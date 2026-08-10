@@ -15,6 +15,11 @@ import type { BaseRace, Member, MemberStats } from "../../types";
 /** 유닛·스킬 칸에 적는 줄 수(요청: Top5). */
 const TOP_N = 5;
 
+/** 스킬 Top5에서 뺀다(요청: "시즈모드 스팀팩같은건 빼기") — 사실상 거의 매 판 켜는
+ *  반사적인 토글(시즈모드·스팀팩·버로우)이라, 다섯 자리 중 절반이 늘 같은 이름으로
+ *  채워져 정작 그 사람이 골라 쓴 스킬(스톰·EMP·플레이그 …)이 밀려났다. */
+const SKILL_LIST_EXCLUDE = new Set(["Tank Siege Mode", "Stim Packs", "Burrowing"]);
+
 /* 도넛 지름 — svg 좌표계 자체의 크기라 CSS로는 못 줄인다(viewBox를 늘리면 글자까지 같이
    줄어들어 읽을 수 없게 된다). 모바일에서도 같은 크기를 쓴다: 한 칸에 도넛이 하나나 둘뿐이라
    좁은 화면에서도 자리가 나고, 이보다 작으면 3시·9시 언저리 조각의 이름이 그림 밖으로
@@ -201,8 +206,9 @@ function TopList({ items, unit }: { items: TopEntry[]; unit: string }) {
   }
   return (
     <ul className={cx("scr-stat-toplist", !SHOW_TOP_VALUES && "scr-stat-toplist-nameonly")}>
-      {items.map((it) => (
+      {items.map((it, i) => (
           <li key={it.name}>
+            <span className="scr-stat-toplist-rank">{i + 1}.</span>
             <span className="scr-stat-toplist-name">{it.name}</span>
             {SHOW_TOP_VALUES && (
               <span className="scr-stat-toplist-n">
@@ -244,7 +250,7 @@ function RaceMixCell({ race, stats }: { race: BaseRace; stats?: MemberStats }) {
       <div className="scr-stat-mix-row">
         {/* 일꾼은 비율이 아니라 그냥 수다(요청) — 5분 동안 몇 기 뽑았나. */}
         <div className="scr-stat-worker5">
-          <span className="scr-stat-worker5-label">5분 일꾼</span>
+          <span className="scr-stat-worker5-label">일꾼(5분)</span>
           {/* 단위를 붙인다(요청) — 수만 있으면 옆 도넛의 퍼센트와 같은 자로 잰 값처럼
               읽힌다. 값이 없을 때(-)는 붙일 단위가 없다. */}
           <span className="scr-stat-worker5-n">
@@ -253,6 +259,9 @@ function RaceMixCell({ race, stats }: { race: BaseRace; stats?: MemberStats }) {
           </span>
         </div>
         <div className="scr-stat-mix-block">
+          {/* 도넛 가운데 구멍이 아니라 위 캡션으로(요청) — 나머지 다섯 내용요소(일꾼·유닛·
+              스킬·공방업)와 같은 자리에 같은 방식으로 이름을 단다. */}
+          <span className="scr-stat-mix-list-cap">건물</span>
           {/* 분당 몇 채를 지었나 — 이 수만은 주요시간대 것으로 센다(요청). 도넛의 구성비와
               아래 Top5는 경기 전체다: 마법처럼 드문 사건까지 담아야 목록이 서고, 구성은
               초·후반까지 넣어야 그 판의 그림이 된다. */}
@@ -269,6 +278,7 @@ function RaceMixCell({ race, stats }: { race: BaseRace; stats?: MemberStats }) {
           </div>
         </div>
         <div className="scr-stat-mix-block">
+          <span className="scr-stat-mix-list-cap">병력</span>
           <PerMin value={perMin(mix.coreUnit, stats.mixSeconds)} unit="기" />
           <div className="scr-stat-mix">
             <DonutChart
@@ -292,9 +302,12 @@ function RaceMixCell({ race, stats }: { race: BaseRace; stats?: MemberStats }) {
         </div>
         <div className="scr-stat-mix-list">
           <span className="scr-stat-mix-list-cap">스킬</span>
-          <TopList items={topEntries(mix.skills, TECH_KO, TOP_N, mix.skillSecs)} unit="회" />
+          <TopList items={topEntries(mix.skills, TECH_KO, TOP_N, mix.skillSecs, SKILL_LIST_EXCLUDE)} unit="회" />
         </div>
-        <UpgradeGrid mix={mix} race={race} />
+        <div className="scr-stat-mix-list">
+          <span className="scr-stat-mix-list-cap">공방업</span>
+          <UpgradeGrid mix={mix} race={race} />
+        </div>
       </div>
     </div>
   );
@@ -341,32 +354,10 @@ export default function MemberStatRow({
   return (
     <div className={cx("scr-stat-row", me && "scr-stat-row-me")}>
       <div className="scr-stat-name-cell">
-        {/* 프사와 닉네임을 한 덩어리로 묶는다 — 칭호가 그 둘 '밑'에 서야 하기 때문이다(요청).
-            묶지 않으면 칭호는 닉네임 밑(프사 옆)에 남아, 프사와 이름과 칭호가 ㄱ자로 어긋난다. */}
-        <div className="scr-stat-name-main">
-        {avatar && (
-          <button type="button" className="scr-stat-avatar-btn" onClick={() => setPhotoOpen(true)} aria-label={`${member.nickname} 사진 보기`}>
-            <Avatar member={member} size={32} />
-          </button>
-        )}
-        <div className="scr-stat-name-stack">
-          {/* 배틀태그는 표시하지 않는다(요청) — 닉네임만. 주종족으로 볼 때만 그 종족이
-              한 글자 배지로 뒤에 붙는다(요청). */}
-          <span className="scr-stat-name-line">
-            <button type="button" className="scr-stat-name-btn" onClick={() => openMemberProfile(member.id)}>
-              {member.nickname}
-            </button>
-            {/* (삭제) 닉네임 옆 종족 배지 — '주종족' 필터에서만 뜨던 것이라 종족 필터가
-                사라지면서(요청) 함께 걷었다. 종족은 이제 칸 이름이 말한다. */}
-          </span>
-        </div>
-        </div>
-        {/* 별명은 닉네임보다 확실히 작고 옅게 둔다(요청) — 이 줄에서 사람을 가리키는 이름은
-            어디까지나 닉네임이고, 이것은 그 옆에 붙는 말이다. 같은 무게로 적으면 표를
-            훑을 때 두 이름이 겹쳐 읽혀 정작 누구 줄인지가 늦게 잡힌다.
-            자리는 프사+닉네임 덩어리의 아래다(요청) — 칸 폭을 통째로 쓰므로 긴 칭호도
-            닉네임 폭에 갇히지 않는다. */}
-        {/* 왜 그 칭호인가는 눌렀을 때만 띄운다(요청) — 늘 적어 두면 줄마다 두 줄이 되어
+        {/* 칭호를 프사+닉네임 위로(요청: "칭호를 닉네임아바타 위로 이탤릭") — 부르는 말이
+            먼저 눈에 들어오고 그 아래 누구인지가 확인되는 순서다. 이탤릭으로 닉네임과
+            자체를 더 뚜렷이 가른다(요청) — 크기·색만으로 가르던 것에 글꼴 기울기까지 더한다.
+            왜 그 칭호인가는 눌렀을 때만 띄운다(요청) — 늘 적어 두면 줄마다 두 줄이 되어
             표가 길어지고, 마우스를 얹어야 뜨는 방식은 손가락으로는 아예 안 뜬다.
 
             말풍선은 표 컬럼 헤더의 ⓘ와 같은 부품(InfoTip)을 그대로 쓴다 — 그쪽이 이미 같은
@@ -389,6 +380,26 @@ export default function MemberStatRow({
              내려와 표가 들쭉날쭉해지고, 아직 안 받아온 것인지 없는 것인지도 구분이 안 된다. */
           <span className="scr-stat-name-epithet scr-stat-name-epithet-none">칭호 없음</span>
         )}
+        {/* 프사와 닉네임을 한 덩어리로 묶는다 — 칭호가 이 둘 '위'에 서야 하기 때문이다(요청).
+            묶지 않으면 칭호가 프사 옆(닉네임 위)에 남아, 프사와 이름과 칭호가 ㄱ자로 어긋난다. */}
+        <div className="scr-stat-name-main">
+        {avatar && (
+          <button type="button" className="scr-stat-avatar-btn" onClick={() => setPhotoOpen(true)} aria-label={`${member.nickname} 사진 보기`}>
+            <Avatar member={member} size={32} />
+          </button>
+        )}
+        <div className="scr-stat-name-stack">
+          {/* 배틀태그는 표시하지 않는다(요청) — 닉네임만. 주종족으로 볼 때만 그 종족이
+              한 글자 배지로 뒤에 붙는다(요청). */}
+          <span className="scr-stat-name-line">
+            <button type="button" className="scr-stat-name-btn" onClick={() => openMemberProfile(member.id)}>
+              {member.nickname}
+            </button>
+            {/* (삭제) 닉네임 옆 종족 배지 — '주종족' 필터에서만 뜨던 것이라 종족 필터가
+                사라지면서(요청) 함께 걷었다. 종족은 이제 칸 이름이 말한다. */}
+          </span>
+        </div>
+        </div>
       </div>
       {/* 게임수·승률·APM·커맨드는 한 칸이다(요청: 통합) — 넷 다 "막대 하나 + 수" 한 줄짜리라
           칸을 넷 쓰면서 표만 넓어졌다. 랭크·레이팅도 같은 칸으로 들어온다(요청: 랭킹과 기록

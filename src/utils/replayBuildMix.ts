@@ -214,13 +214,14 @@ const SUPPLY_BUILDINGS = new Set(["Pylon", "Supply Depot"]);
  *  같은 수면 이름순으로 갈라 순서가 조회마다 흔들리지 않게 한다. */
 export function topEntries(
   d: Record<string, number> | undefined, ko: Record<string, string>, n: number,
-  secs?: Record<string, number>,
+  secs?: Record<string, number>, exclude?: Set<string>,
 ): TopEntry[] {
   const merged: Record<string, number> = {};
   const mergedSecs: Record<string, number> = {};
   // 서버가 아직 이 갈래를 안 내려주는 사이(프론트만 먼저 배포된 순간)에도 칸이 깨지지
   // 않아야 한다 — 없으면 그냥 빈 목록이다.
   for (const [key, v] of Object.entries(d ?? {})) {
+    if (exclude?.has(key)) continue;
     const name = ko[key];
     if (!name || !(v > 0)) continue;
     merged[name] = (merged[name] ?? 0) + v;

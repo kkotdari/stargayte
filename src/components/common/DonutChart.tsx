@@ -1,9 +1,10 @@
 // 표 칸 안에 들어가는 작은 도넛(요청: 통계 생산 칸에 도넛 넷).
 //
 // 이 그림이 답하는 것은 "무엇이 얼마나였나"의 구성비 하나뿐이라, 조각은 둘이나 셋이고
-// 축도 눈금도 없다. 대신 글을 그림 안에 직접 넣는다(요청) — 도넛 이름은 가운데 구멍에,
-// 조각 이름(생산/방어·기본/고급/마법·지상/공중)은 제 조각 띠 위에. 색만으로 뜻을 전하지
-// 않기 위한 장치이기도 하다.
+// 축도 눈금도 없다. 조각 이름(생산/방어·기본/고급/마법·지상/공중)은 제 조각 띠 위에 직접
+// 적는다 — 색만으로 뜻을 전하지 않기 위한 장치다. 도넛 자체의 이름(건물/병력)은 이제 가운데
+// 구멍이 아니라 부르는 쪽이 그림 위에 캡션으로 따로 단다(요청: "타이틀도 도넛 가운데에서
+// 위로 이동") — title은 네이티브 툴팁(전체 조각 수치)에만 쓰인다.
 //
 // 이름은 조각이 아무리 가늘어도 그린다(요청: 칸이 좁아도 삐져나오게라도). 한때는 담기는지
 // 재서 못 담는 조각의 이름을 생략했는데, 그러면 "마법 유닛을 거의 안 뽑았다"처럼 조각이
@@ -26,7 +27,8 @@ export interface DonutSlice {
 }
 
 interface DonutChartProps {
-  /** 도넛 자체의 이름(건물/병력/지형/일꾼) — 가운데 구멍에 적힌다(요청). */
+  /** 도넛 자체의 이름(건물/병력/지형/일꾼) — 화면에는 그리지 않고, 네이티브 툴팁(title
+   *  속성)의 머리말로만 쓰인다. */
   title: string;
   slices: DonutSlice[];
   /** 지름(px). 표 칸에 들어가는 값이라 부르는 쪽이 정한다. */
@@ -44,6 +46,12 @@ const EDGE = 3;
 
 export default function DonutChart({ title, slices, size = 76 }: DonutChartProps) {
   const total = slices.reduce((n, s) => n + s.value, 0);
+  /* 큰 조각부터 반시계로(요청) — 12시에서 시작해 반시계로 도는 방향은 그대로 두고, 어느
+     조각이 먼저 서는지만 값 내림차순으로 바꾼다. 색은 조각 이름이 아니라 자리(첫 조각·
+     둘째·셋째)에 고정이라(아래 idx), 그 결과 "가장 많이 쓴 것"은 어느 도넛에서나 같은
+     색(첫 자리색)으로 읽힌다 — 조각마다 뜻이 달라도(생산/방어, 기본/고급/마법…) "제일
+     많이 한 일"이라는 잣대는 도넛마다 같기 때문이다. */
+  const ordered = [...slices].sort((a, b) => b.value - a.value);
 
   // 링의 굵기와 반지름 — 가운데 구멍이 이름을 담을 만큼 남으면서 띠도 글자를 담을 만큼
   // 두꺼운 값. 구멍 지름은 size - 2*stroke다.
@@ -52,7 +60,6 @@ export default function DonutChart({ title, slices, size = 76 }: DonutChartProps
   const c = 2 * Math.PI * r;
   const cx = size / 2;
   const labelFs = Math.max(9, Math.round(size * 0.125));
-  const titleFs = Math.max(9, Math.round(size * 0.145));
   /* 조각 사이 2px 틈 — 붙여 그리면 비슷한 색끼리 한 덩어리로 읽힌다. 조각이 하나뿐이면
      틈을 낼 곳이 없으므로(원 하나가 잘려 보인다) 그때는 0으로 둔다. */
   const gap = slices.filter((s) => s.value > 0).length > 1 ? 2 : 0;
@@ -67,7 +74,7 @@ export default function DonutChart({ title, slices, size = 76 }: DonutChartProps
   const segs: { key: string; idx: number; dash: number; offset: number }[] = [];
   const onBand: { key: string; x: number; y: number; text: string; delta: string | null }[] = [];
   let acc = 0;
-  slices.slice(0, SEG_MAX).forEach((s, i) => {
+  ordered.slice(0, SEG_MAX).forEach((s, i) => {
     if (total <= 0 || s.value <= 0) return;
     const f = s.value / total;
     const len = f * c;
@@ -116,7 +123,7 @@ export default function DonutChart({ title, slices, size = 76 }: DonutChartProps
   return (
     <div
       className="scr-donut"
-      title={`${title} — ${slices
+      title={`${title} — ${ordered
         .map((s) => `${s.label} ${s.value}` + (total > 0 ? ` (${Math.round((s.value / total) * 100)}%)` : ""))
         .join(" / ")}`}
     >
@@ -159,16 +166,6 @@ export default function DonutChart({ title, slices, size = 76 }: DonutChartProps
             {l.delta}
           </text>
         ) : null))}
-        {/* 가운데 구멍 — 도넛 이름(요청). 한때 여기에 10분당 값도 함께 적었는데(note),
-            이름과 나란히 서서 무엇의 수인지가 섞여 읽혔고 단위를 붙일 자리도 없어
-            그림 위로 뺐다(.scr-stat-per10). */}
-        <text
-          className="scr-donut-center-title"
-          x={cx} y={cx} fontSize={titleFs}
-          textAnchor="middle" dominantBaseline="central"
-        >
-          {title}
-        </text>
       </svg>
     </div>
   );

@@ -213,7 +213,7 @@ export default function LadderScreen() {
     <div className="scr-screen scr-ladder-screen">
       <div className="scr-v2-toolbar">
         <div className="scr-v2-toolbar-title-row">
-          <h1 className="scr-title scr-v2-toolbar-title">래더</h1>
+          <h1 className="scr-title scr-v2-toolbar-title">래더 보드</h1>
           {/* 상성 보기 — 래더에서만 연다(요청). 기간은 이 화면의 현재 필터를 그대로 따른다
               (오버레이 자체 필터 없음 — RivalryOverlay 주석 참고). */}
           <button
@@ -246,6 +246,10 @@ export default function LadderScreen() {
                 minMonth={firstMonth} maxMonth={currentMonthValue()}
                 allValue={PERIOD_ALL} allLabel="전체 누적"
               />
+              {/* 레이팅이 어느 날짜 기준인가 — 컬럼 머리 아랫줄 대신 월 필터 옆에 적는다
+                  (요청: "기준 일은 월 필터 옆에 표시"). 기준일은 그 필터가 정하는 값이라
+                  필터 곁에 있는 편이 "무엇에 대한 기준인가"가 더 잘 붙는다. */}
+              <span className="scr-stat-plain-head-sub scr-ladder-asof">{asOf} 기준</span>
             </div>
           </div>
         </div>}
@@ -268,9 +272,7 @@ export default function LadderScreen() {
               <div className="scr-ladder-row scr-ladder-row-head">
                 <span className="scr-ladder-rank-head">랭크</span>
                 <span className="scr-ladder-name-head">유저</span>
-                {/* 레이팅이 어느 날짜 기준인가는 여기 한 번만 적는다 — 줄마다 되풀이하면
-                    그 글자만 눈에 밟힌다. */}
-                <span>레이팅<span className="scr-stat-plain-head-sub">{asOf} 기준</span></span>
+                <span>레이팅</span>
                 <span>경기수</span>
                 <span>승률</span>
               </div>
@@ -304,7 +306,8 @@ export default function LadderScreen() {
                     )}
                   </span>
                   <span className="scr-ladder-name">
-                    <Avatar member={r.member} size={28} />
+                    {/* 한 스텝 확대(요청: "아바타 및 폰트 크기 1스텝 확대") — 28 → 32px. */}
+                    <Avatar member={r.member} size={32} />
                     <button
                       type="button" className="scr-stat-name-btn"
                       onClick={() => useAppStore.getState().openMemberProfile(r.member.id)}

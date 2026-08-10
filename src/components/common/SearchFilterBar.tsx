@@ -320,16 +320,24 @@ export default function SearchFilterBar({
   //
   // countInline이면 그 대신 필터창+건수를 한 덩어리로 묶어 검색창 옆에 세운다 — 줄이
   // 넘칠 때 둘이 함께 내려가야 해서 형제로 늘어놓지 않고 감싼다(위 prop 주석).
+  // 이 줄에 실제로 담길 것이 하나도 없으면(요청: "안 쓰이는 자리 확인 후 제거" — 래더처럼
+  // 검색창도 필터창도 없는 화면) 빈 flex 상자만 남아 밑에 쓸모없는 여백(margin-bottom)만
+  // 차지한다 — 래퍼 자체를 안 그린다.
+  const hasInlineContent = (!countInline && panelItem)
+    || showSearch || (countInline && (panelItem || countItem)) || trailing;
+
   return (
     <div className="scr-filter-bar">
-      <div className="scr-filter-inline-stack">
-        {!countInline && panelItem}
-        {showSearch && <div className="scr-search-filter-float">{searchItem}</div>}
-        {countInline && (panelItem || countItem) && (
-          <div className="scr-filter-inline-tail">{panelItem}{countItem}</div>
-        )}
-        {trailing}
-      </div>
+      {hasInlineContent && (
+        <div className="scr-filter-inline-stack">
+          {!countInline && panelItem}
+          {showSearch && <div className="scr-search-filter-float">{searchItem}</div>}
+          {countInline && (panelItem || countItem) && (
+            <div className="scr-filter-inline-tail">{panelItem}{countItem}</div>
+          )}
+          {trailing}
+        </div>
+      )}
       {/* 제목이 있으면 건수와 한 줄을 나눠 쓴다 — 없으면 예전 그대로 건수만(오른쪽 정렬은
           .scr-filter-bar-count 자신의 align-self가 맡는다). */}
       {!countInline && (heading ? (

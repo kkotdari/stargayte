@@ -261,7 +261,7 @@ export default function ClanStatsScreen() {
     <div className="scr-screen scr-stats-screen-v2">
       <div className="scr-v2-toolbar">
         <div className="scr-v2-toolbar-title-row">
-          <h1 className="scr-title scr-v2-toolbar-title">내전</h1>
+          <h1 className="scr-title scr-v2-toolbar-title">내전 통계</h1>
           {/* 도움말은 없앴다(요청). 칸마다 달려 있던 ⓘ 여섯 개를 하나로 합친 뒤 다섯 번
               쳐내다가 결국 통째로 지웠다 — 남아 있던 줄의 절반은 판수 문턱 이야기였는데
               그 문턱 자체가 사라졌고, 나머지도 화면이 이미 말하고 있다(칸 이름, 막대 라벨,
@@ -311,14 +311,6 @@ export default function ClanStatsScreen() {
              '무엇의 비율'인지가 없는 그림이 된다. 자리만 비워 두는 것과도 다른 말이다:
              칸을 남겨 두면 그 안의 "-"가 '이 사람은 안 지었다'로 읽힌다. */
           <div className="scr-stat-table-row">
-            {/* 세 칸에 대한 한 줄 — 없을 때는 어떻게 하면 열리는지, 열려 있을 때는 무엇을
-                보는 칸인지 적는다(요청). 자리는 늘 표 위다: 표 옆에 세웠더니 좁은 화면에서
-                표가 볼 자리를 통째로 먹었고(지적), 세 칸이 열린 표는 애초에 옆자리가 없다. */}
-            <p className="scr-stat-mix-hint">
-              <b>종족별 생산</b>
-              <span>분당 지은 채수·뽑은 기수와 그 구성비, 5분 일꾼, 공/방 단계, 많이 쓴 다섯을
-                그 종족으로 뛴 판만 모아 봅니다. ※ 공/방은 20분 이상 경기</span>
-            </p>
             <div className="scr-stat-table-clip">
               <div className="scr-stat-table scr-scroll">
                 {/* 헤더도 데이터 행과 같은 가로 스크롤 컨테이너 안의 평범한 첫 행이다 —
@@ -337,8 +329,8 @@ export default function ClanStatsScreen() {
                       기간은 필터 줄이 이미 말하고 있어 칸 이름에서 뺐다. */}
                   <PlainHead label="주요 지표" />
                   {/* 종족이 곧 칸 이름이다(요청: 종족별로 반복) — 건설·유닛·스킬 셋을 한 칸에
-                      합쳤으니 칸을 가리키는 이름은 종족뿐이다. 무엇을 보는 칸인지는 표 위의
-                      한 줄이 말한다(.scr-stat-mix-hint). */}
+                      합쳤으니 칸을 가리키는 이름은 종족뿐이다. 무엇을 보는 칸인지는 칸 안의
+                      여섯 내용요소가 저마다 제 캡션으로 말한다(요청: 표 위 안내문 제거). */}
                   <PlainHead label="테란" />
                   <PlainHead label="프로토스" />
                   <PlainHead label="저그" />

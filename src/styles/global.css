@@ -256,7 +256,10 @@
   /* 한 단계 밝게(지적: 다크의 막대·도넛 색이 너무 어둡다) — 흰 숫자를 얹는 자리라
      밝힐수록 대비가 깎이지만, 막대 위 숫자는 굵은 큰 글자라 4.4:1이면 넉넉하다.
      작은 글자가 얹히는 도넛 띠는 아래에서 검은 테두리를 둘러 밝기와 무관하게 읽히게 한다. */
-  --info: #4478c9;
+  /* 좀 더 푸른 기운으로(지적: "색깔 너무 촌스러워서 좀더 푸른 기운 강화") — #2f7cf0까지
+     가면 "눈이 아프다"던 값이라(위 라이트 --info 주석) 그 정도까진 안 가고, 채도만 한
+     단계 더 올린다. */
+  --info: #3d7ce0;
   /* 카드/랭킹 행 사이 구분선 톤 — 예전 옅은 붉은기(192,122,134)는 이제 안 쓰는
      팔레트(요청) — 흰 계열로 통일(알파는 쓰는 곳마다 그대로). */
   --divider-tint: 255, 255, 255;
@@ -1026,7 +1029,9 @@ html.scr-light-theme {
   /* 통계 그래프(막대/차트) 채움색. 한때 진하고 채도 강한 파랑(#2f7cf0)까지 갔다가 "눈이
      아프다"는 지적으로 채도를 낮춘 파스텔로 되돌렸고, 그 뒤 "라이트는 더 밝게"라는
      지적으로 명도를 한 번 더 올린다(다크 테마 --info는 반대로 더 어둡게). */
-  --info: #93b3e0;
+  /* 다크와 같은 이유로 채도를 한 단계 올린다(지적: "색깔 너무 촌스러워서 좀더 푸른 기운
+     강화"). */
+  --info: #6f97dc;
   --divider-tint: 0, 0, 0;
   --overlay-rgb: 0, 0, 0;
   /* 다크와 같은 문법 — 라이트의 --panel-solid는 #ffffff라 값 자체는 예전과 같다. */
@@ -1709,12 +1714,13 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      버튼이 기둥의 직계 자식이 되어 저마다 제 자리(order)를 갖는다. 상자는 선택자
      트리에는 그대로 남아 있어 아래 .scr-user … 규칙들은 계속 걸린다. */
   .scr-user { display: contents; }
-  /* 칸의 좌우 여백만큼 밖으로 물린다 — 그래야 '글자'의 왼쪽이 로고의 왼쪽과 한 줄에
-     선다. 안 물리면 누를 자리를 만드는 padding(10px) 때문에 로고만 혼자 왼쪽으로 튀어
-     나온 것처럼 보인다. 배경(호버·활성)은 그만큼 글자보다 넓게 깔리는데, 그건 세로
-     메뉴에서 흔한 모양이고 눌리는 자리가 글자보다 조금 넉넉한 편이 낫다. */
+  /* 로고만 빼고 이 아래 요소들은 로고보다 좀 더 안쪽에서 시작한다(요청: "로고 제외한
+     요소들 좌측 패딩 더 주기") — 누를 자리를 만드는 padding(10px)을 감안해 margin-left를
+     양수로 줘서 글자 시작점을 로고의 왼쪽보다 오른쪽으로 밀어 둔다. 배경(호버·활성)은
+     그만큼 글자보다 넓게 깔리는데, 그건 세로 메뉴에서 흔한 모양이고 눌리는 자리가
+     글자보다 조금 넉넉한 편이 낫다. */
   .scr-user .scr-header-text-btn {
-    order: 1; text-align: left; padding: 7px 10px; border-radius: 6px; margin-left: -10px;
+    order: 1; text-align: left; padding: 7px 10px; border-radius: 6px; margin-left: 2px;
   }
   /* 메뉴는 세로로 쌓이고 기둥 한가운데에 선다. 가로 띠일 때의 flex:1 + 가로 스크롤은 남는
      폭을 나눠 갖기 위한 것이었는데, 세로에서는 그 값이 메뉴를 기둥 아래까지 늘려 버린다. */
@@ -1732,7 +1738,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   .scr-header-inner::after { content: ""; flex-basis: 0; min-height: 0; }
   .scr-header-inner::before { order: 2; flex-grow: 2; }
   .scr-header-inner::after { order: 4; flex-grow: 3; }
-  .scr-nav-tab { justify-content: flex-start; padding: 9px 10px; border-radius: 6px; margin-left: -10px; }
+  .scr-nav-tab { justify-content: flex-start; padding: 9px 10px; border-radius: 6px; margin-left: 2px; }
   /* 기둥에서는 메뉴 글자를 키운다(요청): body(16) → subhead(20). 가로 띠에서 16px인 건
      옆에 로고·프로필과 나란히 서느라 눌러 둔 값인데, 기둥에서는 이 넷이 화면 왼쪽에서
      유일하게 읽는 글자라 그만큼 커도 된다. 한 번 headline(24)까지 올렸다가 한 스텝
@@ -1745,9 +1751,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   /* 누를 수 있는 자리를 눈에 보이게 — 기둥에서는 칸이 글자 폭이라 배경 한 겹이 곧 그
      경계다. 가로 띠에서는 글자색만 밝혔는데, 거기서는 칸이 서로 붙어 있어 경계를 따로
      그릴 필요가 없었다. */
-  /* 칩은 왼쪽 패딩이 4px이라(프사가 붙는 자리) 그만큼만 물린다 — 프사의 왼쪽이 로고·
-     메뉴 글자와 한 줄에 선다. */
-  .scr-user-chip { order: 5; justify-content: flex-start; border-radius: 6px; margin-left: -4px; }
+  /* 칩은 왼쪽 패딩이 4px이라(프사가 붙는 자리) 나머지 메뉴들과 같은 만큼 안쪽에서
+     시작하도록 그 차이만큼 더 민다. */
+  .scr-user-chip { order: 5; justify-content: flex-start; border-radius: 6px; margin-left: 8px; }
 }
 @media (min-width: 1160px) and (hover: hover) {
   .scr-nav-desktop .scr-nav-tab:hover,
@@ -2202,9 +2208,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-name-epithet {
   max-width: 100%;
   /* 색은 --dim에서 한 단계 올렸다(요청: 더 진하게) — 이름 아래 제 줄로 내려오면서 닉네임과
-     겹쳐 읽힐 걱정이 없어졌고, 그러자 이번엔 너무 눌려 읽히지가 않았다. 크기(micro)가
-     이미 닉네임과의 무게 차이를 만들고 있으므로 색까지 눌러 둘 이유가 없다. */
-  font-size: var(--fs-micro); line-height: 1.3; color: var(--muted);
+     겹쳐 읽힐 걱정이 없어졌고, 그러자 이번엔 너무 눌려 읽히지가 않았다. 크기도 한 단계
+     올렸다(요청: "칭호 더 크게") — micro(12) → caption(14).
+     자리는 이제 프사·닉네임 '위'다(요청: "칭호를 닉네임아바타 위로") — 부르는 말이 먼저,
+     누구인지는 그 아래서 확인된다. 이탤릭(요청)까지 더해 닉네임과 성격이 다른 줄임을
+     글꼴에서부터 가른다. */
+  font-size: var(--fs-caption); font-style: italic; line-height: 1.3; color: var(--muted);
   word-break: keep-all;
   /* 눌러서 까닭을 펼치는 자리다(InfoTip의 트리거) — 겉모습은 예전 span 그대로 두고 손 모양만
      얹는다. 까닭 말풍선 자체는 여기서 안 그린다: 이 칸의 조상들이 하나같이 잘라 내서
@@ -2253,37 +2262,56 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    되풀이되는 표라 칸 높이가 곧 표 전체의 길이다. 대신 칸이 넓어져 가로로 스크롤하는데, 그건
    이 표가 원래 하던 일이다(칸이 다섯이던 시절부터). 세로로 긴 것과 달리 가로 스크롤은
    한 줄을 읽는 동안에는 안 움직인다. */
+/* 두 줄(윗줄 [일꾼|건물|병력], 아랫줄 [유닛|스킬|공방업])이 진짜 한 격자다(요청: "가로도
+   구분선 넣고 세로 구분선 위아래 하나로 합쳐서 그리드 형태로 만들기 — 내부 그리드인 셈").
+   행 래퍼(.scr-stat-mix-row)는 display:contents로 제 상자를 걷어 그 자식 셋이 이 칸의
+   진짜 grid item이 되게 한다 — 그래야 위·아래 줄이 같은 grid-template-columns를 나눠
+   쓰고, 칸 사이 세로선이 같은 x에서 시작해 틈 없이 위아래로 이어진다(래퍼가 각자 제
+   상자를 가지면 줄 사이 8px 틈에서 선이 끊겼다). 가로선은 첫 줄 칸들의 아래쪽에만 긋는다. */
 .scr-stat-mix-cell {
-  flex-direction: column; align-items: stretch; justify-content: center;
-  gap: 8px; position: relative;
+  /* minmax(0,1fr) — 그냥 1fr이면 트랙의 자동 최소폭이 그 칸의 제일 넓은 내용(도넛 72px,
+     "배틀크루저" 같은 긴 이름)에 맞춰 잡혀 세 칸이 고르게 안 나뉘었다(지적: "그리드가
+     찌그러짐 정확히 6등분이어야함") — 0을 최소로 못 박아야 세 칸이 내용과 무관하게
+     정확히 3등분된다. */
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 0; column-gap: 10px;
+  /* 기본 .scr-stat-row > *의 align-items:center(그리드 컨테이너에도 그대로 적용돼, 짧은
+     칸이 제 줄 높이 안에서 위아래로 뜬다)를 이긴다 — 칸이 줄 높이를 꽉 채워야 안쪽
+     justify-content:flex-start가 진짜 "위정렬"이 된다(지적: 세로는 위로 가로는 가운데). */
+  align-items: stretch;
+  position: relative;
   --scr-toplist-w: 90px;
 }
-/* 값이 없어 "-" 하나만 있는 칸에서도 그 하나가 가운데 서게 한다. */
-.scr-stat-mix-cell > .scr-stat-points-empty { flex: 1 1 auto; text-align: center; align-self: center; }
-/* 두 줄 다 같은 격자를 쓴다 — 위아래 덩어리가 같은 x에서 시작해야 칸이 하나의 표로 읽힌다.
-   가운데 열이 가장 넓고(그래프·스킬 목록), 양끝은 제 내용만큼이다. 덩어리 사이 실선은
-   서로 다른 것을 세는 값임을 말한다(예전 칸 사이 구분선의 몫). */
-.scr-stat-mix-row {
-  display: grid; grid-template-columns: 1fr 1fr 1fr;
-  align-items: center; gap: 10px;
+/* 값이 없어 "-" 하나만 있는 칸에서도 그 하나가 칸 전체 가운데 서게 한다. */
+.scr-stat-mix-cell > .scr-stat-points-empty {
+  grid-column: 1 / -1; text-align: center; align-self: center; justify-self: center;
 }
+.scr-stat-mix-row { display: contents; }
+/* 세로 위정렬(요청: "세로 가운데 정렬 말고 세로 위정렬 각각 셀에서") — 내용 길이가 칸마다
+   다른데(도넛 하나 vs 다섯 줄 목록) 가운데 정렬이면 짧은 쪽이 위아래로 붕 뜬다. */
 .scr-stat-mix-row > * {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  align-self: stretch; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  min-width: 0; padding: 8px 0;
 }
+.scr-stat-mix-row > *:first-child { padding-left: 6px; }
 .scr-stat-mix-row > * + * { border-left: 1px solid var(--line-hair); padding-left: 10px; }
-/* 목록에 이름표를 단다 — 무엇의 목록인지는 칸 머리가 안 말해 준다(그쪽은 종족 이름이다). */
-.scr-stat-mix-list { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.scr-stat-mix-row:first-child > * { border-bottom: 1px solid var(--line-hair); }
+/* 목록에 이름표를 단다 — 무엇의 목록인지는 칸 머리가 안 말해 준다(그쪽은 종족 이름이다).
+   왼쪽으로 붙인다(요청) — 캡션·순번 붙은 목록·공방업 표 모두 칸 왼쪽부터 읽는 편이
+   가운데보다 표답다. */
+.scr-stat-mix-list { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .scr-stat-mix-list-cap {
-  font-size: var(--fs-9); font-weight: 700; color: var(--dim); letter-spacing: 0.03em;
+  font-size: var(--fs-9); font-weight: 700; color: var(--muted); letter-spacing: 0.03em;
 }
-.scr-stat-mix-cell .scr-stat-toplist { flex: none; width: var(--scr-toplist-w); min-width: 0; }
+/* 여기도 같은 이유로 고정폭 대신 상한만(위 .scr-stat-upgrades 주석 참고) — 칸이 좁아지면
+   목록도 함께 좁아져야지, 고정폭을 고집하면 옆 칸을 덮어쓴다. */
+.scr-stat-mix-cell .scr-stat-toplist { flex: none; width: 100%; max-width: var(--scr-toplist-w); min-width: 0; }
 /* 주요 지표 칸 안의 덩어리 사이 실선은 그대로다. */
 .scr-stat-record-cell > * + * {
   border-left: 1px solid var(--line-hair); padding-left: 10px; align-self: stretch;
 }
-.scr-stat-toplist, .scr-stat-upgrades { align-content: center; }
-.scr-stat-worker5 { justify-content: center; }
+/* 위정렬(요청) — 칸이 제 내용보다 늘어나 있어도(align-self:stretch) 남는 자리는
+   아래로 밀리고, 목록/표 자신은 위에 붙는다. */
+.scr-stat-toplist, .scr-stat-upgrades { align-content: start; }
 .scr-stat-mix { display: flex; align-items: center; justify-content: center; gap: 10px; flex: none; }
 /* 도넛(들)과 그 위의 10분당 값을 한 덩어리로 — 값은 도넛 하나든 둘이든 그 무리의 위쪽
    가운데에 한 번만 선다(요청). 한때 도넛 가운데 구멍에 적었는데, 구멍 안에서는 도넛
@@ -2314,6 +2342,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    넷이 폭을 통째로 나눠 쓰지 않고 다 같은 폭을 쓴다. 대신 줄 수가 배로 늘어난 만큼
    글자와 막대 두께를 함께 줄인다(요청) — 아래 --scr-stat-bar-h. */
 .scr-stat-record-cell {
+  /* 세로 가운데 정렬로 되돌린다(지적: "주요지표도 세로 가운데 정렬") — 유저 칸과 같은
+     규칙이다. 위정렬은 내용 길이가 칸마다 크게 다른 종족 칸에만 쓴다. */
   flex-direction: row; align-items: center; justify-content: center;
   gap: 10px; position: relative;
 }
@@ -2372,7 +2402,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    이름까지 값과 같은 무게면 칸이 글자로 꽉 찬다. */
 .scr-stat-record-label {
   text-align: center;
-  font-size: var(--fs-9); color: var(--dim); white-space: nowrap;
+  font-size: var(--fs-9); color: var(--muted); white-space: nowrap;
 }
 .scr-stat-record-item .scr-value-bar,
 .scr-stat-record-item .scr-stat-bar-row { flex: 1 1 auto; min-width: 0; }
@@ -2388,15 +2418,20 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 240 → 180px(요청: 막대가 너무 길다) — 넷을 세로로 세운 뒤로 이 칸은 '막대밭'이라, 240px은
    길이를 견주는 데 필요한 것보다 길어 칸이 통째로 파랗게 읽혔다. 180px이면 가장 긴 값과
    가장 짧은 값의 차이는 그대로 보이면서 좌우로 숨 쉴 자리가 남는다. */
+/* 180 → 140px, 두께도 도넛 링과 비슷하게(요청: "주요지표 막대 두께, 길이 감소") — 실제로
+   보이는 두께는 아래 v2 전용 규칙(.scr-stats-list-panel-v2 .scr-stat-bar-track-wrap)이
+   덮어쓴다. */
 .scr-stat-record-item .scr-value-bar-track-wrap,
-.scr-stat-record-item .scr-stat-bar-track-wrap { max-width: 180px; }
+.scr-stat-record-item .scr-stat-bar-track-wrap { max-width: 140px; }
 /* 값과 변동을 막대 '안'에 두 줄로 담는다(요청) — 그만큼 트랙을 두껍게 잡는다(15 → 24px).
    한동안 변동을 트랙 밖 아래에 뒀는데, 그러면 막대와 막대 사이 여백을 이 줄이 먹어
    어느 막대의 변동인지가 흐려졌다. 값 11px + 변동 8px + 위아래 여백이 24px이다.
    줄 수가 넷이라 이 이상 두꺼워지면 이 칸 혼자 도넛 칸보다 세로로 커진다. */
 .scr-stat-record-item .scr-value-bar-track-wrap,
 .scr-stat-record-item .scr-stat-bar-track-wrap {
-  height: 24px; min-height: 0;
+  /* 8px는 너무 얇았다(지적: "16이나 20이 적당할듯") — 값+변동 두 줄을 담기엔 그 사이인
+     18px로. */
+  height: 18px; min-height: 0;
   flex-direction: column; justify-content: center; gap: 0;
 }
 /* 승률은 값이 트랙 전체를 덮는 절대배치 상자 안에 있다(.scr-stat-bar-rate-overlay) —
@@ -2428,7 +2463,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 }
 .scr-stat-record-item .scr-stat-bar-row .scr-stat-bar-track-wrap,
 .scr-stat-record-item .scr-value-bar .scr-value-bar-track-wrap {
-  flex: none; width: 100%; min-width: 0; height: 24px; min-height: 0;
+  /* 실제로 이기는 규칙(특이도 0-3-0)이 이거였다(지적: "바 두께 제약걸렸나 아까부터
+     안줄어") — 아래 v2 전용 규칙(0-2-0)이나 위 base 규칙보다 특이도가 높아 그 둘의
+     height를 아무리 낮춰도 여기 24px에 막혀 있었다. */
+  flex: none; width: 100%; min-width: 0; height: 18px; min-height: 0;
 }
 /* 값도 ValueBar의 숫자와 같은 자로 — 자릿수 폭을 고정해 줄마다 흔들리지 않게 한다. */
 .scr-stat-record-item .scr-stat-bar-rate { font-variant-numeric: tabular-nums; }
@@ -2513,7 +2551,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   flex: none; white-space: nowrap;
 }
-.scr-stat-worker5-label { font-size: var(--fs-11); color: var(--dim); line-height: 1.1; }
+/* 다른 다섯 캡션(.scr-stat-mix-list-cap)과 같은 크기로(지적: "일꾼(5분)만 폰트 크기가
+   다르네") — fs-11(11) → fs-9(9). */
+.scr-stat-worker5-label { font-size: var(--fs-9); font-weight: 700; letter-spacing: 0.03em; color: var(--muted); line-height: 1.1; }
 .scr-stat-worker5-n {
   position: relative;
   font-size: var(--fs-caption); font-weight: 700; color: var(--text);
@@ -2540,16 +2580,21 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      실제 하한은 이름이 아니라 밑에 붙는 당구장 한 줄이다(87px, 격자 전체를 가로지른다) —
      그래서 92px. "플라즈마 실드"를 담느라 120px이던 것을 이름을 "실드"로 줄이면서 함께
      줄였다(요청: 줄인 만큼 자리도 줄이기). */
-  --scr-up-num-w: 18px;
+  --scr-up-num-w: 15px;
   display: grid; grid-template-columns: 1fr var(--scr-up-num-w) var(--scr-up-num-w);
-  width: 92px;
-  gap: 1px 8px; align-items: baseline;
+  /* 92px 고정폭이 문제였다(지적: "최소폭도 지정잘못한듯" — 칸이 그보다 좁아지는 화면에서는
+     이 표가 제 칸을 넘어 옆 목록(유닛)까지 덮어썼다). max로 상한만 두고 실제 폭은 칸이
+     주는 만큼(100%) 따라가게 한다 — 좁아지면 이 표도 함께 좁아진다. */
+  width: 100%; max-width: 92px;
+  /* 열 사이 간격을 한 번 더 줄인다(지적: "갭을 줄여야해 글자가 삐져나가고 있다고") —
+     4 → 2px. */
+  gap: 1px 2px; align-items: baseline;
   font-size: var(--fs-11); color: var(--text);
   font-variant-numeric: tabular-nums; text-align: right; flex: none;
 }
 .scr-stat-upgrades > span { white-space: nowrap; }
 .scr-stat-up-head { color: var(--muted); }
-.scr-stat-up-row { color: var(--dim); text-align: left; }
+.scr-stat-up-row { color: var(--muted); text-align: left; }
 /* 어떤 경기만 셌는지 표 밑에 한 줄로 달아 둔다(요청: 아래에 당구장표시로 "n분 이상 경기
    대상") — 안 적으면 이 수만 다른 칸과 다른 자로 잰 것이 안 보인다. 격자 네 칸을 통째로
    써서 위 숫자들의 자리를 안 건드리고, 표 안의 어느 값보다 흐리게 둬 곁말로 읽히게 한다. */
@@ -2579,7 +2624,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 글자는 값보다 확실히 작다(요청) — 값이 11px인 자리에서 9px은 차이가 안 읽혀 두 수가
    같은 무게로 보였다. 한 단계 더 내린다. */
 .scr-stat-delta {
-  margin-left: 3px; font-size: calc(var(--fs-9) - 1px); font-weight: 600; color: var(--dim);
+  margin-left: 3px; font-size: calc(var(--fs-9) - 1px); font-weight: 600; color: var(--muted);
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 /* 안 움직였거나 견줄 값이 없는 자리 — 자리는 지키되 읽을 값이 아니라는 것이 보이게. */
@@ -2650,18 +2695,23 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    목록 전체에서 수의 자릿수가 세로로 맞는다. */
 .scr-stat-toplist {
   list-style: none; margin: 0; padding: 0;
-  display: grid; grid-template-columns: auto auto;
-  justify-content: center; column-gap: 10px; row-gap: 2px;
+  display: grid; grid-template-columns: auto auto auto;
+  justify-content: center; column-gap: 6px 10px; row-gap: 2px;
 }
-/* 수를 숨긴 동안에는 한 열짜리다 — 두 열로 두면 빈 열만큼 이름이 왼쪽으로 쏠린다. */
-.scr-stat-toplist-nameonly { grid-template-columns: auto; }
-/* 이름만 있을 때는 줄마다 가운데로(요청) — 열 폭이 가장 긴 이름에 맞춰 잡히는 탓에 짧은
-   이름들이 왼쪽에 몰려, 가운데 정렬인 다른 칸들 사이에서 이 칸만 왼쪽으로 쏠려 보였다.
-   수를 함께 보여줄 때(SHOW_TOP_VALUES)는 이름-수가 짝으로 읽혀야 해서 왼쪽 그대로다. */
-.scr-stat-toplist-nameonly .scr-stat-toplist-name { text-align: center; }
+/* 수를 숨긴 동안에는 순번+이름 두 열짜리이고, 목록 전체를 칸 왼쪽에 붙인다(요청: "스킬
+   유닛 탑5 왼쪽 정렬하고 넘버링 해주기") — 예전에는 이름 하나뿐이라 줄마다 가운데로
+   눕혔는데, 순번이 붙으면서 "1. 마린"처럼 줄 앞머리가 생겨 왼쪽부터 읽는 목록이 됐다.
+   수를 함께 보여줄 때(SHOW_TOP_VALUES)는 세 열(순번·이름·수) 그대로 가운데다. */
+.scr-stat-toplist-nameonly { grid-template-columns: auto auto; justify-content: flex-start; }
+.scr-stat-toplist-nameonly .scr-stat-toplist-name { text-align: left; }
+/* 값이 없는 "-" 한 줄은 순번 없이 칸 전체를 가로질러 가운데 선다. */
+.scr-stat-toplist > li > .scr-stat-points-empty { grid-column: 1 / -1; text-align: center; }
 .scr-stat-toplist li {
   display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
   align-items: baseline; line-height: 1.35; min-width: 0;
+}
+.scr-stat-toplist-rank {
+  color: var(--muted); font-variant-numeric: tabular-nums; font-size: var(--fs-9);
 }
 .scr-stat-toplist-name {
   color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -2767,11 +2817,6 @@ html:not(.scr-light-theme) .scr-donut-band-label { fill: #fff; }
    '값에 붙는 단서'로 읽히게 한다. 조각 색을 입히지 않는 이유는 이름과 같다. */
 .scr-donut-band-delta { fill: #000; font-weight: 700; opacity: 0.6; }
 html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
-/* 가운데 구멍 — 도넛 이름 하나. 조각 색을 글자에 입히지 않는다: 색이 곧 뜻이 되면 색을
-   못 가르는 사람에게 이름까지 사라진다. (값 한 줄을 함께 적던 .scr-donut-center-note는
-   그 값이 그림 위로 나가면서 없앴다 — .scr-stat-per10 참고.) */
-.scr-donut-center-title { fill: var(--dim); font-weight: 600; }
-
 .scr-value-bar { display: flex; align-items: center; justify-content: center; width: 100%; }
 /* 게임수/생산/APM/커맨드 값(요청: "막대그래프 위에 텍스트 겹쳐서 표시") — 트랙 자신의
    배경(아래 .scr-value-bar-track-wrap) 위에 얹힌 보통 자식이라, 배경은 항상 자식보다
@@ -2944,30 +2989,14 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
 .scr-stats-list-panel-v2 .scr-stat-table-nomedal .scr-stat-row { --scr-stat-rank-w: 62px; }
 /* (삭제) .scr-stat-table-slim — 종족을 안 골라 생산 칸이 통째로 빠지던 표. 종족이 칸이
    되면서 세 칸은 늘 함께 선다(요청). */
-/* 세 칸에 대한 한 줄 — 늘 표 위에 눕는다(요청·지적).
-   표 옆에 세워도 봤는데 두 가지가 걸렸다: 좁은 화면에서는 표가 볼 자리를 통째로 먹었고
-   (폰에서 유저 칸과 레이팅 한 자락만 남았다), 세 칸이 열린 표는 애초에 옆자리가 없다.
-   위에 한 줄로 누우면 표는 폭을 온전히 쓰고, '이 칸들이 무엇인가'를 먼저 읽고 표로
-   내려가는 차례도 자연스럽다. 폭을 못 박지 않으니 줄바꿈도 억지로 생기지 않는다(지적).
-   글자는 표의 어느 글자보다 작고 흐리다 — 곁말이라는 것이 크기로 먼저 읽혀야 한다. */
-.scr-stat-mix-hint {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px;
-  margin: 0 0 8px; padding: 0;
-  font-size: var(--fs-11); line-height: 1.5; color: var(--dim);
-}
-.scr-stat-mix-hint b { font-size: var(--fs-caption); font-weight: 700; color: var(--text); }
+/* (삭제) .scr-stat-mix-hint — 종족별 생산 칸을 설명하던 표 위 안내문(요청: 제거). */
 @media (max-width: 1159px) {
-  .scr-stat-mix-hint { font-size: var(--fs-9); }
-  .scr-stat-mix-hint b { font-size: var(--fs-11); }
   /* 막대는 모바일에서 한 번 더 짧다(요청) — 여기서 막대가 말하는 것은 길이 자체가 아니라
      넷을 나란히 놓고 견주는 그림이고, 그 그림은 다 같이 짧아져도 그대로다. 표가 화면보다
      넓어 가로로 스크롤하는 자리라, 줄인 만큼이 곧 '한 화면에 보이는 칸'이 된다. */
   .scr-stat-record-item .scr-value-bar-track-wrap,
-  .scr-stat-record-item .scr-stat-bar-track-wrap { max-width: 120px; }
+  .scr-stat-record-item .scr-stat-bar-track-wrap { max-width: 100px; }
 }
-/* 어떻게 하면 보이는지 — 이 문장만은 흐리게 두지 않는다. 안내에서 실제로 할 일을 말하는
-   유일한 줄이라, 나머지 설명과 같은 톤이면 읽고도 무엇을 해야 하는지가 안 남는다. */
-.scr-stat-mix-hint em { font-style: normal; color: var(--text); }
 .scr-stats-list-panel-v2 .scr-stat-row > * { padding-top: 10px; padding-bottom: 10px; }
 /* 건설·유닛·스킬 칸의 좌우 여백을 14 → 8px로 조인다(요청: "건물·유닛·스킬의 좌우 여백
    좀 줄이면 줄일 수 있음"). 이 셋은 속이 [그림 | 선 | 목록] 가로 배치라 이미 제 안에
@@ -3133,6 +3162,9 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
    justify-content는 방향이 바뀌면서 '세로 가운데'를 뜻하게 된다 — 원래 하던 일 그대로다. */
 /* 칸 gap은 이름줄과 칭호줄 사이다 — 3 → 7px(요청: 칭호 위를 더 넓게). 칭호는 이름보다
    작고 옅어서 바짝 붙으면 이름의 아랫부분처럼 읽힌다. */
+/* 세로 가운데 정렬로 되돌린다(지적: "유저랑 주요 지표는 세로 가운데 정렬이고") — 위정렬은
+   내용 길이가 칸마다 크게 다른 종족 칸(도넛 하나 vs 다섯 줄 목록)에만 쓰고, 이 칸은
+   그대로 가운데다. */
 .scr-stats-list-panel-v2 .scr-stat-name-cell { flex-direction: column; gap: 7px; justify-content: center; }
 /* 프사는 한 스텝 작게, 닉네임은 한 스텝 크게(요청) — 이 칸에서 사람을 가리키는 것은 이름
    쪽이고 프사는 그 곁이다. 둘의 크기 차가 벌어질수록 훑을 때 이름이 먼저 잡힌다. */
@@ -3216,7 +3248,7 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
    같은 4px로, ③ 승률 숫자를 ValueBar 숫자처럼 가운데 정렬 + 같은 크기(body, 모바일에선
    아래 480px 블록이 caption으로 덮음)로. */
 .scr-stats-list-panel-v2 .scr-stat-bar-row { gap: 4px; }
-.scr-stats-list-panel-v2 .scr-stat-bar-track-wrap { min-height: 0; height: 20px; }
+.scr-stats-list-panel-v2 .scr-stat-bar-track-wrap { min-height: 0; height: 18px; }
 .scr-stats-list-panel-v2 .scr-stat-bar-top { display: flex; justify-content: center; gap: 0; }
 /* 글자 크기는 이제 base(.scr-stat-bar-rate, caption)를 그대로 쓴다 — 모든 수치 텍스트와
    같은 14px로 통일(요청). */
@@ -8741,6 +8773,30 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    제목 옆 토글은 통계의 "도움말"과 같은 글자 트리거 관용구를 쓴다 — 켜져 있을 때만
    점선이 실선이 되어 지금 이 모드라는 것이 글자만으로 읽힌다. */
 
+/* ── 유형별 덩어리(요청: "활동 화면을 유형별 목록으로 구분") ───────────────────────
+   덩어리 사이는 실선(.scr-activity-rows 안의 줄 사이 선)보다 훨씬 넓게 띄운다(요청:
+   "묶음 구분되게 사이 갭 충분히 주기") — 같은 갈래 안의 줄들은 촘촘히, 갈래와 갈래
+   사이는 확실히 떨어져야 "여기부터 다른 이야기"라는 것이 스크롤만으로도 읽힌다. */
+.scr-activity-groups { display: flex; flex-direction: column; gap: 36px; }
+.scr-activity-group-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 0 var(--scr-row-pad-x, 0) 10px;
+}
+.scr-activity-group-title { margin: 0; font-size: var(--fs-subhead); font-weight: 800; color: var(--text); }
+.scr-activity-group-viewall {
+  flex: none; background: none; border: none; padding: 4px 2px; margin: -4px -2px;
+  font-family: inherit; font-size: var(--fs-caption); font-weight: 600; color: var(--muted);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) { .scr-activity-group-viewall:hover { color: var(--text); } }
+
+/* "전체 보기" 팝업 — 폭은 목록 카드와 비슷한 최대폭으로, 모바일에서는 다른 모달과
+   같이(요청 없이도 기존 규칙 자동 적용, global.css의 min-width:1159px 아래 fullscreen
+   규칙 참고) 전체화면이 된다. */
+.scr-activity-group-modal { max-width: 640px; display: flex; flex-direction: column; }
+.scr-activity-group-modal .scr-filter-bar { margin-bottom: 8px; }
+.scr-activity-group-modal-rows { overflow-y: auto; flex: 1 1 auto; min-height: 0; }
+
 /* 줄 구분선은 본문 칸 좌우 여백을 뚫고 끝까지 간다(요청: 양쪽 끝까지 꽉 차게) — 표의
    가로줄은 칸 안쪽이 아니라 표 전체를 가르는 선이다. 여백만큼 밖으로 나갔다가 같은 값을
    줄 안쪽 패딩으로 되돌려 글자 자리는 그대로 둔다(--card-bleed는 .scr-main이 자기
@@ -11297,15 +11353,26 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    랭크가 맨 왼쪽 제 칸인 것이 이 화면의 요점이다(요청) — 리더보드에서 제일 먼저 읽는 값이라
    유저 칸 안에 딸려 있으면 안 된다. 유저만 남는 폭을 먹고(1fr), 수치 셋은 제 폭이 고정이라
    줄이 바뀌어도 자릿수가 세로로 맞는다. */
+/* 내전 통계 표(.scr-stat-table)와 같은 투명 유리로(지적: "래더 메뉴 그리드 왜 불투명") —
+   래더도 같은 통계 배경 사진(stats_bg) 위에 뜨는데 이 표만 --panel-solid로 불투명하게
+   막혀 있었다. 값은 .scr-stats-list-panel-v2 .scr-stat-table과 동일(다크/라이트 각각). */
 .scr-ladder-table {
   display: flex; flex-direction: column;
-  background-color: var(--panel-solid);
+  background-color: rgba(var(--overlay-rgb), 0.07);
+  backdrop-filter: blur(2px) saturate(1.2);
+  -webkit-backdrop-filter: blur(2px) saturate(1.2);
+}
+.scr-light-theme .scr-ladder-table {
+  background-color: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(2px) saturate(1.1);
+  -webkit-backdrop-filter: blur(2px) saturate(1.1);
 }
 .scr-ladder-row {
   display: grid;
   grid-template-columns: 74px minmax(0, 1fr) 88px 68px 72px;
   align-items: center; gap: 0 8px;
-  padding: 10px 16px;
+  /* 위아래 10 → 12px(+20%, 요청: "행높이 20프로 증가"). */
+  padding: 12px 16px;
   border-top: 1px solid var(--line-soft);
 }
 .scr-ladder-row:first-child { border-top: none; }
@@ -11317,9 +11384,11 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 }
 /* 머리 줄 — 통계표의 칸 이름과 같은 톤. */
 .scr-ladder-row-head {
-  font-size: var(--fs-11); font-weight: 700; color: var(--dim);
+  font-size: var(--fs-11); font-weight: 700; color: var(--muted);
   letter-spacing: 0.03em; text-transform: none;
-  background-color: color-mix(in srgb, var(--panel-solid) 94%, transparent);
+  /* 표가 유리가 되면서 따로 칠할 배경이 없다 — 불투명 띠로 남기면 유리 표 위에 지붕만
+     얹힌 모양이 된다(위 .scr-ladder-table 주석과 같은 이유). */
+  background-color: transparent;
   padding-top: 12px; padding-bottom: 12px;
 }
 .scr-ladder-rank-head, .scr-ladder-name-head { text-align: center; }
@@ -11331,7 +11400,8 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-ladder-rank { display: flex; align-items: center; justify-content: center; }
 .scr-ladder-rank-val { position: relative; display: inline-flex; align-items: center; }
 .scr-ladder-rank-n {
-  font-size: var(--fs-subhead); font-weight: 800; color: var(--text);
+  /* 한 스텝 확대(요청: "래더 보드 아바타 및 폰트 크기 1스텝 확대") — subhead(20) → headline(24). */
+  font-size: var(--fs-headline); font-weight: 800; color: var(--text);
   font-variant-numeric: tabular-nums; line-height: 1;
 }
 .scr-ladder-move {
@@ -11348,12 +11418,14 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 유저 칸 — 프사와 닉네임이 한 줄. 통계표처럼 sticky로 고정할 이유가 없다(가로 스크롤이
    없다) — 그래서 배경도 따로 안 깐다. */
 .scr-ladder-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.scr-ladder-name .scr-stat-name-btn { font-size: var(--fs-body); }
+/* 한 스텝 확대(요청) — body(16) → subhead(20). */
+.scr-ladder-name .scr-stat-name-btn { font-size: var(--fs-subhead); }
 
 /* 수치 한 칸 — 값 한 줄, 그 아래 전달 대비 변동 한 줄. 변동 자리는 값이 없는 줄에서도
    지킨다(Delta가 "-"를 그린다): 그래야 줄 높이가 모두 같아 순위표가 고르게 내려간다. */
 .scr-ladder-num > b {
-  font-size: var(--fs-caption); font-weight: 700; color: var(--text);
+  /* 한 스텝 확대(요청) — caption(14) → body(16). */
+  font-size: var(--fs-body); font-weight: 700; color: var(--text);
   font-variant-numeric: tabular-nums; line-height: 1.15;
 }
 .scr-ladder-num .scr-stat-delta { margin-left: 0; }
@@ -11365,7 +11437,8 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
     grid-template-columns: 58px minmax(0, 1fr) 66px 48px 56px;
     /* 좌우 여백은 4px까지 조인다(요청: 모바일 양쪽 패딩 축소) — 화면이 좁을수록 이 여백은
        수를 담는 자리를 그대로 깎는다. 그만큼 유저 칸(1fr)이 넓어져 닉네임이 덜 잘린다. */
-    padding: 9px 4px; gap: 0 5px;
+    /* 위아래 9 → 11px(+20%, 요청). */
+    padding: 11px 4px; gap: 0 5px;
   }
   .scr-ladder-name-head { padding-left: 0; }
   .scr-ladder-name { gap: 6px; }

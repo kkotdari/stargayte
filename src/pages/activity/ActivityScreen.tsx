@@ -1,13 +1,11 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import NoticeCard, { noticeLine } from "./NoticeCard";
-import RankingShiftCard, { RankingShiftMenu, RANK_SHIFT_TITLE } from "./RankingShiftCard";
+import RankingShiftCard, { RankingShiftMenu } from "./RankingShiftCard";
 import LeagueMatchCard from "./LeagueMatchCard";
-import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Upload } from "lucide-react";
+import { CalendarPlus, ClipboardList, MoreHorizontal, Phone, Upload, X } from "lucide-react";
 import { Spinner, LoadingMark } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
-import FilterItem from "../../components/common/FilterItem";
-import PickRow from "../../components/common/PickRow";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import { challengePhoto, shareThumb } from "../../utils/kakaoShare";
@@ -296,15 +294,6 @@ function rowKeyOf(it: DisplayItem): string {
         : it.kind === "schedule" ? `sc-${it.schedule.id}`
           : it.kind === "gameResultPost" ? `ms-${it.items[0].gameResult.id}`
             : `m-${it.gameResult.id}`;
-}
-
-/** 그 줄이 무엇에 대한 것인가 — 카드 머리의 제목과 같은 말을 쓴다. */
-function rowTitleOf(it: DisplayItem): string {
-  return it.kind === "challenge" ? "너 나와!"
-    : it.kind === "notice" ? "알림"
-      : it.kind === "rankingShift" ? RANK_SHIFT_TITLE
-      : it.kind === "leagueMatch" ? "리그"
-        : it.kind === "schedule" ? "일정" : "게임";
 }
 
 /** 그 줄의 갈래 색 — 배지가 제 바탕색을 입는 데 쓴다(요청: 일정 그린 / 리그 보라 /
@@ -650,44 +639,192 @@ export function GameResultPost({
   );
 }
 
-/* 활동 유형 필터 — 나열선택형이라 그대로 한 줄에 늘어선다. 차례는 요청대로
-   전체/알림/일정/리그/너 나와!/게임결과다(알림이 '전체' 바로 다음).
+/* 활동을 유형별 덩어리로 나눈다(요청: "활동 화면을 유형별 목록으로 구분하는데 각
+   덩어리별로 중 타이틀 달고 그 옆에 전체 보기 버튼 추가"). 유형 필터(나열선택형)는
+   이제 없다 — 필터로 하나만 골라 보던 것을, 다섯 덩어리를 한 화면에 늘어놓고 각자
+   "전체 보기"로 파고드는 방식으로 바꿨다.
    알림은 랭크 변동까지 함께 든다 — 둘 다 사람이 올린 글이 아니라 서버가 남긴 한 줄이고,
    화면에서도 같은 카드 자리에 선다(요청: 표시만 통합). */
-type ActivityKindFilter = "all" | "notice" | "schedule" | "league" | "call" | "gameResult";
+type ActivityGroupKey = "notice" | "schedule" | "league" | "call" | "gameResult";
 
-const KIND_OPTS: { value: ActivityKindFilter; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: "notice", label: "알림" },
-  { value: "schedule", label: "일정" },
-  { value: "league", label: "리그" },
-  { value: "call", label: "너 나와!" },
-  { value: "gameResult", label: "게임" },
+const GROUP_DEFS: { key: ActivityGroupKey; label: string }[] = [
+  { key: "notice", label: "알림" },
+  { key: "schedule", label: "일정" },
+  { key: "league", label: "리그" },
+  { key: "call", label: "너 나와!" },
+  { key: "gameResult", label: "게임" },
 ];
+
+/** 이 항목이 어느 덩어리로 가나. */
+function groupKeyOf(item: ActivityItem): ActivityGroupKey {
+  return item.kind === "gameResult" ? "gameResult"
+    : item.kind === "challenge" ? "call"
+    : item.kind === "leagueMatch" ? "league"
+    : item.kind === "schedule" ? "schedule"
+    : "notice"; // notice · rankingShift
+}
+
+/** 한 덩어리를 접었을 때 목록에 보이는 최대 줄 수 — 그 이상은 "전체 보기"로. */
+const GROUP_PREVIEW_MAX = 5;
+
+/** 리그·너 나와·게임 "전체 보기" 팝업에만 유저 필터가 있다(요청: "유저필터는 리그,
+ *  너나와, 게임목록 전체보기에 넣음") — 나머지(알림·일정)는 사람으로 거를 일이 없는
+ *  갈래라 검색창을 둘 이유가 없다. */
+const SEARCHABLE_GROUPS = new Set<ActivityGroupKey>(["league", "call", "gameResult"]);
+
+/** "전체 보기" 팝업 — 한 덩어리의 전체 목록을 보여준다. 리그·너 나와·게임(SEARCHABLE_GROUPS)
+ *  만 유저 검색이 있다(요청: "유저필터는 리그, 너나와, 게임목록 전체보기에 넣음") — 알림·
+ *  일정은 사람으로 거를 일이 없는 갈래라 검색창 없이 목록만 보여준다.
+ *  줄 렌더는 부르는 쪽(ActivityScreen)의 renderRow를 그대로 받아 쓴다 — 미리보기와 팝업이
+ *  같은 함수를 쓰면 카드 쪽 수정이 한 곳만 고치면 양쪽에 반영된다. 열림 상태는 이 팝업만의
+ *  것이다(부모의 openRowKey와 분리) — 같은 항목이 미리보기와 팝업에 동시에 보일 수 있어서,
+ *  하나의 열림 상태를 공유하면 한쪽에서 편 줄이 다른 쪽에서도 편 것처럼 보인다. */
+function ActivityGroupModal({
+  groupKey, label, items, memberOf, members, renderRow, onClose,
+}: {
+  groupKey: ActivityGroupKey;
+  label: string;
+  items: ActivityItem[];
+  memberOf: (id: string) => Member | undefined;
+  members: Member[];
+  renderRow: (
+    item: DisplayItem, open: boolean, closing: boolean,
+    onToggle: () => void, registerRef: (el: HTMLButtonElement | null) => void,
+  ) => ReactNode;
+  onClose: () => void;
+}) {
+  useLockBodyScroll();
+  const searchable = SEARCHABLE_GROUPS.has(groupKey);
+  const [search, setSearch] = useState("");
+  /* 고른 사람들을 어떻게 읽을 것인가 — 활동 목록이 전에 쓰던 것과 같은 두 갈래다.
+       all  — 포함 : 고른 사람이 다 나온 판이면 된다. 다른 사람이 더 껴 있어도 걸린다.
+       only — 일치 : 그 판에 나온 사람이 고른 사람들과 정확히 같아야 한다. */
+  const [userMode, setUserMode] = useState<"all" | "only">("all");
+  const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
+  const searchTerms = useMemo(() => splitSearchTerms(search), [search]);
+
+  const slotMatchesTerm = (slot: GameResultSlot, term: string): boolean => {
+    const m = memberOf(slot.memberId);
+    if (m && memberMatchesTerm(m, term)) return true;
+    return !!slot.rawName && normalizeSearchText(slot.rawName).includes(term);
+  };
+  const challengeMatchesTerm = (c: Challenge, term: string): boolean => {
+    const names = [c.createdBy.nickname, ...c.ownMembers.map((m) => m.nickname), ...c.targets.map((t) => t.nickname)];
+    if (names.some((n) => normalizeSearchText(n).includes(term))) return true;
+    const ids = [c.createdBy.id, ...c.ownMembers.map((m) => m.memberId), ...c.targets.map((t) => t.memberId)];
+    return ids.some((id) => { const m = memberOf(id); return !!m && memberMatchesTerm(m, term); });
+  };
+
+  const filtered = useMemo(() => {
+    if (!searchable || searchTerms.length === 0) return items;
+    const onlyThese = userMode === "only";
+    return items.filter((item) => {
+      if (item.kind === "gameResult") {
+        const slots = [...item.gameResult.team1, ...item.gameResult.team2];
+        if (!searchTerms.every((term) => slots.some((slot) => slotMatchesTerm(slot, term)))) return false;
+        return !onlyThese || slots.every((slot) => isComputerSlot(slot.memberId)
+          || searchTerms.some((term) => slotMatchesTerm(slot, term)));
+      }
+      if (item.kind === "challenge") {
+        if (!searchTerms.every((term) => challengeMatchesTerm(item.challenge, term))) return false;
+        if (!onlyThese) return true;
+        const c = item.challenge;
+        const everyone = [
+          c.createdBy.nickname, ...c.ownMembers.map((m) => m.nickname), ...c.targets.map((t) => t.nickname),
+        ];
+        return everyone.every((n) => searchTerms.some((term) => normalizeSearchText(n).includes(term)));
+      }
+      if (item.kind === "leagueMatch") {
+        const names = [item.match.teamA, item.match.teamB]
+          .flatMap((t) => (t ? t.members.map((x) => x.nickname) : []));
+        const text = normalizeSearchText([...names, item.match.leagueName].join(" "));
+        if (!searchTerms.every((term) => text.includes(term))) return false;
+        return !onlyThese
+          || names.every((n) => searchTerms.some((term) => normalizeSearchText(n).includes(term)));
+      }
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- slotMatchesTerm/challengeMatchesTerm은 memberOf로 충분히 표현됨
+  }, [items, searchTerms, userMode, searchable, memberOf]);
+
+  // 이 팝업 안에서만 쓰는 열림 상태 — 부모 목록의 openRowKey와는 별개다(위 주석).
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [closingKey, setClosingKey] = useState<string | null>(null);
+  const closeTimerRef = useRef<number | null>(null);
+  useEffect(() => () => { if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current); }, []);
+  const toggle = (key: string) => {
+    const prev = openKey;
+    const next = prev === key ? null : key;
+    setOpenKey(next);
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+    if (prev && prev !== next) {
+      setClosingKey(prev);
+      closeTimerRef.current = window.setTimeout(() => { setClosingKey(null); closeTimerRef.current = null; }, ROW_CLOSE_MS);
+    } else {
+      setClosingKey(null);
+    }
+  };
+
+  return createPortal(
+    <div className="scr-modal-overlay">
+      <div className="scr-modal scr-activity-group-modal">
+        <div className="scr-modal-head">
+          <span>{label} 전체 보기</span>
+          <button type="button" className="scr-icon-btn" onClick={onClose} aria-label="닫기">
+            <X aria-hidden />
+          </button>
+        </div>
+        {searchable && (
+          <SearchFilterBar
+            count={filtered.length}
+            countLabel="건"
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="유저 입력 또는 @로 목록 띄우기"
+            suggestions={suggestions}
+            searchLeading={(
+              <Select
+                className="scr-user-mode-select"
+                size="sm"
+                value={userMode}
+                options={[
+                  { value: "all", label: "포함" },
+                  { value: "only", label: "일치" },
+                ]}
+                onChange={(v) => setUserMode(v === "only" ? "only" : "all")}
+                minDropWidth={92}
+              />
+            )}
+          />
+        )}
+        <div className="scr-activity-rows scr-activity-group-modal-rows scr-scroll">
+          {filtered.length === 0 ? (
+            <div className="scr-empty">조건에 맞는 항목이 없어요.</div>
+          ) : (
+            filtered.map((item) => {
+              const key = rowKeyOf(item);
+              return renderRow(item, openKey === key, closingKey === key, () => toggle(key), () => {});
+            })
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
 
 export default function ActivityScreen() {
   // 화면 배경 사진 — 이제 PC 다크에서만 깐다(요청: 라이트는 통째로, 다크는 모바일만 제거).
   // 그래서 모바일용·라이트용 사진은 넘기지 않는다(usePageBackground 주석 참고).
   // 사진은 통계와 같은 것을 쓴다(원래 활동 배경이던 파일이 통계로 옮겨가며 이름만 stats_bg*가 됐다).
   usePageBackground("/images/bg/stats_bg.jpg");
-  // 검색/필터(기록실과 동일 구성) — 유저 검색, 경기유형, 게임번호. 불러온 활동 안에서 즉시 필터.
-  const [search, setSearch] = useState("");
-  const [kindFilter, setKindFilter] = useState<ActivityKindFilter>("all");
-  /* 고른 사람들을 어떻게 읽을 것인가(요청: "선택된 사람들이 모두 포함된 경우 / 선택된
-     사람만 있는 경우 둘로 나누고 싶다").
-
-       all  — 포함 : 고른 사람이 다 나온 판이면 된다. 다른 사람이 더 껴 있어도 걸린다.
-       only — 일치 : 그 판에 나온 사람이 고른 사람들과 정확히 같아야 한다.
-
-     둘의 차이가 드러나는 자리는 팀전이다. "정구 · 태섭"으로 훑을 때 포함은 둘이 낀 4:4까지
-     다 걸리지만, 일치는 딱 그 둘이 붙은 판만 남는다.
-
-     사람이 하나뿐일 때도 일치는 일치 그대로다(요청: "한 명에도 그대로 적용해줘, 모르게
-     바뀌면 오히려 헷갈릴 듯"). 한때 그때만 조용히 포함으로 읽었는데, 고른 값과 실제로
-     걸리는 규칙이 어긋나면 왜 이게 나오는지를 화면 어디서도 알 수가 없다. 결과가 비면
-     비는 것이 맞는 답이다 — 실제로 늘 비는 것도 아니다: 상대가 컴퓨터인 판은 사람이
-     그 하나뿐이라 일치로 걸린다. */
-  const [userMode, setUserMode] = useState<"all" | "only">("all");
+  /* 유저 검색은 이제 이 화면에 없다(요청: "유형 필터, 유저필터 제거하고 유저필터는 리그,
+     너나와, 게임목록 전체보기에 넣음") — 리그·너 나와·게임 "전체 보기" 팝업
+     (ActivityGroupModal)이 각자 제 목록 안에서만 검색한다. 포함/일치 두 갈래(요청: "선택된
+     사람들이 모두 포함된 경우 / 선택된 사람만 있는 경우 둘로 나누고 싶다")도 그 팝업
+     안에서 관리한다.
+     지금 펼쳐 본 "전체 보기" 덩어리 — null이면 팝업이 안 떠 있다. */
+  const [openGroupKey, setOpenGroupKey] = useState<ActivityGroupKey | null>(null);
 
   /* 목록 한 줄을 눌러 펼친다 — 펼침은 한 번에 하나다. 여러 줄을 동시에 펴 두면 목록의
      값어치(한 화면에 많이)가 사라진다.
@@ -832,13 +969,11 @@ export default function ActivityScreen() {
   );
   const {
     items: feedItems, loading: feedLoading, loadingMore, hasMore, loadMore, reload,
-    total: activityTotal, patch: patchFeed,
+    patch: patchFeed,
   } = useCursorPagination(fetchPage, []);
 
-  /* 아이템 하나가 화면의 한 줄이지만, 걸러내기(유형·검색)는 여전히 낱개 활동 위에서 한다 —
-     아홉 판이 묶인 줄에서 검색어에 걸리는 판만 남겨야 하기 때문이다. 그래서 받은 아이템을
-     종류별로 도로 펴서 예전 파이프라인에 넣고, 화면에 세울 때 다시 묶는다(displayFeed).
-     서버가 묶은 규칙과 여기서 묶는 규칙이 같아야 줄 열쇠가 맞는다. */
+  /* 받은 아이템을 종류별로 낱개로 펴서(challenges/gameResults/...) 아래 feed에서 한
+     타임라인으로 합친다 — 유형별 덩어리(groupedSections)로 다시 나누는 것은 그 뒤 단계다. */
   const challenges = useMemo(
     () => feedItems.flatMap((it) => (it.challenge ? [it.challenge] : [])),
     [feedItems],
@@ -1048,149 +1183,6 @@ export default function ActivityScreen() {
      나눠 받으므로 받은 것은 늘 위에서부터 이어져 있고, 보류할 것이 없다. 오히려 남겨
      두면 문제가 된다: 너 나와는 표시 시각과 꽂히는 자리가 달라(challengeSortMs) 제대로
      실려 온 카드가 그 잣대에 걸려 사라질 수 있다. */
-  const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
-  const searchTerms = useMemo(() => splitSearchTerms(search), [search]);
-  const matchedIds = useMemo(() => {
-    if (searchTerms.length === 0) return undefined;
-    const all = new Set<string>();
-    members.forEach((m) => {
-      if (searchTerms.some((t) => memberMatchesTerm(m, t))) all.add(m.id);
-    });
-    return all;
-  }, [members, searchTerms]);
-
-  // 슬롯 하나가 검색어와 맞는지 — 회원이면 닉네임/배틀태그/게임아이디, 아니면 rawName.
-  const slotMatchesTerm = (slot: GameResultSlot, term: string): boolean => {
-    const m = memberOf(slot.memberId);
-    if (m && memberMatchesTerm(m, term)) return true;
-    return !!slot.rawName && normalizeSearchText(slot.rawName).includes(term);
-  };
-  // 너 나와 참가자(도전자/아군/상대) 중 검색어와 맞는 사람이 있는지.
-  const challengeMatchesTerm = (c: Challenge, term: string): boolean => {
-    const names = [c.createdBy.nickname, ...c.ownMembers.map((m) => m.nickname), ...c.targets.map((t) => t.nickname)];
-    if (names.some((n) => normalizeSearchText(n).includes(term))) return true;
-    const ids = [c.createdBy.id, ...c.ownMembers.map((m) => m.memberId), ...c.targets.map((t) => t.memberId)];
-    return ids.some((id) => { const m = memberOf(id); return !!m && memberMatchesTerm(m, term); });
-  };
-
-  // 필터 바에 적을 건수(요청: 무한스크롤이면 미리 전체 건수를 조회해서 써야 한다).
-  //
-  // 아무 필터도 안 걸렸을 때는 서버가 첫 페이지에 담아 준 값(totalActivities)이 곧 전체
-  // 건수다 — 줄이 아니라 '건'이라, 한 자리에서 이어 친 아홉 판은 아홉으로 센다(지적: 묶는
-  // 건 보여주는 방식일 뿐이고 그 안의 판도 각각 한 건이다).
-  // 화면에 몇 장이 그려졌는지(filteredFeed.length)와 무관하게 처음부터 이 값을 보여준다.
-  //
-  // 필터(유형/검색)가 걸리면 이 값을 쓸 수 없다 — 걸러내기는 전부 이미 받아 둔 것들
-  // 위에서만 이뤄지므로(서버에 같은 조건으로 세어 달라고 하지 않는다) 아직 안 받은
-  // 페이지의 건수를 알 방법이 없다. 그때는 지금까지 받은 것 중 걸러진 수를 그대로 쓴다 —
-  // 목록도 딱 그만큼만 보여주고 있으므로 화면과 숫자가 어긋나지는 않는다.
-  const filterActiveForCount = kindFilter !== "all" || searchTerms.length > 0;
-
-  // 필터 판정 — filteredFeed와 아래 건수 계산이 같은 규칙을 쓰도록 함수로 빼 둔다.
-  const passesFilter = useCallback(
-    (item: ActivityItem): boolean => {
-      if (kindFilter !== "all") {
-        // 도전장은 전부 너나와(call)로 본다. 랭크 변동은 알림과 한 갈래다(요청: 통합).
-        const kind = item.kind === "gameResult" ? "gameResult"
-          : item.kind === "challenge" ? "call"
-          : item.kind === "leagueMatch" ? "league"
-          : item.kind === "schedule" ? "schedule"
-          : item.kind === "notice" || item.kind === "rankingShift" ? "notice"
-          : null;
-        if (kind !== kindFilter) return false;
-      }
-      if (searchTerms.length > 0) {
-        // 고른 사람 수와 무관하게 고른 그대로 건다(요청) — 조건이 몰래 바뀌지 않는다.
-        const onlyThese = userMode === "only";
-        if (item.kind === "gameResult") {
-          const slots = [...item.gameResult.team1, ...item.gameResult.team2];
-          if (!searchTerms.every((term) => slots.some((slot) => slotMatchesTerm(slot, term)))) return false;
-          /* 컴퓨터는 세지 않는다 — "이 사람들만"에서 묻는 것은 사람이라, 컴퓨터가 한 자리
-             차지했다고 그 판이 빠지면 오히려 뜻과 어긋난다. */
-          return !onlyThese || slots.every((slot) => isComputerSlot(slot.memberId)
-            || searchTerms.some((term) => slotMatchesTerm(slot, term)));
-        }
-        if (item.kind === "challenge") {
-          if (!searchTerms.every((term) => challengeMatchesTerm(item.challenge, term))) return false;
-          if (!onlyThese) return true;
-          const c = item.challenge;
-          const everyone = [
-            c.createdBy.nickname, ...c.ownMembers.map((m) => m.nickname), ...c.targets.map((t) => t.nickname),
-          ];
-          return everyone.every((n) => searchTerms.some((term) => normalizeSearchText(n).includes(term)));
-        }
-        // 일정은 제목·내용과 올린 사람으로 걸린다 — 참가표시한 사람은 검색어에 안 넣는다:
-        // 손을 들었다는 것이 "그 사람 이야기"는 아니라, 이름으로 훑을 때 남의 일정이 딸려온다.
-        if (item.kind === "schedule") {
-          const s = item.schedule;
-          const text = normalizeSearchText([s.title, s.content, s.createdBy.nickname].join(" "));
-          return searchTerms.every((term) => text.includes(term));
-        }
-        // 리그 경기는 두 팀 이름(로스터 닉네임을 이은 것)으로 걸린다.
-        if (item.kind === "leagueMatch") {
-          const names = [item.match.teamA, item.match.teamB]
-            .flatMap((t) => (t ? t.members.map((x) => x.nickname) : []));
-          const text = normalizeSearchText([...names, item.match.leagueName].join(" "));
-          if (!searchTerms.every((term) => text.includes(term))) return false;
-          return !onlyThese
-            || names.every((n) => searchTerms.some((term) => normalizeSearchText(n).includes(term)));
-        }
-        // 알림은 그 안에서 이름이 불린 사람으로 걸린다 — 칭호가 바뀐 사람이다.
-        if (item.kind === "notice") {
-          const names = (item.notice.payload?.changes ?? [])
-            .map((c) => normalizeSearchText(memberOf(c.memberId)?.nickname ?? ""));
-          return searchTerms.every((term) => names.some((n) => n.includes(term)));
-        }
-        // 좌우 두 칸(개인전·팀전)을 함께 훑는다 — 어느 칸에 걸리든 그 카드는 검색에 맞다.
-        const names = item.shift.sections
-          .flatMap((sec) => sec.shifts)
-          .map((e) => normalizeSearchText(e.nickname));
-        return searchTerms.every((term) => names.some((n) => n.includes(term)));
-      }
-      return true;
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- slotMatchesTerm/challengeMatchesTerm은 members로 충분히 표현됨
-    [kindFilter, searchTerms, members, userMode],
-  );
-  const filteredFeed = useMemo<ActivityItem[]>(
-    () => feed.filter(passesFilter),
-    [feed, passesFilter],
-  );
-  // 필터가 걸린 상태의 경기 건수는 서버에 조용히 다시 물어 채운다(요청: "필터시 정확한
-  // 건수도 필요해 조용히 비동기적으로 업데이트해줘"). 걸러내기는 이미 받아 둔 페이지
-  // 위에서만 이뤄지므로 클라이언트 혼자서는 알 수가 없다 — 같은 조건(userQuery)으로 목록
-  // 엔드포인트에 한 건만 달라고 해서 거기 실려 오는 total만 읽는다.
-  //
-  // 답이 오기 전에는 지금 보이는 수를 그대로 둔다(로딩 표시를 새로 만들지 않는다 — 숫자가
-  // 잠깐 뒤에 조용히 커지는 편이 낫다). 실패해도 조용히 지나간다.
-  // 너나와·순위변동은 처음에 통째로 받아 두므로 그쪽 걸러진 수는 이미 정확하다.
-  const [filteredGameResultTotal, setFilteredGameResultTotal] = useState<number | null>(null);
-  useEffect(() => {
-    if (!filterActiveForCount) { setFilteredGameResultTotal(null); return; }
-    // 게임결과가 아예 대상이 아닌 유형 필터는 물어볼 것도 없다.
-    if (kindFilter !== "gameResult" && kindFilter !== "all") { setFilteredGameResultTotal(0); return; }
-    let alive = true;
-    setFilteredGameResultTotal(null);
-    // 검색어는 글자마다 바뀌므로 잠깐 묵혔다 보낸다 — 타자 한 번에 한 번씩 묻지 않게.
-    const t = window.setTimeout(() => {
-      api.countGameResults({
-        userQuery: searchTerms.length > 0 ? search.trim() : undefined,
-        // 여러 낱말을 모두 만족해야 한다 — 위 passesFilter의 every()와 같은 규칙이다.
-        matchAllUsers: true,
-      })
-        .then((n) => { if (alive) setFilteredGameResultTotal(n); })
-        .catch(() => { /* 조용히 실패 — 로드된 수를 그대로 보여준다 */ });
-    }, 300);
-    return () => { alive = false; window.clearTimeout(t); };
-  }, [filterActiveForCount, kindFilter, search, searchTerms.length]);
-  // 필터에 걸린 너나와·순위변동 수 — 이쪽은 전부 받아 뒀으므로 세면 곧 정확한 값이다.
-  const filteredNonGameResultCount = useMemo(
-    () => feed.filter((it) => it.kind !== "gameResult" && passesFilter(it)).length,
-    [feed, passesFilter],
-  );
-
-  // 같은 세션(sessionDateOf — 새벽 경기는 전날에 붙는다)의 게임결과가 2개 이상 연속이면
-  // 겹침 스택으로 묶는다(요청).
   /** 이 줄에 붙일 딱지 — NEW_WINDOW_MS(12시간) 안에 올라온 것은 NEW, 올라온 지는
    *  지났는데 그 안에 달라진 것은 UPDATE, 그 밖은 없음(요청).
    *
@@ -1245,15 +1237,45 @@ export default function ActivityScreen() {
   /* (삭제) 줄에 달린 댓글 수 — 걷었다(요청). 댓글이 몇 개인지는 카드를 펴면 댓글
      자리가 직접 말하고, 목록 줄에서는 그 수가 무슨 일이 있었는지보다 먼저 읽혔다. */
 
-  /* 목록은 이제 경기를 안 묶는다(요청: "활동에서 경기 묶음 컨셉 제거하고 한 경기 한 경기
-     다 별도 목록으로 보여주기"). 예전에는 한 자리에서 이어 친 판들을 하루 단위로 한 줄에
+  /* 목록은 경기를 안 묶는다(요청: "활동에서 경기 묶음 컨셉 제거하고 한 경기 한 경기 다
+     별도 목록으로 보여주기"). 예전에는 한 자리에서 이어 친 판들을 하루 단위로 한 줄에
      모아 "누가 있었나 · N경기"로 적었는데, 그러면 목록에서 읽을 수 있는 것이 '그날 누가
      모였나'뿐이라 정작 각 판이 누구 대 누구였는지는 줄을 펴야만 알 수 있었다. 다른 갈래
      (너 나와·리그·일정)는 모두 한 건이 한 줄인데 게임만 규칙이 달랐다는 점도 있다.
 
      묶음 자체(GameResultPost)는 지운 게 아니라 공유 화면(SharePage)이 계속 쓴다 — 거기서는
      '그날 한 자리'를 통째로 보여주는 것이 그 화면의 용건이다. */
-  const displayFeed = useMemo<DisplayItem[]>(() => filteredFeed, [filteredFeed]);
+  const displayFeed = feed;
+
+  /* 다섯 덩어리로 나눠 늘어놓는다(요청: "유형별 목록으로 구분하는데 각 덩어리별로 중
+     타이틀 달고 그 옆에 전체 보기 버튼 추가, 묶음 구분되게 사이 갭 충분히 주기").
+     feed가 이미 최신순으로 정렬돼 있으므로(위 sortMsOf) 덩어리 안에서도 그 순서가 그대로
+     이어진다 — 따로 다시 정렬할 필요가 없다.
+
+     덩어리의 차례는 고정이 아니다(요청: "new나 업데이트가 있는 목록이 맨 위로") — NEW·
+     UPDATE 딱지가 붙은 것이 하나라도 있는 덩어리를 앞세우고, 그런 덩어리끼리는 가장 최근
+     딱지를 기준으로 다시 줄 세운다. 아무 딱지도 없는 덩어리들은 원래 차례(GROUP_DEFS,
+     알림→일정→리그→너 나와!→게임)를 그대로 지킨다 — 매번 뒤섞이면 눈에 익은 자리를
+     잃는다. */
+  const groupedSections = useMemo(() => {
+    const buckets = new Map<ActivityGroupKey, ActivityItem[]>();
+    for (const g of GROUP_DEFS) buckets.set(g.key, []);
+    for (const item of feed) buckets.get(groupKeyOf(item))!.push(item);
+    const withFlags = GROUP_DEFS
+      .map((g, order) => {
+        const items = buckets.get(g.key)!;
+        let freshAt = 0;
+        for (const it of items) { if (rowFlagsOf(it).length > 0) freshAt = Math.max(freshAt, it.time); }
+        return { ...g, order, items, freshAt };
+      })
+      .filter((s) => s.items.length > 0);
+    withFlags.sort((a, b) => {
+      if ((a.freshAt > 0) !== (b.freshAt > 0)) return a.freshAt > 0 ? -1 : 1;
+      if (a.freshAt !== b.freshAt) return b.freshAt - a.freshAt;
+      return a.order - b.order;
+    });
+    return withFlags;
+  }, [feed]);
 
   /* 지운 경기 한 판만 목록에서 빼낸다(요청: 새로고침 말고 그 부분만 사라지게) — 예전에는
      통째로 다시 받아서, 스크롤을 내려 둔 자리가 사라지고 펼쳐 둔 카드도 다 접혔다.
@@ -1268,11 +1290,7 @@ export default function ActivityScreen() {
       if (!key) return key;
       const row = displayFeed.find((it) => rowKeyOf(it) === key);
       if (!row) return key;
-      if (row.kind === "gameResultPost") {
-        if (row.items[0].gameResult.id !== id) return key; // 첫 판이 아니면 열쇠는 그대로다
-        const heir = row.items.find((x) => x.gameResult.id !== id);
-        return heir ? `ms-${heir.gameResult.id}` : null;
-      }
+      // 묶음(gameResultPost)은 이 목록에 안 뜬다(위 displayFeed 주석) — 낱장 경기 줄만 본다.
       if (row.kind === "gameResult" && row.gameResult.id === id) return null;
       return key;
     });
@@ -1583,8 +1601,6 @@ export default function ActivityScreen() {
           timeText={formatWhen(item.time, { clock: item.withClock })}
           dateLabel={dateLabelOf(item)}
           actions={<RankingShiftMenu shift={item.shift} />}
-          highlightMemberIds={matchedIds}
-          highlightTerms={searchTerms}
           /* 순위변동 알림에도 댓글(요청) — 경기/너나와 카드와 같은 공통 댓글 영역.
              그 위에 있던 "실시간 랭크 확인" 링크는 걷어냈다(요청). */
           /* 하루에 스냅샷 한 건이라 댓글 실도 자연히 하나다(요청: 한 로우). */
@@ -1639,7 +1655,6 @@ export default function ActivityScreen() {
           <ChallengeCard
             challenge={item.challenge}
             myId={user?.id}
-            highlightMemberIds={matchedIds}
             onResponded={upsertChallenge}
           />
         </ActivityCard>
@@ -1655,8 +1670,6 @@ export default function ActivityScreen() {
         memberOf={memberOf}
         onDeleted={handleGameResultDeleted}
         dateLabel={sessionDateLabel(item.date)}
-        highlightMemberIds={matchedIds}
-        highlightTerms={searchTerms}
       />
     ) : (
       // 묶이지 않은 낱장 경기 — 머리는 목록에서도 남긴다. 줄이 말하지 않는 등록자와
@@ -1667,12 +1680,86 @@ export default function ActivityScreen() {
           memberOf={memberOf}
           onDeleted={handleGameResultDeleted}
           dateLabel={dateLabelOf(item)}
-          highlightMemberIds={matchedIds}
-          highlightTerms={searchTerms}
         />
       </div>
     )
   );
+
+  /* 목록 줄 하나 — 그룹 미리보기(최대 5줄)와 "전체 보기" 팝업이 똑같이 이 함수를 쓴다
+   *  (요청과 무관하게, 카드 쪽 수정이 두 자리에 따로 반영되는 걸 피하려는 renderCard와
+   *  같은 이유). 열림 상태(open/closing)와 그 상태를 바꾸는 방법(onToggle)은 부르는 쪽이
+   *  각자의 것을 넘긴다 — 그룹 미리보기와 팝업이 같은 항목을 동시에 보여줄 수 있어서
+   *  (전체 보기를 열어도 뒤의 미리보기 5줄은 그대로 남는다), 열림 상태를 하나로 공유하면
+   *  한쪽에서 펼친 줄이 다른 쪽에서도 펼쳐진 것처럼 보이는 문제가 생긴다.
+   *
+   *  유형 배지(게임/알림/…)는 이제 줄마다 안 그린다 — 그룹 제목이 이미 그 갈래를 말한다
+   *  (요청: "유형 배지는 이제 필요없고"). 너 나와만 예외로, 제 배지를 제목(desc) 왼쪽에
+   *  다시 단다(요청: "너나와 배지도 제목 왼쪽으로 복귀") — 그룹이 갈려도 "이건 부른
+   *  것/불린 것"이라는 성격 자체는 한눈에 남아야 한다는 판단이다. */
+  const renderRow = (
+    item: DisplayItem,
+    open: boolean, closing: boolean,
+    onToggle: () => void,
+    registerRef: (el: HTMLButtonElement | null) => void,
+  ) => {
+    const key = rowKeyOf(item);
+    const flags = rowFlagsOf(item);
+    return (
+      <div className={cx("scr-activity-row-wrap", open && "scr-activity-row-wrap-open")} key={key}>
+        <button
+          type="button" aria-expanded={open}
+          ref={registerRef}
+          className={cx("scr-activity-row", rowVoid(item) && "scr-activity-row-void")}
+          onClick={onToggle}
+        >
+          <span className="scr-activity-row-main">
+            <span className="scr-activity-row-badges">
+              {/* 상태 알약 — 너 나와·리그에만 붙고 나머지 줄은 아예 그리지 않는다(요청:
+                  자리 예약 취소). */}
+              {rowStatusOf(item)}
+              {/* 새것(NEW)이거나 달라진 것(UPDATE) — 둘 다 참이어도 하나만 세운다(요청:
+                  NEW 우선). */}
+              {flags.length > 0 && (
+                <span className={cx("scr-activity-row-flag", `scr-activity-row-flag-${flags[0]}`)}>
+                  {flags[0] === "new" ? "NEW" : "UPDATE"}
+                </span>
+              )}
+              <span className="scr-activity-row-time">
+                {item.kind === "challenge" && item.undated ? "미정" : formatAgo(item.time)}
+              </span>
+            </span>
+            <span className="scr-activity-row-desc">
+              {/* 유형 배지는 이제 줄마다 안 그린다(요청: 그룹 제목이 이미 갈래를 말한다) —
+                  너 나와만 예외로 제 배지를 제목 왼쪽에 다시 단다(요청: "너나와 배지도
+                  제목 왼쪽으로 복귀"). 스타일은 예전 유형 배지(.scr-activity-row-title-badge)
+                  그대로 재사용한다. */}
+              {item.kind === "challenge" && (
+                <span className={cx("scr-activity-row-title-badge", kindClassOf("challenge"))}>
+                  너 나와!
+                </span>
+              )}
+              {rowDesc(item)}
+            </span>
+          </span>
+        </button>
+        {(open || closing) && (
+          <div className={cx("scr-activity-row-fold", open ? "scr-activity-row-fold-open" : "scr-activity-row-fold-closing")}>
+            <div className="scr-activity-row-fold-clip">
+              <div
+                className={cx("scr-activity-row-body", rowPhoto(item) && "scr-activity-row-body-photo")}
+                {...(rowPhoto(item)
+                  ? { style: { "--card-photo": `url("${rowPhoto(item)}")` } as CSSProperties }
+                  : {})}
+              >
+                {rowPhoto(item) && <div className="scr-activity-card-photo" aria-hidden="true" />}
+                {renderCard(item)}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="scr-screen scr-activity-screen">
@@ -1733,63 +1820,6 @@ export default function ActivityScreen() {
         />
       </div>
 
-      {/* 유형 드롭다운(요청: 분류 제거) + 유저 검색을 한 줄에(요청: 모바일도 한 줄) —
-          검색바의 filterPanel로 넘겨 같은 인라인 스택에 나란히 둔다. */}
-      <SearchFilterBar
-        // 필터 바로 아래에 건수를 둔다(요청). 세는 건 걸러진 활동 하나하나(filteredFeed)이지
-        // 화면에 보이는 카드 수(displayFeed)가 아니다 — 같은 날 게임결과를 한 장으로 묶는 건
-        // 보여주는 방식일 뿐이라(지적) 그 묶음 안의 판도 각각 한 건이다.
-        count={
-          !filterActiveForCount
-            ? (activityTotal ?? filteredFeed.length)
-            // 서버 답이 오기 전에는 지금 보이는 수를 그대로 둔다.
-            : (filteredGameResultTotal !== null
-              ? filteredGameResultTotal + filteredNonGameResultCount
-              : filteredFeed.length)
-        }
-        // 필터 건수를 서버에 다시 묻는 동안에는 숫자 옆에 스피너를 둔다(요청) — 그 사이
-        // 보이는 값은 아직 화면에 그려진 수라 곧 바뀔 수 있다는 표시다.
-        countLoading={filterActiveForCount && filteredGameResultTotal === null}
-        countLabel="건"
-        // 유저·유형·건수를 한 줄에(요청) — 좁아지면 유형+건수가 함께 아랫줄로 내려간다.
-        countInline
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="유저 입력 또는 @로 목록 띄우기"
-        suggestions={suggestions}
-        /* 고른 사람들을 어떻게 읽을지 — 검색창 앞에 선다(요청). 낱말은 두 자씩이다(요청:
-           "옵션명은 일치/포함으로") — 검색창 앞의 좁은 자리라 짧을수록 좋고, 이 둘은
-           집합을 다루는 말로 이미 뜻이 굳어 있어 길게 풀어 쓸 이유가 없다.
-           기본은 포함이다: 덜 좁히는 쪽이 기본이라야 처음 들어온 사람이 뭔가 사라진 목록을
-           보지 않는다. */
-        searchLeading={(
-          <Select
-            className="scr-user-mode-select"
-            size="sm"
-            value={userMode}
-            options={[
-              { value: "all", label: "포함" },
-              { value: "only", label: "일치" },
-            ]}
-            onChange={(v) => setUserMode(v === "only" ? "only" : "all")}
-            minDropWidth={92}
-          />
-        )}
-        filterPanel={
-          <FilterItem label="유형">
-            {/* 통계의 유형·종족 필터와 같은 나열선택형(요청) — 넷뿐이고 낱말이 짧아
-                드롭다운보다 좁고, 무엇을 고를 수 있는지도 열어 보지 않아도 보인다. */}
-            {/* 목록 줄의 갈래 이름과 같이 알약도 색도 없는 글자다(요청) — 필터에서 고른
-                낱말과 줄 앞의 낱말이 한눈에 같은 것으로 읽혀야 거르는 일이 한 번에 끝난다.
-                고른 것만 또렷하고 나머지는 눌러 둔다. */}
-            <PickRow
-              className="scr-pickrow-kind"
-              options={KIND_OPTS} value={kindFilter} onChange={setKindFilter} label="활동 유형"
-            />
-          </FilterItem>
-        }
-      />
-
       {error && <div className="scr-err">{error}</div>}
 
       {loading ? (
@@ -1797,101 +1827,38 @@ export default function ActivityScreen() {
       ) : displayFeed.length === 0 ? (
         <div className="scr-empty">아직 표시할 활동이 없어요.</div>
       ) : (
-        (
-          /* 목록 보기(요청) — 한 줄에 시각·제목·한 줄 요약만 두고, 누르면 그 줄 아래에
-             원래 카드의 본문과 댓글이 그대로 열린다. 카드를 새로 만들지 않고 카드 보기와
-             같은 renderCard를 부르는 이유는, 여기만 따로 만들면 카드 쪽 수정이 목록 쪽에
-             반영되지 않아 두 화면이 서서히 어긋나기 때문이다. 머리(시각·제목)만 CSS로
-             감춘다 — 바로 위 줄이 이미 같은 말을 하고 있다. */
-          <div className="scr-activity-rows">
-            {displayFeed.map((item) => {
-              const key = rowKeyOf(item);
-              const open = openRowKey === key;
-              const closing = closingRowKey === key;
-              const flags = rowFlagsOf(item);
-              return (
-                <div className={cx("scr-activity-row-wrap", open && "scr-activity-row-wrap-open")} key={key}>
-                  <button
-                    type="button" aria-expanded={open}
-                    ref={(el) => {
+        /* 유형별 덩어리(요청: "활동 화면을 유형별 목록으로 구분하는데 각 덩어리별로 중
+           타이틀 달고 그 옆에 전체 보기 버튼 추가, 묶음 구분되게 사이 갭 충분히 주기") —
+           덩어리마다 최대 5줄만 미리 보여주고(GROUP_PREVIEW_MAX), 그 이상은 "전체 보기"
+           팝업(ActivityGroupModal)에서 본다. */
+        <div className="scr-activity-groups">
+          {groupedSections.map((section) => (
+            <div className="scr-activity-group" key={section.key}>
+              <div className="scr-activity-group-head">
+                <h2 className="scr-activity-group-title">{section.label}</h2>
+                <button
+                  type="button" className="scr-activity-group-viewall"
+                  onClick={() => setOpenGroupKey(section.key)}
+                >
+                  전체 보기
+                </button>
+              </div>
+              <div className="scr-activity-rows">
+                {section.items.slice(0, GROUP_PREVIEW_MAX).map((item) => {
+                  const key = rowKeyOf(item);
+                  return renderRow(
+                    item, openRowKey === key, closingRowKey === key,
+                    () => toggleRow(key),
+                    (el) => {
                       if (el) rowElsRef.current.set(key, el);
                       else rowElsRef.current.delete(key);
-                    }}
-                    className={cx("scr-activity-row", rowVoid(item) && "scr-activity-row-void")}
-                    onClick={() => toggleRow(key)}
-                  >
-                    {/* 배지 줄과 제목 줄, 두 줄이다(요청: "유형배지를 제목 위줄로 배치하고
-                        너 나와 배지를 유형배지 오른쪽에"). 한 줄에 다 늘어놓던 시절에는
-                        배지 둘이 앞자리를 먹어 정작 읽을 이름이 그만큼 밀렸다. */}
-                    <span className="scr-activity-row-main">
-                      <span className="scr-activity-row-badges">
-                        {/* 무슨 종류인가 — 늘 있다. */}
-                        <span className={cx("scr-activity-row-title-badge", kindClassOf(item.kind))}>
-                          {rowTitleOf(item)}
-                        </span>
-                        {/* 상태 알약 — 너 나와·리그에만 붙고 나머지 줄은 아예 그리지 않는다
-                            (요청: 자리 예약 취소). 빈 칸을 늘 잡아 두면 알약 없는 줄만
-                            왼쪽이 휑하게 비어 오히려 눈에 걸렸다. */}
-                        {rowStatusOf(item)}
-                        {/* 새것(NEW)이거나 달라진 것(UPDATE) — 둘 다 참이어도 하나만
-                            세운다(요청: NEW 우선). 자리는 유형 배지 바로 오른쪽이다(요청)
-                            — 한동안 제목 글 뒤에 뒀는데, 게임 줄의 제목은 폭에 맞춰 눌리는
-                            덩어리라(FlatLine) 그 뒤에 붙은 딱지가 줄마다 다른 자리에서
-                            줄 오른쪽 끝까지 밀려났다. 배지 줄에 두면 어느 줄에서나 같은
-                            자리에 서서 훑을 때 눈이 한 x만 보면 된다. */}
-                        {flags.length > 0 && (
-                          <span className={cx("scr-activity-row-flag", `scr-activity-row-flag-${flags[0]}`)}>
-                            {flags[0] === "new" ? "NEW" : "UPDATE"}
-                          </span>
-                        )}
-                        {/* 얼마나 지났나(요청: "타임스탬프를 유형 배지랑 같은 줄 오른쪽
-                            끝에 배치") — 하루까지는 "N분 전/N시간 전", 일주일까지는
-                            "N일 전", 그보다 오래된 것만 날짜.
-                            제 칸을 따로 갖고 있던 값인데, 그 칸이 줄 오른쪽에서 88px을
-                            늘 물고 있어 정작 줄마다 달라지는 제목이 그만큼 좁았다. 배지
-                            줄은 낱말 두엇뿐이라 오른쪽이 통째로 비어 있었고, 시각은 거기
-                            얹혀도 아무것도 밀어내지 않는다. */}
-                        <span className="scr-activity-row-time">
-                          {item.kind === "challenge" && item.undated ? "미정" : formatAgo(item.time)}
-                        </span>
-                      </span>
-                      <span className="scr-activity-row-desc">
-                        {rowDesc(item)}
-                      </span>
-                    </span>
-                  </button>
-                  {/* 게임결과는 요약(참가자 명단)을 건너뛰고 바로 경기 목록을 편다(요청) —
-                      목록 줄이 이미 "n명 n경기"로 그 요약을 말했다. */}
-                  {(open || closing) && (
-                    <div className={cx("scr-activity-row-fold", open ? "scr-activity-row-fold-open" : "scr-activity-row-fold-closing")}>
-                      {/* 배경 사진은 카드 본문이 아니라 이 자리에 깐다(요청: "편지지와
-                          똑같이 댓글창까지 배경 넣을 수 있나") — 카드 본문에만 깔면 편지지
-                          아래 댓글부터는 사진이 뚝 끊겨, 한 장의 편지지가 아니라 사진 붙인
-                          카드 + 별개의 댓글창으로 읽힌다. 줄 본문은 카드와 댓글을 함께
-                          담고 있으므로 여기 깔면 둘이 같은 종이 위에 앉는다. */}
-                      {/* 자르는 칸을 한 겹 따로 둔다 — 여닫는 건 이 칸의 높이고, 안쪽 본문은
-                          처음부터 끝까지 제 크기 그대로다. 본문이 직접 줄었다 늘었다 하면 거기
-                          맞춰 깔린 배경 사진도 같이 커졌다 작아진다(지적: "카드 여닫을 때 편지지
-                          배경이 같이 확대/축소 되는데 처음부터 완성된 상태로 그려져서 드러나고
-                          숨겨지는 건 안 되나"). 이제 다 그려 둔 것이 창처럼 드러났다 가려진다. */}
-                      <div className="scr-activity-row-fold-clip">
-                        <div
-                          className={cx("scr-activity-row-body", rowPhoto(item) && "scr-activity-row-body-photo")}
-                          {...(rowPhoto(item)
-                            ? { style: { "--card-photo": `url("${rowPhoto(item)}")` } as CSSProperties }
-                            : {})}
-                        >
-                          {rowPhoto(item) && <div className="scr-activity-card-photo" aria-hidden="true" />}
-                          {renderCard(item)}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )
+                    },
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* 스피너는 화면에 하나뿐이어야 한다 — 위 목록 자리의 것과 여기 '더 불러오는 중'이
@@ -1899,6 +1866,22 @@ export default function ActivityScreen() {
           없으면 관측할 것 자체가 없어 조기 loadMore가 원천적으로 안 생긴다. */}
       {!loading && loadingMore && <LoadingMark />}
       {!loading && <div ref={sentinelRef} aria-hidden />}
+
+      {openGroupKey && (() => {
+        const section = groupedSections.find((s) => s.key === openGroupKey);
+        const def = GROUP_DEFS.find((g) => g.key === openGroupKey)!;
+        return (
+          <ActivityGroupModal
+            groupKey={openGroupKey}
+            label={def.label}
+            items={section?.items ?? []}
+            memberOf={memberOf}
+            members={members}
+            renderRow={renderRow}
+            onClose={() => setOpenGroupKey(null)}
+          />
+        );
+      })()}
 
       {challengeFormOpen && (
         <ChallengeFormModal
