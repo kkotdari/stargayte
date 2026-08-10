@@ -194,13 +194,13 @@ const TIER_BOOST: Record<number, number> = { 1: 3, 2: 1 };
 
 /** 1급 칭호 — 아무나 못 하고, 한 번으로도 그 사람의 표식이 되는 것들. */
 const TIER1 = new Set([
-  "핵보유국", "포토러시의 퀸", "성큰러시의 절대자", "마인드 컨트롤러",
+  "공포의 핵 보유국", "포토러시의 퀸", "성큰러시의 절대자", "마인드 컨트롤러",
   "커널 개통사", "리콜의 마술사", "감염술사", "다크스웜의 여신", "몰래 배럭의 대가",
   "헬프 퀸",
 ]);
 
 const TACTIC_WEIGHT: Record<string, number> = {
-  "핵보유국": 8,
+  "공포의 핵 보유국": 8,
   "포토러시의 퀸": 3.5, "성큰러시의 절대자": 3.5, "마인드 컨트롤러": 3.5,
   "헬프 퀸": 3, "커널 개통사": 3, "리콜의 마술사": 3, "감염술사": 3,
   "조이기의 달인": 2.5, "센포의 지배자": 2.5, "몰래 배럭의 대가": 2.5, "다크스웜의 여신": 2.5,
@@ -214,9 +214,32 @@ const TACTIC_WEIGHT: Record<string, number> = {
 
 /** 전술 칭호 한 줄 — 겨룰 사람 수도 한가운데와의 차이도 안 따지고(위 주석), 최소 횟수만
  *  본다. 여러 키를 묶는 것은 종족마다 이름이 다른 전술 때문이다(드랍이 그렇다). */
+/* 근거 문장에 적을 '그 수의 이름'(요청: "자막에 잡힌 횟수 3회" 말고 무엇이 몇 번인지
+   구체적으로) — 칭호는 멋을 부린 말이라 그것만으로는 무엇을 세었는지가 안 남는다.
+   "커널 개통사"와 "경기 요약에 커널 3번"이 나란히 있어야 읽는 사람이 둘을 이어 붙인다.
+   이름은 자막에서 부르는 말을 그대로 쓴다. */
+const TACTIC_NOUN: Record<string, string> = {
+  "ally-help": "헬프", "ally-cannon": "아군 기지 포토", "wall-in": "입구막기",
+  "center-tank": "센터 탱크 조이기", "harass-workers": "일꾼 견제", "harass-long": "끈질긴 견제",
+  dropship: "드랍", "base-raid": "본진 급습", nydus: "커널", recall: "리콜",
+  "mind-control": "마인드컨트롤", carrier: "캐리어", lurker: "러커",
+  "cloak-wraith": "클로킹 레이스", muta: "뮤탈 견제", "valk-hunt": "발키리로 오버로드 사냥",
+  "sneak-rax": "몰래 배럭", "zling-rush": "저글링 러시", "zealot-rush": "질럿 러시",
+  "duel-rush": "맞러시", "gang-rush": "협공", swarm: "다크스웜", infested: "감염된 테란",
+  guardian: "가디언", bc: "배틀크루저", valkyrie: "발키리", moka: "목동 저그",
+  "side-tank": "옆탱", "center-photon": "센터 포토", "cannon-rush": "포토러시",
+  "sunken-rush": "성큰러시", "front-defense": "입구 방어", mech: "메카닉 진출",
+  bionic: "바이오닉", "fast-tech": "빠른 테크", "hold-off": "공세 막아냄", counter: "역공",
+  breakthrough: "방어선 돌파", allin: "올인", "greedy-paid": "통한 째기", "greedy-build": "째기",
+  expand: "확장", "worker-gap": "일꾼 격차", "prod-gap": "생산 격차", "mass-army": "대군",
+  "upgrade-signature": "업그레이드", "long-run": "장기전", "late-hold": "후반 수비",
+  revival: "재기", relocate: "이사", lodging: "셋방살이", "no-elim": "노엘",
+};
+
 const tactic = (label: string, keys: string[], min = 2): Title => ({
   label, value: (s) => did(s, ...keys), pool: 1, edge: 1, min,
-  why: "자막에 잡힌 횟수", unit: "회", weight: TACTIC_WEIGHT[label] ?? 1, scale: "count",
+  why: `경기 요약에 ${TACTIC_NOUN[keys[0]] ?? "이 수"}`, unit: "번",
+  weight: TACTIC_WEIGHT[label] ?? 1, scale: "count",
   tier: TIER1.has(label) ? 1 : 2,
 });
 /** 어지간해선 두 번 나오기 어려운 것들 — 한 번으로도 그 사람의 표식이 된다. */
@@ -230,7 +253,7 @@ const spell = (label: string, key: string, min = 1): Title => ({
     const n = s.buildMix?.skills?.[key] ?? 0;
     return n > 0 ? n : null;
   },
-  pool: 1, edge: 1, min, why: "사용", unit: "회",
+  pool: 1, edge: 1, min, why: `경기에서 ${TECH_KO[key] ?? "이 기술"} 사용`, unit: "번",
   weight: TACTIC_WEIGHT[label] ?? 1, scale: "count", tier: TIER1.has(label) ? 1 : 2,
 });
 
@@ -239,7 +262,7 @@ const TITLES: Title[] = [
      떨어질까 말까 한 것이고, 떨어뜨리려면 고스트를 뽑아 살려 두고 상대 진영까지 데려가
      지목한 뒤 그 자리를 버텨야 한다. 아래 어떤 칭호도 이만큼 드물지 않다.
      (버섯구름 배달부 → 핵 투하 전문가 → 핵보유국으로 다듬었다.) */
-  spell("핵보유국", "Nuclear Strike"),
+  spell("공포의 핵 보유국", "Nuclear Strike"),
 
   /* ── 사람 노릇(요청: 꼭 넣을 것) ────────────────────────────────────────────
      맨 위에 둔다 — 혼자 잘하는 것보다 판을 함께 굴린 쪽이 먼저 불릴 자격이 있다.
@@ -503,15 +526,15 @@ const SKILL_SAYS: ((n: string) => string)[] = [
    한 번 더 생각해야 읽혔다. 빗댄 말은 그 그림이 곧바로 떠오를 때만 값어치가 있다
    (번개·지뢰밭·버섯구름처럼). 다크스웜은 어차피 제 칭호가 따로 있다(다크스웜의 여신). */
 const SPELL_SPECIAL: Record<string, string[]> = {
-  스톰: ["번개 전문가", "번개 마스터"],
+  스톰: ["사이오닉 스톰의 여왕", "사이오닉 스톰 마스터"],
   /* 리콜은 사전에 없어서 아예 안 불렸다(지적: 스톰보다 리콜이 나와야 하는데 안 나온다) —
      사전에 없는 기술은 "○○의 대가" 문틀로 가는데 그 문턱이 30점이라, 무게 3인 리콜은
      열 번을 써야 겨우 닿았다. 왕관("리콜의 마술사")은 1등 한 사람만 가져가므로, 그 뒤의
      사람에게는 이 자리가 유일한 길이다. */
-  리콜: ["리콜 한 방의 여왕", "순간이동 전문가"],
+  리콜: ["리콜의 여왕", "리콜을 지배하는 자"],
   마인드컨트롤: ["남의 병력을 빼앗는 자"],
   플레이그: ["역병을 뿌리는 자", "전염병 살포반"],
-  이레디에이트: ["방사능 살포자"],
+  이레디에이트: ["방사능을 퍼뜨리는 자"],
   락다운: ["묶어 놓고 패기", "락다운 저격수"],
   EMP: ["실드를 지우는 자"],
   야마토: ["야마토 한 발", "전함 포격수"],
@@ -770,7 +793,9 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
       : `${Math.round(c.raw * 100)}%`;
     out.set(c.id, {
       label: c.label,
-      why: `${c.title.why ?? "기록"} ${shown}${c.title.unit ?? ""}${c.first ? " — 클럽 1위" : ""}`,
+      // 꼬리는 무엇을 잰 값이냐에 따라 다르다 — 횟수는 '최다', 승률·비중은 '1위'가 맞는 말이다.
+      why: `${c.title.why ?? "기록"} ${shown}${c.title.unit ?? ""}`
+        + (c.first ? (c.title.scale === "count" ? " — 클럽 최다" : " — 클럽 1위") : ""),
     });
     used.add(c.label);
   }
