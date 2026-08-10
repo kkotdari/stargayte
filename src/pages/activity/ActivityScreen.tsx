@@ -1783,14 +1783,24 @@ export default function ActivityScreen() {
         <div className="scr-activity-groups">
           {groupedSections.map((section) => (
             <div className="scr-activity-group" key={section.key}>
-              <div className="scr-activity-group-head">
+              {/* 소제목 줄 전체가 "전체 보기" 버튼이다(요청) — 글자 넉 자만 누를 수 있으면
+                  손가락으로는 겨냥해야 하는 과녁이고, 이 줄에서 할 수 있는 일이 그것뿐이라
+                  줄 전체를 내주는 편이 맞다.
+                  버튼 태그로 감싸지 않는 이유는 제목이 h2라서다 — 버튼 안에 제목을 넣는 것은
+                  HTML이 허락하지 않는다. 그래서 role/tabIndex/키보드를 직접 달아 준다. */}
+              <div
+                className="scr-activity-group-head"
+                role="button" tabIndex={0}
+                aria-label={`${section.label} 전체 보기`}
+                onClick={() => openGroup(section.key)}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter" && e.key !== " ") return;
+                  e.preventDefault();
+                  openGroup(section.key);
+                }}
+              >
                 <h2 className="scr-activity-group-title">{section.label}</h2>
-                <button
-                  type="button" className="scr-activity-group-viewall"
-                  onClick={() => openGroup(section.key)}
-                >
-                  전체 보기
-                </button>
+                <span className="scr-activity-group-viewall" aria-hidden>전체 보기</span>
               </div>
               <div className="scr-activity-rows">
                 {section.items.slice(0, GROUP_PREVIEW_MAX).map((item) => renderRow(item))}

@@ -8839,6 +8839,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
      제목까지 목록의 한 줄처럼 읽힌다. 대신 좌우는 상자와 같은 x에 맞춘다: 제목과 상자가
      서로 다른 선에서 시작하면 둘이 한 덩어리라는 것이 안 보인다. */
   padding: 0 4px 8px;
+  /* 줄 전체가 누르는 자리다(요청) — 글자 넉 자만 과녁이던 것을 줄로 넓혔다. 누를 수 있다는
+     것은 커서와, 손을 얹었을 때 "전체 보기"가 또렷해지는 것으로 말한다(아래). */
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 /* 소제목과 "전체 보기"를 한 단씩 줄인다(요청, PC·모바일 공통) — 화면 제목(활동)과 목록
    줄 사이에 낀 층이라, 제목만 한 크기로 서면 다섯 덩어리가 각자 화면 제목처럼 읽힌다.
@@ -8847,9 +8850,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-activity-group-viewall {
   flex: none; background: none; border: none; padding: 4px 2px; margin: -4px -2px;
   font-family: inherit; font-size: var(--fs-micro); font-weight: 600; color: var(--muted);
-  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: transparent;
 }
-@media (hover: hover) { .scr-activity-group-viewall:hover { color: var(--text); } }
+/* 손을 얹으면 줄 전체가 반응한다 — 이제 눌리는 것이 글자가 아니라 줄이라, 밝아지는 것도
+   글자 위가 아니라 줄 어디에 얹든이어야 한다. */
+@media (hover: hover) { .scr-activity-group-head:hover .scr-activity-group-viewall { color: var(--text); } }
 
 /* "전체 보기"는 화면이다(요청: 팝업이 아닌 페이지로 이동) — 활동 화면 자리를 그대로
    갈아 끼우므로 제 폭도 배경도 없다. 창이던 시절의 최대폭(640px)·세로 flex·안쪽 스크롤은
