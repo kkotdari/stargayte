@@ -2579,11 +2579,16 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    다르다) — 한때 레이팅 줄에만 줄여 놨더니, 순위 버튼만 아래 안여백이 2px 더 남아 그
    아래 변동이 그만큼 떨어져 보였다. 값과 변동 사이는 표 어디서나 같아야 한다. */
 .scr-stat-rank-line .scr-stat-points-btn { padding: 2px 4px; }
-.scr-stat-rank-points + .scr-stat-rank-delta { margin-top: -2px; }
+/* 값과 그 아래 변동 사이 — 줄기 안의 셋(레이팅·순위·BEST)이 같아야 한다(요청: BEST 쪽
+   여백으로 통일). BEST의 수는 버튼이 아니라 맨 글자라 아래 안여백이 없고, 그래서 이 둘만
+   음수 마진으로 당겨 두면 BEST보다 2px씩 붙어 보였다. 당기는 것을 걷어 낸다 —
+   버튼의 아래 안여백(2px)이 BEST 격자의 행 사이(margin-top 1px + 글자 아랫여백)와
+   맞물려 셋이 같은 크기로 읽힌다. */
+.scr-stat-rank-points + .scr-stat-rank-delta { margin-top: 0; }
 /* 순위 변동 줄(요청: 크기 줄이고 순위 아래로) — 다른 변동들과 같은 크기·같은 간격이다.
    화살표·"신규"는 예전에 micro(12px)였는데, 그때는 순위 옆에 나란히 서서 그 정도는 돼야
    읽혔다. 제 줄로 내려온 지금은 레이팅·BEST의 변동과 한 열에 서므로 그것들과 같아야 한다. */
-.scr-stat-rank-move { line-height: 1; margin-top: -2px; }
+.scr-stat-rank-move { line-height: 1; margin-top: 0; }
 .scr-stat-rank-move .scr-activity-shift-up,
 .scr-stat-rank-move .scr-activity-shift-down,
 .scr-stat-rank-move .scr-activity-shift-new {
