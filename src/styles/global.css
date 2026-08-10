@@ -2898,7 +2898,9 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
    '같은 것은 같은 자리'가 크다 — 줄기는 그만큼 넓힌다(--scr-stat-rank-w).
    단위와 겹치지 않도록 그 폭(약 12px)만큼 띄운다. */
 .scr-stat-rank-points .scr-stat-medal {
-  left: 100%; right: auto; margin: 0 0 0 13px;
+  /* 단위와 한 줄에 서므로 절대배치를 푼다 — 껍데기(.scr-stat-points-side)가 이미 값의
+     오른쪽 바깥에 세로 가운데로 매달려 있어서, 그 안에서는 흐름 그대로가 가장 정확하다. */
+  position: static; transform: none; margin: 0;
   /* 메달 이모지의 실제 폭은 기기마다 다르다(안드로이드·iOS·크롬이 저마다 다른 글꼴로
      그린다) — 자리를 픽셀로 못 박아, 어느 기기에서 보든 줄기 안에 드는 폭이 같게 한다.
      글리프가 이 상자보다 크면 좌우로 조금 넘치는데, 줄기 여백 안이라 부딪힐 것이 없다. */

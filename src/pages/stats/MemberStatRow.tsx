@@ -217,29 +217,6 @@ function UpgradeGrid({ mix, prev, race }: {
    global.css의 --scr-toplist-w도 90px → 186px으로 함께 올려야 자리가 맞는다. */
 const SHOW_TOP_VALUES = false;
 
-/* 목록에서 밀려나도 반드시 남기는 기술(요청: 통계 스킬에 핵도 나와야지) — 이 칸은 많이 쓴
-   순으로 다섯을 세는데, 테란은 스팀팩·시즈모드·마인처럼 늘 누르는 조작이 수백 번이라 그
-   다섯이 통째로 그것들로 찬다. 핵은 한 판에 한두 발이라 수로는 절대 못 올라오지만, 정작
-   그 판을 말하는 것은 이쪽이다. 그래서 수와 무관하게 자리를 하나 내준다.
-   자리를 늘리지 않고 맨 아래를 밀어내는 이유: 줄 수가 사람마다 달라지면 그 줄만 칸 높이가
-   달라져 옆 칸들과 어긋난다. */
-const PINNED_TECHS = ["Nuclear Strike"];
-
-/** 스킬 칸에 세울 다섯 — 많이 쓴 순 다섯에 위 PINNED_TECHS를 끼워 넣은 것. */
-function skillEntries(mix: BuildMix): TopEntry[] {
-  const items = topEntries(mix.skills, TECH_KO, TOP_N, mix.skillSecs);
-  for (const key of PINNED_TECHS) {
-    const n = mix.skills?.[key] ?? 0;
-    const name = TECH_KO[key];
-    if (!(n > 0) || !name || items.some((it) => it.name === name)) continue;
-    // 값은 목록의 다른 줄과 같은 자로 잰다(그 기술이 나온 판의 시간으로 나눈 분당 값).
-    const secs = mix.skillSecs?.[name] ?? mix.skillSecs?.[key] ?? 0;
-    if (items.length >= TOP_N) items.pop();
-    items.push({ name, perMin: secs > 0 ? (n / secs) * PER_WINDOW_SECONDS : null });
-  }
-  return items;
-}
-
 /** 많이 나온 순 목록 한 칸. 값이 없으면 다른 칸과 같은 "-" 하나로 둔다.
  *
  *  적는 수는 총합이 아니라 주요시간대 1분당 값이다(요청) — 총합은 오래 뛴 사람이 늘 크다.
@@ -458,13 +435,18 @@ export default function MemberStatRow({
                             같은 쪽에 세우면 줄기가 담아야 할 폭이 [수 절반 + 단위 + 메달]의
                             두 배라 그만큼 벌어지고, 그 폭은 왼쪽에서 통째로 빈자리가 된다.
                             좌우로 갈라 매달면 두 쪽이 서로를 채운다. */}
-                        {medals?.points && <span className="scr-stat-medal">{medals.points}</span>}
                         <span className="scr-stat-points-side">
                           {/* 단위(요청) — 아랫줄의 "1위"와 달리 이 줄은 맨숫자라 무엇의 수인지가
                               칸 이름에만 기대고 있었다. "레이팅" 세 글자를 R 한 자로 줄였다
                               (요청) — 이 글자는 줄마다 똑같이 되풀이되는 말이라 한 번 읽으면
                               그다음부터는 자리만 먹고, 그 자리가 곧 줄기 폭이었다. */}
                           <span className="scr-stat-points-unit">R</span>
+                          {/* 메달은 단위 바로 뒤 — 같은 껍데기(.scr-stat-points-side) 안에
+                              들어와야 단위와 세로가 정확히 맞고 사이도 늘 같다. 따로 절대배치
+                              하면 기준이 버튼이라 값의 가운데선과 미묘하게 어긋난다(지적:
+                              위치가 안 예쁘다). 이 껍데기 자체가 자리를 안 먹으므로 수는
+                              여전히 줄기 가운데에 선다. */}
+                          {medals?.points && <span className="scr-stat-medal">{medals.points}</span>}
                         </span>
                       </button>
                     </span>
@@ -691,7 +673,7 @@ export default function MemberStatRow({
           <>
             <UpgradeGrid mix={mix} prev={pmix} race={upRace} />
             <TopList
-              items={skillEntries(mix)} unit="회"
+              items={topEntries(mix.skills, TECH_KO, TOP_N, mix.skillSecs)} unit="회"
               prevRanks={pmix ? topRanks(pmix.skills, TECH_KO) : undefined}
             />
           </>
