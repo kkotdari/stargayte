@@ -203,10 +203,14 @@ const TIER1_KEYS = new Set([
 const TACTIC_WEIGHT: Record<string, number> = {
   "Nuclear Strike": 8,
   "cannon-rush": 3.5, "sunken-rush": 3.5, "mind-control": 3.5,
-  "ally-help": 3, nydus: 3, recall: 3, infested: 3, lodging: 3,
-  "center-tank": 2.5, "center-photon": 2.5, "sneak-rax": 2.5, swarm: 2.5,
-  "wall-in": 2, "side-tank": 2, "harass-workers": 2, "harass-long": 2,
-  "ally-cannon": 2, carrier: 2, bc: 2,
+  /* '사람 노릇'은 한 단계 더 올린다(요청) — 헬프·아군 포토는 제 살림을 놔두고 남의 집을
+     받쳐 준 대목이고, 입구막기와 조이기는 그 판을 통째로 설계한 수다. 혼자 잘한 것보다
+     판을 함께 굴린 쪽이 먼저 불릴 자격이 있다는 것이 이 표의 첫 줄에 적힌 생각이다. */
+  "ally-help": 5, "ally-cannon": 4, "wall-in": 4, "center-tank": 4,
+  nydus: 3, recall: 3, infested: 3, lodging: 3,
+  "center-photon": 2.5, "sneak-rax": 2.5, swarm: 2.5,
+  "side-tank": 2, "harass-workers": 2, "harass-long": 2,
+  carrier: 2, bc: 2,
   dropship: 1.5, lurker: 1.5, guardian: 1.5, valkyrie: 1.5, "valk-hunt": 1.5,
   "duel-rush": 1.5, "base-raid": 1.5,
   /* 운영은 한 번 더 올린다(요청) — 바이오닉·메카닉·목동 저그·빠른 테크는 유닛 이름이
