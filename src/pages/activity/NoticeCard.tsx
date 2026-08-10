@@ -52,24 +52,26 @@ export default function NoticeCard({
           const member = memberOf(c.memberId);
           return (
             <li className="scr-notice-row" key={c.memberId}>
-              {member && <Avatar member={member} size={24} />}
-              <span className="scr-notice-name">{member?.nickname ?? c.memberId}</span>
-              {/* 이름과 칭호 사이는 가운뎃점으로 끊는다(요청) — 굵기만 다른 채 붙어 있으면
-                  "군범 개근의 여왕"이 한 사람 이름처럼 읽힌다. 목록 줄에서 쓰는 것과 같은
-                  부호라(scr-activity-row-sep) 앱 안에서 뜻이 이어진다. */}
-              <span className="scr-notice-sep">·</span>
-              {/* 옛 칭호는 있을 때만 — 없다가 생긴 것은 화살표를 붙일 데가 없다(랭크 변동의
-                  '진입'과 같은 생각). 그럴 때는 새 칭호 하나만 적는다. */}
-              {c.from && (
-                <>
-                  <span className="scr-notice-from">{c.from}</span>
-                  <span className="scr-notice-arrow">→</span>
-                </>
-              )}
-              <span className="scr-notice-to">{c.to}</span>
-              {/* 무엇 때문에 바뀌었나 — 통계 표의 칭호에 달리는 근거와 같은 문장이다.
-                  좁은 화면에서는 아래 줄로 넘어간다(CSS). */}
-              {c.why && <span className="scr-notice-why">{c.why}</span>}
+              {/* 누구인가가 첫 줄, 무엇으로 바뀌었나가 그 아래다(요청) — 한 줄에 이어 붙이면
+                  "Rex 핵보유국"이 한 사람 이름처럼 읽힌다. 가운뎃점으로 끊어도 봤지만,
+                  줄을 바꾸는 편이 부호 하나보다 확실하다. */}
+              <div className="scr-notice-who">
+                {member && <Avatar member={member} size={24} />}
+                <span className="scr-notice-name">{member?.nickname ?? c.memberId}</span>
+              </div>
+              <div className="scr-notice-change">
+                {/* 옛 칭호는 있을 때만 — 없다가 생긴 것은 화살표를 붙일 데가 없다(랭크 변동의
+                    '진입'과 같은 생각). 그럴 때는 새 칭호 하나만 적는다. */}
+                {c.from && (
+                  <>
+                    <span className="scr-notice-from">{c.from}</span>
+                    <span className="scr-notice-arrow">→</span>
+                  </>
+                )}
+                <span className="scr-notice-to">{c.to}</span>
+                {/* 무엇 때문에 바뀌었나 — 통계 표의 칭호에 달리는 근거와 같은 문장이다. */}
+                {c.why && <span className="scr-notice-why">{c.why}</span>}
+              </div>
             </li>
           );
         })}
