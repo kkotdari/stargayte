@@ -10960,10 +10960,11 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   justify-items: center; align-items: center;
   /* 모바일에서 한 단계 더 축소(요청) — micro(12) → 11. 좁은 지도 위에 얹히는 글자라
      작을수록 그림을 덜 가린다. PC는 아래 미디어쿼리에서 그대로 body로 키운다. */
-  /* 다시 한 스텝 올린다(요청: 모바일에서 자막 폰트 확대) — 11 → micro(12). 그림을 덜
-     가리려 내렸던 값인데, 실제로 읽어 보면 지도 위 흰 글자는 검은 테를 두르고 있어
-     한 스텝 정도는 그림을 더 가리지 않고도 또렷해진다. */
-  font-size: var(--fs-micro); font-weight: 500; line-height: 1.6;
+  /* 두 스텝 올렸다(요청: 모바일 자막 14px) — 11 → 12 → caption(14). 그림을 덜 가리려
+     내렸던 값인데, 자막은 이 화면에서 그림 다음으로 읽는 것이지 곁말이 아니다. 흰 글자에
+     검은 테를 두르고 있어(아래 -webkit-text-stroke) 커져도 그림을 덮기보다 그 위에 얹혀
+     읽힌다. PC는 아래 미디어쿼리에서 한 단계 더 올린다. */
+  font-size: var(--fs-caption); font-weight: 500; line-height: 1.6;
   color: #fff;
   /* 글자에 검은 테를 두른다(요청) — 겹쳐 깐 그림자(0 0 3px/6px …)는 글자 주위가 뿌옇게
      번져 지도 위에서 지저분했다. 테는 윤곽이 딱 떨어져서 같은 두께라도 훨씬 깔끔하다.
@@ -10979,8 +10980,8 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 자막 앞의 시각 — 본문보다 한 단계 작고 흐리게 둔다(요청: [5분]처럼 분까지만).
    본문이 한 단계 내려간 만큼 여기도 같이 내려 서열을 지킨다(11 → 10). */
 .scr-story-cap-time {
-  /* 문장보다 한 단계 아래라는 서열은 그대로 두고 함께 한 스텝 올린다(요청) — 10 → 11. */
-  margin-right: 5px; font-size: var(--fs-11); font-weight: 700; opacity: 0.78;
+  /* 문장보다 한 단계 아래라는 서열은 그대로 두고 함께 올린다(요청) — 10 → 11 → 12. */
+  margin-right: 5px; font-size: var(--fs-micro); font-weight: 700; opacity: 0.78;
 }
 .scr-story-cap-line {
   grid-area: 1 / 1; margin: 0;
@@ -11010,8 +11011,8 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    같은 12px라도 화면에서 차지하는 비중이 모바일보다 훨씬 작아 보인다. 모바일은
    지도가 좁아 키우면 자막이 그림을 덮으므로 그대로 둔다. */
 @media (min-width: 1160px) {
-  .scr-story-cap { width: calc((100% + var(--scr-cap-inset, 0px) * 2) * 2 / 3); font-size: var(--fs-body); }
-  .scr-story-cap-time { font-size: var(--fs-caption); }
+  .scr-story-cap { width: calc((100% + var(--scr-cap-inset, 0px) * 2) * 2 / 3); font-size: var(--fs-subhead); }
+  .scr-story-cap-time { font-size: var(--fs-body); }
 }
 @media (prefers-reduced-motion: reduce) { .scr-story-cap-line { transition: none; } }
 
