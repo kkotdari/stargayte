@@ -43,7 +43,9 @@ export default function MemberProfileModal({ member, onClose }: MemberProfileMod
               {/* 칭호는 닉네임 '위'다(요청) — 아래에 두면 배틀태그와 나란히 서서 둘 다
                   '이름에 딸린 부속 정보'로 읽힌다. 위에 얹으면 이름을 부르기 전에 먼저
                   읽히는 수식어가 되어, 실제로 사람을 소개하는 차례와 같아진다. */}
-              {epithet && <div className="scr-member-detail-epithet">{epithet}</div>}
+              {epithet && (
+                <div className="scr-member-detail-epithet" title={epithet.why}>{epithet.label}</div>
+              )}
               <div className="scr-member-detail-name">{member.nickname}</div>
               <div className="scr-member-detail-tag scr-mono">{member.battletag}</div>
             </div>

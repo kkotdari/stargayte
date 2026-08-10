@@ -12,13 +12,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { useAppStore } from "../store/appStore";
-import { epithetsOf } from "./statEpithet";
+import { epithetsOf, type Epithet } from "./statEpithet";
 import type { MemberStatsEntry } from "../types";
 
-const EMPTY = new Map<string, string>();
+const EMPTY = new Map<string, Epithet>();
 
 let cachedKey = "";
-let cached: Map<string, string> | null = null;
+let cached: Map<string, Epithet> | null = null;
 let inflightKey = "";
 let inflight: Promise<void> | null = null;
 
@@ -40,7 +40,7 @@ async function load(key: string): Promise<void> {
 }
 
 /** 지금 활동 중인 회원들의 칭호. 아직 안 받았으면 빈 map을 돌려주고, 도착하면 다시 그린다. */
-export function useEpithets(): Map<string, string> {
+export function useEpithets(): Map<string, Epithet> {
   const members = useAppStore((s) => s.members);
   /* 대상은 활동 중인 회원 전체다 — 검색에 걸린 목록이 아니라(메달과 같은 원칙). 1등이라는
      말이 들어가는 값이라, 이름을 검색했다고 왕관이 옮겨 다니면 그건 기록이 아니다. */
@@ -50,7 +50,7 @@ export function useEpithets(): Map<string, string> {
       .map((m) => m.id).sort().join(","),
     [members],
   );
-  const [map, setMap] = useState<Map<string, string>>(
+  const [map, setMap] = useState<Map<string, Epithet>>(
     () => (cachedKey === key && cached ? cached : EMPTY),
   );
 

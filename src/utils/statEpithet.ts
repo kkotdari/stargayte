@@ -38,6 +38,14 @@ export interface EpithetSubject {
   stats: MemberStats;
 }
 
+/** 칭호 한 벌 — 부르는 말과 그 근거. 근거를 함께 두는 이유는 이 줄이 "기록에서 나온 말"이라고
+ *  주장하면서 정작 그 기록을 볼 길이 없으면, 읽는 사람에게는 그냥 무작위 문구와 같기 때문이다
+ *  (지적: "왜 이 칭호가 나오지?"). 화면은 이 문장을 툴팁(title)으로 단다. */
+export interface Epithet {
+  label: string;
+  why: string;
+}
+
 /** 주요시간대 1분당 값 — 총합은 오래 뛴 사람이 늘 크다(MemberStatRow의 perMin과 같은 자). */
 function perMin(total: number, seconds: number | null | undefined): number | null {
   return seconds && seconds > 0 ? (total / seconds) * PER_WINDOW_SECONDS : null;
@@ -111,12 +119,16 @@ interface Title {
   edge?: number;
   /** {n}에 꽂을 이름 — 맵 칭호처럼 말 자체에 그 사람의 값이 들어가는 경우. */
   name?: (s: MemberStats) => string | null;
+  /** 툴팁에 적을 근거의 앞머리("자막에 잡힌 횟수" 등)와 단위. */
+  why?: string;
+  unit?: string;
 }
 
 /** 전술 칭호 한 줄 — 겨룰 사람 수도 한가운데와의 차이도 안 따지고(위 주석), 최소 횟수만
  *  본다. 여러 키를 묶는 것은 종족마다 이름이 다른 전술 때문이다(드랍이 그렇다). */
 const tactic = (label: string, keys: string[], min = 2): Title => ({
   label, value: (s) => did(s, ...keys), pool: 1, edge: 1, min,
+  why: "자막에 잡힌 횟수", unit: "회",
 });
 /** 어지간해선 두 번 나오기 어려운 것들 — 한 번으로도 그 사람의 표식이 된다. */
 const rare = (label: string, keys: string[]): Title => tactic(label, keys, 1);
@@ -129,7 +141,7 @@ const spell = (label: string, key: string, min = 1): Title => ({
     const n = s.buildMix?.skills?.[key] ?? 0;
     return n > 0 ? n : null;
   },
-  pool: 1, edge: 1, min,
+  pool: 1, edge: 1, min, why: "사용", unit: "회",
 });
 
 const TITLES: Title[] = [
@@ -238,28 +250,28 @@ const TITLES: Title[] = [
   // ── 맵 ─────────────────────────────────────────────────────────────────────
   {
     label: "{n}의 지배자",
-    pool: 1, edge: 1,
+    pool: 1, edge: 1, why: "그 맵 승수", unit: "승",
     value: (s) => bestMap(s)?.wins ?? null,
     name: (s) => bestMap(s)?.name ?? null,
   },
 
   // ── 스타일(무엇을 어떻게 뽑나) ─────────────────────────────────────────────
-  { label: "물량퀸", value: (s) => (s.buildMix ? perMin(s.buildMix.coreUnit, s.mixSeconds) : null) },
-  { label: "번개같은 손놀림", value: (s) => s.avgApm },
+  { label: "물량퀸", why: "분당 뽑은 기수", unit: "기", value: (s) => (s.buildMix ? perMin(s.buildMix.coreUnit, s.mixSeconds) : null) },
+  { label: "번개같은 손놀림", why: "APM", unit: "", value: (s) => s.avgApm },
   {
-    label: "하늘의 여전사",
+    label: "하늘의 여전사", why: "병력 중 공중 비중", unit: "",
     // 공중 비중은 30%를 넘어야 '탄다'고 할 수 있다 — 드랍십 한 기로 하늘을 지배할 수는 없다.
     value: (s) => (s.buildMix ? share(s.buildMix.uAir, s.buildMix.uGround, 20) : null),
     min: 0.3,
   },
   {
-    label: "마법의 화신",
+    label: "마법의 화신", why: "병력 중 마법 유닛 비중", unit: "",
     // 마법 유닛은 원래 수가 적다 — 5%만 넘어도 그 판을 마법으로 푼 사람이다.
     value: (s) => (s.buildMix ? share(s.buildMix.uCaster, s.buildMix.uBasic + s.buildMix.uAdv, 20) : null),
     min: 0.05,
   },
   {
-    label: "고급 유닛 수집가",
+    label: "고급 유닛 수집가", why: "병력 중 고급 유닛 비중", unit: "",
     value: (s) => (s.buildMix ? share(s.buildMix.uAdv, s.buildMix.uBasic, 30) : null),
     min: 0.45,
   },
@@ -267,14 +279,14 @@ const TITLES: Title[] = [
     /* "철벽의 수호자"였는데 무슨 값인지 안 읽힌다는 지적 — 이 줄이 재는 것은 '잘 막았다'가
        아니라 '지은 건물 중 방어 건물의 비중'이다(포토·성큰·터렛·벙커). 값이 말하는 그대로
        부른다: 막아냈는지 아닌지는 리플레이가 말해 주지 않는다. */
-    label: "방어탑 사랑꾼",
+    label: "방어탑 사랑꾼", why: "건물 중 방어 건물 비중", unit: "",
     value: (s) => (s.buildMix ? share(s.buildMix.bDef, s.buildMix.bProd, 20) : null),
     min: 0.12,
   },
-  { label: "다산의 아이콘", value: (s) => s.avgWorker5 },
-  { label: "쉴 새 없이 짓는 자", value: (s) => (s.buildMix ? perMin(s.buildMix.coreBuild, s.mixSeconds) : null) },
+  { label: "다산의 아이콘", why: "초반 5분 일꾼", unit: "기", value: (s) => s.avgWorker5 },
+  { label: "쉴 새 없이 짓는 자", why: "분당 지은 채수", unit: "채", value: (s) => (s.buildMix ? perMin(s.buildMix.coreBuild, s.mixSeconds) : null) },
   {
-    label: "풀업 신봉자",
+    label: "풀업 신봉자", why: "공/방 평균 단계", unit: "",
     value: (s) => {
       const m = s.buildMix;
       if (!m) return null;
@@ -285,10 +297,10 @@ const TITLES: Title[] = [
   },
 
   // ── 양(얼마나 했나) ────────────────────────────────────────────────────────
-  { label: "승률의 정점", value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null) },
-  { label: "BEST 수집가", value: (s) => (s.bests > 0 ? s.bests : null) },
-  { label: "쉬지 않는 손가락", value: (s) => s.avgCmd },
-  { label: "개근의 여왕", value: (s) => s.plays },
+  { label: "승률의 정점", why: "승률", unit: "%", value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null) },
+  { label: "BEST 수집가", why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
+  { label: "쉬지 않는 손가락", why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
+  { label: "개근의 여왕", why: "경기 수", unit: "판", value: (s) => s.plays },
 ];
 
 /* ── 특징 ──────────────────────────────────────────────────────────────────────
@@ -446,7 +458,7 @@ function seedOf(id: string): number {
   return h;
 }
 
-function signature(id: string, s: MemberStats, used: Set<string>): string | null {
+function signature(id: string, s: MemberStats, used: Set<string>): Epithet | null {
   const seed = seedOf(id);
   const m = s.buildMix;
   if (m) {
@@ -462,7 +474,7 @@ function signature(id: string, s: MemberStats, used: Set<string>): string | null
          건너뛰고 아래 유닛 쪽에서 찾는다: 심심한 말을 억지로 붙이느니 다른 재료가 낫다. */
       const t = (special && pick(special.map((label) => () => label), skill.name, seed, used))
         || (skill.score >= SKILL_PLAIN_SCORE ? pick(SKILL_SAYS, skill.name, seed, used) : null);
-      if (t) return t;
+      if (t) return { label: t, why: `${skill.name} ${skill.count}회` };
     }
     /* 병력의 3분의 1을 한 유닛이 차지하면 그건 주력이 아니라 고집이다 — 4분의 1에서 올렸다:
        그 정도는 어느 종족에나 있는 주력 비중이라 "닥치고 ○○"이라 부를 만한 그림이 아니다.
@@ -470,29 +482,30 @@ function signature(id: string, s: MemberStats, used: Set<string>): string | null
     const unit = topOf(m.units, UNIT_KO);
     if (unit && unit.share >= 0.33 && unit.count >= 10) {
       const t = pick(UNIT_SAYS, unit.name, seed, used);
-      if (t) return t;
+      if (t) return { label: t, why: `${unit.name}가 병력의 ${Math.round(unit.share * 100)}%` };
     }
     /* 건물은 마지막이다 — 종족이 정해지면 짓는 것도 대체로 정해져서, 유닛·마법만큼 그
        사람을 가르지 못한다. */
     const build = topOf(m.buildings, BUILDING_KO);
     if (build && build.share >= 0.3 && build.count >= 10) {
       const t = pick(BUILD_SAYS, build.name, seed, used);
-      if (t) return t;
+      if (t) return { label: t, why: `${build.name}가 건물의 ${Math.round(build.share * 100)}%` };
     }
   }
   /* 리플레이가 없는 사람(수기 등록·옛 경기)은 전적밖에 없다. 그래도 한 줄은 준다 —
      이 자리가 비면 그 줄만 닉네임이 위로 떠 표가 들쭉날쭉해 보인다. 지는 쪽에도 놀리는
      말은 안 쓴다: 여기 이름이 오르는 것은 계속 나오고 있다는 뜻이다. */
-  if (s.plays >= MIN_PLAYS_RATE && s.winRate >= 60) return "이기는 맛을 아는 사람";
-  if (s.winRate <= 35) return "다음 판을 노리는 자";
-  return "묵묵히 한 판 더";
+  const record = `${s.plays}판 승률 ${s.winRate.toFixed(1)}%`;
+  if (s.plays >= MIN_PLAYS_RATE && s.winRate >= 60) return { label: "이기는 맛을 아는 사람", why: record };
+  if (s.winRate <= 35) return { label: "다음 판을 노리는 자", why: record };
+  return { label: "묵묵히 한 판 더", why: record };
 }
 
 /** 회원 → 칭호. 왕관은 넘겨받은 무리 안에서만 매기므로, 부르는 쪽이 '검색에 걸린 목록'이
  *  아니라 '그 조건의 회원 전체'를 넘겨야 한다(메달과 같은 원칙) — 이름을 검색했다고 칭호가
  *  옮겨 다니면 그건 기록이 아니라 화면 효과다. */
-export function epithetsOf(pool: EpithetSubject[]): Map<string, string> {
-  const out = new Map<string, string>();
+export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
+  const out = new Map<string, Epithet>();
   const used = new Set<string>();
   const ranked = pool.filter((p) => p.stats.plays >= MIN_PLAYS);
 
@@ -514,7 +527,14 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, string> {
         ? title.label.replace("{n}", title.name(w.stats) ?? "")
         : title.label;
       if (!label || label.includes("{n}") || used.has(label)) continue;
-      out.set(w.id, label);
+      /* 근거를 함께 남긴다(지적: "왜 이 칭호가 나오지?") — 칭호는 기록에서 나온다고 말은
+         하는데 정작 그 기록을 볼 길이 없었다. 화면은 이 문장을 툴팁으로 달아 둔다.
+         수는 소수점을 안 적는다: 비율 칭호(0.42)까지 그대로 적으면 무슨 값인지 되레 헷갈린다. */
+      const raw = vals.find((x) => x.id === w.id)!.v;
+      const shown = raw >= 10 || Number.isInteger(raw)
+        ? `${Math.round(raw)}`
+        : `${Math.round(raw * 100)}%`;
+      out.set(w.id, { label, why: `${title.why ?? "기록"} ${shown}${title.unit ?? ""} — 클럽 1위` });
       used.add(label);
       // 한 칭호는 한 사람만 — 공동 1위여도 먼저 걸린 사람이 가져간다(맵 칭호는 사람마다
       // 맵이 달라 이 줄에 걸리지 않는다: 이름이 다르면 다른 칭호다).
@@ -525,10 +545,10 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, string> {
   for (const p of pool) {
     if (out.has(p.id)) continue;
     if (p.stats.plays < MIN_PLAYS) continue;
-    const text = signature(p.id, p.stats, used);
-    if (!text) continue;
-    out.set(p.id, text);
-    used.add(text);
+    const found = signature(p.id, p.stats, used);
+    if (!found) continue;
+    out.set(p.id, found);
+    used.add(found.label);
   }
   return out;
 }
