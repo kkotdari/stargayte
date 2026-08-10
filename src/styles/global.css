@@ -11287,3 +11287,115 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 칭호가 없는 줄(요청: 도저히 줄 게 없으면 칭호 없음) — 있는 칭호보다 더 눌러 둔다.
    자리를 지키는 것이 목적이라 읽으라고 적는 글자가 아니다. */
 .scr-stat-name-epithet-none { opacity: 0.45; }
+
+/* ===== 래더(리더보드) =========================================================
+   요청: 래더와 내전은 아예 다른 메뉴·다른 페이지다. 내전은 칸이 여섯인 넓은 통계표라
+   가로 스크롤을 전제로 만들어졌지만, 래더는 다섯 칸짜리 순위표라 어느 폭에서도 한 화면에
+   들어와야 한다 — 리더보드를 옆으로 밀어 봐야 할 이유가 없다. 그래서 통계표의 격자를
+   물려받지 않고 제 격자를 따로 갖는다.
+
+   칸: [랭크] [유저] [레이팅] [경기수] [승률](요청).
+   랭크가 맨 왼쪽 제 칸인 것이 이 화면의 요점이다(요청) — 리더보드에서 제일 먼저 읽는 값이라
+   유저 칸 안에 딸려 있으면 안 된다. 유저만 남는 폭을 먹고(1fr), 수치 셋은 제 폭이 고정이라
+   줄이 바뀌어도 자릿수가 세로로 맞는다. */
+.scr-ladder-table {
+  display: flex; flex-direction: column;
+  background-color: var(--panel-solid);
+}
+.scr-ladder-row {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr) 88px 68px 72px;
+  align-items: center; gap: 0 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line-soft);
+}
+.scr-ladder-row:first-child { border-top: none; }
+/* 수치 칸은 오른쪽 맞춤이 아니라 가운데다 — 칸 이름도 가운데라, 오른쪽으로 붙이면 머리와
+   값이 서로 다른 축에 서서 어느 칸의 수인지가 한눈에 안 잡힌다. */
+.scr-ladder-row > span:nth-child(n+3) {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; min-width: 0;
+}
+/* 머리 줄 — 통계표의 칸 이름과 같은 톤. */
+.scr-ladder-row-head {
+  font-size: var(--fs-11); font-weight: 700; color: var(--dim);
+  letter-spacing: 0.03em; text-transform: none;
+  background-color: color-mix(in srgb, var(--panel-solid) 94%, transparent);
+  padding-top: 12px; padding-bottom: 12px;
+}
+.scr-ladder-rank-head, .scr-ladder-name-head { text-align: center; }
+.scr-ladder-name-head { text-align: left; padding-left: 36px; }
+
+/* 랭크 칸 — 수와 그 변동이 한 줄이다. 수 자체는 칸 가운데에 그대로 서고 변동만 오른쪽
+   바깥에 매달린다(통계표의 순위 줄과 같은 규칙) — 흐름에 두면 변동이 있는 줄만 수가
+   왼쪽으로 밀려 줄마다 순위의 x가 흔들린다. */
+.scr-ladder-rank { display: flex; align-items: center; justify-content: center; }
+.scr-ladder-rank-val { position: relative; display: inline-flex; align-items: center; }
+.scr-ladder-rank-n {
+  font-size: var(--fs-subhead); font-weight: 800; color: var(--text);
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+.scr-ladder-move {
+  position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
+  margin-left: 4px; line-height: 1; white-space: nowrap;
+}
+.scr-ladder-move .scr-activity-shift-up,
+.scr-ladder-move .scr-activity-shift-down,
+.scr-ladder-move .scr-activity-shift-new {
+  font-size: calc(var(--fs-9) - 1px); font-weight: 700; line-height: 1;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+/* 유저 칸 — 프사와 닉네임이 한 줄. 통계표처럼 sticky로 고정할 이유가 없다(가로 스크롤이
+   없다) — 그래서 배경도 따로 안 깐다. */
+.scr-ladder-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.scr-ladder-name .scr-stat-name-btn { font-size: var(--fs-body); }
+
+/* 수치 한 칸 — 값 한 줄, 그 아래 전달 대비 변동 한 줄. 변동 자리는 값이 없는 줄에서도
+   지킨다(Delta가 "-"를 그린다): 그래야 줄 높이가 모두 같아 순위표가 고르게 내려간다. */
+.scr-ladder-num > b {
+  font-size: var(--fs-caption); font-weight: 700; color: var(--text);
+  font-variant-numeric: tabular-nums; line-height: 1.15;
+}
+.scr-ladder-num .scr-stat-delta { margin-left: 0; }
+
+/* 좁은 화면에서는 칸 폭을 줄인다 — 다섯 칸이 한 화면에 들어와야 한다는 것이 이 표의
+   전제다(위 주석). 유저 칸이 먼저 줄고, 그래도 모자라면 닉네임이 말줄임된다. */
+@media (max-width: 1159px) {
+  .scr-ladder-row {
+    grid-template-columns: 58px minmax(0, 1fr) 66px 48px 56px;
+    padding: 9px 10px; gap: 0 5px;
+  }
+  .scr-ladder-name-head { padding-left: 0; }
+  .scr-ladder-name { gap: 6px; }
+  .scr-ladder-name .scr-stat-name-btn { font-size: var(--fs-micro); }
+  .scr-ladder-rank-n { font-size: var(--fs-body); }
+  .scr-ladder-num > b { font-size: var(--fs-micro); }
+}
+
+/* BEST PLAYER 횟수(내전 표) — 막대 넷과 같은 격자의 한 줄이지만 막대는 없다. 값과 변동이
+   막대 안의 그것들과 같은 자리에 서도록, 트랙과 같은 높이를 잡고 가운데에 쌓는다. */
+/* 폭은 칸 전체다(막대들과 같게) — 트랙 폭(240px)으로 좁혀 두면 왼쪽에 붙어, 값이 막대 안
+   수치들보다 28px 왼쪽에 서서 세로선이 어긋난다(실측: 622 vs 650). 막대는 트랙을 제 칸
+   가운데에 두므로, 여기서도 칸을 다 쓰고 내용만 가운데에 둬야 같은 x에 선다. */
+.scr-stat-best-cell {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 24px; width: 100%;
+  color: var(--best-ink);
+}
+.scr-stat-best-n {
+  position: relative; line-height: 1;
+  font-size: var(--fs-11); font-weight: 700; font-variant-numeric: tabular-nums;
+}
+/* 단위는 수의 오른쪽에 매달되 자리는 안 차지한다 — 레이팅의 "R"과 같은 규칙이라 수 자체가
+   아래 변동과 세로로 맞는다. 색은 이 줄의 금색을 물려받되 한 단계 눌러 둔다. */
+.scr-stat-best-unit {
+  position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
+  margin-left: 1px; font-size: var(--fs-9); font-weight: 600; opacity: 0.7;
+}
+/* 이 줄의 변동만은 무채가 아니라 제 줄의 색(금)을 옅게 쓴다 — 다른 변동은 바로 위 값도
+   무채라 한 덩어리로 읽히는데, 여기만 값이 금색이라 회색 변동이 남의 줄에서 온 글자처럼
+   떠 보인다. 색상은 그대로 두고 세기만 내린다. */
+.scr-stat-best-cell .scr-stat-delta {
+  color: color-mix(in srgb, var(--best-ink) 62%, transparent);
+}

@@ -4,7 +4,6 @@ import { X } from "lucide-react";
 import Avatar from "../components/common/Avatar";
 import PhotoViewer from "../components/common/PhotoViewer";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
-import { useEpithets } from "../utils/useEpithets";
 import type { Member } from "../types";
 
 interface MemberProfileModalProps {
@@ -17,8 +16,6 @@ interface MemberProfileModalProps {
 export default function MemberProfileModal({ member, onClose }: MemberProfileModalProps) {
   useLockBodyScroll();
   const [photoOpen, setPhotoOpen] = useState(false);
-  // 통계 표에 붙는 것과 같은 한 벌이다(useEpithets) — 화면마다 다른 별명이 붙으면 안 된다.
-  const epithet = useEpithets().get(member.id);
 
   return createPortal(
     <div className="scr-modal-overlay">
@@ -40,13 +37,9 @@ export default function MemberProfileModal({ member, onClose }: MemberProfileMod
               <Avatar member={member} size={56} />
             </button>
             <div>
-              {/* 칭호는 닉네임 '위'다(요청) — 아래에 두면 배틀태그와 나란히 서서 둘 다
-                  '이름에 딸린 부속 정보'로 읽힌다. 위에 얹으면 이름을 부르기 전에 먼저
-                  읽히는 수식어가 되어, 실제로 사람을 소개하는 차례와 같아진다. */}
-              {/* 근거는 여기 안 적는다(요청) — 표의 유저 칸이 칭호 바로 밑에 흐린 글자로
-                  말해 준다(MemberStatRow의 scr-stat-name-epithet-why). 한 사실을 두 화면이
-                  저마다의 자리에 적으면 문구를 고칠 때마다 둘이 어긋난다. */}
-              {epithet && <div className="scr-member-detail-epithet">{epithet.label}</div>}
+              {/* (삭제) 칭호 — 내전 화면에서만 보여준다(요청: 칭호는 내전만 대상으로 집계하고
+                  내전에서만 표시). 잣대가 내전 기록 하나로 좁아진 값이라, 그 화면 밖에 걸리면
+                  무엇으로 얻은 말인지가 사라진다. */}
               <div className="scr-member-detail-name">{member.nickname}</div>
               <div className="scr-member-detail-tag scr-mono">{member.battletag}</div>
             </div>

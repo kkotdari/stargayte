@@ -1,5 +1,6 @@
 import { Fragment, useState } from "react";
 import Avatar from "../../components/common/Avatar";
+import Delta from "./Delta";
 import InfoTip from "../../components/common/InfoTip";
 import PhotoViewer from "../../components/common/PhotoViewer";
 import StatBar from "../../components/common/StatBar";
@@ -31,36 +32,6 @@ function perMin(total: number, seconds: number | null | undefined): string | und
   return seconds && seconds > 0
     ? (total / seconds * PER_WINDOW_SECONDS).toFixed(1)
     : undefined;
-}
-
-/* ── 전달 대비 변동 ────────────────────────────────────────────────────────────
-   요청: 통계의 모든 수치에 전월 대비 변동을 화살표 말고 +/-로, 연하고 작은 글씨로.
-
-   순위(랭크)만은 예전처럼 ▲▼를 그대로 쓴다 — 순위는 '작을수록 좋다'라 +3이 오른 것인지
-   내린 것인지가 읽는 사람마다 갈리지만, 나머지 수치는 큰 쪽이 큰 값이라 부호가 곧 방향이다.
-
-   견줄 값이 없으면(전체 기간을 보는 중이거나, 지난달에 한 판도 안 뛰었거나) 아무것도 안
-   적는다. 0도 안 적는다 — 줄마다 "+0"이 늘어서면 정작 움직인 값이 묻힌다. */
-function Delta({ now, prev, digits = 0, unit = "" }: {
-  now: number | null | undefined;
-  prev: number | null | undefined;
-  /** 소수 몇 자리까지 — 승률·업그레이드처럼 정수로 반올림하면 뜻이 사라지는 값에 쓴다. */
-  digits?: number;
-  unit?: string;
-}) {
-  const d = typeof now === "number" && typeof prev === "number" ? now - prev : null;
-  // 표시할 자릿수에서 0이면 안 움직인 것으로 본다 — 반올림해 0이 되는 값에 "+0"을
-  // 다는 것은 거짓말에 가깝다.
-  const text = d === null ? null : d.toFixed(digits);
-  /* 움직이지 않았거나 견줄 값이 없으면 "-"다(요청: 아예 비우지 말고 - 표시) — 자리를
-     늘 채워야 값이 있는 줄과 없는 줄의 높이가 같고, 빈칸이 '아직 안 그려진 것'으로
-     읽히지도 않는다. 다만 읽을 값이 아니므로 더 눌러 둔다. */
-  if (text === null || Number(text) === 0) {
-    return <span className="scr-stat-delta scr-stat-delta-none">-</span>;
-  }
-  return (
-    <span className="scr-stat-delta">{d! > 0 ? `+${text}` : text}{unit}</span>
-  );
 }
 
 /** 도넛 위에 얹는 주요시간대 1분당 값(요청) — 건설은 "채/분", 유닛은 "기/분".
@@ -305,6 +276,9 @@ interface MemberStatRowProps {
   prev?: MemberStats;
   /** 이 줄이 지금 로그인한 사람인가 — 배경을 살짝 깔아 제 줄을 바로 찾게 한다(요청). */
   me?: boolean;
+  /** BEST PLAYER 횟수를 적을까 — 내전 화면만 넘긴다(요청). 팀전에만 붙는 값이라 래더에서는
+   *  어느 줄이나 0이고, 그 0이 "한 번도 못 받았다"로 잘못 읽힌다. */
+  showBest?: boolean;
   /** 레이팅의 전달 값 — points와 같은 자리에서 온다(entry.rankScore). */
   prevPoints?: number | null;
   // 게임수 칸(ValueBar)의 기준값(이 목록에서 가장 많이 뛴 사람 = 100%).
@@ -357,7 +331,7 @@ interface MemberStatRowProps {
 
 // 전적통계 목록의 테이블 한 행.
 export default function MemberStatRow({
-  member, stats, prev, me = false, prevPoints, maxOverallPlays, maxApm, maxCmd,
+  member, stats, prev, me = false, showBest = false, prevPoints, maxOverallPlays, maxApm, maxCmd,
   avatar = true, compact = false,
   points, rank, rankDelta, medals, race, upRace, showMix = true,
   epithet, epithetReady = false,
@@ -560,6 +534,29 @@ export default function MemberStatRow({
               delta={<Delta now={stats.avgCmd} prev={prev?.avgCmd} />}
             />
           </div>
+          {/* BEST PLAYER 횟수(요청) — 막대 넷과 같은 격자의 한 줄이다. 한때 레이팅·순위
+              줄기에 따로 세워 뒀는데, 그 줄기가 래더로 통째로 옮겨 가면서(요청) 여기 말고는
+              앉을 자리가 없어졌다. 오히려 이 편이 맞다: 넷과 같은 이름표 열을 쓰므로 "무엇의
+              수인가"를 같은 방식으로 읽고, 값과 변동도 다른 줄들과 세로로 맞는다.
+              막대는 안 그린다 — 이 수는 남과 견주는 값이 아니라 그 사람이 받은 횟수다.
+              0도 적는다(요청) — 감추면 줄마다 이 자리가 있었다 없었다 해서 표가 들쭉날쭉해지고,
+              무엇보다 '0회'와 '이 표에 없는 값'이 같아 보인다. */}
+          {showBest && (
+            <div className="scr-stat-record-item">
+              <span className="scr-stat-record-label">BEST</span>
+              <div className="scr-stat-best-cell">
+                <span className="scr-stat-best-n">
+                  {stats.bests}
+                  {/* 단위는 수의 오른쪽에 매달되 자리는 안 차지한다 — 레이팅의 "R", 일꾼의
+                      "기"와 같은 규칙이라 수 자체가 아래 변동과 세로로 맞는다. */}
+                  <span className="scr-stat-best-unit">회</span>
+                </span>
+                <span className="scr-bar-delta">
+                  <Delta now={stats.bests} prev={prev?.bests} />
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       {/* 종족을 안 골랐으면 세 칸을 통째로 안 그린다(요청) — 여러 종족을 겹쳐 놓은 도넛과

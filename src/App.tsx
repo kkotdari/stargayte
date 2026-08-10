@@ -24,13 +24,14 @@ import ChallengeInboxModal from "./modals/ChallengeInboxModal";
 import ChallengeResultInboxModal from "./modals/ChallengeResultInboxModal";
 import AppUpdateNoticeModal from "./modals/AppUpdateNoticeModal";
 import ActivityScreen from "./pages/activity/ActivityScreen";
-import StatsScreen from "./pages/v2/StatsScreen";
+import LadderScreen from "./pages/v2/LadderScreen";
+import ClanStatsScreen from "./pages/v2/ClanStatsScreen";
 import SharePage, { type ShareTarget } from "./pages/share/SharePage";
 import ShareLoginGate from "./pages/share/ShareLoginGate";
 
 import type { ScreenKey } from "./types";
 
-const SCREEN_KEYS: ScreenKey[] = ["activity", "stats", "members", "leagues", "minimaps", "control"];
+const SCREEN_KEYS: ScreenKey[] = ["activity", "ladder", "clan", "members", "leagues", "minimaps", "control"];
 
 // 새로고침해도 보던 화면 그대로 있도록 URL의 ?screen= 쿼리에 현재 화면을 기록해둔다 —
 // 사파리의 pull-to-refresh 등 브라우저 기본 새로고침은 앱 상태를 그대로 날려서 첫 화면으로
@@ -258,11 +259,11 @@ export default function App() {
     screen === "control" && !isAdmin ? "activity" :
     screen;
 
-  // 배경 사진이 있는 화면(지금은 통계뿐 — 활동 배경은 제거)에서는 헤더까지 사진이
+  // 배경 사진이 있는 화면(래더·내전 — 활동 배경은 제거)에서는 헤더까지 사진이
   // 이어져 보이게 — 헤더의 불투명 배경을 끄는 클래스를 앱 루트에 건다(CSS
   // .scr-app-hasbg 참고). 배경 있는 화면이 늘면 이 조건에 추가하면 된다.
   return (
-      <div className={"scr-app" + (resolvedScreen === "stats" ? " scr-app-hasbg" : "")} id="scr-app">
+      <div className={"scr-app" + (resolvedScreen === "ladder" || resolvedScreen === "clan" ? " scr-app-hasbg" : "")} id="scr-app">
         <div className="scr-bg-grid" />
         <span className="scr-rail scr-rail-left" aria-hidden="true" />
         <span className="scr-rail scr-rail-right" aria-hidden="true" />
@@ -297,7 +298,10 @@ export default function App() {
             {/* 활동도 다른 화면과 같다 — 떠나면 언마운트하고 돌아오면 처음부터 새로
                 불러온다(요청: 상태 저장이 잘 안 되니 그 기능은 취소하고 매번 새로). */}
             {!booting && resolvedScreen === "activity" && <ActivityScreen />}
-            {!booting && resolvedScreen === "stats" && <StatsScreen />}
+            {/* 래더와 내전은 아예 다른 화면이다(요청) — 한때 "통계" 하나였는데, 리더보드와
+                통계표를 한 파일에 두면 어느 쪽을 고쳐도 다른 쪽이 흔들린다. */}
+            {!booting && resolvedScreen === "ladder" && <LadderScreen />}
+            {!booting && resolvedScreen === "clan" && <ClanStatsScreen />}
             {isAdmin && !booting && resolvedScreen === "members" && <MembersScreen />}
             {/* 운영자 전용 메뉴로 변경(요청) — 회원/이미지 설정과 같은 기준으로 운영자만 접근. */}
             {/* 공식 리그 — 대진표는 회원 누구나 보고, 고치는 건 화면 안의 '수정' 토글이
