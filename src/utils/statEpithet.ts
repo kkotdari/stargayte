@@ -19,7 +19,7 @@
 // 둘 다 못 잡으면 전적만 보고 무난한 말 하나를 준다. 한 판도 안 뛴 사람은 아예 안 붙인다 —
 // 없는 사실로 별명을 지을 수는 없다.
 
-import { PER_WINDOW_SECONDS } from "./replayBuildMix";
+import { PER_WINDOW_SECONDS, type BuildMix } from "./replayBuildMix";
 import { BUILDING_KO, TECH_KO, UNIT_KO } from "./replaySummaryText";
 import type { MemberStats } from "../types";
 
@@ -526,7 +526,6 @@ const UNIT_SAYS: ((n: string) => string)[] = [
   (n) => `${n} 없인 못 산다`,
   (n) => `${n} 중독`,
   (n) => `${n}${sub(n)} 내 운명`,
-  (n) => `${n} 사재기`,
   (n) => `${n}밖에 몰라`,
   (n) => `${n}${sub(n)} 나의 것`,
   (n) => `${n} 하나로 간다`,
@@ -681,8 +680,42 @@ function seedOf(id: string): number {
    여왕"과 "스톰 마스터"로 나눠 줘 봤지만, 표에서는 결국 스톰 이야기가 두 줄이 된다.
    칭호가 그 사람을 가리키려면 그 재료를 나눠 갖지 말아야 한다. 이름을 먼저 집은 사람이
    가져가고, 나머지는 제 다음 재료(유닛 → 건물 → 전적)로 내려간다. */
+/** 이름 → 그 이름을 가장 많이 쓴 사람의 id. 마법·유닛·건물 이름마다 임자를 미리 정해 둔다.
+ *
+ *  임자가 딴 칭호를 받아 이 이름을 안 쓰게 되면 그 이름은 그냥 안 나간다(지적: 더 많이 쓴
+ *  사람이 있는데 다른 사람이 이어받는다) — 왕관에서 물려주기를 없앤 것과 같은 이유다.
+ *  "스톰의 여왕"이 두 번째로 많이 쓴 사람에게 붙으면 그 말이 거짓이 된다. */
+function ownersOf(
+  pool: EpithetSubject[], of: (m: BuildMix) => Record<string, number> | undefined,
+  ko: Record<string, string>,
+): Map<string, string> {
+  const best = new Map<string, { id: string; n: number }>();
+  for (const p of pool) {
+    const m = p.stats.buildMix;
+    if (!m) continue;
+    const merged: Record<string, number> = {};
+    for (const [key, v] of Object.entries(of(m) ?? {})) {
+      const name = ko[key];
+      if (!name || !(v > 0)) continue;
+      merged[name] = (merged[name] ?? 0) + v;
+    }
+    for (const [name, n] of Object.entries(merged)) {
+      const cur = best.get(name);
+      // 같은 수면 id로 갈라 조회할 때마다 임자가 바뀌지 않게 한다.
+      if (!cur || n > cur.n || (n === cur.n && p.id < cur.id)) best.set(name, { id: p.id, n });
+    }
+  }
+  return new Map([...best].map(([name, v]) => [name, v.id]));
+}
+
+interface NameOwners {
+  spell: Map<string, string>;
+  unit: Map<string, string>;
+  build: Map<string, string>;
+}
+
 function signature(
-  id: string, s: MemberStats, used: Set<string>, takenNames: Set<string>,
+  id: string, s: MemberStats, used: Set<string>, owners: NameOwners,
 ): Epithet | null {
   const seed = seedOf(id);
   const m = s.buildMix;
@@ -694,16 +727,14 @@ function signature(
     const skill = topSpell(m.skills);
     /** 마법 한 줄 만들기 — 사전에 있으면 그 말을, 없으면 문틀을(아주 많이 쌓였을 때만). */
     const skillLine = (): Epithet | null => {
-      if (!skill || takenNames.has(skill.name) || skill.score < SKILL_MIN_SCORE) return null;
+      if (!skill || owners.spell.get(skill.name) !== id || skill.score < SKILL_MIN_SCORE) return null;
       const special = SPELL_SPECIAL[skill.name];
       const t = (special && pick(special.map((label) => () => label), skill.name, seed, used))
         || (skill.score >= SKILL_PLAIN_SCORE ? pick(SKILL_SAYS, skill.name, seed, used) : null);
-      if (!t) return null;
-      takenNames.add(skill.name);
-      return { label: t, why: `경기에서 ${skill.name} ${skill.count}번` };
+      return t ? { label: t, why: `경기에서 ${skill.name} ${skill.count}번` } : null;
     };
     // 드문 마법만 유닛보다 앞이다(SKILL_RARE_SCORE) — 나머지는 아래에서 마지막으로 본다.
-    if (skill && !takenNames.has(skill.name) && skill.score >= SKILL_RARE_SCORE) {
+    if (skill && owners.spell.get(skill.name) === id && skill.score >= SKILL_RARE_SCORE) {
       const t = skillLine();
       if (t) return t;
     }
@@ -711,22 +742,16 @@ function signature(
        그 정도는 어느 종족에나 있는 주력 비중이라 "닥치고 ○○"이라 부를 만한 그림이 아니다.
        일꾼·보급은 애초에 이 원장에 없다(replayBuildMix) — 그래서 이 비율이 곧 병력 구성이다. */
     const unit = topOf(m.units, UNIT_KO);
-    if (unit && !takenNames.has(unit.name) && unit.share >= 0.33 && unit.count >= 10) {
+    if (unit && owners.unit.get(unit.name) === id && unit.share >= 0.33 && unit.count >= 10) {
       const t = pick(UNIT_SAYS, unit.name, seed, used);
-      if (t) {
-        takenNames.add(unit.name);
-        return { label: t, why: `${unit.name}${ga(unit.name)} 병력의 ${Math.round(unit.share * 100)}%` };
-      }
+      if (t) return { label: t, why: `${unit.name}${ga(unit.name)} 병력의 ${Math.round(unit.share * 100)}%` };
     }
     /* 건물은 마지막이다 — 종족이 정해지면 짓는 것도 대체로 정해져서, 유닛·마법만큼 그
        사람을 가르지 못한다. */
     const build = topOf(m.buildings, BUILDING_KO);
-    if (build && !takenNames.has(build.name) && build.share >= 0.3 && build.count >= 10) {
+    if (build && owners.build.get(build.name) === id && build.share >= 0.3 && build.count >= 10) {
       const t = pick(BUILD_SAYS, build.name, seed, used);
-      if (t) {
-        takenNames.add(build.name);
-        return { label: t, why: `${build.name}${ga(build.name)} 건물의 ${Math.round(build.share * 100)}%` };
-      }
+      if (t) return { label: t, why: `${build.name}${ga(build.name)} 건물의 ${Math.round(build.share * 100)}%` };
     }
     // 흔한 마법은 여기까지 와서야 차례다(요청: 기술 사용은 아래로) — 유닛·건물이 할 말을
     // 다 했는데도 부를 것이 없을 때만 "스톰 마스터"가 된다.
@@ -849,15 +874,16 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
     used.add(c.label);
   }
 
-  /* 이름을 먼저 집는 차례는 '많이 한 사람 먼저'다 — 스톰을 마흔 번 뿌린 사람과 다섯 번 쓴
-     사람이 있으면 그 이름은 앞사람 것이어야 한다. 뛴 판이 같으면 id로 갈라 조회할 때마다
-     차례가 바뀌지 않게 한다. */
-  const takenNames = new Set<string>();
-  const rest = pool
-    .filter((p) => !out.has(p.id) && p.stats.plays >= MIN_PLAYS)
-    .sort((a, b) => b.stats.plays - a.stats.plays || a.id.localeCompare(b.id));
-  for (const p of rest) {
-    const found = signature(p.id, p.stats, used, takenNames);
+  /* 이름마다 임자를 먼저 정한다(위 ownersOf) — 가장 많이 쓴 사람만 그 이름으로 불리고,
+     그 사람이 딴 칭호를 받았으면 그 이름은 아무에게도 안 간다. */
+  const owners: NameOwners = {
+    spell: ownersOf(pool, (m) => m.skills, SPELL_KO),
+    unit: ownersOf(pool, (m) => m.units, UNIT_KO),
+    build: ownersOf(pool, (m) => m.buildings, BUILDING_KO),
+  };
+  for (const p of pool) {
+    if (out.has(p.id) || p.stats.plays < MIN_PLAYS) continue;
+    const found = signature(p.id, p.stats, used, owners);
     if (!found) continue;
     out.set(p.id, found);
     used.add(found.label);
