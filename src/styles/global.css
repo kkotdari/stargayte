@@ -6296,6 +6296,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   font-size: var(--fs-micro); color: var(--dim);
   letter-spacing: 0.04em; margin-bottom: 2px; word-break: keep-all;
 }
+/* 그 칭호가 붙은 까닭 — 칭호보다 한 단계 더 눌러 둔다. 같은 굵기로 적으면 둘이 한 문장으로
+   읽혀 정작 부르는 말이 어디까지인지가 흐려진다. */
+.scr-member-detail-epithet-why { margin-left: 6px; opacity: 0.7; letter-spacing: 0; }
 .scr-member-detail-name { font-size: var(--fs-subhead); font-weight: 700; }
 .scr-member-detail-tag { font-size: var(--fs-body); color: var(--dim); margin-top: 2px; }
 .scr-member-detail-resize { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-caption); margin-top: 6px; }
