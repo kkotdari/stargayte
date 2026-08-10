@@ -10367,31 +10367,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   background-image: var(--best-metal);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-/* 목록 줄 제목에서는 이름의 좌상단에 얹되 자리는 안 차지한다(요청) — 흐름에 두면 이 배지가
-   이름 하나 몫만큼 줄을 넓혀, 그만큼 줄 전체가 더 눌린다(FlatLine의 scaleX). 배지가 있는
-   줄만 다른 줄보다 글자가 납작해지는 셈이라, 정작 알리려던 표시가 그 줄을 읽기 어렵게
-   만들었다. 흐름 밖으로 빼면 이름 여덟의 자리는 배지가 있든 없든 같다.
-
-   왼쪽인 것은 요청이지만 자리로도 맞다 — 오른쪽 끝은 마지막 이름일 때 눌린 줄의 오른쪽
-   경계를 넘어 잘리는 자리다(.scr-activity-row-flat의 overflow). left:0은 이름 폭 안에서
-   시작하므로 어느 이름에 붙든 잘릴 일이 없다.
-   글자와도 안 겹친다(요청) — 줄이 글자 위에 9px짜리 빈 띠를 두고(아래 .scr-activity-row-flat-in
-   > *) 배지는 그 띠에 앉는다. 그래서 이 배지만은 한 스텝 더 작다: 9px 글자면 띠를 꽉 채워
-   사이가 안 남고, 그만큼 띠를 넓히면 이번엔 줄이 두꺼워진다.
-
-   자리는 이름 상자 바로 위(bottom:100%)다 — 그 위는 줄이 따로 비워 둔 9px짜리 띠라
-   (.scr-activity-row-flat-in > *의 padding-top) 배지 8px과 사이 1px이 정확히 든다.
-   한동안 줄 높이를 키워 그 자리를 만들었는데, 그러면 아래쪽에도 같은 만큼이 빈자리로
-   남았다(지적). 퍼센트로 어림잡던 것도 함께 걷었다 — 위로 얼마나 올릴지는 이제 띠의
-   두께 하나가 정한다. */
-/* 왼쪽 끝은 상자가 아니라 '글자'에 맞춘다(지적: 닉네임보다 살짝 왼쪽으로 삐져나온다) —
-   left:0은 이름 상자의 왼쪽 변이고, 그 안에서 글자는 제 여백(side bearing)만큼 안쪽에서
-   시작한다. 배지의 'B'는 그런 여백이 거의 없는 글자라 둘을 같은 x에 두면 배지만 밖으로
-   나온 것처럼 보인다. 눈에 맞추는 보정이라 값도 눈에 안 걸릴 만큼만(2px). */
-.scr-activity-row-em .scr-best-mini {
-  position: absolute; left: 2px; bottom: 100%; margin-bottom: 1px;
-  font-size: var(--fs-8); margin-left: 0; line-height: 1; pointer-events: none;
-}
+/* (삭제) 목록 줄 제목에서 이름 위에 얹던 배지 — 이제 그 자리에서는 닉네임 자체가 백금이다
+   (요청). 로스터(.scr-roster-name 옆)의 같은 배지는 흐름에 그대로 서 있다. */
 /* (삭제) 제목의 BEST 배지가 앉던 빈 띠와 그 기준 상자 — 배지 대신 닉네임 자체를 백금으로
    적으면서(요청, 아래 .scr-activity-row-em-best) 흐름 밖에 얹을 것이 없어졌다. 줄 위에
    자리를 비워 둘 이유도, 이름 상자가 넘침을 열어 둘 이유도 함께 사라진다. */
@@ -10670,26 +10647,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    위험을 재는 값이 아니다(그래서 체력바를 걷었다 — 컴포넌트 주석 참고).
    지도(사진) 위에 앉으므로 칸마다 검은 테두리 한 겹을 둘러 어떤 지형 위에서도 경계가 산다. */
 .scr-minimap-vigor { display: flex; align-items: center; gap: 2px; }
-/* 눈금 앞의 톱니바퀴(요청) — 이 눈금이 무엇을 재는지 말하는 이름표다(ReplayMinimap의
-   VigorPips 참고). 칸(6px)보다 조금 큰 8px까지만 키우고 흐리게 눌러 둔다: 이름표가 정작
-   읽어야 할 칸보다 눈에 먼저 들어오면 안 된다. 이모지라 글꼴이 제 색을 그리므로
-   opacity로만 낮춘다. */
-/* 모바일에서는 머리표를 감춘다(요청: 이모지만 빼고 눈금은 그대로) — 지도가 좁아 이름표가
-   서로 가까이 붙는데, 18px짜리 그림이 이름 아래마다 하나씩 더 서면 그 자체로 지도를
-   가린다. 눈금은 6px 다섯 칸이라 그 걱정이 없다. */
-@media (max-width: 1159px) {
-  .scr-minimap-vigor-icon { display: none; }
-}
-.scr-minimap-vigor-icon {
-  /* 8 → 11 → 12 → 18px(요청: 1.5배) — 칸(6px)보다 한참 크지만, 이 그림은 '칸 다섯'을 한
-     덩어리로 읽게 하는 머리표라 그 덩어리 높이가 아니라 이름표 글자와 견주는 편이 맞다.
-     이 크기부터는 달리기·걷기·꿇음이 한눈에 갈린다 — 12px에서는 셋이 다 '작은 사람'이었다.
-     대신 흐리게 눌러 눈이 칸보다 먼저 이쪽에 가지 않게 한다.
-     사이는 0이다(요청: 간격은 줄여도 될 듯) — 이모지 글자 자체가 좌우에 제 여백을 물고
-     있어, 여기서 또 띄우면 머리표와 눈금이 따로 놓인 둘로 보인다. */
-  font-size: 18px; line-height: 1; opacity: 0.8; margin-right: 0;
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9);
-}
+/* (삭제) 눈금 앞에 세우던 머리표(톱니바퀴 → 달리기·걷기·꿇음) — 이름표마다 하나씩 서면서
+   그림 자체가 지도를 가려 통째로 걷었다(요청, ReplayMinimap의 VigorPips 참고). */
 .scr-minimap-vigor-pip {
   display: block; width: 6px; height: 6px;
   background: rgba(255, 255, 255, 0.18);
