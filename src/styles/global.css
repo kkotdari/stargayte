@@ -2241,58 +2241,40 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    글자, 막대 래퍼 등)에도 position을 줄 필요 없이 메달이 곧장 이 칸을 기준으로
    자리 잡는다(안 그러면 shifted 자식이 새 containing block이 돼버려 메달이 셀이 아닌
    그 자식 기준으로 어긋난다). */
-.scr-stat-build-cell { justify-content: center; position: relative; }
-/* (삭제) 표 오른쪽 끝 칸에만 더 주던 여백 — 걷었다(지적: 왼쪽 셀 여백과 가운데 구분선이
-   안 맞는다). 이 칸은 속이 [업그레이드 | 구분선 | 목록]이고 그 묶음이 칸 가운데에 서는데,
-   좌우 패딩이 8/12로 어긋나 있으면 묶음째 2px 왼쪽으로 밀린다 — 그만큼 구분선도 칸의
-   가운데에서 벗어난다. 다른 두 칸(건설·유닛)은 좌우가 같아 이 문제가 없었다.
-   표 오른쪽 끝의 숨 쉴 자리는 이 칸의 패딩이 아니라 패널이 낸다. */
+/* ── 종족별 생산 칸(요청: 건물·유닛·스킬을 한 칸으로 합치고 종족별로 반복) ──────────
+   예전에는 칸이 셋(건설/유닛/스킬)이고 종족 필터가 '어느 종족의 것을 볼까'를 정했다. 이제
+   칸 하나에 셋이 다 들어가고, 그 칸이 종족 수만큼 되풀이된다 — 그래서 한 사람의 세 종족을
+   나란히 견줄 수 있다.
 
-/* ── 건설·유닛·스킬 칸(요청) ────────────────────────────────────────────────────
-   셋 다 위에서 아래로 [그림 → 수치 → 많이 나온 다섯] 순으로 쌓인다. 총량 막대는 더 안
-   그린다 — 값은 그대로 저장되지만 화면에는 '무엇으로 그 총량이 됐나'만 남긴다(요청). */
-/* 속은 가로로 눕는다(요청: "가로로 길게") — 그림·수치·목록이 나란히 서고, 세로로 쌓이는
-   것은 목록 안쪽뿐이다. 세로로 쌓았을 때는 목록 다섯 줄이 그림 아래에 그대로 얹혀 행이
-   통째로 길어졌다(실측 251px). */
-.scr-stat-build-cell, .scr-stat-units-cell, .scr-stat-skills-cell {
-  flex-direction: row; align-items: center; justify-content: center;
-  /* 갭과 아래 padding-left가 짝이다 — 선 좌우로 같은 폭이 남아야 선이 두 덩어리 한가운데에
-     선다. 8px씩은 다닥다닥 붙어 보이고 14px씩은 너무 벌어져(둘 다 지적) 그 사이인 10px. */
-  gap: 10px; position: relative;
+   속은 세로로 쌓는다. 셋을 가로로 눕히던 예전 배치는 칸이 하나뿐일 때의 값이고, 같은 칸이
+   셋으로 늘어난 지금은 그 폭을 감당할 수가 없다. 대신 짝지을 수 있는 것끼리 가로로 묶어
+   높이를 줄인다: 도넛 둘이 한 줄, 목록 둘이 한 줄. */
+.scr-stat-mix-cell {
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; position: relative;
+  --scr-toplist-w: 90px;
 }
-/* 덩어리 사이 실선(요청) — 칸 사이 구분선보다 옅은 --line-hair로, 좌우 여백을 갭과 같게
-   둬서 선이 두 덩어리 한가운데에 선다. */
-.scr-stat-build-cell > * + *,
-.scr-stat-units-cell > * + *,
-.scr-stat-skills-cell > * + *,
+/* 값이 없어 "-" 하나만 있는 칸에서도 그 하나가 가운데 서게 한다. */
+.scr-stat-mix-cell > .scr-stat-points-empty { flex: 1 1 auto; text-align: center; }
+/* 도넛 둘(건물·병력)이 나란히 — 각자 제 수(분당 채수 / 분당 기수)를 머리에 인다. 사이의
+   실선은 두 덩어리가 서로 다른 것을 세는 값임을 말한다(예전 칸 사이 구분선의 몫). */
+.scr-stat-mix-pair { display: flex; align-items: flex-start; justify-content: center; gap: 10px; }
+.scr-stat-mix-pair > * + * { border-left: 1px solid var(--line-hair); padding-left: 10px; }
+/* 목록 둘(유닛·스킬)도 나란히 — 무엇의 목록인지는 이름표가 말한다. 칸 머리가 종족 이름이라
+   목록의 정체를 안 말해 주기 때문이다. */
+.scr-stat-mix-lists { display: flex; align-items: flex-start; justify-content: center; gap: 10px; }
+.scr-stat-mix-lists > * + * { border-left: 1px solid var(--line-hair); padding-left: 10px; }
+.scr-stat-mix-list { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.scr-stat-mix-list-cap {
+  font-size: var(--fs-9); font-weight: 700; color: var(--dim); letter-spacing: 0.03em;
+}
+.scr-stat-mix-cell .scr-stat-toplist { flex: none; width: var(--scr-toplist-w); min-width: 0; }
+/* 주요 지표 칸 안의 덩어리 사이 실선은 그대로다. */
 .scr-stat-record-cell > * + * {
   border-left: 1px solid var(--line-hair); padding-left: 10px; align-self: stretch;
 }
-/* stretch로 늘린 덩어리는 저마다 제 방식으로 속을 세로 가운데에 세운다 — 여기서 display를
-   지정하면 격자로 짠 목록(.scr-stat-toplist)이 flex로 덮여 열이 통째로 무너진다(실측:
-   스킬 목록이 칸 위쪽으로 붙어 버렸다). */
 .scr-stat-toplist, .scr-stat-upgrades { align-content: center; }
 .scr-stat-worker5 { justify-content: center; }
-/* 목록이 차지하는 자리 — 가장 긴 이름(여섯 자)과 가장 큰 수(네 자리+단위)를 담을 만큼만
-   고정한다. 고정해야 줄마다 구분선이 같은 x에 서고, 남는 폭을 목록이 안 먹으므로 덩어리
-   묶음이 칸 가운데에 선다(지적: 스킬 쪽 오른쪽 빈 자리가 너무 넓다 — 목록이 flex로 남는
-   폭을 통째로 가져가는 바람에 그 빈 자리가 목록 안쪽에 생겼다). */
-/* 지금은 이름만 보여주므로(MemberStatRow의 SHOW_TOP_VALUES) 자리를 그만큼 줄여 뒀다 —
-   수를 다시 켜면 186px으로 되돌려야 "어시밀레이터 19.0개"가 한 줄에 들어간다. */
-.scr-stat-build-cell, .scr-stat-units-cell, .scr-stat-skills-cell { --scr-toplist-w: 90px; }
-.scr-stat-build-cell .scr-stat-toplist,
-.scr-stat-units-cell .scr-stat-toplist,
-.scr-stat-skills-cell .scr-stat-toplist { flex: none; width: var(--scr-toplist-w); min-width: 0; }
-/* 값이 없어 "-" 하나만 있는 행에서도 그 하나가 칸 가운데 서게 한다 — 가로 배치라 남는 폭을
-   가져갈 목록이 없으면 "-"가 왼쪽으로 쏠린다. */
-.scr-stat-build-cell > .scr-stat-points-empty,
-.scr-stat-units-cell > .scr-stat-points-empty,
-.scr-stat-skills-cell > .scr-stat-points-empty { flex: 1 1 auto; text-align: center; }
-/* 랭크 줄기도 같다(지적: 왜 왼쪽 정렬이야) — 이 줄기는 세로 flex라 자식이 폭을 통째로
-   늘려 받고(align-items 기본값 stretch), 그 안에서 글자는 왼쪽에 선다. 값이 있는 줄은
-   제 줄(.scr-stat-rank-line)이 가운데로 세우지만 "-"는 그 줄 없이 홀로 놓여 그대로 왼쪽에
-   붙어 있었다. */
-.scr-stat-rank-col > .scr-stat-points-empty { text-align: center; }
 .scr-stat-mix { display: flex; align-items: center; justify-content: center; gap: 10px; flex: none; }
 /* 도넛(들)과 그 위의 10분당 값을 한 덩어리로 — 값은 도넛 하나든 둘이든 그 무리의 위쪽
    가운데에 한 번만 선다(요청). 한때 도넛 가운데 구멍에 적었는데, 구멍 안에서는 도넛
@@ -2467,6 +2449,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   font-size: calc(var(--fs-9) - 1px);
 }
 .scr-bar-delta .scr-stat-delta { margin-left: 0; }
+/* 견줄 달이 없는 화면(내전 — 전체 누적 하나)에서는 Delta가 아무것도 안 그린다(Delta.tsx의
+   undefined 갈래). 그때 이 껍데기가 빈 채로 남으면 line-height만큼 자리를 먹어, 값이
+   막대 안에서 위로 밀린다. 빈 껍데기는 통째로 걷는다. */
+.scr-bar-delta:empty { display: none; }
 
 /* 정렬 드롭다운 — 필터 문장·건수와 한 줄, 건수 바로 왼쪽(요청). margin-left:auto로 남는
    폭을 이쪽이 다 가져가고, 뒤따르는 건수의 같은 auto는 풀어 준다 — 둘 다 auto면 남는 폭을
@@ -2636,6 +2622,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   display: block; line-height: 1; margin-top: 1px; font-size: calc(var(--fs-9) - 1px);
 }
 .scr-stat-per10-delta .scr-stat-delta { margin-left: 0; }
+/* 위 .scr-bar-delta:empty와 같은 이유 — 빈 껍데기가 도넛 위 수치를 밀어 올린다. */
+.scr-stat-per10-delta:empty { display: none; }
 /* 업그레이드 표의 한 칸 — 평균 밑에 변동을 한 줄로 놓는다(옆에 붙이면 세 열이 밀린다). */
 .scr-stat-up-cell { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.15; }
 .scr-stat-up-cell .scr-stat-delta { margin-left: 0; }
@@ -2916,12 +2904,12 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
      — fr을 주면 화면이 넓을 때 이 칸이 혼자 40px씩 늘어, 종족 필터만 바꿔도 막대 길이가
      달라진다. 안에 든 것(막대 180px 상한)이 고정이라 늘어난 폭은 어차피 빈자리다.
      남는 폭은 목록이 든 세 칸이 나눠 갖는다. */
+  /* 종족 세 칸은 똑같은 폭이다(요청: 종족별로 반복) — 같은 것을 세 번 그리는 칸이라
+     하나만 넓으면 그 종족이 더 중요한 것처럼 읽힌다. 남는 폭도 셋이 똑같이 나눠 갖는다. */
   --scr-stat-tracks:
     var(--scr-stat-name-w)
     var(--scr-stat-record-w)
-    minmax(var(--scr-stat-build-w), 192fr)
-    minmax(var(--scr-stat-unit-w), 354fr)
-    minmax(var(--scr-stat-skill-w), 234fr);
+    repeat(3, minmax(var(--scr-stat-race-w), 1fr));
   /* 행의 폭을 '내용이 원하는 만큼'이 아니라 '늘 같은 값'으로 잡는다(지적 사진: 칸 경계가
      행마다 어긋난다). 바탕 규칙(.scr-stat-row)은 width:max-content인데, 그건 행마다 제
      내용을 재는 값이라 다섯 줄짜리 TOP5가 든 행과 "-" 하나뿐인 행이 서로 다른 폭이 된다 —
@@ -2932,8 +2920,7 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
      같은 값이라 fr이 똑같이 나뉜다. */
   width: 100%;
   min-width: calc(
-    var(--scr-stat-name-w) + var(--scr-stat-record-w) + var(--scr-stat-build-w)
-    + var(--scr-stat-unit-w) + var(--scr-stat-skill-w));
+    var(--scr-stat-name-w) + var(--scr-stat-record-w) + 3 * var(--scr-stat-race-w));
 }
 /* 종족을 안 골라 세 칸이 빠진 표(요청) — 트랙과 최소폭을 남은 두 칸으로 다시 적는다.
    빠진 칸의 트랙을 그대로 두면 격자가 여전히 다섯 칸이라, 두 칸짜리 행이 왼쪽 두 칸에만
@@ -2946,11 +2933,8 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
    누적에는 메달이 하나도 없어(StatsScreen의 medalByMember) 그 폭이 통째로 빈자리다.
    남는 것은 [수 절반 + 버튼 안여백 + 단위 R]뿐이라 그 두 배면 된다. */
 .scr-stats-list-panel-v2 .scr-stat-table-nomedal .scr-stat-row { --scr-stat-rank-w: 62px; }
-.scr-stats-list-panel-v2 .scr-stat-table-slim .scr-stat-row {
-  --scr-stat-tracks: var(--scr-stat-name-w) var(--scr-stat-record-w);
-  width: max-content;
-  min-width: calc(var(--scr-stat-name-w) + var(--scr-stat-record-w));
-}
+/* (삭제) .scr-stat-table-slim — 종족을 안 골라 생산 칸이 통째로 빠지던 표. 종족이 칸이
+   되면서 세 칸은 늘 함께 선다(요청). */
 /* 세 칸에 대한 한 줄 — 늘 표 위에 눕는다(요청·지적).
    표 옆에 세워도 봤는데 두 가지가 걸렸다: 좁은 화면에서는 표가 볼 자리를 통째로 먹었고
    (폰에서 유저 칸과 레이팅 한 자락만 남았다), 세 칸이 열린 표는 애초에 옆자리가 없다.
@@ -2982,9 +2966,7 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
    오른쪽에 14px이 그냥 빈다(지적 스크린샷의 노란 상자). 8px이면 칸 경계선에 내용이
    붙지 않을 만큼은 남으면서 칸마다 12px씩 표가 좁아진다.
    기록 칸(10px)과 유저 칸은 안 건드린다 — 기록 칸은 이미 한 번 조인 값이다. */
-.scr-stats-list-panel-v2 .scr-stat-row > .scr-stat-build-cell,
-.scr-stats-list-panel-v2 .scr-stat-row > .scr-stat-units-cell,
-.scr-stats-list-panel-v2 .scr-stat-row > .scr-stat-skills-cell {
+.scr-stats-list-panel-v2 .scr-stat-row > .scr-stat-mix-cell {
   padding-left: 8px; padding-right: 8px;
 }
 /* 종족별 전적 칸을 없애서(대신 필터바 종족 라디오로 전체 칸 값 자체를 그 종족 기준으로
@@ -3017,7 +2999,10 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
      이 칸에 130px 남짓이 순수한 빈자리로 남았다. 안에 든 것이 줄어든 만큼 칸도 줄인다.
      들어가야 하는 것: 랭크 줄기(84) + 줄기 사이(12) + [이름 52 + 막대 180] + 칸 여백(20)
      = 348. 390이면 막대 좌우로 20px씩 숨 쉴 자리가 남는다. */
-  --scr-stat-record-w: 390px;
+  /* 390 → 268px — 이 폭의 3분의 1(랭크 줄기 84 + 줄기 사이 12)이 래더로 옮겨 가면서
+     통째로 빈자리가 됐다(요청). 남는 것은 [이름 52 + 막대 180] + 칸 여백(20) + 숨 쉴
+     자리 = 268px이다. 걷힌 폭은 오른쪽 종족 세 칸이 나눠 갖는다. */
+  --scr-stat-record-w: 268px;
   /* 랭크·포인트 줄기의 고정폭 — 120 → 100px(요청: 너무 넓다).
      이 칸에 실제로 들어가는 가장 긴 것은 "1234 포인트" 79.2px과 "1위 ▲12" 71.4px이다
      (실측, 버튼 좌우 패딩 포함). 100px이면 값 좌우로 10px씩 남는다.
@@ -3049,9 +3034,10 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
   /* 셋 다 12px씩 줄었다(요청) — 칸 바깥 좌우 여백을 14 → 8px로 조인 만큼이다(아래
      .scr-stat-row > .scr-stat-build-cell). 속에 든 것(도넛·목록)은 그대로이고 그 둘레의
      빈자리만 걷혔으므로, 좁아져도 읽는 것은 하나도 안 줄어든다. */
-  --scr-stat-build-w: 192px;
-  --scr-stat-unit-w: 354px;
-  --scr-stat-skill-w: 234px;
+  /* 종족 한 칸의 최소폭 — 안에 든 것 중 가장 넓은 줄이 기준이다: 목록 둘(90+90) + 사이
+     실선 자리(10+10) = 200에 칸 좌우 여백(8+8)을 더한 216px. 도넛 줄(72+72+20+16=180)은
+     그보다 좁아 이 값 안에 들어온다. */
+  --scr-stat-race-w: 216px;
   /* 도넛 지름 — MemberStatRow의 DONUT과 짝이다(svg 좌표계 크기라 그쪽이 실제 값을 정하고,
      여기서는 상자 폭을 그에 맞춘다). 한쪽만 고치면 어긋난다. */
   --scr-donut-size: 72px;
@@ -3322,10 +3308,12 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
        스크롤하는데 오른쪽에 안내까지 서면서 창이 좁아졌고(지적), 칸을 줄이면 같은 창에
        그만큼 더 들어온다. 막대도 여기서만 더 짧다(요청, 아래 max-width 120px):
        64(랭크) + 12 + [52 이름 + 120 막대] + 20 = 268. */
-    --scr-stat-record-w: 268px;
-    --scr-stat-build-w: 184px;
-    --scr-stat-unit-w: 342px;
-    --scr-stat-skill-w: 224px;
+    --scr-stat-record-w: 236px;
+    /* 종족 칸도 모바일에서는 한 단계 좁힌다 — 표가 원래 화면보다 넓어 가로로 스크롤하는데,
+       칸 하나가 화면 폭에서 유저 칸(118px)을 뺀 나머지를 넘으면 끝까지 밀어도 그 칸을
+       온전히 볼 수가 없다. 목록 둘(78+78)과 사이 실선 자리가 최소값이다. */
+    --scr-stat-race-w: 196px;
+    --scr-toplist-w: 78px;
     grid-template-columns: var(--scr-stat-tracks);
   }
 
@@ -3344,7 +3332,6 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
   /* 세 칸이 빠진 표(종족 미선택)에서는 그 최소높이를 푼다 — 키를 정하던 다섯 줄 목록과
      도넛이 통째로 없는데 112px을 그대로 두면 줄마다 위아래로 빈자리가 남는다. 남은 것 중
      가장 큰 것(막대 넷이 세로로 선 기록 칸)이 알아서 높이를 정한다. */
-  .scr-stats-list-panel-v2 .scr-stat-table-slim .scr-stat-row { min-height: 0; }
   /* (삭제) PC 전용 폭 240px — 안내가 표 옆이 아니라 표 위에 한 줄로 눕게 되면서 폭을
      정할 일 자체가 없어졌다(.scr-stat-mix-hint). */
   .scr-stat-mix { gap: 6px; }
@@ -8003,10 +7990,11 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
        기록 칸만 500 → 370px으로 줄인다(요청: 막대가 너무 길다). 막대를 240 → 180px으로,
        랭크 줄기를 156 → 84px으로 줄인 만큼이라 안에 든 것은 하나도 안 잘린다. 표는
        1270px이 되어 상한(1400) 안에 더 여유 있게 들어간다. */
-    --scr-stat-record-w: 370px;
-    --scr-stat-build-w: 186px;
-    --scr-stat-unit-w: 340px;
-    --scr-stat-skill-w: 226px;
+    /* 랭크 줄기가 래더로 옮겨 간 만큼(위 --scr-stat-record-w 주석) 줄이고, 걷힌 폭은
+       종족 세 칸이 나눠 갖는다. 240 + 268 + 3×230 = 1198로 패널 폭(1210) 안에 들어와
+       가로 스크롤 없이 다섯 칸이 다 보인다(실측). */
+    --scr-stat-record-w: 268px;
+    --scr-stat-race-w: 230px;
     /* 헤더 행과 데이터 행은 각각 별개의 그리드 컨테이너다. 트랙을 minmax(_,1fr)로 두면
        width:max-content인 이 행들이 '자기 내용이 원하는 폭'으로 따로 계산돼, 라벨+ⓘ+정렬
        아이콘이 든 헤더 행만 넓어진다 — 실측 873px vs 820px, 오른쪽으로 갈수록 최대 45px씩

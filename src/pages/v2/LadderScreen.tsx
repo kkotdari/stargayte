@@ -237,8 +237,10 @@ export default function LadderScreen() {
         onSearchChange={() => { /* 검색창 자체가 없다 */ }}
         heading={<div className="scr-stat-filters">
           <div className="scr-stat-filter-row">
+            {/* 이름표는 없다(요청) — 이 화면의 유일한 필터라 무엇을 고르는 자리인지 헷갈릴
+                일이 없고, 달력 트리거 자신이 이미 "8월"이라고 적고 있다. 이름표가 필요했던
+                것은 유형·종족·월 셋이 한 줄에 섰을 때였다. */}
             <div className="scr-stat-filter-group">
-              <span className="scr-stat-filter-label">월</span>
               <MonthCalendar
                 value={period} onChange={setPeriod}
                 minMonth={firstMonth} maxMonth={currentMonthValue()}

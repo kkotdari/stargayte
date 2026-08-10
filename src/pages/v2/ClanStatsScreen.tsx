@@ -1,68 +1,42 @@
 import { useEffect, useMemo, useState } from "react";
 import { LoadingMark } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
-import MonthCalendar from "../../components/common/MonthCalendar";
-import PickRow from "../../components/common/PickRow";
-import MemberStatRow, { type StatColumnMedals } from "../stats/MemberStatRow";
+import MemberStatRow from "../stats/MemberStatRow";
 import { useEpithets } from "../../utils/useEpithets";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { activeMemberSearchTerms, memberMatchesQuery } from "../../utils/memberSearch";
-import { monthInputToRange, shiftMonthValue, currentMonthValue } from "../../utils/date";
+// (삭제) 기간 유틸(monthInputToRange 등) — 이 화면에 고를 기간이 없다(요청).
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { usePageBackground } from "../../hooks/usePageBackground";
 import { cx } from "../../utils/format";
-import type { BaseRace, GameResultStatsResponse, GameType, Member, MemberStats, MemberStatsEntry } from "../../types";
+import type { GameResultStatsResponse, GameType, Member, MemberStats, MemberStatsEntry } from "../../types";
 
-/** 종족 필터 값 — 실제 종족 셋에 "전체"와 "주종족"이 더해진다. */
-type RaceFilter = BaseRace | "all" | "main";
+/* (삭제) 종족 필터 한 벌(RaceFilter·RACE_TAB_OPTS·serverRaceOf) — 종족이 표의 칸이 되면서
+   고를 것이 없어졌다(요청). 예전에는 이 필터가 '어느 종족의 도넛·목록을 볼까'를 정했고,
+   그래서 전체종족을 보는 동안에는 그 칸들이 통째로 사라졌다. 이제 세 종족이 나란히 서므로
+   한 사람의 종족별 모습을 한눈에 견줄 수 있고, 필터는 그 일을 대신할 것이 없다.
+   주요 지표(게임수·승률·APM·커맨드·BEST)는 전체 종족 합계로 본다 — 종족을 가르는 일은
+   오른쪽 세 칸이 이미 하고 있다. */
 
-/* 필터는 드롭다운이 아니라 라디오다(요청) — 값이 몇 개 안 되고 늘 같은 자리에 있어,
-   지금 무엇이 걸렸는지를 열어 보지 않고도 한눈에 읽는다. 라벨도 그만큼 짧게 적는다
-   ("전체종족" → "전체"). 주종족은 고른 값 하나로 모두를 보는 다른 항목들과 달리 사람마다
-   다른 종족을 본다 — 종족을 바꿔 가며 하는 사람들의 "제일 잘하는 모습"을 견주는 자리다. */
-const RACE_TAB_OPTS: { value: RaceFilter; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: "main", label: "주종" },
-  { value: "테란", label: "테란" },
-  { value: "프로토스", label: "플토" },
-  { value: "저그", label: "저그" },
-];
+/** 이 회원의 주종족 — 서버가 늘 실제 참가 기록으로 뽑아 준다. 지금은 안 쓴다. */
 
-/** 서버에 넘길 종족 — 값을 그대로 넘긴다("주종족"도 서버가 안다).
- *
- *  한때는 "주종족"을 "전체"로 바꿔 보냈다: 레이팅·순위는 판을 시간순으로 누적해 만드는
- *  값이라 사람마다 다른 잣대로 나눌 수 없다고 봤기 때문이다. 실제로는 서버가 한 번의
- *  재생으로 (회원, 종족) 조합 전부의 점수를 이미 만들어 두므로, 사람마다 제 주종족 칸을
- *  집기만 하면 된다(요청: "주종족으로 했을 때 포인트를 다시 계산 못해?") — 조회가 늘지도
- *  않는다. 집계(전적·APM·생산)는 여전히 전 종족으로 내려오고, 화면이 byRace에서 그 사람
- *  것을 골라 쓴다. */
-const serverRaceOf = (r: RaceFilter): BaseRace | "all" | "main" => r;
-
-/** 이 회원의 주종족 — 서버가 종족 필터와 무관하게 늘 실제 참가 기록으로 뽑아 준다
- *  (game_results/service.py의 most_played_race). 한 판도 안 뛰었으면 null. */
-function mainRaceOf(entry: MemberStatsEntry | undefined): BaseRace | null {
-  const r = entry?.mostPlayedRace;
-  return r === "테란" || r === "프로토스" || r === "저그" ? r : null;
-}
-
-/** 표에 그릴 이 회원의 통계 한 벌 — 종족 필터가 "주종족"이면 사람마다 다른 칸을 집는다. */
-function statsOf(entry: MemberStatsEntry | undefined, shown: RaceFilter): MemberStats {
-  if (shown === "all") return entry?.overall ?? EMPTY_STATS;
-  const race = shown === "main" ? mainRaceOf(entry) : shown;
-  return (race && entry?.byRace[race]) ?? EMPTY_STATS;
-}
 /* 이 화면은 내전(팀전) 하나만 본다(요청: 래더와 내전은 아예 다른 메뉴) — 유형을 고르던
    라디오는 메뉴 그 자체가 됐다. 값은 조회에 계속 쓰이므로 상수로 박아 둔다. */
 const CLAN_TYPE: GameType = "0102";
-// 기간 드롭다운에서 "전체 기간"을 가리키는 값 — 나머지 값은 전부 "YYYY-MM"이다.
-const PERIOD_ALL = "all";
+/* (삭제) 기간 값(PERIOD_ALL과 "YYYY-MM") — 이 화면은 늘 전체 누적이다(요청: 내전은 월
+   필터 없이 무조건 전체 기간). 래더는 반대로 월 하나가 유일한 필터인데, 그건 레이팅이
+   '그 날짜까지의 기록으로 본 값'이라 언제 기준인지가 값의 일부이기 때문이다. 내전이 보는
+   전적·생산·칭호는 쌓일수록 그 사람의 모습에 가까워지는 값이라 잘라 볼 이유가 없다.
+
+   딸려 나온 결과 하나: 견줄 '전달'이 없어져 전월 대비 변동이 통째로 사라진다(Delta의
+   undefined 갈래). 달을 고르지 않는 표에서 "지난달보다 +6"은 어느 달을 말하는지가 없는
+   수이고, 그 자리를 "-"로 채우면 수마다 뜻 없는 줄이 하나씩 깔린다. */
 /* 세부 지표(승률·APM·커맨드·레이팅·순위) 표본 미달 판정은 백엔드가 전담한다(요청: 프론트에서
    경기수로 필터링하는 것 자체를 없앰) — 프론트는 그 값을 그대로 보여주고, null이면 "-"로만
    바꾼다. 최소 판수 기준(game_results/service.py의 _MIN_PLAYS_FOR_RANK)이 바뀌어도 여기는
    손댈 게 없다. */
-// 지난 기간의 각 칸 1·2·3위에 붙일 메달(요청) — 순서가 곧 등수다.
-const MEDALS = ["🥇", "🥈", "🥉"];
+// (삭제) 메달 이모지 — 이 표에서 메달을 걷었다(요청).
 
 const EMPTY_STATS: MemberStats = {
   plays: 0, wins: 0, losses: 0, draws: 0, winRate: 0, bests: 0,
@@ -87,26 +61,10 @@ function PlainHead({ label, sub, className }: { label: string; sub?: string; cla
   );
 }
 
-/** 고를 값들을 낱말로 늘어놓는 한 줄 — 유형·종족·정렬이 같은 물건을 쓴다(요청: 유형·종족도
- *  정렬과 같은 스타일로). 알약 트랙을 두르던 때보다 폭이 훨씬 덜 든다: 트랙과 좌우 여백이
- *  사라지고 고른 낱말 하나만 배경을 갖는다. */
-/** 필터 한 덩어리 — 이름표 + 그 값(요청: 필터에 각각 라벨). PC에서 넷이 한 줄에 서면
- *  무엇이 무엇인지가 낱말만으로는 안 갈린다("전체"가 종족인지 유형인지). */
-function FilterGroup({ label, children, className }: {
-  label: string; children: React.ReactNode; className?: string;
-}) {
-  return (
-    <div className={cx("scr-stat-filter-group", className)}>
-      <span className="scr-stat-filter-label">{label}</span>
-      {children}
-    </div>
-  );
-}
+/* (삭제) FilterGroup(이름표 + 값) — 이 화면에 남은 필터가 없다(요청). */
 
-// 경기결과/랭킹과 같은 공용 상단 모듈(SearchFilterBar)로 전적통계를 보여준다.
-// 조건은 필터창 대신 목록 바로 위의 세 줄이 맡는다(요청) — 유형·기간 / 종족 / 정렬 순으로
-// 늘어놓고, 앞의 둘은 라디오라 지금 걸린 값이 열어 보지 않아도 그대로 보인다. 검색창
-// (유저)은 그 아래 별개 줄이다.
+// 내전(팀전) 통계 — 유저 검색 하나만 걸고 전체 누적을 본다(요청). 표는 [유저][주요 지표]
+// [테란][프로토스][저그] 다섯 칸이다.
 export default function ClanStatsScreen() {
   // 사진 배경은 통계 화면 전용이고, 이제 다크에서만 쓴다(요청: "라이트 테마 통계 배경
   // 제거") — 밝은 바탕에서는 사진이 표/글씨와 경쟁만 해서 읽기를 방해했다.
@@ -117,40 +75,16 @@ export default function ClanStatsScreen() {
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
 
   const [search, setSearch] = useState("");
-  const [race, setRace] = useState<RaceFilter>("all");
-  // 게임 유형(개인전/팀전) — 라디오이고 "전체"는 없다. 기본값은 개인전(요청) — 팀전이던
-  // 것을 옮겼다. 한때 랜덤이었는데, 열 때마다 다른 표가 나오는 것이 득보다 실이 컸다.
-  // (삭제) 활동의 랭크 변동 카드에서 유형을 미리 걸어 주는 연동이 있었는데, 그 입구였던
-  // "실시간 랭크 확인" 링크를 걷어내면서(요청) 걸어 줄 사람이 없어졌다.
+  // (삭제) 종족 필터 — 종족이 표의 칸이 됐다(요청). 위 주석 참고.
   // (삭제) 유형 라디오 — 이 화면 자체가 내전이다(CLAN_TYPE).
   // (삭제) 레이팅 상세·순위변동 그래프, 상성 관계 오버레이 — 앞의 둘은 걷어냈고(요청),
   // 상성은 래더로 갔다(요청: 상성맵은 래더에서만).
-  // 기간은 올타임 아니면 특정 월("YYYY-MM") 하나 — 예전 단위 알약탭 + 월 선택기를 달력
-  // 하나로 합쳤다(요청). 기본값은 당월(요청) — 올타임이던 것을 되돌렸다. 달 초에는 표가
-  // 거의 비어 보이지만, 지금 이 달의 판세를 먼저 보여주는 쪽이 통계를 여는 이유에 가깝다.
-  const [period, setPeriod] = useState<string>(() => currentMonthValue());
-  const periodMonth = period === PERIOD_ALL ? "" : period;
+  // (삭제) 기간 state와 달력 — 전체 누적 하나로 못 박았다(요청).
   /* (삭제) 레이팅·순위 — 내전에서는 폐지다(요청). 레이팅은 일대일 경기로만 매겨지는 값이라
      (래더 화면 참고) 팀전 표에 얹으면 그 표의 어느 수와도 잣대가 안 맞았다. 함께 있던
      "레이팅 n.n 기준" 단서와 순위 변동(▲2)도 이 화면에서는 적을 것이 없어졌다. */
 
-  // 기간 드롭다운에 늘어놓을 월의 하한 — 첫 경기가 있는 달. 그보다 과거는 어차피 빈
-  // 표라서 목록에 둘 이유가 없다. 한 번만 물어보고, 실패하면 이번 달만 남는다.
-  const [firstMonth, setFirstMonth] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    api.getGameResultsPage({ sort: "oldest", limit: 1 })
-      .then((page) => {
-        if (!cancelled) setFirstMonth(page.items[0]?.date.slice(0, 7) ?? null);
-      })
-      .catch(() => { /* 목록이 이번 달 하나로 줄 뿐이라 조용히 넘어간다 */ });
-    return () => { cancelled = true; };
-  }, []);
-
-  const { from: effectiveFrom, to: effectiveTo } = useMemo(
-    () => (periodMonth ? monthInputToRange(periodMonth) : { from: "", to: "" }),
-    [periodMonth],
-  );
+  // (삭제) 달력에 늘어놓을 월의 하한(firstMonth)을 물어보던 조회 — 달력이 없어졌다.
 
   /* (삭제) 레이팅 기준일자(asOf) — 레이팅이 없는 화면이라 적을 것이 없다. */
 
@@ -161,63 +95,31 @@ export default function ClanStatsScreen() {
       m.status !== "withdrawn" && m.status !== "suspended" && memberMatchesQuery(m, search));
   }, [members, search]);
 
-  // 전달의 같은 조건 — 순위 변동을 견줄 기준선(아래 prevStatsByMember 주석 참고).
-  // '전체 기간'에는 견줄 전달이 없으므로 빈 범위로 두고 조회 자체를 건너뛴다.
-  const prevRange = useMemo(
-    () => (periodMonth
-      ? monthInputToRange(shiftMonthValue(periodMonth, -1))
-      : { from: "", to: "" }),
-    [periodMonth],
-  );
+  // (삭제) 전달 범위(prevRange) — 견줄 달이 없다(위 주석).
 
   const queryKey = useMemo(
     () => ({
-      dateFrom: effectiveFrom, dateTo: effectiveTo, matchType: CLAN_TYPE,
-      // 종족도 서버에 넘긴다 — 승률/APM 같은 전적은 응답의 byRace로 골라 쓰면 되지만,
-      // 레이팅(rankScore)과 순위(sortOrder)는 판을 시간순으로 재생해 만든 값이라
-      // 클라이언트가 종족별로 갈라낼 수 없다. 안 넘기면 종족을 골라도 레이팅만 전체
-      // 종족 기준으로 남아 표 안에서 기준이 어긋난다(지적).
-      race,
-      // 기간 자체도 함께 담는다 — 값은 위 dateFrom/dateTo에 이미 들어 있지만, 받아 온
-      // 한 장(StatsView)이 '어느 달의 값인가'를 스스로 알고 있어야 메달·순위변동을
-      // 그 달 기준으로 그린다(아래 view 주석).
-      period,
-      prevFrom: prevRange.from, prevTo: prevRange.to,
+      // (삭제) 기간·전달 범위·종족 — 셋 다 고를 것이 없어졌다(요청). 남은 조건은 검색으로
+      // 걸러진 회원 목록 하나다. 종족은 서버에 "all"로 물어보고, 화면이 응답의 byRace에서
+      // 칸마다 제 것을 집는다.
       memberIds: matchedMembers.map((m) => m.id).sort().join(","),
     }),
-    [effectiveFrom, effectiveTo, prevRange, race, period, matchedMembers],
+    [matchedMembers],
   );
   const queryKeySignature = useMemo(() => JSON.stringify(queryKey), [queryKey]);
   const debouncedSignature = useDebouncedValue(queryKeySignature, 300);
   const debouncedQuery = useMemo(() => JSON.parse(debouncedSignature) as typeof queryKey, [debouncedSignature]);
 
   /* 화면이 그리는 '한 장' — 조건과 그 조건으로 받은 값이 한 몸이다.
-     예전에는 조건(기간·종족)은 state로 따로 있고 통계는 통계대로, 전달 통계는 또 그것대로
-     따로 들어왔다. 그래서 필터를 바꾸면 화면이 중간 단계를 그대로 내보였다(지적):
-       - 기간만 먼저 바뀌고 통계는 아직 지난 조건 것이라, 끝난 달에만 붙는 메달이 엉뚱한
-         값으로 매겨졌다("알 수 없는 순위 배지").
-       - 본 통계가 먼저 도착해 레이팅·랭크가 한 번 바뀌고, 몇백 ms 뒤 전달 통계가 도착해
-         순위 변동(▲2·신규)이 또 한 번 바뀌었다.
-     이제 한 장을 통째로 갈아 끼운다 — 두 조회가 다 끝난 뒤 한 번만 그린다(요청).
-     메달·순위변동·종족 고르기까지 전부 이 안의 값으로만 계산하므로, 조건과 값이 어긋난
-     그림이 애초에 만들어지지 않는다. */
+     조건(종족)만 먼저 바뀌고 값은 아직 지난 조건 것이면, 표가 중간 단계를 그대로 내보인다
+     (지적: 알 수 없는 순위 배지 — 그때는 기간까지 조건이었다). 한 장을 통째로 갈아 끼우면
+     조건과 값이 어긋난 그림이 애초에 만들어지지 않는다(요청). */
   interface StatsView {
     /** 이 한 장을 만든 조건(debouncedSignature) — 지금 조건과 다르면 갱신 중이라는 뜻이다. */
     key: string;
-    race: RaceFilter;
-    /** "YYYY-MM", '전체 기간'이면 빈 문자열. */
-    periodMonth: string;
-    period: string;
     /** 이 조건으로 물어본 회원들 — 검색으로 걸러진 목록도 한 장 안에 함께 얼어 있다. */
     memberIds: string[];
     stats: Record<string, MemberStatsEntry>;
-    /** 전달 같은 조건의 통계 — 레이팅 옆 순위 변동(▲2)의 기준선이다.
-     *
-     *  활동의 '랭크 변동 스냅샷'과는 다른 이야기다(지적): 저쪽은 "직전 순위표 대비 방금
-     *  무엇이 바뀌었나"이고, 이쪽은 "지난달 순위와 견주면 지금 몇 계단인가"다. 그래서
-     *  스냅샷을 갖다 쓰지 않고, 조회할 때 그 달 통계를 한 번 더 받아 직접 계산한다.
-     *  '전체 기간'을 보고 있으면 견줄 '전달'이 없어 아예 안 부른다. */
-    prev: Record<string, MemberStatsEntry>;
   }
   const [view, setView] = useState<StatsView | null>(null);
   const [error, setError] = useState("");
@@ -229,12 +131,9 @@ export default function ClanStatsScreen() {
     const memberIds = debouncedQuery.memberIds ? debouncedQuery.memberIds.split(",") : [];
     const blank = {
       key: debouncedSignature,
-      race: debouncedQuery.race,
-      periodMonth: debouncedQuery.period === PERIOD_ALL ? "" : debouncedQuery.period,
-      period: debouncedQuery.period,
       memberIds,
     };
-    if (memberIds.length === 0) { setView({ ...blank, stats: {}, prev: {} }); return; }
+    if (memberIds.length === 0) { setView({ ...blank, stats: {} }); return; }
     let cancelled = false;
     setError("");
     const byId = (res: GameResultStatsResponse) => {
@@ -242,40 +141,24 @@ export default function ClanStatsScreen() {
       res.members.forEach((entry) => { map[entry.memberId] = entry; });
       return map;
     };
-    const mine = api.getGameResultStats({
+    // 한 번만 부른다 — 전체 누적 한 벌(요청). 전달 기준선을 함께 받던 두 번째 조회는
+    // 견줄 달 자체가 없어지면서 사라졌다.
+    api.getGameResultStats({
       memberIds,
-      dateFrom: debouncedQuery.dateFrom,
-      dateTo: debouncedQuery.dateTo,
-      matchType: CLAN_TYPE,
-      race: serverRaceOf(debouncedQuery.race),
-    });
-    // 전달 기준선은 없어도 표는 그대로다 — 실패하면 화살표만 안 나온다. 그래도 기다렸다가
-    // 함께 그린다: 늦게 도착해 순위 변동만 뒤늦게 뜨는 것이 바로 지적받은 그림이다.
-    const before = debouncedQuery.prevFrom
-      ? api.getGameResultStats({
-        memberIds,
-        dateFrom: debouncedQuery.prevFrom,
-        dateTo: debouncedQuery.prevTo,
-        matchType: CLAN_TYPE,
-        race: serverRaceOf(debouncedQuery.race),
-      }).catch(() => null)
-      : Promise.resolve(null);
-    Promise.all([mine, before]).then(([res, prevRes]) => {
+      dateFrom: "", dateTo: "", matchType: CLAN_TYPE, race: "all",
+    }).then((res) => {
       if (cancelled) return;
-      setView({ ...blank, stats: byId(res), prev: prevRes ? byId(prevRes) : {} });
+      setView({ ...blank, stats: byId(res) });
     }).catch((e) => {
       if (cancelled) return;
       setError(e instanceof Error ? e.message : "통계를 불러오지 못했어요.");
       // 조건이 바뀌었는데 새 값을 못 받았으면 옛 값을 그대로 두지 않는다 — 그게 바로
       // '조건과 값이 어긋난 그림'이다. 빈 한 장으로 갈아 끼우고 오류 문구를 함께 보여준다.
-      setView({ ...blank, stats: {}, prev: {} });
+      setView({ ...blank, stats: {} });
     });
     return () => { cancelled = true; };
   }, [debouncedQuery, debouncedSignature]);
 
-  // 지금 몇 위인가 — 규칙은 rankOrder.ts에 있다(순위변동 모달이 달마다 같은 계산을
-  // 다시 해야 해서 밖으로 뺐다). 표의 정렬(sort)과는 무관하다 — 순위는 정렬을 바꿔도
-  // 그 사람의 순위 그대로여야 한다.
   /* 표에 늘어놓을 회원 — 지금 검색 결과(matchedMembers)가 아니라 '받아 온 한 장'이 물어본
      회원들이다. 검색어도 조회 조건이라, 새 결과가 오기 전에 목록만 먼저 바뀌면 그 사람들
      자리에 남의 통계가 잠깐 앉는다. 이름·아바타는 늘 지금 것으로 읽는다(회원 정보가 바뀌면
@@ -289,32 +172,20 @@ export default function ClanStatsScreen() {
   /* (삭제) shownMonth — 순위변동 그래프를 열 수 있는 달인지 가리던 값이라, 그 화면을
      걷어내며(요청) 쓸 곳이 없어졌다. */
 
-  /* 건설·유닛·스킬 세 칸은 종족이 정해져야 그린다(요청) — 종족마다 짓는 건물도 뽑는 유닛도
-     아예 달라, 여러 종족의 판을 한 칸에 겹치면 그 도넛·목록은 무엇의 비율인지가 없는
-     그림이 된다(업그레이드 표는 이미 같은 이유로 그렇게 하고 있었다 — UP_TABLE 주석).
-     '주종족'도 고른 것으로 친다: 줄마다 잣대는 다르지만 한 줄 안에서는 한 종족이고, 어느
-     종족인지는 닉네임 옆 배지가 말한다. 안 고른 것은 '전체종족' 하나뿐이다.
-     그려져 있는 한 장을 따른다(view.race) — 필터만 먼저 바뀌는 사이에 칸이 나타났다
-     사라지면 표가 두 번 갈아 끼워지는 것처럼 보인다. */
-  const showMix = (view?.race ?? "all") !== "all";
+  /* (삭제) showMix — 종족을 골라야 생산 칸을 그리던 조건. 종족이 칸이 되면서(요청) 늘
+     세 칸이 함께 서므로 켜고 끌 것이 없다. */
 
   /* (삭제) 순위(rankOf)와 전달 대비 순위 변동 — 내전에는 랭킹이 없다(요청).
      계산 자체가 rankScore(레이팅)에 기대고 있어서, 랭킹을 폐지하면 남길 것이 없다.
      같은 계산은 래더 화면이 이어받았다(LadderScreen). */
 
   const cards = useMemo(() => {
-    const shown = view?.race ?? "all";
     const list = viewMembers.map((m) => {
       const entry = view?.stats[m.id];
-      const stats = statsOf(entry, shown);
-      /* 전달 같은 조건의 값 — 줄마다 모든 수치 옆에 붙는 변동의 기준선이다(요청).
-         '전체 기간'을 보고 있으면 애초에 전달을 안 받아 오므로(view.prev가 빈 객체)
-         여기서 undefined가 되고, 그러면 화면은 변동을 아예 안 그린다.
-         종족 필터는 지금 보는 것과 같은 잣대로 골라야 한다 — 전체로 견주면 종족을 바꾼
-         달에 엉뚱한 수가 나온다. */
-      const prevEntry = view?.prev[m.id];
-      const prev = prevEntry ? statsOf(prevEntry, shown) : undefined;
-      return { member: m, stats, entry, prev };
+      /* 주요 지표는 전체 종족 합계다 — 종족을 가르는 일은 오른쪽 세 칸이 한다(위 주석).
+         (삭제) 전달 같은 조건의 값 — 견줄 달이 없어졌다(요청: 무조건 전체 기간). prev를
+         아예 안 넘기므로 줄의 모든 변동이 자리째 사라진다(Delta의 undefined 갈래). */
+      return { member: m, stats: entry?.overall ?? EMPTY_STATS, entry };
     });
 
     const sorted = [...list];
@@ -366,54 +237,10 @@ export default function ClanStatsScreen() {
   }, [viewMembers, view]);
 
 
-  /* 이미 끝난 달을 볼 때는 각 칸의 1·2·3위에 메달을 붙인다(요청) — 그 달의 성적은 더
-     바뀌지 않으니 그렇게 못 박아도 된다. 이번 달과 '전체 기간'은 아직 진행 중이라 안 붙인다.
-
-     순위는 검색창에 걸린 목록이 아니라 그 조건(기간·분류·종족)의 회원 전체에서 매긴다 —
-     이름을 검색했다고 메달이 옮겨 다니면 그건 순위가 아니다. 화면에서 "-"로 가려지는 값
-     (표본 미달·기록 없음)은 애초에 후보에서 뺀다. 같은 값이면 같은 메달을 나눠 갖는다. */
-  const medalByMember = useMemo(() => {
-    const out = new Map<string, StatColumnMedals>();
-    // 기간·종족도 지금 고른 값이 아니라 '받아 온 한 장'의 값으로 본다 — 값보다 조건이 먼저
-    // 바뀌면 지난달 통계에 이번 달 잣대로 메달이 붙는다(지적: 알 수 없는 순위 배지).
-    if (!view) return out;
-    /* 올타임에는 늘 단다(요청) — 여기엔 '아직 안 끝난 기간'이라는 개념이 자체가 없다.
-       달로 볼 때만 이번 달(진행 중)을 뺀다: 아직 뒤집힐 순위에 메달을 달면 그게 확정인
-       것처럼 읽힌다. */
-    if (view.period !== PERIOD_ALL && view.period >= currentMonthValue()) return out;
-    const shown = view.race;
-    const pool = members
-      .filter((m) => m.status !== "withdrawn" && m.status !== "suspended")
-      .map((m) => {
-        const entry = view.stats[m.id];
-        const stats = statsOf(entry, shown);
-        return {
-          id: m.id, stats,
-        };
-      });
-    const give = (
-      key: keyof StatColumnMedals, valueOf: (c: (typeof pool)[number]) => number | null,
-    ) => {
-      const vals = pool
-        .map((c) => ({ id: c.id, v: valueOf(c) }))
-        .filter((x): x is { id: string; v: number } => x.v !== null);
-      const top = [...new Set(vals.map((x) => x.v))].sort((a, b) => b - a).slice(0, MEDALS.length);
-      for (const x of vals) {
-        const i = top.indexOf(x.v);
-        if (i < 0) continue;
-        out.set(x.id, { ...(out.get(x.id) ?? {}), [key]: MEDALS[i] });
-      }
-    };
-    // (삭제) 레이팅 메달 — 이 화면에 레이팅 칸이 없다. 수가 없는 자리에 메달만 뜨면
-    // 무엇으로 1등인지 읽을 도리가 없다(생산 칸을 뺀 것과 같은 이유).
-    give("plays", (c) => (c.stats.plays > 0 ? c.stats.plays : null));
-    give("rate", (c) => (c.stats.plays === 0 ? null : c.stats.winRate));
-    // 생산은 수치를 화면에 안 그리게 됐으니(요청) 메달도 달지 않는다 — 숫자 없이 메달만
-    // 떠 있으면 무엇으로 1등인지 읽을 도리가 없다. 정렬은 그대로 이 값으로 된다.
-    give("apm", (c) => c.stats.avgApm);
-    give("cmd", (c) => c.stats.avgCmd);
-    return out;
-  }, [members, view]);
+  /* (삭제) 칸별 1·2·3위 메달 — 이 표에서 걷었다(요청: 내전 통계에서는 델타랑 메달은 이제
+     쓰이지 않아). 메달은 "이 칸의 1등"이라는 말인데, 줄 세우는 일이 래더로 넘어간 뒤로
+     이 표는 순위를 매기는 화면이 아니다. 메달만 남으면 순위가 아닌 것에 순위 표시가
+     붙는 셈이 된다. */
 
   /* 닉네임 아래 한 줄로 붙는 별명(요청) — 기준·범위는 useEpithets가 한 벌로 못 박는다
      (전체 누적·모든 유형·모든 종족). 이 화면의 기간·종족 필터를 안 따르는 이유는 그 주석에
@@ -455,31 +282,9 @@ export default function ClanStatsScreen() {
         onSearchChange={setSearch}
         searchPlaceholder="유저 입력 또는 @로 목록 띄우기"
         suggestions={suggestions}
-        /* 조건은 목록 위 한 줄이 맡는다(요청) — 예전엔 "8월 개인전 전체종족"처럼 한 문장에
-           드롭다운을 섞어 놨는데, 고를 것이 늘면서 문장이 길어지고 무엇이 눌리는지도 흐릿해졌다.
-           이 화면의 필터는 셋이다(요청: 내전은 월·유저·종족) — 종족(라디오)과 월(달력)이
-           이 줄에, 유저는 그 아래 검색창이다. 유형 라디오는 메뉴 그 자체가 되면서 사라졌고,
-           정렬은 통째로 걷었다(요청). */
-        heading={<div className="scr-stat-filters">
-          {/* 종족·월 순으로 한 줄에 — 고르는 낱말을 앞에 두고 달력을 끝에 둔다. 좁아서 다
-              안 들어가면 wrap이 뒤엣것부터 아래로 내린다. */}
-          <div className="scr-stat-filter-row">
-            <FilterGroup label="종족">
-              <PickRow options={RACE_TAB_OPTS} value={race} onChange={setRace} label="종족" />
-            </FilterGroup>
-            {/* 이름표는 "월"이다(요청) — 고르는 것이 달이고, '전체 누적'은 그 달력 안의
-                한 선택지라 이름표까지 두 가지를 다 이고 있을 필요가 없다. 옆의 유형·종족과
-                글자 수가 비슷해져 세 이름표가 한 줄에서 고르게 보이기도 한다. */}
-            <FilterGroup label="월">
-              <MonthCalendar
-                value={period} onChange={setPeriod}
-                minMonth={firstMonth} maxMonth={currentMonthValue()}
-                allValue={PERIOD_ALL} allLabel="전체 누적"
-              />
-            </FilterGroup>
-          </div>
-          {/* (삭제) 오른쪽 끝의 정렬 줄 — 랭킹순으로 고정하며 걷었다(요청). */}
-        </div>}
+        /* (삭제) 필터 줄 통째 — 남은 조건은 유저 검색 하나이고 그건 검색창 자신이다.
+           유형 라디오는 메뉴가 됐고(요청), 월 달력은 전체 누적으로 못 박으며(요청), 종족
+           라디오는 종족이 표의 칸이 되면서(요청), 정렬은 고를 것이 없어져 걷혔다. */
       />
 
       {error && <div className="scr-err">{error}</div>}
@@ -510,22 +315,12 @@ export default function ClanStatsScreen() {
                 보는 칸인지 적는다(요청). 자리는 늘 표 위다: 표 옆에 세웠더니 좁은 화면에서
                 표가 볼 자리를 통째로 먹었고(지적), 세 칸이 열린 표는 애초에 옆자리가 없다. */}
             <p className="scr-stat-mix-hint">
-              <b>건설 · 유닛 · 스킬</b>
-              {showMix ? (
-                <span>분당 지은 채수·뽑은 기수와 그 구성비, 많이 쓴 다섯을 그 기간 평균으로 봅니다.</span>
-              ) : (
-                <em>종족 필터에서 종족이나 주종족을 고르면 세 칸이 함께 열립니다.</em>
-              )}
+              <b>종족별 생산</b>
+              <span>분당 지은 채수·뽑은 기수와 그 구성비, 5분 일꾼, 공/방 단계, 많이 쓴 다섯을
+                그 종족으로 뛴 판만 모아 봅니다. ※ 공/방은 20분 이상 경기</span>
             </p>
             <div className="scr-stat-table-clip">
-              {/* 메달이 하나도 없는 한 장(진행 중인 달·전체 누적)에서는 랭크 줄기가 메달
-                  자리를 비워 둘 이유가 없다(지적: 왼쪽이 너무 남는다) — 메달은 수의 왼쪽
-                  바깥에 매달리는데, 그 자리는 흐름을 안 먹는 대신 줄기 폭으로 잡혀 있다.
-                  없는 달에는 그 폭을 걷는다(--scr-stat-rank-w). */}
-              <div className={cx("scr-stat-table scr-scroll",
-                medalByMember.size === 0 && "scr-stat-table-nomedal",
-                !showMix && "scr-stat-table-slim")}
-              >
+              <div className="scr-stat-table scr-scroll">
                 {/* 헤더도 데이터 행과 같은 가로 스크롤 컨테이너 안의 평범한 첫 행이다 —
                     더 이상 sticky가 아니라서(요청으로 제거) 페이지 스크롤 기준으로 따로
                     띄워둘 이유가 없어졌고, 그 덕에 이름 칸의 position:sticky;left:0도
@@ -541,20 +336,18 @@ export default function ClanStatsScreen() {
                       래더로 갔고(요청), 그와 함께 "레이팅 n.n 기준" 단서도 여기서 빠졌다.
                       기간은 필터 줄이 이미 말하고 있어 칸 이름에서 뺐다. */}
                   <PlainHead label="주요 지표" />
-                  {showMix && (
-                    <>
-                      <PlainHead label="건설" />
-                      <PlainHead label="유닛" />
-                      <PlainHead label="스킬" sub="※ 공/방은 20분 이상 경기" />
-                    </>
-                  )}
+                  {/* 종족이 곧 칸 이름이다(요청: 종족별로 반복) — 건설·유닛·스킬 셋을 한 칸에
+                      합쳤으니 칸을 가리키는 이름은 종족뿐이다. 무엇을 보는 칸인지는 표 위의
+                      한 줄이 말한다(.scr-stat-mix-hint). */}
+                  <PlainHead label="테란" />
+                  <PlainHead label="프로토스" />
+                  <PlainHead label="저그" />
                 </div>
                 {cards.map((c) => (
                   <MemberStatRow
                     key={c.member.id}
                     member={c.member}
                     stats={c.stats}
-                    prev={c.prev}
                     // 자기 줄에 살짝 배경을 깐다(요청) — 회원이 늘수록 표에서 제 줄을 찾는
                     // 것이 일이 된다.
                     me={c.member.id === user?.id}
@@ -562,18 +355,11 @@ export default function ClanStatsScreen() {
                        래더(개인전)에서는 어느 줄이나 0이라, 그 0이 "한 번도 못 받았다"로
                        잘못 읽혔을 자리다. */
                     showBest
-                    medals={medalByMember.get(c.member.id)}
+                    // 종족 칸 셋이 각자 제 것을 집는다(요청: 종족별로 반복).
+                    byRace={c.entry?.byRace}
                     // 닉네임 아래 한 줄 — 위 epithetByMember 참고(늘 내전 전체 누적 기준).
                     epithet={epithetByMember.get(c.member.id)}
                     epithetReady={epithetByMember.size > 0}
-                    // 주종족으로 볼 때만 — 줄마다 잣대가 다르니 그 종족을 닉네임 옆에
-                    // 적는다(요청). 다른 필터에서는 제목 문장이 이미 말하고 있다.
-                    race={view?.race === "main" ? mainRaceOf(c.entry) : null}
-                    /* 업그레이드 표는 종족마다 줄이 달라 종족이 정해져야 그릴 수 있다(요청)
-                       — 주종족이면 그 사람 것, 종족을 고르면 그 종족, 전체종족이면 안 그린다. */
-                    upRace={view?.race === "main" ? mainRaceOf(c.entry)
-                      : view?.race === "all" ? null : (view?.race as BaseRace | undefined) ?? null}
-                    showMix={showMix}
                     compact
                     maxOverallPlays={maxOverallPlays}
                     maxApm={maxApm}
