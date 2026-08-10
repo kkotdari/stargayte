@@ -27,6 +27,9 @@ import type { MemberStats } from "../types";
 const MIN_PLAYS = 3;
 /** 승률만은 더 본다 — 3판 3승이 곧 "정점"이 되면 그 칭호는 아무 말도 안 하는 것과 같다. */
 const MIN_PLAYS_RATE = 8;
+/** 유형 칭호(개인전·팀전 퀸)는 그 유형에서만 세는 판수라 더 많이 본다 — 팀전 몇 판으로
+ *  "팀전 퀸"이 되면 정작 팀전을 도맡아 뛴 사람이 그 말을 못 듣는다. */
+const MIN_PLAYS_MODE = 12;
 /* 좋은 칭호일수록 뛴 판이 있어야 한다(요청: 경기를 많이 안 했는데 재밌는 칭호를 가져가면
    안 된다) — 세 판 나와서 그중 한 판에 포토러시를 한 사람이 "포토러시의 퀸"이 되면, 그
    칭호는 클럽에서 그 사람을 부르는 말이 아니라 우연히 찍힌 도장이 된다.
@@ -41,6 +44,13 @@ const CROWN_EDGE = 1.15;
 export interface EpithetSubject {
   id: string;
   stats: MemberStats;
+  /** 유형별 전적 — "개인전 퀸"·"팀전 퀸"이 쓰는 값(요청).
+   *
+   *  위 stats(전체)로는 이 둘을 못 가린다: 팀전만 뛴 사람과 개인전만 뛴 사람의 승률이
+   *  한 수에 섞여 있어서다. 유형은 그 사람이 어느 판에서 강한가를 가르는 유일한 잣대라
+   *  따로 받아 온다(useEpithets). 옛 화면·조회 실패로 안 넘어오면 그 칭호만 안 나간다. */
+  solo?: MemberStats;
+  team?: MemberStats;
 }
 
 /** 칭호 한 벌 — 부르는 말과 그 근거. 근거를 함께 두는 이유는 이 줄이 "기록에서 나온 말"이라고
@@ -110,7 +120,9 @@ interface Title {
   /** 화면에 적히는 말. name이 있는 줄은 {n} 자리에 그 이름이 들어간다. */
   label: string;
   /** 클수록 이 칭호에 가깝다. null이면 후보 아님. */
-  value: (s: MemberStats) => number | null;
+  /** 두 번째 인자는 그 회원의 한 벌 전체다 — 유형별 전적처럼 MemberStats 바깥에 있는 값을
+   *  보는 칭호만 쓴다(개인전·팀전 퀸). 나머지는 첫 인자만 보면 된다. */
+  value: (s: MemberStats, of: EpithetSubject) => number | null;
   /** 1등이라도 이 값은 넘어야 씌운다.
    *
    *  이 문턱을 value 안에서 걸면 안 된다(초기 구현의 버그): 문턱에 못 미치는 사람을 null로
@@ -369,6 +381,18 @@ const TITLES: Title[] = [
     },
   },
 
+  /* ── 유형(요청: 개인전 퀸 · 팀전 퀸) ───────────────────────────────────────
+     "이 사람은 개인전에서 강하다"는 전체 승률로는 절대 안 나오는 말이다 — 두 유형이 한 수에
+     섞여 있어서다. 그 유형을 실제로 여러 판 뛴 사람들끼리만 견준다(MIN_PLAYS_MODE). */
+  {
+    label: "개인전 퀸", weight: 3, why: "개인전 승률", unit: "%",
+    value: (_s, of) => (of.solo && of.solo.plays >= MIN_PLAYS_MODE ? of.solo.winRate : null),
+  },
+  {
+    label: "팀전 퀸", weight: 3, why: "팀전 승률", unit: "%",
+    value: (_s, of) => (of.team && of.team.plays >= MIN_PLAYS_MODE ? of.team.winRate : null),
+  },
+
   // ── 양(얼마나 했나) ────────────────────────────────────────────────────────
   { label: "승률의 정점", weight: 3.5, why: "승률", unit: "%", value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null) },
   { label: "BEST 수집가", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
@@ -603,7 +627,7 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
     const need = MIN_PLAYS_TIER[title.tier ?? 2] ?? MIN_PLAYS;
     const vals = ranked
       .filter((p) => p.stats.plays >= need)
-      .map((p) => ({ id: p.id, v: title.value(p.stats), stats: p.stats }))
+      .map((p) => ({ id: p.id, v: title.value(p.stats, p), stats: p.stats }))
       .filter((x): x is { id: string; v: number; stats: MemberStats } => x.v !== null && x.v > 0);
     if (vals.length < (title.pool ?? MIN_POOL)) return;
     const top = Math.max(...vals.map((x) => x.v));

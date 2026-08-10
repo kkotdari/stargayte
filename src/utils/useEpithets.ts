@@ -25,12 +25,32 @@ let inflight: Promise<void> | null = null;
 async function load(key: string): Promise<void> {
   const ids = key.split(",");
   try {
-    const res = await api.getGameResultStats({ memberIds: ids, dateFrom: "", dateTo: "" });
-    const byId: Record<string, MemberStatsEntry> = {};
-    res.members.forEach((entry) => { byId[entry.memberId] = entry; });
-    cached = epithetsOf(ids.map((id) => ({ id, stats: byId[id]?.overall })).filter(
-      (x): x is { id: string; stats: NonNullable<typeof x.stats> } => x.stats !== undefined,
-    ));
+    /* 셋을 함께 받는다 — 전체 한 벌과 유형별 두 벌(요청: 개인전 퀸·팀전 퀸).
+       유형별은 전체 한 벌로는 절대 못 가르는 값이다: 팀전만 뛴 사람과 개인전만 뛴 사람의
+       승률이 한 수에 섞여 있다. 셋 다 같은 기간(전체 누적)이라 잣대는 어긋나지 않는다. */
+    const [all, solo, team] = await Promise.all([
+      api.getGameResultStats({ memberIds: ids, dateFrom: "", dateTo: "" }),
+      api.getGameResultStats({ memberIds: ids, dateFrom: "", dateTo: "", matchType: "0101" }),
+      api.getGameResultStats({ memberIds: ids, dateFrom: "", dateTo: "", matchType: "0102" }),
+    ]);
+    const index = (res: typeof all) => {
+      const byId: Record<string, MemberStatsEntry> = {};
+      res.members.forEach((entry) => { byId[entry.memberId] = entry; });
+      return byId;
+    };
+    const byId = index(all);
+    const soloById = index(solo);
+    const teamById = index(team);
+    cached = epithetsOf(ids
+      .map((id) => ({
+        id,
+        stats: byId[id]?.overall,
+        solo: soloById[id]?.overall,
+        team: teamById[id]?.overall,
+      }))
+      .flatMap((x) => (x.stats
+        ? [{ id: x.id, stats: x.stats, solo: x.solo, team: x.team }]
+        : [])));
     cachedKey = key;
     /* 계산한 한 벌을 서버에 알린다 — 달라진 사람이 있으면 활동에 알림 한 줄이 남는다(요청).
        여기서 부르는 이유: 칭호가 만들어지는 자리가 여기 하나뿐이라, 다른 데서 부르면
