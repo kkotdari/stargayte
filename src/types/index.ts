@@ -253,9 +253,9 @@ export interface MemberStats {
   losses: number;
   draws: number;
   winRate: number;
-  /** 그 조건에서 MVP로 뽑힌 횟수(요청) — 리플레이로 등록된 팀전에만 붙는 값이라, 개인전만
+  /** 그 조건에서 BEST PLAYER로 뽑힌 횟수(요청) — 리플레이로 등록된 팀전에만 붙는 값이라, 개인전만
    *  뛰었거나 수기 등록·옛 경기뿐이면 0이다(옛 경기는 '경기 재분석'으로 채운다). */
-  mvps: number;
+  bests: number;
   // 리플레이 파싱으로 apm/eapm/커맨드수 값이 있는 경기만 평균낸다. 그런 경기가 하나도 없으면 null.
   avgApm: number | null;
   avgEapm: number | null;

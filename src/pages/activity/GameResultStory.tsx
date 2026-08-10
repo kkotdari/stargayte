@@ -8,6 +8,7 @@ import { cleanMapName } from "../../utils/mapName";
 import { cx } from "../../utils/format";
 import { normalizeSearchText } from "../../utils/memberSearch";
 import { ATTACK_BEAT_KEYS } from "../../utils/replaySummary";
+import { bestRawOf } from "../../utils/replaySummaryData";
 import { renderReplaySummarySentences, UNIT_KO, BUILDING_KO, TECH_KO, DEFENSE_KO } from "../../utils/replaySummaryText";
 import { SIGNATURE_UPGRADE_KO, UPGRADE_LINE_KO } from "../../utils/replayTechNames";
 import type { SummaryPart } from "../../utils/replaySummaryText";
@@ -1442,10 +1443,10 @@ export default function GameResultStory({
     const out: MinimapMarker[] = [];
     // 시작 스냅("게임 시작!")은 로스터가 빠진 자리라, 닉네임도 아바타만큼 키운다(요청).
     const introBig = index === 0 && sentences.length > 1 && (sentences[0]?.beats?.length ?? 0) === 0;
-    /* MVP 표시는 결론 장면에서만 세운다(요청) — 이긴 편 전원이 트로피를 받는 그 자리에서
+    /* BEST PLAYER 표시는 결론 장면에서만 세운다(요청) — 판이 끝난 그 자리에서
        "그중 누가"를 마저 말하는 표시라, 다른 장면에 미리 떠 있으면 결말을 먼저 알려 버린다.
        그 장면인지는 승패 beat(verdict)가 이 문장에 들어 있는가로 가른다. */
-    const mvpRaw = gameResult.summaryData?.mvp;
+    const bestRaw = bestRawOf(gameResult.summaryData);
     const onVerdict = (sentences[index]?.beats ?? [])
       .some((i) => gameResult.summaryData?.beats[i]?.k === "verdict");
     for (const s of slots) {
@@ -1480,8 +1481,8 @@ export default function GameResultStory({
         face: actions.faces.get(s.raw),
         // 트로피는 다른 얼굴들과 크기·바운스가 다르다(요청: 28px 확대 + 계속 바운스).
         faceIsTrophy: actions.faces.get(s.raw) === "🏆",
-        // 결론 장면의 MVP(요청) — 아바타에 금테를 두르고 이름 옆에 넉 자를 붙인다.
-        mvp: onVerdict && !!mvpRaw && s.raw === mvpRaw,
+        // 결론 장면의 BEST PLAYER(요청) — 아바타에 금테를 두르고 이름 옆에 넉 자를 붙인다.
+        best: onVerdict && !!bestRaw && s.raw === bestRaw,
         // 그 무렵 이 사람이 한 말(요청) — 아바타 위 말주머니.
         bubble: actions.bubbles.get(s.raw),
         // 닉네임 밑 체력바(요청) — 그 시각까지 갖춘 규모와, 그 시각의 적정치.
@@ -1506,11 +1507,11 @@ export default function GameResultStory({
     }
     return `${o1 === "win" ? 1 : 2}팀 승`;
   })();
-  /* 그 판의 MVP(요청: 승 표시 옆에 누가 MVP인지) — 요약이 원본 게임 아이디로 들고 있어서
-     여기서 지금의 회원 연결로 이름을 푼다. 팀전에만 있고(replaySummary의 mvpOf), 옛
+  /* 그 판의 BEST PLAYER(요청: 승 표시 옆에 누가 뽑혔는지) — 요약이 원본 게임 아이디로 들고 있어서
+     여기서 지금의 회원 연결로 이름을 푼다. 팀전에만 있고(replaySummary의 bestOf), 옛
      요약에는 없다. */
   const mvp = (() => {
-    const raw = gameResult.summaryData?.mvp;
+    const raw = bestRawOf(gameResult.summaryData);
     if (!raw || result === "draw" || result === "not_held") return null;
     const s = slots.find((x) => x.raw === raw);
     return { name: s?.name ?? nameByRaw.get(raw) ?? raw, race: s?.slot.race ?? "" };
@@ -1589,15 +1590,15 @@ export default function GameResultStory({
             {winLabel}
           </span>
         )}
-        {/* 그 판의 MVP — 이긴 편 표시 바로 옆이다(요청). 누가 이겼나 다음으로 궁금한 것이
+        {/* 그 판의 BEST PLAYER — 이긴 편 표시 바로 옆이다(요청). 누가 이겼나 다음으로 궁금한 것이
             "그래서 누가 잘했나"라, 두 표시는 한 벌로 읽힌다. */}
         {!showRoster && mvp && (
-          <span className="scr-story-mvp">
-            <span className="scr-story-mvp-tag">MVP</span>
+          <span className="scr-story-best">
+            <span className="scr-story-best-tag">BEST</span>
             {mvp.name}
-            {/* 종족 배지(요청: MVP 옆에 배지) — 미니맵 이름표·로스터가 이름에 늘 종족을
+            {/* 종족 배지(요청: 이름 옆에 배지) — 미니맵 이름표·로스터가 이름에 늘 종족을
                 달고 다니는데, 로스터를 접은 자리에서는 이 이름만 맨몸이었다. */}
-            <RaceBadge race={mvp.race} size={11} circleLetter className="scr-story-mvp-race" />
+            <RaceBadge race={mvp.race} size={11} circleLetter className="scr-story-best-race" />
           </span>
         )}
       </div>
@@ -1649,7 +1650,7 @@ export default function GameResultStory({
           <RosterSide
             team={team1} memberOf={memberOf}
             highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
-            mvpRaw={gameResult.summaryData?.mvp}
+            bestRaw={bestRawOf(gameResult.summaryData)}
           />
           {/* 가운데 — 승/무 배지와 vs, 그리고 PC에서는 그 아래 미니맵(요청: PC에서는
               로스터 사이에). */}
@@ -1660,7 +1661,7 @@ export default function GameResultStory({
           <RosterSide
             team={team2} memberOf={memberOf}
             highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
-            mvpRaw={gameResult.summaryData?.mvp}
+            bestRaw={bestRawOf(gameResult.summaryData)}
           />
         </div>
       )}

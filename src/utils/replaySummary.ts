@@ -1933,32 +1933,41 @@ function sideBeats(args: {
   return beats;
 }
 
-/* ── MVP ──────────────────────────────────────────────────────────────────────
-   요청: 팀전 한 판마다 MVP를 뽑는다.
+/* ── BEST PLAYER ──────────────────────────────────────────────────────────────
+   요청: 팀전 한 판마다 BEST PLAYER를 뽑는다(예전 이름은 MVP).
 
    근거는 '그 판의 이야기에 몇 번 주인공으로 섰나'다. 새 잣대(킬 수 같은 것)를 지어내지
    않는 이유는 리플레이에 그런 값이 아예 없기 때문이다 — 죽음이 안 남는다
    (replaySummaryData의 hp 주석). 반면 요약의 beats는 이미 그 판에서 무슨 일이 있었는지를
    가려낸 결과라, 러시를 갔고 교전을 이겼고 상대 본진을 헤집은 사람은 자연히 여러 번
-   이름이 오른다 — 화면이 보여준 이야기와 MVP가 어긋나지 않는다는 것도 이 방식의 몫이다.
+   이름이 오른다 — 화면이 보여준 이야기와 뽑힌 사람이 어긋나지 않는다는 것도 이 방식의 몫이다.
+
+   후보는 양편 전부다(요청: 진 팀까지 포함해 공평하게). 한동안 이긴 편에서만 뽑았는데,
+   그러면 진 편에서 혼자 끝까지 밀어붙인 사람은 이야기에 다섯 번을 올라도 처음부터 후보가
+   아니었다 — '그 판을 만든 사람'을 묻는 상에서 편은 물어야 할 것이 아니다. 이긴 편이
+   유리한 것은 그대로 남지만(이야기가 그쪽으로 흐르니까) 그건 실제로 잘한 것의 그림자다.
 
    who(그 일을 한 사람) 2점 · who2(거들었거나 특히 활약한 사람) 1점.
-   다만 이긴 편을 통째로 부르는 문장(승패·팀 전체의 맺음말)은 아무도 가려 주지 못하므로
+   다만 한 편을 통째로 부르는 문장(승패·팀 전체의 맺음말)은 아무도 가려 주지 못하므로
    세지 않고, 자기가 당한 쪽(whom)으로 이름이 걸린 문장도 공으로 치지 않는다.
 
    동점이면 그 판에서 뽑은 전투 유닛 보급(sumSupply)으로, 그래도 같으면 유효 APM으로
-   가른다 — 이야기에 안 걸린 사람들끼리도 아무나 뽑지 않게 하는 마지막 잣대다. */
-const MVP_WHO = 2;
-const MVP_WHO2 = 1;
+   가른다 — 이야기에 안 걸린 사람들끼리도 아무나 뽑지 않게 하는 마지막 잣대다.
+   그마저 같으면 이긴 편을 앞에 세운다: 여기까지 왔다는 건 두 사람이 남긴 것이 똑같다는
+   뜻이라, 마지막 한 끗은 판을 가져간 쪽에 준다. */
+const BEST_WHO = 2;
+const BEST_WHO2 = 1;
 
-/** 이긴 편의 MVP(원본 게임 아이디) — 개인전이면 undefined.
+/** 그 판의 BEST PLAYER(원본 게임 아이디) — 개인전이면 undefined.
  *
- *  컴퓨터는 후보가 아니다 — 사람들 사이의 상이라, 낄 자리가 아니다. 이긴 편이 컴퓨터
- *  뿐이면 아무도 안 뽑는다. 다만 '팀전인가'는 컴퓨터를 빼기 전 인원으로 본다(그 판은
+ *  컴퓨터는 후보가 아니다 — 사람들 사이의 상이라, 낄 자리가 아니다. 양편에 사람이 하나도
+ *  없으면 아무도 안 뽑는다. 다만 '팀전인가'는 컴퓨터를 빼기 전 인원으로 본다(그 판은
  *  분명 팀전이었다). */
-function mvpOf(beats: ReplaySummaryBeat[], winners: ParsedReplayPlayer[]): string | undefined {
+function bestOf(
+  beats: ReplaySummaryBeat[], winners: ParsedReplayPlayer[], losers: ParsedReplayPlayer[],
+): string | undefined {
   if (winners.length < 2) return undefined;
-  const people = winners.filter((p) => !p.isComputer);
+  const people = [...winners, ...losers].filter((p) => !p.isComputer);
   if (people.length === 0) return undefined;
   const names = people.map((p) => p.rawName);
   const score = new Map(names.map((n) => [n, 0]));
@@ -1966,21 +1975,26 @@ function mvpOf(beats: ReplaySummaryBeat[], winners: ParsedReplayPlayer[]): strin
     const cur = score.get(raw);
     if (cur !== undefined) score.set(raw, cur + n);
   };
+  /* 한 편을 통째로 부르는 문장인가 — 이제 후보가 양편이므로 '이긴 편 전부'만 볼 수 없다.
+     어느 한쪽 편의 사람 전부가 who에 들어 있으면 그 문장은 그 편의 맺음말이다. */
+  const sides = [winners, losers].map((s) => s.filter((p) => !p.isComputer).map((p) => p.rawName))
+    .filter((s) => s.length > 0);
   for (const b of beats) {
     const who = b.who ?? [];
     const whom = b.whom ?? [];
-    // 이긴 편 전원을 한꺼번에 부르는 문장은 누구도 가려 주지 못한다.
-    if (!names.every((n) => who.includes(n))) {
-      for (const w of who) if (!whom.includes(w)) add(w, MVP_WHO);
+    if (!sides.some((side) => side.every((n) => who.includes(n)))) {
+      for (const w of who) if (!whom.includes(w)) add(w, BEST_WHO);
     }
-    for (const w of b.who2 ?? []) if (!whom.includes(w)) add(w, MVP_WHO2);
+    for (const w of b.who2 ?? []) if (!whom.includes(w)) add(w, BEST_WHO2);
   }
   const supply = new Map(people.map((p) => [p.rawName, sumSupply(p)]));
   const eapm = new Map(people.map((p) => [p.rawName, p.eapm ?? 0]));
+  const won = new Set(winners.map((p) => p.rawName));
   return [...names].sort((a, b) =>
     (score.get(b)! - score.get(a)!)
     || (supply.get(b)! - supply.get(a)!)
-    || (eapm.get(b)! - eapm.get(a)!))[0];
+    || (eapm.get(b)! - eapm.get(a)!)
+    || (Number(won.has(b)) - Number(won.has(a))))[0];
 }
 
 /**
@@ -4511,9 +4525,9 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     };
   }));
 
-  /* MVP는 이야기가 다 짜인 뒤에 뽑는다 — 근거가 그 이야기 자체라(위 mvpOf 주석), 자리
-     다툼에서 잘려 나간 후보들까지 세면 화면에 안 나온 일로 뽑는 셈이 된다. */
-  const mvp = mvpOf(finalBeats, winnerPlayers);
+  /* BEST PLAYER는 이야기가 다 짜인 뒤에 뽑는다 — 근거가 그 이야기 자체라(위 bestOf 주석),
+     자리 다툼에서 잘려 나간 후보들까지 세면 화면에 안 나온 일로 뽑는 셈이 된다. */
+  const best = bestOf(finalBeats, winnerPlayers, loserPlayers);
 
   return {
     v: REPLAY_SUMMARY_VERSION,
@@ -4521,7 +4535,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...(totalFrames ? { end: totalFrames } : {}),
     // 개인전에서는 팀 용어를 쓰지 않는다(요청).
     ...(duel ? { duel: true } : {}),
-    ...(mvp ? { mvp } : {}),
+    ...(best ? { best } : {}),
     ...(Object.keys(bases).length > 0 ? { bases } : {}),
     ...(Object.keys(hubs).length > 0 ? { hubs } : {}),
     ...(Object.keys(moves).length > 0 ? { moves } : {}),

@@ -304,9 +304,9 @@ interface MemberStatRowProps {
   prev?: MemberStats;
   /** 이 줄이 지금 로그인한 사람인가 — 배경을 살짝 깔아 제 줄을 바로 찾게 한다(요청). */
   me?: boolean;
-  /** MVP 줄을 그릴까 — 개인전만 보고 있으면 안 그린다(요청). MVP는 팀전에만 붙는 값이라
+  /** BEST PLAYER 줄을 그릴까 — 개인전만 보고 있으면 안 그린다(요청). 팀전에만 붙는 값이라
    *  개인전 표에서는 어느 줄이나 0이고, 그 0이 "한 번도 못 받았다"로 잘못 읽힌다. */
-  showMvp?: boolean;
+  showBest?: boolean;
   /** 레이팅의 전달 값 — points와 같은 자리에서 온다(entry.rankScore). */
   prevPoints?: number | null;
   // 게임수 칸(ValueBar)의 기준값(이 목록에서 가장 많이 뛴 사람 = 100%).
@@ -355,7 +355,7 @@ interface MemberStatRowProps {
 
 // 전적통계 목록의 테이블 한 행.
 export default function MemberStatRow({
-  member, stats, prev, me = false, showMvp = true, prevPoints, maxOverallPlays, maxApm, maxCmd,
+  member, stats, prev, me = false, showBest = true, prevPoints, maxOverallPlays, maxApm, maxCmd,
   avatar = true, compact = false,
   points, rank, rankDelta, onPointsClick, onRankClick, medals, race, upRace, showMix = true,
 }: MemberStatRowProps) {
@@ -455,7 +455,7 @@ export default function MemberStatRow({
                 </div>
                 {/* 순위 변동도 수치 아래 제 줄이다(요청: 크기 줄이고 아래에) — 옆에 붙이면
                     [순위+변동]이 한 덩어리로 가운데에 서서 정작 순위가 왼쪽으로 밀리고,
-                    이 줄기의 다른 값들(레이팅·MVP)과 규칙도 갈린다. 방향은 색과 화살표가
+                    이 줄기의 다른 값들(레이팅·BEST)과 규칙도 갈린다. 방향은 색과 화살표가
                     이미 말하므로 글자는 다른 변동들과 같은 크기까지 내린다. */}
                 <div className="scr-stat-rank-line scr-stat-rank-move">
                   {rankDelta === "new" ? (
@@ -471,20 +471,20 @@ export default function MemberStatRow({
                     <span className="scr-stat-delta scr-stat-delta-none">-</span>
                   )}
                 </div>
-                {/* MVP 횟수(요청: 몇 위 아래에) — 순위·레이팅과 같은 '그 사람이 어디쯤인가'
+                {/* BEST PLAYER 횟수(요청: 몇 위 아래에) — 순위·레이팅과 같은 '그 사람이 어디쯤인가'
                     묶음이라 이 줄기에 붙인다. 0도 적는다(요청) — 한때 받은 적 없으면
                     감췄는데, 그러면 줄마다 이 자리가 있었다 없었다 해서 아래 칸들이
                     들쭉날쭉해지고, 무엇보다 '0회'와 '이 표에 없는 값'이 같아 보였다. */}
-                {showMvp && (
+                {showBest && (
                   <>
-                    <div className="scr-stat-rank-line scr-stat-rank-mvp">
-                      <span className="scr-stat-mvp-tag">MVP</span>
-                      <span className="scr-stat-mvp-n">{stats.mvps}</span>
+                    <div className="scr-stat-rank-line scr-stat-rank-best">
+                      <span className="scr-stat-best-tag">BEST</span>
+                      <span className="scr-stat-best-n">{stats.bests}</span>
                     </div>
                     {/* 변동은 여기서도 수치 아래다(요청) — 레이팅이 그렇게 서 있으므로
                         이 줄만 옆에 달면 같은 줄기 안에서 규칙이 갈린다. */}
                     <div className="scr-stat-rank-line scr-stat-rank-delta">
-                      <Delta now={stats.mvps} prev={prev?.mvps} />
+                      <Delta now={stats.bests} prev={prev?.bests} />
                     </div>
                   </>
                 )}

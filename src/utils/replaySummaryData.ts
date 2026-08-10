@@ -89,12 +89,18 @@ export interface ReplaySummaryData {
   /** 일대일이었나 — 개인전에서는 "1팀이", "양 팀이" 같은 팀 용어를 쓰지 않는다(요청).
    *  옛 데이터에는 없어 생략 가능하고, 없으면 예전처럼 팀 용어를 쓴다. */
   duel?: boolean;
-  /** 그 판의 MVP — 이긴 편에서 판을 가장 많이 만든 사람의 원본 게임 아이디(요청: 팀전
-   *  게임마다 MVP를 뽑는다). 어떻게 뽑는지는 replaySummary의 mvpOf 주석에 적어 뒀다.
+  /** 그 판의 BEST PLAYER — 판을 가장 많이 만든 사람의 원본 게임 아이디(요청: 팀전마다
+   *  한 명). 이긴 편만이 아니라 진 편까지 후보다(요청: 공평하게) — 어떻게 뽑는지는
+   *  replaySummary의 bestOf 주석에 적어 뒀다.
    *  개인전에는 없다 — 이긴 사람이 곧 그 사람이라 아무것도 말해 주지 않는다.
    *  회원 pk가 아니라 원본 게임 아이디인 까닭은 who와 같다(파일 머리 주석) — 회원 연결은
    *  나중에 바뀌므로, 볼 때마다 지금의 연결로 다시 풀어 그때의 현재 닉네임을 보여준다.
    *  옛 요약에는 없다(제어판의 '경기 재분석'으로 채운다). */
+  best?: string;
+  /** (옛 데이터 전용) 이름을 바꾸기 전의 같은 값(요청: MVP → BEST PLAYER). 이미 저장된
+   *  요약은 이 키로 들고 있어, 읽을 때만 아래 bestRawOf가 둘을 하나로 본다. 새로 저장하는
+   *  요약에는 안 쓴다 — 다시 분석하면 best로 바뀐다. 그때 뽑힌 사람은 이긴 편에서만 고른
+   *  옛 규칙의 결과라, 재분석 전까지는 그대로 남는다. */
   mvp?: string;
   /** 경기 전체 길이(프레임). '초반'은 절대 시간이 아니라 경기 길이에 대비해 봐야 한다(지적) —
    *  40분 경기의 8분과 9분 경기의 8분은 전혀 다른 자리다. 옛 데이터에는 없어 생략 가능하다. */
@@ -170,6 +176,16 @@ export function sceneWindowSec(base: number, frame: number | null | undefined): 
 
 /** 1 프레임 = 0.042초(replayParser와 같은 상수). */
 const SECONDS_PER_FRAME = 0.042;
+
+/** 그 판의 BEST PLAYER(원본 게임 아이디) — 새 키(best)와 옛 키(mvp)를 하나로 읽는다.
+ *
+ *  이름만 바뀌었을 뿐 같은 값이라, 읽는 자리마다 두 키를 다 아는 대신 여기 한 곳에서
+ *  묶는다(요청: MVP → BEST PLAYER). 이미 저장된 요약을 전부 고쳐 쓰지 않는 이유는,
+ *  그것이 리플레이를 다시 분석해야 하는 일이고(제어판의 '경기 재분석') 굳이 지금 그럴
+ *  까닭이 없기 때문이다 — 읽을 때 한 줄이면 옛 경기도 그대로 보인다. */
+export function bestRawOf(s: ReplaySummaryData | null | undefined): string | undefined {
+  return s?.best ?? s?.mvp;
+}
 
 /** 서버에서 받은 값이 우리가 아는 형식인지 — JSON 컬럼이라 무엇이든 들어올 수 있다. */
 export function isReplaySummaryData(v: unknown): v is ReplaySummaryData {

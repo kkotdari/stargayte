@@ -74,7 +74,8 @@ export default function DonutChart({ title, slices, size = 76 }: DonutChartProps
     // 색은 그린 순서가 아니라 조각 순서를 따른다 — 값이 0이라 안 그려진 조각이 있어도
     // 남은 조각의 색이 밀리면 안 된다(기본이 0인 판에서 고급이 파랑이 돼 버린다).
     segs.push({ key: s.label, idx: i, dash: Math.max(0, len - gap), offset: -acc });
-    // 조각 한가운데 각도 — 12시에서 시계방향으로 잰다(호를 그리는 rotate(-90)과 같은 기준).
+    // 조각 한가운데 각도 — 12시에서 재되, 각도 자체는 호와 같은 셈(시계방향)으로 두고
+    // 자리를 놓을 때만 거울로 뒤집는다(아래 px). 두 곳이 같은 식을 쓰는 편이 어긋나지 않는다.
     const th = 2 * Math.PI * (acc / c + f / 2) - Math.PI / 2;
     const w = s.label.length * labelFs * GLYPH_W;
     const h = labelFs;
@@ -87,16 +88,24 @@ export default function DonutChart({ title, slices, size = 76 }: DonutChartProps
        조각이 작다는 사실 자체가 이야기인 경우에 그 이름이 사라졌다. 대신 그림 밖으로
        나가 잘리는 일만 막는다 — svg는 기본이 overflow:hidden이라 나간 만큼은 아예 안
        보인다. 가장자리에서 EDGE만큼 안쪽까지 밀어 넣고, 그 이상은 밀지 않는다. */
-    const px = cx + r * Math.cos(th);
+    /* x가 뒤집힌 것은 조각을 반시계로 돌리기 때문이다(요청) — 호는 아래 transform의 거울로
+       뒤집고, 글자는 거울에 넣으면 글씨까지 뒤집히므로 여기서 같은 자리를 직접 잰다
+       (거울축이 세로선 x=cx라 y는 그대로다). */
+    const px = cx - r * Math.cos(th);
     const py = cx + r * Math.sin(th);
-    const fx = Math.min(Math.max(px, w / 2 + EDGE), size - w / 2 - EDGE);
-    const fy = Math.min(Math.max(py, h / 2 + EDGE), size - h / 2 - EDGE);
     /* 구성비가 지난달보다 몇 %p 움직였나(요청) — 1%p도 안 되게 움직인 것은 안 적는다.
        반올림해서 0이 되는 값에 "+0"을 달면 '안 변했다'와 구별이 안 되는 데다, 도넛마다
        조각마다 0이 늘어서면 정작 크게 움직인 조각이 묻힌다. */
     const dPt = hasPrev && prevTotal > 0
       ? Math.round(f * 100) - Math.round(((s.prev ?? 0) / prevTotal) * 100)
       : 0;
+    /* 아래쪽 여백은 변동 줄까지 세어 둔다(지적: 100%짜리 조각에서 라벨이 잘려 보인다) —
+       한 조각이 전부인 도넛은 그 조각의 한가운데가 6시라 이름이 그림 맨 아래에 서고, 그
+       바로 밑에 놓이는 변동 줄이 통째로 그림 밖으로 나가 잘렸다(svg는 overflow:hidden).
+       변동이 붙는 줄만 그 높이(줄 간격 0.95 + 글자 절반 0.41)만큼 위로 더 당긴다. */
+    const below = dPt === 0 ? 0 : labelFs * 1.36;
+    const fx = Math.min(Math.max(px, w / 2 + EDGE), size - w / 2 - EDGE);
+    const fy = Math.min(Math.max(py, h / 2 + EDGE), size - h / 2 - EDGE - below);
     onBand.push({
       key: s.label, x: fx, y: fy, text: s.label,
       delta: dPt === 0 ? null : `${dPt > 0 ? "+" : ""}${dPt}`,
@@ -119,10 +128,13 @@ export default function DonutChart({ title, slices, size = 76 }: DonutChartProps
             className={`scr-donut-seg scr-donut-seg-${s.idx + 1}`}
             cx={cx} cy={cx} r={r} strokeWidth={stroke} fill="none"
             strokeDasharray={`${s.dash} ${c - s.dash}`}
-            // 12시부터 시계방향 — 첫 조각이 늘 같은 자리에서 시작해야 여러 줄을 훑을 때
-            // 눈이 기준을 잃지 않는다.
+            // 12시부터 반시계방향(요청: 기본→고급→마법, 생산→방어, 지상→공중 순으로
+            // 반시계) — 첫 조각이 늘 같은 자리(12시)에서 시작해야 여러 줄을 훑을 때 눈이
+            // 기준을 잃지 않는다. 방향만 뒤집는 방법이 거울이다: rotate로 12시에 세운 뒤
+            // 세로선(x=cx)을 축으로 좌우를 뒤집으면 시계방향으로 잰 호가 그대로 반시계로
+            // 놓인다(원이라 모양은 그대로다). 글자는 이 거울에 안 넣는다 — 위 px 참고.
             strokeDashoffset={s.offset}
-            transform={`rotate(-90 ${cx} ${cx})`}
+            transform={`translate(${size} 0) scale(-1 1) rotate(-90 ${cx} ${cx})`}
           />
         ))}
         {onBand.map((l) => (
