@@ -677,7 +677,13 @@ function seedOf(id: string): number {
   return h;
 }
 
-function signature(id: string, s: MemberStats, used: Set<string>): Epithet | null {
+/* 한 마법·한 유닛은 한 사람만(지적: 같은 스톰이 여러 명한테 붙는다) — 문틀만 갈아 "스톰의
+   여왕"과 "스톰 마스터"로 나눠 줘 봤지만, 표에서는 결국 스톰 이야기가 두 줄이 된다.
+   칭호가 그 사람을 가리키려면 그 재료를 나눠 갖지 말아야 한다. 이름을 먼저 집은 사람이
+   가져가고, 나머지는 제 다음 재료(유닛 → 건물 → 전적)로 내려간다. */
+function signature(
+  id: string, s: MemberStats, used: Set<string>, takenNames: Set<string>,
+): Epithet | null {
   const seed = seedOf(id);
   const m = s.buildMix;
   if (m) {
@@ -688,14 +694,16 @@ function signature(id: string, s: MemberStats, used: Set<string>): Epithet | nul
     const skill = topSpell(m.skills);
     /** 마법 한 줄 만들기 — 사전에 있으면 그 말을, 없으면 문틀을(아주 많이 쌓였을 때만). */
     const skillLine = (): Epithet | null => {
-      if (!skill || skill.score < SKILL_MIN_SCORE) return null;
+      if (!skill || takenNames.has(skill.name) || skill.score < SKILL_MIN_SCORE) return null;
       const special = SPELL_SPECIAL[skill.name];
       const t = (special && pick(special.map((label) => () => label), skill.name, seed, used))
         || (skill.score >= SKILL_PLAIN_SCORE ? pick(SKILL_SAYS, skill.name, seed, used) : null);
-      return t ? { label: t, why: `경기에서 ${skill.name} ${skill.count}번` } : null;
+      if (!t) return null;
+      takenNames.add(skill.name);
+      return { label: t, why: `경기에서 ${skill.name} ${skill.count}번` };
     };
     // 드문 마법만 유닛보다 앞이다(SKILL_RARE_SCORE) — 나머지는 아래에서 마지막으로 본다.
-    if (skill && skill.score >= SKILL_RARE_SCORE) {
+    if (skill && !takenNames.has(skill.name) && skill.score >= SKILL_RARE_SCORE) {
       const t = skillLine();
       if (t) return t;
     }
@@ -703,16 +711,22 @@ function signature(id: string, s: MemberStats, used: Set<string>): Epithet | nul
        그 정도는 어느 종족에나 있는 주력 비중이라 "닥치고 ○○"이라 부를 만한 그림이 아니다.
        일꾼·보급은 애초에 이 원장에 없다(replayBuildMix) — 그래서 이 비율이 곧 병력 구성이다. */
     const unit = topOf(m.units, UNIT_KO);
-    if (unit && unit.share >= 0.33 && unit.count >= 10) {
+    if (unit && !takenNames.has(unit.name) && unit.share >= 0.33 && unit.count >= 10) {
       const t = pick(UNIT_SAYS, unit.name, seed, used);
-      if (t) return { label: t, why: `${unit.name}${ga(unit.name)} 병력의 ${Math.round(unit.share * 100)}%` };
+      if (t) {
+        takenNames.add(unit.name);
+        return { label: t, why: `${unit.name}${ga(unit.name)} 병력의 ${Math.round(unit.share * 100)}%` };
+      }
     }
     /* 건물은 마지막이다 — 종족이 정해지면 짓는 것도 대체로 정해져서, 유닛·마법만큼 그
        사람을 가르지 못한다. */
     const build = topOf(m.buildings, BUILDING_KO);
-    if (build && build.share >= 0.3 && build.count >= 10) {
+    if (build && !takenNames.has(build.name) && build.share >= 0.3 && build.count >= 10) {
       const t = pick(BUILD_SAYS, build.name, seed, used);
-      if (t) return { label: t, why: `${build.name}${ga(build.name)} 건물의 ${Math.round(build.share * 100)}%` };
+      if (t) {
+        takenNames.add(build.name);
+        return { label: t, why: `${build.name}${ga(build.name)} 건물의 ${Math.round(build.share * 100)}%` };
+      }
     }
     // 흔한 마법은 여기까지 와서야 차례다(요청: 기술 사용은 아래로) — 유닛·건물이 할 말을
     // 다 했는데도 부를 것이 없을 때만 "스톰 마스터"가 된다.
@@ -835,10 +849,15 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
     used.add(c.label);
   }
 
-  for (const p of pool) {
-    if (out.has(p.id)) continue;
-    if (p.stats.plays < MIN_PLAYS) continue;
-    const found = signature(p.id, p.stats, used);
+  /* 이름을 먼저 집는 차례는 '많이 한 사람 먼저'다 — 스톰을 마흔 번 뿌린 사람과 다섯 번 쓴
+     사람이 있으면 그 이름은 앞사람 것이어야 한다. 뛴 판이 같으면 id로 갈라 조회할 때마다
+     차례가 바뀌지 않게 한다. */
+  const takenNames = new Set<string>();
+  const rest = pool
+    .filter((p) => !out.has(p.id) && p.stats.plays >= MIN_PLAYS)
+    .sort((a, b) => b.stats.plays - a.stats.plays || a.id.localeCompare(b.id));
+  for (const p of rest) {
+    const found = signature(p.id, p.stats, used, takenNames);
     if (!found) continue;
     out.set(p.id, found);
     used.add(found.label);
