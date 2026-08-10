@@ -351,6 +351,10 @@ interface MemberStatRowProps {
    *  뺀다. 자리를 비워 두는 것과는 다른 말이다: 칸을 남기면 그 안의 "-"가 '이 사람은 안
    *  지었다'로 읽힌다. 왜 없는지는 표 바깥 안내가 말한다(StatsScreen). */
   showMix?: boolean;
+  /** 닉네임 아래 한 줄로 붙는 별명(요청, statEpithet.ts) — "물량 끝판왕", "공포의 럴커
+   *  부대"처럼 그 사람의 기록에서 뽑은 말이다. 기준은 늘 전체 누적이라 기간을 바꿔도
+   *  안 흔들린다(StatsScreen). 한 판도 안 뛴 사람에게는 안 온다. */
+  epithet?: string;
 }
 
 // 전적통계 목록의 테이블 한 행.
@@ -358,6 +362,7 @@ export default function MemberStatRow({
   member, stats, prev, me = false, showBest = true, prevPoints, maxOverallPlays, maxApm, maxCmd,
   avatar = true, compact = false,
   points, rank, rankDelta, onPointsClick, onRankClick, medals, race, upRace, showMix = true,
+  epithet,
 }: MemberStatRowProps) {
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -381,6 +386,10 @@ export default function MemberStatRow({
             </button>
             {race && <RaceBadge race={race} circleLetter size={22} className="scr-stat-name-race" />}
           </span>
+          {/* 별명은 닉네임보다 확실히 작고 옅게 둔다(요청) — 이 줄에서 사람을 가리키는 이름은
+              어디까지나 닉네임이고, 이것은 그 옆에 붙는 말이다. 같은 무게로 적으면 표를
+              훑을 때 두 이름이 겹쳐 읽혀 정작 누구 줄인지가 늦게 잡힌다. */}
+          {epithet && <span className="scr-stat-name-epithet">{epithet}</span>}
         </div>
       </div>
       {/* 게임수·승률·APM·커맨드는 한 칸이다(요청: 통합) — 넷 다 "막대 하나 + 수" 한 줄짜리라

@@ -4,6 +4,7 @@ import SearchFilterBar from "../../components/common/SearchFilterBar";
 import MonthCalendar from "../../components/common/MonthCalendar";
 import PickRow from "../../components/common/PickRow";
 import MemberStatRow, { type StatColumnMedals } from "../stats/MemberStatRow";
+import { epithetsOf } from "../../utils/statEpithet";
 import PointDetailModal from "./PointDetailModal";
 import RankTrendModal from "./RankTrendModal";
 import { rankOf } from "./rankOrder";
@@ -503,6 +504,46 @@ export default function StatsScreenV2() {
     return out;
   }, [members, view]);
 
+  /* ── 칭호 ────────────────────────────────────────────────────────────────────
+     닉네임 아래 한 줄로 붙는 별명(요청, statEpithet.ts) — 기준은 언제나 '전체 누적'이고,
+     화면에는 어느 기간을 보고 있든 늘 보인다(요청).
+
+     달마다 다시 매기지 않는 이유: 별명은 그 사람을 부르는 말이라 달이 바뀔 때마다 갈리면
+     별명이 아니라 그달의 순위표가 된다. 게다가 달 초에는 두세 판으로 "끝판왕"이 정해진다.
+     반면 종족·유형 필터는 따른다 — 표가 저그 판만 보여주는데 칭호만 전체 종족 기준이면
+     옆 칸들과 잣대가 어긋나고, 무엇보다 저그 칸을 보며 테란 유닛 별명을 읽게 된다.
+
+     대상은 검색에 걸린 목록이 아니라 활동 중인 회원 전체다(메달과 같은 원칙) — 1등이라는
+     말이 들어가는 값이라, 이름을 검색했다고 왕관이 옮겨 다니면 그건 기록이 아니다. */
+  const epithetIds = useMemo(
+    () => members
+      .filter((m) => m.status !== "withdrawn" && m.status !== "suspended")
+      .map((m) => m.id).sort(),
+    [members],
+  );
+  const epithetKey = useMemo(() => epithetIds.join(","), [epithetIds]);
+  const [lifetime, setLifetime] = useState<Record<string, MemberStatsEntry>>({});
+  useEffect(() => {
+    const ids = epithetKey ? epithetKey.split(",") : [];
+    if (ids.length === 0) { setLifetime({}); return; }
+    let cancelled = false;
+    // 실패해도 표는 그대로다 — 칭호 줄만 안 나온다. 그래서 오류 문구도 따로 안 띄운다.
+    api.getGameResultStats({
+      memberIds: ids, dateFrom: "", dateTo: "", matchType, race: serverRaceOf(race),
+    }).then((res) => {
+      if (cancelled) return;
+      const map: Record<string, MemberStatsEntry> = {};
+      res.members.forEach((entry) => { map[entry.memberId] = entry; });
+      setLifetime(map);
+    }).catch(() => { if (!cancelled) setLifetime({}); });
+    return () => { cancelled = true; };
+  }, [epithetKey, matchType, race]);
+
+  const epithetByMember = useMemo(
+    () => epithetsOf(epithetIds.map((id) => ({ id, stats: statsOf(lifetime[id], race) }))),
+    [epithetIds, lifetime, race],
+  );
+
   const maxOverallPlays = useMemo(
     () => Math.max(1, ...cards.map((c) => c.stats.plays)), [cards],
   );
@@ -672,6 +713,8 @@ export default function StatsScreenV2() {
                     onPointsClick={() => setPointMember(c.member)}
                     onRankClick={showRank && shownMonth ? () => setTrendMember(c.member) : undefined}
                     medals={medalByMember.get(c.member.id)}
+                    // 닉네임 아래 한 줄 — 위 epithetByMember 참고(늘 전체 누적 기준).
+                    epithet={epithetByMember.get(c.member.id)}
                     // 주종족으로 볼 때만 — 줄마다 잣대가 다르니 그 종족을 닉네임 옆에
                     // 적는다(요청). 다른 필터에서는 제목 문장이 이미 말하고 있다.
                     race={view?.race === "main" ? mainRaceOf(c.entry) : null}
