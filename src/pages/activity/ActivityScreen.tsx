@@ -672,13 +672,14 @@ const SEARCHABLE_GROUPS = new Set<ActivityGroupKey>(["league", "call", "gameResu
 /** "전체 보기" 화면 — 한 덩어리의 전체 목록을 보여준다. 팝업이 아니라 활동 화면을 갈아
  *  끼우는 페이지다(요청: "활동 전체보기시 모달이 아닌 페이지로 이동하게") — 목록 하나를
  *  통째로 담고, 그 안에서 검색하고, 다시 그 안에서 상세를 여는 자리라 잠깐 떴다 사라지는
- *  창보다 화면이 맞다. 돌아가는 길은 제목 왼쪽 ←다.
+ *  창보다 화면이 맞다. 돌아가는 길은 화면 아래 동그란 버튼이다(요청) — 활동 목록에서
+ *  "등록"이던 그 자리가 이 화면에서는 "뒤로"가 된다(ActivityScreen의 FAB).
  *  리그·너 나와·게임(SEARCHABLE_GROUPS)만 유저 검색이 있다(요청: "유저필터는 리그, 너나와,
  *  게임목록 전체보기에 넣음") — 알림·일정은 사람으로 거를 일이 없는 갈래라 목록만 보여준다.
  *  줄 렌더는 부르는 쪽(ActivityScreen)의 renderRow를 그대로 받아 쓴다 — 미리보기와 이 화면이
  *  같은 함수를 쓰면 카드 쪽 수정이 한 곳만 고치면 양쪽에 반영된다. */
 function ActivityGroupPage({
-  groupKey, label, items, memberOf, members, renderRow, onClose,
+  groupKey, label, items, memberOf, members, renderRow,
 }: {
   groupKey: ActivityGroupKey;
   label: string;
@@ -686,7 +687,6 @@ function ActivityGroupPage({
   memberOf: (id: string) => Member | undefined;
   members: Member[];
   renderRow: (item: DisplayItem) => ReactNode;
-  onClose: () => void;
 }) {
   const searchable = SEARCHABLE_GROUPS.has(groupKey);
   const [search, setSearch] = useState("");
@@ -753,14 +753,9 @@ function ActivityGroupPage({
     <div className="scr-activity-group-page">
       <div className="scr-v2-toolbar">
         <div className="scr-v2-toolbar-title-row">
-          {/* 돌아가기는 제목 왼쪽이다 — 창이 아니라 화면이라, 닫는 X가 아니라 이전 화면으로
-              가는 ←가 맞다(요청: 팝업이 아닌 페이지로 이동). */}
-          <button
-            type="button" className="scr-activity-group-back"
-            onClick={onClose} aria-label="활동으로 돌아가기"
-          >
-            <ChevronLeft size={18} aria-hidden />
-          </button>
+          {/* (삭제) 제목 왼쪽 ← — 돌아가는 길은 이제 화면 아래 등록 버튼 자리가 맡는다(요청).
+              화면마다 그 자리에 뜨는 동그란 버튼이 이미 "이 화면에서 할 일"이라, 돌아가기도
+              거기 있는 편이 손이 가는 자리와 맞는다(ActivityScreen의 FAB 참고). */}
           {/* 제목은 갈래 이름 하나다(요청: "전체 보기" 빼기) — 이 화면을 여는 버튼이 이미
               "전체 보기"라, 들어와서까지 같은 말을 이고 있을 이유가 없다. */}
           <h1 className="scr-title scr-v2-toolbar-title">{label}</h1>
@@ -1700,19 +1695,12 @@ export default function ActivityScreen() {
           memberOf={memberOf}
           members={members}
           renderRow={renderRow}
-          onClose={() => setOpenGroupKey(null)}
         />
       )}
-      {!groupPage && (
-      <>
-      <div className="scr-v2-toolbar">
-        <div className="scr-v2-toolbar-title-row">
-          <h1 className="scr-title scr-v2-toolbar-title">활동</h1>
-        </div>
-      </div>
-
-      {/* 등록 진입점 — 리플레이 / 너 나와! / 일정(추후 개발). 탭바 좌상단에 플로팅하는
-          동그란 유리 + 버튼(요청). 메뉴는 버튼 위로 펼쳐진다. */}
+      {/* 화면 아래 동그란 버튼은 한 자리를 두 화면이 나눠 쓴다(요청: 전체 보기의 뒤로가기를
+          없애고 등록 버튼이 뒤로가기로 바뀜) — 활동 목록에서는 "등록", 전체 보기 화면에서는
+          "뒤로". 손이 가는 자리가 하나뿐이라, 화면이 바뀌면 그 자리가 하는 일도 바뀌는 것이
+          맞다. 그래서 이 덩어리는 두 화면 바깥에 있다. */}
       {/* 숨김 클래스는 항상 붙이되 실제 적용은 CSS가 모바일 폭에서만 한다 — 이 버튼은
           PC에서도 뜨는데, 거기선 키보드가 화면을 가리지 않으므로 검색창에 포커스했다고
           사라지면 안 된다. */}
@@ -1720,18 +1708,29 @@ export default function ActivityScreen() {
         "scr-activity-add-fab-wrap scr-activity-add-wrap",
         fabHidden && "scr-activity-add-fab-wrap-hidden",
       )}>
-        <button
-          type="button"
-          className="scr-activity-add-fab"
-          onClick={() => setAddMenuOpen((v) => !v)}
-          aria-expanded={addMenuOpen}
-        >
-          {/* 아이콘 대신 글자로(요청) — 동그란 ＋는 "무언가 추가"까지만 말하고 무엇을
-              추가하는지는 눌러 봐야 알았다. 리플레이를 읽는 동안에는 그 자리에 스피너가
-              들어서므로, 글자와 스피너가 자리를 다투지 않게 둘 중 하나만 그린다. */}
-          {parsingReplays ? <Spinner size={18} /> : "등록"}
-        </button>
-        {addMenuOpen && (
+        {groupPage ? (
+          <button
+            type="button"
+            className="scr-activity-add-fab"
+            onClick={() => setOpenGroupKey(null)}
+            aria-label="활동으로 돌아가기"
+          >
+            <ChevronLeft size={20} aria-hidden />
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="scr-activity-add-fab"
+            onClick={() => setAddMenuOpen((v) => !v)}
+            aria-expanded={addMenuOpen}
+          >
+            {/* 아이콘 대신 글자로(요청) — 동그란 ＋는 "무언가 추가"까지만 말하고 무엇을
+                추가하는지는 눌러 봐야 알았다. 리플레이를 읽는 동안에는 그 자리에 스피너가
+                들어서므로, 글자와 스피너가 자리를 다투지 않게 둘 중 하나만 그린다. */}
+            {parsingReplays ? <Spinner size={18} /> : "등록"}
+          </button>
+        )}
+        {!groupPage && addMenuOpen && (
           <>
             <div className="scr-activity-add-backdrop" onClick={() => setAddMenuOpen(false)} aria-hidden />
             <div className="scr-activity-add-menu scr-activity-add-menu-up" role="menu">
@@ -1760,6 +1759,14 @@ export default function ActivityScreen() {
           ref={replayInputRef} type="file" accept=".rep" multiple hidden
           onChange={handleReplayFilesChosen}
         />
+      </div>
+
+      {!groupPage && (
+      <>
+      <div className="scr-v2-toolbar">
+        <div className="scr-v2-toolbar-title-row">
+          <h1 className="scr-title scr-v2-toolbar-title">활동</h1>
+        </div>
       </div>
 
       {error && <div className="scr-err">{error}</div>}
