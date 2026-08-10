@@ -8929,11 +8929,6 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    (FlatLine) 여기서 미리 좁혀 두면 잴 것이 없어진다. --flat은 그 계산이 넣어 주고, 값이
    아직 없는 첫 프레임에는 1(안 누름)로 그린다. */
 .scr-activity-row-flat-in {
-  /* 줄 높이를 키워 글자 위에 빈 띠를 만든다 — BEST 배지가 앉을 자리다(위 .scr-best-mini).
-     흐름에서 뺀 배지는 이 줄 상자 밖으로 나가면 바로 잘리므로(.scr-activity-row-desc의
-     overflow), 자리는 상자 '안'에 있어야 한다. 1.75 → 2 → 2.25로 두 번 더 키웠다(요청:
-     배지를 닉네임에서 좀 더 띄우기) — 띄울 자리를 만드는 것이 곧 줄 높이다. */
-  line-height: 2.25;
   display: flex; align-items: center; width: max-content;
   transform: scaleX(var(--flat, 1));
   transform-origin: left center;
@@ -10380,20 +10375,26 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    왼쪽인 것은 요청이지만 자리로도 맞다 — 오른쪽 끝은 마지막 이름일 때 눌린 줄의 오른쪽
    경계를 넘어 잘리는 자리다(.scr-activity-row-flat의 overflow). left:0은 이름 폭 안에서
    시작하므로 어느 이름에 붙든 잘릴 일이 없다.
-   글자와도 안 겹친다(요청) — 아래 .scr-activity-row-flat-in이 줄 높이를 키워 글자 위에
-   빈 띠를 만들고, 배지는 그 띠에 앉는다. 그래서 이 배지만은 한 스텝 더 작다: 9px이면 그
-   띠보다 커서 다시 글자를 파고든다.
+   글자와도 안 겹친다(요청) — 줄이 글자 위에 9px짜리 빈 띠를 두고(아래 .scr-activity-row-flat-in
+   > *) 배지는 그 띠에 앉는다. 그래서 이 배지만은 한 스텝 더 작다: 9px 글자면 띠를 꽉 채워
+   사이가 안 남고, 그만큼 띠를 넓히면 이번엔 줄이 두꺼워진다.
 
-   bottom은 '줄 상자 안에 온전히 드는 천장'에서 정한다 — 밖으로 나간 만큼은 그대로 잘린다
-   (.scr-activity-row-desc의 overflow). 8px 배지가 36px 줄(line-height 2.25)에 들기로는
-   (36-8)/36 = 78%가 천장이고, 76%면 윗변이 1px 남는다. 88%까지 올렸다가 잘려서 되돌렸고
-   (지적), 줄 높이를 2 → 2.25로 키우면서 다시 조금 올린 값이다(요청: 조금 더 띄우기) —
-   글자와의 사이를 벌리는 길은 배지를 올리는 것이 아니라 그 위의 빈 띠를 넓히는 것이다.
-   36px 줄에서 글자는 가운데 19px만 차지해 위쪽 8.5px가 통째로 비어 있다. */
+   자리는 이름 상자 바로 위(bottom:100%)다 — 그 위는 줄이 따로 비워 둔 9px짜리 띠라
+   (.scr-activity-row-flat-in > *의 padding-top) 배지 8px과 사이 1px이 정확히 든다.
+   한동안 줄 높이를 키워 그 자리를 만들었는데, 그러면 아래쪽에도 같은 만큼이 빈자리로
+   남았다(지적). 퍼센트로 어림잡던 것도 함께 걷었다 — 위로 얼마나 올릴지는 이제 띠의
+   두께 하나가 정한다. */
 .scr-activity-row-em .scr-best-mini {
-  position: absolute; left: 0; bottom: 76%;
+  position: absolute; left: 0; bottom: 100%; margin-bottom: 1px;
   font-size: var(--fs-8); margin-left: 0; line-height: 1; pointer-events: none;
 }
+/* 글자 위의 빈 띠 — BEST 배지가 앉을 자리다(위 .scr-best-mini). 흐름에서 뺀 배지는 줄
+   상자 밖으로 나가면 바로 잘리므로(.scr-activity-row-desc의 overflow) 자리는 상자 '안'에
+   있어야 하는데, 그 자리를 line-height로 만들었더니 위아래로 똑같이 벌어져 아래쪽 8px이
+   아무것도 없는 빈자리로 남았다(지적). 위쪽 안여백이면 필요한 쪽에만 생긴다.
+   줄의 세 조각(양편 이름·vs)에 다 걸어야 한다 — 하나에만 주면 그 조각만 아래로 내려앉아
+   글자 밑선이 어긋난다(가운데 정렬이라 상자가 커진 만큼 속이 내려간다). */
+.scr-activity-row-flat-in > * { padding-top: 9px; }
 /* 배지가 기준으로 삼을 상자 — 이름 글자 자신이다. 넘쳐도 안 자른다: 자르면 어깨 위로
    올라간 배지가 통째로 사라진다(이름은 이미 글자 수로 잘라 두므로 여기서 또 자를 일이
    없다 — ActivityScreen의 clipName). 경기 줄에만 건다(FlatLine 안) — 너 나와·리그 줄의
