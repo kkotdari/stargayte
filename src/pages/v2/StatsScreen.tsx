@@ -605,15 +605,28 @@ export default function StatsScreenV2() {
           /* 종족을 안 고르면 건설·유닛·스킬 세 칸을 통째로 뺀다(요청) — 종족마다 짓는 것도
              뽑는 것도 아예 달라서, 여러 종족의 판을 한 칸에 겹쳐 놓으면 그 도넛과 목록은
              '무엇의 비율'인지가 없는 그림이 된다. 자리만 비워 두는 것과도 다른 말이다:
-             칸을 남겨 두면 그 안의 "-"가 '이 사람은 안 지었다'로 읽힌다.
-             대신 표 오른쪽에 왜 없는지와 어떻게 보는지를 한 줄로 적어 둔다(요청). */
-          <div className={cx("scr-stat-table-row", !showMix && "scr-stat-table-row-slim")}>
+             칸을 남겨 두면 그 안의 "-"가 '이 사람은 안 지었다'로 읽힌다. */
+          <div className="scr-stat-table-row">
+            {/* 세 칸에 대한 한 줄 — 없을 때는 어떻게 하면 열리는지, 열려 있을 때는 무엇을
+                보는 칸인지 적는다(요청). 자리는 늘 표 위다: 표 옆에 세웠더니 좁은 화면에서
+                표가 볼 자리를 통째로 먹었고(지적), 세 칸이 열린 표는 애초에 옆자리가 없다. */}
+            <p className="scr-stat-mix-hint">
+              <b>건설 · 유닛 · 스킬</b>
+              {showMix ? (
+                <span>분당 지은 채수·뽑은 기수와 그 구성비, 많이 쓴 다섯을 그 기간 평균으로 봅니다.</span>
+              ) : (
+                <em>종족 필터에서 종족이나 주종족을 고르면 세 칸이 함께 열립니다.</em>
+              )}
+            </p>
             <div className="scr-stat-table-clip">
               {/* 메달이 하나도 없는 한 장(진행 중인 달·전체 누적)에서는 랭크 줄기가 메달
                   자리를 비워 둘 이유가 없다(지적: 왼쪽이 너무 남는다) — 메달은 수의 왼쪽
                   바깥에 매달리는데, 그 자리는 흐름을 안 먹는 대신 줄기 폭으로 잡혀 있다.
                   없는 달에는 그 폭을 걷는다(--scr-stat-rank-w). */}
-              <div className={cx("scr-stat-table scr-scroll", medalByMember.size === 0 && "scr-stat-table-nomedal")}>
+              <div className={cx("scr-stat-table scr-scroll",
+                medalByMember.size === 0 && "scr-stat-table-nomedal",
+                !showMix && "scr-stat-table-slim")}
+              >
                 {/* 헤더도 데이터 행과 같은 가로 스크롤 컨테이너 안의 평범한 첫 행이다 —
                     더 이상 sticky가 아니라서(요청으로 제거) 페이지 스크롤 기준으로 따로
                     띄워둘 이유가 없어졌고, 그 덕에 이름 칸의 position:sticky;left:0도
@@ -675,15 +688,6 @@ export default function StatsScreenV2() {
                 ))}
               </div>
             </div>
-            {/* 왜 세 칸이 없는지, 어떻게 하면 보이는지 — 표 바깥 오른쪽에 한 줄로(요청).
-                표 안에 두면 그것도 한 칸처럼 읽히고, 줄마다 되풀이할 수도 없는 말이다. */}
-            {!showMix && (
-              <p className="scr-stat-mix-hint">
-                <b>건설 · 유닛 · 스킬</b>
-                종족마다 짓고 뽑는 것이 아예 달라, 섞어 놓으면 비율이 뜻을 잃습니다.
-                <em>종족 필터에서 종족이나 주종족을 고르면 세 칸이 함께 열립니다.</em>
-              </p>
-            )}
           </div>
         )}
       </div>
