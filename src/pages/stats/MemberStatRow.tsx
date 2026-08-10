@@ -217,6 +217,29 @@ function UpgradeGrid({ mix, prev, race }: {
    global.css의 --scr-toplist-w도 90px → 186px으로 함께 올려야 자리가 맞는다. */
 const SHOW_TOP_VALUES = false;
 
+/* 목록에서 밀려나도 반드시 남기는 기술(요청: 통계 스킬에 핵도 나와야지) — 이 칸은 많이 쓴
+   순으로 다섯을 세는데, 테란은 스팀팩·시즈모드·마인처럼 늘 누르는 조작이 수백 번이라 그
+   다섯이 통째로 그것들로 찬다. 핵은 한 판에 한두 발이라 수로는 절대 못 올라오지만, 정작
+   그 판을 말하는 것은 이쪽이다. 그래서 수와 무관하게 자리를 하나 내준다.
+   자리를 늘리지 않고 맨 아래를 밀어내는 이유: 줄 수가 사람마다 달라지면 그 줄만 칸 높이가
+   달라져 옆 칸들과 어긋난다. */
+const PINNED_TECHS = ["Nuclear Strike"];
+
+/** 스킬 칸에 세울 다섯 — 많이 쓴 순 다섯에 위 PINNED_TECHS를 끼워 넣은 것. */
+function skillEntries(mix: BuildMix): TopEntry[] {
+  const items = topEntries(mix.skills, TECH_KO, TOP_N, mix.skillSecs);
+  for (const key of PINNED_TECHS) {
+    const n = mix.skills?.[key] ?? 0;
+    const name = TECH_KO[key];
+    if (!(n > 0) || !name || items.some((it) => it.name === name)) continue;
+    // 값은 목록의 다른 줄과 같은 자로 잰다(그 기술이 나온 판의 시간으로 나눈 분당 값).
+    const secs = mix.skillSecs?.[name] ?? mix.skillSecs?.[key] ?? 0;
+    if (items.length >= TOP_N) items.pop();
+    items.push({ name, perMin: secs > 0 ? (n / secs) * PER_WINDOW_SECONDS : null });
+  }
+  return items;
+}
+
 /** 많이 나온 순 목록 한 칸. 값이 없으면 다른 칸과 같은 "-" 하나로 둔다.
  *
  *  적는 수는 총합이 아니라 주요시간대 1분당 값이다(요청) — 총합은 오래 뛴 사람이 늘 크다.
@@ -668,7 +691,7 @@ export default function MemberStatRow({
           <>
             <UpgradeGrid mix={mix} prev={pmix} race={upRace} />
             <TopList
-              items={topEntries(mix.skills, TECH_KO, TOP_N, mix.skillSecs)} unit="회"
+              items={skillEntries(mix)} unit="회"
               prevRanks={pmix ? topRanks(pmix.skills, TECH_KO) : undefined}
             />
           </>
