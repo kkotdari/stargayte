@@ -146,7 +146,9 @@ const TITLES: Title[] = [
   tactic("일꾼 사냥꾼", ["harass-workers"]),
   tactic("지긋지긋한 견제러", ["harass-long"]),
   tactic("남의 집 헤집기 장인", ["base-raid"]),
-  rare("땅굴의 설계자", ["nydus"]),
+  /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
+     자막이 이 수를 부르는 이름(커널)을 그대로 쓴다. */
+  rare("커널 개통사", ["nydus"]),
   rare("리콜의 마술사", ["recall"]),
   rare("마인드 컨트롤러", ["mind-control"]),
   tactic("캐리어 퀸", ["carrier"]),
@@ -181,7 +183,10 @@ const TITLES: Title[] = [
   tactic("한타의 지배자", ["clash"]),
   tactic("올인의 화신", ["allin"]),
   tactic("째기의 달인", ["greedy-paid"]),
-  tactic("배짱의 화신", ["greedy-build"]),
+  /* "배짱의 화신"이었는데 무슨 뜻인지 안 읽힌다는 지적 — 이 키(greedy-build)는 병력 건물
+     없이 자원부터 올린 '째기'다. 그 판에서 쓰는 말을 그대로 쓰면 설명이 필요 없다.
+     통한 째기(greedy-paid)는 위의 "째기의 달인"이고, 이쪽은 그냥 늘 그렇게 시작하는 사람이다. */
+  tactic("일단 째고 본다", ["greedy-build"]),
   tactic("멀티 부동산왕", ["expand"]),
   tactic("자원 부자", ["worker-gap"]),
   tactic("생산 공장장", ["prod-gap"]),
@@ -200,7 +205,10 @@ const TITLES: Title[] = [
      "집을 잃은 사람"이라는 딱지로 읽힌다. 자막에서 한 번 지나가는 말과, 이름 아래
      늘 붙어 있는 말은 무게가 다르다. */
   rare("노엘을 외치는 자", ["no-elim"]),
-  rare("프로 지망생", ["pro-like"]),
+  /* (삭제) 프로를 닮았다는 이야기(pro-like) — 뺐다(지적: 별로 의미가 안 된다).
+     자막에서는 "○○ 못지않은 △△"처럼 누구를 닮았는지가 함께 나와야 뜻이 서는 말인데,
+     칭호가 세는 것은 문장 틀 키뿐이라 그 이름이 빠진다. 이름 없는 "프로 스타일"은
+     아무 말도 안 하는 칭호다. */
 
   // ── 맵 ─────────────────────────────────────────────────────────────────────
   {
@@ -231,7 +239,10 @@ const TITLES: Title[] = [
     min: 0.45,
   },
   {
-    label: "철벽의 수호자",
+    /* "철벽의 수호자"였는데 무슨 값인지 안 읽힌다는 지적 — 이 줄이 재는 것은 '잘 막았다'가
+       아니라 '지은 건물 중 방어 건물의 비중'이다(포토·성큰·터렛·벙커). 값이 말하는 그대로
+       부른다: 막아냈는지 아닌지는 리플레이가 말해 주지 않는다. */
+    label: "방어탑 사랑꾼",
     value: (s) => (s.buildMix ? share(s.buildMix.bDef, s.buildMix.bProd, 20) : null),
     min: 0.12,
   },
@@ -288,8 +299,20 @@ const SKILL_SAYS: ((n: string) => string)[] = [
   (n) => `${n} 한 방의 여왕`,
   (n) => `${n}의 대가`,
   (n) => `${n} 장인`,
-  (n) => `${n} 없으면 손이 떨림`,
 ];
+
+/* 마법으로 안 치는 것들(지적: 버로우는 기술로 보기 힘들다) — 원장(techUses)에는 '쓴 기술'이
+   전부 들어오지만, 칭호가 부를 만한 것은 '그걸 잘 써서 판을 바꾸는' 마법뿐이다. 버로우·
+   시즈모드·스팀팩은 그 종족이면 누구나 늘 누르는 조작이라, 많이 썼다는 말이 곧 "그 종족을
+   오래 했다"밖에 안 된다. 럴커(럴커 애스펙트)는 쓴 것이 아니라 변태 연구이고, 클로킹은
+   이미 '보이지 않는 손'(cloak-wraith)이 제 칭호로 말한다. */
+const NOT_A_SPELL = new Set([
+  "Burrowing", "Tank Siege Mode", "Stim Packs", "Lurker Aspect",
+  "Cloaking Field", "Personnel Cloaking",
+]);
+const SPELL_KO: Record<string, string> = Object.fromEntries(
+  Object.entries(TECH_KO).filter(([key]) => !NOT_A_SPELL.has(key)),
+);
 const BUILD_SAYS: ((n: string) => string)[] = [
   (n) => `${n} 애호가`,
   (n) => `${n}의 주인`,
@@ -336,7 +359,7 @@ function signature(id: string, s: MemberStats, used: Set<string>): string | null
        쓰기 어려운 것은 한 번만 나와도 그 사람 이야기가 되지만, 많이 뽑은 유닛은 대개 그
        종족의 주력이라 종족이 같으면 다 같은 말이 된다.
        비중을 안 따지는 것도 그래서다 — 가장 많이 쓴 것 하나면 충분하다. */
-    const skill = topOf(m.skills, TECH_KO);
+    const skill = topOf(m.skills, SPELL_KO);
     if (skill && skill.count >= 5) {
       const t = pick(SKILL_SAYS, skill.name, seed, used);
       if (t) return t;

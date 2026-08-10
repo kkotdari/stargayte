@@ -2601,23 +2601,35 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 업그레이드 표의 한 칸 — 평균 밑에 변동을 한 줄로 놓는다(옆에 붙이면 세 열이 밀린다). */
 .scr-stat-up-cell { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.15; }
 .scr-stat-up-cell .scr-stat-delta { margin-left: 0; }
-.scr-stat-rank-best { gap: 3px; color: var(--best-ink); }
+/* 배지·수·변동 세 덩어리를 한 격자로 — 수(1행 2열)와 변동(2행 2열)이 같은 열에 서야
+   세로선이 맞고(요청), 배지는 왼쪽 열에서 제 자리를 차지한다. 격자 자체는 칸 가운데다.
+   flex(줄) 대신 grid를 쓰는 이유는 두 줄로 쓰면 변동이 [배지+수] 덩어리 기준으로 가운데에
+   서서 정작 수와는 어긋나기 때문이다 — 그렇다고 배지를 흐름 밖으로 띄우면 좁은 줄기를
+   넘어 왼쪽 구분선까지 삐져나간다(지적). */
+.scr-stat-rank-best {
+  display: grid; grid-template-columns: auto auto; justify-content: center;
+  align-items: center; column-gap: 3px; color: var(--best-ink);
+}
 /* 채움이 있는 배지는 메탈 그라데이션을 못 쓴다 — background-clip:text는 배경 전부를
    글자 모양으로 오려서, 알약의 채움까지 함께 사라진다. 여기서는 백금 한 색으로 둔다. */
 .scr-stat-best-tag {
   font-size: var(--fs-9); font-weight: 800; letter-spacing: 0.03em;
   padding: 1px 3px; border-radius: 3px; line-height: 1;
   border: 1px solid var(--best-line); background: var(--best-bg);
-  /* 수의 왼쪽 바깥에 매달린다 — 자리를 안 먹어야 수가 줄 가운데에 서고, 그래야 바로 아래
-     변동과 세로선이 맞는다(요청). 기준은 줄이 아니라 수 자신이다: 줄을 기준으로 두면
-     한 자리 수와 두 자리 수에서 배지와 수 사이가 달라진다. */
-  position: absolute; right: 100%; top: 50%; transform: translateY(-50%); margin-right: 4px;
+  /* 배지는 왼쪽 열, 수와 변동은 오른쪽 열 — 그래야 수 아래에 변동이 곧바로 선다(요청).
+     배지가 두 줄 높이의 왼쪽 칸에서 위쪽 줄에 맞춰 서야 수와 나란히 읽힌다. */
+  grid-column: 1; grid-row: 1;
 }
-.scr-stat-best-n { position: relative; font-weight: 700; font-variant-numeric: tabular-nums; }
+.scr-stat-best-n { grid-column: 2; grid-row: 1; font-weight: 700; font-variant-numeric: tabular-nums; }
+.scr-stat-best-delta {
+  grid-column: 2; grid-row: 2; line-height: 1; margin-top: 1px;
+  font-size: calc(var(--fs-9) - 1px);
+}
+.scr-stat-best-delta .scr-stat-delta { margin-left: 0; }
 /* 이 줄의 변동만은 무채가 아니라 제 줄의 색(금)을 옅게 쓴다(요청) — 다른 변동은 바로 위
    값도 무채라 한 덩어리로 읽히는데, 여기만 값이 금색이라 회색 변동이 남의 줄에서 온 글자처럼
    떠 보였다. 색상은 그대로 두고 세기만 내린다. */
-.scr-stat-rank-best + .scr-stat-rank-delta .scr-stat-delta {
+.scr-stat-best-delta .scr-stat-delta {
   color: color-mix(in srgb, var(--best-ink) 62%, transparent);
 }
 

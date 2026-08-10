@@ -486,20 +486,20 @@ export default function MemberStatRow({
                     들쭉날쭉해지고, 무엇보다 '0회'와 '이 표에 없는 값'이 같아 보였다. */}
                 {showBest && (
                   <>
-                    {/* 배지는 수의 왼쪽에 매달되 자리는 안 차지한다(요청: 변동이 값과 같은
-                        세로선에) — 흐름에 두면 [배지+수]가 한 덩어리로 가운데에 서서, 정작
-                        수는 배지 폭의 절반만큼 오른쪽으로 밀려 아래 변동과 어긋난다.
-                        레이팅의 메달·단위와 같은 처방이다. */}
+                    {/* 배지·수·변동이 한 격자다 — 수와 변동이 같은 열에 서야 세로선이 맞고
+                        (요청), 배지는 그 왼쪽 열에 흐름 그대로 놓인다.
+                        한때 배지를 절대배치로 띄워 수만 가운데 세웠는데, 그러면 배지가 칸
+                        밖으로 삐져나가 왼쪽 구분선을 넘었다(지적: 레이아웃 깨짐) — 줄기 폭
+                        (--scr-stat-rank-w)은 [수+단위] 기준이라 배지가 앉을 자리가 없다.
+                        격자로 두면 세 덩어리가 제 폭을 갖고 통째로 칸 가운데에 선다. */}
                     <div className="scr-stat-rank-line scr-stat-rank-best">
-                      <span className="scr-stat-best-n">
-                        <span className="scr-stat-best-tag">BEST</span>
-                        {stats.bests}
+                      <span className="scr-stat-best-tag">BEST</span>
+                      <span className="scr-stat-best-n">{stats.bests}</span>
+                      {/* 변동은 여기서도 수치 아래다(요청) — 레이팅이 그렇게 서 있으므로
+                          이 줄만 옆에 달면 같은 줄기 안에서 규칙이 갈린다. */}
+                      <span className="scr-stat-best-delta">
+                        <Delta now={stats.bests} prev={prev?.bests} />
                       </span>
-                    </div>
-                    {/* 변동은 여기서도 수치 아래다(요청) — 레이팅이 그렇게 서 있으므로
-                        이 줄만 옆에 달면 같은 줄기 안에서 규칙이 갈린다. */}
-                    <div className="scr-stat-rank-line scr-stat-rank-delta">
-                      <Delta now={stats.bests} prev={prev?.bests} />
                     </div>
                   </>
                 )}
