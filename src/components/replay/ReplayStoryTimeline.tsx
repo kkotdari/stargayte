@@ -62,14 +62,8 @@ export default function ReplayStoryTimeline({
   };
 
   return (
+    <div className="scr-story-player">
     <div className="scr-story-line">
-      <button
-        type="button" className="scr-story-play"
-        onClick={(e) => { e.stopPropagation(); onToggle(); }}
-        aria-label={label} title={label}
-      >
-        {playing ? <Pause size={13} /> : finished ? <RotateCcw size={13} /> : <Play size={13} />}
-      </button>
       {/* 트랙 — 눈금 하나하나가 버튼이라 손으로 짚어 옮길 수 있고(요청: 수동 이동), 트랙을
           잡고 끌어도 따라온다(요청: 다이얼을 슬라이드도 가능하게). 화살표 키로도 옮긴다.
 
@@ -114,6 +108,22 @@ export default function ReplayStoryTimeline({
       <span className="scr-story-time">
         {snaps[index]?.at == null ? "끝" : mmss(snaps[index].at as number)}
       </span>
+    </div>
+    {/* 재생 버튼은 트랙 옆이 아니라 그 아래 홀로 선다(요청) — 옆에 있을 때는 트랙과 같은
+        띠에 끼여 눈금 하나처럼 보였고, 정작 이 카드에서 사람이 제일 먼저 누를 것이 이
+        버튼이다. 크기도 훨씬 키우고 삼각형은 속을 채운다(요청) — 선으로만 그린 삼각형은
+        커질수록 속이 빈 표지판처럼 읽힌다. */}
+    <button
+      type="button" className="scr-story-play"
+      onClick={(e) => { e.stopPropagation(); onToggle(); }}
+      aria-label={label} title={label}
+    >
+      {playing
+        ? <Pause size={26} fill="currentColor" />
+        : finished
+          ? <RotateCcw size={26} />
+          : <Play size={26} fill="currentColor" />}
+    </button>
     </div>
   );
 }

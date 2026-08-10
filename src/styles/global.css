@@ -11224,18 +11224,25 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 재생 버튼과 트랙 사이를 띄운다(요청) — 붙어 있으면 첫 눈금이 버튼에 먹힌다.
    좌우 패딩은 여기서 따로 안 낸다(지적: 독자 좌우 패딩 없애야 함) — .scr-activity-game-result-body가
    이미 --card-pad-bx 전체를 내므로(위 참고), 여기서 또 내면 두 배로 겹친다. */
-.scr-story-line { display: flex; align-items: center; gap: 14px; width: 100%; }
+/* 재생기 = 위에 트랙 줄, 그 아래 재생 버튼 한 개(요청: 아래 단독 배치). */
+.scr-story-player {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%;
+}
+.scr-story-line { display: flex; align-items: center; gap: 12px; width: 100%; }
 /* 다른 아이콘 버튼(.scr-icon-btn)과 같은 기본 차림 — 테두리도 채움도 없이 아이콘만
    두고, 반응은 라이팅 호버(은은한 유리 배경 + 글로우)로 낸다(요청). 예전의 테두리 원은
    이 자리에서만 쓰는 별종이라 타임라인 위에서 혼자 단추처럼 튀었다.
    누를 때 나는 표시도 원이라야 한다(요청) — 모바일 기본 탭 하이라이트는 버튼의
    border-radius를 무시한 네모라 동그란 버튼 위에 네모가 번쩍였다. 그걸 끄고, :active에
    호버와 같은 원형 배경을 직접 준다(호버가 없는 터치에서 유일한 눌림 표시이기도 하다). */
+/* 24 → 46px(요청: 훨씬 크게). 트랙 옆에서는 눈금과 부딪히지 않을 만큼만 컸는데, 아래로
+   내려와 홀로 서면서 그럴 이유가 없어졌다 — 이 카드에서 제일 먼저 누를 것이 이 버튼이다.
+   잉크도 --muted에서 --text로 올린다: 커진 채 흐리면 덩치만 크고 안 눌러 보인다. */
 .scr-story-play {
-  flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
+  flex-shrink: 0; width: 46px; height: 46px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
   border: none; background: transparent;
-  color: var(--muted); cursor: pointer; padding: 0;
+  color: var(--text); cursor: pointer; padding: 0;
   -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) {
