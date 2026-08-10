@@ -2892,11 +2892,13 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
   margin-left: -3px; display: inline-flex; align-items: center; gap: 3px;
   white-space: nowrap; pointer-events: none;
 }
-/* 메달은 반대쪽, 수의 왼쪽 바깥이다(요청: 랭크 줄기 좌우 여백 축소) — 단위와 같은 쪽에
-   두면 줄기 폭이 [수 절반 + 단위 + 메달]의 두 배(156px)여야 하고, 그 폭은 왼쪽에서 통째로
-   빈자리가 된다. 좌우로 갈라 매달면 필요한 폭이 124px로 줄고 빈자리도 사라진다. */
+/* 메달은 수의 오른쪽 바깥, 단위(R) 너머다 — 표의 다른 메달과 같은 쪽이어야 한다(지적:
+   왜 레이팅만 메달이 왼쪽이냐). 한때 왼쪽에 매달았던 건 줄기 폭을 아끼려던 것이었는데,
+   그 대가로 이 칸만 메달이 반대쪽에 서서 표를 훑을 때 눈이 한 번 멈췄다. 아낀 폭보다
+   '같은 것은 같은 자리'가 크다 — 줄기는 그만큼 넓힌다(--scr-stat-rank-w).
+   단위와 겹치지 않도록 그 폭(약 12px)만큼 띄운다. */
 .scr-stat-rank-points .scr-stat-medal {
-  left: auto; right: 100%; margin: 0 -3px 0 0;
+  left: 100%; right: auto; margin: 0 0 0 13px;
   /* 메달 이모지의 실제 폭은 기기마다 다르다(안드로이드·iOS·크롬이 저마다 다른 글꼴로
      그린다) — 자리를 픽셀로 못 박아, 어느 기기에서 보든 줄기 안에 드는 폭이 같게 한다.
      글리프가 이 상자보다 크면 좌우로 조금 넘치는데, 줄기 여백 안이라 부딪힐 것이 없다. */
@@ -3073,7 +3075,7 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
      정렬이라 그만큼을 왼쪽에도 비워 두고 있었다.
      여백도 6 → 2px(요청) — 줄기 안의 것들은 이미 가운데에 서 있어, 이 여백은 무엇을
      밀어내지도 지키지도 않는 순수한 빈자리였다. */
-  --scr-stat-rank-w: 76px;
+  --scr-stat-rank-w: 92px;
   --scr-stat-rank-pad: 2px;
   /* 셋 다 12px씩 줄었다(요청) — 칸 바깥 좌우 여백을 14 → 8px로 조인 만큼이다(아래
      .scr-stat-row > .scr-stat-build-cell). 속에 든 것(도넛·목록)은 그대로이고 그 둘레의
