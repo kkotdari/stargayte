@@ -400,7 +400,14 @@ export default function MemberStatRow({
             자리는 프사+닉네임 덩어리의 아래다(요청) — 칸 폭을 통째로 쓰므로 긴 칭호도
             닉네임 폭에 갇히지 않는다. */}
         {epithet ? (
-          <span className="scr-stat-name-epithet" data-why={epithet.why}>{epithet.label}</span>
+          <>
+            <span className="scr-stat-name-epithet">{epithet.label}</span>
+            {/* 왜 그 칭호인가 — 칭호 바로 밑에 흐린 한 줄로 적는다(요청). 툴팁(data-why)만
+                두던 자리인데, 툴팁은 마우스를 1초쯤 얹고 있어야 뜨고 손가락으로는 아예 안
+                뜬다. 이 줄이 생기면서 회원 팝업 쪽 같은 설명은 걷었다 — 한 사실은 한 자리에서
+                만 말한다(MemberProfileModal). */}
+            <span className="scr-stat-name-epithet-why">{epithet.why}</span>
+          </>
         ) : epithetReady && (
           /* 줄 게 없으면 그렇다고 적는다(요청) — 자리를 통째로 비우면 그 줄만 이름이 아래로
              내려와 표가 들쭉날쭉해지고, 아직 안 받아온 것인지 없는 것인지도 구분이 안 된다. */

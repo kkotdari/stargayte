@@ -43,15 +43,10 @@ export default function MemberProfileModal({ member, onClose }: MemberProfileMod
               {/* 칭호는 닉네임 '위'다(요청) — 아래에 두면 배틀태그와 나란히 서서 둘 다
                   '이름에 딸린 부속 정보'로 읽힌다. 위에 얹으면 이름을 부르기 전에 먼저
                   읽히는 수식어가 되어, 실제로 사람을 소개하는 차례와 같아진다. */}
-              {epithet && (
-                <div className="scr-member-detail-epithet">
-                  {epithet.label}
-                  {/* 근거는 여기서만 글자로 드러낸다(지적: 툴팁이 안 나온다) — 툴팁은 마우스를
-                      1초쯤 얹고 있어야 뜨고 손가락으로는 아예 뜨지 않는다. 표에서는 줄마다
-                      한 줄씩 늘릴 수 없어 툴팁으로 두지만, 팝업은 자리가 있으니 그냥 적는다. */}
-                  <span className="scr-member-detail-epithet-why">{epithet.why}</span>
-                </div>
-              )}
+              {/* 근거는 여기 안 적는다(요청) — 표의 유저 칸이 칭호 바로 밑에 흐린 글자로
+                  말해 준다(MemberStatRow의 scr-stat-name-epithet-why). 한 사실을 두 화면이
+                  저마다의 자리에 적으면 문구를 고칠 때마다 둘이 어긋난다. */}
+              {epithet && <div className="scr-member-detail-epithet">{epithet.label}</div>}
               <div className="scr-member-detail-name">{member.nickname}</div>
               <div className="scr-member-detail-tag scr-mono">{member.battletag}</div>
             </div>
