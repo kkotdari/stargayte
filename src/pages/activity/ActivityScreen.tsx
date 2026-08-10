@@ -1318,10 +1318,11 @@ export default function ActivityScreen() {
      알아보기 어렵다(영문은 여덟 자면 대개 다 읽힌다).
      이름에 넓은 글자가 하나라도 있으면 한글 잣대로 본다 — 섞인 이름("한글Ab")도 한글
      이름처럼 읽히고, 실제로 차지하는 자리도 그쪽에 가깝다. */
-  const TITLE_UNITS_KEEP_WIDE = 12;  // 한글 6자
-  const TITLE_UNITS_KEEP_NARROW = 8; // 영문 8자
-  const TITLE_UNITS_CLIP_WIDE = 10;  // 넘치면 한글 5자
-  const TITLE_UNITS_CLIP_NARROW = 7; // 넘치면 영문 7자
+  /* 자르는 길이(요청: 한글 3자 / 영문 4자) — 한 줄에 여덟 이름이 서는 자리라, 이름 하나가
+     읽히기만 하면 된다. "얼마까지는 그냥 두고 넘치면 몇 자로"라는 두 값 짝(keep/clip)도
+     걷었다: 기준이 하나면 모든 이름이 같은 길이로 서서 줄이 격자처럼 읽힌다. */
+  const TITLE_UNITS_WIDE = 6;   // 한글 3자
+  const TITLE_UNITS_NARROW = 4; // 영문 4자
   /** 한 글자가 먹는 칸 — 넓은 글자(한글·한자·가나·전각·이모지)는 둘, 나머지는 하나. */
   const charUnits = (ch: string): number => (
     /[ᄀ-ᅟ⺀-〾ぁ-㏿㐀-䶿一-鿿ꥠ-꥿가-힣豈-﫿︰-﹯＀-｠￠-￦]/u.test(ch)
@@ -1330,18 +1331,18 @@ export default function ActivityScreen() {
   const clipName = (name: string): string => {
     const chars = Array.from(name);
     const wide = chars.some((c) => charUnits(c) === 2);
-    const keep = wide ? TITLE_UNITS_KEEP_WIDE : TITLE_UNITS_KEEP_NARROW;
-    const clip = wide ? TITLE_UNITS_CLIP_WIDE : TITLE_UNITS_CLIP_NARROW;
-    const total = chars.reduce((n, c) => n + charUnits(c), 0);
-    if (total <= keep) return name;
+    const limit = wide ? TITLE_UNITS_WIDE : TITLE_UNITS_NARROW;
     let used = 0;
     const kept: string[] = [];
     for (const c of chars) {
       const w = charUnits(c);
-      if (used + w > clip) break;
+      if (used + w > limit) break;
       kept.push(c); used += w;
     }
-    return `${kept.join("")}…`;
+    /* 말줄임표는 안 붙인다(요청) — 점 셋도 한 글자 자리를 먹는데, 여덟이 늘어선 줄에서
+       그 자리는 이름 한 글자를 더 보여 주는 데 쓰는 편이 낫다. 잘렸다는 것은 줄 전체가
+       같은 길이로 서 있는 모양에서 이미 드러난다. */
+    return kept.join("");
   };
   const sideNodes = (slots: GameResultSlot[], bestRaw: string | undefined): ReactNode[] =>
     slots.flatMap((s, i) => [
