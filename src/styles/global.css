@@ -10384,8 +10384,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    한동안 줄 높이를 키워 그 자리를 만들었는데, 그러면 아래쪽에도 같은 만큼이 빈자리로
    남았다(지적). 퍼센트로 어림잡던 것도 함께 걷었다 — 위로 얼마나 올릴지는 이제 띠의
    두께 하나가 정한다. */
+/* 왼쪽 끝은 상자가 아니라 '글자'에 맞춘다(지적: 닉네임보다 살짝 왼쪽으로 삐져나온다) —
+   left:0은 이름 상자의 왼쪽 변이고, 그 안에서 글자는 제 여백(side bearing)만큼 안쪽에서
+   시작한다. 배지의 'B'는 그런 여백이 거의 없는 글자라 둘을 같은 x에 두면 배지만 밖으로
+   나온 것처럼 보인다. 눈에 맞추는 보정이라 값도 눈에 안 걸릴 만큼만(2px). */
 .scr-activity-row-em .scr-best-mini {
-  position: absolute; left: 0; bottom: 100%; margin-bottom: 1px;
+  position: absolute; left: 2px; bottom: 100%; margin-bottom: 1px;
   font-size: var(--fs-8); margin-left: 0; line-height: 1; pointer-events: none;
 }
 /* 글자 위의 빈 띠 — BEST 배지가 앉을 자리다(위 .scr-best-mini). 흐름에서 뺀 배지는 줄
