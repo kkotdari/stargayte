@@ -8866,7 +8866,16 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    본문과 같은 폭이면 카드가 제자리에서 부풀어 오른 것처럼 보여 층이 안 갈린다. PC는 한
    단 좁혀(560 → 480px) 창이 본문 위에 얹힌 것이 보이게 하고, 모바일은 아래에서 좌우
    12px씩 물려 같은 일을 한다. */
-.scr-activity-detail-modal { max-width: 480px; z-index: 130; }
+/* 높이는 남는 자리를 다 쓴다(지적: 화면 위아래가 비었는데도 안 늘고 스크롤이 생긴다) —
+   공용 모달의 상한이 88dvh라 844px 화면에서 100px이 늘 비어 있었다. 이 창은 카드 한 장을
+   있는 그대로 보여주는 자리라, 내용이 들어갈 만하면 스크롤 없이 들어가야 한다.
+   남기는 것은 좌우와 같은 바깥 여백(16px씩)과 노치·홈 인디케이터뿐이다. dvh를 못 읽는
+   브라우저를 위해 vh로 한 번 더 적는다(뒤 선언이 이긴다). */
+.scr-activity-detail-modal {
+  max-width: 480px; z-index: 130;
+  max-height: calc(100vh - var(--safe-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px);
+  max-height: calc(100dvh - var(--safe-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px);
+}
 /* 편지지 배경이 창 전체를 덮는다(요청) — 사진 층은 창의 첫 자식이라 둥근 모서리와
    overflow:hidden을 그대로 따르고, 유리판(::before, z-index:-1)과 같은 층에서 뒤에
    그려져 그 위를 덮는다. */
