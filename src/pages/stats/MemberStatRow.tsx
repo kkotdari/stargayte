@@ -238,9 +238,20 @@ function RaceMixCell({ race, stats }: { race: BaseRace; stats?: MemberStats }) {
   }
   return (
     <div className="scr-stat-mix-cell">
-      {/* 두 도넛은 나란히 — 세로로 쌓으면 칸 하나가 세 종족 몫으로 되풀이되면서 줄 높이가
-          세 배가 된다. 각각 제 수(분당 채수 / 분당 기수)를 머리에 이고 있다. */}
-      <div className="scr-stat-mix-pair">
+      {/* 윗줄 [일꾼] [건물 그래프] [유닛 그래프](요청) — 셋 다 "그 판에서 얼마나 뽑았나"라
+          한 줄로 읽힌다. 일꾼이 맨 앞인 것은 그것이 다른 둘의 밑절미라서다: 일꾼 수가
+          곧 분당 채수·기수를 만든다. */}
+      <div className="scr-stat-mix-row">
+        {/* 일꾼은 비율이 아니라 그냥 수다(요청) — 5분 동안 몇 기 뽑았나. */}
+        <div className="scr-stat-worker5">
+          <span className="scr-stat-worker5-label">5분 일꾼</span>
+          {/* 단위를 붙인다(요청) — 수만 있으면 옆 도넛의 퍼센트와 같은 자로 잰 값처럼
+              읽힌다. 값이 없을 때(-)는 붙일 단위가 없다. */}
+          <span className="scr-stat-worker5-n">
+            {stats.avgWorker5 ?? "-"}
+            {stats.avgWorker5 !== null && <span className="scr-stat-worker5-unit">기</span>}
+          </span>
+        </div>
         <div className="scr-stat-mix-block">
           {/* 분당 몇 채를 지었나 — 이 수만은 주요시간대 것으로 센다(요청). 도넛의 구성비와
               아래 Top5는 경기 전체다: 마법처럼 드문 사건까지 담아야 목록이 서고, 구성은
@@ -272,20 +283,9 @@ function RaceMixCell({ race, stats }: { race: BaseRace; stats?: MemberStats }) {
           </div>
         </div>
       </div>
-      {/* 일꾼은 비율이 아니라 그냥 수다(요청) — 5분 동안 몇 기 뽑았나. */}
-      <div className="scr-stat-worker5">
-        <span className="scr-stat-worker5-label">5분 일꾼</span>
-        {/* 단위를 붙인다(요청) — 수만 있으면 위 도넛의 퍼센트와 같은 자로 잰 값처럼 읽힌다.
-            값이 없을 때(-)는 붙일 단위가 없다. */}
-        <span className="scr-stat-worker5-n">
-          {stats.avgWorker5 ?? "-"}
-          {stats.avgWorker5 !== null && <span className="scr-stat-worker5-unit">기</span>}
-        </span>
-      </div>
-      <UpgradeGrid mix={mix} race={race} />
-      {/* 두 목록도 나란히 — 위 도넛 둘과 같은 이유다. 무엇의 목록인지는 이름표가 말한다:
-          한 칸에 합쳐진 뒤로는 칸 머리가 "테란"이라 목록의 정체를 안 말해 준다. */}
-      <div className="scr-stat-mix-lists">
+      {/* 아랫줄 [유닛 Top5] [스킬 Top5] [업그레이드](요청) — 셋 다 "무엇을 골라 썼나"라
+          한 줄로 읽힌다. 업그레이드가 끝에 선 것은 그것만 이름이 아니라 수의 표라서다. */}
+      <div className="scr-stat-mix-row">
         <div className="scr-stat-mix-list">
           <span className="scr-stat-mix-list-cap">유닛</span>
           <TopList items={topEntries(mix.units, UNIT_KO, TOP_N, mix.unitSecs)} unit="기" />
@@ -294,6 +294,7 @@ function RaceMixCell({ race, stats }: { race: BaseRace; stats?: MemberStats }) {
           <span className="scr-stat-mix-list-cap">스킬</span>
           <TopList items={topEntries(mix.skills, TECH_KO, TOP_N, mix.skillSecs)} unit="회" />
         </div>
+        <UpgradeGrid mix={mix} race={race} />
       </div>
     </div>
   );

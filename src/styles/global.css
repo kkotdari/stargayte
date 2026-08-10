@@ -2246,24 +2246,33 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    칸 하나에 셋이 다 들어가고, 그 칸이 종족 수만큼 되풀이된다 — 그래서 한 사람의 세 종족을
    나란히 견줄 수 있다.
 
-   속은 세로로 쌓는다. 셋을 가로로 눕히던 예전 배치는 칸이 하나뿐일 때의 값이고, 같은 칸이
-   셋으로 늘어난 지금은 그 폭을 감당할 수가 없다. 대신 짝지을 수 있는 것끼리 가로로 묶어
-   높이를 줄인다: 도넛 둘이 한 줄, 목록 둘이 한 줄. */
+   속은 두 줄 × 세 덩어리다(요청: 셀이 너무 세로로 길다).
+     윗줄 [일꾼] [건물 그래프] [유닛 그래프]
+     아랫줄 [유닛 Top5] [스킬 Top5] [업그레이드]
+   한 줄에 셋씩 눕히면 넷을 세로로 쌓던 때보다 높이가 절반으로 준다 — 같은 칸이 종족 수만큼
+   되풀이되는 표라 칸 높이가 곧 표 전체의 길이다. 대신 칸이 넓어져 가로로 스크롤하는데, 그건
+   이 표가 원래 하던 일이다(칸이 다섯이던 시절부터). 세로로 긴 것과 달리 가로 스크롤은
+   한 줄을 읽는 동안에는 안 움직인다. */
 .scr-stat-mix-cell {
-  flex-direction: column; align-items: center; justify-content: center;
+  flex-direction: column; align-items: stretch; justify-content: center;
   gap: 8px; position: relative;
   --scr-toplist-w: 90px;
 }
 /* 값이 없어 "-" 하나만 있는 칸에서도 그 하나가 가운데 서게 한다. */
-.scr-stat-mix-cell > .scr-stat-points-empty { flex: 1 1 auto; text-align: center; }
-/* 도넛 둘(건물·병력)이 나란히 — 각자 제 수(분당 채수 / 분당 기수)를 머리에 인다. 사이의
-   실선은 두 덩어리가 서로 다른 것을 세는 값임을 말한다(예전 칸 사이 구분선의 몫). */
-.scr-stat-mix-pair { display: flex; align-items: flex-start; justify-content: center; gap: 10px; }
-.scr-stat-mix-pair > * + * { border-left: 1px solid var(--line-hair); padding-left: 10px; }
-/* 목록 둘(유닛·스킬)도 나란히 — 무엇의 목록인지는 이름표가 말한다. 칸 머리가 종족 이름이라
-   목록의 정체를 안 말해 주기 때문이다. */
-.scr-stat-mix-lists { display: flex; align-items: flex-start; justify-content: center; gap: 10px; }
-.scr-stat-mix-lists > * + * { border-left: 1px solid var(--line-hair); padding-left: 10px; }
+.scr-stat-mix-cell > .scr-stat-points-empty { flex: 1 1 auto; text-align: center; align-self: center; }
+/* 두 줄 다 같은 격자를 쓴다 — 위아래 덩어리가 같은 x에서 시작해야 칸이 하나의 표로 읽힌다.
+   가운데 열이 가장 넓고(그래프·스킬 목록), 양끝은 제 내용만큼이다. 덩어리 사이 실선은
+   서로 다른 것을 세는 값임을 말한다(예전 칸 사이 구분선의 몫). */
+.scr-stat-mix-row {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  align-items: center; gap: 10px;
+}
+.scr-stat-mix-row > * {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  align-self: stretch; min-width: 0;
+}
+.scr-stat-mix-row > * + * { border-left: 1px solid var(--line-hair); padding-left: 10px; }
+/* 목록에 이름표를 단다 — 무엇의 목록인지는 칸 머리가 안 말해 준다(그쪽은 종족 이름이다). */
 .scr-stat-mix-list { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .scr-stat-mix-list-cap {
   font-size: var(--fs-9); font-weight: 700; color: var(--dim); letter-spacing: 0.03em;
@@ -3034,10 +3043,10 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
   /* 셋 다 12px씩 줄었다(요청) — 칸 바깥 좌우 여백을 14 → 8px로 조인 만큼이다(아래
      .scr-stat-row > .scr-stat-build-cell). 속에 든 것(도넛·목록)은 그대로이고 그 둘레의
      빈자리만 걷혔으므로, 좁아져도 읽는 것은 하나도 안 줄어든다. */
-  /* 종족 한 칸의 최소폭 — 안에 든 것 중 가장 넓은 줄이 기준이다: 목록 둘(90+90) + 사이
-     실선 자리(10+10) = 200에 칸 좌우 여백(8+8)을 더한 216px. 도넛 줄(72+72+20+16=180)은
-     그보다 좁아 이 값 안에 들어온다. */
-  --scr-stat-race-w: 216px;
+  /* 종족 한 칸의 최소폭 — 한 줄에 셋이 서므로(요청) 가장 넓은 줄이 기준이다:
+     [유닛 90][스킬 90][업그레이드 96] + 사이 실선 자리(20+20) + 칸 좌우 여백(16) = 332px.
+     윗줄(일꾼 56 + 도넛 80 + 도넛 80 + 사이 40 + 여백 16 = 272)은 그 안에 들어온다. */
+  --scr-stat-race-w: 332px;
   /* 도넛 지름 — MemberStatRow의 DONUT과 짝이다(svg 좌표계 크기라 그쪽이 실제 값을 정하고,
      여기서는 상자 폭을 그에 맞춘다). 한쪽만 고치면 어긋난다. */
   --scr-donut-size: 72px;
@@ -3312,8 +3321,10 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
     /* 종족 칸도 모바일에서는 한 단계 좁힌다 — 표가 원래 화면보다 넓어 가로로 스크롤하는데,
        칸 하나가 화면 폭에서 유저 칸(118px)을 뺀 나머지를 넘으면 끝까지 밀어도 그 칸을
        온전히 볼 수가 없다. 목록 둘(78+78)과 사이 실선 자리가 최소값이다. */
-    --scr-stat-race-w: 196px;
-    --scr-toplist-w: 78px;
+    /* 모바일도 한 줄에 셋이다 — 칸이 화면 폭에서 sticky 유저 칸(108px)을 뺀 나머지를
+       넘으면 끝까지 밀어도 그 칸을 온전히 볼 수가 없어서, 목록·여백을 한 단계씩 조인다. */
+    --scr-stat-race-w: 262px;
+    --scr-toplist-w: 72px;
     grid-template-columns: var(--scr-stat-tracks);
   }
 
@@ -7994,7 +8005,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
        종족 세 칸이 나눠 갖는다. 240 + 268 + 3×230 = 1198로 패널 폭(1210) 안에 들어와
        가로 스크롤 없이 다섯 칸이 다 보인다(실측). */
     --scr-stat-record-w: 268px;
-    --scr-stat-race-w: 230px;
+    --scr-stat-race-w: 332px;
     /* 헤더 행과 데이터 행은 각각 별개의 그리드 컨테이너다. 트랙을 minmax(_,1fr)로 두면
        width:max-content인 이 행들이 '자기 내용이 원하는 폭'으로 따로 계산돼, 라벨+ⓘ+정렬
        아이콘이 든 헤더 행만 넓어진다 — 실측 873px vs 820px, 오른쪽으로 갈수록 최대 45px씩
@@ -11352,7 +11363,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 @media (max-width: 1159px) {
   .scr-ladder-row {
     grid-template-columns: 58px minmax(0, 1fr) 66px 48px 56px;
-    padding: 9px 10px; gap: 0 5px;
+    /* 좌우 여백은 4px까지 조인다(요청: 모바일 양쪽 패딩 축소) — 화면이 좁을수록 이 여백은
+       수를 담는 자리를 그대로 깎는다. 그만큼 유저 칸(1fr)이 넓어져 닉네임이 덜 잘린다. */
+    padding: 9px 4px; gap: 0 5px;
   }
   .scr-ladder-name-head { padding-left: 0; }
   .scr-ladder-name { gap: 6px; }
