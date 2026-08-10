@@ -1296,21 +1296,51 @@ export default function ActivityScreen() {
    *  MVP인 사람 닉네임 뒤에는 작은 배지를 붙인다(요청) — 줄만 보고도 그 판의 주인공을
    *  알 수 있게. 누가 MVP인지는 원본 게임 아이디로 가른다(요약이 그 값을 들고 있고,
    *  닉네임은 같은 것이 둘일 수 있다). */
-  /** 한 편을 칸에 담아 늘어놓는다(요청: 딱 네 칸을 만들어 거기에 이름이 들어가 줄이 맞게).
+  /** 한 편을 한 줄에 늘어놓는다(요청: 다시 한 줄 + 스퀴징으로 복구).
    *
-   *  한 줄에 두 칸씩, 팀전 최대 넷이면 2×2다. 칸을 격자로 두는 것이 핵심이다 — 이름을
-   *  가운뎃점으로 이어 놓으면 이름 길이에 따라 두 줄의 글자 시작점이 제각각이라, 같은
-   *  편인데도 위아래 줄이 어긋나 보인다. 칸 폭을 열 단위로 맞추면 이름이 길든 짧든 줄이
-   *  선다. 칸이 곧 구분이라 가운뎃점도 뺐다. */
-  const SIDE_COLS = 2;
-  const sideCells = (slots: GameResultSlot[], mvpRaw: string | undefined): ReactNode =>
-    slots.map((s, i) => (
-      <span className="scr-activity-row-em" key={i}>
-        {/* 이름 규칙은 그 편 전체를 봐야 정해진다(컴퓨터 슬롯 번호 매기기). */}
-        {resolveSlotName(s, slots, memberOf)}
+   *  줄을 나누거나 칸 격자로 세워 보기도 했는데, 둘 다 줄 하나가 두세 줄이 되면서 목록의
+   *  줄 높이가 갈래마다 달라졌다. 한 줄로 돌리면 길이는 다시 문제가 되지만, 그 답은 이미
+   *  있다 — 글자 크기는 그대로 두고 가로로만 눌러 맞추는 FlatLine이다.
+   *  팀원 사이는 빗금 하나로 가른다(요청) — 이름과 같은 색으로 두면 그것도 글자처럼
+   *  읽히므로 연하게, 좌우 사이도 좁혀 [이름/이름]이 한 덩어리로 보이게 한다. */
+  /* 제목에 적는 이름 길이(요청: 한글 넉 자·영문 여덟 자까지는 그대로, 그보다 길면 여섯 칸
+     (한글 석 자)까지만 적고 말줄임표).
+     한 판은 최대 여덟 명이라 긴 닉네임 하나가 줄 전체의 눌림(FlatLine)을 정한다 — 이름
+     한둘이 길다는 이유로 여덟 사람의 글자가 다 같이 납작해진다.
+     길이를 글자 수가 아니라 '칸'으로 세는 것이 요청의 핵심이다: 한글은 영문의 두 배 폭이라
+     같은 넉 자라도 "브래드왕"과 "Brad"는 자리를 두 배로 다르게 먹는다. 한글·한자·이모지를
+     두 칸, 나머지를 한 칸으로 세면 두 이름이 같은 잣대 위에 선다.
+     자를 때 코드포인트로 훑는 건 이모지가 든 닉네임을 반 토막 내지 않기 위해서다. */
+  const TITLE_UNITS_KEEP = 8;  // 여기까지는 손대지 않는다 — 한글 4 = 영문 8
+  const TITLE_UNITS_CLIP = 6;  // 넘치면 여기까지만 — 한글 3 = 영문 6
+  /** 한 글자가 먹는 칸 — 넓은 글자(한글·한자·가나·전각·이모지)는 둘, 나머지는 하나. */
+  const charUnits = (ch: string): number => (
+    /[ᄀ-ᅟ⺀-〾ぁ-㏿㐀-䶿一-鿿ꥠ-꥿가-힣豈-﫿︰-﹯＀-｠￠-￦]/u.test(ch)
+    || ch.codePointAt(0)! > 0xFFFF ? 2 : 1
+  );
+  const clipName = (name: string): string => {
+    const chars = Array.from(name);
+    const total = chars.reduce((n, c) => n + charUnits(c), 0);
+    if (total <= TITLE_UNITS_KEEP) return name;
+    let used = 0;
+    const kept: string[] = [];
+    for (const c of chars) {
+      const w = charUnits(c);
+      if (used + w > TITLE_UNITS_CLIP) break;
+      kept.push(c); used += w;
+    }
+    return `${kept.join("")}…`;
+  };
+  const sideNodes = (slots: GameResultSlot[], mvpRaw: string | undefined): ReactNode[] =>
+    slots.flatMap((s, i) => [
+      ...(i > 0 ? [<span className="scr-activity-row-slash" key={`s${i}`} aria-hidden>/</span>] : []),
+      <span className="scr-activity-row-em" key={`n${i}`}>
+        {/* 이름 규칙은 그 편 전체를 봐야 정해진다(컴퓨터 슬롯 번호 매기기) — 자르는 건
+            그렇게 정해진 이름을 적을 때다. */}
+        {clipName(resolveSlotName(s, slots, memberOf))}
         {!!mvpRaw && s.rawName === mvpRaw && <span className="scr-mvp-mini">MVP</span>}
-      </span>
-    ));
+      </span>,
+    ]);
 
   const rowDesc = (item: DisplayItem) => {
     if (item.kind === "challenge") {
@@ -1408,27 +1438,16 @@ export default function ActivityScreen() {
     const g = item.gameResult;
     return (
       <FlatLine>
-        {/* 편 색은 걷었다(요청) — 한동안 1팀 파랑·2팀 붉음으로 칠했는데, 이제 한 편이
-            제 줄(들)로 묶여 서므로 어디까지가 한 편인지는 줄바꿈이 말한다. 색까지 얹으면
-            줄마다 있는 유형 배지와 한 줄 안에서 서로 다툰다. */}
-        {/* 칸 수는 그 편 인원만큼이되 한 줄에 둘까지 — 인라인 style로 넘기는 이유는
-            1:1(한 칸)까지 같은 규칙으로 담기 위해서다. 네 칸이면 2×2가 된다. */}
+        {/* 편 색은 걷었다(요청) — 한동안 1팀 파랑·2팀 붉음으로 칠했는데, 어디까지가 한
+            편인지는 가운데 vs와 그 안의 빗금이 말한다. 색까지 얹으면 줄마다 있는 유형
+            배지와 한 줄 안에서 서로 다툰다. */}
+        {/* 두 편이 한 줄에 서고, 넘치는 만큼은 FlatLine이 가로로 눌러 맞춘다(요청). */}
         <span className="scr-activity-row-name">
-          <span
-            className="scr-activity-row-name-main scr-activity-row-side-a"
-            style={{ gridTemplateColumns: `repeat(${Math.min(SIDE_COLS, g.team1.length)}, 1fr)` }}
-          >
-            {sideCells(g.team1, g.summaryData?.mvp)}
-          </span>
+          <span className="scr-activity-row-name-main">{sideNodes(g.team1, g.summaryData?.mvp)}</span>
         </span>
         <span className="scr-activity-row-arrow scr-activity-row-vs" aria-hidden>vs</span>
         <span className="scr-activity-row-name">
-          <span
-            className="scr-activity-row-name-main scr-activity-row-side-b"
-            style={{ gridTemplateColumns: `repeat(${Math.min(SIDE_COLS, g.team2.length)}, 1fr)` }}
-          >
-            {sideCells(g.team2, g.summaryData?.mvp)}
-          </span>
+          <span className="scr-activity-row-name-main">{sideNodes(g.team2, g.summaryData?.mvp)}</span>
         </span>
       </FlatLine>
     );

@@ -71,8 +71,13 @@ function PerMin({ value, prev, unit }: { value: string | undefined; prev?: strin
   if (!value) return null;
   return (
     <div className="scr-stat-per10">
-      {value}
-      <span className="scr-stat-per10-unit">{unit}/분</span>
+      {/* 단위는 수의 오른쪽에 매달되 자리는 안 차지한다(요청: 단위를 뺀 숫자와 변동이 줄을
+          맞추고 가운데에) — 흐름에 두면 [수+단위]가 한 덩어리로 가운데에 서서, 정작 수는
+          단위 폭의 절반만큼 왼쪽으로 밀려 아래 변동과 어긋난다. */}
+      <span className="scr-stat-per10-val">
+        {value}
+        <span className="scr-stat-per10-unit">{unit}/분</span>
+      </span>
       {/* 전달 대비 변동은 수 아래 한 줄로(요청) — 옆에 붙이면 단위와 뒤엉켜 "24.0채/분+1.2"가
           한 덩어리로 읽힌다. */}
       <span className="scr-stat-per10-delta">
@@ -224,16 +229,18 @@ function TopList({ items, unit, prevRanks }: {
   prevRanks?: Map<string, number>;
 }) {
   void unit; // 수를 숨긴 동안에는 안 쓰인다(SHOW_TOP_VALUES 참고).
-  /* 전달 대비 순위 변동(요청: Top5 옆에는 +- 말고 흰 화살표로) — 다른 수치와 달리 여기는
-     '몇 계단'이라는 크기보다 올랐나 내렸나가 전부라 화살표 하나로 족하다. 지난달에 아예
-     없던 이름은 화살표를 안 단다: 견줄 자리가 없어 '올랐다'고 말할 수 없고, 그런 줄이
-     목록의 절반이면 화살표가 그냥 장식이 된다. */
-  const arrow = (name: string, i: number): "up" | "down" | null => {
+  /* 전달 대비 순위 변동(요청: Top5 옆에는 +- 말고 흰 화살표로, 몇 계단인지 수도 함께) —
+     방향은 화살표가, 크기는 그 옆의 수가 말한다. 지난달에 아예 없던 이름은 아무것도 안
+     단다: 견줄 자리가 없어 '올랐다'고 말할 수 없고, 그런 줄이 목록의 절반이면 화살표가
+     그냥 장식이 된다. */
+  /** 몇 계단 움직였나 — +면 올라온 것. 화살표 옆에 그 수도 적는다(요청): 한 계단과 네
+   *  계단이 같은 그림이면 목록에서 실제로 무엇이 뒤집혔는지가 안 보인다. */
+  const move = (name: string, i: number): number | null => {
     if (!prevRanks) return null;
     const before = prevRanks.get(name);
     if (before === undefined) return null;
-    const now = i + 1;
-    return before === now ? null : before > now ? "up" : "down";
+    const d = before - (i + 1);
+    return d === 0 ? null : d;
   };
   /* 하나도 없어도 껍데기는 그대로 세운다(지적: 스킬이 없을 때 다른 클래스가 들어가서
      생기는 문제) — 예전엔 여기서 <span>만 돌려줬는데, 그러면 목록의 고정폭
@@ -249,25 +256,28 @@ function TopList({ items, unit, prevRanks }: {
   }
   return (
     <ul className={cx("scr-stat-toplist", !SHOW_TOP_VALUES && "scr-stat-toplist-nameonly")}>
-      {items.map((it, i) => (
-        <li key={it.name}>
-          <span className="scr-stat-toplist-name">
-            {it.name}
-            {arrow(it.name, i) && (
-              <span className={cx("scr-stat-toplist-move",
-                arrow(it.name, i) === "down" && "scr-stat-toplist-move-down")}
-              >
-                {arrow(it.name, i) === "up" ? "▲" : "▼"}
+      {items.map((it, i) => {
+        const d = move(it.name, i);
+        return (
+          <li key={it.name}>
+            <span className="scr-stat-toplist-name">
+              {it.name}
+              {/* 오른 줄과 내린 줄을 같은 톤으로 둔다(요청) — 내린 쪽을 눌러 두면 그것만
+                  '덜 중요한 사실'이 되는데, 목록에서 빠질 뻔한 쪽이 오히려 눈에 걸려야 한다. */}
+              {d !== null && (
+                <span className="scr-stat-toplist-move">
+                  {d > 0 ? `▲${d}` : `▼${-d}`}
+                </span>
+              )}
+            </span>
+            {SHOW_TOP_VALUES && (
+              <span className="scr-stat-toplist-n">
+                {it.perMin === null ? "-" : `${it.perMin.toFixed(1)}${unit}`}
               </span>
             )}
-          </span>
-          {SHOW_TOP_VALUES && (
-            <span className="scr-stat-toplist-n">
-              {it.perMin === null ? "-" : `${it.perMin.toFixed(1)}${unit}`}
-            </span>
-          )}
-        </li>
-      ))}
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -311,8 +321,7 @@ interface MemberStatRowProps {
   // 신규 표시") — null이면 변동 없음이거나 애초에 견줄 전달이 없는 경우(전체 기간 등)라
   // 아무것도 안 보여준다.
   rankDelta?: number | "new" | null;
-  // 레이팅이 어느 날짜 기준인가 — "7.31"처럼 짧게. 안 넘기면 그 줄을 안 그린다.
-  asOf?: string;
+  // (삭제) 레이팅 기준일자 — 줄마다 적던 것을 칸 머리 한 곳으로 옮겼다(요청, StatsScreen).
   // 레이팅을 누르면 레이팅 상세(경기 이력)를 연다.
   onPointsClick?: () => void;
   // 랭크를 누르면 최근 5개월 순위변동 그래프를 연다(요청) — 월을 보고 있을 때만 넘어온다.
@@ -336,7 +345,7 @@ interface MemberStatRowProps {
 export default function MemberStatRow({
   member, stats, prev, me = false, showMvp = true, prevPoints, maxOverallPlays, maxApm, maxCmd,
   avatar = true, compact = false,
-  points, rank, rankDelta, asOf, onPointsClick, onRankClick, medals, race, upRace,
+  points, rank, rankDelta, onPointsClick, onRankClick, medals, race, upRace,
 }: MemberStatRowProps) {
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -387,19 +396,19 @@ export default function MemberStatRow({
                         onClick={onPointsClick} aria-label={`${member.nickname} 레이팅 상세`}
                       >
                         {points.toLocaleString()}
-                        {/* 단위(요청) — 아랫줄의 "1위"와 달리 이 줄은 맨숫자라 무엇의 수인지가
-                            칸 이름에만 기대고 있었다. */}
-                        <span className="scr-stat-points-unit"> 레이팅</span>
+                        {/* 단위와 메달은 수의 오른쪽에 매달되 자리는 안 차지한다(요청: 단위를
+                            뺀 숫자와 변동이 줄을 맞추고 가운데에) — 흐름에 두면 [수+단위+메달]이
+                            한 덩어리로 가운데에 서고, 정작 수는 그 덩어리의 절반만큼 왼쪽으로
+                            밀려 아래 변동과 어긋난다. 자리를 안 먹으니 메달이 있는 줄만 수가
+                            밀리던 일도 함께 사라져, 자리를 비워 두던 빈 메달(-hole)도 걷었다.
+                            그만큼 줄기는 넓어야 한다 — --scr-stat-rank-w 참고. */}
+                        <span className="scr-stat-points-side">
+                          {/* 단위(요청) — 아랫줄의 "1위"와 달리 이 줄은 맨숫자라 무엇의 수인지가
+                              칸 이름에만 기대고 있었다. */}
+                          <span className="scr-stat-points-unit">레이팅</span>
+                          {medals?.points && <span className="scr-stat-medal">{medals.points}</span>}
+                        </span>
                       </button>
-                      {/* 메달 자리는 없는 줄에도 비워 둔다(지적: 메달이 구분선에 딱 붙는다).
-                          메달을 흐름 밖(절대배치)에 두면 값만 가운데에 서고 메달은 그 오른쪽으로
-                          삐져나가, 왼쪽엔 빈자리가 남고 오른쪽에선 구분선에 닿았다. 흐름으로
-                          들이면 [값+메달]이 한 덩어리로 가운데 서서 그 둘이 다 풀리는데, 이번엔
-                          메달이 있는 줄만 값이 왼쪽으로 밀려 줄마다 숫자가 어긋난다. 자리를 늘
-                          비워 두면 어느 줄이든 덩어리 폭이 같아 숫자가 한 줄로 선다. */}
-                      {medals?.points
-                        ? <span className="scr-stat-medal">{medals.points}</span>
-                        : <span className="scr-stat-medal scr-stat-medal-hole" aria-hidden />}
                     </span>
                   )}
                 </div>
@@ -409,10 +418,9 @@ export default function MemberStatRow({
                 <div className="scr-stat-rank-line scr-stat-rank-delta">
                   <Delta now={points} prev={prevPoints} />
                 </div>
-                {/* 언제 기준인가(요청) — 레이팅은 '그 기간에 번 값'이 아니라 '그 날짜까지의
-                    기록으로 본 값'이라, 그 날짜를 안 적으면 달을 바꿨을 때 값이 왜 달라지는지
-                    읽을 길이 없다. 값이 아니라 값에 붙는 단서라 작고 연하게. */}
-                {asOf && <div className="scr-stat-rank-asof">{asOf} 기준</div>}
+                {/* 언제 기준인가는 칸 머리에 한 번만 적는다(요청) — 줄마다 같은 날짜가
+                    되풀이되면 그 글자만 표에서 눈에 밟힌다. StatsScreen의 '주요 지표' 머리
+                    아랫줄 참고. */}
                 <div className="scr-stat-rank-line">
                   {rank == null ? (
                     <span className="scr-stat-points-empty">-</span>
@@ -576,7 +584,9 @@ export default function MemberStatRow({
             <div className="scr-stat-worker5">
               <span className="scr-stat-worker5-label">5분 일꾼</span>
               {/* 단위를 붙인다(요청) — 수만 있으면 옆 도넛의 퍼센트와 같은 자로 잰 값처럼
-                  읽힌다. 값이 없을 때(-)는 붙일 단위가 없다. */}
+                  읽힌다. 값이 없을 때(-)는 붙일 단위가 없다. 단위는 수의 오른쪽에 매달되
+                  자리는 안 차지한다(요청) — 그래야 수 자체가 가운데에 서서 아래 변동과
+                  세로로 맞는다. */}
               <span className="scr-stat-worker5-n">
                 {stats.avgWorker5 ?? "-"}
                 {stats.avgWorker5 !== null && <span className="scr-stat-worker5-unit">기</span>}

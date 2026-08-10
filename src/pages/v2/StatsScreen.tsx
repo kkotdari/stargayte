@@ -605,7 +605,11 @@ export default function StatsScreenV2() {
                 {/* 랭크·레이팅·게임수·승률·APM·커맨드가 다 이 한 칸에 있다(요청: 랭킹과
                     기록 통합) — 어느 한 가지를 가리키는 이름이 없어 '주요 지표'로 부른다
                     (요청). 기간은 필터 줄이 이미 말하고 있어 칸 이름에서 뺐다. */}
-                <PlainHead label="주요 지표" />
+                {/* 레이팅이 어느 날짜 기준인가는 여기 한 번만 적는다(요청) — 줄마다 달던
+                    것을 걷었다. 레이팅은 '그 기간에 번 값'이 아니라 '그 날짜까지의 기록으로
+                    본 값'이라 이 날짜가 없으면 달을 바꿨을 때 값이 왜 달라지는지 읽을 길이
+                    없는데, 그 사정은 칸 전체에 한 번 걸리는 단서지 줄마다 다른 값이 아니다. */}
+                <PlainHead label="주요 지표" sub={showRank ? `레이팅 ${asOf} 기준` : undefined} />
                 <PlainHead
                   label="건설"
                 />
@@ -630,7 +634,6 @@ export default function StatsScreenV2() {
                   points={showRank ? c.points : undefined}
                   rank={showRank ? rankByMember.get(c.member.id) ?? null : null}
                   rankDelta={showRank ? rankDeltaByMember.get(c.member.id) ?? null : null}
-                  asOf={showRank ? asOf : undefined}
                   onPointsClick={() => setPointMember(c.member)}
                   onRankClick={showRank && shownMonth ? () => setTrendMember(c.member) : undefined}
                   medals={medalByMember.get(c.member.id)}

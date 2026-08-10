@@ -1596,6 +1596,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   /* 기둥이 흐름에서 빠졌으므로(fixed) 그 자리를 본문 쪽에서 비워 준다 — 셸에 패딩을
      주면 그 안의 모든 화면이 한꺼번에 비켜서고, 화면마다 따로 맞출 일이 없다. */
   .scr-app { padding-left: var(--rail-w); }
+  /* 기둥이 없는 화면(로그인·회원가입, 공유 카드)은 그 자리를 비울 이유가 없다(지적) —
+     헤더를 아예 안 그리는 화면들이라, 패딩만 남아 화면 전체가 224px 오른쪽으로 밀린 채
+     가운데 정렬이 어긋났다. 이 클래스가 곧 '앱 크롬 없는 화면'의 표시다(App.tsx). */
+  .scr-app.scr-app-fallback-scroll { padding-left: 0; }
   .scr-header {
     position: fixed; left: 0; top: 0; bottom: 0; width: var(--rail-w); z-index: 30;
     /* 세로로 짧은 창에서 메뉴가 잘리는 대신 기둥 안에서만 스크롤한다. */
@@ -1633,7 +1637,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   /* 가로 띠에서 로고를 중심선에 맞추려고 걸어 둔 보정(translateY)은 여기서 뜻이 없다 —
      옆에 나란히 설 것이 없으니 맞출 중심선도 없다. */
   .scr-brand { justify-content: flex-start; transform: none; margin-bottom: 4px; }
-  .scr-brand-logo-img { height: 22px; }
+  /* 폭을 2/3로(요청) — 22px 높이면 워드마크가 192px이라 기둥 안폭(224-32)을 정확히 꽉
+     채웠고, 그래서 로고가 기둥의 제목이 아니라 배너처럼 보였다.
+     폭만 눌러 줄이지 않고 높이로 줄인다 — 별(.scr-brand-logo-star)은 워드마크에 대한
+     %로 얹혀 있어 같은 비율로 줄면 자리가 그대로지만, 폭만 누르면 별의 가로 위치·모양이
+     함께 일그러진다(요청: 별 심볼 위치 안 흐트러지게). */
+  .scr-brand-logo-img { height: calc(22px * 2 / 3); }
   /* .scr-user는 가로 띠에서 [앱 설치 · 테마 · 프로필]을 오른쪽 끝에 함께 밀어 두려고
      묶어 둔 상자다. 기둥에서는 이 셋이 위(테마)와 아래(프로필)로 갈라져야 하는데, 묶음이
      한 덩어리로 남아 있으면 그럴 수가 없다. display:contents로 상자만 걷어 내면 세
@@ -2202,11 +2211,16 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 }
 .scr-stat-per10 {
   font-size: var(--fs-caption); font-weight: 700; color: var(--text);
-  font-variant-numeric: tabular-nums; line-height: 1.1; white-space: nowrap;
+  font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap;
 }
+/* 수만 자리를 차지한다 — 단위가 흐름 밖이라 이 상자의 폭이 곧 수의 폭이고, 그래서 수가
+   도넛 무리 한가운데에 서고 아래 변동과도 세로로 맞는다(요청). */
+.scr-stat-per10-val { position: relative; display: inline-block; }
 /* 단위는 수보다 한참 작고 흐리게 — 줄마다 똑같이 되풀이되는 말이라 읽을 값이 아니고,
-   수와 같은 무게로 두면 정작 다른 수를 훑는 눈이 매번 이 글자에 걸린다. */
+   수와 같은 무게로 두면 정작 다른 수를 훑는 눈이 매번 이 글자에 걸린다.
+   자리는 안 차지한다(요청: 단위를 뺀 숫자를 가운데에) — 수의 오른쪽 끝에 매달린다. */
 .scr-stat-per10-unit {
+  position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
   font-size: var(--fs-9); font-weight: 600; color: var(--dim); margin-left: 2px;
 }
 
@@ -2305,8 +2319,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-record-item .scr-stat-bar-rate-overlay {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
 }
+/* line-height는 1이다(요청: 데이터줄과 변동의 세로 갭을 더 좁게) — 값과 변동은 한 덩어리로
+   읽혀야 하는데, 1.1이면 값 줄이 제 글자보다 1px 남짓 두꺼워져 그만큼 둘이 벌어진다. */
 .scr-stat-record-item .scr-value-bar-num,
-.scr-stat-record-item .scr-stat-bar-rate { font-size: var(--fs-11); line-height: 1.1; }
+.scr-stat-record-item .scr-stat-bar-rate { font-size: var(--fs-11); line-height: 1; }
 /* ── 승률 막대를 나머지 셋과 완전히 같게(요청: "승률막대도 다른것들과 css 똑같이 맞추기")
    승률만 다른 컴포넌트(StatBar)라, 이 칸 안에서 세 가지가 어긋나 있었다(실측):
      ① 트랙 두께 20px — 위에서 15px로 눌렀는데 v2 통계 블록의 같은 특이도 규칙
@@ -2346,7 +2362,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    서므로 이 줄도 가운데 정렬이면 수치 바로 밑이 된다. */
 /* 값과 변동 사이는 바짝 붙인다(요청: 데이터와 변동 사이 세로 갭은 넓지 않게) — 둘은 한
    덩어리로 읽혀야 하고, 벌어야 하는 것은 막대와 막대 사이다(.scr-stat-record-col의 gap). */
-.scr-bar-delta { display: block; line-height: 1; margin-top: 0; text-align: center; position: relative; }
+.scr-bar-delta { display: block; line-height: 1; margin-top: -1px; text-align: center; position: relative; }
 .scr-bar-delta .scr-stat-delta { margin-left: 0; }
 
 /* 정렬 드롭다운 — 필터 문장·건수와 한 줄, 건수 바로 왼쪽(요청). margin-left:auto로 남는
@@ -2401,12 +2417,17 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 }
 .scr-stat-worker5-label { font-size: var(--fs-11); color: var(--dim); line-height: 1.1; }
 .scr-stat-worker5-n {
+  position: relative;
   font-size: var(--fs-caption); font-weight: 700; color: var(--text);
-  font-variant-numeric: tabular-nums; line-height: 1.1;
+  font-variant-numeric: tabular-nums; line-height: 1;
 }
 /* 단위는 수보다 한 단계 작고 흐리게 — 포인트 칸(.scr-stat-points-unit)과 같은 규칙이라
-   표 안에서 "수 + 단위"의 생김새가 한 가지로 읽힌다. */
-.scr-stat-worker5-unit { font-size: var(--fs-11); font-weight: 600; color: var(--dim); margin-left: 1px; }
+   표 안에서 "수 + 단위"의 생김새가 한 가지로 읽힌다. 자리도 같은 규칙으로 안 차지한다
+   (요청) — 수의 오른쪽 끝에 매달려, 수 자체는 아래 변동과 세로로 맞는다. */
+.scr-stat-worker5-unit {
+  position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
+  font-size: var(--fs-11); font-weight: 600; color: var(--dim); margin-left: 1px;
+}
 
 /* 공/방/실드 단계 — 이름 열 하나에 수치 세 열(요청: 지상/공중을 한 열에 두 줄로).
    수치는 오른쪽 맞춤 + tabular-nums라 위아래 자릿수가 흔들리지 않는다. */
@@ -2450,12 +2471,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-rank-cell { flex-direction: column; gap: 2px; }
 .scr-stat-rank-line { display: flex; align-items: center; justify-content: center; gap: 4px; position: relative; }
 .scr-stat-rank-points { color: var(--dim); }
-/* 언제 기준인가(요청: "얘는 좀 작고 연한 글씨야") — 값이 아니라 값에 붙는 단서라, 위아래
-   두 줄보다 한 단계 작고 흐리게. 줄 사이 여백도 좁혀 세 줄이 한 덩어리로 읽히게 한다. */
-.scr-stat-rank-asof {
-  font-size: var(--fs-micro, 11px); line-height: 1.2; color: var(--dim);
-  text-align: center; opacity: 0.72; letter-spacing: -0.01em;
-}
+/* (삭제) 줄마다 달던 레이팅 기준일자 — 칸 머리 아랫줄로 옮겼다(요청, .scr-stat-plain-head-sub). */
 /* MVP 횟수(요청: 순위 아래) — 순위·레이팅과 달리 없는 사람이 대부분이라, 있을 때만 서고
    그때는 확실히 눈에 띄어야 한다. 활동 카드의 MVP 표시와 같은 금색을 쓴다. */
 /* ── 전달 대비 변동 ────────────────────────────────────────────────────────────
@@ -2476,6 +2492,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-rank-delta { line-height: 1; }
 .scr-stat-rank-delta:empty { display: none; }
 .scr-stat-rank-delta .scr-stat-delta { margin-left: 0; }
+/* 레이팅 값과 그 변동 사이(요청: 더 붙게) — 눈에 보이는 사이는 셋이 겹친 값이었다:
+   버튼 아래 안여백(4px) + 줄기 갭(2px) + 점선 밑줄이 앉는 자리. 안여백을 절반으로 줄이고
+   줄기 갭은 이 줄에서만 되당긴다 — 갭 자체를 줄이면 아래 순위·MVP 줄까지 함께 붙는다. */
+.scr-stat-rank-points .scr-stat-points-btn { padding-top: 2px; padding-bottom: 2px; }
+.scr-stat-rank-points + .scr-stat-rank-delta { margin-top: -2px; }
 /* 도넛 위 '몇 채/분' 밑의 변동 — 갭이 다른 자리보다 유독 넓었다(지적): 이 수는 line-height
    1.1짜리 큰 글자(caption)라 그 줄 자체가 높고, 그 아래에 또 제 줄이 서면서 벌어졌다.
    위로 당겨 값에 붙인다 — 다른 자리(막대 안)와 같은 간격으로 보이게. */
@@ -2518,14 +2539,15 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-toplist-name {
   color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-/* Top5 줄의 전달 대비 순위 화살표(요청: 여기만은 +- 말고 화살표로) — 오르내림만 말하면
-   되는 자리라 색으로 뜻을 지지 않는다. 잉크는 이름과 같은 것을 흐리게 눌러 쓰고, 내려간
-   줄만 조금 더 눌러 둔다: 목록에서 눈에 먼저 들어와야 하는 건 올라온 쪽이다. */
+/* Top5 줄의 전달 대비 순위 변동(요청: 여기만은 +- 말고 화살표로, 몇 계단인지도 함께) —
+   방향은 화살표가, 크기는 그 옆의 수가 말한다. 색으로 뜻을 지지 않고 잉크는 이름과 같은
+   것을 흐리게 눌러 쓴다 — 오른 줄과 내린 줄은 같은 톤이다(요청). */
 .scr-stat-toplist-move {
   margin-left: 2px; font-size: var(--fs-9); color: var(--text); opacity: 0.7;
-  vertical-align: 1px;
+  vertical-align: 1px; font-variant-numeric: tabular-nums;
 }
-.scr-stat-toplist-move-down { opacity: 0.45; }
+/* (삭제) 내려간 줄만 더 눌러 두던 규칙 — 요청으로 걷었다. 오르내림은 화살표 방향과 그
+   옆의 수가 이미 말하고, 톤까지 갈라 두면 내려간 사실만 반쯤 지운 것처럼 읽힌다. */
 .scr-stat-toplist-n {
   color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right;
 }
@@ -2688,6 +2710,14 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
    세우므로 덩어리 폭이 줄마다 같고, 그래서 흐름으로 들여도 숫자는 여전히 한 줄로 선다.
    막대 위의 메달들은 그대로 절대배치다 — 거기는 트랙 안이라 삐져나갈 밖이 없다. */
 .scr-stat-rank-val { gap: 3px; }
+/* 단위·메달이 함께 매달리는 자리 — 수(버튼)의 오른쪽 바깥이고, 흐름에서 빠져 있어 자리를
+   안 먹는다(요청: 단위를 뺀 숫자와 변동이 줄을 맞추고 가운데에). 버튼이 기준이라 수가
+   길든 짧든 그 끝을 따라간다. 버튼의 오른쪽 안여백(6px)만큼 되당겨 수와 3px을 띄운다. */
+.scr-stat-points-side {
+  position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
+  margin-left: -3px; display: inline-flex; align-items: center; gap: 3px;
+  white-space: nowrap; pointer-events: none;
+}
 .scr-stat-rank-points .scr-stat-medal {
   position: static; transform: none; margin-left: 0;
   /* 메달 이모지의 실제 폭은 기기마다 다르다(안드로이드·iOS·크롬이 저마다 다른 글꼴로
@@ -2697,7 +2727,8 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
 }
 /* 값 덩어리는 안 눌린다 — 눌리면 그 안의 값이 접히거나 메달이 밀려난다. */
 .scr-stat-rank-points .scr-stat-rank-val { flex: none; min-width: 0; }
-.scr-stat-medal-hole { visibility: hidden; }
+/* (삭제) 자리만 잡던 빈 메달(-hole) — 메달이 단위와 함께 흐름 밖으로 나가면서, 메달이
+   있는 줄과 없는 줄의 수 위치가 애초에 같아졌다. */
 /* (삭제) 랭크 줄기만 흐름으로 돌려 두던 예외 — 이제 모든 메달이 흐름이라 규칙 하나면 된다. */
 /* 트랙 배경을 채움 비율(--scr-value-fill, ValueBar.tsx 인라인 변수)까지는 진하게, 나머지는
    옅게 칠하는 그라디언트 한 장으로 그린다(요청: "배경 막대를 채우기 — 나머지는 반투명
@@ -2807,10 +2838,13 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
      빈자리였고, 줄기가 가운데 정렬이라 그게 좌우로 27px씩 갈려 앉았다(실측).
      이제는 가장 긴 줄("1,055 레이팅🥇" 83px)에 좌우 여백만 더한 폭이다. 줄기가 좁아진
      만큼은 옆의 막대 두 줄기가 가져간다. */
-  /* 값(83) + 간격(3) + 메달 자리(14) = 100px에 좌우 여백을 더한 폭. 메달이 흐름으로
-     들어오면서 줄기가 실제로 담아야 할 것이 그만큼 늘었다 — 이보다 좁으면 메달이 다시
-     구분선 쪽으로 밀린다. */
-  --scr-stat-rank-w: 124px;
+  /* 수 자체가 줄기 한가운데에 서고 단위·메달은 그 오른쪽 바깥에 매달린다(요청) — 그러면
+     줄기가 담아야 할 폭은 '가운데에서 오른쪽 끝까지'의 두 배다: 수의 절반(20) + 버튼
+     안여백(6) + 단위("레이팅" 29) + 간격(3) + 메달(16) ≈ 74, 두 배로 148에 좌우 여백까지.
+     124px이던 시절은 단위·메달이 흐름에 있어 [수+단위+메달] 덩어리를 가운데 세우면 되던
+     때의 값이라, 그대로 두면 메달이 구분선을 넘는다. 늘어난 몫은 막대 두 줄기가 내준다 —
+     막대는 어차피 240px에서 멈춘다(.scr-stat-record-item의 max-width). */
+  --scr-stat-rank-w: 156px;
   --scr-stat-rank-pad: 6px;
   /* 셋 다 12px씩 줄었다(요청) — 칸 바깥 좌우 여백을 14 → 8px로 조인 만큼이다(아래
      .scr-stat-row > .scr-stat-build-cell). 속에 든 것(도넛·목록)은 그대로이고 그 둘레의
@@ -2843,6 +2877,9 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
    줄이는 규칙이 있고 모바일엔 없어(subhead=20px 그대로 남아) 모바일 값이 유독 커
    보였다. 굵기도 800 → 700으로 한 단계 낮춘다(요청: "데이터 폰트 웨이트 감소, 너무 볼드"). */
 .scr-stat-points-btn {
+  /* 단위·메달이 이 버튼의 오른쪽 바깥에 매달린다(.scr-stat-points-side) — 기준이 되려면
+     제 자리를 알아야 한다. */
+  position: relative;
   background: transparent; border: none; padding: 4px 6px; border-radius: var(--radius-sm); cursor: pointer;
   font-family: inherit; font-size: var(--fs-caption); font-weight: 700; color: var(--text);
   /* 절대 접히지 않는다(지적: "1,067 레이 / 팅"으로 줄바꿈됨) — 이 값은 한 낱말이라
@@ -8693,28 +8730,12 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    지나므로 라이트에서는 같은 색상각의 진한 쪽으로 뒤집는다(밝은 파랑은 흰 종이 위에서
    글자로 못 쓴다).
    닉네임에만 입혔고, 색을 한 번 눅였다가(요청) 결국 통째로 걷었다(요청: 로스터 컬러 삭제).
-   어디까지가 한 편인지는 이제 줄바꿈이 말한다 — 한 편은 두 명씩 제 줄에 서고 두 편 사이에
-   vs가 있어, 색 없이도 편이 갈린다. 색이 사라진 만큼 줄마다 있는 유형 배지가 그 줄에서
-   유일한 색이 되어 훑기도 쉬워졌다. */
-/* 한 편의 이름 칸들(요청: 딱 네 칸을 만들어 거기에 이름이 들어가 줄이 맞게) — 한 줄에
-   두 칸, 최대 2×2다. 열 수는 인원에 맞춰 인라인 style로 온다(ActivityScreen).
-   격자로 두는 것이 핵심이다: 이름을 가운뎃점으로 이어 놓으면 이름 길이에 따라 두 줄의
-   글자 시작점이 제각각이라 같은 편인데도 줄이 어긋나 보인다. 열 폭을 1fr로 두면 그 열의
-   가장 긴 이름에 맞춰 통일되므로 위아래가 한 자에 선다.
-   눌러 맞추는 폭(FlatLine)은 가로 한 줄에만 걸리므로, 줄을 나눈 만큼 글자가 덜 눌린다. */
-/* 클래스를 둘 겹쳐 특이도를 올린다(0-2-0) — 이 파일 뒤쪽에 .scr-activity-row-name-main을
-   flex로 두는 규칙이 하나 더 있어서(제목 칸 공용), 같은 특이도로는 그쪽이 이긴다.
-   격자는 경기 줄에만 필요하므로 편 클래스(side-a/b)에 함께 얹는다.
-   두 편은 vs 쪽 가장자리를 맞춰 선다 — 칸 안에서도 그쪽으로 글자를 붙여야 두 편이
-   마주 본다는 그림이 산다. */
-.scr-activity-row-name-main.scr-activity-row-side-a,
-.scr-activity-row-name-main.scr-activity-row-side-b {
-  display: inline-grid; gap: 1px 10px; align-items: center;
-}
-/* 이름은 제 칸 한가운데에 앉는다 — 칸에 담겼다는 것이 그렇게 읽히고, 이름 길이가 제각각
-   이어도 좌우가 고르다. 격자 자체는 내용폭(inline-grid)이라 vs 옆에 바짝 선다. */
-.scr-activity-row-name-main.scr-activity-row-side-a,
-.scr-activity-row-name-main.scr-activity-row-side-b { justify-items: center; text-align: center; }
+   어디까지가 한 편인지는 가운데 vs와 편 안의 빗금(.scr-activity-row-slash)이 말한다 — 사이표는
+   이름보다 연해서, 색 없이도 [이름/이름] vs [이름/이름]으로 갈려 읽힌다. 색이 사라진 만큼
+   줄마다 있는 유형 배지가 그 줄에서 유일한 색이 되어 훑기도 쉬워졌다. */
+/* (삭제) 한 편을 두 칸씩 격자로 세우던 규칙 — 한 줄 + 스퀴징으로 되돌렸다(요청).
+   줄을 나누면 글자는 덜 눌리지만 그 대신 목록의 줄 높이가 갈래마다 달라졌다. 한 줄로
+   두고 넘치는 만큼 가로로 누르는 쪽(FlatLine)이 목록 전체의 결을 지킨다. */
 .scr-activity-row-em {
   color: var(--text); font-weight: 600;
   /* 자리가 모자라면 이름이 줄어든다 — 바깥 상자가 아니라 여기서 자른다(위 주석). */
@@ -8722,6 +8743,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 }
 /* 이름 사이 가운뎃점 — 좌우를 띄운다(요청). 붙여 두면 "Cheol·bob"이 한 낱말로 읽혔다. */
 .scr-activity-row-sep { margin: 0 5px; color: var(--row-dim); flex: none; }
+/* 경기 줄에서 같은 편 사람들 사이를 가르는 빗금(요청) — 가운뎃점보다 좌우를 좁히고 더
+   연하게 둔다. 한 편이 넷이면 이 자리가 셋이라, 가운뎃점만큼 띄우면 그 빈자리가 이름
+   하나 몫을 먹는다(그만큼 FlatLine이 더 눌러야 한다). 연하게 두는 건 이것이 읽을 글자가
+   아니라 사이표이기 때문이다 — 이름과 같은 톤이면 그것도 한 낱말처럼 세어진다. */
+.scr-activity-row-slash {
+  margin: 0 2px; flex: none; color: var(--row-dim); opacity: 0.5; font-weight: 400;
+}
 .scr-activity-row-arrow { color: var(--row-dim); flex: none; }
 /* 리그 줄의 콜론 — 화살표(→)를 대신하지만 글자 폭이 4px밖에 안 돼, 칸의 공용 갭(6px)만으로는
    두 팀 이름이 붙어 보였다(실측: "정구·크리스ː태섭·조조"로 읽힘). 가운뎃점 구분자와 같은
@@ -10165,10 +10193,24 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   margin-left: 3px; font-size: var(--fs-9); font-weight: 800; letter-spacing: 0.03em;
   color: var(--gold-ink); vertical-align: 1px; white-space: nowrap;
 }
-/* 목록 줄 제목에서는 이름 글자 위쪽에 붙인다(요청: 세로 위로 정렬) — 밑선에 맞추면
-   이름과 같은 줄에 선 또 하나의 낱말처럼 읽혀 이름 수를 셀 때 걸린다. 어깨에 얹히면
-   '그 이름에 달린 표'로 읽힌다. */
-.scr-activity-row-em .scr-mvp-mini { vertical-align: top; line-height: 1.05; }
+/* 목록 줄 제목에서는 이름의 우상단에 얹되 자리는 안 차지한다(요청) — 흐름에 두면 이 배지가
+   이름 하나 몫만큼 줄을 넓혀, 그만큼 줄 전체가 더 눌린다(FlatLine의 scaleX). MVP가 있는
+   줄만 다른 줄보다 글자가 납작해지는 셈이라, 정작 MVP를 알리려던 표시가 그 줄을 읽기
+   어렵게 만들었다. 흐름 밖으로 빼면 이름 여덟의 자리는 MVP가 있든 없든 같다.
+   left:100%는 이름 글자의 오른쪽 끝이라, 이름이 길든 짧든 어깨를 따라간다. */
+/* 이름의 오른쪽 '바깥'이 아니라 오른쪽 '끝 위'다 — 바깥으로 내밀면 줄이 꽉 찬 판
+   (MVP가 붙는 팀전이 늘 그렇다)에서 마지막 이름의 배지가 눌린 줄의 오른쪽 끝을 넘어
+   잘려 나간다(.scr-activity-row-flat의 overflow). 글자 위로 올려 얹으면 이름 폭 안에
+   머물러 어느 자리에서도 안 잘린다. */
+.scr-activity-row-em .scr-mvp-mini {
+  position: absolute; right: -1px; bottom: 62%;
+  margin-left: 0; line-height: 1; pointer-events: none;
+}
+/* 배지가 기준으로 삼을 상자 — 이름 글자 자신이다. 넘쳐도 안 자른다: 자르면 어깨 위로
+   올라간 배지가 통째로 사라진다(이름은 이미 글자 수로 잘라 두므로 여기서 또 자를 일이
+   없다 — ActivityScreen의 clipName). 경기 줄에만 건다(FlatLine 안) — 너 나와·리그 줄의
+   이름은 안 자른 원본이라 넘칠 때 말줄임이 필요하다. */
+.scr-activity-row-flat-in .scr-activity-row-em { position: relative; overflow: visible; }
 
 /* ── 미니맵 그림 ── */
 /* 이름표는 이제 지도 안에 들어간다(요청: 테두리 제거하고 이름표는 미니맵 안에서
