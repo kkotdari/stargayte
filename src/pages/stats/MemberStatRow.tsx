@@ -372,6 +372,9 @@ export default function MemberStatRow({
   return (
     <div className={cx("scr-stat-row", me && "scr-stat-row-me")}>
       <div className="scr-stat-name-cell">
+        {/* 프사와 닉네임을 한 덩어리로 묶는다 — 칭호가 그 둘 '밑'에 서야 하기 때문이다(요청).
+            묶지 않으면 칭호는 닉네임 밑(프사 옆)에 남아, 프사와 이름과 칭호가 ㄱ자로 어긋난다. */}
+        <div className="scr-stat-name-main">
         {avatar && (
           <button type="button" className="scr-stat-avatar-btn" onClick={() => setPhotoOpen(true)} aria-label={`${member.nickname} 사진 보기`}>
             <Avatar member={member} size={32} />
@@ -386,13 +389,16 @@ export default function MemberStatRow({
             </button>
             {race && <RaceBadge race={race} circleLetter size={22} className="scr-stat-name-race" />}
           </span>
-          {/* 별명은 닉네임보다 확실히 작고 옅게 둔다(요청) — 이 줄에서 사람을 가리키는 이름은
-              어디까지나 닉네임이고, 이것은 그 옆에 붙는 말이다. 같은 무게로 적으면 표를
-              훑을 때 두 이름이 겹쳐 읽혀 정작 누구 줄인지가 늦게 잡힌다. */}
-          {epithet && (
-            <span className="scr-stat-name-epithet" data-why={epithet.why}>{epithet.label}</span>
-          )}
         </div>
+        </div>
+        {/* 별명은 닉네임보다 확실히 작고 옅게 둔다(요청) — 이 줄에서 사람을 가리키는 이름은
+            어디까지나 닉네임이고, 이것은 그 옆에 붙는 말이다. 같은 무게로 적으면 표를
+            훑을 때 두 이름이 겹쳐 읽혀 정작 누구 줄인지가 늦게 잡힌다.
+            자리는 프사+닉네임 덩어리의 아래다(요청) — 칸 폭을 통째로 쓰므로 긴 칭호도
+            닉네임 폭에 갇히지 않는다. */}
+        {epithet && (
+          <span className="scr-stat-name-epithet" data-why={epithet.why}>{epithet.label}</span>
+        )}
       </div>
       {/* 게임수·승률·APM·커맨드는 한 칸이다(요청: 통합) — 넷 다 "막대 하나 + 수" 한 줄짜리라
           칸을 넷 쓰면서 표만 넓어졌다. 랭크·레이팅도 같은 칸으로 들어온다(요청: 랭킹과 기록
