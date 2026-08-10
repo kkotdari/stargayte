@@ -282,7 +282,7 @@ const TITLES: Title[] = [
      맨 위에 둔다 — 혼자 잘하는 것보다 판을 함께 굴린 쪽이 먼저 불릴 자격이 있다.
      헬프(ally-help)는 제 살림을 놔두고 남의 집으로 병력을 돌린 대목이라, 이기고 지는
      것과 상관없이 그 사람이 어떤 사람인지를 가장 잘 말해 준다. */
-  tactic("헬프 퀸", ["ally-help"]),
+  tactic("든든한 지원군", ["ally-help"]),
   tactic("동맹의 수호신", ["ally-cannon"]),
   /* 입구막기는 '막았다'가 아니라 '막아 놓고 뒤에서 컸다'가 값어치다(판정도 발전까지 함께
      본다 — replayTactics의 WALL_IN_GROW_MIN). 그래서 칭호도 막은 쪽이 아니라 그다음을
@@ -604,6 +604,12 @@ const SPELL_WEIGHT_DEFAULT = 2;
 /** 대표 마법으로 부르려면 이 점수(횟수 × 가중치)는 넘어야 한다 — 핵 두 방이면 되고,
  *  마인은 스물다섯 개를 깔아야 한다. */
 const SKILL_MIN_SCORE = 8;
+/** 유닛보다 먼저 부를 만큼 드문 마법인가(요청: 기술 사용은 뒤로 내리고 다른 개성을 앞에).
+ *
+ *  마법을 통째로 뒤로 미루면 리콜·핵처럼 그 한 번이 곧 이야기인 것까지 같이 묻힌다. 그래서
+ *  줄을 하나 긋는다: 이 점수를 넘는 드문 마법만 앞줄에 서고(리콜 두 번·마엘스트롬 세 번),
+ *  스톰처럼 늘 누르는 것은 유닛·건물이 할 말을 다 한 뒤에야 차례가 온다. */
+const SKILL_RARE_SCORE = 30;
 /** 사전에 없는 기술로 "○○의 대가"를 부르려면 이만큼(요청: 그런 칭호는 재미가 없으니 빈도를
  *  낮춘다) — 흔한 마법을 다섯 번 쓴 것은 그냥 그 종족을 했다는 뜻에 가깝다. */
 const SKILL_PLAIN_SCORE = 30;
@@ -681,14 +687,18 @@ function signature(id: string, s: MemberStats, used: Set<string>): Epithet | nul
        종족의 주력이라 종족이 같으면 다 같은 말이 된다.
        비중을 안 따지는 것도 그래서다 — 가장 많이 쓴 것 하나면 충분하다. */
     const skill = topSpell(m.skills);
-    if (skill && skill.score >= SKILL_MIN_SCORE) {
+    /** 마법 한 줄 만들기 — 사전에 있으면 그 말을, 없으면 문틀을(아주 많이 쌓였을 때만). */
+    const skillLine = (): Epithet | null => {
+      if (!skill || skill.score < SKILL_MIN_SCORE) return null;
       const special = SPELL_SPECIAL[skill.name];
-      /* 사전에 있으면 그 말들을 먼저 쓰고, 없거나 다 쓰였으면 문틀로 내려간다 — 다만
-         문틀은 아주 많이 쌓였을 때만(SKILL_PLAIN_SCORE). 그 문턱에 못 미치면 이 줄은
-         건너뛰고 아래 유닛 쪽에서 찾는다: 심심한 말을 억지로 붙이느니 다른 재료가 낫다. */
       const t = (special && pick(special.map((label) => () => label), skill.name, seed, used))
         || (skill.score >= SKILL_PLAIN_SCORE ? pick(SKILL_SAYS, skill.name, seed, used) : null);
-      if (t) return { label: t, why: `${skill.name} ${skill.count}회` };
+      return t ? { label: t, why: `경기에서 ${skill.name} ${skill.count}번` } : null;
+    };
+    // 드문 마법만 유닛보다 앞이다(SKILL_RARE_SCORE) — 나머지는 아래에서 마지막으로 본다.
+    if (skill && skill.score >= SKILL_RARE_SCORE) {
+      const t = skillLine();
+      if (t) return t;
     }
     /* 병력의 3분의 1을 한 유닛이 차지하면 그건 주력이 아니라 고집이다 — 4분의 1에서 올렸다:
        그 정도는 어느 종족에나 있는 주력 비중이라 "닥치고 ○○"이라 부를 만한 그림이 아니다.
@@ -705,6 +715,10 @@ function signature(id: string, s: MemberStats, used: Set<string>): Epithet | nul
       const t = pick(BUILD_SAYS, build.name, seed, used);
       if (t) return { label: t, why: `${build.name}${ga(build.name)} 건물의 ${Math.round(build.share * 100)}%` };
     }
+    // 흔한 마법은 여기까지 와서야 차례다(요청: 기술 사용은 아래로) — 유닛·건물이 할 말을
+    // 다 했는데도 부를 것이 없을 때만 "스톰 마스터"가 된다.
+    const late = skillLine();
+    if (late) return late;
   }
   /* 리플레이가 없는 사람(수기 등록·옛 경기)은 전적밖에 없다. 그래도 한 줄은 준다 —
      이 자리가 비면 그 줄만 닉네임이 위로 떠 표가 들쭉날쭉해 보인다. 지는 쪽에도 놀리는
