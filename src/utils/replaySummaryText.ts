@@ -2433,6 +2433,11 @@ const TEMPLATES: Record<string, Tpl> = {
     const ratio = num(c.p.ratio);
     const much = ratio >= 2 ? "두 배가 넘는 병력을" : "훨씬 많은 병력을";
     const exp = Number(c.p.exp ?? 0);
+    /* 그 사이 상대가 무엇을 했나 — 멀티만 말하던 것을 테크까지 넓혔다(요청: "테크를 탔다"
+       같은 말이 더 낫다). 멀티는 '자원을 더 먹었다'이고 테크는 '더 좋은 걸 준비했다'라,
+       둘 다면 둘 다 말한다: 병력을 세워만 두는 동안 상대가 벌어들인 것이 그 둘이다.
+       옛 요약에는 tech가 없어 0으로 떨어지고, 그때는 예전 그대로 멀티만 말한다. */
+    const tech = Number(c.p.tech ?? 0);
     /** 팀전이면 "1팀/2팀", 개인전이거나 팀을 모르면 이름 그대로. */
     const team = (names: string[], fallback: string): string => {
       if (c.duel || names.length === 0) return fallback;
@@ -2442,10 +2447,24 @@ const TEMPLATES: Record<string, Tpl> = {
     const foeNames = (c.whom ?? "").split("·").filter(Boolean);
     const me = team(c.whoList, c.who);
     const foe = team(foeNames, c.whom || "상대");
-    return `${ga(me)} ${done(c, exp > 0 ? c.pick([
-      `${much} 쌓아 두고도 들어가지 않는 사이 ${ga(foe)} 멀티를 ${exp}개 더 늘림`,
-      `${much} 세워만 두는 동안 ${ga(foe)} 자원을 ${exp}군데 더 폄`,
-      `${much} 뽑아 놓고도 밀지 않았고, 그 틈에 ${ga(foe)} 멀티를 ${exp}개 더 앉힘`,
+    /** 그 틈에 상대가 한 일 — 멀티·테크 중 있는 것만 잇는다. */
+    const gain = exp > 0 && tech > 0 ? c.pick([
+      `${ga(foe)} 멀티를 ${exp}개 더 늘리고 테크를 탐`,
+      `${ga(foe)} 멀티 ${exp}개를 앉히고 테크까지 올림`,
+    ]) : exp > 0 ? c.pick([
+      `${ga(foe)} 멀티를 ${exp}개 더 늘림`,
+      `${ga(foe)} 멀티를 ${exp}군데 더 폄`,
+      `${ga(foe)} 멀티 ${exp}개를 더 앉힘`,
+    ]) : tech > 0 ? c.pick([
+      // 바깥 문장이 이미 "…동안 / …사이 / 그 틈에"로 때를 말한다 — 여기서 또 "그 사이"를
+      // 붙이면 한 문장에 같은 말이 두 번이다.
+      `${ga(foe)} 테크를 탐`,
+      `${ga(foe)} 테크를 한 단계 올림`,
+    ]) : "";
+    return `${ga(me)} ${done(c, gain ? c.pick([
+      `${much} 쌓아 두고도 들어가지 않는 사이 ${gain}`,
+      `${much} 세워만 두는 동안 ${gain}`,
+      `${much} 뽑아 놓고도 밀지 않았고, 그 틈에 ${gain}`,
     ]) : c.pick([
       `${much} 쌓아 두고도 들어가지 않고 타이밍을 흘려보냄`,
       `${much} 끝내 쓰지 못하고 때를 놓침`,

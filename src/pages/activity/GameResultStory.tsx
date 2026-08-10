@@ -1388,12 +1388,18 @@ export default function GameResultStory({
     }
     /* 아바타에 겹쳐 얹는 상태 얼굴 — "그 사람이 지금 어떤 처지인가"만 말한다(요청: 해골·
      * 트로피 말고는 아바타에 붙는 표시가 없으니 공격자·당한 사람도 아바타로 알려 달라).
-     * 우선순위: 트로피 > 크게 무너짐 > 적당히 당함 > 힘겨움(역부족) > 도움받음(감동) >
-     * 잘 막아냄 > 공격자 > 도와줌(천사). */
+     * 우선순위: 트로피 > 크게 무너짐 > 타이밍(흘려보냄·발전) > 적당히 당함 > 힘겨움(역부족)
+     * > 도움받음(감동) > 잘 막아냄 > 도와줌(천사) > 공격자. */
     const faces = new Map<string, string>();
     for (const s of slots) {
       if (trophy.has(s.raw)) { faces.set(s.raw, "🏆"); continue; }
       if (severe.has(s.raw)) { faces.set(s.raw, SEVERE_FACE); continue; }
+      /* 타이밍 이야기는 '당황(😰)'보다 먼저다(지적: 열심히 발전하는 쪽인데 당황한 얼굴이
+         붙는다) — 이 스냅의 자막이 곧 그 이야기라, 같은 장면에 약한 신호가 하나 더 걸렸다고
+         해서 그쪽 얼굴을 주면 그림과 글이 어긋난다. 크게 무너진 것(😭)만은 그보다 앞이다:
+         그건 자막이 무엇을 말하든 그 사람에게 그 순간 일어난 가장 큰 일이다. */
+      if (idling.has(s.raw)) { faces.set(s.raw, IDLE_FACE); continue; }
+      if (busy.has(s.raw)) { faces.set(s.raw, BUSY_FACE); continue; }
       if (moderate.has(s.raw)) { faces.set(s.raw, MODERATE_FACE); continue; }
       if (struggling.has(s.raw)) { faces.set(s.raw, STRUGGLE_FACE); continue; }
       if (helped.has(s.raw)) { faces.set(s.raw, HELPED_FACE); continue; }
@@ -1403,11 +1409,6 @@ export default function GameResultStory({
       // 도우러 간 것이 더 구체적이고 뚜렷한 사실이라 그쪽을 우선한다.
       if (helper.has(s.raw)) { faces.set(s.raw, HELPER_FACE); continue; }
       if (attacker.has(s.raw)) { faces.set(s.raw, ATTACK_FACE); continue; }
-      /* 타이밍 이야기는 맨 뒤에 본다(요청) — 같은 스냅에 다른 일이 겹쳐 있으면 그쪽이
-         더 구체적인 사실이다. 흘려보낸 쪽은 자는 얼굴, 그 사이 살림을 편 쪽은 불이다
-         (지적: 근육보다 불이 낫다) — 근육은 '힘이 세다'로 읽혀 병력 이야기와 헷갈렸다. */
-      if (idling.has(s.raw)) { faces.set(s.raw, IDLE_FACE); continue; }
-      if (busy.has(s.raw)) { faces.set(s.raw, BUSY_FACE); continue; }
     }
     /* 이 장면 무렵에 오간 말(요청: 스냅으로 선정한 부근의 채팅만 말주머니로) — 요약이
        스냅마다 골라 실어 준 것을 그대로 말한 사람 아바타에 붙인다. 그 장면에 이름이

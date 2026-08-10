@@ -65,6 +65,23 @@ const EARLY_RUSH_UNITS = new Set(["Zergling", "Marine", "Zealot", "Hydralisk", "
 
 // 확장(멀티) 건물 — 이걸 몇 개 지었나로 운영/올인을 가른다.
 const EXPANSION_BUILDINGS = new Set(["Nexus", "Hatchery", "Command Center"]);
+/* 테크 건물 — 병력 대신 자원을 부은 곳이다(요청: "테크를 탔다"는 말도 쓰자). 종족을 안
+   가르고 한 뭉치로 두는 이유는 여기서 쓰는 재료(buildingFrames)의 열쇠가 영문 건물
+   이름이라 종족이 이미 이름에 박혀 있기 때문이다 — 저그가 Forge를 지을 일은 없다.
+   목록은 replayTactics의 TECH_BUILDINGS와 같은 갈래다(그쪽은 종족별로 나눠 쓴다).
+   생산 건물(게이트·배럭·팩토리…)은 뺀다 — 그건 병력을 뽑는 곳이라, 안 들어가고 병력만
+   쌓은 이야기에서 '그 사이 다른 걸 했다'는 뜻이 안 된다. */
+const TECH_BUILDINGS = new Set([
+  // 저그
+  "Lair", "Hive", "Evolution Chamber", "Hydralisk Den", "Spire", "Greater Spire",
+  "Queen's Nest", "Defiler Mound", "Ultralisk Cavern",
+  // 프로토스
+  "Forge", "Cybernetics Core", "Citadel of Adun", "Templar Archives",
+  "Robotics Support Bay", "Observatory", "Fleet Beacon", "Arbiter Tribunal",
+  // 테란
+  "Engineering Bay", "Academy", "Armory", "Science Facility",
+  "Machine Shop", "Control Tower", "Covert Ops", "Physics Lab",
+]);
 // 방어 건물·드랍 수송선 이야기는 이제 각각 "질럿과 성큰으로 막아섰지만 실패"(아래
 // DEFENSE_KO)와 전술 층(replayTactics의 드랍십/셔틀)이 맡는다 — 여기 목록은 없앴다.
 
@@ -3233,7 +3250,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       /* 문장에는 인구수 차이를 그대로 싣지 않는다 — 이 값은 '그때까지 뽑은 총량'의 차라
          경기가 길수록 부풀고(실측 265), 읽는 사람에게 265가 무엇인지 뜻이 안 선다. 몇 배로
          앞섰나만 말한다. */
-      p: { ratio: Math.round(idle.ratio * 10) / 10, exp: idle.exp, min: minutes(idle.at * SECONDS_PER_FRAME) },
+      p: {
+        ratio: Math.round(idle.ratio * 10) / 10, exp: idle.exp, tech: idle.tech,
+        min: minutes(idle.at * SECONDS_PER_FRAME),
+      },
     } as Beat;
   })();
 
@@ -4708,10 +4728,22 @@ function ordersIntoFoes(
 
 /** 그 편이 창 동안 새로 앉힌 확장(본진 건물) 수. */
 function expansionsIn(players: ParsedReplayPlayer[], from: number, to: number): number {
+  return builtIn(players, from, to, EXPANSION_BUILDINGS);
+}
+
+/** 그 창 안에 그 편이 올린 테크 건물 수 — "그 사이 테크를 탔다"의 근거다(요청). */
+function techIn(players: ParsedReplayPlayer[], from: number, to: number): number {
+  return builtIn(players, from, to, TECH_BUILDINGS);
+}
+
+/** 그 창 안에 그 편이 지은 건물 수 — 어떤 건물을 셀지는 부르는 쪽이 정한다. */
+function builtIn(
+  players: ParsedReplayPlayer[], from: number, to: number, kinds: Set<string>,
+): number {
   let n = 0;
   for (const p of players) {
     for (const [b, fs] of Object.entries(p.signals?.buildingFrames ?? {})) {
-      if (!EXPANSION_BUILDINGS.has(b)) continue;
+      if (!kinds.has(b)) continue;
       n += fs.filter((f) => f >= from && f <= to).length;
     }
   }
@@ -4728,7 +4760,10 @@ function idleLead(
   a: ParsedReplayPlayer[],
   b: ParsedReplayPlayer[],
   totalFrames: number | null,
-): { lead: ParsedReplayPlayer[]; behind: ParsedReplayPlayer[]; at: number; gap: number; ratio: number; exp: number } | null {
+): {
+  lead: ParsedReplayPlayer[]; behind: ParsedReplayPlayer[];
+  at: number; gap: number; ratio: number; exp: number; tech: number;
+} | null {
   if (totalFrames === null || totalFrames <= 0) return null;
   const curves = [armyCurve(a), armyCurve(b)];
   if (curves[0].length === 0 || curves[1].length === 0) return null;
@@ -4749,7 +4784,8 @@ function idleLead(
     if (ordersIntoFoes(lead, behind, f, f + win) > IDLE_PUSH_MAX) continue;
     return {
       lead, behind, at: Math.round(f), gap: Math.round(gap),
-      ratio: hi / lo, exp: expansionsIn(behind, f, f + win),
+      ratio: hi / lo,
+      exp: expansionsIn(behind, f, f + win), tech: techIn(behind, f, f + win),
     };
   }
   return null;
