@@ -11793,7 +11793,16 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   background: none;
   border: 1px solid currentColor;
   color: var(--kind, var(--kind-none));
+  /* 한글 글자는 글자상자 안에서 아래로 앉는다(지적: 글자가 아래로 치우쳐 보인다) — 승·무·패는
+     받침 없는 글자라 더 그렇다. 한 픽셀만 올려 동그라미 한가운데로 맞춘다(자리는 안 먹는다). */
+  text-indent: 0.02em;
+  padding-bottom: 1px;
 }
+/* 색은 여기서 정한다(지적: 색이 안 먹는다) — 앞서 이 세 줄이 통째로 지워져 모든 배지가
+   기본 무채(--kind-none)로 떨어져 있었다. 승은 초록, 무는 회색, 패는 붉음이다. */
+.scr-activity-outcome-win { --kind: var(--outcome-win); }
+.scr-activity-outcome-draw { --kind: var(--outcome-draw); }
+.scr-activity-outcome-lose { --kind: var(--outcome-lose); }
 /* (삭제) 이름 쪽으로 당기던 음수 마진 — 걷었다(요청). 줄이 좁아지면 이름 글자와 배지가
    실제로 겹쳐 보였다. */
 
