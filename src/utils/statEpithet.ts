@@ -41,18 +41,8 @@ const RACE_MIN_SHARE = 0.25;
 const MIN_PLAYS_TIER: Record<number, number> = { 1: 10, 2: 4 };
 /* (삭제) NAME_EDGE — 원장에서 뽑던 유닛·건물 칭호가 "무리 한가운데보다 이만큼 앞서야"를
    재던 값이다. 그 칭호들과 함께 걷었다(아래 '특징' 주석). */
-/** 수치 칭호는 겨룰 사람이 이만큼은 있어야 뜻이 선다 — 둘 중 1등은 1등이 아니다. */
-const MIN_POOL = 3;
-/** 수치 칭호의 1등 값이 무리 한가운데보다 이만큼은 커야 왕관이다. 다들 비슷한데 소수점이
- *  조금 컸을 뿐인 1등에 "끝판왕"을 씌우면, 그 표의 모든 칭호가 같이 거짓말이 된다.
- *
- *  1.15 → 1.06(지적: 칭호가 너무 안 나온다). APM·승률·분당 생산처럼 사람 사이가 촘촘한
- *  값에서는 1등이 한가운데의 1.15배까지 벌어지는 일이 드물어, 그 칭호들이 통째로 잠겨
- *  있었다. 6%면 "고만고만한 1등"은 여전히 걸러지면서 실제로 앞선 사람은 통과한다. */
-const CROWN_EDGE = 1.06;
-/** 왕관 계열(여왕·퀸·여제·신…)로 부르는 점수의 문턱 — 이름 짓는 규칙(칭호 표 머리)과 같은
- *  값이고, 2위에게 물려줄 수 있는지도 이 선으로 가른다(요청: 왕관은 1위만, 그 아래만 물림). */
-const CROWN_SCORE = 3;
+/* (삭제) MIN_POOL·CROWN_EDGE·CROWN_SCORE — 상대평가(클럽 1위·왕관 물려주기) 시절의
+   잣대들이다. 절대평가로 바꾸며(요청: 한 사람이 표를 싹쓸이한다) 전부 걷었다. */
 /* 클럽 최다라는 것만으로는 부족하다(요청: 아무리 클럽 최다라도 판수에 비례한 최소 문턱은 다
    있게, 그래서 "칭호 없음"이 흔하게) — 서른 판을 뛰고 두 판에서 드랍을 한 사람이 그것만으로
    클럽 1등이면, 그 말은 그 사람을 부르는 말이 아니라 "다들 안 한다"는 사실의 그림자다.
@@ -71,7 +61,8 @@ const COUNT_SHARE: Record<number, number> = { 1: 0.04, 2: 0.08 };
    같은 비율이 예전보다 헐거워졌다(분자만 줄고 분모는 그대로다).
    지금 값으로 보면, 마흔 판 뛴 사람에게 흔한 수는 네 번(8%)·드문 수는 두 번(4%)이고,
    여든 판이면 일곱 번·네 번이다. 한 번은 우연이지만 서너 번은 버릇이다. */
-const LEAD_PLAYS_SHARE = 0.5;
+/* (삭제) LEAD_PLAYS_SHARE — "클럽 한가운데의 절반은 뛰었어야"라는 상대 잣대. 절대평가로
+   바꾸며 고정 판수(MIN_PLAYS_RATE)가 그 자리를 맡는다. */
 
 export interface EpithetSubject {
   id: string;
@@ -132,11 +123,7 @@ function did(s: MemberStats, ...keys: string[]): number | null {
   return n > 0 ? n : null;
 }
 
-function median(vals: number[]): number {
-  const s = [...vals].sort((x, y) => x - y);
-  const m = Math.floor(s.length / 2);
-  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-}
+/* (삭제) median() — 상대평가(한가운데 대비 배수)가 쓰던 도구. 절대평가와 함께 걷었다. */
 
 /* ── 유독 잘하는 맵 ──────────────────────────────────────────────────────────── */
 /** 한 맵을 '잘한다'고 부르려면 이만큼은 뛰어야 한다 — 두 판 다 이겼다고 지배자는 아니다.
@@ -704,21 +691,15 @@ const TITLES: Title[] = [
   /* (삭제) 일단 째고 본다(greedy-build) — 위 "째기의 달인"(통한 째기)과 같은 수다. 통했나
      아닌가로 갈라 두 칭호를 두면 표에서는 결국 같은 사람이 두 번 걸린다. */
   {
-    /* 건축왕(요청: 멀티 부동산왕 → 건축왕, 근거도 확장이 아니라 건물 수로) — 예전에는
-       자막의 '확장' 대목을 셌다. 그건 "멀티를 폈다"는 한 장면이라 부지런히 지은 사람이
-       아니라 그 장면이 자막에 걸린 사람이 왕이 됐다. 지은 건물을 통째로 세면 그 말이
-       그대로 사실이 된다.
-       분당으로 안 나누는 것이 심시티 퀸과의 차이다 — 그쪽은 '손이 빠른가'이고 이쪽은
-       '얼마나 지었나'다. 대신 남들 절반은 뛰었어야 후보다(LEAD_PLAYS_SHARE). */
-    /* 4 → 3(요청: 나오기 힘든 순서) — 지은 건물 수는 오래 뛰고 부지런히 누르면 쌓이는
-       값이라, 그 판에서 무슨 일을 벌였나를 세는 칭호들과 같은 자리에 둘 수 없다.
-       왕관 자리는 지킨다: 클럽에서 제일 많이 지었다는 사실 자체는 그 사람의 색이다. */
-    label: "문어발 건축 퀸", weight: 3, why: "지은 건물", unit: "채",
+    /* 판당으로 잰다(요청: 절대평가) — 누적 채수는 오래 뛴 사람이 늘 크다. 서른 채면 한 판에
+       확장·생산·방어를 고루 편 살림이다. */
+    label: "문어발 건축 퀸", weight: 3, min: 30, why: "판당 지은 건물", unit: "채",
     value: (s, of) => {
-      const b = mix(s, of)?.buildings;
-      if (!b) return null;
-      const n = Object.values(b).reduce((sum, v) => sum + (v ?? 0), 0);
-      return n > 0 ? n : null;
+      const m = mix(s, of);
+      const plays = won(s, of).mixPlays ?? 0;
+      if (!m || !(plays > 0)) return null;
+      const n = Object.values(m.buildings).reduce((sum, v) => sum + (v ?? 0), 0);
+      return n > 0 ? n / plays : null;
     },
   },
   /* 상대보다 일꾼을 훨씬 많이 굴린 대목(worker-gap) — 자원을 많이 캤다는 말이다. */
@@ -739,9 +720,11 @@ const TITLES: Title[] = [
      앞뒤다: 쫓겨 나가 다시 폈거나(이사), 아예 아군 기지에 얹혀 살았거나(셋방살이). 따로 두면
      같은 판에서 둘 다 잡히는 일이 흔해 한 사람의 같은 사연이 두 칭호로 갈린다.
      근거 문장은 둘을 함께 부른다(tactic이 지어 주는 이름은 첫 열쇠 것뿐이라 여기서 덮는다). */
-  /* (삭제) 이사의 달인(lodging·relocate) — 요청. 쫓겨 다닌 자취라 부를 만한 말을 찾기가
-     어려웠고(셋방살이 퀸·역마살 퀸·신축 퀸을 거쳤다), 무엇보다 그 판을 만든 사람의 수가
-     아니라 당한 자리다. */
+  /* 부활 퀸(요청: 이사 퀸을 되살리되 긍정으로 — 본진 밖에서 살아남았다) — 이사·셋방살이는
+     본진을 잃고도 판을 안 놓은 이야기다. "쫓겨 다녔다"가 아니라 "그러고도 살아남았다"로
+     부르면 같은 기록이 그 사람의 끈기가 된다. 져도 센다(COUNTED_EVEN_IF_LOST) — 밀린 뒤의
+     이야기라 이긴 판만 보면 영영 안 잡힌다. */
+  { ...tactic("부활 퀸", ["lodging", "relocate"]), why: "본진 밖 생존(이사·셋방살이)" },
   /* (삭제) 건물 띄우기(lift-off)로 짓던 "공중부양 마스터" — 뺐다(지적). 이 키는 자리를
      다 내주고 건물만 띄워 쫓겨 다닌 대목이라, 버틴 이야기로 넣었지만 칭호로 굳으면
      "집을 잃은 사람"이라는 딱지로 읽힌다. 자막에서 한 번 지나가는 말과, 이름 아래
@@ -789,10 +772,13 @@ const TITLES: Title[] = [
      함께 봐야 한다(표 머리의 규칙: '머신'은 격을 안 세우는 말이다). 이 파일 첫 줄이 예로 드는
      그 이름으로 돌아간다. 손이 아니라 결과를 세는 값이라 손 이야기들보다 위다: 분당 뽑은
      기수는 자원을 캐고 건물을 늘리고 쉬지 않고 눌러야 함께 오르는 수다. */
-  { label: "물량 퀸", weight: 3.5, why: "분당 뽑은 기수", unit: "기", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreUnit, won(s, of).mixSeconds) : null; } },
+  /* 절대 문턱들(요청: 상대가 아니라 절대평가) — "클럽 1위"가 아니라 "이 수를 넘으면 그
+     사람"이다. 값은 실측에서 잡았다: 분당 12기·APM 283·분당 3.5채가 상위권의 실제 수라,
+     그 언저리에 선을 긋는다. */
+  { label: "물량 퀸", weight: 3.5, min: 10, why: "분당 뽑은 기수", unit: "기", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreUnit, won(s, of).mixSeconds) : null; } },
   // APM은 손 이야기 가운데 아래다(요청: 퀸으로 올릴 만하다) — 빠르다는 사실 하나라, 그
   // 빠름으로 무엇을 했는지는 유효타(군더더기 없는 손)와 물량퀸이 따로 센다.
-  { label: "번개같은 손놀림", weight: 3, why: "APM", unit: "", value: (s) => s.avgApm },
+  { label: "번개같은 손놀림", weight: 3, min: 250, why: "APM", unit: "", value: (s) => s.avgApm },
   /* (삭제) 하늘의 여전사(병력 중 공중 비중) — 요청. */
   /* (삭제) 마법의 화신(병력 중 마법 유닛 비중) — 요청. */
   /* (삭제) 고급 유닛 수집가(병력 중 고급 유닛 비중) — 요청. */
@@ -801,11 +787,11 @@ const TITLES: Title[] = [
   /* 무게를 2 → 1.2로 내렸다(요청) — 초반 일꾼은 그 판의 빌드가 정하는 값에 가깝다.
      같은 종족·같은 빌드면 누구나 비슷하게 나오므로, 1등이라고 그 사람을 말해 주는 몫이
      다른 칭호들보다 작다. */
-  { label: "일꾼 공장장", weight: 1.2, why: "초반 5분 일꾼", unit: "기", value: (s, of) => won(s, of).avgWorker5 },
+  { label: "일꾼 공장장", weight: 1.2, min: 25, why: "초반 5분 일꾼", unit: "기", value: (s, of) => won(s, of).avgWorker5 },
   /* 건물을 제일 많이 올린 사람(요청: 심시티 퀸) — "쉴 새 없이 짓는 자"에서 바꿨다. 재는 값은 그대로 분당 지은 채수다. */
-  { label: "심시티 장인", weight: 1.5, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
+  { label: "심시티 장인", weight: 1.5, min: 4, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
   {
-    label: "풀업녀", weight: 1.5, why: "공/방 평균 단계", unit: "",
+    label: "풀업녀", weight: 1.5, min: 2, why: "공/방 평균 단계", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       if (!m) return null;
@@ -885,20 +871,23 @@ const TITLES: Title[] = [
     label: "승리의 여신", weight: 9, sticky: true, min: 70, why: "승률", unit: "%",
     value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null),
   },
-  { label: "최다 BEST 퀸", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
+  /* "최다"를 뗐다(요청: 절대평가) — 이제 1위가 아니라 열 번을 넘긴 사람 전부다. */
+  { label: "BEST 퀸", weight: 3, min: 10, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
   /* 졌잘싸 퀸(요청) — 진 판에서 BEST로 뽑힌 수다. 판을 가장 많이 만들고도 졌다는 말이라,
      이기고 지고를 안 가리는 BEST 수집퀸과는 다른 이야기를 센다. 무게는 그보다 한 뼘
      아래다: 잘 싸운 것은 맞지만 이긴 판의 BEST와 같은 값으로 둘 수는 없다. */
   /* 2.5 → 3(요청: 퀸으로 올릴 만하다) — 진 판에서 BEST로 뽑히려면 팀이 무너지는 동안 혼자
      그 판을 붙들고 있어야 한다. 이긴 판의 BEST(3)와 같은 자리로 두되 표에서는 그 아래다. */
-  { label: "졌잘싸 퀸", weight: 3, why: "진 판의 BEST PLAYER", unit: "회", value: (s) => ((s.lostBests ?? 0) > 0 ? s.lostBests! : null) },
+  { label: "졌잘싸 퀸", weight: 3, min: 5, why: "진 판의 BEST PLAYER", unit: "회", value: (s) => ((s.lostBests ?? 0) > 0 ? s.lostBests! : null) },
   // 분당 커맨드 — 손 이야기 셋 가운데 맨 아래다(요청: 퀸으로 올릴 만하다). 많이 눌렀다는
   // 사실만 세므로, 그 가운데 몇이 헛손질인지는 안 묻는다.
-  { label: "쉬지 않는 손가락", weight: 3, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
+  { label: "쉬지 않는 손가락", weight: 3, min: 250, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
   /* 참여 퀸 — 여신급까지 올려 봤다가 되돌렸다(요청). 게임 수 1위는 실력이 아니라 시간이고,
      여신 자리는 승률처럼 '얼마나 잘했나'가 앉는 자리다. sticky라 조건만 넘으면 어차피
      무조건 먼저 간다 — 무게는 그 안에서의 차례일 뿐이다. */
-  { label: "참여 퀸", weight: 3, sticky: true, why: "게임 수", unit: "판", value: (s) => s.plays },
+  /* 게임 수도 절대다(요청) — 1위가 아니라 백 판을 넘긴 사람 전부. sticky도 뗐다: 무조건
+     우선은 '그 값의 1위'라는 상대 개념에 딸려 있던 것이다. */
+  { label: "참여 퀸", weight: 3, min: 100, why: "게임 수", unit: "판", value: (s) => s.plays },
 ];
 
 /* ── 이름을 만드는 잔손질 ─────────────────────────────────────────────────────
@@ -974,165 +963,102 @@ export function lastEpithetClaims(): EpithetClaimRow[] {
   return lastClaims;
 }
 
-/** 회원 → 칭호. 왕관은 넘겨받은 무리 안에서만 매기므로, 부르는 쪽이 '검색에 걸린 목록'이
- *  아니라 '그 조건의 회원 전체'를 넘겨야 한다(메달과 같은 원칙) — 이름을 검색했다고 칭호가
- *  옮겨 다니면 그건 기록이 아니라 화면 효과다. */
+/** 회원 → 화면에 보일 칭호 하나(그 사람이 얻은 것 중 가장 높은 것).
+ *
+ *  절대평가다(요청) — 한때 거의 모든 칭호가 "클럽 최다/1위"라는 상대평가였는데, 그러면
+ *  제일 많이 뛰는 한 사람이 표를 싹쓸이한다(실제로 그랬다: 한 사람이 열여섯 자격을 다
+ *  가져갔다). 이제 칭호마다 절대 조건(제 판의 몇 %, 최소 몇 번, 수치 문턱)이 있고, 그걸
+ *  넘은 사람은 누구든 그 칭호를 얻는다 — 같은 칭호를 여럿이 가질 수 있고, 한 사람이 여러
+ *  칭호를 가질 수 있다(요청). 화면에는 그중 점수가 가장 높은 하나가 보인다(요청).
+ *  '물려주기'도 함께 없어졌다 — 임자라는 개념 자체가 없다. */
 export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
   const out = new Map<string, Epithet>();
-  const used = new Set<string>();
   const ranked = pool.filter((p) => p.stats.plays >= MIN_PLAYS);
 
-  /** 임자가 정해진 칭호 하나 — 아직 나눠 주기 전의 '자격'이다. */
+  /** 자격 하나 — 이 사람이 이 칭호의 조건을 넘었다. */
   interface Claim {
     title: Title;
     id: string;
     label: string;
     raw: number;
-    /** 겨룰 점수(무게 × 횟수 또는 무게 × 한가운데 대비 배수). 무게가 없으면 0이라 표 차례로 간다. */
+    /** 그 사람의 여러 자격 중 무엇을 보일지 고르는 점수 — 사람 사이를 견주는 값이 아니다. */
     score: number;
     order: number;
-    /** 이 사람이 그 값의 1등인가 — 근거 문장과 아래 sticky 판정에 쓴다. */
-    first: boolean;
-    /** 나눠 줄 때의 급 — sticky 칭호의 1등만 0급으로 앞당겨진다(Title.sticky 주석). */
+    /** sticky(승률 계열)만 0 — 점수와 무관하게 그 사람의 대표가 된다. */
     rank: number;
     /** 이 값을 잰 판수 — 종족 칭호면 그 종족 판수다. 근거 문장의 '몇 판 중 몇 %'가 쓴다. */
     denom: number;
   }
   const claims: Claim[] = [];
-  /* 이 무리가 보통 몇 판이나 뛰었나 — 수치 칭호의 참여 문턱이 여기에 비례한다. */
-  const medPlays = ranked.length ? median(ranked.map((p) => p.stats.plays)) : 0;
   TITLES.forEach((title, order) => {
     // 급마다 뛴 판 문턱이 다르다(MIN_PLAYS_TIER) — 못 넘긴 사람은 후보에서 아예 빠진다.
     const need = MIN_PLAYS_TIER[title.tier ?? 2] ?? MIN_PLAYS;
-    const vals = ranked
-      .filter((p) => p.stats.plays >= need)
-      .map((p) => ({ id: p.id, v: title.value(p.stats, p), stats: p.stats, of: p }))
-      /* 판수 대비 문턱 — 그 사람 판의 몇 할에서는 나왔어야 한다. 칭호가 따로 정해 두지
-         않았으면 급에 맞는 기본값이 걸린다(요청: 문턱은 다 있게). */
-      .filter((x) => {
-        const tier = title.tier ?? 2;
-        const share = title.minPlaysShare ?? (title.scale === "count"
-          ? COUNT_SHARE[tier] ?? COUNT_SHARE[2]
-          : 0);
-        if (share <= 0) return true;
-        /* 분모는 그 칭호가 타는 종족의 판수다(요청) — 종족을 안 타는 칭호만 전체 판수로
-           잰다. 그 종족으로 한 판도 안 뛴 사람은 애초에 그 수가 나올 수 없다. */
-        const base = denomOf(title, x.of);
-        if (base <= 0) return false;
-        return (x.v ?? 0) >= Math.ceil(base * share);
-      })
-      /* 수치 칭호는 클럽 한가운데의 절반은 뛰었어야 한다(LEAD_PLAYS_SHARE). "count"가 아닌
-         것은 전부 이쪽이다 — scale을 안 적은 칭호(APM·비중·분당)도 점수는 한가운데 대비
-         배수로 매겨지므로 같은 잣대를 받아야 한다. */
-      .filter((x) => title.scale === "count" || x.stats.plays >= medPlays * LEAD_PLAYS_SHARE)
-      .filter((x): x is { id: string; v: number; stats: MemberStats; of: EpithetSubject } =>
-        x.v !== null && x.v > 0);
-    if (vals.length < (title.pool ?? MIN_POOL)) return;
-    const top = Math.max(...vals.map((x) => x.v));
-    if (title.min !== undefined && top < title.min) return;
-    /* 이름이 들어가는 칭호는 사람마다 임자가 따로 서므로(아래 winners) 문턱도 사람마다
-       걸어야 한다(요청: 종족별 승률 퀸은 진짜 승률이 높은 경우만) — 1등 값만 보고 통과시키면
-       그 아래 사람들이 문턱을 한참 밑돌아도 함께 딸려 나간다. */
-    if (title.name && title.min !== undefined) {
-      const kept = vals.filter((x) => x.v >= title.min!);
-      vals.length = 0;
-      vals.push(...kept);
-      if (vals.length === 0) return;
-    }
-    const med = median(vals.map((x) => x.v));
-    if (top < med * (title.edge ?? CROWN_EDGE)) return;
-    /* 1등에게만 준다(지적: 포토러시가 더 많은 사람이 있는데 그다음 사람이 퀸이 됐다).
-       한때는 1등이 다른 칭호를 가져가면 다음 사람에게 물려줬는데, 그러면 "퀸"·"절대자"처럼
-       1위를 뜻하는 말이 1위가 아닌 사람에게 붙는다 — 그 말이 거짓이 되는 순간 나머지 칭호도
-       같이 못 믿을 말이 된다. 임자가 다른 칭호로 가면 이 칭호는 그냥 안 나간다.
-       공동 1위는 그대로 후보이고, 그중 먼저 걸린 한 사람이 가져간다. */
-    /* 이름이 말에 들어가는 칭호(맵·종족)는 사람마다 다른 칭호다 — "헌터스의 여주인"과
-       "투혼의 황녀"는 서로 겨룰 일이 없다. 그래서 1등만 뽑지 않고 문턱을 넘은 사람 모두가
-       후보다(지적: 맵 칭호가 한 명한테만 나왔다). 나머지 칭호는 그대로 1등에게만 간다. */
-    const tops = vals.filter((x) => x.v === top);
-    // 2등 값 — 1위가 얼마나 벌렸나(아래 leadBonus). 뒤가 아무도 없으면 null.
-    const belows = vals.map((x) => x.v).filter((v) => v < top);
-    const second = belows.length ? Math.max(...belows) : null;
-    /* 2점대 이하만 2위까지 물려준다(요청) — 한 사람은 여전히 칭호 하나뿐이라, 3점대를
-       가져간 사람이 걸려 있던 2점대 칭호들은 여태 아무에게도 안 갔다(그 칭호의 임자가 곧
-       그 사람이라 2위는 못 받았다). 재미난 칭호가 통째로 사장되고 "칭호 없음"만 늘던 자리다.
-       왕관 계열(3점대 이상)은 그대로 1위만이다 — "퀸"·"여제"는 그 자리가 하나뿐이라는 뜻이라
-       2위가 받는 순간 말 자체가 무너진다. 그 아래는 "그 수를 즐겨 쓴다"는 말에 가까워 2위가
-       받아도 사실이 남고, 근거 문장이 "클럽 2위"라고 밝힌다.
-       3위부터는 안 준다: 그쯤 되면 그 칭호가 가리키는 사실이 남아 있지 않다.
-       차례는 아래 나눠 주는 고리가 저절로 지킨다 — 같은 칭호라면 1위의 점수가 늘 더 커서
-       먼저 걸리고, 1위가 이미 다른 칭호를 받았을 때만 2위 차례가 온다. */
-    const crown = (title.weight ?? 0) * (TIER_BOOST[title.tier ?? 2] ?? 1) >= CROWN_SCORE;
-    const runnerUps = second !== null && !crown ? vals.filter((x) => x.v === second) : [];
-    const winners = title.name ? vals : [...tops, ...runnerUps];
-    for (const w of winners) {
+    for (const p of ranked) {
+      if (p.stats.plays < need) continue;
+      /* 수치·비율 칭호(scale이 count가 아닌 것)는 판이 좀 더 쌓여야 한다 — 세 판의 APM
+         300은 그 사람의 손이 아니라 그 세 판의 형편이다. 예전에는 "클럽 한가운데의 절반"
+         이라는 상대 잣대였는데, 절대평가로 바꾸며 고정 판수(MIN_PLAYS_RATE)로 못 박는다. */
+      if (title.scale !== "count" && p.stats.plays < MIN_PLAYS_RATE) continue;
+      const v = title.value(p.stats, p);
+      if (v === null || !(v > 0)) continue;
+      const tier = title.tier ?? 2;
+      /* 판수 대비 문턱 — 그 사람 판(종족 칭호면 그 종족 판)의 몇 할에서는 나왔어야 한다.
+         칭호가 따로 정해 두지 않았으면 급에 맞는 기본값이 걸린다(COUNT_SHARE). */
+      const share = title.minPlaysShare ?? (title.scale === "count"
+        ? COUNT_SHARE[tier] ?? COUNT_SHARE[2]
+        : 0);
+      if (share > 0) {
+        const denomPlays = denomOf(title, p);
+        if (denomPlays <= 0) continue;
+        if (v < Math.ceil(denomPlays * share)) continue;
+      }
+      // 절대 문턱 — 이 값을 넘으면 받는다. 남이 얼마나 했는지는 안 본다(요청: 절대평가).
+      if (title.min !== undefined && v < title.min) continue;
       const label = title.name
-        ? title.label.replace("{n}", title.name(w.stats, w.of) ?? "")
+        ? title.label.replace("{n}", title.name(p.stats, p) ?? "")
         : title.label;
       if (!label || label.includes("{n}")) continue;
-      // 전술은 횟수 그대로, 수치는 '한가운데의 몇 배'로 바꿔 곱한다(Title.scale 주석).
-      const base = title.scale === "count" ? w.v : (med > 0 ? w.v / med : 1);
-      const boost = TIER_BOOST[title.tier ?? 2] ?? 1;
-      /* 1위라는 사실 자체에 웃돈을 얹는다(요청) — 다만 '겨우 1위'와 '독보적 1위'는 다른
-         말이라, 2등과 얼마나 벌렸는지로 크기를 정한다. 뒤가 없으면(혼자만 한 일) 최대다.
-         이 웃돈이 있어야 어중간한 여러 칭호가 아니라 그 사람이 확실히 앞서는 하나가
-         고른다 — 압도적인 자리는 그 사람을 부르는 말로 제일 알맞다. */
-      const gap = second === null ? 1 : (second > 0 ? Math.min(1, (top - second) / second) : 1);
-      const leadBonus = 1 + gap;
+      /* 점수는 '그 사람 안에서' 무엇을 보일지만 정한다 — 횟수 칭호는 무게 × 횟수 × 급 웃돈,
+         수치 칭호는 문턱을 얼마나 넘겼나(v/min)를 곱한다. 사람끼리 견주는 값이 아니므로
+         1위 웃돈(leadBonus) 같은 것은 없다. */
+      const boost = TIER_BOOST[tier] ?? 1;
+      const base = title.scale === "count" ? v : (title.min ? v / title.min : 1);
       claims.push({
-        title, id: w.id, label, raw: w.v, denom: denomOf(title, w.of),
-        score: (title.weight ?? 0) * base * boost * leadBonus, order,
-        // sticky만 절대 우선이다(참여수 1위) — 나머지는 급을 웃돈으로 받아 점수로 겨룬다.
-        first: w.v === top, rank: title.sticky ? 0 : 1,
+        title, id: p.id, label, raw: v, denom: denomOf(title, p),
+        score: (title.weight ?? 0) * base * boost, order,
+        rank: title.sticky ? 0 : 1,
       });
     }
   });
 
-  /* 나눠 주는 차례: 점수(무게 × 횟수 또는 배수 × 급 웃돈)가 큰 것부터, 같으면 표 차례다.
-     딱 하나, 참여수 1위(sticky)만 그 앞에 선다.
-     한 사람은 한 칭호, 한 칭호는 한 사람 — 먼저 걸린 쪽이 가져간다.
-     맵 칭호(name이 있는 줄)만은 사람마다 맵 이름이 달라 서로 다른 칭호로 친다. */
+  /* 보일 것을 고르는 차례 — sticky(승률 계열)가 맨 앞, 그다음 점수, 같으면 표 차례다. */
   claims.sort((a, b) =>
     (a.rank - b.rank)
     || (b.score - a.score) || (a.order - b.order) || a.id.localeCompare(b.id));
-  /* 근거를 함께 남긴다(지적: "왜 이 칭호가 나오지?") — 칭호는 기록에서 나온다고 말은
-     하는데 정작 그 기록을 볼 길이 없었다. 화면은 이 문장을 툴팁·글자로 보여 준다.
-     수는 소수점을 안 적는다: 비율 칭호(0.42)까지 그대로 적으면 무슨 값인지 되레 헷갈린다. */
+  /* 근거를 함께 남긴다(지적: "왜 이 칭호가 나오지?") — 화면은 이 문장을 툴팁·글자로 보여
+     준다. "클럽 최다/1위" 꼬리는 걷었다(요청: 절대평가) — 이제 남과 견준 값이 아니라
+     그 문장이 곧 조건 충족의 증거다. */
   const whyOf = (c: Claim): string => {
     const shown = c.raw >= 10 || Number.isInteger(c.raw)
       ? `${Math.round(c.raw)}`
       : `${Math.round(c.raw * 100)}%`;
-    // 꼬리는 무엇을 잰 값이냐에 따라 다르다 — 횟수는 '최다', 승률·비중은 '1위'가 맞는 말이다.
-    /* 횟수 칭호는 '몇 판 중 몇 번'까지 적는다(요청: 테란 경기 중 건물 띄우기 10% 이런
-       식으로) — 세 번이라는 수만으로는 그게 그 사람의 버릇인지 어쩌다 한 번인지가 안
-       갈린다. 분모는 문턱을 잰 그 판수 그대로다(종족 칭호면 그 종족 판수). */
+    /* 횟수 칭호는 '몇 판 중 몇 번'까지 적는다 — 세 번이라는 수만으로는 그게 버릇인지
+       우연인지 안 갈린다. 분모는 문턱을 잰 그 판수 그대로다(종족 칭호면 그 종족 판수). */
     return `${c.title.won ? "이긴 판에서 " : ""}${c.title.why ?? "기록"} ${shown}${c.title.unit ?? ""}`
-      /* '번'으로 세는 칭호만이다 — 종족 가짓수(개)처럼 판마다 세는 값이 아닌 것에
-         비율을 붙이면 뜻이 없는 수가 된다. 한 판에 여러 번 나오는 수(핵)도 비율이
-         100%를 넘으므로 그때는 횟수만 적는다. */
       + (c.title.scale === "count" && c.title.unit === "번" && c.denom > 0 && c.raw <= c.denom
         ? ` — ${c.title.race ? `${c.title.race} ` : ""}${c.denom}판 중 ${Math.round((c.raw / c.denom) * 100)}%`
-        : "")
-      + (c.first
-        ? (c.title.scale === "count" ? " · 클럽 최다" : " — 클럽 1위")
-        // 물려받은 자리는 그 사실을 밝힌다 — 1위가 다른 칭호로 갔다는 뜻이다.
-        : (c.title.name ? "" : " · 클럽 2위"));
+        : "");
   };
+  // 한 사람의 첫 자격(가장 높은 것)이 화면에 보이는 칭호다 — 나머지 자격도 그 사람 것이지만
+  // (요청: 여러 개 보유), 표의 자리는 한 줄이라 대표 하나만 나간다.
   for (const c of claims) {
-    if (out.has(c.id) || used.has(c.label)) continue;
+    if (out.has(c.id)) continue;
     out.set(c.id, { label: c.label, why: whyOf(c) });
-    used.add(c.label);
   }
-  /* 현황 파악용 갈무리(요청: 관리자 칭호 현황은 저장된 하나가 아니라 그 사람이 자격을 얻은
-     칭호 전부) — 나눠 주기 전의 자격(claims)을 점수순 그대로 담아 둔다. 한 사람이 여러
-     칭호에 걸렸는지, 어떤 칭호를 다른 임자에게 내줬는지가 여기서만 보인다. 계산이 이미 다
-     끝난 값이라 담는 데 드는 것이 없고, 저장(서버 보고)과는 무관하다. */
+  /* 자격 전부 갈무리(칭호 시뮬레이션·프로필이 읽는다) — 절대평가라 이 목록이 곧 "그 사람이
+     보유한 칭호 전부"다. */
   lastClaims = claims.map((c) => ({
     memberId: c.id, label: c.label, why: whyOf(c), score: c.score, sticky: c.rank === 0,
   }));
-
-  /* (삭제) 표에서 아무것도 못 받은 사람에게 제 기록으로 별명을 지어 주던 대목 — 위
-     '특징' 주석대로 통째로 걷었다(요청). 여기까지 와서 이름이 없으면 화면이 그 자리를
-     "칭호 없음"으로 적는다. */
   return out;
 }
