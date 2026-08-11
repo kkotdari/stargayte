@@ -62,6 +62,9 @@
   --pc-fs-micro: 12px;
   --pc-fs-caption: 14px;
   --pc-fs-body: 16px;
+  /* body(16)와 subhead(20) 사이 한 칸(요청) — 소제목처럼 "본문보다는 크고 제목만큼은
+     아닌" 자리가 그동안 둘 중 하나로 반올림되고 있었다. */
+  --pc-fs-lead: 18px;
   --pc-fs-subhead: 20px;
   --pc-fs-headline: 24px;   /* subhead(20)와 title(28) 사이 — 랭크 숫자 등 */
   --pc-fs-title: 28px;
@@ -77,6 +80,7 @@
   --mobile-fs-micro: 12px;
   --mobile-fs-caption: 14px;
   --mobile-fs-body: 16px;
+  --mobile-fs-lead: 18px;
   --mobile-fs-subhead: 20px;
   --mobile-fs-headline: 24px;
   --mobile-fs-title: 28px;
@@ -92,6 +96,7 @@
   --fs-micro: var(--pc-fs-micro);
   --fs-caption: var(--pc-fs-caption);
   --fs-body: var(--pc-fs-body);
+  --fs-lead: var(--pc-fs-lead);
   --fs-subhead: var(--pc-fs-subhead);
   --fs-headline: var(--pc-fs-headline);
   --fs-title: var(--pc-fs-title);
@@ -8184,6 +8189,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
     --fs-micro: var(--mobile-fs-micro);
     --fs-caption: var(--mobile-fs-caption);
     --fs-body: var(--mobile-fs-body);
+    --fs-lead: var(--mobile-fs-lead);
     --fs-subhead: var(--mobile-fs-subhead);
     --fs-headline: var(--mobile-fs-headline);
     --fs-title: var(--mobile-fs-title);
@@ -8846,7 +8852,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 /* 소제목과 "전체 보기"를 한 단씩 줄인다(요청, PC·모바일 공통) — 화면 제목(활동)과 목록
    줄 사이에 낀 층이라, 제목만 한 크기로 서면 다섯 덩어리가 각자 화면 제목처럼 읽힌다.
    subhead(20) → body(16) / caption(14) → micro(12). */
-.scr-activity-group-title { margin: 0; font-size: var(--fs-body); font-weight: 800; color: var(--text); }
+/* 소제목은 본문보다 한 칸 크다(요청: 18px) — 덩어리를 가르는 이름이라, 그 아래 줄들과
+   같은 크기면 목록 안의 한 줄로 섞여 읽힌다. */
+.scr-activity-group-title { margin: 0; font-size: var(--fs-lead); font-weight: 800; color: var(--text); }
 .scr-activity-group-viewall {
   flex: none; background: none; border: none; padding: 4px 2px; margin: -4px -2px;
   font-family: inherit; font-size: var(--fs-micro); font-weight: 600; color: var(--muted);
