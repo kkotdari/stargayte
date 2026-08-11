@@ -50,11 +50,11 @@ const MIN_PLAYS_TIER: Record<number, number> = { 1: 10, 2: 4 };
    둘 다 물어야 한다.
    급마다 다른 이유: 1급은 한 번이 곧 이야기인 드문 수(핵·리콜·성큰러시)라 같은 잣대를 대면
    통째로 잠긴다. 그래도 0은 아니다 — 스무 판에 딱 한 번은 그 사람의 색이라기엔 얇다. */
-const COUNT_SHARE: Record<number, number> = { 1: 0.06, 2: 0.08 };
+const COUNT_SHARE: Record<number, number> = { 1: 0.05, 2: 0.06 };
 /** 비율과 별개의 최소 횟수(요청: 너무 겹치지 않게 문턱 높이기) — 절대평가가 되면서 조건만
  *  넘으면 다 받으니, 한 판짜리 우연까지 칭호가 되면 한 사람이 대여섯 개를 예사로 들었다.
  *  드문 수(1급)는 두 번, 흔한 수(2급)는 세 번은 나와야 버릇이라 부른다. */
-const COUNT_MIN: Record<number, number> = { 1: 2, 2: 3 };
+const COUNT_MIN: Record<number, number> = { 1: 2, 2: 2 };
 /* 한때 상한을 뒀다("아무리 많이 뛰어도 여섯 번이면 인정") — 걷어냈다(지적: 상한보다 비율
    자체를 낮추는 편이 합리적이다). 상한은 그 지점부터 비례가 끊겨, 백 판 뛴 사람과 예순 판
    뛴 사람에게 같은 수를 요구한다 — 많이 뛴 쪽이 오히려 쉬워지는 셈이다. 비율을 낮추면
@@ -413,7 +413,7 @@ const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker",
    그쯤이면 "이 사람은 포토러시를 하는 사람"이라 부를 만하다. 흔한 수(8%)와 같은 선인 것은
    러시가 드물어서가 아니라 되풀이할 수 있는 수이기 때문이다 — 드묾은 이미 1급 웃돈이
    값을 쳐 준다. */
-const RUSH_SHARE = 0.08;
+const RUSH_SHARE = 0.06;
 const RUSH_MIN = 2;
 const RUSH_TACTICS = new Set(["cannon-rush", "sunken-rush"]);
 
@@ -527,20 +527,20 @@ const TITLES: Title[] = [
   /* 운영 틀(바이오닉·메카닉·목동)은 절반이 문턱이다(지적: 바이오닉이 쉽게 나온다) — 그
      종족이면 으레 잡는 틀이라, "그 틀로 이긴 판이 종족 판의 절반"쯤 돼야 그 사람의 색이다.
      목동은 저그 후반에만 나오는 틀이라 40%로 한 뼘 낮다. */
-  { ...tactic("바이오닉의 여왕", ["bionic"]), minPlaysShare: 0.35 },
-  { ...tactic("메카닉 사령관", ["mech"]), minPlaysShare: 0.35 },
+  { ...tactic("바이오닉의 여왕", ["bionic"]), minPlaysShare: 0.25 },
+  { ...tactic("메카닉 사령관", ["mech"]), minPlaysShare: 0.25 },
   /* 목동저그 — 이제 자막이 짚은 판만 센다(요청: 목동저그도 이긴 판만). 한때 유닛 기록으로도
      잡았는데(울트라 2기 + 디파일러 + 저글링 20기), 그 원장은 승패를 안 가려서 진 판의
      목동까지 함께 세었다. 자막 쪽은 서버가 이긴 판만 세므로(_tactic_counts) 잣대가 하나가 된다. */
-  { ...tactic("목동저그", ["moka"]), minPlaysShare: 0.25 },
+  { ...tactic("목동저그", ["moka"]), minPlaysShare: 0.18 },
 
   // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
-  tactic("프로 옆탱러", ["side-tank"]),
+  { ...tactic("프로 옆탱러", ["side-tank"]), minPlaysShare: 0.18 },
   /* 한 번으로도 자격이 있다 — 남의 집 앞에 건물을 박는 것은 손이 미끄러져서 되는 일이
      아니다(다른 전술의 기본 문턱 2회는 "한 번은 우연"을 거르려는 것이다). */
   tactic("포토러쉬 퀸", ["cannon-rush"], 1),
   tactic("성큰러시 퀸", ["sunken-rush"], 1),
-  tactic("센터의 여주인", ["center-photon"]),
+  { ...tactic("센터의 여주인", ["center-photon"]), minPlaysShare: 0.12 },
   /* (삭제) 남의 집 헤집기 장인(base-raid) — 요청. 이름 없는 급습이라 "무엇으로 갔는지"가
      빠진 이야기고, 그 대목은 대개 다른 칭호(드랍·견제·러시)가 이미 말한다. */
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
@@ -566,7 +566,7 @@ const TITLES: Title[] = [
        있었는데, 이 값은 '무슨 일을 벌였나'가 아니라 병력 구성비라 그만큼 나오기 힘든
        장면이 아니다. 7.5면 러시(10.5) 아래·역전(6) 위로, 드묾은 그대로 인정하는 자리다. */
     label: "그림자의 여왕", weight: 2.5, pool: 1, edge: 1, tier: 1,
-    min: 0.08, why: "병력 중 은폐 유닛", unit: "",
+    min: 0.06, why: "병력 중 은폐 유닛", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       if (!m || !(m.uGround + m.uAir > 0)) return null;
@@ -593,7 +593,7 @@ const TITLES: Title[] = [
      race를 지우는 이유: 갈래가 두 종족에 걸쳐 있어(질럿·저글링…) 분모는 전체 판수라야 한다.
      tactic()은 첫 열쇠의 종족(프로토스)을 그대로 붙이므로 여기서 걷는다. */
   { ...tactic("초반의 지배자", ["zealot-rush", "zling-rush", "duel-rush", "cannon-rush", "sunken-rush", "sneak-rax"]),
-    race: undefined, why: "초반 러시" },
+    race: undefined, why: "초반 러시", minPlaysShare: 0.1 },
   /* 정찰(요청: 초반 정찰 열심히 한 사람 — 좋은 뜻이라 3점대) — 옵저버를 넉넉히 띄웠거나,
      오버로드를 퍼뜨렸거나, 스캔으로 여기저기 들여다본 판이다. 남의 살림을 먼저 보고 제 수를
      고르는 일이라, 눈에 안 띄면서 판을 가장 크게 바꾸는 습관이다. */
@@ -665,7 +665,7 @@ const TITLES: Title[] = [
     },
   },
   /* 상대보다 일꾼을 훨씬 많이 굴린 대목(worker-gap) — 자원을 많이 캤다는 말이다. */
-  { ...tactic("부티 자원 퀸", ["worker-gap"]), minPlaysShare: 0.45 },
+  { ...tactic("부티 자원 퀸", ["worker-gap"]), minPlaysShare: 0.4 },
   /* 흔한 대목들의 제 문턱(시뮬레이션 실측: 격차·정찰·역전·GG·스톰은 기본 문턱으로는 거의
      전원이 걸렸다 — 자막이 그 대목을 워낙 자주 짚는다) — 기본값 대신 그 대목의 실제 빈도에
      맞는 비율을 따로 건다. 값은 시뮬레이션 실측 분포의 꼭대기 한둘만 남게 맞춘 것이다
@@ -742,7 +742,7 @@ const TITLES: Title[] = [
   /* 절대 문턱들(요청: 상대가 아니라 절대평가) — "클럽 1위"가 아니라 "이 수를 넘으면 그
      사람"이다. 값은 실측에서 잡았다: 분당 12기·APM 283·분당 3.5채가 상위권의 실제 수라,
      그 언저리에 선을 긋는다. */
-  { label: "물량 퀸", weight: 3, min: 18, why: "분당 뽑은 기수", unit: "기", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreUnit, won(s, of).mixSeconds) : null; } },
+  { label: "물량 퀸", weight: 3, min: 19, why: "분당 뽑은 기수", unit: "기", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreUnit, won(s, of).mixSeconds) : null; } },
   // APM은 손 이야기 가운데 아래다(요청: 퀸으로 올릴 만하다) — 빠르다는 사실 하나라, 그
   // 빠름으로 무엇을 했는지는 유효타(군더더기 없는 손)와 물량퀸이 따로 센다.
   { label: "번개같은 손놀림", weight: 3, min: 250, why: "APM", unit: "", value: (s) => s.avgApm },
