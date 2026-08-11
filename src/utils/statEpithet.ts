@@ -224,11 +224,15 @@ const TACTIC_WEIGHT: Record<string, number> = {
      그 한 번이 그 판을 통째로 말한다. */
   lodging: 5, relocate: 5, "no-elim": 5,
 
-  "center-photon": 2.5, "sneak-rax": 2.5, "wall-in": 2,
-  "side-tank": 2, "harass-workers": 2, "harass-long": 2, "ally-cannon": 2,
-  // 주력 유닛으로 부르는 것들 — 운영보다 한 단계 아래(위 주석).
-  carrier: 2, lurker: 2, "cloak-wraith": 2, guardian: 2, bc: 2,
-  valkyrie: 1.5, "valk-hunt": 1.5, dropship: 1.5, "duel-rush": 1.5, "base-raid": 1.5,
+  /* 전술은 유닛보다 위다(요청, 다시 확인) — 견제·러시·잠그기는 '무엇을 뽑았나'가 아니라
+     '어디를 언제 쳤나'라, 같은 유닛으로도 하는 사람과 안 하는 사람이 갈린다. */
+  "center-photon": 3, "sneak-rax": 3, "side-tank": 3,
+  "harass-workers": 3, "harass-long": 3, dropship: 3, "base-raid": 3,
+  "cloak-wraith": 2.5, "duel-rush": 2.5, "valk-hunt": 2.5,
+  "wall-in": 2, "ally-cannon": 2,
+  /* 주력 유닛으로 부르는 것들 — 그 유닛을 뽑았다는 사실만 말하므로 맨 아래다. 같은 유닛이라도
+     그것으로 무엇을 했는지(드랍·사냥·조이기)는 위쪽에 제 칭호가 따로 있다. */
+  carrier: 1.5, lurker: 1.5, bc: 1.5, guardian: 1.2, valkyrie: 1.2,
   /* 헬프는 내린다(요청) — 팀전에서는 흔한 장면이라 한 사람의 표식이 되기 어렵고, 그 판을
      함께 굴렸다는 사실은 상대 쪽에도 똑같이 남는다. 자주 가는 사람은 횟수로 결국 불린다. */
   "ally-help": 1.5,
