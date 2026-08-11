@@ -575,7 +575,7 @@ const TITLES: Title[] = [
   { ...rare("리콜 배달부", ["recall"]), minPlaysShare: 0.01 },
   rare("도둑 퀸", ["mind-control"]),
   tactic("캐리어를 모으는 여인", ["carrier"]),
-  { ...tactic("공포의 독거미 부대", ["lurker"]), minPlaysShare: 0.2 },
+  { ...tactic("공포의 독거미 부대", ["lurker"]), minPlaysShare: 0.25 },
   /* 안 보이는 것으로만 치는 사람(요청: 다크·레이스·아비터를 다 잘 쓴 경우만) —
      "보이지 않는 손" → "안 보이는 레이스"를 거쳐 온 자리다. 유닛 하나로는 안 준다(요청:
      하나만 써서는 안 됨): 다크만 뽑는 프로토스는 흔하고, 그건 이미 유닛 칭호가 말한다.
