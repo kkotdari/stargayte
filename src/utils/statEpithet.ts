@@ -339,7 +339,10 @@ const TITLES: Title[] = [
   rare("정신을 훔치는 마인드 컨트롤러", ["mind-control"]),
   tactic("캐리어를 모으는 여인", ["carrier"]),
   tactic("공포의 독거미 부대", ["lurker"]),
-  tactic("보이지 않는 손", ["cloak-wraith"]),
+  /* "보이지 않는 손"에서 바꿨다(지적: 레이스인 게 안 와닿는다) — 그 말은 무엇으로 그랬는지가
+     빠져 있어 마법이나 옆치기로도 읽혔다. 유닛 이름을 넣되 그 유닛이 하는 일(안 보이게 떠서
+     친다)을 함께 적는다. */
+  tactic("안 보이는 레이스", ["cloak-wraith"]),
   tactic("하늘을 나는 뮤탈 조련사", ["muta"]),
   tactic("무자비한 오버로드 사냥꾼", ["valk-hunt"]),
   tactic("몰래 배럭의 대가", ["sneak-rax"]),
