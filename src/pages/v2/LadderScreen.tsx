@@ -29,9 +29,11 @@ import type { GameResultStatsResponse, GameType, Member, MemberStatsEntry } from
 
 /** 일대일. 이 화면은 이 유형 하나만 본다. */
 const LADDER_TYPE: GameType = "0101";
-/* (삭제) "전체 누적" — 달력에서 걷었다(요청). 이 화면의 값은 늘 한 달치다: 레이팅은 '그
-   날짜까지의 기록으로 본 값'이라 전체 누적이 곧 '오늘 기준'이고, 그건 이번 달을 고른 것과
-   같은 수다. 옆의 경기수·승률만 기간에 따라 달라졌는데, 그 둘을 통째로 누적해 보는 자리는
+/* (삭제) "전체 누적" — 달력에서 걷었다(요청). 이 화면의 값은 이제 전부 '그 시점까지의
+   누적'이다(요청): 레이팅도, 옆의 경기수·승률도 고른 달의 마지막 날까지 쌓인 값이라
+   달을 고르는 일은 기간을 자르는 것이 아니라 시계를 그날로 되돌리는 일이다. 그래서
+   '전체 누적'은 곧 이번 달을 고른 것과 같은 수다. 예전 주석에 남아 있던 "옆의 경기수·
+   승률만 기간에 따라 달라진다"는 이제 옛말이다. 그 둘을 통째로 누적해 보는 자리는
    내전 통계다. 고르는 값은 이제 늘 "YYYY-MM" 하나다. */
 /** 끝난 달의 1·2·3위에 붙는 메달 — 순서가 곧 등수다. */
 const MEDALS = ["🥇", "🥈", "🥉"];
@@ -135,14 +137,19 @@ export default function LadderScreen() {
       res.members.forEach((e) => { map[e.memberId] = e; });
       return map;
     };
+    /* 시작일을 안 준다(요청: 래더는 그 달의 기록이 아니라 그 시점의 기록이다) — 레이팅은
+       원래부터 '그 날짜까지의 모든 판을 재생한 값'인데(서버가 맨 처음부터 다시 돌린다) 옆의
+       판수·승률만 그 달치라, 한 표 안에서 두 가지 시간을 섞어 읽고 있었다. 끝나는 날만
+       달의 마지막 날로 잘라 두면 셋이 같은 시점을 말한다.
+       변동(△)은 지난달 끝까지의 누적과 견주므로 "이번 달에 얼마나 늘었나"가 된다. */
     const mine = api.getGameResultStats({
-      memberIds: ids, dateFrom: q.from, dateTo: q.to, matchType: LADDER_TYPE, race: "all",
+      memberIds: ids, dateFrom: "", dateTo: q.to, matchType: LADDER_TYPE, race: "all",
     });
     // 전달 기준선이 없어도 순위표는 그대로다 — 실패하면 변동만 안 나온다. 그래도 기다렸다가
     // 함께 그린다: 늦게 도착해 ▲2만 뒤늦게 뜨는 것이 딱 지적받았던 그림이다.
     const before = q.prevFrom
       ? api.getGameResultStats({
-        memberIds: ids, dateFrom: q.prevFrom, dateTo: q.prevTo, matchType: LADDER_TYPE, race: "all",
+        memberIds: ids, dateFrom: "", dateTo: q.prevTo, matchType: LADDER_TYPE, race: "all",
       }).catch(() => null)
       : Promise.resolve(null);
     Promise.all([mine, before]).then(([res, prevRes]) => {
