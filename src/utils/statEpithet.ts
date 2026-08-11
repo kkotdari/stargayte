@@ -195,6 +195,11 @@ interface Title {
   pool?: number;
   /** 1등이 한가운데의 몇 배는 돼야 하나(기본 CROWN_EDGE). 전술·맵은 1(안 따짐). */
   edge?: number;
+  /** 값이 '이긴 판'만 센 것인가 — 전술 칭호가 그렇다(서버의 _tactic_counts가 진 판을
+   *  빼고 센다, 요청). 근거 문장에 그 사실을 적으려고 들고 있는다: "옆탱 3번"과 "이긴 판에서
+   *  옆탱 3번"은 다른 말이고, 뒤엣것이 이 표가 실제로 세는 값이다.
+   *  마법 칭호(spell)는 원장(buildMix)에서 세므로 승패를 안 가린다 — 그래서 안 붙인다. */
+  won?: boolean;
   /** 이 칭호가 타는 종족 — 판수 대비 문턱(minPlaysShare)의 분모가 전체 판수가 아니라 이
    *  종족의 판수가 된다(요청). 그 종족 기록이 안 넘어오면 전체 판수로 잰다(옛 방식). */
   race?: string;
@@ -336,7 +341,9 @@ const TACTIC_NOUN: Record<string, string> = {
   "mind-control": "마인드컨트롤", carrier: "캐리어", lurker: "러커",
   "cloak-wraith": "클로킹 레이스", muta: "뮤탈 견제", "valk-hunt": "발키리로 오버로드 사냥",
   "sneak-rax": "몰래 배럭", "zling-rush": "저글링 러시", "zealot-rush": "질럿 러시",
-  "duel-rush": "맞러시", "gang-rush": "협공", swarm: "다크스웜", infested: "감염된 테란",
+  "duel-rush": "맞러시", /* 근거 문장에서는 '공격 참여'로 부른다(요청) — 협공은 당한 쪽이 부르는 말에 가깝고,
+     이 칭호가 말하려는 것은 "이긴 싸움에 늘 함께 있었다"는 쪽이다. */
+  "gang-rush": "공격 참여", swarm: "다크스웜", infested: "감염된 테란",
   guardian: "가디언", bc: "배틀크루저", valkyrie: "발키리", moka: "목동 저그",
   "side-tank": "옆탱", "center-photon": "센터 포토", "cannon-rush": "포토러시",
   "sunken-rush": "성큰러시", "front-defense": "입구 방어", mech: "메카닉 진출",
@@ -372,7 +379,7 @@ const RUSH_MIN = 2;
 const RUSH_TACTICS = new Set(["cannon-rush", "sunken-rush"]);
 
 const tactic = (label: string, keys: string[], min = 1): Title => ({
-  label, value: (s) => did(s, ...keys), pool: 1, edge: 1,
+  label, value: (s) => did(s, ...keys), pool: 1, edge: 1, won: true,
   min: RUSH_TACTICS.has(keys[0]) ? Math.max(min, RUSH_MIN) : min,
   why: TACTIC_NOUN[keys[0]] ?? "이 수", unit: "번",
   ...(UNIT_TACTICS.has(keys[0]) ? { minPlaysShare: UNIT_TACTIC_SHARE } : {}),
@@ -521,11 +528,11 @@ const TITLES: Title[] = [
   tactic("초반러시의 신", ["zealot-rush", "zling-rush"]),
   /* (삭제) 맞러시 승부사(duel-rush) — 요청. 맞러시는 둘이 함께 만든 장면이라 한 사람의
      수라고 하기 어렵다. */
-  /* 협공을 다시 넣는다(요청: 다굴의 여신) — 한때 "협공의 선봉"으로 뺐던 자리다. 그때 뺀
+  /* 협공을 다시 넣는다(요청: 공격에 열심히 참여한다는 좋은 뜻으로) — 한때 "협공의 선봉"으로 뺐던 자리다. 그때 뺀
      까닭은 팀전에서 둘이 함께 들이치는 것이 기본 진행에 가까워서였는데, 이제는 이긴 판만
      세므로(API의 _tactic_counts) 그림이 다르다: 둘이 몰려가 실제로 이긴 판이 쌓였다는
      말이라 그 사람의 수라고 할 만하다. */
-  tactic("다굴의 여신", ["gang-rush"]),
+  tactic("협공의 여신", ["gang-rush"]),
   rare("다크스웜 살포반", ["swarm"]),
   /* (삭제) 감염의 여왕(infested) — 요청. 감염된 테란은 커맨드센터를 잡아야 나오는 장면이라
      드물기는 한데, 그 판을 만든 것은 감염 자체가 아니라 그 앞의 싸움이다. */
@@ -914,7 +921,7 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
       /* 횟수 칭호는 '몇 판 중 몇 번'까지 적는다(요청: 테란 경기 중 건물 띄우기 10% 이런
          식으로) — 세 번이라는 수만으로는 그게 그 사람의 버릇인지 어쩌다 한 번인지가 안
          갈린다. 분모는 문턱을 잰 그 판수 그대로다(종족 칭호면 그 종족 판수). */
-      why: `${c.title.why ?? "기록"} ${shown}${c.title.unit ?? ""}`
+      why: `${c.title.won ? "이긴 판에서 " : ""}${c.title.why ?? "기록"} ${shown}${c.title.unit ?? ""}`
         /* '번'으로 세는 칭호만이다 — 종족 가짓수(개)처럼 판마다 세는 값이 아닌 것에
            비율을 붙이면 뜻이 없는 수가 된다. 한 판에 여러 번 나오는 수(핵)도 비율이
            100%를 넘으므로 그때는 횟수만 적는다. */
