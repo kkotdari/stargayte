@@ -387,13 +387,13 @@ const TITLES: Title[] = [
      쓸 자리를 알아야 하고, 한 번 제대로 들어가면 그 판이 갈린다.
      스톰·이레디에이트·마인처럼 늘 누르는 것은 여전히 없다 — 많이 썼다는 말이 "그 종족을
      오래 했다"밖에 안 된다(예전 SPELL_WEIGHT의 기준선이 그 무리였다). */
-  spell("얼려 놓고 패기", "Maelstrom"),
+  spell("얼음 공주", "Maelstrom"),
   spell("거미줄 설계자", "Disruption Web"),
   spell("시간을 멈추는 자", "Stasis Field"),
   spell("야마토 한 발", "Yamato Gun"),
-  spell("브루들링 저격수", "Spawn Broodlings"),
-  spell("눈을 멀게 하는 자", "Optical Flare"),
-  spell("허깨비 부대장", "Hallucination"),
+  /* (삭제) 브루들링 저격수 · 눈을 멀게 하는 자(옵티컬 플레어) · 허깨비 부대장(할루시네이션)
+     — 요청으로 뺐다. 셋 다 쓰기 어려운 마법이긴 한데, 그 한 번이 판을 가르는 그림까지는
+     아니라 이름만 요란해진다. */
   tactic("든든한 헬프 퀸", ["ally-help"]),
   tactic("동맹의 수호신", ["ally-cannon"]),
   /* 입구막기는 '막았다'가 아니라 '막아 놓고 뒤에서 컸다'가 값어치다(판정도 발전까지 함께
@@ -449,12 +449,13 @@ const TITLES: Title[] = [
   tactic("포토러시의 퀸", ["cannon-rush"], 1),
   tactic("성큰러시의 절대자", ["sunken-rush"], 1),
   tactic("센포의 지배자", ["center-photon"]),
-  tactic("남의 집 헤집기 장인", ["base-raid"]),
+  /* (삭제) 남의 집 헤집기 장인(base-raid) — 요청. 이름 없는 급습이라 "무엇으로 갔는지"가
+     빠진 이야기고, 그 대목은 대개 다른 칭호(드랍·견제·러시)가 이미 말한다. */
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
      자막이 이 수를 부르는 이름(커널)을 그대로 쓴다. */
   rare("커널 개통사", ["nydus"]),
   rare("리콜의 마술사", ["recall"]),
-  rare("정신을 훔치는 마인드 컨트롤러", ["mind-control"]),
+  rare("마음 도둑녀", ["mind-control"]),
   tactic("캐리어를 모으는 여인", ["carrier"]),
   tactic("공포의 독거미 부대", ["lurker"]),
   /* 안 보이는 것으로만 치는 사람(요청: 다크·레이스·아비터를 다 잘 쓴 경우만) —
@@ -475,7 +476,7 @@ const TITLES: Title[] = [
       return dark > 0 && wraith > 0 && arbiter > 0 ? dark + wraith + arbiter : null;
     },
   },
-  tactic("하늘을 나는 뮤탈 조련사", ["muta"]),
+  tactic("뮤탈 조련사", ["muta"]),
   tactic("무자비한 오버로드 사냥꾼", ["valk-hunt"]),
   tactic("몰래 배럭의 대가", ["sneak-rax"]),
   tactic("끝없는 저글링 폭풍", ["zling-rush"]),
@@ -506,7 +507,7 @@ const TITLES: Title[] = [
   tactic("맷집 퀸", ["hold-off"]),
   tactic("받아치기의 정석", ["counter"]),
   tactic("벽을 부수는 자", ["breakthrough"]),
-  tactic("물러섬 없는 올인의 화신", ["allin"]),
+  /* (삭제) 물러섬 없는 올인의 화신(allin) — 요청. */
   tactic("째기의 달인", ["greedy-paid"]),
   /* 빠른 테크는 아래로 내렸다(지적: 그렇게 중요하진 않다) — 고급 유닛으로 곧장 올라간
      것은 흔한 선택이고, 그 자체로 판이 갈리지도 않는다. 문구도 "테크의 연금술사"에서
@@ -578,28 +579,13 @@ const TITLES: Title[] = [
     label: "군더더기 없는 손", weight: 2.5, min: 0.72, why: "APM 중 유효타", unit: "",
     value: (s) => (s.avgApm && s.avgEapm && s.avgApm > 0 ? s.avgEapm / s.avgApm : null),
   },
-  {
-    /* 커맨드 중 얼마나가 실제 생산이었나 — 손을 움직인 만큼 무언가가 나온 사람이다.
-       '많이 눌렀다'(커맨드)와 '많이 만들었다'(생산)는 다른 값이라, 그 비가 곧 운영의 결이다. */
-    label: "누른 만큼 뽑는 사람", weight: 2.5, min: 0.35, why: "커맨드 중 생산", unit: "",
-    value: (s) => (s.avgCmd && s.avgBuild && s.avgCmd > 0 ? s.avgBuild / s.avgCmd : null),
-  },
-  {
-    /* 기본 유닛만으로 미는 사람 — 고급 유닛으로 올라가는 대신 싼 것을 계속 쏟아붓는 운영이다.
-       '고급 유닛 수집가'의 반대편이라, 둘이 함께 있어야 이 축이 뜻을 갖는다. */
-    label: "기본기의 사람", weight: 2, min: 0.8, why: "병력 중 기본 유닛", unit: "",
-    value: (s) => (s.buildMix ? share(s.buildMix.uBasic, s.buildMix.uAdv + s.buildMix.uCaster, 30) : null),
-  },
+  /* (삭제) 누른 만큼 뽑는 사람(커맨드 중 생산 비율) — 요청. */
+  /* (삭제) 기본기의 사람(병력 중 기본 유닛 비율) — 요청. */
   /* (삭제) 땅에서 사는 사람 — 병력의 97%가 지상이라는 말은 "공중을 안 쓴다"는 결핍이다.
      '그것밖에 안 한다'는 말을 걷은 것과 같은 이유다(요청). */
   { label: "물량퀸", weight: 2.5, why: "분당 뽑은 기수", unit: "기", value: (s) => (s.buildMix ? perMin(s.buildMix.coreUnit, s.mixSeconds) : null) },
   { label: "번개같은 손놀림", weight: 2.5, why: "APM", unit: "", value: (s) => s.avgApm },
-  {
-    label: "하늘의 여전사", weight: 2, why: "병력 중 공중 비중", unit: "",
-    // 공중 비중은 30%를 넘어야 '탄다'고 할 수 있다 — 드랍십 한 기로 하늘을 지배할 수는 없다.
-    value: (s) => (s.buildMix ? share(s.buildMix.uAir, s.buildMix.uGround, 20) : null),
-    min: 0.3,
-  },
+  /* (삭제) 하늘의 여전사(병력 중 공중 비중) — 요청. */
   {
     label: "마법의 화신", weight: 2, why: "병력 중 마법 유닛 비중", unit: "",
     // 마법 유닛은 원래 수가 적다 — 5%만 넘어도 그 판을 마법으로 푼 사람이다.
@@ -633,7 +619,7 @@ const TITLES: Title[] = [
   /* 건물을 제일 많이 올린 사람(요청: 심시티 퀸) — "쉴 새 없이 짓는 자"에서 바꿨다. 재는 값은 그대로 분당 지은 채수다. */
   { label: "심시티 퀸", weight: 1.5, why: "분당 지은 채수", unit: "채", value: (s) => (s.buildMix ? perMin(s.buildMix.coreBuild, s.mixSeconds) : null) },
   {
-    label: "풀업 신봉자", weight: 1.5, why: "공/방 평균 단계", unit: "",
+    label: "풀업녀", weight: 1.5, why: "공/방 평균 단계", unit: "",
     value: (s) => {
       const m = s.buildMix;
       if (!m) return null;
@@ -659,14 +645,8 @@ const TITLES: Title[] = [
     why: "건물 띄우기", unit: "번",
     value: (s) => did(s, "lift-off"),
   },
-  {
-    /* 먼저 판에서 사라진 횟수 — 리플레이에 남는 탈락(Leave Game)이라 짐작이 아니다.
-       지는 이야기지만 놀리는 말은 아니다: 팀전에서 제일 먼저 노려지는 자리는 대개 잘하는
-       사람이거나 앞에 선 사람이다. */
-    label: "비련의 여조연", weight: 1, pool: 1, edge: 1, scale: "count",
-    why: "먼저 탈락", unit: "번",
-    value: (s) => did(s, "fallen"),
-  },
+  /* (삭제) 비련의 여조연(먼저 탈락 1위) — 요청. 아무것도 못 받은 사람 자리를 채우려던
+     말인데, 채우는 것이 "제일 먼저 죽었다"면 비워 두는 편이 낫다. */
   {
     /* 종족을 두루 쓰는 사람 — 한 종족만 파는 사람이 대부분이라 그 자체가 특징이다.
        값은 '충분히 뛴 종족의 수'이고, 같으면 그중 가장 적게 쓴 종족의 판수로 갈린다:
