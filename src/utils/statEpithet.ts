@@ -83,20 +83,24 @@ const COUNT_SHARE: Record<number, number> = { 1: 0.03, 2: 0.09 };
    둘 다 넘어야 받는다. 조절할 때도 따로 본다 — "한 번짜리가 너무 쉽다"는 카운트 쪽이고,
    "그 사람의 수라 부르기엔 얇다"는 비율 쪽이다.
 
-   희귀성은 이미 점수(무게 × 급 웃돈)가 재고 있다 — 핵 12, 러시 10.5, 전술 4, 곁가지 2,
-   유닛 1.5. 그래서 점수 4(보통 전술)를 기준으로 잡고 그 역수로 요구 횟수를 나눈다.
-   클럽이 이백 판을 뛰었으면 기준은 네 번이고, 핵은 한 번·러시는 두 번·유닛은 여섯 번이다.
-   위아래로 가둔다: 아무리 드물어도 한 번은 우연이라 최소 두 번이고, 아무리 흔해도 여섯 번을
-   넘기면 클럽이 쌓일수록 아무도 못 받는 칭호가 된다.
-   클럽 전체 판수를 못 받아 왔으면 기준 네 번으로 떨어진다(옛 고정값과 같은 자리다). */
-const CLUB_COUNT_RATE = 0.02;
-const CLUB_COUNT_PIVOT = 4;
-const COUNT_MIN_FLOOR = 2;
-const COUNT_MIN_CAP = 6;
-const countMinFor = (score: number): number => {
-  const club = clubTotalGames && clubTotalGames > 0 ? clubTotalGames : CLUB_COUNT_PIVOT / CLUB_COUNT_RATE;
-  const base = club * CLUB_COUNT_RATE;
-  const n = Math.round(base * (CLUB_COUNT_PIVOT / Math.max(1, score)));
+   희귀성은 그 칭호의 비율 문턱이 이미 재고 있다(지적: 바이오닉 같은 흔한 전술은 최소 판수가
+   더 필요하고, 희귀 전술은 낮아야 한다) — 흔한 수일수록 비율을 높게 잡아 뒀고(바이오닉 24%·
+   정찰 40%·헬프 28%) 드문 수일수록 낮다(핵·러시 3%). 그래서 카운트 하한도 그 비율에서
+   뽑는다: 클럽 판수 × 그 칭호의 비율 × 0.2.
+     클럽 200판 — 핵 1번 · 유닛 4번 · 바이오닉 10번(상한)
+     클럽 600판 — 핵 4번 · 유닛 10번(상한)
+   한때 점수(무게 × 급 웃돈)로 나눴는데, 그건 '얼마나 값어치 있나'라 바이오닉과 옆탱이 같은
+   4점이었다 — 실제로 얼마나 자주 나오나는 비율 쪽이 알고 있다.
+   위아래로 가둔다: 아무리 드물어도 한 번은 있어야 하고, 아무리 흔해도 열 번을 넘기면
+   클럽이 쌓일수록 아무도 못 받는 칭호가 된다.
+   클럽 전체 판수를 못 받아 왔으면 이백 판으로 친다(그때의 눈금이 위 예시다). */
+const CLUB_COUNT_RATE = 0.2;
+const CLUB_GAMES_FALLBACK = 200;
+const COUNT_MIN_FLOOR = 1;
+const COUNT_MIN_CAP = 10;
+const countMinFor = (share: number): number => {
+  const club = clubTotalGames && clubTotalGames > 0 ? clubTotalGames : CLUB_GAMES_FALLBACK;
+  const n = Math.round(club * share * CLUB_COUNT_RATE);
   return Math.min(COUNT_MIN_CAP, Math.max(COUNT_MIN_FLOOR, n));
 };
 /* 한때 상한을 뒀다("아무리 많이 뛰어도 여섯 번이면 인정") — 걷어냈다(지적: 상한보다 비율
@@ -1009,7 +1013,7 @@ const TITLES: Title[] = [
     /* 급을 올린다(요청) — 무게 2 → 3이라 일반에서 에픽이다. 갈래를 승률로 올려 둔 채(요청)
        급만 일반에 남아 있던 것이 어긋난 자리였다: 목록에서는 승률 칸 맨 위인데 대표를
        고를 때는 에픽 스물여섯 줄에 늘 밀렸다. 조건(공/방 평균 2.2단계)은 그대로다. */
-    label: "풀업 퀸", weight: 3, kind: "승률", min: 2.4, why: "공/방 평균 단계", unit: "",
+    label: "풀업 퀸", weight: 3, kind: "승률", min: 2.3, why: "공/방 평균 단계", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       if (!m) return null;
@@ -1337,9 +1341,9 @@ export function epithetsOf(
            일괄 판수 문턱과는 다르다 — 분모가 서야 비율 조건 자체가 성립한다. */
         if (denomPlays < 5) continue;
         if (v < Math.ceil(denomPlays * share)) continue;
-        /* 카운트 하한 — 비율과 별개다(위 countMinFor 주석). 클럽 전체 판수에 비례하고
-           칭호의 희귀성에 반비례한다. 점수는 아래 대표 고르기가 쓰는 그 점수다. */
-        if (v < countMinFor((title.weight ?? 0) * (TIER_BOOST[title.tier ?? 2] ?? 1))) continue;
+        /* 카운트 하한 — 비율과 별개다(위 countMinFor 주석). 클럽 전체 판수에 비례하고,
+           그 칭호가 얼마나 흔한 수인가(= 제 비율 문턱)에도 비례한다. */
+        if (v < countMinFor(share)) continue;
       }
       // 절대 문턱 — 이 값을 넘으면 받는다. 남이 얼마나 했는지는 안 본다(요청: 절대평가).
       if (title.min !== undefined && v < title.min) continue;
