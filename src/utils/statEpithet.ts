@@ -48,6 +48,22 @@ const MIN_POOL = 3;
  *  값에서는 1등이 한가운데의 1.15배까지 벌어지는 일이 드물어, 그 칭호들이 통째로 잠겨
  *  있었다. 6%면 "고만고만한 1등"은 여전히 걸러지면서 실제로 앞선 사람은 통과한다. */
 const CROWN_EDGE = 1.06;
+/* 클럽 최다라는 것만으로는 부족하다(요청: 아무리 클럽 최다라도 판수에 비례한 최소 문턱은 다
+   있게, 그래서 "칭호 없음"이 흔하게) — 서른 판을 뛰고 두 판에서 드랍을 한 사람이 그것만으로
+   클럽 1등이면, 그 말은 그 사람을 부르는 말이 아니라 "다들 안 한다"는 사실의 그림자다.
+   칭호는 그 사람의 색이어야 하므로, 남들보다 앞섰나(1등)와 그 사람답나(제 판의 몇 할)를
+   둘 다 물어야 한다.
+   급마다 다른 이유: 1급은 한 번이 곧 이야기인 드문 수(핵·리콜·성큰러시)라 같은 잣대를 대면
+   통째로 잠긴다. 그래도 0은 아니다 — 스무 판에 딱 한 번은 그 사람의 색이라기엔 얇다. */
+const COUNT_SHARE: Record<number, number> = { 1: 0.05, 2: 0.1 };
+/* 문턱은 비례하되 무한정 오르지는 않는다(요청: 너무 높으면 영영 안 나오니 적당히) — 백 판을
+   뛴 사람에게 열 번을 요구하면, 많이 뛴 사람일수록 부를 말이 없어진다. 그건 비례가 아니라
+   벌이다. 이만큼 되풀이됐으면 그 사람의 색으로 인정한다. */
+const COUNT_NEED_CAP: Record<number, number> = { 1: 3, 2: 6 };
+/* 수치 칭호(APM·자원·승률처럼 비율로 겨루는 것)에는 위 잣대를 댈 수가 없다 — 값 자체가 이미
+   판당 평균이라 '몇 할에서 나왔나'를 물을 수 없다. 대신 얼마나 뛰었나를 클럽에 비례해 묻는다:
+   남들 절반도 안 뛴 사람의 1등은 표본이 얇아서 나온 1등이다. */
+const LEAD_PLAYS_SHARE = 0.5;
 
 export interface EpithetSubject {
   id: string;
@@ -152,8 +168,12 @@ interface Title {
    *  "하늘의 여전사"가 아예 안 나간다. 겨룰 사람이 몇인가와 1등이 그럴 만한가는 서로 다른
    *  질문이라 따로 물어야 한다. */
   min?: number;
-  /** 그 사람 판수의 이만큼에서는 나왔어야 한다 — 유닛 이름을 단 칭호에 건다(지적: 캐리어·
-   *  배틀 같은 것은 경기 수 대비 최소 비율을 봐야 한다).
+  /** 그 사람 판수의 이만큼에서는 나왔어야 한다 — 안 적으면 급에 맞는 기본값이 걸린다
+   *  (COUNT_SHARE, 요청: 문턱은 다 있게).
+   *
+   *  0을 적으면 문턱이 없다 — 값 자체가 이미 '판당 몇'인 칭호를 위한 자리다(요청: 판당
+   *  어시밀리에이터 다섯 채 같은 것은 문턱이 없어도 된다). 그런 값은 판수로 나눈 뒤의
+   *  수라 여기서 다시 판수를 곱해 견주면 같은 잣대를 두 번 대는 셈이 된다.
    *
    *  전술 칭호의 값은 '그 수가 나온 판의 수'라, 스무 판 뛰고 한 판에서 캐리어를 갔다고
    *  "캐리어를 모으는 여인"이라 부르면 그 말이 그 사람을 가리키지 못한다. 드문 수(핵·리콜)는
@@ -974,15 +994,32 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
     rank: number;
   }
   const claims: Claim[] = [];
+  /* 이 무리가 보통 몇 판이나 뛰었나 — 수치 칭호의 참여 문턱이 여기에 비례한다. */
+  const medPlays = ranked.length ? median(ranked.map((p) => p.stats.plays)) : 0;
   TITLES.forEach((title, order) => {
     // 급마다 뛴 판 문턱이 다르다(MIN_PLAYS_TIER) — 못 넘긴 사람은 후보에서 아예 빠진다.
     const need = MIN_PLAYS_TIER[title.tier ?? 2] ?? MIN_PLAYS;
     const vals = ranked
       .filter((p) => p.stats.plays >= need)
       .map((p) => ({ id: p.id, v: title.value(p.stats, p), stats: p.stats, of: p }))
-      // 판수 대비 문턱(Title.minPlaysShare) — 그 사람 판의 몇 할에서는 나왔어야 한다.
-      .filter((x) => title.minPlaysShare === undefined
-        || (x.v ?? 0) >= x.stats.plays * title.minPlaysShare)
+      /* 판수 대비 문턱 — 그 사람 판의 몇 할에서는 나왔어야 한다. 칭호가 따로 정해 두지
+         않았으면 급에 맞는 기본값이 걸린다(요청: 문턱은 다 있게). */
+      .filter((x) => {
+        const tier = title.tier ?? 2;
+        const share = title.minPlaysShare ?? (title.scale === "count"
+          ? COUNT_SHARE[tier] ?? COUNT_SHARE[2]
+          : 0);
+        if (share <= 0) return true;
+        const need = Math.min(
+          Math.ceil(x.stats.plays * share),
+          title.minPlaysShare === undefined ? COUNT_NEED_CAP[tier] ?? COUNT_NEED_CAP[2] : Infinity,
+        );
+        return (x.v ?? 0) >= need;
+      })
+      /* 수치 칭호는 클럽 한가운데의 절반은 뛰었어야 한다(LEAD_PLAYS_SHARE). "count"가 아닌
+         것은 전부 이쪽이다 — scale을 안 적은 칭호(APM·비중·분당)도 점수는 한가운데 대비
+         배수로 매겨지므로 같은 잣대를 받아야 한다. */
+      .filter((x) => title.scale === "count" || x.stats.plays >= medPlays * LEAD_PLAYS_SHARE)
       .filter((x): x is { id: string; v: number; stats: MemberStats; of: EpithetSubject } =>
         x.v !== null && x.v > 0);
     if (vals.length < (title.pool ?? MIN_POOL)) return;

@@ -8,9 +8,12 @@
 // 있으면 그 말이 어느 판에서 나온 것인지 알 수가 없고, 무엇보다 칭호가 걸리는 자리가 내전
 // 화면 하나뿐이다. 보이는 곳과 세는 곳이 같아야 한다.
 //
-// 한 세션에 한 번만 부른다(아래 cached) — 통계 표와 프로필 팝업이 각각 부르고, 표는 필터를
-// 만질 때마다 다시 그려지는데 그때마다 전체 기간 통계를 새로 받아 올 이유가 없다. 회원
-// 목록이 바뀌면(가입·탈퇴) 키가 달라져 그때 한 번 다시 받는다.
+// 화면은 읽기만 한다(load) — 계산은 경기가 등록·삭제될 때만 돈다(refreshEpithets, 요청:
+// 통계 화면 진입 때 재계산 금지). 그 결과는 서버에 남아 있으므로 누가 언제 열어도 같은
+// 말이 보이고, 활동에 남은 알림과 어긋날 수가 없다.
+// 읽은 값은 한 세션에 한 번만 받는다(아래 cached) — 표는 필터를 만질 때마다 다시 그려지는데
+// 칭호는 필터를 안 타는 값이라 그때마다 부를 이유가 없다. 회원 목록이 바뀌면 키가 달라져
+// 그때 한 번 다시 받는다.
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
@@ -30,7 +33,34 @@ let inflight: Promise<void> | null = null;
 let recounting = false;
 let recountAgain: string | null = null;
 
+/** 화면이 쓰는 값 — 서버에 저장된 한 벌을 그대로 읽는다(요청: 통계 화면에 들어갈 때는 다시
+ *  계산하지 않는다). 계산은 경기가 등록될 때만 돈다(아래 refreshEpithets).
+ *
+ *  읽기로 바꾼 뒤에 달라지는 것: 화면을 여는 일이 더는 알림을 남기지 않는다. 예전에는 통계를
+ *  여는 사람마다 전체 통계를 받아 제 손으로 세고 그 결과를 올렸는데, 그러면 '보기'가 '쓰기'를
+ *  겸하게 되고 아무도 통계를 안 열면 칭호도 안 바뀌었다. */
 async function load(key: string): Promise<void> {
+  const want = new Set(key.split(","));
+  try {
+    const rows = await api.getEpithets();
+    const map = new Map<string, Epithet>();
+    rows.forEach((r) => {
+      if (want.has(r.memberId) && r.label) map.set(r.memberId, { label: r.label, why: r.why });
+    });
+    cached = map;
+    cachedKey = key;
+  } catch {
+    // 칭호가 없어도 화면은 그대로다 — 한 줄이 안 붙을 뿐이라 오류를 띄우지 않는다.
+    cached = EMPTY;
+    cachedKey = key;
+  }
+}
+
+/** 칭호를 새로 계산해 서버에 올린다 — 경기가 등록·삭제될 때만 부른다.
+ *
+ *  잣대는 이 파일 머리에 적힌 그대로다(내전·전체 누적·모든 종족). 계산 규칙 자체는
+ *  statEpithet.ts에만 있다(서버는 값만 보관한다 — API의 MemberEpithet 주석). */
+async function recount(key: string): Promise<void> {
   const ids = key.split(",");
   try {
     /* 한 번만 부른다 — 내전(팀전) 전체 누적 한 벌. 예전에는 다섯 벌(전체·개인전·팀전·이번
@@ -41,7 +71,7 @@ async function load(key: string): Promise<void> {
     });
     const byId: Record<string, MemberStatsEntry> = {};
     res.members.forEach((entry) => { byId[entry.memberId] = entry; });
-    cached = epithetsOf(ids
+    const map = epithetsOf(ids
       .map((id) => ({
         id,
         stats: byId[id]?.overall,
@@ -49,27 +79,22 @@ async function load(key: string): Promise<void> {
         races: byId[id]?.byRace,
       }))
       .flatMap((x) => (x.stats ? [{ id: x.id, stats: x.stats, races: x.races }] : [])));
+    /* 올린 값이 곧 다음에 누가 읽을 값이다 — 그래서 여기서 캐시도 같이 갈아 둔다. 달라진
+       사람이 있으면 서버가 활동에 알림 한 줄을 남긴다(요청). */
+    await api.reportEpithets(
+      [...map].map(([memberId, e]) => ({ memberId, label: e.label, why: e.why })),
+    );
+    cached = map;
     cachedKey = key;
-    /* 계산한 한 벌을 서버에 알린다 — 달라진 사람이 있으면 활동에 알림 한 줄이 남는다(요청).
-       여기서 부르는 이유: 칭호가 만들어지는 자리가 여기 하나뿐이라, 다른 데서 부르면
-       화면이 보여주는 값과 알림이 갈릴 수 있다. 한 세션에 한 번만 도는 자리이기도 하다.
-       실패는 조용히 넘긴다 — 알림은 곁다리고, 못 남겼다고 통계 화면이 멈추면 안 된다. */
-    void api.reportEpithets(
-      [...cached].map(([memberId, e]) => ({ memberId, label: e.label, why: e.why })),
-    ).catch(() => { /* 다음에 누가 통계를 열 때 다시 올라간다 */ });
   } catch {
-    // 칭호가 없어도 화면은 그대로다 — 한 줄이 안 붙을 뿐이라 오류를 띄우지 않는다.
-    cached = EMPTY;
-    cachedKey = key;
+    // 등록은 이미 끝났다 — 칭호는 다음 등록 때 다시 센다.
   }
 }
 
 /** 칭호를 다시 계산해 서버에 알린다(요청: 경기 등록할 때마다) — 통계 화면을 열 때가 아니라
  *  기록이 바뀐 그 순간에 돌아야, 활동에 뜨는 알림이 "방금 그 경기 때문에 바뀌었다"는 말이 된다.
  *
- *  캐시를 비우고 다시 받는다: 같은 회원 목록이면 load()가 캐시를 그대로 돌려주므로, 비우지
- *  않으면 새 경기가 반영되지 않는다. 화면이 없어도 도는 자리라 결과는 서버로만 나가고,
- *  다음에 통계를 여는 사람이 그 값을 그대로 본다.
+ *  캐시도 새 값으로 갈린다 — 등록한 사람이 곧바로 통계를 열어도 옛말이 보이지 않게.
  *
  *  실패는 조용히 넘긴다 — 등록은 이미 끝났고 칭호는 곁다리다. 다음 등록이나 다음 통계 조회
  *  때 다시 계산된다. */
@@ -89,8 +114,8 @@ export async function refreshEpithets(memberIds: string[]): Promise<void> {
       cachedKey = "";
       cached = null;
       inflightKey = k;
-      inflight = load(k);
-      await inflight.catch(() => { /* 위 load가 이미 삼킨다 */ });
+      inflight = recount(k);
+      await inflight.catch(() => { /* 위 recount가 이미 삼킨다 */ });
       next = recountAgain;
     }
   } finally {

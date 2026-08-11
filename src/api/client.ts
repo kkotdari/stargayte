@@ -539,6 +539,15 @@ export const api = {
   /** 지금 칭호 한 벌을 서버에 알린다 — 달라진 사람이 있으면 활동에 알림 한 줄이 남는다
    *  (요청). 계산은 화면이 하고(statEpithet.ts) 서버는 견주기만 한다. 응답은 바뀐 사람 수.
    *  실패해도 화면은 그대로다 — 부르는 쪽이 조용히 넘긴다. */
+  /** 저장된 칭호 한 벌을 읽는다 — 통계 화면이 쓰는 값이다(요청: 화면 진입 때 다시 계산하지
+   *  않는다). 계산은 경기 등록 때 한 번 돌고 그 결과가 서버에 남아 있다. */
+  async getEpithets(): Promise<{ memberId: string; label: string; why: string }[]> {
+    const res = await request<{ epithets: { memberId: string; label: string; why: string }[] }>(
+      "/api/activities/epithets",
+    );
+    return res.epithets ?? [];
+  },
+
   async reportEpithets(epithets: { memberId: string; label: string; why: string }[]): Promise<number> {
     const res = await request<{ changed: number }>("/api/activities/epithets", {
       method: "PUT",
