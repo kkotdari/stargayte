@@ -572,12 +572,15 @@ const TITLES: Title[] = [
      한 유닛을 많이 뽑은 것과 달리, 이쪽은 그 판을 어떤 틀로 굴렸나다. 바이오닉·메카닉·
      목동 저그는 유닛 이름이 아니라 운영 이름이라, 그 말 하나로 그 사람의 판이 그려진다.
      그래서 단일 유닛 칭호(캐리어·저글링 같은 것)보다 위에 둔다. */
-  tactic("바이오닉의 여왕", ["bionic"]),
-  tactic("메카닉 사령관", ["mech"]),
+  /* 운영 틀(바이오닉·메카닉·목동)은 절반이 문턱이다(지적: 바이오닉이 쉽게 나온다) — 그
+     종족이면 으레 잡는 틀이라, "그 틀로 이긴 판이 종족 판의 절반"쯤 돼야 그 사람의 색이다.
+     목동은 저그 후반에만 나오는 틀이라 40%로 한 뼘 낮다. */
+  { ...tactic("바이오닉의 여왕", ["bionic"]), minPlaysShare: 0.5 },
+  { ...tactic("메카닉 사령관", ["mech"]), minPlaysShare: 0.5 },
   /* 목동저그 — 이제 자막이 짚은 판만 센다(요청: 목동저그도 이긴 판만). 한때 유닛 기록으로도
      잡았는데(울트라 2기 + 디파일러 + 저글링 20기), 그 원장은 승패를 안 가려서 진 판의
      목동까지 함께 세었다. 자막 쪽은 서버가 이긴 판만 세므로(_tactic_counts) 잣대가 하나가 된다. */
-  tactic("목동저그", ["moka"]),
+  { ...tactic("목동저그", ["moka"]), minPlaysShare: 0.4 },
 
   // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
   tactic("프로 옆탱러", ["side-tank"]),
@@ -800,7 +803,7 @@ const TITLES: Title[] = [
      다른 칭호들보다 작다. */
   { label: "일꾼 공장장", weight: 1.2, min: 32, why: "초반 5분 일꾼", unit: "기", value: (s, of) => won(s, of).avgWorker5 },
   /* 건물을 제일 많이 올린 사람(요청: 심시티 퀸) — "쉴 새 없이 짓는 자"에서 바꿨다. 재는 값은 그대로 분당 지은 채수다. */
-  { label: "심시티 장인", weight: 1.5, min: 6, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
+  { label: "심시티 장인", weight: 1.5, min: 8, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
   {
     label: "풀업녀", weight: 1.5, min: 2, why: "공/방 평균 단계", unit: "",
     value: (s, of) => {
