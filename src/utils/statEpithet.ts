@@ -762,18 +762,9 @@ const TITLES: Title[] = [
      통한 째기(greedy-paid)는 위의 "째기의 달인"이고, 이쪽은 그냥 늘 그렇게 시작하는 사람이다. */
   /* (삭제) 일단 째고 본다(greedy-build) — 위 "째기의 달인"(통한 째기)과 같은 수다. 통했나
      아닌가로 갈라 두 칭호를 두면 표에서는 결국 같은 사람이 두 번 걸린다. */
-  {
-    /* 판당으로 잰다(요청: 절대평가) — 누적 채수는 오래 뛴 사람이 늘 크다. 서른 채면 한 판에
-       확장·생산·방어를 고루 편 살림이다. */
-    label: "건설의 여왕", weight: 2, kind: "경기력", min: 78, why: "판당 지은 건물", unit: "채",
-    value: (s, of) => {
-      const m = mix(s, of);
-      const plays = won(s, of).mixPlays ?? 0;
-      if (!m || !(plays > 0)) return null;
-      const n = Object.values(m.buildings).reduce((sum, v) => sum + (v ?? 0), 0);
-      return n > 0 ? n / plays : null;
-    },
-  },
+  /* (삭제) 건설의 여왕(판당 지은 건물 78채) — 요청. 바로 아래 심시티 퀸이 같은 것을 분당으로
+     재고 있어, 부지런히 지은 사람은 대개 두 칭호에 함께 걸렸다. 한 사람의 같은 사실을 두
+     이름으로 부르는 자리다. */
   /* 상대보다 일꾼을 훨씬 많이 굴린 대목(worker-gap) — 자원을 많이 캤다는 말이다. */
   { ...tactic("부티 자원 퀸", ["worker-gap"]), minPlaysShare: 0.22 },
   /* 흔한 대목들의 제 문턱(시뮬레이션 실측: 격차·정찰·역전·GG·스톰은 기본 문턱으로는 거의
