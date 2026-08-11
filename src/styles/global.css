@@ -11868,6 +11868,21 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   color: color-mix(in srgb, var(--best-ink) 62%, transparent);
 }
 
+/* 칭호 현황(관리자) — 회원 한 줄에 [프사 닉네임 | 칭호 + 근거]. 근거는 옅게, 칭호 없는
+   줄은 그보다 더 옅게 — 이 창의 물음이 "누가 받았나"라 빈 줄이 먼저 읽히면 안 된다. */
+.scr-epithet-status { max-width: 560px; }
+.scr-epithet-status-list { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; list-style: none; }
+.scr-epithet-status-row {
+  display: flex; align-items: center; gap: 10px; min-width: 0;
+  padding: 8px 0; border-bottom: 1px solid var(--line-hair);
+}
+.scr-epithet-status-row:last-child { border-bottom: none; }
+.scr-epithet-status-name { flex: 0 0 96px; font-weight: 600; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scr-epithet-status-what { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.scr-epithet-status-label { font-weight: 700; color: var(--text); word-break: keep-all; }
+.scr-epithet-status-why { color: var(--dim); font-size: var(--fs-micro); line-height: 1.4; word-break: keep-all; }
+.scr-epithet-status-none { color: var(--dim); opacity: 0.7; }
+
 /* 전체 보기 제목의 빵부스러기(요청: "활동 > 게임") — 앞의 '활동'은 화면 제목 크기 그대로고,
    갈래 이름만 목록 소제목과 같은 18px이다. 둘을 같은 크기로 두면 어느 쪽이 지금 자리인지가
    안 갈리고, 갈래 이름을 더 키우면 밖에서 누른 그 소제목과 다른 것처럼 보인다. */

@@ -5,6 +5,7 @@ import Select from "../../components/common/Select";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import ReplayBatchButton from "../../components/common/ReplayBatchButton";
 import VersionManageModal from "../../modals/VersionManageModal";
+import EpithetStatusModal from "../../modals/EpithetStatusModal";
 import { api } from "../../api/client";
 import { parseReplayFile } from "../../utils/replayParser";
 import { buildReplaySummary } from "../../utils/replaySummary";
@@ -56,6 +57,8 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
   const [epiBusy, setEpiBusy] = useState(false);
   const [epiDone, setEpiDone] = useState<number | null>(null);
   const [confirmEpi, setConfirmEpi] = useState(false);
+  // 칭호 현황 창(요청) — 단순 조회라 진행 상태가 없다.
+  const [epiStatusOpen, setEpiStatusOpen] = useState(false);
 
   const recountEpithets = async () => {
     setErr("");
@@ -361,6 +364,14 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
                       </>
                     ) : "경기 재분석"}
                   </button>
+                  {/* 칭호 현황(요청) — 지금 저장된 칭호를 회원 전체 리스트로 훑는다.
+                      단순 조회라 확인창 없이 바로 연다(요청: 조회는 컨펌 제외). */}
+                  <button
+                    type="button" className="scr-btn scr-btn-primary"
+                    onClick={() => setEpiStatusOpen(true)}
+                  >
+                    칭호 현황
+                  </button>
                   {/* 칭호 다시 계산 — 경기를 손대지는 않지만 활동에 알림을 남길 수 있으므로
                       (칭호가 바뀐 사람이 있으면) 확인창을 거친다. */}
                   <button
@@ -412,6 +423,8 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
           onCancel={() => setConfirmRedo(false)}
         />
       )}
+
+      {epiStatusOpen && <EpithetStatusModal onClose={() => setEpiStatusOpen(false)} />}
 
       {confirmEpi && (
         <ConfirmDialog
