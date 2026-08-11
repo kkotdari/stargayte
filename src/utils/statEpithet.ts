@@ -596,7 +596,16 @@ const TITLES: Title[] = [
   /* 건물을 띄워 옮겨 다닌 사람(요청: 하울의 움직이는 성) — 한때 "공중부양 마스터"로 넣었다가
      "집을 잃은 사람"이라는 딱지로 읽혀 걷어냈던 자리다. 같은 사실도 부르는 말이 달라지면
      이야기가 된다: 쫓겨 다닌 것이 아니라 성을 끌고 다닌 것이다. 무게는 위로상 급이다. */
-  rare("하울의 움직이는 성", ["lift-off"]),
+  {
+    /* 한 번 띄운 것으로는 성을 옮겼다고 할 수 없다(지적: 건물 띄우기 1번으로 이 칭호는
+       아니다) — 테란은 밀리면 으레 한 번쯤 띄우고 본다. 그래서 급의 기본 문턱(6%)이 아니라
+       제 문턱을 따로 둔다: 테란 판의 15%에서, 적어도 세 판에서는 띄웠어야 한다. */
+    label: "하울의 움직이는 성", weight: TACTIC_WEIGHT["lift-off"] ?? 1, tier: 2,
+    pool: 1, edge: 1, scale: "count", race: "테란",
+    min: 3, minPlaysShare: 0.15,
+    why: "경기 요약에 건물 띄우기", unit: "번",
+    value: (s) => did(s, "lift-off"),
+  },
   {
     /* 먼저 판에서 사라진 횟수 — 리플레이에 남는 탈락(Leave Game)이라 짐작이 아니다.
        지는 이야기지만 놀리는 말은 아니다: 팀전에서 제일 먼저 노려지는 자리는 대개 잘하는
@@ -609,8 +618,10 @@ const TITLES: Title[] = [
     /* 종족을 두루 쓰는 사람 — 한 종족만 파는 사람이 대부분이라 그 자체가 특징이다.
        값은 '충분히 뛴 종족의 수'이고, 같으면 그중 가장 적게 쓴 종족의 판수로 갈린다:
        세 종족을 고르게 굴린 사람이 한 종족에 치우친 사람보다 앞선다. */
+    /* 값이 '판마다 세는 수'가 아니라 종족의 가짓수라, 판수 대비 문턱을 안 받는다
+       (minPlaysShare: 0) — 마흔 판 뛴 사람에게 종족 세 개를 요구하는 셈이 된다. */
     label: "팔색조 퀸", weight: 1.2, pool: 1, edge: 1, min: 2, scale: "count",
-    why: "고루 쓴 종족", unit: "개",
+    minPlaysShare: 0, why: "고루 쓴 종족", unit: "개",
     value: (_s, of) => {
       const played = Object.values(of.races ?? {})
         .map((st) => st?.plays ?? 0)
@@ -994,6 +1005,13 @@ function signature(
   return null;
 }
 
+/** 이 칭호를 잴 때의 분모 — 종족을 타는 칭호는 그 종족 판수다(Title.race).
+ *  문턱과 근거 문장이 같은 수를 봐야 "테란 12판 중 3번"이 문턱과 어긋나지 않는다. */
+function denomOf(title: Title, of: EpithetSubject): number {
+  if (title.race) return of.races?.[title.race]?.plays ?? of.stats.plays;
+  return of.stats.plays;
+}
+
 /** 회원 → 칭호. 왕관은 넘겨받은 무리 안에서만 매기므로, 부르는 쪽이 '검색에 걸린 목록'이
  *  아니라 '그 조건의 회원 전체'를 넘겨야 한다(메달과 같은 원칙) — 이름을 검색했다고 칭호가
  *  옮겨 다니면 그건 기록이 아니라 화면 효과다. */
@@ -1015,6 +1033,8 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
     first: boolean;
     /** 나눠 줄 때의 급 — sticky 칭호의 1등만 0급으로 앞당겨진다(Title.sticky 주석). */
     rank: number;
+    /** 이 값을 잰 판수 — 종족 칭호면 그 종족 판수다. 근거 문장의 '몇 판 중 몇 %'가 쓴다. */
+    denom: number;
   }
   const claims: Claim[] = [];
   /* 이 무리가 보통 몇 판이나 뛰었나 — 수치 칭호의 참여 문턱이 여기에 비례한다. */
@@ -1035,7 +1055,7 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
         if (share <= 0) return true;
         /* 분모는 그 칭호가 타는 종족의 판수다(요청) — 종족을 안 타는 칭호만 전체 판수로
            잰다. 그 종족으로 한 판도 안 뛴 사람은 애초에 그 수가 나올 수 없다. */
-        const base = title.race ? x.of.races?.[title.race]?.plays ?? x.stats.plays : x.stats.plays;
+        const base = denomOf(title, x.of);
         if (base <= 0) return false;
         return (x.v ?? 0) >= Math.ceil(base * share);
       })
@@ -1089,7 +1109,7 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
       const gap = second === null ? 1 : (second > 0 ? Math.min(1, (top - second) / second) : 1);
       const leadBonus = 1 + gap;
       claims.push({
-        title, id: w.id, label, raw: w.v,
+        title, id: w.id, label, raw: w.v, denom: denomOf(title, w.of),
         score: (title.weight ?? 0) * base * boost * leadBonus, order,
         // sticky만 절대 우선이다(참여수 1위) — 나머지는 급을 웃돈으로 받아 점수로 겨룬다.
         first: w.v === top, rank: title.sticky ? 0 : 1,
@@ -1115,8 +1135,17 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
     out.set(c.id, {
       label: c.label,
       // 꼬리는 무엇을 잰 값이냐에 따라 다르다 — 횟수는 '최다', 승률·비중은 '1위'가 맞는 말이다.
+      /* 횟수 칭호는 '몇 판 중 몇 번'까지 적는다(요청: 테란 경기 중 건물 띄우기 10% 이런
+         식으로) — 세 번이라는 수만으로는 그게 그 사람의 버릇인지 어쩌다 한 번인지가 안
+         갈린다. 분모는 문턱을 잰 그 판수 그대로다(종족 칭호면 그 종족 판수). */
       why: `${c.title.why ?? "기록"} ${shown}${c.title.unit ?? ""}`
-        + (c.first ? (c.title.scale === "count" ? " — 클럽 최다" : " — 클럽 1위") : ""),
+        /* '번'으로 세는 칭호만이다 — 종족 가짓수(개)처럼 판마다 세는 값이 아닌 것에
+           비율을 붙이면 뜻이 없는 수가 된다. 한 판에 여러 번 나오는 수(핵)도 비율이
+           100%를 넘으므로 그때는 횟수만 적는다. */
+        + (c.title.scale === "count" && c.title.unit === "번" && c.denom > 0 && c.raw <= c.denom
+          ? ` — ${c.title.race ? `${c.title.race} ` : ""}${c.denom}판 중 ${Math.round((c.raw / c.denom) * 100)}%`
+          : "")
+        + (c.first ? (c.title.scale === "count" ? " · 클럽 최다" : " — 클럽 1위") : ""),
     });
     used.add(c.label);
   }
