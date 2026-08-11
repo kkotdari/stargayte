@@ -30,6 +30,13 @@ const SUNKEN_RUSH_SEC = 3 * 60;
    내 기지보다 상대가 가까운 자리에 박은 포토만 여기 걸린다(아래 forward). 그런 자리는
    20분에 지어도 조이기가 아니라 러시다. */
 const CANNON_RUSH_SEC = 20 * 60;
+/* 늦게 간 포토러시는 두 채부터다(지적: 하한이 없나?) — 창을 20분까지 열어 두면 한 채로는
+   얇다. 상대 본진 옆에 홀로 선 포토 한 채는 러시라기보다 지나가다 심은 감시탑이거나
+   자리를 잘못 잡은 방어일 수 있는데, 두 채부터는 그 자리를 잠그려는 뜻이 분명하다.
+   초반(이 시각 안)에는 한 채로도 러시다 — 그때 상대 본진에 포토를 심는 일 자체가 우연일
+   수 없고, 한 채가 채 완성되기 전에 쫓겨나는 것이 오히려 흔하다. */
+const CANNON_RUSH_EARLY_SEC = 6 * 60;
+const CANNON_RUSH_LATE_MIN = 2;
 
 // 입구막기(wall-in)로 볼 시간 창 — 입구막기는 앞을 잠가 놓고 그 뒤에서 크는 수다.
 // 빠른무한처럼 처음부터 자원이 넘치는 판에서는 벽이 더 늦게, 더 두껍게 서기도 해서
@@ -1863,7 +1870,11 @@ function detectFor(c: Ctx): Tactic[] {
        방어 포토다. 시작 자리가 붙은 맵에서 실제로 그런 자리가 나온다. */
     const forward = inZone("enemy", "Photon Cannon", CANNON_RUSH_SEC)
       .filter((b) => geo !== null && geo.foeTurfAt(b) !== null);
-    if (forward.length > 0) {
+    // 초반이면 한 채로도, 그 뒤면 두 채부터(위 CANNON_RUSH_LATE_MIN 주석).
+    const earlyCannon = forward.some(
+      (b) => b.frame !== null && sec(b.frame) < CANNON_RUSH_EARLY_SEC,
+    );
+    if (forward.length >= (earlyCannon ? 1 : CANNON_RUSH_LATE_MIN)) {
       out.push({
         key: "cannon-rush", ...foeAt(forward), weight: SNEAK_WEIGHT, at: firstOf(forward),
         who, p: { ...spotOf(forward) },
