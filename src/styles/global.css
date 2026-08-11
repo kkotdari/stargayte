@@ -11799,6 +11799,13 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 
+/* 줄 전체가 래더 상세로 가는 문이다(요청) — 손가락이 갈 수 있는 곳이라는 표시만 한다.
+   hover 배경까지 깔지는 않는다: 제 줄 표시(scr-stat-row-me)의 옅은 판과 겹치면 탁해진다. */
+.scr-ladder-row-click { cursor: pointer; }
+/* 래더 상세의 이력 머리 — 소제목과 월 필터가 한 줄을 나눠 쓴다(요청: 이력엔 월 필터). */
+.scr-ladder-history-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.scr-ladder-history-month { flex: 0 0 auto; }
+
 /* 유저 칸 — 프사와 닉네임이 한 줄. 통계표처럼 sticky로 고정할 이유가 없다(가로 스크롤이
    없다) — 그래서 배경도 따로 안 깐다. */
 .scr-ladder-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
