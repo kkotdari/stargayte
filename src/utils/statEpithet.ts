@@ -389,7 +389,7 @@ const TITLES: Title[] = [
   tactic("쉼 없는 생산 공장장", ["prod-gap"]),
   /* (삭제) 병력 사재기 — 뺐다(요청). "많이 모았다"는 시간을 들이면 누구나 닿는 값이고,
      그 병력으로 무엇을 했는지는 말해 주지 않는다. 물량 자체는 '물량퀸'이 이미 잰다. */
-  tactic("업글 덕후", ["upgrade-signature"]),
+  tactic("업그레이드 여제", ["upgrade-signature"]),
   tactic("지구전의 화신", ["long-run"]),
   tactic("끝까지 버티는 사람", ["late-hold", "late-defense", "stand"]),
   rare("좀비 모드", ["revival"]),
