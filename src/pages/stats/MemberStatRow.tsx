@@ -235,6 +235,29 @@ function TopList({ items, unit }: { items: TopEntry[]; unit: string }) {
    이제야 같아진다.
    값이 없으면 "-"다 — 0과 '잰 적 없음'은 다른 말이라(리플레이가 없는 옛 경기) 0으로
    적으면 안 된다. */
+/* 종족별 판수·승률 한 줄(요청: 주요지표에 각 종족 게임 판수·승률) — 한 종족을 두 줄로
+   쓰면 이 칸이 열한 줄이 되어 도넛 칸보다 세로로 커진다. 판수와 승률은 같은 종족을 두 가지로
+   말하는 값이라 한 줄에 나란히 두는 편이 읽기도 낫다.
+   그 종족으로 한 판도 안 뛰었으면 "-"다 — 0판·0%로 적으면 '해 봤는데 다 졌다'로 읽힌다. */
+function RecordRace({ race, stats }: { race: BaseRace; stats?: MemberStats }) {
+  const plays = stats?.plays ?? 0;
+  return (
+    <div className="scr-stat-record-item">
+      <span className="scr-stat-record-label">{race}</span>
+      <div className="scr-stat-record-pair">
+        <span className="scr-stat-record-num-v">
+          {plays > 0 ? plays : "-"}
+          {plays > 0 && <span className="scr-stat-record-num-unit">판</span>}
+        </span>
+        <span className="scr-stat-record-num-v">
+          {plays > 0 ? stats!.winRate : "-"}
+          {plays > 0 && <span className="scr-stat-record-num-unit">%</span>}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function RecordNum({ value, unit }: { value: number | null; unit?: string }) {
   return (
     <div className="scr-stat-record-num">
@@ -464,6 +487,11 @@ export default function MemberStatRow({
               막대는 안 그린다 — 이 수는 남과 견주는 값이 아니라 그 사람이 받은 횟수다.
               0도 적는다(요청) — 감추면 줄마다 이 자리가 있었다 없었다 해서 표가 들쭉날쭉해지고,
               무엇보다 '0회'와 '이 표에 없는 값'이 같아 보인다. */}
+          {/* 종족별 판수·승률(요청) — 전체 합계 아래에 종족 셋이 이어진다. 도넛 칸이 이미
+              종족별로 서 있어서, 이 칸도 같은 차례(테란·프로토스·저그)로 읽힌다. */}
+          {RACES.map((r) => (
+            <RecordRace key={r} race={r} stats={byRace?.[r]} />
+          ))}
           {showBest && (
             <div className="scr-stat-record-item">
               <span className="scr-stat-record-label">BEST</span>

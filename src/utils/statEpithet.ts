@@ -646,7 +646,7 @@ const TITLES: Title[] = [
   tactic("캐리어를 모으는 여인", ["carrier"]),
   /* 러커는 저그의 밥이라 유닛 기본(7%)과 자릿수가 다르다 — 세 번을 올려 30%: 저그 판
      셋에 하나는 러커로 이겼어야 "부대"라 부른다. */
-  { ...tactic("공포의 독거미 부대", ["lurker"]), minPlaysShare: 0.25 },
+  { ...tactic("공포의 독거미 부대", ["lurker"]), minPlaysShare: 0.32 },
   /* 안 보이는 것으로만 치는 사람(요청: 다크·레이스·아비터를 다 잘 쓴 경우만) —
      "보이지 않는 손" → "안 보이는 레이스"를 거쳐 온 자리다. 유닛 하나로는 안 준다(요청:
      하나만 써서는 안 됨): 다크만 뽑는 프로토스는 흔하고, 그건 이미 유닛 칭호가 말한다.
@@ -715,7 +715,7 @@ const TITLES: Title[] = [
      "초반에 끝내러 간다"는 성향 그 자체를 센다.
      race를 지우는 이유: 갈래가 두 종족에 걸쳐 있어(질럿·저글링…) 분모는 전체 판수라야 한다.
      tactic()은 첫 열쇠의 종족(프로토스)을 그대로 붙이므로 여기서 걷는다. */
-  { ...tactic("초반러시의 여제", ["zealot-rush", "zling-rush", "duel-rush", "cannon-rush", "sunken-rush", "sneak-rax"]),
+  { ...tactic("초반의 지배자", ["zealot-rush", "zling-rush", "duel-rush", "cannon-rush", "sunken-rush", "sneak-rax"]),
     race: undefined, why: "초반 러시", minPlaysShare: 0.1 },
   /* 정찰(요청: 초반 정찰 열심히 한 사람 — 좋은 뜻이라 3점대) — 옵저버를 넉넉히 띄웠거나,
      오버로드를 퍼뜨렸거나, 스캔으로 여기저기 들여다본 판이다. 남의 살림을 먼저 보고 제 수를
@@ -728,7 +728,7 @@ const TITLES: Title[] = [
      일꾼 정찰도 초반 쪽(vision)이다(요청: 파서에 추가) — 첫 일꾼을 상대 진영까지 몰고 간
      명령 좌표로 짚는다(replaySummary의 WORKER_SCOUT_SEC). 오버로드와 한 열쇠인 까닭은
      둘 다 '미리 보고 시작한다'는 같은 습관이라서다. */
-  { ...tactic("부지런한 정찰 퀸", ["vision"]), minPlaysShare: 0.25 },
+  { ...tactic("부지런한 정찰 퀸", ["vision"]), minPlaysShare: 0.35 },
   { ...tactic("전장을 살피는 눈", ["vision-eye"]), minPlaysShare: 0.25 },
   /* (삭제) 맞러시 승부사(duel-rush) — 요청. 맞러시는 둘이 함께 만든 장면이라 한 사람의
      수라고 하기 어렵다. */
@@ -819,11 +819,28 @@ const TITLES: Title[] = [
        있다가 진 판은 여기 안 걸린다. 그래서 이 값은 '안 죽었다'가 아니라 '무너진 적이
        거의 없다'에 가깝고, 근거 문장도 그렇게 적는다. */
     label: "생존퀸", weight: 2, kind: "수비",
-    min: 0.9, why: "무너지지 않은 판", unit: "",
+    min: 0.9, why: "진 판까지 통틀어 안 무너진 판", unit: "",
     value: (s) => {
       if (s.plays < 15) return null;
       const fell = s.tactics?.fallen ?? 0;
       return Math.max(0, (s.plays - fell) / s.plays);
+    },
+  },
+  {
+    /* 소수자 퀸(요청: 특이한 유닛을 많이 뽑는 사람) — 클럽에서 좀처럼 안 보이는 유닛들이다.
+       스카웃·발키리·디바우러·퀸·다크아콘·고스트·감염된 테란. 셋 다 종족을 가리지 않고
+       한 줄로 묶은 까닭은, 이 칭호가 세는 것이 '무엇을 뽑았나'가 아니라 '남들이 안 뽑는
+       것을 고른다'는 취향이라서다 — 종족마다 따로 두면 그 취향이 세 이름으로 갈린다.
+       비중으로 재는 것은 은신·하이브와 같다: 총합은 오래 뛴 사람이 늘 크다. */
+    label: "소수자 퀸", weight: 2, kind: "경기력",
+    min: 0.03, why: "병력 중 남들 안 쓰는 유닛", unit: "",
+    value: (s, of) => {
+      const m = mix(s, of);
+      if (!m || !(m.uGround + m.uAir > 0)) return null;
+      const rare = (m.units?.Scout ?? 0) + (m.units?.Valkyrie ?? 0) + (m.units?.Devourer ?? 0)
+        + (m.units?.Queen ?? 0) + (m.units?.["Dark Archon"] ?? 0) + (m.units?.Ghost ?? 0)
+        + (m.units?.["Infested Terran"] ?? 0);
+      return rare > 0 ? rare / (m.uGround + m.uAir) : null;
     },
   },
   /* 상대보다 일꾼을 훨씬 많이 굴린 대목(worker-gap) — 자원을 많이 캤다는 말이다. */

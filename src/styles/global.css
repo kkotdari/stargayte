@@ -2466,9 +2466,19 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 주요지표는 수로 적는다(요청: 막대가 아닌 숫자로) — 다섯 줄(게임수·승률·APM·커맨드·BEST)이
    같은 격자의 오른쪽 칸에 같은 방식으로 선다. 가운데 정렬인 것은 왼쪽 이름표가 이미 왼쪽
    열을 차지하고 있어서다 — 수를 왼쪽으로 붙이면 이름과 수가 한 덩어리로 뭉쳐 읽힌다. */
+/* 값은 오른쪽 정렬이다(요청: 데이터 값 오른쪽 정렬 맞추기) — 가운데 정렬은 자릿수가
+   다르면 수의 끝이 줄마다 어긋나, 105와 9가 세로로 안 맞는다. 오른쪽 패딩은 단위 자리다:
+   "판"·"%"는 수 오른쪽에 매달려 자리를 안 차지하므로(아래 -unit) 그만큼 비워 둬야 칸
+   밖으로 안 나간다. */
 .scr-stat-record-num {
-  display: flex; align-items: center; justify-content: center;
-  min-width: 0; width: 100%;
+  display: flex; align-items: center; justify-content: flex-end;
+  min-width: 0; width: 100%; padding-right: 12px;
+}
+/* 종족 줄은 판수와 승률 둘이 한 줄에 선다 — 둘 다 오른쪽으로 붙이되 사이를 벌려, 위아래
+   줄의 수들과 끝이 맞는다. */
+.scr-stat-record-pair {
+  display: flex; align-items: center; justify-content: flex-end; gap: 22px;
+  min-width: 0; width: 100%; padding-right: 12px;
 }
 .scr-stat-record-num-v {
   position: relative; line-height: 1;
@@ -11860,7 +11870,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    수치들보다 28px 왼쪽에 서서 세로선이 어긋난다(실측: 622 vs 650). 막대는 트랙을 제 칸
    가운데에 두므로, 여기서도 칸을 다 쓰고 내용만 가운데에 둬야 같은 x에 선다. */
 .scr-stat-best-cell {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  /* 다른 값들과 같은 오른쪽 정렬(요청) — 이 줄만 가운데면 세로로 어긋난다. */
+  display: flex; flex-direction: column; align-items: flex-end; justify-content: center;
+  padding-right: 12px;
   height: 24px; width: 100%;
   color: var(--best-ink);
 }
