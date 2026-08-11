@@ -715,7 +715,7 @@ const TITLES: Title[] = [
      "초반에 끝내러 간다"는 성향 그 자체를 센다.
      race를 지우는 이유: 갈래가 두 종족에 걸쳐 있어(질럿·저글링…) 분모는 전체 판수라야 한다.
      tactic()은 첫 열쇠의 종족(프로토스)을 그대로 붙이므로 여기서 걷는다. */
-  { ...tactic("초반의 지배자", ["zealot-rush", "zling-rush", "duel-rush", "cannon-rush", "sunken-rush", "sneak-rax"]),
+  { ...tactic("초반러시의 여제", ["zealot-rush", "zling-rush", "duel-rush", "cannon-rush", "sunken-rush", "sneak-rax"]),
     race: undefined, why: "초반 러시", minPlaysShare: 0.1 },
   /* 정찰(요청: 초반 정찰 열심히 한 사람 — 좋은 뜻이라 3점대) — 옵저버를 넉넉히 띄웠거나,
      오버로드를 퍼뜨렸거나, 스캔으로 여기저기 들여다본 판이다. 남의 살림을 먼저 보고 제 수를
@@ -906,7 +906,7 @@ const TITLES: Title[] = [
   { label: "물량 퀸", weight: 3, kind: "경기력", min: 19, why: "분당 뽑은 기수", unit: "기", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreUnit, won(s, of).mixSeconds) : null; } },
   // APM은 손 이야기 가운데 아래다(요청: 퀸으로 올릴 만하다) — 빠르다는 사실 하나라, 그
   // 빠름으로 무엇을 했는지는 유효타(군더더기 없는 손)와 물량퀸이 따로 센다.
-  { label: "번개같은 손놀림", weight: 3, kind: "경기력", min: 250, why: "APM", unit: "", value: (s) => s.avgApm },
+  { label: "손놀림 퀸", weight: 3, kind: "경기력", min: 250, why: "APM", unit: "", value: (s) => s.avgApm },
   /* (삭제) 하늘의 여전사(병력 중 공중 비중) — 요청. */
   /* (삭제) 마법의 화신(병력 중 마법 유닛 비중) — 요청. */
   /* (삭제) 고급 유닛 수집가(병력 중 고급 유닛 비중) — 요청. */
@@ -944,16 +944,22 @@ const TITLES: Title[] = [
        세 종족을 고르게 굴린 사람이 한 종족에 치우친 사람보다 앞선다. */
     /* 값이 '판마다 세는 수'가 아니라 종족의 가짓수라, 판수 대비 문턱을 안 받는다
        (minPlaysShare: 0) — 마흔 판 뛴 사람에게 종족 세 개를 요구하는 셈이 된다. */
-    label: "팔색조 여인", weight: 2, kind: "경기력", pool: 1, edge: 1, min: 3, scale: "count",
-    minPlaysShare: 0, why: "고루 쓴 종족", unit: "개",
+    /* 팔색조 여인 → 올라운더 퀸(요청) — 조건에 '그 종족들 승률이 모두 5할 이상'을 더하면서
+       이름도 함께 봤다. 두루 쓴다는 사실만 세던 시절에는 종족을 바꿔 가며 지고 다녀도
+       걸렸는데, 이제는 어느 종족을 잡아도 반은 이긴다는 말이라 '올라운더'가 맞는 말이다. */
+    label: "올라운더 퀸", weight: 2, kind: "경기력", pool: 1, edge: 1, min: 3, scale: "count",
+    minPlaysShare: 0, why: "5할 넘긴 종족", unit: "개",
     value: (_s, of) => {
       /* 종족당 판수 문턱 12 → 18(지적: 팔색조 문턱이 낮다) — 종족 수는 셋이 끝이라 더 올릴
          칸이 없고, 대신 한 종족을 '했다'고 칠 판수를 올린다. 열여덟 판이면 그 종족으로
          한 시즌을 산 것이다. */
-      const played = Object.values(of.races ?? {})
-        .map((st) => st?.plays ?? 0)
-        .filter((n) => n >= 18);
-      if (played.length < 2) return null;
+      const enough = Object.values(of.races ?? {}).filter((st) => (st?.plays ?? 0) >= 18);
+      if (enough.length < 2) return null;
+      /* 그 종족들이 전부 5할을 넘어야 한다(요청) — 하나라도 밑돌면 안 준다. '두루 잘한다'는
+         말이라 평균으로 뭉개면 안 된다: 두 종족이 7할이고 하나가 2할인 사람은 그 하나를
+         못 하는 사람이지 올라운더가 아니다. */
+      if (enough.some((st) => (st?.winRate ?? 0) < 50)) return null;
+      const played = enough.map((st) => st?.plays ?? 0);
       // 종족 수가 같으면 가장 적게 쓴 종족의 판수가 크는 쪽이 이긴다(0.001은 그 잣대의 자리).
       return played.length + Math.min(...played) * 0.001;
     },
@@ -1018,7 +1024,7 @@ const TITLES: Title[] = [
     value: (s) => (s.plays > 0 && (s.lostBests ?? 0) > 0 ? (s.lostBests ?? 0) / s.plays : null) },
   // 분당 커맨드 — 손 이야기 셋 가운데 맨 아래다(요청: 퀸으로 올릴 만하다). 많이 눌렀다는
   // 사실만 세므로, 그 가운데 몇이 헛손질인지는 안 묻는다.
-  { label: "쉬지 않는 손가락", weight: 3, kind: "경기력", min: 250, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
+  { label: "명령 퀸", weight: 3, kind: "경기력", min: 250, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
   /* 참여 퀸 — 여신급까지 올려 봤다가 되돌렸다(요청). 게임 수 1위는 실력이 아니라 시간이고,
      여신 자리는 승률처럼 '얼마나 잘했나'가 앉는 자리다. sticky라 조건만 넘으면 어차피
      무조건 먼저 간다 — 무게는 그 안에서의 차례일 뿐이다. */
