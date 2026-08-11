@@ -53,7 +53,7 @@ const COUNT_SHARE: Record<number, number> = { 1: 0.05, 2: 0.06 };
 /** 비율과 별개의 최소 횟수(요청: 너무 겹치지 않게 문턱 높이기) — 절대평가가 되면서 조건만
  *  넘으면 다 받으니, 한 판짜리 우연까지 칭호가 되면 한 사람이 대여섯 개를 예사로 들었다.
  *  드문 수(1급)는 두 번, 흔한 수(2급)는 세 번은 나와야 버릇이라 부른다. */
-const COUNT_MIN: Record<number, number> = { 1: 2, 2: 2 };
+const COUNT_MIN: Record<number, number> = { 1: 2, 2: 3 };
 /* 한때 상한을 뒀다("아무리 많이 뛰어도 여섯 번이면 인정") — 걷어냈다(지적: 상한보다 비율
    자체를 낮추는 편이 합리적이다). 상한은 그 지점부터 비례가 끊겨, 백 판 뛴 사람과 예순 판
    뛴 사람에게 같은 수를 요구한다 — 많이 뛴 쪽이 오히려 쉬워지는 셈이다. 비율을 낮추면
@@ -974,7 +974,7 @@ export function epithetGuideRows(): EpithetGuideRow[] {
        걸려 있는데 일부만 적으면, 조건을 넘은 줄 알았던 사람이 왜 못 받았는지 알 길이 없다. */
     const bits: string[] = [];
     if (count) {
-      if (share > 0) bits.push(`${what} ${where}의 ${pct(share)} 이상`);
+      if (share > 0) bits.push(`${what} ${where}의 ${pct(share)} 이상 (${where.replace("제 판", "판")} 5판부터)`);
       else bits.push(`${what}`);
       const minCount = Math.max(t.min ?? 1, share > 0 ? COUNT_MIN[tier] ?? 0 : 0);
       if (minCount > 1) bits.push(`최소 ${minCount}${t.unit ?? "번"}`);
@@ -1066,7 +1066,10 @@ export function epithetsOf(
         : 0);
       if (share > 0) {
         const denomPlays = denomOf(title, p);
-        if (denomPlays <= 0) continue;
+        /* 표본 다섯 판은 있어야 비율이 말이 된다(지적: 옆탱 2번으로 퀸이 됐다 — 테란 판이
+           몇 판뿐이면 두 번이 곧 100%다). 승률의 8판과 같은 결의 표본 조건이지, 걷어낸
+           일괄 판수 문턱과는 다르다 — 분모가 서야 비율 조건 자체가 성립한다. */
+        if (denomPlays < 5) continue;
         if (v < Math.ceil(denomPlays * share)) continue;
       }
       // 비율과 별개로 최소 횟수도 넘어야 한다(COUNT_MIN) — 판이 적으면 비율 문턱이 한두
