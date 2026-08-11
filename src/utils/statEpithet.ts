@@ -838,13 +838,13 @@ const TITLES: Title[] = [
     value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null),
   },
   /* "최다"를 뗐다(요청: 절대평가) — 이제 1위가 아니라 열 번을 넘긴 사람 전부다. */
-  { label: "BEST 퀸", weight: 3, min: 15, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
+  { label: "BEST 퀸", weight: 6, min: 15, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
   /* 졌잘싸 퀸(요청) — 진 판에서 BEST로 뽑힌 수다. 판을 가장 많이 만들고도 졌다는 말이라,
      이기고 지고를 안 가리는 BEST 수집퀸과는 다른 이야기를 센다. 무게는 그보다 한 뼘
      아래다: 잘 싸운 것은 맞지만 이긴 판의 BEST와 같은 값으로 둘 수는 없다. */
   /* 2.5 → 3(요청: 퀸으로 올릴 만하다) — 진 판에서 BEST로 뽑히려면 팀이 무너지는 동안 혼자
      그 판을 붙들고 있어야 한다. 이긴 판의 BEST(3)와 같은 자리로 두되 표에서는 그 아래다. */
-  { label: "졌잘싸 퀸", weight: 3, min: 4, why: "진 판의 BEST PLAYER", unit: "회", value: (s) => ((s.lostBests ?? 0) > 0 ? s.lostBests! : null) },
+  { label: "졌잘싸 퀸", weight: 6, min: 4, why: "진 판의 BEST PLAYER", unit: "회", value: (s) => ((s.lostBests ?? 0) > 0 ? s.lostBests! : null) },
   // 분당 커맨드 — 손 이야기 셋 가운데 맨 아래다(요청: 퀸으로 올릴 만하다). 많이 눌렀다는
   // 사실만 세므로, 그 가운데 몇이 헛손질인지는 안 묻는다.
   { label: "쉬지 않는 손가락", weight: 3, min: 250, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
@@ -852,8 +852,11 @@ const TITLES: Title[] = [
      여신 자리는 승률처럼 '얼마나 잘했나'가 앉는 자리다. sticky라 조건만 넘으면 어차피
      무조건 먼저 간다 — 무게는 그 안에서의 차례일 뿐이다. */
   /* 게임 수도 절대다(요청) — 1위가 아니라 백 판을 넘긴 사람 전부. sticky도 뗐다: 무조건
-     우선은 '그 값의 1위'라는 상대 개념에 딸려 있던 것이다. */
-  { label: "참여 퀸", weight: 3, min: 100, why: "게임 수", unit: "판", value: (s) => s.plays },
+     우선은 '그 값의 1위'라는 상대 개념에 딸려 있던 것이다.
+     명예류(BEST·졌잘싸·참여)는 무게 6이다(지적: 베스트 퀸이 옆탱보다 아래라니) — 판을
+     만든 공로와 꾸준함은 낱개 전술(4)보다 위, 승률(전설)보다는 아래인 자리다. 동점대로는
+     전술(3)보다 한 칸 위(4)라 대표 다툼에서 늘 먼저 선다. */
+  { label: "참여 퀸", weight: 6, min: 100, why: "게임 수", unit: "판", value: (s) => s.plays },
 ];
 
 /* ── 이름을 만드는 잔손질 ─────────────────────────────────────────────────────
