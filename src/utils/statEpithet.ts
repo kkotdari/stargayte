@@ -888,7 +888,7 @@ const TITLES: Title[] = [
        사람이 늘 이긴다. 그래서 값은 비율로 재되, 판당 채수가 얇으면 후보에서 뺀다.
        (문턱을 value 안에 두는 자리다 — 절대평가라 후보 수가 줄어도 다른 칭호가 안 흔들린다.) */
     label: "철옹성의 여인", weight: 2, kind: "수비",
-    min: 0.38, why: "건물 중 방어 건물", unit: "",
+    min: 0.4, why: "건물 중 방어 건물", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       const plays = won(s, of).mixPlays ?? 0;
