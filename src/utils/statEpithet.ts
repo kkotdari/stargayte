@@ -966,13 +966,6 @@ function hasFinal(word: string): boolean {
   return (code - 0xac00) % 28 !== 0;
 }
 const sub = (w: string) => (hasFinal(w) ? "은" : "는");
-/** 로/으로 — 받침이 없거나 ㄹ이면 '로', 그 밖의 받침이면 '으로'("드랍으로", "뮤탈 견제로"). */
-function ro(word: string): string {
-  const code = word.charCodeAt(word.length - 1);
-  if (code < 0xac00 || code > 0xd7a3) return "로";      // 한글이 아니면(GG 같은 것) 그냥 로
-  const final = (code - 0xac00) % 28;
-  return final === 0 || final === 8 ? "로" : "으로";     // 8 = ㄹ
-}
 /* (삭제) ga(이/가) — 안내 목록 문장이 쓰던 조사 고르개. 목록과 함께 걷었다. */
 
 /* 종족마다 부르는 말이 따로다 — 셋 다 여신이다(요청: 종족 칭호는 여신급).
@@ -1213,10 +1206,12 @@ export function epithetsOf(
     /* 횟수 칭호는 한 문장으로 적는다(지적: "이긴 판에서 뮤탈 견제 4번 — 저그 28판 중 14%"는
        설명이 아니다) — 세 토막이 대시로 이어져 있어 28판이 저그 전체인지 이긴 판인지부터
        안 읽혔다. 잰 자리(분모)를 앞에 세우고 한 문장으로 잇는다:
-         "저그 28판 중 4판(14%)에서 뮤탈 견제로 승리"
+         "저그 28판 중 이긴 4판(14%)에서 뮤탈 견제"
        분모는 문턱을 잰 그 판수 그대로다 — 종족 칭호면 그 종족 판수이고, 이긴 판만이 아니다.
-       분자만 이긴 판을 세므로 그 사실은 꼬리말('…로 승리')이 문장 안에서 밝힌다
-       (요청: 저그로 승리한 게임 중 어쩌구 하는 식으로).
+       분자만 이긴 판을 세므로 그 사실은 '이긴 n판에서'가 밝힌다(요청: 저그로 승리한 게임
+       중 어쩌구 하는 식으로). 꼬리말로 "…로 승리"·"사용 및 승리"를 달아 봤지만 둘 다 걷었다
+       (지적: 뮤탈로 이긴 건 확실하지 않다) — 이 표가 아는 것은 "이긴 판에 그 수가 있었다"
+       까지이고, 그 수가 이겨 준 것인지는 세지 않는다. 문장이 그보다 더 말하면 안 된다.
        마법 칭호(perUse)는 한 판에 여러 번 나올 수 있어 판수로 못 부른다 — "핵 2번"으로
        적고 비율은 괄호에 남긴다. */
     const what = (c.title.why ?? "기록").replace(/^게임에서 /, "");
@@ -1224,11 +1219,11 @@ export function epithetsOf(
     const countable = c.title.scale === "count" && c.title.unit === "번" && c.denom > 0;
     if (countable && c.raw <= c.denom && !c.title.perUse) {
       const pct = Math.round((c.raw / c.denom) * 100);
-      return `${pool} ${Math.round(c.raw)}판(${pct}%)에서 ${what}${c.title.won ? `${ro(what)} 승리` : ""}`;
+      return `${pool} ${c.title.won ? "이긴 " : ""}${Math.round(c.raw)}판(${pct}%)에서 ${what}`;
     }
     if (countable) {
       const pct = Math.round((c.raw / c.denom) * 100);
-      return `${pool} ${what} ${Math.round(c.raw)}번(${pct}%)${c.title.won ? " · 이긴 판만" : ""}`;
+      return `${pool} ${c.title.won ? "이긴 판에서 " : ""}${what} ${Math.round(c.raw)}번(${pct}%)`;
     }
     return `${c.title.won ? "이긴 판에서 " : ""}${what} ${shown}${c.title.unit ?? ""}`;
   };
