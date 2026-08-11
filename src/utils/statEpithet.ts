@@ -380,7 +380,7 @@ const TACTIC_WEIGHT: Record<string, number> = {
   /* 어려운 마법(요청: 스킬 이름을 살려도 될 것들) — 전술과 같은 자로 잰다. 성큰·포토러시
      (3.5) 언저리에 두되, 마법 한 번이 러시 한 판만큼 판을 말하지는 않으므로 그보다 살짝
      아래에서 시작한다. */
-  Maelstrom: 2.5, "Disruption Web": 2.5,
+  Maelstrom: 2.5, "Disruption Web": 2.5, "Psionic Storm": 2.5,
   "Stasis Field": 2.5, "Yamato Gun": 2.5,
   "Spawn Broodlings": 2.5, "Optical Flare": 2.5, Hallucination: 2.5,
 };
@@ -400,6 +400,7 @@ const TACTIC_RACE: Record<string, string> = {
   "center-tank": "테란", "side-tank": "테란", dropship: "테란", "lift-off": "테란",
   // 프로토스
   Maelstrom: "프로토스", "Disruption Web": "프로토스", "Stasis Field": "프로토스",
+  "Psionic Storm": "프로토스",
   Hallucination: "프로토스",
   carrier: "프로토스", recall: "프로토스", "mind-control": "프로토스",
   "cannon-rush": "프로토스", "center-photon": "프로토스", "ally-cannon": "프로토스",
@@ -512,6 +513,11 @@ const TITLES: Title[] = [
   spell("얼음 공주", "Maelstrom"),
   spell("거미줄 공주", "Disruption Web"),
   spell("보갈타임 공주", "Stasis Field"),
+  /* 스톰(요청: 스톰 잘 쓴 사람 번개 공주) — 한때 "늘 누르는 마법"이라 표에서 뺐는데, 이긴
+     판만 세게 된 지금은 뜻이 다르다: 스톰을 가장 많이 쓰고 이긴 사람이라, 많이 눌렀다는
+     말이 아니라 그걸로 판을 풀었다는 말이다. 공주급이다 — 어려운 마법(마엘스트롬·디스럽션
+     웹)과 달리 프로토스면 누구나 쓰는 수라 격을 더 올릴 자리는 아니다. */
+  spell("번개 공주", "Psionic Storm"),
   spell("야마토 공주", "Yamato Gun"),
   /* (삭제) 브루들링 저격수 · 눈을 멀게 하는 자(옵티컬 플레어) · 허깨비 부대장(할루시네이션)
      — 요청으로 뺐다. 셋 다 쓰기 어려운 마법이긴 한데, 그 한 번이 판을 가르는 그림까지는
