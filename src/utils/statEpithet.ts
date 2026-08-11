@@ -19,7 +19,7 @@
 // 둘 다 못 잡으면 전적만 보고 무난한 말 하나를 준다. 한 판도 안 뛴 사람은 아예 안 붙인다 —
 // 없는 사실로 별명을 지을 수는 없다.
 
-import { PER_WINDOW_SECONDS } from "./replayBuildMix";
+import { PER_WINDOW_SECONDS, type BuildMix } from "./replayBuildMix";
 import { TECH_KO } from "./replaySummaryText";
 import type { MemberStats } from "../types";
 
@@ -74,6 +74,9 @@ export interface EpithetSubject {
   /** 종족별 전적 — 종족 칭호("저그의 절대군주")가 쓰는 값(요청: 종족 강자).
    *  통계 응답의 byRace 그대로다. 안 넘어오면 그 칭호만 안 나간다. */
   races?: Partial<Record<string, MemberStats>>;
+  /** 이긴 판만 놓고 낸 같은 한 벌(통계 응답의 won) — 구성비·분당 값을 보는 칭호가 이걸
+   *  쓴다(요청: 비중 칭호도 이긴 판만). 아래 mix()가 이 자리를 한 곳에서 고른다. */
+  won?: MemberStats;
   /* (삭제) rise — 이번 달 레이팅 상승("떠오르는 샛별"). 레이팅은 이제 래더(일대일)에만
      있는 값이고 칭호는 내전 기록으로만 매기므로(요청), 이 화면의 어느 수와도 잣대가 맞지
      않는다. */
@@ -106,6 +109,19 @@ export function epithetClassOf(label: string): EpithetClass {
   if (Object.values(RACE_SAYS).includes(label)) return "legend";
   if (MAP_SAYS.some((tail) => label.endsWith(`의 ${tail}`))) return "epic";
   return "common";
+}
+
+/* 구성비·분당 값을 보는 칭호는 '이긴 판'의 원장을 본다(요청) — 무엇으로 이겼나를 묻는
+   자리라, 진 판까지 섞으면 "이걸로 판을 푼다"는 말이 반쯤 거짓이 된다. 통계 화면의 도넛·
+   Top5는 여전히 전체(overall)를 쓴다: 그쪽은 성과가 아니라 즐겨 쓰는 것을 보여주는 자리다.
+   옛 응답에는 won이 없어 그때는 전체로 떨어진다(칭호가 통째로 사라지는 것보다 낫다). */
+/** 그 사람의 '이긴 판' 살림 — 없으면 전체 살림. */
+function mix(s: MemberStats, of: EpithetSubject): BuildMix | null | undefined {
+  return of.won?.buildMix ?? s.buildMix;
+}
+/** 그 사람의 '이긴 판' 기준 수치 한 벌 — 없으면 전체. */
+function won(s: MemberStats, of: EpithetSubject): MemberStats {
+  return of.won ?? s;
 }
 
 /** 주요시간대 1분당 값 — 총합은 오래 뛴 사람이 늘 크다(MemberStatRow의 perMin과 같은 자). */
@@ -522,8 +538,8 @@ const TITLES: Title[] = [
        비중으로 재면 종족이 무엇이든 "안 보이는 것으로 푸는 사람"이 그대로 걸린다. */
     label: "그림자의 여왕", weight: 5, pool: 1, edge: 1, tier: 1,
     min: 0.12, why: "병력 중 은폐 유닛", unit: "",
-    value: (s) => {
-      const m = s.buildMix;
+    value: (s, of) => {
+      const m = mix(s, of);
       if (!m || !(m.uGround + m.uAir > 0)) return null;
       const hidden = (m.units?.["Dark Templar"] ?? 0)
         + (m.units?.Wraith ?? 0)
@@ -600,8 +616,8 @@ const TITLES: Title[] = [
        분당으로 안 나누는 것이 심시티 퀸과의 차이다 — 그쪽은 '손이 빠른가'이고 이쪽은
        '얼마나 지었나'다. 대신 남들 절반은 뛰었어야 후보다(LEAD_PLAYS_SHARE). */
     label: "건축퀸", weight: 4, why: "지은 건물", unit: "채",
-    value: (s) => {
-      const b = s.buildMix?.buildings;
+    value: (s, of) => {
+      const b = mix(s, of)?.buildings;
       if (!b) return null;
       const n = Object.values(b).reduce((sum, v) => sum + (v ?? 0), 0);
       return n > 0 ? n : null;
@@ -660,18 +676,18 @@ const TITLES: Title[] = [
   /* (삭제) 기본기의 사람(병력 중 기본 유닛 비율) — 요청. */
   /* (삭제) 땅에서 사는 사람 — 병력의 97%가 지상이라는 말은 "공중을 안 쓴다"는 결핍이다.
      '그것밖에 안 한다'는 말을 걷은 것과 같은 이유다(요청). */
-  { label: "물량 머신", weight: 2.5, why: "분당 뽑은 기수", unit: "기", value: (s) => (s.buildMix ? perMin(s.buildMix.coreUnit, s.mixSeconds) : null) },
+  { label: "물량 머신", weight: 2.5, why: "분당 뽑은 기수", unit: "기", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreUnit, won(s, of).mixSeconds) : null; } },
   { label: "번개같은 손놀림", weight: 2.5, why: "APM", unit: "", value: (s) => s.avgApm },
   /* (삭제) 하늘의 여전사(병력 중 공중 비중) — 요청. */
   {
     label: "마법의 화신", weight: 2, why: "병력 중 마법 유닛 비중", unit: "",
     // 마법 유닛은 원래 수가 적다 — 5%만 넘어도 그 판을 마법으로 푼 사람이다.
-    value: (s) => (s.buildMix ? share(s.buildMix.uCaster, s.buildMix.uBasic + s.buildMix.uAdv, 20) : null),
+    value: (s, of) => { const m = mix(s, of); return m ? share(m.uCaster, m.uBasic + m.uAdv, 20) : null; },
     min: 0.05,
   },
   {
     label: "고급 유닛 수집가", weight: 1.5, why: "병력 중 고급 유닛 비중", unit: "",
-    value: (s) => (s.buildMix ? share(s.buildMix.uAdv, s.buildMix.uBasic, 30) : null),
+    value: (s, of) => { const m = mix(s, of); return m ? share(m.uAdv, m.uBasic, 30) : null; },
     min: 0.45,
   },
   /* (삭제) 파워 공격러(건물 중 생산 건물 95% 이상) — 요청. */
@@ -680,19 +696,19 @@ const TITLES: Title[] = [
        "철벽의 수호자" → "방어탑 사랑꾼"을 거쳐 온 이름이다 — 재는 것은 '잘 막았다'가 아니라
        '지은 건물 중 방어 건물의 비중'이고, 막아냈는지 아닌지는 리플레이가 말해 주지 않는다. */
     label: "차가운 철옹성", weight: 1.5, why: "건물 중 방어 건물 비중", unit: "",
-    value: (s) => (s.buildMix ? share(s.buildMix.bDef, s.buildMix.bProd, 20) : null),
+    value: (s, of) => { const m = mix(s, of); return m ? share(m.bDef, m.bProd, 20) : null; },
     min: 0.12,
   },
   /* 무게를 2 → 1.2로 내렸다(요청) — 초반 일꾼은 그 판의 빌드가 정하는 값에 가깝다.
      같은 종족·같은 빌드면 누구나 비슷하게 나오므로, 1등이라고 그 사람을 말해 주는 몫이
      다른 칭호들보다 작다. */
-  { label: "일꾼 공장장", weight: 1.2, why: "초반 5분 일꾼", unit: "기", value: (s) => s.avgWorker5 },
+  { label: "일꾼 공장장", weight: 1.2, why: "초반 5분 일꾼", unit: "기", value: (s, of) => won(s, of).avgWorker5 },
   /* 건물을 제일 많이 올린 사람(요청: 심시티 퀸) — "쉴 새 없이 짓는 자"에서 바꿨다. 재는 값은 그대로 분당 지은 채수다. */
-  { label: "심시티 장인", weight: 1.5, why: "분당 지은 채수", unit: "채", value: (s) => (s.buildMix ? perMin(s.buildMix.coreBuild, s.mixSeconds) : null) },
+  { label: "심시티 장인", weight: 1.5, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
   {
     label: "풀업녀", weight: 1.5, why: "공/방 평균 단계", unit: "",
-    value: (s) => {
-      const m = s.buildMix;
+    value: (s, of) => {
+      const m = mix(s, of);
       if (!m) return null;
       const n = Object.values(m.upCounts ?? {}).reduce((a, b) => a + b, 0);
       if (n <= 0) return null;

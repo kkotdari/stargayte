@@ -298,6 +298,10 @@ export interface MemberStats {
 export interface MemberStatsEntry {
   memberId: string;
   overall: MemberStats;
+  /** 이긴 판만 놓고 낸 같은 값 — 칭호가 '무엇으로 판을 풀었나'를 물을 때 쓴다(요청).
+   *  전적(판수·승률)은 이 안에서 뜻이 없다: 이긴 판만 모았으니 늘 100%다. 구성비·분당
+   *  값·원장만 읽어야 한다. 옛 응답에는 없다. */
+  won?: MemberStats;
   byRace: Record<BaseRace, MemberStats>;
   mostPlayedRace: Race | null;
   // 랭킹 순서 — 서버가 사람단위 점수(참가+우열) → 상대 강함(SoS) 순으로 가른 결과다.
