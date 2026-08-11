@@ -9550,6 +9550,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    맞는다(지적). 카드 보기 시절의 24px은 큰 제목 아래를 받치던 값이다. */
 .scr-activity-row-body .scr-activity-card > .scr-activity-card-body { padding-top: 14px; }
 .scr-activity-card-head-off > .scr-activity-card > .scr-activity-card-head { display: none; }
+/* 미실시로 끝난 너 나와(요청: 미실시 건도 딤 처리) — 치르지 않은 판이라 목록에서 한 발
+   물러서 있어야 한다. 글자와 그림을 통째로 눌러 두되(opacity) 케밥은 그대로 진하게 남긴다:
+   실제로는 치렀는데 미실시로 적힌 건을 되돌리는 자리가 거기라(케밥 › 결과 입력), 그 손잡이가
+   함께 흐려지면 되돌릴 길이 안 보인다. */
+.scr-activity-card-void { opacity: 0.55; }
+.scr-activity-card-void .scr-activity-post-menu,
+.scr-activity-card-void .scr-activity-chal-menu { opacity: 1; }
 /* (삭제) 머리를 감춘 카드에서 본문을 한 줄만큼 내리던 보정 — 케밥과 겹치던 것이 카드 윗줄
    가운데의 "응답 마감" 표시였는데, 그 줄이 편지지 맨 아래로 내려가면서(요청) 비켜 줄 이유가
    없어졌다. */

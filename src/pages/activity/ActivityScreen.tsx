@@ -1646,6 +1646,10 @@ export default function ActivityScreen() {
         key={`c-${item.challenge.id}`}
       >
         <ActivityCard
+          /* 미실시로 끝난 건은 흐리게(요청) — 치르지 않은 판이라 목록에서 다른 건들과 같은
+             무게로 서 있으면 "이 자리가 있었다"로 읽힌다. 지우지는 않는다: 불렀다는 사실은
+             남아야 하고, 실제로는 치렀는데 미실시로 적힌 건을 되돌릴 자리도 필요하다. */
+          className={item.challenge.resultWinnerSide === "not_held" ? "scr-activity-card-void" : undefined}
           dateLabel={item.undated ? "미정" : dateLabelOf(item)}
           // 너 나와!는 "호출"이니 수화기 아이콘으로(요청) — 등록 메뉴·호출 버튼과 통일.
           icon={<Phone size={16} aria-hidden />}

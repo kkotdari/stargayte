@@ -9,6 +9,7 @@ import InlineCollapse from "../../components/common/InlineCollapse";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import { shareThumb, type KakaoShareContent } from "../../utils/kakaoShare";
 import { useAppStore } from "../../store/appStore";
+import { isAdminRole } from "../../constants/roles";
 import { api } from "../../api/client";
 import { cx } from "../../utils/format";
 import { ChallengeLetter, ChallengeWhen } from "../../components/challenge/ChallengeLetter";
@@ -163,6 +164,8 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
   const inOwnTeam = challenge.ownMembers.some((m) => m.memberId === myId);
   // 이 너 나와의 참가자인지 — 결과 입력 버튼 노출 판정에 쓴다.
   const isParticipant = isCreator || inOwnTeam || !!myTarget;
+  // 운영자는 남의 건도 되살릴 수 있다(아래 canForceResult) — 서버도 같은 잣대다.
+  const isAdmin = !!user && isAdminRole(user.roles);
   // 응답(ChallengeAuthor)엔 프사가 없어서(닉네임만) 로컬 회원 목록에서 찾아 보여준다 —
   // 지목된 상대(targets)는 서버가 프사까지 내려주니 그대로 쓴다.
   const creatorMember = memberOf(challenge.createdBy.id);
@@ -174,6 +177,13 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
   const schedulePassed = !!challenge.scheduledAt && new Date(challenge.scheduledAt).getTime() < Date.now();
   const resultInputOpen = schedulePassed || !challenge.scheduledAt;
   const canEnterResult = isParticipant && challenge.status === "confirmed" && resultInputOpen && challenge.resultWinnerSide === null;
+  /* 강제 결과 입력(요청: 만료됐는데 실제로는 경기를 한 경우) — 폐기(취소·만료·거절·미실시)로
+     접힌 건에도 결과를 넣을 수 있다. 넣으면 서버가 그 건을 수락·완료로 되살린다.
+     참가자와 운영자만이고, 실제 승부 결과가 이미 들어온 건은 대상이 아니다(그때는 먼저 넣은
+     쪽이 인정이다) — '미실시'만은 "안 했다"는 표시라 그 위에 덮어쓸 수 있다. */
+  const canForceResult = (isParticipant || isAdmin)
+    && challenge.status === "discarded"
+    && (challenge.resultWinnerSide === null || challenge.resultWinnerSide === "not_held");
   /* 아무 응답 없이 끝난 건인가 — 카드 껍데기를 흐리게 칠할 때만 쓴다.
      (삭제) 취소·만료를 어느 편 자리에 적을지 가르던 판단 — 편지지가 아바타마다 제 배지를
      달고(수락/거절/대기), 이 건이 어떻게 됐나는 맨 아랫줄이 말하므로(ChallengeOutcome)
@@ -442,11 +452,13 @@ export function ChallengeCard({ challenge, myId, highlightMemberIds, readOnly, o
 
       {/* 결과 입력 — 인라인 폼이 안 열려 있을 때만 뜨는 액션 줄. 이 줄도 InlineCollapse로
           감싸 폼이 열릴 땐 부드럽게 접히고, 취소로 폼이 접힐 땐 부드럽게 되살아난다. */}
-      {!readOnly && canEnterResult && (
+      {!readOnly && (canEnterResult || canForceResult) && (
         <InlineCollapse open={mode === "none"}>
           <div className="scr-challenge-card-actions">
             <button className="scr-btn scr-challenge-accept-btn scr-btn-sm" onClick={startResult} disabled={busy}>
-              결과 입력
+              {/* 폐기된 건에서는 그 말이 하는 일이 다르다 — 접힌 건을 되살리는 자리라
+                  이름으로 미리 알린다(요청: 강제 결과 입력). */}
+              {canEnterResult ? "결과 입력" : "결과 입력(되살리기)"}
             </button>
           </div>
         </InlineCollapse>

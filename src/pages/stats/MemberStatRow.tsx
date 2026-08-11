@@ -17,7 +17,12 @@ const TOP_N = 5;
 /** 스킬 Top5에서 뺀다(요청: "시즈모드 스팀팩같은건 빼기") — 사실상 거의 매 판 켜는
  *  반사적인 토글(시즈모드·스팀팩·버로우)이라, 다섯 자리 중 절반이 늘 같은 이름으로
  *  채워져 정작 그 사람이 골라 쓴 스킬(스톰·EMP·플레이그 …)이 밀려났다. */
-const SKILL_LIST_EXCLUDE = new Set(["Tank Siege Mode", "Stim Packs", "Burrowing"]);
+/* 스킬 Top5에서 뺄 것들 — 그 종족이면 누구나 늘 누르는 조작이라 목록에 서면 다섯 자리 중
+   하나를 늘 같은 이름이 먹는다. 고스트 클로킹(Personnel Cloaking)도 같은 이유로 뺀다(요청):
+   고스트를 뽑으면 따라오는 버튼이라 "무엇을 골라 썼나"를 말하지 못한다. */
+const SKILL_LIST_EXCLUDE = new Set([
+  "Tank Siege Mode", "Stim Packs", "Burrowing", "Personnel Cloaking",
+]);
 
 /* 도넛 지름 — svg 좌표계 자체의 크기라 CSS로는 못 줄인다(viewBox를 늘리면 글자까지 같이
    줄어들어 읽을 수 없게 된다). 모바일에서도 같은 크기를 쓴다: 한 칸에 도넛이 하나나 둘뿐이라
