@@ -121,11 +121,8 @@ function perMin(total: number, seconds: number | null | undefined): number | nul
   return seconds && seconds > 0 ? (total / seconds) * PER_WINDOW_SECONDS : null;
 }
 
-/** 두 갈래의 비율 — 표본이 너무 적으면(min) 비율이 우연이라 안 센다. */
-function share(a: number, b: number, min: number): number | null {
-  const total = a + b;
-  return total >= min ? a / total : null;
-}
+/* (삭제) share() — 두 갈래의 비율(마법 유닛 비중·고급 유닛 비중·방어 건물 비중)을 재던
+   자리다. 그 세 칭호가 함께 없어지면서(요청) 부르는 곳이 사라졌다. */
 
 /** 전술 횟수 — 여러 키를 한 칭호로 묶을 때가 있다(드랍은 종족마다 키가 다르다). */
 function did(s: MemberStats, ...keys: string[]): number | null {
@@ -331,7 +328,7 @@ const TACTIC_WEIGHT: Record<string, number> = {
   "cannon-rush": 3.5, "sunken-rush": 3.5, "mind-control": 3.5,
   infested: 3,
   // 기술 하나로 끝나는 수는 2점대다(지적) — 이름도 왕관 계열을 안 쓴다(표 머리의 규칙).
-  nydus: 2.5, recall: 2.5, swarm: 2.5,
+  nydus: 2, recall: 2, swarm: 2,
   /* 밀리고도 끝까지 앉아 있던 이야기 — 판이 기운 뒤에야 나오는 장면이라 흔치 않고,
      그 한 번이 그 판을 통째로 말한다. */
   /* 셋방살이·이사는 2점대다(요청) — 밀린 뒤의 이야기라 져도 세지만(API의 _COUNT_EVEN_IF_LOST),
@@ -364,7 +361,7 @@ const TACTIC_WEIGHT: Record<string, number> = {
   /* 협공은 2점대다(요청) — 이긴 싸움에 함께 있었다는 말이라 값어치가 있지만, 판을 제 손으로
      끌고 간 수(러시·조이기·목동)와 같은 급은 아니다. 이름도 왕관을 안 쓴다(표 머리의 규칙). */
   "gang-rush": 2.5,
-  "wall-in": 2, "ally-cannon": 2,
+  "ally-cannon": 2.5,
   /* 주력 유닛으로 부르는 것들 — 그 유닛을 뽑았다는 사실만 말하므로 맨 아래다. 같은 유닛이라도
      그것으로 무엇을 했는지(드랍·사냥·조이기)는 위쪽에 제 칭호가 따로 있다. */
   carrier: 1.5, lurker: 1.5, bc: 1.5, guardian: 1.2, valkyrie: 1.2,
@@ -380,8 +377,8 @@ const TACTIC_WEIGHT: Record<string, number> = {
   /* 어려운 마법(요청: 스킬 이름을 살려도 될 것들) — 전술과 같은 자로 잰다. 성큰·포토러시
      (3.5) 언저리에 두되, 마법 한 번이 러시 한 판만큼 판을 말하지는 않으므로 그보다 살짝
      아래에서 시작한다. */
-  Maelstrom: 2.5, "Disruption Web": 2.5, "Psionic Storm": 2.5,
-  "Stasis Field": 2.5, "Yamato Gun": 2.5,
+  Maelstrom: 2, "Disruption Web": 2, "Psionic Storm": 2,
+  "Stasis Field": 2, "Yamato Gun": 2,
   "Spawn Broodlings": 2.5, "Optical Flare": 2.5, Hallucination: 2.5,
 };
 
@@ -510,26 +507,26 @@ const TITLES: Title[] = [
      쓸 자리를 알아야 하고, 한 번 제대로 들어가면 그 판이 갈린다.
      스톰·이레디에이트·마인처럼 늘 누르는 것은 여전히 없다 — 많이 썼다는 말이 "그 종족을
      오래 했다"밖에 안 된다(예전 SPELL_WEIGHT의 기준선이 그 무리였다). */
-  spell("얼음 공주", "Maelstrom"),
-  spell("거미줄 공주", "Disruption Web"),
+  spell("얼음 마법사", "Maelstrom"),
+  spell("거미줄 설계자", "Disruption Web"),
   /* (삭제) 스테이시스(보갈타임 공주) — 요청. 아비터를 살려 두면 따라오는 버튼에 가깝고,
      같은 아비터의 이야기는 리콜(친구 부르기 공주)이 이미 세고 있다. */
   /* 스톰(요청: 스톰 잘 쓴 사람 번개 공주) — 한때 "늘 누르는 마법"이라 표에서 뺐는데, 이긴
      판만 세게 된 지금은 뜻이 다르다: 스톰을 가장 많이 쓰고 이긴 사람이라, 많이 눌렀다는
      말이 아니라 그걸로 판을 풀었다는 말이다. 공주급이다 — 어려운 마법(마엘스트롬·디스럽션
      웹)과 달리 프로토스면 누구나 쓰는 수라 격을 더 올릴 자리는 아니다. */
-  spell("번개 공주", "Psionic Storm"),
-  spell("야마토 공주", "Yamato Gun"),
+  spell("스톰 술사", "Psionic Storm"),
+  spell("야마토 한 발", "Yamato Gun"),
   /* (삭제) 브루들링 저격수 · 눈을 멀게 하는 자(옵티컬 플레어) · 허깨비 부대장(할루시네이션)
      — 요청으로 뺐다. 셋 다 쓰기 어려운 마법이긴 한데, 그 한 번이 판을 가르는 그림까지는
      아니라 이름만 요란해진다. */
   tactic("헬프 퀸", ["ally-help"]),
-  tactic("동맹의 수호자", ["ally-cannon"]),
+  tactic("동맹 수호 공주", ["ally-cannon"]),
   /* 입구막기는 '막았다'가 아니라 '막아 놓고 뒤에서 컸다'가 값어치다(판정도 발전까지 함께
      본다 — replayTactics의 WALL_IN_GROW_MIN). 그래서 칭호도 막은 쪽이 아니라 그다음을
      부른다. "후반 도모 퀸"에서 바꿨다(지적: 개성적이지 않다) — 그 말은 어느 운영에나 붙는
      설명이라, 정작 이 수의 그림(문을 잠가 놓고 뒤에서 살림을 불린다)이 안 보였다. */
-  tactic("성벽을 쌓는 여인", ["wall-in"]),
+  /* (삭제) 성벽을 쌓는 여인(wall-in) — 요청. */
   /* 조이기(요청) — 센터에 탱크를 박아 길목을 잠근 대목이다. 자막에서도 "중앙을 걸어
      잠그고 그 자리를 내주지 않았다"로 말하는 그 수다. */
   tactic("탱크조이기 퀸", ["center-tank"]),
@@ -566,8 +563,8 @@ const TITLES: Title[] = [
      빠진 이야기고, 그 대목은 대개 다른 칭호(드랍·견제·러시)가 이미 말한다. */
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
      자막이 이 수를 부르는 이름(커널)을 그대로 쓴다. */
-  rare("개통 공주", ["nydus"]),
-  rare("친구 부르기 공주", ["recall"]),
+  rare("커널 개통사", ["nydus"]),
+  rare("리콜 배달부", ["recall"]),
   rare("도둑 퀸", ["mind-control"]),
   tactic("캐리어를 모으는 여인", ["carrier"]),
   tactic("독거미 부대", ["lurker"]),
@@ -618,10 +615,10 @@ const TITLES: Title[] = [
   /* (삭제) 협공(gang-rush) — 다시 뺐다(요청). 이름을 넷이나 갈아 봤지만(협공의 선봉 ·
      다굴의 여신 · 잔다르크 · 전장을 누비는 여인) 결국 같은 자리다: 팀전에서 함께 달려간
      것은 그 판의 진행이지 그 사람의 수가 아니다. */
-  rare("다크스웜 공주", ["swarm"]),
+  rare("다크스웜 살포반", ["swarm"]),
   /* (삭제) 감염의 여왕(infested) — 요청. 감염된 테란은 커맨드센터를 잡아야 나오는 장면이라
      드물기는 한데, 그 판을 만든 것은 감염 자체가 아니라 그 앞의 싸움이다. */
-  tactic("가디언을 모으는 여인", ["guardian"]),
+  /* (삭제) 가디언을 모으는 여인(guardian) — 요청. */
   tactic("배틀크루저를 모으는 여인", ["bc"]),
   /* (삭제) 발키리 지휘관(valkyrie) — 위 "무자비한 오버로드 사냥꾼"이 같은 유닛으로 무엇을
      했는지까지 말한다. 뽑았다는 사실만 말하는 쪽을 접는다. */
@@ -649,7 +646,7 @@ const TITLES: Title[] = [
   tactic("맷집왕", ["hold-off"]),
   /* (삭제) 받아치기의 정석(counter) — 요청. 역공은 상대가 들이친 뒤에 따라오는 대목이라
      그 판의 흐름이지 그 사람의 색이 아니다. */
-  tactic("벽을 부수는 자", ["breakthrough"]),
+  /* (삭제) 벽을 부수는 자(breakthrough) — 요청. */
   /* (삭제) 물러섬 없는 올인의 화신(allin) — 요청. */
   /* (삭제) 째기의 여왕(greedy-paid) — 요청. 자원부터 올리고 통했다는 대목인데, 통했는지는
      그 판의 상대가 안 쳤다는 뜻이기도 해서 그 사람의 수라고 하기에는 반쯤이 남의 몫이다. */
@@ -742,26 +739,10 @@ const TITLES: Title[] = [
   { label: "물량 공주", weight: 2.5, why: "분당 뽑은 기수", unit: "기", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreUnit, won(s, of).mixSeconds) : null; } },
   { label: "손놀림 공주", weight: 2.5, why: "APM", unit: "", value: (s) => s.avgApm },
   /* (삭제) 하늘의 여전사(병력 중 공중 비중) — 요청. */
-  {
-    label: "마법의 화신", weight: 2, why: "병력 중 마법 유닛 비중", unit: "",
-    // 마법 유닛은 원래 수가 적다 — 5%만 넘어도 그 판을 마법으로 푼 사람이다.
-    value: (s, of) => { const m = mix(s, of); return m ? share(m.uCaster, m.uBasic + m.uAdv, 20) : null; },
-    min: 0.05,
-  },
-  {
-    label: "고급 유닛 수집가", weight: 1.5, why: "병력 중 고급 유닛 비중", unit: "",
-    value: (s, of) => { const m = mix(s, of); return m ? share(m.uAdv, m.uBasic, 30) : null; },
-    min: 0.45,
-  },
+  /* (삭제) 마법의 화신(병력 중 마법 유닛 비중) — 요청. */
+  /* (삭제) 고급 유닛 수집가(병력 중 고급 유닛 비중) — 요청. */
   /* (삭제) 파워 공격러(건물 중 생산 건물 95% 이상) — 요청. */
-  {
-    /* 방어 건물(포토·성큰·터렛·벙커)을 유독 많이 올린 사람(요청: 철옹성 퀸).
-       "철벽의 수호자" → "방어탑 사랑꾼"을 거쳐 온 이름이다 — 재는 것은 '잘 막았다'가 아니라
-       '지은 건물 중 방어 건물의 비중'이고, 막아냈는지 아닌지는 리플레이가 말해 주지 않는다. */
-    label: "철옹성", weight: 1.5, why: "건물 중 방어 건물 비중", unit: "",
-    value: (s, of) => { const m = mix(s, of); return m ? share(m.bDef, m.bProd, 20) : null; },
-    min: 0.12,
-  },
+  /* (삭제) 철옹성(건물 중 방어 건물 비중) — 요청. */
   /* 무게를 2 → 1.2로 내렸다(요청) — 초반 일꾼은 그 판의 빌드가 정하는 값에 가깝다.
      같은 종족·같은 빌드면 누구나 비슷하게 나오므로, 1등이라고 그 사람을 말해 주는 몫이
      다른 칭호들보다 작다. */
@@ -854,7 +835,7 @@ const TITLES: Title[] = [
      이기고 지고를 안 가리는 BEST 수집퀸과는 다른 이야기를 센다. 무게는 그보다 한 뼘
      아래다: 잘 싸운 것은 맞지만 이긴 판의 BEST와 같은 값으로 둘 수는 없다. */
   { label: "졌잘싸 공주", weight: 2.5, why: "진 판의 BEST PLAYER", unit: "회", value: (s) => ((s.lostBests ?? 0) > 0 ? s.lostBests! : null) },
-  { label: "쉬지 않는 손가락", weight: 2, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
+  { label: "커맨드 공주", weight: 2.5, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
   /* 참여 퀸 — 여신급까지 올려 봤다가 되돌렸다(요청). 게임 수 1위는 실력이 아니라 시간이고,
      여신 자리는 승률처럼 '얼마나 잘했나'가 앉는 자리다. sticky라 조건만 넘으면 어차피
      무조건 먼저 간다 — 무게는 그 안에서의 차례일 뿐이다. */
