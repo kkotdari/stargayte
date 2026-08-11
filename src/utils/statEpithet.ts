@@ -177,12 +177,13 @@ function bestMap(s: MemberStats): { name: string; wins: number } | null {
 }
 
 /* 이름 짓는 규칙(요청) — 점수대가 곧 호칭의 격이다.
-   격은 낱말로 나눈다(요청: 여신 › 퀸 › 공주 › 그 외).
-     여신  : 승률·종족 승률처럼 그 사람의 실력을 통째로 말하는 자리
+   격은 낱말로 나눈다(요청: 여신 › 퀸 › 그 외).
+     여신  : 승률처럼 그 사람의 실력을 통째로 말하는 자리
      퀸    : 3점대 이상 — 그 판을 끌고 간 수(러시·운영·맵·헬프…)
-     공주  : 2.5점 — 잘 쓰면 좋은 한 수(마법 한 방, 졌잘싸)
-     그 외 : 2점 이하 — 장인·부대·수호신처럼 격을 안 세우는 말. 여기에는 '공주'를 안 쓴다
-       (요청) — 낱말이 곧 격이라, 아래 갈래에 얹으면 그 낱말이 아무 말도 안 하게 된다.
+     그 외 : 그 아래 — 장인·부대·수호자처럼 격을 안 세우는 말
+   '공주'는 안 쓴다(요청: 공주 칭호 삭제) — 한때 그 사이에 한 칸을 두었는데, 퀸과 나머지의
+   경계만으로 충분했고 공주라는 말이 붙은 줄과 안 붙은 줄이 같은 갈래에 섞여 오히려 격이
+   흐려졌다.
    '여왕'보다 '퀸'을 쓰고(요청), 앞말과 띄어 쓴다(요청: 다시 띄어쓰기) — "포토러쉬 퀸"처럼
    두 낱말로 두어야 무엇의 퀸인지가 먼저 읽힌다.
        같은 격 안에서는 그 수에 어울리는 말을 고른다(요청: 더 잘 어울리는 게 있으면 바꾸되
@@ -521,7 +522,7 @@ const TITLES: Title[] = [
      — 요청으로 뺐다. 셋 다 쓰기 어려운 마법이긴 한데, 그 한 번이 판을 가르는 그림까지는
      아니라 이름만 요란해진다. */
   tactic("헬프 퀸", ["ally-help"]),
-  tactic("동맹 수호 공주", ["ally-cannon"]),
+  tactic("동맹의 수호자", ["ally-cannon"]),
   /* 입구막기는 '막았다'가 아니라 '막아 놓고 뒤에서 컸다'가 값어치다(판정도 발전까지 함께
      본다 — replayTactics의 WALL_IN_GROW_MIN). 그래서 칭호도 막은 쪽이 아니라 그다음을
      부른다. "후반 도모 퀸"에서 바꿨다(지적: 개성적이지 않다) — 그 말은 어느 운영에나 붙는
@@ -729,15 +730,15 @@ const TITLES: Title[] = [
     /* 헛치지 않는 손 — 유효APM ÷ APM. 같은 APM이라도 큐가 찬 건물을 또 누르거나 같은 명령을
        연타하면 유효 쪽이 뚝 떨어진다(replayParser의 IneffKind 주석). 빠른 손과 깔끔한 손은
        다른 말이고, 이 값은 뒤쪽만 잰다. */
-    label: "유효타 공주", weight: 2.5, min: 0.72, why: "APM 중 유효타", unit: "",
+    label: "군더더기 없는 손", weight: 2.5, min: 0.72, why: "APM 중 유효타", unit: "",
     value: (s) => (s.avgApm && s.avgEapm && s.avgApm > 0 ? s.avgEapm / s.avgApm : null),
   },
   /* (삭제) 누른 만큼 뽑는 사람(커맨드 중 생산 비율) — 요청. */
   /* (삭제) 기본기의 사람(병력 중 기본 유닛 비율) — 요청. */
   /* (삭제) 땅에서 사는 사람 — 병력의 97%가 지상이라는 말은 "공중을 안 쓴다"는 결핍이다.
      '그것밖에 안 한다'는 말을 걷은 것과 같은 이유다(요청). */
-  { label: "물량 공주", weight: 2.5, why: "분당 뽑은 기수", unit: "기", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreUnit, won(s, of).mixSeconds) : null; } },
-  { label: "손놀림 공주", weight: 2.5, why: "APM", unit: "", value: (s) => s.avgApm },
+  { label: "물량 머신", weight: 2.5, why: "분당 뽑은 기수", unit: "기", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreUnit, won(s, of).mixSeconds) : null; } },
+  { label: "번개같은 손놀림", weight: 2.5, why: "APM", unit: "", value: (s) => s.avgApm },
   /* (삭제) 하늘의 여전사(병력 중 공중 비중) — 요청. */
   /* (삭제) 마법의 화신(병력 중 마법 유닛 비중) — 요청. */
   /* (삭제) 고급 유닛 수집가(병력 중 고급 유닛 비중) — 요청. */
@@ -834,8 +835,8 @@ const TITLES: Title[] = [
   /* 졌잘싸 퀸(요청) — 진 판에서 BEST로 뽑힌 수다. 판을 가장 많이 만들고도 졌다는 말이라,
      이기고 지고를 안 가리는 BEST 수집퀸과는 다른 이야기를 센다. 무게는 그보다 한 뼘
      아래다: 잘 싸운 것은 맞지만 이긴 판의 BEST와 같은 값으로 둘 수는 없다. */
-  { label: "졌잘싸 공주", weight: 2.5, why: "진 판의 BEST PLAYER", unit: "회", value: (s) => ((s.lostBests ?? 0) > 0 ? s.lostBests! : null) },
-  { label: "커맨드 공주", weight: 2.5, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
+  { label: "졌잘싸", weight: 2.5, why: "진 판의 BEST PLAYER", unit: "회", value: (s) => ((s.lostBests ?? 0) > 0 ? s.lostBests! : null) },
+  { label: "쉬지 않는 손가락", weight: 2.5, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
   /* 참여 퀸 — 여신급까지 올려 봤다가 되돌렸다(요청). 게임 수 1위는 실력이 아니라 시간이고,
      여신 자리는 승률처럼 '얼마나 잘했나'가 앉는 자리다. sticky라 조건만 넘으면 어차피
      무조건 먼저 간다 — 무게는 그 안에서의 차례일 뿐이다. */
@@ -898,7 +899,7 @@ function denomOf(title: Title, of: EpithetSubject): number {
  *  표(TITLES)에서 그때그때 만들어 낸다: 손으로 적어 두면 이름·문턱을 고칠 때마다 두 곳이
  *  어긋나고, 이 화면은 그 어긋남이 바로 거짓말이 되는 자리다. */
 /** 칭호의 격(요청: 여신 › 퀸 › 공주 › 그 외) — 이름에 쓰는 낱말이자 목록의 갈래다. */
-export type EpithetRank = "여신" | "퀸" | "공주" | "그 외";
+export type EpithetRank = "여신" | "퀸" | "그 외";
 
 export interface EpithetGuideRow {
   label: string;
@@ -937,7 +938,7 @@ export function epithetGuideRows(): EpithetGuideRow[] {
        말하는 자리만 여신이고, 게임 수 1위(참여 퀸)는 sticky라도 퀸이다. */
     const rank: EpithetRank = t.label.includes("여신")
       ? "여신"
-      : score >= 3 ? "퀸" : score >= 2.5 ? "공주" : "그 외";
+      : score >= 3 ? "퀸" : "그 외";
     return { label: t.label, how: bits.join(" · "), wonOnly: t.won === true, score, sticky: t.sticky === true, rank };
   });
   /* 이름이 사람마다 달라지는 두 줄({n})은 손으로 적는다 — 맵 이름·종족 이름이 들어가야
