@@ -501,7 +501,8 @@ const TITLES: Title[] = [
   tactic("뮤탈 습격대", ["muta"]),
   tactic("무자비한 오버로드 사냥꾼", ["valk-hunt"]),
   tactic("몰래 배럭 퀸", ["sneak-rax"]),
-  tactic("끝없는 저글링 폭풍", ["zling-rush"]),
+  /* (삭제) 끝없는 저글링 폭풍(zling-rush) — 요청. 저글링 하나로 들이치는 것은 그 종족의
+     기본 진행에 가까워, 한 유닛만으로 러시라고 부를 만한 수가 아니다. */
   tactic("질럿 돌격대장", ["zealot-rush"]),
   /* (삭제) 맞러시 승부사(duel-rush) — 요청. 맞러시는 둘이 함께 만든 장면이라 한 사람의
      수라고 하기 어렵다. */
