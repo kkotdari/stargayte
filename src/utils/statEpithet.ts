@@ -79,7 +79,7 @@ export interface EpithetSubject {
   /* (삭제) solo / team — 유형별 전적. 칭호를 내전(팀전) 기록으로만 매기게 되면서(요청)
      위 stats가 곧 팀전이라, "개인전 퀸"은 잴 값이 없어졌고 "팀전 퀸"은 전체 승률과 같은
      수가 됐다(같은 사실을 두 이름으로 부르는 셈이다). 두 칭호와 함께 걷었다. */
-  /** 종족별 전적 — 종족 칭호("저그의 절대군주")가 쓰는 값(요청: 종족 강자).
+  /** 종족별 전적 — 종족 칭호("저그의 여신")가 쓰는 값(요청: 종족 강자).
    *  통계 응답의 byRace 그대로다. 안 넘어오면 그 칭호만 안 나간다. */
   races?: Partial<Record<string, MemberStats>>;
   /** 이긴 판만 놓고 낸 같은 한 벌(통계 응답의 won) — 구성비·분당 값을 보는 칭호가 이걸
@@ -866,7 +866,7 @@ function hasFinal(word: string): boolean {
 const sub = (w: string) => (hasFinal(w) ? "은" : "는");
 const ga = (w: string) => (hasFinal(w) ? "이" : "가");
 
-/* 종족마다 부르는 말이 따로다(요청: 저그의 절대군주 · 프로토스의 전설 · 테란의 영웅) —
+/* 종족마다 부르는 말이 따로다 — 셋 다 여신이다(요청: 종족 칭호는 여신급).
    셋뿐이라 표 하나면 되고, 그편이 종족의 색을 살린다. 여기 없는 값은 무난한 말로 받는다. */
 const RACE_SAYS: Record<string, string> = {
   저그: "저그의 여신",
@@ -884,7 +884,7 @@ function bestRace(of: EpithetSubject): { race: string; rate: number } | null {
     if (!st || st.plays < MIN_PLAYS_MODE) continue;
     /* 그 종족을 제 판의 이만큼은 해야 한다(요청: 주종까지는 아니어도 부종족 정도는) —
        판수 문턱(12판)만으로는 백 판 뛰며 어쩌다 스무 판 잡은 종족도 통과한다. 그 스무 판을
-       잘 이겼다고 "저그의 절대군주"라 부르면, 정작 저그로 사는 사람이 그 말을 못 듣는다. */
+       잘 이겼다고 "저그의 여신"이라 부르면, 정작 저그로 사는 사람이 그 말을 못 듣는다. */
     if (all > 0 && st.plays < all * RACE_MIN_SHARE) continue;
     if (!best || st.winRate > best.rate) best = { race, rate: st.winRate };
   }
@@ -948,7 +948,7 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     }
     return {
       ...r,
-      label: "저그의 절대군주 · 프로토스의 수호자 · 테란의 전설",
+      label: "저그의 여신 · 프로토스의 여신 · 테란의 여신",
       how: `그 종족으로 ${MIN_PLAYS_MODE}판 이상 · 제 판의 ${pct(RACE_MIN_SHARE)} 이상 · 승률 70% 이상`,
     };
   }).sort((a, b) => (Number(b.sticky) - Number(a.sticky)) || (b.score - a.score))
