@@ -701,8 +701,11 @@ const TITLES: Title[] = [
      "승률의 정점"에서 이름과 문턱을 함께 바꿨다 — 1등이라도 5할대면 정점이라 부를 수 없고,
      7할을 넘긴 사람이 여럿이어도 그중 가장 높은 한 사람만 이 말을 듣는다. */
   {
-    // 종족 승률과 같은 자리다(요청: 최우선) — 종족을 가리지 않고 일곱 판을 이긴 사람이다.
-    label: "승리의 여신", weight: 5, sticky: true, min: 70, why: "승률", unit: "%",
+    /* 이 표에서 가장 높은 자리다(요청: 승리의 여신이 최고다) — 종족 승률보다도 위다.
+       종족을 골라 잡은 승률이 아니라 나온 판을 통째로 놓고 일곱 판을 이겼다는 말이라,
+       고를 것이 없는 만큼 더 어렵다. 둘 다 걸린 사람에게는 이쪽이 간다(같은 급 안에서는
+       무게가 갈라 준다). */
+    label: "승리의 여신", weight: 9, sticky: true, min: 70, why: "승률", unit: "%",
     value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null),
   },
   { label: "BEST 수집가", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
