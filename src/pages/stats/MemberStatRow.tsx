@@ -463,14 +463,35 @@ export default function MemberStatRow({
         {/* 막대 넷이 세로로 한 줄기(요청) — 줄기를 둘로 나누지 않으므로 넷이 같은 폭을
             나눠 갖고, 이름은 왼쪽 한 열에 모여 막대 시작점이 넷 다 같은 x에 선다. */}
         <div className="scr-stat-record-col">
-          <div className="scr-stat-record-item">
-            <span className="scr-stat-record-label">게임수</span>
-            <RecordNum value={stats.plays > 0 ? stats.plays : null} unit="판" />
+          {/* 판수와 승률은 열 이름을 위에 한 번만 적는다(요청: 게임수·승률도 전체 몇 판 몇 %로,
+              라벨이 세로로 맞게) — 전체와 종족 셋이 같은 두 값을 말하는 줄이라, 줄마다
+              "게임수"·"승률"을 되풀이하면 같은 말이 여덟 번 적힌다. 열 이름을 머리에 두면
+              그 아래 네 줄이 곧 표가 되고, 값도 열 별로 세로로 맞는다. */}
+          <div className="scr-stat-record-item scr-stat-record-head">
+            <span className="scr-stat-record-label" />
+            <div className="scr-stat-record-pair">
+              <span>경기수</span>
+              <span>승률</span>
+            </div>
           </div>
           <div className="scr-stat-record-item">
-            <span className="scr-stat-record-label">승률</span>
-            <RecordNum value={stats.plays > 0 ? stats.winRate : null} unit="%" />
+            <span className="scr-stat-record-label">전체</span>
+            <div className="scr-stat-record-pair">
+              <span className="scr-stat-record-num-v">
+                {stats.plays > 0 ? stats.plays : "-"}
+                {stats.plays > 0 && <span className="scr-stat-record-num-unit">판</span>}
+              </span>
+              <span className="scr-stat-record-num-v">
+                {stats.plays > 0 ? stats.winRate : "-"}
+                {stats.plays > 0 && <span className="scr-stat-record-num-unit">%</span>}
+              </span>
+            </div>
           </div>
+          {/* 종족 셋은 전체 바로 아래다(요청) — 같은 두 값을 종족으로 쪼갠 줄이라 붙어 있어야
+              "전체 23판 가운데 프로토스가 17판"이 한눈에 읽힌다. */}
+          {RACES.map((r) => (
+            <RecordRace key={r} race={r} stats={byRace?.[r]} />
+          ))}
           <div className="scr-stat-record-item">
             <span className="scr-stat-record-label">APM</span>
             <RecordNum value={stats.avgApm} />
@@ -487,11 +508,6 @@ export default function MemberStatRow({
               막대는 안 그린다 — 이 수는 남과 견주는 값이 아니라 그 사람이 받은 횟수다.
               0도 적는다(요청) — 감추면 줄마다 이 자리가 있었다 없었다 해서 표가 들쭉날쭉해지고,
               무엇보다 '0회'와 '이 표에 없는 값'이 같아 보인다. */}
-          {/* 종족별 판수·승률(요청) — 전체 합계 아래에 종족 셋이 이어진다. 도넛 칸이 이미
-              종족별로 서 있어서, 이 칸도 같은 차례(테란·프로토스·저그)로 읽힌다. */}
-          {RACES.map((r) => (
-            <RecordRace key={r} race={r} stats={byRace?.[r]} />
-          ))}
           {showBest && (
             <div className="scr-stat-record-item">
               <span className="scr-stat-record-label">BEST</span>
