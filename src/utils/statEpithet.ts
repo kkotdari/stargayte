@@ -423,8 +423,14 @@ const RUSH_SHARE = 0.1;
 const RUSH_MIN = 2;
 const RUSH_TACTICS = new Set(["cannon-rush", "sunken-rush"]);
 
+/* 져도 세는 수 — 서버의 _COUNT_EVEN_IF_LOST와 짝이다(요청: 셋방살이·이사·노엘은 밀린 뒤에야
+   나오는 이야기라 이긴 판만 보면 영영 안 잡힌다). 여기 있는 열쇠로 만든 칭호는 근거 문장에
+   "이긴 판에서"를 안 적는다(지적: 노엘과 역마살은 이긴 판만이 아닌데 그렇게 적혀 있다). */
+const COUNTED_EVEN_IF_LOST = new Set(["lodging", "relocate", "no-elim"]);
+
 const tactic = (label: string, keys: string[], min = 1): Title => ({
-  label, value: (s) => did(s, ...keys), pool: 1, edge: 1, won: true,
+  label, value: (s) => did(s, ...keys), pool: 1, edge: 1,
+  won: !keys.some((k) => COUNTED_EVEN_IF_LOST.has(k)),
   min: RUSH_TACTICS.has(keys[0]) ? Math.max(min, RUSH_MIN) : min,
   why: TACTIC_NOUN[keys[0]] ?? "이 수", unit: "번",
   ...(UNIT_TACTICS.has(keys[0]) ? { minPlaysShare: UNIT_TACTIC_SHARE } : {}),
