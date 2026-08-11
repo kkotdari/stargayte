@@ -30,6 +30,7 @@ import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitS
 import { cx } from "../../utils/format";
 import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
+import { useIsMobile } from "../../hooks/useIsMobile";
 import { useEditableFocused } from "../../hooks/useEditableFocused";
 import {
   buildReplayDrafts, type ReplayDraft,
@@ -808,15 +809,35 @@ export default function ActivityScreen() {
      안에서 관리한다.
      지금 들어와 있는 "전체 보기" 갈래 — null이면 활동 목록(홈)이다. */
   const [openGroupKey, setOpenGroupKey] = useState<ActivityGroupKey | null>(null);
+  /* 제목 줄의 닉네임을 자를지 — 폰에서만 자른다(요청: PC에서는 줄이지 않기). 글자 수를
+     JS가 자르는 값이라 CSS 미디어쿼리로는 되돌릴 수 없어, 폭을 여기서 본다. */
+  const isMobile = useIsMobile();
   /* 들어갈 때 두고 온 활동 목록의 스크롤 자리 — 돌아오면 그 자리로 되돌린다. 같은 문서를
      스크롤해 오갔으므로 안 되돌리면 전체 보기에서 내려 본 만큼 활동 목록도 내려가 있다.
      되돌리는 것도 instant다(요청: 즉시 전환) — 문서 루트의 smooth를 그대로 두면 돌아오자마자
      화면이 스스로 굴러간다. */
   const homeScrollRef = useRef(0);
+  /* 전체 보기는 이력에 한 칸을 남긴다(요청: 뒤로가기 버튼이 먹히게) — 이 화면은 주소가
+     안 바뀌는 '화면 안의 화면'이라, 폰에서 뒤로가기를 누르면 활동으로 돌아가는 대신 앱을
+     통째로 벗어났다. 해시만 바꿔 두면 그 한 번이 이 화면을 닫는 데 쓰인다. */
   const openGroup = (key: ActivityGroupKey) => {
     homeScrollRef.current = window.scrollY;
     setOpenGroupKey(key);
+    window.history.pushState({ activityGroup: key }, "", `#${key}`);
   };
+  /* 닫을 때는 상태를 직접 지우지 않고 이력을 되감는다 — 직접 지우면 남겨 둔 해시 칸이
+     그대로 남아, 다음 뒤로가기가 아무 일도 안 하는 것처럼 한 번 헛돈다. */
+  const closeGroup = () => {
+    if (window.location.hash) window.history.back();
+    else setOpenGroupKey(null);
+  };
+  useEffect(() => {
+    // 뒤로가기(popstate)는 늘 '전체 보기를 닫는다'로 받는다 — 이 화면에서 이력에 남기는
+    // 것이 이 한 가지뿐이라, 어느 칸으로 돌아가든 결과는 같다.
+    const onPop = () => setOpenGroupKey(null);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
   useLayoutEffect(() => {
     if (openGroupKey === null && homeScrollRef.current > 0) {
       window.scrollTo({ top: homeScrollRef.current, behavior: "instant" });
@@ -1326,6 +1347,9 @@ export default function ActivityScreen() {
     || ch.codePointAt(0)! > 0xFFFF ? 2 : 1
   );
   const clipName = (name: string): string => {
+    /* PC에서는 자르지 않는다(요청) — 자르는 까닭은 한 줄에 여덟 이름이 서는 좁은 폭 때문인데,
+       기둥이 서는 넓은 화면에서는 그 줄에 여유가 있어 이름을 온전히 적을 수 있다. */
+    if (!isMobile) return name;
     const chars = Array.from(name);
     const wide = chars.some((c) => charUnits(c) === 2);
     const limit = wide ? TITLE_UNITS_WIDE : TITLE_UNITS_NARROW;
@@ -1714,7 +1738,7 @@ export default function ActivityScreen() {
           <button
             type="button"
             className="scr-activity-add-fab"
-            onClick={() => setOpenGroupKey(null)}
+            onClick={closeGroup}
             aria-label="활동으로 돌아가기"
           >
             <ChevronLeft size={20} aria-hidden />
