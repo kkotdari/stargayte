@@ -50,9 +50,9 @@ const MIN_POOL = 3;
  *  값에서는 1등이 한가운데의 1.15배까지 벌어지는 일이 드물어, 그 칭호들이 통째로 잠겨
  *  있었다. 6%면 "고만고만한 1등"은 여전히 걸러지면서 실제로 앞선 사람은 통과한다. */
 const CROWN_EDGE = 1.06;
-/** 왕관 계열(여왕·퀸·여제·신…)로 부르는 점수의 문턱 — 이름 짓는 규칙(칭호 표 머리)과 같은
- *  값이고, 등급 색(epithetClassOf)도 이 선으로 에픽과 일반을 가른다. */
-const CROWN_SCORE = 3;
+/* (삭제) CROWN_SCORE — 왕관 계열로 부를 점수의 문턱(3점)이다. 등급 색과 2위 물려주기가
+   함께 없어지면서 코드에서 읽는 곳이 사라졌다. 이름 짓는 규칙으로는 여전히 살아 있다
+   (칭호 표 머리 주석: 3점대 이상은 여왕·퀸·여제·신). */
 /* 클럽 최다라는 것만으로는 부족하다(요청: 아무리 클럽 최다라도 판수에 비례한 최소 문턱은 다
    있게, 그래서 "칭호 없음"이 흔하게) — 서른 판을 뛰고 두 판에서 드랍을 한 사람이 그것만으로
    클럽 1등이면, 그 말은 그 사람을 부르는 말이 아니라 "다들 안 한다"는 사실의 그림자다.
@@ -98,26 +98,10 @@ export interface Epithet {
   why: string;
 }
 
-/** 칭호의 등급(요청: 전설·에픽·일반으로 색을 가른다).
- *
- *  새로 매기는 값이 아니라 이미 있는 두 선을 그대로 읽는다 — sticky(승률·종족 승률·게임 수
- *  1위)가 전설이고, 왕관 계열(CROWN_SCORE 이상)이 에픽, 나머지가 일반이다. 이름 규칙과 같은
- *  선이라 무게를 고치면 이름도 색도 함께 따라온다. */
-export type EpithetClass = "legend" | "epic" | "common";
-
-/** 라벨 하나의 등급. 화면은 저장된 칭호를 이름으로만 받으므로(서버는 label·why만 들고 있다)
- *  표를 되짚어 등급을 찾는다.
- *
- *  맵·종족처럼 이름이 사람마다 달라지는 칭호는 표에서 찾을 수가 없어 말끝으로 가른다 —
- *  종족은 세 낱말이 통째로 정해져 있고(RACE_SAYS), 맵은 꼬리말이 넷뿐이다(MAP_SAYS). */
-export function epithetClassOf(label: string): EpithetClass {
-  if (!label) return "common";
-  const hit = CLASS_BY_LABEL.get(label);
-  if (hit) return hit;
-  if (Object.values(RACE_SAYS).includes(label)) return "legend";
-  if (MAP_SAYS.some((tail) => label.endsWith(`의 ${tail}`))) return "epic";
-  return "common";
-}
+/* (삭제) 칭호 등급(EpithetClass·epithetClassOf) — 전설·에픽·일반으로 색을 가르던 값이다.
+   색을 걷으면서(요청) 읽는 곳이 없어졌다. 등급 자체는 여전히 두 선으로 서 있다:
+   sticky(승률·종족 승률·게임 수 1위)와 CROWN_SCORE(왕관 계열 이름) — 되살릴 일이 있으면
+   그 둘을 그대로 읽으면 된다. */
 
 /* 구성비·분당 값을 보는 칭호는 '이긴 판'의 원장을 본다(요청) — 무엇으로 이겼나를 묻는
    자리라, 진 판까지 섞으면 "이걸로 판을 푼다"는 말이 반쯤 거짓이 된다. 통계 화면의 도넛·
@@ -665,7 +649,9 @@ const TITLES: Title[] = [
      앞뒤다: 쫓겨 나가 다시 폈거나(이사), 아예 아군 기지에 얹혀 살았거나(셋방살이). 따로 두면
      같은 판에서 둘 다 잡히는 일이 흔해 한 사람의 같은 사연이 두 칭호로 갈린다.
      근거 문장은 둘을 함께 부른다(tactic이 지어 주는 이름은 첫 열쇠 것뿐이라 여기서 덮는다). */
-  { ...tactic("이사의 달인", ["lodging", "relocate"]), why: "이사·셋방살이" },
+  /* (삭제) 이사의 달인(lodging·relocate) — 요청. 쫓겨 다닌 자취라 부를 만한 말을 찾기가
+     어려웠고(셋방살이 퀸·역마살 퀸·신축 퀸을 거쳤다), 무엇보다 그 판을 만든 사람의 수가
+     아니라 당한 자리다. */
   /* (삭제) 건물 띄우기(lift-off)로 짓던 "공중부양 마스터" — 뺐다(지적). 이 키는 자리를
      다 내주고 건물만 띄워 쫓겨 다닌 대목이라, 버틴 이야기로 넣었지만 칭호로 굳으면
      "집을 잃은 사람"이라는 딱지로 읽힌다. 자막에서 한 번 지나가는 말과, 이름 아래
@@ -861,18 +847,6 @@ function bestRace(of: EpithetSubject): { race: string; rate: number } | null {
   }
   return best;
 }
-
-/** 표에서 뽑아 둔 라벨 → 등급(위 epithetClassOf) — 이름이 고정인 칭호만 담긴다. */
-const CLASS_BY_LABEL: Map<string, EpithetClass> = new Map(
-  TITLES.filter((t) => !t.label.includes("{n}")).map((t) => [
-    t.label,
-    (t.sticky
-      ? "legend"
-      : (t.weight ?? 0) * (TIER_BOOST[t.tier ?? 2] ?? 1) >= CROWN_SCORE
-        ? "epic"
-        : "common") as EpithetClass,
-  ]),
-);
 
 /** 이 칭호를 잴 때의 분모 — 종족을 타는 칭호는 그 종족 판수다(Title.race).
  *  문턱과 근거 문장이 같은 수를 봐야 "테란 12판 중 3번"이 문턱과 어긋나지 않는다. */

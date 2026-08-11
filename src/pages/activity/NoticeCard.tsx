@@ -5,8 +5,6 @@ import KakaoShareButton from "../../components/common/KakaoShareButton";
 import { shareThumb, type KakaoShareContent } from "../../utils/kakaoShare";
 import type { ActivityNotice, Member } from "../../types";
 import { ActivityCard } from "./ActivityCard";
-import { classCx } from "../stats/MemberStatRow";
-import { cx } from "../../utils/format";
 
 /* 활동에 뜨는 알림 카드(요청: 활동 피드에 알림 유형 추가).
  *
@@ -132,10 +130,7 @@ export default function NoticeCard({
                     <span className="scr-notice-arrow">→</span>
                   </>
                 )}
-                {/* 새 칭호는 등급 색으로(요청: 칭호 변동 본문에도 색) — 통계표와 같은 색이라
-                    두 화면이 한 말을 한다. 옛 칭호는 색을 안 준다: 이미 지나간 말이라
-                    지금 등급을 말할 자리가 아니다. */}
-                <span className={cx("scr-notice-to", classCx(c.to))}>{c.to}</span>
+                <span className="scr-notice-to">{c.to}</span>
               </div>
               {/* 무엇 때문에 바뀌었나는 아랫줄이다(요청) — 첫 줄이 알리는 말이고 이건 그
                   근거라, 같은 줄에 두면 정작 바뀐 칭호가 문장 가운데에 묻힌다. */}

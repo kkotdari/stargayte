@@ -5,7 +5,6 @@ import PhotoViewer from "../../components/common/PhotoViewer";
 import DonutChart from "../../components/common/DonutChart";
 import { useAppStore } from "../../store/appStore";
 import { cx } from "../../utils/format";
-import { epithetClassOf } from "../../utils/statEpithet";
 import { PER_WINDOW_SECONDS, topEntries, type BuildMix, type TopEntry } from "../../utils/replayBuildMix";
 // 건물 이름표(BUILDING_KO)는 더 안 쓴다 — 건물 Top5를 걷었다(요청).
 import { TECH_KO, UNIT_KO } from "../../utils/replaySummaryText";
@@ -369,11 +368,9 @@ interface MemberStatRowProps {
 }
 
 // 전적통계 목록의 테이블 한 행.
-/** 칭호 등급 → 색 클래스(전설·에픽만, 일반은 없음). 통계표와 알림 카드가 같은 함수를 쓴다. */
-export function classCx(label: string): string | undefined {
-  const cls = epithetClassOf(label);
-  return cls === "common" ? undefined : `scr-epi-${cls}`;
-}
+/* (삭제) 칭호 등급 색 — 전설(보라)·에픽(파랑)으로 칭호 글자에 색을 입혔다가 걷었다(요청).
+   등급은 이름이 이미 말한다(3점대 이상만 여왕·퀸·여제를 쓴다) — 색까지 얹으면 표에서
+   한 줄에 두 번 같은 말을 하는 셈이었다. */
 
 export default function MemberStatRow({
   member, stats, byRace, me = false, showBest = false,
@@ -405,8 +402,7 @@ export default function MemberStatRow({
             text={epithet.why}
             label={epithet.label}
             trigger={epithet.label}
-            /* 등급 색(요청) — 전설·에픽만 색을 받고 일반은 제자리 색 그대로다. */
-            triggerClassName={cx("scr-stat-name-epithet", classCx(epithet.label))}
+            triggerClassName="scr-stat-name-epithet"
           />
         ) : epithetReady && (
           /* 줄 게 없으면 그렇다고 적는다(요청) — 자리를 통째로 비우면 그 줄만 이름이 아래로
