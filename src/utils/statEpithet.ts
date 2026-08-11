@@ -55,14 +55,13 @@ const CROWN_EDGE = 1.06;
    둘 다 물어야 한다.
    급마다 다른 이유: 1급은 한 번이 곧 이야기인 드문 수(핵·리콜·성큰러시)라 같은 잣대를 대면
    통째로 잠긴다. 그래도 0은 아니다 — 스무 판에 딱 한 번은 그 사람의 색이라기엔 얇다. */
-const COUNT_SHARE: Record<number, number> = { 1: 0.05, 2: 0.1 };
-/* 문턱은 비례하되 무한정 오르지는 않는다(요청: 너무 높으면 영영 안 나오니 적당히) — 백 판을
-   뛴 사람에게 열 번을 요구하면, 많이 뛴 사람일수록 부를 말이 없어진다. 그건 비례가 아니라
-   벌이다. 이만큼 되풀이됐으면 그 사람의 색으로 인정한다. */
-const COUNT_NEED_CAP: Record<number, number> = { 1: 3, 2: 6 };
-/* 수치 칭호(APM·자원·승률처럼 비율로 겨루는 것)에는 위 잣대를 댈 수가 없다 — 값 자체가 이미
-   판당 평균이라 '몇 할에서 나왔나'를 물을 수 없다. 대신 얼마나 뛰었나를 클럽에 비례해 묻는다:
-   남들 절반도 안 뛴 사람의 1등은 표본이 얇아서 나온 1등이다. */
+const COUNT_SHARE: Record<number, number> = { 1: 0.03, 2: 0.06 };
+/* 한때 상한을 뒀다("아무리 많이 뛰어도 여섯 번이면 인정") — 걷어냈다(지적: 상한보다 비율
+   자체를 낮추는 편이 합리적이다). 상한은 그 지점부터 비례가 끊겨, 백 판 뛴 사람과 예순 판
+   뛴 사람에게 같은 수를 요구한다 — 많이 뛴 쪽이 오히려 쉬워지는 셈이다. 비율을 낮추면
+   눈금이 끝까지 한 가지다.
+   지금 값으로 보면, 마흔 판 뛴 사람에게 흔한 수는 세 번(6%)·드문 수는 두 번(3%)이고,
+   여든 판이면 다섯 번·세 번이다. 한 번은 우연이지만 두세 번은 버릇이다. */
 const LEAD_PLAYS_SHARE = 0.5;
 
 export interface EpithetSubject {
@@ -183,6 +182,9 @@ interface Title {
   pool?: number;
   /** 1등이 한가운데의 몇 배는 돼야 하나(기본 CROWN_EDGE). 전술·맵은 1(안 따짐). */
   edge?: number;
+  /** 이 칭호가 타는 종족 — 판수 대비 문턱(minPlaysShare)의 분모가 전체 판수가 아니라 이
+   *  종족의 판수가 된다(요청). 그 종족 기록이 안 넘어오면 전체 판수로 잰다(옛 방식). */
+  race?: string;
   /** {n}에 꽂을 이름 — 맵 칭호처럼 말 자체에 그 사람의 값이 들어가는 경우. */
   name?: (s: MemberStats, of: EpithetSubject) => string | null;
   /** 툴팁에 적을 근거의 앞머리("자막에 잡힌 횟수" 등)와 단위. */
@@ -267,6 +269,25 @@ const TACTIC_WEIGHT: Record<string, number> = {
   "lift-off": 1.2, fallen: 1,
 };
 
+/* 그 수를 쓸 수 있는 종족(요청: 종족을 타는 칭호는 그 종족 판수에서만 비율을 따져야 한다).
+   캐리어는 프로토스로 나온 판에서만 갈 수 있는데, 프로토스를 세 판에 한 번 하는 사람에게
+   전체 판수로 비율을 물으면 아무리 캐리어를 가도 문턱을 못 넘는다 — 그건 그 사람이 안 한
+   것이 아니라 잴 자리를 잘못 잡은 것이다. 종족이 적힌 칭호는 분모를 그 종족 판수로 바꾼다.
+   여기 없는 키는 종족을 안 탄다(드랍·견제·입구막기·이사처럼 셋 다 하는 것들). */
+const TACTIC_RACE: Record<string, string> = {
+  // 저그
+  moka: "저그", swarm: "저그", infested: "저그", nydus: "저그", "sunken-rush": "저그",
+  muta: "저그", guardian: "저그", lurker: "저그", devourer: "저그", "zling-rush": "저그",
+  // 테란
+  "Nuclear Strike": "테란", bionic: "테란", mech: "테란", bc: "테란", valkyrie: "테란",
+  "valk-hunt": "테란", "sneak-rax": "테란", "cloak-wraith": "테란",
+  "center-tank": "테란", "side-tank": "테란", dropship: "테란", "lift-off": "테란",
+  // 프로토스
+  carrier: "프로토스", recall: "프로토스", "mind-control": "프로토스",
+  "cannon-rush": "프로토스", "center-photon": "프로토스", "ally-cannon": "프로토스",
+  "zealot-rush": "프로토스",
+};
+
 /* 근거 문장에 적을 '그 수의 이름'(요청: "자막에 잡힌 횟수 3회" 말고 무엇이 몇 번인지
    구체적으로) — 칭호는 멋을 부린 말이라 그것만으로는 무엇을 세었는지가 안 남는다.
    "커널 개통사"와 "경기 요약에 커널 3번"이 나란히 있어야 읽는 사람이 둘을 이어 붙인다.
@@ -306,6 +327,7 @@ const tactic = (label: string, keys: string[], min = 1): Title => ({
   label, value: (s) => did(s, ...keys), pool: 1, edge: 1, min,
   why: `경기 요약에 ${TACTIC_NOUN[keys[0]] ?? "이 수"}`, unit: "번",
   ...(UNIT_TACTICS.has(keys[0]) ? { minPlaysShare: UNIT_TACTIC_SHARE } : {}),
+  ...(TACTIC_RACE[keys[0]] ? { race: TACTIC_RACE[keys[0]] } : {}),
   weight: TACTIC_WEIGHT[keys[0]] ?? 1, scale: "count",
   tier: TIER1_KEYS.has(keys[0]) ? 1 : 2,
 });
@@ -321,6 +343,7 @@ const spell = (label: string, key: string, min = 1): Title => ({
     return n > 0 ? n : null;
   },
   pool: 1, edge: 1, min, why: `경기에서 ${TECH_KO[key] ?? "이 기술"} 사용`, unit: "번",
+  ...(TACTIC_RACE[key] ? { race: TACTIC_RACE[key] } : {}),
   weight: TACTIC_WEIGHT[key] ?? 1, scale: "count", tier: TIER1_KEYS.has(key) ? 1 : 2,
 });
 
@@ -367,7 +390,7 @@ const TITLES: Title[] = [
        칭호도 안 나온다. 그래서 자막이 짚은 판이 없으면 그 사람이 그 기간에 뽑은 것으로 대신
        본다 — 울트라와 디파일러를 함께 굴렸다면 그 판들이 곧 목동 저그다.
        값은 둘 중 큰 쪽이라, 자막이 짚은 사람이 늘 앞선다. */
-    label: "공포의 목동저그", weight: 6, pool: 1, edge: 1, scale: "count",
+    label: "공포의 목동저그", weight: 6, pool: 1, edge: 1, scale: "count", race: "저그",
     why: "목동 저그", unit: "번",
     value: (s) => {
       const byBeat = did(s, "moka") ?? 0;
@@ -1010,11 +1033,11 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
           ? COUNT_SHARE[tier] ?? COUNT_SHARE[2]
           : 0);
         if (share <= 0) return true;
-        const need = Math.min(
-          Math.ceil(x.stats.plays * share),
-          title.minPlaysShare === undefined ? COUNT_NEED_CAP[tier] ?? COUNT_NEED_CAP[2] : Infinity,
-        );
-        return (x.v ?? 0) >= need;
+        /* 분모는 그 칭호가 타는 종족의 판수다(요청) — 종족을 안 타는 칭호만 전체 판수로
+           잰다. 그 종족으로 한 판도 안 뛴 사람은 애초에 그 수가 나올 수 없다. */
+        const base = title.race ? x.of.races?.[title.race]?.plays ?? x.stats.plays : x.stats.plays;
+        if (base <= 0) return false;
+        return (x.v ?? 0) >= Math.ceil(base * share);
       })
       /* 수치 칭호는 클럽 한가운데의 절반은 뛰었어야 한다(LEAD_PLAYS_SHARE). "count"가 아닌
          것은 전부 이쪽이다 — scale을 안 적은 칭호(APM·비중·분당)도 점수는 한가운데 대비
