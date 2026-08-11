@@ -329,7 +329,7 @@ const TITLES: Title[] = [
   rare("커널 개통사", ["nydus"]),
   rare("리콜의 마술사", ["recall"]),
   rare("정신을 훔치는 마인드 컨트롤러", ["mind-control"]),
-  tactic("아름다운 캐리어 퀸", ["carrier"]),
+  tactic("캐리어를 모으는 여인", ["carrier"]),
   tactic("공포의 독거미 부대", ["lurker"]),
   tactic("보이지 않는 손", ["cloak-wraith"]),
   tactic("하늘을 나는 뮤탈 조련사", ["muta"]),
@@ -682,7 +682,7 @@ const SPELL_KO: Record<string, string> = Object.fromEntries(
 );
 const BUILD_SAYS: ((n: string) => string)[] = [
   (n) => `${n} 애호가`,
-  (n) => `${n}의 주인`,
+  (n) => `${n}의 여주인`,
 ];
 
 /** 원장에서 많이 나온 순 목록(이름·수·비중) — 이름은 한국어 사전을 거친 뒤에 합친다.
