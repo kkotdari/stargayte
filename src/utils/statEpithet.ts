@@ -317,6 +317,8 @@ const TACTIC_WEIGHT: Record<string, number> = {
   /* 셋방살이·이사는 2점대다(요청) — 밀린 뒤의 이야기라 져도 세지만(API의 _COUNT_EVEN_IF_LOST),
      그만큼 판을 끌고 간 수와 같은 급으로 둘 수는 없다. */
   lodging: 2, relocate: 2,
+  // 역전(재기) — 무너졌다 일어나 이긴 판이라 높은 축이다(요청).
+  revival: 5,
   /* 노엘은 2점대다(요청) — 밀린 뒤에 외치는 한마디라 이사·셋방살이처럼 판을 통째로
      끌고 간 이야기와 같은 무게로 둘 수 없다. 이름에서도 왕관을 뗐다(표 머리의 규칙). */
   "no-elim": 2.5,
@@ -397,7 +399,7 @@ const TACTIC_NOUN: Record<string, string> = {
   breakthrough: "방어선 돌파", allin: "올인", "greedy-paid": "통한 째기", "greedy-build": "째기",
   expand: "확장", "worker-gap": "일꾼 격차", "prod-gap": "생산 격차", "mass-army": "대군",
   "upgrade-signature": "업그레이드", "long-run": "장기전", "late-hold": "후반 수비",
-  revival: "재기", relocate: "이사", lodging: "셋방살이", "no-elim": "노엘",
+  revival: "역전", relocate: "이사", lodging: "셋방살이", "no-elim": "노엘",
   fallen: "먼저 탈락", "lift-off": "건물 띄우기", vision: "정찰", gg: "GG",
 };
 
@@ -601,6 +603,10 @@ const TITLES: Title[] = [
      의미가 구체적이지 않다). 넷 다 "큰 싸움이 있었다"·"오래 버텼다"처럼 어느 판에나 붙는
      말이라, 그 사람이 무엇을 했는지가 안 남는다. 칭호는 읽는 사람이 "왜 저게 붙었지?" 하고
      표를 다시 보게 만드는 값이어야 하는데, 이런 말은 다시 봐도 짚을 것이 없다. */
+  /* 역전의 아이콘(요청, 점수 높은 축) — 자막의 '재기'(revival)는 살림이 무너졌다가 다시
+     일어난 판이다. 전술은 이긴 판만 세므로(서버의 _tactic_counts) 그 판은 곧 역전승이다:
+     무너진 뒤에 일어나 이겼다는 말이라, 이 표에서 흔치 않은 이야기다. */
+  tactic("역전의 아이콘", ["revival"]),
   tactic("소문난 맷집왕", ["hold-off"]),
   /* (삭제) 받아치기의 정석(counter) — 요청. 역공은 상대가 들이친 뒤에 따라오는 대목이라
      그 판의 흐름이지 그 사람의 색이 아니다. */
