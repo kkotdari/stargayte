@@ -38,7 +38,7 @@ import {
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import type {
-  ActivityFeedItem, ActivityNotice, Challenge, ActivityTargetType, GameResult, GameResultSlot,
+  ActivityFeedItem, ActivityNotice, Challenge, ActivityTargetType, GameOutcome, GameResult, GameResultSlot,
   LeagueMatchActivity, Member, RankingShift, Schedule,
 } from "../../types";
 
@@ -143,6 +143,17 @@ export interface GameResultPostItem {
 }
 
 type DisplayItem = ActivityItem | GameResultPostItem;
+
+/** vs 양옆의 승·무·패 동그라미(요청) — 그 편이 이겼나 졌나를 한 글자로 적는다.
+ *
+ *  '미실시'는 아무것도 안 그린다: 치르지 않은 판이라 승패가 없고, 그 자리에 무엇을 세우면
+ *  "무승부"로 읽힌다. 색은 CSS가 정한다(.scr-activity-outcome-win/draw/lose). */
+function OutcomeDot({ result, side }: { result: GameOutcome; side: "team1" | "team2" }) {
+  if (result === "not_held") return null;
+  const kind = result === "draw" ? "draw" : result === side ? "win" : "lose";
+  const text = kind === "draw" ? "무" : kind === "win" ? "승" : "패";
+  return <span className={`scr-activity-outcome scr-activity-outcome-${kind}`}>{text}</span>;
+}
 
 /** 활동에서 이 항목이 꽂히는 자리(ms) — 너 나와만 표시용 시각과 다르다(challengeSortMs). */
 function sortMsOf(it: ActivityItem): number {
@@ -1500,7 +1511,15 @@ export default function ActivityScreen() {
         <span className="scr-activity-row-name">
           <span className="scr-activity-row-name-main">{sideNodes(g.team1, bestRawOf(g.summaryData))}</span>
         </span>
-        <span className="scr-activity-row-arrow scr-activity-row-vs" aria-hidden>vs</span>
+        {/* vs 양옆에 그 편의 결과를 동그란 배지로(요청) — 이름만 늘어선 줄에서는 누가 이겼는지가
+            펼쳐 봐야 나왔다. 무승부는 양쪽 다 '무'이고, 미실시는 아무 표시도 안 한다(치르지
+            않은 판이라 승패 자체가 없다). 배지 색은 유형 배지들과 같은 규칙이다: 바탕을 꽉
+            채우고 글자는 먹색 하나(--kind-ink) — 색은 갈래만 말하고 뜻은 글자가 진다. */}
+        <span className="scr-activity-row-arrow scr-activity-row-vs" aria-hidden>
+          <OutcomeDot result={g.result} side="team1" />
+          vs
+          <OutcomeDot result={g.result} side="team2" />
+        </span>
         <span className="scr-activity-row-name">
           <span className="scr-activity-row-name-main">{sideNodes(g.team2, bestRawOf(g.summaryData))}</span>
         </span>

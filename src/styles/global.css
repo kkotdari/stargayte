@@ -11760,3 +11760,20 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    안 갈리고, 갈래 이름을 더 키우면 밖에서 누른 그 소제목과 다른 것처럼 보인다. */
 .scr-activity-crumb-sep { margin: 0 6px; color: var(--dim); font-weight: 400; }
 .scr-activity-crumb-leaf { font-size: var(--fs-lead); }
+
+/* 게임 줄의 승·무·패 동그라미(요청: vs 양옆에 작은 정원 배지, 배지색 채우고 글자는 기본색).
+   유형 배지(.scr-kind-*)와 같은 규칙을 쓴다 — 바탕을 제 색으로 꽉 채우고 글자는 먹색 하나라,
+   테마가 뒤집혀도 같은 색으로 보이고 색을 못 보는 눈에도 글자가 남는다.
+   정원을 유지하려면 폭·높이를 함께 못 박아야 한다: 글자 하나짜리라 padding으로는 세로가
+   가로보다 커져 달걀이 된다. */
+.scr-activity-outcome {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 50%; flex: none;
+  font-size: var(--fs-9); font-weight: 800; line-height: 1;
+  background: var(--kind, var(--kind-none)); color: var(--kind-ink);
+}
+/* 이긴 쪽만 갈래 색을 받고 진 쪽은 무채다 — 둘 다 색이면 줄에서 어느 쪽이 이겼는지가
+   색으로는 안 갈리고, 그 판단을 글자 하나에만 맡기게 된다. */
+.scr-activity-outcome-win { --kind: var(--kind-schedule); }
+.scr-activity-outcome-draw { --kind: var(--kind-call); }
+.scr-activity-outcome-lose { --kind: var(--kind-none); }
