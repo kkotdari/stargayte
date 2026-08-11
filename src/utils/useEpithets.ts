@@ -86,7 +86,7 @@ async function recount(key: string): Promise<number> {
     }))
     .flatMap((x) => (x.stats
       ? [{ id: x.id, stats: x.stats, races: x.races, won: x.won }]
-      : [])));
+      : [])), { totalGames });
   /* 올린 값이 곧 다음에 누가 읽을 값이다 — 그래서 여기서 캐시도 같이 갈아 둔다. 달라진
      사람이 있으면 서버가 활동에 알림 한 줄을 남긴다(요청). */
   const changed = await api.reportEpithets(
