@@ -997,10 +997,15 @@ const TEMPLATES: Record<string, Tpl> = {
     "탱크와 골리앗 병력을 이끌고 진출함", "탱크를 앞세워 한 걸음씩 조여 나감",
     "메카닉 병력을 모아 전투에 임함",
   ]),
-  valkyrie: act([
-    "발키리를 뽑아 오버로드를 사냥함", "발키리를 모아 제공권 싸움에 나섬",
-    "발키리를 뽑음", "발키리로 공중을 잡음",
-  ]),
+  /* 유닛 이름은 p.unit에서 받는다(요청: 커세어·스카우트·발키리·레이스) — 열쇠는 하나로
+     두고 말만 갈아 끼운다. 옛 요약에는 p.unit이 없어 발키리로 떨어진다(그때는 발키리뿐이었다). */
+  valkyrie: (c) => {
+    const un = UNIT_KO[String(c.p?.unit ?? "Valkyrie")] ?? "발키리";
+    return done(c, c.pick([
+      `${ga(c.who)} ${un}를 뽑아 오버로드를 사냥함`, `${ga(c.who)} ${un}를 모아 제공권 싸움에 나섬`,
+      `${ga(c.who)} ${un}를 뽑음`, `${ga(c.who)} ${un}로 공중을 잡음`,
+    ]));
+  },
   // 드랍이 있었다는 것까지만 — "피해를 줌"은 확인된 게 아니다(지적: 드랍으로 피해를 줌도
   // 가정이니 고쳐 달라). 실제로 상대가 흔들렸으면 그건 raid-damage/harass-workers가
   // 생산 급감·일꾼 재생산이라는 별도 근거를 갖고 따로 말한다.
@@ -2101,10 +2106,11 @@ const TEMPLATES: Record<string, Tpl> = {
   // 그건 계속 잡히고 있었다는 뜻이다. 그림이 확실해서 대상까지 지목한다.
   "valk-hunt": (c) => {
     const foe = c.whom ? `${c.whom}의 ` : "상대 ";
+    const un = UNIT_KO[String(c.p?.unit ?? "Valkyrie")] ?? "발키리";
     return done(c, c.pick([
-      `${ga(c.who)} 발키리를 띄워 ${foe}오버로드를 계속 잡아냄`,
-      `${ga(c.who)} 발키리로 ${foe}오버로드를 사냥함`,
-      `${foe}오버로드가 ${c.who}의 발키리에 계속 녹아 다시 뽑히기 바쁨`,
+      `${ga(c.who)} ${un}를 띄워 ${foe}오버로드를 계속 잡아냄`,
+      `${ga(c.who)} ${un}로 ${foe}오버로드를 사냥함`,
+      `${foe}오버로드가 ${c.who}의 ${un}에 계속 녹아 다시 뽑히기 바쁨`,
     ]));
   },
 

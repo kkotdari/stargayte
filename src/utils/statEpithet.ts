@@ -356,6 +356,14 @@ const KIND_RANK: Record<EpithetKind, number> = {
 const TACTIC_KIND: Record<string, EpithetKind> = {
   "Nuclear Strike": "한방", "mind-control": "한방", infested: "한방",
   "cannon-rush": "한방", "sunken-rush": "한방", "sneak-rax": "한방",
+  /* 리콜을 한방으로 올린다(요청) — 아비터를 살려 데려가 병력을 통째로 옮겨 놓는 수라,
+     그림으로는 마인드컨트롤·핵과 같은 자리다. 무게(2)는 그대로라 급은 일반이고, 그 안에서
+     맨 앞이 된다 — 갈래는 '무엇과 비슷한가'이지 '얼마나 값어치 있나'가 아니다. */
+  recall: "한방",
+  /* 헬프는 명예다(요청) — 이 표에서 유일하게 '남을 위해 한 일'을 세는 자리라, 판을 제 손으로
+     굴린 수들(경기력)보다 클럽이 그 사람을 어떻게 보는가(BEST·참여)에 가깝다. 무게는 손대지
+     않는다(요청: 무게는 없어도 돼) — 앞세우는 일은 갈래가 한다. */
+  "ally-help": "명예",
 };
 
 const TACTIC_WEIGHT: Record<string, number> = {
@@ -377,10 +385,7 @@ const TACTIC_WEIGHT: Record<string, number> = {
   "cannon-rush": 3.5, "sunken-rush": 3.5, "sneak-rax": 3.5,
   // ── 운영·전술(2급 에픽)
   bionic: 4, mech: 4, moka: 4, "center-tank": 4, "center-photon": 4, "side-tank": 4,
-  dropship: 4, "harass-workers": 4, vision: 4, gg: 4,
-  /* 헬프만 이 무리에서 한 스텝 위다(요청) — 표에서 유일하게 '남을 위해 한 일'을 세는
-     자리라, 같은 값으로 두면 제 판을 굴린 수들 사이에 묻힌다. */
-  "ally-help": 5,
+  dropship: 4, "harass-workers": 4, vision: 4, gg: 4, "ally-help": 4,
   revival: 4, allin: 4, "hold-off": 4, "long-run": 4,
   "prod-gap": 4, "worker-gap": 4,
   "zealot-rush": 4, "zling-rush": 4,
@@ -425,7 +430,7 @@ const TACTIC_NOUN: Record<string, string> = {
   "center-tank": "센터 탱크 조이기", "harass-workers": "일꾼 견제", "harass-long": "끈질긴 견제",
   dropship: "드랍", "base-raid": "본진 급습", nydus: "커널", recall: "리콜",
   "mind-control": "마인드컨트롤", carrier: "캐리어", lurker: "러커",
-  "cloak-wraith": "클로킹 레이스", muta: "뮤탈 견제", ultra: "울트라리스크", "valk-hunt": "발키리로 오버로드 사냥",
+  "cloak-wraith": "클로킹 레이스", muta: "뮤탈 견제", ultra: "울트라리스크", "valk-hunt": "오버로드 사냥",
   "sneak-rax": "몰래 배럭", "zling-rush": "저글링 러시", "zealot-rush": "질럿 러시",
   "duel-rush": "맞러시", /* 근거 문장에서는 '공격 참여'로 부른다(요청) — 협공은 당한 쪽이 부르는 말에 가깝고,
      이 칭호가 말하려는 것은 "이긴 싸움에 늘 함께 있었다"는 쪽이다. */
@@ -765,6 +770,23 @@ const TITLES: Title[] = [
   /* (삭제) 건설의 여왕(판당 지은 건물 78채) — 요청. 바로 아래 심시티 퀸이 같은 것을 분당으로
      재고 있어, 부지런히 지은 사람은 대개 두 칭호에 함께 걸렸다. 한 사람의 같은 사실을 두
      이름으로 부르는 자리다. */
+  {
+    /* 철옹성의 여인(요청: 방어 타워 비율과 수가 압도적) — 포토·성큰·터렛을 남들보다 훨씬
+       많이 깐 사람이다. 두 가지를 함께 묻는 까닭은 하나만으로는 거짓이 되기 때문이다:
+       비율만 보면 건물을 거의 안 지은 판의 캐논 두 채가 40%가 되고, 수만 보면 백 판 뛴
+       사람이 늘 이긴다. 그래서 값은 비율로 재되, 판당 채수가 얇으면 후보에서 뺀다.
+       (문턱을 value 안에 두는 자리다 — 절대평가라 후보 수가 줄어도 다른 칭호가 안 흔들린다.) */
+    label: "철옹성의 여인", weight: 2, kind: "경기력",
+    min: 0.22, why: "건물 중 방어 건물", unit: "",
+    value: (s, of) => {
+      const m = mix(s, of);
+      const plays = won(s, of).mixPlays ?? 0;
+      if (!m || !(plays > 0) || !(m.bProd + m.bDef > 0)) return null;
+      // 판당 방어 건물이 이만큼은 돼야 '요새'라 부를 만하다 — 비율만으로는 얇은 판이 이긴다.
+      if (m.bDef / plays < 5) return null;
+      return m.bDef / (m.bProd + m.bDef);
+    },
+  },
   /* 상대보다 일꾼을 훨씬 많이 굴린 대목(worker-gap) — 자원을 많이 캤다는 말이다. */
   { ...tactic("부티 자원 퀸", ["worker-gap"]), minPlaysShare: 0.22 },
   /* 흔한 대목들의 제 문턱(시뮬레이션 실측: 격차·정찰·역전·GG·스톰은 기본 문턱으로는 거의

@@ -2630,7 +2630,10 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
           const prey = overlordHunted(t.at, foes);
           if (prey) {
             return {
+              // 무엇으로 잡았나를 함께 넘긴다(요청: 커세어·스카우트·레이스도) — 문장이
+              // '발키리'를 못 박고 있으면 커세어로 잡은 판이 거짓말이 된다.
               k: "valk-hunt", won, who: [t.who], whom: [prey], at: t.at, weight: t.weight + 14,
+              p: { unit: t.p?.unit ?? "Valkyrie" },
             } as Beat;
           }
         }

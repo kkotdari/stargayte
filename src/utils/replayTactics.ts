@@ -1691,10 +1691,23 @@ function detectFor(c: Ctx): Tactic[] {
         p: { n: bcPeak },
       });
     }
+    /* 오버로드 사냥 후보(요청: 커세어·스카우트·발키리·레이스 모두) — 열쇠는 그대로
+       "valkyrie" 하나다. 이 후보가 하는 일은 "저 사람이 저그 상대로 공중 유닛을 모았다"를
+       알리는 것뿐이고, 실제로 오버로드가 잡혔나는 요약 쪽이 상대의 오버로드 재생산으로
+       확인한다(replaySummary의 overlordHunted). 열쇠를 넷으로 쪼개면 그 확인 대목과
+       문장 틀을 넷으로 늘려야 하는데, 말하려는 사실은 하나다 — 무엇으로 잡았나는 p.unit이
+       들고 간다. */
     if (u("Valkyrie") >= 3 && foeRaces.includes("저그")) {
       out.push({
         key: "valkyrie", weight: 8, at: firstU("Valkyrie"),
-        who,
+        who, p: { unit: "Valkyrie" },
+      });
+    } else if (u("Wraith") >= 4 && foeRaces.includes("저그")) {
+      // 레이스는 넉넉히 본다 — 클로킹 레이스(cloak-wraith)는 제 이야기가 따로 있고,
+      // 여기서 말하는 것은 하늘을 잡으려고 모은 경우다.
+      out.push({
+        key: "valkyrie", weight: 8, at: firstU("Wraith"),
+        who, p: { unit: "Wraith" },
       });
     }
     // 몰래 배럭 — 본진에서 한참 떨어진 자리에 올린 초반 배럭. 자리를 안 보면 그냥 배럭이다.
@@ -1959,6 +1972,13 @@ function detectFor(c: Ctx): Tactic[] {
         key: "carrier", weight: 13, at: burst ? burst.from : firstU("Carrier"),
         who, p: { n: carrierPeak },
       });
+    }
+    // 커세어·스카우트도 같은 자리다(요청) — 저그 상대로 모았을 때만이고, 커세어 쪽이 더
+    // 흔해 먼저 본다. 열쇠와 무게는 발키리와 같다(위 주석).
+    if (u("Corsair") >= 3 && foeRaces.includes("저그")) {
+      out.push({ key: "valkyrie", weight: 8, at: firstU("Corsair"), who, p: { unit: "Corsair" } });
+    } else if (u("Scout") >= 3 && foeRaces.includes("저그")) {
+      out.push({ key: "valkyrie", weight: 8, at: firstU("Scout"), who, p: { unit: "Scout" } });
     }
     const shuttleAt = dropped && u("Shuttle") >= 2 ? dropSpot() : null;
     const shuttleWhom = shuttleAt?.whom ? { whom: shuttleAt.whom } : {};
