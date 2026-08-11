@@ -400,7 +400,7 @@ const TACTIC_NOUN: Record<string, string> = {
    재면 프로토스를 절반만 하는 사람은 아무리 캐리어를 가도 이 문턱을 못 넘는다.
    0.2까지 올렸다가 0.15로 되물렸다(지적: 안 나오는 것들은 미세하게 낮추기) — 캐리어를
    일곱 판에 한 판꼴로 가면 그 유닛으로 판을 푸는 사람이라 부를 만하다. */
-const UNIT_TACTIC_SHARE = 0.08;
+const UNIT_TACTIC_SHARE = 0.06;
 const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker", "muta"]);
 
 /* 수마다 제 문턱을 따로 두는 자리(지적: 포토러시 퀸·성큰러시 퀸의 비율 하한이 너무 낮다).
@@ -493,7 +493,7 @@ const TITLES: Title[] = [
      — 요청으로 뺐다. 셋 다 쓰기 어려운 마법이긴 한데, 그 한 번이 판을 가르는 그림까지는
      아니라 이름만 요란해진다. */
   { ...tactic("헬프 퀸", ["ally-help"]), minPlaysShare: 0.25 },
-  { ...tactic("동맹의 수호자", ["ally-cannon"]), minPlaysShare: 0.03 },
+  { ...tactic("동맹의 수호자", ["ally-cannon"]), minPlaysShare: 0.02 },
   /* 입구막기는 '막았다'가 아니라 '막아 놓고 뒤에서 컸다'가 값어치다(판정도 발전까지 함께
      본다 — replayTactics의 WALL_IN_GROW_MIN). 그래서 칭호도 막은 쪽이 아니라 그다음을
      부른다. "후반 도모 퀸"에서 바꿨다(지적: 개성적이지 않다) — 그 말은 어느 운영에나 붙는
@@ -518,7 +518,7 @@ const TITLES: Title[] = [
     ...tactic("폭탄드랍의 여신", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"], 1),
     race: undefined,
     // 분모가 전체 판이라 기본 비율(6%)이 되레 무겁다(요청: 낮추기) — 스물다섯 판에 한 번꼴.
-    minPlaysShare: 0.04,
+    minPlaysShare: 0.03,
   },
 
   /* ── 운영(요청: 전략운영은 가중치를 좀 높여도 된다) ─────────────────────────
@@ -548,8 +548,8 @@ const TITLES: Title[] = [
      빠진 이야기고, 그 대목은 대개 다른 칭호(드랍·견제·러시)가 이미 말한다. */
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
      자막이 이 수를 부르는 이름(커널)을 그대로 쓴다. */
-  { ...rare("커널 개통사", ["nydus"]), minPlaysShare: 0.03 },
-  { ...rare("리콜 배달부", ["recall"]), minPlaysShare: 0.03 },
+  { ...rare("커널 개통사", ["nydus"]), minPlaysShare: 0.02 },
+  { ...rare("리콜 배달부", ["recall"]), minPlaysShare: 0.02 },
   rare("도둑 퀸", ["mind-control"]),
   tactic("캐리어를 모으는 여인", ["carrier"]),
   tactic("공포의 독거미 부대", ["lurker"]),
@@ -581,10 +581,10 @@ const TITLES: Title[] = [
     },
   },
   tactic("뮤탈 습격대", ["muta"]),
-  /* 곁가지 다섯(오버로드 사냥·동맹 포토·커널·리콜·다크스웜)은 3%다(요청: 문턱 낮추기) —
+  /* 곁가지 다섯(오버로드 사냥·동맹 포토·커널·리콜·다크스웜)은 2%다(요청: 더 낮추기) —
      재분석 뒤에도 내내 비어 있던 것들이다. 워낙 드문 그림이라 비율은 낮게 두고, 우연은
      최소 횟수(3번)가 거른다. */
-  { ...tactic("오버로드 사냥꾼", ["valk-hunt"]), minPlaysShare: 0.03 },
+  { ...tactic("오버로드 사냥꾼", ["valk-hunt"]), minPlaysShare: 0.02 },
   tactic("몰래배럭 퀸", ["sneak-rax"]),
   /* (삭제) 끝없는 저글링 폭풍(zling-rush) — 요청. 저글링 하나로 들이치는 것은 그 종족의
      기본 진행에 가까워, 한 유닛만으로 러시라고 부를 만한 수가 아니다. */
@@ -613,7 +613,7 @@ const TITLES: Title[] = [
   /* (삭제) 협공(gang-rush) — 다시 뺐다(요청). 이름을 넷이나 갈아 봤지만(협공의 선봉 ·
      다굴의 여신 · 잔다르크 · 전장을 누비는 여인) 결국 같은 자리다: 팀전에서 함께 달려간
      것은 그 판의 진행이지 그 사람의 수가 아니다. */
-  { ...rare("다크스웜 살포반", ["swarm"]), minPlaysShare: 0.03 },
+  { ...rare("다크스웜 살포반", ["swarm"]), minPlaysShare: 0.02 },
   /* (삭제) 감염의 여왕(infested) — 요청. 감염된 테란은 커맨드센터를 잡아야 나오는 장면이라
      드물기는 한데, 그 판을 만든 것은 감염 자체가 아니라 그 앞의 싸움이다. */
   /* (삭제) 가디언을 모으는 여인(guardian) — 요청. */
@@ -734,7 +734,7 @@ const TITLES: Title[] = [
     /* 2.5 → 3.5(요청: 퀸으로 올릴 만하다) — 손 이야기 셋(유효타·APM·커맨드) 가운데 가장
        위다. 빠르기는 타고나거나 오래 하면 오르지만, 헛치지 않는 손은 무엇을 누를지 미리
        정해 두어야 나온다. */
-    label: "군더더기 없는 손", weight: 3, min: 0.97, why: "APM 중 유효타", unit: "",
+    label: "군더더기 없는 손", weight: 3, min: 0.98, why: "APM 중 유효타", unit: "",
     value: (s) => (s.avgApm && s.avgEapm && s.avgApm > 0 ? s.avgEapm / s.avgApm : null),
   },
   /* (삭제) 누른 만큼 뽑는 사람(커맨드 중 생산 비율) — 요청. */
@@ -850,7 +850,7 @@ const TITLES: Title[] = [
   /* "최다"를 뗐다(요청: 절대평가) — 이제 1위가 아니라 열 번을 넘긴 사람 전부다. */
   /* 고정 횟수가 아니라 경기수 비례다(요청: 앞으로를 생각해서 — "25회"는 판이 쌓이면
      누구나 닿는 값이 된다). 네 판에 한 번은 BEST로 뽑혔어야 한다. */
-  { label: "BEST 퀸", weight: 6, min: 0.3, why: "판 대비 BEST 선정", unit: "",
+  { label: "BEST 퀸", weight: 6, min: 0.35, why: "판 대비 BEST 선정", unit: "",
     value: (s) => (s.plays > 0 && s.bests > 0 ? s.bests / s.plays : null) },
   /* 졌잘싸 퀸(요청) — 진 판에서 BEST로 뽑힌 수다. 판을 가장 많이 만들고도 졌다는 말이라,
      이기고 지고를 안 가리는 BEST 수집퀸과는 다른 이야기를 센다. 무게는 그보다 한 뼘
