@@ -35,6 +35,10 @@ const MIN_PLAYS_MODE = 12;
    칭호는 클럽에서 그 사람을 부르는 말이 아니라 우연히 찍힌 도장이 된다.
    급마다 다르게 잡는 이유는 급 자체가 '얼마나 그 사람다운가'의 눈금이라서다. */
 const MIN_PLAYS_TIER: Record<number, number> = { 1: 10, 2: 4 };
+/** 유닛·건물 이름으로 불리려면 그 이름을 쓰는 사람들의 한가운데보다 이만큼은 앞서야 한다
+ *  (지적: 회원들 간 상대 우위를 봐야 한다) — 클럽 전체가 질럿을 6할씩 쓰면 6할은 그냥 그
+ *  종족의 기본값이지 그 사람의 색이 아니다. */
+const NAME_EDGE = 1.15;
 /** 수치 칭호는 겨룰 사람이 이만큼은 있어야 뜻이 선다 — 둘 중 1등은 1등이 아니다. */
 const MIN_POOL = 3;
 /** 수치 칭호의 1등 값이 무리 한가운데보다 이만큼은 커야 왕관이다. 다들 비슷한데 소수점이
@@ -731,9 +735,9 @@ function seedOf(id: string): number {
  *  "스톰의 여왕"이 두 번째로 많이 쓴 사람에게 붙으면 그 말이 거짓이 된다. */
 function ownersOf(
   pool: EpithetSubject[], of: (m: BuildMix) => Record<string, number> | undefined,
-  ko: Record<string, string>, by: "count" | "share" = "count",
-): Map<string, string> {
-  const best = new Map<string, { id: string; n: number }>();
+  ko: Record<string, string>, by: "count" | "share" | "perPlay" = "count",
+): Map<string, NameStat> {
+  const all = new Map<string, { id: string; v: number }[]>();
   for (const p of pool) {
     const m = p.stats.buildMix;
     if (!m) continue;
@@ -748,21 +752,40 @@ function ownersOf(
     for (const [name, count] of Object.entries(merged)) {
       /* 유닛·건물은 '많이 뽑은 사람'이 아니라 '그 비중이 가장 큰 사람'이 임자다(지적: 질럿
          칭호가 네 명한테 붙었다) — 칭호가 말하는 값이 비중이라("질럿이 병력의 78%"), 임자도
-         같은 자로 정해야 그 말이 한 사람 것이 된다. 총량으로 정하면 많이 뛴 사람이 이름을
-         다 쓸어 가고, 그 사람이 딴 칭호를 받으면 남은 사람들이 같은 이름을 나눠 갖게 된다. */
-      const n = by === "share" ? (total > 0 ? count / total : 0) : count;
-      const cur = best.get(name);
-      // 같은 값이면 id로 갈라 조회할 때마다 임자가 바뀌지 않게 한다.
-      if (!cur || n > cur.n || (n === cur.n && p.id < cur.id)) best.set(name, { id: p.id, n });
+         같은 자로 정해야 그 말이 한 사람 것이 된다. */
+      /* perPlay는 '판당 몇 채'다(지적: 게이트는 비중이 아니라 절대 개수도 중요하다) —
+         건물은 비중으로만 보면 게이트 세 채만 지은 사람이 "건물의 100%"가 되어 임자가 된다.
+         총량으로 보면 이번엔 많이 뛴 사람이 늘 이기므로, 판수로 나눠 한 판의 그림으로 만든다. */
+      const plays = p.stats.mixPlays ?? 0;
+      const v = by === "share" ? (total > 0 ? count / total : 0)
+        : by === "perPlay" ? (plays > 0 ? count / plays : 0)
+          : count;
+      (all.get(name) ?? all.set(name, []).get(name)!).push({ id: p.id, v });
     }
   }
-  return new Map([...best].map(([name, v]) => [name, v.id]));
+  const out = new Map<string, NameStat>();
+  for (const [name, rows] of all) {
+    // 같은 값이면 id로 갈라 조회할 때마다 임자가 바뀌지 않게 한다.
+    const top = [...rows].sort((a, b) => b.v - a.v || a.id.localeCompare(b.id))[0];
+    out.set(name, { id: top.id, med: median(rows.map((r) => r.v)), top: top.v });
+  }
+  return out;
+}
+
+/** 이름 하나에 대한 무리 전체의 그림 — 임자와, 그 무리의 한가운데 값. */
+interface NameStat {
+  /** 그 이름을 가장 크게 쓰는 사람. */
+  id: string;
+  /** 그 이름을 쓰는 사람들의 한가운데 값 — '상대적으로 앞서는가'를 재는 기준선이다. */
+  med: number;
+  /** 1등 값 — 지금은 안 쓰지만 근거 문장을 늘릴 때 필요하다. */
+  top: number;
 }
 
 interface NameOwners {
-  spell: Map<string, string>;
-  unit: Map<string, string>;
-  build: Map<string, string>;
+  spell: Map<string, NameStat>;
+  unit: Map<string, NameStat>;
+  build: Map<string, NameStat>;
 }
 
 function signature(
@@ -778,14 +801,14 @@ function signature(
     const skill = topSpell(m.skills);
     /** 마법 한 줄 만들기 — 사전에 있으면 그 말을, 없으면 문틀을(아주 많이 쌓였을 때만). */
     const skillLine = (): Epithet | null => {
-      if (!skill || owners.spell.get(skill.name) !== id || skill.score < SKILL_MIN_SCORE) return null;
+      if (!skill || owners.spell.get(skill.name)?.id !== id || skill.score < SKILL_MIN_SCORE) return null;
       const special = SPELL_SPECIAL[skill.name];
       const t = (special && pick(special.map((label) => () => label), skill.name, seed, used))
         || (skill.score >= SKILL_PLAIN_SCORE ? pick(SKILL_SAYS, skill.name, seed, used) : null);
       return t ? { label: t, why: `경기에서 ${skill.name} ${skill.count}번` } : null;
     };
     // 드문 마법만 유닛보다 앞이다(SKILL_RARE_SCORE) — 나머지는 아래에서 마지막으로 본다.
-    if (skill && owners.spell.get(skill.name) === id && skill.score >= SKILL_RARE_SCORE) {
+    if (skill && owners.spell.get(skill.name)?.id === id && skill.score >= SKILL_RARE_SCORE) {
       const t = skillLine();
       if (t) return t;
     }
@@ -796,7 +819,11 @@ function signature(
       /* 임자(그 유닛 비중이 가장 큰 사람)만 그 이름으로 불린다(지적: 질럿이 네 명). 한때
          "비중 50% 넘으면 임자가 아니어도"라는 예외를 뒀는데, 프로토스 넷이 다 질럿 절반을
          넘겨 그 예외가 곧 규칙이 됐다. 문틀을 달리해도 표에서는 결국 질럿 이야기가 네 줄이다. */
-      if (owners.unit.get(unit.name) !== id) continue;
+      /* 임자이면서, 무리 한가운데보다 확실히 앞서야 한다(지적: 제 기록 안에서 비중이 높다고
+         줄 것이 아니라 회원들 간 상대 우위를 봐야 한다) — 다들 질럿이 6할인 클럽에서 6할은
+         평범한 값이고, 그 안에서 8할인 사람만 "질럿밖에 몰라"라 부를 수 있다. */
+      const own = owners.unit.get(unit.name);
+      if (!own || own.id !== id || unit.share < own.med * NAME_EDGE) continue;
       // 두 번째·세 번째 유닛은 비중이 낮게 마련이라 문턱도 낮춘다 — 그래도 넷 중 하나는
       // 되어야 "그 유닛으로 푸는 사람"이라 부를 수 있다.
       if (unit.count < 10 || unit.share < (unit === topList(m.units, UNIT_KO)[0] ? 0.33 : 0.25)) continue;
@@ -806,10 +833,13 @@ function signature(
     /* 건물은 마지막이다 — 종족이 정해지면 짓는 것도 대체로 정해져서, 유닛·마법만큼 그
        사람을 가르지 못한다. */
     for (const build of topList(m.buildings, BUILDING_KO)) {
-      if (owners.build.get(build.name) !== id) continue;
-      if (build.count < 10 || build.share < 0.25) continue;
+      const ownB = owners.build.get(build.name);
+      // 건물은 판당 몇 채로 잰다(위 perPlay 주석) — 비중만 보면 몇 채 안 지은 사람이 임자가 된다.
+      const perPlay = (s.mixPlays ?? 0) > 0 ? build.count / (s.mixPlays as number) : 0;
+      if (!ownB || ownB.id !== id || perPlay < ownB.med * NAME_EDGE) continue;
+      if (build.count < 10) continue;
       const t = pick(BUILD_SAYS, build.name, seed, used);
-      if (t) return { label: t, why: `${build.name}${ga(build.name)} 건물의 ${Math.round(build.share * 100)}%` };
+      if (t) return { label: t, why: `${build.name}${ga(build.name)} 판당 ${perPlay.toFixed(1)}채` };
     }
     // 흔한 마법은 여기까지 와서야 차례다(요청: 기술 사용은 아래로) — 유닛·건물이 할 말을
     // 다 했는데도 부를 것이 없을 때만 "스톰 마스터"가 된다.
@@ -935,7 +965,7 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
   const owners: NameOwners = {
     spell: ownersOf(pool, (m) => m.skills, SPELL_KO),
     unit: ownersOf(pool, (m) => m.units, UNIT_KO, "share"),
-    build: ownersOf(pool, (m) => m.buildings, BUILDING_KO, "share"),
+    build: ownersOf(pool, (m) => m.buildings, BUILDING_KO, "perPlay"),
   };
   for (const p of pool) {
     if (out.has(p.id) || p.stats.plays < MIN_PLAYS) continue;
