@@ -424,8 +424,11 @@ const rare = (label: string, keys: string[]): Title => tactic(label, keys, 1);
  *  남는다. 그렇다고 아래 '특징' 단계로 미루면, 한 번 뚫어 본 커널보다 뒷자리가 된다(지적). */
 const spell = (label: string, key: string, min = 1): Title => ({
   label,
+  /* 이긴 판에서 쓴 것만 센다(요청: 핵·스테이시스 같은 기술도 이긴 판만) — 서버가 그 원장을
+     따로 세어 내려 준다(skillsWon). 없으면(옛 응답) 이 칭호는 안 나간다: 승패를 안 가린
+     수로 "핵 다섯 번"이라 적으면 그 문장이 거짓이 된다. */
   value: (s) => {
-    const n = s.buildMix?.skills?.[key] ?? 0;
+    const n = s.buildMix?.skillsWon?.[key] ?? 0;
     return n > 0 ? n : null;
   },
   pool: 1, edge: 1, min, why: `게임에서 ${TECH_KO[key] ?? "이 기술"} 사용`, unit: "번",
@@ -484,26 +487,10 @@ const TITLES: Title[] = [
      그래서 단일 유닛 칭호(캐리어·저글링 같은 것)보다 위에 둔다. */
   tactic("바이오닉의 신", ["bionic"]),
   tactic("메카닉의 신", ["mech"]),
-  {
-    /* 목동 저그(요청: 멋진데 안 나온다) — 자막이 이 그림을 짚으려면 한 판에서 저글링 12기·
-       울트라 3기·다크스웜이 다 나와야 해서(replayTactics의 moka), 그 조건을 넘긴 판이 적으면
-       칭호도 안 나온다. 그래서 자막이 짚은 판이 없으면 그 사람이 그 기간에 뽑은 것으로 대신
-       본다 — 울트라와 디파일러를 함께 굴렸다면 그 판들이 곧 목동 저그다.
-       값은 둘 중 큰 쪽이라, 자막이 짚은 사람이 늘 앞선다. */
-    label: "목동저그의 신", weight: 6, pool: 1, edge: 1, scale: "count", race: "저그",
-    why: "목동 저그", unit: "번",
-    value: (s) => {
-      const byBeat = did(s, "moka") ?? 0;
-      const m = s.buildMix;
-      const ultra = m?.units?.Ultralisk ?? 0;
-      const defiler = m?.units?.Defiler ?? 0;
-      const ling = m?.units?.Zergling ?? 0;
-      // 셋을 다 굴렸을 때만 — 울트라만 몇 기 뽑은 것은 목동이 아니다.
-      const byUnit = ultra >= 2 && defiler >= 1 && ling >= 20 ? Math.min(ultra, defiler) : 0;
-      const n = Math.max(byBeat, byUnit);
-      return n > 0 ? n : null;
-    },
-  },
+  /* 목동저그 — 이제 자막이 짚은 판만 센다(요청: 목동저그도 이긴 판만). 한때 유닛 기록으로도
+     잡았는데(울트라 2기 + 디파일러 + 저글링 20기), 그 원장은 승패를 안 가려서 진 판의
+     목동까지 함께 세었다. 자막 쪽은 서버가 이긴 판만 세므로(_tactic_counts) 잣대가 하나가 된다. */
+  tactic("목동저그의 신", ["moka"]),
 
   // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
   tactic("옆탱의 여왕", ["side-tank"]),
@@ -638,7 +625,7 @@ const TITLES: Title[] = [
      앞뒤다: 쫓겨 나가 다시 폈거나(이사), 아예 아군 기지에 얹혀 살았거나(셋방살이). 따로 두면
      같은 판에서 둘 다 잡히는 일이 흔해 한 사람의 같은 사연이 두 칭호로 갈린다.
      근거 문장은 둘을 함께 부른다(tactic이 지어 주는 이름은 첫 열쇠 것뿐이라 여기서 덮는다). */
-  { ...tactic("셋방살이 전문가", ["lodging", "relocate"]), why: "이사·셋방살이" },
+  { ...tactic("역마살 퀸", ["lodging", "relocate"]), why: "이사·셋방살이" },
   /* (삭제) 건물 띄우기(lift-off)로 짓던 "공중부양 마스터" — 뺐다(지적). 이 키는 자리를
      다 내주고 건물만 띄워 쫓겨 다닌 대목이라, 버틴 이야기로 넣었지만 칭호로 굳으면
      "집을 잃은 사람"이라는 딱지로 읽힌다. 자막에서 한 번 지나가는 말과, 이름 아래
