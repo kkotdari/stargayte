@@ -157,12 +157,14 @@ const MAP_MIN_RATE = 0.7;
 /* 꼬리말은 왕족 계열만 남긴다(요청: 점수대별로 호칭을 가르고 위쪽은 여왕·퀸·여제·황녀로)
    — "터줏대감"·"지배자"를 걷었다. 맵 칭호의 무게도 2.5 → 4다(요청: 맵 승수 높은 것은
    4점대로): 한 맵을 여섯 판 넘게 뛰고 그 대부분을 이겼다는 말이라 가벼운 자리가 아니다. */
-const MAP_SAYS = ["여주인", "안주인", "황녀", "퀸"];
+/* 꼬리말은 '퀸' 하나다(요청: 맵도 퀸으로) — 넷을 돌려 쓰던 시절에는 같은 맵 칭호인데도
+   사람마다 다른 말이 붙어(여주인·황녀…) 무엇을 뜻하는 줄인지가 한눈에 안 잡혔다. */
+const MAP_SAYS = ["퀸"];
 
 function mapPhrase(name: string): string {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return `${name}의 ${MAP_SAYS[h % MAP_SAYS.length]}`;
+  /* 맵 이름 + 퀸(요청) — 꼬리말이 하나뿐이라 맵 이름으로 고르던 자리(해시)가 필요 없어졌다.
+     띄어쓰기 없이 붙인다: "빨무퀸"처럼 한 낱말로 읽혀야 별명이 된다(표 머리의 규칙). */
+  return `${name}${MAP_SAYS[0]}`;
 }
 
 /** 그 사람이 가장 잘하는 맵과 그 승수. 문턱을 못 넘으면 null.
@@ -929,8 +931,8 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     if (r.how.startsWith("그 맵 승수")) {
       return {
         ...r,
-        label: "○○의 여주인 · 안주인 · 황녀 · 퀸",
-        how: `그 맵에서 ${MAP_MIN_PLAYS}판 이상 · 승률 ${Math.round(MAP_MIN_RATE * 100)}% 이상 (맵 이름이 앞에 붙어요)`,
+        label: "○○퀸 (맵 이름이 앞에 붙어요)",
+        how: `그 맵에서 ${MAP_MIN_PLAYS}판 이상 · 승률 ${Math.round(MAP_MIN_RATE * 100)}% 이상`,
       };
     }
     return {
