@@ -185,6 +185,9 @@ function bestMap(s: MemberStats): { name: string; wins: number } | null {
        '마스터', 판을 통째로 굴리는 틀은 '신'이 붙는다.
        왕관 낱말을 쓰는 이름에는 수식어를 하나 붙인다(요청: 여왕급은 다 수식어) — "포토러시의
        퀸"처럼 맨몸으로 두면 여러 줄이 같은 꼴이 되어 이름이 아니라 표의 항목처럼 읽힌다.
+       '퀸'·'여왕'은 앞말에 붙여 쓴다(요청) — "매너 퀸"보다 "매너퀸"이 한 낱말로 읽혀 별명
+       같다. 다만 "그림자의 여왕"처럼 조사(의)가 앞에 서는 줄은 띄운다: 붙이면 오히려 읽기가
+       걸린다.
        손대지 않는 자리도 있다(요청): 이미 수식이 붙은 이름(부티 자원퀸), 맵·종족처럼 앞에
        고유명사가 서는 줄, 그리고 말장난 하나로 완성된 이름(퀸정은) — 거기에 얹으면 수식이
        두 겹이 되거나 농담이 깨진다.
@@ -532,8 +535,8 @@ const TITLES: Title[] = [
   tactic("옆탱은 나의 힘", ["side-tank"]),
   /* 한 번으로도 자격이 있다 — 남의 집 앞에 건물을 박는 것은 손이 미끄러져서 되는 일이
      아니다(다른 전술의 기본 문턱 2회는 "한 번은 우연"을 거르려는 것이다). */
-  tactic("어둠 속 포토러쉬 여왕", ["cannon-rush"], 1),
-  tactic("역공의 성큰러시 퀸", ["sunken-rush"], 1),
+  tactic("어둠 속 포토러쉬여왕", ["cannon-rush"], 1),
+  tactic("역공의 성큰러시퀸", ["sunken-rush"], 1),
   tactic("센터의 점령자", ["center-photon"]),
   /* (삭제) 남의 집 헤집기 장인(base-raid) — 요청. 이름 없는 급습이라 "무엇으로 갔는지"가
      빠진 이야기고, 그 대목은 대개 다른 칭호(드랍·견제·러시)가 이미 말한다. */
@@ -570,7 +573,7 @@ const TITLES: Title[] = [
   },
   tactic("뮤탈 습격대", ["muta"]),
   tactic("무자비한 오버로드 사냥꾼", ["valk-hunt"]),
-  tactic("심장어택 몰래배럭 퀸", ["sneak-rax"]),
+  tactic("심장어택 몰래배럭퀸", ["sneak-rax"]),
   /* (삭제) 끝없는 저글링 폭풍(zling-rush) — 요청. 저글링 하나로 들이치는 것은 그 종족의
      기본 진행에 가까워, 한 유닛만으로 러시라고 부를 만한 수가 아니다. */
   /* 초반 러시 한 덩어리(요청: 3게이트·9드론 등) — 질럿 러시와 저글링 러시를 한 칭호로 묶는다.
@@ -581,7 +584,7 @@ const TITLES: Title[] = [
   /* 정찰(요청: 초반 정찰 열심히 한 사람 — 좋은 뜻이라 3점대) — 옵저버를 넉넉히 띄웠거나,
      오버로드를 퍼뜨렸거나, 스캔으로 여기저기 들여다본 판이다. 남의 살림을 먼저 보고 제 수를
      고르는 일이라, 눈에 안 띄면서 판을 가장 크게 바꾸는 습관이다. */
-  tactic("부지런한 초반 정찰 퀸", ["vision"]),
+  tactic("부지런한 정찰퀸", ["vision"]),
   /* (삭제) 맞러시 승부사(duel-rush) — 요청. 맞러시는 둘이 함께 만든 장면이라 한 사람의
      수라고 하기 어렵다. */
   /* 협공을 다시 넣는다(요청: 공격에 열심히 참여한다는 좋은 뜻으로) — 한때 "협공의 선봉"으로 뺐던 자리다. 그때 뺀
@@ -639,7 +642,7 @@ const TITLES: Title[] = [
        그대로 사실이 된다.
        분당으로 안 나누는 것이 심시티 퀸과의 차이다 — 그쪽은 '손이 빠른가'이고 이쪽은
        '얼마나 지었나'다. 대신 남들 절반은 뛰었어야 후보다(LEAD_PLAYS_SHARE). */
-    label: "문어발 건축 퀸", weight: 4, why: "지은 건물", unit: "채",
+    label: "문어발 건축퀸", weight: 4, why: "지은 건물", unit: "채",
     value: (s, of) => {
       const b = mix(s, of)?.buildings;
       if (!b) return null;
@@ -678,7 +681,7 @@ const TITLES: Title[] = [
   /* GG를 친 판을 모은다(요청: ㅈㅈ 친 것도 다 모아서 매너 퀸) — 진 것을 인정하고 손을 내미는
      일이라, 이기고 지고와 무관하게 센다(COUNTED_EVEN_IF_LOST). 자막이 이미 그 한마디를
      장면으로 잡아 두고 있어 따로 셀 것이 없다. */
-  tactic("훈훈한 매너 퀸", ["gg"]),
+  tactic("훈훈한 매너퀸", ["gg"]),
   /* (삭제) 프로를 닮았다는 이야기(pro-like) — 뺐다(지적: 별로 의미가 안 된다).
      자막에서는 "○○ 못지않은 △△"처럼 누구를 닮았는지가 함께 나와야 뜻이 서는 말인데,
      칭호가 세는 것은 문장 틀 키뿐이라 그 이름이 빠진다. 이름 없는 "프로 스타일"은
@@ -818,13 +821,13 @@ const TITLES: Title[] = [
     label: "눈부신 승리의 여신", weight: 9, sticky: true, min: 70, why: "승률", unit: "%",
     value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null),
   },
-  { label: "최다 BEST 퀸", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
+  { label: "최다 BEST퀸", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
   /* 졌잘싸 퀸(요청) — 진 판에서 BEST로 뽑힌 수다. 판을 가장 많이 만들고도 졌다는 말이라,
      이기고 지고를 안 가리는 BEST 수집퀸과는 다른 이야기를 센다. 무게는 그보다 한 뼘
      아래다: 잘 싸운 것은 맞지만 이긴 판의 BEST와 같은 값으로 둘 수는 없다. */
-  { label: "졌잘싸 퀸", weight: 2.5, why: "진 판의 BEST PLAYER", unit: "회", value: (s) => ((s.lostBests ?? 0) > 0 ? s.lostBests! : null) },
+  { label: "졌잘싸퀸", weight: 2.5, why: "진 판의 BEST PLAYER", unit: "회", value: (s) => ((s.lostBests ?? 0) > 0 ? s.lostBests! : null) },
   { label: "쉬지 않는 손가락", weight: 2, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
-  { label: "스타 게이 트 NPC", weight: 3, sticky: true, why: "게임 수", unit: "판", value: (s) => s.plays },
+  { label: "참여율퀸", weight: 3, sticky: true, why: "게임 수", unit: "판", value: (s) => s.plays },
 ];
 
 /* ── 이름을 만드는 잔손질 ─────────────────────────────────────────────────────
