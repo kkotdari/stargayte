@@ -1045,7 +1045,7 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
     /** 그 사람의 여러 자격 중 무엇을 보일지 고르는 점수 — 사람 사이를 견주는 값이 아니다. */
     score: number;
     order: number;
-    /** sticky(승률 계열)만 0 — 점수와 무관하게 그 사람의 대표가 된다. */
+    /** 등급(전설 0 · 에픽 1 · 일반 2) — 대표를 고를 때 점수보다 먼저다. */
     rank: number;
     /** 이 값을 잰 판수 — 종족 칭호면 그 종족 판수다. 근거 문장의 '몇 판 중 몇 %'가 쓴다. */
     denom: number;
@@ -1084,15 +1084,21 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
          1위 웃돈(leadBonus) 같은 것은 없다. */
       const boost = TIER_BOOST[tier] ?? 1;
       const base = title.scale === "count" ? v : (title.min ? v / title.min : 1);
+      /* 대표는 등급이 먼저다(요청: 가장 높은 '순위'의 칭호가 보인다 / 지적: 대표가 이상하다)
+         — 점수만으로 고르면 횟수 칭호가 등급을 무시하고 이긴다: 스톰을 천 번 쓴 사람의
+         대표가 승리의 여신이 아니라 '스톰 술사'(일반)가 됐다. 횟수는 끝없이 쌓이지만 등급은
+         그 칭호의 격이라, 전설 › 에픽 › 일반을 먼저 가르고 점수는 같은 등급 안에서만 겨룬다.
+         등급 선은 설명 모달(epithetGuideRows)과 같은 3점이다. */
+      const grade = title.sticky ? 0 : (title.weight ?? 0) * boost >= 3 ? 1 : 2;
       claims.push({
         title, id: p.id, label, raw: v, denom: denomOf(title, p),
         score: (title.weight ?? 0) * base * boost, order,
-        rank: title.sticky ? 0 : 1,
+        rank: grade,
       });
     }
   });
 
-  /* 보일 것을 고르는 차례 — sticky(승률 계열)가 맨 앞, 그다음 점수, 같으면 표 차례다. */
+  /* 보일 것을 고르는 차례 — 등급(전설 › 에픽 › 일반)이 먼저, 같은 등급 안에서 점수다. */
   claims.sort((a, b) =>
     (a.rank - b.rank)
     || (b.score - a.score) || (a.order - b.order) || a.id.localeCompare(b.id));
