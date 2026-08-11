@@ -282,6 +282,8 @@ const TACTIC_WEIGHT: Record<string, number> = {
   "center-photon": 3, "sneak-rax": 3, "side-tank": 3,
   "harass-workers": 3, "harass-long": 3, dropship: 3, "base-raid": 3,
   "cloak-wraith": 2.5, "duel-rush": 2.5, "valk-hunt": 2.5,
+  // 초반 러시(3게이트 질럿·9드론 저글링) — 3점대다(요청).
+  "zealot-rush": 3, "zling-rush": 3,
   "wall-in": 2, "ally-cannon": 2,
   /* 주력 유닛으로 부르는 것들 — 그 유닛을 뽑았다는 사실만 말하므로 맨 아래다. 같은 유닛이라도
      그것으로 무엇을 했는지(드랍·사냥·조이기)는 위쪽에 제 칭호가 따로 있다. */
@@ -510,7 +512,11 @@ const TITLES: Title[] = [
   tactic("몰래 배럭 퀸", ["sneak-rax"]),
   /* (삭제) 끝없는 저글링 폭풍(zling-rush) — 요청. 저글링 하나로 들이치는 것은 그 종족의
      기본 진행에 가까워, 한 유닛만으로 러시라고 부를 만한 수가 아니다. */
-  tactic("질럿 돌격대장", ["zealot-rush"]),
+  /* 초반 러시 한 덩어리(요청: 3게이트·9드론 등) — 질럿 러시와 저글링 러시를 한 칭호로 묶는다.
+     따로 두면 종족마다 같은 이야기가 두 줄이 되고, 무엇보다 "일찍 들이쳤다"는 사실이 그
+     사람을 말하는 것이지 무엇으로 들이쳤나는 그다음이다. 종족을 안 걸어 둔 것도 그래서다
+     (두 종족의 수를 함께 세므로 분모는 전체 판수다). */
+  tactic("초반러시의 신", ["zealot-rush", "zling-rush"]),
   /* (삭제) 맞러시 승부사(duel-rush) — 요청. 맞러시는 둘이 함께 만든 장면이라 한 사람의
      수라고 하기 어렵다. */
   /* (삭제) 협공의 선봉(gang-rush) — 뺐다(요청). 팀전에서 둘이 함께 들이치는 것은 그 판의
