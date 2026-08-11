@@ -691,7 +691,7 @@ const SEARCHABLE_GROUPS = new Set<ActivityGroupKey>(["league", "call", "gameResu
  *  줄 렌더는 부르는 쪽(ActivityScreen)의 renderRow를 그대로 받아 쓴다 — 미리보기와 이 화면이
  *  같은 함수를 쓰면 카드 쪽 수정이 한 곳만 고치면 양쪽에 반영된다. */
 function ActivityGroupPage({
-  groupKey, label, items, memberOf, members, renderRow,
+  groupKey, label, items, memberOf, members, renderRow, onBack,
 }: {
   groupKey: ActivityGroupKey;
   label: string;
@@ -699,6 +699,8 @@ function ActivityGroupPage({
   memberOf: (id: string) => Member | undefined;
   members: Member[];
   renderRow: (item: DisplayItem) => ReactNode;
+  /** 제목의 "활동"을 누르면 돌아간다 — 화면 아래 뒤로 버튼과 같은 길(closeGroup)을 탄다. */
+  onBack: () => void;
 }) {
   const searchable = SEARCHABLE_GROUPS.has(groupKey);
   const [search, setSearch] = useState("");
@@ -774,7 +776,9 @@ function ActivityGroupPage({
               갈래 이름은 목록의 소제목과 같은 크기로 둔다(요청: 게임은 18px 그대로) — 밖에서
               누른 그 소제목이 여기 제목이 된 것이라, 크기가 같아야 같은 것으로 읽힌다. */}
           <h1 className="scr-title scr-v2-toolbar-title">
-            활동
+            {/* 앞머리는 누르면 돌아간다(지적: 빵부스러기는 원래 그런 것) — 이력을 되감는
+                같은 길이라, 브라우저 뒤로가기·아래 뒤로 버튼과 결과가 늘 같다. */}
+            <button type="button" className="scr-activity-crumb-root" onClick={onBack}>활동</button>
             <span className="scr-activity-crumb-sep">›</span>
             <span className="scr-activity-crumb-leaf">{label}</span>
           </h1>
@@ -1747,6 +1751,7 @@ export default function ActivityScreen() {
           memberOf={memberOf}
           members={members}
           renderRow={renderRow}
+          onBack={closeGroup}
         />
       )}
       {/* 화면 아래 동그란 버튼은 한 자리를 두 화면이 나눠 쓴다(요청: 전체 보기의 뒤로가기를

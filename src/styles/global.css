@@ -11777,3 +11777,12 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-activity-outcome-win { --kind: var(--kind-schedule); }
 .scr-activity-outcome-draw { --kind: var(--kind-call); }
 .scr-activity-outcome-lose { --kind: var(--kind-none); }
+
+/* 빵부스러기의 앞머리 — 글자는 제목 그대로이고 누를 수 있다는 것만 손끝에서 드러난다.
+   밑줄이나 색을 입히지 않는 이유: 제목 줄에 링크 색이 하나 끼면 그 줄이 제목이 아니라
+   안내문처럼 읽힌다. 대신 hover에서 살짝 눌러 "누를 수 있는 자리"라고만 말한다. */
+.scr-activity-crumb-root {
+  background: none; border: none; padding: 0; margin: 0; cursor: pointer;
+  font: inherit; color: inherit;
+}
+@media (hover: hover) { .scr-activity-crumb-root:hover { opacity: 0.7; } }
