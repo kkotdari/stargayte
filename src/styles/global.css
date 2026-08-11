@@ -1617,8 +1617,11 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   flex: 0 0 auto; align-self: center;
   /* 한 스텝 축소(요청) — 28→24px, caption(14)→micro(12). 옆 도움말이 사라져 이 버튼만
      제목 옆에 남으면서 전보다 커 보였다. */
-  min-height: 0; height: 24px; padding: 0 10px;
-  font-size: var(--fs-micro); font-weight: 800; border-radius: 999px;
+  /* 한 스텝 더 줄이고 각을 살린다(요청: 둘 다 살짝 축소, 더 네모 모양) — 이 버튼은 제목
+     옆에 붙는 곁다리라 알약(999px)만큼 둥글면 제 몫보다 커 보인다. 통계의 '칭호 조건'도
+     같은 클래스를 쓰므로 둘이 저절로 같아진다(요청). */
+  min-height: 0; height: 22px; padding: 0 9px;
+  font-size: var(--fs-micro); font-weight: 800; border-radius: var(--radius-sm);
   /* -6px 보정은 이제 줄 전체(.scr-v2-toolbar-title-row)가 진다 — 여기서 또 올리면 두 번
      올라가 제목보다 6px 위에 앉는다(실측). */
 }

@@ -260,7 +260,7 @@ export default function ClanStatsScreen() {
           {/* 칭호 조건 — 아이콘이 아니라 글자 버튼이고, 팝업이 아니라 모달이다(요청).
               담을 것이 표 하나만큼이라 말풍선에는 안 들어간다. */}
           <button
-            type="button" className="scr-rank-rivalry-btn"
+            type="button" className="scr-btn scr-btn-primary scr-rivalry-open-btn"
             onClick={() => setGuideOpen(true)}
           >
             칭호 조건
