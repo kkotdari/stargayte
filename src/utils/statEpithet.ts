@@ -701,7 +701,10 @@ const TITLES: Title[] = [
   /* 한 번으로도 자격이 있다 — 남의 집 앞에 건물을 박는 것은 손이 미끄러져서 되는 일이
      아니다(다른 전술의 기본 문턱 2회는 "한 번은 우연"을 거르려는 것이다). */
   tactic("포토러쉬 퀸", ["cannon-rush"], 1),
-  tactic("성큰러시 퀸", ["sunken-rush"], 1),
+  /* 성큰러시만 러시 기본값(3%)보다 높다(지적: 하한이 너무 낮다) — 저그는 앞마당에 성큰을
+     늘 박으므로 '남의 집 앞 성큰'과 제 살림의 성큰이 자막에서 같은 열쇠로 잡히는 판이 있다.
+     6%면 저그 판 열에 한 번은 그 그림이라야 걸린다. */
+  { ...tactic("성큰러시 퀸", ["sunken-rush"], 1), minPlaysShare: 0.06 },
   /* 센터의 여주인 → 센포의 여왕(요청) — 클럽에서 그 수를 부르는 말이 '센포'라, 그 말을
      그대로 쓰면 무엇을 세는 칭호인지가 바로 읽힌다. */
   { ...tactic("센포의 여왕", ["center-photon"]), minPlaysShare: 0.09 },
@@ -736,7 +739,7 @@ const TITLES: Title[] = [
        있었는데, 이 값은 '무슨 일을 벌였나'가 아니라 병력 구성비라 그만큼 나오기 힘든
        장면이 아니다. 7.5면 러시(10.5) 아래·역전(6) 위로, 드묾은 그대로 인정하는 자리다. */
     label: "그림자의 여왕", weight: 2.5, kind: "경기력", pool: 1, edge: 1, tier: 1,
-    min: 0.07, why: "병력 중 은폐 유닛", unit: "",
+    min: 0.1, why: "병력 중 은폐 유닛", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       if (!m || !(m.uGround + m.uAir > 0)) return null;
@@ -843,7 +846,7 @@ const TITLES: Title[] = [
   /* 역전의 아이콘(요청, 점수 높은 축) — 자막의 '재기'(revival)는 살림이 무너졌다가 다시
      일어난 판이다. 전술은 이긴 판만 세므로(서버의 _tactic_counts) 그 판은 곧 역전승이다:
      무너진 뒤에 일어나 이겼다는 말이라, 이 표에서 흔치 않은 이야기다. */
-  { ...tactic("역전 퀸", ["revival"]), minPlaysShare: 0.45 },
+  { ...tactic("역전 퀸", ["revival"]), minPlaysShare: 0.38 },
   /* 도박 퀸(요청: 도박적인 전술로 이긴 경우) — 자막의 '올인'은 뒤를 안 남기고 한 번에 건
      판이다. 전술은 이긴 판만 세므로(서버의 _tactic_counts) 여기 쌓이는 수는 곧 '건 것이
      통한 판'이다. 지고도 세면 그건 도박이 아니라 그냥 무너진 판이라 뜻이 갈린다. */
@@ -877,13 +880,13 @@ const TITLES: Title[] = [
        사람이 늘 이긴다. 그래서 값은 비율로 재되, 판당 채수가 얇으면 후보에서 뺀다.
        (문턱을 value 안에 두는 자리다 — 절대평가라 후보 수가 줄어도 다른 칭호가 안 흔들린다.) */
     label: "철옹성의 여인", weight: 2, kind: "수비",
-    min: 0.26, why: "건물 중 방어 건물", unit: "",
+    min: 0.32, why: "건물 중 방어 건물", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       const plays = won(s, of).mixPlays ?? 0;
       if (!m || !(plays > 0) || !(m.bProd + m.bDef > 0)) return null;
       // 판당 방어 건물이 이만큼은 돼야 '요새'라 부를 만하다 — 비율만으로는 얇은 판이 이긴다.
-      if (m.bDef / plays < 6) return null;
+      if (m.bDef / plays < 7) return null;
       return m.bDef / (m.bProd + m.bDef);
     },
   },
