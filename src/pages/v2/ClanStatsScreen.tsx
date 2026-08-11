@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { LoadingMark } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import MemberStatRow from "../stats/MemberStatRow";
+import InfoTip from "../../components/common/InfoTip";
 import { useEpithets } from "../../utils/useEpithets";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
@@ -254,6 +255,19 @@ export default function ClanStatsScreen() {
       <div className="scr-v2-toolbar">
         <div className="scr-v2-toolbar-title-row">
           <h1 className="scr-title scr-v2-toolbar-title">내전 통계</h1>
+          {/* 칭호가 어떻게 붙는지 한 번에(요청: 제목 옆에 툴팁 버튼, 아주 간단하고 보기 쉽게).
+              점수는 안 적는다(요청: 순서로만) — 무게 값은 자주 손보는 살림이라 여기 적으면
+              고칠 때마다 두 곳이 어긋나고, 보는 쪽이 알아야 하는 것은 "무엇이 먼저 가나"다. */}
+          <InfoTip
+            label="칭호 안내"
+            text={"칭호는 내전 전체 기록에서 한 사람에 하나씩 붙어요.\n\n"
+              + "먼저 가는 순서\n"
+              + "① 승률 · 종족 승률 · 게임 수 1위 (보라)\n"
+              + "② 러시 · 운영 · 맵처럼 판을 끌고 간 수 (파랑)\n"
+              + "③ 유닛 · 기술 · 손버릇\n\n"
+              + "이긴 판만 세고(이사·노엘은 빼고), 그 종족 판에서 자주 나와야 해요.\n"
+              + "한 칭호는 한 사람뿐이라, 임자가 다른 칭호로 가면 그 칭호는 안 나가요."}
+          />
           {/* 도움말은 없앴다(요청). 칸마다 달려 있던 ⓘ 여섯 개를 하나로 합친 뒤 다섯 번
               쳐내다가 결국 통째로 지웠다 — 남아 있던 줄의 절반은 판수 문턱 이야기였는데
               그 문턱 자체가 사라졌고, 나머지도 화면이 이미 말하고 있다(칸 이름, 막대 라벨,
