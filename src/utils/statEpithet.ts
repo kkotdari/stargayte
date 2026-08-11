@@ -19,8 +19,8 @@
 // 둘 다 못 잡으면 전적만 보고 무난한 말 하나를 준다. 한 판도 안 뛴 사람은 아예 안 붙인다 —
 // 없는 사실로 별명을 지을 수는 없다.
 
-import { PER_WINDOW_SECONDS, type BuildMix } from "./replayBuildMix";
-import { BUILDING_KO, TECH_KO, UNIT_KO } from "./replaySummaryText";
+import { PER_WINDOW_SECONDS } from "./replayBuildMix";
+import { TECH_KO } from "./replaySummaryText";
 import type { MemberStats } from "../types";
 
 /** 칭호를 붙일 최소 경기 수 — 한두 판으로 무엇의 "왕"을 부를 수는 없다. */
@@ -35,10 +35,8 @@ const MIN_PLAYS_MODE = 12;
    칭호는 클럽에서 그 사람을 부르는 말이 아니라 우연히 찍힌 도장이 된다.
    급마다 다르게 잡는 이유는 급 자체가 '얼마나 그 사람다운가'의 눈금이라서다. */
 const MIN_PLAYS_TIER: Record<number, number> = { 1: 10, 2: 4 };
-/** 유닛·건물 이름으로 불리려면 그 이름을 쓰는 사람들의 한가운데보다 이만큼은 앞서야 한다
- *  (지적: 회원들 간 상대 우위를 봐야 한다) — 클럽 전체가 질럿을 6할씩 쓰면 6할은 그냥 그
- *  종족의 기본값이지 그 사람의 색이 아니다. */
-const NAME_EDGE = 1.15;
+/* (삭제) NAME_EDGE — 원장에서 뽑던 유닛·건물 칭호가 "무리 한가운데보다 이만큼 앞서야"를
+   재던 값이다. 그 칭호들과 함께 걷었다(아래 '특징' 주석). */
 /** 수치 칭호는 겨룰 사람이 이만큼은 있어야 뜻이 선다 — 둘 중 1등은 1등이 아니다. */
 const MIN_POOL = 3;
 /** 수치 칭호의 1등 값이 무리 한가운데보다 이만큼은 커야 왕관이다. 다들 비슷한데 소수점이
@@ -232,6 +230,9 @@ const TIER_BOOST: Record<number, number> = { 1: 3, 2: 1 };
    표의 열쇠는 칭호 이름이 아니라 전술 키다(요청으로 이름이 자주 바뀐다) — 이름으로 걸면
    문구를 다듬을 때마다 이 표와 어긋나 무게가 조용히 1로 떨어진다(실제로 그럴 뻔했다). */
 const TIER1_KEYS = new Set([
+  /* 어려운 마법 둘 — 쓸 자리를 알아야 하고 한 번으로 판이 갈린다(마엘스트롬·디스럽션 웹).
+     나머지 마법(스테이시스·야마토·브루들링·옵티컬 플레어·할루시네이션)은 2급이다. */
+  "Maelstrom", "Disruption Web",
   "Nuclear Strike", "cannon-rush", "sunken-rush", "mind-control",
   "nydus", "recall", "infested", "swarm", "sneak-rax", "ally-help",
 ]);
@@ -267,6 +268,13 @@ const TACTIC_WEIGHT: Record<string, number> = {
      선택이고, 클럽에서 그 사람을 부를 때 실제로 쓰는 말이기도 하다. */
   "ally-help": 4,
   "lift-off": 1.2, fallen: 1,
+
+  /* 어려운 마법(요청: 스킬 이름을 살려도 될 것들) — 전술과 같은 자로 잰다. 성큰·포토러시
+     (3.5) 언저리에 두되, 마법 한 번이 러시 한 판만큼 판을 말하지는 않으므로 그보다 살짝
+     아래에서 시작한다. */
+  Maelstrom: 3.5, "Disruption Web": 3.5,
+  "Stasis Field": 3, "Yamato Gun": 3,
+  "Spawn Broodlings": 2.5, "Optical Flare": 2.5, Hallucination: 2.5,
 };
 
 /* 그 수를 쓸 수 있는 종족(요청: 종족을 타는 칭호는 그 종족 판수에서만 비율을 따져야 한다).
@@ -276,13 +284,15 @@ const TACTIC_WEIGHT: Record<string, number> = {
    여기 없는 키는 종족을 안 탄다(드랍·견제·입구막기·이사처럼 셋 다 하는 것들). */
 const TACTIC_RACE: Record<string, string> = {
   // 저그
-  moka: "저그", swarm: "저그", infested: "저그", nydus: "저그", "sunken-rush": "저그",
+  moka: "저그", "Spawn Broodlings": "저그", swarm: "저그", infested: "저그", nydus: "저그", "sunken-rush": "저그",
   muta: "저그", guardian: "저그", lurker: "저그", devourer: "저그", "zling-rush": "저그",
   // 테란
-  "Nuclear Strike": "테란", bionic: "테란", mech: "테란", bc: "테란", valkyrie: "테란",
+  "Nuclear Strike": "테란", "Yamato Gun": "테란", "Optical Flare": "테란", bionic: "테란", mech: "테란", bc: "테란", valkyrie: "테란",
   "valk-hunt": "테란", "sneak-rax": "테란", "cloak-wraith": "테란",
   "center-tank": "테란", "side-tank": "테란", dropship: "테란", "lift-off": "테란",
   // 프로토스
+  Maelstrom: "프로토스", "Disruption Web": "프로토스", "Stasis Field": "프로토스",
+  Hallucination: "프로토스",
   carrier: "프로토스", recall: "프로토스", "mind-control": "프로토스",
   "cannon-rush": "프로토스", "center-photon": "프로토스", "ally-cannon": "프로토스",
   "zealot-rush": "프로토스",
@@ -371,6 +381,19 @@ const TITLES: Title[] = [
      맨 위에 둔다 — 혼자 잘하는 것보다 판을 함께 굴린 쪽이 먼저 불릴 자격이 있다.
      헬프(ally-help)는 제 살림을 놔두고 남의 집으로 병력을 돌린 대목이라, 이기고 지는
      것과 상관없이 그 사람이 어떤 사람인지를 가장 잘 말해 준다. */
+  /* 어려운 마법은 이름을 살려 둔다(요청: 몇몇 어려운 스킬을 잘 써서 이긴 경우는 스킬
+     이름을 살려도 되겠다) — 원장에서 아무 마법이나 뽑아 "○○의 대가"를 붙이던 문틀은
+     걷었지만(아래 '특징' 주석), 그건 흔한 마법까지 다 불렀기 때문이다. 여기 있는 것들은
+     쓸 자리를 알아야 하고, 한 번 제대로 들어가면 그 판이 갈린다.
+     스톰·이레디에이트·마인처럼 늘 누르는 것은 여전히 없다 — 많이 썼다는 말이 "그 종족을
+     오래 했다"밖에 안 된다(예전 SPELL_WEIGHT의 기준선이 그 무리였다). */
+  spell("얼려 놓고 패기", "Maelstrom"),
+  spell("거미줄 설계자", "Disruption Web"),
+  spell("시간을 멈추는 자", "Stasis Field"),
+  spell("야마토 한 발", "Yamato Gun"),
+  spell("브루들링 저격수", "Spawn Broodlings"),
+  spell("눈을 멀게 하는 자", "Optical Flare"),
+  spell("허깨비 부대장", "Hallucination"),
   tactic("든든한 헬프 퀸", ["ally-help"]),
   tactic("동맹의 수호신", ["ally-cannon"]),
   /* 입구막기는 '막았다'가 아니라 '막아 놓고 뒤에서 컸다'가 값어치다(판정도 발전까지 함께
@@ -385,7 +408,8 @@ const TITLES: Title[] = [
      쌓아 두는 것과 달리 그 순간 손이 가야만 되는 것이고, 그 판의 자원 곡선을 실제로
      꺾어 놓는다. 그래서 다른 어떤 전술보다 그 사람의 성향을 잘 말한다. */
   tactic("집요한 일꾼 사냥꾼", ["harass-workers"], 1),
-  tactic("지긋지긋한 견제러", ["harass-long"], 1),
+  /* (삭제) 지긋지긋한 견제러(harass-long) — "집요한 일꾼 사냥꾼"과 같은 이야기(견제)를
+     다른 말로 한 번 더 부르는 자리였고, 이름도 그 사람이 아니라 당한 쪽의 감상이다. */
   /* 드랍도 같은 무리로 올린다(요청: 견제도 가중치 높이기) — 병력을 실어 상대 뒤로 넘기는
      일은 앞마당에 병력을 세워 두는 것과 달리 판을 두 곳에서 동시에 굴려야 한다.
      종족마다 키가 달라 하나로 묶는다: 그래야 "드랍 잘하는 사람"이라는 한 말이 된다. */
@@ -464,7 +488,8 @@ const TITLES: Title[] = [
   rare("감염술사", ["infested"]),
   tactic("가디언 함대 사령관", ["guardian"]),
   tactic("배틀 퀸", ["bc"]),
-  tactic("발키리 지휘관", ["valkyrie"]),
+  /* (삭제) 발키리 지휘관(valkyrie) — 위 "무자비한 오버로드 사냥꾼"이 같은 유닛으로 무엇을
+     했는지까지 말한다. 뽑았다는 사실만 말하는 쪽을 접는다. */
   /* (삭제) 우리 집 문지기(front-defense) — 뺐다(지적: 입구는 막으라고 있는 것). 제 입구를
      지키는 일은 누구나 매 판 하는 것이라, 잘했다는 뜻도 그 사람답다는 뜻도 안 된다.
      같은 방어라도 '밀려온 공세를 막아냈다'(hold-off)는 남는다 — 그건 실제로 벌어진 일이다. */
@@ -490,7 +515,8 @@ const TITLES: Title[] = [
   /* "배짱의 화신"이었는데 무슨 뜻인지 안 읽힌다는 지적 — 이 키(greedy-build)는 병력 건물
      없이 자원부터 올린 '째기'다. 그 판에서 쓰는 말을 그대로 쓰면 설명이 필요 없다.
      통한 째기(greedy-paid)는 위의 "째기의 달인"이고, 이쪽은 그냥 늘 그렇게 시작하는 사람이다. */
-  tactic("일단 째고 본다", ["greedy-build"]),
+  /* (삭제) 일단 째고 본다(greedy-build) — 위 "째기의 달인"(통한 째기)과 같은 수다. 통했나
+     아닌가로 갈라 두 칭호를 두면 표에서는 결국 같은 사람이 두 번 걸린다. */
   {
     /* 건축왕(요청: 멀티 부동산왕 → 건축왕, 근거도 확장이 아니라 건물 수로) — 예전에는
        자막의 '확장' 대목을 셌다. 그건 "멀티를 폈다"는 한 장면이라 부지런히 지은 사람이
@@ -511,10 +537,13 @@ const TITLES: Title[] = [
   tactic("쉼 없는 생산 공장장", ["prod-gap"]),
   /* (삭제) 병력 사재기 — 뺐다(요청). "많이 모았다"는 시간을 들이면 누구나 닿는 값이고,
      그 병력으로 무엇을 했는지는 말해 주지 않는다. 물량 자체는 '물량퀸'이 이미 잰다. */
-  tactic("업그레이드 여제", ["upgrade-signature"]),
+  /* (삭제) 업그레이드 여제(upgrade-signature) — 아래 "풀업 신봉자"가 같은 것을 수치로
+     재고 있다. 자막에 그 대목이 잡혔나보다 실제 공/방 단계가 정확하다. */
   tactic("지구전의 화신", ["long-run"]),
-  tactic("끝까지 버티는 사람", ["late-hold", "late-defense", "stand"]),
-  rare("좀비 모드", ["revival"]),
+  /* (삭제) 끝까지 버티는 사람(late-hold) — "지구전의 화신"(장기전)과 겹친다. 오래 버텼다는
+     말은 한 번이면 된다. */
+  /* (삭제) 좀비 모드(revival) — 무너졌다 일어난 판이라는 뜻인데 이름만 보고는 그게 안
+     읽힌다(뜻이 불분명한 말은 뺀다는 그동안의 기준). */
   rare("역마살 퀸", ["relocate"]),
   /* 본진을 잃고 아군 기지에 얹혀산 대목(lodging) — 흔치 않은 데다 그 판을 통째로 말하는
      그림이라 무게를 높였다(요청). 진 이야기가 아니라 끝까지 앉아 있었다는 이야기다. */
@@ -561,11 +590,8 @@ const TITLES: Title[] = [
     label: "기본기의 사람", weight: 2, min: 0.8, why: "병력 중 기본 유닛", unit: "",
     value: (s) => (s.buildMix ? share(s.buildMix.uBasic, s.buildMix.uAdv + s.buildMix.uCaster, 30) : null),
   },
-  {
-    /* 하늘을 아예 안 쓰는 사람 — 지상만으로 푼다. 공중 비중 1위('하늘의 여전사')와 짝이다. */
-    label: "땅에서 사는 사람", weight: 2, min: 0.97, why: "병력 중 지상", unit: "",
-    value: (s) => (s.buildMix ? share(s.buildMix.uGround, s.buildMix.uAir, 30) : null),
-  },
+  /* (삭제) 땅에서 사는 사람 — 병력의 97%가 지상이라는 말은 "공중을 안 쓴다"는 결핍이다.
+     '그것밖에 안 한다'는 말을 걷은 것과 같은 이유다(요청). */
   { label: "물량퀸", weight: 2.5, why: "분당 뽑은 기수", unit: "기", value: (s) => (s.buildMix ? perMin(s.buildMix.coreUnit, s.mixSeconds) : null) },
   { label: "번개같은 손놀림", weight: 2.5, why: "APM", unit: "", value: (s) => s.avgApm },
   {
@@ -698,19 +724,23 @@ const TITLES: Title[] = [
   { label: "스타 게이 트 NPC", weight: 3, sticky: true, why: "게임 수", unit: "판", value: (s) => s.plays },
 ];
 
-/* ── 특징 ──────────────────────────────────────────────────────────────────────
-   왕관을 못 받은 사람은 남과 견주지 않고 제 기록에서만 뽑는다 — 무리에서 1등이 아니어도
-   "이 사람 하면 저것"은 있다. 이름(럴커·스톰)이 들어가는 말이라 사람마다 저절로 달라진다. */
+/* ── 이름을 만드는 잔손질 ─────────────────────────────────────────────────────
+   (삭제) 원장에서 뽑던 '특징' 칭호 — 왕관을 못 받은 사람에게 제 기록에서 뽑아 붙이던
+   문틀들이다(유닛 "공포의 ○○ 부대", 건물 "○○ 애호가", 마법 "○○의 대가"·"사이오닉 스톰의
+   여왕" 등). 통째로 걷었다(요청: 칭호 표의 것만 두고 나머지는 칭호 없음이 낫다).
+   까닭은 표의 칭호와 급이 달랐기 때문이다: 표의 말은 "그 판에서 무슨 일을 벌였나"인데,
+   이 문틀들은 "무엇을 많이 뽑았나"라 종족이 같으면 결국 같은 말이 돌아온다. 아무 말이나
+   붙이느니 비워 두는 편이 낫다 — 화면은 그 자리를 "칭호 없음"으로 적는다.
+   되살릴 일이 있으면 이 커밋을 되짚으면 된다(ownersOf·topList·topSpell·pick·seedOf와
+   UNIT_SAYS·SKILL_SAYS·BUILD_SAYS·SPELL_SPECIAL·SPELL_WEIGHT 표가 함께 있었다). */
 
-/** 한국어 받침 — 조사(은/는)를 고른다. 유닛·기술 이름은 사전(UNIT_KO 등)이 한국어로 옮긴
- *  값이라 여기서 한글만 보면 된다. */
+/** 한국어 받침 — 조사(은/는)를 고른다. */
 function hasFinal(word: string): boolean {
   const code = word.charCodeAt(word.length - 1);
   if (code < 0xac00 || code > 0xd7a3) return false;
   return (code - 0xac00) % 28 !== 0;
 }
 const sub = (w: string) => (hasFinal(w) ? "은" : "는");
-const ga = (w: string) => (hasFinal(w) ? "이" : "가");
 
 /* 종족마다 부르는 말이 따로다(요청: 저그의 절대군주 · 프로토스의 전설 · 테란의 영웅) —
    셋뿐이라 표 하나면 되고, 그편이 종족의 색을 살린다. 여기 없는 값은 무난한 말로 받는다. */
@@ -730,306 +760,6 @@ function bestRace(of: EpithetSubject): { race: string; rate: number } | null {
     if (!best || st.winRate > best.rate) best = { race, rate: st.winRate };
   }
   return best;
-}
-
-/* "~를 부르는 자"는 뺐다(지적: 뜻이 명확하지 않다) — 부른다는 말이 '많이 쓴다'인지 '불러
-   낸다'인지 읽는 사람마다 갈렸다. 대신 무엇을 했는지가 바로 읽히는 말만 남긴다. */
-/* 그냥 "많이 뽑았다"는 재미가 없다(지적) — 수가 아니라 그 사람의 고집으로 읽히는 말만
-   남긴다. "닥치고 ○○"·"○○ 없인 못 산다"처럼 한 유닛만 파는 그림이 이 자리의 웃음이다. */
-/* "그것밖에 안 한다"는 말은 뺐다(요청: 하나만 했다는 건 부정적이라 그 요소를 아예 빼기) —
-   닥치고 ○○ · 난 ○○만 뽑는다 · ○○밖에 몰라 · ○○ 하나로 간다. 같은 사실(그 유닛 비중이
-   압도적)이라도 "다른 건 못 한다"로 읽히면 칭호가 아니라 흠이 된다.
-   남긴 넷은 그 유닛을 좋아한다는 말이지 다른 것을 못 한다는 말이 아니다. */
-const UNIT_SAYS: ((n: string) => string)[] = [
-  (n) => `공포의 ${n} 부대`,
-  (n) => `${n} 없인 못 산다`,
-  (n) => `${n} 중독`,
-  (n) => `${n}${sub(n)} 내 운명`,
-  (n) => `${n}${sub(n)} 나의 것`,
-];
-const SKILL_SAYS: ((n: string) => string)[] = [
-  (n) => `${n} 한 방의 여왕`,
-  (n) => `${n}의 대가`,
-  (n) => `${n} 장인`,
-];
-/* 마법은 이름을 되풀이하는 대신 '그게 화면에서 무슨 짓을 하는지'로 부른다(요청: "스톰
-   장인"이 아니라 "번개 전문가"). "○○의 대가/장인" 같은 문틀은 어느 기술에 붙여도 말이
-   되지만 그래서 아무 말도 안 한다 — 여기 있는 마법은 늘 이쪽을 먼저 쓰고, 위 문틀은
-   여기 없는 기술이 아주 많이 쌓였을 때만 나온다(SKILL_PLAIN_MIN). */
-/* (삭제) 컨슘의 "마나 흡혈귀", 다크스웜의 "모래폭풍 술사" — 뺐다(지적: 의미가 안 와닿는다).
-   둘 다 그 마법이 하는 일을 빗대기만 한 말이라, 그 마법을 아는 사람에게도 무슨 소린지
-   한 번 더 생각해야 읽혔다. 빗댄 말은 그 그림이 곧바로 떠오를 때만 값어치가 있다
-   (번개·지뢰밭·버섯구름처럼). 다크스웜은 어차피 제 칭호가 따로 있다(다크스웜의 여신). */
-const SPELL_SPECIAL: Record<string, string[]> = {
-  스톰: ["사이오닉 스톰의 여왕", "사이오닉 스톰 마스터"],
-  /* 리콜은 사전에 없어서 아예 안 불렸다(지적: 스톰보다 리콜이 나와야 하는데 안 나온다) —
-     사전에 없는 기술은 "○○의 대가" 문틀로 가는데 그 문턱이 30점이라, 무게 3인 리콜은
-     열 번을 써야 겨우 닿았다. 왕관("리콜의 마술사")은 1등 한 사람만 가져가므로, 그 뒤의
-     사람에게는 이 자리가 유일한 길이다. */
-  리콜: ["리콜의 여왕", "리콜을 지배하는 자"],
-  마인드컨트롤: ["남의 병력을 빼앗는 자"],
-  플레이그: ["역병을 뿌리는 자", "전염병 살포반"],
-  이레디에이트: ["치명적인 가스 퀸"],
-  락다운: ["묶어 놓고 패기", "락다운 저격수"],
-  EMP: ["실드를 지우는 자"],
-  야마토: ["야마토 한 발", "전함 포격수"],
-  마인: ["지뢰밭 설계자", "밟으면 터진다"],
-  브루들링: ["브루들링 저격수"],
-  인스네어: ["발목 잡기 장인"],
-  스테이시스: ["시간을 멈추는 자"],
-  할루시네이션: ["허깨비 부대장", "분신술사"],
-  마엘스트롬: ["얼려 놓고 패기"],
-  "옵티컬 플레어": ["눈을 멀게 하는 자"],
-  핵: ["핵 배달부"],
-  "디스럽션 웹": ["거미줄 설계자"],
-  리스토레이션: ["응급처치반"],
-};
-/* 마법마다 '한 번 쓰는 것이 얼마나 어려운가'(요청: 기술도 어려운 것에 가중치를) — 횟수에
-   이 값을 곱한 점수로 그 사람의 대표 마법을 고른다.
-
-   횟수만 보면 스톰만 주구장창 나온다(지적). 스톰은 프로토스가 한 판에 열 번도 쓰는 흔한
-   마법이라, 어느 프로토스를 세워도 1위가 스톰이다. 반대로 핵·마엘스트롬·디스럽션 웹은
-   판마다 한두 번 나올까 말까 한 것이라, 그 사람이 그걸 썼다는 사실 자체가 이야기다.
-   그래서 기준선(1.0)을 스톰에 두고, 드물수록 값을 올린다. 마인은 벌처가 지나가며 뿌리는
-   것에 가까워 1 아래다 — 200개를 깔아도 "마인 잘 쓰는 사람"이라는 뜻은 아니다. */
-const SPELL_WEIGHT: Record<string, number> = {
-  /* 늘 누르는 쪽은 더 내린다(요청: 스톰·이레디에이트처럼 그냥 많이 쓰는 기술) — 마법이라도
-     그 종족의 기본 조작에 가까우면 많이 썼다는 말이 "그 종족을 오래 했다"밖에 안 된다.
-     기준선(1.0)은 이제 이 무리다. */
-  마인: 0.4,
-  스톰: 1, 이레디에이트: 1, 다크스웜: 1, 컨슘: 1,
-  플레이그: 2, 인스네어: 2, EMP: 2, 락다운: 2,
-  브루들링: 5,
-  "옵티컬 플레어": 6, 리스토레이션: 6, 할루시네이션: 6,
-  야마토: 8, 스테이시스: 8,
-  마엘스트롬: 10, "디스럽션 웹": 10,
-  /* 드문 쪽 끝은 흔한 쪽과 열 배 넘게 벌린다(지적: 스톰보다 리콜이 나와야 하는데 안 나온다).
-     한 기간에 프로토스는 스톰을 서른 번쯤 뿌리지만 리콜은 두어 번이다 — 무게 차가 그 빈도
-     차를 못 넘으면 아무리 드문 마법도 흔한 마법의 횟수에 늘 묻힌다. 리콜 한 번이 스톰
-     열다섯 번과 같다는 뜻이고, 실제로 그 한 번이 그 사람을 더 말해 준다(아비터를 살려
-     상대 진영까지 데려가야 나오는 장면이다). */
-  리콜: 15,
-  /* 핵은 마인드컨트롤과 같은 꼭대기다. 한때 12까지 올렸는데, 그건 "핵이 칭호에 안 나오는
-     것이 가중치 탓"이라는 짐작에서 나온 값이었다 — 실제 원인은 파싱이었다(아래 참고).
-     원인을 찾은 뒤 제자리로 되돌린다: 값을 사실이 아니라 증상에 맞춰 두면, 나중에 그
-     값을 읽는 사람이 "핵이 마인드컨트롤보다 두 배 어렵다"는 뜻으로 잘못 읽는다. */
-  마인드컨트롤: 15, 핵: 20,
-};
-const SPELL_WEIGHT_DEFAULT = 2;
-/** 대표 마법으로 부르려면 이 점수(횟수 × 가중치)는 넘어야 한다 — 핵 두 방이면 되고,
- *  마인은 스물다섯 개를 깔아야 한다. */
-const SKILL_MIN_SCORE = 8;
-/** 유닛보다 먼저 부를 만큼 드문 마법인가(요청: 기술 사용은 뒤로 내리고 다른 개성을 앞에).
- *
- *  마법을 통째로 뒤로 미루면 리콜·핵처럼 그 한 번이 곧 이야기인 것까지 같이 묻힌다. 그래서
- *  줄을 하나 긋는다: 이 점수를 넘는 드문 마법만 앞줄에 서고(리콜 두 번·마엘스트롬 세 번),
- *  스톰처럼 늘 누르는 것은 유닛·건물이 할 말을 다 한 뒤에야 차례가 온다. */
-const SKILL_RARE_SCORE = 30;
-/** 사전에 없는 기술로 "○○의 대가"를 부르려면 이만큼(요청: 그런 칭호는 재미가 없으니 빈도를
- *  낮춘다) — 흔한 마법을 다섯 번 쓴 것은 그냥 그 종족을 했다는 뜻에 가깝다. */
-const SKILL_PLAIN_SCORE = 30;
-
-/** 그 사람의 대표 마법 — 횟수가 아니라 위 가중치를 곱한 점수로 고른다. */
-function topSpell(d: Record<string, number> | undefined) {
-  const merged: Record<string, number> = {};
-  for (const [key, v] of Object.entries(d ?? {})) {
-    const name = SPELL_KO[key];
-    if (!name || !(v > 0)) continue;
-    merged[name] = (merged[name] ?? 0) + v;
-  }
-  const scored = Object.entries(merged).map(([name, count]) => ({
-    name, count, score: count * (SPELL_WEIGHT[name] ?? SPELL_WEIGHT_DEFAULT),
-  }));
-  return scored.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))[0] ?? null;
-}
-
-/* 마법으로 안 치는 것들(지적: 버로우는 기술로 보기 힘들다) — 원장(techUses)에는 '쓴 기술'이
-   전부 들어오지만, 칭호가 부를 만한 것은 '그걸 잘 써서 판을 바꾸는' 마법뿐이다. 버로우·
-   시즈모드·스팀팩은 그 종족이면 누구나 늘 누르는 조작이라, 많이 썼다는 말이 곧 "그 종족을
-   오래 했다"밖에 안 된다. 럴커(럴커 애스펙트)는 쓴 것이 아니라 변태 연구이고, 클로킹은
-   이미 '보이지 않는 손'(cloak-wraith)이 제 칭호로 말한다. */
-const NOT_A_SPELL = new Set([
-  "Burrowing", "Tank Siege Mode", "Stim Packs", "Lurker Aspect",
-  "Cloaking Field", "Personnel Cloaking",
-]);
-const SPELL_KO: Record<string, string> = Object.fromEntries(
-  Object.entries(TECH_KO).filter(([key]) => !NOT_A_SPELL.has(key)),
-);
-const BUILD_SAYS: ((n: string) => string)[] = [
-  (n) => `${n} 애호가`,
-  (n) => `${n}의 여주인`,
-];
-
-/** 원장에서 많이 나온 순 목록(이름·수·비중) — 이름은 한국어 사전을 거친 뒤에 합친다.
- *  탱크처럼 영문명 둘이 한국어 하나인 경우가 있어 먼저 세면 제 몫이 갈린다.
- *
- *  1등 하나만 보지 않는 이유(지적: 다들 "묵묵히 한 판 더"만 나온다): 그 이름의 임자가 이미
- *  딴 칭호를 받았으면 이 사람은 아무 말도 못 듣는다. 두세 번째까지 훑으면 "히드라가 병력의
- *  28%"처럼 여전히 사실인 다른 말이 남아 있다. */
-function topList(d: Record<string, number> | undefined, ko: Record<string, string>, n = 3) {
-  const merged: Record<string, number> = {};
-  let total = 0;
-  for (const [key, v] of Object.entries(d ?? {})) {
-    const name = ko[key];
-    if (!name || !(v > 0)) continue;
-    merged[name] = (merged[name] ?? 0) + v;
-    total += v;
-  }
-  if (total <= 0) return [];
-  return Object.entries(merged)
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .slice(0, n)
-    .map(([name, count]) => ({ name, count, share: count / total }));
-}
-
-/** 같은 글자가 표에 두 번 서지 않도록 문틀을 하나씩 밀어 가며 고른다 — 두 사람이 똑같이
- *  럴커를 모아도 한 명은 "공포의 럴커 부대", 다른 한 명은 "닥치고 럴커"가 된다.
- *  시작 자리는 회원 id로 정해 조회할 때마다 말이 바뀌지 않게 한다. */
-function pick(says: ((n: string) => string)[], name: string, seed: number, used: Set<string>): string | null {
-  for (let i = 0; i < says.length; i++) {
-    const text = says[(seed + i) % says.length](name);
-    if (!used.has(text)) return text;
-  }
-  return null;
-}
-
-function seedOf(id: string): number {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return h;
-}
-
-/* 한 마법·한 유닛은 한 사람만(지적: 같은 스톰이 여러 명한테 붙는다) — 문틀만 갈아 "스톰의
-   여왕"과 "스톰 마스터"로 나눠 줘 봤지만, 표에서는 결국 스톰 이야기가 두 줄이 된다.
-   칭호가 그 사람을 가리키려면 그 재료를 나눠 갖지 말아야 한다. 이름을 먼저 집은 사람이
-   가져가고, 나머지는 제 다음 재료(유닛 → 건물 → 전적)로 내려간다. */
-/** 이름 → 그 이름을 가장 많이 쓴 사람의 id. 마법·유닛·건물 이름마다 임자를 미리 정해 둔다.
- *
- *  임자가 딴 칭호를 받아 이 이름을 안 쓰게 되면 그 이름은 그냥 안 나간다(지적: 더 많이 쓴
- *  사람이 있는데 다른 사람이 이어받는다) — 왕관에서 물려주기를 없앤 것과 같은 이유다.
- *  "스톰의 여왕"이 두 번째로 많이 쓴 사람에게 붙으면 그 말이 거짓이 된다. */
-function ownersOf(
-  pool: EpithetSubject[], of: (m: BuildMix) => Record<string, number> | undefined,
-  ko: Record<string, string>, by: "count" | "share" | "perPlay" = "count",
-): Map<string, NameStat> {
-  const all = new Map<string, { id: string; v: number }[]>();
-  for (const p of pool) {
-    const m = p.stats.buildMix;
-    if (!m) continue;
-    const merged: Record<string, number> = {};
-    let total = 0;
-    for (const [key, v] of Object.entries(of(m) ?? {})) {
-      const name = ko[key];
-      if (!name || !(v > 0)) continue;
-      merged[name] = (merged[name] ?? 0) + v;
-      total += v;
-    }
-    for (const [name, count] of Object.entries(merged)) {
-      /* 유닛·건물은 '많이 뽑은 사람'이 아니라 '그 비중이 가장 큰 사람'이 임자다(지적: 질럿
-         칭호가 네 명한테 붙었다) — 칭호가 말하는 값이 비중이라("질럿이 병력의 78%"), 임자도
-         같은 자로 정해야 그 말이 한 사람 것이 된다. */
-      /* perPlay는 '판당 몇 채'다(지적: 게이트는 비중이 아니라 절대 개수도 중요하다) —
-         건물은 비중으로만 보면 게이트 세 채만 지은 사람이 "건물의 100%"가 되어 임자가 된다.
-         총량으로 보면 이번엔 많이 뛴 사람이 늘 이기므로, 판수로 나눠 한 판의 그림으로 만든다. */
-      const plays = p.stats.mixPlays ?? 0;
-      const v = by === "share" ? (total > 0 ? count / total : 0)
-        : by === "perPlay" ? (plays > 0 ? count / plays : 0)
-          : count;
-      (all.get(name) ?? all.set(name, []).get(name)!).push({ id: p.id, v });
-    }
-  }
-  const out = new Map<string, NameStat>();
-  for (const [name, rows] of all) {
-    // 같은 값이면 id로 갈라 조회할 때마다 임자가 바뀌지 않게 한다.
-    const top = [...rows].sort((a, b) => b.v - a.v || a.id.localeCompare(b.id))[0];
-    out.set(name, { id: top.id, med: median(rows.map((r) => r.v)), top: top.v });
-  }
-  return out;
-}
-
-/** 이름 하나에 대한 무리 전체의 그림 — 임자와, 그 무리의 한가운데 값. */
-interface NameStat {
-  /** 그 이름을 가장 크게 쓰는 사람. */
-  id: string;
-  /** 그 이름을 쓰는 사람들의 한가운데 값 — '상대적으로 앞서는가'를 재는 기준선이다. */
-  med: number;
-  /** 1등 값 — 지금은 안 쓰지만 근거 문장을 늘릴 때 필요하다. */
-  top: number;
-}
-
-interface NameOwners {
-  spell: Map<string, NameStat>;
-  unit: Map<string, NameStat>;
-  build: Map<string, NameStat>;
-}
-
-function signature(
-  id: string, s: MemberStats, used: Set<string>, owners: NameOwners,
-): Epithet | null {
-  const seed = seedOf(id);
-  const m = s.buildMix;
-  if (m) {
-    /* 마법을 유닛보다 먼저 본다(지적: 단순히 많이 뽑은 유닛은 재미가 없다) — 스톰·리콜처럼
-       쓰기 어려운 것은 한 번만 나와도 그 사람 이야기가 되지만, 많이 뽑은 유닛은 대개 그
-       종족의 주력이라 종족이 같으면 다 같은 말이 된다.
-       비중을 안 따지는 것도 그래서다 — 가장 많이 쓴 것 하나면 충분하다. */
-    const skill = topSpell(m.skills);
-    /** 마법 한 줄 만들기 — 사전에 있으면 그 말을, 없으면 문틀을(아주 많이 쌓였을 때만). */
-    const skillLine = (): Epithet | null => {
-      if (!skill || owners.spell.get(skill.name)?.id !== id || skill.score < SKILL_MIN_SCORE) return null;
-      const special = SPELL_SPECIAL[skill.name];
-      const t = (special && pick(special.map((label) => () => label), skill.name, seed, used))
-        || (skill.score >= SKILL_PLAIN_SCORE ? pick(SKILL_SAYS, skill.name, seed, used) : null);
-      return t ? { label: t, why: `게임에서 ${skill.name} ${skill.count}번` } : null;
-    };
-    // 드문 마법만 유닛보다 앞이다(SKILL_RARE_SCORE) — 나머지는 아래에서 마지막으로 본다.
-    if (skill && owners.spell.get(skill.name)?.id === id && skill.score >= SKILL_RARE_SCORE) {
-      const t = skillLine();
-      if (t) return t;
-    }
-    /* 병력의 3분의 1을 한 유닛이 차지하면 그건 주력이 아니라 고집이다 — 4분의 1에서 올렸다:
-       그 정도는 어느 종족에나 있는 주력 비중이라 "닥치고 ○○"이라 부를 만한 그림이 아니다.
-       일꾼·보급은 애초에 이 원장에 없다(replayBuildMix) — 그래서 이 비율이 곧 병력 구성이다. */
-    for (const unit of topList(m.units, UNIT_KO)) {
-      /* 임자(그 유닛 비중이 가장 큰 사람)만 그 이름으로 불린다(지적: 질럿이 네 명). 한때
-         "비중 50% 넘으면 임자가 아니어도"라는 예외를 뒀는데, 프로토스 넷이 다 질럿 절반을
-         넘겨 그 예외가 곧 규칙이 됐다. 문틀을 달리해도 표에서는 결국 질럿 이야기가 네 줄이다. */
-      /* 임자이면서, 무리 한가운데보다 확실히 앞서야 한다(지적: 제 기록 안에서 비중이 높다고
-         줄 것이 아니라 회원들 간 상대 우위를 봐야 한다) — 다들 질럿이 6할인 클럽에서 6할은
-         평범한 값이고, 그 안에서 8할인 사람만 "질럿밖에 몰라"라 부를 수 있다. */
-      const own = owners.unit.get(unit.name);
-      if (!own || own.id !== id || unit.share < own.med * NAME_EDGE) continue;
-      // 두 번째·세 번째 유닛은 비중이 낮게 마련이라 문턱도 낮춘다 — 그래도 넷 중 하나는
-      // 되어야 "그 유닛으로 푸는 사람"이라 부를 수 있다.
-      /* 판당 몇 기는 뽑았어야 한다(지적) — 비중만 보면 한 판에서 몰아 뽑은 사람도 통과한다.
-         스무 판에 스무 기면 판당 한 기라, 그 유닛으로 판을 푼다고 말하기 어렵다. */
-      const perPlay = (s.mixPlays ?? 0) > 0 ? unit.count / (s.mixPlays as number) : 0;
-      if (unit.count < 10 || perPlay < 2) continue;
-      if (unit.share < (unit === topList(m.units, UNIT_KO)[0] ? 0.33 : 0.25)) continue;
-      const t = pick(UNIT_SAYS, unit.name, seed, used);
-      if (t) return { label: t, why: `${unit.name}${ga(unit.name)} 병력의 ${Math.round(unit.share * 100)}%` };
-    }
-    /* 건물은 마지막이다 — 종족이 정해지면 짓는 것도 대체로 정해져서, 유닛·마법만큼 그
-       사람을 가르지 못한다. */
-    for (const build of topList(m.buildings, BUILDING_KO)) {
-      const ownB = owners.build.get(build.name);
-      // 건물은 판당 몇 채로 잰다(위 perPlay 주석) — 비중만 보면 몇 채 안 지은 사람이 임자가 된다.
-      const perPlay = (s.mixPlays ?? 0) > 0 ? build.count / (s.mixPlays as number) : 0;
-      if (!ownB || ownB.id !== id || perPlay < ownB.med * NAME_EDGE) continue;
-      if (build.count < 10) continue;
-      const t = pick(BUILD_SAYS, build.name, seed, used);
-      if (t) return { label: t, why: `${build.name}${ga(build.name)} 판당 ${perPlay.toFixed(1)}채` };
-    }
-    // 흔한 마법은 여기까지 와서야 차례다(요청: 기술 사용은 아래로) — 유닛·건물이 할 말을
-    // 다 했는데도 부를 것이 없을 때만 "스톰 마스터"가 된다.
-    const late = skillLine();
-    if (late) return late;
-  }
-  /* 전적만 보고 지어 주던 말들("묵묵히 한 판 더", "다음 판의 주인공" 등)은 통째로 걷었다
-     (요청: 그냥 주는 칭호보다 차라리 칭호 없음). 누구에게나 해당하는 말은 그 사람을 가리키지
-     못하고, 표에 여러 줄이 그런 말로 서면 정작 진짜 칭호까지 그저 그런 장식으로 읽힌다.
-     여기까지 와서 부를 것이 없으면 화면이 그 자리를 "칭호 없음"으로 적는다. */
-  return null;
 }
 
 /** 이 칭호를 잴 때의 분모 — 종족을 타는 칭호는 그 종족 판수다(Title.race).
@@ -1177,19 +907,8 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
     used.add(c.label);
   }
 
-  /* 이름마다 임자를 먼저 정한다(위 ownersOf) — 가장 많이 쓴 사람만 그 이름으로 불리고,
-     그 사람이 딴 칭호를 받았으면 그 이름은 아무에게도 안 간다. */
-  const owners: NameOwners = {
-    spell: ownersOf(pool, (m) => m.skills, SPELL_KO),
-    unit: ownersOf(pool, (m) => m.units, UNIT_KO, "share"),
-    build: ownersOf(pool, (m) => m.buildings, BUILDING_KO, "perPlay"),
-  };
-  for (const p of pool) {
-    if (out.has(p.id) || p.stats.plays < MIN_PLAYS) continue;
-    const found = signature(p.id, p.stats, used, owners);
-    if (!found) continue;
-    out.set(p.id, found);
-    used.add(found.label);
-  }
+  /* (삭제) 표에서 아무것도 못 받은 사람에게 제 기록으로 별명을 지어 주던 대목 — 위
+     '특징' 주석대로 통째로 걷었다(요청). 여기까지 와서 이름이 없으면 화면이 그 자리를
+     "칭호 없음"으로 적는다. */
   return out;
 }
