@@ -56,13 +56,15 @@ const CROWN_SCORE = 3;
    둘 다 물어야 한다.
    급마다 다른 이유: 1급은 한 번이 곧 이야기인 드문 수(핵·리콜·성큰러시)라 같은 잣대를 대면
    통째로 잠긴다. 그래도 0은 아니다 — 스무 판에 딱 한 번은 그 사람의 색이라기엔 얇다. */
-const COUNT_SHARE: Record<number, number> = { 1: 0.03, 2: 0.06 };
+const COUNT_SHARE: Record<number, number> = { 1: 0.04, 2: 0.06 };
 /* 한때 상한을 뒀다("아무리 많이 뛰어도 여섯 번이면 인정") — 걷어냈다(지적: 상한보다 비율
    자체를 낮추는 편이 합리적이다). 상한은 그 지점부터 비례가 끊겨, 백 판 뛴 사람과 예순 판
    뛴 사람에게 같은 수를 요구한다 — 많이 뛴 쪽이 오히려 쉬워지는 셈이다. 비율을 낮추면
    눈금이 끝까지 한 가지다.
-   지금 값으로 보면, 마흔 판 뛴 사람에게 흔한 수는 세 번(6%)·드문 수는 두 번(3%)이고,
-   여든 판이면 다섯 번·세 번이다. 한 번은 우연이지만 두세 번은 버릇이다. */
+   드문 수(1급)의 몫만 3% → 4%로 살짝 올렸다(요청: 전설·에픽의 문턱을 조금씩 높이기) —
+   그쪽이 곧 왕관이 걸리는 자리라, 같은 6%를 대는 흔한 수보다 오히려 쉬웠다.
+   지금 값으로 보면, 마흔 판 뛴 사람에게 흔한 수는 세 번(6%)·드문 수는 두 번(4%)이고,
+   여든 판이면 다섯 번·네 번이다. 한 번은 우연이지만 두세 번은 버릇이다. */
 const LEAD_PLAYS_SHARE = 0.5;
 
 export interface EpithetSubject {
@@ -150,11 +152,13 @@ function median(vals: number[]): number {
 }
 
 /* ── 유독 잘하는 맵 ──────────────────────────────────────────────────────────── */
-/** 한 맵을 '잘한다'고 부르려면 이만큼은 뛰어야 한다 — 두 판 다 이겼다고 지배자는 아니다. */
-const MAP_MIN_PLAYS = 6;
-/** 그리고 이만큼은 이겨야 한다 — 60 → 70%(요청: 종족 칭호처럼 진짜 승률이 높은 경우만).
- *  6할은 '그 맵에서 좀 낫다'는 뜻이지 그 맵의 주인이라는 말은 아니다. */
-const MAP_MIN_RATE = 0.7;
+/** 한 맵을 '잘한다'고 부르려면 이만큼은 뛰어야 한다 — 두 판 다 이겼다고 지배자는 아니다.
+ *  6 → 8판(요청: 전설·에픽의 문턱을 조금씩 높이기) — 맵 칭호는 왕관 계열이라 그 이름을
+ *  달려면 그 맵에서 한동안 살아 봤어야 한다. */
+const MAP_MIN_PLAYS = 8;
+/** 그리고 이만큼은 이겨야 한다 — 60 → 70 → 72%(요청). 7할은 종족·전체 승률 칭호와 같은
+ *  선이라, 셋이 같은 잣대를 쓴다. */
+const MAP_MIN_RATE = 0.72;
 
 /* 맵 이름 뒤에 붙는 말(요청: 맵 이름 뒤에 붙여서 재밌게) — "헌터의 여주인", "빨무의
    안주인", "투혼의 황녀"처럼 맵마다 다른 말이 붙는다. 고르는 자는 맵 이름이다: 같은 맵은
@@ -419,7 +423,7 @@ const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker",
    아니다(핵·리콜과 다른 점이다).
    10%에 최소 두 번 — 프로토스로 서른 판 뛰었으면 세 번, 스무 판이면 두 번이다. 그쯤이면
    "이 사람은 포토러시를 하는 사람"이라 부를 만하다. */
-const RUSH_SHARE = 0.1;
+const RUSH_SHARE = 0.12;
 const RUSH_MIN = 2;
 const RUSH_TACTICS = new Set(["cannon-rush", "sunken-rush"]);
 
@@ -771,7 +775,7 @@ const TITLES: Title[] = [
        승률은 아무리 잘해도 100%를 못 넘어서 그 다툼에서는 구조적으로 진다. 그런데 클럽에서
        진짜 값어치 있는 사실은 이쪽이다: 열두 판 넘게 그 종족으로 뛰고 일곱 판을 이겼다는
        말은 재미가 아니라 실력이다. */
-    label: "{n}", weight: 6, sticky: true, pool: 1, edge: 1, min: 70, why: "그 종족 승률", unit: "%",
+    label: "{n}", weight: 6, sticky: true, pool: 1, edge: 1, min: 72, why: "그 종족 승률", unit: "%",
     value: (_s, of) => bestRace(of)?.rate ?? null,
     name: (_s, of) => { const best = bestRace(of); return best ? racePhrase(best.race) : null; },
   },
@@ -789,7 +793,7 @@ const TITLES: Title[] = [
        종족을 골라 잡은 승률이 아니라 나온 판을 통째로 놓고 일곱 판을 이겼다는 말이라,
        고를 것이 없는 만큼 더 어렵다. 둘 다 걸린 사람에게는 이쪽이 간다(같은 급 안에서는
        무게가 갈라 준다). */
-    label: "승리의 여신", weight: 9, sticky: true, min: 70, why: "승률", unit: "%",
+    label: "승리의 여신", weight: 9, sticky: true, min: 72, why: "승률", unit: "%",
     value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null),
   },
   { label: "BEST 수집퀸", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
