@@ -492,7 +492,7 @@ const TITLES: Title[] = [
   /* (삭제) 브루들링 저격수 · 눈을 멀게 하는 자(옵티컬 플레어) · 허깨비 부대장(할루시네이션)
      — 요청으로 뺐다. 셋 다 쓰기 어려운 마법이긴 한데, 그 한 번이 판을 가르는 그림까지는
      아니라 이름만 요란해진다. */
-  { ...tactic("헬프 퀸", ["ally-help"]), minPlaysShare: 0.2 },
+  { ...tactic("헬프 퀸", ["ally-help"]), minPlaysShare: 0.25 },
   tactic("동맹의 수호자", ["ally-cannon"]),
   /* 입구막기는 '막았다'가 아니라 '막아 놓고 뒤에서 컸다'가 값어치다(판정도 발전까지 함께
      본다 — replayTactics의 WALL_IN_GROW_MIN). 그래서 칭호도 막은 쪽이 아니라 그다음을
@@ -669,8 +669,7 @@ const TITLES: Title[] = [
      전원이 걸렸다 — 자막이 그 대목을 워낙 자주 짚는다) — 기본값 대신 그 대목의 실제 빈도에
      맞는 비율을 따로 건다. 값은 시뮬레이션 실측 분포의 꼭대기 한둘만 남게 맞춘 것이다
      (올렸다 내렸다 몇 차례 — 65%까지 조였더니 이번엔 아무도 못 받았다): 격차 55% ·
-     역전·정찰 40%(지적: 문턱을 높이라는 뜻이었다 — 잠깐 반대로 내렸었다) ·
-     매너 28% · 헬프 20%. 실측이 바뀌면 이 값도 같이 움직여야 한다. */
+     역전·정찰 40% · 매너 35% · 헬프 25%. 실측이 바뀌면 이 값도 같이 움직여야 한다. */
   { ...tactic("다산의 상징", ["prod-gap"]), minPlaysShare: 0.55 },
   /* (삭제) 병력 사재기 — 뺐다(요청). "많이 모았다"는 시간을 들이면 누구나 닿는 값이고,
      그 병력으로 무엇을 했는지는 말해 주지 않는다. 물량 자체는 '물량퀸'이 이미 잰다. */
@@ -702,7 +701,7 @@ const TITLES: Title[] = [
   /* GG를 친 판을 모은다(요청: ㅈㅈ 친 것도 다 모아서 매너 퀸) — 진 것을 인정하고 손을 내미는
      일이라, 이기고 지고와 무관하게 센다(COUNTED_EVEN_IF_LOST). 자막이 이미 그 한마디를
      장면으로 잡아 두고 있어 따로 셀 것이 없다. */
-  { ...tactic("매너 퀸", ["gg"]), minPlaysShare: 0.28 },
+  { ...tactic("매너 퀸", ["gg"]), minPlaysShare: 0.35 },
   /* (삭제) 프로를 닮았다는 이야기(pro-like) — 뺐다(지적: 별로 의미가 안 된다).
      자막에서는 "○○ 못지않은 △△"처럼 누구를 닮았는지가 함께 나와야 뜻이 서는 말인데,
      칭호가 세는 것은 문장 틀 키뿐이라 그 이름이 빠진다. 이름 없는 "프로 스타일"은
@@ -786,9 +785,12 @@ const TITLES: Title[] = [
     label: "팔색조 여인", weight: 2, pool: 1, edge: 1, min: 3, scale: "count",
     minPlaysShare: 0, why: "고루 쓴 종족", unit: "개",
     value: (_s, of) => {
+      /* 종족당 판수 문턱 12 → 18(지적: 팔색조 문턱이 낮다) — 종족 수는 셋이 끝이라 더 올릴
+         칸이 없고, 대신 한 종족을 '했다'고 칠 판수를 올린다. 열여덟 판이면 그 종족으로
+         한 시즌을 산 것이다. */
       const played = Object.values(of.races ?? {})
         .map((st) => st?.plays ?? 0)
-        .filter((n) => n >= MIN_PLAYS_MODE);
+        .filter((n) => n >= 18);
       if (played.length < 2) return null;
       // 종족 수가 같으면 가장 적게 쓴 종족의 판수가 크는 쪽이 이긴다(0.001은 그 잣대의 자리).
       return played.length + Math.min(...played) * 0.001;
@@ -839,7 +841,7 @@ const TITLES: Title[] = [
     value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null),
   },
   /* "최다"를 뗐다(요청: 절대평가) — 이제 1위가 아니라 열 번을 넘긴 사람 전부다. */
-  { label: "BEST 퀸", weight: 6, min: 20, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
+  { label: "BEST 퀸", weight: 6, min: 25, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
   /* 졌잘싸 퀸(요청) — 진 판에서 BEST로 뽑힌 수다. 판을 가장 많이 만들고도 졌다는 말이라,
      이기고 지고를 안 가리는 BEST 수집퀸과는 다른 이야기를 센다. 무게는 그보다 한 뼘
      아래다: 잘 싸운 것은 맞지만 이긴 판의 BEST와 같은 값으로 둘 수는 없다. */
