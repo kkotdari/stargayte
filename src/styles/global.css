@@ -248,11 +248,12 @@
      같은 눈금에 맞췄다(밝기 한 벌이 흐트러지면 그 배지만 튀어 보인다). */
   --kind-notice: #f9b48c;
   --kind-none: #b6bcc4;
-  /* 승·무·패 동그라미(.scr-activity-outcome) — 다크는 밝은 채움에 먹색 글자. */
-  --outcome-win: #4caf50;
-  --outcome-draw: #9aa0a6;
-  --outcome-lose: #ef5350;
-  --outcome-ink: #10151a;
+  /* 승·무·패 동그라미(.scr-activity-outcome) — 채움은 옅게 깔고 글자는 그 테마의 기본
+     잉크를 그대로 쓴다(요청). 그래서 다크는 어두운 채움이다: 밝은 채움 위에 흰 글자를
+     얹으면 글자가 녹는다. 색은 "무슨 결과인가"만 거들고, 읽는 것은 글자가 진다. */
+  --outcome-win: rgba(76, 175, 80, 0.26);
+  --outcome-draw: rgba(154, 160, 166, 0.22);
+  --outcome-lose: rgba(239, 83, 80, 0.26);
   /* 배지 글자는 다섯이 같은 먹색이다(요청) — 갈래는 바탕만으로 말한다. 값을 앱의 기본
      잉크(--text)가 아니라 먹색 하나로 못박는 이유: 배지 바탕은 테마를 안 타는데 --text는
      테마마다 뒤집히므로, 그걸 쓰면 다크에서 흰 글자가 밝은 바탕에 녹는다. */
@@ -1016,12 +1017,10 @@ html.scr-light-theme {
   --point: #000000;
   --point-rgb: 0, 0, 0;
   --point-contrast: #ffffff;
-  /* 흰 바탕에서는 채움을 내리고 글자를 흰색으로 뒤집는다 — 밝은 채움 + 먹색 글자를 그대로
-     쓰면 9px 글자가 배지 안에서 녹는다(위 .scr-activity-outcome 주석). */
-  --outcome-win: #2e7d32;
-  --outcome-draw: #6b7280;
-  --outcome-lose: #c62828;
-  --outcome-ink: #ffffff;
+  /* 흰 바탕에서는 반대로 밝게 깐다 — 글자가 검정이라 채움이 진하면 그쪽이 먼저 읽힌다. */
+  --outcome-win: rgba(46, 125, 50, 0.18);
+  --outcome-draw: rgba(107, 114, 128, 0.16);
+  --outcome-lose: rgba(198, 40, 40, 0.16);
   /* 위 --stat-me-tint 주석 참고 — 흰 바탕에 얹는 검정은 같은 알파라도 더 무겁게 보여
      다크(흰색 0.10)보다 얕게 깐다. */
   --stat-me-tint: rgba(0, 0, 0, 0.055);
@@ -9313,9 +9312,8 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
    덜 준다. 두 편 이름과 같은 크기면 그것도 이름처럼 읽히므로 한 스텝 작게, 흐리게 둔다. */
 .scr-activity-row-vs {
   /* 승·무·패 동그라미가 이 안에 함께 선다 — vs와는 넉넉히 떼고(gap 7px), 바깥쪽(이름 쪽)은
-     오히려 당긴다(요청). 배지는 그 편의 결과라 제 편 이름에 붙어 있어야 누구 것인지가
-     읽히고, 가운데 vs와는 떨어져야 셋이 한 덩어리로 뭉치지 않는다. */
-  display: inline-flex; align-items: center; gap: 7px;
+     4px으로 둔다(요청) — 배지·vs·배지가 한 덩어리로 읽히되 서로 붙어 뭉치지는 않는 폭이다. */
+  display: inline-flex; align-items: center; gap: 4px;
   margin: 0 2px; font-size: var(--fs-11); font-weight: 700; letter-spacing: 0.04em;
 }
 /* 경기 줄만 가로로 눌러 납작하게 만든다(요청: "글자 크기를 줄이는 게 아니라 폭만 줄이기").
@@ -11785,7 +11783,7 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   display: inline-flex; align-items: center; justify-content: center;
   width: 16px; height: 16px; border-radius: 50%; flex: none;
   font-size: var(--fs-9); font-weight: 800; line-height: 1;
-  background: var(--kind, var(--kind-none)); color: var(--kind-ink);
+  background: var(--kind, var(--kind-none));
 }
 /* 색은 초록·회색·빨강이다(요청) — 승패는 갈래가 아니라 결과라, 배지 팔레트(파스텔 다섯)를
    빌려 쓰면 옆의 유형 배지와 같은 말을 하는 것처럼 보인다. 초록은 청록 쪽이 아니라 정녹색이다
@@ -11795,10 +11793,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-activity-outcome-win { --kind: var(--outcome-win); }
 .scr-activity-outcome-draw { --kind: var(--outcome-draw); }
 .scr-activity-outcome-lose { --kind: var(--outcome-lose); }
-.scr-activity-outcome { color: var(--outcome-ink); }
-/* 이름 쪽 여백만 당긴다 — 위 gap(7px)은 vs와의 사이로 남고, 이름과는 2px까지 붙는다. */
-.scr-activity-outcome:first-child { margin-left: -3px; }
-.scr-activity-outcome:last-child { margin-right: -3px; }
+.scr-activity-outcome { color: var(--text); }
+/* (삭제) 이름 쪽으로 당기던 음수 마진 — 걷었다(요청). 줄이 좁아지면 이름 글자와 배지가
+   실제로 겹쳐 보였다. */
 
 /* 빵부스러기의 앞머리 — 글자는 제목 그대로이고 누를 수 있다는 것만 손끝에서 드러난다.
    밑줄이나 색을 입히지 않는 이유: 제목 줄에 링크 색이 하나 끼면 그 줄이 제목이 아니라
