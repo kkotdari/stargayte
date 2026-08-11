@@ -11881,6 +11881,36 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   color: color-mix(in srgb, var(--best-ink) 62%, transparent);
 }
 
+/* 회원 프로필의 보유 칭호(요청) — 닉네임 아래 한 줄. 통계 표의 칭호와 같은 값이라 같은
+   톤(옅게)으로 적는다. */
+.scr-member-profile-epithet { color: var(--muted); font-size: var(--fs-caption); margin-top: 2px; word-break: keep-all; }
+
+/* 칭호 설명 모달(요청: 부활 + 목록) — 등급 머리 아래 [이름 / 조건] 두 칸 줄. */
+.scr-epithet-guide { max-width: 520px; }
+.scr-epithet-guide-lead {
+  margin: 0 0 12px; color: var(--muted); font-size: var(--fs-caption); line-height: 1.5;
+  word-break: keep-all;
+}
+.scr-epithet-guide-group + .scr-epithet-guide-group { margin-top: 16px; }
+.scr-epithet-guide-rank {
+  margin: 0 0 8px; font-size: var(--fs-caption); font-weight: 800; color: var(--muted);
+  letter-spacing: 0.04em;
+}
+.scr-epithet-guide-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.scr-epithet-guide-row {
+  display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr); gap: 2px 10px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--line-hair);
+}
+.scr-epithet-guide-row:last-child { border-bottom: none; padding-bottom: 0; }
+.scr-epithet-guide-name { font-weight: 700; color: var(--text); word-break: keep-all; }
+.scr-epithet-guide-how {
+  color: var(--muted); font-size: var(--fs-caption); line-height: 1.45; word-break: keep-all;
+}
+.scr-epithet-guide-won { color: var(--dim); }
+@media (max-width: 1159px) {
+  .scr-epithet-guide-row { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* 칭호 시뮬레이션(관리자) — 회원 한 덩어리에 [프사 닉네임] 아래 자격 전부가 줄줄이 선다.
    실제로 받는 한 줄만 왕관을 달고 진하게, 내준 자격은 옅게 — 이 창의 물음이 "칭호가 어디에
    몰리고 무엇이 사장되나"라, 그 둘이 한눈에 갈려야 한다. */

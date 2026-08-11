@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import Avatar from "../components/common/Avatar";
 import PhotoViewer from "../components/common/PhotoViewer";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
+import { useEpithets } from "../utils/useEpithets";
 import type { Member } from "../types";
 
 interface MemberProfileModalProps {
@@ -16,6 +17,7 @@ interface MemberProfileModalProps {
 export default function MemberProfileModal({ member, onClose }: MemberProfileModalProps) {
   useLockBodyScroll();
   const [photoOpen, setPhotoOpen] = useState(false);
+  const epithet = useEpithets().get(member.id);
 
   return createPortal(
     <div className="scr-modal-overlay">
@@ -37,10 +39,13 @@ export default function MemberProfileModal({ member, onClose }: MemberProfileMod
               <Avatar member={member} size={56} />
             </button>
             <div>
-              {/* (삭제) 칭호 — 내전 화면에서만 보여준다(요청: 칭호는 내전만 대상으로 집계하고
-                  내전에서만 표시). 잣대가 내전 기록 하나로 좁아진 값이라, 그 화면 밖에 걸리면
-                  무엇으로 얻은 말인지가 사라진다. */}
               <div className="scr-member-detail-name">{member.nickname}</div>
+              {/* 현재 보유한 칭호(요청) — 통계 표가 보여주는 그 대표 칭호다(서버에 저장된
+                  값을 읽는 useEpithets와 같은 자리). 한때 "내전 화면에서만"이라고 뺐는데,
+                  프로필이야말로 그 사람을 부르는 말이 설 자리라 되살렸다. */}
+              {epithet && (
+                <div className="scr-member-profile-epithet" title={epithet.why}>{epithet.label}</div>
+              )}
               <div className="scr-member-detail-tag scr-mono">{member.battletag}</div>
             </div>
           </div>

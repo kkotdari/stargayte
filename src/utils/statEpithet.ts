@@ -963,6 +963,67 @@ export function lastEpithetClaims(): EpithetClaimRow[] {
   return lastClaims;
 }
 
+/** 칭호 설명(요청: 버튼 부활 + 목록) — 이름과 "어떻게 받나"를 표(TITLES)에서 그때그때
+ *  만든다. 절대평가라 조건이 곧 설명이다: 손으로 적어 두면 문턱을 고칠 때마다 두 곳이
+ *  어긋나고, 이 화면은 그 어긋남이 바로 거짓말이 되는 자리다. */
+export type EpithetRank = "전설" | "에픽" | "일반";
+
+export interface EpithetGuideRow {
+  label: string;
+  how: string;
+  rank: EpithetRank;
+  /** 이긴 판만 세는 칭호인가 — 설명에 그 한마디를 덧붙인다. */
+  wonOnly: boolean;
+}
+
+export function epithetGuideRows(): EpithetGuideRow[] {
+  const pct = (v: number) => `${Math.round(v * 100)}%`;
+  const rows = TITLES.map((t) => {
+    const tier = t.tier ?? 2;
+    const boost = TIER_BOOST[tier] ?? 1;
+    const score = (t.weight ?? 0) * boost;
+    const count = t.scale === "count";
+    const share = t.minPlaysShare ?? (count ? COUNT_SHARE[tier] ?? COUNT_SHARE[2] : 0);
+    const where = t.race ? `${t.race} 판` : "제 판";
+    // 마법 칭호의 근거는 문장으로 적혀 있다("게임에서 핵 사용") — 설명에서는 앞머리를 걷는다.
+    const what = (t.why ?? "기록").replace(/^게임에서 /, "");
+    const bits: string[] = [];
+    if (count) {
+      if (share > 0) bits.push(`${what} ${where}의 ${pct(share)} 이상`);
+      else bits.push(`${what}`);
+      if ((t.min ?? 1) > 1) bits.push(`최소 ${t.min}${t.unit ?? "번"}`);
+    } else {
+      if (t.min !== undefined) {
+        bits.push(`${what} ${t.min < 1 ? pct(t.min) : `${t.min}${t.unit ?? ""}`} 이상`);
+      } else {
+        bits.push(what);
+      }
+    }
+    /* 등급은 구조로 가른다 — 전설은 승률 계열(sticky), 에픽은 3점 이상, 나머지가 일반.
+       이름 짓는 규칙(표 머리)과 같은 선이다. */
+    const rank: EpithetRank = t.sticky === true ? "전설" : score >= 3 ? "에픽" : "일반";
+    return { label: t.label, how: bits.join(" · "), rank, wonOnly: t.won === true, score };
+  });
+  /* 이름이 사람마다 달라지는 두 줄({n})은 손으로 적는다 — 맵·종족 이름이 들어가야 말이
+     되는데, 표에는 그 자리가 비어 있다. */
+  return rows.map((r) => {
+    if (r.label !== "{n}") return r;
+    if (r.how.startsWith("그 맵 승수")) {
+      return {
+        ...r,
+        label: "○○의 여왕 (맵 이름이 앞에 붙어요)",
+        how: `그 맵에서 ${MAP_MIN_PLAYS}판 이상 · 승률 ${Math.round(MAP_MIN_RATE * 100)}% 이상`,
+      };
+    }
+    return {
+      ...r,
+      label: "저그의 절대군주 · 프로토스의 수호자 · 테란의 전설",
+      how: `그 종족으로 ${MIN_PLAYS_MODE}판 이상 · 제 판의 ${pct(RACE_MIN_SHARE)} 이상 · 승률 70% 이상`,
+    };
+  }).sort((a, b) => (Number(b.rank === "전설") - Number(a.rank === "전설")) || (b.score - a.score))
+    .map(({ label, how, rank, wonOnly }) => ({ label, how, rank, wonOnly }));
+}
+
 /** 회원 → 화면에 보일 칭호 하나(그 사람이 얻은 것 중 가장 높은 것).
  *
  *  절대평가다(요청) — 한때 거의 모든 칭호가 "클럽 최다/1위"라는 상대평가였는데, 그러면
