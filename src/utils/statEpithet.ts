@@ -256,7 +256,11 @@ const TACTIC_NOUN: Record<string, string> = {
   revival: "재기", relocate: "이사", lodging: "셋방살이", "no-elim": "노엘",
 };
 
-const tactic = (label: string, keys: string[], min = 2): Title => ({
+/* 최소 횟수를 1로 둔다(지적: 전술 칭호가 잘 안 나온다) — 2를 기본으로 두던 것은 "한 번은
+   우연"을 거르려던 것인데, 여기 있는 수들은 대부분 우연히 나오지 않는다(옆탱·센포·드랍은
+   그러려고 해야 나온다). 게다가 칭호는 내전 기록으로만 매기므로 한 사람이 같은 수를 두 번
+   보이기가 생각보다 어렵다 — 문턱이 실제로 막고 있던 것은 우연이 아니라 대부분의 칭호였다. */
+const tactic = (label: string, keys: string[], min = 1): Title => ({
   label, value: (s) => did(s, ...keys), pool: 1, edge: 1, min,
   why: `경기 요약에 ${TACTIC_NOUN[keys[0]] ?? "이 수"}`, unit: "번",
   weight: TACTIC_WEIGHT[keys[0]] ?? 1, scale: "count",
@@ -301,7 +305,7 @@ const TITLES: Title[] = [
   /* 일꾼 견제는 위로 올린다(요청: 일꾼 견제도 강화) — 상대 일꾼을 잡는 일은 병력을 뽑아
      쌓아 두는 것과 달리 그 순간 손이 가야만 되는 것이고, 그 판의 자원 곡선을 실제로
      꺾어 놓는다. 그래서 다른 어떤 전술보다 그 사람의 성향을 잘 말한다. */
-  tactic("무자비한 일꾼 사냥꾼", ["harass-workers"], 1),
+  tactic("집요한 일꾼 사냥꾼", ["harass-workers"], 1),
   tactic("지긋지긋한 견제러", ["harass-long"], 1),
   /* 드랍도 같은 무리로 올린다(요청: 견제도 가중치 높이기) — 병력을 실어 상대 뒤로 넘기는
      일은 앞마당에 병력을 세워 두는 것과 달리 판을 두 곳에서 동시에 굴려야 한다.
@@ -333,7 +337,7 @@ const TITLES: Title[] = [
   tactic("공포의 독거미 부대", ["lurker"]),
   tactic("보이지 않는 손", ["cloak-wraith"]),
   tactic("하늘을 나는 뮤탈 조련사", ["muta"]),
-  tactic("오버로드 사냥꾼", ["valk-hunt"]),
+  tactic("무자비한 오버로드 사냥꾼", ["valk-hunt"]),
   tactic("몰래 배럭의 대가", ["sneak-rax"]),
   tactic("끝없는 저글링 폭풍", ["zling-rush"]),
   tactic("질럿 돌격대장", ["zealot-rush"]),
