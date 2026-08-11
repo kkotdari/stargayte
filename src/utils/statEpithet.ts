@@ -551,7 +551,7 @@ const TITLES: Title[] = [
        종족을 섞어 하는 사람만 여러 판에 걸쳐 겨우 걸렸으니, 그건 은폐를 잘 쓴다는 말이
        아니라 종족을 바꿔 가며 한다는 말이었다.
        비중으로 재면 종족이 무엇이든 "안 보이는 것으로 푸는 사람"이 그대로 걸린다. */
-    label: "그림자의 여왕", weight: 5, pool: 1, edge: 1, tier: 1,
+    label: "은밀한 그림자의 여왕", weight: 5, pool: 1, edge: 1, tier: 1,
     min: 0.12, why: "병력 중 은폐 유닛", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
