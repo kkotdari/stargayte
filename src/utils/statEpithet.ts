@@ -400,7 +400,7 @@ const TACTIC_NOUN: Record<string, string> = {
    재면 프로토스를 절반만 하는 사람은 아무리 캐리어를 가도 이 문턱을 못 넘는다.
    0.2까지 올렸다가 0.15로 되물렸다(지적: 안 나오는 것들은 미세하게 낮추기) — 캐리어를
    일곱 판에 한 판꼴로 가면 그 유닛으로 판을 푸는 사람이라 부를 만하다. */
-const UNIT_TACTIC_SHARE = 0.06;
+const UNIT_TACTIC_SHARE = 0.04;
 const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker", "muta"]);
 
 /* 수마다 제 문턱을 따로 두는 자리(지적: 포토러시 퀸·성큰러시 퀸의 비율 하한이 너무 낮다).
@@ -493,7 +493,7 @@ const TITLES: Title[] = [
      — 요청으로 뺐다. 셋 다 쓰기 어려운 마법이긴 한데, 그 한 번이 판을 가르는 그림까지는
      아니라 이름만 요란해진다. */
   { ...tactic("헬프 퀸", ["ally-help"]), minPlaysShare: 0.25 },
-  { ...tactic("동맹의 수호자", ["ally-cannon"]), minPlaysShare: 0.02 },
+  { ...tactic("동맹의 수호자", ["ally-cannon"]), minPlaysShare: 0.015 },
   /* 입구막기는 '막았다'가 아니라 '막아 놓고 뒤에서 컸다'가 값어치다(판정도 발전까지 함께
      본다 — replayTactics의 WALL_IN_GROW_MIN). 그래서 칭호도 막은 쪽이 아니라 그다음을
      부른다. "후반 도모 퀸"에서 바꿨다(지적: 개성적이지 않다) — 그 말은 어느 운영에나 붙는
@@ -518,7 +518,7 @@ const TITLES: Title[] = [
     ...tactic("폭탄드랍의 여신", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"], 1),
     race: undefined,
     // 분모가 전체 판이라 기본 비율(6%)이 되레 무겁다(요청: 낮추기) — 스물다섯 판에 한 번꼴.
-    minPlaysShare: 0.03,
+    minPlaysShare: 0.05,
   },
 
   /* ── 운영(요청: 전략운영은 가중치를 좀 높여도 된다) ─────────────────────────
@@ -548,8 +548,8 @@ const TITLES: Title[] = [
      빠진 이야기고, 그 대목은 대개 다른 칭호(드랍·견제·러시)가 이미 말한다. */
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
      자막이 이 수를 부르는 이름(커널)을 그대로 쓴다. */
-  { ...rare("커널 개통사", ["nydus"]), minPlaysShare: 0.02 },
-  { ...rare("리콜 배달부", ["recall"]), minPlaysShare: 0.02 },
+  { ...rare("커널 개통사", ["nydus"]), minPlaysShare: 0.015 },
+  { ...rare("리콜 배달부", ["recall"]), minPlaysShare: 0.015 },
   rare("도둑 퀸", ["mind-control"]),
   tactic("캐리어를 모으는 여인", ["carrier"]),
   tactic("공포의 독거미 부대", ["lurker"]),
@@ -569,7 +569,7 @@ const TITLES: Title[] = [
        있었는데, 이 값은 '무슨 일을 벌였나'가 아니라 병력 구성비라 그만큼 나오기 힘든
        장면이 아니다. 7.5면 러시(10.5) 아래·역전(6) 위로, 드묾은 그대로 인정하는 자리다. */
     label: "그림자의 여왕", weight: 2.5, pool: 1, edge: 1, tier: 1,
-    min: 0.06, why: "병력 중 은폐 유닛", unit: "",
+    min: 0.1, why: "병력 중 은폐 유닛", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       if (!m || !(m.uGround + m.uAir > 0)) return null;
@@ -584,7 +584,7 @@ const TITLES: Title[] = [
   /* 곁가지 다섯(오버로드 사냥·동맹 포토·커널·리콜·다크스웜)은 2%다(요청: 더 낮추기) —
      재분석 뒤에도 내내 비어 있던 것들이다. 워낙 드문 그림이라 비율은 낮게 두고, 우연은
      최소 횟수(3번)가 거른다. */
-  { ...tactic("오버로드 사냥꾼", ["valk-hunt"]), minPlaysShare: 0.02 },
+  { ...tactic("오버로드 사냥꾼", ["valk-hunt"]), minPlaysShare: 0.015 },
   tactic("몰래배럭 퀸", ["sneak-rax"]),
   /* (삭제) 끝없는 저글링 폭풍(zling-rush) — 요청. 저글링 하나로 들이치는 것은 그 종족의
      기본 진행에 가까워, 한 유닛만으로 러시라고 부를 만한 수가 아니다. */
@@ -613,7 +613,7 @@ const TITLES: Title[] = [
   /* (삭제) 협공(gang-rush) — 다시 뺐다(요청). 이름을 넷이나 갈아 봤지만(협공의 선봉 ·
      다굴의 여신 · 잔다르크 · 전장을 누비는 여인) 결국 같은 자리다: 팀전에서 함께 달려간
      것은 그 판의 진행이지 그 사람의 수가 아니다. */
-  { ...rare("다크스웜 살포반", ["swarm"]), minPlaysShare: 0.02 },
+  { ...rare("다크스웜 살포반", ["swarm"]), minPlaysShare: 0.015 },
   /* (삭제) 감염의 여왕(infested) — 요청. 감염된 테란은 커맨드센터를 잡아야 나오는 장면이라
      드물기는 한데, 그 판을 만든 것은 감염 자체가 아니라 그 앞의 싸움이다. */
   /* (삭제) 가디언을 모으는 여인(guardian) — 요청. */
@@ -661,7 +661,7 @@ const TITLES: Title[] = [
   {
     /* 판당으로 잰다(요청: 절대평가) — 누적 채수는 오래 뛴 사람이 늘 크다. 서른 채면 한 판에
        확장·생산·방어를 고루 편 살림이다. */
-    label: "건설의 여왕", weight: 2, min: 70, why: "판당 지은 건물", unit: "채",
+    label: "건설의 여왕", weight: 2, min: 78, why: "판당 지은 건물", unit: "채",
     value: (s, of) => {
       const m = mix(s, of);
       const plays = won(s, of).mixPlays ?? 0;
@@ -697,7 +697,7 @@ const TITLES: Title[] = [
      본진을 잃고도 판을 안 놓은 이야기다. "쫓겨 다녔다"가 아니라 "그러고도 살아남았다"로
      부르면 같은 기록이 그 사람의 끈기가 된다. 져도 센다(COUNTED_EVEN_IF_LOST) — 밀린 뒤의
      이야기라 이긴 판만 보면 영영 안 잡힌다. */
-  { ...tactic("부활 퀸", ["lodging", "relocate"]), why: "본진 밖 생존(이사·셋방살이)" },
+  { ...tactic("부활 퀸", ["lodging", "relocate"]), why: "본진 밖 생존(이사·셋방살이)", minPlaysShare: 0.14 },
   /* (삭제) 건물 띄우기(lift-off)로 짓던 "공중부양 마스터" — 뺐다(지적). 이 키는 자리를
      다 내주고 건물만 띄워 쫓겨 다닌 대목이라, 버틴 이야기로 넣었지만 칭호로 굳으면
      "집을 잃은 사람"이라는 딱지로 읽힌다. 자막에서 한 번 지나가는 말과, 이름 아래
@@ -874,7 +874,7 @@ const TITLES: Title[] = [
      나와야 "그 판에 늘 있는 사람"이다. 전체 판수를 못 받아 왔으면(집계 실패) 이 칭호만 쉰다.
      명예류(BEST·참여)는 무게 6이다(지적: 베스트 퀸이 옆탱보다 아래라니) — 판을 만든 공로와
      꾸준함은 낱개 전술(4)보다 위, 승률(전설)보다는 아래인 자리다. */
-  { label: "참여 퀸", weight: 6, min: 0.6, why: "클럽 전체 판 대비 참여", unit: "",
+  { label: "참여 퀸", weight: 6, min: 0.65, why: "클럽 전체 판 대비 참여", unit: "",
     value: (s) => (clubTotalGames && clubTotalGames > 0 && s.plays > 0 ? s.plays / clubTotalGames : null) },
 ];
 
