@@ -1464,6 +1464,35 @@ function sideBeats(args: {
     .map((q) => (typeof q.startX === "number" && typeof q.startY === "number"
       ? { raw: q.rawName, x: q.startX, y: q.startY } : null))
     .filter((v): v is { raw: string; x: number; y: number } => v !== null);
+  /* 일꾼 초반 정찰(요청: 일꾼으로 초반 정찰한 것도) — 첫 일꾼을 상대 진영까지 보내 살림을
+     먼저 보고 오는 그 습관이다. 근거는 '일꾼에게 내린 이동·공격 명령의 좌표'다(파서의
+     orderPositions.by === "Worker") — 그 좌표가 상대 시작 지점 언저리면 거기까지 몰고
+     갔다는 뜻이고, 시각도 그대로 남는다.
+     초반만 본다: 중반 이후의 일꾼 이동은 확장을 펴러 가거나 건물을 지으러 가는 길이라
+     정찰이 아니다. 상대 집 반경도 스캔 정찰과 같은 자를 쓴다(SCAN_BASE_TILES) — 같은
+     '남의 집을 열어 봤다'를 재는 자리라 잣대가 하나여야 한다. */
+  for (const p of players) {
+    const sg = p.signals;
+    if (!sg || foeHomes.length === 0) continue;
+    const early = (sg.orderPositions ?? []).filter(
+      (o) => o.by === "Worker" && o.frame <= WORKER_SCOUT_SEC / SECONDS_PER_FRAME,
+    );
+    if (early.length === 0) continue;
+    const peekedHomes = foeHomes.filter(
+      (h) => early.some((o) => Math.hypot(o.x - h.x, o.y - h.y) <= SCAN_BASE_TILES),
+    );
+    if (peekedHomes.length === 0) continue;
+    const at = early.find(
+      (o) => peekedHomes.some((h) => Math.hypot(o.x - h.x, o.y - h.y) <= SCAN_BASE_TILES),
+    )?.frame ?? null;
+    beats.push({
+      // 오버로드 정찰과 같은 열쇠다 — 둘 다 '미리 깔아 두고 먼저 보는' 초반 정찰이고,
+      // 칭호도 한 이름으로 부른다(부지런한 정찰 퀸).
+      k: "vision", won, who: who(p), weight: 6, at,
+      p: { unit: "Worker", spots: peekedHomes.length },
+    });
+  }
+
   for (const p of players) {
     const sg = p.signals;
     if (!sg) continue;
@@ -4639,6 +4668,9 @@ const SCAN_SCOUT_MIN = 8;
 /** 그중 '자리를 보장할 만큼' 판을 훑어본 선 — 실측 테란 225명의 상위 10%가 열두 번이다. */
 const SCAN_RESERVE_MIN = 12;
 const SCAN_BASE_TILES = 18;
+/** 일꾼 정찰로 칠 창(초) — 첫 일꾼을 보내 보고 오는 시간이다. 그보다 뒤의 일꾼 이동은
+ *  확장을 펴러 가거나 건물을 지으러 가는 길이라 정찰이라 부를 수 없다. */
+const WORKER_SCOUT_SEC = 300;
 
 /* 규모(미니맵 기세 눈금)를 셀 때 쓰는 몫. 병력 한 기를 1로 두고, 건물은 그 한 채가
    대신하는 병력만큼 얹는다 — 방어탑은 병력 둘 몫(replayTactics의 GREEDY_DEF_WORTH와 같은

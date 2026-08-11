@@ -2174,6 +2174,16 @@ const TEMPLATES: Record<string, Tpl> = {
         `스캔 ${n}번으로 상대의 움직임을 훑음`,
       ]))}`;
     }
+    /* 일꾼 정찰(요청)은 말이 다르다 — 뿌려 두는 눈이 아니라 한 기를 보내 보고 오는 것이다.
+       몇 집을 열어 봤는지가 있으면 그 수까지 적는다. */
+    if (str(c.p.unit) === "Worker") {
+      const spots = num(c.p.spots, 0);
+      return `${ga(c.who)} ${done(c, c.pick([
+        ...(spots >= 2 ? [`일꾼을 보내 상대 진영 ${spots}곳을 훑고 옴`] : []),
+        "초반에 일꾼을 보내 상대 진영을 살핌",
+        "일꾼 정찰로 상대의 살림을 먼저 봄",
+      ]))}`;
+    }
     const u = unitWithUp(c);
     if (!u) return null;
     return `${ga(c.who)} ${done(c, c.pick([

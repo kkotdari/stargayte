@@ -448,7 +448,7 @@ const TACTIC_NOUN: Record<string, string> = {
   "upgrade-signature": "업그레이드", "long-run": "장기전", "late-hold": "후반 수비",
   revival: "역전", relocate: "이사", lodging: "셋방살이", "no-elim": "노엘",
   fallen: "먼저 탈락", "lift-off": "건물 띄우기", gg: "GG",
-  vision: "오버로드 정찰", "vision-eye": "옵저버·스캔 정찰",
+  vision: "초반 정찰(일꾼·오버로드)", "vision-eye": "옵저버·스캔 정찰",
 };
 
 /* 최소 횟수를 1로 둔다(지적: 전술 칭호가 잘 안 나온다) — 2를 기본으로 두던 것은 "한 번은
@@ -725,8 +725,9 @@ const TITLES: Title[] = [
      (replaySummary: vision / vision-eye) — 서버는 beat의 열쇠만 세므로 열쇠가 갈려야 칭호도
      갈린다. 비율은 둘 다 25%다: 한 열쇠를 둘로 나누면 사람마다 세는 수가 반으로 줄어,
      합쳐 세던 시절의 40%를 그대로 두면 둘 다 안 나온다.
-     일꾼 정찰(요청)은 아직 못 센다 — 파서에 그 판정 자체가 없다. 초반에 일꾼을 상대 진영으로
-     보낸 것을 짚으려면 요약 쪽에 판정을 새로 심어야 한다. */
+     일꾼 정찰도 초반 쪽(vision)이다(요청: 파서에 추가) — 첫 일꾼을 상대 진영까지 몰고 간
+     명령 좌표로 짚는다(replaySummary의 WORKER_SCOUT_SEC). 오버로드와 한 열쇠인 까닭은
+     둘 다 '미리 보고 시작한다'는 같은 습관이라서다. */
   { ...tactic("부지런한 정찰 퀸", ["vision"]), minPlaysShare: 0.25 },
   { ...tactic("전장을 살피는 눈", ["vision-eye"]), minPlaysShare: 0.25 },
   /* (삭제) 맞러시 승부사(duel-rush) — 요청. 맞러시는 둘이 함께 만든 장면이라 한 사람의
