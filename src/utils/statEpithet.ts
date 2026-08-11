@@ -956,7 +956,10 @@ const TITLES: Title[] = [
   /* 건물을 제일 많이 올린 사람(요청: 심시티 퀸) — "쉴 새 없이 짓는 자"에서 바꿨다. 재는 값은 그대로 분당 지은 채수다. */
   { label: "심시티 퀸", weight: 2, kind: "경기력", min: 7, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
   {
-    label: "풀업 퀸", weight: 2, kind: "승률", min: 2.2, why: "공/방 평균 단계", unit: "",
+    /* 급을 올린다(요청) — 무게 2 → 3이라 일반에서 에픽이다. 갈래를 승률로 올려 둔 채(요청)
+       급만 일반에 남아 있던 것이 어긋난 자리였다: 목록에서는 승률 칸 맨 위인데 대표를
+       고를 때는 에픽 스물여섯 줄에 늘 밀렸다. 조건(공/방 평균 2.2단계)은 그대로다. */
+    label: "풀업 퀸", weight: 3, kind: "승률", min: 2.2, why: "공/방 평균 단계", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       if (!m) return null;
