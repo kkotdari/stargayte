@@ -447,7 +447,8 @@ const TACTIC_NOUN: Record<string, string> = {
   expand: "확장", "worker-gap": "일꾼 격차", "prod-gap": "생산 격차", "mass-army": "대군",
   "upgrade-signature": "업그레이드", "long-run": "장기전", "late-hold": "후반 수비",
   revival: "역전", relocate: "이사", lodging: "셋방살이", "no-elim": "노엘",
-  fallen: "먼저 탈락", "lift-off": "건물 띄우기", vision: "정찰", gg: "GG",
+  fallen: "먼저 탈락", "lift-off": "건물 띄우기", gg: "GG",
+  vision: "오버로드 정찰", "vision-eye": "옵저버·스캔 정찰",
 };
 
 /* 최소 횟수를 1로 둔다(지적: 전술 칭호가 잘 안 나온다) — 2를 기본으로 두던 것은 "한 번은
@@ -564,7 +565,7 @@ const TITLES: Title[] = [
        마법과 달리 스톰은 한 판에 열 번씩도 쓰는 것이라, 사용 수를 판수 비율로 재면 문턱이
        뜻을 잃는다(1087번/56판 같은 값이 나온다). 실측 분포는 판당 1~2회가 보통, 8~19회가
        꼭대기 — 5회면 "스톰으로 사는 사람"만 남는다. */
-    label: "스톰 술사", weight: 2, kind: "경기력", race: "프로토스", min: 8, why: "판당 스톰", unit: "회",
+    label: "번개 중독자", weight: 2, kind: "경기력", race: "프로토스", min: 8, why: "판당 스톰", unit: "회",
     value: (_s, of) => {
       const bucket = of.races?.["프로토스"];
       const n = bucket?.buildMix?.skillsWon?.["Psionic Storm"] ?? 0;
@@ -639,7 +640,7 @@ const TITLES: Title[] = [
      나르는 그림 그대로다. 한때 '땅굴'이라는 말을 뺐었는데(지적: 버로우 이야기로 읽힌다)
      '파는 여인'까지 붙으면 굴을 뚫는 그림이라 그 오해가 없다.
      근거 문장은 그대로 '커널'로 부른다 — 자막이 그 수를 부르는 이름이다. */
-  { ...rare("땅굴을 파는 여인", ["nydus"]), minPlaysShare: 0.01 },
+  { ...rare("개통의 달인", ["nydus"]), minPlaysShare: 0.01 },
   { ...rare("리콜 배달부", ["recall"]), minPlaysShare: 0.01 },
   rare("도둑 퀸", ["mind-control"]),
   tactic("캐리어를 모으는 여인", ["carrier"]),
@@ -719,11 +720,15 @@ const TITLES: Title[] = [
   /* 정찰(요청: 초반 정찰 열심히 한 사람 — 좋은 뜻이라 3점대) — 옵저버를 넉넉히 띄웠거나,
      오버로드를 퍼뜨렸거나, 스캔으로 여기저기 들여다본 판이다. 남의 살림을 먼저 보고 제 수를
      고르는 일이라, 눈에 안 띄면서 판을 가장 크게 바꾸는 습관이다. */
-  /* 부지런한 정찰 퀸 → 초반 정찰(요청) — 이 열쇠(vision)가 세는 것이 곧 옵저버를 띄우고,
-     스캔을 뿌리고, 오버로드를 퍼뜨려 남의 살림을 먼저 본 판이다. 같은 사실로 칭호를 하나 더
-     만들면 한 사람이 두 이름으로 불리므로 이름만 갈아 끼운다("훔쳐보기 퀸"·"전장을 살피는
-     눈"을 거쳐 온 자리다). */
-  { ...tactic("초반 정찰", ["vision"]), minPlaysShare: 0.4 },
+  /* 정찰을 둘로 가른다(요청) — 오버로드를 퍼뜨려 미리 깔아 두는 초반 정찰과, 옵저버·스캔으로
+     판 도중에 전장을 열어 보는 눈은 다른 습관이다. 세는 자리도 요약에서 갈라 뒀다
+     (replaySummary: vision / vision-eye) — 서버는 beat의 열쇠만 세므로 열쇠가 갈려야 칭호도
+     갈린다. 비율은 둘 다 25%다: 한 열쇠를 둘로 나누면 사람마다 세는 수가 반으로 줄어,
+     합쳐 세던 시절의 40%를 그대로 두면 둘 다 안 나온다.
+     일꾼 정찰(요청)은 아직 못 센다 — 파서에 그 판정 자체가 없다. 초반에 일꾼을 상대 진영으로
+     보낸 것을 짚으려면 요약 쪽에 판정을 새로 심어야 한다. */
+  { ...tactic("부지런한 정찰 퀸", ["vision"]), minPlaysShare: 0.25 },
+  { ...tactic("전장을 살피는 눈", ["vision-eye"]), minPlaysShare: 0.25 },
   /* (삭제) 맞러시 승부사(duel-rush) — 요청. 맞러시는 둘이 함께 만든 장면이라 한 사람의
      수라고 하기 어렵다. */
   /* 협공을 다시 넣는다(요청: 공격에 열심히 참여한다는 좋은 뜻으로) — 한때 "협공의 선봉"으로 뺐던 자리다. 그때 뺀
@@ -910,11 +915,11 @@ const TITLES: Title[] = [
   /* 무게를 2 → 1.2로 내렸다(요청) — 초반 일꾼은 그 판의 빌드가 정하는 값에 가깝다.
      같은 종족·같은 빌드면 누구나 비슷하게 나오므로, 1등이라고 그 사람을 말해 주는 몫이
      다른 칭호들보다 작다. */
-  { label: "일꾼 공장장", weight: 2, kind: "경기력", min: 52, why: "초반 5분 일꾼", unit: "기", value: (s, of) => won(s, of).avgWorker5 },
+  { label: "일꾼 부자", weight: 2, kind: "경기력", min: 52, why: "초반 5분 일꾼", unit: "기", value: (s, of) => won(s, of).avgWorker5 },
   /* 건물을 제일 많이 올린 사람(요청: 심시티 퀸) — "쉴 새 없이 짓는 자"에서 바꿨다. 재는 값은 그대로 분당 지은 채수다. */
   { label: "심시티 퀸", weight: 2, kind: "경기력", min: 7, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
   {
-    label: "풀업퀸", weight: 2, kind: "명예", min: 2.2, why: "공/방 평균 단계", unit: "",
+    label: "풀업퀸", weight: 2, kind: "승률", min: 2.2, why: "공/방 평균 단계", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       if (!m) return null;

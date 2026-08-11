@@ -138,7 +138,7 @@ const POS_TRUSTED_VERSION = 2;
    남고(replaySummary의 진출 판정), 요약이 나간 자리까지 실어 준다 — 그런 이야기를 계속
    '집에서 한 일'로 묶어 두면 그 자리가 있어도 화살표를 안 그린다. */
 const HOME_BEAT_KEYS = new Set([
-  "expand", "upgrade", "upgrade-signature", "tech", "fast-tech", "vision", "no-detect",
+  "expand", "upgrade", "upgrade-signature", "tech", "fast-tech", "vision", "vision-eye", "no-detect",
   "greedy-build", "greedy-paid", "greedy-punished", "lodging", "relocate",
   "defense", "front-defense", "late-defense", "wall-in", "side-tank", "center-tank",
   "revival", "fallen", "gg", "no-elim",
@@ -185,7 +185,7 @@ function pusherOf(b: { k: string; p?: Record<string, unknown> }): string | null 
  *  상대 유닛이다. 남의 것을 제 이름표로 달면 안 되니 넣지 않는다. */
 const SAID_UNIT_KEYS = new Set([
   "raid-damage", "base-raid", "power-unit", "fast-tech",
-  "long-run", "stand", "vision", "greedy-paid", "zerg-drop",
+  "long-run", "stand", "vision", "vision-eye", "greedy-paid", "zerg-drop",
 ]);
 
 /* 자막이 늘 같은 이름을 부르는 갈래들 — 그 이름이 곧 이름표다(지적: 자막은 클로킹 레이스인데
@@ -1279,7 +1279,7 @@ export default function GameResultStory({
            좌표가 없는 옛 요약은 아래 예전 길(그 무렵 명령이 몰린 자리)로 간다. */
         // 좌표는 [x1,y1,x2,y2,…] 한 줄로 실려 온다(replaySummary 주석) — 둘씩 끊는다.
         const scanSpots: [number, number][] = [];
-        if (b.k === "vision" && Array.isArray(b.p?.spotsXY)) {
+        if ((b.k === "vision" || b.k === "vision-eye") && Array.isArray(b.p?.spotsXY)) {
           const flat = (b.p.spotsXY as unknown[]).filter((v): v is number => typeof v === "number");
           for (let i = 0; i + 1 < flat.length; i += 2) scanSpots.push([flat[i], flat[i + 1]]);
         }

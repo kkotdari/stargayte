@@ -357,7 +357,7 @@ const NEUTRAL_BEATS = new Set([
   // '앞서고도 안 들어갔다'는 그 편이 잘한 것도 못한 것도 아니라 흐름 설명이다 — 앞뒤
   // 문장을 "하지만"으로 잇지 않는다.
   "idle-lead",
-  "worker-gap", "tech", "vision", "no-detect", "revival", "clash",
+  "worker-gap", "tech", "vision", "vision-eye", "no-detect", "revival", "clash",
   // 째기(greedy-build)도 여기다 — 자원을 먼저 챙긴 것은 공격이 아니라 준비라서, 그 뒤에
   // 상대의 러시가 오면 "하지만"이 아니라 "~했고"로 이어야 맞다(지적: 째기는 공격이 아니라
   // 하지만이 붙는 게 어색하다). 째기가 실제로 응징당한 경우는 greedy-punished가 따로 말한다.
@@ -2182,6 +2182,10 @@ const TEMPLATES: Record<string, Tpl> = {
       `${u} 시야로 판을 넓게 봄`,
     ]))}`;
   },
+
+  /* 옵저버·스캔은 열쇠가 갈렸다(요청: 칭호를 둘로) — 문장은 같은 자리를 쓴다. 갈린 것은
+     세는 자리이지 말이 아니다. */
+  "vision-eye": (c) => TEMPLATES.vision(c),
 
   // 안 보이는 유닛에 대한 대비 부족(요청) — 무엇을 못 갖췄는지는 종족마다 다르다.
   "no-detect": (c) => {

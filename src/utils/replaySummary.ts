@@ -1441,8 +1441,12 @@ function sideBeats(args: {
     const spread = hasUpgrade(sg, "Pneumatized Carapace");
     const unit = obs >= 4 ? "Observer" : spread && ovl >= 8 ? "Overlord" : null;
     if (!unit) continue;
+    /* 열쇠를 둘로 가른다(요청) — 오버로드를 퍼뜨린 것은 초반에 미리 깔아 두는 정찰이고,
+       옵저버·스캔은 판이 굴러가는 동안 전장을 열어 보는 눈이다. 칭호가 그 둘을 다른
+       이름으로 부르므로(부지런한 정찰 퀸 / 전장을 살피는 눈) 세는 자리부터 갈라야 한다 —
+       서버는 beat의 열쇠만 세고 p.unit은 안 본다. */
     beats.push({
-      k: "vision", won, who: who(p), weight: 6,
+      k: unit === "Observer" ? "vision-eye" : "vision", won, who: who(p), weight: 6,
       at: sg.firstUnitFrame[unit] ?? null,
       p: { unit },
     });
@@ -1487,7 +1491,8 @@ function sideBeats(args: {
       if (taken.length >= SCAN_SPOT_MAX) break;
     }
     beats.push({
-      k: "vision", won, who: who(p), weight: peeked >= 2 ? 9 : 8,
+      // 스캔은 옵저버와 같은 갈래다(위 주석) — 판 도중에 전장을 열어 보는 눈.
+      k: "vision-eye", won, who: who(p), weight: peeked >= 2 ? 9 : 8,
       at: scans[0].frame,
       p: {
         unit: "Scanner Sweep", n: scans.length,
@@ -2110,7 +2115,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
      상대 쪽으로 기우는 이야기(제 수가 역풍을 맞음·당함·무너짐)를 갈라 둔다. */
   const LATE_NEUTRAL = new Set([
     "standoff", "attrition", "fast-hands", "power-unit", "mass-army", "expand", "prod-gap",
-    "worker-gap", "tech", "vision", "no-detect", "revival", "greedy-build", "long-run", "wall-in",
+    "worker-gap", "tech", "vision", "vision-eye", "no-detect", "revival", "greedy-build", "long-run", "wall-in",
   ]);
   const LATE_AGAINST_ACTOR = new Set([
     "rush-backfire", "greedy-punished", "fallen", "lodging", "relocate", "lift-off", "gg", "stand",
@@ -3647,7 +3652,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   /* 그 유닛이 '내 병력'인 문장에만 붙인다 — 방어·돌파·탐지 문장의 유닛은 상대 것이라
      내 업그레이드를 얹으면 딴 사람 물건에 딱지를 다는 셈이 된다. */
   const UP_FOLD_KEYS = new Set([
-    "power-unit", "fast-tech", "long-run", "stand", "solo", "vision",
+    "power-unit", "fast-tech", "long-run", "stand", "solo", "vision", "vision-eye",
   ]);
   const foldedUpgrades = new Set<string>();
   for (let i = 0; i < pool.length; i += 1) {
@@ -4195,7 +4200,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
   }
   // 4차: 정찰 예약석 — 판을 훑어본 스캔에만(위 EXTRA_SLOTS 주석).
   for (const b of ranked) {
-    if (b.k !== "vision" || b.p?.unit !== "Scanner Sweep") continue;
+    if (b.k !== "vision-eye" || b.p?.unit !== "Scanner Sweep") continue;
     if ((typeof b.p?.n === "number" ? b.p.n : 0) < SCAN_RESERVE_MIN) continue;
     if (consider(b, false, "scout")) break;
   }
