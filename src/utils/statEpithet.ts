@@ -31,11 +31,11 @@ const MIN_PLAYS = 3;
 const MIN_PLAYS_RATE = 8;
 /** 유형 칭호(개인전·팀전 퀸)는 그 유형에서만 세는 판수라 더 많이 본다 — 팀전 몇 판으로
  *  "팀전 퀸"이 되면 정작 팀전을 도맡아 뛴 사람이 그 말을 못 듣는다. */
-const MIN_PLAYS_MODE = 12;
+const MIN_PLAYS_MODE = 14;
 /** 종족 칭호를 받으려면 그 종족이 제 판의 이만큼은 돼야 한다(요청: 부종족 정도는) —
  *  셋을 고루 하면 한 종족이 3분의 1이니, 4분의 1이면 "이 사람의 종족 가운데 하나"라 부를
  *  만한 선이다. 주종족(대개 절반 이상)까지 요구하지는 않는다. */
-const RACE_MIN_SHARE = 0.2;
+const RACE_MIN_SHARE = 0.22;
 /* (삭제) MIN_PLAYS_TIER — 급별 최소 판수. 판수 문턱을 걷으면서(요청: 수치로 거른다) 함께
    없어졌다. */
 /* (삭제) NAME_EDGE — 원장에서 뽑던 유닛·건물 칭호가 "무리 한가운데보다 이만큼 앞서야"를
@@ -49,7 +49,7 @@ const RACE_MIN_SHARE = 0.2;
    둘 다 물어야 한다.
    급마다 다른 이유: 1급은 한 번이 곧 이야기인 드문 수(핵·리콜·성큰러시)라 같은 잣대를 대면
    통째로 잠긴다. 그래도 0은 아니다 — 스무 판에 딱 한 번은 그 사람의 색이라기엔 얇다. */
-const COUNT_SHARE: Record<number, number> = { 1: 0.03, 2: 0.04 };
+const COUNT_SHARE: Record<number, number> = { 1: 0.035, 2: 0.045 };
 /** 비율과 별개의 최소 횟수(요청: 너무 겹치지 않게 문턱 높이기) — 절대평가가 되면서 조건만
  *  넘으면 다 받으니, 한 판짜리 우연까지 칭호가 되면 한 사람이 대여섯 개를 예사로 들었다.
  *  드문 수(1급)는 두 번, 흔한 수(2급)는 세 번은 나와야 버릇이라 부른다. */
@@ -62,7 +62,7 @@ const COUNT_SHARE: Record<number, number> = { 1: 0.03, 2: 0.04 };
    내린 것: 비례 최소 횟수의 눈금(20 → 30판마다 +1), 급 기본 비율(1급 4→3% · 2급 5→4%),
    승률 계열 셋, 그리고 시뮬레이션에서 주인이 없던 전술·수치들. 아래 각 자리에 적어 둔다. */
 const COUNT_MIN_BASE = 2;
-const COUNT_MIN_PER_PLAYS = 30;
+const COUNT_MIN_PER_PLAYS = 25;
 const countMinFor = (denomPlays: number): number =>
   Math.max(COUNT_MIN_BASE, Math.ceil(denomPlays / COUNT_MIN_PER_PLAYS));
 /* 한때 상한을 뒀다("아무리 많이 뛰어도 여섯 번이면 인정") — 걷어냈다(지적: 상한보다 비율
@@ -147,10 +147,10 @@ function did(s: MemberStats, ...keys: string[]): number | null {
  *  6 → 8판(요청: 전설·에픽의 문턱을 조금씩 높이기) — 맵 칭호는 왕관 계열이라 그 이름을
  *  달려면 그 맵에서 한동안 살아 봤어야 한다. 8 → 12판·승률 72%(요청: 맵 칭호 더 올리기) —
  *  이 클럽은 같은 맵을 오래 도는 편이라 여덟 판은 금방 쌓인다. */
-const MAP_MIN_PLAYS = 8;
+const MAP_MIN_PLAYS = 10;
 /** 그리고 이만큼은 이겨야 한다 — 60 → 70 → 72%(요청). 7할은 종족·전체 승률 칭호와 같은
  *  선이라, 셋이 같은 잣대를 쓴다. */
-const MAP_MIN_RATE = 0.62;
+const MAP_MIN_RATE = 0.66;
 
 /* 맵 이름 뒤에 붙는 말(요청: 맵 이름 뒤에 붙여서 재밌게) — "헌터의 여주인", "빨무의
    안주인", "투혼의 황녀"처럼 맵마다 다른 말이 붙는다. 고르는 자는 맵 이름이다: 같은 맵은
@@ -387,7 +387,7 @@ const TACTIC_WEIGHT: Record<string, number> = {
   Maelstrom: 2, "Disruption Web": 2, "Stasis Field": 2, "Yamato Gun": 2,
   "no-elim": 2, "gang-rush": 2,
   // ── 유닛(일반)
-  carrier: 1.5, lurker: 1.5, bc: 1.5, muta: 1.5, guardian: 1.5, valkyrie: 1.5,
+  carrier: 1.5, lurker: 1.5, bc: 1.5, muta: 1.5, guardian: 1.5, valkyrie: 1.5, ultra: 1.5,
   // 표에 없는 열쇠는 1이다.
 };
 
@@ -399,7 +399,7 @@ const TACTIC_WEIGHT: Record<string, number> = {
 const TACTIC_RACE: Record<string, string> = {
   // 저그
   moka: "저그", "Spawn Broodlings": "저그", swarm: "저그", infested: "저그", nydus: "저그", "sunken-rush": "저그",
-  muta: "저그", guardian: "저그", lurker: "저그", devourer: "저그", "zling-rush": "저그",
+  muta: "저그", guardian: "저그", lurker: "저그", devourer: "저그", "zling-rush": "저그", ultra: "저그",
   // 테란
   "Nuclear Strike": "테란", "Yamato Gun": "테란", "Optical Flare": "테란", bionic: "테란", mech: "테란", bc: "테란", valkyrie: "테란",
   "valk-hunt": "테란", "sneak-rax": "테란", "cloak-wraith": "테란",
@@ -422,7 +422,7 @@ const TACTIC_NOUN: Record<string, string> = {
   "center-tank": "센터 탱크 조이기", "harass-workers": "일꾼 견제", "harass-long": "끈질긴 견제",
   dropship: "드랍", "base-raid": "본진 급습", nydus: "커널", recall: "리콜",
   "mind-control": "마인드컨트롤", carrier: "캐리어", lurker: "러커",
-  "cloak-wraith": "클로킹 레이스", muta: "뮤탈 견제", "valk-hunt": "발키리로 오버로드 사냥",
+  "cloak-wraith": "클로킹 레이스", muta: "뮤탈 견제", ultra: "울트라리스크", "valk-hunt": "발키리로 오버로드 사냥",
   "sneak-rax": "몰래 배럭", "zling-rush": "저글링 러시", "zealot-rush": "질럿 러시",
   "duel-rush": "맞러시", /* 근거 문장에서는 '공격 참여'로 부른다(요청) — 협공은 당한 쪽이 부르는 말에 가깝고,
      이 칭호가 말하려는 것은 "이긴 싸움에 늘 함께 있었다"는 쪽이다. */
@@ -450,8 +450,8 @@ const TACTIC_NOUN: Record<string, string> = {
    일곱 판에 한 판꼴로 가면 그 유닛으로 판을 푸는 사람이라 부를 만하다. */
 /* 버킷을 고치기 전에 4%까지 내렸던 값 — 고치고 나니 진짜 비율이 드러나(러커 5%짜리가
    퀸이 됐다) 10%로 되올린다. 열 판에 한 판은 그 유닛으로 이겨야 그 유닛의 사람이다. */
-const UNIT_TACTIC_SHARE = 0.05;
-const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker", "muta"]);
+const UNIT_TACTIC_SHARE = 0.03;
+const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker", "muta", "ultra"]);
 
 /* 수마다 제 문턱을 따로 두는 자리(지적: 포토러시 퀸·성큰러시 퀸의 비율 하한이 너무 낮다).
    급 기본값(1급 3%)은 '드문 한 번도 이야기'라는 뜻인데, 러시는 그 잣대와 안 맞는다 —
@@ -462,7 +462,7 @@ const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker",
    그쯤이면 "이 사람은 포토러시를 하는 사람"이라 부를 만하다. 흔한 수(8%)와 같은 선인 것은
    러시가 드물어서가 아니라 되풀이할 수 있는 수이기 때문이다 — 드묾은 이미 1급 웃돈이
    값을 쳐 준다. */
-const RUSH_SHARE = 0.02;
+const RUSH_SHARE = 0.022;
 const RUSH_MIN = 2;
 const RUSH_TACTICS = new Set(["cannon-rush", "sunken-rush"]);
 
@@ -590,7 +590,7 @@ const TITLES: Title[] = [
     ...tactic("폭탄드랍의 여신", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"], 1),
     race: undefined,
     // 분모가 전체 판이라 기본 비율(6%)이 되레 무겁다(요청: 낮추기) — 스물다섯 판에 한 번꼴.
-    minPlaysShare: 0.03,
+    minPlaysShare: 0.04,
   },
 
   /* ── 운영(요청: 전략운영은 가중치를 좀 높여도 된다) ─────────────────────────
@@ -601,11 +601,11 @@ const TITLES: Title[] = [
      종족이면 으레 잡는 틀이라, "그 틀로 이긴 판이 종족 판의 절반"쯤 돼야 그 사람의 색이다.
      목동은 저그 후반에만 나오는 틀이라 40%로 한 뼘 낮다. */
   { ...tactic("바이오닉의 여왕", ["bionic"]), minPlaysShare: 0.27 },
-  { ...tactic("메카닉 사령관", ["mech"]), minPlaysShare: 0.05 },
+  { ...tactic("메카닉 사령관", ["mech"]), minPlaysShare: 0.06 },
   /* 목동저그 — 이제 자막이 짚은 판만 센다(요청: 목동저그도 이긴 판만). 한때 유닛 기록으로도
      잡았는데(울트라 2기 + 디파일러 + 저글링 20기), 그 원장은 승패를 안 가려서 진 판의
      목동까지 함께 세었다. 자막 쪽은 서버가 이긴 판만 세므로(_tactic_counts) 잣대가 하나가 된다. */
-  { ...tactic("목동저그", ["moka"]), minPlaysShare: 0.06 },
+  { ...tactic("목동저그", ["moka"]), minPlaysShare: 0.08 },
 
   // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
   /* 옆탱은 25%다(지적: 잘 나오는데 문턱이 낮다 — 18%에서도 넷이 걸렸다). 테란 판
@@ -615,7 +615,7 @@ const TITLES: Title[] = [
      아니다(다른 전술의 기본 문턱 2회는 "한 번은 우연"을 거르려는 것이다). */
   tactic("포토러쉬 퀸", ["cannon-rush"], 1),
   tactic("성큰러시 퀸", ["sunken-rush"], 1),
-  { ...tactic("센터의 여주인", ["center-photon"]), minPlaysShare: 0.07 },
+  { ...tactic("센터의 여주인", ["center-photon"]), minPlaysShare: 0.09 },
   /* (삭제) 남의 집 헤집기 장인(base-raid) — 요청. 이름 없는 급습이라 "무엇으로 갔는지"가
      빠진 이야기고, 그 대목은 대개 다른 칭호(드랍·견제·러시)가 이미 말한다. */
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
@@ -626,7 +626,7 @@ const TITLES: Title[] = [
   tactic("캐리어를 모으는 여인", ["carrier"]),
   /* 러커는 저그의 밥이라 유닛 기본(7%)과 자릿수가 다르다 — 세 번을 올려 30%: 저그 판
      셋에 하나는 러커로 이겼어야 "부대"라 부른다. */
-  { ...tactic("공포의 독거미 부대", ["lurker"]), minPlaysShare: 0.3 },
+  { ...tactic("공포의 독거미 부대", ["lurker"]), minPlaysShare: 0.12 },
   /* 안 보이는 것으로만 치는 사람(요청: 다크·레이스·아비터를 다 잘 쓴 경우만) —
      "보이지 않는 손" → "안 보이는 레이스"를 거쳐 온 자리다. 유닛 하나로는 안 준다(요청:
      하나만 써서는 안 됨): 다크만 뽑는 프로토스는 흔하고, 그건 이미 유닛 칭호가 말한다.
@@ -643,7 +643,7 @@ const TITLES: Title[] = [
        있었는데, 이 값은 '무슨 일을 벌였나'가 아니라 병력 구성비라 그만큼 나오기 힘든
        장면이 아니다. 7.5면 러시(10.5) 아래·역전(6) 위로, 드묾은 그대로 인정하는 자리다. */
     label: "그림자의 여왕", weight: 2.5, kind: "경기력", pool: 1, edge: 1, tier: 1,
-    min: 0.05, why: "병력 중 은폐 유닛", unit: "",
+    min: 0.06, why: "병력 중 은폐 유닛", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       if (!m || !(m.uGround + m.uAir > 0)) return null;
@@ -654,12 +654,17 @@ const TITLES: Title[] = [
       return hidden > 0 ? hidden / (m.uGround + m.uAir) : null;
     },
   },
-  { ...tactic("뮤탈 습격대", ["muta"]), minPlaysShare: 0.02 },
+  { ...tactic("뮤탈 습격대", ["muta"]), minPlaysShare: 0.015 },
+  /* 코끼리 조련사(요청) — 울트라리스크를 모아 나간 판이다. 저그의 마지막 지상 병력이라
+     거기까지 판을 끌고 갔다는 말이기도 한데, 부르는 말은 그 그림 하나면 된다.
+     자막이 그 대목을 'ultra'로 짚는다(replaySummary의 PROD_ONLY_KEYS와 같은 열쇠).
+     비율은 다른 유닛 칭호와 같은 자리(UNIT_TACTIC_SHARE)에서 받는다. */
+  tactic("코끼리 조련사", ["ultra"]),
   /* 곁가지 다섯(오버로드 사냥·동맹 포토·커널·리콜·다크스웜)은 2%다(요청: 더 낮추기) —
      재분석 뒤에도 내내 비어 있던 것들이다. 워낙 드문 그림이라 비율은 낮게 두고, 우연은
      최소 횟수(3번)가 거른다. */
   { ...tactic("오버로드 사냥꾼", ["valk-hunt"]), minPlaysShare: 0.01 },
-  { ...tactic("몰래배럭 퀸", ["sneak-rax"]), minPlaysShare: 0.01 },
+  { ...tactic("몰래배럭 퀸", ["sneak-rax"]), minPlaysShare: 0.012 },
   /* (삭제) 끝없는 저글링 폭풍(zling-rush) — 요청. 저글링 하나로 들이치는 것은 그 종족의
      기본 진행에 가까워, 한 유닛만으로 러시라고 부를 만한 수가 아니다. */
   /* 초반 러시 한 덩어리(요청: 3게이트·9드론 등) — 질럿 러시와 저글링 러시를 한 칭호로 묶는다.
@@ -712,7 +717,7 @@ const TITLES: Title[] = [
   /* 역전의 아이콘(요청, 점수 높은 축) — 자막의 '재기'(revival)는 살림이 무너졌다가 다시
      일어난 판이다. 전술은 이긴 판만 세므로(서버의 _tactic_counts) 그 판은 곧 역전승이다:
      무너진 뒤에 일어나 이겼다는 말이라, 이 표에서 흔치 않은 이야기다. */
-  { ...tactic("역전의 명수", ["revival"]), minPlaysShare: 0.25 },
+  { ...tactic("역전의 명수", ["revival"]), minPlaysShare: 0.7 },
   /* 도박 퀸(요청: 도박적인 전술로 이긴 경우) — 자막의 '올인'은 뒤를 안 남기고 한 번에 건
      판이다. 전술은 이긴 판만 세므로(서버의 _tactic_counts) 여기 쌓이는 수는 곧 '건 것이
      통한 판'이다. 지고도 세면 그건 도박이 아니라 그냥 무너진 판이라 뜻이 갈린다. */
@@ -747,7 +752,7 @@ const TITLES: Title[] = [
     },
   },
   /* 상대보다 일꾼을 훨씬 많이 굴린 대목(worker-gap) — 자원을 많이 캤다는 말이다. */
-  { ...tactic("부티 자원 퀸", ["worker-gap"]), minPlaysShare: 0.25 },
+  { ...tactic("부티 자원 퀸", ["worker-gap"]), minPlaysShare: 0.3 },
   /* 흔한 대목들의 제 문턱(시뮬레이션 실측: 격차·정찰·역전·GG·스톰은 기본 문턱으로는 거의
      전원이 걸렸다 — 자막이 그 대목을 워낙 자주 짚는다) — 기본값 대신 그 대목의 실제 빈도에
      맞는 비율을 따로 건다. 값은 시뮬레이션 실측 분포의 꼭대기 한둘만 남게 맞춘 것이다
@@ -810,7 +815,7 @@ const TITLES: Title[] = [
     /* 2.5 → 3.5(요청: 퀸으로 올릴 만하다) — 손 이야기 셋(유효타·APM·커맨드) 가운데 가장
        위다. 빠르기는 타고나거나 오래 하면 오르지만, 헛치지 않는 손은 무엇을 누를지 미리
        정해 두어야 나온다. */
-    label: "군더더기 없는 손", weight: 3, kind: "경기력", min: 0.9, why: "APM 중 유효타", unit: "",
+    label: "군더더기 없는 손", weight: 3, kind: "경기력", min: 0.99, why: "APM 중 유효타", unit: "",
     value: (s) => (s.avgApm && s.avgEapm && s.avgApm > 0 ? s.avgEapm / s.avgApm : null),
   },
   /* (삭제) 누른 만큼 뽑는 사람(커맨드 중 생산 비율) — 요청. */
@@ -902,7 +907,7 @@ const TITLES: Title[] = [
        승률은 아무리 잘해도 100%를 못 넘어서 그 다툼에서는 구조적으로 진다. 그런데 클럽에서
        진짜 값어치 있는 사실은 이쪽이다: 열두 판 넘게 그 종족으로 뛰고 일곱 판을 이겼다는
        말은 재미가 아니라 실력이다. */
-    label: "{n}", weight: 6, sticky: true, kind: "승률", pool: 1, edge: 1, min: 62, why: "그 종족 승률", unit: "%",
+    label: "{n}", weight: 6, sticky: true, kind: "승률", pool: 1, edge: 1, min: 72, why: "그 종족 승률", unit: "%",
     value: (_s, of) => bestRace(of)?.rate ?? null,
     name: (_s, of) => { const best = bestRace(of); return best ? racePhrase(best.race) : null; },
   },
@@ -920,7 +925,7 @@ const TITLES: Title[] = [
        종족을 골라 잡은 승률이 아니라 나온 판을 통째로 놓고 일곱 판을 이겼다는 말이라,
        고를 것이 없는 만큼 더 어렵다. 둘 다 걸린 사람에게는 이쪽이 간다(같은 급 안에서는
        무게가 갈라 준다). */
-    label: "승리의 여신", weight: 9, sticky: true, kind: "승률", min: 62, why: `${MIN_PLAYS_RATE}판 이상 승률`, unit: "%",
+    label: "승리의 여신", weight: 9, sticky: true, kind: "승률", min: 66, why: `${MIN_PLAYS_RATE}판 이상 승률`, unit: "%",
     value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null),
   },
   /* "최다"를 뗐다(요청: 절대평가) — 이제 1위가 아니라 열 번을 넘긴 사람 전부다. */
@@ -1094,7 +1099,7 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     return {
       ...r,
       label: "저그의 절대군주 · 프로토스의 수호자 · 테란의 전설",
-      how: `그 종족으로 ${MIN_PLAYS_MODE}판 이상 · 제 판의 ${pct(RACE_MIN_SHARE)} 이상 · 승률 62% 이상`,
+      how: `그 종족으로 ${MIN_PLAYS_MODE}판 이상 · 제 판의 ${pct(RACE_MIN_SHARE)} 이상 · 승률 72% 이상`,
     };
   }).sort((a, b) => (Number(b.rank === "전설") - Number(a.rank === "전설")) || (b.score - a.score))
     .map(({ label, how, rank, wonOnly }) => ({ label, how, rank, wonOnly }));
