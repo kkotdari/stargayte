@@ -531,7 +531,7 @@ const TITLES: Title[] = [
   /* 드랍도 같은 무리로 올린다(요청: 견제도 가중치 높이기) — 병력을 실어 상대 뒤로 넘기는
      일은 앞마당에 병력을 세워 두는 것과 달리 판을 두 곳에서 동시에 굴려야 한다.
      종족마다 키가 달라 하나로 묶는다: 그래야 "드랍 잘하는 사람"이라는 한 말이 된다. */
-  tactic("드랍의 여신", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"], 1),
+  tactic("드랍 퀸", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"], 1),
 
   /* ── 운영(요청: 전략운영은 가중치를 좀 높여도 된다) ─────────────────────────
      한 유닛을 많이 뽑은 것과 달리, 이쪽은 그 판을 어떤 틀로 굴렸나다. 바이오닉·메카닉·
@@ -905,9 +905,13 @@ function denomOf(title: Title, of: EpithetSubject): number {
  *
  *  표(TITLES)에서 그때그때 만들어 낸다: 손으로 적어 두면 이름·문턱을 고칠 때마다 두 곳이
  *  어긋나고, 이 화면은 그 어긋남이 바로 거짓말이 되는 자리다. */
+/** 칭호의 격(요청: 여신 › 퀸 › 공주 › 그 외) — 이름에 쓰는 낱말이자 목록의 갈래다. */
+export type EpithetRank = "여신" | "퀸" | "공주" | "그 외";
+
 export interface EpithetGuideRow {
   label: string;
   how: string;
+  rank: EpithetRank;
   /** 이긴 판만 세는 칭호인가 — 안내에 그 한마디를 덧붙인다. */
   wonOnly: boolean;
 }
@@ -936,7 +940,13 @@ export function epithetGuideRows(): EpithetGuideRow[] {
         bits.push(t.min < 1 ? `${pct(t.min)} 이상` : `${t.min}${t.unit ?? ""} 이상`);
       }
     }
-    return { label: t.label, how: bits.join(" · "), wonOnly: t.won === true, score, sticky: t.sticky === true };
+    /* 격은 점수로 가른다 — 이름에 쓰는 낱말과 같은 선이다(표 머리의 규칙).
+       여신은 점수가 아니라 '무엇을 재는가'로 정해진다: 승률처럼 그 사람의 실력을 통째로
+       말하는 자리만 여신이고, 게임 수 1위(참여 퀸)는 sticky라도 퀸이다. */
+    const rank: EpithetRank = t.label.includes("여신")
+      ? "여신"
+      : score >= 3 ? "퀸" : score >= 2 ? "공주" : "그 외";
+    return { label: t.label, how: bits.join(" · "), wonOnly: t.won === true, score, sticky: t.sticky === true, rank };
   });
   /* 이름이 사람마다 달라지는 두 줄({n})은 손으로 적는다 — 맵 이름·종족 이름이 들어가야
      말이 되는데, 표에는 그 자리가 비어 있다. */
@@ -955,7 +965,7 @@ export function epithetGuideRows(): EpithetGuideRow[] {
       how: `그 종족으로 ${MIN_PLAYS_MODE}판 이상 · 제 판의 ${pct(RACE_MIN_SHARE)} 이상 · 승률 70% 이상`,
     };
   }).sort((a, b) => (Number(b.sticky) - Number(a.sticky)) || (b.score - a.score))
-    .map(({ label, how, wonOnly }) => ({ label, how, wonOnly }));
+    .map(({ label, how, wonOnly, rank }) => ({ label, how, wonOnly, rank }));
 }
 
 /** 회원 → 칭호. 왕관은 넘겨받은 무리 안에서만 매기므로, 부르는 쪽이 '검색에 걸린 목록'이

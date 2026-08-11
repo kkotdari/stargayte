@@ -11867,6 +11867,12 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-epithet-guide-lead {
   margin: 0 0 12px; color: var(--muted); font-size: var(--fs-caption); line-height: 1.5;
 }
+/* 격 한 덩어리 — 머리(여신·퀸·공주·그 외)와 그 아래 줄들. */
+.scr-epithet-guide-group + .scr-epithet-guide-group { margin-top: 16px; }
+.scr-epithet-guide-rank {
+  margin: 0 0 8px; font-size: var(--fs-caption); font-weight: 800; color: var(--muted);
+  letter-spacing: 0.04em;
+}
 .scr-epithet-guide-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
 /* 한 줄 = [이름 / 조건] — 좁은 화면에서는 조건이 이름 밑으로 내려간다. */
 .scr-epithet-guide-row {
