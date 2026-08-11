@@ -702,7 +702,12 @@ const TITLES: Title[] = [
        충분히 뛰었나(MIN_PLAYS_MODE) 하나면 된다. */
     // 승률 70% 이상만(요청: 진짜 승률이 높은 경우만) — 그 종족으로 열두 판을 뛰고도 승률이
     // 반반이면 "절대군주"라는 말이 거짓이 된다.
-    label: "{n}", weight: 4, pool: 1, edge: 1, min: 70, why: "그 종족 승률", unit: "%",
+    /* 승률은 무엇보다 앞선다(요청: 종족별·전체 승률 같은 건 진짜 좋은 거니 최우선) —
+       sticky로 급을 앞당긴다. 전술 칭호는 "무엇을 했나"라 되풀이하면 점수가 쌓이는데,
+       승률은 아무리 잘해도 100%를 못 넘어서 그 다툼에서는 구조적으로 진다. 그런데 클럽에서
+       진짜 값어치 있는 사실은 이쪽이다: 열두 판 넘게 그 종족으로 뛰고 일곱 판을 이겼다는
+       말은 재미가 아니라 실력이다. */
+    label: "{n}", weight: 6, sticky: true, pool: 1, edge: 1, min: 70, why: "그 종족 승률", unit: "%",
     value: (_s, of) => bestRace(of)?.rate ?? null,
     name: (_s, of) => { const best = bestRace(of); return best ? racePhrase(best.race) : null; },
   },
@@ -716,7 +721,8 @@ const TITLES: Title[] = [
      "승률의 정점"에서 이름과 문턱을 함께 바꿨다 — 1등이라도 5할대면 정점이라 부를 수 없고,
      7할을 넘긴 사람이 여럿이어도 그중 가장 높은 한 사람만 이 말을 듣는다. */
   {
-    label: "승리의 여신", weight: 3.5, min: 70, why: "승률", unit: "%",
+    // 종족 승률과 같은 자리다(요청: 최우선) — 종족을 가리지 않고 일곱 판을 이긴 사람이다.
+    label: "승리의 여신", weight: 5, sticky: true, min: 70, why: "승률", unit: "%",
     value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null),
   },
   { label: "BEST 수집가", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
