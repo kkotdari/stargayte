@@ -340,7 +340,26 @@ const TITLES: Title[] = [
      그래서 단일 유닛 칭호(캐리어·저글링 같은 것)보다 위에 둔다. */
   tactic("바이오닉의 권위자", ["bionic"]),
   tactic("메카닉을 호령하는 자", ["mech"]),
-  tactic("공포의 목동저그", ["moka"]),
+  {
+    /* 목동 저그(요청: 멋진데 안 나온다) — 자막이 이 그림을 짚으려면 한 판에서 저글링 12기·
+       울트라 3기·다크스웜이 다 나와야 해서(replayTactics의 moka), 그 조건을 넘긴 판이 적으면
+       칭호도 안 나온다. 그래서 자막이 짚은 판이 없으면 그 사람이 그 기간에 뽑은 것으로 대신
+       본다 — 울트라와 디파일러를 함께 굴렸다면 그 판들이 곧 목동 저그다.
+       값은 둘 중 큰 쪽이라, 자막이 짚은 사람이 늘 앞선다. */
+    label: "공포의 목동저그", weight: 6, pool: 1, edge: 1, scale: "count",
+    why: "목동 저그", unit: "번",
+    value: (s) => {
+      const byBeat = did(s, "moka") ?? 0;
+      const m = s.buildMix;
+      const ultra = m?.units?.Ultralisk ?? 0;
+      const defiler = m?.units?.Defiler ?? 0;
+      const ling = m?.units?.Zergling ?? 0;
+      // 셋을 다 굴렸을 때만 — 울트라만 몇 기 뽑은 것은 목동이 아니다.
+      const byUnit = ultra >= 2 && defiler >= 1 && ling >= 20 ? Math.min(ultra, defiler) : 0;
+      const n = Math.max(byBeat, byUnit);
+      return n > 0 ? n : null;
+    },
+  },
 
   // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
   tactic("옆탱의 여왕", ["side-tank"]),
