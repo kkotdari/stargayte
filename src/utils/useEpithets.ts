@@ -18,7 +18,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { useAppStore } from "../store/appStore";
-import { epithetsOf, type Epithet } from "./statEpithet";
+import { epithetsOf, lastEpithetClaims, type Epithet, type EpithetClaimRow } from "./statEpithet";
 import type { GameType, MemberStatsEntry } from "../types";
 
 /** 내전 = 팀전. 칭호는 이 유형의 기록으로만 매긴다(요청). */
@@ -91,6 +91,30 @@ async function recount(key: string): Promise<number> {
   cached = map;
   cachedKey = key;
   return changed;
+}
+
+/** 계산만 해 본다(요청: 제어판의 칭호 시뮬레이션) — 서버에 올리지도, 캐시를 갈지도 않는다.
+ *  돌려주는 것은 배정 결과(한 사람에 하나)와 그 재료가 된 자격 전부(lastEpithetClaims):
+ *  한 사람이 어떤 칭호들에 걸렸고 무엇을 다른 임자에게 내줬는지가 자격 쪽에서만 보인다. */
+export async function simulateEpithets(memberIds: string[]): Promise<{
+  assigned: Map<string, Epithet>;
+  claims: EpithetClaimRow[];
+}> {
+  const ids = [...memberIds].sort();
+  const res = await api.getGameResultStats({
+    memberIds: ids, dateFrom: "", dateTo: "", matchType: CLAN_TYPE,
+  });
+  const byId: Record<string, MemberStatsEntry> = {};
+  res.members.forEach((entry) => { byId[entry.memberId] = entry; });
+  const assigned = epithetsOf(ids
+    .map((id) => ({
+      id,
+      stats: byId[id]?.overall,
+      races: byId[id]?.byRace,
+      won: byId[id]?.won,
+    }))
+    .flatMap((x) => (x.stats ? [{ id: x.id, stats: x.stats, races: x.races, won: x.won }] : [])));
+  return { assigned, claims: lastEpithetClaims() };
 }
 
 /** 지금 당장 다시 계산한다 — 제어판의 "칭호 다시 계산" 버튼이 쓴다(요청).

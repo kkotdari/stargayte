@@ -364,13 +364,14 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
                       </>
                     ) : "경기 재분석"}
                   </button>
-                  {/* 칭호 현황(요청) — 지금 저장된 칭호를 회원 전체 리스트로 훑는다.
+                  {/* 칭호 시뮬레이션(요청) — 저장된 값이 아니라 지금 기록으로 계산을 돌려,
+                      한 사람이 자격을 얻은 칭호 전부를 훑는다. 서버에는 아무것도 안 올리는
                       단순 조회라 확인창 없이 바로 연다(요청: 조회는 컨펌 제외). */}
                   <button
                     type="button" className="scr-btn scr-btn-primary"
                     onClick={() => setEpiStatusOpen(true)}
                   >
-                    칭호 현황
+                    칭호 시뮬레이션
                   </button>
                   {/* 칭호 다시 계산 — 경기를 손대지는 않지만 활동에 알림을 남길 수 있으므로
                       (칭호가 바뀐 사람이 있으면) 확인창을 거친다. */}
