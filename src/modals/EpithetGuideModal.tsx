@@ -25,13 +25,8 @@ export default function EpithetGuideModal({ onClose }: { onClose: () => void }) 
           <button className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={14} /></button>
         </div>
         <div className="scr-modal-body scr-scroll">
-          {/* "위에 있을수록 먼저 간다"에서 바꿨다(요청: 나오기 힘든 플레이가 점수가 높아야
-              한다) — 목록이 점수 차례로 서고, 그 점수가 곧 '얼마나 나오기 힘든가'다. 먼저
-              나가는 것과는 다른 말이라, 그쪽은 해당하는 줄에만 한마디로 적힌다. */}
-          <p className="scr-epithet-guide-lead">
-            내전 전체 기록에서 한 사람에 하나씩 붙어요. 위에 있을수록 나오기 힘든 칭호고,
-            한 칭호는 한 사람뿐이라 임자가 다른 칭호로 가면 그 칭호는 안 나가요.
-          </p>
+          {/* (삭제) 머리말 — 규칙 요약 한 문단을 두었다가 걷었다(요청). 목록 자체가 이미
+              등급·차례로 말하고 있어, 그 위의 설명은 같은 말을 한 번 더 하는 셈이었다. */}
           {/* 등급으로 나눠 적는다(요청: 전설·에픽·일반) — 쉰 줄이 한 덩어리로 서면 어느
               것이 더 높은 자리인지가 안 보인다. 갈래 안에서는 점수 순 그대로다. */}
           {RANKS.map((rank) => {
