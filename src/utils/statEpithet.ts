@@ -87,6 +87,27 @@ export interface Epithet {
   why: string;
 }
 
+/** 칭호의 등급(요청: 전설·에픽·일반으로 색을 가른다).
+ *
+ *  새로 매기는 값이 아니라 이미 있는 두 선을 그대로 읽는다 — sticky(승률·종족 승률·게임 수
+ *  1위)가 전설이고, 왕관 계열(CROWN_SCORE 이상)이 에픽, 나머지가 일반이다. 이름 규칙과 같은
+ *  선이라 무게를 고치면 이름도 색도 함께 따라온다. */
+export type EpithetClass = "legend" | "epic" | "common";
+
+/** 라벨 하나의 등급. 화면은 저장된 칭호를 이름으로만 받으므로(서버는 label·why만 들고 있다)
+ *  표를 되짚어 등급을 찾는다.
+ *
+ *  맵·종족처럼 이름이 사람마다 달라지는 칭호는 표에서 찾을 수가 없어 말끝으로 가른다 —
+ *  종족은 세 낱말이 통째로 정해져 있고(RACE_SAYS), 맵은 꼬리말이 넷뿐이다(MAP_SAYS). */
+export function epithetClassOf(label: string): EpithetClass {
+  if (!label) return "common";
+  const hit = CLASS_BY_LABEL.get(label);
+  if (hit) return hit;
+  if (Object.values(RACE_SAYS).includes(label)) return "legend";
+  if (MAP_SAYS.some((tail) => label.endsWith(`의 ${tail}`))) return "epic";
+  return "common";
+}
+
 /** 주요시간대 1분당 값 — 총합은 오래 뛴 사람이 늘 크다(MemberStatRow의 perMin과 같은 자). */
 function perMin(total: number, seconds: number | null | undefined): number | null {
   return seconds && seconds > 0 ? (total / seconds) * PER_WINDOW_SECONDS : null;
@@ -804,6 +825,18 @@ function bestRace(of: EpithetSubject): { race: string; rate: number } | null {
   }
   return best;
 }
+
+/** 표에서 뽑아 둔 라벨 → 등급(위 epithetClassOf) — 이름이 고정인 칭호만 담긴다. */
+const CLASS_BY_LABEL: Map<string, EpithetClass> = new Map(
+  TITLES.filter((t) => !t.label.includes("{n}")).map((t) => [
+    t.label,
+    (t.sticky
+      ? "legend"
+      : (t.weight ?? 0) * (TIER_BOOST[t.tier ?? 2] ?? 1) >= CROWN_SCORE
+        ? "epic"
+        : "common") as EpithetClass,
+  ]),
+);
 
 /** 이 칭호를 잴 때의 분모 — 종족을 타는 칭호는 그 종족 판수다(Title.race).
  *  문턱과 근거 문장이 같은 수를 봐야 "테란 12판 중 3번"이 문턱과 어긋나지 않는다. */
