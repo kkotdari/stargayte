@@ -244,16 +244,14 @@ function RecordRace({ race, stats }: { race: BaseRace; stats?: MemberStats }) {
   return (
     <div className="scr-stat-record-item">
       <span className="scr-stat-record-label">{race}</span>
-      <div className="scr-stat-record-pair">
-        <span className="scr-stat-record-num-v">
-          {plays > 0 ? plays : "-"}
-          {plays > 0 && <span className="scr-stat-record-num-unit">판</span>}
-        </span>
-        <span className="scr-stat-record-num-v">
-          {plays > 0 ? stats!.winRate : "-"}
-          {plays > 0 && <span className="scr-stat-record-num-unit">%</span>}
-        </span>
-      </div>
+      <span className="scr-stat-record-num-v">
+        {plays > 0 ? plays : "-"}
+        {plays > 0 && <span className="scr-stat-record-num-unit">판</span>}
+      </span>
+      <span className="scr-stat-record-num-v">
+        {plays > 0 ? stats!.winRate : "-"}
+        {plays > 0 && <span className="scr-stat-record-num-unit">%</span>}
+      </span>
     </div>
   );
 }
@@ -469,23 +467,19 @@ export default function MemberStatRow({
               그 아래 네 줄이 곧 표가 되고, 값도 열 별로 세로로 맞는다. */}
           <div className="scr-stat-record-item scr-stat-record-head">
             <span className="scr-stat-record-label" />
-            <div className="scr-stat-record-pair">
-              <span>경기수</span>
-              <span>승률</span>
-            </div>
+            <span>경기수</span>
+            <span>승률</span>
           </div>
           <div className="scr-stat-record-item">
             <span className="scr-stat-record-label">전체</span>
-            <div className="scr-stat-record-pair">
-              <span className="scr-stat-record-num-v">
-                {stats.plays > 0 ? stats.plays : "-"}
-                {stats.plays > 0 && <span className="scr-stat-record-num-unit">판</span>}
-              </span>
-              <span className="scr-stat-record-num-v">
-                {stats.plays > 0 ? stats.winRate : "-"}
-                {stats.plays > 0 && <span className="scr-stat-record-num-unit">%</span>}
-              </span>
-            </div>
+            <span className="scr-stat-record-num-v">
+              {stats.plays > 0 ? stats.plays : "-"}
+              {stats.plays > 0 && <span className="scr-stat-record-num-unit">판</span>}
+            </span>
+            <span className="scr-stat-record-num-v">
+              {stats.plays > 0 ? stats.winRate : "-"}
+              {stats.plays > 0 && <span className="scr-stat-record-num-unit">%</span>}
+            </span>
           </div>
           {/* 종족 셋은 전체 바로 아래다(요청) — 같은 두 값을 종족으로 쪼갠 줄이라 붙어 있어야
               "전체 23판 가운데 프로토스가 17판"이 한눈에 읽힌다. */}
