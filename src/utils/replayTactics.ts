@@ -22,8 +22,11 @@ const SECONDS_PER_FRAME = 0.042;
    전에 문 앞을 잠그는 수라, 판가름은 첫 몇 분에 난다 — 그 창을 7분까지 열어 두면 이미
    중반에 접어든 판에서 상대 멀티 앞에 박는 견제·조이기까지 전부 러시로 읽힌다. */
 const SUNKEN_RUSH_SEC = 3 * 60;
-// 포토러시로 볼 시간 창 — 이보다 늦게 상대 본진에 박는 포토는 러시가 아니라 조이기다.
-const CANNON_RUSH_SEC = 6 * 60;
+/* 포토러시로 볼 시간 창 — 이보다 늦게 상대 본진에 박는 포토는 러시가 아니라 조이기다.
+   성큰(3분)보다 한참 길게 둔다(지적: 포토러시는 의외로 중반까지도 먹힌다) — 성큰은 상대가
+   병력을 갖추기 전 몇 분이 전부지만, 포토는 프로브 한 기만 살아 들어가면 중반에도 상대
+   본진을 잠글 수 있다. 6 → 9분. */
+const CANNON_RUSH_SEC = 9 * 60;
 
 // 입구막기(wall-in)로 볼 시간 창 — 입구막기는 앞을 잠가 놓고 그 뒤에서 크는 수다.
 // 빠른무한처럼 처음부터 자원이 넘치는 판에서는 벽이 더 늦게, 더 두껍게 서기도 해서
@@ -1852,7 +1855,11 @@ function detectFor(c: Ctx): Tactic[] {
     // 봤는데, 그러면 제 본진에 방어 포토를 먼저 깔았다가 나중에 러시를 간 경기가 통째로
     // 빠지고(첫 포토는 이르지만 러시는 아니었다) 반대로 6분에 간 진짜 포토러시도 5분 30초
     // 문턱에 걸려 빠졌다(지적). inZone이 이미 6분 안쪽만 넘겨주므로 그걸 그대로 쓴다.
-    const forward = inZone("enemy", "Photon Cannon", CANNON_RUSH_SEC);
+    /* 성큰러시와 같은 자를 하나 더 댄다(지적: 안 한 사람이 러시로 잡혔다 — 그쪽 주석 참고)
+       — 상대 본진 반경 안이라도 내 기지·아군 기지가 더 가까우면 그건 내 살림 앞에 세운
+       방어 포토다. 시작 자리가 붙은 맵에서 실제로 그런 자리가 나온다. */
+    const forward = inZone("enemy", "Photon Cannon", CANNON_RUSH_SEC)
+      .filter((b) => geo !== null && geo.foeTurfAt(b) !== null);
     if (forward.length > 0) {
       out.push({
         key: "cannon-rush", ...foeAt(forward), weight: SNEAK_WEIGHT, at: firstOf(forward),
