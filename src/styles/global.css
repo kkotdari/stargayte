@@ -9316,8 +9316,10 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-activity-row-vs {
   /* 승·무·패 동그라미가 이 안에 함께 선다 — vs와는 넉넉히 떼고(gap 7px), 바깥쪽(이름 쪽)은
      4px으로 둔다(요청) — 배지·vs·배지가 한 덩어리로 읽히되 서로 붙어 뭉치지는 않는 폭이다. */
-  display: inline-flex; align-items: center; gap: 4px;
-  margin: 0 2px; font-size: var(--fs-11); font-weight: 700; letter-spacing: 0.04em;
+  display: inline-flex; align-items: center; gap: 6px;
+  /* 이 덩어리 바깥(이름 쪽) 여백도 조금 더 준다(요청) — 배지가 동그라미라 네모난 글자보다
+     둘레가 비어 보이지 않아, 같은 값이어도 이름에 더 붙어 보인다. */
+  margin: 0 5px; font-size: var(--fs-11); font-weight: 700; letter-spacing: 0.04em;
 }
 /* 경기 줄만 가로로 눌러 납작하게 만든다(요청: "글자 크기를 줄이는 게 아니라 폭만 줄이기").
    한 판은 최대 여덟 명이라 이름을 넉 자로 잘라도(shortName) 다른 갈래(양편이 한둘인 너
