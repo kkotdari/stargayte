@@ -79,6 +79,10 @@ export function challengeStatusInfo(c: Challenge): { text: string; tone: PillTon
   // 완료는 실제로 붙어서 결과까지 들어온 건이다 — 카드는 그 자리에 승/무를 띄우므로 톤이
   // 따로 없다. 목록에선 '성사됐다'는 뜻이 가장 가까운 수락 색을 그대로 쓴다.
   if (c.status === "done") return { text: "완료", tone: "accepted" };
+  /* 미실시가 먼저다(지적: 미실시인데 배지가 '수락'으로 나온다) — 아래 응답 톤은 사람마다
+     어떻게 답했나를 모은 값이라, 다 수락한 뒤에 안 치른 건이 '수락'으로 뜬다. 이 줄이
+     말해야 하는 것은 응답이 아니라 이 건이 어떻게 끝났나다. */
+  if (c.resultWinnerSide === "not_held") return { text: "미실시", tone: "expired" };
   const ending = challengeEnding(c);
   if (ending === "canceled") return { text: "취소", tone: "canceled" };
   if (ending === "expired") return { text: "만료", tone: "expired" };

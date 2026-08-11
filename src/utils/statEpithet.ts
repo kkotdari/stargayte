@@ -156,11 +156,12 @@ function median(vals: number[]): number {
 /* ── 유독 잘하는 맵 ──────────────────────────────────────────────────────────── */
 /** 한 맵을 '잘한다'고 부르려면 이만큼은 뛰어야 한다 — 두 판 다 이겼다고 지배자는 아니다.
  *  6 → 8판(요청: 전설·에픽의 문턱을 조금씩 높이기) — 맵 칭호는 왕관 계열이라 그 이름을
- *  달려면 그 맵에서 한동안 살아 봤어야 한다. */
+ *  달려면 그 맵에서 한동안 살아 봤어야 한다. 승률 쪽은 7할로 되돌렸다(요청: 전설과 맵
+ *  칭호는 70%로 족하다) — 판수를 늘린 것으로 이미 우연이 걸러진다. */
 const MAP_MIN_PLAYS = 8;
 /** 그리고 이만큼은 이겨야 한다 — 60 → 70 → 72%(요청). 7할은 종족·전체 승률 칭호와 같은
  *  선이라, 셋이 같은 잣대를 쓴다. */
-const MAP_MIN_RATE = 0.72;
+const MAP_MIN_RATE = 0.7;
 
 /* 맵 이름 뒤에 붙는 말(요청: 맵 이름 뒤에 붙여서 재밌게) — "헌터의 여주인", "빨무의
    안주인", "투혼의 황녀"처럼 맵마다 다른 말이 붙는다. 고르는 자는 맵 이름이다: 같은 맵은
@@ -424,9 +425,11 @@ const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker",
    "퀸"·"절대자"는 그 수로 사람을 부르는 말이라, 한두 번 해 본 사람에게 붙으면 그 말이
    거짓이 된다. 그리고 러시는 마음만 먹으면 되풀이할 수 있는 수라 드묾이 곧 값어치도
    아니다(핵·리콜과 다른 점이다).
-   10%에 최소 두 번 — 프로토스로 서른 판 뛰었으면 세 번, 스무 판이면 두 번이다. 그쯤이면
-   "이 사람은 포토러시를 하는 사람"이라 부를 만하다. */
-const RUSH_SHARE = 0.12;
+   8%에 최소 두 번(요청) — 프로토스로 서른 판 뛰었으면 세 번, 스무 판이면 두 번이다.
+   그쯤이면 "이 사람은 포토러시를 하는 사람"이라 부를 만하다. 흔한 수(8%)와 같은 선인 것은
+   러시가 드물어서가 아니라 되풀이할 수 있는 수이기 때문이다 — 드묾은 이미 1급 웃돈이
+   값을 쳐 준다. */
+const RUSH_SHARE = 0.08;
 const RUSH_MIN = 2;
 const RUSH_TACTICS = new Set(["cannon-rush", "sunken-rush"]);
 
@@ -778,7 +781,7 @@ const TITLES: Title[] = [
        승률은 아무리 잘해도 100%를 못 넘어서 그 다툼에서는 구조적으로 진다. 그런데 클럽에서
        진짜 값어치 있는 사실은 이쪽이다: 열두 판 넘게 그 종족으로 뛰고 일곱 판을 이겼다는
        말은 재미가 아니라 실력이다. */
-    label: "{n}", weight: 6, sticky: true, pool: 1, edge: 1, min: 72, why: "그 종족 승률", unit: "%",
+    label: "{n}", weight: 6, sticky: true, pool: 1, edge: 1, min: 70, why: "그 종족 승률", unit: "%",
     value: (_s, of) => bestRace(of)?.rate ?? null,
     name: (_s, of) => { const best = bestRace(of); return best ? racePhrase(best.race) : null; },
   },
@@ -796,7 +799,7 @@ const TITLES: Title[] = [
        종족을 골라 잡은 승률이 아니라 나온 판을 통째로 놓고 일곱 판을 이겼다는 말이라,
        고를 것이 없는 만큼 더 어렵다. 둘 다 걸린 사람에게는 이쪽이 간다(같은 급 안에서는
        무게가 갈라 준다). */
-    label: "승리의 여신", weight: 9, sticky: true, min: 72, why: "승률", unit: "%",
+    label: "승리의 여신", weight: 9, sticky: true, min: 70, why: "승률", unit: "%",
     value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null),
   },
   { label: "BEST 수집퀸", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
