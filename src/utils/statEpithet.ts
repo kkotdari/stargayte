@@ -422,7 +422,18 @@ const RUSH_TACTICS = new Set(["cannon-rush", "sunken-rush"]);
 const COUNTED_EVEN_IF_LOST = new Set(["lodging", "relocate", "no-elim", "gg"]);
 
 const tactic = (label: string, keys: string[], min = 1): Title => ({
-  label, value: (s) => did(s, ...keys), pool: 1, edge: 1,
+  label,
+  /* 분자도 종족 버킷에서 읽는다(지적: 계속 낮춰도 안 나오면 분모가 해당 종족 판수가 아닐
+     수도) — 전체 합(overall.tactics)에서 세고 분모만 종족 판수를 쓰면, 두 집계가 조금만
+     어긋나도 비율이 100%를 넘거나(옆탱 2번 > 테란 판) 영영 못 닿는 수가 된다. 같은 버킷
+     (byRace[종족])에서 분자·분모를 함께 읽으면 구조적으로 어긋날 수가 없다. 종족을 안 타는
+     칭호와 종족 버킷이 안 온 옛 응답은 전체 합 그대로다. */
+  value: (s, of) => {
+    const race = TACTIC_RACE[keys[0]];
+    const src = race ? of.races?.[race] ?? s : s;
+    return did(src, ...keys);
+  },
+  pool: 1, edge: 1,
   won: !keys.some((k) => COUNTED_EVEN_IF_LOST.has(k)),
   min: RUSH_TACTICS.has(keys[0]) ? Math.max(min, RUSH_MIN) : min,
   why: TACTIC_NOUN[keys[0]] ?? "이 수", unit: "번",
@@ -442,8 +453,11 @@ const spell = (label: string, key: string, min = 1): Title => ({
   /* 이긴 판에서 쓴 것만 센다(요청: 핵·스테이시스 같은 기술도 이긴 판만) — 서버가 그 원장을
      따로 세어 내려 준다(skillsWon). 없으면(옛 응답) 이 칭호는 안 나간다: 승패를 안 가린
      수로 "핵 다섯 번"이라 적으면 그 문장이 거짓이 된다. */
-  value: (s) => {
-    const n = s.buildMix?.skillsWon?.[key] ?? 0;
+  // 분자를 종족 버킷에서 읽는 까닭은 tactic()과 같다 — 분모와 같은 집계라야 한다.
+  value: (s, of) => {
+    const race = TACTIC_RACE[key];
+    const src = race ? of.races?.[race] ?? s : s;
+    const n = src.buildMix?.skillsWon?.[key] ?? 0;
     return n > 0 ? n : null;
   },
   pool: 1, edge: 1, min, why: `게임에서 ${TECH_KO[key] ?? "이 기술"} 사용`, unit: "번",
@@ -482,9 +496,10 @@ const TITLES: Title[] = [
        뜻을 잃는다(1087번/56판 같은 값이 나온다). 실측 분포는 판당 1~2회가 보통, 8~19회가
        꼭대기 — 5회면 "스톰으로 사는 사람"만 남는다. */
     label: "스톰 술사", weight: 2, race: "프로토스", min: 8, why: "판당 스톰", unit: "회",
-    value: (s, of) => {
-      const n = s.buildMix?.skillsWon?.["Psionic Storm"] ?? 0;
-      const plays = of.races?.["프로토스"]?.plays ?? 0;
+    value: (_s, of) => {
+      const bucket = of.races?.["프로토스"];
+      const n = bucket?.buildMix?.skillsWon?.["Psionic Storm"] ?? 0;
+      const plays = bucket?.plays ?? 0;
       return plays > 0 && n > 0 ? n / plays : null;
     },
   },
@@ -874,7 +889,7 @@ const TITLES: Title[] = [
      나와야 "그 판에 늘 있는 사람"이다. 전체 판수를 못 받아 왔으면(집계 실패) 이 칭호만 쉰다.
      명예류(BEST·참여)는 무게 6이다(지적: 베스트 퀸이 옆탱보다 아래라니) — 판을 만든 공로와
      꾸준함은 낱개 전술(4)보다 위, 승률(전설)보다는 아래인 자리다. */
-  { label: "참여 퀸", weight: 6, min: 0.65, why: "클럽 전체 판 대비 참여", unit: "",
+  { label: "참여 퀸", weight: 6, min: 0.7, why: "클럽 전체 판 대비 참여", unit: "",
     value: (s) => (clubTotalGames && clubTotalGames > 0 && s.plays > 0 ? s.plays / clubTotalGames : null) },
 ];
 
