@@ -25,7 +25,9 @@ import type { MemberStats } from "../types";
 
 /** 칭호를 붙일 최소 경기 수 — 한두 판으로 무엇의 "왕"을 부를 수는 없다. */
 const MIN_PLAYS = 3;
-/** 승률만은 더 본다 — 3판 3승이 곧 "정점"이 되면 그 칭호는 아무 말도 안 하는 것과 같다. */
+/** 승리의 여신만 쓰는 표본 조건 — 3판 3승이 곧 "여신"이 되면 그 말이 아무것도 안 말한다.
+ *  일반 판수 문턱은 걷었지만(요청: 수치로 거른다) 승률은 표본이 조건의 일부라 남는다 —
+ *  종족(12판)·맵(8판)·팔색조(18판)와 같은 결이고, 설명에도 그 칭호의 조건으로 적힌다. */
 const MIN_PLAYS_RATE = 8;
 /** 유형 칭호(개인전·팀전 퀸)는 그 유형에서만 세는 판수라 더 많이 본다 — 팀전 몇 판으로
  *  "팀전 퀸"이 되면 정작 팀전을 도맡아 뛴 사람이 그 말을 못 듣는다. */
@@ -34,11 +36,8 @@ const MIN_PLAYS_MODE = 12;
  *  셋을 고루 하면 한 종족이 3분의 1이니, 4분의 1이면 "이 사람의 종족 가운데 하나"라 부를
  *  만한 선이다. 주종족(대개 절반 이상)까지 요구하지는 않는다. */
 const RACE_MIN_SHARE = 0.25;
-/* 좋은 칭호일수록 뛴 판이 있어야 한다(요청: 경기를 많이 안 했는데 재밌는 칭호를 가져가면
-   안 된다) — 세 판 나와서 그중 한 판에 포토러시를 한 사람이 "포토러시의 퀸"이 되면, 그
-   칭호는 클럽에서 그 사람을 부르는 말이 아니라 우연히 찍힌 도장이 된다.
-   급마다 다르게 잡는 이유는 급 자체가 '얼마나 그 사람다운가'의 눈금이라서다. */
-const MIN_PLAYS_TIER: Record<number, number> = { 1: 10, 2: 4 };
+/* (삭제) MIN_PLAYS_TIER — 급별 최소 판수. 판수 문턱을 걷으면서(요청: 수치로 거른다) 함께
+   없어졌다. */
 /* (삭제) NAME_EDGE — 원장에서 뽑던 유닛·건물 칭호가 "무리 한가운데보다 이만큼 앞서야"를
    재던 값이다. 그 칭호들과 함께 걷었다(아래 '특징' 주석). */
 /* (삭제) MIN_POOL·CROWN_EDGE·CROWN_SCORE — 상대평가(클럽 1위·왕관 물려주기) 시절의
@@ -838,7 +837,7 @@ const TITLES: Title[] = [
        종족을 골라 잡은 승률이 아니라 나온 판을 통째로 놓고 일곱 판을 이겼다는 말이라,
        고를 것이 없는 만큼 더 어렵다. 둘 다 걸린 사람에게는 이쪽이 간다(같은 급 안에서는
        무게가 갈라 준다). */
-    label: "승리의 여신", weight: 9, sticky: true, min: 70, why: "승률", unit: "%",
+    label: "승리의 여신", weight: 9, sticky: true, min: 70, why: `${MIN_PLAYS_RATE}판 이상 승률`, unit: "%",
     value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null),
   },
   /* "최다"를 뗐다(요청: 절대평가) — 이제 1위가 아니라 열 번을 넘긴 사람 전부다. */
@@ -971,15 +970,12 @@ export function epithetGuideRows(): EpithetGuideRow[] {
       else bits.push(`${what}`);
       const minCount = Math.max(t.min ?? 1, share > 0 ? COUNT_MIN[tier] ?? 0 : 0);
       if (minCount > 1) bits.push(`최소 ${minCount}${t.unit ?? "번"}`);
-      bits.push(`${MIN_PLAYS_TIER[tier] ?? MIN_PLAYS}판 이상`);
     } else {
       if (t.min !== undefined) {
         bits.push(`${what} ${t.min < 1 ? pct(t.min) : `${t.min}${t.unit ?? ""}`} 이상`);
       } else {
         bits.push(what);
       }
-      // 수치·비율 칭호의 판수 문턱(MIN_PLAYS_RATE) — 세 판의 APM은 그 사람의 손이 아니다.
-      bits.push(`${MIN_PLAYS_RATE}판 이상`);
     }
     /* 등급은 구조로 가른다 — 전설은 승률 계열(sticky), 에픽은 3점 이상, 나머지가 일반.
        이름 짓는 규칙(표 머리)과 같은 선이다. */
@@ -1038,14 +1034,11 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
   }
   const claims: Claim[] = [];
   TITLES.forEach((title, order) => {
-    // 급마다 뛴 판 문턱이 다르다(MIN_PLAYS_TIER) — 못 넘긴 사람은 후보에서 아예 빠진다.
-    const need = MIN_PLAYS_TIER[title.tier ?? 2] ?? MIN_PLAYS;
+    /* (삭제) 급별 최소 판수(MIN_PLAYS_TIER)·수치 칭호 최소 판수(MIN_PLAYS_RATE) — 걷었다
+       (요청: 앞으로를 생각해서 판수 문턱이 아니라 수치로 거른다). 판이 쌓일수록 판수 문턱은
+       뜻을 잃고, 우연을 거르는 몫은 이미 수치 조건(비율·최소 횟수·절대 문턱)이 맡고 있다.
+       승률·종족·맵·팔색조처럼 표본이 조건의 일부인 칭호만 제 판수 조건을 값 안에 갖는다. */
     for (const p of ranked) {
-      if (p.stats.plays < need) continue;
-      /* 수치·비율 칭호(scale이 count가 아닌 것)는 판이 좀 더 쌓여야 한다 — 세 판의 APM
-         300은 그 사람의 손이 아니라 그 세 판의 형편이다. 예전에는 "클럽 한가운데의 절반"
-         이라는 상대 잣대였는데, 절대평가로 바꾸며 고정 판수(MIN_PLAYS_RATE)로 못 박는다. */
-      if (title.scale !== "count" && p.stats.plays < MIN_PLAYS_RATE) continue;
       const v = title.value(p.stats, p);
       if (v === null || !(v > 0)) continue;
       const tier = title.tier ?? 2;
