@@ -318,10 +318,14 @@
      이쪽은 가장자리가 어두운 그라데이션이라, 나란히 놓이면 '칠한 색'과 '금속'으로 갈려
      읽힌다. 8px짜리 배지에도 쓰이므로 본체가 밝아야 하는 것도 같은 방향이다 — 어두운
      금속은 작은 글자에서 그냥 회색으로 보인다. */
-  --best-ink: #ffd95e;
-  --best-line: rgba(255, 217, 94, 0.5);
-  --best-bg: rgba(255, 217, 94, 0.12);
-  --best-metal: linear-gradient(115deg, #b8860b 0%, #ffd95e 40%, #fffbe6 50%, #ffd95e 60%, #b8860b 100%);
+  /* 금이 아니라 백금이다(요청: 좀더 백금톤으로) — 순금 노랑은 이 표의 다른 수치들이 죄다
+     무채라 혼자 튀었고, 무엇보다 BEST는 1등 메달과 다른 표시라 메달의 금과 같은 색을 쓰면
+     둘이 한 뜻으로 읽힌다. 백금은 채도를 거의 뺀 밝은 금속인데, 완전한 회색으로 내리면
+     그냥 흐린 글씨가 되므로 아주 옅은 따뜻한 기(은이 아니라 백금)만 남겨 둔다. */
+  --best-ink: #e5e2d8;
+  --best-line: rgba(229, 226, 216, 0.5);
+  --best-bg: rgba(229, 226, 216, 0.12);
+  --best-metal: linear-gradient(115deg, #8e8a7d 0%, #e5e2d8 40%, #fbfaf5 50%, #e5e2d8 60%, #8e8a7d 100%);
   /* 어두운 패널 위에 옅게 얹는 hover/active 배경(흰색 오버레이)용 rgb 트리플릿 — 라이트
      테마에서는 패널이 밝아지므로 검은색 오버레이로 뒤집어야 hover 효과가 보인다. */
   --overlay-rgb: 255, 255, 255;
@@ -1032,10 +1036,10 @@ html.scr-light-theme {
      어둡게 내리되 색상은 그대로 따뜻한 쪽에 둔다(지적: 은이 아니라 백금) — 회색으로
      내려 버리면 흰 바탕에서는 그냥 진회색 글자가 된다.
      가운데 하이라이트도 순백이 아니라 그 금속의 옅은 톤이다(옛 메탈 규칙과 같은 처방). */
-  --best-ink: #8a6600;
-  --best-line: rgba(138, 102, 0, 0.42);
-  --best-bg: rgba(138, 102, 0, 0.10);
-  --best-metal: linear-gradient(115deg, #7a5a00 0%, #c9a227 40%, #dcb63a 50%, #c9a227 60%, #7a5a00 100%);
+  --best-ink: #6f6a5b;
+  --best-line: rgba(111, 106, 91, 0.42);
+  --best-bg: rgba(111, 106, 91, 0.10);
+  --best-metal: linear-gradient(115deg, #5f5b4e 0%, #a9a494 40%, #bdb8a7 50%, #a9a494 60%, #5f5b4e 100%);
   /* 승/패 텍스트, 순위 변동 화살표, 랭킹 막대(승률/경기수) — 전부 검정으로 눌러뒀던 걸
      흰 배경에서도 잘 보이도록 진하게 채도를 살린 색으로 되돌린다(다크 테마의 파스텔
      톤과 같은 색 계열이지만, 흰 배경 대비를 위해 훨씬 진하게). */
@@ -8953,7 +8957,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   position: absolute; top: var(--scr-detail-pad-y); z-index: 3;
   left: var(--scr-detail-pad-x); right: var(--scr-detail-pad-x);
   padding: 0; margin: 0;
+  /* 이 띠는 X 하나만 담았는데도 창 폭을 다 차지한다 — 그리고 바로 이 띠 안(왼쪽 끝)으로
+     아래 케밥을 끌어올려 뒀다. 띠가 위층(z-index:3)이라 케밥은 보이기만 하고 눌리지
+     않았다(지적: 게임상세 케밥이 안 열림, 콘솔에도 아무것도 안 찍힘 — 클릭이 아예 이
+     투명한 띠에 먹혔다). 띠 자체는 클릭을 안 받게 하고, 그 안의 버튼만 되살린다. */
+  pointer-events: none;
 }
+.scr-activity-detail-modal > .scr-activity-detail-head > * { pointer-events: auto; }
 /* 시각(카드 머리)이 판 왼쪽 벽에 붙어 있었다(지적: 살짝 오른쪽으로, 본문과 패딩이 다른지)
    — 실측으로 본문(경기 그림·타임라인)은 창 안쪽에서 16px, 시각은 8px이었다. 그 차이는
    경기 한 판이 제 안에 두는 여백(.scr-game-result-trow의 8px)에서 온 것이라, 머리도 같은
@@ -11091,13 +11101,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    내려가(그 값은 흰 바닥용이다) 지도 위에서 안 읽힌다. 같은 이유로 이름표 하이라이트도
    값을 박아 두고 있다(.scr-minimap-mark-hit). */
 .scr-minimap-mark-best .scr-avatar {
-  border-color: #ffd95e;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 0 8px 2px rgba(255, 217, 94, 0.65);
+  border-color: #e5e2d8;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 0 8px 2px rgba(229, 226, 216, 0.6);
 }
 .scr-minimap-mark-best-tag {
   flex-shrink: 0; font-size: 8px; font-weight: 800; letter-spacing: 0.03em; line-height: 1;
   padding: 1px 3px; border-radius: 3px;
-  background: #ffd95e; color: #101010; text-shadow: none;
+  background: #e5e2d8; color: #101010; text-shadow: none;
 }
 /* 기세 눈금 — 다섯 칸(ReplayMinimap의 VigorPips). 색은 하나다: 켜진 칸은 밝고 꺼진 칸은
    눌러 둔다. 초록↔빨강처럼 색이 뜻을 지면 그 뜻은 늘 '안전↔위험'으로 읽히는데, 이 값은

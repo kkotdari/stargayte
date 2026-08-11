@@ -27,6 +27,8 @@ let cachedKey = "";
 let cached: Map<string, Epithet> | null = null;
 let inflightKey = "";
 let inflight: Promise<void> | null = null;
+let recounting = false;
+let recountAgain: string | null = null;
 
 async function load(key: string): Promise<void> {
   const ids = key.split(",");
@@ -74,11 +76,27 @@ async function load(key: string): Promise<void> {
 export async function refreshEpithets(memberIds: string[]): Promise<void> {
   const key = memberIds.slice().sort().join(",");
   if (!key) return;
-  cachedKey = "";
-  cached = null;
-  inflightKey = key;
-  inflight = load(key);
-  await inflight.catch(() => { /* 위 load가 이미 삼킨다 */ });
+  /* 여러 판을 한 번에 올릴 때(리플레이 검토 창은 고른 판을 하나씩 이어 저장한다) 판마다
+     한 벌씩 세면 스무 번을 세고 스무 번을 알린다. 도는 중이면 "끝나고 한 번 더"만 예약해
+     마지막 상태로 한 번만 더 센다 — 중간값은 어차피 아무도 안 본다. */
+  if (recounting) { recountAgain = key; return; }
+  recounting = true;
+  try {
+    let next: string | null = key;
+    while (next) {
+      const k: string = next;
+      recountAgain = null;
+      cachedKey = "";
+      cached = null;
+      inflightKey = k;
+      inflight = load(k);
+      await inflight.catch(() => { /* 위 load가 이미 삼킨다 */ });
+      next = recountAgain;
+    }
+  } finally {
+    recounting = false;
+    recountAgain = null;
+  }
 }
 
 /** 지금 활동 중인 회원들의 칭호. 아직 안 받았으면 빈 map을 돌려주고, 도착하면 다시 그린다. */
