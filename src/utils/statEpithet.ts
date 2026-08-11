@@ -296,7 +296,9 @@ const TIER1_KEYS = new Set([
 ]);
 
 const TACTIC_WEIGHT: Record<string, number> = {
-  "Nuclear Strike": 8,
+  /* 핵은 8 → 5다(요청: 무게를 좀 낮추기) — 1급 웃돈(×3)이 곱해져 15가 되므로 여전히 표에서
+     가장 무겁다. 8이던 시절에는 24라, 핵 한 번이 다른 어떤 이야기도 덮어 버렸다. */
+  "Nuclear Strike": 5,
 
   /* 경기 운영이 맨 위다(요청: 단순 기술·유닛보다 운영이 먼저) — 어떤 틀로 판을 굴렸나
      (바이오닉·메카닉·목동 저그·빠른 테크), 어디를 잠갔나(조이기), 어떻게 벌었나(째기·확장)는
@@ -803,6 +805,10 @@ const TITLES: Title[] = [
     value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null),
   },
   { label: "BEST 수집퀸", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
+  /* 졌잘싸 퀸(요청) — 진 판에서 BEST로 뽑힌 수다. 판을 가장 많이 만들고도 졌다는 말이라,
+     이기고 지고를 안 가리는 BEST 수집퀸과는 다른 이야기를 센다. 무게는 그보다 한 뼘
+     아래다: 잘 싸운 것은 맞지만 이긴 판의 BEST와 같은 값으로 둘 수는 없다. */
+  { label: "졌잘싸 퀸", weight: 2.5, why: "진 판의 BEST PLAYER", unit: "회", value: (s) => ((s.lostBests ?? 0) > 0 ? s.lostBests! : null) },
   { label: "쉬지 않는 손가락", weight: 2, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
   { label: "스타 게이 트 NPC", weight: 3, sticky: true, why: "게임 수", unit: "판", value: (s) => s.plays },
 ];
