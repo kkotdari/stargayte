@@ -6,6 +6,7 @@ import Avatar from "../../components/common/Avatar";
 import Delta from "../stats/Delta";
 import RivalryOverlay from "../rivalry/RivalryOverlay";
 import { rankOf } from "./rankOrder";
+import LadderDetailModal from "./LadderDetailModal";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { monthInputToRange, shiftMonthValue, currentMonthValue } from "../../utils/date";
@@ -63,6 +64,8 @@ export default function LadderScreen() {
 
   const [period, setPeriod] = useState<string>(() => currentMonthValue());
   const [rivalryOpen, setRivalryOpen] = useState(false);
+  /* 줄을 눌렀을 때 뜨는 상세(요청) — 프로필이 아니라 순위 변동 + 래더 이력이다. */
+  const [detailMember, setDetailMember] = useState<Member | null>(null);
 
   // 달력에 늘어놓을 월의 하한 — 첫 경기가 있는 달. 그보다 과거는 어차피 빈 표다.
   const [firstMonth, setFirstMonth] = useState<string | null>(null);
@@ -216,7 +219,7 @@ export default function LadderScreen() {
     <div className="scr-screen scr-ladder-screen">
       <div className="scr-v2-toolbar">
         <div className="scr-v2-toolbar-title-row">
-          <h1 className="scr-title scr-v2-toolbar-title">래더 보드</h1>
+          <h1 className="scr-title scr-v2-toolbar-title">래더</h1>
           {/* 상성 보기 — 래더에서만 연다(요청). 기간은 이 화면의 현재 필터를 그대로 따른다
               (오버레이 자체 필터 없음 — RivalryOverlay 주석 참고). */}
           <button
@@ -282,7 +285,10 @@ export default function LadderScreen() {
               {rows.map((r) => (
                 <div
                   key={r.member.id}
-                  className={cx("scr-ladder-row", r.member.id === user?.id && "scr-stat-row-me")}
+                  /* 줄 전체가 상세로 가는 문이다(요청: 행을 누르면 래더 상세) — 눌리는
+                     것이라는 표시는 CSS(cursor)가 한다. */
+                  className={cx("scr-ladder-row", "scr-ladder-row-click", r.member.id === user?.id && "scr-stat-row-me")}
+                  onClick={() => setDetailMember(r.member)}
                 >
                   {/* 랭크는 맨 왼쪽 제 칸이다(요청) — 리더보드에서 제일 먼저 읽는 값이라
                       유저 칸 안에 딸려 있으면 안 된다.
@@ -321,12 +327,9 @@ export default function LadderScreen() {
                   <span className="scr-ladder-name">
                     {/* 한 스텝 확대(요청: "아바타 및 폰트 크기 1스텝 확대") — 28 → 32px. */}
                     <Avatar member={r.member} size={32} />
-                    <button
-                      type="button" className="scr-stat-name-btn"
-                      onClick={() => useAppStore.getState().openMemberProfile(r.member.id)}
-                    >
-                      {r.member.nickname}
-                    </button>
+                    {/* 닉네임도 줄과 같은 문이다(요청: 프로필이 아니라 래더 상세) — 버튼을
+                        따로 두면 줄 안에 목적지가 두 개가 된다. 클릭은 줄이 받는다. */}
+                    <span className="scr-stat-name-btn">{r.member.nickname}</span>
                   </span>
                   {/* 수치 셋은 같은 모양이다 — 값 한 줄, 그 아래 전달 대비 변동 한 줄.
                       변동 자리는 값이 없는 줄에서도 지킨다(Delta가 "-"를 그린다): 그래야
@@ -354,6 +357,15 @@ export default function LadderScreen() {
 
       {rivalryOpen && (
         <RivalryOverlay from={from} to={to} onClose={() => setRivalryOpen(false)} />
+      )}
+      {detailMember && (
+        <LadderDetailModal
+          member={detailMember}
+          poolIds={poolIds}
+          period={period}
+          firstMonth={firstMonth}
+          onClose={() => setDetailMember(null)}
+        />
       )}
     </div>
   );
