@@ -60,35 +60,45 @@ async function load(key: string): Promise<void> {
  *
  *  잣대는 이 파일 머리에 적힌 그대로다(내전·전체 누적·모든 종족). 계산 규칙 자체는
  *  statEpithet.ts에만 있다(서버는 값만 보관한다 — API의 MemberEpithet 주석). */
-async function recount(key: string): Promise<void> {
+async function recount(key: string): Promise<number> {
   const ids = key.split(",");
-  try {
-    /* 한 번만 부른다 — 내전(팀전) 전체 누적 한 벌. 예전에는 다섯 벌(전체·개인전·팀전·이번
-       달·지난달)을 나란히 받았는데, 그 넷은 전부 유형을 가르거나 레이팅을 견주는 칭호를
-       위한 것이었고 그 칭호들이 함께 없어졌다(statEpithet의 삭제 주석). */
-    const res = await api.getGameResultStats({
-      memberIds: ids, dateFrom: "", dateTo: "", matchType: CLAN_TYPE,
-    });
-    const byId: Record<string, MemberStatsEntry> = {};
-    res.members.forEach((entry) => { byId[entry.memberId] = entry; });
-    const map = epithetsOf(ids
-      .map((id) => ({
-        id,
-        stats: byId[id]?.overall,
-        // 종족별은 이미 응답에 실려 온다(byRace) — 따로 부를 것이 없다.
-        races: byId[id]?.byRace,
-      }))
-      .flatMap((x) => (x.stats ? [{ id: x.id, stats: x.stats, races: x.races }] : [])));
-    /* 올린 값이 곧 다음에 누가 읽을 값이다 — 그래서 여기서 캐시도 같이 갈아 둔다. 달라진
-       사람이 있으면 서버가 활동에 알림 한 줄을 남긴다(요청). */
-    await api.reportEpithets(
-      [...map].map(([memberId, e]) => ({ memberId, label: e.label, why: e.why })),
-    );
-    cached = map;
-    cachedKey = key;
-  } catch {
-    // 등록은 이미 끝났다 — 칭호는 다음 등록 때 다시 센다.
-  }
+  /* 한 번만 부른다 — 내전(팀전) 전체 누적 한 벌. 예전에는 다섯 벌(전체·개인전·팀전·이번
+     달·지난달)을 나란히 받았는데, 그 넷은 전부 유형을 가르거나 레이팅을 견주는 칭호를
+     위한 것이었고 그 칭호들이 함께 없어졌다(statEpithet의 삭제 주석). */
+  const res = await api.getGameResultStats({
+    memberIds: ids, dateFrom: "", dateTo: "", matchType: CLAN_TYPE,
+  });
+  const byId: Record<string, MemberStatsEntry> = {};
+  res.members.forEach((entry) => { byId[entry.memberId] = entry; });
+  const map = epithetsOf(ids
+    .map((id) => ({
+      id,
+      stats: byId[id]?.overall,
+      // 종족별은 이미 응답에 실려 온다(byRace) — 따로 부를 것이 없다.
+      races: byId[id]?.byRace,
+    }))
+    .flatMap((x) => (x.stats ? [{ id: x.id, stats: x.stats, races: x.races }] : [])));
+  /* 올린 값이 곧 다음에 누가 읽을 값이다 — 그래서 여기서 캐시도 같이 갈아 둔다. 달라진
+     사람이 있으면 서버가 활동에 알림 한 줄을 남긴다(요청). */
+  const changed = await api.reportEpithets(
+    [...map].map(([memberId, e]) => ({ memberId, label: e.label, why: e.why })),
+  );
+  cached = map;
+  cachedKey = key;
+  return changed;
+}
+
+/** 지금 당장 다시 계산한다 — 제어판의 "칭호 다시 계산" 버튼이 쓴다(요청).
+ *
+ *  계산이 경기 등록 때만 도는 구조라, 칭호 규칙(statEpithet.ts)을 손봐도 다음 경기가 올라오기
+ *  전까지는 옛 칭호가 그대로 남는다. 규칙을 고친 사람이 그 자리에서 반영할 길이 필요하다.
+ *  여기서는 오류를 삼키지 않는다 — 누가 눌러서 도는 일이라 결과를 알려 줘야 한다. */
+export async function recomputeEpithets(memberIds: string[]): Promise<number> {
+  const key = memberIds.slice().sort().join(",");
+  if (!key) return 0;
+  cachedKey = "";
+  cached = null;
+  return recount(key);
 }
 
 /** 칭호를 다시 계산해 서버에 알린다(요청: 경기 등록할 때마다) — 통계 화면을 열 때가 아니라
@@ -114,8 +124,9 @@ export async function refreshEpithets(memberIds: string[]): Promise<void> {
       cachedKey = "";
       cached = null;
       inflightKey = k;
-      inflight = recount(k);
-      await inflight.catch(() => { /* 위 recount가 이미 삼킨다 */ });
+      inflight = recount(k).then(() => { /* 알림은 서버가 남긴다 */ });
+      // 등록은 이미 끝났다 — 못 셌으면 다음 등록 때 다시 센다.
+      await inflight.catch(() => { /* 조용히 넘긴다 */ });
       next = recountAgain;
     }
   } finally {

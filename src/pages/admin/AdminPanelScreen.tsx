@@ -10,6 +10,7 @@ import { parseReplayFile } from "../../utils/replayParser";
 import { buildReplaySummary } from "../../utils/replaySummary";
 import { createSummaryPool, runLanes } from "../../utils/replaySummaryPool";
 import { useAppStore } from "../../store/appStore";
+import { recomputeEpithets } from "../../utils/useEpithets";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { cx } from "../../utils/format";
 import { versionNumber } from "../../utils/appVersion";
@@ -48,6 +49,31 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
      버튼 안의 숫자로만 보여준다. */
   const [redo, setRedo] = useState<{ done: number; total: number; failed: number } | null>(null);
   const [confirmRedo, setConfirmRedo] = useState(false);
+  /* 칭호 다시 계산 — 계산은 경기가 등록될 때만 돈다(요청). 그래서 칭호 규칙을 손봐도 다음
+     경기가 올라오기 전까지는 옛 칭호가 그대로 남는다. 규칙을 고친 사람이 그 자리에서
+     반영할 수 있게 버튼 하나를 둔다(요청). 결과(바뀐 사람 수)는 버튼 옆이 아니라 버튼
+     안에 잠깐 적는다 — 재분석 진행 숫자와 같은 자리라 줄이 밀리지 않는다. */
+  const [epiBusy, setEpiBusy] = useState(false);
+  const [epiDone, setEpiDone] = useState<number | null>(null);
+  const [confirmEpi, setConfirmEpi] = useState(false);
+
+  const recountEpithets = async () => {
+    setErr("");
+    setEpiBusy(true);
+    setEpiDone(null);
+    try {
+      /* 대상은 활동 중인 회원 전체다 — 칭호는 서로 겨뤄서 정해지므로(한 칭호는 한 사람)
+         일부만 놓고 세면 1등이라는 말이 거짓이 된다(통계 화면과 같은 잣대). */
+      const ids = useAppStore.getState().members
+        .filter((m) => m.status !== "withdrawn" && m.status !== "suspended")
+        .map((m) => m.id);
+      setEpiDone(await recomputeEpithets(ids));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "칭호를 다시 계산하지 못했어요.");
+    } finally {
+      setEpiBusy(false);
+    }
+  };
 
   // 등록된 리플레이(.rep) 전체를 날짜별 폴더 zip으로 받는다 — 인증 헤더가 필요해 blob으로
   // 받아 클라이언트에서 임시 링크로 저장 트리거한다.
@@ -335,6 +361,14 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
                       </>
                     ) : "경기 재분석"}
                   </button>
+                  {/* 칭호 다시 계산 — 경기를 손대지는 않지만 활동에 알림을 남길 수 있으므로
+                      (칭호가 바뀐 사람이 있으면) 확인창을 거친다. */}
+                  <button
+                    type="button" className="scr-btn scr-btn-primary"
+                    onClick={() => setConfirmEpi(true)} disabled={epiBusy}
+                  >
+                    {epiBusy ? <Spinner /> : epiDone !== null ? `칭호 ${epiDone}명 변경` : "칭호 다시 계산"}
+                  </button>
                 </div>
 
                 {/* (삭제) 랭킹 관리 — "현재 랭킹 집계"와 "순위 기준선" 두 버튼이 있던
@@ -376,6 +410,16 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
           confirmLabel="다시 분석"
           onConfirm={() => { setConfirmRedo(false); void reanalyzeGames(); }}
           onCancel={() => setConfirmRedo(false)}
+        />
+      )}
+
+      {confirmEpi && (
+        <ConfirmDialog
+          title="칭호를 다시 계산할까요?"
+          message="지금 기록으로 회원 전체의 칭호를 새로 매깁니다. 바뀐 사람이 있으면 활동에 알림 한 줄이 남아요."
+          confirmLabel="다시 계산"
+          onConfirm={() => { setConfirmEpi(false); void recountEpithets(); }}
+          onCancel={() => setConfirmEpi(false)}
         />
       )}
 
