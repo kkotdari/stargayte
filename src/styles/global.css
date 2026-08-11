@@ -5499,11 +5499,15 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* 모달 높이를 열 때부터 크게 고정한다(요청: "처음부터 크게 확정하고 나와서 데이터 로딩 후
    길어지지 않게") — 경기 이력이 나중에 도착해도 총 높이가 안 늘어나고, 넘치면 본체가
    스크롤된다. 화면이 작으면 88vh로 맞춘다. */
-.scr-modal-rank-detail { max-width: 360px; height: min(88vh, 760px); height: min(88dvh, 760px); }
+/* 높이를 못 박지 않는다(요청: 래더 상세도 전체 화면 말고 활동 상세와 같은 크기) — 옛 랭킹
+   상세는 그래프+긴 이력을 늘 담아 88vh를 미리 잡아 뒀는데, 그러면 이력이 짧은 달에도 창이
+   화면을 다 덮는다. 활동 상세처럼 내용만큼만 서고, 넘치면 기본 상한(.scr-modal의
+   max-height) 안에서 본문이 스크롤된다. 폭도 활동 상세와 같은 480px. */
+.scr-modal-rank-detail { max-width: 480px; }
 /* PC에선 차트/경기목록이 더 여유롭게 보이도록 랭킹 상세 모달 폭을 키운다(요청).
    이 모달은 .scr-modal-sm(max-width:360px)도 같이 달고 있고 그 규칙이 소스 뒤쪽이라
    동일 특이도(0,1,0)로는 못 이긴다 — .scr-modal 동반(0,2,0)으로 특이도를 올려 덮는다. */
-@media (min-width: 1160px) { .scr-modal.scr-modal-rank-detail { max-width: 520px; } }
+/* (삭제) PC 확대(520px) — 활동 상세와 같은 480px 하나로 통일한다(요청). */
 .scr-modal.scr-modal-rank-detail { padding-right: 8px; }
 /* .scr-modal-body는 기본적으로 위/아래 패딩이 0이라(모달 하단에 폼 버튼이 있는 화면은
    그 버튼 자신이 padding-bottom을 책임진다) 이 모달처럼 버튼 없이 차트로 끝나면 바닥에
