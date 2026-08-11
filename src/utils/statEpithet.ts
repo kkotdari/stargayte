@@ -783,7 +783,7 @@ const TITLES: Title[] = [
   /* 무게를 2 → 1.2로 내렸다(요청) — 초반 일꾼은 그 판의 빌드가 정하는 값에 가깝다.
      같은 종족·같은 빌드면 누구나 비슷하게 나오므로, 1등이라고 그 사람을 말해 주는 몫이
      다른 칭호들보다 작다. */
-  { label: "일꾼 공장장", weight: 2, min: 50, why: "초반 5분 일꾼", unit: "기", value: (s, of) => won(s, of).avgWorker5 },
+  { label: "일꾼 공장장", weight: 2, min: 52, why: "초반 5분 일꾼", unit: "기", value: (s, of) => won(s, of).avgWorker5 },
   /* 건물을 제일 많이 올린 사람(요청: 심시티 퀸) — "쉴 새 없이 짓는 자"에서 바꿨다. 재는 값은 그대로 분당 지은 채수다. */
   { label: "심시티 퀸", weight: 2, min: 7, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
   {
