@@ -841,16 +841,19 @@ const TITLES: Title[] = [
     value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null),
   },
   /* "최다"를 뗐다(요청: 절대평가) — 이제 1위가 아니라 열 번을 넘긴 사람 전부다. */
-  { label: "BEST 퀸", weight: 6, min: 25, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
+  /* 고정 횟수가 아니라 경기수 비례다(요청: 앞으로를 생각해서 — "25회"는 판이 쌓이면
+     누구나 닿는 값이 된다). 네 판에 한 번은 BEST로 뽑혔어야 한다. */
+  { label: "BEST 퀸", weight: 6, min: 0.25, why: "판 대비 BEST 선정", unit: "",
+    value: (s) => (s.plays > 0 && s.bests > 0 ? s.bests / s.plays : null) },
   /* 졌잘싸 퀸(요청) — 진 판에서 BEST로 뽑힌 수다. 판을 가장 많이 만들고도 졌다는 말이라,
      이기고 지고를 안 가리는 BEST 수집퀸과는 다른 이야기를 센다. 무게는 그보다 한 뼘
      아래다: 잘 싸운 것은 맞지만 이긴 판의 BEST와 같은 값으로 둘 수는 없다. */
   /* 2.5 → 3(요청: 퀸으로 올릴 만하다) — 진 판에서 BEST로 뽑히려면 팀이 무너지는 동안 혼자
      그 판을 붙들고 있어야 한다. 이긴 판의 BEST(3)와 같은 자리로 두되 표에서는 그 아래다. */
   /* 졌잘싸는 한참 아래다(지적) — 진 판의 BEST라 잘 싸운 것은 맞지만, 결국 진 판의
-     이야기다. 곁가지(2)와 같은 자리: 재밌는 위로상이지 그 사람을 부르는 첫 번째 말은
-     아니다. */
-  { label: "졌잘싸 퀸", weight: 2, min: 4, why: "진 판의 BEST PLAYER", unit: "회", value: (s) => ((s.lostBests ?? 0) > 0 ? s.lostBests! : null) },
+     이야기다. 곁가지(2)와 같은 자리. 이것도 경기수 비례다(요청) — 열 판에 한 번꼴. */
+  { label: "졌잘싸 퀸", weight: 2, min: 0.1, why: "판 대비 진 판 BEST", unit: "",
+    value: (s) => (s.plays > 0 && (s.lostBests ?? 0) > 0 ? (s.lostBests ?? 0) / s.plays : null) },
   // 분당 커맨드 — 손 이야기 셋 가운데 맨 아래다(요청: 퀸으로 올릴 만하다). 많이 눌렀다는
   // 사실만 세므로, 그 가운데 몇이 헛손질인지는 안 묻는다.
   { label: "쉬지 않는 손가락", weight: 3, min: 250, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
