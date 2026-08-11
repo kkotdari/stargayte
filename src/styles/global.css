@@ -2439,7 +2439,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    맞아야 세로로 읽힌다. */
 .scr-stat-record-col {
   display: grid;
-  grid-template-columns: var(--scr-stat-rlabel-w, 52px) minmax(0, 1fr) minmax(0, 1fr);
+  /* 수 열은 56px 아래로는 안 줄어든다(지적: 아직 겹친다) — minmax(0,1fr)이면 칸이 좁을 때
+     열이 내용보다 작아지고, 그 안의 수는 줄지 않으므로 옆 열 위로 흘러넘친다("21판71.4%").
+     56px은 "105판"(44px)과 오른쪽 여백 12px이 드는 폭이다. */
+  grid-template-columns: var(--scr-stat-rlabel-w, 52px) minmax(56px, 1fr) minmax(56px, 1fr);
   /* 줄 사이를 벌린다(요청: 막대들 줄간격 증가) — 막대 밑에 변동 한 줄이 붙으면서 위아래
      막대가 서로 붙어 어느 변동이 어느 막대의 것인지가 흐려졌다. */
   align-content: center; gap: 8px 6px;
