@@ -599,7 +599,22 @@ const TITLES: Title[] = [
      쓸 자리를 알아야 하고, 한 번 제대로 들어가면 그 판이 갈린다.
      스톰·이레디에이트·마인처럼 늘 누르는 것은 여전히 없다 — 많이 썼다는 말이 "그 종족을
      오래 했다"밖에 안 된다(예전 SPELL_WEIGHT의 기준선이 그 무리였다). */
-  spell("얼음 공주", "Maelstrom"),
+  {
+    /* 얼음 공주 — 마엘스트롬·스테이시스·락다운을 함께 센다(요청: 다 합치기). 셋 다 상대를
+       그 자리에 얼려 놓고 시작하는 수라, 무엇으로 얼렸나는 종족이 정할 뿐 그 사람이 고른
+       수는 하나다. 종족을 안 거는 까닭도 그것이다 — 앞 둘은 프로토스, 락다운은 테란이라
+       분모를 한 종족으로 두면 나머지 판이 남의 종족 판수로 나뉜다.
+       값은 셋을 합친 쓴 횟수다(이긴 판만, skillsWon). spell()이 한 열쇠만 받아 여기서
+       직접 짓는다 — 무게·급·갈래는 spell()이 마엘스트롬에 주던 것과 같다. */
+    label: "얼음 공주", weight: TACTIC_WEIGHT.Maelstrom ?? 2, kind: "경기력",
+    pool: 1, edge: 1, min: 1, scale: "count", tier: 2, perUse: true, won: true,
+    why: "얼리는 마법(마엘스트롬·스테이시스·락다운)", unit: "번",
+    value: (s) => {
+      const n = ["Maelstrom", "Stasis Field", "Lockdown"]
+        .reduce((sum, k) => sum + (s.buildMix?.skillsWon?.[k] ?? 0), 0);
+      return n > 0 ? n : null;
+    },
+  },
   spell("거미줄 설계자", "Disruption Web"),
   /* (삭제) 스테이시스(보갈타임 공주) — 요청. 아비터를 살려 두면 따라오는 버튼에 가깝고,
      같은 아비터의 이야기는 리콜(친구 부르기 공주)이 이미 세고 있다. */
