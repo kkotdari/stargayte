@@ -1067,6 +1067,10 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
     order: number;
     /** 등급(전설 0 · 에픽 1 · 일반 2) — 대표를 고를 때 점수보다 먼저다. */
     rank: number;
+    /** 동점대 — 무게가 비슷한 칭호들의 묶음(클수록 위). 같은 등급 안의 1차 기준이다. */
+    band: number;
+    /** 성취도 — 조건을 얼마나 크게 넘겼나. 같은 동점대 안의 2차 기준이다(요청). */
+    reach: number;
     /** 이 값을 잰 판수 — 종족 칭호면 그 종족 판수다. 근거 문장의 '몇 판 중 몇 %'가 쓴다. */
     denom: number;
   }
@@ -1102,28 +1106,34 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
         ? title.label.replace("{n}", title.name(p.stats, p) ?? "")
         : title.label;
       if (!label || label.includes("{n}")) continue;
-      /* 점수는 '그 사람 안에서' 무엇을 보일지만 정한다 — 횟수 칭호는 무게 × 횟수 × 급 웃돈,
-         수치 칭호는 문턱을 얼마나 넘겼나(v/min)를 곱한다. 사람끼리 견주는 값이 아니므로
-         1위 웃돈(leadBonus) 같은 것은 없다. */
+      /* 대표를 고르는 세 겹(요청: 비슷비슷한 것들은 동점대로 묶고 횟수·퍼센트가 높은 걸
+         우선) —
+         ① 등급(전설 › 에픽 › 일반): 점수만으로 고르면 횟수 칭호가 등급을 무시하고 이긴다.
+         ② 동점대(band): 같은 등급 안에서 무게가 비슷한 칭호들(3과 3.5 같은)은 한 묶음으로
+            본다 — 그 반 점 차이는 "무엇이 더 그 사람다운가"를 말하지 못한다.
+         ③ 성취도(reach): 같은 묶음 안에서는 그 조건을 얼마나 크게 넘겼나로 가른다 — 횟수
+            칭호는 판 대비 비율(raw/denom), 수치 칭호는 문턱 대비 배수(v/min)다. 열두 판 중
+            여덟 번(67%) 한 수가 무게 반 점 높은 세 번(25%)짜리보다 그 사람을 잘 말한다. */
       const boost = TIER_BOOST[tier] ?? 1;
-      const base = title.scale === "count" ? v : (title.min ? v / title.min : 1);
-      /* 대표는 등급이 먼저다(요청: 가장 높은 '순위'의 칭호가 보인다 / 지적: 대표가 이상하다)
-         — 점수만으로 고르면 횟수 칭호가 등급을 무시하고 이긴다: 스톰을 천 번 쓴 사람의
-         대표가 승리의 여신이 아니라 '스톰 술사'(일반)가 됐다. 횟수는 끝없이 쌓이지만 등급은
-         그 칭호의 격이라, 전설 › 에픽 › 일반을 먼저 가르고 점수는 같은 등급 안에서만 겨룬다.
-         등급 선은 설명 모달(epithetGuideRows)과 같은 3점이다. */
       const grade = title.sticky ? 0 : (title.weight ?? 0) * boost >= 3 ? 1 : 2;
+      const denomPlays = denomOf(title, p);
+      const reach = title.scale === "count"
+        ? (denomPlays > 0 ? v / denomPlays : v)
+        : (title.min ? v / title.min : 1);
       claims.push({
-        title, id: p.id, label, raw: v, denom: denomOf(title, p),
-        score: (title.weight ?? 0) * base * boost, order,
+        title, id: p.id, label, raw: v, denom: denomPlays,
+        // 동점대 — 무게(급 웃돈 포함)를 1.5점 폭으로 접는다: 3·3.5·4가 한 칸, 4.5·5가 한 칸.
+        band: Math.round(((title.weight ?? 0) * boost) / 1.5),
+        reach, score: (title.weight ?? 0) * (title.scale === "count" ? v : reach) * boost, order,
         rank: grade,
       });
     }
   });
 
-  /* 보일 것을 고르는 차례 — 등급(전설 › 에픽 › 일반)이 먼저, 같은 등급 안에서 점수다. */
+  /* 보일 것을 고르는 차례 — 등급 › 동점대 › 성취도(요청) › 점수 › 표 차례. */
   claims.sort((a, b) =>
     (a.rank - b.rank)
+    || (b.band - a.band) || (b.reach - a.reach)
     || (b.score - a.score) || (a.order - b.order) || a.id.localeCompare(b.id));
   /* 근거를 함께 남긴다(지적: "왜 이 칭호가 나오지?") — 화면은 이 문장을 툴팁·글자로 보여
      준다. "클럽 최다/1위" 꼬리는 걷었다(요청: 절대평가) — 이제 남과 견준 값이 아니라
