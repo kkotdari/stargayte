@@ -1597,8 +1597,16 @@ function detectFor(c: Ctx): Tactic[] {
     // 맵에 따라 내 앞마당이나 빨무 입구, 멀티가 내 본진보다 상대 본진에 가까울 수 있는데,
     // 그렇다고 거기가 상대 진영인 건 아니기 때문이다(지적). 그래서 기준은 하나로 못박는다:
     // 상대 '본진'에 붙어 있을 때만 러시다.
-    const sunkenRush = (["Creep Colony", "Sunken Colony"] as const)
-      .flatMap((b) => inZone("enemy", b, SUNKEN_RUSH_SEC));
+    /* 근거는 '상대 진영에 초반에 박은 크립 콜로니' 하나다(지적: 한 번도 안 한 사람이
+       성큰러시로 잡혀 칭호까지 받았다). 두 가지를 좁혔다.
+       ① 크립 콜로니만 본다 — 예전에는 성큰(변태)도 같이 셌는데, 성큰은 제 앞마당에 편
+          방어도 같은 이름으로 남는다. 러시의 첫 삽은 늘 크립 콜로니다.
+       ② 그 자리가 정말 상대 동네여야 한다 — 상대 본진 반경 안이라는 것만으로는 모자란다.
+          시작 자리가 붙어 있는 맵(빠른무한 계열)에서는 내 앞마당·멀티가 남의 본진 반경에
+          들어오는 일이 흔하다. 내 기지나 아군 기지가 더 가까우면 그건 내 살림이다
+          (foeTurfAt이 그 비교를 한다). */
+    const sunkenRush = inZone("enemy", "Creep Colony", SUNKEN_RUSH_SEC)
+      .filter((b) => geo !== null && geo.foeTurfAt(b) !== null);
     if (sunkenRush.length > 0) {
       out.push({
         key: "sunken-rush", ...foeAt(sunkenRush), weight: SNEAK_WEIGHT, at: firstOf(sunkenRush), who,
