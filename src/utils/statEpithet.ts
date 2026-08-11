@@ -694,7 +694,7 @@ const TITLES: Title[] = [
   /* 목동저그 — 이제 자막이 짚은 판만 센다(요청: 목동저그도 이긴 판만). 한때 유닛 기록으로도
      잡았는데(울트라 2기 + 디파일러 + 저글링 20기), 그 원장은 승패를 안 가려서 진 판의
      목동까지 함께 세었다. 자막 쪽은 서버가 이긴 판만 세므로(_tactic_counts) 잣대가 하나가 된다. */
-  { ...tactic("목동저그", ["moka"]), minPlaysShare: 0.05, vsWins: true },
+  { ...tactic("목동저그", ["moka"]), minPlaysShare: 0.04, vsWins: true },
 
   // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
   /* (삭제) 프로 옆탱러(side-tank) — 요청. 옆탱은 아군 기지를 받쳐 주는 탱크와 제 기지
@@ -753,14 +753,16 @@ const TITLES: Title[] = [
       return hidden > 0 ? hidden / (m.uGround + m.uAir) : null;
     },
   },
-  { ...tactic("뮤탈 습격대", ["muta"]), minPlaysShare: 0.07 },
+  { ...tactic("뮤탈 습격대", ["muta"]), minPlaysShare: 0.05 },
   /* 코끼리 조련사(요청) — 울트라리스크를 모아 나간 판이다. 저그의 마지막 지상 병력이라
      거기까지 판을 끌고 갔다는 말이기도 한데, 부르는 말은 그 그림 하나면 된다.
      한때 "코끼리떼를 모는 여인"으로 바꿔 봤다가 되돌렸다(요청) — 조련사 쪽이 짧고, 무엇을
      하는 사람인지가 한 낱말에 들어 있다.
      자막이 그 대목을 'ultra'로 짚는다(replaySummary의 PROD_ONLY_KEYS와 같은 열쇠).
      비율은 다른 유닛 칭호와 같은 자리(UNIT_TACTIC_SHARE)에서 받는다. */
-  tactic("코끼리 조련사", ["ultra"]),
+  /* 유닛 기본(7%)보다 낮다(요청) — 울트라까지 가는 판 자체가 저그 판의 일부라, 같은
+     잣대로는 "뽑았다는 사실"조차 안 걸린다. */
+  { ...tactic("코끼리 조련사", ["ultra"]), minPlaysShare: 0.05 },
   {
     /* 진화론의 어머니(요청: 하이브 유닛 많이 쓴 사람) — 울트라·디파일러·가디언·디바우러다.
        넷 다 하이브를 올려야 나오는 것들이라, 그 비중이 크다는 말은 판을 끝까지 끌고 가
@@ -811,7 +813,7 @@ const TITLES: Title[] = [
      일꾼 정찰도 초반 쪽(vision)이다(요청: 파서에 추가) — 첫 일꾼을 상대 진영까지 몰고 간
      명령 좌표로 짚는다(replaySummary의 WORKER_SCOUT_SEC). 오버로드와 한 열쇠인 까닭은
      둘 다 '미리 보고 시작한다'는 같은 습관이라서다. */
-  { ...tactic("부지런한 정찰 퀸", ["vision"]), minPlaysShare: 0.68 },
+  { ...tactic("부지런한 정찰 퀸", ["vision"]), minPlaysShare: 0.5 },
   { ...tactic("전장을 살피는 눈", ["vision-eye"]), minPlaysShare: 0.22 },
   /* (삭제) 맞러시 승부사(duel-rush) — 요청. 맞러시는 둘이 함께 만든 장면이라 한 사람의
      수라고 하기 어렵다. */
@@ -849,7 +851,7 @@ const TITLES: Title[] = [
   /* 역전의 아이콘(요청, 점수 높은 축) — 자막의 '재기'(revival)는 살림이 무너졌다가 다시
      일어난 판이다. 전술은 이긴 판만 세므로(서버의 _tactic_counts) 그 판은 곧 역전승이다:
      무너진 뒤에 일어나 이겼다는 말이라, 이 표에서 흔치 않은 이야기다. */
-  { ...tactic("역전 퀸", ["revival"]), minPlaysShare: 0.38 },
+  { ...tactic("역전 퀸", ["revival"]), minPlaysShare: 0.33 },
   /* 도박 퀸(요청: 도박적인 전술로 이긴 경우) — 자막의 '올인'은 뒤를 안 남기고 한 번에 건
      판이다. 전술은 이긴 판만 세므로(서버의 _tactic_counts) 여기 쌓이는 수는 곧 '건 것이
      통한 판'이다. 지고도 세면 그건 도박이 아니라 그냥 무너진 판이라 뜻이 갈린다. */
@@ -883,13 +885,13 @@ const TITLES: Title[] = [
        사람이 늘 이긴다. 그래서 값은 비율로 재되, 판당 채수가 얇으면 후보에서 뺀다.
        (문턱을 value 안에 두는 자리다 — 절대평가라 후보 수가 줄어도 다른 칭호가 안 흔들린다.) */
     label: "철옹성의 여인", weight: 2, kind: "수비",
-    min: 0.32, why: "건물 중 방어 건물", unit: "",
+    min: 0.38, why: "건물 중 방어 건물", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       const plays = won(s, of).mixPlays ?? 0;
       if (!m || !(plays > 0) || !(m.bProd + m.bDef > 0)) return null;
       // 판당 방어 건물이 이만큼은 돼야 '요새'라 부를 만하다 — 비율만으로는 얇은 판이 이긴다.
-      if (m.bDef / plays < 7) return null;
+      if (m.bDef / plays < 8) return null;
       return m.bDef / (m.bProd + m.bDef);
     },
   },
@@ -983,7 +985,7 @@ const TITLES: Title[] = [
     /* 2.5 → 3.5(요청: 퀸으로 올릴 만하다) — 손 이야기 셋(유효타·APM·커맨드) 가운데 가장
        위다. 빠르기는 타고나거나 오래 하면 오르지만, 헛치지 않는 손은 무엇을 누를지 미리
        정해 두어야 나온다. */
-    label: "군더더기 없는 손", weight: 3, kind: "경기력", min: 0.97, why: "APM 중 유효타", unit: "",
+    label: "군더더기 없는 손", weight: 3, kind: "경기력", min: 0.99, why: "APM 중 유효타", unit: "",
     value: (s) => (s.avgApm && s.avgEapm && s.avgApm > 0 ? s.avgEapm / s.avgApm : null),
   },
   /* (삭제) 누른 만큼 뽑는 사람(커맨드 중 생산 비율) — 요청. */
@@ -1012,14 +1014,16 @@ const TITLES: Title[] = [
   /* 무게를 2 → 1.2로 내렸다(요청) — 초반 일꾼은 그 판의 빌드가 정하는 값에 가깝다.
      같은 종족·같은 빌드면 누구나 비슷하게 나오므로, 1등이라고 그 사람을 말해 주는 몫이
      다른 칭호들보다 작다. */
-  { label: "일꾼 부자", weight: 2, kind: "경기력", min: 52, why: "초반 5분 일꾼", unit: "기", value: (s, of) => won(s, of).avgWorker5 },
+  /* (삭제) 일꾼 부자(초반 5분 일꾼 52기) — 요청. 초반 일꾼 수는 그 판의 빌드가 정하는
+     값에 가까워, 같은 종족·같은 시작이면 누구나 비슷하게 나온다 — 1등이라도 그 사람을
+     말해 주는 몫이 작았다. */
   /* 건물을 제일 많이 올린 사람(요청: 심시티 퀸) — "쉴 새 없이 짓는 자"에서 바꿨다. 재는 값은 그대로 분당 지은 채수다. */
   { label: "심시티 퀸", weight: 2, kind: "경기력", min: 7, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
   {
     /* 급을 올린다(요청) — 무게 2 → 3이라 일반에서 에픽이다. 갈래를 승률로 올려 둔 채(요청)
        급만 일반에 남아 있던 것이 어긋난 자리였다: 목록에서는 승률 칸 맨 위인데 대표를
        고를 때는 에픽 스물여섯 줄에 늘 밀렸다. 조건(공/방 평균 2.2단계)은 그대로다. */
-    label: "풀업 퀸", weight: 3, kind: "승률", min: 2.3, why: "공/방 평균 단계", unit: "",
+    label: "풀업 퀸", weight: 3, kind: "승률", min: 2.4, why: "공/방 평균 단계", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       if (!m) return null;
