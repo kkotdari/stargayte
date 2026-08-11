@@ -27,6 +27,7 @@ import { formatWhen, formatAgo, serverMs } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
 import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitSearchTerms } from "../../utils/memberSearch";
+import { renderReplaySummary } from "../../utils/replaySummaryText";
 import { cx } from "../../utils/format";
 import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
@@ -704,12 +705,32 @@ function ActivityGroupPage({
 }) {
   const searchable = SEARCHABLE_GROUPS.has(groupKey);
   const [search, setSearch] = useState("");
+  /* 경기 내용 검색(요청) — 자막에 적힌 말로 찾는다("포토러시", "핵", "커널"…). 유저 검색과
+     따로 두는 까닭은 찾는 것이 다르기 때문이다: 이쪽은 사람이 아니라 그 판에서 무슨 일이
+     있었나다. 그래서 닉네임은 일부러 안 찾는다(요청) — 아래 captionOf가 이름 자리를 기호로
+     바꿔 글에서 아예 지운다. 안 그러면 사람 이름이 두 검색창에 다 걸려, 이 칸이 유저
+     검색을 두 번 하는 자리가 된다. */
+  const [content, setContent] = useState("");
   /* 고른 사람들을 어떻게 읽을 것인가 — 활동 목록이 전에 쓰던 것과 같은 두 갈래다.
        all  — 포함 : 고른 사람이 다 나온 판이면 된다. 다른 사람이 더 껴 있어도 걸린다.
        only — 일치 : 그 판에 나온 사람이 고른 사람들과 정확히 같아야 한다. */
   const [userMode, setUserMode] = useState<"all" | "only">("all");
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
   const searchTerms = useMemo(() => splitSearchTerms(search), [search]);
+  const contentTerms = useMemo(() => splitSearchTerms(content), [content]);
+  /* 자막 한 벌은 한 번만 만든다 — 글자 하나 칠 때마다 목록 전체의 문장을 다시 짓는 일이라,
+     캐시가 없으면 타이핑이 그대로 멈춘다. 열쇠는 경기 번호다(문장은 그 경기의 요약에서만
+     나온다). */
+  const captions = useRef(new Map<number, string>());
+  const captionOf = (g: GameResult): string => {
+    const hit = captions.current.get(g.id);
+    if (hit !== undefined) return hit;
+    /* 이름은 죄다 같은 기호로 바꾼다(요청: 닉네임은 아님) — 문장 틀은 이름의 받침을 보고
+       조사를 고르므로, 지우는 대신 한 글자로 바꿔야 문장이 그대로 선다. */
+    const text = normalizeSearchText(renderReplaySummary(g.summaryData, () => "○") ?? "");
+    captions.current.set(g.id, text);
+    return text;
+  };
 
   const slotMatchesTerm = (slot: GameResultSlot, term: string): boolean => {
     const m = memberOf(slot.memberId);
@@ -724,9 +745,18 @@ function ActivityGroupPage({
   };
 
   const filtered = useMemo(() => {
-    if (!searchable || searchTerms.length === 0) return items;
+    if (!searchable || (searchTerms.length === 0 && contentTerms.length === 0)) return items;
     const onlyThese = userMode === "only";
     return items.filter((item) => {
+      /* 경기 내용으로 찾는 중이면 경기만 남는다 — 너 나와·리그 줄에는 자막 자체가 없어서
+         "안 걸린 것"이 아니라 "잴 수 없는 것"이다. 목록에 그대로 두면 걸러진 결과처럼
+         보인다. */
+      if (contentTerms.length > 0) {
+        if (item.kind !== "gameResult") return false;
+        const caption = captionOf(item.gameResult);
+        if (!contentTerms.every((term) => caption.includes(term))) return false;
+      }
+      if (searchTerms.length === 0) return true;
       if (item.kind === "gameResult") {
         const slots = [...item.gameResult.team1, ...item.gameResult.team2];
         if (!searchTerms.every((term) => slots.some((slot) => slotMatchesTerm(slot, term)))) return false;
@@ -753,7 +783,7 @@ function ActivityGroupPage({
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- slotMatchesTerm/challengeMatchesTerm은 memberOf로 충분히 표현됨
-  }, [items, searchTerms, userMode, searchable, memberOf]);
+  }, [items, searchTerms, contentTerms, userMode, searchable, memberOf]);
 
   /* 페이지로 들어온 것이니 맨 위에서 시작한다 — 활동 목록을 한참 내려보다 눌렀을 때 그
      스크롤 위치를 그대로 물려받으면, 새 화면이 중간부터 열린 것처럼 보인다.
@@ -792,6 +822,17 @@ function ActivityGroupPage({
           onSearchChange={setSearch}
           searchPlaceholder="유저 입력 또는 @로 목록 띄우기"
           suggestions={suggestions}
+          /* 경기 갈래에만 둔다(요청: 게임 전체 목록에 경기 내용 검색) — 자막이 있는 갈래가
+             여기뿐이다. PC에서는 유저 검색과 한 줄, 모바일에서는 아랫줄이다(trailing). */
+          trailing={groupKey === "gameResult" ? (
+            <input
+              className="scr-input scr-list-search-input scr-activity-content-search"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="경기 내용 (포토러시, 핵 …)"
+              aria-label="경기 내용 검색"
+            />
+          ) : undefined}
           searchLeading={(
             <Select
               className="scr-user-mode-select"

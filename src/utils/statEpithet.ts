@@ -668,7 +668,7 @@ const TITLES: Title[] = [
   },
   { label: "BEST 수집가", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
   { label: "쉬지 않는 손가락", weight: 2, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
-  { label: "스타게이트 NPC", weight: 3, sticky: true, why: "게임 수", unit: "판", value: (s) => s.plays },
+  { label: "스타 게이 트 NPC", weight: 3, sticky: true, why: "게임 수", unit: "판", value: (s) => s.plays },
 ];
 
 /* ── 특징 ──────────────────────────────────────────────────────────────────────

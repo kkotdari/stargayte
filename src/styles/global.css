@@ -4073,6 +4073,21 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 .scr-light-theme .scr-search-filter-float .scr-list-search-input {
   background: rgba(0,0,0,0.06); border: none; box-shadow: none;
 }
+/* 경기 내용 검색(요청) — 유저 검색과 같은 줄에 서는 두 번째 입력이라 생김새도 같아야 한다.
+   그쪽은 칩이 담기는 상자(.scr-search-filter-float 안)라 규칙이 그 상자에 걸려 있어서,
+   흐름에 놓이는 이 입력은 같은 값을 따로 받는다. 폭은 유저 검색보다 좁게 잡되(찾는 말이
+   한 낱말이다) 좁은 화면에서는 제 줄로 내려가 한 줄을 다 쓴다. */
+.scr-activity-content-search {
+  flex: 1 1 160px; min-width: 0; max-width: 220px;
+  background: rgba(255, 255, 255, 0.08); border: none; border-radius: 10px;
+  box-shadow: none; padding-left: 12px;
+  height: 30px; min-height: 30px; box-sizing: border-box;
+  color: var(--text); font-size: var(--fs-caption);
+}
+.scr-light-theme .scr-activity-content-search { background: rgba(0, 0, 0, 0.06); }
+@media (max-width: 1159px) {
+  .scr-activity-content-search { max-width: none; flex: 1 0 100%; }
+}
 /* 배경이 테마색이 됐으니 글자/placeholder도 테마를 따른다(예전 흰 배경 기준 어두운 고정 톤 대체). */
 /* 검색창 폰트도 필터와 같은 방향으로 한 스텝 낮춘다(요청) — 입력/placeholder body(16)
    →caption(14), 완성된 칩 caption(14)→micro(12). 높이를 줄인 만큼(위) 칩 패딩도 같이
