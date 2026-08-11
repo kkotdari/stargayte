@@ -325,7 +325,7 @@ const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker",
 
 const tactic = (label: string, keys: string[], min = 1): Title => ({
   label, value: (s) => did(s, ...keys), pool: 1, edge: 1, min,
-  why: `경기 요약에 ${TACTIC_NOUN[keys[0]] ?? "이 수"}`, unit: "번",
+  why: TACTIC_NOUN[keys[0]] ?? "이 수", unit: "번",
   ...(UNIT_TACTICS.has(keys[0]) ? { minPlaysShare: UNIT_TACTIC_SHARE } : {}),
   ...(TACTIC_RACE[keys[0]] ? { race: TACTIC_RACE[keys[0]] } : {}),
   weight: TACTIC_WEIGHT[keys[0]] ?? 1, scale: "count",
@@ -342,7 +342,7 @@ const spell = (label: string, key: string, min = 1): Title => ({
     const n = s.buildMix?.skills?.[key] ?? 0;
     return n > 0 ? n : null;
   },
-  pool: 1, edge: 1, min, why: `경기에서 ${TECH_KO[key] ?? "이 기술"} 사용`, unit: "번",
+  pool: 1, edge: 1, min, why: `게임에서 ${TECH_KO[key] ?? "이 기술"} 사용`, unit: "번",
   ...(TACTIC_RACE[key] ? { race: TACTIC_RACE[key] } : {}),
   weight: TACTIC_WEIGHT[key] ?? 1, scale: "count", tier: TIER1_KEYS.has(key) ? 1 : 2,
 });
@@ -603,7 +603,7 @@ const TITLES: Title[] = [
     label: "하울의 움직이는 성", weight: TACTIC_WEIGHT["lift-off"] ?? 1, tier: 2,
     pool: 1, edge: 1, scale: "count", race: "테란",
     min: 3, minPlaysShare: 0.15,
-    why: "경기 요약에 건물 띄우기", unit: "번",
+    why: "건물 띄우기", unit: "번",
     value: (s) => did(s, "lift-off"),
   },
   {
@@ -611,7 +611,7 @@ const TITLES: Title[] = [
        지는 이야기지만 놀리는 말은 아니다: 팀전에서 제일 먼저 노려지는 자리는 대개 잘하는
        사람이거나 앞에 선 사람이다. */
     label: "비련의 여조연", weight: 1, pool: 1, edge: 1, scale: "count",
-    why: "경기 요약에 먼저 탈락", unit: "번",
+    why: "먼저 탈락", unit: "번",
     value: (s) => did(s, "fallen"),
   },
   {
@@ -668,7 +668,7 @@ const TITLES: Title[] = [
   },
   { label: "BEST 수집가", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
   { label: "쉬지 않는 손가락", weight: 2, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
-  { label: "우리 클랜 NPC", weight: 3, sticky: true, why: "경기 수", unit: "판", value: (s) => s.plays },
+  { label: "스타게이트 NPC", weight: 3, sticky: true, why: "게임 수", unit: "판", value: (s) => s.plays },
 ];
 
 /* ── 특징 ──────────────────────────────────────────────────────────────────────
@@ -953,7 +953,7 @@ function signature(
       const special = SPELL_SPECIAL[skill.name];
       const t = (special && pick(special.map((label) => () => label), skill.name, seed, used))
         || (skill.score >= SKILL_PLAIN_SCORE ? pick(SKILL_SAYS, skill.name, seed, used) : null);
-      return t ? { label: t, why: `경기에서 ${skill.name} ${skill.count}번` } : null;
+      return t ? { label: t, why: `게임에서 ${skill.name} ${skill.count}번` } : null;
     };
     // 드문 마법만 유닛보다 앞이다(SKILL_RARE_SCORE) — 나머지는 아래에서 마지막으로 본다.
     if (skill && owners.spell.get(skill.name)?.id === id && skill.score >= SKILL_RARE_SCORE) {

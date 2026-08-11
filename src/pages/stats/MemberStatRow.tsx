@@ -2,8 +2,6 @@ import { Fragment, useState } from "react";
 import Avatar from "../../components/common/Avatar";
 import InfoTip from "../../components/common/InfoTip";
 import PhotoViewer from "../../components/common/PhotoViewer";
-import StatBar from "../../components/common/StatBar";
-import ValueBar from "../../components/common/ValueBar";
 import DonutChart from "../../components/common/DonutChart";
 import { useAppStore } from "../../store/appStore";
 import { cx } from "../../utils/format";
@@ -225,6 +223,26 @@ function TopList({ items, unit }: { items: TopEntry[]; unit: string }) {
    이제 쓰이지 않아). 순위를 매기는 화면이 아니게 되면서 "이 칸의 1등"이라는 말도 함께
    자리를 잃었다 — 줄 세우는 일은 래더가 한다. */
 
+/* 주요지표는 막대가 아니라 수다(요청) — 게임수·승률·APM·커맨드 넷 다 막대로 그리던 것을
+   걷었다. 막대는 '남과 견주는 그림'인데, 이 표는 한 사람의 줄을 읽는 자리라 견줄 상대가
+   같은 화면에 세로로 멀리 떨어져 있다. 그 자리에서 막대는 길이를 견주게 해 주는 대신 수를
+   작게 만들고 칸을 넓힌다. BEST 줄이 이미 수만 적고 있어(막대 없는 값) 다섯 줄의 꼴도
+   이제야 같아진다.
+   값이 없으면 "-"다 — 0과 '잰 적 없음'은 다른 말이라(리플레이가 없는 옛 경기) 0으로
+   적으면 안 된다. */
+function RecordNum({ value, unit }: { value: number | null; unit?: string }) {
+  return (
+    <div className="scr-stat-record-num">
+      <span className="scr-stat-record-num-v">
+        {value ?? "-"}
+        {/* 단위는 수의 오른쪽에 매달되 자리는 안 차지한다 — BEST의 "회", 일꾼의 "기"와
+            같은 규칙이라 수 자체가 다섯 줄에서 같은 x에 선다. */}
+        {value !== null && unit && <span className="scr-stat-record-num-unit">{unit}</span>}
+      </span>
+    </div>
+  );
+}
+
 /** 종족 칸의 순서 — 표의 열 순서가 곧 이것이다. */
 const RACES: BaseRace[] = ["테란", "프로토스", "저그"];
 
@@ -330,15 +348,11 @@ interface MemberStatRowProps {
   /** BEST PLAYER 횟수를 적을까 — 내전 화면만 넘긴다(요청). 팀전에만 붙는 값이라 래더에서는
    *  어느 줄이나 0이고, 그 0이 "한 번도 못 받았다"로 잘못 읽힌다. */
   showBest?: boolean;
-  // 게임수 칸(ValueBar)의 기준값(이 목록에서 가장 많이 뛴 사람 = 100%).
-  maxOverallPlays: number;
-  // APM/커맨드 막대의 기준값(이 목록에서 가장 높은 값) — 게임수 막대와 같은 원칙.
-  maxApm: number;
-  maxCmd: number;
+  /* (삭제) maxOverallPlays·maxApm·maxCmd — 막대의 기준값(이 목록의 1등 = 100%)이었다.
+     주요지표를 수로 바꾸면서(요청) 견줄 잣대가 필요 없어졌다. */
   // false면 프사를 아예 그리지 않는다 — 닉네임 버튼을 눌러도 프로필은 그대로 열린다.
   avatar?: boolean;
-  // 전적 막대 캡션을 "승/전" 짧은 표기로 줄인다(StatBar의 compact 참고).
-  compact?: boolean;
+  /* (삭제) compact — 전적 막대의 짧은 표기(StatBar) 스위치였다. 막대가 없어졌다. */
   /** 닉네임 아래 한 줄로 붙는 별명(요청, statEpithet.ts) — "물량 끝판왕", "공포의 럴커
    *  부대"처럼 그 사람의 기록에서 뽑은 말이다. 기준은 내전 전체 누적이라 화면을 바꿔도
    *  안 흔들린다(useEpithets). 한 판도 안 뛴 사람에게는 안 온다. */
@@ -350,8 +364,8 @@ interface MemberStatRowProps {
 
 // 전적통계 목록의 테이블 한 행.
 export default function MemberStatRow({
-  member, stats, byRace, me = false, showBest = false, maxOverallPlays, maxApm, maxCmd,
-  avatar = true, compact = false,
+  member, stats, byRace, me = false, showBest = false,
+  avatar = true,
   epithet, epithetReady = false,
 }: MemberStatRowProps) {
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
@@ -419,23 +433,20 @@ export default function MemberStatRow({
         <div className="scr-stat-record-col">
           <div className="scr-stat-record-item">
             <span className="scr-stat-record-label">게임수</span>
-            <ValueBar value={stats.plays > 0 ? stats.plays : null} maxValue={maxOverallPlays} />
+            <RecordNum value={stats.plays > 0 ? stats.plays : null} unit="판" />
           </div>
           <div className="scr-stat-record-item">
             <span className="scr-stat-record-label">승률</span>
-            <StatBar
-              plays={stats.plays} wins={stats.wins} draws={stats.draws} losses={stats.losses}
-              winRate={stats.winRate} compact={compact}
-            />
+            <RecordNum value={stats.plays > 0 ? stats.winRate : null} unit="%" />
           </div>
           <div className="scr-stat-record-item">
             <span className="scr-stat-record-label">APM</span>
-            <ValueBar value={stats.avgApm} maxValue={maxApm} />
+            <RecordNum value={stats.avgApm} />
           </div>
           <div className="scr-stat-record-item">
             {/* 분당임을 라벨에 적는다(요청) — APM은 원래 분당이라 라벨 그대로. */}
             <span className="scr-stat-record-label">커맨드<span className="scr-stat-record-per">/분</span></span>
-            <ValueBar value={stats.avgCmd} maxValue={maxCmd} />
+            <RecordNum value={stats.avgCmd} />
           </div>
           {/* BEST PLAYER 횟수(요청) — 막대 넷과 같은 격자의 한 줄이다. 한때 레이팅·순위
               줄기에 따로 세워 뒀는데, 그 줄기가 래더로 통째로 옮겨 가면서(요청) 여기 말고는

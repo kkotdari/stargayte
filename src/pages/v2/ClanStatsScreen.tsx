@@ -246,15 +246,8 @@ export default function ClanStatsScreen() {
      있다: 별명이 화면과 필터마다 달라지면 그건 부르는 말이 아니다. */
   const epithetByMember = useEpithets();
 
-  const maxOverallPlays = useMemo(
-    () => Math.max(1, ...cards.map((c) => c.stats.plays)), [cards],
-  );
-  const maxApm = useMemo(
-    () => Math.max(1, ...cards.map((c) => c.stats.avgApm ?? 0)), [cards],
-  );
-  const maxCmd = useMemo(
-    () => Math.max(1, ...cards.map((c) => c.stats.avgCmd ?? 0)), [cards],
-  );
+  /* (삭제) maxOverallPlays·maxApm·maxCmd — 막대의 기준값이었다. 주요지표가 수로 바뀌면서
+     (요청) 이 목록의 1등이 몇인지를 알 필요가 없어졌다. */
 
   return (
     <div className="scr-screen scr-stats-screen-v2">
@@ -351,10 +344,6 @@ export default function ClanStatsScreen() {
                     // 닉네임 아래 한 줄 — 위 epithetByMember 참고(늘 내전 전체 누적 기준).
                     epithet={epithetByMember.get(c.member.id)}
                     epithetReady={epithetByMember.size > 0}
-                    compact
-                    maxOverallPlays={maxOverallPlays}
-                    maxApm={maxApm}
-                    maxCmd={maxCmd}
                   />
                 ))}
               </div>
