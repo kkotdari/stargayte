@@ -515,7 +515,7 @@ const TITLES: Title[] = [
   /* (삭제) 브루들링 저격수 · 눈을 멀게 하는 자(옵티컬 플레어) · 허깨비 부대장(할루시네이션)
      — 요청으로 뺐다. 셋 다 쓰기 어려운 마법이긴 한데, 그 한 번이 판을 가르는 그림까지는
      아니라 이름만 요란해진다. */
-  { ...tactic("헬프 퀸", ["ally-help"]), minPlaysShare: 0.22 },
+  { ...tactic("헬프 퀸", ["ally-help"]), minPlaysShare: 0.25 },
   { ...tactic("동맹의 수호자", ["ally-cannon"]), minPlaysShare: 0.01 },
   /* 입구막기는 '막았다'가 아니라 '막아 놓고 뒤에서 컸다'가 값어치다(판정도 발전까지 함께
      본다 — replayTactics의 WALL_IN_GROW_MIN). 그래서 칭호도 막은 쪽이 아니라 그다음을
@@ -575,7 +575,7 @@ const TITLES: Title[] = [
   { ...rare("리콜 배달부", ["recall"]), minPlaysShare: 0.01 },
   rare("도둑 퀸", ["mind-control"]),
   tactic("캐리어를 모으는 여인", ["carrier"]),
-  tactic("공포의 독거미 부대", ["lurker"]),
+  { ...tactic("공포의 독거미 부대", ["lurker"]), minPlaysShare: 0.15 },
   /* 안 보이는 것으로만 치는 사람(요청: 다크·레이스·아비터를 다 잘 쓴 경우만) —
      "보이지 않는 손" → "안 보이는 레이스"를 거쳐 온 자리다. 유닛 하나로는 안 준다(요청:
      하나만 써서는 안 됨): 다크만 뽑는 프로토스는 흔하고, 그건 이미 유닛 칭호가 말한다.
