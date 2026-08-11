@@ -532,8 +532,8 @@ const TITLES: Title[] = [
   tactic("옆탱은 나의 힘", ["side-tank"]),
   /* 한 번으로도 자격이 있다 — 남의 집 앞에 건물을 박는 것은 손이 미끄러져서 되는 일이
      아니다(다른 전술의 기본 문턱 2회는 "한 번은 우연"을 거르려는 것이다). */
-  tactic("무시무시한 포토러시의 퀸", ["cannon-rush"], 1),
-  tactic("잔혹한 성큰러시의 여제", ["sunken-rush"], 1),
+  tactic("어둠 속 포토러쉬 여왕", ["cannon-rush"], 1),
+  tactic("역공의 성큰러시 퀸", ["sunken-rush"], 1),
   tactic("센터의 점령자", ["center-photon"]),
   /* (삭제) 남의 집 헤집기 장인(base-raid) — 요청. 이름 없는 급습이라 "무엇으로 갔는지"가
      빠진 이야기고, 그 대목은 대개 다른 칭호(드랍·견제·러시)가 이미 말한다. */
@@ -818,7 +818,7 @@ const TITLES: Title[] = [
     label: "눈부신 승리의 여신", weight: 9, sticky: true, min: 70, why: "승률", unit: "%",
     value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null),
   },
-  { label: "화려한 BEST 수집퀸", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
+  { label: "최다 BEST 퀸", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
   /* 졌잘싸 퀸(요청) — 진 판에서 BEST로 뽑힌 수다. 판을 가장 많이 만들고도 졌다는 말이라,
      이기고 지고를 안 가리는 BEST 수집퀸과는 다른 이야기를 센다. 무게는 그보다 한 뼘
      아래다: 잘 싸운 것은 맞지만 이긴 판의 BEST와 같은 값으로 둘 수는 없다. */
