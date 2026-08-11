@@ -323,10 +323,23 @@ const TACTIC_NOUN: Record<string, string> = {
 const UNIT_TACTIC_SHARE = 0.07;
 const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker", "muta"]);
 
+/* 수마다 제 문턱을 따로 두는 자리(지적: 포토러시 퀸·성큰러시 퀸의 비율 하한이 너무 낮다).
+   급 기본값(1급 3%)은 '드문 한 번도 이야기'라는 뜻인데, 러시는 그 잣대와 안 맞는다 —
+   "퀸"·"절대자"는 그 수로 사람을 부르는 말이라, 한두 번 해 본 사람에게 붙으면 그 말이
+   거짓이 된다. 그리고 러시는 마음만 먹으면 되풀이할 수 있는 수라 드묾이 곧 값어치도
+   아니다(핵·리콜과 다른 점이다).
+   10%에 최소 두 번 — 프로토스로 서른 판 뛰었으면 세 번, 스무 판이면 두 번이다. 그쯤이면
+   "이 사람은 포토러시를 하는 사람"이라 부를 만하다. */
+const RUSH_SHARE = 0.1;
+const RUSH_MIN = 2;
+const RUSH_TACTICS = new Set(["cannon-rush", "sunken-rush"]);
+
 const tactic = (label: string, keys: string[], min = 1): Title => ({
-  label, value: (s) => did(s, ...keys), pool: 1, edge: 1, min,
+  label, value: (s) => did(s, ...keys), pool: 1, edge: 1,
+  min: RUSH_TACTICS.has(keys[0]) ? Math.max(min, RUSH_MIN) : min,
   why: TACTIC_NOUN[keys[0]] ?? "이 수", unit: "번",
   ...(UNIT_TACTICS.has(keys[0]) ? { minPlaysShare: UNIT_TACTIC_SHARE } : {}),
+  ...(RUSH_TACTICS.has(keys[0]) ? { minPlaysShare: RUSH_SHARE } : {}),
   ...(TACTIC_RACE[keys[0]] ? { race: TACTIC_RACE[keys[0]] } : {}),
   weight: TACTIC_WEIGHT[keys[0]] ?? 1, scale: "count",
   tier: TIER1_KEYS.has(keys[0]) ? 1 : 2,
