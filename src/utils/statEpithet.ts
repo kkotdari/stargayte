@@ -656,7 +656,7 @@ const TITLES: Title[] = [
   {
     /* 판당으로 잰다(요청: 절대평가) — 누적 채수는 오래 뛴 사람이 늘 크다. 서른 채면 한 판에
        확장·생산·방어를 고루 편 살림이다. */
-    label: "건물주 퀸", weight: 2, min: 70, why: "판당 지은 건물", unit: "채",
+    label: "건설의 여왕", weight: 2, min: 70, why: "판당 지은 건물", unit: "채",
     value: (s, of) => {
       const m = mix(s, of);
       const plays = won(s, of).mixPlays ?? 0;
