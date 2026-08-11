@@ -61,10 +61,11 @@ const COUNT_SHARE: Record<number, number> = { 1: 0.035, 2: 0.045 };
    "조건을 넘으면 누구든"인데 그 조건이 아무도 안 넘는 자리면 그 칭호는 없는 것과 같다.
    내린 것: 비례 최소 횟수의 눈금(20 → 30판마다 +1), 급 기본 비율(1급 4→3% · 2급 5→4%),
    승률 계열 셋, 그리고 시뮬레이션에서 주인이 없던 전술·수치들. 아래 각 자리에 적어 둔다. */
-const COUNT_MIN_BASE = 2;
-const COUNT_MIN_PER_PLAYS = 25;
-const countMinFor = (denomPlays: number): number =>
-  Math.max(COUNT_MIN_BASE, Math.ceil(denomPlays / COUNT_MIN_PER_PLAYS));
+/* (삭제) 비례 최소 횟수(COUNT_MIN_BASE·COUNT_MIN_PER_PLAYS·countMinFor) — 요청: 하한선을
+   복잡하게 두지 말고 비율 하나로 판수를 정한다. 비율이 이미 "제 판의 몇 할"이라 판수에
+   비례하는 잣대인데, 그 위에 "바닥 두 번에서 시작해 스무 판마다 한 번씩"을 얹으니 한 칭호에
+   잣대가 둘이 되어 어느 쪽에 걸려 못 받았는지가 안 보였다. 이제 필요한 횟수는
+   올림(제 판수 × 비율) 하나로 정해진다 — 마흔 판에 3%면 두 번, 백 판이면 세 번이다. */
 /* 한때 상한을 뒀다("아무리 많이 뛰어도 여섯 번이면 인정") — 걷어냈다(지적: 상한보다 비율
    자체를 낮추는 편이 합리적이다). 상한은 그 지점부터 비례가 끊겨, 백 판 뛴 사람과 예순 판
    뛴 사람에게 같은 수를 요구한다 — 많이 뛴 쪽이 오히려 쉬워지는 셈이다. 비율을 낮추면
@@ -476,7 +477,8 @@ const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker",
    러시가 드물어서가 아니라 되풀이할 수 있는 수이기 때문이다 — 드묾은 이미 1급 웃돈이
    값을 쳐 준다. */
 const RUSH_SHARE = 0.012;
-const RUSH_MIN = 2;
+/* (삭제) RUSH_MIN — 러시만 "최소 두 번"을 따로 걸던 값이다. 위 countMinFor와 같은 이유로
+   걷었다(요청): 잣대는 비율 하나다. 러시가 흔해지면 RUSH_SHARE를 올리면 된다. */
 const RUSH_TACTICS = new Set(["cannon-rush", "sunken-rush"]);
 
 /* 져도 세는 수 — 서버의 _COUNT_EVEN_IF_LOST와 짝이다(요청: 셋방살이·이사·노엘은 밀린 뒤에야
@@ -498,7 +500,7 @@ const tactic = (label: string, keys: string[], min = 1): Title => ({
   },
   pool: 1, edge: 1,
   won: !keys.some((k) => COUNTED_EVEN_IF_LOST.has(k)),
-  min: RUSH_TACTICS.has(keys[0]) ? Math.max(min, RUSH_MIN) : min,
+  min,
   why: TACTIC_NOUN[keys[0]] ?? "이 수", unit: "번",
   ...(UNIT_TACTICS.has(keys[0]) ? { minPlaysShare: UNIT_TACTIC_SHARE } : {}),
   ...(RUSH_TACTICS.has(keys[0]) ? { minPlaysShare: RUSH_SHARE } : {}),
@@ -1187,7 +1189,6 @@ export function epithetGuideRows(): EpithetGuideRow[] {
       if (share > 0) bits.push(`${what} ${where}의 ${pct(share)} 이상 (${where.replace("제 판", "판")} 5판부터)`);
       else bits.push(`${what}`);
       if ((t.min ?? 1) > 1) bits.push(`최소 ${t.min}${t.unit ?? "번"}`);
-      else if (share > 0) bits.push(`최소 2번(20판마다 +1)`);
     } else {
       if (t.min !== undefined) {
         bits.push(`${what} ${t.min < 1 ? pct(t.min) : `${t.min}${t.unit ?? ""}`} 이상`);
@@ -1284,8 +1285,6 @@ export function epithetsOf(
         if (denomPlays < 5) continue;
         if (v < Math.ceil(denomPlays * share)) continue;
       }
-      // 비율과 별개로 최소 횟수도 넘어야 한다 — 경기수 비례다(countMinFor).
-      if (title.scale === "count" && share > 0 && v < countMinFor(denomOf(title, p))) continue;
       // 절대 문턱 — 이 값을 넘으면 받는다. 남이 얼마나 했는지는 안 본다(요청: 절대평가).
       if (title.min !== undefined && v < title.min) continue;
       const label = title.name
