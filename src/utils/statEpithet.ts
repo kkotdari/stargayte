@@ -53,7 +53,10 @@ const COUNT_SHARE: Record<number, number> = { 1: 0.04, 2: 0.05 };
 /** 비율과 별개의 최소 횟수(요청: 너무 겹치지 않게 문턱 높이기) — 절대평가가 되면서 조건만
  *  넘으면 다 받으니, 한 판짜리 우연까지 칭호가 되면 한 사람이 대여섯 개를 예사로 들었다.
  *  드문 수(1급)는 두 번, 흔한 수(2급)는 세 번은 나와야 버릇이라 부른다. */
-const COUNT_MIN: Record<number, number> = { 1: 2, 2: 3 };
+/* 2급도 두 번이면 인정한다(지적: 종류가 많아서 안 나오는 것들은 분자를 낮춰야) — 쉰몇
+   가지로 갈라 세니 한 종류에 쌓이는 수 자체가 얇다. 흔한 대목은 비율 문턱이 어차피 더
+   위에서 걸리므로, 이 값을 내려서 헐거워지는 것은 드문 것들뿐이다. */
+const COUNT_MIN: Record<number, number> = { 1: 2, 2: 2 };
 /* 한때 상한을 뒀다("아무리 많이 뛰어도 여섯 번이면 인정") — 걷어냈다(지적: 상한보다 비율
    자체를 낮추는 편이 합리적이다). 상한은 그 지점부터 비례가 끊겨, 백 판 뛴 사람과 예순 판
    뛴 사람에게 같은 수를 요구한다 — 많이 뛴 쪽이 오히려 쉬워지는 셈이다. 비율을 낮추면
@@ -1119,8 +1122,10 @@ export function epithetsOf(
         : (title.min ? v / title.min : 1);
       claims.push({
         title, id: p.id, label, raw: v, denom: denomPlays,
-        // 동점대 — 무게(급 웃돈 포함)를 1.5점 폭으로 접는다: 3·3.5·4가 한 칸, 4.5·5가 한 칸.
-        band: Math.round(((title.weight ?? 0) * boost) / 1.5),
+        /* 동점대 — 3점 폭으로 러프하게 접는다(요청): 1.5 폭일 때는 손 수치(3)와 전술(4)이
+           다른 칸이라 반 점 차이가 또 성취도를 덮었다. 3점 폭이면 에픽 안에서 [3~4]가 한
+           칸, [6]과 [10.5~12]가 제 칸 — 같은 칸 안에서는 얼마나 크게 해냈나가 가른다. */
+        band: Math.round(((title.weight ?? 0) * boost) / 3),
         reach, score: (title.weight ?? 0) * (title.scale === "count" ? v : reach) * boost, order,
         rank: grade,
       });
