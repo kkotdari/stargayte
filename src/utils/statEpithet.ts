@@ -575,7 +575,7 @@ const TITLES: Title[] = [
   { ...rare("리콜 배달부", ["recall"]), minPlaysShare: 0.01 },
   rare("도둑 퀸", ["mind-control"]),
   tactic("캐리어를 모으는 여인", ["carrier"]),
-  { ...tactic("공포의 독거미 부대", ["lurker"]), minPlaysShare: 0.15 },
+  { ...tactic("공포의 독거미 부대", ["lurker"]), minPlaysShare: 0.2 },
   /* 안 보이는 것으로만 치는 사람(요청: 다크·레이스·아비터를 다 잘 쓴 경우만) —
      "보이지 않는 손" → "안 보이는 레이스"를 거쳐 온 자리다. 유닛 하나로는 안 준다(요청:
      하나만 써서는 안 됨): 다크만 뽑는 프로토스는 흔하고, 그건 이미 유닛 칭호가 말한다.
@@ -603,7 +603,7 @@ const TITLES: Title[] = [
       return hidden > 0 ? hidden / (m.uGround + m.uAir) : null;
     },
   },
-  { ...tactic("뮤탈 습격대", ["muta"]), minPlaysShare: 0.06 },
+  { ...tactic("뮤탈 습격대", ["muta"]), minPlaysShare: 0.04 },
   /* 곁가지 다섯(오버로드 사냥·동맹 포토·커널·리콜·다크스웜)은 2%다(요청: 더 낮추기) —
      재분석 뒤에도 내내 비어 있던 것들이다. 워낙 드문 그림이라 비율은 낮게 두고, 우연은
      최소 횟수(3번)가 거른다. */
