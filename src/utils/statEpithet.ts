@@ -339,10 +339,24 @@ const TITLES: Title[] = [
   rare("정신을 훔치는 마인드 컨트롤러", ["mind-control"]),
   tactic("캐리어를 모으는 여인", ["carrier"]),
   tactic("공포의 독거미 부대", ["lurker"]),
-  /* "보이지 않는 손"에서 바꿨다(지적: 레이스인 게 안 와닿는다) — 그 말은 무엇으로 그랬는지가
-     빠져 있어 마법이나 옆치기로도 읽혔다. 유닛 이름을 넣되 그 유닛이 하는 일(안 보이게 떠서
-     친다)을 함께 적는다. */
-  tactic("안 보이는 레이스", ["cloak-wraith"]),
+  /* 안 보이는 것으로만 치는 사람(요청: 다크·레이스·아비터를 다 잘 쓴 경우만) —
+     "보이지 않는 손" → "안 보이는 레이스"를 거쳐 온 자리다. 유닛 하나로는 안 준다(요청:
+     하나만 써서는 안 됨): 다크만 뽑는 프로토스는 흔하고, 그건 이미 유닛 칭호가 말한다.
+     셋을 다 굴렸다는 것은 종족을 넘나들며 '안 보이는 것'이라는 한 가지 수를 계속 골랐다는
+     뜻이라, 그 자체가 그 사람의 취향이다. 값은 셋을 합친 수 — 많이 굴린 쪽이 임자다. */
+  {
+    label: "보이지 않는 공격", weight: 5, pool: 1, edge: 1, tier: 1, scale: "count",
+    why: "다크·레이스·아비터", unit: "기",
+    value: (s) => {
+      const m = s.buildMix;
+      if (!m) return null;
+      const dark = m.units?.["Dark Templar"] ?? 0;
+      const wraith = m.units?.Wraith ?? 0;
+      const arbiter = m.units?.Arbiter ?? 0;
+      // 셋 다 있어야 한다 — 하나라도 비면 그 사람의 수가 아니라 그 판의 종족이 한 일이다.
+      return dark > 0 && wraith > 0 && arbiter > 0 ? dark + wraith + arbiter : null;
+    },
+  },
   tactic("하늘을 나는 뮤탈 조련사", ["muta"]),
   tactic("무자비한 오버로드 사냥꾼", ["valk-hunt"]),
   tactic("몰래 배럭의 대가", ["sneak-rax"]),
