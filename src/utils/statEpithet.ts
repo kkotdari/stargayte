@@ -443,7 +443,7 @@ const TITLES: Title[] = [
        칭호도 안 나온다. 그래서 자막이 짚은 판이 없으면 그 사람이 그 기간에 뽑은 것으로 대신
        본다 — 울트라와 디파일러를 함께 굴렸다면 그 판들이 곧 목동 저그다.
        값은 둘 중 큰 쪽이라, 자막이 짚은 사람이 늘 앞선다. */
-    label: "공포의 목동저그 퀸", weight: 6, pool: 1, edge: 1, scale: "count", race: "저그",
+    label: "무한의 목동퀸", weight: 6, pool: 1, edge: 1, scale: "count", race: "저그",
     why: "목동 저그", unit: "번",
     value: (s) => {
       const byBeat = did(s, "moka") ?? 0;
