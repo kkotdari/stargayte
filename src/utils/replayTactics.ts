@@ -582,6 +582,9 @@ const WRAITH_MIN = 4;
 // 캐리어 — 한두 기 띄워 보고 접은 것과 실제로 캐리어를 굴린 것을 가른다. 인터셉터까지
 // 채워야 쓸모가 생기는 유닛이라 배틀크루저(3기)보다 조금 넉넉히 잡는다.
 const CARRIER_MIN = 4;
+/* 배틀은 창 단위 최대로 이만큼(요청: 낮추기). 캐리어와 달리 몫을 안 보는 까닭은
+   테란이 배틀을 띄우는 판 자체가 드물어, 몫으로 재면 뽑은 판에서도 묻히기 때문이다. */
+const BC_PEAK_MIN = 2;
 // 가디언 — 뮤탈을 변태시켜야 나오는 유닛이라 몇 기만 있어도 그림이 된다.
 const GUARDIAN_MIN = 4;
 
@@ -607,8 +610,11 @@ const GUARDIAN_MIN = 4;
    그 판을 통째로 끌고 간 뮤탈이 아무 말도 못 얻었다는 뜻이라, 몫으로 바꾸면서 지난 요청
    ("3~4부대")의 고정 바닥도 함께 내렸다. 대신 문장이 부대 수가 아니라 기 수로도 말할 수
    있게 고쳤다(replaySummaryText의 muta) — 한 부대가 안 되는데 "1부대"라고 할 수는 없다. */
-const MUTA_MASS_SHARE = 0.15;
-const MUTA_MASS_FLOOR = 8;
+/* 0.15/8 → 0.10/6(요청: 뮤탈은 파싱부터 기수를 낮춰야 한다) — 칭호 쪽 비율만 내려도
+   판정이 안 잡으면 셀 것이 없다. 여섯 기는 이미 견제를 나갈 수 있는 수이고, 몫 10%는
+   "이 판에서 저 사람의 병력 열에 하나는 뮤탈이었다"는 선이다. */
+const MUTA_MASS_SHARE = 0.1;
+const MUTA_MASS_FLOOR = 6;
 const CARRIER_SHARE = 0.03;
 const WRAITH_SHARE = 0.03;
 const GUARDIAN_SHARE = 0.03;
@@ -1685,7 +1691,9 @@ function detectFor(c: Ctx): Tactic[] {
     // 캐리어와 같은 이유로 누계가 아니라 창 단위 최대로 잰다(위 windowPeak 참고).
     const bcs = producedFrames(s, "Battlecruiser", endFrame);
     const bcPeak = windowPeak(bcs);
-    if (bcPeak >= 3) {
+    /* 3 → 2기(요청) — 배틀은 띄우는 것 자체가 사건이라 '모았나'를 물을 자리가 아니다.
+       한 기는 실수로도 나오지만 두 기를 같은 창에 띄웠다면 그 판의 방향이다. */
+    if (bcPeak >= BC_PEAK_MIN) {
       out.push({
         key: "bc", weight: 11, at: firstU("Battlecruiser"), who,
         p: { n: bcPeak },
