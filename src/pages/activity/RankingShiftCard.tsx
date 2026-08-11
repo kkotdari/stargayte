@@ -70,7 +70,9 @@ export function rankShiftShareContent(shift: RankingShift): KakaoShareContent {
   return {
     title: RANK_SHIFT_TITLE,
     description: summary,
-    ...shareThumb("rankShift"),
+    /* 알림 갈래가 함께 쓰는 그림(요청: 미리보기를 알림으로 통일) — 랭크 변동은 이제
+       칭호 변경과 같은 '알림'이라, 갈래 이름을 적은 한 장을 둘이 나눠 쓴다. */
+    ...shareThumb("notice"),
     link: `${window.location.origin}/?sv=rankingShift&sid=${shift.id}`,
     fallbackText: `[스타게이트] ${RANK_SHIFT_TITLE}\n${summary}`,
   };

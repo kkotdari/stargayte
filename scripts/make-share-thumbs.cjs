@@ -23,6 +23,9 @@ const KINDS = [
   { file: 'share_thumb_game_result_list.png',  label: '게임결과 목록' },
   { file: 'share_thumb_game_result.png',       label: '게임결과' },
   { file: 'share_thumb_rank_shift.png',        label: '랭크 변동' },
+  // 활동의 '알림' 갈래가 통째로 쓰는 한 장(요청: 카톡 미리보기를 알림으로 통일) — 칭호
+  // 변경도 랭크 변동도 이제 같은 갈래라, 칭호가 바뀐 글에 '랭크 변동' 그림이 붙어 나갔다.
+  { file: 'share_thumb_notice.png',            label: '알림' },
 ];
 
 const page = (label) => `<!doctype html><html><head><meta charset="utf-8">

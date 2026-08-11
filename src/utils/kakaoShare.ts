@@ -76,6 +76,10 @@ const SHARE_THUMBS = {
   gameResult: "share_thumb_game_result.png",
   /** 랭크 변동 알림. */
   rankShift: "share_thumb_rank_shift.png",
+  /** 활동의 '알림' 갈래 — 칭호 변경·랭크 변동이 함께 쓴다(요청: 카톡 미리보기를 알림으로
+   *  통일). 둘이 한 갈래가 된 뒤로도 칭호가 바뀐 글에 '랭크 변동'이라 적힌 그림이 붙어
+   *  나갔다(지적) — 무슨 알림인지는 카드 제목이 말하므로 그림은 갈래만 말하면 된다. */
+  notice: "share_thumb_notice.png",
   /** 모임 일정. */
   schedule: "share_thumb_schedule.png",
 } as const;

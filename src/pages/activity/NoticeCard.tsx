@@ -32,8 +32,8 @@ export function noticeLine(notice: ActivityNotice, nameOf: (id: string) => strin
 /** 카카오로 내보낼 한 장 — 랭크 변동(rankShiftShareContent)과 같은 얼개다(요청: 알림도 공유).
  *  본문은 바뀐 사람 둘까지만 적는다: 카카오 카드가 두 줄 남짓이라 그 이상은 어차피 잘리고,
  *  전부 보려고 링크를 여는 것이 이 카드가 하는 일이다.
- *  썸네일은 랭크 변동 것을 함께 쓴다 — 둘 다 사람이 올린 글이 아니라 서버가 남긴 알림이라
- *  같은 그림이 어색하지 않고, 알림 전용 그림은 아직 없다. */
+ *  썸네일은 알림 갈래의 것을 쓴다 — 한때 랭크 변동 그림을 빌려 썼는데, 칭호가 바뀌었다는
+ *  글에 '랭크 변동'이라 적힌 그림이 붙어 나갔다(지적). 랭크 변동도 같은 그림을 쓴다. */
 export function noticeShareContent(
   notice: ActivityNotice, nameOf: (id: string) => string,
 ): KakaoShareContent {
@@ -45,7 +45,7 @@ export function noticeShareContent(
   return {
     title: "칭호 변경",
     description: summary,
-    ...shareThumb("rankShift"),
+    ...shareThumb("notice"),
     link: `${window.location.origin}/?sv=notice&sid=${notice.id}`,
     fallbackText: `[스타게이트] 칭호 변경\n${summary}`,
   };
