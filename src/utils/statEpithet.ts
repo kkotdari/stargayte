@@ -828,7 +828,7 @@ const TITLES: Title[] = [
      아래다: 잘 싸운 것은 맞지만 이긴 판의 BEST와 같은 값으로 둘 수는 없다. */
   { label: "졌잘싸퀸", weight: 2.5, why: "진 판의 BEST PLAYER", unit: "회", value: (s) => ((s.lostBests ?? 0) > 0 ? s.lostBests! : null) },
   { label: "쉬지 않는 손가락", weight: 2, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
-  { label: "참여율퀸", weight: 3, sticky: true, why: "게임 수", unit: "판", value: (s) => s.plays },
+  { label: "참여퀸", weight: 3, sticky: true, why: "게임 수", unit: "판", value: (s) => s.plays },
 ];
 
 /* ── 이름을 만드는 잔손질 ─────────────────────────────────────────────────────
