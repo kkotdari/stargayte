@@ -408,7 +408,7 @@ const TACTIC_NOUN: Record<string, string> = {
    일곱 판에 한 판꼴로 가면 그 유닛으로 판을 푸는 사람이라 부를 만하다. */
 /* 버킷을 고치기 전에 4%까지 내렸던 값 — 고치고 나니 진짜 비율이 드러나(러커 5%짜리가
    퀸이 됐다) 10%로 되올린다. 열 판에 한 판은 그 유닛으로 이겨야 그 유닛의 사람이다. */
-const UNIT_TACTIC_SHARE = 0.1;
+const UNIT_TACTIC_SHARE = 0.07;
 const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker", "muta"]);
 
 /* 수마다 제 문턱을 따로 두는 자리(지적: 포토러시 퀸·성큰러시 퀸의 비율 하한이 너무 낮다).
@@ -516,7 +516,7 @@ const TITLES: Title[] = [
      — 요청으로 뺐다. 셋 다 쓰기 어려운 마법이긴 한데, 그 한 번이 판을 가르는 그림까지는
      아니라 이름만 요란해진다. */
   { ...tactic("헬프 퀸", ["ally-help"]), minPlaysShare: 0.22 },
-  { ...tactic("동맹의 수호자", ["ally-cannon"]), minPlaysShare: 0.015 },
+  { ...tactic("동맹의 수호자", ["ally-cannon"]), minPlaysShare: 0.01 },
   /* 입구막기는 '막았다'가 아니라 '막아 놓고 뒤에서 컸다'가 값어치다(판정도 발전까지 함께
      본다 — replayTactics의 WALL_IN_GROW_MIN). 그래서 칭호도 막은 쪽이 아니라 그다음을
      부른다. "후반 도모 퀸"에서 바꿨다(지적: 개성적이지 않다) — 그 말은 어느 운영에나 붙는
@@ -571,8 +571,8 @@ const TITLES: Title[] = [
      빠진 이야기고, 그 대목은 대개 다른 칭호(드랍·견제·러시)가 이미 말한다. */
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
      자막이 이 수를 부르는 이름(커널)을 그대로 쓴다. */
-  { ...rare("커널 개통사", ["nydus"]), minPlaysShare: 0.015 },
-  { ...rare("리콜 배달부", ["recall"]), minPlaysShare: 0.015 },
+  { ...rare("커널 개통사", ["nydus"]), minPlaysShare: 0.01 },
+  { ...rare("리콜 배달부", ["recall"]), minPlaysShare: 0.01 },
   rare("도둑 퀸", ["mind-control"]),
   tactic("캐리어를 모으는 여인", ["carrier"]),
   tactic("공포의 독거미 부대", ["lurker"]),
@@ -607,7 +607,7 @@ const TITLES: Title[] = [
   /* 곁가지 다섯(오버로드 사냥·동맹 포토·커널·리콜·다크스웜)은 2%다(요청: 더 낮추기) —
      재분석 뒤에도 내내 비어 있던 것들이다. 워낙 드문 그림이라 비율은 낮게 두고, 우연은
      최소 횟수(3번)가 거른다. */
-  { ...tactic("오버로드 사냥꾼", ["valk-hunt"]), minPlaysShare: 0.015 },
+  { ...tactic("오버로드 사냥꾼", ["valk-hunt"]), minPlaysShare: 0.01 },
   tactic("몰래배럭 퀸", ["sneak-rax"]),
   /* (삭제) 끝없는 저글링 폭풍(zling-rush) — 요청. 저글링 하나로 들이치는 것은 그 종족의
      기본 진행에 가까워, 한 유닛만으로 러시라고 부를 만한 수가 아니다. */
@@ -636,7 +636,7 @@ const TITLES: Title[] = [
   /* (삭제) 협공(gang-rush) — 다시 뺐다(요청). 이름을 넷이나 갈아 봤지만(협공의 선봉 ·
      다굴의 여신 · 잔다르크 · 전장을 누비는 여인) 결국 같은 자리다: 팀전에서 함께 달려간
      것은 그 판의 진행이지 그 사람의 수가 아니다. */
-  { ...rare("다크스웜 살포반", ["swarm"]), minPlaysShare: 0.015 },
+  { ...rare("다크스웜 살포반", ["swarm"]), minPlaysShare: 0.01 },
   /* (삭제) 감염의 여왕(infested) — 요청. 감염된 테란은 커맨드센터를 잡아야 나오는 장면이라
      드물기는 한데, 그 판을 만든 것은 감염 자체가 아니라 그 앞의 싸움이다. */
   /* (삭제) 가디언을 모으는 여인(guardian) — 요청. */
