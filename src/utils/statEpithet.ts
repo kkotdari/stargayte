@@ -183,8 +183,9 @@ function bestMap(s: MemberStats): { name: string; wins: number } | null {
    격은 낱말로 나눈다(요청: 여신 › 퀸 › 공주 › 그 외).
      여신  : 승률·종족 승률처럼 그 사람의 실력을 통째로 말하는 자리
      퀸    : 3점대 이상 — 그 판을 끌고 간 수(러시·운영·맵·헬프…)
-     공주  : 2점대 — 잘 쓰면 좋은 한 수(마법 한 방, 졌잘싸)
-     그 외 : 1점대 — 장인·부대·머신처럼 격을 안 세우는 말
+     공주  : 2.5점 — 잘 쓰면 좋은 한 수(마법 한 방, 졌잘싸)
+     그 외 : 2점 이하 — 장인·부대·수호신처럼 격을 안 세우는 말. 여기에는 '공주'를 안 쓴다
+       (요청) — 낱말이 곧 격이라, 아래 갈래에 얹으면 그 낱말이 아무 말도 안 하게 된다.
    '여왕'보다 '퀸'을 쓰고(요청), 앞말과 띄어 쓴다(요청: 다시 띄어쓰기) — "포토러쉬 퀸"처럼
    두 낱말로 두어야 무엇의 퀸인지가 먼저 읽힌다.
        같은 격 안에서는 그 수에 어울리는 말을 고른다(요청: 더 잘 어울리는 게 있으면 바꾸되
@@ -507,7 +508,7 @@ const TITLES: Title[] = [
      오래 했다"밖에 안 된다(예전 SPELL_WEIGHT의 기준선이 그 무리였다). */
   spell("얼음 공주", "Maelstrom"),
   spell("거미줄 공주", "Disruption Web"),
-  spell("시간 공주", "Stasis Field"),
+  spell("보갈타임 공주", "Stasis Field"),
   spell("야마토 공주", "Yamato Gun"),
   /* (삭제) 브루들링 저격수 · 눈을 멀게 하는 자(옵티컬 플레어) · 허깨비 부대장(할루시네이션)
      — 요청으로 뺐다. 셋 다 쓰기 어려운 마법이긴 한데, 그 한 번이 판을 가르는 그림까지는
@@ -555,8 +556,8 @@ const TITLES: Title[] = [
      빠진 이야기고, 그 대목은 대개 다른 칭호(드랍·견제·러시)가 이미 말한다. */
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
      자막이 이 수를 부르는 이름(커널)을 그대로 쓴다. */
-  rare("커널 개통사", ["nydus"]),
-  rare("리콜 배달부", ["recall"]),
+  rare("커널 공주", ["nydus"]),
+  rare("리콜 공주", ["recall"]),
   rare("도둑 퀸", ["mind-control"]),
   tactic("캐리어를 모으는 여인", ["carrier"]),
   tactic("독거미 부대", ["lurker"]),
@@ -585,7 +586,7 @@ const TITLES: Title[] = [
     },
   },
   tactic("뮤탈 습격대", ["muta"]),
-  tactic("오버로드 사냥꾼", ["valk-hunt"]),
+  tactic("오버로드 사냥 공주", ["valk-hunt"]),
   tactic("몰래배럭 퀸", ["sneak-rax"]),
   /* (삭제) 끝없는 저글링 폭풍(zling-rush) — 요청. 저글링 하나로 들이치는 것은 그 종족의
      기본 진행에 가까워, 한 유닛만으로 러시라고 부를 만한 수가 아니다. */
@@ -607,7 +608,7 @@ const TITLES: Title[] = [
   /* (삭제) 협공(gang-rush) — 다시 뺐다(요청). 이름을 넷이나 갈아 봤지만(협공의 선봉 ·
      다굴의 여신 · 잔다르크 · 전장을 누비는 여인) 결국 같은 자리다: 팀전에서 함께 달려간
      것은 그 판의 진행이지 그 사람의 수가 아니다. */
-  rare("다크스웜 살포반", ["swarm"]),
+  rare("다크스웜 공주", ["swarm"]),
   /* (삭제) 감염의 여왕(infested) — 요청. 감염된 테란은 커맨드센터를 잡아야 나오는 장면이라
      드물기는 한데, 그 판을 만든 것은 감염 자체가 아니라 그 앞의 싸움이다. */
   tactic("가디언을 모으는 여인", ["guardian"]),
@@ -721,15 +722,15 @@ const TITLES: Title[] = [
     /* 헛치지 않는 손 — 유효APM ÷ APM. 같은 APM이라도 큐가 찬 건물을 또 누르거나 같은 명령을
        연타하면 유효 쪽이 뚝 떨어진다(replayParser의 IneffKind 주석). 빠른 손과 깔끔한 손은
        다른 말이고, 이 값은 뒤쪽만 잰다. */
-    label: "군더더기 없는 손", weight: 2.5, min: 0.72, why: "APM 중 유효타", unit: "",
+    label: "유효타 공주", weight: 2.5, min: 0.72, why: "APM 중 유효타", unit: "",
     value: (s) => (s.avgApm && s.avgEapm && s.avgApm > 0 ? s.avgEapm / s.avgApm : null),
   },
   /* (삭제) 누른 만큼 뽑는 사람(커맨드 중 생산 비율) — 요청. */
   /* (삭제) 기본기의 사람(병력 중 기본 유닛 비율) — 요청. */
   /* (삭제) 땅에서 사는 사람 — 병력의 97%가 지상이라는 말은 "공중을 안 쓴다"는 결핍이다.
      '그것밖에 안 한다'는 말을 걷은 것과 같은 이유다(요청). */
-  { label: "물량 머신", weight: 2.5, why: "분당 뽑은 기수", unit: "기", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreUnit, won(s, of).mixSeconds) : null; } },
-  { label: "번개같은 손놀림", weight: 2.5, why: "APM", unit: "", value: (s) => s.avgApm },
+  { label: "물량 공주", weight: 2.5, why: "분당 뽑은 기수", unit: "기", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreUnit, won(s, of).mixSeconds) : null; } },
+  { label: "손놀림 공주", weight: 2.5, why: "APM", unit: "", value: (s) => s.avgApm },
   /* (삭제) 하늘의 여전사(병력 중 공중 비중) — 요청. */
   {
     label: "마법의 화신", weight: 2, why: "병력 중 마법 유닛 비중", unit: "",
@@ -945,7 +946,7 @@ export function epithetGuideRows(): EpithetGuideRow[] {
        말하는 자리만 여신이고, 게임 수 1위(참여 퀸)는 sticky라도 퀸이다. */
     const rank: EpithetRank = t.label.includes("여신")
       ? "여신"
-      : score >= 3 ? "퀸" : score >= 2 ? "공주" : "그 외";
+      : score >= 3 ? "퀸" : score >= 2.5 ? "공주" : "그 외";
     return { label: t.label, how: bits.join(" · "), wonOnly: t.won === true, score, sticky: t.sticky === true, rank };
   });
   /* 이름이 사람마다 달라지는 두 줄({n})은 손으로 적는다 — 맵 이름·종족 이름이 들어가야
