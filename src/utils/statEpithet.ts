@@ -731,21 +731,28 @@ function seedOf(id: string): number {
  *  "스톰의 여왕"이 두 번째로 많이 쓴 사람에게 붙으면 그 말이 거짓이 된다. */
 function ownersOf(
   pool: EpithetSubject[], of: (m: BuildMix) => Record<string, number> | undefined,
-  ko: Record<string, string>,
+  ko: Record<string, string>, by: "count" | "share" = "count",
 ): Map<string, string> {
   const best = new Map<string, { id: string; n: number }>();
   for (const p of pool) {
     const m = p.stats.buildMix;
     if (!m) continue;
     const merged: Record<string, number> = {};
+    let total = 0;
     for (const [key, v] of Object.entries(of(m) ?? {})) {
       const name = ko[key];
       if (!name || !(v > 0)) continue;
       merged[name] = (merged[name] ?? 0) + v;
+      total += v;
     }
-    for (const [name, n] of Object.entries(merged)) {
+    for (const [name, count] of Object.entries(merged)) {
+      /* 유닛·건물은 '많이 뽑은 사람'이 아니라 '그 비중이 가장 큰 사람'이 임자다(지적: 질럿
+         칭호가 네 명한테 붙었다) — 칭호가 말하는 값이 비중이라("질럿이 병력의 78%"), 임자도
+         같은 자로 정해야 그 말이 한 사람 것이 된다. 총량으로 정하면 많이 뛴 사람이 이름을
+         다 쓸어 가고, 그 사람이 딴 칭호를 받으면 남은 사람들이 같은 이름을 나눠 갖게 된다. */
+      const n = by === "share" ? (total > 0 ? count / total : 0) : count;
       const cur = best.get(name);
-      // 같은 수면 id로 갈라 조회할 때마다 임자가 바뀌지 않게 한다.
+      // 같은 값이면 id로 갈라 조회할 때마다 임자가 바뀌지 않게 한다.
       if (!cur || n > cur.n || (n === cur.n && p.id < cur.id)) best.set(name, { id: p.id, n });
     }
   }
@@ -786,10 +793,10 @@ function signature(
        그 정도는 어느 종족에나 있는 주력 비중이라 "닥치고 ○○"이라 부를 만한 그림이 아니다.
        일꾼·보급은 애초에 이 원장에 없다(replayBuildMix) — 그래서 이 비율이 곧 병력 구성이다. */
     for (const unit of topList(m.units, UNIT_KO)) {
-      /* 이름의 임자가 아니어도 제 병력의 절반을 넘게 차지하면 그 이름으로 부른다(지적:
-         칭호가 너무 안 나온다) — 남이 총량으로 더 뽑았더라도, 그 사람 병력의 절반이 그
-         유닛이면 그건 분명히 그 사람의 색이다. 문틀이 달라 표에서 같은 글자가 서지도 않는다. */
-      if (owners.unit.get(unit.name) !== id && unit.share < 0.5) continue;
+      /* 임자(그 유닛 비중이 가장 큰 사람)만 그 이름으로 불린다(지적: 질럿이 네 명). 한때
+         "비중 50% 넘으면 임자가 아니어도"라는 예외를 뒀는데, 프로토스 넷이 다 질럿 절반을
+         넘겨 그 예외가 곧 규칙이 됐다. 문틀을 달리해도 표에서는 결국 질럿 이야기가 네 줄이다. */
+      if (owners.unit.get(unit.name) !== id) continue;
       // 두 번째·세 번째 유닛은 비중이 낮게 마련이라 문턱도 낮춘다 — 그래도 넷 중 하나는
       // 되어야 "그 유닛으로 푸는 사람"이라 부를 수 있다.
       if (unit.count < 10 || unit.share < (unit === topList(m.units, UNIT_KO)[0] ? 0.33 : 0.25)) continue;
@@ -927,8 +934,8 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
      그 사람이 딴 칭호를 받았으면 그 이름은 아무에게도 안 간다. */
   const owners: NameOwners = {
     spell: ownersOf(pool, (m) => m.skills, SPELL_KO),
-    unit: ownersOf(pool, (m) => m.units, UNIT_KO),
-    build: ownersOf(pool, (m) => m.buildings, BUILDING_KO),
+    unit: ownersOf(pool, (m) => m.units, UNIT_KO, "share"),
+    build: ownersOf(pool, (m) => m.buildings, BUILDING_KO, "share"),
   };
   for (const p of pool) {
     if (out.has(p.id) || p.stats.plays < MIN_PLAYS) continue;
