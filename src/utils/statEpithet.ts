@@ -53,10 +53,13 @@ const COUNT_SHARE: Record<number, number> = { 1: 0.04, 2: 0.05 };
 /** 비율과 별개의 최소 횟수(요청: 너무 겹치지 않게 문턱 높이기) — 절대평가가 되면서 조건만
  *  넘으면 다 받으니, 한 판짜리 우연까지 칭호가 되면 한 사람이 대여섯 개를 예사로 들었다.
  *  드문 수(1급)는 두 번, 흔한 수(2급)는 세 번은 나와야 버릇이라 부른다. */
-/* 2급도 두 번이면 인정한다(지적: 종류가 많아서 안 나오는 것들은 분자를 낮춰야) — 쉰몇
-   가지로 갈라 세니 한 종류에 쌓이는 수 자체가 얇다. 흔한 대목은 비율 문턱이 어차피 더
-   위에서 걸리므로, 이 값을 내려서 헐거워지는 것은 드문 것들뿐이다. */
-const COUNT_MIN: Record<number, number> = { 1: 2, 2: 2 };
+/* 최소 횟수도 경기수에 비례한다(요청: 고정하지 말라고 두 번 말한 자리다) — 바닥 두 번에서
+   시작해 스무 판마다 한 번씩 는다. 스무 판짜리는 두 번이면 버릇이지만 백 판짜리의 두 번은
+   우연이라, 고정값은 어느 한쪽에는 늘 틀린 잣대였다. */
+const COUNT_MIN_BASE = 2;
+const COUNT_MIN_PER_PLAYS = 20;
+const countMinFor = (denomPlays: number): number =>
+  Math.max(COUNT_MIN_BASE, Math.ceil(denomPlays / COUNT_MIN_PER_PLAYS));
 /* 한때 상한을 뒀다("아무리 많이 뛰어도 여섯 번이면 인정") — 걷어냈다(지적: 상한보다 비율
    자체를 낮추는 편이 합리적이다). 상한은 그 지점부터 비례가 끊겨, 백 판 뛴 사람과 예순 판
    뛴 사람에게 같은 수를 요구한다 — 많이 뛴 쪽이 오히려 쉬워지는 셈이다. 비율을 낮추면
@@ -656,7 +659,7 @@ const TITLES: Title[] = [
   /* 역전의 아이콘(요청, 점수 높은 축) — 자막의 '재기'(revival)는 살림이 무너졌다가 다시
      일어난 판이다. 전술은 이긴 판만 세므로(서버의 _tactic_counts) 그 판은 곧 역전승이다:
      무너진 뒤에 일어나 이겼다는 말이라, 이 표에서 흔치 않은 이야기다. */
-  { ...tactic("역전의 명수", ["revival"]), minPlaysShare: 0.3 },
+  { ...tactic("역전의 명수", ["revival"]), minPlaysShare: 0.35 },
   /* 도박 퀸(요청: 도박적인 전술로 이긴 경우) — 자막의 '올인'은 뒤를 안 남기고 한 번에 건
      판이다. 전술은 이긴 판만 세므로(서버의 _tactic_counts) 여기 쌓이는 수는 곧 '건 것이
      통한 판'이다. 지고도 세면 그건 도박이 아니라 그냥 무너진 판이라 뜻이 갈린다. */
@@ -1001,8 +1004,8 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     if (count) {
       if (share > 0) bits.push(`${what} ${where}의 ${pct(share)} 이상 (${where.replace("제 판", "판")} 5판부터)`);
       else bits.push(`${what}`);
-      const minCount = Math.max(t.min ?? 1, share > 0 ? COUNT_MIN[tier] ?? 0 : 0);
-      if (minCount > 1) bits.push(`최소 ${minCount}${t.unit ?? "번"}`);
+      if ((t.min ?? 1) > 1) bits.push(`최소 ${t.min}${t.unit ?? "번"}`);
+      else if (share > 0) bits.push(`최소 2번(20판마다 +1)`);
     } else {
       if (t.min !== undefined) {
         bits.push(`${what} ${t.min < 1 ? pct(t.min) : `${t.min}${t.unit ?? ""}`} 이상`);
@@ -1097,9 +1100,8 @@ export function epithetsOf(
         if (denomPlays < 5) continue;
         if (v < Math.ceil(denomPlays * share)) continue;
       }
-      // 비율과 별개로 최소 횟수도 넘어야 한다(COUNT_MIN) — 판이 적으면 비율 문턱이 한두
-      // 번으로 내려앉는데, 그 한두 번은 버릇이 아니라 우연이다.
-      if (title.scale === "count" && share > 0 && v < (COUNT_MIN[tier] ?? 0)) continue;
+      // 비율과 별개로 최소 횟수도 넘어야 한다 — 경기수 비례다(countMinFor).
+      if (title.scale === "count" && share > 0 && v < countMinFor(denomOf(title, p))) continue;
       // 절대 문턱 — 이 값을 넘으면 받는다. 남이 얼마나 했는지는 안 본다(요청: 절대평가).
       if (title.min !== undefined && v < title.min) continue;
       const label = title.name
