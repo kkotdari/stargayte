@@ -11856,6 +11856,30 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   color: color-mix(in srgb, var(--best-ink) 62%, transparent);
 }
 
+/* 칭호 조건 안내 모달(요청) — 표 한 벌을 그대로 늘어놓는 자리라, 이름과 조건을 두 칸으로
+   나눠 세로로 쌓는다. 이름이 왼쪽에서 같은 x로 시작해야 목록으로 읽힌다. */
+.scr-epithet-guide { max-width: 520px; }
+.scr-epithet-guide-lead {
+  margin: 0 0 12px; color: var(--muted); font-size: var(--fs-caption); line-height: 1.5;
+}
+.scr-epithet-guide-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+/* 한 줄 = [이름 / 조건] — 좁은 화면에서는 조건이 이름 밑으로 내려간다. */
+.scr-epithet-guide-row {
+  display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr); gap: 2px 10px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--line-hair);
+}
+.scr-epithet-guide-row:last-child { border-bottom: none; padding-bottom: 0; }
+.scr-epithet-guide-name { font-weight: 700; color: var(--text); word-break: keep-all; }
+.scr-epithet-guide-how {
+  color: var(--muted); font-size: var(--fs-caption); line-height: 1.45; word-break: keep-all;
+}
+/* '이긴 판만'은 조건 안의 곁말이라 한 단계 더 흐리게 — 조건 자체와 같은 무게로 서면
+   줄마다 그 넉 자가 먼저 읽힌다. */
+.scr-epithet-guide-won { color: var(--dim); }
+@media (max-width: 1159px) {
+  .scr-epithet-guide-row { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* 전체 보기 제목의 빵부스러기(요청: "활동 > 게임") — 앞의 '활동'은 화면 제목 크기 그대로고,
    갈래 이름만 목록 소제목과 같은 18px이다. 둘을 같은 크기로 두면 어느 쪽이 지금 자리인지가
    안 갈리고, 갈래 이름을 더 키우면 밖에서 누른 그 소제목과 다른 것처럼 보인다. */

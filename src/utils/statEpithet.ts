@@ -632,7 +632,7 @@ const TITLES: Title[] = [
     },
   },
   /* 상대보다 일꾼을 훨씬 많이 굴린 대목(worker-gap) — 자원을 많이 캤다는 말이다. */
-  tactic("여재벌", ["worker-gap"]),
+  tactic("부티 자원퀸", ["worker-gap"]),
   tactic("다산왕", ["prod-gap"]),
   /* (삭제) 병력 사재기 — 뺐다(요청). "많이 모았다"는 시간을 들이면 누구나 닿는 값이고,
      그 병력으로 무엇을 했는지는 말해 주지 않는다. 물량 자체는 '물량퀸'이 이미 잰다. */
@@ -656,7 +656,9 @@ const TITLES: Title[] = [
      다 내주고 건물만 띄워 쫓겨 다닌 대목이라, 버틴 이야기로 넣었지만 칭호로 굳으면
      "집을 잃은 사람"이라는 딱지로 읽힌다. 자막에서 한 번 지나가는 말과, 이름 아래
      늘 붙어 있는 말은 무게가 다르다. */
-  rare("노엘을 외치는 자", ["no-elim"]),
+  /* (삭제) 노엘을 외치는 자(no-elim) — 요청. 바로 아래 매너 퀸(GG)이 같은 자리를 더 나은
+     말로 센다: 둘 다 진 판에서 손을 드는 한마디인데, 노엘은 봐 달라는 부탁이고 GG는 졌다는
+     인정이다. 노엘 감지 자체는 그대로 남는다(자막이 그 한마디를 장면으로 쓴다). */
   /* GG를 친 판을 모은다(요청: ㅈㅈ 친 것도 다 모아서 매너 퀸) — 진 것을 인정하고 손을 내미는
      일이라, 이기고 지고와 무관하게 센다(COUNTED_EVEN_IF_LOST). 자막이 이미 그 한마디를
      장면으로 잡아 두고 있어 따로 셀 것이 없다. */
@@ -822,6 +824,7 @@ function hasFinal(word: string): boolean {
   return (code - 0xac00) % 28 !== 0;
 }
 const sub = (w: string) => (hasFinal(w) ? "은" : "는");
+const ga = (w: string) => (hasFinal(w) ? "이" : "가");
 
 /* 종족마다 부르는 말이 따로다(요청: 저그의 절대군주 · 프로토스의 전설 · 테란의 영웅) —
    셋뿐이라 표 하나면 되고, 그편이 종족의 색을 살린다. 여기 없는 값은 무난한 말로 받는다. */
@@ -853,6 +856,63 @@ function bestRace(of: EpithetSubject): { race: string; rate: number } | null {
 function denomOf(title: Title, of: EpithetSubject): number {
   if (title.race) return of.races?.[title.race]?.plays ?? of.stats.plays;
   return of.stats.plays;
+}
+
+/** 칭호 안내에 적을 한 줄 — 이름과 "어떻게 받나"(요청: 모든 칭호 목록과 조건 나열).
+ *
+ *  표(TITLES)에서 그때그때 만들어 낸다: 손으로 적어 두면 이름·문턱을 고칠 때마다 두 곳이
+ *  어긋나고, 이 화면은 그 어긋남이 바로 거짓말이 되는 자리다. */
+export interface EpithetGuideRow {
+  label: string;
+  how: string;
+  /** 이긴 판만 세는 칭호인가 — 안내에 그 한마디를 덧붙인다. */
+  wonOnly: boolean;
+}
+
+/** 표 전체를 안내용 줄로. 값이 큰 것부터 — 화면의 순서가 곧 "무엇이 먼저 가나"다. */
+export function epithetGuideRows(): EpithetGuideRow[] {
+  const pct = (v: number) => `${Math.round(v * 100)}%`;
+  const rows = TITLES.map((t) => {
+    const boost = TIER_BOOST[t.tier ?? 2] ?? 1;
+    const score = (t.weight ?? 0) * boost;
+    const count = t.scale === "count";
+    const share = t.minPlaysShare ?? (count ? COUNT_SHARE[t.tier ?? 2] ?? COUNT_SHARE[2] : 0);
+    const where = t.race ? `${t.race} 판` : "제 판";
+    const bits: string[] = [];
+    /* 마법 칭호의 근거는 문장으로 적혀 있다("게임에서 핵 사용") — 안내에서는 앞머리를
+       걷어야 "핵 사용이 가장 많은 사람"으로 읽힌다. */
+    const what = (t.why ?? "기록").replace(/^게임에서 /, "");
+    if (count) {
+      bits.push(`${what}${ga(what)} 클럽에서 가장 많은 사람`);
+      if (share > 0) bits.push(`${where}의 ${pct(share)} 이상`);
+      if ((t.min ?? 1) > 1) bits.push(`최소 ${t.min}${t.unit ?? "번"}`);
+    } else {
+      bits.push(`${what} 클럽 1위`);
+      if (t.min !== undefined) {
+        // 비중 칭호의 문턱은 0.72처럼 소수로 적혀 있다 — 사람이 읽는 자리에서는 %다.
+        bits.push(t.min < 1 ? `${pct(t.min)} 이상` : `${t.min}${t.unit ?? ""} 이상`);
+      }
+    }
+    return { label: t.label, how: bits.join(" · "), wonOnly: t.won === true, score, sticky: t.sticky === true };
+  });
+  /* 이름이 사람마다 달라지는 두 줄({n})은 손으로 적는다 — 맵 이름·종족 이름이 들어가야
+     말이 되는데, 표에는 그 자리가 비어 있다. */
+  return rows.map((r) => {
+    if (r.label !== "{n}") return r;
+    if (r.how.startsWith("그 맵 승수")) {
+      return {
+        ...r,
+        label: "○○의 여주인 · 안주인 · 황녀 · 여왕",
+        how: `그 맵에서 ${MAP_MIN_PLAYS}판 이상 · 승률 ${Math.round(MAP_MIN_RATE * 100)}% 이상 (맵 이름이 앞에 붙어요)`,
+      };
+    }
+    return {
+      ...r,
+      label: "저그의 절대군주 · 프로토스의 수호자 · 테란의 전설",
+      how: `그 종족으로 ${MIN_PLAYS_MODE}판 이상 · 제 판의 ${pct(RACE_MIN_SHARE)} 이상 · 승률 70% 이상`,
+    };
+  }).sort((a, b) => (Number(b.sticky) - Number(a.sticky)) || (b.score - a.score))
+    .map(({ label, how, wonOnly }) => ({ label, how, wonOnly }));
 }
 
 /** 회원 → 칭호. 왕관은 넘겨받은 무리 안에서만 매기므로, 부르는 쪽이 '검색에 걸린 목록'이
