@@ -386,7 +386,7 @@ const TITLES: Title[] = [
      떨어질까 말까 한 것이고, 떨어뜨리려면 고스트를 뽑아 살려 두고 상대 진영까지 데려가
      지목한 뒤 그 자리를 버텨야 한다. 아래 어떤 칭호도 이만큼 드물지 않다.
      (버섯구름 배달부 → 핵 투하 전문가 → 핵보유국 → 엄청난 핵 마스터를 거쳐 온 이름이다.) */
-  spell("핵 버튼의 여제", "Nuclear Strike"),
+  spell("핵버튼의 여지배자", "Nuclear Strike"),
 
   /* ── 사람 노릇(요청: 꼭 넣을 것) ────────────────────────────────────────────
      맨 위에 둔다 — 혼자 잘하는 것보다 판을 함께 굴린 쪽이 먼저 불릴 자격이 있다.
@@ -430,7 +430,7 @@ const TITLES: Title[] = [
      한 유닛을 많이 뽑은 것과 달리, 이쪽은 그 판을 어떤 틀로 굴렸나다. 바이오닉·메카닉·
      목동 저그는 유닛 이름이 아니라 운영 이름이라, 그 말 하나로 그 사람의 판이 그려진다.
      그래서 단일 유닛 칭호(캐리어·저글링 같은 것)보다 위에 둔다. */
-  tactic("바이오닉 여제", ["bionic"]),
+  tactic("바이오닉의 여왕", ["bionic"]),
   tactic("메카닉의 여왕", ["mech"]),
   {
     /* 목동 저그(요청: 멋진데 안 나온다) — 자막이 이 그림을 짚으려면 한 판에서 저글링 12기·
@@ -438,7 +438,7 @@ const TITLES: Title[] = [
        칭호도 안 나온다. 그래서 자막이 짚은 판이 없으면 그 사람이 그 기간에 뽑은 것으로 대신
        본다 — 울트라와 디파일러를 함께 굴렸다면 그 판들이 곧 목동 저그다.
        값은 둘 중 큰 쪽이라, 자막이 짚은 사람이 늘 앞선다. */
-    label: "목동저그의 여왕", weight: 6, pool: 1, edge: 1, scale: "count", race: "저그",
+    label: "공포의 목동저그 퀸", weight: 6, pool: 1, edge: 1, scale: "count", race: "저그",
     why: "목동 저그", unit: "번",
     value: (s) => {
       const byBeat = did(s, "moka") ?? 0;
@@ -464,9 +464,9 @@ const TITLES: Title[] = [
      빠진 이야기고, 그 대목은 대개 다른 칭호(드랍·견제·러시)가 이미 말한다. */
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
      자막이 이 수를 부르는 이름(커널)을 그대로 쓴다. */
-  rare("커널의 여제", ["nydus"]),
+  rare("커널 개통퀸", ["nydus"]),
   rare("리콜의 여왕", ["recall"]),
-  rare("마음 도둑 퀸", ["mind-control"]),
+  rare("마음을 훔치는 도둑퀸", ["mind-control"]),
   tactic("캐리어를 모으는 여인", ["carrier"]),
   tactic("공포의 독거미 부대", ["lurker"]),
   /* 안 보이는 것으로만 치는 사람(요청: 다크·레이스·아비터를 다 잘 쓴 경우만) —
@@ -475,16 +475,22 @@ const TITLES: Title[] = [
      셋을 다 굴렸다는 것은 종족을 넘나들며 '안 보이는 것'이라는 한 가지 수를 계속 골랐다는
      뜻이라, 그 자체가 그 사람의 취향이다. 값은 셋을 합친 수 — 많이 굴린 쪽이 임자다. */
   {
-    label: "그림자의 여왕", weight: 5, pool: 1, edge: 1, tier: 1, scale: "count",
-    why: "다크·레이스·아비터", unit: "기",
+    /* 은폐 유닛을 얼마나 많이 굴렸나 — 병력 중 비중이다(지적: 다크·레이스·아비터를 다
+       쓸 수는 없다, 종족이 다르니까). 예전에는 셋이 다 있어야 했는데, 다크·아비터는
+       프로토스이고 레이스는 테란이라 한 판에서는 애초에 성립하지 않는 조건이었다.
+       종족을 섞어 하는 사람만 여러 판에 걸쳐 겨우 걸렸으니, 그건 은폐를 잘 쓴다는 말이
+       아니라 종족을 바꿔 가며 한다는 말이었다.
+       비중으로 재면 종족이 무엇이든 "안 보이는 것으로 푸는 사람"이 그대로 걸린다. */
+    label: "그림자의 여왕", weight: 5, pool: 1, edge: 1, tier: 1,
+    min: 0.12, why: "병력 중 은폐 유닛", unit: "",
     value: (s) => {
       const m = s.buildMix;
-      if (!m) return null;
-      const dark = m.units?.["Dark Templar"] ?? 0;
-      const wraith = m.units?.Wraith ?? 0;
-      const arbiter = m.units?.Arbiter ?? 0;
-      // 셋 다 있어야 한다 — 하나라도 비면 그 사람의 수가 아니라 그 판의 종족이 한 일이다.
-      return dark > 0 && wraith > 0 && arbiter > 0 ? dark + wraith + arbiter : null;
+      if (!m || !(m.uGround + m.uAir > 0)) return null;
+      const hidden = (m.units?.["Dark Templar"] ?? 0)
+        + (m.units?.Wraith ?? 0)
+        + (m.units?.Arbiter ?? 0)
+        + (m.units?.Lurker ?? 0);
+      return hidden > 0 ? hidden / (m.uGround + m.uAir) : null;
     },
   },
   tactic("뮤탈 조련사", ["muta"]),
@@ -537,7 +543,7 @@ const TITLES: Title[] = [
        그대로 사실이 된다.
        분당으로 안 나누는 것이 심시티 퀸과의 차이다 — 그쪽은 '손이 빠른가'이고 이쪽은
        '얼마나 지었나'다. 대신 남들 절반은 뛰었어야 후보다(LEAD_PLAYS_SHARE). */
-    label: "건축 여왕", weight: 4, why: "지은 건물", unit: "채",
+    label: "건축 여회장", weight: 4, why: "지은 건물", unit: "채",
     value: (s) => {
       const b = s.buildMix?.buildings;
       if (!b) return null;
@@ -546,7 +552,7 @@ const TITLES: Title[] = [
     },
   },
   /* 상대보다 일꾼을 훨씬 많이 굴린 대목(worker-gap) — 자원을 많이 캤다는 말이다. */
-  tactic("자원의 여왕", ["worker-gap"]),
+  tactic("자원의 여재벌", ["worker-gap"]),
   tactic("쉼 없는 생산 여왕", ["prod-gap"]),
   /* (삭제) 병력 사재기 — 뺐다(요청). "많이 모았다"는 시간을 들이면 누구나 닿는 값이고,
      그 병력으로 무엇을 했는지는 말해 주지 않는다. 물량 자체는 '물량퀸'이 이미 잰다. */
@@ -720,7 +726,7 @@ const TITLES: Title[] = [
     label: "승리의 여신", weight: 9, sticky: true, min: 70, why: "승률", unit: "%",
     value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null),
   },
-  { label: "BEST 퀸", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
+  { label: "최고 of BEST 퀸", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
   { label: "쉬지 않는 손가락", weight: 2, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
   { label: "스타 게이 트 NPC", weight: 3, sticky: true, why: "게임 수", unit: "판", value: (s) => s.plays },
 ];
@@ -747,8 +753,8 @@ const sub = (w: string) => (hasFinal(w) ? "은" : "는");
    셋뿐이라 표 하나면 되고, 그편이 종족의 색을 살린다. 여기 없는 값은 무난한 말로 받는다. */
 const RACE_SAYS: Record<string, string> = {
   저그: "저그의 여왕",
-  프로토스: "프로토스의 여제",
-  테란: "테란의 황녀",
+  프로토스: "프로토스의 여군주",
+  테란: "테란의 여전설",
 };
 const racePhrase = (race: string): string => RACE_SAYS[race] ?? `${race}${sub(race)} 나의 것`;
 
