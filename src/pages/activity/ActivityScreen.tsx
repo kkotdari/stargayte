@@ -757,9 +757,16 @@ function ActivityGroupPage({
           {/* (삭제) 제목 왼쪽 ← — 돌아가는 길은 이제 화면 아래 등록 버튼 자리가 맡는다(요청).
               화면마다 그 자리에 뜨는 동그란 버튼이 이미 "이 화면에서 할 일"이라, 돌아가기도
               거기 있는 편이 손이 가는 자리와 맞는다(ActivityScreen의 FAB 참고). */}
-          {/* 제목은 갈래 이름 하나다(요청: "전체 보기" 빼기) — 이 화면을 여는 버튼이 이미
-              "전체 보기"라, 들어와서까지 같은 말을 이고 있을 이유가 없다. */}
-          <h1 className="scr-title scr-v2-toolbar-title">{label}</h1>
+          {/* 어디서 어디로 들어왔나를 제목이 말한다(요청: "활동 > 게임") — 이 화면은 주소가
+              바뀌지 않는 '화면 안의 화면'이라, 갈래 이름만 있으면 활동에서 파고든 자리인지
+              아예 다른 탭인지가 안 보인다.
+              갈래 이름은 목록의 소제목과 같은 크기로 둔다(요청: 게임은 18px 그대로) — 밖에서
+              누른 그 소제목이 여기 제목이 된 것이라, 크기가 같아야 같은 것으로 읽힌다. */}
+          <h1 className="scr-title scr-v2-toolbar-title">
+            활동
+            <span className="scr-activity-crumb-sep">›</span>
+            <span className="scr-activity-crumb-leaf">{label}</span>
+          </h1>
         </div>
       </div>
       {searchable && (

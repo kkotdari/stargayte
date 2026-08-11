@@ -11754,3 +11754,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-stat-best-cell .scr-stat-delta {
   color: color-mix(in srgb, var(--best-ink) 62%, transparent);
 }
+
+/* 전체 보기 제목의 빵부스러기(요청: "활동 > 게임") — 앞의 '활동'은 화면 제목 크기 그대로고,
+   갈래 이름만 목록 소제목과 같은 18px이다. 둘을 같은 크기로 두면 어느 쪽이 지금 자리인지가
+   안 갈리고, 갈래 이름을 더 키우면 밖에서 누른 그 소제목과 다른 것처럼 보인다. */
+.scr-activity-crumb-sep { margin: 0 6px; color: var(--dim); font-weight: 400; }
+.scr-activity-crumb-leaf { font-size: var(--fs-lead); }
