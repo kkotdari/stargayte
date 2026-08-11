@@ -639,7 +639,7 @@ const TITLES: Title[] = [
        그대로 사실이 된다.
        분당으로 안 나누는 것이 심시티 퀸과의 차이다 — 그쪽은 '손이 빠른가'이고 이쪽은
        '얼마나 지었나'다. 대신 남들 절반은 뛰었어야 후보다(LEAD_PLAYS_SHARE). */
-    label: "성실한 건축퀸", weight: 4, why: "지은 건물", unit: "채",
+    label: "문어발 건축 퀸", weight: 4, why: "지은 건물", unit: "채",
     value: (s, of) => {
       const b = mix(s, of)?.buildings;
       if (!b) return null;
