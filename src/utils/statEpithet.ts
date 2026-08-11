@@ -330,9 +330,7 @@ const TACTIC_WEIGHT: Record<string, number> = {
   // ── 운영·전술(2급 에픽)
   bionic: 4, mech: 4, moka: 4, "center-tank": 4, "center-photon": 4, "side-tank": 4,
   dropship: 4, "harass-workers": 4, vision: 4, "ally-help": 4, gg: 4,
-  /* 역전만 6이다(지적: 너무 낮췄다) — 종류 통일 때 운영과 같은 4로 접었는데, 무너졌다
-     일어나 이긴 판은 틀을 고른 것과 격이 다르다. 명예류(BEST·참여)와 같은 동점대다. */
-  revival: 6, allin: 4, "hold-off": 4, "long-run": 4,
+  revival: 4, allin: 4, "hold-off": 4, "long-run": 4,
   "prod-gap": 4, "worker-gap": 4,
   "zealot-rush": 4, "zling-rush": 4,
   // ── 곁가지(일반)
@@ -631,7 +629,7 @@ const TITLES: Title[] = [
   /* 역전의 아이콘(요청, 점수 높은 축) — 자막의 '재기'(revival)는 살림이 무너졌다가 다시
      일어난 판이다. 전술은 이긴 판만 세므로(서버의 _tactic_counts) 그 판은 곧 역전승이다:
      무너진 뒤에 일어나 이겼다는 말이라, 이 표에서 흔치 않은 이야기다. */
-  { ...tactic("역전의 명수", ["revival"]), weight: 6, minPlaysShare: 0.4 },
+  { ...tactic("역전의 명수", ["revival"]), minPlaysShare: 0.4 },
   /* 도박 퀸(요청: 도박적인 전술로 이긴 경우) — 자막의 '올인'은 뒤를 안 남기고 한 번에 건
      판이다. 전술은 이긴 판만 세므로(서버의 _tactic_counts) 여기 쌓이는 수는 곧 '건 것이
      통한 판'이다. 지고도 세면 그건 도박이 아니라 그냥 무너진 판이라 뜻이 갈린다. */
