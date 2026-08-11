@@ -377,7 +377,10 @@ const TACTIC_WEIGHT: Record<string, number> = {
   "cannon-rush": 3.5, "sunken-rush": 3.5, "sneak-rax": 3.5,
   // ── 운영·전술(2급 에픽)
   bionic: 4, mech: 4, moka: 4, "center-tank": 4, "center-photon": 4, "side-tank": 4,
-  dropship: 4, "harass-workers": 4, vision: 4, "ally-help": 4, gg: 4,
+  dropship: 4, "harass-workers": 4, vision: 4, gg: 4,
+  /* 헬프만 이 무리에서 한 스텝 위다(요청) — 표에서 유일하게 '남을 위해 한 일'을 세는
+     자리라, 같은 값으로 두면 제 판을 굴린 수들 사이에 묻힌다. */
+  "ally-help": 5,
   revival: 4, allin: 4, "hold-off": 4, "long-run": 4,
   "prod-gap": 4, "worker-gap": 4,
   "zealot-rush": 4, "zling-rush": 4,
@@ -600,8 +603,8 @@ const TITLES: Title[] = [
   /* 운영 틀(바이오닉·메카닉·목동)은 절반이 문턱이다(지적: 바이오닉이 쉽게 나온다) — 그
      종족이면 으레 잡는 틀이라, "그 틀로 이긴 판이 종족 판의 절반"쯤 돼야 그 사람의 색이다.
      목동은 저그 후반에만 나오는 틀이라 40%로 한 뼘 낮다. */
-  { ...tactic("바이오닉의 여왕", ["bionic"]), minPlaysShare: 0.2 },
-  { ...tactic("메카닉 사령관", ["mech"]), minPlaysShare: 0.04 },
+  { ...tactic("바이오닉의 여왕", ["bionic"]), minPlaysShare: 0.28 },
+  { ...tactic("메카닉 사령관", ["mech"]), minPlaysShare: 0.03 },
   /* 목동저그 — 이제 자막이 짚은 판만 센다(요청: 목동저그도 이긴 판만). 한때 유닛 기록으로도
      잡았는데(울트라 2기 + 디파일러 + 저글링 20기), 그 원장은 승패를 안 가려서 진 판의
      목동까지 함께 세었다. 자막 쪽은 서버가 이긴 판만 세므로(_tactic_counts) 잣대가 하나가 된다. */
@@ -626,7 +629,7 @@ const TITLES: Title[] = [
   tactic("캐리어를 모으는 여인", ["carrier"]),
   /* 러커는 저그의 밥이라 유닛 기본(7%)과 자릿수가 다르다 — 세 번을 올려 30%: 저그 판
      셋에 하나는 러커로 이겼어야 "부대"라 부른다. */
-  { ...tactic("공포의 독거미 부대", ["lurker"]), minPlaysShare: 0.18 },
+  { ...tactic("공포의 독거미 부대", ["lurker"]), minPlaysShare: 0.25 },
   /* 안 보이는 것으로만 치는 사람(요청: 다크·레이스·아비터를 다 잘 쓴 경우만) —
      "보이지 않는 손" → "안 보이는 레이스"를 거쳐 온 자리다. 유닛 하나로는 안 준다(요청:
      하나만 써서는 안 됨): 다크만 뽑는 프로토스는 흔하고, 그건 이미 유닛 칭호가 말한다.
@@ -643,7 +646,7 @@ const TITLES: Title[] = [
        있었는데, 이 값은 '무슨 일을 벌였나'가 아니라 병력 구성비라 그만큼 나오기 힘든
        장면이 아니다. 7.5면 러시(10.5) 아래·역전(6) 위로, 드묾은 그대로 인정하는 자리다. */
     label: "그림자의 여왕", weight: 2.5, kind: "경기력", pool: 1, edge: 1, tier: 1,
-    min: 0.08, why: "병력 중 은폐 유닛", unit: "",
+    min: 0.1, why: "병력 중 은폐 유닛", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       if (!m || !(m.uGround + m.uAir > 0)) return null;
@@ -662,6 +665,22 @@ const TITLES: Title[] = [
      자막이 그 대목을 'ultra'로 짚는다(replaySummary의 PROD_ONLY_KEYS와 같은 열쇠).
      비율은 다른 유닛 칭호와 같은 자리(UNIT_TACTIC_SHARE)에서 받는다. */
   tactic("코끼리 조련사", ["ultra"]),
+  {
+    /* 진화론의 어머니(요청: 하이브 유닛 많이 쓴 사람) — 울트라·디파일러·가디언·디바우러다.
+       넷 다 하이브를 올려야 나오는 것들이라, 그 비중이 크다는 말은 판을 끝까지 끌고 가
+       테크를 다 올려 봤다는 뜻이다(한 유닛만 보면 그건 이미 제 칭호가 따로 있다).
+       비중으로 재는 까닭은 은신 퀸과 같다 — 총합은 오래 뛴 사람이 늘 크고, 하이브 유닛은
+       인구수가 커서 기수 자체는 적게 잡힌다. 4%면 병력 스물다섯에 하나 꼴이다. */
+    label: "진화론의 어머니", weight: 2, kind: "경기력",
+    min: 0.04, why: "병력 중 하이브 유닛", unit: "",
+    value: (s, of) => {
+      const m = mix(s, of);
+      if (!m || !(m.uGround + m.uAir > 0)) return null;
+      const hive = (m.units?.Ultralisk ?? 0) + (m.units?.Defiler ?? 0)
+        + (m.units?.Guardian ?? 0) + (m.units?.Devourer ?? 0);
+      return hive > 0 ? hive / (m.uGround + m.uAir) : null;
+    },
+  },
   /* 곁가지 다섯(오버로드 사냥·동맹 포토·커널·리콜·다크스웜)은 2%다(요청: 더 낮추기) —
      재분석 뒤에도 내내 비어 있던 것들이다. 워낙 드문 그림이라 비율은 낮게 두고, 우연은
      최소 횟수(3번)가 거른다. */
@@ -700,7 +719,9 @@ const TITLES: Title[] = [
      장면이라 문턱은 바닥(1%)이다: 한 번이라도 두 번쯤 했으면 그 사람의 이야기다. */
   { ...rare("감염의 여왕", ["infested"]), minPlaysShare: 0.01 },
   /* (삭제) 가디언을 모으는 여인(guardian) — 요청. */
-  tactic("배틀크루저를 모으는 여인", ["bc"]),
+  /* 배틀만 유닛 기본(2%)보다 낮다(요청: 안 나온다) — 테란이 배틀까지 가는 판 자체가
+     드물어 같은 잣대로는 통째로 잠긴다. 캐리어·코끼리는 기본값 그대로다. */
+  { ...tactic("배틀크루저를 모으는 여인", ["bc"]), minPlaysShare: 0.012 },
   /* (삭제) 발키리 지휘관(valkyrie) — 위 "무자비한 오버로드 사냥꾼"이 같은 유닛으로 무엇을
      했는지까지 말한다. 뽑았다는 사실만 말하는 쪽을 접는다. */
   /* (삭제) 우리 집 문지기(front-defense) — 뺐다(지적: 입구는 막으라고 있는 것). 제 입구를
