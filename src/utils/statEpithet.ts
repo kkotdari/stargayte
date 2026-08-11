@@ -255,6 +255,10 @@ interface Title {
   unit?: string;
   /** 칭호끼리 겨룰 때의 무게 — 없으면 표의 차례대로 나간다. */
   weight?: number;
+  /** 값이 '그 수가 나온 판의 수'가 아니라 '쓴 횟수'인가 — 마법 칭호(spell)가 그렇다.
+   *  근거 문장이 "4판에서"라 적을지 "4번"이라 적을지를 이 값이 가른다: 핵은 한 판에 두 번
+   *  떨어질 수 있어 판수로 부르면 거짓이 된다. */
+  perUse?: boolean;
   /** 이 칭호의 갈래(요청: 비슷한 칭호끼리 묶기) — 대표를 고를 때의 동점대다(KIND_RANK).
    *  안 적으면 "경기력"이다: 표에서 가장 큰 무리라 기본값으로 둔다. */
   kind?: EpithetKind;
@@ -506,7 +510,11 @@ const spell = (label: string, key: string, min = 1): Title => ({
   pool: 1, edge: 1, min, why: `게임에서 ${TECH_KO[key] ?? "이 기술"} 사용`, unit: "번",
   ...(TACTIC_RACE[key] ? { race: TACTIC_RACE[key] } : {}),
   weight: TACTIC_WEIGHT[key] ?? 1, scale: "count", tier: TIER1_KEYS.has(key) ? 1 : 2,
-  kind: TACTIC_KIND[key] ?? "경기력",
+  kind: TACTIC_KIND[key] ?? "경기력", perUse: true,
+  /* 이 값은 skillsWon(이긴 판)에서 읽으므로 근거·안내에도 그 사실을 적는다 — 한때 "마법은
+     원장에서 세므로 승패를 안 가린다"며 안 붙였는데, 그때 이야기다(지금은 위 value가
+     이긴 판만 읽는다). 안 적으면 "핵 3번"이 진 판까지 센 수로 읽힌다. */
+  won: true,
 });
 
 const TITLES: Title[] = [
@@ -958,6 +966,13 @@ function hasFinal(word: string): boolean {
   return (code - 0xac00) % 28 !== 0;
 }
 const sub = (w: string) => (hasFinal(w) ? "은" : "는");
+/** 로/으로 — 받침이 없거나 ㄹ이면 '로', 그 밖의 받침이면 '으로'("드랍으로", "뮤탈 견제로"). */
+function ro(word: string): string {
+  const code = word.charCodeAt(word.length - 1);
+  if (code < 0xac00 || code > 0xd7a3) return "로";      // 한글이 아니면(GG 같은 것) 그냥 로
+  const final = (code - 0xac00) % 28;
+  return final === 0 || final === 8 ? "로" : "으로";     // 8 = ㄹ
+}
 /* (삭제) ga(이/가) — 안내 목록 문장이 쓰던 조사 고르개. 목록과 함께 걷었다. */
 
 /* 종족마다 부르는 말이 따로다 — 셋 다 여신이다(요청: 종족 칭호는 여신급).
@@ -1195,12 +1210,27 @@ export function epithetsOf(
       : c.raw >= 10 || Number.isInteger(c.raw)
         ? `${Math.round(c.raw)}`
         : `${Math.round(c.raw * 10) / 10}`;
-    /* 횟수 칭호는 '몇 판 중 몇 번'까지 적는다 — 세 번이라는 수만으로는 그게 버릇인지
-       우연인지 안 갈린다. 분모는 문턱을 잰 그 판수 그대로다(종족 칭호면 그 종족 판수). */
-    return `${c.title.won ? "이긴 판에서 " : ""}${c.title.why ?? "기록"} ${shown}${c.title.unit ?? ""}`
-      + (c.title.scale === "count" && c.title.unit === "번" && c.denom > 0 && c.raw <= c.denom
-        ? ` — ${c.title.race ? `${c.title.race} ` : ""}${c.denom}판 중 ${Math.round((c.raw / c.denom) * 100)}%`
-        : "");
+    /* 횟수 칭호는 한 문장으로 적는다(지적: "이긴 판에서 뮤탈 견제 4번 — 저그 28판 중 14%"는
+       설명이 아니다) — 세 토막이 대시로 이어져 있어 28판이 저그 전체인지 이긴 판인지부터
+       안 읽혔다. 잰 자리(분모)를 앞에 세우고 한 문장으로 잇는다:
+         "저그 28판 중 4판(14%)에서 뮤탈 견제로 승리"
+       분모는 문턱을 잰 그 판수 그대로다 — 종족 칭호면 그 종족 판수이고, 이긴 판만이 아니다.
+       분자만 이긴 판을 세므로 그 사실은 꼬리말('…로 승리')이 문장 안에서 밝힌다
+       (요청: 저그로 승리한 게임 중 어쩌구 하는 식으로).
+       마법 칭호(perUse)는 한 판에 여러 번 나올 수 있어 판수로 못 부른다 — "핵 2번"으로
+       적고 비율은 괄호에 남긴다. */
+    const what = (c.title.why ?? "기록").replace(/^게임에서 /, "");
+    const pool = `${c.title.race ? `${c.title.race} ` : ""}${c.denom}판 중`;
+    const countable = c.title.scale === "count" && c.title.unit === "번" && c.denom > 0;
+    if (countable && c.raw <= c.denom && !c.title.perUse) {
+      const pct = Math.round((c.raw / c.denom) * 100);
+      return `${pool} ${Math.round(c.raw)}판(${pct}%)에서 ${what}${c.title.won ? `${ro(what)} 승리` : ""}`;
+    }
+    if (countable) {
+      const pct = Math.round((c.raw / c.denom) * 100);
+      return `${pool} ${what} ${Math.round(c.raw)}번(${pct}%)${c.title.won ? " · 이긴 판만" : ""}`;
+    }
+    return `${c.title.won ? "이긴 판에서 " : ""}${what} ${shown}${c.title.unit ?? ""}`;
   };
   // 한 사람의 첫 자격(가장 높은 것)이 화면에 보이는 칭호다 — 나머지 자격도 그 사람 것이지만
   // (요청: 여러 개 보유), 표의 자리는 한 줄이라 대표 하나만 나간다.
