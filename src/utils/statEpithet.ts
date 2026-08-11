@@ -53,11 +53,13 @@ const RACE_MIN_SHARE = 0.22;
    비례 최소 횟수를 걷기 전에는 그 규칙이 마흔 판에 두 번을 요구했고, 그 두 번이 곧 5%였다.
    비율만 남은 지금 그 자리를 대신한다. 5%(마흔 판에 두 번) → 7% → 9%로 두 번 더 올렸다(요청)
    1급·2급을 가르지 않는 것은 드묾을 이미 무게(TIER_BOOST)가 값으로 쳐 주기 때문이다. */
-/* 급을 다시 가른다(요청: 드문 수는 낮추기) — 바닥 9%는 "마흔 판에 네 번"이라 되풀이할 수
-   있는 수에는 맞지만, 핵·마인드컨트롤처럼 한 판에 한 번 볼까 말까 한 수에는 사실상 잠금이다.
-   1급만 4%(마흔 판에 두 번)로 내리고, 2급은 11%다(요청: 9%는 너무 낮다 → 12% → 한 뼘 되돌려 11%) —
-   되풀이할 수 있는 수는 마흔 판에 다섯 번쯤은 나와야 그 사람의 색이다. */
-const COUNT_SHARE: Record<number, number> = { 1: 0.03, 2: 0.09 };
+/* (삭제) 급 기본 비율(COUNT_SHARE) — 요청: 급 기본값은 없고 각각의 조건은 다 달라야 한다.
+   1급·2급으로 뭉뚱그린 기본값은 편했지만, 그 값을 건드리면 그 값을 쓰는 칭호가 한꺼번에
+   움직여 "이 칭호만 조금"이 안 됐다(방어의 여왕을 내리려다 도박 퀸·마법 셋까지 따라
+   내려가는 식이다). 이제 횟수 칭호는 저마다 제 minPlaysShare를 들고 있다 — 아래 표에서
+   그 줄만 보면 그 칭호의 조건이 전부 읽힌다.
+   비율이 안 적힌 줄은 비율 조건이 없다는 뜻이고, 그런 칭호는 카운트 하한만 넘으면 된다
+   (올라운더 퀸처럼 값 자체가 판마다 세는 수가 아닌 자리다). */
 /** 비율과 별개의 최소 횟수(요청: 너무 겹치지 않게 문턱 높이기) — 절대평가가 되면서 조건만
  *  넘으면 다 받으니, 한 판짜리 우연까지 칭호가 되면 한 사람이 대여섯 개를 예사로 들었다.
  *  드문 수(1급)는 두 번, 흔한 수(2급)는 세 번은 나와야 버릇이라 부른다. */
@@ -595,7 +597,7 @@ const TITLES: Title[] = [
      떨어질까 말까 한 것이고, 떨어뜨리려면 고스트를 뽑아 살려 두고 상대 진영까지 데려가
      지목한 뒤 그 자리를 버텨야 한다. 아래 어떤 칭호도 이만큼 드물지 않다.
      (버섯구름 배달부 → 핵 투하 전문가 → 핵보유국 → 엄청난 핵 마스터를 거쳐 온 이름이다.) */
-  spell("정은 퀸", "Nuclear Strike"),
+  { ...spell("정은 퀸", "Nuclear Strike"), minPlaysShare: 0.025 },
 
   /* ── 사람 노릇(요청: 꼭 넣을 것) ────────────────────────────────────────────
      맨 위에 둔다 — 혼자 잘하는 것보다 판을 함께 굴린 쪽이 먼저 불릴 자격이 있다.
@@ -616,14 +618,14 @@ const TITLES: Title[] = [
        직접 짓는다 — 무게·급·갈래는 spell()이 마엘스트롬에 주던 것과 같다. */
     label: "얼음 공주", weight: TACTIC_WEIGHT.Maelstrom ?? 2, kind: "경기력",
     pool: 1, edge: 1, min: 1, scale: "count", tier: 2, perUse: true, won: true,
-    why: "얼리는 마법(마엘스트롬·스테이시스·락다운)", unit: "번",
+    why: "얼리는 마법(마엘스트롬·스테이시스·락다운)", unit: "번", minPlaysShare: 0.06,
     value: (s) => {
       const n = ["Maelstrom", "Stasis Field", "Lockdown"]
         .reduce((sum, k) => sum + (s.buildMix?.skillsWon?.[k] ?? 0), 0);
       return n > 0 ? n : null;
     },
   },
-  spell("거미줄 설계자", "Disruption Web"),
+  { ...spell("거미줄 설계자", "Disruption Web"), minPlaysShare: 0.06 },
   /* (삭제) 스테이시스(보갈타임 공주) — 요청. 아비터를 살려 두면 따라오는 버튼에 가깝고,
      같은 아비터의 이야기는 리콜(친구 부르기 공주)이 이미 세고 있다. */
   /* 스톰(요청: 스톰 잘 쓴 사람 번개 공주) — 한때 "늘 누르는 마법"이라 표에서 뺐는데, 이긴
@@ -643,7 +645,7 @@ const TITLES: Title[] = [
       return plays > 0 && n > 0 ? n / plays : null;
     },
   },
-  spell("야마토 한 발", "Yamato Gun"),
+  { ...spell("야마토 한 발", "Yamato Gun"), minPlaysShare: 0.06 },
   /* (삭제) 브루들링 저격수 · 눈을 멀게 하는 자(옵티컬 플레어) · 허깨비 부대장(할루시네이션)
      — 요청으로 뺐다. 셋 다 쓰기 어려운 마법이긴 한데, 그 한 번이 판을 가르는 그림까지는
      아니라 이름만 요란해진다. */
@@ -651,7 +653,7 @@ const TITLES: Title[] = [
   /* 동맹의 수호자 → 동맹을 지키는 포탑(요청) — 무엇으로 지켰는지가 이름에 들어가야
      "아군 기지에 포토를 깔아 줬다"는 그 그림이 그대로 읽힌다. '수호자'는 어느 수에나
      붙을 수 있는 말이라 정작 이 칭호가 센 것이 안 보였다. */
-  { ...tactic("동맹을 지키는 포탑", ["ally-cannon"]), minPlaysShare: 0.07 },
+  { ...tactic("동맹을 지키는 포탑", ["ally-cannon"]), minPlaysShare: 0.055 },
   /* 입구막기는 '막았다'가 아니라 '막아 놓고 뒤에서 컸다'가 값어치다(판정도 발전까지 함께
      본다 — replayTactics의 WALL_IN_GROW_MIN). 그래서 칭호도 막은 쪽이 아니라 그다음을
      부른다. "후반 도모 퀸"에서 바꿨다(지적: 개성적이지 않다) — 그 말은 어느 운영에나 붙는
@@ -663,7 +665,7 @@ const TITLES: Title[] = [
   /* 일꾼 견제는 위로 올린다(요청: 일꾼 견제도 강화) — 상대 일꾼을 잡는 일은 병력을 뽑아
      쌓아 두는 것과 달리 그 순간 손이 가야만 되는 것이고, 그 판의 자원 곡선을 실제로
      꺾어 놓는다. 그래서 다른 어떤 전술보다 그 사람의 성향을 잘 말한다. */
-  { ...tactic("집요한 일꾼 헌터", ["harass-workers"], 1), minPlaysShare: 0.07 },
+  { ...tactic("집요한 일꾼 헌터", ["harass-workers"], 1), minPlaysShare: 0.055 },
   /* (삭제) 지긋지긋한 견제러(harass-long) — "집요한 일꾼 사냥꾼"과 같은 이야기(견제)를
      다른 말로 한 번 더 부르는 자리였고, 이름도 그 사람이 아니라 당한 쪽의 감상이다. */
   /* 드랍도 같은 무리로 올린다(요청: 견제도 가중치 높이기) — 병력을 실어 상대 뒤로 넘기는
@@ -676,7 +678,7 @@ const TITLES: Title[] = [
     ...tactic("폭탄드랍의 여신", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"], 1),
     race: undefined,
     // 분모가 전체 판이라 기본 비율(6%)이 되레 무겁다(요청: 낮추기) — 스물다섯 판에 한 번꼴.
-    minPlaysShare: 0.07,
+    minPlaysShare: 0.055,
   },
 
   /* ── 운영(요청: 전략운영은 가중치를 좀 높여도 된다) ─────────────────────────
@@ -695,7 +697,7 @@ const TITLES: Title[] = [
   /* 목동저그 — 이제 자막이 짚은 판만 센다(요청: 목동저그도 이긴 판만). 한때 유닛 기록으로도
      잡았는데(울트라 2기 + 디파일러 + 저글링 20기), 그 원장은 승패를 안 가려서 진 판의
      목동까지 함께 세었다. 자막 쪽은 서버가 이긴 판만 세므로(_tactic_counts) 잣대가 하나가 된다. */
-  { ...tactic("목동저그", ["moka"]), minPlaysShare: 0.02, vsWins: true },
+  { ...tactic("목동저그", ["moka"]), minPlaysShare: 0.015, vsWins: true },
 
   // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
   /* (삭제) 프로 옆탱러(side-tank) — 요청. 옆탱은 아군 기지를 받쳐 주는 탱크와 제 기지
@@ -722,7 +724,7 @@ const TITLES: Title[] = [
      근거 문장은 그대로 '커널'로 부른다 — 자막이 그 수를 부르는 이름이다. */
   { ...rare("커널 개통 전문가", ["nydus"]), minPlaysShare: 0.04 },
   { ...rare("리콜 배달부", ["recall"]), minPlaysShare: 0.03 },
-  rare("도둑 퀸", ["mind-control"]),
+  { ...rare("도둑 퀸", ["mind-control"]), minPlaysShare: 0.025 },
   /* 유닛 기본(7%)보다 낮다(요청) — 캐리어까지 가는 판은 프로토스 판 가운데도 일부라,
      코끼리와 같은 자리에서 제 값을 받는다. */
   { ...tactic("캐리어를 모으는 여인", ["carrier"]), minPlaysShare: 0.03 },
@@ -765,7 +767,7 @@ const TITLES: Title[] = [
      비율은 다른 유닛 칭호와 같은 자리(UNIT_TACTIC_SHARE)에서 받는다. */
   /* 유닛 기본(7%)보다 낮다(요청) — 울트라까지 가는 판 자체가 저그 판의 일부라, 같은
      잣대로는 "뽑았다는 사실"조차 안 걸린다. */
-  { ...tactic("코끼리 조련사", ["ultra"]), minPlaysShare: 0.035 },
+  { ...tactic("코끼리 조련사", ["ultra"]), minPlaysShare: 0.028 },
   {
     /* 진화론의 어머니(요청: 하이브 유닛 많이 쓴 사람) — 울트라·디파일러·가디언·디바우러다.
        넷 다 하이브를 올려야 나오는 것들이라, 그 비중이 크다는 말은 판을 끝까지 끌고 가
@@ -789,7 +791,7 @@ const TITLES: Title[] = [
      커세어·스카웃 넷으로 넓어지면서 이 수는 두 종족에 걸쳐 있다. 분모를 '테란 판'으로
      두면 커세어로 잡은 프로토스 판이 남의 종족 판수로 나뉘어 영영 문턱을 못 넘는다.
      폭탄드랍의 여신이 다섯 열쇠를 세며 같은 이유로 종족을 걷은 것과 같은 자리다. */
-  { ...tactic("오버로드 사냥꾼", ["valk-hunt"]), race: undefined, minPlaysShare: 0.07 },
+  { ...tactic("오버로드 사냥꾼", ["valk-hunt"]), race: undefined, minPlaysShare: 0.055 },
   { ...tactic("몰래배럭 퀸", ["sneak-rax"]), minPlaysShare: 0.03 },
   /* (삭제) 끝없는 저글링 폭풍(zling-rush) — 요청. 저글링 하나로 들이치는 것은 그 종족의
      기본 진행에 가까워, 한 유닛만으로 러시라고 부를 만한 수가 아니다. */
@@ -817,7 +819,7 @@ const TITLES: Title[] = [
      명령 좌표로 짚는다(replaySummary의 WORKER_SCOUT_SEC). 오버로드와 한 열쇠인 까닭은
      둘 다 '미리 보고 시작한다'는 같은 습관이라서다. */
   { ...tactic("부지런한 정찰 퀸", ["vision"]), minPlaysShare: 0.5 },
-  { ...tactic("전장을 살피는 눈", ["vision-eye"]), minPlaysShare: 0.16 },
+  { ...tactic("전장을 살피는 눈", ["vision-eye"]), minPlaysShare: 0.13 },
   /* (삭제) 맞러시 승부사(duel-rush) — 요청. 맞러시는 둘이 함께 만든 장면이라 한 사람의
      수라고 하기 어렵다. */
   /* 협공을 다시 넣는다(요청: 공격에 열심히 참여한다는 좋은 뜻으로) — 한때 "협공의 선봉"으로 뺐던 자리다. 그때 뺀
@@ -827,7 +829,7 @@ const TITLES: Title[] = [
   /* (삭제) 협공(gang-rush) — 다시 뺐다(요청). 이름을 넷이나 갈아 봤지만(협공의 선봉 ·
      다굴의 여신 · 잔다르크 · 전장을 누비는 여인) 결국 같은 자리다: 팀전에서 함께 달려간
      것은 그 판의 진행이지 그 사람의 수가 아니다. */
-  { ...rare("다크스웜 살포반", ["swarm"]), minPlaysShare: 0.02, vsWins: true },
+  { ...rare("다크스웜 살포반", ["swarm"]), minPlaysShare: 0.015, vsWins: true },
   /* 감염의 여왕 — 한 번 지웠다가(그 판을 만든 것은 감염이 아니라 그 앞의 싸움이라는 이유)
      되살렸다(요청: 감염 더 낮게 — 사장된 칭호를 살리는 흐름). 커맨드센터를 잡아야만 나오는
      장면이라 문턱은 바닥(1%)이다: 한 번이라도 두 번쯤 했으면 그 사람의 이야기다. */
@@ -858,10 +860,10 @@ const TITLES: Title[] = [
   /* 도박 퀸(요청: 도박적인 전술로 이긴 경우) — 자막의 '올인'은 뒤를 안 남기고 한 번에 건
      판이다. 전술은 이긴 판만 세므로(서버의 _tactic_counts) 여기 쌓이는 수는 곧 '건 것이
      통한 판'이다. 지고도 세면 그건 도박이 아니라 그냥 무너진 판이라 뜻이 갈린다. */
-  tactic("도박 퀸", ["allin"]),
+  { ...tactic("도박 퀸", ["allin"]), minPlaysShare: 0.06 },
   /* 맷집왕 → 방어의 여왕(요청) — 밀려온 공세를 실제로 막아 낸 판이라, 맞고 버텼다는 쪽보다
      막아 냈다는 쪽이 그 장면에 가깝다. */
-  { ...tactic("방어의 여왕", ["hold-off"]), minPlaysShare: 0.07 },
+  { ...tactic("방어의 여왕", ["hold-off"]), minPlaysShare: 0.055 },
   /* (삭제) 받아치기의 정석(counter) — 요청. 역공은 상대가 들이친 뒤에 따라오는 대목이라
      그 판의 흐름이지 그 사람의 색이 아니다. */
   /* (삭제) 벽을 부수는 자(breakthrough) — 요청. */
@@ -933,7 +935,7 @@ const TITLES: Title[] = [
      그 병력으로 무엇을 했는지는 말해 주지 않는다. 물량 자체는 '물량퀸'이 이미 잰다. */
   /* (삭제) 업그레이드 여제(upgrade-signature) — 아래 "풀업 신봉자"가 같은 것을 수치로
      재고 있다. 자막에 그 대목이 잡혔나보다 실제 공/방 단계가 정확하다. */
-  { ...tactic("지구력 대왕", ["long-run"]), minPlaysShare: 0.07 },
+  { ...tactic("지구력 대왕", ["long-run"]), minPlaysShare: 0.055 },
   /* (삭제) 끝까지 버티는 사람(late-hold) — "지구전의 화신"(장기전)과 겹친다. 오래 버텼다는
      말은 한 번이면 된다. */
   /* (삭제) 좀비 모드(revival) — 무너졌다 일어난 판이라는 뜻인데 이름만 보고는 그게 안
@@ -1060,7 +1062,7 @@ const TITLES: Title[] = [
       /* 종족당 판수 문턱 12 → 18(지적: 팔색조 문턱이 낮다) — 종족 수는 셋이 끝이라 더 올릴
          칸이 없고, 대신 한 종족을 '했다'고 칠 판수를 올린다. 열여덟 판이면 그 종족으로
          한 시즌을 산 것이다. */
-      const enough = Object.values(of.races ?? {}).filter((st) => (st?.plays ?? 0) >= 12);
+      const enough = Object.values(of.races ?? {}).filter((st) => (st?.plays ?? 0) >= 10);
       if (enough.length < 2) return null;
       /* 그 종족들이 전부 5할을 넘어야 한다(요청) — 하나라도 밑돌면 안 준다. '두루 잘한다'는
          말이라 평균으로 뭉개면 안 된다: 두 종족이 7할이고 하나가 2할인 사람은 그 하나를
@@ -1250,7 +1252,7 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     const boost = TIER_BOOST[tier] ?? 1;
     const score = (t.weight ?? 0) * boost;
     const count = t.scale === "count";
-    const share = t.minPlaysShare ?? (count ? COUNT_SHARE[tier] ?? COUNT_SHARE[2] : 0);
+    const share = t.minPlaysShare ?? 0;   // 칭호마다 제 값이다(COUNT_SHARE 삭제 주석)
     const where = t.race ? `${t.race} 판` : "제 판";
     // 마법 칭호의 근거는 문장으로 적혀 있다("게임에서 핵 사용") — 설명에서는 앞머리를 걷는다.
     const what = (t.why ?? "기록").replace(/^게임에서 /, "");
@@ -1346,9 +1348,8 @@ export function epithetsOf(
       const tier = title.tier ?? 2;
       /* 판수 대비 문턱 — 그 사람 판(종족 칭호면 그 종족 판)의 몇 할에서는 나왔어야 한다.
          칭호가 따로 정해 두지 않았으면 급에 맞는 기본값이 걸린다(COUNT_SHARE). */
-      const share = title.minPlaysShare ?? (title.scale === "count"
-        ? COUNT_SHARE[tier] ?? COUNT_SHARE[2]
-        : 0);
+      // 비율은 칭호마다 제 값이다(위 COUNT_SHARE 삭제 주석) — 안 적혔으면 비율 조건이 없다.
+      const share = title.minPlaysShare ?? 0;
       if (share > 0) {
         // 분모는 전체 판수이되, vsWins가 선 칭호만 승리 판수다(Title.vsWins 주석).
         const denomPlays = title.vsWins ? winsOf(title, p) : denomOf(title, p);
