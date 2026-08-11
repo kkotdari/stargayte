@@ -256,7 +256,7 @@ interface Title {
   /** 칭호끼리 겨룰 때의 무게 — 없으면 표의 차례대로 나간다. */
   weight?: number;
   /** 이 칭호의 갈래(요청: 비슷한 칭호끼리 묶기) — 대표를 고를 때의 동점대다(KIND_RANK).
-   *  안 적으면 "전술"이다: 표에서 가장 큰 무리라 기본값으로 둔다. */
+   *  안 적으면 "경기력"이다: 표에서 가장 큰 무리라 기본값으로 둔다. */
   kind?: EpithetKind;
   /** 그 값의 1등에게는 급·무게를 제치고 무조건 준다(요청: 참여수 1위는 개근의 여왕이 맞다).
    *
@@ -326,37 +326,27 @@ const TIER1_KEYS = new Set([
    쏟아졌다(전술 4점과 유닛 1.5점이 같은 칸). 갈래를 이름으로 적으면 점수는 갈래 안의
    잔가지로 물러나고, 칸은 뜻대로 선다.
    수는 '위아래'다 — 클수록 먼저 대표가 된다. */
-type EpithetKind = "승률" | "특수" | "기습" | "명예" | "전술" | "손" | "살림" | "곁가지" | "유닛";
+type EpithetKind = "한방" | "승률" | "명예" | "경기력";
 const KIND_RANK: Record<EpithetKind, number> = {
+  /* 한방 — 드물어서 그 한 번이 곧 표식인 것들(핵·마인드컨트롤·감염·포토·성큰러시·몰래배럭).
+     '특수'와 '기습'으로 갈라 봤지만 핵과 포토러시 사이에 우열을 세울 수가 없었다. */
+  한방: 3,
   /* 승률 — 이겼다는 사실 그 자체(전체·종족·맵). 무엇을 했나가 아니라 어떻게 끝났나다. */
-  승률: 8,
-  /* 특수 — 그 판에 그 그림이 서야만 나오는 한 방(핵·마인드컨트롤·감염). */
-  특수: 7,
-  /* 기습 — 마음먹고 거는 도박(포토·성큰러시·몰래배럭). */
-  기습: 6,
+  승률: 2,
   /* 명예 — 클럽이 그 사람을 어떻게 봤나(BEST·참여·졌잘싸). */
-  명예: 5,
-  /* 전술 — 판을 제 손으로 끌고 간 수(틀·조이기·견제·드랍·역전·올인·격차…). */
-  전술: 4,
-  /* 손 — 손이 얼마나 빠르고 깔끔한가(유효타·APM·커맨드·물량). */
-  손: 3,
-  /* 살림 — 얼마나 부지런히 굴렸나(건설·심시티·일꾼·업그레이드·종족 가짓수). */
-  살림: 2,
-  /* 곁가지 — 재밌지만 판을 가르는 수까지는 아닌 것들(마법·아군 포토·커널·리콜·이사…). */
-  곁가지: 1,
-  /* 유닛 — 무엇을 뽑았나만 말한다(캐리어·러커·뮤탈·배틀). */
-  유닛: 0,
+  명예: 1,
+  /* 경기력 — 나머지 전부. 판을 끌고 간 수(틀·조이기·견제·드랍·역전·격차), 손(APM·유효타·
+     물량), 살림(건설·심시티·일꾼), 곁가지(마법·커널·리콜·이사), 유닛(캐리어·러커)이 한
+     칸이다(지적: 곁가지와 유닛은 뭐가 더 위라고 할 수 없다). 다섯으로 갈라 두었을 때 그
+     경계는 어느 것도 "크게 우열"이 아니었고, 그 반 칸이 정작 성취도를 덮었다.
+     같은 칸이니 이 안에서는 조건을 얼마나 크게 넘겼나가 가른다. */
+  경기력: 0,
 };
 
-/** 전술 열쇠 → 갈래. 여기 없는 열쇠는 전부 "전술"이다(가장 큰 무리라 기본값으로 둔다). */
+/** 전술 열쇠 → 갈래. 한방만 적는다 — 나머지는 전부 "경기력"이다. */
 const TACTIC_KIND: Record<string, EpithetKind> = {
-  "Nuclear Strike": "특수", "mind-control": "특수", infested: "특수",
-  "cannon-rush": "기습", "sunken-rush": "기습", "sneak-rax": "기습",
-  "ally-cannon": "곁가지", "valk-hunt": "곁가지", lodging: "곁가지", relocate: "곁가지",
-  nydus: "곁가지", recall: "곁가지", swarm: "곁가지", "no-elim": "곁가지", "gang-rush": "곁가지",
-  Maelstrom: "곁가지", "Disruption Web": "곁가지", "Stasis Field": "곁가지",
-  "Yamato Gun": "곁가지", "Psionic Storm": "곁가지",
-  carrier: "유닛", lurker: "유닛", bc: "유닛", muta: "유닛", guardian: "유닛", valkyrie: "유닛",
+  "Nuclear Strike": "한방", "mind-control": "한방", infested: "한방",
+  "cannon-rush": "한방", "sunken-rush": "한방", "sneak-rax": "한방",
 };
 
 const TACTIC_WEIGHT: Record<string, number> = {
@@ -494,7 +484,7 @@ const tactic = (label: string, keys: string[], min = 1): Title => ({
   weight: TACTIC_WEIGHT[keys[0]] ?? 1, scale: "count",
   tier: TIER1_KEYS.has(keys[0]) ? 1 : 2,
   // 갈래도 열쇠가 정한다(TACTIC_KIND) — 이름은 자주 바뀌지만 열쇠는 그대로다.
-  kind: TACTIC_KIND[keys[0]] ?? "전술",
+  kind: TACTIC_KIND[keys[0]] ?? "경기력",
 });
 /** 어지간해선 두 번 나오기 어려운 것들 — 한 번으로도 그 사람의 표식이 된다. */
 const rare = (label: string, keys: string[]): Title => tactic(label, keys, 1);
@@ -516,7 +506,7 @@ const spell = (label: string, key: string, min = 1): Title => ({
   pool: 1, edge: 1, min, why: `게임에서 ${TECH_KO[key] ?? "이 기술"} 사용`, unit: "번",
   ...(TACTIC_RACE[key] ? { race: TACTIC_RACE[key] } : {}),
   weight: TACTIC_WEIGHT[key] ?? 1, scale: "count", tier: TIER1_KEYS.has(key) ? 1 : 2,
-  kind: TACTIC_KIND[key] ?? "전술",
+  kind: TACTIC_KIND[key] ?? "경기력",
 });
 
 const TITLES: Title[] = [
@@ -549,7 +539,7 @@ const TITLES: Title[] = [
        마법과 달리 스톰은 한 판에 열 번씩도 쓰는 것이라, 사용 수를 판수 비율로 재면 문턱이
        뜻을 잃는다(1087번/56판 같은 값이 나온다). 실측 분포는 판당 1~2회가 보통, 8~19회가
        꼭대기 — 5회면 "스톰으로 사는 사람"만 남는다. */
-    label: "스톰 술사", weight: 2, kind: "곁가지", race: "프로토스", min: 8, why: "판당 스톰", unit: "회",
+    label: "스톰 술사", weight: 2, kind: "경기력", race: "프로토스", min: 8, why: "판당 스톰", unit: "회",
     value: (_s, of) => {
       const bucket = of.races?.["프로토스"];
       const n = bucket?.buildMix?.skillsWon?.["Psionic Storm"] ?? 0;
@@ -639,7 +629,7 @@ const TITLES: Title[] = [
     /* 무게는 5 → 2.5다(요청: 나오기 힘든 순서) — 1급 웃돈까지 15라 핵과 같은 자리에 서
        있었는데, 이 값은 '무슨 일을 벌였나'가 아니라 병력 구성비라 그만큼 나오기 힘든
        장면이 아니다. 7.5면 러시(10.5) 아래·역전(6) 위로, 드묾은 그대로 인정하는 자리다. */
-    label: "그림자의 여왕", weight: 2.5, kind: "전술", pool: 1, edge: 1, tier: 1,
+    label: "그림자의 여왕", weight: 2.5, kind: "경기력", pool: 1, edge: 1, tier: 1,
     min: 0.08, why: "병력 중 은폐 유닛", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
@@ -734,7 +724,7 @@ const TITLES: Title[] = [
   {
     /* 판당으로 잰다(요청: 절대평가) — 누적 채수는 오래 뛴 사람이 늘 크다. 서른 채면 한 판에
        확장·생산·방어를 고루 편 살림이다. */
-    label: "건설의 여왕", weight: 2, kind: "살림", min: 78, why: "판당 지은 건물", unit: "채",
+    label: "건설의 여왕", weight: 2, kind: "경기력", min: 78, why: "판당 지은 건물", unit: "채",
     value: (s, of) => {
       const m = mix(s, of);
       const plays = won(s, of).mixPlays ?? 0;
@@ -807,7 +797,7 @@ const TITLES: Title[] = [
     /* 2.5 → 3.5(요청: 퀸으로 올릴 만하다) — 손 이야기 셋(유효타·APM·커맨드) 가운데 가장
        위다. 빠르기는 타고나거나 오래 하면 오르지만, 헛치지 않는 손은 무엇을 누를지 미리
        정해 두어야 나온다. */
-    label: "군더더기 없는 손", weight: 3, kind: "손", min: 0.98, why: "APM 중 유효타", unit: "",
+    label: "군더더기 없는 손", weight: 3, kind: "경기력", min: 0.98, why: "APM 중 유효타", unit: "",
     value: (s) => (s.avgApm && s.avgEapm && s.avgApm > 0 ? s.avgEapm / s.avgApm : null),
   },
   /* (삭제) 누른 만큼 뽑는 사람(커맨드 중 생산 비율) — 요청. */
@@ -821,10 +811,10 @@ const TITLES: Title[] = [
   /* 절대 문턱들(요청: 상대가 아니라 절대평가) — "클럽 1위"가 아니라 "이 수를 넘으면 그
      사람"이다. 값은 실측에서 잡았다: 분당 12기·APM 283·분당 3.5채가 상위권의 실제 수라,
      그 언저리에 선을 긋는다. */
-  { label: "물량 퀸", weight: 3, kind: "손", min: 19, why: "분당 뽑은 기수", unit: "기", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreUnit, won(s, of).mixSeconds) : null; } },
+  { label: "물량 퀸", weight: 3, kind: "경기력", min: 19, why: "분당 뽑은 기수", unit: "기", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreUnit, won(s, of).mixSeconds) : null; } },
   // APM은 손 이야기 가운데 아래다(요청: 퀸으로 올릴 만하다) — 빠르다는 사실 하나라, 그
   // 빠름으로 무엇을 했는지는 유효타(군더더기 없는 손)와 물량퀸이 따로 센다.
-  { label: "번개같은 손놀림", weight: 3, kind: "손", min: 250, why: "APM", unit: "", value: (s) => s.avgApm },
+  { label: "번개같은 손놀림", weight: 3, kind: "경기력", min: 250, why: "APM", unit: "", value: (s) => s.avgApm },
   /* (삭제) 하늘의 여전사(병력 중 공중 비중) — 요청. */
   /* (삭제) 마법의 화신(병력 중 마법 유닛 비중) — 요청. */
   /* (삭제) 고급 유닛 수집가(병력 중 고급 유닛 비중) — 요청. */
@@ -833,11 +823,11 @@ const TITLES: Title[] = [
   /* 무게를 2 → 1.2로 내렸다(요청) — 초반 일꾼은 그 판의 빌드가 정하는 값에 가깝다.
      같은 종족·같은 빌드면 누구나 비슷하게 나오므로, 1등이라고 그 사람을 말해 주는 몫이
      다른 칭호들보다 작다. */
-  { label: "일꾼 공장장", weight: 2, kind: "살림", min: 52, why: "초반 5분 일꾼", unit: "기", value: (s, of) => won(s, of).avgWorker5 },
+  { label: "일꾼 공장장", weight: 2, kind: "경기력", min: 52, why: "초반 5분 일꾼", unit: "기", value: (s, of) => won(s, of).avgWorker5 },
   /* 건물을 제일 많이 올린 사람(요청: 심시티 퀸) — "쉴 새 없이 짓는 자"에서 바꿨다. 재는 값은 그대로 분당 지은 채수다. */
-  { label: "심시티 퀸", weight: 2, kind: "살림", min: 7, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
+  { label: "심시티 퀸", weight: 2, kind: "경기력", min: 7, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
   {
-    label: "풀업녀", weight: 2, kind: "살림", min: 2.2, why: "공/방 평균 단계", unit: "",
+    label: "풀업녀", weight: 2, kind: "경기력", min: 2.2, why: "공/방 평균 단계", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       if (!m) return null;
@@ -862,7 +852,7 @@ const TITLES: Title[] = [
        세 종족을 고르게 굴린 사람이 한 종족에 치우친 사람보다 앞선다. */
     /* 값이 '판마다 세는 수'가 아니라 종족의 가짓수라, 판수 대비 문턱을 안 받는다
        (minPlaysShare: 0) — 마흔 판 뛴 사람에게 종족 세 개를 요구하는 셈이 된다. */
-    label: "팔색조 여인", weight: 2, kind: "살림", pool: 1, edge: 1, min: 3, scale: "count",
+    label: "팔색조 여인", weight: 2, kind: "경기력", pool: 1, edge: 1, min: 3, scale: "count",
     minPlaysShare: 0, why: "고루 쓴 종족", unit: "개",
     value: (_s, of) => {
       /* 종족당 판수 문턱 12 → 18(지적: 팔색조 문턱이 낮다) — 종족 수는 셋이 끝이라 더 올릴
@@ -936,7 +926,7 @@ const TITLES: Title[] = [
     value: (s) => (s.plays > 0 && (s.lostBests ?? 0) > 0 ? (s.lostBests ?? 0) / s.plays : null) },
   // 분당 커맨드 — 손 이야기 셋 가운데 맨 아래다(요청: 퀸으로 올릴 만하다). 많이 눌렀다는
   // 사실만 세므로, 그 가운데 몇이 헛손질인지는 안 묻는다.
-  { label: "쉬지 않는 손가락", weight: 3, kind: "손", min: 250, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
+  { label: "쉬지 않는 손가락", weight: 3, kind: "경기력", min: 250, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
   /* 참여 퀸 — 여신급까지 올려 봤다가 되돌렸다(요청). 게임 수 1위는 실력이 아니라 시간이고,
      여신 자리는 승률처럼 '얼마나 잘했나'가 앉는 자리다. sticky라 조건만 넘으면 어차피
      무조건 먼저 간다 — 무게는 그 안에서의 차례일 뿐이다. */
@@ -1162,8 +1152,9 @@ export function epithetsOf(
          우선) —
          ① 등급(전설 › 에픽 › 일반): 점수만으로 고르면 횟수 칭호가 등급을 무시하고 이긴다.
          ② 동점대(band): 같은 등급 안에서 비슷한 칭호끼리 한 묶음으로 본다(요청) — 묶음은
-            갈래(KIND_RANK)다: 승률 › 특수 › 기습 › 명예 › 전술 › 손 › 살림 › 곁가지 › 유닛.
-            같은 갈래 안의 무게 차이(3과 4 같은)는 "무엇이 더 그 사람다운가"를 말하지 못한다.
+            갈래(KIND_RANK) 넷이다: 한방 › 승률 › 명예 › 경기력. 크게 우열이 없는 것끼리는
+            한 칸에 둔다(지적) — 같은 칸 안의 무게 차이는 "무엇이 더 그 사람다운가"를 말하지
+            못하고, 오히려 성취도를 덮는다.
          ③ 성취도(reach): 같은 묶음 안에서는 그 조건을 얼마나 크게 넘겼나로 가른다 — 횟수
             칭호는 판 대비 비율(raw/denom), 수치 칭호는 문턱 대비 배수(v/min)다. 열두 판 중
             여덟 번(67%) 한 수가 무게 반 점 높은 세 번(25%)짜리보다 그 사람을 잘 말한다. */
@@ -1180,7 +1171,7 @@ export function epithetsOf(
            점수로 흉내 낸 것이라, 실제로는 54개 중 43개가 한 칸에 쏟아졌다 — 전술(4)과
            유닛(1.5)이 같은 칸이고, 정작 비슷한 손 수치(3)와 명예(6)는 다른 칸이었다.
            이름으로 묶으면 칸이 뜻대로 서고, 점수는 성취도 뒤의 잔가지로 물러난다. */
-        band: KIND_RANK[title.kind ?? "전술"],
+        band: KIND_RANK[title.kind ?? "경기력"],
         reach, score: (title.weight ?? 0) * (title.scale === "count" ? v : reach) * boost, order,
         rank: grade,
       });
