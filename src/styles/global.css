@@ -4073,17 +4073,21 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 .scr-light-theme .scr-search-filter-float .scr-list-search-input {
   background: rgba(0,0,0,0.06); border: none; box-shadow: none;
 }
-/* 경기 내용 검색(요청) — 유저 검색과 같은 줄에 서는 두 번째 입력이라 생김새도 같아야 한다.
-   그쪽은 칩이 담기는 상자(.scr-search-filter-float 안)라 규칙이 그 상자에 걸려 있어서,
-   흐름에 놓이는 이 입력은 같은 값을 따로 받는다. 폭은 유저 검색보다 좁게 잡되(찾는 말이
-   한 낱말이다) 좁은 화면에서는 제 줄로 내려가 한 줄을 다 쓴다. */
+/* 경기 내용 검색(요청) — 유저 검색과 한 줄에 서는 두 번째 입력이라 생김새가 같아야 한다
+   (지적: 디자인 통일). 그쪽 값(배경·높이·라운드·글자 크기)을 그대로 받는다 — 유저 검색은
+   칩이 담기는 상자라 규칙이 그 상자(.scr-search-filter-float)에 걸려 있어서, 흐름에 놓이는
+   이 입력은 같은 값을 따로 적는 수밖에 없다.
+   .scr-list-search-input은 안 쓴다 — 그 클래스는 흰 배경(칩용)이라 이 자리에서는 혼자
+   하얗게 떴다(지적 스크린샷). */
 .scr-activity-content-search {
-  flex: 1 1 160px; min-width: 0; max-width: 220px;
+  flex: 1 1 180px; min-width: 0; max-width: 260px;
   background: rgba(255, 255, 255, 0.08); border: none; border-radius: 10px;
-  box-shadow: none; padding-left: 12px;
+  box-shadow: none; padding: 0 12px;
   height: 30px; min-height: 30px; box-sizing: border-box;
   color: var(--text); font-size: var(--fs-caption);
 }
+.scr-activity-content-search::placeholder { color: var(--dim); font-size: var(--fs-caption); }
+.scr-activity-content-search:focus { outline: none; border: none; }
 .scr-light-theme .scr-activity-content-search { background: rgba(0, 0, 0, 0.06); }
 @media (max-width: 1159px) {
   .scr-activity-content-search { max-width: none; flex: 1 0 100%; }

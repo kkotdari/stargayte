@@ -826,10 +826,10 @@ function ActivityGroupPage({
              여기뿐이다. PC에서는 유저 검색과 한 줄, 모바일에서는 아랫줄이다(trailing). */
           trailing={groupKey === "gameResult" ? (
             <input
-              className="scr-input scr-list-search-input scr-activity-content-search"
+              className="scr-input scr-activity-content-search"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="경기 내용 (포토러시, 핵 …)"
+              placeholder="경기 내용 검색"
               aria-label="경기 내용 검색"
             />
           ) : undefined}
