@@ -340,6 +340,10 @@ const TACTIC_WEIGHT: Record<string, number> = {
   "zealot-rush": 3, "zling-rush": 3,
   // 정찰 — 3점대다(요청: 좋은 뜻이라).
   vision: 3,
+  /* GG(매너 퀸) — 노엘·이사보다 위다(요청: 매너 퀸은 그 둘보다 우위, 퀸 중 하나로).
+     셋 다 진 판의 이야기지만 결이 다르다: 노엘은 봐 달라는 말이고 이사는 쫓겨 다닌
+     자취인데, GG는 졌다고 먼저 손을 내미는 일이라 그 사람이 고른 태도다. */
+  gg: 4,
   /* 협공은 2점대다(요청) — 이긴 싸움에 함께 있었다는 말이라 값어치가 있지만, 판을 제 손으로
      끌고 간 수(러시·조이기·목동)와 같은 급은 아니다. 이름도 왕관을 안 쓴다(표 머리의 규칙). */
   "gang-rush": 2.5,
@@ -404,7 +408,7 @@ const TACTIC_NOUN: Record<string, string> = {
   expand: "확장", "worker-gap": "일꾼 격차", "prod-gap": "생산 격차", "mass-army": "대군",
   "upgrade-signature": "업그레이드", "long-run": "장기전", "late-hold": "후반 수비",
   revival: "재기", relocate: "이사", lodging: "셋방살이", "no-elim": "노엘",
-  fallen: "먼저 탈락", "lift-off": "건물 띄우기", vision: "정찰",
+  fallen: "먼저 탈락", "lift-off": "건물 띄우기", vision: "정찰", gg: "GG",
 };
 
 /* 최소 횟수를 1로 둔다(지적: 전술 칭호가 잘 안 나온다) — 2를 기본으로 두던 것은 "한 번은
@@ -436,7 +440,7 @@ const RUSH_TACTICS = new Set(["cannon-rush", "sunken-rush"]);
 /* 져도 세는 수 — 서버의 _COUNT_EVEN_IF_LOST와 짝이다(요청: 셋방살이·이사·노엘은 밀린 뒤에야
    나오는 이야기라 이긴 판만 보면 영영 안 잡힌다). 여기 있는 열쇠로 만든 칭호는 근거 문장에
    "이긴 판에서"를 안 적는다(지적: 노엘과 역마살은 이긴 판만이 아닌데 그렇게 적혀 있다). */
-const COUNTED_EVEN_IF_LOST = new Set(["lodging", "relocate", "no-elim"]);
+const COUNTED_EVEN_IF_LOST = new Set(["lodging", "relocate", "no-elim", "gg"]);
 
 const tactic = (label: string, keys: string[], min = 1): Title => ({
   label, value: (s) => did(s, ...keys), pool: 1, edge: 1,
@@ -663,6 +667,10 @@ const TITLES: Title[] = [
      "집을 잃은 사람"이라는 딱지로 읽힌다. 자막에서 한 번 지나가는 말과, 이름 아래
      늘 붙어 있는 말은 무게가 다르다. */
   rare("노엘을 외치는 자", ["no-elim"]),
+  /* GG를 친 판을 모은다(요청: ㅈㅈ 친 것도 다 모아서 매너 퀸) — 진 것을 인정하고 손을 내미는
+     일이라, 이기고 지고와 무관하게 센다(COUNTED_EVEN_IF_LOST). 자막이 이미 그 한마디를
+     장면으로 잡아 두고 있어 따로 셀 것이 없다. */
+  tactic("매너 퀸", ["gg"]),
   /* (삭제) 프로를 닮았다는 이야기(pro-like) — 뺐다(지적: 별로 의미가 안 된다).
      자막에서는 "○○ 못지않은 △△"처럼 누구를 닮았는지가 함께 나와야 뜻이 서는 말인데,
      칭호가 세는 것은 문장 틀 키뿐이라 그 이름이 빠진다. 이름 없는 "프로 스타일"은

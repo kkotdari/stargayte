@@ -3609,7 +3609,12 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       if (raw === undefined) return [];
       // 살림이 끝났거나(downs) GG까지 쳤으면 진짜 손을 든 것이다.
       const gaveUp = arr.some((x) => x.k === "gg" && x.who.includes(raw));
-      if (downs[raw] === undefined && !gaveUp) return [];
+      /* 안 끝난 노엘도 남긴다(요청: 노엘은 이기고 지고가 무관하니 다 센다) — 예전에는
+         여기서 통째로 버렸는데, 그러면 저장도 안 되어 통계에서 없던 일이 됐다. 외쳤다는
+         사실은 그 자체로 그 사람의 한마디다.
+         대신 무게로 가른다: 실제로 손든 노엘은 그 판의 큰 사건이라 15, 농담으로 던진
+         노엘은 원래 무게 그대로 두어 자막 자리다툼에서는 거의 안 뽑힌다. */
+      if (downs[raw] === undefined && !gaveUp) return [b];
       noElimReal.add(raw);
       return [{ ...b, weight: 15 }];
     })
