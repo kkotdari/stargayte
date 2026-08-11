@@ -3861,7 +3861,13 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
      윗줄 검색창 밑동에서 3px 아래에 딱 붙어, 통계(24px)와 눈에 띄게 달랐다(지적). */
   row-gap: 41px;
 }
-.scr-activity-screen .scr-search-filter-float { flex: 50 1 220px; }
+/* 검색창 둘이 한 줄을 반씩 나눈다(요청) — 유저 검색과 경기 내용 검색은 같은 무게의
+   검색이라 한쪽이 넓을 이유가 없다. 기준폭을 0으로 두고 최소폭만 못 박으면 남는 자리를
+   똑같이 나눠 갖는다.
+   최소폭이 줄바꿈도 맡는다: 둘이 이 폭 아래로는 안 줄어드니, 좁아지면 뒤따르는 꼬리
+   (유형+건수)가 아랫줄로 밀린다 — 예전에 유저 검색의 기준폭 220px이 하던 일이다. */
+.scr-activity-screen .scr-search-filter-float { flex: 1 1 0; min-width: 120px; }
+.scr-activity-screen .scr-activity-content-search { flex: 1 1 0; min-width: 120px; max-width: none; }
 .scr-filter-inline-tail {
   display: flex; align-items: center; justify-content: space-between;
   gap: 10px; flex: 1 1 auto; min-width: 0;
@@ -4089,9 +4095,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 .scr-activity-content-search::placeholder { color: var(--dim); font-size: var(--fs-caption); }
 .scr-activity-content-search:focus { outline: none; border: none; }
 .scr-light-theme .scr-activity-content-search { background: rgba(0, 0, 0, 0.06); }
-@media (max-width: 1159px) {
-  .scr-activity-content-search { max-width: none; flex: 1 0 100%; }
-}
+
 /* 배경이 테마색이 됐으니 글자/placeholder도 테마를 따른다(예전 흰 배경 기준 어두운 고정 톤 대체). */
 /* 검색창 폰트도 필터와 같은 방향으로 한 스텝 낮춘다(요청) — 입력/placeholder body(16)
    →caption(14), 완성된 칩 caption(14)→micro(12). 높이를 줄인 만큼(위) 칩 패딩도 같이
