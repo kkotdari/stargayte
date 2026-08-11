@@ -1612,8 +1612,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    — 프라이머리 알약(.scr-btn.scr-btn-primary)에 높이/패딩만 줄인 modifier다. 당시 함께
    붙던 .scr-btn-primary-solid는 그 뒤 "라이트 검정 버튼 전면 제거"에서 사라졌고 지금은
    .scr-btn-primary 하나가 그 역할(글로우 알약)을 하므로 붙이지 않는다.
-   클래스 이름만 화면 이름을 안 타게 scr-rivalry-open-btn으로 둔다. */
-.scr-rivalry-open-btn {
+   이름은 쓰임새로 짓는다(요청: 클래스명 표준화) — 화면 이름(rivalry)을 달아 두었더니 통계의
+   '칭호 조건'이 같은 모양을 쓰면서 이름과 자리가 어긋났다. 제목 줄 옆에 붙는 곁다리 버튼은
+   무엇이든 이 클래스다. */
+.scr-title-side-btn {
   flex: 0 0 auto; align-self: center;
   /* 한 스텝 축소(요청) — 28→24px, caption(14)→micro(12). 옆 도움말이 사라져 이 버튼만
      제목 옆에 남으면서 전보다 커 보였다. */

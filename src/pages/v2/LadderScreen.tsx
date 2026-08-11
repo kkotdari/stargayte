@@ -221,7 +221,7 @@ export default function LadderScreen() {
               (오버레이 자체 필터 없음 — RivalryOverlay 주석 참고). */}
           <button
             type="button"
-            className="scr-btn scr-btn-primary scr-rivalry-open-btn"
+            className="scr-btn scr-btn-primary scr-title-side-btn"
             onClick={() => setRivalryOpen(true)}
           >
             상성 보기
