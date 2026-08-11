@@ -76,8 +76,13 @@ async function recount(key: string): Promise<number> {
       stats: byId[id]?.overall,
       // 종족별은 이미 응답에 실려 온다(byRace) — 따로 부를 것이 없다.
       races: byId[id]?.byRace,
+      /* 이긴 판만 놓고 낸 한 벌 — 구성비·분당 값을 보는 칭호가 쓴다(요청: 무엇으로 이겼나를
+         묻는 자리라 진 판을 섞으면 안 된다). 옛 응답에는 없어 그때는 전체로 떨어진다. */
+      won: byId[id]?.won,
     }))
-    .flatMap((x) => (x.stats ? [{ id: x.id, stats: x.stats, races: x.races }] : [])));
+    .flatMap((x) => (x.stats
+      ? [{ id: x.id, stats: x.stats, races: x.races, won: x.won }]
+      : [])));
   /* 올린 값이 곧 다음에 누가 읽을 값이다 — 그래서 여기서 캐시도 같이 갈아 둔다. 달라진
      사람이 있으면 서버가 활동에 알림 한 줄을 남긴다(요청). */
   const changed = await api.reportEpithets(
