@@ -245,7 +245,10 @@ const TIER1_KEYS = new Set([
      나머지 마법(스테이시스·야마토·브루들링·옵티컬 플레어·할루시네이션)은 2급이다. */
   "Maelstrom", "Disruption Web",
   "Nuclear Strike", "cannon-rush", "sunken-rush", "mind-control",
-  "nydus", "recall", "infested", "swarm", "sneak-rax", "ally-help",
+  /* 커널·리콜·다크스웜은 뺐다(지적: 이런 기술 위주의 수는 3점대 이상이 아니다) — 쓰기가
+     까다롭기는 해도 그 한 번이 판을 가르는 일은 드물고, 무엇보다 그 종족이면 으레 한 번은
+     써 보는 것들이라 1급의 뜻("아무나 못 한다")과 안 맞는다. 아래 무게도 함께 내렸다. */
+  "infested", "sneak-rax", "ally-help",
 ]);
 
 const TACTIC_WEIGHT: Record<string, number> = {
@@ -260,7 +263,9 @@ const TACTIC_WEIGHT: Record<string, number> = {
   "worker-gap": 3, "prod-gap": 3, "long-run": 3,
 
   "cannon-rush": 3.5, "sunken-rush": 3.5, "mind-control": 3.5,
-  nydus: 3, recall: 3, infested: 3, swarm: 3,
+  infested: 3,
+  // 기술 하나로 끝나는 수는 2점대다(지적) — 이름도 왕관 계열을 안 쓴다(표 머리의 규칙).
+  nydus: 2.5, recall: 2.5, swarm: 2.5,
   /* 밀리고도 끝까지 앉아 있던 이야기 — 판이 기운 뒤에야 나오는 장면이라 흔치 않고,
      그 한 번이 그 판을 통째로 말한다. */
   lodging: 5, relocate: 5, "no-elim": 5,
@@ -464,8 +469,8 @@ const TITLES: Title[] = [
      빠진 이야기고, 그 대목은 대개 다른 칭호(드랍·견제·러시)가 이미 말한다. */
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
      자막이 이 수를 부르는 이름(커널)을 그대로 쓴다. */
-  rare("커널 개통퀸", ["nydus"]),
-  rare("리콜의 여왕", ["recall"]),
+  rare("커널 개통사", ["nydus"]),
+  rare("리콜 배달부", ["recall"]),
   rare("마음을 훔치는 도둑퀸", ["mind-control"]),
   tactic("캐리어를 모으는 여인", ["carrier"]),
   tactic("공포의 독거미 부대", ["lurker"]),
@@ -502,7 +507,7 @@ const TITLES: Title[] = [
   /* (삭제) 협공의 선봉(gang-rush) — 뺐다(요청). 팀전에서 둘이 함께 들이치는 것은 그 판의
      기본 진행에 가까워, 두 번 세 번 쌓여도 그 사람을 말해 주지 않는다. 무게를 두 번 내려
      봤지만 결국 다른 칭호가 없는 사람에게만 붙는 자리가 됐다 — 그런 칭호는 없느니만 못하다. */
-  rare("다크스웜의 여신", ["swarm"]),
+  rare("다크스웜 살포반", ["swarm"]),
   rare("감염의 여왕", ["infested"]),
   tactic("가디언 함대 사령관", ["guardian"]),
   tactic("배틀크루저 조종사", ["bc"]),
