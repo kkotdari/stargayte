@@ -513,7 +513,7 @@ const TACTIC_NOUN: Record<string, string> = {
    올림(40×0.01)=1). 드문 수라도 한 번은 우연이라, 마흔 판에 다섯 번은 나와야 하는 선
    (12%)으로 맞춘다. 백 판이면 열두 번이다 — 두 번은 아직 우연이 섞이는 수이고, 세 번쯤
    돼야 "그 사람이 즐겨 쓰는 수"라 부를 만하다. */
-const UNIT_TACTIC_SHARE = 0.09;
+const UNIT_TACTIC_SHARE = 0.07;
 const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker", "muta", "ultra"]);
 
 /* 수마다 제 문턱을 따로 두는 자리(지적: 포토러시 퀸·성큰러시 퀸의 비율 하한이 너무 낮다).
@@ -719,7 +719,7 @@ const TITLES: Title[] = [
   tactic("캐리어를 모으는 여인", ["carrier"]),
   /* 러커는 저그의 밥이라 유닛 기본(7%)과 자릿수가 다르다 — 세 번을 올려 30%: 저그 판
      셋에 하나는 러커로 이겼어야 "부대"라 부른다. */
-  { ...tactic("공포의 독거미 부대", ["lurker"]), minPlaysShare: 0.2 },
+  { ...tactic("공포의 독거미 부대", ["lurker"]), minPlaysShare: 0.15 },
   /* 안 보이는 것으로만 치는 사람(요청: 다크·레이스·아비터를 다 잘 쓴 경우만) —
      "보이지 않는 손" → "안 보이는 레이스"를 거쳐 온 자리다. 유닛 하나로는 안 준다(요청:
      하나만 써서는 안 됨): 다크만 뽑는 프로토스는 흔하고, 그건 이미 유닛 칭호가 말한다.
@@ -747,7 +747,7 @@ const TITLES: Title[] = [
       return hidden > 0 ? hidden / (m.uGround + m.uAir) : null;
     },
   },
-  { ...tactic("뮤탈 습격대", ["muta"]), minPlaysShare: 0.09 },
+  { ...tactic("뮤탈 습격대", ["muta"]), minPlaysShare: 0.07 },
   /* 코끼리 조련사(요청) — 울트라리스크를 모아 나간 판이다. 저그의 마지막 지상 병력이라
      거기까지 판을 끌고 갔다는 말이기도 한데, 부르는 말은 그 그림 하나면 된다.
      한때 "코끼리떼를 모는 여인"으로 바꿔 봤다가 되돌렸다(요청) — 조련사 쪽이 짧고, 무엇을
@@ -805,7 +805,7 @@ const TITLES: Title[] = [
      일꾼 정찰도 초반 쪽(vision)이다(요청: 파서에 추가) — 첫 일꾼을 상대 진영까지 몰고 간
      명령 좌표로 짚는다(replaySummary의 WORKER_SCOUT_SEC). 오버로드와 한 열쇠인 까닭은
      둘 다 '미리 보고 시작한다'는 같은 습관이라서다. */
-  { ...tactic("부지런한 정찰 퀸", ["vision"]), minPlaysShare: 0.55 },
+  { ...tactic("부지런한 정찰 퀸", ["vision"]), minPlaysShare: 0.68 },
   { ...tactic("전장을 살피는 눈", ["vision-eye"]), minPlaysShare: 0.22 },
   /* (삭제) 맞러시 승부사(duel-rush) — 요청. 맞러시는 둘이 함께 만든 장면이라 한 사람의
      수라고 하기 어렵다. */
@@ -824,7 +824,7 @@ const TITLES: Title[] = [
   /* (삭제) 가디언을 모으는 여인(guardian) — 요청. */
   /* 배틀만 유닛 기본(2%)보다 낮다(요청: 안 나온다) — 테란이 배틀까지 가는 판 자체가
      드물어 같은 잣대로는 통째로 잠긴다. 캐리어·코끼리는 기본값 그대로다. */
-  { ...tactic("배틀크루저를 모으는 여인", ["bc"]), minPlaysShare: 0.04, vsWins: true },
+  { ...tactic("배틀크루저를 모으는 여인", ["bc"]), minPlaysShare: 0.03, vsWins: true },
   /* (삭제) 발키리 지휘관(valkyrie) — 위 "무자비한 오버로드 사냥꾼"이 같은 유닛으로 무엇을
      했는지까지 말한다. 뽑았다는 사실만 말하는 쪽을 접는다. */
   /* (삭제) 우리 집 문지기(front-defense) — 뺐다(지적: 입구는 막으라고 있는 것). 제 입구를
