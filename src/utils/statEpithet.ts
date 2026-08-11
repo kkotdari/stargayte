@@ -50,11 +50,11 @@ const MIN_PLAYS_TIER: Record<number, number> = { 1: 10, 2: 4 };
    둘 다 물어야 한다.
    급마다 다른 이유: 1급은 한 번이 곧 이야기인 드문 수(핵·리콜·성큰러시)라 같은 잣대를 대면
    통째로 잠긴다. 그래도 0은 아니다 — 스무 판에 딱 한 번은 그 사람의 색이라기엔 얇다. */
-const COUNT_SHARE: Record<number, number> = { 1: 0.06, 2: 0.12 };
+const COUNT_SHARE: Record<number, number> = { 1: 0.1, 2: 0.2 };
 /** 비율과 별개의 최소 횟수(요청: 너무 겹치지 않게 문턱 높이기) — 절대평가가 되면서 조건만
  *  넘으면 다 받으니, 한 판짜리 우연까지 칭호가 되면 한 사람이 대여섯 개를 예사로 들었다.
  *  드문 수(1급)는 두 번, 흔한 수(2급)는 세 번은 나와야 버릇이라 부른다. */
-const COUNT_MIN: Record<number, number> = { 1: 2, 2: 3 };
+const COUNT_MIN: Record<number, number> = { 1: 3, 2: 5 };
 /* 한때 상한을 뒀다("아무리 많이 뛰어도 여섯 번이면 인정") — 걷어냈다(지적: 상한보다 비율
    자체를 낮추는 편이 합리적이다). 상한은 그 지점부터 비례가 끊겨, 백 판 뛴 사람과 예순 판
    뛴 사람에게 같은 수를 요구한다 — 많이 뛴 쪽이 오히려 쉬워지는 셈이다. 비율을 낮추면
@@ -63,10 +63,10 @@ const COUNT_MIN: Record<number, number> = { 1: 2, 2: 3 };
    그쪽이 곧 왕관이 걸리는 자리라, 같은 6%를 대는 흔한 수보다 오히려 쉬웠다.
    흔한 수(2급)도 6% → 8%로 올렸다(요청: 2점대 이하도 하한 상승) — 이긴 판만 세게 된 뒤로
    같은 비율이 예전보다 헐거워졌다(분자만 줄고 분모는 그대로다).
-   절대평가로 바꾸며 한 번 더 올렸다(요청: 너무 겹치지 않게) — 1급 4% → 6%, 2급 8% → 12%.
-   상대평가 시절에는 "1위"라는 조건이 겹침을 눌러 줬는데, 그 조건이 없어지자 같은 비율로
-   너덧 명이 한 칭호에 서고 한 사람이 대여섯 칭호를 들었다.
-   지금 값으로 보면, 마흔 판 뛴 사람에게 흔한 수는 다섯 번(12%)·드문 수는 세 번(6%)이다. */
+   절대평가로 바꾸며 크게 올렸다(요청: 좀 많이 높여야 할 듯) — 1급 6% → 10%, 2급 12% → 20%,
+   최소 횟수도 2/3 → 3/5번. 상대평가 시절에는 "1위"라는 조건이 겹침을 눌러 줬는데, 그
+   조건이 없어지자 한 사람이 대여섯 칭호를 들었다. 이제 흔한 수는 다섯 판에 한 번꼴로
+   나와야 그 사람의 수다 — 마흔 판이면 여덟 번, 드문 수는 네 번이다. */
 /* (삭제) LEAD_PLAYS_SHARE — "클럽 한가운데의 절반은 뛰었어야"라는 상대 잣대. 절대평가로
    바꾸며 고정 판수(MIN_PLAYS_RATE)가 그 자리를 맡는다. */
 
@@ -466,7 +466,7 @@ const TACTIC_NOUN: Record<string, string> = {
    0.07 → 0.1 → 0.15(요청: 너무 겹치지 않게) — 절대평가가 되면서 "그 유닛의 임자"라는
    조건이 없어져, 같은 종족이면 두엇씩 함께 걸렸다. 일곱 판에 한 판꼴이면 그 유닛으로
    판을 푸는 사람이라 부를 만하다. */
-const UNIT_TACTIC_SHARE = 0.15;
+const UNIT_TACTIC_SHARE = 0.2;
 const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker", "muta"]);
 
 /* 수마다 제 문턱을 따로 두는 자리(지적: 포토러시 퀸·성큰러시 퀸의 비율 하한이 너무 낮다).
@@ -478,8 +478,8 @@ const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker",
    그쯤이면 "이 사람은 포토러시를 하는 사람"이라 부를 만하다. 흔한 수(8%)와 같은 선인 것은
    러시가 드물어서가 아니라 되풀이할 수 있는 수이기 때문이다 — 드묾은 이미 1급 웃돈이
    값을 쳐 준다. */
-const RUSH_SHARE = 0.1;
-const RUSH_MIN = 2;
+const RUSH_SHARE = 0.15;
+const RUSH_MIN = 3;
 const RUSH_TACTICS = new Set(["cannon-rush", "sunken-rush"]);
 
 /* 져도 세는 수 — 서버의 _COUNT_EVEN_IF_LOST와 짝이다(요청: 셋방살이·이사·노엘은 밀린 뒤에야
@@ -994,17 +994,23 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     const where = t.race ? `${t.race} 판` : "제 판";
     // 마법 칭호의 근거는 문장으로 적혀 있다("게임에서 핵 사용") — 설명에서는 앞머리를 걷는다.
     const what = (t.why ?? "기록").replace(/^게임에서 /, "");
+    /* 조건을 전부 적는다(요청: 몇 % 이상인지 다 명시) — 비율·최소 횟수·판수 문턱이 다
+       걸려 있는데 일부만 적으면, 조건을 넘은 줄 알았던 사람이 왜 못 받았는지 알 길이 없다. */
     const bits: string[] = [];
     if (count) {
       if (share > 0) bits.push(`${what} ${where}의 ${pct(share)} 이상`);
       else bits.push(`${what}`);
-      if ((t.min ?? 1) > 1) bits.push(`최소 ${t.min}${t.unit ?? "번"}`);
+      const minCount = Math.max(t.min ?? 1, share > 0 ? COUNT_MIN[tier] ?? 0 : 0);
+      if (minCount > 1) bits.push(`최소 ${minCount}${t.unit ?? "번"}`);
+      bits.push(`${MIN_PLAYS_TIER[tier] ?? MIN_PLAYS}판 이상`);
     } else {
       if (t.min !== undefined) {
         bits.push(`${what} ${t.min < 1 ? pct(t.min) : `${t.min}${t.unit ?? ""}`} 이상`);
       } else {
         bits.push(what);
       }
+      // 수치·비율 칭호의 판수 문턱(MIN_PLAYS_RATE) — 세 판의 APM은 그 사람의 손이 아니다.
+      bits.push(`${MIN_PLAYS_RATE}판 이상`);
     }
     /* 등급은 구조로 가른다 — 전설은 승률 계열(sticky), 에픽은 3점 이상, 나머지가 일반.
        이름 짓는 규칙(표 머리)과 같은 선이다. */
