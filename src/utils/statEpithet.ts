@@ -241,9 +241,9 @@ const TIER_BOOST: Record<number, number> = { 1: 3, 2: 1 };
    표의 열쇠는 칭호 이름이 아니라 전술 키다(요청으로 이름이 자주 바뀐다) — 이름으로 걸면
    문구를 다듬을 때마다 이 표와 어긋나 무게가 조용히 1로 떨어진다(실제로 그럴 뻔했다). */
 const TIER1_KEYS = new Set([
-  /* 어려운 마법 둘 — 쓸 자리를 알아야 하고 한 번으로 판이 갈린다(마엘스트롬·디스럽션 웹).
-     나머지 마법(스테이시스·야마토·브루들링·옵티컬 플레어·할루시네이션)은 2급이다. */
-  "Maelstrom", "Disruption Web",
+  /* 마법은 핵과 마인드컨트롤만 1급이다(지적: 시간·야마토 등 단일 기술은 왕관급이 아니다).
+     핵은 고스트를 살려 상대 진영까지 데려가야 하는 판 전체의 일이고, 마인드컨트롤은 남의
+     병력을 통째로 가져와 판을 뒤집는다 — 나머지는 잘 누른 한 번일 뿐이다. */
   "Nuclear Strike", "cannon-rush", "sunken-rush", "mind-control",
   /* 커널·리콜·다크스웜은 뺐다(지적: 이런 기술 위주의 수는 3점대 이상이 아니다) — 쓰기가
      까다롭기는 해도 그 한 번이 판을 가르는 일은 드물고, 무엇보다 그 종족이면 으레 한 번은
@@ -288,8 +288,8 @@ const TACTIC_WEIGHT: Record<string, number> = {
   /* 어려운 마법(요청: 스킬 이름을 살려도 될 것들) — 전술과 같은 자로 잰다. 성큰·포토러시
      (3.5) 언저리에 두되, 마법 한 번이 러시 한 판만큼 판을 말하지는 않으므로 그보다 살짝
      아래에서 시작한다. */
-  Maelstrom: 3.5, "Disruption Web": 3.5,
-  "Stasis Field": 3, "Yamato Gun": 3,
+  Maelstrom: 2.5, "Disruption Web": 2.5,
+  "Stasis Field": 2.5, "Yamato Gun": 2.5,
   "Spawn Broodlings": 2.5, "Optical Flare": 2.5, Hallucination: 2.5,
 };
 
@@ -403,10 +403,10 @@ const TITLES: Title[] = [
      쓸 자리를 알아야 하고, 한 번 제대로 들어가면 그 판이 갈린다.
      스톰·이레디에이트·마인처럼 늘 누르는 것은 여전히 없다 — 많이 썼다는 말이 "그 종족을
      오래 했다"밖에 안 된다(예전 SPELL_WEIGHT의 기준선이 그 무리였다). */
-  spell("얼음 공주", "Maelstrom"),
-  spell("거미줄의 여왕", "Disruption Web"),
-  spell("시간의 여제", "Stasis Field"),
-  spell("야마토 퀸", "Yamato Gun"),
+  spell("얼음 마법사", "Maelstrom"),
+  spell("거미줄 설계자", "Disruption Web"),
+  spell("시간을 멈추는 자", "Stasis Field"),
+  spell("야마토 한 발", "Yamato Gun"),
   /* (삭제) 브루들링 저격수 · 눈을 멀게 하는 자(옵티컬 플레어) · 허깨비 부대장(할루시네이션)
      — 요청으로 뺐다. 셋 다 쓰기 어려운 마법이긴 한데, 그 한 번이 판을 가르는 그림까지는
      아니라 이름만 요란해진다. */
