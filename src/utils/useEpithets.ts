@@ -65,9 +65,13 @@ async function recount(key: string): Promise<number> {
   /* 한 번만 부른다 — 내전(팀전) 전체 누적 한 벌. 예전에는 다섯 벌(전체·개인전·팀전·이번
      달·지난달)을 나란히 받았는데, 그 넷은 전부 유형을 가르거나 레이팅을 견주는 칭호를
      위한 것이었고 그 칭호들이 함께 없어졌다(statEpithet의 삭제 주석). */
-  const res = await api.getGameResultStats({
-    memberIds: ids, dateFrom: "", dateTo: "", matchType: CLAN_TYPE,
-  });
+  /* 클럽 전체 판수도 함께 받는다(요청: 참여 퀸은 전체 경기수 비례) — 목록 첫 페이지의
+     total이 곧 그 수다(한 건만 받아 값만 쓴다). 실패하면 null로 두고 그 칭호만 쉰다. */
+  const [res, totalGames] = await Promise.all([
+    api.getGameResultStats({ memberIds: ids, dateFrom: "", dateTo: "", matchType: CLAN_TYPE }),
+    api.getGameResultsPage({ matchType: CLAN_TYPE, limit: 1 })
+      .then((page) => page.total).catch(() => null),
+  ]);
   const byId: Record<string, MemberStatsEntry> = {};
   res.members.forEach((entry) => { byId[entry.memberId] = entry; });
   const map = epithetsOf(ids
@@ -101,9 +105,11 @@ export async function simulateEpithets(memberIds: string[]): Promise<{
   claims: EpithetClaimRow[];
 }> {
   const ids = [...memberIds].sort();
-  const res = await api.getGameResultStats({
-    memberIds: ids, dateFrom: "", dateTo: "", matchType: CLAN_TYPE,
-  });
+  const [res, totalGames] = await Promise.all([
+    api.getGameResultStats({ memberIds: ids, dateFrom: "", dateTo: "", matchType: CLAN_TYPE }),
+    api.getGameResultsPage({ matchType: CLAN_TYPE, limit: 1 })
+      .then((page) => page.total).catch(() => null),
+  ]);
   const byId: Record<string, MemberStatsEntry> = {};
   res.members.forEach((entry) => { byId[entry.memberId] = entry; });
   const assigned = epithetsOf(ids
@@ -113,7 +119,8 @@ export async function simulateEpithets(memberIds: string[]): Promise<{
       races: byId[id]?.byRace,
       won: byId[id]?.won,
     }))
-    .flatMap((x) => (x.stats ? [{ id: x.id, stats: x.stats, races: x.races, won: x.won }] : [])));
+    .flatMap((x) => (x.stats ? [{ id: x.id, stats: x.stats, races: x.races, won: x.won }] : [])),
+  { totalGames });
   return { assigned, claims: lastEpithetClaims() };
 }
 

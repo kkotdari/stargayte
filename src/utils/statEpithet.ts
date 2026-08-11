@@ -860,12 +860,13 @@ const TITLES: Title[] = [
   /* 참여 퀸 — 여신급까지 올려 봤다가 되돌렸다(요청). 게임 수 1위는 실력이 아니라 시간이고,
      여신 자리는 승률처럼 '얼마나 잘했나'가 앉는 자리다. sticky라 조건만 넘으면 어차피
      무조건 먼저 간다 — 무게는 그 안에서의 차례일 뿐이다. */
-  /* 게임 수도 절대다(요청) — 1위가 아니라 백 판을 넘긴 사람 전부. sticky도 뗐다: 무조건
-     우선은 '그 값의 1위'라는 상대 개념에 딸려 있던 것이다.
+  /* 참여도 클럽 전체 판수에 비례다(요청: 전체 경기수를 알 수 있으니 거기에 맞춰 나가야지) —
+     "100판"은 클럽이 판을 쌓을수록 누구나 닿는 값이 된다. 클럽에서 열린 판의 45%에 나왔으면
+     그 사람이 곧 이 클럽의 판이다. 전체 판수를 못 받아 왔으면(집계 실패) 이 칭호만 쉰다.
      명예류(BEST·참여)는 무게 6이다(지적: 베스트 퀸이 옆탱보다 아래라니) — 판을 만든 공로와
-     꾸준함은 낱개 전술(4)보다 위, 승률(전설)보다는 아래인 자리다. 졌잘싸는 여기 안 든다
-     (지적) — 진 판의 이야기라 전술과 같은 4다. */
-  { label: "참여 퀸", weight: 6, min: 100, why: "게임 수", unit: "판", value: (s) => s.plays },
+     꾸준함은 낱개 전술(4)보다 위, 승률(전설)보다는 아래인 자리다. */
+  { label: "참여 퀸", weight: 6, min: 0.45, why: "클럽 전체 판 대비 참여", unit: "",
+    value: (s) => (clubTotalGames && clubTotalGames > 0 && s.plays > 0 ? s.plays / clubTotalGames : null) },
 ];
 
 /* ── 이름을 만드는 잔손질 ─────────────────────────────────────────────────────
@@ -1013,7 +1014,16 @@ export function epithetGuideRows(): EpithetGuideRow[] {
  *  넘은 사람은 누구든 그 칭호를 얻는다 — 같은 칭호를 여럿이 가질 수 있고, 한 사람이 여러
  *  칭호를 가질 수 있다(요청). 화면에는 그중 점수가 가장 높은 하나가 보인다(요청).
  *  '물려주기'도 함께 없어졌다 — 임자라는 개념 자체가 없다. */
-export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
+/** 클럽에서 열린 내전 전체 판수 — 참여 퀸의 분모다(요청: 전체 경기수에 맞춰 나간다).
+ *  epithetsOf를 부르기 전에 부르는 쪽이 채워 준다(useEpithets). 모듈 변수인 이유는 Title.value의
+ *  시그니처(s, of)에 끼워 넣을 자리가 없어서다 — 계산 한 번에 한 값이라 이걸로 충분하다. */
+let clubTotalGames: number | null = null;
+
+export function epithetsOf(
+  pool: EpithetSubject[],
+  ctx?: { totalGames?: number | null },
+): Map<string, Epithet> {
+  clubTotalGames = ctx?.totalGames ?? null;
   const out = new Map<string, Epithet>();
   const ranked = pool.filter((p) => p.stats.plays >= MIN_PLAYS);
 
