@@ -152,6 +152,13 @@ interface Title {
    *  "하늘의 여전사"가 아예 안 나간다. 겨룰 사람이 몇인가와 1등이 그럴 만한가는 서로 다른
    *  질문이라 따로 물어야 한다. */
   min?: number;
+  /** 그 사람 판수의 이만큼에서는 나왔어야 한다 — 유닛 이름을 단 칭호에 건다(지적: 캐리어·
+   *  배틀 같은 것은 경기 수 대비 최소 비율을 봐야 한다).
+   *
+   *  전술 칭호의 값은 '그 수가 나온 판의 수'라, 스무 판 뛰고 한 판에서 캐리어를 갔다고
+   *  "캐리어를 모으는 여인"이라 부르면 그 말이 그 사람을 가리키지 못한다. 드문 수(핵·리콜)는
+   *  이 문턱을 안 건다 — 거기서는 한 번이 곧 이야기다. */
+  minPlaysShare?: number;
   /** 후보가 이만큼은 돼야 매긴다(기본 MIN_POOL). 전술·맵은 1. */
   pool?: number;
   /** 1등이 한가운데의 몇 배는 돼야 하나(기본 CROWN_EDGE). 전술·맵은 1(안 따짐). */
@@ -265,9 +272,15 @@ const TACTIC_NOUN: Record<string, string> = {
    우연"을 거르려던 것인데, 여기 있는 수들은 대부분 우연히 나오지 않는다(옆탱·센포·드랍은
    그러려고 해야 나온다). 게다가 칭호는 내전 기록으로만 매기므로 한 사람이 같은 수를 두 번
    보이기가 생각보다 어렵다 — 문턱이 실제로 막고 있던 것은 우연이 아니라 대부분의 칭호였다. */
+/* 유닛 이름을 그대로 단 칭호들 — 그 유닛으로 갔다는 판이 제 판의 이만큼은 돼야 한다(지적).
+   0.15는 "스무 판 중 서너 판"쯤이다: 한두 번 가 본 것과 그 유닛으로 푸는 사람 사이의 선. */
+const UNIT_TACTIC_SHARE = 0.15;
+const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker", "muta"]);
+
 const tactic = (label: string, keys: string[], min = 1): Title => ({
   label, value: (s) => did(s, ...keys), pool: 1, edge: 1, min,
   why: `경기 요약에 ${TACTIC_NOUN[keys[0]] ?? "이 수"}`, unit: "번",
+  ...(UNIT_TACTICS.has(keys[0]) ? { minPlaysShare: UNIT_TACTIC_SHARE } : {}),
   weight: TACTIC_WEIGHT[keys[0]] ?? 1, scale: "count",
   tier: TIER1_KEYS.has(keys[0]) ? 1 : 2,
 });
@@ -852,7 +865,11 @@ function signature(
       if (!own || own.id !== id || unit.share < own.med * NAME_EDGE) continue;
       // 두 번째·세 번째 유닛은 비중이 낮게 마련이라 문턱도 낮춘다 — 그래도 넷 중 하나는
       // 되어야 "그 유닛으로 푸는 사람"이라 부를 수 있다.
-      if (unit.count < 10 || unit.share < (unit === topList(m.units, UNIT_KO)[0] ? 0.33 : 0.25)) continue;
+      /* 판당 몇 기는 뽑았어야 한다(지적) — 비중만 보면 한 판에서 몰아 뽑은 사람도 통과한다.
+         스무 판에 스무 기면 판당 한 기라, 그 유닛으로 판을 푼다고 말하기 어렵다. */
+      const perPlay = (s.mixPlays ?? 0) > 0 ? unit.count / (s.mixPlays as number) : 0;
+      if (unit.count < 10 || perPlay < 2) continue;
+      if (unit.share < (unit === topList(m.units, UNIT_KO)[0] ? 0.33 : 0.25)) continue;
       const t = pick(UNIT_SAYS, unit.name, seed, used);
       if (t) return { label: t, why: `${unit.name}${ga(unit.name)} 병력의 ${Math.round(unit.share * 100)}%` };
     }
@@ -908,6 +925,9 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
     const vals = ranked
       .filter((p) => p.stats.plays >= need)
       .map((p) => ({ id: p.id, v: title.value(p.stats, p), stats: p.stats, of: p }))
+      // 판수 대비 문턱(Title.minPlaysShare) — 그 사람 판의 몇 할에서는 나왔어야 한다.
+      .filter((x) => title.minPlaysShare === undefined
+        || (x.v ?? 0) >= x.stats.plays * title.minPlaysShare)
       .filter((x): x is { id: string; v: number; stats: MemberStats; of: EpithetSubject } =>
         x.v !== null && x.v > 0);
     if (vals.length < (title.pool ?? MIN_POOL)) return;
