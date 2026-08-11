@@ -951,7 +951,7 @@ const TITLES: Title[] = [
     /* 급을 올린다(요청) — 무게 2 → 3이라 일반에서 에픽이다. 갈래를 승률로 올려 둔 채(요청)
        급만 일반에 남아 있던 것이 어긋난 자리였다: 목록에서는 승률 칸 맨 위인데 대표를
        고를 때는 에픽 스물여섯 줄에 늘 밀렸다. 조건(공/방 평균 2.2단계)은 그대로다. */
-    label: "풀업 퀸", weight: 3, kind: "승률", min: 2.2, why: "공/방 평균 단계", unit: "",
+    label: "풀업 퀸", weight: 3, kind: "승률", min: 2.6, why: "공/방 평균 단계", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       if (!m) return null;
