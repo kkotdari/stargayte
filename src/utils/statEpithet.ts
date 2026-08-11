@@ -50,9 +50,9 @@ const MIN_POOL = 3;
  *  값에서는 1등이 한가운데의 1.15배까지 벌어지는 일이 드물어, 그 칭호들이 통째로 잠겨
  *  있었다. 6%면 "고만고만한 1등"은 여전히 걸러지면서 실제로 앞선 사람은 통과한다. */
 const CROWN_EDGE = 1.06;
-/* (삭제) CROWN_SCORE — 왕관 계열로 부를 점수의 문턱(3점)이다. 등급 색과 2위 물려주기가
-   함께 없어지면서 코드에서 읽는 곳이 사라졌다. 이름 짓는 규칙으로는 여전히 살아 있다
-   (칭호 표 머리 주석: 3점대 이상은 여왕·퀸·여제·신). */
+/** 왕관 계열(여왕·퀸·여제·신…)로 부르는 점수의 문턱 — 이름 짓는 규칙(칭호 표 머리)과 같은
+ *  값이고, 2위에게 물려줄 수 있는지도 이 선으로 가른다(요청: 왕관은 1위만, 그 아래만 물림). */
+const CROWN_SCORE = 3;
 /* 클럽 최다라는 것만으로는 부족하다(요청: 아무리 클럽 최다라도 판수에 비례한 최소 문턱은 다
    있게, 그래서 "칭호 없음"이 흔하게) — 서른 판을 뛰고 두 판에서 드랍을 한 사람이 그것만으로
    클럽 1등이면, 그 말은 그 사람을 부르는 말이 아니라 "다들 안 한다"는 사실의 그림자다.
@@ -1006,11 +1006,18 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
     // 2등 값 — 1위가 얼마나 벌렸나(아래 leadBonus). 뒤가 아무도 없으면 null.
     const belows = vals.map((x) => x.v).filter((v) => v < top);
     const second = belows.length ? Math.max(...belows) : null;
-    /* (삭제) 2위 물려주기 — 1위가 다른 칭호로 가면 2위가 받게 해 봤다가 걷었다(요청: 물려주기
-       취소). "퀸"·"여제"만이 아니라 어느 칭호든 그 자리가 하나뿐이라는 뜻이라, 2위가 받는
-       순간 근거 문장에 "클럽 2위"를 적어 두어도 부르는 말과 사실이 어긋난다.
-       임자가 다른 칭호를 가져가면 이 칭호는 그냥 안 나간다. */
-    const winners = title.name ? vals : tops;
+    /* 2점대 이하만 2위까지 물려준다(요청) — 한 사람은 여전히 칭호 하나뿐이라, 3점대를
+       가져간 사람이 걸려 있던 2점대 칭호들은 여태 아무에게도 안 갔다(그 칭호의 임자가 곧
+       그 사람이라 2위는 못 받았다). 재미난 칭호가 통째로 사장되고 "칭호 없음"만 늘던 자리다.
+       왕관 계열(3점대 이상)은 그대로 1위만이다 — "퀸"·"여제"는 그 자리가 하나뿐이라는 뜻이라
+       2위가 받는 순간 말 자체가 무너진다. 그 아래는 "그 수를 즐겨 쓴다"는 말에 가까워 2위가
+       받아도 사실이 남고, 근거 문장이 "클럽 2위"라고 밝힌다.
+       3위부터는 안 준다: 그쯤 되면 그 칭호가 가리키는 사실이 남아 있지 않다.
+       차례는 아래 나눠 주는 고리가 저절로 지킨다 — 같은 칭호라면 1위의 점수가 늘 더 커서
+       먼저 걸리고, 1위가 이미 다른 칭호를 받았을 때만 2위 차례가 온다. */
+    const crown = (title.weight ?? 0) * (TIER_BOOST[title.tier ?? 2] ?? 1) >= CROWN_SCORE;
+    const runnerUps = second !== null && !crown ? vals.filter((x) => x.v === second) : [];
+    const winners = title.name ? vals : [...tops, ...runnerUps];
     for (const w of winners) {
       const label = title.name
         ? title.label.replace("{n}", title.name(w.stats, w.of) ?? "")
@@ -1062,7 +1069,10 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
         + (c.title.scale === "count" && c.title.unit === "번" && c.denom > 0 && c.raw <= c.denom
           ? ` — ${c.title.race ? `${c.title.race} ` : ""}${c.denom}판 중 ${Math.round((c.raw / c.denom) * 100)}%`
           : "")
-        + (c.first ? (c.title.scale === "count" ? " · 클럽 최다" : " — 클럽 1위") : ""),
+        + (c.first
+          ? (c.title.scale === "count" ? " · 클럽 최다" : " — 클럽 1위")
+          // 물려받은 자리는 그 사실을 밝힌다 — 1위가 다른 칭호로 갔다는 뜻이다.
+          : (c.title.name ? "" : " · 클럽 2위")),
     });
     used.add(c.label);
   }
