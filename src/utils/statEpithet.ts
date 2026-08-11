@@ -91,12 +91,13 @@ const COUNT_SHARE: Record<number, number> = { 1: 0.03, 2: 0.09 };
      클럽 600판 — 핵 4번 · 유닛 10번(상한)
    한때 점수(무게 × 급 웃돈)로 나눴는데, 그건 '얼마나 값어치 있나'라 바이오닉과 옆탱이 같은
    4점이었다 — 실제로 얼마나 자주 나오나는 비율 쪽이 알고 있다.
-   위아래로 가둔다: 아무리 드물어도 한 번은 있어야 하고, 아무리 흔해도 열 번을 넘기면
-   클럽이 쌓일수록 아무도 못 받는 칭호가 된다.
+   위아래로 가둔다: 아무리 드물어도 두 번은 있어야 하고(지적: 한 판만 해도 잡히는 지경이다
+   — 한 번은 우연이라는 그 말이 이 바닥이다), 아무리 흔해도 열 번을 넘기면 클럽이 쌓일수록
+   아무도 못 받는 칭호가 된다.
    클럽 전체 판수를 못 받아 왔으면 이백 판으로 친다(그때의 눈금이 위 예시다). */
 const CLUB_COUNT_RATE = 0.2;
 const CLUB_GAMES_FALLBACK = 200;
-const COUNT_MIN_FLOOR = 1;
+const COUNT_MIN_FLOOR = 2;
 const COUNT_MIN_CAP = 10;
 const countMinFor = (share: number): number => {
   const club = clubTotalGames && clubTotalGames > 0 ? clubTotalGames : CLUB_GAMES_FALLBACK;
@@ -704,7 +705,7 @@ const TITLES: Title[] = [
   /* 성큰러시만 러시 기본값(3%)보다 높다(지적: 하한이 너무 낮다) — 저그는 앞마당에 성큰을
      늘 박으므로 '남의 집 앞 성큰'과 제 살림의 성큰이 자막에서 같은 열쇠로 잡히는 판이 있다.
      6%면 저그 판 열에 한 번은 그 그림이라야 걸린다. */
-  { ...tactic("성큰러시 퀸", ["sunken-rush"], 1), minPlaysShare: 0.06 },
+  { ...tactic("성큰러시 퀸", ["sunken-rush"], 1), minPlaysShare: 0.09 },
   /* 센터의 여주인 → 센포의 여왕(요청) — 클럽에서 그 수를 부르는 말이 '센포'라, 그 말을
      그대로 쓰면 무엇을 세는 칭호인지가 바로 읽힌다. */
   { ...tactic("센포의 여왕", ["center-photon"]), minPlaysShare: 0.09 },
