@@ -1,6 +1,6 @@
 import { ga, ira, neun, reul, ro, wa } from "./korean";
 import {
-  isReplaySummaryData, sceneWindowSec,
+  isReplaySummaryData, pickedSummary, sceneWindowSec,
   type ReplaySummaryBeat, type ReplaySummaryData,
 } from "./replaySummaryData";
 import { SIGNATURE_UPGRADE_KO, TECH_USE_PHRASE } from "./replayTechNames";
@@ -2731,11 +2731,16 @@ interface RenderedLines {
 }
 
 function renderLines(
-  data: ReplaySummaryData | unknown,
+  raw: ReplaySummaryData | unknown,
   resolveName: (rawName: string) => string,
   teamOf?: (name: string) => 1 | 2 | undefined,
 ): RenderedLines | null {
-  if (!isReplaySummaryData(data)) return null;
+  if (!isReplaySummaryData(raw)) return null;
+  /* 저장된 비트에는 자막에 안 실을 것까지 다 들어 있다(요청: 모든 것을 저장하고 보여줄 때만
+     선별) — 여기서 한 겹 걷어낸다. 돌려주는 첨자는 '원래 자리번호'다: 미니맵·타임라인이
+     그 번호로 저장된 비트를 다시 찾아가므로, 추린 목록 안의 번호를 주면 엉뚱한 장면을
+     가리킨다. */
+  const { data, map: beatIndex } = pickedSummary(raw);
   // 개인전에서는 팀 용어("1팀의 …", "양 팀이 …")를 아예 쓰지 않는다(요청).
   const duel = data.duel === true;
 
@@ -2782,10 +2787,10 @@ function renderLines(
   const put = (line: string, joined: boolean, beatIdx: number): void => {
     if (joined && out.length > 0) {
       out[out.length - 1] = line;
-      lineBeats[lineBeats.length - 1].push(beatIdx);
+      lineBeats[lineBeats.length - 1].push(beatIndex[beatIdx] ?? beatIdx);
     } else {
       out.push(line);
-      lineBeats.push([beatIdx]);
+      lineBeats.push([beatIndex[beatIdx] ?? beatIdx]);
     }
   };
   // 앞 문장과 인과로 이어지는 자리를 표시해 둔다(요청: 서사·인과가 있어야 재밌다).

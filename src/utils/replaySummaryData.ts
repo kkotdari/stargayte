@@ -28,6 +28,10 @@ export const REPLAY_SUMMARY_VERSION = 2;
 export interface ReplaySummaryBeat {
   /** 문장 틀 키(replaySummaryText.ts의 TEMPLATES). 모르는 키는 조용히 건너뛴다. */
   k: string;
+  /** 이야기로서의 무게 — 자막에 실을 것을 고를 때 쓴 값이다(요청: 자막 중요도가 나중에
+   *  바뀔 수 있으니 고르는 일은 보여줄 때 다시 한다). 이 값이 있어야 저장된 비트만으로
+   *  다시 고를 수 있다. 옛 요약에는 없다. */
+  w?: number;
   /** 이 일을 한 쪽이 이겼나 — 같은 틀도 이긴 쪽/진 쪽의 맺음이 다르다. */
   won: boolean;
   /** 행위자들의 리플레이 원본 게임 아이디. */
@@ -130,7 +134,28 @@ export interface ReplaySummaryData {
   /** 그중 '완전히 끝난'(탈락) 시점만 — 해골은 이쪽에만 붙고, 생산이 무너진 빈사는
    *  회복 반창고(❤️‍🩹)로 간다(요청). 옛 요약에는 없어서 그때는 downs를 그대로 쓴다. */
   elims?: Record<string, number>;
+  /** 그 경기에서 잡아낸 일 **전부**다(요청: 전략·전술·건설·생산 등 모든 것을 최대한
+   *  저장해야 통계에서도 쓴다). 한때 여기에는 자막에 실은 5~7문장만 들어 있었는데, 그러면
+   *  자리 다툼에서 밀린 전술은 아예 없던 일이 된다 — 실제로 칭호·통계가 그 밀린 몫만큼
+   *  틀린 수를 세고 있었다(지적).
+   *  자막에 무엇을 싣느냐는 아래 pick이 말한다. */
   beats: ReplaySummaryBeat[];
+  /** 그중 자막에 싣는 것들 — beats의 자리번호를, 이야기 순서대로. 저장할 때 한 번 골라
+   *  두지만 값은 자리번호뿐이라, 나중에 고르는 규칙이 바뀌면 보는 쪽에서 다시 골라도 된다.
+   *  없으면(옛 요약) beats 전체가 곧 자막이다 — 그때는 실제로 그랬다. */
+  pick?: number[];
+}
+
+/** 자막에 실을 비트만 추린 요약과, 그 자리번호(원래 beats에서의 자리).
+ *
+ *  화면은 이 한 겹을 거쳐 읽는다 — beats에는 이제 안 보여줄 것까지 다 들어 있고, 미니맵·
+ *  타임라인은 자리번호로 그 비트를 다시 찾아가기 때문이다(그래서 번호를 함께 돌려준다). */
+export function pickedSummary(data: ReplaySummaryData): {
+  data: ReplaySummaryData; map: number[];
+} {
+  const map = data.pick ?? data.beats.map((_, i) => i);
+  const beats = map.map((i) => data.beats[i]).filter(Boolean);
+  return { data: { ...data, beats }, map };
 }
 
 /* ── 사건을 '같은 때'로 묶는 창 ────────────────────────────────────────────────

@@ -1122,8 +1122,14 @@ interface Beat extends ReplaySummaryBeat {
  *  때문이다. 실제로 그 차이가 문장으로 새어 나왔다(실측: 같은 경기가 방금 만든 것은 "승리를
  *  결정지었다", 저장된 것은 "이겼다"). 사람이 보는 건 언제나 저장된 쪽이므로 그쪽에 맞춘다.
  *  묶기(mergeSameFate)에서 시점을 모르는 것끼리 합쳐질 때 생기는 Infinity도 여기서 걸린다. */
-function strip({ weight: _w, dedupeOn: _d, keep: _k, ...b }: Beat): ReplaySummaryBeat {
-  return typeof b.at === "number" && !Number.isFinite(b.at) ? { ...b, at: null } : b;
+/* 무게는 버리지 않고 함께 저장한다(요청: 자막 중요도가 나중에 바뀔 수 있으니 고르는 일은
+   보여줄 때 다시 한다) — 저장된 비트만으로 다시 고르려면 그때 쓴 잣대가 같이 있어야 한다.
+   dedupeOn·keep은 고르는 동안에만 쓰는 살림이라 그대로 버린다. */
+function strip({ weight, dedupeOn: _d, keep: _k, ...b }: Beat): ReplaySummaryBeat {
+  const w = Number.isFinite(weight) ? { w: weight } : {};
+  return typeof b.at === "number" && !Number.isFinite(b.at)
+    ? { ...b, ...w, at: null }
+    : { ...b, ...w };
 }
 
 /* 스냅에 붙일 대사(요청: "모든 채팅을 다 보여줄 필욘 없을거 같아 — 우리가 스냅으로 선정한
@@ -4483,7 +4489,7 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
      ending에 GG와 같은 시각을 준다 — 타임라인은 눈금 자리를 at으로 잡으므로, 시각이
      없는 채로 GG 앞에 서면 눈금만 거꾸로 간다(시각 없는 문장은 맨 오른쪽에 놓인다).
      실제로도 그 싸움이 끝나는 순간이 GG라 지어낸 시각이 아니다. */
-  const finalBeats = withChat(replay, (() => {
+  const captionBeats: Beat[] = (() => {
     /* 노엘을 외치고도 끝내 다 털린 경우를 표시해 둔다(요청: 그게 웃음 포인트) —
        '털렸다'의 근거는 elims다: 판을 떠난 기록이거나, 그 뒤로 유닛도 건물도 하나
        안 낸 것(생산 0). 외친 뒤에 그렇게 됐을 때만이다. */
@@ -4503,7 +4509,20 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       ...chosen.map((b) => (typeof b.at === "number" && Number.isFinite(b.at) ? b.at : -1)),
     );
     return [...chosen, ...(lastAt >= 0 ? [{ ...ending, at: lastAt }] : [ending]), verdict];
-  })().map(strip).map(withCastPlace).map((b) => {
+  })();
+
+  /* 저장은 전부, 자막은 그중 일부다(요청: 전략·전술·건설·생산 등 모든 것을 최대한 저장해야
+     통계에서도 쓴다). 한때는 자리 다툼에서 이긴 것만 저장했는데, 그러면 밀린 전술은 통계에
+     아예 없던 일이 된다 — 칭호가 세는 수가 딱 그만큼 틀리고 있었다(지적).
+     자막에 실을 것들을 앞에 세우고(그 자리번호가 곧 pick), 못 실린 후보를 뒤에 잇는다.
+     이 순서가 곧 규칙이다 — 미니맵·타임라인은 "0번부터 이 문장까지"를 훑어 그때까지 무슨
+     일이 있었는지를 쌓으므로, 자막에 실린 것들이 이야기 순서대로 앞에 서 있어야 한다.
+
+     pool이 아니라 ranked로 잇는다: pool에는 이름 있는 진격과 같은 사건을 가리키는 이름 없는
+     급습이 함께 들어 있고(위 NAMELESS_RAID_SEC), 그 둘을 다 저장하면 통계가 한 번의 진격을
+     두 번 센다. ranked는 그 겹침을 이미 덜어낸 목록이다. */
+  const restBeats = ranked.filter((b) => !captionBeats.includes(b));
+  const enrich = (list: Beat[]) => list.map(strip).map(withCastPlace).map((b) => {
     const pos = beatPositions(b, byName);
     /* 나간 것이 확인된 생산담은 '나간 자리'를 그 이야기의 자리로 덮어쓴다(요청: 센터도
        진출로 보고 그 좌표에 화살표를 표시). 기본 자리는 그 무렵 명령이 가장 몰린 곳이라
@@ -4543,11 +4562,15 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
       ...(units ? { units } : {}), ...(sizes ? { sizes } : {}),
       ...(hp ? { hp } : {}),
     };
-  }));
+  });
+  /* 대사는 자막에 실린 장면에만 붙인다 — 말주머니는 미니맵 스냅에 뜨는 것이라, 안 보여줄
+     비트에 붙으면 그 대사는 아무 데도 안 나오면서 가장 가까운 스냅의 몫만 뺏는다. */
+  const shown = withChat(replay, enrich(captionBeats));
+  const finalBeats = [...shown, ...enrich(restBeats)];
 
   /* BEST PLAYER는 이야기가 다 짜인 뒤에 뽑는다 — 근거가 그 이야기 자체라(위 bestOf 주석),
      자리 다툼에서 잘려 나간 후보들까지 세면 화면에 안 나온 일로 뽑는 셈이 된다. */
-  const best = bestOf(finalBeats, winnerPlayers, loserPlayers);
+  const best = bestOf(shown, winnerPlayers, loserPlayers);
 
   return {
     v: REPLAY_SUMMARY_VERSION,
@@ -4562,6 +4585,8 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
     ...(Object.keys(downs).length > 0 ? { downs } : {}),
     ...(Object.keys(elims).length > 0 ? { elims } : {}),
     beats: finalBeats,
+    // 자막에 싣는 것들 — 앞에서부터 shown 개수만큼이다(위 captionBeats 주석).
+    pick: shown.map((_, i) => i),
   };
 }
 
