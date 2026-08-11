@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { api } from "../api/client";
 import { versionNumber } from "../utils/appVersion";
+import { refreshEpithets } from "../utils/useEpithets";
 import type {
   Member, GameResult, NewGameResult, MemberCreatePayload, MemberStatus, MemberRole, AppVersion,
   AppVersionInfo, Challenge, ScreenKey,
@@ -167,6 +168,15 @@ interface AppState {
   memberOf: (id: string) => Member | undefined;
 }
 
+/** 칭호를 다시 세어 서버에 알린다 — 대상은 활동 중인 회원 전체다(통계 화면이 쓰는 것과 같은
+ *  잣대: 1등이라는 말이 들어가는 값이라 일부만 놓고 세면 안 된다). */
+function recountEpithets(get: () => AppState): Promise<void> {
+  const ids = get().members
+    .filter((m) => m.status !== "withdrawn" && m.status !== "suspended")
+    .map((m) => m.id);
+  return refreshEpithets(ids);
+}
+
 export const useAppStore = create<AppState>()((set, get) => ({
   user: null,
   members: [],
@@ -243,8 +253,19 @@ export const useAppStore = create<AppState>()((set, get) => ({
     }
   },
 
-  addGameResult: async (gameResult) => api.createGameResult(gameResult),
-  deleteGameResult: async (id) => { await api.deleteGameResult(id); },
+  /* 경기가 늘거나 줄면 칭호를 다시 센다(요청: 경기 등록할 때마다 — 통계 화면에 들어갈 때가
+     아니라). 칭호가 바뀐 사람이 있으면 그때 활동에 알림 한 줄이 남으므로, 계산이 등록 순간에
+     붙어 있어야 그 알림이 "방금 그 경기 때문에"라는 말이 된다.
+     결과를 기다리지 않는다 — 등록은 이미 끝났고, 이건 그 뒤에 조용히 도는 일이다. */
+  addGameResult: async (gameResult) => {
+    const saved = await api.createGameResult(gameResult);
+    void recountEpithets(get);
+    return saved;
+  },
+  deleteGameResult: async (id) => {
+    await api.deleteGameResult(id);
+    void recountEpithets(get);
+  },
 
   // 화면 이동마다 호출 — 회원 목록과 함께 현재 활성 버전도 다시 가져온다. 다른
   // 운영자가 그 사이 제어판에서 전환했어도 화면을 옮기는 것만으로 바로 반영되게 한다.

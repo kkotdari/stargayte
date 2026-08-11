@@ -62,6 +62,25 @@ async function load(key: string): Promise<void> {
   }
 }
 
+/** 칭호를 다시 계산해 서버에 알린다(요청: 경기 등록할 때마다) — 통계 화면을 열 때가 아니라
+ *  기록이 바뀐 그 순간에 돌아야, 활동에 뜨는 알림이 "방금 그 경기 때문에 바뀌었다"는 말이 된다.
+ *
+ *  캐시를 비우고 다시 받는다: 같은 회원 목록이면 load()가 캐시를 그대로 돌려주므로, 비우지
+ *  않으면 새 경기가 반영되지 않는다. 화면이 없어도 도는 자리라 결과는 서버로만 나가고,
+ *  다음에 통계를 여는 사람이 그 값을 그대로 본다.
+ *
+ *  실패는 조용히 넘긴다 — 등록은 이미 끝났고 칭호는 곁다리다. 다음 등록이나 다음 통계 조회
+ *  때 다시 계산된다. */
+export async function refreshEpithets(memberIds: string[]): Promise<void> {
+  const key = memberIds.slice().sort().join(",");
+  if (!key) return;
+  cachedKey = "";
+  cached = null;
+  inflightKey = key;
+  inflight = load(key);
+  await inflight.catch(() => { /* 위 load가 이미 삼킨다 */ });
+}
+
 /** 지금 활동 중인 회원들의 칭호. 아직 안 받았으면 빈 map을 돌려주고, 도착하면 다시 그린다. */
 export function useEpithets(): Map<string, Epithet> {
   const members = useAppStore((s) => s.members);
