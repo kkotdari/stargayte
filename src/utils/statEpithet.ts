@@ -119,7 +119,10 @@ const MAP_MIN_RATE = 0.7;
 /* 맵 이름 뒤에 붙는 말(요청: 맵 이름 뒤에 붙여서 재밌게) — "헌터의 여주인", "빨무의
    안주인", "투혼의 황녀"처럼 맵마다 다른 말이 붙는다. 고르는 자는 맵 이름이다: 같은 맵은
    늘 같은 말이라 조회할 때마다 바뀌지 않고, 맵이 다르면 저절로 갈린다. */
-const MAP_SAYS = ["여주인", "안주인", "황녀", "터줏대감", "지배자", "여왕"];
+/* 꼬리말은 왕족 계열만 남긴다(요청: 점수대별로 호칭을 가르고 위쪽은 여왕·퀸·여제·황녀로)
+   — "터줏대감"·"지배자"를 걷었다. 맵 칭호의 무게도 2.5 → 4다(요청: 맵 승수 높은 것은
+   4점대로): 한 맵을 여섯 판 넘게 뛰고 그 대부분을 이겼다는 말이라 가벼운 자리가 아니다. */
+const MAP_SAYS = ["여주인", "안주인", "황녀", "여왕"];
 
 function mapPhrase(name: string): string {
   let h = 0;
@@ -139,6 +142,13 @@ function bestMap(s: MemberStats): { name: string; wins: number } | null {
   return best;
 }
 
+/* 이름 짓는 규칙(요청) — 점수대가 곧 호칭의 격이다.
+     3점대 이상 : 여왕 · 퀸 · 여제 · 황녀 · 여신 · 공주 (왕관 계열)
+     2점대 이하 : 그 말을 쓰지 않는다 — 장인 · 조종사 · 여인 · 머신처럼 격이 낮은 말
+   딱 두 자리는 점수와 무관하게 이 규칙에서 뺀다(요청: 셋방살이 소녀 · 역마살 여인) —
+   남의 집에 얹혀 살고 쫓겨 다닌 이야기라, 거기에 왕관을 씌우면 말이 서로 어긋난다.
+   무게를 고칠 때 이름도 함께 봐야 한다: 점수는 올랐는데 이름이 그대로면 표 안에서 격이
+   서로 어긋나 "왜 이건 퀸이고 저건 아닌가"가 안 읽힌다. */
 /* ── 칭호 표 ──────────────────────────────────────────────────────────────────
    위에 있을수록 먼저 나간다. 차례를 이렇게 잡은 이유:
 
@@ -375,7 +385,7 @@ const TITLES: Title[] = [
      떨어질까 말까 한 것이고, 떨어뜨리려면 고스트를 뽑아 살려 두고 상대 진영까지 데려가
      지목한 뒤 그 자리를 버텨야 한다. 아래 어떤 칭호도 이만큼 드물지 않다.
      (버섯구름 배달부 → 핵 투하 전문가 → 핵보유국 → 엄청난 핵 마스터를 거쳐 온 이름이다.) */
-  spell("핵 버튼의 주인", "Nuclear Strike"),
+  spell("핵 버튼의 여제", "Nuclear Strike"),
 
   /* ── 사람 노릇(요청: 꼭 넣을 것) ────────────────────────────────────────────
      맨 위에 둔다 — 혼자 잘하는 것보다 판을 함께 굴린 쪽이 먼저 불릴 자격이 있다.
@@ -388,9 +398,9 @@ const TITLES: Title[] = [
      스톰·이레디에이트·마인처럼 늘 누르는 것은 여전히 없다 — 많이 썼다는 말이 "그 종족을
      오래 했다"밖에 안 된다(예전 SPELL_WEIGHT의 기준선이 그 무리였다). */
   spell("얼음 공주", "Maelstrom"),
-  spell("거미줄 설계자", "Disruption Web"),
-  spell("시간을 멈추는 자", "Stasis Field"),
-  spell("야마토 한 발", "Yamato Gun"),
+  spell("거미줄의 여왕", "Disruption Web"),
+  spell("시간의 여제", "Stasis Field"),
+  spell("야마토 퀸", "Yamato Gun"),
   /* (삭제) 브루들링 저격수 · 눈을 멀게 하는 자(옵티컬 플레어) · 허깨비 부대장(할루시네이션)
      — 요청으로 뺐다. 셋 다 쓰기 어려운 마법이긴 한데, 그 한 번이 판을 가르는 그림까지는
      아니라 이름만 요란해진다. */
@@ -403,11 +413,11 @@ const TITLES: Title[] = [
   tactic("성벽을 쌓는 여인", ["wall-in"]),
   /* 조이기(요청) — 센터에 탱크를 박아 길목을 잠근 대목이다. 자막에서도 "중앙을 걸어
      잠그고 그 자리를 내주지 않았다"로 말하는 그 수다. */
-  tactic("조이기의 달인", ["center-tank"]),
+  tactic("조이기의 여왕", ["center-tank"]),
   /* 일꾼 견제는 위로 올린다(요청: 일꾼 견제도 강화) — 상대 일꾼을 잡는 일은 병력을 뽑아
      쌓아 두는 것과 달리 그 순간 손이 가야만 되는 것이고, 그 판의 자원 곡선을 실제로
      꺾어 놓는다. 그래서 다른 어떤 전술보다 그 사람의 성향을 잘 말한다. */
-  tactic("집요한 일꾼 사냥꾼", ["harass-workers"], 1),
+  tactic("일꾼 사냥 퀸", ["harass-workers"], 1),
   /* (삭제) 지긋지긋한 견제러(harass-long) — "집요한 일꾼 사냥꾼"과 같은 이야기(견제)를
      다른 말로 한 번 더 부르는 자리였고, 이름도 그 사람이 아니라 당한 쪽의 감상이다. */
   /* 드랍도 같은 무리로 올린다(요청: 견제도 가중치 높이기) — 병력을 실어 상대 뒤로 넘기는
@@ -419,15 +429,15 @@ const TITLES: Title[] = [
      한 유닛을 많이 뽑은 것과 달리, 이쪽은 그 판을 어떤 틀로 굴렸나다. 바이오닉·메카닉·
      목동 저그는 유닛 이름이 아니라 운영 이름이라, 그 말 하나로 그 사람의 판이 그려진다.
      그래서 단일 유닛 칭호(캐리어·저글링 같은 것)보다 위에 둔다. */
-  tactic("바이오닉의 권위자", ["bionic"]),
-  tactic("메카닉을 호령하는 자", ["mech"]),
+  tactic("바이오닉 여제", ["bionic"]),
+  tactic("메카닉의 여왕", ["mech"]),
   {
     /* 목동 저그(요청: 멋진데 안 나온다) — 자막이 이 그림을 짚으려면 한 판에서 저글링 12기·
        울트라 3기·다크스웜이 다 나와야 해서(replayTactics의 moka), 그 조건을 넘긴 판이 적으면
        칭호도 안 나온다. 그래서 자막이 짚은 판이 없으면 그 사람이 그 기간에 뽑은 것으로 대신
        본다 — 울트라와 디파일러를 함께 굴렸다면 그 판들이 곧 목동 저그다.
        값은 둘 중 큰 쪽이라, 자막이 짚은 사람이 늘 앞선다. */
-    label: "공포의 목동저그", weight: 6, pool: 1, edge: 1, scale: "count", race: "저그",
+    label: "목동저그의 여왕", weight: 6, pool: 1, edge: 1, scale: "count", race: "저그",
     why: "목동 저그", unit: "번",
     value: (s) => {
       const byBeat = did(s, "moka") ?? 0;
@@ -447,14 +457,14 @@ const TITLES: Title[] = [
   /* 한 번으로도 자격이 있다 — 남의 집 앞에 건물을 박는 것은 손이 미끄러져서 되는 일이
      아니다(다른 전술의 기본 문턱 2회는 "한 번은 우연"을 거르려는 것이다). */
   tactic("포토러시의 퀸", ["cannon-rush"], 1),
-  tactic("성큰러시의 절대자", ["sunken-rush"], 1),
-  tactic("센포의 지배자", ["center-photon"]),
+  tactic("성큰러시의 여제", ["sunken-rush"], 1),
+  tactic("센포의 여왕", ["center-photon"]),
   /* (삭제) 남의 집 헤집기 장인(base-raid) — 요청. 이름 없는 급습이라 "무엇으로 갔는지"가
      빠진 이야기고, 그 대목은 대개 다른 칭호(드랍·견제·러시)가 이미 말한다. */
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
      자막이 이 수를 부르는 이름(커널)을 그대로 쓴다. */
-  rare("커널 개통사", ["nydus"]),
-  rare("리콜의 마술사", ["recall"]),
+  rare("커널의 여제", ["nydus"]),
+  rare("리콜의 여왕", ["recall"]),
   rare("마음 도둑녀", ["mind-control"]),
   tactic("캐리어를 모으는 여인", ["carrier"]),
   tactic("공포의 독거미 부대", ["lurker"]),
@@ -464,7 +474,7 @@ const TITLES: Title[] = [
      셋을 다 굴렸다는 것은 종족을 넘나들며 '안 보이는 것'이라는 한 가지 수를 계속 골랐다는
      뜻이라, 그 자체가 그 사람의 취향이다. 값은 셋을 합친 수 — 많이 굴린 쪽이 임자다. */
   {
-    label: "보이지 않는 공격", weight: 5, pool: 1, edge: 1, tier: 1, scale: "count",
+    label: "그림자의 여왕", weight: 5, pool: 1, edge: 1, tier: 1, scale: "count",
     why: "다크·레이스·아비터", unit: "기",
     value: (s) => {
       const m = s.buildMix;
@@ -478,7 +488,7 @@ const TITLES: Title[] = [
   },
   tactic("뮤탈 조련사", ["muta"]),
   tactic("무자비한 오버로드 사냥꾼", ["valk-hunt"]),
-  tactic("몰래 배럭의 대가", ["sneak-rax"]),
+  tactic("몰래 배럭 퀸", ["sneak-rax"]),
   tactic("끝없는 저글링 폭풍", ["zling-rush"]),
   tactic("질럿 돌격대장", ["zealot-rush"]),
   tactic("맞러시 승부사", ["duel-rush"]),
@@ -486,9 +496,9 @@ const TITLES: Title[] = [
      기본 진행에 가까워, 두 번 세 번 쌓여도 그 사람을 말해 주지 않는다. 무게를 두 번 내려
      봤지만 결국 다른 칭호가 없는 사람에게만 붙는 자리가 됐다 — 그런 칭호는 없느니만 못하다. */
   rare("다크스웜의 여신", ["swarm"]),
-  rare("감염술사", ["infested"]),
+  rare("감염의 여왕", ["infested"]),
   tactic("가디언 함대 사령관", ["guardian"]),
-  tactic("배틀 퀸", ["bc"]),
+  tactic("배틀크루저 조종사", ["bc"]),
   /* (삭제) 발키리 지휘관(valkyrie) — 위 "무자비한 오버로드 사냥꾼"이 같은 유닛으로 무엇을
      했는지까지 말한다. 뽑았다는 사실만 말하는 쪽을 접는다. */
   /* (삭제) 우리 집 문지기(front-defense) — 뺐다(지적: 입구는 막으라고 있는 것). 제 입구를
@@ -504,15 +514,15 @@ const TITLES: Title[] = [
      의미가 구체적이지 않다). 넷 다 "큰 싸움이 있었다"·"오래 버텼다"처럼 어느 판에나 붙는
      말이라, 그 사람이 무엇을 했는지가 안 남는다. 칭호는 읽는 사람이 "왜 저게 붙었지?" 하고
      표를 다시 보게 만드는 값이어야 하는데, 이런 말은 다시 봐도 짚을 것이 없다. */
-  tactic("맷집 퀸", ["hold-off"]),
+  tactic("소문난 맷집왕", ["hold-off"]),
   tactic("받아치기의 정석", ["counter"]),
   tactic("벽을 부수는 자", ["breakthrough"]),
   /* (삭제) 물러섬 없는 올인의 화신(allin) — 요청. */
-  tactic("째기의 달인", ["greedy-paid"]),
+  tactic("째기의 여왕", ["greedy-paid"]),
   /* 빠른 테크는 아래로 내렸다(지적: 그렇게 중요하진 않다) — 고급 유닛으로 곧장 올라간
      것은 흔한 선택이고, 그 자체로 판이 갈리지도 않는다. 문구도 "테크의 연금술사"에서
      바꿨다(지적: 무슨 말인지 모르겠다) — 빗대지 말고 한 일을 그대로 적는다. */
-  tactic("빠른 테크 신봉자", ["fast-tech"]),
+  tactic("빠른 테크 퀸", ["fast-tech"]),
   /* "배짱의 화신"이었는데 무슨 뜻인지 안 읽힌다는 지적 — 이 키(greedy-build)는 병력 건물
      없이 자원부터 올린 '째기'다. 그 판에서 쓰는 말을 그대로 쓰면 설명이 필요 없다.
      통한 째기(greedy-paid)는 위의 "째기의 달인"이고, 이쪽은 그냥 늘 그렇게 시작하는 사람이다. */
@@ -525,7 +535,7 @@ const TITLES: Title[] = [
        그대로 사실이 된다.
        분당으로 안 나누는 것이 심시티 퀸과의 차이다 — 그쪽은 '손이 빠른가'이고 이쪽은
        '얼마나 지었나'다. 대신 남들 절반은 뛰었어야 후보다(LEAD_PLAYS_SHARE). */
-    label: "건축왕", weight: 4, why: "지은 건물", unit: "채",
+    label: "건축 여왕", weight: 4, why: "지은 건물", unit: "채",
     value: (s) => {
       const b = s.buildMix?.buildings;
       if (!b) return null;
@@ -534,26 +544,26 @@ const TITLES: Title[] = [
     },
   },
   /* 상대보다 일꾼을 훨씬 많이 굴린 대목(worker-gap) — 자원을 많이 캤다는 말이다. */
-  tactic("자원 부자", ["worker-gap"]),
-  tactic("쉼 없는 생산 공장장", ["prod-gap"]),
+  tactic("자원의 여왕", ["worker-gap"]),
+  tactic("쉼 없는 생산 여왕", ["prod-gap"]),
   /* (삭제) 병력 사재기 — 뺐다(요청). "많이 모았다"는 시간을 들이면 누구나 닿는 값이고,
      그 병력으로 무엇을 했는지는 말해 주지 않는다. 물량 자체는 '물량퀸'이 이미 잰다. */
   /* (삭제) 업그레이드 여제(upgrade-signature) — 아래 "풀업 신봉자"가 같은 것을 수치로
      재고 있다. 자막에 그 대목이 잡혔나보다 실제 공/방 단계가 정확하다. */
-  tactic("지구전의 화신", ["long-run"]),
+  tactic("지구전의 여왕", ["long-run"]),
   /* (삭제) 끝까지 버티는 사람(late-hold) — "지구전의 화신"(장기전)과 겹친다. 오래 버텼다는
      말은 한 번이면 된다. */
   /* (삭제) 좀비 모드(revival) — 무너졌다 일어난 판이라는 뜻인데 이름만 보고는 그게 안
      읽힌다(뜻이 불분명한 말은 뺀다는 그동안의 기준). */
-  rare("역마살 퀸", ["relocate"]),
+  rare("역마살 여인", ["relocate"]),
   /* 본진을 잃고 아군 기지에 얹혀산 대목(lodging) — 흔치 않은 데다 그 판을 통째로 말하는
      그림이라 무게를 높였다(요청). 진 이야기가 아니라 끝까지 앉아 있었다는 이야기다. */
-  rare("셋방살이 전문가", ["lodging"]),
+  rare("셋방살이 소녀", ["lodging"]),
   /* (삭제) 건물 띄우기(lift-off)로 짓던 "공중부양 마스터" — 뺐다(지적). 이 키는 자리를
      다 내주고 건물만 띄워 쫓겨 다닌 대목이라, 버틴 이야기로 넣었지만 칭호로 굳으면
      "집을 잃은 사람"이라는 딱지로 읽힌다. 자막에서 한 번 지나가는 말과, 이름 아래
      늘 붙어 있는 말은 무게가 다르다. */
-  rare("노엘을 외치는 자", ["no-elim"]),
+  rare("노엘 퀸", ["no-elim"]),
   /* (삭제) 프로를 닮았다는 이야기(pro-like) — 뺐다(지적: 별로 의미가 안 된다).
      자막에서는 "○○ 못지않은 △△"처럼 누구를 닮았는지가 함께 나와야 뜻이 서는 말인데,
      칭호가 세는 것은 문장 틀 키뿐이라 그 이름이 빠진다. 이름 없는 "프로 스타일"은
@@ -563,7 +573,7 @@ const TITLES: Title[] = [
   {
     // 말 전체를 name이 만든다(위 mapPhrase) — 맵마다 다른 꼬리가 붙어야 해서다.
     label: "{n}",
-    pool: 1, edge: 1, weight: 2.5, why: "그 맵 승수", unit: "승",
+    pool: 1, edge: 1, weight: 4, why: "그 맵 승수", unit: "승",
     value: (s) => bestMap(s)?.wins ?? null,
     name: (s) => { const best = bestMap(s); return best ? mapPhrase(best.name) : null; },
   },
@@ -583,7 +593,7 @@ const TITLES: Title[] = [
   /* (삭제) 기본기의 사람(병력 중 기본 유닛 비율) — 요청. */
   /* (삭제) 땅에서 사는 사람 — 병력의 97%가 지상이라는 말은 "공중을 안 쓴다"는 결핍이다.
      '그것밖에 안 한다'는 말을 걷은 것과 같은 이유다(요청). */
-  { label: "물량퀸", weight: 2.5, why: "분당 뽑은 기수", unit: "기", value: (s) => (s.buildMix ? perMin(s.buildMix.coreUnit, s.mixSeconds) : null) },
+  { label: "물량 머신", weight: 2.5, why: "분당 뽑은 기수", unit: "기", value: (s) => (s.buildMix ? perMin(s.buildMix.coreUnit, s.mixSeconds) : null) },
   { label: "번개같은 손놀림", weight: 2.5, why: "APM", unit: "", value: (s) => s.avgApm },
   /* (삭제) 하늘의 여전사(병력 중 공중 비중) — 요청. */
   {
@@ -608,16 +618,16 @@ const TITLES: Title[] = [
     /* 방어 건물(포토·성큰·터렛·벙커)을 유독 많이 올린 사람(요청: 철옹성 퀸).
        "철벽의 수호자" → "방어탑 사랑꾼"을 거쳐 온 이름이다 — 재는 것은 '잘 막았다'가 아니라
        '지은 건물 중 방어 건물의 비중'이고, 막아냈는지 아닌지는 리플레이가 말해 주지 않는다. */
-    label: "차가운 철옹성의 여왕", weight: 1.5, why: "건물 중 방어 건물 비중", unit: "",
+    label: "차가운 철옹성", weight: 1.5, why: "건물 중 방어 건물 비중", unit: "",
     value: (s) => (s.buildMix ? share(s.buildMix.bDef, s.buildMix.bProd, 20) : null),
     min: 0.12,
   },
   /* 무게를 2 → 1.2로 내렸다(요청) — 초반 일꾼은 그 판의 빌드가 정하는 값에 가깝다.
      같은 종족·같은 빌드면 누구나 비슷하게 나오므로, 1등이라고 그 사람을 말해 주는 몫이
      다른 칭호들보다 작다. */
-  { label: "일꾼 뽑기 퀸", weight: 1.2, why: "초반 5분 일꾼", unit: "기", value: (s) => s.avgWorker5 },
+  { label: "일꾼 공장", weight: 1.2, why: "초반 5분 일꾼", unit: "기", value: (s) => s.avgWorker5 },
   /* 건물을 제일 많이 올린 사람(요청: 심시티 퀸) — "쉴 새 없이 짓는 자"에서 바꿨다. 재는 값은 그대로 분당 지은 채수다. */
-  { label: "심시티 퀸", weight: 1.5, why: "분당 지은 채수", unit: "채", value: (s) => (s.buildMix ? perMin(s.buildMix.coreBuild, s.mixSeconds) : null) },
+  { label: "심시티 장인", weight: 1.5, why: "분당 지은 채수", unit: "채", value: (s) => (s.buildMix ? perMin(s.buildMix.coreBuild, s.mixSeconds) : null) },
   {
     label: "풀업녀", weight: 1.5, why: "공/방 평균 단계", unit: "",
     value: (s) => {
@@ -653,7 +663,7 @@ const TITLES: Title[] = [
        세 종족을 고르게 굴린 사람이 한 종족에 치우친 사람보다 앞선다. */
     /* 값이 '판마다 세는 수'가 아니라 종족의 가짓수라, 판수 대비 문턱을 안 받는다
        (minPlaysShare: 0) — 마흔 판 뛴 사람에게 종족 세 개를 요구하는 셈이 된다. */
-    label: "팔색조 퀸", weight: 1.2, pool: 1, edge: 1, min: 2, scale: "count",
+    label: "팔색조 여인", weight: 1.2, pool: 1, edge: 1, min: 2, scale: "count",
     minPlaysShare: 0, why: "고루 쓴 종족", unit: "개",
     value: (_s, of) => {
       const played = Object.values(of.races ?? {})
@@ -708,7 +718,7 @@ const TITLES: Title[] = [
     label: "승리의 여신", weight: 9, sticky: true, min: 70, why: "승률", unit: "%",
     value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null),
   },
-  { label: "BEST 수집가", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
+  { label: "BEST 퀸", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
   { label: "쉬지 않는 손가락", weight: 2, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
   { label: "스타 게이 트 NPC", weight: 3, sticky: true, why: "게임 수", unit: "판", value: (s) => s.plays },
 ];
@@ -734,9 +744,9 @@ const sub = (w: string) => (hasFinal(w) ? "은" : "는");
 /* 종족마다 부르는 말이 따로다(요청: 저그의 절대군주 · 프로토스의 전설 · 테란의 영웅) —
    셋뿐이라 표 하나면 되고, 그편이 종족의 색을 살린다. 여기 없는 값은 무난한 말로 받는다. */
 const RACE_SAYS: Record<string, string> = {
-  저그: "저그의 절대군주",
-  프로토스: "프로토스의 전설",
-  테란: "테란의 영웅",
+  저그: "저그의 여왕",
+  프로토스: "프로토스의 여제",
+  테란: "테란의 황녀",
 };
 const racePhrase = (race: string): string => RACE_SAYS[race] ?? `${race}${sub(race)} 나의 것`;
 
