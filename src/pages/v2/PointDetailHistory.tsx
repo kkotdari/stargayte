@@ -24,6 +24,9 @@ interface PointDetailHistoryProps {
   deltaByMatchNo: Map<string, number>;
   // 팀전 이력이면 "우리팀 대 상대팀"을 함께 보여준다(요청) — 개인전이면 "VS 상대 + 승패"만.
   bothTeams?: boolean;
+  /** 레이팅을 아예 안 적는다(요청: 래더 상세 이력은 결과만) — Δ도 "레이팅 제외"도 없이
+   *  승패까지만. 포인트 상세는 레이팅이 주제라 기본값(false) 그대로다. */
+  noRating?: boolean;
 }
 
 // 경기당 레이팅 변화 병기용 — 양수엔 +를 붙이고(음수는 자연히 -), 0도 그대로.
@@ -91,7 +94,7 @@ function groupByDate(rows: HistoryRow[]): DateGroup[] {
 // 레이팅 변화(Δ)"만 결과 위주로 보여준다(요청: "아예 홈팀을 빼고 vs 팀구성 승패 ... 진짜
 // 결과만"). Δ는 서버가 시간순 재생으로 계산한 이 회원의 그 경기 μ 증감이다.
 export default function PointDetailHistory({
-  gameResults, members, memberOf, loading, deltaByMatchNo, bothTeams = false,
+  gameResults, members, memberOf, loading, deltaByMatchNo, bothTeams = false, noRating = false,
 }: PointDetailHistoryProps) {
   const protagonistIds = new Set(members.map((m) => m.id));
   const groups = groupByDate(toHistoryRows(gameResults, protagonistIds));
@@ -109,10 +112,10 @@ export default function PointDetailHistory({
                 "7월 28일 (화)". */}
             <div className="scr-game-result-date-head scr-game-result-date-head-compact">{formatWhen(g.date)}</div>
             {g.items.map((r) => {
-              const dLabel = deltaLabel(deltaByMatchNo.get(r.matchNo));
+              const dLabel = noRating ? undefined : deltaLabel(deltaByMatchNo.get(r.matchNo));
               // Δ가 안 왔는데 컴퓨터·비회원이 껴 있으면 "레이팅 제외"로 이유를 밝힌다 —
               // 그 밖의 이유(아직 집계 전 등)로 없는 경우는 예전처럼 아무것도 안 보여준다.
-              const excluded = !dLabel && isExcludedFromRating(r);
+              const excluded = !noRating && !dLabel && isExcludedFromRating(r);
               // 팀전: 우리팀 대 상대팀을 그대로 보여주고, 이 회원의 경기당 Δ를 카드 아래 로우에.
               // 개인전: "VS 상대 + 승패 + Δ"만.
               return bothTeams ? (

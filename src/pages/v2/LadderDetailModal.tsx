@@ -4,13 +4,13 @@ import { X } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
 import Select from "../../components/common/Select";
 import { Spinner } from "../../components/common/Feedback";
-import GameResultTeams from "../../components/common/GameResultTeams";
+import PointDetailHistory from "./PointDetailHistory";
 import { api } from "../../api/client";
 import { rankOf } from "./rankOrder";
 import { useAppStore } from "../../store/appStore";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { currentMonthValue, monthInputToRange, shiftMonthValue } from "../../utils/date";
-import type { GameOutcome, GameResult, GameResultSlot, GameType, Member } from "../../types";
+import type { GameResult, GameType, Member } from "../../types";
 
 /* 래더 한 줄을 눌렀을 때 뜨는 상세(요청: 프로필이 아니라 예전 랭킹 상세처럼) —
    위엔 "래더 순위 변동"(최근 몇 달의 순위 그래프), 아래엔 "래더 이력"(그 회원의 개인전
@@ -25,6 +25,8 @@ const LADDER_TYPE: GameType = "0101";
  *  받는 자리라 여는 값이 그대로 늘어난다. */
 const TREND_MONTHS = 5;
 const HISTORY_LIMIT = 100;
+/** 레이팅을 안 적는 이력이라 Δ는 늘 빈 지도다 — 렌더마다 새로 만들지 않게 밖에 둔다. */
+const EMPTY_DELTAS = new Map<string, number>();
 
 // 그래프 좌표계 — 옛 랭킹 상세의 값 그대로다(주석까지 그쪽 참고).
 const W = 300;
@@ -50,31 +52,9 @@ async function rankAt(month: string, poolIds: string[], memberId: string): Promi
   return rankOf(byId, poolIds).get(memberId) ?? null;
 }
 
-interface HistoryRow {
-  id: number;
-  date: string;
-  team1: GameResultSlot[];
-  team2: GameResultSlot[];
-  result: GameOutcome;
-}
-
-/** 주인공이 어느 편이었든 team1=주인공이 되게 뒤집는다 — 이력은 "VS 상대 + 승패"만
- *  보여주므로(옛 랭킹 상세와 같은 꼴) 승패가 주인공 기준이라야 한다. */
-function toHistoryRows(items: GameResult[], memberId: string): HistoryRow[] {
-  return items.map((m) => {
-    const onTeam1 = m.team1.some((s) => s.memberId === memberId);
-    const swap = !onTeam1 && m.team2.some((s) => s.memberId === memberId);
-    const result: GameOutcome = swap
-      ? (m.result === "team1" ? "team2" : m.result === "team2" ? "team1" : m.result)
-      : m.result;
-    return {
-      id: m.id, date: m.date,
-      team1: swap ? m.team2 : m.team1,
-      team2: swap ? m.team1 : m.team2,
-      result,
-    };
-  });
-}
+/* 정규화(주인공을 team1로)와 날짜 묶기는 PointDetailHistory가 한다 — 포인트 상세와 같은
+   부품이라야 두 상세가 같은 꼴로 보인다(처음에 손으로 그렸다가 클래스가 옛 이름이라 통째로
+   깨졌다 — 지적: 하나도 안 맞고 안 이쁘다). */
 
 export default function LadderDetailModal({
   member, poolIds, period, firstMonth, onClose,
@@ -144,7 +124,7 @@ export default function LadderDetailModal({
     return out;
   }, [firstMonth]);
 
-  const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [history, setHistory] = useState<GameResult[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyErr, setHistoryErr] = useState("");
   useEffect(() => {
@@ -156,7 +136,7 @@ export default function LadderDetailModal({
       teamMemberIds: [member.id], matchType: LADDER_TYPE, sort: "latest",
       dateFrom: range.from, dateTo: range.to, limit: HISTORY_LIMIT,
     })
-      .then((page) => { if (!cancelled) setHistory(toHistoryRows(page.items, member.id)); })
+      .then((page) => { if (!cancelled) setHistory(page.items); })
       .catch((e) => {
         if (!cancelled) setHistoryErr(e instanceof Error ? e.message : "경기를 불러오지 못했어요.");
       })
@@ -227,23 +207,11 @@ export default function LadderDetailModal({
               />
             </div>
             {historyErr && <div className="scr-err">{historyErr}</div>}
-            <div className="scr-match-list-panel-v2">
-              {history.length === 0 && (
-                <div className="scr-empty">{historyLoading ? <Spinner size={18} /> : "표시할 경기가 없어요."}</div>
-              )}
-              <div className="scr-match-cards">
-                {history.map((r) => (
-                  <div key={r.id} className="scr-match-card">
-                    {/* 결과만 적는다(요청: 레이팅 X) — 옛 랭킹 상세가 달던 경기당 Δ(outcomeNote)
-                        자리를 아예 안 쓴다. */}
-                    <GameResultTeams
-                      team1={r.team1} team2={r.team2} memberOf={memberOf} result={r.result}
-                      disableProfileLink stackedOutcome compact opponentOnly textRoster
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
+            {/* 결과만 적는다(요청: 레이팅 X) — noRating이 Δ와 "레이팅 제외"를 함께 끈다. */}
+            <PointDetailHistory
+              gameResults={history} members={[member]} memberOf={memberOf}
+              loading={historyLoading} deltaByMatchNo={EMPTY_DELTAS} noRating
+            />
           </div>
         </div>
       </div>

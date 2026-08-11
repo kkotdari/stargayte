@@ -11806,9 +11806,18 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 줄 전체가 래더 상세로 가는 문이다(요청) — 손가락이 갈 수 있는 곳이라는 표시만 한다.
    hover 배경까지 깔지는 않는다: 제 줄 표시(scr-stat-row-me)의 옅은 판과 겹치면 탁해진다. */
 .scr-ladder-row-click { cursor: pointer; }
-/* 래더 상세의 이력 머리 — 소제목과 월 필터가 한 줄을 나눠 쓴다(요청: 이력엔 월 필터). */
+/* 소제목 — 옛 랭킹 상세의 규칙이 CSS에서 걷혀 있어(화면 폐기 때 함께) 여기서 다시 세운다.
+   글자가 규칙 없이 흐르면 제목이 본문과 같은 무게로 읽힌다(지적: 하나도 안 맞는다). */
+.scr-rank-detail-section-head {
+  font-size: var(--fs-caption); font-weight: 700; color: var(--muted);
+  margin-bottom: 8px; white-space: nowrap;
+}
+/* 래더 상세의 이력 머리 — 소제목과 월 필터가 한 줄을 나눠 쓴다(요청: 이력엔 월 필터).
+   제목이 세로로 접히지 않게(지적: "래더 이력"이 한 글자씩 세로로 섰다) 제목은 안 줄어들고,
+   필터는 제 폭만 갖는다 — Select가 기본으로 판 폭을 다 먹으려 해서 못을 박는다. */
 .scr-ladder-history-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.scr-ladder-history-month { flex: 0 0 auto; }
+.scr-ladder-history-head > span { flex: 1 1 auto; }
+.scr-ladder-history-month { flex: 0 0 auto; width: 112px; }
 
 /* 유저 칸 — 프사와 닉네임이 한 줄. 통계표처럼 sticky로 고정할 이유가 없다(가로 스크롤이
    없다) — 그래서 배경도 따로 안 깐다. */

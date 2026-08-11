@@ -956,6 +956,24 @@ function denomOf(title: Title, of: EpithetSubject): number {
    만들어 등급(전설·에픽·일반)별로 늘어놓던 자리다. 안내 모달이 짧은 설명만 남기면서
    (요청: 목록 제거) 부르는 곳이 없어졌다. 되살릴 일이 있으면 이 커밋을 되짚으면 된다. */
 
+/** 자격 한 줄(현황 파악용) — 나눠 주기 전, 그 사람이 조건을 넘은 칭호 하나. */
+export interface EpithetClaimRow {
+  memberId: string;
+  label: string;
+  why: string;
+  /** 겨룰 점수 — 현황 창이 이 순서로 늘어놓는다(맨 위가 실제로 받는 칭호다). */
+  score: number;
+  /** 무조건 우선(승률·종족 승률·게임 수 1위) — 점수와 무관하게 맨 앞이다. */
+  sticky: boolean;
+}
+
+/** 마지막 계산의 자격 전부 — epithetsOf가 돌 때마다 갈아 끼운다. 화면(칭호 현황)이 계산
+ *  직후에 읽는 값이라 모듈 변수 하나면 충분하다. */
+let lastClaims: EpithetClaimRow[] = [];
+export function lastEpithetClaims(): EpithetClaimRow[] {
+  return lastClaims;
+}
+
 /** 회원 → 칭호. 왕관은 넘겨받은 무리 안에서만 매기므로, 부르는 쪽이 '검색에 걸린 목록'이
  *  아니라 '그 조건의 회원 전체'를 넘겨야 한다(메달과 같은 원칙) — 이름을 검색했다고 칭호가
  *  옮겨 다니면 그건 기록이 아니라 화면 효과다. */
@@ -1077,34 +1095,41 @@ export function epithetsOf(pool: EpithetSubject[]): Map<string, Epithet> {
   claims.sort((a, b) =>
     (a.rank - b.rank)
     || (b.score - a.score) || (a.order - b.order) || a.id.localeCompare(b.id));
-  for (const c of claims) {
-    if (out.has(c.id) || used.has(c.label)) continue;
-    /* 근거를 함께 남긴다(지적: "왜 이 칭호가 나오지?") — 칭호는 기록에서 나온다고 말은
-       하는데 정작 그 기록을 볼 길이 없었다. 화면은 이 문장을 툴팁·글자로 보여 준다.
-       수는 소수점을 안 적는다: 비율 칭호(0.42)까지 그대로 적으면 무슨 값인지 되레 헷갈린다. */
+  /* 근거를 함께 남긴다(지적: "왜 이 칭호가 나오지?") — 칭호는 기록에서 나온다고 말은
+     하는데 정작 그 기록을 볼 길이 없었다. 화면은 이 문장을 툴팁·글자로 보여 준다.
+     수는 소수점을 안 적는다: 비율 칭호(0.42)까지 그대로 적으면 무슨 값인지 되레 헷갈린다. */
+  const whyOf = (c: Claim): string => {
     const shown = c.raw >= 10 || Number.isInteger(c.raw)
       ? `${Math.round(c.raw)}`
       : `${Math.round(c.raw * 100)}%`;
-    out.set(c.id, {
-      label: c.label,
-      // 꼬리는 무엇을 잰 값이냐에 따라 다르다 — 횟수는 '최다', 승률·비중은 '1위'가 맞는 말이다.
-      /* 횟수 칭호는 '몇 판 중 몇 번'까지 적는다(요청: 테란 경기 중 건물 띄우기 10% 이런
-         식으로) — 세 번이라는 수만으로는 그게 그 사람의 버릇인지 어쩌다 한 번인지가 안
-         갈린다. 분모는 문턱을 잰 그 판수 그대로다(종족 칭호면 그 종족 판수). */
-      why: `${c.title.won ? "이긴 판에서 " : ""}${c.title.why ?? "기록"} ${shown}${c.title.unit ?? ""}`
-        /* '번'으로 세는 칭호만이다 — 종족 가짓수(개)처럼 판마다 세는 값이 아닌 것에
-           비율을 붙이면 뜻이 없는 수가 된다. 한 판에 여러 번 나오는 수(핵)도 비율이
-           100%를 넘으므로 그때는 횟수만 적는다. */
-        + (c.title.scale === "count" && c.title.unit === "번" && c.denom > 0 && c.raw <= c.denom
-          ? ` — ${c.title.race ? `${c.title.race} ` : ""}${c.denom}판 중 ${Math.round((c.raw / c.denom) * 100)}%`
-          : "")
-        + (c.first
-          ? (c.title.scale === "count" ? " · 클럽 최다" : " — 클럽 1위")
-          // 물려받은 자리는 그 사실을 밝힌다 — 1위가 다른 칭호로 갔다는 뜻이다.
-          : (c.title.name ? "" : " · 클럽 2위")),
-    });
+    // 꼬리는 무엇을 잰 값이냐에 따라 다르다 — 횟수는 '최다', 승률·비중은 '1위'가 맞는 말이다.
+    /* 횟수 칭호는 '몇 판 중 몇 번'까지 적는다(요청: 테란 경기 중 건물 띄우기 10% 이런
+       식으로) — 세 번이라는 수만으로는 그게 그 사람의 버릇인지 어쩌다 한 번인지가 안
+       갈린다. 분모는 문턱을 잰 그 판수 그대로다(종족 칭호면 그 종족 판수). */
+    return `${c.title.won ? "이긴 판에서 " : ""}${c.title.why ?? "기록"} ${shown}${c.title.unit ?? ""}`
+      /* '번'으로 세는 칭호만이다 — 종족 가짓수(개)처럼 판마다 세는 값이 아닌 것에
+         비율을 붙이면 뜻이 없는 수가 된다. 한 판에 여러 번 나오는 수(핵)도 비율이
+         100%를 넘으므로 그때는 횟수만 적는다. */
+      + (c.title.scale === "count" && c.title.unit === "번" && c.denom > 0 && c.raw <= c.denom
+        ? ` — ${c.title.race ? `${c.title.race} ` : ""}${c.denom}판 중 ${Math.round((c.raw / c.denom) * 100)}%`
+        : "")
+      + (c.first
+        ? (c.title.scale === "count" ? " · 클럽 최다" : " — 클럽 1위")
+        // 물려받은 자리는 그 사실을 밝힌다 — 1위가 다른 칭호로 갔다는 뜻이다.
+        : (c.title.name ? "" : " · 클럽 2위"));
+  };
+  for (const c of claims) {
+    if (out.has(c.id) || used.has(c.label)) continue;
+    out.set(c.id, { label: c.label, why: whyOf(c) });
     used.add(c.label);
   }
+  /* 현황 파악용 갈무리(요청: 관리자 칭호 현황은 저장된 하나가 아니라 그 사람이 자격을 얻은
+     칭호 전부) — 나눠 주기 전의 자격(claims)을 점수순 그대로 담아 둔다. 한 사람이 여러
+     칭호에 걸렸는지, 어떤 칭호를 다른 임자에게 내줬는지가 여기서만 보인다. 계산이 이미 다
+     끝난 값이라 담는 데 드는 것이 없고, 저장(서버 보고)과는 무관하다. */
+  lastClaims = claims.map((c) => ({
+    memberId: c.id, label: c.label, why: whyOf(c), score: c.score, sticky: c.rank === 0,
+  }));
 
   /* (삭제) 표에서 아무것도 못 받은 사람에게 제 기록으로 별명을 지어 주던 대목 — 위
      '특징' 주석대로 통째로 걷었다(요청). 여기까지 와서 이름이 없으면 화면이 그 자리를
