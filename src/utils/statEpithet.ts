@@ -266,6 +266,7 @@ const TACTIC_NOUN: Record<string, string> = {
   expand: "확장", "worker-gap": "일꾼 격차", "prod-gap": "생산 격차", "mass-army": "대군",
   "upgrade-signature": "업그레이드", "long-run": "장기전", "late-hold": "후반 수비",
   revival: "재기", relocate: "이사", lodging: "셋방살이", "no-elim": "노엘",
+  fallen: "먼저 탈락",
 };
 
 /* 최소 횟수를 1로 둔다(지적: 전술 칭호가 잘 안 나온다) — 2를 기본으로 두던 것은 "한 번은
@@ -319,7 +320,7 @@ const TITLES: Title[] = [
      본다 — replayTactics의 WALL_IN_GROW_MIN). 그래서 칭호도 막은 쪽이 아니라 그다음을
      부른다. "후반 도모 퀸"에서 바꿨다(지적: 개성적이지 않다) — 그 말은 어느 운영에나 붙는
      설명이라, 정작 이 수의 그림(문을 잠가 놓고 뒤에서 살림을 불린다)이 안 보였다. */
-  tactic("문 잠그고 크는 퀸", ["wall-in"]),
+  tactic("성벽을 쌓는 여인", ["wall-in"]),
   /* 조이기(요청) — 센터에 탱크를 박아 길목을 잠근 대목이다. 자막에서도 "중앙을 걸어
      잠그고 그 자리를 내주지 않았다"로 말하는 그 수다. */
   tactic("조이기의 달인", ["center-tank"]),
@@ -424,7 +425,7 @@ const TITLES: Title[] = [
   tactic("지구전의 화신", ["long-run"]),
   tactic("끝까지 버티는 사람", ["late-hold", "late-defense", "stand"]),
   rare("좀비 모드", ["revival"]),
-  rare("이사 퀸", ["relocate"]),
+  rare("역마살 퀸", ["relocate"]),
   /* 본진을 잃고 아군 기지에 얹혀산 대목(lodging) — 흔치 않은 데다 그 판을 통째로 말하는
      그림이라 무게를 높였다(요청). 진 이야기가 아니라 끝까지 앉아 있었다는 이야기다. */
   rare("셋방살이 전문가", ["lodging"]),
@@ -523,6 +524,33 @@ const TITLES: Title[] = [
       const n = Object.values(m.upCounts ?? {}).reduce((a, b) => a + b, 0);
       if (n <= 0) return null;
       return Object.values(m.ups ?? {}).reduce((a, b) => a + b, 0) / n;
+    },
+  },
+
+  /* ── 위로상(요청: 좋은 칭호는 한 사람에게 몰리니 중·하위권을 위한 자리도) ────────────
+     무게를 낮게 둔다(1 안팎) — 왕관을 받을 만한 사람에게는 절대 안 붙고, 아무것도 못 받은
+     사람에게만 남는 자리다. 그래도 사실에서 나온 말이라 놀림이 아니라 그 사람의 이야기다. */
+  {
+    /* 먼저 판에서 사라진 횟수 — 리플레이에 남는 탈락(Leave Game)이라 짐작이 아니다.
+       지는 이야기지만 놀리는 말은 아니다: 팀전에서 제일 먼저 노려지는 자리는 대개 잘하는
+       사람이거나 앞에 선 사람이다. */
+    label: "비련의 여조연", weight: 1, pool: 1, edge: 1, scale: "count",
+    why: "경기 요약에 먼저 탈락", unit: "번",
+    value: (s) => did(s, "fallen"),
+  },
+  {
+    /* 종족을 두루 쓰는 사람 — 한 종족만 파는 사람이 대부분이라 그 자체가 특징이다.
+       값은 '충분히 뛴 종족의 수'이고, 같으면 그중 가장 적게 쓴 종족의 판수로 갈린다:
+       세 종족을 고르게 굴린 사람이 한 종족에 치우친 사람보다 앞선다. */
+    label: "팔색조 퀸", weight: 1.2, pool: 1, edge: 1, min: 2, scale: "count",
+    why: "고루 쓴 종족", unit: "개",
+    value: (_s, of) => {
+      const played = Object.values(of.races ?? {})
+        .map((st) => st?.plays ?? 0)
+        .filter((n) => n >= MIN_PLAYS_MODE);
+      if (played.length < 2) return null;
+      // 종족 수가 같으면 가장 적게 쓴 종족의 판수가 크는 쪽이 이긴다(0.001은 그 잣대의 자리).
+      return played.length + Math.min(...played) * 0.001;
     },
   },
 
