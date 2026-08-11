@@ -1000,6 +1000,15 @@ function denomOf(title: Title, of: EpithetSubject): number {
   return of.stats.plays;
 }
 
+/** 같은 자리의 '이긴 판수' — 근거 문장이 쓴다(요청: 저그 승리게임 중 몇 %).
+ *  문턱은 여전히 전체 판수(denomOf)로 잰다: 그 비율들은 전체 판 기준으로 맞춰 온 값이라
+ *  분모를 바꾸면 쉰 칭호의 문턱이 한꺼번에 헐거워진다. 근거는 읽는 사람이 뜻을 잡는 자리라
+ *  '이긴 판 중 몇 판'이 맞고, 문턱은 튜닝된 잣대를 지킨다 — 서로 다른 질문이다. */
+function winsOf(title: Title, of: EpithetSubject): number {
+  if (title.race) return of.races?.[title.race]?.wins ?? of.stats.wins;
+  return of.stats.wins;
+}
+
 /* (삭제) 칭호 안내 목록(EpithetGuideRow·epithetGuideRows·EpithetRank) — 표에서 쉰 줄을
    만들어 등급(전설·에픽·일반)별로 늘어놓던 자리다. 안내 모달이 짧은 설명만 남기면서
    (요청: 목록 제거) 부르는 곳이 없어졌다. 되살릴 일이 있으면 이 커밋을 되짚으면 된다. */
@@ -1122,8 +1131,10 @@ export function epithetsOf(
     band: number;
     /** 성취도 — 조건을 얼마나 크게 넘겼나. 같은 동점대 안의 2차 기준이다(요청). */
     reach: number;
-    /** 이 값을 잰 판수 — 종족 칭호면 그 종족 판수다. 근거 문장의 '몇 판 중 몇 %'가 쓴다. */
+    /** 이 값을 잰 판수 — 종족 칭호면 그 종족 판수다. 문턱(minPlaysShare)이 쓰는 분모다. */
     denom: number;
+    /** 같은 자리의 이긴 판수 — 근거 문장의 '승리게임 몇 %'가 쓴다(winsOf 주석). */
+    wonDenom: number;
   }
   const claims: Claim[] = [];
   TITLES.forEach((title, order) => {
@@ -1173,7 +1184,7 @@ export function epithetsOf(
         ? (denomPlays > 0 ? v / denomPlays : v)
         : (title.min ? v / title.min : 1);
       claims.push({
-        title, id: p.id, label, raw: v, denom: denomPlays,
+        title, id: p.id, label, raw: v, denom: denomPlays, wonDenom: winsOf(title, p),
         /* 동점대 — 칭호의 갈래 그대로다(요청: 비슷한 칭호끼리 묶고 그 안에서는 얼마나
            강하게 만족했나로 가른다). 한때 점수에서 뽑았는데(반올림(점수÷3)) 그건 갈래를
            점수로 흉내 낸 것이라, 실제로는 54개 중 43개가 한 칸에 쏟아졌다 — 전술(4)과
@@ -1203,27 +1214,29 @@ export function epithetsOf(
       : c.raw >= 10 || Number.isInteger(c.raw)
         ? `${Math.round(c.raw)}`
         : `${Math.round(c.raw * 10) / 10}`;
-    /* 횟수 칭호는 한 문장으로 적는다(지적: "이긴 판에서 뮤탈 견제 4번 — 저그 28판 중 14%"는
-       설명이 아니다) — 세 토막이 대시로 이어져 있어 28판이 저그 전체인지 이긴 판인지부터
-       안 읽혔다. 잰 자리(분모)를 앞에 세우고 한 문장으로 잇는다:
-         "저그 28판 중 이긴 4판(14%)에서 뮤탈 견제"
-       분모는 문턱을 잰 그 판수 그대로다 — 종족 칭호면 그 종족 판수이고, 이긴 판만이 아니다.
-       분자만 이긴 판을 세므로 그 사실은 '이긴 n판에서'가 밝힌다(요청: 저그로 승리한 게임
-       중 어쩌구 하는 식으로). 꼬리말로 "…로 승리"·"사용 및 승리"를 달아 봤지만 둘 다 걷었다
-       (지적: 뮤탈로 이긴 건 확실하지 않다) — 이 표가 아는 것은 "이긴 판에 그 수가 있었다"
-       까지이고, 그 수가 이겨 준 것인지는 세지 않는다. 문장이 그보다 더 말하면 안 된다.
-       마법 칭호(perUse)는 한 판에 여러 번 나올 수 있어 판수로 못 부른다 — "핵 2번"으로
-       적고 비율은 괄호에 남긴다. */
+    /* 근거는 "무엇을 몇 판에서 했나 (어느 무리의 몇 %인가)"다(요청) —
+         뮤탈 견제 2판 (저그 승리게임 50%)
+       분모가 무리마다 다르다: 이긴 판만 세는 수(전술·마법)는 그 종족의 이긴 판이 무리이고,
+       져도 세는 수(GG·이사)는 전체 판이 무리다. 세는 자리와 견주는 자리가 같아야 "50%"가
+       무슨 말인지 읽힌다 — 한때 이긴 판 수를 전체 판수로 나눠 적어서(4번 — 저그 28판 중
+       14%), 28판이 저그 전체인지 이긴 판인지부터 안 잡혔다.
+       문턱은 그대로 전체 판수로 잰다(winsOf 주석) — 근거는 뜻을 알리는 자리이고 문턱은
+       맞춰 온 잣대다.
+       마법 칭호(perUse)는 한 판에 여러 번 나올 수 있어 판수로 못 부른다 — "핵 사용 3번"으로
+       적고, 견준 무리는 판수 그대로 밝힌다. */
     const what = (c.title.why ?? "기록").replace(/^게임에서 /, "");
-    const pool = `${c.title.race ? `${c.title.race} ` : ""}${c.denom}판 중`;
-    const countable = c.title.scale === "count" && c.title.unit === "번" && c.denom > 0;
-    if (countable && c.raw <= c.denom && !c.title.perUse) {
-      const pct = Math.round((c.raw / c.denom) * 100);
-      return `${pool} ${c.title.won ? "이긴 " : ""}${Math.round(c.raw)}판(${pct}%)에서 ${what}`;
-    }
+    const countable = c.title.scale === "count" && c.title.unit === "번";
     if (countable) {
-      const pct = Math.round((c.raw / c.denom) * 100);
-      return `${pool} ${c.title.won ? "이긴 판에서 " : ""}${what} ${Math.round(c.raw)}번(${pct}%)`;
+      // 이긴 판만 세는 수는 이긴 판이 무리, 아니면 전체 판이 무리다.
+      const pool = c.title.won ? c.wonDenom : c.denom;
+      const poolName = `${c.title.race ? `${c.title.race} ` : ""}${c.title.won ? "승리게임" : "전체 게임"}`;
+      const n = Math.round(c.raw);
+      if (c.title.perUse) {
+        return `${what} ${n}번 (${poolName} ${pool}판)`;
+      }
+      return pool > 0 && c.raw <= pool
+        ? `${what} ${n}판 (${poolName} ${Math.round((c.raw / pool) * 100)}%)`
+        : `${what} ${n}판`;
     }
     return `${c.title.won ? "이긴 판에서 " : ""}${what} ${shown}${c.title.unit ?? ""}`;
   };
