@@ -420,7 +420,7 @@ const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker",
    그쯤이면 "이 사람은 포토러시를 하는 사람"이라 부를 만하다. 흔한 수(8%)와 같은 선인 것은
    러시가 드물어서가 아니라 되풀이할 수 있는 수이기 때문이다 — 드묾은 이미 1급 웃돈이
    값을 쳐 준다. */
-const RUSH_SHARE = 0.06;
+const RUSH_SHARE = 0.04;
 const RUSH_MIN = 2;
 const RUSH_TACTICS = new Set(["cannon-rush", "sunken-rush"]);
 
@@ -608,7 +608,7 @@ const TITLES: Title[] = [
      재분석 뒤에도 내내 비어 있던 것들이다. 워낙 드문 그림이라 비율은 낮게 두고, 우연은
      최소 횟수(3번)가 거른다. */
   { ...tactic("오버로드 사냥꾼", ["valk-hunt"]), minPlaysShare: 0.01 },
-  tactic("몰래배럭 퀸", ["sneak-rax"]),
+  { ...tactic("몰래배럭 퀸", ["sneak-rax"]), minPlaysShare: 0.025 },
   /* (삭제) 끝없는 저글링 폭풍(zling-rush) — 요청. 저글링 하나로 들이치는 것은 그 종족의
      기본 진행에 가까워, 한 유닛만으로 러시라고 부를 만한 수가 아니다. */
   /* 초반 러시 한 덩어리(요청: 3게이트·9드론 등) — 질럿 러시와 저글링 러시를 한 칭호로 묶는다.
