@@ -50,7 +50,7 @@ const MIN_PLAYS_TIER: Record<number, number> = { 1: 10, 2: 4 };
    둘 다 물어야 한다.
    급마다 다른 이유: 1급은 한 번이 곧 이야기인 드문 수(핵·리콜·성큰러시)라 같은 잣대를 대면
    통째로 잠긴다. 그래도 0은 아니다 — 스무 판에 딱 한 번은 그 사람의 색이라기엔 얇다. */
-const COUNT_SHARE: Record<number, number> = { 1: 0.08, 2: 0.12 };
+const COUNT_SHARE: Record<number, number> = { 1: 0.06, 2: 0.08 };
 /** 비율과 별개의 최소 횟수(요청: 너무 겹치지 않게 문턱 높이기) — 절대평가가 되면서 조건만
  *  넘으면 다 받으니, 한 판짜리 우연까지 칭호가 되면 한 사람이 대여섯 개를 예사로 들었다.
  *  드문 수(1급)는 두 번, 흔한 수(2급)는 세 번은 나와야 버릇이라 부른다. */
@@ -63,10 +63,11 @@ const COUNT_MIN: Record<number, number> = { 1: 2, 2: 3 };
    그쪽이 곧 왕관이 걸리는 자리라, 같은 6%를 대는 흔한 수보다 오히려 쉬웠다.
    흔한 수(2급)도 6% → 8%로 올렸다(요청: 2점대 이하도 하한 상승) — 이긴 판만 세게 된 뒤로
    같은 비율이 예전보다 헐거워졌다(분자만 줄고 분모는 그대로다).
-   시뮬레이션을 보며 미세조정한 값이다(지적: 흔한 대목만 남고 전술은 통째로 잠겼다) —
-   흔한 대목(격차·정찰·스톰…)은 제 문턱을 따로 가지므로(위 minPlaysShare 오버라이드),
-   이 기본값은 옆탱·조이기·드랍 같은 전술이 실제로 닿을 수 있는 선이면 된다.
-   1급 8%·2번, 2급 12%·3번 — 마흔 판이면 흔한 수 다섯 번, 드문 수 세 번쯤이다. */
+   시뮬레이션을 보며 여러 차례 미세조정한 값이다 — 흔한 대목(격차·정찰·매너·헬프…)은 제
+   문턱을 따로 가지므로(위 minPlaysShare 오버라이드), 이 기본값은 옆탱·조이기·드랍 같은
+   전술이 실제로 닿을 수 있는 선이면 된다. 재분석으로 모든 비트가 세어진 뒤에도 12%에서는
+   전술 칭호가 대부분 비어 있어(실측) 1급 6%·2급 8%로 내렸다 — 최소 횟수(2/3번)가 우연을
+   거르는 몫을 맡는다. */
 /* (삭제) LEAD_PLAYS_SHARE — "클럽 한가운데의 절반은 뛰었어야"라는 상대 잣대. 절대평가로
    바꾸며 고정 판수(MIN_PLAYS_RATE)가 그 자리를 맡는다. */
 
@@ -400,7 +401,7 @@ const TACTIC_NOUN: Record<string, string> = {
    재면 프로토스를 절반만 하는 사람은 아무리 캐리어를 가도 이 문턱을 못 넘는다.
    0.2까지 올렸다가 0.15로 되물렸다(지적: 안 나오는 것들은 미세하게 낮추기) — 캐리어를
    일곱 판에 한 판꼴로 가면 그 유닛으로 판을 푸는 사람이라 부를 만하다. */
-const UNIT_TACTIC_SHARE = 0.15;
+const UNIT_TACTIC_SHARE = 0.12;
 const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker", "muta"]);
 
 /* 수마다 제 문턱을 따로 두는 자리(지적: 포토러시 퀸·성큰러시 퀸의 비율 하한이 너무 낮다).
@@ -412,7 +413,7 @@ const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker",
    그쯤이면 "이 사람은 포토러시를 하는 사람"이라 부를 만하다. 흔한 수(8%)와 같은 선인 것은
    러시가 드물어서가 아니라 되풀이할 수 있는 수이기 때문이다 — 드묾은 이미 1급 웃돈이
    값을 쳐 준다. */
-const RUSH_SHARE = 0.12;
+const RUSH_SHARE = 0.08;
 const RUSH_MIN = 2;
 const RUSH_TACTICS = new Set(["cannon-rush", "sunken-rush"]);
 
@@ -526,12 +527,12 @@ const TITLES: Title[] = [
   /* 운영 틀(바이오닉·메카닉·목동)은 절반이 문턱이다(지적: 바이오닉이 쉽게 나온다) — 그
      종족이면 으레 잡는 틀이라, "그 틀로 이긴 판이 종족 판의 절반"쯤 돼야 그 사람의 색이다.
      목동은 저그 후반에만 나오는 틀이라 40%로 한 뼘 낮다. */
-  { ...tactic("바이오닉의 여왕", ["bionic"]), minPlaysShare: 0.5 },
-  { ...tactic("메카닉 사령관", ["mech"]), minPlaysShare: 0.5 },
+  { ...tactic("바이오닉의 여왕", ["bionic"]), minPlaysShare: 0.35 },
+  { ...tactic("메카닉 사령관", ["mech"]), minPlaysShare: 0.35 },
   /* 목동저그 — 이제 자막이 짚은 판만 센다(요청: 목동저그도 이긴 판만). 한때 유닛 기록으로도
      잡았는데(울트라 2기 + 디파일러 + 저글링 20기), 그 원장은 승패를 안 가려서 진 판의
      목동까지 함께 세었다. 자막 쪽은 서버가 이긴 판만 세므로(_tactic_counts) 잣대가 하나가 된다. */
-  { ...tactic("목동저그", ["moka"]), minPlaysShare: 0.4 },
+  { ...tactic("목동저그", ["moka"]), minPlaysShare: 0.25 },
 
   // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
   tactic("프로 옆탱러", ["side-tank"]),
@@ -565,7 +566,7 @@ const TITLES: Title[] = [
        있었는데, 이 값은 '무슨 일을 벌였나'가 아니라 병력 구성비라 그만큼 나오기 힘든
        장면이 아니다. 7.5면 러시(10.5) 아래·역전(6) 위로, 드묾은 그대로 인정하는 자리다. */
     label: "그림자의 여왕", weight: 2.5, pool: 1, edge: 1, tier: 1,
-    min: 0.1, why: "병력 중 은폐 유닛", unit: "",
+    min: 0.08, why: "병력 중 은폐 유닛", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       if (!m || !(m.uGround + m.uAir > 0)) return null;
@@ -664,7 +665,7 @@ const TITLES: Title[] = [
     },
   },
   /* 상대보다 일꾼을 훨씬 많이 굴린 대목(worker-gap) — 자원을 많이 캤다는 말이다. */
-  { ...tactic("부티 자원 퀸", ["worker-gap"]), minPlaysShare: 0.55 },
+  { ...tactic("부티 자원 퀸", ["worker-gap"]), minPlaysShare: 0.45 },
   /* 흔한 대목들의 제 문턱(시뮬레이션 실측: 격차·정찰·역전·GG·스톰은 기본 문턱으로는 거의
      전원이 걸렸다 — 자막이 그 대목을 워낙 자주 짚는다) — 기본값 대신 그 대목의 실제 빈도에
      맞는 비율을 따로 건다. 값은 시뮬레이션 실측 분포의 꼭대기 한둘만 남게 맞춘 것이다
@@ -755,7 +756,7 @@ const TITLES: Title[] = [
      다른 칭호들보다 작다. */
   { label: "일꾼 공장장", weight: 2, min: 50, why: "초반 5분 일꾼", unit: "기", value: (s, of) => won(s, of).avgWorker5 },
   /* 건물을 제일 많이 올린 사람(요청: 심시티 퀸) — "쉴 새 없이 짓는 자"에서 바꿨다. 재는 값은 그대로 분당 지은 채수다. */
-  { label: "심시티 장인", weight: 2, min: 8, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
+  { label: "심시티 장인", weight: 2, min: 7, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
   {
     label: "풀업녀", weight: 2, min: 2.2, why: "공/방 평균 단계", unit: "",
     value: (s, of) => {
