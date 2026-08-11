@@ -818,7 +818,7 @@ const TITLES: Title[] = [
      일꾼 정찰도 초반 쪽(vision)이다(요청: 파서에 추가) — 첫 일꾼을 상대 진영까지 몰고 간
      명령 좌표로 짚는다(replaySummary의 WORKER_SCOUT_SEC). 오버로드와 한 열쇠인 까닭은
      둘 다 '미리 보고 시작한다'는 같은 습관이라서다. */
-  { ...tactic("부지런한 정찰 퀸", ["vision"]), minPlaysShare: 0.5 },
+  { ...tactic("부지런한 정찰 퀸", ["vision"]), minPlaysShare: 0.42 },
   { ...tactic("전장을 살피는 눈", ["vision-eye"]), minPlaysShare: 0.15 },
   /* (삭제) 맞러시 승부사(duel-rush) — 요청. 맞러시는 둘이 함께 만든 장면이라 한 사람의
      수라고 하기 어렵다. */
