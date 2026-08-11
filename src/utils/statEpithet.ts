@@ -430,7 +430,7 @@ const TITLES: Title[] = [
   /* 일꾼 견제는 위로 올린다(요청: 일꾼 견제도 강화) — 상대 일꾼을 잡는 일은 병력을 뽑아
      쌓아 두는 것과 달리 그 순간 손이 가야만 되는 것이고, 그 판의 자원 곡선을 실제로
      꺾어 놓는다. 그래서 다른 어떤 전술보다 그 사람의 성향을 잘 말한다. */
-  tactic("일꾼 사냥 퀸", ["harass-workers"], 1),
+  tactic("집요한 일꾼 헌터", ["harass-workers"], 1),
   /* (삭제) 지긋지긋한 견제러(harass-long) — "집요한 일꾼 사냥꾼"과 같은 이야기(견제)를
      다른 말로 한 번 더 부르는 자리였고, 이름도 그 사람이 아니라 당한 쪽의 감상이다. */
   /* 드랍도 같은 무리로 올린다(요청: 견제도 가중치 높이기) — 병력을 실어 상대 뒤로 넘기는
@@ -471,7 +471,7 @@ const TITLES: Title[] = [
      아니다(다른 전술의 기본 문턱 2회는 "한 번은 우연"을 거르려는 것이다). */
   tactic("포토러시의 퀸", ["cannon-rush"], 1),
   tactic("성큰러시의 여제", ["sunken-rush"], 1),
-  tactic("센터의 여주인", ["center-photon"]),
+  tactic("센터의 점령자", ["center-photon"]),
   /* (삭제) 남의 집 헤집기 장인(base-raid) — 요청. 이름 없는 급습이라 "무엇으로 갔는지"가
      빠진 이야기고, 그 대목은 대개 다른 칭호(드랍·견제·러시)가 이미 말한다. */
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
@@ -517,7 +517,8 @@ const TITLES: Title[] = [
      기본 진행에 가까워, 두 번 세 번 쌓여도 그 사람을 말해 주지 않는다. 무게를 두 번 내려
      봤지만 결국 다른 칭호가 없는 사람에게만 붙는 자리가 됐다 — 그런 칭호는 없느니만 못하다. */
   rare("다크스웜 살포반", ["swarm"]),
-  rare("감염의 여왕", ["infested"]),
+  /* (삭제) 감염의 여왕(infested) — 요청. 감염된 테란은 커맨드센터를 잡아야 나오는 장면이라
+     드물기는 한데, 그 판을 만든 것은 감염 자체가 아니라 그 앞의 싸움이다. */
   tactic("가디언을 모으는 여인", ["guardian"]),
   tactic("배틀크루저를 모으는 여인", ["bc"]),
   /* (삭제) 발키리 지휘관(valkyrie) — 위 "무자비한 오버로드 사냥꾼"이 같은 유닛으로 무엇을
@@ -559,7 +560,7 @@ const TITLES: Title[] = [
        그대로 사실이 된다.
        분당으로 안 나누는 것이 심시티 퀸과의 차이다 — 그쪽은 '손이 빠른가'이고 이쪽은
        '얼마나 지었나'다. 대신 남들 절반은 뛰었어야 후보다(LEAD_PLAYS_SHARE). */
-    label: "건축 여회장", weight: 4, why: "지은 건물", unit: "채",
+    label: "건축퀸", weight: 4, why: "지은 건물", unit: "채",
     value: (s) => {
       const b = s.buildMix?.buildings;
       if (!b) return null;
@@ -569,7 +570,7 @@ const TITLES: Title[] = [
   },
   /* 상대보다 일꾼을 훨씬 많이 굴린 대목(worker-gap) — 자원을 많이 캤다는 말이다. */
   tactic("자원의 여재벌", ["worker-gap"]),
-  tactic("쉼 없는 생산왕", ["prod-gap"]),
+  tactic("다산왕", ["prod-gap"]),
   /* (삭제) 병력 사재기 — 뺐다(요청). "많이 모았다"는 시간을 들이면 누구나 닿는 값이고,
      그 병력으로 무엇을 했는지는 말해 주지 않는다. 물량 자체는 '물량퀸'이 이미 잰다. */
   /* (삭제) 업그레이드 여제(upgrade-signature) — 아래 "풀업 신봉자"가 같은 것을 수치로
@@ -727,7 +728,7 @@ const TITLES: Title[] = [
     label: "승리의 여신", weight: 9, sticky: true, min: 70, why: "승률", unit: "%",
     value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null),
   },
-  { label: "최고 of BEST 퀸", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
+  { label: "BEST 수집퀸", weight: 3, why: "BEST PLAYER", unit: "회", value: (s) => (s.bests > 0 ? s.bests : null) },
   { label: "쉬지 않는 손가락", weight: 2, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
   { label: "스타 게이 트 NPC", weight: 3, sticky: true, why: "게임 수", unit: "판", value: (s) => s.plays },
 ];
@@ -753,9 +754,9 @@ const sub = (w: string) => (hasFinal(w) ? "은" : "는");
 /* 종족마다 부르는 말이 따로다(요청: 저그의 절대군주 · 프로토스의 전설 · 테란의 영웅) —
    셋뿐이라 표 하나면 되고, 그편이 종족의 색을 살린다. 여기 없는 값은 무난한 말로 받는다. */
 const RACE_SAYS: Record<string, string> = {
-  저그: "저그의 여왕",
-  프로토스: "프로토스의 여군주",
-  테란: "테란의 여전설",
+  저그: "저그의 절대군주",
+  프로토스: "프로토스의 수호자",
+  테란: "테란의 전설",
 };
 const racePhrase = (race: string): string => RACE_SAYS[race] ?? `${race}${sub(race)} 나의 것`;
 
