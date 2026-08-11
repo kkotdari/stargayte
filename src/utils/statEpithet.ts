@@ -31,7 +31,7 @@ const MIN_PLAYS = 3;
 const MIN_PLAYS_RATE = 8;
 /** 유형 칭호(개인전·팀전 퀸)는 그 유형에서만 세는 판수라 더 많이 본다 — 팀전 몇 판으로
  *  "팀전 퀸"이 되면 정작 팀전을 도맡아 뛴 사람이 그 말을 못 듣는다. */
-const MIN_PLAYS_MODE = 12;
+const MIN_PLAYS_MODE = 15;
 /** 종족 칭호를 받으려면 그 종족이 제 판의 이만큼은 돼야 한다(요청: 부종족 정도는) —
  *  셋을 고루 하면 한 종족이 3분의 1이니, 4분의 1이면 "이 사람의 종족 가운데 하나"라 부를
  *  만한 선이다. 주종족(대개 절반 이상)까지 요구하지는 않는다. */
@@ -517,6 +517,8 @@ const TITLES: Title[] = [
        판이라야 한다. */
     ...tactic("폭탄드랍의 여신", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"], 1),
     race: undefined,
+    // 분모가 전체 판이라 기본 비율(6%)이 되레 무겁다(요청: 낮추기) — 스물다섯 판에 한 번꼴.
+    minPlaysShare: 0.04,
   },
 
   /* ── 운영(요청: 전략운영은 가중치를 좀 높여도 된다) ─────────────────────────
@@ -729,7 +731,7 @@ const TITLES: Title[] = [
     /* 2.5 → 3.5(요청: 퀸으로 올릴 만하다) — 손 이야기 셋(유효타·APM·커맨드) 가운데 가장
        위다. 빠르기는 타고나거나 오래 하면 오르지만, 헛치지 않는 손은 무엇을 누를지 미리
        정해 두어야 나온다. */
-    label: "군더더기 없는 손", weight: 3, min: 0.95, why: "APM 중 유효타", unit: "",
+    label: "군더더기 없는 손", weight: 3, min: 0.97, why: "APM 중 유효타", unit: "",
     value: (s) => (s.avgApm && s.avgEapm && s.avgApm > 0 ? s.avgEapm / s.avgApm : null),
   },
   /* (삭제) 누른 만큼 뽑는 사람(커맨드 중 생산 비율) — 요청. */
@@ -757,7 +759,7 @@ const TITLES: Title[] = [
      다른 칭호들보다 작다. */
   { label: "일꾼 공장장", weight: 2, min: 50, why: "초반 5분 일꾼", unit: "기", value: (s, of) => won(s, of).avgWorker5 },
   /* 건물을 제일 많이 올린 사람(요청: 심시티 퀸) — "쉴 새 없이 짓는 자"에서 바꿨다. 재는 값은 그대로 분당 지은 채수다. */
-  { label: "심시티 장인", weight: 2, min: 7, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
+  { label: "심시티 퀸", weight: 2, min: 7, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
   {
     label: "풀업녀", weight: 2, min: 2.2, why: "공/방 평균 단계", unit: "",
     value: (s, of) => {
@@ -821,7 +823,7 @@ const TITLES: Title[] = [
        승률은 아무리 잘해도 100%를 못 넘어서 그 다툼에서는 구조적으로 진다. 그런데 클럽에서
        진짜 값어치 있는 사실은 이쪽이다: 열두 판 넘게 그 종족으로 뛰고 일곱 판을 이겼다는
        말은 재미가 아니라 실력이다. */
-    label: "{n}", weight: 6, sticky: true, pool: 1, edge: 1, min: 70, why: "그 종족 승률", unit: "%",
+    label: "{n}", weight: 6, sticky: true, pool: 1, edge: 1, min: 72, why: "그 종족 승률", unit: "%",
     value: (_s, of) => bestRace(of)?.rate ?? null,
     name: (_s, of) => { const best = bestRace(of); return best ? racePhrase(best.race) : null; },
   },
@@ -845,7 +847,7 @@ const TITLES: Title[] = [
   /* "최다"를 뗐다(요청: 절대평가) — 이제 1위가 아니라 열 번을 넘긴 사람 전부다. */
   /* 고정 횟수가 아니라 경기수 비례다(요청: 앞으로를 생각해서 — "25회"는 판이 쌓이면
      누구나 닿는 값이 된다). 네 판에 한 번은 BEST로 뽑혔어야 한다. */
-  { label: "BEST 퀸", weight: 6, min: 0.25, why: "판 대비 BEST 선정", unit: "",
+  { label: "BEST 퀸", weight: 6, min: 0.3, why: "판 대비 BEST 선정", unit: "",
     value: (s) => (s.plays > 0 && s.bests > 0 ? s.bests / s.plays : null) },
   /* 졌잘싸 퀸(요청) — 진 판에서 BEST로 뽑힌 수다. 판을 가장 많이 만들고도 졌다는 말이라,
      이기고 지고를 안 가리는 BEST 수집퀸과는 다른 이야기를 센다. 무게는 그보다 한 뼘
@@ -1004,7 +1006,7 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     return {
       ...r,
       label: "저그의 절대군주 · 프로토스의 수호자 · 테란의 전설",
-      how: `그 종족으로 ${MIN_PLAYS_MODE}판 이상 · 제 판의 ${pct(RACE_MIN_SHARE)} 이상 · 승률 70% 이상`,
+      how: `그 종족으로 ${MIN_PLAYS_MODE}판 이상 · 제 판의 ${pct(RACE_MIN_SHARE)} 이상 · 승률 72% 이상`,
     };
   }).sort((a, b) => (Number(b.rank === "전설") - Number(a.rank === "전설")) || (b.score - a.score))
     .map(({ label, how, rank, wonOnly }) => ({ label, how, rank, wonOnly }));
