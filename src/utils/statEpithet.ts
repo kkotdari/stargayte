@@ -918,7 +918,7 @@ function hasFinal(word: string): boolean {
   return (code - 0xac00) % 28 !== 0;
 }
 const sub = (w: string) => (hasFinal(w) ? "은" : "는");
-const ga = (w: string) => (hasFinal(w) ? "이" : "가");
+/* (삭제) ga(이/가) — 안내 목록 문장이 쓰던 조사 고르개. 목록과 함께 걷었다. */
 
 /* 종족마다 부르는 말이 따로다 — 셋 다 여신이다(요청: 종족 칭호는 여신급).
    셋뿐이라 표 하나면 되고, 그편이 종족의 색을 살린다. 여기 없는 값은 무난한 말로 받는다. */
@@ -952,85 +952,9 @@ function denomOf(title: Title, of: EpithetSubject): number {
   return of.stats.plays;
 }
 
-/** 칭호 안내에 적을 한 줄 — 이름과 "어떻게 받나"(요청: 모든 칭호 목록과 조건 나열).
- *
- *  표(TITLES)에서 그때그때 만들어 낸다: 손으로 적어 두면 이름·문턱을 고칠 때마다 두 곳이
- *  어긋나고, 이 화면은 그 어긋남이 바로 거짓말이 되는 자리다. */
-/** 칭호의 격(요청: 여신 › 퀸 › 일반) — 이름에 쓰는 낱말이자 목록의 갈래다.
- *  맨 아래 갈래는 "그 외"라 부르다가 "일반"으로 바꿨다(요청) — "그 외"는 앞의 둘에 못 든
- *  나머지라는 말이라, 정작 그 자리에 있는 칭호들이 남은 것처럼 읽힌다. */
-/** 갈래 이름은 게임 아이템의 등급 말로(요청: 여신급 → 전설급, 퀸급 → 에픽급) — 격의
- *  낱말(여신·퀸)을 갈래 이름으로도 쓰니 "드랍의 여신은 왜 전설이 아니냐"처럼 이름과
- *  갈래가 서로를 간섭했다. 등급 말은 이름과 겹칠 일이 없다. */
-export type EpithetRank = "전설" | "에픽" | "일반";
-
-export interface EpithetGuideRow {
-  label: string;
-  how: string;
-  rank: EpithetRank;
-  /** 이긴 판만 세는 칭호인가 — 안내에 그 한마디를 덧붙인다. */
-  wonOnly: boolean;
-}
-
-/** 표 전체를 안내용 줄로. 값이 큰 것부터 — 화면의 순서가 곧 "무엇이 먼저 가나"다. */
-export function epithetGuideRows(): EpithetGuideRow[] {
-  const pct = (v: number) => `${Math.round(v * 100)}%`;
-  const rows = TITLES.map((t) => {
-    const boost = TIER_BOOST[t.tier ?? 2] ?? 1;
-    const score = (t.weight ?? 0) * boost;
-    const count = t.scale === "count";
-    const share = t.minPlaysShare ?? (count ? COUNT_SHARE[t.tier ?? 2] ?? COUNT_SHARE[2] : 0);
-    const where = t.race ? `${t.race} 판` : "제 판";
-    const bits: string[] = [];
-    /* 마법 칭호의 근거는 문장으로 적혀 있다("게임에서 핵 사용") — 안내에서는 앞머리를
-       걷어야 "핵 사용이 가장 많은 사람"으로 읽힌다. */
-    const what = (t.why ?? "기록").replace(/^게임에서 /, "");
-    if (count) {
-      bits.push(`${what}${ga(what)} 클럽에서 가장 많은 사람`);
-      if (share > 0) bits.push(`${where}의 ${pct(share)} 이상`);
-      if ((t.min ?? 1) > 1) bits.push(`최소 ${t.min}${t.unit ?? "번"}`);
-    } else {
-      bits.push(`${what} 클럽 1위`);
-      if (t.min !== undefined) {
-        // 비중 칭호의 문턱은 0.72처럼 소수로 적혀 있다 — 사람이 읽는 자리에서는 %다.
-        bits.push(t.min < 1 ? `${pct(t.min)} 이상` : `${t.min}${t.unit ?? ""} 이상`);
-      }
-    }
-    /* 순위 그 자체가 이야기인 칭호(sticky)는 그 한마디를 적는다 — 목록을 점수 차례로
-       세우면서(아래 sort) 이 셋만 그 차례를 안 따르기 때문이다. 안 적으면 승률·게임 수
-       1위가 목록 가운데에 있는데 실제로는 맨 먼저 나가는, 설명 없는 어긋남이 된다. */
-    if (t.sticky) bits.push("1위면 다른 칭호보다 먼저");
-    /* 등급은 구조로 가른다 — 이름의 낱말로 갈랐더니 "드랍의 여신"이 맨 위 칸에 서 버렸다.
-       전설은 '승률이 조건인 무조건 우선 칭호'(sticky + min)다: 승리의 여신과 종족 셋(요청:
-       종족 승률까지 전설). 게임 수 1위(참여 퀸)는 sticky라도 승률 조건이 없어 에픽이다. */
-    const rank: EpithetRank = t.sticky === true && t.min !== undefined
-      ? "전설"
-      : score >= CROWN_SCORE ? "에픽" : "일반";
-    return { label: t.label, how: bits.join(" · "), wonOnly: t.won === true, score, sticky: t.sticky === true, rank };
-  });
-  /* 이름이 사람마다 달라지는 두 줄({n})은 손으로 적는다 — 맵 이름·종족 이름이 들어가야
-     말이 되는데, 표에는 그 자리가 비어 있다. */
-  return rows.map((r) => {
-    if (r.label !== "{n}") return r;
-    if (r.how.startsWith("그 맵 승수")) {
-      return {
-        ...r,
-        label: "○○의 여왕 (맵 이름이 앞에 붙어요)",
-        how: `그 맵에서 ${MAP_MIN_PLAYS}판 이상 · 승률 ${Math.round(MAP_MIN_RATE * 100)}% 이상`,
-      };
-    }
-    return {
-      ...r,
-      label: "저그의 절대군주 · 프로토스의 수호자 · 테란의 전설",
-      how: `그 종족으로 ${MIN_PLAYS_MODE}판 이상 · 제 판의 ${pct(RACE_MIN_SHARE)} 이상 · 승률 70% 이상`,
-    };
-  /* 점수 하나로만 세운다(요청: 나오기 힘든 플레이가 점수가 높아야 한다) — 한때 sticky를
-     앞세웠는데, 그러면 게임 수 1위(참여 퀸)가 퀸 갈래의 맨 앞, 핵보다 위에 섰다. 그 자리는
-     '먼저 나간다'는 뜻이지 '나오기 힘들다'는 뜻이 아니라, 목록을 읽는 사람에게는 순서가
-     어긋나 보인다. 먼저 나간다는 사실은 위에서 줄마다 한마디로 적는다. */
-  }).sort((a, b) => b.score - a.score)
-    .map(({ label, how, wonOnly, rank }) => ({ label, how, wonOnly, rank }));
-}
+/* (삭제) 칭호 안내 목록(EpithetGuideRow·epithetGuideRows·EpithetRank) — 표에서 쉰 줄을
+   만들어 등급(전설·에픽·일반)별로 늘어놓던 자리다. 안내 모달이 짧은 설명만 남기면서
+   (요청: 목록 제거) 부르는 곳이 없어졌다. 되살릴 일이 있으면 이 커밋을 되짚으면 된다. */
 
 /** 회원 → 칭호. 왕관은 넘겨받은 무리 안에서만 매기므로, 부르는 쪽이 '검색에 걸린 목록'이
  *  아니라 '그 조건의 회원 전체'를 넘겨야 한다(메달과 같은 원칙) — 이름을 검색했다고 칭호가

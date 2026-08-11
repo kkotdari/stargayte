@@ -257,13 +257,13 @@ export default function ClanStatsScreen() {
       <div className="scr-v2-toolbar">
         <div className="scr-v2-toolbar-title-row">
           <h1 className="scr-title scr-v2-toolbar-title">내전 통계</h1>
-          {/* 칭호 리스트 — 아이콘이 아니라 글자 버튼이고, 팝업이 아니라 모달이다(요청).
+          {/* 칭호 안내 — 아이콘이 아니라 글자 버튼이고, 팝업이 아니라 모달이다(요청).
               담을 것이 표 하나만큼이라 말풍선에는 안 들어간다. */}
           <button
             type="button" className="scr-btn scr-btn-primary scr-title-side-btn"
             onClick={() => setGuideOpen(true)}
           >
-            칭호 리스트
+            칭호 안내
           </button>
           {/* 도움말은 없앴다(요청). 칸마다 달려 있던 ⓘ 여섯 개를 하나로 합친 뒤 다섯 번
               쳐내다가 결국 통째로 지웠다 — 남아 있던 줄의 절반은 판수 문턱 이야기였는데
