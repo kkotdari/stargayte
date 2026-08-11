@@ -55,9 +55,9 @@ const RACE_MIN_SHARE = 0.22;
    1급·2급을 가르지 않는 것은 드묾을 이미 무게(TIER_BOOST)가 값으로 쳐 주기 때문이다. */
 /* 급을 다시 가른다(요청: 드문 수는 낮추기) — 바닥 9%는 "마흔 판에 네 번"이라 되풀이할 수
    있는 수에는 맞지만, 핵·마인드컨트롤처럼 한 판에 한 번 볼까 말까 한 수에는 사실상 잠금이다.
-   1급만 4%(마흔 판에 두 번)로 내리고, 2급은 12%로 올린다(요청: 9%는 너무 낮다) —
+   1급만 4%(마흔 판에 두 번)로 내리고, 2급은 11%다(요청: 9%는 너무 낮다 → 12% → 한 뼘 되돌려 11%) —
    되풀이할 수 있는 수는 마흔 판에 다섯 번쯤은 나와야 그 사람의 색이다. */
-const COUNT_SHARE: Record<number, number> = { 1: 0.04, 2: 0.12 };
+const COUNT_SHARE: Record<number, number> = { 1: 0.04, 2: 0.11 };
 /** 비율과 별개의 최소 횟수(요청: 너무 겹치지 않게 문턱 높이기) — 절대평가가 되면서 조건만
  *  넘으면 다 받으니, 한 판짜리 우연까지 칭호가 되면 한 사람이 대여섯 개를 예사로 들었다.
  *  드문 수(1급)는 두 번, 흔한 수(2급)는 세 번은 나와야 버릇이라 부른다. */
@@ -73,13 +73,32 @@ const COUNT_SHARE: Record<number, number> = { 1: 0.04, 2: 0.12 };
    했다) — 한때 이 둘을 "스무 판마다 한 번씩 는다"로 얽어 놓았다가 통째로 걷었는데, 그때
    잃은 것은 복잡함만이 아니라 이 구분 자체였다.
 
-     카운트 하한(COUNT_MIN)  한 번은 우연이라는 것만 막는다. 판수와 무관한 고정값이라
-                             적게 뛴 사람에게도 같은 말이 선다.
-     비율 하한(minPlaysShare) 그 사람의 색인가를 막는다. 많이 뛴 사람일수록 더 요구한다.
+     카운트 하한(countMinFor)  "우리 클랜에서 이 칭호를 부르려면 이만큼은 나와야 한다"는
+                               횟수다. 클럽에서 열린 판이 쌓일수록 함께 오르고(고정값은
+                               클럽이 백 판을 뛰든 천 판을 뛰든 같은 말을 한다), 칭호의
+                               희귀성에는 반비례한다 — 핵은 한 번이 이야기지만 유닛 하나는
+                               여러 번 나와야 그 사람의 것이다.
+     비율 하한(minPlaysShare)  그 사람의 색인가를 막는다. 그 사람의 판수에 비례한다.
 
    둘 다 넘어야 받는다. 조절할 때도 따로 본다 — "한 번짜리가 너무 쉽다"는 카운트 쪽이고,
-   "그 사람의 수라 부르기엔 얇다"는 비율 쪽이다. */
-const COUNT_MIN = 2;
+   "그 사람의 수라 부르기엔 얇다"는 비율 쪽이다.
+
+   희귀성은 이미 점수(무게 × 급 웃돈)가 재고 있다 — 핵 12, 러시 10.5, 전술 4, 곁가지 2,
+   유닛 1.5. 그래서 점수 4(보통 전술)를 기준으로 잡고 그 역수로 요구 횟수를 나눈다.
+   클럽이 이백 판을 뛰었으면 기준은 네 번이고, 핵은 한 번·러시는 두 번·유닛은 여섯 번이다.
+   위아래로 가둔다: 아무리 드물어도 한 번은 우연이라 최소 두 번이고, 아무리 흔해도 여섯 번을
+   넘기면 클럽이 쌓일수록 아무도 못 받는 칭호가 된다.
+   클럽 전체 판수를 못 받아 왔으면 기준 네 번으로 떨어진다(옛 고정값과 같은 자리다). */
+const CLUB_COUNT_RATE = 0.02;
+const CLUB_COUNT_PIVOT = 4;
+const COUNT_MIN_FLOOR = 2;
+const COUNT_MIN_CAP = 6;
+const countMinFor = (score: number): number => {
+  const club = clubTotalGames && clubTotalGames > 0 ? clubTotalGames : CLUB_COUNT_PIVOT / CLUB_COUNT_RATE;
+  const base = club * CLUB_COUNT_RATE;
+  const n = Math.round(base * (CLUB_COUNT_PIVOT / Math.max(1, score)));
+  return Math.min(COUNT_MIN_CAP, Math.max(COUNT_MIN_FLOOR, n));
+};
 /* 한때 상한을 뒀다("아무리 많이 뛰어도 여섯 번이면 인정") — 걷어냈다(지적: 상한보다 비율
    자체를 낮추는 편이 합리적이다). 상한은 그 지점부터 비례가 끊겨, 백 판 뛴 사람과 예순 판
    뛴 사람에게 같은 수를 요구한다 — 많이 뛴 쪽이 오히려 쉬워지는 셈이다. 비율을 낮추면
@@ -490,7 +509,7 @@ const TACTIC_NOUN: Record<string, string> = {
    올림(40×0.01)=1). 드문 수라도 한 번은 우연이라, 마흔 판에 다섯 번은 나와야 하는 선
    (12%)으로 맞춘다. 백 판이면 열두 번이다 — 두 번은 아직 우연이 섞이는 수이고, 세 번쯤
    돼야 "그 사람이 즐겨 쓰는 수"라 부를 만하다. */
-const UNIT_TACTIC_SHARE = 0.12;
+const UNIT_TACTIC_SHARE = 0.11;
 const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker", "muta", "ultra"]);
 
 /* 수마다 제 문턱을 따로 두는 자리(지적: 포토러시 퀸·성큰러시 퀸의 비율 하한이 너무 낮다).
@@ -609,7 +628,7 @@ const TITLES: Title[] = [
   /* 동맹의 수호자 → 동맹을 지키는 포탑(요청) — 무엇으로 지켰는지가 이름에 들어가야
      "아군 기지에 포토를 깔아 줬다"는 그 그림이 그대로 읽힌다. '수호자'는 어느 수에나
      붙을 수 있는 말이라 정작 이 칭호가 센 것이 안 보였다. */
-  { ...tactic("동맹을 지키는 포탑", ["ally-cannon"]), minPlaysShare: 0.12 },
+  { ...tactic("동맹을 지키는 포탑", ["ally-cannon"]), minPlaysShare: 0.11 },
   /* 입구막기는 '막았다'가 아니라 '막아 놓고 뒤에서 컸다'가 값어치다(판정도 발전까지 함께
      본다 — replayTactics의 WALL_IN_GROW_MIN). 그래서 칭호도 막은 쪽이 아니라 그다음을
      부른다. "후반 도모 퀸"에서 바꿨다(지적: 개성적이지 않다) — 그 말은 어느 운영에나 붙는
@@ -621,7 +640,7 @@ const TITLES: Title[] = [
   /* 일꾼 견제는 위로 올린다(요청: 일꾼 견제도 강화) — 상대 일꾼을 잡는 일은 병력을 뽑아
      쌓아 두는 것과 달리 그 순간 손이 가야만 되는 것이고, 그 판의 자원 곡선을 실제로
      꺾어 놓는다. 그래서 다른 어떤 전술보다 그 사람의 성향을 잘 말한다. */
-  { ...tactic("집요한 일꾼 헌터", ["harass-workers"], 1), minPlaysShare: 0.12 },
+  { ...tactic("집요한 일꾼 헌터", ["harass-workers"], 1), minPlaysShare: 0.11 },
   /* (삭제) 지긋지긋한 견제러(harass-long) — "집요한 일꾼 사냥꾼"과 같은 이야기(견제)를
      다른 말로 한 번 더 부르는 자리였고, 이름도 그 사람이 아니라 당한 쪽의 감상이다. */
   /* 드랍도 같은 무리로 올린다(요청: 견제도 가중치 높이기) — 병력을 실어 상대 뒤로 넘기는
@@ -634,7 +653,7 @@ const TITLES: Title[] = [
     ...tactic("폭탄드랍의 여신", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"], 1),
     race: undefined,
     // 분모가 전체 판이라 기본 비율(6%)이 되레 무겁다(요청: 낮추기) — 스물다섯 판에 한 번꼴.
-    minPlaysShare: 0.12,
+    minPlaysShare: 0.11,
   },
 
   /* ── 운영(요청: 전략운영은 가중치를 좀 높여도 된다) ─────────────────────────
@@ -649,7 +668,7 @@ const TITLES: Title[] = [
      판이고, 자막이 어느 이름으로 짚었나는 그 판의 장면 차이일 뿐이다. 근거 문장도 세
      열쇠를 아우르는 말로 덮는다(tactic이 지어 주는 이름은 첫 열쇠 것뿐이다). */
   { ...tactic("메카닉 사령관", ["mech", "center-tank", "side-tank"]),
-    why: "메카닉·탱크 조이기", minPlaysShare: 0.12 },
+    why: "메카닉·탱크 조이기", minPlaysShare: 0.11 },
   /* 목동저그 — 이제 자막이 짚은 판만 센다(요청: 목동저그도 이긴 판만). 한때 유닛 기록으로도
      잡았는데(울트라 2기 + 디파일러 + 저글링 20기), 그 원장은 승패를 안 가려서 진 판의
      목동까지 함께 세었다. 자막 쪽은 서버가 이긴 판만 세므로(_tactic_counts) 잣대가 하나가 된다. */
@@ -709,7 +728,7 @@ const TITLES: Title[] = [
       return hidden > 0 ? hidden / (m.uGround + m.uAir) : null;
     },
   },
-  { ...tactic("뮤탈 습격대", ["muta"]), minPlaysShare: 0.12 },
+  { ...tactic("뮤탈 습격대", ["muta"]), minPlaysShare: 0.11 },
   /* 코끼리 조련사(요청) — 울트라리스크를 모아 나간 판이다. 저그의 마지막 지상 병력이라
      거기까지 판을 끌고 갔다는 말이기도 한데, 부르는 말은 그 그림 하나면 된다.
      한때 "코끼리떼를 모는 여인"으로 바꿔 봤다가 되돌렸다(요청) — 조련사 쪽이 짧고, 무엇을
@@ -740,7 +759,7 @@ const TITLES: Title[] = [
      커세어·스카웃 넷으로 넓어지면서 이 수는 두 종족에 걸쳐 있다. 분모를 '테란 판'으로
      두면 커세어로 잡은 프로토스 판이 남의 종족 판수로 나뉘어 영영 문턱을 못 넘는다.
      폭탄드랍의 여신이 다섯 열쇠를 세며 같은 이유로 종족을 걷은 것과 같은 자리다. */
-  { ...tactic("오버로드 사냥꾼", ["valk-hunt"]), race: undefined, minPlaysShare: 0.12 },
+  { ...tactic("오버로드 사냥꾼", ["valk-hunt"]), race: undefined, minPlaysShare: 0.11 },
   { ...tactic("몰래배럭 퀸", ["sneak-rax"]), minPlaysShare: 0.04 },
   /* (삭제) 끝없는 저글링 폭풍(zling-rush) — 요청. 저글링 하나로 들이치는 것은 그 종족의
      기본 진행에 가까워, 한 유닛만으로 러시라고 부를 만한 수가 아니다. */
@@ -839,13 +858,13 @@ const TITLES: Title[] = [
        사람이 늘 이긴다. 그래서 값은 비율로 재되, 판당 채수가 얇으면 후보에서 뺀다.
        (문턱을 value 안에 두는 자리다 — 절대평가라 후보 수가 줄어도 다른 칭호가 안 흔들린다.) */
     label: "철옹성의 여인", weight: 2, kind: "수비",
-    min: 0.22, why: "건물 중 방어 건물", unit: "",
+    min: 0.26, why: "건물 중 방어 건물", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       const plays = won(s, of).mixPlays ?? 0;
       if (!m || !(plays > 0) || !(m.bProd + m.bDef > 0)) return null;
       // 판당 방어 건물이 이만큼은 돼야 '요새'라 부를 만하다 — 비율만으로는 얇은 판이 이긴다.
-      if (m.bDef / plays < 5) return null;
+      if (m.bDef / plays < 6) return null;
       return m.bDef / (m.bProd + m.bDef);
     },
   },
@@ -899,7 +918,7 @@ const TITLES: Title[] = [
      본진을 잃고도 판을 안 놓은 이야기다. "쫓겨 다녔다"가 아니라 "그러고도 살아남았다"로
      부르면 같은 기록이 그 사람의 끈기가 된다. 져도 센다(COUNTED_EVEN_IF_LOST) — 밀린 뒤의
      이야기라 이긴 판만 보면 영영 안 잡힌다. */
-  { ...tactic("부활 퀸", ["lodging", "relocate"]), why: "본진 밖 생존(이사·셋방살이)", minPlaysShare: 0.12 },
+  { ...tactic("부활 퀸", ["lodging", "relocate"]), why: "본진 밖 생존(이사·셋방살이)", minPlaysShare: 0.11 },
   /* (삭제) 건물 띄우기(lift-off)로 짓던 "공중부양 마스터" — 뺐다(지적). 이 키는 자리를
      다 내주고 건물만 띄워 쫓겨 다닌 대목이라, 버틴 이야기로 넣었지만 칭호로 굳으면
      "집을 잃은 사람"이라는 딱지로 읽힌다. 자막에서 한 번 지나가는 말과, 이름 아래
@@ -1303,9 +1322,9 @@ export function epithetsOf(
            일괄 판수 문턱과는 다르다 — 분모가 서야 비율 조건 자체가 성립한다. */
         if (denomPlays < 5) continue;
         if (v < Math.ceil(denomPlays * share)) continue;
-        // 카운트 하한 — 비율과 별개다(위 COUNT_MIN 주석). 판수가 적어 비율이 한 번으로
-        // 떨어지는 자리에서 "한 번은 우연"을 막는 몫만 한다.
-        if (v < COUNT_MIN) continue;
+        /* 카운트 하한 — 비율과 별개다(위 countMinFor 주석). 클럽 전체 판수에 비례하고
+           칭호의 희귀성에 반비례한다. 점수는 아래 대표 고르기가 쓰는 그 점수다. */
+        if (v < countMinFor((title.weight ?? 0) * (TIER_BOOST[title.tier ?? 2] ?? 1))) continue;
       }
       // 절대 문턱 — 이 값을 넘으면 받는다. 남이 얼마나 했는지는 안 본다(요청: 절대평가).
       if (title.min !== undefined && v < title.min) continue;
