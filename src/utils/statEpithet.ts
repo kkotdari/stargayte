@@ -844,7 +844,10 @@ const TITLES: Title[] = [
      아래다: 잘 싸운 것은 맞지만 이긴 판의 BEST와 같은 값으로 둘 수는 없다. */
   { label: "졌잘싸 공주", weight: 2.5, why: "진 판의 BEST PLAYER", unit: "회", value: (s) => ((s.lostBests ?? 0) > 0 ? s.lostBests! : null) },
   { label: "쉬지 않는 손가락", weight: 2, why: "분당 커맨드", unit: "", value: (s) => s.avgCmd },
-  { label: "참여 퀸", weight: 3, sticky: true, why: "게임 수", unit: "판", value: (s) => s.plays },
+  /* 참전의 여신(요청: 여신급으로 올린다) — 무게 3 → 8. 게임 수 1위는 실력이 아니라 시간이라
+     퀸급에 두었는데, 이 클럽에서 그 자리는 아무나 못 앉는다: 판마다 나와 준 사람이 없으면
+     나머지 칭호가 셀 기록 자체가 안 생긴다. 승리의 여신(9) 바로 아래다. */
+  { label: "참전의 여신", weight: 8, sticky: true, why: "게임 수", unit: "판", value: (s) => s.plays },
 ];
 
 /* ── 이름을 만드는 잔손질 ─────────────────────────────────────────────────────
