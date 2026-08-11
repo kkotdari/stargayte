@@ -400,7 +400,9 @@ const TACTIC_NOUN: Record<string, string> = {
    재면 프로토스를 절반만 하는 사람은 아무리 캐리어를 가도 이 문턱을 못 넘는다.
    0.2까지 올렸다가 0.15로 되물렸다(지적: 안 나오는 것들은 미세하게 낮추기) — 캐리어를
    일곱 판에 한 판꼴로 가면 그 유닛으로 판을 푸는 사람이라 부를 만하다. */
-const UNIT_TACTIC_SHARE = 0.04;
+/* 버킷을 고치기 전에 4%까지 내렸던 값 — 고치고 나니 진짜 비율이 드러나(러커 5%짜리가
+   퀸이 됐다) 10%로 되올린다. 열 판에 한 판은 그 유닛으로 이겨야 그 유닛의 사람이다. */
+const UNIT_TACTIC_SHARE = 0.1;
 const UNIT_TACTICS = new Set(["carrier", "bc", "guardian", "valkyrie", "lurker", "muta"]);
 
 /* 수마다 제 문턱을 따로 두는 자리(지적: 포토러시 퀸·성큰러시 퀸의 비율 하한이 너무 낮다).
