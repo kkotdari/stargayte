@@ -11590,7 +11590,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 줄 사이는 18px(요청: 더 넓게 — 8 → 12 → 18) — 한 줄이 길어서 좁으면 위아래 글자가
    서로 이어 읽힌다. 프사 지름(24px)의 3/4쯤 되어야 줄마다 제 덩어리로 끊긴다.
    이 카드는 줄이 몇 개 안 되므로 넉넉히 벌려도 카드가 길어지지 않는다. */
-.scr-notice-list { display: flex; flex-direction: column; gap: 18px; margin: 0; padding: 0; list-style: none; }
+/* 줄 사이 18 → 10px(요청: 줄간격 축소) — 한 줄이 두 단이 되면서(이름 줄 / 근거 줄) 그 안에서
+   이미 위아래로 벌어져, 바깥 간격까지 넓으니 사람마다 따로 떨어진 카드처럼 보였다. */
+.scr-notice-list { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
 /* 한 줄이 두 단이다(요청): 위는 [프사·닉네임], 아래는 [옛 칭호 → 새 칭호 · 근거].
    칭호를 이름 옆에 이어 붙이면 "Rex 핵보유국"이 한 사람 이름처럼 읽힌다 — 가운뎃점으로
    끊어도 봤지만, 줄을 바꾸는 편이 부호 하나보다 확실하다. */
