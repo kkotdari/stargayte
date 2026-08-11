@@ -2302,7 +2302,16 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      "배틀크루저" 같은 긴 이름)에 맞춰 잡혀 세 칸이 고르게 안 나뉘었다(지적: "그리드가
      찌그러짐 정확히 6등분이어야함") — 0을 최소로 못 박아야 세 칸이 내용과 무관하게
      정확히 3등분된다. */
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 0; column-gap: 10px;
+  /* 여섯 조각은 늘 정확히 6등분이다(요청: 내용에 따라 크기가 변하지 않고 무조건 6등분).
+     열은 minmax(0,1fr) 셋, 행도 1fr 둘 — 행까지 못 박아야 목록이 다섯 줄인 칸과 도넛
+     하나뿐인 칸이 서로 다른 높이를 가져가지 않는다.
+     칸 사이 틈(column-gap)은 0이다(지적: 가로 구분선이 오른쪽이 비어 있다) — 틈이 있으면
+     첫 줄 아래에 긋는 가로선이 그 틈마다 끊기고, 마지막 칸 오른쪽 여백만큼 선이 모자라
+     격자가 아니라 밑줄 셋으로 보였다. 사이는 이제 칸 제 안쪽 여백(padding)이 낸다. */
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  row-gap: 0; column-gap: 0;
   /* 기본 .scr-stat-row > *의 align-items:center(그리드 컨테이너에도 그대로 적용돼, 짧은
      칸이 제 줄 높이 안에서 위아래로 뜬다)를 이긴다 — 칸이 줄 높이를 꽉 채워야 안쪽
      justify-content:flex-start가 진짜 "위정렬"이 된다(지적: 세로는 위로 가로는 가운데). */
@@ -2319,10 +2328,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    다른데(도넛 하나 vs 다섯 줄 목록) 가운데 정렬이면 짧은 쪽이 위아래로 붕 뜬다. */
 .scr-stat-mix-row > * {
   display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-  min-width: 0; padding: 8px 0;
+  min-width: 0; min-height: 0; padding: 8px;
 }
-.scr-stat-mix-row > *:first-child { padding-left: 6px; }
-.scr-stat-mix-row > * + * { border-left: 1px solid var(--line-hair); padding-left: 10px; }
+/* 세로선은 칸의 왼쪽 벽이다 — 열이 정확히 3등분이고 틈이 없으므로 위·아래 줄의 선이 같은
+   x에 서서 위아래로 이어진다. 가로선은 첫 줄 세 칸의 아래로, 틈이 없어 오른쪽 끝까지 한
+   줄로 이어진다. */
+.scr-stat-mix-row > * + * { border-left: 1px solid var(--line-hair); }
 .scr-stat-mix-row:first-child > * { border-bottom: 1px solid var(--line-hair); }
 /* 목록에 이름표를 단다 — 무엇의 목록인지는 칸 머리가 안 말해 준다(그쪽은 종족 이름이다).
    왼쪽으로 붙인다(요청) — 캡션·순번 붙은 목록·공방업 표 모두 칸 왼쪽부터 읽는 편이
@@ -3056,8 +3067,11 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
    오른쪽에 14px이 그냥 빈다(지적 스크린샷의 노란 상자). 8px이면 칸 경계선에 내용이
    붙지 않을 만큼은 남으면서 칸마다 12px씩 표가 좁아진다.
    기록 칸(10px)과 유저 칸은 안 건드린다 — 기록 칸은 이미 한 번 조인 값이다. */
+/* 좌우 여백은 칸이 아니라 그 안의 여섯 조각이 낸다(지적: 가로 구분선이 오른쪽이 비어
+   있다) — 칸이 제 여백을 들고 있으면 격자가 그만큼 안으로 들어앉아, 가로선이 칸 벽에
+   닿지 못하고 양끝이 뜬다. 여백 값 자체는 그대로다(위 .scr-stat-mix-row의 padding). */
 .scr-stats-list-panel-v2 .scr-stat-row > .scr-stat-mix-cell {
-  padding-left: 8px; padding-right: 8px;
+  padding-left: 0; padding-right: 0;
 }
 /* 종족별 전적 칸을 없애서(대신 필터바 종족 라디오로 전체 칸 값 자체를 그 종족 기준으로
    바꿔치기) 이제 게임수/전적/APM/커맨드 네 칸만 남았다 — 다들 라벨 없는 단순한
