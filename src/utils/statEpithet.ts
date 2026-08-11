@@ -1096,7 +1096,7 @@ const TITLES: Title[] = [
        승률은 아무리 잘해도 100%를 못 넘어서 그 다툼에서는 구조적으로 진다. 그런데 클럽에서
        진짜 값어치 있는 사실은 이쪽이다: 열두 판 넘게 그 종족으로 뛰고 일곱 판을 이겼다는
        말은 재미가 아니라 실력이다. */
-    label: "{n}", weight: 6, sticky: true, kind: "승률", pool: 1, edge: 1, min: 72, why: "그 종족 승률", unit: "%",
+    label: "{n}", weight: 6, sticky: true, kind: "승률", pool: 1, edge: 1, min: 70, why: "그 종족 승률", unit: "%",
     value: (_s, of) => bestRace(of)?.rate ?? null,
     name: (_s, of) => { const best = bestRace(of); return best ? racePhrase(best.race) : null; },
   },
@@ -1114,7 +1114,7 @@ const TITLES: Title[] = [
        종족을 골라 잡은 승률이 아니라 나온 판을 통째로 놓고 일곱 판을 이겼다는 말이라,
        고를 것이 없는 만큼 더 어렵다. 둘 다 걸린 사람에게는 이쪽이 간다(같은 급 안에서는
        무게가 갈라 준다). */
-    label: "승리의 여신", weight: 9, sticky: true, kind: "승률", min: 66, why: `${MIN_PLAYS_RATE}판 이상 승률`, unit: "%",
+    label: "승리의 여신", weight: 9, sticky: true, kind: "승률", min: 70, why: `${MIN_PLAYS_RATE}판 이상 승률`, unit: "%",
     value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null),
   },
   /* "최다"를 뗐다(요청: 절대평가) — 이제 1위가 아니라 열 번을 넘긴 사람 전부다. */
@@ -1289,7 +1289,7 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     return {
       ...r,
       label: "저그의 절대군주 · 프로토스의 수호자 · 테란의 전설",
-      how: `그 종족으로 ${MIN_PLAYS_MODE}판 이상 · 제 판의 ${pct(RACE_MIN_SHARE)} 이상 · 승률 72% 이상`,
+      how: `그 종족으로 ${MIN_PLAYS_MODE}판 이상 · 제 판의 ${pct(RACE_MIN_SHARE)} 이상 · 승률 70% 이상`,
     };
   }).sort((a, b) => (Number(b.rank === "전설") - Number(a.rank === "전설")) || (b.score - a.score))
     .map(({ label, how, rank, wonOnly }) => ({ label, how, rank, wonOnly }));
