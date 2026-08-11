@@ -545,7 +545,7 @@ const TITLES: Title[] = [
      자막이 이 수를 부르는 이름(커널)을 그대로 쓴다. */
   rare("커널 개통사", ["nydus"]),
   rare("리콜 배달부", ["recall"]),
-  rare("마음을 훔치는 도둑", ["mind-control"]),
+  rare("도둑퀸", ["mind-control"]),
   tactic("캐리어를 모으는 여인", ["carrier"]),
   tactic("독거미 부대", ["lurker"]),
   /* 안 보이는 것으로만 치는 사람(요청: 다크·레이스·아비터를 다 잘 쓴 경우만) —
