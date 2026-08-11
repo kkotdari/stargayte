@@ -732,7 +732,7 @@ const TITLES: Title[] = [
      '파는 여인'까지 붙으면 굴을 뚫는 그림이라 그 오해가 없다.
      근거 문장은 그대로 '커널'로 부른다 — 자막이 그 수를 부르는 이름이다. */
   { ...rare("커널 개통 전문가", ["nydus"]), minPlaysShare: 0.05 },
-  { ...rare("리콜 배달부", ["recall"]), minPlaysShare: 0.02 },
+  { ...rare("리콜 배달부", ["recall"]), minPlaysShare: 0.05 },
   { ...rare("도둑 퀸", ["mind-control"]), minPlaysShare: 0.01 },
   /* 유닛 기본(7%)보다 낮다(요청) — 캐리어까지 가는 판은 프로토스 판 가운데도 일부라,
      코끼리와 같은 자리에서 제 값을 받는다. */
@@ -923,7 +923,7 @@ const TITLES: Title[] = [
        것을 고른다'는 취향이라서다 — 종족마다 따로 두면 그 취향이 세 이름으로 갈린다.
        비중으로 재는 것은 은신·하이브와 같다: 총합은 오래 뛴 사람이 늘 크다. */
     label: "소수자 퀸", weight: 2, kind: "경기력",
-    min: 0.03, why: "병력 중 남들 안 쓰는 유닛", unit: "",
+    min: 0.1, why: "병력 중 남들 안 쓰는 유닛", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       if (!m || !(m.uGround + m.uAir > 0)) return null;
