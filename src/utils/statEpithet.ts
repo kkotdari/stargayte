@@ -30,6 +30,10 @@ const MIN_PLAYS_RATE = 8;
 /** 유형 칭호(개인전·팀전 퀸)는 그 유형에서만 세는 판수라 더 많이 본다 — 팀전 몇 판으로
  *  "팀전 퀸"이 되면 정작 팀전을 도맡아 뛴 사람이 그 말을 못 듣는다. */
 const MIN_PLAYS_MODE = 12;
+/** 종족 칭호를 받으려면 그 종족이 제 판의 이만큼은 돼야 한다(요청: 부종족 정도는) —
+ *  셋을 고루 하면 한 종족이 3분의 1이니, 4분의 1이면 "이 사람의 종족 가운데 하나"라 부를
+ *  만한 선이다. 주종족(대개 절반 이상)까지 요구하지는 않는다. */
+const RACE_MIN_SHARE = 0.25;
 /* 좋은 칭호일수록 뛴 판이 있어야 한다(요청: 경기를 많이 안 했는데 재밌는 칭호를 가져가면
    안 된다) — 세 판 나와서 그중 한 판에 포토러시를 한 사람이 "포토러시의 퀸"이 되면, 그
    칭호는 클럽에서 그 사람을 부르는 말이 아니라 우연히 찍힌 도장이 된다.
@@ -846,8 +850,13 @@ const racePhrase = (race: string): string => RACE_SAYS[race] ?? `${race}${sub(ra
  *  여럿 하는 사람도 가장 잘한 하나만 본다: 셋을 다 부르면 그건 칭호가 아니라 표다. */
 function bestRace(of: EpithetSubject): { race: string; rate: number } | null {
   let best: { race: string; rate: number } | null = null;
+  const all = of.stats.plays;
   for (const [race, st] of Object.entries(of.races ?? {})) {
     if (!st || st.plays < MIN_PLAYS_MODE) continue;
+    /* 그 종족을 제 판의 이만큼은 해야 한다(요청: 주종까지는 아니어도 부종족 정도는) —
+       판수 문턱(12판)만으로는 백 판 뛰며 어쩌다 스무 판 잡은 종족도 통과한다. 그 스무 판을
+       잘 이겼다고 "저그의 절대군주"라 부르면, 정작 저그로 사는 사람이 그 말을 못 듣는다. */
+    if (all > 0 && st.plays < all * RACE_MIN_SHARE) continue;
     if (!best || st.winRate > best.rate) best = { race, rate: st.winRate };
   }
   return best;
