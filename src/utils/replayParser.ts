@@ -118,6 +118,10 @@ export interface ReplayPlayerSignals {
      *  골라져 있던 번호는 곧 그 유닛의 번호다(replayTechNames의 CAST_ORDER_TO_UNIT /
      *  USE_CMD_TO_UNIT). 그렇게 알아낸 번호를 고른 채 내린 이동·공격 명령에 이름을 붙인다. */
     by?: string;
+    /** 그 명령 때 골라져 있던 유닛 수(요청: 리플레이 정보를 최대한 활용) — 이름을 못
+     *  알아낸 명령이라도 '한 기짜리 클릭'인 것은 안다. 초반 정찰(일꾼·오버로드)은 죄다
+     *  한 기라, 재생의 부대 자취가 이 수로 정찰을 걷어낸다. 선택 기록이 없으면 안 붙는다. */
+    n?: number;
   }[];
   /** 상대의 유닛·건물을 직접 찍은 순간 — '누구를 쳤나'를 어림이 아니라 사실로 아는
    *  유일한 자리다(요청: 공격 타겟팅을 정확히).
@@ -702,10 +706,11 @@ function collectSignals(
         const kind = orderName === "Move" ? "move" as const
           : orderName?.startsWith("Attack") ? "attack" as const
             : byClick;
+        const picked = sel.get(c.PlayerID) ?? [];
         s.orderPositions.push({
           frame, x: pos.x / PIXELS_PER_TILE, y: pos.y / PIXELS_PER_TILE, ...(kind ? { kind } : {}),
+          ...(picked.length > 0 ? { n: picked.length } : {}),
         });
-        const picked = sel.get(c.PlayerID) ?? [];
         if (picked.length > 0) {
           pending.push({ pid: c.PlayerID, idx: s.orderPositions.length - 1, tags: [...picked] });
         }

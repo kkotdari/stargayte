@@ -59,6 +59,10 @@ export interface MotionTrack {
    *  죽음을 모르니 '지금 서 있는 병력'이 아니라 '최근에 몰아 뽑은 규모'다 — 진군 직전에
    *  커지고 소강기에 줄어, 화면의 뜻(지금 움직이는 덩어리가 얼마나 큰가)과 결이 맞다. */
   size: [number, number][];
+  /** [시작, 끝] 초 — 상대의 공격 명령이 내 부대 자리 곁에 몰린 구간(전투 어림). 재생이
+   *  이 구간에서 규모를 깎는다(지적: 전투 중인데 유닛 수가 안 준다) — 리플레이에 죽음이
+   *  안 남아 수를 셀 수는 없고, 맞고 있는 시간만큼 지수로 줄이는 것이 어림의 한계다. */
+  hot?: [number, number][];
 }
 
 export interface SummaryMotion {
@@ -76,11 +80,28 @@ export interface SummaryMotion {
 const dist = (ax: number, ay: number, bx: number, by: number): number =>
   Math.hypot(ax - bx, ay - by);
 
-/** 부대 자취 — 이동·공격 명령(건물 랠리 제외)을 버킷으로 접는다. */
+/** 부대 자취 — 이동·공격 명령(건물 랠리 제외)을 버킷으로 접는다.
+ *
+ *  정찰을 리플레이 정보로 걷는다(지적: 특히 초반에 자리가 튄다 — 오버로드인지 갑자기
+ *  저 멀리 가 있다). 화면의 어림(멀리 갔다 돌아오면 빼기)보다 근거가 굵은 세 가지다.
+ *   · by가 "Worker"인 명령 — 자원 클릭·건설로 정체가 드러난 일꾼의 클릭이다. 일꾼
+ *     정찰·매너 파일런이 부대 자리로 읽히면 안 된다.
+ *   · 한 기짜리 클릭(n === 1)인데 정체를 모르거나 수송선인 것 — 시작 오버로드는 아무
+ *     커맨드로도 정체가 안 드러나지만 '한 기'인 것은 선택 기록이 말해 준다. 한 기는
+ *     부대가 아니다(수송선 한 대의 원정도 오버로드 정찰과 같은 결이다 — 내린 뒤의 부대
+ *     명령이 어차피 그 자리를 찍는다).
+ *   · 첫 전투 유닛 생산 전의 모든 명령 — 병력이 없는 동안 움직이는 것은 죄다 일꾼과
+ *     오버로드다. 부대 마커는 부대가 생기고서야 움직일 자격이 있다.
+ *  옛 분석본에는 n이 없어 둘째 조건이 그냥 통과된다 — 그런 판은 재생 쪽의 나들이 걷기
+ *  (dropSpikes)가 마저 막는다. */
 function trackOf(
-  orders: { frame: number; x: number; y: number; kind?: "attack" | "move"; by?: string }[],
+  orders: { frame: number; x: number; y: number; kind?: "attack" | "move"; by?: string; n?: number }[],
+  armyStartSec: number,
 ): [number, number, number][] {
-  const combat = orders.filter((o) => o.kind !== undefined && o.by !== "Building");
+  const combat = orders.filter((o) => o.kind !== undefined && o.by !== "Building"
+    && o.by !== "Worker"
+    && !(o.n === 1 && (o.by === undefined || o.by === "Transport"))
+    && o.frame * SECONDS_PER_FRAME >= armyStartSec);
   let step = STEP_SEC;
   for (;;) {
     const byBucket = new Map<number, { sec: number; x: number; y: number }>();
@@ -201,6 +222,41 @@ function sizeTimeline(unitFrames: Record<string, number[]>): [number, number][] 
   return out;
 }
 
+/* 전투 구간 어림(MotionTrack.hot) — 버킷(초)마다 '그때 내 부대 자리'에서 반경 안에 떨어진
+   상대 공격 명령을 세고, 문턱을 넘긴 버킷을 구간으로 잇는다. 반경·문턱은 건물 무너짐
+   어림(razedAt)과 같은 결이되, 부대는 건물보다 움직이니 반경을 조금 넓게 잡는다. */
+const FIGHT_STEP_SEC = 10;
+const FIGHT_RADIUS = 10;
+const FIGHT_MIN_ORDERS = 5;
+
+function hotOf(
+  pts: [number, number, number][],
+  foeAttacks: { sec: number; x: number; y: number }[],
+): [number, number][] {
+  if (pts.length === 0 || foeAttacks.length === 0) return [];
+  // 그 시각의 내 자리 — 자취는 시간순이라 한 손가락으로 따라가며 읽는다.
+  let pi = 0;
+  const counts = new Map<number, number>();
+  for (const a of foeAttacks) {
+    while (pi + 1 < pts.length && pts[pi + 1][0] <= a.sec) pi += 1;
+    const [, x, y] = pts[pi];
+    if (Math.hypot(a.x - x, a.y - y) <= FIGHT_RADIUS) {
+      const b = Math.floor(a.sec / FIGHT_STEP_SEC);
+      counts.set(b, (counts.get(b) ?? 0) + 1);
+    }
+  }
+  const hot: [number, number][] = [];
+  for (const b of [...counts.keys()].sort((x, y) => x - y)) {
+    if ((counts.get(b) ?? 0) < FIGHT_MIN_ORDERS) continue;
+    const start = b * FIGHT_STEP_SEC;
+    const end = start + FIGHT_STEP_SEC;
+    const last = hot[hot.length - 1];
+    if (last && start <= last[1]) last[1] = end;
+    else hot.push([start, end]);
+  }
+  return hot;
+}
+
 /** 건물이 무너진 때의 어림 — 지은 뒤 상대 공격 명령이 그 자리에 몰린 첫 창의 끝(초).
  *  안 무너졌으면 0. */
 function razedAt(
@@ -240,7 +296,16 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
 
   for (const p of players) {
     const sg = p.signals!;
-    const pts = trackOf(sg.orderPositions ?? []);
+    /* 첫 전투 유닛의 생산 명령 시각 — 그 전의 명령은 전부 정찰이다(trackOf 주석).
+       전투 유닛을 아예 안 뽑은 사람(일꾼뿐)은 0으로 두어 옛 동작 그대로 남긴다 —
+       자취가 통째로 비는 것보다는 낫다. */
+    let armyStartSec = Infinity;
+    for (const [unit, frames] of Object.entries(sg.unitFrames ?? {})) {
+      if (NOT_ARMY.has(unit)) continue;
+      for (const f of frames) armyStartSec = Math.min(armyStartSec, f * SECONDS_PER_FRAME);
+    }
+    if (armyStartSec === Infinity) armyStartSec = 0;
+    const pts = trackOf(sg.orderPositions ?? [], armyStartSec);
     const units = unitTimeline(sg.unitFrames ?? {});
     // 생산 슬롯 — 시작 본진(0초) + 지어진 본진 건물들(건설 시간 지나서부터).
     const slotOpenSecs = [0, ...(sg.buildPositions ?? [])
@@ -270,17 +335,19 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
         ptag[unit] = tags;
       }
     }
-    if (pts.length > 0 || units.length > 0 || workers.length > 0) {
-      tracks.push({
-        raw: p.rawName, ...(p.color ? { color: p.color } : {}),
-        ...(ups.length > 0 ? { ups } : {}), pts, units, workers, size, prod,
-        ...(Object.keys(ptag).length > 0 ? { ptag } : {}),
-      });
-    }
     const foeAttacks = [...attacksByTeam.entries()]
       .filter(([team]) => team !== p.team)
       .flatMap(([, list]) => list)
       .sort((a, b) => a.sec - b.sec);
+    if (pts.length > 0 || units.length > 0 || workers.length > 0) {
+      const hot = hotOf(pts, foeAttacks);
+      tracks.push({
+        raw: p.rawName, ...(p.color ? { color: p.color } : {}),
+        ...(ups.length > 0 ? { ups } : {}), pts, units, workers, size, prod,
+        ...(Object.keys(ptag).length > 0 ? { ptag } : {}),
+        ...(hot.length > 0 ? { hot } : {}),
+      });
+    }
     for (const b of sg.buildPositions ?? []) {
       if (b.frame === null) continue; // 시각을 모르는 건설은 시간축에 못 세운다.
       const builtSec = Math.round(b.frame * SECONDS_PER_FRAME);

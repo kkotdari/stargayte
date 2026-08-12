@@ -885,9 +885,12 @@ export default function ReplayMotionPlayer({
                 <RaceBadge race={m.race} size={9} circleLetter className="scr-motion-base-race" />
                 {/* 팀 표시(요청: 깃발 말고 팀을 나타내는 아이콘에 색 구분) — 반대 어깨의
                     방패다. 색은 늘 팀색이다(modeColor가 아니다): 개인색 모드에서는 아바타
-                    테두리가 그 사람 색이라, 편을 말해 주는 자리가 하나는 있어야 한다. */}
+                    테두리가 그 사람 색이라, 편을 말해 주는 자리가 하나는 있어야 한다.
+                    방패 안에 팀 번호를 적는다(요청) — 색만으로는 "1팀이 파랑이던가"를
+                    되물어야 하는데, 숫자가 앉으면 그 물음이 없다. */}
                 <span className="scr-motion-base-team">
-                  <Shield size={9} strokeWidth={3} color={TEAM_EDGE[m.team === 2 ? 2 : 1]} fill={TEAM_EDGE[m.team === 2 ? 2 : 1]} />
+                  <Shield size={11} strokeWidth={0} fill={TEAM_EDGE[m.team === 2 ? 2 : 1]} />
+                  <i className="scr-motion-team-n">{m.team === 2 ? 2 : 1}</i>
                 </span>
                 {/* 재생이 끝나면 이긴 편에 트로피(요청) — 스냅의 승패 표시와 같은 자리. */}
                 {winnerTeam && m.team === winnerTeam && t >= total - 0.5 && !m.ghost && (
@@ -942,6 +945,20 @@ export default function ReplayMotionPlayer({
             if (d > t) break;
             if (t - d <= 180) size += 1;
           }
+          /* 전투 감모(지적: 전투 중인데 유닛 수가 안 준다) — 리플레이에 죽음이 안 남아
+             수를 셀 수는 없고, 트랙의 전투 구간(hot)과 최근 3분이 겹친 시간만큼 지수로
+             깎는다. 1분을 얻어맞으면 절반쯤 남는 눈금(반감기 60초) — 전투가 끝나고 3분이
+             지나면 그 구간이 창을 벗어나 저절로 회복된다(새 생산이 그 사이를 채운다).
+             옛 분석본에는 hot이 없어 그대로다(재분석 후부터). */
+          let fightSec = 0;
+          for (const [a, b] of p.hot ?? []) {
+            const lo = Math.max(a, t - 180);
+            const hi = Math.min(b, t);
+            if (hi > lo) fightSec += hi - lo;
+          }
+          if (size > 0 && fightSec > 0) {
+            size = Math.max(1, Math.round(size * Math.exp(-(Math.LN2 / 60) * fightSec)));
+          }
           const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC;
           const showName = activeNow && !!unit && (size >= 1 || !!SCOUT_KO[unit]);
           const fontPx = Math.min(16, 8 + Math.round(Math.sqrt(size) * 1.6));
@@ -993,6 +1010,15 @@ export default function ReplayMotionPlayer({
               {showName
                 ? (UNIT_KO[unit] ? `${UNIT_KO[unit]} ${size}`.trim() : SCOUT_KO[unit] ?? "●")
                 : "●"}
+              {/* 텍스트일 때는 왼쪽 위에 팀 방패를 겹쳐 붙인다(요청) — 개인색 칩은 편이
+                  안 읽히는데, 이름이 뜬 순간이 곧 "지금 움직이는 부대"라 편이 가장
+                  궁금한 순간이다. 점(●)일 때는 뺀다 — 점보다 방패가 커서 배보다 배꼽이 된다. */}
+              {showName && (
+                <span className="scr-motion-army-team">
+                  <Shield size={9} strokeWidth={0} fill={TEAM_EDGE[team === 2 ? 2 : 1]} />
+                  <i className="scr-motion-team-n">{team === 2 ? 2 : 1}</i>
+                </span>
+              )}
             </span>
           );
         })}
