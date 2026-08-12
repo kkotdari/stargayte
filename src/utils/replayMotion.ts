@@ -100,22 +100,31 @@ function trackOf(
   }
 }
 
-/** 우세 유닛 이름표의 변천 — 그때까지 가장 많이 뽑은 전투 유닛. */
+/** 우세 유닛 이름표의 변천 — 그때까지 가장 많이 뽑은 전투 유닛. 전투 유닛이 아직 없으면
+ *  일꾼·오버로드가 그 자리를 맡는다(지적: 초반 정찰 — 오버로드·일꾼이 이름 없이 점으로만
+ *  움직였다. 초반에 움직이는 것은 죄다 그 둘이다). */
+const SCOUT_FALLBACK = new Set(["SCV", "Probe", "Drone", "Overlord"]);
+
 function unitTimeline(unitFrames: Record<string, number[]>): [number, string][] {
-  const events: { sec: number; unit: string }[] = [];
+  const events: { sec: number; unit: string; army: boolean }[] = [];
   for (const [unit, frames] of Object.entries(unitFrames)) {
-    if (NOT_ARMY.has(unit)) continue;
-    for (const f of frames) events.push({ sec: f * SECONDS_PER_FRAME, unit });
+    const army = !NOT_ARMY.has(unit);
+    if (!army && !SCOUT_FALLBACK.has(unit)) continue;
+    for (const f of frames) events.push({ sec: f * SECONDS_PER_FRAME, unit, army });
   }
   events.sort((a, b) => a.sec - b.sec);
-  const counts = new Map<string, number>();
+  const armyCounts = new Map<string, number>();
+  const scoutCounts = new Map<string, number>();
   const out: [number, string][] = [];
   let leader = "";
   let lastAt = -Infinity;
   for (const e of events) {
-    counts.set(e.unit, (counts.get(e.unit) ?? 0) + 1);
-    let top = leader;
-    let topN = counts.get(leader) ?? 0;
+    (e.army ? armyCounts : scoutCounts).set(
+      e.unit, ((e.army ? armyCounts : scoutCounts).get(e.unit) ?? 0) + 1,
+    );
+    const counts = armyCounts.size > 0 ? armyCounts : scoutCounts;
+    let top = "";
+    let topN = 0;
     for (const [u, n] of counts) if (n > topN) { top = u; topN = n; }
     if (top !== leader && e.sec - lastAt >= UNIT_HOLD_SEC) {
       leader = top;
@@ -125,6 +134,7 @@ function unitTimeline(unitFrames: Record<string, number[]>): [number, string][] 
   }
   return out;
 }
+
 
 /** 누적 일꾼 수의 변천 — WORKER_STEP_SEC 버킷 끝의 값만 남긴다. */
 function workerTimeline(unitFrames: Record<string, number[]>): [number, number][] {

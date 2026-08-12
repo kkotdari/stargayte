@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, type ReactNode } from "rea
 import { Mountain, Pause, Play, RotateCcw } from "lucide-react";
 import TerrainReviewModal from "../../modals/TerrainReviewModal";
 import Avatar from "../common/Avatar";
-import { cx } from "../../utils/format";
+import { cx, cx as cx2 } from "../../utils/format";
 import { UNIT_KO, BUILDING_KO, TECH_KO } from "../../utils/replaySummaryText";
 import type { ReplayMapGrid } from "../../utils/replayParser";
 import { isAirUnit, type SummaryMotion } from "../../utils/replayMotion";
@@ -75,6 +75,13 @@ function speedOf(
 
 /** 커맨드를 받은 지 이 안이면 아직 '활동 중'이다(요청) — 이름표를 유지한다. */
 const ACTIVE_HOLD_SEC = 8;
+/** 재생 전용 이름 보강 — UNIT_KO에 없는 정찰 유닛(일꾼·오버로드). UNIT_KO에 넣으면 통계
+ *  도넛·Top5까지 일꾼이 섞이므로(replayBuildMix가 그 표로 거른다) 여기서만 얹는다. */
+const SCOUT_KO: Record<string, string> = {
+  SCV: "SCV", Probe: "프로브", Drone: "드론", Overlord: "오버로드",
+};
+/** 근처 건물을 한 덩어리로 묶는 반경(타일)(요청: 근처 건물은 유닛처럼 수로). */
+const BUILD_CLUSTER_TILES = 7;
 /** 생산 뒤 이 안이면 그 건물이 '일하는 중'이다(요청: 생산할 때 이름 표시). */
 const PROD_FLASH_SEC = 6;
 
@@ -205,6 +212,11 @@ export default function ReplayMotionPlayer({
   /* 색 규칙(요청: 위치 바꿈) — 안쪽 배경이 개인(게임 내) 컬러, 테두리가 팀 컬러다.
      테두리는 선명한 팀색으로 굵게(2px). 글자는 배경 밝기에 따라 흰/검. */
   const TEAM_EDGE: Record<1 | 2, string> = { 1: "#2f80ff", 2: "#e0435c" };
+  /* 도형(●▪▲)의 색(요청) — 안쪽(글자색)이 개인색, 테두리(외곽선)가 팀색이다. */
+  const shapeStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => ({
+    color: colorByRaw.get(raw) ?? (team === 2 ? "#e0435c" : "#2f80ff"),
+    WebkitTextStroke: `0.7px ${team === 2 ? "#e0435c" : "#2f80ff"}`,
+  });
   const chipStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => {
     const personal = colorByRaw.get(raw);
     const bg = personal ?? (team === 2 ? "#5a2a31" : "#233c5c");
@@ -392,11 +404,31 @@ export default function ReplayMotionPlayer({
     return m;
   }, [motion]);
 
-  /* 무너진 건물(어림)은 그 시각 뒤로 그리지 않는다 — 무너진 직후 몇 초만 ✕로 말한다. */
-  const buildsNow = motion.builds.filter((b) => {
-    const gone = b[5] ?? 0;
-    return b[0] <= t && (gone === 0 || t < gone + 6);
-  });
+  /* 근처의 같은 종류 건물은 한 덩어리다(요청) — 활성(건설·생산 중)일 땐 유닛처럼
+     "배럭 3"으로 커지고, 포커스가 끝나면 낱개 도형으로 돌아간다. */
+  const buildClusters = useMemo(() => {
+    const clusters: {
+      raw: string; unit: string; sx: number; sy: number;
+      members: { sec: number; x: number; y: number; gone: number }[];
+    }[] = [];
+    for (const [sec, x, y, unit, raw, gone] of motion.builds) {
+      let best: (typeof clusters)[number] | null = null;
+      let bestD = Infinity;
+      for (const c of clusters) {
+        if (c.raw !== raw || c.unit !== unit) continue;
+        const d = Math.hypot(c.sx / c.members.length - x, c.sy / c.members.length - y);
+        if (d <= BUILD_CLUSTER_TILES && d < bestD) { best = c; bestD = d; }
+      }
+      if (!best) {
+        best = { raw, unit, sx: 0, sy: 0, members: [] };
+        clusters.push(best);
+      }
+      best.sx += x;
+      best.sy += y;
+      best.members.push({ sec, x, y, gone: gone ?? 0 });
+    }
+    return clusters;
+  }, [motion]);
   const castsNow = motion.casts.filter((c) => c[0] <= t && t - c[0] <= CAST_HOLD_SEC);
 
   return (
@@ -406,37 +438,62 @@ export default function ReplayMotionPlayer({
           ? <img className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`} />
           : <div className="scr-motion-canvas scr-motion-canvas-blank" />}
 
-        {/* 건물 — 자리·시각이 정확한 유일한 층이다. 갓 지은 것만 이름을 달고, 지나면 점만.
-            무너진(어림) 건물은 ✕를 잠깐 보이고 사라진다(요청: 파괴 파악). */}
-        {buildsNow.map(([sec, x, y, unit, raw, gone], i) => {
-          const team = teamOfRaw(raw);
-          const razed = (gone ?? 0) > 0 && t >= (gone ?? 0);
-          /* 일하는 중인가(요청) — 이 종류가 지금 창 안에 유닛을 냈나. */
-          const producing = !razed && (prodByRawType.get(`${raw}|${unit}`) ?? [])
-            .some((ps) => ps <= t && t - ps <= PROD_FLASH_SEC);
-          const freshBuild = !razed && (t - sec <= BUILD_LABEL_SEC || producing);
-          return (
+        {/* 건물(요청: 근처는 한 덩어리로) — 활성이면 "배럭 3"처럼 수와 함께 커지고,
+            아니면 낱개 도형(▪/▲, 안=개인색·테두리=팀색)이다. 무너진 것은 ✕로 잠깐. */}
+        {buildClusters.flatMap((c, ci) => {
+          const alive = c.members.filter((m) => m.sec <= t && (m.gone === 0 || t < m.gone));
+          const razedNow = c.members.filter((m) => m.gone > 0 && t >= m.gone && t < m.gone + 6);
+          const team = teamOfRaw(c.raw);
+          const nodes: React.ReactNode[] = razedNow.map((m, i) => (
             <span
-              key={`b-${i}`}
-              className={cx(
-                "scr-motion-build",
-                team === 2 ? "scr-motion-team2" : "scr-motion-team1",
-                freshBuild && "scr-motion-build-fresh scr-motion-chip",
-                razed && "scr-motion-build-razed",
-              )}
-              style={{
-                left: pct(x, grid.width), top: pct(y, grid.height),
-                ...(freshBuild ? chipStyle(raw, team) : {}),
-              }}
+              key={`bz-${ci}-${i}`}
+              className="scr-motion-build scr-motion-build-razed"
+              style={{ left: pct(m.x, grid.width), top: pct(m.y, grid.height) }}
             >
-              {/* 겉모습 규칙(요청) — 건물 네모·방어건물 세모, 지어지는 동안만 이름.
-                  이름 표는 건물 것(BUILDING_KO)이다(지적: 건물 이름이 안 나온다 — 유닛
-                  표(UNIT_KO)만 뒤져서 건물은 늘 도형으로 떨어졌다). */}
-              {razed ? "✕"
-                : freshBuild ? (BUILDING_KO[unit] ?? UNIT_KO[unit] ?? (DEFENSE_BUILDINGS.has(unit) ? "▲" : "▪"))
-                  : DEFENSE_BUILDINGS.has(unit) ? "▲" : "▪"}
+              ✕
             </span>
-          );
+          ));
+          if (alive.length === 0) return nodes;
+          const producing = (prodByRawType.get(`${c.raw}|${c.unit}`) ?? [])
+            .some((ps) => ps <= t && t - ps <= PROD_FLASH_SEC);
+          const freshBuild = alive.some((m) => t - m.sec <= BUILD_LABEL_SEC);
+          const name = BUILDING_KO[c.unit] ?? UNIT_KO[c.unit];
+          if ((producing || freshBuild) && name) {
+            // 활성 — 유닛처럼 이름+수, 수만큼 커진다(요청).
+            const cx = alive.reduce((sum, m) => sum + m.x, 0) / alive.length;
+            const cy = alive.reduce((sum, m) => sum + m.y, 0) / alive.length;
+            nodes.push(
+              <span
+                key={`bc-${ci}`}
+                className={cx2("scr-motion-build", "scr-motion-build-fresh", "scr-motion-chip",
+                  team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
+                style={{
+                  left: pct(cx, grid.width), top: pct(cy, grid.height),
+                  fontSize: Math.min(14, 8 + Math.round(Math.sqrt(alive.length) * 1.5)),
+                  ...chipStyle(c.raw, team),
+                }}
+              >
+                {alive.length > 1 ? `${name} ${alive.length}` : name}
+              </span>,
+            );
+            return nodes;
+          }
+          // 비활성 — 낱개 도형. 안쪽이 개인색, 테두리가 팀색이다(요청).
+          for (let i = 0; i < alive.length; i += 1) {
+            nodes.push(
+              <span
+                key={`bs-${ci}-${i}`}
+                className="scr-motion-build"
+                style={{
+                  left: pct(alive[i].x, grid.width), top: pct(alive[i].y, grid.height),
+                  ...shapeStyle(c.raw, team),
+                }}
+              >
+                {DEFENSE_BUILDINGS.has(c.unit) ? "▲" : "▪"}
+              </span>,
+            );
+          }
+          return nodes;
         })}
 
         {/* 본진 — 스냅 미니맵과 같은 표시(아바타+이름), 늘 떠 있다. 그 아래에 자원 캐는
@@ -504,7 +561,7 @@ export default function ReplayMotionPlayer({
             size = n;
           }
           const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC;
-          const showName = activeNow && size >= 1 && !!unit;
+          const showName = activeNow && !!unit && (size >= 1 || !!SCOUT_KO[unit]);
           const fontPx = Math.min(16, 8 + Math.round(Math.sqrt(size) * 1.6));
           return (
             <span
@@ -518,11 +575,14 @@ export default function ReplayMotionPlayer({
               style={{
                 left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
                 fontSize: showName ? fontPx : Math.min(14, 7 + Math.round(Math.sqrt(size))),
-                ...(showName ? chipStyle(p.raw, team) : {}),
+                ...(showName ? chipStyle(p.raw, team) : shapeStyle(p.raw, team)),
               }}
             >
-              {/* 수도 함께 적는다(요청) — "질럿 12" 꼴. */}
-              {showName ? `${UNIT_KO[unit] ?? ""} ${size}`.trim() : "●"}
+              {/* 수도 함께 적는다(요청) — "질럿 12" 꼴. 정찰 유닛(일꾼·오버로드)은 수 없이
+                  이름만 — 세는 값(size)이 전투 유닛이라 정찰에는 뜻이 없다. */}
+              {showName
+                ? (UNIT_KO[unit] ? `${UNIT_KO[unit]} ${size}`.trim() : SCOUT_KO[unit] ?? "●")
+                : "●"}
             </span>
           );
         })}
