@@ -44,6 +44,22 @@ const RAZE_SURE_ORDERS = 14;
 const RAZE_QUIET_SEC = 90;
 const RAZE_QUIET_RADIUS = 8;
 const RAZE_QUIET_MAX_ORDERS = 1;
+/** 일꾼 걸음(타일/초) — 착공 지연의 자다. 재생 쪽 SCOUT_WALK_SPEED와 같은 값. */
+const WORKER_TILES_PER_SEC = 3.7;
+/** 착공 지연 상한(초) — 몰래 건물이라도 이보다 오래 걷지는 않았다고 본다. */
+const BUILD_TRAVEL_CAP_SEC = 45;
+/** 띄울 수 있는 테란 건물 — 착륙(Land)이 오면 이 가운데 가장 가까운 것이 옮겨 앉는다. */
+const LIFTABLE = new Set([
+  "Command Center", "Barracks", "Factory", "Starport", "Engineering Bay", "Science Facility",
+]);
+/** 건물 변태의 재료 — 무엇에서 무엇이 되는가(요청: 저그 건물 변태 추적). */
+const MORPH_SRC: Record<string, string[]> = {
+  Lair: ["Hatchery"], Hive: ["Lair"],
+  "Sunken Colony": ["Creep Colony"], "Spore Colony": ["Creep Colony"],
+  "Greater Spire": ["Spire"],
+};
+/** 취소가 물릴 수 있는 착공 후 시간(초) — 이보다 오래된 건물은 이미 다 섰다. */
+const CANCEL_WINDOW_SEC = 60;
 
 /** 한 사람의 자취 — 원본 게임 아이디(raw)로 부른다(beats와 같은 규칙). */
 export interface MotionTrack {
@@ -415,6 +431,96 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       .filter(([team]) => team !== p.team)
       .flatMap(([, list]) => list)
       .sort((a, b) => a.sec - b.sec);
+    /* 임자의 모든 명령 좌표(캐기·랠리처럼 kind 없는 것 포함) — 무너짐 확인의 재료다.
+       서 있는 건물 곁에는 이런 손길이 계속 지나간다. */
+    const ownOrders = (sg.orderPositions ?? [])
+      .map((o) => ({ sec: o.frame * SECONDS_PER_FRAME, x: o.x, y: o.y }));
+    const myBuildIdx: number[] = [];
+    for (const b of sg.buildPositions ?? []) {
+      if (b.frame === null) continue; // 시각을 모르는 건설은 시간축에 못 세운다.
+      const clickSec = b.frame * SECONDS_PER_FRAME;
+      /* 착공은 일꾼이 닿고서다(요청: 건설 명령이면 일꾼이 거기로 이동한 뒤 올라가기 시작) —
+         직전 명령 자리(그 무렵 그 사람 손이 있던 어림 자리)에서 현장까지 일꾼 걸음으로
+         걸린 시간을 얹는다. 몰래 건물일수록 지연이 길어져, 클릭 순간 짠 하고 서던 것이
+         걸어가 닿은 뒤 올라간다. 일꾼 점도 현장으로 걷는다(아래 spts 주석). */
+      let prev: { x: number; y: number } | null = null;
+      for (const o of ownOrders) {
+        if (o.sec > clickSec) break;
+        prev = o;
+      }
+      const travel = prev
+        ? Math.min(BUILD_TRAVEL_CAP_SEC, Math.hypot(prev.x - b.x, prev.y - b.y) / WORKER_TILES_PER_SEC)
+        : 0;
+      const builtSec = Math.round(clickSec + travel);
+      spts.push([Math.round(clickSec), Math.round(b.x), Math.round(b.y)]);
+      myBuildIdx.push(builds.length);
+      builds.push([
+        builtSec, Math.round(b.x), Math.round(b.y), b.unit, p.rawName,
+        razedAt(builtSec, b.x, b.y, foeAttacks, ownOrders),
+      ]);
+    }
+    spts.sort((a, b) => a[0] - b[0]);
+    /* 저그 건물 변태(요청) — 명령에 자리가 없어 재료 건물을 되짚는다. 성큰·스포어는 방금
+       깐 콜로니(가장 최근)가, 레어·하이브는 가장 오래된 재료(대개 본진)가 변한 것이다.
+       시작 해처리는 건설 기록이 없어 못 되짚는다 — 그때는 그냥 넘어간다(자리를 모르는
+       레어를 아무 데나 세울 수는 없다). */
+    for (const bm of sg.buildingMorphs ?? []) {
+      const srcKinds = MORPH_SRC[bm.to];
+      if (!srcKinds) continue;
+      const sec = Math.round(bm.frame * SECONDS_PER_FRAME);
+      const recentFirst = bm.to.includes("Colony");
+      let pick = -1;
+      for (const k of myBuildIdx) {
+        const e = builds[k];
+        if (!srcKinds.includes(e[3]) || e[0] > sec || (e[5] > 0 && e[5] <= sec)) continue;
+        if (pick < 0 || (recentFirst ? e[0] > builds[pick][0] : e[0] < builds[pick][0])) pick = k;
+      }
+      if (pick < 0) continue;
+      const e = builds[pick];
+      e[5] = e[5] > 0 ? Math.min(e[5], sec) : sec;
+      myBuildIdx.push(builds.length);
+      builds.push([sec, e[1], e[2], bm.to, p.rawName, razedAt(sec, e[1], e[2], foeAttacks, ownOrders)]);
+    }
+    /* 테란 착륙(요청: 띄우기 판단) — 어느 건물이 내렸는지는 안 남아, 그 시각 살아 있는
+       띄울 수 있는 건물 중 가장 가까운 것이 옮겨 앉은 것으로 본다. 옛 자리는 그때 비고
+       (✕ 없이 사라짐), 새 자리에 같은 건물이 선다. */
+    for (const l of sg.lands ?? []) {
+      const sec = Math.round(l.frame * SECONDS_PER_FRAME);
+      let pick = -1;
+      let bd = Infinity;
+      for (const k of myBuildIdx) {
+        const e = builds[k];
+        if (!LIFTABLE.has(e[3]) || e[0] > sec || (e[5] > 0 && e[5] <= sec)) continue;
+        const d = Math.hypot(e[1] - l.x, e[2] - l.y);
+        if (d < bd) { bd = d; pick = k; }
+      }
+      // 같은 자리 재착륙(애드온 붙이기 실패 등)은 이사가 아니다.
+      if (pick < 0 || bd <= 2) continue;
+      const e = builds[pick];
+      e[5] = e[5] > 0 ? Math.min(e[5], sec) : sec;
+      myBuildIdx.push(builds.length);
+      builds.push([
+        sec, Math.round(l.x), Math.round(l.y), e[3], p.rawName,
+        razedAt(sec, l.x, l.y, foeAttacks, ownOrders),
+      ]);
+    }
+    /* 건설 취소(요청: 짓다가 멈추거나 취소) — 어느 건물인지 안 남아, 가장 최근에 착공돼
+       아직 짓고 있던 건물을 물린 것으로 본다. */
+    for (const cf of sg.cancelBuilds ?? []) {
+      const sec = Math.round(cf * SECONDS_PER_FRAME);
+      let pick = -1;
+      for (const k of myBuildIdx) {
+        const e = builds[k];
+        if (e[0] > sec || sec - e[0] > CANCEL_WINDOW_SEC || (e[5] > 0 && e[5] <= sec)) continue;
+        if (pick < 0 || e[0] > builds[pick][0]) pick = k;
+      }
+      if (pick >= 0) {
+        const e = builds[pick];
+        e[5] = e[5] > 0 ? Math.min(e[5], sec) : sec;
+      }
+    }
+    /* 트랙은 여기서 싣는다 — 위 건설 걸음이 spts에 점을 더한 뒤라야, 일꾼 명령이
+       하나도 없던 사람의 건설 걸음도 함께 실린다. */
     if (pts.length > 0 || spts.length > 0 || tpts.length > 0 || opts.length > 0
       || units.length > 0 || workers.length > 0) {
       const hot = hotOf(
@@ -431,18 +537,6 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
         ...(hot.length > 0 ? { hot } : {}),
       });
     }
-    /* 임자의 모든 명령 좌표(캐기·랠리처럼 kind 없는 것 포함) — 무너짐 확인의 재료다.
-       서 있는 건물 곁에는 이런 손길이 계속 지나간다. */
-    const ownOrders = (sg.orderPositions ?? [])
-      .map((o) => ({ sec: o.frame * SECONDS_PER_FRAME, x: o.x, y: o.y }));
-    for (const b of sg.buildPositions ?? []) {
-      if (b.frame === null) continue; // 시각을 모르는 건설은 시간축에 못 세운다.
-      const builtSec = Math.round(b.frame * SECONDS_PER_FRAME);
-      builds.push([
-        builtSec, Math.round(b.x), Math.round(b.y), b.unit, p.rawName,
-        razedAt(builtSec, b.x, b.y, foeAttacks, ownOrders),
-      ]);
-    }
     for (const c of sg.castPositions ?? []) {
       casts.push([
         Math.round(c.frame * SECONDS_PER_FRAME), Math.round(c.x), Math.round(c.y), c.tech, p.rawName,
@@ -450,6 +544,24 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
     }
   }
   if (tracks.length === 0 && builds.length === 0) return null;
+  /* 공격이 온 뒤 그 자리에 새 건물이 서면, 옛 건물은 늦어도 그때 없어진 것이다(요청) —
+     같은 타일에 두 채가 같이 설 수는 없다. 임자가 같아도 적용된다(부서진 자리에 다시
+     지은 것). 공격 근거 없이 겹친 것은 취소·재배치일 수 있어 안 건드린다. */
+  const teamOfRaw = new Map<string, number>();
+  for (const p of players) teamOfRaw.set(p.rawName, p.team);
+  for (const a of builds) {
+    for (const b of builds) {
+      if (b[0] <= a[0] || Math.hypot(a[1] - b[1], a[2] - b[2]) > 2) continue;
+      if (a[5] > 0 && a[5] <= b[0]) continue;
+      const foes = [...attacksByTeam.entries()]
+        .filter(([team]) => team !== teamOfRaw.get(a[4]))
+        .flatMap(([, list]) => list);
+      const hitNear = foes.reduce((n, o) => (
+        o.sec > a[0] && o.sec < b[0] && Math.hypot(o.x - a[1], o.y - a[2]) <= RAZE_RADIUS
+          ? n + 1 : n), 0);
+      if (hitNear >= 2) a[5] = b[0];
+    }
+  }
   builds.sort((a, b) => a[0] - b[0]);
   casts.sort((a, b) => a[0] - b[0]);
   return { v: 1, step: STEP_SEC, players: tracks, builds, casts };

@@ -900,8 +900,9 @@ export default function ReplayMotionPlayer({
           return motion.builds.map(([sec, x, y, unit, raw, gone], i) => {
             if (sec > t) return null;
             const goneAt = gone ?? 0;
-            if (goneAt > 0 && t >= goneAt + 6) return null;
-            const razed = goneAt > 0 && t >= goneAt;
+            // 없어진 건물은 그냥 사라진다(요청: ✕ 표시 없음) — 착륙 이사·변태와도 한 결이다.
+            if (goneAt > 0 && t >= goneAt) return null;
+            const razed = false;
             /* 같은 자리에 같은 임자의 새 건물이 서면(레어 진화·재건) 옛 것은 걷는다
                (지적: 비활성 건물이 글자와 도형으로 동시 표시). */
             if (!razed && motion.builds.some(([s2, x2, y2, , r2], j) =>
@@ -935,8 +936,7 @@ export default function ReplayMotionPlayer({
                "겹치지만 않으면 이름 상시 노출"이던 옛 규칙을 걷었다). */
             const isHall = ["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(unit);
             let text: string;
-            if (razed) text = "✕";
-            else if (activeBuild && name) text = name;
+            if (activeBuild && name) text = name;
             // ▪는 글꼴상 반쪽짜리라 ●▲보다 작아 보인다(지적) — 꽉 찬 ■로. 본진은 별표(요청).
             else text = isHall ? "★" : DEFENSE_BUILDINGS.has(unit) ? "▲" : "■";
             return (
@@ -1407,7 +1407,6 @@ export default function ReplayMotionPlayer({
         <span>★ 본진</span>
         <span>■ 건물</span>
         <span>▲ 방어 건물</span>
-        <span>✕ 파괴됨</span>
         <span>· 채굴 일꾼</span>
         <span><Hammer size={8} /> 건설 중</span>
       </div>

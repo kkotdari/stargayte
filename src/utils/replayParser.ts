@@ -70,6 +70,15 @@ export interface BuildPos {
 export interface ReplayPlayerSignals {
   /** 훈련·변태 커맨드로 센 유닛별 생산 커맨드 수(screp 영문명 그대로, 일꾼·보급 포함). */
   unitCounts: Record<string, number>;
+  /** 테란 건물 착륙(Land) — 좌표는 건설과 같은 빌드 타일이다. 어느 건물이 내렸는지는 안
+   *  남아, 재생이 가장 가까운 띄울 수 있는 건물로 어림한다(요청: 건물 띄우기 판단). */
+  lands: { frame: number; x: number; y: number }[];
+  /** 건설 취소 커맨드의 프레임 — 짓다 만 건물 판정의 재료(요청). 어느 건물인지는 안 남아,
+   *  재생이 가장 최근 착공된 건물로 어림한다. */
+  cancelBuilds: number[];
+  /** 저그 건물 변태 — [프레임, 무엇으로]. 명령에 자리가 안 실려(고른 건물이 변한다),
+   *  재생이 재료 건물(해처리·크립 콜로니…)을 되짚는다(요청: 건물 변태 추적). */
+  buildingMorphs: { frame: number; to: string }[];
   /** 유닛별 첫 생산 프레임 — "9분에 첫 캐리어" 같은 타이밍 이야기를 만들 때 쓴다. */
   firstUnitFrame: Record<string, number>;
   /** 건설·건물변태 커맨드로 센 건물별 수(확장 수, 테크 건물, 방어 건물 판정). */
@@ -444,7 +453,7 @@ const PIXELS_PER_TILE = 32;
 
 function emptySignals(): ReplayPlayerSignals {
   return {
-    unitCounts: {}, firstUnitFrame: {},
+    unitCounts: {}, firstUnitFrame: {}, lands: [], cancelBuilds: [], buildingMorphs: [],
     buildingCounts: {}, firstBuildingFrame: {},
     unitFrames: {}, trainTags: {}, buildingFrames: {}, buildPositions: [], orderPositions: [], hits: [],
     techNames: [], upgradeNames: [], firstTechFrame: {}, firstUpgradeFrame: {},
@@ -613,7 +622,18 @@ function collectSignals(
         if (pos) {
           s.buildPositions.push({ unit: b, frame, x: pos.x, y: pos.y });
         }
+        // 건물 변태는 자리가 안 실린다 — 무엇이 됐는지와 시각만 남긴다(요청: 변태 추적).
+        if (cmdName === "Building Morph" && frame !== null) {
+          s.buildingMorphs.push({ frame, to: b });
+        }
       }
+    } else if (cmdName === "Land") {
+      // 착륙 — 좌표가 실린다(요청: 띄우기 판단). 이륙(Lift Off)은 자리가 안 남아 착륙만 쓴다.
+      const pos = posOf(c.Pos);
+      if (pos && frame !== null) s.lands.push({ frame, x: pos.x, y: pos.y });
+    } else if (cmdName && cmdName.startsWith("Cancel Construct") && frame !== null) {
+      // 짓다 물린 것(요청) — 어느 건물인지는 재생이 어림한다.
+      s.cancelBuilds.push(frame);
     }
     // ── 무엇을 골라 두고 있나 — 탱크 번호를 알아내는 데 쓴다(위 pending 주석) ──
     if (cmdName === "Select") sel.set(c.PlayerID, tagsOf(c));
