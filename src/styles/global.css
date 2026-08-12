@@ -10952,17 +10952,15 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
      흐려지는 것(stale)이 문턱을 넘는 순간 뚝 떨어지지 않고 천천히 가라앉는다. */
   transition: left 0.25s linear, top 0.25s linear, opacity 0.8s ease;
 }
-.scr-motion-army-stale { opacity: 0.45; }
+/* (삭제) 자취가 뜸하면 흐려지던 -stale(0.45) — 생존 추정의 원칙(지적: "유닛은 왜
+   반투명해져?")과 어긋난다: 조용한 유닛도 살아서 그 자리에 있는 것이라 제 농도를 지킨다.
+   반투명은 이제 클로킹만의 뜻이다. */
 /* 클로킹 유닛(옵저버·다크·클로킹 연구 뒤 레이스·고스트)은 반투명이다(요청) — 칩이든
    점이든 같이 옅어진다. */
 .scr-motion-cloaked { opacity: 0.45; }
 /* 오버로드 풍선 도형은 점 크기(1em)로는 다리가 안 보인다(지적: "오버로드 모양이 안
    나오는듯") — 한 단 키운다. */
 .scr-motion-shape-svg.scr-motion-ovie { width: 1.7em; height: 1.7em; }
-/* 이름 칩만은 흐리게 안 한다(지적) — 칩은 '지금 깨어 있는' 쪽인데 자취가 뜸하다는 이유로
-   반투명해지면, 방금까지 또렷하던 배지가 갑자기 꺼진 것처럼 읽힌다. 흐림은 도형(점)의
-   몫으로 남긴다. */
-.scr-motion-chip.scr-motion-army-stale { opacity: 1; }
 /* 정찰·일꾼 점(지적: 일꾼 정찰이 안 보인다) — 부대 점보다 작고 옅어서 "부대는 아니고
    무언가 갔다"로 읽힌다. */
 .scr-motion-scout {
@@ -11002,23 +11000,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 }
 @keyframes scr-motion-dig { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1px); } }
 .scr-motion-build-razed { color: var(--dim); animation: scr-motion-in 0.3s ease-out; }
-/* 생산·연구 중 건물 — 크기 박동(쿵쾅) 대신 라임색 글로우가 쉬었다 밝아졌다 한다(요청).
-   빛은 아이콘 '뒤'에만 깔린다(지적: 아이콘 자체를 물들이지 말 것) — 도형 밑의 둥근 후광
-   하나가 숨 쉰다. 세기는 낮춰 뒀다(지적: 효과 약화). */
-/* 퍼지는 후광 대신 또렷한 라임 테(지적: "그 액티브 효과때문에 건물이 블러가 돼보여") —
-   그라데이션 안개가 건물 가장자리를 뿌옇게 만들었다. 테는 숨 쉬되 선은 선명하다.
-   모양은 동그라미가 아니라(지적) 아이콘 상자를 그대로 두른 둥근 네모다 — 발자국 비례로
-   넓어진 건물에는 그만큼 넓은 테가 앉는다. */
-.scr-motion-build-glow::before {
-  content: ""; position: absolute; inset: -2.5px; border-radius: 3px;
-  z-index: -1; pointer-events: none;
-  border: 1.5px solid rgba(190, 255, 80, 0.9);
-  animation: scr-motion-glow 1.2s ease-in-out infinite;
-}
-@keyframes scr-motion-glow {
-  0%, 100% { opacity: 0.15; }
-  50% { opacity: 0.8; }
-}
+/* (삭제) 생산·연구 라임 테(-glow) — 하는 일은 가운데 아이콘(망치·톱니·플라스크)만으로
+   말한다(요청: 건물 액티브 사각형 효과 제거). */
 /* 떠 있는 건물(지적: "건물 떠있는게 표현이 안된다") — 이륙부터 착륙까지 옛 자리에서
    둥실거린다. 반투명은 살짝만: 자리에 '있긴 한데 땅에 없는' 상태다. */
 .scr-motion-build-afloat { opacity: 0.75; animation: scr-motion-afloat 1.4s ease-in-out infinite; }
@@ -11096,7 +11079,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    흐릿해진 자취 점(-stale)은 제 옅음이 뜻이라 건드리지 않는다. */
 .scr-motion-build-shape,
 .scr-motion-sq,
-.scr-motion-dot:not(.scr-motion-army-stale) { opacity: 0.82; }
+.scr-motion-dot { opacity: 0.82; }
 .scr-motion-build-on.scr-motion-build-shape { opacity: 0.95; }
 /* 건물 네모 — 글꼴 ■는 작으면 동그랗게 뭉개져(지적) 상자로 직접 그린다. 색은 글자색을 탄다.
    그림자도 유닛과 같은 톤으로 얇게(요청). */
@@ -11166,12 +11149,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-base-team .scr-motion-team-n { font-size: 8px; }
 /* 하는 일 아이콘(공사 망치·생산 톱니·업그레이드 플라스크) — 건물 한가운데에
    얹는다(지적: "망치가 어디붙은지 헷갈림") — 모서리에 매달려 있으면 어느 건물의
-   아이콘인지가 붙어서 안 읽혔다. 색은 폰트색이다(요청) — 그 사람 색을 타면 같은 색
-   도형 위에서 아이콘이 안 보인다. */
+   아이콘인지가 붙어서 안 읽혔다. 색은 그 사람 글자색을 그대로 탄다(지적: "아이콘이
+   왜 다 흰색이지" — var(--text)로 못 박았던 것을 되돌림). */
 .scr-motion-raising {
   position: absolute; top: 50%; left: 50%; right: auto;
   transform: translate(-50%, -50%); pointer-events: none;
-  color: var(--text);
 }
 /* 방패 속 팀 번호(요청) — 방패가 곧 바탕이라 판 없이 숫자만 얹는다. 방패 아랫단이
    뾰족해 눈금 중심이 살짝 위라, 숫자도 반 픽셀 위로 당긴다. */
@@ -11241,17 +11223,41 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   width: 24px; height: 24px; min-width: 24px; padding: 0; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
 }
-/* 큰 화면 팝업(요청: 맵과 조작부만, 화면 안에서 최대·스크롤바 금지) — 폭은 화면 높이가
-   허락하는 만큼이다: 지도는 폭을 따라 커지므로(aspect-ratio) 폭 상한이 곧 높이 상한이고,
-   조작부 몫으로 높이에서 190px을 남긴다. 실제 폭은 JSX 인라인 width가 맵 가로세로비까지
-   곱해 확정한다(여기 값은 정사각 맵 기준 폴백). 게임 상세 팝업(z 130) 위에 선다. */
+/* 큰 화면 팝업(요청: 맵을 최대한 크게 — 조작부는 맵 양옆 세로, 스크러버 없음) — 폭은
+   화면 높이가 허락하는 만큼이다: 지도는 폭을 따라 커지므로(aspect-ratio) 높이 상한이
+   폭 상한을 정하고, 양옆 조작부 몫을 더한다. 실제 폭은 JSX 인라인 width가 맵
+   가로세로비까지 곱해 확정한다(여기 값은 정사각 맵 기준 폴백). 게임 상세 팝업(z 130)
+   위에 선다. */
 .scr-motion-big-modal {
   z-index: 210; max-width: none;
-  width: min(94vw, calc(100dvh - 190px));
+  width: min(94vw, calc(100dvh - 60px + 170px));
   padding: 12px 14px;
 }
 /* 팝업에는 맵과 조작부만(요청) — 범례·지형 수정은 감춘다. */
 .scr-motion-big .scr-motion-legend, .scr-motion-big .scr-motion-terrain-row { display: none; }
+/* 확대 모드 배치(요청: 배속+컬러는 맵 왼쪽 세로, 재생+시간은 맵 오른쪽 세로, 스크러버
+   없음) — .scr-motion을 3열 그리드로 펴고, 도구줄·조종부 상자는 display:contents로
+   풀어 아이들이 직접 그리드 칸에 앉는다. 오른쪽 기둥은 위(확대 토글)·가운데(재생)·
+   아래(시간) 세 줄이다. */
+.scr-motion-big {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: 1fr auto 1fr;
+  column-gap: 10px; row-gap: 8px; align-items: center;
+}
+.scr-motion-big .scr-motion-map { grid-column: 2; grid-row: 1 / 4; }
+.scr-motion-big .scr-motion-toolrow { display: contents; }
+.scr-motion-big .scr-motion-toolrow-mid { display: none; }
+.scr-motion-big .scr-motion-expand-row { grid-column: 3; grid-row: 1; align-self: start; }
+/* 스크러버 줄은 확대에선 없다(요청) — 시간은 오른쪽 기둥의 시계가 말한다. */
+.scr-motion-big .scr-motion-bar:not(.scr-motion-bar-controls) { display: none; }
+.scr-motion-big .scr-motion-bar-controls { display: contents; }
+.scr-motion-big .scr-motion-speeds {
+  grid-column: 1; grid-row: 1 / 4; align-self: center;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.scr-motion-big .scr-motion-speeds .scr-motion-colorbtn { margin-left: 0; margin-top: 4px; }
+.scr-motion-big .scr-motion-play { grid-column: 3; grid-row: 2; justify-self: center; }
+.scr-motion-big .scr-motion-clock { grid-column: 3; grid-row: 3; align-self: start; justify-self: center; }
 .scr-terrain-hint { margin: 0 0 8px; font-size: var(--fs-caption); color: var(--muted); }
 .scr-terrain-stage { position: relative; width: 100%; }
 .scr-terrain-img { display: block; width: 100%; user-select: none; border-radius: var(--radius-sm); }

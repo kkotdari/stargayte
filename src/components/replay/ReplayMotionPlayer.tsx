@@ -22,8 +22,8 @@ import type { MinimapMarker } from "./ReplayMinimap";
    원장으로만 남는다. 유닛 위치는 명령 기반 추정이다: 리플레이에는 위치·죽음이 안 남아서,
    이 자취는 "그 사람 부대가 어디서 무엇을 하고 있었나"의 어림이다. */
 
-/** 배속 갈래(요청: 속도 조절, 기본 ×2) — 뜯어보는 ×2부터 훑어 넘기는 ×32까지. */
-const SPEEDS = [2, 4, 8, 16, 32] as const;
+/** 배속 갈래(요청: 1·2·3·5·10·20) — 뜯어보는 ×1부터 훑어 넘기는 ×20까지. */
+const SPEEDS = [1, 2, 3, 5, 10, 20] as const;
 /** 착공 직후 이름이 떠 있는 시간(초) — 그 뒤로는 곧장 도형+망치다(요청: "건물은 처음
  *  짓기 시작할때 잠깐 이름으로 표시하고 아이콘에 망치"). 예전엔 다 지어지고도 한참
  *  이름이었는데, 그 시간 내내 이름이 화면을 차지했다. 생산·연구가 돌면 그때 다시
@@ -35,7 +35,10 @@ const BUILD_NAME_SEC = 6;
  *  — 4칸짜리 커맨드는 1.6타일, 2칸짜리 파일런은 0.8타일 솟는다. 높은 건물이 제 뒤(위쪽)
  *  건물을 가릴 수 있는 것은 사선 뷰의 원래 모습이고, 겹침 차례는 y가 큰(앞) 건물이
  *  이긴다(렌더 정렬). */
-const riseOf = (unit: string): number => (FOOTPRINT[unit] ?? [3, 2])[0] * 0.4;
+/** 높이가 거의 없는 납작이들(지적: 포토캐논·성큰·벙커) — 높이 몫을 확 줄인다. */
+const FLAT_BUILDINGS = new Set(["Photon Cannon", "Sunken Colony", "Bunker"]);
+const riseOf = (unit: string): number =>
+  (FOOTPRINT[unit] ?? [3, 2])[0] * (FLAT_BUILDINGS.has(unit) ? 0.12 : 0.4);
 /** 마법 텍스트가 떠 있는 시간(초, 게임 시간). */
 const CAST_HOLD_SEC = 6;
 /** 자취 점 사이가 이보다 벌어지면 잇지 않고 건너뛴다(초) — 한참 조용하다 다른 곳을 찍은
@@ -414,13 +417,14 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
      그 단면의 앞모서리를 공유한다). 스크린샷 대조(지적: 설명과 다름) — 옆면은 더 작고
      정팔각형에 가깝게, 앞면은 더 넓게, 앞면 밑에는 평평한 발 셋이 받친다. */
   factory: [
-    ["M1 6.6 L11 6.6 L11.8 5.2 L1.8 5.2 Z", 1],
-    ["M1 6.6 L11 6.6 L11.8 5.2 L1.8 5.2 Z", 0.3, "#fff"],
+    // 윗면이 살짝 보이는 각도(요청) — 앞-위 꺾임면을 더 깊게 눕힌다.
+    ["M1 6.6 L11 6.6 L12.4 4.8 L2.4 4.8 Z", 1],
+    ["M1 6.6 L11 6.6 L12.4 4.8 L2.4 4.8 Z", 0.3, "#fff"],
     ["M1 6.6 L11 6.6 L11 10.6 L1 10.6 Z", 1],
     ["M1 10.6 L11 10.6 L11.8 12 L1.8 12 Z", 1],
     ["M1 10.6 L11 10.6 L11.8 12 L1.8 12 Z", 0.3, "#000"],
-    ["M11 6.6 L11.8 5.2 L13.2 5.2 L14.2 6.6 L14.2 10.6 L13.2 12 L11.8 12 L11 10.6 Z", 1],
-    ["M11 6.6 L11.8 5.2 L13.2 5.2 L14.2 6.6 L14.2 10.6 L13.2 12 L11.8 12 L11 10.6 Z", 0.35, "#000"],
+    ["M11 6.6 L12.4 4.8 L13.8 4.8 L14.6 6.6 L14.6 10.6 L13.8 12 L11.8 12 L11 10.6 Z", 1],
+    ["M11 6.6 L12.4 4.8 L13.8 4.8 L14.6 6.6 L14.6 10.6 L13.8 12 L11.8 12 L11 10.6 Z", 0.35, "#000"],
     ["M2 12 H4 V13.2 H2 Z M5.5 12 H7.5 V13.2 H5.5 Z M9 12 H11 V13.2 H9 Z", 1],
   ],
   /* 커맨드 — 사선으로 본 입체(요청): 돔 위에 밝은 윗면 타원, 꼭대기 판은 그대로.
@@ -472,19 +476,22 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
      패드가 얹히고, 대각선으로 안테나 팔(끝에 둥근 등)이 뻗으며, 벌어진 다리들이 받친다.
      패드를 맨 나중에 그려 팔·몸통의 밑동을 덮는다(패드 뒤에서 나온 것처럼). */
   plane: [
-    // 다리 — 패드 아래로 벌어지는 발 셋.
-    ["M3.4 10.6 L1.6 13.6 L4 13.6 Z M7.2 11.4 L6 14.4 L8.6 14.4 Z M11.6 10.6 L11.2 13.8 L13.8 13.4 Z", 1],
-    ["M3.4 10.6 L1.6 13.6 L4 13.6 Z M7.2 11.4 L6 14.4 L8.6 14.4 Z M11.6 10.6 L11.2 13.8 L13.8 13.4 Z", 0.35, "#000"],
-    // 몸통 — 패드 밑 받침(옆면 톤).
-    ["M4 8.4 L12 8.4 L12.8 11.6 L3.2 11.6 Z", 1],
-    ["M4 8.4 L12 8.4 L12.8 11.6 L3.2 11.6 Z", 0.3, "#000"],
-    // 안테나 팔 — 왼위·오른위 대각선, 끝에 둥근 등.
-    ["M4.2 6.4 L2 4.2 L2.8 3.5 L4.9 5.7 Z M11.8 6.4 L14 4.2 L13.2 3.5 L11.1 5.7 Z", 1],
-    ["M1.5 3.6a0.9 0.9 0 1 0 1.8 0a0.9 0.9 0 1 0-1.8 0Z M12.7 3.6a0.9 0.9 0 1 0 1.8 0a0.9 0.9 0 1 0-1.8 0Z", 1],
-    // 착륙 패드 — 큰 타원 링 위에 밝은 테, 가운데는 살짝 꺼진 판.
-    ["M2 7.2a6 3.1 0 1 0 12 0a6 3.1 0 1 0-12 0Z", 1],
-    ["M3.4 7.2a4.6 2.3 0 1 0 9.2 0a4.6 2.3 0 1 0-9.2 0Z", 0.28, "#fff"],
-    ["M4.4 7.2a3.6 1.8 0 1 0 7.2 0a3.6 1.8 0 1 0-7.2 0Z", 0.25, "#000"],
+    // 안테나 팔 — 왼위·오른위 대각선, 끝에 둥근 등(패드 뒤에서 나온다).
+    ["M4.6 5.4 L2.4 3.2 L3.2 2.5 L5.3 4.7 Z M11.4 5.4 L13.6 3.2 L12.8 2.5 L10.7 4.7 Z", 1],
+    ["M1.9 2.6a0.9 0.9 0 1 0 1.8 0a0.9 0.9 0 1 0-1.8 0Z M12.3 2.6a0.9 0.9 0 1 0 1.8 0a0.9 0.9 0 1 0-1.8 0Z", 1],
+    // 몸통 앞면 — 패드 아래로 내려오는 받침(지적: 동그란 상륙장만 있고 앞이 없다).
+    ["M3.6 8 L12.4 8 L13.2 12 L2.8 12 Z", 1],
+    // 양옆 포드(지적: 양옆이 없다) — 몸통 옆구리에 붙는 상자.
+    ["M0.8 8.4 H3.2 V10.8 H0.8 Z M12.8 8.4 H15.2 V10.8 H12.8 Z", 1],
+    ["M0.8 8.4 H3.2 V10.8 H0.8 Z M12.8 8.4 H15.2 V10.8 H12.8 Z", 0.3, "#000"],
+    // 다리 — 앞면 아래로 벌어지는 발 셋.
+    ["M3.6 12 L2.2 14.6 L4.6 14.6 Z M7.4 12 L6.4 14.8 L9 14.8 Z M11.6 12 L11 14.6 L13.4 14.6 Z", 1],
+    ["M3.6 12 L2.2 14.6 L4.6 14.6 Z M7.4 12 L6.4 14.8 L9 14.8 Z M11.6 12 L11 14.6 L13.4 14.6 Z", 0.35, "#000"],
+    // 착륙 패드 — 큰 타원 링 위에 밝은 테, 가운데는 살짝 꺼진 판. 맨 나중에 그려
+    // 팔·몸통의 밑동을 덮는다. 몸통이 보이게 패드는 위로 올려 앉힌다.
+    ["M2.8 6.2a5.2 2.6 0 1 0 10.4 0a5.2 2.6 0 1 0-10.4 0Z", 1],
+    ["M4 6.2a4 1.9 0 1 0 8 0a4 1.9 0 1 0-8 0Z", 0.28, "#fff"],
+    ["M4.9 6.2a3.1 1.5 0 1 0 6.2 0a3.1 1.5 0 1 0-6.2 0Z", 0.25, "#000"],
   ],
   /* 스타게이트 — 똑같은 긴 마름모 두 개가 나란히 사선으로 붙는다(지적: 둘이 같은
      모양이라야 한다). */
@@ -502,14 +509,27 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
     // 첨탑 오른쪽 면은 어둡게 — 입체(요청).
     ["M8 4 L11 11.8 L8 11.8 Z", 0.22, "#000"],
     ["M2.4 12.4a5.6 2 0 1 0 11.2 0a5.6 2 0 1 0-11.2 0Z", 1],
-    // 소환구 원은 더 크고 위로(지적).
-    ["M6 11.4a2 1.4 0 1 0 4 0a2 1.4 0 1 0-4 0Z", 0.5, "#fff"],
+    // 소환구 원은 더 크고 위로(지적), 색은 어둡게 — 뚫린 그림자 느낌(요청). 왼쪽으로
+    // 치우치고(요청 두 번), 위-우측에서 내려다본 기울어진 타원(요청) — 호 회전 +18도
+    // (지적: 경사가 반대였다).
+    ["M5.3 10.78a2 1.2 18 1 0 3.8 1.24a2 1.2 18 1 0-3.8-1.24Z", 0.45, "#000"],
   ],
   /* 나머지 건물도 전부 위 오른쪽 사선 입체(요청: "모든 건물이 위 우측에서 본 사선") —
      밝은 윗면 한 겹씩. */
+  /* 벙커 — 납작한 사각 상자 위에 둥근 무덤이 올라앉은 것을 위-오른쪽에서 본 모습(지적:
+     입체가 아니었다). */
   tombFlat: [
-    ["M1.5 13 V10.5 Q1.5 7 8 7 Q14.5 7 14.5 10.5 V13 Z", 1],
-    ["M3.6 8.6a4.4 1.2 0 1 0 8.8 0a4.4 1.2 0 1 0-8.8 0Z", 0.28, "#fff"],
+    // 상자 윗면(밝음) — 위-오른쪽 사선.
+    ["M2.4 9.6 L3.6 8.2 L15 8.2 L13.8 9.6 Z", 1],
+    ["M2.4 9.6 L3.6 8.2 L15 8.2 L13.8 9.6 Z", 0.3, "#fff"],
+    // 상자 앞면.
+    ["M2.4 9.6 H13.8 V12.6 H2.4 Z", 1],
+    // 상자 오른쪽 옆면(어두움).
+    ["M13.8 9.6 L15 8.2 L15 11.2 L13.8 12.6 Z", 1],
+    ["M13.8 9.6 L15 8.2 L15 11.2 L13.8 12.6 Z", 0.35, "#000"],
+    // 둥근 무덤 — 상자 윗면 가운데에 앉는다.
+    ["M4.6 8.2 Q4.6 4.6 8.6 4.6 Q12.6 4.6 12.6 8.2 Z", 1],
+    ["M5.6 6a1.6 0.8 0 1 0 3.2 0a1.6 0.8 0 1 0-3.2 0Z", 0.3, "#fff"],
   ],
   /* 서플라이 — 제대로 된 사선 상자(지적: "옆면과 윗면도 보이게 사선으로") — 살짝 기운
      앞면 + 밝은 윗면 + 어두운 옆면, 앞면에 동그라미 해치 둘(요청). */
@@ -523,10 +543,12 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
     ["M3.6 9.9a1.8 1.5 0 1 0 3.6 0a1.8 1.5 0 1 0-3.6 0Z M7.4 9.9a1.8 1.5 0 1 0 3.6 0a1.8 1.5 0 1 0-3.6 0Z", 0.3, "#000"],
   ],
   /* (삭제) 가스 — 직접 그린 게 아니라 네모로 돌아갔다(지적). */
-  /* 로보틱스 — 뭉뚝한 꼬깔모자(요청): 위가 둥글게 잘린 원뿔이 넓은 받침에 앉는다. */
+  /* 로보틱스 — 뭉뚝한 꼬깔모자(요청): 위가 둥글게 잘린 원뿔이 넓은 받침에 앉는다.
+     몸통에는 격자무늬(요청) — 가로 두 줄·세로 두 줄의 옅은 골. */
   dome: [
     ["M6 4.6 Q8 3.8 10 4.6 L12.2 11.4 L3.8 11.4 Z", 1],
     ["M6.6 4.4a1.5 0.55 0 1 0 3 0a1.5 0.55 0 1 0-3 0Z", 0.3, "#fff"],
+    ["M5.3 6.6 H10.7 V7 H5.3 Z M4.5 9.2 H11.5 V9.6 H4.5 Z M6.8 5 H7.2 V11.4 H6.8 Z M8.8 5 H9.2 V11.4 H8.8 Z", 0.28, "#000"],
     ["M2 13.4 Q2 11.4 3.8 11.4 L12.2 11.4 Q14 11.4 14 13.4 Z", 1],
     ["M2 13.4 Q2 11.4 3.8 11.4 L12.2 11.4 Q14 11.4 14 13.4 Z", 0.25, "#000"],
   ],
@@ -1034,8 +1056,8 @@ export default function ReplayMotionPlayer({
       }))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [motion, terrain, grid.width, grid.height, bases]);
-  // 기본은 ×4다(요청: ×8 → ×4) — ×8은 전투가 눈으로 못 따라갈 만큼 빨랐다.
-  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(4);
+  // 기본은 ×3이다(요청: ×8 → ×4였다가 눈금이 1·2·3·5·10·20으로 바뀌며 가장 가까운 값).
+  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(3);
   /* 탐색바(지적: 다이얼 드래그가 안 되고, 부드럽지 않고 반응이 느림) — 제어 입력은 매
      프레임 React가 값을 덮어써 잡은 손잡이와 싸웠고, 끌 때마다 지도 전체가 그려져 손을
      못 따라왔다. 입력을 비제어로 두고(손잡이는 브라우저 몫), 재생 중의 위치는 ref로 직접
@@ -1393,7 +1415,9 @@ export default function ReplayMotionPlayer({
   const body = (
     <div
       className={cx("scr-motion", big && "scr-motion-big")}
-      style={{ maxWidth: `calc((100dvh - ${big ? 190 : 230}px) * ${(grid.width / grid.height).toFixed(4)})`, margin: "0 auto" }}
+      // 확대 모드에선 폭 상한을 안 건다 — 모달 폭(아래 포털)이 이미 맵+양옆 세로 조작부
+      // 기준으로 확정돼 있고, 여기까지 조이면 이중 제약으로 맵이 더 작아진다.
+      style={big ? undefined : { maxWidth: `calc((100dvh - 230px) * ${(grid.width / grid.height).toFixed(4)})`, margin: "0 auto" }}
     >
       <div
         className="scr-motion-map" ref={mapRef}
@@ -1469,20 +1493,30 @@ export default function ReplayMotionPlayer({
             const raising = !razed && !flownFrom && t - sec < (BUILD_SEC[unit] ?? 30);
             const team = teamOfRaw(raw);
             const tagOrd = tagOrdinals.get(`${raw}|${unit}`);
-            const myOrd = (buildsByType.get(`${raw}|${unit}`) ?? []).indexOf(i);
+            const typeList = buildsByType.get(`${raw}|${unit}`) ?? [];
+            const myOrd = typeList.indexOf(i);
+            /* 태그를 모르면 대표 하나만(지적: 해처리 생산·업그레이드에 모든 해처리가
+               아이콘) — 같은 종류 전부에 달면 어디서 하는지가 아니라 "다 한다"로 읽힌다.
+               대표는 그 종류에서 가장 오래된, 지금 살아 있는 건물(대개 본진 쪽)이다. */
+            const repOrd = typeList.findIndex((bi) => {
+              const [s2, , , , , g2] = motion.builds[bi];
+              return s2 <= t && !((g2 ?? 0) > 0 && t >= (g2 ?? 0));
+            });
             const producing = !razed && (prodByRawType.get(`${raw}|${unit}`) ?? [])
               .some(([ps, tag]) => {
                 if (!(ps <= t && t - ps <= PROD_FLASH_SEC)) return false;
-                // 태그를 알면 그 순번의 건물만(요청) — 모르면 예전처럼 같은 종류 전부.
-                if (!tag || !tagOrd) return true;
+                // 태그를 알면 그 순번의 건물만(요청) — 모르면 대표 건물만(지적).
+                if (!tag || !tagOrd) return myOrd === repOrd;
                 const ord = tagOrd.get(tag);
                 return ord === undefined || ord === myOrd;
               });
-            // 연구 중(요청) — 이 건물에서 하는 연구가 지금 창 안에 시작돼 있나.
+            // 연구 중(요청) — 이 건물에서 하는 연구가 지금 창 안에 시작돼 있나. 어느
+            // 건물인지는 안 남으므로 대표 건물에만 단다(지적).
             const track = motion.players.find((p) => p.raw === raw);
             const hallLike = unit === "Lair" || unit === "Hive" ? "Hatchery" : unit;
-            const researching = !razed && (track?.ups ?? []).some(([us, name]) =>
-              RESEARCH_BUILDING[name] === hallLike && us <= t && t - us <= RESEARCH_SEC);
+            const researching = !razed && myOrd === repOrd
+              && (track?.ups ?? []).some(([us, name]) =>
+                RESEARCH_BUILDING[name] === hallLike && us <= t && t - us <= RESEARCH_SEC);
             // 이름 창 = 착공 직후 잠깐뿐(요청) — 그 뒤 공사 중에는 도형+망치이고, 생산·
             // 연구 중에도 이름 대신 라임 글로우가 말한다(요청: "생산중인 건물은 이름을
             // 띄우지 말고 액티브").
@@ -1516,9 +1550,8 @@ export default function ReplayMotionPlayer({
                   // 본진 건물은 다른 건물보다 큼직하게(요청).
                   isHall && "scr-motion-build-hall",
                   activeBuild && "scr-motion-build-on",
-                  // 쿵쾅(크기 박동) 대신 라임색 글로우 박동(요청) — 크기는 그대로 두고
-                  // 빛만 쉬었다 밝아졌다 한다.
-                  (producing || researching) && !afloat && "scr-motion-build-glow",
+                  // (삭제) 라임 테 박동(-glow) — 하는 일은 아이콘만으로 말한다(요청:
+                  // 건물 액티브 사각형 효과 제거).
                   afloat && "scr-motion-build-afloat",
                   razed && "scr-motion-build-razed",
                 )}
@@ -1569,13 +1602,18 @@ export default function ReplayMotionPlayer({
                     : text}
                 {/* 하는 일 아이콘(요청: 생산·업그레이드도 각각 아이콘으로) — 공사는 망치,
                     생산은 톱니, 업그레이드는 플라스크. 한 번에 하나만(공사가 먼저다). */}
-                {raising
-                  ? <Hammer size={6} className="scr-motion-raising" />
-                  : producing && !afloat
-                    ? <Cog size={6} className="scr-motion-raising" />
-                    : researching && !afloat
-                      ? <FlaskConical size={6} className="scr-motion-raising" />
-                      : null}
+                {/* 6 → 8(요청: 건물 상태 아이콘 조금 더 크게). 색은 그 사람 칩의
+                    글자색과 같은 규칙(요청: "글자색" — 플레이어색도 흰색 고정도 아니다):
+                    밝은 개인색 위엔 검정, 어두운 색 위엔 흰색이라 제 색 도형 위에서도
+                    늘 보인다. */}
+                {(() => {
+                  const Icon = raising ? Hammer
+                    : producing && !afloat ? Cog
+                      : researching && !afloat ? FlaskConical : null;
+                  if (!Icon) return null;
+                  const jobColor = lumOf(modeColor(raw, team)) > 150 ? "#111" : "#fff";
+                  return <Icon size={8} className="scr-motion-raising" style={{ color: jobColor }} />;
+                })()}
               </span>
             );
           });
@@ -1898,9 +1936,7 @@ export default function ReplayMotionPlayer({
                 className={cx(
                   "scr-motion-army",
                   activeNow ? "scr-motion-chip" : "scr-motion-dot",
-                  team === 2 ? "scr-motion-team2" : "scr-motion-team1",
-                  pos.stale && "scr-motion-army-stale",
-                  cloaked && "scr-motion-cloaked",
+                  team === 2 ? "scr-motion-team2" : "scr-motion-team1",                  cloaked && "scr-motion-cloaked",
                 )}
                 style={{
                   left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
@@ -1973,9 +2009,7 @@ export default function ReplayMotionPlayer({
                     className={cx(
                       "scr-motion-army",
                       "scr-motion-dot",
-                      team === 2 ? "scr-motion-team2" : "scr-motion-team1",
-                      pos.stale && "scr-motion-army-stale",
-                    )}
+                      team === 2 ? "scr-motion-team2" : "scr-motion-team1",                    )}
                     style={{
                       left: pct(pos.x + dx, grid.width), top: pct(pos.y + dy, grid.height),
                       ...glyphStyle(p.raw, team),
@@ -2001,9 +2035,7 @@ export default function ReplayMotionPlayer({
                   "scr-motion-army",
                   "scr-motion-chip",
                   ci === 0 && "scr-motion-heartbeat",
-                  team === 2 ? "scr-motion-team2" : "scr-motion-team1",
-                  pos.stale && "scr-motion-army-stale",
-                )}
+                  team === 2 ? "scr-motion-team2" : "scr-motion-team1",                )}
                 style={{
                   left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
                   fontSize: ci === 0 ? fontPx : 10,
@@ -2076,9 +2108,7 @@ export default function ReplayMotionPlayer({
                 className={cx(
                   "scr-motion-army",
                   activeNow ? "scr-motion-chip" : "scr-motion-dot",
-                  team === 2 ? "scr-motion-team2" : "scr-motion-team1",
-                  pos.stale && "scr-motion-army-stale",
-                )}
+                  team === 2 ? "scr-motion-team2" : "scr-motion-team1",                )}
                 style={{
                   left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
                   ...(activeNow ? chipStyle(p.raw, team) : glyphStyle(p.raw, team)),
@@ -2090,6 +2120,30 @@ export default function ReplayMotionPlayer({
               </span>
             );
           });
+        })}
+
+        {/* 스타팅 오버로드(요청: 아이콘으로 바로 표시) — 명령이 있기 전에도 본진 곁에
+            풍선이 떠 있다. 첫 수송·단독 정찰 자취가 시작되면 그쪽 점이 이어받는다(정찰도
+            본진에서 걸어 나가므로 자리가 이어진다). */}
+        {motion.players.flatMap((p, pi) => {
+          const race = bases.find((b) => b.key === p.raw)?.race;
+          if (race !== "저그") return [];
+          const firstScout = Math.min(Infinity, ...scoutSquads[pi]
+            .filter((g) => g.kind !== "worker" && g.walk.length > 0)
+            .map((g) => g.walk[0][0]));
+          if (t >= firstScout) return [];
+          const home = homeOf(p.raw);
+          if (!home) return [];
+          const team = teamOfRaw(p.raw);
+          return [(
+            <span
+              key={`ovie0-${p.raw}`}
+              className={cx("scr-motion-army", "scr-motion-dot", team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
+              style={{ left: pct(home[0] + 2.5, grid.width), top: pct(home[1] - 2.5, grid.height), ...glyphStyle(p.raw, team) }}
+            >
+              <ShapeIcon kind="ovie" className="scr-motion-ovie" />
+            </span>
+          )];
         })}
 
         {/* 마법 — 떨어진 자리에 이름이 잠깐 떠오른다. 핵만은 이름에 폭발 파문까지
@@ -2240,12 +2294,13 @@ export default function ReplayMotionPlayer({
   if (big) {
     return createPortal(
       <div className="scr-modal-overlay">
-        {/* 폭 상한 = (가용 높이 − 조작부 몫) × 맵 가로세로비(지적: 화면 안에서 최대화,
-            스크롤바 금지) — CSS의 고정 190px 어림은 정사각 맵만 맞아서, 넓은 맵은 더
-            키울 수 있는데도 작았고 세로로 긴 맵은 넘쳐 스크롤이 생겼다. */}
+        {/* 폭 상한 = (가용 높이 − 위아래 여백) × 맵 가로세로비 + 양옆 조작부 몫(요청:
+            조작부를 맵 양옆 세로로, 스크러버 없이 — 맵을 최대한 크게). 세로는 이제 맵과
+            모달 패딩뿐이라 60px만 남기면 되고, 가로로 배속·컬러(왼쪽)와 재생·시간(오른쪽)
+            기둥 몫 170px을 더한다. */}
         <div
           className="scr-modal scr-motion-big-modal"
-          style={{ width: `min(94vw, calc((100dvh - 190px) * ${(grid.width / grid.height).toFixed(4)}))` }}
+          style={{ width: `min(94vw, calc((100dvh - 60px) * ${(grid.width / grid.height).toFixed(4)} + 170px))` }}
         >{body}</div>
       </div>,
       document.body,
