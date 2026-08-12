@@ -493,7 +493,7 @@ export default function MemberStatRow({
             '0회'와 '이 표에 없는 값'이 같아 보이면 안 된다. */}
         {showBest && (
           <div className="scr-stat-record-col">
-            <span className="scr-stat-mix-list-cap">BEST</span>
+            <span className="scr-stat-mix-list-cap">BEST Player 선정</span>
             {/* 이긴 판과 진 판을 나눠 적는다(요청) — 같은 BEST여도 이긴 판 것은 활약이고
                 진 판 것은 졌잘싸다(칭호도 이 둘을 다른 이름으로 부른다). 진 판 수(lostBests)
                 가 없는 옛 응답이면 나눌 수 없어 총합 한 줄로 돌아간다. */}
