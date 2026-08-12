@@ -299,7 +299,9 @@ function speedOf(
  *  이름으로, 건물은 타이트하게(지적)의 '오래' 쪽. */
 /* 12 → 25초(요청: 액티브 상태 더 오래) — 이름이 너무 빨리 점으로 꺼져, 훑어보는 눈이
    따라가기 전에 정보가 사라졌다. */
-const ACTIVE_HOLD_SEC = 25;
+/* 25 → 10초(요청: 아이콘으로 변경되는 시간 줄이기) — 이름이 오래 남으니 지도가 글자로
+   덮였다. 열 초면 "방금 명령받았다"를 읽기에 충분하다. */
+const ACTIVE_HOLD_SEC = 10;
 /** 갓 뽑힌 유닛이 부대를 깨우는 창(요청: 생산 직후 액티브) — 완성이 이 안이면 이름이 뜬다. */
 const FRESH_ACTIVE_SEC = 15;
 /** 띄운 건물의 비행 속도(타일/초) — 착륙 이사를 잇는 자다. */
@@ -2243,7 +2245,10 @@ export default function ReplayMotionPlayer({
                하나여도(리플레이가 스팀팩 같은 묶음 커맨드 단위로만 정체를 말한다) 이름은
                식구별로 갈라 적는다: "마린 8 · 메딕 2". 같은 한글 이름(시즈/퉁퉁 탱크)은
                하나로 합산하고, 수를 하나도 모르면 묶음 이름으로 물러난다. */
-            const label = (() => {
+            /* 유닛마다 제 칩이다(지적: 한 칩에 " · "로 이어 적으니 여전히 한데 표시로
+               읽혔다) — 무명 부대와 같은 세로 쌓기로 가른다. 자리는 하나뿐이다(묶음
+               커맨드는 묶음 단위로만 자리를 말한다). */
+            const groupChips: string[] = (() => {
               if (members.length > 1 && aliveAll > 0) {
                 const factor = alive / aliveAll;
                 const byKo = new Map<string, number>();
@@ -2253,12 +2258,12 @@ export default function ReplayMotionPlayer({
                   if (n > 0) byKo.set(ko, (byKo.get(ko) ?? 0) + n);
                 }
                 if (byKo.size > 0) {
-                  return [...byKo].sort((a, b) => b[1] - a[1])
-                    .map(([ko, n]) => `${ko} ${n}`).join(" · ");
+                  return [...byKo].sort((a, b) => b[1] - a[1]).map(([ko, n]) => `${ko} ${n}`);
                 }
               }
-              return `${groupKo}${alive > 0 ? ` ${alive}` : ""}`;
+              return [`${groupKo}${alive > 0 ? ` ${alive}` : ""}`];
             })();
+            const label = groupChips[0];
             /* 일꾼과 수송선은 이름을 안 띄운다(요청) — 일꾼은 늘 작은 점, 수송선은 늘
                제 도형(오버로드 풍선·드랍십·셔틀)이다. */
             const noName = g.unit === "Worker" || g.unit === "Transport";
@@ -2268,9 +2273,14 @@ export default function ReplayMotionPlayer({
             const cloaked = g.unit === "Observer" || g.unit === "Dark Templar"
               || (g.unit === "Wraith" && (p.ups ?? []).some(([us, n]) => n === "Cloaking Field" && us <= t))
               || (g.unit === "Ghost" && (p.ups ?? []).some(([us, n]) => n === "Personnel Cloaking" && us <= t));
-            return (
+            const chipFont = Math.min(11, 7 + Math.round(Math.sqrt(Math.max(alive, 1))));
+            /* 이름이 뜬 동안은 유닛마다 제 칩으로 쌓는다(지적: 다른 유닛을 한데 표시하지
+               말라고 했는데 한 칩으로 — 무명 부대와 같은 세로 쌓기). 아닐 때는 점·도형
+               하나다. */
+            const rows = activeNow && g.unit !== "Transport" ? groupChips : [label];
+            return rows.map((text, ci) => (
               <span
-                key={`${p.raw}-u${g.unit}-${gi}`}
+                key={`${p.raw}-u${g.unit}-${gi}-c${ci}`}
                 className={cx(
                   "scr-motion-army",
                   activeNow ? "scr-motion-chip" : "scr-motion-dot",
@@ -2285,8 +2295,10 @@ export default function ReplayMotionPlayer({
                   zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
                   // 칩 글씨 한 단 축소(지적: 너무 큼).
                   ...(activeNow
-                    ? { fontSize: Math.min(11, 7 + Math.round(Math.sqrt(Math.max(alive, 1)))), ...chipStyle(p.raw, team) }
+                    ? { fontSize: ci === 0 ? chipFont : 10, ...chipStyle(p.raw, team) }
                     : glyphStyle(p.raw, team)),
+                  // 첫 칩 아래로 한 줄씩 내려 쌓는다 — 무명 부대 칩과 같은 규칙.
+                  ...(ci > 0 ? { marginTop: chipFont + 4 + (ci - 1) * 14 } : {}),
                 }}
               >
                 {/* 수송선은 점·이름 대신 늘 제 도형(요청) — 오버로드 풍선·드랍십·셔틀. */}
@@ -2297,9 +2309,9 @@ export default function ReplayMotionPlayer({
                       className="scr-motion-ovie"
                     />
                   )
-                  : activeNow ? label : "●"}
+                  : activeNow ? text : "●"}
               </span>
-            );
+            ));
           });
           const squadNodes = squads.map((rp, si) => {
             /* 첫 부대 명령 전에는 아예 없다(지적: 시작하자마자 이상한 데 멈춰 있다) —
