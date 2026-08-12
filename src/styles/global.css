@@ -10853,6 +10853,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: var(--radius-sm); }
 .scr-motion-canvas-blank { background: rgba(255, 255, 255, 0.04); }
 .scr-motion-map > span { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; }
+/* 겹침 차례(요청: 건물을 아바타 위로) — 본진 아바타(24px)가 곁의 건물 도형을 가렸다.
+   움직이는 것(부대·정찰·마법)은 그 위다 — 지나가는 것이 서 있는 것에 가려지면 안 보인다. */
+.scr-motion-base { z-index: 1; }
+.scr-motion-build, .scr-motion-workers { z-index: 2; }
+.scr-motion-army, .scr-motion-scout, .scr-motion-cast, .scr-motion-fresh { z-index: 3; }
 /* 팀 색 — 팀전 로스터·요약 문장과 같은 두 색을 쓴다(.scr-sum-team*와 한 벌). */
 /* 요약 문장의 두 팀 색(.scr-sum-team*)과 같은 값 — 어두운 지도 위라 살짝 밝힌다. */
 .scr-motion-team1 { color: #5b9ae0; }
@@ -10956,7 +10961,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    시간이 오른쪽 끝(3열)이다. */
 @media (max-width: 1159px) {
   .scr-motion-bar-controls { row-gap: 2px; }
-  .scr-motion-bar-controls .scr-motion-speeds { grid-column: 1 / -1; grid-row: 1; display: flex; }
+  .scr-motion-bar-controls .scr-motion-speeds { grid-column: 1 / -1; grid-row: 1; display: flex; justify-self: stretch; }
   .scr-motion-speeds .scr-motion-colorbtn { margin-left: auto; }
   .scr-motion-bar-controls .scr-motion-play { grid-column: 2; grid-row: 2; }
   .scr-motion-bar-controls .scr-motion-clock { grid-column: 3; grid-row: 2; }
@@ -11027,11 +11032,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   display: inline-flex; align-items: center; justify-content: center;
 }
 .scr-motion-base-team .scr-motion-team-n { font-size: 8px; }
-/* 공사중 아이콘(요청: 건설 중 반투명 말고) — 도형·이름의 오른쪽 위에 작게 얹는다.
-   반투명은 "저기 뭐가 있긴 한데"로만 읽혔고, 도형의 뒤 비침(opacity 0.82)과도 헷갈렸다. */
+/* 공사중 아이콘(요청: 건설 중 반투명 말고, 이모지 말고 아이콘) — 망치를 건물명 오른쪽
+   위에 겹쳐 얹는다(요청: 좀 더 건물명에 겹치게). 색은 글자색(그 사람 색)을 그대로 탄다. */
 .scr-motion-raising {
-  position: absolute; top: -5px; right: -6px;
-  font-size: 6px; font-style: normal; line-height: 1; pointer-events: none;
+  position: absolute; top: -2px; right: -2px; pointer-events: none;
 }
 /* 방패 속 팀 번호(요청) — 방패가 곧 바탕이라 판 없이 숫자만 얹는다. 방패 아랫단이
    뾰족해 눈금 중심이 살짝 위라, 숫자도 반 픽셀 위로 당긴다. */
@@ -11039,13 +11043,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   position: absolute; font-style: normal; font-size: 6px; font-weight: 900;
   color: #111; line-height: 1; transform: translateY(-0.5px);
 }
-/* 유닛 텍스트 칩의 팀 방패(요청: 텍스트일 때 왼쪽 위에 겹쳐 붙이기) — 칩의 왼쪽 위
-   모서리를 물고 얹힌다. 칩은 폰트 크기가 규모 따라 변하므로 px 고정이 아니라 모서리
-   기준이다. */
-.scr-motion-army-team {
-  position: absolute; top: -5px; left: -5px;
-  display: inline-flex; align-items: center; justify-content: center;
-}
+/* (삭제) 유닛 칩의 팀 방패(.scr-motion-army-team) — 요청으로 붙였다가 요청으로 걷었다.
+   부대가 여럿으로 갈라지면서(squadPts) 칩마다 방패가 붙으면 지도가 방패밭이 된다. */
 /* 승리 트로피(요청) — 재생이 끝나면 이긴 편 아바타 위에 얹힌다. */
 .scr-motion-trophy {
   position: absolute; top: -9px; left: 50%; transform: translateX(-50%);

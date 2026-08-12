@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Mountain, Pause, Play, RotateCcw, Shield } from "lucide-react";
+import { Hammer, Mountain, Pause, Play, RotateCcw, Shield } from "lucide-react";
 import TerrainReviewModal from "../../modals/TerrainReviewModal";
 import Avatar from "../common/Avatar";
 import RaceBadge from "../common/RaceBadge";
 import { cx } from "../../utils/format";
 import { UNIT_KO, BUILDING_KO, TECH_KO } from "../../utils/replaySummaryText";
 import type { ReplayMapGrid } from "../../utils/replayParser";
-import { isAirUnit, type SummaryMotion } from "../../utils/replayMotion";
+import { isAirUnit, type MotionTrack, type SummaryMotion } from "../../utils/replayMotion";
 import { DEFENSE_BUILDINGS } from "../../utils/replayBuildMix";
 import { terrainOf, decodeWalk, groundPath, type TerrainGrid } from "../../utils/minimapTerrain";
 import type { MinimapMarker } from "./ReplayMinimap";
@@ -62,6 +62,14 @@ const SPIKE_FAR_RATE = 0.22;
 const SPIKE_BACK_RATE = 0.1;
 /** 나들이로 볼 수 있는 최대 연속 점 수 — 이보다 길게 머물렀으면 그건 진짜 그 자리다. */
 const SPIKE_MAX_RUN = 4;
+/** 부대 묶기(요청: 가까운 유닛만 합침) — 앞 부대의 마지막 자리에서 이 안이면 같은 부대다. */
+const SQUAD_MERGE_TILES = 14;
+const SQUAD_MAX = 3;
+/** 곁 부대가 이만큼 조용하면 걷는다 — 본대에 합류했거나 정리된 것이다. */
+const SQUAD_FADE_SEC = 60;
+/** 정찰 자취의 걸음(타일/초) — 일꾼 속도다. 오버로드는 더 느리지만 누가 갔는지 모르는
+ *  자리라, 흔한 쪽(일꾼)에 맞춘다. */
+const SCOUT_WALK_SPEED = 3.7;
 
 function dropSpikes(
   pts: [number, number, number][], span: number,
@@ -404,8 +412,12 @@ export default function ReplayMotionPlayer({
     () => motion.players.map((p) => dropSpikes(p.pts, Math.max(grid.width, grid.height))),
     [motion, grid.width, grid.height],
   );
-  const refinedPts = useMemo(() => motion.players.map((p, pi) => {
-    const src = basePts[pi];
+  /* 자취 펴기 한 벌 — 부대는 지형 경로에 그 유닛의 속도로, 정찰(straight)은 직선에 일꾼
+     걸음(3.7타일/초)으로 걷는다(지적: 일꾼·오버로드가 위치 찍으면 바로 이동하는 느낌 —
+     정찰 점도 명령 시각에 출발해 걸어서 가야 한다). */
+  const walkTrack = (
+    src: [number, number, number][], p: MotionTrack, straight: boolean,
+  ): [number, number, number][] => {
     if (src.length === 0) return src;
     const out: [number, number, number][] = [[src[0][0], src[0][1], src[0][2]]];
     let atX = src[0][1];
@@ -417,10 +429,10 @@ export default function ReplayMotionPlayer({
       // 명령이 올 때까지 서 있던 자리 — 같은 좌표의 점을 박아 그 구간을 정지로 만든다.
       if (orderSec > atSec) out.push([orderSec, atX, atY]);
       const startSec = Math.max(atSec, orderSec);
-      const unit = unitAt(p.units, orderSec);
+      const unit = straight ? "" : unitAt(p.units, orderSec);
       const air = unit !== "" && isAirUnit(unit);
       let path: [number, number][] | null = null;
-      if (!air && terrain) {
+      if (!straight && !air && terrain) {
         path = groundPath(
           terrain,
           atX / grid.width, atY / grid.height,
@@ -440,7 +452,7 @@ export default function ReplayMotionPlayer({
         py = y;
       }
       if (total === 0) { atSec = startSec; continue; }
-      const v = Math.max(0.5, speedOf(unit || "Marine", orderSec, p.ups));
+      const v = straight ? SCOUT_WALK_SPEED : Math.max(0.5, speedOf(unit || "Marine", orderSec, p.ups));
       const travel = total / v;
       if (startSec + travel <= nextOrderSec) {
         // 끝까지 간다 — 도착 뒤 다음 명령까지는 위의 대기 점이 맡는다.
@@ -479,10 +491,47 @@ export default function ReplayMotionPlayer({
       }
     }
     return out;
-  }), [basePts, terrain, grid.width, grid.height]);
-  // 기본은 ×8이다(요청: ×2 → ×8) — 실제로 보는 쪽은 판 전체의 흐름이라, 느린 기본은
-  // 늘 첫 손질이 배속 올리기였다.
-  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(8);
+  };
+  /* 부대 갈라 보기(요청: 유닛을 무조건 합치는 게 아니라 가까운 것만 합침) — 마커 하나가
+     드랍조와 본대를 오가며 순간이동하던 자리다. 명령 점을 가까운 것끼리 묶어 부대 몇으로
+     가르고, 어느 부대에서도 먼 점은 가장 오래 조용한 부대가 그리로 옮겨 간 것으로 본다. */
+  const squadPts = useMemo(() => basePts.map((pts) => {
+    const squads: [number, number, number][][] = [];
+    for (const pt of pts) {
+      let best = -1;
+      let bestD = Infinity;
+      for (let i = 0; i < squads.length; i += 1) {
+        const last = squads[i][squads[i].length - 1];
+        const d = Math.hypot(last[1] - pt[1], last[2] - pt[2]);
+        if (d < bestD) { bestD = d; best = i; }
+      }
+      if (best >= 0 && bestD <= SQUAD_MERGE_TILES) { squads[best].push(pt); continue; }
+      if (squads.length < SQUAD_MAX) { squads.push([pt]); continue; }
+      let oldest = 0;
+      for (let i = 1; i < squads.length; i += 1) {
+        if (squads[i][squads[i].length - 1][0] < squads[oldest][squads[oldest].length - 1][0]) oldest = i;
+      }
+      squads[oldest].push(pt);
+    }
+    return squads;
+  }), [basePts]);
+  const refinedSquads = useMemo(
+    () => motion.players.map((p, pi) => squadPts[pi].map((sq) => walkTrack(sq, p, false))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [squadPts, terrain, grid.width, grid.height, motion],
+  );
+  /* 정찰 자취도 걸어서 간다(지적: 갑자기 이동) — 직선이되 속도는 일꾼 걸음이다. */
+  const refinedSpts = useMemo(
+    () => motion.players.map((p) => walkTrack(p.spts ?? [], p, true)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [motion, terrain, grid.width, grid.height],
+  );
+  // 기본은 ×4다(요청: ×8 → ×4) — ×8은 전투가 눈으로 못 따라갈 만큼 빨랐다.
+  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(4);
+  /* 탐색바를 잡고 있는 동안의 값(지적: 다이얼 드래그가 안 됨) — 재생 중에는 매 프레임
+     t가 갈아치워져, 잡은 손잡이가 프레임마다 제자리로 튕겨 드래그가 안 먹혔다. 잡은
+     동안은 이 값이 이기고, 놓으면 다시 시계를 따른다. */
+  const [scrub, setScrub] = useState<number | null>(null);
   const [done, setDone] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
 
@@ -789,7 +838,7 @@ export default function ReplayMotionPlayer({
               >
                 {/* 글꼴 ■는 작게 뭉개져 동그라미처럼 보인다(지적) — 진짜 네모를 CSS로 그린다. */}
                 {text === "■" ? <i className="scr-motion-sq" /> : text}
-                {raising && <i className="scr-motion-raising">🚧</i>}
+                {raising && <Hammer size={6} className="scr-motion-raising" />}
               </span>
             );
           });
@@ -972,30 +1021,22 @@ export default function ReplayMotionPlayer({
           );
         })}
 
-        {/* 부대 자취 — 명령 좌표 기반 어림(모듈 주석). 우세 유닛 이름이 팀 색으로 흐른다. */}
-        {motion.players.map((p, pi) => {
+        {/* 부대 자취 — 명령 좌표 기반 어림(모듈 주석). 부대(squadPts)마다 마커 하나씩이고,
+            이름·수·심장박동은 주 부대(가장 최근 명령을 받은 쪽)에만 붙는다 — 수는 사람
+            단위 어림이라 부대별로 가를 근거가 없다. 곁 부대는 잠잠해지면 걷는다(본대에
+            합류했거나 정리된 것이다). 유닛 칩의 팀 방패는 뺐다(요청). */}
+        {motion.players.flatMap((p, pi) => {
           const unit = unitAt(p.units, t);
-          /* 지형 경로가 있으면 그 점들을 그대로 잇고(곡선 불필요), 없으면 가운데로 휘는
-             곡선 폴백이다. 활동 판정(sinceLast)은 원본 명령 점으로 따로 잰다 — 경로로 편
-             점들은 촘촘해서 그걸로 재면 늘 '방금 명령받음'이 된다. */
-          /* 첫 부대 명령 전에는 아예 없다(지적: 시작하자마자 이상한 데 멈춰 있다) —
-             posAt은 첫 점 이전이면 첫 점 자리를 돌려줘서, 병력이 생기기도 전에 마커가
-             '앞으로 갈 자리'에 서 있었다. 그동안의 움직임은 정찰 점(spts)이 맡는다. */
-          if (refinedPts[pi].length === 0 || t < refinedPts[pi][0][0]) return null;
-          const pos = posAt(
-            refinedPts[pi], t,
-            terrain || isAirUnit(unit) ? null : { x: grid.width / 2, y: grid.height / 2 },
-          );
-          if (!pos) return null;
-          let sinceCmd = Infinity;
-          for (const [sec] of basePts[pi]) {
-            if (sec > t) break;
-            sinceCmd = t - sec;
-          }
           const team = teamOfRaw(p.raw);
-          /* 겉모습 규칙(요청) — 유닛은 동그라미가 기본이고, 커맨드를 받았거나 이동 중일
-             때만 이름+수로 바뀐다(나중에 이미지가 이 자리를 물려받는다). 크기는 규모의
-             제곱근(요청: 뭉친 병력은 크기로 수를 표현). */
+          const squads = refinedSquads[pi];
+          const raws = squadPts[pi];
+          let primary = 0;
+          let latest = -Infinity;
+          raws.forEach((sq, si) => {
+            let l = -Infinity;
+            for (const [sec] of sq) { if (sec > t) break; l = sec; }
+            if (l > latest) { latest = l; primary = si; }
+          });
           // 규모 — 완성 누계에서 전투 시간만큼 깎은 곡선을 읽는다(sizeSeries 주석).
           let size = 0;
           for (const [sec, v] of sizeSeries.get(p.raw) ?? []) {
@@ -1003,79 +1044,94 @@ export default function ReplayMotionPlayer({
             size = v;
           }
           size = Math.round(size);
-          const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC;
-          const showName = activeNow && !!unit && (size >= 1 || !!SCOUT_KO[unit]);
-          const fontPx = Math.min(16, 8 + Math.round(Math.sqrt(size) * 1.6));
-          /* 도형일 땐 뭉치지 않는다(지적: 이름일 때만 뭉침) — 규모만큼 낱개 점을 촘촘히
-             흩어 놓는다(해바라기 나선 — 결정적이라 프레임마다 안 튄다). */
-          if (!showName) {
-            const dots = Math.min(9, Math.max(1, Math.round(size / 3) || 1));
-            return Array.from({ length: dots }, (_, di) => {
-              const r = di === 0 ? 0 : 0.7 + 0.55 * Math.sqrt(di);
-              const dx = Math.cos(di * 2.4) * r;
-              const dy = Math.sin(di * 2.4) * r;
-              return (
-                <span
-                  key={`${p.raw}-d${di}`}
-                  className={cx(
-                    "scr-motion-army",
-                    "scr-motion-dot",
-                    team === 2 ? "scr-motion-team2" : "scr-motion-team1",
-                    pos.stale && "scr-motion-army-stale",
-                  )}
-                  style={{
-                    left: pct(pos.x + dx, grid.width), top: pct(pos.y + dy, grid.height),
-                    ...glyphStyle(p.raw, team),
-                  }}
-                >
-                  ●
-                </span>
-              );
-            });
-          }
-          return (
-            <span
-              key={p.raw}
-              className={cx(
-                "scr-motion-army",
-                "scr-motion-chip",
-                "scr-motion-heartbeat",
-                team === 2 ? "scr-motion-team2" : "scr-motion-team1",
-                pos.stale && "scr-motion-army-stale",
-              )}
-              style={{
-                left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
-                fontSize: fontPx,
-                ...chipStyle(p.raw, team),
-              }}
-            >
-              {/* 수도 함께 적는다(요청) — "질럿 12" 꼴. 정찰 유닛(일꾼·오버로드)은 수 없이
-                  이름만 — 세는 값(size)이 전투 유닛이라 정찰에는 뜻이 없다. */}
-              {showName
-                ? (UNIT_KO[unit] ? `${UNIT_KO[unit]} ${size}`.trim() : SCOUT_KO[unit] ?? "●")
-                : "●"}
-              {/* 텍스트일 때는 왼쪽 위에 팀 방패를 겹쳐 붙인다(요청) — 개인색 칩은 편이
-                  안 읽히는데, 이름이 뜬 순간이 곧 "지금 움직이는 부대"라 편이 가장
-                  궁금한 순간이다. 점(●)일 때는 뺀다 — 점보다 방패가 커서 배보다 배꼽이 된다. */}
-              {showName && (
-                <span className="scr-motion-army-team">
-                  <Shield size={9} strokeWidth={0} fill={TEAM_EDGE[team === 2 ? 2 : 1]} />
-                  <i className="scr-motion-team-n">{team === 2 ? 2 : 1}</i>
-                </span>
-              )}
-            </span>
-          );
+          return squads.map((rp, si) => {
+            /* 첫 부대 명령 전에는 아예 없다(지적: 시작하자마자 이상한 데 멈춰 있다) —
+               posAt은 첫 점 이전이면 첫 점 자리를 돌려줘서, 병력이 생기기도 전에 마커가
+               '앞으로 갈 자리'에 서 있었다. 그동안의 움직임은 정찰 점(spts)이 맡는다. */
+            if (rp.length === 0 || t < rp[0][0]) return null;
+            const pos = posAt(
+              rp, t,
+              terrain || isAirUnit(unit) ? null : { x: grid.width / 2, y: grid.height / 2 },
+            );
+            if (!pos) return null;
+            // 활동 판정은 원본 명령 점으로 잰다 — 경로로 편 점은 촘촘해 늘 '방금'이 된다.
+            let sinceCmd = Infinity;
+            for (const [sec] of raws[si]) {
+              if (sec > t) break;
+              sinceCmd = t - sec;
+            }
+            if (si !== primary && sinceCmd > SQUAD_FADE_SEC) return null;
+            const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC;
+            const showName = si === primary && activeNow && !!unit && (size >= 1 || !!SCOUT_KO[unit]);
+            const fontPx = Math.min(16, 8 + Math.round(Math.sqrt(size) * 1.6));
+            /* 도형일 땐 뭉치지 않는다(지적: 이름일 때만 뭉침) — 규모만큼 낱개 점을 촘촘히
+               흩어 놓는다(해바라기 나선 — 결정적이라 프레임마다 안 튄다). 곁 부대는 규모를
+               모르니 점 하나다. */
+            if (!showName) {
+              const dots = si === primary ? Math.min(9, Math.max(1, Math.round(size / 3) || 1)) : 1;
+              return Array.from({ length: dots }, (_, di) => {
+                const r = di === 0 ? 0 : 0.7 + 0.55 * Math.sqrt(di);
+                const dx = Math.cos(di * 2.4) * r;
+                const dy = Math.sin(di * 2.4) * r;
+                return (
+                  <span
+                    key={`${p.raw}-s${si}-d${di}`}
+                    className={cx(
+                      "scr-motion-army",
+                      "scr-motion-dot",
+                      team === 2 ? "scr-motion-team2" : "scr-motion-team1",
+                      pos.stale && "scr-motion-army-stale",
+                    )}
+                    style={{
+                      left: pct(pos.x + dx, grid.width), top: pct(pos.y + dy, grid.height),
+                      ...glyphStyle(p.raw, team),
+                    }}
+                  >
+                    ●
+                  </span>
+                );
+              });
+            }
+            return (
+              <span
+                key={`${p.raw}-s${si}`}
+                className={cx(
+                  "scr-motion-army",
+                  "scr-motion-chip",
+                  "scr-motion-heartbeat",
+                  team === 2 ? "scr-motion-team2" : "scr-motion-team1",
+                  pos.stale && "scr-motion-army-stale",
+                )}
+                style={{
+                  left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
+                  fontSize: fontPx,
+                  ...chipStyle(p.raw, team),
+                }}
+              >
+                {/* 수도 함께 적는다(요청) — "질럿 12" 꼴. 정찰 유닛(일꾼·오버로드)은 수
+                    없이 이름만 — 세는 값(size)이 전투 유닛이라 정찰에는 뜻이 없다. */}
+                {UNIT_KO[unit] ? `${UNIT_KO[unit]} ${size}`.trim() : SCOUT_KO[unit] ?? "●"}
+              </span>
+            );
+          });
         })}
 
         {/* 정찰·일꾼 점(spts) — 부대 자취에서 걷어낸 한 기짜리·일꾼 명령의 자취다(지적:
             일꾼 정찰이 하나도 안 보인다 — 포토러시 일꾼은 안 가는데 파일런만 생겼다).
             명령이 이어지는 동안만 보이고(stale이면 숨김) 곧게 간다 — 정찰 하나에 지형
             길찾기까지 쓰는 것은 배보다 배꼽이다. */}
-        {motion.players.map((p) => {
-          const sp = p.spts ?? [];
-          if (sp.length === 0) return null;
-          const pos = posAt(sp, t, null);
-          if (!pos || pos.stale || t < sp[0][0]) return null;
+        {motion.players.map((p, pi) => {
+          const rp = refinedSpts[pi];
+          if (rp.length === 0 || t < rp[0][0]) return null;
+          const pos = posAt(rp, t, null);
+          if (!pos || pos.stale) return null;
+          // 사라짐도 명령 기준(지적: 갑자기 사라짐) — 걷는 중에는 안 걷힌다.
+          let sinceCmd = Infinity;
+          for (const [sec] of p.spts ?? []) {
+            if (sec > t) break;
+            sinceCmd = t - sec;
+          }
+          if (sinceCmd > LERP_MAX_GAP_SEC && !pos.moving) return null;
           const team = teamOfRaw(p.raw);
           return (
             <span
@@ -1128,7 +1184,7 @@ export default function ReplayMotionPlayer({
         <span>▲ 방어 건물</span>
         <span>✕ 파괴됨</span>
         <span>· 채굴 일꾼</span>
-        <span>🚧 건설 중</span>
+        <span><Hammer size={8} /> 건설 중</span>
       </div>
 
       {/* 조종간(요청: 두 줄) — 윗줄은 스크러버 하나, 아랫줄에 재생·배속·시간이 선다. */}
@@ -1139,13 +1195,17 @@ export default function ReplayMotionPlayer({
             --p는 지나온 자리를 채우는 트랙 그라데이션의 경계다(CSS의 -range 참고). */}
         <input
           className="scr-motion-range" type="range"
-          min={0} max={total} step="any" value={t}
-          style={{ "--p": `${total > 0 ? (t / total) * 100 : 0}%` } as React.CSSProperties}
+          min={0} max={total} step="any" value={scrub ?? t}
+          style={{ "--p": `${total > 0 ? ((scrub ?? t) / total) * 100 : 0}%` } as React.CSSProperties}
           onChange={(e) => {
             const v = Number(e.target.value);
+            setScrub(v);
             setT(v);
             setDone(v >= total);
           }}
+          onPointerUp={() => setScrub(null)}
+          onTouchEnd={() => setScrub(null)}
+          onBlur={() => setScrub(null)}
           aria-label="재생 위치"
         />
       </div>
