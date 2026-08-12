@@ -411,15 +411,17 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
     ["M2.6 13.2 V14.6 H3.6 V13.2 Z M7.4 13.2 V14.6 H8.4 V13.2 Z M12.6 11.9 L13.6 11.5 V12.9 L12.6 13.3 Z", 1],
   ],
   /* 팩토리 — 8각 단면의 각기둥을 사선으로 본 것(지적: 옆면이 8각, 앞면의 위아래 꺾임은
-     그 단면의 앞모서리(10,7)-(10,11)를 공유한다 — 오른쪽 꺾임 방향도 단면을 따른다). */
+     그 단면의 앞모서리를 공유한다). 스크린샷 대조(지적: 설명과 다름) — 옆면은 더 작고
+     정팔각형에 가깝게, 앞면은 더 넓게, 앞면 밑에는 평평한 발 셋이 받친다. */
   factory: [
-    ["M2 7 L10 7 L11 5.4 L3 5.4 Z", 1],
-    ["M2 7 L10 7 L11 5.4 L3 5.4 Z", 0.3, "#fff"],
-    ["M2 7 L10 7 L10 11 L2 11 Z", 1],
-    ["M2 11 L10 11 L11 12.6 L3 12.6 Z", 1],
-    ["M2 11 L10 11 L11 12.6 L3 12.6 Z", 0.3, "#000"],
-    ["M10 7 L11 5.4 L13.4 4.8 L14.8 6.4 L14.8 9.6 L13.4 11.8 L11 12.6 L10 11 Z", 1],
-    ["M10 7 L11 5.4 L13.4 4.8 L14.8 6.4 L14.8 9.6 L13.4 11.8 L11 12.6 L10 11 Z", 0.35, "#000"],
+    ["M1 6.6 L11 6.6 L11.8 5.2 L1.8 5.2 Z", 1],
+    ["M1 6.6 L11 6.6 L11.8 5.2 L1.8 5.2 Z", 0.3, "#fff"],
+    ["M1 6.6 L11 6.6 L11 10.6 L1 10.6 Z", 1],
+    ["M1 10.6 L11 10.6 L11.8 12 L1.8 12 Z", 1],
+    ["M1 10.6 L11 10.6 L11.8 12 L1.8 12 Z", 0.3, "#000"],
+    ["M11 6.6 L11.8 5.2 L13.2 5.2 L14.2 6.6 L14.2 10.6 L13.2 12 L11.8 12 L11 10.6 Z", 1],
+    ["M11 6.6 L11.8 5.2 L13.2 5.2 L14.2 6.6 L14.2 10.6 L13.2 12 L11.8 12 L11 10.6 Z", 0.35, "#000"],
+    ["M2 12 H4 V13.2 H2 Z M5.5 12 H7.5 V13.2 H5.5 Z M9 12 H11 V13.2 H9 Z", 1],
   ],
   /* 커맨드 — 사선으로 본 입체(요청): 돔 위에 밝은 윗면 타원, 꼭대기 판은 그대로.
      바닥은 네모난 발자국을 모서리로 본 두 직선이다(지적: 해처리는 둥글고 넥서스·커맨드는
@@ -901,7 +903,12 @@ export default function ReplayMotionPlayer({
         py = y;
       }
       if (total === 0) { atSec = startSec; continue; }
-      const v = straight ? SCOUT_WALK_SPEED : Math.max(0.5, speedOf(unit || "Marine", orderSec, p.ups));
+      /* 정체를 아는 갈래(수송선·오버로드)는 곧게 날더라도 제 속도로 걷는다(지적: 오버로드
+         이동이 뚝뚝 끊김 — 일꾼 걸음 3.7로 내달리곤 다음 명령까지 서 있어서, 실제 0.6짜리
+         걸음과 전혀 다른 돌진·정지 반복이 됐다). */
+      const v = straight && !forcedUnit
+        ? SCOUT_WALK_SPEED
+        : Math.max(0.5, speedOf(unit || "Marine", orderSec, p.ups));
       const travel = total / v;
       if (startSec + travel <= nextOrderSec) {
         // 끝까지 간다 — 도착 뒤 다음 명령까지는 위의 대기 점이 맡는다.
@@ -939,7 +946,26 @@ export default function ReplayMotionPlayer({
         atSec = nextOrderSec;
       }
     }
-    return out;
+    /* 긴 걸음을 잘게 썬다(지적: 이동이 뚝뚝 끊김) — posAt은 LERP_MAX_GAP_SEC(24초)보다
+       긴 구간을 침묵(시선 전환)으로 보고 잇지 않으므로, 오버로드(0.6타일/초)처럼 느린
+       걸음 하나가 24초를 넘으면 출발점에 얼어 있다 도착점으로 튀었다. 이동 구간의 점
+       사이가 그 문턱을 못 넘게 쪼갠다 — 대기(같은 좌표) 구간은 그대로 둔다. */
+    const MAX_SEG_SEC = LERP_MAX_GAP_SEC - 4;
+    const dense: [number, number, number][] = [out[0]];
+    for (let i = 1; i < out.length; i += 1) {
+      const [s0, x0, y0] = out[i - 1];
+      const [s1, x1, y1] = out[i];
+      const dur = s1 - s0;
+      if (dur > MAX_SEG_SEC && (x0 !== x1 || y0 !== y1)) {
+        const n = Math.ceil(dur / MAX_SEG_SEC);
+        for (let k = 1; k < n; k += 1) {
+          const f = k / n;
+          dense.push([s0 + dur * f, x0 + (x1 - x0) * f, y0 + (y1 - y0) * f]);
+        }
+      }
+      dense.push(out[i]);
+    }
+    return dense;
   };
   /* 부대 갈라 보기(요청: 유닛을 무조건 합치는 게 아니라 가까운 것만 합침) — 마커 하나가
      드랍조와 본대를 오가며 순간이동하던 자리다. 명령 점을 가까운 것끼리 묶어 부대 몇으로
@@ -985,10 +1011,18 @@ export default function ReplayMotionPlayer({
        드론·SCV·프로브는 지상 유닛이다. 수송선·오버로드(carrier·lone)만 곧게 난다. */
     const race = bases.find((b) => b.key === p.raw)?.race;
     const workerUnit = race === "저그" ? "Drone" : race === "테란" ? "SCV" : "Probe";
+    /* 갈래마다 정체를 아는 만큼 제 속도로(지적: 오버로드 이동이 뚝뚝 끊김) — 저그의
+       수송·단독 정찰은 오버로드(0.6, 업글 ×4), 테란·토스 수송선은 드랍십·셔틀. 정체
+       모를 비저그 단독만 일꾼 걸음(3.7) 그대로다. */
+    const carrierUnit = race === "저그" ? "Overlord" : race === "테란" ? "Dropship" : "Shuttle";
+    const loneUnit = race === "저그" ? "Overlord" : undefined;
     return kinds.flatMap(({ kind, src }) => (src.length === 0 ? [] : splitSquads(src, homeOf(p.raw))
       .map((sq) => ({
         kind, raw: sq,
-        walk: walkTrack(sq, p, kind !== "worker", kind === "worker" ? workerUnit : undefined),
+        walk: walkTrack(
+          sq, p, kind !== "worker",
+          kind === "worker" ? workerUnit : kind === "carrier" ? carrierUnit : loneUnit,
+        ),
       }))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [motion, terrain, grid.width, grid.height, bases]);
@@ -1351,11 +1385,13 @@ export default function ReplayMotionPlayer({
   /* 폭은 무조건 컨테이너 최대가 아니라 화면 세로 공간이 허락하는 만큼(지적: 노트북처럼
      납작한 화면에서 전체 폭을 쓰면 미니맵이 한 화면에 다 안 들어옴) — 맵 높이가
      (100dvh − 조작부 몫)을 넘지 않게 폭을 비율로 역산해 상한을 걸고 가운데 정렬.
+     인라인은 맵 아래 전부(확대 토글·지형·범례·조종부)와 위쪽 화면 몫까지 빼서 조종부까지
+     한 화면에 들어온다(지적). 큰 화면 모달은 맵+조종부만이라 몫이 작다(190px).
      폰 세로 화면에선 이 상한이 컨테이너 폭보다 커서 아무 영향 없다. */
   const body = (
     <div
       className={cx("scr-motion", big && "scr-motion-big")}
-      style={{ maxWidth: `calc((100dvh - 190px) * ${(grid.width / grid.height).toFixed(4)})`, margin: "0 auto" }}
+      style={{ maxWidth: `calc((100dvh - ${big ? 190 : 280}px) * ${(grid.width / grid.height).toFixed(4)})`, margin: "0 auto" }}
     >
       <div
         className="scr-motion-map" ref={mapRef}
@@ -1492,17 +1528,23 @@ export default function ReplayMotionPlayer({
                   left: pct(bx + footDx(unit) - (ADDONS.has(unit) ? 1.6 : 0), grid.width),
                   // 건물은 바닥 위로 솟는다(지적: "실제 건물은 바닥위에 높이가 있어") —
                   // 캔버스 높이에 그 몫(riseOf, 발자국 폭 비례)을 더하고, 늘어난 만큼
-                  // 위로 올려 바닥선은 발자국 그대로다.
+                  // 위로 올려 바닥선은 발자국 그대로다. 단 전용 벡터가 있는 건물만이다
+                  // (지적: 벡터 없는 애들은 높이 생각 말고 바닥 캔버스로만) — 맨 네모가
+                  // 높이 몫까지 늘어나면 발자국보다 세로로 긴 거짓 기둥이 된다.
+                  // 벡터 없는 네모는 발자국의 80%로만 그린다(요청) — 대신 아래로 내려
+                  // 바닥선은 발자국 바닥 그대로다.
                   top: pct(
                     by + footDy(unit) + (ADDONS.has(unit) ? 0.4 : 0)
-                      - (text !== name && !ADDONS.has(unit) ? riseOf(unit) / 2 : 0),
+                      + (text !== name && !ADDONS.has(unit)
+                        ? (shapeKind ? -riseOf(unit) / 2 : (FOOTPRINT[unit] ?? [3, 2])[1] * 0.1)
+                        : 0),
                     grid.height,
                   ),
-                  // 캔버스 비율 = 발자국 폭 × (발자국 높이 + 건물 높이 몫)(요청·지적).
+                  // 캔버스 비율 = 발자국 폭 × (발자국 높이 + 벡터 건물만 높이 몫)(요청·지적).
                   ...(text !== name && !ADDONS.has(unit)
                     ? {
-                      width: pct((FOOTPRINT[unit] ?? [3, 2])[0], grid.width),
-                      aspectRatio: `${(FOOTPRINT[unit] ?? [3, 2])[0]} / ${(FOOTPRINT[unit] ?? [3, 2])[1] + riseOf(unit)}`,
+                      width: pct((FOOTPRINT[unit] ?? [3, 2])[0] * (shapeKind ? 1 : 0.8), grid.width),
+                      aspectRatio: `${(FOOTPRINT[unit] ?? [3, 2])[0]} / ${(FOOTPRINT[unit] ?? [3, 2])[1] + (shapeKind ? riseOf(unit) : 0)}`,
                     }
                     : {}),
                   // 긴 이름은 한 단계 작게(지적) — 여섯 자부터.
@@ -1519,14 +1561,9 @@ export default function ReplayMotionPlayer({
                 {shapeKind && text !== name
                   ? <ShapeIcon kind={shapeKind} />
                   : text === "■"
-                    ? (
-                      <i
-                        className="scr-motion-sq"
-                        style={{
-                          aspectRatio: `${(FOOTPRINT[unit] ?? [3, 2])[0]} / ${(FOOTPRINT[unit] ?? [3, 2])[1]}`,
-                        }}
-                      />
-                    )
+                    // 캔버스가 이미 발자국 비율이라(위 aspectRatio — 벡터 없으면 높이 몫도
+                    // 없다) 네모는 그 상자를 그대로 채운다(CSS width/height 100%).
+                    ? <i className="scr-motion-sq" />
                     : text}
                 {raising && <Hammer size={6} className="scr-motion-raising" />}
               </span>
