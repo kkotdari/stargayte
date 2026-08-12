@@ -11997,7 +11997,8 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    .scr-epithet-guide-row(그리드 두 열)를 대체한다. 머리말(lead)도 함께 걷었다(요청). */
 .scr-epithet-guide-table {
   width: 100%; border-collapse: collapse;
-  font-size: var(--fs-9); line-height: 1.45;
+  /* fs-9는 너무 작았다(지적) — 한 단계 위(캡션)로. */
+  font-size: var(--fs-caption); line-height: 1.45;
 }
 .scr-epithet-guide-table th {
   text-align: left; font-weight: 700; color: var(--dim); letter-spacing: 0.03em;
