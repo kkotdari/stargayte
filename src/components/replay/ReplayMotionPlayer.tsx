@@ -692,6 +692,12 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
   ],
   /* (삭제) slab — 이름 없는 기본 건물은 입체 상자가 아니라 예전 네모로 돌아갔다(지적:
      "입체표현은 직접 그린거만"). 크기만 발자국을 따른다. */
+  /* 병력 육각형(요청: 일꾼과 구분이 안 됨 — 병력을 육각형으로) — 일꾼·채굴·정찰 일꾼은
+     전부 지금의 ● 점 그대로고(요청: 변경 없음), 전투 유닛 점만 이 도형을 쓴다.
+     점과 같은 급의 표시라 입체 없이 채운 한 면이다(입체는 직접 그린 건물만). */
+  hex: [
+    ["M8 1.2 L13.9 4.6 V11.4 L8 14.8 L2.1 11.4 V4.6 Z", 1],
+  ],
 };
 /** 도형째 돌려 그리는 각도(시계방향) — 스타게이트는 45도(요청). */
 const SHAPE_ROT: Record<string, number> = { arch: 45 };
@@ -1947,7 +1953,9 @@ export default function ReplayMotionPlayer({
                     ...glyphStyle(p.raw, team),
                   }}
                 >
-                  ●
+                  {/* 갓 나온 것도 병력이면 육각형, 일꾼이면 점(요청: 아이콘 구분). */}
+                  {unit === "SCV" || unit === "Probe" || unit === "Drone"
+                    ? "●" : <ShapeIcon kind="hex" className="scr-motion-hexi" />}
                 </span>,
               );
             }
@@ -2316,7 +2324,9 @@ export default function ReplayMotionPlayer({
                       className="scr-motion-ovie"
                     />
                   )
-                  : activeNow ? text : "●"}
+                  : activeNow ? text
+                    // 병력은 육각형, 일꾼은 점(요청: 아이콘 구분).
+                    : g.unit === "Worker" ? "●" : <ShapeIcon kind="hex" className="scr-motion-hexi" />}
               </span>
             ));
           });
@@ -2401,7 +2411,8 @@ export default function ReplayMotionPlayer({
                       ...glyphStyle(p.raw, team),
                     }}
                   >
-                    ●
+                    {/* 무명 부대는 병력이다 — 육각형(요청: 일꾼과 아이콘 구분). */}
+                    <ShapeIcon kind="hex" className="scr-motion-hexi" />
                   </span>
                 );
               });
@@ -2503,12 +2514,13 @@ export default function ReplayMotionPlayer({
                   ...(activeNow ? chipStyle(p.raw, team) : glyphStyle(p.raw, team)),
                 }}
               >
-                {/* 수송선·오버로드는 점 대신 제 도형(요청) — 풍선·드랍십·셔틀. */}
+                {/* 수송선·오버로드는 점 대신 제 도형(요청) — 풍선·드랍십·셔틀.
+                    일꾼은 점 그대로, 그 밖의 단독 정찰(병력)은 육각형(요청: 아이콘 구분). */}
                 {race === "저그" && g.kind !== "worker"
                   ? <ShapeIcon kind="ovie" className="scr-motion-ovie" />
                   : g.kind === "carrier"
                     ? <ShapeIcon kind={race === "테란" ? "dship" : "shuttle"} className="scr-motion-ovie" />
-                    : "●"}
+                    : g.kind === "worker" ? "●" : <ShapeIcon kind="hex" className="scr-motion-hexi" />}
               </span>
             );
           });
@@ -2607,7 +2619,8 @@ export default function ReplayMotionPlayer({
       <div className="scr-motion-toolrow">
         <div className="scr-motion-toolrow-mid">
           <div className="scr-motion-legend">
-            <span>● 부대·유닛</span>
+            {/* 병력은 육각형(요청: 일꾼과 아이콘 구분) — 지도의 도형과 같은 벡터를 쓴다. */}
+            <span><i className="scr-motion-legend-hex"><ShapeIcon kind="hex" /></i> 병력</span>
             <span>■ 건물</span>
             {/* 일꾼은 채굴·정찰 없이 전부 같은 작은 점이다(요청: 통일). 기호는 지도의
                 점과 같은 ●를 부대보다 한 단 작게(지적: •는 너무 작았다). */}

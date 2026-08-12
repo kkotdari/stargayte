@@ -10990,6 +10990,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 오버로드 풍선 도형은 점 크기(1em)로는 다리가 안 보인다(지적: "오버로드 모양이 안
    나오는듯") — 한 단 키운다. */
 .scr-motion-shape-svg.scr-motion-ovie { width: 1.7em; height: 1.7em; }
+/* 병력 육각형(요청: 일꾼과 아이콘 구분) — 점(●)과 같은 급의 표시라 점 크기를 따라간다.
+   글꼴 ●보다 도형이 상자를 꽉 채워 살짝만 키워도 점보다 또렷하다. */
+.scr-motion-shape-svg.scr-motion-hexi { width: 1.15em; height: 1.15em; }
+.scr-motion-legend-hex {
+  font-style: normal; display: inline-flex; vertical-align: -0.1em;
+}
+.scr-motion-legend-hex .scr-motion-shape-svg { width: 0.85em; height: 0.85em; }
 /* 정찰·일꾼 점(지적: 일꾼 정찰이 안 보인다) — 부대 점보다 작고 옅어서 "부대는 아니고
    무언가 갔다"로 읽힌다. */
 .scr-motion-scout {
