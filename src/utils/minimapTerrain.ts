@@ -238,3 +238,88 @@ export function groundPath(
   out[out.length - 1] = [fx1, fy1];
   return out;
 }
+
+/** BFS가 길을 못 찾을 때의 차선 — 못 걷는 칸도 '비싸게는' 지나가는 다익스트라(지적: 지상
+ *  유닛이 벽을 막 통과해 직진). 격자가 검수·분석 오류로 조각나면 groundPath는 null이고,
+ *  부르는 쪽의 직선 폴백이 벽을 그대로 그었다. 이 차선은 걷는 칸 위주로 돌아가되 정말
+ *  막힌 자리만 최단으로 가로질러, 최악의 경우에도 "대체로 땅을 따라가는" 경로를 준다.
+ *  시작·끝을 걷는 칸에 옮겨 잡을 필요도 없어(스냅 실패로 인한 null도 없다) 항상 답이 있다. */
+const SOFT_WALL_COST = 30;
+export function groundPathSoft(
+  t: TerrainGrid, fx0: number, fy0: number, fx1: number, fy1: number,
+): [number, number][] {
+  const cx0 = Math.min(t.w - 1, Math.max(0, Math.floor(fx0 * t.w)));
+  const cy0 = Math.min(t.h - 1, Math.max(0, Math.floor(fy0 * t.h)));
+  const cx1 = Math.min(t.w - 1, Math.max(0, Math.floor(fx1 * t.w)));
+  const cy1 = Math.min(t.h - 1, Math.max(0, Math.floor(fy1 * t.h)));
+  const startIdx = cy0 * t.w + cx0;
+  const goalIdx = cy1 * t.w + cx1;
+  if (startIdx === goalIdx) return [[fx1, fy1]];
+  const dist = new Float64Array(t.w * t.h).fill(Infinity);
+  const prev = new Int32Array(t.w * t.h).fill(-1);
+  dist[startIdx] = 0;
+  // 이진 힙 — 96×96(9천여 칸)이면 몇 ms 안이다.
+  const heap: number[] = [startIdx];
+  const key = (i: number) => dist[i];
+  const push = (i: number) => {
+    heap.push(i);
+    let c = heap.length - 1;
+    while (c > 0) {
+      const p = (c - 1) >> 1;
+      if (key(heap[p]) <= key(heap[c])) break;
+      [heap[p], heap[c]] = [heap[c], heap[p]];
+      c = p;
+    }
+  };
+  const pop = (): number => {
+    const top = heap[0];
+    const last = heap.pop()!;
+    if (heap.length > 0) {
+      heap[0] = last;
+      let c = 0;
+      for (;;) {
+        const l = c * 2 + 1;
+        const r = l + 1;
+        let m = c;
+        if (l < heap.length && key(heap[l]) < key(heap[m])) m = l;
+        if (r < heap.length && key(heap[r]) < key(heap[m])) m = r;
+        if (m === c) break;
+        [heap[m], heap[c]] = [heap[c], heap[m]];
+        c = m;
+      }
+    }
+    return top;
+  };
+  const dirs: [number, number][] = [
+    [-1, 1], [1, 1], [-t.w, 1], [t.w, 1],
+    [-t.w - 1, Math.SQRT2], [-t.w + 1, Math.SQRT2], [t.w - 1, Math.SQRT2], [t.w + 1, Math.SQRT2],
+  ];
+  const settled = new Uint8Array(t.w * t.h);
+  while (heap.length > 0) {
+    const cur = pop();
+    if (settled[cur]) continue;
+    settled[cur] = 1;
+    if (cur === goalIdx) break;
+    for (const [d, step] of dirs) {
+      const next = cur + d;
+      if (next < 0 || next >= dist.length) continue;
+      if (Math.abs((cur % t.w) - (next % t.w)) > 1) continue;
+      const cost = dist[cur] + step * (t.walk[next] ? 1 : SOFT_WALL_COST);
+      if (cost < dist[next]) {
+        dist[next] = cost;
+        prev[next] = cur;
+        push(next);
+      }
+    }
+  }
+  if (prev[goalIdx] === -1) return [[fx1, fy1]]; // 있을 수 없지만 — 안전망은 직선.
+  const cells: number[] = [];
+  for (let cur = goalIdx; cur !== startIdx; cur = prev[cur]) cells.push(cur);
+  cells.reverse();
+  const out: [number, number][] = cells.map((i) => [
+    ((i % t.w) + 0.5) / t.w,
+    (Math.floor(i / t.w) + 0.5) / t.h,
+  ]);
+  out[out.length - 1] = [fx1, fy1];
+  return out;
+}

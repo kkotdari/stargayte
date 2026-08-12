@@ -9,7 +9,7 @@ import { UNIT_KO, BUILDING_KO, TECH_KO } from "../../utils/replaySummaryText";
 import type { ReplayMapGrid } from "../../utils/replayParser";
 import { isAirUnit, type MotionTrack, type SummaryMotion, type TrackPt } from "../../utils/replayMotion";
 import { DEFENSE_BUILDINGS } from "../../utils/replayBuildMix";
-import { terrainOf, decodeWalk, groundPath, type TerrainGrid } from "../../utils/minimapTerrain";
+import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } from "../../utils/minimapTerrain";
 import type { MinimapMarker } from "./ReplayMinimap";
 
 /* ── 연속 재생 플레이어(요청: 장면 선정 없이 전부 연속으로, 이미지 대신 텍스트로) ──────
@@ -1054,8 +1054,10 @@ export default function ReplayMotionPlayer({
       const air = !forceGround && unit !== "" && isAirUnit(unit);
       let path: [number, number][] | null = null;
       if (!straight && !air && terrain) {
-        /* 조인 격자 먼저, 끊겼으면 원본으로 한 번 더(위 terrainRaw 주석) — 그래도 없으면
-           직선 폴백이지만, 그건 이제 정말 길이 없는 자리뿐이다. */
+        /* 조인 격자 먼저, 끊겼으면 원본으로 한 번 더(위 terrainRaw 주석) — 둘 다 끊겼으면
+           직선이 아니라 차선(벽을 비싸게 취급하는 다익스트라)이다(지적: 지상 유닛이 벽을 막
+           통과해 직진). 격자가 조각났거나 출발·도착이 못 걷는 칸 깊숙이 떨어져 스냅이
+           실패하면 BFS는 null인데, 그때마다 직선을 그으면 벽 관통이 화면을 덮는다. */
         const found = groundPath(
           terrain,
           atX / grid.width, atY / grid.height,
@@ -1064,8 +1066,12 @@ export default function ReplayMotionPlayer({
           terrainRaw,
           atX / grid.width, atY / grid.height,
           tx / grid.width, ty / grid.height,
-        ) : null);
-        path = found?.map(([fx, fy]) => [fx * grid.width, fy * grid.height] as [number, number]) ?? null;
+        ) : null) ?? groundPathSoft(
+          terrainRaw ?? terrain,
+          atX / grid.width, atY / grid.height,
+          tx / grid.width, ty / grid.height,
+        );
+        path = found.map(([fx, fy]) => [fx * grid.width, fy * grid.height] as [number, number]);
       }
       if (!path) path = [[tx, ty]];
       let total = 0;
@@ -1907,13 +1913,17 @@ export default function ReplayMotionPlayer({
                   const key = `${Math.round(exitX)},${Math.round(exitY)}>${rx},${ry}`;
                   let hit = rallyRoutes.current.get(key);
                   if (!hit) {
+                    // 둘 다 끊겼으면 차선(벽 회피 다익스트라) — walkTrack과 같은 이유.
                     const found = groundPath(
                       terrain, exitX / grid.width, exitY / grid.height,
                       rx / grid.width, ry / grid.height,
                     ) ?? (terrainRaw ? groundPath(
                       terrainRaw, exitX / grid.width, exitY / grid.height,
                       rx / grid.width, ry / grid.height,
-                    ) : null);
+                    ) : null) ?? groundPathSoft(
+                      terrainRaw ?? terrain, exitX / grid.width, exitY / grid.height,
+                      rx / grid.width, ry / grid.height,
+                    );
                     hit = found
                       ? [[exitX, exitY] as [number, number],
                         ...found.map(([nx, ny]) => [nx * grid.width, ny * grid.height] as [number, number])]
@@ -2229,9 +2239,12 @@ export default function ReplayMotionPlayer({
           const typeMarks = typeSquads[pi].flatMap((g, gi) => {
             const rp = g.walk;
             if (rp.length === 0 || t < rp[0][0]) return [];
-            const pos = posAt(
-              rp, t, terrain || isAirUnit(g.unit) ? null : { x: grid.width / 2, y: grid.height / 2 },
-            );
+            /* 가운데로 휘는 곡선(bend)은 걷은 자취에 안 얹는다(지적: 일꾼·유닛이 왜 이렇게
+               빠르냐) — walkTrack이 이미 유닛 속도로 시간을 배분해 놨는데, 그 구간을 곡선
+               으로 늘리면 같은 시간에 더 긴 길을 미끄러져 실제보다 빨라 보였다(실측 3.7
+               타일/초짜리 일꾼이 4.7로). 곡선은 walkTrack 이전, 명령 점을 그대로 잇던
+               시절의 장치다. */
+            const pos = posAt(rp, t, null);
             if (!pos) return [];
             let sinceCmd = Infinity;
             for (const [sec] of g.raw) {
@@ -2355,10 +2368,8 @@ export default function ReplayMotionPlayer({
                posAt은 첫 점 이전이면 첫 점 자리를 돌려줘서, 병력이 생기기도 전에 마커가
                '앞으로 갈 자리'에 서 있었다. 그동안의 움직임은 정찰 점(spts)이 맡는다. */
             if (rp.length === 0 || t < rp[0][0]) return null;
-            const pos = posAt(
-              rp, t,
-              terrain || isAirUnit(unit) ? null : { x: grid.width / 2, y: grid.height / 2 },
-            );
+            // 걷은 자취에는 곡선을 안 얹는다 — 위 typeMarks의 bend 주석과 같은 이유.
+            const pos = posAt(rp, t, null);
             if (!pos) return null;
             // 활동 판정은 원본 명령 점으로 잰다 — 경로로 편 점은 촘촘해 늘 '방금'이 된다.
             let sinceCmd = Infinity;
