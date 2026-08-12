@@ -2442,10 +2442,12 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-record-col-hands {
   grid-template-columns: var(--scr-stat-rlabel-w, 52px) minmax(0, 1fr) !important;
 }
-/* 전적 표 줄기는 제 내용 폭으로 선다(지적: 너비 문제) — 반반(flex 1 1 0)이면 칸이 표의
-   최소폭보다 좁을 때 표가 제 줄기를 넘어 손 수치 줄기 위로 흘러넘친다. 표가 제 폭을 갖고,
-   남는 자리는 손 수치 줄기가 갖는다. */
-.scr-stat-record-col-games { flex: 0 0 auto; }
+/* 폭 배분(지적: 손지표 쪽은 줄이고 전적쪽은 늘려야) — 반반(flex 1 1 0)이면 칸이 표의
+   최소폭보다 좁을 때 표가 제 줄기를 넘어 손 수치 위로 흘렀고, 표를 내용폭으로 고정하니
+   이번엔 남는 폭이 전부 손 수치 쪽에 붙었다. 손 수치는 [이름|값] 두 마디뿐이라 넓을수록
+   이름과 값 사이만 벌어진다 — 제 내용만큼만 서고, 남는 자리는 열이 셋인 전적 표가 갖는다. */
+.scr-stat-record-col-games { flex: 1 1 auto; }
+.scr-stat-record-col-hands { flex: 0 0 auto; }
 .scr-stat-record-col {
   display: grid;
   /* 수 열은 56px 아래로는 안 줄어든다(지적: 아직 겹친다) — minmax(0,1fr)이면 칸이 좁을 때
