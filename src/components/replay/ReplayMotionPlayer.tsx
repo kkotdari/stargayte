@@ -929,6 +929,11 @@ export default function ReplayMotionPlayer({
   /* 지형(요청: 미니맵 이미지 분석) — 그림에서 걷는 땅 격자를 만들어, 지상 부대의 자취를
      그 위의 경로로 편다. 분석 전·실패 시에는 기존 곡선 폴백. */
   const [terrain, setTerrain] = useState<TerrainGrid | null>(null);
+  /* 틈을 조이기 전의 원본 격자(지적: 지상 유닛들이 다 벽을 뚫고 다닌다) — 미니맵 해상도
+     에서는 언덕길·초크가 딱 1칸 폭이라, 실틈 조이기(closeNarrowGaps)가 진짜 길목까지 막아
+     지역이 통째로 끊겼다. 길찾기가 실패하면 직선 폴백이라 전부 벽을 뚫었다. 조인 격자로
+     길이 안 나오면 이 원본으로 한 번 더 찾는다 — 실틈만 조이고 길목은 살리는 절충이다. */
+  const [terrainRaw, setTerrainRaw] = useState<TerrainGrid | null>(null);
   /* 지형 수정(요청: 모든 경기 리플레이 화면에서, 아무나) — 산 버튼이 검수 모달을 연다.
      저장하면 이 자리에서 바로 새 지형으로 갈아 끼운다(맵 캐시는 다음 로드에 새 값을 받는다). */
   const [terrainOpen, setTerrainOpen] = useState(false);
@@ -945,10 +950,18 @@ export default function ReplayMotionPlayer({
     /* 검수한 지형(grid.walk, 방금 이 자리에서 고쳤으면 walkOverride)이 있으면 그쪽이
        이긴다(요청) — 자동 분석은 어림이다. */
     const reviewed = decodeWalk(walkOverride ?? grid.walk);
-    if (reviewed) { setTerrain(closeNarrowGaps(reviewed)); return undefined; }
-    if (!grid.image) { setTerrain(null); return undefined; }
+    if (reviewed) {
+      setTerrain(closeNarrowGaps(reviewed));
+      setTerrainRaw(reviewed);
+      return undefined;
+    }
+    if (!grid.image) { setTerrain(null); setTerrainRaw(null); return undefined; }
     terrainOf(grid.image)
-      .then((tg) => { if (!cancelled) setTerrain(tg ? closeNarrowGaps(tg) : tg); });
+      .then((tg) => {
+        if (cancelled) return;
+        setTerrain(tg ? closeNarrowGaps(tg) : tg);
+        setTerrainRaw(tg);
+      });
     return () => { cancelled = true; };
   }, [grid.image, grid.walk, walkOverride]);
 
@@ -1014,11 +1027,18 @@ export default function ReplayMotionPlayer({
       const air = !forceGround && unit !== "" && isAirUnit(unit);
       let path: [number, number][] | null = null;
       if (!straight && !air && terrain) {
-        path = groundPath(
+        /* 조인 격자 먼저, 끊겼으면 원본으로 한 번 더(위 terrainRaw 주석) — 그래도 없으면
+           직선 폴백이지만, 그건 이제 정말 길이 없는 자리뿐이다. */
+        const found = groundPath(
           terrain,
           atX / grid.width, atY / grid.height,
           tx / grid.width, ty / grid.height,
-        )?.map(([fx, fy]) => [fx * grid.width, fy * grid.height] as [number, number]) ?? null;
+        ) ?? (terrainRaw ? groundPath(
+          terrainRaw,
+          atX / grid.width, atY / grid.height,
+          tx / grid.width, ty / grid.height,
+        ) : null);
+        path = found?.map(([fx, fy]) => [fx * grid.width, fy * grid.height] as [number, number]) ?? null;
       }
       if (!path) path = [[tx, ty]];
       let total = 0;
@@ -1122,13 +1142,13 @@ export default function ReplayMotionPlayer({
       .flatMap(([unit, pts]) => splitSquads(pts, homeOf(p.raw), TYPE_MERGE_TILES, p.drops)
         .map((sq) => ({ unit, raw: sq, walk: walkTrack(sq, p, false, unit) })))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [motion, terrain, grid.width, grid.height, bases],
+    [motion, terrain, terrainRaw, grid.width, grid.height, bases],
   );
   const refinedSquads = useMemo(
     () => motion.players.map((p, pi) => squadPts[pi].map((sq) =>
       walkTrack(sq, p, false, undefined, undefined, true))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [squadPts, terrain, grid.width, grid.height, motion],
+    [squadPts, terrain, terrainRaw, grid.width, grid.height, motion],
   );
   /* 정찰 자취도 걸어서 가고(지적: 갑자기 이동 — 직선이되 일꾼 걸음), 갈래·부대로 갈라
      각자의 점이 된다(지적: 드랍십 순간이동 — 일꾼 정찰과 셔틀 원정이 한 점을 놓고
@@ -1158,7 +1178,7 @@ export default function ReplayMotionPlayer({
         ),
       }))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [motion, terrain, grid.width, grid.height, bases]);
+  }), [motion, terrain, terrainRaw, grid.width, grid.height, bases]);
   // 기본은 ×3이다(요청: ×8 → ×4였다가 눈금이 1·2·3·5·10·20으로 바뀌며 가장 가까운 값).
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(3);
   /* 탐색바(지적: 다이얼 드래그가 안 되고, 부드럽지 않고 반응이 느림) — 제어 입력은 매
