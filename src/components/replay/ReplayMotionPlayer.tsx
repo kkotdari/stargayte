@@ -87,6 +87,44 @@ const PROD_FLASH_SEC = 6;
    채인지는 리플레이가 안 알려줘(생산 커맨드에 건물 번호가 없다) 같은 종류가 함께 켜진다.
    저그는 전부 해처리 계열(라바)이고, 러커·가디언처럼 유닛에서 변태하는 것은 건물 몫이
    아니라 뺀다. */
+/* 연구(업그레이드·테크) → 그 연구를 하는 건물(요청: 업그레이드 중인 건물도 심장 뛰기).
+   연구가 시작되면 그 건물이 RESEARCH_SEC 동안 뛰는 것으로 본다(정확한 연구 시간은 종류마다
+   달라 어림 하나로 뭉친다). 부속 건물(머신샵 등)의 연구는 몸통 건물로 올려 붙인다. */
+const RESEARCH_SEC = 90;
+const RESEARCH_BUILDING: Record<string, string> = {
+  "Terran Infantry Weapons": "Engineering Bay", "Terran Infantry Armor": "Engineering Bay",
+  "Terran Vehicle Weapons": "Armory", "Terran Vehicle Plating": "Armory",
+  "Terran Ship Weapons": "Armory", "Terran Ship Plating": "Armory",
+  "U-238 Shells": "Academy", "Stim Packs": "Academy", "Caduceus Reactor": "Academy",
+  "Restoration": "Academy", "Optical Flare": "Academy",
+  "Ion Thrusters": "Factory", "Spider Mines": "Factory", "Tank Siege Mode": "Factory",
+  "Cloaking Field": "Starport", "Apollo Reactor": "Starport",
+  "Yamato Gun": "Science Facility", "Titan Reactor": "Science Facility",
+  "Personnel Cloaking": "Science Facility", "Lockdown": "Science Facility",
+  "Protoss Ground Weapons": "Forge", "Protoss Ground Armor": "Forge", "Protoss Plasma Shields": "Forge",
+  "Protoss Air Weapons": "Cybernetics Core", "Protoss Air Armor": "Cybernetics Core",
+  "Singularity Charge": "Cybernetics Core",
+  "Leg Enhancements": "Citadel of Adun",
+  "Psionic Storm": "Templar Archives", "Hallucination": "Templar Archives",
+  "Khaydarin Amulet": "Templar Archives", "Maelstrom": "Templar Archives",
+  "Mind Control": "Templar Archives", "Argus Talisman": "Templar Archives",
+  "Gravitic Drive": "Robotics Support Bay", "Scarab Damage": "Robotics Support Bay",
+  "Reaver Capacity": "Robotics Support Bay",
+  "Gravitic Boosters": "Observatory", "Sensor Array": "Observatory",
+  "Carrier Capacity": "Fleet Beacon", "Gravitic Thrusters": "Fleet Beacon",
+  "Apial Sensors": "Fleet Beacon", "Disruption Web": "Fleet Beacon", "Argus Jewel": "Fleet Beacon",
+  "Recall": "Arbiter Tribunal", "Stasis Field": "Arbiter Tribunal", "Khaydarin Core": "Arbiter Tribunal",
+  "Zerg Melee Attacks": "Evolution Chamber", "Zerg Missile Attacks": "Evolution Chamber",
+  "Zerg Carapace": "Evolution Chamber",
+  "Zerg Flyer Attacks": "Spire", "Zerg Flyer Carapace": "Spire",
+  "Metabolic Boost": "Spawning Pool", "Adrenal Glands": "Spawning Pool",
+  "Muscular Augments": "Hydralisk Den", "Grooved Spines": "Hydralisk Den", "Lurker Aspect": "Hydralisk Den",
+  "Pneumatized Carapace": "Hatchery", "Ventral Sacs": "Hatchery", "Antennae": "Hatchery", "Burrowing": "Hatchery",
+  "Anabolic Synthesis": "Ultralisk Cavern", "Chitinous Plating": "Ultralisk Cavern",
+  "Plague": "Defiler Mound", "Consume": "Defiler Mound", "Metasynaptic Node": "Defiler Mound",
+  "Ensnare": "Queen's Nest", "Spawn Broodlings": "Queen's Nest", "Gamete Meiosis": "Queen's Nest",
+};
+
 const ZERG_LARVA = ["Drone", "Overlord", "Zergling", "Hydralisk", "Mutalisk", "Scourge", "Queen", "Ultralisk", "Defiler"];
 const PRODUCED_BY: Record<string, string[]> = {
   Barracks: ["Marine", "Firebat", "Medic", "Ghost"],
@@ -416,36 +454,58 @@ export default function ReplayMotionPlayer({
           ? <img className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`} />
           : <div className="scr-motion-canvas scr-motion-canvas-blank" />}
 
-        {/* 건물(요청: 합치기 대신) — 기본은 작은 폰트의 이름이 늘 떠 있고, 활성화(건설·
-            생산 중)일 때만 바운스로 커진다. 이름을 모르는 건물만 도형(▪/▲)이다. 색은
-            안=개인·테두리=팀(요청). 무너진 것(어림)은 ✕로 잠깐. */}
-        {motion.builds.map(([sec, x, y, unit, raw, gone], i) => {
-          if (sec > t) return null;
-          const goneAt = gone ?? 0;
-          if (goneAt > 0 && t >= goneAt + 6) return null;
-          const razed = goneAt > 0 && t >= goneAt;
-          const team = teamOfRaw(raw);
-          const producing = !razed && (prodByRawType.get(`${raw}|${unit}`) ?? [])
-            .some((ps) => ps <= t && t - ps <= PROD_FLASH_SEC);
-          const activeBuild = !razed && (producing || t - sec <= BUILD_LABEL_SEC);
-          const name = BUILDING_KO[unit] ?? UNIT_KO[unit];
-          return (
-            <span
-              key={`b-${i}`}
-              className={cx(
-                "scr-motion-build",
-                activeBuild && "scr-motion-build-on",
-                razed && "scr-motion-build-razed",
-              )}
-              style={{
-                left: pct(x, grid.width), top: pct(y, grid.height),
-                ...(razed ? {} : shapeStyle(raw, team)),
-              }}
-            >
-              {razed ? "✕" : name ?? (DEFENSE_BUILDINGS.has(unit) ? "▲" : "▪")}
-            </span>
-          );
-        })}
+        {/* 건물(요청: 합치기 대신) — 기본은 작은 이름이 늘 떠 있되, 가까이 겹치는 같은
+            이름은 하나만 적고 나머지는 점(지적: 겹치면 안 보인다). 긴 이름은 폰트를 한
+            단계 줄인다. 생산·연구 중이면 심장처럼 뛴다(요청). */}
+        {(() => {
+          const shownNames: { x: number; y: number; unit: string }[] = [];
+          return motion.builds.map(([sec, x, y, unit, raw, gone], i) => {
+            if (sec > t) return null;
+            const goneAt = gone ?? 0;
+            if (goneAt > 0 && t >= goneAt + 6) return null;
+            const razed = goneAt > 0 && t >= goneAt;
+            const team = teamOfRaw(raw);
+            const producing = !razed && (prodByRawType.get(`${raw}|${unit}`) ?? [])
+              .some((ps) => ps <= t && t - ps <= PROD_FLASH_SEC);
+            // 연구 중(요청) — 이 건물에서 하는 연구가 지금 창 안에 시작돼 있나.
+            const track = motion.players.find((p) => p.raw === raw);
+            const hallLike = unit === "Lair" || unit === "Hive" ? "Hatchery" : unit;
+            const researching = !razed && (track?.ups ?? []).some(([us, name]) =>
+              RESEARCH_BUILDING[name] === hallLike && us <= t && t - us <= RESEARCH_SEC);
+            const activeBuild = !razed && (producing || researching || t - sec <= BUILD_LABEL_SEC);
+            const name = BUILDING_KO[unit] ?? UNIT_KO[unit];
+            // 겹침 정리 — 비활성 이름은 같은 종류가 5타일 안에 이미 적혀 있으면 점으로.
+            let text: string;
+            if (razed) text = "✕";
+            else if (!name) text = DEFENSE_BUILDINGS.has(unit) ? "▲" : "▪";
+            else if (activeBuild) text = name;
+            else if (shownNames.some((sn) => sn.unit === unit && Math.hypot(sn.x - x, sn.y - y) <= 5)) {
+              text = DEFENSE_BUILDINGS.has(unit) ? "▲" : "▪";
+            } else {
+              shownNames.push({ x, y, unit });
+              text = name;
+            }
+            return (
+              <span
+                key={`b-${i}`}
+                className={cx(
+                  "scr-motion-build",
+                  activeBuild && "scr-motion-build-on",
+                  (producing || researching) && "scr-motion-heartbeat",
+                  razed && "scr-motion-build-razed",
+                )}
+                style={{
+                  left: pct(x, grid.width), top: pct(y, grid.height),
+                  // 긴 이름은 한 단계 작게(지적) — 여섯 자부터.
+                  ...(text.length >= 6 && !activeBuild ? { fontSize: 5 } : {}),
+                  ...(razed ? {} : shapeStyle(raw, team)),
+                }}
+              >
+                {text}
+              </span>
+            );
+          });
+        })()}
 
         {/* 채굴 일꾼(요청, 지적: 방향 반대) — 자원 지대마다, 그 시점에 서 있는 가장
             가까운 본진 건물(시작 본진·확장 포함)을 찾아 그리로 오간다. 가까운 홀이 없는
@@ -572,6 +632,7 @@ export default function ReplayMotionPlayer({
               className={cx(
                 "scr-motion-army",
                 showName && "scr-motion-chip",
+                showName && "scr-motion-heartbeat",
                 team === 2 ? "scr-motion-team2" : "scr-motion-team1",
                 pos.stale && "scr-motion-army-stale",
               )}

@@ -19,11 +19,9 @@ const TRACK_CAP = 400;
 const SAME_SPOT_TILES = 3;
 /** 부대 이름표가 너무 촐싹대지 않게, 우세 유닛이 바뀌어도 이만큼은 지나야 갈아 준다(초). */
 const UNIT_HOLD_SEC = 10;
-/** 속도에 관여하는 업그레이드만 싣는다(요청: 속업 중요) — 이름은 파서가 정규화한 그대로다. */
-const SPEED_UPGRADES = new Set([
-  "Metabolic Boost", "Muscular Augments", "Anabolic Synthesis", "Pneumatized Carapace",
-  "Ion Thrusters", "Leg Enhancements", "Gravitic Drive", "Gravitic Boosters", "Gravitic Thrusters",
-]);
+/* 업그레이드·테크의 연구 시작을 전부 싣는다(요청: 업그레이드 중인 건물 표시) — 속도
+   업그레이드만 골라 싣던 것을 넓혔다. 재생 쪽이 이름으로 속업(9종)과 연구 건물을 가른다.
+   가짓수가 몇십이라 트랙 무게는 티가 안 난다. */
 /** 일꾼 수의 버킷(초) — 매 마리마다 점을 찍으면 트랙만 굵어진다. */
 const WORKER_STEP_SEC = 15;
 /** 병력 규모의 버킷·창(초) — 최근 이 창 안의 생산 수를 규모로 본다(요청: 크기로 수를). */
@@ -136,16 +134,37 @@ function unitTimeline(unitFrames: Record<string, number[]>): [number, string][] 
 }
 
 
-/** 누적 일꾼 수의 변천 — WORKER_STEP_SEC 버킷 끝의 값만 남긴다. */
-function workerTimeline(unitFrames: Record<string, number[]>): [number, number][] {
-  const frames = WORKER_UNITS.flatMap((u) => unitFrames[u] ?? []).sort((a, b) => a - b);
-  if (frames.length === 0) return [];
+/** 일꾼 건조 시간(초) — 세 종족 모두 비슷한 눈금이다. */
+const WORKER_BUILD_SEC = 13;
+/** 본진 건물이 지어져 생산 슬롯이 되기까지(초) — 커맨드·넥서스·해처리의 어림 건설 시간. */
+const HALL_BUILD_SEC = 55;
+
+/** 누적 일꾼 수의 변천 — 완료 시각 기준이다(지적: 누른다고 다 뽑는 게 아니다 — 시간을
+ *  계산해야 한다). 생산 슬롯(본진 건물 수)마다 한 기씩 직렬로 뽑는 큐를 시뮬레이션해서,
+ *  명령을 몰아 눌러도 완료는 건조 시간 간격으로 흩어진다. */
+function workerTimeline(
+  unitFrames: Record<string, number[]>, slotOpenSecs: number[],
+): [number, number][] {
+  const cmds = WORKER_UNITS.flatMap((u) => unitFrames[u] ?? [])
+    .map((f) => f * SECONDS_PER_FRAME)
+    .sort((a, b) => a - b);
+  if (cmds.length === 0) return [];
+  // 슬롯마다 '언제부터 비나' — 본진 건물이 지어지는 대로 슬롯이 는다.
+  const free = (slotOpenSecs.length > 0 ? slotOpenSecs : [0]).slice().sort((a, b) => a - b);
+  const doneSecs: number[] = [];
+  for (const c of cmds) {
+    let bi = 0;
+    for (let i = 1; i < free.length; i += 1) if (free[i] < free[bi]) bi = i;
+    const fin = Math.max(c, free[bi]) + WORKER_BUILD_SEC;
+    free[bi] = fin;
+    doneSecs.push(fin);
+  }
+  doneSecs.sort((a, b) => a - b);
   const out: [number, number][] = [];
   let n = 0;
   let bucket = -1;
-  for (const f of frames) {
+  for (const sec of doneSecs) {
     n += 1;
-    const sec = f * SECONDS_PER_FRAME;
     const b = Math.floor(sec / WORKER_STEP_SEC);
     if (b !== bucket) {
       bucket = b;
@@ -220,11 +239,19 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
     const sg = p.signals!;
     const pts = trackOf(sg.orderPositions ?? []);
     const units = unitTimeline(sg.unitFrames ?? {});
-    const workers = workerTimeline(sg.unitFrames ?? {});
+    // 생산 슬롯 — 시작 본진(0초) + 지어진 본진 건물들(건설 시간 지나서부터).
+    const slotOpenSecs = [0, ...(sg.buildPositions ?? [])
+      .filter((b) => b.frame !== null
+        && ["Command Center", "Nexus", "Hatchery"].includes(b.unit))
+      .map((b) => b.frame! * SECONDS_PER_FRAME + HALL_BUILD_SEC)];
+    const workers = workerTimeline(sg.unitFrames ?? {}, slotOpenSecs);
     const size = sizeTimeline(sg.unitFrames ?? {});
     const ups: [number, string][] = [];
     for (const [name, frame] of Object.entries(sg.firstUpgradeFrame ?? {})) {
-      if (SPEED_UPGRADES.has(name)) ups.push([Math.round(frame * SECONDS_PER_FRAME), name]);
+      ups.push([Math.round(frame * SECONDS_PER_FRAME), name]);
+    }
+    for (const [name, frame] of Object.entries(sg.firstTechFrame ?? {})) {
+      ups.push([Math.round(frame * SECONDS_PER_FRAME), name]);
     }
     ups.sort((a, b) => a[0] - b[0]);
     const prod: Record<string, number[]> = {};

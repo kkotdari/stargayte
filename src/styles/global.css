@@ -10861,6 +10861,15 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    커진다. */
 .scr-motion-build { font-size: 6px; font-weight: 700; opacity: 0.8; text-shadow: 0 0 3px rgba(0, 0, 0, 0.9); }
 .scr-motion-build-on { font-size: 10px; opacity: 1; animation: scr-motion-bounce 0.45s ease-out; }
+/* 심장박동(요청) — 생산·연구 중인 건물과 명령받은 유닛이 지속적으로 맥동한다. */
+.scr-motion-heartbeat { animation: scr-motion-heart 1.1s ease-in-out infinite; }
+.scr-motion-build-on.scr-motion-heartbeat {
+  animation: scr-motion-bounce 0.45s ease-out, scr-motion-heart 1.1s ease-in-out 0.45s infinite;
+}
+@keyframes scr-motion-heart {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.14); }
+}
 @keyframes scr-motion-bounce {
   0% { transform: translate(-50%, -50%) scale(0.6); }
   45% { transform: translate(-50%, -50%) scale(1.3); }
