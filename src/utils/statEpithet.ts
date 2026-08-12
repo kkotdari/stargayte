@@ -741,15 +741,15 @@ const TITLES: Title[] = [
      같은 캐리어라도 아비터가 끼면 스테이시스·리콜이 낀 다른 그림이라, 이름이 그 판을
      말하게 한다(맵 여왕과 같은 {n} 방식). 아비터를 뽑았나는 이긴 판 원장(mix)의 유닛
      수로 본다. */
-  /* 문턱이 둘이다(요청) — 캐리어만이면 10%, 아비터까지 함께 굴린 판이면 8%. 표의 비율
-     (minPlaysShare)은 낮은 쪽(8%)을 걸고, 아비터 없는 판의 10%는 value가 직접 요구한다. */
-  { ...tactic("{n}", ["carrier"]), minPlaysShare: 0.08, battle: true, why: "캐리어",
+  /* 문턱이 둘이다(요청) — 캐리어만이면 5%, 아비터까지 함께 굴린 판이면 2%. 표의 비율
+     (minPlaysShare)은 낮은 쪽(2%)을 걸고, 아비터 없는 판의 5%는 value가 직접 요구한다. */
+  { ...tactic("{n}", ["carrier"]), minPlaysShare: 0.02, battle: true, why: "캐리어",
     value: (s, of) => {
       const src = of.races?.["프로토스"] ?? s;
       const n = did(src, "carrier");
       if (n === null) return null;
       const arb = (mix(s, of)?.units?.["Arbiter"] ?? 0) > 0;
-      if (!arb && n < Math.ceil(normDenom() * 0.1)) return null;
+      if (!arb && n < Math.ceil(normDenom() * 0.05)) return null;
       return n;
     },
     name: (s, of) => ((mix(s, of)?.units?.["Arbiter"] ?? 0) > 0 ? "보이지 않는 날파리 퀸" : "날파리 퀸") },
@@ -1343,7 +1343,7 @@ export function epithetGuideRows(): EpithetGuideRow[] {
         label: "날파리 퀸 (아비터까지 썼으면 보이지 않는 날파리 퀸)",
         /* 아비터 이야기를 조건에도 적는다(요청) — 자동 문구는 낮은 쪽(8%)만 알아서,
            캐리어 단독의 10%와 이름이 갈리는 사연이 빠진다. */
-        how: "10% 이상 게임에서 캐리어 · 전투/게임 모두 승리 — 아비터까지 함께 굴렸으면 8%부터, 이름도 \"보이지 않는 날파리 퀸\"으로",
+        how: "5% 이상 게임에서 캐리어 · 전투/게임 모두 승리 — 아비터까지 함께 굴렸으면 2%부터, 이름도 \"보이지 않는 날파리 퀸\"으로",
       };
     }
     if (r.how.startsWith("그 맵 승수")) {
