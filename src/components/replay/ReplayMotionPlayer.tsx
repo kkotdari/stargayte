@@ -23,9 +23,9 @@ import type { MinimapMarker } from "./ReplayMinimap";
 
 /** 배속 갈래(요청: 속도 조절, 기본 ×2) — 뜯어보는 ×2부터 훑어 넘기는 ×32까지. */
 const SPEEDS = [2, 4, 8, 16, 32] as const;
-/** 건물 텍스트가 이름을 달고 있는 시간(초, 게임 시간) — 지나면 점만 남는다(지적: 지어 놓고
- *  명령 없는 건물은 재빨리 도형으로). */
-const BUILD_LABEL_SEC = 8;
+/** 다 지어진 뒤 이름이 더 붙어 있는 시간(초) — 지나면 도형만 남는다(지적: 서플라이·파일런
+ *  같은 건 짓고 거의 바로 도형으로). 생산·연구가 돌면 그때 다시 이름이 뜬다. */
+const BUILD_LABEL_TAIL_SEC = 3;
 /** 마법 텍스트가 떠 있는 시간(초, 게임 시간). */
 const CAST_HOLD_SEC = 6;
 /** 자취 점 사이가 이보다 벌어지면 잇지 않고 건너뛴다(초) — 한참 조용하다 다른 곳을 찍은
@@ -539,7 +539,9 @@ export default function ReplayMotionPlayer({
             const hallLike = unit === "Lair" || unit === "Hive" ? "Hatchery" : unit;
             const researching = !razed && (track?.ups ?? []).some(([us, name]) =>
               RESEARCH_BUILDING[name] === hallLike && us <= t && t - us <= RESEARCH_SEC);
-            const activeBuild = !razed && (producing || researching || t - sec <= BUILD_LABEL_SEC);
+            // 이름 창 = 짓는 동안 + 꼬리 3초 — 완공되면 거의 바로 도형이다(지적).
+            const activeBuild = !razed && (producing || researching
+              || t - sec <= (BUILD_SEC[unit] ?? 30) + BUILD_LABEL_TAIL_SEC);
             const name = BUILDING_KO[unit] ?? UNIT_KO[unit];
             // 겹침 정리 — 비활성 이름은 같은 종류가 5타일 안에 이미 적혀 있으면 점으로.
             let text: string;
