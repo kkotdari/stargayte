@@ -609,6 +609,9 @@ export default function ReplayMotionPlayer({
                 className={cx(
                   "scr-motion-build",
                   !razed && text !== name && "scr-motion-build-shape",
+                  // 본진 건물은 다른 건물보다 큼직하게(요청).
+                  ["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(unit)
+                    && "scr-motion-build-hall",
                   activeBuild && "scr-motion-build-on",
                   (producing || researching) && "scr-motion-heartbeat",
                   razed && "scr-motion-build-razed",

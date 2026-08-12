@@ -10875,6 +10875,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 @media (min-width: 1160px) {
   .scr-motion-build { font-size: 9px; }
   .scr-motion-build-shape { font-size: 13px; }
+  .scr-motion-build-hall { font-size: 12px; }
+  .scr-motion-build-hall.scr-motion-build-shape { font-size: 17px; }
   .scr-motion-build-on { font-size: 13px; }
   .scr-motion-army { font-size: 12px; }
   .scr-motion-dot { font-size: 14px; }
@@ -10977,6 +10979,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   display: inline-block; width: 0.85em; height: 0.85em;
   background: currentColor; border-radius: 1px; vertical-align: -0.05em;
 }
+/* 본진 건물(커맨드·넥서스·해처리 계열)은 큼직하게(요청) — 이름이든 네모든 한 단계 키운다. */
+.scr-motion-build-hall { font-size: 10px; }
+.scr-motion-build-hall.scr-motion-build-shape { font-size: 13px; }
 /* 종족 배지(요청) — 아바타 오른쪽 어깨에. */
 .scr-motion-base-race { position: absolute; top: -3px; right: -10px; }
 /* 범례(요청) — 도형이 뭔지 한 줄. 지도 아래 가운데, 작은 회색 글씨. */
