@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Mountain, Pause, Play, RotateCcw } from "lucide-react";
 import TerrainReviewModal from "../../modals/TerrainReviewModal";
 import Avatar from "../common/Avatar";
@@ -211,7 +211,7 @@ const fmtClock = (sec: number): string => {
 };
 
 export default function ReplayMotionPlayer({
-  grid, motion, endSec, bases, teamOfRaw, active = true, caps = [],
+  grid, motion, endSec, bases, teamOfRaw, active = true,
 }: {
   grid: ReplayMapGrid;
   motion: SummaryMotion;
@@ -223,10 +223,7 @@ export default function ReplayMotionPlayer({
   teamOfRaw: (raw: string) => 1 | 2 | undefined;
   /** 화면에 실제로 보이는 카드인가 — 안 보이는 카드의 시계는 세우지 않는다. */
   active?: boolean;
-  /** 자막(요청: 예전처럼 미니맵 아래) — 재생 시각이 문장의 시각을 지나면 그 문장이 뜬다.
-   *  시각 없는 문장(맺음말)은 재생이 끝까지 닿았을 때 나온다. beat 자체는 여기서 몰라도
-   *  된다 — 문장과 초만 받는다. */
-  caps?: { atSec: number | null; node: ReactNode }[];
+  // (삭제·요청) caps — 자막 표시를 걷으면서 함께.
 }) {
   const total = useMemo(() => {
     if (endSec && endSec > 0) return endSec;
@@ -245,17 +242,22 @@ export default function ReplayMotionPlayer({
     for (const p of motion.players) if (p.color) m.set(p.raw, p.color);
     return m;
   }, [motion]);
-  /* 색 규칙(요청: 위치 바꿈) — 안쪽 배경이 개인(게임 내) 컬러, 테두리가 팀 컬러다.
-     테두리는 선명한 팀색으로 굵게(2px). 글자는 배경 밝기에 따라 흰/검. */
+  /* 색은 한 벌만 칠한다(요청: 중복 표시 제거) — 팀색/개인색을 전환 버튼으로 오간다.
+     개인색이 없는 옛 기록은 개인색 모드여도 팀색으로 떨어진다. */
+  const [colorMode, setColorMode] = useState<"team" | "personal">("team");
   const TEAM_EDGE: Record<1 | 2, string> = { 1: "#2f80ff", 2: "#e0435c" };
+  const modeColor = (raw: string, team: 1 | 2 | undefined): string => {
+    const teamColor = team === 2 ? TEAM_EDGE[2] : TEAM_EDGE[1];
+    if (colorMode === "personal") return colorByRaw.get(raw) ?? teamColor;
+    return teamColor;
+  };
   /* 도형(●▪▲)의 색(요청) — 안쪽(글자색)이 개인색, 테두리(외곽선)가 팀색이다. */
   const shapeStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => ({
-    color: colorByRaw.get(raw) ?? (team === 2 ? "#e0435c" : "#2f80ff"),
-    WebkitTextStroke: `0.7px ${team === 2 ? "#e0435c" : "#2f80ff"}`,
+    color: modeColor(raw, team),
+    WebkitTextStroke: "0.5px rgba(0, 0, 0, 0.6)",
   });
   const chipStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => {
-    const personal = colorByRaw.get(raw);
-    const bg = personal ?? (team === 2 ? "#5a2a31" : "#233c5c");
+    const bg = modeColor(raw, team);
     const r = parseInt(bg.slice(1, 3), 16);
     const g = parseInt(bg.slice(3, 5), 16);
     const b = parseInt(bg.slice(5, 7), 16);
@@ -263,8 +265,7 @@ export default function ReplayMotionPlayer({
     return {
       background: bg,
       color: lum > 150 ? "#111" : "#fff",
-      borderColor: team === 2 ? TEAM_EDGE[2] : TEAM_EDGE[1],
-      borderWidth: 2,
+      borderColor: "rgba(0, 0, 0, 0.45)",
     };
   };
 
@@ -543,7 +544,7 @@ export default function ReplayMotionPlayer({
                 className="scr-motion-miner"
                 style={{
                   left: pct(x, grid.width), top: pct(y, grid.height),
-                  color: colorByRaw.get(owner!.raw) ?? (team === 2 ? "#e0435c" : "#2f80ff"),
+                  color: modeColor(owner!.raw, team),
                 }}
               >
                 ·
@@ -567,12 +568,10 @@ export default function ReplayMotionPlayer({
               className={cx("scr-motion-base", m.ghost && "scr-motion-base-ghost")}
               style={{ left: pct(m.x, grid.width), top: pct(m.y, grid.height) }}
             >
-              {/* 이중 테두리(요청) — 안쪽이 개인색, 바깥이 팀색이다. */}
+              {/* 테두리 한 겹(요청: 중복 제거) — 지금 색 모드의 색으로. */}
               <span
                 className="scr-motion-base-ring"
-                style={{
-                  boxShadow: `0 0 0 2px ${colorByRaw.get(m.key) ?? "rgba(255,255,255,0.35)"}, 0 0 0 4px ${m.team === 2 ? TEAM_EDGE[2] : TEAM_EDGE[1]}`,
-                }}
+                style={{ boxShadow: `0 0 0 2px ${modeColor(m.key, m.team)}` }}
               >
                 <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={16} />
               </span>
@@ -666,25 +665,7 @@ export default function ReplayMotionPlayer({
         ))}
       </div>
 
-      {/* 자막 — 예전처럼 지도 아래다(요청). 문장을 전부 겹쳐 두고 지금 것만 보인다:
-          칸 높이가 늘 가장 긴 문장이라 재생 중에 아래가 위아래로 안 흔들린다(스냅 시절과
-          같은 수법). 지금 문장 = 시각이 t를 안 넘긴 마지막 문장, 맺음말(null)은 끝에서. */}
-      {caps.length > 0 && (() => {
-        let cur = -1;
-        caps.forEach((c, i) => {
-          if (c.atSec !== null ? c.atSec <= t : done) cur = i;
-        });
-        return (
-          <div className="scr-motion-caps">
-            {caps.map((c, i) => (
-              <p key={i} className="scr-motion-cap-line" data-on={i === cur} aria-hidden={i !== cur}>
-                {c.atSec !== null && <span className="scr-motion-cap-time">[{fmtClock(c.atSec)}]</span>}
-                {c.node}
-              </p>
-            ))}
-          </div>
-        );
-      })()}
+      {/* (삭제·요청) 자막 — 재생 화면에서 걷었다. beat는 칭호·BEST 원장으로만 남는다. */}
 
       {/* 조종간(요청: 두 줄) — 윗줄은 스크러버 하나, 아랫줄에 재생·배속·시간이 선다. */}
       <div className="scr-motion-bar">
@@ -712,6 +693,14 @@ export default function ReplayMotionPlayer({
               ×{v}
             </button>
           ))}
+          {/* 색 전환(요청: 전환 버튼 살림) — 팀색 ↔ 개인색. */}
+          <button
+            type="button" className="scr-motion-btn scr-motion-colorbtn"
+            onClick={() => setColorMode((v) => (v === "team" ? "personal" : "team"))}
+            title="색 기준 전환"
+          >
+            {colorMode === "team" ? "팀색" : "개인색"}
+          </button>
         </span>
         {/* 옛 스냅 타임라인의 재생 버튼과 같은 꼴(요청) — 46px 완전 원, 속 채운 삼각형. */}
         <button
