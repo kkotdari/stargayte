@@ -23,13 +23,10 @@ import { PER_WINDOW_SECONDS, type BuildMix } from "./replayBuildMix";
 import { TECH_KO } from "./replaySummaryText";
 import type { MemberStats } from "../types";
 
-/** 칭호를 붙일 최소 경기 수 — 한두 판으로 무엇의 "왕"을 부를 수는 없다. */
-const MIN_PLAYS = 3;
-/* 판수 바닥은 전부 클럽 전체 판수에 비례한다(지적: 하드코딩하면 안 된다 — 바닥 조건은
-   전체 경기수에 따라 바뀌어야 한다). 아래 셋이 그 눈금이다. 서열도 요청대로다: 승리의
-   여신이 가장 높고(전체 판의 12%), 종족 퀸이 그 아래(6%), 비율 칭호의 표본 바닥이 맨
-   아래(2.5%)다 — 클럽 이백 판 기준으로 24판 · 12판 · 5판. 클럽 판수를 못 받았으면 이백
-   판으로 친다(countMinFor와 같은 처방). */
+/* (교체·요청) MIN_PLAYS(고정 3판) — "적어도 한 달 경기의 반은 해야 칭호를 준다"로.
+   자격 풀 거름은 epithetsOf의 ranked가 floorGames()로 건다. */
+/* 판수 바닥은 하드코딩하지 않는다(지적) — 전부 아래 floorGames(최근 한 달 비례) 하나로
+   통일됐다(요청). 클럽 판수를 못 받았으면 이백 판으로 친다. */
 const clubGames = (): number =>
   (clubTotalGames && clubTotalGames > 0 ? clubTotalGames : CLUB_GAMES_FALLBACK);
 /* 표본 바닥들도 최근 한 달 기준이다(요청) — 전체 누적 비례는 클럽이 오래될수록 자라
@@ -1410,7 +1407,10 @@ export function epithetsOf(
   clubTotalGames = ctx?.totalGames ?? null;
   clubMonthGames = ctx?.monthGames ?? null;
   const out = new Map<string, Epithet>();
-  const ranked = pool.filter((p) => p.stats.plays >= MIN_PLAYS);
+  /* 칭호를 받으려면 적어도 최근 한 달 경기의 반은 뛰었어야 한다(요청) — 서너 판 얼굴
+     비춘 사람에게 "퀸"을 붙이면 말이 가벼워진다. 판수는 조회 기간(최근 석 달) 안의 것이라
+     오래전에만 뛰던 사람도 자동으로 걸러진다. */
+  const ranked = pool.filter((p) => p.stats.plays >= floorGames());
 
   /** 자격 하나 — 이 사람이 이 칭호의 조건을 넘었다. */
   interface Claim {

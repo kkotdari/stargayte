@@ -28,10 +28,18 @@ const CLAN_TYPE: GameType = "0102";
 /** 클럽 전체 판수와 최근 한 달 판수 — 기준 분모(normDenom)가 최근 한 달 페이스에 비례한다
  *  (요청: 전체 기간으로 하면 뒤늦게 들어온 사람이 기준 판수를 못 채운다). 목록 첫 페이지의
  *  total만 쓴다(한 건만 받아 값만 쓴다). 실패하면 null — 그 값을 쓰는 계산만 기본값으로 돈다. */
+/** 칭호가 보는 조회 창(요청: 최근 석 달) — 통계도 전체 판수도 이 창 안의 것만 센다.
+ *  칭호는 "요즘 그 사람"을 부르는 말이라, 일 년 전의 수는 근거가 못 된다. */
+export const EPITHET_WINDOW_DAYS = 90;
+const daysAgo = (days: number): string =>
+  new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+export const epithetWindowFrom = (): string => daysAgo(EPITHET_WINDOW_DAYS);
+
 async function clubGameCounts(): Promise<{ totalGames: number | null; monthGames: number | null }> {
-  const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const monthAgo = daysAgo(30);
   const [totalGames, monthGames] = await Promise.all([
-    api.getGameResultsPage({ matchType: CLAN_TYPE, limit: 1 })
+    // 전체 판수도 조회 창(석 달) 안의 것 — 참여 퀸의 분모라 분자(개인 판수)와 창이 같아야 한다.
+    api.getGameResultsPage({ matchType: CLAN_TYPE, dateFrom: epithetWindowFrom(), limit: 1 })
       .then((page) => page.total).catch(() => null),
     api.getGameResultsPage({ matchType: CLAN_TYPE, dateFrom: monthAgo, limit: 1 })
       .then((page) => page.total).catch(() => null),
@@ -83,7 +91,7 @@ async function recount(key: string): Promise<number> {
   /* 클럽 전체 판수도 함께 받는다(요청: 참여 퀸은 전체 경기수 비례) — 목록 첫 페이지의
      total이 곧 그 수다(한 건만 받아 값만 쓴다). 실패하면 null로 두고 그 칭호만 쉰다. */
   const [res, { totalGames, monthGames }] = await Promise.all([
-    api.getGameResultStats({ memberIds: ids, dateFrom: "", dateTo: "", matchType: CLAN_TYPE }),
+    api.getGameResultStats({ memberIds: ids, dateFrom: epithetWindowFrom(), dateTo: "", matchType: CLAN_TYPE }),
     clubGameCounts(),
   ]);
   const byId: Record<string, MemberStatsEntry> = {};
@@ -125,7 +133,7 @@ export async function simulateEpithets(memberIds: string[]): Promise<{
 }> {
   const ids = [...memberIds].sort();
   const [res, { totalGames, monthGames }] = await Promise.all([
-    api.getGameResultStats({ memberIds: ids, dateFrom: "", dateTo: "", matchType: CLAN_TYPE }),
+    api.getGameResultStats({ memberIds: ids, dateFrom: epithetWindowFrom(), dateTo: "", matchType: CLAN_TYPE }),
     clubGameCounts(),
   ]);
   const byId: Record<string, MemberStatsEntry> = {};
@@ -158,7 +166,7 @@ export async function claimsOfMember(memberId: string): Promise<EpithetClaimRow[
   const hit = claimCache.get(memberId);
   if (hit) return hit;
   const [res, { totalGames, monthGames }] = await Promise.all([
-    api.getGameResultStats({ memberIds: [memberId], dateFrom: "", dateTo: "", matchType: CLAN_TYPE }),
+    api.getGameResultStats({ memberIds: [memberId], dateFrom: epithetWindowFrom(), dateTo: "", matchType: CLAN_TYPE }),
     clubGameCounts(),
   ]);
   const entry = res.members.find((m) => m.memberId === memberId);
