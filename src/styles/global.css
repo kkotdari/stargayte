@@ -11921,6 +11921,36 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    톤(옅게)으로 적는다. */
 .scr-member-profile-epithet { color: var(--muted); font-size: var(--fs-caption); margin-top: 2px; word-break: keep-all; }
 
+/* 프로필의 '보유 칭호'(요청: 저장된 하나가 아니라 조건을 만족하는 것을 쭉) — 줄마다
+   [이름 + 근거 / 표시 배지] 두 칸이고, 배지는 오른쪽 끝에 붙는다(요청). 배지가 붙는 줄만
+   글자를 먹색으로 올려, 목록을 훑을 때 "지금 표에 나가는 건 이거"가 한눈에 잡히게 한다. */
+.scr-profile-epithets { margin-top: 14px; }
+.scr-profile-epithets-head {
+  margin: 0 0 8px; font-size: var(--fs-caption); font-weight: 800; color: var(--muted);
+}
+.scr-profile-epithets-none { margin: 0; color: var(--dim); font-size: var(--fs-caption); }
+.scr-profile-epithet-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.scr-profile-epithet-row {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+}
+.scr-profile-epithet-text { display: flex; flex-direction: column; min-width: 0; }
+.scr-profile-epithet-label {
+  font-size: var(--fs-caption); font-weight: 700; color: var(--muted); word-break: keep-all;
+}
+.scr-profile-epithet-row-shown .scr-profile-epithet-label { color: var(--text); }
+.scr-profile-epithet-why {
+  color: var(--dim); font-size: var(--fs-micro); line-height: 1.4; word-break: keep-all;
+}
+/* 배지는 줄 높이만큼 줄어들지 않게 고정하고(flex 0 0 auto), 글자 첫 줄에 눈높이를 맞춘다.
+   색은 포인트(--point) — 테마마다 이미 제 값이 잡혀 있어 다크·라이트를 따로 안 적어도 된다.
+   바탕을 옅게 깔고 글자만 제 색으로 두는 것은 다른 상태 배지들과 같은 규칙이다. */
+.scr-profile-epithet-badge {
+  flex: 0 0 auto; margin-top: 1px; padding: 1px 7px; border-radius: 999px;
+  font-size: var(--fs-micro); font-weight: 800; letter-spacing: 0.02em;
+  color: var(--point); background: rgba(var(--point-rgb), 0.14);
+  border: 1px solid rgba(var(--point-rgb), 0.42);
+}
+
 /* 칭호 설명 모달(요청: 부활 + 목록) — 등급 머리 아래 [이름 / 조건] 두 칸 줄. */
 .scr-epithet-guide { max-width: 520px; }
 .scr-epithet-guide-lead {

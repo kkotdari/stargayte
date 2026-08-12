@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { useAppStore } from "../store/appStore";
 import { epithetsOf, lastEpithetClaims, type Epithet, type EpithetClaimRow } from "./statEpithet";
+export type { EpithetClaimRow };
 import type { GameType, MemberStatsEntry } from "../types";
 
 /** 내전 = 팀전. 칭호는 이 유형의 기록으로만 매긴다(요청). */
@@ -94,6 +95,9 @@ async function recount(key: string): Promise<number> {
   );
   cached = map;
   cachedKey = key;
+  /* 프로필이 들고 있던 자격 목록도 함께 버린다 — 기록이 바뀐 자리라, 그대로 두면 표에 보이는
+     대표 칭호와 프로필의 목록이 서로 다른 시점을 말하게 된다. */
+  claimCache.clear();
   return changed;
 }
 
@@ -122,6 +126,34 @@ export async function simulateEpithets(memberIds: string[]): Promise<{
     .flatMap((x) => (x.stats ? [{ id: x.id, stats: x.stats, races: x.races, won: x.won }] : [])),
   { totalGames });
   return { assigned, claims: lastEpithetClaims() };
+}
+
+/* 한 사람이 지금 조건을 만족하는 칭호 전부 — 회원 프로필이 읽는다(요청: 저장된 칭호 하나가
+   아니라 조건을 만족하는 것을 쭉).
+   혼자만 계산해도 되는 까닭은 절대평가라서다 — 조건이 전부 그 사람 안에서 닫혀 있어(제 판수
+   대비 비율·값 문턱), 남을 함께 세도 이 사람의 자격 목록은 안 바뀐다. 클럽 전체 판수만
+   바깥값이라 함께 받는다(카운트 하한이 그걸 쓴다).
+   창을 여닫을 때마다 다시 받지 않게 사람별로 갈무리해 둔다 — 한 세션 안에서 기록이 바뀌면
+   그때는 refreshEpithets가 도는 자리라 여기도 함께 비운다. */
+const claimCache = new Map<string, EpithetClaimRow[]>();
+
+export async function claimsOfMember(memberId: string): Promise<EpithetClaimRow[]> {
+  const hit = claimCache.get(memberId);
+  if (hit) return hit;
+  const [res, totalGames] = await Promise.all([
+    api.getGameResultStats({ memberIds: [memberId], dateFrom: "", dateTo: "", matchType: CLAN_TYPE }),
+    api.getGameResultsPage({ matchType: CLAN_TYPE, limit: 1 })
+      .then((page) => page.total).catch(() => null),
+  ]);
+  const entry = res.members.find((m) => m.memberId === memberId);
+  if (!entry?.overall) { claimCache.set(memberId, []); return []; }
+  epithetsOf(
+    [{ id: memberId, stats: entry.overall, races: entry.byRace, won: entry.won }],
+    { totalGames },
+  );
+  const rows = lastEpithetClaims().filter((c) => c.memberId === memberId);
+  claimCache.set(memberId, rows);
+  return rows;
 }
 
 /** 지금 당장 다시 계산한다 — 제어판의 "칭호 다시 계산" 버튼이 쓴다(요청).
