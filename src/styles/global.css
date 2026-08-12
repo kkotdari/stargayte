@@ -2834,7 +2834,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-toplist {
   list-style: none; margin: 0; padding: 0;
   display: grid; grid-template-columns: auto auto auto;
-  justify-content: center; column-gap: 6px 10px; row-gap: 2px;
+  /* column-gap은 값 하나짜리다 — "6px 10px"로 적혀 있던 동안은 선언 자체가 무효라 순번
+     아이콘과 이름이 붙어 보였다(지적: 12345랑 이름 사이 갭). */
+  justify-content: center; column-gap: 6px; row-gap: 2px;
 }
 /* 수를 숨긴 동안에는 순번+이름 두 열짜리이고, 목록 전체를 칸 왼쪽에 붙인다(요청: "스킬
    유닛 탑5 왼쪽 정렬하고 넘버링 해주기") — 예전에는 이름 하나뿐이라 줄마다 가운데로
