@@ -1039,9 +1039,14 @@ export default function ReplayMotionPlayer({
 
       {/* 조종간(요청: 두 줄) — 윗줄은 스크러버 하나, 아랫줄에 재생·배속·시간이 선다. */}
       <div className="scr-motion-bar">
+        {/* 손잡이가 1초씩 끊어 뛰던 자리(지적: 움직임을 부드럽게) — step이 1초라 ×4에서는
+            네 프레임에 한 번씩 툭툭 옮겨 앉았다. 시계는 어차피 매 프레임 갱신되므로
+            눈금을 없애고 값도 소수 그대로 넘기면 손잡이가 재생과 같은 결로 흐른다.
+            --p는 지나온 자리를 채우는 트랙 그라데이션의 경계다(CSS의 -range 참고). */}
         <input
           className="scr-motion-range" type="range"
-          min={0} max={total} step={1} value={Math.floor(t)}
+          min={0} max={total} step="any" value={t}
+          style={{ "--p": `${total > 0 ? (t / total) * 100 : 0}%` } as React.CSSProperties}
           onChange={(e) => {
             const v = Number(e.target.value);
             setT(v);
