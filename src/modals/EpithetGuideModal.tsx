@@ -37,8 +37,17 @@ export default function EpithetGuideModal({ onClose }: { onClose: () => void }) 
               <section className="scr-epithet-guide-group" key={rank}>
                 <h3 className="scr-epithet-guide-rank">{rank}</h3>
                 <ul className="scr-epithet-guide-list">
-                  {group.map((r) => (
-                    <li className="scr-epithet-guide-row" key={r.label}>
+                  {group.map((r, i) => (
+                    <li
+                      className={
+                        /* 묶음이 바뀌는 자리에 줄을 긋는다(요청: 그룹화) — 묶음 번호는
+                           표(GUIDE_ORDER)가 정하고 여기는 경계만 읽는다. */
+                        i > 0 && group[i - 1].group !== r.group
+                          ? "scr-epithet-guide-row scr-epithet-guide-row-newgroup"
+                          : "scr-epithet-guide-row"
+                      }
+                      key={r.label}
+                    >
                       <span className="scr-epithet-guide-name">{r.label}</span>
                       <span className="scr-epithet-guide-how">
                         {r.how}

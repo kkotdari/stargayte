@@ -187,17 +187,9 @@ function won(s: MemberStats, of: EpithetSubject): MemberStats {
   return of.won ?? s;
 }
 
-/** 그 갈래 전투의 승률(%) — combat은 이제 판수가 아니라 전투 원장([붙은 수, 이긴 수])이다
- *  (요청: 경기가 아니라 그 전투 하나하나에서 이겼냐). 전투 하나의 경계와 승패("그 자리에
- *  살아남았나")는 등록·재분석 때 리플레이에서 가른다(replayBattles.ts) — 서버는 기간 합계만
- *  낸다. 표본은 전투 수가 바닥(ratioFloor, 클럽 판수 비례)은 돼야 한다. */
-function combatRate(of: EpithetSubject, key: "ground" | "air" | "magic"): number | null {
-  const rec = of.combat?.[key];
-  if (!rec) return null;
-  const [fights, wins] = rec;
-  if (fights < ratioFloor()) return null;
-  return Math.round((wins / fights) * 1000) / 10;
-}
+/* (삭제·요청) combatRate — 지상전/공중전/마법 퀸이 쓰던 전투 승률. 전투 원장 자체
+   (combat·bt_*)는 서버의 에픽 전투 게이트가 계속 쓴다. */
+
 
 /** 주요시간대 1분당 값 — 총합은 오래 뛴 사람이 늘 크다(MemberStatRow의 perMin과 같은 자). */
 function perMin(total: number, seconds: number | null | undefined): number | null {
@@ -657,43 +649,16 @@ const TITLES: Title[] = [
      쓸 자리를 알아야 하고, 한 번 제대로 들어가면 그 판이 갈린다.
      스톰·이레디에이트·마인처럼 늘 누르는 것은 여전히 없다 — 많이 썼다는 말이 "그 종족을
      오래 했다"밖에 안 된다(예전 SPELL_WEIGHT의 기준선이 그 무리였다). */
-  {
-    /* 얼음 공주 — 마엘스트롬·스테이시스·락다운을 함께 센다(요청: 다 합치기). 셋 다 상대를
-       그 자리에 얼려 놓고 시작하는 수라, 무엇으로 얼렸나는 종족이 정할 뿐 그 사람이 고른
-       수는 하나다. 종족을 안 거는 까닭도 그것이다 — 앞 둘은 프로토스, 락다운은 테란이라
-       분모를 한 종족으로 두면 나머지 판이 남의 종족 판수로 나뉜다.
-       값은 셋을 합친 쓴 횟수다(이긴 판만, skillsWon). spell()이 한 열쇠만 받아 여기서
-       직접 짓는다 — 무게·급·갈래는 spell()이 마엘스트롬에 주던 것과 같다. */
-    label: "얼음 공주", weight: TACTIC_WEIGHT.Maelstrom ?? 2, kind: "경기력",
-    pool: 1, edge: 1, min: 1, scale: "count", tier: 2, perUse: true, won: true,
-    why: "얼리는 마법(마엘스트롬·스테이시스·락다운)", unit: "번", minPlaysShare: 0.08,
-    value: (s) => {
-      const n = ["Maelstrom", "Stasis Field", "Lockdown"]
-        .reduce((sum, k) => sum + (s.buildMix?.skillsWon?.[k] ?? 0), 0);
-      return n > 0 ? n : null;
-    },
-  },
-  { ...spell("거미줄 설계자", "Disruption Web"), minPlaysShare: 0.05 },
+  /* (삭제·요청) 얼음 공주 — 마엘스트롬·스테이시스·락다운 합산. */
+  // (삭제·요청) 거미줄 설계자(디스럽션 웹).
   /* (삭제) 스테이시스(보갈타임 공주) — 요청. 아비터를 살려 두면 따라오는 버튼에 가깝고,
      같은 아비터의 이야기는 리콜(친구 부르기 공주)이 이미 세고 있다. */
   /* 스톰(요청: 스톰 잘 쓴 사람 번개 공주) — 한때 "늘 누르는 마법"이라 표에서 뺐는데, 이긴
      판만 세게 된 지금은 뜻이 다르다: 스톰을 가장 많이 쓰고 이긴 사람이라, 많이 눌렀다는
      말이 아니라 그걸로 판을 풀었다는 말이다. 공주급이다 — 어려운 마법(마엘스트롬·디스럽션
      웹)과 달리 프로토스면 누구나 쓰는 수라 격을 더 올릴 자리는 아니다. */
-  {
-    /* 스톰만은 '판당 몇 회'로 잰다(시뮬레이션 실측: 스톰 17번짜리도 대표가 됐다) — 다른
-       마법과 달리 스톰은 한 판에 열 번씩도 쓰는 것이라, 사용 수를 판수 비율로 재면 문턱이
-       뜻을 잃는다(1087번/56판 같은 값이 나온다). 실측 분포는 판당 1~2회가 보통, 8~19회가
-       꼭대기 — 5회면 "스톰으로 사는 사람"만 남는다. */
-    label: "번개 중독자", weight: 2, kind: "경기력", race: "프로토스", min: 8, why: "판당 스톰", unit: "회",
-    value: (_s, of) => {
-      const bucket = of.races?.["프로토스"];
-      const n = bucket?.buildMix?.skillsWon?.["Psionic Storm"] ?? 0;
-      const plays = bucket?.plays ?? 0;
-      return plays > 0 && n > 0 ? n / plays : null;
-    },
-  },
-  { ...spell("야마토 한 발", "Yamato Gun"), minPlaysShare: 0.02 },
+  /* (삭제·요청) 번개 중독자 — 판당 스톰 횟수. */
+  // (삭제·요청) 야마토 한 발.
   /* (삭제) 브루들링 저격수 · 눈을 멀게 하는 자(옵티컬 플레어) · 허깨비 부대장(할루시네이션)
      — 요청으로 뺐다. 셋 다 쓰기 어려운 마법이긴 한데, 그 한 번이 판을 가르는 그림까지는
      아니라 이름만 요란해진다. */
@@ -702,7 +667,7 @@ const TITLES: Title[] = [
      "아군 기지에 포토를 깔아 줬다"는 그 그림이 그대로 읽힌다. '수호자'는 어느 수에나
      붙을 수 있는 말이라 정작 이 칭호가 센 것이 안 보였다. */
   // 5% → 2%(요청) — 곁가지 다섯과 같은 선이다.
-  { ...tactic("동맹을 지키는 포탑", ["ally-cannon"]), minPlaysShare: 0.02 },
+  { ...tactic("아군 보호 퀸", ["ally-cannon"]), minPlaysShare: 0.02 },
   /* 입구막기는 '막았다'가 아니라 '막아 놓고 뒤에서 컸다'가 값어치다(판정도 발전까지 함께
      본다 — replayTactics의 WALL_IN_GROW_MIN). 그래서 칭호도 막은 쪽이 아니라 그다음을
      부른다. "후반 도모 퀸"에서 바꿨다(지적: 개성적이지 않다) — 그 말은 어느 운영에나 붙는
@@ -749,12 +714,12 @@ const TITLES: Title[] = [
     why: "메카닉·탱크 조이기", minPlaysShare: 0.15, battle: true },
   /* 과학의 여왕(요청: 신규 과학전 — 여신은 전설급에만) — 베슬을 둘 이상 띄우고 이레디·EMP·매트릭스를 실제로
      뿌린 판이다. 판정은 replayTactics의 vessel. */
-  { ...tactic("과학전의 지배자", ["vessel"]), minPlaysShare: 0.05, vsWins: true, battle: true },
+  { ...tactic("과학전의 퀸", ["vessel"]), minPlaysShare: 0.05, vsWins: true, battle: true },
   /* 발키리와 배틀은 따로 두 칭호다(요청: 통합했다가 이름을 따로 받으며 갈랐다) — 발키리는
      제공권 싸움이고 배틀은 끝판 한 방이라 그림이 다르다. */
   // 이름 확정(요청) — 발키리는 그 자체가 여전사라 이름이 곧 그림이다.
   { ...tactic("여전사 발키리", ["valkyrie"]), minPlaysShare: 0.03, vsWins: true, battle: true },
-  { ...tactic("배틀 퀸", ["bc"]), minPlaysShare: 0.02, vsWins: true, battle: true },
+  { ...tactic("우주전함 퀸", ["bc"]), minPlaysShare: 0.02, vsWins: true, battle: true },
   /* 목동의 여왕(요청: 목동저그 변경·상향) — 다크스웜을 실제로 깔고 그 아래로 저글링·럴커·
      울트라 중 하나를 몰아넣은 판이다(지적: 스웜에는 저글링만이 아니라 럴커·울트라도 쓴다).
      판정은 replayTactics의 moka(개편). 자막이 짚은 판만 세고 서버가 이긴 판만 세므로
@@ -790,8 +755,8 @@ const TITLES: Title[] = [
      나르는 그림 그대로다. 한때 '땅굴'이라는 말을 뺐었는데(지적: 버로우 이야기로 읽힌다)
      '파는 여인'까지 붙으면 굴을 뚫는 그림이라 그 오해가 없다.
      근거 문장은 그대로 '커널'로 부른다 — 자막이 그 수를 부르는 이름이다. */
-  { ...rare("커널 개통 전문가", ["nydus"]), minPlaysShare: 0.05 },
-  { ...rare("리콜 배달부", ["recall"]), minPlaysShare: 0.02 },
+  { ...rare("커널 개통 퀸", ["nydus"]), minPlaysShare: 0.05 },
+  { ...rare("리콜 배달 퀸", ["recall"]), minPlaysShare: 0.02 },
   { ...rare("도둑 퀸", ["mind-control"]), minPlaysShare: 0.01 },
   /* 유닛 기본(7%)보다 낮다(요청) — 캐리어까지 가는 판은 프로토스 판 가운데도 일부라,
      코끼리와 같은 자리에서 제 값을 받는다. 에픽 상향(요청: 캐리어 상향). */
@@ -801,10 +766,10 @@ const TITLES: Title[] = [
      말하게 한다(맵 여왕과 같은 {n} 방식). 아비터를 뽑았나는 이긴 판 원장(mix)의 유닛
      수로 본다. */
   { ...tactic("{n}", ["carrier"]), minPlaysShare: 0.02, battle: true, why: "캐리어",
-    name: (s, of) => ((mix(s, of)?.units?.["Arbiter"] ?? 0) > 0 ? "그림자 함대의 여왕" : "캐리어 퀸") },
+    name: (s, of) => ((mix(s, of)?.units?.["Arbiter"] ?? 0) > 0 ? "보이지 않는 날파리 퀸" : "날파리 퀸") },
   /* 폭풍의 여왕(요청: 신규 질럿+템플러) — 질럿 몸에 스톰을 얹은 프로토스 지상 한 벌.
      판정은 replayTactics의 zealot-templar. */
-  { ...tactic("또각또각 돌진 퀸", ["zealot-templar"]), minPlaysShare: 0.1, vsWins: true, battle: true },
+  { ...tactic("또각또각 번개 퀸", ["zealot-templar"]), minPlaysShare: 0.1, vsWins: true, battle: true },
   /* 강습의 여왕(요청: 프로토스 하나 추가 — 셔틀 리버) — 폭탄드랍의 여왕은 종족 무관 드랍
      전부를 세고, 이쪽은 프로토스의 셔틀 리버 그림만 센다. */
   { ...tactic("리버 드랍의 여왕", ["shuttle-reaver"]), minPlaysShare: 0.05, vsWins: true, battle: true },
@@ -828,28 +793,8 @@ const TITLES: Title[] = [
      하나만 써서는 안 됨): 다크만 뽑는 프로토스는 흔하고, 그건 이미 유닛 칭호가 말한다.
      셋을 다 굴렸다는 것은 종족을 넘나들며 '안 보이는 것'이라는 한 가지 수를 계속 골랐다는
      뜻이라, 그 자체가 그 사람의 취향이다. 값은 셋을 합친 수 — 많이 굴린 쪽이 임자다. */
-  {
-    /* 은폐 유닛을 얼마나 많이 굴렸나 — 병력 중 비중이다(지적: 다크·레이스·아비터를 다
-       쓸 수는 없다, 종족이 다르니까). 예전에는 셋이 다 있어야 했는데, 다크·아비터는
-       프로토스이고 레이스는 테란이라 한 판에서는 애초에 성립하지 않는 조건이었다.
-       종족을 섞어 하는 사람만 여러 판에 걸쳐 겨우 걸렸으니, 그건 은폐를 잘 쓴다는 말이
-       아니라 종족을 바꿔 가며 한다는 말이었다.
-       비중으로 재면 종족이 무엇이든 "안 보이는 것으로 푸는 사람"이 그대로 걸린다. */
-    /* 무게는 5 → 2.5다(요청: 나오기 힘든 순서) — 1급 웃돈까지 15라 핵과 같은 자리에 서
-       있었는데, 이 값은 '무슨 일을 벌였나'가 아니라 병력 구성비라 그만큼 나오기 힘든
-       장면이 아니다. 7.5면 러시(10.5) 아래·역전(6) 위로, 드묾은 그대로 인정하는 자리다. */
-    label: "은폐 유닛 퀸", weight: 2.5, kind: "경기력", pool: 1, edge: 1, tier: 1,
-    min: 0.08, why: "병력 중 은폐 유닛", unit: "",
-    value: (s, of) => {
-      const m = mix(s, of);
-      if (!m || !(m.uGround + m.uAir > 0)) return null;
-      const hidden = (m.units?.["Dark Templar"] ?? 0)
-        + (m.units?.Wraith ?? 0)
-        + (m.units?.Arbiter ?? 0)
-        + (m.units?.Lurker ?? 0);
-      return hidden > 0 ? hidden / (m.uGround + m.uAir) : null;
-    },
-  },
+  /* (삭제·요청) 은폐 유닛 퀸 — 병력 중 은신 유닛 비중. 다크가 주인공인 판은
+     '보이지 않는 여왕'(dark-templar)이 따로 센다. */
   // 에픽 상향(요청: 뮤탈은 상향 — 이름도 여왕 계열로) + 전투 조건.
   { ...tactic("뮤탈 습격 퀸", ["muta"]), minPlaysShare: 0.02, battle: true },
   /* 코끼리 조련사(요청) — 울트라리스크를 모아 나간 판이다. 저그의 마지막 지상 병력이라
@@ -860,7 +805,7 @@ const TITLES: Title[] = [
      비율은 다른 유닛 칭호와 같은 자리(UNIT_TACTIC_SHARE)에서 받는다. */
   /* 유닛 기본(7%)보다 낮다(요청) — 울트라까지 가는 판 자체가 저그 판의 일부라, 같은
      잣대로는 "뽑았다는 사실"조차 안 걸린다. */
-  { ...tactic("코끼리 조련사", ["ultra"]), minPlaysShare: 0.02 },
+  // (삭제·요청) 코끼리 조련사(울트라).
   {
     /* 진화론의 어머니(요청: 하이브 유닛 많이 쓴 사람) — 울트라·디파일러·가디언·디바우러다.
        넷 다 하이브를 올려야 나오는 것들이라, 그 비중이 크다는 말은 판을 끝까지 끌고 가
@@ -899,7 +844,7 @@ const TITLES: Title[] = [
      "초반에 끝내러 간다"는 성향 그 자체를 센다.
      race를 지우는 이유: 갈래가 두 종족에 걸쳐 있어(질럿·저글링…) 분모는 전체 판수라야 한다.
      tactic()은 첫 열쇠의 종족(프로토스)을 그대로 붙이므로 여기서 걷는다. */
-  { ...tactic("초반의 지배자", ["zealot-rush", "zling-rush", "duel-rush", "cannon-rush", "sunken-rush", "sneak-rax"]),
+  { ...tactic("초반의 여왕", ["zealot-rush", "zling-rush", "duel-rush", "cannon-rush", "sunken-rush", "sneak-rax"]),
     race: undefined, why: "초반 러시", minPlaysShare: 0.1 },
   /* 정찰(요청: 초반 정찰 열심히 한 사람 — 좋은 뜻이라 3점대) — 옵저버를 넉넉히 띄웠거나,
      오버로드를 퍼뜨렸거나, 스캔으로 여기저기 들여다본 판이다. 남의 살림을 먼저 보고 제 수를
@@ -912,7 +857,7 @@ const TITLES: Title[] = [
      일꾼 정찰도 초반 쪽(vision)이다(요청: 파서에 추가) — 첫 일꾼을 상대 진영까지 몰고 간
      명령 좌표로 짚는다(replaySummary의 WORKER_SCOUT_SEC). 오버로드와 한 열쇠인 까닭은
      둘 다 '미리 보고 시작한다'는 같은 습관이라서다. */
-  { ...tactic("부지런한 정찰꾼", ["vision"]), minPlaysShare: 0.5 },
+  { ...tactic("부지런한 정찰 퀸", ["vision"]), minPlaysShare: 0.5 },
   { ...tactic("전장을 살피는 눈", ["vision-eye"]), minPlaysShare: 0.2 },
   /* (삭제) 맞러시 승부사(duel-rush) — 요청. 맞러시는 둘이 함께 만든 장면이라 한 사람의
      수라고 하기 어렵다. */
@@ -923,16 +868,16 @@ const TITLES: Title[] = [
   /* (삭제) 협공(gang-rush) — 다시 뺐다(요청). 이름을 넷이나 갈아 봤지만(협공의 선봉 ·
      다굴의 여신 · 잔다르크 · 전장을 누비는 여인) 결국 같은 자리다: 팀전에서 함께 달려간
      것은 그 판의 진행이지 그 사람의 수가 아니다. */
-  { ...rare("다크스웜 살포반", ["swarm"]), minPlaysShare: 0.01, vsWins: true },
+  // (삭제·요청) 다크스웜 살포반 — 스웜의 이야기는 목동의 여왕이 맡는다.
   /* 감염의 여왕 — 한 번 지웠다가(그 판을 만든 것은 감염이 아니라 그 앞의 싸움이라는 이유)
      되살렸다(요청: 감염 더 낮게 — 사장된 칭호를 살리는 흐름). 커맨드센터를 잡아야만 나오는
      장면이라 문턱은 바닥(1%)이다: 한 번이라도 두 번쯤 했으면 그 사람의 이야기다. */
-  { ...rare("감염술사", ["infested"]), minPlaysShare: 0.02 },
+  // (삭제·요청) 감염술사(감염된 테란).
   /* (삭제) 배틀크루저를 모으는 여인(bc) — "발키리 함대 사령관"으로 흡수(요청: 통합). */
   /* 떴다 가디 퀸(요청: 창공의 여왕에서 개명) — 가디언+디바우러 한 벌. 한때 따로 있다
      삭제된 가디언 칭호 자리에, 저그 하늘의 두 얼굴을 되세운다. 어느 쪽으로 잡혔든 하늘로
      이긴 판이다. */
-  { ...tactic("떴다 가디 퀸", ["guardian", "devourer"]), why: "가디언·디바우러",
+  { ...tactic("꽃게탕 퀸", ["guardian", "devourer"]), why: "가디언·디바우러",
     minPlaysShare: 0.02, vsWins: true, battle: true },
   /* (삭제) 발키리 지휘관(valkyrie) — 위 "무자비한 오버로드 사냥꾼"이 같은 유닛으로 무엇을
      했는지까지 말한다. 뽑았다는 사실만 말하는 쪽을 접는다. */
@@ -956,13 +901,13 @@ const TITLES: Title[] = [
   /* 도박 퀸(요청: 도박적인 전술로 이긴 경우) — 자막의 '올인'은 뒤를 안 남기고 한 번에 건
      판이다. 전술은 이긴 판만 세므로(서버의 _tactic_counts) 여기 쌓이는 수는 곧 '건 것이
      통한 판'이다. 지고도 세면 그건 도박이 아니라 그냥 무너진 판이라 뜻이 갈린다. */
-  { ...tactic("승부사", ["allin"]), minPlaysShare: 0.06 },
+  // (삭제·요청) 승부사(올인).
   /* 맷집왕 → 방어의 여왕(요청) — 밀려온 공세를 실제로 막아 낸 판이라, 맞고 버텼다는 쪽보다
      막아 냈다는 쪽이 그 장면에 가깝다. */
   /* 3 → 8%(요청) — 막아 낸 판은 이 표에서 손꼽히게 자주 잡히는 자막이다(한 번 밀려오면
      그 판에 여러 번 서는 일도 있다). 3%로 두니 웬만한 사람은 다 걸려 "방어를 잘한다"는
      말이 아무도 안 가리켰다. 열 판에 한 판 가까이 막아 냈어야 그 사람의 색이다. */
-  { ...tactic("철벽의 수호자", ["hold-off"]), minPlaysShare: 0.1 },
+  { ...tactic("철벽 퀸", ["hold-off"]), minPlaysShare: 0.1 },
   /* (삭제) 받아치기의 정석(counter) — 요청. 역공은 상대가 들이친 뒤에 따라오는 대목이라
      그 판의 흐름이지 그 사람의 색이 아니다. */
   /* (삭제) 벽을 부수는 자(breakthrough) — 요청. */
@@ -1003,23 +948,7 @@ const TITLES: Title[] = [
      뒤집은 것이라 "안 죽었다"가 아니라 "무너진 장면이 안 잡혔다"에 가까웠고, 그러다 보니
      대부분이 90%를 넘어 누구나 받는 칭호가 됐다. 되살리려면 서버가 사람별 탈락 기록을
      따로 세어 내려 줘야 한다. */
-  {
-    /* 소수자 퀸(요청: 특이한 유닛을 많이 뽑는 사람) — 클럽에서 좀처럼 안 보이는 유닛들이다.
-       스카웃·발키리·디바우러·퀸·다크아콘·고스트·감염된 테란. 셋 다 종족을 가리지 않고
-       한 줄로 묶은 까닭은, 이 칭호가 세는 것이 '무엇을 뽑았나'가 아니라 '남들이 안 뽑는
-       것을 고른다'는 취향이라서다 — 종족마다 따로 두면 그 취향이 세 이름으로 갈린다.
-       비중으로 재는 것은 은신·하이브와 같다: 총합은 오래 뛴 사람이 늘 크다. */
-    label: "소수자 퀸", weight: 2, kind: "경기력",
-    min: 0.1, why: "병력 중 남들 안 쓰는 유닛", unit: "",
-    value: (s, of) => {
-      const m = mix(s, of);
-      if (!m || !(m.uGround + m.uAir > 0)) return null;
-      const rare = (m.units?.Scout ?? 0) + (m.units?.Valkyrie ?? 0) + (m.units?.Devourer ?? 0)
-        + (m.units?.Queen ?? 0) + (m.units?.["Dark Archon"] ?? 0) + (m.units?.Ghost ?? 0)
-        + (m.units?.["Infested Terran"] ?? 0);
-      return rare > 0 ? rare / (m.uGround + m.uAir) : null;
-    },
-  },
+  // (삭제·요청) 소수자 퀸 — 남들 안 쓰는 유닛 비중.
   /* 상대보다 일꾼을 훨씬 많이 굴린 대목(worker-gap) — 자원을 많이 캤다는 말이다. */
   /* (삭제) 부티 자원 퀸(일꾼 격차) — 요청. 상대보다 일꾼을 많이 굴렸다는 대목인데, 그
      격차는 내가 잘 캔 만큼이나 상대가 흔들린 몫이라 반쯤이 남의 사정이다. */
@@ -1034,7 +963,7 @@ const TITLES: Title[] = [
      그 병력으로 무엇을 했는지는 말해 주지 않는다. 물량 자체는 '물량퀸'이 이미 잰다. */
   /* (삭제) 업그레이드 여제(upgrade-signature) — 아래 "풀업 신봉자"가 같은 것을 수치로
      재고 있다. 자막에 그 대목이 잡혔나보다 실제 공/방 단계가 정확하다. */
-  { ...tactic("지구력 대왕", ["long-run"]), minPlaysShare: 0.05 },
+  // (삭제·요청) 지구력 대왕(장기전).
   /* (삭제) 끝까지 버티는 사람(late-hold) — "지구전의 화신"(장기전)과 겹친다. 오래 버텼다는
      말은 한 번이면 된다. */
   /* (삭제) 좀비 모드(revival) — 무너졌다 일어난 판이라는 뜻인데 이름만 보고는 그게 안
@@ -1090,7 +1019,7 @@ const TITLES: Title[] = [
     /* 2.5 → 3.5(요청: 퀸으로 올릴 만하다) — 손 이야기 셋(유효타·APM·커맨드) 가운데 가장
        위다. 빠르기는 타고나거나 오래 하면 오르지만, 헛치지 않는 손은 무엇을 누를지 미리
        정해 두어야 나온다. */
-    label: "군더더기 없는 손", weight: 3, kind: "경기력", min: 0.99, why: "APM 중 유효타", unit: "",
+    label: "군더더기 없는 손놀림", weight: 3, kind: "경기력", min: 0.99, why: "APM 중 유효타", unit: "",
     value: (s) => (s.avgApm && s.avgEapm && s.avgApm > 0 ? s.avgEapm / s.avgApm : null),
   },
   /* (삭제) 누른 만큼 뽑는 사람(커맨드 중 생산 비율) — 요청. */
@@ -1122,25 +1051,10 @@ const TITLES: Title[] = [
   /* (삭제) 일꾼 부자(초반 5분 일꾼 52기) — 요청. 초반 일꾼 수는 그 판의 빌드가 정하는
      값에 가까워, 같은 종족·같은 시작이면 누구나 비슷하게 나온다 — 1등이라도 그 사람을
      말해 주는 몫이 작았다. */
-  /* 지상전·공중전·마법 퀸(요청 네 번째 판 — 이번엔 전투다) — 그 갈래로 붙은 전투 하나
-     하나의 승률을 묻는다(요청: 경기가 아니라 전투에서 이겼냐 — 판정은 그 자리에 살아
-     남았나, replayBattles.ts). 종족은 안 가린다(요청).
-     문턱: 셋 다 70(요청: 상향) — 판가름 난 전투의 반은 어차피 누군가의 승리라 50%가
-     평균선이고, 열에 일곱은 이겨야 그 싸움의 임자다. */
-  {
-    label: "지상전 퀸", weight: 3, kind: "경기력", min: 70, why: "지상 전투 승률", unit: "%",
-    value: (_s, of) => combatRate(of, "ground"),
-  },
-  {
-    label: "공중전 퀸", weight: 3, kind: "경기력", min: 70, why: "공중 전투 승률", unit: "%",
-    value: (_s, of) => combatRate(of, "air"),
-  },
-  {
-    label: "마법 퀸", weight: 3, kind: "경기력", min: 70, why: "마법 전투 승률", unit: "%",
-    value: (_s, of) => combatRate(of, "magic"),
-  },
+  /* (삭제·요청) 지상전·공중전·마법 퀸 — 전투 승률 셋. 전투 원장(bt_*)은 에픽 전투
+     칭호의 '그 판의 전투도 이겼어야' 게이트가 계속 쓴다. */
   /* 건물을 제일 많이 올린 사람(요청: 심시티 퀸) — "쉴 새 없이 짓는 자"에서 바꿨다. 재는 값은 그대로 분당 지은 채수다. */
-  { label: "심시티 건축가", weight: 3, kind: "경기력", min: 8, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
+  { label: "심시티 퀸", weight: 3, kind: "경기력", min: 8, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
   {
     /* 급을 올린다(요청) — 무게 2 → 3이라 일반에서 에픽이다. 갈래를 승률로 올려 둔 채(요청)
        급만 일반에 남아 있던 것이 어긋난 자리였다: 목록에서는 승률 칸 맨 위인데 대표를
@@ -1148,7 +1062,7 @@ const TITLES: Title[] = [
        그 평균은 20분을 넘긴 판에서만 센다 — 서버가 그렇게 쌓는다(_MIN_UPGRADE_SECONDS).
        3단계까지 올리려면 그만큼 시간이 필요해서, 짧은 판을 섞으면 오래 끄는 사람이 아니라
        짧게 끝내는 사람이 손해를 본다. 그 사실을 조건 문구에도 적었다(요청). */
-    label: "풀업 장인", weight: 3, kind: "승률", min: 2.5, why: "20분 넘긴 판의 공/방 평균 단계", unit: "",
+    label: "풀업 퀸", weight: 3, kind: "승률", min: 2.5, why: "20분 넘긴 판의 공/방 평균 단계", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       if (!m) return null;
@@ -1361,7 +1275,39 @@ export interface EpithetGuideRow {
   rank: EpithetRank;
   /** 이긴 판만 세는 칭호인가 — 설명에 그 한마디를 덧붙인다. */
   wonOnly: boolean;
+  /** 목록의 묶음 번호(요청: 그룹화) — 모달이 묶음이 바뀌는 자리에 줄을 긋는다. */
+  group: number;
 }
+
+/* 설명 목록의 차례와 묶음(요청: 그룹화를 다시 해봤다 — 손으로 짠 차례 그대로).
+   묶음의 결: [종합·명예] [전술·전투 조합] [경기 자세]. 여기 없는 이름은 맨 뒤 묶음으로
+   떨어진다 — 새 칭호를 넣고 이 표를 잊어도 목록에서 사라지지는 않게. */
+const GUIDE_ORDER: string[][] = [
+  ["승리의 여신"],
+  ["저그의 절대군주 · 프로토스의 전설 · 테란의 영웅"],
+  ["최고의 선수", "개근왕", "올라운더 퀸", "○○의 여왕 (맵 이름이 앞에 붙어요)"],
+  [
+    "정은 퀸", "도둑 퀸", "포토러시 퀸", "성큰러시 퀸", "몰래배럭 퀸", "집요한 일꾼 헌터",
+    "폭탄드랍의 여왕", "바이오닉의 여왕", "메카닉의 여왕", "과학전의 퀸", "여전사 발키리",
+    "우주전함 퀸", "목동의 여왕", "진화의 여왕", "센포의 여왕",
+    "날파리 퀸 (아비터까지 썼으면 보이지 않는 날파리 퀸)", "또각또각 번개 퀸",
+    "리버 드랍의 여왕", "보이지 않는 여왕", "시공을 지배하는 여제", "공포의 번개 퀸",
+    "가시의 여왕", "뮤탈 습격 퀸", "초반의 여왕", "부지런한 정찰 퀸", "꽃게탕 퀸",
+    "아군 보호 퀸", "커널 개통 퀸", "하이브의 지배자", "오버로드 사냥꾼", "전장을 살피는 눈",
+    "리콜 배달 퀸",
+  ],
+  [
+    "헬프 퀸", "역전의 명수", "철벽 퀸", "불사조", "군더더기 없는 손놀림", "풀업 퀸",
+    "심시티 퀸", "철옹성의 여인", "노엘을 외치는 여인",
+  ],
+];
+const guidePlaceOf = (label: string): { group: number; order: number } => {
+  for (let g = 0; g < GUIDE_ORDER.length; g += 1) {
+    const i = GUIDE_ORDER[g].indexOf(label);
+    if (i >= 0) return { group: g, order: i };
+  }
+  return { group: GUIDE_ORDER.length, order: 0 };
+};
 
 export function epithetGuideRows(): EpithetGuideRow[] {
   const pct = (v: number) => `${Math.round(v * 100)}%`;
@@ -1409,21 +1355,11 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     if (r.label === "승리의 여신") {
       return { ...r, how: `${winsFloor()}판 이상 · 승률 65% 이상 (판수 바닥은 클럽 판수 비례)` };
     }
-    /* 세 퀸 — 전투 판정(뭉치·살아남음)이 value 밖(replayBattles)에 있어 자동 문구로는
-       반이 빠진다. 승패는 전투가 끝난 자리에 살아남았나로 가른다(요청). */
-    if (r.label === "지상전 퀸") {
-      return { ...r, how: `지상 병력 위주로 붙은 전투 ${ratioFloor()}번 이상 · 그 전투 승률 70% 이상 (승패는 그 자리에 살아남았나)` };
-    }
-    if (r.label === "공중전 퀸") {
-      return { ...r, how: `공중 함대(6기 이상·병력의 25% 이상)로 붙은 전투 ${ratioFloor()}번 이상 · 그 전투 승률 70% 이상 (승패는 그 자리에 살아남았나)` };
-    }
-    if (r.label === "마법 퀸") {
-      return { ...r, how: `교전 마법을 떨어뜨린 전투 ${ratioFloor()}번 이상 · 그 전투 승률 70% 이상 (승패는 그 자리에 살아남았나)` };
-    }
+    // (삭제·요청) 지상전·공중전·마법 퀸의 안내 특례.
     if (r.label !== "{n}") return r;
     /* 함대의 여신 — 이름이 아비터 사용으로 갈리는 {n} 칭호라 손으로 적는다. */
     if (r.how.startsWith("캐리어")) {
-      return { ...r, label: "캐리어 퀸 (아비터까지 썼으면 그림자 함대의 여왕)" };
+      return { ...r, label: "날파리 퀸 (아비터까지 썼으면 보이지 않는 날파리 퀸)" };
     }
     if (r.how.startsWith("그 맵 승수")) {
       return {
@@ -1437,8 +1373,12 @@ export function epithetGuideRows(): EpithetGuideRow[] {
       label: "저그의 절대군주 · 프로토스의 전설 · 테란의 영웅",
       how: `그 종족으로 ${raceFloor()}판 이상 · 제 판의 ${pct(RACE_MIN_SHARE)} 이상 · 승률 ${RACE_MIN_RATE}% 이상`,
     };
-  }).sort((a, b) => (Number(b.rank === "전설") - Number(a.rank === "전설")) || (b.score - a.score))
-    .map(({ label, how, rank, wonOnly }) => ({ label, how, rank, wonOnly }));
+  }).map((r) => ({ ...r, ...guidePlaceOf(r.label) }))
+    /* 차례는 손으로 짠 묶음표가 정한다(요청: 그룹화) — 등급이 먼저인 것은 그대로다(전설
+       묶음 둘이 표의 맨 앞이라 결과는 같지만, 표를 어긋나게 고쳐도 등급이 섞이지 않게). */
+    .sort((a, b) => (Number(b.rank === "전설") - Number(a.rank === "전설"))
+      || (a.group - b.group) || (a.order - b.order) || (b.score - a.score))
+    .map(({ label, how, rank, wonOnly, group }) => ({ label, how, rank, wonOnly, group }));
 }
 
 /** 회원 → 화면에 보일 칭호 하나(그 사람이 얻은 것 중 가장 높은 것).

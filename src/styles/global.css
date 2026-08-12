@@ -11993,6 +11993,8 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   letter-spacing: 0.04em;
 }
 .scr-epithet-guide-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+/* 묶음 경계(요청: 그룹화) — 줄마다 이미 헤어라인이 있어, 경계는 사이를 더 벌려 말한다. */
+.scr-epithet-guide-row-newgroup { margin-top: 12px; border-top: 1px solid var(--line-soft); padding-top: 12px; }
 .scr-epithet-guide-row {
   display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr); gap: 2px 10px;
   padding-bottom: 8px; border-bottom: 1px solid var(--line-hair);
