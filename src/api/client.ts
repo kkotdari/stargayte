@@ -465,6 +465,13 @@ export const api = {
     });
   },
 
+  /** 지형 격자만 고친다(요청: 회원 누구나) — 빈 문자열은 지우기다. */
+  async updateMinimapWalk(id: number, walk: string): Promise<MinimapImage> {
+    return request<MinimapImage>(`/api/game-results/replay-maps/images/${id}/walk`, {
+      method: "PUT", body: JSON.stringify({ walk }),
+    });
+  },
+
   /** 이름만 고칠 때는 image를 빼고 부른다 — 수백 KB짜리를 다시 올릴 이유가 없다. */
   async updateMinimapImage(
     id: number, body: { name: string; image?: string; hashes?: string[]; walk?: string },

@@ -124,9 +124,8 @@ export default function TerrainReviewModal({
     setBusy(true);
     setErr("");
     try {
-      const updated = await api.updateMinimapImage(image.id, {
-        name: image.name, walk: encodeWalk(grid),
-      });
+      // walk 전용 길(요청: 아무나 지형 업데이트) — 이름·그림·매핑은 안 건드린다.
+      const updated = await api.updateMinimapWalk(image.id, encodeWalk(grid));
       onSaved(updated);
       onClose();
     } catch (e) {

@@ -215,6 +215,8 @@ export interface ReplayMapGrid {
   image?: string | null;
   /** 그 그림의 지형(이동 가능/불가) 격자 — 운영자가 검수·수정한 값(요청). JSON 문자열. */
   walk?: string | null;
+  /** 그 그림의 번호 — 재생 화면의 지형 수정 버튼이 저장할 곳(요청: 아무나 업데이트). */
+  imageId?: number | null;
 }
 
 export interface ParsedReplay {

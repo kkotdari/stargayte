@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Pause, Play, RotateCcw } from "lucide-react";
+import { Mountain, Pause, Play, RotateCcw } from "lucide-react";
+import TerrainReviewModal from "../../modals/TerrainReviewModal";
 import Avatar from "../common/Avatar";
 import { cx } from "../../utils/format";
 import { UNIT_KO, TECH_KO } from "../../utils/replaySummaryText";
@@ -215,16 +216,21 @@ export default function ReplayMotionPlayer({
   /* 지형(요청: 미니맵 이미지 분석) — 그림에서 걷는 땅 격자를 만들어, 지상 부대의 자취를
      그 위의 경로로 편다. 분석 전·실패 시에는 기존 곡선 폴백. */
   const [terrain, setTerrain] = useState<TerrainGrid | null>(null);
+  /* 지형 수정(요청: 모든 경기 리플레이 화면에서, 아무나) — 산 버튼이 검수 모달을 연다.
+     저장하면 이 자리에서 바로 새 지형으로 갈아 끼운다(맵 캐시는 다음 로드에 새 값을 받는다). */
+  const [terrainOpen, setTerrainOpen] = useState(false);
+  const [walkOverride, setWalkOverride] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    /* 운영자가 검수한 지형(grid.walk)이 있으면 그쪽이 이긴다(요청) — 자동 분석은 어림이다. */
-    const reviewed = decodeWalk(grid.walk);
+    /* 검수한 지형(grid.walk, 방금 이 자리에서 고쳤으면 walkOverride)이 있으면 그쪽이
+       이긴다(요청) — 자동 분석은 어림이다. */
+    const reviewed = decodeWalk(walkOverride ?? grid.walk);
     if (reviewed) { setTerrain(reviewed); return undefined; }
     if (!grid.image) { setTerrain(null); return undefined; }
     terrainOf(grid.image)
       .then((tg) => { if (!cancelled) setTerrain(tg); });
     return () => { cancelled = true; };
-  }, [grid.image, grid.walk]);
+  }, [grid.image, grid.walk, walkOverride]);
 
   /* 자취를 실제 이동으로 편다 — 지상은 지형 경로(BFS), 공중은 직선. 시간은 그 유닛의
      속도(속업 포함, 요청)로 배분한다: 경로 길이 ÷ 속도가 걸리는 시간이고, 다음 명령까지
@@ -552,8 +558,28 @@ export default function ReplayMotionPlayer({
               ? <RotateCcw size={26} />
               : <Play size={26} fill="currentColor" />}
         </button>
+        {/* 지형 수정(요청) — 산 아이콘, 회원 누구나. 그림이 등록된 맵에서만 선다. */}
+        {typeof grid.imageId === "number" && grid.image && (
+          <button
+            type="button" className="scr-motion-btn scr-motion-terrain"
+            onClick={() => setTerrainOpen(true)}
+            aria-label="지형 수정" title="지형 수정"
+          >
+            <Mountain size={12} />
+          </button>
+        )}
         <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
       </div>
+      {terrainOpen && typeof grid.imageId === "number" && grid.image && (
+        <TerrainReviewModal
+          image={{
+            id: grid.imageId, name: grid.name || "미니맵",
+            image: grid.image, walk: walkOverride ?? grid.walk,
+          }}
+          onClose={() => setTerrainOpen(false)}
+          onSaved={(updated) => setWalkOverride(updated.walk ?? null)}
+        />
+      )}
     </div>
   );
 }

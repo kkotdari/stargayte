@@ -10920,7 +10920,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   border: 1px solid transparent; border-radius: 3px; padding: 0 2px;
   background: rgba(0, 0, 0, 0.35);
 }
-.scr-motion-colorbtn { width: auto; min-width: 34px; padding: 0 6px; border-radius: 11px; height: 22px; }
+/* (삭제) 색 모드 토글 버튼 — 배지 색 역할이 고정되며 걷었다. */
+.scr-motion-terrain {
+  width: 24px; height: 24px; min-width: 24px; padding: 0; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center; margin-left: 6px;
+}
 .scr-motion-speed-on { background: rgba(255, 255, 255, 0.1); color: var(--text); border-color: var(--line-soft); }
 .scr-motion-range { flex: 1 1 0; min-width: 0; accent-color: var(--muted); }
 .scr-motion-clock {
