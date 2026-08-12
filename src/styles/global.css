@@ -11255,7 +11255,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    풀어 아이들이 직접 그리드 칸에 앉는다. 오른쪽 기둥은 위(확대 토글)·가운데(재생)·
    아래(시간) 세 줄이다. */
 .scr-motion-big {
-  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  /* 4번째 칸은 오른쪽 리플 영역(side) — 없으면 auto가 0으로 접힌다. */
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto;
   grid-template-rows: 1fr auto 1fr auto;
   column-gap: 10px; row-gap: 6px; align-items: center;
 }
@@ -11274,6 +11275,18 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-big .scr-motion-speeds .scr-motion-colorbtn { margin-left: 0; margin-top: 4px; }
 .scr-motion-big .scr-motion-play { grid-column: 3; grid-row: 2; justify-self: center; }
 .scr-motion-big .scr-motion-clock { grid-column: 3; grid-row: 3; align-self: start; justify-self: center; }
+/* 뒤 상세 창 가리개(지적: 확대에서 뒤에 창이 남아 보임) — 모달 딤과 달리 거의 다 가린다.
+   누르면 축소로 돌아간다(JSX). PC 전용 화면이라 iOS 크롬 재펼침 걱정은 없다. */
+.scr-motion-big-backdrop { position: fixed; inset: 0; z-index: 205; background: rgba(0, 0, 0, 0.88); }
+/* 확대 모드 오른쪽 리플 영역(요청) — 경기 요약 문장을 시각 순으로 붙인 패널. 맵 높이를
+   넘으면 제 스크롤이다(그리드 한 칸을 통째로 받아 stretch + overflow). */
+.scr-motion-sidewrap {
+  grid-column: 4; grid-row: 1 / 5; align-self: stretch; min-height: 0;
+  width: 260px; overflow-y: auto; padding: 2px 8px 2px 2px;
+  font-size: var(--fs-caption); line-height: 1.5; color: var(--text);
+}
+.scr-motion-side-line { margin: 0 0 7px; }
+.scr-motion-side-time { color: var(--dim); font-variant-numeric: tabular-nums; margin-right: 4px; }
 .scr-terrain-hint { margin: 0 0 8px; font-size: var(--fs-caption); color: var(--muted); }
 .scr-terrain-stage { position: relative; width: 100%; }
 .scr-terrain-img { display: block; width: 100%; user-select: none; border-radius: var(--radius-sm); }

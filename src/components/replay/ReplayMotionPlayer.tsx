@@ -777,7 +777,7 @@ const fmtClock = (sec: number): string => {
 };
 
 export default function ReplayMotionPlayer({
-  grid, motion, endSec, bases, teamOfRaw, active = true, winnerTeam,
+  grid, motion, endSec, bases, teamOfRaw, active = true, winnerTeam, side,
 }: {
   grid: ReplayMapGrid;
   motion: SummaryMotion;
@@ -791,6 +791,9 @@ export default function ReplayMotionPlayer({
   active?: boolean;
   /** 이긴 편 — 재생이 끝나면 그 편 아바타에 트로피를 얹는다(요청). 무승부·미확정은 없음. */
   winnerTeam?: 1 | 2;
+  /** 확대 모드의 오른쪽 리플 영역(요청) — 경기 요약 문장 같은 곁들이 내용. 인라인에선
+   *  안 그린다. */
+  side?: React.ReactNode;
   // (삭제·요청) caps — 자막 표시를 걷으면서 함께.
 }) {
   const total = useMemo(() => {
@@ -1190,6 +1193,16 @@ export default function ReplayMotionPlayer({
     el.value = String(t);
     el.style.setProperty("--p", `${total > 0 ? (t / total) * 100 : 0}%`);
   }, [t, total]);
+
+  /* PC에서 보는 것은 확대가 기본이다(요청: 경기 결과는 최대화 화면이 기본, 줄인 게
+     옵션) — 재생을 시작하는 순간 확대로 연다. 사람이 축소를 눌렀으면 그 뜻을 기억해
+     이번 카드에선 다시 안 키운다. 카드 목록이라 열자마자 전부 확대할 수는 없어(포털이
+     겹친다) '재생 시작'을 문으로 쓴다. */
+  const shrunk = useRef(false);
+  const bigByDefault = () => {
+    if (!shrunk.current && typeof window !== "undefined"
+      && window.matchMedia?.("(min-width: 1160px)").matches) setBig(true);
+  };
 
   /* 한 번에 한 판만(요청) — 재생을 시작하는 순간 먼저 돌던 판을 멈춘다. */
   const pauseSelf = useRef(() => {});
@@ -2393,7 +2406,8 @@ export default function ReplayMotionPlayer({
         <div className="scr-motion-expand-row">
           <button
             type="button" className="scr-motion-btn scr-motion-expand"
-            onClick={() => setBig((v) => !v)}
+            // 사람이 줄였으면 기억한다(위 shrunk 주석) — 재생을 다시 눌러도 안 커진다.
+            onClick={() => setBig((v) => { if (v) shrunk.current = true; return !v; })}
             aria-label={big ? "작게 보기" : "크게 보기"} title={big ? "작게 보기" : "크게 보기"}
           >
             {big ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
@@ -2460,7 +2474,8 @@ export default function ReplayMotionPlayer({
         <button
           type="button" className="scr-motion-play"
           onClick={() => {
-            if (done) { setT(0); setDone(false); setPlaying(true); return; }
+            if (done) { setT(0); setDone(false); setPlaying(true); bigByDefault(); return; }
+            if (!playing) bigByDefault();
             setPlaying((v) => !v);
           }}
           aria-label={playing ? "일시정지" : "재생"}
@@ -2473,6 +2488,8 @@ export default function ReplayMotionPlayer({
         </button>
         <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
       </div>
+      {/* 확대 모드의 오른쪽 리플 영역(요청) — 요약 문장 등 곁들이. 인라인에선 안 그린다. */}
+      {big && side ? <div className="scr-motion-sidewrap">{side}</div> : null}
       {terrainOpen && typeof grid.imageId === "number" && grid.image && (
         <TerrainReviewModal
           image={terrainModalImage}
@@ -2488,12 +2505,19 @@ export default function ReplayMotionPlayer({
   if (big) {
     return createPortal(
       <div className="scr-modal-overlay">
+        {/* 뒤 상세 창 가리개(지적: 확대를 누르면 뒤에 창이 남아 보임) — 화면 전체를 덮는
+            어두운 막. 누르면 축소로 돌아간다(사람의 축소로 기억). */}
+        <div
+          className="scr-motion-big-backdrop"
+          onClick={() => { shrunk.current = true; setBig(false); }}
+        />
         {/* 폭 상한 = (가용 높이 − 위아래 여백·슬림 탐색바 몫) × 맵 가로세로비 + 양옆
             조작부 몫(요청: 조작부를 맵 양옆 세로로 — 맵을 최대한 크게, 탐색바는 맵 아래
-            슬림하게). 가로로 배속·컬러(왼쪽)와 재생·시간(오른쪽) 기둥 몫 170px을 더한다. */}
+            슬림하게). 가로로 배속·컬러(왼쪽)와 재생·시간(오른쪽) 기둥 몫 170px, 오른쪽
+            리플 영역(side)이 있으면 그 몫 270px을 더한다. */}
         <div
           className="scr-modal scr-motion-big-modal"
-          style={{ width: `min(94vw, calc((100dvh - 84px) * ${(grid.width / grid.height).toFixed(4)} + 170px))` }}
+          style={{ width: `min(94vw, calc((100dvh - 84px) * ${(grid.width / grid.height).toFixed(4)} + ${side ? 440 : 170}px))` }}
         >{body}</div>
       </div>,
       document.body,
