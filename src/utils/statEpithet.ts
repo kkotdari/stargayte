@@ -614,12 +614,12 @@ const TITLES: Title[] = [
   /* (삭제) 브루들링 저격수 · 눈을 멀게 하는 자(옵티컬 플레어) · 허깨비 부대장(할루시네이션)
      — 요청으로 뺐다. 셋 다 쓰기 어려운 마법이긴 한데, 그 한 번이 판을 가르는 그림까지는
      아니라 이름만 요란해진다. */
-  { ...tactic("헬프 퀸", ["ally-help"]), minPlaysShare: 0.22 },
+  { ...tactic("헬프 퀸", ["ally-help"]), minPlaysShare: 0.45 },
   /* 동맹의 수호자 → 동맹을 지키는 포탑(요청) — 무엇으로 지켰는지가 이름에 들어가야
      "아군 기지에 포토를 깔아 줬다"는 그 그림이 그대로 읽힌다. '수호자'는 어느 수에나
      붙을 수 있는 말이라 정작 이 칭호가 센 것이 안 보였다. */
   // 5% → 2%(요청) — 곁가지 다섯과 같은 선이다.
-  { ...tactic("아군 보호 퀸", ["ally-cannon"]), minPlaysShare: 0.02 },
+  { ...tactic("아군 보호 퀸", ["ally-cannon"]), minPlaysShare: 0.2 },
   /* 입구막기는 '막았다'가 아니라 '막아 놓고 뒤에서 컸다'가 값어치다(판정도 발전까지 함께
      본다 — replayTactics의 WALL_IN_GROW_MIN). 그래서 칭호도 막은 쪽이 아니라 그다음을
      부른다. "후반 도모 퀸"에서 바꿨다(지적: 개성적이지 않다) — 그 말은 어느 운영에나 붙는
@@ -654,33 +654,37 @@ const TITLES: Title[] = [
   /* 운영 틀(바이오닉·메카닉·목동)은 절반이 문턱이다(지적: 바이오닉이 쉽게 나온다) — 그
      종족이면 으레 잡는 틀이라, "그 틀로 이긴 판이 종족 판의 절반"쯤 돼야 그 사람의 색이다.
      목동은 저그 후반에만 나오는 틀이라 40%로 한 뼘 낮다. */
+  /* 문턱 일괄 상향(지적: 조건을 만족하는 사람이 많다는 건 칭호로서 기준이 잘못됐다는 것 —
+     카운트 하한을 걷은 뒤 1판짜리 자격이 쏟아진 시뮬레이션 실측으로 조정). 별도 횟수
+     바닥은 안 얹는다(요청) — 표본이 다섯 판이라 비율이 20%를 넘으면 한 판짜리는 산수로
+     걸러진다(ceil(5×0.21)=2). */
   /* 에픽 전투 칭호 한 벌(요청: 종족별 비율 맞춤)에는 battle이 선다 — 그 판에서 경기만이
      아니라 전투(교전)도 이겼어야 센다(요청: 그 유닛을 사용해 전투/경기 모두 이긴 경우만).
      대조는 서버가 전투 원장(bt_*_won)으로 한다. */
-  { ...tactic("바이오닉의 여왕", ["bionic"]), minPlaysShare: 0.25, battle: true },
+  { ...tactic("바이오닉의 여왕", ["bionic"]), minPlaysShare: 0.3, battle: true },
   /* 탱크 조이기·옆탱을 함께 센다(요청: 탱크는 메카닉에 통합) — 셋 다 테란이 탱크로 굴린
      판이고, 자막이 어느 이름으로 짚었나는 그 판의 장면 차이일 뿐이다. 근거 문장도 세
      열쇠를 아우르는 말로 덮는다(tactic이 지어 주는 이름은 첫 열쇠 것뿐이다). */
   // 이름은 여신·여왕 계열로 통일(요청) — 메카닉 사령관에서 바꿨다.
   { ...tactic("메카닉의 여왕", ["mech", "center-tank", "side-tank"]),
-    why: "메카닉·탱크 조이기", minPlaysShare: 0.15, battle: true },
+    why: "메카닉·탱크 조이기", minPlaysShare: 0.4, battle: true },
   /* 과학의 여왕(요청: 신규 과학전 — 여신은 전설급에만) — 베슬을 둘 이상 띄우고 이레디·EMP·매트릭스를 실제로
      뿌린 판이다. 판정은 replayTactics의 vessel. */
-  { ...tactic("과학전의 퀸", ["vessel"]), minPlaysShare: 0.05, vsWins: true, battle: true },
+  { ...tactic("과학전의 퀸", ["vessel"]), minPlaysShare: 0.25, vsWins: true, battle: true },
   /* 발키리와 배틀은 따로 두 칭호다(요청: 통합했다가 이름을 따로 받으며 갈랐다) — 발키리는
      제공권 싸움이고 배틀은 끝판 한 방이라 그림이 다르다. */
   // 이름 확정(요청) — 발키리는 그 자체가 여전사라 이름이 곧 그림이다.
-  { ...tactic("여전사 발키리", ["valkyrie"]), minPlaysShare: 0.03, vsWins: true, battle: true },
-  { ...tactic("우주전함 퀸", ["bc"]), minPlaysShare: 0.02, vsWins: true, battle: true },
+  { ...tactic("여전사 발키리", ["valkyrie"]), minPlaysShare: 0.2, vsWins: true, battle: true },
+  { ...tactic("우주전함 퀸", ["bc"]), minPlaysShare: 0.15, vsWins: true, battle: true },
   /* 목동의 여왕(요청: 목동저그 변경·상향) — 다크스웜을 실제로 깔고 그 아래로 저글링·럴커·
      울트라 중 하나를 몰아넣은 판이다(지적: 스웜에는 저글링만이 아니라 럴커·울트라도 쓴다).
      판정은 replayTactics의 moka(개편). 자막이 짚은 판만 세고 서버가 이긴 판만 세므로
      (_tactic_counts) 잣대가 하나다. */
   // 스웜 목동 → 목동의 여왕(요청) — 여신·여왕 계열로.
-  { ...tactic("목동의 여왕", ["moka"]), minPlaysShare: 0.01, vsWins: true, battle: true },
+  { ...tactic("목동의 여왕", ["moka"]), minPlaysShare: 0.15, vsWins: true, battle: true },
   /* 브루들링의 여왕(요청: 퀸 쪽 추가) — 퀸을 띄워 브루들링·인스네어·패러사이트를 실제로
      쓴 판이다. 과학의 여왕(베슬)과 같은 자다. */
-  { ...tactic("진화의 여왕", ["queen"]), minPlaysShare: 0.03, vsWins: true, battle: true },
+  { ...tactic("진화의 여왕", ["queen"]), minPlaysShare: 0.15, vsWins: true, battle: true },
 
   // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
   /* (삭제) 프로 옆탱러(side-tank) — 요청. 옆탱은 아군 기지를 받쳐 주는 탱크와 제 기지
@@ -698,7 +702,7 @@ const TITLES: Title[] = [
   { ...tactic("성큰러시 퀸", ["sunken-rush"], 1), minPlaysShare: 0.1 },
   /* 센터의 여주인 → 센포의 여왕(요청) — 클럽에서 그 수를 부르는 말이 '센포'라, 그 말을
      그대로 쓰면 무엇을 세는 칭호인지가 바로 읽힌다. */
-  { ...tactic("센포의 여왕", ["center-photon"]), minPlaysShare: 0.1 },
+  { ...tactic("센포의 여왕", ["center-photon"]), minPlaysShare: 0.25 },
   /* (삭제) 남의 집 헤집기 장인(base-raid) — 요청. 이름 없는 급습이라 "무엇으로 갔는지"가
      빠진 이야기고, 그 대목은 대개 다른 칭호(드랍·견제·러시)가 이미 말한다. */
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
@@ -707,9 +711,9 @@ const TITLES: Title[] = [
      나르는 그림 그대로다. 한때 '땅굴'이라는 말을 뺐었는데(지적: 버로우 이야기로 읽힌다)
      '파는 여인'까지 붙으면 굴을 뚫는 그림이라 그 오해가 없다.
      근거 문장은 그대로 '커널'로 부른다 — 자막이 그 수를 부르는 이름이다. */
-  { ...rare("커널 개통 퀸", ["nydus"]), minPlaysShare: 0.05 },
-  { ...rare("리콜 배달 퀸", ["recall"]), minPlaysShare: 0.02 },
-  { ...rare("도둑 퀸", ["mind-control"]), minPlaysShare: 0.01 },
+  { ...rare("커널 개통 퀸", ["nydus"]), minPlaysShare: 0.25 },
+  { ...rare("리콜 배달 퀸", ["recall"]), minPlaysShare: 0.2 },
+  { ...rare("도둑 퀸", ["mind-control"]), minPlaysShare: 0.1 },
   /* 유닛 기본(7%)보다 낮다(요청) — 캐리어까지 가는 판은 프로토스 판 가운데도 일부라,
      코끼리와 같은 자리에서 제 값을 받는다. 에픽 상향(요청: 캐리어 상향). */
   /* 함대의 여왕(요청 — 여신은 전설급에만 쓴다) — 아비터까지 함께 굴렸으면 "그림자 함대의
@@ -717,29 +721,29 @@ const TITLES: Title[] = [
      같은 캐리어라도 아비터가 끼면 스테이시스·리콜이 낀 다른 그림이라, 이름이 그 판을
      말하게 한다(맵 여왕과 같은 {n} 방식). 아비터를 뽑았나는 이긴 판 원장(mix)의 유닛
      수로 본다. */
-  { ...tactic("{n}", ["carrier"]), minPlaysShare: 0.02, battle: true, why: "캐리어",
+  { ...tactic("{n}", ["carrier"]), minPlaysShare: 0.2, battle: true, why: "캐리어",
     name: (s, of) => ((mix(s, of)?.units?.["Arbiter"] ?? 0) > 0 ? "보이지 않는 날파리 퀸" : "날파리 퀸") },
   /* 폭풍의 여왕(요청: 신규 질럿+템플러) — 질럿 몸에 스톰을 얹은 프로토스 지상 한 벌.
      판정은 replayTactics의 zealot-templar. */
-  { ...tactic("또각또각 번개 퀸", ["zealot-templar"]), minPlaysShare: 0.1, vsWins: true, battle: true },
+  { ...tactic("또각또각 번개 퀸", ["zealot-templar"]), minPlaysShare: 0.3, vsWins: true, battle: true },
   /* 강습의 여왕(요청: 프로토스 하나 추가 — 셔틀 리버) — 폭탄드랍의 여왕은 종족 무관 드랍
      전부를 세고, 이쪽은 프로토스의 셔틀 리버 그림만 센다. */
-  { ...tactic("리버 드랍의 여왕", ["shuttle-reaver"]), minPlaysShare: 0.05, vsWins: true, battle: true },
+  { ...tactic("리버 드랍의 여왕", ["shuttle-reaver"]), minPlaysShare: 0.15, vsWins: true, battle: true },
   /* 보이지 않는 여왕(요청: 어둠의 여왕에서 개명 — 다크 단독 또는 다템+커세어) — 그림자의
      여왕(은신 유닛 비중)과 달리 다크가 주인공인 판을 센다. */
   // 조건 상향(요청) — 프로토스 판 5% → 10%: 스무 판에 두 판은 다크로 이겨야 그 이름이다.
-  { ...tactic("보이지 않는 여왕", ["dark-templar"]), minPlaysShare: 0.1, vsWins: true, battle: true },
+  { ...tactic("보이지 않는 여왕", ["dark-templar"]), minPlaysShare: 0.5, vsWins: true, battle: true },
   /* 시공의 여왕(요청: 아비터 쪽 추가) — 아비터를 띄워 스테이시스·리콜을 실제로 쓴 판이다.
      함대의 여왕(캐리어+아비터)과 달리 아비터가 주인공인 판을 센다. */
-  { ...tactic("시공을 지배하는 여제", ["arbiter"]), minPlaysShare: 0.03, vsWins: true, battle: true },
+  { ...tactic("시공을 지배하는 여제", ["arbiter"]), minPlaysShare: 0.15, vsWins: true, battle: true },
   /* 번개의 여왕(요청: 셔틀+하이템플러 — 여신이 아니라 여왕) — 셔틀에 템플러를 태워 스톰을 떨어뜨린 판이다
      (templar-drop). 폭탄드랍의 여왕에도 드는 열쇠지만, 그쪽은 종족 무관 드랍 전부를 세는
      자리고 이쪽은 이 그림 하나만 센다. */
-  { ...tactic("공포의 번개 퀸", ["templar-drop"]), minPlaysShare: 0.03, vsWins: true, battle: true },
+  { ...tactic("공포의 번개 퀸", ["templar-drop"]), minPlaysShare: 0.15, vsWins: true, battle: true },
   /* 가시밭의 여왕(요청: 독거미 부대 상향·개편) — 히드라 몸에 럴커를 묻은 저그 지상
      한 벌이다(판정도 히드라+럴커 조합으로 바뀐다). 러커는 저그의 밥이라 유닛 기본(7%)의
      배로 잰다. */
-  { ...tactic("가시의 여왕", ["lurker"]), minPlaysShare: 0.15, battle: true },
+  { ...tactic("가시의 여왕", ["lurker"]), minPlaysShare: 0.5, battle: true },
   /* 안 보이는 것으로만 치는 사람(요청: 다크·레이스·아비터를 다 잘 쓴 경우만) —
      "보이지 않는 손" → "안 보이는 레이스"를 거쳐 온 자리다. 유닛 하나로는 안 준다(요청:
      하나만 써서는 안 됨): 다크만 뽑는 프로토스는 흔하고, 그건 이미 유닛 칭호가 말한다.
@@ -748,7 +752,7 @@ const TITLES: Title[] = [
   /* (삭제·요청) 은폐 유닛 퀸 — 병력 중 은신 유닛 비중. 다크가 주인공인 판은
      '보이지 않는 여왕'(dark-templar)이 따로 센다. */
   // 에픽 상향(요청: 뮤탈은 상향 — 이름도 여왕 계열로) + 전투 조건.
-  { ...tactic("뮤탈 습격 퀸", ["muta"]), minPlaysShare: 0.02, battle: true },
+  { ...tactic("뮤탈 습격 퀸", ["muta"]), minPlaysShare: 0.3, battle: true },
   /* 코끼리 조련사(요청) — 울트라리스크를 모아 나간 판이다. 저그의 마지막 지상 병력이라
      거기까지 판을 끌고 갔다는 말이기도 한데, 부르는 말은 그 그림 하나면 된다.
      한때 "코끼리떼를 모는 여인"으로 바꿔 봤다가 되돌렸다(요청) — 조련사 쪽이 짧고, 무엇을
@@ -830,7 +834,7 @@ const TITLES: Title[] = [
      삭제된 가디언 칭호 자리에, 저그 하늘의 두 얼굴을 되세운다. 어느 쪽으로 잡혔든 하늘로
      이긴 판이다. */
   { ...tactic("꽃게탕 퀸", ["guardian", "devourer"]), why: "가디언·디바우러",
-    minPlaysShare: 0.02, vsWins: true, battle: true },
+    minPlaysShare: 0.25, vsWins: true, battle: true },
   /* (삭제) 발키리 지휘관(valkyrie) — 위 "무자비한 오버로드 사냥꾼"이 같은 유닛으로 무엇을
      했는지까지 말한다. 뽑았다는 사실만 말하는 쪽을 접는다. */
   /* (삭제) 우리 집 문지기(front-defense) — 뺐다(지적: 입구는 막으라고 있는 것). 제 입구를
@@ -1420,7 +1424,8 @@ export function epithetsOf(
            일괄 판수 문턱과는 다르다 — 분모가 서야 비율 조건 자체가 성립한다. */
         if (denomPlays < ratioFloor()) continue;
         if (v < Math.ceil(denomPlays * share)) continue;
-        // (삭제·지적) 카운트 하한(countMinFor) — 표본 바닥·비율과 겹말이라 걷었다.
+        /* 별도 횟수 바닥은 없다(요청: 규칙을 또 얹지 말고 수치로) — 표본이 다섯 판이라
+           비율을 20% 위로 두면 한 판짜리는 산수로 걸러진다(ceil(5×0.21)=2). */
       }
       // 절대 문턱 — 이 값을 넘으면 받는다. 남이 얼마나 했는지는 안 본다(요청: 절대평가).
       if (title.min !== undefined && v < title.min) continue;
