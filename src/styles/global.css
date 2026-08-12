@@ -10953,6 +10953,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   transition: left 0.25s linear, top 0.25s linear, opacity 0.8s ease;
 }
 .scr-motion-army-stale { opacity: 0.45; }
+/* 클로킹 유닛(옵저버·다크·클로킹 연구 뒤 레이스·고스트)은 반투명이다(요청) — 칩이든
+   점이든 같이 옅어진다. */
+.scr-motion-cloaked { opacity: 0.45; }
 /* 이름 칩만은 흐리게 안 한다(지적) — 칩은 '지금 깨어 있는' 쪽인데 자취가 뜸하다는 이유로
    반투명해지면, 방금까지 또렷하던 배지가 갑자기 꺼진 것처럼 읽힌다. 흐림은 도형(점)의
    몫으로 남긴다. */

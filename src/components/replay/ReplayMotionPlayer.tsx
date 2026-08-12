@@ -331,7 +331,8 @@ const SHAPE_KIND: Record<string, string> = {
  *  꼭대기는 평평하고, 높이보다 옆으로 넓다(지적). */
 /* 후지산 옆모습(지적: 뚱뚱하면 안 된다 — 위쪽은 거의 직선으로 가파르고 내려갈수록
    완만하게 벌어지는 오목 곡선), 바닥은 거미줄처럼 사방으로 퍼지는 가닥들(지적). */
-const ZERG_MOUND = "M5.6 4 Q8 3.2 10.4 4 Q10.9 10 14.2 12.6 Q8 13.8 1.8 12.6 Q5.1 10 5.6 4 Z"
+// 머리(윗부분) 폭을 한 단 좁혔다(지적: 너무 두꺼움).
+const ZERG_MOUND = "M6.2 4 Q8 3.3 9.8 4 Q10.5 10 14.2 12.6 Q8 13.8 1.8 12.6 Q5.5 10 6.2 4 Z"
   /* 다리는 옆으로 나가며 위로 펼쳐지는 뭉뚝한 갈래다(지적: 아래로 처지면 나무뿌리 같다)
      — 게처럼 끝이 밑동보다 위에 선다. */
   + " M4.6 11 Q2 11.4 1 9 Q2.6 10 4.2 9.9 Z"
@@ -340,40 +341,18 @@ const ZERG_MOUND = "M5.6 4 Q8 3.2 10.4 4 Q10.9 10 14.2 12.6 Q8 13.8 1.8 12.6 Q5.
   + " M12 12.4 Q14.4 13 15.4 11.6 Q13.6 12 11.6 11.6 Z"
   + " M7.3 13.2 Q7.2 14.6 8 14.8 Q8.8 14.6 8.9 13.2 Z";
 /** 저그 본진 머리의 평평한 윗면(요청) — 둥근 머리 위 밝은 타원. 더 얇게(지적: 뚜껑). */
-const ZERG_TOP = "M6.2 3.8a1.8 0.5 0 1 0 3.6 0a1.8 0.5 0 1 0-3.6 0Z";
+const ZERG_TOP = "M6.6 3.85a1.4 0.45 0 1 0 2.8 0a1.4 0.45 0 1 0-2.8 0Z";
+/* 여기 남은 것은 입체(면 겹침)가 필요 없는 도형뿐이다 — 나머지는 전부 SHAPE_FACES로 갔다. */
 const SHAPE_PATHS: Record<string, string> = {
-  // 좀 더 얇은 마름모로(요청) — 꽉 찬 정마름모는 네모와 잘 안 갈렸다.
-  diamond: "M8 1 12 8 8 15 4 8Z",
-  trapezoid: "M4 4 12 4 16 12 0 12Z",
-  /* 커맨드는 납작·넓게, 직선을 줄인 둥근 돔에(요청) 꼭대기 가운데 얇은 판 하나(요청).
-     판은 더 작고 얇게(지적: 너무 두꺼움). */
-  tomb: "M1.5 14 Q1.5 5.2 8 5.2 Q14.5 5.2 14.5 14 Z M6.2 3.8 H9.8 V4.5 H6.2 Z",
-  tombFlat: "M1.5 13 V10.5 Q1.5 7 8 7 Q14.5 7 14.5 10.5 V13 Z",
   /* 포토캐논 — 병뚜껑처럼 톱니가 두른 원(지적: "박카스 로고같은 모양이어야"). 살짝
      납작하게 눌러 바닥에 깔린 태엽으로 읽힌다. */
   coil: "M8 3.1 L9.8 5.1 L12.8 4.5 L12.5 6.9 L15.3 8 L13.1 9.7 L14.4 12 L11.3 12.2 L10.5 14.6 L8 13.2 L5.5 14.6 L4.7 12.2 L1.6 12 L2.9 9.7 L0.7 8 L3.5 6.9 L3.2 4.5 L6.2 5.1 Z",
   pyramid: "M8 1 16 15 0 15Z",
-  // 게이트는 넓적한 원판 위에 세모가 올라간 느낌(요청) — 납작한 타원 받침 + 가파른 첨탑.
-  gate: "M8 2 L12 11.5 L4 11.5 Z M0.8 12.5 a7.2 2.6 0 1 0 14.4 0 a7.2 2.6 0 1 0 -14.4 0 Z",
-  // 넙적한 세모(요청: 넥서스) — 밑변이 높이의 두 배쯤이라 눌러앉은 피라미드로 읽히고,
-  // 양옆에 뾰족 기둥이 솟는다(요청). 처음엔 경사면에 1px 남짓 겹쳐 안 보였다(지적:
-  // "기둥 어디감") — 경사 위로 확실히 뚫고 나오게 키웠다.
-  pyramidWide: "M8 4.5 16 14 0 14Z M1.8 14 L2.9 6 L4.4 14 Z M14.2 14 L13.1 6 L11.6 14 Z",
-  /* 팩토리 — 뭉툭한 기계 상자에 오른쪽 위 모듈, 짧은 다리(요청: 게임 스크린샷 참고). */
-  dome: "M2 14 V10 A6 6 0 0 1 14 10 V14 Z",
-  arch: "M2 15 V4 H14 V15 H10 V8 H6 V15 Z",
-  gas: "M0.8 13 Q0.8 8.8 8 8.8 Q15.2 8.8 15.2 13 Z",
   /* 성큰 — 넙적한 몸통에 휘어 올라간 촉수 가시 둘(요청: 게임 스크린샷 참고 — 낮게 엎드린
      살덩이에 낫처럼 굽은 가시가 솟아 있다). */
   sunken: "M1.2 11.5a6.8 3.2 0 1 0 13.6 0a6.8 3.2 0 1 0-13.6 0Z"
     + " M4.2 9.8 Q2.4 6.2 4.8 3 Q4.2 6.4 6.2 9.2 Z"
     + " M11.8 9.8 Q13.6 6.2 11.2 3 Q11.8 6.4 9.8 9.2 Z",
-  /* 스포어 — 봉오리 머리가 위로 솟고 밑동에 짧은 촉수(요청: 게임 스크린샷 참고). */
-  spore: "M4.8 6.4a3.4 3.3 0 1 0 6.8 0a3.4 3.3 0 1 0-6.8 0Z"
-    + " M2 13.8 Q2.4 11 5.2 10.4 L10.8 10.4 Q13.6 11 14 13.8 Z"
-    + " M3.6 10.8 Q1.8 9.2 3 6.8 Q3 9.2 5 10.2 Z",
-  // 터렛 — 네모 받침 위에 기울어진 네모 머리(요청).
-  turret: "M3.5 14 H12.5 V8.6 H3.5 Z M10.4 7.6 L6.6 8.6 L5.6 4.8 L9.4 3.8 Z",
   // 오버로드 — 동그란 풍선에 긴 다리가 줄줄 늘어진다(요청).
   ovie: "M3.6 6a4.4 4.2 0 1 0 8.8 0a4.4 4.2 0 1 0-8.8 0Z"
     + " M5.4 9.6 Q5 12.6 4.2 14 Q5.8 12.4 6.4 9.9 Z"
@@ -407,28 +386,47 @@ const AVATAR_HALL_PATHS: Record<string, { body: string; deco?: string; dy: numbe
   },
   저그: {
     // 건물 해처리와 같은 후지산 결이되, 원형 아바타가 담기게 옆으로 벌린 판.
-    body: "M4.6 4.4 Q8 3.4 11.4 4.4 Q12 10 15 12.8 Q8 14.2 1 12.8 Q4 10 4.6 4.4 Z",
+    // 다리(위로 펼쳐지는 뭉뚝한 갈래)도 함께 단다(요청: 아바타에도 다리 표현).
+    body: "M4.6 4.4 Q8 3.4 11.4 4.4 Q12 10 15 12.8 Q8 14.2 1 12.8 Q4 10 4.6 4.4 Z"
+      + " M3.8 11.2 Q1.4 11.6 0.4 9.4 Q2 10.3 3.6 10.2 Z"
+      + " M3.4 12.9 Q1 13.5 0 12.1 Q1.8 12.5 3.8 12.1 Z"
+      + " M12.2 11.2 Q14.6 11.6 15.6 9.4 Q14 10.3 12.4 10.2 Z"
+      + " M12.6 12.9 Q15 13.5 16 12.1 Q14.2 12.5 12.2 12.1 Z"
+      + " M7.3 13.6 Q7.2 15 8 15.2 Q8.8 15 8.9 13.6 Z",
     dy: 4,
   },
+};
+/** 저그 아바타의 단계 장식(요청: "해처리 아바타도 레어 하이브 다 표현") — 그 시각에
+ *  살아 있는 최고 단계 건물을 따라간다. 레어는 바닥 뿔, 하이브는 본체보다 긴 뿔 셋. */
+const AVATAR_ZERG_DECO: Record<string, string | undefined> = {
+  hatchery: undefined,
+  lair: "M2.4 12.2 L1.2 8 L4.2 10.8 Z M13.6 12.2 L14.8 8 L11.8 10.8 Z",
+  hive: "M2 12.2 Q0.8 6.4 2.4 0.8 Q3.4 6.6 4.4 11 Z"
+    + " M6.9 10.4 Q7.3 3.8 8 0.3 Q8.7 3.8 9.1 10.4 Z"
+    + " M14 12.2 Q15.2 6.4 13.6 0.8 Q12.6 6.6 11.6 11 Z",
 };
 
 /** 여러 면으로 그리는 도형 — [패스, 불투명도, 색?] 목록. 색을 안 주면 currentColor다.
  *  한 색 위에 흰/검 반투명을 겹쳐 밝은 윗면·어두운 옆면을 만든다(입체 사선 뷰). */
 const SHAPE_FACES: Record<string, [string, number, string?][]> = {
-  /* 배럭 — 살짝만 입체(지적), 옆면이 좀 긴 직사각형(지적: 깊게 뻗은 몸체). */
+  /* 배럭 — 살짝만 입체(지적), 옆면이 좀 긴 직사각형(지적). 높이는 낮춘다(지적).
+     다리 넷 중 셋이 보인다(요청: 입체라 하나는 가려짐). */
   cube: [
-    ["M2 6 L9 6 L14 4.2 L7 4.2 Z", 1],
-    ["M2 6 L9 6 L14 4.2 L7 4.2 Z", 0.3, "#fff"],
-    ["M2 6 L9 6 L9 13.6 L2 13.6 Z", 1],
-    ["M9 6 L14 4.2 L14 11.8 L9 13.6 Z", 1],
-    ["M9 6 L14 4.2 L14 11.8 L9 13.6 Z", 0.35, "#000"],
+    ["M2 7 L9 7 L14 5.2 L7 5.2 Z", 1],
+    ["M2 7 L9 7 L14 5.2 L7 5.2 Z", 0.3, "#fff"],
+    ["M2 7 L9 7 L9 13.2 L2 13.2 Z", 1],
+    ["M9 7 L14 5.2 L14 11.4 L9 13.2 Z", 1],
+    ["M9 7 L14 5.2 L14 11.4 L9 13.2 Z", 0.35, "#000"],
+    ["M2.6 13.2 V14.6 H3.6 V13.2 Z M7.4 13.2 V14.6 H8.4 V13.2 Z M12.6 11.9 L13.6 11.5 V12.9 L12.6 13.3 Z", 1],
   ],
-  /* 팩토리 — 입체이되 '옆면'이 8각이다(지적: 앞이 아니라 옆). 앞면도 그 8각 단면을 따라
-     위아래가 꺾인 길쭉한 8각이다(지적: "앞면도 옆면에 맞춰 꺾여야함"). */
+  /* 팩토리 — 8각 단면의 각기둥을 사선으로 본 것(지적: 옆면이 8각, 앞면의 위아래 꺾임은
+     그 단면의 앞모서리(10,7)-(10,11)를 공유한다 — 오른쪽 꺾임 방향도 단면을 따른다). */
   factory: [
-    ["M3.4 5.4 L8.6 5.4 L11 3.8 L5.8 3.8 Z", 1],
-    ["M3.4 5.4 L8.6 5.4 L11 3.8 L5.8 3.8 Z", 0.3, "#fff"],
-    ["M2 7 L3.4 5.4 L8.6 5.4 L10 7 L10 11 L8.6 12.6 L3.4 12.6 L2 11 Z", 1],
+    ["M2 7 L10 7 L11 5.4 L3 5.4 Z", 1],
+    ["M2 7 L10 7 L11 5.4 L3 5.4 Z", 0.3, "#fff"],
+    ["M2 7 L10 7 L10 11 L2 11 Z", 1],
+    ["M2 11 L10 11 L11 12.6 L3 12.6 Z", 1],
+    ["M2 11 L10 11 L11 12.6 L3 12.6 Z", 0.3, "#000"],
     ["M10 7 L11 5.4 L13.4 4.8 L14.8 6.4 L14.8 9.6 L13.4 11.8 L11 12.6 L10 11 Z", 1],
     ["M10 7 L11 5.4 L13.4 4.8 L14.8 6.4 L14.8 9.6 L13.4 11.8 L11 12.6 L10 11 Z", 0.35, "#000"],
   ],
@@ -456,9 +454,13 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
     [`${ZERG_MOUND} M2.4 12.2 L1.2 8 L4.2 10.6 Z M13.6 12.2 L14.8 8 L11.8 10.6 Z`, 1],
     [ZERG_TOP, 0.3, "#fff"],
   ],
+  /* 하이브 — 본 건물보다 훨씬 긴 뿔 셋이 위로 솟고, 안쪽을 향한 가시가 따로 난다(요청). */
   hive: [
-    [`${ZERG_MOUND} M2.4 12.2 L0.8 5 L4.6 10 Z M13.6 12.2 L15.2 5 L11.4 10 Z`
-      + " M5.2 11.6 L4.5 7.2 L6.9 10 Z M10.8 11.6 L11.5 7.2 L9.1 10 Z", 1],
+    [`${ZERG_MOUND}`
+      + " M2 12.4 Q0.8 6.6 2.4 0.8 Q3.4 6.6 4.4 11.4 Z"
+      + " M6.9 11 Q7.3 4 8 0.3 Q8.7 4 9.1 11 Z"
+      + " M14 12.4 Q15.2 6.6 13.6 0.8 Q12.6 6.6 11.6 11.4 Z"
+      + " M4.4 10.6 L6 7.8 L6.6 10.4 Z M11.6 10.6 L10 7.8 L9.4 10.4 Z", 1],
     [ZERG_TOP, 0.3, "#fff"],
   ],
   /* 파일런 — 얇은 마름모 크리스탈의 허리를 둘러싼 납작한 고리(요청: "기둥을 둘러싼
@@ -468,18 +470,62 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
     // 안쪽 타원은 감는 방향을 뒤집어 구멍이 된다(nonzero 규칙) — 그래야 '고리'다.
     ["M2.6 8a5.4 1.5 0 1 0 10.8 0a5.4 1.5 0 1 0-10.8 0Z M4 8a4 0.9 0 1 1 8 0a4 0.9 0 1 1-8 0Z", 0.4, "#000"],
   ],
-  /* 종이비행기(요청: 스타포트) — 코가 왼쪽, 갈라짐 없는 한 몸. 아래에 그림자 층을 깔아
-     입체감을 주고(지적), 가운데 원(착륙 패드)은 더 크고 밝게(지적). */
+  /* 종이비행기(요청: 스타포트) — 코가 왼쪽, 갈라짐 없는 한 몸. 세로로 눌러 사선 아래에서
+     본 원근을 준다(지적: 정 위에서 본 것 같다) — 그림자 층이 입체감, 가운데 원(착륙 패드)은
+     크고 밝게(지적). */
   plane: [
-    ["M0.9 9.4 L14.9 2.9 L14.9 15.9 Z", 0.4, "#000"],
-    ["M0.5 8 L14.5 1.5 L14.5 14.5 Z", 1],
-    ["M7 8a3 3 0 1 0 6 0a3 3 0 1 0-6 0Z", 0.5, "#fff"],
+    ["M1.1 10.4 L15.1 5.6 L15.1 15 Z", 0.4, "#000"],
+    ["M0.5 9 L14.5 4.2 L14.5 13.6 Z", 1],
+    ["M7.4 9a3 2.1 0 1 0 6 0a3 2.1 0 1 0-6 0Z", 0.5, "#fff"],
+    // 다리 셋 중 둘이 보인다(요청: 입체라 하나는 가려짐).
+    ["M6 12.2 V13.8 H7 V12.2 Z M11.6 13.6 V15.2 H12.6 V13.6 Z", 1],
   ],
-  /* 스타게이트 — 긴 마름모 두 개가 사선으로 붙은 모양(요청). */
+  /* 스타게이트 — 똑같은 긴 마름모 두 개가 나란히 사선으로 붙는다(지적: 둘이 같은
+     모양이라야 한다). */
   arch: [
-    ["M4.6 1.6 L8.4 5 L6.6 12.6 L2.8 9.2 Z", 1],
-    ["M11.4 3.4 L13.2 11 L9.4 14.4 L7.6 6.8 Z", 1],
-    ["M11.4 3.4 L13.2 11 L9.4 14.4 L7.6 6.8 Z", 0.25, "#000"],
+    ["M4 2 L7.4 5 L5.6 12.4 L2.2 9.4 Z", 1],
+    ["M9.4 4 L12.8 7 L11 14.4 L7.6 11.4 Z", 1],
+    ["M9.4 4 L12.8 7 L11 14.4 L7.6 11.4 Z", 0.25, "#000"],
+  ],
+  /* 게이트 — 원판 위 가파른 삼각, 원판 가운데 밝은 원(지적: 가운데 원은 게이트웨이 것). */
+  gate: [
+    ["M8 4 L11 11.8 L5 11.8 Z", 1],
+    ["M2.4 12.4a5.6 2 0 1 0 11.2 0a5.6 2 0 1 0-11.2 0Z", 1],
+    // 소환구 원은 더 크고 위로(지적).
+    ["M6 11.4a2 1.4 0 1 0 4 0a2 1.4 0 1 0-4 0Z", 0.5, "#fff"],
+  ],
+  /* 나머지 건물도 전부 위 오른쪽 사선 입체(요청: "모든 건물이 위 우측에서 본 사선") —
+     밝은 윗면 한 겹씩. */
+  tombFlat: [
+    ["M1.5 13 V10.5 Q1.5 7 8 7 Q14.5 7 14.5 10.5 V13 Z", 1],
+    ["M3.6 8.6a4.4 1.2 0 1 0 8.8 0a4.4 1.2 0 1 0-8.8 0Z", 0.28, "#fff"],
+  ],
+  trapezoid: [
+    ["M4 4 12 4 16 12 0 12Z", 1],
+    ["M4 4 L12 4 L13 5.4 L3 5.4 Z", 0.3, "#fff"],
+  ],
+  gas: [
+    ["M0.8 13 Q0.8 8.8 8 8.8 Q15.2 8.8 15.2 13 Z", 1],
+    ["M4.4 9.6a3.6 0.9 0 1 0 7.2 0a3.6 0.9 0 1 0-7.2 0Z", 0.28, "#fff"],
+  ],
+  /* 로보틱스 — 뭉뚝한 꼬깔모자(요청): 위가 둥글게 잘린 원뿔이 넓은 받침에 앉는다. */
+  dome: [
+    ["M6 4.6 Q8 3.8 10 4.6 L12.2 11.4 L3.8 11.4 Z", 1],
+    ["M6.6 4.4a1.5 0.55 0 1 0 3 0a1.5 0.55 0 1 0-3 0Z", 0.3, "#fff"],
+    ["M2 13.4 Q2 11.4 3.8 11.4 L12.2 11.4 Q14 11.4 14 13.4 Z", 1],
+    ["M2 13.4 Q2 11.4 3.8 11.4 L12.2 11.4 Q14 11.4 14 13.4 Z", 0.25, "#000"],
+  ],
+  turret: [
+    ["M3.5 14 H12.5 V8.6 H3.5 Z", 1],
+    ["M10.4 7.6 L6.6 8.6 L5.6 4.8 L9.4 3.8 Z", 1],
+    ["M10.4 7.6 L6.6 8.6 L5.6 4.8 L9.4 3.8 Z", 0.25, "#fff"],
+  ],
+  /* 스포어 — 봉오리 머리(윗면 반짝임) + 밑동 둔덕 + 양옆 촉수(요청: 스크린샷 참고). */
+  spore: [
+    ["M2 13.6 Q2.4 10.8 5.2 10.2 L10.8 10.2 Q13.6 10.8 14 13.6 Z", 1],
+    ["M3.4 10.6 Q1.6 9 2.8 6.6 Q2.8 9 4.8 10 Z M12.6 10.6 Q14.4 9 13.2 6.6 Q13.2 9 11.2 10 Z", 1],
+    ["M4.6 6.6a3.4 3.2 0 1 0 6.8 0a3.4 3.2 0 1 0-6.8 0Z", 1],
+    ["M6 5a1.6 0.7 0 1 0 3.2 0a1.6 0.7 0 1 0-3.2 0Z", 0.3, "#fff"],
   ],
   /* 이름 없는 건물의 기본 도형 — 납작한 네모도 사선 위에서 본 입체다(요청: "건물들은
      기본적으로 사선위에서 본 모양"). */
@@ -491,8 +537,8 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
     ["M11 7.4 L13 6 L13 12 L11 13.4 Z", 0.35, "#000"],
   ],
 };
-/** 도형째 돌려 그리는 각도(시계방향) — 스타게이트는 지금 형태를 75도 돌린다(요청). */
-const SHAPE_ROT: Record<string, number> = { arch: 75 };
+/** 도형째 돌려 그리는 각도(시계방향) — 스타게이트는 45도(요청). */
+const SHAPE_ROT: Record<string, number> = { arch: 45 };
 function ShapeIcon({ kind }: { kind: string }) {
   const faces = SHAPE_FACES[kind];
   const rot = SHAPE_ROT[kind];
@@ -512,6 +558,26 @@ function ShapeIcon({ kind }: { kind: string }) {
 const ADDONS = new Set([
   "Comsat Station", "Nuclear Silo", "Machine Shop", "Control Tower", "Covert Ops", "Physics Lab",
 ]);
+
+/** 폭 1칸짜리 실틈은 막힌 것으로 본다(요청: "벽과 벽 사이에 공간이 살짝 있어도 원래
+ *  없을법한 적은 타일수면 막힌걸로") — 분석 격자의 틈새로 지상 유닛이 벽을 뚫고 다녔다.
+ *  양옆(또는 위아래)이 다 막힌 외길 칸을 지운다. 화면에서만 조인다 — 저장된 지형은
+ *  그대로다. */
+function closeNarrowGaps(t: TerrainGrid): TerrainGrid {
+  const walk = new Uint8Array(t.walk);
+  for (let y = 0; y < t.h; y += 1) {
+    for (let x = 0; x < t.w; x += 1) {
+      const i = y * t.w + x;
+      if (!t.walk[i]) continue;
+      const blockedL = x <= 0 || !t.walk[i - 1];
+      const blockedR = x >= t.w - 1 || !t.walk[i + 1];
+      const blockedU = y <= 0 || !t.walk[i - t.w];
+      const blockedD = y >= t.h - 1 || !t.walk[i + t.w];
+      if ((blockedL && blockedR) || (blockedU && blockedD)) walk[i] = 0;
+    }
+  }
+  return { ...t, walk };
+}
 
 /** 건물 짓는 시간(초, 어림) — 짓는 동안 반투명 표시(요청)의 창이다. */
 const BUILD_SEC: Record<string, number> = {
@@ -721,10 +787,10 @@ export default function ReplayMotionPlayer({
     /* 검수한 지형(grid.walk, 방금 이 자리에서 고쳤으면 walkOverride)이 있으면 그쪽이
        이긴다(요청) — 자동 분석은 어림이다. */
     const reviewed = decodeWalk(walkOverride ?? grid.walk);
-    if (reviewed) { setTerrain(reviewed); return undefined; }
+    if (reviewed) { setTerrain(closeNarrowGaps(reviewed)); return undefined; }
     if (!grid.image) { setTerrain(null); return undefined; }
     terrainOf(grid.image)
-      .then((tg) => { if (!cancelled) setTerrain(tg); });
+      .then((tg) => { if (!cancelled) setTerrain(tg ? closeNarrowGaps(tg) : tg); });
     return () => { cancelled = true; };
   }, [grid.image, grid.walk, walkOverride]);
 
@@ -884,8 +950,15 @@ export default function ReplayMotionPlayer({
       { kind: "lone", src: p.opts ?? [] },
     ];
     // 정찰도 본진에서 걸어 나간다(지적: 엉뚱한 데서 태어남).
+    /* 일꾼 정찰은 직선이 아니라 지형 길로 걷는다(지적: "드론이 벽을 뚫고 정찰감") —
+       드론·SCV·프로브는 지상 유닛이다. 수송선·오버로드(carrier·lone)만 곧게 난다. */
+    const race = bases.find((b) => b.key === p.raw)?.race;
+    const workerUnit = race === "저그" ? "Drone" : race === "테란" ? "SCV" : "Probe";
     return kinds.flatMap(({ kind, src }) => (src.length === 0 ? [] : splitSquads(src, homeOf(p.raw))
-      .map((sq) => ({ kind, raw: sq, walk: walkTrack(sq, p, true) }))));
+      .map((sq) => ({
+        kind, raw: sq,
+        walk: walkTrack(sq, p, kind !== "worker", kind === "worker" ? workerUnit : undefined),
+      }))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [motion, terrain, grid.width, grid.height, bases]);
   // 기본은 ×4다(요청: ×8 → ×4) — ×8은 전투가 눈으로 못 따라갈 만큼 빨랐다.
@@ -1366,10 +1439,10 @@ export default function ReplayMotionPlayer({
                 style={{
                   // 나는 중이면 비행 좌표(bx·by), 아니면 제자리다(위 착륙 이사 주석).
                   // 앵커는 발자국 가운데다(FOOTPRINT 주석 — 왼쪽 위 타일 그대로면 치우친다).
-                  // 부속건물(+)은 본체 쪽으로 살짝 파고든다(요청: "건물에 연결된(조금 겹친)
-                  // 오른쪽 아래") — 제 자리는 본체 오른쪽 아래라, 왼쪽 위로 당기면 겹친다.
-                  left: pct(bx + footDx(unit) - (ADDONS.has(unit) ? 1.2 : 0), grid.width),
-                  top: pct(by + footDy(unit) - (ADDONS.has(unit) ? 0.8 : 0), grid.height),
+                  // 부속건물(+)은 본체에 딱 붙여 오른쪽 아래로(요청: "더 본건물에 딱 붙이고
+                  // 아래로 내리기") — 왼쪽으로 당겨 겹치고, 세로는 내린다.
+                  left: pct(bx + footDx(unit) - (ADDONS.has(unit) ? 1.6 : 0), grid.width),
+                  top: pct(by + footDy(unit) + (ADDONS.has(unit) ? 0.4 : 0), grid.height),
                   // 긴 이름은 한 단계 작게(지적) — 여섯 자부터.
                   ...(text.length >= 6 && !activeBuild ? { fontSize: 6 } : {}),
 
@@ -1420,13 +1493,15 @@ export default function ReplayMotionPlayer({
                   }
                 }
               }
-              const [, bx, by] = pick;
+              const [, bx, by, bUnit] = pick;
               out.push(
                 <span
                   key={`fresh-${p.raw}-${unit}-${si}`}
                   className="scr-motion-fresh"
                   style={{
-                    left: pct(bx + 1.2, grid.width), top: pct(by + 2, grid.height),
+                    // 건물 발자국의 왼쪽 아래에서 나온다(요청) — 건물과 안 겹치는 자리.
+                    left: pct(bx - 0.9, grid.width),
+                    top: pct(by + (FOOTPRINT[bUnit] ?? [3, 2])[1] + 0.9, grid.height),
                     ...glyphStyle(p.raw, team),
                   }}
                 >
@@ -1528,6 +1603,18 @@ export default function ReplayMotionPlayer({
                      가운데에 잘림없이, 종족 무관 같은 크기") — 본진 실루엣은 색 판으로
                      뒤에 서고, 그 한가운데에 동그란 아바타가 같은 크기로 얹힌다. */
                   const hall = m.race ? AVATAR_HALL_PATHS[m.race] : undefined;
+                  /* 저그는 그 시각의 최고 단계(해처리→레어→하이브)를 따라 뿔이 자란다
+                     (요청: "해처리 아바타도 레어 하이브 다 표현"). */
+                  let deco = hall?.deco;
+                  if (m.race === "저그") {
+                    let tier: "hatchery" | "lair" | "hive" = "hatchery";
+                    for (const [bs, , , bu, br, bg] of motion.builds) {
+                      if (br !== m.key || bs > t || ((bg ?? 0) > 0 && t >= (bg ?? 0))) continue;
+                      if (bu === "Hive") { tier = "hive"; break; }
+                      if (bu === "Lair") tier = "lair";
+                    }
+                    deco = AVATAR_ZERG_DECO[tier];
+                  }
                   if (!hall) {
                     return (
                       <span
@@ -1545,7 +1632,7 @@ export default function ReplayMotionPlayer({
                         style={{ color: modeColor(m.key, m.team) }}
                       >
                         <path d={hall.body} fill="currentColor" />
-                        {hall.deco && <path d={hall.deco} fill="currentColor" />}
+                        {deco && <path d={deco} fill="currentColor" />}
                       </svg>
                       <span
                         className="scr-motion-base-avatar-in"
@@ -1682,6 +1769,11 @@ export default function ReplayMotionPlayer({
                   : g.unit);
             const label = `${groupKo}${alive > 0 ? ` ${alive}` : ""}`;
             const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC;
+            /* 클로킹 유닛은 반투명(요청) — 옵저버·다크는 늘, 레이스·고스트는 클로킹 연구
+               뒤부터. 칩이든 점이든 같이 옅어진다(요청). */
+            const cloaked = g.unit === "Observer" || g.unit === "Dark Templar"
+              || (g.unit === "Wraith" && (p.ups ?? []).some(([us, n]) => n === "Cloaking Field" && us <= t))
+              || (g.unit === "Ghost" && (p.ups ?? []).some(([us, n]) => n === "Personnel Cloaking" && us <= t));
             return (
               <span
                 key={`${p.raw}-u${g.unit}-${gi}`}
@@ -1690,11 +1782,13 @@ export default function ReplayMotionPlayer({
                   activeNow ? "scr-motion-chip" : "scr-motion-dot",
                   team === 2 ? "scr-motion-team2" : "scr-motion-team1",
                   pos.stale && "scr-motion-army-stale",
+                  cloaked && "scr-motion-cloaked",
                 )}
                 style={{
                   left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
+                  // 칩 글씨 한 단 축소(지적: 너무 큼).
                   ...(activeNow
-                    ? { fontSize: Math.min(14, 8 + Math.round(Math.sqrt(Math.max(alive, 1)) * 1.4)), ...chipStyle(p.raw, team) }
+                    ? { fontSize: Math.min(11, 7 + Math.round(Math.sqrt(Math.max(alive, 1)))), ...chipStyle(p.raw, team) }
                     : glyphStyle(p.raw, team)),
                 }}
               >
@@ -1735,7 +1829,8 @@ export default function ReplayMotionPlayer({
             }
             const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC || freshDone;
             const showName = si === primary && activeNow && !!unit && (size >= 1 || !!SCOUT_KO[unit]);
-            const fontPx = Math.min(16, 8 + Math.round(Math.sqrt(size) * 1.6));
+            // 칩 글씨 한 단 축소(지적: 너무 큼) — 16 상한/1.6 기울기 → 12/1.1.
+            const fontPx = Math.min(12, 7 + Math.round(Math.sqrt(size) * 1.1));
             /* 무명 부대의 구성 — 제 마커를 가진 종류(shownUnits)는 뺀다: 같은 탱크가 제
                마커와 부대 칩에 두 번 적히면 수가 배로 읽힌다. */
             const parts: [string, number][] = [];
