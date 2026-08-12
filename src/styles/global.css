@@ -10856,6 +10856,26 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* ── 연속 재생 플레이어(요청: 스냅 없이 전부 연속, 이미지 대신 텍스트) ─────────────
    층 셋이 지도 위에 얹힌다: 건물(정확) · 부대 자취(어림) · 마법(정확). 전부 텍스트다. */
 .scr-motion { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+/* 아바타 로스터 기둥(요청: 아바타를 맵 밖으로 — 1팀 왼쪽·2팀 오른쪽 세로 한 줄,
+   로스터식 아바타+닉네임에 그 사람 색) — 맵을 가운데 두고 양옆에 선다. */
+.scr-motion-maprow { display: flex; align-items: center; gap: 8px; }
+.scr-motion-maprow .scr-motion-map { flex: 1 1 auto; min-width: 0; }
+.scr-motion-teamcol { display: flex; flex-direction: column; gap: 10px; width: 88px; flex: 0 0 auto; }
+.scr-motion-teamcol-item { position: relative; display: flex; align-items: center; gap: 6px; }
+.scr-motion-teamcol-text { display: flex; flex-direction: column; min-width: 0; }
+/* 글씨는 충분히 작게(요청) — 기둥은 지도 곁들이라 지도보다 목소리가 작아야 한다. */
+.scr-motion-teamcol-name {
+  font-size: 9px; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 58px;
+}
+/* 모바일은 옆이 좁다(요청: 로스터를 위에) — 기둥 둘이 맵 위에서 1팀 왼쪽·2팀 오른쪽으로
+   마주 보고, 인원이 많으면 줄을 바꾼다. */
+@media (max-width: 1159px) {
+  .scr-motion-maprow { display: grid; grid-template-columns: 1fr 1fr; row-gap: 6px; column-gap: 8px; }
+  .scr-motion-maprow .scr-motion-map { grid-column: 1 / -1; grid-row: 2; }
+  .scr-motion-teamcol { width: auto; flex-direction: row; flex-wrap: wrap; gap: 8px; align-content: flex-start; }
+  .scr-motion-teamcol:last-of-type { justify-content: flex-end; }
+}
 /* 잘라내기는 바탕 그림에만(지적: 경계의 아바타·이름이 잘려 나감) — 컨테이너가 overflow:
    hidden이면 모서리 본진의 마커가 반쪽이 된다. 둥근 모서리는 그림이 제 몫으로 갖는다. */
 .scr-motion-map { position: relative; width: 100%; }
@@ -11261,7 +11281,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   grid-template-rows: 1fr auto 1fr auto;
   column-gap: 10px; row-gap: 6px; align-items: center;
 }
-.scr-motion-big .scr-motion-map { grid-column: 2; grid-row: 1 / 4; }
+.scr-motion-big .scr-motion-maprow { grid-column: 2; grid-row: 1 / 4; }
 .scr-motion-big .scr-motion-toolrow { display: contents; }
 .scr-motion-big .scr-motion-toolrow-mid { display: none; }
 .scr-motion-big .scr-motion-expand-row { grid-column: 3; grid-row: 1; align-self: start; }

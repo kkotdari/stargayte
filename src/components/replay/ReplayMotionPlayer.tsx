@@ -120,6 +120,9 @@ const BY_UNITS: Record<string, string[]> = {
 function splitSquads(
   pts: [number, number, number][], home?: [number, number] | null,
   mergeTiles: number = SQUAD_MERGE_TILES,
+  /** 드랍 지점들(요청: 드랍십 태우고 내리는 게 반영 안 됨) — 갓 내린 자리 곁의 새 명령
+   *  뭉치는 여기서 태어난 부대다(수송선이 날라 준 것이라 걸어온 자취가 없는 게 맞다). */
+  warps?: [number, number, number][],
 ): [number, number, number][][] {
   const squads: [number, number, number][][] = [];
   // 직전 점이 들어간 부대 — 연속 클릭은 대개 같은 선택(같은 부대)의 것이다.
@@ -181,10 +184,14 @@ function splitSquads(
       if (!staysBehind) { squads[best].push(pt); prevIdx = best; continue; }
     }
     if (squads.length < SQUAD_MAX) {
-      /* 새 부대의 출발점(지적: 엉뚱한 데서 태어남) — 곁 부대의 마지막 자리, 그것도 없으면
-         본진이다. 첫 명령의 좌표는 목적지라, 심어 주지 않으면 마커가 목적지에서 태어난다. */
+      /* 새 부대의 출발점(지적: 엉뚱한 데서 태어남) — 갓 내린 드랍 지점이 곁에 있으면
+         거기서(수송선이 날라 줬다), 아니면 곁 부대의 마지막 자리, 그것도 없으면 본진이다.
+         첫 명령의 좌표는 목적지라, 심어 주지 않으면 마커가 목적지에서 태어난다. */
+      const warp = warps?.find(([ws, wx, wy]) =>
+        pt[0] - ws >= 0 && pt[0] - ws <= 45 && Math.hypot(wx - pt[1], wy - pt[2]) <= 10);
       const from = best >= 0 ? squads[best][squads[best].length - 1] : null;
-      const seed: [number, number] | null = from ? [from[1], from[2]] : home ?? null;
+      const seed: [number, number] | null = warp ? [warp[1], warp[2]]
+        : from ? [from[1], from[2]] : home ?? null;
       squads.push(seed && Math.hypot(seed[0] - pt[1], seed[1] - pt[2]) > SAME_SPOT_START_TILES
         ? [[pt[0], seed[0], seed[1]], pt] : [pt]);
       prevIdx = squads.length - 1;
@@ -951,7 +958,7 @@ export default function ReplayMotionPlayer({
      정찰 점도 명령 시각에 출발해 걸어서 가야 한다). */
   const walkTrack = (
     src: [number, number, number][], p: MotionTrack, straight: boolean, forcedUnit?: string,
-    speedOverride?: number,
+    speedOverride?: number, forceGround?: boolean,
   ): [number, number, number][] => {
     if (src.length === 0) return src;
     const out: [number, number, number][] = [[src[0][0], src[0][1], src[0][2]]];
@@ -965,7 +972,11 @@ export default function ReplayMotionPlayer({
       if (orderSec > atSec) out.push([orderSec, atX, atY]);
       const startSec = Math.max(atSec, orderSec);
       const unit = forcedUnit ?? (straight ? "" : unitAt(p.units, orderSec));
-      const air = unit !== "" && isAirUnit(unit);
+      /* 무명 부대는 늘 지상 길찾기다(지적: 지상 유닛이 벽을 뚫고 다닌다) — 우세 유닛이
+         공중(뮤탈 등)이면 부대 전체가 직선으로 날았는데, 그 부대엔 지상 유닛이 섞여
+         있기 마련이라 벽 뚫기가 더 큰 거짓말이다. 정체를 아는 공중(typeSquads)만 곧게
+         난다. */
+      const air = !forceGround && unit !== "" && isAirUnit(unit);
       let path: [number, number][] | null = null;
       if (!straight && !air && terrain) {
         path = groundPath(
@@ -1059,7 +1070,9 @@ export default function ReplayMotionPlayer({
     return b ? [b.x, b.y] : null;
   };
   const squadPts = useMemo(
-    () => basePts.map((pts, pi) => splitSquads(pts, homeOf(motion.players[pi].raw))),
+    () => basePts.map((pts, pi) => splitSquads(
+      pts, homeOf(motion.players[pi].raw), SQUAD_MERGE_TILES, motion.players[pi].drops,
+    )),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [basePts, motion, bases],
   );
@@ -1071,13 +1084,14 @@ export default function ReplayMotionPlayer({
      마커로 뭉쳤다. 6타일이면 화면에서 실제로 붙어 보이는 것만 하나가 된다. */
   const typeSquads = useMemo(
     () => motion.players.map((p) => Object.entries(p.upts ?? {})
-      .flatMap(([unit, pts]) => splitSquads(pts, homeOf(p.raw), TYPE_MERGE_TILES)
+      .flatMap(([unit, pts]) => splitSquads(pts, homeOf(p.raw), TYPE_MERGE_TILES, p.drops)
         .map((sq) => ({ unit, raw: sq, walk: walkTrack(sq, p, false, unit) })))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [motion, terrain, grid.width, grid.height, bases],
   );
   const refinedSquads = useMemo(
-    () => motion.players.map((p, pi) => squadPts[pi].map((sq) => walkTrack(sq, p, false))),
+    () => motion.players.map((p, pi) => squadPts[pi].map((sq) =>
+      walkTrack(sq, p, false, undefined, undefined, true))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [squadPts, terrain, grid.width, grid.height, motion],
   );
@@ -1501,6 +1515,19 @@ export default function ReplayMotionPlayer({
     br === p.raw && bs <= t && bs >= lastOrderSec - 4 && bs - lastOrderSec <= 60
     && Math.hypot(bx2 + footDx(bu) - pos.x, by2 + footDy(bu) - pos.y) <= 3);
 
+  /* 본진이 무너졌나(지적: 본진 기지 건물은 절대 안 망했다 — 시작 홀을 builds에 합성하며
+     판정이 생겼다) — 집 자리(3타일)의 내 홀 계보에서 마지막 채가 무너졌고 재건이 없으면
+     함락이다. 아바타 로스터의 유령화와 채굴 일꾼 걷기가 같이 쓴다. */
+  const fallenHome = (m: MinimapMarker): boolean => {
+    const chain = motion.builds
+      .filter(([bs, x2, y2, bu, br]) => br === m.key && bs <= t
+        && ["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(bu)
+        && Math.hypot(x2 + footDx(bu) - m.x, y2 + footDy(bu) - m.y) <= 3)
+      .sort((a, b) => a[0] - b[0]);
+    const last = chain[chain.length - 1];
+    return !!last && (last[5] ?? 0) > 0 && t >= (last[5] ?? 0);
+  };
+
   /* 무너진 기지의 유닛도 대개 같이 죽는다(지적: 확률은 높은데 완벽하진 않음 — 그래서
      침묵 조건을 같이 건다) — 내 건물이 무너진 자리 곁(8타일)에 서 있었고, 무너진 뒤로
      새 명령 없이 한참(DEAD_QUIET_SEC) 지난 마커는 그 함락에서 정리된 것으로 본다. */
@@ -1533,6 +1560,46 @@ export default function ReplayMotionPlayer({
      인라인은 맵 아래 전부(도구줄·조종부)와 위쪽 화면 몫까지 빼서 조종부까지 한 화면에
      들어온다(지적). 큰 화면 모달은 맵+조종부만이라 몫이 작다(190px).
      폰 세로 화면에선 이 상한이 컨테이너 폭보다 커서 아무 영향 없다. */
+  /* 아바타 로스터 기둥(요청: 아바타를 맵 밖으로 — 1팀 왼쪽·2팀 오른쪽 세로 한 줄,
+     로스터식 아바타+닉네임에 그 사람 색까지) — 맵 위의 본진 자리는 합성된 시작 홀이
+     다른 홀과 같은 평범한 기지 도형으로 말한다. */
+  const teamCol = (team: 1 | 2) => (
+    <div className="scr-motion-teamcol">
+      {bases.filter((m) => (m.team === 2 ? 2 : 1) === team).map((m) => {
+        const track = motion.players.find((p) => p.raw === m.key);
+        let workerN = 0;
+        for (const [sec, n] of track?.workers ?? []) {
+          if (sec > t) break;
+          workerN = n;
+        }
+        const fallen = m.ghost || fallenHome(m);
+        const color = modeColor(m.key, m.team);
+        return (
+          <div
+            key={m.key}
+            className={cx("scr-motion-teamcol-item", fallen && "scr-motion-base-ghost")}
+          >
+            <span className="scr-motion-base-ring" style={{ boxShadow: `0 0 0 2px ${color}` }}>
+              <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={22} />
+            </span>
+            <span className="scr-motion-teamcol-text">
+              <span className="scr-motion-teamcol-name" style={{ color }}>{m.name}</span>
+              <span
+                className="scr-motion-workers"
+                style={workerN > 0 ? undefined : { visibility: "hidden" }}
+              >
+                일꾼 {workerN || 0}
+              </span>
+            </span>
+            {winnerTeam && (m.team === 2 ? 2 : 1) === winnerTeam && t >= total - 0.5 && !fallen && (
+              <span className="scr-motion-trophy">🏆</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
   const body = (
     <div
       className={cx("scr-motion", big && "scr-motion-big")}
@@ -1540,6 +1607,8 @@ export default function ReplayMotionPlayer({
       // 기준으로 확정돼 있고, 여기까지 조이면 이중 제약으로 맵이 더 작아진다.
       style={big ? undefined : { maxWidth: `calc((100dvh - 230px) * ${(grid.width / grid.height).toFixed(4)})`, margin: "0 auto" }}
     >
+      <div className="scr-motion-maprow">
+      {teamCol(1)}
       <div
         className="scr-motion-map" ref={mapRef}
         style={{
@@ -1815,7 +1884,8 @@ export default function ReplayMotionPlayer({
           let owner: { x: number; y: number; raw: string } | null = null;
           let best = 18;
           for (const m of bases) {
-            if (m.ghost) continue;
+            // 함락된 본진(fallenHome)은 채굴 목적지가 아니다(지적: 본진이 안 망하던 문제).
+            if (m.ghost || fallenHome(m)) continue;
             const d = Math.hypot(res[0] - m.x, res[1] - m.y);
             if (d < best) { best = d; owner = { x: m.x, y: m.y, raw: m.key }; }
           }
@@ -1872,9 +1942,9 @@ export default function ReplayMotionPlayer({
           });
         })}
 
-        {/* 본진 — 스냅 미니맵과 같은 표시(아바타+이름), 늘 떠 있다. 그 아래에 자원 캐는
-            일꾼(요청) — 여태 뽑은 일꾼 수가 곡괭이질하듯 잘게 흔들린다. */}
-        {bases.map((m) => {
+        {/* (이동·요청: 아바타를 맵 밖으로) — 본진 아바타+이름은 맵 양옆 로스터 기둥
+            (teamCol)으로 나갔다. 맵의 본진 자리는 합성된 시작 홀 도형이 말한다. */}
+        {false && bases.map((m) => {
           const track = motion.players.find((p) => p.raw === m.key);
           let workerN = 0;
           for (const [sec, n] of track?.workers ?? []) {
@@ -2392,6 +2462,8 @@ export default function ReplayMotionPlayer({
         {/* (삭제) PC 확대 조절바 — PC에서는 확대 기능을 통째로 걷었다(요청). 확대·이동은
             이제 모바일 손짓(더블탭·두 손가락)만의 것이다. */}
       </div>
+      {teamCol(2)}
+      </div>
 
       {/* 지도 아래 도구줄(요청: 범례·지형 수정·확대 토글을 전부 같은 한 줄에) — 가운데
           칸에 범례와 지형 버튼, 오른쪽 칸에 확대 토글. 범례의 본진(★)은 지웠다(요청) —
@@ -2535,7 +2607,8 @@ export default function ReplayMotionPlayer({
             댓글 영역(side)이 있으면 그 몫 310px을 더한다. */}
         <div
           className="scr-modal scr-motion-big-modal"
-          style={{ width: `min(94vw, calc((100dvh - 84px) * ${(grid.width / grid.height).toFixed(4)} + ${side ? 480 : 170}px))` }}
+          // 로스터 기둥(양옆 88px×2 + 간격)이 맵 칸 안에 있어 그 몫 190px도 더한다.
+          style={{ width: `min(94vw, calc((100dvh - 84px) * ${(grid.width / grid.height).toFixed(4)} + ${side ? 670 : 360}px))` }}
         >{body}</div>
       </div>,
       document.body,

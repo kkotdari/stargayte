@@ -506,6 +506,21 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
     const ownOrders = (sg.orderPositions ?? [])
       .map((o) => ({ sec: o.frame * SECONDS_PER_FRAME, x: o.x, y: o.y }));
     const myBuildIdx: number[] = [];
+    /* 시작 본진을 심는다(지적: 본진 기지 건물은 절대 안 망함 + 요청: 기존 기지는 평범한
+       기지 아이콘으로) — 시작 홀은 건설 커맨드가 없어 builds에 없었고, 그래서 무너짐
+       판정의 대상조차 아니었다. 시작 지점에 종족 홀을 0초로 세우면 무너짐 어림·파괴
+       전파·변태(시작 해처리 → 레어)가 전부 걸리고, 맵에는 다른 홀과 같은 도형이 선다.
+       좌표는 중심(startX·Y)에서 발자국 절반(4×3)을 물려 왼쪽 위 타일로 맞춘다(builds
+       규약). */
+    if (p.startX !== null && p.startY !== null && p.race) {
+      const hallUnit = p.race === "저그" ? "Hatchery"
+        : p.race === "테란" ? "Command Center" : "Nexus";
+      myBuildIdx.push(builds.length);
+      builds.push([
+        0, Math.round(p.startX - 2), Math.round(p.startY - 1.5), hallUnit, p.rawName,
+        razedAt(0, p.startX, p.startY, foeAttacks, ownOrders),
+      ]);
+    }
     for (const b of sg.buildPositions ?? []) {
       if (b.frame === null) continue; // 시각을 모르는 건설은 시간축에 못 세운다.
       const clickSec = b.frame * SECONDS_PER_FRAME;
@@ -749,6 +764,30 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       if (b[0] > a[5] || (b[5] > 0 && b[5] <= a[5])) continue;
       if (Math.hypot(a[1] - b[1], a[2] - b[2]) > PROP_RADIUS_TILES) continue;
       b[5] = b[5] > 0 ? Math.min(b[5], a[5]) : a[5];
+    }
+  }
+  /* 홀의 함락(요청: 주변 생산 건물이 깨지면 기지도 파괴로 — 보통 기지를 먼저 깨지만 아닌
+     경우도 있어 조심히, 시작 본진뿐 아니라 후에 지은 확장도 포함) — 곁(10타일)의 같은
+     임자 생산 건물이 무너졌고, 그 무렵 홀 자신에게도 상대 공격이 두 발 이상 닿았을 때만
+     같이 무너진 것으로 본다. 공격 근거 없이 전파하면 수비에 성공한 기지까지 걷는다. */
+  const hallSet = new Set(["Command Center", "Nexus", "Hatchery", "Lair", "Hive"]);
+  for (const a of builds) {
+    if (a[5] <= 0 || !prodLike.has(a[3]) || hallSet.has(a[3])) continue;
+    for (const b of builds) {
+      if (b === a || b[5] > 0 || b[4] !== a[4] || !hallSet.has(b[3])) continue;
+      if (b[0] > a[5] || Math.hypot(a[1] - b[1], a[2] - b[2]) > PROP_RADIUS_TILES) continue;
+      const foes = [...attacksByTeam.entries()]
+        .filter(([team]) => team !== teamOfRaw.get(b[4]))
+        .flatMap(([, list]) => list);
+      let hitNear = 0;
+      let lastHit = 0;
+      for (const o of foes) {
+        if (Math.abs(o.sec - a[5]) <= 60 && Math.hypot(o.x - b[1], o.y - b[2]) <= RAZE_RADIUS) {
+          hitNear += 1;
+          if (o.sec > lastHit) lastHit = o.sec;
+        }
+      }
+      if (hitNear >= 2) b[5] = Math.round(Math.max(lastHit, a[5]));
     }
   }
   builds.sort((a, b) => a[0] - b[0]);
