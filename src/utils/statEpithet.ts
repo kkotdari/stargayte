@@ -1287,7 +1287,6 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     const score = (t.weight ?? 0) * boost;
     const count = t.scale === "count";
     const share = t.minPlaysShare ?? 0;   // 칭호마다 제 값이다(COUNT_SHARE 삭제 주석)
-    const where = t.race ? `${t.race} 판` : "제 판";
     // 마법 칭호의 근거는 문장으로 적혀 있다("게임에서 핵 사용") — 설명에서는 앞머리를 걷는다.
     const what = (t.why ?? "기록").replace(/^게임에서 /, "");
     /* 조건을 전부 적는다(요청: 몇 % 이상인지 다 명시) — 비율·최소 횟수·판수 문턱이 다
@@ -1296,9 +1295,11 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     if (count) {
       /* perUse(마법 사용 수)는 판수를 넘을 수 있는 값이라 "판의 N%"가 아니라 "판수 대비
          N%"로 적는다(지적: 설명 현행화) — 같은 식이지만 읽는 말이 달라야 헷갈리지 않는다. */
-      /* 표본(판수 바닥)은 문장에 안 섞고 제 열(minPlays)로 뺀다(요청: 칭호/조건/최소판). */
-      if (share > 0 && t.perUse) bits.push(`${what} ${where}수 대비 ${pct(share)} 이상`);
-      else if (share > 0) bits.push(`${what} ${where}의 ${pct(share)} 이상`);
+      /* 표본(판수 바닥)은 문장에 안 섞고 제 열(minPlays)로 뺀다(요청: 칭호/조건/최소판).
+         "제 판" 같은 말은 안 쓴다(요청) — "20% 이상 게임에서 커널" 꼴로, 비율이 먼저 온다.
+         어느 종족의 게임인지는 최소판 열이 말한다. */
+      if (share > 0 && t.perUse) bits.push(`${what} 게임 수 대비 ${pct(share)} 이상`);
+      else if (share > 0) bits.push(`${pct(share)} 이상 게임에서 ${what}`);
       else bits.push(`${what}`);
       if ((t.min ?? 1) > 1) bits.push(`최소 ${t.min}${t.unit ?? "번"}`);
       // (삭제·지적) "최소 2~6번(클럽 판수 비례)" — 카운트 하한이 걷히며 함께 사라졌다.
@@ -1312,12 +1313,13 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     /* 등급은 구조로 가른다 — 전설은 승률 계열(sticky), 에픽은 3점 이상, 나머지가 일반.
        이름 짓는 규칙(표 머리)과 같은 선이다. */
     const rank: EpithetRank = t.sticky === true ? "전설" : "에픽";
-    // 전투 조건(요청)은 문장으로 덧붙인다 — 플래그를 또 만들면 모달도 고쳐야 한다.
-    const how = bits.join(" · ") + (t.battle ? " · 그 판의 전투(교전)도 이겼어야" : "");
+    /* 전투 칭호의 두 꼬리("그 판의 전투도 이겼어야"·"이긴 판만")는 한마디로 합친다(요청:
+       전투/게임 모두 승리) — 그래서 battle 줄은 wonOnly 표시를 끈다(겹말). */
+    const how = bits.join(" · ") + (t.battle ? " · 전투/게임 모두 승리" : "");
     const minPlays = count && share > 0
-      ? `${where.replace("제 판", "판")} ${ratioFloor()}판부터`
+      ? `${t.race ? `${t.race} 게임` : "게임"} ${ratioFloor()}판부터`
       : "";
-    return { label: t.label, how, rank, wonOnly: t.won === true, score, minPlays };
+    return { label: t.label, how, rank, wonOnly: t.won === true && t.battle !== true, score, minPlays };
   });
   /* 이름이 사람마다 달라지는 두 줄({n})은 손으로 적는다 — 맵·종족 이름이 들어가야 말이
      되는데, 표에는 그 자리가 비어 있다. */
@@ -1329,8 +1331,10 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     }
     // (삭제·요청) 지상전·공중전·마법 퀸의 안내 특례.
     if (r.label !== "{n}") return r;
-    /* 함대의 여신 — 이름이 아비터 사용으로 갈리는 {n} 칭호라 손으로 적는다. */
-    if (r.how.startsWith("캐리어")) {
+    /* 날파리 퀸 — 이름이 아비터 사용으로 갈리는 {n} 칭호라 손으로 적는다. 문구가 "N% 이상
+       게임에서 캐리어" 꼴이 되면서 앞머리가 아니라 포함으로 찾는다(startsWith였을 때 못
+       찾아 종족 칭호 줄로 떨어졌다 — 절대군주 줄이 에픽에 하나 더 생겼다). */
+    if (r.how.includes("캐리어")) {
       return { ...r, label: "날파리 퀸 (아비터까지 썼으면 보이지 않는 날파리 퀸)" };
     }
     if (r.how.startsWith("그 맵 승수")) {
@@ -1344,7 +1348,7 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     return {
       ...r,
       label: "저그의 절대군주 · 프로토스의 전설 · 테란의 영웅",
-      how: `제 판의 ${pct(RACE_MIN_SHARE)} 이상 · 승률 ${RACE_MIN_RATE}% 이상`,
+      how: `그 종족이 게임의 ${pct(RACE_MIN_SHARE)} 이상 · 승률 ${RACE_MIN_RATE}% 이상`,
       minPlays: `그 종족 ${raceFloor()}판부터`,
     };
   }).map((r) => ({ ...r, ...guidePlaceOf(r.label) }))
