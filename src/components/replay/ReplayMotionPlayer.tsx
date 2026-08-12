@@ -340,6 +340,7 @@ export default function ReplayMotionPlayer({
           {done ? "↻" : playing ? "❚❚" : "▶"}
         </button>
         <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
+      </div>
     </div>
   );
 }
