@@ -1447,14 +1447,12 @@ export function epithetsOf(
       // 비율은 칭호마다 제 값이다(위 COUNT_SHARE 삭제 주석) — 안 적혔으면 비율 조건이 없다.
       const share = title.minPlaysShare ?? 0;
       if (share > 0) {
-        // 분모는 전체 판수이되, vsWins가 선 칭호만 승리 판수다(Title.vsWins 주석).
-        /* 얇은 분모는 기준 판수(normDenom)로 쳐서 잰다(요청: 공평 장치 — 표본 바닥은
-           제거). 다섯 판에 한 번(20%)이던 신입의 우연이 기준 스물한 판의 한 번(5%)으로
-           쳐져, 낮은 문턱을 비율 뻥튀기로 넘을 수 없다. */
-        const denomPlays = Math.max(
-          title.vsWins ? winsOf(title, p) : denomOf(title, p),
-          normDenom(),
-        );
+        /* 분모는 기준 판수 하나다(요청: max에서 그 사람의 활동량은 뺀다) — 개인 판수를
+           분모에 두면 조회 창이 석 달로 줄어든 지금, 많이 뛰는 사람일수록 분모만 커져
+           같은 횟수로도 문턱을 못 넘었다(지적: 판수 하한에 다 걸린다). 모두가 같은 기준
+           판수로 재지면 비율 조건은 사실상 "기준 판수의 N% 횟수"라는 절대 횟수가 된다 —
+           신입의 비율 뻥튀기도 그대로 막힌다. */
+        const denomPlays = normDenom();
         if (v < Math.ceil(denomPlays * share)) continue;
       }
       // 절대 문턱 — 이 값을 넘으면 받는다. 남이 얼마나 했는지는 안 본다(요청: 절대평가).
@@ -1527,8 +1525,10 @@ export function epithetsOf(
          적는 칭호가 있었다. 그 승리게임 수를 못 읽은 버킷에서는 분모가 0이라 %가 통째로
          빠졌다("러커 1판"). vsWins(문턱의 분모)와 같은 자를 쓰면 문턱을 넘은 줄의 분모는
          표본 바닥 위라 0일 수가 없다. */
-      const pool = c.title.vsWins ? c.wonDenom : c.denom;
-      const poolName = `${c.title.race ? `${c.title.race} ` : ""}${c.title.vsWins ? "승리게임" : "게임"}`;
+      /* 분모가 기준 판수 하나가 되면서(위 normDenom 주석) 근거도 그 자로 적는다 —
+         "프로토스 승리게임 N판"이라 적으면 실제 그 사람 판수로 읽혀 수가 안 맞아 보인다. */
+      const pool = normDenom();
+      const poolName = "기준";
       const n = Math.round(c.raw);
       if (c.title.perUse) {
         /* 조건이 비율(판수 대비 %)이라 근거에도 그 비율을 적는다(지적: 퍼센트 기준인데
