@@ -779,6 +779,26 @@ export default function ReplayMotionPlayer({
     return m;
   }, [motion]);
 
+  /* 유닛별 완성 시각(요청: 제일 많이 뽑은 것 하나가 아니라 모든 유닛을 따로) — 위 합계와
+     같은 큐 시뮬레이션을 유닛별로 가른 것. 어느 유닛이 죽었는지는 모르니, 전투 감모는
+     합계의 감모 비율(살아남은 몫)을 유닛마다 같은 비율로 나눠 얹는다 — 전투에서 질럿만
+     죽고 리버는 멀쩡했는지까지는 리플레이가 말해 주지 않는다. */
+  const unitDoneByRaw = useMemo(() => {
+    const m = new Map<string, [string, number[]][]>();
+    for (const p of motion.players) {
+      const byUnit: [string, number[]][] = [];
+      for (const [unit, secs] of Object.entries(p.prod ?? {})) {
+        if (SCOUT_KO[unit] || !UNIT_KO[unit]) continue;
+        const dur = UNIT_SEC[unit] ?? 20;
+        // 합계 쪽은 생산 큐를 시뮬레이션하지만, 유닛별 몫은 순서 비교라 완성 어림(명령+
+        // 건조 시간)으로 충분하다 — 큐 밀림은 모든 유닛에 비슷하게 얹힌다.
+        byUnit.push([unit, secs.map((sec) => sec + dur).sort((a, b) => a - b)]);
+      }
+      m.set(p.raw, byUnit);
+    }
+    return m;
+  }, [motion]);
+
   /* 규모 곡선(요청: 유닛 수는 전투하거나 공격당해야만 감소) — 예전에는 '최근 3분의 완성
      수'라 소강기에도 저절로 줄었다. 이제 완성 누계를 들고 가되, 전투 구간(hot)에서만
      지수로 깎는다(반감기 60초). 리플레이에 죽음이 안 남는 이상 "전투 밖에서는 안 줄어든다"
@@ -1136,6 +1156,27 @@ export default function ReplayMotionPlayer({
             const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC;
             const showName = si === primary && activeNow && !!unit && (size >= 1 || !!SCOUT_KO[unit]);
             const fontPx = Math.min(16, 8 + Math.round(Math.sqrt(size) * 1.6));
+            /* 유닛별 구성(요청: 제일 많이 뽑은 것 하나가 아니라 모든 유닛을 따로) —
+               유닛마다 완성 누계를 세고, 전투 감모는 합계의 살아남은 비율을 같은 몫으로
+               나눠 얹는다. 한 기도 안 남은 유닛은 안 적는다. */
+            let cumAll = 0;
+            for (const d of completionsByRaw.get(p.raw) ?? []) {
+              if (d > t) break;
+              cumAll += 1;
+            }
+            const aliveShare = cumAll > 0 ? size / cumAll : 1;
+            const parts: [string, number][] = [];
+            for (const [u, doneSecs] of unitDoneByRaw.get(p.raw) ?? []) {
+              let n = 0;
+              for (const d of doneSecs) {
+                if (d > t) break;
+                n += 1;
+              }
+              const alive = Math.round(n * aliveShare);
+              if (alive >= 1) parts.push([u, alive]);
+            }
+            parts.sort((a, b) => b[1] - a[1]);
+            const composition = parts.map(([u, n]) => `${UNIT_KO[u]} ${n}`).join(" · ");
             /* 도형일 땐 뭉치지 않는다(지적: 이름일 때만 뭉침) — 규모만큼 낱개 점을 촘촘히
                흩어 놓는다(해바라기 나선 — 결정적이라 프레임마다 안 튄다). 곁 부대는 규모를
                모르니 점 하나다. */
@@ -1180,9 +1221,9 @@ export default function ReplayMotionPlayer({
                   ...chipStyle(p.raw, team),
                 }}
               >
-                {/* 수도 함께 적는다(요청) — "질럿 12" 꼴. 정찰 유닛(일꾼·오버로드)은 수
-                    없이 이름만 — 세는 값(size)이 전투 유닛이라 정찰에는 뜻이 없다. */}
-                {UNIT_KO[unit] ? `${UNIT_KO[unit]} ${size}`.trim() : SCOUT_KO[unit] ?? "●"}
+                {/* 유닛 전부를 수와 함께 적는다(요청) — "질럿 8 · 드라군 4" 꼴. 구성이
+                    비었으면(병력 어림 0) 우세 유닛 이름이나 점으로 물러난다. */}
+                {composition || (UNIT_KO[unit] ? `${UNIT_KO[unit]} ${size}`.trim() : SCOUT_KO[unit] ?? "●")}
               </span>
             );
           });
@@ -1209,6 +1250,14 @@ export default function ReplayMotionPlayer({
               sinceCmd = t - sec;
             }
             if (sinceCmd > LERP_MAX_GAP_SEC && !pos.moving) return null;
+            /* 전투 판정(요청: 정찰 점에도) — 마지막 명령이 전투 창에 닿아 있고 그 전투가
+               끝나고도 새 명령이 없으면, 그 정찰도 거기서 정리된 것이다. */
+            if (Number.isFinite(sinceCmd)) {
+              const lastOrderSec = t - sinceCmd;
+              for (const [a, b] of p.hot ?? []) {
+                if (lastOrderSec >= a - 30 && lastOrderSec <= b && t > b + 8) return null;
+              }
+            }
             const label = g.kind === "worker" ? "일꾼"
               : race === "저그" ? "오버로드"
                 : g.kind === "carrier" ? "수송선" : "정찰";
