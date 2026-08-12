@@ -2450,9 +2450,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   grid-template-columns: var(--scr-stat-rlabel-w, 52px) minmax(56px, 1fr) minmax(56px, 1fr);
   /* 줄 사이를 벌린다(요청: 막대들 줄간격 증가) — 막대 밑에 변동 한 줄이 붙으면서 위아래
      막대가 서로 붙어 어느 변동이 어느 막대의 것인지가 흐려졌다. */
-  /* 위로 정렬(요청) — 칸이 위아래로 서면서 세로 가운데는 두 칸 사이만 벌린다. */
+  /* 위아래 두 칸이 높이를 반반 나눈다(요청) — 그 안에서 내용은 위로 정렬이다(요청).
+     내용 높이(flex:none)로 두면 전적 표가 길어 아래 칸이 바닥까지 밀린다. */
   align-content: start; gap: 8px 6px;
-  flex: none; width: 100%; min-width: 0; padding-right: 0;
+  flex: 1 1 0; width: 100%; min-width: 0; padding-right: 0;
 }
 .scr-stat-record-item {
   display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
@@ -2524,7 +2525,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-record-label {
   /* 왼쪽 정렬(요청) — 가운데면 "전체"(2자)와 "프로토스"(4자)의 시작선이 줄마다 다르다. */
   text-align: left;
-  font-size: var(--fs-9); color: var(--muted); white-space: nowrap;
+  /* 다른 칸의 이름표("일꾼(5분)" — .scr-stat-mix-list-cap)와 같은 옷이다(요청: 스타일
+     통일) — 크기·색만 같고 무게·자간이 달라 이 칸만 흐릿하게 떠 보였다. */
+  font-size: var(--fs-9); font-weight: 700; color: var(--muted); letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 .scr-stat-record-item .scr-value-bar,
 .scr-stat-record-item .scr-stat-bar-row { flex: 1 1 auto; min-width: 0; }
