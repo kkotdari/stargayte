@@ -16,8 +16,9 @@ import type { MinimapMarker } from "./ReplayMinimap";
    원장으로만 남는다. 유닛 위치는 명령 기반 추정이다: 리플레이에는 위치·죽음이 안 남아서,
    이 자취는 "그 사람 부대가 어디서 무엇을 하고 있었나"의 어림이다. */
 
-/** 배속 갈래 — 실시간(×1)은 30분짜리 판을 30분 보는 것이라 뜻이 없다. */
-const SPEEDS = [8, 16, 32] as const;
+/** 배속 갈래(요청: 속도 조절) — 느리게 뜯어보는 ×4부터 훑어 넘기는 ×64까지. 실시간(×1)은
+ *  30분짜리 판을 30분 보는 것이라 안 둔다. */
+const SPEEDS = [4, 8, 16, 32, 64] as const;
 /** 건물 텍스트가 이름을 달고 있는 시간(초, 게임 시간) — 지나면 점만 남는다. */
 const BUILD_LABEL_SEC = 45;
 /** 마법 텍스트가 떠 있는 시간(초, 게임 시간). */
@@ -146,7 +147,8 @@ export default function ReplayMotionPlayer({
               )}
               style={{ left: pct(x, grid.width), top: pct(y, grid.height) }}
             >
-              {freshBuild ? (UNIT_KO[unit] ?? unit) : "▪"}
+              {/* 한글명만 적는다(요청) — 이름을 모르는 건물은 점으로만. */}
+              {freshBuild ? (UNIT_KO[unit] ?? "▪") : "▪"}
             </span>
           );
         })}
@@ -183,20 +185,23 @@ export default function ReplayMotionPlayer({
               )}
               style={{ left: pct(pos.x, grid.width), top: pct(pos.y, grid.height) }}
             >
-              {unit ? (UNIT_KO[unit] ?? unit) : "·"}
+              {unit ? (UNIT_KO[unit] ?? "·") : "·"}
             </span>
           );
         })}
 
         {/* 마법 — 떨어진 자리에 이름이 잠깐 떠오른다. */}
         {castsNow.map(([, x, y, tech, raw], i) => (
-          <span
-            key={`c-${i}`}
-            className={cx("scr-motion-cast", teamOfRaw(raw) === 2 ? "scr-motion-team2" : "scr-motion-team1")}
-            style={{ left: pct(x, grid.width), top: pct(y, grid.height) }}
-          >
-            {TECH_KO[tech] ?? tech}
-          </span>
+          // 한글명을 모르는 기술은 아예 안 띄운다(요청: 텍스트는 전부 한글로).
+          TECH_KO[tech] ? (
+            <span
+              key={`c-${i}`}
+              className={cx("scr-motion-cast", teamOfRaw(raw) === 2 ? "scr-motion-team2" : "scr-motion-team1")}
+              style={{ left: pct(x, grid.width), top: pct(y, grid.height) }}
+            >
+              {TECH_KO[tech]}
+            </span>
+          ) : null
         ))}
       </div>
 
@@ -232,13 +237,19 @@ export default function ReplayMotionPlayer({
         >
           {done ? "↻" : playing ? "❚❚" : "▶"}
         </button>
-        <button
-          type="button" className="scr-motion-btn scr-motion-speed"
-          onClick={() => setSpeed((v) => SPEEDS[(SPEEDS.indexOf(v) + 1) % SPEEDS.length])}
-          aria-label="배속"
-        >
-          ×{speed}
-        </button>
+        {/* 배속은 눌러 고른다(요청: 속도 조절 기능) — 순환 버튼은 원하는 속도까지 몇 번을
+            눌러야 하는지 세어야 했다. */}
+        <span className="scr-motion-speeds" role="group" aria-label="배속">
+          {SPEEDS.map((v) => (
+            <button
+              key={v} type="button"
+              className={cx("scr-motion-btn", "scr-motion-speed", speed === v && "scr-motion-speed-on")}
+              onClick={() => setSpeed(v)}
+            >
+              ×{v}
+            </button>
+          ))}
+        </span>
         <input
           className="scr-motion-range" type="range"
           min={0} max={total} step={1} value={Math.floor(t)}

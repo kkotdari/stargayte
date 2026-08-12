@@ -10884,6 +10884,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   border: 1px solid var(--line-hair); background: transparent; color: var(--muted);
   font-size: var(--fs-9); font-weight: 700; cursor: pointer;
 }
+.scr-motion-speeds { display: inline-flex; gap: 2px; }
+.scr-motion-speed-on { background: rgba(255, 255, 255, 0.1); color: var(--text); border-color: var(--line-soft); }
 .scr-motion-range { flex: 1 1 0; min-width: 0; accent-color: var(--muted); }
 .scr-motion-clock {
   font-size: var(--fs-9); color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap;
