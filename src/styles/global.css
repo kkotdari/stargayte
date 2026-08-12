@@ -10972,6 +10972,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 도형 전용 크기(지적: PC에서 너무 작다) — 인라인 크기 대신 클래스라야 미디어 확대가 먹는다. */
 .scr-motion-build-shape { font-size: 9px; }
 .scr-motion-dot { font-size: 10px; }
+/* 건물 네모 — 글꼴 ■는 작으면 동그랗게 뭉개져(지적) 상자로 직접 그린다. 색은 글자색을 탄다. */
+.scr-motion-sq {
+  display: inline-block; width: 0.85em; height: 0.85em;
+  background: currentColor; border-radius: 1px; vertical-align: -0.05em;
+}
 /* 종족 배지(요청) — 아바타 오른쪽 어깨에. */
 .scr-motion-base-race { position: absolute; top: -3px; right: -10px; }
 /* 범례(요청) — 도형이 뭔지 한 줄. 지도 아래 가운데, 작은 회색 글씨. */

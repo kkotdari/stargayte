@@ -623,7 +623,8 @@ export default function ReplayMotionPlayer({
                   ...(razed ? {} : text === name ? shapeStyle(raw, team) : glyphStyle(raw, team)),
                 }}
               >
-                {text}
+                {/* 글꼴 ■는 작게 뭉개져 동그라미처럼 보인다(지적) — 진짜 네모를 CSS로 그린다. */}
+                {text === "■" ? <i className="scr-motion-sq" /> : text}
               </span>
             );
           });
