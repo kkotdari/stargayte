@@ -23,9 +23,9 @@ import type { MinimapMarker } from "./ReplayMinimap";
 
 /** 배속 갈래(요청: 속도 조절, 기본 ×2) — 뜯어보는 ×2부터 훑어 넘기는 ×32까지. */
 const SPEEDS = [2, 4, 8, 16, 32] as const;
-/** 건물 텍스트가 이름을 달고 있는 시간(초, 게임 시간) — 지나면 점만 남는다(지적: 도형
- *  전환은 더 빠르게). */
-const BUILD_LABEL_SEC = 18;
+/** 건물 텍스트가 이름을 달고 있는 시간(초, 게임 시간) — 지나면 점만 남는다(지적: 지어 놓고
+ *  명령 없는 건물은 재빨리 도형으로). */
+const BUILD_LABEL_SEC = 8;
 /** 마법 텍스트가 떠 있는 시간(초, 게임 시간). */
 const CAST_HOLD_SEC = 6;
 /** 자취 점 사이가 이보다 벌어지면 잇지 않고 건너뛴다(초) — 한참 조용하다 다른 곳을 찍은
@@ -289,8 +289,8 @@ export default function ReplayMotionPlayer({
       + 0.587 * parseInt(hex.slice(3, 5), 16)
       + 0.114 * parseInt(hex.slice(5, 7), 16);
   };
-  /* 도형(●▪▲)·건물 글자의 색 — 글자 테두리는 안 두른다(지적: 음영만 있으면 된다).
-     어두운 계열(블루 포함, 지적)은 흰 반투명 배경판을 깐다 — 검은 음영 위에서도 보이게. */
+  /* 건물 이름 글자 — 테두리 없이 음영판만(지적). 어두운 계열(블루 포함, 지적)은 흰 반투명
+     배경판, 밝은 계열은 CSS의 검정 음영판. */
   const shapeStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => {
     const c = modeColor(raw, team);
     return {
@@ -301,6 +301,11 @@ export default function ReplayMotionPlayer({
       } : {}),
     };
   };
+  /* 도형(●▪▲✕·점)은 건물이든 유닛이든 음영이 아예 없다(지적) — 제 색 그대로. CSS의
+     음영판·그림자를 물려받지 않게 여기서 걷는다. */
+  const glyphStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => ({
+    color: modeColor(raw, team), background: "none", textShadow: "none", padding: 0,
+  });
   const chipStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => {
     const bg = modeColor(raw, team);
     const lum = lumOf(bg);
@@ -552,7 +557,6 @@ export default function ReplayMotionPlayer({
                 key={`b-${i}`}
                 className={cx(
                   "scr-motion-build",
-                  text === name && !razed && "scr-motion-chip",
                   activeBuild && "scr-motion-build-on",
                   (producing || researching) && "scr-motion-heartbeat",
                   razed && "scr-motion-build-razed",
@@ -562,9 +566,9 @@ export default function ReplayMotionPlayer({
                   // 긴 이름은 한 단계 작게(지적) — 여섯 자부터.
                   ...(text.length >= 6 && !activeBuild ? { fontSize: 6 } : {}),
                   ...(raising ? { opacity: 0.4 } : {}),
-                  // 이름일 땐 유닛 이름표와 같은 배지 꼴(지적: 건물 음영색은 유닛 쪽을 따라간다),
-                  // 도형(▪▲✕)일 땐 도형 규칙.
-                  ...(razed ? {} : text === name ? chipStyle(raw, team) : shapeStyle(raw, team)),
+                  // 건물은 글자색=제 색, 음영판이 바탕 — 유닛 배지와 반대(지적). 도형이 된
+                  // 뒤에는 음영 없이 맨 색이다(지적).
+                  ...(razed ? {} : text === name ? shapeStyle(raw, team) : glyphStyle(raw, team)),
                 }}
               >
                 {text}
@@ -596,7 +600,7 @@ export default function ReplayMotionPlayer({
                   className="scr-motion-fresh"
                   style={{
                     left: pct(bx + 1.2, grid.width), top: pct(by + 2, grid.height),
-                    ...shapeStyle(p.raw, team),
+                    ...glyphStyle(p.raw, team),
                   }}
                 >
                   ●
@@ -659,7 +663,7 @@ export default function ReplayMotionPlayer({
                 className="scr-motion-miner"
                 style={{
                   left: pct(x, grid.width), top: pct(y, grid.height),
-                  ...shapeStyle(owner!.raw, team),
+                  ...glyphStyle(owner!.raw, team),
                 }}
               >
                 ·
@@ -748,21 +752,47 @@ export default function ReplayMotionPlayer({
           const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC;
           const showName = activeNow && !!unit && (size >= 1 || !!SCOUT_KO[unit]);
           const fontPx = Math.min(16, 8 + Math.round(Math.sqrt(size) * 1.6));
+          /* 도형일 땐 뭉치지 않는다(지적: 이름일 때만 뭉침) — 규모만큼 낱개 점을 촘촘히
+             흩어 놓는다(해바라기 나선 — 결정적이라 프레임마다 안 튄다). */
+          if (!showName) {
+            const dots = Math.min(9, Math.max(1, Math.round(size / 3) || 1));
+            return Array.from({ length: dots }, (_, di) => {
+              const r = di === 0 ? 0 : 0.7 + 0.55 * Math.sqrt(di);
+              const dx = Math.cos(di * 2.4) * r;
+              const dy = Math.sin(di * 2.4) * r;
+              return (
+                <span
+                  key={`${p.raw}-d${di}`}
+                  className={cx(
+                    "scr-motion-army",
+                    team === 2 ? "scr-motion-team2" : "scr-motion-team1",
+                    pos.stale && "scr-motion-army-stale",
+                  )}
+                  style={{
+                    left: pct(pos.x + dx, grid.width), top: pct(pos.y + dy, grid.height),
+                    fontSize: 10,
+                    ...glyphStyle(p.raw, team),
+                  }}
+                >
+                  ●
+                </span>
+              );
+            });
+          }
           return (
             <span
               key={p.raw}
               className={cx(
                 "scr-motion-army",
-                showName && "scr-motion-chip",
-                showName && "scr-motion-heartbeat",
+                "scr-motion-chip",
+                "scr-motion-heartbeat",
                 team === 2 ? "scr-motion-team2" : "scr-motion-team1",
                 pos.stale && "scr-motion-army-stale",
               )}
               style={{
                 left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
-                // 점도 좀 크게(지적: 도형이 안 보임) — 규모에 따라 9~16px.
-                fontSize: showName ? fontPx : Math.min(16, 9 + Math.round(Math.sqrt(size))),
-                ...(showName ? chipStyle(p.raw, team) : shapeStyle(p.raw, team)),
+                fontSize: fontPx,
+                ...chipStyle(p.raw, team),
               }}
             >
               {/* 수도 함께 적는다(요청) — "질럿 12" 꼴. 정찰 유닛(일꾼·오버로드)은 수 없이
