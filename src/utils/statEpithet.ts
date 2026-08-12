@@ -326,6 +326,10 @@ interface Title {
    *  옆탱 3번"은 다른 말이고, 뒤엣것이 이 표가 실제로 세는 값이다.
    *  마법 칭호(spell)는 원장(buildMix)에서 세므로 승패를 안 가린다 — 그래서 안 붙인다. */
   won?: boolean;
+  /** 그 판에서 전투(교전)도 이겼어야 세는 칭호(요청: 그 유닛으로 전투/경기 모두 이긴 경우만)
+   *  — 가르는 것은 서버(_tactic_counts가 전투 원장 bt_*_won을 대조)다. 갈래(지상/공중)는 안
+   *  본다(지적: 캐리어도 상대 지상을 친다) — 그 판에서 교전을 하나라도 이겼으면 된다. */
+  battle?: boolean;
   /** 이 칭호가 타는 종족 — 판수 대비 문턱(minPlaysShare)의 분모가 전체 판수가 아니라 이
    *  종족의 판수가 된다(요청). 그 종족 기록이 안 넘어오면 전체 판수로 잰다(옛 방식). */
   race?: string;
@@ -481,8 +485,13 @@ const TACTIC_WEIGHT: Record<string, number> = {
   nydus: 2, recall: 2, swarm: 2,
   Maelstrom: 2, "Disruption Web": 2, "Stasis Field": 2, "Yamato Gun": 2,
   "no-elim": 2, "gang-rush": 2,
+  // ── 전투 조합(2급 에픽·요청: 종족별 전투 칭호 비율 맞춤) — 유닛(1.5)에서 올렸다.
+  //    베슬 과학전·발키리+배틀·질럿+템플러·셔틀+리버·히드라+럴커·스웜 목동(moka 위)·
+  //    가디언+디바우러·캐리어·뮤탈이 한 벌이다.
+  carrier: 4, lurker: 4, bc: 4, muta: 4, guardian: 4, valkyrie: 4,
+  vessel: 4, "zealot-templar": 4, "shuttle-reaver": 4, "templar-drop": 4,
   // ── 유닛(일반)
-  carrier: 1.5, lurker: 1.5, bc: 1.5, muta: 1.5, guardian: 1.5, valkyrie: 1.5, ultra: 1.5,
+  ultra: 1.5,
   // 표에 없는 열쇠는 1이다.
 };
 
@@ -496,7 +505,7 @@ const TACTIC_RACE: Record<string, string> = {
   moka: "저그", "Spawn Broodlings": "저그", swarm: "저그", infested: "저그", nydus: "저그", "sunken-rush": "저그",
   muta: "저그", guardian: "저그", lurker: "저그", devourer: "저그", "zling-rush": "저그", ultra: "저그",
   // 테란
-  "Nuclear Strike": "테란", "Yamato Gun": "테란", "Optical Flare": "테란", bionic: "테란", mech: "테란", bc: "테란", valkyrie: "테란",
+  "Nuclear Strike": "테란", "Yamato Gun": "테란", "Optical Flare": "테란", bionic: "테란", mech: "테란", bc: "테란", valkyrie: "테란", vessel: "테란",
   "valk-hunt": "테란", "sneak-rax": "테란", "cloak-wraith": "테란",
   "center-tank": "테란", "side-tank": "테란", dropship: "테란", "lift-off": "테란",
   // 프로토스
@@ -504,6 +513,7 @@ const TACTIC_RACE: Record<string, string> = {
   "Psionic Storm": "프로토스",
   Hallucination: "프로토스",
   carrier: "프로토스", recall: "프로토스", "mind-control": "프로토스",
+  "zealot-templar": "프로토스", "shuttle-reaver": "프로토스", "templar-drop": "프로토스",
   "cannon-rush": "프로토스", "center-photon": "프로토스", "ally-cannon": "프로토스",
   "zealot-rush": "프로토스",
 };
@@ -522,7 +532,9 @@ const TACTIC_NOUN: Record<string, string> = {
   "duel-rush": "맞러시", /* 근거 문장에서는 '공격 참여'로 부른다(요청) — 협공은 당한 쪽이 부르는 말에 가깝고,
      이 칭호가 말하려는 것은 "이긴 싸움에 늘 함께 있었다"는 쪽이다. */
   "gang-rush": "공격 참여", swarm: "다크스웜", infested: "감염된 테란",
-  guardian: "가디언", bc: "배틀크루저", valkyrie: "발키리", moka: "목동 저그",
+  guardian: "가디언", bc: "배틀크루저", valkyrie: "발키리", moka: "다크스웜 군단",
+  devourer: "디바우러", vessel: "과학전(베슬)", "zealot-templar": "질럿+템플러",
+  "shuttle-reaver": "셔틀 리버", "templar-drop": "템플러 드랍",
   "side-tank": "옆탱", "center-photon": "센터 포토", "cannon-rush": "포토러시",
   "sunken-rush": "성큰러시", "front-defense": "입구 방어", mech: "메카닉 진출",
   bionic: "바이오닉", "fast-tech": "빠른 테크", "hold-off": "공세 막아냄", counter: "역공",
@@ -708,7 +720,7 @@ const TITLES: Title[] = [
     /* 종족을 걷는다(시뮬레이션 실측: 프로토스가 셔틀 드랍만 해도 '테란 판' 분모로 재서
        퍼센트가 안 붙고 문턱도 헐거워졌다) — 다섯 열쇠가 세 종족에 걸쳐 있어 분모는 전체
        판이라야 한다. */
-    ...tactic("폭탄드랍의 여신", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"], 1),
+    ...tactic("폭탄드랍의 여왕", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"], 1),
     race: undefined,
     // 분모가 전체 판이라 기본 비율(6%)이 되레 무겁다(요청: 낮추기) — 스물다섯 판에 한 번꼴.
     minPlaysShare: 0.03,
@@ -721,16 +733,29 @@ const TITLES: Title[] = [
   /* 운영 틀(바이오닉·메카닉·목동)은 절반이 문턱이다(지적: 바이오닉이 쉽게 나온다) — 그
      종족이면 으레 잡는 틀이라, "그 틀로 이긴 판이 종족 판의 절반"쯤 돼야 그 사람의 색이다.
      목동은 저그 후반에만 나오는 틀이라 40%로 한 뼘 낮다. */
-  { ...tactic("바이오닉의 여왕", ["bionic"]), minPlaysShare: 0.25 },
+  /* 에픽 전투 칭호 한 벌(요청: 종족별 비율 맞춤)에는 battle이 선다 — 그 판에서 경기만이
+     아니라 전투(교전)도 이겼어야 센다(요청: 그 유닛을 사용해 전투/경기 모두 이긴 경우만).
+     대조는 서버가 전투 원장(bt_*_won)으로 한다. */
+  { ...tactic("바이오닉의 여왕", ["bionic"]), minPlaysShare: 0.25, battle: true },
   /* 탱크 조이기·옆탱을 함께 센다(요청: 탱크는 메카닉에 통합) — 셋 다 테란이 탱크로 굴린
      판이고, 자막이 어느 이름으로 짚었나는 그 판의 장면 차이일 뿐이다. 근거 문장도 세
      열쇠를 아우르는 말로 덮는다(tactic이 지어 주는 이름은 첫 열쇠 것뿐이다). */
-  { ...tactic("메카닉 사령관", ["mech", "center-tank", "side-tank"]),
-    why: "메카닉·탱크 조이기", minPlaysShare: 0.15 },
-  /* 목동저그 — 이제 자막이 짚은 판만 센다(요청: 목동저그도 이긴 판만). 한때 유닛 기록으로도
-     잡았는데(울트라 2기 + 디파일러 + 저글링 20기), 그 원장은 승패를 안 가려서 진 판의
-     목동까지 함께 세었다. 자막 쪽은 서버가 이긴 판만 세므로(_tactic_counts) 잣대가 하나가 된다. */
-  { ...tactic("목동저그", ["moka"]), minPlaysShare: 0.01, vsWins: true },
+  // 이름은 여신·여왕 계열로 통일(요청) — 메카닉 사령관에서 바꿨다.
+  { ...tactic("메카닉의 여왕", ["mech", "center-tank", "side-tank"]),
+    why: "메카닉·탱크 조이기", minPlaysShare: 0.15, battle: true },
+  /* 과학의 여왕(요청: 신규 과학전 — 여신은 전설급에만) — 베슬을 둘 이상 띄우고 이레디·EMP·매트릭스를 실제로
+     뿌린 판이다. 판정은 replayTactics의 vessel. */
+  { ...tactic("과학의 여왕", ["vessel"]), minPlaysShare: 0.05, vsWins: true, battle: true },
+  /* 발키리와 배틀은 따로 두 칭호다(요청: 통합했다가 이름을 따로 받으며 갈랐다) — 발키리는
+     제공권 싸움이고 배틀은 끝판 한 방이라 그림이 다르다. */
+  { ...tactic("하늘을 호령하는 여왕", ["valkyrie"]), minPlaysShare: 0.03, vsWins: true, battle: true },
+  { ...tactic("전함의 여제", ["bc"]), minPlaysShare: 0.02, vsWins: true, battle: true },
+  /* 목동의 여왕(요청: 목동저그 변경·상향) — 다크스웜을 실제로 깔고 그 아래로 저글링·럴커·
+     울트라 중 하나를 몰아넣은 판이다(지적: 스웜에는 저글링만이 아니라 럴커·울트라도 쓴다).
+     판정은 replayTactics의 moka(개편). 자막이 짚은 판만 세고 서버가 이긴 판만 세므로
+     (_tactic_counts) 잣대가 하나다. */
+  // 스웜 목동 → 목동의 여왕(요청) — 여신·여왕 계열로.
+  { ...tactic("목동의 여왕", ["moka"]), minPlaysShare: 0.01, vsWins: true, battle: true },
 
   // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
   /* (삭제) 프로 옆탱러(side-tank) — 요청. 옆탱은 아군 기지를 받쳐 주는 탱크와 제 기지
@@ -761,11 +786,28 @@ const TITLES: Title[] = [
   { ...rare("리콜 배달부", ["recall"]), minPlaysShare: 0.02 },
   { ...rare("도둑 퀸", ["mind-control"]), minPlaysShare: 0.01 },
   /* 유닛 기본(7%)보다 낮다(요청) — 캐리어까지 가는 판은 프로토스 판 가운데도 일부라,
-     코끼리와 같은 자리에서 제 값을 받는다. */
-  { ...tactic("캐리어를 모으는 여인", ["carrier"]), minPlaysShare: 0.02 },
-  /* 러커는 저그의 밥이라 유닛 기본(7%)과 자릿수가 다르다 — 세 번을 올려 30%: 저그 판
-     셋에 하나는 러커로 이겼어야 "부대"라 부른다. */
-  { ...tactic("공포의 독거미 부대", ["lurker"]), minPlaysShare: 0.15 },
+     코끼리와 같은 자리에서 제 값을 받는다. 에픽 상향(요청: 캐리어 상향). */
+  /* 함대의 여왕(요청 — 여신은 전설급에만 쓴다) — 아비터까지 함께 굴렸으면 "그림자 함대의
+     여왕"으로 이름이 갈린다:
+     같은 캐리어라도 아비터가 끼면 스테이시스·리콜이 낀 다른 그림이라, 이름이 그 판을
+     말하게 한다(맵 여왕과 같은 {n} 방식). 아비터를 뽑았나는 이긴 판 원장(mix)의 유닛
+     수로 본다. */
+  { ...tactic("{n}", ["carrier"]), minPlaysShare: 0.02, battle: true, why: "캐리어",
+    name: (s, of) => ((mix(s, of)?.units?.["Arbiter"] ?? 0) > 0 ? "그림자 함대의 여왕" : "함대의 여왕") },
+  /* 폭풍의 여왕(요청: 신규 질럿+템플러) — 질럿 몸에 스톰을 얹은 프로토스 지상 한 벌.
+     판정은 replayTactics의 zealot-templar. */
+  { ...tactic("폭풍의 여왕", ["zealot-templar"]), minPlaysShare: 0.1, vsWins: true, battle: true },
+  /* 강습의 여왕(요청: 프로토스 하나 추가 — 셔틀 리버) — 폭탄드랍의 여왕은 종족 무관 드랍
+     전부를 세고, 이쪽은 프로토스의 셔틀 리버 그림만 센다. */
+  { ...tactic("강습의 여왕", ["shuttle-reaver"]), minPlaysShare: 0.05, vsWins: true, battle: true },
+  /* 번개의 여왕(요청: 셔틀+하이템플러 — 여신이 아니라 여왕) — 셔틀에 템플러를 태워 스톰을 떨어뜨린 판이다
+     (templar-drop). 폭탄드랍의 여왕에도 드는 열쇠지만, 그쪽은 종족 무관 드랍 전부를 세는
+     자리고 이쪽은 이 그림 하나만 센다. */
+  { ...tactic("번개의 여왕", ["templar-drop"]), minPlaysShare: 0.03, vsWins: true, battle: true },
+  /* 가시밭의 여왕(요청: 독거미 부대 상향·개편) — 히드라 몸에 럴커를 묻은 저그 지상
+     한 벌이다(판정도 히드라+럴커 조합으로 바뀐다). 러커는 저그의 밥이라 유닛 기본(7%)의
+     배로 잰다. */
+  { ...tactic("가시밭의 여왕", ["lurker"]), minPlaysShare: 0.15, battle: true },
   /* 안 보이는 것으로만 치는 사람(요청: 다크·레이스·아비터를 다 잘 쓴 경우만) —
      "보이지 않는 손" → "안 보이는 레이스"를 거쳐 온 자리다. 유닛 하나로는 안 준다(요청:
      하나만 써서는 안 됨): 다크만 뽑는 프로토스는 흔하고, 그건 이미 유닛 칭호가 말한다.
@@ -793,7 +835,8 @@ const TITLES: Title[] = [
       return hidden > 0 ? hidden / (m.uGround + m.uAir) : null;
     },
   },
-  { ...tactic("뮤탈 습격대", ["muta"]), minPlaysShare: 0.02 },
+  // 에픽 상향(요청: 뮤탈은 상향 — 이름도 여왕 계열로) + 전투 조건.
+  { ...tactic("하늘을 뒤덮는 여왕", ["muta"]), minPlaysShare: 0.02, battle: true },
   /* 코끼리 조련사(요청) — 울트라리스크를 모아 나간 판이다. 저그의 마지막 지상 병력이라
      거기까지 판을 끌고 갔다는 말이기도 한데, 부르는 말은 그 그림 하나면 된다.
      한때 "코끼리떼를 모는 여인"으로 바꿔 봤다가 되돌렸다(요청) — 조련사 쪽이 짧고, 무엇을
@@ -826,7 +869,7 @@ const TITLES: Title[] = [
   /* 종족을 안 건다(요청: 테란만이 아니라 프로토스·테란 합쳐서) — 판정이 발키리·레이스·
      커세어·스카웃 넷으로 넓어지면서 이 수는 두 종족에 걸쳐 있다. 분모를 '테란 판'으로
      두면 커세어로 잡은 프로토스 판이 남의 종족 판수로 나뉘어 영영 문턱을 못 넘는다.
-     폭탄드랍의 여신이 다섯 열쇠를 세며 같은 이유로 종족을 걷은 것과 같은 자리다. */
+     폭탄드랍의 여왕이 다섯 열쇠를 세며 같은 이유로 종족을 걷은 것과 같은 자리다. */
   { ...tactic("오버로드 사냥꾼", ["valk-hunt"]), race: undefined, minPlaysShare: 0.02 },
   { ...tactic("몰래배럭 퀸", ["sneak-rax"]), minPlaysShare: 0.02 },
   /* (삭제) 끝없는 저글링 폭풍(zling-rush) — 요청. 저글링 하나로 들이치는 것은 그 종족의
@@ -870,10 +913,11 @@ const TITLES: Title[] = [
      되살렸다(요청: 감염 더 낮게 — 사장된 칭호를 살리는 흐름). 커맨드센터를 잡아야만 나오는
      장면이라 문턱은 바닥(1%)이다: 한 번이라도 두 번쯤 했으면 그 사람의 이야기다. */
   { ...rare("감염의 여왕", ["infested"]), minPlaysShare: 0.02 },
-  /* (삭제) 가디언을 모으는 여인(guardian) — 요청. */
-  /* 배틀만 유닛 기본(2%)보다 낮다(요청: 안 나온다) — 테란이 배틀까지 가는 판 자체가
-     드물어 같은 잣대로는 통째로 잠긴다. 캐리어·코끼리는 기본값 그대로다. */
-  { ...tactic("배틀크루저를 모으는 여인", ["bc"]), minPlaysShare: 0.02, vsWins: true },
+  /* (삭제) 배틀크루저를 모으는 여인(bc) — "발키리 함대 사령관"으로 흡수(요청: 통합). */
+  /* 창공의 여왕(요청: 가디언+디바우러 신규 통합) — 한때 따로 있다 삭제된 가디언 칭호
+     자리에, 저그 하늘의 두 얼굴을 한 벌로 되세운다. 어느 쪽으로 잡혔든 하늘로 이긴 판이다. */
+  { ...tactic("창공의 여왕", ["guardian", "devourer"]), why: "가디언·디바우러",
+    minPlaysShare: 0.02, vsWins: true, battle: true },
   /* (삭제) 발키리 지휘관(valkyrie) — 위 "무자비한 오버로드 사냥꾼"이 같은 유닛으로 무엇을
      했는지까지 말한다. 뽑았다는 사실만 말하는 쪽을 접는다. */
   /* (삭제) 우리 집 문지기(front-defense) — 뺐다(지적: 입구는 막으라고 있는 것). 제 입구를
@@ -1333,7 +1377,9 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     /* 등급은 구조로 가른다 — 전설은 승률 계열(sticky), 에픽은 3점 이상, 나머지가 일반.
        이름 짓는 규칙(표 머리)과 같은 선이다. */
     const rank: EpithetRank = t.sticky === true ? "전설" : score >= 3 ? "에픽" : "일반";
-    return { label: t.label, how: bits.join(" · "), rank, wonOnly: t.won === true, score };
+    // 전투 조건(요청)은 문장으로 덧붙인다 — 플래그를 또 만들면 모달도 고쳐야 한다.
+    const how = bits.join(" · ") + (t.battle ? " · 그 판의 전투(교전)도 이겼어야" : "");
+    return { label: t.label, how, rank, wonOnly: t.won === true, score };
   });
   /* 이름이 사람마다 달라지는 두 줄({n})은 손으로 적는다 — 맵·종족 이름이 들어가야 말이
      되는데, 표에는 그 자리가 비어 있다. */
@@ -1355,6 +1401,10 @@ export function epithetGuideRows(): EpithetGuideRow[] {
       return { ...r, how: `교전 마법을 떨어뜨린 전투 ${ratioFloor()}번 이상 · 그 전투 승률 70% 이상 (승패는 그 자리에 살아남았나)` };
     }
     if (r.label !== "{n}") return r;
+    /* 함대의 여신 — 이름이 아비터 사용으로 갈리는 {n} 칭호라 손으로 적는다. */
+    if (r.how.startsWith("캐리어")) {
+      return { ...r, label: "함대의 여왕 (아비터까지 썼으면 그림자 함대의 여왕)" };
+    }
     if (r.how.startsWith("그 맵 승수")) {
       return {
         ...r,
