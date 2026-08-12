@@ -734,7 +734,7 @@ const TITLES: Title[] = [
      '파는 여인'까지 붙으면 굴을 뚫는 그림이라 그 오해가 없다.
      근거 문장은 그대로 '커널'로 부른다 — 자막이 그 수를 부르는 이름이다. */
   { ...rare("커널 개통 퀸", ["nydus"]), minPlaysShare: 0.05 },
-  { ...rare("리콜 배달 퀸", ["recall"]), minPlaysShare: 0.1 },
+  { ...rare("리콜 배달 퀸", ["recall"]), minPlaysShare: 0.15 },
   { ...rare("도둑 퀸", ["mind-control"]), minPlaysShare: 0.01 },
   /* 유닛 기본(7%)보다 낮다(요청) — 캐리어까지 가는 판은 프로토스 판 가운데도 일부라,
      코끼리와 같은 자리에서 제 값을 받는다. 에픽 상향(요청: 캐리어 상향). */
