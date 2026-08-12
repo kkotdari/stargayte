@@ -594,7 +594,25 @@ function collectSignals(
        나온 뒤에야 알 수 있어서, 다 훑은 뒤에 되돌아가 붙여야 그 앞의 이동도 놓치지 않는다. */
   const sel = new Map<number, number[]>();
   const groups = new Map<string, number[]>();
-  const unitOfTag = new Map<string, string>();
+  const unitOfTag = new Map<string, [number, string][]>();
+  const nameTag = (key: string, frame: number, named: string) => {
+    const list = unitOfTag.get(key);
+    if (!list) { unitOfTag.set(key, [[frame, named]]); return; }
+    const last = list[list.length - 1];
+    if (last[1] !== named) list.push([frame, named]);
+  };
+  /** 그 시각의 임자 이름 — 첫 정체는 뒤(과거)로도 뻗는다: 그 유닛은 제 정체가 드러나기
+   *  전에도 그 유닛이었다. 정체가 갈아탄 뒤(번호 재사용)의 시각은 새 임자를 따른다. */
+  const nameAt = (key: string, frame: number): string | undefined => {
+    const list = unitOfTag.get(key);
+    if (!list) return undefined;
+    let name = list[0][1];
+    for (const [f, n] of list) {
+      if (f > frame) break;
+      name = n;
+    }
+    return name;
+  };
   const pending: { pid: number; idx: number; tags: number[] }[] = [];
   /* 태우기 후보(위 태움 주석) — 정체 표가 다 찬 뒤에 수송선을 찍은 것만 남긴다. */
   const pendingLoads: { pid: number; frame: number; x: number; y: number; tag: number }[] = [];
@@ -726,7 +744,7 @@ function collectSignals(
         ?? (orderName === PLACE_MINE_ORDER ? "Vulture" : undefined)
         ?? byMorph ?? byRole;
       if (named) {
-        for (const t of sel.get(c.PlayerID) ?? []) unitOfTag.set(`${c.PlayerID}:${t}`, named);
+        for (const t of sel.get(c.PlayerID) ?? []) nameTag(`${c.PlayerID}:${t}`, frame ?? 0, named);
       }
     }
     // 이동·공격 명령의 좌표(위 orderPositions 주석). 우클릭이 이동·공격·수리를 다 겸하고,
@@ -899,9 +917,10 @@ function collectSignals(
   for (const { pid, idx, tags } of pending) {
     // 고른 것 가운데 가장 많은 이름을 그 명령의 주인으로 본다 — 절반은 넘어야 한다
     // (부대에 한 기 딸려 든 유닛의 자리로 읽으면 안 된다).
+    const atFrame = out.get(pid)?.orderPositions[idx]?.frame ?? 0;
     const tally = new Map<string, number>();
     for (const t of tags) {
-      const name = unitOfTag.get(`${pid}:${t}`);
+      const name = nameAt(`${pid}:${t}`, atFrame);
       if (name) tally.set(name, (tally.get(name) ?? 0) + 1);
     }
     const top = [...tally].sort((a, b) => b[1] - a[1])[0];
@@ -913,7 +932,10 @@ function collectSignals(
            좌표가 곧 갓 나온 유닛이 걸어갈 자리다. 태그는 건물로 판명된 것 하나를 남긴다
            (생산 귀속의 ptag와 같은 번호라, 재생이 유닛→건물→랠리를 이을 수 있다). */
         if (top[0] === "Building") {
-          const bTag = tags.find((tg) => unitOfTag.get(`${pid}:${tg}`) === "Building") ?? tags[0];
+          /* 건물로 판명된 번호만 랠리의 임자다(지적: 랠리 뒤바뀜) — 예전의 tags[0] 폴백은
+             아무 번호나 집어, 유닛 번호가 건물 랠리의 임자가 되곤 했다. 못 찾으면 0으로
+             비워 두면 재생이 '마지막 랠리' 어림으로 물러난다. */
+          const bTag = tags.find((tg) => nameAt(`${pid}:${tg}`, o.frame) === "Building") ?? 0;
           const sig = out.get(pid);
           if (sig && sig.rallies.length < 400) {
             sig.rallies.push({ frame: o.frame, x: o.x, y: o.y, tag: bTag });
@@ -925,7 +947,7 @@ function collectSignals(
   /* 태우기 확정(위 pendingLoads 주석) — 정체 표(unitOfTag)가 경기 전체로 다 찬 지금,
      수송선을 찍은 클릭만 남긴다. 태우기가 내리기보다 먼저라도 이제 안 놓친다. */
   for (const l of pendingLoads) {
-    if (unitOfTag.get(`${l.pid}:${l.tag}`) !== "Transport") continue;
+    if (nameAt(`${l.pid}:${l.tag}`, l.frame) !== "Transport") continue;
     const sig = out.get(l.pid);
     if (!sig) continue;
     (sig.loadPositions ??= []).push({ frame: l.frame, x: l.x, y: l.y });
