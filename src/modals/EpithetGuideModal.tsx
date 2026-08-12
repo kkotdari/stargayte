@@ -55,12 +55,9 @@ export default function EpithetGuideModal({ onClose }: { onClose: () => void }) 
                             <span className="scr-epithet-guide-name-line" key={line}>{line}</span>
                           ))}
                         </td>
-                        <td className="scr-epithet-guide-how">
-                          {r.how}
-                          {/* 이긴 판만 세는 칭호는 그 한마디를 덧붙인다 — 같은 "세 번"이라도
-                              뜻이 다르고, 안 적으면 왜 내 기록보다 적게 세었는지 알 길이 없다. */}
-                          {r.wonOnly && <span className="scr-epithet-guide-won"> · 이긴 판만</span>}
-                        </td>
+                        {/* "이긴 판만" 꼬리는 걷었다(요청) — 승리는 조건 문장에 녹아 있다
+                            ("역전 승리"). */}
+                        <td className="scr-epithet-guide-how">{r.how}</td>
                         <td className="scr-epithet-guide-min">{r.minPlays || "-"}</td>
                       </tr>
                     ))}
