@@ -32,10 +32,18 @@ const MIN_PLAYS = 3;
    판으로 친다(countMinFor와 같은 처방). */
 const clubGames = (): number =>
   (clubTotalGames && clubTotalGames > 0 ? clubTotalGames : CLUB_GAMES_FALLBACK);
+/* 표본 바닥들도 최근 한 달 기준이다(요청) — 전체 누적 비례는 클럽이 오래될수록 자라
+   늦게 들어온 사람이 영영 못 채운다. 상수는 그만큼 키웠다(월 40판 클럽에서 옛 눈금 그대로:
+   여신 24 · 종족 12 · 맵 10 · 종족당 8판). 한 달 값을 못 받아 왔으면 옛 식(전체 비례)으로. */
+const monthly = (rate: number, fallbackRate: number, floor: number): number => (
+  clubMonthGames && clubMonthGames > 0
+    ? Math.max(floor, Math.round(clubMonthGames * rate))
+    : Math.max(floor, Math.round(clubGames() * fallbackRate))
+);
 /** 승리의 여신의 표본 — 셋 중 가장 높다(요청): 여신은 판이 쌓인 사람의 말이라야 한다. */
-const winsFloor = (): number => Math.max(10, Math.round(clubGames() * 0.12));
+const winsFloor = (): number => monthly(0.6, 0.12, 10);
 /** 종족 퀸의 표본 — 여신보다 낮게(요청). */
-const raceFloor = (): number => Math.max(8, Math.round(clubGames() * 0.06));
+const raceFloor = (): number => monthly(0.3, 0.06, 8);
 /* (교체·요청) ratioFloor(표본 바닥 — 분모 5판부터) → 아래 normDenom. "분모가 얇으면 아예
    안 잰다"에서 "얇은 분모는 기준 판수로 쳐서 잰다"로 바뀌었다. */
 /** 비율의 기준 분모(요청: 공평 장치) — 분모 = max(그 사람의 판수, 클럽 판수 × 10%)다.
@@ -197,9 +205,9 @@ function did(s: MemberStats, ...keys: string[]): number | null {
  *  이 클럽은 같은 맵을 오래 도는 편이라 여덟 판은 금방 쌓인다. */
 /* 고정 10판 → 클럽 판수 비례(요청: 맵도 똑같이 — 전체 판수 × 상수). 200판 클럽에서 10판,
    판이 쌓이면 함께 오른다. */
-const mapFloor = (): number => Math.max(6, Math.round(clubGames() * 0.05));
+const mapFloor = (): number => monthly(0.25, 0.05, 6);
 /** 올라운드 강자의 종족당 판수 — 전체 판수 × 상수(요청). 200판 클럽에서 8판. */
-const allRoundFloor = (): number => Math.max(6, Math.round(clubGames() * 0.04));
+const allRoundFloor = (): number => monthly(0.2, 0.04, 6);
 /** 그리고 이만큼은 이겨야 한다 — 60 → 70 → 72 → 70%(요청: 맵은 해당 맵 승률 70%로 고정).
  *  7할은 전체 승률 칭호(승리의 여신)와 같은 선이다. 종족(75%)만 한 칸 위인 까닭은 종족은
  *  골라 잡을 수 있고 맵은 그날 뽑히는 것이라, 맵에 7할을 요구하는 편이 더 어렵기 때문이다.
