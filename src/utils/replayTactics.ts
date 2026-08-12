@@ -1551,13 +1551,19 @@ function detectFor(c: Ctx): Tactic[] {
       }
     }
     // 목동 저그 — 저글링·울트라에 다크스웜(또는 디파일러)까지 얹은 그림.
-    const swarm = hasTech(s, "Dark Swarm") || u("Defiler") >= 2;
+    /* 다크스웜은 hasTech(연구 여부)로 못 본다(지적: 목동저그가 너무 안 나온다 — 분석 단계
+       문제 맞았다). 스웜은 브루드워에서 연구가 아니라 디파일러가 처음부터 가진 기술이라
+       연구 커맨드 자체가 없고, techNames에 영영 안 실려 늘 false였다. 그 탓에 목동은
+       "디파일러 2기 생산"에만 매달렸고(스웜을 깔아도 디파일러 1기면 탈락), 아래 다크스웜
+       살포반(swarm) 갈래는 아예 한 번도 나올 수 없었다. '실제로 깔았나'(techUses)로 본다. */
+    const swarmUses = s.techUses["Dark Swarm"] ?? 0;
+    const swarm = swarmUses > 0 || u("Defiler") >= 2;
     if (u("Zergling") >= 12 && u("Ultralisk") >= 3 && swarm) {
       out.push({
         key: "moka", weight: 11, at: firstU("Ultralisk"),
         who,
       });
-    } else if (hasTech(s, "Dark Swarm")) {
+    } else if (swarmUses > 0) {
       out.push({
         key: "swarm", weight: 6, at: s.firstTechFrame["Dark Swarm"] ?? null,
         who,
