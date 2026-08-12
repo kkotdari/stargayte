@@ -40,6 +40,27 @@ interface TrackPos { x: number; y: number; stale: boolean; moving: boolean; sinc
 
 /** 커맨드를 받은 지 이 안이면 아직 '활동 중'이다(요청) — 이름표를 유지한다. */
 const ACTIVE_HOLD_SEC = 8;
+/** 생산 뒤 이 안이면 그 건물이 '일하는 중'이다(요청: 생산할 때 이름 표시). */
+const PROD_FLASH_SEC = 6;
+
+/* 무엇이 어디서 나오나 — 유닛이 나온 순간 그 종류의 건물이 일하고 있었다는 뜻이다. 어느
+   채인지는 리플레이가 안 알려줘(생산 커맨드에 건물 번호가 없다) 같은 종류가 함께 켜진다.
+   저그는 전부 해처리 계열(라바)이고, 러커·가디언처럼 유닛에서 변태하는 것은 건물 몫이
+   아니라 뺀다. */
+const ZERG_LARVA = ["Drone", "Overlord", "Zergling", "Hydralisk", "Mutalisk", "Scourge", "Queen", "Ultralisk", "Defiler"];
+const PRODUCED_BY: Record<string, string[]> = {
+  Barracks: ["Marine", "Firebat", "Medic", "Ghost"],
+  Factory: ["Vulture", "Siege Tank (Tank Mode)", "Siege Tank", "Goliath"],
+  Starport: ["Wraith", "Dropship", "Science Vessel", "Battlecruiser", "Valkyrie"],
+  "Command Center": ["SCV"],
+  Gateway: ["Zealot", "Dragoon", "High Templar", "Dark Templar"],
+  "Robotics Facility": ["Shuttle", "Reaver", "Observer"],
+  Stargate: ["Scout", "Corsair", "Carrier", "Arbiter"],
+  Nexus: ["Probe"],
+  Hatchery: ZERG_LARVA,
+  Lair: ZERG_LARVA,
+  Hive: ZERG_LARVA,
+};
 
 /** 자취에서 t 시각의 자리 — 사이는 보간(지상은 가운데로 휘는 곡선), 틈이 크면 앞 점에 머문다.
  *  moving(두 점 사이를 미끄러지는 중)과 sinceLast(마지막 명령에서 지난 초)도 함께 낸다 —
@@ -255,6 +276,23 @@ export default function ReplayMotionPlayer({
     };
   }, [playing, active, speed, total]);
 
+  /* 생산 시각 되짚기(요청: 생산할 때 건물 이름) — 사람×건물종류별로 생산 초들을 미리
+     모아, 재생 중에는 "지금 창(6초) 안에 있나"만 본다. */
+  const prodByRawType = useMemo(() => {
+    const m = new Map<string, number[]>();
+    for (const p of motion.players) {
+      for (const [type, units] of Object.entries(PRODUCED_BY)) {
+        const secs: number[] = [];
+        for (const u of units) for (const sec of p.prod?.[u] ?? []) secs.push(sec);
+        if (secs.length > 0) {
+          secs.sort((a, b) => a - b);
+          m.set(`${p.raw}|${type}`, secs);
+        }
+      }
+    }
+    return m;
+  }, [motion]);
+
   /* 무너진 건물(어림)은 그 시각 뒤로 그리지 않는다 — 무너진 직후 몇 초만 ✕로 말한다. */
   const buildsNow = motion.builds.filter((b) => {
     const gone = b[5] ?? 0;
@@ -274,7 +312,10 @@ export default function ReplayMotionPlayer({
         {buildsNow.map(([sec, x, y, unit, raw, gone], i) => {
           const team = teamOfRaw(raw);
           const razed = (gone ?? 0) > 0 && t >= (gone ?? 0);
-          const freshBuild = !razed && t - sec <= BUILD_LABEL_SEC;
+          /* 일하는 중인가(요청) — 이 종류가 지금 창 안에 유닛을 냈나. */
+          const producing = !razed && (prodByRawType.get(`${raw}|${unit}`) ?? [])
+            .some((ps) => ps <= t && t - ps <= PROD_FLASH_SEC);
+          const freshBuild = !razed && (t - sec <= BUILD_LABEL_SEC || producing);
           return (
             <span
               key={`b-${i}`}
