@@ -28,7 +28,7 @@ const DEFENSE_BUILDINGS = new Set([
 
 const WORKER_UNITS = new Set(["SCV", "Probe", "Drone"]);
 /** 병력으로 세지 않는 것들 — 일꾼·보급·알·소모품. 비율을 흐리기만 한다. */
-const NOT_ARMY = new Set([
+export const NOT_ARMY = new Set([
   ...WORKER_UNITS, "Larva", "Egg", "Overlord", "Cocoon", "Mutalisk Cocoon", "Lurker Egg",
   "Interceptor", "Scarab", "Spider Mine", "Scanner Sweep", "Nuclear Missile",
 ]);
@@ -36,7 +36,7 @@ const NOT_ARMY = new Set([
 /** 마법 유닛 — 에너지를 쓰는 것이 그 유닛의 존재 이유인 것들. 메딕·고스트는 여기 안 넣는다:
  *  메딕은 바이오닉의 한 부분이고 고스트는 사실상 핵·락다운용이라 수가 아주 적어, 넣으면
  *  '마법 비중'이 그 사람의 운영이 아니라 종족을 말하는 값이 된다. */
-const CASTER_UNITS = new Set([
+export const CASTER_UNITS = new Set([
   "High Templar", "Dark Archon", "Arbiter", "Science Vessel", "Defiler", "Queen",
 ]);
 /** 기본 유닛 — 첫 생산 건물에서 바로 나오는 것들. 나머지 전투 유닛은 전부 '고급'이다
@@ -47,7 +47,7 @@ const BASIC_UNITS = new Set([
   "Zergling", "Hydralisk",
 ]);
 /** 하늘에 뜨는 것 — 오버로드는 위 NOT_ARMY에서 이미 빠진다. */
-const AIR_UNITS = new Set([
+export const AIR_UNITS = new Set([
   "Wraith", "Dropship", "Science Vessel", "Valkyrie", "Battlecruiser",
   "Shuttle", "Observer", "Scout", "Corsair", "Carrier", "Arbiter",
   "Mutalisk", "Guardian", "Devourer", "Scourge", "Queen",
@@ -67,6 +67,15 @@ export interface BuildMix {
   uAir: number;
   /** 초반(WORKER_EARLY_SEC)까지 뽑은 일꾼 수 — 비율이 아니라 그냥 수다(요청). */
   worker5: number;
+  /** 전투(교전) 원장 — 갈래별 [붙은 수/이긴 수]다(요청: 그 전투 하나하나에서 이겼냐).
+   *  판정은 replayBattles가 게임 단위로 하고(사람 혼자서는 못 가른다 — 상대 명령이 필요
+   *  하다) 파서가 여기 실어 준다. 좌표를 못 읽은 판·옛 기록에는 없다(재분석이 채운다). */
+  btGround?: number;
+  btGroundWon?: number;
+  btAir?: number;
+  btAirWon?: number;
+  btMagic?: number;
+  btMagicWon?: number;
   /** 공/방/실드 업그레이드가 몇 단계까지 올라갔나(0~3). 종족마다 이름이 다르지만 부르는
    *  이름은 '지상/공중'과 '공/방' 넷이라, 종족 이름을 지우고 그 넷으로만 담는다(요청:
    *  종족 무관). 테란처럼 지상이 보병·메카닉 둘로 갈리는 종족은 높은 쪽을 그 판의 지상

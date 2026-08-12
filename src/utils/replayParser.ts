@@ -5,6 +5,7 @@
 // 중단됐지만(→ screp-ts) 그건 Go 바이너리를 Node에서 실행하는 CLI 래퍼라 브라우저에서 못
 // 쓴다 — 그래서 이 앱은 계속 screp-js를 쓴다.
 import { fmt } from "./date";
+import { battleCountsOf } from "./replayBattles";
 import { buildMixOf, type BuildMix } from "./replayBuildMix";
 import {
   normalizeUpgradeName, CAST_ORDER_TO_TECH, USE_CMD_TO_TECH, PLACE_MINE_ORDER,
@@ -978,6 +979,15 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
         signals: signalsOf(p.ID),
       };
     });
+
+  /* 전투 하나하나의 승패(요청) — 사람 혼자의 신호로는 못 가른다(상대가 같은 자리를 찍고
+     있었어야 전투다). 전원이 모인 여기서 게임 단위로 가려, 각자의 buildMix에 실어 준다 —
+     저장·집계 길은 buildMix가 이미 낸 길 그대로다. */
+  const battleCounts = battleCountsOf(declared);
+  declared.forEach((p) => {
+    const c = battleCounts.get(p.rawName);
+    if (c && p.buildMix) p.buildMix = { ...p.buildMix, ...c };
+  });
 
   // (1) 팀 번호가 세 개 이상이면 앞의 두 팀만 실제로 붙은 편이다 — 옵저버 맵에서 관전자는
   // 그다음 팀 번호로 밀려난다(screp의 computeUMSTeams도 관전자에게 Team=3을 준다). 예전엔
