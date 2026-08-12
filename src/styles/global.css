@@ -11109,9 +11109,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.45));
 }
 /* 발자국 비례 도형(요청: "건물 아이콘 크기를 실제 맵크기에 비례해서 정확히") — 스팬 폭을
-   지도 %로 못박고(JSX) 그림이 그 폭을 다 쓴다. 글자 크기 클래스는 이때 안 듣는다. */
+   지도 %로 못박고(JSX) 그림이 그 폭을 다 쓴다. 글자 크기 클래스는 이때 안 듣는다.
+   맨 네모(전용 도형 없는 건물)도 같은 폭을 받아 발자국 비율(aspect-ratio, JSX)로 선다. */
 .scr-motion-build-tile { display: inline-flex; justify-content: center; }
 .scr-motion-build-tile .scr-motion-shape-svg { width: 100%; height: auto; }
+.scr-motion-build-tile .scr-motion-sq { width: 100%; height: auto; }
 /* 유닛 이름 칩에도 같은 톤의 약한 그림자(요청) — 배경 있는 배지라 텍스트 그림자 대신
    상자 그림자다. */
 .scr-motion-army.scr-motion-chip, .scr-motion-cast.scr-motion-chip { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }

@@ -551,15 +551,8 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
     ["M4.6 6.6a3.4 3.2 0 1 0 6.8 0a3.4 3.2 0 1 0-6.8 0Z", 1],
     ["M6 5a1.6 0.7 0 1 0 3.2 0a1.6 0.7 0 1 0-3.2 0Z", 0.3, "#fff"],
   ],
-  /* 이름 없는 건물의 기본 도형 — 납작한 네모도 사선 위에서 본 입체다(요청: "건물들은
-     기본적으로 사선위에서 본 모양"). */
-  slab: [
-    ["M3 7.4 L11 7.4 L11 13.4 L3 13.4 Z", 1],
-    ["M3 7.4 L11 7.4 L13 6 L5 6 Z", 1],
-    ["M3 7.4 L11 7.4 L13 6 L5 6 Z", 0.3, "#fff"],
-    ["M11 7.4 L13 6 L13 12 L11 13.4 Z", 1],
-    ["M11 7.4 L13 6 L13 12 L11 13.4 Z", 0.35, "#000"],
-  ],
+  /* (삭제) slab — 이름 없는 기본 건물은 입체 상자가 아니라 예전 네모로 돌아갔다(지적:
+     "입체표현은 직접 그린거만"). 크기만 발자국을 따른다. */
 };
 /** 도형째 돌려 그리는 각도(시계방향) — 스타게이트는 45도(요청). */
 const SHAPE_ROT: Record<string, number> = { arch: 45 };
@@ -1470,10 +1463,11 @@ export default function ReplayMotionPlayer({
                   // 아래로 내리기") — 왼쪽으로 당겨 겹치고, 세로는 내린다.
                   left: pct(bx + footDx(unit) - (ADDONS.has(unit) ? 1.6 : 0), grid.width),
                   top: pct(by + footDy(unit) + (ADDONS.has(unit) ? 0.4 : 0), grid.height),
-                  // 도형 폭 = 발자국 폭(타일) 그대로(요청: 실제 맵 크기에 비례) — 여백
-                  // 몫(뷰박스 안 도형이 13/16쯤을 쓴다)만 1.25로 보정한다.
+                  // 도형 폭 = 발자국 폭(타일) 그대로(요청: 실제 맵 크기에 비례) — 벡터
+                  // 도형은 입체 면(윗면·옆면)이 발자국 밖까지 그려져 실제보다 커 보였다
+                  // (지적) — 1.25 보정을 걷고 1배로 못박는다. 맨 네모도 1배다.
                   ...(text !== name && !ADDONS.has(unit)
-                    ? { width: pct((FOOTPRINT[unit] ?? [3, 2])[0] * 1.25, grid.width) }
+                    ? { width: pct((FOOTPRINT[unit] ?? [3, 2])[0], grid.width) }
                     : {}),
                   // 긴 이름은 한 단계 작게(지적) — 여섯 자부터.
                   ...(text.length >= 6 && !activeBuild ? { fontSize: 6 } : {}),
@@ -1484,11 +1478,20 @@ export default function ReplayMotionPlayer({
                 }}
               >
                 {/* 전용 도형이 있으면 벡터로(SHAPE_KIND — 이모지·글꼴 글리프 금지 요청).
-                    이름 없는 기본 건물도 납작한 사선 입체 상자다(요청: "건물들은 기본적으로
-                    사선위에서 본 모양" — 예전 CSS 네모를 대체). */}
+                    입체는 직접 깎은 도형만이다(지적) — 이름 없는 나머지 건물은 예전대로
+                    네모, 대신 크기만 발자국에 맞춘다. */}
                 {shapeKind && text !== name
                   ? <ShapeIcon kind={shapeKind} />
-                  : text === "■" ? <ShapeIcon kind="slab" /> : text}
+                  : text === "■"
+                    ? (
+                      <i
+                        className="scr-motion-sq"
+                        style={{
+                          aspectRatio: `${(FOOTPRINT[unit] ?? [3, 2])[0]} / ${(FOOTPRINT[unit] ?? [3, 2])[1]}`,
+                        }}
+                      />
+                    )
+                    : text}
                 {raising && <Hammer size={6} className="scr-motion-raising" />}
               </span>
             );
