@@ -131,7 +131,26 @@ function splitSquads(
       const d = Math.hypot(last[1] - pt[1], last[2] - pt[2]);
       if (d < bestD) { bestD = d; best = k; }
     }
-    if (best >= 0 && bestD <= mergeTiles) { squads[best].push(pt); continue; }
+    /* 방향이 갈리면 바로 안 묶는다(지적: 멈춰 있거나 같은 방향일 때만 묶기 — 뮤탈
+       나누기처럼 서로 다른 움직임은 딴 무리다) — 그 부대가 방금 가던 쪽에서 90도 넘게
+       꺾이는 클릭은 아래 staysBehind 판정으로 넘긴다: 옛 방향 클릭이 곧 또 오면(교차
+       클릭 = 나누기) 새 부대로 갈리고, 아니면(무리째 방향 전환) 그대로 잇는다. */
+    let joinable = best >= 0 && bestD <= mergeTiles;
+    if (joinable && squads.length < SQUAD_MAX) {
+      const sq = squads[best];
+      if (sq.length >= 2) {
+        const prev = sq[sq.length - 2];
+        const last = sq[sq.length - 1];
+        const vx = last[1] - prev[1];
+        const vy = last[2] - prev[2];
+        const wx = pt[1] - last[1];
+        const wy = pt[2] - last[2];
+        const vlen = Math.hypot(vx, vy);
+        const wlen = Math.hypot(wx, wy);
+        if (vlen > 2 && wlen > 2 && (vx * wx + vy * wy) / (vlen * wlen) < 0) joinable = false;
+      }
+    }
+    if (joinable) { squads[best].push(pt); continue; }
     if (best >= 0) {
       const last = squads[best][squads[best].length - 1];
       let staysBehind = false;
@@ -476,22 +495,20 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
      패드가 얹히고, 대각선으로 안테나 팔(끝에 둥근 등)이 뻗으며, 벌어진 다리들이 받친다.
      패드를 맨 나중에 그려 팔·몸통의 밑동을 덮는다(패드 뒤에서 나온 것처럼). */
   plane: [
-    // 안테나 팔 — 왼위·오른위 대각선, 끝에 둥근 등(패드 뒤에서 나온다).
-    ["M4.6 5.4 L2.4 3.2 L3.2 2.5 L5.3 4.7 Z M11.4 5.4 L13.6 3.2 L12.8 2.5 L10.7 4.7 Z", 1],
-    ["M1.9 2.6a0.9 0.9 0 1 0 1.8 0a0.9 0.9 0 1 0-1.8 0Z M12.3 2.6a0.9 0.9 0 1 0 1.8 0a0.9 0.9 0 1 0-1.8 0Z", 1],
-    // 몸통 앞면 — 패드 아래로 내려오는 받침(지적: 동그란 상륙장만 있고 앞이 없다).
-    ["M3.6 8 L12.4 8 L13.2 12 L2.8 12 Z", 1],
-    // 양옆 포드(지적: 양옆이 없다) — 몸통 옆구리에 붙는 상자.
-    ["M0.8 8.4 H3.2 V10.8 H0.8 Z M12.8 8.4 H15.2 V10.8 H12.8 Z", 1],
-    ["M0.8 8.4 H3.2 V10.8 H0.8 Z M12.8 8.4 H15.2 V10.8 H12.8 Z", 0.3, "#000"],
-    // 다리 — 앞면 아래로 벌어지는 발 셋.
-    ["M3.6 12 L2.2 14.6 L4.6 14.6 Z M7.4 12 L6.4 14.8 L9 14.8 Z M11.6 12 L11 14.6 L13.4 14.6 Z", 1],
-    ["M3.6 12 L2.2 14.6 L4.6 14.6 Z M7.4 12 L6.4 14.8 L9 14.8 Z M11.6 12 L11 14.6 L13.4 14.6 Z", 0.35, "#000"],
+    // 맞보는 날개 한 쌍(요청: 왼쪽 위·오른쪽 아래에 작게).
+    ["M1.6 4.2 L4.6 5.2 L4 6.5 L1 5.5 Z M14.4 10.6 L11.4 9.6 L12 8.3 L15 9.3 Z", 1],
+    ["M1.6 4.2 L4.6 5.2 L4 6.5 L1 5.5 Z M14.4 10.6 L11.4 9.6 L12 8.3 L15 9.3 Z", 0.25, "#000"],
+    // 왼쪽 아래로 툭 튀어나온 덩이(요청).
+    ["M1 9 H4.4 V11.2 H1 Z", 1],
+    ["M1 9 H4.4 V11.2 H1 Z", 0.3, "#000"],
+    // 다리 — 받침 없이(지적) 패드 밑에 바로 붙어 벌어지는 발 셋.
+    ["M4 9.8 L2.6 13.2 L5 13.2 Z M7.6 10.4 L6.6 14 L9.2 14 Z M11.6 9.8 L11 13.2 L13.4 13.2 Z", 1],
+    ["M4 9.8 L2.6 13.2 L5 13.2 Z M7.6 10.4 L6.6 14 L9.2 14 Z M11.6 9.8 L11 13.2 L13.4 13.2 Z", 0.35, "#000"],
     // 착륙 패드 — 큰 타원 링 위에 밝은 테, 가운데는 살짝 꺼진 판. 맨 나중에 그려
-    // 팔·몸통의 밑동을 덮는다. 몸통이 보이게 패드는 위로 올려 앉힌다.
-    ["M2.8 6.2a5.2 2.6 0 1 0 10.4 0a5.2 2.6 0 1 0-10.4 0Z", 1],
-    ["M4 6.2a4 1.9 0 1 0 8 0a4 1.9 0 1 0-8 0Z", 0.28, "#fff"],
-    ["M4.9 6.2a3.1 1.5 0 1 0 6.2 0a3.1 1.5 0 1 0-6.2 0Z", 0.25, "#000"],
+    // 날개·돌출부·다리의 밑동을 덮는다.
+    ["M2.4 7.2a5.6 3 0 1 0 11.2 0a5.6 3 0 1 0-11.2 0Z", 1],
+    ["M3.7 7.2a4.3 2.2 0 1 0 8.6 0a4.3 2.2 0 1 0-8.6 0Z", 0.28, "#fff"],
+    ["M4.7 7.2a3.3 1.7 0 1 0 6.6 0a3.3 1.7 0 1 0-6.6 0Z", 0.25, "#000"],
   ],
   /* 스타게이트 — 똑같은 긴 마름모 두 개가 나란히 사선으로 붙는다(지적: 둘이 같은
      모양이라야 한다). */
@@ -898,6 +915,7 @@ export default function ReplayMotionPlayer({
      정찰 점도 명령 시각에 출발해 걸어서 가야 한다). */
   const walkTrack = (
     src: [number, number, number][], p: MotionTrack, straight: boolean, forcedUnit?: string,
+    speedOverride?: number,
   ): [number, number, number][] => {
     if (src.length === 0) return src;
     const out: [number, number, number][] = [[src[0][0], src[0][1], src[0][2]]];
@@ -935,10 +953,10 @@ export default function ReplayMotionPlayer({
       if (total === 0) { atSec = startSec; continue; }
       /* 정체를 아는 갈래(수송선·오버로드)는 곧게 날더라도 제 속도로 걷는다(지적: 오버로드
          이동이 뚝뚝 끊김 — 일꾼 걸음 3.7로 내달리곤 다음 명령까지 서 있어서, 실제 0.6짜리
-         걸음과 전혀 다른 돌진·정지 반복이 됐다). */
-      const v = straight && !forcedUnit
+         걸음과 전혀 다른 돌진·정지 반복이 됐다). 띄운 건물은 제 비행 속도(오버라이드)다. */
+      const v = speedOverride ?? (straight && !forcedUnit
         ? SCOUT_WALK_SPEED
-        : Math.max(0.5, speedOf(unit || "Marine", orderSec, p.ups));
+        : Math.max(0.5, speedOf(unit || "Marine", orderSec, p.ups)));
       const travel = total / v;
       if (startSec + travel <= nextOrderSec) {
         // 끝까지 간다 — 도착 뒤 다음 명령까지는 위의 대기 점이 맡는다.
@@ -1170,8 +1188,12 @@ export default function ReplayMotionPlayer({
   }, [playing]);
 
   /* 시야에서 벗어나면 일시정지(요청) — 다시 보일 때 자동으로 되살리지는 않는다(멈춘 걸
-     사람이 이어 보는 건 재생 버튼의 몫이다). */
+     사람이 이어 보는 건 재생 버튼의 몫이다). 확대 모달은 늘 화면 안이라 안 지킨다 —
+     여닫는 재부착 순간 IO가 '안 보임'을 쏘아 재생을 멈추던 것(지적: 확대·축소 시
+     재생 유지)도 이것으로 막힌다. big이 바뀌면 맵이 다른 트리로 옮겨 심기므로 effect를
+     다시 걸어 새 엘리먼트를 관찰한다. */
   useEffect(() => {
+    if (big) return undefined;
     const el = mapRef.current;
     if (!el || typeof IntersectionObserver === "undefined") return undefined;
     const io = new IntersectionObserver((entries) => {
@@ -1179,7 +1201,7 @@ export default function ReplayMotionPlayer({
     }, { threshold: 0.2 });
     io.observe(el);
     return () => io.disconnect();
-  }, []);
+  }, [big]);
 
   /* (삭제) 화면을 벗어날 때의 정지는 이제 스크롤 밖(IntersectionObserver)뿐이다 —
      창 전환(blur) 정지를 걷은 뒤에도 탭 숨김(visibilitychange) 정지가 남아 창을 덮으면
@@ -1406,6 +1428,22 @@ export default function ReplayMotionPlayer({
     })), [motion]);
   const castsNow = motion.casts.filter((c) => c[0] <= t && t - c[0] <= CAST_HOLD_SEC);
 
+  /* 태워진 유닛은 잠깐 사라진다(요청: 태운 자리의 유닛들은 안 보이다가 내리면 나타남) —
+     태움 지점 곁에 서 있던, 그 뒤로 새 명령이 없는 마커는 다음 드랍(없으면 계속)까지
+     숨는다. 내리면(드랍 시각이 지나면) 도로 나타난다 — 다 내렸는지는 알 수 없으니
+     시각만 근거다. */
+  const carriedGone = (
+    p: MotionTrack, pos: { x: number; y: number }, lastOrderSec: number,
+  ): boolean => {
+    for (const [ls, lx, ly] of p.loads ?? []) {
+      if (ls > t) break;
+      const ds = (p.drops ?? []).find(([s]) => s > ls)?.[0] ?? Infinity;
+      if (t >= ls && t < ds && lastOrderSec <= ls
+        && Math.hypot(pos.x - lx, pos.y - ly) <= 5) return true;
+    }
+    return false;
+  };
+
   /* 폭은 무조건 컨테이너 최대가 아니라 화면 세로 공간이 허락하는 만큼(지적: 노트북처럼
      납작한 화면에서 전체 폭을 쓰면 미니맵이 한 화면에 다 안 들어옴) — 맵 높이가
      (100dvh − 조작부 몫)을 넘지 않게 폭을 비율로 역산해 상한을 걸고 가운데 정렬.
@@ -1487,6 +1525,21 @@ export default function ReplayMotionPlayer({
                 by = flownFrom[2] + (y - flownFrom[2]) * k;
               }
             }
+            /* 띄운 채 나는 정찰(요청: 엔베 띄워 정찰이 안 나온다) — 뜬 마커는 옛 자리에
+               둥실대는 대신, 이륙 뒤의 비행 클릭(fpts)을 비행 속도로 따라 난다. 동시에
+               두 채가 떠 있으면 자취를 나눠 갖지 못하고 같이 따라간다(어림). */
+            const flyTrack = motion.players.find((p) => p.raw === raw);
+            if (afloat && liftAt && flyTrack) {
+              const flight = (flyTrack.fpts ?? []).filter(([fs]) =>
+                fs >= liftAt && (goneAt === 0 || fs < goneAt));
+              if (flight.length > 0) {
+                const fw = walkTrack(
+                  [[liftAt, x, y], ...flight], flyTrack, true, undefined, BUILDING_FLY_SPEED,
+                );
+                const fp = posAt(fw, t, null);
+                if (fp) { bx = fp.x; by = fp.y; }
+              }
+            }
             // 짓는 동안은 공사중 아이콘(요청: 반투명 말고) — 반투명은 "저기 뭐가 있긴 한데"
             // 로만 읽히고, 도형의 반투명(뒤 비침)과도 헷갈렸다. 날아온 건물은 이미 다 선
             // 건물이라 망치를 안 든다.
@@ -1512,10 +1565,9 @@ export default function ReplayMotionPlayer({
               });
             // 연구 중(요청) — 이 건물에서 하는 연구가 지금 창 안에 시작돼 있나. 어느
             // 건물인지는 안 남으므로 대표 건물에만 단다(지적).
-            const track = motion.players.find((p) => p.raw === raw);
             const hallLike = unit === "Lair" || unit === "Hive" ? "Hatchery" : unit;
             const researching = !razed && myOrd === repOrd
-              && (track?.ups ?? []).some(([us, name]) =>
+              && (flyTrack?.ups ?? []).some(([us, name]) =>
                 RESEARCH_BUILDING[name] === hallLike && us <= t && t - us <= RESEARCH_SEC);
             // 이름 창 = 착공 직후 잠깐뿐(요청) — 그 뒤 공사 중에는 도형+망치이고, 생산·
             // 연구 중에도 이름 대신 라임 글로우가 말한다(요청: "생산중인 건물은 이름을
@@ -1560,6 +1612,10 @@ export default function ReplayMotionPlayer({
                   // 앵커는 발자국 가운데다(FOOTPRINT 주석 — 왼쪽 위 타일 그대로면 치우친다).
                   // 부속건물(+)은 본체에 딱 붙여 오른쪽 아래로(요청: "더 본건물에 딱 붙이고
                   // 아래로 내리기") — 왼쪽으로 당겨 겹치고, 세로는 내린다.
+                  /* 겹침 차례는 마지막 명령 시각(지적: 유닛이 무조건 위가 아니라 —
+                     건물이 위일 수 있다) — 방금 착공했거나 지금 생산·연구·비행 중인
+                     건물은 조용한 유닛 점 위로 온다. 유닛 마커도 같은 자로 잰다. */
+                  zIndex: 1000 + Math.round(producing || researching || afloat ? t : sec),
                   left: pct(bx + footDx(unit) - (ADDONS.has(unit) ? 1.6 : 0), grid.width),
                   // 건물은 바닥 위로 솟는다(지적: "실제 건물은 바닥위에 높이가 있어") —
                   // 캔버스 높이에 그 몫(riseOf, 발자국 폭 비례)을 더하고, 늘어난 만큼
@@ -1686,21 +1742,17 @@ export default function ReplayMotionPlayer({
             if (d < best) { best = d; owner = { x: hall.x, y: hall.y, raw: hall.raw }; }
           }
           if (!owner) return [];
-          /* 가스 지대 게이트(지적) — 같은 기지에 미네랄 지대가 따로 있는 홑 가스 지대는,
-             그 위에 가스 건물(정제소류)이 서기 전엔 일꾼이 안 간다. 미네랄과 가스가 한
-             지대로 묶인 맵은 그대로 둔다(어차피 미네랄 캐는 길이다). */
+          /* 가스 지대 게이트(재지적: 가스 안 지은 곳에 가스 캐는 일꾼이 계속 나옴) —
+             가스가 낀 지대는 가스 건물(정제소류)이 서기 전엔 일꾼이 안 간다. 예전의
+             '홑 가스 지대' 판별(30타일 안 다른 지대가 있어야 게이트)은 가스만 있는
+             멀티를 놓쳤다 — 근처에 미네랄 지대가 따로 없어 홑으로 안 잡혔다. 미네랄과
+             가스가 한 지대로 묶인 맵에서 정제소 전까지 이 지대가 조용해지는 손해는
+             감수한다(본진 밑 곡괭이 일꾼이 채취 자체는 계속 말해 준다). */
           if (res[2] === 1) {
-            /* 홑 가스 지대인가 — 근처(같은 기지권, 30타일)에 다른 자원 지대가 따로 있으면
-               이 지대는 간헐천 홑 지대다(미네랄이 섞였으면 애초에 한 지대로 묶였을 테니).
-               (지적: 12타일로는 못 잡았다 — 본진 미네랄 지대 중심이 그보다 멀다.) */
-            const standalone = (grid.resources ?? []).some((other, oi) =>
-              oi !== ri && Math.hypot(other[0] - res[0], other[1] - res[1]) <= 30);
-            if (standalone) {
-              const hasGasBuilding = gasBuildings.some((g) =>
-                g.raw === owner!.raw && g.sec + 30 <= t && (g.gone === 0 || t < g.gone)
-                && Math.hypot(g.x - res[0], g.y - res[1]) <= 8);
-              if (!hasGasBuilding) return [];
-            }
+            const hasGasBuilding = gasBuildings.some((g) =>
+              g.raw === owner!.raw && g.sec + 30 <= t && (g.gone === 0 || t < g.gone)
+              && Math.hypot(g.x - res[0], g.y - res[1]) <= 10);
+            if (!hasGasBuilding) return [];
           }
           const track = motion.players.find((p) => p.raw === owner!.raw);
           let workerN = 0;
@@ -1724,7 +1776,9 @@ export default function ReplayMotionPlayer({
                   ...glyphStyle(owner!.raw, team),
                 }}
               >
-                ·
+                {/* ·(가운뎃점)은 잉크가 적어 너무 작았다(지적) — 정찰·일꾼 점과 같은
+                    ●를 같은 크기로 쓴다(요청: 일꾼 점 통일). */}
+                ●
               </span>
             );
           });
@@ -1908,12 +1962,25 @@ export default function ReplayMotionPlayer({
             }
             if (sinceCmd > SQUAD_FADE_SEC) return [];
             if (Number.isFinite(sinceCmd) && deadBy(t - sinceCmd)) return [];
+            // 태워진 동안은 숨는다(요청) — 내리면 나타난다.
+            if (carriedGone(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : -1)) return [];
             return [{ g, gi, pos, sinceCmd }];
           });
           const shownUnits = new Set(typeMarks.flatMap(({ g }) => BY_UNITS[g.unit] ?? [g.unit]));
+          /* 같은 종류가 여러 부대로 갈라졌으면 수도 갈라 적는다(지적: 저글링 10이 5·5,
+             3·3·4처럼 갈라지는 모션) — 어느 쪽에 몇이 갔는지는 안 남으니 고르게 나눈다. */
+          const squadsOfUnit = new Map<string, number>();
+          for (const { g } of typeMarks) squadsOfUnit.set(g.unit, (squadsOfUnit.get(g.unit) ?? 0) + 1);
+          const seenOfUnit = new Map<string, number>();
           const typeNodes = typeMarks.map(({ g, gi, pos, sinceCmd }) => {
             const members = BY_UNITS[g.unit] ?? [g.unit];
-            const alive = members.reduce((n, u) => n + aliveOf(u), 0);
+            const aliveAll = members.reduce((n, u) => n + aliveOf(u), 0);
+            const nSquads = squadsOfUnit.get(g.unit) ?? 1;
+            const idx = seenOfUnit.get(g.unit) ?? 0;
+            seenOfUnit.set(g.unit, idx + 1);
+            const alive = aliveAll > 0
+              ? Math.floor(aliveAll / nSquads) + (idx < aliveAll % nSquads ? 1 : 0)
+              : 0;
             /* 파서의 묶음 이름이 유닛명이 아닌 경우("Transport"·"Worker")는 그 종족의 실제
                이름으로 부른다(지적: "transport가 뭐지" — 영문 키가 그대로 샜다). */
             const race = bases.find((b) => b.key === p.raw)?.race;
@@ -1924,7 +1991,10 @@ export default function ReplayMotionPlayer({
                   ? (race === "저그" ? "드론" : race === "테란" ? "SCV" : "프로브")
                   : g.unit);
             const label = `${groupKo}${alive > 0 ? ` ${alive}` : ""}`;
-            const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC;
+            /* 일꾼과 오버로드는 이름을 안 띄운다(요청) — 일꾼은 늘 작은 점, 오버로드는
+               늘 풍선 도형이다. */
+            const noName = g.unit === "Worker" || (g.unit === "Transport" && race === "저그");
+            const activeNow = !noName && (pos.moving || sinceCmd <= ACTIVE_HOLD_SEC);
             /* 클로킹 유닛은 반투명(요청) — 옵저버·다크는 늘, 레이스·고스트는 클로킹 연구
                뒤부터. 칩이든 점이든 같이 옅어진다(요청). */
             const cloaked = g.unit === "Observer" || g.unit === "Dark Templar"
@@ -1936,19 +2006,25 @@ export default function ReplayMotionPlayer({
                 className={cx(
                   "scr-motion-army",
                   activeNow ? "scr-motion-chip" : "scr-motion-dot",
-                  team === 2 ? "scr-motion-team2" : "scr-motion-team1",                  cloaked && "scr-motion-cloaked",
+                  // 일꾼은 적당히 작은 점으로 통일(요청) — 부대 점보다 작고 옅은 정찰 점 크기.
+                  g.unit === "Worker" && "scr-motion-scout",
+                  team === 2 ? "scr-motion-team2" : "scr-motion-team1",
+                  cloaked && "scr-motion-cloaked",
                 )}
                 style={{
                   left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
+                  // 겹침 차례는 마지막 명령 시각(지적: 유닛이 무조건 위가 아니라).
+                  zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
                   // 칩 글씨 한 단 축소(지적: 너무 큼).
                   ...(activeNow
                     ? { fontSize: Math.min(11, 7 + Math.round(Math.sqrt(Math.max(alive, 1)))), ...chipStyle(p.raw, team) }
                     : glyphStyle(p.raw, team)),
                 }}
               >
-                {/* 저그 수송(오버로드)은 점 대신 풍선+다리 도형(요청). */}
-                {activeNow ? label
-                  : g.unit === "Transport" && race === "저그" ? <ShapeIcon kind="ovie" className="scr-motion-ovie" /> : "●"}
+                {/* 저그 수송(오버로드)은 점 대신 풍선+다리 도형(요청: 이름 없이 늘). */}
+                {g.unit === "Transport" && race === "저그"
+                  ? <ShapeIcon kind="ovie" className="scr-motion-ovie" />
+                  : activeNow ? label : "●"}
               </span>
             );
           });
@@ -1972,6 +2048,8 @@ export default function ReplayMotionPlayer({
             /* 전투에서 정리된 부대(요청: 유닛은 새로 이동하지 않는 한 그 자리에 있고,
                전투 후 다시 액션이 없다면 그 전투에서 죽은 것). */
             if (Number.isFinite(sinceCmd) && deadBy(t - sinceCmd)) return null;
+            // 태워진 동안은 숨는다(요청) — 내리면 나타난다.
+            if (carriedGone(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : -1)) return null;
             /* 생산 직후에도 깨어 있다(요청) — 갓 나온 유닛은 명령을 안 받았어도 지금
                이야기의 일부다. 완성은 사람 단위 값이라 주 부대만 깨운다. */
             let freshDone = false;
@@ -2012,6 +2090,8 @@ export default function ReplayMotionPlayer({
                       team === 2 ? "scr-motion-team2" : "scr-motion-team1",                    )}
                     style={{
                       left: pct(pos.x + dx, grid.width), top: pct(pos.y + dy, grid.height),
+                      // 겹침 차례는 마지막 명령 시각(지적).
+                      zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
                       ...glyphStyle(p.raw, team),
                     }}
                   >
@@ -2034,8 +2114,10 @@ export default function ReplayMotionPlayer({
                 className={cx(
                   "scr-motion-army",
                   "scr-motion-chip",
-                  ci === 0 && "scr-motion-heartbeat",
-                  team === 2 ? "scr-motion-team2" : "scr-motion-team1",                )}
+                  // (삭제) 심장박동 — 유닛 액티브 효과 취소(요청). 게다가 scale 맥동은
+                  // 글자 래스터를 늘려 확대 화면에서 칩이 내내 뿌옇게 보였다(지적).
+                  team === 2 ? "scr-motion-team2" : "scr-motion-team1",
+                )}
                 style={{
                   left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
                   fontSize: ci === 0 ? fontPx : 10,
@@ -2087,6 +2169,8 @@ export default function ReplayMotionPlayer({
                 if (lastOrderSec >= a && lastOrderSec <= b && t > b + DEAD_QUIET_SEC) return null;
               }
             }
+            // 태워진 동안은 숨는다(요청) — 오버로드·셔틀에 오른 정찰도 마찬가지다.
+            if (carriedGone(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : -1)) return null;
             /* 진짜 이름으로 부른다(지적: "일꾼"이 아니라 원래 이름 — "정찰"이라는 유닛은
                없다). 종족이 이름을 정한다: 일꾼은 SCV·프로브·드론, 수송선은 드랍십·셔틀·
                오버로드. 정체 모를 한 기도 그 종족의 흔한 쪽(일꾼, 저그는 오버로드)으로
@@ -2096,27 +2180,32 @@ export default function ReplayMotionPlayer({
               : g.kind === "carrier"
                 ? (race === "테란" ? "드랍십" : "셔틀")
                 : race === "테란" ? "SCV" : "프로브";
-            /* 유닛 마커와 같은 꼴이다(요청: 오버로드·일꾼만 다르게 표현되던 것을 동일하게)
-               — 깨어 있으면 배지 칩, 아니면 점. 크기 규칙도 부대와 같은 기본값을 쓴다. */
-            /* 본진 곁에서는 늘 점이다(요청: "처음 오버로드와 일꾼은 그냥 도형으로 시작") —
-               시작하자마자 첫 채취·정렬 명령에 이름 칩이 우르르 켜지던 자리다. 이름은
-               집을 떠나 진짜 정찰을 나설 때에야 값어치가 있다. */
-            const activeNow = (pos.moving || sinceCmd <= ACTIVE_HOLD_SEC) && !nearHome;
+            /* 일꾼과 오버로드는 이름을 안 띄운다(요청) — 일꾼은 자원 채취뿐 아니라 늘
+               적당히 작은 점으로 통일, 오버로드는 늘 풍선 도형이다. 이름 칩은 정체를
+               아는 비저그 수송선(드랍십·셔틀)에만 남는다. */
+            const noName = g.kind === "worker" || race === "저그";
+            const activeNow = !noName && (pos.moving || sinceCmd <= ACTIVE_HOLD_SEC) && !nearHome;
             return (
               <span
                 key={`s-${p.raw}-${g.kind}-${gi}`}
                 className={cx(
                   "scr-motion-army",
                   activeNow ? "scr-motion-chip" : "scr-motion-dot",
-                  team === 2 ? "scr-motion-team2" : "scr-motion-team1",                )}
+                  // 일꾼은 부대 점보다 작고 옅은 정찰 점 크기(요청).
+                  g.kind === "worker" && "scr-motion-scout",
+                  team === 2 ? "scr-motion-team2" : "scr-motion-team1",
+                )}
                 style={{
                   left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
+                  // 겹침 차례는 마지막 명령 시각(지적).
+                  zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
                   ...(activeNow ? chipStyle(p.raw, team) : glyphStyle(p.raw, team)),
                 }}
               >
                 {/* 오버로드(저그의 일꾼 아닌 정찰)는 점 대신 풍선+다리 도형(요청). */}
-                {activeNow ? label
-                  : race === "저그" && g.kind !== "worker" ? <ShapeIcon kind="ovie" className="scr-motion-ovie" /> : "●"}
+                {race === "저그" && g.kind !== "worker"
+                  ? <ShapeIcon kind="ovie" className="scr-motion-ovie" />
+                  : activeNow ? label : "●"}
               </span>
             );
           });
@@ -2165,6 +2254,25 @@ export default function ReplayMotionPlayer({
             </span>
           ) : null
         ))}
+
+        {/* 드랍·태움(요청: 셔틀·드랍십·오버로드의 태우기와 드랍 표현) — 내린 자리엔
+            '드랍', 제 수송선을 찍어 태운 자리엔 '태움'이 마법처럼 잠깐 떠오른다. */}
+        {motion.players.flatMap((p) => {
+          const team = teamOfRaw(p.raw);
+          const mk = (pts: [number, number, number][] | undefined, label: string, kp: string) =>
+            (pts ?? [])
+              .filter(([s]) => s <= t && t - s <= CAST_HOLD_SEC)
+              .map(([s, cx2, cy2]) => (
+                <span
+                  key={`${kp}-${p.raw}-${s}-${cx2}-${cy2}`}
+                  className={cx("scr-motion-cast", "scr-motion-chip", team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
+                  style={{ left: pct(cx2, grid.width), top: pct(cy2, grid.height), ...chipStyle(p.raw, team) }}
+                >
+                  {label}
+                </span>
+              ));
+          return [...mk(p.drops, "드랍", "dr"), ...mk(p.loads, "태움", "ld")];
+        })}
         </div>
         {/* (삭제) PC 확대 조절바 — PC에서는 확대 기능을 통째로 걷었다(요청). 확대·이동은
             이제 모바일 손짓(더블탭·두 손가락)만의 것이다. */}
@@ -2179,7 +2287,8 @@ export default function ReplayMotionPlayer({
           <div className="scr-motion-legend">
             <span>● 부대·유닛</span>
             <span>■ 건물</span>
-            <span>· 채굴 일꾼</span>
+            {/* 일꾼은 채굴·정찰 없이 전부 같은 작은 점이다(요청: 통일). */}
+            <span>• 일꾼</span>
             <span><Hammer size={8} /> 건설 중</span>
             <span><Cog size={8} /> 생산 중</span>
             <span><FlaskConical size={8} /> 업그레이드 중</span>
@@ -2294,13 +2403,12 @@ export default function ReplayMotionPlayer({
   if (big) {
     return createPortal(
       <div className="scr-modal-overlay">
-        {/* 폭 상한 = (가용 높이 − 위아래 여백) × 맵 가로세로비 + 양옆 조작부 몫(요청:
-            조작부를 맵 양옆 세로로, 스크러버 없이 — 맵을 최대한 크게). 세로는 이제 맵과
-            모달 패딩뿐이라 60px만 남기면 되고, 가로로 배속·컬러(왼쪽)와 재생·시간(오른쪽)
-            기둥 몫 170px을 더한다. */}
+        {/* 폭 상한 = (가용 높이 − 위아래 여백·슬림 탐색바 몫) × 맵 가로세로비 + 양옆
+            조작부 몫(요청: 조작부를 맵 양옆 세로로 — 맵을 최대한 크게, 탐색바는 맵 아래
+            슬림하게). 가로로 배속·컬러(왼쪽)와 재생·시간(오른쪽) 기둥 몫 170px을 더한다. */}
         <div
           className="scr-modal scr-motion-big-modal"
-          style={{ width: `min(94vw, calc((100dvh - 60px) * ${(grid.width / grid.height).toFixed(4)} + 170px))` }}
+          style={{ width: `min(94vw, calc((100dvh - 84px) * ${(grid.width / grid.height).toFixed(4)} + 170px))` }}
         >{body}</div>
       </div>,
       document.body,

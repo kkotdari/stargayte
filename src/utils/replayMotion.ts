@@ -78,6 +78,13 @@ export interface MotionTrack {
   /** 정체 모를 한 기짜리 클릭의 자취 — 시작 오버로드·옵저버 정찰이 대부분이다(지적:
    *  오버로드 이름이 안 나온다). 저그면 "오버로드", 아니면 "정찰"로 부른다. */
   opts?: [number, number, number][];
+  /** 뜬 건물의 비행 클릭 자취(요청: 엔베 띄워 정찰이 안 나온다) — 떠 있는(liftAt) 건물
+   *  마커가 이 자취를 비행 속도로 따라 난다. 옛 분석본에는 없다. */
+  fpts?: [number, number, number][];
+  /** 수송선 드랍 지점 [초, x, y](요청: 드랍 표현). 옛 분석본에는 없다. */
+  drops?: [number, number, number][];
+  /** 태우기 지점 [초, x, y](요청: 태운 것 표현) — 제 수송선을 찍은 우클릭. 옛 분석본에는 없다. */
+  loads?: [number, number, number][];
   /** 정체가 드러난 유닛별 자취(요청: 모든 유닛의 위치를 따로 표시, 같은 종류끼리만
    *  묶기) — 시즈·버로우·스팀팩처럼 그 유닛만 하는 커맨드로 정체가 드러난 번호(orderPositions
    *  의 by)의 명령들이다. 키는 그 이름("Siege Tank"·"Bionic"·"Lurker"…). 정체가 안
@@ -409,6 +416,12 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       .map((b) => b.frame! * SECONDS_PER_FRAME + HALL_BUILD_SEC)];
     const workers = workerTimeline(sg.unitFrames ?? {}, slotOpenSecs);
     const size = sizeTimeline(sg.unitFrames ?? {});
+    /* 비행·드랍·태움(요청: 엔베 띄워 정찰, 수송선 태우기·드랍 표현). */
+    const fpts = foldTrack(sg.flyPositions ?? []);
+    const drops: [number, number, number][] = (sg.unloadPositions ?? [])
+      .map((u) => [Math.round(u.frame * SECONDS_PER_FRAME), Math.round(u.x), Math.round(u.y)]);
+    const loads: [number, number, number][] = (sg.loadPositions ?? [])
+      .map((u) => [Math.round(u.frame * SECONDS_PER_FRAME), Math.round(u.x), Math.round(u.y)]);
     const ups: [number, string][] = [];
     for (const [name, frame] of Object.entries(sg.firstUpgradeFrame ?? {})) {
       ups.push([Math.round(frame * SECONDS_PER_FRAME), name]);
@@ -442,15 +455,17 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
     for (const b of sg.buildPositions ?? []) {
       if (b.frame === null) continue; // 시각을 모르는 건설은 시간축에 못 세운다.
       const clickSec = b.frame * SECONDS_PER_FRAME;
-      /* 착공은 일꾼이 닿고서다(요청: 건설 명령이면 일꾼이 거기로 이동한 뒤 올라가기 시작) —
-         직전 명령 자리(그 무렵 그 사람 손이 있던 어림 자리)에서 현장까지 일꾼 걸음으로
-         걸린 시간을 얹는다. 몰래 건물일수록 지연이 길어져, 클릭 순간 짠 하고 서던 것이
-         걸어가 닿은 뒤 올라간다. 일꾼 점도 현장으로 걷는다(아래 spts 주석). */
+      /* 착공은 일꾼이 닿고서다(요청, 재지적: 여전히 클릭 순간 올라감) — 예전엔 '직전
+         명령 자리'를 일꾼 자리로 썼는데, 직전 명령이 딴 부대 것이라 우연히 현장 근처면
+         지연이 0이 됐다. 이제 마지막 '일꾼' 명령 자리(없으면 본진)에서 현장까지 일꾼
+         걸음으로 걸린 시간을 얹는다. 몰래 건물일수록 지연이 길어져, 클릭 순간 짠 하고
+         서던 것이 걸어가 닿은 뒤 올라간다. 일꾼 점도 현장으로 걷는다(아래 spts 주석). */
       let prev: { x: number; y: number } | null = null;
-      for (const o of ownOrders) {
-        if (o.sec > clickSec) break;
-        prev = o;
+      for (const o of sg.orderPositions ?? []) {
+        if (o.frame * SECONDS_PER_FRAME > clickSec) break;
+        if (o.by === "Worker") prev = { x: o.x, y: o.y };
       }
+      if (!prev && p.startX !== null && p.startY !== null) prev = { x: p.startX, y: p.startY };
       const travel = prev
         ? Math.min(BUILD_TRAVEL_CAP_SEC, Math.hypot(prev.x - b.x, prev.y - b.y) / WORKER_TILES_PER_SEC)
         : 0;
@@ -518,6 +533,21 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
         razedAt(sec, l.x, l.y, foeAttacks, ownOrders),
       ]);
     }
+    /* 착륙 없이 끝나는 이륙(요청: 엔베 띄워 정찰이 안 나온다) — 엔지니어링 베이가 가장
+       흔한 '띄우고 안 내리는' 정찰이라, 남은 이륙을 살아 있는 엔베에 붙인다. 그때부터
+       그 마커는 둥실 뜬 채 비행 클릭(fpts)을 따라 난다. 생산 건물은 안 짚는다 —
+       이사(착륙)로 끝나는 것이 보통이라, 잘못 짚으면 멀쩡히 생산하는 건물이 떠 버린다. */
+    for (let li = 0; li < liftSecs.length; li += 1) {
+      if (liftUsed.has(li)) continue;
+      const sec = liftSecs[li];
+      for (const k of myBuildIdx) {
+        const e = builds[k];
+        if (e[3] !== "Engineering Bay" || e[0] > sec || (e[5] > 0 && e[5] <= sec) || e[6]) continue;
+        e[6] = sec;
+        liftUsed.add(li);
+        break;
+      }
+    }
     /* 건설 취소(요청: 짓다가 멈추거나 취소) — 어느 건물인지 안 남아, 가장 최근에 착공돼
        아직 짓고 있던 건물을 물린 것으로 본다. */
     for (const cf of sg.cancelBuilds ?? []) {
@@ -536,7 +566,7 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
     /* 트랙은 여기서 싣는다 — 위 건설 걸음이 spts에 점을 더한 뒤라야, 일꾼 명령이
        하나도 없던 사람의 건설 걸음도 함께 실린다. */
     if (pts.length > 0 || spts.length > 0 || tpts.length > 0 || opts.length > 0
-      || units.length > 0 || workers.length > 0) {
+      || units.length > 0 || workers.length > 0 || fpts.length > 0) {
       const hot = hotOf(
         [...pts, ...Object.values(upts).flat()].sort((a, b) => a[0] - b[0]), foeAttacks,
       );
@@ -546,6 +576,9 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
         ...(spts.length > 0 ? { spts } : {}),
         ...(tpts.length > 0 ? { tpts } : {}),
         ...(opts.length > 0 ? { opts } : {}),
+        ...(fpts.length > 0 ? { fpts } : {}),
+        ...(drops.length > 0 ? { drops } : {}),
+        ...(loads.length > 0 ? { loads } : {}),
         ...(Object.keys(upts).length > 0 ? { upts } : {}),
         ...(Object.keys(ptag).length > 0 ? { ptag } : {}),
         ...(hot.length > 0 ? { hot } : {}),

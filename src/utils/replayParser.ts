@@ -76,6 +76,13 @@ export interface ReplayPlayerSignals {
   /** 이륙(Lift Off) 프레임들 — 좌표도 어느 건물인지도 안 남는다. 재생이 다음 착륙(Land)과
    *  짝지어 "떠 있는 구간"을 어림한다(지적: 건물 떠 있는 게 표현이 안 된다). */
   lifts?: number[];
+  /** 뜬 건물이 골라진 채의 이동 클릭(요청: 엔베 띄워 정찰이 안 나온다) — 떠 있는 건물
+   *  마커가 이 자취를 따라 난다. 좌표는 타일. 옛 분석본에는 없다. */
+  flyPositions?: { frame: number; x: number; y: number }[];
+  /** 수송선 내리기(Unload) 커맨드의 좌표(타일) — 드랍 지점 표시의 재료(요청). */
+  unloadPositions?: { frame: number; x: number; y: number }[];
+  /** 제 수송선을 찍은 우클릭(태우기)의 좌표(타일) — 태움 표시의 재료(요청). */
+  loadPositions?: { frame: number; x: number; y: number }[];
   /** 건설 취소 커맨드의 프레임 — 짓다 만 건물 판정의 재료(요청). 어느 건물인지는 안 남아,
    *  재생이 가장 최근 착공된 건물로 어림한다. */
   cancelBuilds: number[];
@@ -455,6 +462,9 @@ const CHAT_CAP = 40;
 const ORDER_POS_CAP = 20000;
 // 브루드워 좌표: 빌드 타일 한 칸 = 32픽셀.
 const PIXELS_PER_TILE = 32;
+/** 시작 직후 '통째 선택' 판정 창(프레임, 약 30초) — 이 안의 4기 이상 선택이 찍은 자원
+ *  클릭에는 일꾼 낙인을 안 찍는다(스타팅 오버로드 오염 방지, 아래 byClick 주석). */
+const EARLY_ALL_SELECT_FRAMES = 720;
 
 function emptySignals(): ReplayPlayerSignals {
   return {
@@ -578,6 +588,10 @@ function collectSignals(
   const groups = new Map<string, number[]>();
   const unitOfTag = new Map<string, string>();
   const pending: { pid: number; idx: number; tags: number[] }[] = [];
+  /* 지금 떠 있는 건물 번호들(요청: 엔베 띄워 정찰 표현) — 이륙(Lift Off) 때 골라져 있던
+     번호가 뜬 건물이고, 그 번호가 골라진 채의 우클릭은 랠리가 아니라 '비행 이동'이다.
+     착륙(Land)하면 걷는다. */
+  const flying = new Map<number, Set<number>>();
   const tagsOf = (c: ScrepCmd): number[] => (
     Array.isArray(c.UnitTags) ? c.UnitTags.filter((t) => typeof t === "number") : []
   );
@@ -685,7 +699,13 @@ function collectSignals(
          걷어내기가 쉬워진다. */
       const clicked = (cmdName === "Right Click" || cmdName === "Targeted Order")
         ? nameOf(c.Unit) : undefined;
-      const byClick = clicked && RESOURCE_TARGETS.has(clicked) ? "Worker" : undefined;
+      /* 자원 클릭의 일꾼 낙인은 초반의 '통째 선택'에는 안 찍는다(지적: 첫 오버로드 정찰이
+         아예 안 잡히고 일꾼과 헷갈림) — 시작하자마자 본진 근처를 상자로 긁어 미네랄을
+         찍으면 드론들 틈의 스타팅 오버로드까지 일꾼으로 낙인찍혀, 그 뒤 오버로드 정찰이
+         전부 일꾼 자취로 흘렀다. 드론들은 다음 개별 채집 클릭들이 금방 다시 이름 붙인다. */
+      const mixedStart = frame !== null && frame < EARLY_ALL_SELECT_FRAMES
+        && (sel.get(c.PlayerID)?.length ?? 0) >= 4;
+      const byClick = clicked && RESOURCE_TARGETS.has(clicked) && !mixedStart ? "Worker" : undefined;
       const byRole = cmdName && WORKER_CMD_NAMES.has(cmdName) ? "Worker"
         : cmdName && BUILDING_ONLY_CMD_NAMES.has(cmdName) ? "Building" : byClick;
       const named = (cmdName ? USE_CMD_TO_UNIT[cmdName] : undefined)
@@ -732,6 +752,22 @@ function collectSignals(
           : orderName?.startsWith("Attack") ? "attack" as const
             : byClick;
         const picked = sel.get(c.PlayerID) ?? [];
+        /* 뜬 건물이 골라진 채의 클릭은 비행 이동이다(요청: 엔베 띄워 정찰이 안 나온다) —
+           재생이 떠 있는 건물 마커를 이 자취로 움직인다. */
+        const fly = flying.get(c.PlayerID);
+        if (fly && picked.length > 0 && picked.every((tg) => fly.has(tg))) {
+          (s.flyPositions ??= []).push({
+            frame, x: pos.x / PIXELS_PER_TILE, y: pos.y / PIXELS_PER_TILE,
+          });
+        }
+        /* 제 수송선을 찍은 우클릭은 태우기다(요청: 태운 것 표현) — 찍힌 번호가 이미
+           수송선으로 드러난 내 유닛일 때만. */
+        if (typeof c.UnitTag === "number" && clickedOwner === c.PlayerID
+          && unitOfTag.get(`${c.PlayerID}:${c.UnitTag}`) === "Transport") {
+          (s.loadPositions ??= []).push({
+            frame, x: pos.x / PIXELS_PER_TILE, y: pos.y / PIXELS_PER_TILE,
+          });
+        }
         s.orderPositions.push({
           frame, x: pos.x / PIXELS_PER_TILE, y: pos.y / PIXELS_PER_TILE, ...(kind ? { kind } : {}),
           ...(picked.length > 0 ? { n: picked.length } : {}),
@@ -752,12 +788,27 @@ function collectSignals(
     if (cmdName === "Unload" || cmdName === "Unload All") {
       s.unloadCount += 1;
       if (frame !== null && s.firstUnloadFrame === null) s.firstUnloadFrame = frame;
+      /* 어디에 내렸나(요청: 드랍 표현) — 내리기 커맨드에 좌표가 실리면(땅에 내리기)
+         그 자리가 곧 드랍 지점이다. 좌표 단위는 이동 명령과 같은 픽셀이라 타일로 나눈다. */
+      const pos = posOf(c.Pos);
+      if (pos && frame !== null) {
+        (s.unloadPositions ??= []).push({
+          frame, x: pos.x / PIXELS_PER_TILE, y: pos.y / PIXELS_PER_TILE,
+        });
+      }
     }
     if (cmdName === "Lift Off") {
       s.liftOffCount += 1;
       if (frame !== null && s.firstLiftOffFrame === null) s.firstLiftOffFrame = frame;
       // 전부 남긴다(지적: 건물 떠 있는 게 표현이 안 된다) — 재생이 다음 착륙과 짝짓는다.
       if (frame !== null) (s.lifts ??= []).push(frame);
+      // 이륙 때 골라져 있던 번호가 곧 뜬 건물이다(요청: 엔베 띄워 정찰).
+      const f = flying.get(c.PlayerID) ?? new Set<number>();
+      for (const tg of sel.get(c.PlayerID) ?? []) f.add(tg);
+      flying.set(c.PlayerID, f);
+    } else if (cmdName === "Land") {
+      // 내려앉으면 비행 목록에서 걷는다(위 flying 주석).
+      for (const tg of sel.get(c.PlayerID) ?? []) flying.get(c.PlayerID)?.delete(tg);
     } else if (cmdName === "Leave Game") {
       // 여러 번 찍히면 마지막 것이 실제로 떠난 시점이다.
       s.leaveFrame = frame;
