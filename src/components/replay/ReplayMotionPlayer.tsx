@@ -71,23 +71,50 @@ const SQUAD_FADE_SEC = 60;
  *  자리라, 흔한 쪽(일꾼)에 맞춘다. */
 const SCOUT_WALK_SPEED = 3.7;
 
+/** 먼 점을 새 부대로 볼지 내다보는 창(초) — 이 안에 옛 자리 근처 명령이 또 오면 두 무리다. */
+const SQUAD_LOOKAHEAD_SEC = 30;
+
 /** 명령 점을 가까운 것끼리 부대로 묶는다(요청: 가까운 유닛만 합침) — 부대 자취와 정찰
- *  자취가 같이 쓴다. 어느 부대에서도 먼 점은 가장 오래 조용한 부대가 옮겨 간 것으로 본다. */
+ *  자취가 같이 쓴다.
+ *
+ *  먼 점 하나에는 두 이야기가 있다(지적: 부대를 가른 뒤로 먼 어택이 걷지 않았고, 일꾼·
+ *  오버로드 위치도 여전히 튀었다) — 그 무리가 통째로 옮겨 가는 것이거나, 딴 무리가 저기서
+ *  따로 움직이는 것이다. 가르는 근거는 옛 자리다: 먼 점 뒤로 곧(30초) 옛 자리 근처 명령이
+ *  또 오면 두 무리가 같이 사는 것이라 부대를 가르고, 안 오면 이사라 이어 걷는다.
+ *  새로 서는 부대는 곁 부대의 마지막 자리를 출발점으로 심는다 — 첫 점이 곧 목적지라
+ *  마커가 목적지에서 태어나던 것을, 걸어 나가는 그림으로 되돌린다. */
 function splitSquads(pts: [number, number, number][]): [number, number, number][][] {
   const squads: [number, number, number][][] = [];
-  for (const pt of pts) {
+  for (let i = 0; i < pts.length; i += 1) {
+    const pt = pts[i];
     let best = -1;
     let bestD = Infinity;
-    for (let i = 0; i < squads.length; i += 1) {
-      const last = squads[i][squads[i].length - 1];
+    for (let k = 0; k < squads.length; k += 1) {
+      const last = squads[k][squads[k].length - 1];
       const d = Math.hypot(last[1] - pt[1], last[2] - pt[2]);
-      if (d < bestD) { bestD = d; best = i; }
+      if (d < bestD) { bestD = d; best = k; }
     }
     if (best >= 0 && bestD <= SQUAD_MERGE_TILES) { squads[best].push(pt); continue; }
-    if (squads.length < SQUAD_MAX) { squads.push([pt]); continue; }
+    if (best >= 0) {
+      const last = squads[best][squads[best].length - 1];
+      let staysBehind = false;
+      for (let j = i + 1; j < pts.length && pts[j][0] - pt[0] <= SQUAD_LOOKAHEAD_SEC; j += 1) {
+        if (Math.hypot(pts[j][1] - last[1], pts[j][2] - last[2]) <= SQUAD_MERGE_TILES) {
+          staysBehind = true;
+          break;
+        }
+      }
+      // 옛 자리가 곧 다시 안 쓰인다 — 무리째 이사다. 이어 걸어간다.
+      if (!staysBehind) { squads[best].push(pt); continue; }
+    }
+    if (squads.length < SQUAD_MAX) {
+      const from = best >= 0 ? squads[best][squads[best].length - 1] : null;
+      squads.push(from ? [[pt[0], from[1], from[2]], pt] : [pt]);
+      continue;
+    }
     let oldest = 0;
-    for (let i = 1; i < squads.length; i += 1) {
-      if (squads[i][squads[i].length - 1][0] < squads[oldest][squads[oldest].length - 1][0]) oldest = i;
+    for (let k = 1; k < squads.length; k += 1) {
+      if (squads[k][squads[k].length - 1][0] < squads[oldest][squads[oldest].length - 1][0]) oldest = k;
     }
     squads[oldest].push(pt);
   }
@@ -435,6 +462,30 @@ export default function ReplayMotionPlayer({
     () => motion.players.map((p) => dropSpikes(p.pts, Math.max(grid.width, grid.height))),
     [motion, grid.width, grid.height],
   );
+  /* 지금 부대의 주력 유닛(지적: 질럿·히드라·탱크·일꾼 말고는 이름이 안 나온다) — 트랙의
+     units는 '여태 제일 많이 뽑은 것'이라 한번 정해지면 거의 안 바뀌었다. 최근 3분의
+     생산에서 고르고, 그동안 생산이 없으면 여태 누계로 물러난다. 재료(prod)는 옛 분석본에도
+     있어 재분석이 필요 없다. */
+  const unitNow = (p: MotionTrack, at: number): string => {
+    let bestRecent = "";
+    let nRecent = 0;
+    let bestEver = "";
+    let nEver = 0;
+    for (const [unit, secs] of Object.entries(p.prod ?? {})) {
+      if (SCOUT_KO[unit] || !UNIT_KO[unit]) continue;
+      let recent = 0;
+      let ever = 0;
+      for (const sec of secs) {
+        if (sec > at) break;
+        ever += 1;
+        if (at - sec <= 180) recent += 1;
+      }
+      if (recent > nRecent) { nRecent = recent; bestRecent = unit; }
+      if (ever > nEver) { nEver = ever; bestEver = unit; }
+    }
+    return bestRecent || bestEver || unitAt(p.units, at);
+  };
+
   /* 자취 펴기 한 벌 — 부대는 지형 경로에 그 유닛의 속도로, 정찰(straight)은 직선에 일꾼
      걸음(3.7타일/초)으로 걷는다(지적: 일꾼·오버로드가 위치 찍으면 바로 이동하는 느낌 —
      정찰 점도 명령 시각에 출발해 걸어서 가야 한다). */
@@ -1037,7 +1088,7 @@ export default function ReplayMotionPlayer({
             단위 어림이라 부대별로 가를 근거가 없다. 곁 부대는 잠잠해지면 걷는다(본대에
             합류했거나 정리된 것이다). 유닛 칩의 팀 방패는 뺐다(요청). */}
         {motion.players.flatMap((p, pi) => {
-          const unit = unitAt(p.units, t);
+          const unit = unitNow(p, t);
           const team = teamOfRaw(p.raw);
           const squads = refinedSquads[pi];
           const raws = squadPts[pi];
@@ -1072,6 +1123,16 @@ export default function ReplayMotionPlayer({
               sinceCmd = t - sec;
             }
             if (si !== primary && sinceCmd > SQUAD_FADE_SEC) return null;
+            /* 전투에서 정리된 부대(요청: 유닛은 새로 이동하지 않는 한 그 자리에 있고,
+               전투 후 다시 액션이 없다면 그 전투에서 죽은 것) — 마지막 명령이 어떤 전투
+               창에 닿아 있고 그 전투가 끝나고도 새 명령이 없으면, 그 부대는 거기서
+               정리된 것이라 걷는다. */
+            if (Number.isFinite(sinceCmd)) {
+              const lastOrderSec = t - sinceCmd;
+              for (const [a, b] of p.hot ?? []) {
+                if (lastOrderSec >= a - 30 && lastOrderSec <= b && t > b + 8) return null;
+              }
+            }
             const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC;
             const showName = si === primary && activeNow && !!unit && (size >= 1 || !!SCOUT_KO[unit]);
             const fontPx = Math.min(16, 8 + Math.round(Math.sqrt(size) * 1.6));

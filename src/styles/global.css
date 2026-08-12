@@ -10853,9 +10853,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: var(--radius-sm); }
 .scr-motion-canvas-blank { background: rgba(255, 255, 255, 0.04); }
 .scr-motion-map > span { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; }
-/* 겹침 차례(요청: 건물을 아바타 위로) — 본진 아바타(24px)가 곁의 건물 도형을 가렸다.
-   움직이는 것(부대·정찰·마법)은 그 위다 — 지나가는 것이 서 있는 것에 가려지면 안 보인다. */
-.scr-motion-base { z-index: 1; }
+/* 겹침 차례 — 건물(z2)은 움직이는 것(z3) 아래, 본진 아바타는 도로 제일 위다(요청:
+   아바타가 제일 위였던 것 복구 — 건물을 위로 올려 보니 얼굴이 도형에 덮여 누가 누군지가
+   먼저 죽었다). */
+.scr-motion-base { z-index: 4; }
 .scr-motion-build, .scr-motion-workers { z-index: 2; }
 .scr-motion-army, .scr-motion-scout, .scr-motion-cast, .scr-motion-fresh { z-index: 3; }
 /* 팀 색 — 팀전 로스터·요약 문장과 같은 두 색을 쓴다(.scr-sum-team*와 한 벌). */
