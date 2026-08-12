@@ -732,7 +732,7 @@ const TITLES: Title[] = [
      '파는 여인'까지 붙으면 굴을 뚫는 그림이라 그 오해가 없다.
      근거 문장은 그대로 '커널'로 부른다 — 자막이 그 수를 부르는 이름이다. */
   { ...rare("커널 개통 전문가", ["nydus"]), minPlaysShare: 0.05 },
-  { ...rare("리콜 배달부", ["recall"]), minPlaysShare: 0.05 },
+  { ...rare("리콜 배달부", ["recall"]), minPlaysShare: 0.02 },
   { ...rare("도둑 퀸", ["mind-control"]), minPlaysShare: 0.01 },
   /* 유닛 기본(7%)보다 낮다(요청) — 캐리어까지 가는 판은 프로토스 판 가운데도 일부라,
      코끼리와 같은 자리에서 제 값을 받는다. */
@@ -962,7 +962,8 @@ const TITLES: Title[] = [
      본진을 잃고도 판을 안 놓은 이야기다. "쫓겨 다녔다"가 아니라 "그러고도 살아남았다"로
      부르면 같은 기록이 그 사람의 끈기가 된다. 져도 센다(COUNTED_EVEN_IF_LOST) — 밀린 뒤의
      이야기라 이긴 판만 보면 영영 안 잡힌다. */
-  { ...tactic("부활 퀸", ["lodging", "relocate"]), why: "본진 밖 생존(이사·셋방살이)", minPlaysShare: 0.11 },
+  /* 에픽으로 올렸다(요청) — 본진을 잃고도 판을 이어 간 이야기라 곁가지보다는 위다. */
+  { ...tactic("부활 퀸", ["lodging", "relocate"]), why: "본진 밖 생존(이사·셋방살이)", minPlaysShare: 0.11, weight: 3 },
   /* (삭제) 건물 띄우기(lift-off)로 짓던 "공중부양 마스터" — 뺐다(지적). 이 키는 자리를
      다 내주고 건물만 띄워 쫓겨 다닌 대목이라, 버틴 이야기로 넣었지만 칭호로 굳으면
      "집을 잃은 사람"이라는 딱지로 읽힌다. 자막에서 한 번 지나가는 말과, 이름 아래
@@ -1035,7 +1036,7 @@ const TITLES: Title[] = [
      값에 가까워, 같은 종족·같은 시작이면 누구나 비슷하게 나온다 — 1등이라도 그 사람을
      말해 주는 몫이 작았다. */
   /* 건물을 제일 많이 올린 사람(요청: 심시티 퀸) — "쉴 새 없이 짓는 자"에서 바꿨다. 재는 값은 그대로 분당 지은 채수다. */
-  { label: "심시티 퀸", weight: 2, kind: "경기력", min: 8, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
+  { label: "심시티 퀸", weight: 3, kind: "경기력", min: 8, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
   {
     /* 급을 올린다(요청) — 무게 2 → 3이라 일반에서 에픽이다. 갈래를 승률로 올려 둔 채(요청)
        급만 일반에 남아 있던 것이 어긋난 자리였다: 목록에서는 승률 칸 맨 위인데 대표를
@@ -1071,7 +1072,7 @@ const TITLES: Title[] = [
     /* 팔색조 여인 → 올라운더 퀸(요청) — 조건에 '그 종족들 승률이 모두 5할 이상'을 더하면서
        이름도 함께 봤다. 두루 쓴다는 사실만 세던 시절에는 종족을 바꿔 가며 지고 다녀도
        걸렸는데, 이제는 어느 종족을 잡아도 반은 이긴다는 말이라 '올라운더'가 맞는 말이다. */
-    label: "올라운더 퀸", weight: 2, kind: "경기력", pool: 1, edge: 1, min: 3, scale: "count",
+    label: "올라운더 퀸", weight: 3, kind: "경기력", pool: 1, edge: 1, min: 3, scale: "count",
     minPlaysShare: 0, why: "5할 넘긴 종족", unit: "개",
     value: (_s, of) => {
       /* 종족당 판수 문턱 12 → 18(지적: 팔색조 문턱이 낮다) — 종족 수는 셋이 끝이라 더 올릴
@@ -1144,7 +1145,7 @@ const TITLES: Title[] = [
      그 판을 붙들고 있어야 한다. 이긴 판의 BEST(3)와 같은 자리로 두되 표에서는 그 아래다. */
   /* 졌잘싸는 한참 아래다(지적) — 진 판의 BEST라 잘 싸운 것은 맞지만, 결국 진 판의
      이야기다. 곁가지(2)와 같은 자리. 이것도 경기수 비례다(요청) — 열 판에 한 번꼴. */
-  { label: "졌잘싸 퀸", weight: 2, kind: "명예", min: 0.1, why: "판 대비 진 판 BEST", unit: "",
+  { label: "졌잘싸 퀸", weight: 3, kind: "명예", min: 0.1, why: "판 대비 진 판 BEST", unit: "",
     value: (s) => (s.plays > 0 && (s.lostBests ?? 0) > 0 ? (s.lostBests ?? 0) / s.plays : null) },
   // 분당 커맨드 — 손 이야기 셋 가운데 맨 아래다(요청: 퀸으로 올릴 만하다). 많이 눌렀다는
   // 사실만 세므로, 그 가운데 몇이 헛손질인지는 안 묻는다.
