@@ -2012,8 +2012,23 @@ export default function ReplayMotionPlayer({
           if (workerN === 0) return [];
           const team = teamOfRaw(owner.raw);
           const dots = Math.min(3, Math.max(1, Math.ceil(workerN / 10)));
+          /* 채굴 걸음을 실제 일꾼 걸음으로(지적: 일꾼 속도가 왜 이렇게 빠르냐) — 예전
+             사인파는 거리와 무관하게 7초에 한 왕복이라, 먼 홀(18타일까지)에선 점이 실제
+             일꾼(3.7타일/초)보다 빨리 내달렸고 캐는 멈춤도 없었다. 이제 구간 길이만큼
+             일꾼보다 살짝 느린 걸음(가감속 감안)으로 걷고, 양 끝에서 캐고 내리는 동안
+             멈춘다 — 거리가 멀수록 왕복이 오래 걸리는, 눈에 익은 그 리듬이다. */
+          const legTiles = Math.hypot(owner.x - res[0], owner.y - res[1]) * 0.7;
+          const MINE_WALK = 2.6;
+          const MINE_DWELL = 2;
+          const leg = legTiles / MINE_WALK;
+          const period = 2 * (leg + MINE_DWELL);
           return Array.from({ length: dots }, (_, i) => {
-            const k = 0.5 + 0.5 * Math.sin(t * 0.9 + i * 2.1 + ri);
+            // 점·지대마다 위상을 어긋내 셋이 같이 안 다니게 한다(결정적 — 프레임마다 안 튐).
+            const u = ((t + i * 5.3 + ri * 2.7) % period + period) % period;
+            const k = u < leg ? u / leg
+              : u < leg + MINE_DWELL ? 1
+                : u < 2 * leg + MINE_DWELL ? 1 - (u - leg - MINE_DWELL) / leg
+                  : 0;
             const x = res[0] + (owner!.x - res[0]) * (0.15 + 0.7 * k);
             const y = res[1] + (owner!.y - res[1]) * (0.15 + 0.7 * k);
             return (
