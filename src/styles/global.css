@@ -10867,6 +10867,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   text-shadow: 0 0 5px rgba(0, 0, 0, 0.95); animation: scr-motion-in 0.3s ease-out;
 }
 .scr-motion-base { display: inline-flex; flex-direction: column; align-items: center; gap: 1px; }
+/* 아바타 이중 테두리(요청) — 안쪽 개인색·바깥 팀색은 인라인 box-shadow가 칠한다. */
+.scr-motion-base-ring { display: inline-flex; border-radius: 50%; margin: 4px; }
 /* 자원 캐는 일꾼(요청) — 본진 밑에서 곡괭이질하듯 잘게 까딱인다. */
 .scr-motion-workers {
   font-size: 7px; font-weight: 700; color: var(--muted);

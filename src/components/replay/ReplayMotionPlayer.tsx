@@ -202,14 +202,21 @@ export default function ReplayMotionPlayer({
     for (const p of motion.players) if (p.color) m.set(p.raw, p.color);
     return m;
   }, [motion]);
+  /* 색 규칙(요청: 위치 바꿈) — 안쪽 배경이 개인(게임 내) 컬러, 테두리가 팀 컬러다.
+     테두리는 선명한 팀색으로 굵게(2px). 글자는 배경 밝기에 따라 흰/검. */
+  const TEAM_EDGE: Record<1 | 2, string> = { 1: "#2f80ff", 2: "#e0435c" };
   const chipStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => {
-    const bg = team === 2 ? "#c8455a" : "#2b6fbd";
-    // 배경 밝기로 글자색을 고른다(요청: 흰색이나 검정, 잘 보이는 걸로).
-    const lum = team === 2 ? 0.299 * 200 + 0.587 * 69 + 0.114 * 90 : 0.299 * 43 + 0.587 * 111 + 0.114 * 189;
+    const personal = colorByRaw.get(raw);
+    const bg = personal ?? (team === 2 ? "#5a2a31" : "#233c5c");
+    const r = parseInt(bg.slice(1, 3), 16);
+    const g = parseInt(bg.slice(3, 5), 16);
+    const b = parseInt(bg.slice(5, 7), 16);
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
     return {
       background: bg,
       color: lum > 150 ? "#111" : "#fff",
-      borderColor: colorByRaw.get(raw) ?? "rgba(255, 255, 255, 0.4)",
+      borderColor: team === 2 ? TEAM_EDGE[2] : TEAM_EDGE[1],
+      borderWidth: 2,
     };
   };
 
@@ -232,35 +239,38 @@ export default function ReplayMotionPlayer({
     return () => { cancelled = true; };
   }, [grid.image, grid.walk, walkOverride]);
 
-  /* 자취를 실제 이동으로 편다 — 지상은 지형 경로(BFS), 공중은 직선. 시간은 그 유닛의
-     속도(속업 포함, 요청)로 배분한다: 경로 길이 ÷ 속도가 걸리는 시간이고, 다음 명령까지
-     남으면 도착지에서 기다린다(정지 점을 하나 더 박는다). 클릭이 부대보다 앞서 나간 구간
-     (걸리는 시간 > 명령 간격)은 명령 시각에 맞춰 도착시킨다 — 마커가 명령을 영영 못
-     따라가면 그 뒤 화면 전체가 밀린다. */
+  /* 자취를 실제 이동으로 편다(지적: 클릭 자리로 순간이동해서 이상하다) — 명령은 도착이
+     아니라 출발 신호다: 마커는 명령 시각에 그 자리에서 출발해, 경로(지상은 지형 BFS,
+     공중은 직선)를 그 유닛의 속도(속업 포함)로 이동한다. 도착 전에 다음 명령이 오면 가던
+     길 그 지점에서 새 목적지로 방향을 튼다. 명령이 없는 동안은 서 있는다 — 순간이동은
+     구조적으로 없다. */
   const refinedPts = useMemo(() => motion.players.map((p) => {
-    const out: [number, number, number][] = [];
-    for (let i = 0; i < p.pts.length; i += 1) {
-      const cur = p.pts[i];
-      if (i === 0) { out.push(cur); continue; }
-      const prev = p.pts[i - 1];
-      const unit = unitAt(p.units, prev[0]);
+    if (p.pts.length === 0) return p.pts;
+    const out: [number, number, number][] = [[p.pts[0][0], p.pts[0][1], p.pts[0][2]]];
+    let atX = p.pts[0][1];
+    let atY = p.pts[0][2];
+    let atSec = p.pts[0][0];
+    for (let i = 1; i < p.pts.length; i += 1) {
+      const [orderSec, tx, ty] = p.pts[i];
+      const nextOrderSec = i + 1 < p.pts.length ? p.pts[i + 1][0] : Infinity;
+      // 명령이 올 때까지 서 있던 자리 — 같은 좌표의 점을 박아 그 구간을 정지로 만든다.
+      if (orderSec > atSec) out.push([orderSec, atX, atY]);
+      const startSec = Math.max(atSec, orderSec);
+      const unit = unitAt(p.units, orderSec);
       const air = unit !== "" && isAirUnit(unit);
-      const dt = cur[0] - prev[0];
-      if (dt > LERP_MAX_GAP_SEC) { out.push(cur); continue; }
-      // 경로 — 지상은 지형 위 BFS(지형 없으면 직선 폴백), 공중은 직선.
       let path: [number, number][] | null = null;
       if (!air && terrain) {
         path = groundPath(
           terrain,
-          prev[1] / grid.width, prev[2] / grid.height,
-          cur[1] / grid.width, cur[2] / grid.height,
+          atX / grid.width, atY / grid.height,
+          tx / grid.width, ty / grid.height,
         )?.map(([fx, fy]) => [fx * grid.width, fy * grid.height] as [number, number]) ?? null;
       }
-      if (!path) path = [[cur[1], cur[2]]];
+      if (!path) path = [[tx, ty]];
       let total = 0;
       const lens: number[] = [];
-      let px = prev[1];
-      let py = prev[2];
+      let px = atX;
+      let py = atY;
       for (const [x, y] of path) {
         const d = Math.hypot(x - px, y - py);
         lens.push(d);
@@ -268,17 +278,44 @@ export default function ReplayMotionPlayer({
         px = x;
         py = y;
       }
-      if (total === 0) { out.push(cur); continue; }
-      // 걸리는 시간 — 유닛 속도(속업 반영)로, 명령 간격을 넘지는 않는다(위 주석).
-      const v = speedOf(unit || "Marine", prev[0], p.ups);
-      const travel = Math.min(dt, total / Math.max(0.5, v));
-      let acc = 0;
-      for (let j = 0; j < path.length; j += 1) {
-        acc += lens[j];
-        out.push([prev[0] + travel * (acc / total), path[j][0], path[j][1]]);
+      if (total === 0) { atSec = startSec; continue; }
+      const v = Math.max(0.5, speedOf(unit || "Marine", orderSec, p.ups));
+      const travel = total / v;
+      if (startSec + travel <= nextOrderSec) {
+        // 끝까지 간다 — 도착 뒤 다음 명령까지는 위의 대기 점이 맡는다.
+        let acc = 0;
+        for (let j = 0; j < path.length; j += 1) {
+          acc += lens[j];
+          out.push([startSec + travel * (acc / total), path[j][0], path[j][1]]);
+        }
+        atX = tx;
+        atY = ty;
+        atSec = startSec + travel;
+      } else {
+        // 다음 명령이 먼저 온다 — 그때까지 간 만큼만 걷고 거기서 방향을 튼다.
+        const cutDist = v * (nextOrderSec - startSec);
+        let acc = 0;
+        let cx = atX;
+        let cy = atY;
+        for (let j = 0; j < path.length; j += 1) {
+          if (acc + lens[j] >= cutDist) {
+            const k = lens[j] > 0 ? (cutDist - acc) / lens[j] : 0;
+            const bx = j === 0 ? atX : path[j - 1][0];
+            const by = j === 0 ? atY : path[j - 1][1];
+            cx = bx + (path[j][0] - bx) * k;
+            cy = by + (path[j][1] - by) * k;
+            out.push([nextOrderSec, cx, cy]);
+            break;
+          }
+          acc += lens[j];
+          out.push([startSec + acc / v, path[j][0], path[j][1]]);
+          cx = path[j][0];
+          cy = path[j][1];
+        }
+        atX = cx;
+        atY = cy;
+        atSec = nextOrderSec;
       }
-      // 일찍 닿았으면 다음 명령까지 그 자리에서 기다린다.
-      if (travel < dt) out.push([cur[0], cur[1], cur[2]]);
     }
     return out;
   }), [motion, terrain, grid.width, grid.height]);
@@ -416,7 +453,15 @@ export default function ReplayMotionPlayer({
               className={cx("scr-motion-base", m.ghost && "scr-motion-base-ghost")}
               style={{ left: pct(m.x, grid.width), top: pct(m.y, grid.height) }}
             >
-              <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={16} />
+              {/* 이중 테두리(요청) — 안쪽이 개인색, 바깥이 팀색이다. */}
+              <span
+                className="scr-motion-base-ring"
+                style={{
+                  boxShadow: `0 0 0 2px ${colorByRaw.get(m.key) ?? "rgba(255,255,255,0.35)"}, 0 0 0 4px ${m.team === 2 ? TEAM_EDGE[2] : TEAM_EDGE[1]}`,
+                }}
+              >
+                <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={16} />
+              </span>
               {m.withName && (
                 <span
                   className={cx("scr-motion-base-name", "scr-motion-chip", m.team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
