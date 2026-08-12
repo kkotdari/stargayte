@@ -10865,8 +10865,15 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-teamcol-text { display: flex; flex-direction: column; min-width: 0; }
 /* 글씨는 충분히 작게(요청) — 기둥은 지도 곁들이라 지도보다 목소리가 작아야 한다. */
 .scr-motion-teamcol-name {
-  font-size: 9px; font-weight: 700;
+  /* 칩 꼴(지적: 글자색에 따라 안 보임) — 그 사람 색이 바탕, 글자는 밝기 따라 검정/흰색
+     (인라인 chipStyle). 색 글자를 카드 바탕에 그대로 얹으면 테마 어느 한쪽에서 묻힌다. */
+  font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 3px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 58px;
+  align-self: flex-start;
+}
+/* 모바일 세로 목록에서 2팀은 오른쪽 벽에 붙는다 — 칩이 flex-start로 왼쪽에 남지 않게. */
+@media (max-width: 1159px) {
+  .scr-motion-teamcol:last-of-type .scr-motion-teamcol-name { align-self: flex-end; }
 }
 /* 모바일은 옆이 좁다(요청: 로스터를 위에) — 기둥 둘이 맵 위에서 1팀 왼쪽·2팀 오른쪽으로
    마주 본다. 아바타는 걷고 이름만 남긴다(요청) — 위 로스터는 명패지 얼굴첩이 아니고,

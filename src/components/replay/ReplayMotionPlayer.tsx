@@ -1555,7 +1555,7 @@ export default function ReplayMotionPlayer({
               <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={22} />
             </span>
             <span className="scr-motion-teamcol-text">
-              <span className="scr-motion-teamcol-name" style={{ color }}>{m.name}</span>
+              <span className="scr-motion-teamcol-name" style={chipStyle(m.key, m.team)}>{m.name}</span>
               <span
                 className="scr-motion-workers"
                 style={workerN > 0 ? undefined : { visibility: "hidden" }}
@@ -1625,8 +1625,12 @@ export default function ReplayMotionPlayer({
                속도로 잇는다. */
             let bx = x;
             let by = y;
-            const flownFrom = motion.builds.find(([, x2, y2, u2, r2, g2]) =>
-              r2 === raw && u2 === unit && (g2 ?? 0) === sec && (x2 !== x || y2 !== y));
+            /* 짝의 걷힌 시각이 실제로 있어야(> 0) 한다(지적: 첫 기지가 위에서 내려온다) —
+               시작 홀은 시작 시각이 0이라, 조건이 "gone === 0"이 되면 살아 있는 같은 종류
+               건물 아무거나와 짝이 돼 거기서 날아왔다. */
+            const flownFrom = sec > 0 && motion.builds.find(([, x2, y2, u2, r2, g2]) =>
+              r2 === raw && u2 === unit && (g2 ?? 0) > 0 && (g2 ?? 0) === sec
+              && (x2 !== x || y2 !== y)) || undefined;
             if (flownFrom) {
               const flyDist = Math.hypot(flownFrom[1] - x, flownFrom[2] - y);
               const flyDur = Math.min(40, flyDist / BUILDING_FLY_SPEED);
