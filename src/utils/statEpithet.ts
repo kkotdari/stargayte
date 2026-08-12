@@ -36,8 +36,14 @@ const clubGames = (): number =>
 const winsFloor = (): number => Math.max(10, Math.round(clubGames() * 0.12));
 /** 종족 퀸의 표본 — 여신보다 낮게(요청). */
 const raceFloor = (): number => Math.max(8, Math.round(clubGames() * 0.06));
-/** 비율 칭호의 분모 바닥 — 이보다 얇은 표본에서는 비율이 말이 안 된다. */
-const ratioFloor = (): number => Math.max(4, Math.round(clubGames() * 0.025));
+/* (교체·요청) ratioFloor(표본 바닥 — 분모 5판부터) → 아래 normDenom. "분모가 얇으면 아예
+   안 잰다"에서 "얇은 분모는 기준 판수로 쳐서 잰다"로 바뀌었다. */
+/** 비율의 기준 분모(요청: 공평 장치) — 분모 = max(그 사람의 판수, 클럽 판수 × 10%)다.
+ *  고정 숫자로만 걸면 판이 쌓인 사람이 유리하고(기회가 많다), 제 판수 비율로만 걸면 신입이
+ *  유리하다(다섯 판에 한 번이면 20%다). 분모에 이 바닥을 깔면 판이 적은 사람은 기준 판수
+ *  (= 사실상 고정 숫자)로 재지고, 판이 쌓인 사람은 제 판수 그대로 재진다 — 양쪽의 유리함이
+ *  서로를 지운다. 클럽 208판이면 기준 21판: 신입의 한 판은 5%로 쳐진다. */
+const normDenom = (): number => Math.max(10, Math.round(clubGames() * 0.1));
 /** 유형 칭호(개인전·팀전 퀸)는 그 유형에서만 세는 판수라 더 많이 본다 — 팀전 몇 판으로
  *  "팀전 퀸"이 되면 정작 팀전을 도맡아 뛴 사람이 그 말을 못 듣는다. */
 /* (삭제) MIN_PLAYS_RATE·MIN_PLAYS_MODE — 고정 판수 바닥. 위 winsFloor/raceFloor로
@@ -1427,14 +1433,14 @@ export function epithetsOf(
       const share = title.minPlaysShare ?? 0;
       if (share > 0) {
         // 분모는 전체 판수이되, vsWins가 선 칭호만 승리 판수다(Title.vsWins 주석).
-        const denomPlays = title.vsWins ? winsOf(title, p) : denomOf(title, p);
-        /* 표본 다섯 판은 있어야 비율이 말이 된다(지적: 옆탱 2번으로 퀸이 됐다 — 테란 판이
-           몇 판뿐이면 두 번이 곧 100%다). 승률의 8판과 같은 결의 표본 조건이지, 걷어낸
-           일괄 판수 문턱과는 다르다 — 분모가 서야 비율 조건 자체가 성립한다. */
-        if (denomPlays < ratioFloor()) continue;
+        /* 얇은 분모는 기준 판수(normDenom)로 쳐서 잰다(요청: 공평 장치 — 표본 바닥은
+           제거). 다섯 판에 한 번(20%)이던 신입의 우연이 기준 스물한 판의 한 번(5%)으로
+           쳐져, 낮은 문턱을 비율 뻥튀기로 넘을 수 없다. */
+        const denomPlays = Math.max(
+          title.vsWins ? winsOf(title, p) : denomOf(title, p),
+          normDenom(),
+        );
         if (v < Math.ceil(denomPlays * share)) continue;
-        /* 별도 횟수 바닥은 없다(요청: 규칙을 또 얹지 말고 수치로) — 표본이 다섯 판이라
-           비율을 20% 위로 두면 한 판짜리는 산수로 걸러진다(ceil(5×0.21)=2). */
       }
       // 절대 문턱 — 이 값을 넘으면 받는다. 남이 얼마나 했는지는 안 본다(요청: 절대평가).
       if (title.min !== undefined && v < title.min) continue;
