@@ -140,6 +140,11 @@ export interface ReplaySummaryData {
    *  틀린 수를 세고 있었다(지적).
    *  자막에 무엇을 싣느냐는 아래 pick이 말한다. */
   beats: ReplaySummaryBeat[];
+  /** 연속 재생용 모션 트랙(요청: 장면 선정 없이 전부 연속으로) — 원본 명령 스트림을
+   *  시간축으로 솎은 것(replayMotion). beat와 별개다: beat는 칭호·BEST의 원장으로
+   *  남고, 재생 화면은 이것만 본다(요청: beat는 남겨두고 사용은 안 하게). 옛 요약에는
+   *  없다 — 그 판은 스냅 방식으로 폴백한다. */
+  motion?: import("./replayMotion").SummaryMotion;
   /** 그중 자막에 싣는 것들 — beats의 자리번호를, 이야기 순서대로. 저장할 때 한 번 골라
    *  두지만 값은 자리번호뿐이라, 나중에 고르는 규칙이 바뀌면 보는 쪽에서 다시 골라도 된다.
    *  없으면(옛 요약) beats 전체가 곧 자막이다 — 그때는 실제로 그랬다. */

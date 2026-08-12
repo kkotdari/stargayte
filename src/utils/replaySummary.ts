@@ -1,4 +1,5 @@
 import type { ParsedReplay, ParsedReplayPlayer, ReplayPlayerSignals } from "./replayParser";
+import { motionOf } from "./replayMotion";
 import {
   pushersOn, scanTactics, producedFrames, windowPeak, fightersAt, midOf,
   FIGHT_TECHS, GG_RE, NO_ELIM_RE,
@@ -4618,8 +4619,11 @@ export function buildReplaySummary(replay: ParsedReplay): ReplaySummaryData | nu
      자리 다툼에서 잘려 나간 후보들까지 세면 화면에 안 나온 일로 뽑는 셈이 된다. */
   const best = bestOf(shown, winnerPlayers, loserPlayers);
 
+  // 연속 재생용 모션 트랙(요청) — beat 선정과 무관하게 원본 스트림을 솎아 함께 싣는다.
+  const motion = motionOf(replay);
   return {
     v: REPLAY_SUMMARY_VERSION,
+    ...(motion ? { motion } : {}),
     // '초반'을 재려면 경기가 얼마나 길었는지를 알아야 한다(지적).
     ...(totalFrames ? { end: totalFrames } : {}),
     // 개인전에서는 팀 용어를 쓰지 않는다(요청).

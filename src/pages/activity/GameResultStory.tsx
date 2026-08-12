@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent } from "react";
 import ReplayMinimap, { ARROW_MIN_TILES, type MinimapArrow, type MinimapMarker } from "../../components/replay/ReplayMinimap";
 import ReplayStoryTimeline from "../../components/replay/ReplayStoryTimeline";
+import ReplayMotionPlayer from "../../components/replay/ReplayMotionPlayer";
 import RosterSide, { outcomeFor, resolveSlotName } from "./GameResultSides";
 import RaceBadge from "../../components/common/RaceBadge";
 import { useReplayMap } from "../../hooks/useReplayMap";
@@ -1663,6 +1664,13 @@ export default function GameResultStory({
     </span>
   );
 
+  /* 연속 재생(요청: 장면 선정 없이 전부) — 모션 트랙이 실려 온 요약(재분석 이후)만.
+     없으면 옛 스냅 방식 그대로다. */
+  const motionData = gameResult.summaryData?.motion ?? null;
+  const endSecVal = gameResult.summaryData?.end
+    ? gameResult.summaryData.end * SECONDS_PER_FRAME : null;
+  const teamOfRaw = (raw: string): 1 | 2 | undefined => slots.find((x) => x.raw === raw)?.team;
+
   const mapBlock = storyMap && (
     <div className="scr-story-map" {...stopBubble}>
       {/* 머리는 두 줄이다(요청) — 윗줄은 그 판이 벌어진 자리(맵·경기 시간), 아랫줄은 그
@@ -1702,6 +1710,13 @@ export default function GameResultStory({
       </div>
       {/* (이동) "미니맵 좌우를 눌러…" 안내 — 재생 버튼 아래로 내렸다(요청). 그림 바로 위에
           있을 때는 제목과 그림 사이를 갈라 놓아, 정작 읽어야 할 머리 두 줄이 안내에 밀렸다. */}
+      {motionData ? (
+        /* 연속 재생 — beat(자막·장면)는 안 쓴다(요청: 남겨두되 사용은 안 하게). */
+        <ReplayMotionPlayer
+          grid={storyMap} motion={motionData} endSec={endSecVal}
+          bases={bases} teamOfRaw={teamOfRaw} active={active}
+        />
+      ) : (
       <ReplayMinimap
         grid={storyMap} bases={bases} arrows={arrows}
         onStep={sentences.length > 1 ? (d) => {
@@ -1735,6 +1750,7 @@ export default function GameResultStory({
           </div>
         )}
       />
+      )}
     </div>
   );
 
@@ -1802,7 +1818,7 @@ export default function GameResultStory({
           끼우면 매 스냅마다 아래 내용이 밀린다. */}
       {/* 타임라인은 스냅이 둘 이상일 때만 쓸모가 있다 — 한 문장짜리 요약에 재생 버튼을 두면
           누를 데는 있는데 아무 일도 안 일어난다. */}
-      {!showRoster && grid && sentences.length > 1 && (
+      {!showRoster && !motionData && grid && sentences.length > 1 && (
         <div {...stopBubble}>
         <ReplayStoryTimeline
           snaps={sentences} end={gameResult.summaryData?.end ?? null}
