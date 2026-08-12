@@ -10872,6 +10872,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   --mk: var(--mk-unit, 1);
 }
 .scr-motion-lens > .scr-motion-build, .scr-motion-lens > .scr-motion-workers { --mk: var(--mk-build, 1); }
+/* PC는 모든 마커를 1.5배로(요청: "피시에서 모든 요소 1.5배 확대") — 같은 --mk 지렛대의
+   기본값만 바꾼다: 글자·아바타·배지·둥실거림까지 마커째 커진다. PC에는 확대 렌즈가
+   없으므로(--mk-unit/-build가 늘 비어 있다) 폴백 1.5가 곧 값이다. */
+@media (min-width: 1160px) {
+  .scr-motion-map > span, .scr-motion-lens > span { --mk: var(--mk-unit, 1.5); }
+  .scr-motion-lens > .scr-motion-build, .scr-motion-lens > .scr-motion-workers { --mk: var(--mk-build, 1.5); }
+}
 /* 겹침 차례 — 건물(z2)은 움직이는 것(z3) 아래, 본진 아바타(z4)가 그 위다(요청: 복구 —
    건물을 위로 올려 보니 얼굴이 도형에 덮여 누가 누군지가 먼저 죽었다). 다만 깨어 있는
    유닛(이름 칩)만은 아바타보다도 위다(요청) — 지금 움직이며 이야기를 만드는 쪽이,
@@ -11206,6 +11213,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    본문 폭을 그대로 다 써서 760px까지 커져 있었다(실측). 어느 자리에 서든 걸리게 둔다.
    (320 → 400 → 480 → 560px, 요청에 따라 키워 왔다) */
 @media (min-width: 1160px) { .scr-story-map { max-width: 560px; } }
+/* 상세 모달 안에서는 그 상한을 푼다(요청: "PC에서 더 크게, 미니맵 모달 세로를 늘리고
+   양옆 다 사용") — 모달 폭(820px)에서 좌우 틀만 남기고 지도가 다 가진다. 좌우 틀도
+   16 → 8px로 조인다. */
+@media (min-width: 1160px) {
+  .scr-activity-detail-modal { --scr-detail-pad-x: 8px; }
+  .scr-activity-detail-modal .scr-story-map { max-width: none; }
+}
 
 /* 알약 둘(승패·BEST)의 높이는 이 줄이 한 값으로 쥔다 — 알약마다 제 값을 적으면 한쪽만
    고칠 때 어긋나고, 실제로 그렇게 어긋나 있었다(지적). 글자가 커지는 PC에서는 이 값도
