@@ -596,6 +596,8 @@ function collectSignals(
   const groups = new Map<string, number[]>();
   const unitOfTag = new Map<string, string>();
   const pending: { pid: number; idx: number; tags: number[] }[] = [];
+  /* 태우기 후보(위 태움 주석) — 정체 표가 다 찬 뒤에 수송선을 찍은 것만 남긴다. */
+  const pendingLoads: { pid: number; frame: number; x: number; y: number; tag: number }[] = [];
   /* 지금 떠 있는 건물 번호들(요청: 엔베 띄워 정찰 표현) — 이륙(Lift Off) 때 골라져 있던
      번호가 뜬 건물이고, 그 번호가 골라진 채의 우클릭은 랠리가 아니라 '비행 이동'이다.
      착륙(Land)하면 걷는다. */
@@ -771,12 +773,14 @@ function collectSignals(
             frame, x: pos.x / PIXELS_PER_TILE, y: pos.y / PIXELS_PER_TILE,
           });
         }
-        /* 제 수송선을 찍은 우클릭은 태우기다(요청: 태운 것 표현) — 찍힌 번호가 이미
-           수송선으로 드러난 내 유닛일 때만. */
-        if (typeof c.UnitTag === "number" && clickedOwner === c.PlayerID
-          && unitOfTag.get(`${c.PlayerID}:${c.UnitTag}`) === "Transport") {
-          (s.loadPositions ??= []).push({
-            frame, x: pos.x / PIXELS_PER_TILE, y: pos.y / PIXELS_PER_TILE,
+        /* 제 유닛을 찍은 우클릭은 태우기 후보다(지적: 태우기 판정이 아쉽다) — 예전에는
+           '이미 수송선으로 드러난 번호'만 태움으로 봤는데, 정체는 대개 내리기에서야
+           드러나고 태우기는 내리기보다 먼저라 첫 드랍 전의 태움을 죄다 놓쳤다. 여기서는
+           후보만 모으고, 정체 표(unitOfTag)가 경기 전체로 다 찬 뒤에 수송선만 남긴다. */
+        if (typeof c.UnitTag === "number" && clickedOwner === c.PlayerID && frame !== null) {
+          pendingLoads.push({
+            pid: c.PlayerID, frame, x: pos.x / PIXELS_PER_TILE, y: pos.y / PIXELS_PER_TILE,
+            tag: c.UnitTag,
           });
         }
         // 선택 묶음 번호(위 selIds 주석) — 부대지정으로 오간 명령을 재생이 한 자취로 잇는다.
@@ -814,6 +818,13 @@ function collectSignals(
         (s.unloadPositions ??= []).push({
           frame, x: pos.x / PIXELS_PER_TILE, y: pos.y / PIXELS_PER_TILE,
         });
+      } else if (frame !== null) {
+        /* 좌표 없는 내리기(제자리 언로드, 지적: 내리기 판정이 아쉽다) — 수송선의 자리는
+           안 남지만, 직전 30초 안의 마지막 이동 클릭이 대개 그 수송선을 몰고 간 자리다. */
+        const last = s.orderPositions[s.orderPositions.length - 1];
+        if (last && frame - last.frame <= 30 / SECONDS_PER_FRAME) {
+          (s.unloadPositions ??= []).push({ frame, x: last.x, y: last.y });
+        }
       }
     }
     if (cmdName === "Lift Off") {
@@ -910,6 +921,17 @@ function collectSignals(
         }
       }
     }
+  }
+  /* 태우기 확정(위 pendingLoads 주석) — 정체 표(unitOfTag)가 경기 전체로 다 찬 지금,
+     수송선을 찍은 클릭만 남긴다. 태우기가 내리기보다 먼저라도 이제 안 놓친다. */
+  for (const l of pendingLoads) {
+    if (unitOfTag.get(`${l.pid}:${l.tag}`) !== "Transport") continue;
+    const sig = out.get(l.pid);
+    if (!sig) continue;
+    (sig.loadPositions ??= []).push({ frame: l.frame, x: l.x, y: l.y });
+  }
+  for (const sig of out.values()) {
+    sig.loadPositions?.sort((a, b) => a.frame - b.frame);
   }
   return out;
 }

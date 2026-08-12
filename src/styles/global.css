@@ -10997,7 +10997,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   transition: left 0.25s linear, top 0.25s linear;
 }
 .scr-motion-cast {
-  font-size: 9px; font-weight: 800; color: var(--text);
+  /* 기술 전용 배지(요청: 유닛과 다른 스타일) — 어두운 알약에 그 사람 색 테두리(인라인
+     castStyle). 유닛 칩(제 색 꽉 채운 네모)과 꼴부터 갈려, 색이 같아도 안 헷갈린다.
+     글자는 지도 위 규칙대로 테마를 안 타는 밝은 고정색이다. */
+  font-size: 9px; font-weight: 800; color: #f5f6f7;
+  padding: 1px 6px; border-radius: 999px; background: rgba(0, 0, 0, 0.62);
   animation: scr-motion-in 0.3s ease-out;
 }
 /* 채굴 일꾼 점(요청) — 본진과 자원 사이를 오가는 작은 점. 정찰·일꾼 점(.scr-motion-scout)

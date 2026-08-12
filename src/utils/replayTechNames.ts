@@ -465,6 +465,7 @@ export const TECH_USE_PHRASE: Partial<Record<TechName, string[]>> = {
  *  두 유닛이 함께 쓰는 것(클로킹=고스트·레이스 등)은 여기 넣지 않는다 — 틀리게 짚느니
  *  모른 채로 두는 편이 낫다. */
 export const CAST_ORDER_TO_UNIT: Record<string, string> = {
+  MoveUnload: "Transport",
   CastNuclearStrike: "Ghost",
   CastPsionicStorm: "High Templar",
   CastHallucination: "High Templar",
@@ -503,3 +504,5 @@ export const USE_CMD_TO_UNIT: Record<string, string> = {
   "Unload All": "Transport",
   Unload: "Transport",
 };
+/* MoveUnload는 커맨드가 아니라 오더로 온다 — 수송선에 "가서 내려라"를 시킨 우클릭이다.
+   CAST_ORDER_TO_UNIT에 넣으면 그 순간 골라져 있던 번호가 수송선으로 드러난다. */

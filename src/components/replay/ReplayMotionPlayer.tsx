@@ -925,6 +925,12 @@ export default function ReplayMotionPlayer({
       color: lum > 150 ? "#111" : "#fff",
     };
   };
+  /* 기술(마법·드랍·태움) 전용 배지(요청: 유닛과 다른 스타일) — 유닛 칩은 제 색을 꽉 채운
+     네모, 기술은 어두운 알약에 제 색 테두리다. 배지 꼴만으로 "누구의 부대"와 "무슨 일이
+     일어난 자리"가 갈린다. 바탕·글자색은 CSS(.scr-motion-cast)가 정한다. */
+  const castStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => ({
+    border: `1px solid ${modeColor(raw, team)}`,
+  });
 
   /* 지형(요청: 미니맵 이미지 분석) — 그림에서 걷는 땅 격자를 만들어, 지상 부대의 자취를
      그 위의 경로로 편다. 분석 전·실패 시에는 기존 곡선 폴백. */
@@ -2512,11 +2518,11 @@ export default function ReplayMotionPlayer({
             <span
               key={`c-${i}`}
               className={cx(
-                "scr-motion-cast", "scr-motion-chip",
+                "scr-motion-cast",
                 tech === "Nuclear Strike" && "scr-motion-nuke",
                 teamOfRaw(raw) === 2 ? "scr-motion-team2" : "scr-motion-team1",
               )}
-              style={{ left: pct(x, grid.width), top: pct(y, grid.height), ...chipStyle(raw, teamOfRaw(raw)) }}
+              style={{ left: pct(x, grid.width), top: pct(y, grid.height), ...castStyle(raw, teamOfRaw(raw)) }}
             >
               {TECH_KO[tech]}
             </span>
@@ -2527,8 +2533,18 @@ export default function ReplayMotionPlayer({
             '드랍', 제 수송선을 찍어 태운 자리엔 '태움'이 마법처럼 잠깐 떠오른다. */}
         {motion.players.flatMap((p) => {
           const team = teamOfRaw(p.raw);
-          const mk = (pts: [number, number, number][] | undefined, label: string, kp: string) =>
-            (pts ?? [])
+          const mk = (pts: [number, number, number][] | undefined, label: string, kp: string) => {
+            /* 몰린 클릭 접기(지적: 태움·내림 효과가 계속 남아 이상하다) — 여러 기를 태울
+               때 수송선을 잇달아 찍으므로, 10초·5타일 안에 몰린 클릭은 첫 것 하나만 배지가
+               된다. 그래야 효과가 "한 번 일어난 일"로 읽히고 끝난다. */
+            const folded: [number, number, number][] = [];
+            for (const pt of pts ?? []) {
+              const prev = folded[folded.length - 1];
+              if (prev && pt[0] - prev[0] <= 10
+                && Math.hypot(pt[1] - prev[1], pt[2] - prev[2]) <= 5) continue;
+              folded.push(pt);
+            }
+            return folded
               .filter(([s]) => s <= t && t - s <= CAST_HOLD_SEC)
               .map(([s, cx2, cy2]) => (
                 <React.Fragment key={`${kp}-${p.raw}-${s}-${cx2}-${cy2}`}>
@@ -2538,13 +2554,14 @@ export default function ReplayMotionPlayer({
                     style={{ left: pct(cx2, grid.width), top: pct(cy2, grid.height) }}
                   />
                   <span
-                    className={cx("scr-motion-cast", "scr-motion-chip", team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
-                    style={{ left: pct(cx2, grid.width), top: pct(cy2, grid.height), ...chipStyle(p.raw, team) }}
+                    className={cx("scr-motion-cast", team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
+                    style={{ left: pct(cx2, grid.width), top: pct(cy2, grid.height), ...castStyle(p.raw, team) }}
                   >
                     {label}
                   </span>
                 </React.Fragment>
               ));
+          };
           return [...mk(p.drops, "드랍", "dr"), ...mk(p.loads, "태움", "ld")];
         })}
         </div>
