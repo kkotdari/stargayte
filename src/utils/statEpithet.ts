@@ -1030,7 +1030,8 @@ const TITLES: Title[] = [
        그 평균은 20분을 넘긴 판에서만 센다 — 서버가 그렇게 쌓는다(_MIN_UPGRADE_SECONDS).
        3단계까지 올리려면 그만큼 시간이 필요해서, 짧은 판을 섞으면 오래 끄는 사람이 아니라
        짧게 끝내는 사람이 손해를 본다. 그 사실을 조건 문구에도 적었다(요청). */
-    label: "풀업 퀸", weight: 3, kind: "승률", min: 2.5, why: "20분 넘긴 판의 공/방 평균 단계", unit: "",
+    // 2.5 → 2.4(요청).
+    label: "풀업 퀸", weight: 3, kind: "승률", min: 2.4, why: "20분 넘긴 판의 공/방 평균 단계", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       if (!m) return null;
