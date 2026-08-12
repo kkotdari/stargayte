@@ -309,8 +309,9 @@ interface Title {
   won?: boolean;
   /** 그 판에서 전투(교전)도 이겼어야 세는 칭호(요청: 그 유닛으로 전투/경기 모두 이긴 경우만)
    *  — 가르는 것은 서버(_tactic_counts가 전투 원장 bt_*_won을 대조)다. 갈래(지상/공중)는 안
-   *  본다(지적: 캐리어도 상대 지상을 친다) — 그 판에서 교전을 하나라도 이겼으면 된다. */
-  battle?: boolean;
+   *  본다(지적: 캐리어도 상대 지상을 친다). 수를 적으면 그 판에서 그만큼은 이겼어야 한다
+   *  (메카닉 2 — 지적: 너무 잘 나온다). 서버 _BATTLE_GATED_KEYS와 짝. */
+  battle?: boolean | number;
   /** 이 칭호가 타는 종족 — 판수 대비 문턱(minPlaysShare)의 분모가 전체 판수가 아니라 이
    *  종족의 판수가 된다(요청). 그 종족 기록이 안 넘어오면 전체 판수로 잰다(옛 방식). */
   race?: string;
@@ -692,7 +693,7 @@ const TITLES: Title[] = [
      열쇠를 아우르는 말로 덮는다(tactic이 지어 주는 이름은 첫 열쇠 것뿐이다). */
   // 이름은 여신·여왕 계열로 통일(요청) — 메카닉 사령관에서 바꿨다.
   { ...tactic("메카닉의 여왕", ["mech", "center-tank", "side-tank"]),
-    why: "메카닉·탱크 조이기", minPlaysShare: 0.3, battle: true },
+    why: "메카닉·탱크 조이기", minPlaysShare: 0.3, battle: 2 },
   /* 과학의 여왕(요청: 신규 과학전 — 여신은 전설급에만) — 베슬을 둘 이상 띄우고 이레디·EMP·매트릭스를 실제로
      뿌린 판이다. 판정은 replayTactics의 vessel. */
   { ...tactic("과학전의 퀸", ["vessel"]), minPlaysShare: 0.1, vsWins: true, battle: true },
@@ -1305,7 +1306,11 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     /* 수치 칭호(비율 없는 줄)가 이긴 판 원장을 볼 때는 그 사실만 짧게 남긴다 — "이긴
        판만" 꼬리는 걷었다(요청). */
     const wonBit = !count && t.won === true ? " (승리 게임 기준)" : "";
-    const how = bits.join(" · ") + wonBit + (t.battle ? " · 전투/게임 모두 승리" : "");
+    const how = bits.join(" · ") + wonBit + (t.battle
+      ? typeof t.battle === "number"
+        ? ` · 그 판 전투 ${t.battle}승 이상 + 게임 승리`
+        : " · 전투/게임 모두 승리"
+      : "");
     return { label: t.label, how, rank, score };
   });
   /* 이름이 사람마다 달라지는 두 줄({n})은 손으로 적는다 — 맵·종족 이름이 들어가야 말이
