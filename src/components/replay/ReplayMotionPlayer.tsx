@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Pause, Play, RotateCcw } from "lucide-react";
 import Avatar from "../common/Avatar";
 import { cx } from "../../utils/format";
 import { UNIT_KO, TECH_KO } from "../../utils/replaySummaryText";
@@ -329,15 +330,20 @@ export default function ReplayMotionPlayer({
             </button>
           ))}
         </span>
+        {/* 옛 스냅 타임라인의 재생 버튼과 같은 꼴(요청) — 46px 완전 원, 속 채운 삼각형. */}
         <button
-          type="button" className="scr-motion-btn scr-motion-play"
+          type="button" className="scr-motion-play"
           onClick={() => {
             if (done) { setT(0); setDone(false); setPlaying(true); return; }
             setPlaying((v) => !v);
           }}
           aria-label={playing ? "일시정지" : "재생"}
         >
-          {done ? "↻" : playing ? "❚❚" : "▶"}
+          {playing
+            ? <Pause size={26} fill="currentColor" />
+            : done
+              ? <RotateCcw size={26} />
+              : <Play size={26} fill="currentColor" />}
         </button>
         <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
       </div>
