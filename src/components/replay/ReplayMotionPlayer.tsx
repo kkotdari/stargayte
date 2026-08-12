@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Mountain, Pause, Play, RotateCcw } from "lucide-react";
 import TerrainReviewModal from "../../modals/TerrainReviewModal";
 import Avatar from "../common/Avatar";
+import RaceBadge from "../common/RaceBadge";
 import { cx } from "../../utils/format";
 import { UNIT_KO, BUILDING_KO, TECH_KO } from "../../utils/replaySummaryText";
 import type { ReplayMapGrid } from "../../utils/replayParser";
@@ -140,6 +141,33 @@ const PRODUCED_BY: Record<string, string[]> = {
   Hive: ZERG_LARVA,
 };
 
+/** 건물 짓는 시간(초, 어림) — 짓는 동안 반투명 표시(요청)의 창이다. */
+const BUILD_SEC: Record<string, number> = {
+  "Command Center": 55, Nexus: 55, Hatchery: 55, Lair: 45, Hive: 55,
+  Refinery: 18, Assimilator: 18, Extractor: 18,
+  "Supply Depot": 18, Pylon: 14, "Creep Colony": 10, "Spawning Pool": 35,
+};
+/** 유닛 뽑는 시간(초, 어림) — 이 시간이 지나면 만든 건물 앞에 잠깐 놓인다(요청). */
+const UNIT_SEC: Record<string, number> = {
+  SCV: 13, Probe: 13, Drone: 13, Overlord: 25,
+  Marine: 15, Firebat: 15, Medic: 19, Ghost: 31,
+  Vulture: 19, "Siege Tank (Tank Mode)": 31, "Siege Tank": 31, Goliath: 25,
+  Wraith: 38, Dropship: 31, "Science Vessel": 50, Battlecruiser: 83, Valkyrie: 31,
+  Zealot: 25, Dragoon: 31, "High Templar": 31, "Dark Templar": 31,
+  Shuttle: 38, Reaver: 44, Observer: 25, Scout: 50, Corsair: 25, Carrier: 88, Arbiter: 100,
+  Zergling: 17, Hydralisk: 17, Mutalisk: 25, Scourge: 19, Queen: 31, Ultralisk: 42, Defiler: 31,
+};
+/** 유닛 → 뽑는 건물들 — PRODUCED_BY의 뒤집기. */
+const PRODUCER_OF: Record<string, string[]> = (() => {
+  const m: Record<string, string[]> = {};
+  for (const [b, units] of Object.entries(PRODUCED_BY)) {
+    for (const u of units) (m[u] ??= []).push(b);
+  }
+  return m;
+})();
+/** 갓 뽑힌 유닛이 건물 앞에 머무는 시간(초). */
+const FRESH_HOLD_SEC = 12;
+
 /** 자취에서 t 시각의 자리 — 사이는 보간(지상은 가운데로 휘는 곡선), 틈이 크면 앞 점에 머문다.
  *  moving(두 점 사이를 미끄러지는 중)과 sinceLast(마지막 명령에서 지난 초)도 함께 낸다 —
  *  "커맨드를 받거나 이동 중이면 이름으로"(요청)의 재료다. */
@@ -244,28 +272,39 @@ export default function ReplayMotionPlayer({
   }, [motion]);
   /* 색은 한 벌만 칠한다(요청: 중복 표시 제거) — 팀색/개인색을 전환 버튼으로 오간다.
      개인색이 없는 옛 기록은 개인색 모드여도 팀색으로 떨어진다. */
-  const [colorMode, setColorMode] = useState<"team" | "personal">("team");
-  const TEAM_EDGE: Record<1 | 2, string> = { 1: "#2f80ff", 2: "#e0435c" };
+  const [colorMode, setColorMode] = useState<"team" | "personal">("personal");
+  // 파스텔 톤(지적: 음영에 비해 팀색이 어두워 안 보인다) — 밝은 하늘·장미색.
+  const TEAM_EDGE: Record<1 | 2, string> = { 1: "#9cc4ff", 2: "#ffafc0" };
   const modeColor = (raw: string, team: 1 | 2 | undefined): string => {
     const teamColor = team === 2 ? TEAM_EDGE[2] : TEAM_EDGE[1];
     if (colorMode === "personal") return colorByRaw.get(raw) ?? teamColor;
     return teamColor;
   };
-  /* 도형(●▪▲)의 색(요청) — 안쪽(글자색)이 개인색, 테두리(외곽선)가 팀색이다. */
-  const shapeStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => ({
-    color: modeColor(raw, team),
-    WebkitTextStroke: "0.5px rgba(0, 0, 0, 0.6)",
-  });
+  /** 색의 밝기 — 어두운 개인색은 흰 반투명 음영을 받쳐야 보인다(지적). */
+  const lumOf = (hex: string): number => {
+    if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return 255;
+    return 0.299 * parseInt(hex.slice(1, 3), 16)
+      + 0.587 * parseInt(hex.slice(3, 5), 16)
+      + 0.114 * parseInt(hex.slice(5, 7), 16);
+  };
+  /* 도형(●▪▲)의 색 — 어두운 계열이면 검정 대신 흰 반투명 테두리·음영으로 띄운다(지적). */
+  const shapeStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => {
+    const c = modeColor(raw, team);
+    const dark = lumOf(c) < 110;
+    return {
+      color: c,
+      WebkitTextStroke: dark ? "0.6px rgba(255, 255, 255, 0.75)" : "0.5px rgba(0, 0, 0, 0.6)",
+      ...(dark ? { textShadow: "0 0 4px rgba(255, 255, 255, 0.55)" } : {}),
+    };
+  };
   const chipStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => {
     const bg = modeColor(raw, team);
-    const r = parseInt(bg.slice(1, 3), 16);
-    const g = parseInt(bg.slice(3, 5), 16);
-    const b = parseInt(bg.slice(5, 7), 16);
-    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+    const lum = lumOf(bg);
     return {
       background: bg,
       color: lum > 150 ? "#111" : "#fff",
-      borderColor: "rgba(0, 0, 0, 0.45)",
+      borderColor: lum < 110 ? "rgba(255, 255, 255, 0.8)" : "rgba(0, 0, 0, 0.45)",
+      ...(lum < 110 ? { boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.3)" } : {}),
     };
   };
 
@@ -476,6 +515,14 @@ export default function ReplayMotionPlayer({
             const goneAt = gone ?? 0;
             if (goneAt > 0 && t >= goneAt + 6) return null;
             const razed = goneAt > 0 && t >= goneAt;
+            /* 같은 자리에 같은 임자의 새 건물이 서면(레어 진화·재건) 옛 것은 걷는다
+               (지적: 비활성 건물이 글자와 도형으로 동시 표시). */
+            if (!razed && motion.builds.some(([s2, x2, y2, , r2], j) =>
+              j !== i && r2 === raw && s2 > sec && s2 <= t && Math.hypot(x2 - x, y2 - y) <= 1.5)) {
+              return null;
+            }
+            // 짓는 동안은 반투명(요청) — 다 서면 제 농도로.
+            const raising = !razed && t - sec < (BUILD_SEC[unit] ?? 30);
             const team = teamOfRaw(raw);
             const producing = !razed && (prodByRawType.get(`${raw}|${unit}`) ?? [])
               .some((ps) => ps <= t && t - ps <= PROD_FLASH_SEC);
@@ -510,6 +557,7 @@ export default function ReplayMotionPlayer({
                   left: pct(x, grid.width), top: pct(y, grid.height),
                   // 긴 이름은 한 단계 작게(지적) — 여섯 자부터.
                   ...(text.length >= 6 && !activeBuild ? { fontSize: 6 } : {}),
+                  ...(raising ? { opacity: 0.4 } : {}),
                   ...(razed ? {} : shapeStyle(raw, team)),
                 }}
               >
@@ -518,6 +566,40 @@ export default function ReplayMotionPlayer({
             );
           });
         })()}
+
+        {/* 갓 뽑힌 유닛(요청) — 뽑는 시간이 지나면 만든 건물 앞에 잠깐 놓인다. 같은 종류
+            건물이 여럿이면(게이트 여럿) 차례로 나눠 놓는다. */}
+        {motion.players.flatMap((p) => {
+          const team = teamOfRaw(p.raw);
+          const out: React.ReactNode[] = [];
+          for (const [unit, secs] of Object.entries(p.prod ?? {})) {
+            const producers = PRODUCER_OF[unit];
+            if (!producers) continue;
+            for (let si = 0; si < secs.length; si += 1) {
+              const done = secs[si] + (UNIT_SEC[unit] ?? 20);
+              if (t < done || t > done + FRESH_HOLD_SEC) continue;
+              // 그 시각에 서 있는 그 종류 건물들 — si로 돌려 가며 앞에 놓는다.
+              const cands = motion.builds.filter(([bs, , , bu, br, bg]) =>
+                br === p.raw && bs <= secs[si] && ((bg ?? 0) === 0 || secs[si] < (bg ?? 0))
+                && producers.includes(bu));
+              if (cands.length === 0) continue;
+              const [, bx, by] = cands[si % cands.length];
+              out.push(
+                <span
+                  key={`fresh-${p.raw}-${unit}-${si}`}
+                  className="scr-motion-fresh"
+                  style={{
+                    left: pct(bx + 1.2, grid.width), top: pct(by + 2, grid.height),
+                    ...shapeStyle(p.raw, team),
+                  }}
+                >
+                  ●
+                </span>,
+              );
+            }
+          }
+          return out;
+        })}
 
         {/* 채굴 일꾼(요청, 지적: 방향 반대) — 자원 지대마다, 그 시점에 서 있는 가장
             가까운 본진 건물(시작 본진·확장 포함)을 찾아 그리로 오간다. 가까운 홀이 없는
@@ -540,8 +622,11 @@ export default function ReplayMotionPlayer({
              그 위에 가스 건물(정제소류)이 서기 전엔 일꾼이 안 간다. 미네랄과 가스가 한
              지대로 묶인 맵은 그대로 둔다(어차피 미네랄 캐는 길이다). */
           if (res[2] === 1) {
+            /* 홑 가스 지대인가 — 근처(같은 기지권, 30타일)에 다른 자원 지대가 따로 있으면
+               이 지대는 간헐천 홑 지대다(미네랄이 섞였으면 애초에 한 지대로 묶였을 테니).
+               (지적: 12타일로는 못 잡았다 — 본진 미네랄 지대 중심이 그보다 멀다.) */
             const standalone = (grid.resources ?? []).some((other, oi) =>
-              oi !== ri && other[2] === 0 && Math.hypot(other[0] - res[0], other[1] - res[1]) <= 12);
+              oi !== ri && Math.hypot(other[0] - res[0], other[1] - res[1]) <= 30);
             if (standalone) {
               const hasGasBuilding = gasBuildings.some((g) =>
                 g.raw === owner!.raw && g.sec + 30 <= t && (g.gone === 0 || t < g.gone)
@@ -568,7 +653,7 @@ export default function ReplayMotionPlayer({
                 className="scr-motion-miner"
                 style={{
                   left: pct(x, grid.width), top: pct(y, grid.height),
-                  color: modeColor(owner!.raw, team),
+                  ...shapeStyle(owner!.raw, team),
                 }}
               >
                 ·
@@ -593,11 +678,19 @@ export default function ReplayMotionPlayer({
               style={{ left: pct(m.x, grid.width), top: pct(m.y, grid.height) }}
             >
               {/* 테두리 한 겹(요청: 중복 제거) — 지금 색 모드의 색으로. */}
-              <span
-                className="scr-motion-base-ring"
-                style={{ boxShadow: `0 0 0 2px ${modeColor(m.key, m.team)}` }}
-              >
-                <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={16} />
+              <span style={{ position: "relative" }}>
+                <span
+                  className="scr-motion-base-ring"
+                  style={{
+                    boxShadow: lumOf(modeColor(m.key, m.team)) < 110
+                      ? `0 0 0 3px ${modeColor(m.key, m.team)}, 0 0 0 4px rgba(255, 255, 255, 0.55)`
+                      : `0 0 0 3px ${modeColor(m.key, m.team)}`,
+                  }}
+                >
+                  <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={16} />
+                </span>
+                {/* 종족 배지(요청) — 아바타 옆에. */}
+                <RaceBadge race={m.race} size={9} circleLetter className="scr-motion-base-race" />
               </span>
               {m.withName && (
                 <span
@@ -703,6 +796,16 @@ export default function ReplayMotionPlayer({
         </div>
       )}
 
+
+      {/* 범례(요청) — 지도 위 도형이 뭔지 한 줄로. */}
+      <div className="scr-motion-legend">
+        <span>● 부대·유닛</span>
+        <span>▪ 건물</span>
+        <span>▲ 방어 건물</span>
+        <span>✕ 파괴됨</span>
+        <span>· 채굴 일꾼</span>
+        <span>반투명 = 건설 중</span>
+      </div>
 
       {/* 조종간(요청: 두 줄) — 윗줄은 스크러버 하나, 아랫줄에 재생·배속·시간이 선다. */}
       <div className="scr-motion-bar">
