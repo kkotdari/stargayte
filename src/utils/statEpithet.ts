@@ -741,18 +741,19 @@ const TITLES: Title[] = [
      같은 캐리어라도 아비터가 끼면 스테이시스·리콜이 낀 다른 그림이라, 이름이 그 판을
      말하게 한다(맵 여왕과 같은 {n} 방식). 아비터를 뽑았나는 이긴 판 원장(mix)의 유닛
      수로 본다. */
-  /* 문턱이 둘이다(요청) — 캐리어만이면 5%, 아비터까지 함께 굴린 판이면 2%. 표의 비율
-     (minPlaysShare)은 낮은 쪽(2%)을 걸고, 아비터 없는 판의 5%는 value가 직접 요구한다. */
-  { ...tactic("{n}", ["carrier"]), minPlaysShare: 0.02, battle: true, why: "캐리어",
+  /* 캐리어와 아비터를 가른다(요청: 분리) — 한 칭호에서 이름만 갈리던 것을 두 칭호로.
+     날파리 퀸은 캐리어 그 자체(5%), 보이지 않는 날파리 퀸은 아비터까지 함께 굴린 판(2%)
+     이라 둘 다 가질 수도 있다. 아비터를 뽑았나는 이긴 판 원장(mix)의 유닛 수로 본다. */
+  { ...tactic("날파리 퀸", ["carrier"]), minPlaysShare: 0.05, battle: true },
+  {
+    ...tactic("보이지 않는 날파리 퀸", ["carrier"]), minPlaysShare: 0.02, battle: true,
+    why: "캐리어+아비터",
     value: (s, of) => {
+      if ((mix(s, of)?.units?.["Arbiter"] ?? 0) === 0) return null;
       const src = of.races?.["프로토스"] ?? s;
-      const n = did(src, "carrier");
-      if (n === null) return null;
-      const arb = (mix(s, of)?.units?.["Arbiter"] ?? 0) > 0;
-      if (!arb && n < Math.ceil(normDenom() * 0.05)) return null;
-      return n;
+      return did(src, "carrier");
     },
-    name: (s, of) => ((mix(s, of)?.units?.["Arbiter"] ?? 0) > 0 ? "보이지 않는 날파리 퀸" : "날파리 퀸") },
+  },
   /* 폭풍의 여왕(요청: 신규 질럿+템플러) — 질럿 몸에 스톰을 얹은 프로토스 지상 한 벌.
      판정은 replayTactics의 zealot-templar. */
   { ...tactic("또각또각 번개 퀸", ["zealot-templar"]), minPlaysShare: 0.3, vsWins: true, battle: true },
@@ -1247,7 +1248,7 @@ const GUIDE_ORDER: string[][] = [
     "정은 퀸", "도둑 퀸", "포토러시 퀸", "성큰러시 퀸", "몰래배럭 퀸", "집요한 일꾼 헌터",
     "폭탄드랍의 여왕", "바이오닉의 여왕", "메카닉의 여왕", "과학전의 퀸",
     "우주전함 퀸", "목동의 여왕", "진화의 여왕", "센포의 여왕",
-    "날파리 퀸 (아비터까지 썼으면 보이지 않는 날파리 퀸)", "또각또각 번개 퀸",
+    "날파리 퀸", "보이지 않는 날파리 퀸", "또각또각 번개 퀸",
     "리버 드랍의 여왕", "보이지 않는 여왕", "시공을 지배하는 여제", "깜짝 번개 퀸",
     "가시의 여왕", "뮤탈 습격 퀸", "초반의 여왕", "꽃게탕 퀸",
     "아군 보호 퀸", "커널 개통 퀸", "오버로드 사냥꾼",
@@ -1262,7 +1263,6 @@ const GUIDE_ORDER: string[][] = [
  *  대표 이름으로 되돌려 자리를 짚는다(대표 선정 우선순위도 이 자리를 쓴다, 지적). */
 const guideLabelOf = (t: Title): string => {
   if (t.label !== "{n}") return t.label;
-  if (t.why === "캐리어") return "날파리 퀸 (아비터까지 썼으면 보이지 않는 날파리 퀸)";
   if (t.why === "그 맵 승수") return "○○의 여왕";
   return "저그의 절대군주 · 프로토스의 전설 · 테란의 영웅";
 };
@@ -1337,15 +1337,7 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     /* 날파리 퀸 — 이름이 아비터 사용으로 갈리는 {n} 칭호라 손으로 적는다. 문구가 "N% 이상
        게임에서 캐리어" 꼴이 되면서 앞머리가 아니라 포함으로 찾는다(startsWith였을 때 못
        찾아 종족 칭호 줄로 떨어졌다 — 절대군주 줄이 에픽에 하나 더 생겼다). */
-    if (r.how.includes("캐리어")) {
-      return {
-        ...r,
-        label: "날파리 퀸 (아비터까지 썼으면 보이지 않는 날파리 퀸)",
-        /* 아비터 이야기를 조건에도 적는다(요청) — 자동 문구는 낮은 쪽(8%)만 알아서,
-           캐리어 단독의 10%와 이름이 갈리는 사연이 빠진다. */
-        how: "5% 이상 게임에서 캐리어 · 전투/게임 모두 승리 — 아비터까지 함께 굴렸으면 2%부터, 이름도 \"보이지 않는 날파리 퀸\"으로",
-      };
-    }
+    // (삭제·요청) 날파리 퀸 {n} 특례 — 캐리어·아비터가 두 칭호로 갈렸다.
     if (r.how.startsWith("그 맵 승수")) {
       return {
         ...r,
