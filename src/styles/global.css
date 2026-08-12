@@ -9958,6 +9958,11 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
 /* 좌우 4px을 더 갖고 있어 로스터만 다른 카드보다 4px 안쪽에 섰다(지적: 카드마다 내부
    여백이 다르다) — 좌우는 trow(8) + 본문(8) = 16px으로 충분하니 여기선 0으로 둔다. */
 .scr-activity-game-result-matchup { padding: 0; }
+/* 로스터 탭의 정렬(지적: 왼쪽 줄맞춤이 아니다) — 양쪽 로스터가 가로 반반을 나눠 갖고
+   (flex 1:1은 위 공용 규칙), 각 칸 안에서 사람 줄은 가운데 정렬이다. vs·결과 배지는
+   가운데 칸(.scr-story-mid)이 이미 맡고 있다. 너 나와 쪽 로스터는 안 건드린다(스코프). */
+.scr-activity-game-result-matchup .scr-roster-block { display: flex; justify-content: center; }
+.scr-activity-game-result-matchup .scr-roster-row { justify-content: center; }
 /* (삭제) 첫 스냅의 로스터(.scr-story-intro-roster) — 자막 패널이 세로로 너무 커져서
    (지적) 로스터를 걷어내고 "게임 시작!" 한 줄로 바꿨다. 로스터는 대신 미니맵 아바타·
    닉네임을 키워 보여준다(.scr-minimap-mark-introbig). */
