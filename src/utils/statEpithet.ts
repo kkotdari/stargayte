@@ -663,8 +663,7 @@ const TITLES: Title[] = [
        판이라야 한다. */
     ...tactic("폭탄드랍의 여왕", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"], 1),
     race: undefined,
-    // 분모가 전체 판이라 기본 비율(6%)이 되레 무겁다(요청: 낮추기).
-    minPlaysShare: 0.02,
+    minPlaysShare: 0.05,
   },
 
   /* ── 운영(요청: 전략운영은 가중치를 좀 높여도 된다) ─────────────────────────
