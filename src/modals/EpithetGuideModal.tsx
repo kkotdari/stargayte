@@ -36,7 +36,6 @@ export default function EpithetGuideModal({ onClose }: { onClose: () => void }) 
                     <tr>
                       <th>칭호</th>
                       <th>조건</th>
-                      <th>최소판</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -56,9 +55,9 @@ export default function EpithetGuideModal({ onClose }: { onClose: () => void }) 
                           ))}
                         </td>
                         {/* "이긴 판만" 꼬리는 걷었다(요청) — 승리는 조건 문장에 녹아 있다
-                            ("역전 승리"). */}
+                            ("역전 승리"). 최소판 열은 걷었다(요청) — 표본 바닥은 클럽 판수
+                            비례라 값이 늘 움직이는 데다, 조건을 읽는 눈에는 곁가지였다. */}
                         <td className="scr-epithet-guide-how">{r.how}</td>
-                        <td className="scr-epithet-guide-min">{r.minPlays || "-"}</td>
                       </tr>
                     ))}
                   </tbody>

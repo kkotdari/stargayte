@@ -1235,8 +1235,8 @@ export interface EpithetGuideRow {
   rank: EpithetRank;
   /** 목록의 묶음 번호(요청: 그룹화) — 모달이 묶음이 바뀌는 자리에 줄을 긋는다. */
   group: number;
-  /** 표본(최소판) 조건 — 표의 제 열로 나간다(요청: 칭호/조건/최소판). 없으면 빈 문자열. */
-  minPlays: string;
+  /* (삭제·요청) minPlays(최소판 열) — 표본 바닥은 클럽 판수 비례라 값이 늘 움직이고,
+     조건을 읽는 눈에 곁가지라 열째로 걷었다. 바닥 자체(ratioFloor 등)는 그대로 돈다. */
 }
 
 /* 설명 목록의 차례와 묶음(요청: 그룹화를 다시 해봤다 — 손으로 짠 차례 그대로).
@@ -1322,11 +1322,7 @@ export function epithetGuideRows(): EpithetGuideRow[] {
        판만" 꼬리는 걷었다(요청). */
     const wonBit = !count && t.won === true ? " (승리 게임 기준)" : "";
     const how = bits.join(" · ") + wonBit + (t.battle ? " · 전투/게임 모두 승리" : "");
-    // 짧게 적는다(요청: "프로토스 게임 5판부터"가 아니라 "프로토스 5판").
-    const minPlays = count && share > 0
-      ? `${t.race ? `${t.race} ` : ""}${ratioFloor()}판`
-      : "";
-    return { label: t.label, how, rank, score, minPlays };
+    return { label: t.label, how, rank, score };
   });
   /* 이름이 사람마다 달라지는 두 줄({n})은 손으로 적는다 — 맵·종족 이름이 들어가야 말이
      되는데, 표에는 그 자리가 비어 있다. */
@@ -1334,12 +1330,12 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     /* 승리의 여신 — 표본(전체 판의 12%, 클럽 판수 비례)이 value 안에 있어 자동 문구에는
        안 잡힌다. 손으로 완성한다(지적: 설명 현행화). */
     if (r.label === "승리의 여신") {
-      return { ...r, how: "승률 65% 이상", minPlays: `${winsFloor()}판` };
+      return { ...r, how: "승률 65% 이상" };
     }
     /* 올라운드 강자 — 자동 문구("5할 넘긴 종족 · 최소 3개")는 셈의 말이라, 뜻 그대로
        적는다(요청): 종족은 셋뿐이니 셋 다면 곧 전부다. */
     if (r.label === "올라운드 강자") {
-      return { ...r, how: "모든 종족 승률 50% 이상", minPlays: "종족당 8판" };
+      return { ...r, how: "모든 종족 승률 50% 이상" };
     }
     // (삭제·요청) 지상전·공중전·마법 퀸의 안내 특례.
     if (r.label !== "{n}") return r;
@@ -1354,21 +1350,19 @@ export function epithetGuideRows(): EpithetGuideRow[] {
         ...r,
         label: "○○의 여왕",
         how: `그 맵 승률 ${Math.round(MAP_MIN_RATE * 100)}% 이상`,
-        minPlays: `그 맵 ${MAP_MIN_PLAYS}판`,
       };
     }
     return {
       ...r,
       label: "저그의 절대군주 · 프로토스의 전설 · 테란의 영웅",
       how: `그 종족이 게임의 ${pct(RACE_MIN_SHARE)} 이상 · 승률 ${RACE_MIN_RATE}% 이상`,
-      minPlays: `그 종족 ${raceFloor()}판`,
     };
   }).map((r) => ({ ...r, ...guidePlaceOf(r.label) }))
     /* 차례는 손으로 짠 묶음표가 정한다(요청: 그룹화) — 등급이 먼저인 것은 그대로다(전설
        묶음 둘이 표의 맨 앞이라 결과는 같지만, 표를 어긋나게 고쳐도 등급이 섞이지 않게). */
     .sort((a, b) => (Number(b.rank === "전설") - Number(a.rank === "전설"))
       || (a.group - b.group) || (a.order - b.order) || (b.score - a.score))
-    .map(({ label, how, rank, group, minPlays }) => ({ label, how, rank, group, minPlays }));
+    .map(({ label, how, rank, group }) => ({ label, how, rank, group }));
 }
 
 /** 회원 → 화면에 보일 칭호 하나(그 사람이 얻은 것 중 가장 높은 것).
