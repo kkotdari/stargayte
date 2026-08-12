@@ -182,7 +182,11 @@ function did(s: MemberStats, ...keys: string[]): number | null {
  *  6 → 8판(요청: 전설·에픽의 문턱을 조금씩 높이기) — 맵 칭호는 왕관 계열이라 그 이름을
  *  달려면 그 맵에서 한동안 살아 봤어야 한다. 8 → 12판·승률 70%(요청: 맵 칭호 더 올리기) —
  *  이 클럽은 같은 맵을 오래 도는 편이라 여덟 판은 금방 쌓인다. */
-const MAP_MIN_PLAYS = 10;
+/* 고정 10판 → 클럽 판수 비례(요청: 맵도 똑같이 — 전체 판수 × 상수). 200판 클럽에서 10판,
+   판이 쌓이면 함께 오른다. */
+const mapFloor = (): number => Math.max(6, Math.round(clubGames() * 0.05));
+/** 올라운드 강자의 종족당 판수 — 전체 판수 × 상수(요청). 200판 클럽에서 8판. */
+const allRoundFloor = (): number => Math.max(6, Math.round(clubGames() * 0.04));
 /** 그리고 이만큼은 이겨야 한다 — 60 → 70 → 72 → 70%(요청: 맵은 해당 맵 승률 70%로 고정).
  *  7할은 전체 승률 칭호(승리의 여신)와 같은 선이다. 종족(75%)만 한 칸 위인 까닭은 종족은
  *  골라 잡을 수 있고 맵은 그날 뽑히는 것이라, 맵에 7할을 요구하는 편이 더 어렵기 때문이다.
@@ -210,7 +214,7 @@ function bestMap(s: MemberStats): { name: string; wins: number } | null {
   let best: { name: string; wins: number } | null = null;
   for (const [name, record] of Object.entries(s.maps ?? {})) {
     const [plays, wins] = record;
-    if (plays < MAP_MIN_PLAYS || wins / plays < MAP_MIN_RATE) continue;
+    if (plays < mapFloor() || wins / plays < MAP_MIN_RATE) continue;
     if (!best || wins > best.wins) best = { name, wins };
   }
   return best;
@@ -1055,7 +1059,8 @@ const TITLES: Title[] = [
       /* 종족당 판수 문턱 12 → 18(지적: 팔색조 문턱이 낮다) — 종족 수는 셋이 끝이라 더 올릴
          칸이 없고, 대신 한 종족을 '했다'고 칠 판수를 올린다. 열여덟 판이면 그 종족으로
          한 시즌을 산 것이다. */
-      const enough = Object.values(of.races ?? {}).filter((st) => (st?.plays ?? 0) >= 8);
+      /* 종족당 판수도 클럽 판수 비례다(요청) — 고정 8판은 200판 클럽의 눈금이었다. */
+      const enough = Object.values(of.races ?? {}).filter((st) => (st?.plays ?? 0) >= allRoundFloor());
       if (enough.length < 2) return null;
       /* 그 종족들이 전부 5할을 넘어야 한다(요청) — 하나라도 밑돌면 안 준다. '두루 잘한다'는
          말이라 평균으로 뭉개면 안 된다: 두 종족이 7할이고 하나가 2할인 사람은 그 하나를
