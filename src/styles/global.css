@@ -10996,6 +10996,19 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 }
 @keyframes scr-motion-dig { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1px); } }
 .scr-motion-build-razed { color: var(--dim); animation: scr-motion-in 0.3s ease-out; }
+/* 생산·연구 중 건물 — 크기 박동(쿵쾅) 대신 라임색 글로우가 쉬었다 밝아졌다 한다(요청).
+   빛은 아이콘 '뒤'에만 깔린다(지적: 아이콘 자체를 물들이지 말 것) — 도형 밑의 둥근 후광
+   하나가 숨 쉰다. 세기는 낮춰 뒀다(지적: 효과 약화). */
+.scr-motion-build-glow::before {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 2em; height: 2em;
+  transform: translate(-50%, -50%); border-radius: 50%; z-index: -1; pointer-events: none;
+  background: radial-gradient(circle, rgba(190, 255, 80, 0.4) 0%, rgba(190, 255, 80, 0) 70%);
+  animation: scr-motion-glow 1.2s ease-in-out infinite;
+}
+@keyframes scr-motion-glow {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.7; }
+}
 /* 떠 있는 건물(지적: "건물 떠있는게 표현이 안된다") — 이륙부터 착륙까지 옛 자리에서
    둥실거린다. 반투명은 살짝만: 자리에 '있긴 한데 땅에 없는' 상태다. */
 .scr-motion-build-afloat { opacity: 0.75; animation: scr-motion-afloat 1.4s ease-in-out infinite; }
