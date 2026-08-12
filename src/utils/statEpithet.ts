@@ -760,7 +760,7 @@ const TITLES: Title[] = [
   /* 번개의 여왕(요청: 셔틀+하이템플러 — 여신이 아니라 여왕) — 셔틀에 템플러를 태워 스톰을 떨어뜨린 판이다
      (templar-drop). 폭탄드랍의 여왕에도 드는 열쇠지만, 그쪽은 종족 무관 드랍 전부를 세는
      자리고 이쪽은 이 그림 하나만 센다. */
-  { ...tactic("깜짝 번개 퀸", ["templar-drop"]), minPlaysShare: 0.1, vsWins: true, battle: true },
+  { ...tactic("깜짝 번개 퀸", ["templar-drop"]), minPlaysShare: 0.15, vsWins: true, battle: true },
   /* 가시밭의 여왕(요청: 독거미 부대 상향·개편) — 히드라 몸에 럴커를 묻은 저그 지상
      한 벌이다(판정도 히드라+럴커 조합으로 바뀐다). 러커는 저그의 밥이라 유닛 기본(7%)의
      배로 잰다. */
