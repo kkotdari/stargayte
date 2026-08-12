@@ -34,8 +34,8 @@ const clubGames = (): number =>
    상수는 하나로 통일했다(요청) — 최근 한 달 판수의 절반. 여신·종족·맵이 다른 상수를
    쓰던 시절의 위아래는 분모가 대신 말한다: 같은 20판이라도 "전체 20판"(여신)보다
    "그 종족으로 20판"(종족 퀸)이 채우기 어렵다. 한 달 값을 못 받아 왔으면 전체×10%로. */
-// 0.5 → 0.4(요청: 상수 낮추기) — 월 40판 클럽에서 기준 16판.
-const MONTHLY_FLOOR_RATE = 0.4;
+// 0.5 → 0.4 → 0.45(요청: 낮췄다가 살짝 되돌림) — 월 40판 클럽에서 기준 18판.
+const MONTHLY_FLOOR_RATE = 0.45;
 const floorGames = (): number => (
   clubMonthGames && clubMonthGames > 0
     ? Math.max(8, Math.round(clubMonthGames * MONTHLY_FLOOR_RATE))
@@ -833,7 +833,8 @@ const TITLES: Title[] = [
      일꾼 정찰도 초반 쪽(vision)이다(요청: 파서에 추가) — 첫 일꾼을 상대 진영까지 몰고 간
      명령 좌표로 짚는다(replaySummary의 WORKER_SCOUT_SEC). 오버로드와 한 열쇠인 까닭은
      둘 다 '미리 보고 시작한다'는 같은 습관이라서다. */
-  { ...tactic("부지런한 정찰 퀸", ["vision"]), minPlaysShare: 0.55 },
+  { ...// 55 → 70%(요청) — 판정도 초반 3분으로 좁혔으니(replaySummary) 이 비율은 습관을 묻는다.
+  tactic("부지런한 정찰 퀸", ["vision"]), minPlaysShare: 0.7 },
   { ...tactic("전장을 살피는 눈", ["vision-eye"]), minPlaysShare: 0.2 },
   /* (삭제) 맞러시 승부사(duel-rush) — 요청. 맞러시는 둘이 함께 만든 장면이라 한 사람의
      수라고 하기 어렵다. */

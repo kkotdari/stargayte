@@ -4671,8 +4671,9 @@ const SCAN_SCOUT_MIN = 8;
 const SCAN_RESERVE_MIN = 12;
 const SCAN_BASE_TILES = 18;
 /** 일꾼 정찰로 칠 창(초) — 첫 일꾼을 보내 보고 오는 시간이다. 그보다 뒤의 일꾼 이동은
- *  확장을 펴러 가거나 건물을 지으러 가는 길이라 정찰이라 부를 수 없다. */
-const WORKER_SCOUT_SEC = 300;
+ *  확장을 펴러 가거나 건물을 지으러 가는 길이라 정찰이라 부를 수 없다.
+ *  5분 → 3분(요청: 정찰 퀸은 초반 3분으로 제한) — 진짜 첫 정찰만 남긴다. */
+const WORKER_SCOUT_SEC = 180;
 
 /* 규모(미니맵 기세 눈금)를 셀 때 쓰는 몫. 병력 한 기를 1로 두고, 건물은 그 한 채가
    대신하는 병력만큼 얹는다 — 방어탑은 병력 둘 몫(replayTactics의 GREEDY_DEF_WORTH와 같은
