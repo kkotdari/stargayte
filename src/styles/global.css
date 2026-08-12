@@ -10869,12 +10869,20 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 58px;
 }
 /* 모바일은 옆이 좁다(요청: 로스터를 위에) — 기둥 둘이 맵 위에서 1팀 왼쪽·2팀 오른쪽으로
-   마주 보고, 인원이 많으면 줄을 바꾼다. */
+   마주 본다. 아바타는 걷고 이름만 남긴다(요청) — 위 로스터는 명패지 얼굴첩이 아니고,
+   좁은 위 칸에서 아바타가 자리를 다 먹었다. 한 명이 무조건 한 줄이고(요청: 줄바꿈),
+   두 팀 사이에는 흐린 세로 줄을 긋는다(요청). */
 @media (max-width: 1159px) {
-  .scr-motion-maprow { display: grid; grid-template-columns: 1fr 1fr; row-gap: 6px; column-gap: 8px; }
+  .scr-motion-maprow { display: grid; grid-template-columns: 1fr 1fr; row-gap: 6px; column-gap: 0; }
   .scr-motion-maprow .scr-motion-map { grid-column: 1 / -1; grid-row: 2; }
-  .scr-motion-teamcol { width: auto; flex-direction: row; flex-wrap: wrap; gap: 8px; align-content: flex-start; }
-  .scr-motion-teamcol:last-of-type { justify-content: flex-end; }
+  .scr-motion-teamcol { width: auto; flex-direction: column; gap: 3px; }
+  .scr-motion-teamcol:last-of-type {
+    align-items: flex-end;
+    border-left: 1px solid var(--line-soft); padding-left: 8px; margin-left: 8px;
+  }
+  .scr-motion-teamcol-item .scr-motion-base-ring { display: none; }
+  /* 이름은 살짝 크게(요청) — 아바타가 빠져 이름이 곧 그 사람이다. */
+  .scr-motion-teamcol-name { font-size: 11px; max-width: none; }
 }
 /* 잘라내기는 바탕 그림에만(지적: 경계의 아바타·이름이 잘려 나감) — 컨테이너가 overflow:
    hidden이면 모서리 본진의 마커가 반쪽이 된다. 둥근 모서리는 그림이 제 몫으로 갖는다. */
