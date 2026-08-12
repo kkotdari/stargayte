@@ -102,6 +102,18 @@ export const BUILDING_KO: Record<string, string> = {
   "Nydus Canal": "나이더스", "Engineering Bay": "엔지니어링 베이", Refinery: "리파이너리",
   Assimilator: "어시밀레이터", Extractor: "익스트랙터", Nexus: "넥서스",
   "Command Center": "커맨드", Hatchery: "해처리",
+  /* 나머지 건물들(지적: 연속 재생에서 건물 이름이 안 나온다) — 재생 화면이 건설 순간의
+     이름표로 쓴다. 자막 쪽은 여전히 위 목록 위주로 말한다. */
+  "Cybernetics Core": "코어", "Templar Archives": "아카이브", "Citadel of Adun": "시타델",
+  Stargate: "스타게이트", "Fleet Beacon": "플릿 비콘", "Arbiter Tribunal": "트리뷰널",
+  "Robotics Support Bay": "서포트 베이", "Shield Battery": "배터리",
+  Spire: "스파이어", "Greater Spire": "그레이터 스파이어", "Queen's Nest": "퀸즈 네스트",
+  "Defiler Mound": "디파일러 마운드", "Ultralisk Cavern": "울트라 동굴",
+  "Hydralisk Den": "히드라 덴", Lair: "레어", Hive: "하이브",
+  "Science Facility": "사이언스 퍼실리티", "Comsat Station": "컴셋",
+  "Machine Shop": "머신샵", "Control Tower": "컨트롤 타워", "Covert Ops": "커버트 옵스",
+  "Physics Lab": "피직스 랩", "Nuclear Silo": "핵 사일로",
+  "Infested Command Center": "감염된 커맨드",
 };
 
 export const EXPANSION_KO: Record<string, string> = {

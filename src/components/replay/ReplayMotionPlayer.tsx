@@ -3,7 +3,7 @@ import { Mountain, Pause, Play, RotateCcw } from "lucide-react";
 import TerrainReviewModal from "../../modals/TerrainReviewModal";
 import Avatar from "../common/Avatar";
 import { cx } from "../../utils/format";
-import { UNIT_KO, TECH_KO } from "../../utils/replaySummaryText";
+import { UNIT_KO, BUILDING_KO, TECH_KO } from "../../utils/replaySummaryText";
 import type { ReplayMapGrid } from "../../utils/replayParser";
 import { isAirUnit, type SummaryMotion } from "../../utils/replayMotion";
 import { DEFENSE_BUILDINGS } from "../../utils/replayBuildMix";
@@ -429,10 +429,11 @@ export default function ReplayMotionPlayer({
                 ...(freshBuild ? chipStyle(raw, team) : {}),
               }}
             >
-              {/* 겉모습 규칙(요청) — 건물 네모·방어건물 세모, 지어지는 동안만 이름(한글명
-                  없으면 도형 그대로). */}
+              {/* 겉모습 규칙(요청) — 건물 네모·방어건물 세모, 지어지는 동안만 이름.
+                  이름 표는 건물 것(BUILDING_KO)이다(지적: 건물 이름이 안 나온다 — 유닛
+                  표(UNIT_KO)만 뒤져서 건물은 늘 도형으로 떨어졌다). */}
               {razed ? "✕"
-                : freshBuild ? (UNIT_KO[unit] ?? (DEFENSE_BUILDINGS.has(unit) ? "▲" : "▪"))
+                : freshBuild ? (BUILDING_KO[unit] ?? UNIT_KO[unit] ?? (DEFENSE_BUILDINGS.has(unit) ? "▲" : "▪"))
                   : DEFENSE_BUILDINGS.has(unit) ? "▲" : "▪"}
             </span>
           );
