@@ -316,17 +316,8 @@ export default function ReplayMotionPlayer({
         />
       </div>
       <div className="scr-motion-bar scr-motion-bar-controls">
-        <button
-          type="button" className="scr-motion-btn"
-          onClick={() => {
-            if (done) { setT(0); setDone(false); setPlaying(true); return; }
-            setPlaying((v) => !v);
-          }}
-          aria-label={playing ? "일시정지" : "재생"}
-        >
-          {done ? "↻" : playing ? "❚❚" : "▶"}
-        </button>
-        {/* 배속은 눌러 고른다(요청: 속도 조절 기능). */}
+        {/* 차례가 곧 그리드 칸이다(지적: 재생이 줄 가운데, 배속은 왼쪽에 필터처럼) —
+            [배속 | 재생 | 시간]. 재생 버튼을 먼저 적으면 왼쪽 칸에 앉아 버린다. */}
         <span className="scr-motion-speeds" role="group" aria-label="배속">
           {SPEEDS.map((v) => (
             <button
@@ -338,8 +329,17 @@ export default function ReplayMotionPlayer({
             </button>
           ))}
         </span>
+        <button
+          type="button" className="scr-motion-btn scr-motion-play"
+          onClick={() => {
+            if (done) { setT(0); setDone(false); setPlaying(true); return; }
+            setPlaying((v) => !v);
+          }}
+          aria-label={playing ? "일시정지" : "재생"}
+        >
+          {done ? "↻" : playing ? "❚❚" : "▶"}
+        </button>
         <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
-      </div>
     </div>
   );
 }
