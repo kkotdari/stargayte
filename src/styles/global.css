@@ -10874,8 +10874,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* PC는 지도가 커서 같은 픽셀이 상대적으로 작다(지적: 도형이 안 보임) — 한 단계씩 키운다. */
 @media (min-width: 1160px) {
   .scr-motion-build { font-size: 9px; }
+  .scr-motion-build-shape { font-size: 13px; }
   .scr-motion-build-on { font-size: 13px; }
   .scr-motion-army { font-size: 12px; }
+  .scr-motion-dot { font-size: 14px; }
+  .scr-motion-fresh { font-size: 11px; }
   .scr-motion-cast { font-size: 11px; }
   .scr-motion-base-name { font-size: 10px; }
   .scr-motion-workers { font-size: 9px; }
@@ -10965,7 +10968,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   background: rgba(0, 0, 0, 0.35);
 }
 /* 갓 뽑힌 유닛(요청) — 만든 건물 앞에 잠깐 놓이는 작은 점. */
-.scr-motion-fresh { font-size: 7px; text-shadow: 0 0 2px rgba(0, 0, 0, 0.8); }
+.scr-motion-fresh { font-size: 8px; text-shadow: 0 0 2px rgba(0, 0, 0, 0.8); }
+/* 도형 전용 크기(지적: PC에서 너무 작다) — 인라인 크기 대신 클래스라야 미디어 확대가 먹는다. */
+.scr-motion-build-shape { font-size: 9px; }
+.scr-motion-dot { font-size: 10px; }
 /* 종족 배지(요청) — 아바타 오른쪽 어깨에. */
 .scr-motion-base-race { position: absolute; top: -3px; right: -10px; }
 /* 범례(요청) — 도형이 뭔지 한 줄. 지도 아래 가운데, 작은 회색 글씨. */

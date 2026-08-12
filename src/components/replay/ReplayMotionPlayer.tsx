@@ -601,12 +601,14 @@ export default function ReplayMotionPlayer({
             let text: string;
             if (razed) text = "✕";
             else if (activeBuild && name) text = name;
-            else text = DEFENSE_BUILDINGS.has(unit) ? "▲" : "▪";
+            // ▪는 글꼴상 반쪽짜리라 ●▲보다 작아 보인다(지적) — 꽉 찬 ■로.
+            else text = DEFENSE_BUILDINGS.has(unit) ? "▲" : "■";
             return (
               <span
                 key={`b-${i}`}
                 className={cx(
                   "scr-motion-build",
+                  !razed && text !== name && "scr-motion-build-shape",
                   activeBuild && "scr-motion-build-on",
                   (producing || researching) && "scr-motion-heartbeat",
                   razed && "scr-motion-build-razed",
@@ -816,12 +818,12 @@ export default function ReplayMotionPlayer({
                   key={`${p.raw}-d${di}`}
                   className={cx(
                     "scr-motion-army",
+                    "scr-motion-dot",
                     team === 2 ? "scr-motion-team2" : "scr-motion-team1",
                     pos.stale && "scr-motion-army-stale",
                   )}
                   style={{
                     left: pct(pos.x + dx, grid.width), top: pct(pos.y + dy, grid.height),
-                    fontSize: 10,
                     ...glyphStyle(p.raw, team),
                   }}
                 >
@@ -887,7 +889,7 @@ export default function ReplayMotionPlayer({
       {/* 범례(요청) — 지도 위 도형이 뭔지 한 줄로. */}
       <div className="scr-motion-legend">
         <span>● 부대·유닛</span>
-        <span>▪ 건물</span>
+        <span>■ 건물</span>
         <span>▲ 방어 건물</span>
         <span>✕ 파괴됨</span>
         <span>· 채굴 일꾼</span>
