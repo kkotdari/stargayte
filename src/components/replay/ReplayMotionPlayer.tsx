@@ -2381,7 +2381,11 @@ export default function ReplayMotionPlayer({
             /* 일꾼과 수송선은 이름을 안 띄운다(요청) — 일꾼은 자원 채취뿐 아니라 늘
                적당히 작은 점으로 통일, 수송선은 늘 제 도형(오버로드 풍선·드랍십·셔틀)이다. */
             const noName = g.kind === "worker" || g.kind === "carrier" || race === "저그";
-            const activeNow = !noName && sinceCmd <= ACTIVE_HOLD_SEC && !nearHome;
+            /* 걷는 중일 때만 이름이다(지적: 일꾼 아이콘이 커졌다 작아졌다 — 일꾼은 명령을
+               잘게 자주 받아 액티브 창이 계속 다시 열리고, 칩↔점 전환이 깜빡임으로 읽혔다).
+               '명령 직후 + 걷는 중'을 함께 물으면 서 있는 일꾼은 늘 점이고, 이름은 여정에
+               한 번만 떴다 진다. */
+            const activeNow = !noName && sinceCmd <= ACTIVE_HOLD_SEC && pos.moving && !nearHome;
             return (
               <span
                 key={`s-${p.raw}-${g.kind}-${gi}`}
