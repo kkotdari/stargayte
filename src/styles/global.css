@@ -10889,16 +10889,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   font-size: var(--fs-9); color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 
-/* 게임 상세의 탭(요청: 미니맵 리플레이는 탭 뒤로) — 유리판 세그먼트 두 쪽. */
-.scr-story-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
-.scr-story-tab {
-  padding: 3px 10px; border-radius: var(--radius-sm);
-  border: 1px solid var(--line-hair); background: transparent;
-  color: var(--muted); font-size: var(--fs-9); font-weight: 700; cursor: pointer;
-}
-.scr-story-tab-on {
-  background: rgba(255, 255, 255, 0.08); color: var(--text); border-color: var(--line-soft);
-}
+/* (삭제·요청) 게임 상세 탭(.scr-story-tab*) — 연속 재생이 서면서 다시 걷었다. */
 .scr-story { display: flex; flex-direction: column; gap: 12px; }
 
 /* 미니맵이 들어오면 가운데 열이 폭을 먹으므로 매치업을 조금 넓게 쓴다 — 그러지 않으면

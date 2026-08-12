@@ -1623,10 +1623,9 @@ export default function GameResultStory({
      아예 다른 화면으로 보였다. 맵 자체를 못 읽은 옛 경기(grid === null)만 예전 형식이다 —
      좌표계가 없어 아무것도 제자리에 못 놓는다. */
   const storyMap = grid;
-  /* 탭(요청: 미니맵 리플레이는 탭으로 숨기고 기본은 옛 로스터 형식) — 미니맵이 있는
-     경기만 탭이 서고, 없는 경기는 예전처럼 로스터뿐이다. */
-  const [tab, setTab] = useState<"roster" | "replay">("roster");
-  const showRoster = storyMap === null || tab === "roster";
+  /* (삭제·요청) 로스터/리플레이 탭 — 연속 재생이 서면서 다시 필요 없어졌다. 미니맵을
+     못 그리는 경기만 로스터로 보여준다(예전 규칙 그대로). */
+  const showRoster = storyMap === null;
   /* 맵은 읽었는데 그림만 아직 없는 경우 — 운영자가 연결해 주면 바로 이야기가 붙는다(요청).
      맵 자체를 못 읽은 옛 경기(grid === null)에는 연결할 대상이 없어 안 띄운다. */
   const needMapImage = grid !== null && !grid.image;
@@ -1637,7 +1636,6 @@ export default function GameResultStory({
   // 자막으로 보여줄 수 있는 경기인가 — 미니맵이 있고 훑을 문장이 있을 때. 그림이 없으면
   // 자막만 남아 무엇을 보고 읽는 글인지 알 수 없다.
   const caption = storyMap !== null && sentences.length > 0;
-  // 로스터 탭에서도 맵 이름·시간 한 줄은 적는다(요청: 간단한 정보만).
   const showMapLine = showRoster && Boolean(mapName || minutes !== null);
 
   /* 미니맵·자막·타임라인을 눌러도 카드가 접히지 않게 한다(요청) — 이 카드는 눌러서 접는
@@ -1777,25 +1775,6 @@ export default function GameResultStory({
 
   return (
     <div className="scr-story" ref={rootRef}>
-      {storyMap !== null && (
-        /* 두 탭 — 기본이 로스터라, 리플레이(미니맵·타임라인)는 눌러야 나온다(요청). */
-        <div className="scr-story-tabs" {...stopBubble}>
-          <button
-            type="button"
-            className={cx("scr-story-tab", tab === "roster" && "scr-story-tab-on")}
-            onClick={() => setTab("roster")}
-          >
-            로스터
-          </button>
-          <button
-            type="button"
-            className={cx("scr-story-tab", tab === "replay" && "scr-story-tab-on")}
-            onClick={() => setTab("replay")}
-          >
-            미니맵 리플레이
-          </button>
-        </div>
-      )}
       {showRoster && (
         <div className={cx("scr-roster-matchup", "scr-activity-game-result-matchup", grid && "scr-story-matchup-wide")}>
           <RosterSide
