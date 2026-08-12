@@ -614,12 +614,12 @@ const TITLES: Title[] = [
   /* (삭제) 브루들링 저격수 · 눈을 멀게 하는 자(옵티컬 플레어) · 허깨비 부대장(할루시네이션)
      — 요청으로 뺐다. 셋 다 쓰기 어려운 마법이긴 한데, 그 한 번이 판을 가르는 그림까지는
      아니라 이름만 요란해진다. */
-  { ...tactic("헬프 퀸", ["ally-help"]), minPlaysShare: 0.4 },
+  { ...tactic("헬프 퀸", ["ally-help"]), minPlaysShare: 0.35 },
   /* 동맹의 수호자 → 동맹을 지키는 포탑(요청) — 무엇으로 지켰는지가 이름에 들어가야
      "아군 기지에 포토를 깔아 줬다"는 그 그림이 그대로 읽힌다. '수호자'는 어느 수에나
      붙을 수 있는 말이라 정작 이 칭호가 센 것이 안 보였다. */
   // 5% → 2%(요청) — 곁가지 다섯과 같은 선이다.
-  { ...tactic("아군 보호 퀸", ["ally-cannon"]), minPlaysShare: 0.15 },
+  { ...tactic("아군 보호 퀸", ["ally-cannon"]), minPlaysShare: 0.1 },
   /* 입구막기는 '막았다'가 아니라 '막아 놓고 뒤에서 컸다'가 값어치다(판정도 발전까지 함께
      본다 — replayTactics의 WALL_IN_GROW_MIN). 그래서 칭호도 막은 쪽이 아니라 그다음을
      부른다. "후반 도모 퀸"에서 바꿨다(지적: 개성적이지 않다) — 그 말은 어느 운영에나 붙는
@@ -631,7 +631,7 @@ const TITLES: Title[] = [
   /* 일꾼 견제는 위로 올린다(요청: 일꾼 견제도 강화) — 상대 일꾼을 잡는 일은 병력을 뽑아
      쌓아 두는 것과 달리 그 순간 손이 가야만 되는 것이고, 그 판의 자원 곡선을 실제로
      꺾어 놓는다. 그래서 다른 어떤 전술보다 그 사람의 성향을 잘 말한다. */
-  { ...tactic("집요한 일꾼 헌터", ["harass-workers"], 1), minPlaysShare: 0.03 },
+  { ...tactic("집요한 일꾼 헌터", ["harass-workers"], 1), minPlaysShare: 0.01 },
   /* (삭제) 지긋지긋한 견제러(harass-long) — "집요한 일꾼 사냥꾼"과 같은 이야기(견제)를
      다른 말로 한 번 더 부르는 자리였고, 이름도 그 사람이 아니라 당한 쪽의 감상이다. */
   /* 드랍도 같은 무리로 올린다(요청: 견제도 가중치 높이기) — 병력을 실어 상대 뒤로 넘기는
@@ -643,8 +643,8 @@ const TITLES: Title[] = [
        판이라야 한다. */
     ...tactic("폭탄드랍의 여왕", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"], 1),
     race: undefined,
-    // 분모가 전체 판이라 기본 비율(6%)이 되레 무겁다(요청: 낮추기) — 스물다섯 판에 한 번꼴.
-    minPlaysShare: 0.03,
+    // 분모가 전체 판이라 기본 비율(6%)이 되레 무겁다(요청: 낮추기).
+    minPlaysShare: 0.01,
   },
 
   /* ── 운영(요청: 전략운영은 가중치를 좀 높여도 된다) ─────────────────────────
@@ -661,13 +661,13 @@ const TITLES: Title[] = [
   /* 에픽 전투 칭호 한 벌(요청: 종족별 비율 맞춤)에는 battle이 선다 — 그 판에서 경기만이
      아니라 전투(교전)도 이겼어야 센다(요청: 그 유닛을 사용해 전투/경기 모두 이긴 경우만).
      대조는 서버가 전투 원장(bt_*_won)으로 한다. */
-  { ...tactic("바이오닉의 여왕", ["bionic"]), minPlaysShare: 0.25, battle: true },
+  { ...tactic("바이오닉의 여왕", ["bionic"]), minPlaysShare: 0.2, battle: true },
   /* 탱크 조이기·옆탱을 함께 센다(요청: 탱크는 메카닉에 통합) — 셋 다 테란이 탱크로 굴린
      판이고, 자막이 어느 이름으로 짚었나는 그 판의 장면 차이일 뿐이다. 근거 문장도 세
      열쇠를 아우르는 말로 덮는다(tactic이 지어 주는 이름은 첫 열쇠 것뿐이다). */
   // 이름은 여신·여왕 계열로 통일(요청) — 메카닉 사령관에서 바꿨다.
   { ...tactic("메카닉의 여왕", ["mech", "center-tank", "side-tank"]),
-    why: "메카닉·탱크 조이기", minPlaysShare: 0.35, battle: true },
+    why: "메카닉·탱크 조이기", minPlaysShare: 0.3, battle: true },
   /* 과학의 여왕(요청: 신규 과학전 — 여신은 전설급에만) — 베슬을 둘 이상 띄우고 이레디·EMP·매트릭스를 실제로
      뿌린 판이다. 판정은 replayTactics의 vessel. */
   { ...tactic("과학전의 퀸", ["vessel"]), minPlaysShare: 0.2, vsWins: true, battle: true },
@@ -684,7 +684,7 @@ const TITLES: Title[] = [
   { ...tactic("목동의 여왕", ["moka"]), minPlaysShare: 0.1, vsWins: true, battle: true },
   /* 브루들링의 여왕(요청: 퀸 쪽 추가) — 퀸을 띄워 브루들링·인스네어·패러사이트를 실제로
      쓴 판이다. 과학의 여왕(베슬)과 같은 자다. */
-  { ...tactic("진화의 여왕", ["queen"]), minPlaysShare: 0.1, vsWins: true, battle: true },
+  { ...tactic("진화의 여왕", ["queen"]), minPlaysShare: 0.05, vsWins: true, battle: true },
 
   // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
   /* (삭제) 프로 옆탱러(side-tank) — 요청. 옆탱은 아군 기지를 받쳐 주는 탱크와 제 기지
@@ -695,14 +695,14 @@ const TITLES: Title[] = [
      아니다(다른 전술의 기본 문턱 2회는 "한 번은 우연"을 거르려는 것이다). */
   /* 러시 기본값(3%)보다 낮게 제 값을 든다(요청: 2%) — 남의 집 앞 캐논은 드문 수라
      비율을 높게 걸면 아무도 안 걸리고, 대신 카운트 하한이 우연 한 판을 막는다. */
-  { ...tactic("포토러시 퀸", ["cannon-rush"], 1), minPlaysShare: 0.02 },
+  { ...tactic("포토러시 퀸", ["cannon-rush"], 1), minPlaysShare: 0.01 },
   /* 성큰러시만 러시 기본값(3%)보다 높다(지적: 하한이 너무 낮다) — 저그는 앞마당에 성큰을
      늘 박으므로 '남의 집 앞 성큰'과 제 살림의 성큰이 자막에서 같은 열쇠로 잡히는 판이 있다.
      10%면 저그 판 열에 한 번은 그 그림이라야 걸린다(요청: 10%). */
-  { ...tactic("성큰러시 퀸", ["sunken-rush"], 1), minPlaysShare: 0.1 },
+  { ...tactic("성큰러시 퀸", ["sunken-rush"], 1), minPlaysShare: 0.05 },
   /* 센터의 여주인 → 센포의 여왕(요청) — 클럽에서 그 수를 부르는 말이 '센포'라, 그 말을
      그대로 쓰면 무엇을 세는 칭호인지가 바로 읽힌다. */
-  { ...tactic("센포의 여왕", ["center-photon"]), minPlaysShare: 0.2 },
+  { ...tactic("센포의 여왕", ["center-photon"]), minPlaysShare: 0.15 },
   /* (삭제) 남의 집 헤집기 장인(base-raid) — 요청. 이름 없는 급습이라 "무엇으로 갔는지"가
      빠진 이야기고, 그 대목은 대개 다른 칭호(드랍·견제·러시)가 이미 말한다. */
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
@@ -711,9 +711,9 @@ const TITLES: Title[] = [
      나르는 그림 그대로다. 한때 '땅굴'이라는 말을 뺐었는데(지적: 버로우 이야기로 읽힌다)
      '파는 여인'까지 붙으면 굴을 뚫는 그림이라 그 오해가 없다.
      근거 문장은 그대로 '커널'로 부른다 — 자막이 그 수를 부르는 이름이다. */
-  { ...rare("커널 개통 퀸", ["nydus"]), minPlaysShare: 0.2 },
-  { ...rare("리콜 배달 퀸", ["recall"]), minPlaysShare: 0.15 },
-  { ...rare("도둑 퀸", ["mind-control"]), minPlaysShare: 0.05 },
+  { ...rare("커널 개통 퀸", ["nydus"]), minPlaysShare: 0.15 },
+  { ...rare("리콜 배달 퀸", ["recall"]), minPlaysShare: 0.1 },
+  { ...rare("도둑 퀸", ["mind-control"]), minPlaysShare: 0.02 },
   /* 유닛 기본(7%)보다 낮다(요청) — 캐리어까지 가는 판은 프로토스 판 가운데도 일부라,
      코끼리와 같은 자리에서 제 값을 받는다. 에픽 상향(요청: 캐리어 상향). */
   /* 함대의 여왕(요청 — 여신은 전설급에만 쓴다) — 아비터까지 함께 굴렸으면 "그림자 함대의
@@ -721,18 +721,18 @@ const TITLES: Title[] = [
      같은 캐리어라도 아비터가 끼면 스테이시스·리콜이 낀 다른 그림이라, 이름이 그 판을
      말하게 한다(맵 여왕과 같은 {n} 방식). 아비터를 뽑았나는 이긴 판 원장(mix)의 유닛
      수로 본다. */
-  { ...tactic("{n}", ["carrier"]), minPlaysShare: 0.15, battle: true, why: "캐리어",
+  { ...tactic("{n}", ["carrier"]), minPlaysShare: 0.1, battle: true, why: "캐리어",
     name: (s, of) => ((mix(s, of)?.units?.["Arbiter"] ?? 0) > 0 ? "보이지 않는 날파리 퀸" : "날파리 퀸") },
   /* 폭풍의 여왕(요청: 신규 질럿+템플러) — 질럿 몸에 스톰을 얹은 프로토스 지상 한 벌.
      판정은 replayTactics의 zealot-templar. */
   { ...tactic("또각또각 번개 퀸", ["zealot-templar"]), minPlaysShare: 0.25, vsWins: true, battle: true },
   /* 강습의 여왕(요청: 프로토스 하나 추가 — 셔틀 리버) — 폭탄드랍의 여왕은 종족 무관 드랍
      전부를 세고, 이쪽은 프로토스의 셔틀 리버 그림만 센다. */
-  { ...tactic("리버 드랍의 여왕", ["shuttle-reaver"]), minPlaysShare: 0.1, vsWins: true, battle: true },
+  { ...tactic("리버 드랍의 여왕", ["shuttle-reaver"]), minPlaysShare: 0.05, vsWins: true, battle: true },
   /* 보이지 않는 여왕(요청: 어둠의 여왕에서 개명 — 다크 단독 또는 다템+커세어) — 그림자의
      여왕(은신 유닛 비중)과 달리 다크가 주인공인 판을 센다. */
   // 조건 상향(요청) — 프로토스 판 5% → 10%: 스무 판에 두 판은 다크로 이겨야 그 이름이다.
-  { ...tactic("보이지 않는 여왕", ["dark-templar"]), minPlaysShare: 0.55, vsWins: true, battle: true },
+  { ...tactic("보이지 않는 여왕", ["dark-templar"]), minPlaysShare: 0.6, vsWins: true, battle: true },
   /* 시공의 여왕(요청: 아비터 쪽 추가) — 아비터를 띄워 스테이시스·리콜을 실제로 쓴 판이다.
      함대의 여왕(캐리어+아비터)과 달리 아비터가 주인공인 판을 센다. */
   { ...tactic("시공을 지배하는 여제", ["arbiter"]), minPlaysShare: 0.2, vsWins: true, battle: true },
@@ -743,7 +743,7 @@ const TITLES: Title[] = [
   /* 가시밭의 여왕(요청: 독거미 부대 상향·개편) — 히드라 몸에 럴커를 묻은 저그 지상
      한 벌이다(판정도 히드라+럴커 조합으로 바뀐다). 러커는 저그의 밥이라 유닛 기본(7%)의
      배로 잰다. */
-  { ...tactic("가시의 여왕", ["lurker"]), minPlaysShare: 0.45, battle: true },
+  { ...tactic("가시의 여왕", ["lurker"]), minPlaysShare: 0.4, battle: true },
   /* 안 보이는 것으로만 치는 사람(요청: 다크·레이스·아비터를 다 잘 쓴 경우만) —
      "보이지 않는 손" → "안 보이는 레이스"를 거쳐 온 자리다. 유닛 하나로는 안 준다(요청:
      하나만 써서는 안 됨): 다크만 뽑는 프로토스는 흔하고, 그건 이미 유닛 칭호가 말한다.
@@ -752,7 +752,7 @@ const TITLES: Title[] = [
   /* (삭제·요청) 은폐 유닛 퀸 — 병력 중 은신 유닛 비중. 다크가 주인공인 판은
      '보이지 않는 여왕'(dark-templar)이 따로 센다. */
   // 에픽 상향(요청: 뮤탈은 상향 — 이름도 여왕 계열로) + 전투 조건.
-  { ...tactic("뮤탈 습격 퀸", ["muta"]), minPlaysShare: 0.25, battle: true },
+  { ...tactic("뮤탈 습격 퀸", ["muta"]), minPlaysShare: 0.2, battle: true },
   /* 코끼리 조련사(요청) — 울트라리스크를 모아 나간 판이다. 저그의 마지막 지상 병력이라
      거기까지 판을 끌고 갔다는 말이기도 한데, 부르는 말은 그 그림 하나면 된다.
      한때 "코끼리떼를 모는 여인"으로 바꿔 봤다가 되돌렸다(요청) — 조련사 쪽이 짧고, 무엇을
@@ -770,7 +770,7 @@ const TITLES: Title[] = [
        인구수가 커서 기수 자체는 적게 잡힌다. 4%면 병력 스물다섯에 하나 꼴이다. */
     label: "하이브의 지배자", weight: 2, kind: "경기력",
     // 5% → 10%(요청) — 하이브 유닛이 병력 열에 하나는 돼야 "끝까지 끌고 간 사람"이다.
-    min: 0.1, why: "병력 중 하이브 유닛", unit: "",
+    min: 0.05, why: "병력 중 하이브 유닛", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       if (!m || !(m.uGround + m.uAir > 0)) return null;
@@ -786,8 +786,8 @@ const TITLES: Title[] = [
      커세어·스카웃 넷으로 넓어지면서 이 수는 두 종족에 걸쳐 있다. 분모를 '테란 판'으로
      두면 커세어로 잡은 프로토스 판이 남의 종족 판수로 나뉘어 영영 문턱을 못 넘는다.
      폭탄드랍의 여왕이 다섯 열쇠를 세며 같은 이유로 종족을 걷은 것과 같은 자리다. */
-  { ...tactic("오버로드 사냥꾼", ["valk-hunt"]), race: undefined, minPlaysShare: 0.02 },
-  { ...tactic("몰래배럭 퀸", ["sneak-rax"]), minPlaysShare: 0.02 },
+  { ...tactic("오버로드 사냥꾼", ["valk-hunt"]), race: undefined, minPlaysShare: 0.01 },
+  { ...tactic("몰래배럭 퀸", ["sneak-rax"]), minPlaysShare: 0.01 },
   /* (삭제) 끝없는 저글링 폭풍(zling-rush) — 요청. 저글링 하나로 들이치는 것은 그 종족의
      기본 진행에 가까워, 한 유닛만으로 러시라고 부를 만한 수가 아니다. */
   /* 초반 러시 한 덩어리(요청: 3게이트·9드론 등) — 질럿 러시와 저글링 러시를 한 칭호로 묶는다.
@@ -814,7 +814,7 @@ const TITLES: Title[] = [
      명령 좌표로 짚는다(replaySummary의 WORKER_SCOUT_SEC). 오버로드와 한 열쇠인 까닭은
      둘 다 '미리 보고 시작한다'는 같은 습관이라서다. */
   { ...tactic("부지런한 정찰 퀸", ["vision"]), minPlaysShare: 0.5 },
-  { ...tactic("전장을 살피는 눈", ["vision-eye"]), minPlaysShare: 0.2 },
+  { ...tactic("전장을 살피는 눈", ["vision-eye"]), minPlaysShare: 0.15 },
   /* (삭제) 맞러시 승부사(duel-rush) — 요청. 맞러시는 둘이 함께 만든 장면이라 한 사람의
      수라고 하기 어렵다. */
   /* 협공을 다시 넣는다(요청: 공격에 열심히 참여한다는 좋은 뜻으로) — 한때 "협공의 선봉"으로 뺐던 자리다. 그때 뺀
@@ -853,7 +853,7 @@ const TITLES: Title[] = [
   /* 역전의 아이콘(요청, 점수 높은 축) — 자막의 '재기'(revival)는 살림이 무너졌다가 다시
      일어난 판이다. 전술은 이긴 판만 세므로(서버의 _tactic_counts) 그 판은 곧 역전승이다:
      무너진 뒤에 일어나 이겼다는 말이라, 이 표에서 흔치 않은 이야기다. */
-  { ...tactic("역전의 명수", ["revival"]), minPlaysShare: 0.4 },
+  { ...tactic("역전의 명수", ["revival"]), minPlaysShare: 0.35 },
   /* 도박 퀸(요청: 도박적인 전술로 이긴 경우) — 자막의 '올인'은 뒤를 안 남기고 한 번에 건
      판이다. 전술은 이긴 판만 세므로(서버의 _tactic_counts) 여기 쌓이는 수는 곧 '건 것이
      통한 판'이다. 지고도 세면 그건 도박이 아니라 그냥 무너진 판이라 뜻이 갈린다. */
@@ -863,7 +863,7 @@ const TITLES: Title[] = [
   /* 3 → 8%(요청) — 막아 낸 판은 이 표에서 손꼽히게 자주 잡히는 자막이다(한 번 밀려오면
      그 판에 여러 번 서는 일도 있다). 3%로 두니 웬만한 사람은 다 걸려 "방어를 잘한다"는
      말이 아무도 안 가리켰다. 열 판에 한 판 가까이 막아 냈어야 그 사람의 색이다. */
-  { ...tactic("철벽 퀸", ["hold-off"]), minPlaysShare: 0.1 },
+  { ...tactic("철벽 퀸", ["hold-off"]), minPlaysShare: 0.05 },
   /* (삭제) 받아치기의 정석(counter) — 요청. 역공은 상대가 들이친 뒤에 따라오는 대목이라
      그 판의 흐름이지 그 사람의 색이 아니다. */
   /* (삭제) 벽을 부수는 자(breakthrough) — 요청. */
@@ -935,7 +935,7 @@ const TITLES: Title[] = [
      부르면 같은 기록이 그 사람의 끈기가 된다. 져도 센다(COUNTED_EVEN_IF_LOST) — 밀린 뒤의
      이야기라 이긴 판만 보면 영영 안 잡힌다. */
   /* 에픽으로 올렸다(요청) — 본진을 잃고도 판을 이어 간 이야기라 곁가지보다는 위다. */
-  { ...tactic("불사조", ["lodging", "relocate"]), why: "본진 밖 생존(이사·셋방살이)", minPlaysShare: 0.11, weight: 3 },
+  { ...tactic("불사조", ["lodging", "relocate"]), why: "본진 밖 생존(이사·셋방살이)", minPlaysShare: 0.06, weight: 3 },
   /* (삭제) 건물 띄우기(lift-off)로 짓던 "공중부양 마스터" — 뺐다(지적). 이 키는 자리를
      다 내주고 건물만 띄워 쫓겨 다닌 대목이라, 버틴 이야기로 넣었지만 칭호로 굳으면
      "집을 잃은 사람"이라는 딱지로 읽힌다. 자막에서 한 번 지나가는 말과, 이름 아래
@@ -975,7 +975,7 @@ const TITLES: Title[] = [
     /* 2.5 → 3.5(요청: 퀸으로 올릴 만하다) — 손 이야기 셋(유효타·APM·커맨드) 가운데 가장
        위다. 빠르기는 타고나거나 오래 하면 오르지만, 헛치지 않는 손은 무엇을 누를지 미리
        정해 두어야 나온다. */
-    label: "군더더기 없는 손놀림", weight: 3, kind: "경기력", min: 0.99, why: "APM 중 유효타", unit: "",
+    label: "군더더기 없는 손놀림", weight: 3, kind: "경기력", min: 0.94, why: "APM 중 유효타", unit: "",
     value: (s) => (s.avgApm && s.avgEapm && s.avgApm > 0 ? s.avgEapm / s.avgApm : null),
   },
   /* (삭제) 누른 만큼 뽑는 사람(커맨드 중 생산 비율) — 요청. */
@@ -1010,7 +1010,7 @@ const TITLES: Title[] = [
   /* (삭제·요청) 지상전·공중전·마법 퀸 — 전투 승률 셋. 전투 원장(bt_*)은 에픽 전투
      칭호의 '그 판의 전투도 이겼어야' 게이트가 계속 쓴다. */
   /* 건물을 제일 많이 올린 사람(요청: 심시티 퀸) — "쉴 새 없이 짓는 자"에서 바꿨다. 재는 값은 그대로 분당 지은 채수다. */
-  { label: "심시티 퀸", weight: 3, kind: "경기력", min: 8, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
+  { label: "심시티 퀸", weight: 3, kind: "경기력", min: 7.9, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
   {
     /* 급을 올린다(요청) — 무게 2 → 3이라 일반에서 에픽이다. 갈래를 승률로 올려 둔 채(요청)
        급만 일반에 남아 있던 것이 어긋난 자리였다: 목록에서는 승률 칸 맨 위인데 대표를
@@ -1019,7 +1019,7 @@ const TITLES: Title[] = [
        3단계까지 올리려면 그만큼 시간이 필요해서, 짧은 판을 섞으면 오래 끄는 사람이 아니라
        짧게 끝내는 사람이 손해를 본다. 그 사실을 조건 문구에도 적었다(요청). */
     // 2.5 → 2.4(요청).
-    label: "풀업 퀸", weight: 3, kind: "승률", min: 2.4, why: "20분 넘긴 판의 공/방 평균 단계", unit: "",
+    label: "풀업 퀸", weight: 3, kind: "승률", min: 2.3, why: "20분 넘긴 판의 공/방 평균 단계", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       if (!m) return null;
