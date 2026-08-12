@@ -544,12 +544,13 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
       + " M11.8 9.8 Q13.6 6.2 11.2 3 Q11.8 6.4 9.8 9.2 Z", 1],
     ["M4.6 10.4a3.4 1 0 1 0 6.8 0a3.4 1 0 1 0-6.8 0Z", 0.22, "#fff"],
   ],
-  /* 오버로드 — 풍선에 긴 다리(요청) + 풍선 윗머리 반짝임으로 입체. */
+  /* 오버로드 — 풍선에 긴 다리 + 풍선 윗머리 반짝임으로 입체.
+     다리는 옆으로 벌지 않고 수직으로 길게 떨어진다(지적). */
   ovie: [
     ["M3.6 6a4.4 4.2 0 1 0 8.8 0a4.4 4.2 0 1 0-8.8 0Z"
-      + " M5.4 9.6 Q5 12.6 4.2 14 Q5.8 12.4 6.4 9.9 Z"
-      + " M7.6 10.2 Q7.6 13.4 7 15 Q8.6 13 8.6 10.2 Z"
-      + " M10.4 9.6 Q10.8 12.6 11.6 14 Q10 12.4 9.4 9.9 Z", 1],
+      + " M4.6 9.3 Q4.7 13.2 5.1 15.9 Q5.6 13.1 5.7 9.7 Z"
+      + " M7.5 10.2 Q7.5 13.7 8 16 Q8.5 13.7 8.5 10.2 Z"
+      + " M11.4 9.3 Q11.3 13.2 10.9 15.9 Q10.4 13.1 10.3 9.7 Z", 1],
     ["M5.2 4.4a1.8 1.1 0 1 0 3.6 0a1.8 1.1 0 1 0-3.6 0Z", 0.35, "#fff"],
   ],
   /* 스포어 — 봉오리 머리(윗면 반짝임) + 밑동 둔덕 + 양옆 촉수(요청: 스크린샷 참고). */
@@ -2091,7 +2092,6 @@ export default function ReplayMotionPlayer({
       <div className="scr-motion-legend">
         <span>● 부대·유닛</span>
         <span>■ 건물</span>
-        <span>▲ 방어 건물</span>
         <span>· 채굴 일꾼</span>
         <span><Hammer size={8} /> 건설 중</span>
       </div>
@@ -2183,7 +2183,13 @@ export default function ReplayMotionPlayer({
   if (big) {
     return createPortal(
       <div className="scr-modal-overlay">
-        <div className="scr-modal scr-motion-big-modal">{body}</div>
+        {/* 폭 상한 = (가용 높이 − 조작부 몫) × 맵 가로세로비(지적: 화면 안에서 최대화,
+            스크롤바 금지) — CSS의 고정 190px 어림은 정사각 맵만 맞아서, 넓은 맵은 더
+            키울 수 있는데도 작았고 세로로 긴 맵은 넘쳐 스크롤이 생겼다. */}
+        <div
+          className="scr-modal scr-motion-big-modal"
+          style={{ width: `min(94vw, calc((100dvh - 190px) * ${(grid.width / grid.height).toFixed(4)}))` }}
+        >{body}</div>
       </div>,
       document.body,
     );

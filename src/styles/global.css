@@ -11236,9 +11236,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   width: 24px; height: 24px; min-width: 24px; padding: 0; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
 }
-/* 큰 화면 팝업(요청: 맵과 조작부만, 엄청 크게) — 폭은 화면 높이가 허락하는 만큼이다:
-   지도는 폭을 따라 커지므로(aspect-ratio) 폭 상한이 곧 높이 상한이다. 조작부 몫으로
-   높이에서 190px을 남긴다. 게임 상세 팝업(z 130) 위에 선다. */
+/* 큰 화면 팝업(요청: 맵과 조작부만, 화면 안에서 최대·스크롤바 금지) — 폭은 화면 높이가
+   허락하는 만큼이다: 지도는 폭을 따라 커지므로(aspect-ratio) 폭 상한이 곧 높이 상한이고,
+   조작부 몫으로 높이에서 190px을 남긴다. 실제 폭은 JSX 인라인 width가 맵 가로세로비까지
+   곱해 확정한다(여기 값은 정사각 맵 기준 폴백). 게임 상세 팝업(z 130) 위에 선다. */
 .scr-motion-big-modal {
   z-index: 210; max-width: none;
   width: min(94vw, calc(100dvh - 190px));
