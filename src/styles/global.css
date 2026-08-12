@@ -10902,16 +10902,17 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   100% { transform: translate(-50%, -50%) scale(1); }
 }
 .scr-motion-army {
-  font-size: 10px; font-weight: 800; text-shadow: 0 0 4px rgba(0, 0, 0, 0.95);
+  /* 그림자 없음(지적: 유닛 텍스트에 그림자 아직 있다) — 배지는 제 배경만으로 선다. */
+  font-size: 10px; font-weight: 800;
   transition: left 0.25s linear, top 0.25s linear;
 }
 .scr-motion-army-stale { opacity: 0.45; }
 .scr-motion-cast {
   font-size: 9px; font-weight: 800; color: var(--text);
-  text-shadow: 0 0 5px rgba(0, 0, 0, 0.95); animation: scr-motion-in 0.3s ease-out;
+  animation: scr-motion-in 0.3s ease-out;
 }
 /* 채굴 일꾼 점(요청) — 본진과 자원 사이를 오가는 작은 점. */
-.scr-motion-miner { font-size: 10px; font-weight: 900; text-shadow: 0 0 2px rgba(0, 0, 0, 0.9); }
+.scr-motion-miner { font-size: 10px; font-weight: 900; }
 .scr-motion-base { display: inline-flex; flex-direction: column; align-items: center; gap: 1px; }
 /* 아바타 이중 테두리(요청) — 안쪽 개인색·바깥 팀색은 인라인 box-shadow가 칠한다. */
 .scr-motion-base-ring { display: inline-flex; border-radius: 50%; margin: 4px; }
@@ -10924,7 +10925,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 @keyframes scr-motion-dig { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1px); } }
 .scr-motion-build-razed { color: var(--dim); animation: scr-motion-in 0.3s ease-out; }
 .scr-motion-base-ghost { filter: grayscale(1); opacity: 0.5; }
-.scr-motion-base-name { font-size: 8px; font-weight: 700; text-shadow: 0 0 3px rgba(0, 0, 0, 0.9); }
+.scr-motion-base-name { font-size: 8px; font-weight: 700; }
 @keyframes scr-motion-in { from { opacity: 0; transform: translate(-50%, -50%) scale(1.6); } }
 /* 자막(요청: 미니맵 아래) — 전부 겹쳐 두고 지금 것만 보여 높이가 안 흔들린다. */
 .scr-motion-caps { display: grid; }
