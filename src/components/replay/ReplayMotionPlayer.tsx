@@ -64,7 +64,10 @@ const SPIKE_BACK_RATE = 0.1;
 const SPIKE_MAX_RUN = 4;
 /** 부대 묶기(요청: 가까운 유닛만 합침) — 앞 부대의 마지막 자리에서 이 안이면 같은 부대다. */
 const SQUAD_MERGE_TILES = 14;
-const SQUAD_MAX = 3;
+const SQUAD_MAX = 4;
+/** 다 찼을 때 이보다 먼 점은 아예 빠뜨린다(지적: 동선이 튄다) — 가장 가까운 부대에
+ *  이어도 맵을 가로지르는 유령 걸음이 된다. */
+const SQUAD_TELEPORT_TILES = 45;
 /** 곁 부대가 이만큼 조용하면 걷는다 — 본대에 합류했거나 정리된 것이다. */
 const SQUAD_FADE_SEC = 60;
 /** 정찰 자취의 걸음(타일/초) — 일꾼 속도다. 오버로드는 더 느리지만 누가 갔는지 모르는
@@ -126,8 +129,9 @@ function splitSquads(
       continue;
     }
     /* 다 찼으면 가장 가까운 부대가 그리로 걸어간다(지적: 순간이동) — 예전에는 가장 오래
-       조용한 부대를 골라, 맵 반대편의 부대가 유령처럼 가로질러 걸었다. */
-    squads[best].push(pt);
+       조용한 부대를 골라, 맵 반대편의 부대가 유령처럼 가로질러 걸었다. 그마저도 아주 멀면
+       빠뜨린다 — 놓치는 것보다 유령이 더 큰 거짓말이다. */
+    if (bestD <= SQUAD_TELEPORT_TILES) squads[best].push(pt);
   }
   return squads;
 }
@@ -633,6 +637,70 @@ export default function ReplayMotionPlayer({
   const rangeRef = useRef<HTMLInputElement>(null);
   const scrubbing = useRef(false);
   const seekPending = useRef<number | null>(null);
+
+  /* 확대·이동(요청) — 더블클릭(더블탭)으로 그 자리를 확대하고, 확대 중에는 한 손가락으로
+     끌어 움직이며 두 손가락으로 배율을 조절한다. 축소는 더블탭 한 번 더. 렌즈는 지도와
+     마커를 통째로 키운다 — 마커만 제 크기로 두는 것은 확대의 뜻(그 자리를 크게)과 어긋난다. */
+  const [lens, setLens] = useState({ z: 1, tx: 0, ty: 0 });
+  const lensPointers = useRef(new Map<number, { x: number; y: number }>());
+  const pinchBase = useRef<{ d: number; z: number } | null>(null);
+  const clampLens = (z: number, tx: number, ty: number) => {
+    const el = mapRef.current;
+    if (!el) return { z, tx, ty };
+    const r = el.getBoundingClientRect();
+    return {
+      z,
+      tx: Math.min(0, Math.max(r.width * (1 - z), tx)),
+      ty: Math.min(0, Math.max(r.height * (1 - z), ty)),
+    };
+  };
+  /** 화면의 한 점(px·py)이 제자리에 남도록 배율만 바꾼다. */
+  const zoomAt = (px: number, py: number, wantZ: number) => {
+    setLens((v) => {
+      const z = Math.max(1, Math.min(4, wantZ));
+      const wx = (px - v.tx) / v.z;
+      const wy = (py - v.ty) / v.z;
+      return clampLens(z, px - wx * z, py - wy * z);
+    });
+  };
+  const lensHandlers = {
+    onDoubleClick: (e: React.MouseEvent) => {
+      const r = mapRef.current?.getBoundingClientRect();
+      if (!r) return;
+      zoomAt(e.clientX - r.left, e.clientY - r.top, lens.z > 1 ? 1 : 2.4);
+    },
+    onPointerDown: (e: React.PointerEvent) => {
+      lensPointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (lensPointers.current.size === 2) {
+        const [a, b] = [...lensPointers.current.values()];
+        pinchBase.current = { d: Math.hypot(a.x - b.x, a.y - b.y), z: lens.z };
+      }
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      const prev = lensPointers.current.get(e.pointerId);
+      if (!prev) return;
+      const cur = { x: e.clientX, y: e.clientY };
+      lensPointers.current.set(e.pointerId, cur);
+      const r = mapRef.current?.getBoundingClientRect();
+      if (!r) return;
+      if (lensPointers.current.size === 2 && pinchBase.current) {
+        const [a, b] = [...lensPointers.current.values()];
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        const mid = { x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top };
+        if (pinchBase.current.d > 0) zoomAt(mid.x, mid.y, pinchBase.current.z * (d / pinchBase.current.d));
+      } else if (lensPointers.current.size === 1 && lens.z > 1) {
+        setLens((v) => clampLens(v.z, v.tx + (cur.x - prev.x), v.ty + (cur.y - prev.y)));
+      }
+    },
+    onPointerUp: (e: React.PointerEvent) => {
+      lensPointers.current.delete(e.pointerId);
+      if (lensPointers.current.size < 2) pinchBase.current = null;
+    },
+    onPointerCancel: (e: React.PointerEvent) => {
+      lensPointers.current.delete(e.pointerId);
+      if (lensPointers.current.size < 2) pinchBase.current = null;
+    },
+  };
   const [done, setDone] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
 
@@ -894,7 +962,21 @@ export default function ReplayMotionPlayer({
 
   return (
     <div className="scr-motion">
-      <div className="scr-motion-map" ref={mapRef} style={{ aspectRatio: `${grid.width} / ${grid.height}` }}>
+      <div
+        className="scr-motion-map" ref={mapRef}
+        style={{
+          aspectRatio: `${grid.width} / ${grid.height}`,
+          overflow: lens.z > 1 ? "hidden" : "visible",
+          touchAction: lens.z > 1 ? "none" : "pan-y",
+        }}
+        {...lensHandlers}
+      >
+        <div
+          className="scr-motion-lens"
+          style={lens.z > 1
+            ? { transform: `translate(${lens.tx}px, ${lens.ty}px) scale(${lens.z})` }
+            : undefined}
+        >
         {grid.image
           ? <img className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`} />
           : <div className="scr-motion-canvas scr-motion-canvas-blank" />}
@@ -1378,7 +1460,7 @@ export default function ReplayMotionPlayer({
               if (sec > t) break;
               sinceCmd = t - sec;
             }
-            if (sinceCmd > LERP_MAX_GAP_SEC && !pos.moving) return null;
+            if (sinceCmd > SQUAD_FADE_SEC && !pos.moving) return null;
             /* 전투 판정(요청: 정찰 점에도) — 마지막 명령이 전투 창에 닿아 있고 그 전투가
                끝나고도 새 명령이 없으면, 그 정찰도 거기서 정리된 것이다. */
             if (Number.isFinite(sinceCmd)) {
@@ -1387,9 +1469,15 @@ export default function ReplayMotionPlayer({
                 if (lastOrderSec >= a - 30 && lastOrderSec <= b && t > b + 8) return null;
               }
             }
-            const label = g.kind === "worker" ? "일꾼"
-              : race === "저그" ? "오버로드"
-                : g.kind === "carrier" ? "수송선" : "정찰";
+            /* 진짜 이름으로 부른다(지적: "일꾼"이 아니라 원래 이름 — "정찰"이라는 유닛은
+               없다). 종족이 이름을 정한다: 일꾼은 SCV·프로브·드론, 수송선은 드랍십·셔틀·
+               오버로드. 정체 모를 한 기도 그 종족의 흔한 쪽(일꾼, 저그는 오버로드)으로
+               부른다 — 어림이지만 없는 유닛 이름보다는 사실에 가깝다. */
+            const label = race === "저그"
+              ? (g.kind === "worker" ? "드론" : "오버로드")
+              : g.kind === "carrier"
+                ? (race === "테란" ? "드랍십" : "셔틀")
+                : race === "테란" ? "SCV" : "프로브";
             /* 유닛 마커와 같은 꼴이다(요청: 오버로드·일꾼만 다르게 표현되던 것을 동일하게)
                — 깨어 있으면 배지 칩, 아니면 점. 크기 규칙도 부대와 같은 기본값을 쓴다. */
             const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC;
@@ -1426,6 +1514,7 @@ export default function ReplayMotionPlayer({
             </span>
           ) : null
         ))}
+        </div>
       </div>
 
       {/* 지형 수정(요청: 미니맵 바로 아래 가운데) — 산 아이콘, 회원 누구나. */}

@@ -10846,13 +10846,15 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    한 경기의 그림과 그 설명이라 서로 붙어 있어야 한 덩이로 읽힌다. */
 /* ── 연속 재생 플레이어(요청: 스냅 없이 전부 연속, 이미지 대신 텍스트) ─────────────
    층 셋이 지도 위에 얹힌다: 건물(정확) · 부대 자취(어림) · 마법(정확). 전부 텍스트다. */
-.scr-motion { display: flex; flex-direction: column; gap: 6px; }
+.scr-motion { display: flex; flex-direction: column; gap: 6px; width: 100%; }
 /* 잘라내기는 바탕 그림에만(지적: 경계의 아바타·이름이 잘려 나감) — 컨테이너가 overflow:
    hidden이면 모서리 본진의 마커가 반쪽이 된다. 둥근 모서리는 그림이 제 몫으로 갖는다. */
 .scr-motion-map { position: relative; width: 100%; }
+.scr-motion-lens { position: absolute; inset: 0; transform-origin: 0 0; }
 .scr-motion-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: var(--radius-sm); }
 .scr-motion-canvas-blank { background: rgba(255, 255, 255, 0.04); }
-.scr-motion-map > span { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; }
+/* 렌즈가 끼면서 마커 스팬은 렌즈의 자식이 됐다 — 옛 선택자를 함께 둔다(렌즈 없는 화면 대비). */
+.scr-motion-map > span, .scr-motion-lens > span { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; }
 /* 겹침 차례 — 건물(z2)은 움직이는 것(z3) 아래, 본진 아바타(z4)가 그 위다(요청: 복구 —
    건물을 위로 올려 보니 얼굴이 도형에 덮여 누가 누군지가 먼저 죽었다). 다만 깨어 있는
    유닛(이름 칩)만은 아바타보다도 위다(요청) — 지금 움직이며 이야기를 만드는 쪽이,
