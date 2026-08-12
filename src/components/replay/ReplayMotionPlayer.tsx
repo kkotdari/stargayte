@@ -480,8 +480,9 @@ export default function ReplayMotionPlayer({
     }
     return out;
   }), [basePts, terrain, grid.width, grid.height]);
-  // 기본은 ×2다(요청) — 처음부터 빨리 감으면 초반 정찰·빌드가 통째로 지나가 버린다.
-  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(2);
+  // 기본은 ×8이다(요청: ×2 → ×8) — 실제로 보는 쪽은 판 전체의 흐름이라, 느린 기본은
+  // 늘 첫 손질이 배속 올리기였다.
+  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(8);
   const [done, setDone] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
 
@@ -508,6 +509,19 @@ export default function ReplayMotionPlayer({
     return () => io.disconnect();
   }, []);
 
+  /* 창을 벗어나면 일시정지(지적: 창 전환해도 계속 재생됨) — 탭 전환(hidden)과 창 전환
+     (blur)을 함께 잡는다. 되살리는 것은 화면 밖 정지와 마찬가지로 사람의 몫이다. */
+  useEffect(() => {
+    const stop = () => setPlaying(false);
+    const onVis = () => { if (document.hidden) stop(); };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("blur", stop);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("blur", stop);
+    };
+  }, []);
+
   /* 시계 — rAF로 게임 시간 t를 배속만큼 민다. state로 두는 이유는 매 프레임 그리는 것들
      (자취·건물·마법)이 전부 t의 함수라서다. */
   const clockRef = useRef<{ raf: number; last: number } | null>(null);
@@ -515,7 +529,10 @@ export default function ReplayMotionPlayer({
     if (!playing || !active) return undefined;
     const tick = (now: number) => {
       const c = clockRef.current;
-      const dt = c ? (now - c.last) / 1000 : 0;
+      /* 한 틱 상한 — 브라우저가 rAF를 멈췄다 되살리면(백그라운드 탭) dt가 자리 비운
+         시간 전체가 돼, 돌아온 순간 그만큼을 한 번에 건너뛴다. 위의 정지가 대부분 막지만
+         blur가 안 오는 경우(다른 모니터로 시선만 이동)를 위한 이중 잠금이다. */
+      const dt = c ? Math.min((now - c.last) / 1000, 0.5) : 0;
       clockRef.current = { raf: requestAnimationFrame(tick), last: now };
       if (dt > 0) {
         setT((prev) => {
@@ -651,6 +668,39 @@ export default function ReplayMotionPlayer({
     return m;
   }, [motion]);
 
+  /* 규모 곡선(요청: 유닛 수는 전투하거나 공격당해야만 감소) — 예전에는 '최근 3분의 완성
+     수'라 소강기에도 저절로 줄었다. 이제 완성 누계를 들고 가되, 전투 구간(hot)에서만
+     지수로 깎는다(반감기 60초). 리플레이에 죽음이 안 남는 이상 "전투 밖에서는 안 줄어든다"
+     쪽이 어림으로도 사실에 가깝다. 곡선은 사람마다 한 번 만들어 두고 재생은 읽기만 한다. */
+  const sizeSeries = useMemo(() => {
+    const out = new Map<string, [number, number][]>();
+    const HALF_LIFE = Math.LN2 / 60;
+    for (const p of motion.players) {
+      const done = completionsByRaw.get(p.raw) ?? [];
+      const hot = p.hot ?? [];
+      // 눈금: 완성 시각 + 전투 경계와 그 안의 5초 간격 — 구간이 경계를 안 넘게 쪼갠다.
+      const marks = new Set<number>([0, ...done]);
+      for (const [a, b] of hot) {
+        for (let x = a; x < b; x += 5) marks.add(x);
+        marks.add(b);
+      }
+      const times = [...marks].sort((a, b) => a - b);
+      const inHot = (lo: number, hi: number) => hot.some(([a, b]) => lo >= a && hi <= b);
+      const series: [number, number][] = [];
+      let size = 0;
+      let di = 0;
+      let prev = 0;
+      for (const now of times) {
+        if (now > prev && inHot(prev, now)) size *= Math.exp(-HALF_LIFE * (now - prev));
+        while (di < done.length && done[di] <= now) { size += 1; di += 1; }
+        series.push([now, size]);
+        prev = now;
+      }
+      out.set(p.raw, series);
+    }
+    return out;
+  }, [motion, completionsByRaw]);
+
   /* 본진 건물(확장 포함)의 자리 — 채굴 일꾼이 오갈 목적지다(지적: 자원 지대가 기준이고,
      거기서 가장 가까운 본진 건물로 왔다 갔다). 커맨드·넥서스·해처리 계열이 대상이다. */
   const halls = useMemo(() => motion.builds
@@ -684,7 +734,8 @@ export default function ReplayMotionPlayer({
               j !== i && r2 === raw && s2 > sec && s2 <= t && Math.hypot(x2 - x, y2 - y) <= 1.5)) {
               return null;
             }
-            // 짓는 동안은 반투명(요청) — 다 서면 제 농도로.
+            // 짓는 동안은 공사중 아이콘(요청: 반투명 말고) — 반투명은 "저기 뭐가 있긴 한데"
+            // 로만 읽히고, 도형의 반투명(뒤 비침)과도 헷갈렸다.
             const raising = !razed && t - sec < (BUILD_SEC[unit] ?? 30);
             const team = teamOfRaw(raw);
             const tagOrd = tagOrdinals.get(`${raw}|${unit}`);
@@ -730,7 +781,7 @@ export default function ReplayMotionPlayer({
                   left: pct(x, grid.width), top: pct(y, grid.height),
                   // 긴 이름은 한 단계 작게(지적) — 여섯 자부터.
                   ...(text.length >= 6 && !activeBuild ? { fontSize: 6 } : {}),
-                  ...(raising ? { opacity: 0.4 } : {}),
+
                   // 건물은 글자색=제 색, 음영판이 바탕 — 유닛 배지와 반대(지적). 도형이 된
                   // 뒤에는 음영 없이 맨 색이다(지적).
                   ...(razed ? {} : text === name ? shapeStyle(raw, team) : glyphStyle(raw, team)),
@@ -738,6 +789,7 @@ export default function ReplayMotionPlayer({
               >
                 {/* 글꼴 ■는 작게 뭉개져 동그라미처럼 보인다(지적) — 진짜 네모를 CSS로 그린다. */}
                 {text === "■" ? <i className="scr-motion-sq" /> : text}
+                {raising && <i className="scr-motion-raising">🚧</i>}
               </span>
             );
           });
@@ -867,15 +919,13 @@ export default function ReplayMotionPlayer({
               className={cx("scr-motion-base", m.ghost && "scr-motion-base-ghost")}
               style={{ left: pct(m.x, grid.width), top: pct(m.y, grid.height) }}
             >
-              {/* 테두리 한 겹(요청: 중복 제거) — 지금 색 모드의 색으로. */}
+              {/* 테두리 한 겹(요청: 중복 제거) — 지금 색 모드의 색으로. 어두운 색에 받치던
+                  흰 겉테두리는 걷었다(요청: 흰 테두리 제거) — 아바타가 커진 뒤로는 색 테가
+                  얇아도 충분히 읽힌다. */}
               <span style={{ position: "relative" }}>
                 <span
                   className="scr-motion-base-ring"
-                  style={{
-                    boxShadow: lumOf(modeColor(m.key, m.team)) < 110
-                      ? `0 0 0 3px ${modeColor(m.key, m.team)}, 0 0 0 4px rgba(255, 255, 255, 0.55)`
-                      : `0 0 0 3px ${modeColor(m.key, m.team)}`,
-                  }}
+                  style={{ boxShadow: `0 0 0 3px ${modeColor(m.key, m.team)}` }}
                 >
                   {/* 16 → 24px(요청: 아바타 크기 확대) — 지도 위에서 사람을 가려내는 것은
                       결국 얼굴이라, 도형보다 이쪽이 커야 한다. */}
@@ -888,8 +938,11 @@ export default function ReplayMotionPlayer({
                     테두리가 그 사람 색이라, 편을 말해 주는 자리가 하나는 있어야 한다.
                     방패 안에 팀 번호를 적는다(요청) — 색만으로는 "1팀이 파랑이던가"를
                     되물어야 하는데, 숫자가 앉으면 그 물음이 없다. */}
+                {/* 11 → 15px(요청: 아바타 방패 크기 증가) — 아바타가 24px로 커진 뒤라
+                    방패가 그 절반은 돼야 어깨 장식이 아니라 표식으로 읽힌다. 숫자도 한
+                    눈금 따라 큰다(scr-motion-base-team의 --n 참고). */}
                 <span className="scr-motion-base-team">
-                  <Shield size={11} strokeWidth={0} fill={TEAM_EDGE[m.team === 2 ? 2 : 1]} />
+                  <Shield size={15} strokeWidth={0} fill={TEAM_EDGE[m.team === 2 ? 2 : 1]} />
                   <i className="scr-motion-team-n">{m.team === 2 ? 2 : 1}</i>
                 </span>
                 {/* 재생이 끝나면 이긴 편에 트로피(요청) — 스냅의 승패 표시와 같은 자리. */}
@@ -925,6 +978,10 @@ export default function ReplayMotionPlayer({
           /* 지형 경로가 있으면 그 점들을 그대로 잇고(곡선 불필요), 없으면 가운데로 휘는
              곡선 폴백이다. 활동 판정(sinceLast)은 원본 명령 점으로 따로 잰다 — 경로로 편
              점들은 촘촘해서 그걸로 재면 늘 '방금 명령받음'이 된다. */
+          /* 첫 부대 명령 전에는 아예 없다(지적: 시작하자마자 이상한 데 멈춰 있다) —
+             posAt은 첫 점 이전이면 첫 점 자리를 돌려줘서, 병력이 생기기도 전에 마커가
+             '앞으로 갈 자리'에 서 있었다. 그동안의 움직임은 정찰 점(spts)이 맡는다. */
+          if (refinedPts[pi].length === 0 || t < refinedPts[pi][0][0]) return null;
           const pos = posAt(
             refinedPts[pi], t,
             terrain || isAirUnit(unit) ? null : { x: grid.width / 2, y: grid.height / 2 },
@@ -939,26 +996,13 @@ export default function ReplayMotionPlayer({
           /* 겉모습 규칙(요청) — 유닛은 동그라미가 기본이고, 커맨드를 받았거나 이동 중일
              때만 이름+수로 바뀐다(나중에 이미지가 이 자리를 물려받는다). 크기는 규모의
              제곱근(요청: 뭉친 병력은 크기로 수를 표현). */
-          // 규모 = 최근 3분에 '완성된' 유닛 수(지적: 클릭 수는 부풀려진다).
+          // 규모 — 완성 누계에서 전투 시간만큼 깎은 곡선을 읽는다(sizeSeries 주석).
           let size = 0;
-          for (const d of completionsByRaw.get(p.raw) ?? []) {
-            if (d > t) break;
-            if (t - d <= 180) size += 1;
+          for (const [sec, v] of sizeSeries.get(p.raw) ?? []) {
+            if (sec > t) break;
+            size = v;
           }
-          /* 전투 감모(지적: 전투 중인데 유닛 수가 안 준다) — 리플레이에 죽음이 안 남아
-             수를 셀 수는 없고, 트랙의 전투 구간(hot)과 최근 3분이 겹친 시간만큼 지수로
-             깎는다. 1분을 얻어맞으면 절반쯤 남는 눈금(반감기 60초) — 전투가 끝나고 3분이
-             지나면 그 구간이 창을 벗어나 저절로 회복된다(새 생산이 그 사이를 채운다).
-             옛 분석본에는 hot이 없어 그대로다(재분석 후부터). */
-          let fightSec = 0;
-          for (const [a, b] of p.hot ?? []) {
-            const lo = Math.max(a, t - 180);
-            const hi = Math.min(b, t);
-            if (hi > lo) fightSec += hi - lo;
-          }
-          if (size > 0 && fightSec > 0) {
-            size = Math.max(1, Math.round(size * Math.exp(-(Math.LN2 / 60) * fightSec)));
-          }
+          size = Math.round(size);
           const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC;
           const showName = activeNow && !!unit && (size >= 1 || !!SCOUT_KO[unit]);
           const fontPx = Math.min(16, 8 + Math.round(Math.sqrt(size) * 1.6));
@@ -1023,6 +1067,30 @@ export default function ReplayMotionPlayer({
           );
         })}
 
+        {/* 정찰·일꾼 점(spts) — 부대 자취에서 걷어낸 한 기짜리·일꾼 명령의 자취다(지적:
+            일꾼 정찰이 하나도 안 보인다 — 포토러시 일꾼은 안 가는데 파일런만 생겼다).
+            명령이 이어지는 동안만 보이고(stale이면 숨김) 곧게 간다 — 정찰 하나에 지형
+            길찾기까지 쓰는 것은 배보다 배꼽이다. */}
+        {motion.players.map((p) => {
+          const sp = p.spts ?? [];
+          if (sp.length === 0) return null;
+          const pos = posAt(sp, t, null);
+          if (!pos || pos.stale || t < sp[0][0]) return null;
+          const team = teamOfRaw(p.raw);
+          return (
+            <span
+              key={`s-${p.raw}`}
+              className={cx("scr-motion-scout", team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
+              style={{
+                left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
+                ...glyphStyle(p.raw, team),
+              }}
+            >
+              ●
+            </span>
+          );
+        })}
+
         {/* 마법 — 떨어진 자리에 이름이 잠깐 떠오른다. */}
         {castsNow.map(([, x, y, tech, raw], i) => (
           // 한글명을 모르는 기술은 아예 안 띄운다(요청: 텍스트는 전부 한글로).
@@ -1060,7 +1128,7 @@ export default function ReplayMotionPlayer({
         <span>▲ 방어 건물</span>
         <span>✕ 파괴됨</span>
         <span>· 채굴 일꾼</span>
-        <span>반투명 = 건설 중</span>
+        <span>🚧 건설 중</span>
       </div>
 
       {/* 조종간(요청: 두 줄) — 윗줄은 스크러버 하나, 아랫줄에 재생·배속·시간이 선다. */}

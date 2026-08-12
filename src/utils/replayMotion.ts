@@ -41,6 +41,9 @@ export interface MotionTrack {
   color?: string;
   /** [초, x, y] — STEP_SEC 버킷의 마지막 명령 자리. 안 움직인 버킷은 접혀 있다. */
   pts: [number, number, number][];
+  /** 정찰·일꾼의 자취 — 부대 자취(pts)에서 걷어낸 한 기짜리·일꾼 명령들이다(지적: 정찰이
+   *  안 보인다). 옛 분석본에는 없다. */
+  spts?: [number, number, number][];
   /** [초, 유닛 영문명] — 그때까지 가장 많이 뽑은 전투 유닛이 바뀐 순간들(이름표 재료). */
   units: [number, string][];
   /** [초, 누적 일꾼 수] — 자원 캐는 모습의 재료(요청). 생산 커맨드 누적이라 죽은 일꾼은
@@ -94,14 +97,9 @@ const dist = (ax: number, ay: number, bx: number, by: number): number =>
  *     오버로드다. 부대 마커는 부대가 생기고서야 움직일 자격이 있다.
  *  옛 분석본에는 n이 없어 둘째 조건이 그냥 통과된다 — 그런 판은 재생 쪽의 나들이 걷기
  *  (dropSpikes)가 마저 막는다. */
-function trackOf(
-  orders: { frame: number; x: number; y: number; kind?: "attack" | "move"; by?: string; n?: number }[],
-  armyStartSec: number,
+function foldTrack(
+  combat: { frame: number; x: number; y: number }[],
 ): [number, number, number][] {
-  const combat = orders.filter((o) => o.kind !== undefined && o.by !== "Building"
-    && o.by !== "Worker"
-    && !(o.n === 1 && (o.by === undefined || o.by === "Transport"))
-    && o.frame * SECONDS_PER_FRAME >= armyStartSec);
   let step = STEP_SEC;
   for (;;) {
     const byBucket = new Map<number, { sec: number; x: number; y: number }>();
@@ -120,6 +118,24 @@ function trackOf(
     if (pts.length <= TRACK_CAP) return pts;
     step *= 2;
   }
+}
+
+function trackOf(
+  orders: { frame: number; x: number; y: number; kind?: "attack" | "move"; by?: string; n?: number }[],
+  armyStartSec: number,
+): { pts: [number, number, number][]; spts: [number, number, number][] } {
+  const movable = orders.filter((o) => o.kind !== undefined && o.by !== "Building");
+  const isScout = (o: (typeof movable)[number]): boolean =>
+    o.by === "Worker"
+    || (o.n === 1 && (o.by === undefined || o.by === "Transport"))
+    || o.frame * SECONDS_PER_FRAME < armyStartSec;
+  return {
+    pts: foldTrack(movable.filter((o) => !isScout(o))),
+    /* 걷어낸 쪽이 버려지지 않고 제 자취가 된다(지적: 일꾼 정찰을 하나도 못 잡는다 —
+       포토러시 일꾼은 안 가는데 파일런만 생겼다). 초반 정찰·매너 건물·오버로드 산개가
+       전부 이 자취다. 화면은 이 자취가 움직이는 동안만 작은 점을 띄운다. */
+    spts: foldTrack(movable.filter(isScout)),
+  };
 }
 
 /** 우세 유닛 이름표의 변천 — 그때까지 가장 많이 뽑은 전투 유닛. 전투 유닛이 아직 없으면
@@ -305,7 +321,7 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       for (const f of frames) armyStartSec = Math.min(armyStartSec, f * SECONDS_PER_FRAME);
     }
     if (armyStartSec === Infinity) armyStartSec = 0;
-    const pts = trackOf(sg.orderPositions ?? [], armyStartSec);
+    const { pts, spts } = trackOf(sg.orderPositions ?? [], armyStartSec);
     const units = unitTimeline(sg.unitFrames ?? {});
     // 생산 슬롯 — 시작 본진(0초) + 지어진 본진 건물들(건설 시간 지나서부터).
     const slotOpenSecs = [0, ...(sg.buildPositions ?? [])
@@ -339,11 +355,12 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       .filter(([team]) => team !== p.team)
       .flatMap(([, list]) => list)
       .sort((a, b) => a.sec - b.sec);
-    if (pts.length > 0 || units.length > 0 || workers.length > 0) {
+    if (pts.length > 0 || spts.length > 0 || units.length > 0 || workers.length > 0) {
       const hot = hotOf(pts, foeAttacks);
       tracks.push({
         raw: p.rawName, ...(p.color ? { color: p.color } : {}),
         ...(ups.length > 0 ? { ups } : {}), pts, units, workers, size, prod,
+        ...(spts.length > 0 ? { spts } : {}),
         ...(Object.keys(ptag).length > 0 ? { ptag } : {}),
         ...(hot.length > 0 ? { hot } : {}),
       });
