@@ -273,8 +273,9 @@ export default function ReplayMotionPlayer({
   /* 색은 한 벌만 칠한다(요청: 중복 표시 제거) — 팀색/개인색을 전환 버튼으로 오간다.
      개인색이 없는 옛 기록은 개인색 모드여도 팀색으로 떨어진다. */
   const [colorMode, setColorMode] = useState<"team" | "personal">("personal");
-  // 파스텔 톤(지적: 음영에 비해 팀색이 어두워 안 보인다) — 밝은 하늘·장미색.
-  const TEAM_EDGE: Record<1 | 2, string> = { 1: "#9cc4ff", 2: "#ffafc0" };
+  /* 밝은 톤(지적: 음영에 비해 팀색이 어두워 안 보인다)이되 너무 파스텔은 말고(지적) —
+     쨍한 하늘·장미색의 중간 지점. */
+  const TEAM_EDGE: Record<1 | 2, string> = { 1: "#5ea2ff", 2: "#ff7d95" };
   const modeColor = (raw: string, team: 1 | 2 | undefined): string => {
     const teamColor = team === 2 ? TEAM_EDGE[2] : TEAM_EDGE[1];
     if (colorMode === "personal") return colorByRaw.get(raw) ?? teamColor;
