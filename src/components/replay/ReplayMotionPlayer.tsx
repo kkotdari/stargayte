@@ -3,7 +3,7 @@ import Avatar from "../common/Avatar";
 import { cx } from "../../utils/format";
 import { UNIT_KO, TECH_KO } from "../../utils/replaySummaryText";
 import type { ReplayMapGrid } from "../../utils/replayParser";
-import type { SummaryMotion } from "../../utils/replayMotion";
+import { isAirUnit, type SummaryMotion } from "../../utils/replayMotion";
 import type { MinimapMarker } from "./ReplayMinimap";
 
 /* ── 연속 재생 플레이어(요청: 장면 선정 없이 전부 연속으로, 이미지 대신 텍스트로) ──────
@@ -16,9 +16,8 @@ import type { MinimapMarker } from "./ReplayMinimap";
    원장으로만 남는다. 유닛 위치는 명령 기반 추정이다: 리플레이에는 위치·죽음이 안 남아서,
    이 자취는 "그 사람 부대가 어디서 무엇을 하고 있었나"의 어림이다. */
 
-/** 배속 갈래(요청: 속도 조절) — 느리게 뜯어보는 ×4부터 훑어 넘기는 ×64까지. 실시간(×1)은
- *  30분짜리 판을 30분 보는 것이라 안 둔다. */
-const SPEEDS = [4, 8, 16, 32, 64] as const;
+/** 배속 갈래(요청: 속도 조절, 기본 ×2) — 뜯어보는 ×2부터 훑어 넘기는 ×32까지. */
+const SPEEDS = [2, 4, 8, 16, 32] as const;
 /** 건물 텍스트가 이름을 달고 있는 시간(초, 게임 시간) — 지나면 점만 남는다. */
 const BUILD_LABEL_SEC = 45;
 /** 마법 텍스트가 떠 있는 시간(초, 게임 시간). */
@@ -29,9 +28,15 @@ const LERP_MAX_GAP_SEC = 24;
 
 const pct = (v: number, span: number) => `${(v / span) * 100}%`;
 
-/** 자취에서 t 시각의 자리 — 사이는 직선 보간, 틈이 크면 앞 점에 머문다. */
+/** 지상 부대가 가운데 쪽으로 휘는 정도 — 스냅 화살표의 BEND와 같은 어림(지적: 지상군이
+ *  벽을 넘어 다닌다). 진짜 길찾기는 지형 표 없이는 못 그리지만, 브루드워 지상군은 대체로
+ *  본진을 나와 가운데 길로 돌므로 직선보다 이쪽이 덜 거짓말이다. 공중은 곧게 간다. */
+const GROUND_BEND = 0.35;
+
+/** 자취에서 t 시각의 자리 — 사이는 보간(지상은 가운데로 휘는 곡선), 틈이 크면 앞 점에 머문다. */
 function posAt(
   pts: [number, number, number][], t: number,
+  bendCenter: { x: number; y: number } | null,
 ): { x: number; y: number; stale: boolean } | null {
   if (pts.length === 0) return null;
   if (t <= pts[0][0]) return { x: pts[0][1], y: pts[0][2], stale: false };
@@ -41,7 +46,21 @@ function posAt(
     if (t < s1) {
       if (s1 - s0 > LERP_MAX_GAP_SEC) return { x: x0, y: y0, stale: t - s0 > LERP_MAX_GAP_SEC };
       const k = (t - s0) / Math.max(1, s1 - s0);
-      return { x: x0 + (x1 - x0) * k, y: y0 + (y1 - y0) * k, stale: false };
+      if (!bendCenter) {
+        return { x: x0 + (x1 - x0) * k, y: y0 + (y1 - y0) * k, stale: false };
+      }
+      /* 이차 베지어 — 제어점을 두 점의 가운데에서 맵 중앙 쪽으로 당긴다. 이동 거리가 길수록
+         더 휘어, 먼 진군일수록 "가운데 길로 돌아간다"에 가까워진다. */
+      const mx = (x0 + x1) / 2;
+      const my = (y0 + y1) / 2;
+      const cx = mx + (bendCenter.x - mx) * GROUND_BEND;
+      const cy = my + (bendCenter.y - my) * GROUND_BEND;
+      const u = 1 - k;
+      return {
+        x: u * u * x0 + 2 * u * k * cx + k * k * x1,
+        y: u * u * y0 + 2 * u * k * cy + k * k * y1,
+        stale: false,
+      };
     }
   }
   const last = pts[pts.length - 1];
@@ -103,7 +122,8 @@ export default function ReplayMotionPlayer({
 
   const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(true);
-  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(16);
+  // 기본은 ×2다(요청) — 처음부터 빨리 감으면 초반 정찰·빌드가 통째로 지나가 버린다.
+  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(2);
   const [done, setDone] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
 
@@ -225,9 +245,12 @@ export default function ReplayMotionPlayer({
 
         {/* 부대 자취 — 명령 좌표 기반 어림(모듈 주석). 우세 유닛 이름이 팀 색으로 흐른다. */}
         {motion.players.map((p) => {
-          const pos = posAt(p.pts, t);
-          if (!pos) return null;
           const unit = unitAt(p.units, t);
+          const pos = posAt(
+            p.pts, t,
+            isAirUnit(unit) ? null : { x: grid.width / 2, y: grid.height / 2 },
+          );
+          if (!pos) return null;
           const team = teamOfRaw(p.raw);
           return (
             <span
