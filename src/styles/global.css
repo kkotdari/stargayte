@@ -9130,6 +9130,13 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   .scr-activity-detail-modal:has(.scr-motion-wide) > .scr-activity-detail-body {
     margin-inline: calc(50% - 50vw);
     padding-inline: calc(50vw - 50%);
+    /* 본문 상자가 뷰포트 폭이 되면 세로 스크롤바가 화면 오른쪽 끝(바디 자리)으로
+       옮겨 보인다(지적: 방지) — 확대 중에만 숨긴다. 스크롤 자체는 그대로다. */
+    scrollbar-width: none;
+    scrollbar-gutter: auto;
+  }
+  .scr-activity-detail-modal:has(.scr-motion-wide) > .scr-activity-detail-body::-webkit-scrollbar {
+    display: none;
   }
   /* 본문은 창의 좌우 패딩을 음수 마진으로 물렸다가 제 패딩으로 되돌리는 구조라
      (스크롤바를 안쪽 벽에 붙이려는 것) 여기서도 같은 값으로 맞춘다. */
