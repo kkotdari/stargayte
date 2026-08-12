@@ -20,7 +20,7 @@ export const WORKER_EARLY_SEC = 5 * 60;
 
 /** 막는 건물 — 나머지 건물은 전부 '생산'으로 본다(요청: 건물 빌드 비율은 생산/방어).
  *  크립 콜로니는 성큰·스포어가 되기 전 단계라 방어로 센다. */
-const DEFENSE_BUILDINGS = new Set([
+export const DEFENSE_BUILDINGS = new Set([
   "Bunker", "Missile Turret",
   "Photon Cannon", "Shield Battery",
   "Creep Colony", "Sunken Colony", "Spore Colony",
