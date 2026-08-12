@@ -301,11 +301,10 @@ export default function ReplayMotionPlayer({
   const chipStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => {
     const bg = modeColor(raw, team);
     const lum = lumOf(bg);
+    // 배지(칩)는 제 배경색이 있으니 테두리는 안 두른다(지적).
     return {
       background: bg,
       color: lum > 150 ? "#111" : "#fff",
-      borderColor: lum < 110 ? "rgba(255, 255, 255, 0.8)" : "rgba(0, 0, 0, 0.45)",
-      ...(lum < 110 ? { boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.3)" } : {}),
     };
   };
 

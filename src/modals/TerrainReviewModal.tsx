@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { Eraser, Paintbrush, RotateCcw, Save, Undo2, Wand2, X } from "lucide-react";
 import { Spinner } from "../components/common/Feedback";
 import { api } from "../api/client";
 import {
@@ -27,9 +27,9 @@ export default function TerrainReviewModal({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  /* 붓 모드(요청: 비슷한 유형의 타일을 동시에) — "한 칸"은 끌어서 칠하고, "비슷한 색"은
-     누른 칸과 색이 비슷한 칸 전부를 한 번에 같은 값으로 뒤집는다. */
-  const [brush, setBrush] = useState<"one" | "similar">("one");
+  /* 도구 셋(요청: 아이콘 여섯) — 붓은 끌어서 막고(이동 불가), 지우개는 끌어서 열고(이동
+     가능), 요술봉은 누른 칸과 색이 비슷한 칸 전부를 한 번에 뒤집는다. */
+  const [tool, setTool] = useState<"paint" | "erase" | "wand">("paint");
   const [colors, setColors] = useState<Uint8ClampedArray | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   /** 끌기 한 번은 한 값으로만 칠한다 — 지나는 칸마다 뒤집으면 갈지자 자국이 남는다. */
@@ -107,14 +107,11 @@ export default function TerrainReviewModal({
     const cell = cellAt(e);
     if (!cell) return;
     const idx = cell[1] * grid.w + cell[0];
-    if (begin) {
-      paintRef.current = grid.walk[idx] ? 0 : 1;
+    if (tool === "wand") {
+      // 요술봉(요청) — 클릭 한 번이 한 획: 누른 칸과 색이 가까운 칸 전부를 뒤집는다.
+      if (!begin || !colors) return;
       snapshot(grid.walk);
-    }
-    const v = paintRef.current;
-    if (v === null) return;
-    if (brush === "similar" && begin && colors) {
-      // 비슷한 유형 한꺼번에(요청) — 누른 칸과 색이 가까운 칸 전부를 같은 값으로.
+      const v = grid.walk[idx] ? 0 : 1;
       const r0 = colors[idx * 4];
       const g0 = colors[idx * 4 + 1];
       const b0 = colors[idx * 4 + 2];
@@ -128,7 +125,13 @@ export default function TerrainReviewModal({
       setGrid({ ...grid, walk });
       return;
     }
-    if (brush === "similar") return; // 유형 붓은 클릭 한 번이 한 획이다 — 끌기는 없다.
+    // 붓=막기(0), 지우개=열기(1) — 한 획 안에서 값이 안 변한다.
+    const v: 0 | 1 = tool === "paint" ? 0 : 1;
+    if (begin) {
+      paintRef.current = v;
+      snapshot(grid.walk);
+    }
+    if (paintRef.current === null) return;
     if (grid.walk[idx] === v) return;
     const walk = new Uint8Array(grid.walk);
     walk[idx] = v;
@@ -161,8 +164,8 @@ export default function TerrainReviewModal({
         </div>
         <div className="scr-modal-body">
           <p className="scr-terrain-hint">
-            어두운 칸이 <b>이동 불가</b>예요. 칸을 누르거나 끌면 뒤집혀요 — 자동 분석이 놓친
-            램프·다리를 열어 주세요.
+            어두운 칸이 <b>이동 불가</b>예요. 붓은 막고, 지우개는 열고, 요술봉은 비슷한 색을
+            한꺼번에 뒤집어요 — 자동 분석이 놓친 램프·다리를 열어 주세요.
           </p>
           {err && <div className="scr-err">{err}</div>}
           {loading ? (
@@ -180,69 +183,66 @@ export default function TerrainReviewModal({
             </div>
           )}
           <div className="scr-terrain-actions">
-            {/* 붓 고르기(요청: 비슷한 유형 동시 적용) — 왼쪽에 붙인다. */}
+            {/* 아이콘 여섯(요청) — 붓 · 지우개 · 요술봉 | 되돌리기 · 완전 취소 · 저장. */}
             <div className="scr-terrain-brushes">
               <button
                 type="button"
-                className={busy ? "scr-btn scr-btn-sm" : brush === "one" ? "scr-btn scr-btn-sm scr-btn-primary" : "scr-btn scr-btn-sm"}
-                onClick={() => setBrush("one")}
+                className={tool === "paint" && !busy ? "scr-btn scr-btn-sm scr-btn-primary" : "scr-btn scr-btn-sm"}
+                onClick={() => setTool("paint")}
+                aria-label="붓" title="붓 — 끌어서 이동 불가로 막아요"
               >
-                한 칸
+                <Paintbrush size={14} />
               </button>
               <button
                 type="button"
-                className={busy ? "scr-btn scr-btn-sm" : brush === "similar" ? "scr-btn scr-btn-sm scr-btn-primary" : "scr-btn scr-btn-sm"}
-                onClick={() => setBrush("similar")}
+                className={tool === "erase" && !busy ? "scr-btn scr-btn-sm scr-btn-primary" : "scr-btn scr-btn-sm"}
+                onClick={() => setTool("erase")}
+                aria-label="지우개" title="지우개 — 끌어서 이동 가능으로 열어요"
+              >
+                <Eraser size={14} />
+              </button>
+              <button
+                type="button"
+                className={tool === "wand" && !busy ? "scr-btn scr-btn-sm scr-btn-primary" : "scr-btn scr-btn-sm"}
+                onClick={() => setTool("wand")}
                 disabled={!colors}
-                title="누른 칸과 색이 비슷한 칸 전부를 한 번에 뒤집어요"
+                aria-label="요술봉" title="요술봉 — 누른 칸과 색이 비슷한 칸 전부를 한 번에 뒤집어요"
               >
-                비슷한 색 한꺼번에
-              </button>
-              <button
-                type="button" className="scr-btn scr-btn-sm"
-                disabled={busy || histN === 0}
-                onClick={() => {
-                  const prev = historyRef.current.pop();
-                  setHistN(historyRef.current.length);
-                  if (prev && grid) setGrid({ ...grid, walk: prev });
-                }}
-                title="마지막 획을 되돌려요"
-              >
-                한 스텝 되돌리기
-              </button>
-              <button
-                type="button" className="scr-btn scr-btn-sm"
-                disabled={busy || histN === 0}
-                onClick={() => {
-                  if (initialRef.current && grid) {
-                    setGrid({ ...grid, walk: new Uint8Array(initialRef.current) });
-                  }
-                  historyRef.current = [];
-                  setHistN(0);
-                }}
-                title="처음 불러온 상태로 전부 되돌려요"
-              >
-                전부 되돌리기
+                <Wand2 size={14} />
               </button>
             </div>
             <button
               type="button" className="scr-btn scr-btn-sm"
-              disabled={busy || loading}
-              onClick={async () => {
-                setLoading(true);
-                const g = await analyzeMinimap(image.image);
-                setGrid(g);
-                initialRef.current = g ? new Uint8Array(g.walk) : null;
+              disabled={busy || histN === 0}
+              onClick={() => {
+                const prev = historyRef.current.pop();
+                setHistN(historyRef.current.length);
+                if (prev && grid) setGrid({ ...grid, walk: prev });
+              }}
+              aria-label="한 스텝 되돌리기" title="한 스텝 되돌리기 — 마지막 획을 되돌려요"
+            >
+              <Undo2 size={14} />
+            </button>
+            <button
+              type="button" className="scr-btn scr-btn-sm"
+              disabled={busy || histN === 0}
+              onClick={() => {
+                if (initialRef.current && grid) {
+                  setGrid({ ...grid, walk: new Uint8Array(initialRef.current) });
+                }
                 historyRef.current = [];
                 setHistN(0);
-                setLoading(false);
-                if (!g) setErr("그림을 분석하지 못했어요.");
               }}
+              aria-label="완전 취소" title="완전 취소 — 처음 불러온 상태로 전부 되돌려요"
             >
-              다시 분석
+              <RotateCcw size={14} />
             </button>
-            <button type="button" className="scr-btn scr-btn-sm scr-btn-primary" onClick={save} disabled={busy || !grid}>
-              {busy ? "저장 중…" : "저장"}
+            <button
+              type="button" className="scr-btn scr-btn-sm scr-btn-primary"
+              onClick={save} disabled={busy || !grid}
+              aria-label="저장" title="저장"
+            >
+              {busy ? <Spinner size={14} /> : <Save size={14} />}
             </button>
           </div>
         </div>

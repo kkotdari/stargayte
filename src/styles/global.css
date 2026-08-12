@@ -10958,8 +10958,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-speeds { display: inline-flex; gap: 2px; align-items: center; }
 /* 유저 컬러 테두리 칩(요청) — 색을 아는 사람의 라벨은 그 색 테두리를 두른다. */
 .scr-motion-chip {
-  /* 테두리 폭 증가(요청) — 개인색 테두리가 얇아 안 보였다. */
-  border: 1.5px solid transparent; border-radius: 3px; padding: 0 2px;
+  /* 배경색이 있는 배지엔 테두리 불요(지적) — 자리만 남긴 투명 테두리. */
+  border: 1px solid transparent; border-radius: 3px; padding: 0 2px;
   background: rgba(0, 0, 0, 0.35);
 }
 /* 갓 뽑힌 유닛(요청) — 만든 건물 앞에 잠깐 놓이는 작은 점. */
