@@ -598,11 +598,12 @@ export default function ReplayMotionPlayer({
             const name = BUILDING_KO[unit] ?? UNIT_KO[unit];
             /* 비활성이면 무조건 도형이다(지적: 서플라이·파일런·포토·터렛이 영영 안 변했다 —
                "겹치지만 않으면 이름 상시 노출"이던 옛 규칙을 걷었다). */
+            const isHall = ["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(unit);
             let text: string;
             if (razed) text = "✕";
             else if (activeBuild && name) text = name;
-            // ▪는 글꼴상 반쪽짜리라 ●▲보다 작아 보인다(지적) — 꽉 찬 ■로.
-            else text = DEFENSE_BUILDINGS.has(unit) ? "▲" : "■";
+            // ▪는 글꼴상 반쪽짜리라 ●▲보다 작아 보인다(지적) — 꽉 찬 ■로. 본진은 별표(요청).
+            else text = isHall ? "★" : DEFENSE_BUILDINGS.has(unit) ? "▲" : "■";
             return (
               <span
                 key={`b-${i}`}
@@ -610,8 +611,7 @@ export default function ReplayMotionPlayer({
                   "scr-motion-build",
                   !razed && text !== name && "scr-motion-build-shape",
                   // 본진 건물은 다른 건물보다 큼직하게(요청).
-                  ["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(unit)
-                    && "scr-motion-build-hall",
+                  isHall && "scr-motion-build-hall",
                   activeBuild && "scr-motion-build-on",
                   (producing || researching) && "scr-motion-heartbeat",
                   razed && "scr-motion-build-razed",
@@ -893,6 +893,7 @@ export default function ReplayMotionPlayer({
       {/* 범례(요청) — 지도 위 도형이 뭔지 한 줄로. */}
       <div className="scr-motion-legend">
         <span>● 부대·유닛</span>
+        <span>★ 본진</span>
         <span>■ 건물</span>
         <span>▲ 방어 건물</span>
         <span>✕ 파괴됨</span>
