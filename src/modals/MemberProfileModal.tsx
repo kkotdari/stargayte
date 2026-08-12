@@ -84,7 +84,8 @@ export default function MemberProfileModal({ member, onClose }: MemberProfileMod
           </dl>
 
           <section className="scr-profile-epithets">
-            <h4 className="scr-profile-epithets-head">보유 칭호</h4>
+            {/* "보유 칭호" → "이 사람은?"(요청) — 목록이 곧 그 사람 소개다. */}
+            <h4 className="scr-profile-epithets-head">이 사람은?</h4>
             {claims === null ? (
               <div className="scr-empty"><Spinner size={16} /></div>
             ) : rows.length === 0 ? (

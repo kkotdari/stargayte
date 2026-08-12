@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { LoadingMark } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import MemberStatRow from "../stats/MemberStatRow";
-import EpithetGuideModal from "../../modals/EpithetGuideModal";
 import { useEpithets } from "../../utils/useEpithets";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
@@ -246,8 +245,6 @@ export default function ClanStatsScreen() {
      (전체 누적·모든 유형·모든 종족). 이 화면의 기간·종족 필터를 안 따르는 이유는 그 주석에
      있다: 별명이 화면과 필터마다 달라지면 그건 부르는 말이 아니다. */
   const epithetByMember = useEpithets();
-  // 칭호 설명 모달(요청: 부활).
-  const [guideOpen, setGuideOpen] = useState(false);
 
   /* (삭제) maxOverallPlays·maxApm·maxCmd — 막대의 기준값이었다. 주요지표가 수로 바뀌면서
      (요청) 이 목록의 1등이 몇인지를 알 필요가 없어졌다. */
@@ -257,13 +254,7 @@ export default function ClanStatsScreen() {
       <div className="scr-v2-toolbar">
         <div className="scr-v2-toolbar-title-row">
           <h1 className="scr-title scr-v2-toolbar-title">내전 통계</h1>
-          {/* 칭호 설명(요청: 버튼 부활) — 절대평가가 되면서 조건이 곧 설명이 됐다. */}
-          <button
-            type="button" className="scr-btn scr-btn-primary scr-title-side-btn"
-            onClick={() => setGuideOpen(true)}
-          >
-            칭호 설명
-          </button>
+          {/* (삭제·요청) 칭호 설명 버튼 — 목록이 표로 정리된 뒤 화면에서 걷었다. */}
           {/* 도움말은 없앴다(요청). 칸마다 달려 있던 ⓘ 여섯 개를 하나로 합친 뒤 다섯 번
               쳐내다가 결국 통째로 지웠다 — 남아 있던 줄의 절반은 판수 문턱 이야기였는데
               그 문턱 자체가 사라졌고, 나머지도 화면이 이미 말하고 있다(칸 이름, 막대 라벨,
@@ -364,7 +355,6 @@ export default function ClanStatsScreen() {
 
       {/* (삭제) 레이팅 상세·순위변동 그래프 — 둘 다 걷어냈다(요청). */}
       {/* (이동) 상성 관계 오버레이 — 래더로 갔다(요청). */}
-      {guideOpen && <EpithetGuideModal onClose={() => setGuideOpen(false)} />}
     </div>
   );
 }
