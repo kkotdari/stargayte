@@ -2390,6 +2390,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-per10 {
   font-size: var(--fs-caption); font-weight: 700; color: var(--text);
   font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap;
+  /* 값과 도넛 사이를 벌린다(요청: 여기 갭 좀 크게) — 블록의 gap은 0으로 걷어 둔 자리라
+     (이름표 간격 규칙), 이 줄이 제 아래 여백을 든다. */
+  margin-bottom: 7px;
 }
 /* 수만 자리를 차지한다 — 단위가 흐름 밖이라 이 상자의 폭이 곧 수의 폭이고, 그래서 수가
    도넛 무리 한가운데에 서고 아래 변동과도 세로로 맞는다(요청). */
