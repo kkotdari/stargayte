@@ -10873,9 +10873,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    맵 줄이 제 상자 가운데에서 뷰포트 폭으로 넓어진다(50% − 50vw 트릭: 상세 모달 본문의
    가로 클리핑 상자가 모달 폭 전체를 덮어서, 모달을 100vw로 넓히면 잘리지 않는다).
    아래 요소들은 맵이 커진 만큼 자연히 내려간다 — 폭 트랜지션이 곧 그 내려감의
-   트랜지션이다. */
-.scr-motion-maprow { width: 100%; margin-left: 0; transition: width 0.3s ease, margin-left 0.3s ease; }
-.scr-motion-wide .scr-motion-maprow { width: 100vw; margin-left: calc(50% - 50vw); }
+   트랜지션이다. 확대는 맵만이다(지적: 로스터 수평 위치는 변하면 안 됨) — 맵 요소만
+   넓히고, 위 로스터 줄은 제자리를 지킨다. */
+.scr-motion-wide .scr-motion-map { width: 100vw; margin-left: calc(50% - 50vw); }
 .scr-motion-teamcol { display: flex; flex-direction: column; gap: 10px; width: 88px; flex: 0 0 auto; }
 .scr-motion-teamcol-item { position: relative; display: flex; align-items: center; gap: 6px; }
 .scr-motion-teamcol-text { display: flex; flex-direction: column; min-width: 0; }
@@ -10909,10 +10909,16 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 }
 /* 잘라내기는 바탕 그림에만(지적: 경계의 아바타·이름이 잘려 나감) — 컨테이너가 overflow:
    hidden이면 모서리 본진의 마커가 반쪽이 된다. 둥근 모서리는 그림이 제 몫으로 갖는다. */
-.scr-motion-map { position: relative; width: 100%; }
+.scr-motion-map {
+  position: relative; width: 100%; margin-left: 0;
+  /* 화면 폭 확대(위 .scr-motion-wide)의 넓어짐·되돌아옴이 부드럽게 — 아래 요소들의
+     내려감도 이 폭 트랜지션이 그대로 만든다. */
+  transition: width 0.3s ease, margin-left 0.3s ease;
+}
 .scr-motion-lens { position: absolute; inset: 0; transform-origin: 0 0; }
 /* (삭제) PC 확대 조절바(.scr-motion-zoom) — PC의 확대 기능을 통째로 걷었다(요청). */
-.scr-motion-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: var(--radius-sm); }
+/* 래디우스 없음(요청: 제거) — 화면 폭 확대에서 모서리가 둥글면 가장자리가 뜬다. */
+.scr-motion-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .scr-motion-canvas-blank { background: rgba(255, 255, 255, 0.04); }
 /* 렌즈가 끼면서 마커 스팬은 렌즈의 자식이 됐다 — 옛 선택자를 함께 둔다(렌즈 없는 화면 대비). */
 /* 마커의 확대 되돌림(요청: 확대해도 건물만 2배까지, 유닛은 그대로) — 렌즈가 지도째 z배로
@@ -11298,7 +11304,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 화면 폭 확대 버튼(요청: 산 아이콘 옆)은 모바일 전용 — PC는 팝업 확대(big)가 따로 있다. */
 @media (min-width: 1160px) {
   .scr-motion-widebtn { display: none; }
-  .scr-motion-wide .scr-motion-maprow { width: 100%; margin-left: 0; }
+  .scr-motion-wide .scr-motion-map { width: 100%; margin-left: 0; }
 }
 /* 큰 화면 보기 토글(요청: PC 전용 — 대각선 화살표). */
 .scr-motion-expand-row { display: none; }
