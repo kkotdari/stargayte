@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, type ReactNode } from "rea
 import { Mountain, Pause, Play, RotateCcw } from "lucide-react";
 import TerrainReviewModal from "../../modals/TerrainReviewModal";
 import Avatar from "../common/Avatar";
-import { cx, cx as cx2 } from "../../utils/format";
+import { cx } from "../../utils/format";
 import { UNIT_KO, BUILDING_KO, TECH_KO } from "../../utils/replaySummaryText";
 import type { ReplayMapGrid } from "../../utils/replayParser";
 import { isAirUnit, type SummaryMotion } from "../../utils/replayMotion";
@@ -404,31 +404,11 @@ export default function ReplayMotionPlayer({
     return m;
   }, [motion]);
 
-  /* 근처의 같은 종류 건물은 한 덩어리다(요청) — 활성(건설·생산 중)일 땐 유닛처럼
-     "배럭 3"으로 커지고, 포커스가 끝나면 낱개 도형으로 돌아간다. */
-  const buildClusters = useMemo(() => {
-    const clusters: {
-      raw: string; unit: string; sx: number; sy: number;
-      members: { sec: number; x: number; y: number; gone: number }[];
-    }[] = [];
-    for (const [sec, x, y, unit, raw, gone] of motion.builds) {
-      let best: (typeof clusters)[number] | null = null;
-      let bestD = Infinity;
-      for (const c of clusters) {
-        if (c.raw !== raw || c.unit !== unit) continue;
-        const d = Math.hypot(c.sx / c.members.length - x, c.sy / c.members.length - y);
-        if (d <= BUILD_CLUSTER_TILES && d < bestD) { best = c; bestD = d; }
-      }
-      if (!best) {
-        best = { raw, unit, sx: 0, sy: 0, members: [] };
-        clusters.push(best);
-      }
-      best.sx += x;
-      best.sy += y;
-      best.members.push({ sec, x, y, gone: gone ?? 0 });
-    }
-    return clusters;
-  }, [motion]);
+  /* 본진 건물(확장 포함)의 자리 — 채굴 일꾼이 오갈 목적지다(지적: 자원 지대가 기준이고,
+     거기서 가장 가까운 본진 건물로 왔다 갔다). 커맨드·넥서스·해처리 계열이 대상이다. */
+  const halls = useMemo(() => motion.builds
+    .filter(([, , , unit]) => ["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(unit))
+    .map(([sec, x, y, , raw, gone]) => ({ sec, x, y, raw, gone: gone ?? 0 })), [motion]);
   const castsNow = motion.casts.filter((c) => c[0] <= t && t - c[0] <= CAST_HOLD_SEC);
 
   return (
@@ -438,96 +418,74 @@ export default function ReplayMotionPlayer({
           ? <img className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`} />
           : <div className="scr-motion-canvas scr-motion-canvas-blank" />}
 
-        {/* 건물(요청: 근처는 한 덩어리로) — 활성이면 "배럭 3"처럼 수와 함께 커지고,
-            아니면 낱개 도형(▪/▲, 안=개인색·테두리=팀색)이다. 무너진 것은 ✕로 잠깐. */}
-        {buildClusters.flatMap((c, ci) => {
-          const alive = c.members.filter((m) => m.sec <= t && (m.gone === 0 || t < m.gone));
-          const razedNow = c.members.filter((m) => m.gone > 0 && t >= m.gone && t < m.gone + 6);
-          const team = teamOfRaw(c.raw);
-          const nodes: React.ReactNode[] = razedNow.map((m, i) => (
-            <span
-              key={`bz-${ci}-${i}`}
-              className="scr-motion-build scr-motion-build-razed"
-              style={{ left: pct(m.x, grid.width), top: pct(m.y, grid.height) }}
-            >
-              ✕
-            </span>
-          ));
-          if (alive.length === 0) return nodes;
-          const producing = (prodByRawType.get(`${c.raw}|${c.unit}`) ?? [])
+        {/* 건물(요청: 합치기 대신) — 기본은 작은 폰트의 이름이 늘 떠 있고, 활성화(건설·
+            생산 중)일 때만 바운스로 커진다. 이름을 모르는 건물만 도형(▪/▲)이다. 색은
+            안=개인·테두리=팀(요청). 무너진 것(어림)은 ✕로 잠깐. */}
+        {motion.builds.map(([sec, x, y, unit, raw, gone], i) => {
+          if (sec > t) return null;
+          const goneAt = gone ?? 0;
+          if (goneAt > 0 && t >= goneAt + 6) return null;
+          const razed = goneAt > 0 && t >= goneAt;
+          const team = teamOfRaw(raw);
+          const producing = !razed && (prodByRawType.get(`${raw}|${unit}`) ?? [])
             .some((ps) => ps <= t && t - ps <= PROD_FLASH_SEC);
-          const freshBuild = alive.some((m) => t - m.sec <= BUILD_LABEL_SEC);
-          const name = BUILDING_KO[c.unit] ?? UNIT_KO[c.unit];
-          if ((producing || freshBuild) && name) {
-            // 활성 — 유닛처럼 이름+수, 수만큼 커진다(요청).
-            const cx = alive.reduce((sum, m) => sum + m.x, 0) / alive.length;
-            const cy = alive.reduce((sum, m) => sum + m.y, 0) / alive.length;
-            nodes.push(
-              <span
-                key={`bc-${ci}`}
-                className={cx2("scr-motion-build", "scr-motion-build-fresh", "scr-motion-chip",
-                  team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
-                style={{
-                  left: pct(cx, grid.width), top: pct(cy, grid.height),
-                  fontSize: Math.min(14, 8 + Math.round(Math.sqrt(alive.length) * 1.5)),
-                  ...chipStyle(c.raw, team),
-                }}
-              >
-                {alive.length > 1 ? `${name} ${alive.length}` : name}
-              </span>,
-            );
-            return nodes;
-          }
-          // 비활성 — 낱개 도형. 안쪽이 개인색, 테두리가 팀색이다(요청).
-          for (let i = 0; i < alive.length; i += 1) {
-            nodes.push(
-              <span
-                key={`bs-${ci}-${i}`}
-                className="scr-motion-build"
-                style={{
-                  left: pct(alive[i].x, grid.width), top: pct(alive[i].y, grid.height),
-                  ...shapeStyle(c.raw, team),
-                }}
-              >
-                {DEFENSE_BUILDINGS.has(c.unit) ? "▲" : "▪"}
-              </span>,
-            );
-          }
-          return nodes;
+          const activeBuild = !razed && (producing || t - sec <= BUILD_LABEL_SEC);
+          const name = BUILDING_KO[unit] ?? UNIT_KO[unit];
+          return (
+            <span
+              key={`b-${i}`}
+              className={cx(
+                "scr-motion-build",
+                activeBuild && "scr-motion-build-on",
+                razed && "scr-motion-build-razed",
+              )}
+              style={{
+                left: pct(x, grid.width), top: pct(y, grid.height),
+                ...(razed ? {} : shapeStyle(raw, team)),
+              }}
+            >
+              {razed ? "✕" : name ?? (DEFENSE_BUILDINGS.has(unit) ? "▲" : "▪")}
+            </span>
+          );
         })}
 
-        {/* 채굴 일꾼(요청: 미네랄·가스 캐는 일꾼 움직임) — 본진과 가장 가까운 자원 지대
-            사이를 점 몇 개가 왕복한다. 일꾼이 많을수록 점도 는다(최대 3). 자원 좌표를 못
-            읽은 맵은 그린다 만다. */}
-        {bases.map((m) => {
-          if (m.ghost || (grid.resources ?? []).length === 0) return null;
-          const track = motion.players.find((p) => p.raw === m.key);
+        {/* 채굴 일꾼(요청, 지적: 방향 반대) — 자원 지대마다, 그 시점에 서 있는 가장
+            가까운 본진 건물(시작 본진·확장 포함)을 찾아 그리로 오간다. 가까운 홀이 없는
+            자원(아직 안 편 멀티)은 비워 둔다. */}
+        {(grid.resources ?? []).flatMap((res, ri) => {
+          let owner: { x: number; y: number; raw: string } | null = null;
+          let best = 18;
+          for (const m of bases) {
+            if (m.ghost) continue;
+            const d = Math.hypot(res[0] - m.x, res[1] - m.y);
+            if (d < best) { best = d; owner = { x: m.x, y: m.y, raw: m.key }; }
+          }
+          for (const hall of halls) {
+            if (hall.sec > t || (hall.gone > 0 && t >= hall.gone)) continue;
+            const d = Math.hypot(res[0] - hall.x, res[1] - hall.y);
+            if (d < best) { best = d; owner = { x: hall.x, y: hall.y, raw: hall.raw }; }
+          }
+          if (!owner) return [];
+          const track = motion.players.find((p) => p.raw === owner!.raw);
           let workerN = 0;
           for (const [sec, n] of track?.workers ?? []) {
             if (sec > t) break;
             workerN = n;
           }
-          if (workerN === 0) return null;
-          let res: [number, number, 0 | 1] | null = null;
-          let best = Infinity;
-          for (const r of grid.resources) {
-            const d = Math.hypot(r[0] - m.x, r[1] - m.y);
-            if (d < best) { best = d; res = r; }
-          }
-          if (!res || best > 24) return null;
-          const dots = Math.min(3, Math.max(1, Math.ceil(workerN / 8)));
+          if (workerN === 0) return [];
+          const team = teamOfRaw(owner.raw);
+          const dots = Math.min(3, Math.max(1, Math.ceil(workerN / 10)));
           return Array.from({ length: dots }, (_, i) => {
-            // 일꾼마다 위상이 다르게 — sin 왕복이라 기지·자원 사이를 오간다.
-            const k = 0.5 + 0.5 * Math.sin(t * 0.9 + i * 2.1 + m.x);
-            const x = m.x + (res![0] - m.x) * (0.15 + 0.7 * k);
-            const y = m.y + (res![1] - m.y) * (0.15 + 0.7 * k);
+            const k = 0.5 + 0.5 * Math.sin(t * 0.9 + i * 2.1 + ri);
+            const x = res[0] + (owner!.x - res[0]) * (0.15 + 0.7 * k);
+            const y = res[1] + (owner!.y - res[1]) * (0.15 + 0.7 * k);
             return (
               <span
-                key={`mine-${m.key}-${i}`}
+                key={`mine-${ri}-${i}`}
                 className="scr-motion-miner"
                 style={{
                   left: pct(x, grid.width), top: pct(y, grid.height),
-                  color: colorByRaw.get(m.key) ?? (m.team === 2 ? "#e0435c" : "#2f80ff"),
+                  color: colorByRaw.get(owner!.raw) ?? (team === 2 ? "#e0435c" : "#2f80ff"),
                 }}
               >
                 ·

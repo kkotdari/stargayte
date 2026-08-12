@@ -10855,8 +10855,15 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 요약 문장의 두 팀 색(.scr-sum-team*)과 같은 값 — 어두운 지도 위라 살짝 밝힌다. */
 .scr-motion-team1 { color: #5b9ae0; }
 .scr-motion-team2 { color: #e06578; }
-.scr-motion-build { font-size: 8px; font-weight: 700; opacity: 0.85; text-shadow: 0 0 3px rgba(0, 0, 0, 0.9); }
-.scr-motion-build-fresh { font-size: 9px; animation: scr-motion-in 0.4s ease-out; }
+/* 건물 이름은 늘 작게 떠 있고(요청: 합치기 대신 기본 작은 폰트), 활성화 때만 바운스로
+   커진다. */
+.scr-motion-build { font-size: 6px; font-weight: 700; opacity: 0.8; text-shadow: 0 0 3px rgba(0, 0, 0, 0.9); }
+.scr-motion-build-on { font-size: 10px; opacity: 1; animation: scr-motion-bounce 0.45s ease-out; }
+@keyframes scr-motion-bounce {
+  0% { transform: translate(-50%, -50%) scale(0.6); }
+  45% { transform: translate(-50%, -50%) scale(1.3); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
 .scr-motion-army {
   font-size: 10px; font-weight: 800; text-shadow: 0 0 4px rgba(0, 0, 0, 0.95);
   transition: left 0.25s linear, top 0.25s linear;
