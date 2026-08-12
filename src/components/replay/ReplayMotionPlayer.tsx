@@ -2154,7 +2154,7 @@ export default function ReplayMotionPlayer({
             /* 일꾼과 수송선은 이름을 안 띄운다(요청) — 일꾼은 늘 작은 점, 수송선은 늘
                제 도형(오버로드 풍선·드랍십·셔틀)이다. */
             const noName = g.unit === "Worker" || g.unit === "Transport";
-            const activeNow = !noName && (pos.moving || sinceCmd <= ACTIVE_HOLD_SEC);
+            const activeNow = !noName && sinceCmd <= ACTIVE_HOLD_SEC;
             /* 클로킹 유닛은 반투명(요청) — 옵저버·다크는 늘, 레이스·고스트는 클로킹 연구
                뒤부터. 칩이든 점이든 같이 옅어진다(요청). */
             const cloaked = g.unit === "Observer" || g.unit === "Dark Templar"
@@ -2226,7 +2226,9 @@ export default function ReplayMotionPlayer({
                 freshDone = t - d <= FRESH_ACTIVE_SEC;
               }
             }
-            const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC || freshDone;
+            /* 커맨드 직후 한동안만 이름이다(요청) — 이동 중이라고 계속 액티브면 지도가
+               이름으로 덮여 정작 새 명령이 안 보인다. 창이 지나면 걷는 중이어도 점이다. */
+            const activeNow = sinceCmd <= ACTIVE_HOLD_SEC || freshDone;
             const showName = si === primary && activeNow && !!unit && (size >= 1 || !!SCOUT_KO[unit]);
             // 칩 글씨 한 단 축소(지적: 너무 큼) — 16 상한/1.6 기울기 → 12/1.1.
             const fontPx = Math.min(12, 7 + Math.round(Math.sqrt(size) * 1.1));
@@ -2355,7 +2357,7 @@ export default function ReplayMotionPlayer({
             /* 일꾼과 수송선은 이름을 안 띄운다(요청) — 일꾼은 자원 채취뿐 아니라 늘
                적당히 작은 점으로 통일, 수송선은 늘 제 도형(오버로드 풍선·드랍십·셔틀)이다. */
             const noName = g.kind === "worker" || g.kind === "carrier" || race === "저그";
-            const activeNow = !noName && (pos.moving || sinceCmd <= ACTIVE_HOLD_SEC) && !nearHome;
+            const activeNow = !noName && sinceCmd <= ACTIVE_HOLD_SEC && !nearHome;
             return (
               <span
                 key={`s-${p.raw}-${g.kind}-${gi}`}
