@@ -458,10 +458,12 @@ export default function MemberStatRow({
           쌓인다. 어느 막대인지는 왼쪽 이름이 말한다. */}
       {/* (삭제) 레이팅·순위 줄기 — 래더로 통째로 옮겼다(요청). 이 칸에는 이제 막대들만 있다. */}
       <div className="scr-stat-record-cell">
-        {/* 두 줄기로 가른다(요청: 전적과 APM·커맨드 칸을 나누고 구분선) — 왼쪽은 전적 표
-            ([이름|경기수|승률] 세 열)이고 오른쪽은 손 수치(APM·커맨드) 두 줄이다. 구분선은
-            칸의 형제 규칙(.scr-stat-record-cell > * + *)이 긋는다. */}
+        {/* 세 덩어리다(요청: 전적과 BEST를 나누고 각 셀에 좌상단 라벨) — 전적 표([이름|
+            경기수|승률] 세 열), BEST, 손 지표(APM·커맨드). 구분선은 칸의 형제 규칙
+            (.scr-stat-record-cell > * + *)이 긋고, 라벨은 종족 칸의 "일꾼(5분)"과 같은
+            옷(.scr-stat-mix-list-cap)이다. */}
         <div className="scr-stat-record-col scr-stat-record-col-games">
+          <span className="scr-stat-mix-list-cap">전적</span>
           {/* 판수와 승률은 열 이름을 위에 한 번만 적는다(요청) — 줄마다 되풀이하면 같은
               말이 여덟 번 적힌다. */}
           <div className="scr-stat-record-item scr-stat-record-head">
@@ -485,21 +487,25 @@ export default function MemberStatRow({
           {RACES.map((r) => (
             <RecordRace key={r} race={r} stats={byRace?.[r]} />
           ))}
-          {/* BEST는 전적 아래다(요청) — 이것도 '몇 판을 어떻게 뛰었나'의 끝줄이라 전적
-              표의 마지막 행으로 서고, 값은 경기수 열에 맞춘다. 0도 적는다(요청) — '0회'와
-              '이 표에 없는 값'이 같아 보이면 안 된다. */}
-          {showBest && (
+        </div>
+        {/* BEST는 제 덩어리다(요청: 전적과 베스트를 나누기) — 라벨이 덩어리 이름이 됐으니
+            줄 안의 이름표는 비우고, 값은 위 표의 경기수 열에 맞춘다. 0도 적는다(요청) —
+            '0회'와 '이 표에 없는 값'이 같아 보이면 안 된다. */}
+        {showBest && (
+          <div className="scr-stat-record-col">
+            <span className="scr-stat-mix-list-cap">BEST</span>
             <div className="scr-stat-record-item">
-              <span className="scr-stat-record-label">BEST</span>
+              <span className="scr-stat-record-label" />
               <span className="scr-stat-record-num-v">
                 {stats.bests}
                 <span className="scr-stat-record-num-unit">회</span>
               </span>
               <span />
             </div>
-          )}
-        </div>
+          </div>
+        )}
         <div className="scr-stat-record-col scr-stat-record-col-hands">
+          <span className="scr-stat-mix-list-cap">손 지표</span>
           <div className="scr-stat-record-item">
             <span className="scr-stat-record-label">APM</span>
             <RecordNum value={stats.avgApm} />
