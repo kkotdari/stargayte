@@ -1159,17 +1159,11 @@ export default function ReplayMotionPlayer({
     return () => io.disconnect();
   }, []);
 
-  /* 탭이 실제로 안 보이게 되면(hidden) 일시정지 — 되살리는 것은 화면 밖 정지와 마찬가지로
-     사람의 몫이다. 창 전환(blur)의 정지는 걷었다(요청: "블러시 멈춤 제거") — 다른 창을
-     옆에 두고 보는 동안에도 재생은 계속 돌아야 한다. */
-  useEffect(() => {
-    const stop = () => setPlaying(false);
-    const onVis = () => { if (document.hidden) stop(); };
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, []);
+  /* (삭제) 화면을 벗어날 때의 정지는 이제 스크롤 밖(IntersectionObserver)뿐이다 —
+     창 전환(blur) 정지를 걷은 뒤에도 탭 숨김(visibilitychange) 정지가 남아 창을 덮으면
+     여전히 멈췄다(지적: "블러시 재생 멈춤 왜 아직도 있지"). 숨은 탭은 브라우저가 rAF를
+     세워 어차피 시간이 안 가고, 돌아온 첫 틱은 dt 상한(0.5초)이 점프를 막으므로 명시적
+     정지 없이도 이어 보기가 안전하다. */
 
   /* 시계 — rAF로 게임 시간 t를 배속만큼 민다. state로 두는 이유는 매 프레임 그리는 것들
      (자취·건물·마법)이 전부 t의 함수라서다. */
