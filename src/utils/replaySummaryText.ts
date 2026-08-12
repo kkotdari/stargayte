@@ -690,6 +690,7 @@ function tacticLabel(k: string, p: Record<string, unknown>): string {
     case "zealot-templar": return "질럿·템플러";
     case "queen": return "퀸";
     case "arbiter": return "아비터";
+    case "dark-templar": return "다크템플러";
     default: return "";
   }
 }
@@ -977,6 +978,13 @@ const TEMPLATES: Record<string, Tpl> = {
     "예상치 못한 목동 저그를 꺼냄", "다크스웜 아래로 병력을 몰아넣음",
     "목동 저그로 판을 굴림", "다크스웜을 앞세워 밀어붙임",
   ]),
+  "dark-templar": (c) =>
+    `${ga(c.who)} ${done(c, c.pick(
+      c.p.corsair
+        ? ["커세어로 하늘을 열고 다크템플러를 들여보냄", "커세어·다크템플러 한 벌로 찌름"]
+        : ["다크템플러를 앞세워 보이지 않게 찌름", "다크템플러 운용으로 판을 흔듦",
+           "어둠 속에서 다크템플러를 굴림"]
+    ))}`,
   queen: act([
     "퀸을 띄워 마법으로 판을 흔듦", "브루들링으로 알짜 유닛을 지움",
     "퀸 마법을 아끼지 않고 씀", "인스네어를 뿌리며 싸움을 걺",

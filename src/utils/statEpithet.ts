@@ -490,7 +490,7 @@ const TACTIC_WEIGHT: Record<string, number> = {
   //    가디언+디바우러·캐리어·뮤탈이 한 벌이다.
   carrier: 4, lurker: 4, bc: 4, muta: 4, guardian: 4, valkyrie: 4,
   vessel: 4, "zealot-templar": 4, "shuttle-reaver": 4, "templar-drop": 4,
-  queen: 4, arbiter: 4,
+  queen: 4, arbiter: 4, "dark-templar": 4,
   // ── 유닛(일반)
   ultra: 1.5,
   // 표에 없는 열쇠는 1이다.
@@ -515,6 +515,7 @@ const TACTIC_RACE: Record<string, string> = {
   Hallucination: "프로토스",
   carrier: "프로토스", recall: "프로토스", "mind-control": "프로토스",
   "zealot-templar": "프로토스", "shuttle-reaver": "프로토스", "templar-drop": "프로토스", arbiter: "프로토스",
+  "dark-templar": "프로토스",
   "cannon-rush": "프로토스", "center-photon": "프로토스", "ally-cannon": "프로토스",
   "zealot-rush": "프로토스",
 };
@@ -536,7 +537,7 @@ const TACTIC_NOUN: Record<string, string> = {
   guardian: "가디언", bc: "배틀크루저", valkyrie: "발키리", moka: "다크스웜 군단",
   devourer: "디바우러", vessel: "과학전(베슬)", "zealot-templar": "질럿+템플러",
   "shuttle-reaver": "셔틀 리버", "templar-drop": "템플러 드랍",
-  queen: "퀸 마법", arbiter: "아비터 마법",
+  queen: "퀸 마법", arbiter: "아비터 마법", "dark-templar": "다크템플러",
   "side-tank": "옆탱", "center-photon": "센터 포토", "cannon-rush": "포토러시",
   "sunken-rush": "성큰러시", "front-defense": "입구 방어", mech: "메카닉 진출",
   bionic: "바이오닉", "fast-tech": "빠른 테크", "hold-off": "공세 막아냄", counter: "역공",
@@ -806,6 +807,9 @@ const TITLES: Title[] = [
   /* 강습의 여왕(요청: 프로토스 하나 추가 — 셔틀 리버) — 폭탄드랍의 여왕은 종족 무관 드랍
      전부를 세고, 이쪽은 프로토스의 셔틀 리버 그림만 센다. */
   { ...tactic("강습의 여왕", ["shuttle-reaver"]), minPlaysShare: 0.05, vsWins: true, battle: true },
+  /* 어둠의 여왕(요청: 다크템플러 운용 — 다크 단독 또는 다템+커세어) — 그림자의 여왕
+     (은신 유닛 비중)과 달리 다크가 주인공인 판을 센다. */
+  { ...tactic("어둠의 여왕", ["dark-templar"]), minPlaysShare: 0.05, vsWins: true, battle: true },
   /* 시공의 여왕(요청: 아비터 쪽 추가) — 아비터를 띄워 스테이시스·리콜을 실제로 쓴 판이다.
      함대의 여왕(캐리어+아비터)과 달리 아비터가 주인공인 판을 센다. */
   { ...tactic("시공의 여왕", ["arbiter"]), minPlaysShare: 0.03, vsWins: true, battle: true },

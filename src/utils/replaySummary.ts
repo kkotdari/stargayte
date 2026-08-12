@@ -450,6 +450,7 @@ const UNIT_STORY_KEYS: Record<string, string> = {
   valkyrie: "Valkyrie", muta: "Mutalisk", ultra: "Ultralisk", moka: "Ultralisk",
   arbiter: "Arbiter", lurker: "Lurker", "cloak-wraith": "Wraith",
   vessel: "Science Vessel", "zealot-templar": "High Templar", queen: "Queen",
+  "dark-templar": "Dark Templar",
 };
 
 const NEED_TARGET_KEYS = new Set([

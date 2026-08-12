@@ -2005,6 +2005,16 @@ function detectFor(c: Ctx): Tactic[] {
     // 수는 누계가 아니라 창 단위 최대(windowPeak)다 — 누계를 말하면 긴 경기에서 "캐리어를
     // 69기 뽑았다"가 되어 함대 규모로 읽힌다(지적). 문턱도 같은 값으로 재야 뜻이 맞는다:
     // 스무 분에 걸쳐 넷을 뽑은 것은 캐리어를 굴린 게 아니라 한두 기씩 갈아 넣은 것이다.
+    /* 다크템플러 운용(요청) — 다크 단독으로 셋 이상이거나, 커세어를 곁들인 다템 한 벌
+       (다템 둘 + 커세어 셋)이다. 커세어가 오버로드를 걷어내고 다크가 찌르는 그림은 저그전
+       정석이라 다크 수가 좀 적어도 그 운용으로 친다. */
+    const darks = u("Dark Templar");
+    if (darks >= 3 || (darks >= 2 && u("Corsair") >= 3)) {
+      out.push({
+        key: "dark-templar", weight: 9, at: firstU("Dark Templar"),
+        who, p: { corsair: u("Corsair") >= 3 },
+      });
+    }
     /* 아비터(요청: 아비터 쪽도 한 벌) — 아비터를 둘 이상 띄우고 그 마법(스테이시스·리콜)을
        실제로 쓴 판이다. 클로킹 필드는 지나가기만 해도 걸리는 상시 효과라 증거로 안 쓴다. */
     const arbiterCasts = (s.techUses["Stasis Field"] ?? 0) + (s.techUses["Recall"] ?? 0);
