@@ -753,7 +753,7 @@ const TITLES: Title[] = [
      제공권 싸움이고 배틀은 끝판 한 방이라 그림이 다르다. */
   // 이름 확정(요청) — 발키리는 그 자체가 여전사라 이름이 곧 그림이다.
   { ...tactic("여전사 발키리", ["valkyrie"]), minPlaysShare: 0.03, vsWins: true, battle: true },
-  { ...tactic("전함의 여제", ["bc"]), minPlaysShare: 0.02, vsWins: true, battle: true },
+  { ...tactic("배틀 퀸", ["bc"]), minPlaysShare: 0.02, vsWins: true, battle: true },
   /* 목동의 여왕(요청: 목동저그 변경·상향) — 다크스웜을 실제로 깔고 그 아래로 저글링·럴커·
      울트라 중 하나를 몰아넣은 판이다(지적: 스웜에는 저글링만이 아니라 럴커·울트라도 쓴다).
      판정은 replayTactics의 moka(개편). 자막이 짚은 판만 세고 서버가 이긴 판만 세므로
@@ -762,7 +762,7 @@ const TITLES: Title[] = [
   { ...tactic("목동의 여왕", ["moka"]), minPlaysShare: 0.01, vsWins: true, battle: true },
   /* 브루들링의 여왕(요청: 퀸 쪽 추가) — 퀸을 띄워 브루들링·인스네어·패러사이트를 실제로
      쓴 판이다. 과학의 여왕(베슬)과 같은 자다. */
-  { ...tactic("브루들링의 여왕", ["queen"]), minPlaysShare: 0.03, vsWins: true, battle: true },
+  { ...tactic("진화의 여왕", ["queen"]), minPlaysShare: 0.03, vsWins: true, battle: true },
 
   // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
   /* (삭제) 프로 옆탱러(side-tank) — 요청. 옆탱은 아군 기지를 받쳐 주는 탱크와 제 기지
@@ -800,27 +800,27 @@ const TITLES: Title[] = [
      말하게 한다(맵 여왕과 같은 {n} 방식). 아비터를 뽑았나는 이긴 판 원장(mix)의 유닛
      수로 본다. */
   { ...tactic("{n}", ["carrier"]), minPlaysShare: 0.02, battle: true, why: "캐리어",
-    name: (s, of) => ((mix(s, of)?.units?.["Arbiter"] ?? 0) > 0 ? "그림자 함대의 여왕" : "함대의 여왕") },
+    name: (s, of) => ((mix(s, of)?.units?.["Arbiter"] ?? 0) > 0 ? "그림자 함대의 여왕" : "캐리어 퀸") },
   /* 폭풍의 여왕(요청: 신규 질럿+템플러) — 질럿 몸에 스톰을 얹은 프로토스 지상 한 벌.
      판정은 replayTactics의 zealot-templar. */
-  { ...tactic("폭풍의 여왕", ["zealot-templar"]), minPlaysShare: 0.1, vsWins: true, battle: true },
+  { ...tactic("또각또각 돌진 퀸", ["zealot-templar"]), minPlaysShare: 0.1, vsWins: true, battle: true },
   /* 강습의 여왕(요청: 프로토스 하나 추가 — 셔틀 리버) — 폭탄드랍의 여왕은 종족 무관 드랍
      전부를 세고, 이쪽은 프로토스의 셔틀 리버 그림만 센다. */
-  { ...tactic("강습의 여왕", ["shuttle-reaver"]), minPlaysShare: 0.05, vsWins: true, battle: true },
+  { ...tactic("리버 드랍의 여왕", ["shuttle-reaver"]), minPlaysShare: 0.05, vsWins: true, battle: true },
   /* 어둠의 여왕(요청: 다크템플러 운용 — 다크 단독 또는 다템+커세어) — 그림자의 여왕
      (은신 유닛 비중)과 달리 다크가 주인공인 판을 센다. */
   { ...tactic("어둠의 여왕", ["dark-templar"]), minPlaysShare: 0.05, vsWins: true, battle: true },
   /* 시공의 여왕(요청: 아비터 쪽 추가) — 아비터를 띄워 스테이시스·리콜을 실제로 쓴 판이다.
      함대의 여왕(캐리어+아비터)과 달리 아비터가 주인공인 판을 센다. */
-  { ...tactic("시공의 여왕", ["arbiter"]), minPlaysShare: 0.03, vsWins: true, battle: true },
+  { ...tactic("시공을 지배하는 여제", ["arbiter"]), minPlaysShare: 0.03, vsWins: true, battle: true },
   /* 번개의 여왕(요청: 셔틀+하이템플러 — 여신이 아니라 여왕) — 셔틀에 템플러를 태워 스톰을 떨어뜨린 판이다
      (templar-drop). 폭탄드랍의 여왕에도 드는 열쇠지만, 그쪽은 종족 무관 드랍 전부를 세는
      자리고 이쪽은 이 그림 하나만 센다. */
-  { ...tactic("번개의 여왕", ["templar-drop"]), minPlaysShare: 0.03, vsWins: true, battle: true },
+  { ...tactic("공포의 번개 퀸", ["templar-drop"]), minPlaysShare: 0.03, vsWins: true, battle: true },
   /* 가시밭의 여왕(요청: 독거미 부대 상향·개편) — 히드라 몸에 럴커를 묻은 저그 지상
      한 벌이다(판정도 히드라+럴커 조합으로 바뀐다). 러커는 저그의 밥이라 유닛 기본(7%)의
      배로 잰다. */
-  { ...tactic("가시밭의 여왕", ["lurker"]), minPlaysShare: 0.15, battle: true },
+  { ...tactic("가시의 여왕", ["lurker"]), minPlaysShare: 0.15, battle: true },
   /* 안 보이는 것으로만 치는 사람(요청: 다크·레이스·아비터를 다 잘 쓴 경우만) —
      "보이지 않는 손" → "안 보이는 레이스"를 거쳐 온 자리다. 유닛 하나로는 안 준다(요청:
      하나만 써서는 안 됨): 다크만 뽑는 프로토스는 흔하고, 그건 이미 유닛 칭호가 말한다.
@@ -849,7 +849,7 @@ const TITLES: Title[] = [
     },
   },
   // 에픽 상향(요청: 뮤탈은 상향 — 이름도 여왕 계열로) + 전투 조건.
-  { ...tactic("하늘을 뒤덮는 여왕", ["muta"]), minPlaysShare: 0.02, battle: true },
+  { ...tactic("습격 퀸", ["muta"]), minPlaysShare: 0.02, battle: true },
   /* 코끼리 조련사(요청) — 울트라리스크를 모아 나간 판이다. 저그의 마지막 지상 병력이라
      거기까지 판을 끌고 갔다는 말이기도 한데, 부르는 말은 그 그림 하나면 된다.
      한때 "코끼리떼를 모는 여인"으로 바꿔 봤다가 되돌렸다(요청) — 조련사 쪽이 짧고, 무엇을
@@ -1417,7 +1417,7 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     if (r.label !== "{n}") return r;
     /* 함대의 여신 — 이름이 아비터 사용으로 갈리는 {n} 칭호라 손으로 적는다. */
     if (r.how.startsWith("캐리어")) {
-      return { ...r, label: "함대의 여왕 (아비터까지 썼으면 그림자 함대의 여왕)" };
+      return { ...r, label: "캐리어 퀸 (아비터까지 썼으면 그림자 함대의 여왕)" };
     }
     if (r.how.startsWith("그 맵 승수")) {
       return {
