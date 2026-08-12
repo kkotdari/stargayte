@@ -10911,8 +10911,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   .scr-motion-build { font-size: 9px; }
   .scr-motion-build-shape { font-size: 13px; }
   .scr-motion-build-hall { font-size: 12px; }
-  /* 본진은 어느 건물 도형보다도 크다(요청) — 4×3 생산 건물(-lg 16px)보다 한 단 위. */
-  .scr-motion-build-hall.scr-motion-build-shape { font-size: 20px; }
+  /* 본진은 어느 건물 도형보다도 크다(요청) — 20 → 25px(지적: 본진이 너무 작다). */
+  .scr-motion-build-hall.scr-motion-build-shape { font-size: 25px; }
   .scr-motion-build-on { font-size: 13px; }
   .scr-motion-army { font-size: 12px; }
   .scr-motion-dot { font-size: 14px; }
@@ -11117,8 +11117,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 }
 /* 본진 건물(커맨드·넥서스·해처리 계열)은 큼직하게(요청) — 이름이든 네모든 한 단계 키운다. */
 .scr-motion-build-hall { font-size: 10px; }
-/* 본진은 어느 건물 도형보다도 크다(요청) — 모바일에서도 -lg(12px)보다 한 단 위. */
-.scr-motion-build-hall.scr-motion-build-shape { font-size: 15px; }
+/* 본진은 어느 건물 도형보다도 크다(요청) — 15 → 18px(지적: "본진 크기가 넘 작은듯"). */
+.scr-motion-build-hall.scr-motion-build-shape { font-size: 18px; }
 /* 종족 배지(요청) — 아바타 오른쪽 어깨에. 밖으로 밀던 것을 아바타에 겹치게 당겼다
    (요청: 배지를 좀 더 아바타에 붙이기) — 떨어져 있으면 어느 아바타의 배지인지가
    본진이 몰린 자리에서 안 갈렸다. */

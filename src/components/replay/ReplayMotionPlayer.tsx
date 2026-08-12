@@ -310,7 +310,8 @@ const SHAPE_KIND: Record<string, string> = {
   // 벙커는 납작한 무덤, 포토캐논은 납작한 태엽(요청) — 커맨드의 큰 무덤과 갈린다.
   // 성큰은 동그라미에 가시, 터렛은 네모 위에 기울어진 네모(요청).
   Pylon: "diamond", "Supply Depot": "trapezoid", Bunker: "tombFlat", "Photon Cannon": "coil",
-  "Sunken Colony": "sunken", "Missile Turret": "turret",
+  // 스포어는 봉오리 머리에 밑동 촉수(요청: 게임 스크린샷 참고).
+  "Sunken Colony": "sunken", "Spore Colony": "spore", "Missile Turret": "turret",
   // 넥서스는 넙적한 세모+양옆 기둥, 게이트는 원 위의 가파른 삼각(요청).
   "Command Center": "tomb", Nexus: "pyramidWide", Gateway: "gate",
   /* 저그 본진 3형제(요청) — 해처리는 곡선 둔덕(각진 T는 부자연스럽다는 지적), 레어는
@@ -328,8 +329,12 @@ const SHAPE_KIND: Record<string, string> = {
 /** 저그 둔덕 몸통 — 셋이 같은 몸을 쓰고 뿔만 자란다(아래 lair/hive). 옆구리는 종 모양
  *  으로 불룩하게(지적: "해처리의 곡선이 반대로 됨" — 나팔처럼 파인 곡선을 뒤집었다).
  *  꼭대기는 평평하고, 높이보다 옆으로 넓다(지적). */
-/* 곡선은 더 완만하게(지적) — 꼭짓점에서 밑변까지 부드러운 S 하나로 흘러내린다. */
-const ZERG_MOUND = "M5.2 5.6 L10.8 5.6 Q11 9.4 13.8 12 Q15.4 13.4 15.4 14.2 L0.6 14.2 Q0.6 13.4 2.2 12 Q5 9.4 5.2 5.6 Z";
+/* 게임 스크린샷대로(요청: "해처리모양" 이미지) — 둥근 머리가 가운데 솟고, 몸이 옆으로
+   퍼지되 바닥은 매끈한 후지산이 아니라 오리발처럼 갈라진 엽(로브)이다(지적). */
+const ZERG_MOUND = "M5 6 Q5.2 3.4 8 3.4 Q10.8 3.4 11 6"
+  + " Q13 7.6 14.6 10.4 Q15.8 12.6 14.4 13.6 Q13.2 14.4 12 13.8"
+  + " Q11 14.6 9.6 14.1 Q8.6 14.8 8 14.8 Q7.4 14.8 6.4 14.1"
+  + " Q5 14.6 4 13.8 Q2.8 14.4 1.6 13.6 Q0.2 12.6 1.4 10.4 Q3 7.6 5 6 Z";
 const SHAPE_PATHS: Record<string, string> = {
   // 좀 더 얇은 마름모로(요청) — 꽉 찬 정마름모는 네모와 잘 안 갈렸다.
   diamond: "M8 1 12 8 8 15 4 8Z",
@@ -352,7 +357,9 @@ const SHAPE_PATHS: Record<string, string> = {
   lair: `${ZERG_MOUND} M2.4 13.6 L1.2 9.2 L4.2 11.8 Z M13.6 13.6 L14.8 9.2 L11.8 11.8 Z`,
   hive: `${ZERG_MOUND} M2.4 13.6 L0.8 6.2 L4.6 11.4 Z M13.6 13.6 L15.2 6.2 L11.4 11.4 Z`
     + " M5.2 12.9 L4.5 8.4 L6.9 11.3 Z M10.8 12.9 L11.5 8.4 L9.1 11.3 Z",
-  factory: "M2 14 V8 L5 5 V8 L8 5 V8 L11 5 V8 H14 V14 Z",
+  /* 팩토리 — 뭉툭한 기계 상자에 오른쪽 위 모듈, 짧은 다리(요청: 게임 스크린샷 참고). */
+  factory: "M2 13.6 V6 H14 V13.6 Z M10.4 6 V3.2 H13.6 V6 Z"
+    + " M2.8 13.6 V15 H5 V13.6 Z M10.8 13.6 V15 H13 V13.6 Z",
   // 종이비행기(요청: 스타포트) — 보내기 아이콘과 같은 다트 실루엣.
   plane: "M1.5 14.5 L15.5 8 L1.5 1.5 L1.5 6.5 L11.5 8 L1.5 9.5 Z",
   dome: "M2 14 V10 A6 6 0 0 1 14 10 V14 Z",
@@ -363,8 +370,17 @@ const SHAPE_PATHS: Record<string, string> = {
   sunken: "M1.2 11.5a6.8 3.2 0 1 0 13.6 0a6.8 3.2 0 1 0-13.6 0Z"
     + " M4.2 9.8 Q2.4 6.2 4.8 3 Q4.2 6.4 6.2 9.2 Z"
     + " M11.8 9.8 Q13.6 6.2 11.2 3 Q11.8 6.4 9.8 9.2 Z",
+  /* 스포어 — 봉오리 머리가 위로 솟고 밑동에 짧은 촉수(요청: 게임 스크린샷 참고). */
+  spore: "M4.8 6.4a3.4 3.3 0 1 0 6.8 0a3.4 3.3 0 1 0-6.8 0Z"
+    + " M2 13.8 Q2.4 11 5.2 10.4 L10.8 10.4 Q13.6 11 14 13.8 Z"
+    + " M3.6 10.8 Q1.8 9.2 3 6.8 Q3 9.2 5 10.2 Z",
   // 터렛 — 네모 받침 위에 기울어진 네모 머리(요청).
   turret: "M3.5 14 H12.5 V8.6 H3.5 Z M10.4 7.6 L6.6 8.6 L5.6 4.8 L9.4 3.8 Z",
+  // 오버로드 — 동그란 풍선에 긴 다리가 줄줄 늘어진다(요청).
+  ovie: "M3.6 6a4.4 4.2 0 1 0 8.8 0a4.4 4.2 0 1 0-8.8 0Z"
+    + " M5.4 9.6 Q5 12.6 4.2 14 Q5.8 12.4 6.4 9.9 Z"
+    + " M7.6 10.2 Q7.6 13.4 7 15 Q8.6 13 8.6 10.2 Z"
+    + " M10.4 9.6 Q10.8 12.6 11.6 14 Q10 12.4 9.4 9.9 Z",
 };
 /** 본진 아바타용 실루엣(요청: "아바타를 본진 안에", "아바타용 모양들도 크기 비슷하게") —
  *  건물 도형을 그대로 쓰면 종족마다 덩치가 달라(피라미드는 뾰족해 얼굴이 좁고, 커맨드의
@@ -872,9 +888,8 @@ export default function ReplayMotionPlayer({
   };
   const [done, setDone] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
-  /* 본진 아바타 클립 id — 한 화면에 이 플레이어가 여러 장 떠도(카드 여럿) SVG clipPath
-     id가 안 겹치게 판마다 다른 접두어를 쓴다. */
-  const clipUidRef = useRef(`mo${Math.random().toString(36).slice(2, 8)}`);
+  /* (삭제) 본진 아바타 클립 id — 사진을 도형으로 자르지 않게 되면서(지적) 클립 자체가
+     없어졌다. */
   /* 큰 화면 보기(요청: PC — 확대 아이콘을 누르면 맵과 조작부만 든 팝업이 엄청 크게) —
      같은 컴포넌트 트리를 통째로 포털 모달 안으로 옮겨 심으므로 재생 상태가 그대로
      이어진다. Esc로도 닫는다. */
@@ -1600,7 +1615,9 @@ export default function ReplayMotionPlayer({
                     : glyphStyle(p.raw, team)),
                 }}
               >
-                {activeNow ? label : "●"}
+                {/* 저그 수송(오버로드)은 점 대신 풍선+다리 도형(요청). */}
+                {activeNow ? label
+                  : g.unit === "Transport" && race === "저그" ? <ShapeIcon kind="ovie" /> : "●"}
               </span>
             );
           });
@@ -1769,7 +1786,9 @@ export default function ReplayMotionPlayer({
                   ...(activeNow ? chipStyle(p.raw, team) : glyphStyle(p.raw, team)),
                 }}
               >
-                {activeNow ? label : "●"}
+                {/* 오버로드(저그의 일꾼 아닌 정찰)는 점 대신 풍선+다리 도형(요청). */}
+                {activeNow ? label
+                  : race === "저그" && g.kind !== "worker" ? <ShapeIcon kind="ovie" /> : "●"}
               </span>
             );
           });
