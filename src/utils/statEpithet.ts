@@ -623,7 +623,7 @@ const TITLES: Title[] = [
      "아군 기지에 포토를 깔아 줬다"는 그 그림이 그대로 읽힌다. '수호자'는 어느 수에나
      붙을 수 있는 말이라 정작 이 칭호가 센 것이 안 보였다. */
   // 5% → 2%(요청) — 곁가지 다섯과 같은 선이다.
-  { ...tactic("아군 보호 퀸", ["ally-cannon"]), minPlaysShare: 0.1 },
+  { ...tactic("아군 보호 퀸", ["ally-cannon"]), minPlaysShare: 0.05 },
   /* 입구막기는 '막았다'가 아니라 '막아 놓고 뒤에서 컸다'가 값어치다(판정도 발전까지 함께
      본다 — replayTactics의 WALL_IN_GROW_MIN). 그래서 칭호도 막은 쪽이 아니라 그다음을
      부른다. "후반 도모 퀸"에서 바꿨다(지적: 개성적이지 않다) — 그 말은 어느 운영에나 붙는
@@ -648,7 +648,7 @@ const TITLES: Title[] = [
     ...tactic("폭탄드랍의 여왕", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"], 1),
     race: undefined,
     // 분모가 전체 판이라 기본 비율(6%)이 되레 무겁다(요청: 낮추기).
-    minPlaysShare: 0.01,
+    minPlaysShare: 0.02,
   },
 
   /* ── 운영(요청: 전략운영은 가중치를 좀 높여도 된다) ─────────────────────────
@@ -671,7 +671,7 @@ const TITLES: Title[] = [
      열쇠를 아우르는 말로 덮는다(tactic이 지어 주는 이름은 첫 열쇠 것뿐이다). */
   // 이름은 여신·여왕 계열로 통일(요청) — 메카닉 사령관에서 바꿨다.
   { ...tactic("메카닉의 여왕", ["mech", "center-tank", "side-tank"]),
-    why: "메카닉·탱크 조이기", minPlaysShare: 0.25, battle: true },
+    why: "메카닉·탱크 조이기", minPlaysShare: 0.3, battle: true },
   /* 과학의 여왕(요청: 신규 과학전 — 여신은 전설급에만) — 베슬을 둘 이상 띄우고 이레디·EMP·매트릭스를 실제로
      뿌린 판이다. 판정은 replayTactics의 vessel. */
   { ...tactic("과학전의 퀸", ["vessel"]), minPlaysShare: 0.2, vsWins: true, battle: true },
@@ -679,16 +679,16 @@ const TITLES: Title[] = [
      제공권 싸움이고 배틀은 끝판 한 방이라 그림이 다르다. */
   // 이름 확정(요청) — 발키리는 그 자체가 여전사라 이름이 곧 그림이다.
   { ...tactic("여전사 발키리", ["valkyrie"]), minPlaysShare: 0.15, vsWins: true, battle: true },
-  { ...tactic("우주전함 퀸", ["bc"]), minPlaysShare: 0.1, vsWins: true, battle: true },
+  { ...tactic("우주전함 퀸", ["bc"]), minPlaysShare: 0.15, vsWins: true, battle: true },
   /* 목동의 여왕(요청: 목동저그 변경·상향) — 다크스웜을 실제로 깔고 그 아래로 저글링·럴커·
      울트라 중 하나를 몰아넣은 판이다(지적: 스웜에는 저글링만이 아니라 럴커·울트라도 쓴다).
      판정은 replayTactics의 moka(개편). 자막이 짚은 판만 세고 서버가 이긴 판만 세므로
      (_tactic_counts) 잣대가 하나다. */
   // 스웜 목동 → 목동의 여왕(요청) — 여신·여왕 계열로.
-  { ...tactic("목동의 여왕", ["moka"]), minPlaysShare: 0.05, vsWins: true, battle: true },
+  { ...tactic("목동의 여왕", ["moka"]), minPlaysShare: 0.1, vsWins: true, battle: true },
   /* 브루들링의 여왕(요청: 퀸 쪽 추가) — 퀸을 띄워 브루들링·인스네어·패러사이트를 실제로
      쓴 판이다. 과학의 여왕(베슬)과 같은 자다. */
-  { ...tactic("진화의 여왕", ["queen"]), minPlaysShare: 0.05, vsWins: true, battle: true },
+  { ...tactic("진화의 여왕", ["queen"]), minPlaysShare: 0.02, vsWins: true, battle: true },
 
   // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
   /* (삭제) 프로 옆탱러(side-tank) — 요청. 옆탱은 아군 기지를 받쳐 주는 탱크와 제 기지
@@ -703,7 +703,7 @@ const TITLES: Title[] = [
   /* 성큰러시만 러시 기본값(3%)보다 높다(지적: 하한이 너무 낮다) — 저그는 앞마당에 성큰을
      늘 박으므로 '남의 집 앞 성큰'과 제 살림의 성큰이 자막에서 같은 열쇠로 잡히는 판이 있다.
      10%면 저그 판 열에 한 번은 그 그림이라야 걸린다(요청: 10%). */
-  { ...tactic("성큰러시 퀸", ["sunken-rush"], 1), minPlaysShare: 0.05 },
+  { ...tactic("성큰러시 퀸", ["sunken-rush"], 1), minPlaysShare: 0.1 },
   /* 센터의 여주인 → 센포의 여왕(요청) — 클럽에서 그 수를 부르는 말이 '센포'라, 그 말을
      그대로 쓰면 무엇을 세는 칭호인지가 바로 읽힌다. */
   { ...tactic("센포의 여왕", ["center-photon"]), minPlaysShare: 0.1 },
@@ -725,7 +725,7 @@ const TITLES: Title[] = [
      같은 캐리어라도 아비터가 끼면 스테이시스·리콜이 낀 다른 그림이라, 이름이 그 판을
      말하게 한다(맵 여왕과 같은 {n} 방식). 아비터를 뽑았나는 이긴 판 원장(mix)의 유닛
      수로 본다. */
-  { ...tactic("{n}", ["carrier"]), minPlaysShare: 0.05, battle: true, why: "캐리어",
+  { ...tactic("{n}", ["carrier"]), minPlaysShare: 0.02, battle: true, why: "캐리어",
     name: (s, of) => ((mix(s, of)?.units?.["Arbiter"] ?? 0) > 0 ? "보이지 않는 날파리 퀸" : "날파리 퀸") },
   /* 폭풍의 여왕(요청: 신규 질럿+템플러) — 질럿 몸에 스톰을 얹은 프로토스 지상 한 벌.
      판정은 replayTactics의 zealot-templar. */
@@ -736,7 +736,7 @@ const TITLES: Title[] = [
   /* 보이지 않는 여왕(요청: 어둠의 여왕에서 개명 — 다크 단독 또는 다템+커세어) — 그림자의
      여왕(은신 유닛 비중)과 달리 다크가 주인공인 판을 센다. */
   // 조건 상향(요청) — 프로토스 판 5% → 10%: 스무 판에 두 판은 다크로 이겨야 그 이름이다.
-  { ...tactic("보이지 않는 여왕", ["dark-templar"]), minPlaysShare: 0.65, vsWins: true, battle: true },
+  { ...tactic("보이지 않는 여왕", ["dark-templar"]), minPlaysShare: 0.7, vsWins: true, battle: true },
   /* 시공의 여왕(요청: 아비터 쪽 추가) — 아비터를 띄워 스테이시스·리콜을 실제로 쓴 판이다.
      함대의 여왕(캐리어+아비터)과 달리 아비터가 주인공인 판을 센다. */
   { ...tactic("시공을 지배하는 여제", ["arbiter"]), minPlaysShare: 0.2, vsWins: true, battle: true },
@@ -756,7 +756,7 @@ const TITLES: Title[] = [
   /* (삭제·요청) 은폐 유닛 퀸 — 병력 중 은신 유닛 비중. 다크가 주인공인 판은
      '보이지 않는 여왕'(dark-templar)이 따로 센다. */
   // 에픽 상향(요청: 뮤탈은 상향 — 이름도 여왕 계열로) + 전투 조건.
-  { ...tactic("뮤탈 습격 퀸", ["muta"]), minPlaysShare: 0.15, battle: true },
+  { ...tactic("뮤탈 습격 퀸", ["muta"]), minPlaysShare: 0.1, battle: true },
   /* 코끼리 조련사(요청) — 울트라리스크를 모아 나간 판이다. 저그의 마지막 지상 병력이라
      거기까지 판을 끌고 갔다는 말이기도 한데, 부르는 말은 그 그림 하나면 된다.
      한때 "코끼리떼를 모는 여인"으로 바꿔 봤다가 되돌렸다(요청) — 조련사 쪽이 짧고, 무엇을
@@ -838,7 +838,7 @@ const TITLES: Title[] = [
      삭제된 가디언 칭호 자리에, 저그 하늘의 두 얼굴을 되세운다. 어느 쪽으로 잡혔든 하늘로
      이긴 판이다. */
   { ...tactic("꽃게탕 퀸", ["guardian", "devourer"]), why: "가디언·디바우러",
-    minPlaysShare: 0.25, vsWins: true, battle: true },
+    minPlaysShare: 0.3, vsWins: true, battle: true },
   /* (삭제) 발키리 지휘관(valkyrie) — 위 "무자비한 오버로드 사냥꾼"이 같은 유닛으로 무엇을
      했는지까지 말한다. 뽑았다는 사실만 말하는 쪽을 접는다. */
   /* (삭제) 우리 집 문지기(front-defense) — 뺐다(지적: 입구는 막으라고 있는 것). 제 입구를
@@ -939,7 +939,7 @@ const TITLES: Title[] = [
      부르면 같은 기록이 그 사람의 끈기가 된다. 져도 센다(COUNTED_EVEN_IF_LOST) — 밀린 뒤의
      이야기라 이긴 판만 보면 영영 안 잡힌다. */
   /* 에픽으로 올렸다(요청) — 본진을 잃고도 판을 이어 간 이야기라 곁가지보다는 위다. */
-  { ...tactic("불사조", ["lodging", "relocate"]), why: "본진 밖 생존(이사·셋방살이)", minPlaysShare: 0.06, weight: 3 },
+  { ...tactic("불사조", ["lodging", "relocate"]), why: "본진 밖 생존(이사·셋방살이)", minPlaysShare: 0.11, weight: 3 },
   /* (삭제) 건물 띄우기(lift-off)로 짓던 "공중부양 마스터" — 뺐다(지적). 이 키는 자리를
      다 내주고 건물만 띄워 쫓겨 다닌 대목이라, 버틴 이야기로 넣었지만 칭호로 굳으면
      "집을 잃은 사람"이라는 딱지로 읽힌다. 자막에서 한 번 지나가는 말과, 이름 아래
