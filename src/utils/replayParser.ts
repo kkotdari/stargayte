@@ -632,9 +632,17 @@ function collectSignals(
      번호가 뜬 건물이고, 그 번호가 골라진 채의 우클릭은 랠리가 아니라 '비행 이동'이다.
      착륙(Land)하면 걷는다. */
   const flying = new Map<number, Set<number>>();
-  /* 선택 묶음 → 작은 번호(위 orderPositions.g 주석) — 같은 번호 집합이면 같은 묶음이다. */
+  /* 선택 묶음 → 작은 번호(위 orderPositions.g 주석) — 같은 번호 집합이면 같은 묶음이다.
+     같기만 해서는 모자라다(지적: 순간이동이 여전함) — 부대에서 몇 기가 죽거나, 드래그로
+     같은 부대의 대부분을 다시 집으면 집합이 달라져 묶음이 끊기고, 재생은 자리 어림으로
+     되돌아갔다. 그래서 승계를 본다: 새 집합이 최근 쓰인 옛 집합의 과반(큰 쪽 기준)과
+     겹치면 같은 부대의 이어짐이라 옛 번호를 물려받는다. 과반이 못 되는 겹침(한두 기만
+     떼어 낸 것)은 갈라져 나간 딴 무리라 새 번호다. 죽은 유닛의 번호가 새 유닛에게
+     재사용되는 오염은 시간 창(3분)으로 막는다 — 그 안의 재사용은 드물다. */
   const selIds = new Map<string, number>();
   let selIdSeq = 1;
+  const SEL_LINK_FRAMES = Math.round(180 / SECONDS_PER_FRAME);
+  const selSets = new Map<number, { tags: Set<number>; gid: number; frame: number }[]>();
   const tagsOf = (c: ScrepCmd): number[] => (
     Array.isArray(c.UnitTags) ? c.UnitTags.filter((t) => typeof t === "number") : []
   );
@@ -818,7 +826,26 @@ function collectSignals(
         if (picked.length > 0) {
           const gkey = `${c.PlayerID}:${[...picked].sort((a, b) => a - b).join(",")}`;
           gid = selIds.get(gkey);
-          if (gid === undefined) { gid = selIdSeq; selIdSeq += 1; selIds.set(gkey, gid); }
+          if (gid === undefined) {
+            // 겹침 승계(위 selIds 주석) — 최근 집합의 과반과 겹치면 같은 부대의 이어짐.
+            const list = selSets.get(c.PlayerID) ?? [];
+            let bestInter = 0;
+            for (const e of list) {
+              if (frame - e.frame > SEL_LINK_FRAMES) continue;
+              let inter = 0;
+              for (const tg of picked) if (e.tags.has(tg)) inter += 1;
+              if (inter >= Math.ceil(Math.max(picked.length, e.tags.size) / 2)
+                && inter > bestInter) { bestInter = inter; gid = e.gid; }
+            }
+            if (gid === undefined) { gid = selIdSeq; selIdSeq += 1; }
+            selIds.set(gkey, gid);
+          }
+          // 이 집합의 최근 사용 시각을 남긴다 — 다음 승계 판정의 재료다.
+          let list = selSets.get(c.PlayerID);
+          if (!list) { list = []; selSets.set(c.PlayerID, list); }
+          const hit = list.find((e) => e.gid === gid);
+          if (hit) { hit.tags = new Set(picked); hit.frame = frame; }
+          else list.push({ tags: new Set(picked), gid, frame });
         }
         s.orderPositions.push({
           frame, x: pos.x / PIXELS_PER_TILE, y: pos.y / PIXELS_PER_TILE, ...(kind ? { kind } : {}),
