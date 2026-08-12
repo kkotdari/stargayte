@@ -310,6 +310,7 @@ const LODGING_OFFSET_TILES = 16;
 
 export default function GameResultStory({
   gameResult, team1, team2, result, memberOf, highlightMemberIds, highlightTerms, active = true,
+  menu,
 }: {
   gameResult: GameResult;
   team1: GameResultSlot[];
@@ -318,6 +319,9 @@ export default function GameResultStory({
   memberOf: (id: string) => Member | undefined;
   highlightMemberIds?: Set<string>;
   highlightTerms?: string[];
+  /** 케밥 메뉴(요청: PC 기본이 확대인 만큼 확대 창에도 케밥·닫기) — 카드의
+   *  GameResultActionsMenu를 그대로 받아 확대 창 오른쪽 위에 앉힌다. */
+  menu?: import("react").ReactNode;
   /** 지금 실제로 보이는 카드인가 — 접힌 묶음은 카드 본체를 투명하게 깔아 둔 채로 두므로
    *  (자리를 주고받는 애니메이션 때문) 이 값 없이는 안 보이는 카드의 타임라인이 혼자
    *  돌아가 있다가 펼치는 순간 중간 장면부터 보인다. */
@@ -1720,6 +1724,7 @@ export default function GameResultStory({
           /* 확대 모드의 오른쪽 영역엔 이 경기의 댓글(지적: "리플" = 댓글) — 활동 카드
              하단과 같은 컴포넌트를 그대로 앉힌다. 모달(z 210) 안이라 overModal. */
           side={<ActivityComments targetType="gameResult" targetId={gameResult.id} overModal />}
+          menu={menu}
         />
       ) : (
       <ReplayMinimap

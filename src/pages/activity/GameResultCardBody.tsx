@@ -216,6 +216,14 @@ export default function GameResultCardBody({
                   gameResult={r.raw} team1={r.team1} team2={r.team2} result={r.result}
                   memberOf={memberOf} active={active}
                   highlightMemberIds={highlightMemberIds} highlightTerms={highlightTerms}
+                  /* 확대 창에도 케밥이 있어야 한다(요청: PC 기본이 확대) — 카드 윗줄의
+                     메뉴와 같은 것을 하나 더 만들어 내려보낸다. */
+                  menu={(
+                    <GameResultActionsMenu
+                      gameResult={r.raw} canDelete={canDelete} memberOf={memberOf}
+                      onDelete={setDeleteTarget}
+                    />
+                  )}
                 />
               </div>
         ))}

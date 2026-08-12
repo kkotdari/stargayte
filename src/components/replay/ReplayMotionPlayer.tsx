@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Cog, FlaskConical, Hammer, Maximize2, Minimize2, Mountain, Pause, Play, RotateCcw, Shield } from "lucide-react";
+import { Cog, FlaskConical, Hammer, Maximize2, Mountain, Pause, Play, RotateCcw, Shield, X } from "lucide-react";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import TerrainReviewModal from "../../modals/TerrainReviewModal";
 import Avatar from "../common/Avatar";
@@ -834,7 +834,7 @@ const fmtClock = (sec: number): string => {
 };
 
 export default function ReplayMotionPlayer({
-  grid, motion, endSec, bases, teamOfRaw, active = true, winnerTeam, side,
+  grid, motion, endSec, bases, teamOfRaw, active = true, winnerTeam, side, menu,
 }: {
   grid: ReplayMapGrid;
   motion: SummaryMotion;
@@ -851,6 +851,9 @@ export default function ReplayMotionPlayer({
   /** 확대 모드에서 맵 오른쪽 영역에 앉는 내용(지적: "리플" = 댓글) — 경기 결과의 댓글
    *  컴포넌트가 온다. 자막 패널로 오해했다가 바로잡았다. 인라인에선 안 그린다. */
   side?: React.ReactNode;
+  /** 케밥 메뉴(요청: PC 기본이 확대인 만큼 확대 창에도 케밥·닫기) — 확대 창 오른쪽 위,
+   *  닫기(X) 옆에 앉는다. 인라인에선 카드 윗줄의 원본이 이미 있으니 안 그린다. */
+  menu?: React.ReactNode;
   // (삭제·요청) caps — 자막 표시를 걷으면서 함께.
 }) {
   const total = useMemo(() => {
@@ -1593,6 +1596,8 @@ export default function ReplayMotionPlayer({
             이름은 하나만 적고 나머지는 점(지적: 겹치면 안 보인다). 긴 이름은 폰트를 한
             단계 줄인다. 생산·연구 중이면 심장처럼 뛴다(요청). */}
         {(() => {
+          /* 시작 홀은 파서가 합성한다(지적: 스타팅 포인트에 기지가 없다 → 재분석으로
+             해결, 폴백은 걷었다 — 요청). */
           /* 그리는 차례는 y(세로) 순이다 — 높이가 생기면서(BUILD_RISE) 높은 건물이 제 뒤
              건물 위로 솟는데(지적: "높이땜에 뒤에 건물과 겹쳐보일수도"), 사선 뷰에서는
              앞(y가 큰) 건물이 뒤를 가리는 것이 맞다. i는 원래 인덱스 그대로 들고 간다
@@ -2448,13 +2453,16 @@ export default function ReplayMotionPlayer({
           )}
         </div>
         <div className="scr-motion-expand-row">
+          {/* 확대 창의 케밥(요청: PC 기본이 확대인 만큼 케밥·닫기가 있어야 한다) —
+              카드 윗줄의 메뉴와 같은 것. 인라인에선 원본이 이미 있어 안 그린다. */}
+          {big && menu}
           <button
             type="button" className="scr-motion-btn scr-motion-expand"
             // 사람이 줄였으면 기억한다(위 shrunk 주석) — 재생을 다시 눌러도 안 커진다.
             onClick={() => setBig((v) => { if (v) shrunk.current = true; return !v; })}
-            aria-label={big ? "작게 보기" : "크게 보기"} title={big ? "작게 보기" : "크게 보기"}
+            aria-label={big ? "닫기" : "크게 보기"} title={big ? "닫기" : "크게 보기"}
           >
-            {big ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+            {big ? <X size={14} /> : <Maximize2 size={12} />}
           </button>
         </div>
       </div>
@@ -2555,14 +2563,12 @@ export default function ReplayMotionPlayer({
           className="scr-motion-big-backdrop"
           onClick={() => { shrunk.current = true; setBig(false); }}
         />
-        {/* 폭 상한 = (가용 높이 − 위아래 여백·슬림 탐색바 몫) × 맵 가로세로비 + 양옆
-            조작부 몫(요청: 조작부를 맵 양옆 세로로 — 맵을 최대한 크게, 탐색바는 맵 아래
-            슬림하게). 가로로 배속·컬러(왼쪽)와 재생·시간(오른쪽) 기둥 몫 170px, 오른쪽
-            댓글 영역(side)이 있으면 그 몫 310px을 더한다. */}
+        {/* 폭 상한 = (가용 높이 − 위아래 여백·슬림 탐색바 몫) × 맵 가로세로비 + 옆 기둥
+            몫(요청: 옆 기둥 위에서부터 로스터 → 조작부 → 댓글, 맵은 최대 크기) — 기둥은
+            고정 300px + 간격·패딩 40px. */}
         <div
           className="scr-modal scr-motion-big-modal"
-          // 로스터 기둥(양옆 88px×2 + 간격)이 맵 칸 안에 있어 그 몫 190px도 더한다.
-          style={{ width: `min(94vw, calc((100dvh - 84px) * ${(grid.width / grid.height).toFixed(4)} + ${side ? 670 : 360}px))` }}
+          style={{ width: `min(94vw, calc((100dvh - 88px) * ${(grid.width / grid.height).toFixed(4)} + 340px))` }}
         >{body}</div>
       </div>,
       document.body,
