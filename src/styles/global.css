@@ -10956,6 +10956,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 클로킹 유닛(옵저버·다크·클로킹 연구 뒤 레이스·고스트)은 반투명이다(요청) — 칩이든
    점이든 같이 옅어진다. */
 .scr-motion-cloaked { opacity: 0.45; }
+/* 오버로드 풍선 도형은 점 크기(1em)로는 다리가 안 보인다(지적: "오버로드 모양이 안
+   나오는듯") — 한 단 키운다. */
+.scr-motion-shape-svg.scr-motion-ovie { width: 1.7em; height: 1.7em; }
 /* 이름 칩만은 흐리게 안 한다(지적) — 칩은 '지금 깨어 있는' 쪽인데 자취가 뜸하다는 이유로
    반투명해지면, 방금까지 또렷하던 배지가 갑자기 꺼진 것처럼 읽힌다. 흐림은 도형(점)의
    몫으로 남긴다. */

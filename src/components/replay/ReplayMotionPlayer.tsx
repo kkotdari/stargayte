@@ -29,6 +29,13 @@ const SPEEDS = [2, 4, 8, 16, 32] as const;
  *  이름이었는데, 그 시간 내내 이름이 화면을 차지했다. 생산·연구가 돌면 그때 다시
  *  이름이 뜬다. */
 const BUILD_NAME_SEC = 6;
+/** 건물이 바닥 위로 솟는 높이 몫(타일) — 캔버스는 발자국 비율에 이만큼을 더해 세로로
+ *  길어지고, 그만큼 위로 올라앉아 바닥선은 발자국 그대로다(지적: "실제 건물은 바닥위에
+ *  높이가 있어"). 높이는 발자국 폭에 비례한다(지적: "바닥이 좁으면 대체로 높이도 낮아")
+ *  — 4칸짜리 커맨드는 1.6타일, 2칸짜리 파일런은 0.8타일 솟는다. 높은 건물이 제 뒤(위쪽)
+ *  건물을 가릴 수 있는 것은 사선 뷰의 원래 모습이고, 겹침 차례는 y가 큰(앞) 건물이
+ *  이긴다(렌더 정렬). */
+const riseOf = (unit: string): number => (FOOTPRINT[unit] ?? [3, 2])[0] * 0.4;
 /** 마법 텍스트가 떠 있는 시간(초, 게임 시간). */
 const CAST_HOLD_SEC = 6;
 /** 자취 점 사이가 이보다 벌어지면 잇지 않고 건너뛴다(초) — 한참 조용하다 다른 곳을 찍은
@@ -435,17 +442,19 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
   /* 저그 본진 3형제 — 몸통 + 밝은 윗면(요청: "해처리 윗부분 동그란 평평한 면 표현").
      레어·하이브는 그 위에 뿔·가시(요청). */
   hatchery: [[ZERG_MOUND, 1], [ZERG_TOP, 0.3, "#fff"]],
+  /* 레어 — 바닥 뿔은 하이브보다 확실히 작게(지적). */
   lair: [
-    [`${ZERG_MOUND} M2.4 12.2 L1.2 8 L4.2 10.6 Z M13.6 12.2 L14.8 8 L11.8 10.6 Z`, 1],
+    [`${ZERG_MOUND} M2.8 12.2 L2 9.2 L4.4 11.2 Z M13.2 12.2 L14 9.2 L11.6 11.2 Z`, 1],
     [ZERG_TOP, 0.3, "#fff"],
   ],
-  /* 하이브 — 본 건물보다 훨씬 긴 뿔 셋이 위로 솟고, 안쪽을 향한 가시가 따로 난다(요청). */
+  /* 하이브 — 본 건물보다 훨씬 긴 뿔 셋이 위로 솟고, 가시는 그 뿔에서 본 건물 쪽(안쪽)
+     으로 난다(지적). */
   hive: [
     [`${ZERG_MOUND}`
       + " M2 12.4 Q0.8 6.6 2.4 0.8 Q3.4 6.6 4.4 11.4 Z"
       + " M6.9 11 Q7.3 4 8 0.3 Q8.7 4 9.1 11 Z"
       + " M14 12.4 Q15.2 6.6 13.6 0.8 Q12.6 6.6 11.6 11.4 Z"
-      + " M4.4 10.6 L6 7.8 L6.6 10.4 Z M11.6 10.6 L10 7.8 L9.4 10.4 Z", 1],
+      + " M2.9 7.4 L5.6 8.6 L3.4 9.6 Z M13.1 7.4 L10.4 8.6 L12.6 9.6 Z", 1],
     [ZERG_TOP, 0.3, "#fff"],
   ],
   /* 파일런 — 얇은 마름모 크리스탈의 허리를 둘러싼 납작한 고리(요청: "기둥을 둘러싼
@@ -555,13 +564,16 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
 };
 /** 도형째 돌려 그리는 각도(시계방향) — 스타게이트는 45도(요청). */
 const SHAPE_ROT: Record<string, number> = { arch: 45 };
-function ShapeIcon({ kind }: { kind: string }) {
+function ShapeIcon({ kind, className }: { kind: string; className?: string }) {
   const faces = SHAPE_FACES[kind];
   const rot = SHAPE_ROT[kind];
   return (
     // preserveAspectRatio="none" — 상자(발자국 비율)에 맞춰 그림째 눌린다(요청: 캔버스
     // 비율을 정확하게). 정사각 상자(유닛 마커 등)에서는 아무 일도 안 일어난다.
-    <svg className="scr-motion-shape-svg" viewBox="0 0 16 16" preserveAspectRatio="none" aria-hidden>
+    <svg
+      className={cx("scr-motion-shape-svg", className)}
+      viewBox="0 0 16 16" preserveAspectRatio="none" aria-hidden
+    >
       <g transform={rot ? `rotate(${rot} 8 8)` : undefined}>
         {faces
           ? faces.map(([d, op, fill], i) => <path key={i} d={d} fill={fill ?? "currentColor"} opacity={op} />)
@@ -1367,7 +1379,14 @@ export default function ReplayMotionPlayer({
             이름은 하나만 적고 나머지는 점(지적: 겹치면 안 보인다). 긴 이름은 폰트를 한
             단계 줄인다. 생산·연구 중이면 심장처럼 뛴다(요청). */}
         {(() => {
-          return motion.builds.map(([sec, x, y, unit, raw, gone, liftAt], i) => {
+          /* 그리는 차례는 y(세로) 순이다 — 높이가 생기면서(BUILD_RISE) 높은 건물이 제 뒤
+             건물 위로 솟는데(지적: "높이땜에 뒤에 건물과 겹쳐보일수도"), 사선 뷰에서는
+             앞(y가 큰) 건물이 뒤를 가리는 것이 맞다. i는 원래 인덱스 그대로 들고 간다
+             (buildsByType 등이 그 인덱스로 잰다). */
+          const drawOrder = motion.builds.map((_, i) => i)
+            .sort((a, b) => motion.builds[a][2] - motion.builds[b][2]);
+          return drawOrder.map((i) => {
+            const [sec, x, y, unit, raw, gone, liftAt] = motion.builds[i];
             if (sec > t) return null;
             const goneAt = gone ?? 0;
             // 없어진 건물은 그냥 사라진다(요청: ✕ 표시 없음) — 착륙 이사·변태와도 한 결이다.
@@ -1463,14 +1482,19 @@ export default function ReplayMotionPlayer({
                   // 부속건물(+)은 본체에 딱 붙여 오른쪽 아래로(요청: "더 본건물에 딱 붙이고
                   // 아래로 내리기") — 왼쪽으로 당겨 겹치고, 세로는 내린다.
                   left: pct(bx + footDx(unit) - (ADDONS.has(unit) ? 1.6 : 0), grid.width),
-                  top: pct(by + footDy(unit) + (ADDONS.has(unit) ? 0.4 : 0), grid.height),
-                  // 캔버스 비율을 발자국 그대로(요청: "캔버스를 비율을 정확하게 하는게
-                  // 낫지") — 폭은 발자국 타일 폭, 높이는 발자국 비율(aspect-ratio)이 정한다.
-                  // 정사각 뷰박스 그림은 그 상자에 맞춰 눌린다(preserveAspectRatio 없음).
+                  // 건물은 바닥 위로 솟는다(지적: "실제 건물은 바닥위에 높이가 있어") —
+                  // 캔버스 높이에 그 몫(riseOf, 발자국 폭 비례)을 더하고, 늘어난 만큼
+                  // 위로 올려 바닥선은 발자국 그대로다.
+                  top: pct(
+                    by + footDy(unit) + (ADDONS.has(unit) ? 0.4 : 0)
+                      - (text !== name && !ADDONS.has(unit) ? riseOf(unit) / 2 : 0),
+                    grid.height,
+                  ),
+                  // 캔버스 비율 = 발자국 폭 × (발자국 높이 + 건물 높이 몫)(요청·지적).
                   ...(text !== name && !ADDONS.has(unit)
                     ? {
                       width: pct((FOOTPRINT[unit] ?? [3, 2])[0], grid.width),
-                      aspectRatio: `${(FOOTPRINT[unit] ?? [3, 2])[0]} / ${(FOOTPRINT[unit] ?? [3, 2])[1]}`,
+                      aspectRatio: `${(FOOTPRINT[unit] ?? [3, 2])[0]} / ${(FOOTPRINT[unit] ?? [3, 2])[1] + riseOf(unit)}`,
                     }
                     : {}),
                   // 긴 이름은 한 단계 작게(지적) — 여섯 자부터.
@@ -1833,7 +1857,7 @@ export default function ReplayMotionPlayer({
               >
                 {/* 저그 수송(오버로드)은 점 대신 풍선+다리 도형(요청). */}
                 {activeNow ? label
-                  : g.unit === "Transport" && race === "저그" ? <ShapeIcon kind="ovie" /> : "●"}
+                  : g.unit === "Transport" && race === "저그" ? <ShapeIcon kind="ovie" className="scr-motion-ovie" /> : "●"}
               </span>
             );
           });
@@ -2005,7 +2029,7 @@ export default function ReplayMotionPlayer({
               >
                 {/* 오버로드(저그의 일꾼 아닌 정찰)는 점 대신 풍선+다리 도형(요청). */}
                 {activeNow ? label
-                  : race === "저그" && g.kind !== "worker" ? <ShapeIcon kind="ovie" /> : "●"}
+                  : race === "저그" && g.kind !== "worker" ? <ShapeIcon kind="ovie" className="scr-motion-ovie" /> : "●"}
               </span>
             );
           });

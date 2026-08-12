@@ -428,7 +428,9 @@ const RESOURCE_TARGETS = new Set<string>([
 const BUILDING_ONLY_CMD_NAMES = new Set<string>([
   "Train", "Cancel Train", "Building Morph", "Lift Off", "Land",
 ]);
-const BUILD_CMD_NAMES = new Set<string>(["Build", "Building Morph", "Hatch"]);
+/* "Build Addon" — 커샛·머신샵 같은 테란 부속건물의 건설 커맨드(지적: 애드온이 표시가
+   안 된다 — 이 이름이 목록에 없어 buildPositions에 아예 안 실렸다). */
+const BUILD_CMD_NAMES = new Set<string>(["Build", "Build Addon", "Building Morph", "Hatch"]);
 
 // (삭제) 예전엔 유닛/건물 생산 프레임을 종류별 앞쪽 24개까지만 남겼다 — "9드론이냐
 // 12드론이냐" 같은 초반 순서만 보던 시절의 최적화였다. 그 뒤로 요약 엔진이 이 목록을
