@@ -748,7 +748,8 @@ const TITLES: Title[] = [
   { ...tactic("과학의 여왕", ["vessel"]), minPlaysShare: 0.05, vsWins: true, battle: true },
   /* 발키리와 배틀은 따로 두 칭호다(요청: 통합했다가 이름을 따로 받으며 갈랐다) — 발키리는
      제공권 싸움이고 배틀은 끝판 한 방이라 그림이 다르다. */
-  { ...tactic("하늘을 호령하는 여왕", ["valkyrie"]), minPlaysShare: 0.03, vsWins: true, battle: true },
+  // 이름 확정(요청) — 발키리는 그 자체가 여전사라 이름이 곧 그림이다.
+  { ...tactic("여전사 발키리", ["valkyrie"]), minPlaysShare: 0.03, vsWins: true, battle: true },
   { ...tactic("전함의 여제", ["bc"]), minPlaysShare: 0.02, vsWins: true, battle: true },
   /* 목동의 여왕(요청: 목동저그 변경·상향) — 다크스웜을 실제로 깔고 그 아래로 저글링·럴커·
      울트라 중 하나를 몰아넣은 판이다(지적: 스웜에는 저글링만이 아니라 럴커·울트라도 쓴다).
