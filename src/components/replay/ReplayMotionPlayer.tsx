@@ -559,7 +559,9 @@ function ShapeIcon({ kind }: { kind: string }) {
   const faces = SHAPE_FACES[kind];
   const rot = SHAPE_ROT[kind];
   return (
-    <svg className="scr-motion-shape-svg" viewBox="0 0 16 16" aria-hidden>
+    // preserveAspectRatio="none" — 상자(발자국 비율)에 맞춰 그림째 눌린다(요청: 캔버스
+    // 비율을 정확하게). 정사각 상자(유닛 마커 등)에서는 아무 일도 안 일어난다.
+    <svg className="scr-motion-shape-svg" viewBox="0 0 16 16" preserveAspectRatio="none" aria-hidden>
       <g transform={rot ? `rotate(${rot} 8 8)` : undefined}>
         {faces
           ? faces.map(([d, op, fill], i) => <path key={i} d={d} fill={fill ?? "currentColor"} opacity={op} />)
@@ -1462,11 +1464,14 @@ export default function ReplayMotionPlayer({
                   // 아래로 내리기") — 왼쪽으로 당겨 겹치고, 세로는 내린다.
                   left: pct(bx + footDx(unit) - (ADDONS.has(unit) ? 1.6 : 0), grid.width),
                   top: pct(by + footDy(unit) + (ADDONS.has(unit) ? 0.4 : 0), grid.height),
-                  // 도형 폭 = 발자국 폭(타일)에 비례(요청) — 다만 그림 대부분이 뷰박스
-                  // 가장자리 여백 없이 꽉 차게 그려져 눈에는 실제보다 넓게 읽혔다(지적:
-                  // "특히 폭이 너무 넓게") — 0.8을 곱해 눌러 둔다.
+                  // 캔버스 비율을 발자국 그대로(요청: "캔버스를 비율을 정확하게 하는게
+                  // 낫지") — 폭은 발자국 타일 폭, 높이는 발자국 비율(aspect-ratio)이 정한다.
+                  // 정사각 뷰박스 그림은 그 상자에 맞춰 눌린다(preserveAspectRatio 없음).
                   ...(text !== name && !ADDONS.has(unit)
-                    ? { width: pct((FOOTPRINT[unit] ?? [3, 2])[0] * 0.8, grid.width) }
+                    ? {
+                      width: pct((FOOTPRINT[unit] ?? [3, 2])[0], grid.width),
+                      aspectRatio: `${(FOOTPRINT[unit] ?? [3, 2])[0]} / ${(FOOTPRINT[unit] ?? [3, 2])[1]}`,
+                    }
                     : {}),
                   // 긴 이름은 한 단계 작게(지적) — 여섯 자부터.
                   ...(text.length >= 6 && !activeBuild ? { fontSize: 6 } : {}),
