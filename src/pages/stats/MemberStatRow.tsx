@@ -458,13 +458,12 @@ export default function MemberStatRow({
           쌓인다. 어느 막대인지는 왼쪽 이름이 말한다. */}
       {/* (삭제) 레이팅·순위 줄기 — 래더로 통째로 옮겼다(요청). 이 칸에는 이제 막대들만 있다. */}
       <div className="scr-stat-record-cell">
-        {/* 막대 넷이 세로로 한 줄기(요청) — 줄기를 둘로 나누지 않으므로 넷이 같은 폭을
-            나눠 갖고, 이름은 왼쪽 한 열에 모여 막대 시작점이 넷 다 같은 x에 선다. */}
-        <div className="scr-stat-record-col">
-          {/* 판수와 승률은 열 이름을 위에 한 번만 적는다(요청: 게임수·승률도 전체 몇 판 몇 %로,
-              라벨이 세로로 맞게) — 전체와 종족 셋이 같은 두 값을 말하는 줄이라, 줄마다
-              "게임수"·"승률"을 되풀이하면 같은 말이 여덟 번 적힌다. 열 이름을 머리에 두면
-              그 아래 네 줄이 곧 표가 되고, 값도 열 별로 세로로 맞는다. */}
+        {/* 두 줄기로 가른다(요청: 전적과 APM·커맨드 칸을 나누고 구분선) — 왼쪽은 전적 표
+            ([이름|경기수|승률] 세 열)이고 오른쪽은 손 수치(APM·커맨드) 두 줄이다. 구분선은
+            칸의 형제 규칙(.scr-stat-record-cell > * + *)이 긋는다. */}
+        <div className="scr-stat-record-col scr-stat-record-col-games">
+          {/* 판수와 승률은 열 이름을 위에 한 번만 적는다(요청) — 줄마다 되풀이하면 같은
+              말이 여덟 번 적힌다. */}
           <div className="scr-stat-record-item scr-stat-record-head">
             <span className="scr-stat-record-label" />
             <span>경기수</span>
@@ -481,11 +480,26 @@ export default function MemberStatRow({
               {stats.plays > 0 && <span className="scr-stat-record-num-unit">%</span>}
             </span>
           </div>
-          {/* 종족 셋은 전체 바로 아래다(요청) — 같은 두 값을 종족으로 쪼갠 줄이라 붙어 있어야
-              "전체 23판 가운데 프로토스가 17판"이 한눈에 읽힌다. */}
+          {/* 종족 셋은 전체 바로 아래다(요청) — 같은 두 값을 종족으로 쪼갠 줄이라 붙어
+              있어야 "전체 23판 가운데 프로토스가 17판"이 한눈에 읽힌다. */}
           {RACES.map((r) => (
             <RecordRace key={r} race={r} stats={byRace?.[r]} />
           ))}
+          {/* BEST는 전적 아래다(요청) — 이것도 '몇 판을 어떻게 뛰었나'의 끝줄이라 전적
+              표의 마지막 행으로 서고, 값은 경기수 열에 맞춘다. 0도 적는다(요청) — '0회'와
+              '이 표에 없는 값'이 같아 보이면 안 된다. */}
+          {showBest && (
+            <div className="scr-stat-record-item">
+              <span className="scr-stat-record-label">BEST</span>
+              <span className="scr-stat-record-num-v">
+                {stats.bests}
+                <span className="scr-stat-record-num-unit">회</span>
+              </span>
+              <span />
+            </div>
+          )}
+        </div>
+        <div className="scr-stat-record-col scr-stat-record-col-hands">
           <div className="scr-stat-record-item">
             <span className="scr-stat-record-label">APM</span>
             <RecordNum value={stats.avgApm} />
@@ -495,26 +509,6 @@ export default function MemberStatRow({
             <span className="scr-stat-record-label">커맨드<span className="scr-stat-record-per">/분</span></span>
             <RecordNum value={stats.avgCmd} />
           </div>
-          {/* BEST PLAYER 횟수(요청) — 막대 넷과 같은 격자의 한 줄이다. 한때 레이팅·순위
-              줄기에 따로 세워 뒀는데, 그 줄기가 래더로 통째로 옮겨 가면서(요청) 여기 말고는
-              앉을 자리가 없어졌다. 오히려 이 편이 맞다: 넷과 같은 이름표 열을 쓰므로 "무엇의
-              수인가"를 같은 방식으로 읽고, 값과 변동도 다른 줄들과 세로로 맞는다.
-              막대는 안 그린다 — 이 수는 남과 견주는 값이 아니라 그 사람이 받은 횟수다.
-              0도 적는다(요청) — 감추면 줄마다 이 자리가 있었다 없었다 해서 표가 들쭉날쭉해지고,
-              무엇보다 '0회'와 '이 표에 없는 값'이 같아 보인다. */}
-          {showBest && (
-            <div className="scr-stat-record-item">
-              <span className="scr-stat-record-label">BEST</span>
-              <div className="scr-stat-best-cell">
-                <span className="scr-stat-best-n">
-                  {stats.bests}
-                  {/* 단위는 수의 오른쪽에 매달되 자리는 안 차지한다 — 레이팅의 "R", 일꾼의
-                      "기"와 같은 규칙이라 수 자체가 아래 변동과 세로로 맞는다. */}
-                  <span className="scr-stat-best-unit">회</span>
-                </span>
-              </div>
-            </div>
-          )}
         </div>
       </div>
       {/* 종족마다 한 칸씩 — 건설·유닛·스킬을 한 칸으로 합치고 그 칸을 종족별로 되풀이한다
