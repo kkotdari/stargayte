@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEven
 import ReplayMinimap, { ARROW_MIN_TILES, type MinimapArrow, type MinimapMarker } from "../../components/replay/ReplayMinimap";
 import ReplayStoryTimeline from "../../components/replay/ReplayStoryTimeline";
 import ReplayMotionPlayer from "../../components/replay/ReplayMotionPlayer";
+import ActivityComments from "./ActivityComments";
 import RosterSide, { outcomeFor, resolveSlotName } from "./GameResultSides";
 import RaceBadge from "../../components/common/RaceBadge";
 import { useReplayMap } from "../../hooks/useReplayMap";
@@ -1716,20 +1717,9 @@ export default function GameResultStory({
           grid={storyMap} motion={motionData} endSec={endSecVal}
           bases={bases} teamOfRaw={teamOfRaw} active={active}
           winnerTeam={gameResult.result === "team1" ? 1 : gameResult.result === "team2" ? 2 : undefined}
-          /* 확대 모드의 오른쪽 리플 영역(요청) — 요약 문장 전체를 시각 순으로. 연속
-             재생에선 자막(beat)을 안 쓰므로, 문장들은 이 패널로만 나온다. */
-          side={sentences.length > 0 ? (
-            <div>
-              {sentences.map((sn, i) => (
-                <p key={i} className="scr-motion-side-line">
-                  {capMin(sn) !== null && <span className="scr-motion-side-time">[{capMin(sn)}]</span>}
-                  {sn.parts.map((pt, j) => (pt.team
-                    ? <span key={j} className={pt.team === 1 ? "scr-sum-team1" : "scr-sum-team2"}>{pt.text}</span>
-                    : <span key={j}>{pt.text}</span>))}
-                </p>
-              ))}
-            </div>
-          ) : undefined}
+          /* 확대 모드의 오른쪽 영역엔 이 경기의 댓글(지적: "리플" = 댓글) — 활동 카드
+             하단과 같은 컴포넌트를 그대로 앉힌다. 모달(z 210) 안이라 overModal. */
+          side={<ActivityComments targetType="gameResult" targetId={gameResult.id} overModal />}
         />
       ) : (
       <ReplayMinimap

@@ -122,6 +122,8 @@ function splitSquads(
   mergeTiles: number = SQUAD_MERGE_TILES,
 ): [number, number, number][][] {
   const squads: [number, number, number][][] = [];
+  // 직전 점이 들어간 부대 — 연속 클릭은 대개 같은 선택(같은 부대)의 것이다.
+  let prevIdx = -1;
   for (let i = 0; i < pts.length; i += 1) {
     const pt = pts[i];
     let best = -1;
@@ -130,6 +132,21 @@ function splitSquads(
       const last = squads[k][squads[k].length - 1];
       const d = Math.hypot(last[1] - pt[1], last[2] - pt[2]);
       if (d < bestD) { bestD = d; best = k; }
+    }
+    /* 순간이동 방지(지적: 이동 명령을 내리면 바로 그 자리로 가 버림) — 배정이 '목적지에서
+       가장 가까운 부대'라, 목적지 곁에 한참 조용한 옛 부대가 있으면 그 부대가 명령을
+       가로채 마커가 목적지에서 바로 켜졌다. 실제로 움직인 부대(직전 클릭과 같은 선택)는
+       제자리인 채였다. 가장 가까운 부대가 한참(SQUAD_FADE_SEC) 조용했고, 직전 클릭의
+       부대가 방금(10초 안)도 부려졌고 걸어갈 만한 거리(TELEPORT 이내)면, 직전 부대가
+       그리로 이동한 것으로 본다 — 마커가 걸어간다. */
+    if (best >= 0 && bestD <= mergeTiles && prevIdx >= 0 && prevIdx !== best) {
+      const bl = squads[best][squads[best].length - 1];
+      const pl = squads[prevIdx][squads[prevIdx].length - 1];
+      if (pt[0] - bl[0] > SQUAD_FADE_SEC && pt[0] - pl[0] <= 10
+        && Math.hypot(pl[1] - pt[1], pl[2] - pt[2]) <= SQUAD_TELEPORT_TILES) {
+        best = prevIdx;
+        bestD = Math.hypot(pl[1] - pt[1], pl[2] - pt[2]);
+      }
     }
     /* 방향이 갈리면 바로 안 묶는다(지적: 멈춰 있거나 같은 방향일 때만 묶기 — 뮤탈
        나누기처럼 서로 다른 움직임은 딴 무리다) — 그 부대가 방금 가던 쪽에서 90도 넘게
@@ -150,7 +167,7 @@ function splitSquads(
         if (vlen > 2 && wlen > 2 && (vx * wx + vy * wy) / (vlen * wlen) < 0) joinable = false;
       }
     }
-    if (joinable) { squads[best].push(pt); continue; }
+    if (joinable) { squads[best].push(pt); prevIdx = best; continue; }
     if (best >= 0) {
       const last = squads[best][squads[best].length - 1];
       let staysBehind = false;
@@ -161,7 +178,7 @@ function splitSquads(
         }
       }
       // 옛 자리가 곧 다시 안 쓰인다 — 무리째 이사다. 이어 걸어간다.
-      if (!staysBehind) { squads[best].push(pt); continue; }
+      if (!staysBehind) { squads[best].push(pt); prevIdx = best; continue; }
     }
     if (squads.length < SQUAD_MAX) {
       /* 새 부대의 출발점(지적: 엉뚱한 데서 태어남) — 곁 부대의 마지막 자리, 그것도 없으면
@@ -170,12 +187,13 @@ function splitSquads(
       const seed: [number, number] | null = from ? [from[1], from[2]] : home ?? null;
       squads.push(seed && Math.hypot(seed[0] - pt[1], seed[1] - pt[2]) > SAME_SPOT_START_TILES
         ? [[pt[0], seed[0], seed[1]], pt] : [pt]);
+      prevIdx = squads.length - 1;
       continue;
     }
     /* 다 찼으면 가장 가까운 부대가 그리로 걸어간다(지적: 순간이동) — 예전에는 가장 오래
        조용한 부대를 골라, 맵 반대편의 부대가 유령처럼 가로질러 걸었다. 그마저도 아주 멀면
        빠뜨린다 — 놓치는 것보다 유령이 더 큰 거짓말이다. */
-    if (bestD <= SQUAD_TELEPORT_TILES) squads[best].push(pt);
+    if (bestD <= SQUAD_TELEPORT_TILES) { squads[best].push(pt); prevIdx = best; }
   }
   return squads;
 }
@@ -791,8 +809,8 @@ export default function ReplayMotionPlayer({
   active?: boolean;
   /** 이긴 편 — 재생이 끝나면 그 편 아바타에 트로피를 얹는다(요청). 무승부·미확정은 없음. */
   winnerTeam?: 1 | 2;
-  /** 확대 모드의 오른쪽 리플 영역(요청) — 경기 요약 문장 같은 곁들이 내용. 인라인에선
-   *  안 그린다. */
+  /** 확대 모드에서 맵 오른쪽 영역에 앉는 내용(지적: "리플" = 댓글) — 경기 결과의 댓글
+   *  컴포넌트가 온다. 자막 패널로 오해했다가 바로잡았다. 인라인에선 안 그린다. */
   side?: React.ReactNode;
   // (삭제·요청) caps — 자막 표시를 걷으면서 함께.
 }) {
@@ -2488,7 +2506,7 @@ export default function ReplayMotionPlayer({
         </button>
         <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
       </div>
-      {/* 확대 모드의 오른쪽 리플 영역(요청) — 요약 문장 등 곁들이. 인라인에선 안 그린다. */}
+      {/* 확대 모드의 오른쪽 댓글 영역(지적: "리플" = 댓글) — 맵 오른쪽 그리드 4번째 칸. */}
       {big && side ? <div className="scr-motion-sidewrap">{side}</div> : null}
       {terrainOpen && typeof grid.imageId === "number" && grid.image && (
         <TerrainReviewModal
@@ -2514,10 +2532,10 @@ export default function ReplayMotionPlayer({
         {/* 폭 상한 = (가용 높이 − 위아래 여백·슬림 탐색바 몫) × 맵 가로세로비 + 양옆
             조작부 몫(요청: 조작부를 맵 양옆 세로로 — 맵을 최대한 크게, 탐색바는 맵 아래
             슬림하게). 가로로 배속·컬러(왼쪽)와 재생·시간(오른쪽) 기둥 몫 170px, 오른쪽
-            리플 영역(side)이 있으면 그 몫 270px을 더한다. */}
+            댓글 영역(side)이 있으면 그 몫 310px을 더한다. */}
         <div
           className="scr-modal scr-motion-big-modal"
-          style={{ width: `min(94vw, calc((100dvh - 84px) * ${(grid.width / grid.height).toFixed(4)} + ${side ? 440 : 170}px))` }}
+          style={{ width: `min(94vw, calc((100dvh - 84px) * ${(grid.width / grid.height).toFixed(4)} + ${side ? 480 : 170}px))` }}
         >{body}</div>
       </div>,
       document.body,

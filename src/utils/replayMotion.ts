@@ -611,14 +611,49 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       if (e[5] > 0) continue;
       const us = PROD_OF[e[3]];
       if (!us) continue;
+      /* 건물별 생산 귀속(재지적: 생산 끊긴 건물이 끝까지 남는다 — 좌표·개체를 잘 봐야
+         한다, 딴 데 같은 종류 건물이 계속 뽑으면 종류 합계로는 끊김이 안 보인다) —
+         생산 태그의 첫 등장 순서 = 그 종류를 지은 순서로 보고(재생 tagOrdinals와 같은
+         어림), 이 건물 몫의 생산만 잰다. 본진 계열은 시작 본진이 건설 기록에 없어
+         순번이 어긋나므로, 태그 없는 옛 분석본과 함께 종류 합계 그대로다. */
+      const hall = ["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(e[3]);
       let lastProd = 0;
-      for (const u of us) {
-        for (const f of sg.unitFrames?.[u] ?? []) lastProd = Math.max(lastProd, f * SECONDS_PER_FRAME);
+      let attributed = false;
+      if (!hall) {
+        const sameType = myBuildIdx.filter((k2) => builds[k2][3] === e[3]);
+        const myOrd = sameType.indexOf(k);
+        const evs: [number, number][] = [];
+        for (const u of us) {
+          const frames = sg.unitFrames?.[u] ?? [];
+          const tags = sg.trainTags?.[u] ?? [];
+          if (tags.length === 0 || tags.length !== frames.length) continue;
+          for (let x = 0; x < frames.length; x += 1) {
+            evs.push([frames[x] * SECONDS_PER_FRAME, tags[x]]);
+          }
+        }
+        if (evs.length > 0) {
+          evs.sort((a, b) => a[0] - b[0]);
+          const ord = new Map<number, number>();
+          for (const [, tg] of evs) if (tg > 0 && !ord.has(tg)) ord.set(tg, ord.size);
+          for (const [sec2, tg] of evs) {
+            if (ord.get(tg) === myOrd) {
+              lastProd = Math.max(lastProd, sec2);
+              attributed = true;
+            }
+          }
+        }
       }
+      if (!attributed) {
+        for (const u of us) {
+          for (const f of sg.unitFrames?.[u] ?? []) lastProd = Math.max(lastProd, f * SECONDS_PER_FRAME);
+        }
+      }
+      // 생산이 아예 없던 건물은 선 시각부터 잰다 — 갓 지은 건물을 옛 공격으로 걷지 않게.
+      if (lastProd === 0) lastProd = e[0];
       if (gameEndSec - lastProd < PROD_QUIET_SEC) continue;
       let lastHit = 0;
       for (const o of foeAttacks) {
-        if (o.sec > lastProd - 30 && Math.hypot(o.x - e[1], o.y - e[2]) <= RAZE_RADIUS) {
+        if (o.sec > Math.max(lastProd - 30, e[0]) && Math.hypot(o.x - e[1], o.y - e[2]) <= RAZE_RADIUS) {
           lastHit = Math.max(lastHit, o.sec);
         }
       }
