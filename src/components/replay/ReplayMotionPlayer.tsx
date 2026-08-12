@@ -102,6 +102,9 @@ const SCOUT_WALK_SPEED = 3.7;
 const SQUAD_LOOKAHEAD_SEC = 30;
 /** 출발점이 첫 목적지와 이보다 가까우면 심지 않는다 — 제자리 걸음만 한 점 는다. */
 const SAME_SPOT_START_TILES = 4;
+/** 이만큼 조용했던 부대는 먼 점을 못 가져간다(초, 지적: 잠든 무명 부대가 명령을 가로채
+ *  순간이동처럼 보임) — 그 클릭은 새 부대로 태어나거나(자리가 있으면) 버려진다. */
+const SQUAD_RETIRE_SEC = 120;
 /** 묶음 이름(by) → 그 안의 유닛들 — 유닛별 마커의 수를 셀 때 쓴다. */
 const BY_UNITS: Record<string, string[]> = {
   Bionic: ["Marine", "Firebat", "Medic"],
@@ -202,8 +205,11 @@ function splitSquads(
           break;
         }
       }
-      // 옛 자리가 곧 다시 안 쓰인다 — 무리째 이사다. 이어 걸어간다.
-      if (!staysBehind) {
+      /* 옛 자리가 곧 다시 안 쓰인다 — 무리째 이사다. 이어 걸어간다.
+         단, 한참 잠든 부대는 못 가져간다(지적: "기존 명령 받은 무명 부대에 계속 명령을
+         할당해서" 순간이동) — 2분 넘게 조용하던 부대가 맵 저쪽 클릭을 가로채면 유령이
+         걸어간다. 그 클릭은 아래에서 새 부대로 태어난다. */
+      if (!staysBehind && pt[0] - last[0] <= SQUAD_RETIRE_SEC) {
         squads[best].push(pt);
         prevIdx = best;
         if (g !== undefined) gToSquad.set(g, best);
@@ -226,9 +232,10 @@ function splitSquads(
       continue;
     }
     /* 다 찼으면 가장 가까운 부대가 그리로 걸어간다(지적: 순간이동) — 예전에는 가장 오래
-       조용한 부대를 골라, 맵 반대편의 부대가 유령처럼 가로질러 걸었다. 그마저도 아주 멀면
-       빠뜨린다 — 놓치는 것보다 유령이 더 큰 거짓말이다. */
-    if (bestD <= SQUAD_TELEPORT_TILES) {
+       조용한 부대를 골라, 맵 반대편의 부대가 유령처럼 가로질러 걸었다. 그마저도 아주 멀거나
+       그 부대가 한참 잠들어 있었으면 빠뜨린다 — 놓치는 것보다 유령이 더 큰 거짓말이다. */
+    if (bestD <= SQUAD_TELEPORT_TILES
+      && pt[0] - squads[best][squads[best].length - 1][0] <= SQUAD_RETIRE_SEC) {
       squads[best].push(pt);
       prevIdx = best;
       if (g !== undefined) gToSquad.set(g, best);
