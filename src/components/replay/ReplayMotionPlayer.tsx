@@ -7,7 +7,7 @@ import Avatar from "../common/Avatar";
 import { cx } from "../../utils/format";
 import { UNIT_KO, BUILDING_KO, TECH_KO } from "../../utils/replaySummaryText";
 import type { ReplayMapGrid } from "../../utils/replayParser";
-import { isAirUnit, type MotionTrack, type SummaryMotion } from "../../utils/replayMotion";
+import { isAirUnit, type MotionTrack, type SummaryMotion, type TrackPt } from "../../utils/replayMotion";
 import { DEFENSE_BUILDINGS } from "../../utils/replayBuildMix";
 import { terrainOf, decodeWalk, groundPath, type TerrainGrid } from "../../utils/minimapTerrain";
 import type { MinimapMarker } from "./ReplayMinimap";
@@ -118,17 +118,34 @@ const BY_UNITS: Record<string, string[]> = {
  *  새로 서는 부대는 곁 부대의 마지막 자리를 출발점으로 심는다 — 첫 점이 곧 목적지라
  *  마커가 목적지에서 태어나던 것을, 걸어 나가는 그림으로 되돌린다. */
 function splitSquads(
-  pts: [number, number, number][], home?: [number, number] | null,
+  pts: TrackPt[], home?: [number, number] | null,
   mergeTiles: number = SQUAD_MERGE_TILES,
   /** 드랍 지점들(요청: 드랍십 태우고 내리는 게 반영 안 됨) — 갓 내린 자리 곁의 새 명령
    *  뭉치는 여기서 태어난 부대다(수송선이 날라 준 것이라 걸어온 자취가 없는 게 맞다). */
   warps?: [number, number, number][],
-): [number, number, number][][] {
-  const squads: [number, number, number][][] = [];
+): TrackPt[][] {
+  const squads: TrackPt[][] = [];
   // 직전 점이 들어간 부대 — 연속 클릭은 대개 같은 선택(같은 부대)의 것이다.
   let prevIdx = -1;
+  /* 선택 묶음 번호(g) → 그 묶음이 마지막으로 들어간 부대(지적: 단축키 부대지정 뒤
+     이동이 순간이동으로 보임) — 같은 부대지정으로 내린 명령은 거리와 무관하게 같은
+     부대의 자취다. 자리 어림(가까운 부대)보다 굵은 근거라 먼저 본다. */
+  const gToSquad = new Map<number, number>();
   for (let i = 0; i < pts.length; i += 1) {
     const pt = pts[i];
+    const g = pt[3];
+    if (g !== undefined) {
+      const k = gToSquad.get(g);
+      if (k !== undefined) {
+        const last = squads[k][squads[k].length - 1];
+        // 너무 멀면(TELEPORT 초과) 드랍·리콜로 옮겨진 것일 수 있다 — 아래 워프 시딩에 맡긴다.
+        if (Math.hypot(last[1] - pt[1], last[2] - pt[2]) <= SQUAD_TELEPORT_TILES) {
+          squads[k].push(pt);
+          prevIdx = k;
+          continue;
+        }
+      }
+    }
     let best = -1;
     let bestD = Infinity;
     for (let k = 0; k < squads.length; k += 1) {
@@ -170,7 +187,12 @@ function splitSquads(
         if (vlen > 2 && wlen > 2 && (vx * wx + vy * wy) / (vlen * wlen) < 0) joinable = false;
       }
     }
-    if (joinable) { squads[best].push(pt); prevIdx = best; continue; }
+    if (joinable) {
+      squads[best].push(pt);
+      prevIdx = best;
+      if (g !== undefined) gToSquad.set(g, best);
+      continue;
+    }
     if (best >= 0) {
       const last = squads[best][squads[best].length - 1];
       let staysBehind = false;
@@ -181,7 +203,12 @@ function splitSquads(
         }
       }
       // 옛 자리가 곧 다시 안 쓰인다 — 무리째 이사다. 이어 걸어간다.
-      if (!staysBehind) { squads[best].push(pt); prevIdx = best; continue; }
+      if (!staysBehind) {
+        squads[best].push(pt);
+        prevIdx = best;
+        if (g !== undefined) gToSquad.set(g, best);
+        continue;
+      }
     }
     if (squads.length < SQUAD_MAX) {
       /* 새 부대의 출발점(지적: 엉뚱한 데서 태어남) — 갓 내린 드랍 지점이 곁에 있으면
@@ -195,12 +222,17 @@ function splitSquads(
       squads.push(seed && Math.hypot(seed[0] - pt[1], seed[1] - pt[2]) > SAME_SPOT_START_TILES
         ? [[pt[0], seed[0], seed[1]], pt] : [pt]);
       prevIdx = squads.length - 1;
+      if (g !== undefined) gToSquad.set(g, prevIdx);
       continue;
     }
     /* 다 찼으면 가장 가까운 부대가 그리로 걸어간다(지적: 순간이동) — 예전에는 가장 오래
        조용한 부대를 골라, 맵 반대편의 부대가 유령처럼 가로질러 걸었다. 그마저도 아주 멀면
        빠뜨린다 — 놓치는 것보다 유령이 더 큰 거짓말이다. */
-    if (bestD <= SQUAD_TELEPORT_TILES) { squads[best].push(pt); prevIdx = best; }
+    if (bestD <= SQUAD_TELEPORT_TILES) {
+      squads[best].push(pt);
+      prevIdx = best;
+      if (g !== undefined) gToSquad.set(g, best);
+    }
   }
   return squads;
 }
@@ -1134,72 +1166,9 @@ export default function ReplayMotionPlayer({
   const scrubbing = useRef(false);
   const seekPending = useRef<number | null>(null);
 
-  /* 확대·이동(요청) — 더블클릭(더블탭)으로 그 자리를 확대하고, 확대 중에는 한 손가락으로
-     끌어 움직이며 두 손가락으로 배율을 조절한다. 축소는 더블탭 한 번 더. 렌즈는 지도와
-     마커를 통째로 키운다 — 마커만 제 크기로 두는 것은 확대의 뜻(그 자리를 크게)과 어긋난다. */
-  const [lens, setLens] = useState({ z: 1, tx: 0, ty: 0 });
-  const lensPointers = useRef(new Map<number, { x: number; y: number }>());
-  const pinchBase = useRef<{ d: number; z: number } | null>(null);
-  const clampLens = (z: number, tx: number, ty: number) => {
-    const el = mapRef.current;
-    if (!el) return { z, tx, ty };
-    const r = el.getBoundingClientRect();
-    return {
-      z,
-      tx: Math.min(0, Math.max(r.width * (1 - z), tx)),
-      ty: Math.min(0, Math.max(r.height * (1 - z), ty)),
-    };
-  };
-  /** 화면의 한 점(px·py)이 제자리에 남도록 배율만 바꾼다. */
-  const zoomAt = (px: number, py: number, wantZ: number) => {
-    setLens((v) => {
-      const z = Math.max(1, Math.min(4, wantZ));
-      const wx = (px - v.tx) / v.z;
-      const wy = (py - v.ty) / v.z;
-      return clampLens(z, px - wx * z, py - wy * z);
-    });
-  };
-  const lensHandlers = {
-    onDoubleClick: (e: React.MouseEvent) => {
-      /* PC에서는 확대 기능을 통째로 걷었다(요청) — 마우스 더블클릭은 아무 일도 안 한다.
-         모바일(터치)의 더블탭·두 손가락은 그대로다. */
-      if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
-      const r = mapRef.current?.getBoundingClientRect();
-      if (!r) return;
-      zoomAt(e.clientX - r.left, e.clientY - r.top, lens.z > 1 ? 1 : 2.4);
-    },
-    onPointerDown: (e: React.PointerEvent) => {
-      lensPointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (lensPointers.current.size === 2) {
-        const [a, b] = [...lensPointers.current.values()];
-        pinchBase.current = { d: Math.hypot(a.x - b.x, a.y - b.y), z: lens.z };
-      }
-    },
-    onPointerMove: (e: React.PointerEvent) => {
-      const prev = lensPointers.current.get(e.pointerId);
-      if (!prev) return;
-      const cur = { x: e.clientX, y: e.clientY };
-      lensPointers.current.set(e.pointerId, cur);
-      const r = mapRef.current?.getBoundingClientRect();
-      if (!r) return;
-      if (lensPointers.current.size === 2 && pinchBase.current) {
-        const [a, b] = [...lensPointers.current.values()];
-        const d = Math.hypot(a.x - b.x, a.y - b.y);
-        const mid = { x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top };
-        if (pinchBase.current.d > 0) zoomAt(mid.x, mid.y, pinchBase.current.z * (d / pinchBase.current.d));
-      } else if (lensPointers.current.size === 1 && lens.z > 1) {
-        setLens((v) => clampLens(v.z, v.tx + (cur.x - prev.x), v.ty + (cur.y - prev.y)));
-      }
-    },
-    onPointerUp: (e: React.PointerEvent) => {
-      lensPointers.current.delete(e.pointerId);
-      if (lensPointers.current.size < 2) pinchBase.current = null;
-    },
-    onPointerCancel: (e: React.PointerEvent) => {
-      lensPointers.current.delete(e.pointerId);
-      if (lensPointers.current.size < 2) pinchBase.current = null;
-    },
-  };
+  /* (삭제·요청: 모바일 확대 기능 제거) — 더블탭·핀치 렌즈를 통째로 걷었다. PC 확대는
+     이미 걷었으니(마우스 더블클릭 무시) 렌즈는 더 이상 쓸 곳이 없다. 확대는 큰 화면
+     보기(확대 모달)가 맡는다. */
   const [done, setDone] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   /* (삭제) 본진 아바타 클립 id — 사진을 도형으로 자르지 않게 되면서(지적) 클립 자체가
@@ -1611,26 +1580,11 @@ export default function ReplayMotionPlayer({
       {teamCol(1)}
       <div
         className="scr-motion-map" ref={mapRef}
-        style={{
-          aspectRatio: `${grid.width} / ${grid.height}`,
-          overflow: lens.z > 1 ? "hidden" : "visible",
-          touchAction: lens.z > 1 ? "none" : "pan-y",
-        }}
-        {...lensHandlers}
+        style={{ aspectRatio: `${grid.width} / ${grid.height}` }}
       >
-        <div
-          className="scr-motion-lens"
-          style={lens.z > 1
-            ? {
-              transform: `translate(${lens.tx}px, ${lens.ty}px) scale(${lens.z})`,
-              /* 마커의 되돌림 배율(요청: "건물만 2배까지 확대 유닛은 그대로") — 렌즈가
-                 z배로 키운 것을 마커가 제 몫만큼 되돌린다. 건물은 min(z,2)/z(2배 상한),
-                 유닛·아바타·마법은 1/z(원래 크기 그대로). global.css의 --mk 참고. */
-              ["--mk-build" as string]: `${Math.min(lens.z, 2) / lens.z}`,
-              ["--mk-unit" as string]: `${1 / lens.z}`,
-            }
-            : undefined}
-        >
+        {/* 렌즈 상자는 남긴다(마커들의 부모) — 확대 기능이 걷혀(요청: 모바일 확대 제거)
+            transform은 더 이상 없다. */}
+        <div className="scr-motion-lens">
         {grid.image
           ? <img className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`} />
           : <div className="scr-motion-canvas scr-motion-canvas-blank" />}

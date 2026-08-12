@@ -77,26 +77,30 @@ const PROD_QUIET_SEC = 90;
 /** 취소가 물릴 수 있는 착공 후 시간(초) — 이보다 오래된 건물은 이미 다 섰다. */
 const CANCEL_WINDOW_SEC = 60;
 
+/** 자취 한 점 [초, x, y, 선택 묶음 번호?] — 넷째 값(g)은 같은 부대지정으로 내린 명령끼리
+ *  같은 번호다(지적: 단축키 부대 이동의 순간이동). 옛 분석본에는 없다. */
+export type TrackPt = [number, number, number, number?];
+
 /** 한 사람의 자취 — 원본 게임 아이디(raw)로 부른다(beats와 같은 규칙). */
 export interface MotionTrack {
   raw: string;
   /** 게임 내 색(#rrggbb, 요청) — 재생 화면이 팀 2색 대신 이 색으로 칠한다. 없으면 팀 색. */
   color?: string;
-  /** [초, x, y] — STEP_SEC 버킷의 마지막 명령 자리. 안 움직인 버킷은 접혀 있다. */
-  pts: [number, number, number][];
+  /** [초, x, y, g?] — STEP_SEC 버킷의 마지막 명령 자리. 안 움직인 버킷은 접혀 있다. */
+  pts: TrackPt[];
   /** 일꾼의 자취 — 부대 자취(pts)에서 걷어낸, 정체가 일꾼으로 드러난 명령들이다(지적:
    *  정찰이 안 보인다). 옛 분석본에는 없거나(더 옛것) 정찰 전부가 섞여 있다(한 벌이던
    *  시절) — 화면은 어느 쪽이든 "일꾼"으로 부른다. */
-  spts?: [number, number, number][];
+  spts?: TrackPt[];
   /** 수송선(오버로드 포함)의 자취 — 한 기짜리 클릭인데 정체가 수송선인 것(지적: 드랍십
    *  순간이동). 저그면 화면이 "오버로드"라 부른다. 옛 분석본에는 없다. */
-  tpts?: [number, number, number][];
+  tpts?: TrackPt[];
   /** 정체 모를 한 기짜리 클릭의 자취 — 시작 오버로드·옵저버 정찰이 대부분이다(지적:
    *  오버로드 이름이 안 나온다). 저그면 "오버로드", 아니면 "정찰"로 부른다. */
-  opts?: [number, number, number][];
+  opts?: TrackPt[];
   /** 뜬 건물의 비행 클릭 자취(요청: 엔베 띄워 정찰이 안 나온다) — 떠 있는(liftAt) 건물
    *  마커가 이 자취를 비행 속도로 따라 난다. 옛 분석본에는 없다. */
-  fpts?: [number, number, number][];
+  fpts?: TrackPt[];
   /** 명령의 선택 크기 자취 [초, x, y, 몇 기 골랐나](요청: 유닛 수를 죽음 판정보다 실제
    *  컨트롤되는 수로) — 죽은 유닛은 더 못 고르니 저절로 준다. 5초·6타일 안 연속 클릭은
    *  최대값 하나로 접는다. 옛 분석본에는 없다. */
@@ -109,7 +113,7 @@ export interface MotionTrack {
    *  묶기) — 시즈·버로우·스팀팩처럼 그 유닛만 하는 커맨드로 정체가 드러난 번호(orderPositions
    *  의 by)의 명령들이다. 키는 그 이름("Siege Tank"·"Bionic"·"Lurker"…). 정체가 안
    *  드러난 명령은 여전히 pts(무명 부대)다. 옛 분석본에는 없다. */
-  upts?: Record<string, [number, number, number][]>;
+  upts?: Record<string, TrackPt[]>;
   /** [초, 유닛 영문명] — 그때까지 가장 많이 뽑은 전투 유닛이 바뀐 순간들(이름표 재료). */
   units: [number, string][];
   /** [초, 누적 일꾼 수] — 자원 캐는 모습의 재료(요청). 생산 커맨드 누적이라 죽은 일꾼은
@@ -167,22 +171,25 @@ const dist = (ax: number, ay: number, bx: number, by: number): number =>
  *  옛 분석본에는 n이 없어 둘째 조건이 그냥 통과된다 — 그런 판은 재생 쪽의 나들이 걷기
  *  (dropSpikes)가 마저 막는다. */
 function foldTrack(
-  combat: { frame: number; x: number; y: number }[],
-): [number, number, number][] {
+  combat: { frame: number; x: number; y: number; g?: number }[],
+): TrackPt[] {
   let step = STEP_SEC;
   for (;;) {
-    const byBucket = new Map<number, { sec: number; x: number; y: number }>();
+    const byBucket = new Map<number, { sec: number; x: number; y: number; g?: number }>();
     for (const o of combat) {
       const sec = o.frame * SECONDS_PER_FRAME;
-      byBucket.set(Math.floor(sec / step), { sec: Math.round(sec), x: o.x, y: o.y });
+      byBucket.set(Math.floor(sec / step), { sec: Math.round(sec), x: o.x, y: o.y, g: o.g });
     }
-    const pts: [number, number, number][] = [];
+    const pts: TrackPt[] = [];
     for (const key of [...byBucket.keys()].sort((a, b) => a - b)) {
       const p = byBucket.get(key)!;
       const last = pts[pts.length - 1];
       // 같은 자리에서 맴돈 버킷은 접는다 — 자취는 "어디로 갔나"지 "몇 번 찍었나"가 아니다.
       if (last && dist(last[1], last[2], p.x, p.y) < SAME_SPOT_TILES) continue;
-      pts.push([p.sec, Math.round(p.x), Math.round(p.y)]);
+      // 선택 묶음 번호(g)는 그대로 실어 나른다(지적: 부대지정 이동의 순간이동).
+      pts.push(p.g !== undefined
+        ? [p.sec, Math.round(p.x), Math.round(p.y), p.g]
+        : [p.sec, Math.round(p.x), Math.round(p.y)]);
     }
     if (pts.length <= TRACK_CAP) return pts;
     step *= 2;
@@ -190,12 +197,12 @@ function foldTrack(
 }
 
 function trackOf(
-  orders: { frame: number; x: number; y: number; kind?: "attack" | "move"; by?: string; n?: number }[],
+  orders: { frame: number; x: number; y: number; kind?: "attack" | "move"; by?: string; n?: number; g?: number }[],
   armyStartSec: number,
 ): {
-  pts: [number, number, number][]; spts: [number, number, number][];
-  tpts: [number, number, number][]; opts: [number, number, number][];
-  upts: Record<string, [number, number, number][]>;
+  pts: TrackPt[]; spts: TrackPt[];
+  tpts: TrackPt[]; opts: TrackPt[];
+  upts: Record<string, TrackPt[]>;
 } {
   const movable = orders.filter((o) => o.kind !== undefined && o.by !== "Building");
   type O = (typeof movable)[number];

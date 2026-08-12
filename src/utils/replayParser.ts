@@ -128,6 +128,10 @@ export interface ReplayPlayerSignals {
    *  비워지고, 그 좌표는 여느 때처럼 '근처에 몰렸나'로만 쓰인다. */
   orderPositions: {
     frame: number; x: number; y: number; kind?: "attack" | "move";
+    /** 선택 묶음 번호(지적: 단축키 부대지정 뒤 이동이 순간이동으로 보임) — 같은 유닛
+     *  번호 집합(부대지정·같은 드래그 선택)으로 내린 명령끼리 같은 번호다. 재생이 이
+     *  번호로 "같은 부대의 자취"를 잇는다. 옛 분석본에는 없다. */
+    g?: number;
     /** 그 명령을 받은 유닛이 무엇이었나 — 알아낸 경우에만 붙는다("Siege Tank",
      *  "High Templar", "Arbiter", "Defiler", "Bionic", "Transport" …).
      *
@@ -592,6 +596,9 @@ function collectSignals(
      번호가 뜬 건물이고, 그 번호가 골라진 채의 우클릭은 랠리가 아니라 '비행 이동'이다.
      착륙(Land)하면 걷는다. */
   const flying = new Map<number, Set<number>>();
+  /* 선택 묶음 → 작은 번호(위 orderPositions.g 주석) — 같은 번호 집합이면 같은 묶음이다. */
+  const selIds = new Map<string, number>();
+  let selIdSeq = 1;
   const tagsOf = (c: ScrepCmd): number[] => (
     Array.isArray(c.UnitTags) ? c.UnitTags.filter((t) => typeof t === "number") : []
   );
@@ -768,9 +775,17 @@ function collectSignals(
             frame, x: pos.x / PIXELS_PER_TILE, y: pos.y / PIXELS_PER_TILE,
           });
         }
+        // 선택 묶음 번호(위 selIds 주석) — 부대지정으로 오간 명령을 재생이 한 자취로 잇는다.
+        let gid: number | undefined;
+        if (picked.length > 0) {
+          const gkey = `${c.PlayerID}:${[...picked].sort((a, b) => a - b).join(",")}`;
+          gid = selIds.get(gkey);
+          if (gid === undefined) { gid = selIdSeq; selIdSeq += 1; selIds.set(gkey, gid); }
+        }
         s.orderPositions.push({
           frame, x: pos.x / PIXELS_PER_TILE, y: pos.y / PIXELS_PER_TILE, ...(kind ? { kind } : {}),
           ...(picked.length > 0 ? { n: picked.length } : {}),
+          ...(gid !== undefined ? { g: gid } : {}),
         });
         if (picked.length > 0) {
           pending.push({ pid: c.PlayerID, idx: s.orderPositions.length - 1, tags: [...picked] });
