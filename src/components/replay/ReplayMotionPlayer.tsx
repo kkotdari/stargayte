@@ -300,7 +300,8 @@ export default function ReplayMotionPlayer({
                 ...(small ? {} : chipStyle(p.raw)),
               }}
             >
-              {small || !unit ? "●" : (UNIT_KO[unit] ?? "●")}
+              {/* 수도 함께 적는다(요청) — "질럿 12" 꼴. 이름을 모르면 수만. */}
+              {small || !unit ? "●" : `${UNIT_KO[unit] ?? ""} ${size}`.trim()}
             </span>
           );
         })}
