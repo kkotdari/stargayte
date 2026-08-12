@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Avatar from "../common/Avatar";
 import { cx } from "../../utils/format";
 import { UNIT_KO, TECH_KO } from "../../utils/replaySummaryText";
@@ -64,7 +64,7 @@ const fmtClock = (sec: number): string => {
 };
 
 export default function ReplayMotionPlayer({
-  grid, motion, endSec, bases, teamOfRaw, active = true,
+  grid, motion, endSec, bases, teamOfRaw, active = true, caps = [],
 }: {
   grid: ReplayMapGrid;
   motion: SummaryMotion;
@@ -76,6 +76,10 @@ export default function ReplayMotionPlayer({
   teamOfRaw: (raw: string) => 1 | 2 | undefined;
   /** 화면에 실제로 보이는 카드인가 — 안 보이는 카드의 시계는 세우지 않는다. */
   active?: boolean;
+  /** 자막(요청: 예전처럼 미니맵 아래) — 재생 시각이 문장의 시각을 지나면 그 문장이 뜬다.
+   *  시각 없는 문장(맺음말)은 재생이 끝까지 닿았을 때 나온다. beat 자체는 여기서 몰라도
+   *  된다 — 문장과 초만 받는다. */
+  caps?: { atSec: number | null; node: ReactNode }[];
 }) {
   const total = useMemo(() => {
     if (endSec && endSec > 0) return endSec;
@@ -195,6 +199,26 @@ export default function ReplayMotionPlayer({
           </span>
         ))}
       </div>
+
+      {/* 자막 — 예전처럼 지도 아래다(요청). 문장을 전부 겹쳐 두고 지금 것만 보인다:
+          칸 높이가 늘 가장 긴 문장이라 재생 중에 아래가 위아래로 안 흔들린다(스냅 시절과
+          같은 수법). 지금 문장 = 시각이 t를 안 넘긴 마지막 문장, 맺음말(null)은 끝에서. */}
+      {caps.length > 0 && (() => {
+        let cur = -1;
+        caps.forEach((c, i) => {
+          if (c.atSec !== null ? c.atSec <= t : done) cur = i;
+        });
+        return (
+          <div className="scr-motion-caps">
+            {caps.map((c, i) => (
+              <p key={i} className="scr-motion-cap-line" data-on={i === cur} aria-hidden={i !== cur}>
+                {c.atSec !== null && <span className="scr-motion-cap-time">[{fmtClock(c.atSec)}]</span>}
+                {c.node}
+              </p>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* 조종간 — 재생/일시정지 · 배속 · 시간 스크러버. 스냅 눈금이 아니라 진짜 시간축이다. */}
       <div className="scr-motion-bar">

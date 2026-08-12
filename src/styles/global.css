@@ -10870,6 +10870,14 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-base-ghost { filter: grayscale(1); opacity: 0.5; }
 .scr-motion-base-name { font-size: 8px; font-weight: 700; text-shadow: 0 0 3px rgba(0, 0, 0, 0.9); }
 @keyframes scr-motion-in { from { opacity: 0; transform: translate(-50%, -50%) scale(1.6); } }
+/* 자막(요청: 미니맵 아래) — 전부 겹쳐 두고 지금 것만 보여 높이가 안 흔들린다. */
+.scr-motion-caps { display: grid; }
+.scr-motion-cap-line {
+  grid-area: 1 / 1; margin: 0; visibility: hidden;
+  font-size: var(--fs-caption); line-height: 1.5; color: var(--text); word-break: keep-all;
+}
+.scr-motion-cap-line[data-on="true"] { visibility: visible; }
+.scr-motion-cap-time { color: var(--dim); font-variant-numeric: tabular-nums; margin-right: 4px; }
 .scr-motion-bar { display: flex; align-items: center; gap: 6px; }
 .scr-motion-btn {
   min-width: 28px; height: 22px; padding: 0 6px; border-radius: var(--radius-sm);

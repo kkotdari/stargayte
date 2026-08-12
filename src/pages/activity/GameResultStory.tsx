@@ -1671,6 +1671,27 @@ export default function GameResultStory({
     ? gameResult.summaryData.end * SECONDS_PER_FRAME : null;
   const teamOfRaw = (raw: string): 1 | 2 | undefined => slots.find((x) => x.raw === raw)?.team;
 
+  /* 연속 재생의 자막(요청: 예전처럼 미니맵 아래) — 문장마다 가리키는 시각(초)을 붙여
+     플레이어에게 준다. 시각 없는 문장(맺음말)은 null — 재생이 끝에 닿으면 나온다. */
+  const motionCaps = sentences.map((sn) => {
+    const beats = gameResult.summaryData?.beats ?? [];
+    let at: number | null = null;
+    for (const i of sn.beats) {
+      const v = beats[i]?.at;
+      if (typeof v === "number" && (at === null || v < at)) at = v;
+    }
+    return {
+      atSec: at === null ? null : Math.max(0, Math.round(at * SECONDS_PER_FRAME)),
+      node: (
+        <>
+          {sn.parts.map((pt, j) => (pt.team
+            ? <span key={j} className={pt.team === 1 ? "scr-sum-team1" : "scr-sum-team2"}>{pt.text}</span>
+            : <span key={j}>{pt.text}</span>))}
+        </>
+      ),
+    };
+  });
+
   const mapBlock = storyMap && (
     <div className="scr-story-map" {...stopBubble}>
       {/* 머리는 두 줄이다(요청) — 윗줄은 그 판이 벌어진 자리(맵·경기 시간), 아랫줄은 그
@@ -1714,7 +1735,7 @@ export default function GameResultStory({
         /* 연속 재생 — beat(자막·장면)는 안 쓴다(요청: 남겨두되 사용은 안 하게). */
         <ReplayMotionPlayer
           grid={storyMap} motion={motionData} endSec={endSecVal}
-          bases={bases} teamOfRaw={teamOfRaw} active={active}
+          bases={bases} teamOfRaw={teamOfRaw} active={active} caps={motionCaps}
         />
       ) : (
       <ReplayMinimap
