@@ -11002,11 +11002,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 생산·연구 중 건물 — 크기 박동(쿵쾅) 대신 라임색 글로우가 쉬었다 밝아졌다 한다(요청).
    빛은 아이콘 '뒤'에만 깔린다(지적: 아이콘 자체를 물들이지 말 것) — 도형 밑의 둥근 후광
    하나가 숨 쉰다. 세기는 낮춰 뒀다(지적: 효과 약화). */
-/* 퍼지는 후광 대신 또렷한 라임 링(지적: "그 액티브 효과때문에 건물이 블러가 돼보여") —
-   그라데이션 안개가 건물 가장자리를 뿌옇게 만들었다. 링은 숨 쉬되 선은 선명하다.
-   크기는 아이콘 상자를 그대로 따라(inset) 돈다 — 발자국 비례로 커진 도형에도 맞는다. */
+/* 퍼지는 후광 대신 또렷한 라임 테(지적: "그 액티브 효과때문에 건물이 블러가 돼보여") —
+   그라데이션 안개가 건물 가장자리를 뿌옇게 만들었다. 테는 숨 쉬되 선은 선명하다.
+   모양은 동그라미가 아니라(지적) 아이콘 상자를 그대로 두른 둥근 네모다 — 발자국 비례로
+   넓어진 건물에는 그만큼 넓은 테가 앉는다. */
 .scr-motion-build-glow::before {
-  content: ""; position: absolute; inset: -3px; border-radius: 50%;
+  content: ""; position: absolute; inset: -2.5px; border-radius: 3px;
   z-index: -1; pointer-events: none;
   border: 1.5px solid rgba(190, 255, 80, 0.9);
   animation: scr-motion-glow 1.2s ease-in-out infinite;
