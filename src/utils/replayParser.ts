@@ -594,24 +594,36 @@ function collectSignals(
        나온 뒤에야 알 수 있어서, 다 훑은 뒤에 되돌아가 붙여야 그 앞의 이동도 놓치지 않는다. */
   const sel = new Map<number, number[]>();
   const groups = new Map<string, number[]>();
-  const unitOfTag = new Map<string, [number, string][]>();
+  const unitOfTag = new Map<string, { from: number; name: string; last: number }[]>();
   const nameTag = (key: string, frame: number, named: string) => {
     const list = unitOfTag.get(key);
-    if (!list) { unitOfTag.set(key, [[frame, named]]); return; }
-    const last = list[list.length - 1];
-    if (last[1] !== named) list.push([frame, named]);
+    if (!list) { unitOfTag.set(key, [{ from: frame, name: named, last: frame }]); return; }
+    const tail = list[list.length - 1];
+    // 같은 이름의 되풀이는 갱신이다 — 그 정체가 그 시각까지 살아 있었다는 증거.
+    if (tail.name === named) tail.last = Math.max(tail.last, frame);
+    else list.push({ from: frame, name: named, last: frame });
   };
+  /* 정체의 유효기간(지적: 아직도 일꾼 마커와 유닛 마커가 뒤바뀐다 — 번호는 유닛이 죽으면
+     새 유닛이 물려받는데, 새 임자가 저만의 커맨드를 안 내리면 옛 정체가 앞으로 무한정
+     뻗었다. 일꾼 번호를 물려받은 탱크는 시즈할 때까지 일꾼이었고, 그 클릭이 일꾼 자취에
+     섞여 순간이동으로도 보였다). 갱신(같은 정체의 재확인)이 끊긴 지 이만큼 지나면 모른다고
+     답한다 — 일꾼은 건설·채집 클릭으로 수시로 갱신되니 짧게, 나머지는 넉넉히. */
+  const ID_TTL_SEC: Record<string, number> = { Worker: 180 };
+  const ID_TTL_DEFAULT_SEC = 300;
   /** 그 시각의 임자 이름 — 첫 정체는 뒤(과거)로도 뻗는다: 그 유닛은 제 정체가 드러나기
-   *  전에도 그 유닛이었다. 정체가 갈아탄 뒤(번호 재사용)의 시각은 새 임자를 따른다. */
+   *  전에도 그 유닛이었다. 앞(미래)으로는 유효기간까지만 뻗는다(위 ID_TTL 주석). */
   const nameAt = (key: string, frame: number): string | undefined => {
     const list = unitOfTag.get(key);
     if (!list) return undefined;
-    let name = list[0][1];
-    for (const [f, n] of list) {
-      if (f > frame) break;
-      name = n;
+    let span = list[0];
+    for (const sp of list) {
+      if (sp.from > frame) break;
+      span = sp;
     }
-    return name;
+    if (frame < span.from) return span.name;
+    const ttl = (ID_TTL_SEC[span.name] ?? ID_TTL_DEFAULT_SEC) / SECONDS_PER_FRAME;
+    if (frame - span.last > ttl) return undefined;
+    return span.name;
   };
   const pending: { pid: number; idx: number; tags: number[] }[] = [];
   /* 태우기 후보(위 태움 주석) — 정체 표가 다 찬 뒤에 수송선을 찍은 것만 남긴다. */
