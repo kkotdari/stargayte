@@ -319,6 +319,8 @@ const SHAPE_KIND: Record<string, string> = {
      지붕 공장, 스타포트는 착륙 패드(원)와 받침, 로보틱스는 돔, 스타게이트는 문(아치). */
   Barracks: "house", Factory: "factory", Starport: "pad",
   "Robotics Facility": "dome", Stargate: "arch",
+  // 가스 건물은 넙적한 판(요청) — 자원 위에 낮게 엎드린 모양.
+  Refinery: "gas", Assimilator: "gas", Extractor: "gas",
 };
 /** 저그 둔덕 몸통 — 셋이 같은 몸을 쓰고 뿔만 자란다(아래 lair/hive). 옆구리는 종 모양
  *  으로 불룩하게(지적: "해처리의 곡선이 반대로 됨" — 나팔처럼 파인 곡선을 뒤집었다).
@@ -329,16 +331,18 @@ const SHAPE_PATHS: Record<string, string> = {
   // 좀 더 얇은 마름모로(요청) — 꽉 찬 정마름모는 네모와 잘 안 갈렸다.
   diamond: "M8 1 12 8 8 15 4 8Z",
   trapezoid: "M4 4 12 4 16 12 0 12Z",
-  /* 커맨드는 납작·넓게, 직선을 줄인 둥근 돔에(요청) 꼭대기 가운데 얇은 판 하나(요청). */
-  tomb: "M1.5 14 Q1.5 5.2 8 5.2 Q14.5 5.2 14.5 14 Z M5.3 3.2 H10.7 V4.6 H5.3 Z",
+  /* 커맨드는 납작·넓게, 직선을 줄인 둥근 돔에(요청) 꼭대기 가운데 얇은 판 하나(요청).
+     판은 더 작고 얇게(지적: 너무 두꺼움). */
+  tomb: "M1.5 14 Q1.5 5.2 8 5.2 Q14.5 5.2 14.5 14 Z M6.2 3.8 H9.8 V4.5 H6.2 Z",
   tombFlat: "M1.5 13 V10.5 Q1.5 7 8 7 Q14.5 7 14.5 10.5 V13 Z",
   coil: "M1 11a7 3.5 0 1 0 14 0a7 3.5 0 1 0-14 0Z M6.6 8a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0-2.8 0Z",
   pyramid: "M8 1 16 15 0 15Z",
   // 게이트는 원 위에 더 가파른 삼각(요청) — 소환 관문의 링과 첨탑.
   gate: "M8 1 L12.2 11 L3.8 11 Z M8 15.2 a3.4 3.4 0 1 1 0 -6.8 a3.4 3.4 0 1 1 0 6.8 Z",
   // 넙적한 세모(요청: 넥서스) — 밑변이 높이의 두 배쯤이라 눌러앉은 피라미드로 읽히고,
-  // 양옆에 뾰족 기둥이 살짝 솟는다(요청).
-  pyramidWide: "M8 4.5 16 14 0 14Z M2.6 14 L3.4 8.6 L4.6 14 Z M13.4 14 L12.6 8.6 L11.4 14 Z",
+  // 양옆에 뾰족 기둥이 솟는다(요청). 처음엔 경사면에 1px 남짓 겹쳐 안 보였다(지적:
+  // "기둥 어디감") — 경사 위로 확실히 뚫고 나오게 키웠다.
+  pyramidWide: "M8 4.5 16 14 0 14Z M1.8 14 L2.9 6 L4.4 14 Z M14.2 14 L13.1 6 L11.6 14 Z",
   hatchery: ZERG_MOUND,
   lair: `${ZERG_MOUND} M2.4 13.6 L1.2 9.2 L4.2 11.8 Z M13.6 13.6 L14.8 9.2 L11.8 11.8 Z`,
   hive: `${ZERG_MOUND} M2.4 13.6 L0.8 6.2 L4.6 11.4 Z M13.6 13.6 L15.2 6.2 L11.4 11.4 Z`
@@ -348,7 +352,17 @@ const SHAPE_PATHS: Record<string, string> = {
   pad: "M8 3a5 5 0 1 0 .01 0Z M3 12h10v3H3Z",
   dome: "M2 14 V10 A6 6 0 0 1 14 10 V14 Z",
   arch: "M2 15 V4 H14 V15 H10 V8 H6 V15 Z",
+  gas: "M0.8 13 Q0.8 8.8 8 8.8 Q15.2 8.8 15.2 13 Z",
 };
+/** 본진 아바타용 실루엣(요청: "아바타를 본진 안에", "아바타용 모양들도 크기 비슷하게") —
+ *  건물 도형을 그대로 쓰면 종족마다 덩치가 달라(피라미드는 뾰족해 얼굴이 좁고, 커맨드의
+ *  떠 있는 판은 사진 조각을 따로 남긴다) 셋을 비슷한 부피로 다시 깎은 판이다. */
+const AVATAR_HALL_PATHS: Record<string, string> = {
+  테란: "M1.5 14.5 Q1.5 4.5 8 4.5 Q14.5 4.5 14.5 14.5 Z",
+  프로토스: "M8 2.5 15.5 14.5 0.5 14.5Z",
+  저그: "M5 4.5 L11 4.5 Q11.2 8.8 14 11.6 Q15.6 13.2 15.6 14.5 L0.4 14.5 Q0.4 13.2 2 11.6 Q4.8 8.8 5 4.5 Z",
+};
+
 function ShapeIcon({ kind }: { kind: string }) {
   return (
     <svg className="scr-motion-shape-svg" viewBox="0 0 16 16" aria-hidden>
@@ -1213,7 +1227,10 @@ export default function ReplayMotionPlayer({
                 style={{
                   // 나는 중이면 비행 좌표(bx·by), 아니면 제자리다(위 착륙 이사 주석).
                   // 앵커는 발자국 가운데다(FOOTPRINT 주석 — 왼쪽 위 타일 그대로면 치우친다).
-                  left: pct(bx + footDx(unit), grid.width), top: pct(by + footDy(unit), grid.height),
+                  // 부속건물(+)은 본체 쪽으로 살짝 파고든다(요청: "건물에 연결된(조금 겹친)
+                  // 오른쪽 아래") — 제 자리는 본체 오른쪽 아래라, 왼쪽 위로 당기면 겹친다.
+                  left: pct(bx + footDx(unit) - (ADDONS.has(unit) ? 1.2 : 0), grid.width),
+                  top: pct(by + footDy(unit) - (ADDONS.has(unit) ? 0.8 : 0), grid.height),
                   // 긴 이름은 한 단계 작게(지적) — 여섯 자부터.
                   ...(text.length >= 6 && !activeBuild ? { fontSize: 6 } : {}),
 
@@ -1367,8 +1384,9 @@ export default function ReplayMotionPlayer({
                     모양의 색 테를 두른다. 사진이 없는 사람은 도형 바탕에 첫 글자다.
                     종족은 이 실루엣이 이미 말하므로 종족 배지는 걷었다(요청). */}
                 {(() => {
-                  const hallKind = m.race === "테란" ? "tomb" : m.race === "프로토스" ? "pyramid" : m.race === "저그" ? "hatchery" : null;
-                  if (!hallKind) {
+                  // 종족마다 비슷한 부피로 다시 깎은 아바타 전용 판(AVATAR_HALL_PATHS 주석).
+                  const hallPath = m.race ? AVATAR_HALL_PATHS[m.race] : undefined;
+                  if (!hallPath) {
                     return (
                       <span
                         className="scr-motion-base-ring"
@@ -1384,8 +1402,8 @@ export default function ReplayMotionPlayer({
                       className="scr-motion-base-hallsvg" viewBox="0 0 16 16" aria-hidden
                       style={{ color: modeColor(m.key, m.team) }}
                     >
-                      <defs><clipPath id={cid}><path d={SHAPE_PATHS[hallKind]} /></clipPath></defs>
-                      <path d={SHAPE_PATHS[hallKind]} fill="currentColor" />
+                      <defs><clipPath id={cid}><path d={hallPath} /></clipPath></defs>
+                      <path d={hallPath} fill="currentColor" />
                       {m.avatar ? (
                         <image
                           href={m.avatar} x="0" y="0" width="16" height="16"
@@ -1398,7 +1416,7 @@ export default function ReplayMotionPlayer({
                           {(m.name || "?").slice(0, 1)}
                         </text>
                       )}
-                      <path d={SHAPE_PATHS[hallKind]} fill="none" stroke="currentColor" strokeWidth="1.6" />
+                      <path d={hallPath} fill="none" stroke="currentColor" strokeWidth="1.6" />
                     </svg>
                   );
                 })()}
