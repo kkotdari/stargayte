@@ -10974,8 +10974,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 
 /* 지형 검수 모달(요청) — 그림을 크게, 그 위에 이동 불가 칸을 어둡게 겹친다. */
 .scr-terrain-modal { max-width: 640px; }
-/* 게임 상세 팝업(z-index 130) 위에 뜬다(지적) — 리플레이 화면의 산 버튼이 여는 모달이다. */
-.scr-terrain-overlay { z-index: 200; }
+/* 게임 상세 팝업(상자 z-index 130) 위에 뜬다(지적: 아직도 뒤에 뜸) — 오버레이는
+   display:contents라 상자가 없어 z-index가 안 먹는다(첫 시도의 함정). 모달 상자에 건다. */
+.scr-terrain-modal { z-index: 200; }
 /* 산 버튼 줄(요청) — 미니맵 바로 아래 가운데. */
 .scr-motion-terrain-row { display: flex; justify-content: center; }
 .scr-terrain-hint { margin: 0 0 8px; font-size: var(--fs-caption); color: var(--muted); }
