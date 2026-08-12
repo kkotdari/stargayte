@@ -25,6 +25,20 @@ import type { GameType, MemberStatsEntry } from "../types";
 /** 내전 = 팀전. 칭호는 이 유형의 기록으로만 매긴다(요청). */
 const CLAN_TYPE: GameType = "0102";
 
+/** 클럽 전체 판수와 최근 한 달 판수 — 기준 분모(normDenom)가 최근 한 달 페이스에 비례한다
+ *  (요청: 전체 기간으로 하면 뒤늦게 들어온 사람이 기준 판수를 못 채운다). 목록 첫 페이지의
+ *  total만 쓴다(한 건만 받아 값만 쓴다). 실패하면 null — 그 값을 쓰는 계산만 기본값으로 돈다. */
+async function clubGameCounts(): Promise<{ totalGames: number | null; monthGames: number | null }> {
+  const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const [totalGames, monthGames] = await Promise.all([
+    api.getGameResultsPage({ matchType: CLAN_TYPE, limit: 1 })
+      .then((page) => page.total).catch(() => null),
+    api.getGameResultsPage({ matchType: CLAN_TYPE, dateFrom: monthAgo, limit: 1 })
+      .then((page) => page.total).catch(() => null),
+  ]);
+  return { totalGames, monthGames };
+}
+
 const EMPTY = new Map<string, Epithet>();
 
 let cachedKey = "";
@@ -68,10 +82,9 @@ async function recount(key: string): Promise<number> {
      위한 것이었고 그 칭호들이 함께 없어졌다(statEpithet의 삭제 주석). */
   /* 클럽 전체 판수도 함께 받는다(요청: 참여 퀸은 전체 경기수 비례) — 목록 첫 페이지의
      total이 곧 그 수다(한 건만 받아 값만 쓴다). 실패하면 null로 두고 그 칭호만 쉰다. */
-  const [res, totalGames] = await Promise.all([
+  const [res, { totalGames, monthGames }] = await Promise.all([
     api.getGameResultStats({ memberIds: ids, dateFrom: "", dateTo: "", matchType: CLAN_TYPE }),
-    api.getGameResultsPage({ matchType: CLAN_TYPE, limit: 1 })
-      .then((page) => page.total).catch(() => null),
+    clubGameCounts(),
   ]);
   const byId: Record<string, MemberStatsEntry> = {};
   res.members.forEach((entry) => { byId[entry.memberId] = entry; });
@@ -89,7 +102,7 @@ async function recount(key: string): Promise<number> {
     }))
     .flatMap((x) => (x.stats
       ? [{ id: x.id, stats: x.stats, races: x.races, won: x.won, combat: x.combat }]
-      : [])), { totalGames });
+      : [])), { totalGames, monthGames });
   /* 올린 값이 곧 다음에 누가 읽을 값이다 — 그래서 여기서 캐시도 같이 갈아 둔다. 달라진
      사람이 있으면 서버가 활동에 알림 한 줄을 남긴다(요청). */
   const changed = await api.reportEpithets(
@@ -111,10 +124,9 @@ export async function simulateEpithets(memberIds: string[]): Promise<{
   claims: EpithetClaimRow[];
 }> {
   const ids = [...memberIds].sort();
-  const [res, totalGames] = await Promise.all([
+  const [res, { totalGames, monthGames }] = await Promise.all([
     api.getGameResultStats({ memberIds: ids, dateFrom: "", dateTo: "", matchType: CLAN_TYPE }),
-    api.getGameResultsPage({ matchType: CLAN_TYPE, limit: 1 })
-      .then((page) => page.total).catch(() => null),
+    clubGameCounts(),
   ]);
   const byId: Record<string, MemberStatsEntry> = {};
   res.members.forEach((entry) => { byId[entry.memberId] = entry; });
@@ -129,7 +141,7 @@ export async function simulateEpithets(memberIds: string[]): Promise<{
     .flatMap((x) => (x.stats
       ? [{ id: x.id, stats: x.stats, races: x.races, won: x.won, combat: x.combat }]
       : [])),
-  { totalGames });
+  { totalGames, monthGames });
   return { assigned, claims: lastEpithetClaims() };
 }
 
@@ -145,16 +157,15 @@ const claimCache = new Map<string, EpithetClaimRow[]>();
 export async function claimsOfMember(memberId: string): Promise<EpithetClaimRow[]> {
   const hit = claimCache.get(memberId);
   if (hit) return hit;
-  const [res, totalGames] = await Promise.all([
+  const [res, { totalGames, monthGames }] = await Promise.all([
     api.getGameResultStats({ memberIds: [memberId], dateFrom: "", dateTo: "", matchType: CLAN_TYPE }),
-    api.getGameResultsPage({ matchType: CLAN_TYPE, limit: 1 })
-      .then((page) => page.total).catch(() => null),
+    clubGameCounts(),
   ]);
   const entry = res.members.find((m) => m.memberId === memberId);
   if (!entry?.overall) { claimCache.set(memberId, []); return []; }
   epithetsOf(
     [{ id: memberId, stats: entry.overall, races: entry.byRace, won: entry.won, combat: entry.combat }],
-    { totalGames },
+    { totalGames, monthGames },
   );
   const rows = lastEpithetClaims().filter((c) => c.memberId === memberId);
   claimCache.set(memberId, rows);

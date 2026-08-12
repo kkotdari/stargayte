@@ -43,7 +43,14 @@ const raceFloor = (): number => Math.max(8, Math.round(clubGames() * 0.06));
  *  유리하다(다섯 판에 한 번이면 20%다). 분모에 이 바닥을 깔면 판이 적은 사람은 기준 판수
  *  (= 사실상 고정 숫자)로 재지고, 판이 쌓인 사람은 제 판수 그대로 재진다 — 양쪽의 유리함이
  *  서로를 지운다. 클럽 208판이면 기준 21판: 신입의 한 판은 5%로 쳐진다. */
-const normDenom = (): number => Math.max(10, Math.round(clubGames() * 0.1));
+/* 기준은 전체 기간이 아니라 최근 한 달의 클럽 판수다(요청) — 전체 누적으로 잡으면 클럽이
+   오래될수록 기준이 자라, 뒤늦게 들어온 사람은 영영 못 채운다. 최근 페이스 기준이면 신입도
+   한 달을 뛰면 고참과 같은 자로 재진다. 한 달 판수를 못 받아 왔으면 옛 식(전체×10%)으로. */
+const normDenom = (): number => (
+  clubMonthGames && clubMonthGames > 0
+    ? Math.max(10, Math.round(clubMonthGames * 0.5))
+    : Math.max(10, Math.round(clubGames() * 0.1))
+);
 /** 유형 칭호(개인전·팀전 퀸)는 그 유형에서만 세는 판수라 더 많이 본다 — 팀전 몇 판으로
  *  "팀전 퀸"이 되면 정작 팀전을 도맡아 뛴 사람이 그 말을 못 듣는다. */
 /* (삭제) MIN_PLAYS_RATE·MIN_PLAYS_MODE — 고정 판수 바닥. 위 winsFloor/raceFloor로
@@ -1388,12 +1395,15 @@ export function epithetGuideRows(): EpithetGuideRow[] {
  *  epithetsOf를 부르기 전에 부르는 쪽이 채워 준다(useEpithets). 모듈 변수인 이유는 Title.value의
  *  시그니처(s, of)에 끼워 넣을 자리가 없어서다 — 계산 한 번에 한 값이라 이걸로 충분하다. */
 let clubTotalGames: number | null = null;
+/** 최근 한 달의 클럽 판수 — 기준 분모(normDenom)의 재료(요청). 채우는 쪽은 위와 같다. */
+let clubMonthGames: number | null = null;
 
 export function epithetsOf(
   pool: EpithetSubject[],
-  ctx?: { totalGames?: number | null },
+  ctx?: { totalGames?: number | null; monthGames?: number | null },
 ): Map<string, Epithet> {
   clubTotalGames = ctx?.totalGames ?? null;
+  clubMonthGames = ctx?.monthGames ?? null;
   const out = new Map<string, Epithet>();
   const ranked = pool.filter((p) => p.stats.plays >= MIN_PLAYS);
 
