@@ -238,15 +238,15 @@ function splitSquads(
 }
 
 function dropSpikes(
-  pts: [number, number, number][], span: number,
-): [number, number, number][] {
+  pts: TrackPt[], span: number,
+): TrackPt[] {
   if (pts.length < 3) return pts;
   const far = span * SPIKE_FAR_RATE;
   const back = span * SPIKE_BACK_RATE;
-  const at = (p: [number, number, number]) => [p[1], p[2]] as const;
-  const gap = (a: [number, number, number], b: [number, number, number]) =>
+  const at = (p: TrackPt) => [p[1], p[2]] as const;
+  const gap = (a: TrackPt, b: TrackPt) =>
     Math.hypot(at(a)[0] - at(b)[0], at(a)[1] - at(b)[1]);
-  const out: [number, number, number][] = [pts[0]];
+  const out: TrackPt[] = [pts[0]];
   let i = 1;
   while (i < pts.length) {
     const prev = out[out.length - 1];
@@ -762,7 +762,7 @@ const FRESH_HOLD_SEC = 12;
  *  moving(두 점 사이를 미끄러지는 중)과 sinceLast(마지막 명령에서 지난 초)도 함께 낸다 —
  *  "커맨드를 받거나 이동 중이면 이름으로"(요청)의 재료다. */
 function posAt(
-  pts: [number, number, number][], t: number,
+  pts: TrackPt[], t: number,
   bendCenter: { x: number; y: number } | null,
 ): TrackPos | null {
   if (pts.length === 0) return null;
@@ -992,10 +992,10 @@ export default function ReplayMotionPlayer({
      걸음(3.7타일/초)으로 걷는다(지적: 일꾼·오버로드가 위치 찍으면 바로 이동하는 느낌 —
      정찰 점도 명령 시각에 출발해 걸어서 가야 한다). */
   const walkTrack = (
-    src: [number, number, number][], p: MotionTrack, straight: boolean, forcedUnit?: string,
+    src: TrackPt[], p: MotionTrack, straight: boolean, forcedUnit?: string,
     speedOverride?: number, forceGround?: boolean,
   ): [number, number, number][] => {
-    if (src.length === 0) return src;
+    if (src.length === 0) return [];
     const out: [number, number, number][] = [[src[0][0], src[0][1], src[0][2]]];
     let atX = src[0][1];
     let atY = src[0][2];
@@ -1134,7 +1134,7 @@ export default function ReplayMotionPlayer({
      각자의 점이 된다(지적: 드랍십 순간이동 — 일꾼 정찰과 셔틀 원정이 한 점을 놓고
      밀당했다). 갈래는 이름을 정한다(지적: 오버로드 이름이 안 나온다). */
   const scoutSquads = useMemo(() => motion.players.map((p) => {
-    const kinds: { kind: "worker" | "carrier" | "lone"; src: [number, number, number][] }[] = [
+    const kinds: { kind: "worker" | "carrier" | "lone"; src: TrackPt[] }[] = [
       { kind: "worker", src: p.spts ?? [] },
       { kind: "carrier", src: p.tpts ?? [] },
       { kind: "lone", src: p.opts ?? [] },

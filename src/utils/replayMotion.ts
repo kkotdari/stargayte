@@ -218,7 +218,7 @@ function trackOf(
   const army = movable.filter((o) => !scout(o));
   /* 정체가 드러난 유닛은 제 자취로(요청: 유닛별 위치) — 무명 명령만 '부대'로 남는다.
      그래야 탱크 라인과 바이오닉 본대가 서로 딴 자리에 있어도 각자의 점으로 선다. */
-  const upts: Record<string, [number, number, number][]> = {};
+  const upts: Record<string, TrackPt[]> = {};
   const named = new Map<string, typeof army>();
   for (const o of army) {
     if (!o.by) continue;
@@ -348,7 +348,7 @@ const FIGHT_RADIUS = 10;
 const FIGHT_MIN_ORDERS = 5;
 
 function hotOf(
-  pts: [number, number, number][],
+  pts: TrackPt[],
   foeAttacks: { sec: number; x: number; y: number }[],
 ): [number, number][] {
   if (pts.length === 0 || foeAttacks.length === 0) return [];
