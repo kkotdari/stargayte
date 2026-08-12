@@ -1470,6 +1470,18 @@ export default function ReplayMotionPlayer({
     br === p.raw && bs <= t && bs >= lastOrderSec - 4 && bs - lastOrderSec <= 60
     && Math.hypot(bx2 + footDx(bu) - pos.x, by2 + footDy(bu) - pos.y) <= 3);
 
+  /* 무너진 기지의 유닛도 대개 같이 죽는다(지적: 확률은 높은데 완벽하진 않음 — 그래서
+     침묵 조건을 같이 건다) — 내 건물이 무너진 자리 곁(8타일)에 서 있었고, 무너진 뒤로
+     새 명령 없이 한참(DEAD_QUIET_SEC) 지난 마커는 그 함락에서 정리된 것으로 본다. */
+  const razedNearby = (
+    p: MotionTrack, pos: { x: number; y: number }, lastOrderSec: number,
+  ): boolean => motion.builds.some(([, bx2, by2, bu, br, g2]) => {
+    const gone = g2 ?? 0;
+    return br === p.raw && gone > 0 && gone <= t && t > gone + DEAD_QUIET_SEC
+      && lastOrderSec <= gone
+      && Math.hypot(bx2 + footDx(bu) - pos.x, by2 + footDy(bu) - pos.y) <= 8;
+  });
+
   /* 폭은 무조건 컨테이너 최대가 아니라 화면 세로 공간이 허락하는 만큼(지적: 노트북처럼
      납작한 화면에서 전체 폭을 쓰면 미니맵이 한 화면에 다 안 들어옴) — 맵 높이가
      (100dvh − 조작부 몫)을 넘지 않게 폭을 비율로 역산해 상한을 걸고 가운데 정렬.
@@ -1998,6 +2010,8 @@ export default function ReplayMotionPlayer({
             // 건설에 흡수(지적: 익스트랙터 만든 드론이 남는다) — 일꾼 묶음만.
             if (g.unit === "Worker" && !pos.moving && Number.isFinite(sinceCmd)
               && buildAbsorbed(p, pos, t - sinceCmd)) return [];
+            // 무너진 기지 곁에서 침묵 — 그 함락에서 정리된 것(지적).
+            if (razedNearby(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return [];
             return [{ g, gi, pos, sinceCmd }];
           });
           const shownUnits = new Set(typeMarks.flatMap(({ g }) => BY_UNITS[g.unit] ?? [g.unit]));
@@ -2089,6 +2103,8 @@ export default function ReplayMotionPlayer({
             if (Number.isFinite(sinceCmd) && deadBy(t - sinceCmd)) return null;
             // 태워진 동안은 숨는다(요청) — 내리면 나타난다.
             if (carriedGone(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : -1)) return null;
+            // 무너진 기지 곁에서 침묵 — 그 함락에서 정리된 것(지적).
+            if (razedNearby(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return null;
             /* 생산 직후에도 깨어 있다(요청) — 갓 나온 유닛은 명령을 안 받았어도 지금
                이야기의 일부다. 완성은 사람 단위 값이라 주 부대만 깨운다. */
             let freshDone = false;
@@ -2213,6 +2229,8 @@ export default function ReplayMotionPlayer({
             // 건설에 흡수(지적: 익스트랙터 만든 드론이 남는다) — 일꾼 점만.
             if (g.kind === "worker" && !pos.moving && Number.isFinite(sinceCmd)
               && buildAbsorbed(p, pos, t - sinceCmd)) return null;
+            // 무너진 기지 곁에서 침묵 — 그 함락에서 정리된 것(지적).
+            if (razedNearby(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return null;
             /* 진짜 이름으로 부른다(지적: "일꾼"이 아니라 원래 이름 — "정찰"이라는 유닛은
                없다). 종족이 이름을 정한다: 일꾼은 SCV·프로브·드론, 수송선은 드랍십·셔틀·
                오버로드. 정체 모를 한 기도 그 종족의 흔한 쪽(일꾼, 저그는 오버로드)으로

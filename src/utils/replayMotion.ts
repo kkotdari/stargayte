@@ -58,6 +58,22 @@ const MORPH_SRC: Record<string, string[]> = {
   "Sunken Colony": ["Creep Colony"], "Spore Colony": ["Creep Colony"],
   "Greater Spire": ["Spire"],
 };
+/** 생산 건물 → 거기서 나오는 유닛들(요청: 생산 끊김 = 파괴의 재료). 저그 본진 3형제는
+ *  라바 유닛 전부를 공유한다. */
+const ZERG_FROM_LARVA = ["Drone", "Overlord", "Zergling", "Hydralisk", "Mutalisk", "Scourge", "Queen", "Ultralisk", "Defiler"];
+const PROD_OF: Record<string, string[]> = {
+  Barracks: ["Marine", "Firebat", "Medic", "Ghost"],
+  Factory: ["Vulture", "Siege Tank (Tank Mode)", "Siege Tank", "Goliath"],
+  Starport: ["Wraith", "Dropship", "Science Vessel", "Battlecruiser", "Valkyrie"],
+  "Command Center": ["SCV"],
+  Gateway: ["Zealot", "Dragoon", "High Templar", "Dark Templar"],
+  "Robotics Facility": ["Shuttle", "Reaver", "Observer"],
+  Stargate: ["Scout", "Corsair", "Carrier", "Arbiter"],
+  Nexus: ["Probe"],
+  Hatchery: ZERG_FROM_LARVA, Lair: ZERG_FROM_LARVA, Hive: ZERG_FROM_LARVA,
+};
+/** 생산이 판 끝보다 이만큼 일찍 영영 멎었으면 '끊김'으로 본다(초). */
+const PROD_QUIET_SEC = 90;
 /** 취소가 물릴 수 있는 착공 후 시간(초) — 이보다 오래된 건물은 이미 다 섰다. */
 const CANCEL_WINDOW_SEC = 60;
 
@@ -381,6 +397,10 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
   const players = replay.players.filter((p) => !p.isComputer && p.signals);
   if (players.length === 0) return null;
 
+  // 판의 끝 — 생산 끊김 판정(요청)의 기준선. 마지막 커맨드가 곧 판의 끝이다.
+  const gameEndSec = players.reduce(
+    (m, pp) => Math.max(m, (pp.signals?.lastCmdFrame ?? 0) * SECONDS_PER_FRAME), 0,
+  );
   const tracks: MotionTrack[] = [];
   const builds: SummaryMotion["builds"] = [];
   const casts: SummaryMotion["casts"] = [];
@@ -561,6 +581,28 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
         break;
       }
     }
+    /* 생산 끊김 = 파괴(요청) — 그 종류의 생산이 판 끝보다 한참(PROD_QUIET_SEC) 일찍
+       영영 멎었고, 멎은 무렵부터 그 건물 곁으로 상대 공격이 지나갔다면 무너진 것으로
+       본다. 공격 뭉치 판정(razedAt: 2발+침묵)이 못 잡는 치고 빠진 파괴를 줍는다. 같은
+       종류가 여럿이면 생산 스트림이 공유라 어느 채인지 모르니, 공격이 닿은 채만 걷는다. */
+    for (const k of myBuildIdx) {
+      const e = builds[k];
+      if (e[5] > 0) continue;
+      const us = PROD_OF[e[3]];
+      if (!us) continue;
+      let lastProd = 0;
+      for (const u of us) {
+        for (const f of sg.unitFrames?.[u] ?? []) lastProd = Math.max(lastProd, f * SECONDS_PER_FRAME);
+      }
+      if (gameEndSec - lastProd < PROD_QUIET_SEC) continue;
+      let lastHit = 0;
+      for (const o of foeAttacks) {
+        if (o.sec > lastProd - 30 && Math.hypot(o.x - e[1], o.y - e[2]) <= RAZE_RADIUS) {
+          lastHit = Math.max(lastHit, o.sec);
+        }
+      }
+      if (lastHit > 0) e[5] = Math.round(Math.max(lastHit, lastProd));
+    }
     /* 건설 취소(요청: 짓다가 멈추거나 취소) — 어느 건물인지 안 남아, 가장 최근에 착공돼
        아직 짓고 있던 건물을 물린 것으로 본다. */
     for (const cf of sg.cancelBuilds ?? []) {
@@ -630,6 +672,26 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
         }
       }
       if (hitNear >= 2) a[5] = Math.round(lastHit);
+    }
+  }
+  /* 파괴 전파(지적: 파괴 판정이 약하다) — 생산·본진 건물이 무너지면 곁의 같은 임자
+     비생산 건물(서플·파일런·테크류)도 같이 무너진 것으로 본다. 무너짐 어림(razedAt)은
+     '그 자리에 공격이 몰렸나'를 보는데, 밀리는 기지에서 공격 클릭은 생산 건물에 몰리고
+     곁 건물 위에는 따로 안 찍혀 홀로 살아남곤 했다. 비생산 건물로만 전파한다 — 생산
+     건물은 제 판정(공격 뭉치·생산 신호)이 따로 있다. */
+  const PROP_RADIUS_TILES = 10;
+  const prodLike = new Set([
+    "Command Center", "Nexus", "Hatchery", "Lair", "Hive",
+    "Barracks", "Factory", "Starport", "Gateway", "Stargate", "Robotics Facility",
+  ]);
+  for (const a of builds) {
+    if (a[5] <= 0 || !prodLike.has(a[3])) continue;
+    for (const b of builds) {
+      if (b === a || b[4] !== a[4] || prodLike.has(b[3])) continue;
+      // 그 시각에 서 있던 것만 — 나중에 다시 지은 건물을 소급해 걷으면 안 된다.
+      if (b[0] > a[5] || (b[5] > 0 && b[5] <= a[5])) continue;
+      if (Math.hypot(a[1] - b[1], a[2] - b[2]) > PROP_RADIUS_TILES) continue;
+      b[5] = b[5] > 0 ? Math.min(b[5], a[5]) : a[5];
     }
   }
   builds.sort((a, b) => a[0] - b[0]);
