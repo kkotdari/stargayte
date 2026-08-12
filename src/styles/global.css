@@ -10866,6 +10866,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   font-size: 9px; font-weight: 800; color: var(--text);
   text-shadow: 0 0 5px rgba(0, 0, 0, 0.95); animation: scr-motion-in 0.3s ease-out;
 }
+/* 채굴 일꾼 점(요청) — 본진과 자원 사이를 오가는 작은 점. */
+.scr-motion-miner { font-size: 10px; font-weight: 900; text-shadow: 0 0 2px rgba(0, 0, 0, 0.9); }
 .scr-motion-base { display: inline-flex; flex-direction: column; align-items: center; gap: 1px; }
 /* 아바타 이중 테두리(요청) — 안쪽 개인색·바깥 팀색은 인라인 box-shadow가 칠한다. */
 .scr-motion-base-ring { display: inline-flex; border-radius: 50%; margin: 4px; }

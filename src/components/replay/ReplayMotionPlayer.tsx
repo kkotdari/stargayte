@@ -496,6 +496,46 @@ export default function ReplayMotionPlayer({
           return nodes;
         })}
 
+        {/* 채굴 일꾼(요청: 미네랄·가스 캐는 일꾼 움직임) — 본진과 가장 가까운 자원 지대
+            사이를 점 몇 개가 왕복한다. 일꾼이 많을수록 점도 는다(최대 3). 자원 좌표를 못
+            읽은 맵은 그린다 만다. */}
+        {bases.map((m) => {
+          if (m.ghost || (grid.resources ?? []).length === 0) return null;
+          const track = motion.players.find((p) => p.raw === m.key);
+          let workerN = 0;
+          for (const [sec, n] of track?.workers ?? []) {
+            if (sec > t) break;
+            workerN = n;
+          }
+          if (workerN === 0) return null;
+          let res: [number, number, 0 | 1] | null = null;
+          let best = Infinity;
+          for (const r of grid.resources) {
+            const d = Math.hypot(r[0] - m.x, r[1] - m.y);
+            if (d < best) { best = d; res = r; }
+          }
+          if (!res || best > 24) return null;
+          const dots = Math.min(3, Math.max(1, Math.ceil(workerN / 8)));
+          return Array.from({ length: dots }, (_, i) => {
+            // 일꾼마다 위상이 다르게 — sin 왕복이라 기지·자원 사이를 오간다.
+            const k = 0.5 + 0.5 * Math.sin(t * 0.9 + i * 2.1 + m.x);
+            const x = m.x + (res![0] - m.x) * (0.15 + 0.7 * k);
+            const y = m.y + (res![1] - m.y) * (0.15 + 0.7 * k);
+            return (
+              <span
+                key={`mine-${m.key}-${i}`}
+                className="scr-motion-miner"
+                style={{
+                  left: pct(x, grid.width), top: pct(y, grid.height),
+                  color: colorByRaw.get(m.key) ?? (m.team === 2 ? "#e0435c" : "#2f80ff"),
+                }}
+              >
+                ·
+              </span>
+            );
+          });
+        })}
+
         {/* 본진 — 스냅 미니맵과 같은 표시(아바타+이름), 늘 떠 있다. 그 아래에 자원 캐는
             일꾼(요청) — 여태 뽑은 일꾼 수가 곡괭이질하듯 잘게 흔들린다. */}
         {bases.map((m) => {
