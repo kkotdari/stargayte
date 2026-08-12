@@ -5,6 +5,7 @@ import { cx } from "../../utils/format";
 import { UNIT_KO, TECH_KO } from "../../utils/replaySummaryText";
 import type { ReplayMapGrid } from "../../utils/replayParser";
 import { isAirUnit, type SummaryMotion } from "../../utils/replayMotion";
+import { DEFENSE_BUILDINGS } from "../../utils/replayBuildMix";
 import type { MinimapMarker } from "./ReplayMinimap";
 
 /* ── 연속 재생 플레이어(요청: 장면 선정 없이 전부 연속으로, 이미지 대신 텍스트로) ──────
@@ -34,21 +35,30 @@ const pct = (v: number, span: number) => `${(v / span) * 100}%`;
  *  본진을 나와 가운데 길로 돌므로 직선보다 이쪽이 덜 거짓말이다. 공중은 곧게 간다. */
 const GROUND_BEND = 0.35;
 
-/** 자취에서 t 시각의 자리 — 사이는 보간(지상은 가운데로 휘는 곡선), 틈이 크면 앞 점에 머문다. */
+interface TrackPos { x: number; y: number; stale: boolean; moving: boolean; sinceLast: number }
+
+/** 커맨드를 받은 지 이 안이면 아직 '활동 중'이다(요청) — 이름표를 유지한다. */
+const ACTIVE_HOLD_SEC = 8;
+
+/** 자취에서 t 시각의 자리 — 사이는 보간(지상은 가운데로 휘는 곡선), 틈이 크면 앞 점에 머문다.
+ *  moving(두 점 사이를 미끄러지는 중)과 sinceLast(마지막 명령에서 지난 초)도 함께 낸다 —
+ *  "커맨드를 받거나 이동 중이면 이름으로"(요청)의 재료다. */
 function posAt(
   pts: [number, number, number][], t: number,
   bendCenter: { x: number; y: number } | null,
-): { x: number; y: number; stale: boolean } | null {
+): TrackPos | null {
   if (pts.length === 0) return null;
-  if (t <= pts[0][0]) return { x: pts[0][1], y: pts[0][2], stale: false };
+  if (t <= pts[0][0]) return { x: pts[0][1], y: pts[0][2], stale: false, moving: false, sinceLast: Infinity };
   for (let i = 0; i < pts.length - 1; i += 1) {
     const [s0, x0, y0] = pts[i];
     const [s1, x1, y1] = pts[i + 1];
     if (t < s1) {
-      if (s1 - s0 > LERP_MAX_GAP_SEC) return { x: x0, y: y0, stale: t - s0 > LERP_MAX_GAP_SEC };
+      if (s1 - s0 > LERP_MAX_GAP_SEC) {
+        return { x: x0, y: y0, stale: t - s0 > LERP_MAX_GAP_SEC, moving: false, sinceLast: t - s0 };
+      }
       const k = (t - s0) / Math.max(1, s1 - s0);
       if (!bendCenter) {
-        return { x: x0 + (x1 - x0) * k, y: y0 + (y1 - y0) * k, stale: false };
+        return { x: x0 + (x1 - x0) * k, y: y0 + (y1 - y0) * k, stale: false, moving: true, sinceLast: 0 };
       }
       /* 이차 베지어 — 제어점을 두 점의 가운데에서 맵 중앙 쪽으로 당긴다. 이동 거리가 길수록
          더 휘어, 먼 진군일수록 "가운데 길로 돌아간다"에 가까워진다. */
@@ -60,12 +70,12 @@ function posAt(
       return {
         x: u * u * x0 + 2 * u * k * cx + k * k * x1,
         y: u * u * y0 + 2 * u * k * cy + k * k * y1,
-        stale: false,
+        stale: false, moving: true, sinceLast: 0,
       };
     }
   }
   const last = pts[pts.length - 1];
-  return { x: last[1], y: last[2], stale: t - last[0] > LERP_MAX_GAP_SEC };
+  return { x: last[1], y: last[2], stale: t - last[0] > LERP_MAX_GAP_SEC, moving: false, sinceLast: t - last[0] };
 }
 
 /** t 시각의 우세 유닛 이름 — 없으면 빈 문자열. */
@@ -279,32 +289,34 @@ export default function ReplayMotionPlayer({
           );
           if (!pos) return null;
           const team = teamOfRaw(p.raw);
-          /* 규모를 크기로(요청) — 최근에 몰아 뽑은 병력 수의 제곱근으로 글자를 키운다.
-             덩어리가 작거나(4 미만) 자취가 식었으면 점만 — 중요하지 않은 것은 점이다(요청). */
+          /* 겉모습 규칙(요청) — 유닛은 동그라미가 기본이고, 커맨드를 받았거나 이동 중일
+             때만 이름+수로 바뀐다(나중에 이미지가 이 자리를 물려받는다). 크기는 규모의
+             제곱근(요청: 뭉친 병력은 크기로 수를 표현). */
           let size = 0;
           for (const [sec, n] of p.size ?? []) {
             if (sec > t) break;
             size = n;
           }
-          const small = size < 4;
+          const activeNow = pos.moving || pos.sinceLast <= ACTIVE_HOLD_SEC;
+          const showName = activeNow && size >= 1 && !!unit;
           const fontPx = Math.min(16, 8 + Math.round(Math.sqrt(size) * 1.6));
           return (
             <span
               key={p.raw}
               className={cx(
                 "scr-motion-army",
-                !small && "scr-motion-chip",
+                showName && "scr-motion-chip",
                 team === 2 ? "scr-motion-team2" : "scr-motion-team1",
                 pos.stale && "scr-motion-army-stale",
               )}
               style={{
                 left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
-                fontSize: small ? undefined : fontPx,
-                ...(small ? {} : chipStyle(p.raw)),
+                fontSize: showName ? fontPx : Math.min(14, 7 + Math.round(Math.sqrt(size))),
+                ...(showName ? chipStyle(p.raw) : {}),
               }}
             >
-              {/* 수도 함께 적는다(요청) — "질럿 12" 꼴. 이름을 모르면 수만. */}
-              {small || !unit ? "●" : `${UNIT_KO[unit] ?? ""} ${size}`.trim()}
+              {/* 수도 함께 적는다(요청) — "질럿 12" 꼴. */}
+              {showName ? `${UNIT_KO[unit] ?? ""} ${size}`.trim() : "●"}
             </span>
           );
         })}
