@@ -1063,18 +1063,18 @@ const TITLES: Title[] = [
   /* 지상전·공중전·마법 퀸(요청 네 번째 판 — 이번엔 전투다) — 그 갈래로 붙은 전투 하나
      하나의 승률을 묻는다(요청: 경기가 아니라 전투에서 이겼냐 — 판정은 그 자리에 살아
      남았나, replayBattles.ts). 종족은 안 가린다(요청).
-     문턱: 판가름 난 전투의 반은 어차피 누군가의 승리라 50%가 평균선이다 — 지상은 표본이
-     가장 흔해 한 칸 위(65), 공중·마법은 그 축을 세운 것 자체가 드물어 60이다. */
+     문턱: 셋 다 70(요청: 상향) — 판가름 난 전투의 반은 어차피 누군가의 승리라 50%가
+     평균선이고, 열에 일곱은 이겨야 그 싸움의 임자다. */
   {
-    label: "지상전 퀸", weight: 3, kind: "경기력", min: 65, why: "지상 전투 승률", unit: "%",
+    label: "지상전 퀸", weight: 3, kind: "경기력", min: 70, why: "지상 전투 승률", unit: "%",
     value: (_s, of) => combatRate(of, "ground"),
   },
   {
-    label: "공중전 퀸", weight: 3, kind: "경기력", min: 60, why: "공중 전투 승률", unit: "%",
+    label: "공중전 퀸", weight: 3, kind: "경기력", min: 70, why: "공중 전투 승률", unit: "%",
     value: (_s, of) => combatRate(of, "air"),
   },
   {
-    label: "마법 퀸", weight: 3, kind: "경기력", min: 60, why: "마법 전투 승률", unit: "%",
+    label: "마법 퀸", weight: 3, kind: "경기력", min: 70, why: "마법 전투 승률", unit: "%",
     value: (_s, of) => combatRate(of, "magic"),
   },
   /* 건물을 제일 많이 올린 사람(요청: 심시티 퀸) — "쉴 새 없이 짓는 자"에서 바꿨다. 재는 값은 그대로 분당 지은 채수다. */
@@ -1344,13 +1344,13 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     /* 세 퀸 — 전투 판정(뭉치·살아남음)이 value 밖(replayBattles)에 있어 자동 문구로는
        반이 빠진다. 승패는 전투가 끝난 자리에 살아남았나로 가른다(요청). */
     if (r.label === "지상전 퀸") {
-      return { ...r, how: `지상 병력 위주로 붙은 전투 ${ratioFloor()}번 이상 · 그 전투 승률 65% 이상 (승패는 그 자리에 살아남았나)` };
+      return { ...r, how: `지상 병력 위주로 붙은 전투 ${ratioFloor()}번 이상 · 그 전투 승률 70% 이상 (승패는 그 자리에 살아남았나)` };
     }
     if (r.label === "공중전 퀸") {
-      return { ...r, how: `공중 함대(6기 이상·병력의 25% 이상)로 붙은 전투 ${ratioFloor()}번 이상 · 그 전투 승률 60% 이상 (승패는 그 자리에 살아남았나)` };
+      return { ...r, how: `공중 함대(6기 이상·병력의 25% 이상)로 붙은 전투 ${ratioFloor()}번 이상 · 그 전투 승률 70% 이상 (승패는 그 자리에 살아남았나)` };
     }
     if (r.label === "마법 퀸") {
-      return { ...r, how: `교전 마법을 떨어뜨린 전투 ${ratioFloor()}번 이상 · 그 전투 승률 60% 이상 (승패는 그 자리에 살아남았나)` };
+      return { ...r, how: `교전 마법을 떨어뜨린 전투 ${ratioFloor()}번 이상 · 그 전투 승률 70% 이상 (승패는 그 자리에 살아남았나)` };
     }
     if (r.label !== "{n}") return r;
     if (r.how.startsWith("그 맵 승수")) {
