@@ -838,7 +838,7 @@ export default function ReplayMotionPlayer({
             onClick={() => setColorMode((v) => (v === "team" ? "personal" : "team"))}
             title="색 기준 전환"
           >
-            {colorMode === "team" ? "팀색" : "개인색"}
+            {colorMode === "team" ? "팀컬러" : "개인컬러"}
           </button>
         </span>
         {/* 옛 스냅 타임라인의 재생 버튼과 같은 꼴(요청) — 46px 완전 원, 속 채운 삼각형. */}
