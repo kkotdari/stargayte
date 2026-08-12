@@ -10851,6 +10851,16 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    hidden이면 모서리 본진의 마커가 반쪽이 된다. 둥근 모서리는 그림이 제 몫으로 갖는다. */
 .scr-motion-map { position: relative; width: 100%; }
 .scr-motion-lens { position: absolute; inset: 0; transform-origin: 0 0; }
+/* 확대 조절바(요청: PC) — 지도 오른쪽 위의 작은 알약. 모바일은 손짓이 있어 숨긴다.
+   지도 위 글자들과 같은 이유로 색은 테마를 안 타는 밝은 고정색이다. */
+.scr-motion-zoom {
+  position: absolute; top: 6px; right: 6px; z-index: 6;
+  display: none; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5); color: #f5f6f7;
+}
+@media (min-width: 1160px) { .scr-motion-zoom { display: inline-flex; } }
+.scr-motion-zoom input { width: 110px; accent-color: #f5f6f7; cursor: pointer; }
 .scr-motion-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: var(--radius-sm); }
 .scr-motion-canvas-blank { background: rgba(255, 255, 255, 0.04); }
 /* 렌즈가 끼면서 마커 스팬은 렌즈의 자식이 됐다 — 옛 선택자를 함께 둔다(렌즈 없는 화면 대비). */

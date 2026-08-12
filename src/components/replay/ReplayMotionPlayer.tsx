@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Hammer, Mountain, Pause, Play, RotateCcw, Shield } from "lucide-react";
+import { Hammer, Mountain, Pause, Play, RotateCcw, Shield, ZoomIn, ZoomOut } from "lucide-react";
 import TerrainReviewModal from "../../modals/TerrainReviewModal";
 import Avatar from "../common/Avatar";
 import RaceBadge from "../common/RaceBadge";
@@ -1514,6 +1514,26 @@ export default function ReplayMotionPlayer({
             </span>
           ) : null
         ))}
+        </div>
+        {/* 확대 조절바(요청: PC) — 모바일은 손짓(더블탭·두 손가락)이 있어 PC에만 보인다
+            (CSS 미디어). 렌즈 밖에 있어야 저까지 확대되지 않고, 지도 손짓에 안 먹히게
+            흐름을 끊는다. 가운데를 고정한 채 배율만 바꾼다. */}
+        <div
+          className="scr-motion-zoom"
+          onPointerDown={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
+        >
+          <ZoomOut size={11} />
+          <input
+            type="range" min={1} max={4} step={0.1} value={lens.z}
+            onChange={(e) => {
+              const r = mapRef.current?.getBoundingClientRect();
+              if (!r) return;
+              zoomAt(r.width / 2, r.height / 2, Number(e.target.value));
+            }}
+            aria-label="지도 확대"
+          />
+          <ZoomIn size={11} />
         </div>
       </div>
 
