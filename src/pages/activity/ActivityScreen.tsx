@@ -674,8 +674,9 @@ function groupKeyOf(item: ActivityItem): ActivityGroupKey {
     : "notice"; // notice · rankingShift
 }
 
-/** 한 덩어리를 접었을 때 목록에 보이는 최대 줄 수 — 그 이상은 "전체 보기"로. */
-const GROUP_PREVIEW_MAX = 5;
+/** 한 덩어리를 접었을 때 목록에 보이는 최대 줄 수 — 그 이상은 "전체 보기"로.
+ *  5 → 3(요청: 활동 페이지 목록은 최대 3개 노출). */
+const GROUP_PREVIEW_MAX = 3;
 
 /** 리그·너 나와·게임 "전체 보기" 팝업에만 유저 필터가 있다(요청: "유저필터는 리그,
  *  너나와, 게임목록 전체보기에 넣음") — 나머지(알림·일정)는 사람으로 거를 일이 없는
@@ -1219,6 +1220,23 @@ export default function ActivityScreen() {
    *  없어(GameResult에 createdAt이 없다) 경기 시각으로 대신한다 — 대개 친 날 바로
    *  올리므로 거의 같지만, 한참 지난 경기를 오늘 올리면 그 건에는 아무 딱지도 안 붙는다.
    *  앞으로의 일(예정된 너 나와)은 새것이 아니라 아직 안 온 것이라 제외한다. */
+  /* 미리보기의 정렬 열쇠(요청: 가장 최근에 NEW나 UPDATE가 발생한 순) — 위 rowFlagsOf가
+     딱지를 매기는 그 시각들 중 가장 늦은 것이다. 종류마다 아는 만큼만 쓰는 것도 같다. */
+  const touchMsOf = (it: DisplayItem): number => {
+    if (it.kind === "challenge") {
+      return Math.max(serverMs(it.challenge.createdAt), serverMs(it.challenge.updatedAt));
+    }
+    if (it.kind === "leagueMatch") {
+      return Math.max(serverMs(it.match.postedAt), serverMs(it.match.updatedAt));
+    }
+    if (it.kind === "schedule") {
+      return Math.max(serverMs(it.schedule.createdAt), serverMs(it.schedule.updatedAt));
+    }
+    if (it.kind === "rankingShift") return serverMs(it.shift.createdAt);
+    if (it.kind === "gameResultPost") return Math.max(...it.items.map((x) => x.time));
+    return it.time;
+  };
+
   const rowFlagsOf = (it: DisplayItem): ("new" | "update")[] => {
     const now = Date.now();
     const fresh = (ms: number) => now - ms >= 0 && now - ms <= NEW_WINDOW_MS;
@@ -1905,7 +1923,12 @@ export default function ActivityScreen() {
                 <span className="scr-activity-group-viewall" aria-hidden>전체 보기</span>
               </div>
               <div className="scr-activity-rows">
-                {section.items.slice(0, GROUP_PREVIEW_MAX).map((item) => renderRow(item))}
+                {/* 미리보기는 시간표가 아니라 소식란이다(요청) — 최근에 올라오거나 달라진
+                    것부터 센다. "전체 보기" 팝업은 원래 차례(시간순) 그대로다. */}
+                {[...section.items]
+                  .sort((a, b) => touchMsOf(b) - touchMsOf(a))
+                  .slice(0, GROUP_PREVIEW_MAX)
+                  .map((item) => renderRow(item))}
               </div>
             </div>
           ))}
