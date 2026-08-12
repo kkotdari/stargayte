@@ -276,6 +276,13 @@ export default function ReplayMotionPlayer({
      저장하면 이 자리에서 바로 새 지형으로 갈아 끼운다(맵 캐시는 다음 로드에 새 값을 받는다). */
   const [terrainOpen, setTerrainOpen] = useState(false);
   const [walkOverride, setWalkOverride] = useState<string | null>(null);
+  /* 모달에 주는 image는 같은 값이면 같은 객체여야 한다(지적: 칠하면 까맣게 깜빡이고
+     되돌아감) — 재생은 매 프레임 리렌더라, 인라인 객체를 만들면 모달의 초기화 effect가
+     프레임마다 다시 돌아 격자를 원본으로 리셋했다. */
+  const terrainModalImage = useMemo(() => ({
+    id: grid.imageId ?? 0, name: grid.name || "미니맵",
+    image: grid.image ?? "", walk: walkOverride ?? grid.walk,
+  }), [grid.imageId, grid.name, grid.image, grid.walk, walkOverride]);
   useEffect(() => {
     let cancelled = false;
     /* 검수한 지형(grid.walk, 방금 이 자리에서 고쳤으면 walkOverride)이 있으면 그쪽이
@@ -671,7 +678,7 @@ export default function ReplayMotionPlayer({
         <div className="scr-motion-terrain-row">
           <button
             type="button" className="scr-motion-btn scr-motion-terrain"
-            onClick={() => setTerrainOpen(true)}
+            onClick={() => { setPlaying(false); setTerrainOpen(true); }}
             aria-label="지형 수정" title="지형 수정"
           >
             <Mountain size={12} />
@@ -734,10 +741,7 @@ export default function ReplayMotionPlayer({
       </div>
       {terrainOpen && typeof grid.imageId === "number" && grid.image && (
         <TerrainReviewModal
-          image={{
-            id: grid.imageId, name: grid.name || "미니맵",
-            image: grid.image, walk: walkOverride ?? grid.walk,
-          }}
+          image={terrainModalImage}
           onClose={() => setTerrainOpen(false)}
           onSaved={(updated) => setWalkOverride(updated.walk ?? null)}
         />
