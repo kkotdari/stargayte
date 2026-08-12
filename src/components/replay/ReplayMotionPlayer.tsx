@@ -499,7 +499,8 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
     ["M2.6 6.6 L10.6 6.6 L11 12.8 L2.2 12.8 Z", 1],
     ["M10.6 6.6 L13 5 L13.4 11.2 L11 12.8 Z", 1],
     ["M10.6 6.6 L13 5 L13.4 11.2 L11 12.8 Z", 0.35, "#000"],
-    ["M4.1 9.8a1.4 1.2 0 1 0 2.8 0a1.4 1.2 0 1 0-2.8 0Z M7.1 9.8a1.4 1.2 0 1 0 2.8 0a1.4 1.2 0 1 0-2.8 0Z", 0.3, "#000"],
+    // 앞면 원 둘은 더 크게(지적).
+    ["M3.6 9.9a1.8 1.5 0 1 0 3.6 0a1.8 1.5 0 1 0-3.6 0Z M7.4 9.9a1.8 1.5 0 1 0 3.6 0a1.8 1.5 0 1 0-3.6 0Z", 0.3, "#000"],
   ],
   /* 가스 — 넙적한 판도 윗면·옆면이 보이는 사선 상자다(지적: 서플과 같은 기준). */
   gas: [
@@ -1448,6 +1449,9 @@ export default function ReplayMotionPlayer({
                 className={cx(
                   "scr-motion-build",
                   !razed && text !== name && "scr-motion-build-shape",
+                  // 도형은 실제 발자국 크기 그대로 그린다(요청: "건물 아이콘 크기를 실제
+                  // 맵크기에 비례해서 정확히") — 폭을 지도 % 로 못박는다(아래 style).
+                  !razed && text !== name && "scr-motion-build-tile",
                   !razed && text !== name && !isHall
                     && (fpArea >= 12 ? "scr-motion-build-lg" : fpArea <= 6 ? "scr-motion-build-sm" : false),
                   // 본진 건물은 다른 건물보다 큼직하게(요청).
@@ -1466,6 +1470,11 @@ export default function ReplayMotionPlayer({
                   // 아래로 내리기") — 왼쪽으로 당겨 겹치고, 세로는 내린다.
                   left: pct(bx + footDx(unit) - (ADDONS.has(unit) ? 1.6 : 0), grid.width),
                   top: pct(by + footDy(unit) + (ADDONS.has(unit) ? 0.4 : 0), grid.height),
+                  // 도형 폭 = 발자국 폭(타일) 그대로(요청: 실제 맵 크기에 비례) — 여백
+                  // 몫(뷰박스 안 도형이 13/16쯤을 쓴다)만 1.25로 보정한다.
+                  ...(text !== name && !ADDONS.has(unit)
+                    ? { width: pct((FOOTPRINT[unit] ?? [3, 2])[0] * 1.25, grid.width) }
+                    : {}),
                   // 긴 이름은 한 단계 작게(지적) — 여섯 자부터.
                   ...(text.length >= 6 && !activeBuild ? { fontSize: 6 } : {}),
 

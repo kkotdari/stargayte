@@ -10872,14 +10872,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   --mk: var(--mk-unit, 1);
 }
 .scr-motion-lens > .scr-motion-build, .scr-motion-lens > .scr-motion-workers { --mk: var(--mk-build, 1); }
-/* PC는 모든 마커를 키운다(요청: "피시에서 모든 요소 1.5배 확대" → "피시 맵 내 모든 요소
-   20프로 축소" = 1.2배) — 같은 --mk 지렛대의 기본값만 바꾼다: 글자·아바타·배지·둥실거림
-   까지 마커째 커진다. PC에는 확대 렌즈가 없으므로(--mk-unit/-build가 늘 비어 있다) 폴백이
-   곧 값이다. */
-@media (min-width: 1160px) {
-  .scr-motion-map > span, .scr-motion-lens > span { --mk: var(--mk-unit, 1.2); }
-  .scr-motion-lens > .scr-motion-build, .scr-motion-lens > .scr-motion-workers { --mk: var(--mk-build, 1.2); }
-}
+/* (삭제) PC 마커 1.2배 transform(--mk) — 래스터를 GPU로 늘려 마커가 뿌옇게 보였다(지적:
+   "건물이 블러처리되는건 왜그래") — 대신 아래 PC 미디어의 글자 크기 자체를 1.2배로 올려
+   같은 크기를 또렷하게 그린다. --mk는 모바일 확대 렌즈 전용으로 남는다. */
 /* 겹침 차례 — 건물(z2)은 움직이는 것(z3) 아래, 본진 아바타(z4)가 그 위다(요청: 복구 —
    건물을 위로 올려 보니 얼굴이 도형에 덮여 누가 누군지가 먼저 죽었다). 다만 깨어 있는
    유닛(이름 칩)만은 아바타보다도 위다(요청) — 지금 움직이며 이야기를 만드는 쪽이,
@@ -10907,20 +10902,25 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-chip { text-shadow: none; border: none; padding: 1px 3px; }
 .scr-motion-build { font-size: 7px; font-weight: 700; opacity: 0.85; }
 /* PC는 지도가 커서 같은 픽셀이 상대적으로 작다(지적: 도형이 안 보임) — 한 단계씩 키운다. */
+/* 값들은 예전 1.2배 transform을 걷어낸 몫까지 미리 곱해 둔 것(위 --mk 주석) — 크기는
+   그대로, 래스터만 또렷해진다. */
 @media (min-width: 1160px) {
-  .scr-motion-build { font-size: 9px; }
-  .scr-motion-build-shape { font-size: 13px; }
-  .scr-motion-build-hall { font-size: 12px; }
-  /* 본진은 어느 건물 도형보다도 크다(요청) — 20 → 25px(지적: 본진이 너무 작다). */
-  .scr-motion-build-hall.scr-motion-build-shape { font-size: 25px; }
-  .scr-motion-build-on { font-size: 13px; }
-  .scr-motion-army { font-size: 12px; }
-  .scr-motion-dot { font-size: 14px; }
-  .scr-motion-fresh { font-size: 11px; }
-  .scr-motion-cast { font-size: 11px; }
-  .scr-motion-base-name { font-size: 10px; }
-  .scr-motion-workers { font-size: 9px; }
-  .scr-motion-miner { font-size: 13px; }
+  .scr-motion-build { font-size: 11px; }
+  .scr-motion-build-shape { font-size: 16px; }
+  .scr-motion-build-hall { font-size: 14px; }
+  /* 본진은 어느 건물 도형보다도 크다(요청). */
+  .scr-motion-build-hall.scr-motion-build-shape { font-size: 30px; }
+  .scr-motion-build-on { font-size: 16px; }
+  .scr-motion-army { font-size: 14px; }
+  .scr-motion-dot { font-size: 17px; }
+  .scr-motion-fresh { font-size: 13px; }
+  .scr-motion-cast { font-size: 13px; }
+  .scr-motion-base-name { font-size: 12px; }
+  .scr-motion-workers { font-size: 11px; }
+  .scr-motion-miner { font-size: 16px; }
+  /* 본진 아바타도 같은 몫만큼 판과 원을 키운다. */
+  .scr-motion-base-hallwrap { width: 48px; height: 48px; }
+  .scr-motion-base-avatar-in .scr-avatar { width: 22px !important; height: 22px !important; }
 }
 .scr-motion-build-on { font-size: 10px; opacity: 1; animation: scr-motion-bounce 0.45s ease-out; }
 /* 심장박동(요청) — 생산·연구 중인 건물과 명령받은 유닛이 지속적으로 맥동한다. */
@@ -11002,15 +11002,18 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 생산·연구 중 건물 — 크기 박동(쿵쾅) 대신 라임색 글로우가 쉬었다 밝아졌다 한다(요청).
    빛은 아이콘 '뒤'에만 깔린다(지적: 아이콘 자체를 물들이지 말 것) — 도형 밑의 둥근 후광
    하나가 숨 쉰다. 세기는 낮춰 뒀다(지적: 효과 약화). */
+/* 퍼지는 후광 대신 또렷한 라임 링(지적: "그 액티브 효과때문에 건물이 블러가 돼보여") —
+   그라데이션 안개가 건물 가장자리를 뿌옇게 만들었다. 링은 숨 쉬되 선은 선명하다.
+   크기는 아이콘 상자를 그대로 따라(inset) 돈다 — 발자국 비례로 커진 도형에도 맞는다. */
 .scr-motion-build-glow::before {
-  content: ""; position: absolute; left: 50%; top: 50%; width: 2em; height: 2em;
-  transform: translate(-50%, -50%); border-radius: 50%; z-index: -1; pointer-events: none;
-  background: radial-gradient(circle, rgba(190, 255, 80, 0.4) 0%, rgba(190, 255, 80, 0) 70%);
+  content: ""; position: absolute; inset: -3px; border-radius: 50%;
+  z-index: -1; pointer-events: none;
+  border: 1.5px solid rgba(190, 255, 80, 0.9);
   animation: scr-motion-glow 1.2s ease-in-out infinite;
 }
 @keyframes scr-motion-glow {
-  0%, 100% { opacity: 0.2; }
-  50% { opacity: 0.7; }
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.8; }
 }
 /* 떠 있는 건물(지적: "건물 떠있는게 표현이 안된다") — 이륙부터 착륙까지 옛 자리에서
    둥실거린다. 반투명은 살짝만: 자리에 '있긴 한데 땅에 없는' 상태다. */
@@ -11105,6 +11108,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   display: inline-block; width: 1em; height: 1em; vertical-align: -0.12em;
   filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.45));
 }
+/* 발자국 비례 도형(요청: "건물 아이콘 크기를 실제 맵크기에 비례해서 정확히") — 스팬 폭을
+   지도 %로 못박고(JSX) 그림이 그 폭을 다 쓴다. 글자 크기 클래스는 이때 안 듣는다. */
+.scr-motion-build-tile { display: inline-flex; justify-content: center; }
+.scr-motion-build-tile .scr-motion-shape-svg { width: 100%; height: auto; }
 /* 유닛 이름 칩에도 같은 톤의 약한 그림자(요청) — 배경 있는 배지라 텍스트 그림자 대신
    상자 그림자다. */
 .scr-motion-army.scr-motion-chip, .scr-motion-cast.scr-motion-chip { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
