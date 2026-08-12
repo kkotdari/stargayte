@@ -10847,8 +10847,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* ── 연속 재생 플레이어(요청: 스냅 없이 전부 연속, 이미지 대신 텍스트) ─────────────
    층 셋이 지도 위에 얹힌다: 건물(정확) · 부대 자취(어림) · 마법(정확). 전부 텍스트다. */
 .scr-motion { display: flex; flex-direction: column; gap: 6px; }
-.scr-motion-map { position: relative; width: 100%; overflow: hidden; border-radius: var(--radius-sm); }
-.scr-motion-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* 잘라내기는 바탕 그림에만(지적: 경계의 아바타·이름이 잘려 나감) — 컨테이너가 overflow:
+   hidden이면 모서리 본진의 마커가 반쪽이 된다. 둥근 모서리는 그림이 제 몫으로 갖는다. */
+.scr-motion-map { position: relative; width: 100%; }
+.scr-motion-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: var(--radius-sm); }
 .scr-motion-canvas-blank { background: rgba(255, 255, 255, 0.04); }
 .scr-motion-map > span { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; }
 /* 팀 색 — 팀전 로스터·요약 문장과 같은 두 색을 쓴다(.scr-sum-team*와 한 벌). */
