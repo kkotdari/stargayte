@@ -10839,6 +10839,16 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 세로 간격을 줄인다(요청) — 바깥 로우(.scr-game-result-trow)의 24px을 그대로 물려받고
    있었는데, 그 값은 '로스터 / 맵 / 요약'처럼 성격이 다른 덩어리를 가르는 간격이다. 이 안은
    한 경기의 그림과 그 설명이라 서로 붙어 있어야 한 덩이로 읽힌다. */
+/* 게임 상세의 탭(요청: 미니맵 리플레이는 탭 뒤로) — 유리판 세그먼트 두 쪽. */
+.scr-story-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.scr-story-tab {
+  padding: 3px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line-hair); background: transparent;
+  color: var(--muted); font-size: var(--fs-9); font-weight: 700; cursor: pointer;
+}
+.scr-story-tab-on {
+  background: rgba(255, 255, 255, 0.08); color: var(--text); border-color: var(--line-soft);
+}
 .scr-story { display: flex; flex-direction: column; gap: 12px; }
 
 /* 미니맵이 들어오면 가운데 열이 폭을 먹으므로 매치업을 조금 넓게 쓴다 — 그러지 않으면
