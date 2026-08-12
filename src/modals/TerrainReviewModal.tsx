@@ -168,14 +168,14 @@ export default function TerrainReviewModal({
             <div className="scr-terrain-brushes">
               <button
                 type="button"
-                className={busy ? "scr-btn" : brush === "one" ? "scr-btn scr-btn-primary" : "scr-btn"}
+                className={busy ? "scr-btn scr-btn-sm" : brush === "one" ? "scr-btn scr-btn-sm scr-btn-primary" : "scr-btn scr-btn-sm"}
                 onClick={() => setBrush("one")}
               >
                 한 칸
               </button>
               <button
                 type="button"
-                className={busy ? "scr-btn" : brush === "similar" ? "scr-btn scr-btn-primary" : "scr-btn"}
+                className={busy ? "scr-btn scr-btn-sm" : brush === "similar" ? "scr-btn scr-btn-sm scr-btn-primary" : "scr-btn scr-btn-sm"}
                 onClick={() => setBrush("similar")}
                 disabled={!colors}
                 title="누른 칸과 색이 비슷한 칸 전부를 한 번에 뒤집어요"
@@ -184,7 +184,7 @@ export default function TerrainReviewModal({
               </button>
             </div>
             <button
-              type="button" className="scr-btn"
+              type="button" className="scr-btn scr-btn-sm"
               disabled={busy || loading}
               onClick={async () => {
                 setLoading(true);
@@ -196,7 +196,7 @@ export default function TerrainReviewModal({
             >
               다시 분석
             </button>
-            <button type="button" className="scr-btn scr-btn-primary" onClick={save} disabled={busy || !grid}>
+            <button type="button" className="scr-btn scr-btn-sm scr-btn-primary" onClick={save} disabled={busy || !grid}>
               {busy ? "저장 중…" : "저장"}
             </button>
           </div>
