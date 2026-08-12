@@ -10859,10 +10859,14 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-team2 { color: #e06578; }
 /* 건물 이름은 늘 작게 떠 있고(요청: 합치기 대신 기본 작은 폰트), 활성화 때만 바운스로
    커진다. */
-/* 지도 위 글자의 후광(지적: 글자가 안 보인다) — 방향별 진한 그림자 네 겹으로 어떤 바탕
-   에서도 뜬다. 색 칠하기는 인라인이 하고, 여기는 읽히게만 만든다. */
-.scr-motion-build, .scr-motion-army, .scr-motion-cast, .scr-motion-base-name, .scr-motion-workers {
-  text-shadow: 0 0 2px #000, 0 0 4px #000, 1px 1px 2px #000, -1px -1px 2px #000;
+/* 지도 위 글자의 바탕(지적: 그림자가 너무 진하다 — 반투명 음영이 낫다) — 네 겹 그림자
+   대신 옅은 어두운 판을 깔고 그림자는 한 겹만 남긴다. 칩(배지)은 제 배경이 있어 제외. */
+.scr-motion-build:not(.scr-motion-chip), .scr-motion-workers {
+  background: rgba(0, 0, 0, 0.4); border-radius: 3px; padding: 0 2px;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+}
+.scr-motion-army, .scr-motion-cast, .scr-motion-base-name {
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
 }
 .scr-motion-build { font-size: 7px; font-weight: 700; opacity: 0.85; }
 /* PC는 지도가 커서 같은 픽셀이 상대적으로 작다(지적: 도형이 안 보임) — 한 단계씩 키운다. */
