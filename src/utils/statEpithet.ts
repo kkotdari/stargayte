@@ -1302,9 +1302,15 @@ export function epithetGuideRows(): EpithetGuideRow[] {
        걸려 있는데 일부만 적으면, 조건을 넘은 줄 알았던 사람이 왜 못 받았는지 알 길이 없다. */
     const bits: string[] = [];
     if (count) {
-      if (share > 0) bits.push(`${what} ${where}의 ${pct(share)} 이상 (${where.replace("제 판", "판")} 5판부터)`);
+      /* perUse(마법 사용 수)는 판수를 넘을 수 있는 값이라 "판의 N%"가 아니라 "판수 대비
+         N%"로 적는다(지적: 설명 현행화) — 같은 식이지만 읽는 말이 달라야 헷갈리지 않는다. */
+      if (share > 0 && t.perUse) bits.push(`${what} ${where}수 대비 ${pct(share)} 이상 (${where.replace("제 판", "판")} 5판부터)`);
+      else if (share > 0) bits.push(`${what} ${where}의 ${pct(share)} 이상 (${where.replace("제 판", "판")} 5판부터)`);
       else bits.push(`${what}`);
       if ((t.min ?? 1) > 1) bits.push(`최소 ${t.min}${t.unit ?? "번"}`);
+      /* 카운트 하한(countMinFor)도 적는다(요청: 조건 다 명시) — 값이 클럽 전체 판수에
+         비례해 움직이므로 범위로 말한다. */
+      else if (share > 0) bits.push(`최소 ${COUNT_MIN_FLOOR}~${COUNT_MIN_CAP}번(클럽 판수 비례)`);
     } else {
       if (t.min !== undefined) {
         bits.push(`${what} ${t.min < 1 ? pct(t.min) : `${t.min}${t.unit ?? ""}`} 이상`);
@@ -1475,9 +1481,15 @@ export function epithetsOf(
       const poolName = `${c.title.race ? `${c.title.race} ` : ""}${c.title.won ? "승리게임" : "전체 게임"}`;
       const n = Math.round(c.raw);
       if (c.title.perUse) {
-        return `${what} ${n}번 (${poolName} ${pool}판)`;
+        /* 조건이 비율(판수 대비 %)이라 근거에도 그 비율을 적는다(지적: 퍼센트 기준인데
+           판수만 나온다) — 사용 수는 판수를 넘을 수 있어 100%를 넘기도 한다. */
+        return pool > 0
+          ? `${what} ${n}번 (${poolName} ${pool}판 대비 ${Math.round((c.raw / pool) * 100)}%)`
+          : `${what} ${n}번`;
       }
-      return pool > 0 && c.raw <= pool
+      /* 판수를 넘는 값(집계가 어긋난 옛 데이터)에도 %를 같이 적는다 — 수만 남기면 조건
+         (비율)과 근거가 서로 다른 말을 한다. */
+      return pool > 0
         ? `${what} ${n}판 (${poolName} ${Math.round((c.raw / pool) * 100)}%)`
         : `${what} ${n}판`;
     }
