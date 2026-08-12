@@ -10956,17 +10956,6 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-bar-controls {
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
 }
-/* 모바일은 두 줄이다(요청: 재생 버튼·시간은 아랫줄, 배속과 색 전환은 양쪽 정렬) —
-   한 줄에 다 세우면 배속 다섯에 색 전환까지 일곱이 시간과 자리를 다퉜다. 윗줄은 배속
-   무리가 왼쪽, 색 전환이 오른쪽 끝(margin-left: auto)이고, 아랫줄은 재생이 정중앙(2열)·
-   시간이 오른쪽 끝(3열)이다. */
-@media (max-width: 1159px) {
-  .scr-motion-bar-controls { row-gap: 2px; }
-  .scr-motion-bar-controls .scr-motion-speeds { grid-column: 1 / -1; grid-row: 1; display: flex; justify-self: stretch; }
-  .scr-motion-speeds .scr-motion-colorbtn { margin-left: auto; }
-  .scr-motion-bar-controls .scr-motion-play { grid-column: 2; grid-row: 2; }
-  .scr-motion-bar-controls .scr-motion-clock { grid-column: 3; grid-row: 2; }
-}
 .scr-motion-bar-controls .scr-motion-speeds { justify-self: start; }
 /* 옛 재생 버튼(.scr-story-play)과 같은 꼴(요청) — 46px 완전 원. */
 .scr-motion-play {
@@ -10990,6 +10979,16 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   font-size: var(--fs-9); font-weight: 700; cursor: pointer;
 }
 .scr-motion-speeds { display: inline-flex; gap: 2px; align-items: center; }
+/* 모바일은 두 줄이다(요청: 재생 버튼·시간은 아랫줄, 배속과 색 전환은 양쪽 정렬). 이
+   블록은 justify-self: start(PC 규칙)보다 '뒤'에 있어야 한다(지적: 컬러 버튼이 여전히
+   배속에 붙어 있었다 — 같은 특이도라 파일에서 뒤에 오는 쪽이 이긴다). */
+@media (max-width: 1159px) {
+  .scr-motion-bar-controls { row-gap: 2px; }
+  .scr-motion-bar-controls .scr-motion-speeds { grid-column: 1 / -1; grid-row: 1; display: flex; justify-self: stretch; }
+  .scr-motion-speeds .scr-motion-colorbtn { margin-left: auto; }
+  .scr-motion-bar-controls .scr-motion-play { grid-column: 2; grid-row: 2; }
+  .scr-motion-bar-controls .scr-motion-clock { grid-column: 3; grid-row: 2; }
+}
 /* 유저 컬러 테두리 칩(요청) — 색을 아는 사람의 라벨은 그 색 테두리를 두른다. */
 .scr-motion-chip {
   /* 배경색이 있는 배지엔 테두리 불요(지적) — 자리만 남긴 투명 테두리. */

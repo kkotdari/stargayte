@@ -62,6 +62,11 @@ export interface MotionTrack {
   /** 정체 모를 한 기짜리 클릭의 자취 — 시작 오버로드·옵저버 정찰이 대부분이다(지적:
    *  오버로드 이름이 안 나온다). 저그면 "오버로드", 아니면 "정찰"로 부른다. */
   opts?: [number, number, number][];
+  /** 정체가 드러난 유닛별 자취(요청: 모든 유닛의 위치를 따로 표시, 같은 종류끼리만
+   *  묶기) — 시즈·버로우·스팀팩처럼 그 유닛만 하는 커맨드로 정체가 드러난 번호(orderPositions
+   *  의 by)의 명령들이다. 키는 그 이름("Siege Tank"·"Bionic"·"Lurker"…). 정체가 안
+   *  드러난 명령은 여전히 pts(무명 부대)다. 옛 분석본에는 없다. */
+  upts?: Record<string, [number, number, number][]>;
   /** [초, 유닛 영문명] — 그때까지 가장 많이 뽑은 전투 유닛이 바뀐 순간들(이름표 재료). */
   units: [number, string][];
   /** [초, 누적 일꾼 수] — 자원 캐는 모습의 재료(요청). 생산 커맨드 누적이라 죽은 일꾼은
@@ -144,6 +149,7 @@ function trackOf(
 ): {
   pts: [number, number, number][]; spts: [number, number, number][];
   tpts: [number, number, number][]; opts: [number, number, number][];
+  upts: Record<string, [number, number, number][]>;
 } {
   const movable = orders.filter((o) => o.kind !== undefined && o.by !== "Building");
   type O = (typeof movable)[number];
@@ -156,12 +162,28 @@ function trackOf(
   const lone = (o: O): boolean => o.n === 1 && o.by === undefined;
   const early = (o: O): boolean => o.frame * SECONDS_PER_FRAME < armyStartSec;
   const scout = (o: O): boolean => worker(o) || carrier(o) || lone(o) || early(o);
+  const army = movable.filter((o) => !scout(o));
+  /* 정체가 드러난 유닛은 제 자취로(요청: 유닛별 위치) — 무명 명령만 '부대'로 남는다.
+     그래야 탱크 라인과 바이오닉 본대가 서로 딴 자리에 있어도 각자의 점으로 선다. */
+  const upts: Record<string, [number, number, number][]> = {};
+  const named = new Map<string, typeof army>();
+  for (const o of army) {
+    if (!o.by) continue;
+    const list = named.get(o.by) ?? [];
+    list.push(o);
+    named.set(o.by, list);
+  }
+  for (const [unit, list] of named) {
+    const folded = foldTrack(list);
+    if (folded.length > 0) upts[unit] = folded;
+  }
   return {
-    pts: foldTrack(movable.filter((o) => !scout(o))),
+    pts: foldTrack(army.filter((o) => !o.by)),
     // 병력 생기기 전의 여럿 클릭도 일꾼이다 — 그때 여럿을 골랐다면 일꾼 무리뿐이다.
     spts: foldTrack(movable.filter((o) => worker(o) || (early(o) && !carrier(o) && !lone(o)))),
     tpts: foldTrack(movable.filter(carrier)),
-    opts: foldTrack(movable.filter((o) => lone(o) && !worker(o)))
+    opts: foldTrack(movable.filter((o) => lone(o) && !worker(o))),
+    upts,
   };
 }
 
@@ -359,7 +381,7 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       for (const f of frames) armyStartSec = Math.min(armyStartSec, f * SECONDS_PER_FRAME);
     }
     if (armyStartSec === Infinity) armyStartSec = 0;
-    const { pts, spts, tpts, opts } = trackOf(sg.orderPositions ?? [], armyStartSec);
+    const { pts, spts, tpts, opts, upts } = trackOf(sg.orderPositions ?? [], armyStartSec);
     const units = unitTimeline(sg.unitFrames ?? {});
     // 생산 슬롯 — 시작 본진(0초) + 지어진 본진 건물들(건설 시간 지나서부터).
     const slotOpenSecs = [0, ...(sg.buildPositions ?? [])
@@ -395,13 +417,16 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       .sort((a, b) => a.sec - b.sec);
     if (pts.length > 0 || spts.length > 0 || tpts.length > 0 || opts.length > 0
       || units.length > 0 || workers.length > 0) {
-      const hot = hotOf(pts, foeAttacks);
+      const hot = hotOf(
+        [...pts, ...Object.values(upts).flat()].sort((a, b) => a[0] - b[0]), foeAttacks,
+      );
       tracks.push({
         raw: p.rawName, ...(p.color ? { color: p.color } : {}),
         ...(ups.length > 0 ? { ups } : {}), pts, units, workers, size, prod,
         ...(spts.length > 0 ? { spts } : {}),
         ...(tpts.length > 0 ? { tpts } : {}),
         ...(opts.length > 0 ? { opts } : {}),
+        ...(Object.keys(upts).length > 0 ? { upts } : {}),
         ...(Object.keys(ptag).length > 0 ? { ptag } : {}),
         ...(hot.length > 0 ? { hot } : {}),
       });

@@ -73,6 +73,13 @@ const SCOUT_WALK_SPEED = 3.7;
 
 /** 먼 점을 새 부대로 볼지 내다보는 창(초) — 이 안에 옛 자리 근처 명령이 또 오면 두 무리다. */
 const SQUAD_LOOKAHEAD_SEC = 30;
+/** 출발점이 첫 목적지와 이보다 가까우면 심지 않는다 — 제자리 걸음만 한 점 는다. */
+const SAME_SPOT_START_TILES = 4;
+/** 묶음 이름(by) → 그 안의 유닛들 — 유닛별 마커의 수를 셀 때 쓴다. */
+const BY_UNITS: Record<string, string[]> = {
+  Bionic: ["Marine", "Firebat", "Medic"],
+  "Siege Tank": ["Siege Tank (Tank Mode)", "Siege Tank (Siege Mode)"],
+};
 
 /** 명령 점을 가까운 것끼리 부대로 묶는다(요청: 가까운 유닛만 합침) — 부대 자취와 정찰
  *  자취가 같이 쓴다.
@@ -83,7 +90,9 @@ const SQUAD_LOOKAHEAD_SEC = 30;
  *  또 오면 두 무리가 같이 사는 것이라 부대를 가르고, 안 오면 이사라 이어 걷는다.
  *  새로 서는 부대는 곁 부대의 마지막 자리를 출발점으로 심는다 — 첫 점이 곧 목적지라
  *  마커가 목적지에서 태어나던 것을, 걸어 나가는 그림으로 되돌린다. */
-function splitSquads(pts: [number, number, number][]): [number, number, number][][] {
+function splitSquads(
+  pts: [number, number, number][], home?: [number, number] | null,
+): [number, number, number][][] {
   const squads: [number, number, number][][] = [];
   for (let i = 0; i < pts.length; i += 1) {
     const pt = pts[i];
@@ -108,15 +117,17 @@ function splitSquads(pts: [number, number, number][]): [number, number, number][
       if (!staysBehind) { squads[best].push(pt); continue; }
     }
     if (squads.length < SQUAD_MAX) {
+      /* 새 부대의 출발점(지적: 엉뚱한 데서 태어남) — 곁 부대의 마지막 자리, 그것도 없으면
+         본진이다. 첫 명령의 좌표는 목적지라, 심어 주지 않으면 마커가 목적지에서 태어난다. */
       const from = best >= 0 ? squads[best][squads[best].length - 1] : null;
-      squads.push(from ? [[pt[0], from[1], from[2]], pt] : [pt]);
+      const seed: [number, number] | null = from ? [from[1], from[2]] : home ?? null;
+      squads.push(seed && Math.hypot(seed[0] - pt[1], seed[1] - pt[2]) > SAME_SPOT_START_TILES
+        ? [[pt[0], seed[0], seed[1]], pt] : [pt]);
       continue;
     }
-    let oldest = 0;
-    for (let k = 1; k < squads.length; k += 1) {
-      if (squads[k][squads[k].length - 1][0] < squads[oldest][squads[oldest].length - 1][0]) oldest = k;
-    }
-    squads[oldest].push(pt);
+    /* 다 찼으면 가장 가까운 부대가 그리로 걸어간다(지적: 순간이동) — 예전에는 가장 오래
+       조용한 부대를 골라, 맵 반대편의 부대가 유령처럼 가로질러 걸었다. */
+    squads[best].push(pt);
   }
   return squads;
 }
@@ -490,7 +501,7 @@ export default function ReplayMotionPlayer({
      걸음(3.7타일/초)으로 걷는다(지적: 일꾼·오버로드가 위치 찍으면 바로 이동하는 느낌 —
      정찰 점도 명령 시각에 출발해 걸어서 가야 한다). */
   const walkTrack = (
-    src: [number, number, number][], p: MotionTrack, straight: boolean,
+    src: [number, number, number][], p: MotionTrack, straight: boolean, forcedUnit?: string,
   ): [number, number, number][] => {
     if (src.length === 0) return src;
     const out: [number, number, number][] = [[src[0][0], src[0][1], src[0][2]]];
@@ -503,7 +514,7 @@ export default function ReplayMotionPlayer({
       // 명령이 올 때까지 서 있던 자리 — 같은 좌표의 점을 박아 그 구간을 정지로 만든다.
       if (orderSec > atSec) out.push([orderSec, atX, atY]);
       const startSec = Math.max(atSec, orderSec);
-      const unit = straight ? "" : unitAt(p.units, orderSec);
+      const unit = forcedUnit ?? (straight ? "" : unitAt(p.units, orderSec));
       const air = unit !== "" && isAirUnit(unit);
       let path: [number, number][] | null = null;
       if (!straight && !air && terrain) {
@@ -569,7 +580,25 @@ export default function ReplayMotionPlayer({
   /* 부대 갈라 보기(요청: 유닛을 무조건 합치는 게 아니라 가까운 것만 합침) — 마커 하나가
      드랍조와 본대를 오가며 순간이동하던 자리다. 명령 점을 가까운 것끼리 묶어 부대 몇으로
      가르고, 어느 부대에서도 먼 점은 가장 오래 조용한 부대가 그리로 옮겨 간 것으로 본다. */
-  const squadPts = useMemo(() => basePts.map(splitSquads), [basePts]);
+  const homeOf = (raw: string): [number, number] | null => {
+    const b = bases.find((m) => m.key === raw);
+    return b ? [b.x, b.y] : null;
+  };
+  const squadPts = useMemo(
+    () => basePts.map((pts, pi) => splitSquads(pts, homeOf(motion.players[pi].raw))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [basePts, motion, bases],
+  );
+  /* 정체가 드러난 유닛별 자취(요청: 모든 유닛의 위치를 따로, 같은 종류끼리만 묶기) —
+     시즈·스팀팩·버로우로 정체가 드러난 명령들이다. 종류마다 따로 묶으므로 탱크 라인과
+     바이오닉 본대가 딴 자리에 있어도 각자의 점으로 선다. 옛 분석본에는 없다(재분석). */
+  const typeSquads = useMemo(
+    () => motion.players.map((p) => Object.entries(p.upts ?? {})
+      .flatMap(([unit, pts]) => splitSquads(pts, homeOf(p.raw))
+        .map((sq) => ({ unit, raw: sq, walk: walkTrack(sq, p, false, unit) })))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [motion, terrain, grid.width, grid.height, bases],
+  );
   const refinedSquads = useMemo(
     () => motion.players.map((p, pi) => squadPts[pi].map((sq) => walkTrack(sq, p, false))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -584,18 +613,32 @@ export default function ReplayMotionPlayer({
       { kind: "carrier", src: p.tpts ?? [] },
       { kind: "lone", src: p.opts ?? [] },
     ];
-    return kinds.flatMap(({ kind, src }) => (src.length === 0 ? [] : splitSquads(src)
+    // 정찰도 본진에서 걸어 나간다(지적: 엉뚱한 데서 태어남).
+    return kinds.flatMap(({ kind, src }) => (src.length === 0 ? [] : splitSquads(src, homeOf(p.raw))
       .map((sq) => ({ kind, raw: sq, walk: walkTrack(sq, p, true) }))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [motion, terrain, grid.width, grid.height]);
+  }), [motion, terrain, grid.width, grid.height, bases]);
   // 기본은 ×4다(요청: ×8 → ×4) — ×8은 전투가 눈으로 못 따라갈 만큼 빨랐다.
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(4);
-  /* 탐색바를 잡고 있는 동안의 값(지적: 다이얼 드래그가 안 됨) — 재생 중에는 매 프레임
-     t가 갈아치워져, 잡은 손잡이가 프레임마다 제자리로 튕겨 드래그가 안 먹혔다. 잡은
-     동안은 이 값이 이기고, 놓으면 다시 시계를 따른다. */
-  const [scrub, setScrub] = useState<number | null>(null);
+  /* 탐색바(지적: 다이얼 드래그가 안 되고, 부드럽지 않고 반응이 느림) — 제어 입력은 매
+     프레임 React가 값을 덮어써 잡은 손잡이와 싸웠고, 끌 때마다 지도 전체가 그려져 손을
+     못 따라왔다. 입력을 비제어로 두고(손잡이는 브라우저 몫), 재생 중의 위치는 ref로 직접
+     쓰며, 끌기의 지도 이동(setT)은 rAF로 프레임당 한 번으로 묶는다. */
+  const rangeRef = useRef<HTMLInputElement>(null);
+  const scrubbing = useRef(false);
+  const seekPending = useRef<number | null>(null);
   const [done, setDone] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
+
+  /* 재생이 손잡이를 민다 — 비제어라 React가 안 밀어 주므로 여기서 직접 쓴다. 잡고 있는
+     동안은 안 민다(그 순간의 임자는 손이다). */
+  useEffect(() => {
+    if (scrubbing.current) return;
+    const el = rangeRef.current;
+    if (!el) return;
+    el.value = String(t);
+    el.style.setProperty("--p", `${total > 0 ? (t / total) * 100 : 0}%`);
+  }, [t, total]);
 
   /* 한 번에 한 판만(요청) — 재생을 시작하는 순간 먼저 돌던 판을 멈춘다. */
   const pauseSelf = useRef(() => {});
@@ -1126,7 +1169,77 @@ export default function ReplayMotionPlayer({
             size = v;
           }
           size = Math.round(size);
-          return squads.map((rp, si) => {
+          /* 유닛별 살아 있는 수의 어림 — 완성 누계 × 합계의 살아남은 비율. 유닛별 마커의
+             수와 무명 부대의 구성 표기가 같이 쓴다. */
+          let cumAll = 0;
+          for (const d of completionsByRaw.get(p.raw) ?? []) {
+            if (d > t) break;
+            cumAll += 1;
+          }
+          const aliveShare = cumAll > 0 ? size / cumAll : 1;
+          const aliveOf = (u: string): number => {
+            let n = 0;
+            for (const [du, doneSecs] of unitDoneByRaw.get(p.raw) ?? []) {
+              if (du !== u) continue;
+              for (const d of doneSecs) {
+                if (d > t) break;
+                n += 1;
+              }
+            }
+            return Math.round(n * aliveShare);
+          };
+          /* 유닛별 마커(요청: 모든 유닛의 위치를 따로, 같은 종류끼리만 묶기) — 정체가
+             드러난 자취(upts)의 부대들이다. 살아서 보이는 종류는 무명 부대의 구성 표기에서
+             뺀다 — 같은 탱크가 제 마커와 부대 칩에 두 번 적히면 수가 배로 읽힌다. */
+          const deadBy = (lastOrderSec: number): boolean => {
+            for (const [a, b] of p.hot ?? []) {
+              if (lastOrderSec >= a - 30 && lastOrderSec <= b && t > b + 8) return true;
+            }
+            return false;
+          };
+          const typeMarks = typeSquads[pi].flatMap((g, gi) => {
+            const rp = g.walk;
+            if (rp.length === 0 || t < rp[0][0]) return [];
+            const pos = posAt(
+              rp, t, terrain || isAirUnit(g.unit) ? null : { x: grid.width / 2, y: grid.height / 2 },
+            );
+            if (!pos) return [];
+            let sinceCmd = Infinity;
+            for (const [sec] of g.raw) {
+              if (sec > t) break;
+              sinceCmd = t - sec;
+            }
+            if (sinceCmd > SQUAD_FADE_SEC) return [];
+            if (Number.isFinite(sinceCmd) && deadBy(t - sinceCmd)) return [];
+            return [{ g, gi, pos, sinceCmd }];
+          });
+          const shownUnits = new Set(typeMarks.flatMap(({ g }) => BY_UNITS[g.unit] ?? [g.unit]));
+          const typeNodes = typeMarks.map(({ g, gi, pos, sinceCmd }) => {
+            const members = BY_UNITS[g.unit] ?? [g.unit];
+            const alive = members.reduce((n, u) => n + aliveOf(u), 0);
+            const label = `${UNIT_KO[g.unit] ?? g.unit}${alive > 0 ? ` ${alive}` : ""}`;
+            const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC;
+            return (
+              <span
+                key={`${p.raw}-u${g.unit}-${gi}`}
+                className={cx(
+                  "scr-motion-army",
+                  activeNow ? "scr-motion-chip" : "scr-motion-dot",
+                  team === 2 ? "scr-motion-team2" : "scr-motion-team1",
+                  pos.stale && "scr-motion-army-stale",
+                )}
+                style={{
+                  left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
+                  ...(activeNow
+                    ? { fontSize: Math.min(14, 8 + Math.round(Math.sqrt(Math.max(alive, 1)) * 1.4)), ...chipStyle(p.raw, team) }
+                    : glyphStyle(p.raw, team)),
+                }}
+              >
+                {activeNow ? label : "●"}
+              </span>
+            );
+          });
+          const squadNodes = squads.map((rp, si) => {
             /* 첫 부대 명령 전에는 아예 없다(지적: 시작하자마자 이상한 데 멈춰 있다) —
                posAt은 첫 점 이전이면 첫 점 자리를 돌려줘서, 병력이 생기기도 전에 마커가
                '앞으로 갈 자리'에 서 있었다. 그동안의 움직임은 정찰 점(spts)이 맡는다. */
@@ -1144,35 +1257,17 @@ export default function ReplayMotionPlayer({
             }
             if (si !== primary && sinceCmd > SQUAD_FADE_SEC) return null;
             /* 전투에서 정리된 부대(요청: 유닛은 새로 이동하지 않는 한 그 자리에 있고,
-               전투 후 다시 액션이 없다면 그 전투에서 죽은 것) — 마지막 명령이 어떤 전투
-               창에 닿아 있고 그 전투가 끝나고도 새 명령이 없으면, 그 부대는 거기서
-               정리된 것이라 걷는다. */
-            if (Number.isFinite(sinceCmd)) {
-              const lastOrderSec = t - sinceCmd;
-              for (const [a, b] of p.hot ?? []) {
-                if (lastOrderSec >= a - 30 && lastOrderSec <= b && t > b + 8) return null;
-              }
-            }
+               전투 후 다시 액션이 없다면 그 전투에서 죽은 것). */
+            if (Number.isFinite(sinceCmd) && deadBy(t - sinceCmd)) return null;
             const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC;
             const showName = si === primary && activeNow && !!unit && (size >= 1 || !!SCOUT_KO[unit]);
             const fontPx = Math.min(16, 8 + Math.round(Math.sqrt(size) * 1.6));
-            /* 유닛별 구성(요청: 제일 많이 뽑은 것 하나가 아니라 모든 유닛을 따로) —
-               유닛마다 완성 누계를 세고, 전투 감모는 합계의 살아남은 비율을 같은 몫으로
-               나눠 얹는다. 한 기도 안 남은 유닛은 안 적는다. */
-            let cumAll = 0;
-            for (const d of completionsByRaw.get(p.raw) ?? []) {
-              if (d > t) break;
-              cumAll += 1;
-            }
-            const aliveShare = cumAll > 0 ? size / cumAll : 1;
+            /* 무명 부대의 구성 — 제 마커를 가진 종류(shownUnits)는 뺀다: 같은 탱크가 제
+               마커와 부대 칩에 두 번 적히면 수가 배로 읽힌다. */
             const parts: [string, number][] = [];
-            for (const [u, doneSecs] of unitDoneByRaw.get(p.raw) ?? []) {
-              let n = 0;
-              for (const d of doneSecs) {
-                if (d > t) break;
-                n += 1;
-              }
-              const alive = Math.round(n * aliveShare);
+            for (const [u] of unitDoneByRaw.get(p.raw) ?? []) {
+              if (shownUnits.has(u)) continue;
+              const alive = aliveOf(u);
               if (alive >= 1) parts.push([u, alive]);
             }
             parts.sort((a, b) => b[1] - a[1]);
@@ -1227,6 +1322,7 @@ export default function ReplayMotionPlayer({
               </span>
             );
           });
+          return [...typeNodes, ...squadNodes];
         })}
 
         {/* 정찰 자취 — 부대 자취에서 걷어낸 명령들이다(지적: 일꾼 정찰이 하나도 안
@@ -1318,23 +1414,31 @@ export default function ReplayMotionPlayer({
 
       {/* 조종간(요청: 두 줄) — 윗줄은 스크러버 하나, 아랫줄에 재생·배속·시간이 선다. */}
       <div className="scr-motion-bar">
-        {/* 손잡이가 1초씩 끊어 뛰던 자리(지적: 움직임을 부드럽게) — step이 1초라 ×4에서는
-            네 프레임에 한 번씩 툭툭 옮겨 앉았다. 시계는 어차피 매 프레임 갱신되므로
-            눈금을 없애고 값도 소수 그대로 넘기면 손잡이가 재생과 같은 결로 흐른다.
-            --p는 지나온 자리를 채우는 트랙 그라데이션의 경계다(CSS의 -range 참고). */}
+        {/* 비제어 탐색바(지적: 드래그가 안 먹고 느림 — 위 rangeRef 주석). step이 없어야
+            ×4에서도 손잡이가 툭툭 안 뛴다. --p는 지나온 자리를 채우는 그라데이션 경계다. */}
         <input
+          ref={rangeRef}
           className="scr-motion-range" type="range"
-          min={0} max={total} step="any" value={scrub ?? t}
-          style={{ "--p": `${total > 0 ? ((scrub ?? t) / total) * 100 : 0}%` } as React.CSSProperties}
-          onChange={(e) => {
-            const v = Number(e.target.value);
-            setScrub(v);
-            setT(v);
-            setDone(v >= total);
+          min={0} max={total} step="any" defaultValue={t}
+          onPointerDown={() => { scrubbing.current = true; }}
+          onPointerUp={() => { scrubbing.current = false; }}
+          onPointerCancel={() => { scrubbing.current = false; }}
+          onInput={(e) => {
+            const el = e.target as HTMLInputElement;
+            const v = Number(el.value);
+            el.style.setProperty("--p", `${total > 0 ? (v / total) * 100 : 0}%`);
+            // 지도는 프레임당 한 번만 따라온다 — 끌기 이벤트마다 그리면 손이 밀린다.
+            if (seekPending.current === null) {
+              requestAnimationFrame(() => {
+                const sv = seekPending.current;
+                seekPending.current = null;
+                if (sv === null) return;
+                setT(sv);
+                setDone(sv >= total);
+              });
+            }
+            seekPending.current = v;
           }}
-          onPointerUp={() => setScrub(null)}
-          onTouchEnd={() => setScrub(null)}
-          onBlur={() => setScrub(null)}
           aria-label="재생 위치"
         />
       </div>
