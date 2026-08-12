@@ -453,6 +453,10 @@ export default function ReplayMotionPlayer({
   const halls = useMemo(() => motion.builds
     .filter(([, , , unit]) => ["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(unit))
     .map(([sec, x, y, , raw, gone]) => ({ sec, x, y, raw, gone: gone ?? 0 })), [motion]);
+  /** 가스 건물들 — 가스 지대에 일꾼을 보낼 자격이다(지적: 가스도 안 지었는데 왔다 갔다). */
+  const gasBuildings = useMemo(() => motion.builds
+    .filter(([, , , unit]) => ["Refinery", "Assimilator", "Extractor"].includes(unit))
+    .map(([sec, x, y, , raw, gone]) => ({ sec, x, y, raw, gone: gone ?? 0 })), [motion]);
   const castsNow = motion.casts.filter((c) => c[0] <= t && t - c[0] <= CAST_HOLD_SEC);
 
   return (
@@ -532,6 +536,19 @@ export default function ReplayMotionPlayer({
             if (d < best) { best = d; owner = { x: hall.x, y: hall.y, raw: hall.raw }; }
           }
           if (!owner) return [];
+          /* 가스 지대 게이트(지적) — 같은 기지에 미네랄 지대가 따로 있는 홑 가스 지대는,
+             그 위에 가스 건물(정제소류)이 서기 전엔 일꾼이 안 간다. 미네랄과 가스가 한
+             지대로 묶인 맵은 그대로 둔다(어차피 미네랄 캐는 길이다). */
+          if (res[2] === 1) {
+            const standalone = (grid.resources ?? []).some((other, oi) =>
+              oi !== ri && other[2] === 0 && Math.hypot(other[0] - res[0], other[1] - res[1]) <= 12);
+            if (standalone) {
+              const hasGasBuilding = gasBuildings.some((g) =>
+                g.raw === owner!.raw && g.sec + 30 <= t && (g.gone === 0 || t < g.gone)
+                && Math.hypot(g.x - res[0], g.y - res[1]) <= 8);
+              if (!hasGasBuilding) return [];
+            }
+          }
           const track = motion.players.find((p) => p.raw === owner!.raw);
           let workerN = 0;
           for (const [sec, n] of track?.workers ?? []) {
