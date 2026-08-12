@@ -230,8 +230,11 @@ export default function ReplayMotionPlayer({
                   ? { color: colorByRaw.get(raw) } : {}),
               }}
             >
-              {/* 한글명만 적는다(요청) — 이름을 모르는 건물은 점으로만. */}
-              {razed ? "✕" : freshBuild ? (UNIT_KO[unit] ?? "▪") : "▪"}
+              {/* 겉모습 규칙(요청) — 건물 네모·방어건물 세모, 지어지는 동안만 이름(한글명
+                  없으면 도형 그대로). */}
+              {razed ? "✕"
+                : freshBuild ? (UNIT_KO[unit] ?? (DEFENSE_BUILDINGS.has(unit) ? "▲" : "▪"))
+                  : DEFENSE_BUILDINGS.has(unit) ? "▲" : "▪"}
             </span>
           );
         })}
