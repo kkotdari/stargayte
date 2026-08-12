@@ -2174,7 +2174,26 @@ export default function ReplayMotionPlayer({
                 : g.unit === "Worker"
                   ? (race === "저그" ? "드론" : race === "테란" ? "SCV" : "프로브")
                   : g.unit);
-            const label = `${groupKo}${alive > 0 ? ` ${alive}` : ""}`;
+            /* 묶음 이름("바이오닉")을 그대로 안 쓴다(요청: 합쳐 부르지 않기) — 자리는
+               하나여도(리플레이가 스팀팩 같은 묶음 커맨드 단위로만 정체를 말한다) 이름은
+               식구별로 갈라 적는다: "마린 8 · 메딕 2". 같은 한글 이름(시즈/퉁퉁 탱크)은
+               하나로 합산하고, 수를 하나도 모르면 묶음 이름으로 물러난다. */
+            const label = (() => {
+              if (members.length > 1 && aliveAll > 0) {
+                const factor = alive / aliveAll;
+                const byKo = new Map<string, number>();
+                for (const u of members) {
+                  const ko = UNIT_KO[u] ?? u;
+                  const n = Math.round(aliveOf(u) * factor);
+                  if (n > 0) byKo.set(ko, (byKo.get(ko) ?? 0) + n);
+                }
+                if (byKo.size > 0) {
+                  return [...byKo].sort((a, b) => b[1] - a[1])
+                    .map(([ko, n]) => `${ko} ${n}`).join(" · ");
+                }
+              }
+              return `${groupKo}${alive > 0 ? ` ${alive}` : ""}`;
+            })();
             /* 일꾼과 수송선은 이름을 안 띄운다(요청) — 일꾼은 늘 작은 점, 수송선은 늘
                제 도형(오버로드 풍선·드랍십·셔틀)이다. */
             const noName = g.unit === "Worker" || g.unit === "Transport";
@@ -2369,23 +2388,10 @@ export default function ReplayMotionPlayer({
               && buildAbsorbed(p, pos, t - sinceCmd)) return null;
             // 무너진 기지 곁에서 침묵 — 그 함락에서 정리된 것(지적).
             if (razedNearby(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return null;
-            /* 진짜 이름으로 부른다(지적: "일꾼"이 아니라 원래 이름 — "정찰"이라는 유닛은
-               없다). 종족이 이름을 정한다: 일꾼은 SCV·프로브·드론, 수송선은 드랍십·셔틀·
-               오버로드. 정체 모를 한 기도 그 종족의 흔한 쪽(일꾼, 저그는 오버로드)으로
-               부른다 — 어림이지만 없는 유닛 이름보다는 사실에 가깝다. */
-            const label = race === "저그"
-              ? (g.kind === "worker" ? "드론" : "오버로드")
-              : g.kind === "carrier"
-                ? (race === "테란" ? "드랍십" : "셔틀")
-                : race === "테란" ? "SCV" : "프로브";
-            /* 일꾼과 수송선은 이름을 안 띄운다(요청) — 일꾼은 자원 채취뿐 아니라 늘
-               적당히 작은 점으로 통일, 수송선은 늘 제 도형(오버로드 풍선·드랍십·셔틀)이다. */
-            const noName = g.kind === "worker" || g.kind === "carrier" || race === "저그";
-            /* 걷는 중일 때만 이름이다(지적: 일꾼 아이콘이 커졌다 작아졌다 — 일꾼은 명령을
-               잘게 자주 받아 액티브 창이 계속 다시 열리고, 칩↔점 전환이 깜빡임으로 읽혔다).
-               '명령 직후 + 걷는 중'을 함께 물으면 서 있는 일꾼은 늘 점이고, 이름은 여정에
-               한 번만 떴다 진다. */
-            const activeNow = !noName && sinceCmd <= ACTIVE_HOLD_SEC && pos.moving && !nearHome;
+            /* 정찰은 이름을 아예 안 띄운다(지적: 일꾼 이름 뜨는 게 문제 맞다) — 일꾼은
+               늘 작은 점, 수송선·오버로드는 늘 제 도형이다. 칩으로 커지는 일이 없으니
+               커졌다 작아졌다도 없다. */
+            const activeNow = false;
             return (
               <span
                 key={`s-${p.raw}-${g.kind}-${gi}`}
@@ -2408,7 +2414,7 @@ export default function ReplayMotionPlayer({
                   ? <ShapeIcon kind="ovie" className="scr-motion-ovie" />
                   : g.kind === "carrier"
                     ? <ShapeIcon kind={race === "테란" ? "dship" : "shuttle"} className="scr-motion-ovie" />
-                    : activeNow ? label : "●"}
+                    : "●"}
               </span>
             );
           });
