@@ -73,6 +73,9 @@ export interface ReplayPlayerSignals {
   /** 테란 건물 착륙(Land) — 좌표는 건설과 같은 빌드 타일이다. 어느 건물이 내렸는지는 안
    *  남아, 재생이 가장 가까운 띄울 수 있는 건물로 어림한다(요청: 건물 띄우기 판단). */
   lands: { frame: number; x: number; y: number }[];
+  /** 이륙(Lift Off) 프레임들 — 좌표도 어느 건물인지도 안 남는다. 재생이 다음 착륙(Land)과
+   *  짝지어 "떠 있는 구간"을 어림한다(지적: 건물 떠 있는 게 표현이 안 된다). */
+  lifts?: number[];
   /** 건설 취소 커맨드의 프레임 — 짓다 만 건물 판정의 재료(요청). 어느 건물인지는 안 남아,
    *  재생이 가장 최근 착공된 건물로 어림한다. */
   cancelBuilds: number[];
@@ -751,6 +754,8 @@ function collectSignals(
     if (cmdName === "Lift Off") {
       s.liftOffCount += 1;
       if (frame !== null && s.firstLiftOffFrame === null) s.firstLiftOffFrame = frame;
+      // 전부 남긴다(지적: 건물 떠 있는 게 표현이 안 된다) — 재생이 다음 착륙과 짝짓는다.
+      if (frame !== null) (s.lifts ??= []).push(frame);
     } else if (cmdName === "Leave Game") {
       // 여러 번 찍히면 마지막 것이 실제로 떠난 시점이다.
       s.leaveFrame = frame;

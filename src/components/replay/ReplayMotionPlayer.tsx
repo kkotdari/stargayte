@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Hammer, Mountain, Pause, Play, RotateCcw, Shield, ZoomIn, ZoomOut } from "lucide-react";
+import { Hammer, Mountain, Pause, Play, RotateCcw, Shield } from "lucide-react";
 import TerrainReviewModal from "../../modals/TerrainReviewModal";
 import Avatar from "../common/Avatar";
 import RaceBadge from "../common/RaceBadge";
@@ -31,6 +31,14 @@ const CAST_HOLD_SEC = 6;
 /** 자취 점 사이가 이보다 벌어지면 잇지 않고 건너뛴다(초) — 한참 조용하다 다른 곳을 찍은
  *  것은 이동이 아니라 시선 전환이라, 이으면 부대가 맵을 순간이동으로 가로지른다. */
 const LERP_MAX_GAP_SEC = 24;
+/** 보간이 낼 수 있는 최고 속도(타일/초) — 이보다 빨라야 닿는 두 점은 잇지 않고 앞 점에
+ *  머문다(지적: "아직도 유닛 갑자기 빠르게 이동하는 말도안되는 현상이"). 자취는 걷기
+ *  (walkTrack)로 속도가 눌려 있지만, 부대 재배정·틈새로 새는 점이 남긴 초고속 미끄러짐을
+ *  여기서 마지막으로 막는다. 스커지(6.7타일/초)가 실제 최고라 8이면 진짜 이동은 안 걸린다. */
+const GLIDE_MAX_SPEED = 8;
+/** 전투가 끝나고 이만큼 침묵해야 '그 전투에서 정리됐다'고 본다(초) — 요청: "유닛 죽은게
+ *  확실하지 않으면 남겨놓기". 예전 8초는 잠깐 손을 뗀 부대까지 걷어냈다. */
+const DEAD_QUIET_SEC = 45;
 
 const pct = (v: number, span: number) => `${(v / span) * 100}%`;
 
@@ -64,6 +72,9 @@ const SPIKE_BACK_RATE = 0.1;
 const SPIKE_MAX_RUN = 4;
 /** 부대 묶기(요청: 가까운 유닛만 합침) — 앞 부대의 마지막 자리에서 이 안이면 같은 부대다. */
 const SQUAD_MERGE_TILES = 14;
+/** 유닛별 마커의 뭉침 반경(요청: "같은 종류유닛을 무조건 뭉치는게 아니라 아주 가까울때만")
+ *  — 부대 반경보다 훨씬 좁다. */
+const TYPE_MERGE_TILES = 6;
 const SQUAD_MAX = 4;
 /** 다 찼을 때 이보다 먼 점은 아예 빠뜨린다(지적: 동선이 튄다) — 가장 가까운 부대에
  *  이어도 맵을 가로지르는 유령 걸음이 된다. */
@@ -95,6 +106,7 @@ const BY_UNITS: Record<string, string[]> = {
  *  마커가 목적지에서 태어나던 것을, 걸어 나가는 그림으로 되돌린다. */
 function splitSquads(
   pts: [number, number, number][], home?: [number, number] | null,
+  mergeTiles: number = SQUAD_MERGE_TILES,
 ): [number, number, number][][] {
   const squads: [number, number, number][][] = [];
   for (let i = 0; i < pts.length; i += 1) {
@@ -106,12 +118,12 @@ function splitSquads(
       const d = Math.hypot(last[1] - pt[1], last[2] - pt[2]);
       if (d < bestD) { bestD = d; best = k; }
     }
-    if (best >= 0 && bestD <= SQUAD_MERGE_TILES) { squads[best].push(pt); continue; }
+    if (best >= 0 && bestD <= mergeTiles) { squads[best].push(pt); continue; }
     if (best >= 0) {
       const last = squads[best][squads[best].length - 1];
       let staysBehind = false;
       for (let j = i + 1; j < pts.length && pts[j][0] - pt[0] <= SQUAD_LOOKAHEAD_SEC; j += 1) {
-        if (Math.hypot(pts[j][1] - last[1], pts[j][2] - last[2]) <= SQUAD_MERGE_TILES) {
+        if (Math.hypot(pts[j][1] - last[1], pts[j][2] - last[2]) <= mergeTiles) {
           staysBehind = true;
           break;
         }
@@ -269,6 +281,22 @@ const PRODUCED_BY: Record<string, string[]> = {
   Hive: ZERG_LARVA,
 };
 
+/** 건물 발자국(타일 폭·높이) — 건설 커맨드의 좌표는 발자국의 왼쪽 위 타일이라(스크렙),
+ *  그대로 앵커에 놓으면 건물마다 반 발자국씩 왼쪽 위로 치우친다(지적: "맵 안의 요소들은
+ *  또 맵의 왼쪽으로 살짝 치우쳤어"). 반 발자국을 더해 가운데에 그린다. 표에 없는 건물은
+ *  가장 흔한 3×2로 어림한다 — 반 타일 안쪽의 오차는 눈에 안 걸린다. */
+const FOOTPRINT: Record<string, [number, number]> = {
+  "Command Center": [4, 3], Nexus: [4, 3], Hatchery: [4, 3], Lair: [4, 3], Hive: [4, 3],
+  Barracks: [4, 3], Factory: [4, 3], Starport: [4, 3], "Science Facility": [4, 3],
+  Gateway: [4, 3], Stargate: [4, 3], "Engineering Bay": [4, 3],
+  Refinery: [4, 2], Assimilator: [4, 2], Extractor: [4, 2],
+  Pylon: [2, 2], "Missile Turret": [2, 2], "Photon Cannon": [2, 2],
+  "Creep Colony": [2, 2], "Sunken Colony": [2, 2], "Spore Colony": [2, 2],
+  Spire: [2, 2], "Greater Spire": [2, 2], "Nydus Canal": [2, 2],
+};
+const footDx = (unit: string): number => (FOOTPRINT[unit] ?? [3, 2])[0] / 2;
+const footDy = (unit: string): number => (FOOTPRINT[unit] ?? [3, 2])[1] / 2;
+
 /** 건물 짓는 시간(초, 어림) — 짓는 동안 반투명 표시(요청)의 창이다. */
 const BUILD_SEC: Record<string, number> = {
   "Command Center": 55, Nexus: 55, Hatchery: 55, Lair: 45, Hive: 55,
@@ -311,6 +339,11 @@ function posAt(
     if (t < s1) {
       if (s1 - s0 > LERP_MAX_GAP_SEC) {
         return { x: x0, y: y0, stale: t - s0 > LERP_MAX_GAP_SEC, moving: false, sinceLast: t - s0 };
+      }
+      /* 말이 안 되는 속도의 미끄러짐은 잇지 않는다(지적) — 앞 점에 머물다 다음 점에서
+         이어 간다. GLIDE_MAX_SPEED 주석 참고. */
+      if (Math.hypot(x1 - x0, y1 - y0) / Math.max(0.001, s1 - s0) > GLIDE_MAX_SPEED) {
+        return { x: x0, y: y0, stale: false, moving: false, sinceLast: t - s0 };
       }
       const k = (t - s0) / Math.max(0.001, s1 - s0);
       // 대기 구간(같은 자리 두 점) — 움직임이 아니다(도착해서 다음 명령을 기다리는 중).
@@ -431,10 +464,16 @@ export default function ReplayMotionPlayer({
     };
   };
   /* 도형(●▪▲✕·점)은 건물이든 유닛이든 음영이 아예 없다(지적) — 제 색 그대로. CSS의
-     음영판·그림자를 물려받지 않게 여기서 걷는다. */
-  const glyphStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => ({
-    color: modeColor(raw, team), background: "none", textShadow: "none", padding: 0,
-  });
+     음영판·그림자를 물려받지 않게 여기서 걷는다.
+     다만 아주 밝은 개인색(연두·노랑·흰색)만은 어두운 링을 얇게 두른다(지적: "이색은 흰색
+     바탕에서 잘 안보여") — 밝은 맵 바탕에서 밝은 색 도형은 통째로 사라진다. */
+  const glyphStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => {
+    const c = modeColor(raw, team);
+    return {
+      color: c, background: "none", padding: 0,
+      textShadow: lumOf(c) > 170 ? "0 0 2px rgba(0, 0, 0, 0.9), 0 0 1px rgba(0, 0, 0, 0.9)" : "none",
+    };
+  };
   const chipStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => {
     const bg = modeColor(raw, team);
     const lum = lumOf(bg);
@@ -602,9 +641,12 @@ export default function ReplayMotionPlayer({
   /* 정체가 드러난 유닛별 자취(요청: 모든 유닛의 위치를 따로, 같은 종류끼리만 묶기) —
      시즈·스팀팩·버로우로 정체가 드러난 명령들이다. 종류마다 따로 묶으므로 탱크 라인과
      바이오닉 본대가 딴 자리에 있어도 각자의 점으로 선다. 옛 분석본에는 없다(재분석). */
+  /* 같은 종류라도 아주 가까울 때만 뭉친다(요청: "같은 종류유닛을 무조건 뭉치는게 아니라
+     아주 가까울때만") — 부대 반경(14타일)은 앞마당 시즈 라인과 본진 수비 탱크까지 한
+     마커로 뭉쳤다. 6타일이면 화면에서 실제로 붙어 보이는 것만 하나가 된다. */
   const typeSquads = useMemo(
     () => motion.players.map((p) => Object.entries(p.upts ?? {})
-      .flatMap(([unit, pts]) => splitSquads(pts, homeOf(p.raw))
+      .flatMap(([unit, pts]) => splitSquads(pts, homeOf(p.raw), TYPE_MERGE_TILES)
         .map((sq) => ({ unit, raw: sq, walk: walkTrack(sq, p, false, unit) })))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [motion, terrain, grid.width, grid.height, bases],
@@ -665,6 +707,9 @@ export default function ReplayMotionPlayer({
   };
   const lensHandlers = {
     onDoubleClick: (e: React.MouseEvent) => {
+      /* PC에서는 확대 기능을 통째로 걷었다(요청) — 마우스 더블클릭은 아무 일도 안 한다.
+         모바일(터치)의 더블탭·두 손가락은 그대로다. */
+      if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
       const r = mapRef.current?.getBoundingClientRect();
       if (!r) return;
       zoomAt(e.clientX - r.left, e.clientY - r.top, lens.z > 1 ? 1 : 2.4);
@@ -737,16 +782,15 @@ export default function ReplayMotionPlayer({
     return () => io.disconnect();
   }, []);
 
-  /* 창을 벗어나면 일시정지(지적: 창 전환해도 계속 재생됨) — 탭 전환(hidden)과 창 전환
-     (blur)을 함께 잡는다. 되살리는 것은 화면 밖 정지와 마찬가지로 사람의 몫이다. */
+  /* 탭이 실제로 안 보이게 되면(hidden) 일시정지 — 되살리는 것은 화면 밖 정지와 마찬가지로
+     사람의 몫이다. 창 전환(blur)의 정지는 걷었다(요청: "블러시 멈춤 제거") — 다른 창을
+     옆에 두고 보는 동안에도 재생은 계속 돌아야 한다. */
   useEffect(() => {
     const stop = () => setPlaying(false);
     const onVis = () => { if (document.hidden) stop(); };
     document.addEventListener("visibilitychange", onVis);
-    window.addEventListener("blur", stop);
     return () => {
       document.removeEventListener("visibilitychange", onVis);
-      window.removeEventListener("blur", stop);
     };
   }, []);
 
@@ -918,11 +962,14 @@ export default function ReplayMotionPlayer({
 
   /* 규모 곡선(요청: 유닛 수는 전투하거나 공격당해야만 감소) — 예전에는 '최근 3분의 완성
      수'라 소강기에도 저절로 줄었다. 이제 완성 누계를 들고 가되, 전투 구간(hot)에서만
-     지수로 깎는다(반감기 60초). 리플레이에 죽음이 안 남는 이상 "전투 밖에서는 안 줄어든다"
-     쪽이 어림으로도 사실에 가깝다. 곡선은 사람마다 한 번 만들어 두고 재생은 읽기만 한다. */
+     지수로 깎는다. 리플레이에 죽음이 안 남는 이상 "전투 밖에서는 안 줄어든다" 쪽이
+     어림으로도 사실에 가깝다. 곡선은 사람마다 한 번 만들어 두고 재생은 읽기만 한다.
+     반감기 60 → 25초(지적: "유닛수가 아직도 너무 과도하게 잡힘 죽음 감지 철저히") —
+     브루드워 전투는 분 단위가 아니라 초 단위로 병력이 녹는다. 60초 반감기는 2분을 싸워도
+     4분의 1이 남는 셈이라 늘 실제보다 부풀어 있었다. */
   const sizeSeries = useMemo(() => {
     const out = new Map<string, [number, number][]>();
-    const HALF_LIFE = Math.LN2 / 60;
+    const HALF_LIFE = Math.LN2 / 25;
     for (const p of motion.players) {
       const done = completionsByRaw.get(p.raw) ?? [];
       const hot = p.hot ?? [];
@@ -951,13 +998,19 @@ export default function ReplayMotionPlayer({
 
   /* 본진 건물(확장 포함)의 자리 — 채굴 일꾼이 오갈 목적지다(지적: 자원 지대가 기준이고,
      거기서 가장 가까운 본진 건물로 왔다 갔다). 커맨드·넥서스·해처리 계열이 대상이다. */
+  // 좌표는 발자국 가운데로 옮긴다(FOOTPRINT 주석) — 일꾼이 건물 왼쪽 위 모서리가 아니라
+  // 건물 한가운데로 오가야 한다.
   const halls = useMemo(() => motion.builds
     .filter(([, , , unit]) => ["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(unit))
-    .map(([sec, x, y, , raw, gone]) => ({ sec, x, y, raw, gone: gone ?? 0 })), [motion]);
+    .map(([sec, x, y, unit, raw, gone]) => ({
+      sec, x: x + footDx(unit), y: y + footDy(unit), raw, gone: gone ?? 0,
+    })), [motion]);
   /** 가스 건물들 — 가스 지대에 일꾼을 보낼 자격이다(지적: 가스도 안 지었는데 왔다 갔다). */
   const gasBuildings = useMemo(() => motion.builds
     .filter(([, , , unit]) => ["Refinery", "Assimilator", "Extractor"].includes(unit))
-    .map(([sec, x, y, , raw, gone]) => ({ sec, x, y, raw, gone: gone ?? 0 })), [motion]);
+    .map(([sec, x, y, unit, raw, gone]) => ({
+      sec, x: x + footDx(unit), y: y + footDy(unit), raw, gone: gone ?? 0,
+    })), [motion]);
   const castsNow = motion.casts.filter((c) => c[0] <= t && t - c[0] <= CAST_HOLD_SEC);
 
   return (
@@ -974,7 +1027,14 @@ export default function ReplayMotionPlayer({
         <div
           className="scr-motion-lens"
           style={lens.z > 1
-            ? { transform: `translate(${lens.tx}px, ${lens.ty}px) scale(${lens.z})` }
+            ? {
+              transform: `translate(${lens.tx}px, ${lens.ty}px) scale(${lens.z})`,
+              /* 마커의 되돌림 배율(요청: "건물만 2배까지 확대 유닛은 그대로") — 렌즈가
+                 z배로 키운 것을 마커가 제 몫만큼 되돌린다. 건물은 min(z,2)/z(2배 상한),
+                 유닛·아바타·마법은 1/z(원래 크기 그대로). global.css의 --mk 참고. */
+              ["--mk-build" as string]: `${Math.min(lens.z, 2) / lens.z}`,
+              ["--mk-unit" as string]: `${1 / lens.z}`,
+            }
             : undefined}
         >
         {grid.image
@@ -985,11 +1045,14 @@ export default function ReplayMotionPlayer({
             이름은 하나만 적고 나머지는 점(지적: 겹치면 안 보인다). 긴 이름은 폰트를 한
             단계 줄인다. 생산·연구 중이면 심장처럼 뛴다(요청). */}
         {(() => {
-          return motion.builds.map(([sec, x, y, unit, raw, gone], i) => {
+          return motion.builds.map(([sec, x, y, unit, raw, gone, liftAt], i) => {
             if (sec > t) return null;
             const goneAt = gone ?? 0;
             // 없어진 건물은 그냥 사라진다(요청: ✕ 표시 없음) — 착륙 이사·변태와도 한 결이다.
             if (goneAt > 0 && t >= goneAt) return null;
+            // 떠 있는 구간(지적: 건물 떠 있는 게 표현이 안 된다) — 이륙부터 착륙(=goneAt)
+            // 까지 옛 자리에서 둥실거린다.
+            const afloat = !!liftAt && t >= liftAt;
             const razed = false;
             /* 같은 자리에 같은 임자의 새 건물이 서면(레어 진화·재건) 옛 것은 걷는다
                (지적: 비활성 건물이 글자와 도형으로 동시 표시). */
@@ -1053,12 +1116,14 @@ export default function ReplayMotionPlayer({
                   // 본진 건물은 다른 건물보다 큼직하게(요청).
                   isHall && "scr-motion-build-hall",
                   activeBuild && "scr-motion-build-on",
-                  (producing || researching) && "scr-motion-heartbeat",
+                  (producing || researching) && !afloat && "scr-motion-heartbeat",
+                  afloat && "scr-motion-build-afloat",
                   razed && "scr-motion-build-razed",
                 )}
                 style={{
                   // 나는 중이면 비행 좌표(bx·by), 아니면 제자리다(위 착륙 이사 주석).
-                  left: pct(bx, grid.width), top: pct(by, grid.height),
+                  // 앵커는 발자국 가운데다(FOOTPRINT 주석 — 왼쪽 위 타일 그대로면 치우친다).
+                  left: pct(bx + footDx(unit), grid.width), top: pct(by + footDy(unit), grid.height),
                   // 긴 이름은 한 단계 작게(지적) — 여섯 자부터.
                   ...(text.length >= 6 && !activeBuild ? { fontSize: 6 } : {}),
 
@@ -1297,9 +1362,14 @@ export default function ReplayMotionPlayer({
           /* 유닛별 마커(요청: 모든 유닛의 위치를 따로, 같은 종류끼리만 묶기) — 정체가
              드러난 자취(upts)의 부대들이다. 살아서 보이는 종류는 무명 부대의 구성 표기에서
              뺀다 — 같은 탱크가 제 마커와 부대 칩에 두 번 적히면 수가 배로 읽힌다. */
+          /* 죽음이 확실할 때만 걷는다(요청: "유닛 죽은게 확실하지 않으면 남겨놓기") —
+             마지막 명령이 전투 창 '안'에 있어야 하고(예전엔 전투 30초 전 명령까지 쓸어
+             담아, 싸움 근처에 서 있기만 한 부대도 죽은 것이 됐다), 전투가 끝나고도 한참
+             (DEAD_QUIET_SEC) 손이 안 간 뒤에야 정리된 것으로 본다 — 리플레이에 죽음이 안
+             남는 이상 이 둘이 겹친 것이 우리가 가질 수 있는 가장 굵은 근거다. */
           const deadBy = (lastOrderSec: number): boolean => {
             for (const [a, b] of p.hot ?? []) {
-              if (lastOrderSec >= a - 30 && lastOrderSec <= b && t > b + 8) return true;
+              if (lastOrderSec >= a && lastOrderSec <= b && t > b + DEAD_QUIET_SEC) return true;
             }
             return false;
           };
@@ -1323,7 +1393,16 @@ export default function ReplayMotionPlayer({
           const typeNodes = typeMarks.map(({ g, gi, pos, sinceCmd }) => {
             const members = BY_UNITS[g.unit] ?? [g.unit];
             const alive = members.reduce((n, u) => n + aliveOf(u), 0);
-            const label = `${UNIT_KO[g.unit] ?? g.unit}${alive > 0 ? ` ${alive}` : ""}`;
+            /* 파서의 묶음 이름이 유닛명이 아닌 경우("Transport"·"Worker")는 그 종족의 실제
+               이름으로 부른다(지적: "transport가 뭐지" — 영문 키가 그대로 샜다). */
+            const race = bases.find((b) => b.key === p.raw)?.race;
+            const groupKo = UNIT_KO[g.unit]
+              ?? (g.unit === "Transport"
+                ? (race === "저그" ? "오버로드" : race === "테란" ? "드랍십" : "셔틀")
+                : g.unit === "Worker"
+                  ? (race === "저그" ? "드론" : race === "테란" ? "SCV" : "프로브")
+                  : g.unit);
+            const label = `${groupKo}${alive > 0 ? ` ${alive}` : ""}`;
             const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC;
             return (
               <span
@@ -1386,7 +1465,6 @@ export default function ReplayMotionPlayer({
               if (alive >= 1) parts.push([u, alive]);
             }
             parts.sort((a, b) => b[1] - a[1]);
-            const composition = parts.map(([u, n]) => `${UNIT_KO[u]} ${n}`).join(" · ");
             /* 도형일 땐 뭉치지 않는다(지적: 이름일 때만 뭉침) — 규모만큼 낱개 점을 촘촘히
                흩어 놓는다(해바라기 나선 — 결정적이라 프레임마다 안 튄다). 곁 부대는 규모를
                모르니 점 하나다. */
@@ -1415,27 +1493,36 @@ export default function ReplayMotionPlayer({
                 );
               });
             }
-            return (
+            /* 유닛마다 제 칩이다(지적: "왜 아직도 합쳐서 나와 유닛이?") — "질럿 93 ·
+               옵저버 5 · 하이템플러 4"를 한 칩에 이어 적으면 세 유닛이 한 덩어리로 읽힌다.
+               자리는 하나뿐이라(이 유닛들은 제 위치가 드러난 적이 없어 부대 자리밖에
+               모른다) 같은 자리에 세로로 쌓되, 칩은 유닛별로 가른다. 첫 칩(가장 많은
+               유닛)만 규모 글씨·심장박동을 갖고 나머지는 작게 딸린다. */
+            const chips: string[] = parts.length > 0
+              ? parts.map(([u, n]) => `${UNIT_KO[u]} ${n}`)
+              : [UNIT_KO[unit] ? `${UNIT_KO[unit]} ${size}`.trim() : SCOUT_KO[unit] ?? "●"];
+            return chips.map((text, ci) => (
               <span
-                key={`${p.raw}-s${si}`}
+                key={`${p.raw}-s${si}-c${ci}`}
                 className={cx(
                   "scr-motion-army",
                   "scr-motion-chip",
-                  "scr-motion-heartbeat",
+                  ci === 0 && "scr-motion-heartbeat",
                   team === 2 ? "scr-motion-team2" : "scr-motion-team1",
                   pos.stale && "scr-motion-army-stale",
                 )}
                 style={{
                   left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
-                  fontSize: fontPx,
+                  fontSize: ci === 0 ? fontPx : 10,
+                  // 첫 칩 아래로 한 줄씩 내려 쌓는다 — 마진은 transform(가운데 앵커)보다
+                  // 먼저 먹으므로 앵커는 그대로고 상자만 내려간다.
+                  ...(ci > 0 ? { marginTop: fontPx + 4 + (ci - 1) * 14 } : {}),
                   ...chipStyle(p.raw, team),
                 }}
               >
-                {/* 유닛 전부를 수와 함께 적는다(요청) — "질럿 8 · 드라군 4" 꼴. 구성이
-                    비었으면(병력 어림 0) 우세 유닛 이름이나 점으로 물러난다. */}
-                {composition || (UNIT_KO[unit] ? `${UNIT_KO[unit]} ${size}`.trim() : SCOUT_KO[unit] ?? "●")}
+                {text}
               </span>
-            );
+            ));
           });
           return [...typeNodes, ...squadNodes];
         })}
@@ -1462,11 +1549,13 @@ export default function ReplayMotionPlayer({
             }
             if (sinceCmd > SQUAD_FADE_SEC && !pos.moving) return null;
             /* 전투 판정(요청: 정찰 점에도) — 마지막 명령이 전투 창에 닿아 있고 그 전투가
-               끝나고도 새 명령이 없으면, 그 정찰도 거기서 정리된 것이다. */
+               끝나고도 새 명령이 없으면, 그 정찰도 거기서 정리된 것이다. 부대의 deadBy와
+               같은 완화(요청: 확실하지 않으면 남겨놓기) — 전투 창 안의 명령만, 침묵도
+               한참 뒤에야. */
             if (Number.isFinite(sinceCmd)) {
               const lastOrderSec = t - sinceCmd;
               for (const [a, b] of p.hot ?? []) {
-                if (lastOrderSec >= a - 30 && lastOrderSec <= b && t > b + 8) return null;
+                if (lastOrderSec >= a && lastOrderSec <= b && t > b + DEAD_QUIET_SEC) return null;
               }
             }
             /* 진짜 이름으로 부른다(지적: "일꾼"이 아니라 원래 이름 — "정찰"이라는 유닛은
@@ -1480,7 +1569,12 @@ export default function ReplayMotionPlayer({
                 : race === "테란" ? "SCV" : "프로브";
             /* 유닛 마커와 같은 꼴이다(요청: 오버로드·일꾼만 다르게 표현되던 것을 동일하게)
                — 깨어 있으면 배지 칩, 아니면 점. 크기 규칙도 부대와 같은 기본값을 쓴다. */
-            const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC;
+            /* 본진 곁에서는 늘 점이다(요청: "처음 오버로드와 일꾼은 그냥 도형으로 시작") —
+               시작하자마자 첫 채취·정렬 명령에 이름 칩이 우르르 켜지던 자리다. 이름은
+               집을 떠나 진짜 정찰을 나설 때에야 값어치가 있다. */
+            const home = homeOf(p.raw);
+            const nearHome = !!home && Math.hypot(pos.x - home[0], pos.y - home[1]) <= 6;
+            const activeNow = (pos.moving || sinceCmd <= ACTIVE_HOLD_SEC) && !nearHome;
             return (
               <span
                 key={`s-${p.raw}-${g.kind}-${gi}`}
@@ -1501,13 +1595,19 @@ export default function ReplayMotionPlayer({
           });
         })}
 
-        {/* 마법 — 떨어진 자리에 이름이 잠깐 떠오른다. */}
+        {/* 마법 — 떨어진 자리에 이름이 잠깐 떠오른다. 핵만은 이름에 폭발 파문까지
+            얹는다(요청: "핵 떨어지는거도 효과") — 경기 하나에 몇 번 없는, 그 판의 가장
+            큰 사건이라 다른 마법과 같은 글자 한 줄로는 안 보였다. */}
         {castsNow.map(([, x, y, tech, raw], i) => (
           // 한글명을 모르는 기술은 아예 안 띄운다(요청: 텍스트는 전부 한글로).
           TECH_KO[tech] ? (
             <span
               key={`c-${i}`}
-              className={cx("scr-motion-cast", "scr-motion-chip", teamOfRaw(raw) === 2 ? "scr-motion-team2" : "scr-motion-team1")}
+              className={cx(
+                "scr-motion-cast", "scr-motion-chip",
+                tech === "Nuclear Strike" && "scr-motion-nuke",
+                teamOfRaw(raw) === 2 ? "scr-motion-team2" : "scr-motion-team1",
+              )}
               style={{ left: pct(x, grid.width), top: pct(y, grid.height), ...chipStyle(raw, teamOfRaw(raw)) }}
             >
               {TECH_KO[tech]}
@@ -1515,26 +1615,8 @@ export default function ReplayMotionPlayer({
           ) : null
         ))}
         </div>
-        {/* 확대 조절바(요청: PC) — 모바일은 손짓(더블탭·두 손가락)이 있어 PC에만 보인다
-            (CSS 미디어). 렌즈 밖에 있어야 저까지 확대되지 않고, 지도 손짓에 안 먹히게
-            흐름을 끊는다. 가운데를 고정한 채 배율만 바꾼다. */}
-        <div
-          className="scr-motion-zoom"
-          onPointerDown={(e) => e.stopPropagation()}
-          onDoubleClick={(e) => e.stopPropagation()}
-        >
-          <ZoomOut size={11} />
-          <input
-            type="range" min={1} max={4} step={0.1} value={lens.z}
-            onChange={(e) => {
-              const r = mapRef.current?.getBoundingClientRect();
-              if (!r) return;
-              zoomAt(r.width / 2, r.height / 2, Number(e.target.value));
-            }}
-            aria-label="지도 확대"
-          />
-          <ZoomIn size={11} />
-        </div>
+        {/* (삭제) PC 확대 조절바 — PC에서는 확대 기능을 통째로 걷었다(요청). 확대·이동은
+            이제 모바일 손짓(더블탭·두 손가락)만의 것이다. */}
       </div>
 
       {/* 지형 수정(요청: 미니맵 바로 아래 가운데) — 산 아이콘, 회원 누구나. */}
@@ -1604,13 +1686,16 @@ export default function ReplayMotionPlayer({
               ×{v}
             </button>
           ))}
-          {/* 색 전환(요청: 전환 버튼 살림) — 팀색 ↔ 개인색. */}
+          {/* 색 전환(요청: 전환 버튼 살림) — 팀색 ↔ 개인색. 이름표는 지금 상태가 아니라
+              '누르면 볼 것'이다(요청: "개인컬러 팀컬러를 반대로 뒤집고 뒤에 보기 붙이기")
+              — "팀컬러"라 적혀 있는데 눌러도 팀컬러가 안 되는(이미 팀컬러인) 버튼은
+              거꾸로 읽힌다. */}
           <button
             type="button" className="scr-motion-btn scr-motion-colorbtn"
             onClick={() => setColorMode((v) => (v === "team" ? "personal" : "team"))}
             title="색 기준 전환"
           >
-            {colorMode === "team" ? "팀컬러" : "개인컬러"}
+            {colorMode === "team" ? "개인컬러 보기" : "팀컬러 보기"}
           </button>
         </span>
         {/* 옛 스냅 타임라인의 재생 버튼과 같은 꼴(요청) — 46px 완전 원, 속 채운 삼각형. */}

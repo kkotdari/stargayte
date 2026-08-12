@@ -111,10 +111,13 @@ export interface SummaryMotion {
   v: 1;
   step: number;
   players: MotionTrack[];
-  /** [초, x, y, 건물 영문명, raw, 무너진 초(0이면 살아 있음)] — 자리·시각은 건설 커맨드
-   *  그대로 정확하고, 무너짐만 어림이다(요청: 파괴 파악) — 상대의 공격 명령이 그 자리에
-   *  몰린 창의 끝을 무너진 때로 본다. */
-  builds: [number, number, number, string, string, number][];
+  /** [초, x, y, 건물 영문명, raw, 무너진 초(0이면 살아 있음), 이륙한 초?] — 자리·시각은
+   *  건설 커맨드 그대로 정확하고, 무너짐만 어림이다(요청: 파괴 파악) — 상대의 공격 명령이
+   *  그 자리에 몰린 창의 끝을 무너진 때로 본다.
+   *  일곱째 값은 착륙 이사의 옛 자리에만 붙는다(지적: 건물 떠 있는 게 표현이 안 된다) —
+   *  이륙(Lift Off)한 초다. 그때부터 착륙까지 옛 자리 마커가 '떠 있음'으로 그려진다.
+   *  옛 분석본에는 없다. */
+  builds: [number, number, number, string, string, number, number?][];
   /** [초, x, y, 기술 영문명, raw] — 좌표가 남는 마법(스톰·스웜·리콜…). */
   casts: [number, number, number, string, string][];
 }
@@ -484,6 +487,11 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
     /* 테란 착륙(요청: 띄우기 판단) — 어느 건물이 내렸는지는 안 남아, 그 시각 살아 있는
        띄울 수 있는 건물 중 가장 가까운 것이 옮겨 앉은 것으로 본다. 옛 자리는 그때 비고
        (✕ 없이 사라짐), 새 자리에 같은 건물이 선다. */
+    /* 이륙 시각을 착륙과 짝짓는다(지적: 건물 떠 있는 게 표현이 안 된다) — 이륙에는 좌표도
+       대상도 안 남아, "이 착륙보다 앞의 아직 안 쓴 마지막 이륙"이 그 건물이 뜬 순간이다.
+       옛 자리 마커가 그때부터 착륙까지 '떠 있음'으로 그려진다. */
+    const liftSecs = (sg.lifts ?? []).map((f) => Math.round(f * SECONDS_PER_FRAME)).sort((a, b) => a - b);
+    const liftUsed = new Set<number>();
     for (const l of sg.lands ?? []) {
       const sec = Math.round(l.frame * SECONDS_PER_FRAME);
       let pick = -1;
@@ -498,6 +506,12 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       if (pick < 0 || bd <= 2) continue;
       const e = builds[pick];
       e[5] = e[5] > 0 ? Math.min(e[5], sec) : sec;
+      for (let li = liftSecs.length - 1; li >= 0; li -= 1) {
+        if (liftUsed.has(li) || liftSecs[li] > sec || liftSecs[li] <= e[0]) continue;
+        liftUsed.add(li);
+        e[6] = liftSecs[li];
+        break;
+      }
       myBuildIdx.push(builds.length);
       builds.push([
         sec, Math.round(l.x), Math.round(l.y), e[3], p.rawName,
@@ -544,9 +558,12 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
     }
   }
   if (tracks.length === 0 && builds.length === 0) return null;
-  /* 공격이 온 뒤 그 자리에 새 건물이 서면, 옛 건물은 늦어도 그때 없어진 것이다(요청) —
-     같은 타일에 두 채가 같이 설 수는 없다. 임자가 같아도 적용된다(부서진 자리에 다시
-     지은 것). 공격 근거 없이 겹친 것은 취소·재배치일 수 있어 안 건드린다. */
+  /* 공격이 온 뒤 그 자리에 새 건물이 서면, 옛 건물은 그 공격 때 없어진 것이다(요청:
+     "건물 없어짐 시점은 새건물 지을때가 아니라 공격시점") — 같은 타일에 두 채가 같이 설
+     수는 없으니 재건 자체가 파괴의 증거이고, 무너진 순간은 마지막으로 그 자리를 때린
+     공격이 말한다. 예전엔 새 건물이 서는 순간을 썼는데, 그러면 부서진 건물이 재건 직전
+     까지 몇 분씩 멀쩡히 서 있었다. 임자가 같아도 적용된다(부서진 자리에 다시 지은 것).
+     공격 근거 없이 겹친 것은 취소·재배치일 수 있어 안 건드린다. */
   const teamOfRaw = new Map<string, number>();
   for (const p of players) teamOfRaw.set(p.rawName, p.team);
   for (const a of builds) {
@@ -556,10 +573,15 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       const foes = [...attacksByTeam.entries()]
         .filter(([team]) => team !== teamOfRaw.get(a[4]))
         .flatMap(([, list]) => list);
-      const hitNear = foes.reduce((n, o) => (
-        o.sec > a[0] && o.sec < b[0] && Math.hypot(o.x - a[1], o.y - a[2]) <= RAZE_RADIUS
-          ? n + 1 : n), 0);
-      if (hitNear >= 2) a[5] = b[0];
+      let hitNear = 0;
+      let lastHit = 0;
+      for (const o of foes) {
+        if (o.sec > a[0] && o.sec < b[0] && Math.hypot(o.x - a[1], o.y - a[2]) <= RAZE_RADIUS) {
+          hitNear += 1;
+          if (o.sec > lastHit) lastHit = o.sec;
+        }
+      }
+      if (hitNear >= 2) a[5] = Math.round(lastHit);
     }
   }
   builds.sort((a, b) => a[0] - b[0]);
