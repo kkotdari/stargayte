@@ -1035,6 +1035,32 @@ const TITLES: Title[] = [
   /* (삭제) 일꾼 부자(초반 5분 일꾼 52기) — 요청. 초반 일꾼 수는 그 판의 빌드가 정하는
      값에 가까워, 같은 종족·같은 시작이면 누구나 비슷하게 나온다 — 1등이라도 그 사람을
      말해 주는 몫이 작았다. */
+  /* 지상전·공중전·마법 퀸(요청) — 이긴 판의 병력 구성으로, 종족 무관하게 잰다. 셋이 한
+     자(병력 중 비중)를 나눠 쓰지만 문턱은 제 빈도에 맞다: 지상은 기본값이라 거의 전부여야
+     하고(92%), 공중은 병력 셋에 하나면 이미 하늘로 사는 사람이고(30%), 마법 유닛은 열에
+     하나면 마법으로 판을 푸는 사람이다(10%). */
+  {
+    label: "지상전 퀸", weight: 3, kind: "경기력", min: 0.92, why: "병력 중 지상 유닛", unit: "",
+    value: (s, of) => {
+      const m = mix(s, of);
+      return m && m.uGround + m.uAir > 0 ? m.uGround / (m.uGround + m.uAir) : null;
+    },
+  },
+  {
+    label: "공중전 퀸", weight: 3, kind: "경기력", min: 0.3, why: "병력 중 공중 유닛", unit: "",
+    value: (s, of) => {
+      const m = mix(s, of);
+      return m && m.uGround + m.uAir > 0 ? m.uAir / (m.uGround + m.uAir) : null;
+    },
+  },
+  {
+    label: "마법 퀸", weight: 3, kind: "경기력", min: 0.1, why: "병력 중 마법 유닛", unit: "",
+    value: (s, of) => {
+      const m = mix(s, of);
+      const total = m ? m.uBasic + m.uAdv + m.uCaster : 0;
+      return m && total > 0 ? m.uCaster / total : null;
+    },
+  },
   /* 건물을 제일 많이 올린 사람(요청: 심시티 퀸) — "쉴 새 없이 짓는 자"에서 바꿨다. 재는 값은 그대로 분당 지은 채수다. */
   { label: "심시티 퀸", weight: 3, kind: "경기력", min: 8, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
   {
