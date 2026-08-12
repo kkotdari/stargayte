@@ -665,13 +665,13 @@ const TITLES: Title[] = [
   /* 에픽 전투 칭호 한 벌(요청: 종족별 비율 맞춤)에는 battle이 선다 — 그 판에서 경기만이
      아니라 전투(교전)도 이겼어야 센다(요청: 그 유닛을 사용해 전투/경기 모두 이긴 경우만).
      대조는 서버가 전투 원장(bt_*_won)으로 한다. */
-  { ...tactic("바이오닉의 여왕", ["bionic"]), minPlaysShare: 0.15, battle: true },
+  { ...tactic("바이오닉의 여왕", ["bionic"]), minPlaysShare: 0.2, battle: true },
   /* 탱크 조이기·옆탱을 함께 센다(요청: 탱크는 메카닉에 통합) — 셋 다 테란이 탱크로 굴린
      판이고, 자막이 어느 이름으로 짚었나는 그 판의 장면 차이일 뿐이다. 근거 문장도 세
      열쇠를 아우르는 말로 덮는다(tactic이 지어 주는 이름은 첫 열쇠 것뿐이다). */
   // 이름은 여신·여왕 계열로 통일(요청) — 메카닉 사령관에서 바꿨다.
   { ...tactic("메카닉의 여왕", ["mech", "center-tank", "side-tank"]),
-    why: "메카닉·탱크 조이기", minPlaysShare: 0.3, battle: true },
+    why: "메카닉·탱크 조이기", minPlaysShare: 0.25, battle: true },
   /* 과학의 여왕(요청: 신규 과학전 — 여신은 전설급에만) — 베슬을 둘 이상 띄우고 이레디·EMP·매트릭스를 실제로
      뿌린 판이다. 판정은 replayTactics의 vessel. */
   { ...tactic("과학전의 퀸", ["vessel"]), minPlaysShare: 0.2, vsWins: true, battle: true },
@@ -747,7 +747,7 @@ const TITLES: Title[] = [
   /* 가시밭의 여왕(요청: 독거미 부대 상향·개편) — 히드라 몸에 럴커를 묻은 저그 지상
      한 벌이다(판정도 히드라+럴커 조합으로 바뀐다). 러커는 저그의 밥이라 유닛 기본(7%)의
      배로 잰다. */
-  { ...tactic("가시의 여왕", ["lurker"]), minPlaysShare: 0.35, battle: true },
+  { ...tactic("가시의 여왕", ["lurker"]), minPlaysShare: 0.4, battle: true },
   /* 안 보이는 것으로만 치는 사람(요청: 다크·레이스·아비터를 다 잘 쓴 경우만) —
      "보이지 않는 손" → "안 보이는 레이스"를 거쳐 온 자리다. 유닛 하나로는 안 준다(요청:
      하나만 써서는 안 됨): 다크만 뽑는 프로토스는 흔하고, 그건 이미 유닛 칭호가 말한다.
@@ -756,7 +756,7 @@ const TITLES: Title[] = [
   /* (삭제·요청) 은폐 유닛 퀸 — 병력 중 은신 유닛 비중. 다크가 주인공인 판은
      '보이지 않는 여왕'(dark-templar)이 따로 센다. */
   // 에픽 상향(요청: 뮤탈은 상향 — 이름도 여왕 계열로) + 전투 조건.
-  { ...tactic("뮤탈 습격 퀸", ["muta"]), minPlaysShare: 0.1, battle: true },
+  { ...tactic("뮤탈 습격 퀸", ["muta"]), minPlaysShare: 0.05, battle: true },
   /* 코끼리 조련사(요청) — 울트라리스크를 모아 나간 판이다. 저그의 마지막 지상 병력이라
      거기까지 판을 끌고 갔다는 말이기도 한데, 부르는 말은 그 그림 하나면 된다.
      한때 "코끼리떼를 모는 여인"으로 바꿔 봤다가 되돌렸다(요청) — 조련사 쪽이 짧고, 무엇을
@@ -790,7 +790,7 @@ const TITLES: Title[] = [
      커세어·스카웃 넷으로 넓어지면서 이 수는 두 종족에 걸쳐 있다. 분모를 '테란 판'으로
      두면 커세어로 잡은 프로토스 판이 남의 종족 판수로 나뉘어 영영 문턱을 못 넘는다.
      폭탄드랍의 여왕이 다섯 열쇠를 세며 같은 이유로 종족을 걷은 것과 같은 자리다. */
-  { ...tactic("오버로드 사냥꾼", ["valk-hunt"]), race: undefined, minPlaysShare: 0.01 },
+  { ...tactic("오버로드 사냥꾼", ["valk-hunt"]), race: undefined, minPlaysShare: 0.02 },
   { ...tactic("몰래배럭 퀸", ["sneak-rax"]), minPlaysShare: 0.02 },
   /* (삭제) 끝없는 저글링 폭풍(zling-rush) — 요청. 저글링 하나로 들이치는 것은 그 종족의
      기본 진행에 가까워, 한 유닛만으로 러시라고 부를 만한 수가 아니다. */
@@ -1501,9 +1501,13 @@ export function epithetsOf(
     const what = (c.title.why ?? "기록").replace(/^게임에서 /, "");
     const countable = c.title.scale === "count" && c.title.unit === "번";
     if (countable) {
-      // 이긴 판만 세는 수는 이긴 판이 무리, 아니면 전체 판이 무리다.
-      const pool = c.title.won ? c.wonDenom : c.denom;
-      const poolName = `${c.title.race ? `${c.title.race} ` : ""}${c.title.won ? "승리게임" : "전체 게임"}`;
+      /* 무리는 문턱이 잰 그 무리다(지적: 퍼센트가 아니라 수로만 나오는 줄이 있다) — 한때
+         won(이긴 판만 세는가)으로 골라서, 문턱은 전체 판으로 재는데 근거는 승리게임으로
+         적는 칭호가 있었다. 그 승리게임 수를 못 읽은 버킷에서는 분모가 0이라 %가 통째로
+         빠졌다("러커 1판"). vsWins(문턱의 분모)와 같은 자를 쓰면 문턱을 넘은 줄의 분모는
+         표본 바닥 위라 0일 수가 없다. */
+      const pool = c.title.vsWins ? c.wonDenom : c.denom;
+      const poolName = `${c.title.race ? `${c.title.race} ` : ""}${c.title.vsWins ? "승리게임" : "게임"}`;
       const n = Math.round(c.raw);
       if (c.title.perUse) {
         /* 조건이 비율(판수 대비 %)이라 근거에도 그 비율을 적는다(지적: 퍼센트 기준인데
