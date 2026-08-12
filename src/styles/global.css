@@ -10865,9 +10865,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   background: rgba(0, 0, 0, 0.4); border-radius: 3px; padding: 0 2px;
   text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
 }
-.scr-motion-army, .scr-motion-cast, .scr-motion-base-name {
+/* 배지(칩)는 테두리도 그림자 번짐도 없이 음영(제 배경)만(지적) — 도형·점일 때만 그림자. */
+.scr-motion-army:not(.scr-motion-chip) {
   text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
 }
+.scr-motion-chip { text-shadow: none; border: none; padding: 1px 3px; }
 .scr-motion-build { font-size: 7px; font-weight: 700; opacity: 0.85; }
 /* PC는 지도가 커서 같은 픽셀이 상대적으로 작다(지적: 도형이 안 보임) — 한 단계씩 키운다. */
 @media (min-width: 1160px) {

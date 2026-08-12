@@ -288,14 +288,13 @@ export default function ReplayMotionPlayer({
       + 0.587 * parseInt(hex.slice(3, 5), 16)
       + 0.114 * parseInt(hex.slice(5, 7), 16);
   };
-  /* 도형(●▪▲)의 색 — 어두운 계열이면 검정 대신 흰 반투명 테두리·음영으로 띄운다(지적). */
+  /* 도형(●▪▲)·건물 글자의 색 — 글자 테두리는 안 두른다(지적: 음영만 있으면 된다).
+     어두운 계열만 흰 반투명 음영으로 띄운다. */
   const shapeStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => {
     const c = modeColor(raw, team);
-    const dark = lumOf(c) < 110;
     return {
       color: c,
-      WebkitTextStroke: dark ? "0.6px rgba(255, 255, 255, 0.75)" : "0.5px rgba(0, 0, 0, 0.6)",
-      ...(dark ? { textShadow: "0 0 4px rgba(255, 255, 255, 0.55)" } : {}),
+      ...(lumOf(c) < 110 ? { textShadow: "0 0 4px rgba(255, 255, 255, 0.55)" } : {}),
     };
   };
   const chipStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => {
