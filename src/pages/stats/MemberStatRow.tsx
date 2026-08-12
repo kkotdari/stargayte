@@ -494,14 +494,38 @@ export default function MemberStatRow({
         {showBest && (
           <div className="scr-stat-record-col">
             <span className="scr-stat-mix-list-cap">BEST</span>
-            <div className="scr-stat-record-item">
-              <span className="scr-stat-record-label" />
-              <span className="scr-stat-record-num-v">
-                {stats.bests}
-                <span className="scr-stat-record-num-unit">회</span>
-              </span>
-              <span />
-            </div>
+            {/* 이긴 판과 진 판을 나눠 적는다(요청) — 같은 BEST여도 이긴 판 것은 활약이고
+                진 판 것은 졌잘싸다(칭호도 이 둘을 다른 이름으로 부른다). 진 판 수(lostBests)
+                가 없는 옛 응답이면 나눌 수 없어 총합 한 줄로 돌아간다. */}
+            {stats.lostBests === undefined ? (
+              <div className="scr-stat-record-item">
+                <span className="scr-stat-record-label" />
+                <span className="scr-stat-record-num-v">
+                  {stats.bests}
+                  <span className="scr-stat-record-num-unit">회</span>
+                </span>
+                <span />
+              </div>
+            ) : (
+              <>
+                <div className="scr-stat-record-item">
+                  <span className="scr-stat-record-label">이긴판</span>
+                  <span className="scr-stat-record-num-v">
+                    {stats.bests - stats.lostBests}
+                    <span className="scr-stat-record-num-unit">회</span>
+                  </span>
+                  <span />
+                </div>
+                <div className="scr-stat-record-item">
+                  <span className="scr-stat-record-label">진판</span>
+                  <span className="scr-stat-record-num-v">
+                    {stats.lostBests}
+                    <span className="scr-stat-record-num-unit">회</span>
+                  </span>
+                  <span />
+                </div>
+              </>
+            )}
           </div>
         )}
         <div className="scr-stat-record-col scr-stat-record-col-hands">
