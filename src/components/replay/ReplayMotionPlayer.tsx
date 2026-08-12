@@ -326,8 +326,8 @@ const SHAPE_KIND: Record<string, string> = {
      자란다. */
   Hatchery: "hatchery", Lair: "lair", Hive: "hive",
   /* 다른 생산 건물도 원래 실루엣을 살린 벡터로(요청) — 배럭은 측면에서 본 정육면체(요청),
-     팩토리는 톱니 지붕 공장, 스타포트는 종이비행기(요청), 로보틱스는 돔, 스타게이트는
-     문(아치). */
+     팩토리는 8각 단면 각기둥(스크린샷), 스타포트는 원형 착륙 패드(스크린샷 — 종이비행기
+     설명은 오해), 로보틱스는 돔, 스타게이트는 문(아치). */
   Barracks: "cube", Factory: "factory", Starport: "plane",
   "Robotics Facility": "dome", Stargate: "arch",
   // (삭제) 가스 건물 — 직접 그린 게 아니라 네모로 돌아갔다(지적). 크기는 발자국(4×2)이 맞춘다.
@@ -468,15 +468,23 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
     // 안쪽 타원은 감는 방향을 뒤집어 구멍이 된다(nonzero 규칙) — 그래야 '고리'다.
     ["M2.6 8a5.4 1.5 0 1 0 10.8 0a5.4 1.5 0 1 0-10.8 0Z M4 8a4 0.9 0 1 1 8 0a4 0.9 0 1 1-8 0Z", 0.4, "#000"],
   ],
-  /* 종이비행기(요청: 스타포트) — 코가 왼쪽, 갈라짐 없는 한 몸. 세로로 눌러 사선 아래에서
-     본 원근을 준다(지적: 정 위에서 본 것 같다) — 그림자 층이 입체감, 가운데 원(착륙 패드)은
-     크고 밝게(지적). */
+  /* 스타포트 — 스크린샷 대조(지적: 종이비행기 설명은 오해였다): 몸통 위에 큰 원형 착륙
+     패드가 얹히고, 대각선으로 안테나 팔(끝에 둥근 등)이 뻗으며, 벌어진 다리들이 받친다.
+     패드를 맨 나중에 그려 팔·몸통의 밑동을 덮는다(패드 뒤에서 나온 것처럼). */
   plane: [
-    ["M1.1 10.4 L15.1 5.6 L15.1 15 Z", 0.4, "#000"],
-    ["M0.5 9 L14.5 4.2 L14.5 13.6 Z", 1],
-    ["M7.4 9a3 2.1 0 1 0 6 0a3 2.1 0 1 0-6 0Z", 0.5, "#fff"],
-    // 다리 셋 중 둘이 보인다(요청: 입체라 하나는 가려짐).
-    ["M6 12.2 V13.8 H7 V12.2 Z M11.6 13.6 V15.2 H12.6 V13.6 Z", 1],
+    // 다리 — 패드 아래로 벌어지는 발 셋.
+    ["M3.4 10.6 L1.6 13.6 L4 13.6 Z M7.2 11.4 L6 14.4 L8.6 14.4 Z M11.6 10.6 L11.2 13.8 L13.8 13.4 Z", 1],
+    ["M3.4 10.6 L1.6 13.6 L4 13.6 Z M7.2 11.4 L6 14.4 L8.6 14.4 Z M11.6 10.6 L11.2 13.8 L13.8 13.4 Z", 0.35, "#000"],
+    // 몸통 — 패드 밑 받침(옆면 톤).
+    ["M4 8.4 L12 8.4 L12.8 11.6 L3.2 11.6 Z", 1],
+    ["M4 8.4 L12 8.4 L12.8 11.6 L3.2 11.6 Z", 0.3, "#000"],
+    // 안테나 팔 — 왼위·오른위 대각선, 끝에 둥근 등.
+    ["M4.2 6.4 L2 4.2 L2.8 3.5 L4.9 5.7 Z M11.8 6.4 L14 4.2 L13.2 3.5 L11.1 5.7 Z", 1],
+    ["M1.5 3.6a0.9 0.9 0 1 0 1.8 0a0.9 0.9 0 1 0-1.8 0Z M12.7 3.6a0.9 0.9 0 1 0 1.8 0a0.9 0.9 0 1 0-1.8 0Z", 1],
+    // 착륙 패드 — 큰 타원 링 위에 밝은 테, 가운데는 살짝 꺼진 판.
+    ["M2 7.2a6 3.1 0 1 0 12 0a6 3.1 0 1 0-12 0Z", 1],
+    ["M3.4 7.2a4.6 2.3 0 1 0 9.2 0a4.6 2.3 0 1 0-9.2 0Z", 0.28, "#fff"],
+    ["M4.4 7.2a3.6 1.8 0 1 0 7.2 0a3.6 1.8 0 1 0-7.2 0Z", 0.25, "#000"],
   ],
   /* 스타게이트 — 똑같은 긴 마름모 두 개가 나란히 사선으로 붙는다(지적: 둘이 같은
      모양이라야 한다). */
@@ -1385,13 +1393,13 @@ export default function ReplayMotionPlayer({
   /* 폭은 무조건 컨테이너 최대가 아니라 화면 세로 공간이 허락하는 만큼(지적: 노트북처럼
      납작한 화면에서 전체 폭을 쓰면 미니맵이 한 화면에 다 안 들어옴) — 맵 높이가
      (100dvh − 조작부 몫)을 넘지 않게 폭을 비율로 역산해 상한을 걸고 가운데 정렬.
-     인라인은 맵 아래 전부(확대 토글·지형·범례·조종부)와 위쪽 화면 몫까지 빼서 조종부까지
-     한 화면에 들어온다(지적). 큰 화면 모달은 맵+조종부만이라 몫이 작다(190px).
+     인라인은 맵 아래 전부(도구줄·조종부)와 위쪽 화면 몫까지 빼서 조종부까지 한 화면에
+     들어온다(지적). 큰 화면 모달은 맵+조종부만이라 몫이 작다(190px).
      폰 세로 화면에선 이 상한이 컨테이너 폭보다 커서 아무 영향 없다. */
   const body = (
     <div
       className={cx("scr-motion", big && "scr-motion-big")}
-      style={{ maxWidth: `calc((100dvh - ${big ? 190 : 280}px) * ${(grid.width / grid.height).toFixed(4)})`, margin: "0 auto" }}
+      style={{ maxWidth: `calc((100dvh - ${big ? 190 : 230}px) * ${(grid.width / grid.height).toFixed(4)})`, margin: "0 auto" }}
     >
       <div
         className="scr-motion-map" ref={mapRef}
@@ -2106,40 +2114,39 @@ export default function ReplayMotionPlayer({
             이제 모바일 손짓(더블탭·두 손가락)만의 것이다. */}
       </div>
 
-      {/* 큰 화면 보기 토글(요청: PC — 대각선 양쪽 화살표를 맵 아래 바깥 오른쪽에) —
-          모바일은 CSS가 숨긴다(핀치 확대가 이미 있다). */}
-      <div className="scr-motion-expand-row">
-        <button
-          type="button" className="scr-motion-btn scr-motion-expand"
-          onClick={() => setBig((v) => !v)}
-          aria-label={big ? "작게 보기" : "크게 보기"} title={big ? "작게 보기" : "크게 보기"}
-        >
-          {big ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-        </button>
-      </div>
-
-      {/* 지형 수정(요청: 미니맵 바로 아래 가운데) — 산 아이콘, 회원 누구나. */}
-      {typeof grid.imageId === "number" && grid.image && (
-        <div className="scr-motion-terrain-row">
+      {/* 지도 아래 도구줄(요청: 범례·지형 수정·확대 토글을 전부 같은 한 줄에) — 가운데
+          칸에 범례와 지형 버튼, 오른쪽 칸에 확대 토글. 범례의 본진(★)은 지웠다(요청) —
+          본진 건물들이 저마다 제 도형을 갖게 되면서 ★는 더 이상 안 그려진다. 확대 토글은
+          PC 전용(모바일은 핀치 확대), 큰 화면 모달에선 범례·지형이 숨어 토글만 남는다. */}
+      <div className="scr-motion-toolrow">
+        <div className="scr-motion-toolrow-mid">
+          <div className="scr-motion-legend">
+            <span>● 부대·유닛</span>
+            <span>■ 건물</span>
+            <span>· 채굴 일꾼</span>
+            <span><Hammer size={8} /> 건설 중</span>
+          </div>
+          {typeof grid.imageId === "number" && grid.image && (
+            <div className="scr-motion-terrain-row">
+              <button
+                type="button" className="scr-motion-btn scr-motion-terrain"
+                onClick={() => { setPlaying(false); setTerrainOpen(true); }}
+                aria-label="지형 수정" title="지형 수정"
+              >
+                <Mountain size={12} />
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="scr-motion-expand-row">
           <button
-            type="button" className="scr-motion-btn scr-motion-terrain"
-            onClick={() => { setPlaying(false); setTerrainOpen(true); }}
-            aria-label="지형 수정" title="지형 수정"
+            type="button" className="scr-motion-btn scr-motion-expand"
+            onClick={() => setBig((v) => !v)}
+            aria-label={big ? "작게 보기" : "크게 보기"} title={big ? "작게 보기" : "크게 보기"}
           >
-            <Mountain size={12} />
+            {big ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
           </button>
         </div>
-      )}
-
-
-      {/* 범례(요청) — 지도 위 도형이 뭔지 한 줄로. 본진(★)은 지웠다(요청: 안 맞는 건
-          지우기) — 본진 건물들이 저마다 제 도형(무덤·피라미드·T·육각별·육각형)을 갖게
-          되면서 ★는 더 이상 안 그려진다. */}
-      <div className="scr-motion-legend">
-        <span>● 부대·유닛</span>
-        <span>■ 건물</span>
-        <span>· 채굴 일꾼</span>
-        <span><Hammer size={8} /> 건설 중</span>
       </div>
 
       {/* 조종간(요청: 두 줄) — 윗줄은 스크러버 하나, 아랫줄에 재생·배속·시간이 선다. */}
