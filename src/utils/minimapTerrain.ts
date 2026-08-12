@@ -108,6 +108,33 @@ export async function analyzeMinimap(url: string): Promise<TerrainGrid | null> {
   return { w, h, walk };
 }
 
+/** 격자 크기대로 내려 읽은 칸 색(RGBA) — 검수 화면의 "비슷한 유형 한꺼번에"(요청)가
+ *  같은 색 계열을 찾는 재료다. 분석과 같은 방식으로 줄여 읽는다. */
+export async function sampleMinimapColors(
+  url: string, w: number, h: number,
+): Promise<Uint8ClampedArray | null> {
+  if (typeof document === "undefined") return null;
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  const loaded = await new Promise<boolean>((resolve) => {
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = url;
+  });
+  if (!loaded) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0, w, h);
+  try {
+    return ctx.getImageData(0, 0, w, h).data;
+  } catch {
+    return null;
+  }
+}
+
 /** 자동 분석의 캐시판 — 재생 화면이 쓴다(맵당 한 번). */
 export function terrainOf(url: string): Promise<TerrainGrid | null> {
   let hit = cache.get(url);

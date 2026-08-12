@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 import { Spinner } from "../components/common/Feedback";
 import { api } from "../api/client";
 import {
-  analyzeMinimap, decodeWalk, encodeWalk, type TerrainGrid,
+  analyzeMinimap, decodeWalk, encodeWalk, sampleMinimapColors, type TerrainGrid,
 } from "../utils/minimapTerrain";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import type { MinimapImage } from "../types";
@@ -27,6 +27,10 @@ export default function TerrainReviewModal({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  /* 붓 모드(요청: 비슷한 유형의 타일을 동시에) — "한 칸"은 끌어서 칠하고, "비슷한 색"은
+     누른 칸과 색이 비슷한 칸 전부를 한 번에 같은 값으로 뒤집는다. */
+  const [brush, setBrush] = useState<"one" | "similar">("one");
+  const [colors, setColors] = useState<Uint8ClampedArray | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   /** 끌기 한 번은 한 값으로만 칠한다 — 지나는 칸마다 뒤집으면 갈지자 자국이 남는다. */
   const paintRef = useRef<0 | 1 | null>(null);
@@ -44,6 +48,15 @@ export default function TerrainReviewModal({
     })();
     return () => { cancelled = true; };
   }, [image]);
+
+  // 칸 색 표본 — 격자 크기가 정해진 뒤 그 크기로 읽는다(비슷한 유형 붓의 재료).
+  useEffect(() => {
+    let cancelled = false;
+    if (!grid) return undefined;
+    sampleMinimapColors(image.image, grid.w, grid.h)
+      .then((c) => { if (!cancelled) setColors(c); });
+    return () => { cancelled = true; };
+  }, [image, grid?.w, grid?.h]);
 
   // 격자를 그림 위에 겹쳐 그린다 — 캔버스 픽셀 하나가 칸 하나다(CSS가 늘린다).
   useEffect(() => {
@@ -72,6 +85,10 @@ export default function TerrainReviewModal({
     return [x, y];
   };
 
+  /** 비슷한 색으로 치는 거리 — RGB 유클리드. 미니맵 팔레트가 단순해 이 정도면 같은
+   *  타일 유형(같은 물·같은 벽)이 묶인다. */
+  const SIMILAR_DIST = 30;
+
   const paint = (e: React.PointerEvent, begin: boolean) => {
     if (!grid) return;
     const cell = cellAt(e);
@@ -79,7 +96,24 @@ export default function TerrainReviewModal({
     const idx = cell[1] * grid.w + cell[0];
     if (begin) paintRef.current = grid.walk[idx] ? 0 : 1;
     const v = paintRef.current;
-    if (v === null || grid.walk[idx] === v) return;
+    if (v === null) return;
+    if (brush === "similar" && begin && colors) {
+      // 비슷한 유형 한꺼번에(요청) — 누른 칸과 색이 가까운 칸 전부를 같은 값으로.
+      const r0 = colors[idx * 4];
+      const g0 = colors[idx * 4 + 1];
+      const b0 = colors[idx * 4 + 2];
+      const walk = new Uint8Array(grid.walk);
+      for (let i = 0; i < walk.length; i += 1) {
+        const dr = colors[i * 4] - r0;
+        const dg = colors[i * 4 + 1] - g0;
+        const db = colors[i * 4 + 2] - b0;
+        if (Math.sqrt(dr * dr + dg * dg + db * db) <= SIMILAR_DIST) walk[i] = v;
+      }
+      setGrid({ ...grid, walk });
+      return;
+    }
+    if (brush === "similar") return; // 유형 붓은 클릭 한 번이 한 획이다 — 끌기는 없다.
+    if (grid.walk[idx] === v) return;
     const walk = new Uint8Array(grid.walk);
     walk[idx] = v;
     setGrid({ ...grid, walk });
@@ -130,6 +164,25 @@ export default function TerrainReviewModal({
             </div>
           )}
           <div className="scr-terrain-actions">
+            {/* 붓 고르기(요청: 비슷한 유형 동시 적용) — 왼쪽에 붙인다. */}
+            <div className="scr-terrain-brushes">
+              <button
+                type="button"
+                className={busy ? "scr-btn" : brush === "one" ? "scr-btn scr-btn-primary" : "scr-btn"}
+                onClick={() => setBrush("one")}
+              >
+                한 칸
+              </button>
+              <button
+                type="button"
+                className={busy ? "scr-btn" : brush === "similar" ? "scr-btn scr-btn-primary" : "scr-btn"}
+                onClick={() => setBrush("similar")}
+                disabled={!colors}
+                title="누른 칸과 색이 비슷한 칸 전부를 한 번에 뒤집어요"
+              >
+                비슷한 색 한꺼번에
+              </button>
+            </div>
             <button
               type="button" className="scr-btn"
               disabled={busy || loading}
