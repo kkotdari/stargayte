@@ -449,11 +449,12 @@ const UNIT_STORY_KEYS: Record<string, string> = {
   carrier: "Carrier", bc: "Battlecruiser", guardian: "Guardian", devourer: "Devourer",
   valkyrie: "Valkyrie", muta: "Mutalisk", ultra: "Ultralisk", moka: "Ultralisk",
   arbiter: "Arbiter", lurker: "Lurker", "cloak-wraith": "Wraith",
+  vessel: "Science Vessel", "zealot-templar": "High Templar", queen: "Queen",
 };
 
 const NEED_TARGET_KEYS = new Set([
   "shuttle", "shuttle-reaver", "templar-drop", "zerg-drop", "dropship",
-  "bionic", "mech", "moka",
+  "bionic", "mech", "moka", "zealot-templar",
   // 패스트 OO도 마찬가지다(지적: "일찍 뽑아서 어딜 갔는지가 없네") — 어디로도 안 간 빠른
   // 테크는 '들이댄 수'가 아니라 그냥 빌드 순서라, 목표를 못 짚으면 무게를 내린다.
   "fast-tech",
@@ -499,7 +500,7 @@ const BACKFIRE_KEYS = new Set([
 const RAID_KEYS = new Set([
   "zling-rush", "zealot-rush", "cannon-rush", "sunken-rush", "sneak-rax",
   "shuttle-reaver", "templar-drop", "zerg-drop", "dropship", "shuttle",
-  "nydus", "recall", "bionic", "mech", "moka",
+  "nydus", "recall", "bionic", "mech", "moka", "zealot-templar",
   // 빠른 테크·클로킹 레이스도 들이치는 수다 — 그 타이밍에 상대가 꺾였으면 그게 결과다(요청).
   "fast-tech", "cloak-wraith",
   // 이름 없는 급습(replayTactics의 raidOn) — 뮤탈 여섯 기로 본진을 헤집는 것처럼 어느

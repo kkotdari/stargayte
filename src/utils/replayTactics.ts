@@ -1557,10 +1557,13 @@ function detectFor(c: Ctx): Tactic[] {
        "디파일러 2기 생산"에만 매달렸고(스웜을 깔아도 디파일러 1기면 탈락), 아래 다크스웜
        살포반(swarm) 갈래는 아예 한 번도 나올 수 없었다. '실제로 깔았나'(techUses)로 본다. */
     const swarmUses = s.techUses["Dark Swarm"] ?? 0;
-    const swarm = swarmUses > 0 || u("Defiler") >= 2;
-    if (u("Zergling") >= 12 && u("Ultralisk") >= 3 && swarm) {
+    /* 개편(요청: 다크스웜에는 저글링만이 아니라 럴커·울트라도 쓴다) — 실제로 스웜을 깔았고
+       그 아래로 몰아넣을 병력(저글링·럴커·울트라 중 하나)이 있으면 목동이다. 디파일러
+       수로 어림하던 갈래는 걷었다 — 이제 사용 기록(techUses)이 있으니 진짜만 센다. */
+    const swarmArmy = u("Zergling") >= 12 || u("Lurker") >= 4 || u("Ultralisk") >= 3;
+    if (swarmUses > 0 && swarmArmy) {
       out.push({
-        key: "moka", weight: 11, at: firstU("Ultralisk"),
+        key: "moka", weight: 11, at: s.firstTechUseFrame["Dark Swarm"] ?? null,
         who,
       });
     } else if (swarmUses > 0) {
@@ -1671,10 +1674,23 @@ function detectFor(c: Ctx): Tactic[] {
         p: { n: u("Infested Terran"), ...(inf ? { xy: inf.xy } : {}) },
       });
     }
-    if (u("Lurker") >= 5) {
+    /* 개편(요청: 히드라+럴커 한 벌로 상향) — 럴커만 다섯이 아니라, 히드라 몸이 받치고
+       럴커를 심는 그림이라야 "가시밭"이다. */
+    if (u("Lurker") >= 3 && u("Hydralisk") >= 8) {
       out.push({
         key: "lurker", weight: 7, at: firstU("Lurker"),
         who,
+      });
+    }
+    /* 퀸(요청: 퀸 쪽도 한 벌) — 퀸을 둘 이상 띄우고 그 마법(브루들링·인스네어·패러사이트)을
+       실제로 쓴 판이다. 베슬 과학전과 같은 자다. */
+    const queenCasts = (s.techUses["Spawn Broodlings"] ?? 0)
+      + (s.techUses["Ensnare"] ?? 0)
+      + (s.techUses["Parasite"] ?? 0);
+    if (u("Queen") >= 2 && queenCasts >= 3) {
+      out.push({
+        key: "queen", weight: 9, at: firstU("Queen"),
+        who, p: { n: queenCasts },
       });
     }
   }
@@ -1691,6 +1707,17 @@ function detectFor(c: Ctx): Tactic[] {
       out.push({
         key: "mech", weight: 9, at: firstU("Siege Tank (Tank Mode)") ?? firstU("Goliath"),
         who,
+      });
+    }
+    /* 과학전(요청: 과학의 여왕) — 베슬을 둘 이상 띄우고 그 마법(이레디·EMP·매트릭스)을
+       실제로 뿌린 판이다. 띄우기만 한 베슬은 디텍터일 뿐이라 안 센다. */
+    const vesselCasts = (s.techUses["Irradiate"] ?? 0)
+      + (s.techUses["EMP Shockwave"] ?? 0)
+      + (s.techUses["Defensive Matrix"] ?? 0);
+    if (u("Science Vessel") >= 2 && vesselCasts >= 3) {
+      out.push({
+        key: "vessel", weight: 9, at: firstU("Science Vessel"),
+        who, p: { n: vesselCasts },
       });
     }
     // 배틀크루저 — 띄우는 것 자체가 사건이고, 띄우고도 지는 경기가 많아 이야기가 된다(요청).
@@ -1978,6 +2005,22 @@ function detectFor(c: Ctx): Tactic[] {
     // 수는 누계가 아니라 창 단위 최대(windowPeak)다 — 누계를 말하면 긴 경기에서 "캐리어를
     // 69기 뽑았다"가 되어 함대 규모로 읽힌다(지적). 문턱도 같은 값으로 재야 뜻이 맞는다:
     // 스무 분에 걸쳐 넷을 뽑은 것은 캐리어를 굴린 게 아니라 한두 기씩 갈아 넣은 것이다.
+    /* 아비터(요청: 아비터 쪽도 한 벌) — 아비터를 둘 이상 띄우고 그 마법(스테이시스·리콜)을
+       실제로 쓴 판이다. 클로킹 필드는 지나가기만 해도 걸리는 상시 효과라 증거로 안 쓴다. */
+    const arbiterCasts = (s.techUses["Stasis Field"] ?? 0) + (s.techUses["Recall"] ?? 0);
+    if (u("Arbiter") >= 2 && arbiterCasts >= 2) {
+      out.push({
+        key: "arbiter", weight: 9, at: firstU("Arbiter"),
+        who, p: { n: arbiterCasts },
+      });
+    }
+    /* 질럿+템플러(요청: 폭풍의 여왕) — 질럿 몸에 스톰을 얹은 지상 한 벌. 스톰을 실제로
+       두 번은 지졌어야 한다(연구만 한 템플러는 아콘 재료다). */
+    if (u("Zealot") >= 8 && u("High Templar") >= 2 && (s.techUses["Psionic Storm"] ?? 0) >= 2) {
+      out.push({
+        key: "zealot-templar", weight: 10, at: firstU("High Templar"), who,
+      });
+    }
     const carriers = producedFrames(s, "Carrier", endFrame);
     const carrierPeak = windowPeak(carriers);
     if (carrierPeak >= unitBar(CARRIER_SHARE, CARRIER_MIN)) {

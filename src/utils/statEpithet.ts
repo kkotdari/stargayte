@@ -490,6 +490,7 @@ const TACTIC_WEIGHT: Record<string, number> = {
   //    가디언+디바우러·캐리어·뮤탈이 한 벌이다.
   carrier: 4, lurker: 4, bc: 4, muta: 4, guardian: 4, valkyrie: 4,
   vessel: 4, "zealot-templar": 4, "shuttle-reaver": 4, "templar-drop": 4,
+  queen: 4, arbiter: 4,
   // ── 유닛(일반)
   ultra: 1.5,
   // 표에 없는 열쇠는 1이다.
@@ -502,7 +503,7 @@ const TACTIC_WEIGHT: Record<string, number> = {
    여기 없는 키는 종족을 안 탄다(드랍·견제·입구막기·이사처럼 셋 다 하는 것들). */
 const TACTIC_RACE: Record<string, string> = {
   // 저그
-  moka: "저그", "Spawn Broodlings": "저그", swarm: "저그", infested: "저그", nydus: "저그", "sunken-rush": "저그",
+  moka: "저그", "Spawn Broodlings": "저그", swarm: "저그", infested: "저그", nydus: "저그", "sunken-rush": "저그", queen: "저그",
   muta: "저그", guardian: "저그", lurker: "저그", devourer: "저그", "zling-rush": "저그", ultra: "저그",
   // 테란
   "Nuclear Strike": "테란", "Yamato Gun": "테란", "Optical Flare": "테란", bionic: "테란", mech: "테란", bc: "테란", valkyrie: "테란", vessel: "테란",
@@ -513,7 +514,7 @@ const TACTIC_RACE: Record<string, string> = {
   "Psionic Storm": "프로토스",
   Hallucination: "프로토스",
   carrier: "프로토스", recall: "프로토스", "mind-control": "프로토스",
-  "zealot-templar": "프로토스", "shuttle-reaver": "프로토스", "templar-drop": "프로토스",
+  "zealot-templar": "프로토스", "shuttle-reaver": "프로토스", "templar-drop": "프로토스", arbiter: "프로토스",
   "cannon-rush": "프로토스", "center-photon": "프로토스", "ally-cannon": "프로토스",
   "zealot-rush": "프로토스",
 };
@@ -535,6 +536,7 @@ const TACTIC_NOUN: Record<string, string> = {
   guardian: "가디언", bc: "배틀크루저", valkyrie: "발키리", moka: "다크스웜 군단",
   devourer: "디바우러", vessel: "과학전(베슬)", "zealot-templar": "질럿+템플러",
   "shuttle-reaver": "셔틀 리버", "templar-drop": "템플러 드랍",
+  queen: "퀸 마법", arbiter: "아비터 마법",
   "side-tank": "옆탱", "center-photon": "센터 포토", "cannon-rush": "포토러시",
   "sunken-rush": "성큰러시", "front-defense": "입구 방어", mech: "메카닉 진출",
   bionic: "바이오닉", "fast-tech": "빠른 테크", "hold-off": "공세 막아냄", counter: "역공",
@@ -757,6 +759,9 @@ const TITLES: Title[] = [
      (_tactic_counts) 잣대가 하나다. */
   // 스웜 목동 → 목동의 여왕(요청) — 여신·여왕 계열로.
   { ...tactic("목동의 여왕", ["moka"]), minPlaysShare: 0.01, vsWins: true, battle: true },
+  /* 브루들링의 여왕(요청: 퀸 쪽 추가) — 퀸을 띄워 브루들링·인스네어·패러사이트를 실제로
+     쓴 판이다. 과학의 여왕(베슬)과 같은 자다. */
+  { ...tactic("브루들링의 여왕", ["queen"]), minPlaysShare: 0.03, vsWins: true, battle: true },
 
   // ── 전술(리플레이 자막이 말하던 그 사실) ────────────────────────────────────
   /* (삭제) 프로 옆탱러(side-tank) — 요청. 옆탱은 아군 기지를 받쳐 주는 탱크와 제 기지
@@ -801,6 +806,9 @@ const TITLES: Title[] = [
   /* 강습의 여왕(요청: 프로토스 하나 추가 — 셔틀 리버) — 폭탄드랍의 여왕은 종족 무관 드랍
      전부를 세고, 이쪽은 프로토스의 셔틀 리버 그림만 센다. */
   { ...tactic("강습의 여왕", ["shuttle-reaver"]), minPlaysShare: 0.05, vsWins: true, battle: true },
+  /* 시공의 여왕(요청: 아비터 쪽 추가) — 아비터를 띄워 스테이시스·리콜을 실제로 쓴 판이다.
+     함대의 여왕(캐리어+아비터)과 달리 아비터가 주인공인 판을 센다. */
+  { ...tactic("시공의 여왕", ["arbiter"]), minPlaysShare: 0.03, vsWins: true, battle: true },
   /* 번개의 여왕(요청: 셔틀+하이템플러 — 여신이 아니라 여왕) — 셔틀에 템플러를 태워 스톰을 떨어뜨린 판이다
      (templar-drop). 폭탄드랍의 여왕에도 드는 열쇠지만, 그쪽은 종족 무관 드랍 전부를 세는
      자리고 이쪽은 이 그림 하나만 센다. */
@@ -915,9 +923,10 @@ const TITLES: Title[] = [
      장면이라 문턱은 바닥(1%)이다: 한 번이라도 두 번쯤 했으면 그 사람의 이야기다. */
   { ...rare("감염의 여왕", ["infested"]), minPlaysShare: 0.02 },
   /* (삭제) 배틀크루저를 모으는 여인(bc) — "발키리 함대 사령관"으로 흡수(요청: 통합). */
-  /* 창공의 여왕(요청: 가디언+디바우러 신규 통합) — 한때 따로 있다 삭제된 가디언 칭호
-     자리에, 저그 하늘의 두 얼굴을 한 벌로 되세운다. 어느 쪽으로 잡혔든 하늘로 이긴 판이다. */
-  { ...tactic("창공의 여왕", ["guardian", "devourer"]), why: "가디언·디바우러",
+  /* 떴다 가디 퀸(요청: 창공의 여왕에서 개명) — 가디언+디바우러 한 벌. 한때 따로 있다
+     삭제된 가디언 칭호 자리에, 저그 하늘의 두 얼굴을 되세운다. 어느 쪽으로 잡혔든 하늘로
+     이긴 판이다. */
+  { ...tactic("떴다 가디 퀸", ["guardian", "devourer"]), why: "가디언·디바우러",
     minPlaysShare: 0.02, vsWins: true, battle: true },
   /* (삭제) 발키리 지휘관(valkyrie) — 위 "무자비한 오버로드 사냥꾼"이 같은 유닛으로 무엇을
      했는지까지 말한다. 뽑았다는 사실만 말하는 쪽을 접는다. */
