@@ -152,6 +152,9 @@ export interface EpithetSubject {
   /** 이긴 판만 놓고 낸 같은 한 벌(통계 응답의 won) — 구성비·분당 값을 보는 칭호가 이걸
    *  쓴다(요청: 비중 칭호도 이긴 판만). 아래 mix()가 이 자리를 한 곳에서 고른다. */
   won?: MemberStats;
+  /** 갈래(ground/air/magic) → [그렇게 싸운 판수, 그중 이긴 판수] — 서버가 판별 병력 구성
+   *  으로 가려 센 값(통계 응답의 combat). 지상전·공중전·마법 퀸이 쓴다. */
+  combat?: Record<string, [number, number]>;
   /* (삭제) rise — 이번 달 레이팅 상승("떠오르는 샛별"). 레이팅은 이제 래더(일대일)에만
      있는 값이고 칭호는 내전 기록으로만 매기므로(요청), 이 화면의 어느 수와도 잣대가 맞지
      않는다. */
@@ -181,6 +184,18 @@ function mix(s: MemberStats, of: EpithetSubject): BuildMix | null | undefined {
 /** 그 사람의 '이긴 판' 기준 수치 한 벌 — 없으면 전체. */
 function won(s: MemberStats, of: EpithetSubject): MemberStats {
   return of.won ?? s;
+}
+
+/** 그 싸움(지상전/공중전/마법전)의 승률(%) — 표본이 바닥(ratioFloor, 클럽 판수 비례)에
+ *  못 미치면 없는 값이다. 어떤 판이 '그 싸움'인지는 서버(_combat_split)가 가른다: 그 갈래를
+ *  많이 뽑은 판만이다(요청: 많이 뽑아서 활약까지 해서 승리로 이끌어야 — 구성비만 보면 병력이
+ *  코딱지만 해도 비중은 높을 수 있다). */
+function combatRate(of: EpithetSubject, key: "ground" | "air" | "magic"): number | null {
+  const rec = of.combat?.[key];
+  if (!rec) return null;
+  const [plays, wins] = rec;
+  if (plays < ratioFloor()) return null;
+  return Math.round((wins / plays) * 1000) / 10;
 }
 
 /** 주요시간대 1분당 값 — 총합은 오래 뛴 사람이 늘 크다(MemberStatRow의 perMin과 같은 자). */
@@ -1045,31 +1060,24 @@ const TITLES: Title[] = [
   /* (삭제) 일꾼 부자(초반 5분 일꾼 52기) — 요청. 초반 일꾼 수는 그 판의 빌드가 정하는
      값에 가까워, 같은 종족·같은 시작이면 누구나 비슷하게 나온다 — 1등이라도 그 사람을
      말해 주는 몫이 작았다. */
-  /* 지상전·공중전·마법 퀸(요청) — 이긴 판의 병력 구성으로, 종족 무관하게 잰다. 셋이 한
-     자(병력 중 비중)를 나눠 쓰지만 문턱은 제 빈도에 맞다: 지상은 기본값이라 거의 전부여야
-     하고(92%), 공중은 병력 셋에 하나면 이미 하늘로 사는 사람이고(30%), 마법 유닛은 열에
-     하나면 마법으로 판을 푸는 사람이다(10%). */
+  /* 지상전·공중전·마법 퀸(요청 두 번째 판) — 구성비가 아니라 '그 싸움의 승률'이다: 그
+     갈래를 많이 뽑은 판(판정은 서버 — 지상 30기에 공중 대비 8할, 공중 12기, 마법 5기)만
+     표본으로 놓고, 그 판들을 얼마나 이겼나를 묻는다(요청: 많이 뽑아서 활약까지 해서 승리로
+     이끌어야 — "지상 전투 승률" 같은 것). 종족은 안 가린다(요청).
+     문턱은 승률 칭호들의 선(맵·여신 70%)에 맞추되, 지상전은 대부분의 판이 표본이라(= 전체
+     승률과 거의 같은 말이라) 종족 승률(75%)의 선을 받는다. 표본 바닥은 combatRate 안의
+     ratioFloor다. */
   {
-    label: "지상전 퀸", weight: 3, kind: "경기력", min: 0.92, why: "병력 중 지상 유닛", unit: "",
-    value: (s, of) => {
-      const m = mix(s, of);
-      return m && m.uGround + m.uAir > 0 ? m.uGround / (m.uGround + m.uAir) : null;
-    },
+    label: "지상전 퀸", weight: 3, kind: "승률", min: 75, why: "지상전 승률", unit: "%",
+    value: (_s, of) => combatRate(of, "ground"),
   },
   {
-    label: "공중전 퀸", weight: 3, kind: "경기력", min: 0.3, why: "병력 중 공중 유닛", unit: "",
-    value: (s, of) => {
-      const m = mix(s, of);
-      return m && m.uGround + m.uAir > 0 ? m.uAir / (m.uGround + m.uAir) : null;
-    },
+    label: "공중전 퀸", weight: 3, kind: "승률", min: 70, why: "공중전 승률", unit: "%",
+    value: (_s, of) => combatRate(of, "air"),
   },
   {
-    label: "마법 퀸", weight: 3, kind: "경기력", min: 0.1, why: "병력 중 마법 유닛", unit: "",
-    value: (s, of) => {
-      const m = mix(s, of);
-      const total = m ? m.uBasic + m.uAdv + m.uCaster : 0;
-      return m && total > 0 ? m.uCaster / total : null;
-    },
+    label: "마법 퀸", weight: 3, kind: "승률", min: 70, why: "마법전 승률", unit: "%",
+    value: (_s, of) => combatRate(of, "magic"),
   },
   /* 건물을 제일 많이 올린 사람(요청: 심시티 퀸) — "쉴 새 없이 짓는 자"에서 바꿨다. 재는 값은 그대로 분당 지은 채수다. */
   { label: "심시티 퀸", weight: 3, kind: "경기력", min: 8, why: "분당 지은 채수", unit: "채", value: (s, of) => { const m = mix(s, of); return m ? perMin(m.coreBuild, won(s, of).mixSeconds) : null; } },
@@ -1340,6 +1348,17 @@ export function epithetGuideRows(): EpithetGuideRow[] {
        안 잡힌다. 손으로 완성한다(지적: 설명 현행화). */
     if (r.label === "승리의 여신") {
       return { ...r, how: `${winsFloor()}판 이상 · 승률 70% 이상 (판수 바닥은 클럽 판수 비례)` };
+    }
+    /* 세 퀸 — 표본(그 싸움의 판)과 판 판정이 value 밖(서버)에 있어 자동 문구로는 반이
+       빠진다. 판정 바닥은 서버 _combat_split과 한 벌이다. */
+    if (r.label === "지상전 퀸") {
+      return { ...r, how: `지상 유닛 30기 이상(공중 대비 8할)을 뽑은 판 ${ratioFloor()}판 이상 · 그 판들 승률 75% 이상` };
+    }
+    if (r.label === "공중전 퀸") {
+      return { ...r, how: `공중 유닛 12기 이상 뽑은 판 ${ratioFloor()}판 이상 · 그 판들 승률 70% 이상` };
+    }
+    if (r.label === "마법 퀸") {
+      return { ...r, how: `마법 유닛 5기 이상 뽑은 판 ${ratioFloor()}판 이상 · 그 판들 승률 70% 이상` };
     }
     if (r.label !== "{n}") return r;
     if (r.how.startsWith("그 맵 승수")) {

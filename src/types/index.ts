@@ -305,6 +305,10 @@ export interface MemberStatsEntry {
    *  전적(판수·승률)은 이 안에서 뜻이 없다: 이긴 판만 모았으니 늘 100%다. 구성비·분당
    *  값·원장만 읽어야 한다. 옛 응답에는 없다. */
   won?: MemberStats;
+  /** 갈래(ground/air/magic) → [그렇게 싸운 판수, 그중 이긴 판수] — 지상전·공중전·마법 퀸이
+   *  "그 싸움의 승률"을 내는 재료(요청: 많이 뽑아 활약해 승리로 이끌어야). 판 판정(지상
+   *  30기·8할, 공중 12기, 마법 5기)은 서버(_combat_split)가 한다. 옛 응답에는 없다. */
+  combat?: Record<string, [number, number]>;
   byRace: Record<BaseRace, MemberStats>;
   mostPlayedRace: Race | null;
   // 랭킹 순서 — 서버가 사람단위 점수(참가+우열) → 상대 강함(SoS) 순으로 가른 결과다.

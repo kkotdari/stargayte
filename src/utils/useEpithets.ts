@@ -84,9 +84,11 @@ async function recount(key: string): Promise<number> {
       /* 이긴 판만 놓고 낸 한 벌 — 구성비·분당 값을 보는 칭호가 쓴다(요청: 무엇으로 이겼나를
          묻는 자리라 진 판을 섞으면 안 된다). 옛 응답에는 없어 그때는 전체로 떨어진다. */
       won: byId[id]?.won,
+      // 지상전/공중전/마법전 전적 — 세 퀸의 승률 재료다(요청).
+      combat: byId[id]?.combat,
     }))
     .flatMap((x) => (x.stats
-      ? [{ id: x.id, stats: x.stats, races: x.races, won: x.won }]
+      ? [{ id: x.id, stats: x.stats, races: x.races, won: x.won, combat: x.combat }]
       : [])), { totalGames });
   /* 올린 값이 곧 다음에 누가 읽을 값이다 — 그래서 여기서 캐시도 같이 갈아 둔다. 달라진
      사람이 있으면 서버가 활동에 알림 한 줄을 남긴다(요청). */
@@ -122,8 +124,11 @@ export async function simulateEpithets(memberIds: string[]): Promise<{
       stats: byId[id]?.overall,
       races: byId[id]?.byRace,
       won: byId[id]?.won,
+      combat: byId[id]?.combat,
     }))
-    .flatMap((x) => (x.stats ? [{ id: x.id, stats: x.stats, races: x.races, won: x.won }] : [])),
+    .flatMap((x) => (x.stats
+      ? [{ id: x.id, stats: x.stats, races: x.races, won: x.won, combat: x.combat }]
+      : [])),
   { totalGames });
   return { assigned, claims: lastEpithetClaims() };
 }
@@ -148,7 +153,7 @@ export async function claimsOfMember(memberId: string): Promise<EpithetClaimRow[
   const entry = res.members.find((m) => m.memberId === memberId);
   if (!entry?.overall) { claimCache.set(memberId, []); return []; }
   epithetsOf(
-    [{ id: memberId, stats: entry.overall, races: entry.byRace, won: entry.won }],
+    [{ id: memberId, stats: entry.overall, races: entry.byRace, won: entry.won, combat: entry.combat }],
     { totalGames },
   );
   const rows = lastEpithetClaims().filter((c) => c.memberId === memberId);
