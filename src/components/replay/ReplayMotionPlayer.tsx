@@ -602,6 +602,21 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
       + " M11.4 9.3 Q11.3 13.2 10.9 15.9 Q10.4 13.1 10.3 9.7 Z", 1],
     ["M5.2 4.4a1.8 1.1 0 1 0 3.6 0a1.8 1.1 0 1 0-3.6 0Z", 0.35, "#fff"],
   ],
+  /* 드랍십 — 옆에서 본 뭉툭한 수송선(요청: 오버로드처럼 도형으로): 둥근 몸통, 오른쪽
+     조종석 창, 왼쪽 위·아래 작은 핀. */
+  dship: [
+    ["M4 4.8 L2.2 3.2 L5.6 4.2 Z M4 10.6 L2.2 12.2 L5.6 11.2 Z", 1],
+    ["M3 6.2 Q3 4.6 4.8 4.6 L10.2 4.6 Q12.8 4.8 13.8 6.8 Q14.2 7.8 13.6 8.8 Q12.4 10.8 9.8 10.8 L4.8 10.8 Q3 10.8 3 9.2 Z", 1],
+    ["M4.4 5.4 L10 5.4 Q11.4 5.5 12.2 6.3 L4.8 6.3 Q4.2 6.3 4.4 5.4 Z", 0.3, "#fff"],
+    ["M11.2 6.6a1 0.9 0 1 0 2 0a1 0.9 0 1 0-2 0Z", 0.45, "#fff"],
+  ],
+  /* 셔틀 — 위에서 본 넓적한 조개꼴(요청: 오버로드처럼 도형으로): 가운데 돔, 앞뒤로
+     얇아지고 왼쪽 반은 그늘. */
+  shuttle: [
+    ["M1.6 8 Q4 4.4 8 4.2 Q12 4.4 14.4 8 Q12 11.6 8 11.8 Q4 11.6 1.6 8 Z", 1],
+    ["M1.6 8 Q4 4.4 8 4.2 Q5.2 6.6 5 8 Q5.2 9.6 8 11.8 Q4 11.6 1.6 8 Z", 0.25, "#000"],
+    ["M6 7.4a2 1.2 0 1 0 4 0a2 1.2 0 1 0-4 0Z", 0.3, "#fff"],
+  ],
   /* 스포어 — 봉오리 머리(윗면 반짝임) + 밑동 둔덕 + 양옆 촉수(요청: 스크린샷 참고). */
   spore: [
     ["M2 13.6 Q2.4 10.8 5.2 10.2 L10.8 10.2 Q13.6 10.8 14 13.6 Z", 1],
@@ -1444,6 +1459,17 @@ export default function ReplayMotionPlayer({
     return false;
   };
 
+  /* 건설에 흡수(지적: 익스트랙터 만든 드론이 유닛 아이콘으로 남는다) — 마지막 명령 뒤
+     조용한 채 제 건물 착공 자리에 서 있는 일꾼 점은 걷는다: 저그는 드론이 건물이 된
+     것이고, 테란·토스도 다 짓고 일감으로 돌아간 것이다. 그 명령 무렵(걸어간 시간 포함
+     60초 안)에 시작된 착공만 짚는다 — 한참 뒤 같은 자리의 딴 건물에 엉뚱하게 먹히지
+     않게. */
+  const buildAbsorbed = (
+    p: MotionTrack, pos: { x: number; y: number }, lastOrderSec: number,
+  ): boolean => motion.builds.some(([bs, bx2, by2, bu, br]) =>
+    br === p.raw && bs <= t && bs >= lastOrderSec - 4 && bs - lastOrderSec <= 60
+    && Math.hypot(bx2 + footDx(bu) - pos.x, by2 + footDy(bu) - pos.y) <= 3);
+
   /* 폭은 무조건 컨테이너 최대가 아니라 화면 세로 공간이 허락하는 만큼(지적: 노트북처럼
      납작한 화면에서 전체 폭을 쓰면 미니맵이 한 화면에 다 안 들어옴) — 맵 높이가
      (100dvh − 조작부 몫)을 넘지 않게 폭을 비율로 역산해 상한을 걸고 가운데 정렬.
@@ -1658,17 +1684,17 @@ export default function ReplayMotionPlayer({
                     : text}
                 {/* 하는 일 아이콘(요청: 생산·업그레이드도 각각 아이콘으로) — 공사는 망치,
                     생산은 톱니, 업그레이드는 플라스크. 한 번에 하나만(공사가 먼저다). */}
-                {/* 6 → 8(요청: 건물 상태 아이콘 조금 더 크게). 색은 그 사람 칩의
-                    글자색과 같은 규칙(요청: "글자색" — 플레이어색도 흰색 고정도 아니다):
-                    밝은 개인색 위엔 검정, 어두운 색 위엔 흰색이라 제 색 도형 위에서도
-                    늘 보인다. */}
+                {/* 8 → 10(요청: 아이콘 확대), 자리는 건물 왼쪽 모서리에 살짝 걸치게(요청).
+                    색은 그 사람 칩의 글자색과 같은 규칙(요청: "글자색" — 플레이어색도
+                    흰색 고정도 아니다): 밝은 개인색 위엔 검정, 어두운 색 위엔 흰색이라
+                    제 색 도형 위에서도 늘 보인다. */}
                 {(() => {
                   const Icon = raising ? Hammer
                     : producing && !afloat ? Cog
                       : researching && !afloat ? FlaskConical : null;
                   if (!Icon) return null;
                   const jobColor = lumOf(modeColor(raw, team)) > 150 ? "#111" : "#fff";
-                  return <Icon size={8} className="scr-motion-raising" style={{ color: jobColor }} />;
+                  return <Icon size={10} className="scr-motion-raising" style={{ color: jobColor }} />;
                 })()}
               </span>
             );
@@ -1748,7 +1774,12 @@ export default function ReplayMotionPlayer({
              멀티를 놓쳤다 — 근처에 미네랄 지대가 따로 없어 홑으로 안 잡혔다. 미네랄과
              가스가 한 지대로 묶인 맵에서 정제소 전까지 이 지대가 조용해지는 손해는
              감수한다(본진 밑 곡괭이 일꾼이 채취 자체는 계속 말해 준다). */
-          if (res[2] === 1) {
+          /* 깃발 안전망(재지적: 아직도 가스 없는 곳에 가스 캐는 일꾼) — 옛 맵 데이터에는
+             가스 깃발(res[2])이 아예 없을 수 있다. 이 판에서 누군가 가스 건물을 지은
+             자리는 깃발과 무관하게 가스 지대다. */
+          const gasSpot = res[2] === 1
+            || gasBuildings.some((g) => Math.hypot(g.x - res[0], g.y - res[1]) <= 6);
+          if (gasSpot) {
             const hasGasBuilding = gasBuildings.some((g) =>
               g.raw === owner!.raw && g.sec + 30 <= t && (g.gone === 0 || t < g.gone)
               && Math.hypot(g.x - res[0], g.y - res[1]) <= 10);
@@ -1964,6 +1995,9 @@ export default function ReplayMotionPlayer({
             if (Number.isFinite(sinceCmd) && deadBy(t - sinceCmd)) return [];
             // 태워진 동안은 숨는다(요청) — 내리면 나타난다.
             if (carriedGone(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : -1)) return [];
+            // 건설에 흡수(지적: 익스트랙터 만든 드론이 남는다) — 일꾼 묶음만.
+            if (g.unit === "Worker" && !pos.moving && Number.isFinite(sinceCmd)
+              && buildAbsorbed(p, pos, t - sinceCmd)) return [];
             return [{ g, gi, pos, sinceCmd }];
           });
           const shownUnits = new Set(typeMarks.flatMap(({ g }) => BY_UNITS[g.unit] ?? [g.unit]));
@@ -1991,9 +2025,9 @@ export default function ReplayMotionPlayer({
                   ? (race === "저그" ? "드론" : race === "테란" ? "SCV" : "프로브")
                   : g.unit);
             const label = `${groupKo}${alive > 0 ? ` ${alive}` : ""}`;
-            /* 일꾼과 오버로드는 이름을 안 띄운다(요청) — 일꾼은 늘 작은 점, 오버로드는
-               늘 풍선 도형이다. */
-            const noName = g.unit === "Worker" || (g.unit === "Transport" && race === "저그");
+            /* 일꾼과 수송선은 이름을 안 띄운다(요청) — 일꾼은 늘 작은 점, 수송선은 늘
+               제 도형(오버로드 풍선·드랍십·셔틀)이다. */
+            const noName = g.unit === "Worker" || g.unit === "Transport";
             const activeNow = !noName && (pos.moving || sinceCmd <= ACTIVE_HOLD_SEC);
             /* 클로킹 유닛은 반투명(요청) — 옵저버·다크는 늘, 레이스·고스트는 클로킹 연구
                뒤부터. 칩이든 점이든 같이 옅어진다(요청). */
@@ -2021,9 +2055,14 @@ export default function ReplayMotionPlayer({
                     : glyphStyle(p.raw, team)),
                 }}
               >
-                {/* 저그 수송(오버로드)은 점 대신 풍선+다리 도형(요청: 이름 없이 늘). */}
-                {g.unit === "Transport" && race === "저그"
-                  ? <ShapeIcon kind="ovie" className="scr-motion-ovie" />
+                {/* 수송선은 점·이름 대신 늘 제 도형(요청) — 오버로드 풍선·드랍십·셔틀. */}
+                {g.unit === "Transport"
+                  ? (
+                    <ShapeIcon
+                      kind={race === "저그" ? "ovie" : race === "테란" ? "dship" : "shuttle"}
+                      className="scr-motion-ovie"
+                    />
+                  )
                   : activeNow ? label : "●"}
               </span>
             );
@@ -2171,6 +2210,9 @@ export default function ReplayMotionPlayer({
             }
             // 태워진 동안은 숨는다(요청) — 오버로드·셔틀에 오른 정찰도 마찬가지다.
             if (carriedGone(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : -1)) return null;
+            // 건설에 흡수(지적: 익스트랙터 만든 드론이 남는다) — 일꾼 점만.
+            if (g.kind === "worker" && !pos.moving && Number.isFinite(sinceCmd)
+              && buildAbsorbed(p, pos, t - sinceCmd)) return null;
             /* 진짜 이름으로 부른다(지적: "일꾼"이 아니라 원래 이름 — "정찰"이라는 유닛은
                없다). 종족이 이름을 정한다: 일꾼은 SCV·프로브·드론, 수송선은 드랍십·셔틀·
                오버로드. 정체 모를 한 기도 그 종족의 흔한 쪽(일꾼, 저그는 오버로드)으로
@@ -2180,10 +2222,9 @@ export default function ReplayMotionPlayer({
               : g.kind === "carrier"
                 ? (race === "테란" ? "드랍십" : "셔틀")
                 : race === "테란" ? "SCV" : "프로브";
-            /* 일꾼과 오버로드는 이름을 안 띄운다(요청) — 일꾼은 자원 채취뿐 아니라 늘
-               적당히 작은 점으로 통일, 오버로드는 늘 풍선 도형이다. 이름 칩은 정체를
-               아는 비저그 수송선(드랍십·셔틀)에만 남는다. */
-            const noName = g.kind === "worker" || race === "저그";
+            /* 일꾼과 수송선은 이름을 안 띄운다(요청) — 일꾼은 자원 채취뿐 아니라 늘
+               적당히 작은 점으로 통일, 수송선은 늘 제 도형(오버로드 풍선·드랍십·셔틀)이다. */
+            const noName = g.kind === "worker" || g.kind === "carrier" || race === "저그";
             const activeNow = !noName && (pos.moving || sinceCmd <= ACTIVE_HOLD_SEC) && !nearHome;
             return (
               <span
@@ -2202,10 +2243,12 @@ export default function ReplayMotionPlayer({
                   ...(activeNow ? chipStyle(p.raw, team) : glyphStyle(p.raw, team)),
                 }}
               >
-                {/* 오버로드(저그의 일꾼 아닌 정찰)는 점 대신 풍선+다리 도형(요청). */}
+                {/* 수송선·오버로드는 점 대신 제 도형(요청) — 풍선·드랍십·셔틀. */}
                 {race === "저그" && g.kind !== "worker"
                   ? <ShapeIcon kind="ovie" className="scr-motion-ovie" />
-                  : activeNow ? label : "●"}
+                  : g.kind === "carrier"
+                    ? <ShapeIcon kind={race === "테란" ? "dship" : "shuttle"} className="scr-motion-ovie" />
+                    : activeNow ? label : "●"}
               </span>
             );
           });
@@ -2263,13 +2306,19 @@ export default function ReplayMotionPlayer({
             (pts ?? [])
               .filter(([s]) => s <= t && t - s <= CAST_HOLD_SEC)
               .map(([s, cx2, cy2]) => (
-                <span
-                  key={`${kp}-${p.raw}-${s}-${cx2}-${cy2}`}
-                  className={cx("scr-motion-cast", "scr-motion-chip", team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
-                  style={{ left: pct(cx2, grid.width), top: pct(cy2, grid.height), ...chipStyle(p.raw, team) }}
-                >
-                  {label}
-                </span>
+                <React.Fragment key={`${kp}-${p.raw}-${s}-${cx2}-${cy2}`}>
+                  {/* 우주선 광선(요청) — 위(수송선)에서 유닛 자리로 노랗게 내리쬔다. */}
+                  <span
+                    className="scr-motion-beam"
+                    style={{ left: pct(cx2, grid.width), top: pct(cy2, grid.height) }}
+                  />
+                  <span
+                    className={cx("scr-motion-cast", "scr-motion-chip", team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
+                    style={{ left: pct(cx2, grid.width), top: pct(cy2, grid.height), ...chipStyle(p.raw, team) }}
+                  >
+                    {label}
+                  </span>
+                </React.Fragment>
               ));
           return [...mk(p.drops, "드랍", "dr"), ...mk(p.loads, "태움", "ld")];
         })}
@@ -2287,8 +2336,9 @@ export default function ReplayMotionPlayer({
           <div className="scr-motion-legend">
             <span>● 부대·유닛</span>
             <span>■ 건물</span>
-            {/* 일꾼은 채굴·정찰 없이 전부 같은 작은 점이다(요청: 통일). */}
-            <span>• 일꾼</span>
+            {/* 일꾼은 채굴·정찰 없이 전부 같은 작은 점이다(요청: 통일). 기호는 지도의
+                점과 같은 ●를 부대보다 한 단 작게(지적: •는 너무 작았다). */}
+            <span><i className="scr-motion-legend-worker">●</i> 일꾼</span>
             <span><Hammer size={8} /> 건설 중</span>
             <span><Cog size={8} /> 생산 중</span>
             <span><FlaskConical size={8} /> 업그레이드 중</span>

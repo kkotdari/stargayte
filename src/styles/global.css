@@ -11142,13 +11142,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   display: inline-flex; align-items: center; justify-content: center;
 }
 .scr-motion-base-team .scr-motion-team-n { font-size: 8px; }
-/* 하는 일 아이콘(공사 망치·생산 톱니·업그레이드 플라스크) — 건물 한가운데에
-   얹는다(지적: "망치가 어디붙은지 헷갈림") — 모서리에 매달려 있으면 어느 건물의
-   아이콘인지가 붙어서 안 읽혔다. 색은 그 사람 글자색을 그대로 탄다(지적: "아이콘이
-   왜 다 흰색이지" — var(--text)로 못 박았던 것을 되돌림). */
+/* 하는 일 아이콘(공사 망치·생산 톱니·업그레이드 플라스크) — 건물 왼쪽 모서리에 살짝
+   걸친다(요청; 처음엔 한가운데였는데 도형 그림을 가렸다). 색은 JSX 인라인이 칩 글자색
+   규칙으로 준다(지적: 흰색 고정도, 플레이어색도 아니다). */
 .scr-motion-raising {
-  position: absolute; top: 50%; left: 50%; right: auto;
-  transform: translate(-50%, -50%); pointer-events: none;
+  position: absolute; top: 50%; left: 0; right: auto;
+  transform: translate(-55%, -50%); pointer-events: none;
 }
 /* 방패 속 팀 번호(요청) — 방패가 곧 바탕이라 판 없이 숫자만 얹는다. 방패 아랫단이
    뾰족해 눈금 중심이 살짝 위라, 숫자도 반 픽셀 위로 당긴다. */
@@ -11206,6 +11205,22 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 게임 상세 팝업(상자 z-index 130) 위에 뜬다(지적: 아직도 뒤에 뜸) — 오버레이는
    display:contents라 상자가 없어 z-index가 안 먹는다(첫 시도의 함정). 모달 상자에 건다. */
 .scr-terrain-modal { z-index: 200; }
+/* 범례의 일꾼 점 — 지도의 ●와 같은 기호를 부대 항목보다 한 단 작게(지적: •는 너무 작음). */
+.scr-motion-legend-worker { font-style: normal; font-size: 0.8em; }
+/* 태움·드랍 광선(요청: 우주선처럼 노란 광선) — 위(수송선)에서 좁게 시작해 유닛 자리로
+   퍼지며 내리쬔다. 아래끝이 그 자리다(translate -100%). */
+.scr-motion-beam {
+  position: absolute; width: 18px; height: 24px; pointer-events: none;
+  transform: translate(-50%, -100%);
+  clip-path: polygon(36% 0, 64% 0, 100% 100%, 0 100%);
+  background: linear-gradient(rgba(255, 224, 96, 0.06), rgba(255, 224, 96, 0.6));
+  animation: scr-motion-beam 0.9s ease-in-out infinite;
+  z-index: 25000;
+}
+@keyframes scr-motion-beam {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
 /* 지도 아래 도구줄(요청: 범례·지형 수정·확대 토글을 전부 같은 한 줄에) — 조종부와 같은
    3칸 그리드 수법: 가운데 칸(범례+산 버튼)이 정중앙, 확대 토글은 오른쪽 칸 끝이다. */
 .scr-motion-toolrow { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }

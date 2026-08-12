@@ -395,6 +395,19 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
     attacksByTeam.set(p.team, list);
   }
   for (const list of attacksByTeam.values()) list.sort((a, b) => a.sec - b.sec);
+  /* 나를 직접 찍은 공격(hits) — 상대가 '내 유닛'을 우클릭·표적으로 찍은 기록이라, 공격
+     명령 뭉치보다 표적이 확실한 전투 증거다(지적: 치열하게 싸워 다 소모했는데 유닛 수가
+     그대로 누적 — 전투 감지(hot)가 빗나가면 감쇠가 아예 안 걸렸다). 전투 구간 감지에
+     합친다. */
+  const hitsOnRaw = new Map<string, { sec: number; x: number; y: number }[]>();
+  for (const p of players) {
+    for (const h of p.signals!.hits ?? []) {
+      const list = hitsOnRaw.get(h.whom) ?? [];
+      list.push({ sec: h.frame * SECONDS_PER_FRAME, x: h.x, y: h.y });
+      hitsOnRaw.set(h.whom, list);
+    }
+  }
+  for (const list of hitsOnRaw.values()) list.sort((a, b) => a.sec - b.sec);
 
   for (const p of players) {
     const sg = p.signals!;
@@ -568,7 +581,9 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
     if (pts.length > 0 || spts.length > 0 || tpts.length > 0 || opts.length > 0
       || units.length > 0 || workers.length > 0 || fpts.length > 0) {
       const hot = hotOf(
-        [...pts, ...Object.values(upts).flat()].sort((a, b) => a[0] - b[0]), foeAttacks,
+        [...pts, ...Object.values(upts).flat()].sort((a, b) => a[0] - b[0]),
+        // 공격 명령 뭉치 + 나를 직접 찍은 공격(위 hitsOnRaw 주석) — 시간순으로 다시 섞는다.
+        [...foeAttacks, ...(hitsOnRaw.get(p.rawName) ?? [])].sort((a, b) => a.sec - b.sec),
       );
       tracks.push({
         raw: p.rawName, ...(p.color ? { color: p.color } : {}),
