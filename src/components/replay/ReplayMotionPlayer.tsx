@@ -192,7 +192,13 @@ function speedOf(
 
 /** 커맨드를 받은 지 이 안이면 아직 '활동 중'이다(요청) — 이름표를 유지한다. 유닛은 오래
  *  이름으로, 건물은 타이트하게(지적)의 '오래' 쪽. */
-const ACTIVE_HOLD_SEC = 12;
+/* 12 → 25초(요청: 액티브 상태 더 오래) — 이름이 너무 빨리 점으로 꺼져, 훑어보는 눈이
+   따라가기 전에 정보가 사라졌다. */
+const ACTIVE_HOLD_SEC = 25;
+/** 갓 뽑힌 유닛이 부대를 깨우는 창(요청: 생산 직후 액티브) — 완성이 이 안이면 이름이 뜬다. */
+const FRESH_ACTIVE_SEC = 15;
+/** 띄운 건물의 비행 속도(타일/초) — 착륙 이사를 잇는 자다. */
+const BUILDING_FLY_SPEED = 1.2;
 /** 재생 전용 이름 보강 — UNIT_KO에 없는 정찰 유닛(일꾼·오버로드). UNIT_KO에 넣으면 통계
  *  도넛·Top5까지 일꾼이 섞이므로(replayBuildMix가 그 표로 거른다) 여기서만 얹는다. */
 const SCOUT_KO: Record<string, string> = {
@@ -909,9 +915,26 @@ export default function ReplayMotionPlayer({
               j !== i && r2 === raw && s2 > sec && s2 <= t && Math.hypot(x2 - x, y2 - y) <= 1.5)) {
               return null;
             }
+            /* 착륙 이사(요청: 건물 움직임도 추적) — 같은 임자의 같은 건물이 내 시작
+               시각에 걷혔으면 거기서 날아온 것이다. 나는 동안은 두 자리 사이를 비행
+               속도로 잇는다. */
+            let bx = x;
+            let by = y;
+            const flownFrom = motion.builds.find(([, x2, y2, u2, r2, g2]) =>
+              r2 === raw && u2 === unit && (g2 ?? 0) === sec && (x2 !== x || y2 !== y));
+            if (flownFrom) {
+              const flyDist = Math.hypot(flownFrom[1] - x, flownFrom[2] - y);
+              const flyDur = Math.min(40, flyDist / BUILDING_FLY_SPEED);
+              if (t < sec + flyDur && flyDur > 0) {
+                const k = Math.max(0, (t - sec) / flyDur);
+                bx = flownFrom[1] + (x - flownFrom[1]) * k;
+                by = flownFrom[2] + (y - flownFrom[2]) * k;
+              }
+            }
             // 짓는 동안은 공사중 아이콘(요청: 반투명 말고) — 반투명은 "저기 뭐가 있긴 한데"
-            // 로만 읽히고, 도형의 반투명(뒤 비침)과도 헷갈렸다.
-            const raising = !razed && t - sec < (BUILD_SEC[unit] ?? 30);
+            // 로만 읽히고, 도형의 반투명(뒤 비침)과도 헷갈렸다. 날아온 건물은 이미 다 선
+            // 건물이라 망치를 안 든다.
+            const raising = !razed && !flownFrom && t - sec < (BUILD_SEC[unit] ?? 30);
             const team = teamOfRaw(raw);
             const tagOrd = tagOrdinals.get(`${raw}|${unit}`);
             const myOrd = (buildsByType.get(`${raw}|${unit}`) ?? []).indexOf(i);
@@ -952,7 +975,8 @@ export default function ReplayMotionPlayer({
                   razed && "scr-motion-build-razed",
                 )}
                 style={{
-                  left: pct(x, grid.width), top: pct(y, grid.height),
+                  // 나는 중이면 비행 좌표(bx·by), 아니면 제자리다(위 착륙 이사 주석).
+                  left: pct(bx, grid.width), top: pct(by, grid.height),
                   // 긴 이름은 한 단계 작게(지적) — 여섯 자부터.
                   ...(text.length >= 6 && !activeBuild ? { fontSize: 6 } : {}),
 
@@ -1259,7 +1283,16 @@ export default function ReplayMotionPlayer({
             /* 전투에서 정리된 부대(요청: 유닛은 새로 이동하지 않는 한 그 자리에 있고,
                전투 후 다시 액션이 없다면 그 전투에서 죽은 것). */
             if (Number.isFinite(sinceCmd) && deadBy(t - sinceCmd)) return null;
-            const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC;
+            /* 생산 직후에도 깨어 있다(요청) — 갓 나온 유닛은 명령을 안 받았어도 지금
+               이야기의 일부다. 완성은 사람 단위 값이라 주 부대만 깨운다. */
+            let freshDone = false;
+            if (si === primary) {
+              for (const d of completionsByRaw.get(p.raw) ?? []) {
+                if (d > t) break;
+                freshDone = t - d <= FRESH_ACTIVE_SEC;
+              }
+            }
+            const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC || freshDone;
             const showName = si === primary && activeNow && !!unit && (size >= 1 || !!SCOUT_KO[unit]);
             const fontPx = Math.min(16, 8 + Math.round(Math.sqrt(size) * 1.6));
             /* 무명 부대의 구성 — 제 마커를 가진 종류(shownUnits)는 뺀다: 같은 탱크가 제
@@ -1357,16 +1390,24 @@ export default function ReplayMotionPlayer({
             const label = g.kind === "worker" ? "일꾼"
               : race === "저그" ? "오버로드"
                 : g.kind === "carrier" ? "수송선" : "정찰";
+            /* 유닛 마커와 같은 꼴이다(요청: 오버로드·일꾼만 다르게 표현되던 것을 동일하게)
+               — 깨어 있으면 배지 칩, 아니면 점. 크기 규칙도 부대와 같은 기본값을 쓴다. */
+            const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC;
             return (
               <span
                 key={`s-${p.raw}-${g.kind}-${gi}`}
-                className={cx("scr-motion-scout", team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
+                className={cx(
+                  "scr-motion-army",
+                  activeNow ? "scr-motion-chip" : "scr-motion-dot",
+                  team === 2 ? "scr-motion-team2" : "scr-motion-team1",
+                  pos.stale && "scr-motion-army-stale",
+                )}
                 style={{
                   left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
-                  ...glyphStyle(p.raw, team),
+                  ...(activeNow ? chipStyle(p.raw, team) : glyphStyle(p.raw, team)),
                 }}
               >
-                {pos.moving || sinceCmd <= ACTIVE_HOLD_SEC ? label : "●"}
+                {activeNow ? label : "●"}
               </span>
             );
           });
