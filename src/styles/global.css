@@ -11092,20 +11092,28 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 유닛 이름 칩에도 같은 톤의 약한 그림자(요청) — 배경 있는 배지라 텍스트 그림자 대신
    상자 그림자다. */
 .scr-motion-army.scr-motion-chip, .scr-motion-cast.scr-motion-chip { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
-/* 본진 실루엣 아바타(요청: "아바타를 본진 안에 넣기") — 사진을 본진 모양으로 자르고
-   같은 모양의 색 테를 두른다. 크기는 옛 원형 아바타(24px + 테 3px)와 같은 자리다. */
+/* 본진 실루엣 아바타(요청) — 실루엣 색 판이 뒤에 서고, 그 한가운데에 동그란 아바타가
+   잘림 없이 같은 크기로 얹힌다(지적: 사진을 도형으로 자르지 말 것). */
+.scr-motion-base-hallwrap {
+  position: relative; display: inline-flex; width: 40px; height: 40px;
+  align-items: center; justify-content: center;
+}
 .scr-motion-base-hallsvg {
-  display: block; width: 32px; height: 32px;
+  position: absolute; inset: 0; width: 100%; height: 100%;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+.scr-motion-base-avatar-in {
+  position: relative; display: inline-flex; border-radius: 50%; overflow: hidden;
 }
 /* 발자국대로 크고 작게(요청: "건물크기로 구분 — 서플·파일런같은 작은 건물은 작게, 큰
    건물은 크게") — 2×2·3×2 발자국은 한 단계 작게, 4×3 생산 건물은 한 단계 크게. 본진은
    제 크기(-hall)가 따로 있다. */
+/* -lg 12/16 → 10/14(지적: "배럭 게이트 크기가 너무 큰듯") — 본진(15/20)과의 층은 그대로. */
 .scr-motion-build-sm.scr-motion-build-shape { font-size: 7px; }
-.scr-motion-build-lg.scr-motion-build-shape { font-size: 12px; }
+.scr-motion-build-lg.scr-motion-build-shape { font-size: 10px; }
 @media (min-width: 1160px) {
   .scr-motion-build-sm.scr-motion-build-shape { font-size: 10px; }
-  .scr-motion-build-lg.scr-motion-build-shape { font-size: 16px; }
+  .scr-motion-build-lg.scr-motion-build-shape { font-size: 14px; }
 }
 /* 본진 건물(커맨드·넥서스·해처리 계열)은 큼직하게(요청) — 이름이든 네모든 한 단계 키운다. */
 .scr-motion-build-hall { font-size: 10px; }
@@ -11125,10 +11133,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   display: inline-flex; align-items: center; justify-content: center;
 }
 .scr-motion-base-team .scr-motion-team-n { font-size: 8px; }
-/* 공사중 아이콘(요청: 건설 중 반투명 말고, 이모지 말고 아이콘) — 망치를 건물명 오른쪽
-   위에 겹쳐 얹는다(요청: 좀 더 건물명에 겹치게). 색은 글자색(그 사람 색)을 그대로 탄다. */
+/* 공사중 아이콘(요청: 건설 중 반투명 말고, 이모지 말고 아이콘) — 건물 한가운데에
+   얹는다(지적: "망치가 어디붙은지 헷갈림") — 모서리에 매달려 있으면 어느 건물의
+   망치인지가 붙어서 안 읽혔다. 색은 글자색(그 사람 색)을 그대로 탄다. */
 .scr-motion-raising {
-  position: absolute; top: -2px; right: -2px; pointer-events: none;
+  position: absolute; top: 50%; left: 50%; right: auto;
+  transform: translate(-50%, -50%); pointer-events: none;
 }
 /* 방패 속 팀 번호(요청) — 방패가 곧 바탕이라 판 없이 숫자만 얹는다. 방패 아랫단이
    뾰족해 눈금 중심이 살짝 위라, 숫자도 반 픽셀 위로 당긴다. */

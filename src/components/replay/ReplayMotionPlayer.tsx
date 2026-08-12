@@ -308,16 +308,19 @@ const footDy = (unit: string): number => (FOOTPRINT[unit] ?? [3, 2])[1] / 2;
  *  구분된다. 나머지 건물은 ■/▲/★ 기본 규칙 그대로다. */
 const SHAPE_KIND: Record<string, string> = {
   // 벙커는 납작한 무덤, 포토캐논은 납작한 태엽(요청) — 커맨드의 큰 무덤과 갈린다.
+  // 성큰은 동그라미에 가시, 터렛은 네모 위에 기울어진 네모(요청).
   Pylon: "diamond", "Supply Depot": "trapezoid", Bunker: "tombFlat", "Photon Cannon": "coil",
+  "Sunken Colony": "sunken", "Missile Turret": "turret",
   // 넥서스는 넙적한 세모+양옆 기둥, 게이트는 원 위의 가파른 삼각(요청).
   "Command Center": "tomb", Nexus: "pyramidWide", Gateway: "gate",
   /* 저그 본진 3형제(요청) — 해처리는 곡선 둔덕(각진 T는 부자연스럽다는 지적), 레어는
      그 둔덕의 바닥에 뿔, 하이브는 더 높은 뿔에 안쪽 가시까지 — 단계가 오를수록 뿔이
      자란다. */
   Hatchery: "hatchery", Lair: "lair", Hive: "hive",
-  /* 다른 생산 건물도 원래 실루엣을 살린 벡터로(요청) — 배럭은 막사 지붕, 팩토리는 톱니
-     지붕 공장, 스타포트는 착륙 패드(원)와 받침, 로보틱스는 돔, 스타게이트는 문(아치). */
-  Barracks: "house", Factory: "factory", Starport: "pad",
+  /* 다른 생산 건물도 원래 실루엣을 살린 벡터로(요청) — 배럭은 측면에서 본 정육면체(요청),
+     팩토리는 톱니 지붕 공장, 스타포트는 종이비행기(요청), 로보틱스는 돔, 스타게이트는
+     문(아치). */
+  Barracks: "cube", Factory: "factory", Starport: "plane",
   "Robotics Facility": "dome", Stargate: "arch",
   // 가스 건물은 넙적한 판(요청) — 자원 위에 낮게 엎드린 모양.
   Refinery: "gas", Assimilator: "gas", Extractor: "gas",
@@ -335,10 +338,12 @@ const SHAPE_PATHS: Record<string, string> = {
      판은 더 작고 얇게(지적: 너무 두꺼움). */
   tomb: "M1.5 14 Q1.5 5.2 8 5.2 Q14.5 5.2 14.5 14 Z M6.2 3.8 H9.8 V4.5 H6.2 Z",
   tombFlat: "M1.5 13 V10.5 Q1.5 7 8 7 Q14.5 7 14.5 10.5 V13 Z",
-  coil: "M1 11a7 3.5 0 1 0 14 0a7 3.5 0 1 0-14 0Z M6.6 8a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0-2.8 0Z",
+  /* 포토캐논 — 병뚜껑처럼 톱니가 두른 원(지적: "박카스 로고같은 모양이어야"). 살짝
+     납작하게 눌러 바닥에 깔린 태엽으로 읽힌다. */
+  coil: "M8 3.1 L9.8 5.1 L12.8 4.5 L12.5 6.9 L15.3 8 L13.1 9.7 L14.4 12 L11.3 12.2 L10.5 14.6 L8 13.2 L5.5 14.6 L4.7 12.2 L1.6 12 L2.9 9.7 L0.7 8 L3.5 6.9 L3.2 4.5 L6.2 5.1 Z",
   pyramid: "M8 1 16 15 0 15Z",
-  // 게이트는 원 위에 더 가파른 삼각(요청) — 소환 관문의 링과 첨탑.
-  gate: "M8 1 L12.2 11 L3.8 11 Z M8 15.2 a3.4 3.4 0 1 1 0 -6.8 a3.4 3.4 0 1 1 0 6.8 Z",
+  // 게이트는 넓적한 원판 위에 세모가 올라간 느낌(요청) — 납작한 타원 받침 + 가파른 첨탑.
+  gate: "M8 2 L12 11.5 L4 11.5 Z M0.8 12.5 a7.2 2.6 0 1 0 14.4 0 a7.2 2.6 0 1 0 -14.4 0 Z",
   // 넙적한 세모(요청: 넥서스) — 밑변이 높이의 두 배쯤이라 눌러앉은 피라미드로 읽히고,
   // 양옆에 뾰족 기둥이 솟는다(요청). 처음엔 경사면에 1px 남짓 겹쳐 안 보였다(지적:
   // "기둥 어디감") — 경사 위로 확실히 뚫고 나오게 키웠다.
@@ -347,26 +352,63 @@ const SHAPE_PATHS: Record<string, string> = {
   lair: `${ZERG_MOUND} M2.4 13.6 L1.2 9.2 L4.2 11.8 Z M13.6 13.6 L14.8 9.2 L11.8 11.8 Z`,
   hive: `${ZERG_MOUND} M2.4 13.6 L0.8 6.2 L4.6 11.4 Z M13.6 13.6 L15.2 6.2 L11.4 11.4 Z`
     + " M5.2 12.9 L4.5 8.4 L6.9 11.3 Z M10.8 12.9 L11.5 8.4 L9.1 11.3 Z",
-  house: "M2 14 V7 L8 3 14 7 V14 Z",
   factory: "M2 14 V8 L5 5 V8 L8 5 V8 L11 5 V8 H14 V14 Z",
-  pad: "M8 3a5 5 0 1 0 .01 0Z M3 12h10v3H3Z",
+  // 종이비행기(요청: 스타포트) — 보내기 아이콘과 같은 다트 실루엣.
+  plane: "M1.5 14.5 L15.5 8 L1.5 1.5 L1.5 6.5 L11.5 8 L1.5 9.5 Z",
   dome: "M2 14 V10 A6 6 0 0 1 14 10 V14 Z",
   arch: "M2 15 V4 H14 V15 H10 V8 H6 V15 Z",
   gas: "M0.8 13 Q0.8 8.8 8 8.8 Q15.2 8.8 15.2 13 Z",
+  /* 성큰 — 넙적한 몸통에 휘어 올라간 촉수 가시 둘(요청: 게임 스크린샷 참고 — 낮게 엎드린
+     살덩이에 낫처럼 굽은 가시가 솟아 있다). */
+  sunken: "M1.2 11.5a6.8 3.2 0 1 0 13.6 0a6.8 3.2 0 1 0-13.6 0Z"
+    + " M4.2 9.8 Q2.4 6.2 4.8 3 Q4.2 6.4 6.2 9.2 Z"
+    + " M11.8 9.8 Q13.6 6.2 11.2 3 Q11.8 6.4 9.8 9.2 Z",
+  // 터렛 — 네모 받침 위에 기울어진 네모 머리(요청).
+  turret: "M3.5 14 H12.5 V8.6 H3.5 Z M10.4 7.6 L6.6 8.6 L5.6 4.8 L9.4 3.8 Z",
 };
 /** 본진 아바타용 실루엣(요청: "아바타를 본진 안에", "아바타용 모양들도 크기 비슷하게") —
  *  건물 도형을 그대로 쓰면 종족마다 덩치가 달라(피라미드는 뾰족해 얼굴이 좁고, 커맨드의
- *  떠 있는 판은 사진 조각을 따로 남긴다) 셋을 비슷한 부피로 다시 깎은 판이다. */
-const AVATAR_HALL_PATHS: Record<string, string> = {
-  테란: "M1.5 14.5 Q1.5 4.5 8 4.5 Q14.5 4.5 14.5 14.5 Z",
-  프로토스: "M8 2.5 15.5 14.5 0.5 14.5Z",
-  저그: "M5 4.5 L11 4.5 Q11.2 8.8 14 11.6 Q15.6 13.2 15.6 14.5 L0.4 14.5 Q0.4 13.2 2 11.6 Q4.8 8.8 5 4.5 Z",
+ *  떠 있는 판은 사진 조각을 따로 남긴다) 셋을 비슷한 부피로 다시 깎은 판이다.
+ *  장식(커맨드 꼭대기 판, 넥서스 양옆 기둥)도 함께 단다(요청: "아바타에도 장식 요소 다") —
+ *  사진은 몸통(body)에만 담고 장식(deco)은 사진 위에 색으로 얹는다: 장식까지 클립에 넣으면
+ *  떨어진 판·기둥 속에 사진 조각이 따로 남는다. 해처리는 건물 자체에 장식이 없어 몸통뿐이다
+ *  (뿔은 레어부터다). */
+const AVATAR_HALL_PATHS: Record<string, { body: string; deco?: string; dy: number }> = {
+  /* dy — 동그란 아바타가 실루엣 배 속에 쏙 들어가는 세로 자리(px, 40px 상자 기준, 지적:
+     "아바타가 쏙 들어가게 크기 위치 조정"). 도형마다 배가 앉은 높이가 달라 하나로 못
+     맞춘다(피라미드는 아래가 넓고 돔은 가운데다). */
+  테란: {
+    body: "M1.5 14.5 Q1.5 4.5 8 4.5 Q14.5 4.5 14.5 14.5 Z",
+    deco: "M6.2 2.6 H9.8 V3.4 H6.2 Z",
+    dy: 4,
+  },
+  프로토스: {
+    body: "M8 2.5 15.5 14.5 0.5 14.5Z",
+    deco: "M1.2 14.5 L2.5 6.5 L4.2 14.5 Z M14.8 14.5 L13.5 6.5 L11.8 14.5 Z",
+    dy: 6,
+  },
+  저그: {
+    body: "M5 4.5 L11 4.5 Q11.2 8.8 14 11.6 Q15.6 13.2 15.6 14.5 L0.4 14.5 Q0.4 13.2 2 11.6 Q4.8 8.8 5 4.5 Z",
+    dy: 6,
+  },
 };
 
+/** 여러 면으로 그리는 도형 — [패스, 불투명도] 목록. 한 색으로 입체감을 내는 데 쓴다. */
+const SHAPE_FACES: Record<string, [string, number][]> = {
+  /* 측면에서 본 정육면체(요청: 배럭) — 윗면·앞면·옆면을 같은 색의 다른 농도로. */
+  cube: [
+    ["M8 2 L14 5 L8 8 L2 5 Z", 0.8],
+    ["M2 5 L8 8 L8 15 L2 12 Z", 1],
+    ["M14 5 L8 8 L8 15 L14 12 Z", 0.55],
+  ],
+};
 function ShapeIcon({ kind }: { kind: string }) {
+  const faces = SHAPE_FACES[kind];
   return (
     <svg className="scr-motion-shape-svg" viewBox="0 0 16 16" aria-hidden>
-      <path d={SHAPE_PATHS[kind]} fill="currentColor" />
+      {faces
+        ? faces.map(([d, op], i) => <path key={i} d={d} fill="currentColor" opacity={op} />)
+        : <path d={SHAPE_PATHS[kind]} fill="currentColor" />}
     </svg>
   );
 }
@@ -1384,9 +1426,11 @@ export default function ReplayMotionPlayer({
                     모양의 색 테를 두른다. 사진이 없는 사람은 도형 바탕에 첫 글자다.
                     종족은 이 실루엣이 이미 말하므로 종족 배지는 걷었다(요청). */}
                 {(() => {
-                  // 종족마다 비슷한 부피로 다시 깎은 아바타 전용 판(AVATAR_HALL_PATHS 주석).
-                  const hallPath = m.race ? AVATAR_HALL_PATHS[m.race] : undefined;
-                  if (!hallPath) {
+                  /* 사진은 자르지 않는다(지적: "아바타를 잘라서 넣는게 아니라 원으로
+                     가운데에 잘림없이, 종족 무관 같은 크기") — 본진 실루엣은 색 판으로
+                     뒤에 서고, 그 한가운데에 동그란 아바타가 같은 크기로 얹힌다. */
+                  const hall = m.race ? AVATAR_HALL_PATHS[m.race] : undefined;
+                  if (!hall) {
                     return (
                       <span
                         className="scr-motion-base-ring"
@@ -1396,28 +1440,22 @@ export default function ReplayMotionPlayer({
                       </span>
                     );
                   }
-                  const cid = `${clipUidRef.current}-${m.key.replace(/[^a-zA-Z0-9]/g, "")}`;
                   return (
-                    <svg
-                      className="scr-motion-base-hallsvg" viewBox="0 0 16 16" aria-hidden
-                      style={{ color: modeColor(m.key, m.team) }}
-                    >
-                      <defs><clipPath id={cid}><path d={hallPath} /></clipPath></defs>
-                      <path d={hallPath} fill="currentColor" />
-                      {m.avatar ? (
-                        <image
-                          href={m.avatar} x="0" y="0" width="16" height="16"
-                          preserveAspectRatio="xMidYMid slice" clipPath={`url(#${cid})`}
-                        />
-                      ) : (
-                        <text
-                          x="8" y="10.2" textAnchor="middle" fontSize="6.5" fontWeight="800" fill="#fff"
-                        >
-                          {(m.name || "?").slice(0, 1)}
-                        </text>
-                      )}
-                      <path d={hallPath} fill="none" stroke="currentColor" strokeWidth="1.6" />
-                    </svg>
+                    <span className="scr-motion-base-hallwrap">
+                      <svg
+                        className="scr-motion-base-hallsvg" viewBox="0 0 16 16" aria-hidden
+                        style={{ color: modeColor(m.key, m.team) }}
+                      >
+                        <path d={hall.body} fill="currentColor" />
+                        {hall.deco && <path d={hall.deco} fill="currentColor" />}
+                      </svg>
+                      <span
+                        className="scr-motion-base-avatar-in"
+                        style={{ transform: `translateY(${hall.dy}px)` }}
+                      >
+                        <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={18} />
+                      </span>
+                    </span>
                   );
                 })()}
                 {/* 팀 표시(요청: 깃발 말고 팀을 나타내는 아이콘에 색 구분) — 반대 어깨의
