@@ -1462,11 +1462,11 @@ export default function ReplayMotionPlayer({
                   // 아래로 내리기") — 왼쪽으로 당겨 겹치고, 세로는 내린다.
                   left: pct(bx + footDx(unit) - (ADDONS.has(unit) ? 1.6 : 0), grid.width),
                   top: pct(by + footDy(unit) + (ADDONS.has(unit) ? 0.4 : 0), grid.height),
-                  // 도형 폭 = 발자국 폭(타일) 그대로(요청: 실제 맵 크기에 비례) — 벡터
-                  // 도형은 입체 면(윗면·옆면)이 발자국 밖까지 그려져 실제보다 커 보였다
-                  // (지적) — 1.25 보정을 걷고 1배로 못박는다. 맨 네모도 1배다.
+                  // 도형 폭 = 발자국 폭(타일)에 비례(요청) — 다만 그림 대부분이 뷰박스
+                  // 가장자리 여백 없이 꽉 차게 그려져 눈에는 실제보다 넓게 읽혔다(지적:
+                  // "특히 폭이 너무 넓게") — 0.8을 곱해 눌러 둔다.
                   ...(text !== name && !ADDONS.has(unit)
-                    ? { width: pct((FOOTPRINT[unit] ?? [3, 2])[0], grid.width) }
+                    ? { width: pct((FOOTPRINT[unit] ?? [3, 2])[0] * 0.8, grid.width) }
                     : {}),
                   // 긴 이름은 한 단계 작게(지적) — 여섯 자부터.
                   ...(text.length >= 6 && !activeBuild ? { fontSize: 6 } : {}),
