@@ -2008,8 +2008,9 @@ function detectFor(c: Ctx): Tactic[] {
     /* 다크템플러 운용(요청) — 다크 단독으로 셋 이상이거나, 커세어를 곁들인 다템 한 벌
        (다템 둘 + 커세어 셋)이다. 커세어가 오버로드를 걷어내고 다크가 찌르는 그림은 저그전
        정석이라 다크 수가 좀 적어도 그 운용으로 친다. */
+    // 문턱 상향(요청: 조건 높이기) — 단독 3 → 4기, 커세어 조합 2 → 3기.
     const darks = u("Dark Templar");
-    if (darks >= 3 || (darks >= 2 && u("Corsair") >= 3)) {
+    if (darks >= 4 || (darks >= 3 && u("Corsair") >= 3)) {
       out.push({
         key: "dark-templar", weight: 9, at: firstU("Dark Templar"),
         who, p: { corsair: u("Corsair") >= 3 },
