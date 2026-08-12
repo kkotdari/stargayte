@@ -635,7 +635,7 @@ const TITLES: Title[] = [
   /* 일꾼 견제는 위로 올린다(요청: 일꾼 견제도 강화) — 상대 일꾼을 잡는 일은 병력을 뽑아
      쌓아 두는 것과 달리 그 순간 손이 가야만 되는 것이고, 그 판의 자원 곡선을 실제로
      꺾어 놓는다. 그래서 다른 어떤 전술보다 그 사람의 성향을 잘 말한다. */
-  { ...tactic("집요한 일꾼 헌터", ["harass-workers"], 1), minPlaysShare: 0.02 },
+  { ...tactic("집요한 일꾼 헌터", ["harass-workers"], 1), minPlaysShare: 0.01 },
   /* (삭제) 지긋지긋한 견제러(harass-long) — "집요한 일꾼 사냥꾼"과 같은 이야기(견제)를
      다른 말로 한 번 더 부르는 자리였고, 이름도 그 사람이 아니라 당한 쪽의 감상이다. */
   /* 드랍도 같은 무리로 올린다(요청: 견제도 가중치 높이기) — 병력을 실어 상대 뒤로 넘기는
@@ -648,7 +648,7 @@ const TITLES: Title[] = [
     ...tactic("폭탄드랍의 여왕", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"], 1),
     race: undefined,
     // 분모가 전체 판이라 기본 비율(6%)이 되레 무겁다(요청: 낮추기).
-    minPlaysShare: 0.02,
+    minPlaysShare: 0.01,
   },
 
   /* ── 운영(요청: 전략운영은 가중치를 좀 높여도 된다) ─────────────────────────
@@ -665,13 +665,13 @@ const TITLES: Title[] = [
   /* 에픽 전투 칭호 한 벌(요청: 종족별 비율 맞춤)에는 battle이 선다 — 그 판에서 경기만이
      아니라 전투(교전)도 이겼어야 센다(요청: 그 유닛을 사용해 전투/경기 모두 이긴 경우만).
      대조는 서버가 전투 원장(bt_*_won)으로 한다. */
-  { ...tactic("바이오닉의 여왕", ["bionic"]), minPlaysShare: 0.2, battle: true },
+  { ...tactic("바이오닉의 여왕", ["bionic"]), minPlaysShare: 0.15, battle: true },
   /* 탱크 조이기·옆탱을 함께 센다(요청: 탱크는 메카닉에 통합) — 셋 다 테란이 탱크로 굴린
      판이고, 자막이 어느 이름으로 짚었나는 그 판의 장면 차이일 뿐이다. 근거 문장도 세
      열쇠를 아우르는 말로 덮는다(tactic이 지어 주는 이름은 첫 열쇠 것뿐이다). */
   // 이름은 여신·여왕 계열로 통일(요청) — 메카닉 사령관에서 바꿨다.
   { ...tactic("메카닉의 여왕", ["mech", "center-tank", "side-tank"]),
-    why: "메카닉·탱크 조이기", minPlaysShare: 0.3, battle: true },
+    why: "메카닉·탱크 조이기", minPlaysShare: 0.25, battle: true },
   /* 과학의 여왕(요청: 신규 과학전 — 여신은 전설급에만) — 베슬을 둘 이상 띄우고 이레디·EMP·매트릭스를 실제로
      뿌린 판이다. 판정은 replayTactics의 vessel. */
   { ...tactic("과학전의 퀸", ["vessel"]), minPlaysShare: 0.2, vsWins: true, battle: true },
@@ -790,7 +790,7 @@ const TITLES: Title[] = [
      커세어·스카웃 넷으로 넓어지면서 이 수는 두 종족에 걸쳐 있다. 분모를 '테란 판'으로
      두면 커세어로 잡은 프로토스 판이 남의 종족 판수로 나뉘어 영영 문턱을 못 넘는다.
      폭탄드랍의 여왕이 다섯 열쇠를 세며 같은 이유로 종족을 걷은 것과 같은 자리다. */
-  { ...tactic("오버로드 사냥꾼", ["valk-hunt"]), race: undefined, minPlaysShare: 0.02 },
+  { ...tactic("오버로드 사냥꾼", ["valk-hunt"]), race: undefined, minPlaysShare: 0.01 },
   { ...tactic("몰래배럭 퀸", ["sneak-rax"]), minPlaysShare: 0.02 },
   /* (삭제) 끝없는 저글링 폭풍(zling-rush) — 요청. 저글링 하나로 들이치는 것은 그 종족의
      기본 진행에 가까워, 한 유닛만으로 러시라고 부를 만한 수가 아니다. */
@@ -838,7 +838,7 @@ const TITLES: Title[] = [
      삭제된 가디언 칭호 자리에, 저그 하늘의 두 얼굴을 되세운다. 어느 쪽으로 잡혔든 하늘로
      이긴 판이다. */
   { ...tactic("꽃게탕 퀸", ["guardian", "devourer"]), why: "가디언·디바우러",
-    minPlaysShare: 0.2, vsWins: true, battle: true },
+    minPlaysShare: 0.25, vsWins: true, battle: true },
   /* (삭제) 발키리 지휘관(valkyrie) — 위 "무자비한 오버로드 사냥꾼"이 같은 유닛으로 무엇을
      했는지까지 말한다. 뽑았다는 사실만 말하는 쪽을 접는다. */
   /* (삭제) 우리 집 문지기(front-defense) — 뺐다(지적: 입구는 막으라고 있는 것). 제 입구를
