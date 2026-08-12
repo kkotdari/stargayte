@@ -34,6 +34,16 @@ export default function TerrainReviewModal({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   /** 끌기 한 번은 한 값으로만 칠한다 — 지나는 칸마다 뒤집으면 갈지자 자국이 남는다. */
   const paintRef = useRef<0 | 1 | null>(null);
+  /* 되돌리기(요청) — 한 획(클릭·끌기 한 번, 일괄 붓 한 번)마다 이전 판을 쌓아 두고
+     한 스텝씩 되돌린다. 전부 되돌리기는 처음 불러온 판(저장값 또는 자동 분석)으로. */
+  const historyRef = useRef<Uint8Array[]>([]);
+  const initialRef = useRef<Uint8Array | null>(null);
+  const [histN, setHistN] = useState(0);
+  const snapshot = (walk: Uint8Array) => {
+    historyRef.current.push(new Uint8Array(walk));
+    if (historyRef.current.length > 60) historyRef.current.shift();
+    setHistN(historyRef.current.length);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -42,6 +52,9 @@ export default function TerrainReviewModal({
       const g = stored ?? (await analyzeMinimap(image.image));
       if (!cancelled) {
         setGrid(g);
+        initialRef.current = g ? new Uint8Array(g.walk) : null;
+        historyRef.current = [];
+        setHistN(0);
         setLoading(false);
         if (!g) setErr("그림을 분석하지 못했어요.");
       }
@@ -94,7 +107,10 @@ export default function TerrainReviewModal({
     const cell = cellAt(e);
     if (!cell) return;
     const idx = cell[1] * grid.w + cell[0];
-    if (begin) paintRef.current = grid.walk[idx] ? 0 : 1;
+    if (begin) {
+      paintRef.current = grid.walk[idx] ? 0 : 1;
+      snapshot(grid.walk);
+    }
     const v = paintRef.current;
     if (v === null) return;
     if (brush === "similar" && begin && colors) {
@@ -182,6 +198,32 @@ export default function TerrainReviewModal({
               >
                 비슷한 색 한꺼번에
               </button>
+              <button
+                type="button" className="scr-btn scr-btn-sm"
+                disabled={busy || histN === 0}
+                onClick={() => {
+                  const prev = historyRef.current.pop();
+                  setHistN(historyRef.current.length);
+                  if (prev && grid) setGrid({ ...grid, walk: prev });
+                }}
+                title="마지막 획을 되돌려요"
+              >
+                한 스텝 되돌리기
+              </button>
+              <button
+                type="button" className="scr-btn scr-btn-sm"
+                disabled={busy || histN === 0}
+                onClick={() => {
+                  if (initialRef.current && grid) {
+                    setGrid({ ...grid, walk: new Uint8Array(initialRef.current) });
+                  }
+                  historyRef.current = [];
+                  setHistN(0);
+                }}
+                title="처음 불러온 상태로 전부 되돌려요"
+              >
+                전부 되돌리기
+              </button>
             </div>
             <button
               type="button" className="scr-btn scr-btn-sm"
@@ -190,6 +232,9 @@ export default function TerrainReviewModal({
                 setLoading(true);
                 const g = await analyzeMinimap(image.image);
                 setGrid(g);
+                initialRef.current = g ? new Uint8Array(g.walk) : null;
+                historyRef.current = [];
+                setHistN(0);
                 setLoading(false);
                 if (!g) setErr("그림을 분석하지 못했어요.");
               }}
