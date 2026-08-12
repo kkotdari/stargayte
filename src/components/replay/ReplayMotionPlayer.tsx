@@ -23,8 +23,9 @@ import type { MinimapMarker } from "./ReplayMinimap";
 
 /** 배속 갈래(요청: 속도 조절, 기본 ×2) — 뜯어보는 ×2부터 훑어 넘기는 ×32까지. */
 const SPEEDS = [2, 4, 8, 16, 32] as const;
-/** 건물 텍스트가 이름을 달고 있는 시간(초, 게임 시간) — 지나면 점만 남는다. */
-const BUILD_LABEL_SEC = 45;
+/** 건물 텍스트가 이름을 달고 있는 시간(초, 게임 시간) — 지나면 점만 남는다(지적: 도형
+ *  전환은 더 빠르게). */
+const BUILD_LABEL_SEC = 18;
 /** 마법 텍스트가 떠 있는 시간(초, 게임 시간). */
 const CAST_HOLD_SEC = 6;
 /** 자취 점 사이가 이보다 벌어지면 잇지 않고 건너뛴다(초) — 한참 조용하다 다른 곳을 찍은
@@ -551,6 +552,7 @@ export default function ReplayMotionPlayer({
                 key={`b-${i}`}
                 className={cx(
                   "scr-motion-build",
+                  text === name && !razed && "scr-motion-chip",
                   activeBuild && "scr-motion-build-on",
                   (producing || researching) && "scr-motion-heartbeat",
                   razed && "scr-motion-build-razed",
@@ -560,7 +562,9 @@ export default function ReplayMotionPlayer({
                   // 긴 이름은 한 단계 작게(지적) — 여섯 자부터.
                   ...(text.length >= 6 && !activeBuild ? { fontSize: 6 } : {}),
                   ...(raising ? { opacity: 0.4 } : {}),
-                  ...(razed ? {} : shapeStyle(raw, team)),
+                  // 이름일 땐 유닛 이름표와 같은 배지 꼴(지적: 건물 음영색은 유닛 쪽을 따라간다),
+                  // 도형(▪▲✕)일 땐 도형 규칙.
+                  ...(razed ? {} : text === name ? chipStyle(raw, team) : shapeStyle(raw, team)),
                 }}
               >
                 {text}
