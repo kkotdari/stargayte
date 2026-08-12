@@ -58,6 +58,17 @@ function unitAt(units: [number, string][], t: number): string {
   return name;
 }
 
+/* 한 번에 한 판만 돈다(요청) — 목록에 게임 카드가 여럿 펼쳐져 있으면 저마다 자동재생을
+   시작해 지도가 사방에서 움직인다. 마지막으로 재생을 잡은 플레이어가 앞 임자를 멈춘다. */
+let playbackHolder: { current: () => void } | null = null;
+function claimPlayback(ref: { current: () => void }) {
+  if (playbackHolder && playbackHolder !== ref) playbackHolder.current();
+  playbackHolder = ref;
+}
+function releasePlayback(ref: { current: () => void }) {
+  if (playbackHolder === ref) playbackHolder = null;
+}
+
 const fmtClock = (sec: number): string => {
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
@@ -94,6 +105,30 @@ export default function ReplayMotionPlayer({
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(16);
   const [done, setDone] = useState(false);
+  const mapRef = useRef<HTMLDivElement>(null);
+
+  /* 한 번에 한 판만(요청) — 재생을 시작하는 순간 먼저 돌던 판을 멈춘다. */
+  const pauseSelf = useRef(() => {});
+  useEffect(() => {
+    pauseSelf.current = () => setPlaying(false);
+  }, []);
+  useEffect(() => {
+    if (!playing) return undefined;
+    claimPlayback(pauseSelf);
+    return () => releasePlayback(pauseSelf);
+  }, [playing]);
+
+  /* 시야에서 벗어나면 일시정지(요청) — 다시 보일 때 자동으로 되살리지는 않는다(멈춘 걸
+     사람이 이어 보는 건 재생 버튼의 몫이다). */
+  useEffect(() => {
+    const el = mapRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return undefined;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => !e.isIntersecting)) setPlaying(false);
+    }, { threshold: 0.2 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   /* 시계 — rAF로 게임 시간 t를 배속만큼 민다. state로 두는 이유는 매 프레임 그리는 것들
      (자취·건물·마법)이 전부 t의 함수라서다. */
@@ -128,7 +163,7 @@ export default function ReplayMotionPlayer({
 
   return (
     <div className="scr-motion">
-      <div className="scr-motion-map" style={{ aspectRatio: `${grid.width} / ${grid.height}` }}>
+      <div className="scr-motion-map" ref={mapRef} style={{ aspectRatio: `${grid.width} / ${grid.height}` }}>
         {grid.image
           ? <img className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`} />
           : <div className="scr-motion-canvas scr-motion-canvas-blank" />}
