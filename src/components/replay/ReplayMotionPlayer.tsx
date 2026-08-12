@@ -1986,14 +1986,18 @@ export default function ReplayMotionPlayer({
             const rp = g.walk;
             if (rp.length === 0 || t < rp[0][0]) return null;
             const pos = posAt(rp, t, null);
-            if (!pos || pos.stale) return null;
-            // 사라짐도 명령 기준(지적: 갑자기 사라짐) — 걷는 중에는 안 걷힌다.
+            if (!pos) return null;
             let sinceCmd = Infinity;
             for (const [sec] of g.raw) {
               if (sec > t) break;
               sinceCmd = t - sec;
             }
-            if (sinceCmd > SQUAD_FADE_SEC && !pos.moving) return null;
+            /* 생존 추정의 원칙(지적: 정찰 간 오버로드가 죽었을 리 없는데 갑자기 사라짐) —
+               명령이 끊겨도, 자취가 오래돼도(stale) 마지막 자리에 그대로 둔다. 걷는 근거는
+               둘뿐이다: 집에 돌아와 본진 표현에 흡수됐거나, 아래 전투 판정(죽음의 근거). */
+            const home = homeOf(p.raw);
+            const nearHome = !!home && Math.hypot(pos.x - home[0], pos.y - home[1]) <= 6;
+            if (sinceCmd > SQUAD_FADE_SEC && !pos.moving && nearHome) return null;
             /* 전투 판정(요청: 정찰 점에도) — 마지막 명령이 전투 창에 닿아 있고 그 전투가
                끝나고도 새 명령이 없으면, 그 정찰도 거기서 정리된 것이다. 부대의 deadBy와
                같은 완화(요청: 확실하지 않으면 남겨놓기) — 전투 창 안의 명령만, 침묵도
@@ -2018,8 +2022,6 @@ export default function ReplayMotionPlayer({
             /* 본진 곁에서는 늘 점이다(요청: "처음 오버로드와 일꾼은 그냥 도형으로 시작") —
                시작하자마자 첫 채취·정렬 명령에 이름 칩이 우르르 켜지던 자리다. 이름은
                집을 떠나 진짜 정찰을 나설 때에야 값어치가 있다. */
-            const home = homeOf(p.raw);
-            const nearHome = !!home && Math.hypot(pos.x - home[0], pos.y - home[1]) <= 6;
             const activeNow = (pos.moving || sinceCmd <= ACTIVE_HOLD_SEC) && !nearHome;
             return (
               <span
