@@ -1348,8 +1348,15 @@ export default function ReplayMotionPlayer({
     })), [motion]);
   const castsNow = motion.casts.filter((c) => c[0] <= t && t - c[0] <= CAST_HOLD_SEC);
 
+  /* 폭은 무조건 컨테이너 최대가 아니라 화면 세로 공간이 허락하는 만큼(지적: 노트북처럼
+     납작한 화면에서 전체 폭을 쓰면 미니맵이 한 화면에 다 안 들어옴) — 맵 높이가
+     (100dvh − 조작부 몫)을 넘지 않게 폭을 비율로 역산해 상한을 걸고 가운데 정렬.
+     폰 세로 화면에선 이 상한이 컨테이너 폭보다 커서 아무 영향 없다. */
   const body = (
-    <div className={cx("scr-motion", big && "scr-motion-big")}>
+    <div
+      className={cx("scr-motion", big && "scr-motion-big")}
+      style={{ maxWidth: `calc((100dvh - 190px) * ${(grid.width / grid.height).toFixed(4)})`, margin: "0 auto" }}
+    >
       <div
         className="scr-motion-map" ref={mapRef}
         style={{
