@@ -21,6 +21,9 @@ const SAME_SPOT_TILES = 3;
 const UNIT_HOLD_SEC = 10;
 /** 일꾼 수의 버킷(초) — 매 마리마다 점을 찍으면 트랙만 굵어진다. */
 const WORKER_STEP_SEC = 15;
+/** 병력 규모의 버킷·창(초) — 최근 이 창 안의 생산 수를 규모로 본다(요청: 크기로 수를). */
+const SIZE_STEP_SEC = 15;
+const SIZE_WINDOW_SEC = 180;
 const WORKER_UNITS = ["SCV", "Probe", "Drone"];
 /* 건물 무너짐 어림(요청) — 상대의 공격 명령이 건물 반경(타일) 안에서 창(초) 동안 이만큼
    몰리면, 그 창의 끝을 무너진 때로 본다. 리플레이에 파괴가 안 남아 명령 밀도로 어림한다. */
@@ -40,6 +43,10 @@ export interface MotionTrack {
   /** [초, 누적 일꾼 수] — 자원 캐는 모습의 재료(요청). 생산 커맨드 누적이라 죽은 일꾼은
    *  못 뺀다(리플레이에 죽음이 없다) — "여태 뽑은 일꾼"으로 읽어야 한다. */
   workers: [number, number][];
+  /** [초, 병력 규모] — 최근 3분 안에 뽑은 전투 유닛 수(요청: 뭉친 병력은 크기로 수를 표현).
+   *  죽음을 모르니 '지금 서 있는 병력'이 아니라 '최근에 몰아 뽑은 규모'다 — 진군 직전에
+   *  커지고 소강기에 줄어, 화면의 뜻(지금 움직이는 덩어리가 얼마나 큰가)과 결이 맞다. */
+  size: [number, number][];
 }
 
 export interface SummaryMotion {
@@ -129,6 +136,28 @@ function workerTimeline(unitFrames: Record<string, number[]>): [number, number][
   return out;
 }
 
+/** 병력 규모의 변천 — SIZE_STEP_SEC 버킷마다 최근 SIZE_WINDOW_SEC 안의 전투 유닛 생산 수. */
+function sizeTimeline(unitFrames: Record<string, number[]>): [number, number][] {
+  const secs: number[] = [];
+  for (const [unit, frames] of Object.entries(unitFrames)) {
+    if (NOT_ARMY.has(unit)) continue;
+    for (const f of frames) secs.push(f * SECONDS_PER_FRAME);
+  }
+  if (secs.length === 0) return [];
+  secs.sort((a, b) => a - b);
+  const out: [number, number][] = [];
+  const lastSec = secs[secs.length - 1];
+  let prev = -1;
+  for (let t = 0; t <= lastSec + SIZE_WINDOW_SEC; t += SIZE_STEP_SEC) {
+    const n = secs.filter((v) => v > t - SIZE_WINDOW_SEC && v <= t).length;
+    if (n !== prev) {
+      out.push([Math.round(t), n]);
+      prev = n;
+    }
+  }
+  return out;
+}
+
 /** 건물이 무너진 때의 어림 — 지은 뒤 상대 공격 명령이 그 자리에 몰린 첫 창의 끝(초).
  *  안 무너졌으면 0. */
 function razedAt(
@@ -171,8 +200,9 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
     const pts = trackOf(sg.orderPositions ?? []);
     const units = unitTimeline(sg.unitFrames ?? {});
     const workers = workerTimeline(sg.unitFrames ?? {});
+    const size = sizeTimeline(sg.unitFrames ?? {});
     if (pts.length > 0 || units.length > 0 || workers.length > 0) {
-      tracks.push({ raw: p.rawName, ...(p.color ? { color: p.color } : {}), pts, units, workers });
+      tracks.push({ raw: p.rawName, ...(p.color ? { color: p.color } : {}), pts, units, workers, size });
     }
     const foeAttacks = [...attacksByTeam.entries()]
       .filter(([team]) => team !== p.team)

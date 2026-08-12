@@ -276,17 +276,31 @@ export default function ReplayMotionPlayer({
           );
           if (!pos) return null;
           const team = teamOfRaw(p.raw);
+          /* 규모를 크기로(요청) — 최근에 몰아 뽑은 병력 수의 제곱근으로 글자를 키운다.
+             덩어리가 작거나(4 미만) 자취가 식었으면 점만 — 중요하지 않은 것은 점이다(요청). */
+          let size = 0;
+          for (const [sec, n] of p.size ?? []) {
+            if (sec > t) break;
+            size = n;
+          }
+          const small = size < 4;
+          const fontPx = Math.min(16, 8 + Math.round(Math.sqrt(size) * 1.6));
           return (
             <span
               key={p.raw}
               className={cx(
-                "scr-motion-army", "scr-motion-chip",
+                "scr-motion-army",
+                !small && "scr-motion-chip",
                 team === 2 ? "scr-motion-team2" : "scr-motion-team1",
                 pos.stale && "scr-motion-army-stale",
               )}
-              style={{ left: pct(pos.x, grid.width), top: pct(pos.y, grid.height), ...chipStyle(p.raw) }}
+              style={{
+                left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
+                fontSize: small ? undefined : fontPx,
+                ...(small ? {} : chipStyle(p.raw)),
+              }}
             >
-              {unit ? (UNIT_KO[unit] ?? "·") : "·"}
+              {small || !unit ? "●" : (UNIT_KO[unit] ?? "●")}
             </span>
           );
         })}
