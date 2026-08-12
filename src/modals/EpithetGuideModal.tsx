@@ -49,7 +49,12 @@ export default function EpithetGuideModal({ onClose }: { onClose: () => void }) 
                         )}
                         key={r.label}
                       >
-                        <td className="scr-epithet-guide-name">{r.label}</td>
+                        <td className="scr-epithet-guide-name">
+                          {/* 종족 칭호처럼 이름이 여럿인 줄은 가운뎃점에서 줄을 바꾼다(요청). */}
+                          {r.label.split(" · ").map((line) => (
+                            <span className="scr-epithet-guide-name-line" key={line}>{line}</span>
+                          ))}
+                        </td>
                         <td className="scr-epithet-guide-how">
                           {r.how}
                           {/* 이긴 판만 세는 칭호는 그 한마디를 덧붙인다 — 같은 "세 번"이라도

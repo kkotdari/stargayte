@@ -12012,6 +12012,7 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 묶음 경계(요청: 그룹화) — 줄마다 이미 헤어라인이 있어, 경계는 조금 더 진한 선이다. */
 .scr-epithet-guide-row-newgroup > td { border-top: 1px solid var(--line-soft); padding-top: 8px; }
 .scr-epithet-guide-name { font-weight: 700; color: var(--text); width: 34%; }
+.scr-epithet-guide-name-line { display: block; }
 .scr-epithet-guide-how { color: var(--muted); }
 .scr-epithet-guide-min { color: var(--muted); white-space: nowrap; }
 .scr-epithet-guide-won { color: var(--dim); }
