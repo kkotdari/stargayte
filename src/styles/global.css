@@ -11164,12 +11164,14 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   display: inline-flex; align-items: center; justify-content: center;
 }
 .scr-motion-base-team .scr-motion-team-n { font-size: 8px; }
-/* 공사중 아이콘(요청: 건설 중 반투명 말고, 이모지 말고 아이콘) — 건물 한가운데에
+/* 하는 일 아이콘(공사 망치·생산 톱니·업그레이드 플라스크) — 건물 한가운데에
    얹는다(지적: "망치가 어디붙은지 헷갈림") — 모서리에 매달려 있으면 어느 건물의
-   망치인지가 붙어서 안 읽혔다. 색은 글자색(그 사람 색)을 그대로 탄다. */
+   아이콘인지가 붙어서 안 읽혔다. 색은 폰트색이다(요청) — 그 사람 색을 타면 같은 색
+   도형 위에서 아이콘이 안 보인다. */
 .scr-motion-raising {
   position: absolute; top: 50%; left: 50%; right: auto;
   transform: translate(-50%, -50%); pointer-events: none;
+  color: var(--text);
 }
 /* 방패 속 팀 번호(요청) — 방패가 곧 바탕이라 판 없이 숫자만 얹는다. 방패 아랫단이
    뾰족해 눈금 중심이 살짝 위라, 숫자도 반 픽셀 위로 당긴다. */

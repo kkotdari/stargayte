@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Hammer, Maximize2, Minimize2, Mountain, Pause, Play, RotateCcw, Shield } from "lucide-react";
+import { Cog, FlaskConical, Hammer, Maximize2, Minimize2, Mountain, Pause, Play, RotateCcw, Shield } from "lucide-react";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import TerrainReviewModal from "../../modals/TerrainReviewModal";
 import Avatar from "../common/Avatar";
@@ -1573,7 +1573,15 @@ export default function ReplayMotionPlayer({
                     // 없다) 네모는 그 상자를 그대로 채운다(CSS width/height 100%).
                     ? <i className="scr-motion-sq" />
                     : text}
-                {raising && <Hammer size={6} className="scr-motion-raising" />}
+                {/* 하는 일 아이콘(요청: 생산·업그레이드도 각각 아이콘으로) — 공사는 망치,
+                    생산은 톱니, 업그레이드는 플라스크. 한 번에 하나만(공사가 먼저다). */}
+                {raising
+                  ? <Hammer size={6} className="scr-motion-raising" />
+                  : producing && !afloat
+                    ? <Cog size={6} className="scr-motion-raising" />
+                    : researching && !afloat
+                      ? <FlaskConical size={6} className="scr-motion-raising" />
+                      : null}
               </span>
             );
           });
@@ -2125,6 +2133,8 @@ export default function ReplayMotionPlayer({
             <span>■ 건물</span>
             <span>· 채굴 일꾼</span>
             <span><Hammer size={8} /> 건설 중</span>
+            <span><Cog size={8} /> 생산 중</span>
+            <span><FlaskConical size={8} /> 업그레이드 중</span>
           </div>
           {typeof grid.imageId === "number" && grid.image && (
             <div className="scr-motion-terrain-row">
