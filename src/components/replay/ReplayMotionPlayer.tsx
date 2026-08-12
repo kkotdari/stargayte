@@ -71,6 +71,29 @@ const SQUAD_FADE_SEC = 60;
  *  자리라, 흔한 쪽(일꾼)에 맞춘다. */
 const SCOUT_WALK_SPEED = 3.7;
 
+/** 명령 점을 가까운 것끼리 부대로 묶는다(요청: 가까운 유닛만 합침) — 부대 자취와 정찰
+ *  자취가 같이 쓴다. 어느 부대에서도 먼 점은 가장 오래 조용한 부대가 옮겨 간 것으로 본다. */
+function splitSquads(pts: [number, number, number][]): [number, number, number][][] {
+  const squads: [number, number, number][][] = [];
+  for (const pt of pts) {
+    let best = -1;
+    let bestD = Infinity;
+    for (let i = 0; i < squads.length; i += 1) {
+      const last = squads[i][squads[i].length - 1];
+      const d = Math.hypot(last[1] - pt[1], last[2] - pt[2]);
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    if (best >= 0 && bestD <= SQUAD_MERGE_TILES) { squads[best].push(pt); continue; }
+    if (squads.length < SQUAD_MAX) { squads.push([pt]); continue; }
+    let oldest = 0;
+    for (let i = 1; i < squads.length; i += 1) {
+      if (squads[i][squads[i].length - 1][0] < squads[oldest][squads[oldest].length - 1][0]) oldest = i;
+    }
+    squads[oldest].push(pt);
+  }
+  return squads;
+}
+
 function dropSpikes(
   pts: [number, number, number][], span: number,
 ): [number, number, number][] {
@@ -495,37 +518,25 @@ export default function ReplayMotionPlayer({
   /* 부대 갈라 보기(요청: 유닛을 무조건 합치는 게 아니라 가까운 것만 합침) — 마커 하나가
      드랍조와 본대를 오가며 순간이동하던 자리다. 명령 점을 가까운 것끼리 묶어 부대 몇으로
      가르고, 어느 부대에서도 먼 점은 가장 오래 조용한 부대가 그리로 옮겨 간 것으로 본다. */
-  const squadPts = useMemo(() => basePts.map((pts) => {
-    const squads: [number, number, number][][] = [];
-    for (const pt of pts) {
-      let best = -1;
-      let bestD = Infinity;
-      for (let i = 0; i < squads.length; i += 1) {
-        const last = squads[i][squads[i].length - 1];
-        const d = Math.hypot(last[1] - pt[1], last[2] - pt[2]);
-        if (d < bestD) { bestD = d; best = i; }
-      }
-      if (best >= 0 && bestD <= SQUAD_MERGE_TILES) { squads[best].push(pt); continue; }
-      if (squads.length < SQUAD_MAX) { squads.push([pt]); continue; }
-      let oldest = 0;
-      for (let i = 1; i < squads.length; i += 1) {
-        if (squads[i][squads[i].length - 1][0] < squads[oldest][squads[oldest].length - 1][0]) oldest = i;
-      }
-      squads[oldest].push(pt);
-    }
-    return squads;
-  }), [basePts]);
+  const squadPts = useMemo(() => basePts.map(splitSquads), [basePts]);
   const refinedSquads = useMemo(
     () => motion.players.map((p, pi) => squadPts[pi].map((sq) => walkTrack(sq, p, false))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [squadPts, terrain, grid.width, grid.height, motion],
   );
-  /* 정찰 자취도 걸어서 간다(지적: 갑자기 이동) — 직선이되 속도는 일꾼 걸음이다. */
-  const refinedSpts = useMemo(
-    () => motion.players.map((p) => walkTrack(p.spts ?? [], p, true)),
+  /* 정찰 자취도 걸어서 가고(지적: 갑자기 이동 — 직선이되 일꾼 걸음), 갈래·부대로 갈라
+     각자의 점이 된다(지적: 드랍십 순간이동 — 일꾼 정찰과 셔틀 원정이 한 점을 놓고
+     밀당했다). 갈래는 이름을 정한다(지적: 오버로드 이름이 안 나온다). */
+  const scoutSquads = useMemo(() => motion.players.map((p) => {
+    const kinds: { kind: "worker" | "carrier" | "lone"; src: [number, number, number][] }[] = [
+      { kind: "worker", src: p.spts ?? [] },
+      { kind: "carrier", src: p.tpts ?? [] },
+      { kind: "lone", src: p.opts ?? [] },
+    ];
+    return kinds.flatMap(({ kind, src }) => (src.length === 0 ? [] : splitSquads(src)
+      .map((sq) => ({ kind, raw: sq, walk: walkTrack(sq, p, true) }))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [motion, terrain, grid.width, grid.height],
-  );
+  }), [motion, terrain, grid.width, grid.height]);
   // 기본은 ×4다(요청: ×8 → ×4) — ×8은 전투가 눈으로 못 따라갈 만큼 빨랐다.
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(4);
   /* 탐색바를 잡고 있는 동안의 값(지적: 다이얼 드래그가 안 됨) — 재생 중에는 매 프레임
@@ -1116,35 +1127,43 @@ export default function ReplayMotionPlayer({
           });
         })}
 
-        {/* 정찰·일꾼 점(spts) — 부대 자취에서 걷어낸 한 기짜리·일꾼 명령의 자취다(지적:
-            일꾼 정찰이 하나도 안 보인다 — 포토러시 일꾼은 안 가는데 파일런만 생겼다).
-            명령이 이어지는 동안만 보이고(stale이면 숨김) 곧게 간다 — 정찰 하나에 지형
-            길찾기까지 쓰는 것은 배보다 배꼽이다. */}
-        {motion.players.map((p, pi) => {
-          const rp = refinedSpts[pi];
-          if (rp.length === 0 || t < rp[0][0]) return null;
-          const pos = posAt(rp, t, null);
-          if (!pos || pos.stale) return null;
-          // 사라짐도 명령 기준(지적: 갑자기 사라짐) — 걷는 중에는 안 걷힌다.
-          let sinceCmd = Infinity;
-          for (const [sec] of p.spts ?? []) {
-            if (sec > t) break;
-            sinceCmd = t - sec;
-          }
-          if (sinceCmd > LERP_MAX_GAP_SEC && !pos.moving) return null;
+        {/* 정찰 자취 — 부대 자취에서 걷어낸 명령들이다(지적: 일꾼 정찰이 하나도 안
+            보인다). 갈래(일꾼·수송선·정체 모름)와 부대로 갈라 각자의 점이고, 움직이거나
+            방금 명령받은 동안은 이름이 뜬다(지적: 오버로드 이름이 안 나온다) — 정체 모를
+            한 기는 저그면 오버로드라 부른다: 그 종족의 이름 없는 한 기는 대개 그것이다.
+            명령이 이어지는 동안만 보이고 곧게 간다 — 정찰 하나에 지형 길찾기는 배보다
+            배꼽이다. */}
+        {motion.players.flatMap((p, pi) => {
+          const race = bases.find((b) => b.key === p.raw)?.race;
           const team = teamOfRaw(p.raw);
-          return (
-            <span
-              key={`s-${p.raw}`}
-              className={cx("scr-motion-scout", team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
-              style={{
-                left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
-                ...glyphStyle(p.raw, team),
-              }}
-            >
-              ●
-            </span>
-          );
+          return scoutSquads[pi].map((g, gi) => {
+            const rp = g.walk;
+            if (rp.length === 0 || t < rp[0][0]) return null;
+            const pos = posAt(rp, t, null);
+            if (!pos || pos.stale) return null;
+            // 사라짐도 명령 기준(지적: 갑자기 사라짐) — 걷는 중에는 안 걷힌다.
+            let sinceCmd = Infinity;
+            for (const [sec] of g.raw) {
+              if (sec > t) break;
+              sinceCmd = t - sec;
+            }
+            if (sinceCmd > LERP_MAX_GAP_SEC && !pos.moving) return null;
+            const label = g.kind === "worker" ? "일꾼"
+              : race === "저그" ? "오버로드"
+                : g.kind === "carrier" ? "수송선" : "정찰";
+            return (
+              <span
+                key={`s-${p.raw}-${g.kind}-${gi}`}
+                className={cx("scr-motion-scout", team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
+                style={{
+                  left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
+                  ...glyphStyle(p.raw, team),
+                }}
+              >
+                {pos.moving || sinceCmd <= ACTIVE_HOLD_SEC ? label : "●"}
+              </span>
+            );
+          });
         })}
 
         {/* 마법 — 떨어진 자리에 이름이 잠깐 떠오른다. */}

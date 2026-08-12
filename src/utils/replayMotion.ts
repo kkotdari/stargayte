@@ -30,9 +30,20 @@ const SIZE_WINDOW_SEC = 180;
 const WORKER_UNITS = ["SCV", "Probe", "Drone"];
 /* 건물 무너짐 어림(요청) — 상대의 공격 명령이 건물 반경(타일) 안에서 창(초) 동안 이만큼
    몰리면, 그 창의 끝을 무너진 때로 본다. 리플레이에 파괴가 안 남아 명령 밀도로 어림한다. */
+/* 판정 정밀화(요청: 어느 시점 이후 액션이 없으면 없어진 것) — 공격 뭉치 하나만으로는
+   두 방향으로 틀렸다: 문턱(12)이 높아 조용히 부순 건물을 놓쳤고, 막아 낸 자리도 부쉈다고
+   봤다. 이제 두 근거를 겹친다. ① 후보: 공격 명령 6개만 몰려도 후보다. ② 확인: 그 창이
+   끝나고 90초 동안 임자의 명령이 그 곁(8타일)에 거의 없으면(1개 이하) 무너진 것이다 —
+   서 있는 건물 곁에는 임자의 손이 계속 오간다(수리·생산·랠리·일꾼). 임자가 계속 움직이면
+   막아 낸 것이라 안 부순다. 다만 뭉치가 압도적이면(14개) 임자의 손과 무관하게 무너진
+   것으로 본다 — 그만큼 두들긴 자리가 남아 있는 일은 드물다. */
 const RAZE_RADIUS = 6;
 const RAZE_WINDOW_SEC = 30;
-const RAZE_MIN_ORDERS = 12;
+const RAZE_MIN_ORDERS = 6;
+const RAZE_SURE_ORDERS = 14;
+const RAZE_QUIET_SEC = 90;
+const RAZE_QUIET_RADIUS = 8;
+const RAZE_QUIET_MAX_ORDERS = 1;
 
 /** 한 사람의 자취 — 원본 게임 아이디(raw)로 부른다(beats와 같은 규칙). */
 export interface MotionTrack {
@@ -41,9 +52,16 @@ export interface MotionTrack {
   color?: string;
   /** [초, x, y] — STEP_SEC 버킷의 마지막 명령 자리. 안 움직인 버킷은 접혀 있다. */
   pts: [number, number, number][];
-  /** 정찰·일꾼의 자취 — 부대 자취(pts)에서 걷어낸 한 기짜리·일꾼 명령들이다(지적: 정찰이
-   *  안 보인다). 옛 분석본에는 없다. */
+  /** 일꾼의 자취 — 부대 자취(pts)에서 걷어낸, 정체가 일꾼으로 드러난 명령들이다(지적:
+   *  정찰이 안 보인다). 옛 분석본에는 없거나(더 옛것) 정찰 전부가 섞여 있다(한 벌이던
+   *  시절) — 화면은 어느 쪽이든 "일꾼"으로 부른다. */
   spts?: [number, number, number][];
+  /** 수송선(오버로드 포함)의 자취 — 한 기짜리 클릭인데 정체가 수송선인 것(지적: 드랍십
+   *  순간이동). 저그면 화면이 "오버로드"라 부른다. 옛 분석본에는 없다. */
+  tpts?: [number, number, number][];
+  /** 정체 모를 한 기짜리 클릭의 자취 — 시작 오버로드·옵저버 정찰이 대부분이다(지적:
+   *  오버로드 이름이 안 나온다). 저그면 "오버로드", 아니면 "정찰"로 부른다. */
+  opts?: [number, number, number][];
   /** [초, 유닛 영문명] — 그때까지 가장 많이 뽑은 전투 유닛이 바뀐 순간들(이름표 재료). */
   units: [number, string][];
   /** [초, 누적 일꾼 수] — 자원 캐는 모습의 재료(요청). 생산 커맨드 누적이라 죽은 일꾼은
@@ -123,18 +141,27 @@ function foldTrack(
 function trackOf(
   orders: { frame: number; x: number; y: number; kind?: "attack" | "move"; by?: string; n?: number }[],
   armyStartSec: number,
-): { pts: [number, number, number][]; spts: [number, number, number][] } {
+): {
+  pts: [number, number, number][]; spts: [number, number, number][];
+  tpts: [number, number, number][]; opts: [number, number, number][];
+} {
   const movable = orders.filter((o) => o.kind !== undefined && o.by !== "Building");
-  const isScout = (o: (typeof movable)[number]): boolean =>
-    o.by === "Worker"
-    || (o.n === 1 && (o.by === undefined || o.by === "Transport"))
-    || o.frame * SECONDS_PER_FRAME < armyStartSec;
+  type O = (typeof movable)[number];
+  /* 걷어낸 쪽이 버려지지 않고 제 자취가 된다(지적: 일꾼 정찰을 하나도 못 잡는다). 세
+     갈래로 가르는 까닭은 이름과 움직임이 다 달라서다(지적: 오버로드 이름이 안 나온다 /
+     드랍십이 순간이동한다) — 한 벌로 묶으면 일꾼 정찰과 셔틀 원정이 한 점을 놓고
+     밀당하며 순간이동한다. */
+  const worker = (o: O): boolean => o.by === "Worker";
+  const carrier = (o: O): boolean => o.by === "Transport" && (o.n ?? 1) === 1;
+  const lone = (o: O): boolean => o.n === 1 && o.by === undefined;
+  const early = (o: O): boolean => o.frame * SECONDS_PER_FRAME < armyStartSec;
+  const scout = (o: O): boolean => worker(o) || carrier(o) || lone(o) || early(o);
   return {
-    pts: foldTrack(movable.filter((o) => !isScout(o))),
-    /* 걷어낸 쪽이 버려지지 않고 제 자취가 된다(지적: 일꾼 정찰을 하나도 못 잡는다 —
-       포토러시 일꾼은 안 가는데 파일런만 생겼다). 초반 정찰·매너 건물·오버로드 산개가
-       전부 이 자취다. 화면은 이 자취가 움직이는 동안만 작은 점을 띄운다. */
-    spts: foldTrack(movable.filter(isScout)),
+    pts: foldTrack(movable.filter((o) => !scout(o))),
+    // 병력 생기기 전의 여럿 클릭도 일꾼이다 — 그때 여럿을 골랐다면 일꾼 무리뿐이다.
+    spts: foldTrack(movable.filter((o) => worker(o) || (early(o) && !carrier(o) && !lone(o)))),
+    tpts: foldTrack(movable.filter(carrier)),
+    opts: foldTrack(movable.filter((o) => lone(o) && !worker(o)))
   };
 }
 
@@ -273,11 +300,12 @@ function hotOf(
   return hot;
 }
 
-/** 건물이 무너진 때의 어림 — 지은 뒤 상대 공격 명령이 그 자리에 몰린 첫 창의 끝(초).
- *  안 무너졌으면 0. */
+/** 건물이 무너진 때의 어림 — 상대 공격 뭉치(후보) + 그 뒤 임자의 침묵(확인). 위 정밀화
+ *  주석 참고. 안 무너졌으면 0. */
 function razedAt(
   builtSec: number, x: number, y: number,
   foeAttacks: { sec: number; x: number; y: number }[],
+  ownOrders: { sec: number; x: number; y: number }[],
 ): number {
   const near = foeAttacks.filter(
     (o) => o.sec > builtSec && Math.hypot(o.x - x, o.y - y) <= RAZE_RADIUS,
@@ -285,7 +313,17 @@ function razedAt(
   for (let i = 0; i < near.length; i += 1) {
     let j = i;
     while (j + 1 < near.length && near[j + 1].sec - near[i].sec <= RAZE_WINDOW_SEC) j += 1;
-    if (j - i + 1 >= RAZE_MIN_ORDERS) return Math.round(near[j].sec);
+    const count = j - i + 1;
+    if (count < RAZE_MIN_ORDERS) continue;
+    const end = Math.round(near[j].sec);
+    if (count >= RAZE_SURE_ORDERS) return end;
+    // 임자의 손이 그 곁에서 끊겼나 — 계속 오가면 막아 낸 것이다.
+    const after = ownOrders.reduce((n, o) => (
+      o.sec > end && o.sec <= end + RAZE_QUIET_SEC
+      && Math.hypot(o.x - x, o.y - y) <= RAZE_QUIET_RADIUS ? n + 1 : n), 0);
+    if (after <= RAZE_QUIET_MAX_ORDERS) return end;
+    // 막아 냈다 — 이 뭉치는 지나가고 다음 뭉치를 본다.
+    i = j;
   }
   return 0;
 }
@@ -321,7 +359,7 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       for (const f of frames) armyStartSec = Math.min(armyStartSec, f * SECONDS_PER_FRAME);
     }
     if (armyStartSec === Infinity) armyStartSec = 0;
-    const { pts, spts } = trackOf(sg.orderPositions ?? [], armyStartSec);
+    const { pts, spts, tpts, opts } = trackOf(sg.orderPositions ?? [], armyStartSec);
     const units = unitTimeline(sg.unitFrames ?? {});
     // 생산 슬롯 — 시작 본진(0초) + 지어진 본진 건물들(건설 시간 지나서부터).
     const slotOpenSecs = [0, ...(sg.buildPositions ?? [])
@@ -355,22 +393,29 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       .filter(([team]) => team !== p.team)
       .flatMap(([, list]) => list)
       .sort((a, b) => a.sec - b.sec);
-    if (pts.length > 0 || spts.length > 0 || units.length > 0 || workers.length > 0) {
+    if (pts.length > 0 || spts.length > 0 || tpts.length > 0 || opts.length > 0
+      || units.length > 0 || workers.length > 0) {
       const hot = hotOf(pts, foeAttacks);
       tracks.push({
         raw: p.rawName, ...(p.color ? { color: p.color } : {}),
         ...(ups.length > 0 ? { ups } : {}), pts, units, workers, size, prod,
         ...(spts.length > 0 ? { spts } : {}),
+        ...(tpts.length > 0 ? { tpts } : {}),
+        ...(opts.length > 0 ? { opts } : {}),
         ...(Object.keys(ptag).length > 0 ? { ptag } : {}),
         ...(hot.length > 0 ? { hot } : {}),
       });
     }
+    /* 임자의 모든 명령 좌표(캐기·랠리처럼 kind 없는 것 포함) — 무너짐 확인의 재료다.
+       서 있는 건물 곁에는 이런 손길이 계속 지나간다. */
+    const ownOrders = (sg.orderPositions ?? [])
+      .map((o) => ({ sec: o.frame * SECONDS_PER_FRAME, x: o.x, y: o.y }));
     for (const b of sg.buildPositions ?? []) {
       if (b.frame === null) continue; // 시각을 모르는 건설은 시간축에 못 세운다.
       const builtSec = Math.round(b.frame * SECONDS_PER_FRAME);
       builds.push([
         builtSec, Math.round(b.x), Math.round(b.y), b.unit, p.rawName,
-        razedAt(builtSec, b.x, b.y, foeAttacks),
+        razedAt(builtSec, b.x, b.y, foeAttacks, ownOrders),
       ]);
     }
     for (const c of sg.castPositions ?? []) {
