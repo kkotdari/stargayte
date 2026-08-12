@@ -9,8 +9,8 @@ import { useLockBodyScroll } from "../utils/bodyScrollLock";
  * 줄은 표(statEpithet의 TITLES)에서 그때그때 만든다 — 손으로 적어 두면 문턱을 고칠 때마다
  * 이 화면만 옛말을 하게 된다. */
 
-/** 등급의 차례 — 위가 더 받기 어려운 자리다. */
-const RANKS: EpithetRank[] = ["전설", "에픽", "일반"];
+/** 등급의 차례 — 위가 더 받기 어려운 자리다. 일반은 에픽에 합쳤다(요청). */
+const RANKS: EpithetRank[] = ["전설", "에픽"];
 
 export default function EpithetGuideModal({ onClose }: { onClose: () => void }) {
   useLockBodyScroll();
