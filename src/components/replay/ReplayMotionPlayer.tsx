@@ -934,6 +934,10 @@ export default function ReplayMotionPlayer({
      지역이 통째로 끊겼다. 길찾기가 실패하면 직선 폴백이라 전부 벽을 뚫었다. 조인 격자로
      길이 안 나오면 이 원본으로 한 번 더 찾는다 — 실틈만 조이고 길목은 살리는 절충이다. */
   const [terrainRaw, setTerrainRaw] = useState<TerrainGrid | null>(null);
+  /* 랠리 걸음의 경로 갈무리(지적: 벽뚫기) — (출발, 목적지) 짝마다 지형 길을 한 번만 셈한다.
+     지형이 갈리면(검수 저장 등) 비운다. */
+  const rallyRoutes = useRef(new Map<string, [number, number][]>());
+  useEffect(() => { rallyRoutes.current.clear(); }, [terrain, terrainRaw]);
   /* 지형 수정(요청: 모든 경기 리플레이 화면에서, 아무나) — 산 버튼이 검수 모달을 연다.
      저장하면 이 자리에서 바로 새 지형으로 갈아 끼운다(맵 캐시는 다음 로드에 새 값을 받는다). */
   const [terrainOpen, setTerrainOpen] = useState(false);
@@ -1868,13 +1872,54 @@ export default function ReplayMotionPlayer({
               let fy = exitY;
               let arrive = done;
               if (rx !== null && ry !== null) {
-                const d = Math.hypot(rx - exitX, ry - exitY);
+                /* 지상 유닛은 지형 길로 걷는다(지적: 벽뚫기가 랠리와 관련 있어 보인다) —
+                   직선 보간이 벽을 그었다. 경로는 (출발, 목적지) 짝마다 한 번만 셈해
+                   갈무리한다 — 매 프레임 BFS는 못 버틴다. */
+                const air = isAirUnit(unit);
+                let route: [number, number][] = [[exitX, exitY], [rx, ry]];
+                if (!air && terrain) {
+                  const key = `${Math.round(exitX)},${Math.round(exitY)}>${rx},${ry}`;
+                  let hit = rallyRoutes.current.get(key);
+                  if (!hit) {
+                    const found = groundPath(
+                      terrain, exitX / grid.width, exitY / grid.height,
+                      rx / grid.width, ry / grid.height,
+                    ) ?? (terrainRaw ? groundPath(
+                      terrainRaw, exitX / grid.width, exitY / grid.height,
+                      rx / grid.width, ry / grid.height,
+                    ) : null);
+                    hit = found
+                      ? [[exitX, exitY] as [number, number],
+                        ...found.map(([nx, ny]) => [nx * grid.width, ny * grid.height] as [number, number])]
+                      : route;
+                    rallyRoutes.current.set(key, hit);
+                  }
+                  route = hit;
+                }
+                let total = 0;
+                const lens: number[] = [];
+                for (let ri = 1; ri < route.length; ri += 1) {
+                  const d = Math.hypot(route[ri][0] - route[ri - 1][0], route[ri][1] - route[ri - 1][1]);
+                  lens.push(d);
+                  total += d;
+                }
                 const v = Math.max(0.5, speedOf(unit, done, p.ups));
-                const travel = Math.min(60, d / v);
+                const travel = Math.min(60, total / v);
                 arrive = done + travel;
                 const k = travel > 0 ? Math.min(1, (t - done) / travel) : 1;
-                fx = exitX + (rx - exitX) * k;
-                fy = exitY + (ry - exitY) * k;
+                // 경로 길이 k 비율 지점까지 걷는다.
+                let want = total * k;
+                fx = route[route.length - 1][0];
+                fy = route[route.length - 1][1];
+                for (let ri = 1; ri < route.length; ri += 1) {
+                  if (want <= lens[ri - 1]) {
+                    const f = lens[ri - 1] > 0 ? want / lens[ri - 1] : 1;
+                    fx = route[ri - 1][0] + (route[ri][0] - route[ri - 1][0]) * f;
+                    fy = route[ri - 1][1] + (route[ri][1] - route[ri - 1][1]) * f;
+                    break;
+                  }
+                  want -= lens[ri - 1];
+                }
               }
               if (t > arrive + FRESH_HOLD_SEC) continue;
               out.push(
@@ -2077,12 +2122,26 @@ export default function ReplayMotionPlayer({
           const team = teamOfRaw(p.raw);
           const squads = refinedSquads[pi];
           const raws = squadPts[pi];
+          /* 주 부대 = 여태 명령을 가장 많이 받은 부대(지적: 구성 칩이 두 그룹 사이를
+             계속 순간이동) — '가장 최근 명령'으로 고르면 앞마당 수비 클릭 한 번에 본대
+             칩이 그리로 튀고, 다음 본대 클릭에 되튀었다. 누적 명령 수는 천천히 변해
+             칩이 본대에 눌러앉는다. 동수면 최근 쪽이 이긴다. */
           let primary = 0;
-          let latest = -Infinity;
+          let bestN = -1;
+          let bestLast = -Infinity;
           raws.forEach((sq, si) => {
-            let l = -Infinity;
-            for (const [sec] of sq) { if (sec > t) break; l = sec; }
-            if (l > latest) { latest = l; primary = si; }
+            let n = 0;
+            let last = -Infinity;
+            for (const pt of sq) {
+              if (pt[0] > t) break;
+              n += 1;
+              last = pt[0];
+            }
+            if (n > bestN || (n === bestN && last > bestLast)) {
+              primary = si;
+              bestN = n;
+              bestLast = last;
+            }
           });
           // 규모 — 완성 누계에서 전투 시간만큼 깎은 곡선을 읽는다(sizeSeries 주석).
           let size = 0;
