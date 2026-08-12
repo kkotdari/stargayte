@@ -6,7 +6,7 @@ import { UNIT_KO, TECH_KO } from "../../utils/replaySummaryText";
 import type { ReplayMapGrid } from "../../utils/replayParser";
 import { isAirUnit, type SummaryMotion } from "../../utils/replayMotion";
 import { DEFENSE_BUILDINGS } from "../../utils/replayBuildMix";
-import { terrainOf, groundPath, type TerrainGrid } from "../../utils/minimapTerrain";
+import { terrainOf, decodeWalk, groundPath, type TerrainGrid } from "../../utils/minimapTerrain";
 import type { MinimapMarker } from "./ReplayMinimap";
 
 /* ── 연속 재생 플레이어(요청: 장면 선정 없이 전부 연속으로, 이미지 대신 텍스트로) ──────
@@ -178,11 +178,14 @@ export default function ReplayMotionPlayer({
   const [terrain, setTerrain] = useState<TerrainGrid | null>(null);
   useEffect(() => {
     let cancelled = false;
+    /* 운영자가 검수한 지형(grid.walk)이 있으면 그쪽이 이긴다(요청) — 자동 분석은 어림이다. */
+    const reviewed = decodeWalk(grid.walk);
+    if (reviewed) { setTerrain(reviewed); return undefined; }
     if (!grid.image) { setTerrain(null); return undefined; }
-    terrainOf(grid.image, grid.width, grid.height)
+    terrainOf(grid.image)
       .then((tg) => { if (!cancelled) setTerrain(tg); });
     return () => { cancelled = true; };
-  }, [grid.image, grid.width, grid.height]);
+  }, [grid.image, grid.walk]);
 
   /* 지상 구간을 지형 경로로 편 자취 — 시간은 경로 길이에 비례해 나눠 얹는다. 공중 유닛
      구간·길이 없는 구간은 원본 그대로다. */
@@ -198,7 +201,11 @@ export default function ReplayMotionPlayer({
         out.push(cur);
         continue;
       }
-      const path = groundPath(terrain, prev[1], prev[2], cur[1], cur[2]);
+      const path = groundPath(
+        terrain,
+        prev[1] / grid.width, prev[2] / grid.height,
+        cur[1] / grid.width, cur[2] / grid.height,
+      )?.map(([fx, fy]) => [fx * grid.width, fy * grid.height] as [number, number]);
       if (!path || path.length < 2) { out.push(cur); continue; }
       let total = 0;
       const lens: number[] = [];
@@ -219,7 +226,7 @@ export default function ReplayMotionPlayer({
       }
     }
     return out;
-  }), [motion, terrain]);
+  }), [motion, terrain, grid.width, grid.height]);
   // 기본은 ×2다(요청) — 처음부터 빨리 감으면 초반 정찰·빌드가 통째로 지나가 버린다.
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(2);
   const [done, setDone] = useState(false);

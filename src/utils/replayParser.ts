@@ -213,6 +213,8 @@ export interface ReplayMapGrid {
   /** 사람이 올려 둔 실제 미니맵 그림(data URL) — 있으면 격자 대신 이걸 그린다(요청: 물·풀·
    *  땅·벽을 실제와 비슷하게). 서버에서 내려오는 값이라 리플레이를 읽어 만들 때는 없다. */
   image?: string | null;
+  /** 그 그림의 지형(이동 가능/불가) 격자 — 운영자가 검수·수정한 값(요청). JSON 문자열. */
+  walk?: string | null;
 }
 
 export interface ParsedReplay {

@@ -467,7 +467,7 @@ export const api = {
 
   /** 이름만 고칠 때는 image를 빼고 부른다 — 수백 KB짜리를 다시 올릴 이유가 없다. */
   async updateMinimapImage(
-    id: number, body: { name: string; image?: string; hashes?: string[] },
+    id: number, body: { name: string; image?: string; hashes?: string[]; walk?: string },
   ): Promise<MinimapImage> {
     return request<MinimapImage>(`/api/game-results/replay-maps/images/${id}`, {
       method: "PUT", body: JSON.stringify(body),

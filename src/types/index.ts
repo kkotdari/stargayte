@@ -601,6 +601,8 @@ export interface MinimapImage {
   name: string;
   /** data URL. */
   image: string;
+  /** 지형(이동 가능/불가) 격자 — 운영자가 검수·수정한 값(요청). JSON 문자열({w,h,hex}). */
+  walk?: string | null;
 }
 
 /** 제어판 맵 목록의 한 줄 — 격자(22KB)는 빼고 어떤 맵이 있는지만. */

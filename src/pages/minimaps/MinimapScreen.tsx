@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Trash2, Upload, Link2Off, ImageUp } from "lucide-react";
+import { Trash2, Upload, Link2Off, ImageUp, Mountain } from "lucide-react";
+import TerrainReviewModal from "../../modals/TerrainReviewModal";
 import ReplayMapCanvas from "../../components/replay/ReplayMapCanvas";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import Select from "../../components/common/Select";
@@ -116,6 +117,8 @@ export default function MinimapScreen() {
   // ① 새 미니맵 이름.
   const [name, setName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<MinimapImage | null>(null);
+  // 지형 검수 모달(요청) — 그림 하나를 크게 띄워 이동 가능/불가 격자를 보고 고친다.
+  const [terrainTarget, setTerrainTarget] = useState<MinimapImage | null>(null);
   /** 매핑된 맵 목록을 펼쳐 둔 미니맵들 — 기본은 접힘(요청). */
   const [openIds, setOpenIds] = useState<Set<number>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
@@ -358,6 +361,16 @@ export default function MinimapScreen() {
                 </button>
                 {/* 그림 변경 — 지우기 왼쪽에 둔다(요청). 매핑을 지키면서 그림만 바꾸는
                     일이라, 되돌릴 수 없는 지우기와 나란히 있되 확인창은 없다. */}
+                {/* 지형 검수(요청) — 자동 분석 결과를 크게 보고 칸 단위로 고친다. */}
+                <button
+                  type="button" className="scr-icon-btn"
+                  onClick={() => setTerrainTarget(i)}
+                  disabled={busy}
+                  aria-label={`${i.name} 지형 검수`}
+                  title="지형 검수"
+                >
+                  <Mountain size={14} />
+                </button>
                 <button
                   type="button" className="scr-icon-btn"
                   onClick={() => { setSwapId(i.id); swapRef.current?.click(); }}
@@ -403,6 +416,16 @@ export default function MinimapScreen() {
         }}
       />
 
+      {terrainTarget && (
+        <TerrainReviewModal
+          image={terrainTarget}
+          onClose={() => setTerrainTarget(null)}
+          onSaved={(updated) => setCatalog((prev) => (prev ? {
+            ...prev,
+            images: prev.images.map((im) => (im.id === updated.id ? updated : im)),
+          } : prev))}
+        />
+      )}
       {confirmDelete && (
         <ConfirmDialog
           title={`"${confirmDelete.name}" 미니맵을 지울까요?`}
