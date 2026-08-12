@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Cog, FlaskConical, Hammer, Maximize2, Mountain, Pause, Play, RotateCcw, Shield, X } from "lucide-react";
+import { Cog, FlaskConical, Hammer, Maximize2, Minimize2, Mountain, Pause, Play, RotateCcw, Shield, X } from "lucide-react";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import TerrainReviewModal from "../../modals/TerrainReviewModal";
 import Avatar from "../common/Avatar";
@@ -692,11 +692,12 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
   ],
   /* (삭제) slab — 이름 없는 기본 건물은 입체 상자가 아니라 예전 네모로 돌아갔다(지적:
      "입체표현은 직접 그린거만"). 크기만 발자국을 따른다. */
-  /* 병력 육각형(요청: 일꾼과 구분이 안 됨 — 병력을 육각형으로) — 일꾼·채굴·정찰 일꾼은
-     전부 지금의 ● 점 그대로고(요청: 변경 없음), 전투 유닛 점만 이 도형을 쓴다.
+  /* 병력 표시(요청: 일꾼과 구분이 안 됨) — 일꾼·채굴·정찰 일꾼은 전부 지금의 ● 점
+     그대로고(요청: 변경 없음), 전투 유닛 점만 이 도형을 쓴다. 육각형은 점 크기에서
+     원과 구분이 안 됐다(지적) — 위로 솟은 쐐기(삼각형)는 9px에서도 뾰족함이 읽힌다.
      점과 같은 급의 표시라 입체 없이 채운 한 면이다(입체는 직접 그린 건물만). */
-  hex: [
-    ["M8 1.2 L13.9 4.6 V11.4 L8 14.8 L2.1 11.4 V4.6 Z", 1],
+  troop: [
+    ["M8 1.6 L14.6 14.2 H1.4 Z", 1],
   ],
 };
 /** 도형째 돌려 그리는 각도(시계방향) — 스타게이트는 45도(요청). */
@@ -907,12 +908,13 @@ export default function ReplayMotionPlayer({
       + 0.114 * parseInt(hex.slice(5, 7), 16);
   };
   /* 건물 이름 글자 — 테두리 없이 음영판만(지적). 어두운 계열(블루 포함, 지적)은 흰 반투명
-     배경판, 밝은 계열은 CSS의 검정 음영판. */
+     배경판, 밝은 계열은 CSS의 검정 음영판. 문턱은 칩(chipStyle의 150)과 같은 값이다
+     (지적: 연보라가 칩에선 흰 글자인데 건물 음영판은 검정 — 140/150으로 갈라져 있었다). */
   const shapeStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => {
     const c = modeColor(raw, team);
     return {
       color: c,
-      ...(lumOf(c) < 140 ? {
+      ...(lumOf(c) <= 150 ? {
         background: "rgba(255, 255, 255, 0.5)", borderRadius: 3, padding: "0 2px",
         textShadow: "none",
       } : {}),
@@ -1225,6 +1227,9 @@ export default function ReplayMotionPlayer({
      같은 컴포넌트 트리를 통째로 포털 모달 안으로 옮겨 심으므로 재생 상태가 그대로
      이어진다. Esc로도 닫는다. */
   const [big, setBig] = useState(false);
+  /* 모바일 화면 폭 확대(요청: 산 아이콘 옆 확대 버튼) — 맵이 모달·카드 폭을 벗어나
+     화면 폭 전체를 쓴다. PC 팝업(big)과 별개의 인라인 확장이다. */
+  const [wide, setWide] = useState(false);
   useLockBodyScroll(big);
   useEffect(() => {
     if (!big) return undefined;
@@ -1619,7 +1624,7 @@ export default function ReplayMotionPlayer({
 
   const body = (
     <div
-      className={cx("scr-motion", big && "scr-motion-big")}
+      className={cx("scr-motion", big && "scr-motion-big", wide && !big && "scr-motion-wide")}
       // 확대 모드에선 폭 상한을 안 건다 — 모달 폭(아래 포털)이 이미 맵+양옆 세로 조작부
       // 기준으로 확정돼 있고, 여기까지 조이면 이중 제약으로 맵이 더 작아진다.
       style={big ? undefined : { maxWidth: `calc((100dvh - 230px) * ${(grid.width / grid.height).toFixed(4)})`, margin: "0 auto" }}
@@ -1955,7 +1960,7 @@ export default function ReplayMotionPlayer({
                 >
                   {/* 갓 나온 것도 병력이면 육각형, 일꾼이면 점(요청: 아이콘 구분). */}
                   {unit === "SCV" || unit === "Probe" || unit === "Drone"
-                    ? "●" : <ShapeIcon kind="hex" className="scr-motion-hexi" />}
+                    ? "●" : <ShapeIcon kind="troop" className="scr-motion-troop" />}
                 </span>,
               );
             }
@@ -2326,7 +2331,7 @@ export default function ReplayMotionPlayer({
                   )
                   : activeNow ? text
                     // 병력은 육각형, 일꾼은 점(요청: 아이콘 구분).
-                    : g.unit === "Worker" ? "●" : <ShapeIcon kind="hex" className="scr-motion-hexi" />}
+                    : g.unit === "Worker" ? "●" : <ShapeIcon kind="troop" className="scr-motion-troop" />}
               </span>
             ));
           });
@@ -2412,7 +2417,7 @@ export default function ReplayMotionPlayer({
                     }}
                   >
                     {/* 무명 부대는 병력이다 — 육각형(요청: 일꾼과 아이콘 구분). */}
-                    <ShapeIcon kind="hex" className="scr-motion-hexi" />
+                    <ShapeIcon kind="troop" className="scr-motion-troop" />
                   </span>
                 );
               });
@@ -2520,7 +2525,7 @@ export default function ReplayMotionPlayer({
                   ? <ShapeIcon kind="ovie" className="scr-motion-ovie" />
                   : g.kind === "carrier"
                     ? <ShapeIcon kind={race === "테란" ? "dship" : "shuttle"} className="scr-motion-ovie" />
-                    : g.kind === "worker" ? "●" : <ShapeIcon kind="hex" className="scr-motion-hexi" />}
+                    : g.kind === "worker" ? "●" : <ShapeIcon kind="troop" className="scr-motion-troop" />}
               </span>
             );
           });
@@ -2620,7 +2625,7 @@ export default function ReplayMotionPlayer({
         <div className="scr-motion-toolrow-mid">
           <div className="scr-motion-legend">
             {/* 병력은 육각형(요청: 일꾼과 아이콘 구분) — 지도의 도형과 같은 벡터를 쓴다. */}
-            <span><i className="scr-motion-legend-hex"><ShapeIcon kind="hex" /></i> 병력</span>
+            <span><i className="scr-motion-legend-troop"><ShapeIcon kind="troop" /></i> 병력</span>
             <span>■ 건물</span>
             {/* 일꾼은 채굴·정찰 없이 전부 같은 작은 점이다(요청: 통일). 기호는 지도의
                 점과 같은 ●를 부대보다 한 단 작게(지적: •는 너무 작았다). */}
@@ -2629,8 +2634,8 @@ export default function ReplayMotionPlayer({
             <span><Cog size={8} /> 생산 중</span>
             <span><FlaskConical size={8} /> 업그레이드 중</span>
           </div>
-          {typeof grid.imageId === "number" && grid.image && (
-            <div className="scr-motion-terrain-row">
+          <div className="scr-motion-terrain-row">
+            {typeof grid.imageId === "number" && grid.image && (
               <button
                 type="button" className="scr-motion-btn scr-motion-terrain"
                 onClick={() => { setPlaying(false); setTerrainOpen(true); }}
@@ -2638,8 +2643,18 @@ export default function ReplayMotionPlayer({
               >
                 <Mountain size={12} />
               </button>
-            </div>
-          )}
+            )}
+            {/* 모바일 확대(요청: 산 아이콘 옆) — 누르면 맵이 모달 폭을 벗어나 화면 폭을
+                다 쓰고, 아래 요소들은 그만큼 내려간다(트랜지션은 CSS). PC는 팝업 확대가
+                따로 있어 이 버튼을 감춘다(CSS). */}
+            <button
+              type="button" className="scr-motion-btn scr-motion-widebtn"
+              onClick={() => setWide((v) => !v)}
+              aria-label={wide ? "원래 폭" : "화면 폭 확대"} title={wide ? "원래 폭" : "화면 폭 확대"}
+            >
+              {wide ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+            </button>
+          </div>
         </div>
         <div className="scr-motion-expand-row">
           {/* 확대 창의 케밥(요청: PC 기본이 확대인 만큼 케밥·닫기가 있어야 한다) —
@@ -2752,12 +2767,12 @@ export default function ReplayMotionPlayer({
           className="scr-motion-big-backdrop"
           onClick={() => { shrunk.current = true; setBig(false); }}
         />
-        {/* 폭 상한 = (가용 높이 − 위아래 여백·슬림 탐색바 몫) × 맵 가로세로비 + 옆 기둥
-            몫(요청: 옆 기둥 위에서부터 로스터 → 조작부 → 댓글, 맵은 최대 크기) — 기둥은
-            고정 300px + 간격·패딩 40px. */}
+        {/* 폭 상한 = (가용 높이 − 위아래 여백·슬림 탐색바 몫) × 맵 가로세로비 + 양쪽 기둥
+            몫(요청: 왼쪽 기둥에 로스터·조작부, 오른쪽 기둥에 댓글 — 맵은 최대 크기) —
+            기둥 둘 300px씩 + 간격·패딩 60px. */}
         <div
           className="scr-modal scr-motion-big-modal"
-          style={{ width: `min(94vw, calc((100dvh - 88px) * ${(grid.width / grid.height).toFixed(4)} + 340px))` }}
+          style={{ width: `min(94vw, calc((100dvh - 88px) * ${(grid.width / grid.height).toFixed(4)} + 660px))` }}
         >{body}</div>
       </div>,
       document.body,

@@ -9122,6 +9122,15 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
     width: calc(100vw - 32px); max-width: none;
     padding-left: var(--scr-detail-pad-x); padding-right: var(--scr-detail-pad-x);
   }
+  /* 미니맵 화면 폭 확대(요청: 모달이 아니라 미니맵만 확장) — 창 크기는 그대로 두고,
+     확대 중에만 창의 클리핑(overflow:hidden)을 풀고 본문 상자를 뷰포트 폭으로 넓혀
+     (마진과 패딩이 서로 지워져 내용 자리는 안 변한다) 맵 줄(50% − 50vw 트릭)이
+     화면 가장자리까지 나가게 한다. */
+  .scr-activity-detail-modal:has(.scr-motion-wide) { overflow: visible; }
+  .scr-activity-detail-modal:has(.scr-motion-wide) > .scr-activity-detail-body {
+    margin-inline: calc(50% - 50vw);
+    padding-inline: calc(50vw - 50%);
+  }
   /* 본문은 창의 좌우 패딩을 음수 마진으로 물렸다가 제 패딩으로 되돌리는 구조라
      (스크롤바를 안쪽 벽에 붙이려는 것) 여기서도 같은 값으로 맞춘다. */
   .scr-activity-detail-modal > .scr-activity-detail-body {
@@ -10860,6 +10869,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    로스터식 아바타+닉네임에 그 사람 색) — 맵을 가운데 두고 양옆에 선다. */
 .scr-motion-maprow { display: flex; align-items: center; gap: 8px; }
 .scr-motion-maprow .scr-motion-map { flex: 1 1 auto; min-width: 0; }
+/* 모바일 화면 폭 확대(요청: 산 아이콘 옆 확대 버튼 — 모달을 벗어나 화면 폭 최대) —
+   맵 줄이 제 상자 가운데에서 뷰포트 폭으로 넓어진다(50% − 50vw 트릭: 상세 모달 본문의
+   가로 클리핑 상자가 모달 폭 전체를 덮어서, 모달을 100vw로 넓히면 잘리지 않는다).
+   아래 요소들은 맵이 커진 만큼 자연히 내려간다 — 폭 트랜지션이 곧 그 내려감의
+   트랜지션이다. */
+.scr-motion-maprow { width: 100%; margin-left: 0; transition: width 0.3s ease, margin-left 0.3s ease; }
+.scr-motion-wide .scr-motion-maprow { width: 100vw; margin-left: calc(50% - 50vw); }
 .scr-motion-teamcol { display: flex; flex-direction: column; gap: 10px; width: 88px; flex: 0 0 auto; }
 .scr-motion-teamcol-item { position: relative; display: flex; align-items: center; gap: 6px; }
 .scr-motion-teamcol-text { display: flex; flex-direction: column; min-width: 0; }
@@ -10930,13 +10946,15 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    커진다. */
 /* 지도 위 글자의 바탕(지적: 그림자가 너무 진하다 — 반투명 음영이 낫다) — 네 겹 그림자
    대신 옅은 어두운 판을 깔고 그림자는 한 겹만 남긴다. 칩(배지)은 제 배경이 있어 제외. */
-.scr-motion-build:not(.scr-motion-chip), .scr-motion-workers {
+/* 일꾼 수는 판(배지) 없이 그냥 텍스트다(요청) — 아래 .scr-motion-workers가 제 그림자만 갖는다. */
+.scr-motion-build:not(.scr-motion-chip) {
   background: rgba(0, 0, 0, 0.4); border-radius: 3px; padding: 0 2px;
   text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
 }
 /* 배지(칩)는 테두리도 그림자 번짐도 없이 음영(제 배경)만(지적) — 도형·점일 때만 그림자. */
+/* 그림자 폭은 그대로, 농도만 살짝 진하게(요청) — 번짐 반경은 안 키운다. */
 .scr-motion-army:not(.scr-motion-chip) {
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.95);
 }
 .scr-motion-chip { text-shadow: none; border: none; padding: 1px 3px; }
 .scr-motion-build { font-size: 7px; font-weight: 700; opacity: 0.85; }
@@ -10990,13 +11008,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 오버로드 풍선 도형은 점 크기(1em)로는 다리가 안 보인다(지적: "오버로드 모양이 안
    나오는듯") — 한 단 키운다. */
 .scr-motion-shape-svg.scr-motion-ovie { width: 1.7em; height: 1.7em; }
-/* 병력 육각형(요청: 일꾼과 아이콘 구분) — 점(●)과 같은 급의 표시라 점 크기를 따라간다.
-   글꼴 ●보다 도형이 상자를 꽉 채워 살짝만 키워도 점보다 또렷하다. */
-.scr-motion-shape-svg.scr-motion-hexi { width: 1.15em; height: 1.15em; }
-.scr-motion-legend-hex {
+/* 병력 쐐기(요청: 일꾼과 아이콘 구분 — 육각형은 점 크기에서 원과 안 갈렸다는 지적으로
+   삼각 쐐기로) — 점(●)과 같은 급의 표시라 점 크기를 따라간다. */
+.scr-motion-shape-svg.scr-motion-troop { width: 1.15em; height: 1.15em; }
+.scr-motion-legend-troop {
   font-style: normal; display: inline-flex; vertical-align: -0.1em;
 }
-.scr-motion-legend-hex .scr-motion-shape-svg { width: 0.85em; height: 0.85em; }
+.scr-motion-legend-troop .scr-motion-shape-svg { width: 0.85em; height: 0.85em; }
 /* 정찰·일꾼 점(지적: 일꾼 정찰이 안 보인다) — 부대 점보다 작고 옅어서 "부대는 아니고
    무언가 갔다"로 읽힌다. */
 .scr-motion-scout {
@@ -11031,15 +11049,17 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-base { display: inline-flex; flex-direction: column; align-items: center; gap: 1px; }
 /* 아바타 이중 테두리(요청) — 안쪽 개인색·바깥 팀색은 인라인 box-shadow가 칠한다. */
 .scr-motion-base-ring { display: inline-flex; border-radius: 50%; margin: 4px; }
-/* 자원 캐는 일꾼(요청) — 본진 밑에서 곡괭이질하듯 잘게 까딱인다. */
+/* 일꾼 수 — 그냥 텍스트, 움직임 없음(요청: 곡괭이질 까딱임과 배지 판을 걷었다). */
 .scr-motion-workers {
   /* 지도 위 글자는 테마를 안 탄다(지적: 라이트에서 검정 글씨) — 바탕(미니맵)이 늘
      어두워서, 라이트의 --muted(검정 계열)로는 안 읽힌다. */
   font-size: 7px; font-weight: 700; color: #f5f6f7;
   text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
-  animation: scr-motion-dig 1.2s ease-in-out infinite;
 }
-@keyframes scr-motion-dig { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1px); } }
+/* 로스터 기둥의 일꾼 줄은 지도 밖(카드 바탕)이라 테마 색을 따른다. */
+.scr-motion-teamcol .scr-motion-workers { color: var(--muted); text-shadow: none; }
+/* 2팀 기둥은 오른쪽 벽에 붙는다 — 일꾼 줄도 이름처럼 오른쪽 정렬(지적). */
+.scr-motion-teamcol:last-of-type .scr-motion-workers { align-self: flex-end; text-align: right; }
 .scr-motion-build-razed { color: var(--dim); animation: scr-motion-in 0.3s ease-out; }
 /* (삭제) 생산·연구 라임 테(-glow) — 하는 일은 가운데 아이콘(망치·톱니·플라스크)만으로
    말한다(요청: 건물 액티브 사각형 효과 제거). */
@@ -11114,6 +11134,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 부대 점만 모바일에서 한 눈금 작다(요청: 유닛 크기도 살짝 줄이기) — 도형과 달리 점은
    작아져도 뜻이 안 상한다(자리만 말하는 표시다). PC는 아래 미디어에서 제 값으로 돌아간다. */
 .scr-motion-dot { font-size: 9px; }
+/* 일꾼은 점 클래스가 겹쳐도 늘 작다(지적: 어떤 일꾼이 병력만큼 커 보임) — 일꾼 마커는
+   scout(7px)와 dot(9px)를 같이 달고 있는데, 뒤에 선언된 dot이 이겨 부대 크기가 됐다. */
+.scr-motion-dot.scr-motion-scout { font-size: 7px; }
 /* 도형은 아주 살짝 뒤가 비친다(요청: 모바일·PC 모두) — 지도 위에 도형이 빽빽하면 겹친
    것끼리 서로를 완전히 지운다. 살짝 비치면 뒤에 무엇이 깔렸는지가 보이면서도 앞의 도형이
    흐려지지는 않는다. 활성(생산 중)일 때는 거의 불투명으로 올려 '지금 일한다'를 지킨다.
@@ -11127,14 +11150,14 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-sq {
   display: inline-block; width: 0.85em; height: 0.85em;
   background: currentColor; border-radius: 1px; vertical-align: -0.05em;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
 }
 /* 건물 전용 벡터 도형(요청: 이모지·글꼴 글리프 말고 벡터) — em 단위라 크기 클래스와
    확대 배율(--mk)을 글자와 똑같이 따른다. 색도 currentColor 그대로다.
    그림자도 유닛처럼 얇게(요청: "건물도 약간 그림자 유닛처럼"). */
 .scr-motion-shape-svg {
   display: inline-block; width: 1em; height: 1em; vertical-align: -0.12em;
-  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.6));
 }
 /* 발자국 비례 도형(요청: "건물 아이콘 크기를 실제 맵크기에 비례해서 정확히") — 스팬 폭을
    지도 %로 못박고(JSX) 그림이 그 폭을 다 쓴다. 글자 크기 클래스는 이때 안 듣는다.
@@ -11146,7 +11169,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-build-tile .scr-motion-sq { width: 100%; height: 100%; }
 /* 유닛 이름 칩에도 같은 톤의 약한 그림자(요청) — 배경 있는 배지라 텍스트 그림자 대신
    상자 그림자다. */
-.scr-motion-army.scr-motion-chip, .scr-motion-cast.scr-motion-chip { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
+.scr-motion-army.scr-motion-chip, .scr-motion-cast.scr-motion-chip { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5); }
 /* 본진 실루엣 아바타(요청) — 실루엣 색 판이 뒤에 서고, 그 한가운데에 동그란 아바타가
    잘림 없이 같은 크기로 얹힌다(지적: 사진을 도형으로 자르지 말 것). */
 .scr-motion-base-hallwrap {
@@ -11271,7 +11294,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    3칸 그리드 수법: 가운데 칸(범례+산 버튼)이 정중앙, 확대 토글은 오른쪽 칸 끝이다. */
 .scr-motion-toolrow { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
 .scr-motion-toolrow-mid { grid-column: 2; display: flex; align-items: center; justify-content: center; gap: 10px; }
-.scr-motion-terrain-row { display: flex; justify-content: center; }
+.scr-motion-terrain-row { display: flex; justify-content: center; gap: 6px; }
+/* 화면 폭 확대 버튼(요청: 산 아이콘 옆)은 모바일 전용 — PC는 팝업 확대(big)가 따로 있다. */
+@media (min-width: 1160px) {
+  .scr-motion-widebtn { display: none; }
+  .scr-motion-wide .scr-motion-maprow { width: 100%; margin-left: 0; }
+}
 /* 큰 화면 보기 토글(요청: PC 전용 — 대각선 화살표). */
 .scr-motion-expand-row { display: none; }
 @media (min-width: 1160px) { .scr-motion-expand-row { grid-column: 3; display: flex; justify-content: flex-end; } }
@@ -11297,27 +11325,30 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 }
 /* 팝업에는 맵과 조작부만(요청) — 범례·지형 수정은 감춘다. */
 .scr-motion-big .scr-motion-legend, .scr-motion-big .scr-motion-terrain-row { display: none; }
-/* 확대 모드 배치(요청: 옆 기둥의 위에서부터 로스터 → 배속·컬러·재생·시간 → 댓글, 맵은
-   왼쪽에 최대 크기 + 아래 슬림 탐색바) — 맵줄(.scr-motion-maprow)을 contents로 풀어
-   로스터 기둥 둘을 옆 기둥으로 올려 보낸다. 옆 기둥이 고정 폭(300px)이라 컬러 버튼
-   글자가 바뀌어도 맵 크기가 안 흔들린다(지적: 컬러 변경 시 미니맵 크기가 조금씩 변함). */
+/* 확대 모드 배치(요청: 댓글 영역과 균형을 맞춰 로스터와 버튼을 전부 왼쪽 기둥으로) —
+   [왼쪽 기둥: 1팀·2팀 로스터(위쪽부터) → 조작부] | [맵 최대 크기 + 아래 슬림 탐색바] |
+   [오른쪽 기둥: 댓글]. 맵줄(.scr-motion-maprow)을 contents로 풀어 로스터 기둥 둘을
+   왼쪽 기둥으로 보낸다. 기둥이 고정 폭(300px)이라 컬러 버튼 글자가 바뀌어도 맵 크기가
+   안 흔들린다(지적: 컬러 변경 시 미니맵 크기가 조금씩 변함). */
 .scr-motion-big {
-  display: grid; grid-template-columns: minmax(0, 1fr) 300px;
+  display: grid; grid-template-columns: 300px minmax(0, 1fr) 300px;
   grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   column-gap: 12px; row-gap: 8px; align-items: start;
 }
 .scr-motion-big .scr-motion-maprow { display: contents; }
-.scr-motion-big .scr-motion-map { grid-column: 1; grid-row: 1 / 5; }
+.scr-motion-big .scr-motion-map { grid-column: 2; grid-row: 1 / 5; }
 /* 탐색바는 맵 바로 아래 한 줄, 자리를 최대한 안 차지하게 슬림하게(요청). */
-.scr-motion-big .scr-motion-bar:not(.scr-motion-bar-controls) { grid-column: 1; grid-row: 5; }
-/* 옆 기둥 — 위에서부터 1팀·2팀 로스터(가로로 줄바꿈), 조작부, 댓글. */
+.scr-motion-big .scr-motion-bar:not(.scr-motion-bar-controls) { grid-column: 2; grid-row: 5; }
+/* 왼쪽 기둥 — 위에서부터 1팀·2팀 로스터, 그 아래 조작부. 팀별로 한 줄씩 두 줄이고
+   (요청: 줄맞춰서), 칸을 1fr로 고르게 나눠 인원이 같으면 위아래 줄이 맞는다. */
 .scr-motion-big .scr-motion-teamcol {
-  grid-column: 2; width: auto; flex-direction: row; flex-wrap: wrap;
-  gap: 8px; align-content: flex-start;
+  grid-column: 1; width: auto;
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+  gap: 8px; align-items: start;
 }
 .scr-motion-big .scr-motion-teamcol:first-of-type { grid-row: 1; }
 .scr-motion-big .scr-motion-teamcol:last-of-type { grid-row: 2; }
-.scr-motion-big .scr-motion-bar-controls { grid-column: 2; grid-row: 3; }
+.scr-motion-big .scr-motion-bar-controls { grid-column: 1; grid-row: 3; }
 .scr-motion-big .scr-motion-toolrow { display: contents; }
 .scr-motion-big .scr-motion-toolrow-mid { display: none; }
 /* 케밥·닫기(요청: PC 기본이 확대인 만큼) — 모달 오른쪽 위 구석에 나란히 떠 있다. */
@@ -11332,9 +11363,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    경기 결과의 댓글 컴포넌트(.scr-comment-*)가 통째로 앉는다. 맵 높이를 넘으면 제
    스크롤이다(그리드 한 칸을 stretch로 받아 overflow). */
 .scr-motion-sidewrap {
-  grid-column: 2; grid-row: 4 / 6; align-self: stretch; min-height: 0;
+  grid-column: 3; grid-row: 1 / 6; align-self: stretch; min-height: 0;
   overflow-y: auto; padding: 2px 4px 2px 2px;
 }
+/* 확대 기둥의 댓글은 위 구분선이 필요 없다(요청) — 카드 인라인용 경계선(.scr-activity-notes
+   border-top)은 본문과 댓글을 가르는 선인데, 여기선 기둥 자체가 이미 제 영역이다. */
+.scr-motion-sidewrap .scr-activity-notes { border-top: none; margin-top: 0; padding-top: 0; }
 .scr-terrain-hint { margin: 0 0 8px; font-size: var(--fs-caption); color: var(--muted); }
 .scr-terrain-stage { position: relative; width: 100%; }
 .scr-terrain-img { display: block; width: 100%; user-select: none; border-radius: var(--radius-sm); }
