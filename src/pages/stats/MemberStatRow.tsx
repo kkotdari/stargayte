@@ -1,6 +1,5 @@
 import { Fragment, useState } from "react";
 import Avatar from "../../components/common/Avatar";
-import InfoTip from "../../components/common/InfoTip";
 import PhotoViewer from "../../components/common/PhotoViewer";
 import DonutChart from "../../components/common/DonutChart";
 import { useAppStore } from "../../store/appStore";
@@ -404,27 +403,11 @@ export default function MemberStatRow({
   return (
     <div className={cx("scr-stat-row", me && "scr-stat-row-me")}>
       <div className="scr-stat-name-cell">
-        {/* 칭호를 프사+닉네임 위로(요청: "칭호를 닉네임아바타 위로 이탤릭") — 부르는 말이
-            먼저 눈에 들어오고 그 아래 누구인지가 확인되는 순서다. 이탤릭으로 닉네임과
-            자체를 더 뚜렷이 가른다(요청) — 크기·색만으로 가르던 것에 글꼴 기울기까지 더한다.
-            왜 그 칭호인가는 눌렀을 때만 띄운다(요청) — 늘 적어 두면 줄마다 두 줄이 되어
-            표가 길어지고, 마우스를 얹어야 뜨는 방식은 손가락으로는 아예 안 뜬다.
-
-            말풍선은 표 컬럼 헤더의 ⓘ와 같은 부품(InfoTip)을 그대로 쓴다 — 그쪽이 이미 같은
-            문제를 풀어 놨기 때문이다(지적: 툴팁이 유저 컬럼 안으로 제한돼). 칭호가 앉은
-            유저 칸은 조상마다 잘라 낸다: .scr-stat-table-clip이 overflow:hidden(둥근 모서리),
-            .scr-stat-table이 가로 스크롤용 overflow-x:auto, 칸 자신은 position:sticky. CSS
-            ::after로 그리면 무엇을 해도 그 셋 중 하나에 잘린다. InfoTip은 말풍선만 body로
-            포털해 화면 좌표(fixed)로 띄우므로 자르는 조상이 아예 없고, 화면 가장자리 밀어넣기
-            ·아래가 좁으면 위로 뒤집기·바깥 탭으로 닫기·한 번에 하나만 열기까지 딸려 온다.
-            겉모습만 이 표의 칭호 규칙으로 갈아 끼운다(triggerClassName). */}
+        {/* (삭제·요청) 칭호 근거 말풍선(InfoTip) — 표에서는 이름만 적는다. */}
+        {/* 툴팁(근거 말풍선)은 걷었다(요청) — 근거는 관리자 시뮬레이션·프로필의 몫이고,
+            표에서는 이름 한 줄이면 된다. */}
         {epithet ? (
-          <InfoTip
-            text={epithet.why}
-            label={epithet.label}
-            trigger={epithet.label}
-            triggerClassName="scr-stat-name-epithet"
-          />
+          <span className="scr-stat-name-epithet">{epithet.label}</span>
         ) : epithetReady && (
           /* 줄 게 없으면 그렇다고 적는다(요청) — 자리를 통째로 비우면 그 줄만 이름이 아래로
              내려와 표가 들쭉날쭉해지고, 아직 안 받아온 것인지 없는 것인지도 구분이 안 된다. */
