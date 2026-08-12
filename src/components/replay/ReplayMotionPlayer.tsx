@@ -80,8 +80,6 @@ const ACTIVE_HOLD_SEC = 8;
 const SCOUT_KO: Record<string, string> = {
   SCV: "SCV", Probe: "프로브", Drone: "드론", Overlord: "오버로드",
 };
-/** 근처 건물을 한 덩어리로 묶는 반경(타일)(요청: 근처 건물은 유닛처럼 수로). */
-const BUILD_CLUSTER_TILES = 7;
 /** 생산 뒤 이 안이면 그 건물이 '일하는 중'이다(요청: 생산할 때 이름 표시). */
 const PROD_FLASH_SEC = 6;
 
@@ -526,8 +524,15 @@ export default function ReplayMotionPlayer({
                   {m.name}
                 </span>
               )}
-              {m.withName && workerN > 0 && (
-                <span className="scr-motion-workers">일꾼 {workerN}</span>
+              {/* 일꾼 줄은 자리를 늘 잡아 둔다(지적: 첫 장면에서 일꾼 줄이 생기며 아바타가
+                  위로 밀렸다) — 마커는 세로 가운데 정렬이라 줄이 늘면 전체가 움직인다. */}
+              {m.withName && (
+                <span
+                  className="scr-motion-workers"
+                  style={workerN > 0 ? undefined : { visibility: "hidden" }}
+                >
+                  일꾼 {workerN || 0}
+                </span>
               )}
             </span>
           );
