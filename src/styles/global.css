@@ -10853,12 +10853,14 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: var(--radius-sm); }
 .scr-motion-canvas-blank { background: rgba(255, 255, 255, 0.04); }
 .scr-motion-map > span { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; }
-/* 겹침 차례 — 건물(z2)은 움직이는 것(z3) 아래, 본진 아바타는 도로 제일 위다(요청:
-   아바타가 제일 위였던 것 복구 — 건물을 위로 올려 보니 얼굴이 도형에 덮여 누가 누군지가
-   먼저 죽었다). */
+/* 겹침 차례 — 건물(z2)은 움직이는 것(z3) 아래, 본진 아바타(z4)가 그 위다(요청: 복구 —
+   건물을 위로 올려 보니 얼굴이 도형에 덮여 누가 누군지가 먼저 죽었다). 다만 깨어 있는
+   유닛(이름 칩)만은 아바타보다도 위다(요청) — 지금 움직이며 이야기를 만드는 쪽이,
+   늘 서 있는 문패에 가려지면 안 된다. */
 .scr-motion-base { z-index: 4; }
 .scr-motion-build, .scr-motion-workers { z-index: 2; }
 .scr-motion-army, .scr-motion-scout, .scr-motion-cast, .scr-motion-fresh { z-index: 3; }
+.scr-motion-army.scr-motion-chip { z-index: 5; }
 /* 팀 색 — 팀전 로스터·요약 문장과 같은 두 색을 쓴다(.scr-sum-team*와 한 벌). */
 /* 요약 문장의 두 팀 색(.scr-sum-team*)과 같은 값 — 어두운 지도 위라 살짝 밝힌다. */
 .scr-motion-team1 { color: #5b9ae0; }
