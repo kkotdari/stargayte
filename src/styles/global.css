@@ -2845,8 +2845,13 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
   align-items: baseline; line-height: 1.35; min-width: 0;
 }
+/* 순번은 "1."이 아니라 동그란 아이콘이다(요청) — 크기는 옆 텍스트 한 줄 높이와 같게,
+   유리판(흰 톤 반투명) 위에 수만 작게 앉힌다. 붉은 기 없는 앱 규칙 그대로다. */
 .scr-stat-toplist-rank {
-  color: var(--muted); font-variant-numeric: tabular-nums; font-size: var(--fs-9);
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border-radius: 50%; align-self: center; flex: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted); font-variant-numeric: tabular-nums; font-size: 9px; line-height: 1;
 }
 .scr-stat-toplist-name {
   color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;

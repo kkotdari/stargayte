@@ -211,7 +211,7 @@ function TopList({ items, unit }: { items: TopEntry[]; unit: string }) {
     <ul className={cx("scr-stat-toplist", !SHOW_TOP_VALUES && "scr-stat-toplist-nameonly")}>
       {items.map((it, i) => (
           <li key={it.name}>
-            <span className="scr-stat-toplist-rank">{i + 1}.</span>
+            <span className="scr-stat-toplist-rank">{i + 1}</span>
             <span className="scr-stat-toplist-name">{it.name}</span>
             {SHOW_TOP_VALUES && (
               <span className="scr-stat-toplist-n">
