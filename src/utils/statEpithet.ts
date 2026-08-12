@@ -639,7 +639,7 @@ const TITLES: Title[] = [
      "아군 기지에 포토를 깔아 줬다"는 그 그림이 그대로 읽힌다. '수호자'는 어느 수에나
      붙을 수 있는 말이라 정작 이 칭호가 센 것이 안 보였다. */
   // 5% → 2%(요청) — 곁가지 다섯과 같은 선이다.
-  { ...tactic("아군 보호 퀸", ["ally-cannon"]), minPlaysShare: 0.05 },
+  { ...tactic("아군 보호 퀸", ["ally-cannon"]), minPlaysShare: 0.1 },
   /* 입구막기는 '막았다'가 아니라 '막아 놓고 뒤에서 컸다'가 값어치다(판정도 발전까지 함께
      본다 — replayTactics의 WALL_IN_GROW_MIN). 그래서 칭호도 막은 쪽이 아니라 그다음을
      부른다. "후반 도모 퀸"에서 바꿨다(지적: 개성적이지 않다) — 그 말은 어느 운영에나 붙는
@@ -655,7 +655,7 @@ const TITLES: Title[] = [
      오래 이어진 견제를 harass-long으로 갈라 부르는데, 그게 바로 "집요한" 쪽이라 빼면
      정작 제일 그 사람다운 판이 안 세졌다. 판정 자체는 요청하신 그대로다: 상대가 갑자기
      일꾼을 다시 몰아 뽑았고(workersHunted) 그 진영까지 실제로 간 자리 근거가 있는 판. */
-  { ...tactic("집요한 일꾼 헌터", ["harass-workers", "harass-long"], 1), minPlaysShare: 0.01 },
+  { ...tactic("집요한 일꾼 헌터", ["harass-workers", "harass-long"], 1), minPlaysShare: 0.1 },
   /* (삭제) 지긋지긋한 견제러(harass-long) — "집요한 일꾼 사냥꾼"과 같은 이야기(견제)를
      다른 말로 한 번 더 부르는 자리였고, 이름도 그 사람이 아니라 당한 쪽의 감상이다. */
   /* 드랍도 같은 무리로 올린다(요청: 견제도 가중치 높이기) — 병력을 실어 상대 뒤로 넘기는
@@ -698,7 +698,7 @@ const TITLES: Title[] = [
      제공권 싸움이고 배틀은 끝판 한 방이라 그림이 다르다. */
   // 이름 확정(요청) — 발키리는 그 자체가 여전사라 이름이 곧 그림이다.
   { ...tactic("여전사 발키리", ["valkyrie"]), minPlaysShare: 0.15, vsWins: true, battle: true },
-  { ...tactic("우주전함 퀸", ["bc"]), minPlaysShare: 0.05, vsWins: true, battle: true },
+  { ...tactic("우주전함 퀸", ["bc"]), minPlaysShare: 0.1, vsWins: true, battle: true },
   /* 목동의 여왕(요청: 목동저그 변경·상향) — 다크스웜을 실제로 깔고 그 아래로 저글링·럴커·
      울트라 중 하나를 몰아넣은 판이다(지적: 스웜에는 저글링만이 아니라 럴커·울트라도 쓴다).
      판정은 replayTactics의 moka(개편). 자막이 짚은 판만 세고 서버가 이긴 판만 세므로
@@ -725,7 +725,7 @@ const TITLES: Title[] = [
   { ...tactic("성큰러시 퀸", ["sunken-rush"], 1), minPlaysShare: 0.1 },
   /* 센터의 여주인 → 센포의 여왕(요청) — 클럽에서 그 수를 부르는 말이 '센포'라, 그 말을
      그대로 쓰면 무엇을 세는 칭호인지가 바로 읽힌다. */
-  { ...tactic("센포의 여왕", ["center-photon"]), minPlaysShare: 0.15 },
+  { ...tactic("센포의 여왕", ["center-photon"]), minPlaysShare: 0.2 },
   /* (삭제) 남의 집 헤집기 장인(base-raid) — 요청. 이름 없는 급습이라 "무엇으로 갔는지"가
      빠진 이야기고, 그 대목은 대개 다른 칭호(드랍·견제·러시)가 이미 말한다. */
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
@@ -744,7 +744,17 @@ const TITLES: Title[] = [
      같은 캐리어라도 아비터가 끼면 스테이시스·리콜이 낀 다른 그림이라, 이름이 그 판을
      말하게 한다(맵 여왕과 같은 {n} 방식). 아비터를 뽑았나는 이긴 판 원장(mix)의 유닛
      수로 본다. */
-  { ...tactic("{n}", ["carrier"]), minPlaysShare: 0.05, battle: true, why: "캐리어",
+  /* 문턱이 둘이다(요청) — 캐리어만이면 10%, 아비터까지 함께 굴린 판이면 8%. 표의 비율
+     (minPlaysShare)은 낮은 쪽(8%)을 걸고, 아비터 없는 판의 10%는 value가 직접 요구한다. */
+  { ...tactic("{n}", ["carrier"]), minPlaysShare: 0.08, battle: true, why: "캐리어",
+    value: (s, of) => {
+      const src = of.races?.["프로토스"] ?? s;
+      const n = did(src, "carrier");
+      if (n === null) return null;
+      const arb = (mix(s, of)?.units?.["Arbiter"] ?? 0) > 0;
+      if (!arb && n < Math.ceil(normDenom() * 0.1)) return null;
+      return n;
+    },
     name: (s, of) => ((mix(s, of)?.units?.["Arbiter"] ?? 0) > 0 ? "보이지 않는 날파리 퀸" : "날파리 퀸") },
   /* 폭풍의 여왕(요청: 신규 질럿+템플러) — 질럿 몸에 스톰을 얹은 프로토스 지상 한 벌.
      판정은 replayTactics의 zealot-templar. */
@@ -808,7 +818,7 @@ const TITLES: Title[] = [
      race를 지우는 이유: 갈래가 두 종족에 걸쳐 있어(질럿·저글링…) 분모는 전체 판수라야 한다.
      tactic()은 첫 열쇠의 종족(프로토스)을 그대로 붙이므로 여기서 걷는다. */
   { ...tactic("초반의 여왕", ["zealot-rush", "zling-rush", "duel-rush", "cannon-rush", "sunken-rush", "sneak-rax"]),
-    race: undefined, why: "초반 러시", minPlaysShare: 0.35 },
+    race: undefined, why: "초반 러시", minPlaysShare: 0.4 },
   /* 정찰(요청: 초반 정찰 열심히 한 사람 — 좋은 뜻이라 3점대) — 옵저버를 넉넉히 띄웠거나,
      오버로드를 퍼뜨렸거나, 스캔으로 여기저기 들여다본 판이다. 남의 살림을 먼저 보고 제 수를
      고르는 일이라, 눈에 안 띄면서 판을 가장 크게 바꾸는 습관이다. */
@@ -901,7 +911,7 @@ const TITLES: Title[] = [
      상대보다 일꾼을 훨씬 많이 굴렸다는 것이 곧 자원을 제일 많이 캤다는 말이다. 흔한
      대목이라(격차류는 자막이 자주 짚는다) 문턱은 절반이다. 한때 "부티 자원 퀸"으로 있다
      걷힌 자리의 부활이다. */
-  { ...tactic("경제력 퀸", ["worker-gap"]), minPlaysShare: 0.5 },
+  { ...tactic("경제력 퀸", ["worker-gap"]), minPlaysShare: 0.4 },
   /* (삭제) 부티 자원 퀸(일꾼 격차) — 요청. 상대보다 일꾼을 많이 굴렸다는 대목인데, 그
      격차는 내가 잘 캔 만큼이나 상대가 흔들린 몫이라 반쯤이 남의 사정이다. */
   /* 흔한 대목들의 제 문턱(시뮬레이션 실측: 격차·정찰·역전·GG·스톰은 기본 문턱으로는 거의
@@ -1331,7 +1341,13 @@ export function epithetGuideRows(): EpithetGuideRow[] {
        게임에서 캐리어" 꼴이 되면서 앞머리가 아니라 포함으로 찾는다(startsWith였을 때 못
        찾아 종족 칭호 줄로 떨어졌다 — 절대군주 줄이 에픽에 하나 더 생겼다). */
     if (r.how.includes("캐리어")) {
-      return { ...r, label: "날파리 퀸 (아비터까지 썼으면 보이지 않는 날파리 퀸)" };
+      return {
+        ...r,
+        label: "날파리 퀸 (아비터까지 썼으면 보이지 않는 날파리 퀸)",
+        /* 아비터 이야기를 조건에도 적는다(요청) — 자동 문구는 낮은 쪽(8%)만 알아서,
+           캐리어 단독의 10%와 이름이 갈리는 사연이 빠진다. */
+        how: "10% 이상 게임에서 캐리어 · 전투/게임 모두 승리 — 아비터까지 함께 굴렸으면 8%부터, 이름도 \"보이지 않는 날파리 퀸\"으로",
+      };
     }
     if (r.how.startsWith("그 맵 승수")) {
       return {
