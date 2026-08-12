@@ -260,8 +260,20 @@ export default function ReplayMotionPlayer({
         );
       })()}
 
-      {/* 조종간 — 재생/일시정지 · 배속 · 시간 스크러버. 스냅 눈금이 아니라 진짜 시간축이다. */}
+      {/* 조종간(요청: 두 줄) — 윗줄은 스크러버 하나, 아랫줄에 재생·배속·시간이 선다. */}
       <div className="scr-motion-bar">
+        <input
+          className="scr-motion-range" type="range"
+          min={0} max={total} step={1} value={Math.floor(t)}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            setT(v);
+            setDone(v >= total);
+          }}
+          aria-label="재생 위치"
+        />
+      </div>
+      <div className="scr-motion-bar scr-motion-bar-controls">
         <button
           type="button" className="scr-motion-btn"
           onClick={() => {
@@ -272,8 +284,7 @@ export default function ReplayMotionPlayer({
         >
           {done ? "↻" : playing ? "❚❚" : "▶"}
         </button>
-        {/* 배속은 눌러 고른다(요청: 속도 조절 기능) — 순환 버튼은 원하는 속도까지 몇 번을
-            눌러야 하는지 세어야 했다. */}
+        {/* 배속은 눌러 고른다(요청: 속도 조절 기능). */}
         <span className="scr-motion-speeds" role="group" aria-label="배속">
           {SPEEDS.map((v) => (
             <button
@@ -285,16 +296,6 @@ export default function ReplayMotionPlayer({
             </button>
           ))}
         </span>
-        <input
-          className="scr-motion-range" type="range"
-          min={0} max={total} step={1} value={Math.floor(t)}
-          onChange={(e) => {
-            const v = Number(e.target.value);
-            setT(v);
-            setDone(v >= total);
-          }}
-          aria-label="재생 위치"
-        />
         <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
       </div>
     </div>

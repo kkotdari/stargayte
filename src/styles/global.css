@@ -10879,6 +10879,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-cap-line[data-on="true"] { visibility: visible; }
 .scr-motion-cap-time { color: var(--dim); font-variant-numeric: tabular-nums; margin-right: 4px; }
 .scr-motion-bar { display: flex; align-items: center; gap: 6px; }
+/* 아랫줄(요청) — 재생·배속은 왼쪽, 시간은 오른쪽 끝. */
+.scr-motion-bar-controls { justify-content: flex-start; }
+.scr-motion-bar-controls .scr-motion-clock { margin-left: auto; }
 .scr-motion-btn {
   min-width: 28px; height: 22px; padding: 0 6px; border-radius: var(--radius-sm);
   border: 1px solid var(--line-hair); background: transparent; color: var(--muted);
