@@ -136,7 +136,8 @@ export default function TerrainReviewModal({
   };
 
   return createPortal(
-    <div className="scr-modal-overlay" onClick={onClose}>
+    // 상세 팝업(z-index 130) 위에도 떠야 한다(지적: 산을 누르면 뒤에 떠서 안 보인다).
+    <div className="scr-modal-overlay scr-terrain-overlay" onClick={onClose}>
       <div className="scr-modal scr-terrain-modal" onClick={(e) => e.stopPropagation()}>
         <div className="scr-modal-head">
           <span>지형 검수 — {image.name}</span>

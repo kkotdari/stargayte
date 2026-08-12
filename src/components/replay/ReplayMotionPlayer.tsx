@@ -498,7 +498,7 @@ export default function ReplayMotionPlayer({
                 style={{
                   left: pct(x, grid.width), top: pct(y, grid.height),
                   // 긴 이름은 한 단계 작게(지적) — 여섯 자부터.
-                  ...(text.length >= 6 && !activeBuild ? { fontSize: 5 } : {}),
+                  ...(text.length >= 6 && !activeBuild ? { fontSize: 6 } : {}),
                   ...(razed ? {} : shapeStyle(raw, team)),
                 }}
               >
@@ -637,7 +637,8 @@ export default function ReplayMotionPlayer({
               )}
               style={{
                 left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
-                fontSize: showName ? fontPx : Math.min(14, 7 + Math.round(Math.sqrt(size))),
+                // 점도 좀 크게(지적: 도형이 안 보임) — 규모에 따라 9~16px.
+                fontSize: showName ? fontPx : Math.min(16, 9 + Math.round(Math.sqrt(size))),
                 ...(showName ? chipStyle(p.raw, team) : shapeStyle(p.raw, team)),
               }}
             >
@@ -665,7 +666,19 @@ export default function ReplayMotionPlayer({
         ))}
       </div>
 
-      {/* (삭제·요청) 자막 — 재생 화면에서 걷었다. beat는 칭호·BEST 원장으로만 남는다. */}
+      {/* 지형 수정(요청: 미니맵 바로 아래 가운데) — 산 아이콘, 회원 누구나. */}
+      {typeof grid.imageId === "number" && grid.image && (
+        <div className="scr-motion-terrain-row">
+          <button
+            type="button" className="scr-motion-btn scr-motion-terrain"
+            onClick={() => setTerrainOpen(true)}
+            aria-label="지형 수정" title="지형 수정"
+          >
+            <Mountain size={12} />
+          </button>
+        </div>
+      )}
+
 
       {/* 조종간(요청: 두 줄) — 윗줄은 스크러버 하나, 아랫줄에 재생·배속·시간이 선다. */}
       <div className="scr-motion-bar">
@@ -717,16 +730,6 @@ export default function ReplayMotionPlayer({
               ? <RotateCcw size={26} />
               : <Play size={26} fill="currentColor" />}
         </button>
-        {/* 지형 수정(요청) — 산 아이콘, 회원 누구나. 그림이 등록된 맵에서만 선다. */}
-        {typeof grid.imageId === "number" && grid.image && (
-          <button
-            type="button" className="scr-motion-btn scr-motion-terrain"
-            onClick={() => setTerrainOpen(true)}
-            aria-label="지형 수정" title="지형 수정"
-          >
-            <Mountain size={12} />
-          </button>
-        )}
         <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
       </div>
       {terrainOpen && typeof grid.imageId === "number" && grid.image && (
