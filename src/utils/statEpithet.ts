@@ -810,7 +810,8 @@ const TITLES: Title[] = [
        비중으로 재는 까닭은 은신 퀸과 같다 — 총합은 오래 뛴 사람이 늘 크고, 하이브 유닛은
        인구수가 커서 기수 자체는 적게 잡힌다. 4%면 병력 스물다섯에 하나 꼴이다. */
     label: "최고급 저그 퀸", weight: 2, kind: "경기력",
-    min: 0.05, why: "병력 중 하이브 유닛", unit: "",
+    // 5% → 10%(요청) — 하이브 유닛이 병력 열에 하나는 돼야 "끝까지 끌고 간 사람"이다.
+    min: 0.1, why: "병력 중 하이브 유닛", unit: "",
     value: (s, of) => {
       const m = mix(s, of);
       if (!m || !(m.uGround + m.uAir > 0)) return null;
