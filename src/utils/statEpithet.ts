@@ -25,17 +25,27 @@ import type { MemberStats } from "../types";
 
 /** 칭호를 붙일 최소 경기 수 — 한두 판으로 무엇의 "왕"을 부를 수는 없다. */
 const MIN_PLAYS = 3;
-/** 승리의 여신만 쓰는 표본 조건 — 3판 3승이 곧 "여신"이 되면 그 말이 아무것도 안 말한다.
- *  일반 판수 문턱은 걷었지만(요청: 수치로 거른다) 승률은 표본이 조건의 일부라 남는다 —
- *  종족(12판)·맵(8판)·팔색조(18판)와 같은 결이고, 설명에도 그 칭호의 조건으로 적힌다. */
-const MIN_PLAYS_RATE = 8;
+/* 판수 바닥은 전부 클럽 전체 판수에 비례한다(지적: 하드코딩하면 안 된다 — 바닥 조건은
+   전체 경기수에 따라 바뀌어야 한다). 아래 셋이 그 눈금이다. 서열도 요청대로다: 승리의
+   여신이 가장 높고(전체 판의 12%), 종족 퀸이 그 아래(6%), 비율 칭호의 표본 바닥이 맨
+   아래(2.5%)다 — 클럽 이백 판 기준으로 24판 · 12판 · 5판. 클럽 판수를 못 받았으면 이백
+   판으로 친다(countMinFor와 같은 처방). */
+const clubGames = (): number =>
+  (clubTotalGames && clubTotalGames > 0 ? clubTotalGames : CLUB_GAMES_FALLBACK);
+/** 승리의 여신의 표본 — 셋 중 가장 높다(요청): 여신은 판이 쌓인 사람의 말이라야 한다. */
+const winsFloor = (): number => Math.max(10, Math.round(clubGames() * 0.12));
+/** 종족 퀸의 표본 — 여신보다 낮게(요청). */
+const raceFloor = (): number => Math.max(8, Math.round(clubGames() * 0.06));
+/** 비율 칭호의 분모 바닥 — 이보다 얇은 표본에서는 비율이 말이 안 된다. */
+const ratioFloor = (): number => Math.max(4, Math.round(clubGames() * 0.025));
 /** 유형 칭호(개인전·팀전 퀸)는 그 유형에서만 세는 판수라 더 많이 본다 — 팀전 몇 판으로
  *  "팀전 퀸"이 되면 정작 팀전을 도맡아 뛴 사람이 그 말을 못 듣는다. */
-const MIN_PLAYS_MODE = 14;
+/* (삭제) MIN_PLAYS_RATE·MIN_PLAYS_MODE — 고정 판수 바닥. 위 winsFloor/raceFloor로
+   바뀌었다(지적: 전체 경기수 비례). */
 /** 종족 칭호를 받으려면 그 종족이 제 판의 이만큼은 돼야 한다(요청: 부종족 정도는) —
  *  셋을 고루 하면 한 종족이 3분의 1이니, 4분의 1이면 "이 사람의 종족 가운데 하나"라 부를
  *  만한 선이다. 주종족(대개 절반 이상)까지 요구하지는 않는다. */
-const RACE_MIN_SHARE = 0.22;
+const RACE_MIN_SHARE = 0.25;
 /** 그리고 그 종족으로 이만큼은 이겨야 한다 — 70 → 75%(요청). 맵(70%)·전체 승률(70%)보다
  *  한 칸 위인 까닭은 종족은 고를 수 있어서다: 잘 되는 종족만 골라 잡으면 7할은 만들 수
  *  있지만, 고른 종족으로 네 판에 세 판을 이기는 것은 그 종족을 실제로 잘한다는 말이다.
@@ -1156,8 +1166,8 @@ const TITLES: Title[] = [
        종족을 골라 잡은 승률이 아니라 나온 판을 통째로 놓고 일곱 판을 이겼다는 말이라,
        고를 것이 없는 만큼 더 어렵다. 둘 다 걸린 사람에게는 이쪽이 간다(같은 급 안에서는
        무게가 갈라 준다). */
-    label: "승리의 여신", weight: 9, sticky: true, kind: "승률", min: 70, why: `${MIN_PLAYS_RATE}판 이상 승률`, unit: "%",
-    value: (s) => (s.plays >= MIN_PLAYS_RATE ? s.winRate : null),
+    label: "승리의 여신", weight: 9, sticky: true, kind: "승률", min: 70, why: "승률", unit: "%",
+    value: (s) => (s.plays >= winsFloor() ? s.winRate : null),
   },
   /* "최다"를 뗐다(요청: 절대평가) — 이제 1위가 아니라 열 번을 넘긴 사람 전부다. */
   /* 고정 횟수가 아니라 경기수 비례다(요청: 앞으로를 생각해서 — "25회"는 판이 쌓이면
@@ -1226,7 +1236,7 @@ function bestRace(of: EpithetSubject): { race: string; rate: number } | null {
   let best: { race: string; rate: number } | null = null;
   const all = of.stats.plays;
   for (const [race, st] of Object.entries(of.races ?? {})) {
-    if (!st || st.plays < MIN_PLAYS_MODE) continue;
+    if (!st || st.plays < raceFloor()) continue;
     /* 그 종족을 제 판의 이만큼은 해야 한다(요청: 주종까지는 아니어도 부종족 정도는) —
        판수 문턱(12판)만으로는 백 판 뛰며 어쩌다 스무 판 잡은 종족도 통과한다. 그 스무 판을
        잘 이겼다고 "저그의 절대군주"라 부르면, 정작 저그로 사는 사람이 그 말을 못 듣는다. */
@@ -1304,8 +1314,8 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     if (count) {
       /* perUse(마법 사용 수)는 판수를 넘을 수 있는 값이라 "판의 N%"가 아니라 "판수 대비
          N%"로 적는다(지적: 설명 현행화) — 같은 식이지만 읽는 말이 달라야 헷갈리지 않는다. */
-      if (share > 0 && t.perUse) bits.push(`${what} ${where}수 대비 ${pct(share)} 이상 (${where.replace("제 판", "판")} 5판부터)`);
-      else if (share > 0) bits.push(`${what} ${where}의 ${pct(share)} 이상 (${where.replace("제 판", "판")} 5판부터)`);
+      if (share > 0 && t.perUse) bits.push(`${what} ${where}수 대비 ${pct(share)} 이상 (${where.replace("제 판", "판")} ${ratioFloor()}판부터)`);
+      else if (share > 0) bits.push(`${what} ${where}의 ${pct(share)} 이상 (${where.replace("제 판", "판")} ${ratioFloor()}판부터)`);
       else bits.push(`${what}`);
       if ((t.min ?? 1) > 1) bits.push(`최소 ${t.min}${t.unit ?? "번"}`);
       /* 카운트 하한(countMinFor)도 적는다(요청: 조건 다 명시) — 값이 클럽 전체 판수에
@@ -1326,6 +1336,11 @@ export function epithetGuideRows(): EpithetGuideRow[] {
   /* 이름이 사람마다 달라지는 두 줄({n})은 손으로 적는다 — 맵·종족 이름이 들어가야 말이
      되는데, 표에는 그 자리가 비어 있다. */
   return rows.map((r) => {
+    /* 승리의 여신 — 표본(전체 판의 12%, 클럽 판수 비례)이 value 안에 있어 자동 문구에는
+       안 잡힌다. 손으로 완성한다(지적: 설명 현행화). */
+    if (r.label === "승리의 여신") {
+      return { ...r, how: `${winsFloor()}판 이상 · 승률 70% 이상 (판수 바닥은 클럽 판수 비례)` };
+    }
     if (r.label !== "{n}") return r;
     if (r.how.startsWith("그 맵 승수")) {
       return {
@@ -1337,7 +1352,7 @@ export function epithetGuideRows(): EpithetGuideRow[] {
     return {
       ...r,
       label: "저그의 절대군주 · 프로토스의 수호자 · 테란의 전설",
-      how: `그 종족으로 ${MIN_PLAYS_MODE}판 이상 · 제 판의 ${pct(RACE_MIN_SHARE)} 이상 · 승률 ${RACE_MIN_RATE}% 이상`,
+      how: `그 종족으로 ${raceFloor()}판 이상 · 제 판의 ${pct(RACE_MIN_SHARE)} 이상 · 승률 ${RACE_MIN_RATE}% 이상`,
     };
   }).sort((a, b) => (Number(b.rank === "전설") - Number(a.rank === "전설")) || (b.score - a.score))
     .map(({ label, how, rank, wonOnly }) => ({ label, how, rank, wonOnly }));
@@ -1404,7 +1419,7 @@ export function epithetsOf(
         /* 표본 다섯 판은 있어야 비율이 말이 된다(지적: 옆탱 2번으로 퀸이 됐다 — 테란 판이
            몇 판뿐이면 두 번이 곧 100%다). 승률의 8판과 같은 결의 표본 조건이지, 걷어낸
            일괄 판수 문턱과는 다르다 — 분모가 서야 비율 조건 자체가 성립한다. */
-        if (denomPlays < 5) continue;
+        if (denomPlays < ratioFloor()) continue;
         if (v < Math.ceil(denomPlays * share)) continue;
         /* 카운트 하한 — 비율과 별개다(위 countMinFor 주석). 클럽 전체 판수에 비례하고,
            그 칭호가 얼마나 흔한 수인가(= 제 비율 문턱)에도 비례한다. */
