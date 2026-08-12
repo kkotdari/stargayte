@@ -25,7 +25,7 @@ import type { MinimapMarker } from "./ReplayMinimap";
 const SPEEDS = [2, 4, 8, 16, 32] as const;
 /** 다 지어진 뒤 이름이 더 붙어 있는 시간(초) — 하는 일 없으면 바로 도형이다(지적: 액티브
  *  시간은 유닛보다 타이트하게). 생산·연구가 돌면 그때 다시 이름이 뜬다. */
-const BUILD_LABEL_TAIL_SEC = 1;
+const BUILD_LABEL_TAIL_SEC = 15;
 /** 마법 텍스트가 떠 있는 시간(초, 게임 시간). */
 const CAST_HOLD_SEC = 6;
 /** 자취 점 사이가 이보다 벌어지면 잇지 않고 건너뛴다(초) — 한참 조용하다 다른 곳을 찍은
@@ -75,8 +75,9 @@ function speedOf(
   return unit === "Overlord" ? base * 4 : base * 1.5;
 }
 
-/** 커맨드를 받은 지 이 안이면 아직 '활동 중'이다(요청) — 이름표를 유지한다. */
-const ACTIVE_HOLD_SEC = 8;
+/** 커맨드를 받은 지 이 안이면 아직 '활동 중'이다(요청) — 이름표를 유지한다. 유닛은 오래
+ *  이름으로, 건물은 타이트하게(지적)의 '오래' 쪽. */
+const ACTIVE_HOLD_SEC = 12;
 /** 재생 전용 이름 보강 — UNIT_KO에 없는 정찰 유닛(일꾼·오버로드). UNIT_KO에 넣으면 통계
  *  도넛·Top5까지 일꾼이 섞이므로(replayBuildMix가 그 표로 거른다) 여기서만 얹는다. */
 const SCOUT_KO: Record<string, string> = {
@@ -496,6 +497,58 @@ export default function ReplayMotionPlayer({
     return m;
   }, [motion]);
 
+  /* 부대 규모(지적: 말도 안 되게 부풀려진다 — 클릭 수로 세고 있었다) — 완성으로 센다.
+     그 유닛을 뽑는 건물 수가 슬롯이고(저그는 해처리당 라바 3), 클릭이 와도 슬롯 대기가
+     두 판 분량을 넘으면 스팸 클릭으로 보고 버린다. 표시 규모 = 최근 3분의 완성 수. */
+  const completionsByRaw = useMemo(() => {
+    const m = new Map<string, number[]>();
+    for (const p of motion.players) {
+      const done: number[] = [];
+      const producersAt = (types: string[], atSec: number): number => {
+        let n = 0;
+        for (let i = 0; i < motion.builds.length; i += 1) {
+          const [bs, bx, by, bu, br, bg] = motion.builds[i];
+          if (br !== p.raw || !types.includes(bu)) continue;
+          if (bs + (BUILD_SEC[bu] ?? 30) > atSec) continue;
+          if ((bg ?? 0) > 0 && atSec >= (bg ?? 0)) continue;
+          // 같은 자리에 뒤 건물이 있으면(해처리→레어) 이건 옛 껍데기다.
+          let dup = false;
+          for (let j = 0; j < motion.builds.length; j += 1) {
+            if (j === i) continue;
+            const [s2, x2, y2, u2, r2] = motion.builds[j];
+            if (r2 === p.raw && s2 > bs && s2 <= atSec && types.includes(u2)
+              && Math.hypot(x2 - bx, y2 - by) <= 1.5) { dup = true; break; }
+          }
+          if (!dup) n += 1;
+        }
+        return n;
+      };
+      for (const [unit, secs] of Object.entries(p.prod ?? {})) {
+        if (SCOUT_KO[unit]) continue;
+        const producers = PRODUCER_OF[unit];
+        if (!producers) continue;
+        const dur = UNIT_SEC[unit] ?? 20;
+        const larva = producers.includes("Hatchery");
+        const slotFree: number[] = [];
+        for (const cmdSec of secs) {
+          const cap = Math.max(1, producersAt(producers, cmdSec) * (larva ? 3 : 1));
+          while (slotFree.length < cap) slotFree.push(0);
+          let bi = 0;
+          for (let k = 1; k < Math.min(slotFree.length, cap); k += 1) {
+            if (slotFree[k] < slotFree[bi]) bi = k;
+          }
+          if (slotFree[bi] > cmdSec + dur * 2) continue;
+          const start = Math.max(cmdSec, slotFree[bi]);
+          slotFree[bi] = start + dur;
+          done.push(start + dur);
+        }
+      }
+      done.sort((a, b) => a - b);
+      m.set(p.raw, done);
+    }
+    return m;
+  }, [motion]);
+
   /* 본진 건물(확장 포함)의 자리 — 채굴 일꾼이 오갈 목적지다(지적: 자원 지대가 기준이고,
      거기서 가장 가까운 본진 건물로 왔다 갔다). 커맨드·넥서스·해처리 계열이 대상이다. */
   const halls = useMemo(() => motion.builds
@@ -518,7 +571,6 @@ export default function ReplayMotionPlayer({
             이름은 하나만 적고 나머지는 점(지적: 겹치면 안 보인다). 긴 이름은 폰트를 한
             단계 줄인다. 생산·연구 중이면 심장처럼 뛴다(요청). */}
         {(() => {
-          const shownNames: { x: number; y: number; unit: string }[] = [];
           return motion.builds.map(([sec, x, y, unit, raw, gone], i) => {
             if (sec > t) return null;
             const goneAt = gone ?? 0;
@@ -544,17 +596,12 @@ export default function ReplayMotionPlayer({
             const activeBuild = !razed && (producing || researching
               || t - sec <= (BUILD_SEC[unit] ?? 30) + BUILD_LABEL_TAIL_SEC);
             const name = BUILDING_KO[unit] ?? UNIT_KO[unit];
-            // 겹침 정리 — 비활성 이름은 같은 종류가 5타일 안에 이미 적혀 있으면 점으로.
+            /* 비활성이면 무조건 도형이다(지적: 서플라이·파일런·포토·터렛이 영영 안 변했다 —
+               "겹치지만 않으면 이름 상시 노출"이던 옛 규칙을 걷었다). */
             let text: string;
             if (razed) text = "✕";
-            else if (!name) text = DEFENSE_BUILDINGS.has(unit) ? "▲" : "▪";
-            else if (activeBuild) text = name;
-            else if (shownNames.some((sn) => sn.unit === unit && Math.hypot(sn.x - x, sn.y - y) <= 5)) {
-              text = DEFENSE_BUILDINGS.has(unit) ? "▲" : "▪";
-            } else {
-              shownNames.push({ x, y, unit });
-              text = name;
-            }
+            else if (activeBuild && name) text = name;
+            else text = DEFENSE_BUILDINGS.has(unit) ? "▲" : "▪";
             return (
               <span
                 key={`b-${i}`}
@@ -747,10 +794,11 @@ export default function ReplayMotionPlayer({
           /* 겉모습 규칙(요청) — 유닛은 동그라미가 기본이고, 커맨드를 받았거나 이동 중일
              때만 이름+수로 바뀐다(나중에 이미지가 이 자리를 물려받는다). 크기는 규모의
              제곱근(요청: 뭉친 병력은 크기로 수를 표현). */
+          // 규모 = 최근 3분에 '완성된' 유닛 수(지적: 클릭 수는 부풀려진다).
           let size = 0;
-          for (const [sec, n] of p.size ?? []) {
-            if (sec > t) break;
-            size = n;
+          for (const d of completionsByRaw.get(p.raw) ?? []) {
+            if (d > t) break;
+            if (t - d <= 180) size += 1;
           }
           const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC;
           const showName = activeNow && !!unit && (size >= 1 || !!SCOUT_KO[unit]);
