@@ -634,7 +634,7 @@ const TITLES: Title[] = [
   /* (삭제) 브루들링 저격수 · 눈을 멀게 하는 자(옵티컬 플레어) · 허깨비 부대장(할루시네이션)
      — 요청으로 뺐다. 셋 다 쓰기 어려운 마법이긴 한데, 그 한 번이 판을 가르는 그림까지는
      아니라 이름만 요란해진다. */
-  { ...tactic("헬프 퀸", ["ally-help"]), minPlaysShare: 0.35 },
+  { ...tactic("헬프 퀸", ["ally-help"]), minPlaysShare: 0.5 },
   /* 동맹의 수호자 → 동맹을 지키는 포탑(요청) — 무엇으로 지켰는지가 이름에 들어가야
      "아군 기지에 포토를 깔아 줬다"는 그 그림이 그대로 읽힌다. '수호자'는 어느 수에나
      붙을 수 있는 말이라 정작 이 칭호가 센 것이 안 보였다. */
@@ -663,7 +663,7 @@ const TITLES: Title[] = [
        판이라야 한다. */
     ...tactic("폭탄드랍의 여왕", ["dropship", "shuttle", "zerg-drop", "templar-drop", "shuttle-reaver"], 1),
     race: undefined,
-    minPlaysShare: 0.05,
+    minPlaysShare: 0.1,
   },
 
   /* ── 운영(요청: 전략운영은 가중치를 좀 높여도 된다) ─────────────────────────
@@ -686,15 +686,15 @@ const TITLES: Title[] = [
      열쇠를 아우르는 말로 덮는다(tactic이 지어 주는 이름은 첫 열쇠 것뿐이다). */
   // 이름은 여신·여왕 계열로 통일(요청) — 메카닉 사령관에서 바꿨다.
   { ...tactic("메카닉의 여왕", ["mech", "center-tank", "side-tank"]),
-    why: "메카닉·탱크 조이기", minPlaysShare: 0.2, battle: true },
+    why: "메카닉·탱크 조이기", minPlaysShare: 0.3, battle: true },
   /* 과학의 여왕(요청: 신규 과학전 — 여신은 전설급에만) — 베슬을 둘 이상 띄우고 이레디·EMP·매트릭스를 실제로
      뿌린 판이다. 판정은 replayTactics의 vessel. */
-  { ...tactic("과학전의 퀸", ["vessel"]), minPlaysShare: 0.15, vsWins: true, battle: true },
+  { ...tactic("과학전의 퀸", ["vessel"]), minPlaysShare: 0.1, vsWins: true, battle: true },
   /* 발키리와 배틀은 따로 두 칭호다(요청: 통합했다가 이름을 따로 받으며 갈랐다) — 발키리는
      제공권 싸움이고 배틀은 끝판 한 방이라 그림이 다르다. */
   // 이름 확정(요청) — 발키리는 그 자체가 여전사라 이름이 곧 그림이다.
   { ...tactic("여전사 발키리", ["valkyrie"]), minPlaysShare: 0.15, vsWins: true, battle: true },
-  { ...tactic("우주전함 퀸", ["bc"]), minPlaysShare: 0.1, vsWins: true, battle: true },
+  { ...tactic("우주전함 퀸", ["bc"]), minPlaysShare: 0.05, vsWins: true, battle: true },
   /* 목동의 여왕(요청: 목동저그 변경·상향) — 다크스웜을 실제로 깔고 그 아래로 저글링·럴커·
      울트라 중 하나를 몰아넣은 판이다(지적: 스웜에는 저글링만이 아니라 럴커·울트라도 쓴다).
      판정은 replayTactics의 moka(개편). 자막이 짚은 판만 세고 서버가 이긴 판만 세므로
@@ -804,7 +804,7 @@ const TITLES: Title[] = [
      race를 지우는 이유: 갈래가 두 종족에 걸쳐 있어(질럿·저글링…) 분모는 전체 판수라야 한다.
      tactic()은 첫 열쇠의 종족(프로토스)을 그대로 붙이므로 여기서 걷는다. */
   { ...tactic("초반의 여왕", ["zealot-rush", "zling-rush", "duel-rush", "cannon-rush", "sunken-rush", "sneak-rax"]),
-    race: undefined, why: "초반 러시", minPlaysShare: 0.25 },
+    race: undefined, why: "초반 러시", minPlaysShare: 0.35 },
   /* 정찰(요청: 초반 정찰 열심히 한 사람 — 좋은 뜻이라 3점대) — 옵저버를 넉넉히 띄웠거나,
      오버로드를 퍼뜨렸거나, 스캔으로 여기저기 들여다본 판이다. 남의 살림을 먼저 보고 제 수를
      고르는 일이라, 눈에 안 띄면서 판을 가장 크게 바꾸는 습관이다. */
@@ -817,7 +817,7 @@ const TITLES: Title[] = [
      명령 좌표로 짚는다(replaySummary의 WORKER_SCOUT_SEC). 오버로드와 한 열쇠인 까닭은
      둘 다 '미리 보고 시작한다'는 같은 습관이라서다. */
   // (삭제·요청) 부지런한 정찰 퀸(vision) — 초반 정찰. 전장을 살피는 눈만 남는다.
-  { ...tactic("전장을 살피는 눈", ["vision-eye"]), minPlaysShare: 0.5 },
+  { ...tactic("전장을 살피는 눈", ["vision-eye"]), minPlaysShare: 0.8 },
   /* (삭제) 맞러시 승부사(duel-rush) — 요청. 맞러시는 둘이 함께 만든 장면이라 한 사람의
      수라고 하기 어렵다. */
   /* 협공을 다시 넣는다(요청: 공격에 열심히 참여한다는 좋은 뜻으로) — 한때 "협공의 선봉"으로 뺐던 자리다. 그때 뺀
@@ -856,7 +856,7 @@ const TITLES: Title[] = [
   /* 역전의 아이콘(요청, 점수 높은 축) — 자막의 '재기'(revival)는 살림이 무너졌다가 다시
      일어난 판이다. 전술은 이긴 판만 세므로(서버의 _tactic_counts) 그 판은 곧 역전승이다:
      무너진 뒤에 일어나 이겼다는 말이라, 이 표에서 흔치 않은 이야기다. */
-  { ...tactic("역전의 명수", ["revival"]), minPlaysShare: 0.4 },
+  { ...tactic("역전의 명수", ["revival"]), minPlaysShare: 0.6 },
   /* 도박 퀸(요청: 도박적인 전술로 이긴 경우) — 자막의 '올인'은 뒤를 안 남기고 한 번에 건
      판이다. 전술은 이긴 판만 세므로(서버의 _tactic_counts) 여기 쌓이는 수는 곧 '건 것이
      통한 판'이다. 지고도 세면 그건 도박이 아니라 그냥 무너진 판이라 뜻이 갈린다. */
@@ -866,7 +866,7 @@ const TITLES: Title[] = [
   /* 3 → 8%(요청) — 막아 낸 판은 이 표에서 손꼽히게 자주 잡히는 자막이다(한 번 밀려오면
      그 판에 여러 번 서는 일도 있다). 3%로 두니 웬만한 사람은 다 걸려 "방어를 잘한다"는
      말이 아무도 안 가리켰다. 열 판에 한 판 가까이 막아 냈어야 그 사람의 색이다. */
-  { ...tactic("철벽 퀸", ["hold-off"]), minPlaysShare: 0.1 },
+  { ...tactic("철벽 퀸", ["hold-off"]), minPlaysShare: 0.2 },
   /* (삭제) 받아치기의 정석(counter) — 요청. 역공은 상대가 들이친 뒤에 따라오는 대목이라
      그 판의 흐름이지 그 사람의 색이 아니다. */
   /* (삭제) 벽을 부수는 자(breakthrough) — 요청. */
@@ -922,7 +922,7 @@ const TITLES: Title[] = [
      부르면 같은 기록이 그 사람의 끈기가 된다. 져도 센다(COUNTED_EVEN_IF_LOST) — 밀린 뒤의
      이야기라 이긴 판만 보면 영영 안 잡힌다. */
   /* 에픽으로 올렸다(요청) — 본진을 잃고도 판을 이어 간 이야기라 곁가지보다는 위다. */
-  { ...tactic("불사조", ["lodging", "relocate"]), why: "본진 밖 생존(이사·셋방살이)", minPlaysShare: 0.15, weight: 3 },
+  { ...tactic("불사조", ["lodging", "relocate"]), why: "본진 밖 생존(이사·셋방살이)", minPlaysShare: 0.2, weight: 3 },
   /* (삭제) 건물 띄우기(lift-off)로 짓던 "공중부양 마스터" — 뺐다(지적). 이 키는 자리를
      다 내주고 건물만 띄워 쫓겨 다닌 대목이라, 버틴 이야기로 넣었지만 칭호로 굳으면
      "집을 잃은 사람"이라는 딱지로 읽힌다. 자막에서 한 번 지나가는 말과, 이름 아래
