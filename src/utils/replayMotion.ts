@@ -19,6 +19,14 @@ const TRACK_CAP = 400;
 const SAME_SPOT_TILES = 3;
 /** 부대 이름표가 너무 촐싹대지 않게, 우세 유닛이 바뀌어도 이만큼은 지나야 갈아 준다(초). */
 const UNIT_HOLD_SEC = 10;
+/** 일꾼 수의 버킷(초) — 매 마리마다 점을 찍으면 트랙만 굵어진다. */
+const WORKER_STEP_SEC = 15;
+const WORKER_UNITS = ["SCV", "Probe", "Drone"];
+/* 건물 무너짐 어림(요청) — 상대의 공격 명령이 건물 반경(타일) 안에서 창(초) 동안 이만큼
+   몰리면, 그 창의 끝을 무너진 때로 본다. 리플레이에 파괴가 안 남아 명령 밀도로 어림한다. */
+const RAZE_RADIUS = 6;
+const RAZE_WINDOW_SEC = 30;
+const RAZE_MIN_ORDERS = 12;
 
 /** 한 사람의 자취 — 원본 게임 아이디(raw)로 부른다(beats와 같은 규칙). */
 export interface MotionTrack {
@@ -27,14 +35,19 @@ export interface MotionTrack {
   pts: [number, number, number][];
   /** [초, 유닛 영문명] — 그때까지 가장 많이 뽑은 전투 유닛이 바뀐 순간들(이름표 재료). */
   units: [number, string][];
+  /** [초, 누적 일꾼 수] — 자원 캐는 모습의 재료(요청). 생산 커맨드 누적이라 죽은 일꾼은
+   *  못 뺀다(리플레이에 죽음이 없다) — "여태 뽑은 일꾼"으로 읽어야 한다. */
+  workers: [number, number][];
 }
 
 export interface SummaryMotion {
   v: 1;
   step: number;
   players: MotionTrack[];
-  /** [초, x, y, 건물 영문명, raw] — 건설 커맨드는 자리·시각이 정확하다. */
-  builds: [number, number, number, string, string][];
+  /** [초, x, y, 건물 영문명, raw, 무너진 초(0이면 살아 있음)] — 자리·시각은 건설 커맨드
+   *  그대로 정확하고, 무너짐만 어림이다(요청: 파괴 파악) — 상대의 공격 명령이 그 자리에
+   *  몰린 창의 끝을 무너진 때로 본다. */
+  builds: [number, number, number, string, string, number][];
   /** [초, x, y, 기술 영문명, raw] — 좌표가 남는 마법(스톰·스웜·리콜…). */
   casts: [number, number, number, string, string][];
 }
@@ -93,6 +106,44 @@ function unitTimeline(unitFrames: Record<string, number[]>): [number, string][] 
   return out;
 }
 
+/** 누적 일꾼 수의 변천 — WORKER_STEP_SEC 버킷 끝의 값만 남긴다. */
+function workerTimeline(unitFrames: Record<string, number[]>): [number, number][] {
+  const frames = WORKER_UNITS.flatMap((u) => unitFrames[u] ?? []).sort((a, b) => a - b);
+  if (frames.length === 0) return [];
+  const out: [number, number][] = [];
+  let n = 0;
+  let bucket = -1;
+  for (const f of frames) {
+    n += 1;
+    const sec = f * SECONDS_PER_FRAME;
+    const b = Math.floor(sec / WORKER_STEP_SEC);
+    if (b !== bucket) {
+      bucket = b;
+      out.push([Math.round(sec), n]);
+    } else {
+      out[out.length - 1] = [out[out.length - 1][0], n];
+    }
+  }
+  return out;
+}
+
+/** 건물이 무너진 때의 어림 — 지은 뒤 상대 공격 명령이 그 자리에 몰린 첫 창의 끝(초).
+ *  안 무너졌으면 0. */
+function razedAt(
+  builtSec: number, x: number, y: number,
+  foeAttacks: { sec: number; x: number; y: number }[],
+): number {
+  const near = foeAttacks.filter(
+    (o) => o.sec > builtSec && Math.hypot(o.x - x, o.y - y) <= RAZE_RADIUS,
+  );
+  for (let i = 0; i < near.length; i += 1) {
+    let j = i;
+    while (j + 1 < near.length && near[j + 1].sec - near[i].sec <= RAZE_WINDOW_SEC) j += 1;
+    if (j - i + 1 >= RAZE_MIN_ORDERS) return Math.round(near[j].sec);
+  }
+  return 0;
+}
+
 /** 게임 하나의 모션 트랙 — 좌표를 못 읽은 리플레이(옛 포맷)는 null(연속 재생은 그 판만 쉰다). */
 export function motionOf(replay: ParsedReplay): SummaryMotion | null {
   const players = replay.players.filter((p) => !p.isComputer && p.signals);
@@ -101,15 +152,36 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
   const tracks: MotionTrack[] = [];
   const builds: SummaryMotion["builds"] = [];
   const casts: SummaryMotion["casts"] = [];
+  /* 팀별 공격 명령 — 건물 무너짐 어림의 재료. 한 번만 모아 두고 건물마다 훑는다. */
+  const attacksByTeam = new Map<number, { sec: number; x: number; y: number }[]>();
+  for (const p of players) {
+    const list = attacksByTeam.get(p.team) ?? [];
+    for (const o of p.signals!.orderPositions ?? []) {
+      if (o.kind !== "attack" || o.by === "Building") continue;
+      list.push({ sec: o.frame * SECONDS_PER_FRAME, x: o.x, y: o.y });
+    }
+    attacksByTeam.set(p.team, list);
+  }
+  for (const list of attacksByTeam.values()) list.sort((a, b) => a.sec - b.sec);
+
   for (const p of players) {
     const sg = p.signals!;
     const pts = trackOf(sg.orderPositions ?? []);
     const units = unitTimeline(sg.unitFrames ?? {});
-    if (pts.length > 0 || units.length > 0) tracks.push({ raw: p.rawName, pts, units });
+    const workers = workerTimeline(sg.unitFrames ?? {});
+    if (pts.length > 0 || units.length > 0 || workers.length > 0) {
+      tracks.push({ raw: p.rawName, pts, units, workers });
+    }
+    const foeAttacks = [...attacksByTeam.entries()]
+      .filter(([team]) => team !== p.team)
+      .flatMap(([, list]) => list)
+      .sort((a, b) => a.sec - b.sec);
     for (const b of sg.buildPositions ?? []) {
       if (b.frame === null) continue; // 시각을 모르는 건설은 시간축에 못 세운다.
+      const builtSec = Math.round(b.frame * SECONDS_PER_FRAME);
       builds.push([
-        Math.round(b.frame * SECONDS_PER_FRAME), Math.round(b.x), Math.round(b.y), b.unit, p.rawName,
+        builtSec, Math.round(b.x), Math.round(b.y), b.unit, p.rawName,
+        razedAt(builtSec, b.x, b.y, foeAttacks),
       ]);
     }
     for (const c of sg.castPositions ?? []) {

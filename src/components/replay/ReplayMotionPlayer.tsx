@@ -158,7 +158,11 @@ export default function ReplayMotionPlayer({
     };
   }, [playing, active, speed, total]);
 
-  const buildsNow = motion.builds.filter((b) => b[0] <= t);
+  /* 무너진 건물(어림)은 그 시각 뒤로 그리지 않는다 — 무너진 직후 몇 초만 ✕로 말한다. */
+  const buildsNow = motion.builds.filter((b) => {
+    const gone = b[5] ?? 0;
+    return b[0] <= t && (gone === 0 || t < gone + 6);
+  });
   const castsNow = motion.casts.filter((c) => c[0] <= t && t - c[0] <= CAST_HOLD_SEC);
 
   return (
@@ -168,10 +172,12 @@ export default function ReplayMotionPlayer({
           ? <img className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`} />
           : <div className="scr-motion-canvas scr-motion-canvas-blank" />}
 
-        {/* 건물 — 자리·시각이 정확한 유일한 층이다. 갓 지은 것만 이름을 달고, 지나면 점만. */}
-        {buildsNow.map(([sec, x, y, unit, raw], i) => {
+        {/* 건물 — 자리·시각이 정확한 유일한 층이다. 갓 지은 것만 이름을 달고, 지나면 점만.
+            무너진(어림) 건물은 ✕를 잠깐 보이고 사라진다(요청: 파괴 파악). */}
+        {buildsNow.map(([sec, x, y, unit, raw, gone], i) => {
           const team = teamOfRaw(raw);
-          const freshBuild = t - sec <= BUILD_LABEL_SEC;
+          const razed = (gone ?? 0) > 0 && t >= (gone ?? 0);
+          const freshBuild = !razed && t - sec <= BUILD_LABEL_SEC;
           return (
             <span
               key={`b-${i}`}
@@ -179,30 +185,43 @@ export default function ReplayMotionPlayer({
                 "scr-motion-build",
                 team === 2 ? "scr-motion-team2" : "scr-motion-team1",
                 freshBuild && "scr-motion-build-fresh",
+                razed && "scr-motion-build-razed",
               )}
               style={{ left: pct(x, grid.width), top: pct(y, grid.height) }}
             >
               {/* 한글명만 적는다(요청) — 이름을 모르는 건물은 점으로만. */}
-              {freshBuild ? (UNIT_KO[unit] ?? "▪") : "▪"}
+              {razed ? "✕" : freshBuild ? (UNIT_KO[unit] ?? "▪") : "▪"}
             </span>
           );
         })}
 
-        {/* 본진 — 스냅 미니맵과 같은 표시(아바타+이름), 늘 떠 있다. */}
-        {bases.map((m) => (
-          <span
-            key={m.key}
-            className={cx("scr-motion-base", m.ghost && "scr-motion-base-ghost")}
-            style={{ left: pct(m.x, grid.width), top: pct(m.y, grid.height) }}
-          >
-            <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={16} />
-            {m.withName && (
-              <span className={cx("scr-motion-base-name", m.team === 2 ? "scr-motion-team2" : "scr-motion-team1")}>
-                {m.name}
-              </span>
-            )}
-          </span>
-        ))}
+        {/* 본진 — 스냅 미니맵과 같은 표시(아바타+이름), 늘 떠 있다. 그 아래에 자원 캐는
+            일꾼(요청) — 여태 뽑은 일꾼 수가 곡괭이질하듯 잘게 흔들린다. */}
+        {bases.map((m) => {
+          const track = motion.players.find((p) => p.raw === m.key);
+          let workerN = 0;
+          for (const [sec, n] of track?.workers ?? []) {
+            if (sec > t) break;
+            workerN = n;
+          }
+          return (
+            <span
+              key={m.key}
+              className={cx("scr-motion-base", m.ghost && "scr-motion-base-ghost")}
+              style={{ left: pct(m.x, grid.width), top: pct(m.y, grid.height) }}
+            >
+              <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={16} />
+              {m.withName && (
+                <span className={cx("scr-motion-base-name", m.team === 2 ? "scr-motion-team2" : "scr-motion-team1")}>
+                  {m.name}
+                </span>
+              )}
+              {m.withName && workerN > 0 && (
+                <span className="scr-motion-workers">일꾼 {workerN}</span>
+              )}
+            </span>
+          );
+        })}
 
         {/* 부대 자취 — 명령 좌표 기반 어림(모듈 주석). 우세 유닛 이름이 팀 색으로 흐른다. */}
         {motion.players.map((p) => {
