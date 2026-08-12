@@ -6,6 +6,7 @@ import { UNIT_KO, TECH_KO } from "../../utils/replaySummaryText";
 import type { ReplayMapGrid } from "../../utils/replayParser";
 import { isAirUnit, type SummaryMotion } from "../../utils/replayMotion";
 import { DEFENSE_BUILDINGS } from "../../utils/replayBuildMix";
+import { terrainOf, groundPath, type TerrainGrid } from "../../utils/minimapTerrain";
 import type { MinimapMarker } from "./ReplayMinimap";
 
 /* ── 연속 재생 플레이어(요청: 장면 선정 없이 전부 연속으로, 이미지 대신 텍스트로) ──────
@@ -133,22 +134,71 @@ export default function ReplayMotionPlayer({
 
   const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(true);
-  /* 색 모드(요청) — 팀색(두 색)과 개인색(게임 내 유저 컬러) 사이를 오간다. 유저 컬러는
-     어느 모드든 테두리에 입힌다(요청). 색을 못 읽은 옛 기록은 개인색 모드여도 팀색으로. */
-  const [colorMode, setColorMode] = useState<"team" | "personal">("team");
+  /* 배지 색 규칙(요청) — 배경은 팀 컬러, 테두리는 개인(게임 내) 컬러, 글자는 배경과
+     대비되는 흰/검이다. 역할이 고정되면서 팀색/개인색 토글은 걷었다. */
   const colorByRaw = useMemo(() => {
     const m = new Map<string, string>();
     for (const p of motion.players) if (p.color) m.set(p.raw, p.color);
     return m;
   }, [motion]);
-  const chipStyle = (raw: string): React.CSSProperties => {
-    const c = colorByRaw.get(raw);
-    if (!c) return {};
+  const chipStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => {
+    const bg = team === 2 ? "#c8455a" : "#2b6fbd";
+    // 배경 밝기로 글자색을 고른다(요청: 흰색이나 검정, 잘 보이는 걸로).
+    const lum = team === 2 ? 0.299 * 200 + 0.587 * 69 + 0.114 * 90 : 0.299 * 43 + 0.587 * 111 + 0.114 * 189;
     return {
-      borderColor: c,
-      ...(colorMode === "personal" ? { color: c } : {}),
+      background: bg,
+      color: lum > 150 ? "#111" : "#fff",
+      borderColor: colorByRaw.get(raw) ?? "rgba(255, 255, 255, 0.4)",
     };
   };
+
+  /* 지형(요청: 미니맵 이미지 분석) — 그림에서 걷는 땅 격자를 만들어, 지상 부대의 자취를
+     그 위의 경로로 편다. 분석 전·실패 시에는 기존 곡선 폴백. */
+  const [terrain, setTerrain] = useState<TerrainGrid | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!grid.image) { setTerrain(null); return undefined; }
+    terrainOf(grid.image, grid.width, grid.height)
+      .then((tg) => { if (!cancelled) setTerrain(tg); });
+    return () => { cancelled = true; };
+  }, [grid.image, grid.width, grid.height]);
+
+  /* 지상 구간을 지형 경로로 편 자취 — 시간은 경로 길이에 비례해 나눠 얹는다. 공중 유닛
+     구간·길이 없는 구간은 원본 그대로다. */
+  const refinedPts = useMemo(() => motion.players.map((p) => {
+    if (!terrain) return p.pts;
+    const out: [number, number, number][] = [];
+    for (let i = 0; i < p.pts.length; i += 1) {
+      const cur = p.pts[i];
+      if (i === 0) { out.push(cur); continue; }
+      const prev = p.pts[i - 1];
+      const unit = unitAt(p.units, prev[0]);
+      if (cur[0] - prev[0] > LERP_MAX_GAP_SEC || (unit !== "" && isAirUnit(unit))) {
+        out.push(cur);
+        continue;
+      }
+      const path = groundPath(terrain, prev[1], prev[2], cur[1], cur[2]);
+      if (!path || path.length < 2) { out.push(cur); continue; }
+      let total = 0;
+      const lens: number[] = [];
+      let px = prev[1];
+      let py = prev[2];
+      for (const [x, y] of path) {
+        const d = Math.hypot(x - px, y - py);
+        lens.push(d);
+        total += d;
+        px = x;
+        py = y;
+      }
+      let acc = 0;
+      for (let j = 0; j < path.length; j += 1) {
+        acc += lens[j];
+        const sec = prev[0] + (cur[0] - prev[0]) * (total > 0 ? acc / total : 1);
+        out.push([sec, path[j][0], path[j][1]]);
+      }
+    }
+    return out;
+  }), [motion, terrain]);
   // 기본은 ×2다(요청) — 처음부터 빨리 감으면 초반 정찰·빌드가 통째로 지나가 버린다.
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(2);
   const [done, setDone] = useState(false);
@@ -236,8 +286,7 @@ export default function ReplayMotionPlayer({
               )}
               style={{
                 left: pct(x, grid.width), top: pct(y, grid.height),
-                ...(freshBuild ? chipStyle(raw) : colorMode === "personal" && colorByRaw.get(raw)
-                  ? { color: colorByRaw.get(raw) } : {}),
+                ...(freshBuild ? chipStyle(raw, team) : {}),
               }}
             >
               {/* 겉모습 규칙(요청) — 건물 네모·방어건물 세모, 지어지는 동안만 이름(한글명
@@ -268,7 +317,7 @@ export default function ReplayMotionPlayer({
               {m.withName && (
                 <span
                   className={cx("scr-motion-base-name", "scr-motion-chip", m.team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
-                  style={chipStyle(m.key)}
+                  style={chipStyle(m.key, m.team)}
                 >
                   {m.name}
                 </span>
@@ -281,13 +330,21 @@ export default function ReplayMotionPlayer({
         })}
 
         {/* 부대 자취 — 명령 좌표 기반 어림(모듈 주석). 우세 유닛 이름이 팀 색으로 흐른다. */}
-        {motion.players.map((p) => {
+        {motion.players.map((p, pi) => {
           const unit = unitAt(p.units, t);
+          /* 지형 경로가 있으면 그 점들을 그대로 잇고(곡선 불필요), 없으면 가운데로 휘는
+             곡선 폴백이다. 활동 판정(sinceLast)은 원본 명령 점으로 따로 잰다 — 경로로 편
+             점들은 촘촘해서 그걸로 재면 늘 '방금 명령받음'이 된다. */
           const pos = posAt(
-            p.pts, t,
-            isAirUnit(unit) ? null : { x: grid.width / 2, y: grid.height / 2 },
+            refinedPts[pi], t,
+            terrain || isAirUnit(unit) ? null : { x: grid.width / 2, y: grid.height / 2 },
           );
           if (!pos) return null;
+          let sinceCmd = Infinity;
+          for (const [sec] of p.pts) {
+            if (sec > t) break;
+            sinceCmd = t - sec;
+          }
           const team = teamOfRaw(p.raw);
           /* 겉모습 규칙(요청) — 유닛은 동그라미가 기본이고, 커맨드를 받았거나 이동 중일
              때만 이름+수로 바뀐다(나중에 이미지가 이 자리를 물려받는다). 크기는 규모의
@@ -297,7 +354,7 @@ export default function ReplayMotionPlayer({
             if (sec > t) break;
             size = n;
           }
-          const activeNow = pos.moving || pos.sinceLast <= ACTIVE_HOLD_SEC;
+          const activeNow = pos.moving || sinceCmd <= ACTIVE_HOLD_SEC;
           const showName = activeNow && size >= 1 && !!unit;
           const fontPx = Math.min(16, 8 + Math.round(Math.sqrt(size) * 1.6));
           return (
@@ -312,7 +369,7 @@ export default function ReplayMotionPlayer({
               style={{
                 left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
                 fontSize: showName ? fontPx : Math.min(14, 7 + Math.round(Math.sqrt(size))),
-                ...(showName ? chipStyle(p.raw) : {}),
+                ...(showName ? chipStyle(p.raw, team) : {}),
               }}
             >
               {/* 수도 함께 적는다(요청) — "질럿 12" 꼴. */}
@@ -328,7 +385,7 @@ export default function ReplayMotionPlayer({
             <span
               key={`c-${i}`}
               className={cx("scr-motion-cast", "scr-motion-chip", teamOfRaw(raw) === 2 ? "scr-motion-team2" : "scr-motion-team1")}
-              style={{ left: pct(x, grid.width), top: pct(y, grid.height), ...chipStyle(raw) }}
+              style={{ left: pct(x, grid.width), top: pct(y, grid.height), ...chipStyle(raw, teamOfRaw(raw)) }}
             >
               {TECH_KO[tech]}
             </span>
@@ -382,15 +439,6 @@ export default function ReplayMotionPlayer({
               ×{v}
             </button>
           ))}
-          <button
-            type="button"
-            className={cx("scr-motion-btn", "scr-motion-colorbtn")}
-            onClick={() => setColorMode((v) => (v === "team" ? "personal" : "team"))}
-            aria-label="색 기준 전환"
-            title="색 기준 전환"
-          >
-            {colorMode === "team" ? "팀색" : "개인색"}
-          </button>
         </span>
         {/* 옛 스냅 타임라인의 재생 버튼과 같은 꼴(요청) — 46px 완전 원, 속 채운 삼각형. */}
         <button
