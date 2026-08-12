@@ -18,19 +18,17 @@ export interface TerrainGrid {
   walk: Uint8Array;
 }
 
-/** 가로 격자 수 — 세로는 그림 비율을 따른다. 64면 128×128 맵에서 한 칸이 2타일이다. */
-const GRID_W = 64;
+/** 가로 격자 수 — 세로는 그림 비율을 따른다. 96이면 128×128 맵에서 한 칸이 1.3타일쯤 —
+ *  64에서 올렸다(지적: 벽을 전혀 못 잡는다 — 절벽선은 한두 타일 굵기라 굵은 격자에서는
+ *  이웃 땅과 섞여 평균색이 밝아진다). */
+const GRID_W = 96;
+/** 상대 명암의 창 반지름(칸) — 절벽·벽 판정의 "주변"이 이만큼이다. */
+const LOCAL_R = 4;
+/** 주변 평균의 이 비율보다 어두우면 절벽·벽으로 본다(지적: 절대 밝기만으론 벽을 못 잡는다
+ *  — 벽은 검은 게 아니라 제 주변보다 어두운 능선이다). */
+const RIDGE_RATIO = 0.68;
 
 const cache = new Map<string, Promise<TerrainGrid | null>>();
-
-function classify(r: number, g: number, b: number): boolean {
-  const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-  // 우주·심연 — 스페이스 타일셋의 바깥은 거의 검다.
-  if (lum < 26) return false;
-  // 물 — 파랑이 붉음을 뚜렷이 누르는 어두운 칸(정글·황혼·얼음의 강과 바다).
-  if (b > r + 18 && b > g + 8 && lum < 110) return false;
-  return true;
-}
 
 /** 그림을 격자로 내려 읽는다 — 검수 화면(초기값)과 재생 화면(저장값 없을 때)이 함께 쓴다. */
 export async function analyzeMinimap(url: string): Promise<TerrainGrid | null> {
@@ -59,9 +57,53 @@ export async function analyzeMinimap(url: string): Promise<TerrainGrid | null> {
     // 다른 출처의 그림이라 캔버스가 오염되면(CORS) 지형 없이 간다 — 직선 폴백.
     return null;
   }
+  /* 두 겹으로 가른다(지적: 벽을 전혀 못 잡는다).
+     ① 절대 규칙 — 우주(거의 검정)와 물(파랑 우세)은 색 자체가 답이다.
+     ② 상대 규칙 — 절벽·벽·언덕 경계는 "제 주변(9×9칸)보다 뚜렷이 어두운 능선"이다.
+        절대 밝기로는 못 잡는다: 어두운 타일셋에서는 온 땅이 어둡고, 밝은 타일셋에서는
+        벽조차 밝다. 주변 평균 대비 비율이라야 타일셋을 안 탄다. */
+  const lum = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i += 1) {
+    lum[i] = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2];
+  }
+  // 가로·세로 두 번의 박스 블러로 주변 평균을 만든다 — O(w·h·r)면 96×96에 충분히 싸다.
+  const rowAvg = new Float32Array(w * h);
+  for (let y = 0; y < h; y += 1) {
+    for (let x = 0; x < w; x += 1) {
+      let sum = 0;
+      let n = 0;
+      for (let dx = -LOCAL_R; dx <= LOCAL_R; dx += 1) {
+        const nx = x + dx;
+        if (nx >= 0 && nx < w) { sum += lum[y * w + nx]; n += 1; }
+      }
+      rowAvg[y * w + x] = sum / n;
+    }
+  }
+  const localAvg = new Float32Array(w * h);
+  for (let y = 0; y < h; y += 1) {
+    for (let x = 0; x < w; x += 1) {
+      let sum = 0;
+      let n = 0;
+      for (let dy = -LOCAL_R; dy <= LOCAL_R; dy += 1) {
+        const ny = y + dy;
+        if (ny >= 0 && ny < h) { sum += rowAvg[ny * w + x]; n += 1; }
+      }
+      localAvg[y * w + x] = sum / n;
+    }
+  }
   const walk = new Uint8Array(w * h);
   for (let i = 0; i < w * h; i += 1) {
-    walk[i] = classify(data[i * 4], data[i * 4 + 1], data[i * 4 + 2]) ? 1 : 0;
+    const r = data[i * 4];
+    const g = data[i * 4 + 1];
+    const b = data[i * 4 + 2];
+    const L = lum[i];
+    // ① 절대 — 우주·심연.
+    if (L < 26) continue;
+    // ① 절대 — 물(파랑 우세).
+    if (b > r + 18 && b > g + 8 && L < 110) continue;
+    // ② 상대 — 주변보다 뚜렷이 어두운 능선(절벽·벽·언덕 경계).
+    if (L < localAvg[i] * RIDGE_RATIO) continue;
+    walk[i] = 1;
   }
   return { w, h, walk };
 }
