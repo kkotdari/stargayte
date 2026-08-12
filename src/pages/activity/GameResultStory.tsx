@@ -1715,6 +1715,7 @@ export default function GameResultStory({
         <ReplayMotionPlayer
           grid={storyMap} motion={motionData} endSec={endSecVal}
           bases={bases} teamOfRaw={teamOfRaw} active={active}
+          winnerTeam={gameResult.result === "team1" ? 1 : gameResult.result === "team2" ? 2 : undefined}
         />
       ) : (
       <ReplayMinimap

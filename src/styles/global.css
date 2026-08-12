@@ -10985,6 +10985,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-build-hall.scr-motion-build-shape { font-size: 13px; }
 /* 종족 배지(요청) — 아바타 오른쪽 어깨에. */
 .scr-motion-base-race { position: absolute; top: -3px; right: -10px; }
+/* 승리 트로피(요청) — 재생이 끝나면 이긴 편 아바타 위에 얹힌다. */
+.scr-motion-trophy {
+  position: absolute; top: -9px; left: 50%; transform: translateX(-50%);
+  font-size: 13px; animation: scr-motion-in 0.3s ease-out; pointer-events: none;
+}
 /* 범례(요청) — 도형이 뭔지 한 줄. 지도 아래 가운데, 작은 회색 글씨. */
 .scr-motion-legend {
   display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 10px;

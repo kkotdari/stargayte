@@ -82,6 +82,11 @@ export interface ReplayPlayerSignals {
    *  무너진 시점(fellFrame)·생산 급감(productionDips)·후반 주력(lateCombat)이 전부
    *  여기서 나온다. 앞쪽만 남기면 그 셋이 통째로 오판한다(pushFrame 위 주석 참고). */
   unitFrames: Record<string, number[]>;
+  /** unitFrames와 나란한 '그때 골라져 있던 유닛 번호(태그)' — 생산 커맨드는 지금 선택된
+   *  건물에게 가고, 브루드워는 건물을 한 채만 고를 수 있어 첫 태그가 곧 그 건물이다(요청:
+   *  어느 건물에서 생산 중인지). 태그↔건물 자리 대응은 리플레이에 없어서, 쓰는 쪽이
+   *  "먼저 보인 태그 = 먼저 지은 건물" 어림으로 잇는다. 선택 기록이 없으면 0. */
+  trainTags: Record<string, number[]>;
   buildingFrames: Record<string, number[]>;
   /** 건물을 지은 좌표 — 몰래 배럭/센터 포토처럼 '어디에' 지었는지가 곧 전술인 것들을
    *  판정한다. screp이 Pos를 안 내려주는 버전이면 빈 배열로 남고, 그 전술들은 그냥 안 나온다. */
@@ -437,7 +442,7 @@ function emptySignals(): ReplayPlayerSignals {
   return {
     unitCounts: {}, firstUnitFrame: {},
     buildingCounts: {}, firstBuildingFrame: {},
-    unitFrames: {}, buildingFrames: {}, buildPositions: [], orderPositions: [], hits: [],
+    unitFrames: {}, trainTags: {}, buildingFrames: {}, buildPositions: [], orderPositions: [], hits: [],
     techNames: [], upgradeNames: [], firstTechFrame: {}, firstUpgradeFrame: {},
     techUses: {}, techFrames: {}, firstTechUseFrame: {}, castPositions: [], chats: [],
     unloadCount: 0, firstUnloadFrame: null, liftOffCount: 0, firstLiftOffFrame: null,
@@ -588,6 +593,8 @@ function collectSignals(
         if (frame !== null) {
           if (s.firstUnitFrame[unit] === undefined) s.firstUnitFrame[unit] = frame;
           pushFrame(s.unitFrames, unit, frame);
+          // 그때 골라져 있던 번호(태그) — unitFrames와 짝을 맞춰 쌓는다(인터페이스 주석).
+          pushFrame(s.trainTags, unit, (sel.get(c.PlayerID) ?? [])[0] ?? 0);
         }
       }
     } else if (!wasted && cmdName && BUILD_CMD_NAMES.has(cmdName)) {

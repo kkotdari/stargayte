@@ -242,7 +242,7 @@ const fmtClock = (sec: number): string => {
 };
 
 export default function ReplayMotionPlayer({
-  grid, motion, endSec, bases, teamOfRaw, active = true,
+  grid, motion, endSec, bases, teamOfRaw, active = true, winnerTeam,
 }: {
   grid: ReplayMapGrid;
   motion: SummaryMotion;
@@ -254,6 +254,8 @@ export default function ReplayMotionPlayer({
   teamOfRaw: (raw: string) => 1 | 2 | undefined;
   /** 화면에 실제로 보이는 카드인가 — 안 보이는 카드의 시계는 세우지 않는다. */
   active?: boolean;
+  /** 이긴 편 — 재생이 끝나면 그 편 아바타에 트로피를 얹는다(요청). 무승부·미확정은 없음. */
+  winnerTeam?: 1 | 2;
   // (삭제·요청) caps — 자막 표시를 걷으면서 함께.
 }) {
   const total = useMemo(() => {
@@ -480,20 +482,51 @@ export default function ReplayMotionPlayer({
     };
   }, [playing, active, speed, total]);
 
-  /* 생산 시각 되짚기(요청: 생산할 때 건물 이름) — 사람×건물종류별로 생산 초들을 미리
-     모아, 재생 중에는 "지금 창(6초) 안에 있나"만 본다. */
+  /* 생산 시각 되짚기(요청: 생산할 때 건물 이름) — 사람×건물종류별로 [생산 초, 그때 고른
+     건물 태그]를 미리 모아, 재생 중에는 "지금 창 안에 있나"만 본다. 태그가 있으면(새
+     분석본) 그 건물 하나만 깜빡인다(요청: 어느 건물에서 생산 중인지). */
   const prodByRawType = useMemo(() => {
-    const m = new Map<string, number[]>();
+    const m = new Map<string, [number, number][]>();
     for (const p of motion.players) {
       for (const [type, units] of Object.entries(PRODUCED_BY)) {
-        const secs: number[] = [];
-        for (const u of units) for (const sec of p.prod?.[u] ?? []) secs.push(sec);
-        if (secs.length > 0) {
-          secs.sort((a, b) => a - b);
-          m.set(`${p.raw}|${type}`, secs);
+        const evs: [number, number][] = [];
+        for (const u of units) {
+          const secs = p.prod?.[u] ?? [];
+          const tags = p.ptag?.[u];
+          for (let k = 0; k < secs.length; k += 1) evs.push([secs[k], tags?.[k] ?? 0]);
+        }
+        if (evs.length > 0) {
+          evs.sort((a, b) => a[0] - b[0]);
+          m.set(`${p.raw}|${type}`, evs);
         }
       }
     }
+    return m;
+  }, [motion]);
+
+  /* 태그 → 건물 순번 어림(요청 승인) — 태그↔자리 대응은 리플레이에 없다. "먼저 보인
+     태그 = 먼저 지은 건물"로 잇는다. 저그(라바 생산)는 태그가 라바 것이라 못 쓴다. */
+  const tagOrdinals = useMemo(() => {
+    const m = new Map<string, Map<number, number>>();
+    for (const [key, evs] of prodByRawType) {
+      const type = key.slice(key.indexOf("|") + 1);
+      if (type === "Hatchery" || type === "Lair" || type === "Hive") continue;
+      const ord = new Map<number, number>();
+      for (const [, tag] of evs) if (tag > 0 && !ord.has(tag)) ord.set(tag, ord.size);
+      if (ord.size > 0) m.set(key, ord);
+    }
+    return m;
+  }, [prodByRawType]);
+  /** (임자, 건물 종류) 안에서 지은 순서 — builds 인덱스 → 순번, 그리고 그 역방향. */
+  const buildsByType = useMemo(() => {
+    const m = new Map<string, number[]>();
+    motion.builds.forEach((b, i) => {
+      const key = `${b[4]}|${b[3]}`;
+      const arr = m.get(key);
+      if (arr) arr.push(i);
+      else m.set(key, [i]);
+    });
+    for (const arr of m.values()) arr.sort((a, b) => motion.builds[a][0] - motion.builds[b][0]);
     return m;
   }, [motion]);
 
@@ -529,6 +562,21 @@ export default function ReplayMotionPlayer({
         if (!producers) continue;
         const dur = UNIT_SEC[unit] ?? 20;
         const larva = producers.includes("Hatchery");
+        const tags = larva ? undefined : p.ptag?.[unit];
+        if (tags) {
+          // 태그(=건물)마다 제 큐(요청 승인) — 어느 채에 시켰는지까지 아는 셈이다.
+          const freeByTag = new Map<number, number>();
+          for (let k = 0; k < secs.length; k += 1) {
+            const cmdSec = secs[k];
+            const tag = tags[k] ?? 0;
+            const free = freeByTag.get(tag) ?? 0;
+            if (free > cmdSec + dur * 2) continue;
+            const start = Math.max(cmdSec, free);
+            freeByTag.set(tag, start + dur);
+            done.push(start + dur);
+          }
+          continue;
+        }
         const slotFree: number[] = [];
         for (const cmdSec of secs) {
           const cap = Math.max(1, producersAt(producers, cmdSec) * (larva ? 3 : 1));
@@ -585,8 +633,16 @@ export default function ReplayMotionPlayer({
             // 짓는 동안은 반투명(요청) — 다 서면 제 농도로.
             const raising = !razed && t - sec < (BUILD_SEC[unit] ?? 30);
             const team = teamOfRaw(raw);
+            const tagOrd = tagOrdinals.get(`${raw}|${unit}`);
+            const myOrd = (buildsByType.get(`${raw}|${unit}`) ?? []).indexOf(i);
             const producing = !razed && (prodByRawType.get(`${raw}|${unit}`) ?? [])
-              .some((ps) => ps <= t && t - ps <= PROD_FLASH_SEC);
+              .some(([ps, tag]) => {
+                if (!(ps <= t && t - ps <= PROD_FLASH_SEC)) return false;
+                // 태그를 알면 그 순번의 건물만(요청) — 모르면 예전처럼 같은 종류 전부.
+                if (!tag || !tagOrd) return true;
+                const ord = tagOrd.get(tag);
+                return ord === undefined || ord === myOrd;
+              });
             // 연구 중(요청) — 이 건물에서 하는 연구가 지금 창 안에 시작돼 있나.
             const track = motion.players.find((p) => p.raw === raw);
             const hallLike = unit === "Lair" || unit === "Hive" ? "Hatchery" : unit;
@@ -644,12 +700,26 @@ export default function ReplayMotionPlayer({
             for (let si = 0; si < secs.length; si += 1) {
               const done = secs[si] + (UNIT_SEC[unit] ?? 20);
               if (t < done || t > done + FRESH_HOLD_SEC) continue;
-              // 그 시각에 서 있는 그 종류 건물들 — si로 돌려 가며 앞에 놓는다.
+              // 그 시각에 서 있는 그 종류 건물들 — 태그를 알면 그 건물, 모르면 돌려 가며.
               const cands = motion.builds.filter(([bs, , , bu, br, bg]) =>
                 br === p.raw && bs <= secs[si] && ((bg ?? 0) === 0 || secs[si] < (bg ?? 0))
                 && producers.includes(bu));
               if (cands.length === 0) continue;
-              const [, bx, by] = cands[si % cands.length];
+              let pick = cands[si % cands.length];
+              const tag = p.ptag?.[unit]?.[si] ?? 0;
+              if (tag > 0) {
+                for (const ptype of producers) {
+                  const ord = tagOrdinals.get(`${p.raw}|${ptype}`)?.get(tag);
+                  const bIdx = ord === undefined ? undefined
+                    : buildsByType.get(`${p.raw}|${ptype}`)?.[ord];
+                  const b = bIdx === undefined ? undefined : motion.builds[bIdx];
+                  if (b && b[0] <= secs[si] && ((b[5] ?? 0) === 0 || secs[si] < (b[5] ?? 0))) {
+                    pick = b;
+                    break;
+                  }
+                }
+              }
+              const [, bx, by] = pick;
               out.push(
                 <span
                   key={`fresh-${p.raw}-${unit}-${si}`}
@@ -757,6 +827,10 @@ export default function ReplayMotionPlayer({
                 </span>
                 {/* 종족 배지(요청) — 아바타 옆에. */}
                 <RaceBadge race={m.race} size={9} circleLetter className="scr-motion-base-race" />
+                {/* 재생이 끝나면 이긴 편에 트로피(요청) — 스냅의 승패 표시와 같은 자리. */}
+                {winnerTeam && m.team === winnerTeam && t >= total - 0.5 && !m.ghost && (
+                  <span className="scr-motion-trophy">🏆</span>
+                )}
               </span>
               {m.withName && (
                 <span

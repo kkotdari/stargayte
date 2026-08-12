@@ -52,6 +52,9 @@ export interface MotionTrack {
   /** 유닛 영문명 → 생산 시각(초)들 — "생산할 때 건물 이름 켜기"(요청)의 재료다. 마린이
    *  나온 순간 그 사람 배럭이 일하고 있었다는 뜻이라, 건물 종류로 되짚는다. */
   prod: Record<string, number[]>;
+  /** prod와 나란한 '그때 골라져 있던 건물 번호(태그)' — 어느 건물에서 뽑았는지의 어림
+   *  재료다(요청). 옛 분석본에는 없다 — 그때는 같은 종류가 함께 깜빡이는 폴백. */
+  ptag?: Record<string, number[]>;
   /** [초, 병력 규모] — 최근 3분 안에 뽑은 전투 유닛 수(요청: 뭉친 병력은 크기로 수를 표현).
    *  죽음을 모르니 '지금 서 있는 병력'이 아니라 '최근에 몰아 뽑은 규모'다 — 진군 직전에
    *  커지고 소강기에 줄어, 화면의 뜻(지금 움직이는 덩어리가 얼마나 큰가)과 결이 맞다. */
@@ -259,10 +262,19 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       if (frames.length === 0) continue;
       prod[unit] = frames.map((f) => Math.round(f * SECONDS_PER_FRAME));
     }
+    // 생산 태그(요청: 어느 건물인지) — prod와 길이가 맞는 것만 싣는다(어긋나면 오지목).
+    const ptag: Record<string, number[]> = {};
+    for (const [unit, tags] of Object.entries(sg.trainTags ?? {})) {
+      if (tags.length > 0 && tags.length === (sg.unitFrames?.[unit]?.length ?? 0)
+        && tags.some((tg) => tg > 0)) {
+        ptag[unit] = tags;
+      }
+    }
     if (pts.length > 0 || units.length > 0 || workers.length > 0) {
       tracks.push({
         raw: p.rawName, ...(p.color ? { color: p.color } : {}),
         ...(ups.length > 0 ? { ups } : {}), pts, units, workers, size, prod,
+        ...(Object.keys(ptag).length > 0 ? { ptag } : {}),
       });
     }
     const foeAttacks = [...attacksByTeam.entries()]
