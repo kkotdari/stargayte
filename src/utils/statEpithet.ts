@@ -34,8 +34,8 @@ const clubGames = (): number =>
    상수는 하나로 통일했다(요청) — 최근 한 달 판수의 절반. 여신·종족·맵이 다른 상수를
    쓰던 시절의 위아래는 분모가 대신 말한다: 같은 20판이라도 "전체 20판"(여신)보다
    "그 종족으로 20판"(종족 퀸)이 채우기 어렵다. 한 달 값을 못 받아 왔으면 전체×10%로. */
-// 0.5 → 0.4 → 0.45(요청: 낮췄다가 살짝 되돌림) — 월 40판 클럽에서 기준 18판.
-const MONTHLY_FLOOR_RATE = 0.45;
+// 0.5 → 0.45 → 0.3(요청) — 월 40판 클럽에서 기준 12판.
+const MONTHLY_FLOOR_RATE = 0.3;
 const floorGames = (): number => (
   clubMonthGames && clubMonthGames > 0
     ? Math.max(8, Math.round(clubMonthGames * MONTHLY_FLOOR_RATE))
