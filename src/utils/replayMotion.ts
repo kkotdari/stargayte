@@ -114,6 +114,9 @@ export interface MotionTrack {
    *  의 by)의 명령들이다. 키는 그 이름("Siege Tank"·"Bionic"·"Lurker"…). 정체가 안
    *  드러난 명령은 여전히 pts(무명 부대)다. 옛 분석본에는 없다. */
   upts?: Record<string, TrackPt[]>;
+  /** [초, x, y, 건물 태그] — 생산 건물의 랠리 포인트(지적: 갓 나온 유닛이 갑자기 사라짐).
+   *  태그는 생산 귀속(ptag)과 같은 번호라, 유닛→건물→랠리가 이어진다. 옛 분석본에는 없다. */
+  rly?: [number, number, number, number][];
   /** [초, 유닛 영문명] — 그때까지 가장 많이 뽑은 전투 유닛이 바뀐 순간들(이름표 재료). */
   units: [number, string][];
   /** [초, 누적 일꾼 수] — 자원 캐는 모습의 재료(요청). 생산 커맨드 누적이라 죽은 일꾼은
@@ -696,6 +699,9 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
         e[5] = e[5] > 0 ? Math.min(e[5], sec) : sec;
       }
     }
+    /* 랠리 포인트(지적) — 좌표·시각·건물 태그를 그대로 옮긴다. */
+    const rly: [number, number, number, number][] = (sg.rallies ?? [])
+      .map((r) => [Math.round(r.frame * SECONDS_PER_FRAME), Math.round(r.x), Math.round(r.y), r.tag]);
     /* 트랙은 여기서 싣는다 — 위 건설 걸음이 spts에 점을 더한 뒤라야, 일꾼 명령이
        하나도 없던 사람의 건설 걸음도 함께 실린다. */
     if (pts.length > 0 || spts.length > 0 || tpts.length > 0 || opts.length > 0
@@ -717,6 +723,7 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
         ...(loads.length > 0 ? { loads } : {}),
         ...(Object.keys(upts).length > 0 ? { upts } : {}),
         ...(Object.keys(ptag).length > 0 ? { ptag } : {}),
+        ...(rly.length > 0 ? { rly } : {}),
         ...(hot.length > 0 ? { hot } : {}),
       });
     }

@@ -89,6 +89,10 @@ export interface ReplayPlayerSignals {
   /** 저그 건물 변태 — [프레임, 무엇으로]. 명령에 자리가 안 실려(고른 건물이 변한다),
    *  재생이 재료 건물(해처리·크립 콜로니…)을 되짚는다(요청: 건물 변태 추적). */
   buildingMorphs: { frame: number; to: string }[];
+  /** 생산 건물의 랠리 포인트(지적: 갓 나온 유닛이 건물 옆에 있다가 갑자기 사라진다 —
+   *  실제로는 랠리로 걸어간다). 건물을 골라 둔 채 찍은 우클릭이 곧 랠리라, 그 좌표와
+   *  그때 골라져 있던 건물 번호(태그)를 남긴다. 재생은 갓 나온 유닛을 이 자리로 걷게 한다. */
+  rallies: { frame: number; x: number; y: number; tag: number }[];
   /** 유닛별 첫 생산 프레임 — "9분에 첫 캐리어" 같은 타이밍 이야기를 만들 때 쓴다. */
   firstUnitFrame: Record<string, number>;
   /** 건설·건물변태 커맨드로 센 건물별 수(확장 수, 테크 건물, 방어 건물 판정). */
@@ -472,7 +476,7 @@ const EARLY_ALL_SELECT_FRAMES = 720;
 
 function emptySignals(): ReplayPlayerSignals {
   return {
-    unitCounts: {}, firstUnitFrame: {}, lands: [], cancelBuilds: [], buildingMorphs: [],
+    unitCounts: {}, firstUnitFrame: {}, lands: [], cancelBuilds: [], buildingMorphs: [], rallies: [],
     buildingCounts: {}, firstBuildingFrame: {},
     unitFrames: {}, trainTags: {}, buildingFrames: {}, buildPositions: [], orderPositions: [], hits: [],
     techNames: [], upgradeNames: [], firstTechFrame: {}, firstUpgradeFrame: {},
@@ -892,7 +896,19 @@ function collectSignals(
     const top = [...tally].sort((a, b) => b[1] - a[1])[0];
     if (top && top[1] * 2 >= tags.length) {
       const o = out.get(pid)?.orderPositions[idx];
-      if (o) o.by = top[0];
+      if (o) {
+        o.by = top[0];
+        /* 건물을 골라 둔 채 찍은 우클릭 = 랠리(지적: 랠리 포인트 생각을 못 함) — 그
+           좌표가 곧 갓 나온 유닛이 걸어갈 자리다. 태그는 건물로 판명된 것 하나를 남긴다
+           (생산 귀속의 ptag와 같은 번호라, 재생이 유닛→건물→랠리를 이을 수 있다). */
+        if (top[0] === "Building") {
+          const bTag = tags.find((tg) => unitOfTag.get(`${pid}:${tg}`) === "Building") ?? tags[0];
+          const sig = out.get(pid);
+          if (sig && sig.rallies.length < 400) {
+            sig.rallies.push({ frame: o.frame, x: o.x, y: o.y, tag: bTag });
+          }
+        }
+      }
     }
   }
   return out;

@@ -1786,8 +1786,11 @@ export default function ReplayMotionPlayer({
           });
         })()}
 
-        {/* 갓 뽑힌 유닛(요청) — 뽑는 시간이 지나면 만든 건물 앞에 잠깐 놓인다. 같은 종류
-            건물이 여럿이면(게이트 여럿) 차례로 나눠 놓는다. */}
+        {/* 갓 뽑힌 유닛(요청) — 뽑는 시간이 지나면 만든 건물 앞에 놓이고, 그 건물에 랠리가
+            찍혀 있으면 그리로 걸어간다(지적: 랠리 포인트를 생각 못 해 건물 옆에 있다가
+            갑자기 사라졌다 — 실제로는 랠리로 걸어간 것이다). 랠리에 닿고 잠시 뒤 걷히는
+            것은 그 자리의 부대에 합류한 것으로 읽힌다. 같은 종류 건물이 여럿이면(게이트
+            여럿) 차례로 나눠 놓는다. */}
         {motion.players.flatMap((p) => {
           const team = teamOfRaw(p.raw);
           const out: React.ReactNode[] = [];
@@ -1796,7 +1799,8 @@ export default function ReplayMotionPlayer({
             if (!producers) continue;
             for (let si = 0; si < secs.length; si += 1) {
               const done = secs[si] + (UNIT_SEC[unit] ?? 20);
-              if (t < done || t > done + FRESH_HOLD_SEC) continue;
+              // 랠리까지 걷는 시간(최대 60초) + 머무는 시간보다 지난 것은 볼 것도 없다.
+              if (t < done || t - done > 60 + FRESH_HOLD_SEC) continue;
               // 그 시각에 서 있는 그 종류 건물들 — 태그를 알면 그 건물, 모르면 돌려 가며.
               const cands = motion.builds.filter(([bs, , , bu, br, bg]) =>
                 br === p.raw && bs <= secs[si] && ((bg ?? 0) === 0 || secs[si] < (bg ?? 0))
@@ -1817,14 +1821,45 @@ export default function ReplayMotionPlayer({
                 }
               }
               const [, bx, by, bUnit] = pick;
+              // 건물 발자국의 왼쪽 아래에서 나온다(요청) — 더 바짝 붙여서(지적).
+              const exitX = bx - 0.2;
+              const exitY = by + (FOOTPRINT[bUnit] ?? [3, 2])[1] + 0.3;
+              /* 랠리 목적지(지적) — 그 건물(태그)에 완성 전 마지막으로 찍힌 랠리. 태그가
+                 안 맞으면(귀속 실패·옛 분석본) 그 사람의 마지막 랠리로 어림한다 — 랠리는
+                 대개 한 방향(집결지)이라 건물이 달라도 크게 안 틀린다. */
+              let rx: number | null = null;
+              let ry: number | null = null;
+              for (const [rs, rxx, ryy, rtag] of p.rly ?? []) {
+                if (rs > done) break;
+                if (tag > 0 && rtag === tag) { rx = rxx; ry = ryy; }
+              }
+              if (rx === null || ry === null) {
+                for (const [rs, rxx, ryy] of p.rly ?? []) {
+                  if (rs > done) break;
+                  rx = rxx;
+                  ry = ryy;
+                }
+              }
+              let fx = exitX;
+              let fy = exitY;
+              let arrive = done;
+              if (rx !== null && ry !== null) {
+                const d = Math.hypot(rx - exitX, ry - exitY);
+                const v = Math.max(0.5, speedOf(unit, done, p.ups));
+                const travel = Math.min(60, d / v);
+                arrive = done + travel;
+                const k = travel > 0 ? Math.min(1, (t - done) / travel) : 1;
+                fx = exitX + (rx - exitX) * k;
+                fy = exitY + (ry - exitY) * k;
+              }
+              if (t > arrive + FRESH_HOLD_SEC) continue;
               out.push(
                 <span
                   key={`fresh-${p.raw}-${unit}-${si}`}
                   className="scr-motion-fresh"
                   style={{
-                    // 건물 발자국의 왼쪽 아래에서 나온다(요청) — 더 바짝 붙여서(지적).
-                    left: pct(bx - 0.2, grid.width),
-                    top: pct(by + (FOOTPRINT[bUnit] ?? [3, 2])[1] + 0.3, grid.height),
+                    left: pct(fx, grid.width),
+                    top: pct(fy, grid.height),
                     ...glyphStyle(p.raw, team),
                   }}
                 >
