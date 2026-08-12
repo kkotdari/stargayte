@@ -2337,6 +2337,13 @@ export default function ReplayMotionPlayer({
             if (carriedGone(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : -1)) return null;
             // 무너진 기지 곁에서 침묵 — 그 함락에서 정리된 것(지적).
             if (razedNearby(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return null;
+            /* 유닛 수는 컨트롤이 먼저다(요청: 컨트롤 기준으로 죽음 처리를 안 해서 계속
+               쌓여만 간다) — 완성 누계 어림은 전투 감쇠로만 줄어서 실제 전멸을 못 따라간다.
+               최근 이 자리를 찍은 선택의 최대 크기가 12 미만이면 남은 병력을 그 크기로
+               본다: 병력이 더 있었다면 선택이 게임 한계(12)를 쳤을 것이다. 12를 꽉 채운
+               선택은 "12 이상"이라는 하한일 뿐이라(대군은 부대지정 여러 개) 어림을 둔다. */
+            const ctrl = ctrlNear(p, pos);
+            const shownSize = ctrl > 0 && ctrl < 12 && ctrl < size ? ctrl : size;
             /* 생산 직후에도 깨어 있다(요청) — 갓 나온 유닛은 명령을 안 받았어도 지금
                이야기의 일부다. 완성은 사람 단위 값이라 주 부대만 깨운다. */
             let freshDone = false;
@@ -2349,15 +2356,18 @@ export default function ReplayMotionPlayer({
             /* 커맨드 직후 한동안만 이름이다(요청) — 이동 중이라고 계속 액티브면 지도가
                이름으로 덮여 정작 새 명령이 안 보인다. 창이 지나면 걷는 중이어도 점이다. */
             const activeNow = sinceCmd <= ACTIVE_HOLD_SEC || freshDone;
-            const showName = si === primary && activeNow && !!unit && (size >= 1 || !!SCOUT_KO[unit]);
+            const showName = si === primary && activeNow && !!unit && (shownSize >= 1 || !!SCOUT_KO[unit]);
             // 칩 글씨 한 단 축소(지적: 너무 큼) — 16 상한/1.6 기울기 → 12/1.1.
-            const fontPx = Math.min(12, 7 + Math.round(Math.sqrt(size) * 1.1));
+            const fontPx = Math.min(12, 7 + Math.round(Math.sqrt(shownSize) * 1.1));
             /* 무명 부대의 구성 — 제 마커를 가진 종류(shownUnits)는 뺀다: 같은 탱크가 제
-               마커와 부대 칩에 두 번 적히면 수가 배로 읽힌다. */
+               마커와 부대 칩에 두 번 적히면 수가 배로 읽힌다.
+               컨트롤이 합계를 눌렀으면 구성도 같은 비율로 눌러 적는다 — 합은 12인데
+               구성 합이 30이면 서로 딴소리가 된다. */
+            const partScale = size > 0 && shownSize < size ? shownSize / size : 1;
             const parts: [string, number][] = [];
             for (const [u] of unitDoneByRaw.get(p.raw) ?? []) {
               if (shownUnits.has(u)) continue;
-              const alive = aliveOf(u);
+              const alive = Math.round(aliveOf(u) * partScale);
               if (alive >= 1) parts.push([u, alive]);
             }
             parts.sort((a, b) => b[1] - a[1]);
@@ -2365,7 +2375,7 @@ export default function ReplayMotionPlayer({
                흩어 놓는다(해바라기 나선 — 결정적이라 프레임마다 안 튄다). 곁 부대는 규모를
                모르니 점 하나다. */
             if (!showName) {
-              const dots = si === primary ? Math.min(9, Math.max(1, Math.round(size / 3) || 1)) : 1;
+              const dots = si === primary ? Math.min(9, Math.max(1, Math.round(shownSize / 3) || 1)) : 1;
               return Array.from({ length: dots }, (_, di) => {
                 const r = di === 0 ? 0 : 0.7 + 0.55 * Math.sqrt(di);
                 const dx = Math.cos(di * 2.4) * r;
@@ -2396,7 +2406,7 @@ export default function ReplayMotionPlayer({
                유닛)만 규모 글씨·심장박동을 갖고 나머지는 작게 딸린다. */
             const chips: string[] = parts.length > 0
               ? parts.map(([u, n]) => `${UNIT_KO[u]} ${n}`)
-              : [UNIT_KO[unit] ? `${UNIT_KO[unit]} ${size}`.trim() : SCOUT_KO[unit] ?? "●"];
+              : [UNIT_KO[unit] ? `${UNIT_KO[unit]} ${shownSize}`.trim() : SCOUT_KO[unit] ?? "●"];
             return chips.map((text, ci) => (
               <span
                 key={`${p.raw}-s${si}-c${ci}`}
