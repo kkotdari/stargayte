@@ -11074,15 +11074,28 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-sq,
 .scr-motion-dot:not(.scr-motion-army-stale) { opacity: 0.82; }
 .scr-motion-build-on.scr-motion-build-shape { opacity: 0.95; }
-/* 건물 네모 — 글꼴 ■는 작으면 동그랗게 뭉개져(지적) 상자로 직접 그린다. 색은 글자색을 탄다. */
+/* 건물 네모 — 글꼴 ■는 작으면 동그랗게 뭉개져(지적) 상자로 직접 그린다. 색은 글자색을 탄다.
+   그림자도 유닛과 같은 톤으로 얇게(요청). */
 .scr-motion-sq {
   display: inline-block; width: 0.85em; height: 0.85em;
   background: currentColor; border-radius: 1px; vertical-align: -0.05em;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 /* 건물 전용 벡터 도형(요청: 이모지·글꼴 글리프 말고 벡터) — em 단위라 크기 클래스와
-   확대 배율(--mk)을 글자와 똑같이 따른다. 색도 currentColor 그대로다. */
+   확대 배율(--mk)을 글자와 똑같이 따른다. 색도 currentColor 그대로다.
+   그림자도 유닛처럼 얇게(요청: "건물도 약간 그림자 유닛처럼"). */
 .scr-motion-shape-svg {
   display: inline-block; width: 1em; height: 1em; vertical-align: -0.12em;
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.45));
+}
+/* 유닛 이름 칩에도 같은 톤의 약한 그림자(요청) — 배경 있는 배지라 텍스트 그림자 대신
+   상자 그림자다. */
+.scr-motion-army.scr-motion-chip, .scr-motion-cast.scr-motion-chip { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
+/* 본진 실루엣 아바타(요청: "아바타를 본진 안에 넣기") — 사진을 본진 모양으로 자르고
+   같은 모양의 색 테를 두른다. 크기는 옛 원형 아바타(24px + 테 3px)와 같은 자리다. */
+.scr-motion-base-hallsvg {
+  display: block; width: 32px; height: 32px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 }
 /* 발자국대로 크고 작게(요청: "건물크기로 구분 — 서플·파일런같은 작은 건물은 작게, 큰
    건물은 크게") — 2×2·3×2 발자국은 한 단계 작게, 4×3 생산 건물은 한 단계 크게. 본진은
@@ -11173,6 +11186,23 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-terrain-modal { z-index: 200; }
 /* 산 버튼 줄(요청) — 미니맵 바로 아래 가운데. */
 .scr-motion-terrain-row { display: flex; justify-content: center; }
+/* 큰 화면 보기 토글(요청: PC 전용 — 맵 아래 바깥 오른쪽의 대각선 화살표). */
+.scr-motion-expand-row { display: none; }
+@media (min-width: 1160px) { .scr-motion-expand-row { display: flex; justify-content: flex-end; } }
+.scr-motion-expand {
+  width: 24px; height: 24px; min-width: 24px; padding: 0; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+/* 큰 화면 팝업(요청: 맵과 조작부만, 엄청 크게) — 폭은 화면 높이가 허락하는 만큼이다:
+   지도는 폭을 따라 커지므로(aspect-ratio) 폭 상한이 곧 높이 상한이다. 조작부 몫으로
+   높이에서 190px을 남긴다. 게임 상세 팝업(z 130) 위에 선다. */
+.scr-motion-big-modal {
+  z-index: 210; max-width: none;
+  width: min(94vw, calc(100dvh - 190px));
+  padding: 12px 14px;
+}
+/* 팝업에는 맵과 조작부만(요청) — 범례·지형 수정은 감춘다. */
+.scr-motion-big .scr-motion-legend, .scr-motion-big .scr-motion-terrain-row { display: none; }
 .scr-terrain-hint { margin: 0 0 8px; font-size: var(--fs-caption); color: var(--muted); }
 .scr-terrain-stage { position: relative; width: 100%; }
 .scr-terrain-img { display: block; width: 100%; user-select: none; border-radius: var(--radius-sm); }

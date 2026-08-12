@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Hammer, Mountain, Pause, Play, RotateCcw, Shield } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Hammer, Maximize2, Minimize2, Mountain, Pause, Play, RotateCcw, Shield } from "lucide-react";
+import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import TerrainReviewModal from "../../modals/TerrainReviewModal";
 import Avatar from "../common/Avatar";
-import RaceBadge from "../common/RaceBadge";
 import { cx } from "../../utils/format";
 import { UNIT_KO, BUILDING_KO, TECH_KO } from "../../utils/replaySummaryText";
 import type { ReplayMapGrid } from "../../utils/replayParser";
@@ -23,9 +24,11 @@ import type { MinimapMarker } from "./ReplayMinimap";
 
 /** 배속 갈래(요청: 속도 조절, 기본 ×2) — 뜯어보는 ×2부터 훑어 넘기는 ×32까지. */
 const SPEEDS = [2, 4, 8, 16, 32] as const;
-/** 다 지어진 뒤 이름이 더 붙어 있는 시간(초) — 하는 일 없으면 바로 도형이다(지적: 액티브
- *  시간은 유닛보다 타이트하게). 생산·연구가 돌면 그때 다시 이름이 뜬다. */
-const BUILD_LABEL_TAIL_SEC = 15;
+/** 착공 직후 이름이 떠 있는 시간(초) — 그 뒤로는 곧장 도형+망치다(요청: "건물은 처음
+ *  짓기 시작할때 잠깐 이름으로 표시하고 아이콘에 망치"). 예전엔 다 지어지고도 한참
+ *  이름이었는데, 그 시간 내내 이름이 화면을 차지했다. 생산·연구가 돌면 그때 다시
+ *  이름이 뜬다. */
+const BUILD_NAME_SEC = 6;
 /** 마법 텍스트가 떠 있는 시간(초, 게임 시간). */
 const CAST_HOLD_SEC = 6;
 /** 자취 점 사이가 이보다 벌어지면 잇지 않고 건너뛴다(초) — 한참 조용하다 다른 곳을 찍은
@@ -304,22 +307,35 @@ const footDy = (unit: string): number => (FOOTPRINT[unit] ?? [3, 2])[1] / 2;
  *  글자와 똑같이 탄다. 커맨드/넥서스/해처리 계열은 본진 크기(-hall)라 벙커의 작은 무덤과
  *  구분된다. 나머지 건물은 ■/▲/★ 기본 규칙 그대로다. */
 const SHAPE_KIND: Record<string, string> = {
-  Pylon: "diamond", "Supply Depot": "trapezoid", Bunker: "tomb",
+  // 벙커는 납작한 무덤, 포토캐논은 납작한 태엽(요청) — 커맨드의 큰 무덤과 갈린다.
+  Pylon: "diamond", "Supply Depot": "trapezoid", Bunker: "tombFlat", "Photon Cannon": "coil",
   "Command Center": "tomb", Nexus: "pyramid", Gateway: "pyramid",
-  Hatchery: "tee", Lair: "star6", Hive: "hexagon",
+  /* 저그 본진 3형제(요청) — 해처리는 곡선 둔덕(각진 T는 부자연스럽다는 지적), 레어는
+     그 둔덕의 바닥에 뿔, 하이브는 더 높은 뿔에 안쪽 가시까지 — 단계가 오를수록 뿔이
+     자란다. */
+  Hatchery: "hatchery", Lair: "lair", Hive: "hive",
   /* 다른 생산 건물도 원래 실루엣을 살린 벡터로(요청) — 배럭은 막사 지붕, 팩토리는 톱니
      지붕 공장, 스타포트는 착륙 패드(원)와 받침, 로보틱스는 돔, 스타게이트는 문(아치). */
   Barracks: "house", Factory: "factory", Starport: "pad",
   "Robotics Facility": "dome", Stargate: "arch",
 };
+/** 저그 둔덕 몸통 — 셋이 같은 몸을 쓰고 뿔만 자란다(아래 lair/hive). 옆구리는 종 모양
+ *  으로 불룩하게(지적: "해처리의 곡선이 반대로 됨" — 나팔처럼 파인 곡선을 뒤집었다).
+ *  꼭대기는 평평하고, 높이보다 옆으로 넓다(지적). */
+const ZERG_MOUND = "M5.4 5.4 L10.6 5.4 L10.6 8.2 Q10.8 10.4 13.6 11.8 Q15.6 12.9 15.6 14.2 L0.4 14.2 Q0.4 12.9 2.4 11.8 Q5.2 10.4 5.4 8.2 Z";
 const SHAPE_PATHS: Record<string, string> = {
-  diamond: "M8 0 16 8 8 16 0 8Z",
+  // 좀 더 얇은 마름모로(요청) — 꽉 찬 정마름모는 네모와 잘 안 갈렸다.
+  diamond: "M8 1 12 8 8 15 4 8Z",
   trapezoid: "M4 4 12 4 16 12 0 12Z",
-  tomb: "M3 15 V7 Q3 2 8 2 Q13 2 13 7 V15 Z",
+  /* 커맨드는 더 납작하고 넓게, 벙커는 그보다도 낮게(요청). */
+  tomb: "M1.5 14 V9 Q1.5 4.5 8 4.5 Q14.5 4.5 14.5 9 V14 Z",
+  tombFlat: "M1.5 13 V10.5 Q1.5 7 8 7 Q14.5 7 14.5 10.5 V13 Z",
+  coil: "M1 11a7 3.5 0 1 0 14 0a7 3.5 0 1 0-14 0Z M6.6 8a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0-2.8 0Z",
   pyramid: "M8 1 16 15 0 15Z",
-  tee: "M6 2 H10 V11 H14 V15 H2 V11 H6 Z",
-  star6: "M8 0 10.2 4.19 14.93 4 12.4 8 14.93 12 10.2 11.81 8 16 5.8 11.81 1.07 12 3.6 8 1.07 4 5.8 4.19Z",
-  hexagon: "M8 0 15 4 15 12 8 16 1 12 1 4Z",
+  hatchery: ZERG_MOUND,
+  lair: `${ZERG_MOUND} M2.4 13.6 L1.2 9.2 L4.2 11.8 Z M13.6 13.6 L14.8 9.2 L11.8 11.8 Z`,
+  hive: `${ZERG_MOUND} M2.4 13.6 L0.8 6.2 L4.6 11.4 Z M13.6 13.6 L15.2 6.2 L11.4 11.4 Z`
+    + " M5.2 12.9 L4.5 8.4 L6.9 11.3 Z M10.8 12.9 L11.5 8.4 L9.1 11.3 Z",
   house: "M2 14 V7 L8 3 14 7 V14 Z",
   factory: "M2 14 V8 L5 5 V8 L8 5 V8 L11 5 V8 H14 V14 Z",
   pad: "M8 3a5 5 0 1 0 .01 0Z M3 12h10v3H3Z",
@@ -506,15 +522,17 @@ export default function ReplayMotionPlayer({
       } : {}),
     };
   };
-  /* 도형(●▪▲✕·점)은 건물이든 유닛이든 음영이 아예 없다(지적) — 제 색 그대로. CSS의
-     음영판·그림자를 물려받지 않게 여기서 걷는다.
-     다만 아주 밝은 개인색(연두·노랑·흰색)만은 어두운 링을 얇게 두른다(지적: "이색은 흰색
-     바탕에서 잘 안보여") — 밝은 맵 바탕에서 밝은 색 도형은 통째로 사라진다. */
+  /* 도형(●▪▲✕·점)은 건물이든 유닛이든 음영판 없이 제 색 그대로다(지적).
+     그림자만 얇게 깐다(요청: "유닛 테두리 검정톤 그림자 약하게 추가") — 아주 밝은
+     개인색(연두·노랑·흰색)은 밝은 맵에서 통째로 사라져 더 진한 링을 두른다(지적: "이색은
+     흰색 바탕에서 잘 안보여"). */
   const glyphStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => {
     const c = modeColor(raw, team);
     return {
       color: c, background: "none", padding: 0,
-      textShadow: lumOf(c) > 170 ? "0 0 2px rgba(0, 0, 0, 0.9), 0 0 1px rgba(0, 0, 0, 0.9)" : "none",
+      textShadow: lumOf(c) > 170
+        ? "0 0 2px rgba(0, 0, 0, 0.9), 0 0 1px rgba(0, 0, 0, 0.9)"
+        : "0 1px 2px rgba(0, 0, 0, 0.5)",
     };
   };
   const chipStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => {
@@ -791,6 +809,20 @@ export default function ReplayMotionPlayer({
   };
   const [done, setDone] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
+  /* 본진 아바타 클립 id — 한 화면에 이 플레이어가 여러 장 떠도(카드 여럿) SVG clipPath
+     id가 안 겹치게 판마다 다른 접두어를 쓴다. */
+  const clipUidRef = useRef(`mo${Math.random().toString(36).slice(2, 8)}`);
+  /* 큰 화면 보기(요청: PC — 확대 아이콘을 누르면 맵과 조작부만 든 팝업이 엄청 크게) —
+     같은 컴포넌트 트리를 통째로 포털 모달 안으로 옮겨 심으므로 재생 상태가 그대로
+     이어진다. Esc로도 닫는다. */
+  const [big, setBig] = useState(false);
+  useLockBodyScroll(big);
+  useEffect(() => {
+    if (!big) return undefined;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setBig(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [big]);
 
   /* 재생이 손잡이를 민다 — 비제어라 React가 안 밀어 주므로 여기서 직접 쓴다. 잡고 있는
      동안은 안 민다(그 순간의 임자는 손이다). */
@@ -1056,8 +1088,8 @@ export default function ReplayMotionPlayer({
     })), [motion]);
   const castsNow = motion.casts.filter((c) => c[0] <= t && t - c[0] <= CAST_HOLD_SEC);
 
-  return (
-    <div className="scr-motion">
+  const body = (
+    <div className={cx("scr-motion", big && "scr-motion-big")}>
       <div
         className="scr-motion-map" ref={mapRef}
         style={{
@@ -1139,9 +1171,8 @@ export default function ReplayMotionPlayer({
             const hallLike = unit === "Lair" || unit === "Hive" ? "Hatchery" : unit;
             const researching = !razed && (track?.ups ?? []).some(([us, name]) =>
               RESEARCH_BUILDING[name] === hallLike && us <= t && t - us <= RESEARCH_SEC);
-            // 이름 창 = 짓는 동안 + 꼬리 3초 — 완공되면 거의 바로 도형이다(지적).
-            const activeBuild = !razed && (producing || researching
-              || t - sec <= (BUILD_SEC[unit] ?? 30) + BUILD_LABEL_TAIL_SEC);
+            // 이름 창 = 착공 직후 잠깐뿐(요청) — 그 뒤 공사 중에는 도형+망치다.
+            const activeBuild = !razed && (producing || researching || t - sec <= BUILD_NAME_SEC);
             const name = BUILDING_KO[unit] ?? UNIT_KO[unit];
             /* 비활성이면 무조건 도형이다(지적: 서플라이·파일런·포토·터렛이 영영 안 변했다 —
                "겹치지만 않으면 이름 상시 노출"이던 옛 규칙을 걷었다). */
@@ -1323,16 +1354,47 @@ export default function ReplayMotionPlayer({
                   흰 겉테두리는 걷었다(요청: 흰 테두리 제거) — 아바타가 커진 뒤로는 색 테가
                   얇아도 충분히 읽힌다. */}
               <span style={{ position: "relative" }}>
-                <span
-                  className="scr-motion-base-ring"
-                  style={{ boxShadow: `0 0 0 3px ${modeColor(m.key, m.team)}` }}
-                >
-                  {/* 16 → 24px(요청: 아바타 크기 확대) — 지도 위에서 사람을 가려내는 것은
-                      결국 얼굴이라, 도형보다 이쪽이 커야 한다. */}
-                  <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={24} />
-                </span>
-                {/* 종족 배지(요청) — 아바타 옆에. */}
-                <RaceBadge race={m.race} size={9} circleLetter className="scr-motion-base-race" />
+                {/* 아바타를 그 종족 본진 실루엣 '안'에 넣는다(요청: "본진 기지 아바타도 본진
+                    모양을 본따서", "아바타를 본진안에 넣으라는 뜻, 따로 빼지말고") —
+                    테란 무덤, 프로토스 피라미드, 저그 둔덕 모양으로 사진을 자르고 같은
+                    모양의 색 테를 두른다. 사진이 없는 사람은 도형 바탕에 첫 글자다.
+                    종족은 이 실루엣이 이미 말하므로 종족 배지는 걷었다(요청). */}
+                {(() => {
+                  const hallKind = m.race === "테란" ? "tomb" : m.race === "프로토스" ? "pyramid" : m.race === "저그" ? "hatchery" : null;
+                  if (!hallKind) {
+                    return (
+                      <span
+                        className="scr-motion-base-ring"
+                        style={{ boxShadow: `0 0 0 3px ${modeColor(m.key, m.team)}` }}
+                      >
+                        <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={24} />
+                      </span>
+                    );
+                  }
+                  const cid = `${clipUidRef.current}-${m.key.replace(/[^a-zA-Z0-9]/g, "")}`;
+                  return (
+                    <svg
+                      className="scr-motion-base-hallsvg" viewBox="0 0 16 16" aria-hidden
+                      style={{ color: modeColor(m.key, m.team) }}
+                    >
+                      <defs><clipPath id={cid}><path d={SHAPE_PATHS[hallKind]} /></clipPath></defs>
+                      <path d={SHAPE_PATHS[hallKind]} fill="currentColor" />
+                      {m.avatar ? (
+                        <image
+                          href={m.avatar} x="0" y="0" width="16" height="16"
+                          preserveAspectRatio="xMidYMid slice" clipPath={`url(#${cid})`}
+                        />
+                      ) : (
+                        <text
+                          x="8" y="10.2" textAnchor="middle" fontSize="6.5" fontWeight="800" fill="#fff"
+                        >
+                          {(m.name || "?").slice(0, 1)}
+                        </text>
+                      )}
+                      <path d={SHAPE_PATHS[hallKind]} fill="none" stroke="currentColor" strokeWidth="1.6" />
+                    </svg>
+                  );
+                })()}
                 {/* 팀 표시(요청: 깃발 말고 팀을 나타내는 아이콘에 색 구분) — 반대 어깨의
                     방패다. 색은 늘 팀색이다(modeColor가 아니다): 개인색 모드에서는 아바타
                     테두리가 그 사람 색이라, 편을 말해 주는 자리가 하나는 있어야 한다.
@@ -1674,6 +1736,18 @@ export default function ReplayMotionPlayer({
             이제 모바일 손짓(더블탭·두 손가락)만의 것이다. */}
       </div>
 
+      {/* 큰 화면 보기 토글(요청: PC — 대각선 양쪽 화살표를 맵 아래 바깥 오른쪽에) —
+          모바일은 CSS가 숨긴다(핀치 확대가 이미 있다). */}
+      <div className="scr-motion-expand-row">
+        <button
+          type="button" className="scr-motion-btn scr-motion-expand"
+          onClick={() => setBig((v) => !v)}
+          aria-label={big ? "작게 보기" : "크게 보기"} title={big ? "작게 보기" : "크게 보기"}
+        >
+          {big ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+        </button>
+      </div>
+
       {/* 지형 수정(요청: 미니맵 바로 아래 가운데) — 산 아이콘, 회원 누구나. */}
       {typeof grid.imageId === "number" && grid.image && (
         <div className="scr-motion-terrain-row">
@@ -1780,4 +1854,16 @@ export default function ReplayMotionPlayer({
       )}
     </div>
   );
+
+  /* 큰 화면 보기(요청) — 같은 트리를 포털 모달에 옮겨 심는다: 재생 상태가 그대로 이어지고,
+     범례·지형 버튼은 CSS(.scr-motion-big)가 감춰 맵과 조작부만 남는다. */
+  if (big) {
+    return createPortal(
+      <div className="scr-modal-overlay">
+        <div className="scr-modal scr-motion-big-modal">{body}</div>
+      </div>,
+      document.body,
+    );
+  }
+  return body;
 }
