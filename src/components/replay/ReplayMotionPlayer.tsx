@@ -1482,6 +1482,20 @@ export default function ReplayMotionPlayer({
       && Math.hypot(bx2 + footDx(bu) - pos.x, by2 + footDy(bu) - pos.y) <= 8;
   });
 
+  /* 컨트롤되는 유닛 수(요청: 유닛 수를 죽음 판정에 기대기보다 실제 명령 받는 수로 —
+     명령을 받는다는 건 그 자리에 계속 있었다는 뜻이다) — 최근 90초 안에 그 부대 자리
+     곁(8타일)을 찍은 명령의 최대 선택 크기. 한 번에 최대 12기(게임 한계)라 과장이 없고,
+     죽은 유닛은 더 못 고르니 저절로 줄어든다. 0이면(그 자리 명령에 선택 크기 기록이
+     없으면) 생산-감쇠 어림이 대신 말한다. */
+  const ctrlNear = (p: MotionTrack, pos: { x: number; y: number }): number => {
+    let n = 0;
+    for (const [s, sx, sy, k] of p.sels ?? []) {
+      if (s > t) break;
+      if (t - s <= 90 && Math.hypot(sx - pos.x, sy - pos.y) <= 8 && k > n) n = k;
+    }
+    return n;
+  };
+
   /* 폭은 무조건 컨테이너 최대가 아니라 화면 세로 공간이 허락하는 만큼(지적: 노트북처럼
      납작한 화면에서 전체 폭을 쓰면 미니맵이 한 화면에 다 안 들어옴) — 맵 높이가
      (100dvh − 조작부 몫)을 넘지 않게 폭을 비율로 역산해 상한을 걸고 가운데 정렬.
@@ -2026,9 +2040,12 @@ export default function ReplayMotionPlayer({
             const nSquads = squadsOfUnit.get(g.unit) ?? 1;
             const idx = seenOfUnit.get(g.unit) ?? 0;
             seenOfUnit.set(g.unit, idx + 1);
-            const alive = aliveAll > 0
+            const aliveGuess = aliveAll > 0
               ? Math.floor(aliveAll / nSquads) + (idx < aliveAll % nSquads ? 1 : 0)
               : 0;
+            // 실제 컨트롤 수가 있으면 그것이 먼저다(요청) — 어림은 폴백.
+            const ctrl = ctrlNear(p, pos);
+            const alive = ctrl > 0 ? ctrl : aliveGuess;
             /* 파서의 묶음 이름이 유닛명이 아닌 경우("Transport"·"Worker")는 그 종족의 실제
                이름으로 부른다(지적: "transport가 뭐지" — 영문 키가 그대로 샜다). */
             const race = bases.find((b) => b.key === p.raw)?.race;

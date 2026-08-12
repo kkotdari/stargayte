@@ -97,6 +97,10 @@ export interface MotionTrack {
   /** 뜬 건물의 비행 클릭 자취(요청: 엔베 띄워 정찰이 안 나온다) — 떠 있는(liftAt) 건물
    *  마커가 이 자취를 비행 속도로 따라 난다. 옛 분석본에는 없다. */
   fpts?: [number, number, number][];
+  /** 명령의 선택 크기 자취 [초, x, y, 몇 기 골랐나](요청: 유닛 수를 죽음 판정보다 실제
+   *  컨트롤되는 수로) — 죽은 유닛은 더 못 고르니 저절로 준다. 5초·6타일 안 연속 클릭은
+   *  최대값 하나로 접는다. 옛 분석본에는 없다. */
+  sels?: [number, number, number, number][];
   /** 수송선 드랍 지점 [초, x, y](요청: 드랍 표현). 옛 분석본에는 없다. */
   drops?: [number, number, number][];
   /** 태우기 지점 [초, x, y](요청: 태운 것 표현) — 제 수송선을 찍은 우클릭. 옛 분석본에는 없다. */
@@ -451,6 +455,23 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
     const size = sizeTimeline(sg.unitFrames ?? {});
     /* 비행·드랍·태움(요청: 엔베 띄워 정찰, 수송선 태우기·드랍 표현). */
     const fpts = foldTrack(sg.flyPositions ?? []);
+    /* 명령의 선택 크기(요청: 유닛 수는 실제 컨트롤되는 수로 — 명령을 받는다는 건 그
+       자리에 계속 있었다는 뜻) — 이동·공격 명령의 n을 자취로 남긴다. 가까운 연속 클릭은
+       최대값 하나로 접어 저장량을 줄인다. */
+    const sels: [number, number, number, number][] = [];
+    for (const o of sg.orderPositions ?? []) {
+      if (o.kind === undefined || o.by === "Building" || !o.n) continue;
+      const sec = Math.round(o.frame * SECONDS_PER_FRAME);
+      const last = sels[sels.length - 1];
+      if (last && sec - last[0] <= 5 && Math.hypot(o.x - last[1], o.y - last[2]) <= 6) {
+        if (o.n > last[3]) last[3] = o.n;
+        last[0] = sec;
+        last[1] = Math.round(o.x);
+        last[2] = Math.round(o.y);
+        continue;
+      }
+      sels.push([sec, Math.round(o.x), Math.round(o.y), o.n]);
+    }
     const drops: [number, number, number][] = (sg.unloadPositions ?? [])
       .map((u) => [Math.round(u.frame * SECONDS_PER_FRAME), Math.round(u.x), Math.round(u.y)]);
     const loads: [number, number, number][] = (sg.loadPositions ?? [])
@@ -634,6 +655,7 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
         ...(tpts.length > 0 ? { tpts } : {}),
         ...(opts.length > 0 ? { opts } : {}),
         ...(fpts.length > 0 ? { fpts } : {}),
+        ...(sels.length > 0 ? { sels } : {}),
         ...(drops.length > 0 ? { drops } : {}),
         ...(loads.length > 0 ? { loads } : {}),
         ...(Object.keys(upts).length > 0 ? { upts } : {}),
