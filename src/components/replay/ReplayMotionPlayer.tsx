@@ -297,6 +297,49 @@ const FOOTPRINT: Record<string, [number, number]> = {
 const footDx = (unit: string): number => (FOOTPRINT[unit] ?? [3, 2])[0] / 2;
 const footDy = (unit: string): number => (FOOTPRINT[unit] ?? [3, 2])[1] / 2;
 
+/** 건물 전용 도형(요청) — 파일런 마름모·서플 사다리꼴·벙커 무덤·커맨드 큰 무덤·넥서스
+ *  큰 피라미드·게이트 삼각형·해처리 거꾸로 T·레어 육각별·하이브 육각형.
+ *  이모지·글꼴 글리프가 아니라 벡터로 직접 그린다(요청) — 이모지는 제 색을 고집해 유저
+ *  색을 못 입고, 글꼴 도형은 글꼴마다 크기·잉크가 다르다. currentColor를 채우므로 색은
+ *  글자와 똑같이 탄다. 커맨드/넥서스/해처리 계열은 본진 크기(-hall)라 벙커의 작은 무덤과
+ *  구분된다. 나머지 건물은 ■/▲/★ 기본 규칙 그대로다. */
+const SHAPE_KIND: Record<string, string> = {
+  Pylon: "diamond", "Supply Depot": "trapezoid", Bunker: "tomb",
+  "Command Center": "tomb", Nexus: "pyramid", Gateway: "pyramid",
+  Hatchery: "tee", Lair: "star6", Hive: "hexagon",
+  /* 다른 생산 건물도 원래 실루엣을 살린 벡터로(요청) — 배럭은 막사 지붕, 팩토리는 톱니
+     지붕 공장, 스타포트는 착륙 패드(원)와 받침, 로보틱스는 돔, 스타게이트는 문(아치). */
+  Barracks: "house", Factory: "factory", Starport: "pad",
+  "Robotics Facility": "dome", Stargate: "arch",
+};
+const SHAPE_PATHS: Record<string, string> = {
+  diamond: "M8 0 16 8 8 16 0 8Z",
+  trapezoid: "M4 4 12 4 16 12 0 12Z",
+  tomb: "M3 15 V7 Q3 2 8 2 Q13 2 13 7 V15 Z",
+  pyramid: "M8 1 16 15 0 15Z",
+  tee: "M6 2 H10 V11 H14 V15 H2 V11 H6 Z",
+  star6: "M8 0 10.2 4.19 14.93 4 12.4 8 14.93 12 10.2 11.81 8 16 5.8 11.81 1.07 12 3.6 8 1.07 4 5.8 4.19Z",
+  hexagon: "M8 0 15 4 15 12 8 16 1 12 1 4Z",
+  house: "M2 14 V7 L8 3 14 7 V14 Z",
+  factory: "M2 14 V8 L5 5 V8 L8 5 V8 L11 5 V8 H14 V14 Z",
+  pad: "M8 3a5 5 0 1 0 .01 0Z M3 12h10v3H3Z",
+  dome: "M2 14 V10 A6 6 0 0 1 14 10 V14 Z",
+  arch: "M2 15 V4 H14 V15 H10 V8 H6 V15 Z",
+};
+function ShapeIcon({ kind }: { kind: string }) {
+  return (
+    <svg className="scr-motion-shape-svg" viewBox="0 0 16 16" aria-hidden>
+      <path d={SHAPE_PATHS[kind]} fill="currentColor" />
+    </svg>
+  );
+}
+
+/** 테란 부속건물 — 이름 대신 + 하나로 본체 옆에 붙는다(요청). 제 건설 좌표가 본체
+ *  오른쪽 아래라 저절로 옆자리다. */
+const ADDONS = new Set([
+  "Comsat Station", "Nuclear Silo", "Machine Shop", "Control Tower", "Covert Ops", "Physics Lab",
+]);
+
 /** 건물 짓는 시간(초, 어림) — 짓는 동안 반투명 표시(요청)의 창이다. */
 const BUILD_SEC: Record<string, number> = {
   "Command Center": 55, Nexus: 55, Hatchery: 55, Lair: 45, Hive: 55,
@@ -1103,16 +1146,25 @@ export default function ReplayMotionPlayer({
             /* 비활성이면 무조건 도형이다(지적: 서플라이·파일런·포토·터렛이 영영 안 변했다 —
                "겹치지만 않으면 이름 상시 노출"이던 옛 규칙을 걷었다). */
             const isHall = ["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(unit);
+            const shapeKind = SHAPE_KIND[unit];
             let text: string;
-            if (activeBuild && name) text = name;
+            // 테란 부속건물은 이름 대신 늘 +다(요청: "테란 부속건물은 +로 옆에 붙이기") —
+            // 제 발자국 자리가 본체 오른쪽이라 저절로 옆에 붙는다.
+            if (ADDONS.has(unit)) text = "+";
+            else if (activeBuild && name) text = name;
             // ▪는 글꼴상 반쪽짜리라 ●▲보다 작아 보인다(지적) — 꽉 찬 ■로. 본진은 별표(요청).
             else text = isHall ? "★" : DEFENSE_BUILDINGS.has(unit) ? "▲" : "■";
+            // 발자국이 곧 크기다(요청: "건물크기로 구분 — 서플·파일런같은 작은 건물은 작게,
+            // 큰 건물은 크게"). 본진은 제 크기 클래스(-hall)가 이미 있다.
+            const fpArea = (FOOTPRINT[unit] ?? [3, 2]).reduce((a, b) => a * b, 1);
             return (
               <span
                 key={`b-${i}`}
                 className={cx(
                   "scr-motion-build",
                   !razed && text !== name && "scr-motion-build-shape",
+                  !razed && text !== name && !isHall
+                    && (fpArea >= 12 ? "scr-motion-build-lg" : fpArea <= 6 ? "scr-motion-build-sm" : false),
                   // 본진 건물은 다른 건물보다 큼직하게(요청).
                   isHall && "scr-motion-build-hall",
                   activeBuild && "scr-motion-build-on",
@@ -1132,8 +1184,11 @@ export default function ReplayMotionPlayer({
                   ...(razed ? {} : text === name ? shapeStyle(raw, team) : glyphStyle(raw, team)),
                 }}
               >
-                {/* 글꼴 ■는 작게 뭉개져 동그라미처럼 보인다(지적) — 진짜 네모를 CSS로 그린다. */}
-                {text === "■" ? <i className="scr-motion-sq" /> : text}
+                {/* 전용 도형이 있으면 벡터로(SHAPE_KIND — 이모지·글꼴 글리프 금지 요청),
+                    글꼴 ■는 작게 뭉개져 동그라미처럼 보인다(지적) — 진짜 네모를 CSS로. */}
+                {shapeKind && text !== name
+                  ? <ShapeIcon kind={shapeKind} />
+                  : text === "■" ? <i className="scr-motion-sq" /> : text}
                 {raising && <Hammer size={6} className="scr-motion-raising" />}
               </span>
             );
@@ -1633,10 +1688,11 @@ export default function ReplayMotionPlayer({
       )}
 
 
-      {/* 범례(요청) — 지도 위 도형이 뭔지 한 줄로. */}
+      {/* 범례(요청) — 지도 위 도형이 뭔지 한 줄로. 본진(★)은 지웠다(요청: 안 맞는 건
+          지우기) — 본진 건물들이 저마다 제 도형(무덤·피라미드·T·육각별·육각형)을 갖게
+          되면서 ★는 더 이상 안 그려진다. */}
       <div className="scr-motion-legend">
         <span>● 부대·유닛</span>
-        <span>★ 본진</span>
         <span>■ 건물</span>
         <span>▲ 방어 건물</span>
         <span>· 채굴 일꾼</span>

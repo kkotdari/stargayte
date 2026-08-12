@@ -10872,12 +10872,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   --mk: var(--mk-unit, 1);
 }
 .scr-motion-lens > .scr-motion-build, .scr-motion-lens > .scr-motion-workers { --mk: var(--mk-build, 1); }
-/* PC는 모든 마커를 1.5배로(요청: "피시에서 모든 요소 1.5배 확대") — 같은 --mk 지렛대의
-   기본값만 바꾼다: 글자·아바타·배지·둥실거림까지 마커째 커진다. PC에는 확대 렌즈가
-   없으므로(--mk-unit/-build가 늘 비어 있다) 폴백 1.5가 곧 값이다. */
+/* PC는 모든 마커를 키운다(요청: "피시에서 모든 요소 1.5배 확대" → "피시 맵 내 모든 요소
+   20프로 축소" = 1.2배) — 같은 --mk 지렛대의 기본값만 바꾼다: 글자·아바타·배지·둥실거림
+   까지 마커째 커진다. PC에는 확대 렌즈가 없으므로(--mk-unit/-build가 늘 비어 있다) 폴백이
+   곧 값이다. */
 @media (min-width: 1160px) {
-  .scr-motion-map > span, .scr-motion-lens > span { --mk: var(--mk-unit, 1.5); }
-  .scr-motion-lens > .scr-motion-build, .scr-motion-lens > .scr-motion-workers { --mk: var(--mk-build, 1.5); }
+  .scr-motion-map > span, .scr-motion-lens > span { --mk: var(--mk-unit, 1.2); }
+  .scr-motion-lens > .scr-motion-build, .scr-motion-lens > .scr-motion-workers { --mk: var(--mk-build, 1.2); }
 }
 /* 겹침 차례 — 건물(z2)은 움직이는 것(z3) 아래, 본진 아바타(z4)가 그 위다(요청: 복구 —
    건물을 위로 올려 보니 얼굴이 도형에 덮여 누가 누군지가 먼저 죽었다). 다만 깨어 있는
@@ -10929,9 +10930,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* scale에 var(--mk)를 곱해 두는 이유 — 확대 렌즈의 마커 되돌림(위 --mk)이 정적 transform에
    들어 있어, 키프레임이 그냥 scale(1.14)로 덮으면 확대 중에만 마커가 애니메이션 순간
    원래 크기로 튀었다 돌아온다. */
+/* 1.14 → 1.07(요청: "박동 효과 크기 더 줄이기") — 맥박은 '살아 있다'는 표시면 되지,
+   커졌다 작아졌다가 눈에 밟히면 안 된다. */
 @keyframes scr-motion-heart {
   0%, 100% { transform: translate(-50%, -50%) scale(var(--mk, 1)); }
-  50% { transform: translate(-50%, -50%) scale(calc(var(--mk, 1) * 1.14)); }
+  50% { transform: translate(-50%, -50%) scale(calc(var(--mk, 1) * 1.07)); }
 }
 /* 확대폭을 줄였다(요청: "바운스 효과에서 확대폭 작게") — 0.6→1.3→1은 지도 위에서 건물이
    튀어 오르는 것처럼 보였다. 0.85→1.12→1이면 '켜졌다'는 신호는 남고 튀는 맛만 빠진다. */
@@ -11075,6 +11078,20 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-sq {
   display: inline-block; width: 0.85em; height: 0.85em;
   background: currentColor; border-radius: 1px; vertical-align: -0.05em;
+}
+/* 건물 전용 벡터 도형(요청: 이모지·글꼴 글리프 말고 벡터) — em 단위라 크기 클래스와
+   확대 배율(--mk)을 글자와 똑같이 따른다. 색도 currentColor 그대로다. */
+.scr-motion-shape-svg {
+  display: inline-block; width: 1em; height: 1em; vertical-align: -0.12em;
+}
+/* 발자국대로 크고 작게(요청: "건물크기로 구분 — 서플·파일런같은 작은 건물은 작게, 큰
+   건물은 크게") — 2×2·3×2 발자국은 한 단계 작게, 4×3 생산 건물은 한 단계 크게. 본진은
+   제 크기(-hall)가 따로 있다. */
+.scr-motion-build-sm.scr-motion-build-shape { font-size: 7px; }
+.scr-motion-build-lg.scr-motion-build-shape { font-size: 12px; }
+@media (min-width: 1160px) {
+  .scr-motion-build-sm.scr-motion-build-shape { font-size: 10px; }
+  .scr-motion-build-lg.scr-motion-build-shape { font-size: 16px; }
 }
 /* 본진 건물(커맨드·넥서스·해처리 계열)은 큼직하게(요청) — 이름이든 네모든 한 단계 키운다. */
 .scr-motion-build-hall { font-size: 10px; }
