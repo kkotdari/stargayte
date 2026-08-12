@@ -30,6 +30,8 @@ export interface ParsedReplayPlayer {
   // 실제 종족만 저장하기로 했으므로), 검토 화면에서 직접 선택하도록 비워둔다.
   race: Race | "";
   team: number;
+  /** 게임 내 색(#rrggbb) — screp의 Player.Color.RGB(요청: 유저 컬러 추출). 없으면 null. */
+  color: string | null;
   apm: number | null;
   eapm: number | null;
   cmdCount: number | null;
@@ -287,6 +289,8 @@ interface ScrepPlayer {
   Observer?: boolean;
   // "Computer"(AI, 옵저버가 아닌 실제 참가 슬롯) / "Human" 등 — icza/screp의 PlayerType.
   Type?: { Name?: string };
+  /** 게임 내 색 — RGB는 0xRRGGBB 수다(요청: 유저 컬러 추출). */
+  Color?: { Name?: string; RGB?: number };
 }
 
 interface ScrepPlayerDesc {
@@ -965,6 +969,9 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
       return {
         rawName: p.Name,
         race: RACE_NAME_MAP[p.Race?.Name ?? ""] ?? "",
+        // 게임 내 색(요청) — 연속 재생이 팀 2색 대신 이 색으로 각자를 칠한다.
+        color: typeof p.Color?.RGB === "number"
+          ? `#${p.Color.RGB.toString(16).padStart(6, "0")}` : null,
         team: p.Team,
         apm: desc?.APM ?? null,
         eapm: desc?.EAPM ?? null,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import React, { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Pause, Play, RotateCcw } from "lucide-react";
 import Avatar from "../common/Avatar";
 import { cx } from "../../utils/format";
@@ -123,6 +123,22 @@ export default function ReplayMotionPlayer({
 
   const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(true);
+  /* 색 모드(요청) — 팀색(두 색)과 개인색(게임 내 유저 컬러) 사이를 오간다. 유저 컬러는
+     어느 모드든 테두리에 입힌다(요청). 색을 못 읽은 옛 기록은 개인색 모드여도 팀색으로. */
+  const [colorMode, setColorMode] = useState<"team" | "personal">("team");
+  const colorByRaw = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of motion.players) if (p.color) m.set(p.raw, p.color);
+    return m;
+  }, [motion]);
+  const chipStyle = (raw: string): React.CSSProperties => {
+    const c = colorByRaw.get(raw);
+    if (!c) return {};
+    return {
+      borderColor: c,
+      ...(colorMode === "personal" ? { color: c } : {}),
+    };
+  };
   // 기본은 ×2다(요청) — 처음부터 빨리 감으면 초반 정찰·빌드가 통째로 지나가 버린다.
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(2);
   const [done, setDone] = useState(false);
@@ -205,10 +221,14 @@ export default function ReplayMotionPlayer({
               className={cx(
                 "scr-motion-build",
                 team === 2 ? "scr-motion-team2" : "scr-motion-team1",
-                freshBuild && "scr-motion-build-fresh",
+                freshBuild && "scr-motion-build-fresh scr-motion-chip",
                 razed && "scr-motion-build-razed",
               )}
-              style={{ left: pct(x, grid.width), top: pct(y, grid.height) }}
+              style={{
+                left: pct(x, grid.width), top: pct(y, grid.height),
+                ...(freshBuild ? chipStyle(raw) : colorMode === "personal" && colorByRaw.get(raw)
+                  ? { color: colorByRaw.get(raw) } : {}),
+              }}
             >
               {/* 한글명만 적는다(요청) — 이름을 모르는 건물은 점으로만. */}
               {razed ? "✕" : freshBuild ? (UNIT_KO[unit] ?? "▪") : "▪"}
@@ -233,7 +253,10 @@ export default function ReplayMotionPlayer({
             >
               <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={16} />
               {m.withName && (
-                <span className={cx("scr-motion-base-name", m.team === 2 ? "scr-motion-team2" : "scr-motion-team1")}>
+                <span
+                  className={cx("scr-motion-base-name", "scr-motion-chip", m.team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
+                  style={chipStyle(m.key)}
+                >
                   {m.name}
                 </span>
               )}
@@ -257,11 +280,11 @@ export default function ReplayMotionPlayer({
             <span
               key={p.raw}
               className={cx(
-                "scr-motion-army",
+                "scr-motion-army", "scr-motion-chip",
                 team === 2 ? "scr-motion-team2" : "scr-motion-team1",
                 pos.stale && "scr-motion-army-stale",
               )}
-              style={{ left: pct(pos.x, grid.width), top: pct(pos.y, grid.height) }}
+              style={{ left: pct(pos.x, grid.width), top: pct(pos.y, grid.height), ...chipStyle(p.raw) }}
             >
               {unit ? (UNIT_KO[unit] ?? "·") : "·"}
             </span>
@@ -274,8 +297,8 @@ export default function ReplayMotionPlayer({
           TECH_KO[tech] ? (
             <span
               key={`c-${i}`}
-              className={cx("scr-motion-cast", teamOfRaw(raw) === 2 ? "scr-motion-team2" : "scr-motion-team1")}
-              style={{ left: pct(x, grid.width), top: pct(y, grid.height) }}
+              className={cx("scr-motion-cast", "scr-motion-chip", teamOfRaw(raw) === 2 ? "scr-motion-team2" : "scr-motion-team1")}
+              style={{ left: pct(x, grid.width), top: pct(y, grid.height), ...chipStyle(raw) }}
             >
               {TECH_KO[tech]}
             </span>
@@ -329,6 +352,15 @@ export default function ReplayMotionPlayer({
               ×{v}
             </button>
           ))}
+          <button
+            type="button"
+            className={cx("scr-motion-btn", "scr-motion-colorbtn")}
+            onClick={() => setColorMode((v) => (v === "team" ? "personal" : "team"))}
+            aria-label="색 기준 전환"
+            title="색 기준 전환"
+          >
+            {colorMode === "team" ? "팀색" : "개인색"}
+          </button>
         </span>
         {/* 옛 스냅 타임라인의 재생 버튼과 같은 꼴(요청) — 46px 완전 원, 속 채운 삼각형. */}
         <button

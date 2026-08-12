@@ -31,6 +31,8 @@ const RAZE_MIN_ORDERS = 12;
 /** 한 사람의 자취 — 원본 게임 아이디(raw)로 부른다(beats와 같은 규칙). */
 export interface MotionTrack {
   raw: string;
+  /** 게임 내 색(#rrggbb, 요청) — 재생 화면이 팀 2색 대신 이 색으로 칠한다. 없으면 팀 색. */
+  color?: string;
   /** [초, x, y] — STEP_SEC 버킷의 마지막 명령 자리. 안 움직인 버킷은 접혀 있다. */
   pts: [number, number, number][];
   /** [초, 유닛 영문명] — 그때까지 가장 많이 뽑은 전투 유닛이 바뀐 순간들(이름표 재료). */
@@ -170,7 +172,7 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
     const units = unitTimeline(sg.unitFrames ?? {});
     const workers = workerTimeline(sg.unitFrames ?? {});
     if (pts.length > 0 || units.length > 0 || workers.length > 0) {
-      tracks.push({ raw: p.rawName, pts, units, workers });
+      tracks.push({ raw: p.rawName, ...(p.color ? { color: p.color } : {}), pts, units, workers });
     }
     const foeAttacks = [...attacksByTeam.entries()]
       .filter(([team]) => team !== p.team)
