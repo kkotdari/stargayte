@@ -38,6 +38,40 @@ const GROUND_BEND = 0.35;
 
 interface TrackPos { x: number; y: number; stale: boolean; moving: boolean; sinceLast: number }
 
+/* ── 유닛 속도(요청: 속업 여부 포함) ──────────────────────────────────────────
+   값은 타일/초다(브루드워 픽셀/프레임 × 23.81fps ÷ 32px). 표에 없는 유닛은 보병쯤(3.2)으로
+   친다. 속업은 리플레이의 업그레이드 기록(트랙의 ups)에서 연구 시점을 읽어, 그 뒤의
+   이동에만 붙는다 — 배수는 대부분 1.5배이고 오버로드만 4배다. */
+const UNIT_SPEED: Record<string, number> = {
+  Marine: 3.0, Firebat: 3.0, Medic: 3.0, Ghost: 3.0, SCV: 3.7,
+  Vulture: 4.8, Goliath: 3.5, "Siege Tank (Tank Mode)": 3.5, "Siege Tank": 3.5,
+  Wraith: 5.0, Dropship: 4.1, "Science Vessel": 3.7, Battlecruiser: 1.9, Valkyrie: 4.9,
+  Zealot: 3.0, Dragoon: 3.7, "High Templar": 2.4, "Dark Templar": 3.7, Archon: 3.7,
+  Reaver: 1.3, Probe: 3.7, Shuttle: 3.3, Observer: 2.5, Scout: 5.0, Corsair: 5.0,
+  Carrier: 2.5, Arbiter: 3.7,
+  Zergling: 4.1, Hydralisk: 2.7, Lurker: 4.3, Ultralisk: 3.8, Defiler: 3.0,
+  Drone: 3.7, Overlord: 0.6, Mutalisk: 5.0, Scourge: 5.0, Queen: 5.0, Guardian: 1.9,
+  Devourer: 3.7, "Infested Terran": 4.0,
+};
+/** 유닛 → 그 유닛의 속도 업그레이드 이름. */
+const SPEED_UP_OF: Record<string, string> = {
+  Zergling: "Metabolic Boost", Hydralisk: "Muscular Augments", Ultralisk: "Anabolic Synthesis",
+  Overlord: "Pneumatized Carapace", Vulture: "Ion Thrusters", Zealot: "Leg Enhancements",
+  Shuttle: "Gravitic Drive", Observer: "Gravitic Boosters", Scout: "Gravitic Thrusters",
+};
+const DEFAULT_SPEED = 3.2;
+
+function speedOf(
+  unit: string, atSec: number, ups: [number, string][] | undefined,
+): number {
+  const base = UNIT_SPEED[unit] ?? DEFAULT_SPEED;
+  const upName = SPEED_UP_OF[unit];
+  if (!upName || !ups) return base;
+  const researched = ups.some(([sec, name]) => name === upName && sec <= atSec);
+  if (!researched) return base;
+  return unit === "Overlord" ? base * 4 : base * 1.5;
+}
+
 /** 커맨드를 받은 지 이 안이면 아직 '활동 중'이다(요청) — 이름표를 유지한다. */
 const ACTIVE_HOLD_SEC = 8;
 /** 생산 뒤 이 안이면 그 건물이 '일하는 중'이다(요청: 생산할 때 이름 표시). */
@@ -78,9 +112,14 @@ function posAt(
       if (s1 - s0 > LERP_MAX_GAP_SEC) {
         return { x: x0, y: y0, stale: t - s0 > LERP_MAX_GAP_SEC, moving: false, sinceLast: t - s0 };
       }
-      const k = (t - s0) / Math.max(1, s1 - s0);
-      if (!bendCenter) {
-        return { x: x0 + (x1 - x0) * k, y: y0 + (y1 - y0) * k, stale: false, moving: true, sinceLast: 0 };
+      const k = (t - s0) / Math.max(0.001, s1 - s0);
+      // 대기 구간(같은 자리 두 점) — 움직임이 아니다(도착해서 다음 명령을 기다리는 중).
+      const still = x0 === x1 && y0 === y1;
+      if (!bendCenter || still) {
+        return {
+          x: x0 + (x1 - x0) * k, y: y0 + (y1 - y0) * k,
+          stale: false, moving: !still, sinceLast: still ? t - s0 : 0,
+        };
       }
       /* 이차 베지어 — 제어점을 두 점의 가운데에서 맵 중앙 쪽으로 당긴다. 이동 거리가 길수록
          더 휘어, 먼 진군일수록 "가운데 길로 돌아간다"에 가까워진다. */
@@ -187,26 +226,31 @@ export default function ReplayMotionPlayer({
     return () => { cancelled = true; };
   }, [grid.image, grid.walk]);
 
-  /* 지상 구간을 지형 경로로 편 자취 — 시간은 경로 길이에 비례해 나눠 얹는다. 공중 유닛
-     구간·길이 없는 구간은 원본 그대로다. */
+  /* 자취를 실제 이동으로 편다 — 지상은 지형 경로(BFS), 공중은 직선. 시간은 그 유닛의
+     속도(속업 포함, 요청)로 배분한다: 경로 길이 ÷ 속도가 걸리는 시간이고, 다음 명령까지
+     남으면 도착지에서 기다린다(정지 점을 하나 더 박는다). 클릭이 부대보다 앞서 나간 구간
+     (걸리는 시간 > 명령 간격)은 명령 시각에 맞춰 도착시킨다 — 마커가 명령을 영영 못
+     따라가면 그 뒤 화면 전체가 밀린다. */
   const refinedPts = useMemo(() => motion.players.map((p) => {
-    if (!terrain) return p.pts;
     const out: [number, number, number][] = [];
     for (let i = 0; i < p.pts.length; i += 1) {
       const cur = p.pts[i];
       if (i === 0) { out.push(cur); continue; }
       const prev = p.pts[i - 1];
       const unit = unitAt(p.units, prev[0]);
-      if (cur[0] - prev[0] > LERP_MAX_GAP_SEC || (unit !== "" && isAirUnit(unit))) {
-        out.push(cur);
-        continue;
+      const air = unit !== "" && isAirUnit(unit);
+      const dt = cur[0] - prev[0];
+      if (dt > LERP_MAX_GAP_SEC) { out.push(cur); continue; }
+      // 경로 — 지상은 지형 위 BFS(지형 없으면 직선 폴백), 공중은 직선.
+      let path: [number, number][] | null = null;
+      if (!air && terrain) {
+        path = groundPath(
+          terrain,
+          prev[1] / grid.width, prev[2] / grid.height,
+          cur[1] / grid.width, cur[2] / grid.height,
+        )?.map(([fx, fy]) => [fx * grid.width, fy * grid.height] as [number, number]) ?? null;
       }
-      const path = groundPath(
-        terrain,
-        prev[1] / grid.width, prev[2] / grid.height,
-        cur[1] / grid.width, cur[2] / grid.height,
-      )?.map(([fx, fy]) => [fx * grid.width, fy * grid.height] as [number, number]);
-      if (!path || path.length < 2) { out.push(cur); continue; }
+      if (!path) path = [[cur[1], cur[2]]];
       let total = 0;
       const lens: number[] = [];
       let px = prev[1];
@@ -218,12 +262,17 @@ export default function ReplayMotionPlayer({
         px = x;
         py = y;
       }
+      if (total === 0) { out.push(cur); continue; }
+      // 걸리는 시간 — 유닛 속도(속업 반영)로, 명령 간격을 넘지는 않는다(위 주석).
+      const v = speedOf(unit || "Marine", prev[0], p.ups);
+      const travel = Math.min(dt, total / Math.max(0.5, v));
       let acc = 0;
       for (let j = 0; j < path.length; j += 1) {
         acc += lens[j];
-        const sec = prev[0] + (cur[0] - prev[0]) * (total > 0 ? acc / total : 1);
-        out.push([sec, path[j][0], path[j][1]]);
+        out.push([prev[0] + travel * (acc / total), path[j][0], path[j][1]]);
       }
+      // 일찍 닿았으면 다음 명령까지 그 자리에서 기다린다.
+      if (travel < dt) out.push([cur[0], cur[1], cur[2]]);
     }
     return out;
   }), [motion, terrain, grid.width, grid.height]);

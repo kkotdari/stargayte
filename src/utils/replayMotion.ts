@@ -19,6 +19,11 @@ const TRACK_CAP = 400;
 const SAME_SPOT_TILES = 3;
 /** 부대 이름표가 너무 촐싹대지 않게, 우세 유닛이 바뀌어도 이만큼은 지나야 갈아 준다(초). */
 const UNIT_HOLD_SEC = 10;
+/** 속도에 관여하는 업그레이드만 싣는다(요청: 속업 중요) — 이름은 파서가 정규화한 그대로다. */
+const SPEED_UPGRADES = new Set([
+  "Metabolic Boost", "Muscular Augments", "Anabolic Synthesis", "Pneumatized Carapace",
+  "Ion Thrusters", "Leg Enhancements", "Gravitic Drive", "Gravitic Boosters", "Gravitic Thrusters",
+]);
 /** 일꾼 수의 버킷(초) — 매 마리마다 점을 찍으면 트랙만 굵어진다. */
 const WORKER_STEP_SEC = 15;
 /** 병력 규모의 버킷·창(초) — 최근 이 창 안의 생산 수를 규모로 본다(요청: 크기로 수를). */
@@ -43,6 +48,9 @@ export interface MotionTrack {
   /** [초, 누적 일꾼 수] — 자원 캐는 모습의 재료(요청). 생산 커맨드 누적이라 죽은 일꾼은
    *  못 뺀다(리플레이에 죽음이 없다) — "여태 뽑은 일꾼"으로 읽어야 한다. */
   workers: [number, number][];
+  /** [초, 업그레이드 영문명] — 속도 업그레이드의 연구 시점(요청: 속업 여부가 이동 속도에
+   *  중요하다). 속도와 무관한 업은 안 싣는다(트랙만 굵어진다). */
+  ups?: [number, string][];
   /** 유닛 영문명 → 생산 시각(초)들 — "생산할 때 건물 이름 켜기"(요청)의 재료다. 마린이
    *  나온 순간 그 사람 배럭이 일하고 있었다는 뜻이라, 건물 종류로 되짚는다. */
   prod: Record<string, number[]>;
@@ -204,13 +212,21 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
     const units = unitTimeline(sg.unitFrames ?? {});
     const workers = workerTimeline(sg.unitFrames ?? {});
     const size = sizeTimeline(sg.unitFrames ?? {});
+    const ups: [number, string][] = [];
+    for (const [name, frame] of Object.entries(sg.firstUpgradeFrame ?? {})) {
+      if (SPEED_UPGRADES.has(name)) ups.push([Math.round(frame * SECONDS_PER_FRAME), name]);
+    }
+    ups.sort((a, b) => a[0] - b[0]);
     const prod: Record<string, number[]> = {};
     for (const [unit, frames] of Object.entries(sg.unitFrames ?? {})) {
       if (frames.length === 0) continue;
       prod[unit] = frames.map((f) => Math.round(f * SECONDS_PER_FRAME));
     }
     if (pts.length > 0 || units.length > 0 || workers.length > 0) {
-      tracks.push({ raw: p.rawName, ...(p.color ? { color: p.color } : {}), pts, units, workers, size, prod });
+      tracks.push({
+        raw: p.rawName, ...(p.color ? { color: p.color } : {}),
+        ...(ups.length > 0 ? { ups } : {}), pts, units, workers, size, prod,
+      });
     }
     const foeAttacks = [...attacksByTeam.entries()]
       .filter(([team]) => team !== p.team)
