@@ -309,7 +309,8 @@ const footDy = (unit: string): number => (FOOTPRINT[unit] ?? [3, 2])[1] / 2;
 const SHAPE_KIND: Record<string, string> = {
   // 벙커는 납작한 무덤, 포토캐논은 납작한 태엽(요청) — 커맨드의 큰 무덤과 갈린다.
   Pylon: "diamond", "Supply Depot": "trapezoid", Bunker: "tombFlat", "Photon Cannon": "coil",
-  "Command Center": "tomb", Nexus: "pyramid", Gateway: "pyramid",
+  // 넥서스는 게이트보다 넙적한 세모(요청) — 크기(-hall)에 모양까지 갈린다.
+  "Command Center": "tomb", Nexus: "pyramidWide", Gateway: "pyramid",
   /* 저그 본진 3형제(요청) — 해처리는 곡선 둔덕(각진 T는 부자연스럽다는 지적), 레어는
      그 둔덕의 바닥에 뿔, 하이브는 더 높은 뿔에 안쪽 가시까지 — 단계가 오를수록 뿔이
      자란다. */
@@ -332,6 +333,8 @@ const SHAPE_PATHS: Record<string, string> = {
   tombFlat: "M1.5 13 V10.5 Q1.5 7 8 7 Q14.5 7 14.5 10.5 V13 Z",
   coil: "M1 11a7 3.5 0 1 0 14 0a7 3.5 0 1 0-14 0Z M6.6 8a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0-2.8 0Z",
   pyramid: "M8 1 16 15 0 15Z",
+  // 넙적한 세모(요청: 넥서스) — 밑변이 높이의 두 배쯤이라 눌러앉은 피라미드로 읽힌다.
+  pyramidWide: "M8 4.5 16 14 0 14Z",
   hatchery: ZERG_MOUND,
   lair: `${ZERG_MOUND} M2.4 13.6 L1.2 9.2 L4.2 11.8 Z M13.6 13.6 L14.8 9.2 L11.8 11.8 Z`,
   hive: `${ZERG_MOUND} M2.4 13.6 L0.8 6.2 L4.6 11.4 Z M13.6 13.6 L15.2 6.2 L11.4 11.4 Z`
