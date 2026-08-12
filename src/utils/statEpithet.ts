@@ -685,7 +685,7 @@ const TITLES: Title[] = [
      판정은 replayTactics의 moka(개편). 자막이 짚은 판만 세고 서버가 이긴 판만 세므로
      (_tactic_counts) 잣대가 하나다. */
   // 스웜 목동 → 목동의 여왕(요청) — 여신·여왕 계열로.
-  { ...tactic("목동의 여왕", ["moka"]), minPlaysShare: 0.1, vsWins: true, battle: true },
+  { ...tactic("목동의 여왕", ["moka"]), minPlaysShare: 0.05, vsWins: true, battle: true },
   /* 브루들링의 여왕(요청: 퀸 쪽 추가) — 퀸을 띄워 브루들링·인스네어·패러사이트를 실제로
      쓴 판이다. 과학의 여왕(베슬)과 같은 자다. */
   { ...tactic("진화의 여왕", ["queen"]), minPlaysShare: 0.05, vsWins: true, battle: true },
@@ -706,7 +706,7 @@ const TITLES: Title[] = [
   { ...tactic("성큰러시 퀸", ["sunken-rush"], 1), minPlaysShare: 0.05 },
   /* 센터의 여주인 → 센포의 여왕(요청) — 클럽에서 그 수를 부르는 말이 '센포'라, 그 말을
      그대로 쓰면 무엇을 세는 칭호인지가 바로 읽힌다. */
-  { ...tactic("센포의 여왕", ["center-photon"]), minPlaysShare: 0.15 },
+  { ...tactic("센포의 여왕", ["center-photon"]), minPlaysShare: 0.1 },
   /* (삭제) 남의 집 헤집기 장인(base-raid) — 요청. 이름 없는 급습이라 "무엇으로 갔는지"가
      빠진 이야기고, 그 대목은 대개 다른 칭호(드랍·견제·러시)가 이미 말한다. */
   /* 나이더스 커널이다(버로우가 아니다). "땅굴"이라 부르니 버로우 이야기로 읽힌다는 지적 —
@@ -725,29 +725,29 @@ const TITLES: Title[] = [
      같은 캐리어라도 아비터가 끼면 스테이시스·리콜이 낀 다른 그림이라, 이름이 그 판을
      말하게 한다(맵 여왕과 같은 {n} 방식). 아비터를 뽑았나는 이긴 판 원장(mix)의 유닛
      수로 본다. */
-  { ...tactic("{n}", ["carrier"]), minPlaysShare: 0.1, battle: true, why: "캐리어",
+  { ...tactic("{n}", ["carrier"]), minPlaysShare: 0.05, battle: true, why: "캐리어",
     name: (s, of) => ((mix(s, of)?.units?.["Arbiter"] ?? 0) > 0 ? "보이지 않는 날파리 퀸" : "날파리 퀸") },
   /* 폭풍의 여왕(요청: 신규 질럿+템플러) — 질럿 몸에 스톰을 얹은 프로토스 지상 한 벌.
      판정은 replayTactics의 zealot-templar. */
-  { ...tactic("또각또각 번개 퀸", ["zealot-templar"]), minPlaysShare: 0.25, vsWins: true, battle: true },
+  { ...tactic("또각또각 번개 퀸", ["zealot-templar"]), minPlaysShare: 0.3, vsWins: true, battle: true },
   /* 강습의 여왕(요청: 프로토스 하나 추가 — 셔틀 리버) — 폭탄드랍의 여왕은 종족 무관 드랍
      전부를 세고, 이쪽은 프로토스의 셔틀 리버 그림만 센다. */
   { ...tactic("리버 드랍의 여왕", ["shuttle-reaver"]), minPlaysShare: 0.05, vsWins: true, battle: true },
   /* 보이지 않는 여왕(요청: 어둠의 여왕에서 개명 — 다크 단독 또는 다템+커세어) — 그림자의
      여왕(은신 유닛 비중)과 달리 다크가 주인공인 판을 센다. */
   // 조건 상향(요청) — 프로토스 판 5% → 10%: 스무 판에 두 판은 다크로 이겨야 그 이름이다.
-  { ...tactic("보이지 않는 여왕", ["dark-templar"]), minPlaysShare: 0.6, vsWins: true, battle: true },
+  { ...tactic("보이지 않는 여왕", ["dark-templar"]), minPlaysShare: 0.65, vsWins: true, battle: true },
   /* 시공의 여왕(요청: 아비터 쪽 추가) — 아비터를 띄워 스테이시스·리콜을 실제로 쓴 판이다.
      함대의 여왕(캐리어+아비터)과 달리 아비터가 주인공인 판을 센다. */
   { ...tactic("시공을 지배하는 여제", ["arbiter"]), minPlaysShare: 0.2, vsWins: true, battle: true },
   /* 번개의 여왕(요청: 셔틀+하이템플러 — 여신이 아니라 여왕) — 셔틀에 템플러를 태워 스톰을 떨어뜨린 판이다
      (templar-drop). 폭탄드랍의 여왕에도 드는 열쇠지만, 그쪽은 종족 무관 드랍 전부를 세는
      자리고 이쪽은 이 그림 하나만 센다. */
-  { ...tactic("공포의 번개 퀸", ["templar-drop"]), minPlaysShare: 0.1, vsWins: true, battle: true },
+  { ...tactic("선녀하강 번개 퀸", ["templar-drop"]), minPlaysShare: 0.1, vsWins: true, battle: true },
   /* 가시밭의 여왕(요청: 독거미 부대 상향·개편) — 히드라 몸에 럴커를 묻은 저그 지상
      한 벌이다(판정도 히드라+럴커 조합으로 바뀐다). 러커는 저그의 밥이라 유닛 기본(7%)의
      배로 잰다. */
-  { ...tactic("가시의 여왕", ["lurker"]), minPlaysShare: 0.4, battle: true },
+  { ...tactic("가시의 여왕", ["lurker"]), minPlaysShare: 0.35, battle: true },
   /* 안 보이는 것으로만 치는 사람(요청: 다크·레이스·아비터를 다 잘 쓴 경우만) —
      "보이지 않는 손" → "안 보이는 레이스"를 거쳐 온 자리다. 유닛 하나로는 안 준다(요청:
      하나만 써서는 안 됨): 다크만 뽑는 프로토스는 흔하고, 그건 이미 유닛 칭호가 말한다.
@@ -756,7 +756,7 @@ const TITLES: Title[] = [
   /* (삭제·요청) 은폐 유닛 퀸 — 병력 중 은신 유닛 비중. 다크가 주인공인 판은
      '보이지 않는 여왕'(dark-templar)이 따로 센다. */
   // 에픽 상향(요청: 뮤탈은 상향 — 이름도 여왕 계열로) + 전투 조건.
-  { ...tactic("뮤탈 습격 퀸", ["muta"]), minPlaysShare: 0.2, battle: true },
+  { ...tactic("뮤탈 습격 퀸", ["muta"]), minPlaysShare: 0.15, battle: true },
   /* 코끼리 조련사(요청) — 울트라리스크를 모아 나간 판이다. 저그의 마지막 지상 병력이라
      거기까지 판을 끌고 갔다는 말이기도 한데, 부르는 말은 그 그림 하나면 된다.
      한때 "코끼리떼를 모는 여인"으로 바꿔 봤다가 되돌렸다(요청) — 조련사 쪽이 짧고, 무엇을
@@ -805,7 +805,7 @@ const TITLES: Title[] = [
      race를 지우는 이유: 갈래가 두 종족에 걸쳐 있어(질럿·저글링…) 분모는 전체 판수라야 한다.
      tactic()은 첫 열쇠의 종족(프로토스)을 그대로 붙이므로 여기서 걷는다. */
   { ...tactic("초반의 여왕", ["zealot-rush", "zling-rush", "duel-rush", "cannon-rush", "sunken-rush", "sneak-rax"]),
-    race: undefined, why: "초반 러시", minPlaysShare: 0.1 },
+    race: undefined, why: "초반 러시", minPlaysShare: 0.15 },
   /* 정찰(요청: 초반 정찰 열심히 한 사람 — 좋은 뜻이라 3점대) — 옵저버를 넉넉히 띄웠거나,
      오버로드를 퍼뜨렸거나, 스캔으로 여기저기 들여다본 판이다. 남의 살림을 먼저 보고 제 수를
      고르는 일이라, 눈에 안 띄면서 판을 가장 크게 바꾸는 습관이다. */
@@ -818,7 +818,7 @@ const TITLES: Title[] = [
      명령 좌표로 짚는다(replaySummary의 WORKER_SCOUT_SEC). 오버로드와 한 열쇠인 까닭은
      둘 다 '미리 보고 시작한다'는 같은 습관이라서다. */
   { ...tactic("부지런한 정찰 퀸", ["vision"]), minPlaysShare: 0.5 },
-  { ...tactic("전장을 살피는 눈", ["vision-eye"]), minPlaysShare: 0.15 },
+  { ...tactic("전장을 살피는 눈", ["vision-eye"]), minPlaysShare: 0.2 },
   /* (삭제) 맞러시 승부사(duel-rush) — 요청. 맞러시는 둘이 함께 만든 장면이라 한 사람의
      수라고 하기 어렵다. */
   /* 협공을 다시 넣는다(요청: 공격에 열심히 참여한다는 좋은 뜻으로) — 한때 "협공의 선봉"으로 뺐던 자리다. 그때 뺀
@@ -1258,7 +1258,7 @@ const GUIDE_ORDER: string[][] = [
     "폭탄드랍의 여왕", "바이오닉의 여왕", "메카닉의 여왕", "과학전의 퀸", "여전사 발키리",
     "우주전함 퀸", "목동의 여왕", "진화의 여왕", "센포의 여왕",
     "날파리 퀸 (아비터까지 썼으면 보이지 않는 날파리 퀸)", "또각또각 번개 퀸",
-    "리버 드랍의 여왕", "보이지 않는 여왕", "시공을 지배하는 여제", "공포의 번개 퀸",
+    "리버 드랍의 여왕", "보이지 않는 여왕", "시공을 지배하는 여제", "선녀하강 번개 퀸",
     "가시의 여왕", "뮤탈 습격 퀸", "초반의 여왕", "부지런한 정찰 퀸", "꽃게탕 퀸",
     "아군 보호 퀸", "커널 개통 퀸", "하이브의 지배자", "오버로드 사냥꾼", "전장을 살피는 눈",
     "리콜 배달 퀸",
