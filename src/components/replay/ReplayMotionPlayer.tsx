@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Mountain, Pause, Play, RotateCcw } from "lucide-react";
+import { Mountain, Pause, Play, RotateCcw, Shield } from "lucide-react";
 import TerrainReviewModal from "../../modals/TerrainReviewModal";
 import Avatar from "../common/Avatar";
 import RaceBadge from "../common/RaceBadge";
@@ -40,6 +40,52 @@ const pct = (v: number, span: number) => `${(v / span) * 100}%`;
 const GROUND_BEND = 0.35;
 
 interface TrackPos { x: number; y: number; stale: boolean; moving: boolean; sinceLast: number }
+
+/* ── 나들이 점 걷기(지적: 특히 초반에 유닛 자리가 튄다 — 오버로드인지 갑자기 저 멀리 다른
+   기지에 가 있다) ────────────────────────────────────────────────────────────────
+   한 사람의 자취(pts)는 그 사람이 내린 이동·공격 명령을 시간순으로 이은 것 하나뿐이다.
+   무엇을 골라 내린 명령인지는 대체로 안 남아서(replayParser의 orderPositions.by는 시즈·스톰
+   처럼 그 유닛만 하는 커맨드가 있어야 붙는다), 오버로드나 일꾼을 정찰 보낸 클릭 한 번이
+   '부대'의 자리로 읽히고 마커가 맵을 가로지른다. 초반에 유독 심한 것은 그때 내리는 명령의
+   거의 전부가 정찰이라서다.
+
+   가려내는 근거는 '돌아온다'는 사실이다: 정찰은 저쪽에 잠깐 찍혔다가 곧 이쪽 명령으로
+   돌아오지만, 진짜 진군은 간 자리에서 계속 명령이 이어진다. 그래서 앞점에서 멀리 떨어진
+   점이 짧게(RUN 이하) 이어지다가 다시 앞점 근처로 돌아오면 그 구간을 통째로 뺀다. 오래
+   머무르는 구간(전투·진출)은 길이 조건에서 살아남는다.
+
+   저장된 트랙이 아니라 화면에서 거른다 — 원본을 깎아 두면 되돌릴 수 없고, 이렇게 하면
+   이미 등록된 경기도 재분석 없이 곧바로 반듯해진다. */
+/** 앞점에서 이만큼(맵 한 변 대비) 떨어지면 '저 멀리'다. */
+const SPIKE_FAR_RATE = 0.22;
+/** 그러고서 앞점의 이만큼 안으로 돌아오면 나들이였다고 본다. */
+const SPIKE_BACK_RATE = 0.1;
+/** 나들이로 볼 수 있는 최대 연속 점 수 — 이보다 길게 머물렀으면 그건 진짜 그 자리다. */
+const SPIKE_MAX_RUN = 4;
+
+function dropSpikes(
+  pts: [number, number, number][], span: number,
+): [number, number, number][] {
+  if (pts.length < 3) return pts;
+  const far = span * SPIKE_FAR_RATE;
+  const back = span * SPIKE_BACK_RATE;
+  const at = (p: [number, number, number]) => [p[1], p[2]] as const;
+  const gap = (a: [number, number, number], b: [number, number, number]) =>
+    Math.hypot(at(a)[0] - at(b)[0], at(a)[1] - at(b)[1]);
+  const out: [number, number, number][] = [pts[0]];
+  let i = 1;
+  while (i < pts.length) {
+    const prev = out[out.length - 1];
+    if (gap(prev, pts[i]) <= far) { out.push(pts[i]); i += 1; continue; }
+    // 멀리 나간 구간의 끝을 찾는다 — 앞점 근처로 돌아온 첫 점이 그 끝이다.
+    let j = i;
+    while (j < pts.length && j - i < SPIKE_MAX_RUN && gap(prev, pts[j]) > far) j += 1;
+    if (j < pts.length && gap(prev, pts[j]) <= back) { i = j; continue; }  // 나들이 — 통째로 뺀다
+    out.push(pts[i]);
+    i += 1;
+  }
+  return out;
+}
 
 /* ── 유닛 속도(요청: 속업 여부 포함) ──────────────────────────────────────────
    값은 타일/초다(브루드워 픽셀/프레임 × 23.81fps ÷ 32px). 표에 없는 유닛은 보병쯤(3.2)으로
@@ -351,15 +397,23 @@ export default function ReplayMotionPlayer({
      공중은 직선)를 그 유닛의 속도(속업 포함)로 이동한다. 도착 전에 다음 명령이 오면 가던
      길 그 지점에서 새 목적지로 방향을 튼다. 명령이 없는 동안은 서 있는다 — 순간이동은
      구조적으로 없다. */
-  const refinedPts = useMemo(() => motion.players.map((p) => {
-    if (p.pts.length === 0) return p.pts;
-    const out: [number, number, number][] = [[p.pts[0][0], p.pts[0][1], p.pts[0][2]]];
-    let atX = p.pts[0][1];
-    let atY = p.pts[0][2];
-    let atSec = p.pts[0][0];
-    for (let i = 1; i < p.pts.length; i += 1) {
-      const [orderSec, tx, ty] = p.pts[i];
-      const nextOrderSec = i + 1 < p.pts.length ? p.pts[i + 1][0] : Infinity;
+  /* 정찰 클릭 한 번에 부대가 맵을 가로지르던 점들을 먼저 걷는다(위 dropSpikes 주석).
+     아래 자취를 펴는 계산도, 마커가 '방금 명령받았나'를 재는 곳도 이 걸러진 점을 본다 —
+     뺀 점이 한쪽에만 남아 있으면 마커는 가만히 선 채로 명령받은 척 맥동한다. */
+  const basePts = useMemo(
+    () => motion.players.map((p) => dropSpikes(p.pts, Math.max(grid.width, grid.height))),
+    [motion, grid.width, grid.height],
+  );
+  const refinedPts = useMemo(() => motion.players.map((p, pi) => {
+    const src = basePts[pi];
+    if (src.length === 0) return src;
+    const out: [number, number, number][] = [[src[0][0], src[0][1], src[0][2]]];
+    let atX = src[0][1];
+    let atY = src[0][2];
+    let atSec = src[0][0];
+    for (let i = 1; i < src.length; i += 1) {
+      const [orderSec, tx, ty] = src[i];
+      const nextOrderSec = i + 1 < src.length ? src[i + 1][0] : Infinity;
       // 명령이 올 때까지 서 있던 자리 — 같은 좌표의 점을 박아 그 구간을 정지로 만든다.
       if (orderSec > atSec) out.push([orderSec, atX, atY]);
       const startSec = Math.max(atSec, orderSec);
@@ -425,7 +479,7 @@ export default function ReplayMotionPlayer({
       }
     }
     return out;
-  }), [motion, terrain, grid.width, grid.height]);
+  }), [basePts, terrain, grid.width, grid.height]);
   // 기본은 ×2다(요청) — 처음부터 빨리 감으면 초반 정찰·빌드가 통째로 지나가 버린다.
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(2);
   const [done, setDone] = useState(false);
@@ -823,10 +877,18 @@ export default function ReplayMotionPlayer({
                       : `0 0 0 3px ${modeColor(m.key, m.team)}`,
                   }}
                 >
-                  <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={16} />
+                  {/* 16 → 24px(요청: 아바타 크기 확대) — 지도 위에서 사람을 가려내는 것은
+                      결국 얼굴이라, 도형보다 이쪽이 커야 한다. */}
+                  <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={24} />
                 </span>
                 {/* 종족 배지(요청) — 아바타 옆에. */}
                 <RaceBadge race={m.race} size={9} circleLetter className="scr-motion-base-race" />
+                {/* 팀 표시(요청: 깃발 말고 팀을 나타내는 아이콘에 색 구분) — 반대 어깨의
+                    방패다. 색은 늘 팀색이다(modeColor가 아니다): 개인색 모드에서는 아바타
+                    테두리가 그 사람 색이라, 편을 말해 주는 자리가 하나는 있어야 한다. */}
+                <span className="scr-motion-base-team">
+                  <Shield size={9} strokeWidth={3} color={TEAM_EDGE[m.team === 2 ? 2 : 1]} fill={TEAM_EDGE[m.team === 2 ? 2 : 1]} />
+                </span>
                 {/* 재생이 끝나면 이긴 편에 트로피(요청) — 스냅의 승패 표시와 같은 자리. */}
                 {winnerTeam && m.team === winnerTeam && t >= total - 0.5 && !m.ghost && (
                   <span className="scr-motion-trophy">🏆</span>
@@ -866,7 +928,7 @@ export default function ReplayMotionPlayer({
           );
           if (!pos) return null;
           let sinceCmd = Infinity;
-          for (const [sec] of p.pts) {
+          for (const [sec] of basePts[pi]) {
             if (sec > t) break;
             sinceCmd = t - sec;
           }

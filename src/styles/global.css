@@ -10903,7 +10903,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 }
 .scr-motion-army {
   /* 그림자 없음(지적: 유닛 텍스트에 그림자 아직 있다) — 배지는 제 배경만으로 선다. */
-  font-size: 10px; font-weight: 800;
+  /* 10 → 9px(요청: 모바일에서 유닛 크기 살짝 축소). PC는 아래 미디어가 12px로 올린다. */
+  font-size: 9px; font-weight: 800;
   transition: left 0.25s linear, top 0.25s linear;
 }
 .scr-motion-army-stale { opacity: 0.45; }
@@ -10912,7 +10913,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   animation: scr-motion-in 0.3s ease-out;
 }
 /* 채굴 일꾼 점(요청) — 본진과 자원 사이를 오가는 작은 점. */
-.scr-motion-miner { font-size: 10px; font-weight: 900; }
+.scr-motion-miner { font-size: 9px; font-weight: 900; }
 .scr-motion-base { display: inline-flex; flex-direction: column; align-items: center; gap: 1px; }
 /* 아바타 이중 테두리(요청) — 안쪽 개인색·바깥 팀색은 인라인 box-shadow가 칠한다. */
 .scr-motion-base-ring { display: inline-flex; border-radius: 50%; margin: 4px; }
@@ -10971,10 +10972,22 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   background: rgba(0, 0, 0, 0.35);
 }
 /* 갓 뽑힌 유닛(요청) — 만든 건물 앞에 잠깐 놓이는 작은 점. */
-.scr-motion-fresh { font-size: 8px; text-shadow: 0 0 2px rgba(0, 0, 0, 0.8); }
-/* 도형 전용 크기(지적: PC에서 너무 작다) — 인라인 크기 대신 클래스라야 미디어 확대가 먹는다. */
+.scr-motion-fresh { font-size: 7px; text-shadow: 0 0 2px rgba(0, 0, 0, 0.8); }
+/* 도형 전용 크기(지적: PC에서 너무 작다) — 인라인 크기 대신 클래스라야 미디어 확대가 먹는다.
+   한때 모바일만 줄였다가 되돌렸다(요청: 도형 크기 줄이기 취소) — 작게 만드니 무엇을 그린
+   것인지가 안 읽혔다. 대신 뒤가 비치게 해서 겹침을 푼다(아래 opacity). */
 .scr-motion-build-shape { font-size: 9px; }
-.scr-motion-dot { font-size: 10px; }
+/* 부대 점만 모바일에서 한 눈금 작다(요청: 유닛 크기도 살짝 줄이기) — 도형과 달리 점은
+   작아져도 뜻이 안 상한다(자리만 말하는 표시다). PC는 아래 미디어에서 제 값으로 돌아간다. */
+.scr-motion-dot { font-size: 9px; }
+/* 도형은 아주 살짝 뒤가 비친다(요청: 모바일·PC 모두) — 지도 위에 도형이 빽빽하면 겹친
+   것끼리 서로를 완전히 지운다. 살짝 비치면 뒤에 무엇이 깔렸는지가 보이면서도 앞의 도형이
+   흐려지지는 않는다. 활성(생산 중)일 때는 거의 불투명으로 올려 '지금 일한다'를 지킨다.
+   흐릿해진 자취 점(-stale)은 제 옅음이 뜻이라 건드리지 않는다. */
+.scr-motion-build-shape,
+.scr-motion-sq,
+.scr-motion-dot:not(.scr-motion-army-stale) { opacity: 0.82; }
+.scr-motion-build-on.scr-motion-build-shape { opacity: 0.95; }
 /* 건물 네모 — 글꼴 ■는 작으면 동그랗게 뭉개져(지적) 상자로 직접 그린다. 색은 글자색을 탄다. */
 .scr-motion-sq {
   display: inline-block; width: 0.85em; height: 0.85em;
@@ -10983,8 +10996,18 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 본진 건물(커맨드·넥서스·해처리 계열)은 큼직하게(요청) — 이름이든 네모든 한 단계 키운다. */
 .scr-motion-build-hall { font-size: 10px; }
 .scr-motion-build-hall.scr-motion-build-shape { font-size: 13px; }
-/* 종족 배지(요청) — 아바타 오른쪽 어깨에. */
-.scr-motion-base-race { position: absolute; top: -3px; right: -10px; }
+/* 종족 배지(요청) — 아바타 오른쪽 어깨에. 아바타가 커진 만큼(16 → 24px) 어깨도 밖으로 민다. */
+.scr-motion-base-race { position: absolute; top: -2px; right: -11px; }
+/* 팀 아이콘(요청: 깃발 말고 팀을 나타내는 아이콘에 색 구분) — 아바타 왼쪽 어깨에 붙는
+   방패다. 개인색 모드에서도 이 자리만은 늘 팀색이라, 색을 개인으로 바꿔 놓고 보다가
+   "얘가 어느 편이더라"를 다시 묻지 않게 된다. 아바타 테두리(개인색)와 겹쳐 읽히지 않게
+   짙은 판을 깔고 그 위에 아이콘을 얹는다. */
+.scr-motion-base-team {
+  position: absolute; top: -2px; left: -11px;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+}
 /* 승리 트로피(요청) — 재생이 끝나면 이긴 편 아바타 위에 얹힌다. */
 .scr-motion-trophy {
   position: absolute; top: -9px; left: 50%; transform: translateX(-50%);
