@@ -2362,7 +2362,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-mix-cell .scr-stat-toplist { flex: none; width: 100%; max-width: var(--scr-toplist-w); min-width: 0; }
 /* 주요 지표 칸 안의 덩어리 사이 실선은 그대로다. */
 .scr-stat-record-cell > * + * {
-  border-left: 1px solid var(--line-hair); padding-left: 10px; align-self: stretch;
+  /* 두 칸이 위아래로 서면서(요청) 구분선도 가로로 눕는다. */
+  border-top: 1px solid var(--line-hair); padding-top: 10px;
 }
 /* 위정렬(요청) — 칸이 제 내용보다 늘어나 있어도(align-self:stretch) 남는 자리는
    아래로 밀리고, 목록/표 자신은 위에 붙는다. */
@@ -2408,9 +2409,10 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    넷이 폭을 통째로 나눠 쓰지 않고 다 같은 폭을 쓴다. 대신 줄 수가 배로 늘어난 만큼
    글자와 막대 두께를 함께 줄인다(요청) — 아래 --scr-stat-bar-h. */
 .scr-stat-record-cell {
-  /* 세로 가운데 정렬로 되돌린다(지적: "주요지표도 세로 가운데 정렬") — 유저 칸과 같은
-     규칙이다. 위정렬은 내용 길이가 칸마다 크게 다른 종족 칸에만 쓴다. */
-  flex-direction: row; align-items: center; justify-content: center;
+  /* 위아래 두 칸으로(요청) — 옆으로 나란히는 전적 표(세 열)와 손 수치가 한 폭을 나눠 써야
+     해서 어느 한쪽이 늘 좁거나 넓었다(지적이 오간 자리). 위가 전적 표, 아래가 손 수치이고
+     각 칸은 위로 정렬한다(요청) — 종족 칸과 같은 규칙이다. */
+  flex-direction: column; align-items: stretch; justify-content: flex-start;
   gap: 10px; position: relative;
 }
 /* 주요 지표만 좌우를 조인다(지적: 인셀 컬럼 좌우 패딩이 과하다) — 이 칸은 줄기가 셋이라
@@ -2420,8 +2422,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    값의 오른쪽 끝이 줄마다 같은 x에 선다.
    건설·유닛·스킬은 10px 그대로다 — 예전에 8px로 좁혔다가 "다닥다닥 붙어 보인다"는
    지적으로 되돌린 값이고(위 주석), 거기는 줄기가 둘이라 지금도 답답하지 않다. */
-.scr-stat-record-cell { gap: 6px; }
-.scr-stat-record-cell > * + * { padding-left: 6px; }
+.scr-stat-record-cell { gap: 8px; }
+.scr-stat-record-cell > * + * { padding-top: 8px; }
 .scr-stat-row > .scr-stat-record-cell { padding-left: 10px; padding-right: 10px; }
 /* 한 줄기 안의 두 줄은 [이름 | 막대] 두 열을 나눠 쓴다 — 이름 열은 그 줄기에서 가장 긴
    이름에 맞춰지고(auto), 각 이름은 그 안에서 가운데 정렬된다(요청: 세로로 배치된 두 요소의
@@ -2437,17 +2439,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    열 이름과 아래 값들이 어긋났다. 열을 칸 차원에 한 번만 세우면 모든 줄이 같은 자를 쓴다.
    APM·커맨드·BEST처럼 값이 하나뿐인 줄은 마지막 열(승률 자리)에 선다 — 오른쪽 끝이
    맞아야 세로로 읽힌다. */
-/* 손 수치 줄기(APM·커맨드) — 전적 표(세 열)와 달리 [이름 | 값] 두 열이다. 줄기가 둘로
-   갈리면서(요청: 전적과 APM·커맨드를 나누고 구분선) 각자 제 격자를 갖는다. */
-.scr-stat-record-col-hands {
-  grid-template-columns: var(--scr-stat-rlabel-w, 52px) minmax(0, 1fr) !important;
-}
-/* 폭 배분(지적: 손지표 쪽은 줄이고 전적쪽은 늘려야) — 반반(flex 1 1 0)이면 칸이 표의
-   최소폭보다 좁을 때 표가 제 줄기를 넘어 손 수치 위로 흘렀고, 표를 내용폭으로 고정하니
-   이번엔 남는 폭이 전부 손 수치 쪽에 붙었다. 손 수치는 [이름|값] 두 마디뿐이라 넓을수록
-   이름과 값 사이만 벌어진다 — 제 내용만큼만 서고, 남는 자리는 열이 셋인 전적 표가 갖는다. */
-.scr-stat-record-col-games { flex: 1 1 auto; }
-.scr-stat-record-col-hands { flex: 0 0 auto; }
+/* 손 수치 칸(APM·커맨드)도 전적 표와 같은 세 열을 쓴다 — 두 칸이 위아래로 서면서(요청)
+   같은 격자라야 값들이 세로로 한 줄에 맞고, 값이 이름 바로 옆 열에 서니 사이도 좁다
+   (지적: 손수치는 사이 간격 많이 줄여도 됨). 값은 자동 배치로 둘째 열(경기수 자리)에 선다. */
 .scr-stat-record-col {
   display: grid;
   /* 수 열은 56px 아래로는 안 줄어든다(지적: 아직 겹친다) — minmax(0,1fr)이면 칸이 좁을 때
@@ -2456,8 +2450,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   grid-template-columns: var(--scr-stat-rlabel-w, 52px) minmax(56px, 1fr) minmax(56px, 1fr);
   /* 줄 사이를 벌린다(요청: 막대들 줄간격 증가) — 막대 밑에 변동 한 줄이 붙으면서 위아래
      막대가 서로 붙어 어느 변동이 어느 막대의 것인지가 흐려졌다. */
-  align-content: center; gap: 8px 6px;
-  flex: 1 1 0; min-width: 0; padding-right: 0;
+  /* 위로 정렬(요청) — 칸이 위아래로 서면서 세로 가운데는 두 칸 사이만 벌린다. */
+  align-content: start; gap: 8px 6px;
+  flex: none; width: 100%; min-width: 0; padding-right: 0;
 }
 .scr-stat-record-item {
   display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
@@ -2527,7 +2522,8 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    글자는 값보다 한 단계 작다(요청: 텍스트 크기 줄이기) — 네 줄이 세로로 쌓이는 자리라
    이름까지 값과 같은 무게면 칸이 글자로 꽉 찬다. */
 .scr-stat-record-label {
-  text-align: center;
+  /* 왼쪽 정렬(요청) — 가운데면 "전체"(2자)와 "프로토스"(4자)의 시작선이 줄마다 다르다. */
+  text-align: left;
   font-size: var(--fs-9); color: var(--muted); white-space: nowrap;
 }
 .scr-stat-record-item .scr-value-bar,
@@ -3171,11 +3167,9 @@ html:not(.scr-light-theme) .scr-donut-band-delta { fill: #fff; opacity: 0.66; }
   /* 390 → 268px — 이 폭의 3분의 1(랭크 줄기 84 + 줄기 사이 12)이 래더로 옮겨 가면서
      통째로 빈자리가 됐다(요청). 남는 것은 [이름 52 + 막대 180] + 칸 여백(20) + 숨 쉴
      자리 = 268px이다. 걷힌 폭은 오른쪽 종족 세 칸이 나눠 갖는다. */
-  /* 전적 표(이름 52 + 경기수 56 + 승률 56 + 갭 12 = 176)와 손 수치 줄기(이름 52 + 값),
-     그 사이 구분선까지 앉는 폭이다(요청: 두 줄기 + 구분선) — 300px일 때는 반반 나눈 몫
-     (134)이 전적 표의 최소폭(176)보다 작아 표가 제 줄기를 넘어 손 수치 위로 흘렀다
-     (지적: 너비 문제). 표 176 + 구분선·갭 13 + 손 수치 130 + 칸 여백 20 = 339. */
-  --scr-stat-record-w: 340px;
+  /* 전적 표(이름 52 + 경기수 56 + 승률 56 + 갭 12 = 176)에 칸 여백(20)과 숨 쉴 자리가
+     앉는 폭이다 — 두 칸이 위아래로 서면서(요청) 옆으로 같이 앉을 폭(340)은 필요 없어졌다. */
+  --scr-stat-record-w: 230px;
   /* 랭크·포인트 줄기의 고정폭 — 120 → 100px(요청: 너무 넓다).
      이 칸에 실제로 들어가는 가장 긴 것은 "1234 포인트" 79.2px과 "1위 ▲12" 71.4px이다
      (실측, 버튼 좌우 패딩 포함). 100px이면 값 좌우로 10px씩 남는다.
@@ -3495,7 +3489,7 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
        들어가야 하는 것: 이름 46 + [경기수 60 + 승률 60] + 칸 여백 = 176.
        이름표 열도 52 → 46px로 줄여 그만큼을 수 쪽에 준다 — 여기 서는 말은 "프로토스"가
        가장 길고 그건 46px에 든다(실측). */
-    --scr-stat-record-w: 332px;
+    --scr-stat-record-w: 224px;
     --scr-stat-rlabel-w: 46px;
     /* 종족 칸과 유닛·스킬 목록을 PC와 같은 폭으로 넓힌다(요청: "내전 통계 모바일에서
        유닛과 각 종족 스탯 너비 확대").
@@ -8229,9 +8223,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
        랭크 줄기를 156 → 84px으로 줄인 만큼이라 안에 든 것은 하나도 안 잘린다. 표는
        1270px이 되어 상한(1400) 안에 더 여유 있게 들어간다. */
     /* 랭크 줄기가 래더로 옮겨 간 만큼(위 --scr-stat-record-w 주석) 줄이고, 걷힌 폭은
-       종족 세 칸이 나눠 갖는다. 300 → 340은 전적 표 최소폭(176) 때문이다(지적: 너비 문제
-       — 위 기본값 주석 참고). */
-  --scr-stat-record-w: 340px;
+       종족 세 칸이 나눠 갖는다. 340 → 230은 두 칸이 위아래로 서면서다(요청 — 위 기본값
+       주석 참고). */
+  --scr-stat-record-w: 230px;
     --scr-stat-race-w: 332px;
     /* 헤더 행과 데이터 행은 각각 별개의 그리드 컨테이너다. 트랙을 minmax(_,1fr)로 두면
        width:max-content인 이 행들이 '자기 내용이 원하는 폭'으로 따로 계산돼, 라벨+ⓘ+정렬
