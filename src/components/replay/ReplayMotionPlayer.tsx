@@ -1243,23 +1243,38 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      기어(가운데 허브). */
   forge: () => {
     const out: ShapeFace[] = [...domeFaces3(0, -1.6, 3.1, 2.8)];
-    /* 앞 톱니바퀴(정정: 방향) — 눕지 않고 세워진 바퀴가 반쯤 묻혀 위 반원만 보인다.
-       세운 바퀴라 화면 원 그대로 그린다. */
+    /* 앞 톱니바퀴(재정정: 방향) — 화면에 그대로 붙인 원이 아니라, 시점 요잉에 맞춰
+       살짝 기울인 타원 바퀴로 세운다. 이빨도 같은 기울기의 방사 방향을 따른다. */
     const [gx3, gy3] = project(0, 2.2, 0);
-    const R2 = 2.6;
-    out.push(bodyFace(`M${gx3 - R2} ${gy3} A${R2} ${R2} 0 0 1 ${gx3 + R2} ${gy3} Z`));
-    out.push(topFace(`M${gx3 - R2 * 0.62} ${gy3} A${R2 * 0.62} ${R2 * 0.62} 0 0 1 ${gx3 + R2 * 0.62} ${gy3} Z`, 0.2));
-    out.push(capFace(`M${gx3 - R2 * 0.28} ${gy3} A${R2 * 0.28} ${R2 * 0.28} 0 0 1 ${gx3 + R2 * 0.28} ${gy3} Z`, 0.4));
-    for (const ang of [22, 56, 90, 124, 158]) {
-      const a = (ang * Math.PI) / 180;
-      const ca = Math.cos(a);
-      const sa = Math.sin(a);
-      const tx2 = -sa * 0.26;
-      const ty2 = -ca * 0.26;
-      out.push(bodyFace(`M${gx3 + ca * 2.45 + tx2} ${gy3 - sa * 2.45 + ty2}`
-        + ` L${gx3 + ca * 3.05 + tx2} ${gy3 - sa * 3.05 + ty2}`
-        + ` L${gx3 + ca * 3.05 - tx2} ${gy3 - sa * 3.05 - ty2}`
-        + ` L${gx3 + ca * 2.45 - tx2} ${gy3 - sa * 2.45 - ty2} Z`));
+    const rxG = 2.15;
+    const ryG = 2.6;
+    const ph = (-14 * Math.PI) / 180;
+    const gp = (adeg: number, k: number): [number, number] => {
+      const a = (adeg * Math.PI) / 180;
+      const ex = Math.cos(a) * rxG * k;
+      const ey = -Math.sin(a) * ryG * k;
+      return [
+        gx3 + ex * Math.cos(ph) - ey * Math.sin(ph),
+        gy3 + ex * Math.sin(ph) + ey * Math.cos(ph),
+      ];
+    };
+    const ring = (k: number): string => {
+      let d = "";
+      for (let a = 0; a <= 180; a += 15) {
+        const [px2, py2] = gp(a, k);
+        d += `${a === 0 ? "M" : "L"}${Math.round(px2 * 100) / 100} ${Math.round(py2 * 100) / 100} `;
+      }
+      return `${d}Z`;
+    };
+    out.push(bodyFace(ring(1)));
+    out.push(topFace(ring(0.62), 0.2));
+    out.push(capFace(ring(0.28), 0.4));
+    for (const a of [22, 56, 90, 124, 158]) {
+      const p1 = gp(a - 6, 0.94);
+      const p2 = gp(a - 6, 1.2);
+      const p3 = gp(a + 6, 1.2);
+      const p4 = gp(a + 6, 0.94);
+      out.push(bodyFace(`M${p1[0]} ${p1[1]} L${p2[0]} ${p2[1]} L${p3[0]} ${p3[1]} L${p4[0]} ${p4[1]} Z`));
     }
     return out;
   },
