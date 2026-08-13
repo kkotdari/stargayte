@@ -1630,9 +1630,6 @@ export default function GameResultStory({
   /* 맵은 읽었는데 그림만 아직 없는 경우 — 운영자가 연결해 주면 바로 이야기가 붙는다(요청).
      맵 자체를 못 읽은 옛 경기(grid === null)에는 연결할 대상이 없어 안 띄운다. */
   const needMapImage = grid !== null && !grid.image;
-  // 자막으로 보여줄 수 있는 경기인가 — 미니맵이 있고 훑을 문장이 있을 때. 그림이 없으면
-  // 자막만 남아 무엇을 보고 읽는 글인지 알 수 없다.
-  const caption = storyMap !== null && sentences.length > 0;
   const showMapLine = showRoster && Boolean(mapName || minutes !== null);
 
   /* 미니맵·자막·타임라인을 눌러도 카드가 접히지 않게 한다(요청) — 이 카드는 눌러서 접는
@@ -1786,18 +1783,8 @@ export default function GameResultStory({
       {/* 미니맵이 없는 경기(옛 경기, 맵 정보를 못 읽은 리플레이)는 훑을 그림도 자막도 없다 —
           예전처럼 요약 전문을 한 문단으로 보여준다. 이게 없으면 그 카드는 읽을거리가 통째로
           사라진다. */}
-      {!caption && sentences.length > 0 && (
-        <div className="scr-game-result-trow-summary">
-          {sentences.map((sn, i) => (
-            <span key={i}>
-              {sn.parts.map((pt, j) => (pt.team
-                ? <span key={j} className={pt.team === 1 ? "scr-sum-team1" : "scr-sum-team2"}>{pt.text}</span>
-                : <span key={j}>{pt.text}</span>))}
-              {i < sentences.length - 1 ? ". " : ""}
-            </span>
-          ))}
-        </div>
-      )}
+      {/* (삭제·요청) 요약 전문 문단 — 문장 요약 시절의 마지막 흔적까지 걷었다. 연속
+          재생이 없는 옛 경기는 로스터·맵 이름 줄만 남는다. */}
     </div>
   );
 }
