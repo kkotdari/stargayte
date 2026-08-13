@@ -46,6 +46,8 @@ const riseOf = (unit: string): number =>
   (FOOTPRINT[unit] ?? [3, 2])[0] * (FLAT_BUILDINGS.has(unit) ? 0.12 : 0.4);
 /** 마법 텍스트가 떠 있는 시간(초, 게임 시간). */
 const CAST_HOLD_SEC = 6;
+/** 핵 낙하 시간(초) — 발사(런치)부터 실제 착탄까지. 폭발 효과는 이 뒤에야 시작한다(지적). */
+const NUKE_FALL_SEC = 7;
 /** 자취 점 사이가 이보다 벌어지면 잇지 않고 건너뛴다(초) — 한참 조용하다 다른 곳을 찍은
  *  것은 이동이 아니라 시선 전환이라, 이으면 부대가 맵을 순간이동으로 가로지른다. */
 const LERP_MAX_GAP_SEC = 24;
@@ -2640,7 +2642,12 @@ export default function ReplayMotionPlayer({
     .map(([sec, x, y, unit, raw, gone]) => ({
       sec, x: x + footDx(unit), y: y + footDy(unit), raw, gone: gone ?? 0,
     })), [motion]);
-  const castsNow = motion.casts.filter((c) => c[0] <= t && t - c[0] <= CAST_HOLD_SEC);
+  const castsNow = motion.casts.filter((c) => c[0] <= t
+    && t - c[0] <= (c[3] === "Nuclear Strike" ? NUKE_FALL_SEC + 4 : CAST_HOLD_SEC));
+  /** 핵 착탄들 — 폭발 반경 안에서 무너진 건물을 착탄 순간 바로 걷는 데 쓴다(지적). */
+  const nukeImpacts = useMemo(() => motion.casts
+    .filter((c) => c[3] === "Nuclear Strike")
+    .map((c) => ({ sec: c[0] + NUKE_FALL_SEC, x: c[1], y: c[2] })), [motion]);
 
   /* 태워진 유닛은 잠깐 사라진다(요청: 태운 자리의 유닛들은 안 보이다가 내리면 나타남) —
      태움 지점 곁에 서 있던, 그 뒤로 새 명령이 없는 마커는 다음 드랍(없으면 계속)까지
@@ -2852,7 +2859,19 @@ export default function ReplayMotionPlayer({
             if (sec > t) return null;
             const goneAt = gone ?? 0;
             // 없어진 건물은 그냥 사라진다(요청: ✕ 표시 없음) — 착륙 이사·변태와도 한 결이다.
-            if (goneAt > 0 && t >= goneAt) return null;
+            /* 핵 한 방(요청) — 폭발 반경 안에서 무너진 걸로 판정된 건물은 파괴 감지가
+               한참 뒤에 눈치챘더라도 착탄 순간 바로 걷는다. 이륙 이사 기록(liftAt)은
+               goneAt이 착륙 시각이라 건드리지 않는다. */
+            let goneEff = goneAt;
+            if (goneAt > 0 && !liftAt) {
+              for (const nk of nukeImpacts) {
+                if (nk.sec <= goneAt && goneAt - nk.sec <= 90
+                  && Math.hypot(x + footDx(unit) - nk.x, y + footDy(unit) - nk.y) <= 5) {
+                  goneEff = Math.min(goneEff, nk.sec);
+                }
+              }
+            }
+            if (goneEff > 0 && t >= goneEff) return null;
             // 떠 있는 구간(지적: 건물 떠 있는 게 표현이 안 된다) — 이륙부터 착륙(=goneAt)
             // 까지 옛 자리에서 둥실거린다.
             const afloat = !!liftAt && t >= liftAt;
@@ -3222,6 +3241,14 @@ export default function ReplayMotionPlayer({
             if (sec > t) break;
             workerN = n;
           }
+          /* 저그 가스는 변태(지적) — 익스트랙터 하나마다 드론 하나가 사라져 그 자리에
+             가스가 된다. 채굴 일꾼 수에서 그만큼 뺀다. */
+          const ownerRace = bases.find((b) => b.key === owner!.raw)?.race;
+          if (ownerRace === "저그") {
+            const morphed = motion.builds.filter(([bs, , , bu, br]) =>
+              br === owner!.raw && bu === "Extractor" && bs <= t).length;
+            workerN = Math.max(0, workerN - morphed);
+          }
           if (workerN === 0) return [];
           const team = teamOfRaw(owner.raw);
           const dots = Math.min(3, Math.max(1, Math.ceil(workerN / 10)));
@@ -3258,10 +3285,7 @@ export default function ReplayMotionPlayer({
                 }}
               >
                 {/* 일꾼류는 직접 모델링(요청) — 종족 일꾼 상징물이 오간다. */}
-                <ShapeIcon
-                  kind={workerKindOf(bases.find((b) => b.key === owner!.raw)?.race)}
-                  rotDeg={hdg} className="scr-motion-troop"
-                />
+                <ShapeIcon kind={workerKindOf(ownerRace)} rotDeg={hdg} className="scr-motion-troop" />
               </span>
             );
           });
@@ -3870,24 +3894,52 @@ export default function ReplayMotionPlayer({
           )];
         })}
 
+        {/* 건설 중 SCV 맴돌기(요청) — 테란 건물이 올라가는 동안 SCV 한 기가 발자국
+            둘레를 돈다(저그는 변태·프로토스는 소환이라 해당 없음). */}
+        {motion.builds.map(([sec, bx3, by3, unit, raw], i) => {
+          if (sec <= 0 || t < sec || t - sec >= (BUILD_SEC[unit] ?? 30)) return null;
+          if (ADDONS.has(unit)) return null;
+          const race2 = bases.find((b) => b.key === raw)?.race;
+          if (race2 !== "테란") return null;
+          const [fw2, fh2] = FOOTPRINT[unit] ?? [3, 2];
+          const ang = (t - sec) * 1.1 + i;
+          return (
+            <span
+              key={`scv-${i}`}
+              className="scr-motion-fresh"
+              style={{
+                left: pct(bx3 + footDx(unit) + Math.cos(ang) * (fw2 / 2 + 0.9), grid.width),
+                top: pct(by3 + footDy(unit) + Math.sin(ang) * (fh2 / 2 + 0.7), grid.height),
+                ...glyphStyle(raw, teamOfRaw(raw)),
+              }}
+            >
+              <ShapeIcon kind="scv" rotDeg={(ang * 180) / Math.PI} className="scr-motion-troop" />
+            </span>
+          );
+        })}
+
         {/* 마법 — 떨어진 자리에 이름이 잠깐 떠오른다. 핵만은 이름에 폭발 파문까지
             얹는다(요청: "핵 떨어지는거도 효과") — 경기 하나에 몇 번 없는, 그 판의 가장
             큰 사건이라 다른 마법과 같은 글자 한 줄로는 안 보였다. */}
         {castsNow.map(([sec, x, y, tech, raw], i) => {
           if (!TECH_KO[tech]) return null; // 한글명을 모르는 기술은 안 띄운다(요청).
           if (tech === "Nuclear Strike") {
-            /* 핵(요청·테스트) — 처음 2초는 탄두가 내려오고, 닿는 순간 폭발 광원: 백열
-               섬광 → 주황 화구 → 퍼지는 링. 광원은 mix-blend(screen)로 지형을 실제로
-               밝힌다. */
+            /* 핵(정정) — 런치가 아니라 실제 착탄에 폭발(지적): 낙하 동안은 표적 점, 마지막
+               2초에 탄두가 내려오고, NUKE_FALL_SEC부터 폭발 광원. 크기는 실제 피해 반경
+               (4타일)에 맞춘 지름 8타일 상자에 %로 그리고 살짝 투명하다(지적). */
             const age = t - sec;
-            const falling = age < 2;
             return (
               <span
                 key={`c-${i}`}
                 className="scr-motion-nukefx"
-                style={{ left: pct(x, grid.width), top: pct(y, grid.height) }}
+                style={{
+                  left: pct(x, grid.width), top: pct(y, grid.height),
+                  width: pct(8, grid.width),
+                }}
               >
-                {falling ? (
+                {age < NUKE_FALL_SEC - 2 ? (
+                  <span className="scr-motion-nuke-dot" />
+                ) : age < NUKE_FALL_SEC ? (
                   <span className="scr-motion-nuke-fall" style={{ color: modeColor(raw, teamOfRaw(raw)) }}>
                     <ShapeIcon kind="nuke" />
                   </span>
@@ -3898,6 +3950,28 @@ export default function ReplayMotionPlayer({
                     <span className="scr-motion-nuke-ring" />
                   </>
                 )}
+              </span>
+            );
+          }
+          if (tech === "Psionic Storm") {
+            /* 사이오닉 스톰(요청) — 반투명 번개가 지지직. 영역은 실제 인게임(지름
+               3타일)과 일치. 폭풍 지속(약 4초)만 보여 준다. */
+            if (t - sec > 4) return null;
+            return (
+              <span
+                key={`c-${i}`}
+                className="scr-motion-stormfx"
+                style={{
+                  left: pct(x, grid.width), top: pct(y, grid.height),
+                  width: pct(3, grid.width),
+                }}
+              >
+                <span className="scr-motion-storm-glow" />
+                <svg className="scr-motion-storm-bolts" viewBox="0 0 48 48" aria-hidden>
+                  <path d="M10 4 L16 16 L8 18 L20 32 L14 34 L24 46" />
+                  <path d="M30 2 L26 14 L36 16 L28 30 L38 32 L30 44" />
+                  <path d="M42 8 L36 18 L44 22 L34 38" />
+                </svg>
               </span>
             );
           }
