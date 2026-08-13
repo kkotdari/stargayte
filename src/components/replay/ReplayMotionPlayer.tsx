@@ -2051,7 +2051,7 @@ export default function ReplayMotionPlayer({
           } : undefined}
         >
         {grid.image
-          ? <img className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`} />
+          ? <img className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`} draggable={false} />
           : <div className="scr-motion-canvas scr-motion-canvas-blank" />}
 
         {/* 건물(요청: 합치기 대신) — 기본은 작은 이름이 늘 떠 있되, 가까이 겹치는 같은
