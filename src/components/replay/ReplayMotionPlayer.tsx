@@ -679,17 +679,28 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
     ["M8 3.4 L11.4 6.4 L9.6 13.8 L6.2 10.8 Z", 1],
     ["M8 3.4 L11.4 6.4 L9.6 13.8 Z", 0.2, "#000"],
   ],
-  /* 게이트 — 원판 위 가파른 삼각, 원판 가운데 밝은 원(지적: 가운데 원은 게이트웨이 것). */
-  gate: [
-    ["M8 4 L11 11.8 L5 11.8 Z", 1],
-    // 첨탑 오른쪽 면은 어둡게 — 입체(요청).
-    ["M8 4 L11 11.8 L8 11.8 Z", 0.22, "#000"],
-    ["M2.4 12.4a5.6 2 0 1 0 11.2 0a5.6 2 0 1 0-11.2 0Z", 1],
-    // 소환구 원은 더 크고 위로(지적), 색은 어둡게 — 뚫린 그림자 느낌(요청). 왼쪽으로
-    // 치우치고(요청 두 번), 위-우측에서 내려다본 기울어진 타원(요청) — 호 회전 +18도
-    // (지적: 경사가 반대였다).
-    ["M5.3 10.78a2 1.2 18 1 0 3.8 1.24a2 1.2 18 1 0-3.8-1.24Z", 0.45, "#000"],
-  ],
+  /* 게이트(재편) — 바닥은 원판이 아니라 사방으로 놓인 아주 넓고 완만한 경사로(요청):
+     낮은 절두 피라미드를 투영해 위 평평한 단 + 사방 비탈을 만든다. 첨탑과 소환구는
+     그 단 위에 그대로 선다. */
+  gate: (() => {
+    const b = 7.4;
+    const bd = 4.8;
+    const tw = 5.4;
+    const td = 3.2;
+    const h = 1.1;
+    const top = polyPath3([[-tw, td, h], [tw, td, h], [tw, -td, h], [-tw, -td, h]]);
+    const front = polyPath3([[-tw, td, h], [tw, td, h], [b, bd, 0], [-b, bd, 0]]);
+    const right = polyPath3([[tw, td, h], [tw, -td, h], [b, -bd, 0], [b, bd, 0]]);
+    const left = polyPath3([[-tw, -td, h], [-tw, td, h], [-b, bd, 0], [-b, -bd, 0]]);
+    return [
+      bodyFace(`${top} ${front} ${right} ${left}`),
+      topFace(top, 0.22),
+      sideFace(right, 0.3),
+      ["M8 4 L11 11.8 L5 11.8 Z", 1],
+      ["M8 4 L11 11.8 L8 11.8 Z", 0.22, "#000"],
+      ["M5.3 10.78a2 1.2 18 1 0 3.8 1.24a2 1.2 18 1 0-3.8-1.24Z", 0.45, "#000"],
+    ] as ShapeFace[];
+  })(),
   /* 나머지 건물도 전부 위 오른쪽 사선 입체(요청: "모든 건물이 위 우측에서 본 사선") —
      밝은 윗면 한 겹씩. */
   /* 벙커 — 사선(위-오른쪽)에서 본 모습을 더 눕혀 윗면·옆면이 잘 드러나게(요청). 아래
@@ -2080,7 +2091,8 @@ export default function ReplayMotionPlayer({
                   // 캔버스 비율 = 발자국 폭 × (발자국 높이 + 벡터 건물만 높이 몫)(요청·지적).
                   ...(text !== name && !ADDONS.has(unit)
                     ? {
-                      width: pct((FOOTPRINT[unit] ?? [3, 2])[0] * (shapeKind ? 1 : 0.8), grid.width),
+                      // 기지는 각 종족 제일 큰 건물(지적) — 같은 발자국이라도 크게 그린다.
+                      width: pct((FOOTPRINT[unit] ?? [3, 2])[0] * (shapeKind ? 1 : 0.8) * (isHall ? 1.3 : 1), grid.width),
                       aspectRatio: `${(FOOTPRINT[unit] ?? [3, 2])[0]} / ${(FOOTPRINT[unit] ?? [3, 2])[1] + (shapeKind ? riseOf(unit) : 0)}`,
                     }
                     : {}),
