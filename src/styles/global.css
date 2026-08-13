@@ -11351,6 +11351,17 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-range {
   flex: 1 1 0; min-width: 0; height: 16px; cursor: pointer;
   -webkit-appearance: none; appearance: none; background: transparent;
+  /* 끌기 시작하면 손짓은 탐색바 것이다(지적: 모바일에서 손잡이가 잘 안 잡힘) — 세로
+     스크롤이 제스처를 가로채면 드래그가 끊긴다. */
+  touch-action: none;
+}
+/* 모바일 — 손가락 표적을 키운다(지적: 터치로 잡기가 안 됨). 상자 높이 16→32px에
+   손잡이도 12→20px. 트랙(4px)은 가운데 정렬만 다시 맞춘다. */
+@media (max-width: 1159px) {
+  .scr-motion-range { height: 32px; }
+  .scr-motion-range::-webkit-slider-runnable-track { margin-top: 0; }
+  .scr-motion-range::-webkit-slider-thumb { width: 20px; height: 20px; margin-top: -8px; }
+  .scr-motion-range::-moz-range-thumb { width: 20px; height: 20px; }
 }
 .scr-motion-range::-webkit-slider-runnable-track {
   height: 4px; border-radius: 999px;

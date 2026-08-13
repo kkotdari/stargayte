@@ -133,6 +133,12 @@ function splitSquads(
   /** 드랍 지점들(요청: 드랍십 태우고 내리는 게 반영 안 됨) — 갓 내린 자리 곁의 새 명령
    *  뭉치는 여기서 태어난 부대다(수송선이 날라 준 것이라 걸어온 자취가 없는 게 맞다). */
   warps?: [number, number, number][],
+  /** 이어붙이기 속도(타일/초) — 느린 정찰(오버로드·수송선)용(지적: 오버로드가 자꾸
+   *  순간이동). 이 갈래는 대개 한두 기의 여정이라 부대 나누기 휴리스틱(방향 갈림·옛 자리
+   *  재사용)이 여정을 툭툭 끊어 새 마커가 목적지에서 태어났다. 시간 대비 그 거리를 갈 수
+   *  있으면(bestD/dt ≤ glueSpeed) 같은 기체가 걸어간 것으로 보고 잇고, 방향 갈림 규칙은
+   *  끈다. */
+  glueSpeed?: number,
 ): TrackPt[][] {
   const squads: TrackPt[][] = [];
   // 직전 점이 들어간 부대 — 연속 클릭은 대개 같은 선택(같은 부대)의 것이다.
@@ -183,7 +189,7 @@ function splitSquads(
        꺾이는 클릭은 아래 staysBehind 판정으로 넘긴다: 옛 방향 클릭이 곧 또 오면(교차
        클릭 = 나누기) 새 부대로 갈리고, 아니면(무리째 방향 전환) 그대로 잇는다. */
     let joinable = best >= 0 && bestD <= mergeTiles;
-    if (joinable && squads.length < SQUAD_MAX) {
+    if (joinable && squads.length < SQUAD_MAX && glueSpeed === undefined) {
       const sq = squads[best];
       if (sq.length >= 2) {
         const prev = sq[sq.length - 2];
@@ -196,6 +202,14 @@ function splitSquads(
         const wlen = Math.hypot(wx, wy);
         if (vlen > 2 && wlen > 2 && (vx * wx + vy * wy) / (vlen * wlen) < 0) joinable = false;
       }
+    }
+    /* 느린 정찰 이어붙이기(위 glueSpeed 주석) — 오버로드는 왕복·선회가 잦아 방향 규칙에
+       걸리고, 먼 목적지는 mergeTiles를 넘어 새 부대가 됐다. 그 시간에 갈 수 있는 거리면
+       같은 기체다 — 마커가 제 속도로 걸어간다(순간이동이 구조적으로 없어진다). */
+    if (!joinable && glueSpeed !== undefined && best >= 0) {
+      const last = squads[best][squads[best].length - 1];
+      const dt = pt[0] - last[0];
+      if (dt > 0 && bestD / dt <= glueSpeed) joinable = true;
     }
     if (joinable) {
       squads[best].push(pt);
@@ -398,6 +412,9 @@ const FOOTPRINT: Record<string, [number, number]> = {
   Pylon: [2, 2], "Missile Turret": [2, 2], "Photon Cannon": [2, 2],
   "Creep Colony": [2, 2], "Sunken Colony": [2, 2], "Spore Colony": [2, 2],
   Spire: [2, 2], "Greater Spire": [2, 2], "Nydus Canal": [2, 2],
+  // 테란 부속건물(요청: 모델링·매핑) — 실제 발자국 2×2로 본체 오른쪽에 붙는다.
+  "Comsat Station": [2, 2], "Nuclear Silo": [2, 2], "Machine Shop": [2, 2],
+  "Control Tower": [2, 2], "Covert Ops": [2, 2], "Physics Lab": [2, 2],
 };
 const footDx = (unit: string): number => (FOOTPRINT[unit] ?? [3, 2])[0] / 2;
 const footDy = (unit: string): number => (FOOTPRINT[unit] ?? [3, 2])[1] / 2;
@@ -427,8 +444,10 @@ const SHAPE_KIND: Record<string, string> = {
      설명은 오해), 로보틱스는 돔, 스타게이트는 문(아치). */
   Barracks: "cube", Factory: "factory", Starport: "plane",
   "Robotics Facility": "dome", Stargate: "arch",
-  // 애드온(요청) — 컴샛(스캔)·핵 사일로는 모델, 나머지는 +.
+  // 애드온(요청: 부속건물 전부 모델링) — 여섯 다 제 모델이다.
   "Comsat Station": "comsat", "Nuclear Silo": "nsilo",
+  "Machine Shop": "mshop", "Control Tower": "ctower",
+  "Covert Ops": "covert", "Physics Lab": "physlab",
   // 가스 건물 셋(실물 참고) — 종족별 정제소. 크기는 발자국(4×2)이 맞춘다.
   Refinery: "refinery", Assimilator: "assim", Extractor: "extract",
   // 업그레이드·테크 건물들(요청: 다 만들자).
@@ -2327,6 +2346,40 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     topFace(discPath3(0, 0, 5.1, 0.75), 0.3),
     capFace(discPath3(0, 0, 5.13, 0.4), 0.35),
   ],
+  /* 머신 샵(애드온, 요청: 부속건물 모델링) — 낮은 작업동 + 왼뒤 굴뚝 + 오른앞 부속함,
+     앞면 셔터 문 씸. */
+  mshop: () => [
+    ...boxFaces3(0, 0.2, 5.6, 4.4, 3),
+    ...cylinderFaces3(-1.6, -1.2, 0.6, 2, 3),
+    capFace(discPath3(-1.6, -1.2, 5.05, 0.6), 0.4),
+    ...boxFaces3(1.6, 1.2, 2.2, 1.6, 1, 3),
+    capFace(polyPath3([[-0.9, 2.41, 0.3], [2.1, 2.41, 0.3], [2.1, 2.41, 2.2], [-0.9, 2.41, 2.2]]), 0.3),
+  ],
+  /* 컨트롤 타워(애드온, 요청) — 받침 위 높은 관제탑 + 꼭대기 유리 띠 + 안테나. */
+  ctower: () => [
+    ...boxFaces3(0, 0.4, 4.6, 3.8, 2),
+    ...boxFaces3(0, 0, 3.4, 3, 4.6, 2),
+    // 관제실 유리 띠 — 앞면 위쪽에 밝은 가로 띠.
+    capFace(polyPath3([[-1.5, 1.51, 5.4], [1.5, 1.51, 5.4], [1.5, 1.51, 6.2], [-1.5, 1.51, 6.2]]), 0.45),
+    ...cylinderFaces3(0.9, -0.6, 0.18, 2.2, 6.6),
+    topFace(discPath3(0.9, -0.6, 8.8, 0.4), 0.4),
+  ],
+  /* 코버트 옵스(애드온, 요청) — 어두운 지붕의 첩보동 + 감시 안테나 둘. */
+  covert: () => [
+    ...boxFaces3(0, 0.2, 5.6, 4.4, 3),
+    topFace(polyPath3([[-2.4, 1.9, 3.05], [2.4, 1.9, 3.05], [2.4, -1.6, 3.05], [-2.4, -1.6, 3.05]]), 0.16),
+    ...cylinderFaces3(-1.5, -0.8, 0.24, 2.2, 3),
+    ...cylinderFaces3(1.7, 0.6, 0.24, 1.5, 3),
+    capFace(discPath3(-1.5, -0.8, 5.25, 0.5), 0.4),
+    capFace(discPath3(1.7, 0.6, 4.55, 0.4), 0.4),
+  ],
+  /* 피직스 랩(애드온, 요청) — 연구동 위 관측 돔 + 오른앞 배기 원통. */
+  physlab: () => [
+    ...boxFaces3(0, 0.2, 5.6, 4.4, 2.4),
+    ...domeFaces3(0, -0.2, 1.9, 1.6, 2.4),
+    capFace(discPath3(0, -0.2, 2.45, 1.9), 0.2),
+    ...cylinderFaces3(2, 1.4, 0.35, 1.2, 2.4),
+  ],
   /* ── 공사 표현 공용 셋(요청: 아이콘 대신 모델) ───────────────────────────── */
   /* 저그 고치 — 크립 위 통통한 번데기(재생 쪽 CSS가 바운스시킨다). */
   cocoon: () => [
@@ -3011,6 +3064,9 @@ type UnitDrawOp = {
   wFrac?: number; hFrac?: number;
   /** 상자 채우기 방식 — "meet"는 비율 유지·바닥 정렬(keepRatio), "fill"은 맨 네모 채움. */
   boxFit?: "meet" | "fill";
+  /** meet에서 높이 대신 폭을 기준으로 — 납작 건물(벙커류)은 상자가 낮아 min 규칙이
+   *  전체를 줄여 버린다(조사: 벙커가 유난히 작던 이유). */
+  fitWidth?: boolean;
   /** 도형 대신 글자 하나(부속건물 +) — kind는 무시된다. */
   textGlyph?: string;
   /** 그림자 끄기 — 건물은 발이 땅에 붙어야 해서 그림자가 없다(유닛만 있다). */
@@ -3031,9 +3087,12 @@ function UnitLayer({ ops, zoom }: { ops: UnitDrawOp[]; zoom: number }) {
     const cw = cv.clientWidth;
     const ch = cv.clientHeight;
     if (!cw || !ch) return;
-    /* 배킹 해상도 — 렌즈 줌은 CSS 확대라 래스터가 흐려진다. dpr×줌(상한 2.5)으로 그려
-       확대 중에도 또렷하게. 상한 3은 폭주 방지(줌 5 × dpr 3 = 15배 배킹은 낭비). */
-    const B = Math.min(3, (window.devicePixelRatio || 1) * Math.min(zoom, 2.5));
+    /* 배킹 해상도 — 렌즈 줌은 CSS 확대라 래스터가 흐려진다. dpr×줌으로 그려 확대
+       중에도 또렷하게. 첫 판의 상한 3은 dpr 3짜리 폰에서 줌만 걸면 바로 포화돼 흐렸다
+       (지적: 모바일 줌인 해상도 저하) — 상한을 dpr×3으로 올리되, 배킹 최장변 4096px
+       (GPU 텍스처 한계·메모리)로만 막는다. */
+    const dpr = window.devicePixelRatio || 1;
+    const B = Math.min(dpr * Math.min(zoom, 3), 4096 / Math.max(cw, ch, 1));
     const bw = Math.round(cw * B);
     const bh = Math.round(ch * B);
     if (cv.width !== bw) cv.width = bw;
@@ -3077,7 +3136,7 @@ function UnitLayer({ ops, zoom }: { ops: UnitDrawOp[]; zoom: number }) {
         // keepRatio(xMidYMax meet) — 비율 유지로 상자에 맞추고 바닥 가운데 정렬.
         const { faces } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
         if (faces) {
-          const s = Math.min(wPx, hPx) / 16;
+          const s = (op.fitWidth ? wPx : Math.min(wPx, hPx)) / 16;
           ctx.translate(op.fx * cw, op.fy * ch + hPx / 2);
           ctx.scale(s, s);
           ctx.translate(-8, -16);
@@ -3640,7 +3699,7 @@ export default function ReplayMotionPlayer({
      졌다) — 거리 반경 대신 '그 시간에 그 걸음으로 닿을 수 있나'로 잇는다. 닿을 수 있으면
      같은 마리, 없으면(동시에 딴 곳을 찍는 두 마리) 딴 마리다. */
   const chainScout = (
-    pts: TrackPt[], speed: number, home: [number, number] | null,
+    pts: TrackPt[], speedAt: (sec: number) => number, home: [number, number] | null,
   ): TrackPt[][] => {
     const tracks: TrackPt[][] = [];
     for (const pt of pts) {
@@ -3650,11 +3709,17 @@ export default function ReplayMotionPlayer({
         const last = tracks[ti][tracks[ti].length - 1];
         const need = Math.hypot(pt[1] - last[1], pt[2] - last[2]);
         // 여유 14타일 — 명령 좌표는 '목표'라 실제 위치보다 과대(실측: 되돌림 스팸 클릭).
-        const avail = Math.max(0, pt[0] - last[0]) * speed * 1.5 + 14;
+        /* 속도는 그 시각의 것(지적: 오버로드가 자꾸 순간이동) — 속업(×4) 뒤에도 기본
+           0.6으로 재면 실제로 갈 수 있던 거리가 "못 간다"가 되어 여정이 갈라지고, 갈라진
+           새 자취가 목적지에서 태어나며 순간이동으로 보였다. */
+        const avail = Math.max(0, pt[0] - last[0]) * speedAt(pt[0]) * 1.5 + 14;
         if (need <= avail && avail - need < bestSlack) { best = ti; bestSlack = avail - need; }
       }
       if (best >= 0) tracks[best].push(pt);
-      else if (tracks.length === 0 && home) tracks.push([[pt[0], home[0], home[1]], pt]);
+      /* 새 자취는 전부 집에서 걸어 나온다(지적: 순간이동의 둘째 갈래) — 첫 자취만 집
+         시딩을 받아, 둘째 오버로드부터는 마커가 목적지에서 뿅 나타났다. 새 오버로드·
+         수송선은 어차피 본진(해처리)에서 나온다. */
+      else if (home) tracks.push([[pt[0], home[0], home[1]], pt]);
       else tracks.push([pt]);
     }
     return tracks;
@@ -3686,10 +3751,17 @@ export default function ReplayMotionPlayer({
     const home0 = homeOf(p.raw);
     const ovieHome: [number, number] | null = home0 && race === "저그"
       ? [home0[0] + 2.5, home0[1] - 2.5] : home0;
-    const carrierSpeed = race === "저그" ? 0.6 : race === "테란" ? 4.1 : 3.3;
+    /* 그 시각의 실제 속도(지적: 오버로드 순간이동) — 속업 연구 뒤에는 오버로드 ×4,
+       셔틀 ×1.5(드랍십은 속업이 없다)로 잰다. speedOf가 같은 표를 이미 안다. */
+    const carrierSpeedAt = (sec: number): number =>
+      speedOf(race === "저그" ? "Overlord" : race === "테란" ? "Dropship" : "Shuttle", sec, p.ups);
     return kinds.flatMap(({ kind, src }) => (src.length === 0 ? [] : (kind === "worker"
       ? splitSquads(src, home0)
-      : chainScout(src, kind === "carrier" || race === "저그" ? carrierSpeed : SCOUT_WALK_SPEED, ovieHome))
+      : chainScout(
+        src,
+        kind === "carrier" || race === "저그" ? carrierSpeedAt : () => SCOUT_WALK_SPEED,
+        ovieHome,
+      ))
       .map((sq) => ({
         kind, raw: sq,
         walk: walkTrack(
@@ -4580,20 +4652,8 @@ export default function ReplayMotionPlayer({
     </div>
   );
 
-  /* 범례 한 벌 — 지도 아래(인라인)와 확대 창 왼쪽 기둥(요청: 2열)이 같은 항목을 쓴다. */
-  const legendItems = (
-    <>
-      {/* 유닛 갈래 도형(요청: 지대지/지대공/공중/마법으로 분리) — 지상은 채운 도형,
-          공중은 속 빈 도형. 크기(소·중·대형)는 마커 크기가 말한다. */}
-      {/* (삭제·요청) 갈래 대표 기호 — 유닛마다 제 모델이 생겨 갈래 범례는 걷었다. */}
-      <span>■ 건물</span>
-      {/* 일꾼은 채굴·정찰 없이 전부 같은 작은 점이다(요청: 통일). 기호는 지도의
-          점과 같은 ●를 부대보다 한 단 작게(지적: •는 너무 작았다). */}
-      <span><i className="scr-motion-legend-worker">●</i> 일꾼</span>
-      {/* (삭제·요청: 생산 아이콘 더 이상 사용 안 함) — 건설·생산·업그레이드 범례가
-          있던 자리. 공사는 종족 공용 모델(고치·소환구·공사장)이 직접 보인다. */}
-    </>
-  );
+  /* (삭제·요청: 안 쓰는 범례 정리) — 건물·유닛·일꾼이 전부 제 모델로 그려져 기호
+     범례(■·●)가 더는 화면과 안 맞았다. 범례 한 벌을 통째로 걷는다. */
 
   const body = (
     <div
@@ -4778,12 +4838,15 @@ export default function ReplayMotionPlayer({
                unitOps로 보낸다. DOM에는 효과(전투 불꽃·마법·핵)만 남는다(요청). */
             const isHall = ["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(unit);
             const shapeKind = SHAPE_KIND[unit];
+            /* 부속건물도 제 모델이면 보통 건물과 같은 자리 규칙이다(요청: 부속건물 모델링)
+               — + 글자 시절의 스넉 오프셋(-1.6, +0.4)은 모델 없는 폴백에만 남는다. */
+            const addonPlus = ADDONS.has(unit) && !shapeKind;
             const fp2 = FOOTPRINT[unit] ?? [3, 2];
             const centerX = bx + footDx(unit);
             const centerY = by + footDy(unit);
-            const anchorX = centerX - (ADDONS.has(unit) ? 1.6 : 0);
-            const anchorY = centerY + (ADDONS.has(unit) ? 0.4 : 0)
-              + (!ADDONS.has(unit) ? (shapeKind ? -riseOf(unit) / 2 : fp2[1] * 0.1) : 0);
+            const anchorX = centerX - (addonPlus ? 1.6 : 0);
+            const anchorY = centerY + (addonPlus ? 0.4 : 0)
+              + (!addonPlus ? (shapeKind ? -riseOf(unit) / 2 : fp2[1] * 0.1) : 0);
             const [fxF, fyF] = posFrac(anchorX, anchorY);
             const mkK = pitchK(centerY);
             const z = pitched
@@ -4791,8 +4854,9 @@ export default function ReplayMotionPlayer({
               : 1000 + Math.round(afloat ? t : sec);
             const alpha = fade * (afloat ? 0.75 : 1);
             const color = modeColor(raw, team);
-            if (ADDONS.has(unit)) {
-              // 테란 부속건물 — 이름 대신 + 하나(요청). 본체 오른쪽 아래에 붙는다.
+            if (addonPlus) {
+              // 모델 없는 부속건물 폴백 — + 하나(캔버스 전환 첫 판이 모델까지 +로 덮던
+              // 것을 바로잡았다: 이제 여섯 애드온 다 모델이 있어 여긴 안전망이다).
               unitOps.push({
                 fx: fxF, fy: fyF, z, kind: "", sizePx: (pcView ? 11 : 7) * mkK,
                 color, alpha, textGlyph: "+", noShadow: true,
@@ -4821,6 +4885,11 @@ export default function ReplayMotionPlayer({
                 fx: fxF, fy: fyF, z, kind: shapeKind,
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
                 sizePx: 0, wFrac, hFrac, boxFit: "meet",
+                /* 납작 건물은 폭 기준으로 맞춘다(조사: 벙커가 유난히 작던 이유) — 납작
+                   분류(FLAT_BUILDINGS)는 높이 몫(rise)이 0.12×폭뿐이라 상자가 낮고,
+                   meet(min(w,h)) 규칙이 그 낮은 높이로 전체를 줄여 같은 발자국의 서플라이
+                   보다 한 뼘 작아졌다. 납작함은 모델이 이미 말하니 폭을 기준 삼는다. */
+                fitWidth: FLAT_BUILDINGS.has(unit),
                 color, alpha, noShadow: true,
               });
               return null;
@@ -5935,7 +6004,7 @@ export default function ReplayMotionPlayer({
           PC 전용(모바일은 핀치 확대), 큰 화면 모달에선 범례·지형이 숨어 토글만 남는다. */}
       <div className="scr-motion-toolrow">
         <div className="scr-motion-toolrow-mid">
-          <div className="scr-motion-legend">{legendItems}</div>
+          {/* (삭제·요청) 범례 — 모델이 곧 범례다. */}
           <div className="scr-motion-terrain-row">
             {typeof grid.imageId === "number" && grid.image && (
               <button
@@ -6062,7 +6131,7 @@ export default function ReplayMotionPlayer({
       </div>
       {/* 확대 창 왼쪽 기둥(요청) — 맨 위 타임스탬프, 로스터(기존), 범례 2열, 맨 아래 등록자. */}
       {big && stamp ? <div className="scr-motion-stamp">{stamp}</div> : null}
-      {big ? <div className="scr-motion-legend scr-motion-legend-side">{legendItems}</div> : null}
+      
       {big && registrant ? <div className="scr-motion-registrant">{registrant}</div> : null}
       {/* 확대 모드의 오른쪽 댓글 영역(지적: "리플" = 댓글) — 맵 오른쪽 그리드 4번째 칸. */}
       {big && side ? <div className="scr-motion-sidewrap">{side}</div> : null}
