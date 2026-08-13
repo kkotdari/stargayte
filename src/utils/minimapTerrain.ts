@@ -168,7 +168,11 @@ export async function analyzeMinimap(url: string): Promise<TerrainGrid | null> {
     for (const [k, n] of counts) {
       if (n > best || (n === best && k < nb)) { best = n; nb = k; }
     }
-    return own <= nb ? own * 512 + nb : nb * 512 + own;
+    /* 같은 색이라도 결이 다르면 딴 요소다(지적) — 국소 대비(제 밝기 − 주변 평균)를
+       넉 단계로 접어 열쇠에 붙인다. 매끈한 바닥과 같은 색의 우둘투둘한 장식이 갈린다. */
+    const diff = Math.abs(lum[i] - localAvg[i]);
+    const grain = diff < 6 ? 0 : diff < 14 ? 1 : diff < 26 ? 2 : 3;
+    return (own <= nb ? own * 512 + nb : nb * 512 + own) * 4 + grain;
   };
   const freq = new Map<number, number>();
   let candidates = 0;
