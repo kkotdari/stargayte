@@ -783,34 +783,29 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...hornFaces(2.7, 0, 0.8, 1, -0.3, 9.6, 2.3));
     return out;
   },
-  /* 스타게이트(다시 다섯, 지적: 전판 폐기) — 세운 원통을 세로로 반 갈라 두 쪽을 사이
-     띄워 마주 세운 꼴. 앞단면의 반고리 구멍으로 속이 빈 관임이 보이고, 함선은 그 사이로 나온다. */
+  /* 스타게이트(완전 리디자인, 실물 참고) — 비스듬한 두꺼운 슬래브 몸에 길게 얹힌
+     지붕 칼날 핀, 앞면 그릴의 청록 창 슬릿 줄, 뒤로 흐르는 곡선 리본, 앞 아래 금 침. */
   arch: () => {
-    const [xcL] = project(-1.9, 0, 0);
-    const [xcR] = project(1.9, 0, 0);
-    const [, tyS] = project(0, 0, 8.2);
-    const [, byS] = project(0, 0, 0);
-    const R = 2.3;
-    const ry = R * 0.45;
-    const half = (xc: number, m: 1 | -1): { body: string; top: string; hole: string } => {
-      const sw = m === -1 ? 0 : 1;
-      return {
-        body: `M${xc} ${tyS - ry} A${R} ${ry} 0 0 ${sw} ${xc + m * R} ${tyS}`
-          + ` L${xc + m * R} ${byS} A${R} ${ry} 0 0 ${sw} ${xc} ${byS + ry} L${xc} ${tyS + ry} Z`,
-        top: `M${xc} ${tyS - ry} A${R} ${ry} 0 0 ${sw} ${xc} ${tyS + ry} Z`,
-        // 구멍은 앞단면(지적: 뒷구멍이 아니라 앞구멍이 보여야 한다) — 아래(앞) 끝에 판다.
-        hole: `M${xc} ${byS - ry * 0.6} A${R * 0.6} ${ry * 0.6} 0 0 ${sw} ${xc} ${byS + ry * 0.6} Z`,
-      };
-    };
-    const L2 = half(xcL, -1);
-    const R2 = half(xcR, 1);
-    return [
-      sideFace(discPath3(0, 0.2, 0, 5), 0.22),
-      bodyFace(L2.body), topFace(L2.top), capFace(L2.hole, 0.4),
-      topFace(`M${xcL - R} ${tyS} L${xcL - R + 0.6} ${tyS + 0.3} L${xcL - R + 0.6} ${byS} L${xcL - R} ${byS} Z`, 0.14),
-      bodyFace(R2.body), topFace(R2.top), capFace(R2.hole, 0.4),
-      sideFace(`M${xcR + R} ${tyS} L${xcR + R - 0.6} ${tyS + 0.3} L${xcR + R - 0.6} ${byS} L${xcR + R} ${byS} Z`, 0.2),
-    ];
+    const out: ShapeFace[] = [];
+    // 뒤 곡선 리본 두 가닥.
+    out.push(...hornFaces(2.6, -2, 3.2, 4.6, -3.2, 5, 0.5));
+    out.push(...hornFaces(4.6, -3.2, 4.8, 3.6, -4.2, 6.6, 0.4));
+    // 슬래브 몸.
+    out.push(...boxFaces3(0, -0.4, 6.8, 4.4, 4.2, 0.6));
+    // 지붕 칼날 핀 — 대각으로 길게.
+    const fin = polyPath3([[-3.6, 0.7, 5.1], [3.4, -1.2, 5.3], [3.9, -1.5, 6.7], [-3.2, 1, 6.3]]);
+    out.push(bodyFace(fin), topFace(fin, 0.2));
+    // 앞면 그릴 — 어두운 틀에 청록 창 슬릿 넉 장.
+    out.push(capFace(polyPath3([[-2.8, 1.81, 1], [1.6, 1.81, 1], [1.6, 1.81, 3.5], [-2.8, 1.81, 3.5]]), 0.35));
+    for (let i = 0; i < 4; i += 1) {
+      const x0 = -2.5 + i * 1.05;
+      out.push(topFace(polyPath3([
+        [x0, 1.82, 1.3], [x0 + 0.7, 1.82, 1.3], [x0 + 0.7, 1.82, 3.2], [x0, 1.82, 3.2],
+      ]), 0.45));
+    }
+    // 앞 아래 금 침.
+    out.push(...hornFaces(-2.4, 2.4, 0.9, -3.5, 3.7, 0.2, 0.7));
+    return out;
   },
   /* 파일런(정정 둘) — 고리를 수정 허리께로 더 올리고(지적), 수정은 매끈한 육각
      보석으로 다듬었다: 위 뾰족·어깨·허리·아래 뾰족이 좌우대칭. */
@@ -1122,30 +1117,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...domeFaces3(1.6, 2.3, 0.5, 0.45, 3.55),
     ];
   },
-  /* 엔지니어링 베이(리디자인, 실물 참고) — 둥근 층층 플랫폼이 드럼 발들 위에 떠
-     있고(이륙하는 다리), 가운데 큰 갈빗살 돔과 원통 모듈, 옆에 초록 불 띠. */
+  /* 엔지니어링 베이(복원) — 사방 대각 팔 끝의 원반 발 넷, 각진 몸체 더미, 끝이
+     빛나는 앞 통, 지붕 안테나. */
   ebay: () => {
     const foot = (fx: number, fy: number): ShapeFace[] => [
-      ...cylinderFaces3(fx, fy, 1.05, 1.3),
-      bodyFace(discPath3(fx, fy, 0.25, 1.4)),
-      capFace(discPath3(fx, fy, 1.32, 0.55), 0.3),
+      ...hornFaces(fx * 0.45, fy * 0.45, 1.9, fx * 0.85, fy * 0.85, 0.7, 0.9),
+      bodyFace(discPath3(fx, fy, 0.35, 1.5)),
+      topFace(discPath3(fx, fy, 0.38, 1), 0.25),
+      ...cylinderFaces3(fx, fy, 0.32, 1, 0.35),
     ];
-    const glow = (gx2: number, gy2: number, gz2: number): ShapeFace => {
-      const [px2, py2] = project(gx2, gy2, gz2);
-      return topFace(groundEllipse(px2, py2, 0.45, 0.2), 0.45);
-    };
     return [
-      ...foot(-3.6, -2.2), ...foot(3.8, -2),
-      // 떠 있는 둥근 플랫폼 두 단.
-      ...cylinderFaces3(0, 0, 4.6, 1.9, 1.3),
-      ...cylinderFaces3(0, 0, 3.4, 1.3, 3.2),
-      // 큰 갈빗살 돔 — 세로 이음선 하나.
-      ...domeFaces3(0, -0.5, 2.5, 2.2, 4.4),
-      sideFace(polyPath3([[0, 1.9, 4.6], [0, 1.5, 6], [0, -0.5, 6.65], [0.16, -0.5, 6.65], [0.16, 1.5, 6], [0.16, 1.9, 4.6]]), 0.15),
-      // 오른앞 원통 모듈 + 불 띠.
-      ...cylinderFaces3(2.1, 1, 1, 2, 3.2),
-      glow(-2.9, 2.6, 2.2), glow(-1.6, 3.3, 2.2), glow(3.3, 1.9, 2.6),
-      ...foot(-1.2, 3.5), ...foot(2.9, 3),
+      ...foot(-5, -3), ...foot(5, -3),
+      ...boxFaces3(0, -0.4, 6.6, 4, 3),
+      ...boxFaces3(-0.8, -1, 3, 2.4, 1.5, 3),
+      ...boxFaces3(1.8, -1.4, 1.5, 1.5, 2.3, 3),
+      ...tubeFaces(1.7, 0.6, 1.7, 2.5, 0.65, 1.9),
+      topFace(groundEllipse(...project(1.7, 2.5, 2.4), 0.5, 0.4), 0.35),
+      ...hornFaces(-2.3, -1.7, 4.5, -2.3, -1.7, 6.5, 0.32),
+      ...foot(-5.2, 3.2), ...foot(5.2, 3.2),
     ];
   },
   /* 아머리(실물 참고) — 가운데 우물 드럼(어두운 속·테두리 빛 눈금·비스듬한 뚜껑 판),
@@ -1186,15 +1175,29 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...post(3.7, 2.7, 2.7),
     ];
   },
-  /* 사이언스 퍼실리티(정정) — 넓은 몸체 지붕 중앙에 농구공 반쪽(반구)이 얹힌다. */
-  scifac: () => [
-    ...boxFaces3(0, 0.2, 8.2, 5.4, 3),
-    ...domeFaces3(0, -0.2, 2.6, 2.4, 3),
-    // 반구의 세로 이음선 — 농구공 느낌.
-    sideFace(polyPath3([[0, 2.35, 3.1], [0, 2.15, 4.6], [0, 0, 5.45], [0.18, 0, 5.45], [0.18, 2.3, 4.6], [0.18, 2.5, 3.1]]), 0.16),
-    ...cylinderFaces3(-3.2, -1.6, 0.6, 1.4, 3),
-    ...cylinderFaces3(3.2, -1.6, 0.6, 1.4, 3),
-  ],
+  /* 사이언스 퍼실리티(정정: 엔베가 아니라 이 건물이었다) — 드럼 발 위에 떠 있는
+     둥근 층층 플랫폼, 가운데 큰 갈빗살 돔(농구공 반쪽), 원통 모듈, 초록 불 띠. */
+  scifac: () => {
+    const foot = (fx: number, fy: number): ShapeFace[] => [
+      ...cylinderFaces3(fx, fy, 1.05, 1.3),
+      bodyFace(discPath3(fx, fy, 0.25, 1.4)),
+      capFace(discPath3(fx, fy, 1.32, 0.55), 0.3),
+    ];
+    const glow = (gx2: number, gy2: number, gz2: number): ShapeFace => {
+      const [px2, py2] = project(gx2, gy2, gz2);
+      return topFace(groundEllipse(px2, py2, 0.45, 0.2), 0.45);
+    };
+    return [
+      ...foot(-3.6, -2.2), ...foot(3.8, -2),
+      ...cylinderFaces3(0, 0, 4.6, 1.9, 1.3),
+      ...cylinderFaces3(0, 0, 3.4, 1.3, 3.2),
+      ...domeFaces3(0, -0.5, 2.5, 2.2, 4.4),
+      sideFace(polyPath3([[0, 1.9, 4.6], [0, 1.5, 6], [0, -0.5, 6.65], [0.16, -0.5, 6.65], [0.16, 1.5, 6], [0.16, 1.9, 4.6]]), 0.15),
+      ...cylinderFaces3(2.1, 1, 1, 2, 3.2),
+      glow(-2.9, 2.6, 2.2), glow(-1.6, 3.3, 2.2), glow(3.3, 1.9, 2.6),
+      ...foot(-1.2, 3.5), ...foot(2.9, 3),
+    ];
+  },
   /* 포지(정정) — 뒤쪽의 둥근 몸과 앞쪽의 톱니바퀴가 인상적: 큰 돔 + 이빨 두른 납작
      기어(가운데 허브). */
   forge: () => {
@@ -1261,19 +1264,28 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       lens(0, 0.9, 4.6),
     ];
   },
-  /* 템플러 아카이브 — 넓은 대 + 돔 + 떠 있는 보석. */
+  /* 템플러 아카이브(리디자인, 실물 참고) — 큰 황금 공 몸에 테 물린 파란 렌즈가
+     위에 박히고, 왼뒤로 뿔 한 쌍이 솟으며, 오른앞엔 골진 껍데기 꼬리(끝 원반). */
   archives: () => {
-    const [gx2, gy2] = project(0, 0, 8);
+    const [gx2, gy2] = project(0.1, 0.4, 4);
+    const [tx3, ty3] = project(3.8, 3, 1);
     return [
-      ...boxFaces3(0, 0, 7, 5.4, 1.6),
-      // 끝의 뾰족 부분(지적) — 네 귀에서 바깥으로 솟는 침.
-      ...hornFaces(-3.1, -2.3, 1.6, -4, -3, 3.6, 0.85),
-      ...hornFaces(3.1, -2.3, 1.6, 4, -3, 3.6, 0.85),
-      ...domeFaces3(0, 0, 3.2, 2.9, 1.6),
-      ...hornFaces(-3.1, 2.3, 1.6, -4, 3, 3.4, 0.85),
-      ...hornFaces(3.1, 2.3, 1.6, 4, 3, 3.4, 0.85),
-      bodyFace(`M${gx2} ${gy2 - 1.4} L${gx2 + 0.85} ${gy2} L${gx2} ${gy2 + 1.05} L${gx2 - 0.85} ${gy2} Z`),
-      topFace(`M${gx2} ${gy2 - 1.4} L${gx2 - 0.85} ${gy2} L${gx2} ${gy2 + 1.05} L${gx2 - 0.28} ${gy2} Z`, 0.3),
+      // 왼뒤 뿔 한 쌍.
+      ...hornFaces(-1.6, -1.4, 2.6, -3.2, -2.4, 6.6, 1.1),
+      ...hornFaces(-0.2, -2, 2.8, -0.8, -3.2, 7, 1.2),
+      // 큰 황금 공 몸 + 받침.
+      ...cylinderFaces3(0, 0, 2.9, 0.7),
+      ...domeFaces3(0, 0, 2.9, 2.7, 0.7),
+      // 위 파란 렌즈 — 테에 물림.
+      bodyFace(groundEllipse(gx2, gy2, 1.35, 1.05)),
+      [groundEllipse(gx2, gy2, 1.02, 0.78), 0.6] as ShapeFace,
+      topFace(groundEllipse(gx2 - 0.35, gy2 - 0.3, 0.4, 0.3), 0.5),
+      // 오른앞 골진 껍데기 꼬리 — 굽은 마디 둘 + 골 줄 + 끝 작은 파란 원반.
+      ...domeFaces3(2.4, 1.2, 1.3, 1),
+      ...domeFaces3(3.2, 2.2, 1, 0.8),
+      sideFace(polyPath3([[1.8, 0.6, 1], [2.2, 1, 1.9], [2.6, 1.5, 1], [2.5, 1.4, 0.6]]), 0.18),
+      sideFace(polyPath3([[2.7, 1.6, 0.9], [3, 2, 1.6], [3.4, 2.5, 0.9], [3.3, 2.4, 0.5]]), 0.18),
+      [groundEllipse(tx3, ty3, 0.5, 0.4), 0.55] as ShapeFace,
     ];
   },
   /* 로보틱스 서포트 베이(실물 참고) — 톱니 테 받침판 가운데 오목한 대접(심 발광),
