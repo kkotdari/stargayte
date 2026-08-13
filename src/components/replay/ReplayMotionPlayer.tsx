@@ -8,7 +8,7 @@ import { cx } from "../../utils/format";
 import { UNIT_KO, BUILDING_KO, TECH_KO } from "../../utils/replaySummaryText";
 import type { ReplayMapGrid } from "../../utils/replayParser";
 import { isAirUnit, type MotionTrack, type SummaryMotion, type TrackPt } from "../../utils/replayMotion";
-import { DEFENSE_BUILDINGS } from "../../utils/replayBuildMix";
+// (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } from "../../utils/minimapTerrain";
 import {
   bodyFace, capFace, groundEllipse, sideFace, topFace, type ShapeFace,
@@ -3005,6 +3005,16 @@ type UnitDrawOp = {
   sizePx: number;
   color: string;
   alpha: number;
+  /* ── 건물용(캔버스 전환 둘째 판) — 발자국 비례 상자에 그린다. ───────────────── */
+  /** 상자 폭·높이 — 캔버스 '폭'에 대한 분수(스팬의 % 폭 + aspectRatio와 같은 자).
+   *  있으면 sizePx 대신 이 상자를 쓴다. */
+  wFrac?: number; hFrac?: number;
+  /** 상자 채우기 방식 — "meet"는 비율 유지·바닥 정렬(keepRatio), "fill"은 맨 네모 채움. */
+  boxFit?: "meet" | "fill";
+  /** 도형 대신 글자 하나(부속건물 +) — kind는 무시된다. */
+  textGlyph?: string;
+  /** 그림자 끄기 — 건물은 발이 땅에 붙어야 해서 그림자가 없다(유닛만 있다). */
+  noShadow?: boolean;
 };
 const PATH2D_CACHE = new Map<string, Path2D>();
 const pathOf = (d: string): Path2D => {
@@ -3038,9 +3048,50 @@ function UnitLayer({ ops, zoom }: { ops: UnitDrawOp[]; zoom: number }) {
     ctx.shadowBlur = 1.5;
     const sorted = [...ops].sort((a, b) => a.z - b.z);
     for (const op of sorted) {
-      const { faces, rot } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
-      if (!faces) continue;
       ctx.save();
+      // 건물은 그림자 없음(지적: 떠 보임 — 유닛만 그림자) — SVG 시절 filter:none과 동일.
+      ctx.shadowColor = op.noShadow ? "transparent" : "rgba(0, 0, 0, 0.6)";
+      if (op.textGlyph) {
+        // 부속건물 + 같은 글자 하나 — 스팬 글자와 같은 굵기·가운데 앵커.
+        ctx.globalAlpha = op.alpha;
+        ctx.fillStyle = op.color;
+        ctx.font = `700 ${op.sizePx}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(op.textGlyph, op.fx * cw, op.fy * ch);
+        ctx.restore();
+        continue;
+      }
+      if (op.wFrac !== undefined && op.hFrac !== undefined) {
+        // 건물 상자 — 스팬의 % 폭 + aspectRatio(폭 기준)를 그대로 픽셀로 푼 것.
+        const wPx = op.wFrac * cw;
+        const hPx = op.hFrac * cw;
+        if (op.boxFit === "fill") {
+          // 맨 네모(전용 도형 없는 건물) — 상자를 그대로 채운다(.scr-motion-sq).
+          ctx.globalAlpha = op.alpha;
+          ctx.fillStyle = op.color;
+          ctx.fillRect(op.fx * cw - wPx / 2, op.fy * ch - hPx / 2, wPx, hPx);
+          ctx.restore();
+          continue;
+        }
+        // keepRatio(xMidYMax meet) — 비율 유지로 상자에 맞추고 바닥 가운데 정렬.
+        const { faces } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
+        if (faces) {
+          const s = Math.min(wPx, hPx) / 16;
+          ctx.translate(op.fx * cw, op.fy * ch + hPx / 2);
+          ctx.scale(s, s);
+          ctx.translate(-8, -16);
+          for (const [d, o, fill] of faces) {
+            ctx.globalAlpha = op.alpha * o;
+            ctx.fillStyle = fill ?? op.color;
+            ctx.fill(pathOf(d));
+          }
+        }
+        ctx.restore();
+        continue;
+      }
+      const { faces, rot } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
+      if (!faces) { ctx.restore(); continue; }
       // 스팬의 가운데 앵커 + 발끝 띄움(translateY(-24%))을 그대로 재현한다.
       ctx.translate(op.fx * cw, op.fy * ch - op.sizePx * 0.24);
       if (rot) ctx.rotate((rot * Math.PI) / 180);
@@ -3296,16 +3347,7 @@ export default function ReplayMotionPlayer({
   /* 건물 이름 글자 — 테두리 없이 음영판만(지적). 어두운 계열(블루 포함, 지적)은 흰 반투명
      배경판, 밝은 계열은 CSS의 검정 음영판. 문턱은 칩(chipStyle의 150)과 같은 값이다
      (지적: 연보라가 칩에선 흰 글자인데 건물 음영판은 검정 — 140/150으로 갈라져 있었다). */
-  const shapeStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => {
-    const c = modeColor(raw, team);
-    return {
-      color: c,
-      ...(lumOf(c) <= 150 ? {
-        background: "rgba(255, 255, 255, 0.5)", borderRadius: 3, padding: "0 2px",
-        textShadow: "none",
-      } : {}),
-    };
-  };
+  /* (삭제) 이름 음영판(shapeStyle) — 건물 이름 창이 걷히며 함께 걷었다. */
   /* 도형(●▪▲✕·점)은 건물이든 유닛이든 음영판 없이 제 색 그대로다(지적).
      그림자만 얇게 깐다(요청: "유닛 테두리 검정톤 그림자 약하게 추가") — 아주 밝은
      개인색(연두·노랑·흰색)은 밝은 맵에서 통째로 사라져 더 진한 링을 두른다(지적: "이색은
@@ -3331,9 +3373,7 @@ export default function ReplayMotionPlayer({
   /* 기술(마법·드랍·태움) 전용 배지(요청: 유닛과 다른 스타일) — 유닛 칩은 제 색을 꽉 채운
      네모, 기술은 어두운 알약에 제 색 테두리다. 배지 꼴만으로 "누구의 부대"와 "무슨 일이
      일어난 자리"가 갈린다. 바탕·글자색은 CSS(.scr-motion-cast)가 정한다. */
-  const castStyle = (raw: string, team: 1 | 2 | undefined): React.CSSProperties => ({
-    border: `1px solid ${modeColor(raw, team)}`,
-  });
+  /* (삭제·요청: 배지 더 이상 사용 안 함) — 기술 알약 배지 테두리(castStyle)가 있던 자리. */
 
   /* 지형(요청: 미니맵 이미지 분석) — 그림에서 걷는 땅 격자를 만들어, 지상 부대의 자취를
      그 위의 경로로 편다. 분석 전·실패 시에는 기존 곡선 폴백. */
@@ -3742,8 +3782,7 @@ export default function ReplayMotionPlayer({
   const [pitched, setPitched] = useState(false);
   // 유닛 크기 토글(요청) — 기본은 실제 크기, 누르면 2배.
   const [unitX2, setUnitX2] = useState(false);
-  // 모바일(터치 기기)은 입체 보기를 아직 안 연다(요청) — 아래에서 버튼을 감춘다.
-  const coarsePointer = typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches;
+  // (삭제·요청: 모바일에도 입체 보기 개방) — 터치 기기 판별이 있던 자리.
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   useEffect(() => {
     const el = mapRef.current;
@@ -4551,9 +4590,8 @@ export default function ReplayMotionPlayer({
       {/* 일꾼은 채굴·정찰 없이 전부 같은 작은 점이다(요청: 통일). 기호는 지도의
           점과 같은 ●를 부대보다 한 단 작게(지적: •는 너무 작았다). */}
       <span><i className="scr-motion-legend-worker">●</i> 일꾼</span>
-      <span>🔨 건설 중</span>
-      <span>⏳🥚✨ 생산 중</span>
-      <span>🧪🧬🔮 업그레이드 중</span>
+      {/* (삭제·요청: 생산 아이콘 더 이상 사용 안 함) — 건설·생산·업그레이드 범례가
+          있던 자리. 공사는 종족 공용 모델(고치·소환구·공사장)이 직접 보인다. */}
     </>
   );
 
@@ -4734,109 +4772,66 @@ export default function ReplayMotionPlayer({
             // 차례 계산에서 빠졌지만(지적: 무조건 신규 건물 우선) 판정 기반은 남겨둔다.
             void producing;
             void researching;
-            const name = BUILDING_KO[unit] ?? UNIT_KO[unit];
-            /* 비활성이면 무조건 도형이다(지적: 서플라이·파일런·포토·터렛이 영영 안 변했다 —
-               "겹치지만 않으면 이름 상시 노출"이던 옛 규칙을 걷었다). */
+            void activeBuild;
+            /* (캔버스 전환 둘째 판·요청: 건물도 캔버스로) — 이름 창·아이콘이 다 걷힌
+               건물 마커는 도형 하나라, 자리·상자·차례 계산만 그대로 두고 그리기는
+               unitOps로 보낸다. DOM에는 효과(전투 불꽃·마법·핵)만 남는다(요청). */
             const isHall = ["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(unit);
             const shapeKind = SHAPE_KIND[unit];
-            let text: string;
-            // 테란 부속건물은 이름 대신 늘 +다(요청: "테란 부속건물은 +로 옆에 붙이기") —
-            // 제 발자국 자리가 본체 오른쪽이라 저절로 옆에 붙는다.
-            if (ADDONS.has(unit)) text = "+";
-            // ▪는 글꼴상 반쪽짜리라 ●▲보다 작아 보인다(지적) — 꽉 찬 ■로. 본진은 별표(요청).
-            else text = isHall ? "★" : DEFENSE_BUILDINGS.has(unit) ? "▲" : "■";
-            // 발자국이 곧 크기다(요청: "건물크기로 구분 — 서플·파일런같은 작은 건물은 작게,
-            // 큰 건물은 크게"). 본진은 제 크기 클래스(-hall)가 이미 있다.
-            const fpArea = (FOOTPRINT[unit] ?? [3, 2]).reduce((a, b) => a * b, 1);
-            return (
-              <span
-                key={`b-${i}`}
-                className={cx(
-                  "scr-motion-build",
-                  !razed && text !== name && "scr-motion-build-shape",
-                  // 도형은 실제 발자국 크기 그대로 그린다(요청: "건물 아이콘 크기를 실제
-                  // 맵크기에 비례해서 정확히") — 폭을 지도 % 로 못박는다(아래 style).
-                  !razed && text !== name && "scr-motion-build-tile",
-                  !razed && text !== name && !isHall
-                    && (fpArea >= 12 ? "scr-motion-build-lg" : fpArea <= 6 ? "scr-motion-build-sm" : false),
-                  // 본진 건물은 다른 건물보다 큼직하게(요청).
-                  isHall && "scr-motion-build-hall",
-                  activeBuild && "scr-motion-build-on",
-                  // (삭제) 라임 테 박동(-glow) — 하는 일은 아이콘만으로 말한다(요청:
-                  // 건물 액티브 사각형 효과 제거).
-                  afloat && "scr-motion-build-afloat",
-                  razed && "scr-motion-build-razed",
-                )}
-                style={{
-                  // 나는 중이면 비행 좌표(bx·by), 아니면 제자리다(위 착륙 이사 주석).
-                  // 앵커는 발자국 가운데다(FOOTPRINT 주석 — 왼쪽 위 타일 그대로면 치우친다).
-                  // 부속건물(+)은 본체에 딱 붙여 오른쪽 아래로(요청: "더 본건물에 딱 붙이고
-                  // 아래로 내리기") — 왼쪽으로 당겨 겹치고, 세로는 내린다.
-                  /* 겹침 차례는 마지막 명령 시각(지적: 유닛이 무조건 위가 아니라 —
-                     건물이 위일 수 있다) — 방금 착공했거나 지금 생산·연구·비행 중인
-                     건물은 조용한 유닛 점 위로 온다. 유닛 마커도 같은 자로 잰다. */
-                  /* 입체 보기는 화가 순서(지적: 반투명 아닌데 뒤 건물이 보임) — 겹침을
-                     화면 앞뒤(발자국 앞변 y)로 잰다. 같은 자리면 새 건물이 위(지적:
-                     건물 위치 겹침 — 무조건 신규 우선). 평면도 신규 우선 — 생산·연구
-                     부양(t)은 빼고 착공 시각만 본다(나는 중만 예외로 맨 위). */
-                  zIndex: pitched
-                    ? 1000 + Math.round((by + footDy(unit) * 2) * 80) + Math.min(70, Math.round(sec / 60))
-                    : 1000 + Math.round(afloat ? t : sec),
-                  ...(fade < 1 ? { opacity: fade } : {}),
-                  ...depthMk(bx + footDx(unit), by + footDy(unit)),
-                  ...posStyle(
-                    bx + footDx(unit) - (ADDONS.has(unit) ? 1.6 : 0),
-                    by + footDy(unit) + (ADDONS.has(unit) ? 0.4 : 0)
-                      + (text !== name && !ADDONS.has(unit)
-                        ? (shapeKind ? -riseOf(unit) / 2 : (FOOTPRINT[unit] ?? [3, 2])[1] * 0.1)
-                        : 0),
-                  ),
-                  // 건물은 바닥 위로 솟는다(지적: "실제 건물은 바닥위에 높이가 있어") —
-                  // 캔버스 높이에 그 몫(riseOf, 발자국 폭 비례)을 더하고, 늘어난 만큼
-                  // 위로 올려 바닥선은 발자국 그대로다. 단 전용 벡터가 있는 건물만이다
-                  // (지적: 벡터 없는 애들은 높이 생각 말고 바닥 캔버스로만) — 맨 네모가
-                  // 높이 몫까지 늘어나면 발자국보다 세로로 긴 거짓 기둥이 된다.
-                  // 벡터 없는 네모는 발자국의 80%로만 그린다(요청) — 대신 아래로 내려
-                  // 바닥선은 발자국 바닥 그대로다.
-                  // 캔버스 비율 = 발자국 폭 × (발자국 높이 + 벡터 건물만 높이 몫)(요청·지적).
-                  ...(text !== name && (!ADDONS.has(unit) || shapeKind)
-                    ? {
-                      // 기지는 각 종족 제일 큰 건물(지적) — 같은 발자국이라도 크게 그린다.
-                      width: pct((FOOTPRINT[unit] ?? [3, 2])[0] * (shapeKind ? 1 : 0.8) * (isHall ? 1.3 : 1), grid.width),
-                      aspectRatio: `${(FOOTPRINT[unit] ?? [3, 2])[0]} / ${(FOOTPRINT[unit] ?? [3, 2])[1] + (shapeKind ? riseOf(unit) : 0)}`,
-                    }
-                    : {}),
-                  // 긴 이름은 한 단계 작게(지적) — 여섯 자부터.
-                  ...(text.length >= 6 && !activeBuild ? { fontSize: 6 } : {}),
-
-                  // 건물은 글자색=제 색, 음영판이 바탕 — 유닛 배지와 반대(지적). 도형이 된
-                  // 뒤에는 음영 없이 맨 색이다(지적).
-                  ...(razed ? {} : text === name ? shapeStyle(raw, team) : glyphStyle(raw, team)),
-                }}
-              >
-                {/* 전용 도형이 있으면 벡터로(SHAPE_KIND — 이모지·글꼴 글리프 금지 요청).
-                    입체는 직접 깎은 도형만이다(지적) — 이름 없는 나머지 건물은 예전대로
-                    네모, 대신 크기만 발자국에 맞춘다. */}
-                {raising && !ADDONS.has(unit)
-                  ? (
-                    <ShapeIcon
-                      kind={(bases.find((b) => b.key === raw)?.race) === "저그" ? "cocoon"
-                        : (bases.find((b) => b.key === raw)?.race) === "프로토스" ? "warpin" : "scaffold"}
-                      flat={!pitched} pitchView={pitched} keepRatio viewYaw={viewYawOf(bx + footDx(unit), by + footDy(unit))}
-                      className={(bases.find((b) => b.key === raw)?.race) === "저그" ? "scr-motion-cocoon" : undefined}
-                    />
-                  )
-                  : shapeKind && text !== name
-                  ? <ShapeIcon kind={shapeKind} flat={!pitched} pitchView={pitched} keepRatio viewYaw={viewYawOf(bx + footDx(unit), by + footDy(unit))} />
-                  : text === "■"
-                    // 캔버스가 이미 발자국 비율이라(위 aspectRatio — 벡터 없으면 높이 몫도
-                    // 없다) 네모는 그 상자를 그대로 채운다(CSS width/height 100%).
-                    ? <i className="scr-motion-sq" />
-                    : text}
-                {/* (제거·요청) 건설·생산·연구 아이콘 — 공사는 종족 공용 모델(고치·
-                    소환구·공사장)이 말하고, 생산·연구는 액티브 글로우가 말한다. */}
-              </span>
-            );
+            const fp2 = FOOTPRINT[unit] ?? [3, 2];
+            const centerX = bx + footDx(unit);
+            const centerY = by + footDy(unit);
+            const anchorX = centerX - (ADDONS.has(unit) ? 1.6 : 0);
+            const anchorY = centerY + (ADDONS.has(unit) ? 0.4 : 0)
+              + (!ADDONS.has(unit) ? (shapeKind ? -riseOf(unit) / 2 : fp2[1] * 0.1) : 0);
+            const [fxF, fyF] = posFrac(anchorX, anchorY);
+            const mkK = pitchK(centerY);
+            const z = pitched
+              ? 1000 + Math.round((by + footDy(unit) * 2) * 80) + Math.min(70, Math.round(sec / 60))
+              : 1000 + Math.round(afloat ? t : sec);
+            const alpha = fade * (afloat ? 0.75 : 1);
+            const color = modeColor(raw, team);
+            if (ADDONS.has(unit)) {
+              // 테란 부속건물 — 이름 대신 + 하나(요청). 본체 오른쪽 아래에 붙는다.
+              unitOps.push({
+                fx: fxF, fy: fyF, z, kind: "", sizePx: (pcView ? 11 : 7) * mkK,
+                color, alpha, textGlyph: "+", noShadow: true,
+              });
+              return null;
+            }
+            // 기지는 각 종족 제일 큰 건물(지적) — 같은 발자국이라도 크게 그린다.
+            const wTiles = fp2[0] * (shapeKind ? 1 : 0.8) * (isHall ? 1.3 : 1);
+            const hTiles = wTiles * ((fp2[1] + (shapeKind ? riseOf(unit) : 0)) / fp2[0]);
+            const wFrac = (wTiles / grid.width) * mkK;
+            const hFrac = (hTiles / grid.width) * mkK;
+            const race2 = bases.find((b) => b.key === raw)?.race;
+            if (raising) {
+              // 공사는 종족 공용 모델(고치·소환구·공사장)이 말한다.
+              unitOps.push({
+                fx: fxF, fy: fyF, z,
+                kind: race2 === "저그" ? "cocoon" : race2 === "프로토스" ? "warpin" : "scaffold",
+                viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
+                sizePx: 0, wFrac, hFrac, boxFit: "meet",
+                color, alpha, noShadow: true,
+              });
+              return null;
+            }
+            if (shapeKind) {
+              unitOps.push({
+                fx: fxF, fy: fyF, z, kind: shapeKind,
+                viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
+                sizePx: 0, wFrac, hFrac, boxFit: "meet",
+                color, alpha, noShadow: true,
+              });
+              return null;
+            }
+            // 전용 도형이 없는 건물 — 발자국 80% 네모(.scr-motion-sq와 같은 채움·0.82).
+            unitOps.push({
+              fx: fxF, fy: fyF, z, kind: "",
+              sizePx: 0, wFrac, hFrac, boxFit: "fill",
+              color, alpha: alpha * 0.82, noShadow: true,
+            });
+            return null;
           });
         })()}
 
@@ -4955,20 +4950,19 @@ export default function ReplayMotionPlayer({
               // 이동 방향(요청) — 랠리 목적지를 향한다.
               const hdg = rx !== null && ry !== null && Math.hypot(rx - fx, ry - fy) > 0.1
                 ? Math.atan2(-(rx - fx), ry - fy) * (180 / Math.PI) : 0;
-              out.push(
-                <span
-                  key={`fresh-${p.raw}-${unit}-${si}`}
-                  className="scr-motion-fresh"
-                  style={{
-                    ...posStyle(fx, fy),
-                    ...depthMk(fx, fy),
-                    ...glyphStyle(p.raw, team),
-                  }}
-                >
-                  {/* 갓 나온 유닛도 상징물(요청) — 일꾼도 제 모델로 랠리까지 걷는다. */}
-                  <ShapeIcon kind={unitMarkerKind(unit, bases.find((b) => b.key === p.raw)?.race)} rotDeg={hdg} flat={!pitched} pitchView={pitched} viewYaw={viewYawOf(fx, fy)} className="scr-motion-troop" />
-                </span>,
-              );
+              // (캔버스 전환) 갓 나온 유닛도 unitOps로 — 제 모델로 랠리까지 걷는다.
+              {
+                const [ffx, ffy] = posFrac(fx, fy);
+                unitOps.push({
+                  fx: ffx, fy: ffy,
+                  z: pitched ? 1000 + Math.round(fy * 80) : 1000 + Math.round(t),
+                  kind: unitMarkerKind(unit, bases.find((b) => b.key === p.raw)?.race),
+                  rotDeg: hdg, viewYaw: viewYawOf(fx, fy), flat: !pitched, pitch: pitched,
+                  sizePx: (pcView ? 13 : 9) * 1.15 * x2Mul * pitchK(fy),
+                  color: modeColor(p.raw, team),
+                  alpha: 1,
+                });
+              }
             }
           }
           return out;
@@ -5275,23 +5269,8 @@ export default function ReplayMotionPlayer({
             return [{ g, gi, pos, sinceCmd }];
           });
           const shownUnits = new Set(typeMarks.flatMap(({ g }) => BY_UNITS[g.unit] ?? [g.unit]));
-          /* 액티브 말풍선(요청: 이름 칩으로 바꾸지 말고 도형은 유지, 말풍선으로 무엇인지
-             알려주기) — 액티브인 마커들이 여기에 제 구성([한글 이름, 수])을 적어 두면,
-             가까운 것끼리(8타일) 한 풍선으로 묶여 마커 위에 뜬다(요청: 겹치지 않게 가까운
-             유닛들은 하나의 말주머니로). */
-          const bubbles: { x: number; y: number; parts: [string, number][] }[] = [];
-          const addBubble = (x: number, y: number, parts: [string, number][]) => {
-            if (parts.length === 0) return;
-            const near = bubbles.find((b) => Math.hypot(b.x - x, b.y - y) <= 8);
-            if (!near) { bubbles.push({ x, y, parts: [...parts] }); return; }
-            // 같은 이름은 수를 합친다 — "질럿 4"와 "질럿 3"이 두 줄이면 딴 부대로 읽힌다.
-            for (const [ko, n] of parts) {
-              const hit = near.parts.find((q) => q[0] === ko);
-              if (hit) hit[1] += n;
-              else near.parts.push([ko, n]);
-            }
-          };
-          void addBubble; // 유닛 이름 말풍선 제거(요청)로 지금은 안 쓴다 — 기반만 남긴다.
+          /* (삭제·요청: 말풍선 더 이상 사용 안 함) — 액티브 말풍선의 수집·병합 기반이
+             있던 자리. 모델과 낱개 수가 정체를 말한다. */
           /* 같은 종류가 여러 부대로 갈라졌으면 수도 갈라 적는다(지적: 저글링 10이 5·5,
              3·3·4처럼 갈라지는 모션) — 어느 쪽에 몇이 갔는지는 안 남으니 고르게 나눈다. */
           const squadsOfUnit = new Map<string, number>();
@@ -5638,37 +5617,8 @@ export default function ReplayMotionPlayer({
               );
             });
           });
-          /* 말풍선 그리기 — 위에서 모인 것을 자리(겹침 회피)만 다듬어 얹는다. 폰트는 수와
-             무관하게 고정이고(요청) 모바일 축소는 CSS 미디어가 맡는다. */
-          const placed: { x: number; y: number }[] = [];
-          const bubbleNodes = bubbles
-            .sort((a, b) => a.y - b.y)
-            .map((b, bi) => {
-              let by = b.y;
-              // 겹치지 않게(요청) — 앞서 놓인 풍선과 가로로 가깝고 세로로도 붙으면 위로 민다.
-              for (const q of placed) {
-                if (Math.abs(q.x - b.x) < 16 && Math.abs(q.y - by) < 5) by = q.y - 5;
-              }
-              placed.push({ x: b.x, y: by });
-              const bg = modeColor(p.raw, team);
-              return (
-                <span
-                  key={`${p.raw}-bub${bi}`}
-                  className="scr-motion-bubble"
-                  style={{
-                    ...posStyle(b.x, by),
-                    zIndex: 20000 + bi,
-                    ...chipStyle(p.raw, team),
-                    "--bub": bg,
-                  } as React.CSSProperties}
-                >
-                  {b.parts.map(([ko, n]) => (
-                    <span key={ko}>{ko}{n > 0 ? ` ${n}` : ""}</span>
-                  ))}
-                </span>
-              );
-            });
-          return [...typeNodes, ...squadNodes, ...bubbleNodes];
+          // (삭제·요청: 말풍선 더 이상 사용 안 함) — 말풍선 그리기가 있던 자리.
+          return [...typeNodes, ...squadNodes];
         })}
 
         {/* 정찰 자취 — 부대 자취에서 걷어낸 명령들이다(지적: 일꾼 정찰이 하나도 안
@@ -5755,15 +5705,17 @@ export default function ReplayMotionPlayer({
           const home = homeOf(p.raw);
           if (!home) return [];
           const team = teamOfRaw(p.raw);
-          return [(
-            <span
-              key={`ovie0-${p.raw}`}
-              className={cx("scr-motion-army", "scr-motion-dot", team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
-              style={{ ...posStyle(home[0] + 2.5, home[1] - 2.5), ...glyphStyle(p.raw, team) }}
-            >
-              <ShapeIcon kind="ovie" flat={!pitched} pitchView={pitched} viewYaw={viewYawOf(home[0] + 2.5, home[1] - 2.5)} className="scr-motion-ovie" />
-            </span>
-          )];
+          // (캔버스 전환) 스타팅 오버로드도 unitOps로.
+          {
+            const [fx, fy] = posFrac(home[0] + 2.5, home[1] - 2.5);
+            unitOps.push({
+              fx, fy, z: 1000, kind: "ovie",
+              viewYaw: viewYawOf(home[0] + 2.5, home[1] - 2.5), flat: !pitched, pitch: pitched,
+              sizePx: dotGlyphPx("dot", 1.7, home[1] - 2.5),
+              color: modeColor(p.raw, team), alpha: 0.82,
+            });
+          }
+          return [];
         })}
 
         {/* 건설 SCV(정정: 빙빙이 아니라) — 건물 둘레 네 자리를 "이동→정지(작업)→이동"
@@ -5792,18 +5744,19 @@ export default function ReplayMotionPlayer({
           const hdg2 = walkF < 1
             ? (Math.atan2(-(x2 - x1), y2 - y1) * 180) / Math.PI
             : (Math.atan2(sx2, -sy2) * 180) / Math.PI;
-          return (
-            <span
-              key={`scv-${i}`}
-              className="scr-motion-fresh"
-              style={{
-                ...posStyle(cx0 + sx2, cy0 + sy2),
-                ...glyphStyle(raw, teamOfRaw(raw)),
-              }}
-            >
-              <ShapeIcon kind="scv" rotDeg={hdg2} flat={!pitched} pitchView={pitched} viewYaw={viewYawOf(cx0 + sx2, cy0 + sy2)} className="scr-motion-troop" />
-            </span>
-          );
+          // (캔버스 전환) 건설 SCV도 unitOps로.
+          {
+            const [fx, fy] = posFrac(cx0 + sx2, cy0 + sy2);
+            unitOps.push({
+              fx, fy,
+              z: pitched ? 1000 + Math.round((cy0 + sy2) * 80) : 1000 + Math.round(t),
+              kind: "scv", rotDeg: hdg2, viewYaw: viewYawOf(cx0 + sx2, cy0 + sy2),
+              flat: !pitched, pitch: pitched,
+              sizePx: (pcView ? 13 : 9) * 1.15 * x2Mul * pitchK(cy0 + sy2),
+              color: modeColor(raw, teamOfRaw(raw)), alpha: 1,
+            });
+          }
+          return null;
         })}
 
         {/* 마법 — 떨어진 자리에 이름이 잠깐 떠오른다. 핵만은 이름에 폭발 파문까지
@@ -5919,18 +5872,9 @@ export default function ReplayMotionPlayer({
               </span>
             );
           }
-          return (
-            <span
-              key={`c-${i}`}
-              className={cx(
-                "scr-motion-cast",
-                teamOfRaw(raw) === 2 ? "scr-motion-team2" : "scr-motion-team1",
-              )}
-              style={{ ...posStyle(x, y), ...castStyle(raw, teamOfRaw(raw)) }}
-            >
-              {TECH_KO[tech]}
-            </span>
-          );
+          /* (제거·요청: 배지 더 이상 사용 안 함) — 전용 효과가 없는 기술의 이름 알약
+             배지가 서던 자리. 효과 있는 기술(스톰·스웜·핵·역병 등)만 그린다. */
+          return null;
         })}
 
         {/* 드랍·태움(요청: 셔틀·드랍십·오버로드의 태우기와 드랍 표현) — 내린 자리엔
@@ -6058,16 +6002,15 @@ export default function ReplayMotionPlayer({
         >
           {colorMode === "team" ? "개인컬러 보기" : "팀컬러 보기"}
         </button>
-        {/* 피칭 보기(요청) — 수직 부감 ↔ 비스듬한 정면. 모바일은 아직 안 연다(요청). */}
-        {!coarsePointer && (
-          <button
-            type="button" className="scr-motion-btn scr-motion-colorbtn"
-            onClick={() => setPitched((v) => !v)}
-            title="시점 전환"
-          >
-            {pitched ? "수직 보기" : "입체 보기"}
-          </button>
-        )}
+        {/* 피칭 보기(요청) — 수직 부감 ↔ 비스듬한 정면. 캔버스 전환으로 유닛·건물이
+            전부 한 장에 그려져 폰에서도 감당돼(실측), 모바일에도 연다(요청). */}
+        <button
+          type="button" className="scr-motion-btn scr-motion-colorbtn"
+          onClick={() => setPitched((v) => !v)}
+          title="시점 전환"
+        >
+          {pitched ? "수직 보기" : "입체 보기"}
+        </button>
         {/* 유닛 크기(요청) — 기본은 실제 크기, 누르면 2배. */}
         <button
           type="button" className="scr-motion-btn scr-motion-colorbtn"
