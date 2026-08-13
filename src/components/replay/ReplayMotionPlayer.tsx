@@ -5303,8 +5303,9 @@ export default function ReplayMotionPlayer({
             const seed = gi * 1.7;
             return glyphUnits.map((u, di) => {
               const bulk = UNIT_BULK[u] ?? 2;
-              // 조금 겹침 허용(지적: 너무 떨어져 징그러움) — 반지름을 한 단 좁힌다.
-              const r = (0.3 + 0.09 * bulk) * Math.sqrt(di + 0.35);
+              /* 겹침 허용도는 덩치별로(지적: 큰 유닛은 겹치면 더 어색) — 소형은 좁혀
+                 붙이고, 대형은 간격을 확 벌린다. */
+              const r = (0.26 + 0.18 * bulk) * Math.sqrt(di + 0.35);
               /* 랜덤성 섞기(지적: 고정 나선이 부자연스럽다) — 해시 지터(반경·각을
                  유닛마다 조금씩 어긋냄)와 위상 다른 느린 배회를 얹는다. 전부 (di,seed,t)의
                  순수 함수라 프레임마다 안 튀고, 같은 유닛은 늘 같은 버릇으로 서성인다. */
@@ -5314,7 +5315,8 @@ export default function ReplayMotionPlayer({
               const ja = h2 - Math.floor(h2);
               // (정리) 걸음 요동 일습 제거(지적: 꿀렁댐) — 정적 나선 지터만 남긴다.
               const churn = ja * 3.1;
-              const rj = r * (0.85 + jr * 0.5);
+              // 대형은 지터도 눅여 서로 파고들지 않게(지적).
+              const rj = r * (bulk === 2 ? 0.92 + jr * 0.22 : 0.85 + jr * 0.5);
               const aj = di * 2.4 + seed + ja * 1.1 + churn;
               const dx = Math.cos(aj) * rj;
               const dy = Math.sin(aj) * rj;
@@ -5447,8 +5449,9 @@ export default function ReplayMotionPlayer({
             return glyphs.map((u, di) => {
               const bulk = UNIT_BULK[u] ?? 2;
               // 아주 촘촘히(지적: 퍼짐이 심해졌다 — 겹치되 규모는 보이게).
-              // 조금 겹침 허용(지적: 너무 떨어져 징그러움) — 반지름을 한 단 좁힌다.
-              const r = (0.3 + 0.09 * bulk) * Math.sqrt(di + 0.35);
+              /* 겹침 허용도는 덩치별로(지적: 큰 유닛은 겹치면 더 어색) — 소형은 좁혀
+                 붙이고, 대형은 간격을 확 벌린다. */
+              const r = (0.26 + 0.18 * bulk) * Math.sqrt(di + 0.35);
               /* 랜덤성 섞기(지적: 고정 나선이 부자연스럽다) — 해시 지터(반경·각을
                  유닛마다 조금씩 어긋냄)와 위상 다른 느린 배회를 얹는다. 전부 (di,seed,t)의
                  순수 함수라 프레임마다 안 튀고, 같은 유닛은 늘 같은 버릇으로 서성인다. */
@@ -5458,7 +5461,8 @@ export default function ReplayMotionPlayer({
               const ja = h2 - Math.floor(h2);
               // (정리) 걸음 요동 일습 제거(지적: 꿀렁댐) — 정적 나선 지터만 남긴다.
               const churn = ja * 3.1;
-              const rj = r * (0.85 + jr * 0.5);
+              // 대형은 지터도 눅여 서로 파고들지 않게(지적).
+              const rj = r * (bulk === 2 ? 0.92 + jr * 0.22 : 0.85 + jr * 0.5);
               const aj = di * 2.4 + seed + ja * 1.1 + churn;
               const dx = Math.cos(aj) * rj;
               const dy = Math.sin(aj) * rj;
