@@ -1132,22 +1132,41 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...foot(-5.2, 3.2), ...foot(5.2, 3.2),
     ];
   },
-  /* 아머리(정정: 유명한 삼발이) — 세 다리 위에 올린 둥근 몸 + 위 굴뚝. */
+  /* 아머리(실물 참고) — 가운데 우물 드럼(어두운 속·테두리 빛 눈금·비스듬한 뚜껑 판),
+     둘레의 각진 첨탑 둘과 빛나는 기둥 포스트 둘, 방사 팔 모듈. */
   armory: () => {
-    const leg = (ang: number): ShapeFace[] => {
+    const rim = (ang: number): ShapeFace => {
       const a = (ang * Math.PI) / 180;
+      const [px2, py2] = project(Math.sin(a) * 2.1, Math.cos(a) * 2.1, 3);
+      return topFace(groundEllipse(px2, py2, 0.3, 0.2), 0.4);
+    };
+    const post = (px2: number, py2: number, h: number): ShapeFace[] => {
+      const [gx2, gy2] = project(px2, py2, h + 0.6);
       return [
-        ...hornFaces(Math.sin(a) * 1.3, Math.cos(a) * 1.3, 4, Math.sin(a) * 3.9, Math.cos(a) * 3.9, 0, 1.15),
-        bodyFace(discPath3(Math.sin(a) * 4, Math.cos(a) * 4, 0.3, 1)),
+        ...cylinderFaces3(px2, py2, 0.75, h),
+        ...domeFaces3(px2, py2, 0.75, 0.5, h),
+        topFace(groundEllipse(gx2, gy2, 0.32, 0.22), 0.45),
       ];
     };
     return [
-      ...leg(180),
-      ...cylinderFaces3(0, 0, 2.7, 1.6, 3.4),
-      ...domeFaces3(0, 0, 2.3, 1.9, 5),
-      ...cylinderFaces3(1.2, -1, 0.5, 1.8, 6),
-      ...leg(60),
-      ...leg(-60),
+      // 뒤 첨탑 둘.
+      ...boxFaces3(-3.2, -2.2, 1.4, 1.4, 5.4),
+      ...boxFaces3(-3.2, -2.2, 0.7, 0.7, 1.8, 5.4),
+      ...boxFaces3(3.4, -1.8, 1.5, 1.5, 6.2),
+      ...boxFaces3(3.4, -1.8, 0.8, 0.8, 2, 6.2),
+      // 방사 팔 모듈.
+      ...boxFaces3(2.4, 0.9, 2, 1.3, 1.5),
+      ...boxFaces3(-2.5, 0.7, 1.9, 1.3, 1.4),
+      // 가운데 우물 드럼.
+      ...cylinderFaces3(0, 0, 2.6, 3),
+      capFace(discPath3(0, 0, 3.05, 1.85), 0.45),
+      rim(50), rim(90), rim(130),
+      // 비스듬한 뚜껑 판 — 우물 위로 걸친 원판.
+      bodyFace(discPath3(0.4, -0.9, 4.3, 1.6)),
+      topFace(discPath3(0.4, -0.9, 4.33, 1.15), 0.25),
+      // 앞 빛 기둥 포스트 둘.
+      ...post(-3.5, 2.3, 3.1),
+      ...post(3.7, 2.7, 2.7),
     ];
   },
   /* 사이언스 퍼실리티(정정) — 넓은 몸체 지붕 중앙에 농구공 반쪽(반구)이 얹힌다. */
