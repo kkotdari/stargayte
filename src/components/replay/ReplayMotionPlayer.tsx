@@ -774,12 +774,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...hornFaces(5.7, 2, 4.2, 4.8, 2.4, 6, 0.8));
     return out;
   },
-  /* 스타게이트(다시 넷, 지적) — 가운데 원통형 통로가 대각선(좌상단이 정면)으로 놓이고,
-     양옆의 굽은 판이 그 통로를 감싼다. 함선은 좌상단 아가리로 나온다. 판 등엔 갈빗살과
+  /* 스타게이트(다시 넷, 지적) — 가운데 원통형 통로가 대각선(좌하단이 정면)으로 놓이고,
+     양옆의 굽은 판이 그 통로를 감싼다. 함선은 좌하단 아가리로 나온다. 판 등엔 갈빗살과
      파란 창 점, 끝은 아가리 쪽으로 말린 갈고리. */
   arch: () => {
-    const [axp, ayp] = project(3.6, -0.8, 1.4);
-    const [bxp, byp] = project(-3.4, 0.6, 8.8);
+    // 정면은 좌하단(정정) — 아가리(B)가 앞왼쪽 낮은 데, 둥근 뒤꽁무니(A)가 오른뒤 높은 데.
+    const [axp, ayp] = project(3.4, -0.8, 8.6);
+    const [bxp, byp] = project(-3.6, 0.8, 1.6);
     const dx = bxp - axp;
     const dy = byp - ayp;
     const len = Math.hypot(dx, dy) || 1;
