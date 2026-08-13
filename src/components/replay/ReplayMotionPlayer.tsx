@@ -1262,6 +1262,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [p2x, p2y] = project(1.75, 0.7, 4.75);
     out.push(topFace(groundEllipse(p1x, p1y, 0.34, 0.3), 0.3));
     out.push(topFace(groundEllipse(p2x, p2y, 0.34, 0.3), 0.3));
+    // 앞다리 한 쌍(요청) — 얼굴 아래에서 중간 길이로 아래를 향한다.
+    for (const ang of [25, -25]) out.push(...spikeTo(ang, 3.2, 0.6, 0.7));
     return out;
   },
   /* 드론(정정) — 갈퀴치마는 집게 사이가 아니라 집게팔과 꼬리 사이, 양옆에 부채처럼
