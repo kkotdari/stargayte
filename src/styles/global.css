@@ -9158,6 +9158,11 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
 .scr-activity-detail-full::before,
 .scr-light-theme .scr-activity-detail-full::before { box-shadow: none; }
 .scr-light-theme .scr-activity-detail-full { border: none; box-shadow: none; }
+/* 진짜 범인은 ::after의 반사광 림이었다(지적: 다크에서 선명한 흰 줄) — 상세 모달은
+   ::before(유리) 말고 ::after에 안쪽 테두리+위 반사광을 따로 긋는다. 전체화면에선 이
+   층도 통째로 끈다(두 테마 다). */
+.scr-activity-detail-full::after,
+.scr-light-theme .scr-activity-detail-full::after { box-shadow: none; }
 .scr-activity-detail-body { padding-top: var(--scr-detail-head-h); }
 /* 경기 케밥만 기준면이 다르다 — 카드가 아니라 그 안의 경기 한 판(.scr-game-result-trow)에
    매달려 있어서, 같은 값을 줘도 카드 머리(날짜 줄)만큼 아래에 떨어졌다(실측 y=45, 목표 16).
