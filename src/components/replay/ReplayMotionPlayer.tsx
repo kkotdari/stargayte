@@ -4353,7 +4353,8 @@ export default function ReplayMotionPlayer({
             // 연구 중에도 이름 대신 라임 글로우가 말한다(요청: "생산중인 건물은 이름을
             // 띄우지 말고 액티브").
             // 시작 건물은 액티브도 없다(요청: 처음 등장하는 건물·유닛은 액티브 안 주기).
-            const activeBuild = !razed && sec > 0 && t - sec <= BUILD_NAME_SEC;
+            // (요청) 착공 직후 이름 창도 걷었다 — 모델이 정체를 말한다.
+            const activeBuild = false;
             const name = BUILDING_KO[unit] ?? UNIT_KO[unit];
             /* 비활성이면 무조건 도형이다(지적: 서플라이·파일런·포토·터렛이 영영 안 변했다 —
                "겹치지만 않으면 이름 상시 노출"이던 옛 규칙을 걷었다). */
@@ -4363,7 +4364,6 @@ export default function ReplayMotionPlayer({
             // 테란 부속건물은 이름 대신 늘 +다(요청: "테란 부속건물은 +로 옆에 붙이기") —
             // 제 발자국 자리가 본체 오른쪽이라 저절로 옆에 붙는다.
             if (ADDONS.has(unit)) text = "+";
-            else if (activeBuild && name) text = name;
             // ▪는 글꼴상 반쪽짜리라 ●▲보다 작아 보인다(지적) — 꽉 찬 ■로. 본진은 별표(요청).
             else text = isHall ? "★" : DEFENSE_BUILDINGS.has(unit) ? "▲" : "■";
             // 발자국이 곧 크기다(요청: "건물크기로 구분 — 서플·파일런같은 작은 건물은 작게,
@@ -4919,6 +4919,7 @@ export default function ReplayMotionPlayer({
               else near.parts.push([ko, n]);
             }
           };
+          void addBubble; // 유닛 이름 말풍선 제거(요청)로 지금은 안 쓴다 — 기반만 남긴다.
           /* 같은 종류가 여러 부대로 갈라졌으면 수도 갈라 적는다(지적: 저글링 10이 5·5,
              3·3·4처럼 갈라지는 모션) — 어느 쪽에 몇이 갔는지는 안 남으니 고르게 나눈다. */
           const squadsOfUnit = new Map<string, number>();
@@ -4973,6 +4974,8 @@ export default function ReplayMotionPlayer({
             /* 액티브라도 마커는 도형 그대로다(요청: 이름으로 바꾸지 말고 말풍선으로) —
                무엇인지는 위의 말풍선이 말한다. */
             // (제거·요청) 유닛 이름 말풍선 — 모델링이 끝나 도형이 정체를 말한다.
+            void groupParts;
+            void activeNow;
             /* 클로킹 유닛은 반투명(요청) — 옵저버·다크는 늘, 레이스·고스트는 클로킹 연구
                뒤부터. 칩이든 점이든 같이 옅어진다(요청). */
             const cloaked = g.unit === "Observer" || g.unit === "Dark Templar"
@@ -5169,6 +5172,7 @@ export default function ReplayMotionPlayer({
                부대 자리 하나뿐이라 풍선도 하나고, 곁의 액티브 유닛 마커들과는 addBubble이
                알아서 합친다. */
             // (제거·요청) 유닛 이름 말풍선 — 모델이 정체를 말한다.
+            void showName;
             /* 낱개 마커(요청: 같은 유닛이라도 합치지 말고 하나하나 — 대신 작게) — 구성
                (parts)의 유닛 수만큼 각자의 갈래 도형·덩치 크기로 흩는다. 구성을 모르면
                우세 유닛의 도형으로 규모만큼, 곁 부대는 규모를 모르니 하나다. */
