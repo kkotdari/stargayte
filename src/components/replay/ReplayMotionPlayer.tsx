@@ -1439,7 +1439,12 @@ export default function ReplayMotionPlayer({
   /* 큰 화면 보기(요청: PC — 확대 아이콘을 누르면 맵과 조작부만 든 팝업이 엄청 크게) —
      같은 컴포넌트 트리를 통째로 포털 모달 안으로 옮겨 심으므로 재생 상태가 그대로
      이어진다. Esc로도 닫는다. */
-  const [big, setBig] = useState(false);
+  /* 상세 팝업(PC)은 첫 렌더부터 확대다(지적: 승패·BEST 줄이 잠깐 보였다 사라짐 —
+     effect로 열면 인라인 카드가 한 프레임 먼저 그려진다). 초기값은 순수 계산만 하고,
+     자리 잡기(autoBigHolder)는 아래 effect가 맡는다. */
+  const [big, setBig] = useState<boolean>(() => Boolean(onDetailClose)
+    && typeof window !== "undefined"
+    && !!window.matchMedia?.("(min-width: 1160px)").matches);
   /* (삭제·요청: 모바일 확대 기능 제거 둘째 판) — 화면 폭 확대 토글(wide)도 걷었다.
      게임 상세 모달이 애초에 전체화면이 되면서(요청) 맵은 늘 화면의 짧은 변에 최대로
      맞고, 눌러서 넓히는 중간 상태가 설 자리가 없다. */
@@ -1482,7 +1487,8 @@ export default function ReplayMotionPlayer({
   useEffect(() => {
     if (!onDetailClose) return undefined;
     if (typeof window === "undefined" || !window.matchMedia?.("(min-width: 1160px)").matches) return undefined;
-    if (autoBigHolder.taken) return undefined;
+    // 묶음 상세에서 다른 판이 이미 확대를 잡았으면 이쪽은 내려선다(초기값이 true였어도).
+    if (autoBigHolder.taken) { setBig(false); return undefined; }
     autoBigHolder.taken = true;
     setBig(true);
     return () => { autoBigHolder.taken = false; };
