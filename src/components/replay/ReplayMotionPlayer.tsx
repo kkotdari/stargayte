@@ -2632,13 +2632,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     }
     return [
       bodyFace(legs.join(" ")),
-      bodyFace(groundEllipse(cx, cy, 4.4, 4.1)),
-      // 양쪽 큰 반구 눈(요청) — 불룩 솟은 눈알과 하이라이트.
-      bodyFace(groundEllipse(cx - 3.4, cy + 0.7, 1.5, 1.4)),
-      topFace(groundEllipse(cx - 3.7, cy + 0.35, 0.55, 0.5), 0.35),
-      bodyFace(groundEllipse(cx + 3.4, cy + 0.7, 1.5, 1.4)),
-      sideFace(groundEllipse(cx + 3.4, cy + 0.7, 1.5, 1.4), 0.18),
-      topFace(groundEllipse(cx + 3.05, cy + 0.35, 0.55, 0.5), 0.3),
+      // 머리 축소(지적) + 눈은 앞쪽으로 모은다.
+      bodyFace(groundEllipse(cx, cy, 3.6, 3.4)),
+      bodyFace(groundEllipse(cx - 2.1, cy + 1.7, 1.25, 1.15)),
+      topFace(groundEllipse(cx - 2.35, cy + 1.4, 0.45, 0.4), 0.35),
+      bodyFace(groundEllipse(cx + 2.1, cy + 1.7, 1.25, 1.15)),
+      sideFace(groundEllipse(cx + 2.1, cy + 1.7, 1.25, 1.15), 0.18),
+      topFace(groundEllipse(cx + 1.82, cy + 1.42, 0.45, 0.4), 0.3),
       sideFace(`M${cx + 1.4} ${cy - 3.4} Q${cx + 4.4} ${cy - 1.6} ${cx + 3.4} ${cy + 2.4} Q${cx + 3.9} ${cy - 1} ${cx + 1.4} ${cy - 3.4} Z`, 0.22),
       topFace(groundEllipse(cx - 1.2, cy - 2.2, 1.8, 1.1), 0.35),
     ];
@@ -2822,18 +2822,18 @@ export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg, flat,
   let faces = facesOverride;
   let rot = SHAPE_ROT[kind] ?? 0;
   const builder = SHAPE_BUILDERS[kind];
-  if (!faces && rotDeg !== undefined && rotDeg !== 0 && builder) {
+  if (!faces && rotDeg !== undefined && builder) {
+    /* 기본은 정면(지적: 사선이 어색) — rotDeg 0이 요잉 0(정면 아래)이 되도록 굽는다.
+       건물은 rotDeg를 안 주므로 기존 사선(-20) 시점 그대로다. */
     const bucket = ((Math.round(rotDeg / 15) * 15) % 360 + 360) % 360;
-    if (bucket !== 0) {
-      const key = `${kind}:${bucket}:${flat ? 1 : 0}`;
-      let f = HEAD_FACES.get(key);
-      if (!f) {
-        const bake = (): ShapeFace[] => withYaw(VIEW.yawDeg - bucket, builder);
-        f = flat ? withTopView(bake) : bake();
-        HEAD_FACES.set(key, f);
-      }
-      faces = f;
+    const key = `${kind}:${bucket}:${flat ? 1 : 0}`;
+    let f = HEAD_FACES.get(key);
+    if (!f) {
+      const bake = (): ShapeFace[] => withYaw(-bucket, builder);
+      f = flat ? withTopView(bake) : bake();
+      HEAD_FACES.set(key, f);
     }
+    faces = f;
   } else if (!builder) {
     rot += rotDeg ?? 0;
   }
@@ -3580,6 +3580,18 @@ export default function ReplayMotionPlayer({
       el.removeEventListener("touchcancel", onTE);
     };
   }, []);
+  /* 유닛 방향(지적: 멈추면 정면으로 돌아가 어색) — 조금 전이 아니라 '마지막으로 움직인'
+     방향을 문다: 0.8초 전부터 점점 멀리(최대 15초) 되짚어 처음 잡히는 변위의 방향이다. */
+  const headingOf = (walk: TrackPt[], pos: { x: number; y: number }): number => {
+    for (const back of [0.8, 2, 4, 8, 15]) {
+      const hp = posAt(walk, Math.max(0, t - back), null);
+      if (!hp) break;
+      const dx = pos.x - hp.x;
+      const dy = pos.y - hp.y;
+      if (Math.hypot(dx, dy) > 0.1) return (Math.atan2(-dx, dy) * 180) / Math.PI;
+    }
+    return 0;
+  };
   const dragRef = useRef<{ id: number; sx: number; sy: number; px: number; py: number } | null>(null);
   const onMapPointerDown = (e: React.PointerEvent) => {
     if (zoom <= 1 || e.button !== 0) return;
@@ -5004,6 +5016,7 @@ export default function ReplayMotionPlayer({
                     ? (
                       <ShapeIcon
                         kind={race === "저그" ? "ovie" : race === "테란" ? "dship" : "shuttle"}
+                        rotDeg={headingOf(g.walk, pos)}
                         className="scr-motion-ovie" flat={!pitched}
                       />
                     )
@@ -5036,10 +5049,7 @@ export default function ReplayMotionPlayer({
             const fighting = sinceCmd <= 15
               && (p.hot ?? []).some(([a2, b2]) => t >= a2 && t <= b2);
             const cyc = Math.floor(t / 1.5);
-            /* 이동 방향(요청: 유닛 마커도 방향) — 조금 전 자리와의 차가 향한 곳. */
-            const hp = posAt(g.walk, Math.max(0, t - 0.8), null);
-            const hdg = hp && Math.hypot(pos.x - hp.x, pos.y - hp.y) > 0.1
-              ? Math.atan2(-(pos.x - hp.x), pos.y - hp.y) * (180 / Math.PI) : 0;
+            const hdg = headingOf(g.walk, pos);
             const seed = gi * 1.7;
             return glyphUnits.map((u, di) => {
               const bulk = UNIT_BULK[u] ?? 2;
@@ -5060,16 +5070,15 @@ export default function ReplayMotionPlayer({
               const marching = mvL > 0.1;
               /* 길 섞임(재지적: 대형 그대로 가면 이상) — 유닛마다 다른 속도로 나선 자리를
                  돌고 반경도 출렁여, 걷는 동안 앞뒤 차례가 계속 뒤바뀐다. */
-              // 난수 절제(지적: 너무 정신없음) — 섞임은 느리게, 출렁임은 얕게.
-              const churn = marching ? t * (0.12 + jr * 0.2) + ja * 3.1 : 0;
-              const rj = r * (0.85 + jr * 0.5)
-                * (marching ? 1 + 0.08 * Math.sin(t * (0.9 + ja) + di) : 1);
+              // 꿀렁댐 제거(지적) — 시간에 따른 요동은 다 끄고 정적 지터만 남긴다.
+              const churn = ja * 3.1;
+              const rj = r * (0.85 + jr * 0.5);
               const aj = di * 2.4 + seed + ja * 1.1 + churn;
               const ux2 = marching ? mvx / mvL : 0;
               const uy2 = marching ? mvy / mvL : 0;
-              const step = marching ? Math.sin(t * 3 + di * 2.1 + jr * 6.3) * 0.2 : 0;
-              const sway = marching ? Math.cos(t * 2.4 + di * 1.3) * 0.06 : 0;
-              const wob = marching ? 0.04 : 0.14 + 0.06 * jr;
+              const step = 0;
+              const sway = 0;
+              const wob = 0;
               const dx = Math.cos(aj) * rj + Math.cos(t * 0.7 + di * 1.7) * wob
                 + ux2 * step - uy2 * sway;
               const dy = Math.sin(aj) * rj + Math.sin(t * 0.9 + di * 2.3) * wob
@@ -5190,10 +5199,7 @@ export default function ReplayMotionPlayer({
             const fighting = sinceCmd <= 15
               && (p.hot ?? []).some(([a2, b2]) => t >= a2 && t <= b2);
             const cyc = Math.floor(t / 1.5);
-            /* 이동 방향(요청) — 위 typeNodes와 같은 규칙. */
-            const hp = posAt(rp, Math.max(0, t - 0.8), null);
-            const hdg = hp && Math.hypot(pos.x - hp.x, pos.y - hp.y) > 0.1
-              ? Math.atan2(-(pos.x - hp.x), pos.y - hp.y) * (180 / Math.PI) : 0;
+            const hdg = headingOf(rp, pos);
             const seed = si * 1.7;
             return glyphs.map((u, di) => {
               const bulk = UNIT_BULK[u] ?? 2;
@@ -5215,16 +5221,15 @@ export default function ReplayMotionPlayer({
               const marching = mvL > 0.1;
               /* 길 섞임(재지적: 대형 그대로 가면 이상) — 유닛마다 다른 속도로 나선 자리를
                  돌고 반경도 출렁여, 걷는 동안 앞뒤 차례가 계속 뒤바뀐다. */
-              // 난수 절제(지적: 너무 정신없음) — 섞임은 느리게, 출렁임은 얕게.
-              const churn = marching ? t * (0.12 + jr * 0.2) + ja * 3.1 : 0;
-              const rj = r * (0.85 + jr * 0.5)
-                * (marching ? 1 + 0.08 * Math.sin(t * (0.9 + ja) + di) : 1);
+              // 꿀렁댐 제거(지적) — 시간에 따른 요동은 다 끄고 정적 지터만 남긴다.
+              const churn = ja * 3.1;
+              const rj = r * (0.85 + jr * 0.5);
               const aj = di * 2.4 + seed + ja * 1.1 + churn;
               const ux2 = marching ? mvx / mvL : 0;
               const uy2 = marching ? mvy / mvL : 0;
-              const step = marching ? Math.sin(t * 3 + di * 2.1 + jr * 6.3) * 0.2 : 0;
-              const sway = marching ? Math.cos(t * 2.4 + di * 1.3) * 0.06 : 0;
-              const wob = marching ? 0.04 : 0.14 + 0.06 * jr;
+              const step = 0;
+              const sway = 0;
+              const wob = 0;
               const dx = Math.cos(aj) * rj + Math.cos(t * 0.7 + di * 1.7) * wob
                 + ux2 * step - uy2 * sway;
               const dy = Math.sin(aj) * rj + Math.sin(t * 0.9 + di * 2.3) * wob
@@ -5346,9 +5351,7 @@ export default function ReplayMotionPlayer({
             /* 정찰은 이름을 아예 안 띄운다(지적: 일꾼 이름 뜨는 게 문제 맞다) — 일꾼은
                늘 작은 점, 수송선·오버로드는 늘 제 도형이다. 칩으로 커지는 일이 없으니
                커졌다 작아졌다도 없다. */
-            const hp2 = posAt(rp, Math.max(0, t - 0.8), null);
-            const hdg = hp2 && Math.hypot(pos.x - hp2.x, pos.y - hp2.y) > 0.1
-              ? Math.atan2(-(pos.x - hp2.x), pos.y - hp2.y) * (180 / Math.PI) : 0;
+            const hdg = headingOf(rp, pos);
             const activeNow = false;
             return (
               <span
@@ -5370,9 +5373,9 @@ export default function ReplayMotionPlayer({
                 {/* 수송선·오버로드는 점 대신 제 도형(요청) — 풍선·드랍십·셔틀.
                     일꾼은 점 그대로, 그 밖의 단독 정찰(병력)은 육각형(요청: 아이콘 구분). */}
                 {race === "저그" && g.kind !== "worker"
-                  ? <ShapeIcon kind="ovie" flat={!pitched} className="scr-motion-ovie" />
+                  ? <ShapeIcon kind="ovie" rotDeg={hdg} flat={!pitched} className="scr-motion-ovie" />
                   : g.kind === "carrier"
-                    ? <ShapeIcon kind={race === "테란" ? "dship" : "shuttle"} flat={!pitched} className="scr-motion-ovie" />
+                    ? <ShapeIcon kind={race === "테란" ? "dship" : "shuttle"} rotDeg={hdg} flat={!pitched} className="scr-motion-ovie" />
                     : g.kind === "worker"
                       ? <ShapeIcon kind={workerKindOf(race)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
                       : (
