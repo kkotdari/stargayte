@@ -4972,7 +4972,7 @@ export default function ReplayMotionPlayer({
             const activeNow = !noName && sinceCmd <= ACTIVE_HOLD_SEC;
             /* 액티브라도 마커는 도형 그대로다(요청: 이름으로 바꾸지 말고 말풍선으로) —
                무엇인지는 위의 말풍선이 말한다. */
-            if (activeNow) addBubble(pos.x, pos.y, groupParts);
+            // (제거·요청) 유닛 이름 말풍선 — 모델링이 끝나 도형이 정체를 말한다.
             /* 클로킹 유닛은 반투명(요청) — 옵저버·다크는 늘, 레이스·고스트는 클로킹 연구
                뒤부터. 칩이든 점이든 같이 옅어진다(요청). */
             const cloaked = g.unit === "Observer" || g.unit === "Dark Templar"
@@ -5058,15 +5058,16 @@ export default function ReplayMotionPlayer({
               const marching = mvL > 0.1;
               /* 길 섞임(재지적: 대형 그대로 가면 이상) — 유닛마다 다른 속도로 나선 자리를
                  돌고 반경도 출렁여, 걷는 동안 앞뒤 차례가 계속 뒤바뀐다. */
-              const churn = marching ? t * (0.3 + jr * 0.6) + ja * 3.1 : 0;
+              // 난수 절제(지적: 너무 정신없음) — 섞임은 느리게, 출렁임은 얕게.
+              const churn = marching ? t * (0.12 + jr * 0.2) + ja * 3.1 : 0;
               const rj = r * (0.85 + jr * 0.5)
-                * (marching ? 1 + 0.18 * Math.sin(t * (0.9 + ja) + di) : 1);
+                * (marching ? 1 + 0.08 * Math.sin(t * (0.9 + ja) + di) : 1);
               const aj = di * 2.4 + seed + ja * 1.1 + churn;
               const ux2 = marching ? mvx / mvL : 0;
               const uy2 = marching ? mvy / mvL : 0;
-              const step = marching ? Math.sin(t * 4 + di * 2.1 + jr * 6.3) * 0.35 : 0;
-              const sway = marching ? Math.cos(t * 3.1 + di * 1.3) * 0.12 : 0;
-              const wob = marching ? 0.08 : 0.22 + 0.1 * jr;
+              const step = marching ? Math.sin(t * 3 + di * 2.1 + jr * 6.3) * 0.2 : 0;
+              const sway = marching ? Math.cos(t * 2.4 + di * 1.3) * 0.06 : 0;
+              const wob = marching ? 0.04 : 0.14 + 0.06 * jr;
               const dx = Math.cos(aj) * rj + Math.cos(t * 0.7 + di * 1.7) * wob
                 + ux2 * step - uy2 * sway;
               const dy = Math.sin(aj) * rj + Math.sin(t * 0.9 + di * 2.3) * wob
@@ -5167,13 +5168,7 @@ export default function ReplayMotionPlayer({
             /* 액티브면 구성을 말풍선에 적는다(요청: 마커는 도형 유지, 말풍선으로) — 자리는
                부대 자리 하나뿐이라 풍선도 하나고, 곁의 액티브 유닛 마커들과는 addBubble이
                알아서 합친다. */
-            if (showName) {
-              addBubble(pos.x, pos.y, parts.length > 0
-                ? parts.map(([u, n]) => [UNIT_KO[u] ?? u, n] as [string, number])
-                : (UNIT_KO[unit] || SCOUT_KO[unit]
-                  ? [[(UNIT_KO[unit] ?? SCOUT_KO[unit])!, shownSize] as [string, number]]
-                  : []));
-            }
+            // (제거·요청) 유닛 이름 말풍선 — 모델이 정체를 말한다.
             /* 낱개 마커(요청: 같은 유닛이라도 합치지 말고 하나하나 — 대신 작게) — 구성
                (parts)의 유닛 수만큼 각자의 갈래 도형·덩치 크기로 흩는다. 구성을 모르면
                우세 유닛의 도형으로 규모만큼, 곁 부대는 규모를 모르니 하나다. */
@@ -5217,15 +5212,16 @@ export default function ReplayMotionPlayer({
               const marching = mvL > 0.1;
               /* 길 섞임(재지적: 대형 그대로 가면 이상) — 유닛마다 다른 속도로 나선 자리를
                  돌고 반경도 출렁여, 걷는 동안 앞뒤 차례가 계속 뒤바뀐다. */
-              const churn = marching ? t * (0.3 + jr * 0.6) + ja * 3.1 : 0;
+              // 난수 절제(지적: 너무 정신없음) — 섞임은 느리게, 출렁임은 얕게.
+              const churn = marching ? t * (0.12 + jr * 0.2) + ja * 3.1 : 0;
               const rj = r * (0.85 + jr * 0.5)
-                * (marching ? 1 + 0.18 * Math.sin(t * (0.9 + ja) + di) : 1);
+                * (marching ? 1 + 0.08 * Math.sin(t * (0.9 + ja) + di) : 1);
               const aj = di * 2.4 + seed + ja * 1.1 + churn;
               const ux2 = marching ? mvx / mvL : 0;
               const uy2 = marching ? mvy / mvL : 0;
-              const step = marching ? Math.sin(t * 4 + di * 2.1 + jr * 6.3) * 0.35 : 0;
-              const sway = marching ? Math.cos(t * 3.1 + di * 1.3) * 0.12 : 0;
-              const wob = marching ? 0.08 : 0.22 + 0.1 * jr;
+              const step = marching ? Math.sin(t * 3 + di * 2.1 + jr * 6.3) * 0.2 : 0;
+              const sway = marching ? Math.cos(t * 2.4 + di * 1.3) * 0.06 : 0;
+              const wob = marching ? 0.04 : 0.14 + 0.06 * jr;
               const dx = Math.cos(aj) * rj + Math.cos(t * 0.7 + di * 1.7) * wob
                 + ux2 * step - uy2 * sway;
               const dy = Math.sin(aj) * rj + Math.sin(t * 0.9 + di * 2.3) * wob
