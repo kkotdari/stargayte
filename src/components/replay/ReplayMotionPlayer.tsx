@@ -1239,44 +1239,38 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...foot(-1.2, 3.5), ...foot(2.9, 3),
     ];
   },
-  /* 포지(정정) — 뒤쪽의 둥근 몸과 앞쪽의 톱니바퀴가 인상적: 큰 돔 + 이빨 두른 납작
-     기어(가운데 허브). */
+  /* 포지(인게임 참고 재작도) — 왼쪽에 옆으로 세워진 바퀴 드럼(두께 겹), 가운데 총알
+     기둥들과 가로 배관 다발, 오른쪽 렌즈 돔 큰 것·작은 것. */
   forge: () => {
-    const out: ShapeFace[] = [...domeFaces3(0, -1.6, 3.1, 2.8)];
-    /* 앞 톱니바퀴(재정정: 방향) — 화면에 그대로 붙인 원이 아니라, 시점 요잉에 맞춰
-       살짝 기울인 타원 바퀴로 세운다. 이빨도 같은 기울기의 방사 방향을 따른다. */
-    const [gx3, gy3] = project(0, 2.2, 0);
-    const rxG = 2.15;
-    const ryG = 2.6;
-    const ph = (-14 * Math.PI) / 180;
-    const gp = (adeg: number, k: number): [number, number] => {
-      const a = (adeg * Math.PI) / 180;
-      const ex = Math.cos(a) * rxG * k;
-      const ey = -Math.sin(a) * ryG * k;
+    const lens = (x: number, y: number, z: number, r: number): ShapeFace[] => {
+      const [px2, py2] = project(x, y, z);
       return [
-        gx3 + ex * Math.cos(ph) - ey * Math.sin(ph),
-        gy3 + ex * Math.sin(ph) + ey * Math.cos(ph),
+        topFace(groundEllipse(px2, py2, r, r * 0.7), 0.3),
+        topFace(groundEllipse(px2, py2, r * 0.55, r * 0.4), 0.5),
       ];
     };
-    const ring = (k: number): string => {
-      let d = "";
-      for (let a = 0; a <= 180; a += 15) {
-        const [px2, py2] = gp(a, k);
-        d += `${a === 0 ? "M" : "L"}${Math.round(px2 * 100) / 100} ${Math.round(py2 * 100) / 100} `;
-      }
-      return `${d}Z`;
-    };
-    out.push(bodyFace(ring(1)));
-    out.push(topFace(ring(0.62), 0.2));
-    out.push(capFace(ring(0.28), 0.4));
-    for (const a of [22, 56, 90, 124, 158]) {
-      const p1 = gp(a - 6, 0.94);
-      const p2 = gp(a - 6, 1.2);
-      const p3 = gp(a + 6, 1.2);
-      const p4 = gp(a + 6, 0.94);
-      out.push(bodyFace(`M${p1[0]} ${p1[1]} L${p2[0]} ${p2[1]} L${p3[0]} ${p3[1]} L${p4[0]} ${p4[1]} Z`));
-    }
-    return out;
+    const [wx2, wy2] = project(-3.3, 0.6, 2.4);
+    return [
+      // 세운 바퀴 드럼 — 뒤판(두께)과 앞판, 테·허브.
+      bodyFace(groundEllipse(wx2 - 0.55, wy2, 0.95, 2.3)),
+      sideFace(groundEllipse(wx2 - 0.55, wy2, 0.95, 2.3), 0.22),
+      bodyFace(groundEllipse(wx2, wy2, 0.95, 2.3)),
+      topFace(groundEllipse(wx2, wy2, 0.62, 1.6), 0.18),
+      capFace(groundEllipse(wx2, wy2, 0.3, 0.75), 0.4),
+      // 가운데 총알 기둥 둘.
+      ...cylinderFaces3(-1.2, -1.2, 0.8, 4.2),
+      ...domeFaces3(-1.2, -1.2, 0.8, 0.75, 4.2),
+      ...cylinderFaces3(0.2, -0.4, 0.7, 3.4),
+      ...domeFaces3(0.2, -0.4, 0.7, 0.65, 3.4),
+      // 가로 배관 다발 — 바퀴에서 돔 쪽으로.
+      ...tubeFaces(-2.2, 0.9, 2.6, 0.5, 0.45, 2),
+      ...tubeFaces(-2, 1.6, 2.4, 1.3, 0.4, 1.2),
+      // 오른쪽 렌즈 돔 큰 것·작은 것.
+      ...domeFaces3(2.9, -0.3, 2.3, 2.1),
+      ...lens(2.9, -0.3, 2.15, 0.95),
+      ...domeFaces3(2.6, 2.2, 1.2, 1),
+      ...lens(2.6, 2.2, 1.05, 0.55),
+    ];
   },
   /* 사이버네틱스 코어(정정) — 아래쪽을 큰 구슬들이 빙 두른 원통 + 돔 + 위 빛 구. */
   cyber: () => {
