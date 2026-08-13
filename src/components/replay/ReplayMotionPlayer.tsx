@@ -1964,12 +1964,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   reaver: () => {
     const [mx2, my2] = project(0, 3.6, 4);
     return [
-      // 앞뒤는 낮고 가운데가 높은 반원 아치(지적).
-      ...domeFaces3(0, -2.3, 1.4, 1, 3.4),
-      ...domeFaces3(0, -1.1, 1.6, 1.9, 3.4),
+      // 반원 아치 + 머리·꼬리로 갈수록 몸도 얇아진다(지적).
+      ...domeFaces3(0, -2.5, 0.95, 0.85, 3.4),
+      ...domeFaces3(0, -1.2, 1.4, 1.8, 3.4),
       ...domeFaces3(0, 0.1, 1.68, 2.4, 3.4),
-      ...domeFaces3(0, 1.3, 1.6, 1.9, 3.4),
-      ...domeFaces3(0, 2.4, 1.35, 1, 3.4),
+      ...domeFaces3(0, 1.4, 1.4, 1.8, 3.4),
+      ...domeFaces3(0, 2.6, 0.95, 0.85, 3.4),
       capFace(groundEllipse(mx2, my2, 0.55, 0.35), 0.4),
     ];
   },
