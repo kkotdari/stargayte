@@ -1122,24 +1122,30 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...domeFaces3(1.6, 2.3, 0.5, 0.45, 3.55),
     ];
   },
-  /* 엔지니어링 베이(실물 참고) — 사방 대각으로 뻗은 팔 끝의 원반 발 넷, 각진 몸체
-     더미, 앞의 끝이 빛나는 통, 지붕 안테나. */
+  /* 엔지니어링 베이(리디자인, 실물 참고) — 둥근 층층 플랫폼이 드럼 발들 위에 떠
+     있고(이륙하는 다리), 가운데 큰 갈빗살 돔과 원통 모듈, 옆에 초록 불 띠. */
   ebay: () => {
     const foot = (fx: number, fy: number): ShapeFace[] => [
-      ...hornFaces(fx * 0.45, fy * 0.45, 1.9, fx * 0.85, fy * 0.85, 0.7, 0.9),
-      bodyFace(discPath3(fx, fy, 0.35, 1.5)),
-      topFace(discPath3(fx, fy, 0.38, 1), 0.25),
-      ...cylinderFaces3(fx, fy, 0.32, 1, 0.35),
+      ...cylinderFaces3(fx, fy, 1.05, 1.3),
+      bodyFace(discPath3(fx, fy, 0.25, 1.4)),
+      capFace(discPath3(fx, fy, 1.32, 0.55), 0.3),
     ];
+    const glow = (gx2: number, gy2: number, gz2: number): ShapeFace => {
+      const [px2, py2] = project(gx2, gy2, gz2);
+      return topFace(groundEllipse(px2, py2, 0.45, 0.2), 0.45);
+    };
     return [
-      ...foot(-5, -3), ...foot(5, -3),
-      ...boxFaces3(0, -0.4, 6.6, 4, 3),
-      ...boxFaces3(-0.8, -1, 3, 2.4, 1.5, 3),
-      ...boxFaces3(1.8, -1.4, 1.5, 1.5, 2.3, 3),
-      ...tubeFaces(1.7, 0.6, 1.7, 2.5, 0.65, 1.9),
-      topFace(groundEllipse(...project(1.7, 2.5, 2.4), 0.5, 0.4), 0.35),
-      ...hornFaces(-2.3, -1.7, 4.5, -2.3, -1.7, 6.5, 0.32),
-      ...foot(-5.2, 3.2), ...foot(5.2, 3.2),
+      ...foot(-3.6, -2.2), ...foot(3.8, -2),
+      // 떠 있는 둥근 플랫폼 두 단.
+      ...cylinderFaces3(0, 0, 4.6, 1.9, 1.3),
+      ...cylinderFaces3(0, 0, 3.4, 1.3, 3.2),
+      // 큰 갈빗살 돔 — 세로 이음선 하나.
+      ...domeFaces3(0, -0.5, 2.5, 2.2, 4.4),
+      sideFace(polyPath3([[0, 1.9, 4.6], [0, 1.5, 6], [0, -0.5, 6.65], [0.16, -0.5, 6.65], [0.16, 1.5, 6], [0.16, 1.9, 4.6]]), 0.15),
+      // 오른앞 원통 모듈 + 불 띠.
+      ...cylinderFaces3(2.1, 1, 1, 2, 3.2),
+      glow(-2.9, 2.6, 2.2), glow(-1.6, 3.3, 2.2), glow(3.3, 1.9, 2.6),
+      ...foot(-1.2, 3.5), ...foot(2.9, 3),
     ];
   },
   /* 아머리(실물 참고) — 가운데 우물 드럼(어두운 속·테두리 빛 눈금·비스듬한 뚜껑 판),
