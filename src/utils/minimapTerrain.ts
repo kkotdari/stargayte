@@ -300,6 +300,26 @@ export async function analyzeMinimap(
       `[terrain] anchors=${anchorIdx.length} families=${families.length} included=${included.size} solved=${solved}`,
     );
     if (solved) {
+      /* 확장(지적: 투혼 과차단) — 16단계 세분으로 바닥이 여러 가족으로 조각나는데, 최소
+         연결 집합은 그중 일부만 쓴다. 연결에 안 쓰였어도 '매끈한'(양방향 능선에 걸리는
+         칸 비율 < 20%) 가족은 바닥 변주로 보고 편입한다 — 벽·유적·바위는 능선 비율이
+         높아 여기 못 낀다. */
+      const famCells = new Map<number, number[]>();
+      for (let i = 0; i < w * h; i += 1) {
+        if (banned[i] || tryWalk[i]) continue;
+        const k = keyOf(i);
+        const arr = famCells.get(k);
+        if (arr) arr.push(i);
+        else famCells.set(k, [i]);
+      }
+      for (const [, cells] of famCells) {
+        if (cells.length < 20) continue;
+        let ridgeN = 0;
+        for (const i of cells) {
+          if (lum[i] > localAvg[i] * 1.18 || lum[i] < localAvg[i] * 0.78) ridgeN += 1;
+        }
+        if (ridgeN / cells.length < 0.2) for (const i of cells) tryWalk[i] = 1;
+      }
       walk.set(tryWalk);
       /* 양방향 능선(지적: 벽이 너무 조금만 잡힘) — 96칸 격자에선 가는 벽이 바닥과 섞여
          평균색이 바닥 가족과 같아진다. 하지만 벽은 제 주변보다 뚜렷이 밝거나(밝은 구조물)
