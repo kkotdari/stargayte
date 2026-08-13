@@ -197,7 +197,10 @@ export function faceLight(nxModel: number, nyModel: number): { visible: boolean;
     if (dot < -0.1) return [sideFace(d, Math.min(0.38, (-dot - 0.1) * 0.45 + 0.12))];
     return [];
   };
-  return { visible: ny > 0.02, face };
+  /* 보임 판정도 시각 밀림만큼 돌린다(지적: 넥서스 옆면이 안 보임) — 소실점이 옮겨 간
+     만큼 카메라가 비껴 보므로, 화면 가운데 쪽 옆면이 드러나야 한다. */
+  const vphi = Math.atan(viewShear);
+  return { visible: ny * Math.cos(vphi) - nx * Math.sin(vphi) > 0.02, face };
 }
 
 /* 모형 내부 원근(요청: 모델 안에서도 원근법 — 건물은 특히) — 앞(시청자 쪽)으로 나온
@@ -232,7 +235,9 @@ export function project(x: number, y: number, z: number): [number, number] {
      태우면 요잉한 옆구리가 앞으로 쏟아짐) — 세로선은 곧게, 앞뒤는 납작비 그대로.
      시각 밀림(viewShear)은 화면 깊이(ry×납작비)에 태워, 바닥의 남북 선 기울기가
      지도의 소실 기울기(u/P)와 정확히 같아진다(지적: 노란선-빨간선 어긋남). */
-  const rx2 = rx + ry2 * groundSquashNow() * viewShear;
+  /* 가로 밀림은 앞숙임 제외한 원래 깊이(ry)에만(지적: 가장자리에서 안쪽으로 롤 된
+     느낌) — 숙임 몫(z×0.34)까지 태우면 바닥 앞변만 바깥으로 밀려 세로선이 기운다. */
+  const rx2 = rx + ry * groundSquashNow() * viewShear;
   return [r2(VIEW.originX + rx2 * f), r2(originYNow() + ry2 * groundSquashNow() - z * zScaleNow())];
 }
 
