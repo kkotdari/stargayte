@@ -71,7 +71,8 @@ export function groundSquashNow(): number {
   return pitchView ? 0.52 : topView ? 0.55 : GROUND_SQUASH;
 }
 function zScaleNow(): number {
-  return pitchView ? 0.71 : topView ? 0.66 : 0.89;
+  // 0.71 → 0.8 — 앞숙임이 꼭대기를 깊이로 내리는 몫(z×0.34×납작비)을 벌충한다.
+  return pitchView ? 0.8 : topView ? 0.66 : 0.89;
 }
 function originYNow(): number {
   return pitchView ? 12.6 : topView ? 12 : 12.6;
@@ -222,12 +223,17 @@ export function project(x: number, y: number, z: number): [number, number] {
   const sn = Math.sin(th);
   const rx = x * c + y * sn;
   const ry = -x * sn + y * c;
-  const f = MODEL_PERSP / (MODEL_PERSP - Math.max(-10, Math.min(10, ry)));
+  /* 앞으로 숙임(지적: 시청자 쪽으로 숙여야 한다) — 입체 판에서 꼭대기일수록 시청자
+     쪽으로 기운다(z가 깊이에 태워짐). 지붕 윗면이 드러나 45도 내려다보는 지형과 자세가
+     맞는다. sin20° ≈ 0.34. */
+  const ry2 = pitchView ? ry + z * 0.34 : ry;
+  const f = MODEL_PERSP / (MODEL_PERSP - Math.max(-10, Math.min(10, ry2)));
   /* 원근은 가로 수렴만(지적 둘: 높이까지 태우면 반대쪽이 들리는 가짜 롤, 깊이까지
      태우면 요잉한 옆구리가 앞으로 쏟아짐) — 세로선은 곧게, 앞뒤는 납작비 그대로.
-     시각 밀림(viewShear)은 깊이에 비례한 가로 이동으로만 얹는다. */
-  const rx2 = rx + ry * viewShear;
-  return [r2(VIEW.originX + rx2 * f), r2(originYNow() + ry * groundSquashNow() - z * zScaleNow())];
+     시각 밀림(viewShear)은 화면 깊이(ry×납작비)에 태워, 바닥의 남북 선 기울기가
+     지도의 소실 기울기(u/P)와 정확히 같아진다(지적: 노란선-빨간선 어긋남). */
+  const rx2 = rx + ry2 * groundSquashNow() * viewShear;
+  return [r2(VIEW.originX + rx2 * f), r2(originYNow() + ry2 * groundSquashNow() - z * zScaleNow())];
 }
 
 /** 3D 꼭짓점 목록 → 닫힌 직선 패스. (곡선이 필요하면 결과 좌표를 Q로 이어 다듬는다.) */

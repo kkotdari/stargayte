@@ -3782,15 +3782,12 @@ export default function ReplayMotionPlayer({
      오른쪽 마커는 왼옆이 보인다. */
   const viewYawOf = (x: number, y: number): number => {
     if (!pitched) return 0;
-    const { w, h, S } = pitchGeom();
+    const { w } = pitchGeom();
     const u = (x / grid.width - 0.5) * w;
-    const v = (y / grid.height - 0.5) * h;
-    // 각은 뒤 축소(q) 전의 원근 공간에서 잰다 — q를 곱하면 각이 약해진다(지적).
-    const k = PITCH_P / (PITCH_P - v * S);
     /* 요잉이 아니라 시각 밀림의 각(지적: 소실점이 시각을 반영해야 — 돌리면 찌그러짐).
-       ShapeIcon이 tan을 취해 깊이 비례 가로 밀림으로 쓴다. 부호는 실화면 확인으로
-       이쪽이 정답("지금까지 중 제일 나아") — 다시 뒤집지 말 것. */
-    return (Math.atan2(u * k, PITCH_P) * 180) / Math.PI;
+       ShapeIcon이 tan을 취하면 u/P — 지도 남북 선의 소실 기울기 그 값이다(지적:
+       노란선-빨간선 정합). 부호는 실화면 확인으로 이쪽이 정답 — 다시 뒤집지 말 것. */
+    return (Math.atan2(u, PITCH_P) * 180) / Math.PI;
   };
   const depthMk = (x: number, y: number): React.CSSProperties => {
     if (!pitched) return {};
