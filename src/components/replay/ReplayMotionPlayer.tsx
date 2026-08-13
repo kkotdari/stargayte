@@ -427,6 +427,8 @@ const SHAPE_KIND: Record<string, string> = {
      설명은 오해), 로보틱스는 돔, 스타게이트는 문(아치). */
   Barracks: "cube", Factory: "factory", Starport: "plane",
   "Robotics Facility": "dome", Stargate: "arch",
+  // 애드온(요청) — 컴샛(스캔)·핵 사일로는 모델, 나머지는 +.
+  "Comsat Station": "comsat", "Nuclear Silo": "nsilo",
   // 가스 건물 셋(실물 참고) — 종족별 정제소. 크기는 발자국(4×2)이 맞춘다.
   Refinery: "refinery", Assimilator: "assim", Extractor: "extract",
   // 업그레이드·테크 건물들(요청: 다 만들자).
@@ -2293,6 +2295,27 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(groundEllipse(lx2 - 0.1, ly2 - 0.1, 0.13, 0.11), 0.5),
     ];
   },
+  /* 컴샛 스테이션(스캔 애드온, 요청) — 낮은 몸체 위 기울어진 접시 안테나와 침. */
+  comsat: () => {
+    const [dx3, dy3] = project(0.3, -0.4, 5.2);
+    return [
+      ...boxFaces3(0, 0.2, 5.6, 4.4, 2.6),
+      ...cylinderFaces3(0.3, -0.4, 0.5, 1.6, 2.6),
+      bodyFace(groundEllipse(dx3, dy3, 2, 1)),
+      topFace(groundEllipse(dx3, dy3, 1.5, 0.7), 0.2),
+      capFace(groundEllipse(dx3, dy3, 0.4, 0.22), 0.35),
+      ...hornFaces(0.3, -0.4, 5.2, 0.7, 0.3, 6.8, 0.2),
+    ];
+  },
+  /* 핵 사일로(요청) — 받침 위 둥근 사일로 통과 돔 뚜껑, 해치 씸. */
+  nsilo: () => [
+    ...boxFaces3(0, 0.2, 5.6, 4.4, 1.6),
+    ...cylinderFaces3(0, 0, 2.3, 2.4, 1.6),
+    ...domeFaces3(0, 0, 2.3, 1.5, 4),
+    capFace(discPath3(0, 0, 4.05, 1.6), 0.22),
+    topFace(discPath3(0, 0, 5.1, 0.75), 0.3),
+    capFace(discPath3(0, 0, 5.13, 0.4), 0.35),
+  ],
   /* ── 공사 표현 공용 셋(요청: 아이콘 대신 모델) ───────────────────────────── */
   /* 저그 고치 — 크립 위 통통한 번데기(재생 쪽 CSS가 바운스시킨다). */
   cocoon: () => [
@@ -4473,7 +4496,7 @@ export default function ReplayMotionPlayer({
                     grid.height,
                   ),
                   // 캔버스 비율 = 발자국 폭 × (발자국 높이 + 벡터 건물만 높이 몫)(요청·지적).
-                  ...(text !== name && !ADDONS.has(unit)
+                  ...(text !== name && (!ADDONS.has(unit) || shapeKind)
                     ? {
                       // 기지는 각 종족 제일 큰 건물(지적) — 같은 발자국이라도 크게 그린다.
                       width: pct((FOOTPRINT[unit] ?? [3, 2])[0] * (shapeKind ? 1 : 0.8) * (isHall ? 1.3 : 1), grid.width),
