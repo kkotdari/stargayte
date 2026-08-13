@@ -205,14 +205,15 @@ export async function analyzeMinimap(
     anchorIdx.push(ay * w + ax);
   }
   if (anchorIdx.length >= 3) {
-    /* 땅 팔레트 학습(지적: 벽까지 다 열림 — 밝기 대역이 후해서 회청 벽이 끼었다) —
-       표본을 뭉친 색별 평균 RGB 팔레트로 만들고, 판정은 둘 중 하나면 땅이다:
-         · 팔레트 거리 — 가장 가까운 표본 색과의 RGB 거리 ≤ 45 (초록 바닥과 회청 벽은
-           밝기가 비슷해도 색 거리가 멀다)
-         · 좁은 밝기 대역 — 표본 밝기 10~90% 구간을 ×0.92~1.08로만 벌린 범위(광장처럼
-           색은 달라도 밝기가 땅급인 타일을 위한 보조) */
-    const acc = new Map<number, [number, number, number, number]>();
-    const sampleLums: number[] = [];
+    /* 앵커 분류기 셋째 판(지적: 빠른무한 벽 통과 + 투혼 유적 통과·풀 차단) — 핵심은 표본
+       정화다: 자원 곁 표본에는 미네랄 결정(밝음)과, 벽에 붙은 자원의 벽 픽셀(어두움)이
+       섞여 팔레트를 오염시킨다. 표본 밝기 중앙값의 0.85~1.3배 밖 표본은 버린다.
+       판정은 셋 중 하나면 땅:
+         · 정화 팔레트와의 색 거리 ≤ 45
+         · 좁은 밝기 대역(정화 표본 30~70% × 0.9~1.1)
+         · 전역 우세 가족 — 맵 전체에서 4% 이상 깔린 색이면서 평균 밝기가 땅 대역 언저리
+           (풀처럼 앵커 곁엔 없지만 넓게 깔린 걷는 장식) */
+    const rawSamples: number[] = [];
     for (const ai of anchorIdx) {
       const ax = ai % w;
       const ay = Math.floor(ai / w);
@@ -221,26 +222,44 @@ export async function analyzeMinimap(
           const nx = ax + dx;
           const ny = ay + dy;
           if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-          const ni = ny * w + nx;
-          const k = keyOf(ni);
-          const a = acc.get(k) ?? [0, 0, 0, 0];
-          a[0] += data[ni * 4];
-          a[1] += data[ni * 4 + 1];
-          a[2] += data[ni * 4 + 2];
-          a[3] += 1;
-          acc.set(k, a);
-          sampleLums.push(lum[ni]);
+          rawSamples.push(ny * w + nx);
         }
       }
+    }
+    const rawLums = rawSamples.map((i) => lum[i]).sort((a, b) => a - b);
+    const med = rawLums[Math.floor(rawLums.length / 2)];
+    const samples = rawSamples.filter((i) => lum[i] >= med * 0.85 && lum[i] <= med * 1.3);
+    const acc = new Map<number, [number, number, number, number]>();
+    const sampleLums: number[] = [];
+    for (const ni of samples) {
+      const k = keyOf(ni);
+      const a = acc.get(k) ?? [0, 0, 0, 0];
+      a[0] += data[ni * 4];
+      a[1] += data[ni * 4 + 1];
+      a[2] += data[ni * 4 + 2];
+      a[3] += 1;
+      acc.set(k, a);
+      sampleLums.push(lum[ni]);
     }
     const palette: [number, number, number][] = [...acc.values()]
       .map(([r, g, b, n]) => [r / n, g / n, b / n] as [number, number, number]);
     sampleLums.sort((a, b) => a - b);
-    /* 대역은 중앙값 중심으로(지적: 투혼의 흰 유적·뼈 장식을 못 잡음) — 표본에 미네랄
-       결정(아주 밝음)이 섞여 90% 백분위가 대역 윗선을 끌어올리면, 밝은 장식이 죄다
-       땅으로 열린다. 30~70% 구간이면 미네랄 소수는 못 끼어든다. */
     const lo = sampleLums[Math.floor(sampleLums.length * 0.3)] * 0.9;
     const hi = sampleLums[Math.floor(sampleLums.length * 0.7)] * 1.1;
+    // 전역 우세 가족 — 키별 칸 수·평균 밝기.
+    const gcount = new Map<number, [number, number]>();
+    for (let i = 0; i < w * h; i += 1) {
+      const k = keyOf(i);
+      const e = gcount.get(k) ?? [0, 0];
+      e[0] += 1;
+      e[1] += lum[i];
+      gcount.set(k, e);
+    }
+    const dominant = new Set<number>();
+    for (const [k, [n, lsum]] of gcount) {
+      const meanL = lsum / n;
+      if (n >= w * h * 0.04 && meanL >= lo * 0.95 && meanL <= hi * 1.05) dominant.add(k);
+    }
     const PAL_DIST = 45;
     for (let i = 0; i < w * h; i += 1) {
       const r = data[i * 4];
@@ -257,7 +276,7 @@ export async function analyzeMinimap(
         const db = b - pb;
         if (dr * dr + dg * dg + db * db <= PAL_DIST * PAL_DIST) { near = true; break; }
       }
-      if (near || (L >= lo && L <= hi)) walk[i] = 1;
+      if (near || (L >= lo && L <= hi) || dominant.has(keyOf(i))) walk[i] = 1;
     }
   }
   /* ④ 작은 빵꾸 메우기(요청) — 자잘한 고립 조각은 오판일 확률이 높아 주변 값으로 맞춘다.
