@@ -3089,6 +3089,17 @@ export default function ReplayMotionPlayer({
           >
             {colorMode === "team" ? "개인컬러 보기" : "팀컬러 보기"}
           </button>
+          {/* 지형 수정(요청, 지적: 따로 두면 자리가 애매하고 너무 컸다) — 인라인의 산
+              버튼과 같은 작은 원형으로 조작부 배속 무리 끝에 앉는다. */}
+          {big && typeof grid.imageId === "number" && grid.image ? (
+            <button
+              type="button" className="scr-motion-btn scr-motion-terrain"
+              onClick={() => { setPlaying(false); setTerrainOpen(true); }}
+              aria-label="지형 수정" title="지형 수정"
+            >
+              <Mountain size={12} />
+            </button>
+          ) : null}
         </span>
         {/* 옛 스냅 타임라인의 재생 버튼과 같은 꼴(요청) — 46px 완전 원, 속 채운 삼각형. */}
         <button
@@ -3107,17 +3118,6 @@ export default function ReplayMotionPlayer({
         </button>
         <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
       </div>
-      {/* 지형 편집(요청: 조작부 위) — 확대창에도 산 버튼을 살린다. */}
-      {big && typeof grid.imageId === "number" && grid.image ? (
-        <div className="scr-motion-terrain-side">
-          <button
-            type="button" className="scr-btn scr-btn-sm"
-            onClick={() => { setPlaying(false); setTerrainOpen(true); }}
-          >
-            <Mountain size={13} /> 지형 수정
-          </button>
-        </div>
-      ) : null}
       {/* 확대 창 왼쪽 기둥(요청) — 맨 위 타임스탬프, 로스터(기존), 범례 2열, 맨 아래 등록자. */}
       {big && stamp ? <div className="scr-motion-stamp">{stamp}</div> : null}
       {big ? <div className="scr-motion-legend scr-motion-legend-side">{legendItems}</div> : null}
