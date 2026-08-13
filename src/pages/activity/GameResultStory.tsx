@@ -1,4 +1,5 @@
 import { useContext, useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent } from "react";
+import { formatWhen } from "../../utils/date";
 import { ARROW_MIN_TILES, type MinimapArrow, type MinimapMarker } from "../../components/replay/ReplayMinimap";
 import ReplayMotionPlayer from "../../components/replay/ReplayMotionPlayer";
 import ActivityComments from "./ActivityComments";
@@ -332,16 +333,9 @@ export default function GameResultStory({
   /* 상세 팝업의 닫기 통로(요청: PC는 게임 결과만 확대창 기본, 기존 상세 미사용) — 상세
      팝업 안에서만 값이 있고, 목록·전체 보기에서는 null이라 예전 그대로다. */
   const detailClose = useContext(GameDetailCloseContext);
-  // 확대 창 왼쪽 기둥의 타임스탬프(요청) — 리플레이 실제 시작 시각, 없으면 경기 날짜.
-  const stampText = (() => {
-    const iso = gameResult.gameStartedAt;
-    if (!iso) return gameResult.date;
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return gameResult.date;
-    const two = (n: number) => String(n).padStart(2, "0");
-    return d.getFullYear() + "." + two(d.getMonth() + 1) + "." + two(d.getDate())
-      + " " + two(d.getHours()) + ":" + two(d.getMinutes());
-  })();
+  // 확대 창 왼쪽 기둥의 타임스탬프(요청: 공통 양식) — 앱 공용 시각 유틸(formatWhen)로,
+  // 리플레이 실제 시작 시각(시각 포함), 없으면 경기 날짜.
+  const stampText = formatWhen(gameResult.gameStartedAt ?? gameResult.date, { clock: true });
   const rootRef = useRef<HTMLDivElement>(null);
 
   // 이름 풀기 — 요약은 리플레이 원본 게임 아이디로 저장돼 있어서, 볼 때마다 지금의 회원
