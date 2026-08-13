@@ -457,6 +457,16 @@ const ZERG_TOP = "M6 5.65a2 0.5 0 1 0 4 0a2 0.5 0 1 0-4 0Z";
 /** 사선 시점의 어두운 오른 옆면(지적: 평면 회전이 아니라 xyz 사선 입체) — 다른 건물들의
  *  입체 규칙(밝은 윗면·어두운 옆면)과 같은 결. */
 const ZERG_SHADE = "M9.9 5.6 Q10.9 10.4 14.2 12.6 Q11.5 13.4 8.6 13.6 Q9.6 10 9.9 5.6 Z";
+/* 반원통 다리 끝의 단면(요청: 동굴 입구처럼 어둡게) — 다리마다 바닥이 평평한 반원 캡.
+   가시가 나오는 다리는 입구가 가려지므로 캡을 안 그린다(레어·하이브). */
+const ZERG_CAP_RF = "M10.9 13.85 L12.5 13.85 Q12.6 12.9 11.7 12.85 Q10.9 12.9 10.9 13.85 Z";
+const ZERG_CAP_CF = "M7.2 14.25 L8.9 14.25 Q9 13.2 8.05 13.2 Q7.1 13.2 7.2 14.25 Z";
+const ZERG_CAP_LF = "M4 13.85 L5.5 13.85 Q5.55 12.9 4.75 12.85 Q3.95 12.9 4 13.85 Z";
+const ZERG_CAP_RB = "M13.95 12.45 L15.05 12.45 Q15.1 11.6 14.5 11.55 Q13.9 11.6 13.95 12.45 Z";
+const ZERG_CAP_LB = "M0.95 12.45 L2.05 12.45 Q2.1 11.6 1.5 11.55 Q0.9 11.6 0.95 12.45 Z";
+/** 해처리 — 다섯 다리 전부. 레어·하이브 — 가시 없는 앞 좌·우 둘만. */
+const ZERG_CAPS_ALL = `${ZERG_CAP_RF} ${ZERG_CAP_CF} ${ZERG_CAP_LF} ${ZERG_CAP_RB} ${ZERG_CAP_LB}`;
+const ZERG_CAPS_UNSPIKED = `${ZERG_CAP_RF} ${ZERG_CAP_LF}`;
 /* 전부 입체(면 겹침)로 옮겼다(요청: "무조건 입체로") — 홑겹 도형은 이제 없다. */
 const SHAPE_PATHS: Record<string, string> = {};
 /** 본진 아바타용 실루엣(요청: "아바타를 본진 안에", "아바타용 모양들도 크기 비슷하게") —
@@ -555,7 +565,7 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
   ],
   /* 저그 본진 3형제 — 몸통 + 밝은 윗면(요청: "해처리 윗부분 동그란 평평한 면 표현").
      레어·하이브는 그 위에 뿔·가시(요청). */
-  hatchery: [bodyFace(ZERG_MOUND), sideFace(ZERG_SHADE, 0.22), topFace(ZERG_TOP)],
+  hatchery: [bodyFace(ZERG_MOUND), sideFace(ZERG_SHADE, 0.22), sideFace(ZERG_CAPS_ALL, 0.4), topFace(ZERG_TOP)],
   /* 레어(정정) — 바닥 기둥 끝에서 위로 솟는 가시. 쪽마다 두 기둥 중 하나에만 나고,
      높이는 본(중심) 기둥보다 높다. */
   /* 레어(정정) — 가시는 다리 기둥 끝에서 위로, 다리가 여섯이니 쌍마다 하나씩 셋. 사선
@@ -567,6 +577,7 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
       + " M7.1 14 Q6.9 9.6 7.9 6 Q8.8 10 8.7 14.2 Z"
       + " M15.5 11.9 Q15.9 7.6 14.7 3.8 Q13.9 8.2 13.5 12.1 Z", 1],
     sideFace(ZERG_SHADE, 0.22),
+    sideFace(ZERG_CAPS_UNSPIKED, 0.4),
     topFace(ZERG_TOP),
   ],
   /* 하이브 — 본 건물보다 훨씬 긴 뿔 셋이 위로 솟고, 가시는 그 뿔에서 본 건물 쪽(안쪽)
@@ -580,6 +591,7 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
       + " M15.6 11.9 Q16.1 6.4 14.7 0.9 Q13.7 7.4 13.4 12.1 Z"
       + " M1.3 7.4 L3.8 8.8 L1.8 9.8 Z M14.5 6.6 L12 8.2 L14.2 9.2 Z", 1],
     sideFace(ZERG_SHADE, 0.22),
+    sideFace(ZERG_CAPS_UNSPIKED, 0.4),
     topFace(ZERG_TOP),
   ],
   /* 파일런 — 얇은 마름모 크리스탈의 허리를 둘러싼 납작한 고리(요청: "기둥을 둘러싼
