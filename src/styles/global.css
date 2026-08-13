@@ -12755,8 +12755,16 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-model-controls { display: flex; gap: 6px; align-items: center; }
 .scr-model-yaw { font-size: var(--fs-caption); color: var(--muted); font-variant-numeric: tabular-nums; }
 .scr-model-note { font-size: var(--fs-caption); color: var(--muted); }
+/* 뷰어·목록 분리(지적: 아래 목록 보기 힘듦) — 패널을 화면 높이에 맞춰 세로로 나누고,
+   스크롤은 목록에만 준다. 뷰어는 그대로 붙박이. */
+.scr-model-screen .scr-minimap-panel {
+  display: flex; flex-direction: column;
+  height: calc(100dvh - 150px); overflow: hidden;
+}
+.scr-model-viewer { flex: none; }
 .scr-model-gallery {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px;
+  flex: 1; min-height: 0; overflow-y: auto; align-content: start; padding-right: 2px;
 }
 .scr-model-item {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
