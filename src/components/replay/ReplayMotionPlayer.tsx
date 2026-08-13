@@ -538,19 +538,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       sideFace(discPath3(0, 0, 4.36, 4.5), 0.25),
     ];
   },
-  /* 벙커 — 낮은 상자 + 무덤 돔. */
+  /* 벙커 — 정사각 바닥(요청) 낮은 상자 + 무덤 돔. */
   tombFlat: () => [
-    ...boxFaces3(0, 0, 10.8, 6.6, 3.4),
-    ...domeFaces3(0, 0, 4.4, 5.6, 3.2),
+    ...boxFaces3(0, 0, 8.8, 8.8, 3.2),
+    ...domeFaces3(0, 0, 4.2, 5.4, 3),
   ],
-  /* 넥서스 — 넙적 피라미드 + 좌우 기둥. */
-  pyramidWide: () => [
-    ...pyramidFaces3(0, 0, 13.4, 7, 9.6),
-    bodyFace(
-      polyPath3([[-6.7, 0, 0], [-6, 0, 7.2], [-5.2, 0, 0]])
-      + " " + polyPath3([[6.7, 0, 0], [6, 0, 7.2], [5.2, 0, 0]]),
-    ),
-  ],
+  /* 넥서스 — 정사각 바닥 피라미드 + 네 꼭짓점 기둥(요청). */
+  pyramidWide: () => {
+    const out: ShapeFace[] = [...pyramidFaces3(0, 0, 10.6, 10.6, 9.2)];
+    for (const [px, py] of [[-5.3, 5.3], [5.3, 5.3], [5.3, -5.3], [-5.3, -5.3]] as [number, number][]) {
+      out.push(...hornFaces(px, py, 0, px, py, 7, 1.3));
+    }
+    return out;
+  },
   /* 게이트 — 사방 직사각 경사로 + 절두 첨탑 + 소환구. */
   gate: () => {
     const h = 1.1;
@@ -586,7 +586,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [f2, s2] = panel(2.2, -0.8);
     return [bodyFace(`${f1} ${f2}`), sideFace(`${s1} ${s2}`, 0.2)];
   },
-  /* 파일런 — 뜬 수정 팔면체 + 허리 고리(앞뒤 반쪽) + 바닥 그림자. */
+  /* 파일런 — 수정은 돌려도 같은 정다면체 보석(요청: 정12면체 느낌) — 회전 대칭이라
+     요잉 불변으로, 육각 실루엣 + 면 분할을 화면 공간에 그린다. 고리는 원래 요잉 불변. */
   diamond: () => {
     const [cx, cy] = project(0, 0, 4);
     const rxo = 3.3;
@@ -595,18 +596,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const ryi = rxi * 0.45;
     const ringBack = `M${cx - rxo} ${cy} A${rxo} ${ryo} 0 0 1 ${cx + rxo} ${cy} L${cx + rxi} ${cy} A${rxi} ${ryi} 0 0 0 ${cx - rxi} ${cy} Z`;
     const ringFront = `M${cx - rxo} ${cy} A${rxo} ${ryo} 0 0 0 ${cx + rxo} ${cy} L${cx + rxi} ${cy} A${rxi} ${ryi} 0 0 1 ${cx - rxi} ${cy} Z`;
-    const [tx, ty] = project(0, 0, 8);
-    const [bx, by] = project(0, 0, 0.4);
-    const [lx, ly] = project(-1.8, 0.9, 4.2);
-    const [rx, ry] = project(1.8, 0.9, 4.2);
-    const crystal = `M${tx} ${ty} L${rx} ${ry} L${bx} ${by} L${lx} ${ly} Z`;
+    const [gx, gy] = project(0, 0, 4.1);
+    const R = 3.9;
+    const W = 2;
+    const gem = `M${gx} ${gy - R} L${gx + W} ${gy - R * 0.42} L${gx + W} ${gy + R * 0.42} L${gx} ${gy + R} L${gx - W} ${gy + R * 0.42} L${gx - W} ${gy - R * 0.42} Z`;
+    const facetL = `M${gx} ${gy - R} L${gx - W} ${gy - R * 0.42} L${gx - W} ${gy + R * 0.42} L${gx} ${gy + R} L${gx - W * 0.34} ${gy + R * 0.3} L${gx - W * 0.34} ${gy - R * 0.3} Z`;
+    const facetR = `M${gx} ${gy - R} L${gx + W} ${gy - R * 0.42} L${gx + W} ${gy + R * 0.42} L${gx} ${gy + R} L${gx + W * 0.34} ${gy + R * 0.3} L${gx + W * 0.34} ${gy - R * 0.3} Z`;
     return [
       sideFace(discPath3(0, 0, 0, 2.4), 0.28),
       bodyFace(ringBack),
       sideFace(ringBack, 0.3),
-      bodyFace(crystal),
-      topFace(`M${tx} ${ty} L${lx} ${ly} L${bx} ${by} Z`, 0.25),
-      sideFace(`M${tx} ${ty} L${rx} ${ry} L${bx} ${by} Z`, 0.25),
+      bodyFace(gem),
+      topFace(facetL, 0.25),
+      sideFace(facetR, 0.25),
+      topFace(`M${gx} ${gy - R} L${gx + W * 0.34} ${gy - R * 0.3} L${gx} ${gy - R * 0.12} L${gx - W * 0.34} ${gy - R * 0.3} Z`, 0.35),
       bodyFace(ringFront),
       topFace(ringFront, 0.22),
     ];

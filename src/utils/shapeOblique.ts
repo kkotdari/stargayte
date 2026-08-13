@@ -136,6 +136,30 @@ export function withYaw<T>(deg: number, fn: () => T): T {
   }
 }
 
+/** 지금 유효한 요잉(도) — withYaw 안이면 그 값. */
+function currentYaw(): number {
+  return yawOverride ?? VIEW.yawDeg;
+}
+
+/* 세계 광원(요청: 모델을 돌려도 광원은 고정) — 왼쪽에서 약간 앞으로 비춘다. 세로 면의
+   평면 법선(모형 기준)을 요잉만큼 돌려 광원과 내적: 왼쪽을 보는 면은 밝고 오른쪽을 보는
+   면은 어둡다. 면이 시청자 쪽을 보는지도 여기서 판단한다. */
+const LIGHT_PLAN: [number, number] = [-0.9, 0.45];
+export function faceLight(nxModel: number, nyModel: number): { visible: boolean; face: (d: string) => ShapeFace[] } {
+  const th = (currentYaw() * Math.PI) / 180;
+  const c = Math.cos(th);
+  const sn = Math.sin(th);
+  const nx = nxModel * c + nyModel * sn;
+  const ny = -nxModel * sn + nyModel * c;
+  const dot = nx * LIGHT_PLAN[0] + ny * LIGHT_PLAN[1];
+  const face = (d: string): ShapeFace[] => {
+    if (dot > 0.3) return [topFace(d, Math.min(0.2, (dot - 0.3) * 0.3 + 0.08))];
+    if (dot < -0.1) return [sideFace(d, Math.min(0.38, (-dot - 0.1) * 0.45 + 0.12))];
+    return [];
+  };
+  return { visible: ny > 0.02, face };
+}
+
 /** 모형 좌표 (x,y,z) → 화면 [sx, sy]. y(앞)는 아래로, z(위)는 위로 간다. */
 export function project(x: number, y: number, z: number): [number, number] {
   const th = ((yawOverride ?? VIEW.yawDeg) * Math.PI) / 180;
@@ -161,29 +185,11 @@ export function discPath3(cx: number, cy: number, z: number, r: number): string 
   return groundEllipse(sx, sy, r, r * VIEW.squash);
 }
 
-/** 세운 상자 — 바닥 중심 (cx,cy), 가로 w(x)·세로 d(y)·높이 h. 표준 시점에서는 앞면과
- *  오른면이 보인다: 몸통(앞면+오른면+윗면 실루엣) · 윗면 밝게 · 오른면 어둡게. */
+/** 세운 상자 — frustum의 특수형. 보이는 면·세계 광원은 frustumFaces3가 맡는다. */
 export function boxFaces3(
   cx: number, cy: number, w: number, d: number, h: number, z0 = 0,
 ): ShapeFace[] {
-  const hw = w / 2;
-  const hd = d / 2;
-  // 바닥 네 모서리(모형 공간) — 앞왼·앞오른·뒤오른·뒤왼.
-  const fl: [number, number] = [cx - hw, cy + hd];
-  const fr: [number, number] = [cx + hw, cy + hd];
-  const br: [number, number] = [cx + hw, cy - hd];
-  const bl: [number, number] = [cx - hw, cy - hd];
-  const zt = z0 + h;
-  const top = polyPath3([
-    [fl[0], fl[1], zt], [fr[0], fr[1], zt], [br[0], br[1], zt], [bl[0], bl[1], zt],
-  ]);
-  const front = polyPath3([
-    [fl[0], fl[1], zt], [fr[0], fr[1], zt], [fr[0], fr[1], z0], [fl[0], fl[1], z0],
-  ]);
-  const right = polyPath3([
-    [fr[0], fr[1], zt], [br[0], br[1], zt], [br[0], br[1], z0], [fr[0], fr[1], z0],
-  ]);
-  return [bodyFace(`${front} ${right} ${top}`), sideFace(right), topFace(top)];
+  return frustumFaces3(cx, cy, w, d, w, d, h, z0);
 }
 
 /** 세운 원통 — 바닥 중심 (cx,cy), 반지름 r, 높이 h. 몸통 + 밝은 윗면 + 오른쪽 세로 음영. */
@@ -204,34 +210,59 @@ export function cylinderFaces3(
  *  길이 len, 폭 w. 단면(동굴 입구)의 보임은 각도가 정한다(요잉이 이미 계산에 들어간다):
  *  실효각 |β| < 55°면 앞(단면 크게), < 100°면 옆(작게), 그 너머는 뒤(없음). 뒤로 뻗는
  *  다리는 몸통에 가려질 수 있으니 부르는 쪽이 그릴지 말지를 정한다. */
-/** X축으로 길게 눕힌 각기둥 — profile은 단면(y,z) 꼭짓점들(위→앞→아래 차례), hw는 반길이.
- *  몸통(앞쪽 면들+오른쪽 끝 단면) + 첫 면(윗면) 밝게 + 끝 단면 어둡게. 팩토리류. */
+/** X축으로 눕힌 각기둥 — profile은 단면 (y,z)들(위→앞→아래). 앞띠·뒷띠·양 끝 단면을
+ *  보이는 것만, 세계 광원 밝기로 그린다(요청: 돌려도 광원 고정). */
 export function prismXFaces(profile: [number, number][], hw: number): ShapeFace[] {
-  const cap = polyPath3(profile.map(([y, z]) => [hw, y, z] as [number, number, number]));
-  const quads: string[] = [];
-  for (let i = 0; i < profile.length - 1; i += 1) {
-    const [y1, z1] = profile[i];
-    const [y2, z2] = profile[i + 1];
-    quads.push(polyPath3([[-hw, y1, z1], [hw, y1, z1], [hw, y2, z2], [-hw, y2, z2]]));
+  const out: ShapeFace[] = [];
+  const bodyParts: string[] = [];
+  const strip = (sign: 1 | -1): void => {
+    const { visible, face } = faceLight(0, sign);
+    if (!visible) return;
+    for (let i = 0; i < profile.length - 1; i += 1) {
+      const [y1, z1] = profile[i];
+      const [y2, z2] = profile[i + 1];
+      const d = polyPath3([[-hw, sign * y1, z1], [hw, sign * y1, z1], [hw, sign * y2, z2], [-hw, sign * y2, z2]]);
+      bodyParts.push(d);
+      if (i === 0) out.push(topFace(d));
+      else out.push(...face(d));
+    }
+  };
+  strip(1);
+  strip(-1);
+  for (const sign of [1, -1] as const) {
+    const { visible, face } = faceLight(sign, 0);
+    if (!visible) continue;
+    const cap = polyPath3(profile.map(([y, z]) => [sign * hw, y, z] as [number, number, number]));
+    bodyParts.push(cap);
+    out.push(...face(cap));
   }
-  return [bodyFace(`${quads.join(" ")} ${cap}`), sideFace(cap, OP.sideDeep), topFace(quads[0])];
+  return [bodyFace(bodyParts.join(" ")), ...out];
 }
 
-/** 넙적 피라미드 — 바닥 (w×d), 꼭짓점 높이 h. 앞면+오른면 실루엣, 오른면 어둡게. */
+/** 넙적 피라미드 — 네 삼각 면을 보이는 것만, 세계 광원 밝기로. */
 export function pyramidFaces3(
   cx: number, cy: number, w: number, d: number, h: number, z0 = 0,
 ): ShapeFace[] {
-  const hw = w / 2;
-  const hd = d / 2;
   const apex: [number, number, number] = [cx, cy, z0 + h];
-  const fl: [number, number, number] = [cx - hw, cy + hd, z0];
-  const fr: [number, number, number] = [cx + hw, cy + hd, z0];
-  const br: [number, number, number] = [cx + hw, cy - hd, z0];
-  const bl: [number, number, number] = [cx - hw, cy - hd, z0];
-  const front = polyPath3([apex, fl, fr]);
-  const right = polyPath3([apex, fr, br]);
-  const left = polyPath3([apex, bl, fl]);
-  return [bodyFace(`${front} ${right} ${left}`), sideFace(right, OP.sideSoft)];
+  const b: [number, number, number][] = [
+    [cx - w / 2, cy + d / 2, z0], [cx + w / 2, cy + d / 2, z0],
+    [cx + w / 2, cy - d / 2, z0], [cx - w / 2, cy - d / 2, z0],
+  ];
+  const sides: { d: string; n: [number, number] }[] = [
+    { d: polyPath3([apex, b[0], b[1]]), n: [0, 1] },
+    { d: polyPath3([apex, b[1], b[2]]), n: [1, 0] },
+    { d: polyPath3([apex, b[2], b[3]]), n: [0, -1] },
+    { d: polyPath3([apex, b[3], b[0]]), n: [-1, 0] },
+  ];
+  const out: ShapeFace[] = [];
+  const bodyParts: string[] = [];
+  for (const f of sides) {
+    const { visible, face } = faceLight(f.n[0], f.n[1]);
+    if (!visible) continue;
+    bodyParts.push(f.d);
+    out.push(...face(f.d));
+  }
+  return [bodyFace(bodyParts.join(" ")), ...out];
 }
 
 export function limbFaces(
@@ -274,22 +305,34 @@ export function limbFaces(
 
 /* ── 전면 3D화 프리미티브(요청: 모든 건물·수송선을 3D 도형으로) ──────────────────── */
 
-/** 절두 각뿔 — 바닥 (wB×dB), 윗면 (wT×dT), 높이 h. 게이트 첨탑·감시탑류. */
+/** 절두 각뿔(상자 포함) — 바닥 (wB×dB) → 윗면 (wT×dT). 네 세로 면을 보이는 것만,
+ *  세계 광원 밝기로 그린다(요청: 돌려도 광원 고정). 윗면은 항상 밝다. */
 export function frustumFaces3(
   cx: number, cy: number, wB: number, dB: number, wT: number, dT: number, h: number, z0 = 0,
 ): ShapeFace[] {
   const zt = z0 + h;
-  const c = (w: number, d: number, z: number): [number, number, number][] => [
+  const corners = (w: number, d: number, z: number): [number, number, number][] => [
     [cx - w / 2, cy + d / 2, z], [cx + w / 2, cy + d / 2, z],
     [cx + w / 2, cy - d / 2, z], [cx - w / 2, cy - d / 2, z],
   ];
-  const b = c(wB, dB, z0);
-  const t = c(wT, dT, zt);
+  const b = corners(wB, dB, z0);
+  const t = corners(wT, dT, zt);
   const top = polyPath3(t);
-  const front = polyPath3([t[0], t[1], b[1], b[0]]);
-  const right = polyPath3([t[1], t[2], b[2], b[1]]);
-  const left = polyPath3([t[3], t[0], b[0], b[3]]);
-  return [bodyFace(`${front} ${right} ${left} ${top}`), sideFace(right), topFace(top)];
+  const sides: { d: string; n: [number, number] }[] = [
+    { d: polyPath3([t[0], t[1], b[1], b[0]]), n: [0, 1] },
+    { d: polyPath3([t[1], t[2], b[2], b[1]]), n: [1, 0] },
+    { d: polyPath3([t[2], t[3], b[3], b[2]]), n: [0, -1] },
+    { d: polyPath3([t[3], t[0], b[0], b[3]]), n: [-1, 0] },
+  ];
+  const out: ShapeFace[] = [];
+  const bodyParts: string[] = [top];
+  for (const f of sides) {
+    const { visible, face } = faceLight(f.n[0], f.n[1]);
+    if (!visible) continue;
+    bodyParts.push(f.d);
+    out.push(...face(f.d));
+  }
+  return [bodyFace(bodyParts.join(" ")), ...out, topFace(top)];
 }
 
 /** 반구 돔 — 회전 대칭이라 요잉 불변. 바닥 중심 (cx,cy,z0), 반지름 r, 높이 h. */
