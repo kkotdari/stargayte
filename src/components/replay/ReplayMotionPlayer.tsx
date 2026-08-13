@@ -3645,6 +3645,8 @@ export default function ReplayMotionPlayer({
      컨테이너 세로비가 맡아서 %자리가 저절로 따라온다. 휠 확대·드래그 이동은 기존
      렌즈(zoom·pan) 그대로다. */
   const [pitched, setPitched] = useState(false);
+  // 유닛 크기 토글(요청) — 기본은 실제 크기, 누르면 2배.
+  const [unitX2, setUnitX2] = useState(false);
   // 모바일(터치 기기)은 입체 보기를 아직 안 연다(요청) — 아래에서 버튼을 감춘다.
   const coarsePointer = typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches;
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -3782,10 +3784,10 @@ export default function ReplayMotionPlayer({
     const v = (y / grid.height - 0.5) * h;
     // 각은 뒤 축소(q) 전의 원근 공간에서 잰다 — q를 곱하면 각이 약해진다(지적).
     const k = PITCH_P / (PITCH_P - v * S);
-    /* 부호(지적: 우측은 맞는데 좌측이 잘못) — 마커는 화면 가운데를 향한 옆면을 보여야
-       한다. 왼쪽 마커는 음(제 오른옆이 보임), 오른쪽 마커는 양. 세기는 0.6로 눅인다
-       (지적: 각 그대로면 돌아간 옆구리가 앞으로 쏟아져 보인다). */
-    return (Math.atan2(u * k, PITCH_P) * 180 * 0.6) / Math.PI;
+    /* 부호는 실화면 확인으로 확정(지적: 돌아 보이는 방향이 반대) — 처음 부호로 복귀.
+       왼쪽이 이상했던 건 부호가 아니라 limbFaces 단면 비대칭 버그였고, 그건 따로
+       수리됐다. 세기는 0.6로 눅인다(지적: 옆구리가 앞으로 쏟아져 보임). */
+    return (-Math.atan2(u * k, PITCH_P) * 180 * 0.6) / Math.PI;
   };
   const depthMk = (x: number, y: number): React.CSSProperties => {
     if (!pitched) return {};
@@ -4452,7 +4454,7 @@ export default function ReplayMotionPlayer({
       <div className="scr-motion-maprow">
       {teamCol(1)}
       <div
-        className={cx("scr-motion-map", pitched && "scr-motion-pitched")} ref={mapRef}
+        className={cx("scr-motion-map", pitched && "scr-motion-pitched", unitX2 && "scr-motion-unit2x")} ref={mapRef}
         onPointerDown={onMapPointerDown}
         onPointerMove={onMapPointerMove}
         onPointerUp={onMapPointerUp}
@@ -5976,6 +5978,14 @@ export default function ReplayMotionPlayer({
               {pitched ? "수직 보기" : "입체 보기"}
             </button>
           )}
+          {/* 유닛 크기(요청) — 기본은 실제 크기, 누르면 2배. */}
+          <button
+            type="button" className="scr-motion-btn scr-motion-colorbtn"
+            onClick={() => setUnitX2((v) => !v)}
+            title="유닛 크기 전환"
+          >
+            {unitX2 ? "유닛 실제 크기" : "유닛 2배 크기"}
+          </button>
           {/* 지형 수정(요청, 지적: 따로 두면 자리가 애매하고 너무 컸다) — 인라인의 산
               버튼과 같은 작은 원형으로 조작부 배속 무리 끝에 앉는다. */}
           {big && typeof grid.imageId === "number" && grid.image ? (
