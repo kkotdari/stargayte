@@ -2604,9 +2604,34 @@ export default function ReplayMotionPlayer({
     const out = new Map<string, [number, number][]>();
     const PROP = Math.LN2 / 18;
     const LIN = 0.25;
+    /* 업그레이드 반영(요청: 실력까진 몰라도 업 정보는 있다) — 상대 공업이 높을수록 빨리
+       녹고, 내 방업이 높을수록 천천히 녹는다. 단계당 공업 +8%, 방업 −6%(브루드워 공방업
+       한 단의 체감 배율 어림). */
+    const WEAPON_UPS = new Set([
+      "Terran Infantry Weapons", "Terran Vehicle Weapons", "Terran Ship Weapons",
+      "Zerg Melee Attacks", "Zerg Missile Attacks", "Zerg Flyer Attacks",
+      "Protoss Ground Weapons", "Protoss Air Weapons",
+    ]);
+    const ARMOR_UPS = new Set([
+      "Terran Infantry Armor", "Terran Vehicle Plating", "Terran Ship Plating",
+      "Zerg Carapace", "Zerg Flyer Carapace",
+      "Protoss Ground Armor", "Protoss Air Armor", "Protoss Plasma Shields",
+    ]);
+    const upTimes = (raw: string, names: Set<string>): number[] =>
+      (motion.players.find((q) => q.raw === raw)?.ups ?? [])
+        .filter(([, n]) => names.has(n)).map(([us]) => us).sort((a, b) => a - b);
+    const countBy = (times: number[], sec: number): number => {
+      let n = 0;
+      while (n < times.length && times[n] <= sec) n += 1;
+      return n;
+    };
     for (const p of motion.players) {
       const done = completionsByRaw.get(p.raw) ?? [];
       const hot = p.hot ?? [];
+      const myArmor = upTimes(p.raw, ARMOR_UPS);
+      const foeWeapons = motion.players
+        .filter((q) => q.raw !== p.raw && teamOfRaw(q.raw) !== teamOfRaw(p.raw))
+        .map((q) => upTimes(q.raw, WEAPON_UPS));
       // 눈금: 완성 시각 + 전투 경계와 그 안의 5초 간격 — 구간이 경계를 안 넘게 쪼갠다.
       const marks = new Set<number>([0, ...done]);
       for (const [a, b] of hot) {
@@ -2622,7 +2647,9 @@ export default function ReplayMotionPlayer({
       for (const now of times) {
         if (now > prev && inHot(prev, now)) {
           const dt2 = now - prev;
-          size = Math.max(0, size * Math.exp(-PROP * dt2) - LIN * dt2);
+          const atk = Math.max(0, ...foeWeapons.map((w) => countBy(w, prev)));
+          const mult = (1 + 0.08 * atk) / (1 + 0.06 * countBy(myArmor, prev));
+          size = Math.max(0, size * Math.exp(-PROP * mult * dt2) - LIN * mult * dt2);
         }
         while (di < done.length && done[di] <= now) { size += 1; di += 1; }
         series.push([now, size]);
@@ -2631,7 +2658,7 @@ export default function ReplayMotionPlayer({
       out.set(p.raw, series);
     }
     return out;
-  }, [motion, completionsByRaw]);
+  }, [motion, completionsByRaw, teamOfRaw]);
 
   /* 본진 건물(확장 포함)의 자리 — 채굴 일꾼이 오갈 목적지다(지적: 자원 지대가 기준이고,
      거기서 가장 가까운 본진 건물로 왔다 갔다). 커맨드·넥서스·해처리 계열이 대상이다. */
@@ -3517,8 +3544,11 @@ export default function ReplayMotionPlayer({
               && buildAbsorbed(p, pos, t - sinceCmd)) return [];
             // 무너진 기지 곁에서 침묵 — 그 함락에서 정리된 것(지적).
             if (razedNearby(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return [];
-            // 배틀크루저는 예외(지적: 방업까지 치면 500피 경계에서 산다).
-            if (!(BY_UNITS[g.unit] ?? [g.unit]).includes("Battlecruiser")
+            /* 배틀크루저 예외(지적: 방업 여부도 고려해서 뺄지 말지) — 500피 경계라
+               방업(함선 장갑)이 돼 있을 때만 핵에서 살아남는 것으로 본다. */
+            const bcTough = (BY_UNITS[g.unit] ?? [g.unit]).includes("Battlecruiser")
+              && (p.ups ?? []).some(([us, n]) => n === "Terran Ship Plating" && us <= t);
+            if (!bcTough
               && nukedGone(pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return [];
             return [{ g, gi, pos, sinceCmd }];
           });
