@@ -25,7 +25,9 @@ export interface TerrainGrid {
 // 해상도로 줄인다.
 const GRID_W = 128;
 /** 상대 명암의 창 반지름(칸) — 절벽·벽 판정의 "주변"이 이만큼이다. */
-const LOCAL_R = 4;
+// 4 → 6(지적: 128 격자에서 벽을 아예 놓침) — 창이 벽 두께보다 좁으면 벽 가운데의
+// '주변 평균'이 제 밝기가 되어 능선이 무력화된다.
+const LOCAL_R = 6;
 /** 주변 평균의 이 비율보다 어두우면 절벽·벽으로 본다(지적: 절대 밝기만으론 벽을 못 잡는다
  *  — 벽은 검은 게 아니라 제 주변보다 어두운 능선이다). */
 const RIDGE_RATIO = 0.68;
@@ -135,8 +137,9 @@ export async function analyzeMinimap(
      본다. 뭉친 색 하나가 전체의 MINOR_SHARE(1.5%)를 못 넘으면 비주요다. 미니맵이 온통
      잘게 갈린 색이라 주요 색이 절반도 안 되면(그라데이션 심한 그림) 이 규칙은 접는다 —
      그때 켜면 맵이 통째로 불가가 된다. */
+  // 채널당 16단계(지적: 벽을 아예 놓침 — 8단계는 회청 바닥과 회색 벽을 한 바구니에 넣었다).
   const keyOf = (i: number): number =>
-    ((data[i * 4] >> 5) << 6) | ((data[i * 4 + 1] >> 5) << 3) | (data[i * 4 + 2] >> 5);
+    ((data[i * 4] >> 4) << 8) | ((data[i * 4 + 1] >> 4) << 4) | (data[i * 4 + 2] >> 4);
   /* ①·② 먼저 — 우주·물·능선을 거른 '땅 후보'를 만든다. ③의 주요 색은 이 후보 안에서만
      센다(지적: 우주맵에서 가능/불가가 반대로 — 우주(검정)가 맵의 주요 색이 되면서 정작
      플랫폼 땅 색들이 소수파로 몰려 통째로 막혔다). */
@@ -178,7 +181,7 @@ export async function analyzeMinimap(
        넉 단계로 접어 열쇠에 붙인다. 매끈한 바닥과 같은 색의 우둘투둘한 장식이 갈린다. */
     const diff = Math.abs(lum[i] - localAvg[i]);
     const grain = diff < 6 ? 0 : diff < 14 ? 1 : diff < 26 ? 2 : 3;
-    return (own <= nb ? own * 512 + nb : nb * 512 + own) * 4 + grain;
+    return (own <= nb ? own * 4096 + nb : nb * 4096 + own) * 4 + grain;
   };
   const freq = new Map<number, number>();
   let candidates = 0;
