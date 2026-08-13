@@ -3123,7 +3123,9 @@ function UnitLayer({ ops, zoom }: { ops: UnitDrawOp[]; zoom: number }) {
        (지적: 모바일 줌인 해상도 저하) — 상한을 dpr×3으로 올리되, 배킹 최장변 4096px
        (GPU 텍스처 한계·메모리)로만 막는다. */
     const dpr = window.devicePixelRatio || 1;
-    const B = Math.min(dpr * Math.min(zoom, 3), 4096 / Math.max(cw, ch, 1));
+    /* 줌 상한 12(요청: 모바일 확대 허용치 크게)에 맞춰 배킹도 5까지 따라간다 — 그 위는
+       4096px 한계가 알아서 막는다. */
+    const B = Math.min(dpr * Math.min(zoom, 5), 4096 / Math.max(cw, ch, 1));
     const bw = Math.round(cw * B);
     const bh = Math.round(ch * B);
     if (cv.width !== bw) cv.width = bw;
@@ -3945,7 +3947,8 @@ export default function ReplayMotionPlayer({
       const r = el.getBoundingClientRect();
       const ox = r.left + r.width / 2;
       const oy = r.top + r.height / 2;
-      const z = Math.min(5, Math.max(1, (pinch.z * dist(e.touches)) / pinch.d));
+      // 상한 5 → 12(요청: 모바일 확대 허용치 크게) — 좁은 화면에선 더 깊이 들어가야 보인다.
+      const z = Math.min(12, Math.max(1, (pinch.z * dist(e.touches)) / pinch.d));
       const mx2 = (e.touches[0].clientX + e.touches[1].clientX) / 2;
       const my2 = (e.touches[0].clientY + e.touches[1].clientY) / 2;
       // 핀치 시작점 아래의 지도 지점이 손가락을 따라오도록 pan을 푼다.
@@ -4739,6 +4742,10 @@ export default function ReplayMotionPlayer({
           aspectRatio: `${grid.width} / ${grid.height * (pitched ? 0.74 : 1)}`,
           ...(zoom > 1 || pitched ? { overflow: "hidden" } : {}),
           ...(zoom > 1 ? { cursor: dragRef.current ? "grabbing" : "grab" } : {}),
+          /* 손짓 격리(지적: 맵을 조정하는데 모달이 같이 조종됨) — 확대 중엔 맵 위 손짓을
+             브라우저에 안 넘겨(팬·스크롤 전부 맵 몫) 모달이 딸려 움직이지 않는다. 확대
+             전엔 세로 스크롤만 허용해 모달 훑기는 그대로 된다(핀치는 JS가 막는다). */
+          touchAction: zoom > 1 ? "none" : "pan-y",
         }}
       >
         {/* 렌즈 상자 — PC 휠 줌(요청)이 이 층을 통째로 키운다(마커·자취까지 같이). */}
@@ -4789,11 +4796,22 @@ export default function ReplayMotionPlayer({
                한참 뒤에 눈치챘더라도 착탄 순간 바로 걷는다. 이륙 이사 기록(liftAt)은
                goneAt이 착륙 시각이라 건드리지 않는다. */
             let goneEff = goneAt;
-            if (goneAt > 0 && !liftAt) {
+            if (!liftAt) {
               for (const nk of nukeImpacts) {
-                if (nk.sec <= goneAt && goneAt - nk.sec <= 90
-                  && Math.hypot(x + footDx(unit) - nk.x, y + footDy(unit) - nk.y) <= 5) {
-                  goneEff = Math.min(goneEff, nk.sec);
+                const d = Math.hypot(x + footDx(unit) - nk.x, y + footDy(unit) - nk.y);
+                if (goneAt > 0) {
+                  if (nk.sec <= goneAt && goneAt - nk.sec <= 90 && d <= 5) {
+                    goneEff = Math.min(goneEff, nk.sec);
+                  }
+                  continue;
+                }
+                /* 파괴 감지가 아예 없던 건물(지적: 핵 터진 자리에 건물이 남는다) — 파괴
+                   감지는 놓치는 게 많아, 터진 게 확인된 핵의 폭심(4타일) 안 건물은 그냥
+                   걷는다. 본진(커맨드·넥서스·해처리 계열)만은 체력이 커서 실제로도 핵
+                   한 방을 버티므로 남긴다. */
+                if (nk.confirmed && nk.sec >= sec && nk.sec <= t && d <= 4
+                  && !["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(unit)) {
+                  goneEff = goneEff > 0 ? Math.min(goneEff, nk.sec) : nk.sec;
                 }
               }
             }
