@@ -1489,15 +1489,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...tubeFaces(-2, -1.2, -2, 1, 0.45, 5.4),
     ...tubeFaces(2, -1.2, 2, 1, 0.45, 5.4),
   ],
-  /* 사이언스 베슬 — 접시 링 위 구 + 앞 눈. */
+  /* 사이언스 베슬(정정) — 구 몸통 아래에 구형 추진기 세 개가 달린다. */
   vessel: () => {
-    const [dx2, dy2] = project(0, 0, 6);
-    const [ex2, ey2] = project(0, 2.9, 6);
+    const [ex2, ey2] = project(0, 2.2, 6.3);
     return [
-      bodyFace(groundEllipse(dx2, dy2, 3.4, 1.4)),
-      topFace(groundEllipse(dx2, dy2 - 0.1, 2.6, 1), 0.18),
-      ...domeFaces3(0, 0, 1.9, 1.7, 5.9),
-      capFace(groundEllipse(ex2, ey2, 0.5, 0.3), 0.35),
+      ...domeFaces3(0, -1.6, 0.8, 1.4, 4.3),
+      ...domeFaces3(-1.4, 1, 0.8, 1.4, 4.3),
+      ...domeFaces3(1.4, 1, 0.8, 1.4, 4.3),
+      ...domeFaces3(0, 0, 2.5, 3.4, 5),
+      capFace(groundEllipse(ex2, ey2, 0.5, 0.32), 0.35),
     ];
   },
   /* 뮤탈리스크(정정) — 날개는 위에 달리고, 긴 몸통이 앞-아래로 휘어 입이 아래로 나온다. */
@@ -1826,16 +1826,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 뱀몸 — 긴 통 위에 코브라 두건 + 길쭉한 머리(요청).
     ...cylinderFaces3(0, -0.8, 1.3, 3.4, 3.4),
     ...domeFaces3(0, -0.4, 1.5, 1.2, 6.7),
-    ...hornFaces(0, 0.2, 7.4, 0.3, 2.2, 8.8, 0.95),
+    // 작은 머리 + 뒤로 아주 긴 머리 장식(정정).
+    ...domeFaces3(0, 0.3, 0.75, 0.6, 7.3),
+    ...hornFaces(0, -0.1, 7.5, 0, -3.9, 8.7, 0.8),
     ...claw3(1, 1, 4.4),
     ...claw3(-1, 1, 4.4),
   ],
   ultra: () => [
-    // 큰 덩치 — 불룩한 몸 + 낮은 머리 + 큰 카이저 칼날.
-    ...domeFaces3(0, -0.8, 2.6, 2.6, 3.4),
-    ...domeFaces3(0, 1.2, 1.3, 1, 4),
-    ...claw3(1, 1.3, 4.2),
-    ...claw3(-1, 1.3, 4.2),
+    // 큰 덩치(정정: 머리·몸통 다 크게) — 불룩한 큰 몸 + 큰 머리 + 카이저 칼날.
+    ...domeFaces3(0, -0.9, 3.2, 3, 3.4),
+    ...domeFaces3(0, 1.6, 2, 1.6, 3.9),
+    ...claw3(1, 1.4, 4.4),
+    ...claw3(-1, 1.4, 4.4),
   ],
   /* 러커 — 거미다리(요청) 세 쌍: 위마디 밖-위로, 아랫마디 밖-아래로. */
   lurker: () => {
@@ -1850,8 +1852,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     }
     out.push(...domeFaces3(0, -0.2, 2.4, 1.9, 3.6));
     out.push(...domeFaces3(0, 1.1, 1.3, 1, 3.9));
-    // 길쭉한 머리(요청) — 앞으로 길게 내민 주둥이.
-    out.push(...hornFaces(0, 1.6, 4.4, 0.2, 3.8, 5.4, 0.9));
+    // 작은 머리 + 뒤로 아주 긴 머리 장식(정정).
+    out.push(...domeFaces3(0, 1.9, 0.7, 0.55, 4.2));
+    out.push(...hornFaces(0, 1.5, 4.5, 0, -2.8, 6, 0.7));
     return out;
   },
   /* 디파일러 — 뒤 꼬리(끝이 위로 말림) + 앞 양 집게(요청). */
