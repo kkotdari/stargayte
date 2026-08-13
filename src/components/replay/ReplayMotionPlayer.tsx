@@ -3811,14 +3811,18 @@ export default function ReplayMotionPlayer({
               const jr = h1 - Math.floor(h1);
               const h2 = Math.sin(di * 269.5 + seed * 183.3) * 28001.8384;
               const ja = h2 - Math.floor(h2);
-              const rj = r * (0.85 + jr * 0.5);
-              const aj = di * 2.4 + seed + ja * 1.1;
               /* 걸으며 이동(지적: 대형이 통째로 미끄러지면 이상) — 이동 중엔 진행 방향으로
                  앞서거니 뒤서거니 보폭과 좌우 살랑을 섞고, 제자리 배회는 줄인다. */
               const mvx = hp ? pos.x - hp.x : 0;
               const mvy = hp ? pos.y - hp.y : 0;
               const mvL = Math.hypot(mvx, mvy);
               const marching = mvL > 0.1;
+              /* 길 섞임(재지적: 대형 그대로 가면 이상) — 유닛마다 다른 속도로 나선 자리를
+                 돌고 반경도 출렁여, 걷는 동안 앞뒤 차례가 계속 뒤바뀐다. */
+              const churn = marching ? t * (0.3 + jr * 0.6) + ja * 3.1 : 0;
+              const rj = r * (0.85 + jr * 0.5)
+                * (marching ? 1 + 0.18 * Math.sin(t * (0.9 + ja) + di) : 1);
+              const aj = di * 2.4 + seed + ja * 1.1 + churn;
               const ux2 = marching ? mvx / mvL : 0;
               const uy2 = marching ? mvy / mvL : 0;
               const step = marching ? Math.sin(t * 4 + di * 2.1 + jr * 6.3) * 0.35 : 0;
@@ -3954,14 +3958,18 @@ export default function ReplayMotionPlayer({
               const jr = h1 - Math.floor(h1);
               const h2 = Math.sin(di * 269.5 + seed * 183.3) * 28001.8384;
               const ja = h2 - Math.floor(h2);
-              const rj = r * (0.85 + jr * 0.5);
-              const aj = di * 2.4 + seed + ja * 1.1;
               /* 걸으며 이동(지적: 대형이 통째로 미끄러지면 이상) — 이동 중엔 진행 방향으로
                  앞서거니 뒤서거니 보폭과 좌우 살랑을 섞고, 제자리 배회는 줄인다. */
               const mvx = hp ? pos.x - hp.x : 0;
               const mvy = hp ? pos.y - hp.y : 0;
               const mvL = Math.hypot(mvx, mvy);
               const marching = mvL > 0.1;
+              /* 길 섞임(재지적: 대형 그대로 가면 이상) — 유닛마다 다른 속도로 나선 자리를
+                 돌고 반경도 출렁여, 걷는 동안 앞뒤 차례가 계속 뒤바뀐다. */
+              const churn = marching ? t * (0.3 + jr * 0.6) + ja * 3.1 : 0;
+              const rj = r * (0.85 + jr * 0.5)
+                * (marching ? 1 + 0.18 * Math.sin(t * (0.9 + ja) + di) : 1);
+              const aj = di * 2.4 + seed + ja * 1.1 + churn;
               const ux2 = marching ? mvx / mvL : 0;
               const uy2 = marching ? mvy / mvL : 0;
               const step = marching ? Math.sin(t * 4 + di * 2.1 + jr * 6.3) * 0.35 : 0;
