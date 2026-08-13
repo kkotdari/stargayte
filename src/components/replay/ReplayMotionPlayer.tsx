@@ -798,15 +798,31 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...hornFaces(0.4, -5.4, 1.2, 1.4, -4, 9, 1.5),
     ...hornFaces(5.2, 1.4, 1.4, 6.6, 3, 11, 1.9),
   ],
-  /* 하이브 — 더 길고 굵은 뿔 셋 + 앞 컬. */
-  hive: () => [
-    ...SHAPE_BUILDERS.hatchery(),
-    ...hornFaces(-4.6, -2.6, 1.2, -6.4, -0.8, 13, 2.1),
-    ...hornFaces(0.4, -5.4, 1.2, 1.8, -3.6, 11.6, 1.9),
-    ...hornFaces(5.2, 1.4, 1.4, 7.2, 3.6, 14, 2.3),
-    ...hornFaces(-2.6, 4.6, 0.6, -4.4, 6, 2.6, 1),
-    ...hornFaces(2.8, 4.4, 0.6, 4.6, 5.6, 2.4, 1),
-  ],
+  /* 하이브 — 더 길고 굵은 뿔 셋(뿔 등에 가시들, 요청) + 앞 컬. */
+  hive: () => {
+    const out: ShapeFace[] = [...SHAPE_BUILDERS.hatchery()];
+    const horns: [number, number, number, number, number, number, number][] = [
+      [-4.6, -2.6, 1.2, -6.4, -0.8, 13, 2.1],
+      [0.4, -5.4, 1.2, 1.8, -3.6, 11.6, 1.9],
+      [5.2, 1.4, 1.4, 7.2, 3.6, 14, 2.3],
+    ];
+    for (const [bx, by, bz, tx, ty, tz, w] of horns) {
+      out.push(...hornFaces(bx, by, bz, tx, ty, tz, w));
+      /* 뿔 등의 가시(요청) — 뿔 길이를 따라 서너 개가 바깥쪽으로 돋는다. */
+      for (const t of [0.35, 0.55, 0.75]) {
+        const px = bx + (tx - bx) * t;
+        const py = by + (ty - by) * t;
+        const pz = bz + (tz - bz) * t;
+        const olen = Math.hypot(px, py) || 1;
+        const ox = (px / olen) * 1.7;
+        const oy = (py / olen) * 1.7;
+        out.push(...hornFaces(px, py, pz, px + ox, py + oy, pz + 1.1, 0.65));
+      }
+    }
+    out.push(...hornFaces(-2.6, 4.6, 0.6, -4.4, 6, 2.6, 1));
+    out.push(...hornFaces(2.8, 4.4, 0.6, 4.6, 5.6, 2.4, 1));
+    return out;
+  },
   /* 스포닝 풀 — 납작 웅덩이 셋 + 힘줄 관 + 가시. */
   pool: () => {
     const puddle = (px: number, py: number, r: number, op: number): ShapeFace[] => {
