@@ -1967,18 +1967,38 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       capFace(groundEllipse(mx2, my2, 0.55, 0.35), 0.4),
     ];
   },
-  /* 레이스(복구) — 뒤로 젖힌 쌍날개 다트 + 콕핏 + 아래에 매달린 미사일 포신. */
+  /* 레이스(정정: 세모 아님) — 사각형들로 짠 몸: 상자 몸통 + 콕핏 상자 + 뒤로 젖힌
+     사각 날개 두 장, 그리고 양 날개 끝마다 앞으로 뻗는 긴 포신 하나씩. */
   wraith: () => {
-    const hull = polyPath3([
-      [0, 4.8, 6], [1.1, 0.6, 6.1], [3.2, -2.2, 5.9], [0.9, -1.6, 6.1],
-      [0, -2.8, 6.1], [-0.9, -1.6, 6.1], [-3.2, -2.2, 5.9], [-1.1, 0.6, 6.1],
-    ]);
-    const [cx2, cy2] = project(0, 1.6, 6.15);
+    const gun = (tx: number): ShapeFace[] => {
+      const [ax2, ay2] = project(tx, -0.8, 5.75);
+      const [bx2, by2] = project(tx + (tx > 0 ? 0.2 : -0.2), 3.6, 5.65);
+      const dx2 = bx2 - ax2;
+      const dy2 = by2 - ay2;
+      const L = Math.hypot(dx2, dy2) || 1;
+      const nx2 = (-dy2 / L) * 0.17;
+      const ny2 = (dx2 / L) * 0.17;
+      return [
+        bodyFace(`M${ax2 + nx2} ${ay2 + ny2} L${bx2 + nx2} ${by2 + ny2} L${bx2 - nx2} ${by2 - ny2} L${ax2 - nx2} ${ay2 - ny2} Z`),
+        capFace(groundEllipse(bx2, by2, 0.2, 0.16), 0.4),
+      ];
+    };
+    const wingL = polyPath3([[-0.85, 0.6, 5.9], [-3.1, -1.1, 5.7], [-3.1, -2.3, 5.75], [-0.85, -1.2, 5.95]]);
+    const wingR = polyPath3([[0.85, 0.6, 5.9], [3.1, -1.1, 5.7], [3.1, -2.3, 5.75], [0.85, -1.2, 5.95]]);
     return [
-      bodyFace(hull), topFace(hull, 0.16),
-      capFace(groundEllipse(cx2, cy2, 0.5, 0.38), 0.4),
-      ...hornFaces(0, -1.7, 5.9, 0, -1.9, 3.4, 0.28),
-      ...tubeFaces(0, -2.9, 0, -1.1, 0.42, 2.9),
+      // 뒤 엔진 꽁무니 둘.
+      ...tubeFaces(-0.5, -2.8, -0.5, -1.7, 0.32, 5.4),
+      ...tubeFaces(0.5, -2.8, 0.5, -1.7, 0.32, 5.4),
+      // 날개 — 사각 평판 두 장.
+      bodyFace(wingL), topFace(wingL, 0.16),
+      bodyFace(wingR), sideFace(wingR, 0.18),
+      // 날개 끝 긴 포신 각각.
+      ...gun(-3.1),
+      ...gun(3.1),
+      // 몸통 상자 + 콕핏 상자.
+      ...boxFaces3(0, 0.3, 1.7, 4.2, 1.1, 5.4),
+      ...boxFaces3(0, 1, 1.1, 1.7, 0.7, 6.5),
+      capFace(polyPath3([[-0.4, 1.86, 7], [0.4, 1.86, 7], [0.35, 1.86, 6.6], [-0.35, 1.86, 6.6]]), 0.4),
     ];
   },
   /* 배틀크루저(재복구: 이게 더 좋았다) — 넓은 화살촉 몸통, 뒤 엔진 통 둘, 대각 붐 팔
