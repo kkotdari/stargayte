@@ -836,8 +836,13 @@ function collectSignals(
         const clickedFoe = clickedOwner !== undefined && clickedOwner !== c.PlayerID
           && teamOf.get(clickedOwner) !== undefined
           && teamOf.get(clickedOwner) !== teamOf.get(c.PlayerID);
+        /* 맨 가스 게이저를 찍은 것은 채집이 아니다(지적: 가스기지 없는 가스에 일꾼을
+           찍어 지으러 보내는 경우까지 가스 캐는 걸로 버려졌다) — 건물 없는 게이저는
+           캘 수가 없으니 그 클릭은 이동(대개 정제소 지으러 가는 길)이다. 채집으로
+           비우는 것은 미네랄·정제소류(선 가스 건물) 클릭만이다. */
         const byClick = cmdName !== "Right Click" ? undefined
-          : clickedName && RESOURCE_TARGETS.has(clickedName) ? undefined
+          : clickedName && RESOURCE_TARGETS.has(clickedName) && clickedName !== "Vespene Geyser"
+            ? undefined
             : clickedFoe ? "attack" as const : "move" as const;
         const kind = orderName === "Move" ? "move" as const
           : orderName?.startsWith("Attack") ? "attack" as const

@@ -1255,6 +1255,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(capFace(groundEllipse(e2x, e2y, 0.42, 0.4), 0.5));
     out.push(topFace(groundEllipse(e1x + 0.13, e1y - 0.13, 0.14, 0.13), 0.6));
     out.push(topFace(groundEllipse(e2x + 0.13, e2y - 0.13, 0.14, 0.13), 0.6));
+    // 옆면 둥근 포트(실물 참고) — 앞옆 비스듬한 면의 원형 해치 한 쌍.
+    const [p1x, p1y] = project(-1.75, 0.7, 4.75);
+    const [p2x, p2y] = project(1.75, 0.7, 4.75);
+    out.push(topFace(groundEllipse(p1x, p1y, 0.34, 0.3), 0.3));
+    out.push(topFace(groundEllipse(p2x, p2y, 0.34, 0.3), 0.3));
     return out;
   },
   /* 드론(정정) — 갈퀴치마는 집게 사이가 아니라 집게팔과 꼬리 사이, 양옆에 부채처럼
