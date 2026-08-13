@@ -930,7 +930,26 @@ const UNIT_BULK: Record<string, 0 | 1 | 2> = {
 };
 /** 도형째 돌려 그리는 각도(시계방향) — 스타게이트는 45도(요청). */
 const SHAPE_ROT: Record<string, number> = { arch: 45 };
-function ShapeIcon({ kind, className }: { kind: string; className?: string }) {
+/** 관리자 모델링 뷰어(요청) — 도형 카탈로그. 건물은 SHAPE_KIND에서, 유닛 갈래는 손으로. */
+export const SHAPE_GALLERY: { kind: string; label: string }[] = (() => {
+  const seen = new Set<string>();
+  const out: { kind: string; label: string }[] = [];
+  for (const [unit, kind] of Object.entries(SHAPE_KIND)) {
+    if (seen.has(kind)) continue;
+    seen.add(kind);
+    out.push({ kind, label: BUILDING_KO[unit] ?? unit });
+  }
+  for (const [kind, label] of [
+    ["pool", "스포닝 풀"], ["troop", "지상(지대지)"], ["gAA", "지대공"], ["gBoth", "지상(겸용)"],
+    ["aAir", "공대공"], ["aBoth", "공중(겸용)"], ["gCast", "마법(지상)"], ["aCast", "마법(공중)"],
+    ["ovie", "오버로드"], ["dship", "드랍십"], ["shuttle", "셔틀"],
+  ] as [string, string][]) {
+    if (!seen.has(kind)) { seen.add(kind); out.push({ kind, label }); }
+  }
+  return out;
+})();
+
+export function ShapeIcon({ kind, className }: { kind: string; className?: string }) {
   const faces = SHAPE_FACES[kind];
   const rot = SHAPE_ROT[kind];
   return (

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Trash2, Upload, Link2Off, ImageUp, Mountain } from "lucide-react";
 import TerrainReviewModal from "../../modals/TerrainReviewModal";
+import { SHAPE_GALLERY, ShapeIcon } from "../../components/replay/ReplayMotionPlayer";
 import ReplayMapCanvas from "../../components/replay/ReplayMapCanvas";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import Select from "../../components/common/Select";
@@ -119,6 +120,11 @@ export default function MinimapScreen() {
   const [confirmDelete, setConfirmDelete] = useState<MinimapImage | null>(null);
   // 지형 검수 모달(요청) — 그림 하나를 크게 띄워 이동 가능/불가 격자를 보고 고친다.
   const [terrainTarget, setTerrainTarget] = useState<MinimapImage | null>(null);
+  /* 모델링 뷰어(요청) — 도형을 크게 보고 15도씩 돌려 본다. 도형은 사선 시점이 구워진
+     2D 벡터라 여기 회전은 평면 회전이다 — 시점(요잉) 회전은 3D 엔진으로 만든 도형만
+     가능해서, 확인용 뷰어에는 평면 회전이면 충분하다. */
+  const [modelKind, setModelKind] = useState(SHAPE_GALLERY[0]?.kind ?? "");
+  const [modelRot, setModelRot] = useState(0);
   /* 검수 모달용 앵커(지적: 빠른무한이 아직도 반대 — 모달의 자동 분석이 앵커 없이 돌았다)
      — 매핑된 첫 맵의 자원 좌표를 받아 분수로 넘긴다. */
   const [terrainAnchors, setTerrainAnchors] = useState<[number, number][] | undefined>(undefined);
@@ -441,6 +447,33 @@ export default function MinimapScreen() {
           if (f && target) void swap(target, f);
         }}
       />
+
+      {/* ④ 유닛·건물 모델링(요청) — 도형을 상당히 크게 보고 15도씩 돌려 본다. */}
+      <div className="scr-minimap-panel">
+        <div className="scr-notice-edit-label">유닛·건물 모델링</div>
+        <div className="scr-model-viewer">
+          <div className="scr-model-stage" style={{ transform: `rotate(${modelRot}deg)` }}>
+            <ShapeIcon kind={modelKind} />
+          </div>
+          <div className="scr-model-controls">
+            <button type="button" className="scr-btn scr-btn-sm" onClick={() => setModelRot((r) => r - 15)}>⟲ 15°</button>
+            <button type="button" className="scr-btn scr-btn-sm" onClick={() => setModelRot(0)}>0°</button>
+            <button type="button" className="scr-btn scr-btn-sm" onClick={() => setModelRot((r) => r + 15)}>⟳ 15°</button>
+          </div>
+        </div>
+        <div className="scr-model-gallery">
+          {SHAPE_GALLERY.map(({ kind, label }) => (
+            <button
+              key={kind} type="button"
+              className={kind === modelKind ? "scr-model-item scr-model-item-on" : "scr-model-item"}
+              onClick={() => { setModelKind(kind); setModelRot(0); }}
+            >
+              <span className="scr-model-thumb"><ShapeIcon kind={kind} /></span>
+              <span className="scr-model-label">{label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
       {terrainTarget && (
         <TerrainReviewModal
