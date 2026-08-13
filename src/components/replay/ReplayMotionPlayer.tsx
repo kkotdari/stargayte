@@ -2650,10 +2650,20 @@ export default function ReplayMotionPlayer({
     })), [motion]);
   const castsNow = motion.casts.filter((c) => c[0] <= t
     && t - c[0] <= (c[3] === "Nuclear Strike" ? NUKE_FALL_SEC + 4 : CAST_HOLD_SEC));
-  /** 핵 착탄들 — 폭발 반경 안에서 무너진 건물을 착탄 순간 바로 걷는 데 쓴다(지적). */
+  /* 핵 착탄들 + 성공 판정(지적: 실패가 더 많다) — 발사가 다 착탄이 아니다(고스트가
+     끊기면 불발). 착탄 시각 언저리(−2초~+90초)에 반경 안 건물이 실제로 무너진 발사만
+     '터진 핵'으로 본다. 불발은 표적 점만 보이다 만다. 유닛 몰살도 터진 핵만이다. */
   const nukeImpacts = useMemo(() => motion.casts
     .filter((c) => c[3] === "Nuclear Strike")
-    .map((c) => ({ sec: c[0] + NUKE_FALL_SEC, x: c[1], y: c[2] })), [motion]);
+    .map((c) => {
+      const sec = c[0] + NUKE_FALL_SEC;
+      const confirmed = motion.builds.some(([bs, bx2, by2, bu, , g2]) => {
+        const gone = g2 ?? 0;
+        return gone > 0 && gone >= sec - 2 && gone - sec <= 90 && bs <= sec
+          && Math.hypot(bx2 + footDx(bu) - c[1], by2 + footDy(bu) - c[2]) <= 5;
+      });
+      return { sec, x: c[1], y: c[2], confirmed };
+    }), [motion]);
 
   /* 태워진 유닛은 잠깐 사라진다(요청: 태운 자리의 유닛들은 안 보이다가 내리면 나타남) —
      태움 지점 곁에 서 있던, 그 뒤로 새 명령이 없는 마커는 다음 드랍(없으면 계속)까지
@@ -2744,7 +2754,7 @@ export default function ReplayMotionPlayer({
      순간 반경(4.5타일) 안에 서 있었고(마지막 명령이 착탄 전) 그 뒤 새 명령이 없는
      마커는 그 핵에 정리된 것으로 본다. 건물은 위 goneEff(파괴 판정 당김)가 맡는다. */
   const nukedGone = (pos: { x: number; y: number }, lastOrderSec: number): boolean =>
-    nukeImpacts.some((nk) => nk.sec <= t && lastOrderSec <= nk.sec
+    nukeImpacts.some((nk) => nk.confirmed && nk.sec <= t && lastOrderSec <= nk.sec
       && Math.hypot(pos.x - nk.x, pos.y - nk.y) <= 4.5);
 
   const razedNearby = (
@@ -3507,7 +3517,9 @@ export default function ReplayMotionPlayer({
               && buildAbsorbed(p, pos, t - sinceCmd)) return [];
             // 무너진 기지 곁에서 침묵 — 그 함락에서 정리된 것(지적).
             if (razedNearby(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return [];
-            if (nukedGone(pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return [];
+            // 배틀크루저는 예외(지적: 방업까지 치면 500피 경계에서 산다).
+            if (!(BY_UNITS[g.unit] ?? [g.unit]).includes("Battlecruiser")
+              && nukedGone(pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return [];
             return [{ g, gi, pos, sinceCmd }];
           });
           const shownUnits = new Set(typeMarks.flatMap(({ g }) => BY_UNITS[g.unit] ?? [g.unit]));
@@ -3945,6 +3957,10 @@ export default function ReplayMotionPlayer({
                2초에 탄두가 내려오고, NUKE_FALL_SEC부터 폭발 광원. 크기는 실제 피해 반경
                (4타일)에 맞춘 지름 8타일 상자에 %로 그리고 살짝 투명하다(지적). */
             const age = t - sec;
+            /* 성공 판정(지적) — 불발이면 폭발 없이 표적 점만 보이다 만다. */
+            const landed = nukeImpacts.some((nk) =>
+              nk.confirmed && nk.x === x && nk.y === y && Math.abs(nk.sec - (sec + NUKE_FALL_SEC)) < 0.5);
+            if (age >= NUKE_FALL_SEC && !landed) return null;
             return (
               <span
                 key={`c-${i}`}
@@ -3956,7 +3972,7 @@ export default function ReplayMotionPlayer({
               >
                 {age < NUKE_FALL_SEC - 2 ? (
                   <span className="scr-motion-nuke-dot" />
-                ) : age < NUKE_FALL_SEC ? (
+                ) : age < NUKE_FALL_SEC && landed ? (
                   <span className="scr-motion-nuke-fall" style={{ color: modeColor(raw, teamOfRaw(raw)) }}>
                     <ShapeIcon kind="nuke" />
                   </span>
