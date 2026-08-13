@@ -699,14 +699,28 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...hornFaces(-0.5, -5.5, 0.8, -1.2, -7.1, 1.3, 0.8),
     ];
   },
-  /* 오버로드 — 풍선 몸통(요잉 불변) + 늘어진 다리 셋. */
+  /* 오버로드 — 풍선 몸통(요잉 불변) + 곤충 다리 셋(요청: 촉수·칼이 아니라 무릎이 꺾인
+     곤충 다리) — 윗마디는 바깥-아래로, 아랫마디는 무릎에서 안-아래로 꺾인다. */
   ovie: () => {
     const [cx, cy] = project(0, 0, 5.2);
     const legs: string[] = [];
-    for (const [lx, lyy] of [[-2.2, 0.6], [0, 1.2], [2.2, 0.6]] as [number, number][]) {
-      const [ax, ay] = project(lx, lyy, 2.6);
-      const [bx, by] = project(lx * 1.06, lyy * 1.06, -2.6);
-      legs.push(`M${ax - 0.45} ${ay} Q${ax - 0.4} ${(ay + by) / 2} ${bx - 0.2} ${by} L${bx + 0.2} ${by} Q${ax + 0.4} ${(ay + by) / 2} ${ax + 0.45} ${ay} Z`);
+    for (const [lx, lyy] of [[-2.4, 0.6], [0.2, 1.3], [2.6, 0.5]] as [number, number][]) {
+      const seg = (
+        x1: number, y1: number, z1: number, x2: number, y2: number, z2: number, w: number,
+      ): string => {
+        const [ax, ay] = project(x1, y1, z1);
+        const [bx, by] = project(x2, y2, z2);
+        const dx = bx - ax;
+        const dy = by - ay;
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = (-dy / len) * (w / 2);
+        const ny = (dx / len) * (w / 2);
+        return `M${ax + nx} ${ay + ny} L${bx + nx} ${by + ny} L${bx - nx} ${by - ny} L${ax - nx} ${ay - ny} Z`;
+      };
+      // 윗마디: 몸통 밑 → 무릎(바깥으로 벌어짐). 아랫마디: 무릎 → 발끝(안으로 모임).
+      const kneeX = lx * 1.55 + (lx === 0.2 ? 0.9 : 0);
+      legs.push(seg(lx, lyy, 2.8, kneeX, lyy, 0.4, 0.55));
+      legs.push(seg(kneeX, lyy, 0.4, lx * 1.15 + (lx === 0.2 ? 0.4 : 0), lyy, -2.6, 0.42));
     }
     return [
       bodyFace(legs.join(" ")),
