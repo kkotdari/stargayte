@@ -71,8 +71,8 @@ export function groundSquashNow(): number {
   return pitchView ? 0.52 : topView ? 0.55 : GROUND_SQUASH;
 }
 function zScaleNow(): number {
-  // 0.71 → 0.8 — 앞숙임이 꼭대기를 깊이로 내리는 몫(z×0.34×납작비)을 벌충한다.
-  return pitchView ? 0.8 : topView ? 0.66 : 0.89;
+  // 0.71 → 0.8 → 0.86(지적: 높이가 살짝 눌림) — 앞숙임 몫을 벌충하고 한 뼘 더.
+  return pitchView ? 0.86 : topView ? 0.66 : 0.89;
 }
 function originYNow(): number {
   return pitchView ? 12.6 : topView ? 12 : 12.6;
@@ -87,12 +87,30 @@ export const sideFace = (d: string, opacity: number = OP.side): ShapeFace => [d,
 /** 원통·구멍의 단면 — 동굴 입구처럼 깊은 어둠(기본 OP.cap). */
 export const capFace = (d: string, opacity: number = OP.cap): ShapeFace => [d, opacity, "#000"];
 
-/** 바닥에 놓인 원(납작 타원) 패스 — 밝은 윗면·발판·고리에 두루 쓴다. */
+/** 바닥에 놓인 원(납작 타원) 패스 — 밝은 윗면·발판·고리에 두루 쓴다.
+ *  시각 밀림 중이면 타원도 같이 기울인다(지적: 파일런·포토·소환구 원반만 안 기울어
+ *  첨탑과 어긋난 롤로 보임) — 밀림 행렬 [[1,sh],[0,1]]을 입힌 타원도 타원이라,
+ *  주축·각을 풀어 회전 타원 호로 그린다. */
 export const groundEllipse = (
   cx: number, cy: number, rx: number, ry: number = rx * groundSquashNow(),
-): string =>
-  `M${r2(cx - rx)} ${r2(cy)}a${r2(rx)} ${r2(ry)} 0 1 0 ${r2(rx * 2)} 0`
-  + `a${r2(rx)} ${r2(ry)} 0 1 0-${r2(rx * 2)} 0Z`;
+): string => {
+  if (!viewShear) {
+    return `M${r2(cx - rx)} ${r2(cy)}a${r2(rx)} ${r2(ry)} 0 1 0 ${r2(rx * 2)} 0`
+      + `a${r2(rx)} ${r2(ry)} 0 1 0-${r2(rx * 2)} 0Z`;
+  }
+  const b = viewShear * ry;
+  const t = rx * rx + b * b;
+  const e = ry * ry;
+  const ang = 0.5 * Math.atan2(2 * b * ry, t - e);
+  const disc = Math.sqrt((t - e) * (t - e) + 4 * b * b * e);
+  const R1 = Math.sqrt((t + e + disc) / 2);
+  const R2 = Math.sqrt(Math.max(0.0001, (t + e - disc) / 2));
+  const ux = R1 * Math.cos(ang);
+  const uy = R1 * Math.sin(ang);
+  const angDeg = r2((ang * 180) / Math.PI);
+  return `M${r2(cx - ux)} ${r2(cy - uy)}a${r2(R1)} ${r2(R2)} ${angDeg} 1 0 ${r2(2 * ux)} ${r2(2 * uy)}`
+    + `a${r2(R1)} ${r2(R2)} ${angDeg} 1 0 ${r2(-2 * ux)} ${r2(-2 * uy)}Z`;
+};
 
 /** 세운 각기둥(상자) 3면 — 앞면(본색) + 윗면(밝게) + 오른 옆면(어둡게).
  *  (x, yBottom)이 앞면 왼쪽 아래, w×h가 앞면, depth가 뒤로 물러나는 길이다. */
