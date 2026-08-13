@@ -3030,10 +3030,9 @@ export default function ReplayMotionPlayer({
                 전체화면이 되며 맵이 늘 최대 크기다. */}
           </div>
         </div>
+        {/* 케밥은 왼쪽 위(요청: PC 게임 상세에서도 케밥은 왼쪽) — X와 갈라 세운다. */}
+        {big && menu ? <div className="scr-motion-menu-left">{menu}</div> : null}
         <div className="scr-motion-expand-row">
-          {/* 확대 창의 케밥(요청: PC 기본이 확대인 만큼 케밥·닫기가 있어야 한다) —
-              카드 윗줄의 메뉴와 같은 것. 인라인에선 원본이 이미 있어 안 그린다. */}
-          {big && menu}
           <button
             type="button" className="scr-motion-btn scr-motion-expand"
             // 사람이 줄였으면 기억한다(위 shrunk 주석) — 재생을 다시 눌러도 안 커진다.
@@ -3118,6 +3117,17 @@ export default function ReplayMotionPlayer({
         </button>
         <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
       </div>
+      {/* 지형 편집(요청: 조작부 위) — 확대창에도 산 버튼을 살린다. */}
+      {big && typeof grid.imageId === "number" && grid.image ? (
+        <div className="scr-motion-terrain-side">
+          <button
+            type="button" className="scr-btn scr-btn-sm"
+            onClick={() => { setPlaying(false); setTerrainOpen(true); }}
+          >
+            <Mountain size={13} /> 지형 수정
+          </button>
+        </div>
+      ) : null}
       {/* 확대 창 왼쪽 기둥(요청) — 맨 위 타임스탬프, 로스터(기존), 범례 2열, 맨 아래 등록자. */}
       {big && stamp ? <div className="scr-motion-stamp">{stamp}</div> : null}
       {big ? <div className="scr-motion-legend scr-motion-legend-side">{legendItems}</div> : null}

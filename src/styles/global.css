@@ -11432,6 +11432,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   position: absolute; top: 8px; right: 8px;
   display: flex; align-items: center; gap: 4px;
 }
+/* 케밥은 왼쪽 위(요청) — X(오른쪽)와 갈라 세운다. */
+.scr-motion-menu-left { position: absolute; top: 8px; left: 8px; z-index: 5; }
+/* 지형 편집(요청) — 왼쪽 기둥 4행의 위쪽(조작부는 같은 칸 아래 끝). */
+.scr-motion-terrain-side { grid-column: 1 / 3; grid-row: 4; align-self: start; }
+.scr-motion-terrain-side .scr-btn { display: inline-flex; align-items: center; gap: 6px; }
 /* 뒤 상세 창 가리개(지적: 확대에서 뒤에 창이 남아 보임) — 모달 딤과 달리 거의 다 가린다.
    누르면 축소로 돌아간다(JSX). PC 전용 화면이라 iOS 크롬 재펼침 걱정은 없다. */
 .scr-motion-big-backdrop { position: fixed; inset: 0; z-index: 205; background: rgba(0, 0, 0, 0.88); }
