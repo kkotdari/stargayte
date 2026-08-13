@@ -1568,35 +1568,38 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(capFace(groundEllipse(cx2, cy2 - 0.15, 0.75, 0.45), 0.5));
     return out;
   },
-  /* 그레이터 스파이어(실물 참고) — 잿빛 돌 밑동 위 붉은 살 몸통, 양옆의 큰 갑각
-     날개판, 꼭대기의 골진 왕관(어두운 구멍), 발치 발톱. */
+  /* 그레이터 스파이어(재작도) — 바위 밑동(발톱)에서 좁아졌다 다시 벌어지는 어두운
+     줄기, 앞면의 골진 붉은 살 띠, 꼭대기 골진 왕관과 그 옆에서 위로 굽는 깃 뿔 한 쌍. */
   gspire: () => {
     const out: ShapeFace[] = [];
-    // 돌 밑동.
-    out.push(...frustumFaces3(0, 0.4, 5.2, 3.8, 2.8, 2.2, 3.2));
-    // 발치 발톱.
-    out.push(...hornFaces(-1.9, 2.3, 0.6, -2.4, 3.1, 0.1, 0.5));
-    out.push(...hornFaces(-0.4, 2.5, 0.6, -0.5, 3.3, 0.1, 0.5));
-    out.push(...hornFaces(1.2, 2.4, 0.6, 1.6, 3.2, 0.1, 0.5));
-    // 붉은 살 몸통.
-    out.push(...domeFaces3(0, -0.2, 2.3, 3.4, 2.9));
-    // 양옆 큰 갑각 날개판(잿빛 윗빛).
-    const wing = (m2: 1 | -1): string => polyPath3([
-      [m2 * 1.5, -0.6, 3.6], [m2 * 4.1, -1.4, 8.6], [m2 * 2.7, -0.2, 10], [m2 * 1.1, 0.2, 5.4],
-    ]);
-    out.push(bodyFace(wing(-1)), topFace(wing(-1), 0.3));
-    out.push(bodyFace(wing(1)), topFace(wing(1), 0.22), sideFace(wing(1), 0.18));
-    // 꼭대기 골진 왕관.
-    const [cx2, cy2] = project(0, -0.2, 10.6);
-    out.push(bodyFace(groundEllipse(cx2, cy2, 2.15, 1.25)));
+    // 바위 밑동 + 앞 발톱.
+    out.push(...domeFaces3(0, 0.6, 3.4, 1.8));
+    out.push(...hornFaces(-1.8, 2.4, 0.6, -2.2, 3.2, 0.1, 0.5));
+    out.push(...hornFaces(-0.5, 2.7, 0.6, -0.6, 3.5, 0.1, 0.5));
+    out.push(...hornFaces(0.9, 2.6, 0.6, 1.1, 3.4, 0.1, 0.5));
+    out.push(...hornFaces(2, 2.2, 0.6, 2.5, 2.9, 0.1, 0.5));
+    // 줄기 — 좁아졌다 위에서 다시 벌어진다.
+    out.push(...frustumFaces3(0, 0, 4, 3, 2.2, 1.8, 4.4, 1.4));
+    out.push(...frustumFaces3(0, 0, 2.3, 1.9, 3, 2.4, 2.4, 5.6));
+    // 앞면 골진 붉은 살 띠.
+    out.push(bodyFace(polyPath3([[-0.8, 1.85, 1.9], [0.8, 1.85, 1.9], [0.5, 1.35, 6], [-0.5, 1.35, 6]])));
+    out.push(capFace(polyPath3([[-0.68, 1.86, 2.7], [0.68, 1.86, 2.7], [0.64, 1.76, 3], [-0.64, 1.76, 3]]), 0.2));
+    out.push(capFace(polyPath3([[-0.62, 1.76, 3.8], [0.62, 1.76, 3.8], [0.58, 1.66, 4.1], [-0.58, 1.66, 4.1]]), 0.2));
+    out.push(capFace(polyPath3([[-0.56, 1.66, 4.9], [0.56, 1.66, 4.9], [0.52, 1.56, 5.2], [-0.52, 1.56, 5.2]]), 0.2));
+    // 옆 깃 뿔 한 쌍 — 왕관 옆에서 위로 굽는다.
+    out.push(...hornFaces(-2, -0.4, 6.6, -2.9, -0.9, 9.8, 0.95));
+    out.push(...hornFaces(2, -0.4, 6.6, 2.9, -0.9, 9.8, 0.95));
+    // 꼭대기 골진 왕관 — 방사 골 + 어두운 구멍.
+    const [cx2, cy2] = project(0, 0, 8.7);
+    out.push(bodyFace(groundEllipse(cx2, cy2, 2.05, 1.2)));
     for (const ang of [210, 255, 300, 345, 30, 75, 120, 165]) {
       const a = (ang * Math.PI) / 180;
-      out.push(sideFace(`M${cx2 + Math.cos(a) * 0.9} ${cy2 + Math.sin(a) * 0.52}`
-        + ` L${cx2 + Math.cos(a) * 2} ${cy2 + Math.sin(a) * 1.16}`
-        + ` L${cx2 + Math.cos(a + 0.18) * 2} ${cy2 + Math.sin(a + 0.18) * 1.16}`
-        + ` L${cx2 + Math.cos(a + 0.18) * 0.9} ${cy2 + Math.sin(a + 0.18) * 0.52} Z`, 0.16));
+      out.push(sideFace(`M${cx2 + Math.cos(a) * 0.85} ${cy2 + Math.sin(a) * 0.5}`
+        + ` L${cx2 + Math.cos(a) * 1.92} ${cy2 + Math.sin(a) * 1.12}`
+        + ` L${cx2 + Math.cos(a + 0.18) * 1.92} ${cy2 + Math.sin(a + 0.18) * 1.12}`
+        + ` L${cx2 + Math.cos(a + 0.18) * 0.85} ${cy2 + Math.sin(a + 0.18) * 0.5} Z`, 0.16));
     }
-    out.push(capFace(groundEllipse(cx2, cy2 - 0.1, 0.7, 0.4), 0.5));
+    out.push(capFace(groundEllipse(cx2, cy2 - 0.1, 0.68, 0.4), 0.5));
     return out;
   },
   /* 퀸즈 네스트(실물 참고) — 살덩이 엽이 겹겹이 쌓인 봉분: 아랫단 엽 다섯, 사이 어두운
