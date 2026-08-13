@@ -10958,11 +10958,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    키우므로, 마커는 제 --mk(1/z 또는 min(z,2)/z — ReplayMotionPlayer의 렌즈 style)만큼
    되돌려 앉는다. 축소(1배)에서는 두 변수가 없어 1이다. */
 .scr-motion-map > span, .scr-motion-lens > span {
-  /* 화면 롤(지적: 입체 보기에서 마커만 꼿꼿해 맵과 안 맞음) — 자리 계산(depthMk)이
-     소실점 기울기를 --rot로 준다(평면 보기는 0). 회전이 아니라 기울임(skew)이다
-     (지적: 회전은 바닥 발자국까지 통째로 돌아 마커가 돌아간 것처럼 보였다) — 세로선만
-     기울고 바닥 수평선은 그대로 남는다. */
-  position: absolute; transform: translate(-50%, -50%) scale(var(--mk, 1)) skewX(calc(0deg - var(--rot, 0deg))); white-space: nowrap;
+  /* (철회) 화면 롤 — 회전도 기울임도 모델을 찌그러뜨려 보였다(지적: 엉뚱한 걸 수정,
+     점점 찌그러짐). 마커는 꼿꼿하게 서고, 시점은 좌우 요잉과 깊이 배율만 말한다. */
+  position: absolute; transform: translate(-50%, -50%) scale(var(--mk, 1)); white-space: nowrap;
   --mk: var(--mk-unit, 1);
 }
 /* 액티브 말풍선(요청: 마커는 도형 그대로, 무엇인지는 말풍선이) — 앵커 점 위에 뜨고 아래로

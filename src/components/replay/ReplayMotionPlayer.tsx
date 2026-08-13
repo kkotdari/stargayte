@@ -3784,24 +3784,17 @@ export default function ReplayMotionPlayer({
     const v = (y / grid.height - 0.5) * h;
     // 각은 뒤 축소(q) 전의 원근 공간에서 잰다 — q를 곱하면 각이 약해진다(지적).
     const k = PITCH_P / (PITCH_P - v * S);
-    /* 부호는 실화면 확인으로 확정(지적: 돌아 보이는 방향이 반대) — 처음 부호로 복귀.
-       왼쪽이 이상했던 건 부호가 아니라 limbFaces 단면 비대칭 버그였고, 그건 따로
-       수리됐다. 세기는 0.6로 눅인다(지적: 옆구리가 앞으로 쏟아져 보임). */
-    return (-Math.atan2(u * k, PITCH_P) * 180 * 0.6) / Math.PI;
+    /* (보류) 좌우 요잉 — 어느 부호·세기로도 돌아가거나 찌그러져 보였다(지적: 요가
+       문제). 모양이 괜찮던 꼿꼿한 정면으로 되돌리고, 각 계산만 남겨둔다. */
+    void k;
+    return 0;
   };
   const depthMk = (x: number, y: number): React.CSSProperties => {
     if (!pitched) return {};
-    const { w, h, S, C } = pitchGeom();
-    const u = (x / grid.width - 0.5) * w;
-    const v = (y / grid.height - 0.5) * h;
-    /* 화면 롤(지적: 롤이 빠져 맵과 안 맞음) — 내려다보는 원근에선 세로선이 화면 아래
-       소실점으로 모인다. 가장자리 마커일수록 꼭대기가 바깥으로 기운다. 세기는 0.6로
-       눅인다(지적: 그대로면 가장자리에서 많이 돌아 보인다). */
-    const roll = (Math.atan2(u * C, PITCH_P * S - v) * 180 * 0.6) / Math.PI;
-    return {
-      "--mk": pitchK(y).toFixed(3),
-      "--rot": `${roll.toFixed(2)}deg`,
-    } as React.CSSProperties;
+    /* (철회) 화면 롤(--rot) — 회전이든 기울임이든 모델이 찌그러져 보였다(지적).
+       깊이 배율만 남긴다. x는 자리 호환으로 받아둔다. */
+    void x;
+    return { "--mk": pitchK(y).toFixed(3) } as React.CSSProperties;
   };
   const dodge = (px: number, py: number): [number, number] => {
     for (const [bs, bx2, by2, bu, , g2, liftAt2] of motion.builds) {
