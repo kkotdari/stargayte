@@ -2670,6 +2670,10 @@ export default function ReplayMotionPlayer({
       const foeDevourers = motion.players
         .filter((q) => teamOfRaw(q.raw) !== teamOfRaw(p.raw))
         .map((q) => prodTimes(q, (u) => u === "Devourer"));
+      /* 다크 스웜(지적) — 스웜 아래 근접(대개 시전한 저그)은 원거리에 안 맞아 한결
+         강해진다. 내 스웜이 최근 30초 안에 깔렸으면 20% 천천히 녹는다. */
+      const mySwarms = motion.casts
+        .filter((c) => c[3] === "Dark Swarm" && c[4] === p.raw).map((c) => c[0]);
       // 눈금: 완성 시각 + 전투 경계와 그 안의 5초 간격 — 구간이 경계를 안 넘게 쪼갠다.
       const marks = new Set<number>([0, ...done]);
       for (const [a, b] of hot) {
@@ -2690,7 +2694,8 @@ export default function ReplayMotionPlayer({
             * (1 + Math.min(0.6, castBoost(foeCasts, prev)))
             / (1 + Math.min(0.3, castBoost(myCasts, prev) * 0.6))
             * (1 + Math.min(0.15, Math.max(0, ...foeDevourers.map((d2) => countBy(d2, prev))) * 0.05)
-              * (countBy(myAll, prev) > 0 ? countBy(myAir, prev) / countBy(myAll, prev) : 0));
+              * (countBy(myAll, prev) > 0 ? countBy(myAir, prev) / countBy(myAll, prev) : 0))
+            / (mySwarms.some((cs) => cs <= prev && prev - cs <= 30) ? 1.2 : 1);
           size = Math.max(0, size * Math.exp(-PROP * mult * dt2) - LIN * mult * dt2);
         }
         while (di < done.length && done[di] <= now) { size += 1; di += 1; }
@@ -2718,7 +2723,8 @@ export default function ReplayMotionPlayer({
       sec, x: x + footDx(unit), y: y + footDy(unit), raw, gone: gone ?? 0,
     })), [motion]);
   const castsNow = motion.casts.filter((c) => c[0] <= t
-    && t - c[0] <= (c[3] === "Nuclear Strike" ? NUKE_FALL_SEC + 4 : CAST_HOLD_SEC));
+    && t - c[0] <= (c[3] === "Nuclear Strike" ? NUKE_FALL_SEC + 4
+      : c[3] === "Dark Swarm" ? 30 : CAST_HOLD_SEC));
   /* 핵 착탄들 + 성공 판정(지적: 실패가 더 많다) — 발사가 다 착탄이 아니다(고스트가
      끊기면 불발). 착탄 시각 언저리(−2초~+90초)에 반경 안 건물이 실제로 무너진 발사만
      '터진 핵'으로 본다. 불발은 표적 점만 보이다 만다. 유닛 몰살도 터진 핵만이다. */
@@ -4055,6 +4061,23 @@ export default function ReplayMotionPlayer({
                     <span className="scr-motion-nuke-ring" />
                   </>
                 )}
+              </span>
+            );
+          }
+          if (tech === "Dark Swarm") {
+            /* 다크 스웜(요청) — 갈색 반투명 구름이 우글거린다. 실제 지속(약 60초의
+               절반만 표시)과 영역(지름 6타일)에 맞춘다. */
+            return (
+              <span
+                key={`c-${i}`}
+                className="scr-motion-swarmfx"
+                style={{
+                  left: pct(x, grid.width), top: pct(y, grid.height),
+                  width: pct(6, grid.width),
+                }}
+              >
+                <span className="scr-motion-swarm-cloud" />
+                <span className="scr-motion-swarm-cloud scr-motion-swarm-cloud-b" />
               </span>
             );
           }

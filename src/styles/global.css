@@ -12833,6 +12833,25 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   from { opacity: 0.6; scale: 0.4; }
   to { opacity: 0; scale: 3.3; }
 }
+/* ── 다크 스웜(요청) — 갈색 반투명 구름이 우글거린다. 지름은 인라인 width(6타일). */
+.scr-motion-swarmfx {
+  pointer-events: none; z-index: 24000; position: absolute;
+  transform: translate(-50%, -50%); aspect-ratio: 1;
+}
+.scr-motion-swarm-cloud {
+  position: absolute; inset: 4%; border-radius: 50%;
+  background: radial-gradient(ellipse at 45% 40%, rgba(150, 90, 40, 0.4) 0%, rgba(90, 50, 25, 0.32) 55%, transparent 75%);
+  animation: scr-swarm 2.6s ease-in-out infinite alternate;
+}
+.scr-motion-swarm-cloud-b {
+  inset: 10%;
+  background: radial-gradient(ellipse at 60% 60%, rgba(190, 120, 50, 0.28) 0%, rgba(110, 60, 25, 0.22) 50%, transparent 72%);
+  animation-duration: 1.9s; animation-delay: 0.4s;
+}
+@keyframes scr-swarm {
+  from { transform: scale(0.94) translate(-1.5%, 1%); opacity: 0.75; }
+  to { transform: scale(1.04) translate(1.5%, -1%); opacity: 1; }
+}
 /* ── 사이오닉 스톰(요청) — 반투명 푸른 구름 + 지지직 번개. 지름은 인라인 width(3타일). */
 .scr-motion-stormfx {
   pointer-events: none; z-index: 30000; position: absolute;
