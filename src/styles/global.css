@@ -11414,6 +11414,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-stamp {
   grid-column: 1 / 3; grid-row: 1;
   font-size: var(--fs-caption); color: var(--muted); font-variant-numeric: tabular-nums;
+  /* 케밥(왼쪽 위 절대배치, ~28px) 자리 확보(지적: 겹침) — 타임스탬프가 그 오른쪽에 선다. */
+  padding-left: 36px; min-height: 26px; display: flex; align-items: center;
 }
 .scr-motion-legend-side {
   grid-column: 1 / 3; grid-row: 3;
