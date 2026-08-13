@@ -98,6 +98,39 @@ export async function analyzeMinimap(
     // 다른 출처의 그림이라 캔버스가 오염되면(CORS) 지형 없이 간다 — 직선 폴백.
     return null;
   }
+  /* 셀 내부 결(분산) — 실측으로 얻은 결정타(하네스 검증): 빠른무한의 벽은 평균색이
+     바닥과 거리 4로 사실상 같아 색으로는 분리 불가였고, 정체는 셀 안의 버팀목 무늬
+     (고분산)에만 남아 있었다. 3배 해상도로 한 번 더 읽어 3×3 서브샘플의 밝기 분산을
+     셀마다 잰다. 투혼의 걷는 모래(분산 ~470)와 절벽 잔해(1200+)도 이것으로 갈린다. */
+  const variance = new Float64Array(w * h);
+  {
+    const c3 = document.createElement("canvas");
+    c3.width = w * 3;
+    c3.height = h * 3;
+    const ctx3 = c3.getContext("2d", { willReadFrequently: true });
+    if (ctx3) {
+      ctx3.drawImage(img, 0, 0, w * 3, h * 3);
+      try {
+        const d3 = ctx3.getImageData(0, 0, w * 3, h * 3).data;
+        for (let y = 0; y < h; y += 1) {
+          for (let x = 0; x < w; x += 1) {
+            let sum = 0;
+            let sum2 = 0;
+            for (let sy = 0; sy < 3; sy += 1) {
+              for (let sx = 0; sx < 3; sx += 1) {
+                const si = ((y * 3 + sy) * w * 3 + x * 3 + sx) * 4;
+                const l = 0.299 * d3[si] + 0.587 * d3[si + 1] + 0.114 * d3[si + 2];
+                sum += l;
+                sum2 += l * l;
+              }
+            }
+            const mean = sum / 9;
+            variance[y * w + x] = Math.max(0, sum2 / 9 - mean * mean);
+          }
+        }
+      } catch { /* 오염 시 분산 0 — 결 규칙만 잠잠해진다. */ }
+    }
+  }
   /* 두 겹으로 가른다(지적: 벽을 전혀 못 잡는다).
      ① 절대 규칙 — 우주(거의 검정)와 물(파랑 우세)은 색 자체가 답이다.
      ② 상대 규칙 — 절벽·벽·언덕 경계는 "제 주변(9×9칸)보다 뚜렷이 어두운 능선"이다.
@@ -211,18 +244,19 @@ export async function analyzeMinimap(
     anchorIdx.push(ay * w + ax);
   }
   if (anchorIdx.length >= 3) {
-    /* 앵커 연결 분류기(지적: 빠른무한만 계속 반대 — 자원이 벽을 따라 늘어선 맵은 "자원
-       근처 표본"이 늘 오염된다) — 원리를 바꾼다: 게임 맵은 모든 본진·자원이 지상으로
-       이어지게 만들어져 있다. 그래서
-         1) 우주·물을 뺀 칸을 색 가족(8단계/채널)으로 묶어 점유율 순으로 세운다
-         2) 가족을 큰 것부터 하나씩 '땅'에 넣어 가며, 앵커들(자원에서 맵 중심 쪽 3칸)이
-            한 덩어리로 이어지는 최소 집합을 찾는다 — 벽·구조물은 연결에 필요 없어 자동
-            으로 빠진다
-         3) 땅에 둘러싸인 작은 조각(풀 같은 장식)은 밝기가 땅급이면 열어 준다 */
+    /* 앵커 분류기 v2 — 실제 세 맵(빠른무한·투혼·헌터)의 DB 이미지로 하네스 검증을 거친
+       판이다(감으로 고치던 판들을 전부 대체).
+         · 연결성은 '바닥 기준'을 얻는 데만 쓴다: 앵커 지점(자원에서 맵 중심 쪽 3칸)의
+           3×3 색 가족을 시드로, 모자라면 큰 가족부터 더해 앵커 75%가 이어질 때까지.
+           (시드가 핵심이다 — 헌터의 정글처럼 맵 전체에 이어진 못 걷는 큰 가족이
+           연결성을 먼저 만족시키는 함정을 막는다.)
+         · 판정은 밝기 대역 + 결(분산): 바닥 중앙값 L의 0.72~1.42배, 결이 고우면(분산이
+           바닥 80분위×1.6의 60% 이하) 1.62배까지. 결이 거친 칸(벽 무늬·절벽 잔해)은
+           대역 안이라도 차단. */
     const spots: number[] = [];
-    for (const ai of anchorIdx) {
-      let ax = ai % w;
-      let ay = Math.floor(ai / w);
+    for (const [fx, fy] of anchors ?? []) {
+      let ax = Math.min(w - 1, Math.max(0, Math.round(fx * w)));
+      let ay = Math.min(h - 1, Math.max(0, Math.round(fy * h)));
       const vx = w / 2 - ax;
       const vy = h / 2 - ay;
       const vlen = Math.hypot(vx, vy);
@@ -232,29 +266,42 @@ export async function analyzeMinimap(
       }
       spots.push(ay * w + ax);
     }
-    const banned = new Uint8Array(w * h); // 우주·물 — 어떤 경우에도 못 걷는다.
+    const banned = new Uint8Array(w * h);
     for (let i = 0; i < w * h; i += 1) {
       const r = data[i * 4];
       const g = data[i * 4 + 1];
       const b = data[i * 4 + 2];
-      const L = lum[i];
-      if (L < 15 || (b > Math.max(r, g) * 1.25 && L < 120)) banned[i] = 1;
+      if (lum[i] < 15 || (b > Math.max(r, g) * 1.25 && lum[i] < 120)) banned[i] = 1;
     }
     const famCount = new Map<number, number>();
     for (let i = 0; i < w * h; i += 1) {
-      if (banned[i]) continue;
-      famCount.set(keyOf(i), (famCount.get(keyOf(i)) ?? 0) + 1);
+      if (!banned[i]) famCount.set(keyOf(i), (famCount.get(keyOf(i)) ?? 0) + 1);
     }
     const families = [...famCount.entries()].sort((a, b) => b[1] - a[1]).map(([k]) => k);
     const included = new Set<number>();
+    for (const sp of spots) {
+      const cx = sp % w;
+      const cy = Math.floor(sp / w);
+      for (let dy = -1; dy <= 1; dy += 1) {
+        for (let dx = -1; dx <= 1; dx += 1) {
+          const nx = cx + dx;
+          const ny = cy + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const i2 = ny * w + nx;
+          if (!banned[i2]) included.add(keyOf(i2));
+        }
+      }
+    }
     const tryWalk = new Uint8Array(w * h);
+    const paint = () => {
+      for (let i = 0; i < w * h; i += 1) {
+        if (!banned[i] && included.has(keyOf(i))) tryWalk[i] = 1;
+      }
+    };
     const connected = (): boolean => {
-      // 앵커 자리를 가까운 땅 칸(3칸 안)으로 스냅해 BFS — 75% 이상이 한 덩어리면 합격.
       const snap = (ci: number): number => {
         const cx = ci % w;
         const cy = Math.floor(ci / w);
-        // 반경 5칸(지적: 집합화가 이상함 — 안쪽 자원을 중심 쪽으로 민 자리가 두꺼운
-        // 구조물 속이면 3칸 스냅이 대량 실패해, 모든 후보가 전제에서 탈락했다).
         for (let rr = 0; rr <= 5; rr += 1) {
           for (let dy = -rr; dy <= rr; dy += 1) {
             for (let dx = -rr; dx <= rr; dx += 1) {
@@ -268,7 +315,6 @@ export async function analyzeMinimap(
         return -1;
       };
       const starts = spots.map(snap).filter((v) => v >= 0);
-      // 스냅 실패는 그 앵커만 빼고 본다 — 절반 이상 찾았으면 연결로 판정한다.
       if (starts.length < Math.max(3, spots.length * 0.5)) return false;
       const seen = new Uint8Array(w * h);
       const stack = [starts[0]];
@@ -287,85 +333,66 @@ export async function analyzeMinimap(
       const okN = starts.filter((st) => seen[st]).length;
       return okN >= starts.length * 0.7;
     };
-    let solved = false;
-    for (const fam of families.slice(0, 24)) {
-      included.add(fam);
-      for (let i = 0; i < w * h; i += 1) {
-        if (!banned[i] && included.has(keyOf(i))) tryWalk[i] = 1;
+    paint();
+    let solved = connected();
+    if (!solved) {
+      for (const fam of families.slice(0, 24)) {
+        if (included.has(fam)) continue;
+        included.add(fam);
+        paint();
+        if (connected()) { solved = true; break; }
       }
-      if (connected()) { solved = true; break; }
     }
-    // 진단(임시) — 다음 라운드에 어디서 갈리는지 콘솔로 확인한다.
-    console.info(
-      `[terrain] anchors=${anchorIdx.length} families=${families.length} included=${included.size} solved=${solved}`,
-    );
     if (solved) {
-      /* 확장(지적: 투혼 과차단) — 16단계 세분으로 바닥이 여러 가족으로 조각나는데, 최소
-         연결 집합은 그중 일부만 쓴다. 연결에 안 쓰였어도 '매끈한'(양방향 능선에 걸리는
-         칸 비율 < 20%) 가족은 바닥 변주로 보고 편입한다 — 벽·유적·바위는 능선 비율이
-         높아 여기 못 낀다. */
-      const famCells = new Map<number, number[]>();
+      const fl: number[] = [];
+      const fv: number[] = [];
       for (let i = 0; i < w * h; i += 1) {
-        if (banned[i] || tryWalk[i]) continue;
-        const k = keyOf(i);
-        const arr = famCells.get(k);
-        if (arr) arr.push(i);
-        else famCells.set(k, [i]);
+        if (tryWalk[i]) { fl.push(lum[i]); fv.push(variance[i]); }
       }
-      for (const [, cells] of famCells) {
-        if (cells.length < 20) continue;
-        let ridgeN = 0;
-        for (const i of cells) {
-          if (lum[i] > localAvg[i] * 1.18 || lum[i] < localAvg[i] * 0.78) ridgeN += 1;
-        }
-        if (ridgeN / cells.length < 0.2) for (const i of cells) tryWalk[i] = 1;
-      }
-      walk.set(tryWalk);
-      /* 양방향 능선(지적: 벽이 너무 조금만 잡힘) — 96칸 격자에선 가는 벽이 바닥과 섞여
-         평균색이 바닥 가족과 같아진다. 하지만 벽은 제 주변보다 뚜렷이 밝거나(밝은 구조물)
-         어둡다(절벽 그림자) — 연결 해답 위에 그 대비를 얹어 걷어낸다. */
+      fl.sort((a, b) => a - b);
+      fv.sort((a, b) => a - b);
+      const floorL = fl[Math.floor(fl.length / 2)];
+      const varT = fv[Math.floor(fv.length * 0.8)] * 1.6;
       for (let i = 0; i < w * h; i += 1) {
-        if (!walk[i]) continue;
-        if (lum[i] > localAvg[i] * 1.18 || lum[i] < localAvg[i] * 0.78) walk[i] = 0;
+        walk[i] = 0;
+        if (banned[i]) continue;
+        if (variance[i] > varT) continue;
+        const hiCap = variance[i] <= varT * 0.6 ? floorL * 1.62 : floorL * 1.42;
+        if (lum[i] < floorL * 0.72 || lum[i] > hiCap) continue;
+        walk[i] = 1;
       }
-      /* 땅 밝기 — 땅에 둘러싸인 작은 장식(풀)을 열지 판단할 기준. */
-      let lsum = 0;
-      let ln = 0;
-      for (let i = 0; i < w * h; i += 1) {
-        if (walk[i]) { lsum += lum[i]; ln += 1; }
-      }
-      const gMean = ln > 0 ? lsum / ln : 128;
-      // 막힌 작은 조각(≤40칸)이 땅에 둘러싸였고 밝기가 땅급(0.8~1.2배)이면 연다 — 풀.
+      /* 둘러싸인 작은 조각 — 표식(시작점 아이콘, ≤12칸)은 무조건, 13~40칸은 밝기가
+         땅급일 때 연다. */
       const seen2 = new Uint8Array(w * h);
       for (let start = 0; start < w * h; start += 1) {
         if (seen2[start] || walk[start] || banned[start]) continue;
         const comp: number[] = [];
         const stack2 = [start];
         seen2[start] = 1;
-        let touchesBanned = false;
+        let touch = false;
         while (stack2.length > 0) {
           const cur = stack2.pop()!;
           comp.push(cur);
           const x = cur % w;
           for (const d of [-1, 1, -w, w]) {
             const nx = cur + d;
-            if (nx < 0 || nx >= w * h) { touchesBanned = true; continue; }
+            if (nx < 0 || nx >= w * h) { touch = true; continue; }
             if (Math.abs((nx % w) - x) > 1) continue;
-            if (banned[nx]) { touchesBanned = true; continue; }
+            if (banned[nx]) { touch = true; continue; }
             if (walk[nx] || seen2[nx]) continue;
             seen2[nx] = 1;
             stack2.push(nx);
           }
         }
-        if (touchesBanned || comp.length > 40) continue;
-        /* 아주 작은 둘러싸인 조각(≤12칸)은 무조건 연다(지적: 시작 지점 아이콘이 잡힘) —
-           미니맵에 그려 넣은 표식(시작점 초록 등)이지 지형이 아니다. */
+        if (touch || comp.length > 40) continue;
         if (comp.length <= 12) { for (const i of comp) walk[i] = 1; continue; }
         const mean = comp.reduce((a, i) => a + lum[i], 0) / comp.length;
-        if (mean >= gMean * 0.8 && mean <= gMean * 1.2) for (const i of comp) walk[i] = 1;
+        if (mean >= floorL * 0.8 && mean <= floorL * 1.2) for (const i of comp) walk[i] = 1;
       }
+      console.info(`[terrain] anchors=${anchorIdx.length} incl=${included.size} floorL=${Math.round(floorL)} varT=${Math.round(varT)} solved=true`);
+    } else {
+      console.info(`[terrain] anchors=${anchorIdx.length} solved=false — 무앵커 규칙 폴백`);
     }
-    // solved 실패면 앞의 무앵커 규칙 결과(walk)를 그대로 둔다 — 최소한 예전만큼은 된다.
   }
   /* ④ 작은 빵꾸 메우기(요청) — 자잘한 고립 조각은 오판일 확률이 높아 주변 값으로 맞춘다.
      걷는 조각(벽 사이 빵꾸)은 5칸까지 막고, 막힌 점은 2칸까지만 연다 — 막힌 쪽을 크게
