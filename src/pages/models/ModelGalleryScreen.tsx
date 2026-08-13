@@ -25,6 +25,18 @@ export default function ModelGalleryScreen() {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [auto]);
+  /* 수동 요잉은 키보드로(개편: 요잉 버튼 줄 제거) — ←/→가 15도씩 돌리고 자동을 멈춘다.
+     화면 검증 스크립트도 이 키를 쓴다. */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      e.preventDefault();
+      setAuto(false);
+      setYaw((y) => Math.round(y / 15) * 15 + (e.key === "ArrowRight" ? 15 : -15));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const builder: (() => ReturnType<(typeof SHAPE_BUILDERS)[string]>) | undefined =
     Object.prototype.hasOwnProperty.call(SHAPE_BUILDERS, kind) ? SHAPE_BUILDERS[kind] : undefined;
   const faces = useMemo(
@@ -38,24 +50,23 @@ export default function ModelGalleryScreen() {
       </div>
       <div className="scr-minimap-panel">
         <div className="scr-model-viewer">
+          {/* 조작부 개편(요청: 버튼 줄 제거) — 각도는 무대 우상단, 멈춤·재생은 무대
+              우하단 오버레이. 수동 회전은 ←/→ 키. */}
           <div className="scr-model-stage">
             <ShapeIcon kind={kind} faces={faces} />
+            {builder && (
+              <>
+                <span className="scr-model-yaw">{Math.round(((yaw % 360) + 360) % 360)}°</span>
+                <button
+                  type="button" className="scr-model-pause"
+                  aria-label={auto ? "멈춤" : "자동 회전"}
+                  onClick={() => setAuto((a) => !a)}
+                >
+                  {auto ? "❚❚" : "▶"}
+                </button>
+              </>
+            )}
           </div>
-          {builder ? (
-            <div className="scr-model-controls">
-              <button type="button" className="scr-btn scr-btn-sm" onClick={() => { setAuto(false); setYaw((y) => Math.round(y / 15) * 15 - 15); }}>⟲ 요잉 15°</button>
-              <button
-                type="button" className="scr-btn scr-btn-sm"
-                onClick={() => setAuto((a) => !a)}
-              >
-                {auto ? "❚❚ 멈춤" : "▶ 자동 회전"}
-              </button>
-              <button type="button" className="scr-btn scr-btn-sm" onClick={() => { setAuto(false); setYaw((y) => Math.round(y / 15) * 15 + 15); }}>요잉 15° ⟳</button>
-              <span className="scr-model-yaw">{Math.round(((yaw % 360) + 360) % 360)}°</span>
-            </div>
-          ) : (
-            <div className="scr-model-note">전투 갈래 기호는 2D 기호라 회전이 없어요.</div>
-          )}
         </div>
         <div className="scr-model-gallery">
           {SHAPE_GALLERY.map(({ kind: k, label }) => (

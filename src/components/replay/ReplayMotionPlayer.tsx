@@ -12,7 +12,7 @@ import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } f
 import {
   bodyFace, capFace, groundEllipse, sideFace, topFace, type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
-  domeFaces3, faceLight, facingRatio, frustumFaces3, hornFaces, limbFaces, tubeFaces,
+  domeFaces3, faceLight, facingRatio, frustumFaces3, hornFaces, limbFaces, pyramidFaces3, tubeFaces,
   wallDiscPath, wallFrame, withPitchView, withTopView, withViewShear, withYaw,
 } from "../../utils/shapeOblique";
 import type { MinimapMarker } from "./ReplayMinimap";
@@ -2023,9 +2023,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...boxFaces3(0, -3.5, 0.5, 1.4, 0.32, 1.6),
       ...boxFaces3(0, -4.3, 0.45, 0.45, 1.7),
       ...boxFaces3(0, -4.3, 0.9, 1, 0.28),
-      // 옆이 아니라 앞뒤로 긴 차체(정정).
-      ...boxFaces3(0, -0.3, 2.8, 4.8, 1.6, 1),
-      ...frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.6),
+      // 차체는 탱크 모드와 똑같이(지적: 시즈·보통 모드의 몸통이 달라) — 같은 상자.
+      ...boxFaces3(0, -0.2, 3.9, 5.6, 1.3, 1.2),
+      ...frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.5),
       bodyFace(barrelTop),
       topFace(barrelTop, 0.18),
       bodyFace(polyPath3([[0.7, 0.7, 4], [0.7, 2.9, 6.9], [0.7, 2.9, 6.5], [0.7, 0.7, 3.6]])),
@@ -2069,19 +2069,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     capFace(polyPath3([[-0.5, 0.95, 7.2], [0.5, 0.95, 7.2], [0.4, 1.05, 6.9], [-0.4, 1.05, 6.9]]), 0.4),
     ...hornFaces(-0.5, -0.6, 7.4, -0.8, -0.9, 8.4, 0.22),
   ],
-  /* 리버(복구) — 반지름이 비슷한 마디 돔 다섯을 촘촘히 겹친 매끈한 애벌레 + 앞 입. */
-  reaver: () => {
-    const [mx2, my2] = project(0, 3.6, 4);
-    return [
-      // 반원 아치 + 머리·꼬리로 갈수록 몸도 얇아진다(지적).
-      ...domeFaces3(0, -2.6, 0.65, 0.6, 3.4),
-      ...domeFaces3(0, -1.2, 1.4, 1.8, 3.4),
-      ...domeFaces3(0, 0.1, 1.68, 2.4, 3.4),
-      ...domeFaces3(0, 1.4, 1.4, 1.8, 3.4),
-      ...domeFaces3(0, 2.6, 0.65, 0.6, 3.4),
-      capFace(groundEllipse(mx2, my2, 0.55, 0.35), 0.4),
-    ];
-  },
+  /* 리버(복구) — 반지름이 비슷한 마디 돔 다섯을 촘촘히 겹친 매끈한 애벌레.
+     머리 앞에 띄우던 입 원반은 걷었다(지적: 머리쪽 검은 원이 떠 있음 — 몸에서 떨어져
+     보일 뿐 정보가 없다). */
+  reaver: () => [
+    // 반원 아치 + 머리·꼬리로 갈수록 몸도 얇아진다(지적).
+    ...domeFaces3(0, -2.6, 0.65, 0.6, 3.4),
+    ...domeFaces3(0, -1.2, 1.4, 1.8, 3.4),
+    ...domeFaces3(0, 0.1, 1.68, 2.4, 3.4),
+    ...domeFaces3(0, 1.4, 1.4, 1.8, 3.4),
+    ...domeFaces3(0, 2.6, 0.65, 0.6, 3.4),
+  ],
   /* 레이스(정정: 세모 아님) — 사각형들로 짠 몸: 상자 몸통 + 콕핏 상자 + 뒤로 젖힌
      사각 날개 두 장, 그리고 양 날개 끝마다 앞으로 뻗는 긴 포신 하나씩. */
   wraith: () => {
@@ -2818,8 +2816,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   hydra: () => {
     const hood = polyPath3([[0.5, 0.3, 7.1], [0.95, -1.5, 8.4], [0, -2.6, 8.7], [-0.95, -1.5, 8.4], [-0.5, 0.3, 7.1]]);
     return [
-      ...domeFaces3(0, -0.9, 1.9, 1.3, 3.2),
-      ...cylinderFaces3(0, 0, 1.05, 2.9, 3.9),
+      /* 바닥 원반을 꼬리로(지적: 바닥의 원을 굵은 꼬리처럼 몸에 이어 달라) — 몸기둥
+         밑에서 뒤로 갈수록 가늘어지며 땅에 끌리는 마디 꼬리 + 꼬리끝 뿔. */
+      ...domeFaces3(0, -0.8, 1.5, 1.1, 1.7),
+      ...domeFaces3(0, -2, 1.15, 0.9, 0.9),
+      ...domeFaces3(0, -3.1, 0.85, 0.7, 0.4),
+      ...domeFaces3(0, -4, 0.6, 0.5, 0.12),
+      ...hornFaces(0, -4.3, 0.6, 0, -5.3, 0.12, 0.3),
+      // 몸기둥도 꼬리 뿌리까지 내려 잇는다(같은 지적) — 예전엔 3.9에서 떠 시작했다.
+      ...cylinderFaces3(0, 0, 1.05, 5.3, 1.5),
       ...claw3(1, 0.85, 5),
       ...claw3(-1, 0.85, 5),
       ...domeFaces3(0, 0.2, 0.75, 0.6, 6.8),
@@ -3038,6 +3043,23 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(bodyFace(claw(-1)), topFace(claw(-1), 0.14));
     return out;
   },
+  /* 미네랄(요청: 자원 모델링) — 기운 크기 다른 결정 무더기 셋. 색은 그리는 쪽이
+     하늘색을 넣는다(팀색과 무관한 지물). */
+  mineral: () => [
+    ...pyramidFaces3(-2.3, -0.7, 2.8, 2.2, 3),
+    ...pyramidFaces3(0.5, 0.9, 3.6, 2.8, 4.6),
+    ...pyramidFaces3(3, -1, 2.2, 1.8, 2.3),
+    // 큰 결정의 왼 능선 반짝.
+    topFace(polyPath3([[0.5, 0.9, 4.6], [-0.7, 0.4, 0.2], [0.1, 1.6, 0.2]]), 0.3),
+  ],
+  /* 가스 간헐천(요청) — 낮은 언덕 위 분화구 단과 어두운 구멍, 위로 김 두 뭉치. */
+  geyser: () => [
+    ...domeFaces3(0, 0, 4.4, 1.5),
+    ...frustumFaces3(0, 0.2, 3.6, 2.9, 2.3, 1.9, 1.5, 1.3),
+    capFace(groundEllipse(...project(0, 0.2, 2.85), 1.5, 0.7), 0.5),
+    topFace(groundEllipse(...project(0.4, -0.2, 3.7), 0.85, 0.5), 0.22),
+    topFace(groundEllipse(...project(-0.3, 0.4, 4.6), 0.6, 0.38), 0.16),
+  ],
 };
 
 
@@ -3132,6 +3154,7 @@ export const SHAPE_GALLERY: { kind: string; label: string }[] = (() => {
     ["muta", "뮤탈리스크"], ["guardian", "가디언"], ["devourer", "디바우러"], ["scourge", "스커지"],
     ["queen", "퀸"], ["corsair", "커세어"], ["scout", "스카웃"], ["carrier", "캐리어"],
     ["arbiter", "아비터"], ["observer", "옵저버"],
+    ["mineral", "미네랄"], ["geyser", "가스 간헐천"],
   ] as [string, string][]) {
     if (!seen.has(kind)) { seen.add(kind); out.push({ kind, label }); }
   }
@@ -5294,6 +5317,29 @@ export default function ReplayMotionPlayer({
         {/* 채굴 일꾼(요청, 지적: 방향 반대) — 자원 지대마다, 그 시점에 서 있는 가장
             가까운 본진 건물(시작 본진·확장 포함)을 찾아 그리로 오간다. 가까운 홀이 없는
             자원(아직 안 편 멀티)은 비워 둔다. */}
+        {/* 자원 지물(요청: 미네랄·가스 모델링해서 맵에 배치) — 지대마다 가스 깃발이면
+            간헐천, 아니면 미네랄 결정 무더기. 팀색과 무관한 고정 색이고, 건물(1000+)
+            아래 층에 깔린다. */}
+        {(grid.resources ?? []).map((res, ri) => {
+          const gasSpot = res[2] === 1
+            || gasBuildings.some((g) => Math.hypot(g.x - res[0], g.y - res[1]) <= 6);
+          const mkK = pitchK(res[1]);
+          const [fx, fy] = posFrac(res[0], res[1]);
+          const wTiles = gasSpot ? 3.6 : 3.2;
+          unitOps.push({
+            fx, fy,
+            z: pitched ? 990 + Math.round(res[1] * 80) : 900 + ri,
+            kind: gasSpot ? "geyser" : "mineral",
+            viewYaw: viewYawOf(res[0], res[1]), flat: !pitched, pitch: pitched,
+            sizePx: 0,
+            wFrac: (wTiles / grid.width) * mkK,
+            hFrac: ((wTiles * 0.75) / grid.width) * mkK,
+            boxFit: "meet", fitWidth: true,
+            color: gasSpot ? "#93b06f" : "#8fb9e8",
+            alpha: 1, noShadow: true,
+          });
+          return null;
+        })}
         {(grid.resources ?? []).flatMap((res, ri) => {
           let owner: { x: number; y: number; raw: string } | null = null;
           let best = 18;
