@@ -2306,11 +2306,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(polyPath3([[0, 2.1, 5.9], [-1.6, 1, 5.95], [-1.1, -0.3, 5.9], [0, 0.3, 5.92]]), 0.18),
       sideFace(polyPath3([[0, 2.1, 5.9], [1.6, 1, 5.95], [2, -0.7, 5.85], [0.85, -0.15, 5.9]]), 0.18),
       /* 양팔(재지적: 포신보다 완만하게 휜 가시 느낌) — 밖으로 벌었다가 앞으로 모이는
-         두 마디 곡선 가시. 아래 꼬리 포드는 걷었다(지적: 아래쪽 포신 제거). */
+         두 마디 곡선 가시. */
       ...hornFaces(1.5, -0.6, 5.9, 2.5, 1.3, 5.7, 0.6),
       ...hornFaces(2.5, 1.3, 5.7, 2.1, 3.3, 5.5, 0.36),
       ...hornFaces(-1.5, -0.6, 5.9, -2.5, 1.3, 5.7, 0.6),
       ...hornFaces(-2.5, 1.3, 5.7, -2.1, 3.3, 5.5, 0.36),
+      /* 하단 팔 하나(재재지적: 위로 휘기가 아니라 아래에 팔 추가) — 몸 밑에서 앞으로
+         뻗다 끝이 팔처럼 위로 말린다. */
+      ...hornFaces(0, -0.4, 5.3, 0, 1.7, 5.05, 0.5),
+      ...hornFaces(0, 1.7, 5.05, 0, 3.3, 5.75, 0.3),
       // 콕핏 혹.
       ...domeFaces3(0, 0.4, 0.7, 0.55, 6.05),
       // 뒤 발광 엔진 둘.
@@ -2351,16 +2355,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ] as [number, number, number];
       }),
     );
+    /* 볼륨감(재정정: 돔을 얹는 게 아니라 꽃잎 자체가 가운데 두툼한 렌즈꼴) — 잎마다
+       가운데를 향해 줄인 볼록판을 한 단 띄워 겹치면, 가장자리는 얇고 중심이 부푼
+       렌즈로 읽힌다. */
     return [
       bodyFace(petal(-1.3, -1, 5.1, 1.05, 3.9)),
       topFace(petal(-1.3, -1, 5.1, 1.05, 3.9), 0.16),
+      topFace(petal(-1.3, -1, 5.5, 0.62, 2.3), 0.14),
       bodyFace(petal(1.3, 1, 5.1, 1.05, 3.9)),
       sideFace(petal(1.3, 1, 5.1, 1.05, 3.9), 0.18),
+      topFace(petal(1.3, 1, 5.5, 0.62, 2.3), 0.08),
       bodyFace(petal(0, 0, 6.5, 1.05, 4.1)),
       topFace(petal(0, 0, 6.5, 1.05, 4.1), 0.1),
-      // 볼륨감(지적: 살짝) — 위 꽃잎 가운데 등마루 돔과 앞 뭉툭한 함수.
-      ...domeFaces3(0, 0.4, 0.8, 0.55, 6.85),
-      ...domeFaces3(0, 2.6, 0.55, 0.4, 6.3),
+      topFace(petal(0, 0, 6.95, 0.62, 2.4), 0.15),
     ];
   },
   /* 아비터(재정정: 날개는 지면과 수직으로 몸에 붙고, 특히 앞쪽에 두께감) — 수평으로
@@ -2368,22 +2375,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      잇는 얇은 방패 날개가 몸통 옆구리에 선다. */
   arbiter: () => {
     const wing = (m2: 1 | -1): ShapeFace[] => {
-      // 몸에 바짝(재보정: 첫 판은 몸과 떠 보였다) + 더 얇게 — 칼날 방패 느낌.
+      // 몸에 바짝(재보정: 첫 판은 몸과 떠 보였다) + 더 얇게.
       const xi = m2 * 1.05;
       const xo = m2 * 1.55;
-      // 날개 옆모습 (y, z) — 앞이 도톰하고 뒤로 길게 빠진다.
+      /* 날개 옆모습 (y, z) — 물고기 몸통꼴(재재정정): 앞이 뾰족한 코, 가운데가 불룩한
+         등·배, 뒤로 길게 빠져 꼬리 끝점으로 모인다. */
       const prof: [number, number][] = [
-        [2.2, 5.9], [1.2, 6.65], [-1.2, 6.75], [-3.2, 5.95], [-1.4, 5.25], [1.2, 5.2],
+        [2.6, 6], [1.2, 6.7], [-0.6, 6.78], [-2.3, 6.35], [-3.5, 6],
+        [-2.3, 5.65], [-0.6, 5.22], [1.2, 5.3],
       ];
       const at = (x: number): string => polyPath3(
         prof.map(([y, z]) => [x, y, z] as [number, number, number]));
       const o: ShapeFace[] = [bodyFace(at(xi))];
-      // 두께 띠 — 앞변 둘(도톰)·윗변 하나.
+      // 두께 띠 — 코 아래·코 위·등 앞쪽(앞이 도톰하다는 지적 그대로).
       const band = (i: number, j: number): string => polyPath3([
         [xi, prof[i][0], prof[i][1]], [xo, prof[i][0], prof[i][1]],
         [xo, prof[j][0], prof[j][1]], [xi, prof[j][0], prof[j][1]],
       ]);
-      o.push(bodyFace(band(5, 0)), sideFace(band(5, 0), 0.2));
+      o.push(bodyFace(band(7, 0)), sideFace(band(7, 0), 0.2));
       o.push(bodyFace(band(0, 1)), topFace(band(0, 1), 0.2));
       o.push(bodyFace(band(1, 2)), topFace(band(1, 2), 0.12));
       o.push(bodyFace(at(xo)));
@@ -2953,13 +2962,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       legs.push(seg(lx, lyy, 2.8, kneeX, lyy, 0.4, 0.55));
       legs.push(seg(kneeX, lyy, 0.4, lx * 1.15 + (lx === 0.2 ? 0.4 : 0), lyy, -2.6, 0.42));
     }
-    /* 눈은 납작한 반구(재지적: 구가 아니라) — 요잉을 타는 모델 좌표 낮은 돔 한 쌍. */
+    /* 눈은 양옆에(재재지적: 아래를 보고 있었다) — 바닥 돔이 아니라 풍선 옆구리에
+       반쯤 겹쳐 붙는 납작한 혹 한 쌍. 몸이 안쪽 반을 가려 바깥으로 볼록한 반구로
+       읽히고, 모델 좌표라 요잉을 따라 돌아 나간다. */
+    const [b1x, b1y] = project(-3.3, 0.7, 4.9);
+    const [b2x, b2y] = project(3.3, 0.7, 4.9);
     return [
       bodyFace(legs.join(" ")),
-      // 머리 축소(지적) + 눈은 앞쪽으로 모은다.
+      bodyFace(groundEllipse(b1x, b1y, 0.95, 0.8)),
+      topFace(groundEllipse(b1x - 0.25, b1y - 0.2, 0.4, 0.3), 0.3),
+      bodyFace(groundEllipse(b2x, b2y, 0.95, 0.8)),
+      sideFace(groundEllipse(b2x, b2y, 0.95, 0.8), 0.18),
+      // 머리 축소(지적) + 몸이 옆 혹의 안쪽 반을 덮는다.
       bodyFace(groundEllipse(cx, cy, 3.6, 3.4)),
-      ...domeFaces3(-2.1, 1.9, 1.15, 0.5, 3.9),
-      ...domeFaces3(2.1, 1.9, 1.15, 0.5, 3.9),
       sideFace(`M${cx + 1.4} ${cy - 3.4} Q${cx + 4.4} ${cy - 1.6} ${cx + 3.4} ${cy + 2.4} Q${cx + 3.9} ${cy - 1} ${cx + 1.4} ${cy - 3.4} Z`, 0.22),
       topFace(groundEllipse(cx - 1.2, cy - 2.2, 1.8, 1.1), 0.35),
     ];
@@ -3077,17 +3092,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...pillar(2.8, -1, 1.7, 1.8),
     ];
   },
-  /* 가스 간헐천(재정정: 분출구 하나 더 + 살짝 작게) — 언덕 위 큰 분화구와 작은
-     분화구, 각자 어두운 구멍과 김. */
+  /* 가스 간헐천(재재정정: 전체 크기는 원래대로, 두 번째 분화구만 작게) — 언덕 위
+     큰 분화구와 작은 분화구, 각자 어두운 구멍과 김. */
   geyser: () => [
-    ...domeFaces3(0, 0, 3.9, 1.35),
-    ...frustumFaces3(-0.7, 0.4, 3, 2.5, 1.9, 1.6, 1.35, 1.05),
-    capFace(groundEllipse(...project(-0.7, 0.4, 2.45), 1.2, 0.58), 0.5),
-    ...frustumFaces3(1.9, -1.2, 1.7, 1.5, 1.1, 0.95, 1, 0.9),
-    capFace(groundEllipse(...project(1.9, -1.2, 1.95), 0.62, 0.32), 0.5),
-    topFace(groundEllipse(...project(-0.4, 0.7, 3.2), 0.75, 0.45), 0.22),
-    topFace(groundEllipse(...project(1.6, -0.9, 2.8), 0.48, 0.3), 0.18),
-    topFace(groundEllipse(...project(-0.9, 0.3, 4), 0.5, 0.32), 0.15),
+    ...domeFaces3(0, 0, 4.4, 1.5),
+    ...frustumFaces3(-0.7, 0.4, 3.4, 2.8, 2.2, 1.8, 1.5, 1.2),
+    capFace(groundEllipse(...project(-0.7, 0.4, 2.75), 1.4, 0.68), 0.5),
+    ...frustumFaces3(2.2, -1.3, 1.5, 1.3, 0.95, 0.8, 0.9, 1.05),
+    capFace(groundEllipse(...project(2.2, -1.3, 2), 0.52, 0.27), 0.5),
+    topFace(groundEllipse(...project(-0.4, 0.7, 3.5), 0.85, 0.5), 0.22),
+    topFace(groundEllipse(...project(1.9, -1, 2.8), 0.42, 0.26), 0.18),
+    topFace(groundEllipse(...project(-0.9, 0.3, 4.4), 0.55, 0.35), 0.15),
   ],
 };
 
@@ -5354,8 +5369,7 @@ export default function ReplayMotionPlayer({
             || gasBuildings.some((g) => Math.hypot(g.x - res[0], g.y - res[1]) <= 6);
           const mkK = pitchK(res[1]);
           const [fx, fy] = posFrac(res[0], res[1]);
-          // 가스는 살짝 작게(재지적).
-          const wTiles = gasSpot ? 3.2 : 3.2;
+          const wTiles = gasSpot ? 3.6 : 3.2;
           unitOps.push({
             fx, fy,
             z: pitched ? 990 + Math.round(res[1] * 80) : 900 + ri,
