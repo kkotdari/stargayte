@@ -5389,26 +5389,43 @@ export default function ReplayMotionPlayer({
           )];
         })}
 
-        {/* 건설 중 SCV 맴돌기(요청) — 테란 건물이 올라가는 동안 SCV 한 기가 발자국
-            둘레를 돈다(저그는 변태·프로토스는 소환이라 해당 없음). */}
+        {/* 건설 SCV(정정: 빙빙이 아니라) — 건물 둘레 네 자리를 "이동→정지(작업)→이동"
+            으로 옮겨 다닌다. 걷는 동안은 진행 방향, 멈추면 건물 쪽을 본다. */}
         {motion.builds.map(([sec, bx3, by3, unit, raw], i) => {
           if (sec <= 0 || t < sec || t - sec >= (BUILD_SEC[unit] ?? 30)) return null;
           if (ADDONS.has(unit)) return null;
           const race2 = bases.find((b) => b.key === raw)?.race;
           if (race2 !== "테란") return null;
           const [fw2, fh2] = FOOTPRINT[unit] ?? [3, 2];
-          const ang = (t - sec) * 1.1 + i;
+          const cx0 = bx3 + footDx(unit);
+          const cy0 = by3 + footDy(unit);
+          const spots: [number, number][] = [
+            [fw2 / 2 + 0.9, 0], [0, fh2 / 2 + 0.8], [-(fw2 / 2 + 0.9), 0], [0, -(fh2 / 2 + 0.8)],
+          ];
+          const LEG = 3;
+          const k = (t - sec) / LEG + i * 0.7;
+          const idx = ((Math.floor(k) % 4) + 4) % 4;
+          const f = k - Math.floor(k);
+          const walkF = Math.min(1, f / 0.35);
+          const [x1, y1] = spots[idx];
+          const [x2, y2] = spots[(idx + 1) % 4];
+          const sx2 = x1 + (x2 - x1) * walkF;
+          const sy2 = y1 + (y2 - y1) * walkF;
+          // 걷는 중엔 진행 방향, 멈추면 건물(안쪽)을 본다.
+          const hdg2 = walkF < 1
+            ? (Math.atan2(-(x2 - x1), y2 - y1) * 180) / Math.PI
+            : (Math.atan2(sx2, -sy2) * 180) / Math.PI;
           return (
             <span
               key={`scv-${i}`}
               className="scr-motion-fresh"
               style={{
-                left: pct(bx3 + footDx(unit) + Math.cos(ang) * (fw2 / 2 + 0.9), grid.width),
-                top: pct(by3 + footDy(unit) + Math.sin(ang) * (fh2 / 2 + 0.7), grid.height),
+                left: pct(cx0 + sx2, grid.width),
+                top: pct(cy0 + sy2, grid.height),
                 ...glyphStyle(raw, teamOfRaw(raw)),
               }}
             >
-              <ShapeIcon kind="scv" rotDeg={(ang * 180) / Math.PI} flat={!pitched} className="scr-motion-troop" />
+              <ShapeIcon kind="scv" rotDeg={hdg2} flat={!pitched} className="scr-motion-troop" />
             </span>
           );
         })}
