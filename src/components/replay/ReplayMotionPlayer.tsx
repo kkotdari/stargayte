@@ -779,16 +779,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(plateau, 0.22),
     ];
     // (삭제·지적) 검은 뿔·안테나 가지들 — 이상한 뒷가지로 읽혀 걷어냈다.
-    // 중앙 돛 — 위로 뾰족하게 굽는 황금 판.
-    const sail = `M${pt(-2.9, 0.2, 0.7)} Q${pt(-3.7, 0.2, 5.6)} ${pt(-0.4, 0, 10)}`
-      + ` Q${pt(0.5, -0.1, 11.2)} ${pt(1, -0.1, 9.5)}`
-      + ` Q${pt(3.5, -0.2, 5)} ${pt(2.8, -0.2, 0.7)} Z`;
-    out.push(bodyFace(sail));
-    out.push(sideFace(`M${pt(1, -0.1, 9.5)} Q${pt(3.5, -0.2, 5)} ${pt(2.8, -0.2, 0.7)} L${pt(1.6, -0.2, 0.7)} Q${pt(2.3, -0.2, 5)} ${pt(0.4, -0.1, 8.6)} Z`, 0.22));
-    // 소환창 — 어두운 테 + 빛나는 속.
-    const [wx, wy] = project(-0.2, 0.1, 4.9);
-    out.push(capFace(groundEllipse(wx, wy, 1.5, 2.3), 0.4));
-    out.push(topFace(groundEllipse(wx, wy, 1.05, 1.8), 0.5));
+    // 실물 점검(스프라이트 시트) — 게이트는 돛 하나가 아니라 마주 기운 어금니 탑
+    // 한 쌍이 사이를 띄우고 문을 이룬다. 사이엔 소환 빛.
+    const [wx, wy] = project(0, 0.1, 3.6);
+    out.push(topFace(groundEllipse(wx, wy, 1.45, 2), 0.4));
+    out.push(...hornFaces(-2.7, 0, 0.8, -1, -0.3, 9.6, 2.3));
+    out.push(...hornFaces(2.7, 0, 0.8, 1, -0.3, 9.6, 2.3));
     return out;
   },
   /* 스타게이트(다시 다섯, 지적: 전판 폐기) — 세운 원통을 세로로 반 갈라 두 쪽을 사이
@@ -1214,6 +1210,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 시타델 오브 아둔 — 좁아지는 탑 + 꼭대기 뾰족. */
   citadel: () => [
     ...frustumFaces3(0, 0, 6.6, 5.4, 3, 2.4, 5.4),
+    // 옆 날개 비탈(실물 점검) — 좌우로 흘러내리는 낮은 지느러미.
+    ...hornFaces(-2.8, 0, 3, -4.6, 0.6, 0.7, 1.5),
+    ...hornFaces(2.8, 0, 3, 4.6, 0.6, 0.7, 1.5),
     ...hornFaces(0, 0, 5.2, 0, 0, 8.6, 1.4),
   ],
   /* 템플러 아카이브 — 넓은 대 + 돔 + 떠 있는 보석. */
@@ -1287,16 +1286,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(groundEllipse(gx2 - 0.85, gy2 - 1.5, 1, 0.9), 0.5),
     ];
   },
-  /* 아비터 트리뷰널 — 넓은 돔 + 세 가시 + 빛점. */
+  /* 아비터 트리뷰널(실물 점검) — 넓은 돔 위에 큰 구슬이 얹히고 옆에 작은 포드 둘. */
   tribunal: () => {
-    const [gx2, gy2] = project(0, 0, 5.9);
+    const [gx2, gy2] = project(0, 0, 6.4);
     return [
       ...cylinderFaces3(0, 0, 4.4, 1.4),
-      ...domeFaces3(0, 0, 3.6, 3.2, 1.4),
-      ...hornFaces(-3.4, -1.6, 1.4, -4.2, -2.1, 4.6, 0.8),
-      ...hornFaces(3.4, -1.6, 1.4, 4.2, -2.1, 4.6, 0.8),
-      ...hornFaces(0, 3.6, 1.4, 0, 4.6, 4.2, 0.8),
-      topFace(groundEllipse(gx2, gy2, 0.8, 0.5), 0.4),
+      ...domeFaces3(0, 0, 3.6, 3, 1.4),
+      [groundEllipse(gx2, gy2, 1.9, 1.8), 0.6] as ShapeFace,
+      topFace(groundEllipse(gx2 - 0.6, gy2 - 0.6, 0.7, 0.6), 0.5),
+      ...domeFaces3(-3.3, 1.6, 1.1, 0.9, 1.1),
+      ...domeFaces3(3.3, 1.6, 1.1, 0.9, 1.1),
     ];
   },
   /* 실드 배터리(정정) — 작은 본체를 가지 같은 다리들이 빙 두른 형태. */
