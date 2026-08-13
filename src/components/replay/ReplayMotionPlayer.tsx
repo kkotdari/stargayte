@@ -811,17 +811,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 레어 — 해처리 + 다리 끝 굽은 뿔 셋. */
   lair: () => [
     ...SHAPE_BUILDERS.hatchery(),
-    ...hornFaces(-4.6, -2.6, 1.2, -5.8, -1.2, 10.4, 1.7),
-    ...hornFaces(0.4, -5.4, 1.2, 1.4, -4, 9, 1.5),
-    ...hornFaces(5.2, 1.4, 1.4, 6.6, 3, 11, 1.9),
+    // 뿔 뿌리는 다리 동굴 입구(바깥, 지적)에서 솟는다.
+    ...hornFaces(-5.6, -3.2, 0.9, -6.6, -1.6, 10.4, 1.7),
+    ...hornFaces(0.5, -6.4, 0.9, 1.5, -4.9, 9, 1.5),
+    ...hornFaces(6.2, 1.7, 1, 7.4, 3.3, 11, 1.9),
   ],
   /* 하이브 — 더 길고 굵은 뿔 셋(뿔 등에 가시들, 요청) + 앞 컬. */
   hive: () => {
     const out: ShapeFace[] = [...SHAPE_BUILDERS.hatchery()];
+    // 뿔 뿌리는 다리 동굴 입구(바깥, 지적)에서.
     const horns: [number, number, number, number, number, number, number][] = [
-      [-4.6, -2.6, 1.2, -6.4, -0.8, 13, 2.1],
-      [0.4, -5.4, 1.2, 1.8, -3.6, 11.6, 1.9],
-      [5.2, 1.4, 1.4, 7.2, 3.6, 14, 2.3],
+      [-5.6, -3.2, 0.9, -7.2, -1.2, 13, 2.1],
+      [0.5, -6.4, 0.9, 1.9, -4.5, 11.6, 1.9],
+      [6.2, 1.7, 1, 8, 3.8, 14, 2.3],
     ];
     for (const [bx, by, bz, tx, ty, tz, w] of horns) {
       out.push(...hornFaces(bx, by, bz, tx, ty, tz, w));
