@@ -844,51 +844,54 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...hornFaces(2.7, 0, 0.8, 1, -0.3, 9.6, 2.3));
     return out;
   },
-  /* 스타게이트(재재정정, 설명: 잎은 긴 육각형에 가깝고, 길게 서서 빙 한 바퀴 두른
-     꼴이 앞으로 누워 구멍이 앞뒤를 향한다) — 앞뒤 축을 두른 원통 관문: 긴 육각형
-     잎날 넷이 축을 따라 길게 눕고(위·아래·왼·오), 저마다 넓은 배 면을 축 가운데로
-     향해 서로 마주본다. 구멍(관문)은 앞뒤로 뚫려 있다. 각 잎의 안쪽 면엔 밝은 발광
-     잎. 판·받침은 없다(요청). */
+  /* 스타게이트(재정정, 힌트: 잎의 '넓은 면'들이 배를 서로 마주본다 — 꼭지점·모서리가
+     아니라) — 관문 축(앞뒤 방향)을 둘러싼 통꽃: 나뭇잎 잎날 넷이 위·아래·왼·오른쪽에
+     서서 저마다 넓은 배 면을 축 가운데로 향한다. 잎 길이는 앞뒤로 뻗고, 가운데가 축
+     쪽으로 살짝 다가오는 휨이라 배(볼록면)가 서로를 본다. 각 잎의 안쪽 면엔 밝은 발광
+     잎. 판·받침은 없다(요청).
+     육각·관·나팔 시도들 뒤 이 판으로 원복(요청: 처음에 보여준 게 제일 맞다). */
   arch: () => {
-    // 그림자는 옅고 아담하게 — 관문이 떠 있는 자리만 알리면 된다.
+    // 그림자는 옅고 아담하게 — 봉오리가 떠 있는 자리만 알리면 된다.
     const out: ShapeFace[] = [sideFace(discPath3(0, 0.2, 0, 3.4), 0.16)];
     const C = 5; // 관문 축 높이
-    const R = 2.7; // 축에서 잎 배까지 반지름
-    /* 잎 하나 — 축 둘레 각 phi(0=위) 자리, 길이는 앞뒤(y·축 방향), 폭은 접선 방향,
-       배 면은 축을 본다. 윤곽은 긴 육각형: 양 끝 꼭지 + 나란한 중간 변. */
-    const leaf = (phi: number, rr: number, ll: number, ww: number): string => {
+    const R = 2.9; // 축에서 잎 배까지 반지름
+    /* 잎 하나 — 축 둘레 각 phi(0=위) 자리, 길이는 고리 접선 방향. tilt만큼 관문 평면
+       에서 안쪽으로 기울어(반쯤 벌어진 봉오리) 넓은 배 면이 축 가운데와 시청자 쪽을
+       함께 본다 — 완전히 눕히면(관 모양) 정면에서 모로 서 안 보이던 것의 절충이다.
+       바깥 가장자리는 뒤로 눕고 안 가장자리가 시청자 쪽으로 나온다. */
+    const leaf = (
+      phi: number, rr: number, ll: number, ww: number, dy: number,
+    ): string => {
       const rx = Math.sin(phi); // 축에서 바깥 방향(x·z 평면)
       const rz = Math.cos(phi);
       const tx = Math.cos(phi); // 접선 방향
       const tz = -Math.sin(phi);
-      // 긴 육각형 여섯 꼭짓점 — (앞뒤 위치, 접선 반폭). 0.5부터 변이 나란하다.
-      const HEX: [number, number][] = [
-        [-1, 0], [-0.5, 1], [0.5, 1], [1, 0], [0.5, -1], [-0.5, -1],
-      ];
-      /* 앞벌림(나팔) — 곧은 관은 정면에서 좌우 잎이 모로 서 통이 안 읽혔다. 앞쪽
-         반지름을 벌려 구멍 속으로 네 잎의 안쪽 면이 다 들여다보인다. */
-      /* 앞들림 — 우리 카메라는 높은 부감이라, 수평으로 누운 관은 구멍이 안 보인다.
-         원작 스프라이트처럼 관 앞을 35도쯤 들어 구멍이 앞-위를 향하게 한다. */
-      const TIP = 0.95;
-      const ctp = Math.cos(TIP);
-      const stp = Math.sin(TIP);
-      return polyPath3(HEX.map(([a, w]) => {
-        const rad = rr + 0.9 * a;
-        const px = rx * rad + tx * (w * ww);
-        const py = a * ll;
-        const pz = rz * rad + tz * (w * ww);
-        return [px, py * ctp - pz * stp, C + pz * ctp + py * stp] as [number, number, number];
-      }));
+      const ct = Math.cos(0.92); // 기울기 ≈ 53도
+      const st = Math.sin(0.92);
+      const N = 9;
+      const A: [number, number, number][] = [];
+      const B: [number, number, number][] = [];
+      for (let i = 0; i <= N; i += 1) {
+        const t2 = i / N;
+        const al = (t2 * 2 - 1) * ll;
+        const hw = ww * Math.sin(Math.PI * t2) ** 0.75; // 양 끝이 뾰족한 잎 폭
+        const bow = 0.35 * Math.sin(Math.PI * t2); // 가운데가 축으로 살짝 다가온다
+        for (const [list, sign] of [[A, 1], [B, -1]] as [typeof A, 1 | -1][]) {
+          const rad = rr - bow + sign * hw * ct;
+          list.push([rx * rad + tx * al, -sign * hw * st + dy, C + rz * rad + tz * al]);
+        }
+      }
+      return polyPath3([...A, ...B.reverse()]);
     };
     const PHIS = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
     for (const phi of PHIS) {
-      const d = leaf(phi, R, 2.7, 1.18);
+      const d = leaf(phi, R, 2, 1.15, 0);
       out.push(bodyFace(d));
       if (Math.cos(phi) > 0.5) out.push(topFace(d, 0.18)); // 위 잎 등이 빛을 받고
       else if (Math.cos(phi) < -0.5) out.push(sideFace(d, 0.24)); // 아래 잎은 어둡다
       else if (Math.sin(phi) > 0.5) out.push(sideFace(d, 0.12)); // 오른 잎은 옅은 그늘
-      // 잎 안쪽(배) 발광 — 축을 보는 면에 밝은 작은 육각 잎.
-      out.push(topFace(leaf(phi, R - 0.18, 1.7, 0.66), 0.5));
+      // 잎 안쪽(배) 발광 — 시청자 쪽 면 위에 밝은 작은 잎.
+      out.push(topFace(leaf(phi, R - 0.12, 1.25, 0.62, 0.14), 0.5));
     }
     return out;
   },
@@ -3966,8 +3969,8 @@ export default function ReplayMotionPlayer({
       const r = el.getBoundingClientRect();
       const ox = r.left + r.width / 2;
       const oy = r.top + r.height / 2;
-      // 상한 5 → 12(요청: 모바일 확대 허용치 크게) — 좁은 화면에선 더 깊이 들어가야 보인다.
-      const z = Math.min(12, Math.max(1, (pinch.z * dist(e.touches)) / pinch.d));
+      // 상한 12 → 20(재요청: 더 높게) — 그 위는 선명도가 배킹 한계(4096px)에 막혀 무의미하다.
+      const z = Math.min(20, Math.max(1, (pinch.z * dist(e.touches)) / pinch.d));
       const mx2 = (e.touches[0].clientX + e.touches[1].clientX) / 2;
       const my2 = (e.touches[0].clientY + e.touches[1].clientY) / 2;
       // 핀치 시작점 아래의 지도 지점이 손가락을 따라오도록 pan을 푼다.
@@ -4075,14 +4078,16 @@ export default function ReplayMotionPlayer({
     return [px, py];
   };
   /* 유닛 방향(지적: 멈추면 정면으로 돌아가 어색) — 조금 전이 아니라 '마지막으로 움직인'
-     방향을 문다: 0.8초 전부터 점점 멀리(최대 15초) 되짚어 처음 잡히는 변위의 방향이다. */
+     방향을 문다: 가까운 창부터 점점 멀리(최대 15초) 되짚어 처음 잡히는 변위의 방향이다.
+     첫 창을 0.3초로 좁혔다(지적: 가끔 옆을 보고 걷는 듯) — 0.8초 창은 모퉁이를 돈 직후
+     두 구간에 걸친 평균 방향(대각선)을 물어, 꺾고 나서도 한동안 비껴 보였다. */
   const headingOf = (walk: TrackPt[], pos: { x: number; y: number }): number => {
-    for (const back of [0.8, 2, 4, 8, 15]) {
+    for (const back of [0.3, 0.8, 2, 4, 8, 15]) {
       const hp = posAt(walk, Math.max(0, t - back), null);
       if (!hp) break;
       const dx = pos.x - hp.x;
       const dy = pos.y - hp.y;
-      if (Math.hypot(dx, dy) > 0.1) return (Math.atan2(-dx, dy) * 180) / Math.PI;
+      if (Math.hypot(dx, dy) > 0.08) return (Math.atan2(-dx, dy) * 180) / Math.PI;
     }
     return 0;
   };
@@ -5854,9 +5859,14 @@ export default function ReplayMotionPlayer({
                 : 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
               kind, rotDeg: hdg, viewYaw: viewYawOf(pos.x, pos.y),
               flat: !pitched, pitch: pitched,
+              /* 보병 정찰은 부대 도형과 같은 눈금(지적: 같은 유닛이 더 크게 나올 때가
+                 있다) — dot 눈금(17px)은 수송선용이라, 보병 정찰이 부대의 소형 보병
+                 (8px)보다 두 배로 컸다. 수송선·오버로드만 큰 dot 눈금을 쓴다. */
               sizePx: g.kind === "worker"
                 ? dotGlyphPx("scout", 1.15, ay3)
-                : dotGlyphPx("dot", isOvie || g.kind === "carrier" ? 1.7 : 1.15, ay3),
+                : isOvie || g.kind === "carrier"
+                  ? dotGlyphPx("dot", 1.7, ay3)
+                  : unitGlyphPx(0, ay3),
               color: modeColor(p.raw, team),
               alpha: 0.82,
             });
