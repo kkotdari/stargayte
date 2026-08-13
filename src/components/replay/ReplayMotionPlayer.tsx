@@ -1844,12 +1844,6 @@ export default function ReplayMotionPlayer({
   const teamCol = (team: 1 | 2) => (
     <div className="scr-motion-teamcol">
       {bases.filter((m) => (m.team === 2 ? 2 : 1) === team).map((m) => {
-        const track = motion.players.find((p) => p.raw === m.key);
-        let workerN = 0;
-        for (const [sec, n] of track?.workers ?? []) {
-          if (sec > t) break;
-          workerN = n;
-        }
         const fallen = m.ghost || fallenHome(m);
         const color = modeColor(m.key, m.team);
         return (
@@ -1862,12 +1856,6 @@ export default function ReplayMotionPlayer({
             </span>
             <span className="scr-motion-teamcol-text">
               <span className="scr-motion-teamcol-name" style={chipStyle(m.key, m.team)}>{m.name}</span>
-              <span
-                className="scr-motion-workers"
-                style={workerN > 0 ? undefined : { visibility: "hidden" }}
-              >
-                일꾼 {workerN || 0}
-              </span>
             </span>
             {winnerTeam && (m.team === 2 ? 2 : 1) === winnerTeam && t >= total - 0.5 && !fallen && (
               <span className="scr-motion-trophy">🏆</span>
