@@ -3762,7 +3762,9 @@ export default function ReplayMotionPlayer({
     const u = (x / grid.width - 0.5) * w;
     const v = (y / grid.height - 0.5) * h;
     const k = (q * PITCH_P) / (PITCH_P - v * S);
-    return (-Math.atan2(u * k, PITCH_P) * 180) / Math.PI;
+    /* 부호(지적: 우측은 맞는데 좌측이 잘못) — 마커는 화면 가운데를 향한 옆면을 보여야
+       한다. 왼쪽 마커는 음(제 오른옆이 보임), 오른쪽 마커는 양. */
+    return (Math.atan2(u * k, PITCH_P) * 180) / Math.PI;
   };
   const depthMk = (y: number): React.CSSProperties =>
     (pitched ? { "--mk": pitchK(y).toFixed(3) } as React.CSSProperties : {});

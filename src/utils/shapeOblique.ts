@@ -322,7 +322,8 @@ export function limbFaces(
     [rootX - nx, rootY - ny, 0],
   ]);
   const faces: ShapeFace[] = [bodyFace(body)];
-  const beta = Math.abs(angleDeg + VIEW.yawDeg);
+  // 단면 보임도 지금 유효한 요잉으로(수리: 기본 시점 고정이라 좌우로 굽힐 때 비대칭).
+  const beta = Math.abs(angleDeg + currentYaw());
   if (capOpen && beta < 100) {
     // 단면 반원 — 앞이면 꽉 차게, 옆이면 작게(capScaleOf와 같은 눈금).
     const scale = beta < 55 ? 1 : 0.6;
