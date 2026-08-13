@@ -9149,6 +9149,9 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
   height: 100dvh; max-height: none;
   border-radius: 0;
 }
+/* 전체화면 상세에선 유리판의 위쪽 반사광(inset 1px)이 화면 꼭대기에 뜬 구분선처럼
+   읽힌다(지적: 게임 상세 모바일 위쪽 구분선) — 떠 있는 창일 때나 어울리는 장식이라 걷는다. */
+.scr-activity-detail-full::before { box-shadow: none; }
 .scr-activity-detail-body { padding-top: var(--scr-detail-head-h); }
 /* 경기 케밥만 기준면이 다르다 — 카드가 아니라 그 안의 경기 한 판(.scr-game-result-trow)에
    매달려 있어서, 같은 값을 줘도 카드 머리(날짜 줄)만큼 아래에 떨어졌다(실측 y=45, 목표 16).
