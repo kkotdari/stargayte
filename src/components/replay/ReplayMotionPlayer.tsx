@@ -427,13 +427,20 @@ const SHAPE_KIND: Record<string, string> = {
    완만하게 벌어지는 오목 곡선), 바닥은 거미줄처럼 사방으로 퍼지는 가닥들(지적). */
 // 머리(윗부분) 폭을 한 단 좁혔다(지적: 너무 두꺼움).
 const ZERG_MOUND = "M6.2 4 Q8 3.3 9.8 4 Q10.5 10 14.2 12.6 Q8 13.8 1.8 12.6 Q5.5 10 6.2 4 Z"
-  /* 다리는 옆으로 나가며 위로 펼쳐지는 뭉뚝한 갈래다(지적: 아래로 처지면 나무뿌리 같다)
-     — 게처럼 끝이 밑동보다 위에 선다. */
-  + " M4.6 11 Q2 11.4 1 9 Q2.6 10 4.2 9.9 Z"
-  + " M4 12.4 Q1.6 13 0.6 11.6 Q2.4 12 4.4 11.6 Z"
-  + " M11.4 11 Q14 11.4 15 9 Q13.4 10 11.8 9.9 Z"
-  + " M12 12.4 Q14.4 13 15.4 11.6 Q13.6 12 11.6 11.6 Z"
-  + " M7.3 13.2 Q7.2 14.6 8 14.8 Q8.8 14.6 8.9 13.2 Z";
+  /* 바닥(지적: 문어발처럼 위로 올라오면 안 된다) — 반원통 기둥들이 불가사리처럼 사방으로
+     낮게 뻗고, 그 사이가 오리발 갈퀴처럼 오목하게 이어진 치마 한 장이다: 볼록한 둥근
+     끝(기둥)과 얕게 파인 이음(갈퀴)이 번갈아 간다. */
+  + " M2.4 11.2"
+  + " Q0.3 11.9 0.4 13 Q0.5 14 1.7 13.9"
+  + " Q2.7 13.8 3.3 13.1"
+  + " Q3.3 14.6 4.6 14.7 Q5.7 14.8 6.2 13.8"
+  + " Q6.9 14.2 7.4 13.9"
+  + " Q7.5 15.3 8 15.3 Q8.5 15.3 8.6 13.9"
+  + " Q9.1 14.2 9.8 13.8"
+  + " Q10.3 14.8 11.4 14.7 Q12.7 14.6 12.7 13.1"
+  + " Q13.3 13.8 14.3 13.9"
+  + " Q15.5 14 15.6 13 Q15.7 11.9 13.6 11.2"
+  + " Q8 12.6 2.4 11.2 Z";
 /** 저그 본진 머리의 평평한 윗면(요청) — 둥근 머리 위 밝은 타원. 더 얇게(지적: 뚜껑). */
 const ZERG_TOP = "M6.6 3.85a1.4 0.45 0 1 0 2.8 0a1.4 0.45 0 1 0-2.8 0Z";
 /* 전부 입체(면 겹침)로 옮겼다(요청: "무조건 입체로") — 홑겹 도형은 이제 없다. */
@@ -1268,7 +1275,13 @@ export default function ReplayMotionPlayer({
        모를 비저그 단독만 일꾼 걸음(3.7) 그대로다. */
     const carrierUnit = race === "저그" ? "Overlord" : race === "테란" ? "Dropship" : "Shuttle";
     const loneUnit = race === "저그" ? "Overlord" : undefined;
-    return kinds.flatMap(({ kind, src }) => (src.length === 0 ? [] : splitSquads(src, homeOf(p.raw))
+    /* 수송선·단독 정찰은 넓은 반경(28타일)으로 묶는다(지적: 초반 오버로드가 조금 가다
+       멈췄다 나중에 몰아 움직임) — 한 마리가 맵을 크게 가로지르는 클릭들이 좁은 반경에서
+       여러 부대로 갈라지고, '조용한 부대가 저리 옮겨 간 것' 재배정에 튕기며 가다 서다
+       몰아치기가 됐다. 일꾼 정찰은 종전 반경 그대로다(여럿이 딴 데를 볼 수 있다). */
+    return kinds.flatMap(({ kind, src }) => (src.length === 0 ? [] : splitSquads(
+      src, homeOf(p.raw), kind === "worker" ? undefined : 28,
+    )
       .map((sq) => ({
         kind, raw: sq,
         walk: walkTrack(
@@ -1626,6 +1639,10 @@ export default function ReplayMotionPlayer({
         const tpAfter = posAt(w, lastOrderSec + 3, null);
         if (!tpBefore || Math.hypot(tpBefore.x - pos.x, tpBefore.y - pos.y) > 4.5) continue;
         if (!tpAfter || Math.hypot(tpAfter.x - pos.x, tpAfter.y - pos.y) > 4.5) continue;
+        /* 그리고 그 순간 수송선이 '서' 있었어야 한다(지적: 이동 중 마커가 사라졌다 멈추면
+           나타난다) — 부대가 행군 틈에 잠깐 선 순간, 나란히 걷던 오버로드가 곁을 지나가기만
+           해도 태움으로 쳤다. 앞뒤 6초의 변위가 1.5타일을 넘으면 지나가는 중이다. */
+        if (Math.hypot(tpAfter.x - tpBefore.x, tpAfter.y - tpBefore.y) > 1.5) continue;
         const tp1 = posAt(w, lastOrderSec + 25, null);
         if (!tp1 || Math.hypot(tp1.x - tp0.x, tp1.y - tp0.y) < 10) continue;
         const ds = (p.drops ?? []).find(([s]) => s > lastOrderSec)?.[0] ?? Infinity;
@@ -2472,16 +2489,27 @@ export default function ReplayMotionPlayer({
             /* 낱개 마커(요청: 같은 유닛이라도 합치지 말고 하나하나 — 대신 작게) — 수만큼
                도형을 해바라기 나선으로 촘촘히 흩는다(결정적 — 프레임마다 안 튄다). 갈래
                도형(UNIT_CLASS)과 덩치 크기(UNIT_BULK)가 유닛의 정체를 말한다. */
-            const n = Math.max(1, Math.min(36, alive));
-            const kind = UNIT_CLASS[g.unit] ?? "troop";
-            const bulk = UNIT_BULK[g.unit] ?? 2;
-            /* 같은 자리 무리는 서로 조금 퍼진다(요청: 겹치면서도 수량이 보이게) — 나선
-               간격을 넓히고, 묶음(gi)마다 나선을 돌려 한 자리에 두 무리가 서면 포개지지
-               않고 끼워진다. 첫 도형도 살짝 비껴 앉는다(sqrt(di+0.35)) — 무리마다 정중앙
-               한 점에 겹치던 것을 푼다. */
+            /* 묶음(바이오닉 등)은 유닛마다 제 도형·제 덩치로(지적: 질럿과 마린 크기가
+               다르다 — 묶음 이름 "Bionic"이 도형·덩치 표에 없어 통째로 대형 삼각형이
+               됐다). 구성 비율대로 낱개를 채운다. */
+            const glyphUnits: string[] = [];
+            if (members.length > 1 && aliveAll > 0) {
+              const factor = alive / aliveAll;
+              for (const u of members) {
+                const cnt = Math.round(aliveOf(u) * factor);
+                for (let k = 0; k < cnt && glyphUnits.length < 36; k += 1) glyphUnits.push(u);
+              }
+            }
+            if (glyphUnits.length === 0) {
+              const n0 = Math.max(1, Math.min(36, alive));
+              for (let k = 0; k < n0; k += 1) glyphUnits.push(g.unit);
+            }
+            /* 같은 자리 무리는 아주 촘촘히 겹친다(지적: 퍼짐이 심해졌다 — 겹치면서도
+               규모는 보이게). 묶음(gi)마다 나선을 돌려 두 무리가 포개지지 않게만 한다. */
             const seed = gi * 1.7;
-            return Array.from({ length: n }, (_, di) => {
-              const r = (0.72 + 0.2 * bulk) * Math.sqrt(di + 0.35);
+            return glyphUnits.map((u, di) => {
+              const bulk = UNIT_BULK[u] ?? 2;
+              const r = (0.4 + 0.12 * bulk) * Math.sqrt(di + 0.35);
               const dx = Math.cos(di * 2.4 + seed) * r;
               const dy = Math.sin(di * 2.4 + seed) * r;
               return (
@@ -2500,7 +2528,7 @@ export default function ReplayMotionPlayer({
                     ...glyphStyle(p.raw, team),
                   }}
                 >
-                  <ShapeIcon kind={kind} className="scr-motion-troop" />
+                  <ShapeIcon kind={UNIT_CLASS[u] ?? "troop"} className="scr-motion-troop" />
                 </span>
               );
             });
@@ -2586,7 +2614,8 @@ export default function ReplayMotionPlayer({
             const seed = si * 1.7;
             return glyphs.map((u, di) => {
               const bulk = UNIT_BULK[u] ?? 2;
-              const r = (0.72 + 0.2 * bulk) * Math.sqrt(di + 0.35);
+              // 아주 촘촘히(지적: 퍼짐이 심해졌다 — 겹치되 규모는 보이게).
+              const r = (0.4 + 0.12 * bulk) * Math.sqrt(di + 0.35);
               const dx = Math.cos(di * 2.4 + seed) * r;
               const dy = Math.sin(di * 2.4 + seed) * r;
               return (
