@@ -5,7 +5,18 @@ import { cx } from "../utils/format";
 import { attachPopover } from "../utils/popover";
 import type { ScreenKey } from "../types";
 
+export interface AdminItem {
+  key: string;
+  label: string;
+  isActive: boolean;
+  onSelect: () => void;
+}
+
 interface AdminMenuProps {
+  /** 드롭다운 제목 — 기본 "운영". 자료실 등 같은 급 메뉴가 재사용한다(요청). */
+  title?: string;
+  /** 항목 오버라이드 — 없으면 운영 기본 항목. */
+  menuItems?: AdminItem[];
   screen: ScreenKey;
   onNavigate: (screen: ScreenKey) => void;
   // nav: 데스크톱 상단 네비 탭 스타일 · drawer: 모바일 드로어 세로 목록 스타일 ·
@@ -19,20 +30,16 @@ interface AdminMenuProps {
   onOpenChange?: (open: boolean) => void;
 }
 
-interface AdminItem {
-  key: string;
-  label: string;
-  isActive: boolean;
-  onSelect: () => void;
-}
 
 // 운영자 전용 화면(회원 화면/유저연결)을 낱개 탭으로 늘어놓는 대신 "운영"
 // 드롭다운 하나로 묶는다 — 이 컴포넌트는 호출부(Header)가 이미 운영자에게만 렌더링하므로
 // 역할/권한 체크 없이 항상 전체 항목을 보여준다. 위치 계산은 커스텀 셀렉트(Select.tsx)와
 // 동일하게 attachPopover를 재사용 — 하단 탭바에 놓였을 때도 아래쪽 공간이 부족하면 자동으로
 // 위로 뒤집어 열린다.
-export default function AdminMenu({ screen, onNavigate, variant, onOpenChange }: AdminMenuProps) {
-  const items: AdminItem[] = [
+export default function AdminMenu({
+  screen, onNavigate, variant, onOpenChange, title = "운영", menuItems,
+}: AdminMenuProps) {
+  const items: AdminItem[] = menuItems ?? [
     { key: "members", label: "회원", isActive: screen === "members", onSelect: () => onNavigate("members") },
     // 상성맵은 운영 메뉴에서 뺐다(요청) — 이제 랭킹 화면(개인전)의 "상성맵" 버튼이
     // 오버레이(RivalryOverlay)로 띄운다. 운영 전용 화면(RivalryScreen) 자체는 남아 있다.
@@ -113,7 +120,7 @@ export default function AdminMenu({ screen, onNavigate, variant, onOpenChange }:
     // 카테고리 제목 + 항상 펼쳐진 목록으로 고정한다.
     return (
       <div className="scr-menu-pop scr-menu-pop-drawer">
-        <div className="scr-nav-tab scr-menu-pop-drawer-title"><span>운영</span></div>
+        <div className="scr-nav-tab scr-menu-pop-drawer-title"><span>{title}</span></div>
         <div className="scr-menu-pop-drop-inline">{optionButtons}</div>
       </div>
     );
@@ -133,7 +140,7 @@ export default function AdminMenu({ screen, onNavigate, variant, onOpenChange }:
   return (
     <div className={cx("scr-menu-pop", `scr-menu-pop-${variant}`)}>
       <button type="button" className={triggerClass} ref={anchorRef} onClick={() => setOpen((v) => !v)}>
-        <span>운영</span>
+        <span>{title}</span>
         {variant !== "mobile" && <ChevronDown size={14} className={cx("scr-menu-pop-caret", open && "scr-menu-pop-caret-open")} />}
       </button>
 

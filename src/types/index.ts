@@ -389,7 +389,7 @@ export interface TeamRankingResponse {
 // 한때 하나였던 "stats"가 둘로 갈렸다(요청: 래더와 내전은 메뉴 진입점부터 다르다).
 //   "ladder" — 일대일 리더보드. 통계가 아니다: 줄 세운 순위표 하나가 화면의 전부다.
 //   "clan"   — 내전 통계. 레이팅·순위가 없고 전적·생산·칭호를 본다.
-export type ScreenKey = "activity" | "ladder" | "clan" | "members" | "leagues" | "minimaps" | "control";
+export type ScreenKey = "activity" | "ladder" | "clan" | "members" | "leagues" | "minimaps" | "control" | "models";
 
 // 랭킹/경기결과/전적통계 등 화면·메뉴 구성을 어느 버전 세트로 보여줄지 — 제어판에서 등록된
 // 버전 중 하나로 배포하면 앱 전체가 즉시 바뀐다(개인별 설정이 아니라 서버에 저장된 전역 값).

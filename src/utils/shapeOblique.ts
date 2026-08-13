@@ -123,9 +123,22 @@ export const VIEW = {
   originY: 12.6,
 } as const;
 
+/* 요잉 오버라이드(요청: 모델링 뷰어에서 시점 회전) — withYaw 블록 안에서만 값이 서고,
+   블록을 나가면 표준 시점으로 돌아온다. 3D 프리미티브로 만든 도형은 이걸로 아무 각도에서나
+   다시 투영할 수 있다(손으로 깎은 도형은 좌표에 시점이 구워져 불가). */
+let yawOverride: number | null = null;
+export function withYaw<T>(deg: number, fn: () => T): T {
+  yawOverride = deg;
+  try {
+    return fn();
+  } finally {
+    yawOverride = null;
+  }
+}
+
 /** 모형 좌표 (x,y,z) → 화면 [sx, sy]. y(앞)는 아래로, z(위)는 위로 간다. */
 export function project(x: number, y: number, z: number): [number, number] {
-  const th = (VIEW.yawDeg * Math.PI) / 180;
+  const th = ((yawOverride ?? VIEW.yawDeg) * Math.PI) / 180;
   const c = Math.cos(th);
   const sn = Math.sin(th);
   const rx = x * c + y * sn;
@@ -257,4 +270,90 @@ export function limbFaces(
     faces.push(capFace(`M${c1x} ${c1y} A${r2(rr)} ${r2(rr * 0.95)} 0 0 1 ${c2x} ${c2y} Z`));
   }
   return faces;
+}
+
+/* ── 전면 3D화 프리미티브(요청: 모든 건물·수송선을 3D 도형으로) ──────────────────── */
+
+/** 절두 각뿔 — 바닥 (wB×dB), 윗면 (wT×dT), 높이 h. 게이트 첨탑·감시탑류. */
+export function frustumFaces3(
+  cx: number, cy: number, wB: number, dB: number, wT: number, dT: number, h: number, z0 = 0,
+): ShapeFace[] {
+  const zt = z0 + h;
+  const c = (w: number, d: number, z: number): [number, number, number][] => [
+    [cx - w / 2, cy + d / 2, z], [cx + w / 2, cy + d / 2, z],
+    [cx + w / 2, cy - d / 2, z], [cx - w / 2, cy - d / 2, z],
+  ];
+  const b = c(wB, dB, z0);
+  const t = c(wT, dT, zt);
+  const top = polyPath3(t);
+  const front = polyPath3([t[0], t[1], b[1], b[0]]);
+  const right = polyPath3([t[1], t[2], b[2], b[1]]);
+  const left = polyPath3([t[3], t[0], b[0], b[3]]);
+  return [bodyFace(`${front} ${right} ${left} ${top}`), sideFace(right), topFace(top)];
+}
+
+/** 반구 돔 — 회전 대칭이라 요잉 불변. 바닥 중심 (cx,cy,z0), 반지름 r, 높이 h. */
+export function domeFaces3(
+  cx: number, cy: number, r: number, hh: number, z0 = 0,
+): ShapeFace[] {
+  const [bx, by] = project(cx, cy, z0);
+  const [, ty] = project(cx, cy, z0 + hh);
+  const ry = r * GROUND_SQUASH;
+  const body = `M${r2(bx - r)} ${r2(by)} Q${r2(bx - r)} ${r2(ty)} ${r2(bx)} ${r2(ty)}`
+    + ` Q${r2(bx + r)} ${r2(ty)} ${r2(bx + r)} ${r2(by)}`
+    + `a${r2(r)} ${r2(ry)} 0 1 1-${r2(r * 2)} 0Z`;
+  const shine = groundEllipse(bx - r * 0.25, (by + ty) / 2 - (by - ty) * 0.22, r * 0.4, r * 0.18);
+  const shade = `M${r2(bx + r * 0.35)} ${r2(ty + (by - ty) * 0.08)} Q${r2(bx + r)} ${r2(ty + (by - ty) * 0.25)} ${r2(bx + r)} ${r2(by)}`
+    + ` Q${r2(bx + r * 0.55)} ${r2(by + ry * 0.6)} ${r2(bx + r * 0.35)} ${r2(by)}Z`;
+  return [bodyFace(body), sideFace(shade, OP.sideSoft), topFace(shine)];
+}
+
+/** 눕힌 원통(관) — 평면 두 점 사이를 반지름 r로 잇는다. 몸통 + (보이는 쪽) 끝 단면.
+ *  단면 보임은 진행 방향이 시청자 쪽(+y)일 때 크고, 뒤로 가면 없다(캡 규칙). */
+export function tubeFaces(
+  x1: number, y1: number, x2: number, y2: number, r: number, z = 0, capOpen = false,
+): ShapeFace[] {
+  const [ax, ay] = project(x1, y1, z);
+  const [bx, by] = project(x2, y2, z);
+  const dx = bx - ax;
+  const dy = by - ay;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = (-dy / len) * r;
+  const ny = (dx / len) * r;
+  const zr = r * 0.9;
+  const body = `M${r2(ax + nx)} ${r2(ay + ny - zr)} L${r2(bx + nx)} ${r2(by + ny - zr)}`
+    + ` A${r2(r)} ${r2(r * 0.8)} 0 0 1 ${r2(bx - nx)} ${r2(by - ny - zr)}`
+    + ` L${r2(ax - nx)} ${r2(ay - ny - zr)}`
+    + ` A${r2(r)} ${r2(r * 0.8)} 0 0 1 ${r2(ax + nx)} ${r2(ay + ny - zr)} Z`
+    + ` M${r2(ax + nx)} ${r2(ay + ny - zr)} L${r2(bx + nx)} ${r2(by + ny - zr)}`
+    + ` L${r2(bx + nx)} ${r2(by + ny)} L${r2(ax + nx)} ${r2(ay + ny)} Z`;
+  const faces: ShapeFace[] = [bodyFace(body)];
+  if (capOpen) {
+    // 시청자 쪽 끝(화면 y가 큰 쪽)에만 어두운 단면.
+    const toward = by >= ay ? [bx, by] : [ax, ay];
+    faces.push(capFace(groundEllipse(toward[0], toward[1] - zr / 2, r * 0.85, r * 0.7)));
+  }
+  faces.push(sideFace(
+    `M${r2(ax + nx)} ${r2(ay + ny - zr * 0.2)} L${r2(bx + nx)} ${r2(by + ny - zr * 0.2)} L${r2(bx + nx)} ${r2(by + ny)} L${r2(ax + nx)} ${r2(ay + ny)} Z`,
+    OP.sideSoft,
+  ));
+  return faces;
+}
+
+/** 뿔·가시 — 평면 밑점(bx,by,z0)에서 평면 끝점(tx,ty,zt)으로 솟는 가는 원뿔. */
+export function hornFaces(
+  bx: number, by: number, z0: number, tx: number, ty: number, zt: number, w: number,
+): ShapeFace[] {
+  const [ax, ay] = project(bx, by, z0);
+  const [cx2, cy2] = project(tx, ty, zt);
+  const dx = cx2 - ax;
+  const dy = cy2 - ay;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = (-dy / len) * (w / 2);
+  const ny = (dx / len) * (w / 2);
+  const body = `M${r2(ax + nx)} ${r2(ay + ny)} Q${r2((ax + cx2) / 2 + nx)} ${r2((ay + cy2) / 2 + ny)} ${r2(cx2)} ${r2(cy2)}`
+    + ` Q${r2((ax + cx2) / 2 - nx)} ${r2((ay + cy2) / 2 - ny)} ${r2(ax - nx)} ${r2(ay - ny)} Z`;
+  const shade = `M${r2(cx2)} ${r2(cy2)} Q${r2((ax + cx2) / 2 - nx)} ${r2((ay + cy2) / 2 - ny)} ${r2(ax - nx)} ${r2(ay - ny)}`
+    + ` L${r2(ax - nx * 0.2)} ${r2(ay - ny * 0.2)} Z`;
+  return [bodyFace(body), sideFace(shade, OP.sideSoft)];
 }

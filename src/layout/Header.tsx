@@ -241,6 +241,11 @@ export default function Header({
         <nav className="scr-nav scr-nav-desktop">
           {commonNavItems}
           {isAdmin && <AdminMenu screen={screen} onNavigate={go} variant="nav" />}
+          {/* 자료실(요청) — 운영급 별도 메뉴, 모두에게 개방. */}
+          <AdminMenu
+            screen={screen} onNavigate={go} variant="nav" title="자료실"
+            menuItems={[{ key: "models", label: "모델링", isActive: screen === "models", onSelect: () => go("models") }]}
+          />
         </nav>
 
         <div className="scr-user">
@@ -320,6 +325,10 @@ export default function Header({
             <nav className="scr-drawer-nav">
               {/* 운영은 접을 수 없는 고정 섹션(AdminMenu drawer 변형이 항상 펼쳐 그린다). */}
               {isAdmin && <AdminMenu screen={screen} onNavigate={go} variant="drawer" />}
+              <AdminMenu
+                screen={screen} onNavigate={go} variant="drawer" title="자료실"
+                menuItems={[{ key: "models", label: "모델링", isActive: screen === "models", onSelect: () => go("models") }]}
+              />
             </nav>
 
             {/* 서랍의 낱말과 차례를 기둥(왼쪽 세로 메뉴)과 맞춘다(요청): 테마 → 앱 설치 →

@@ -20,6 +20,7 @@ import ProfileModal from "./modals/ProfileModal";
 import MemberProfileModal from "./modals/MemberProfileModal";
 import AdminPanelScreen from "./pages/admin/AdminPanelScreen";
 import MinimapScreen from "./pages/minimaps/MinimapScreen";
+import ModelGalleryScreen from "./pages/models/ModelGalleryScreen";
 import ChallengeInboxModal from "./modals/ChallengeInboxModal";
 import ChallengeResultInboxModal from "./modals/ChallengeResultInboxModal";
 import AppUpdateNoticeModal from "./modals/AppUpdateNoticeModal";
@@ -31,7 +32,7 @@ import ShareLoginGate from "./pages/share/ShareLoginGate";
 
 import type { ScreenKey } from "./types";
 
-const SCREEN_KEYS: ScreenKey[] = ["activity", "ladder", "clan", "members", "leagues", "minimaps", "control"];
+const SCREEN_KEYS: ScreenKey[] = ["activity", "ladder", "clan", "members", "leagues", "minimaps", "control", "models"];
 
 // 새로고침해도 보던 화면 그대로 있도록 URL의 ?screen= 쿼리에 현재 화면을 기록해둔다 —
 // 사파리의 pull-to-refresh 등 브라우저 기본 새로고침은 앱 상태를 그대로 날려서 첫 화면으로
@@ -309,6 +310,8 @@ export default function App() {
             {!booting && resolvedScreen === "leagues" && <LeagueScreen />}
             {/* 미니맵 — 맵마다 실제 미니맵 그림을 올려 두는 운영 화면(요청). */}
             {isAdmin && !booting && resolvedScreen === "minimaps" && <MinimapScreen />}
+            {/* 자료실 > 모델링(요청) — 모두에게 개방. */}
+            {!booting && resolvedScreen === "models" && <ModelGalleryScreen />}
             {/* 제어판 — 모달이 아니라 정식 화면이다(요청). 들어오면 비밀번호부터 묻는다. */}
             {isAdmin && !booting && resolvedScreen === "control" && <AdminPanelScreen isAdmin={isAdmin} />}
           </main>
