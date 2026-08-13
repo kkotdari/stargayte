@@ -1416,73 +1416,6 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(groundEllipse(hx3, hy3, 2.2, 1.5), 0.35),
     ];
   },
-  /* ── 갈래 기호도 전부 3D(요청: 마법·공중까지) — 삼각형은 삼각뿔로. 공중은 높이 떠
-     있고 꼬리 지느러미가 달린다. 정면은 +y. */
-  troop: () => {
-    // 밑동을 좁게(지적: 펑퍼짐 — 사람 형태로 보이게 홀쭉하고 키가 있게).
-    const A: [number, number, number] = [0, 2.1, 3.2];
-    const B: [number, number, number] = [-1.6, -1.5, 3.2];
-    const C: [number, number, number] = [1.6, -1.5, 3.2];
-    const T: [number, number, number] = [0, -0.3, 7.2];
-    return [
-      bodyFace(`${polyPath3([A, B, T])} ${polyPath3([A, C, T])} ${polyPath3([B, C, T])}`),
-      topFace(polyPath3([A, B, T]), 0.22),
-      sideFace(polyPath3([A, C, T]), 0.22),
-    ];
-  },
-  /* 지대공 — 삼각뿔 꼭대기에 하늘로 솟는 침. */
-  gAA: () => [
-    ...SHAPE_BUILDERS.troop(),
-    ...hornFaces(0, -0.3, 6.8, 0, -0.3, 9.8, 0.5),
-  ],
-  /* 지상 겸용 — 사각뿔(마름모 밑면). */
-  gBoth: () => {
-    const A: [number, number, number] = [0, 3.6, 3.2];
-    const B: [number, number, number] = [-3.2, -0.2, 3.2];
-    const C: [number, number, number] = [0, -3, 3.2];
-    const D: [number, number, number] = [3.2, -0.2, 3.2];
-    const T: [number, number, number] = [0, 0.2, 6.8];
-    return [
-      bodyFace(`${polyPath3([A, B, T])} ${polyPath3([A, D, T])} ${polyPath3([B, C, T])} ${polyPath3([C, D, T])}`),
-      topFace(polyPath3([A, B, T]), 0.22),
-      sideFace(polyPath3([A, D, T]), 0.22),
-    ];
-  },
-  /* 공대공 — 높이 떠 있는 날개 다트 + 꼬리 지느러미. */
-  aAir: () => [
-    bodyFace(polyPath3([[0, 4.6, 6], [3.4, -2.8, 5.6], [0, -1.2, 6.2], [-3.4, -2.8, 5.6]])),
-    topFace(polyPath3([[0, 4.6, 6], [0, -1.2, 6.2], [-3.4, -2.8, 5.6]]), 0.2),
-    sideFace(polyPath3([[0, 4.6, 6], [3.4, -2.8, 5.6], [0, -1.2, 6.2]]), 0.18),
-    ...hornFaces(0, -1.6, 6.1, 0, -2.6, 8.4, 0.6),
-  ],
-  /* 공중 겸용 — 다트에 몸통 돔을 얹는다. */
-  aBoth: () => [
-    bodyFace(polyPath3([[0, 4.6, 6], [3.4, -2.8, 5.6], [0, -1.2, 6.2], [-3.4, -2.8, 5.6]])),
-    topFace(polyPath3([[0, 4.6, 6], [0, -1.2, 6.2], [-3.4, -2.8, 5.6]]), 0.2),
-    sideFace(polyPath3([[0, 4.6, 6], [3.4, -2.8, 5.6], [0, -1.2, 6.2]]), 0.18),
-    ...domeFaces3(0, 0.4, 1.3, 1, 5.9),
-    ...hornFaces(0, -1.6, 6.1, 0, -2.6, 8.4, 0.6),
-  ],
-  /* 지상 마법 — 몸 돔 위에 떠 있는 빛 구슬. */
-  gCast: () => {
-    const [ox, oy] = project(0, 0.2, 7);
-    return [
-      ...domeFaces3(0, -0.3, 2.2, 2.4, 3.4),
-      [groundEllipse(ox, oy, 0.95, 0.9), 0.6] as ShapeFace,
-      topFace(groundEllipse(ox - 0.3, oy - 0.3, 0.4, 0.35), 0.5),
-    ];
-  },
-  /* 공중 마법 — 떠 있는 접시 + 돔 + 빛점. */
-  aCast: () => {
-    const [dx2, dy2] = project(0, 0, 6);
-    return [
-      bodyFace(groundEllipse(dx2, dy2, 3.2, 1.35)),
-      topFace(groundEllipse(dx2, dy2 - 0.15, 2.4, 0.95), 0.2),
-      ...domeFaces3(0, 0, 1.6, 1.3, 6.05),
-      topFace(groundEllipse(dx2 - 0.6, dy2 - 1.3, 0.5, 0.3), 0.45),
-    ];
-  },
-
   /* ── 기계·함선 유닛들(요청: 만들 수 있는 건 다) — 정면 +y, 공중은 높이 띄운다. ── */
   /* 시즈 탱크 — 차체 + 포탑 + 앞으로 내민 포신. */
   tank: () => [
@@ -2092,13 +2025,9 @@ const UNIT_3D: Record<string, string> = {
 /** 종족 → 일꾼 상징물 — 유닛 이름이 없는 일꾼 점(정찰·채굴)용. */
 const workerKindOf = (race?: string): string =>
   race === "테란" ? "scv" : race === "저그" ? "drone" : "probe";
-const GROUND_CLASSES = new Set(["troop", "gAA", "gBoth", "gCast"]);
-const unitMarkerKind = (u: string): string => {
-  const k = UNIT_3D[u];
-  if (k) return k;
-  const cls = UNIT_CLASS[u] ?? "troop";
-  return GROUND_CLASSES.has(cls) ? "wedge" : cls;
-};
+/* 갈래 대표 모델 폐기(요청) — 전 유닛이 제 모델을 가지니, 표에 없는 낯선 유닛만
+   기본 쐐기로 남긴다. */
+const unitMarkerKind = (u: string): string => UNIT_3D[u] ?? "wedge";
 /* 유닛 덩치(요청: 소형/중형/대형 크기 구분) — 브루드워의 유닛 크기 분류를 따른다.
    표에 없으면 대형으로 본다(큰 것들이 표에서 빠졌을 때 눈에 띄는 쪽이 덜 틀린다). */
 const UNIT_BULK: Record<string, 0 | 1 | 2> = {
@@ -2119,8 +2048,7 @@ export const SHAPE_GALLERY: { kind: string; label: string }[] = (() => {
     out.push({ kind, label: BUILDING_KO[unit] ?? unit });
   }
   for (const [kind, label] of [
-    ["pool", "스포닝 풀"], ["troop", "지상(지대지)"], ["gAA", "지대공"], ["gBoth", "지상(겸용)"],
-    ["aAir", "공대공"], ["aBoth", "공중(겸용)"], ["gCast", "마법(지상)"], ["aCast", "마법(공중)"],
+    ["pool", "스포닝 풀"],
     ["ovie", "오버로드"], ["dship", "드랍십"], ["shuttle", "셔틀"],
     ["wedge", "기본 유닛"], ["gunner", "테란 보병(총)"], ["fbat", "파이어뱃"], ["inf", "메딕"],
     ["zealot", "질럿"], ["dtemp", "다크 템플러"], ["goon", "드라군"],
@@ -3441,11 +3369,7 @@ export default function ReplayMotionPlayer({
     <>
       {/* 유닛 갈래 도형(요청: 지대지/지대공/공중/마법으로 분리) — 지상은 채운 도형,
           공중은 속 빈 도형. 크기(소·중·대형)는 마커 크기가 말한다. */}
-      <span><i className="scr-motion-legend-troop"><ShapeIcon kind="troop" /></i> 지상</span>
-      <span><i className="scr-motion-legend-troop"><ShapeIcon kind="gBoth" /></i> 지상(대공)</span>
-      <span><i className="scr-motion-legend-troop"><ShapeIcon kind="aAir" /></i> 공대공</span>
-      <span><i className="scr-motion-legend-troop"><ShapeIcon kind="aBoth" /></i> 공중</span>
-      <span><i className="scr-motion-legend-troop"><ShapeIcon kind="gCast" /></i> 마법</span>
+      {/* (삭제·요청) 갈래 대표 기호 — 유닛마다 제 모델이 생겨 갈래 범례는 걷었다. */}
       <span>■ 건물</span>
       {/* 일꾼은 채굴·정찰 없이 전부 같은 작은 점이다(요청: 통일). 기호는 지도의
           점과 같은 ●를 부대보다 한 단 작게(지적: •는 너무 작았다). */}
