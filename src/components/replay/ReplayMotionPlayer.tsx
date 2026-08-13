@@ -5158,7 +5158,9 @@ export default function ReplayMotionPlayer({
                   z: pitched ? 1000 + Math.round(fy * 80) : 1000 + Math.round(t),
                   kind: unitMarkerKind(unit, bases.find((b) => b.key === p.raw)?.race),
                   rotDeg: hdg, viewYaw: viewYawOf(fx, fy), flat: !pitched, pitch: pitched,
-                  sizePx: (pcView ? 13 : 9) * 1.15 * x2Mul * pitchK(fy),
+                  /* 덩치 눈금 그대로(지적: 같은 질럿인데 유독 큰 애들) — 갓 나온 유닛이
+                     고정 13/9px라 곁의 부대 질럿(소형 8/6px)보다 한참 컸다. */
+                  sizePx: unitGlyphPx(UNIT_BULK[unit] ?? 2, fy),
                   color: modeColor(p.raw, team),
                   alpha: 1,
                 });
@@ -5971,7 +5973,8 @@ export default function ReplayMotionPlayer({
               z: pitched ? 1000 + Math.round((cy0 + sy2) * 80) : 1000 + Math.round(t),
               kind: "scv", rotDeg: hdg2, viewYaw: viewYawOf(cx0 + sx2, cy0 + sy2),
               flat: !pitched, pitch: pitched,
-              sizePx: (pcView ? 13 : 9) * 1.15 * x2Mul * pitchK(cy0 + sy2),
+              // 다른 일꾼과 같은 소형 눈금(지적: 크기 제각각) — 고정 13/9px였다.
+              sizePx: unitGlyphPx(0, cy0 + sy2),
               color: modeColor(raw, teamOfRaw(raw)), alpha: 1,
             });
           }
