@@ -146,8 +146,8 @@ export async function analyzeMinimap(
     const L = lum[i];
     // ① 절대 — 우주·심연.
     if (L < 26) continue;
-    // ① 절대 — 물(파랑 우세).
-    if (b > r + 18 && b > g + 8 && L < 110) continue;
+    // ① 절대 — 물(채도 높은 진짜 파랑만 — 지적: 빠른무한의 청회색 바닥이 물로 먹혔다).
+    if (b > r + 40 && b > g + 20 && L < 105) continue;
     // ② 상대 — 주변보다 뚜렷이 어두운 능선(절벽·벽·언덕 경계).
     if (L < localAvg[i] * RIDGE_RATIO) continue;
     walk[i] = 1;
@@ -232,7 +232,7 @@ export async function analyzeMinimap(
       const g = data[i * 4 + 1];
       const b = data[i * 4 + 2];
       const L = lum[i];
-      if (L < 15 || (b > r + 18 && b > g + 8 && L < 110)) banned[i] = 1;
+      if (L < 15 || (b > r + 40 && b > g + 20 && L < 105)) banned[i] = 1;
     }
     const famCount = new Map<number, number>();
     for (let i = 0; i < w * h; i += 1) {
