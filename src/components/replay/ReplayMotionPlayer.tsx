@@ -2515,12 +2515,16 @@ export default function ReplayMotionPlayer({
      수'라 소강기에도 저절로 줄었다. 이제 완성 누계를 들고 가되, 전투 구간(hot)에서만
      지수로 깎는다. 리플레이에 죽음이 안 남는 이상 "전투 밖에서는 안 줄어든다" 쪽이
      어림으로도 사실에 가깝다. 곡선은 사람마다 한 번 만들어 두고 재생은 읽기만 한다.
-     반감기 60 → 25초(지적: "유닛수가 아직도 너무 과도하게 잡힘 죽음 감지 철저히") —
-     브루드워 전투는 분 단위가 아니라 초 단위로 병력이 녹는다. 60초 반감기는 2분을 싸워도
-     4분의 1이 남는 셈이라 늘 실제보다 부풀어 있었다. */
+     반감기 60 → 25초(지적) → 복합 감쇠(재지적: 소모를 너무 작게 잡음) — 지수 하나로는
+     0에 영영 못 닿는데, 실제 전투는 양쪽이 동시에 때려서 손실이 시간에 비례하는 몫이
+     크다(비슷한 병력끼리 붙으면 결국 둘 다 0 — 수에 꼭 비례하지 않는다). 규모가 클수록
+     화력도 커지니 비례 몫도 함께 둔다: 초당 '고정 0.25 + 반감기 18초 비례'로 깎고
+     바닥은 0 — 30기끼리 붙으면 40초 언저리에 전멸하는 눈금이다. 입구 싸움처럼 천천히
+     녹는 판은 hot 구간이 길어 그만큼 오래 깎이는 것으로 대신한다. */
   const sizeSeries = useMemo(() => {
     const out = new Map<string, [number, number][]>();
-    const HALF_LIFE = Math.LN2 / 25;
+    const PROP = Math.LN2 / 18;
+    const LIN = 0.25;
     for (const p of motion.players) {
       const done = completionsByRaw.get(p.raw) ?? [];
       const hot = p.hot ?? [];
@@ -2537,7 +2541,10 @@ export default function ReplayMotionPlayer({
       let di = 0;
       let prev = 0;
       for (const now of times) {
-        if (now > prev && inHot(prev, now)) size *= Math.exp(-HALF_LIFE * (now - prev));
+        if (now > prev && inHot(prev, now)) {
+          const dt2 = now - prev;
+          size = Math.max(0, size * Math.exp(-PROP * dt2) - LIN * dt2);
+        }
         while (di < done.length && done[di] <= now) { size += 1; di += 1; }
         series.push([now, size]);
         prev = now;
