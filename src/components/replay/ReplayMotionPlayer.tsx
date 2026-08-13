@@ -12,7 +12,7 @@ import { DEFENSE_BUILDINGS } from "../../utils/replayBuildMix";
 import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } from "../../utils/minimapTerrain";
 import {
   bodyFace, capFace, groundEllipse, sideFace, topFace, type ShapeFace,
-  boxFaces3, cylinderFaces3, discPath3, polyPath3, pyramidFaces3, project,
+  boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
   domeFaces3, faceLight, frustumFaces3, hornFaces, limbFaces, tubeFaces,
 } from "../../utils/shapeOblique";
 import type { MinimapMarker } from "./ReplayMinimap";
@@ -425,7 +425,8 @@ const SHAPE_KIND: Record<string, string> = {
      설명은 오해), 로보틱스는 돔, 스타게이트는 문(아치). */
   Barracks: "cube", Factory: "factory", Starport: "plane",
   "Robotics Facility": "dome", Stargate: "arch",
-  // (삭제) 가스 건물 — 직접 그린 게 아니라 네모로 돌아갔다(지적). 크기는 발자국(4×2)이 맞춘다.
+  // 가스 건물 셋(실물 참고) — 종족별 정제소. 크기는 발자국(4×2)이 맞춘다.
+  Refinery: "refinery", Assimilator: "assim", Extractor: "extract",
 };
 /** 저그 둔덕 몸통 — 셋이 같은 몸을 쓰고 뿔만 자란다(아래 lair/hive). 옆구리는 종 모양
  *  으로 불룩하게(지적: "해처리의 곡선이 반대로 됨" — 나팔처럼 파인 곡선을 뒤집었다).
@@ -498,12 +499,35 @@ function legAndFoot(px: number, py: number, zTop: number): ShapeFace[] {
 }
 
 export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
-  /* 커맨드 — 낮은 받침 원통 + 큰 돔 + 꼭대기 판. */
-  tomb: () => [
-    ...cylinderFaces3(0, 0, 6.6, 1.5),
-    ...domeFaces3(0, 0, 5.6, 5.2, 1.4),
-    ...boxFaces3(0, 0, 2.8, 1.9, 0.8, 6.8),
-  ],
+  /* 커맨드 센터(실물 참고) — 넓은 원반 선체 3단 + 위 관제 모듈(빛 띠·돔) + 앞으로
+     내려오는 전개 램프 + 네 귀 돔 발. */
+  tomb: () => {
+    const pod = (px: number, py: number): ShapeFace[] => [
+      ...cylinderFaces3(px, py, 1.1, 1.1),
+      ...domeFaces3(px, py, 1.6, 1.4, 1.05),
+    ];
+    const out: ShapeFace[] = [...pod(-5.4, -4.4), ...pod(5.4, -4.4)];
+    out.push(...cylinderFaces3(0, 0, 6.4, 2.4));
+    out.push(capFace(discPath3(0, 0, 2.42, 5.6), 0.2));
+    out.push(...cylinderFaces3(0, 0, 4.8, 1.6, 2.42));
+    out.push(...cylinderFaces3(0, 0, 3.3, 1.3, 4));
+    // 관제 모듈 — 상자 + 앞면 빛 띠 + 지붕 돔.
+    out.push(...boxFaces3(0, 0.2, 3.2, 2.8, 1.9, 5.3));
+    out.push(capFace(polyPath3([[-1.3, 1.61, 5.7], [1.3, 1.61, 5.7], [1.3, 1.61, 6.1], [-1.3, 1.61, 6.1]]), 0.5));
+    out.push(topFace(polyPath3([[-1.1, 1.62, 5.75], [1.1, 1.62, 5.75], [1.1, 1.62, 6.05], [-1.1, 1.62, 6.05]]), 0.35));
+    out.push(...domeFaces3(0, 0.2, 1.2, 0.9, 7.2));
+    // 전개 램프(실물) — 선체 중턱 해치에서 앞 바닥으로.
+    const ramp = polyPath3([[-1.3, 6, 2.4], [1.3, 6, 2.4], [2.1, 9.6, 0], [-2.1, 9.6, 0]]);
+    out.push(bodyFace(ramp), topFace(ramp, 0.16));
+    for (const t of [0.25, 0.5, 0.75]) {
+      const yy = 6 + 3.6 * t;
+      const zz = 2.4 * (1 - t);
+      const ww = 1.3 + 0.8 * t;
+      out.push(capFace(polyPath3([[-ww, yy, zz + 0.02], [ww, yy, zz + 0.02], [ww, yy + 0.3, zz - 0.18], [-ww, yy + 0.3, zz - 0.18]]), 0.3));
+    }
+    out.push(...pod(-5.6, 3.9), ...pod(5.6, 3.9));
+    return out;
+  },
   /* 배럭(실물 참고) — 중앙 몸통 + 좌우로 더 높은 쌍탑 + 벌어진 네 다리와 원반 발. */
   cube: () => [
     // 평면을 정사각에 가깝게(지적: 실물이 거의 정사각) — 발자국 눌림은 캔버스가 맡는다.
@@ -520,45 +544,50 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     topFace(polyPath3([[-5.2, 2.2, 9.6], [-3, 2.2, 9.6], [-3, 1.4, 9.6], [-5.2, 1.4, 9.6]]), 0.3),
     topFace(polyPath3([[3, 2.2, 9.6], [5.2, 2.2, 9.6], [5.2, 1.4, 9.6], [3, 1.4, 9.6]]), 0.3),
   ],
-  /* 서플라이(실물 참고 재설계) — 넓은 본체 + 지붕의 회전 통풍구 + 앞면의 둥근 팬 둘 +
-     왼쪽 적재 칸 줄 + 앞 정비 기둥. */
+  /* 서플라이(실물 참고, 다시) — 낮고 넓은 본체 + 뒤로 한 단 올린 등판 + 지붕 왼쪽
+     원형 통풍구 + 앞면 오른쪽에 살짝 튀어나온 팬 하우징(둥근 팬 둘) + 지붕 왼쪽
+     캐니스터 줄 + 왼앞 줄무늬 차단바. */
   trapezoid: () => {
-    const out: ShapeFace[] = [...boxFaces3(0, 0, 10.6, 6.6, 5.2)];
-    // 지붕 회전 통풍구 — 원판 + 십자 날.
-    out.push(capFace(discPath3(-2.2, -0.8, 5.25, 2.3), 0.3));
-    out.push(bodyFace(discPath3(-2.2, -0.8, 5.3, 1.9)));
+    const out: ShapeFace[] = [...boxFaces3(0, 0, 10.8, 6.8, 4.6)];
+    out.push(...boxFaces3(0, -2.2, 9.4, 2.2, 1.3, 4.6));
+    // 지붕 회전 통풍구 — 테두리 + 어두운 속 + 십자 날.
+    out.push(capFace(discPath3(-2.4, 0.4, 4.65, 2.15), 0.3));
+    out.push(bodyFace(discPath3(-2.4, 0.4, 4.7, 1.75)));
     for (const ang of [0, 45, 90, 135]) {
       const a = (ang * Math.PI) / 180;
       out.push(capFace(polyPath3([
-        [-2.2 - Math.sin(a) * 1.7, -0.8 - Math.cos(a) * 1.7, 5.35],
-        [-2.2 + Math.sin(a) * 1.7, -0.8 + Math.cos(a) * 1.7, 5.35],
-        [-2.2 + Math.sin(a) * 1.7 + Math.cos(a) * 0.3, -0.8 + Math.cos(a) * 1.7 - Math.sin(a) * 0.3, 5.35],
-        [-2.2 - Math.sin(a) * 1.7 + Math.cos(a) * 0.3, -0.8 - Math.cos(a) * 1.7 - Math.sin(a) * 0.3, 5.35],
+        [-2.4 - Math.sin(a) * 1.55, 0.4 - Math.cos(a) * 1.55, 4.75],
+        [-2.4 + Math.sin(a) * 1.55, 0.4 + Math.cos(a) * 1.55, 4.75],
+        [-2.4 + Math.sin(a) * 1.55 + Math.cos(a) * 0.28, 0.4 + Math.cos(a) * 1.55 - Math.sin(a) * 0.28, 4.75],
+        [-2.4 - Math.sin(a) * 1.55 + Math.cos(a) * 0.28, 0.4 - Math.cos(a) * 1.55 - Math.sin(a) * 0.28, 4.75],
       ]), 0.35));
     }
-    // 앞면 둥근 팬 둘 — 테두리·안쪽 날개.
+    // 앞면 오른쪽 팬 하우징 — 반 단 튀어나온 패널에 둥근 팬 둘이 나란히.
+    out.push(...boxFaces3(2.6, 3.55, 5, 0.6, 3.4, 0.5));
     const fan = (fx: number, fz: number, r: number): void => {
-      const [px, py] = project(fx, 3.31, fz);
-      out.push(capFace(groundEllipse(px, py, r, r * 0.92), 0.4));
-      out.push(bodyFace(groundEllipse(px, py, r * 0.82, r * 0.75)));
-      for (const ang of [20, 140, 260]) {
+      const [px, py] = project(fx, 3.86, fz);
+      out.push(capFace(groundEllipse(px, py, r, r * 0.94), 0.42));
+      out.push(bodyFace(groundEllipse(px, py, r * 0.8, r * 0.75)));
+      for (const ang of [15, 105, 195, 285]) {
         const a = (ang * Math.PI) / 180;
-        out.push(capFace(`M${px} ${py} L${px + Math.cos(a) * r * 0.7} ${py + Math.sin(a) * r * 0.62} L${px + Math.cos(a + 0.8) * r * 0.7} ${py + Math.sin(a + 0.8) * r * 0.62} Z`, 0.35));
+        out.push(capFace(`M${px} ${py} L${px + Math.cos(a) * r * 0.72} ${py + Math.sin(a) * r * 0.66} A${r * 0.72} ${r * 0.66} 0 0 1 ${px + Math.cos(a + 1.1) * r * 0.72} ${py + Math.sin(a + 1.1) * r * 0.66} Z`, 0.32));
       }
-      out.push(topFace(groundEllipse(px - r * 0.25, py - r * 0.25, r * 0.2, r * 0.16), 0.35));
+      out.push(topFace(groundEllipse(px, py, r * 0.22, r * 0.2), 0.4));
     };
-    fan(1.6, 2.9, 1.55);
-    fan(4, 2.5, 1.35);
-    // 왼쪽 적재 칸 줄 — 밝은 칸 셋.
-    for (const oz of [0, 1, 2]) {
-      out.push(topFace(polyPath3([
-        [-5.31, 1.8 - oz * 1.6, 3.9], [-5.31, 0.6 - oz * 1.6, 3.9],
-        [-5.31, 0.6 - oz * 1.6, 2.3], [-5.31, 1.8 - oz * 1.6, 2.3],
-      ]), 0.32));
+    fan(1.35, 2.25, 1.42);
+    fan(3.85, 2.25, 1.28);
+    // 지붕 왼쪽 캐니스터 줄.
+    for (const oy of [2.3, 1.1, -0.1]) {
+      out.push(...cylinderFaces3(-4.1, oy, 0.62, 1.25, 4.62));
     }
-    // 앞 정비 기둥·탱크.
-    out.push(...cylinderFaces3(-3.6, 4.4, 0.7, 1.9));
-    out.push(...domeFaces3(3.6, 4.6, 0.9, 1.1));
+    // 왼앞 줄무늬 차단바 — 낮은 바 + 사선 줄무늬.
+    out.push(...boxFaces3(-3.3, 4.05, 3.6, 0.9, 1.15));
+    for (let i = 0; i < 4; i += 1) {
+      const x0 = -4.9 + i * 0.9;
+      out.push(capFace(polyPath3([
+        [x0, 4.51, 0.15], [x0 + 0.45, 4.51, 0.15], [x0 + 0.85, 4.51, 1], [x0 + 0.4, 4.51, 1],
+      ]), 0.4));
+    }
     return out;
   },
   /* 팩토리(실물 참고) — 큰 본체 상자 + 앞 낮은 별채 + 지붕 굴뚝 셋 + 오른뒤 포탑 + 발. */
@@ -611,8 +640,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     }
     return out;
   },
-  /* 벙커(실물 참고) — 사방으로 비탈진 날개 판(정사각 배치) + 가운데 강철 돔 + 윗면
-     원형 해치. 날개 밝기는 세계 광원(faceLight)이 정한다. */
+  /* 벙커(실물 참고) — 사방으로 비탈진 날개 판(정사각 배치) + 날개마다 내려오는 계단 +
+     가운데 강철 돔 + 윗면 원형 해치. 날개 밝기는 세계 광원(faceLight)이 정한다. */
   tombFlat: () => {
     const out: ShapeFace[] = [];
     for (const ang of [0, 90, 180, 270]) {
@@ -630,40 +659,119 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const { visible, face } = faceLight(sx, sy);
       if (!visible) continue;
       out.push(bodyFace(d), ...face(d));
+      /* 사방으로 내려오는 계단(요청) — 날개 가운데로 살짝 도드라진 디딤판 셋. */
+      const w = 0.95;
+      for (let i = 0; i < 3; i += 1) {
+        const d0 = 2.3 + i * 1.1;
+        const d1 = d0 + 1.1;
+        const z0 = 2 - i * 0.66;
+        const z1 = z0 - 0.66;
+        const tread = polyPath3([
+          [sx * d0 + cxa * w, sy * d0 + sya * w, z0],
+          [sx * d0 - cxa * w, sy * d0 - sya * w, z0],
+          [sx * d1 - cxa * w, sy * d1 - sya * w, z0],
+          [sx * d1 + cxa * w, sy * d1 + sya * w, z0],
+        ]);
+        const riser = polyPath3([
+          [sx * d1 + cxa * w, sy * d1 + sya * w, z0],
+          [sx * d1 - cxa * w, sy * d1 - sya * w, z0],
+          [sx * d1 - cxa * w, sy * d1 - sya * w, z1],
+          [sx * d1 + cxa * w, sy * d1 + sya * w, z1],
+        ]);
+        out.push(bodyFace(`${tread} ${riser}`), topFace(tread, 0.22), ...face(riser));
+      }
     }
     out.push(...domeFaces3(0, 0, 3.6, 4.6, 1.6));
     out.push(topFace(discPath3(0, 0, 5.6, 1.7), 0.3));
     out.push(capFace(discPath3(0, 0, 5.63, 0.7), 0.35));
     return out;
   },
-  /* 넥서스 — 정사각 바닥 피라미드 + 네 꼭짓점 기둥(요청). */
+  /* 넥서스(실물 참고) — 절두 황금 피라미드 + 면의 능선 띠 + 꼭대기 파란 수정 +
+     사방 삼각 진입받침(요청) + 네 귀 오벨리스크 기둥(둥근 받침·빛 점). */
   pyramidWide: () => {
-    const out: ShapeFace[] = [...pyramidFaces3(0, 0, 10.6, 10.6, 9.2)];
-    for (const [px, py] of [[-5.3, 5.3], [5.3, 5.3], [5.3, -5.3], [-5.3, -5.3]] as [number, number][]) {
-      out.push(...hornFaces(px, py, 0, px, py, 7, 1.3));
+    const out: ShapeFace[] = [...frustumFaces3(0, 0, 10.6, 10.6, 3.2, 3.2, 7.2)];
+    // 앞면 능선 띠 — 경사면을 따라 층층이 가로 띠.
+    const half = (z: number): number => 5.3 - (5.3 - 1.6) * (z / 7.2);
+    for (const bz of [1.6, 3.4, 5.2]) {
+      const w0 = half(bz) - 0.35;
+      const w1 = half(bz + 0.6) - 0.35;
+      out.push(topFace(polyPath3([
+        [-w0, half(bz), bz], [w0, half(bz), bz],
+        [w1, half(bz + 0.6), bz + 0.6], [-w1, half(bz + 0.6), bz + 0.6],
+      ]), 0.2));
+    }
+    // 꼭대기 받침 + 파란 수정.
+    out.push(...boxFaces3(0, 0, 2.9, 2.9, 0.8, 7.2));
+    const [gx, gy] = project(0, 0, 8);
+    out.push(bodyFace(`M${gx} ${gy - 2.7} L${gx + 1.25} ${gy - 0.9} L${gx} ${gy + 0.55} L${gx - 1.25} ${gy - 0.9} Z`));
+    out.push(topFace(`M${gx} ${gy - 2.7} L${gx - 1.25} ${gy - 0.9} L${gx} ${gy + 0.55} L${gx - 0.4} ${gy - 0.95} Z`, 0.45));
+    /* 사방 삼각형 진입받침(요청) — 면 가운데에 기대어 바닥으로 벌어지는 낮은 비탈. */
+    for (const ang of [0, 90, 180, 270]) {
+      const a = (ang * Math.PI) / 180;
+      const sx = Math.sin(a);
+      const sy = Math.cos(a);
+      const cxa = Math.cos(a);
+      const sya = -Math.sin(a);
+      const { visible, face } = faceLight(sx, sy);
+      if (!visible) continue;
+      const d = polyPath3([
+        [sx * 3.9, sy * 3.9, 3.6],
+        [sx * 8.4 + cxa * 2.4, sy * 8.4 + sya * 2.4, 0],
+        [sx * 8.4 - cxa * 2.4, sy * 8.4 - sya * 2.4, 0],
+      ]);
+      out.push(bodyFace(d), ...face(d));
+    }
+    // 네 귀 오벨리스크 — 둥근 받침 + 위로 좁아지는 기둥 + 빛 점.
+    for (const [px, py] of [[-6.6, 6.6], [6.6, 6.6], [6.6, -6.6], [-6.6, -6.6]] as [number, number][]) {
+      out.push(bodyFace(discPath3(px, py, 0.45, 1.9)));
+      out.push(sideFace(discPath3(px, py, 0.42, 1.9), 0.25));
+      out.push(...hornFaces(px, py, 0.4, px, py, 9.6, 2));
+      const [kx, ky] = project(px, py, 6.2);
+      out.push(topFace(groundEllipse(kx, ky, 0.45, 0.65), 0.5));
     }
     return out;
   },
-  /* 게이트 — 사방 직사각 경사로 + 절두 첨탑 + 소환구. */
+  /* 게이트웨이(실물 참고) — 낮은 사방 경사로 마당 위에 위로 뾰족한 황금 물방울 돛,
+     가운데 빛나는 소환창, 곁의 검은 굽은 뿔들과 가는 안테나 관. */
   gate: () => {
+    const pt = (x: number, y: number, z: number): string => {
+      const [px, py] = project(x, y, z);
+      return `${px} ${py}`;
+    };
     const h = 1.1;
-    const a = 2.7;
-    const b = 2;
-    const run = 2.3;
+    const a = 3.1;
+    const b = 2.4;
+    const run = 2.5;
     const plateau = polyPath3([[-a, b, h], [a, b, h], [a, -b, h], [-a, -b, h]]);
     const front = polyPath3([[-a, b, h], [a, b, h], [a, b + run, 0], [-a, b + run, 0]]);
     const back = polyPath3([[-a, -b, h], [a, -b, h], [a, -b - run, 0], [-a, -b - run, 0]]);
     const right = polyPath3([[a, -b, h], [a, b, h], [a + run, b, 0], [a + run, -b, 0]]);
     const left = polyPath3([[-a, -b, h], [-a, b, h], [-a - run, b, 0], [-a - run, -b, 0]]);
-    const [gx, gy] = project(-0.9, 1.1, h);
-    return [
+    const out: ShapeFace[] = [
       bodyFace(`${back} ${left} ${right} ${plateau} ${front}`),
       sideFace(back, 0.2),
       sideFace(right, 0.3),
       topFace(plateau, 0.22),
-      ...frustumFaces3(0, -0.3, 3.4, 2.2, 1.4, 1, 5.6, h),
-      capFace(groundEllipse(gx, gy, 1.7, 0.85), 0.45),
     ];
+    // 왼쪽 검은 뿔 — 마당에서 솟아 돛 쪽으로 감긴다.
+    out.push(...hornFaces(-4.4, 0.6, 0.8, -5.9, 0, 4.8, 1.2));
+    out.push(...hornFaces(-5.9, 0, 4.6, -4.7, -0.5, 6.8, 0.9));
+    // 가는 안테나 관 — 마당을 가로지른다.
+    out.push(...tubeFaces(-6.6, 1.6, 7, 1, 0.22, 3.9));
+    // 중앙 돛 — 위로 뾰족하게 굽는 황금 판.
+    const sail = `M${pt(-2.9, 0.2, 0.7)} Q${pt(-3.7, 0.2, 5.6)} ${pt(-0.4, 0, 10)}`
+      + ` Q${pt(0.5, -0.1, 11.2)} ${pt(1, -0.1, 9.5)}`
+      + ` Q${pt(3.5, -0.2, 5)} ${pt(2.8, -0.2, 0.7)} Z`;
+    out.push(bodyFace(sail));
+    out.push(sideFace(`M${pt(1, -0.1, 9.5)} Q${pt(3.5, -0.2, 5)} ${pt(2.8, -0.2, 0.7)} L${pt(1.6, -0.2, 0.7)} Q${pt(2.3, -0.2, 5)} ${pt(0.4, -0.1, 8.6)} Z`, 0.22));
+    // 소환창 — 어두운 테 + 빛나는 속.
+    const [wx, wy] = project(-0.2, 0.1, 4.9);
+    out.push(capFace(groundEllipse(wx, wy, 1.5, 2.3), 0.4));
+    out.push(topFace(groundEllipse(wx, wy, 1.05, 1.8), 0.5));
+    // 오른앞 굽은 뿔 — 돛 앞을 스치듯.
+    out.push(...hornFaces(4.5, 1.4, 0.8, 5.7, 2, 4.4, 1.1));
+    out.push(...hornFaces(5.7, 2, 4.2, 4.8, 2.4, 6, 0.8));
+    return out;
   },
   /* 스타게이트(실물 참고) — 굽은 황금 껍데기(서 있는 초승달 판) + 안쪽 파란 창 띠 +
      위로 감기는 갈고리 핀. */
@@ -693,44 +801,47 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(hook, 0.25),
     ];
   },
-  /* 파일런(실물 참고 재설계) — 큰 수정이 낮은 황금 링 안에 서고, 링에서 발톱 가시들이
-     수정을 감싸 쥐듯 안쪽-위로 솟는다. 수정·링 모두 회전 대칭이라 요잉 불변, 발톱은
-     링 위 각도를 따라 돈다. */
+  /* 파일런(실물 참고, 다시) — 큰 파란 수정이 황금 링에 앉고, 링 둘레에서 발톱 가시
+     여덟이 수정을 감싸 쥐듯 솟는다. 수정·링은 회전 대칭이라 요잉 불변, 발톱은 링 위
+     각도를 따라 돈다. */
   diamond: () => {
-    const out: ShapeFace[] = [sideFace(discPath3(0, 0, 0, 3.4), 0.26)];
-    const [cx, cy] = project(0, 0, 2);
-    const rxo = 4.1;
+    const out: ShapeFace[] = [sideFace(discPath3(0, 0, 0, 3.8), 0.26)];
+    const [cx, cy] = project(0, 0, 1.5);
+    const rxo = 4.6;
     const ryo = rxo * 0.45;
-    const rxi = 3.1;
+    const rxi = 3.2;
     const ryi = rxi * 0.45;
     const ringBack = `M${cx - rxo} ${cy} A${rxo} ${ryo} 0 0 1 ${cx + rxo} ${cy} L${cx + rxi} ${cy} A${rxi} ${ryi} 0 0 0 ${cx - rxi} ${cy} Z`;
     const ringFront = `M${cx - rxo} ${cy} A${rxo} ${ryo} 0 0 0 ${cx + rxo} ${cy} L${cx + rxi} ${cy} A${rxi} ${ryi} 0 0 1 ${cx - rxi} ${cy} Z`;
-    const claw = (ang: number): ShapeFace[] => {
+    const claw = (ang: number, h: number): ShapeFace[] => {
       const a = (ang * Math.PI) / 180;
-      const px = Math.sin(a) * 3.6;
-      const py = Math.cos(a) * 3.6;
-      return hornFaces(px, py, 2, px * 0.55, py * 0.55, 4.6, 0.9);
+      return hornFaces(Math.sin(a) * 3.9, Math.cos(a) * 3.9, 1.3, Math.sin(a) * 3, Math.cos(a) * 3, h, 1.05);
     };
     // 뒤 발톱들 → 뒤 링 → 수정 → 앞 링 → 앞 발톱들 순으로 겹친다.
-    for (const ang of [150, -150, 180]) out.push(...claw(ang));
+    for (const ang of [135, 180, -135]) out.push(...claw(ang, 5.4));
     out.push(bodyFace(ringBack), sideFace(ringBack, 0.3));
-    const [gx, gy] = project(0, 0, 5.2);
-    const R = 5.2;
-    const W = 2.5;
+    const [gx, gy] = project(0, 0, 6.1);
+    const R = 5.4;
+    const W = 2.8;
     const gem = `M${gx} ${gy - R} L${gx + W} ${gy - R * 0.34} L${gx + W * 0.62} ${gy + R * 0.6} L${gx} ${gy + R * 0.86} L${gx - W * 0.62} ${gy + R * 0.6} L${gx - W} ${gy - R * 0.34} Z`;
     out.push(bodyFace(gem));
     out.push(topFace(`M${gx} ${gy - R} L${gx - W} ${gy - R * 0.34} L${gx - W * 0.62} ${gy + R * 0.6} L${gx} ${gy + R * 0.86} L${gx - W * 0.3} ${gy + R * 0.4} L${gx - W * 0.3} ${gy - R * 0.28} Z`, 0.28));
     out.push(sideFace(`M${gx} ${gy - R} L${gx + W} ${gy - R * 0.34} L${gx + W * 0.62} ${gy + R * 0.6} L${gx} ${gy + R * 0.86} L${gx + W * 0.3} ${gy + R * 0.4} L${gx + W * 0.3} ${gy - R * 0.28} Z`, 0.24));
     out.push(topFace(`M${gx} ${gy - R} L${gx + W * 0.3} ${gy - R * 0.28} L${gx} ${gy - R * 0.05} L${gx - W * 0.3} ${gy - R * 0.28} Z`, 0.4));
     out.push(bodyFace(ringFront), topFace(ringFront, 0.22));
-    for (const ang of [30, -30, 90, -90, 0]) out.push(...claw(ang));
+    for (const ang of [90, -90]) out.push(...claw(ang, 5.9));
+    for (const ang of [45, -45, 0]) out.push(...claw(ang, 5.2));
     return out;
   },
-  /* 로보틱스(실물 참고) — 넓은 대야 + 안쪽 어두운 격자 구덩이 + 테두리 바깥 가시 +
-     왼쪽에서 구덩이 위로 굽어 드리우는 팔(끝 발광). */
+  /* 로보틱스(실물 참고, 곡선의 미) — 둥근 대야와 도톰한 링 테두리, 어두운 격자 구덩이,
+     테두리의 매끈한 흰 가시, 그리고 테두리에서 구덩이 위로 부드럽게 굽어 드리우는 팔. */
   dome: () => {
+    const pt = (x: number, y: number, z: number): string => {
+      const [px, py] = project(x, y, z);
+      return `${px} ${py}`;
+    };
     const out: ShapeFace[] = [...cylinderFaces3(0, 0, 6.6, 2.4)];
-    out.push(capFace(discPath3(0, 0, 2.45, 5.1), 0.5));
+    out.push(capFace(discPath3(0, 0, 2.45, 5.2), 0.5));
     // 구덩이 격자 — 가로·세로 가는 줄.
     const bars: string[] = [];
     for (const o of [-2.8, -1, 1, 2.8]) {
@@ -738,18 +849,31 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       bars.push(polyPath3([[o + 0.12, -4.6, 2.5], [o + 0.12, 4.6, 2.5], [o - 0.12, 4.6, 2.5], [o - 0.12, -4.6, 2.5]]));
     }
     out.push(capFace(bars.join(" "), 0.55));
-    // 테두리 가시 — 바깥으로 기운 짧은 뿔 넷.
-    for (const ang of [35, 145, 215, 325]) {
-      const a = (ang * Math.PI) / 180;
-      out.push(...hornFaces(Math.sin(a) * 5.8, Math.cos(a) * 5.8, 1.6, Math.sin(a) * 7.6, Math.cos(a) * 7.6, 3.6, 1.2));
+    // 도톰한 링 테두리 — 위 테를 둥근 띠로 두른다.
+    const [rcx, rcy] = project(0, 0, 2.5);
+    out.push(bodyFace(`M${rcx - 6.9} ${rcy} a6.9 3.35 0 1 0 13.8 0a6.9 3.35 0 1 0 -13.8 0`
+      + ` M${rcx - 5.5} ${rcy} a5.5 2.65 0 1 1 11 0a5.5 2.65 0 1 1 -11 0`));
+    // 테두리 빛 눈금 — 앞쪽 띠의 밝은 조각들.
+    for (const ang of [115, 80, 45, 245]) {
+      const a2 = (ang * Math.PI) / 180;
+      out.push(topFace(groundEllipse(rcx + Math.cos(a2) * 6.2, rcy + Math.sin(a2) * 3, 0.55, 0.3), 0.45));
     }
-    // 굽은 팔 — 세로 기둥 + 구덩이 위로 꺾인 마디 + 끝 발광.
-    out.push(...boxFaces3(-4.4, -1.6, 1.7, 1.7, 6.6, 2));
-    out.push(bodyFace(polyPath3([[-4.4, -1.6, 8.6], [-0.6, -0.4, 7.2], [0.4, 0, 6.4], [-0.4, 0.6, 6.2], [-3.4, -1, 7.8], [-4.4, -0.6, 8.4]])));
-    const [tx, ty] = project(0, 0.2, 6.2);
-    out.push(topFace(groundEllipse(tx, ty, 0.9, 0.55), 0.5));
-    const [hx, hy] = project(-4.4, -1.6, 8.8);
-    out.push(topFace(groundEllipse(hx, hy, 1, 0.6), 0.4));
+    // 매끈한 흰 가시 — 바깥으로 살짝 기운 원뿔 셋.
+    for (const [hx, hy, tx2, ty2] of [[-3.4, 5.2, -4.2, 6.6], [3.5, 5, 4.3, 6.3], [-6.4, -1, -7.9, -1.3]] as [number, number, number, number][]) {
+      out.push(...hornFaces(hx, hy, 1.8, tx2, ty2, 4.2, 1.05));
+      out.push(topFace(groundEllipse(...project(tx2 * 0.94, ty2 * 0.94, 3.2), 0.32, 0.5), 0.4));
+    }
+    // 굽은 팔 — 뒤 테두리에서 솟아 구덩이 위로 매끈하게 드리운다.
+    const arm = `M${pt(-4.9, -2.6, 2)} Q${pt(-6, -3.2, 8.2)} ${pt(-1.8, -1.4, 9)}`
+      + ` Q${pt(1.4, 0, 9.4)} ${pt(1.5, 0.4, 6.4)} L${pt(0.7, 0.5, 6.2)}`
+      + ` Q${pt(0.6, -0.2, 8.2)} ${pt(-2, -1.5, 7.9)} Q${pt(-4.3, -2.4, 7.4)} ${pt(-3.5, -2.2, 2)} Z`;
+    out.push(bodyFace(arm), sideFace(arm, 0.18));
+    // 팔끝 매달린 머리와 발광, 팔 어깨 발광 캡.
+    const [hx2, hy2] = project(1.1, 0.45, 6.1);
+    out.push(bodyFace(groundEllipse(hx2, hy2, 0.85, 1.05)));
+    out.push(topFace(groundEllipse(hx2, hy2 + 0.2, 0.5, 0.6), 0.5));
+    const [ax2, ay2] = project(-1.6, -1.3, 9.1);
+    out.push(topFace(groundEllipse(ax2, ay2, 1, 0.6), 0.4));
     return out;
   },
   /* 터렛(실물 참고) — 원통 받침 + 상자 머리 + 세로 미사일 랙 둘 + 옆으로 빠지는 배관. */
@@ -761,24 +885,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...[-2.2, 2.2].flatMap((rx) => {
       const lean = 1.4;
       const front = polyPath3([
-        [rx - 0.75, 1.2 - lean, 8.6], [rx + 0.75, 1.2 - lean, 8.6],
-        [rx + 0.75, 1.2, 3.4], [rx - 0.75, 1.2, 3.4],
+        [rx - 0.75, 1.9 - lean, 8.6], [rx + 0.75, 1.9 - lean, 8.6],
+        [rx + 0.75, 1.9, 3.4], [rx - 0.75, 1.9, 3.4],
       ]);
       const side = polyPath3([
-        [rx + 0.75, 1.2 - lean, 8.6], [rx + 0.75, -1.2 - lean, 8.6],
-        [rx + 0.75, -1.2, 3.4], [rx + 0.75, 1.2, 3.4],
+        [rx + 0.75, 1.9 - lean, 8.6], [rx + 0.75, -1.9 - lean, 8.6],
+        [rx + 0.75, -1.9, 3.4], [rx + 0.75, 1.9, 3.4],
       ]);
       const top = polyPath3([
-        [rx - 0.75, 1.2 - lean, 8.6], [rx + 0.75, 1.2 - lean, 8.6],
-        [rx + 0.75, -1.2 - lean, 8.6], [rx - 0.75, -1.2 - lean, 8.6],
+        [rx - 0.75, 1.9 - lean, 8.6], [rx + 0.75, 1.9 - lean, 8.6],
+        [rx + 0.75, -1.9 - lean, 8.6], [rx - 0.75, -1.9 - lean, 8.6],
       ]);
       return [
         bodyFace(`${front} ${side} ${top}`),
         sideFace(side, 0.28),
         topFace(top, 0.2),
         topFace(polyPath3([
-          [rx - 0.5, 1.21 - lean * 0.95, 8.2], [rx + 0.5, 1.21 - lean * 0.95, 8.2],
-          [rx + 0.5, 1.21 - lean * 0.15, 4.4], [rx - 0.5, 1.21 - lean * 0.15, 4.4],
+          [rx - 0.5, 1.91 - lean * 0.95, 8.2], [rx + 0.5, 1.91 - lean * 0.95, 8.2],
+          [rx + 0.5, 1.91 - lean * 0.15, 4.4], [rx - 0.5, 1.91 - lean * 0.15, 4.4],
         ]), 0.35),
       ];
     }),
@@ -843,6 +967,101 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...hornFaces(3.4, -1.8, 1.6, 4.6, -2.6, 3.2, 0.9),
   ],
 
+  /* 리파이너리(실물 참고) — 낮은 받침 + 좌우 어두운 탑 + 가운데 나팔 굴뚝 + 은빛
+     팔꿈치 배관들 + 앞 은색 탱크 + 왼앞 줄무늬 경사로. */
+  refinery: () => {
+    const out: ShapeFace[] = [...boxFaces3(0, 0, 11.6, 7, 2.2)];
+    out.push(...frustumFaces3(-3.9, -0.9, 3.4, 3, 2.9, 2.6, 6.2, 2.2));
+    out.push(...frustumFaces3(3.9, -0.7, 3.6, 3.2, 3.1, 2.8, 5.4, 2.2));
+    // 나팔 굴뚝 — 목 원통 위로 벌어진 테와 어두운 속.
+    out.push(...cylinderFaces3(0, -1.2, 1.7, 4.6, 2.2));
+    out.push(bodyFace(discPath3(0, -1.2, 6.8, 2.9)));
+    out.push(capFace(discPath3(0, -1.2, 6.85, 2.2), 0.5));
+    // 은빛 배관 — 탑과 굴뚝 사이를 타넘는다.
+    out.push(...tubeFaces(-3.6, 1.2, -1, 1.6, 0.55, 4.2));
+    out.push(...tubeFaces(1.2, 1.4, 3.4, 0.6, 0.55, 3.6));
+    out.push(...tubeFaces(-2.2, -2.6, 2.4, -2.8, 0.5, 5.8));
+    // 앞 은색 탱크(돔 뚜껑) + 왼쪽 작은 돔.
+    out.push(...cylinderFaces3(1.4, 2.9, 1.6, 3.4));
+    out.push(...domeFaces3(1.4, 2.9, 1.6, 1.1, 5.6));
+    out.push(...domeFaces3(-4.9, 2.3, 1.3, 1.4, 2.2));
+    // 왼앞 경사로 — 아래쪽에 사선 줄무늬.
+    const ramp = polyPath3([[-3.9, 2.2, 2.2], [-1.7, 2.2, 2.2], [-1.2, 5, 0], [-4.4, 5, 0]]);
+    out.push(bodyFace(ramp), topFace(ramp, 0.15));
+    for (let i = 0; i < 3; i += 1) {
+      const x0 = -4.2 + i * 1;
+      out.push(capFace(polyPath3([
+        [x0, 4.3, 0.5], [x0 + 0.5, 4.3, 0.5], [x0 + 0.9, 4.9, 0.08], [x0 + 0.4, 4.9, 0.08],
+      ]), 0.4));
+    }
+    return out;
+  },
+  /* 어시밀레이터(실물 참고) — 둥근 황금 몸체 + 몸을 타넘는 골진 활 띠(청록 눈금) +
+     가운데 큰 청록 알 + 네 귀 비스듬한 통풍 포드 + 바깥으로 처지는 지느러미. */
+  assim: () => {
+    const out: ShapeFace[] = [sideFace(discPath3(0, 0.4, 0, 7), 0.2)];
+    // 귀퉁이 지느러미 — 바깥-아래로 처지는 넓은 갈퀴.
+    for (const [px, py] of [[-4.6, 3.2], [4.6, 3.2], [-5, -2.8], [5, -2.8]] as [number, number][]) {
+      out.push(...hornFaces(px * 0.6, py * 0.6, 1.2, px * 1.4, py * 1.4, 0.3, 2.2));
+    }
+    out.push(...domeFaces3(0, -0.2, 5.6, 3.2));
+    // 골진 활 띠 — 몸 위를 가로로 타넘는 도톰한 반고리.
+    const [bx2, by2] = project(0, -0.6, 0);
+    out.push(bodyFace(`M${bx2 - 5.9} ${by2} A5.9 4.6 0 0 1 ${bx2 + 5.9} ${by2}`
+      + ` L${bx2 + 4.4} ${by2} A4.4 3.4 0 0 0 ${bx2 - 4.4} ${by2} Z`));
+    out.push(sideFace(`M${bx2 + 4.4} ${by2} A4.4 3.4 0 0 1 ${bx2 + 5.9} ${by2} L${bx2 + 5.9} ${by2} A5.9 4.6 0 0 0 ${bx2 + 4.4} ${by2} Z`, 0.2));
+    for (const ang of [140, 108, 76, 44]) {
+      const a2 = (ang * Math.PI) / 180;
+      out.push(topFace(groundEllipse(bx2 + Math.cos(a2) * 5.15, by2 - Math.sin(a2) * 4, 0.35, 0.55), 0.5));
+    }
+    // 네 귀 통풍 포드 — 흰 띠 두른 포드와 위 타원 구멍.
+    for (const [px, py] of [[-3.5, 2.6], [3.6, 2.4], [-3.9, -2.5], [3.9, -2.6]] as [number, number][]) {
+      out.push(...boxFaces3(px, py, 1.9, 1.7, 2.9, 0.6));
+      const [vx, vy] = project(px, py, 3.6);
+      out.push(topFace(groundEllipse(vx, vy, 0.8, 0.55), 0.3));
+      out.push(capFace(groundEllipse(vx, vy, 0.55, 0.35), 0.45));
+    }
+    // 가운데 큰 알 — 빛나는 청록 물방울(윤곽 테 + 발광 속).
+    const [ex, ey] = project(0, 2.4, 2.1);
+    out.push(capFace(groundEllipse(ex, ey, 2.4, 3), 0.35));
+    out.push(topFace(groundEllipse(ex, ey, 2, 2.6), 0.55));
+    return out;
+  },
+  /* 익스트랙터(실물 참고) — 점액 받침 위 좌우 갈색 통(초록 발광 뚜껑 + 흘러내리는 힘줄
+     우리)과 그 위 뿔 돋은 검은 덮개, 가운데 비스듬히 기댄 골진 붉은 애벌레 몸통. */
+  extract: () => {
+    const out: ShapeFace[] = [sideFace(discPath3(0, 0.4, 0, 7.2), 0.2)];
+    const vat = (px: number, py: number, r: number): void => {
+      out.push(...cylinderFaces3(px, py, r, 3.4));
+      const [gx, gy] = project(px, py, 3.45);
+      out.push(topFace(groundEllipse(gx, gy, r * 0.82, r * 0.4), 0.5));
+      // 힘줄 우리 — 통 옆면을 타고 내리는 가는 다리들.
+      for (const ang of [150, 210, 30, -30, 90]) {
+        const a2 = (ang * Math.PI) / 180;
+        out.push(...hornFaces(
+          px + Math.sin(a2) * r * 0.7, py + Math.cos(a2) * r * 0.7, 3.6,
+          px + Math.sin(a2) * r * 1.25, py + Math.cos(a2) * r * 1.25, 0.2, 0.5,
+        ));
+      }
+      // 검은 덮개와 굽은 뿔들.
+      out.push(...domeFaces3(px, py, r * 1.15, 1.6, 3.4));
+      out.push(...hornFaces(px - 0.6, py - 0.5, 4.6, px - 1.9, py - 1.2, 8.6, 1.3));
+      out.push(...hornFaces(px + 0.8, py - 0.3, 4.6, px + 2, py - 1, 7.6, 1.1));
+      out.push(...hornFaces(px, py + 0.5, 4.4, px + 0.4, py + 1.4, 6.4, 0.9));
+    };
+    vat(-3.9, -0.6, 2.4);
+    vat(4, -0.4, 2.2);
+    // 가운데 붉은 애벌레 몸통 — 골진 마디가 비스듬히 기댄다.
+    for (let i = 0; i < 4; i += 1) {
+      out.push(...domeFaces3(0.2 - i * 0.15, 2.6 - i * 1.1, 2 - i * 0.28, 1.5, 0.4 + i * 1.35));
+    }
+    out.push(...hornFaces(0, -1.6, 4.4, -0.4, -2.6, 7, 1.4));
+    // 잿빛 가시 조각.
+    out.push(...hornFaces(-1.6, 3.4, 0.4, -2.4, 4.6, 2.2, 0.8));
+    out.push(...hornFaces(1.8, 3.2, 0.4, 2.6, 4.2, 2, 0.8));
+    return out;
+  },
+
   /* 해처리 — 둔덕 + 방사 다리 여섯(요잉을 따라 도는 것이 핵심) + 윗면 입·목띠. */
   hatchery: () => {
     const out: ShapeFace[] = [];
@@ -851,9 +1070,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        가파르다가 바닥에서 완만하게 벌어진다. 회전 대칭이라 요잉 불변. */
     {
       const [bx, by] = project(0, 0, 0);
-      const [, ty] = project(0, 0, 5.2);
+      const [, ty] = project(0, 0, 6.6);
       const rB = 5.9;
-      const rT = 2.3;
+      const rT = 1.4;
       const ryB = rB * 0.45;
       const mound = `M${bx - rB} ${by}`
         + ` Q${bx - rB * 0.86} ${by - (by - ty) * 0.28} ${bx - rT} ${ty}`
@@ -868,10 +1087,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         0.2,
       ));
     }
-    const [mx, my] = project(0, 0, 5);
-    out.push(sideFace(`M${mx - 2.1} ${my} L${mx + 2.1} ${my} Q${mx + 2} ${my + 1.4} ${mx} ${my + 1.6} Q${mx - 2} ${my + 1.4} ${mx - 2.1} ${my} Z`, 0.35));
-    out.push(topFace(groundEllipse(mx, my, 2, 0.5)));
+    // 꼭대기 볏(실물) — 뒤로 벌어져 굽는 어두운 볏 뿔 한 쌍.
+    out.push(...hornFaces(-1.1, -0.7, 5.7, -3.2, -1.6, 9.4, 1.3));
+    out.push(...hornFaces(1.1, -0.6, 5.7, 3.3, -1.4, 9.6, 1.4));
+    const [mx, my] = project(0, 0, 6.35);
+    out.push(sideFace(`M${mx - 1.5} ${my} L${mx + 1.5} ${my} Q${mx + 1.4} ${my + 1} ${mx} ${my + 1.15} Q${mx - 1.4} ${my + 1} ${mx - 1.5} ${my} Z`, 0.35));
+    out.push(topFace(groundEllipse(mx, my, 1.4, 0.4)));
     for (const ang of [-40, 20, -100, 80]) out.push(...limbFaces(ang, 3.4, 1.7, 3.2));
+    // 바닥 갈고리 덩굴(실물) — 다리 사이로 기다가 끝이 말려 올라간다.
+    out.push(...hornFaces(4.2, 4.2, 0.5, 6.6, 6, 0.9, 0.7));
+    out.push(...hornFaces(6.6, 6, 0.9, 7.4, 6.6, 2.4, 0.5));
+    out.push(...hornFaces(-5.6, 2, 0.5, -7.8, 2.8, 0.9, 0.7));
+    out.push(...hornFaces(-7.8, 2.8, 0.9, -8.6, 3, 2.2, 0.5));
     return out;
   },
   /* 레어 — 해처리 + 다리 끝 굽은 뿔 셋. */
@@ -909,27 +1136,27 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...hornFaces(2.8, 4.4, 0.6, 4.6, 5.6, 2.4, 1));
     return out;
   },
-  /* 스포닝 풀 — 납작 웅덩이 셋 + 힘줄 관 + 가시. */
+  /* 스포닝 풀(다시) — 큰 웅덩이 하나 + 도톰한 살 테두리 + 웅덩이 위로 마주 굽는
+     뼈 아치 + 테두리 잔가시. */
   pool: () => {
-    const puddle = (px: number, py: number, r: number, op: number): ShapeFace[] => {
-      const [cx, cy] = project(px, py, 0.3);
-      return [
-        [groundEllipse(cx, cy, r, r * 0.5), op] as ShapeFace,
-        topFace(groundEllipse(cx - r * 0.25, cy - r * 0.12, r * 0.4, r * 0.15)),
-      ];
-    };
+    const [cx, cy] = project(0, 0, 0.9);
+    const ring = `M${cx - 6.4} ${cy} a6.4 3.1 0 1 0 12.8 0a6.4 3.1 0 1 0 -12.8 0`
+      + ` M${cx - 4.7} ${cy} a4.7 2.15 0 1 1 9.4 0a4.7 2.15 0 1 1 -9.4 0`;
     return [
-      sideFace(discPath3(0, 0, 0, 6.4), 0.2),
-      ...puddle(-1.8, -0.6, 5, 0.55),
-      ...puddle(3.9, 2.4, 2.8, 0.55),
-      ...puddle(3.2, -3, 2.1, 0.55),
-      ...tubeFaces(-6.4, -2.4, 6.6, 1.6, 0.55, 1),
-      ...tubeFaces(-5.6, 3.4, 6.2, 4.6, 0.5, 0.9),
-      ...tubeFaces(-0.6, -5.6, 0.6, 5.8, 0.45, 0.8),
-      ...hornFaces(-6.2, -2.4, 1, -7.6, -3.2, 1.6, 0.8),
-      ...hornFaces(6.4, 1.6, 1, 7.8, 2.2, 1.7, 0.8),
-      ...hornFaces(0.5, 5.6, 0.8, 1.2, 7.2, 1.3, 0.8),
-      ...hornFaces(-0.5, -5.5, 0.8, -1.2, -7.1, 1.3, 0.8),
+      sideFace(discPath3(0, 0.4, 0, 7), 0.2),
+      bodyFace(ring),
+      sideFace(`M${cx - 6.4} ${cy} a6.4 3.1 0 0 0 12.8 0a6.4 2.5 0 0 1 -12.8 0`, 0.2),
+      capFace(groundEllipse(cx, cy, 4.7, 2.15), 0.5),
+      topFace(groundEllipse(cx - 1.3, cy - 0.5, 2.4, 0.9), 0.18),
+      topFace(groundEllipse(cx + 1.8, cy + 0.6, 1.2, 0.45), 0.14),
+      // 뼈 아치 — 양쪽 테두리에서 웅덩이 위로 마주 굽는 뿔 둘.
+      ...hornFaces(-5.2, -1.4, 1.4, -1, -0.4, 5, 1.3),
+      ...hornFaces(4.9, 1, 1.4, 0.9, 0.2, 4.6, 1.2),
+      // 테두리 잔가시.
+      ...hornFaces(-3.2, 4.2, 1, -4, 5.6, 2, 0.8),
+      ...hornFaces(5.6, -1.8, 1, 7, -2.4, 1.9, 0.8),
+      ...hornFaces(-6, 0.8, 1, -7.4, 1, 1.8, 0.8),
+      ...hornFaces(1.8, -5, 0.9, 2.4, -6.4, 1.7, 0.7),
     ];
   },
   /* 핵탄두(요청·테스트) — 몸통 원통 + 둥근 탄두 + 꼬리 날개 넷. */
