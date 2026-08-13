@@ -1391,13 +1391,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...hornFaces(sx * 2.2, sy * 2.2, 0.35, sx * 2.5 - tx2 * 1, sy * 2.5 - ty2 * 1, 0.05, 0.4),
       ];
     };
-    const [bx2, by2] = project(0, 0, 7.9);
+    // 더 높이(지적) — 둥지를 9.4까지 올린다.
+    const [bx2, by2] = project(0, 0, 9.4);
     return [
-      ...leg(150, 8), ...leg(210, 8), ...leg(90, 8), ...leg(270, 8),
+      ...leg(150, 9.5), ...leg(210, 9.5), ...leg(90, 9.5), ...leg(270, 9.5),
       bodyFace(groundEllipse(bx2, by2, 2.4, 1.1)),
-      ...domeFaces3(0, 0, 2.4, 2.2, 7.9),
-      ...hornFaces(0, 0, 10, 0.5, -0.5, 11.4, 0.8),
-      ...leg(30, 8), ...leg(-30, 8),
+      ...domeFaces3(0, 0, 2.4, 2.2, 9.4),
+      ...hornFaces(0, 0, 11.5, 0.5, -0.5, 12.9, 0.8),
+      ...leg(30, 9.5), ...leg(-30, 9.5),
     ];
   },
   /* 그레이터 스파이어(정정 둘) — 같은 덩쿨 다리 둥지를 한층 더 높게 + 둥지 옆 뿔. */
@@ -1409,19 +1410,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const tx2 = Math.cos(a);
       const ty2 = -Math.sin(a);
       return [
-        ...hornFaces(sx * 1, sy * 1, 9.2, sx * 2.4, sy * 2.4, 0, 0.7),
+        ...hornFaces(sx * 1, sy * 1, 10.4, sx * 2.4, sy * 2.4, 0, 0.7),
         ...hornFaces(sx * 2.4, sy * 2.4, 0.35, sx * 2.7 + tx2 * 1.1, sy * 2.7 + ty2 * 1.1, 0.05, 0.42),
         ...hornFaces(sx * 2.4, sy * 2.4, 0.35, sx * 2.7 - tx2 * 1.1, sy * 2.7 - ty2 * 1.1, 0.05, 0.42),
       ];
     };
-    const [bx2, by2] = project(0, 0, 9.1);
+    const [bx2, by2] = project(0, 0, 10.3);
     return [
       ...leg(150), ...leg(210), ...leg(90), ...leg(270),
       bodyFace(groundEllipse(bx2, by2, 2.6, 1.2)),
-      ...domeFaces3(0, 0, 2.6, 2.4, 9.1),
-      ...hornFaces(0, 0, 11.4, 0.6, -0.6, 12.8, 0.9),
-      ...hornFaces(-2.2, -0.8, 10.2, -3.4, -1.2, 11.6, 0.7),
-      ...hornFaces(2.2, -0.8, 10.2, 3.4, -1.2, 11.6, 0.7),
+      ...domeFaces3(0, 0, 2.6, 2.4, 10.3),
+      ...hornFaces(0, 0, 12.6, 0.6, -0.6, 13.8, 0.9),
+      ...hornFaces(-2.2, -0.8, 11.4, -3.4, -1.2, 12.6, 0.7),
+      ...hornFaces(2.2, -0.8, 11.4, 3.4, -1.2, 12.6, 0.7),
       ...leg(30), ...leg(-30),
     ];
   },
