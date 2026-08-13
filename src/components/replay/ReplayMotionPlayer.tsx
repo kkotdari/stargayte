@@ -1608,34 +1608,45 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ]);
     return [bodyFace(hull), topFace(hull, 0.16), ...domeFaces3(0, 0.6, 0.7, 0.55, 6.2)];
   },
-  /* 캐리어(정정) — 누워 있는 안 핀 튤립: 뒤가 불룩한 몸이 앞으로 다물린 꽃잎 끝
-     셋으로 모인다. 깔끔하게, 아래엔 격납 판. */
+  /* 캐리어(실물 참고) — 길게 누운 몸이 가운데 홈을 두고 두 쪽 껍데기로 갈라진다.
+     앞은 둥글게 좁아지고 아래엔 격납 판. */
   carrier: () => {
     const [bx2, by2] = project(0, 0.2, 5);
     const [hx3, hy3] = project(0, 0.8, 4.98);
+    const shell = (m2: 1 | -1): ShapeFace[] => [
+      ...domeFaces3(m2 * 1.05, -1.7, 1.35, 1.15, 5.2),
+      ...domeFaces3(m2 * 1.05, -0.1, 1.45, 1.25, 5.2),
+      ...domeFaces3(m2 * 1.05, 1.5, 1.3, 1.1, 5.2),
+      ...hornFaces(m2 * 0.95, 2.4, 5.8, m2 * 0.55, 4.2, 5.4, 0.9),
+    ];
     return [
       bodyFace(groundEllipse(bx2, by2, 2.5, 1.05)),
       capFace(groundEllipse(hx3, hy3, 1.6, 0.65), 0.4),
-      ...domeFaces3(0, -1.3, 2.2, 1.8, 5.2),
-      ...domeFaces3(0, 0.3, 1.95, 1.6, 5.3),
-      // 다물린 꽃잎 끝 셋 — 앞으로 모인다.
-      ...hornFaces(0, 1.4, 6.6, 0, 3.5, 5.9, 1.15),
-      ...hornFaces(1.1, 1.4, 5.9, 1.4, 3.3, 5.5, 0.85),
-      ...hornFaces(-1.1, 1.4, 5.9, -1.4, 3.3, 5.5, 0.85),
+      ...shell(-1),
+      ...shell(1),
+      // 가운데 홈 — 두 껍데기 사이의 어두운 골.
+      capFace(polyPath3([[-0.22, -2.4, 6.3], [0.22, -2.4, 6.3], [0.22, 3, 6.1], [-0.22, 3, 6.1]]), 0.35),
     ];
   },
-  /* 아비터(정정) — 양쪽에 달린 긴 타원 방패가 특징: 가운데 몸 + 좌우 세로로 긴 방패판. */
+  /* 아비터(실물 참고) — 양쪽 뒤로 위를 향해 젖힌 큰 타원 방패 날개가 특징. 앞엔 낮은
+     몸과 콕핏 구슬, 앞으로 뻗는 프롱 한 쌍. */
   arbiter: () => {
-    const [lx2, ly2] = project(-2.7, 0, 6.1);
-    const [rx2, ry2] = project(2.7, 0, 6.1);
+    const [lx2, ly2] = project(-2.4, -1.3, 7);
+    const [rx2, ry2] = project(2.4, -1.3, 7);
+    const [cx2, cy2] = project(0, 2.1, 5.6);
     return [
-      ...hornFaces(0, -0.8, 6.2, 0, -2.6, 7.4, 0.7),
-      ...domeFaces3(0, 0.2, 1.5, 1.2, 5.6),
-      bodyFace(groundEllipse(lx2, ly2, 0.95, 2.3)),
-      topFace(groundEllipse(lx2, ly2, 0.6, 1.7), 0.2),
-      bodyFace(groundEllipse(rx2, ry2, 0.95, 2.3)),
-      sideFace(groundEllipse(rx2, ry2, 0.95, 2.3), 0.18),
-      topFace(groundEllipse(rx2, ry2, 0.6, 1.7), 0.14),
+      // 방패 날개 — 뒤에서 위로, 몸이 뿌리를 덮는다.
+      bodyFace(groundEllipse(lx2, ly2, 1.5, 2.35)),
+      topFace(groundEllipse(lx2, ly2, 1, 1.75), 0.2),
+      bodyFace(groundEllipse(rx2, ry2, 1.5, 2.35)),
+      sideFace(groundEllipse(rx2, ry2, 1.5, 2.35), 0.18),
+      topFace(groundEllipse(rx2, ry2, 1, 1.75), 0.14),
+      ...domeFaces3(0, 0.6, 1.4, 1.05, 5.4),
+      // 앞 콕핏 구슬.
+      bodyFace(groundEllipse(cx2, cy2, 0.75, 0.7)),
+      topFace(groundEllipse(cx2 - 0.2, cy2 - 0.2, 0.3, 0.27), 0.4),
+      ...hornFaces(0.9, 1.6, 5.8, 1.5, 3.4, 5.4, 0.5),
+      ...hornFaces(-0.9, 1.6, 5.8, -1.5, 3.4, 5.4, 0.5),
     ];
   },
   /* 옵저버 — 작은 구 + 위 안테나 둘 + 아래 다리 둘. */
