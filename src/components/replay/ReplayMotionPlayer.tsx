@@ -2306,6 +2306,12 @@ export default function ReplayMotionPlayer({
   /* PC 휠 줌(요청) — 맵 위에서 휠로 확대/축소, 커서 자리를 붙든 채 늘어난다. 팬은 줌
      계산에 함께 실려 경계 밖이 안 보이게 죈다. */
   const [zoom, setZoom] = useState(1);
+  /* 피칭 보기(요청) — 수직 부감 대신 약간 비스듬한 정면. 바닥(지형 그림과 마커 자리)만
+     세로로 눌리고, 건물·유닛 도형은 제 크기로 서 있어 3D로 바닥에 붙는다. 눌림은
+     컨테이너 세로비가 맡아서 %자리가 저절로 따라온다. 휠 확대·드래그 이동은 기존
+     렌즈(zoom·pan) 그대로다. */
+  const [pitched, setPitched] = useState(false);
+  const PITCH_K = 0.6;
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   useEffect(() => {
     const el = mapRef.current;
@@ -2815,7 +2821,7 @@ export default function ReplayMotionPlayer({
       className={cx("scr-motion", big && "scr-motion-big")}
       // 확대 모드에선 폭 상한을 안 건다 — 모달 폭(아래 포털)이 이미 맵+양옆 세로 조작부
       // 기준으로 확정돼 있고, 여기까지 조이면 이중 제약으로 맵이 더 작아진다.
-      style={big ? undefined : { maxWidth: `calc((100dvh - 230px) * ${(grid.width / grid.height).toFixed(4)})`, margin: "0 auto" }}
+      style={big ? undefined : { maxWidth: `calc((100dvh - 230px) * ${(grid.width / (grid.height * (pitched ? PITCH_K : 1))).toFixed(4)})`, margin: "0 auto" }}
     >
       <div className="scr-motion-maprow">
       {teamCol(1)}
@@ -2826,7 +2832,7 @@ export default function ReplayMotionPlayer({
         onPointerUp={onMapPointerUp}
         onPointerCancel={onMapPointerUp}
         style={{
-          aspectRatio: `${grid.width} / ${grid.height}`,
+          aspectRatio: `${grid.width} / ${grid.height * (pitched ? PITCH_K : 1)}`,
           ...(zoom > 1 ? { overflow: "hidden", cursor: dragRef.current ? "grabbing" : "grab" } : {}),
         }}
       >
@@ -4129,6 +4135,14 @@ export default function ReplayMotionPlayer({
             title="색 기준 전환"
           >
             {colorMode === "team" ? "개인컬러 보기" : "팀컬러 보기"}
+          </button>
+          {/* 피칭 보기(요청) — 수직 부감 ↔ 비스듬한 정면. */}
+          <button
+            type="button" className="scr-motion-btn scr-motion-colorbtn"
+            onClick={() => setPitched((v) => !v)}
+            title="시점 전환"
+          >
+            {pitched ? "수직 보기" : "입체 보기"}
           </button>
           {/* 지형 수정(요청, 지적: 따로 두면 자리가 애매하고 너무 컸다) — 인라인의 산
               버튼과 같은 작은 원형으로 조작부 배속 무리 끝에 앉는다. */}
