@@ -1250,14 +1250,28 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...hornFaces(4, 0.6, 3.1, 3, -0.3, 4.2, 0.55));
     return out;
   },
-  /* 옵저버토리 — 받침 다리 + 구 + 뒤 접시. */
+  /* 옵저버토리(실물 참고) — 청록 랜턴 머리를 얹은 각진 탑 셋이 삼각으로 서고,
+     밑동끼리 굽은 팔로 이어진다. */
   observatory: () => {
-    const [dx3, dy3] = project(-1.8, -2, 5.6);
+    const lamp = (px2: number, py2: number, h: number): ShapeFace[] => {
+      const [gx2, gy2] = project(px2, py2, h + 1.75);
+      return [
+        ...boxFaces3(px2, py2, 1.35, 1.35, h),
+        ...cylinderFaces3(px2, py2, 0.6, 0.9, h),
+        ...domeFaces3(px2, py2, 0.95, 1.05, h + 0.9),
+        topFace(groundEllipse(gx2, gy2, 0.55, 0.42), 0.5),
+      ];
+    };
     return [
-      ...boxFaces3(0, 0.4, 6.6, 4.4, 2),
-      ...domeFaces3(0.6, 0.4, 2.4, 2.1, 2),
-      bodyFace(groundEllipse(dx3, dy3, 1.7, 0.8)),
-      topFace(groundEllipse(dx3, dy3, 1.2, 0.55), 0.3),
+      ...lamp(-2.8, -1.3, 3.2),
+      ...lamp(0.2, -2.3, 4.4),
+      ...lamp(2.9, -0.7, 3.6),
+      // 밑동을 잇는 굽은 팔들 — 앞 가운데로 모인다.
+      ...hornFaces(-2.8, -1, 1.1, -1.3, 1.6, 0.9, 1.2),
+      ...hornFaces(-1.3, 1.6, 0.9, 0.3, 2.3, 0.8, 1),
+      ...hornFaces(2.9, -0.4, 1.1, 1.7, 1.9, 0.9, 1.2),
+      ...hornFaces(1.7, 1.9, 0.9, 0.3, 2.3, 0.8, 1),
+      ...hornFaces(-2.4, -1.9, 1, 0, -2.4, 0.9, 1),
     ];
   },
   /* 플릿 비컨 — 낮은 원반 + 큰 반고리 + 가운데 구. */
@@ -1267,8 +1281,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     return [
       ...cylinderFaces3(0, 0, 4.6, 1.8),
       bodyFace(`M${cx2 - 4.2} ${cy2} A4.2 2.9 0 0 1 ${cx2 + 4.2} ${cy2} L${cx2 + 3.1} ${cy2} A3.1 2.1 0 0 0 ${cx2 - 3.1} ${cy2} Z`),
-      [groundEllipse(gx2, gy2, 1.35, 1.25), 0.6] as ShapeFace,
-      topFace(groundEllipse(gx2 - 0.4, gy2 - 0.4, 0.5, 0.45), 0.5),
+      // 구슬 왕크게(지적).
+      [groundEllipse(gx2, gy2 - 0.7, 2.75, 2.6), 0.6] as ShapeFace,
+      topFace(groundEllipse(gx2 - 0.85, gy2 - 1.5, 1, 0.9), 0.5),
     ];
   },
   /* 아비터 트리뷰널 — 넓은 돔 + 세 가시 + 빛점. */
