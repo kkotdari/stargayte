@@ -1203,6 +1203,72 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...hornFaces(0, 1.3, 0.4, 0, 2.8, 2.6, 0.9),
   ],
 
+  /* ── 갈래 기호도 전부 3D(요청: 마법·공중까지) — 삼각형은 삼각뿔로. 공중은 높이 떠
+     있고 꼬리 지느러미가 달린다. 정면은 +y. */
+  troop: () => {
+    const A: [number, number, number] = [0, 3.8, 3.2];
+    const B: [number, number, number] = [-3, -2.6, 3.2];
+    const C: [number, number, number] = [3, -2.6, 3.2];
+    const T: [number, number, number] = [0, -0.6, 6.6];
+    return [
+      bodyFace(`${polyPath3([A, B, T])} ${polyPath3([A, C, T])} ${polyPath3([B, C, T])}`),
+      topFace(polyPath3([A, B, T]), 0.22),
+      sideFace(polyPath3([A, C, T]), 0.22),
+    ];
+  },
+  /* 지대공 — 삼각뿔 꼭대기에 하늘로 솟는 침. */
+  gAA: () => [
+    ...SHAPE_BUILDERS.troop(),
+    ...hornFaces(0, -0.6, 6.2, 0, -0.6, 9.4, 0.5),
+  ],
+  /* 지상 겸용 — 사각뿔(마름모 밑면). */
+  gBoth: () => {
+    const A: [number, number, number] = [0, 3.6, 3.2];
+    const B: [number, number, number] = [-3.2, -0.2, 3.2];
+    const C: [number, number, number] = [0, -3, 3.2];
+    const D: [number, number, number] = [3.2, -0.2, 3.2];
+    const T: [number, number, number] = [0, 0.2, 6.8];
+    return [
+      bodyFace(`${polyPath3([A, B, T])} ${polyPath3([A, D, T])} ${polyPath3([B, C, T])} ${polyPath3([C, D, T])}`),
+      topFace(polyPath3([A, B, T]), 0.22),
+      sideFace(polyPath3([A, D, T]), 0.22),
+    ];
+  },
+  /* 공대공 — 높이 떠 있는 날개 다트 + 꼬리 지느러미. */
+  aAir: () => [
+    bodyFace(polyPath3([[0, 4.6, 6], [3.4, -2.8, 5.6], [0, -1.2, 6.2], [-3.4, -2.8, 5.6]])),
+    topFace(polyPath3([[0, 4.6, 6], [0, -1.2, 6.2], [-3.4, -2.8, 5.6]]), 0.2),
+    sideFace(polyPath3([[0, 4.6, 6], [3.4, -2.8, 5.6], [0, -1.2, 6.2]]), 0.18),
+    ...hornFaces(0, -1.6, 6.1, 0, -2.6, 8.4, 0.6),
+  ],
+  /* 공중 겸용 — 다트에 몸통 돔을 얹는다. */
+  aBoth: () => [
+    bodyFace(polyPath3([[0, 4.6, 6], [3.4, -2.8, 5.6], [0, -1.2, 6.2], [-3.4, -2.8, 5.6]])),
+    topFace(polyPath3([[0, 4.6, 6], [0, -1.2, 6.2], [-3.4, -2.8, 5.6]]), 0.2),
+    sideFace(polyPath3([[0, 4.6, 6], [3.4, -2.8, 5.6], [0, -1.2, 6.2]]), 0.18),
+    ...domeFaces3(0, 0.4, 1.3, 1, 5.9),
+    ...hornFaces(0, -1.6, 6.1, 0, -2.6, 8.4, 0.6),
+  ],
+  /* 지상 마법 — 몸 돔 위에 떠 있는 빛 구슬. */
+  gCast: () => {
+    const [ox, oy] = project(0, 0.2, 7);
+    return [
+      ...domeFaces3(0, -0.3, 2.2, 2.4, 3.4),
+      [groundEllipse(ox, oy, 0.95, 0.9), 0.6] as ShapeFace,
+      topFace(groundEllipse(ox - 0.3, oy - 0.3, 0.4, 0.35), 0.5),
+    ];
+  },
+  /* 공중 마법 — 떠 있는 접시 + 돔 + 빛점. */
+  aCast: () => {
+    const [dx2, dy2] = project(0, 0, 6);
+    return [
+      bodyFace(groundEllipse(dx2, dy2, 3.2, 1.35)),
+      topFace(groundEllipse(dx2, dy2 - 0.15, 2.4, 0.95), 0.2),
+      ...domeFaces3(0, 0, 1.6, 1.3, 6.05),
+      topFace(groundEllipse(dx2 - 0.6, dy2 - 1.3, 0.5, 0.3), 0.45),
+    ];
+  },
+
   /* SCV(실물 참고) — 각진 몸통 + 양옆 포드 + 위 머리 + 앞으로 굽는 집게 드릴 한 쌍. */
   scv: () => [
     ...boxFaces3(0, -0.4, 2.6, 2.4, 2.6, 3.4),
@@ -1262,8 +1328,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [p2x, p2y] = project(1.75, 0.7, 4.75);
     out.push(topFace(groundEllipse(p1x, p1y, 0.34, 0.3), 0.3));
     out.push(topFace(groundEllipse(p2x, p2y, 0.34, 0.3), 0.3));
-    // 앞다리 한 쌍(요청) — 얼굴 아래에서 중간 길이로 아래를 향한다.
-    for (const ang of [25, -25]) out.push(...spikeTo(ang, 3.2, 0.6, 0.7));
+    // 앞다리 한 쌍(정정) — 눈을 안 가리게 얼굴 밑에서, 더 가늘고 반쯤 짧게 아래로.
+    out.push(...hornFaces(-0.55, 1.7, 3.9, -0.85, 2.6, 1.6, 0.45));
+    out.push(...hornFaces(0.55, 1.7, 3.9, 0.85, 2.6, 1.6, 0.45));
     return out;
   },
   /* 드론(정정) — 갈퀴치마는 집게 사이가 아니라 집게팔과 꼬리 사이, 양옆에 부채처럼
@@ -1496,17 +1563,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
 const SHAPE_FACES: Record<string, ShapeFace[]> = {
   // 3D 빌더 전부를 표준 시점으로 한 번 굽고, 2D 기호(전투 갈래)는 그대로 얹는다.
   ...Object.fromEntries(Object.entries(SHAPE_BUILDERS).map(([k, b]) => [k, b()])),
-  /* 유닛 갈래 기호(2D 유지) — 공격 갈래를 말하는 기호라 입체가 아니라 기호가 본질이다.
-     지상은 채운 도형, 공중은 속 빈 도형. */
-  troop: [["M8 1.6 L14.6 14.2 H1.4 Z", 1]],
-  gAA: [["M8 2.6 L14.4 13.4 L8 9.6 L1.6 13.4 Z", 1]],
-  gBoth: [["M8 1.6 L14.4 8 L8 14.4 L1.6 8 Z", 1]],
-  aAir: [["M1.6 4 L5.1 4 L8 7.9 L10.9 4 L14.4 4 L8 12.6 Z", 1]],
-  aBoth: [["M8 1.6 L14.4 8 L8 14.4 L1.6 8 Z M8 4.8 L4.8 8 L8 11.2 L11.2 8 Z", 1]],
-  gCast: [["M8 1.6 L9.7 6.3 L14.4 8 L9.7 9.7 L8 14.4 L6.3 9.7 L1.6 8 L6.3 6.3 Z", 1]],
-  aCast: [[
-    "M8 1.6 L9.7 6.3 L14.4 8 L9.7 9.7 L8 14.4 L6.3 9.7 L1.6 8 L6.3 6.3 Z"
-    + " M8 5 L7.2 7.2 L5 8 L7.2 8.8 L8 11 L8.8 8.8 L11 8 L8.8 7.2 Z", 1]],
+  // (2D 기호 삭제·요청) — 갈래 기호도 전부 3D 빌더가 만든다: 삼각형은 삼각뿔로.
 };
 /* 유닛 → 마커 갈래(요청) — 표에 없는 유닛은 지대지 병력으로 본다. 수송·일꾼·오버로드는
    기존 갈래(수송선 도형·점·풍선)가 이미 따로 있다. */
@@ -3116,7 +3173,7 @@ export default function ReplayMotionPlayer({
                   }}
                 >
                   {/* 갓 나온 유닛도 상징물(요청) — 일꾼도 제 모델로 랠리까지 걷는다. */}
-                  <ShapeIcon kind={unitMarkerKind(unit)} rotDeg={GROUND_CLASSES.has(UNIT_CLASS[unit] ?? "troop") ? hdg : 0} className="scr-motion-troop" />
+                  <ShapeIcon kind={unitMarkerKind(unit)} rotDeg={hdg} className="scr-motion-troop" />
                 </span>,
               );
             }
@@ -3561,7 +3618,7 @@ export default function ReplayMotionPlayer({
                     ...glyphStyle(p.raw, team),
                   }}
                 >
-                  <ShapeIcon kind={unitMarkerKind(u)} rotDeg={GROUND_CLASSES.has(UNIT_CLASS[u] ?? "troop") ? hdg : 0} className="scr-motion-troop" />
+                  <ShapeIcon kind={unitMarkerKind(u)} rotDeg={hdg} className="scr-motion-troop" />
                 </span>
               );
             });
@@ -3671,7 +3728,7 @@ export default function ReplayMotionPlayer({
                     ...glyphStyle(p.raw, team),
                   }}
                 >
-                  <ShapeIcon kind={unitMarkerKind(u)} rotDeg={GROUND_CLASSES.has(UNIT_CLASS[u] ?? "troop") ? hdg : 0} className="scr-motion-troop" />
+                  <ShapeIcon kind={unitMarkerKind(u)} rotDeg={hdg} className="scr-motion-troop" />
                 </span>
               );
             });
