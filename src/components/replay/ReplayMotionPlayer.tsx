@@ -3858,7 +3858,7 @@ export default function ReplayMotionPlayer({
             '드랍', 제 수송선을 찍어 태운 자리엔 '태움'이 마법처럼 잠깐 떠오른다. */}
         {motion.players.flatMap((p) => {
           const team = teamOfRaw(p.raw);
-          const mk = (pts: [number, number, number][] | undefined, label: string, kp: string) => {
+          const mk = (pts: [number, number, number][] | undefined, kp: "dr" | "ld") => {
             /* 몰린 클릭 접기(지적: 태움·내림 효과가 계속 남아 이상하다) — 여러 기를 태울
                때 수송선을 잇달아 찍으므로, 10초·5타일 안에 몰린 클릭은 첫 것 하나만 배지가
                된다. 그래야 효과가 "한 번 일어난 일"로 읽히고 끝난다. */
@@ -3873,21 +3873,32 @@ export default function ReplayMotionPlayer({
               .filter(([s]) => s <= t && t - s <= CAST_HOLD_SEC)
               .map(([s, cx2, cy2]) => (
                 <React.Fragment key={`${kp}-${p.raw}-${s}-${cx2}-${cy2}`}>
-                  {/* 우주선 광선(요청) — 위(수송선)에서 유닛 자리로 노랗게 내리쬔다. */}
+                  {/* 우주선 광선(요청: 글씨 없이 광선만) — 위(수송선)에서 유닛 자리로
+                      노랗게 내리쬔다. */}
                   <span
                     className="scr-motion-beam"
                     style={{ left: pct(cx2, grid.width), top: pct(cy2, grid.height) }}
                   />
-                  <span
-                    className={cx("scr-motion-cast", team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
-                    style={{ left: pct(cx2, grid.width), top: pct(cy2, grid.height), ...castStyle(p.raw, team) }}
-                  >
-                    {label}
-                  </span>
+                  {/* 유닛 승강(요청) — 태울 땐 광선 속으로 떠오르고, 내릴 땐 내려온다. */}
+                  {[0, 1].map((di) => (
+                    <span
+                      key={di}
+                      className={cx(
+                        "scr-motion-lift",
+                        kp === "ld" ? "scr-motion-lift-up" : "scr-motion-lift-down",
+                        di === 1 && "scr-motion-lift-b",
+                      )}
+                      style={{
+                        left: pct(cx2 + (di === 1 ? 0.7 : -0.4), grid.width),
+                        top: pct(cy2, grid.height),
+                        color: modeColor(p.raw, team),
+                      }}
+                    />
+                  ))}
                 </React.Fragment>
               ));
           };
-          return [...mk(p.drops, "드랍", "dr"), ...mk(p.loads, "태움", "ld")];
+          return [...mk(p.drops, "dr"), ...mk(p.loads, "ld")];
         })}
         </div>
         {/* (삭제) PC 확대 조절바 — PC에서는 확대 기능을 통째로 걷었다(요청). 확대·이동은
