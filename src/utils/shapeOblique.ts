@@ -203,7 +203,13 @@ function currentYaw(): number {
    평면 법선(모형 기준)을 요잉만큼 돌려 광원과 내적: 왼쪽을 보는 면은 밝고 오른쪽을 보는
    면은 어둡다. 면이 시청자 쪽을 보는지도 여기서 판단한다. */
 const LIGHT_PLAN: [number, number] = [-0.9, 0.45];
-export function faceLight(nxModel: number, nyModel: number): { visible: boolean; face: (d: string) => ShapeFace[] } {
+export function faceLight(
+  nxModel: number, nyModel: number,
+  /** 법선의 위 성분(경사면용, 지적: 벙커 하단·넥서스의 기운 옆면이 위 45도 시점에서
+   *  안 보임) — 카메라가 내려다보므로 위로 기운 면은 수평 법선이 뒤를 향해도 보인다.
+   *  수평 전용 판정은 그 면을 걷어내 구멍을 냈고, 그 틈으로 뒤 요소가 비쳐 보였다. */
+  nzModel = 0,
+): { visible: boolean; face: (d: string) => ShapeFace[] } {
   const th = (currentYaw() * Math.PI) / 180;
   const c = Math.cos(th);
   const sn = Math.sin(th);
@@ -218,7 +224,12 @@ export function faceLight(nxModel: number, nyModel: number): { visible: boolean;
   /* 보임 판정도 시각 밀림만큼 돌린다(지적: 넥서스 옆면이 안 보임) — 소실점이 옮겨 간
      만큼 카메라가 비껴 보므로, 화면 가운데 쪽 옆면이 드러나야 한다. */
   const vphi = Math.atan(viewShear);
-  return { visible: ny * Math.cos(vphi) - nx * Math.sin(vphi) > 0.02, face };
+  // 내려다보는 몫 — 납작비가 곧 부감의 세기다(납작할수록 더 위에서 본다).
+  const elev = groundSquashNow();
+  return {
+    visible: (ny * Math.cos(vphi) - nx * Math.sin(vphi)) + nzModel * elev > 0.02,
+    face,
+  };
 }
 
 /** 면이 카메라를 얼마나 마주보는가(−1~1) — faceLight의 보임 판정을 눈금으로 돌려준다.
@@ -408,16 +419,19 @@ export function pyramidFaces3(
     [cx - w / 2, cy + d / 2, z0], [cx + w / 2, cy + d / 2, z0],
     [cx + w / 2, cy - d / 2, z0], [cx - w / 2, cy - d / 2, z0],
   ];
-  const sides: { d: string; n: [number, number] }[] = [
-    { d: polyPath3([apex, b[0], b[1]]), n: [0, 1] },
-    { d: polyPath3([apex, b[1], b[2]]), n: [1, 0] },
-    { d: polyPath3([apex, b[2], b[3]]), n: [0, -1] },
-    { d: polyPath3([apex, b[3], b[0]]), n: [-1, 0] },
+  // 피라미드 옆면의 위 성분 — 절두체와 같은 규칙(꼭짓점이 곧 위 극단).
+  const nzW = (w / 2) / (Math.hypot(h, w / 2) || 1);
+  const nzD = (d / 2) / (Math.hypot(h, d / 2) || 1);
+  const sides: { d: string; n: [number, number]; nz: number }[] = [
+    { d: polyPath3([apex, b[0], b[1]]), n: [0, 1], nz: nzD },
+    { d: polyPath3([apex, b[1], b[2]]), n: [1, 0], nz: nzW },
+    { d: polyPath3([apex, b[2], b[3]]), n: [0, -1], nz: nzD },
+    { d: polyPath3([apex, b[3], b[0]]), n: [-1, 0], nz: nzW },
   ];
   const out: ShapeFace[] = [];
   const bodyParts: string[] = [];
   for (const f of sides) {
-    const { visible, face } = faceLight(f.n[0], f.n[1]);
+    const { visible, face } = faceLight(f.n[0], f.n[1], f.nz);
     if (!visible) continue;
     bodyParts.push(f.d);
     out.push(...face(f.d));
@@ -481,16 +495,20 @@ export function frustumFaces3(
   const b = corners(wB, dB, z0);
   const t = corners(wT, dT, zt);
   const top = polyPath3(t);
-  const sides: { d: string; n: [number, number] }[] = [
-    { d: polyPath3([t[0], t[1], b[1], b[0]]), n: [0, 1] },
-    { d: polyPath3([t[1], t[2], b[2], b[1]]), n: [1, 0] },
-    { d: polyPath3([t[2], t[3], b[3], b[2]]), n: [0, -1] },
-    { d: polyPath3([t[3], t[0], b[0], b[3]]), n: [-1, 0] },
+  /* 기운 옆면의 위 성분(지적: 벙커·넥서스처럼 위가 좁은 절두체) — 밑이 넓을수록
+     벽이 위로 눕고, 법선이 하늘을 향한 만큼 내려다보는 카메라에 잡힌다. */
+  const nzOf = (eB: number, eT: number): number =>
+    (eB - eT) / (Math.hypot(h, eB - eT) || 1);
+  const sides: { d: string; n: [number, number]; nz: number }[] = [
+    { d: polyPath3([t[0], t[1], b[1], b[0]]), n: [0, 1], nz: nzOf(dB / 2, dT / 2) },
+    { d: polyPath3([t[1], t[2], b[2], b[1]]), n: [1, 0], nz: nzOf(wB / 2, wT / 2) },
+    { d: polyPath3([t[2], t[3], b[3], b[2]]), n: [0, -1], nz: nzOf(dB / 2, dT / 2) },
+    { d: polyPath3([t[3], t[0], b[0], b[3]]), n: [-1, 0], nz: nzOf(wB / 2, wT / 2) },
   ];
   const out: ShapeFace[] = [];
   const bodyParts: string[] = [top];
   for (const f of sides) {
-    const { visible, face } = faceLight(f.n[0], f.n[1]);
+    const { visible, face } = faceLight(f.n[0], f.n[1], f.nz);
     if (!visible) continue;
     bodyParts.push(f.d);
     out.push(...face(f.d));

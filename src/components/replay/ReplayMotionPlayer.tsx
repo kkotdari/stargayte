@@ -911,19 +911,27 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 뒤 발톱들 → 뒤 링 → 수정 → 앞 링 → 앞 발톱들 순으로 겹친다.
     for (const ang of [135, 180, -135]) out.push(...claw(ang, 9.4));
     out.push(bodyFace(ringBack), sideFace(ringBack, 0.3));
-    const [, gy] = project(0, 0, 7.4);
+    const [gx0, gy] = project(0, 0, 7.4);
     const R = 5.2;
     const W = 2.6;
     /* 수정 보석도 높이별 기울임(지적: 수정 기둥만 밀림·기울임 영향을 안 받았다) —
        화면 한 점(gx,gy) 둘레 좌표라 통째 옆 이동만 됐다. 꼭짓점 높이마다 그 높이의
        투영 x(hx)를 쓴다 — 평면·부감 판에선 밀림이 0이라 예전과 똑같다. */
     const hx = (dy: number): number => project(0, 0, 7.4 - dy)[0];
-    const gem = `M${hx(-R)} ${gy - R} L${hx(-R * 0.42) + W * 0.82} ${gy - R * 0.42} L${hx(R * 0.28) + W} ${gy + R * 0.28} L${hx(R * 0.72)} ${gy + R * 0.72} L${hx(R * 0.28) - W} ${gy + R * 0.28} L${hx(-R * 0.42) - W * 0.82} ${gy - R * 0.42} Z`;
+    /* 가로 폭도 요잉을 탄다(재지적: 수정이 요잉에도 안 움직임) — 화면 가로 상수(W)
+       대신 모델 x축의 투영(u)을 따라 놓아, 돌면 눌리고 비스듬히 기운다. */
+    const [ux1, uy1] = ((): [number, number] => {
+      const [axx, axy] = project(1, 0, 7.4);
+      return [axx - gx0, axy - gy];
+    })();
+    const G = (dy: number, w: number): string =>
+      `${hx(dy) + w * ux1} ${gy + dy + w * uy1}`;
+    const gem = `M${G(-R, 0)} L${G(-R * 0.42, W * 0.82)} L${G(R * 0.28, W)} L${G(R * 0.72, 0)} L${G(R * 0.28, -W)} L${G(-R * 0.42, -W * 0.82)} Z`;
     out.push(bodyFace(gem));
     // 왼 면 밝게 · 오른 면 어둡게 · 세로 능선은 좁게.
-    out.push(topFace(`M${hx(-R)} ${gy - R} L${hx(-R * 0.42) - W * 0.82} ${gy - R * 0.42} L${hx(R * 0.28) - W} ${gy + R * 0.28} L${hx(R * 0.72)} ${gy + R * 0.72} L${hx(R * 0.24) - W * 0.3} ${gy + R * 0.24} L${hx(-R * 0.36) - W * 0.3} ${gy - R * 0.36} Z`, 0.26));
-    out.push(sideFace(`M${hx(-R)} ${gy - R} L${hx(-R * 0.42) + W * 0.82} ${gy - R * 0.42} L${hx(R * 0.28) + W} ${gy + R * 0.28} L${hx(R * 0.72)} ${gy + R * 0.72} L${hx(R * 0.24) + W * 0.3} ${gy + R * 0.24} L${hx(-R * 0.36) + W * 0.3} ${gy - R * 0.36} Z`, 0.22));
-    out.push(topFace(`M${hx(-R)} ${gy - R} L${hx(-R * 0.36) + W * 0.3} ${gy - R * 0.36} L${hx(-R * 0.1)} ${gy - R * 0.1} L${hx(-R * 0.36) - W * 0.3} ${gy - R * 0.36} Z`, 0.4));
+    out.push(topFace(`M${G(-R, 0)} L${G(-R * 0.42, -W * 0.82)} L${G(R * 0.28, -W)} L${G(R * 0.72, 0)} L${G(R * 0.24, -W * 0.3)} L${G(-R * 0.36, -W * 0.3)} Z`, 0.26));
+    out.push(sideFace(`M${G(-R, 0)} L${G(-R * 0.42, W * 0.82)} L${G(R * 0.28, W)} L${G(R * 0.72, 0)} L${G(R * 0.24, W * 0.3)} L${G(-R * 0.36, W * 0.3)} Z`, 0.22));
+    out.push(topFace(`M${G(-R, 0)} L${G(-R * 0.36, W * 0.3)} L${G(-R * 0.1, 0)} L${G(-R * 0.36, -W * 0.3)} Z`, 0.4));
     out.push(bodyFace(ringFront), topFace(ringFront, 0.22));
     for (const ang of [90, -90]) out.push(...claw(ang, 9.7));
     for (const ang of [45, -45, 0]) out.push(...claw(ang, 9.2));
@@ -2739,16 +2747,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      길게 늘어지는 두 팔. */
   archon: () => {
     const [cx, cy] = project(0, 0, 5);
+    /* 구 속 형체가 요잉에 돈다(지적: 요잉에도 안 움직임) — 화면 좌표 상수 대신 모델
+       x축의 투영(u)을 따라 가로 오프셋을 놓는다: 구는 어느 각에서나 같지만, 속의
+       종잇장 형체는 함께 돌아 비스듬히 눌리고 옆에선 실루엣만 남는다. */
+    const [ax1, ay1] = project(1, 0, 5);
+    const ux = ax1 - cx;
+    const uy = ay1 - cy;
+    const P = (dx: number, dy: number): string => `${cx + dx * ux} ${cy + dy + dx * uy}`;
+    const wk = Math.hypot(ux, uy);
     return [
       [groundEllipse(cx, cy, 3.6, 3.4), 0.55] as ShapeFace,
       topFace(groundEllipse(cx, cy, 3.6, 3.4), 0.3),
-      // 구 속 형체.
-      capFace(`M${cx} ${cy - 2.5} L${cx + 0.55} ${cy - 1.5} L${cx - 0.5} ${cy - 1.45} Z`, 0.4),
-      capFace(groundEllipse(cx, cy - 0.4, 0.75, 1.15), 0.35),
-      capFace(`M${cx - 0.6} ${cy - 1.2} Q${cx - 1.9} ${cy - 0.4} ${cx - 1.6} ${cy + 1.3}`
-        + ` L${cx - 1.3} ${cy + 1.2} Q${cx - 1.4} ${cy - 0.2} ${cx - 0.4} ${cy - 0.8} Z`, 0.35),
-      capFace(`M${cx + 0.6} ${cy - 1.2} Q${cx + 1.9} ${cy - 0.2} ${cx + 1.5} ${cy + 1.5}`
-        + ` L${cx + 1.2} ${cy + 1.4} Q${cx + 1.4} ${cy} ${cx + 0.4} ${cy - 0.8} Z`, 0.35),
+      // 구 속 형체 — 머리 불꽃·몸·양팔이 다 P()로, 요잉을 따라 돈다.
+      capFace(`M${P(0, -2.5)} L${P(0.55, -1.5)} L${P(-0.5, -1.45)} Z`, 0.4),
+      capFace(groundEllipse(cx, cy - 0.4, 0.75 * wk, 1.15), 0.35),
+      capFace(`M${P(-0.6, -1.2)} Q${P(-1.9, -0.4)} ${P(-1.6, 1.3)}`
+        + ` L${P(-1.3, 1.2)} Q${P(-1.4, -0.2)} ${P(-0.4, -0.8)} Z`, 0.35),
+      capFace(`M${P(0.6, -1.2)} Q${P(1.9, -0.2)} ${P(1.5, 1.5)}`
+        + ` L${P(1.2, 1.4)} Q${P(1.4, 0)} ${P(0.4, -0.8)} Z`, 0.35),
       topFace(groundEllipse(cx - 1.2, cy - 1.2, 1.3, 1), 0.4),
     ];
   },
@@ -2756,15 +2772,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      구 밖으로 가는 수염 호가 흩날린다. */
   darchon: () => {
     const [cx, cy] = project(0, 0, 5);
+    // 속 형체의 요잉 — 아콘과 같은 규칙(u축 투영). 수염 호·광택은 구 둘레 장식이라 그대로.
+    const [ax1, ay1] = project(1, 0, 5);
+    const ux = ax1 - cx;
+    const uy = ay1 - cy;
+    const P = (dx: number, dy: number): string => `${cx + dx * ux} ${cy + dy + dx * uy}`;
+    const wk = Math.hypot(ux, uy);
     return [
       [groundEllipse(cx, cy, 3.6, 3.4), 0.55] as ShapeFace,
       capFace(groundEllipse(cx, cy, 3.6, 3.4), 0.25),
       // 속 형체 — 뿔귀 둘·몸·아래로 늘어지는 갈퀴 팔.
-      capFace(`M${cx - 0.1} ${cy - 2.2} L${cx + 0.95} ${cy - 0.95} L${cx + 0.1} ${cy - 0.85} Z`, 0.45),
-      capFace(`M${cx - 1.25} ${cy - 1.75} L${cx - 0.3} ${cy - 0.9} L${cx - 1.05} ${cy - 0.65} Z`, 0.45),
-      capFace(groundEllipse(cx - 0.15, cy + 0.1, 0.7, 1), 0.4),
-      capFace(`M${cx - 0.5} ${cy + 0.6} Q${cx - 1.3} ${cy + 1.2} ${cx - 1.1} ${cy + 2.2}`
-        + ` L${cx - 0.8} ${cy + 2.1} Q${cx - 0.95} ${cy + 1.2} ${cx - 0.25} ${cy + 0.8} Z`, 0.4),
+      capFace(`M${P(-0.1, -2.2)} L${P(0.95, -0.95)} L${P(0.1, -0.85)} Z`, 0.45),
+      capFace(`M${P(-1.25, -1.75)} L${P(-0.3, -0.9)} L${P(-1.05, -0.65)} Z`, 0.45),
+      capFace(groundEllipse(cx - 0.15 * ux, cy + 0.1 - 0.15 * uy, 0.7 * wk, 1), 0.4),
+      capFace(`M${P(-0.5, 0.6)} Q${P(-1.3, 1.2)} ${P(-1.1, 2.2)}`
+        + ` L${P(-0.8, 2.1)} Q${P(-0.95, 1.2)} ${P(-0.25, 0.8)} Z`, 0.4),
       // 바깥 수염 호 — 가늘게 흩날린다.
       topFace(`M${cx - 3.1} ${cy - 1.9} Q${cx - 4.6} ${cy - 0.6} ${cx - 4.1} ${cy + 1}`
         + ` L${cx - 3.9} ${cy + 0.9} Q${cx - 4.3} ${cy - 0.5} ${cx - 2.95} ${cy - 1.75} Z`, 0.4),
@@ -2897,15 +2919,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       legs.push(seg(lx, lyy, 2.8, kneeX, lyy, 0.4, 0.55));
       legs.push(seg(kneeX, lyy, 0.4, lx * 1.15 + (lx === 0.2 ? 0.4 : 0), lyy, -2.6, 0.42));
     }
+    /* 볼주머니 한 쌍도 요잉을 탄다(지적: 요잉에도 안 움직임 — 다 봐봐) — 화면 상수
+       오프셋 대신 모델 좌표(±2.1 옆, 1.9 앞)를 투영해, 돌면 앞볼이 돌아 나간다. */
+    const [c1x, c1y] = project(-2.1, 1.9, 4.4);
+    const [c2x, c2y] = project(2.1, 1.9, 4.4);
+    const [g1x, g1y] = project(-2.4, 2.2, 4.7);
+    const [g2x, g2y] = project(1.85, 2.2, 4.7);
     return [
       bodyFace(legs.join(" ")),
       // 머리 축소(지적) + 눈은 앞쪽으로 모은다.
       bodyFace(groundEllipse(cx, cy, 3.6, 3.4)),
-      bodyFace(groundEllipse(cx - 2.1, cy + 1.7, 1.25, 1.15)),
-      topFace(groundEllipse(cx - 2.35, cy + 1.4, 0.45, 0.4), 0.35),
-      bodyFace(groundEllipse(cx + 2.1, cy + 1.7, 1.25, 1.15)),
-      sideFace(groundEllipse(cx + 2.1, cy + 1.7, 1.25, 1.15), 0.18),
-      topFace(groundEllipse(cx + 1.82, cy + 1.42, 0.45, 0.4), 0.3),
+      bodyFace(groundEllipse(c1x, c1y, 1.25, 1.15)),
+      topFace(groundEllipse(g1x, g1y, 0.45, 0.4), 0.35),
+      bodyFace(groundEllipse(c2x, c2y, 1.25, 1.15)),
+      sideFace(groundEllipse(c2x, c2y, 1.25, 1.15), 0.18),
+      topFace(groundEllipse(g2x, g2y, 0.45, 0.4), 0.3),
       sideFace(`M${cx + 1.4} ${cy - 3.4} Q${cx + 4.4} ${cy - 1.6} ${cx + 3.4} ${cy + 2.4} Q${cx + 3.9} ${cy - 1} ${cx + 1.4} ${cy - 3.4} Z`, 0.22),
       topFace(groundEllipse(cx - 1.2, cy - 2.2, 1.8, 1.1), 0.35),
     ];
