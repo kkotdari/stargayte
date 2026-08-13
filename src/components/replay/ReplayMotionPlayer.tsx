@@ -2425,13 +2425,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...hornFaces(-1.9, 1.2, 4.6, -3.8, 3, 1.9, 0.85),
     ...hornFaces(1.9, 1.2, 4.6, 3.8, 3, 1.9, 0.85),
   ],
-  /* 아콘 — 반투명 밝은 구(요청). */
+  /* 아콘(실물 참고) — 반투명 발광 구 속에 어두운 형체가 비친다: 뾰족한 머리, 몸통,
+     길게 늘어지는 두 팔. */
   archon: () => {
     const [cx, cy] = project(0, 0, 5);
     return [
       [groundEllipse(cx, cy, 3.6, 3.4), 0.55] as ShapeFace,
       topFace(groundEllipse(cx, cy, 3.6, 3.4), 0.3),
-      topFace(groundEllipse(cx - 1.1, cy - 1.1, 1.4, 1.1), 0.4),
+      // 구 속 형체.
+      capFace(`M${cx} ${cy - 2.5} L${cx + 0.55} ${cy - 1.5} L${cx - 0.5} ${cy - 1.45} Z`, 0.4),
+      capFace(groundEllipse(cx, cy - 0.4, 0.75, 1.15), 0.35),
+      capFace(`M${cx - 0.6} ${cy - 1.2} Q${cx - 1.9} ${cy - 0.4} ${cx - 1.6} ${cy + 1.3}`
+        + ` L${cx - 1.3} ${cy + 1.2} Q${cx - 1.4} ${cy - 0.2} ${cx - 0.4} ${cy - 0.8} Z`, 0.35),
+      capFace(`M${cx + 0.6} ${cy - 1.2} Q${cx + 1.9} ${cy - 0.2} ${cx + 1.5} ${cy + 1.5}`
+        + ` L${cx + 1.2} ${cy + 1.4} Q${cx + 1.4} ${cy} ${cx + 0.4} ${cy - 0.8} Z`, 0.35),
+      topFace(groundEllipse(cx - 1.2, cy - 1.2, 1.3, 1), 0.4),
     ];
   },
   /* 다크 아콘 — 반투명 어두운 구(요청). */
