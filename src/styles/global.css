@@ -11073,6 +11073,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    삼각 쐐기로) — 점(●)과 같은 급의 표시라 점 크기를 따라간다. */
 /* 유닛은 실제보다 2배 크게(요청). */
 .scr-motion-shape-svg.scr-motion-troop { width: 2.3em; height: 2.3em; }
+/* 저그 공사 고치(요청) — 통통 바운스. */
+.scr-motion-cocoon { animation: scr-cocoon 0.9s ease-in-out infinite alternate; }
+@keyframes scr-cocoon {
+  from { transform: translateY(0); }
+  to { transform: translateY(-9%); }
+}
 /* 유닛 바닥 띄움(지적: 발이 땅에 묻혀 보임) — 발끝이 마커 지점 위에 서도록 그림을
    살짝 올린다. 방향은 요잉 재투영이라 회전과의 간섭이 없다. */
 .scr-motion-shape-svg.scr-motion-troop,

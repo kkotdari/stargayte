@@ -2291,6 +2291,43 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(groundEllipse(lx2 - 0.1, ly2 - 0.1, 0.13, 0.11), 0.5),
     ];
   },
+  /* ── 공사 표현 공용 셋(요청: 아이콘 대신 모델) ───────────────────────────── */
+  /* 저그 고치 — 크립 위 통통한 번데기(재생 쪽 CSS가 바운스시킨다). */
+  cocoon: () => [
+    ...creepSplat(4.4),
+    ...domeFaces3(0, 0.3, 2.6, 3.2),
+    ...domeFaces3(0, 1.1, 1.9, 1.5),
+    capFace(polyPath3([[-1.9, 0.5, 2.1], [1.9, 0.5, 2.1], [1.7, 0.3, 2.5], [-1.7, 0.3, 2.5]]), 0.18),
+    capFace(polyPath3([[-1.5, 1.3, 1.2], [1.5, 1.3, 1.2], [1.35, 1.1, 1.6], [-1.35, 1.1, 1.6]]), 0.18),
+    ...hornFaces(0, -1.8, 3, 0.4, -2.6, 4.4, 0.6),
+  ],
+  /* 프로토스 소환구 — 겹겹의 빛 고리와 중심 빛기둥. 다 지어지면 건물이 드러난다. */
+  warpin: () => {
+    const [cx, cy] = project(0, 0, 0.4);
+    return [
+      bodyFace(groundEllipse(cx, cy, 4.6, 2.2)),
+      topFace(groundEllipse(cx, cy, 4, 1.9), 0.2),
+      capFace(groundEllipse(cx, cy, 3, 1.4), 0.3),
+      topFace(groundEllipse(cx, cy, 2, 0.95), 0.35),
+      [`M${cx - 0.75} ${cy} L${cx - 0.25} ${cy - 5.8} L${cx + 0.25} ${cy - 5.8} L${cx + 0.75} ${cy} Z`, 0.45, "#fff"] as ShapeFace,
+      topFace(groundEllipse(cx, cy, 0.9, 0.45), 0.5),
+    ];
+  },
+  /* 테란 공사장 — 기초 슬래브 + 뼈대 기둥 넷 + 가로 보 + 크레인. */
+  scaffold: () => [
+    ...boxFaces3(0, 0, 7, 5, 0.8),
+    ...boxFaces3(-2.9, 1.9, 0.5, 0.5, 3.4, 0.8),
+    ...boxFaces3(2.9, 1.9, 0.5, 0.5, 3.4, 0.8),
+    ...boxFaces3(-2.9, -1.9, 0.5, 0.5, 3.4, 0.8),
+    ...boxFaces3(2.9, -1.9, 0.5, 0.5, 3.4, 0.8),
+    ...boxFaces3(0, 1.9, 6.2, 0.4, 0.4, 4.2),
+    ...boxFaces3(0, -1.9, 6.2, 0.4, 0.4, 4.2),
+    // 크레인 — 기둥 + 지브 + 갈고리 줄.
+    ...boxFaces3(2.3, -1.5, 0.45, 0.45, 6.4, 0.8),
+    bodyFace(polyPath3([[2.3, -1.7, 7.2], [-0.9, -1.7, 6.9], [-0.9, -1.5, 6.9], [2.3, -1.3, 7.2]])),
+    ...hornFaces(-0.7, -1.6, 6.9, -0.7, -1.6, 5.2, 0.16),
+  ],
+
   /* SCV(실물 참고) — 각진 몸통 + 양옆 포드 + 위 머리 + 앞으로 굽는 집게 드릴 한 쌍. */
   scv: () => [
     ...boxFaces3(0, -0.4, 2.6, 2.4, 2.6, 3.4),
@@ -2791,6 +2828,7 @@ export const SHAPE_GALLERY: { kind: string; label: string }[] = (() => {
     ["zealot", "질럿"], ["dtemp", "다크 템플러"], ["goon", "드라군"],
     ["archon", "아콘"], ["darchon", "다크 아콘"],
     ["lurker", "러커"], ["defiler", "디파일러"],
+    ["cocoon", "공사 고치(저그)"], ["warpin", "소환구(프로토스)"], ["scaffold", "공사장(테란)"],
     ["scv", "SCV"], ["probe", "프로브"], ["drone", "드론"],
     ["zling", "저글링"], ["hydra", "히드라"], ["ultra", "울트라리스크"],
     ["htemp", "하이 템플러"],
@@ -4451,37 +4489,24 @@ export default function ReplayMotionPlayer({
                 {/* 전용 도형이 있으면 벡터로(SHAPE_KIND — 이모지·글꼴 글리프 금지 요청).
                     입체는 직접 깎은 도형만이다(지적) — 이름 없는 나머지 건물은 예전대로
                     네모, 대신 크기만 발자국에 맞춘다. */}
-                {shapeKind && text !== name
+                {raising && !ADDONS.has(unit)
+                  ? (
+                    <ShapeIcon
+                      kind={(bases.find((b) => b.key === raw)?.race) === "저그" ? "cocoon"
+                        : (bases.find((b) => b.key === raw)?.race) === "프로토스" ? "warpin" : "scaffold"}
+                      flat={!pitched} keepRatio
+                      className={(bases.find((b) => b.key === raw)?.race) === "저그" ? "scr-motion-cocoon" : undefined}
+                    />
+                  )
+                  : shapeKind && text !== name
                   ? <ShapeIcon kind={shapeKind} flat={!pitched} keepRatio />
                   : text === "■"
                     // 캔버스가 이미 발자국 비율이라(위 aspectRatio — 벡터 없으면 높이 몫도
                     // 없다) 네모는 그 상자를 그대로 채운다(CSS width/height 100%).
                     ? <i className="scr-motion-sq" />
                     : text}
-                {/* 하는 일 아이콘(요청: 생산·업그레이드도 각각 아이콘으로) — 공사는 망치,
-                    생산은 톱니, 업그레이드는 플라스크. 한 번에 하나만(공사가 먼저다). */}
-                {/* 8 → 10(요청: 아이콘 확대), 자리는 건물 왼쪽 모서리에 살짝 걸치게(요청).
-                    색은 그 사람 칩의 글자색과 같은 규칙(요청: "글자색" — 플레이어색도
-                    흰색 고정도 아니다): 밝은 개인색 위엔 검정, 어두운 색 위엔 흰색이라
-                    제 색 도형 위에서도 늘 보인다. */}
-                {(() => {
-                  /* 이모지로(요청: 아이콘보다 잘 보이게) — 공사 🔨. 생산·연구는 종족
-                     따라(요청): 생산 = 테란 ⏳ · 저그 알 🥚 · 프로토스 소환 ✨, 연구 =
-                     테란 🧪 · 저그 유전자 🧬 · 프로토스 🔮(좀 더 고급). */
-                  const jobRace = bases.find((b) => b.key === raw)?.race;
-                  /* 요청: 건설 = 테란 🔨 · 프로토스 💫 · 저그 🐛. 생산 = 테란 훈련(공부하는
-                     사람) 🧑‍🎓 · 프로토스 소용돌이 소환 🌀 · 저그 알 🥚. 업그레이드 =
-                     테란 실험 🧪 · 저그 진화 유전자 🧬 · 프로토스 반짝이 ✨. */
-                  const job = raising
-                    ? (jobRace === "저그" ? "🐛" : jobRace === "프로토스" ? "💫" : "🔨")
-                    : producing && !afloat
-                      ? (jobRace === "저그" ? "🥚" : jobRace === "프로토스" ? "🌀" : "🧑‍🎓")
-                      : researching && !afloat
-                        ? (jobRace === "저그" ? "🧬" : jobRace === "프로토스" ? "✨" : "🧪")
-                        : null;
-                  if (!job) return null;
-                  return <span className="scr-motion-raising scr-motion-job">{job}</span>;
-                })()}
+                {/* (제거·요청) 건설·생산·연구 아이콘 — 공사는 종족 공용 모델(고치·
+                    소환구·공사장)이 말하고, 생산·연구는 액티브 글로우가 말한다. */}
               </span>
             );
           });
