@@ -1559,6 +1559,31 @@ export default function ReplayMotionPlayer({
     return () => el.removeEventListener("wheel", onWheel);
   }, [big]);
 
+  /* 드래그 팬(지적: 확대 후 드래그가 이상함 — 브라우저의 이미지 드래그가 끌려 나왔다)
+     — 확대 중에는 드래그로 지도를 민다. 경계 죔은 휠과 같은 식. */
+  const dragRef = useRef<{ id: number; sx: number; sy: number; px: number; py: number } | null>(null);
+  const onMapPointerDown = (e: React.PointerEvent) => {
+    if (zoom <= 1 || e.button !== 0) return;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    dragRef.current = { id: e.pointerId, sx: e.clientX, sy: e.clientY, px: pan.x, py: pan.y };
+  };
+  const onMapPointerMove = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d || d.id !== e.pointerId) return;
+    const el = mapRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const maxX = ((zoom - 1) * rect.width) / 2;
+    const maxY = ((zoom - 1) * rect.height) / 2;
+    setPan({
+      x: Math.min(maxX, Math.max(-maxX, d.px + (e.clientX - d.sx))),
+      y: Math.min(maxY, Math.max(-maxY, d.py + (e.clientY - d.sy))),
+    });
+  };
+  const onMapPointerUp = (e: React.PointerEvent) => {
+    if (dragRef.current?.id === e.pointerId) dragRef.current = null;
+  };
+
   /* 키보드(요청: PC) — ↑↓ 배속, ←→ 5초 뒤/앞. 댓글 입력 중에는 건드리지 않는다. */
   useEffect(() => {
     if (!big) return undefined;
@@ -2008,9 +2033,13 @@ export default function ReplayMotionPlayer({
       {teamCol(1)}
       <div
         className="scr-motion-map" ref={mapRef}
+        onPointerDown={onMapPointerDown}
+        onPointerMove={onMapPointerMove}
+        onPointerUp={onMapPointerUp}
+        onPointerCancel={onMapPointerUp}
         style={{
           aspectRatio: `${grid.width} / ${grid.height}`,
-          ...(zoom > 1 ? { overflow: "hidden" } : {}),
+          ...(zoom > 1 ? { overflow: "hidden", cursor: dragRef.current ? "grabbing" : "grab" } : {}),
         }}
       >
         {/* 렌즈 상자 — PC 휠 줌(요청)이 이 층을 통째로 키운다(마커·자취까지 같이). */}
