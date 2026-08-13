@@ -1149,7 +1149,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ];
     };
     return [
-      // 뒤 첨탑 둘.
+      // 기둥은 셋(지적) — 뒤 첨탑 둘 + 앞 첨탑 하나.
       ...boxFaces3(-3.2, -2.2, 1.4, 1.4, 5.4),
       ...boxFaces3(-3.2, -2.2, 0.7, 0.7, 1.8, 5.4),
       ...boxFaces3(3.4, -1.8, 1.5, 1.5, 6.2),
@@ -1164,8 +1164,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 비스듬한 뚜껑 판 — 우물 위로 걸친 원판.
       bodyFace(discPath3(0.4, -0.9, 4.3, 1.6)),
       topFace(discPath3(0.4, -0.9, 4.33, 1.15), 0.25),
-      // 앞 빛 기둥 포스트 둘.
-      ...post(-3.5, 2.3, 3.1),
+      // 앞 첨탑 하나 + 빛 포스트.
+      ...boxFaces3(-3.4, 2.4, 1.4, 1.4, 4.6),
+      ...boxFaces3(-3.4, 2.4, 0.7, 0.7, 1.6, 4.6),
       ...post(3.7, 2.7, 2.7),
     ];
   },
