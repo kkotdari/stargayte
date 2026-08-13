@@ -4479,7 +4479,7 @@ export default function ReplayMotionPlayer({
                      건물이 위일 수 있다) — 방금 착공했거나 지금 생산·연구·비행 중인
                      건물은 조용한 유닛 점 위로 온다. 유닛 마커도 같은 자로 잰다. */
                   zIndex: 1000 + Math.round(producing || researching || afloat ? t : sec),
-                  ...(fade < 1 ? { opacity: 0.85 * fade } : {}),
+                  ...(fade < 1 ? { opacity: fade } : {}),
                   left: pct(bx + footDx(unit) - (ADDONS.has(unit) ? 1.6 : 0), grid.width),
                   // 건물은 바닥 위로 솟는다(지적: "실제 건물은 바닥위에 높이가 있어") —
                   // 캔버스 높이에 그 몫(riseOf, 발자국 폭 비례)을 더하고, 늘어난 만큼

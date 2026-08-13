@@ -11016,7 +11016,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   text-shadow: 0 0 2px rgba(0, 0, 0, 0.95);
 }
 .scr-motion-chip { text-shadow: none; border: none; padding: 1px 3px; }
-.scr-motion-build { font-size: 7px; font-weight: 700; opacity: 0.85; }
+/* 불투명(지적: 반투명 제거). */
+.scr-motion-build { font-size: 7px; font-weight: 700; }
 /* PC는 지도가 커서 같은 픽셀이 상대적으로 작다(지적: 도형이 안 보임) — 한 단계씩 키운다. */
 /* 값들은 예전 1.2배 transform을 걷어낸 몫까지 미리 곱해 둔 것(위 --mk 주석) — 크기는
    그대로, 래스터만 또렷해진다. */
@@ -11102,7 +11103,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 }
 /* 채굴 일꾼 점(요청) — 본진과 자원 사이를 오가는 작은 점. 정찰·일꾼 점(.scr-motion-scout)
    과 같은 크기·농도로 통일(요청: 자원 채취뿐 아니라 일꾼은 적당히 작은 점 하나로). */
-.scr-motion-miner { font-size: 7px; font-weight: 800; opacity: 0.75; }
+.scr-motion-miner { font-size: 7px; font-weight: 800; }
 /* 핵(요청: "핵 떨어지는거도 효과") — 이름 칩 뒤로 주황 파문이 두 번 퍼진다. 마커 하나로는
    경기 최대 사건이 다른 마법과 같은 무게로 읽혔다. */
 .scr-motion-nuke { font-weight: 900; }
@@ -12866,12 +12867,15 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    것들(유닛·건물·배지·말풍선·광선)은 바닥점 기준 반대 회전(빌보드)으로 도로 세운다.
    바닥에 깔리는 넓이 효과(스톰·스웜·핵 폭발)는 그대로 눕는다. */
 .scr-motion-pitched .scr-motion-lens { transform-style: preserve-3d; }
+/* 수리(지적: 입체 보기에서 우하단 쏠림) — 빌보드 회전이 공통 가운데 앵커
+   translate(-50%,-50%)를 덮어써 마커가 좌상단 기준이 됐었다. 앵커를 포함해 회전한다. */
 .scr-motion-pitched .scr-motion-army,
 .scr-motion-pitched .scr-motion-fresh,
 .scr-motion-pitched .scr-motion-miner,
 .scr-motion-pitched .scr-motion-cast,
 .scr-motion-pitched .scr-motion-build {
-  transform: rotateX(-38deg); transform-origin: 50% 100%;
+  transform: translate(-50%, -50%) scale(var(--mk, 1)) rotateX(-38deg);
+  transform-origin: 50% 100%;
 }
 .scr-motion-pitched .scr-motion-lens > .scr-motion-bubble {
   transform: translate(-50%, calc(-100% - 8px)) rotateX(-38deg); transform-origin: 50% 100%;
