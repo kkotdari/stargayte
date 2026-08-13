@@ -128,11 +128,16 @@ export default function MinimapScreen() {
     setTerrainAnchors(undefined);
     setBusy(true);
     try {
-      const first = maps.find((m) => m.imageId === img.id);
-      if (first) {
-        const [mg] = await api.getReplayMaps([first.hash]);
-        if (mg && (mg.resources ?? []).length > 0) {
-          setTerrainAnchors(mg.resources.map(([x, y]) => [x / mg.width, y / mg.height] as [number, number]));
+      /* 매핑된 모든 맵을 받아 자원이 있는 판을 고른다(지적: 빠른무한 그대로 — 첫 매핑
+         맵이 자원 없는 옛 레코드면 앵커가 비어 분류기가 아예 안 돌았다). */
+      const hashes = maps.filter((m) => m.imageId === img.id).map((m) => m.hash);
+      if (hashes.length > 0) {
+        const mgs = await api.getReplayMaps(hashes);
+        const best = mgs
+          .filter((mg) => (mg.resources ?? []).length > 0)
+          .sort((a, b) => (b.resources?.length ?? 0) - (a.resources?.length ?? 0))[0];
+        if (best) {
+          setTerrainAnchors(best.resources.map(([x, y]) => [x / best.width, y / best.height] as [number, number]));
         }
       }
     } catch { /* 앵커는 보정일 뿐. */ } finally {
