@@ -12812,6 +12812,8 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-motion-nuke-domewrap {
   position: absolute; left: 50%; top: 50%; width: 72%; aspect-ratio: 1;
   transform: translate(-50%, -79%);
+  /* 스케일 기준점 = 돔 바닥선(수리: 가운데 기준으로 부풀어 폭풍·섬광 중심과 어긋났다). */
+  transform-origin: 50% 79%;
   color: #ff9d4a; mix-blend-mode: screen; pointer-events: none;
   animation: scr-nuke-dome 2.6s ease-out forwards;
 }
