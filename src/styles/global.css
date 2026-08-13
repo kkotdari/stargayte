@@ -11247,6 +11247,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   display: inline-block; width: 1em; height: 1em; vertical-align: -0.12em;
   filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.6));
 }
+/* 건물 밑 그림자 제거(지적: 떠 보임) — 발이 땅에 붙은 건물엔 아래 그림자가 틈으로 읽힌다. */
+.scr-motion-build .scr-motion-shape-svg { filter: none; }
 /* 발자국 비례 도형(요청: "건물 아이콘 크기를 실제 맵크기에 비례해서 정확히") — 스팬 폭을
    지도 %로 못박고(JSX) 그림이 그 폭을 다 쓴다. 글자 크기 클래스는 이때 안 듣는다.
    맨 네모(전용 도형 없는 건물)도 같은 폭을 받아 발자국 비율(aspect-ratio, JSX)로 선다. */
