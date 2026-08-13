@@ -806,8 +806,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 파일런(정정 둘) — 고리를 수정 허리께로 더 올리고(지적), 수정은 매끈한 육각
      보석으로 다듬었다: 위 뾰족·어깨·허리·아래 뾰족이 좌우대칭. */
   diamond: () => {
-    const out: ShapeFace[] = [sideFace(discPath3(0, 0, 0, 3.8), 0.26)];
-    const [cx, cy] = project(0, 0, 3.6);
+    // 고리가 바닥에 붙어 보인다(지적) — 그림자를 줄이고 고리를 공중으로 더 올린다.
+    const out: ShapeFace[] = [sideFace(discPath3(0, 0, 0, 3), 0.24)];
+    const [cx, cy] = project(0, 0, 4.6);
     const rxo = 4.6;
     const ryo = rxo * 0.45;
     const rxi = 3.2;
@@ -816,12 +817,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const ringFront = `M${cx - rxo} ${cy} A${rxo} ${ryo} 0 0 0 ${cx + rxo} ${cy} L${cx + rxi} ${cy} A${rxi} ${ryi} 0 0 1 ${cx - rxi} ${cy} Z`;
     const claw = (ang: number, h: number): ShapeFace[] => {
       const a = (ang * Math.PI) / 180;
-      return hornFaces(Math.sin(a) * 3.9, Math.cos(a) * 3.9, 3.4, Math.sin(a) * 3, Math.cos(a) * 3, h, 1.05);
+      return hornFaces(Math.sin(a) * 3.9, Math.cos(a) * 3.9, 4.4, Math.sin(a) * 3, Math.cos(a) * 3, h, 1.05);
     };
     // 뒤 발톱들 → 뒤 링 → 수정 → 앞 링 → 앞 발톱들 순으로 겹친다.
-    for (const ang of [135, 180, -135]) out.push(...claw(ang, 7));
+    for (const ang of [135, 180, -135]) out.push(...claw(ang, 8));
     out.push(bodyFace(ringBack), sideFace(ringBack, 0.3));
-    const [gx, gy] = project(0, 0, 6.6);
+    const [gx, gy] = project(0, 0, 7.4);
     const R = 5.2;
     const W = 2.6;
     const gem = `M${gx} ${gy - R} L${gx + W * 0.82} ${gy - R * 0.42} L${gx + W} ${gy + R * 0.28} L${gx} ${gy + R * 0.72} L${gx - W} ${gy + R * 0.28} L${gx - W * 0.82} ${gy - R * 0.42} Z`;
@@ -831,8 +832,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(sideFace(`M${gx} ${gy - R} L${gx + W * 0.82} ${gy - R * 0.42} L${gx + W} ${gy + R * 0.28} L${gx} ${gy + R * 0.72} L${gx + W * 0.3} ${gy + R * 0.24} L${gx + W * 0.3} ${gy - R * 0.36} Z`, 0.22));
     out.push(topFace(`M${gx} ${gy - R} L${gx + W * 0.3} ${gy - R * 0.36} L${gx} ${gy - R * 0.1} L${gx - W * 0.3} ${gy - R * 0.36} Z`, 0.4));
     out.push(bodyFace(ringFront), topFace(ringFront, 0.22));
-    for (const ang of [90, -90]) out.push(...claw(ang, 7.3));
-    for (const ang of [45, -45, 0]) out.push(...claw(ang, 6.8));
+    for (const ang of [90, -90]) out.push(...claw(ang, 8.3));
+    for (const ang of [45, -45, 0]) out.push(...claw(ang, 7.8));
     return out;
   },
   /* 로보틱스(실물 참고, 곡선의 미) — 둥근 대야와 도톰한 링 테두리, 어두운 격자 구덩이,
@@ -990,19 +991,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      팔꿈치 배관들 + 앞 은색 탱크 + 왼앞 줄무늬 경사로. */
   refinery: () => {
     const out: ShapeFace[] = [...boxFaces3(0, 0, 11.6, 7, 2.2)];
-    out.push(...frustumFaces3(-3.9, -0.9, 3.4, 3, 2.9, 2.6, 6.2, 2.2));
-    out.push(...frustumFaces3(3.9, -0.7, 3.6, 3.2, 3.1, 2.8, 5.4, 2.2));
+    // 높이 살짝 낮춤(지적).
+    out.push(...frustumFaces3(-3.9, -0.9, 3.4, 3, 2.9, 2.6, 5, 2.2));
+    out.push(...frustumFaces3(3.9, -0.7, 3.6, 3.2, 3.1, 2.8, 4.3, 2.2));
     // 나팔 굴뚝 — 목 원통 위로 벌어진 테와 어두운 속.
-    out.push(...cylinderFaces3(0, -1.2, 1.7, 4.6, 2.2));
-    out.push(bodyFace(discPath3(0, -1.2, 6.8, 2.9)));
-    out.push(capFace(discPath3(0, -1.2, 6.85, 2.2), 0.5));
+    out.push(...cylinderFaces3(0, -1.2, 1.7, 3.6, 2.2));
+    out.push(bodyFace(discPath3(0, -1.2, 5.85, 2.9)));
+    out.push(capFace(discPath3(0, -1.2, 5.9, 2.2), 0.5));
     // 은빛 배관 — 탑과 굴뚝 사이를 타넘는다.
     out.push(...tubeFaces(-3.6, 1.2, -1, 1.6, 0.55, 4.2));
     out.push(...tubeFaces(1.2, 1.4, 3.4, 0.6, 0.55, 3.6));
-    out.push(...tubeFaces(-2.2, -2.6, 2.4, -2.8, 0.5, 5.8));
+    out.push(...tubeFaces(-2.2, -2.6, 2.4, -2.8, 0.5, 4.9));
     // 앞 은색 탱크(돔 뚜껑) + 왼쪽 작은 돔.
     out.push(...cylinderFaces3(1.4, 2.9, 1.6, 3.4));
-    out.push(...domeFaces3(1.4, 2.9, 1.6, 1.1, 5.6));
+    out.push(...domeFaces3(1.4, 2.9, 1.6, 1.1, 3.4));
     out.push(...domeFaces3(-4.9, 2.3, 1.3, 1.4, 2.2));
     // 왼앞 경사로 — 아래쪽에 사선 줄무늬.
     const ramp = polyPath3([[-3.9, 2.2, 2.2], [-1.7, 2.2, 2.2], [-1.2, 5, 0], [-4.4, 5, 0]]);
@@ -1339,9 +1341,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const [fx2, fy2] = project(tx, frontY, 3.6);
       out.push(bodyFace(groundEllipse(fx2, fy2 - r * 0.45, r * 0.95, r * 0.78)));
       out.push(topFace(groundEllipse(fx2 - r * 0.25, fy2 - r * 0.65, r * 0.45, r * 0.3), 0.25));
-      // 마디 띠 — 허리를 감는 어두운 고리.
-      const [mx2, my2] = project(tx, (back + frontY) / 2 - 0.6, 3.6 + r * 0.85);
-      out.push(sideFace(groundEllipse(mx2, my2, r * 0.95, r * 0.35), 0.18));
+      // (삭제) 마디 띠 — 어두운 고리가 뚫린 단면처럼 보였다(지적).
     };
     tube(-2.5, -3.4, 2.2, 1.35);
     tube(2.7, -3, 3, 1.25);
