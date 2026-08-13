@@ -780,7 +780,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 해처리 — 둔덕 + 방사 다리 여섯(요잉을 따라 도는 것이 핵심) + 윗면 입·목띠. */
   hatchery: () => {
     const out: ShapeFace[] = [];
-    for (const ang of [150, -150]) out.push(...limbFaces(ang, 3, 1.7, 3.4));
+    for (const ang of [130, -170]) out.push(...limbFaces(ang, 3, 1.7, 3.4));
     /* 본 기둥 — 뒤집힌 밥그릇(돔)이 아니라 후지산 둔덕(지적): 위는 좁게 잘리고 옆구리는
        가파르다가 바닥에서 완만하게 벌어진다. 회전 대칭이라 요잉 불변. */
     {
@@ -805,25 +805,25 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [mx, my] = project(0, 0, 5);
     out.push(sideFace(`M${mx - 2.1} ${my} L${mx + 2.1} ${my} Q${mx + 2} ${my + 1.4} ${mx} ${my + 1.6} Q${mx - 2} ${my + 1.4} ${mx - 2.1} ${my} Z`, 0.35));
     out.push(topFace(groundEllipse(mx, my, 2, 0.5)));
-    for (const ang of [-20, 40, -80, 100]) out.push(...limbFaces(ang, 3.4, 1.7, 3.2));
+    for (const ang of [-40, 20, -100, 80]) out.push(...limbFaces(ang, 3.4, 1.7, 3.2));
     return out;
   },
   /* 레어 — 해처리 + 다리 끝 굽은 뿔 셋. */
   lair: () => [
     ...SHAPE_BUILDERS.hatchery(),
-    // 뿔 뿌리는 다리 동굴 입구(바깥, 지적)에서 솟는다.
-    ...hornFaces(-5.6, -3.2, 0.9, -6.6, -1.6, 10.4, 1.7),
-    ...hornFaces(0.5, -6.4, 0.9, 1.5, -4.9, 9, 1.5),
-    ...hornFaces(6.2, 1.7, 1, 7.4, 3.3, 11, 1.9),
+    // 뿔은 동굴 입구 하나 건너 하나(지적) — 다리 각 -170·-40·80의 입구에서 솟는다.
+    ...hornFaces(-1.15, -6.5, 0.9, -1.4, -7.7, 9, 1.5),
+    ...hornFaces(-4.25, 5.05, 0.9, -5, 6, 10.4, 1.7),
+    ...hornFaces(6.5, 1.15, 1, 7.7, 1.4, 11, 1.9),
   ],
   /* 하이브 — 더 길고 굵은 뿔 셋(뿔 등에 가시들, 요청) + 앞 컬. */
   hive: () => {
     const out: ShapeFace[] = [...SHAPE_BUILDERS.hatchery()];
-    // 뿔 뿌리는 다리 동굴 입구(바깥, 지적)에서.
+    // 뿔은 동굴 입구 하나 건너 하나(지적) — 레어와 같은 세 입구, 더 길게.
     const horns: [number, number, number, number, number, number, number][] = [
-      [-5.6, -3.2, 0.9, -7.2, -1.2, 13, 2.1],
-      [0.5, -6.4, 0.9, 1.9, -4.5, 11.6, 1.9],
-      [6.2, 1.7, 1, 8, 3.8, 14, 2.3],
+      [-1.15, -6.5, 0.9, -1.5, -8.2, 11.6, 1.9],
+      [-4.25, 5.05, 0.9, -5.3, 6.4, 13, 2.1],
+      [6.5, 1.15, 1, 8.2, 1.6, 14, 2.3],
     ];
     for (const [bx, by, bz, tx, ty, tz, w] of horns) {
       out.push(...hornFaces(bx, by, bz, tx, ty, tz, w));

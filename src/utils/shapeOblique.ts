@@ -268,7 +268,9 @@ export function pyramidFaces3(
 export function limbFaces(
   angleDeg: number, len: number, w: number, r0 = 1.6, capOpen = true,
 ): ShapeFace[] {
-  const a = ((angleDeg + VIEW.yawDeg) * Math.PI) / 180;
+  // 모형 공간 각도 그대로 — 요잉은 project가 입힌다(예전엔 여기서 한 번 더 더해 이중
+  // 회전이었고, 뷰어에서 다리가 고정 오프셋으로 어긋났다).
+  const a = (angleDeg * Math.PI) / 180;
   const dx = Math.sin(a);
   const dy = Math.cos(a); // +면 시청자 쪽
   const rootX = dx * r0;
