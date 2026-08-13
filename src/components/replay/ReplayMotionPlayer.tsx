@@ -1225,13 +1225,31 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(`M${gx2} ${gy2 - 1.4} L${gx2 - 0.85} ${gy2} L${gx2} ${gy2 + 1.05} L${gx2 - 0.28} ${gy2} Z`, 0.3),
     ];
   },
-  /* 로보틱스 서포트 베이 — 낮은 상자 + 위로 굽은 팔. */
-  robobay: () => [
-    ...boxFaces3(0, 0.2, 7.6, 5, 3),
-    ...hornFaces(-2.4, -1.2, 3, -3.2, -1.6, 6.4, 1.1),
-    ...hornFaces(-3.2, -1.6, 6.2, -1.4, -0.6, 7.4, 0.8),
-    ...domeFaces3(2.2, 0.6, 1.4, 1.1, 3),
-  ],
+  /* 로보틱스 서포트 베이(실물 참고) — 톱니 테 받침판 가운데 오목한 대접(심 발광),
+     그 둘레로 바깥으로 기운 당근 포드들과 굽은 관 팔. */
+  robobay: () => {
+    const out: ShapeFace[] = [...cylinderFaces3(0, 0, 4.6, 1.1)];
+    // 받침 테두리 톱니.
+    for (const ang of [160, 200, 90, 270, 40, 320]) {
+      const a = (ang * Math.PI) / 180;
+      out.push(...boxFaces3(Math.sin(a) * 4.7, Math.cos(a) * 4.7, 0.8, 0.8, 0.9));
+    }
+    // 오목 대접 + 심 발광.
+    out.push(capFace(discPath3(0, 0, 1.15, 3), 0.3));
+    out.push(capFace(discPath3(0, 0, 1.18, 2.1), 0.45));
+    const [gx2, gy2] = project(0, 0, 1.25);
+    out.push(topFace(groundEllipse(gx2, gy2, 0.7, 0.4), 0.5));
+    // 당근 포드 — 뒤 둘·오른앞 하나, 바깥으로 기운다.
+    out.push(...hornFaces(-1.4, -1.2, 1, -2.5, -2, 6.6, 1.7));
+    out.push(...hornFaces(0.4, -1.7, 1, 0.7, -3, 7.2, 1.8));
+    out.push(...hornFaces(1.7, -0.6, 1, 2.8, -1.1, 5.8, 1.6));
+    // 굽은 관 팔 — 받침 밖에서 포드 쪽으로 넘어온다.
+    out.push(...hornFaces(-3.6, 0.9, 0.8, -4, 0.2, 3.6, 0.7));
+    out.push(...hornFaces(-4, 0.2, 3.5, -2.9, -0.9, 4.6, 0.55));
+    out.push(...hornFaces(3.6, 1.3, 0.8, 4, 0.6, 3.2, 0.7));
+    out.push(...hornFaces(4, 0.6, 3.1, 3, -0.3, 4.2, 0.55));
+    return out;
+  },
   /* 옵저버토리 — 받침 다리 + 구 + 뒤 접시. */
   observatory: () => {
     const [dx3, dy3] = project(-1.8, -2, 5.6);
