@@ -1488,57 +1488,66 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       capFace(groundEllipse(mx3, my3, 0.8, 0.45), 0.4),
     ];
   },
-  /* 스파이어(정정 둘) — 더 높이 올린 둥지를, 무릎이 꺾인 곤충 다리인지 덩쿨인지 모를
-     다리들이 받치고, 발치는 나무 뿌리처럼 잔뿌리를 벌려 땅에 심긴다. */
+  /* 스파이어(실물 참고) — 초록 밑동에서 촉수 여러 가닥이 모여 오르는 기둥, 그 위
+     잿빛 머리와 골진 도넛 왕관(가운데 구멍). */
   spire: () => {
-    const leg = (ang: number, zTop: number): ShapeFace[] => {
+    const out: ShapeFace[] = [];
+    // 밑동 — 초록 무지개 더미(밝은 윗빛).
+    out.push(...domeFaces3(0, 0.6, 2.7, 1.2));
+    out.push(topFace(groundEllipse(...project(0, 0.6, 1), 1.7, 0.85), 0.3));
+    // 촉수 기둥 — 여섯 가닥이 위로 모인다.
+    for (const ang of [150, 210, 90, 270, 30, -30]) {
       const a = (ang * Math.PI) / 180;
-      const sx = Math.sin(a);
-      const sy = Math.cos(a);
-      const tx2 = Math.cos(a);
-      const ty2 = -Math.sin(a);
-      return [
-        // 다리는 둥지 아래 가운데에 모여 꺾임 없이 길게 쭉 내려온다(정정).
-        ...hornFaces(sx * 0.9, sy * 0.9, zTop, sx * 2.2, sy * 2.2, 0, 0.65),
-        // 발치 잔뿌리 — 좌우로 벌어져 땅에 심긴다.
-        ...hornFaces(sx * 2.2, sy * 2.2, 0.35, sx * 2.5 + tx2 * 1, sy * 2.5 + ty2 * 1, 0.05, 0.4),
-        ...hornFaces(sx * 2.2, sy * 2.2, 0.35, sx * 2.5 - tx2 * 1, sy * 2.5 - ty2 * 1, 0.05, 0.4),
-      ];
-    };
-    // 더 높이(지적) — 둥지를 9.4까지 올린다.
-    const [bx2, by2] = project(0, 0, 9.4);
-    return [
-      ...leg(150, 9.5), ...leg(210, 9.5), ...leg(90, 9.5), ...leg(270, 9.5),
-      bodyFace(groundEllipse(bx2, by2, 2.4, 1.1)),
-      ...domeFaces3(0, 0, 2.4, 2.2, 9.4),
-      ...hornFaces(0, 0, 11.5, 0.5, -0.5, 12.9, 0.8),
-      ...leg(30, 9.5), ...leg(-30, 9.5),
-    ];
+      out.push(...hornFaces(
+        Math.sin(a) * 2.5, 0.6 + Math.cos(a) * 2.5, 0.3,
+        Math.sin(a) * 0.85, Math.cos(a) * 0.85, 8.3, 0.55,
+      ));
+    }
+    // 잿빛 머리 판.
+    out.push(...cylinderFaces3(0, 0, 1.6, 1.3, 8.1));
+    // 골진 도넛 왕관 — 방사 골 + 가운데 구멍.
+    const [cx2, cy2] = project(0, 0, 9.8);
+    out.push(bodyFace(groundEllipse(cx2, cy2, 2.6, 1.5)));
+    for (const ang of [200, 240, 280, 320, 20, 60, 100, 140]) {
+      const a = (ang * Math.PI) / 180;
+      out.push(sideFace(`M${cx2 + Math.cos(a) * 1.1} ${cy2 + Math.sin(a) * 0.62}`
+        + ` L${cx2 + Math.cos(a) * 2.45} ${cy2 + Math.sin(a) * 1.4}`
+        + ` L${cx2 + Math.cos(a + 0.16) * 2.45} ${cy2 + Math.sin(a + 0.16) * 1.4}`
+        + ` L${cx2 + Math.cos(a + 0.16) * 1.1} ${cy2 + Math.sin(a + 0.16) * 0.62} Z`, 0.16));
+    }
+    out.push(capFace(groundEllipse(cx2, cy2 - 0.15, 0.75, 0.45), 0.5));
+    return out;
   },
-  /* 그레이터 스파이어(정정 둘) — 같은 덩쿨 다리 둥지를 한층 더 높게 + 둥지 옆 뿔. */
+  /* 그레이터 스파이어(실물 참고) — 잿빛 돌 밑동 위 붉은 살 몸통, 양옆의 큰 갑각
+     날개판, 꼭대기의 골진 왕관(어두운 구멍), 발치 발톱. */
   gspire: () => {
-    const leg = (ang: number): ShapeFace[] => {
+    const out: ShapeFace[] = [];
+    // 돌 밑동.
+    out.push(...frustumFaces3(0, 0.4, 5.2, 3.8, 2.8, 2.2, 3.2));
+    // 발치 발톱.
+    out.push(...hornFaces(-1.9, 2.3, 0.6, -2.4, 3.1, 0.1, 0.5));
+    out.push(...hornFaces(-0.4, 2.5, 0.6, -0.5, 3.3, 0.1, 0.5));
+    out.push(...hornFaces(1.2, 2.4, 0.6, 1.6, 3.2, 0.1, 0.5));
+    // 붉은 살 몸통.
+    out.push(...domeFaces3(0, -0.2, 2.3, 3.4, 2.9));
+    // 양옆 큰 갑각 날개판(잿빛 윗빛).
+    const wing = (m2: 1 | -1): string => polyPath3([
+      [m2 * 1.5, -0.6, 3.6], [m2 * 4.1, -1.4, 8.6], [m2 * 2.7, -0.2, 10], [m2 * 1.1, 0.2, 5.4],
+    ]);
+    out.push(bodyFace(wing(-1)), topFace(wing(-1), 0.3));
+    out.push(bodyFace(wing(1)), topFace(wing(1), 0.22), sideFace(wing(1), 0.18));
+    // 꼭대기 골진 왕관.
+    const [cx2, cy2] = project(0, -0.2, 10.6);
+    out.push(bodyFace(groundEllipse(cx2, cy2, 2.15, 1.25)));
+    for (const ang of [210, 255, 300, 345, 30, 75, 120, 165]) {
       const a = (ang * Math.PI) / 180;
-      const sx = Math.sin(a);
-      const sy = Math.cos(a);
-      const tx2 = Math.cos(a);
-      const ty2 = -Math.sin(a);
-      return [
-        ...hornFaces(sx * 1, sy * 1, 10.4, sx * 2.4, sy * 2.4, 0, 0.7),
-        ...hornFaces(sx * 2.4, sy * 2.4, 0.35, sx * 2.7 + tx2 * 1.1, sy * 2.7 + ty2 * 1.1, 0.05, 0.42),
-        ...hornFaces(sx * 2.4, sy * 2.4, 0.35, sx * 2.7 - tx2 * 1.1, sy * 2.7 - ty2 * 1.1, 0.05, 0.42),
-      ];
-    };
-    const [bx2, by2] = project(0, 0, 10.3);
-    return [
-      ...leg(150), ...leg(210), ...leg(90), ...leg(270),
-      bodyFace(groundEllipse(bx2, by2, 2.6, 1.2)),
-      ...domeFaces3(0, 0, 2.6, 2.4, 10.3),
-      ...hornFaces(0, 0, 12.6, 0.6, -0.6, 13.8, 0.9),
-      ...hornFaces(-2.2, -0.8, 11.4, -3.4, -1.2, 12.6, 0.7),
-      ...hornFaces(2.2, -0.8, 11.4, 3.4, -1.2, 12.6, 0.7),
-      ...leg(30), ...leg(-30),
-    ];
+      out.push(sideFace(`M${cx2 + Math.cos(a) * 0.9} ${cy2 + Math.sin(a) * 0.52}`
+        + ` L${cx2 + Math.cos(a) * 2} ${cy2 + Math.sin(a) * 1.16}`
+        + ` L${cx2 + Math.cos(a + 0.18) * 2} ${cy2 + Math.sin(a + 0.18) * 1.16}`
+        + ` L${cx2 + Math.cos(a + 0.18) * 0.9} ${cy2 + Math.sin(a + 0.18) * 0.52} Z`, 0.16));
+    }
+    out.push(capFace(groundEllipse(cx2, cy2 - 0.1, 0.7, 0.4), 0.5));
+    return out;
   },
   /* 퀸즈 네스트(정정) — 반구형 몸에 아래쪽 밑단을 따라 긴 입구들이 빙 둘러 뚫린다. */
   queensnest: () => {
@@ -1605,32 +1614,52 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...hornFaces(0.6, 1.9, 0.6, 0.9, 2.6, 1.6, 0.4),
     ];
   },
-  /* 울트라리스크 캐번(정정) — 크고 통통한 소라: 불룩한 몸 위로 나선 단이 겹겹이
-     말려 올라가 비스듬한 꼭지로 끝나고, 앞엔 큰 입이 뚫린다. */
+  /* 울트라리스크 캐번(실물 참고) — 울퉁불퉁한 큰 덩치 앞에 거대한 아가리가 벌어지고,
+     그 양옆을 큰 금빛 엄니 둘이 감싼다. 옆엔 흰 베개 덩이, 바닥엔 촉수 술. */
   cavern: () => {
-    const [mx3, my3] = project(0.6, 3.8, 1.6);
+    const [mx3, my3] = project(0, 2.9, 1.5);
     return [
-      ...domeFaces3(0, 0, 4.9, 3.8),
-      ...domeFaces3(-1.2, -1.2, 3.4, 2.6, 1.8),
-      ...domeFaces3(-2.2, -2, 2.2, 1.8, 3.6),
-      ...hornFaces(-2.8, -2.6, 4.8, -3.7, -3.3, 6.8, 1.4),
-      // 입구 크게(지적) — 앞면을 넓게 뚫는다.
-      capFace(groundEllipse(mx3, my3, 2.7, 1.5), 0.45),
+      // 옆 흰 베개 덩이.
+      ...domeFaces3(-3.7, 0.4, 1.5, 1.1),
+      topFace(groundEllipse(...project(-3.7, 0.4, 0.9), 0.9, 0.5), 0.35),
+      ...domeFaces3(3.7, 0, 1.4, 1),
+      topFace(groundEllipse(...project(3.7, 0, 0.8), 0.85, 0.45), 0.3),
+      // 울퉁불퉁 몸 — 겹돔.
+      ...domeFaces3(0, -1, 4.2, 3.7),
+      ...domeFaces3(-1.7, 0.1, 2.6, 2.2, 1.3),
+      ...domeFaces3(1.9, 0.3, 2.4, 2, 1.1),
+      // 거대한 아가리 — 어두운 속.
+      capFace(groundEllipse(mx3, my3, 2.5, 1.6), 0.5),
+      // 큰 금 엄니 — 아가리 양옆에서 아래로 굽는다(끝 밝게).
+      ...hornFaces(-2, 2.4, 3.6, -1.2, 3.9, 0.4, 1.05),
+      topFace(polyPath3([[-1.7, 2.9, 2.6], [-1.25, 3.7, 0.6], [-1.5, 3.5, 0.5], [-1.95, 2.8, 2.4]]), 0.4),
+      ...hornFaces(2, 2.4, 3.6, 1.2, 3.9, 0.4, 1.05),
+      topFace(polyPath3([[1.7, 2.9, 2.6], [1.25, 3.7, 0.6], [1.5, 3.5, 0.5], [1.95, 2.8, 2.4]]), 0.35),
+      // 바닥 촉수 술.
+      ...hornFaces(-3.3, 2.4, 0.5, -4.5, 3.2, 0.1, 0.4),
+      ...hornFaces(3.4, 2.2, 0.5, 4.6, 3, 0.1, 0.4),
+      ...hornFaces(-4.2, 1.2, 0.5, -5.4, 1.7, 0.1, 0.38),
     ];
   },
-  /* 나이더스 커널(정정) — 땅굴 동굴 입구: 뒤가 높은 둔덕 테와 앞 낮은 입술 사이로
-     겹겹이 어두워지는 목구멍이 크게 뚫리고, 뒤 테두리에 이빨이 돋는다. */
+  /* 나이더스 커널(실물 참고) — 뒤로 크게 늘어진 살 엽 둘(끝 잿빛 갑판) 아래에
+     발광하는 구덩이가 열리고, 앞 테두리엔 엄니와 발톱들. */
   nydus: () => {
-    const [cx2, cy2] = project(0, 0.3, 1);
+    const [px2, py2] = project(0, 0.9, 0.7);
     return [
-      ...domeFaces3(0, -0.6, 4.3, 2.2),
-      ...domeFaces3(0, 1, 3.6, 1.3),
-      capFace(groundEllipse(cx2, cy2 + 0.3, 2.9, 1.7), 0.35),
-      capFace(groundEllipse(cx2, cy2 + 0.5, 2.2, 1.25), 0.45),
-      capFace(groundEllipse(cx2, cy2 + 0.7, 1.4, 0.8), 0.55),
-      ...hornFaces(-2.6, -1.2, 2.2, -2, -0.6, 3.4, 0.6),
-      ...hornFaces(2.6, -1.2, 2.2, 2, -0.6, 3.4, 0.6),
-      ...hornFaces(0, -2.4, 2.4, 0, -1.5, 3.6, 0.6),
+      // 늘어진 큰 엽 둘.
+      ...domeFaces3(-1.7, -1.6, 2.2, 2.7),
+      topFace(groundEllipse(...project(-2.3, -0.6, 2.6), 0.95, 0.55), 0.3),
+      ...domeFaces3(1.9, -1.4, 2, 2.4),
+      topFace(groundEllipse(...project(2.5, -0.4, 2.3), 0.9, 0.5), 0.26),
+      // 발광 구덩이 — 어두운 테에 밝은 속.
+      capFace(groundEllipse(px2, py2, 2.35, 1.35), 0.45),
+      topFace(groundEllipse(px2, py2, 1.65, 0.95), 0.4),
+      // 앞 테두리 엄니와 발톱.
+      ...hornFaces(-1.6, 2.2, 0.5, -1.9, 2.9, 1.9, 0.5),
+      ...hornFaces(0, 2.5, 0.5, 0, 3.2, 2, 0.5),
+      ...hornFaces(1.6, 2.2, 0.5, 1.9, 2.9, 1.9, 0.5),
+      ...hornFaces(-2.9, 1.4, 0.5, -3.7, 2, 0.1, 0.45),
+      ...hornFaces(2.9, 1.4, 0.5, 3.7, 2, 0.1, 0.45),
     ];
   },
 
