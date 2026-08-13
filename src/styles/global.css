@@ -12857,6 +12857,31 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-motion-pitched .scr-motion-lift {
   transform: translate(-50%, -50%) rotateX(-38deg);
 }
+/* ── 전투 불꽃·사망 퍼프(요청) — 전투 구간의 유닛 낱개 위에서 불꽃이 지지직, 이따금
+   퍼프가 터지며 사그라든다. 광원 블렌드라 지형을 살짝 밝힌다. */
+.scr-motion-fight {
+  position: absolute; left: 50%; top: 50%; width: 14px; height: 14px;
+  transform: translate(-50%, -50%); pointer-events: none; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 240, 180, 0.9) 0%, rgba(255, 200, 90, 0.4) 40%, transparent 70%);
+  mix-blend-mode: screen;
+  animation: scr-fight 0.5s steps(3, jump-none) infinite;
+}
+@keyframes scr-fight {
+  0% { opacity: 0.1; scale: 0.6; }
+  50% { opacity: 0.9; scale: 1; }
+  100% { opacity: 0.2; scale: 0.75; }
+}
+.scr-motion-puff {
+  position: absolute; left: 50%; top: 50%; width: 16px; height: 16px;
+  transform: translate(-50%, -50%); pointer-events: none; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 210, 130, 0.85) 0%, rgba(120, 120, 120, 0.4) 45%, transparent 70%);
+  mix-blend-mode: screen;
+  animation: scr-puff 1.2s ease-out forwards;
+}
+@keyframes scr-puff {
+  0% { opacity: 0.9; scale: 0.3; }
+  100% { opacity: 0; scale: 1.6; }
+}
 /* ── 다크 스웜(요청) — 갈색 반투명 구름이 우글거린다. 지름은 인라인 width(6타일). */
 .scr-motion-swarmfx {
   pointer-events: none; z-index: 24000; position: absolute;

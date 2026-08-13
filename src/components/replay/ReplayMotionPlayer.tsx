@@ -3791,6 +3791,11 @@ export default function ReplayMotionPlayer({
             }
             /* 같은 자리 무리는 아주 촘촘히 겹친다(지적: 퍼짐이 심해졌다 — 겹치면서도
                규모는 보이게). 묶음(gi)마다 나선을 돌려 두 무리가 포개지지 않게만 한다. */
+            /* 전투 중(요청: 전투 효과) — 이 사람의 전투 구간(hot) 안이고 이 부대가
+               방금도 부려졌으면 불꽃이 튀고, 주기적으로 사망 퍼프가 터진다. */
+            const fighting = sinceCmd <= 15
+              && (p.hot ?? []).some(([a2, b2]) => t >= a2 && t <= b2);
+            const cyc = Math.floor(t / 1.5);
             /* 이동 방향(요청: 유닛 마커도 방향) — 조금 전 자리와의 차가 향한 곳. */
             const hp = posAt(g.walk, Math.max(0, t - 0.8), null);
             const hdg = hp && Math.hypot(pos.x - hp.x, pos.y - hp.y) > 0.1
@@ -3818,6 +3823,12 @@ export default function ReplayMotionPlayer({
                   }}
                 >
                   <ShapeIcon kind={unitMarkerKind(u)} rotDeg={hdg} className="scr-motion-troop" />
+                  {/* 전투 불꽃·사망 퍼프(요청) — 대여섯에 하나씩 불꽃, 일곱에 하나씩
+                      돌아가며 퍼프(1.5초 주기 결정적 순환이라 프레임마다 안 튄다). */}
+                  {fighting && di % 5 === 0 && <span className="scr-motion-fight" />}
+                  {fighting && (di + cyc) % 7 === 0 && (
+                    <span key={`pf-${cyc}`} className="scr-motion-puff" />
+                  )}
                 </span>
               );
             });
@@ -3901,6 +3912,10 @@ export default function ReplayMotionPlayer({
             }
             if (glyphs.length === 0) glyphs.push(unit || "Marine");
             // 퍼짐 보정(요청) — 위 typeNodes의 seed 주석과 같은 규칙(부대 번호로 나선 회전).
+            /* 전투 중(요청) — 위 typeNodes와 같은 규칙. */
+            const fighting = sinceCmd <= 15
+              && (p.hot ?? []).some(([a2, b2]) => t >= a2 && t <= b2);
+            const cyc = Math.floor(t / 1.5);
             /* 이동 방향(요청) — 위 typeNodes와 같은 규칙. */
             const hp = posAt(rp, Math.max(0, t - 0.8), null);
             const hdg = hp && Math.hypot(pos.x - hp.x, pos.y - hp.y) > 0.1
@@ -3929,6 +3944,12 @@ export default function ReplayMotionPlayer({
                   }}
                 >
                   <ShapeIcon kind={unitMarkerKind(u)} rotDeg={hdg} className="scr-motion-troop" />
+                  {/* 전투 불꽃·사망 퍼프(요청) — 대여섯에 하나씩 불꽃, 일곱에 하나씩
+                      돌아가며 퍼프(1.5초 주기 결정적 순환이라 프레임마다 안 튄다). */}
+                  {fighting && di % 5 === 0 && <span className="scr-motion-fight" />}
+                  {fighting && (di + cyc) % 7 === 0 && (
+                    <span key={`pf-${cyc}`} className="scr-motion-puff" />
+                  )}
                 </span>
               );
             });
