@@ -236,8 +236,11 @@ export async function analyzeMinimap(
     const palette: [number, number, number][] = [...acc.values()]
       .map(([r, g, b, n]) => [r / n, g / n, b / n] as [number, number, number]);
     sampleLums.sort((a, b) => a - b);
-    const lo = sampleLums[Math.floor(sampleLums.length * 0.1)] * 0.92;
-    const hi = sampleLums[Math.floor(sampleLums.length * 0.9)] * 1.08;
+    /* 대역은 중앙값 중심으로(지적: 투혼의 흰 유적·뼈 장식을 못 잡음) — 표본에 미네랄
+       결정(아주 밝음)이 섞여 90% 백분위가 대역 윗선을 끌어올리면, 밝은 장식이 죄다
+       땅으로 열린다. 30~70% 구간이면 미네랄 소수는 못 끼어든다. */
+    const lo = sampleLums[Math.floor(sampleLums.length * 0.3)] * 0.9;
+    const hi = sampleLums[Math.floor(sampleLums.length * 0.7)] * 1.1;
     const PAL_DIST = 45;
     for (let i = 0; i < w * h; i += 1) {
       const r = data[i * 4];
