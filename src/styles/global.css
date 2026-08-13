@@ -11341,7 +11341,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-terrain-modal { max-width: 640px; }
 /* 게임 상세 팝업(상자 z-index 130) 위에 뜬다(지적: 아직도 뒤에 뜸) — 오버레이는
    display:contents라 상자가 없어 z-index가 안 먹는다(첫 시도의 함정). 모달 상자에 건다. */
-.scr-terrain-modal { z-index: 200; }
+/* 확대창(210)·그 가리개(205) 위에도 떠야 한다(지적: 지형 편집이 뒤에 열림). */
+.scr-terrain-modal { z-index: 300; }
 /* 범례의 일꾼 점 — 지도의 ●와 같은 기호를 부대 항목보다 한 단 작게(지적: •는 너무 작음). */
 .scr-motion-legend-worker { font-style: normal; font-size: 0.8em; }
 /* 태움·드랍 광선(요청: 우주선처럼 노란 광선) — 위(수송선)에서 좁게 시작해 유닛 자리로
