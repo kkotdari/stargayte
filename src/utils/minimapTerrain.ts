@@ -63,8 +63,12 @@ function fillSpecks(w: number, h: number, walk: Uint8Array): void {
 
 const cache = new Map<string, Promise<TerrainGrid | null>>();
 
-/** 그림을 격자로 내려 읽는다 — 검수 화면(초기값)과 재생 화면(저장값 없을 때)이 함께 쓴다. */
-export async function analyzeMinimap(url: string): Promise<TerrainGrid | null> {
+/** 그림을 격자로 내려 읽는다 — 검수 화면(초기값)과 재생 화면(저장값 없을 때)이 함께 쓴다.
+ *  anchors(0~1 분수 좌표)는 '반드시 걷는 땅'인 자리들이다 — 자원 지대·시작점(지적: 빠른
+ *  무한에서 반전 — 그림만 보는 추측의 한계라, 정답을 아는 칸으로 보정한다). */
+export async function analyzeMinimap(
+  url: string, anchors?: [number, number][],
+): Promise<TerrainGrid | null> {
   if (typeof document === "undefined") return null;
   const img = new Image();
   img.crossOrigin = "anonymous";
@@ -187,9 +191,50 @@ export async function analyzeMinimap(url: string): Promise<TerrainGrid | null> {
   for (const [k, n] of freq) {
     if (n >= candidates * MINOR_SHARE) { majors.add(k); majorCells += n; }
   }
+  /* 앵커 보정(지적: 빠른무한 반전, 풀 장식 오차단) — 앵커 칸의 패턴 열쇠는 무조건 주요
+     무리다(자원 밭 위 칸이니 땅이 확실하다). ②능선이 잘못 막은 땅색 칸도 앵커 열쇠면
+     되살린다. */
+  const anchorKeys = new Set<number>();
+  const anchorIdx: number[] = [];
+  for (const [fx, fy] of anchors ?? []) {
+    const ax = Math.min(w - 1, Math.max(0, Math.round(fx * w)));
+    const ay = Math.min(h - 1, Math.max(0, Math.round(fy * h)));
+    const ai = ay * w + ax;
+    anchorIdx.push(ai);
+    anchorKeys.add(patternKeyOf(ai));
+  }
+  for (const k of anchorKeys) majors.add(k);
   if (candidates > 0 && majorCells >= candidates * 0.5) {
     for (let i = 0; i < w * h; i += 1) {
       if (walk[i] && !majors.has(patternKeyOf(i))) walk[i] = 0;
+    }
+  }
+  if (anchorKeys.size > 0) {
+    for (let i = 0; i < w * h; i += 1) {
+      // 절대 규칙(우주·물)은 존중하고, 능선·순위가 막은 것만 앵커 열쇠로 되살린다.
+      if (!walk[i] && lum[i] >= 26 && anchorKeys.has(patternKeyOf(i))) walk[i] = 1;
+    }
+  }
+  /* 티일셋 어긋남 복구(지적: 반전) — 앵커의 절반도 걷는 땅이 안 됐으면 규칙이 이 그림과
+     안 맞는 것이다. 앵커 밝기를 기준으로 문턱을 다시 잡아 한 번 더 돈다: 우주 문턱은
+     앵커 중간 밝기의 35%, 능선 비율은 절반으로 완화. */
+  if (anchorIdx.length >= 3) {
+    const okN = anchorIdx.filter((ai) => walk[ai]).length;
+    if (okN < anchorIdx.length / 2) {
+      const lums = anchorIdx.map((ai) => lum[ai]).sort((a, b) => a - b);
+      const Lg = lums[Math.floor(lums.length / 2)];
+      const spaceCut = Math.min(26, Lg * 0.35);
+      for (let i = 0; i < w * h; i += 1) {
+        const r = data[i * 4];
+        const g = data[i * 4 + 1];
+        const b = data[i * 4 + 2];
+        const L = lum[i];
+        walk[i] = 0;
+        if (L < spaceCut) continue;
+        if (b > r + 18 && b > g + 8 && L < 110) continue;
+        if (L < localAvg[i] * 0.5) continue;
+        walk[i] = 1;
+      }
     }
   }
   /* ④ 작은 빵꾸 메우기(요청) — 자잘한 고립 조각은 오판일 확률이 높아 주변 값으로 맞춘다.
@@ -227,11 +272,13 @@ export async function sampleMinimapColors(
 }
 
 /** 자동 분석의 캐시판 — 재생 화면이 쓴다(맵당 한 번). */
-export function terrainOf(url: string): Promise<TerrainGrid | null> {
-  let hit = cache.get(url);
+export function terrainOf(url: string, anchors?: [number, number][]): Promise<TerrainGrid | null> {
+  // 앵커 유무가 결과를 바꾼다 — 앵커 있는 호출(재생 화면)이 캐시를 갈아 끼운다.
+  const key = anchors && anchors.length > 0 ? `${url}#a` : url;
+  let hit = cache.get(key);
   if (!hit) {
-    hit = analyzeMinimap(url).catch(() => null);
-    cache.set(url, hit);
+    hit = analyzeMinimap(url, anchors).catch(() => null);
+    cache.set(key, hit);
   }
   return hit;
 }

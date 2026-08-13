@@ -1169,7 +1169,11 @@ export default function ReplayMotionPlayer({
       return undefined;
     }
     if (!grid.image) { setTerrain(null); setTerrainRaw(null); return undefined; }
-    terrainOf(grid.image)
+    terrainOf(
+      grid.image,
+      // 앵커(지적: 빠른무한 반전) — 자원 지대는 반드시 걷는 땅이다. 분수 좌표로 넘긴다.
+      (grid.resources ?? []).map(([x, y]) => [x / grid.width, y / grid.height] as [number, number]),
+    )
       .then((tg) => {
         if (cancelled) return;
         setTerrain(tg ? closeNarrowGaps(tg) : tg);
