@@ -823,7 +823,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ];
     for (const [bx, by, bz, tx, ty, tz, w] of horns) {
       out.push(...hornFaces(bx, by, bz, tx, ty, tz, w));
-      /* 뿔 등의 가시(요청) — 뿔 길이를 따라 서너 개가 바깥쪽으로 돋는다. */
+      /* 뿔 등의 가시(요청, 정정: 안쪽을 향한다) — 뿔 길이를 따라 서너 개가 본 건물
+         쪽으로 돋는다. */
       for (const t of [0.35, 0.55, 0.75]) {
         const px = bx + (tx - bx) * t;
         const py = by + (ty - by) * t;
@@ -831,7 +832,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         const olen = Math.hypot(px, py) || 1;
         const ox = (px / olen) * 1.7;
         const oy = (py / olen) * 1.7;
-        out.push(...hornFaces(px, py, pz, px + ox, py + oy, pz + 1.1, 0.65));
+        out.push(...hornFaces(px, py, pz, px - ox, py - oy, pz + 0.7, 0.65));
       }
     }
     out.push(...hornFaces(-2.6, 4.6, 0.6, -4.4, 6, 2.6, 1));
