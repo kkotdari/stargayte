@@ -1192,8 +1192,11 @@ export default function ReplayMotionPlayer({
     if (!grid.image) { setTerrain(null); setTerrainRaw(null); return undefined; }
     terrainOf(
       grid.image,
-      // 앵커(지적: 빠른무한 반전) — 자원 지대는 반드시 걷는 땅이다. 분수 좌표로 넘긴다.
-      (grid.resources ?? []).map(([x, y]) => [x / grid.width, y / grid.height] as [number, number]),
+      // 앵커(지적: 빠른무한 반전) — 자원 지대 + 시작 지점(둘 다 확실한 땅). 분수 좌표.
+      [
+        ...(grid.resources ?? []).map(([x, y]) => [x / grid.width, y / grid.height] as [number, number]),
+        ...bases.filter((m) => !m.ghost).map((m) => [m.x / grid.width, m.y / grid.height] as [number, number]),
+      ],
     )
       .then((tg) => {
         if (cancelled) return;

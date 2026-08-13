@@ -213,10 +213,21 @@ export async function analyzeMinimap(
          · 좁은 밝기 대역(정화 표본 30~70% × 0.9~1.1)
          · 전역 우세 가족 — 맵 전체에서 4% 이상 깔린 색이면서 평균 밝기가 땅 대역 언저리
            (풀처럼 앵커 곁엔 없지만 넓게 깔린 걷는 장식) */
+    /* 표본은 자원 그 자리가 아니라 '자원에서 맵 중심 쪽으로 3칸 들어간 자리'에서 뽑는다
+       (지적: 빠른무한 그대로 — 자원이 벽·가장자리에 붙은 맵은 자원 곁 표본의 다수가
+       미네랄·구조물이라, 중앙값 정화가 진짜 바닥(어두운 체커)을 오염으로 버렸다).
+       자원 안쪽은 일꾼이 드나드는 트인 바닥이 확실하다. */
     const rawSamples: number[] = [];
     for (const ai of anchorIdx) {
-      const ax = ai % w;
-      const ay = Math.floor(ai / w);
+      let ax = ai % w;
+      let ay = Math.floor(ai / w);
+      const vx = w / 2 - ax;
+      const vy = h / 2 - ay;
+      const vlen = Math.hypot(vx, vy);
+      if (vlen > 1) {
+        ax = Math.min(w - 1, Math.max(0, Math.round(ax + (vx / vlen) * 3)));
+        ay = Math.min(h - 1, Math.max(0, Math.round(ay + (vy / vlen) * 3)));
+      }
       for (let dy = -2; dy <= 2; dy += 1) {
         for (let dx = -2; dx <= 2; dx += 1) {
           const nx = ax + dx;
