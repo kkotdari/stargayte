@@ -3795,8 +3795,9 @@ export default function ReplayMotionPlayer({
     const u = (x / grid.width - 0.5) * w;
     const v = (y / grid.height - 0.5) * h;
     /* 화면 롤(지적: 롤이 빠져 맵과 안 맞음) — 내려다보는 원근에선 세로선이 화면 아래
-       소실점으로 모인다. 가장자리 마커일수록 꼭대기가 바깥으로 기운다. */
-    const roll = (Math.atan2(u * C, PITCH_P * S - v) * 180) / Math.PI;
+       소실점으로 모인다. 가장자리 마커일수록 꼭대기가 바깥으로 기운다. 세기는 0.6로
+       눅인다(지적: 그대로면 가장자리에서 많이 돌아 보인다). */
+    const roll = (Math.atan2(u * C, PITCH_P * S - v) * 180 * 0.6) / Math.PI;
     return {
       "--mk": pitchK(y).toFixed(3),
       "--rot": `${roll.toFixed(2)}deg`,
