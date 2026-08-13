@@ -205,7 +205,13 @@ export async function analyzeMinimap(
     anchorIdx.push(ay * w + ax);
   }
   if (anchorIdx.length >= 3) {
-    const groundKeys = new Set<number>();
+    /* 땅 팔레트 학습(지적: 벽까지 다 열림 — 밝기 대역이 후해서 회청 벽이 끼었다) —
+       표본을 뭉친 색별 평균 RGB 팔레트로 만들고, 판정은 둘 중 하나면 땅이다:
+         · 팔레트 거리 — 가장 가까운 표본 색과의 RGB 거리 ≤ 45 (초록 바닥과 회청 벽은
+           밝기가 비슷해도 색 거리가 멀다)
+         · 좁은 밝기 대역 — 표본 밝기 10~90% 구간을 ×0.92~1.08로만 벌린 범위(광장처럼
+           색은 달라도 밝기가 땅급인 타일을 위한 보조) */
+    const acc = new Map<number, [number, number, number, number]>();
     const sampleLums: number[] = [];
     for (const ai of anchorIdx) {
       const ax = ai % w;
@@ -216,14 +222,23 @@ export async function analyzeMinimap(
           const ny = ay + dy;
           if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
           const ni = ny * w + nx;
-          groundKeys.add(keyOf(ni));
+          const k = keyOf(ni);
+          const a = acc.get(k) ?? [0, 0, 0, 0];
+          a[0] += data[ni * 4];
+          a[1] += data[ni * 4 + 1];
+          a[2] += data[ni * 4 + 2];
+          a[3] += 1;
+          acc.set(k, a);
           sampleLums.push(lum[ni]);
         }
       }
     }
+    const palette: [number, number, number][] = [...acc.values()]
+      .map(([r, g, b, n]) => [r / n, g / n, b / n] as [number, number, number]);
     sampleLums.sort((a, b) => a - b);
-    const lo = sampleLums[Math.floor(sampleLums.length * 0.05)] * 0.75;
-    const hi = sampleLums[Math.floor(sampleLums.length * 0.95)] * 1.25;
+    const lo = sampleLums[Math.floor(sampleLums.length * 0.1)] * 0.92;
+    const hi = sampleLums[Math.floor(sampleLums.length * 0.9)] * 1.08;
+    const PAL_DIST = 45;
     for (let i = 0; i < w * h; i += 1) {
       const r = data[i * 4];
       const g = data[i * 4 + 1];
@@ -232,7 +247,14 @@ export async function analyzeMinimap(
       walk[i] = 0;
       if (L < 15) continue; // 우주·심연
       if (b > r + 18 && b > g + 8 && L < 110) continue; // 물
-      if (groundKeys.has(keyOf(i)) || (L >= lo && L <= hi)) walk[i] = 1;
+      let near = false;
+      for (const [pr, pg, pb] of palette) {
+        const dr = r - pr;
+        const dg = g - pg;
+        const db = b - pb;
+        if (dr * dr + dg * dg + db * db <= PAL_DIST * PAL_DIST) { near = true; break; }
+      }
+      if (near || (L >= lo && L <= hi)) walk[i] = 1;
     }
   }
   /* ④ 작은 빵꾸 메우기(요청) — 자잘한 고립 조각은 오판일 확률이 높아 주변 값으로 맞춘다.
