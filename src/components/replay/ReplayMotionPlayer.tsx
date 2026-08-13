@@ -699,7 +699,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         topFace(groundEllipse(kx, ky, 0.45, 0.65), 0.5),
       ];
     };
-    const out: ShapeFace[] = [...pillar(-6.6, -6.6), ...pillar(6.6, -6.6)];
+    /* 기둥 자리 6.6 → 6.0(수리: 대각 모서리 기둥이 요잉 투영에서 뷰박스 가로(±8)를
+       넘어 잘려 떨어져 나간 듯 보였다 — rx = 6.6cos20 + 6.6sin20 ≈ 8.46). */
+    const out: ShapeFace[] = [...pillar(-6, -6), ...pillar(6, -6)];
     out.push(...frustumFaces3(0, 0, 10.6, 10.6, 3.2, 3.2, 6.4));
     // 앞면 능선 띠 — 경사면을 따라 층층이 가로 띠.
     const half = (z: number): number => 5.3 - (5.3 - 1.6) * (z / 6.4);
@@ -727,12 +729,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       if (!visible) continue;
       const d = polyPath3([
         [sx * 3.9, sy * 3.9, 3.4],
-        [sx * 8.4 + cxa * 2.4, sy * 8.4 + sya * 2.4, 0],
-        [sx * 8.4 - cxa * 2.4, sy * 8.4 - sya * 2.4, 0],
+        [sx * 8 + cxa * 2.4, sy * 8 + sya * 2.4, 0],
+        [sx * 8 - cxa * 2.4, sy * 8 - sya * 2.4, 0],
       ]);
       out.push(bodyFace(d), ...face(d));
     }
-    out.push(...pillar(-6.6, 6.6), ...pillar(6.6, 6.6));
+    out.push(...pillar(-6, 6), ...pillar(6, 6));
     return out;
   },
   /* 게이트웨이(실물 참고) — 낮은 사방 경사로 마당 위에 위로 뾰족한 황금 물방울 돛,
