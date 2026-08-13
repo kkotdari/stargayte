@@ -16,9 +16,11 @@ import type { MinimapImage } from "../types";
  * 쓰는 모든 맵의 연속 재생이 이 격자로 길을 찾는다. */
 
 export default function TerrainReviewModal({
-  image, onClose, onSaved,
+  image, anchors, onClose, onSaved,
 }: {
   image: MinimapImage;
+  /** 확실한 땅(자원 지대, 0~1 분수) — 자동 분석의 앵커 보정(지적: 빠른무한 반전). */
+  anchors?: [number, number][];
   onClose: () => void;
   /** 저장된 뒤의 그림 한 벌 — 부모 목록을 제자리에서 갈아 끼운다. */
   onSaved: (updated: MinimapImage) => void;
@@ -50,7 +52,7 @@ export default function TerrainReviewModal({
     let cancelled = false;
     (async () => {
       const stored = decodeWalk(image.walk);
-      const g = stored ?? (await analyzeMinimap(image.image));
+      const g = stored ?? (await analyzeMinimap(image.image, anchors));
       if (!cancelled) {
         setGrid(g);
         initialRef.current = g ? new Uint8Array(g.walk) : null;

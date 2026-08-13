@@ -380,7 +380,16 @@ export default function MinimapScreen() {
                     setBusy(true);
                     setErr("");
                     try {
-                      const g = await analyzeMinimap(i.image);
+                      /* 앵커(지적: 빠른무한 반전) — 매핑된 맵의 자원 좌표는 확실한 땅이다.
+                         첫 매핑 맵의 격자를 받아 분수 좌표로 넘긴다. 매핑이 없으면 무앵커. */
+                      let anchors: [number, number][] | undefined;
+                      if (mapped.length > 0) {
+                        const [mg] = await api.getReplayMaps([mapped[0].hash]);
+                        if (mg && (mg.resources ?? []).length > 0) {
+                          anchors = mg.resources.map(([x, y]) => [x / mg.width, y / mg.height] as [number, number]);
+                        }
+                      }
+                      const g = await analyzeMinimap(i.image, anchors);
                       if (!g) throw new Error("그림을 분석하지 못했어요.");
                       const updated = await api.updateMinimapWalk(i.id, encodeWalk(g));
                       setCatalog((prev) => (prev ? {
@@ -447,6 +456,7 @@ export default function MinimapScreen() {
       {terrainTarget && (
         <TerrainReviewModal
           image={terrainTarget}
+          anchors={undefined /* 관리 검수는 저장값 우선이라 앵커 없이도 되지만, 필요시 재분석 버튼이 앵커판을 저장한다. */}
           onClose={() => setTerrainTarget(null)}
           onSaved={(updated) => setCatalog((prev) => (prev ? {
             ...prev,

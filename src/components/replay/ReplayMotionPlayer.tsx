@@ -3131,6 +3131,7 @@ export default function ReplayMotionPlayer({
       {terrainOpen && typeof grid.imageId === "number" && grid.image && (
         <TerrainReviewModal
           image={terrainModalImage}
+          anchors={(grid.resources ?? []).map(([x, y]) => [x / grid.width, y / grid.height] as [number, number])}
           onClose={() => setTerrainOpen(false)}
           onSaved={(updated) => setWalkOverride(updated.walk ?? null)}
         />
