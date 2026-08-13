@@ -2010,39 +2010,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...tubeFaces(0, -3.4, 0, 1.8, 0.4, 2.8),
     ];
   },
-  /* 배틀크루저(장도리 판 다듬기) — 앞 가시는 뭉뚝한 원통 한 쌍으로, T 양 날개 끝엔
-     방패 포신, 뒤엔 로켓 추진기 셋. */
+  /* 배틀크루저(확정: 렌더 참고 — 설명 정정) — 넓은 화살촉 몸통, 뒤 엔진 통 둘,
+     대각 붐 팔 한 쌍과 끝 포드, 등뼈 마디와 함교. */
   bc: () => {
-    const blunt = (tx: number): ShapeFace => {
-      const [px2, py2] = project(tx, 4.4, 5.7);
-      return bodyFace(groundEllipse(px2, py2 - 0.16, 0.42, 0.34));
-    };
-    const shieldGun = (m2: 1 | -1): ShapeFace[] => {
-      const [sx2, sy2] = project(m2 * 2.9, -2.2, 6.2);
-      return [
-        ...tubeFaces(m2 * 2.9, -2, m2 * 2.9, -0.3, 0.22, 6),
-        bodyFace(groundEllipse(sx2, sy2, 0.6, 1)),
-        ...(m2 === 1
-          ? [sideFace(groundEllipse(sx2, sy2, 0.6, 1), 0.2)]
-          : [topFace(groundEllipse(sx2, sy2, 0.6, 1), 0.16)]),
-      ];
-    };
+    const hull = polyPath3([
+      [0, 4.6, 5.9], [2.3, 0.8, 6.1], [1.4, -2.6, 6], [-1.4, -2.6, 6], [-2.3, 0.8, 6.1],
+    ]);
     return [
-      // 로켓 추진기 셋 — 꽁무니 뒤로.
-      ...tubeFaces(-1.1, -3.6, -1.1, -2.5, 0.36, 5.6),
-      ...tubeFaces(0, -3.8, 0, -2.6, 0.4, 5.6),
-      ...tubeFaces(1.1, -3.6, 1.1, -2.5, 0.36, 5.6),
-      ...boxFaces3(0, -2.2, 5.6, 1.2, 0.8, 5.9),
-      ...shieldGun(-1),
-      ...shieldGun(1),
-      ...boxFaces3(0, -0.2, 2.4, 4.6, 1.6, 5.4),
-      ...boxFaces3(0, 2.5, 3.6, 1.2, 1.4, 5.5),
-      // 앞은 뭉뚝한 원통 한 쌍.
-      ...tubeFaces(-1.35, 3.1, -1.35, 4.4, 0.4, 5.7),
-      blunt(-1.35),
-      ...tubeFaces(1.35, 3.1, 1.35, 4.4, 0.4, 5.7),
-      blunt(1.35),
-      ...boxFaces3(0, -1.2, 1.2, 1.2, 0.8, 7),
+      ...tubeFaces(-0.9, -3.6, -0.9, -1.8, 0.6, 5.7),
+      ...tubeFaces(0.9, -3.6, 0.9, -1.8, 0.6, 5.7),
+      ...hornFaces(-1.4, 0.4, 6, -4.5, 1.8, 5.7, 0.4),
+      ...tubeFaces(-4.8, 1.2, -4.8, 2.7, 0.42, 5.4),
+      ...hornFaces(1.4, 0.4, 6, 4.5, 1.8, 5.7, 0.4),
+      ...tubeFaces(4.8, 1.2, 4.8, 2.7, 0.42, 5.4),
+      bodyFace(hull), topFace(hull, 0.16),
+      capFace(polyPath3([[-0.3, 3.6, 6.15], [0.3, 3.6, 6.15], [0.35, -2.2, 6.05], [-0.35, -2.2, 6.05]]), 0.22),
+      ...boxFaces3(0, -1.4, 1.2, 1.1, 0.7, 6.2),
     ];
   },
   /* 발키리(실물 참고) — 뭉툭한 큰 몸통에 둥근 코, 지붕의 미사일 튜브 다발 두 줄,
@@ -2473,13 +2456,25 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(groundEllipse(cx - 1.2, cy - 1.2, 1.3, 1), 0.4),
     ];
   },
-  /* 다크 아콘 — 반투명 어두운 구(요청). */
+  /* 다크 아콘(실물 참고) — 어두운 반투명 구 속에 뿔귀 머리와 갈퀴 팔의 형체가 비치고,
+     구 밖으로 가는 수염 호가 흩날린다. */
   darchon: () => {
     const [cx, cy] = project(0, 0, 5);
     return [
       [groundEllipse(cx, cy, 3.6, 3.4), 0.55] as ShapeFace,
-      capFace(groundEllipse(cx, cy, 3.6, 3.4), 0.3),
-      topFace(groundEllipse(cx - 1.1, cy - 1.1, 1.2, 0.9), 0.3),
+      capFace(groundEllipse(cx, cy, 3.6, 3.4), 0.25),
+      // 속 형체 — 뿔귀 둘·몸·아래로 늘어지는 갈퀴 팔.
+      capFace(`M${cx - 0.1} ${cy - 2.2} L${cx + 0.95} ${cy - 0.95} L${cx + 0.1} ${cy - 0.85} Z`, 0.45),
+      capFace(`M${cx - 1.25} ${cy - 1.75} L${cx - 0.3} ${cy - 0.9} L${cx - 1.05} ${cy - 0.65} Z`, 0.45),
+      capFace(groundEllipse(cx - 0.15, cy + 0.1, 0.7, 1), 0.4),
+      capFace(`M${cx - 0.5} ${cy + 0.6} Q${cx - 1.3} ${cy + 1.2} ${cx - 1.1} ${cy + 2.2}`
+        + ` L${cx - 0.8} ${cy + 2.1} Q${cx - 0.95} ${cy + 1.2} ${cx - 0.25} ${cy + 0.8} Z`, 0.4),
+      // 바깥 수염 호 — 가늘게 흩날린다.
+      topFace(`M${cx - 3.1} ${cy - 1.9} Q${cx - 4.6} ${cy - 0.6} ${cx - 4.1} ${cy + 1}`
+        + ` L${cx - 3.9} ${cy + 0.9} Q${cx - 4.3} ${cy - 0.5} ${cx - 2.95} ${cy - 1.75} Z`, 0.4),
+      topFace(`M${cx + 2.9} ${cy - 2.2} Q${cx + 4.5} ${cy - 1.4} ${cx + 4.6} ${cy + 0.2}`
+        + ` L${cx + 4.4} ${cy + 0.25} Q${cx + 4.2} ${cy - 1.2} ${cx + 2.75} ${cy - 2} Z`, 0.35),
+      topFace(groundEllipse(cx - 1.2, cy - 1.2, 1.2, 0.9), 0.3),
     ];
   },
   /* 저글링·히드라·울트라(요청: 전용 모델) — 갈고리는 직선이 아니라 3단으로 휘어진다:
