@@ -1,6 +1,5 @@
 import { useContext, useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent } from "react";
-import ReplayMinimap, { ARROW_MIN_TILES, type MinimapArrow, type MinimapMarker } from "../../components/replay/ReplayMinimap";
-import ReplayStoryTimeline from "../../components/replay/ReplayStoryTimeline";
+import { ARROW_MIN_TILES, type MinimapArrow, type MinimapMarker } from "../../components/replay/ReplayMinimap";
 import ReplayMotionPlayer from "../../components/replay/ReplayMotionPlayer";
 import ActivityComments from "./ActivityComments";
 import RosterSide, { outcomeFor, resolveSlotName } from "./GameResultSides";
@@ -401,7 +400,6 @@ export default function GameResultStory({
   }, []);
 
   const last = sentences.length - 1;
-  const finished = index >= last && !playing;
   // 이 문장에 머물 시간 — 아래 타이머의 의존값으로 쓴다. sentences 배열 자체를 의존값에
   // 넣으면 안 된다: 활동 머리의 카운트다운 때문에 부모가 1초마다 다시 그려지고, 그때마다
   // 이 배열이 새 객체로 만들어져 타이머가 매번 끊긴다 — 그래서 3초 뒤에 넘어가야 할 스냅이
@@ -425,22 +423,6 @@ export default function GameResultStory({
      지금 스냅까지의 beat를 시간순으로 훑어 쌓는다: 한 번 쓰러지면 그 뒤 스냅에서도
      쓰러진 채여야 한다(그 스냅의 beat에만 나온다고 그때만 해골을 띄우면, 다음 장면에서
      되살아난 것처럼 보인다). 이 계산은 이미 저장된 값만 쓰므로 옛 경기에도 그대로 붙는다. */
-  /** 그 문장이 가리키는 시각(분) — 문장에 묶인 beat 가운데 가장 이른 것을 쓴다. 시각이
-   *  없는 문장(맺음말 등)은 null이라 아무것도 안 붙는다. */
-  const capMin = (sn: { beats: number[] }): string | null => {
-    const beats = gameResult.summaryData?.beats ?? [];
-    let at: number | null = null;
-    for (const i of sn.beats) {
-      const v = beats[i]?.at;
-      if (typeof v === "number" && (at === null || v < at)) at = v;
-    }
-    if (at === null) return null;
-    /* 분까지만 적던 것을 초까지 적는다(요청) — 한 분 안에 장면이 둘씩 들어가는 구간에서는
-       "[12분]"이 연달아 나와 어느 쪽이 먼저인지 시각으로는 알 수 없었다. */
-    const sec = Math.max(0, Math.round(at * SECONDS_PER_FRAME));
-    return `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
-  };
-
   /** 지금 스냅이 가리키는 시점(프레임) — 여기까지 지나온 beat 가운데 가장 늦은 시각. 저장된
    *  '이사·망함' 시점과 견주는 잣대다. 맺음말 스냅은 경기 끝이므로 전부 지난 것으로 본다.
    *
@@ -1512,7 +1494,6 @@ export default function GameResultStory({
     }
     return { arrows, marks, markTexts, markSpots: markSpot, faces, bubbles };
   }, [gameResult.summaryData, sentences, index, slots, grid, moved, movedPair]);
-  const arrows = actions.arrows;
 
   /* 지금 스냅의 활성도와 그 시각(요청: 아바타 닉네임 밑 눈금) — 한 문장이 여러 beat를
      묶기도 하므로, 그중 시각이 있는 마지막 beat를 쓴다(가장 나중 상태가 지금 그림이다).
@@ -1649,10 +1630,6 @@ export default function GameResultStory({
   /* 맵은 읽었는데 그림만 아직 없는 경우 — 운영자가 연결해 주면 바로 이야기가 붙는다(요청).
      맵 자체를 못 읽은 옛 경기(grid === null)에는 연결할 대상이 없어 안 띄운다. */
   const needMapImage = grid !== null && !grid.image;
-  /* 시작 스냅("게임 시작!") — 자막은 짧은 한 줄뿐이니, 그 대신 미니맵 쪽 아바타·닉네임을
-     키워 로스터를 보여준다(요청). 소개 문장은 beat 없이 만들어 넣은 것이라 beats가 비어
-     있는 것으로 가려낸다. */
-  const introIdx = sentences.length > 1 && (sentences[0]?.beats?.length ?? 0) === 0 ? 0 : -1;
   // 자막으로 보여줄 수 있는 경기인가 — 미니맵이 있고 훑을 문장이 있을 때. 그림이 없으면
   // 자막만 남아 무엇을 보고 읽는 글인지 알 수 없다.
   const caption = storyMap !== null && sentences.length > 0;
@@ -1756,41 +1733,7 @@ export default function GameResultStory({
           side={<ActivityComments targetType="gameResult" targetId={gameResult.id} overModal />}
           menu={menu}
         />
-      ) : (
-      <ReplayMinimap
-        grid={storyMap} bases={bases} arrows={arrows}
-        onStep={sentences.length > 1 ? (d) => {
-          // 그림 좌·우 절반으로 장면을 옮긴다(요청). 손으로 옮겼으면 자동재생은 멈춘다 —
-          // 타임라인의 눈금을 짚었을 때와 같은 규칙이다.
-          setIndex((i) => Math.min(sentences.length - 1, Math.max(0, i + d)));
-          setPlaying(false);
-        } : undefined}
-        // 자막 패널을 없애고 자막을 미니맵 가운데에 얹는다(요청) — ReplayMinimap이
-        // 지도 위에 겹쳐서(overlay) 그린다.
-        caption={sentences.length > 0 && (
-          <div className="scr-story-cap">
-            {sentences.map((sn, i) => (
-              <p
-                key={i}
-                className={cx("scr-story-cap-line", i === introIdx && "scr-story-cap-intro")}
-                aria-hidden={i !== index} data-on={i === index}
-              >
-                {/* 언제 있었던 일인지 앞에 붙인다(요청: [07:12]처럼 초까지). 시각을 모르는
-                    문장(맺음말 등)은 아무것도 안 붙인다 — 0분이라고 적으면 거짓말이다. */}
-                {capMin(sn) !== null && <span className="scr-story-cap-time">[{capMin(sn)}]</span>}
-                {/* 요약이 만든 문장을 그대로 쓴다(요청: 예전 자막 대사가 더 재밌으니 복원).
-                    한때 "정구가 Rex를 공격" 식의 한 마디 타이틀로 줄였는데, 짧아진 만큼
-                    말맛이 통째로 사라졌다 — 장황한 문장은 타이틀로 뭉개는 대신 템플릿
-                    자체를 짧게 고쳤다(replaySummaryText). */}
-                {sn.parts.map((pt, j) => (pt.team
-                  ? <span key={j} className={pt.team === 1 ? "scr-sum-team1" : "scr-sum-team2"}>{pt.text}</span>
-                  : <span key={j}>{pt.text}</span>))}
-              </p>
-            ))}
-          </div>
-        )}
-      />
-      )}
+      ) : null}
     </div>
   );
 
@@ -1831,30 +1774,8 @@ export default function GameResultStory({
       {needMapImage && (
         <div className="scr-story-map-missing">운영메뉴에서 미니맵 이미지를 연결해주세요</div>
       )}
-      {/* 자막 — 요약을 문단으로 늘어놓는 대신 지금 스냅의 문장만 보여준다(요청). 미니맵
-          바로 아래에 따로 두는 이유는 그림 위에 얹으면 지형과 아바타를 가리기 때문이다
-          (요청: 자막이 안 가려지게 하단에 캡션 영역으로).
-          문장을 모두 겹쳐 놓고 지금 것만 보이게 한다 — 이러면 칸이 늘 가장 긴 문장 높이라
-          재생하는 동안 카드가 위아래로 흔들리지 않는다. 문장마다 높이가 달라 그냥 갈아
-          끼우면 매 스냅마다 아래 내용이 밀린다. */}
-      {/* 타임라인은 스냅이 둘 이상일 때만 쓸모가 있다 — 한 문장짜리 요약에 재생 버튼을 두면
-          누를 데는 있는데 아무 일도 안 일어난다. */}
-      {!showRoster && !motionData && grid && sentences.length > 1 && (
-        <div {...stopBubble}>
-        <ReplayStoryTimeline
-          snaps={sentences} end={gameResult.summaryData?.end ?? null}
-          index={index} playing={playing} finished={finished}
-          /* 그림을 어떻게 넘기는지 한 줄로 일러 둔다(요청: 재생 버튼 아래에 작은 딤 글씨로)
-             — 좌·우 절반이 누르는 자리라는 건 보이는 표시가 없어 아무도 모른다. */
-          hint="미니맵 좌우를 눌러 이전/다음 장면으로 이동"
-          onSeek={(i) => { setIndex(i); setPlaying(false); }}
-          onToggle={() => {
-            if (finished) { setIndex(0); setPlaying(true); return; }
-            setPlaying((v) => !v);
-          }}
-        />
-        </div>
-      )}
+      {/* (삭제·요청) 스냅 자막·타임라인 — 문장 요약 시절의 폴백 화면은 아예 걷었다.
+          연속 재생이 없는 경기는 아래 요약 전문 한 문단이 대신 읽을거리를 맡는다. */}
       {/* 누가 올린 경기인가 — 재생 바 아래다(요청). 카드 머리에서 경기 시각 바로 옆에 서던
           때는 그 둘이 한 덩어리로 읽혀 마치 '등록한 시각'처럼 보였다(지적). 여기서는 위에
           아무 시각도 없어 그럴 일이 없고, 이 경기를 누가 올렸는지는 그림을 다 본 뒤에

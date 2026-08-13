@@ -10,7 +10,9 @@
          영역 바깥)으로 두고 그만큼 뷰포트를 줄여서 보여준다 — env(safe-area-inset-bottom)도
          이 값 없이는 항상 0으로 계산돼, 아래 탭바/스크롤탑 버튼의 안전영역 여백 계산
          (calc(...+ env(safe-area-inset-bottom))) 자체가 무의미해진다. -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover" />
+    <!-- 핀치 줌 허용(지적: 모바일 팬앤줌이 안 된다) — maximum-scale=1·user-scalable=no가
+         앱 전체의 확대를 금지하고 있었다. 접근성 관점에서도 확대는 열어 두는 쪽이 맞다. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content, viewport-fit=cover" />
     <!-- 홈 화면에 추가했을 때 사파리 브라우저 창(주소창 + 하단 툴바, 스크롤에 따라
          늘었다 줄었다 하며 뷰포트 높이를 계속 바꾼다) 없이 완전 독립 실행(standalone)
          모드로 열리게 한다 — 이게 없으면 "웹앱으로 추가"해도 그냥 사파리 탭 하나가

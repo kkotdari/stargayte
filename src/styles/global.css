@@ -742,7 +742,7 @@ input[type="text"], input[type="password"], input[type="search"], input[type="em
 input[type="number"], input[type="tel"], input[type="url"], input:not([type]) {
   touch-action: none;
 }
-textarea { touch-action: pan-y; }
+textarea { touch-action: pan-y pinch-zoom; } /* 글칸은 세로 팬+줌만 — 가로 끌기는 글자 선택이다. */
 textarea, .scr-input { overscroll-behavior: contain; }
 .scr-input::placeholder { color: var(--dim); }
 .scr-input:focus { border-color: var(--pipe-bright); outline: none; }
@@ -1302,7 +1302,7 @@ html.scr-light-theme { --header-bg: rgba(255, 255, 255, 0.9); }
    체이닝되는 것을 끊는다(실드의 canScrollWithin 차단과 한 세트). */
 /* 본문은 모달의 좌우 패딩을 음수 마진으로 물렸다가 제 패딩으로 되돌린다 — 스크롤바가
    모달 안쪽 벽에 붙게 하려는 것이라, 두 값은 늘 모달의 좌우 패딩과 같아야 한다(16px). */
-.scr-modal-body { display: flex; flex-direction: column; gap: 14px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; margin: 0 -16px; padding: 0 16px; scrollbar-gutter: stable; touch-action: pan-y; overscroll-behavior: none; }
+.scr-modal-body { display: flex; flex-direction: column; gap: 14px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; margin: 0 -16px; padding: 0 16px; scrollbar-gutter: stable; touch-action: manipulation; overscroll-behavior: none; }
 
 /* 이미지 타입일 때: URL 입력칸 대신 업로드 버튼 + (값이 있으면) 삭제 버튼을 나란히.
    min-width:0도 함께 둬서 버튼 자체가 칸보다 좁게 줄어들 수 있게(같은 이유). */
@@ -1436,7 +1436,7 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   /* 다른 드롭다운(.scr-select-drop/.scr-cselect-drop)과 달리 overflow-y가 없어서 스크롤
      가능한 요소가 아니었다 — 배경(body) 스크롤이 잠겨 있는 동안 이 위에서 드래그하면 갈 곳
      없는 제스처가 뷰포트 전체의 러버밴드 바운스로 새어나가 드롭다운이 통째로 흔들렸다. */
-  overflow-y: auto; overscroll-behavior: none; touch-action: pan-y;
+  overflow-y: auto; overscroll-behavior: none; touch-action: manipulation;
 }
 .scr-menu-pop-opt {
   width: 100%; display: flex; align-items: center; gap: 8px;
@@ -5176,7 +5176,7 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 /* (배경/블러/라운드/그림자는 파일 뒤 "드롭다운 통일" 섹션이 한 벌로 정의한다 — 여기엔
    이 드롭다운 고유의 크기/스크롤 동작만 남긴다. CSS 정리(요청)로 중복 정의 제거.) */
 .scr-select-drop {
-  max-height: 220px; overflow-y: auto; overscroll-behavior: none; touch-action: pan-y; z-index: 210;
+  max-height: 220px; overflow-y: auto; overscroll-behavior: none; touch-action: manipulation; z-index: 210;
 }
 /* 옵션 행은 래디우스 없이(사각) 호버 배경이 항상 꽉 찬 사각형으로 보이게 한다. */
 /* 회원 다중선택 드롭다운 — 항상 유저 이름 목록이라 기본 UI 폰트로(요청). */
@@ -6325,7 +6325,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
    여기엔 이 드롭다운 고유의 크기/스크롤 동작만 남긴다. CSS 정리(요청)로 중복 제거.) */
 .scr-cselect-drop {
   z-index: 210;
-  max-height: 240px; overflow-y: auto; overscroll-behavior: none; touch-action: pan-y;
+  max-height: 240px; overflow-y: auto; overscroll-behavior: none; touch-action: manipulation;
 }
 .scr-cselect-opt { white-space: nowrap; }
 /* 드롭다운 폭을 트리거(인풋)와 같게 맞추면서, 라벨이 길 때 잘리지 않고 그냥 넘쳐 보이는
@@ -6371,7 +6371,7 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
   /* 다른 팝오버와 같은 기준으로(요청) — 블러는 흔적만, 배경은 공통 패널 토큰. */
   -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
-  overflow-y: auto; overscroll-behavior: none; touch-action: pan-y;
+  overflow-y: auto; overscroll-behavior: none; touch-action: manipulation;
   border: none;
   background: var(--dd-panel-bg);
   /* 다크모드 팝업 공통 원칙(요청: "팝업/모달/드롭다운 모두 다크모드에서 아래쪽에도
