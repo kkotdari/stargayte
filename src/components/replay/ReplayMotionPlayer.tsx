@@ -520,13 +520,46 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     topFace(polyPath3([[-5.2, 2.2, 9.6], [-3, 2.2, 9.6], [-3, 1.4, 9.6], [-5.2, 1.4, 9.6]]), 0.3),
     topFace(polyPath3([[3, 2.2, 9.6], [5.2, 2.2, 9.6], [5.2, 1.4, 9.6], [3, 1.4, 9.6]]), 0.3),
   ],
-  /* 서플라이 — 상자 + 앞면 해치 둘. */
+  /* 서플라이(실물 참고 재설계) — 넓은 본체 + 지붕의 회전 통풍구 + 앞면의 둥근 팬 둘 +
+     왼쪽 적재 칸 줄 + 앞 정비 기둥. */
   trapezoid: () => {
-    const hatch = (cx: number): string => {
-      const [hx, hy] = project(cx, 2.9, 2.6);
-      return groundEllipse(hx, hy, 2, 1.65);
+    const out: ShapeFace[] = [...boxFaces3(0, 0, 10.6, 6.6, 5.2)];
+    // 지붕 회전 통풍구 — 원판 + 십자 날.
+    out.push(capFace(discPath3(-2.2, -0.8, 5.25, 2.3), 0.3));
+    out.push(bodyFace(discPath3(-2.2, -0.8, 5.3, 1.9)));
+    for (const ang of [0, 45, 90, 135]) {
+      const a = (ang * Math.PI) / 180;
+      out.push(capFace(polyPath3([
+        [-2.2 - Math.sin(a) * 1.7, -0.8 - Math.cos(a) * 1.7, 5.35],
+        [-2.2 + Math.sin(a) * 1.7, -0.8 + Math.cos(a) * 1.7, 5.35],
+        [-2.2 + Math.sin(a) * 1.7 + Math.cos(a) * 0.3, -0.8 + Math.cos(a) * 1.7 - Math.sin(a) * 0.3, 5.35],
+        [-2.2 - Math.sin(a) * 1.7 + Math.cos(a) * 0.3, -0.8 - Math.cos(a) * 1.7 - Math.sin(a) * 0.3, 5.35],
+      ]), 0.35));
+    }
+    // 앞면 둥근 팬 둘 — 테두리·안쪽 날개.
+    const fan = (fx: number, fz: number, r: number): void => {
+      const [px, py] = project(fx, 3.31, fz);
+      out.push(capFace(groundEllipse(px, py, r, r * 0.92), 0.4));
+      out.push(bodyFace(groundEllipse(px, py, r * 0.82, r * 0.75)));
+      for (const ang of [20, 140, 260]) {
+        const a = (ang * Math.PI) / 180;
+        out.push(capFace(`M${px} ${py} L${px + Math.cos(a) * r * 0.7} ${py + Math.sin(a) * r * 0.62} L${px + Math.cos(a + 0.8) * r * 0.7} ${py + Math.sin(a + 0.8) * r * 0.62} Z`, 0.35));
+      }
+      out.push(topFace(groundEllipse(px - r * 0.25, py - r * 0.25, r * 0.2, r * 0.16), 0.35));
     };
-    return [...boxFaces3(0, 0, 10.8, 5.8, 5.8), sideFace(`${hatch(-2.5)} ${hatch(2.1)}`, 0.3)];
+    fan(1.6, 2.9, 1.55);
+    fan(4, 2.5, 1.35);
+    // 왼쪽 적재 칸 줄 — 밝은 칸 셋.
+    for (const oz of [0, 1, 2]) {
+      out.push(topFace(polyPath3([
+        [-5.31, 1.8 - oz * 1.6, 3.9], [-5.31, 0.6 - oz * 1.6, 3.9],
+        [-5.31, 0.6 - oz * 1.6, 2.3], [-5.31, 1.8 - oz * 1.6, 2.3],
+      ]), 0.32));
+    }
+    // 앞 정비 기둥·탱크.
+    out.push(...cylinderFaces3(-3.6, 4.4, 0.7, 1.9));
+    out.push(...domeFaces3(3.6, 4.6, 0.9, 1.1));
+    return out;
   },
   /* 팩토리(실물 참고) — 큰 본체 상자 + 앞 낮은 별채 + 지붕 굴뚝 셋 + 오른뒤 포탑 + 발. */
   factory: () => [
@@ -660,33 +693,38 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(hook, 0.25),
     ];
   },
-  /* 파일런 — 수정은 돌려도 같은 정다면체 보석(요청: 정12면체 느낌) — 회전 대칭이라
-     요잉 불변으로, 육각 실루엣 + 면 분할을 화면 공간에 그린다. 고리는 원래 요잉 불변. */
+  /* 파일런(실물 참고 재설계) — 큰 수정이 낮은 황금 링 안에 서고, 링에서 발톱 가시들이
+     수정을 감싸 쥐듯 안쪽-위로 솟는다. 수정·링 모두 회전 대칭이라 요잉 불변, 발톱은
+     링 위 각도를 따라 돈다. */
   diamond: () => {
-    const [cx, cy] = project(0, 0, 4);
-    const rxo = 3.3;
+    const out: ShapeFace[] = [sideFace(discPath3(0, 0, 0, 3.4), 0.26)];
+    const [cx, cy] = project(0, 0, 2);
+    const rxo = 4.1;
     const ryo = rxo * 0.45;
-    const rxi = 2.4;
+    const rxi = 3.1;
     const ryi = rxi * 0.45;
     const ringBack = `M${cx - rxo} ${cy} A${rxo} ${ryo} 0 0 1 ${cx + rxo} ${cy} L${cx + rxi} ${cy} A${rxi} ${ryi} 0 0 0 ${cx - rxi} ${cy} Z`;
     const ringFront = `M${cx - rxo} ${cy} A${rxo} ${ryo} 0 0 0 ${cx + rxo} ${cy} L${cx + rxi} ${cy} A${rxi} ${ryi} 0 0 1 ${cx - rxi} ${cy} Z`;
-    const [gx, gy] = project(0, 0, 4.1);
-    const R = 3.9;
-    const W = 2;
-    const gem = `M${gx} ${gy - R} L${gx + W} ${gy - R * 0.42} L${gx + W} ${gy + R * 0.42} L${gx} ${gy + R} L${gx - W} ${gy + R * 0.42} L${gx - W} ${gy - R * 0.42} Z`;
-    const facetL = `M${gx} ${gy - R} L${gx - W} ${gy - R * 0.42} L${gx - W} ${gy + R * 0.42} L${gx} ${gy + R} L${gx - W * 0.34} ${gy + R * 0.3} L${gx - W * 0.34} ${gy - R * 0.3} Z`;
-    const facetR = `M${gx} ${gy - R} L${gx + W} ${gy - R * 0.42} L${gx + W} ${gy + R * 0.42} L${gx} ${gy + R} L${gx + W * 0.34} ${gy + R * 0.3} L${gx + W * 0.34} ${gy - R * 0.3} Z`;
-    return [
-      sideFace(discPath3(0, 0, 0, 2.4), 0.28),
-      bodyFace(ringBack),
-      sideFace(ringBack, 0.3),
-      bodyFace(gem),
-      topFace(facetL, 0.25),
-      sideFace(facetR, 0.25),
-      topFace(`M${gx} ${gy - R} L${gx + W * 0.34} ${gy - R * 0.3} L${gx} ${gy - R * 0.12} L${gx - W * 0.34} ${gy - R * 0.3} Z`, 0.35),
-      bodyFace(ringFront),
-      topFace(ringFront, 0.22),
-    ];
+    const claw = (ang: number): ShapeFace[] => {
+      const a = (ang * Math.PI) / 180;
+      const px = Math.sin(a) * 3.6;
+      const py = Math.cos(a) * 3.6;
+      return hornFaces(px, py, 2, px * 0.55, py * 0.55, 4.6, 0.9);
+    };
+    // 뒤 발톱들 → 뒤 링 → 수정 → 앞 링 → 앞 발톱들 순으로 겹친다.
+    for (const ang of [150, -150, 180]) out.push(...claw(ang));
+    out.push(bodyFace(ringBack), sideFace(ringBack, 0.3));
+    const [gx, gy] = project(0, 0, 5.2);
+    const R = 5.2;
+    const W = 2.5;
+    const gem = `M${gx} ${gy - R} L${gx + W} ${gy - R * 0.34} L${gx + W * 0.62} ${gy + R * 0.6} L${gx} ${gy + R * 0.86} L${gx - W * 0.62} ${gy + R * 0.6} L${gx - W} ${gy - R * 0.34} Z`;
+    out.push(bodyFace(gem));
+    out.push(topFace(`M${gx} ${gy - R} L${gx - W} ${gy - R * 0.34} L${gx - W * 0.62} ${gy + R * 0.6} L${gx} ${gy + R * 0.86} L${gx - W * 0.3} ${gy + R * 0.4} L${gx - W * 0.3} ${gy - R * 0.28} Z`, 0.28));
+    out.push(sideFace(`M${gx} ${gy - R} L${gx + W} ${gy - R * 0.34} L${gx + W * 0.62} ${gy + R * 0.6} L${gx} ${gy + R * 0.86} L${gx + W * 0.3} ${gy + R * 0.4} L${gx + W * 0.3} ${gy - R * 0.28} Z`, 0.24));
+    out.push(topFace(`M${gx} ${gy - R} L${gx + W * 0.3} ${gy - R * 0.28} L${gx} ${gy - R * 0.05} L${gx - W * 0.3} ${gy - R * 0.28} Z`, 0.4));
+    out.push(bodyFace(ringFront), topFace(ringFront, 0.22));
+    for (const ang of [30, -30, 90, -90, 0]) out.push(...claw(ang));
+    return out;
   },
   /* 로보틱스(실물 참고) — 넓은 대야 + 안쪽 어두운 격자 구덩이 + 테두리 바깥 가시 +
      왼쪽에서 구덩이 위로 굽어 드리우는 팔(끝 발광). */
