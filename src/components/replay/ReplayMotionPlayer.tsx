@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Cog, FlaskConical, Hammer, Maximize2, Mountain, Pause, Play, RotateCcw, Shield, X } from "lucide-react";
+import { Maximize2, Mountain, Pause, Play, RotateCcw, Shield, X } from "lucide-react";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import TerrainReviewModal from "../../modals/TerrainReviewModal";
 import Avatar from "../common/Avatar";
@@ -426,21 +426,21 @@ const SHAPE_KIND: Record<string, string> = {
 /* 후지산 옆모습(지적: 뚱뚱하면 안 된다 — 위쪽은 거의 직선으로 가파르고 내려갈수록
    완만하게 벌어지는 오목 곡선), 바닥은 거미줄처럼 사방으로 퍼지는 가닥들(지적). */
 // 머리(윗부분) 폭을 한 단 좁혔다(지적: 너무 두꺼움).
-const ZERG_MOUND = "M6.2 4 Q8 3.3 9.8 4 Q10.5 10 14.2 12.6 Q8 13.8 1.8 12.6 Q5.5 10 6.2 4 Z"
-  /* 바닥(지적: 문어발처럼 위로 올라오면 안 된다) — 반원통 기둥들이 불가사리처럼 사방으로
-     낮게 뻗고, 그 사이가 오리발 갈퀴처럼 이어진 치마 한 장이다. 기둥은 가늘고 살짝 짧게,
-     갈퀴 이음은 얕게 파서 몸통 바닥과 기둥 사이에 빈틈이 없다(지적 둘). */
-  + " M2.6 11"
-  + " Q1 11.7 1.1 12.7 Q1.2 13.4 1.9 13.3"
-  + " Q2.5 13.2 2.9 12.7"
-  + " Q3.3 13.9 4.3 14 Q5.1 14 5.5 13.3"
-  + " Q6.3 13.6 6.9 13.4"
-  + " Q7.2 14.4 7.9 14.4 Q8.6 14.4 8.8 13.4"
-  + " Q9.4 13.6 10.1 13.3"
-  + " Q10.5 14 11.3 14 Q12.3 13.9 12.7 12.7"
-  + " Q13.1 13.2 13.7 13.3"
-  + " Q14.4 13.4 14.5 12.7 Q14.6 11.7 13 11"
-  + " Q8 12.4 2.6 11 Z";
+const ZERG_MOUND =
+  /* 본 기둥(지적: 문어발처럼 위로 올라온 건 가운데 기둥 얘기였다) — 반원통 기둥(능선)
+     셋이 불가사리처럼 가운데에서 뻗어 오르고, 그 사이 골이 오리발 갈퀴처럼 이어진다. */
+  "M2.6 12.6"
+  + " Q2.8 8.4 4.4 6.6 Q5.2 5.9 5.9 6.6 Q6.3 7 6.4 7.8"
+  + " Q6.6 6.9 6.9 5.2 Q7.4 3.4 8 3.4 Q8.6 3.4 9.1 5.2 Q9.4 6.9 9.6 7.8"
+  + " Q9.7 7 10.1 6.6 Q10.8 5.9 11.6 6.6 Q13.2 8.4 13.4 12.6"
+  + " Q8 13.8 2.6 12.6 Z"
+  /* 바닥 다리 — 옛 게다리 꼴 복귀(요청)에 살짝만 크게. 밑동이 몸통 안에서 시작해
+     빈틈이 없다(지적). */
+  + " M4.6 11 Q1.8 11.5 0.6 8.6 Q2.4 9.9 4.2 9.8 Z"
+  + " M4 12.5 Q1.3 13.2 0.2 11.4 Q2.2 12 4.4 11.6 Z"
+  + " M11.4 11 Q14.2 11.5 15.4 8.6 Q13.6 9.9 11.8 9.8 Z"
+  + " M12 12.5 Q14.7 13.2 15.8 11.4 Q13.8 12 11.6 11.6 Z"
+  + " M7.2 13.2 Q7.1 15 8 15.2 Q8.9 15 8.8 13.2 Z";
 /** 저그 본진 머리의 평평한 윗면(요청) — 둥근 머리 위 밝은 타원. 더 얇게(지적: 뚜껑). */
 const ZERG_TOP = "M6.6 3.85a1.4 0.45 0 1 0 2.8 0a1.4 0.45 0 1 0-2.8 0Z";
 /* 전부 입체(면 겹침)로 옮겼다(요청: "무조건 입체로") — 홑겹 도형은 이제 없다. */
@@ -1790,10 +1790,14 @@ export default function ReplayMotionPlayer({
             // 까지 옛 자리에서 둥실거린다.
             const afloat = !!liftAt && t >= liftAt;
             const razed = false;
-            /* 같은 자리에 같은 임자의 새 건물이 서면(레어 진화·재건) 옛 것은 걷는다
-               (지적: 비활성 건물이 글자와 도형으로 동시 표시). */
-            if (!razed && motion.builds.some(([s2, x2, y2, , r2], j) =>
-              j !== i && r2 === raw && s2 > sec && s2 <= t && Math.hypot(x2 - x, y2 - y) <= 1.5)) {
+            /* 같은 자리에 같은 계보의 새 건물이 서면(레어 진화·재건·콜로니 변태) 옛 것은
+               걷는다(지적: 비활성 건물이 글자와 도형으로 동시 표시). 계보만 본다(지적:
+               레어 되면서 없어짐 — 아무 새 건물이나 곁에 서면 옛 것을 지워 버렸다). */
+            if (!razed && motion.builds.some(([s2, x2, y2, u2, r2], j) =>
+              j !== i && r2 === raw && s2 > sec && s2 <= t && Math.hypot(x2 - x, y2 - y) <= 1.5
+              && (u2 === unit
+                || (["Hatchery", "Lair", "Hive"].includes(unit) && ["Hatchery", "Lair", "Hive"].includes(u2))
+                || (unit.includes("Colony") && u2.includes("Colony"))))) {
               return null;
             }
             /* 착륙 이사(요청: 건물 움직임도 추적) — 같은 임자의 같은 건물이 내 시작
@@ -1957,12 +1961,13 @@ export default function ReplayMotionPlayer({
                     흰색 고정도 아니다): 밝은 개인색 위엔 검정, 어두운 색 위엔 흰색이라
                     제 색 도형 위에서도 늘 보인다. */}
                 {(() => {
-                  const Icon = raising ? Hammer
-                    : producing && !afloat ? Cog
-                      : researching && !afloat ? FlaskConical : null;
-                  if (!Icon) return null;
-                  const jobColor = lumOf(modeColor(raw, team)) > 150 ? "#111" : "#fff";
-                  return <Icon size={10} className="scr-motion-raising" style={{ color: jobColor }} />;
+                  /* 이모지로(요청: 아이콘보다 잘 보이게) — 공사 🚧, 생산은 톱니 대신
+                     모래시계 ⏳(뽑는 중), 연구 🧪. */
+                  const job = raising ? "🚧"
+                    : producing && !afloat ? "⏳"
+                      : researching && !afloat ? "🧪" : null;
+                  if (!job) return null;
+                  return <span className="scr-motion-raising scr-motion-job">{job}</span>;
                 })()}
               </span>
             );
@@ -2851,9 +2856,9 @@ export default function ReplayMotionPlayer({
             {/* 일꾼은 채굴·정찰 없이 전부 같은 작은 점이다(요청: 통일). 기호는 지도의
                 점과 같은 ●를 부대보다 한 단 작게(지적: •는 너무 작았다). */}
             <span><i className="scr-motion-legend-worker">●</i> 일꾼</span>
-            <span><Hammer size={8} /> 건설 중</span>
-            <span><Cog size={8} /> 생산 중</span>
-            <span><FlaskConical size={8} /> 업그레이드 중</span>
+            <span>🚧 건설 중</span>
+            <span>⏳ 생산 중</span>
+            <span>🧪 업그레이드 중</span>
           </div>
           <div className="scr-motion-terrain-row">
             {typeof grid.imageId === "number" && grid.image && (
