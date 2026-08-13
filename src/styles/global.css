@@ -10943,7 +10943,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
      내려감도 이 폭 트랜지션이 그대로 만든다. */
   transition: width 0.3s ease, margin-left 0.3s ease;
 }
-.scr-motion-lens { position: absolute; inset: 0; transform-origin: 0 0; }
+.scr-motion-lens {
+  position: absolute; inset: 0; transform-origin: 0 0;
+  /* 확대 중 배경이 살짝살짝 미끄러지는 문제(지적) — 변환된 지도 그림을 브라우저가
+     수시로 다시 래스터화하며 반 픽셀씩 어긋나 보였다. 제 합성 레이어로 승격해 두면
+     변환만 바뀌고 래스터는 고정된다. */
+  will-change: transform;
+}
 /* 유닛 캔버스 층(캔버스 전환·성능) — 낱개 유닛 도형을 한 장에 그린다. 건물 스팬 위·
    말풍선(20000) 아래. 입력은 안 받는다. */
 .scr-motion-unitlayer {
@@ -11168,7 +11174,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 보기 설정 줄(정리·요청) — 보기·컬러·모델크기 짝 버튼 3그룹, 종류 사이 갭. */
 .scr-motion-viewrow { flex-wrap: wrap; justify-content: flex-end; margin-bottom: 2px; gap: 12px; }
 /* 원형 버튼 통일(요청: 11개 전부 같은 크기 정원). */
-.scr-motion-rbtn {
+/* .scr-motion-btn(아래 정의)과 같이 실리므로 두 클래스 선택자로 이겨야 한다(지적:
+   버튼이 아직 알약꼴) — 뒤에 오는 .scr-motion-btn의 height 22px·radius가 원을 덮었다. */
+.scr-motion-btn.scr-motion-rbtn {
   width: 34px; height: 34px; min-width: 34px; padding: 0; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
   /* 세 글자(개인색)도 한 줄로 원 안에 — 감기면 원이 찌그러진다. */

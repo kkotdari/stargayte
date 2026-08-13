@@ -3018,6 +3018,10 @@ const UNIT_3D: Record<string, string> = {
   Mutalisk: "muta", Guardian: "guardian", Devourer: "devourer", Scourge: "scourge",
   Queen: "queen", Corsair: "corsair", Scout: "scout", Carrier: "carrier",
   Arbiter: "arbiter", Observer: "observer",
+  /* 수송선 셋(단서: "큰 질럿들이 좀 이따 드라군으로 바뀜") — 이 셋이 표에 없어 부대
+     구성의 셔틀이 종족 폴백(질럿·마린·저글링)에 폴백 덩치(대형)로, 게다가 공중이라 떠서
+     그려졌다. 구성 순서가 바뀌면 그 자리가 드라군으로 바뀌는 것까지 들어맞는다. */
+  Dropship: "dship", Shuttle: "shuttle", Overlord: "ovie",
   Zealot: "zealot", "Dark Templar": "dtemp", Dragoon: "goon", "High Templar": "htemp",
   Archon: "archon", "Dark Archon": "darchon",
   Zergling: "zling", Hydralisk: "hydra", Ultralisk: "ultra", Broodling: "zling",
@@ -3203,8 +3207,10 @@ function UnitLayer({ ops, zoom, pan }: {
         ? Math.max(op.wFrac, op.hFrac ?? 0) * cw : op.sizePx) * zoom + 24;
       if (sx < -ext || sx > cw + ext || sy < -ext || sy > ch + ext) continue;
       ctx.save();
-      // 건물은 그림자 없음(지적: 떠 보임 — 유닛만 그림자) — SVG 시절 filter:none과 동일.
-      ctx.shadowColor = op.noShadow ? "transparent" : "rgba(0, 0, 0, 0.6)";
+      /* 건물은 그림자 없음(지적: 떠 보임 — 유닛만 그림자) — SVG 시절 filter:none과 동일.
+         공중 유닛도 자체 그림자는 걷는다(지적) — 바닥 타원이 그림자를 맡으니, 몸에 또
+         드리우면 그림자가 두 겹이 된다. */
+      ctx.shadowColor = op.noShadow || op.air ? "transparent" : "rgba(0, 0, 0, 0.6)";
       if (op.textGlyph) {
         // 부속건물 + 같은 글자 하나 — 스팬 글자와 같은 굵기·가운데 앵커.
         ctx.globalAlpha = op.alpha;
@@ -4181,6 +4187,12 @@ export default function ReplayMotionPlayer({
   /** 점 갈래 크기(px) — dot 9/17·scout/miner 7/10에 도형 배수(troop 1.15·ovie 1.7). */
   const dotGlyphPx = (kindCss: "dot" | "scout", mult: number, depthY: number): number =>
     (kindCss === "dot" ? (pcView ? 17 : 9) : (pcView ? 10 : 7)) * mult * x2Mul * pitchK(depthY);
+  /** 유닛 이름 → 낱개 도형 크기 — 수송선은 어디서 그리든 dot 눈금(전용 마커와 같은 크기)
+   *  이어야 한다: 부대 구성·갓 생산 길에서 덩치 눈금(대형)으로 서면 유독 커 보인다. */
+  const unitPxOf = (u: string, depthY: number): number =>
+    (u === "Shuttle" || u === "Dropship" || u === "Overlord")
+      ? dotGlyphPx("dot", 1.7, depthY)
+      : unitGlyphPx(u === "?" ? 0 : (UNIT_BULK[u] ?? 2), depthY);
   const dragRef = useRef<{ id: number; sx: number; sy: number; px: number; py: number } | null>(null);
   const onMapPointerDown = (e: React.PointerEvent) => {
     if (zoom <= 1 || e.button !== 0) return;
@@ -5016,7 +5028,6 @@ export default function ReplayMotionPlayer({
             /* (캔버스 전환 둘째 판·요청: 건물도 캔버스로) — 이름 창·아이콘이 다 걷힌
                건물 마커는 도형 하나라, 자리·상자·차례 계산만 그대로 두고 그리기는
                unitOps로 보낸다. DOM에는 효과(전투 불꽃·마법·핵)만 남는다(요청). */
-            const isHall = ["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(unit);
             const shapeKind = SHAPE_KIND[unit];
             /* 부속건물도 제 모델이면 보통 건물과 같은 자리 규칙이다(요청: 부속건물 모델링)
                — + 글자 시절의 스넉 오프셋(-1.6, +0.4)은 모델 없는 폴백에만 남는다. */
@@ -5043,8 +5054,10 @@ export default function ReplayMotionPlayer({
               });
               return null;
             }
-            // 기지는 각 종족 제일 큰 건물(지적) — 같은 발자국이라도 크게 그린다.
-            const wTiles = fp2[0] * (shapeKind ? 1 : 0.8) * (isHall ? 1.3 : 1);
+            /* 바닥은 실제 발자국 그대로(요청: 건물 바닥크기를 캔버스에 맞추기) — 기지를
+               1.3배 부풀리던 보정을 걷었다: 바닥 폭이 타일 발자국과 같아야 하고, 높이는
+               모델 제 비율이 바닥 폭을 따라 정한다(아래 fitWidth). */
+            const wTiles = fp2[0] * (shapeKind ? 1 : 0.8);
             const hTiles = wTiles * ((fp2[1] + (shapeKind ? riseOf(unit) : 0)) / fp2[0]);
             const wFrac = (wTiles / grid.width) * mkK;
             const hFrac = (hTiles / grid.width) * mkK;
@@ -5055,7 +5068,8 @@ export default function ReplayMotionPlayer({
                 fx: fxF, fy: fyF, z,
                 kind: race2 === "저그" ? "cocoon" : race2 === "프로토스" ? "warpin" : "scaffold",
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
-                sizePx: 0, wFrac, hFrac, boxFit: "meet",
+                // 공사 모델도 완성 모델과 같은 폭 기준 — 바닥 폭이 발자국과 같아야 한다.
+                sizePx: 0, wFrac, hFrac, boxFit: "meet", fitWidth: true,
                 color, alpha, noShadow: true,
               });
               return null;
@@ -5065,11 +5079,11 @@ export default function ReplayMotionPlayer({
                 fx: fxF, fy: fyF, z, kind: shapeKind,
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
                 sizePx: 0, wFrac: wFrac * pulse, hFrac: hFrac * pulse, boxFit: "meet",
-                /* 납작 건물은 폭 기준으로 맞춘다(조사: 벙커가 유난히 작던 이유) — 납작
-                   분류(FLAT_BUILDINGS)는 높이 몫(rise)이 0.12×폭뿐이라 상자가 낮고,
-                   meet(min(w,h)) 규칙이 그 낮은 높이로 전체를 줄여 같은 발자국의 서플라이
-                   보다 한 뼘 작아졌다. 납작함은 모델이 이미 말하니 폭을 기준 삼는다. */
-                fitWidth: FLAT_BUILDINGS.has(unit),
+                /* 전 건물 폭 기준(요청: 바닥을 발자국에, 높이는 제 비율로) — meet
+                   (min(w,h)) 규칙은 상자가 낮으면 바닥까지 같이 줄여 발자국보다 작은
+                   바닥을 만들었다(벙커가 유난히 작던 이유와 같은 갈래). 폭을 기준 삼으면
+                   바닥이 늘 발자국 폭과 같고 높이는 모델 비율이 따라온다. */
+                fitWidth: true,
                 color, alpha, noShadow: true,
               });
               return null;
@@ -5217,7 +5231,7 @@ export default function ReplayMotionPlayer({
                   rotDeg: hdg, viewYaw: viewYawOf(fx, fy), flat: !pitched, pitch: pitched,
                   /* 덩치 눈금 그대로(지적: 같은 질럿인데 유독 큰 애들) — 갓 나온 유닛이
                      고정 13/9px라 곁의 부대 질럿(소형 8/6px)보다 한참 컸다. */
-                  sizePx: unitGlyphPx(UNIT_BULK[unit] ?? 2, fy),
+                  sizePx: unitPxOf(unit, fy),
                   color: modeColor(p.raw, team),
                   alpha: 1,
                   air: isAirUnit(unit),
@@ -5519,19 +5533,25 @@ export default function ReplayMotionPlayer({
             const homeT = homeOf(p.raw);
             if (sinceCmd > SQUAD_FADE_SEC && !pos.moving && homeT
               && Math.hypot(pos.x - homeT[0], pos.y - homeT[1]) <= 6) return [];
-            if (Number.isFinite(sinceCmd) && deadBy(t - sinceCmd)) return [];
+            /* 뒤에 명령이 더 남은 부대는 죽음류 판정으로 안 걷는다(지적: 같은 부대가
+               사라졌다 다시 나타남) — 다음 명령이 오는 순간 어차피 되살아나 깜빡이가 되고,
+               명령을 받았다는 것 자체가 그 전투·함락·핵에서 살아남았다는 증거다. */
+            const hasLater = Number.isFinite(sinceCmd)
+              && g.raw.some(([sec]) => sec > t - sinceCmd);
+            if (!hasLater && Number.isFinite(sinceCmd) && deadBy(t - sinceCmd)) return [];
             // 태워진 동안은 숨는다(요청) — 내리면 나타난다.
             if (carriedGone(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : -1, pos.moving)) return [];
             // 건설에 흡수(지적: 익스트랙터 만든 드론이 남는다) — 일꾼 묶음만.
             if (g.unit === "Worker" && !pos.moving && Number.isFinite(sinceCmd)
               && buildAbsorbed(p, pos, t - sinceCmd)) return [];
             // 무너진 기지 곁에서 침묵 — 그 함락에서 정리된 것(지적).
-            if (razedNearby(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return [];
+            if (!hasLater
+              && razedNearby(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return [];
             /* 배틀크루저 예외(지적: 방업 여부도 고려해서 뺄지 말지) — 500피 경계라
                방업(함선 장갑)이 돼 있을 때만 핵에서 살아남는 것으로 본다. */
             const bcTough = (BY_UNITS[g.unit] ?? [g.unit]).includes("Battlecruiser")
               && (p.ups ?? []).some(([us, n]) => n === "Terran Ship Plating" && us <= t);
-            if (!bcTough
+            if (!bcTough && !hasLater
               && nukedGone(pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return [];
             return [{ g, gi, pos, sinceCmd }];
           });
@@ -5685,7 +5705,7 @@ export default function ReplayMotionPlayer({
                 kind: unitMarkerKind(u, bases.find((b) => b.key === p.raw)?.race),
                 rotDeg: hdg, viewYaw: viewYawOf(ax3, ay3),
                 flat: !pitched, pitch: pitched,
-                sizePx: unitGlyphPx(bulk, ay3),
+                sizePx: unitPxOf(u, ay3),
                 color: modeColor(p.raw, team),
                 alpha: 0.82 * (cloaked ? 0.45 : 1),
                 air: uAir,
@@ -5753,12 +5773,18 @@ export default function ReplayMotionPlayer({
               && Math.hypot(pos.x - homeS[0], pos.y - homeS[1]) <= 6) return null;
             /* 전투에서 정리된 부대(요청: 유닛은 새로 이동하지 않는 한 그 자리에 있고,
                전투 후 다시 액션이 없다면 그 전투에서 죽은 것). */
-            if (Number.isFinite(sinceCmd) && deadBy(t - sinceCmd)) return null;
+            /* 뒤에 명령이 더 남았으면 안 걷는다(지적: 사라졌다 다시 나타남) — 위
+               typeMarks의 hasLater와 같은 이유다. */
+            const hasLater = Number.isFinite(sinceCmd)
+              && raws[si].some(([sec]) => sec > t - sinceCmd);
+            if (!hasLater && Number.isFinite(sinceCmd) && deadBy(t - sinceCmd)) return null;
             // 태워진 동안은 숨는다(요청) — 내리면 나타난다.
             if (carriedGone(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : -1, pos.moving)) return null;
             // 무너진 기지 곁에서 침묵 — 그 함락에서 정리된 것(지적).
-            if (razedNearby(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return null;
-            if (nukedGone(pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return null;
+            if (!hasLater
+              && razedNearby(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return null;
+            if (!hasLater
+              && nukedGone(pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return null;
             /* 유닛 수는 컨트롤이 먼저다(요청: 컨트롤 기준으로 죽음 처리를 안 해서 계속
                쌓여만 간다) — 완성 누계 어림은 전투 감쇠로만 줄어서 실제 전멸을 못 따라간다.
                최근 이 자리를 찍은 선택의 최대 크기가 12 미만이면 남은 병력을 그 크기로
@@ -5853,7 +5879,7 @@ export default function ReplayMotionPlayer({
                 kind: unitMarkerKind(u, bases.find((b) => b.key === p.raw)?.race),
                 rotDeg: hdg, viewYaw: viewYawOf(ax3, ay3),
                 flat: !pitched, pitch: pitched,
-                sizePx: unitGlyphPx(bulk, ay3),
+                sizePx: unitPxOf(u, ay3),
                 color: modeColor(p.raw, team),
                 alpha: 0.82,
                 air: uAir,
@@ -5934,7 +5960,11 @@ export default function ReplayMotionPlayer({
                끝나고도 새 명령이 없으면, 그 정찰도 거기서 정리된 것이다. 부대의 deadBy와
                같은 완화(요청: 확실하지 않으면 남겨놓기) — 전투 창 안의 명령만, 침묵도
                한참 뒤에야. */
-            if (Number.isFinite(sinceCmd)) {
+            /* 뒤에 명령이 더 남은 점은 죽음류 판정으로 안 걷는다(지적: 사라졌다 다시
+               나타남) — 부대의 hasLater와 같은 이유다. */
+            const hasLater = Number.isFinite(sinceCmd)
+              && g.raw.some(([sec]) => sec > t - sinceCmd);
+            if (!hasLater && Number.isFinite(sinceCmd)) {
               const lastOrderSec = t - sinceCmd;
               for (const [a, b] of p.hot ?? []) {
                 if (lastOrderSec >= a && lastOrderSec <= b && t > b + DEAD_QUIET_SEC) return null;
@@ -5946,8 +5976,10 @@ export default function ReplayMotionPlayer({
             if (g.kind === "worker" && !pos.moving && Number.isFinite(sinceCmd)
               && buildAbsorbed(p, pos, t - sinceCmd)) return null;
             // 무너진 기지 곁에서 침묵 — 그 함락에서 정리된 것(지적).
-            if (razedNearby(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return null;
-            if (nukedGone(pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return null;
+            if (!hasLater
+              && razedNearby(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return null;
+            if (!hasLater
+              && nukedGone(pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return null;
             /* 정찰은 이름을 아예 안 띄운다(지적: 일꾼 이름 뜨는 게 문제 맞다) — 일꾼은
                늘 작은 점, 수송선·오버로드는 늘 제 도형이다. 칩으로 커지는 일이 없으니
                커졌다 작아졌다도 없다. */
@@ -6319,14 +6351,14 @@ export default function ReplayMotionPlayer({
             className={cx("scr-motion-btn", "scr-motion-rbtn", !unitX2 && "scr-motion-speed-on")}
             onClick={() => setUnitX2(false)}
           >
-            ×1
+            작게
           </button>
           <button
             type="button"
             className={cx("scr-motion-btn", "scr-motion-rbtn", unitX2 && "scr-motion-speed-on")}
             onClick={() => setUnitX2(true)}
           >
-            ×2
+            크게
           </button>
         </span>
       </div>
