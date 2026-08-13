@@ -1239,8 +1239,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...foot(-1.2, 3.5), ...foot(2.9, 3),
     ];
   },
-  /* 포지(인게임 참고 재작도) — 왼쪽에 옆으로 세워진 바퀴 드럼(두께 겹), 가운데 총알
-     기둥들과 가로 배관 다발, 오른쪽 렌즈 돔 큰 것·작은 것. */
+  /* 포지(렌더 참고 복원) — 왼앞 아치 별채, 가운데 총알 기둥 무리, 초록 배관 다발이
+     오른쪽 큰 렌즈 돔으로 흘러들고, 앞오른쪽에 작은 렌즈 돔. */
   forge: () => {
     const lens = (x: number, y: number, z: number, r: number): ShapeFace[] => {
       const [px2, py2] = project(x, y, z);
@@ -1249,43 +1249,59 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         topFace(groundEllipse(px2, py2, r * 0.55, r * 0.4), 0.5),
       ];
     };
-    const [wx2, wy2] = project(-3.3, 0.6, 2.4);
     return [
-      // 세운 바퀴 드럼 — 뒤판(두께)과 앞판, 테·허브.
-      bodyFace(groundEllipse(wx2 - 0.55, wy2, 0.95, 2.3)),
-      sideFace(groundEllipse(wx2 - 0.55, wy2, 0.95, 2.3), 0.22),
-      bodyFace(groundEllipse(wx2, wy2, 0.95, 2.3)),
-      topFace(groundEllipse(wx2, wy2, 0.62, 1.6), 0.18),
-      capFace(groundEllipse(wx2, wy2, 0.3, 0.75), 0.4),
-      // 가운데 총알 기둥 둘.
-      ...cylinderFaces3(-1.2, -1.2, 0.8, 4.2),
-      ...domeFaces3(-1.2, -1.2, 0.8, 0.75, 4.2),
-      ...cylinderFaces3(0.2, -0.4, 0.7, 3.4),
-      ...domeFaces3(0.2, -0.4, 0.7, 0.65, 3.4),
-      // 가로 배관 다발 — 바퀴에서 돔 쪽으로.
-      ...tubeFaces(-2.2, 0.9, 2.6, 0.5, 0.45, 2),
-      ...tubeFaces(-2, 1.6, 2.4, 1.3, 0.4, 1.2),
-      // 오른쪽 렌즈 돔 큰 것·작은 것.
-      ...domeFaces3(2.9, -0.3, 2.3, 2.1),
-      ...lens(2.9, -0.3, 2.15, 0.95),
-      ...domeFaces3(2.6, 2.2, 1.2, 1),
-      ...lens(2.6, 2.2, 1.05, 0.55),
+      // 왼앞 아치 별채.
+      ...boxFaces3(-3, 1.6, 3.2, 2.9, 2.3),
+      ...domeFaces3(-3, 1.6, 1.4, 1, 2.3),
+      // 총알 기둥 무리.
+      ...cylinderFaces3(-2.9, -2.6, 0.75, 3.6),
+      ...domeFaces3(-2.9, -2.6, 0.75, 0.7, 3.6),
+      ...cylinderFaces3(-1.6, -1.6, 0.85, 4.6),
+      ...domeFaces3(-1.6, -1.6, 0.85, 0.8, 4.6),
+      ...cylinderFaces3(-0.2, -2.4, 0.8, 5.4),
+      ...domeFaces3(-0.2, -2.4, 0.8, 0.75, 5.4),
+      ...cylinderFaces3(0.6, -0.8, 0.7, 3.2),
+      ...domeFaces3(0.6, -0.8, 0.7, 0.65, 3.2),
+      // 배관 다발 — 기둥에서 큰 돔으로 층층이.
+      ...tubeFaces(0.2, -1.8, 2.6, -1.1, 0.42, 2.8),
+      ...tubeFaces(0.3, -1.4, 2.7, -0.7, 0.42, 2),
+      ...tubeFaces(0.4, -1, 2.8, -0.3, 0.42, 1.2),
+      // 큰 렌즈 돔(뒤 오른) + 작은 렌즈 돔(앞 오른).
+      ...domeFaces3(3, -1.2, 2.5, 2.3),
+      ...lens(3, -1.2, 2.35, 1.05),
+      ...domeFaces3(2.8, 2.4, 1.55, 1.3),
+      ...lens(2.8, 2.4, 1.35, 0.65),
     ];
   },
-  /* 사이버네틱스 코어(정정) — 아래쪽을 큰 구슬들이 빙 두른 원통 + 돔 + 위 빛 구. */
+  /* 사이버네틱스 코어(실물 참고) — 가운데 드럼 위 파란 발광 고리, 그 뒤로 솟는 발톱
+     손가락 셋, 둘레 네 포드마다 파란 구슬이 얹힌다. */
   cyber: () => {
-    const [gx2, gy2] = project(0, 0, 6.9);
-    const orb = (ang: number): ShapeFace[] => {
-      const a = (ang * Math.PI) / 180;
-      return domeFaces3(Math.sin(a) * 4, Math.cos(a) * 4, 1.05, 0.95);
+    const orbPod = (px2: number, py2: number): ShapeFace[] => {
+      const [gx2, gy2] = project(px2, py2, 1.45);
+      return [
+        ...domeFaces3(px2, py2, 1.15, 0.9),
+        [groundEllipse(gx2, gy2, 0.85, 0.8), 0.6] as ShapeFace,
+        topFace(groundEllipse(gx2 - 0.25, gy2 - 0.25, 0.32, 0.28), 0.5),
+        ...hornFaces(px2 - 0.55, py2 + 0.75, 0.4, px2 - 0.75, py2 + 1.15, 1.5, 0.32),
+        ...hornFaces(px2 + 0.55, py2 + 0.75, 0.4, px2 + 0.75, py2 + 1.15, 1.5, 0.32),
+      ];
     };
+    const [cx2, cy2] = project(0, -0.2, 3.6);
     return [
-      ...orb(150), ...orb(210), ...orb(90), ...orb(270),
-      ...cylinderFaces3(0, 0, 3.6, 2.6),
-      ...domeFaces3(0, 0, 3, 2.4, 2.6),
-      ...orb(30), ...orb(330),
-      [groundEllipse(gx2, gy2, 1, 0.95), 0.6] as ShapeFace,
-      topFace(groundEllipse(gx2 - 0.3, gy2 - 0.3, 0.4, 0.35), 0.5),
+      // 뒤 발톱 손가락 셋.
+      ...hornFaces(-0.9, -1.5, 3.8, -1.3, -2.1, 8, 1),
+      ...hornFaces(0, -1.8, 3.8, 0, -2.5, 8.6, 1.1),
+      ...hornFaces(0.9, -1.5, 3.8, 1.3, -2.1, 8, 1),
+      ...orbPod(-2.9, -1.5),
+      ...orbPod(2.9, -1.5),
+      // 가운데 드럼.
+      ...cylinderFaces3(0, -0.2, 2.5, 3.3),
+      // 위 파란 발광 고리 — 반투명 판 위에 금 뚜껑.
+      [groundEllipse(cx2, cy2, 2.3, 1.15), 0.55] as ShapeFace,
+      bodyFace(groundEllipse(cx2, cy2, 1.45, 0.72)),
+      topFace(groundEllipse(cx2, cy2, 1.05, 0.5), 0.25),
+      ...orbPod(-2.4, 2.1),
+      ...orbPod(2.4, 2.1),
     ];
   },
   /* 시타델 오브 아둔 — 좁아지는 탑 + 꼭대기 뾰족. */
@@ -1928,17 +1944,37 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     capFace(polyPath3([[-0.5, 0.95, 7.2], [0.5, 0.95, 7.2], [0.4, 1.05, 6.9], [-0.4, 1.05, 6.9]]), 0.4),
     ...hornFaces(-0.5, -0.6, 7.4, -0.8, -0.9, 8.4, 0.22),
   ],
-  /* 리버 — 애벌레 마디 돔 넷 + 앞 입. */
+  /* 리버(실물 참고) — 매끈한 돔 대신 겹치는 각진 갑각 판 등딱지: 기와처럼 앞으로
+     겹쳐 내려가고, 옆에는 흰 마디, 앞 아래 낮은 머리와 집게. */
   reaver: () => {
-    const [mx2, my2] = project(0, 3.6, 4);
+    const plate = (yc: number, w2: number, zTop: number): ShapeFace[] => {
+      const d = polyPath3([
+        [-w2, yc - 0.75, zTop - 1.7], [w2, yc - 0.75, zTop - 1.7],
+        [w2 * 0.82, yc + 0.6, zTop], [-w2 * 0.82, yc + 0.6, zTop],
+      ]);
+      return [bodyFace(d), topFace(d, 0.2)];
+    };
+    const pale = (px2: number, py2: number): ShapeFace[] => {
+      const [gx2, gy2] = project(px2, py2, 1);
+      return [
+        ...domeFaces3(px2, py2, 0.7, 0.6),
+        topFace(groundEllipse(gx2, gy2, 0.42, 0.26), 0.35),
+      ];
+    };
     return [
-      // 굴곡을 줄여 매끈하게(지적) — 반지름이 비슷한 마디를 촘촘히 겹친다.
-      ...domeFaces3(0, -2.3, 1.5, 1.25, 3.4),
-      ...domeFaces3(0, -1.1, 1.62, 1.35, 3.4),
-      ...domeFaces3(0, 0.1, 1.66, 1.38, 3.4),
-      ...domeFaces3(0, 1.3, 1.56, 1.28, 3.4),
-      ...domeFaces3(0, 2.4, 1.35, 1.1, 3.4),
-      capFace(groundEllipse(mx2, my2, 0.55, 0.35), 0.4),
+      // 옆 흰 마디 줄.
+      ...pale(-1.9, -1.6), ...pale(-2, -0.2), ...pale(-1.9, 1.2),
+      ...pale(1.9, -1.6), ...pale(2, -0.2), ...pale(1.9, 1.2),
+      // 갑각 판 — 뒤에서 앞으로 기와처럼 겹친다.
+      ...plate(-2.6, 1.5, 4.1),
+      ...plate(-1.3, 1.7, 4.5),
+      ...plate(0, 1.8, 4.7),
+      ...plate(1.3, 1.7, 4.4),
+      ...plate(2.5, 1.4, 3.8),
+      // 낮은 머리 + 집게 한 쌍.
+      ...domeFaces3(0, 3.3, 1.05, 0.85),
+      ...hornFaces(0.5, 3.9, 0.7, 0.85, 4.6, 0.2, 0.35),
+      ...hornFaces(-0.5, 3.9, 0.7, -0.85, 4.6, 0.2, 0.35),
     ];
   },
   /* 레이스 — 뒤로 젖힌 쌍날개 다트 + 콕핏. */
