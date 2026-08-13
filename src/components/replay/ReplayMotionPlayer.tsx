@@ -763,7 +763,27 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   hatchery: () => {
     const out: ShapeFace[] = [];
     for (const ang of [150, -150]) out.push(...limbFaces(ang, 3, 1.7, 3.4));
-    out.push(...domeFaces3(0, 0, 5.6, 5, 0));
+    /* 본 기둥 — 뒤집힌 밥그릇(돔)이 아니라 후지산 둔덕(지적): 위는 좁게 잘리고 옆구리는
+       가파르다가 바닥에서 완만하게 벌어진다. 회전 대칭이라 요잉 불변. */
+    {
+      const [bx, by] = project(0, 0, 0);
+      const [, ty] = project(0, 0, 5.2);
+      const rB = 5.9;
+      const rT = 2.3;
+      const ryB = rB * 0.45;
+      const mound = `M${bx - rB} ${by}`
+        + ` Q${bx - rB * 0.86} ${by - (by - ty) * 0.28} ${bx - rT} ${ty}`
+        + ` L${bx + rT} ${ty}`
+        + ` Q${bx + rB * 0.86} ${by - (by - ty) * 0.28} ${bx + rB} ${by}`
+        + `a${rB} ${ryB} 0 1 1-${rB * 2} 0Z`;
+      out.push(bodyFace(mound));
+      out.push(sideFace(
+        `M${bx + rT * 0.55} ${ty} Q${bx + rB * 0.8} ${by - (by - ty) * 0.26} ${bx + rB * 0.92} ${by}`
+        + ` Q${bx + rB * 0.55} ${by + ryB * 0.5} ${bx + rT * 0.4} ${by}`
+        + ` Q${bx + rB * 0.5} ${by - (by - ty) * 0.3} ${bx + rT * 0.55} ${ty} Z`,
+        0.2,
+      ));
+    }
     const [mx, my] = project(0, 0, 5);
     out.push(sideFace(`M${mx - 2.1} ${my} L${mx + 2.1} ${my} Q${mx + 2} ${my + 1.4} ${mx} ${my + 1.6} Q${mx - 2} ${my + 1.4} ${mx - 2.1} ${my} Z`, 0.35));
     out.push(topFace(groundEllipse(mx, my, 2, 0.5)));
