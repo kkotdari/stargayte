@@ -1723,21 +1723,29 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...hornFaces(0, -3.9, 6.3, 0, 4.7, 5.6, 2),
     ];
   },
-  /* 아비터(정정) — 방패 날개는 세로가 아니라 가로로 길쭉하고 뒤쪽이 뾰족하다.
-     앞 낮은 몸·콕핏 구슬·프롱은 유지. */
+  /* 아비터(정정 둘) — 작은 몸체 양옆에 긴 타원형 날개가 방패처럼 뒤를 향해 길게
+     붙는다. 모형 공간 타원(10각 근사)이라 방향이 정확히 뒤로 눕는다. */
   arbiter: () => {
-    const wing = (m2: 1 | -1): string => polyPath3([
-      [m2 * 1.1, 1, 6.1], [m2 * 3.5, 0.5, 6.5], [m2 * 2.7, -3.3, 6.8], [m2 * 0.9, -1.5, 6],
-    ]);
-    const [cx2, cy2] = project(0, 2.1, 5.6);
+    const oval = (m2: 1 | -1): string => polyPath3(
+      Array.from({ length: 10 }, (_, i) => {
+        const a = (i / 10) * Math.PI * 2;
+        return [
+          m2 * 2.2 + Math.cos(a) * 1.05,
+          -1 + Math.sin(a) * 2.9,
+          6.05 - Math.sin(a) * 0.25,
+        ] as [number, number, number];
+      }),
+    );
+    const [cx2, cy2] = project(0, 1.9, 5.7);
     return [
-      bodyFace(wing(-1)), topFace(wing(-1), 0.18),
-      bodyFace(wing(1)), sideFace(wing(1), 0.18),
-      ...domeFaces3(0, 0.6, 1.4, 1.05, 5.4),
-      bodyFace(groundEllipse(cx2, cy2, 0.75, 0.7)),
-      topFace(groundEllipse(cx2 - 0.2, cy2 - 0.2, 0.3, 0.27), 0.4),
-      ...hornFaces(0.9, 1.6, 5.8, 1.5, 3.4, 5.4, 0.5),
-      ...hornFaces(-0.9, 1.6, 5.8, -1.5, 3.4, 5.4, 0.5),
+      bodyFace(oval(-1)), topFace(oval(-1), 0.16),
+      bodyFace(oval(1)), sideFace(oval(1), 0.18),
+      // 작은 몸체 + 앞 콕핏 구슬 + 프롱.
+      ...domeFaces3(0, 0.6, 1.1, 0.85, 5.5),
+      bodyFace(groundEllipse(cx2, cy2, 0.65, 0.6)),
+      topFace(groundEllipse(cx2 - 0.18, cy2 - 0.18, 0.26, 0.23), 0.4),
+      ...hornFaces(0.7, 1.5, 5.8, 1.2, 3, 5.5, 0.45),
+      ...hornFaces(-0.7, 1.5, 5.8, -1.2, 3, 5.5, 0.45),
     ];
   },
   /* 옵저버 — 작은 구 + 위 안테나 둘 + 아래 다리 둘. */
