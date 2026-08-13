@@ -1592,10 +1592,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   reaver: () => {
     const [mx2, my2] = project(0, 3.6, 4);
     return [
-      ...domeFaces3(0, -2.4, 1.5, 1.6, 3.4),
-      ...domeFaces3(0, -0.8, 1.7, 1.9, 3.4),
-      ...domeFaces3(0, 1, 1.6, 1.7, 3.4),
-      ...domeFaces3(0, 2.6, 1.3, 1.3, 3.4),
+      // 굴곡을 줄여 매끈하게(지적) — 반지름이 비슷한 마디를 촘촘히 겹친다.
+      ...domeFaces3(0, -2.3, 1.5, 1.25, 3.4),
+      ...domeFaces3(0, -1.1, 1.62, 1.35, 3.4),
+      ...domeFaces3(0, 0.1, 1.66, 1.38, 3.4),
+      ...domeFaces3(0, 1.3, 1.56, 1.28, 3.4),
+      ...domeFaces3(0, 2.4, 1.35, 1.1, 3.4),
       capFace(groundEllipse(mx2, my2, 0.55, 0.35), 0.4),
     ];
   },
@@ -1640,8 +1642,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       bodyFace(plate(1)), sideFace(plate(1), 0.2),
       bodyFace(plate(-1)), topFace(plate(-1), 0.14),
       ...boxFaces3(0, -0.4, 2.8, 3.8, 2.2, 5),
-      // 둥근 코 — 짧고 뭉툭하게.
-      ...hornFaces(0, 1.5, 6.1, 0, 3.1, 5.9, 2.2),
+      // 둥근 코 — 몸체 폭에서 자연스럽게 이어져 좁아진다(정정: 갑자기 튀어나오지 않게).
+      ...hornFaces(0, 0.8, 6.1, 0, 3.3, 5.9, 2.7),
       // 지붕 미사일 튜브 다발.
       ...tubeFaces(-0.7, -1.7, -0.7, 0.9, 0.5, 7.2),
       ...tubeNose(-0.7),
