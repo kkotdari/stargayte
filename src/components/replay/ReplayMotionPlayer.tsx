@@ -1217,10 +1217,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* ── 갈래 기호도 전부 3D(요청: 마법·공중까지) — 삼각형은 삼각뿔로. 공중은 높이 떠
      있고 꼬리 지느러미가 달린다. 정면은 +y. */
   troop: () => {
-    const A: [number, number, number] = [0, 3.8, 3.2];
-    const B: [number, number, number] = [-3, -2.6, 3.2];
-    const C: [number, number, number] = [3, -2.6, 3.2];
-    const T: [number, number, number] = [0, -0.6, 6.6];
+    // 밑동을 좁게(지적: 펑퍼짐 — 사람 형태로 보이게 홀쭉하고 키가 있게).
+    const A: [number, number, number] = [0, 2.1, 3.2];
+    const B: [number, number, number] = [-1.6, -1.5, 3.2];
+    const C: [number, number, number] = [1.6, -1.5, 3.2];
+    const T: [number, number, number] = [0, -0.3, 7.2];
     return [
       bodyFace(`${polyPath3([A, B, T])} ${polyPath3([A, C, T])} ${polyPath3([B, C, T])}`),
       topFace(polyPath3([A, B, T]), 0.22),
@@ -1230,7 +1231,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 지대공 — 삼각뿔 꼭대기에 하늘로 솟는 침. */
   gAA: () => [
     ...SHAPE_BUILDERS.troop(),
-    ...hornFaces(0, -0.6, 6.2, 0, -0.6, 9.4, 0.5),
+    ...hornFaces(0, -0.3, 6.8, 0, -0.3, 9.8, 0.5),
   ],
   /* 지상 겸용 — 사각뿔(마름모 밑면). */
   gBoth: () => {
