@@ -1452,14 +1452,43 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       capFace(slit(-104), 0.38),
     ];
   },
-  /* 디파일러 마운드(정정: 납작하게) — 낮게 퍼진 둔덕 + 큰 옆 아가리 + 가시들. */
+  /* 디파일러 마운드(실물 참고) — 낮게 퍼진 살덩이 위에 검은 수정 조각 무더기가 솟고,
+     왼쪽엔 말려 올라간 촉수, 가운데엔 흰 애벌레 마디, 앞엔 구덩이 입. */
   dmound: () => {
-    const [mx3, my3] = project(2.9, 1.8, 1.1);
+    const shard = (bx2: number, by2: number, tx2: number, ty2: number, tz2: number, w2: number): ShapeFace[] => {
+      const d = polyPath3([[bx2 - w2, by2, 0.4], [bx2 + w2, by2 - 0.3, 0.4], [tx2, ty2, tz2]]);
+      return [bodyFace(d), sideFace(d, 0.42)];
+    };
+    const grub = (gx2: number, gy2: number, r2: number): ShapeFace[] => {
+      const [px2, py2] = project(gx2, gy2, r2 * 0.9);
+      return [
+        ...domeFaces3(gx2, gy2, r2, r2 * 0.85),
+        topFace(groundEllipse(px2, py2, r2 * 0.6, r2 * 0.4), 0.4),
+      ];
+    };
+    const [mx3, my3] = project(0.9, 2.6, 0.8);
     return [
-      ...domeFaces3(0, 0, 5, 1.8),
-      capFace(groundEllipse(mx3, my3, 1.9, 0.95), 0.45),
-      ...hornFaces(-2.6, -1.6, 1.5, -3.6, -2.4, 4.4, 1),
-      ...hornFaces(-0.4, -2.8, 1.4, -0.8, -4, 3.6, 0.9),
+      ...domeFaces3(-1.4, 0.4, 3.6, 1.6),
+      ...domeFaces3(1.8, -0.4, 3.4, 1.7),
+      // 검은 수정 무더기 — 오른쪽 크게, 왼앞 작게.
+      ...shard(2.6, -1.4, 2.4, -2, 4.8, 0.8),
+      ...shard(3.6, -0.6, 3.9, -1.1, 3.7, 0.7),
+      ...shard(4.2, -1.8, 4.6, -2.2, 2.9, 0.6),
+      ...shard(1.9, -0.4, 1.6, -0.9, 3.4, 0.6),
+      ...shard(-4, 0.6, -4.4, 0.2, 2.5, 0.6),
+      ...shard(-3.3, 1.4, -3.6, 1, 2, 0.5),
+      // 말린 촉수 — 왼쪽에서 세 마디로 감아 올라간다.
+      ...hornFaces(-2.6, 0.9, 1, -4.5, -0.2, 3.3, 0.9),
+      ...hornFaces(-4.5, -0.2, 3.3, -3.5, -1.5, 4.6, 0.7),
+      ...hornFaces(-3.5, -1.5, 4.6, -2.6, -0.9, 3.7, 0.5),
+      // 흰 애벌레 마디 — 가운데 대각선 줄.
+      ...grub(0.3, 0.6, 0.85),
+      ...grub(-0.5, -0.1, 0.8),
+      ...grub(-1.3, -0.7, 0.72),
+      // 앞 구덩이 입 + 작은 엄니.
+      capFace(groundEllipse(mx3, my3, 1.35, 0.6), 0.5),
+      ...hornFaces(-0.2, 2.2, 0.6, -0.4, 2.9, 1.7, 0.4),
+      ...hornFaces(0.6, 1.9, 0.6, 0.9, 2.6, 1.6, 0.4),
     ];
   },
   /* 울트라리스크 캐번(정정) — 크고 통통한 소라: 불룩한 몸 위로 나선 단이 겹겹이
