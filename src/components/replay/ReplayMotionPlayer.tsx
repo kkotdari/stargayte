@@ -10,7 +10,7 @@ import { isAirUnit, type MotionTrack, type SummaryMotion, type TrackPt } from ".
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } from "../../utils/minimapTerrain";
 import {
-  bodyFace, capFace, groundEllipse, sideFace, topFace, type ShapeFace,
+  bodyFace, capFace, depthNow, groundEllipse, sideFace, tagDepth, topFace, type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
   domeFaces3, faceLight, facingRatio, frustumFaces3, hornFaces, limbFaces, pyramidFaces3, tubeFaces,
   wallDiscPath, wallFrame, withPitchView, withTopView, withViewShear, withYaw, zsorted,
@@ -1457,10 +1457,32 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(capFace(discPath3(0, 0, 1.18, 2.1), 0.45));
     const [gx2, gy2] = project(0, 0, 1.25);
     out.push(topFace(groundEllipse(gx2, gy2, 0.7, 0.4), 0.5));
-    // 당근 포드 — 뒤 둘·오른앞 하나, 바깥으로 기운다.
-    out.push(...hornFaces(-1.4, -1.2, 1, -2.5, -2, 6.6, 1.7));
-    out.push(...hornFaces(0.4, -1.7, 1, 0.7, -3, 7.2, 1.8));
-    out.push(...hornFaces(1.7, -0.6, 1, 2.8, -1.1, 5.8, 1.6));
+    /* 뒤 기둥들(재지적: 뾰족뿔이 아니라 끝이 둥근 넙적판) — 바깥으로 기운 넓은 판,
+       꼭대기는 둥근 캡. */
+    const plate = (
+      bx2: number, by2: number, z0: number, tx2: number, ty2: number, zt: number, w: number,
+    ): ShapeFace[] => {
+      const [ax, ay] = project(bx2, by2, z0);
+      const [cx3, cy3] = project(tx2, ty2, zt);
+      const dx = cx3 - ax;
+      const dy = cy3 - ay;
+      const len = Math.hypot(dx, dy) || 1;
+      const nx = (-dy / len) * (w / 2);
+      const ny = (dx / len) * (w / 2);
+      const ex = (dx / len) * (w * 0.62);
+      const ey = (dy / len) * (w * 0.62);
+      const d = `M${ax + nx} ${ay + ny} L${cx3 + nx} ${cy3 + ny}`
+        + ` Q${cx3 + ex} ${cy3 + ey} ${cx3 - nx} ${cy3 - ny} L${ax - nx} ${ay - ny} Z`;
+      const edge = `M${cx3 + nx * 0.3} ${cy3 + ny * 0.3} Q${cx3 + ex} ${cy3 + ey} ${cx3 - nx} ${cy3 - ny}`
+        + ` L${ax - nx} ${ay - ny} L${ax - nx * 0.5} ${ay - ny * 0.5} Z`;
+      return tagDepth(
+        [bodyFace(d), sideFace(edge, 0.18)],
+        (bx2 + tx2) / 2, (by2 + ty2) / 2,
+      );
+    };
+    out.push(...plate(-1.4, -1.2, 1, -2.5, -2, 6.6, 2.1));
+    out.push(...plate(0.4, -1.7, 1, 0.7, -3, 7.2, 2.2));
+    out.push(...plate(1.7, -0.6, 1, 2.8, -1.1, 5.8, 2));
     // 굽은 관 팔 — 받침 밖에서 포드 쪽으로 넘어온다.
     out.push(...hornFaces(-3.6, 0.9, 0.8, -4, 0.2, 3.6, 0.7));
     out.push(...hornFaces(-4, 0.2, 3.5, -2.9, -0.9, 4.6, 0.55));
@@ -1529,12 +1551,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         Math.sin(a) * 4.7, Math.cos(a) * 4.7, 0.15, 2.3,
       );
     };
+    // 기둥은 수직 직육면체(지적: 안으로 기운 뿔이 아니라) — 돔 둘레에 곧게 선다.
     const post = (ang: number): ShapeFace[] => {
       const a = (ang * Math.PI) / 180;
-      return hornFaces(
-        Math.sin(a) * 2.1, Math.cos(a) * 2.1, 2.6,
-        Math.sin(a) * 1.3, Math.cos(a) * 1.3, 4.6, 0.75,
-      );
+      return boxFaces3(Math.sin(a) * 1.8, Math.cos(a) * 1.8, 0.7, 0.7, 2.1, 2.5);
     };
     return [
       ...arm(135), ...arm(225),
@@ -1669,8 +1689,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 골진 도넛 왕관 — 방사 골 + 가운데 구멍.
     const [cx2, cy2] = project(0, 0, 9.8);
     out.push(bodyFace(groundEllipse(cx2, cy2, 2.6, 1.5)));
+    /* 골도 요잉을 탄다(지적: 뚜껑이 안 돎) — 화면 고정 각이던 골 위치에 현재 요잉을
+       더해, 뚜껑이 함께 도는 것으로 보인다. */
+    const yawRad = Math.atan2(-depthNow(1, 0), depthNow(0, 1));
     for (const ang of [200, 240, 280, 320, 20, 60, 100, 140]) {
-      const a = (ang * Math.PI) / 180;
+      const a = (ang * Math.PI) / 180 + yawRad;
       out.push(sideFace(`M${cx2 + Math.cos(a) * 1.1} ${cy2 + Math.sin(a) * 0.62}`
         + ` L${cx2 + Math.cos(a) * 2.45} ${cy2 + Math.sin(a) * 1.4}`
         + ` L${cx2 + Math.cos(a + 0.16) * 2.45} ${cy2 + Math.sin(a + 0.16) * 1.4}`
@@ -2765,17 +2788,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ];
   },
   /* 드라군(실물 참고) — 크고 둥근 금빛 껍데기 몸(앞 해치 슬릿), 굵게 꺾인 네 다리. */
+  /* 드라군(재지적: 몸통 반으로 + 다리는 더 두꺼운 기계 느낌) — 작은 머리 돔에 굵은
+     관절 다리 넷. */
   goon: () => {
     const leg = (m2: 1 | -1, fy: number): ShapeFace[] => [
-      ...hornFaces(m2 * 1.5, fy, 4.2, m2 * 3, fy * 1.35, 5.2, 0.85),
-      ...hornFaces(m2 * 3, fy * 1.35, 5.2, m2 * 3.6, fy * 1.55, 0.4, 0.7),
+      ...hornFaces(m2 * 1.1, fy * 0.8, 4.6, m2 * 3, fy * 1.35, 5.4, 1.2),
+      ...hornFaces(m2 * 3, fy * 1.35, 5.4, m2 * 3.6, fy * 1.55, 0.4, 0.95),
     ];
-    const [gx2, gy2] = project(-0.8, -0.8, 5.7);
+    const [gx2, gy2] = project(-0.5, -0.5, 5.8);
     return [
       ...leg(-1, -1.5), ...leg(1, -1.5),
-      ...domeFaces3(0, -0.2, 2.4, 2.3, 3.8),
-      capFace(polyPath3([[-0.7, 1.95, 4.7], [0.7, 1.95, 4.7], [0.5, 2.15, 4.1], [-0.5, 2.15, 4.1]]), 0.4),
-      topFace(groundEllipse(gx2, gy2, 0.9, 0.6), 0.25),
+      ...domeFaces3(0, -0.1, 1.6, 1.5, 4.4),
+      capFace(polyPath3([[-0.5, 1.4, 5.2], [0.5, 1.4, 5.2], [0.36, 1.56, 4.75], [-0.36, 1.56, 4.75]]), 0.4),
+      topFace(groundEllipse(gx2, gy2, 0.6, 0.4), 0.25),
       ...leg(-1, 1.3), ...leg(1, 1.3),
     ];
   },
@@ -2790,13 +2815,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const ux = ax1 - cx;
     const uy = ay1 - cy;
     const P = (dx: number, dy: number): string => `${cx + dx * ux} ${cy + dy + dx * uy}`;
-    const wk = Math.hypot(ux, uy);
+    /* 몸통 타원도 같은 평면 사상으로(재지적: 돌 때 몸통이 떨림) — 축 고정 타원에
+       가로 눌림만 주니 함께 도는 머리·팔과 결이 어긋나 흔들려 보였다. 같은 P()로
+       그린 다각 타원이라 형체 전체가 한 몸으로 돈다. */
+    const fig = (rx: number, ry: number, dy0: number, dx0 = 0): string => Array.from(
+      { length: 12 },
+      (_, i) => {
+        const t2 = (i / 12) * Math.PI * 2;
+        return `${i === 0 ? "M" : "L"}${P(dx0 + Math.cos(t2) * rx, dy0 + Math.sin(t2) * ry)}`;
+      },
+    ).join(" ") + " Z";
     return [
       [groundEllipse(cx, cy, 3.6, 3.4), 0.55] as ShapeFace,
       topFace(groundEllipse(cx, cy, 3.6, 3.4), 0.3),
       // 구 속 형체 — 머리 불꽃·몸·양팔이 다 P()로, 요잉을 따라 돈다.
       capFace(`M${P(0, -2.5)} L${P(0.55, -1.5)} L${P(-0.5, -1.45)} Z`, 0.4),
-      capFace(groundEllipse(cx, cy - 0.4, 0.75 * wk, 1.15), 0.35),
+      capFace(fig(0.75, 1.15, -0.4), 0.35),
       capFace(`M${P(-0.6, -1.2)} Q${P(-1.9, -0.4)} ${P(-1.6, 1.3)}`
         + ` L${P(-1.3, 1.2)} Q${P(-1.4, -0.2)} ${P(-0.4, -0.8)} Z`, 0.35),
       capFace(`M${P(0.6, -1.2)} Q${P(1.9, -0.2)} ${P(1.5, 1.5)}`
@@ -2813,14 +2847,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const ux = ax1 - cx;
     const uy = ay1 - cy;
     const P = (dx: number, dy: number): string => `${cx + dx * ux} ${cy + dy + dx * uy}`;
-    const wk = Math.hypot(ux, uy);
+    // 몸통 타원도 같은 평면 사상으로 — 아콘의 fig와 같은 이유(돌 때 떨림).
+    const fig = (rx: number, ry: number, dy0: number, dx0 = 0): string => Array.from(
+      { length: 12 },
+      (_, i) => {
+        const t2 = (i / 12) * Math.PI * 2;
+        return `${i === 0 ? "M" : "L"}${P(dx0 + Math.cos(t2) * rx, dy0 + Math.sin(t2) * ry)}`;
+      },
+    ).join(" ") + " Z";
     return [
       [groundEllipse(cx, cy, 3.6, 3.4), 0.55] as ShapeFace,
       capFace(groundEllipse(cx, cy, 3.6, 3.4), 0.25),
       // 속 형체 — 뿔귀 둘·몸·아래로 늘어지는 갈퀴 팔.
       capFace(`M${P(-0.1, -2.2)} L${P(0.95, -0.95)} L${P(0.1, -0.85)} Z`, 0.45),
       capFace(`M${P(-1.25, -1.75)} L${P(-0.3, -0.9)} L${P(-1.05, -0.65)} Z`, 0.45),
-      capFace(groundEllipse(cx - 0.15 * ux, cy + 0.1 - 0.15 * uy, 0.7 * wk, 1), 0.4),
+      capFace(fig(0.7, 1, 0.1, -0.15), 0.4),
       capFace(`M${P(-0.5, 0.6)} Q${P(-1.3, 1.2)} ${P(-1.1, 2.2)}`
         + ` L${P(-0.8, 2.1)} Q${P(-0.95, 1.2)} ${P(-0.25, 0.8)} Z`, 0.4),
       // 바깥 수염 호 — 가늘게 흩날린다.
