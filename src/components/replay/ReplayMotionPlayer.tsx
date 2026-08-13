@@ -2444,43 +2444,72 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
 
   /* ── 유닛 상징물(요청: 유닛 마커도 방향을 갖게 기본 3D화) — 정면은 +y. 세밀한 움직임
      대신 정체를 말하는 상징물이다. 회전 중심(8,8) 근처에 몸이 오도록 공중에 띄워 깎는다. */
-  /* 메딕 — 원통 몸 + 머리 + 앞에 든 방패(요청). */
+  /* 메딕(실물 참고) — 같은 파워드 아머에 밝은 열린 얼굴, 앞으로 드리운 흰 앞치마
+     자락, 오른팔의 주사기. */
   inf: () => {
-    const [px2, py2] = project(1.3, 1.4, 4.9);
+    const [fx2, fy2] = project(0, 0.5, 4.55);
+    const apron = polyPath3([[-0.5, 1.05, 2.9], [0.5, 1.05, 2.9], [0.35, 1.2, 0.9], [-0.35, 1.2, 0.9]]);
     return [
-      ...cylinderFaces3(0, -0.4, 1.4, 3.2, 3.4),
-      ...domeFaces3(0, -0.9, 1.2, 0.95, 6.6),
-      bodyFace(groundEllipse(px2, py2, 0.95, 1.25)),
-      topFace(groundEllipse(px2, py2, 0.6, 0.85), 0.25),
+      ...cylinderFaces3(-0.6, -0.2, 0.5, 1.7, 0.2),
+      ...cylinderFaces3(0.6, -0.2, 0.5, 1.7, 0.2),
+      ...cylinderFaces3(0, -0.2, 1.25, 2.1, 1.9),
+      ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
+      ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
+      ...domeFaces3(0, -0.2, 0.8, 0.7, 4.2),
+      topFace(groundEllipse(fx2, fy2, 0.4, 0.34), 0.45),
+      bodyFace(apron),
+      topFace(apron, 0.3),
+      // 오른팔 주사기.
+      ...tubeFaces(1.35, 0.3, 1.35, 1.4, 0.3, 3),
+      ...hornFaces(1.35, 1.4, 3.1, 1.35, 2.2, 3, 0.16),
     ];
   },
-  /* 테란 보병 — 긴 원통 몸 + 총(정정: 칼 같았다 — 폭이 한결같은 총열·총몸·총구). */
+  /* 마린(실물 참고) — 큰 어깨 뽕 한 쌍의 파워드 아머, 금빛 바이저 머리, 가슴 앞에
+     가로로 든 가우스 소총. */
   gunner: () => {
-    const [ax2, ay2] = project(1, 0.8, 4.5);
-    const [bx2, by2] = project(1.2, 2, 8);
-    const dx2 = bx2 - ax2;
-    const dy2 = by2 - ay2;
-    const L = Math.hypot(dx2, dy2) || 1;
-    const nx2 = (-dy2 / L) * 0.26;
-    const ny2 = (dx2 / L) * 0.26;
+    const [vx2, vy2] = project(0, 0.55, 4.7);
+    const [mx2, my2] = project(1.75, 1.15, 3.35);
     return [
-      ...cylinderFaces3(0, -0.4, 1.4, 3.2, 3.4),
-      ...domeFaces3(0, -0.9, 1.2, 0.95, 6.6),
-      ...boxFaces3(1, 0.9, 0.7, 1, 0.8, 4.1),
-      bodyFace(`M${ax2 + nx2} ${ay2 + ny2} L${bx2 + nx2} ${by2 + ny2} L${bx2 - nx2} ${by2 - ny2} L${ax2 - nx2} ${ay2 - ny2} Z`),
-      capFace(groundEllipse(bx2, by2, 0.3, 0.24), 0.4),
+      ...cylinderFaces3(-0.6, -0.2, 0.5, 1.7, 0.2),
+      ...cylinderFaces3(0.6, -0.2, 0.5, 1.7, 0.2),
+      ...cylinderFaces3(0, -0.2, 1.25, 2.1, 1.9),
+      ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
+      ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
+      ...domeFaces3(0, -0.2, 0.8, 0.7, 4.2),
+      topFace(groundEllipse(vx2, vy2, 0.42, 0.3), 0.5),
+      // 가로 가우스 소총.
+      ...boxFaces3(0.3, 1.15, 2.7, 0.7, 0.7, 3),
+      capFace(groundEllipse(mx2, my2, 0.22, 0.18), 0.4),
     ];
   },
-  /* 파이어뱃(정정) — 등에 큰 방사통 실린더 둘 + 앞에 포 형태의 굵은 화염포. */
-  fbat: () => [
-    ...cylinderFaces3(-0.85, -1.9, 0.72, 2.7, 4),
-    ...domeFaces3(-0.85, -1.9, 0.72, 0.5, 6.7),
-    ...cylinderFaces3(0.85, -1.9, 0.72, 2.7, 4),
-    ...domeFaces3(0.85, -1.9, 0.72, 0.5, 6.7),
-    ...cylinderFaces3(0, -0.4, 1.4, 3.2, 3.4),
-    ...domeFaces3(0, -0.9, 1.2, 0.95, 6.6),
-    ...tubeFaces(0.9, 0.8, 0.9, 3.4, 0.55, 4.5, true),
-  ],
+  /* 파이어뱃(실물 참고) — 같은 파워드 아머에 어깨 위로 보이는 등 연료통 둘, 어두운
+     바이저 슬릿, 앞으로 내민 굵은 화염 건틀릿 두 팔. */
+  fbat: () => {
+    const [vx2, vy2] = project(0, 0.55, 4.7);
+    const noz = (tx: number): ShapeFace => {
+      const [px2, py2] = project(tx, 1.6, 2.95);
+      return capFace(groundEllipse(px2, py2 - 0.19, 0.3, 0.24), 0.4);
+    };
+    return [
+      // 등 연료통 둘 — 먼저 그려 어깨가 뿌리를 덮는다.
+      ...cylinderFaces3(-0.7, -1.3, 0.5, 2.4, 3.2),
+      ...domeFaces3(-0.7, -1.3, 0.5, 0.4, 5.6),
+      ...cylinderFaces3(0.7, -1.3, 0.5, 2.4, 3.2),
+      ...domeFaces3(0.7, -1.3, 0.5, 0.4, 5.6),
+      ...cylinderFaces3(-0.6, -0.2, 0.5, 1.7, 0.2),
+      ...cylinderFaces3(0.6, -0.2, 0.5, 1.7, 0.2),
+      ...cylinderFaces3(0, -0.2, 1.25, 2.1, 1.9),
+      ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
+      ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
+      ...domeFaces3(0, -0.2, 0.8, 0.7, 4.2),
+      capFace(groundEllipse(vx2, vy2, 0.4, 0.22), 0.4),
+      // 화염 건틀릿 두 팔.
+      ...tubeFaces(-1.4, 0.4, -1.4, 1.6, 0.42, 2.9),
+      noz(-1.4),
+      ...tubeFaces(1.4, 0.4, 1.4, 1.6, 0.42, 2.9),
+      noz(1.4),
+    ];
+  },
   /* 질럿 — 검 두 자루(요청). */
   zealot: () => [
     ...cylinderFaces3(0, -0.4, 1.4, 3.4, 3.4),
