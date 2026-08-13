@@ -501,6 +501,16 @@ function legAndFoot(px: number, py: number, zTop: number): ShapeFace[] {
   ];
 }
 
+/** 3단 갈고리(요청: 직선이 아닌 세 마디 휨) — 밖-앞 → 앞 → 안-아래로 말린다.
+ *  m은 좌우, s는 덩치 배율, z0는 뿌리 높이. */
+function claw3(m: 1 | -1, s: number, z0: number): ShapeFace[] {
+  return [
+    ...hornFaces(m * 1.2 * s, 0.5 * s, z0, m * 2.1 * s, 1.8 * s, z0 + 0.6, 0.7 * s),
+    ...hornFaces(m * 2.1 * s, 1.8 * s, z0 + 0.6, m * 1.9 * s, 3.2 * s, z0 + 0.2, 0.55 * s),
+    ...hornFaces(m * 1.9 * s, 3.2 * s, z0 + 0.2, m * 1.1 * s, 4.2 * s, z0 - 0.9, 0.4 * s),
+  ];
+}
+
 export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 커맨드 센터(실물 참고) — 넓은 원반 선체 3단 + 위 관제 모듈(빛 띠·돔) + 앞으로
      내려오는 전개 램프 + 네 귀 돔 발. */
@@ -1436,6 +1446,28 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...hornFaces(-1.5, 0.6, 4, -2.6, 3.4, 4.6, 0.8),
     ...hornFaces(-2.6, 3.4, 4.6, -1.6, 5.4, 3.6, 0.6),
   ],
+  /* 저글링·히드라·울트라(요청: 전용 모델) — 갈고리는 직선이 아니라 3단으로 휘어진다:
+     밖-앞으로 → 앞으로 → 안-아래로 말리는 세 마디. 덩치별로 몸과 갈고리 크기가 다르다. */
+  zling: () => [
+    ...cylinderFaces3(0, -0.6, 1.1, 2.1, 3.4),
+    ...domeFaces3(0, 0.3, 0.85, 0.7, 5.4),
+    ...claw3(1, 0.8, 4),
+    ...claw3(-1, 0.8, 4),
+  ],
+  hydra: () => [
+    // 뱀몸 — 긴 통 위에 코브라 두건.
+    ...cylinderFaces3(0, -0.8, 1.3, 3.4, 3.4),
+    ...domeFaces3(0, -0.4, 1.5, 1.2, 6.7),
+    ...claw3(1, 1, 4.4),
+    ...claw3(-1, 1, 4.4),
+  ],
+  ultra: () => [
+    // 큰 덩치 — 불룩한 몸 + 낮은 머리 + 큰 카이저 칼날.
+    ...domeFaces3(0, -0.8, 2.6, 2.6, 3.4),
+    ...domeFaces3(0, 1.2, 1.3, 1, 4),
+    ...claw3(1, 1.3, 4.2),
+    ...claw3(-1, 1.3, 4.2),
+  ],
   /* 러커 — 거미다리(요청) 세 쌍: 위마디 밖-위로, 아랫마디 밖-아래로. */
   lurker: () => {
     const out: ShapeFace[] = [];
@@ -1612,7 +1644,7 @@ const UNIT_3D: Record<string, string> = {
   Marine: "gunner", Firebat: "gunner", Ghost: "gunner", Medic: "inf",
   Zealot: "zealot", "Dark Templar": "dtemp", Dragoon: "goon",
   Archon: "archon", "Dark Archon": "darchon",
-  Zergling: "zclaw", Hydralisk: "zclaw", Ultralisk: "zclaw", Broodling: "zclaw",
+  Zergling: "zling", Hydralisk: "hydra", Ultralisk: "ultra", Broodling: "zclaw",
   "Infested Terran": "zclaw", Lurker: "lurker", Defiler: "defiler",
   // 일꾼류는 다 직접 모델링(요청).
   SCV: "scv", Probe: "probe", Drone: "drone",
@@ -1655,6 +1687,7 @@ export const SHAPE_GALLERY: { kind: string; label: string }[] = (() => {
     ["archon", "아콘"], ["darchon", "다크 아콘"], ["zclaw", "저그 지상"],
     ["lurker", "러커"], ["defiler", "디파일러"],
     ["scv", "SCV"], ["probe", "프로브"], ["drone", "드론"],
+    ["zling", "저글링"], ["hydra", "히드라"], ["ultra", "울트라리스크"],
   ] as [string, string][]) {
     if (!seen.has(kind)) { seen.add(kind); out.push({ kind, label }); }
   }
