@@ -430,6 +430,14 @@ const SHAPE_KIND: Record<string, string> = {
   "Robotics Facility": "dome", Stargate: "arch",
   // 가스 건물 셋(실물 참고) — 종족별 정제소. 크기는 발자국(4×2)이 맞춘다.
   Refinery: "refinery", Assimilator: "assim", Extractor: "extract",
+  // 업그레이드·테크 건물들(요청: 다 만들자).
+  Academy: "academy", "Engineering Bay": "ebay", Armory: "armory", "Science Facility": "scifac",
+  Forge: "forge", "Cybernetics Core": "cyber", "Citadel of Adun": "citadel",
+  "Templar Archives": "archives", "Robotics Support Bay": "robobay", Observatory: "observatory",
+  "Fleet Beacon": "fleetbeacon", "Arbiter Tribunal": "tribunal", "Shield Battery": "sbattery",
+  "Evolution Chamber": "evo", "Hydralisk Den": "hydraden", Spire: "spire", "Greater Spire": "gspire",
+  "Queen's Nest": "queensnest", "Defiler Mound": "dmound", "Ultralisk Cavern": "cavern",
+  "Nydus Canal": "nydus",
 };
 /** 저그 둔덕 몸통 — 셋이 같은 몸을 쓰고 뿔만 자란다(아래 lair/hive). 옆구리는 종 모양
  *  으로 불룩하게(지적: "해처리의 곡선이 반대로 됨" — 나팔처럼 파인 곡선을 뒤집었다).
@@ -1093,6 +1101,192 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     return out;
   },
 
+  /* ── 업그레이드·테크 건물들(요청: 이제 다 만들자) ─────────────────────────── */
+  /* 아카데미 — 본관 + 별관 + 안테나 원반. */
+  academy: () => {
+    const [ax2, ay2] = project(2.7, -1.3, 7.4);
+    return [
+      ...boxFaces3(0, 0.3, 8.6, 5.2, 4),
+      ...boxFaces3(-2.1, -0.8, 3.2, 2.6, 1.9, 4),
+      ...hornFaces(2.7, -1.3, 4, 2.7, -1.3, 7.4, 0.5),
+      topFace(groundEllipse(ax2, ay2, 1.3, 0.55), 0.3),
+    ];
+  },
+  /* 엔지니어링 베이 — 상자 + 연구 돔 둘 + 짧은 침. */
+  ebay: () => [
+    ...boxFaces3(0, 0.2, 9, 5.4, 3.4),
+    ...domeFaces3(-2.2, -0.6, 2, 1.7, 3.4),
+    ...domeFaces3(1.9, -0.4, 1.5, 1.3, 3.4),
+    ...hornFaces(3.4, 1.4, 3.4, 3.4, 1.4, 5.8, 0.4),
+  ],
+  /* 아머리 — 상자 + 옆 포탑 통 + 굴뚝. */
+  armory: () => [
+    ...boxFaces3(-0.6, 0.2, 7.6, 5.2, 3.8),
+    ...cylinderFaces3(3.4, 0.6, 1.5, 2.6, 1.2),
+    ...domeFaces3(3.4, 0.6, 1.5, 1, 3.8),
+    ...cylinderFaces3(-2.8, -1.4, 0.7, 2.4, 3.8),
+  ],
+  /* 사이언스 퍼실리티 — 받침 + 큰 구 + 위 포드. */
+  scifac: () => [
+    ...boxFaces3(0, 0.3, 7.8, 5, 2.2),
+    ...domeFaces3(0, -0.2, 3.9, 3.4, 2.2),
+    ...boxFaces3(0, -0.4, 2.4, 1.9, 1, 5.6),
+  ],
+  /* 포지 — 낮은 몸 + 앞 빛 슬릿 + 모서리 뿔. */
+  forge: () => {
+    const [sx2, sy2] = project(0, 2.65, 1.6);
+    return [
+      ...boxFaces3(0, 0, 7.8, 5, 3.6),
+      topFace(groundEllipse(sx2, sy2, 2.2, 0.5), 0.35),
+      ...hornFaces(-3.2, -1.8, 3.6, -3.7, -2.2, 6, 0.8),
+      ...hornFaces(3.2, -1.8, 3.6, 3.7, -2.2, 6, 0.8),
+    ];
+  },
+  /* 사이버네틱스 코어 — 원통 + 돔 + 위 빛 구. */
+  cyber: () => {
+    const [gx2, gy2] = project(0, 0, 6.9);
+    return [
+      ...cylinderFaces3(0, 0, 4.2, 2.6),
+      ...domeFaces3(0, 0, 3.4, 2.6, 2.6),
+      [groundEllipse(gx2, gy2, 1, 0.95), 0.6] as ShapeFace,
+      topFace(groundEllipse(gx2 - 0.3, gy2 - 0.3, 0.4, 0.35), 0.5),
+    ];
+  },
+  /* 시타델 오브 아둔 — 좁아지는 탑 + 꼭대기 뾰족. */
+  citadel: () => [
+    ...frustumFaces3(0, 0, 6.6, 5.4, 3, 2.4, 5.4),
+    ...hornFaces(0, 0, 5.2, 0, 0, 8.6, 1.4),
+  ],
+  /* 템플러 아카이브 — 넓은 대 + 돔 + 떠 있는 보석. */
+  archives: () => {
+    const [gx2, gy2] = project(0, 0, 8);
+    return [
+      ...boxFaces3(0, 0, 7, 5.4, 1.6),
+      ...domeFaces3(0, 0, 3.2, 2.9, 1.6),
+      bodyFace(`M${gx2} ${gy2 - 1.4} L${gx2 + 0.85} ${gy2} L${gx2} ${gy2 + 1.05} L${gx2 - 0.85} ${gy2} Z`),
+      topFace(`M${gx2} ${gy2 - 1.4} L${gx2 - 0.85} ${gy2} L${gx2} ${gy2 + 1.05} L${gx2 - 0.28} ${gy2} Z`, 0.3),
+    ];
+  },
+  /* 로보틱스 서포트 베이 — 낮은 상자 + 위로 굽은 팔. */
+  robobay: () => [
+    ...boxFaces3(0, 0.2, 7.6, 5, 3),
+    ...hornFaces(-2.4, -1.2, 3, -3.2, -1.6, 6.4, 1.1),
+    ...hornFaces(-3.2, -1.6, 6.2, -1.4, -0.6, 7.4, 0.8),
+    ...domeFaces3(2.2, 0.6, 1.4, 1.1, 3),
+  ],
+  /* 옵저버토리 — 받침 다리 + 구 + 뒤 접시. */
+  observatory: () => {
+    const [dx3, dy3] = project(-1.8, -2, 5.6);
+    return [
+      ...boxFaces3(0, 0.4, 6.6, 4.4, 2),
+      ...domeFaces3(0.6, 0.4, 2.4, 2.1, 2),
+      bodyFace(groundEllipse(dx3, dy3, 1.7, 0.8)),
+      topFace(groundEllipse(dx3, dy3, 1.2, 0.55), 0.3),
+    ];
+  },
+  /* 플릿 비컨 — 낮은 원반 + 큰 반고리 + 가운데 구. */
+  fleetbeacon: () => {
+    const [cx2, cy2] = project(0, 0, 3.4);
+    const [gx2, gy2] = project(0, 0, 4.4);
+    return [
+      ...cylinderFaces3(0, 0, 4.6, 1.8),
+      bodyFace(`M${cx2 - 4.2} ${cy2} A4.2 2.9 0 0 1 ${cx2 + 4.2} ${cy2} L${cx2 + 3.1} ${cy2} A3.1 2.1 0 0 0 ${cx2 - 3.1} ${cy2} Z`),
+      [groundEllipse(gx2, gy2, 1.35, 1.25), 0.6] as ShapeFace,
+      topFace(groundEllipse(gx2 - 0.4, gy2 - 0.4, 0.5, 0.45), 0.5),
+    ];
+  },
+  /* 아비터 트리뷰널 — 넓은 돔 + 세 가시 + 빛점. */
+  tribunal: () => {
+    const [gx2, gy2] = project(0, 0, 5.9);
+    return [
+      ...cylinderFaces3(0, 0, 4.4, 1.4),
+      ...domeFaces3(0, 0, 3.6, 3.2, 1.4),
+      ...hornFaces(-3.4, -1.6, 1.4, -4.2, -2.1, 4.6, 0.8),
+      ...hornFaces(3.4, -1.6, 1.4, 4.2, -2.1, 4.6, 0.8),
+      ...hornFaces(0, 3.6, 1.4, 0, 4.6, 4.2, 0.8),
+      topFace(groundEllipse(gx2, gy2, 0.8, 0.5), 0.4),
+    ];
+  },
+  /* 실드 배터리 — 납작 통 + 빛나는 유리 돔. */
+  sbattery: () => [
+    ...cylinderFaces3(0, 0, 3.9, 1.5),
+    ...domeFaces3(0, 0, 2.9, 2.2, 1.5),
+    topFace(discPath3(0, 0, 2.6, 1.9), 0.3),
+  ],
+  /* 에볼루션 챔버 — 겹둔덕 + 숨구멍 혹 + 옆 굴뚝. */
+  evo: () => [
+    ...domeFaces3(0, 0.4, 4.6, 3),
+    ...domeFaces3(-1.6, -1, 2.6, 2.4, 1.4),
+    ...domeFaces3(2, 0.6, 1.7, 1.5, 2.2),
+    ...hornFaces(-3, -2, 2, -3.8, -2.6, 5.2, 1.1),
+  ],
+  /* 히드라리스크 덴 — 둔덕 + 굽은 가시 둘 + 동굴 입. */
+  hydraden: () => {
+    const [mx3, my3] = project(0, 3.5, 1.2);
+    return [
+      ...domeFaces3(0, 0, 4.8, 3.2),
+      ...hornFaces(-2.6, -1.8, 2.6, -4, -2.8, 6.6, 1.2),
+      ...hornFaces(2.8, -1.4, 2.6, 4.4, -2, 5.8, 1.1),
+      capFace(groundEllipse(mx3, my3, 1.5, 0.7), 0.45),
+    ];
+  },
+  /* 스파이어 — 3단 좁아지는 탑 + 꼭대기 뿔. */
+  spire: () => [
+    ...cylinderFaces3(0, 0, 3.6, 2.2),
+    ...cylinderFaces3(0, 0, 2.7, 2.4, 2.2),
+    ...cylinderFaces3(0, 0, 1.9, 2.6, 4.6),
+    ...hornFaces(0, 0, 7, 0.6, -0.6, 9.6, 1.2),
+  ],
+  /* 그레이터 스파이어 — 더 높은 탑 + 옆 뿔들. */
+  gspire: () => [
+    ...cylinderFaces3(0, 0, 3.8, 2.4),
+    ...cylinderFaces3(0, 0, 2.9, 2.6, 2.4),
+    ...cylinderFaces3(0, 0, 2.1, 2.8, 5),
+    ...hornFaces(0, 0, 7.6, 0.7, -0.7, 10.6, 1.3),
+    ...hornFaces(-2.4, -1, 3.4, -3.6, -1.6, 6.2, 0.9),
+    ...hornFaces(2.4, -1.2, 3.4, 3.6, -1.9, 5.8, 0.9),
+  ],
+  /* 퀸즈 네스트 — 둔덕 + 알 무더기 + 뿔. */
+  queensnest: () => [
+    ...domeFaces3(0, -0.4, 4.4, 2.8),
+    ...domeFaces3(-1.8, 2.2, 1.2, 1),
+    ...domeFaces3(0.2, 2.8, 1, 0.85),
+    ...domeFaces3(1.8, 2.1, 1.1, 0.9),
+    ...hornFaces(-2.4, -2, 2.2, -3.2, -2.8, 5.4, 1),
+  ],
+  /* 디파일러 마운드 — 둔덕 + 큰 옆 아가리 + 가시들. */
+  dmound: () => {
+    const [mx3, my3] = project(2.9, 1.8, 1.6);
+    return [
+      ...domeFaces3(0, 0, 4.8, 3.1),
+      capFace(groundEllipse(mx3, my3, 1.8, 1), 0.45),
+      ...hornFaces(-2.6, -1.6, 2.6, -3.6, -2.4, 5.8, 1),
+      ...hornFaces(-0.4, -2.8, 2.4, -0.8, -4, 4.8, 0.9),
+    ];
+  },
+  /* 울트라리스크 캐번 — 둔덕 + 큰 엄니 둘 + 입. */
+  cavern: () => {
+    const [mx3, my3] = project(0, 3.6, 1.2);
+    return [
+      ...domeFaces3(0, 0, 4.9, 3.3),
+      ...hornFaces(-2.2, 2.6, 1.6, -3.6, 4.4, 5, 1.3),
+      ...hornFaces(2.2, 2.6, 1.6, 3.6, 4.4, 5, 1.3),
+      capFace(groundEllipse(mx3, my3, 1.4, 0.65), 0.45),
+    ];
+  },
+  /* 나이더스 커널 — 점액 테 + 어두운 아가리 + 이빨 뿔들. */
+  nydus: () => {
+    const [cx2, cy2] = project(0, 0, 1.2);
+    return [
+      ...domeFaces3(0, 0, 4.2, 1.6),
+      capFace(groundEllipse(cx2, cy2, 2.6, 1.35), 0.5),
+      ...hornFaces(-2.2, -1.8, 1.4, -1.6, -1.2, 3, 0.7),
+      ...hornFaces(2.2, -1.8, 1.4, 1.6, -1.2, 3, 0.7),
+      ...hornFaces(-2.4, 1.6, 1.3, -1.8, 1.1, 2.9, 0.7),
+      ...hornFaces(2.4, 1.6, 1.3, 1.8, 1.1, 2.9, 0.7),
+    ];
+  },
+
   /* 해처리 — 둔덕 + 방사 다리 여섯(요잉을 따라 도는 것이 핵심) + 윗면 입·목띠. */
   hatchery: () => {
     const out: ShapeFace[] = [];
@@ -1572,10 +1766,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...domeFaces3(0, -0.9, 1.2, 0.95, 6.6),
     ...tubeFaces(0.9, 0.6, 0.9, 5.6, 0.5, 4.6),
   ],
+  /* 파이어뱃 — 보병 + 등의 화염통 둘(요청) + 짧은 화염 관. */
+  fbat: () => [
+    ...cylinderFaces3(-0.7, -1.7, 0.5, 1.9, 4.3),
+    ...cylinderFaces3(0.7, -1.7, 0.5, 1.9, 4.3),
+    ...cylinderFaces3(0, -0.4, 1.4, 3.2, 3.4),
+    ...domeFaces3(0, -0.9, 1.2, 0.95, 6.6),
+    ...tubeFaces(0.9, 0.6, 0.9, 4.4, 0.5, 4.6),
+  ],
   /* 질럿 — 검 두 자루(요청). */
   zealot: () => [
     ...cylinderFaces3(0, -0.4, 1.4, 3.4, 3.4),
     ...domeFaces3(0, -0.9, 1.2, 0.95, 6.8),
+    // 프로토스 특유의 길쭉한 머리(요청) — 뒤로 흐르는 타원 볏.
+    ...hornFaces(0, -1.3, 7.2, 0, -3, 7.9, 0.7),
     // 칼은 옆구리에서 아래를 향한다(지적: 위가 아니라).
     ...hornFaces(1.7, 0.3, 4.7, 2.4, 1.4, 1, 0.7),
     ...hornFaces(-1.7, 0.3, 4.7, -2.4, 1.4, 1, 0.7),
@@ -1593,6 +1797,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ]), 0.18),
     ...cylinderFaces3(0, -0.4, 1.4, 3.4, 3.4),
     ...domeFaces3(0, -0.9, 1.2, 0.95, 6.8),
+    // 프로토스 길쭉한 머리(요청).
+    ...hornFaces(0, -1.3, 7.2, 0, -3, 7.9, 0.7),
     // 칼 한 자루 — 오른 옆구리에서 아래로(지적).
     ...hornFaces(1.7, 0.3, 4.7, 2.4, 1.5, 0.9, 0.75),
   ],
@@ -1603,6 +1809,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(groundEllipse(gx, gy, 1.6, 0.8), 0.3),
       ...cylinderFaces3(0, -0.3, 1.3, 2.4, 4.4),
       ...domeFaces3(0, -0.7, 1.05, 0.85, 6.8),
+      // 프로토스 길쭉한 머리(요청).
+      ...hornFaces(0, -1.1, 7.1, 0, -2.7, 7.8, 0.65),
     ];
   },
   /* 드라군 — 몸통 + 네 다리(요청). 뒤 두 다리 → 몸 → 앞 두 다리. */
@@ -1843,7 +2051,7 @@ const UNIT_CLASS: Record<string, string> = {
 /* 유닛 → 3D 상징물(요청) — 지상 유닛만(지적: 저그도 지상만). 공중은 2D 기호 그대로.
    표에 없는 지상 유닛은 기본 쐐기(wedge)로 방향만 갖는다. */
 const UNIT_3D: Record<string, string> = {
-  Marine: "gunner", Firebat: "gunner", Ghost: "gunner", Medic: "inf",
+  Marine: "gunner", Firebat: "fbat", Ghost: "gunner", Medic: "inf",
   // 기계·함선(요청: 만들 수 있는 건 다).
   Vulture: "vulture", "Siege Tank": "tank", "Siege Tank (Tank Mode)": "tank",
   Goliath: "goliath", Reaver: "reaver", Wraith: "wraith", Battlecruiser: "bc",
@@ -1891,7 +2099,7 @@ export const SHAPE_GALLERY: { kind: string; label: string }[] = (() => {
     ["pool", "스포닝 풀"], ["troop", "지상(지대지)"], ["gAA", "지대공"], ["gBoth", "지상(겸용)"],
     ["aAir", "공대공"], ["aBoth", "공중(겸용)"], ["gCast", "마법(지상)"], ["aCast", "마법(공중)"],
     ["ovie", "오버로드"], ["dship", "드랍십"], ["shuttle", "셔틀"],
-    ["wedge", "기본 유닛"], ["gunner", "테란 보병(총)"], ["inf", "메딕"],
+    ["wedge", "기본 유닛"], ["gunner", "테란 보병(총)"], ["fbat", "파이어뱃"], ["inf", "메딕"],
     ["zealot", "질럿"], ["dtemp", "다크 템플러"], ["goon", "드라군"],
     ["archon", "아콘"], ["darchon", "다크 아콘"], ["zclaw", "저그 지상"],
     ["lurker", "러커"], ["defiler", "디파일러"],
