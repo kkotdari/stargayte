@@ -1948,7 +1948,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...domeFaces3(0, -0.4, 1.5, 1.2, 6.7),
     // 작은 머리 + 뒤로 아주 긴 머리 장식(정정).
     ...domeFaces3(0, 0.3, 0.75, 0.6, 7.3),
-    ...hornFaces(0, -0.1, 7.5, 0, -3.9, 8.7, 0.8),
+    // 머리 장식은 뾰족하지 않게(정정) — 뒤로 길게 누운 갸름한 타원.
+    ...tubeFaces(0, -0.2, 0, -3.7, 0.6, 7.4),
     ...claw3(1, 1, 4.4),
     ...claw3(-1, 1, 4.4),
   ],
@@ -1974,7 +1975,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...domeFaces3(0, 1.1, 1.3, 1, 3.9));
     // 작은 머리 + 뒤로 아주 긴 머리 장식(정정).
     out.push(...domeFaces3(0, 1.9, 0.7, 0.55, 4.2));
-    out.push(...hornFaces(0, 1.5, 4.5, 0, -2.8, 6, 0.7));
+    // 머리 장식은 뾰족하지 않게(정정) — 뒤로 길게 누운 갸름한 타원.
+    out.push(...tubeFaces(0, 1.4, 0, -2.6, 0.5, 4.6));
     return out;
   },
   /* 디파일러 — 뒤 꼬리(끝이 위로 말림) + 앞 양 집게(요청). */
