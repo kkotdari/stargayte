@@ -1755,16 +1755,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     topFace(polyPath3([[0, 4.6, 3.4], [2.6, -2.6, 3.4], [0, -1, 3.4], [-2.6, -2.6, 3.4]]), 0.16),
     ...domeFaces3(0, -0.4, 1.6, 1.3, 3.4),
   ],
-  /* 테란 보병(메딕) — 몸통은 긴 원통(지적: 돔이 아니라) + 머리. */
-  inf: () => [
-    ...cylinderFaces3(0, -0.4, 1.4, 3.2, 3.4),
-    ...domeFaces3(0, -0.9, 1.2, 0.95, 6.6),
-  ],
-  /* 테란 보병 — 긴 원통 몸 + 총관(요청)을 앞으로 내민다. */
+  /* 메딕 — 원통 몸 + 머리 + 앞에 든 방패(요청). */
+  inf: () => {
+    const [px2, py2] = project(1.3, 1.4, 4.9);
+    return [
+      ...cylinderFaces3(0, -0.4, 1.4, 3.2, 3.4),
+      ...domeFaces3(0, -0.9, 1.2, 0.95, 6.6),
+      bodyFace(groundEllipse(px2, py2, 0.95, 1.25)),
+      topFace(groundEllipse(px2, py2, 0.6, 0.85), 0.25),
+    ];
+  },
+  /* 테란 보병 — 긴 원통 몸 + 총관은 위를 향해 겨눈다(지적). */
   gunner: () => [
     ...cylinderFaces3(0, -0.4, 1.4, 3.2, 3.4),
     ...domeFaces3(0, -0.9, 1.2, 0.95, 6.6),
-    ...tubeFaces(0.9, 0.6, 0.9, 5.6, 0.5, 4.6),
+    ...hornFaces(1, 0.6, 4.4, 1.1, 1.9, 8, 0.55),
   ],
   /* 파이어뱃 — 보병 + 등의 화염통 둘(요청) + 짧은 화염 관. */
   fbat: () => [
@@ -1839,15 +1844,6 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(groundEllipse(cx - 1.1, cy - 1.1, 1.2, 0.9), 0.3),
     ];
   },
-  /* 저그 지상 — 웅크린 몸 + 앞 갈고리 칼날 둘(요청). */
-  zclaw: () => [
-    // 몸통은 긴 원통(지적) — 웅크린 돔 대신 세운 통.
-    ...cylinderFaces3(0, -0.6, 1.5, 2.9, 3.4),
-    ...hornFaces(1.5, 0.6, 4, 2.6, 3.4, 4.6, 0.8),
-    ...hornFaces(2.6, 3.4, 4.6, 1.6, 5.4, 3.6, 0.6),
-    ...hornFaces(-1.5, 0.6, 4, -2.6, 3.4, 4.6, 0.8),
-    ...hornFaces(-2.6, 3.4, 4.6, -1.6, 5.4, 3.6, 0.6),
-  ],
   /* 저글링·히드라·울트라(요청: 전용 모델) — 갈고리는 직선이 아니라 3단으로 휘어진다:
      밖-앞으로 → 앞으로 → 안-아래로 말리는 세 마디. 덩치별로 몸과 갈고리 크기가 다르다. */
   zling: () => [
@@ -2061,8 +2057,8 @@ const UNIT_3D: Record<string, string> = {
   Arbiter: "arbiter", Observer: "observer",
   Zealot: "zealot", "Dark Templar": "dtemp", Dragoon: "goon", "High Templar": "htemp",
   Archon: "archon", "Dark Archon": "darchon",
-  Zergling: "zling", Hydralisk: "hydra", Ultralisk: "ultra", Broodling: "zclaw",
-  "Infested Terran": "zclaw", Lurker: "lurker", Defiler: "defiler",
+  Zergling: "zling", Hydralisk: "hydra", Ultralisk: "ultra", Broodling: "zling",
+  "Infested Terran": "zling", Lurker: "lurker", Defiler: "defiler",
   // 일꾼류는 다 직접 모델링(요청).
   SCV: "scv", Probe: "probe", Drone: "drone",
 };
@@ -2101,7 +2097,7 @@ export const SHAPE_GALLERY: { kind: string; label: string }[] = (() => {
     ["ovie", "오버로드"], ["dship", "드랍십"], ["shuttle", "셔틀"],
     ["wedge", "기본 유닛"], ["gunner", "테란 보병(총)"], ["fbat", "파이어뱃"], ["inf", "메딕"],
     ["zealot", "질럿"], ["dtemp", "다크 템플러"], ["goon", "드라군"],
-    ["archon", "아콘"], ["darchon", "다크 아콘"], ["zclaw", "저그 지상"],
+    ["archon", "아콘"], ["darchon", "다크 아콘"],
     ["lurker", "러커"], ["defiler", "디파일러"],
     ["scv", "SCV"], ["probe", "프로브"], ["drone", "드론"],
     ["zling", "저글링"], ["hydra", "히드라"], ["ultra", "울트라리스크"],
