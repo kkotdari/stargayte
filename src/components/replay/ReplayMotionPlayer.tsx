@@ -1527,6 +1527,63 @@ export default function ReplayMotionPlayer({
     setBig(false);
   };
 
+  /* PC 휠 줌(요청) — 맵 위에서 휠로 확대/축소, 커서 자리를 붙든 채 늘어난다. 팬은 줌
+     계산에 함께 실려 경계 밖이 안 보이게 죈다. */
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  useEffect(() => {
+    const el = mapRef.current;
+    if (!el) return undefined;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const ox = e.clientX - (rect.left + rect.width / 2);
+      const oy = e.clientY - (rect.top + rect.height / 2);
+      setZoom((z) => {
+        const nz = Math.min(5, Math.max(1, z * (e.deltaY < 0 ? 1.2 : 1 / 1.2)));
+        setPan((p) => {
+          if (nz <= 1) return { x: 0, y: 0 };
+          const k = nz / z;
+          let nx = ox + (p.x - ox) * k;
+          let ny = oy + (p.y - oy) * k;
+          const maxX = ((nz - 1) * rect.width) / 2;
+          const maxY = ((nz - 1) * rect.height) / 2;
+          nx = Math.min(maxX, Math.max(-maxX, nx));
+          ny = Math.min(maxY, Math.max(-maxY, ny));
+          return { x: nx, y: ny };
+        });
+        return nz;
+      });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [big]);
+
+  /* 키보드(요청: PC) — ↑↓ 배속, ←→ 5초 뒤/앞. 댓글 입력 중에는 건드리지 않는다. */
+  useEffect(() => {
+    if (!big) return undefined;
+    const onKey = (e: KeyboardEvent) => {
+      const t2 = e.target as HTMLElement | null;
+      if (t2 && (t2.tagName === "INPUT" || t2.tagName === "TEXTAREA" || t2.isContentEditable)) return;
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        e.preventDefault();
+        setSpeed((v) => {
+          const i = SPEEDS.indexOf(v);
+          return SPEEDS[e.key === "ArrowUp" ? Math.min(SPEEDS.length - 1, i + 1) : Math.max(0, i - 1)];
+        });
+      } else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        e.preventDefault();
+        setT((v) => {
+          const nv = Math.min(total, Math.max(0, v + (e.key === "ArrowRight" ? 5 : -5)));
+          setDone(nv >= total);
+          return nv;
+        });
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [big, total]);
+
   /* 한 번에 한 판만(요청) — 재생을 시작하는 순간 먼저 돌던 판을 멈춘다. */
   const pauseSelf = useRef(() => {});
   useEffect(() => {
@@ -1951,11 +2008,19 @@ export default function ReplayMotionPlayer({
       {teamCol(1)}
       <div
         className="scr-motion-map" ref={mapRef}
-        style={{ aspectRatio: `${grid.width} / ${grid.height}` }}
+        style={{
+          aspectRatio: `${grid.width} / ${grid.height}`,
+          ...(zoom > 1 ? { overflow: "hidden" } : {}),
+        }}
       >
-        {/* 렌즈 상자는 남긴다(마커들의 부모) — 확대 기능이 걷혀(요청: 모바일 확대 제거)
-            transform은 더 이상 없다. */}
-        <div className="scr-motion-lens">
+        {/* 렌즈 상자 — PC 휠 줌(요청)이 이 층을 통째로 키운다(마커·자취까지 같이). */}
+        <div
+          className="scr-motion-lens"
+          style={zoom > 1 ? {
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transformOrigin: "center",
+          } : undefined}
+        >
         {grid.image
           ? <img className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`} />
           : <div className="scr-motion-canvas scr-motion-canvas-blank" />}
