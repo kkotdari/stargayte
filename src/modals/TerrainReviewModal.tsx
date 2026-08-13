@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import ModalHash from "../utils/modalHash";
 import { createPortal } from "react-dom";
-import { Eraser, Paintbrush, RotateCcw, Save, Undo2, Wand2, X } from "lucide-react";
+import { Eraser, Paintbrush, RefreshCcw, RotateCcw, Save, Undo2, Wand2, X } from "lucide-react";
 import { Spinner } from "../components/common/Feedback";
 import { api } from "../api/client";
 import {
@@ -16,11 +16,13 @@ import type { MinimapImage } from "../types";
  * 쓰는 모든 맵의 연속 재생이 이 격자로 길을 찾는다. */
 
 export default function TerrainReviewModal({
-  image, anchors, onClose, onSaved,
+  image, anchors, reanalyzable = false, onClose, onSaved,
 }: {
   image: MinimapImage;
   /** 확실한 땅(자원 지대, 0~1 분수) — 자동 분석의 앵커 보정(지적: 빠른무한 반전). */
   anchors?: [number, number][];
+  /** 재분석 버튼을 보일까 — 관리자(미니맵 관리) 모달에서만(요청). */
+  reanalyzable?: boolean;
   onClose: () => void;
   /** 저장된 뒤의 그림 한 벌 — 부모 목록을 제자리에서 갈아 끼운다. */
   onSaved: (updated: MinimapImage) => void;
@@ -242,6 +244,27 @@ export default function TerrainReviewModal({
             >
               <RotateCcw size={14} />
             </button>
+            {reanalyzable && (
+              <button
+                type="button" className="scr-btn scr-btn-sm"
+                disabled={busy || loading}
+                onClick={async () => {
+                  // 재분석(요청: 관리자 모달 안에서만) — 앵커 보정판으로 다시 만든다.
+                  setLoading(true);
+                  setErr("");
+                  const g = await analyzeMinimap(image.image, anchors);
+                  setGrid(g);
+                  initialRef.current = g ? new Uint8Array(g.walk) : null;
+                  historyRef.current = [];
+                  setHistN(0);
+                  setLoading(false);
+                  if (!g) setErr("그림을 분석하지 못했어요.");
+                }}
+                aria-label="재분석" title="재분석 — 자동 분석(앵커 보정)으로 다시 만들어요"
+              >
+                <RefreshCcw size={14} />
+              </button>
+            )}
             <button
               type="button" className="scr-btn scr-btn-sm scr-btn-primary"
               onClick={save} disabled={busy || !grid}

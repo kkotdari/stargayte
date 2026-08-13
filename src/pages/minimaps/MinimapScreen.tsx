@@ -120,6 +120,21 @@ export default function MinimapScreen() {
   const [confirmDelete, setConfirmDelete] = useState<MinimapImage | null>(null);
   // 지형 검수 모달(요청) — 그림 하나를 크게 띄워 이동 가능/불가 격자를 보고 고친다.
   const [terrainTarget, setTerrainTarget] = useState<MinimapImage | null>(null);
+  /* 검수 모달용 앵커(지적: 빠른무한이 아직도 반대 — 모달의 자동 분석이 앵커 없이 돌았다)
+     — 매핑된 첫 맵의 자원 좌표를 받아 분수로 넘긴다. */
+  const [terrainAnchors, setTerrainAnchors] = useState<[number, number][] | undefined>(undefined);
+  const openTerrain = async (img: MinimapImage) => {
+    setTerrainAnchors(undefined);
+    setTerrainTarget(img);
+    const first = maps.find((m) => m.imageId === img.id);
+    if (!first) return;
+    try {
+      const [mg] = await api.getReplayMaps([first.hash]);
+      if (mg && (mg.resources ?? []).length > 0) {
+        setTerrainAnchors(mg.resources.map(([x, y]) => [x / mg.width, y / mg.height] as [number, number]));
+      }
+    } catch { /* 앵커는 보정일 뿐 — 못 받아도 모달은 연다. */ }
+  };
   /** 매핑된 맵 목록을 펼쳐 둔 미니맵들 — 기본은 접힘(요청). */
   const [openIds, setOpenIds] = useState<Set<number>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
@@ -365,7 +380,7 @@ export default function MinimapScreen() {
                 {/* 지형 검수(요청) — 자동 분석 결과를 크게 보고 칸 단위로 고친다. */}
                 <button
                   type="button" className="scr-icon-btn"
-                  onClick={() => setTerrainTarget(i)}
+                  onClick={() => void openTerrain(i)}
                   disabled={busy}
                   aria-label={`${i.name} 지형 검수`}
                   title="지형 검수"
@@ -456,7 +471,8 @@ export default function MinimapScreen() {
       {terrainTarget && (
         <TerrainReviewModal
           image={terrainTarget}
-          anchors={undefined /* 관리 검수는 저장값 우선이라 앵커 없이도 되지만, 필요시 재분석 버튼이 앵커판을 저장한다. */}
+          anchors={terrainAnchors}
+          reanalyzable
           onClose={() => setTerrainTarget(null)}
           onSaved={(updated) => setCatalog((prev) => (prev ? {
             ...prev,
