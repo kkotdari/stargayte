@@ -1571,8 +1571,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       bodyFace(hull), topFace(hull, 0.16),
       capFace(groundEllipse(cx2, cy2, 0.5, 0.38), 0.4),
       // 미사일 포신(정정 둘) — 가는 지주로 본 몸체 아래에 한참 떨어져 매달린다.
-      ...hornFaces(0, -1.7, 5.9, 0, -1.9, 4.3, 0.28),
-      ...tubeFaces(0, -2.9, 0, -1.1, 0.42, 3.8),
+      ...hornFaces(0, -1.7, 5.9, 0, -1.9, 3.4, 0.28),
+      ...tubeFaces(0, -2.9, 0, -1.1, 0.42, 2.9),
     ];
   },
   /* 배틀크루저(지적) — 앞은 장도리(가로 머리 + 갈라진 두 발), 뒤는 T자 양날개. */
