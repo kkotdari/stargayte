@@ -41,6 +41,18 @@ export const GROUND_SQUASH = 0.45;
 /* 위에서 본 모드(요청: 입체 아닌 모드에서 에셋을 좀 더 부감으로) — 이 블록 안에서 구우면
    바닥 원은 더 동그랗고(0.66) 높이는 더 낮게(0.6) 투영된다. withYaw와 같은 수법. */
 let topView = false;
+/* 입체 보기 판(지적: 모델이 맵하고 안 맞음) — 지형이 45도로 기울어 보이므로 모델도
+   같은 각으로 굽는다: 바닥 원 납작비·높이 배율 둘 다 cos45(0.71). 표준(0.45/0.89)은
+   더 낮은 시점이라 45도 지형 위에서 어긋나 보였다. */
+let pitchView = false;
+export function withPitchView<T>(fn: () => T): T {
+  pitchView = true;
+  try {
+    return fn();
+  } finally {
+    pitchView = false;
+  }
+}
 export function withTopView<T>(fn: () => T): T {
   topView = true;
   try {
@@ -53,13 +65,13 @@ export function withTopView<T>(fn: () => T): T {
 export function groundSquashNow(): number {
   /* 0.66 → 0.55(수리: 넥서스 앞 바닥·기둥이 뷰박스 밖으로 잘렸다) — 앞쪽 깊이가
      원점(아래 originYNow)과 함께 16칸 안에 들어오는 선까지만 부감을 준다. */
-  return topView ? 0.55 : GROUND_SQUASH;
+  return pitchView ? 0.71 : topView ? 0.55 : GROUND_SQUASH;
 }
 function zScaleNow(): number {
-  return topView ? 0.66 : 0.89;
+  return pitchView ? 0.71 : topView ? 0.66 : 0.89;
 }
 function originYNow(): number {
-  return topView ? 12 : 12.6;
+  return pitchView ? 12.2 : topView ? 12 : 12.6;
 }
 
 /** 몸통 — 본색 그대로. */
@@ -196,7 +208,10 @@ export function project(x: number, y: number, z: number): [number, number] {
   const rx = x * c + y * sn;
   const ry = -x * sn + y * c;
   const f = MODEL_PERSP / (MODEL_PERSP - Math.max(-10, Math.min(10, ry)));
-  return [r2(VIEW.originX + rx * f), r2(originYNow() + (ry * groundSquashNow() - z * zScaleNow()) * f)];
+  /* 높이는 원근을 안 태운다(지적: 요잉하면 반대쪽이 들리고 뒤로 가는 느낌) — 발밑 기준
+     확대가 높이까지 흔들면 가짜 롤이 생긴다. 가로·바닥 깊이만 모이게 하고 세로선은
+     곧게 세운다(건축 투시 관례). */
+  return [r2(VIEW.originX + rx * f), r2(originYNow() + ry * groundSquashNow() * f - z * zScaleNow())];
 }
 
 /** 3D 꼭짓점 목록 → 닫힌 직선 패스. (곡선이 필요하면 결과 좌표를 Q로 이어 다듬는다.) */
@@ -211,7 +226,7 @@ export function polyPath3(pts: [number, number, number][]): string {
 /** 지면과 평행한 원(높이 z) — 화면에선 납작 타원. */
 export function discPath3(cx: number, cy: number, z: number, r: number): string {
   const [sx, sy] = project(cx, cy, z);
-  return groundEllipse(sx, sy, r, r * VIEW.squash);
+  return groundEllipse(sx, sy, r, r * groundSquashNow());
 }
 
 /** 세운 상자 — frustum의 특수형. 보이는 면·세계 광원은 frustumFaces3가 맡는다. */
@@ -227,7 +242,7 @@ export function cylinderFaces3(
 ): ShapeFace[] {
   const [bx, by] = project(cx, cy, z0);
   const [, ty] = project(cx, cy, z0 + h);
-  const ry = r * VIEW.squash;
+  const ry = r * groundSquashNow();
   const body = `M${r2(bx - r)} ${r2(ty)} L${r2(bx + r)} ${r2(ty)} L${r2(bx + r)} ${r2(by)}`
     + `a${r2(r)} ${r2(ry)} 0 1 1-${r2(r * 2)} 0Z`;
   const shade = `M${r2(bx + r * 0.35)} ${r2(ty)} L${r2(bx + r)} ${r2(ty)} L${r2(bx + r)} ${r2(by)}`

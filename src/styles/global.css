@@ -10958,7 +10958,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    키우므로, 마커는 제 --mk(1/z 또는 min(z,2)/z — ReplayMotionPlayer의 렌즈 style)만큼
    되돌려 앉는다. 축소(1배)에서는 두 변수가 없어 1이다. */
 .scr-motion-map > span, .scr-motion-lens > span {
-  position: absolute; transform: translate(-50%, -50%) scale(var(--mk, 1)); white-space: nowrap;
+  /* 화면 롤(지적: 입체 보기에서 마커만 꼿꼿해 맵과 안 맞음) — 자리 계산(depthMk)이
+     소실점 기울기를 --rot로 준다(평면 보기는 0). */
+  position: absolute; transform: translate(-50%, -50%) scale(var(--mk, 1)) rotate(var(--rot, 0deg)); white-space: nowrap;
   --mk: var(--mk-unit, 1);
 }
 /* 액티브 말풍선(요청: 마커는 도형 그대로, 무엇인지는 말풍선이) — 앵커 점 위에 뜨고 아래로
