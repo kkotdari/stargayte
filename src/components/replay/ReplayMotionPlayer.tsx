@@ -2369,29 +2369,37 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 프로브(실물 참고) — 팔각 보석 몸(밝은 윗판 층층) + 방사 가시들. */
   probe: () => {
     const out: ShapeFace[] = [];
-    // 가지는 길고 입체적으로, 몸체는 작게(지적) — 끝이 아래로 처지는 굵은 원뿔.
-    const spike = (ang: number, len: number, w: number): ShapeFace[] => {
+    /* 다리를 납작한 날개판으로(지적: 원통·원뿔이 아니라 비행기 날개 같은 형태) —
+       윗판(넓적한 사다리꼴) + 바깥 모서리의 얇은 두께면. 옆다리는 뺐다(지적). */
+    const wing = (
+      ang: number, r0: number, len: number, wRoot: number, wTip: number, z0: number, z1: number,
+    ): ShapeFace[] => {
       const a = (ang * Math.PI) / 180;
-      return hornFaces(
-        Math.sin(a) * 1.1, Math.cos(a) * 1.1, 4.6,
-        Math.sin(a) * (1.1 + len), Math.cos(a) * (1.1 + len), 3.7, w,
-      );
+      const dx = Math.sin(a);
+      const dy = Math.cos(a);
+      const nx = Math.cos(a);
+      const ny = -Math.sin(a);
+      const rx = dx * r0;
+      const ryy = dy * r0;
+      const tx = dx * (r0 + len);
+      const ty = dy * (r0 + len);
+      const dTop = polyPath3([
+        [rx - nx * wRoot, ryy - ny * wRoot, z0],
+        [rx + nx * wRoot, ryy + ny * wRoot, z0],
+        [tx + nx * wTip, ty + ny * wTip, z1],
+        [tx - nx * wTip, ty - ny * wTip, z1],
+      ]);
+      const dEdge = polyPath3([
+        [rx + nx * wRoot, ryy + ny * wRoot, z0],
+        [tx + nx * wTip, ty + ny * wTip, z1],
+        [tx + nx * wTip, ty + ny * wTip, z1 - 0.28],
+        [rx + nx * wRoot, ryy + ny * wRoot, z0 - 0.34],
+      ]);
+      return [bodyFace(`${dTop} ${dEdge}`), topFace(dTop, 0.18), sideFace(dEdge, 0.3)];
     };
-    // 뒤쪽 두 다리(길게) + 뒤아래로 기운 두 다리(더 가파르게), 옆은 짧게(정정).
-    const spikeTo = (ang: number, len: number, tipZ: number, w: number): ShapeFace[] => {
-      const a = (ang * Math.PI) / 180;
-      return hornFaces(
-        Math.sin(a) * 1.1, Math.cos(a) * 1.1, 4.6,
-        Math.sin(a) * (1.1 + len), Math.cos(a) * (1.1 + len), tipZ, w,
-      );
-    };
-    // 물고기처럼 보인다(지적) — 뒤 안테나 둘은 얇고 짧게, 아래 다리 둘은 양옆으로
-    // 벌려 더 팍 내리꽂고 얇게.
-    // 다리 전부 2/3 길이로(지적: 귀엽게).
-    // 뒷다리 한 번 더 축소(지적).
-    for (const ang of [168, 192]) out.push(...spikeTo(ang, 2.2, 4.2, 0.7));
-    for (const ang of [138, 222]) out.push(...spikeTo(ang, 2.7, 1.4, 0.8));
-    for (const ang of [95, -95]) out.push(...spike(ang, 1.3, 0.8));
+    // 뒤 위 날개 한 쌍 + 뒤 아래로 처지는 날개 한 쌍(옆다리는 제거 — 지적).
+    for (const ang of [168, 192]) out.push(...wing(ang, 1, 1.9, 0.5, 0.22, 4.6, 3.8));
+    for (const ang of [138, 222]) out.push(...wing(ang, 1, 2.2, 0.55, 0.25, 4.5, 2.4));
     /* 몸통·눈도 모델 공간(수리: 화면 공간이라 돌아도 고정돼 있었다 — 지적) — 팔각도
        눈도 요잉을 따라 함께 돈다. */
     const oct = (r: number, z: number): string => polyPath3(
@@ -2403,21 +2411,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(bodyFace(oct(2, 4.6)));
     out.push(topFace(oct(1.35, 4.85), 0.26));
     out.push(topFace(oct(0.8, 5.1), 0.3));
-    // 앞은 다리 없이 동그란 눈 두 개(정정) — 정면(+y)에 붙어 같이 돈다.
+    // 동그란 눈 두 개 — 흰색으로(지적), 정면(+y)에 붙어 같이 돈다.
     const [e1x, e1y] = project(-0.75, 1.85, 4.7);
     const [e2x, e2y] = project(0.75, 1.85, 4.7);
-    out.push(capFace(groundEllipse(e1x, e1y, 0.42, 0.4), 0.5));
-    out.push(capFace(groundEllipse(e2x, e2y, 0.42, 0.4), 0.5));
-    out.push(topFace(groundEllipse(e1x + 0.13, e1y - 0.13, 0.14, 0.13), 0.6));
-    out.push(topFace(groundEllipse(e2x + 0.13, e2y - 0.13, 0.14, 0.13), 0.6));
+    out.push(topFace(groundEllipse(e1x, e1y, 0.42, 0.4), 0.88));
+    out.push(topFace(groundEllipse(e2x, e2y, 0.42, 0.4), 0.88));
     // 옆면 둥근 포트(실물 참고) — 앞옆 비스듬한 면의 원형 해치 한 쌍.
     const [p1x, p1y] = project(-1.75, 0.7, 4.75);
     const [p2x, p2y] = project(1.75, 0.7, 4.75);
     out.push(topFace(groundEllipse(p1x, p1y, 0.34, 0.3), 0.3));
     out.push(topFace(groundEllipse(p2x, p2y, 0.34, 0.3), 0.3));
-    // 앞다리 한 쌍(정정) — 눈을 안 가리게 얼굴 밑에서, 더 가늘고 반쯤 짧게 아래로.
-    out.push(...hornFaces(-0.55, 1.7, 3.9, -0.75, 2.3, 2.35, 0.45));
-    out.push(...hornFaces(0.55, 1.7, 3.9, 0.75, 2.3, 2.35, 0.45));
+    // 앞다리 한 쌍 — 몸에 딱 붙여 더 가늘고 짧게(지적), 이것도 납작한 날개판.
+    for (const ang of [14, -14]) out.push(...wing(ang, 0.9, 0.9, 0.26, 0.13, 4.15, 3.15));
     return out;
   },
   /* 드론(정정) — 갈퀴치마는 집게 사이가 아니라 집게팔과 꼬리 사이, 양옆에 부채처럼
