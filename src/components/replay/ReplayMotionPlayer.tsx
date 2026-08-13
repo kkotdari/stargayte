@@ -4795,10 +4795,11 @@ export default function ReplayMotionPlayer({
           aspectRatio: `${grid.width} / ${grid.height * (pitched ? 0.74 : 1)}`,
           ...(zoom > 1 || pitched ? { overflow: "hidden" } : {}),
           ...(zoom > 1 ? { cursor: dragRef.current ? "grabbing" : "grab" } : {}),
-          /* 손짓 격리(지적: 맵을 조정하는데 모달이 같이 조종됨) — 확대 중엔 맵 위 손짓을
-             브라우저에 안 넘겨(팬·스크롤 전부 맵 몫) 모달이 딸려 움직이지 않는다. 확대
-             전엔 세로 스크롤만 허용해 모달 훑기는 그대로 된다(핀치는 JS가 막는다). */
-          touchAction: zoom > 1 ? "none" : "pan-y",
+          /* 손짓 격리(지적 둘: 맵 조정 시 모달이 딸려 움직임 + 2D 모드에서 드래그가
+             모달로 전파) — 맵 위 손짓은 확대 여부와 무관하게 브라우저에 안 넘긴다.
+             확대 전 세로 스크롤만 열어 두던 pan-y가 2D에서 모달을 끌었다. 모달 훑기는
+             맵 밖(로스터·댓글)에서 하면 된다. */
+          touchAction: "none",
         }}
       >
         {/* 렌즈 상자 — PC 휠 줌(요청)이 이 층을 통째로 키운다(마커·자취까지 같이). */}
@@ -5147,9 +5148,17 @@ export default function ReplayMotionPlayer({
                 }
               }
               if (t > arrive + FRESH_HOLD_SEC) continue;
-              // 이동 방향(요청) — 랠리 목적지를 향한다.
-              const hdg = rx !== null && ry !== null && Math.hypot(rx - fx, ry - fy) > 0.1
-                ? Math.atan2(-(rx - fx), ry - fy) * (180 / Math.PI) : 0;
+              /* 이동 방향(요청) — 랠리 목적지를 향하고, 다 걸어온 뒤에도 걸어온 방향을
+                 지킨다(지적: 랠리로 이동한 유닛들이 무조건 정면을 봄 — 도착하는 순간
+                 남은 거리가 0이 되며 0도(정면)로 튕겼다). */
+              let hdg = 0;
+              if (rx !== null && ry !== null) {
+                if (Math.hypot(rx - fx, ry - fy) > 0.1) {
+                  hdg = Math.atan2(-(rx - fx), ry - fy) * (180 / Math.PI);
+                } else if (Math.hypot(rx - exitX, ry - exitY) > 0.1) {
+                  hdg = Math.atan2(-(rx - exitX), ry - exitY) * (180 / Math.PI);
+                }
+              }
               // (캔버스 전환) 갓 나온 유닛도 unitOps로 — 제 모델로 랠리까지 걷는다.
               {
                 const [ffx, ffy] = posFrac(fx, fy);
@@ -5757,7 +5766,9 @@ export default function ReplayMotionPlayer({
             const hdg = headingOf(rp, pos);
             const seed = si * 1.7;
             return glyphs.map((u, di) => {
-              const bulk = u === "?" ? 1 : (UNIT_BULK[u] ?? 2);
+              /* 물음 도형은 빌린 모델과 같은 소형(재지적: 아직도 큰 애들) — 중형으로
+                 올렸더니 같은 질럿 모델이 1.4배로 서서 "유독 큰 질럿"이 됐다. */
+              const bulk = u === "?" ? 0 : (UNIT_BULK[u] ?? 2);
               // 아주 촘촘히(지적: 퍼짐이 심해졌다 — 겹치되 규모는 보이게).
               /* 겹침 허용도는 덩치별로(지적: 큰 유닛은 겹치면 더 어색) — 소형은 좁혀
                  붙이고, 대형은 간격을 확 벌린다. */
