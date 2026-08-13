@@ -3803,7 +3803,8 @@ export default function ReplayMotionPlayer({
             const seed = gi * 1.7;
             return glyphUnits.map((u, di) => {
               const bulk = UNIT_BULK[u] ?? 2;
-              const r = (0.4 + 0.12 * bulk) * Math.sqrt(di + 0.35);
+              // 조금 겹침 허용(지적: 너무 떨어져 징그러움) — 반지름을 한 단 좁힌다.
+              const r = (0.3 + 0.09 * bulk) * Math.sqrt(di + 0.35);
               /* 랜덤성 섞기(지적: 고정 나선이 부자연스럽다) — 해시 지터(반경·각을
                  유닛마다 조금씩 어긋냄)와 위상 다른 느린 배회를 얹는다. 전부 (di,seed,t)의
                  순수 함수라 프레임마다 안 튀고, 같은 유닛은 늘 같은 버릇으로 서성인다. */
@@ -3950,7 +3951,8 @@ export default function ReplayMotionPlayer({
             return glyphs.map((u, di) => {
               const bulk = UNIT_BULK[u] ?? 2;
               // 아주 촘촘히(지적: 퍼짐이 심해졌다 — 겹치되 규모는 보이게).
-              const r = (0.4 + 0.12 * bulk) * Math.sqrt(di + 0.35);
+              // 조금 겹침 허용(지적: 너무 떨어져 징그러움) — 반지름을 한 단 좁힌다.
+              const r = (0.3 + 0.09 * bulk) * Math.sqrt(di + 0.35);
               /* 랜덤성 섞기(지적: 고정 나선이 부자연스럽다) — 해시 지터(반경·각을
                  유닛마다 조금씩 어긋냄)와 위상 다른 느린 배회를 얹는다. 전부 (di,seed,t)의
                  순수 함수라 프레임마다 안 튀고, 같은 유닛은 늘 같은 버릇으로 서성인다. */
