@@ -1529,28 +1529,31 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       [0, -2.8, 6.1], [-0.9, -1.6, 6.1], [-3.2, -2.2, 5.9], [-1.1, 0.6, 6.1],
     ]);
     const [cx2, cy2] = project(0, 1.6, 6.15);
-    return [bodyFace(hull), topFace(hull, 0.16), capFace(groundEllipse(cx2, cy2, 0.5, 0.38), 0.4)];
-  },
-  /* 배틀크루저 — 긴 몸통 + 뾰족 뱃머리 + 함교. */
-  bc: () => {
-    const prow = polyPath3([[-1.3, 2.1, 6.6], [1.3, 2.1, 6.6], [0, 4.6, 5.9]]);
-    return [
-      ...boxFaces3(0, -0.4, 2.6, 5, 1.7, 5.4),
-      bodyFace(prow), topFace(prow, 0.2),
-      ...boxFaces3(0, -1.8, 1.3, 1.3, 0.9, 7.1),
-    ];
-  },
-  /* 발키리 — 넓은 날개 + 미사일 포드 둘. */
-  valk: () => {
-    const hull = polyPath3([
-      [0, 3.6, 6], [3.6, -0.6, 5.8], [2.2, -2.4, 5.9], [0, -1.2, 6.1], [-2.2, -2.4, 5.9], [-3.6, -0.6, 5.8],
-    ]);
     return [
       bodyFace(hull), topFace(hull, 0.16),
-      ...tubeFaces(-2.2, -1.4, -2.2, 0.6, 0.4, 6),
-      ...tubeFaces(2.2, -1.4, 2.2, 0.6, 0.4, 6),
+      capFace(groundEllipse(cx2, cy2, 0.5, 0.38), 0.4),
+      // 아래 꼬리총(요청) — 꽁무니 밑으로 처진 총관.
+      ...hornFaces(0, -2.4, 5.9, 0, -3.9, 4.9, 0.4),
     ];
   },
+  /* 배틀크루저(지적) — 앞은 장도리(가로 머리 + 갈라진 두 발), 뒤는 T자 양날개. */
+  bc: () => [
+    // T 날개 — 뒤 가로 크로스바.
+    ...boxFaces3(0, -2.2, 5.6, 1.2, 0.8, 5.9),
+    ...boxFaces3(0, -0.2, 2.4, 4.6, 1.6, 5.4),
+    // 장도리 머리 — 앞 가로 상자와 갈라져 나온 두 발.
+    ...boxFaces3(0, 2.5, 3.6, 1.2, 1.4, 5.5),
+    ...hornFaces(1.4, 3, 6, 1.8, 4.4, 5.7, 0.6),
+    ...hornFaces(-1.4, 3, 6, -1.8, 4.4, 5.7, 0.6),
+    ...boxFaces3(0, -1.2, 1.2, 1.2, 0.8, 7),
+  ],
+  /* 발키리(지적: 뭉툭한 우유곽) — 각진 상자 몸 + 지붕 능선 + 양옆 미사일 포드. */
+  valk: () => [
+    ...boxFaces3(0, 0.2, 2.7, 4.2, 2, 5),
+    ...boxFaces3(0, -0.2, 1.7, 3, 0.9, 7),
+    ...tubeFaces(-2, -1.2, -2, 1, 0.45, 5.4),
+    ...tubeFaces(2, -1.2, 2, 1, 0.45, 5.4),
+  ],
   /* 사이언스 베슬 — 접시 링 위 구 + 앞 눈. */
   vessel: () => {
     const [dx2, dy2] = project(0, 0, 6);
@@ -1574,25 +1577,34 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...hornFaces(0, -0.2, 6.1, 0, -1.8, 5.7, 0.5),
     ];
   },
-  /* 가디언 — 게딱지 몸 + 앞으로 드리운 다리들. */
+  /* 가디언(지적: 꽃게 모양) — 옆으로 넓적한 게딱지 + 앞 양 집게 + 옆 잔다리. */
   guardian: () => [
-    ...domeFaces3(0, -0.6, 1.9, 1.5, 5.6),
-    ...hornFaces(1.3, 0.6, 6, 2.2, 2.6, 5.2, 0.6),
-    ...hornFaces(-1.3, 0.6, 6, -2.2, 2.6, 5.2, 0.6),
-    ...hornFaces(0.5, 0.9, 6, 0.9, 2.9, 5.3, 0.5),
-    ...hornFaces(-0.5, 0.9, 6, -0.9, 2.9, 5.3, 0.5),
+    ...domeFaces3(-1.2, -0.4, 1.7, 1.1, 5.7),
+    ...domeFaces3(1.2, -0.4, 1.7, 1.1, 5.7),
+    ...domeFaces3(0, -0.2, 2.1, 1.4, 5.6),
+    // 앞 양 집게 — 두 마디로 안쪽으로 굽는다.
+    ...hornFaces(1.9, 0.8, 5.9, 3, 2.2, 5.6, 0.7),
+    ...hornFaces(3, 2.2, 5.6, 2.2, 3.2, 5.4, 0.5),
+    ...hornFaces(-1.9, 0.8, 5.9, -3, 2.2, 5.6, 0.7),
+    ...hornFaces(-3, 2.2, 5.6, -2.2, 3.2, 5.4, 0.5),
+    // 옆 잔다리.
+    ...hornFaces(2.4, -0.6, 5.7, 3.6, -1.2, 5, 0.45),
+    ...hornFaces(-2.4, -0.6, 5.7, -3.6, -1.2, 5, 0.45),
+    ...hornFaces(2.2, -1.4, 5.7, 3.2, -2.2, 5, 0.45),
+    ...hornFaces(-2.2, -1.4, 5.7, -3.2, -2.2, 5, 0.45),
   ],
-  /* 디바우러 — 뚱뚱한 몸 + 짧은 날개 + 입. */
+  /* 디바우러(지적: 콩벌레 모양) — 마디진 등딱지가 앞뒤로 겹치는 통통한 몸 + 잔날개. */
   devourer: () => {
-    const wing = (m: 1 | -1): string => polyPath3([
-      [m * 1.2, 0.4, 6.6], [m * 3.4, 1.6, 6.2], [m * 2.6, -0.8, 6.4],
+    const wing = (m2: 1 | -1): string => polyPath3([
+      [m2 * 1.4, -0.2, 6.3], [m2 * 3, 0.8, 6], [m2 * 2.4, -1.2, 6.1],
     ]);
-    const [mx2, my2] = project(0, 1.8, 6.2);
     return [
-      ...domeFaces3(0, -0.4, 2, 1.7, 5.6),
+      ...domeFaces3(0, -2.6, 1.25, 1, 5.7),
+      ...domeFaces3(0, -1.4, 1.65, 1.3, 5.6),
+      ...domeFaces3(0, 0.1, 1.9, 1.5, 5.5),
+      ...domeFaces3(0, 1.5, 1.55, 1.2, 5.6),
       bodyFace(wing(1)), sideFace(wing(1), 0.16),
       bodyFace(wing(-1)), topFace(wing(-1), 0.14),
-      capFace(groundEllipse(mx2, my2, 0.5, 0.3), 0.4),
     ];
   },
   /* 스커지 — 작은 몸 + 날개 한 쌍. */
@@ -1631,14 +1643,26 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ]);
     return [bodyFace(hull), topFace(hull, 0.16), ...domeFaces3(0, 0.6, 0.7, 0.55, 6.2)];
   },
-  /* 캐리어 — 아래 격납 판(어두운 격납구) 위 큰 몸. */
+  /* 캐리어(지적: 갈라진 세 꽃잎의 꽃봉오리) — 아래 격납 판 위로 꽃잎 셋이 벌어진다. */
   carrier: () => {
-    const [bx2, by2] = project(0, 0.4, 5.3);
-    const [hx3, hy3] = project(0, 1, 5.28);
+    const [bx2, by2] = project(0, 0.4, 5);
+    const [hx3, hy3] = project(0, 1, 4.98);
+    const petal = (ang: number): ShapeFace[] => {
+      const a = (ang * Math.PI) / 180;
+      const ox = Math.sin(a);
+      const oy = Math.cos(a);
+      return [
+        ...hornFaces(ox * 0.5, oy * 0.5, 7.3, ox * 2.7, oy * 2.7, 5.2, 2.3),
+      ];
+    };
     return [
-      bodyFace(groundEllipse(bx2, by2, 2.6, 1.1)),
-      capFace(groundEllipse(hx3, hy3, 1.7, 0.7), 0.4),
-      ...domeFaces3(0, 0, 2.9, 2.1, 5.4),
+      bodyFace(groundEllipse(bx2, by2, 2.7, 1.15)),
+      capFace(groundEllipse(hx3, hy3, 1.8, 0.75), 0.4),
+      ...domeFaces3(0, 0, 2.2, 1.4, 5.2),
+      // 꽃잎 셋 — 뒤 하나, 앞 좌우 둘로 갈라진다.
+      ...petal(180),
+      ...petal(60),
+      ...petal(-60),
     ];
   },
   /* 아비터 — 접시 몸 + 뒤 지느러미 + 가운데 돔. */
@@ -1816,6 +1840,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...domeFaces3(0, -0.7, 1.05, 0.85, 6.8),
       // 프로토스 길쭉한 머리(요청).
       ...hornFaces(0, -1.1, 7.1, 0, -2.7, 7.8, 0.65),
+      // 두 손을 들고 다닌다(요청) — 어깨에서 위-앞으로 든 팔 한 쌍.
+      ...hornFaces(1.1, 0.5, 5.8, 1.8, 1.3, 7.9, 0.5),
+      ...hornFaces(-1.1, 0.5, 5.8, -1.8, 1.3, 7.9, 0.5),
     ];
   },
   /* 드라군 — 몸통 + 네 다리(요청). 뒤 두 다리 → 몸 → 앞 두 다리. */
