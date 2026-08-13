@@ -1561,15 +1561,30 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...hornFaces(-1.4, 3, 6, -1.8, 4.4, 5.7, 0.6),
     ...boxFaces3(0, -1.2, 1.2, 1.2, 0.8, 7),
   ],
-  /* 발키리(지적: 뭉툭한 우유곽) — 각진 상자 몸 + 지붕 능선 + 양옆 미사일 포드. */
-  valk: () => [
-    ...boxFaces3(0, 0.2, 2.7, 4.2, 2, 5),
-    ...boxFaces3(0, -0.2, 1.7, 3, 0.9, 7),
-    // 앞부분은 뭉툭한 크레파스 끝(정정) — 넓고 짧은 원뿔.
-    ...hornFaces(0, 2.3, 6, 0, 4.3, 5.9, 2.1),
-    ...tubeFaces(-2, -1.2, -2, 1, 0.45, 5.4),
-    ...tubeFaces(2, -1.2, 2, 1, 0.45, 5.4),
-  ],
+  /* 발키리(실물 참고) — 뭉툭한 큰 몸통에 둥근 코, 지붕의 미사일 튜브 다발 두 줄,
+     양옆의 납작한 판 날개, 뒤 엔진 블록. */
+  valk: () => {
+    const plate = (m2: 1 | -1): string => polyPath3([
+      [m2 * 1.6, 0.8, 5.6], [m2 * 3.6, 0.2, 5.4], [m2 * 3.4, -1.8, 5.5], [m2 * 1.6, -1.2, 5.7],
+    ]);
+    const tubeNose = (tx: number): ShapeFace[] => {
+      const [px2, py2] = project(tx, 0.9, 7.2);
+      return [bodyFace(groundEllipse(px2, py2 - 0.45 * 0.45, 0.48, 0.4))];
+    };
+    return [
+      ...boxFaces3(0, -2.3, 2.2, 1, 1.5, 5.3),
+      bodyFace(plate(1)), sideFace(plate(1), 0.2),
+      bodyFace(plate(-1)), topFace(plate(-1), 0.14),
+      ...boxFaces3(0, -0.4, 2.8, 3.8, 2.2, 5),
+      // 둥근 코 — 짧고 뭉툭하게.
+      ...hornFaces(0, 1.5, 6.1, 0, 3.1, 5.9, 2.2),
+      // 지붕 미사일 튜브 다발.
+      ...tubeFaces(-0.7, -1.7, -0.7, 0.9, 0.5, 7.2),
+      ...tubeNose(-0.7),
+      ...tubeFaces(0.7, -1.7, 0.7, 0.9, 0.5, 7.2),
+      ...tubeNose(0.7),
+    ];
+  },
   /* 사이언스 베슬(정정) — 구 몸통 아래에 구형 추진기 세 개가 달린다. */
   vessel: () => {
     const [ex2, ey2] = project(0, 2.2, 6.3);
