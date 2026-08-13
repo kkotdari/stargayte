@@ -11072,6 +11072,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 병력 쐐기(요청: 일꾼과 아이콘 구분 — 육각형은 점 크기에서 원과 안 갈렸다는 지적으로
    삼각 쐐기로) — 점(●)과 같은 급의 표시라 점 크기를 따라간다. */
 .scr-motion-shape-svg.scr-motion-troop { width: 1.15em; height: 1.15em; }
+/* 유닛 바닥 띄움(지적: 발이 땅에 묻혀 보임) — 발끝이 마커 지점 위에 서도록 그림을
+   살짝 올린다. 방향은 요잉 재투영이라 회전과의 간섭이 없다. */
+.scr-motion-shape-svg.scr-motion-troop,
+.scr-motion-shape-svg.scr-motion-ovie { transform: translateY(-24%); }
 .scr-motion-legend-troop {
   font-style: normal; display: inline-flex; vertical-align: -0.1em;
 }
