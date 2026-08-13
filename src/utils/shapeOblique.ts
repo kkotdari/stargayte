@@ -202,6 +202,18 @@ export function faceLight(nxModel: number, nyModel: number): { visible: boolean;
    점은 크게, 뒤로 물러난 점은 작게. 발밑 원점을 눈 축으로 삼아 깊이 나눗셈을 한다.
    project를 지나는 모든 프리미티브(상자·절두·기둥·다리·관·뿔)가 저절로 받는다. */
 const MODEL_PERSP = 30;
+/* 시각 밀림(지적: 소실점이 정면이 아니라 시각을 반영해야) — 화면 가운데에서 벗어난
+   마커는 깊이에 비례해 가로로 민다(앞은 바깥, 뒤는 안). 모델을 돌리는 요잉과 달리
+   폭·세로선이 안 바뀌어 찌그러지지 않고, 내부 소실점만 시각 방향으로 옮겨 간다. */
+let viewShear = 0;
+export function withViewShear<T>(sh: number, fn: () => T): T {
+  viewShear = sh;
+  try {
+    return fn();
+  } finally {
+    viewShear = 0;
+  }
+}
 /** 모형 좌표 (x,y,z) → 화면 [sx, sy]. y(앞)는 아래로, z(위)는 위로 간다. */
 export function project(x: number, y: number, z: number): [number, number] {
   const th = ((yawOverride ?? VIEW.yawDeg) * Math.PI) / 180;
@@ -211,8 +223,10 @@ export function project(x: number, y: number, z: number): [number, number] {
   const ry = -x * sn + y * c;
   const f = MODEL_PERSP / (MODEL_PERSP - Math.max(-10, Math.min(10, ry)));
   /* 원근은 가로 수렴만(지적 둘: 높이까지 태우면 반대쪽이 들리는 가짜 롤, 깊이까지
-     태우면 요잉한 옆구리가 앞으로 쏟아짐) — 세로선은 곧게, 앞뒤는 납작비 그대로. */
-  return [r2(VIEW.originX + rx * f), r2(originYNow() + ry * groundSquashNow() - z * zScaleNow())];
+     태우면 요잉한 옆구리가 앞으로 쏟아짐) — 세로선은 곧게, 앞뒤는 납작비 그대로.
+     시각 밀림(viewShear)은 깊이에 비례한 가로 이동으로만 얹는다. */
+  const rx2 = rx + ry * viewShear;
+  return [r2(VIEW.originX + rx2 * f), r2(originYNow() + ry * groundSquashNow() - z * zScaleNow())];
 }
 
 /** 3D 꼭짓점 목록 → 닫힌 직선 패스. (곡선이 필요하면 결과 좌표를 Q로 이어 다듬는다.) */

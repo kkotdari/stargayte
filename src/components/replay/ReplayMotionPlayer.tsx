@@ -14,7 +14,7 @@ import {
   bodyFace, capFace, groundEllipse, sideFace, topFace, type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
   domeFaces3, faceLight, frustumFaces3, hornFaces, limbFaces, tubeFaces,
-  withPitchView, withTopView, withYaw,
+  withPitchView, withTopView, withViewShear, withYaw,
 } from "../../utils/shapeOblique";
 import type { MinimapMarker } from "./ReplayMinimap";
 
@@ -2975,7 +2975,10 @@ export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg, flat,
     const key = `${kind}:${bucket}:${flat ? 1 : 0}:${vq}:${pitchView ? 1 : 0}`;
     let f = HEAD_FACES.get(key);
     if (!f) {
-      const bake0 = (): ShapeFace[] => withYaw(vq - bucket, builder);
+      /* vq는 요잉이 아니라 시각 밀림(지적: 돌리면 모양이 찌그러짐) — 모델은 제 방향
+         (bucket)만 요잉하고, 시각은 깊이 비례 가로 밀림(소실점 이동)으로만 반영한다. */
+      const sh = Math.tan((vq * Math.PI) / 180);
+      const bake0 = (): ShapeFace[] => withViewShear(sh, () => withYaw(-bucket, builder));
       const bake = pitchView ? (): ShapeFace[] => withPitchView(bake0) : bake0;
       f = flat ? withTopView(bake) : bake();
       HEAD_FACES.set(key, f);
@@ -3784,10 +3787,9 @@ export default function ReplayMotionPlayer({
     const v = (y / grid.height - 0.5) * h;
     // 각은 뒤 축소(q) 전의 원근 공간에서 잰다 — q를 곱하면 각이 약해진다(지적).
     const k = PITCH_P / (PITCH_P - v * S);
-    /* (보류) 좌우 요잉 — 어느 부호·세기로도 돌아가거나 찌그러져 보였다(지적: 요가
-       문제). 모양이 괜찮던 꼿꼿한 정면으로 되돌리고, 각 계산만 남겨둔다. */
-    void k;
-    return 0;
+    /* 요잉이 아니라 시각 밀림의 각(지적: 소실점이 시각을 반영해야 — 돌리면 찌그러짐).
+       오른쪽 마커 양, 왼쪽 음. ShapeIcon이 tan을 취해 깊이 비례 가로 밀림으로 쓴다. */
+    return (Math.atan2(u * k, PITCH_P) * 180) / Math.PI;
   };
   const depthMk = (x: number, y: number): React.CSSProperties => {
     if (!pitched) return {};
