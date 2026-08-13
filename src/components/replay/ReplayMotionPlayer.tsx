@@ -3783,8 +3783,9 @@ export default function ReplayMotionPlayer({
     // 각은 뒤 축소(q) 전의 원근 공간에서 잰다 — q를 곱하면 각이 약해진다(지적).
     const k = PITCH_P / (PITCH_P - v * S);
     /* 부호(지적: 우측은 맞는데 좌측이 잘못) — 마커는 화면 가운데를 향한 옆면을 보여야
-       한다. 왼쪽 마커는 음(제 오른옆이 보임), 오른쪽 마커는 양. */
-    return (Math.atan2(u * k, PITCH_P) * 180) / Math.PI;
+       한다. 왼쪽 마커는 음(제 오른옆이 보임), 오른쪽 마커는 양. 세기는 0.6로 눅인다
+       (지적: 각 그대로면 돌아간 옆구리가 앞으로 쏟아져 보인다). */
+    return (Math.atan2(u * k, PITCH_P) * 180 * 0.6) / Math.PI;
   };
   const depthMk = (x: number, y: number): React.CSSProperties => {
     if (!pitched) return {};

@@ -208,10 +208,9 @@ export function project(x: number, y: number, z: number): [number, number] {
   const rx = x * c + y * sn;
   const ry = -x * sn + y * c;
   const f = MODEL_PERSP / (MODEL_PERSP - Math.max(-10, Math.min(10, ry)));
-  /* 높이는 원근을 안 태운다(지적: 요잉하면 반대쪽이 들리고 뒤로 가는 느낌) — 발밑 기준
-     확대가 높이까지 흔들면 가짜 롤이 생긴다. 가로·바닥 깊이만 모이게 하고 세로선은
-     곧게 세운다(건축 투시 관례). */
-  return [r2(VIEW.originX + rx * f), r2(originYNow() + ry * groundSquashNow() * f - z * zScaleNow())];
+  /* 원근은 가로 수렴만(지적 둘: 높이까지 태우면 반대쪽이 들리는 가짜 롤, 깊이까지
+     태우면 요잉한 옆구리가 앞으로 쏟아짐) — 세로선은 곧게, 앞뒤는 납작비 그대로. */
+  return [r2(VIEW.originX + rx * f), r2(originYNow() + ry * groundSquashNow() - z * zScaleNow())];
 }
 
 /** 3D 꼭짓점 목록 → 닫힌 직선 패스. (곡선이 필요하면 결과 좌표를 Q로 이어 다듬는다.) */
