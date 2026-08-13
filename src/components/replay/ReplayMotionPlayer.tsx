@@ -1210,11 +1210,19 @@ export default function ReplayMotionPlayer({
   };
   /* 수송선 명령 자리도 워프 후보다(요청: 새로운 셔틀 위치에서 명령이 갑자기 시작되면
      내린 것) — 드랍 신호(drops)가 안 잡혀도, 수송선이 들른 자리 곁에서 태어나는 새 명령
-     뭉치는 수송선이 날라 준 부대라 걸어온 자취 없이 그 자리에서 시작해야 한다. */
-  const warpsOf = (p: MotionTrack): [number, number, number][] => [
-    ...(p.drops ?? []),
-    ...(p.tpts ?? []).map(([s, x, y]) => [s, x, y] as [number, number, number]),
-  ];
+     뭉치는 수송선이 날라 준 부대라 걸어온 자취 없이 그 자리에서 시작해야 한다.
+     단 집 곁(15타일)의 수송선 자리는 뺀다(지적: 유닛 이동 중 마커 사라짐의 한 갈래) —
+     본진 근처는 수송선이 늘 오가는 곳이라, 행군하러 나서는 부대의 첫 클릭이 엉뚱하게
+     "여기서 내린 새 부대"로 태어나고 원래 부대는 조용해져 사라졌다. */
+  const warpsOf = (p: MotionTrack): [number, number, number][] => {
+    const home = homeOf(p.raw);
+    return [
+      ...(p.drops ?? []),
+      ...(p.tpts ?? [])
+        .filter(([, x, y]) => !home || Math.hypot(x - home[0], y - home[1]) > 15)
+        .map(([s, x, y]) => [s, x, y] as [number, number, number]),
+    ];
+  };
   const squadPts = useMemo(
     () => basePts.map((pts, pi) => splitSquads(
       pts, homeOf(motion.players[pi].raw), SQUAD_MERGE_TILES, warpsOf(motion.players[pi]),
@@ -1589,6 +1597,8 @@ export default function ReplayMotionPlayer({
   }, [scoutSquads, motion]);
   const carriedGone = (
     p: MotionTrack, pos: { x: number; y: number }, lastOrderSec: number,
+    // 지금 걷는 중인가 — 걷는 부대는 탄 것일 수 없다(아래 암묵 태움 판정의 걸림막).
+    moving = false,
   ): boolean => {
     for (const [ls, lx, ly] of p.loads ?? []) {
       if (ls > t) break;
@@ -1598,14 +1608,24 @@ export default function ReplayMotionPlayer({
     }
     /* 셔틀 곁에서 명령이 끊긴 애들은 탄 것(요청) — 태움 클릭이 안 잡혔어도, 마지막 명령
        순간 수송선이 바로 곁(3.5타일)에 있었고 그 수송선이 곧(25초 안) 10타일 넘게 날아
-       갔으면 태워진 것으로 본다. 뒤 조건이 핵심 갈림막이다 — 부대 위에 그냥 떠 있는
-       오버로드는 안 날아가므로 이 판정에 안 걸린다. 내림은 위 규칙과 같이 다음 드랍
-       신호까지다(없으면 계속 — 새 자리의 명령이 새 부대로 태어나 그쪽이 이어 말한다). */
-    if (Number.isFinite(lastOrderSec) && lastOrderSec > 0) {
+       갔으면 태워진 것으로 본다. 내림은 위 규칙과 같이 다음 드랍 신호까지다(없으면 계속
+       — 새 자리의 명령이 새 부대로 태어나 그쪽이 이어 말한다).
+       걸림막 셋(지적: 유닛 이동 중 마커가 사라진다 — 첫 판은 '지나가기만 한' 수송선에도
+       걸렸다. 셔틀·오버로드는 본대와 나란히 다니기 일쑤라, 스쳐 간 것까지 태움으로 치면
+       행군하던 부대가 통째로 증발한다):
+         · 부대가 지금 걷는 중이면 안 탄 것이다 — 탄 유닛은 움직일 수 없다.
+         · 수송선이 그 자리에 잠깐이라도 머물러야 한다(명령 앞뒤 3초 다 곁) — 태움은
+           스치는 게 아니라 앉는 동작이다.
+         · 그리고 곧 멀리 날아가야 한다 — 부대 위에 떠 있기만 한 오버로드 걸림막. */
+    if (Number.isFinite(lastOrderSec) && lastOrderSec > 0 && !moving) {
       for (const w of carrierWalks.get(p.raw) ?? []) {
         if (w.length === 0 || lastOrderSec < w[0][0]) continue;
         const tp0 = posAt(w, lastOrderSec, null);
         if (!tp0 || Math.hypot(tp0.x - pos.x, tp0.y - pos.y) > 3.5) continue;
+        const tpBefore = posAt(w, lastOrderSec - 3, null);
+        const tpAfter = posAt(w, lastOrderSec + 3, null);
+        if (!tpBefore || Math.hypot(tpBefore.x - pos.x, tpBefore.y - pos.y) > 4.5) continue;
+        if (!tpAfter || Math.hypot(tpAfter.x - pos.x, tpAfter.y - pos.y) > 4.5) continue;
         const tp1 = posAt(w, lastOrderSec + 25, null);
         if (!tp1 || Math.hypot(tp1.x - tp0.x, tp1.y - tp0.y) < 10) continue;
         const ds = (p.drops ?? []).find(([s]) => s > lastOrderSec)?.[0] ?? Infinity;
@@ -2340,7 +2360,7 @@ export default function ReplayMotionPlayer({
             if (sinceCmd > SQUAD_FADE_SEC) return [];
             if (Number.isFinite(sinceCmd) && deadBy(t - sinceCmd)) return [];
             // 태워진 동안은 숨는다(요청) — 내리면 나타난다.
-            if (carriedGone(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : -1)) return [];
+            if (carriedGone(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : -1, pos.moving)) return [];
             // 건설에 흡수(지적: 익스트랙터 만든 드론이 남는다) — 일꾼 묶음만.
             if (g.unit === "Worker" && !pos.moving && Number.isFinite(sinceCmd)
               && buildAbsorbed(p, pos, t - sinceCmd)) return [];
@@ -2455,10 +2475,15 @@ export default function ReplayMotionPlayer({
             const n = Math.max(1, Math.min(36, alive));
             const kind = UNIT_CLASS[g.unit] ?? "troop";
             const bulk = UNIT_BULK[g.unit] ?? 2;
+            /* 같은 자리 무리는 서로 조금 퍼진다(요청: 겹치면서도 수량이 보이게) — 나선
+               간격을 넓히고, 묶음(gi)마다 나선을 돌려 한 자리에 두 무리가 서면 포개지지
+               않고 끼워진다. 첫 도형도 살짝 비껴 앉는다(sqrt(di+0.35)) — 무리마다 정중앙
+               한 점에 겹치던 것을 푼다. */
+            const seed = gi * 1.7;
             return Array.from({ length: n }, (_, di) => {
-              const r = di === 0 ? 0 : (0.5 + 0.14 * bulk) * Math.sqrt(di);
-              const dx = Math.cos(di * 2.4) * r;
-              const dy = Math.sin(di * 2.4) * r;
+              const r = (0.72 + 0.2 * bulk) * Math.sqrt(di + 0.35);
+              const dx = Math.cos(di * 2.4 + seed) * r;
+              const dy = Math.sin(di * 2.4 + seed) * r;
               return (
                 <span
                   key={`${p.raw}-u${g.unit}-${gi}-i${di}`}
@@ -2499,7 +2524,7 @@ export default function ReplayMotionPlayer({
                전투 후 다시 액션이 없다면 그 전투에서 죽은 것). */
             if (Number.isFinite(sinceCmd) && deadBy(t - sinceCmd)) return null;
             // 태워진 동안은 숨는다(요청) — 내리면 나타난다.
-            if (carriedGone(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : -1)) return null;
+            if (carriedGone(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : -1, pos.moving)) return null;
             // 무너진 기지 곁에서 침묵 — 그 함락에서 정리된 것(지적).
             if (razedNearby(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return null;
             /* 유닛 수는 컨트롤이 먼저다(요청: 컨트롤 기준으로 죽음 처리를 안 해서 계속
@@ -2557,11 +2582,13 @@ export default function ReplayMotionPlayer({
               }
             }
             if (glyphs.length === 0) glyphs.push(unit || "Marine");
+            // 퍼짐 보정(요청) — 위 typeNodes의 seed 주석과 같은 규칙(부대 번호로 나선 회전).
+            const seed = si * 1.7;
             return glyphs.map((u, di) => {
               const bulk = UNIT_BULK[u] ?? 2;
-              const r = di === 0 ? 0 : (0.5 + 0.14 * bulk) * Math.sqrt(di);
-              const dx = Math.cos(di * 2.4) * r;
-              const dy = Math.sin(di * 2.4) * r;
+              const r = (0.72 + 0.2 * bulk) * Math.sqrt(di + 0.35);
+              const dx = Math.cos(di * 2.4 + seed) * r;
+              const dy = Math.sin(di * 2.4 + seed) * r;
               return (
                 <span
                   key={`${p.raw}-s${si}-d${di}`}
@@ -2652,7 +2679,7 @@ export default function ReplayMotionPlayer({
               }
             }
             // 태워진 동안은 숨는다(요청) — 오버로드·셔틀에 오른 정찰도 마찬가지다.
-            if (carriedGone(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : -1)) return null;
+            if (carriedGone(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : -1, pos.moving)) return null;
             // 건설에 흡수(지적: 익스트랙터 만든 드론이 남는다) — 일꾼 점만.
             if (g.kind === "worker" && !pos.moving && Number.isFinite(sinceCmd)
               && buildAbsorbed(p, pos, t - sinceCmd)) return null;
