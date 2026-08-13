@@ -205,19 +205,15 @@ export async function analyzeMinimap(
     anchorIdx.push(ay * w + ax);
   }
   if (anchorIdx.length >= 3) {
-    /* 앵커 분류기 셋째 판(지적: 빠른무한 벽 통과 + 투혼 유적 통과·풀 차단) — 핵심은 표본
-       정화다: 자원 곁 표본에는 미네랄 결정(밝음)과, 벽에 붙은 자원의 벽 픽셀(어두움)이
-       섞여 팔레트를 오염시킨다. 표본 밝기 중앙값의 0.85~1.3배 밖 표본은 버린다.
-       판정은 셋 중 하나면 땅:
-         · 정화 팔레트와의 색 거리 ≤ 45
-         · 좁은 밝기 대역(정화 표본 30~70% × 0.9~1.1)
-         · 전역 우세 가족 — 맵 전체에서 4% 이상 깔린 색이면서 평균 밝기가 땅 대역 언저리
-           (풀처럼 앵커 곁엔 없지만 넓게 깔린 걷는 장식) */
-    /* 표본은 자원 그 자리가 아니라 '자원에서 맵 중심 쪽으로 3칸 들어간 자리'에서 뽑는다
-       (지적: 빠른무한 그대로 — 자원이 벽·가장자리에 붙은 맵은 자원 곁 표본의 다수가
-       미네랄·구조물이라, 중앙값 정화가 진짜 바닥(어두운 체커)을 오염으로 버렸다).
-       자원 안쪽은 일꾼이 드나드는 트인 바닥이 확실하다. */
-    const rawSamples: number[] = [];
+    /* 앵커 연결 분류기(지적: 빠른무한만 계속 반대 — 자원이 벽을 따라 늘어선 맵은 "자원
+       근처 표본"이 늘 오염된다) — 원리를 바꾼다: 게임 맵은 모든 본진·자원이 지상으로
+       이어지게 만들어져 있다. 그래서
+         1) 우주·물을 뺀 칸을 색 가족(8단계/채널)으로 묶어 점유율 순으로 세운다
+         2) 가족을 큰 것부터 하나씩 '땅'에 넣어 가며, 앵커들(자원에서 맵 중심 쪽 3칸)이
+            한 덩어리로 이어지는 최소 집합을 찾는다 — 벽·구조물은 연결에 필요 없어 자동
+            으로 빠진다
+         3) 땅에 둘러싸인 작은 조각(풀 같은 장식)은 밝기가 땅급이면 열어 준다 */
+    const spots: number[] = [];
     for (const ai of anchorIdx) {
       let ax = ai % w;
       let ay = Math.floor(ai / w);
@@ -228,67 +224,105 @@ export async function analyzeMinimap(
         ax = Math.min(w - 1, Math.max(0, Math.round(ax + (vx / vlen) * 3)));
         ay = Math.min(h - 1, Math.max(0, Math.round(ay + (vy / vlen) * 3)));
       }
-      for (let dy = -2; dy <= 2; dy += 1) {
-        for (let dx = -2; dx <= 2; dx += 1) {
-          const nx = ax + dx;
-          const ny = ay + dy;
-          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-          rawSamples.push(ny * w + nx);
-        }
-      }
+      spots.push(ay * w + ax);
     }
-    const rawLums = rawSamples.map((i) => lum[i]).sort((a, b) => a - b);
-    const med = rawLums[Math.floor(rawLums.length / 2)];
-    const samples = rawSamples.filter((i) => lum[i] >= med * 0.85 && lum[i] <= med * 1.3);
-    const acc = new Map<number, [number, number, number, number]>();
-    const sampleLums: number[] = [];
-    for (const ni of samples) {
-      const k = keyOf(ni);
-      const a = acc.get(k) ?? [0, 0, 0, 0];
-      a[0] += data[ni * 4];
-      a[1] += data[ni * 4 + 1];
-      a[2] += data[ni * 4 + 2];
-      a[3] += 1;
-      acc.set(k, a);
-      sampleLums.push(lum[ni]);
-    }
-    const palette: [number, number, number][] = [...acc.values()]
-      .map(([r, g, b, n]) => [r / n, g / n, b / n] as [number, number, number]);
-    sampleLums.sort((a, b) => a - b);
-    const lo = sampleLums[Math.floor(sampleLums.length * 0.3)] * 0.9;
-    const hi = sampleLums[Math.floor(sampleLums.length * 0.7)] * 1.1;
-    // 전역 우세 가족 — 키별 칸 수·평균 밝기.
-    const gcount = new Map<number, [number, number]>();
-    for (let i = 0; i < w * h; i += 1) {
-      const k = keyOf(i);
-      const e = gcount.get(k) ?? [0, 0];
-      e[0] += 1;
-      e[1] += lum[i];
-      gcount.set(k, e);
-    }
-    const dominant = new Set<number>();
-    for (const [k, [n, lsum]] of gcount) {
-      const meanL = lsum / n;
-      if (n >= w * h * 0.04 && meanL >= lo * 0.95 && meanL <= hi * 1.05) dominant.add(k);
-    }
-    const PAL_DIST = 45;
+    const banned = new Uint8Array(w * h); // 우주·물 — 어떤 경우에도 못 걷는다.
     for (let i = 0; i < w * h; i += 1) {
       const r = data[i * 4];
       const g = data[i * 4 + 1];
       const b = data[i * 4 + 2];
       const L = lum[i];
-      walk[i] = 0;
-      if (L < 15) continue; // 우주·심연
-      if (b > r + 18 && b > g + 8 && L < 110) continue; // 물
-      let near = false;
-      for (const [pr, pg, pb] of palette) {
-        const dr = r - pr;
-        const dg = g - pg;
-        const db = b - pb;
-        if (dr * dr + dg * dg + db * db <= PAL_DIST * PAL_DIST) { near = true; break; }
-      }
-      if (near || (L >= lo && L <= hi) || dominant.has(keyOf(i))) walk[i] = 1;
+      if (L < 15 || (b > r + 18 && b > g + 8 && L < 110)) banned[i] = 1;
     }
+    const famCount = new Map<number, number>();
+    for (let i = 0; i < w * h; i += 1) {
+      if (banned[i]) continue;
+      famCount.set(keyOf(i), (famCount.get(keyOf(i)) ?? 0) + 1);
+    }
+    const families = [...famCount.entries()].sort((a, b) => b[1] - a[1]).map(([k]) => k);
+    const included = new Set<number>();
+    const tryWalk = new Uint8Array(w * h);
+    const connected = (): boolean => {
+      // 앵커 자리를 가까운 땅 칸(3칸 안)으로 스냅해 BFS — 75% 이상이 한 덩어리면 합격.
+      const snap = (ci: number): number => {
+        const cx = ci % w;
+        const cy = Math.floor(ci / w);
+        for (let rr = 0; rr <= 3; rr += 1) {
+          for (let dy = -rr; dy <= rr; dy += 1) {
+            for (let dx = -rr; dx <= rr; dx += 1) {
+              const nx = cx + dx;
+              const ny = cy + dy;
+              if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+              if (tryWalk[ny * w + nx]) return ny * w + nx;
+            }
+          }
+        }
+        return -1;
+      };
+      const starts = spots.map(snap).filter((v) => v >= 0);
+      if (starts.length < spots.length * 0.75) return false;
+      const seen = new Uint8Array(w * h);
+      const stack = [starts[0]];
+      seen[starts[0]] = 1;
+      while (stack.length > 0) {
+        const cur = stack.pop()!;
+        const x = cur % w;
+        for (const d of [-1, 1, -w, w]) {
+          const nx = cur + d;
+          if (nx < 0 || nx >= w * h || seen[nx] || !tryWalk[nx]) continue;
+          if (Math.abs((nx % w) - x) > 1) continue;
+          seen[nx] = 1;
+          stack.push(nx);
+        }
+      }
+      const okN = starts.filter((st) => seen[st]).length;
+      return okN >= starts.length * 0.75;
+    };
+    let solved = false;
+    for (const fam of families.slice(0, 24)) {
+      included.add(fam);
+      for (let i = 0; i < w * h; i += 1) {
+        if (!banned[i] && included.has(keyOf(i))) tryWalk[i] = 1;
+      }
+      if (connected()) { solved = true; break; }
+    }
+    if (solved) {
+      walk.set(tryWalk);
+      /* 땅 밝기 — 땅에 둘러싸인 작은 장식(풀)을 열지 판단할 기준. */
+      let lsum = 0;
+      let ln = 0;
+      for (let i = 0; i < w * h; i += 1) {
+        if (walk[i]) { lsum += lum[i]; ln += 1; }
+      }
+      const gMean = ln > 0 ? lsum / ln : 128;
+      // 막힌 작은 조각(≤40칸)이 땅에 둘러싸였고 밝기가 땅급(0.8~1.2배)이면 연다 — 풀.
+      const seen2 = new Uint8Array(w * h);
+      for (let start = 0; start < w * h; start += 1) {
+        if (seen2[start] || walk[start] || banned[start]) continue;
+        const comp: number[] = [];
+        const stack2 = [start];
+        seen2[start] = 1;
+        let touchesBanned = false;
+        while (stack2.length > 0) {
+          const cur = stack2.pop()!;
+          comp.push(cur);
+          const x = cur % w;
+          for (const d of [-1, 1, -w, w]) {
+            const nx = cur + d;
+            if (nx < 0 || nx >= w * h) { touchesBanned = true; continue; }
+            if (Math.abs((nx % w) - x) > 1) continue;
+            if (banned[nx]) { touchesBanned = true; continue; }
+            if (walk[nx] || seen2[nx]) continue;
+            seen2[nx] = 1;
+            stack2.push(nx);
+          }
+        }
+        if (touchesBanned || comp.length > 40) continue;
+        const mean = comp.reduce((a, i) => a + lum[i], 0) / comp.length;
+        if (mean >= gMean * 0.8 && mean <= gMean * 1.2) for (const i of comp) walk[i] = 1;
+      }
+    }
+    // solved 실패면 앞의 무앵커 규칙 결과(walk)를 그대로 둔다 — 최소한 예전만큼은 된다.
   }
   /* ④ 작은 빵꾸 메우기(요청) — 자잘한 고립 조각은 오판일 확률이 높아 주변 값으로 맞춘다.
      걷는 조각(벽 사이 빵꾸)은 5칸까지 막고, 막힌 점은 2칸까지만 연다 — 막힌 쪽을 크게
