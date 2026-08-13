@@ -1909,14 +1909,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 시즈 모드(실물 참고) — 사방으로 벌린 궤도 발 넷 + 올라선 포탑 + 위-앞으로 겨눈
      큰 포신. */
   tanksiege: () => {
-    const [ax2, ay2] = project(0, 0.7, 3.9);
-    const [bx2, by2] = project(0, 2.9, 6.8);
-    const dx2 = bx2 - ax2;
-    const dy2 = by2 - ay2;
-    const L = Math.hypot(dx2, dy2) || 1;
-    // 포신은 넙적하게(지적).
-    const nx2 = (-dy2 / L) * 0.7;
-    const ny2 = (dx2 / L) * 0.7;
+    /* 포신(수리: 요잉 때 뒤틀림) — 화면 사각형 대신 모델 공간 슬래브: 윗면·옆 두께·
+       포구 단면이 전부 모형 좌표라 어느 요잉에서도 결이 맞는다. */
+    const barrelTop = polyPath3([[-0.7, 0.7, 4], [0.7, 0.7, 4], [0.7, 2.9, 6.9], [-0.7, 2.9, 6.9]]);
     return [
       /* 고정 다리(지적) — 차체에서 대각으로 내려 뻗는 지주와 땅을 문 넓은 발판,
          발판 끝 말뚝까지: 땅에 딱 박힌 전개 다리. */
@@ -1933,9 +1928,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 옆이 아니라 앞뒤로 긴 차체(정정).
       ...boxFaces3(0, -0.3, 2.8, 4.8, 1.6, 1),
       ...frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.6),
-      bodyFace(`M${ax2 + nx2} ${ay2 + ny2} L${bx2 + nx2} ${by2 + ny2} L${bx2 - nx2} ${by2 - ny2} L${ax2 - nx2} ${ay2 - ny2} Z`),
-      topFace(`M${ax2 + nx2 * 0.5} ${ay2 + ny2 * 0.5} L${bx2 + nx2 * 0.5} ${by2 + ny2 * 0.5} L${bx2 + nx2 * 0.1} ${by2 + ny2 * 0.1} L${ax2 + nx2 * 0.1} ${ay2 + ny2 * 0.1} Z`, 0.18),
-      capFace(groundEllipse(bx2, by2, 0.62, 0.4), 0.4),
+      bodyFace(barrelTop),
+      topFace(barrelTop, 0.18),
+      bodyFace(polyPath3([[0.7, 0.7, 4], [0.7, 2.9, 6.9], [0.7, 2.9, 6.5], [0.7, 0.7, 3.6]])),
+      sideFace(polyPath3([[0.7, 0.7, 4], [0.7, 2.9, 6.9], [0.7, 2.9, 6.5], [0.7, 0.7, 3.6]]), 0.24),
+      capFace(polyPath3([[-0.7, 2.9, 6.9], [0.7, 2.9, 6.9], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]), 0.4),
     ];
   },
   /* 벌처(실물 참고) — 뒤 엔진 통 둘, 가운데 좌석·라이더 혹, 앞으로 길고 뾰족하게
