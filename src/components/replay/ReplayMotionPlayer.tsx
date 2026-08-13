@@ -465,7 +465,7 @@ const ZERG_BACKLEG_END = "M15.1 9.85 Q16 9.95 15.95 10.5 Q15.9 10.9 15.55 11.1 Q
    반쪽이 어둡다. 가운데 뿔은 이 어둠이 몸통과의 구분선 노릇도 한다(지적: 구분 안 됨). */
 const ZERG_HORN_SHADE_LAIR =
   "M5.6 3 Q5.4 6.6 6.1 10.3 L5.2 10.2 Q4.8 6.2 5.6 3 Z"
-  + " M10.2 3.4 Q11.1 5.8 10.6 10.1 L9.9 10.1 Q10.3 5.8 10.2 3.4 Z"
+  + " M6.5 4.2 Q7.6 8.4 7.3 13.4 L6.6 13.5 Q6.9 8.4 6.5 4.2 Z"
   + " M14.9 3.6 Q15.9 6.8 14.9 10.8 L14.4 10.7 Q15.2 6.8 14.9 3.6 Z";
 const ZERG_HORN_SHADE_HIVE =
   "M5.5 1.6 Q5.1 6.6 5.9 10.2 L5 10.1 Q4.4 6 5.5 1.6 Z"
@@ -486,6 +486,8 @@ const ZERG_CAP_LF = "M1.05 11.35 A0.55 0.5 0 0 1 1.35 12.35 Z";
 /* 뒷다리 둘은 뒤로 뻗어(지적: 앞·옆·뒤 방향이 다 달라야) 입구가 이쪽을 안 본다 — 캡 없음.
    엄니·뿔은 전부 뒤쪽에서 솟아(실물 참고) 앞 캡 셋은 셋 다 그대로 보인다. */
 const ZERG_CAPS_ALL = `${ZERG_CAP_RF} ${ZERG_CAP_CF} ${ZERG_CAP_LF}`;
+/** 레어 — 앞-가운데 뿔이 그 다리 입구를 가리므로(규칙) 옆 캡 둘만. */
+const ZERG_CAPS_SIDE = `${ZERG_CAP_RF} ${ZERG_CAP_LF}`;
 /* 전부 입체(면 겹침)로 옮겼다(요청: "무조건 입체로") — 홑겹 도형은 이제 없다. */
 const SHAPE_PATHS: Record<string, string> = {};
 /** 본진 아바타용 실루엣(요청: "아바타를 본진 안에", "아바타용 모양들도 크기 비슷하게") —
@@ -595,14 +597,14 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
   lair: [
     [`${ZERG_MOUND}`
       + " M4.4 10.6 Q3 5.6 5 2.6 Q6.1 1.4 7.2 2 Q6.3 2.4 5.9 3.8 Q5.5 6.8 6.1 10.3 Z"
-      + " M9 10.2 Q9.2 5.4 10.2 3.4 Q11.1 5.8 10.6 10.1 Z"
+      + " M5.7 13.6 Q5.3 8 6.5 4.2 Q7.6 8.4 7.3 13.4 Z"
       + " M14.9 10.8 Q15.9 6.8 14.9 3.6 Q13.9 7 13.9 10.5 Z", 1],
     sideFace(ZERG_SHADE, 0.22),
     sideFace(ZERG_HORN_SHADE_LAIR, 0.28),
     sideFace(ZERG_BACKLEG_END, 0.25),
-    capFace(ZERG_CAPS_ALL),
+    capFace(ZERG_CAPS_SIDE),
     sideFace(ZERG_COLLAR, 0.35),
-    topFace("M6.3 1.5 L7.2 2 L5.9 2.8 Z M10 3.5 L10.6 4.2 L9.6 4.5 Z M14.6 3.7 L15.2 4.5 L14.1 4.6 Z", 0.5),
+    topFace("M6.3 1.5 L7.2 2 L5.9 2.8 Z M6 4.9 L6.5 4.2 L7 5 Z M14.6 3.7 L15.2 4.5 L14.1 4.6 Z", 0.5),
     topFace(ZERG_TOP),
   ],
   /* 하이브 — 본 건물보다 훨씬 긴 뿔 셋이 위로 솟고, 가시는 그 뿔에서 본 건물 쪽(안쪽)
