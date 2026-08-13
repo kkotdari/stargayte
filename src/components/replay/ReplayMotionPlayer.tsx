@@ -774,47 +774,43 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...hornFaces(5.7, 2, 4.2, 4.8, 2.4, 6, 0.8));
     return out;
   },
-  /* 스타게이트(다시, 실물 참고) — 굽은 두 판이 가운데 원형 소환구를 감싸는 꼴(지적):
-     위판이 위를, 아래판이 아래를 감고 양옆은 트인다. 판에는 갈빗살 마디, 아래판에는
-     파란 창 줄, 오른쪽엔 바깥으로 뻗는 칼 지느러미. 소환구로 함선이 나온다. */
+  /* 스타게이트(다시 둘, 지적) — 두 손이 사이를 띄우고 마주 보는 꼴: 아래 손은
+     왼아래에서 위로, 위 손은 오른위에서 아래로 굽는 오목한 판이고 가운데는 그냥
+     빈틈이다(광원 없음). 손바닥 안쪽엔 파란 창 줄, 등에는 갈빗살, 끝은 말린 손끝. */
   arch: () => {
-    const out: ShapeFace[] = [sideFace(discPath3(0, 0, 0, 4.8), 0.22)];
-    const [cx, cy] = project(0, 0.2, 5);
-    const RX = 6.1;
-    const RY = 4.9;
-    const rx2 = 3.5;
-    const ry2 = 2.8;
-    const E = (deg: number, ax: number, ay: number): [number, number] => {
-      const a = (deg * Math.PI) / 180;
-      return [cx + Math.cos(a) * ax, cy - Math.sin(a) * ay];
+    const pt = (x: number, y: number, z: number): string => {
+      const [px, py] = project(x, y, z);
+      return `${px} ${py}`;
     };
-    const P = (v: [number, number]): string => `${Math.round(v[0] * 100) / 100} ${Math.round(v[1] * 100) / 100}`;
-    // 소환구 — 판이 가장자리를 덮도록 먼저: 어두운 테 + 빛나는 속 + 심.
-    out.push(capFace(groundEllipse(cx, cy, rx2 + 0.5, ry2 + 0.4), 0.35));
-    out.push(topFace(groundEllipse(cx, cy, rx2, ry2), 0.5));
-    out.push(topFace(groundEllipse(cx, cy - 0.4, rx2 * 0.55, ry2 * 0.5), 0.3));
-    // 감싸는 판 — 원환 조각: 바깥 호 → 안 호로 돌아온다.
-    const plate = (a0: number, a1: number, sw: 0 | 1): string =>
-      `M${P(E(a0, RX, RY))} A${RX} ${RY} 0 0 ${sw} ${P(E(a1, RX, RY))}`
-      + ` L${P(E(a1, rx2 + 0.2, ry2 + 0.15))} A${rx2 + 0.2} ${ry2 + 0.15} 0 0 ${1 - sw} ${P(E(a0, rx2 + 0.2, ry2 + 0.15))} Z`;
-    const topPlate = plate(168, 12, 1);
-    const botPlate = plate(192, 348, 0);
-    // 오른쪽 칼 지느러미 — 판 밖으로 뻗는다(판이 뿌리를 덮는다).
-    out.push(bodyFace(`M${P(E(24, RX * 0.8, RY * 0.8))} Q${P(E(8, RX + 2.8, RY + 2.3))} ${P(E(-14, RX * 0.95, RY * 0.95))} Q${P(E(4, RX * 0.9, RY * 0.9))} ${P(E(24, RX * 0.8, RY * 0.8))} Z`));
-    out.push(bodyFace(topPlate), topFace(topPlate, 0.14));
-    out.push(bodyFace(botPlate));
-    out.push(sideFace(plate(60, 12, 1), 0.2));
-    out.push(sideFace(plate(300, 348, 0), 0.2));
-    // 갈빗살 마디 — 판을 가로지르는 가는 골.
-    for (const ang of [140, 108, 76, 44, 214, 246, 278, 310]) {
-      out.push(sideFace(`M${P(E(ang + 2, rx2 + 0.2, ry2 + 0.15))} L${P(E(ang + 2, RX - 0.3, RY - 0.25))}`
-        + ` L${P(E(ang - 2, RX - 0.3, RY - 0.25))} L${P(E(ang - 2, rx2 + 0.2, ry2 + 0.15))} Z`, 0.14));
+    const out: ShapeFace[] = [sideFace(discPath3(0, 0.2, 0, 5), 0.22)];
+    // 아래 손 — 왼아래에서 위로 굽는 판.
+    const lower = `M${pt(3.4, 0.5, 0.5)} Q${pt(-2.6, 0.7, 0.3)} ${pt(-5.8, 0.9, 4.4)}`
+      + ` L${pt(-4, 0.9, 5.7)} Q${pt(-1.9, 0.6, 3.1)} ${pt(2.8, 0.5, 3)} Z`;
+    out.push(bodyFace(lower), sideFace(lower, 0.14));
+    // 위 손 — 오른위에서 아래로 굽는 판(광원을 받아 살짝 밝게).
+    const upper = `M${pt(-3.4, 0, 10.7)} Q${pt(2.6, -0.2, 10.9)} ${pt(5.8, -0.4, 6.8)}`
+      + ` L${pt(4, -0.4, 5.5)} Q${pt(1.9, -0.1, 8.1)} ${pt(-2.8, 0, 8.2)} Z`;
+    out.push(bodyFace(upper), topFace(upper, 0.1));
+    // 손끝 말림 — 마주 보는 손 쪽으로 갈고리.
+    out.push(...hornFaces(-5.4, 0.9, 4.6, -6.6, 1, 6.6, 0.9));
+    out.push(...hornFaces(5.4, -0.4, 6.6, 6.6, -0.5, 4.6, 0.9));
+    // 파란 창 줄 — 두 손바닥 안쪽을 따라.
+    for (const [wx2, wz] of [[1.6, 1.8], [-0.2, 1.9], [-2, 2.4], [-3.6, 3.4]] as [number, number][]) {
+      out.push(topFace(groundEllipse(...project(wx2, 0.7, wz), 0.6, 0.45), 0.5));
     }
-    // 아래판 파란 창 줄 — 안쪽 중간 반지름을 따라 빛 점.
-    const mx2 = (rx2 + RX) / 2 - 0.2;
-    const my2 = (ry2 + RY) / 2 - 0.2;
-    for (const ang of [222, 252, 282, 312]) {
-      out.push(topFace(groundEllipse(...E(ang, mx2, my2), 0.55, 0.42), 0.5));
+    for (const [wx2, wz] of [[-1.6, 9.5], [0.2, 9.4], [2, 8.9], [3.6, 7.9]] as [number, number][]) {
+      out.push(topFace(groundEllipse(...project(wx2, -0.2, wz), 0.55, 0.4), 0.45));
+    }
+    // 갈빗살 — 판을 가로지르는 가는 골.
+    for (const [ox, oz, ix2, iz] of [
+      [-4.8, 3.6, -3.6, 5], [-3, 1.6, -2.2, 3.4], [-0.8, 0.7, -0.5, 2.9],
+    ] as [number, number, number, number][]) {
+      out.push(sideFace(polyPath3([[ox, 0.85, oz], [ix2, 0.75, iz], [ix2 + 0.3, 0.75, iz], [ox + 0.3, 0.85, oz]]), 0.18));
+    }
+    for (const [ox, oz, ix2, iz] of [
+      [4.8, 7.6, 3.6, 6.1], [3, 9.7, 2.2, 7.9], [0.8, 10.5, 0.5, 8.4],
+    ] as [number, number, number, number][]) {
+      out.push(sideFace(polyPath3([[ox, -0.35, oz], [ix2, -0.25, iz], [ix2 + 0.3, -0.25, iz], [ox + 0.3, -0.35, oz]]), 0.15));
     }
     return out;
   },
