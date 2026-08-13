@@ -1773,10 +1773,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       bodyFace(plate(1)), sideFace(plate(1), 0.2),
       bodyFace(plate(-1)), topFace(plate(-1), 0.14),
       ...boxFaces3(0, -0.4, 2.8, 3.8, 2.2, 5),
-      // 둥근 코 — 몸체 폭에서 이어져 좁아지되 끝은 뭉툭하게 눌러 막는다(정정).
-      ...hornFaces(0, 0.8, 6.1, 0, 3, 5.95, 2.7),
-      bodyFace(groundEllipse(...project(0, 2.75, 5.95), 0.95, 0.78)),
-      topFace(groundEllipse(...project(-0.25, 2.7, 6.15), 0.4, 0.3), 0.25),
+      // 코 — 뾰족한 끝을 깎아낸 절두형(정정): 좁아지다 평평한 단면으로 끝난다.
+      bodyFace(polyPath3([[-1.35, 1, 6.05], [1.35, 1, 6.05], [0.75, 3, 5.9], [-0.75, 3, 5.9]])),
+      topFace(polyPath3([[-1.35, 1, 6.05], [1.35, 1, 6.05], [0.75, 3, 5.9], [-0.75, 3, 5.9]]), 0.18),
+      bodyFace(polyPath3([[-0.75, 3, 5.9], [0.75, 3, 5.9], [0.75, 3, 5], [-0.75, 3, 5]])),
+      sideFace(polyPath3([[1.35, 1, 6.05], [0.75, 3, 5.9], [0.75, 3, 5], [1.35, 1, 5]]), 0.2),
       // 지붕 미사일 튜브 다발.
       ...tubeFaces(-0.7, -1.7, -0.7, 0.9, 0.5, 7.2),
       ...tubeNose(-0.7),
