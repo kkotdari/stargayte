@@ -71,8 +71,8 @@ export function groundSquashNow(): number {
   return pitchView ? 0.52 : topView ? 0.55 : GROUND_SQUASH;
 }
 function zScaleNow(): number {
-  // 0.71 → 0.8 → 0.86(지적: 높이가 살짝 눌림) — 앞숙임 몫을 벌충하고 한 뼘 더.
-  return pitchView ? 0.86 : topView ? 0.66 : 0.89;
+  // 0.71 → 0.8 → 0.86 → 0.94(지적: 높이 더) — 앞숙임 몫을 벌충하고 두 뼘 더.
+  return pitchView ? 0.94 : topView ? 0.66 : 0.89;
 }
 function originYNow(): number {
   return pitchView ? 12.6 : topView ? 12 : 12.6;
