@@ -2021,24 +2021,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...hornFaces(m2 * 5.15, -1.2, 5.6, m2 * 5.6, -1.8, 5.95, 0.3),
       ...hornFaces(m2 * 4.45, -1.2, 5.6, m2 * 4, -1.8, 5.95, 0.3),
     ];
-    /* 로켓 노즐(사진 참고: 새턴 V) — 뒤로 벌어지는 종 몸통과 그 끝에 정확히 얹힌
-       노즐 입(몸색 테 + 어두운 속). 끝 타원은 종 끝점·끝폭에 그대로 맞춰 이음매가
-       없다(앞판의 어긋남은 세로 보정 탓이었다). */
-    const cup = (cx2: number, z2: number): ShapeFace[] => {
-      const [ax2, ay2] = project(cx2, -2.1, z2);
-      const [bx2, by2] = project(cx2, -3.9, z2);
-      const dxv = bx2 - ax2;
-      const dyv = by2 - ay2;
-      const L = Math.hypot(dxv, dyv) || 1;
-      const nx3 = -dyv / L;
-      const ny3 = dxv / L;
-      return [
-        bodyFace(`M${ax2 + nx3 * 0.36} ${ay2 + ny3 * 0.36} L${bx2 + nx3 * 0.7} ${by2 + ny3 * 0.7}`
-          + ` L${bx2 - nx3 * 0.7} ${by2 - ny3 * 0.7} L${ax2 - nx3 * 0.36} ${ay2 - ny3 * 0.36} Z`),
-        bodyFace(groundEllipse(bx2, by2, 0.7, 0.52)),
-        capFace(groundEllipse(bx2, by2, 0.5, 0.36), 0.45),
-      ];
-    };
+    /* 추진기(최종 수리) — 손수 깎던 종·타원을 다 버리고, 원통으로 읽히는 검증된
+       캡슐 관 하나로만 그린다. */
+    const cup = (cx2: number, z2: number): ShapeFace[] =>
+      tubeFaces(cx2, -3.9, cx2, -2.1, 0.55, z2);
     return [
       // 컵라면 추진기 셋 — 삼각형(아래 둘·위 가운데).
       ...cup(0, 6.7),
@@ -2207,7 +2193,6 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 커세어(실물 참고) — 넓고 둥근 게딱지 몸, 앞으로 감아 도는 옆 팔 한 쌍, 콕핏 혹,
      뒤 바닥의 발광 엔진 둘. */
   corsair: () => {
-    const [cx, cy] = project(0, 0.2, 5.8);
     const [e1x, e1y] = project(-1.1, -1.7, 5.55);
     const [e2x, e2y] = project(1.1, -1.7, 5.55);
     return [
