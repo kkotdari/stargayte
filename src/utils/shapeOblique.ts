@@ -224,7 +224,8 @@ export function faceLight(nxModel: number, nyModel: number): { visible: boolean;
 /* 모형 내부 원근(요청: 모델 안에서도 원근법 — 건물은 특히) — 앞(시청자 쪽)으로 나온
    점은 크게, 뒤로 물러난 점은 작게. 발밑 원점을 눈 축으로 삼아 깊이 나눗셈을 한다.
    project를 지나는 모든 프리미티브(상자·절두·기둥·다리·관·뿔)가 저절로 받는다. */
-const MODEL_PERSP = 30;
+// 30 → 48(지적: 모델 원근이 과함) — 수렴을 눅인다.
+const MODEL_PERSP = 48;
 /* 시각 밀림(지적: 소실점이 정면이 아니라 시각을 반영해야) — 화면 가운데에서 벗어난
    마커는 깊이에 비례해 가로로 민다(앞은 바깥, 뒤는 안). 모델을 돌리는 요잉과 달리
    폭·세로선이 안 바뀌어 찌그러지지 않고, 내부 소실점만 시각 방향으로 옮겨 간다. */
@@ -248,17 +249,19 @@ export function project(x: number, y: number, z: number): [number, number] {
      쪽으로 기운다(z가 깊이에 태워짐). 지붕 윗면이 드러나 45도 내려다보는 지형과 자세가
      맞는다. sin20° ≈ 0.34. */
   const ry2 = pitchView ? ry + z * 0.34 : ry;
-  const f = MODEL_PERSP / (MODEL_PERSP - Math.max(-10, Math.min(10, ry2)));
+  /* 원근 배율은 원래 깊이만(지적: 원근이 과함) — 앞숙임 몫(z×0.34)까지 넣으면 키 큰
+     꼭대기가 덩달아 확대돼 과한 원근으로 보였다. */
+  const f = MODEL_PERSP / (MODEL_PERSP - Math.max(-10, Math.min(10, ry)));
   /* 원근은 가로 수렴만(지적 둘: 높이까지 태우면 반대쪽이 들리는 가짜 롤, 깊이까지
      태우면 요잉한 옆구리가 앞으로 쏟아짐) — 세로선은 곧게, 앞뒤는 납작비 그대로.
      시각 밀림(viewShear)은 화면 깊이(ry×납작비)에 태워, 바닥의 남북 선 기울기가
      지도의 소실 기울기(u/P)와 정확히 같아진다(지적: 노란선-빨간선 어긋남). */
   /* 가로 밀림은 앞숙임 제외한 원래 깊이(ry)에만(지적: 가장자리에서 안쪽으로 롤 된
      느낌) — 숙임 몫(z×0.34)까지 태우면 바닥 앞변만 바깥으로 밀려 세로선이 기운다.
-     대신 위쪽만 살짝 바깥으로(요청) — 높이에 비례해 시각 방향으로 0.25씩 민다.
-     바닥은 붙은 채 꼭대기만 소실점 반대쪽으로 기운다. */
+     세로 기둥의 기울기는 지형 남북선의 소실 수렴과 같은 방향(가운데 쪽)이어야
+     한다(지적: 초록 기대선, 바깥 0.8은 엄청 반대로 기움) — 부호 음, 크기는 u/P 일치. */
   const rx2 = rx + ry * groundSquashNow() * viewShear
-    + (pitchView ? z * 0.25 * viewShear : 0);
+    + (pitchView ? -z * 0.8 * viewShear : 0);
   return [r2(VIEW.originX + rx2 * f), r2(originYNow() + ry2 * groundSquashNow() - z * zScaleNow())];
 }
 

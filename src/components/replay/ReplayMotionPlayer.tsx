@@ -815,14 +815,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [xcR] = project(1.9, 0, 0);
     const [, tyS] = project(0, 0, 8.2);
     const [, byS] = project(0, 0, 0);
+    // 꼭대기 x 이동(지적: 원통형 오류 일습) — 시각 밀림·바깥 롤을 꼭대기도 탄다.
+    const dxT = project(0, 0, 8.2)[0] - project(0, 0, 0)[0];
     const R = 2.3;
     const ry = R * 0.45;
     const half = (xc: number, m2: 1 | -1): { body: string; top: string; hole: string } => {
       const sw = m2 === -1 ? 0 : 1;
       return {
-        body: `M${xc} ${tyS - ry} A${R} ${ry} 0 0 ${sw} ${xc + m2 * R} ${tyS}`
-          + ` L${xc + m2 * R} ${byS} A${R} ${ry} 0 0 ${sw} ${xc} ${byS + ry} L${xc} ${tyS + ry} Z`,
-        top: `M${xc} ${tyS - ry} A${R} ${ry} 0 0 ${sw} ${xc} ${tyS + ry} Z`,
+        body: `M${xc + dxT} ${tyS - ry} A${R} ${ry} 0 0 ${sw} ${xc + dxT + m2 * R} ${tyS}`
+          + ` L${xc + m2 * R} ${byS} A${R} ${ry} 0 0 ${sw} ${xc} ${byS + ry} L${xc + dxT} ${tyS + ry} Z`,
+        top: `M${xc + dxT} ${tyS - ry} A${R} ${ry} 0 0 ${sw} ${xc + dxT} ${tyS + ry} Z`,
         hole: `M${xc} ${byS - ry * 0.6} A${R * 0.6} ${ry * 0.6} 0 0 ${sw} ${xc} ${byS + ry * 0.6} Z`,
       };
     };
@@ -836,10 +838,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     return [
       sideFace(discPath3(0, 0.2, 0, 5), 0.22),
       bodyFace(L2.body), topFace(L2.top), capFace(L2.hole, 0.4),
-      topFace(`M${xcL - R} ${tyS} L${xcL - R + 0.6} ${tyS + 0.3} L${xcL - R + 0.6} ${byS} L${xcL - R} ${byS} Z`, 0.14),
+      topFace(`M${xcL - R + dxT} ${tyS} L${xcL - R + 0.6 + dxT} ${tyS + 0.3} L${xcL - R + 0.6} ${byS} L${xcL - R} ${byS} Z`, 0.14),
       ...win(xcL, -1),
       bodyFace(R2.body), topFace(R2.top), capFace(R2.hole, 0.4),
-      sideFace(`M${xcR + R} ${tyS} L${xcR + R - 0.6} ${tyS + 0.3} L${xcR + R - 0.6} ${byS} L${xcR + R} ${byS} Z`, 0.2),
+      sideFace(`M${xcR + R + dxT} ${tyS} L${xcR + R - 0.6 + dxT} ${tyS + 0.3} L${xcR + R - 0.6} ${byS} L${xcR + R} ${byS} Z`, 0.2),
       ...win(xcR, 1),
     ];
   },
@@ -980,10 +982,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...cylinderFaces3(0, 0, 0.55, 4.6, 1.3));
     // 꼭대기는 주사바늘(지적) — 관 끝이 사선으로 깎여 왼쪽이 높다.
     const [nx2, nyB] = project(0, 0, 5.85);
-    const [, nyL] = project(0, 0, 7.6);
-    const [, nyR] = project(0, 0, 6.35);
-    out.push(bodyFace(`M${nx2 - 0.55} ${nyL} L${nx2 + 0.55} ${nyR} L${nx2 + 0.55} ${nyB} L${nx2 - 0.55} ${nyB} Z`));
-    out.push(topFace(`M${nx2 - 0.55} ${nyL} L${nx2 + 0.55} ${nyR} L${nx2 + 0.55} ${nyR + 0.35} L${nx2 - 0.55} ${nyL + 0.35} Z`, 0.5));
+    // 꼭대기 x도 제 투영으로(지적: 원통형 오류 일습).
+    const [nxL, nyL] = project(0, 0, 7.6);
+    const [nxR, nyR] = project(0, 0, 6.35);
+    out.push(bodyFace(`M${nxL - 0.55} ${nyL} L${nxR + 0.55} ${nyR} L${nx2 + 0.55} ${nyB} L${nx2 - 0.55} ${nyB} Z`));
+    out.push(topFace(`M${nxL - 0.55} ${nyL} L${nxR + 0.55} ${nyR} L${nxR + 0.55} ${nyR + 0.35} L${nxL - 0.55} ${nyL + 0.35} Z`, 0.5));
     return out;
   },
   /* 성큰(실물 참고) — 납작한 크립 더미 + 잔가시들 + 웅크린 큰 낫 발톱(끝 밝은 날). */
@@ -1600,14 +1603,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   gspire: () => {
     const out: ShapeFace[] = [];
     const [bx, by] = project(0, 0.4, 0);
-    const [, wy] = project(0, 0.4, 6.2);
-    const [, ty] = project(0, 0.4, 9.6);
+    const [wx, wy] = project(0, 0.4, 6.2);
+    const [tx, ty] = project(0, 0.4, 9.6);
+    // 허리·꼭대기 x 이동(지적: 원통형 오류 일습).
+    const dw = wx - bx;
+    const dt = tx - bx;
     out.push(bodyFace(
       `M${bx - 2.9} ${by}`
-      + ` Q${bx - 2.5} ${(by + wy) / 2} ${bx - 1.55} ${wy}`
-      + ` Q${bx - 1.75} ${(wy + ty) / 2} ${bx - 2.35} ${ty}`
-      + ` L${bx + 2.35} ${ty}`
-      + ` Q${bx + 1.75} ${(wy + ty) / 2} ${bx + 1.55} ${wy}`
+      + ` Q${bx - 2.5 + dw * 0.5} ${(by + wy) / 2} ${bx - 1.55 + dw} ${wy}`
+      + ` Q${bx - 1.75 + (dw + dt) / 2} ${(wy + ty) / 2} ${bx - 2.35 + dt} ${ty}`
+      + ` L${bx + 2.35 + dt} ${ty}`
+      + ` Q${bx + 1.75 + (dw + dt) / 2} ${(wy + ty) / 2} ${bx + 1.55 + dw} ${wy}`
       + ` Q${bx + 2.5} ${(by + wy) / 2} ${bx + 2.9} ${by}`
       + `a2.9 1.3 0 1 1 -5.8 0Z`,
     ));
@@ -1781,13 +1787,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        가파르다가 바닥에서 완만하게 벌어진다. 회전 대칭이라 요잉 불변. */
     {
       const [bx, by] = project(0, 0, 0);
-      const [, ty] = project(0, 0, 6.6);
+      const [tx, ty] = project(0, 0, 6.6);
+      const dt = tx - bx; // 꼭대기 x 이동(지적: 원통형 오류 일습).
       const rB = 5.9;
       const rT = 1.4;
       const ryB = rB * 0.45;
       const mound = `M${bx - rB} ${by}`
-        + ` Q${bx - rB * 0.86} ${by - (by - ty) * 0.28} ${bx - rT} ${ty}`
-        + ` L${bx + rT} ${ty}`
+        + ` Q${bx - rB * 0.86 + dt * 0.3} ${by - (by - ty) * 0.28} ${bx - rT + dt} ${ty}`
+        + ` L${bx + rT + dt} ${ty}`
         + ` Q${bx + rB * 0.86} ${by - (by - ty) * 0.28} ${bx + rB} ${by}`
         + `a${rB} ${ryB} 0 1 1-${rB * 2} 0Z`;
       out.push(bodyFace(mound));
@@ -4464,7 +4471,7 @@ export default function ReplayMotionPlayer({
       >
         {/* 렌즈 상자 — PC 휠 줌(요청)이 이 층을 통째로 키운다(마커·자취까지 같이). */}
         <div
-          className="scr-motion-lens"
+          className={cx("scr-motion-lens", unitX2 && "scr-motion-unit2x")}
           style={zoom > 1 ? {
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: "center",
@@ -5939,6 +5946,43 @@ export default function ReplayMotionPlayer({
           aria-label="재생 위치"
         />
       </div>
+      {/* 보기 설정 줄(요청: 팀컬러·수직보기·유닛크기·지형편집은 윗줄로 따로). */}
+      <div className="scr-motion-bar scr-motion-viewrow">
+        <button
+          type="button" className="scr-motion-btn scr-motion-colorbtn"
+          onClick={() => setColorMode((v) => (v === "team" ? "personal" : "team"))}
+          title="색 기준 전환"
+        >
+          {colorMode === "team" ? "개인컬러 보기" : "팀컬러 보기"}
+        </button>
+        {/* 피칭 보기(요청) — 수직 부감 ↔ 비스듬한 정면. 모바일은 아직 안 연다(요청). */}
+        {!coarsePointer && (
+          <button
+            type="button" className="scr-motion-btn scr-motion-colorbtn"
+            onClick={() => setPitched((v) => !v)}
+            title="시점 전환"
+          >
+            {pitched ? "수직 보기" : "입체 보기"}
+          </button>
+        )}
+        {/* 유닛 크기(요청) — 기본은 실제 크기, 누르면 2배. */}
+        <button
+          type="button" className="scr-motion-btn scr-motion-colorbtn"
+          onClick={() => setUnitX2((v) => !v)}
+          title="유닛 크기 전환"
+        >
+          {unitX2 ? "유닛 실제 크기" : "유닛 2배 크기"}
+        </button>
+        {big && typeof grid.imageId === "number" && grid.image ? (
+          <button
+            type="button" className="scr-motion-btn scr-motion-terrain"
+            onClick={() => { setPlaying(false); setTerrainOpen(true); }}
+            aria-label="지형 수정" title="지형 수정"
+          >
+            <Mountain size={12} />
+          </button>
+        ) : null}
+      </div>
       <div className="scr-motion-bar scr-motion-bar-controls">
         {/* 차례가 곧 그리드 칸이다(지적: 재생이 줄 가운데, 배속은 왼쪽에 필터처럼) —
             [배속 | 재생 | 시간]. 재생 버튼을 먼저 적으면 왼쪽 칸에 앉아 버린다. */}
@@ -5952,46 +5996,6 @@ export default function ReplayMotionPlayer({
               ×{v}
             </button>
           ))}
-          {/* 색 전환(요청: 전환 버튼 살림) — 팀색 ↔ 개인색. 이름표는 지금 상태가 아니라
-              '누르면 볼 것'이다(요청: "개인컬러 팀컬러를 반대로 뒤집고 뒤에 보기 붙이기")
-              — "팀컬러"라 적혀 있는데 눌러도 팀컬러가 안 되는(이미 팀컬러인) 버튼은
-              거꾸로 읽힌다. */}
-          <button
-            type="button" className="scr-motion-btn scr-motion-colorbtn"
-            onClick={() => setColorMode((v) => (v === "team" ? "personal" : "team"))}
-            title="색 기준 전환"
-          >
-            {colorMode === "team" ? "개인컬러 보기" : "팀컬러 보기"}
-          </button>
-          {/* 피칭 보기(요청) — 수직 부감 ↔ 비스듬한 정면. 모바일은 아직 안 연다(요청). */}
-          {!coarsePointer && (
-            <button
-              type="button" className="scr-motion-btn scr-motion-colorbtn"
-              onClick={() => setPitched((v) => !v)}
-              title="시점 전환"
-            >
-              {pitched ? "수직 보기" : "입체 보기"}
-            </button>
-          )}
-          {/* 유닛 크기(요청) — 기본은 실제 크기, 누르면 2배. */}
-          <button
-            type="button" className="scr-motion-btn scr-motion-colorbtn"
-            onClick={() => setUnitX2((v) => !v)}
-            title="유닛 크기 전환"
-          >
-            {unitX2 ? "유닛 실제 크기" : "유닛 2배 크기"}
-          </button>
-          {/* 지형 수정(요청, 지적: 따로 두면 자리가 애매하고 너무 컸다) — 인라인의 산
-              버튼과 같은 작은 원형으로 조작부 배속 무리 끝에 앉는다. */}
-          {big && typeof grid.imageId === "number" && grid.image ? (
-            <button
-              type="button" className="scr-motion-btn scr-motion-terrain"
-              onClick={() => { setPlaying(false); setTerrainOpen(true); }}
-              aria-label="지형 수정" title="지형 수정"
-            >
-              <Mountain size={12} />
-            </button>
-          ) : null}
         </span>
         {/* 옛 스냅 타임라인의 재생 버튼과 같은 꼴(요청) — 46px 완전 원, 속 채운 삼각형. */}
         <button

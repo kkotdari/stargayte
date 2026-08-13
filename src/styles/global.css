@@ -11159,6 +11159,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-cap-line[data-on="true"] { visibility: visible; }
 .scr-motion-cap-time { color: var(--dim); font-variant-numeric: tabular-nums; margin-right: 4px; }
 .scr-motion-bar { display: flex; align-items: center; gap: 6px; }
+/* 보기 설정 줄(요청: 컬러·시점·유닛크기·지형편집은 윗줄로 따로). */
+.scr-motion-viewrow { flex-wrap: wrap; justify-content: flex-end; margin-bottom: 2px; }
 /* 아랫줄(요청: 버튼 전부 정원, 재생은 예전처럼 크고 가운데) — [배속 | 재생 | 시간] 세 칸
    그리드로, 재생이 줄의 정중앙에 선다. */
 .scr-motion-bar-controls {
@@ -11244,6 +11246,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    확대 배율(--mk)을 글자와 똑같이 따른다. 색도 currentColor 그대로다.
    그림자도 유닛처럼 얇게(요청: "건물도 약간 그림자 유닛처럼"). */
 .scr-motion-shape-svg {
+  /* 뷰박스 밖도 그린다(지적: 넥서스 앞 기둥 실종) — 시각 밀림·바깥 롤로 16칸을 살짝
+     넘는 꼭대기·기둥이 잘려 나갔다. */
+  overflow: visible;
   display: inline-block; width: 1em; height: 1em; vertical-align: -0.12em;
   filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.6));
 }
