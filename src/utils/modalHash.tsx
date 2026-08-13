@@ -13,15 +13,27 @@ import { useEffect, useRef } from "react";
      <ModalHash hash={`member-${member.id}`} onClose={onClose} />
    (조건부 렌더 속에서도 안전하게 훅이 돌도록 컴포넌트로 감쌌다.) */
 
+/* StrictMode(개발)는 마운트→정리→재마운트를 일부러 한 번 더 돈다 — 정리에서 곧장
+ * history.back()을 쏘면 그 비동기 복원이 재마운트 '뒤'에 도착해, 방금 연 모달을
+ * popstate가 닫아 버렸다(지적: 모든 모달이 열렸다 바로 닫힘). 복원을 잠깐 유예해 두고,
+ * 같은 해시가 곧바로 다시 마운트되면 복원을 취소하는 것으로 재마운트를 삼킨다. */
+const pendingRestore = new Map<string, number>();
+
 export function useModalHash(hash: string, onClose: () => void): void {
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   useEffect(() => {
     const tag = `#${hash}`;
-    // 앞으로가기로 이미 해시가 서 있으면(재열림) 또 얹지 않는다 — 두 겹이 되면
-    // 뒤로가기가 두 번 필요해진다.
-    const pushed = window.location.hash !== tag;
-    if (pushed) window.history.pushState({ scrModal: hash }, "", tag);
+    const pending = pendingRestore.get(hash);
+    if (pending !== undefined) {
+      // 재마운트 — 방금 예약된 주소 복원을 취소하는 것이 곧 '다시 얹기'다.
+      window.clearTimeout(pending);
+      pendingRestore.delete(hash);
+    } else if (window.location.hash !== tag) {
+      // 앞으로가기로 이미 해시가 서 있으면(재열림) 또 얹지 않는다 — 두 겹이 되면
+      // 뒤로가기가 두 번 필요해진다.
+      window.history.pushState({ scrModal: hash }, "", tag);
+    }
     let closedByPop = false;
     const onPop = () => {
       // 내 해시가 걷혔다 — 뒤로가기(또는 앞으로가기로 딴 데 감)다. 화면도 닫는다.
@@ -34,8 +46,13 @@ export function useModalHash(hash: string, onClose: () => void): void {
     return () => {
       window.removeEventListener("popstate", onPop);
       // X·저장 등 화면 쪽 닫기 — 얹은 해시가 아직 주소에 있으면 한 칸 되돌려 주소를
-      // 화면과 맞춘다(안 맞추면 다음 뒤로가기가 헛돈다).
-      if (!closedByPop && window.location.hash === tag) window.history.back();
+      // 화면과 맞춘다. 되돌리기는 위 유예를 거친다(StrictMode 재마운트 삼키기).
+      if (!closedByPop && window.location.hash === tag) {
+        pendingRestore.set(hash, window.setTimeout(() => {
+          pendingRestore.delete(hash);
+          if (window.location.hash === tag) window.history.back();
+        }, 60));
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hash]);
