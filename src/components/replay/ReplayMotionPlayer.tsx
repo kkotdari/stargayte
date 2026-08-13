@@ -3227,13 +3227,16 @@ export default function ReplayMotionPlayer({
                      따라(요청): 생산 = 테란 ⏳ · 저그 알 🥚 · 프로토스 소환 ✨, 연구 =
                      테란 🧪 · 저그 유전자 🧬 · 프로토스 🔮(좀 더 고급). */
                   const jobRace = bases.find((b) => b.key === raw)?.race;
-                  /* 요청: 건설 = 테란 망치 🔨 · 프로토스 소환 동그라미 💫 · 저그 번데기
-                     고치 🐛, 생산 소환은 소용돌이 시공 🌀, 업그레이드는 전부 반짝이 ✨. */
+                  /* 요청: 건설 = 테란 🔨 · 프로토스 💫 · 저그 🐛. 생산 = 테란 훈련(공부하는
+                     사람) 🧑‍🎓 · 프로토스 소용돌이 소환 🌀 · 저그 알 🥚. 업그레이드 =
+                     테란 실험 🧪 · 저그 진화 유전자 🧬 · 프로토스 반짝이 ✨. */
                   const job = raising
                     ? (jobRace === "저그" ? "🐛" : jobRace === "프로토스" ? "💫" : "🔨")
                     : producing && !afloat
-                      ? (jobRace === "저그" ? "🥚" : jobRace === "프로토스" ? "🌀" : "⏳")
-                      : researching && !afloat ? "✨" : null;
+                      ? (jobRace === "저그" ? "🥚" : jobRace === "프로토스" ? "🌀" : "🧑‍🎓")
+                      : researching && !afloat
+                        ? (jobRace === "저그" ? "🧬" : jobRace === "프로토스" ? "✨" : "🧪")
+                        : null;
                   if (!job) return null;
                   return <span className="scr-motion-raising scr-motion-job">{job}</span>;
                 })()}
