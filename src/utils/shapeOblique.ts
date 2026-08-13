@@ -91,3 +91,137 @@ export const capScaleOf = (dir: RadialDir): number =>
 function r2(v: number): number {
   return Math.round(v * 100) / 100;
 }
+
+/* ── 3D 투영 엔진(요청: 고도화 — 모든 유닛·건물에 적용할 준비) ────────────────────
+   손으로 좌표를 깎는 대신, 모형을 3D로 기술하면 표준 시점으로 투영해 면 목록을 만들어
+   준다. 모형 공간: x 오른쪽 · y 앞(시청자 쪽) · z 위, 단위는 뷰박스 칸(16×16), 지면
+   원점은 도형 발밑 가운데다.
+
+   투영 = 요잉(모형을 z축으로 YAW_DEG만큼) → 피칭(내려다보기: 앞뒤가 GROUND_SQUASH로
+   눌리고 높이는 Z_SCALE로 선다) → 화면 (ORIGIN_X, ORIGIN_Y) 평행이동.
+
+   쓰는 법 — 도형 하나는 대개 이렇게 조립한다:
+     const faces: ShapeFace[] = [
+       ...boxFaces3(0, 0, 6, 4, 3),            // 몸통 상자
+       ...cylinderFaces3(0, 0, 2, 5),          // 가운데 원통
+       ...limbFaces(-20, 5, 1.8),              // 방사 다리(단면 보임은 각도가 정한다)
+     ];
+   각 프리미티브가 몸통·윗면·옆면(·단면)을 표준 농도로 겹쳐 준다. 손 튜닝이 필요하면
+   반환된 면의 패스를 그대로 다듬으면 된다. */
+
+/** 표준 시점 상수 — 요잉 −20°(시계), 피칭 +(내려다보기). */
+export const VIEW = {
+  yawDeg: -20,
+  /** 앞뒤(깊이)의 화면 눌림 — 바닥 원의 납작비와 같다. */
+  squash: GROUND_SQUASH,
+  /** 높이(z)의 화면 배율 — cos(내려다보는 각) ≈ 0.89. */
+  zScale: 0.89,
+  /** 화면 원점 — 발밑 가운데가 앉는 자리. */
+  originX: 8,
+  originY: 12.6,
+} as const;
+
+/** 모형 좌표 (x,y,z) → 화면 [sx, sy]. y(앞)는 아래로, z(위)는 위로 간다. */
+export function project(x: number, y: number, z: number): [number, number] {
+  const th = (VIEW.yawDeg * Math.PI) / 180;
+  const c = Math.cos(th);
+  const sn = Math.sin(th);
+  const rx = x * c + y * sn;
+  const ry = -x * sn + y * c;
+  return [r2(VIEW.originX + rx), r2(VIEW.originY + ry * VIEW.squash - z * VIEW.zScale)];
+}
+
+/** 3D 꼭짓점 목록 → 닫힌 직선 패스. (곡선이 필요하면 결과 좌표를 Q로 이어 다듬는다.) */
+export function polyPath3(pts: [number, number, number][]): string {
+  const s = pts.map(([x, y, z], i) => {
+    const [sx, sy] = project(x, y, z);
+    return `${i === 0 ? "M" : "L"}${sx} ${sy}`;
+  }).join(" ");
+  return `${s} Z`;
+}
+
+/** 지면과 평행한 원(높이 z) — 화면에선 납작 타원. */
+export function discPath3(cx: number, cy: number, z: number, r: number): string {
+  const [sx, sy] = project(cx, cy, z);
+  return groundEllipse(sx, sy, r, r * VIEW.squash);
+}
+
+/** 세운 상자 — 바닥 중심 (cx,cy), 가로 w(x)·세로 d(y)·높이 h. 표준 시점에서는 앞면과
+ *  오른면이 보인다: 몸통(앞면+오른면+윗면 실루엣) · 윗면 밝게 · 오른면 어둡게. */
+export function boxFaces3(
+  cx: number, cy: number, w: number, d: number, h: number,
+): ShapeFace[] {
+  const hw = w / 2;
+  const hd = d / 2;
+  // 바닥 네 모서리(모형 공간) — 앞왼·앞오른·뒤오른·뒤왼.
+  const fl: [number, number] = [cx - hw, cy + hd];
+  const fr: [number, number] = [cx + hw, cy + hd];
+  const br: [number, number] = [cx + hw, cy - hd];
+  const bl: [number, number] = [cx - hw, cy - hd];
+  const top = polyPath3([
+    [fl[0], fl[1], h], [fr[0], fr[1], h], [br[0], br[1], h], [bl[0], bl[1], h],
+  ]);
+  const front = polyPath3([
+    [fl[0], fl[1], h], [fr[0], fr[1], h], [fr[0], fr[1], 0], [fl[0], fl[1], 0],
+  ]);
+  const right = polyPath3([
+    [fr[0], fr[1], h], [br[0], br[1], h], [br[0], br[1], 0], [fr[0], fr[1], 0],
+  ]);
+  return [bodyFace(`${front} ${right} ${top}`), sideFace(right), topFace(top)];
+}
+
+/** 세운 원통 — 바닥 중심 (cx,cy), 반지름 r, 높이 h. 몸통 + 밝은 윗면 + 오른쪽 세로 음영. */
+export function cylinderFaces3(
+  cx: number, cy: number, r: number, h: number,
+): ShapeFace[] {
+  const [bx, by] = project(cx, cy, 0);
+  const [, ty] = project(cx, cy, h);
+  const ry = r * VIEW.squash;
+  const body = `M${r2(bx - r)} ${r2(ty)} L${r2(bx + r)} ${r2(ty)} L${r2(bx + r)} ${r2(by)}`
+    + `a${r2(r)} ${r2(ry)} 0 1 1-${r2(r * 2)} 0Z`;
+  const shade = `M${r2(bx + r * 0.35)} ${r2(ty)} L${r2(bx + r)} ${r2(ty)} L${r2(bx + r)} ${r2(by)}`
+    + `a${r2(r)} ${r2(ry)} 0 0 1-${r2(r * 0.65)} ${r2(ry * 0.92)}Z`;
+  return [bodyFace(body), sideFace(shade, OP.sideSoft), topFace(groundEllipse(bx, ty, r, ry))];
+}
+
+/** 방사형 다리(수평 반원통) — 평면각 angleDeg(0=시청자 쪽, +는 오른쪽), 뿌리 거리 r0,
+ *  길이 len, 폭 w. 단면(동굴 입구)의 보임은 각도가 정한다(요잉이 이미 계산에 들어간다):
+ *  실효각 |β| < 55°면 앞(단면 크게), < 100°면 옆(작게), 그 너머는 뒤(없음). 뒤로 뻗는
+ *  다리는 몸통에 가려질 수 있으니 부르는 쪽이 그릴지 말지를 정한다. */
+export function limbFaces(
+  angleDeg: number, len: number, w: number, r0 = 1.6, capOpen = true,
+): ShapeFace[] {
+  const a = ((angleDeg + VIEW.yawDeg) * Math.PI) / 180;
+  const dx = Math.sin(a);
+  const dy = Math.cos(a); // +면 시청자 쪽
+  const rootX = dx * r0;
+  const rootY = dy * r0;
+  const tipX = dx * (r0 + len);
+  const tipY = dy * (r0 + len);
+  // 다리 진행과 직각인 반폭 벡터(지면 위).
+  const nx = Math.cos(a) * (w / 2);
+  const ny = -Math.sin(a) * (w / 2);
+  const hRoot = w * 0.62; // 뿌리 쪽 등 높이
+  const hTip = w * 0.5;
+  const body = polyPath3([
+    [rootX - nx, rootY - ny, hRoot],
+    [tipX - nx, tipY - ny, hTip],
+    [tipX + nx, tipY + ny, hTip],
+    [rootX + nx, rootY + ny, hRoot],
+    [rootX + nx, rootY + ny, 0],
+    [tipX + nx, tipY + ny, 0],
+    [tipX - nx, tipY - ny, 0],
+    [rootX - nx, rootY - ny, 0],
+  ]);
+  const faces: ShapeFace[] = [bodyFace(body)];
+  const beta = Math.abs(angleDeg + VIEW.yawDeg);
+  if (capOpen && beta < 100) {
+    // 단면 반원 — 앞이면 꽉 차게, 옆이면 작게(capScaleOf와 같은 눈금).
+    const scale = beta < 55 ? 1 : 0.6;
+    const [c1x, c1y] = project(tipX - nx * scale, tipY - ny * scale, 0);
+    const [c2x, c2y] = project(tipX + nx * scale, tipY + ny * scale, 0);
+    const rr = (Math.hypot(c2x - c1x, c2y - c1y) / 2) * 1.05;
+    faces.push(capFace(`M${c1x} ${c1y} A${r2(rr)} ${r2(rr * 0.95)} 0 0 1 ${c2x} ${c2y} Z`));
+  }
+  return faces;
+}
