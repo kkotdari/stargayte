@@ -2690,16 +2690,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(capFace(polyPath3([[-0.5, 2.4, 3.5], [0.5, 2.4, 3.5], [0.35, 2.65, 3.3], [-0.35, 2.65, 3.3]]), 0.42));
     return out;
   },
-  /* 디파일러(단순화) — 겹돔 혹등(가운데 높음) + 앞 낮은 머리와 긴 더듬이 한 쌍 +
-     짧은 꼬리. */
+  /* 디파일러(정정: 리버 같았다) — 겹돔 줄 대신 곤충 실루엣: 옆으로 뻗는 다리 여섯,
+     낮고 넓은 몸+뒤 혹, 작은 머리와 긴 더듬이, 위로 말린 꼬리침. */
   defiler: () => [
-    ...hornFaces(0, -2.6, 3.2, 0.3, -3.6, 3.6, 0.45),
-    ...domeFaces3(0, -1.2, 1.6, 1.5, 3.2),
-    ...domeFaces3(0, 0.2, 1.8, 2.2, 3.2),
-    ...domeFaces3(0, 1.6, 1.2, 1, 3.1),
-    ...domeFaces3(0, 2.4, 0.8, 0.6, 3),
-    ...hornFaces(0.25, 2.9, 3.5, 1.6, 4.4, 4.8, 0.2),
-    ...hornFaces(-0.25, 2.9, 3.5, -1.6, 4.4, 4.8, 0.2),
+    ...hornFaces(-1.2, -1.2, 3, -2.5, -1.7, 0.4, 0.4),
+    ...hornFaces(-1.4, 0, 3, -2.8, 0, 0.4, 0.4),
+    ...hornFaces(-1.2, 1.2, 3, -2.5, 1.7, 0.4, 0.4),
+    ...hornFaces(1.2, -1.2, 3, 2.5, -1.7, 0.4, 0.4),
+    ...hornFaces(1.4, 0, 3, 2.8, 0, 0.4, 0.4),
+    ...hornFaces(1.2, 1.2, 3, 2.5, 1.7, 0.4, 0.4),
+    ...domeFaces3(0, 0.3, 1.9, 1.3, 3),
+    ...domeFaces3(0, -1.3, 1.5, 1.7, 3.1),
+    ...domeFaces3(0, 1.9, 0.7, 0.55, 3),
+    ...hornFaces(0.25, 2.4, 3.4, 1.7, 4.5, 4.6, 0.18),
+    ...hornFaces(-0.25, 2.4, 3.4, -1.7, 4.5, 4.6, 0.18),
+    ...hornFaces(0, -2.5, 3.4, 0.2, -3.4, 5, 0.4),
   ],
 
   /* 오버로드 — 풍선 몸통(요잉 불변) + 곤충 다리 셋(요청: 촉수·칼이 아니라 무릎이 꺾인
@@ -3676,6 +3681,29 @@ export default function ReplayMotionPlayer({
       el.removeEventListener("touchcancel", onTE);
     };
   }, []);
+  /* 건물 자리 회피(요청: 밟고 지나가지 않고 돌아간다) — 서 있는 건물 발자국(+여유
+     0.5타일) 안으로 들어온 유닛 자리는 가장 가까운 변 밖으로 밀어낸다. 선분이 발자국을
+     가로지르면 안쪽 구간이 변을 따라 미끄러져, 돌아가는 걸음으로 보인다. */
+  const dodge = (px: number, py: number): [number, number] => {
+    for (const [bs, bx2, by2, bu, , g2, liftAt2] of motion.builds) {
+      if (bs > t) continue;
+      const gone = g2 ?? 0;
+      if (gone > 0 && t >= gone) continue;
+      if (liftAt2 && t >= liftAt2) continue;
+      const [fw2, fh2] = FOOTPRINT[bu] ?? [3, 2];
+      const cx2 = bx2 + footDx(bu);
+      const cy2 = by2 + footDy(bu);
+      const hw = fw2 / 2 + 0.5;
+      const hh = fh2 / 2 + 0.5;
+      const dx2 = px - cx2;
+      const dy2 = py - cy2;
+      if (Math.abs(dx2) < hw && Math.abs(dy2) < hh) {
+        if (hw - Math.abs(dx2) < hh - Math.abs(dy2)) px = cx2 + (dx2 >= 0 ? hw : -hw);
+        else py = cy2 + (dy2 >= 0 ? hh : -hh);
+      }
+    }
+    return [px, py];
+  };
   /* 유닛 방향(지적: 멈추면 정면으로 돌아가 어색) — 조금 전이 아니라 '마지막으로 움직인'
      방향을 문다: 0.8초 전부터 점점 멀리(최대 15초) 되짚어 처음 잡히는 변위의 방향이다. */
   const headingOf = (walk: TrackPt[], pos: { x: number; y: number }): number => {
@@ -4314,36 +4342,20 @@ export default function ReplayMotionPlayer({
         onPointerUp={onMapPointerUp}
         onPointerCancel={onMapPointerUp}
         style={{
-          aspectRatio: `${grid.width} / ${grid.height}`,
+          /* 입체 보기(재구성: CSS 3D 빌보드가 브라우저 따라 누워 보임) — 바닥(자리·그림)만
+             세로로 누르고, 마커는 눌리지 않은 채 서 있는 2.5D. */
+          aspectRatio: `${grid.width} / ${grid.height * (pitched ? 0.62 : 1)}`,
           ...(zoom > 1 || pitched ? { overflow: "hidden" } : {}),
-          /* 원근은 부모 속성으로(수리: transform 함수형 perspective는 브라우저에 따라
-             자식 preserve-3d 합성이 깨져 빌보드가 안 서고 다 누워 보였다). */
-          ...(pitched ? { perspective: "900px" } : {}),
           ...(zoom > 1 ? { cursor: dragRef.current ? "grabbing" : "grab" } : {}),
         }}
       >
         {/* 렌즈 상자 — PC 휠 줌(요청)이 이 층을 통째로 키운다(마커·자취까지 같이). */}
         <div
           className="scr-motion-lens"
-          style={(() => {
-            /* 입체 보기(정정: 원근법 적용) — 렌즈를 perspective+rotateX로 눕히고, 확대·
-               이동(zoom·pan)은 눕힌 판 위에서 움직인다. 서 있는 마커는 CSS 빌보드
-               (scr-motion-pitched 규칙)가 도로 세운다. */
-            /* 가까운 변까지 다 담기(지적: 앞쪽이 잘림) — 원근에서 아래(가까운) 변이
-               1/(1−sinθ·h/2P)배로 넓어지므로, 그 역수만큼 미리 줄여 맵 상자 안에
-               통째로 들어오게 한다(3% 여유). */
-            const mapH = mapRef.current?.clientHeight ?? 600;
-            const fit = Math.min(1, ((900 - Math.sin((38 * Math.PI) / 180) * (mapH / 2)) / 900) * 0.97);
-            const tf = [
-              pitched ? `rotateX(38deg) scale(${fit.toFixed(3)})` : "",
-              zoom > 1 ? `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` : "",
-            ].filter(Boolean).join(" ");
-            return tf === "" ? undefined : {
-              transform: tf,
-              transformOrigin: "center",
-              ...(pitched ? { transformStyle: "preserve-3d" as const } : {}),
-            };
-          })()}
+          style={zoom > 1 ? {
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transformOrigin: "center",
+          } : undefined}
         >
         {grid.image
           ? <img className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`} draggable={false} />
@@ -5102,7 +5114,7 @@ export default function ReplayMotionPlayer({
                     cloaked && "scr-motion-cloaked",
                   )}
                   style={{
-                    left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
+                    ...(() => { const [ax3, ay3] = dodge(pos.x, pos.y); return { left: pct(ax3, grid.width), top: pct(ay3, grid.height) }; })(),
                     zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
                     ...glyphStyle(p.raw, team),
                   }}
@@ -5174,7 +5186,7 @@ export default function ReplayMotionPlayer({
                     cloaked && "scr-motion-cloaked",
                   )}
                   style={{
-                    left: pct(pos.x + dx, grid.width), top: pct(pos.y + dy, grid.height),
+                    ...(() => { const [ax3, ay3] = dodge(pos.x + dx, pos.y + dy); return { left: pct(ax3, grid.width), top: pct(ay3, grid.height) }; })(),
                     zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
                     ...glyphStyle(p.raw, team),
                   }}
@@ -5309,7 +5321,7 @@ export default function ReplayMotionPlayer({
                     team === 2 ? "scr-motion-team2" : "scr-motion-team1",
                   )}
                   style={{
-                    left: pct(pos.x + dx, grid.width), top: pct(pos.y + dy, grid.height),
+                    ...(() => { const [ax3, ay3] = dodge(pos.x + dx, pos.y + dy); return { left: pct(ax3, grid.width), top: pct(ay3, grid.height) }; })(),
                     // 겹침 차례는 마지막 명령 시각(지적).
                     zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
                     ...glyphStyle(p.raw, team),
@@ -5429,7 +5441,7 @@ export default function ReplayMotionPlayer({
                   team === 2 ? "scr-motion-team2" : "scr-motion-team1",
                 )}
                 style={{
-                  left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
+                  ...(() => { const [ax3, ay3] = dodge(pos.x, pos.y); return { left: pct(ax3, grid.width), top: pct(ay3, grid.height) }; })(),
                   // 겹침 차례는 마지막 명령 시각(지적).
                   zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
                   ...(activeNow ? chipStyle(p.raw, team) : glyphStyle(p.raw, team)),
