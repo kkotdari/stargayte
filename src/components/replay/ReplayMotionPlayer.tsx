@@ -3923,19 +3923,31 @@ export default function ReplayMotionPlayer({
 
   /* 시계 — rAF로 게임 시간 t를 배속만큼 민다. state로 두는 이유는 매 프레임 그리는 것들
      (자취·건물·마법)이 전부 t의 함수라서다. */
-  const clockRef = useRef<{ raf: number; last: number } | null>(null);
+  /* 그리기는 10Hz다(실측: 중반 4대4는 마커 span만 750개라 한 리렌더가 수십~수백 ms —
+     rAF마다 밀면 재생 자체가 슬라이드가 된다. 프로덕션 빌드 실측 5.3fps→10Hz 상한이면
+     리렌더 수가 프레임 예산 안으로 들어온다). 시간은 매 틱 어김없이 쌓으므로(accRef)
+     재생 속도는 그대로고, 화면만 0.1초 걸음으로 따라온다 — 미니맵 걸음(초당 몇 타일)
+     에서는 눈으로 구분이 안 되는 간격이다. */
+  const clockRef = useRef<{ raf: number; last: number; acc: number; drawn: number } | null>(null);
   useEffect(() => {
     if (!playing || !active) return undefined;
+    const DRAW_GAP_MS = 100;
     const tick = (now: number) => {
       const c = clockRef.current;
       /* 한 틱 상한 — 브라우저가 rAF를 멈췄다 되살리면(백그라운드 탭) dt가 자리 비운
          시간 전체가 돼, 돌아온 순간 그만큼을 한 번에 건너뛴다. 위의 정지가 대부분 막지만
          blur가 안 오는 경우(다른 모니터로 시선만 이동)를 위한 이중 잠금이다. */
       const dt = c ? Math.min((now - c.last) / 1000, 0.5) : 0;
-      clockRef.current = { raf: requestAnimationFrame(tick), last: now };
-      if (dt > 0) {
+      const acc = (c?.acc ?? 0) + dt;
+      const drawnAt = c?.drawn ?? 0;
+      const draw = acc > 0 && now - drawnAt >= DRAW_GAP_MS;
+      clockRef.current = {
+        raf: requestAnimationFrame(tick), last: now,
+        acc: draw ? 0 : acc, drawn: draw ? now : drawnAt,
+      };
+      if (draw) {
         setT((prev) => {
-          const next = prev + dt * speed;
+          const next = prev + acc * speed;
           if (next >= total) {
             setPlaying(false);
             setDone(true);
@@ -3945,7 +3957,7 @@ export default function ReplayMotionPlayer({
         });
       }
     };
-    clockRef.current = { raf: requestAnimationFrame(tick), last: performance.now() };
+    clockRef.current = { raf: requestAnimationFrame(tick), last: performance.now(), acc: 0, drawn: 0 };
     return () => {
       if (clockRef.current) cancelAnimationFrame(clockRef.current.raf);
       clockRef.current = null;
