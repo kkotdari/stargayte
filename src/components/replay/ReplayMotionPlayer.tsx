@@ -1471,15 +1471,8 @@ export default function ReplayMotionPlayer({
     el.style.setProperty("--p", `${total > 0 ? (t / total) * 100 : 0}%`);
   }, [t, total]);
 
-  /* PC에서 보는 것은 확대가 기본이다(요청: 경기 결과는 최대화 화면이 기본, 줄인 게
-     옵션) — 재생을 시작하는 순간 확대로 연다. 사람이 축소를 눌렀으면 그 뜻을 기억해
-     이번 카드에선 다시 안 키운다. 카드 목록이라 열자마자 전부 확대할 수는 없어(포털이
-     겹친다) '재생 시작'을 문으로 쓴다. */
-  const shrunk = useRef(false);
-  const bigByDefault = () => {
-    if (!shrunk.current && typeof window !== "undefined"
-      && window.matchMedia?.("(min-width: 1160px)").matches) setBig(true);
-  };
+  /* (삭제·요청) PC 축소 장면 — 상세가 늘 확대창으로 열리면서 "재생 시작 시 확대"와
+     "축소 기억"(shrunk·bigByDefault)은 통째로 걷었다. */
 
   /* PC 상세는 확대창이 곧 화면이다(요청: 기존 상세 미사용) — 상세 팝업 안(onDetailClose가
      온 자리)에서 마운트되자마자 확대창을 연다. 묶음 상세에 카드가 여럿이면 첫 판만 연다
@@ -1496,7 +1489,6 @@ export default function ReplayMotionPlayer({
   }, []);
   const closeBig = () => {
     if (onDetailClose) { onDetailClose(); return; }
-    shrunk.current = true;
     setBig(false);
   };
 
@@ -3035,7 +3027,6 @@ export default function ReplayMotionPlayer({
         <div className="scr-motion-expand-row">
           <button
             type="button" className="scr-motion-btn scr-motion-expand"
-            // 사람이 줄였으면 기억한다(위 shrunk 주석) — 재생을 다시 눌러도 안 커진다.
             onClick={() => { if (big) closeBig(); else setBig(true); }}
             aria-label={big ? "닫기" : "크게 보기"} title={big ? "닫기" : "크게 보기"}
           >
@@ -3103,8 +3094,7 @@ export default function ReplayMotionPlayer({
         <button
           type="button" className="scr-motion-play"
           onClick={() => {
-            if (done) { setT(0); setDone(false); setPlaying(true); bigByDefault(); return; }
-            if (!playing) bigByDefault();
+            if (done) { setT(0); setDone(false); setPlaying(true); return; }
             setPlaying((v) => !v);
           }}
           aria-label={playing ? "일시정지" : "재생"}
