@@ -1294,22 +1294,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...domeFaces3(3.3, 1.6, 1.1, 0.9, 1.1),
     ];
   },
-  /* 실드 배터리(정정) — 작은 본체를 가지 같은 다리들이 빙 두른 형태. */
+  /* 실드 배터리(정정 둘) — 몸은 얇게, 다리는 빨대: 가늘게 수평으로 뻗다가 끝이
+     구부러져 땅에 꽂힌다. */
   sbattery: () => {
     const leg = (ang: number): ShapeFace[] => {
       const a = (ang * Math.PI) / 180;
-      // 다리는 수평으로(지적).
-      return hornFaces(
-        Math.sin(a) * 1.1, Math.cos(a) * 1.1, 1.7,
-        Math.sin(a) * 3.5, Math.cos(a) * 3.5, 1.5, 0.6,
-      );
+      const sx = Math.sin(a);
+      const sy = Math.cos(a);
+      return [
+        ...hornFaces(sx * 1.1, sy * 1.1, 1.4, sx * 3.2, sy * 3.2, 1.35, 0.42),
+        ...hornFaces(sx * 3.2, sy * 3.2, 1.35, sx * 3.7, sy * 3.7, 0, 0.38),
+      ];
     };
-    const [gx2, gy2] = project(0, 0, 3);
+    const [gx2, gy2] = project(0, 0, 2.2);
     return [
       ...leg(157), ...leg(203), ...leg(112), ...leg(248),
-      ...cylinderFaces3(0, 0, 1.5, 1.5),
-      ...domeFaces3(0, 0, 1.5, 1.4, 1.5),
-      topFace(groundEllipse(gx2, gy2, 0.6, 0.45), 0.4),
+      ...cylinderFaces3(0, 0, 1.5, 1),
+      ...domeFaces3(0, 0, 1.5, 0.95, 1),
+      topFace(groundEllipse(gx2, gy2, 0.55, 0.4), 0.4),
       ...leg(67), ...leg(-67), ...leg(22), ...leg(-22),
     ];
   },
@@ -1335,10 +1337,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       sideFace(polyPath3([[2.4, -1.6, 2.4], [4, -2.9, 6.2], [3, -0.9, 4.2], [2, -0.7, 2.8]]), 0.2),
       ...hornFaces(0, -2.8, 2.4, 0, -4.4, 6.2, 1.1),
       // 가지 사이 물갈퀴 천막(지적) — 이웃 돛가시 끝을 잇는 처진 막.
-      bodyFace(polyPath3([[-4.2, -2.5, 7], [0, -4.2, 5.9], [0, -2.9, 2.4], [-2.6, -1.6, 2.5]])),
-      sideFace(polyPath3([[-4.2, -2.5, 7], [0, -4.2, 5.9], [0, -2.9, 2.4], [-2.6, -1.6, 2.5]]), 0.16),
-      bodyFace(polyPath3([[4, -2.9, 6.5], [0, -4.2, 5.9], [0, -2.9, 2.4], [2.4, -1.7, 2.5]])),
-      sideFace(polyPath3([[4, -2.9, 6.5], [0, -4.2, 5.9], [0, -2.9, 2.4], [2.4, -1.7, 2.5]]), 0.2),
+      // 갈퀴막은 바닥까지 잇는다(지적).
+      bodyFace(polyPath3([[-4.2, -2.5, 7], [0, -4.2, 5.9], [-0.6, -3.6, 0.3], [-3.4, -2.2, 0.3]])),
+      sideFace(polyPath3([[-4.2, -2.5, 7], [0, -4.2, 5.9], [-0.6, -3.6, 0.3], [-3.4, -2.2, 0.3]]), 0.16),
+      bodyFace(polyPath3([[4, -2.9, 6.5], [0, -4.2, 5.9], [0.6, -3.6, 0.3], [3.2, -2.4, 0.3]])),
+      sideFace(polyPath3([[4, -2.9, 6.5], [0, -4.2, 5.9], [0.6, -3.6, 0.3], [3.2, -2.4, 0.3]]), 0.2),
       // 앞 똬리 꼬리 — 마디 돔 줄 + 끝 입.
       ...domeFaces3(-1.2, 2.6, 1, 0.85),
       ...domeFaces3(0, 3, 0.9, 0.75),
@@ -1955,12 +1958,6 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
 
   /* ── 유닛 상징물(요청: 유닛 마커도 방향을 갖게 기본 3D화) — 정면은 +y. 세밀한 움직임
      대신 정체를 말하는 상징물이다. 회전 중심(8,8) 근처에 몸이 오도록 공중에 띄워 깎는다. */
-  /* 기본 유닛 — 앞이 보이는 화살 쐐기 + 몸 혹. */
-  wedge: () => [
-    bodyFace(polyPath3([[0, 4.6, 3.4], [2.6, -2.6, 3.4], [0, -1, 3.4], [-2.6, -2.6, 3.4]])),
-    topFace(polyPath3([[0, 4.6, 3.4], [2.6, -2.6, 3.4], [0, -1, 3.4], [-2.6, -2.6, 3.4]]), 0.16),
-    ...domeFaces3(0, -0.4, 1.6, 1.3, 3.4),
-  ],
   /* 메딕 — 원통 몸 + 머리 + 앞에 든 방패(요청). */
   inf: () => {
     const [px2, py2] = project(1.3, 1.4, 4.9);
@@ -2287,9 +2284,9 @@ const UNIT_3D: Record<string, string> = {
 /** 종족 → 일꾼 상징물 — 유닛 이름이 없는 일꾼 점(정찰·채굴)용. */
 const workerKindOf = (race?: string): string =>
   race === "테란" ? "scv" : race === "저그" ? "drone" : "probe";
-/* 갈래 대표 모델 폐기(요청) — 전 유닛이 제 모델을 가지니, 표에 없는 낯선 유닛만
-   기본 쐐기로 남긴다. */
-const unitMarkerKind = (u: string): string => UNIT_3D[u] ?? "wedge";
+/* 기본 쐐기도 폐기(요청) — 표에 없는 낯선 유닛은 그 종족의 기본 보병 꼴로 그린다. */
+const unitMarkerKind = (u: string, race?: string): string =>
+  UNIT_3D[u] ?? (race === "테란" ? "gunner" : race === "저그" ? "zling" : "zealot");
 /* 유닛 덩치(요청: 소형/중형/대형 크기 구분) — 브루드워의 유닛 크기 분류를 따른다.
    표에 없으면 대형으로 본다(큰 것들이 표에서 빠졌을 때 눈에 띄는 쪽이 덜 틀린다). */
 const UNIT_BULK: Record<string, 0 | 1 | 2> = {
@@ -2312,7 +2309,7 @@ export const SHAPE_GALLERY: { kind: string; label: string }[] = (() => {
   for (const [kind, label] of [
     ["pool", "스포닝 풀"],
     ["ovie", "오버로드"], ["dship", "드랍십"], ["shuttle", "셔틀"],
-    ["wedge", "기본 유닛"], ["gunner", "테란 보병(총)"], ["fbat", "파이어뱃"], ["inf", "메딕"],
+    ["gunner", "테란 보병(총)"], ["fbat", "파이어뱃"], ["inf", "메딕"],
     ["zealot", "질럿"], ["dtemp", "다크 템플러"], ["goon", "드라군"],
     ["archon", "아콘"], ["darchon", "다크 아콘"],
     ["lurker", "러커"], ["defiler", "디파일러"],
@@ -4044,7 +4041,7 @@ export default function ReplayMotionPlayer({
                   }}
                 >
                   {/* 갓 나온 유닛도 상징물(요청) — 일꾼도 제 모델로 랠리까지 걷는다. */}
-                  <ShapeIcon kind={unitMarkerKind(unit)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
+                  <ShapeIcon kind={unitMarkerKind(unit, bases.find((b) => b.key === p.raw)?.race)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
                 </span>,
               );
             }
@@ -4538,7 +4535,7 @@ export default function ReplayMotionPlayer({
                     ...glyphStyle(p.raw, team),
                   }}
                 >
-                  <ShapeIcon kind={unitMarkerKind(u)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
+                  <ShapeIcon kind={unitMarkerKind(u, bases.find((b) => b.key === p.raw)?.race)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
                   {/* 전투 불꽃·사망 퍼프(요청) — 대여섯에 하나씩 불꽃, 일곱에 하나씩
                       돌아가며 퍼프(1.5초 주기 결정적 순환이라 프레임마다 안 튄다). */}
                   {fighting && di % 5 === 0 && <span className="scr-motion-fight" />}
@@ -4697,7 +4694,7 @@ export default function ReplayMotionPlayer({
                     ...glyphStyle(p.raw, team),
                   }}
                 >
-                  <ShapeIcon kind={unitMarkerKind(u)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
+                  <ShapeIcon kind={unitMarkerKind(u, bases.find((b) => b.key === p.raw)?.race)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
                   {/* 전투 불꽃·사망 퍼프(요청) — 대여섯에 하나씩 불꽃, 일곱에 하나씩
                       돌아가며 퍼프(1.5초 주기 결정적 순환이라 프레임마다 안 튄다). */}
                   {fighting && di % 5 === 0 && <span className="scr-motion-fight" />}
@@ -4827,7 +4824,12 @@ export default function ReplayMotionPlayer({
                     ? <ShapeIcon kind={race === "테란" ? "dship" : "shuttle"} flat={!pitched} className="scr-motion-ovie" />
                     : g.kind === "worker"
                       ? <ShapeIcon kind={workerKindOf(race)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
-                      : <ShapeIcon kind="wedge" rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />}
+                      : (
+                        <ShapeIcon
+                          kind={race === "테란" ? "gunner" : race === "저그" ? "zling" : "zealot"}
+                          rotDeg={hdg} flat={!pitched} className="scr-motion-troop"
+                        />
+                      )}
               </span>
             );
           });
