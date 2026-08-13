@@ -295,6 +295,13 @@ export async function analyzeMinimap(
     );
     if (solved) {
       walk.set(tryWalk);
+      /* 양방향 능선(지적: 벽이 너무 조금만 잡힘) — 96칸 격자에선 가는 벽이 바닥과 섞여
+         평균색이 바닥 가족과 같아진다. 하지만 벽은 제 주변보다 뚜렷이 밝거나(밝은 구조물)
+         어둡다(절벽 그림자) — 연결 해답 위에 그 대비를 얹어 걷어낸다. */
+      for (let i = 0; i < w * h; i += 1) {
+        if (!walk[i]) continue;
+        if (lum[i] > localAvg[i] * 1.3 || lum[i] < localAvg[i] * 0.7) walk[i] = 0;
+      }
       /* 땅 밝기 — 땅에 둘러싸인 작은 장식(풀)을 열지 판단할 기준. */
       let lsum = 0;
       let ln = 0;
