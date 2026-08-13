@@ -1661,7 +1661,7 @@ export const SHAPE_GALLERY: { kind: string; label: string }[] = (() => {
   return out;
 })();
 
-export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg, flat }: {
+export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg, flat, keepRatio }: {
   kind: string; className?: string;
   /** 뷰어의 요잉 회전(요청) — withYaw로 다시 투영한 면 목록을 그대로 그린다. */
   faces?: ShapeFace[];
@@ -1669,6 +1669,8 @@ export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg, flat 
   rotDeg?: number;
   /** 위에서 본 판(요청) — 입체 보기가 아닐 때의 지도 마커가 켠다. */
   flat?: boolean;
+  /** 원본 비율 유지(요청: 자료실에서 보는 비율 그대로 — 캔버스에 맞춰 늘리기 금지). */
+  keepRatio?: boolean;
 }) {
   const faces = facesOverride ?? (flat ? SHAPE_FACES_TOP[kind] : undefined) ?? SHAPE_FACES[kind];
   const rot = (SHAPE_ROT[kind] ?? 0) + (rotDeg ?? 0);
@@ -1677,7 +1679,7 @@ export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg, flat 
     // 비율을 정확하게). 정사각 상자(유닛 마커 등)에서는 아무 일도 안 일어난다.
     <svg
       className={cx("scr-motion-shape-svg", className)}
-      viewBox="0 0 16 16" preserveAspectRatio="none" aria-hidden
+      viewBox="0 0 16 16" preserveAspectRatio={keepRatio ? "xMidYMax meet" : "none"} aria-hidden
     >
       <g transform={rot ? `rotate(${rot} 8 8)` : undefined}>
         {faces
@@ -3216,7 +3218,7 @@ export default function ReplayMotionPlayer({
                     입체는 직접 깎은 도형만이다(지적) — 이름 없는 나머지 건물은 예전대로
                     네모, 대신 크기만 발자국에 맞춘다. */}
                 {shapeKind && text !== name
-                  ? <ShapeIcon kind={shapeKind} flat={!pitched} />
+                  ? <ShapeIcon kind={shapeKind} flat={!pitched} keepRatio />
                   : text === "■"
                     // 캔버스가 이미 발자국 비율이라(위 aspectRatio — 벡터 없으면 높이 몫도
                     // 없다) 네모는 그 상자를 그대로 채운다(CSS width/height 100%).
