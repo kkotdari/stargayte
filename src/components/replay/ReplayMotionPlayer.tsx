@@ -1313,9 +1313,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     };
     // 물고기처럼 보인다(지적) — 뒤 안테나 둘은 얇고 짧게, 아래 다리 둘은 양옆으로
     // 벌려 더 팍 내리꽂고 얇게.
-    for (const ang of [168, 192]) out.push(...spikeTo(ang, 4.6, 4.2, 0.7));
-    for (const ang of [138, 222]) out.push(...spikeTo(ang, 5.6, 0.2, 0.8));
-    for (const ang of [95, -95]) out.push(...spike(ang, 2, 0.8));
+    // 다리 전부 2/3 길이로(지적: 귀엽게).
+    for (const ang of [168, 192]) out.push(...spikeTo(ang, 3.1, 4.2, 0.7));
+    for (const ang of [138, 222]) out.push(...spikeTo(ang, 3.7, 1, 0.8));
+    for (const ang of [95, -95]) out.push(...spike(ang, 1.3, 0.8));
     /* 몸통·눈도 모델 공간(수리: 화면 공간이라 돌아도 고정돼 있었다 — 지적) — 팔각도
        눈도 요잉을 따라 함께 돈다. */
     const oct = (r: number, z: number): string => polyPath3(
@@ -1340,8 +1341,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(topFace(groundEllipse(p1x, p1y, 0.34, 0.3), 0.3));
     out.push(topFace(groundEllipse(p2x, p2y, 0.34, 0.3), 0.3));
     // 앞다리 한 쌍(정정) — 눈을 안 가리게 얼굴 밑에서, 더 가늘고 반쯤 짧게 아래로.
-    out.push(...hornFaces(-0.55, 1.7, 3.9, -0.85, 2.6, 1.6, 0.45));
-    out.push(...hornFaces(0.55, 1.7, 3.9, 0.85, 2.6, 1.6, 0.45));
+    out.push(...hornFaces(-0.55, 1.7, 3.9, -0.75, 2.3, 2.35, 0.45));
+    out.push(...hornFaces(0.55, 1.7, 3.9, 0.75, 2.3, 2.35, 0.45));
     return out;
   },
   /* 드론(정정) — 갈퀴치마는 집게 사이가 아니라 집게팔과 꼬리 사이, 양옆에 부채처럼
@@ -1387,14 +1388,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   zealot: () => [
     ...domeFaces3(0, -0.4, 2.5, 2.3, 3.4),
     ...domeFaces3(0, -1.1, 1.3, 1, 5.5),
-    ...hornFaces(1.9, 0.8, 4.4, 2.3, 5.8, 4.2, 0.75),
-    ...hornFaces(-1.9, 0.8, 4.4, -2.3, 5.8, 4.2, 0.75),
+    // 칼은 옆구리에서 아래를 향한다(지적: 위가 아니라).
+    ...hornFaces(1.9, 0.3, 4.5, 2.5, 1.4, 1, 0.7),
+    ...hornFaces(-1.9, 0.3, 4.5, -2.5, 1.4, 1, 0.7),
   ],
   /* 다크 템플러 — 검 한 자루(요청). */
   dtemp: () => [
     ...domeFaces3(0, -0.4, 2.5, 2.3, 3.4),
     ...domeFaces3(0, -1.1, 1.3, 1, 5.5),
-    ...hornFaces(1.7, 0.8, 4.4, 2.5, 6.2, 4.1, 0.8),
+    // 칼 한 자루 — 오른 옆구리에서 아래로(지적).
+    ...hornFaces(1.8, 0.3, 4.5, 2.5, 1.5, 0.9, 0.75),
   ],
   /* 드라군 — 몸통 + 네 다리(요청). 뒤 두 다리 → 몸 → 앞 두 다리. */
   goon: () => [
