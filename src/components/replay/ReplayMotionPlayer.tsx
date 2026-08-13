@@ -701,7 +701,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     };
     /* 기둥 자리 6.6 → 6.0(수리: 대각 모서리 기둥이 요잉 투영에서 뷰박스 가로(±8)를
        넘어 잘려 떨어져 나간 듯 보였다 — rx = 6.6cos20 + 6.6sin20 ≈ 8.46). */
-    const out: ShapeFace[] = [...pillar(-6, -6), ...pillar(6, -6)];
+    // 6.0 → 5.6(재지적: 왼뒤 기둥이 너무 바깥) — 받침 원반이 피라미드 모서리에 걸치게 붙인다.
+    const out: ShapeFace[] = [...pillar(-5.6, -5.6), ...pillar(5.6, -5.6)];
     out.push(...frustumFaces3(0, 0, 10.6, 10.6, 3.2, 3.2, 6.4));
     // 앞면 능선 띠 — 경사면을 따라 층층이 가로 띠.
     const half = (z: number): number => 5.3 - (5.3 - 1.6) * (z / 6.4);
@@ -734,7 +735,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ]);
       out.push(bodyFace(d), ...face(d));
     }
-    out.push(...pillar(-6, 6), ...pillar(6, 6));
+    out.push(...pillar(-5.6, 5.6), ...pillar(5.6, 5.6));
     return out;
   },
   /* 게이트웨이(실물 참고) — 낮은 사방 경사로 마당 위에 위로 뾰족한 황금 물방울 돛,
