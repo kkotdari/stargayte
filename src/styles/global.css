@@ -12891,6 +12891,103 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   0% { opacity: 0.9; scale: 0.3; }
   100% { opacity: 0; scale: 1.6; }
 }
+/* ── 특징 기술 효과들(요청) — 이름 배지 대신 실제 영역 크기의 전용 연출. 지름은
+   인라인 width가 정한다. */
+.scr-motion-castfx {
+  position: absolute; transform: translate(-50%, -50%); aspect-ratio: 1;
+  pointer-events: none; z-index: 29000;
+}
+/* 플레이그 — 검붉은 얼룩이 눌어붙었다 사그라든다. */
+.scr-fx-plague {
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 40%, rgba(190, 60, 30, 0.5) 0 18%, transparent 20%),
+    radial-gradient(circle at 65% 55%, rgba(170, 50, 25, 0.45) 0 22%, transparent 24%),
+    radial-gradient(circle at 45% 72%, rgba(200, 70, 35, 0.4) 0 15%, transparent 17%),
+    radial-gradient(circle, rgba(150, 40, 20, 0.3) 0 60%, transparent 70%);
+  animation: scr-fx-fade 6s linear forwards;
+}
+/* 인스네어 — 초록 점액 튐. */
+.scr-fx-ensnare {
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 40% 40%, rgba(120, 200, 60, 0.45) 0 30%, transparent 34%),
+    radial-gradient(circle at 62% 62%, rgba(100, 180, 50, 0.4) 0 26%, transparent 30%),
+    radial-gradient(circle, rgba(90, 170, 40, 0.3) 0 55%, transparent 65%);
+  animation: scr-fx-fade 6s linear forwards;
+}
+/* 이레디에잇 — 노란초록 발광이 맥동. */
+.scr-fx-irrad {
+  border-radius: 50%; mix-blend-mode: screen;
+  background: radial-gradient(circle, rgba(190, 255, 90, 0.55) 0%, rgba(140, 220, 60, 0.3) 45%, transparent 70%);
+  animation: scr-fx-pulse 0.8s ease-in-out infinite alternate;
+}
+/* EMP — 퍼져 나가는 파란 고리 한 번. */
+.scr-fx-emp {
+  border: 2px solid rgba(120, 190, 255, 0.8); border-radius: 50%; mix-blend-mode: screen;
+  animation: scr-fx-ring 1.5s ease-out forwards;
+}
+/* 스태시스 — 유리얼음 결정 상자. */
+.scr-fx-stasis {
+  background: linear-gradient(135deg, rgba(150, 210, 255, 0.4), rgba(90, 140, 230, 0.28));
+  border: 1px solid rgba(190, 230, 255, 0.6); border-radius: 22%;
+  animation: scr-fx-glint 1.6s ease-in-out infinite alternate;
+}
+/* 락다운 — 노란 정전기 지지직. */
+.scr-fx-lock {
+  border-radius: 50%; mix-blend-mode: screen;
+  background: radial-gradient(circle, rgba(255, 230, 120, 0.7) 0 30%, transparent 60%);
+  animation: scr-fx-zap 0.3s steps(2, jump-none) infinite;
+}
+/* 마엘스톰 — 보랏빛 파동. */
+.scr-fx-mael {
+  border-radius: 50%; mix-blend-mode: screen;
+  background: radial-gradient(circle, rgba(190, 120, 255, 0.45) 0 45%, rgba(140, 80, 220, 0.25) 65%, transparent 75%);
+  animation: scr-fx-pulse 0.5s ease-in-out 4 alternate forwards;
+}
+/* 리콜 — 도는 푸른 소용돌이. */
+.scr-fx-recall {
+  border-radius: 50%; mix-blend-mode: screen;
+  background: conic-gradient(rgba(120, 180, 255, 0.55), transparent 30%, rgba(120, 180, 255, 0.55) 50%, transparent 80%, rgba(120, 180, 255, 0.55));
+  animation: scr-fx-spin 1s linear infinite;
+}
+/* 스캐너 스윕 — 되풀이 퍼지는 흰 레이더 고리. */
+.scr-fx-scan {
+  border: 1.5px solid rgba(255, 255, 255, 0.55); border-radius: 50%; mix-blend-mode: screen;
+  animation: scr-fx-ring 2s ease-out infinite;
+}
+/* 디스럽션 웹 — 어두운 거미줄 판. */
+.scr-fx-dweb {
+  border-radius: 50%; opacity: 0.8;
+  background:
+    repeating-radial-gradient(circle, rgba(40, 40, 60, 0.4) 0 12%, rgba(70, 70, 100, 0.25) 12% 16%),
+    radial-gradient(circle, rgba(30, 30, 50, 0.45) 0 60%, transparent 72%);
+}
+@keyframes scr-fx-fade {
+  0% { opacity: 1; }
+  80% { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+@keyframes scr-fx-pulse {
+  from { opacity: 0.5; scale: 0.9; }
+  to { opacity: 1; scale: 1.05; }
+}
+@keyframes scr-fx-ring {
+  from { opacity: 0.9; scale: 0.15; }
+  to { opacity: 0; scale: 1; }
+}
+@keyframes scr-fx-glint {
+  from { opacity: 0.7; }
+  to { opacity: 1; }
+}
+@keyframes scr-fx-zap {
+  0% { opacity: 0.2; }
+  50% { opacity: 1; }
+  100% { opacity: 0.4; }
+}
+@keyframes scr-fx-spin {
+  to { rotate: 1turn; }
+}
 /* ── 다크 스웜(요청) — 갈색 반투명 구름이 우글거린다. 지름은 인라인 width(6타일). */
 .scr-motion-swarmfx {
   pointer-events: none; z-index: 24000; position: absolute;

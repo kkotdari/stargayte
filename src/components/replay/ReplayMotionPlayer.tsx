@@ -3569,7 +3569,9 @@ export default function ReplayMotionPlayer({
     })), [motion]);
   const castsNow = motion.casts.filter((c) => c[0] <= t
     && t - c[0] <= (c[3] === "Nuclear Strike" ? NUKE_FALL_SEC + 4
-      : c[3] === "Dark Swarm" ? 30 : CAST_HOLD_SEC));
+      : c[3] === "Dark Swarm" ? 30
+        : c[3] === "Disruption Web" ? 25
+          : c[3] === "Stasis Field" ? 20 : CAST_HOLD_SEC));
   /* 핵 착탄들 + 성공 판정(지적: 실패가 더 많다) — 발사가 다 착탄이 아니다(고스트가
      끊기면 불발). 착탄 시각 언저리(−2초~+90초)에 반경 안 건물이 실제로 무너진 발사만
      '터진 핵'으로 본다. 불발은 표적 점만 보이다 만다. 유닛 몰살도 터진 핵만이다. */
@@ -5043,6 +5045,30 @@ export default function ReplayMotionPlayer({
                 )}
               </span>
             );
+          }
+          {
+            /* 특징 기술 효과(요청) — 이름 배지 대신 실제 영역 크기의 전용 효과.
+               [클래스, 지름(타일)] — 영역은 인게임 어림이다. */
+            const AREA_FX: Record<string, [string, number]> = {
+              Plague: ["plague", 5], Ensnare: ["ensnare", 5], Irradiate: ["irrad", 2.5],
+              "EMP Shockwave": ["emp", 6], "Stasis Field": ["stasis", 4],
+              Lockdown: ["lock", 2.2], Maelstrom: ["mael", 5], Recall: ["recall", 4],
+              "Scanner Sweep": ["scan", 8], "Disruption Web": ["dweb", 5.5],
+            };
+            const fx = AREA_FX[tech];
+            if (fx) {
+              if (tech === "EMP Shockwave" && t - sec > 1.6) return null;
+              return (
+                <span
+                  key={`c-${i}`}
+                  className={`scr-motion-castfx scr-fx-${fx[0]}`}
+                  style={{
+                    left: pct(x, grid.width), top: pct(y, grid.height),
+                    width: pct(fx[1], grid.width),
+                  }}
+                />
+              );
+            }
           }
           if (tech === "Dark Swarm") {
             /* 다크 스웜(요청) — 갈색 반투명 구름이 우글거린다. 실제 지속(약 60초의
