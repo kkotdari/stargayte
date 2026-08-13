@@ -4932,9 +4932,12 @@ export default function ReplayMotionPlayer({
             // (요청) 착공 직후 이름 창도 걷었다 — 모델이 정체를 말한다.
             const activeBuild = false;
             // 차례 계산에서 빠졌지만(지적: 무조건 신규 건물 우선) 판정 기반은 남겨둔다.
-            void producing;
-            void researching;
             void activeBuild;
+            /* 미세 박동(요청: 유닛 뽑거나 업그레이드 중인 건물은 아주 미세하게 박동) —
+               게임 시간 1.6초 주기로 2.5%만 부풀었다 준다. 살아 일한다는 기색만 내고
+               시선을 끌 만큼은 아니다. 캔버스 전환 때 끊겼던 심장 뛰기의 계승이다. */
+            const pulse = producing || researching
+              ? 1 + 0.025 * Math.sin((t * Math.PI * 2) / 1.6) : 1;
             /* (캔버스 전환 둘째 판·요청: 건물도 캔버스로) — 이름 창·아이콘이 다 걷힌
                건물 마커는 도형 하나라, 자리·상자·차례 계산만 그대로 두고 그리기는
                unitOps로 보낸다. DOM에는 효과(전투 불꽃·마법·핵)만 남는다(요청). */
@@ -4960,7 +4963,7 @@ export default function ReplayMotionPlayer({
               // 모델 없는 부속건물 폴백 — + 하나(캔버스 전환 첫 판이 모델까지 +로 덮던
               // 것을 바로잡았다: 이제 여섯 애드온 다 모델이 있어 여긴 안전망이다).
               unitOps.push({
-                fx: fxF, fy: fyF, z, kind: "", sizePx: (pcView ? 11 : 7) * mkK,
+                fx: fxF, fy: fyF, z, kind: "", sizePx: (pcView ? 11 : 7) * mkK * pulse,
                 color, alpha, textGlyph: "+", noShadow: true,
               });
               return null;
@@ -4986,7 +4989,7 @@ export default function ReplayMotionPlayer({
               unitOps.push({
                 fx: fxF, fy: fyF, z, kind: shapeKind,
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
-                sizePx: 0, wFrac, hFrac, boxFit: "meet",
+                sizePx: 0, wFrac: wFrac * pulse, hFrac: hFrac * pulse, boxFit: "meet",
                 /* 납작 건물은 폭 기준으로 맞춘다(조사: 벙커가 유난히 작던 이유) — 납작
                    분류(FLAT_BUILDINGS)는 높이 몫(rise)이 0.12×폭뿐이라 상자가 낮고,
                    meet(min(w,h)) 규칙이 그 낮은 높이로 전체를 줄여 같은 발자국의 서플라이
@@ -4999,7 +5002,7 @@ export default function ReplayMotionPlayer({
             // 전용 도형이 없는 건물 — 발자국 80% 네모(.scr-motion-sq와 같은 채움·0.82).
             unitOps.push({
               fx: fxF, fy: fyF, z, kind: "",
-              sizePx: 0, wFrac, hFrac, boxFit: "fill",
+              sizePx: 0, wFrac: wFrac * pulse, hFrac: hFrac * pulse, boxFit: "fill",
               color, alpha: alpha * 0.82, noShadow: true,
             });
             return null;
