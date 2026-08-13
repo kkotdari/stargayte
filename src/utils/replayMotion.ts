@@ -219,6 +219,10 @@ function trackOf(
   const carrier = (o: O): boolean => o.by === "Transport" && (o.n ?? 1) === 1;
   const early = (o: O): boolean => o.frame * SECONDS_PER_FRAME < armyStartSec;
   const lone = (o: O): boolean => (o.n === 1 && o.by === undefined)
+    /* 초반 저그의 두 마리 이하 무명 선택도 오버로드로 본다(지적: 오버로드가 너무 늦게
+       출발 — 시작 오버로드를 드론과 함께 잡고 찍으면 n=2가 돼 lone에서 새고, 다음 홑
+       클릭이 올 때까지 몇 분을 풍선이 서 있었다). */
+    || (zerg && o.n !== undefined && o.n <= 2 && o.by === undefined && early(o))
     /* 옛 분석본 폴백(지적: 오버로드가 초반에 정찰을 안 한다) — n(선택 크기)이 없던
        시절 자료에선 시작 오버로드의 홑 클릭을 알 길이 없어 일꾼 정찰(spts)에 묻혔다.
        저그의 이른 무명 원거리 클릭(집에서 25타일 너머)은 오버로드 정찰로 본다. */
