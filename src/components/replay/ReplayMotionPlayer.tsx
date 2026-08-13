@@ -2455,9 +2455,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [fx2, fy2] = project(0, 0.5, 4.55);
     const apron = polyPath3([[-0.5, 1.05, 2.9], [0.5, 1.05, 2.9], [0.35, 1.2, 0.9], [-0.35, 1.2, 0.9]]);
     return [
-      ...cylinderFaces3(-0.6, -0.2, 0.5, 1.7, 0.2),
-      ...cylinderFaces3(0.6, -0.2, 0.5, 1.7, 0.2),
-      ...cylinderFaces3(0, -0.2, 1.25, 2.1, 1.9),
+      // 다리를 또렷하게(지적: 다리가 없어 헷갈림) — 벌린 두 기둥 + 둥근 발.
+      ...cylinderFaces3(-0.62, 0, 0.4, 2.3, 0.1),
+      ...cylinderFaces3(0.62, 0, 0.4, 2.3, 0.1),
+      ...domeFaces3(-0.62, 0.25, 0.5, 0.35, 0.05),
+      ...domeFaces3(0.62, 0.25, 0.5, 0.35, 0.05),
+      ...cylinderFaces3(0, -0.2, 1.25, 1.9, 2.3),
       ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
       ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
       ...domeFaces3(0, -0.2, 0.8, 0.7, 4.2),
@@ -2473,18 +2476,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      가로로 든 가우스 소총. */
   gunner: () => {
     const [vx2, vy2] = project(0, 0.55, 4.7);
-    const [mx2, my2] = project(1.75, 1.15, 3.35);
+    const [mx2, my2] = project(0.55, 2.8, 3.35);
     return [
-      ...cylinderFaces3(-0.6, -0.2, 0.5, 1.7, 0.2),
-      ...cylinderFaces3(0.6, -0.2, 0.5, 1.7, 0.2),
-      ...cylinderFaces3(0, -0.2, 1.25, 2.1, 1.9),
+      // 다리를 또렷하게(지적: 다리가 없어 헷갈림) — 벌린 두 기둥 + 둥근 발.
+      ...cylinderFaces3(-0.62, 0, 0.4, 2.3, 0.1),
+      ...cylinderFaces3(0.62, 0, 0.4, 2.3, 0.1),
+      ...domeFaces3(-0.62, 0.25, 0.5, 0.35, 0.05),
+      ...domeFaces3(0.62, 0.25, 0.5, 0.35, 0.05),
+      ...cylinderFaces3(0, -0.2, 1.25, 1.9, 2.3),
       ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
       ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
       ...domeFaces3(0, -0.2, 0.8, 0.7, 4.2),
       topFace(groundEllipse(vx2, vy2, 0.42, 0.3), 0.5),
-      // 가로 가우스 소총.
-      ...boxFaces3(0.3, 1.15, 2.7, 0.7, 0.7, 3),
-      capFace(groundEllipse(mx2, my2, 0.22, 0.18), 0.4),
+      // 소총은 앞을 향한다(지적: 가로로 들었었다) — 오른손 앞으로 내민 긴 총열 + 총구.
+      ...boxFaces3(0.55, 1.5, 0.55, 2.4, 0.5, 3.1),
+      capFace(groundEllipse(mx2, my2, 0.2, 0.16), 0.45),
     ];
   },
   /* 파이어뱃(실물 참고) — 같은 파워드 아머에 어깨 위로 보이는 등 연료통 둘, 어두운
@@ -2492,7 +2498,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   fbat: () => {
     const [vx2, vy2] = project(0, 0.55, 4.7);
     const noz = (tx: number): ShapeFace => {
-      const [px2, py2] = project(tx, 1.6, 2.95);
+      const [px2, py2] = project(tx, 2.2, 2.95);
       return capFace(groundEllipse(px2, py2 - 0.19, 0.3, 0.24), 0.4);
     };
     return [
@@ -2501,22 +2507,29 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...domeFaces3(-0.7, -1.3, 0.5, 0.4, 5.6),
       ...cylinderFaces3(0.7, -1.3, 0.5, 2.4, 3.2),
       ...domeFaces3(0.7, -1.3, 0.5, 0.4, 5.6),
-      ...cylinderFaces3(-0.6, -0.2, 0.5, 1.7, 0.2),
-      ...cylinderFaces3(0.6, -0.2, 0.5, 1.7, 0.2),
-      ...cylinderFaces3(0, -0.2, 1.25, 2.1, 1.9),
+      // 다리를 또렷하게(지적: 다리가 없어 헷갈림) — 벌린 두 기둥 + 둥근 발.
+      ...cylinderFaces3(-0.62, 0, 0.4, 2.3, 0.1),
+      ...cylinderFaces3(0.62, 0, 0.4, 2.3, 0.1),
+      ...domeFaces3(-0.62, 0.25, 0.5, 0.35, 0.05),
+      ...domeFaces3(0.62, 0.25, 0.5, 0.35, 0.05),
+      ...cylinderFaces3(0, -0.2, 1.25, 1.9, 2.3),
       ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
       ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
       ...domeFaces3(0, -0.2, 0.8, 0.7, 4.2),
       capFace(groundEllipse(vx2, vy2, 0.4, 0.22), 0.4),
       // 화염 건틀릿 두 팔.
-      ...tubeFaces(-1.4, 0.4, -1.4, 1.6, 0.42, 2.9),
+      // 앞으로 더 내민 화염 건틀릿(지적: 총구가 앞을 향하게).
+      ...tubeFaces(-1.4, 0.4, -1.4, 2.2, 0.42, 2.9),
       noz(-1.4),
-      ...tubeFaces(1.4, 0.4, 1.4, 1.6, 0.42, 2.9),
+      ...tubeFaces(1.4, 0.4, 1.4, 2.2, 0.42, 2.9),
       noz(1.4),
     ];
   },
   /* 질럿 — 검 두 자루(요청). */
   zealot: () => [
+    // 다리(지적: 다리가 없어 헷갈림) — 로브 아래로 두 기둥.
+    ...cylinderFaces3(-0.55, 0, 0.45, 3.5, 0),
+    ...cylinderFaces3(0.55, 0, 0.45, 3.5, 0),
     ...cylinderFaces3(0, -0.4, 1.4, 3.4, 3.4),
     ...domeFaces3(0, -0.9, 1.2, 0.95, 6.8),
     // 프로토스 특유의 길쭉한 머리(요청) — 뒤로 흐르는 타원 볏.
@@ -2541,6 +2554,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       [-1.3, -0.9, 6.2], [1.3, -0.9, 6.2], [1.9, -1.8, 3.2],
       [0.6, -1.5, 3.7], [0, -1.7, 3.2], [-0.6, -1.5, 3.7], [-1.9, -1.8, 3.2],
     ]), 0.18),
+    // 다리(지적) — 질럿과 같은 두 기둥.
+    ...cylinderFaces3(-0.55, 0, 0.45, 3.5, 0),
+    ...cylinderFaces3(0.55, 0, 0.45, 3.5, 0),
     ...cylinderFaces3(0, -0.4, 1.4, 3.4, 3.4),
     ...domeFaces3(0, -0.9, 1.2, 0.95, 6.8),
     // 프로토스 길쭉한 머리(요청).
