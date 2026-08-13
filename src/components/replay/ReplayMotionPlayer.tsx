@@ -3784,6 +3784,7 @@ export default function ReplayMotionPlayer({
     if (!pitched) return 0;
     const { w } = pitchGeom();
     const u = (x / grid.width - 0.5) * w;
+    void y; // 자리 호환 — 기울기는 u/P라 세로 좌표가 안 든다.
     /* 요잉이 아니라 시각 밀림의 각(지적: 소실점이 시각을 반영해야 — 돌리면 찌그러짐).
        ShapeIcon이 tan을 취하면 u/P — 지도 남북 선의 소실 기울기 그 값이다(지적:
        노란선-빨간선 정합). 부호는 실화면 확인으로 이쪽이 정답 — 다시 뒤집지 말 것. */
