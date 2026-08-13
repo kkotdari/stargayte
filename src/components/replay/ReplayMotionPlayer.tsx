@@ -3150,6 +3150,8 @@ type UnitDrawOp = {
   textGlyph?: string;
   /** 그림자 끄기 — 건물은 발이 땅에 붙어야 해서 그림자가 없다(유닛만 있다). */
   noShadow?: boolean;
+  /** 공중 유닛(요청: 더 높이 + 바닥 그림자) — 몸을 위로 띄우고 발밑에 그림자 타원. */
+  air?: boolean;
 };
 const PATH2D_CACHE = new Map<string, Path2D>();
 const pathOf = (d: string): Path2D => {
@@ -3245,8 +3247,21 @@ function UnitLayer({ ops, zoom, pan }: {
       const { faces, rot } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
       if (!faces) { ctx.restore(); continue; }
       const px = op.sizePx * zoom;
+      /* 공중 유닛(요청: 높이 더 높이 + 바닥 그림자) — 발밑 자리에 그림자 타원을 깔고
+         몸은 반 키만큼 위로 띄운다. 떠 있음이 땅 유닛과 한눈에 갈린다. */
+      const lift = op.air ? px * 0.55 : 0;
+      if (op.air) {
+        ctx.save();
+        ctx.shadowColor = "transparent";
+        ctx.globalAlpha = op.alpha * 0.3;
+        ctx.fillStyle = "#000";
+        ctx.beginPath();
+        ctx.ellipse(sx, sy + px * 0.06, px * 0.3, px * 0.12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
       // 스팬의 가운데 앵커 + 발끝 띄움(translateY(-24%))을 그대로 재현한다.
-      ctx.translate(sx, sy - px * 0.24);
+      ctx.translate(sx, sy - px * 0.24 - lift);
       if (rot) ctx.rotate((rot * Math.PI) / 180);
       ctx.scale(px / 16, px / 16);
       ctx.translate(-8, -8);
@@ -4146,6 +4161,24 @@ export default function ReplayMotionPlayer({
      도형들. 아래 마커 계산부가 push하고, 렌즈 안의 <UnitLayer>가 커밋 뒤 한 번에 그린다.
      계산(자리·회피·방향·깊이·순서)은 전부 그대로라 그림은 SVG 시절과 같다. */
   const unitOps: UnitDrawOp[] = [];
+  /* 퍼짐이 절벽을 밟지 않게(지적: 걸을 수 없는 지형에 지상군이 선다) — 흩은 자리가
+     못 걷는 땅이면 부대 중심 쪽으로 반씩 당겨 걷는 땅을 찾고, 끝내 없으면 중심에
+     세운다. 공중 유닛은 안 거른다. */
+  const walkableAt = (x: number, y: number): boolean => {
+    const tg = terrain ?? terrainRaw;
+    if (!tg) return true;
+    const gx = Math.min(tg.w - 1, Math.max(0, Math.floor((x / grid.width) * tg.w)));
+    const gy = Math.min(tg.h - 1, Math.max(0, Math.floor((y / grid.height) * tg.h)));
+    return tg.walk[gy * tg.w + gx] === 1;
+  };
+  const groundedSpot = (cx: number, cy: number, dx: number, dy: number): [number, number] => {
+    for (const k of [1, 0.66, 0.4, 0.2]) {
+      const x = cx + dx * k;
+      const y = cy + dy * k;
+      if (walkableAt(x, y)) return [x, y];
+    }
+    return [cx, cy];
+  };
   // 글자 크기 CSS(모바일/PC 미디어)와 같은 값 — 캔버스는 CSS를 못 읽으니 여기서 정한다.
   const pcView = typeof window !== "undefined" && !!window.matchMedia?.("(min-width: 1160px)").matches;
   const x2Mul = unitX2 ? 2 : 1;
@@ -5194,6 +5227,7 @@ export default function ReplayMotionPlayer({
                   sizePx: unitGlyphPx(UNIT_BULK[unit] ?? 2, fy),
                   color: modeColor(p.raw, team),
                   alpha: 1,
+                  air: isAirUnit(unit),
                 });
               }
             }
@@ -5593,6 +5627,7 @@ export default function ReplayMotionPlayer({
                   : unitGlyphPx(0, ay3),
                 color: modeColor(p.raw, team),
                 alpha: 0.82 * (cloaked ? 0.45 : 1),
+                air: g.unit === "Transport",
               });
               return null;
             }
@@ -5607,11 +5642,12 @@ export default function ReplayMotionPlayer({
               const factor = alive / aliveAll;
               for (const u of members) {
                 const cnt = Math.round(aliveOf(u) * factor);
-                for (let k = 0; k < cnt && glyphUnits.length < 36; k += 1) glyphUnits.push(u);
+                // 36 상한 해제(요청) — 수가 곧 규모다.
+                for (let k = 0; k < cnt; k += 1) glyphUnits.push(u);
               }
             }
             if (glyphUnits.length === 0) {
-              const n0 = Math.max(1, Math.min(36, alive));
+              const n0 = Math.max(1, alive);
               for (let k = 0; k < n0; k += 1) glyphUnits.push(g.unit);
             }
             /* 같은 자리 무리는 아주 촘촘히 겹친다(지적: 퍼짐이 심해졌다 — 겹치면서도
@@ -5645,18 +5681,21 @@ export default function ReplayMotionPlayer({
               /* (캔버스 전환) 도형은 unitOps로, 전투 효과(CSS 애니메이션)만 DOM 스팬으로
                  남긴다 — 캔버스는 10Hz라 불꽃·퍼프의 부드러움은 CSS가 맡는 편이 낫고,
                  전투 중인 낱개는 소수라 DOM 비용도 미미하다. */
-              const [ax3, ay3] = dodge(pos.x + dx, pos.y + dy);
+              const uAir = isAirUnit(u);
+              const [sx0, sy0] = uAir ? [pos.x + dx, pos.y + dy] : groundedSpot(pos.x, pos.y, dx, dy);
+              const [ax3, ay3] = dodge(sx0, sy0);
               const [fx, fy] = posFrac(ax3, ay3);
               unitOps.push({
                 fx, fy,
                 z: pitched ? 1000 + Math.round(ay3 * 80)
                   : 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
                 kind: unitMarkerKind(u, bases.find((b) => b.key === p.raw)?.race),
-                rotDeg: hdg, viewYaw: viewYawOf(pos.x + dx, pos.y + dy),
+                rotDeg: hdg, viewYaw: viewYawOf(ax3, ay3),
                 flat: !pitched, pitch: pitched,
                 sizePx: unitGlyphPx(bulk, ay3),
                 color: modeColor(p.raw, team),
                 alpha: 0.82 * (cloaked ? 0.45 : 1),
+                air: uAir,
               });
               const hasFx = fighting && (
                 (ATTACK_FX[u] && di % 4 === 0) || (di + cyc) % 7 === 0 || u === "Carrier");
@@ -5810,18 +5849,21 @@ export default function ReplayMotionPlayer({
               const dx = Math.cos(aj) * rj;
               const dy = Math.sin(aj) * rj;
               // (캔버스 전환) — 위 typeNodes 낱개와 같은 규칙: 도형은 unitOps, 효과만 DOM.
-              const [ax3, ay3] = dodge(pos.x + dx, pos.y + dy);
+              const uAir = u !== "?" && isAirUnit(u);
+              const [sx0, sy0] = uAir ? [pos.x + dx, pos.y + dy] : groundedSpot(pos.x, pos.y, dx, dy);
+              const [ax3, ay3] = dodge(sx0, sy0);
               const [fx, fy] = posFrac(ax3, ay3);
               unitOps.push({
                 fx, fy,
                 z: pitched ? 1000 + Math.round(ay3 * 80)
                   : 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
                 kind: unitMarkerKind(u, bases.find((b) => b.key === p.raw)?.race),
-                rotDeg: hdg, viewYaw: viewYawOf(pos.x + dx, pos.y + dy),
+                rotDeg: hdg, viewYaw: viewYawOf(ax3, ay3),
                 flat: !pitched, pitch: pitched,
                 sizePx: unitGlyphPx(bulk, ay3),
                 color: modeColor(p.raw, team),
                 alpha: 0.82,
+                air: uAir,
               });
               const hasFx = fighting && (
                 (ATTACK_FX[u] && di % 4 === 0) || (di + cyc) % 7 === 0 || u === "Carrier");
@@ -5941,6 +5983,7 @@ export default function ReplayMotionPlayer({
                   : unitGlyphPx(0, ay3),
               color: modeColor(p.raw, team),
               alpha: 0.82,
+              air: isOvie || g.kind === "carrier",
             });
             return null;
           });
@@ -5966,7 +6009,7 @@ export default function ReplayMotionPlayer({
               fx, fy, z: 1000, kind: "ovie",
               viewYaw: viewYawOf(home[0] + 2.5, home[1] - 2.5), flat: !pitched, pitch: pitched,
               sizePx: dotGlyphPx("dot", 1.7, home[1] - 2.5),
-              color: modeColor(p.raw, team), alpha: 0.82,
+              color: modeColor(p.raw, team), alpha: 0.82, air: true,
             });
           }
           return [];
