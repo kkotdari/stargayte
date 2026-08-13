@@ -14,7 +14,7 @@ import {
   bodyFace, capFace, groundEllipse, sideFace, topFace, type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
   domeFaces3, faceLight, frustumFaces3, hornFaces, limbFaces, tubeFaces,
-  withTopView, withYaw, VIEW,
+  withTopView, withYaw,
 } from "../../utils/shapeOblique";
 import type { MinimapMarker } from "./ReplayMinimap";
 
@@ -5062,27 +5062,12 @@ export default function ReplayMotionPlayer({
               const jr = h1 - Math.floor(h1);
               const h2 = Math.sin(di * 269.5 + seed * 183.3) * 28001.8384;
               const ja = h2 - Math.floor(h2);
-              /* 걸으며 이동(지적: 대형이 통째로 미끄러지면 이상) — 이동 중엔 진행 방향으로
-                 앞서거니 뒤서거니 보폭과 좌우 살랑을 섞고, 제자리 배회는 줄인다. */
-              const mvx = hp ? pos.x - hp.x : 0;
-              const mvy = hp ? pos.y - hp.y : 0;
-              const mvL = Math.hypot(mvx, mvy);
-              const marching = mvL > 0.1;
-              /* 길 섞임(재지적: 대형 그대로 가면 이상) — 유닛마다 다른 속도로 나선 자리를
-                 돌고 반경도 출렁여, 걷는 동안 앞뒤 차례가 계속 뒤바뀐다. */
-              // 꿀렁댐 제거(지적) — 시간에 따른 요동은 다 끄고 정적 지터만 남긴다.
+              // (정리) 걸음 요동 일습 제거(지적: 꿀렁댐) — 정적 나선 지터만 남긴다.
               const churn = ja * 3.1;
               const rj = r * (0.85 + jr * 0.5);
               const aj = di * 2.4 + seed + ja * 1.1 + churn;
-              const ux2 = marching ? mvx / mvL : 0;
-              const uy2 = marching ? mvy / mvL : 0;
-              const step = 0;
-              const sway = 0;
-              const wob = 0;
-              const dx = Math.cos(aj) * rj + Math.cos(t * 0.7 + di * 1.7) * wob
-                + ux2 * step - uy2 * sway;
-              const dy = Math.sin(aj) * rj + Math.sin(t * 0.9 + di * 2.3) * wob
-                + uy2 * step + ux2 * sway;
+              const dx = Math.cos(aj) * rj;
+              const dy = Math.sin(aj) * rj;
               return (
                 <span
                   key={`${p.raw}-u${g.unit}-${gi}-i${di}`}
@@ -5213,27 +5198,12 @@ export default function ReplayMotionPlayer({
               const jr = h1 - Math.floor(h1);
               const h2 = Math.sin(di * 269.5 + seed * 183.3) * 28001.8384;
               const ja = h2 - Math.floor(h2);
-              /* 걸으며 이동(지적: 대형이 통째로 미끄러지면 이상) — 이동 중엔 진행 방향으로
-                 앞서거니 뒤서거니 보폭과 좌우 살랑을 섞고, 제자리 배회는 줄인다. */
-              const mvx = hp ? pos.x - hp.x : 0;
-              const mvy = hp ? pos.y - hp.y : 0;
-              const mvL = Math.hypot(mvx, mvy);
-              const marching = mvL > 0.1;
-              /* 길 섞임(재지적: 대형 그대로 가면 이상) — 유닛마다 다른 속도로 나선 자리를
-                 돌고 반경도 출렁여, 걷는 동안 앞뒤 차례가 계속 뒤바뀐다. */
-              // 꿀렁댐 제거(지적) — 시간에 따른 요동은 다 끄고 정적 지터만 남긴다.
+              // (정리) 걸음 요동 일습 제거(지적: 꿀렁댐) — 정적 나선 지터만 남긴다.
               const churn = ja * 3.1;
               const rj = r * (0.85 + jr * 0.5);
               const aj = di * 2.4 + seed + ja * 1.1 + churn;
-              const ux2 = marching ? mvx / mvL : 0;
-              const uy2 = marching ? mvy / mvL : 0;
-              const step = 0;
-              const sway = 0;
-              const wob = 0;
-              const dx = Math.cos(aj) * rj + Math.cos(t * 0.7 + di * 1.7) * wob
-                + ux2 * step - uy2 * sway;
-              const dy = Math.sin(aj) * rj + Math.sin(t * 0.9 + di * 2.3) * wob
-                + uy2 * step + ux2 * sway;
+              const dx = Math.cos(aj) * rj;
+              const dy = Math.sin(aj) * rj;
               return (
                 <span
                   key={`${p.raw}-s${si}-d${di}`}
