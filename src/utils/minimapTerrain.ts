@@ -91,6 +91,23 @@ export async function analyzeMinimap(url: string): Promise<TerrainGrid | null> {
       localAvg[y * w + x] = sum / n;
     }
   }
+  /* ③ 색 순위(요청) — 칸 색을 뭉쳐(채널당 8단계) 넓게 깔린 '주요 타일' 색을 가려낸다.
+     주요 색 무리 안에 드문드문 박힌 비주요 색(바위·수풀·장식 타일)은 걸을 수 없는 것으로
+     본다. 뭉친 색 하나가 전체의 MINOR_SHARE(1.5%)를 못 넘으면 비주요다. 미니맵이 온통
+     잘게 갈린 색이라 주요 색이 절반도 안 되면(그라데이션 심한 그림) 이 규칙은 접는다 —
+     그때 켜면 맵이 통째로 불가가 된다. */
+  const keyOf = (i: number): number =>
+    ((data[i * 4] >> 5) << 6) | ((data[i * 4 + 1] >> 5) << 3) | (data[i * 4 + 2] >> 5);
+  const freq = new Map<number, number>();
+  for (let i = 0; i < w * h; i += 1) freq.set(keyOf(i), (freq.get(keyOf(i)) ?? 0) + 1);
+  const MINOR_SHARE = 0.015;
+  const majors = new Set<number>();
+  let majorCells = 0;
+  for (const [k, n] of freq) {
+    if (n >= w * h * MINOR_SHARE) { majors.add(k); majorCells += n; }
+  }
+  const rankRule = majorCells >= w * h * 0.5;
+
   const walk = new Uint8Array(w * h);
   for (let i = 0; i < w * h; i += 1) {
     const r = data[i * 4];
@@ -103,6 +120,8 @@ export async function analyzeMinimap(url: string): Promise<TerrainGrid | null> {
     if (b > r + 18 && b > g + 8 && L < 110) continue;
     // ② 상대 — 주변보다 뚜렷이 어두운 능선(절벽·벽·언덕 경계).
     if (L < localAvg[i] * RIDGE_RATIO) continue;
+    // ③ 색 순위 — 주요 타일이 아닌 색은 불가(요청).
+    if (rankRule && !majors.has(keyOf(i))) continue;
     walk[i] = 1;
   }
   return { w, h, walk };
