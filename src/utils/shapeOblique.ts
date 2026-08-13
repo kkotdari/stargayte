@@ -289,13 +289,15 @@ export function cylinderFaces3(
   cx: number, cy: number, r: number, h: number, z0 = 0,
 ): ShapeFace[] {
   const [bx, by] = project(cx, cy, z0);
-  const [, ty] = project(cx, cy, z0 + h);
+  /* 꼭대기 x도 제 투영으로(지적: 파일런·포토가 안쪽 기움) — 바닥 x를 재사용하면
+     몸통이 바깥 롤·앞숙임을 안 타고 수직으로만 서서, 기운 바닥 타원과 어긋난다. */
+  const [tx, ty] = project(cx, cy, z0 + h);
   const ry = r * groundSquashNow();
-  const body = `M${r2(bx - r)} ${r2(ty)} L${r2(bx + r)} ${r2(ty)} L${r2(bx + r)} ${r2(by)}`
+  const body = `M${r2(tx - r)} ${r2(ty)} L${r2(tx + r)} ${r2(ty)} L${r2(bx + r)} ${r2(by)}`
     + `a${r2(r)} ${r2(ry)} 0 1 1-${r2(r * 2)} 0Z`;
-  const shade = `M${r2(bx + r * 0.35)} ${r2(ty)} L${r2(bx + r)} ${r2(ty)} L${r2(bx + r)} ${r2(by)}`
+  const shade = `M${r2(tx + r * 0.35)} ${r2(ty)} L${r2(tx + r)} ${r2(ty)} L${r2(bx + r)} ${r2(by)}`
     + `a${r2(r)} ${r2(ry)} 0 0 1-${r2(r * 0.65)} ${r2(ry * 0.92)}Z`;
-  return [bodyFace(body), sideFace(shade, OP.sideSoft), topFace(groundEllipse(bx, ty, r, ry))];
+  return [bodyFace(body), sideFace(shade, OP.sideSoft), topFace(groundEllipse(tx, ty, r, ry))];
 }
 
 /** 방사형 다리(수평 반원통) — 평면각 angleDeg(0=시청자 쪽, +는 오른쪽), 뿌리 거리 r0,
@@ -435,13 +437,14 @@ export function domeFaces3(
   cx: number, cy: number, r: number, hh: number, z0 = 0,
 ): ShapeFace[] {
   const [bx, by] = project(cx, cy, z0);
-  const [, ty] = project(cx, cy, z0 + hh);
+  // 꼭대기 x도 제 투영으로(지적) — 원통과 같은 이유. 정수리만 기울고 발은 붙는다.
+  const [tx, ty] = project(cx, cy, z0 + hh);
   const ry = r * groundSquashNow();
-  const body = `M${r2(bx - r)} ${r2(by)} Q${r2(bx - r)} ${r2(ty)} ${r2(bx)} ${r2(ty)}`
-    + ` Q${r2(bx + r)} ${r2(ty)} ${r2(bx + r)} ${r2(by)}`
+  const body = `M${r2(bx - r)} ${r2(by)} Q${r2(tx - r)} ${r2(ty)} ${r2(tx)} ${r2(ty)}`
+    + ` Q${r2(tx + r)} ${r2(ty)} ${r2(bx + r)} ${r2(by)}`
     + `a${r2(r)} ${r2(ry)} 0 1 1-${r2(r * 2)} 0Z`;
-  const shine = groundEllipse(bx - r * 0.25, (by + ty) / 2 - (by - ty) * 0.22, r * 0.4, r * 0.18);
-  const shade = `M${r2(bx + r * 0.35)} ${r2(ty + (by - ty) * 0.08)} Q${r2(bx + r)} ${r2(ty + (by - ty) * 0.25)} ${r2(bx + r)} ${r2(by)}`
+  const shine = groundEllipse((bx + tx) / 2 - r * 0.25, (by + ty) / 2 - (by - ty) * 0.22, r * 0.4, r * 0.18);
+  const shade = `M${r2(tx + r * 0.35)} ${r2(ty + (by - ty) * 0.08)} Q${r2(tx + r)} ${r2(ty + (by - ty) * 0.25)} ${r2(bx + r)} ${r2(by)}`
     + ` Q${r2(bx + r * 0.55)} ${r2(by + ry * 0.6)} ${r2(bx + r * 0.35)} ${r2(by)}Z`;
   return [bodyFace(body), sideFace(shade, OP.sideSoft), topFace(shine)];
 }
