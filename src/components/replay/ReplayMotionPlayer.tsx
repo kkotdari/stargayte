@@ -844,32 +844,54 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...hornFaces(2.7, 0, 0.8, 1, -0.3, 9.6, 2.3));
     return out;
   },
-  /* 스타게이트(재설계, 지적: 무슨 모양인지 이해가 안 됨) — '문'답게 세운다: 받침 단
-     위에 좌우 기둥과 위 가로보가 ㄷ자를 뒤집은 문틀을 이루고, 그 사이에 청록 에너지
-     막이 선다. 막은 납작한 판이라 벽 무늬(wallDiscPath)가 정확하다 — 모로 서면 실처럼
-     얇아지는 게 물리적으로 맞다. 기둥 앞 창 점은 앞이 보일 때만. */
+  /* 스타게이트(재정정, 힌트: 잎의 '넓은 면'들이 배를 서로 마주본다 — 꼭지점·모서리가
+     아니라) — 관문 축(앞뒤 방향)을 둘러싼 통꽃: 나뭇잎 잎날 넷이 위·아래·왼·오른쪽에
+     서서 저마다 넓은 배 면을 축 가운데로 향한다. 잎 길이는 앞뒤로 뻗고, 가운데가 축
+     쪽으로 살짝 다가오는 휨이라 배(볼록면)가 서로를 본다. 각 잎의 안쪽 면엔 밝은 발광
+     잎. 판·받침은 없다(요청). */
   arch: () => {
-    const out: ShapeFace[] = [sideFace(discPath3(0, 0.2, 0, 5), 0.22)];
-    // 받침 단.
-    out.push(...boxFaces3(0, 0.2, 8.6, 5, 1.1));
-    // 에너지 막 — 겉은 은은하게, 속은 밝게. 기둥보다 먼저 그려 틀이 막을 가린다.
-    out.push(topFace(wallDiscPath(0, 0, 4.5, 2.3, 3), 0.32));
-    out.push(topFace(wallDiscPath(0, 0, 4.5, 1.5, 2.1), 0.52));
-    // 좌우 기둥.
-    out.push(...boxFaces3(-3.3, 0, 1.7, 2.6, 6.8, 1.1));
-    out.push(...boxFaces3(3.3, 0, 1.7, 2.6, 6.8, 1.1));
-    // 기둥 앞 청록 창 점 셋씩.
-    if (faceLight(0, 1).visible) {
-      for (const px of [-3.3, 3.3]) {
-        for (const zi of [2.6, 4.2, 5.8]) {
-          out.push(topFace(wallDiscPath(px, 1.31, zi, 0.3, 0.36), 0.45));
+    // 그림자는 옅고 아담하게 — 봉오리가 떠 있는 자리만 알리면 된다.
+    const out: ShapeFace[] = [sideFace(discPath3(0, 0.2, 0, 3.4), 0.16)];
+    const C = 5; // 관문 축 높이
+    const R = 2.9; // 축에서 잎 배까지 반지름
+    /* 잎 하나 — 축 둘레 각 phi(0=위) 자리, 길이는 고리 접선 방향. tilt만큼 관문 평면
+       에서 안쪽으로 기울어(반쯤 벌어진 봉오리) 넓은 배 면이 축 가운데와 시청자 쪽을
+       함께 본다 — 완전히 눕히면(관 모양) 정면에서 모로 서 안 보이던 것의 절충이다.
+       바깥 가장자리는 뒤로 눕고 안 가장자리가 시청자 쪽으로 나온다. */
+    const leaf = (
+      phi: number, rr: number, ll: number, ww: number, dy: number,
+    ): string => {
+      const rx = Math.sin(phi); // 축에서 바깥 방향(x·z 평면)
+      const rz = Math.cos(phi);
+      const tx = Math.cos(phi); // 접선 방향
+      const tz = -Math.sin(phi);
+      const ct = Math.cos(0.92); // 기울기 ≈ 53도
+      const st = Math.sin(0.92);
+      const N = 9;
+      const A: [number, number, number][] = [];
+      const B: [number, number, number][] = [];
+      for (let i = 0; i <= N; i += 1) {
+        const t2 = i / N;
+        const al = (t2 * 2 - 1) * ll;
+        const hw = ww * Math.sin(Math.PI * t2) ** 0.75; // 양 끝이 뾰족한 잎 폭
+        const bow = 0.35 * Math.sin(Math.PI * t2); // 가운데가 축으로 살짝 다가온다
+        for (const [list, sign] of [[A, 1], [B, -1]] as [typeof A, 1 | -1][]) {
+          const rad = rr - bow + sign * hw * ct;
+          list.push([rx * rad + tx * al, -sign * hw * st + dy, C + rz * rad + tz * al]);
         }
       }
+      return polyPath3([...A, ...B.reverse()]);
+    };
+    const PHIS = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
+    for (const phi of PHIS) {
+      const d = leaf(phi, R, 2, 1.15, 0);
+      out.push(bodyFace(d));
+      if (Math.cos(phi) > 0.5) out.push(topFace(d, 0.18)); // 위 잎 등이 빛을 받고
+      else if (Math.cos(phi) < -0.5) out.push(sideFace(d, 0.24)); // 아래 잎은 어둡다
+      else if (Math.sin(phi) > 0.5) out.push(sideFace(d, 0.12)); // 오른 잎은 옅은 그늘
+      // 잎 안쪽(배) 발광 — 시청자 쪽 면 위에 밝은 작은 잎.
+      out.push(topFace(leaf(phi, R - 0.12, 1.25, 0.62, 0.14), 0.5));
     }
-    // 위 가로보 + 양끝 뿔 장식.
-    out.push(...boxFaces3(0, 0, 8.4, 2.2, 1.5, 7.9));
-    out.push(...hornFaces(-3.7, 0, 9.4, -4.1, 0, 10.6, 0.75));
-    out.push(...hornFaces(3.7, 0, 9.4, 4.1, 0, 10.6, 0.75));
     return out;
   },
   /* 파일런(정정 둘) — 고리를 수정 허리께로 더 올리고(지적), 수정은 매끈한 육각
@@ -2286,55 +2308,52 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...domeFaces3(0, 0.9, 0.6, 0.5, 6.3),
     ];
   },
-  /* 캐리어(재설계, 지적: 무슨 모양인지 이해가 안 됨) — '큰 함선'답게: 뒤가 두툼하고
-     앞으로 좁아지는 함체 슬랩 + 등의 큰 껍질 돔 + 캐리어의 상징인 앞 갈퀴 두 갈래와
-     그 사이 어두운 격납 입, 뒤엔 엔진 발광. */
+  /* 캐리어(정정: 오므림 반대) — 옆 꽃잎이 안쪽을 향해 오므려 보였다(지적). 바깥쪽이
+     볼록한 봉오리가 맞다: 옆 두 장은 안쪽 가장자리가 올라 등이 바깥으로 부풀고, 위
+     꽃잎은 양 가장자리가 처져 등이 위로 아치를 그린다 — 세 장 다 볼록한 등. */
   carrier: () => {
-    const z = 4.3; // 부양 높이 — 다른 공중 유닛과 같은 결.
-    const out: ShapeFace[] = [];
-    // 함체 슬랩 — 앞쪽 윗면이 좁아지며 뱃머리로 모인다.
-    out.push(...frustumFaces3(0, -0.4, 3.2, 5, 2.4, 3.6, 1.4, z));
-    // 등 껍질 — 뒤 큰 돔 + 앞 낮은 돔.
-    out.push(...domeFaces3(0, -1.3, 1.9, 1.5, z + 1.4));
-    out.push(...domeFaces3(0, 0.9, 1.35, 0.9, z + 1.4));
-    // 앞 갈퀴 두 갈래.
-    out.push(...hornFaces(-1.05, 2, z + 0.5, -1.35, 4.3, z + 0.35, 0.85));
-    out.push(...hornFaces(1.05, 2, z + 0.5, 1.35, 4.3, z + 0.35, 0.85));
-    // 갈래 사이 격납 입 — 앞이 보일 때만(뒤에선 등에 얼룩 지지 않게).
-    if (faceLight(0, 1).visible) {
-      out.push(capFace(discPath3(0, 2.5, z + 0.3, 0.95), 0.45));
-    }
-    // 뒤 엔진 발광 둘 — 꽁무니가 보일 때만.
-    if (facingRatio(0, -1) > -0.15) {
-      out.push(topFace(groundEllipse(...project(-0.9, -3, z + 0.7), 0.36, 0.28), 0.5));
-      out.push(topFace(groundEllipse(...project(0.9, -3, z + 0.7), 0.36, 0.28), 0.5));
-    }
-    return out;
+    const petal = (cx2: number, m2: 0 | 1 | -1, z0: number, xr: number, yr: number): string => polyPath3(
+      Array.from({ length: 12 }, (_, i) => {
+        const a = (i / 12) * Math.PI * 2;
+        const co = Math.cos(a);
+        return [
+          cx2 + co * xr,
+          0.3 + Math.sin(a) * yr,
+          z0 - Math.sin(a) * 0.28
+            + (m2 !== 0 ? Math.max(0, -m2 * co) * 1.35 : -Math.abs(co) * 0.55),
+        ] as [number, number, number];
+      }),
+    );
+    return [
+      bodyFace(petal(-1.3, -1, 5.1, 1.05, 3.9)),
+      topFace(petal(-1.3, -1, 5.1, 1.05, 3.9), 0.16),
+      bodyFace(petal(1.3, 1, 5.1, 1.05, 3.9)),
+      sideFace(petal(1.3, 1, 5.1, 1.05, 3.9), 0.18),
+      bodyFace(petal(0, 0, 6.5, 1.05, 4.1)),
+      topFace(petal(0, 0, 6.5, 1.05, 4.1), 0.1),
+    ];
   },
-  /* 아비터(재설계, 지적: 무슨 모양인지 이해가 안 됨) — '가오리'답게 한 몸으로: 앞의
-     둥근 조종 포드에서 뒤로 쓸려 나가는 초승달 날개 한 장, 뒤 가운데 세로 꼬리 지느
-     러미, 날개 끝 발광. 날개는 모형 공간 판이라 어느 각도에서나 방향이 맞는다. */
+  /* 아비터(원복, 요청) — 작은 몸체 양옆에 긴 타원형 날개가 방패처럼 뒤를 향해 길게
+     붙는다. 모형 공간 타원(10각 근사)이라 방향이 정확히 뒤로 눕는다. */
   arbiter: () => {
-    const z = 5.2;
-    const out: ShapeFace[] = [];
-    // 초승달 날개 — 뒤 가운데가 살짝 파인 한 장.
-    const wing = polyPath3([
-      [-0.85, 1.7, z], [-2.1, 0.3, z + 0.05], [-3.3, -1.5, z + 0.1], [-1.7, -1.9, z + 0.05],
-      [0, -1.1, z], [1.7, -1.9, z + 0.05], [3.3, -1.5, z + 0.1], [2.1, 0.3, z + 0.05], [0.85, 1.7, z],
-    ]);
-    out.push(bodyFace(wing), topFace(wing, 0.12));
-    out.push(sideFace(polyPath3([[0.85, 1.7, z], [2.1, 0.3, z + 0.05], [3.3, -1.5, z + 0.1], [2.55, -1.35, z + 0.08]]), 0.18));
-    // 뒤 세로 꼬리 지느러미 — 정면에선 모로 서 안 보이고 옆에서 펼쳐진다.
-    const fin = polyPath3([[0, -0.9, z + 0.05], [0, -2.4, z + 0.1], [0, -2.7, z + 1.3], [0, -1.3, z + 1.05]]);
-    out.push(bodyFace(fin), sideFace(fin, 0.15));
-    // 앞 둥근 조종 포드 + 하이라이트.
-    out.push(...domeFaces3(0, 1.1, 1.25, 1.05, z - 0.15));
-    const [cx2, cy2] = project(0, 1.3, z + 0.55);
-    out.push(topFace(groundEllipse(cx2 - 0.3, cy2 - 0.25, 0.4, 0.3), 0.35));
-    // 날개 끝 발광.
-    out.push(topFace(groundEllipse(...project(-3.05, -1.4, z + 0.18), 0.3, 0.24), 0.45));
-    out.push(topFace(groundEllipse(...project(3.05, -1.4, z + 0.18), 0.3, 0.24), 0.45));
-    return out;
+    const oval = (m2: 1 | -1): string => polyPath3(
+      Array.from({ length: 10 }, (_, i) => {
+        const a = (i / 10) * Math.PI * 2;
+        return [
+          m2 * 1.7 + Math.cos(a) * 1.05,
+          -1 + Math.sin(a) * 2.9,
+          6.05 - Math.sin(a) * 0.25,
+        ] as [number, number, number];
+      }),
+    );
+    const [cx2, cy2] = project(0, 1.9, 5.7);
+    return [
+      bodyFace(oval(-1)), topFace(oval(-1), 0.16),
+      bodyFace(oval(1)), sideFace(oval(1), 0.18),
+      // 몸체는 구(지적: 곤충 같음) — 동그란 공 하나에 하이라이트만.
+      ...domeFaces3(0, 0.5, 1.15, 1.05, 5.3),
+      topFace(groundEllipse(cx2 - 0.3, cy2 - 0.5, 0.4, 0.32), 0.35),
+    ];
   },
   /* 옵저버(실물 참고) — 작은 금빛 공 몸통 좌우에 둥근 귀 덩이, 위엔 부챗살 볏 돛,
      앞엔 렌즈 고리. */
@@ -3006,8 +3025,10 @@ const UNIT_BULK: Record<string, 0 | 1 | 2> = {
   Broodling: 0, "Infested Terran": 0,
   Hydralisk: 1, Vulture: 1, Corsair: 1, Lurker: 1, Queen: 1, Defiler: 1,
 };
-/** 도형째 돌려 그리는 각도(시계방향) — 스타게이트는 45도(요청). */
-const SHAPE_ROT: Record<string, number> = { arch: 45 };
+/** 도형째 돌려 그리는 각도(시계방향) — 옛 스타게이트(반쪽 원통)용 45도는 봉오리
+ *  재설계로 걷었다: 잎이 정확히 위아래·좌우에 서야 하고(요청), 화면 회전은 바닥
+ *  그림자까지 대각선으로 돌려 검은 얼룩처럼 보였다. */
+const SHAPE_ROT: Record<string, number> = {};
 /** 관리자 모델링 뷰어(요청) — 도형 카탈로그. 건물은 SHAPE_KIND에서, 유닛 갈래는 손으로. */
 export const SHAPE_GALLERY: { kind: string; label: string }[] = (() => {
   const seen = new Set<string>();
