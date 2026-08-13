@@ -1178,33 +1178,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...cylinderFaces3(-3.2, -1.6, 0.6, 1.4, 3),
     ...cylinderFaces3(3.2, -1.6, 0.6, 1.4, 3),
   ],
-  /* 포지(실물 참고) — 큰 렌즈 돔(뒤 오른)과 작은 렌즈 돔(앞 오른), 가운데 총알 기둥
-     무리, 그 사이를 잇는 배관, 왼앞의 아치 별채. */
+  /* 포지(정정) — 뒤쪽의 둥근 몸과 앞쪽의 톱니바퀴가 인상적: 큰 돔 + 이빨 두른 납작
+     기어(가운데 허브). */
   forge: () => {
-    const lens = (x: number, y: number, z: number, r: number): ShapeFace[] => {
-      const [px2, py2] = project(x, y, z);
-      return [
-        topFace(groundEllipse(px2, py2, r, r * 0.7), 0.3),
-        topFace(groundEllipse(px2, py2, r * 0.55, r * 0.4), 0.5),
-      ];
+    const out: ShapeFace[] = [...domeFaces3(0, -1.6, 3.1, 2.8)];
+    // 앞 톱니바퀴 — 뒤쪽 이빨 → 바퀴 몸 → 앞쪽 이빨 순으로 겹친다.
+    const tooth = (ang: number): ShapeFace[] => {
+      const a = (ang * Math.PI) / 180;
+      return boxFaces3(Math.sin(a) * 2.35, 1.8 + Math.cos(a) * 2.35, 0.6, 0.6, 1.15);
     };
-    return [
-      ...boxFaces3(-3, 1.6, 3.4, 3, 2.4),
-      ...domeFaces3(-3, 1.6, 1.5, 1.1, 2.4),
-      // 총알 기둥 무리 — 높이 다른 넷.
-      ...cylinderFaces3(-2.9, -2.6, 0.75, 3.6), ...domeFaces3(-2.9, -2.6, 0.75, 0.7, 3.6),
-      ...cylinderFaces3(-1.6, -1.6, 0.85, 4.6), ...domeFaces3(-1.6, -1.6, 0.85, 0.8, 4.6),
-      ...cylinderFaces3(-0.2, -2.4, 0.8, 5.4), ...domeFaces3(-0.2, -2.4, 0.8, 0.75, 5.4),
-      ...cylinderFaces3(0.6, -0.8, 0.7, 3.2), ...domeFaces3(0.6, -0.8, 0.7, 0.65, 3.2),
-      // 배관 — 기둥에서 큰 돔으로 흘러든다.
-      ...tubeFaces(0.2, -1.8, 2.6, -1.1, 0.4, 2.6),
-      ...tubeFaces(0.4, -1.2, 2.8, -0.5, 0.4, 1.7),
-      // 렌즈 돔 큰 것·작은 것.
-      ...domeFaces3(3, -1.2, 2.5, 2.3),
-      ...lens(3, -1.2, 2.35, 1.05),
-      ...domeFaces3(2.8, 2.4, 1.55, 1.3),
-      ...lens(2.8, 2.4, 1.35, 0.65),
-    ];
+    for (const ang of [180, 135, 225, 90, 270]) out.push(...tooth(ang));
+    out.push(...cylinderFaces3(0, 1.8, 2.2, 1.2));
+    out.push(topFace(discPath3(0, 1.8, 1.22, 1.55), 0.2));
+    out.push(capFace(discPath3(0, 1.8, 1.25, 0.85), 0.4));
+    for (const ang of [45, 315, 0]) out.push(...tooth(ang));
+    return out;
   },
   /* 사이버네틱스 코어(정정) — 아래쪽을 큰 구슬들이 빙 두른 원통 + 돔 + 위 빛 구. */
   cyber: () => {
@@ -1281,9 +1269,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   sbattery: () => {
     const leg = (ang: number): ShapeFace[] => {
       const a = (ang * Math.PI) / 180;
+      // 다리는 수평으로(지적).
       return hornFaces(
-        Math.sin(a) * 1.1, Math.cos(a) * 1.1, 2.2,
-        Math.sin(a) * 3.5, Math.cos(a) * 3.5, 0.3, 0.6,
+        Math.sin(a) * 1.1, Math.cos(a) * 1.1, 1.7,
+        Math.sin(a) * 3.5, Math.cos(a) * 3.5, 1.5, 0.6,
       );
     };
     const [gx2, gy2] = project(0, 0, 3);
