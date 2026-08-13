@@ -1750,12 +1750,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     return [
       bodyFace(oval(-1)), topFace(oval(-1), 0.16),
       bodyFace(oval(1)), sideFace(oval(1), 0.18),
-      // 작은 몸체 + 앞 콕핏 구슬 + 프롱.
-      ...domeFaces3(0, 0.6, 1.1, 0.85, 5.5),
-      bodyFace(groundEllipse(cx2, cy2, 0.65, 0.6)),
-      topFace(groundEllipse(cx2 - 0.18, cy2 - 0.18, 0.26, 0.23), 0.4),
-      ...hornFaces(0.7, 1.5, 5.8, 1.2, 3, 5.5, 0.45),
-      ...hornFaces(-0.7, 1.5, 5.8, -1.2, 3, 5.5, 0.45),
+      // 몸체는 구(지적: 곤충 같음) — 동그란 공 하나에 하이라이트만.
+      ...domeFaces3(0, 0.5, 1.15, 1.05, 5.3),
+      topFace(groundEllipse(cx2 - 0.3, cy2 - 0.5, 0.4, 0.32), 0.35),
     ];
   },
   /* 옵저버 — 작은 구 + 위 안테나 둘 + 아래 다리 둘. */
