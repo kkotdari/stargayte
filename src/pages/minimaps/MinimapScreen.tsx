@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Trash2, Upload, Link2Off, ImageUp, Mountain, RefreshCcw } from "lucide-react";
+import { Trash2, Upload, Link2Off, ImageUp, Mountain } from "lucide-react";
 import TerrainReviewModal from "../../modals/TerrainReviewModal";
-import { analyzeMinimap, encodeWalk } from "../../utils/minimapTerrain";
 import ReplayMapCanvas from "../../components/replay/ReplayMapCanvas";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import Select from "../../components/common/Select";
@@ -124,16 +123,22 @@ export default function MinimapScreen() {
      — 매핑된 첫 맵의 자원 좌표를 받아 분수로 넘긴다. */
   const [terrainAnchors, setTerrainAnchors] = useState<[number, number][] | undefined>(undefined);
   const openTerrain = async (img: MinimapImage) => {
+    /* 앵커를 받은 뒤에 연다(지적: 아직도 반대 — 모달이 먼저 열리면 재분석이 앵커 도착
+       전에 무보정으로 돌 수 있었다). 못 받으면 앵커 없이라도 연다. */
     setTerrainAnchors(undefined);
-    setTerrainTarget(img);
-    const first = maps.find((m) => m.imageId === img.id);
-    if (!first) return;
+    setBusy(true);
     try {
-      const [mg] = await api.getReplayMaps([first.hash]);
-      if (mg && (mg.resources ?? []).length > 0) {
-        setTerrainAnchors(mg.resources.map(([x, y]) => [x / mg.width, y / mg.height] as [number, number]));
+      const first = maps.find((m) => m.imageId === img.id);
+      if (first) {
+        const [mg] = await api.getReplayMaps([first.hash]);
+        if (mg && (mg.resources ?? []).length > 0) {
+          setTerrainAnchors(mg.resources.map(([x, y]) => [x / mg.width, y / mg.height] as [number, number]));
+        }
       }
-    } catch { /* 앵커는 보정일 뿐 — 못 받아도 모달은 연다. */ }
+    } catch { /* 앵커는 보정일 뿐. */ } finally {
+      setBusy(false);
+      setTerrainTarget(img);
+    }
   };
   /** 매핑된 맵 목록을 펼쳐 둔 미니맵들 — 기본은 접힘(요청). */
   const [openIds, setOpenIds] = useState<Set<number>>(new Set());
@@ -386,42 +391,6 @@ export default function MinimapScreen() {
                   title="지형 검수"
                 >
                   <Mountain size={14} />
-                </button>
-                {/* 재분석(요청) — 새 분석 규칙(색 순위·빵꾸 메우기)으로 지형을 다시 만들어
-                    바로 저장한다. 손 검수한 값을 덮으니 필요할 때만. */}
-                <button
-                  type="button" className="scr-icon-btn"
-                  onClick={async () => {
-                    setBusy(true);
-                    setErr("");
-                    try {
-                      /* 앵커(지적: 빠른무한 반전) — 매핑된 맵의 자원 좌표는 확실한 땅이다.
-                         첫 매핑 맵의 격자를 받아 분수 좌표로 넘긴다. 매핑이 없으면 무앵커. */
-                      let anchors: [number, number][] | undefined;
-                      if (mapped.length > 0) {
-                        const [mg] = await api.getReplayMaps([mapped[0].hash]);
-                        if (mg && (mg.resources ?? []).length > 0) {
-                          anchors = mg.resources.map(([x, y]) => [x / mg.width, y / mg.height] as [number, number]);
-                        }
-                      }
-                      const g = await analyzeMinimap(i.image, anchors);
-                      if (!g) throw new Error("그림을 분석하지 못했어요.");
-                      const updated = await api.updateMinimapWalk(i.id, encodeWalk(g));
-                      setCatalog((prev) => (prev ? {
-                        ...prev,
-                        images: prev.images.map((im) => (im.id === updated.id ? updated : im)),
-                      } : prev));
-                    } catch (e) {
-                      setErr(e instanceof Error ? e.message : "지형을 재분석하지 못했어요.");
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                  disabled={busy}
-                  aria-label={`${i.name} 지형 재분석`}
-                  title="지형 재분석(자동 분석으로 다시 저장)"
-                >
-                  <RefreshCcw size={14} />
                 </button>
                 <button
                   type="button" className="scr-icon-btn"
