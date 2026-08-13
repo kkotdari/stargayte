@@ -774,31 +774,47 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...hornFaces(5.7, 2, 4.2, 4.8, 2.4, 6, 0.8));
     return out;
   },
-  /* 스타게이트(다시) — 번데기 둘이 위에서 맞붙은 꼴(지적): 좌우로 통통한 고치 껍데기가
-     마주 굽어 오르고, 그 사이 소환창이 파랗게 빛난다. 고치 등에는 마디 띠. */
+  /* 스타게이트(다시, 실물 참고) — 굽은 두 판이 가운데 원형 소환구를 감싸는 꼴(지적):
+     위판이 위를, 아래판이 아래를 감고 양옆은 트인다. 판에는 갈빗살 마디, 아래판에는
+     파란 창 줄, 오른쪽엔 바깥으로 뻗는 칼 지느러미. 소환구로 함선이 나온다. */
   arch: () => {
-    const pt = (x: number, y: number, z: number): string => {
-      const [px, py] = project(x, y, z);
-      return `${px} ${py}`;
-    };
     const out: ShapeFace[] = [sideFace(discPath3(0, 0, 0, 4.8), 0.22)];
-    // 소환창 — 고치들이 가장자리를 덮도록 먼저 그린다.
-    const [wx, wy] = project(0, 0.2, 4.8);
-    out.push(capFace(groundEllipse(wx, wy, 2.6, 3.4), 0.35));
-    out.push(topFace(groundEllipse(wx, wy, 2.2, 2.9), 0.55));
-    const pod = (m: number): string =>
-      `M${pt(m * -1.8, 0.4, 0.5)} Q${pt(m * -6, 0.4, 1.2)} ${pt(m * -5.5, 0.2, 5)}`
-      + ` Q${pt(m * -5.6, 0, 8.6)} ${pt(m * -1.6, 0, 10.1)}`
-      + ` Q${pt(m * -0.7, 0, 10.6)} ${pt(m * -0.5, 0, 9.4)}`
-      + ` Q${pt(m * -3, 0.1, 7.8)} ${pt(m * -2.9, 0.2, 4.4)}`
-      + ` Q${pt(m * -2.7, 0.4, 1.8)} ${pt(m * -1.8, 0.4, 0.5)} Z`;
-    out.push(bodyFace(pod(1)));
-    out.push(bodyFace(pod(-1)));
-    out.push(sideFace(pod(-1), 0.18));
-    // 고치 마디 띠 — 등을 가로지르는 가는 주름.
-    for (const [xo, xi, bz] of [[-5.4, -2.8, 2.8], [-5.2, -2.9, 5], [-4.3, -2.5, 7.4]] as [number, number, number][]) {
-      out.push(sideFace(polyPath3([[xo, 0.25, bz], [xi, 0.15, bz + 0.2], [xi, 0.15, bz + 0.5], [xo, 0.25, bz + 0.3]]), 0.16));
-      out.push(sideFace(polyPath3([[-xo, 0.25, bz], [-xi, 0.15, bz + 0.2], [-xi, 0.15, bz + 0.5], [-xo, 0.25, bz + 0.3]]), 0.16));
+    const [cx, cy] = project(0, 0.2, 5);
+    const RX = 6.1;
+    const RY = 4.9;
+    const rx2 = 3.5;
+    const ry2 = 2.8;
+    const E = (deg: number, ax: number, ay: number): [number, number] => {
+      const a = (deg * Math.PI) / 180;
+      return [cx + Math.cos(a) * ax, cy - Math.sin(a) * ay];
+    };
+    const P = (v: [number, number]): string => `${Math.round(v[0] * 100) / 100} ${Math.round(v[1] * 100) / 100}`;
+    // 소환구 — 판이 가장자리를 덮도록 먼저: 어두운 테 + 빛나는 속 + 심.
+    out.push(capFace(groundEllipse(cx, cy, rx2 + 0.5, ry2 + 0.4), 0.35));
+    out.push(topFace(groundEllipse(cx, cy, rx2, ry2), 0.5));
+    out.push(topFace(groundEllipse(cx, cy - 0.4, rx2 * 0.55, ry2 * 0.5), 0.3));
+    // 감싸는 판 — 원환 조각: 바깥 호 → 안 호로 돌아온다.
+    const plate = (a0: number, a1: number, sw: 0 | 1): string =>
+      `M${P(E(a0, RX, RY))} A${RX} ${RY} 0 0 ${sw} ${P(E(a1, RX, RY))}`
+      + ` L${P(E(a1, rx2 + 0.2, ry2 + 0.15))} A${rx2 + 0.2} ${ry2 + 0.15} 0 0 ${1 - sw} ${P(E(a0, rx2 + 0.2, ry2 + 0.15))} Z`;
+    const topPlate = plate(168, 12, 1);
+    const botPlate = plate(192, 348, 0);
+    // 오른쪽 칼 지느러미 — 판 밖으로 뻗는다(판이 뿌리를 덮는다).
+    out.push(bodyFace(`M${P(E(24, RX * 0.8, RY * 0.8))} Q${P(E(8, RX + 2.8, RY + 2.3))} ${P(E(-14, RX * 0.95, RY * 0.95))} Q${P(E(4, RX * 0.9, RY * 0.9))} ${P(E(24, RX * 0.8, RY * 0.8))} Z`));
+    out.push(bodyFace(topPlate), topFace(topPlate, 0.14));
+    out.push(bodyFace(botPlate));
+    out.push(sideFace(plate(60, 12, 1), 0.2));
+    out.push(sideFace(plate(300, 348, 0), 0.2));
+    // 갈빗살 마디 — 판을 가로지르는 가는 골.
+    for (const ang of [140, 108, 76, 44, 214, 246, 278, 310]) {
+      out.push(sideFace(`M${P(E(ang + 2, rx2 + 0.2, ry2 + 0.15))} L${P(E(ang + 2, RX - 0.3, RY - 0.25))}`
+        + ` L${P(E(ang - 2, RX - 0.3, RY - 0.25))} L${P(E(ang - 2, rx2 + 0.2, ry2 + 0.15))} Z`, 0.14));
+    }
+    // 아래판 파란 창 줄 — 안쪽 중간 반지름을 따라 빛 점.
+    const mx2 = (rx2 + RX) / 2 - 0.2;
+    const my2 = (ry2 + RY) / 2 - 0.2;
+    for (const ang of [222, 252, 282, 312]) {
+      out.push(topFace(groundEllipse(...E(ang, mx2, my2), 0.55, 0.42), 0.5));
     }
     return out;
   },
