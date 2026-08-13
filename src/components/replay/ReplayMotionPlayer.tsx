@@ -2982,8 +2982,13 @@ export default function ReplayMotionPlayer({
             /* 입체 보기(정정: 원근법 적용) — 렌즈를 perspective+rotateX로 눕히고, 확대·
                이동(zoom·pan)은 눕힌 판 위에서 움직인다. 서 있는 마커는 CSS 빌보드
                (scr-motion-pitched 규칙)가 도로 세운다. */
+            /* 가까운 변까지 다 담기(지적: 앞쪽이 잘림) — 원근에서 아래(가까운) 변이
+               1/(1−sinθ·h/2P)배로 넓어지므로, 그 역수만큼 미리 줄여 맵 상자 안에
+               통째로 들어오게 한다(3% 여유). */
+            const mapH = mapRef.current?.clientHeight ?? 600;
+            const fit = Math.min(1, ((900 - Math.sin((38 * Math.PI) / 180) * (mapH / 2)) / 900) * 0.97);
             const tf = [
-              pitched ? "perspective(900px) rotateX(38deg)" : "",
+              pitched ? `perspective(900px) rotateX(38deg) scale(${fit.toFixed(3)})` : "",
               zoom > 1 ? `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` : "",
             ].filter(Boolean).join(" ");
             return tf === "" ? undefined : {
