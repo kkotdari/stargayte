@@ -51,10 +51,15 @@ export function withTopView<T>(fn: () => T): T {
 }
 /** 지금 유효한 바닥 납작비. */
 export function groundSquashNow(): number {
-  return topView ? 0.66 : GROUND_SQUASH;
+  /* 0.66 → 0.55(수리: 넥서스 앞 바닥·기둥이 뷰박스 밖으로 잘렸다) — 앞쪽 깊이가
+     원점(아래 originYNow)과 함께 16칸 안에 들어오는 선까지만 부감을 준다. */
+  return topView ? 0.55 : GROUND_SQUASH;
 }
 function zScaleNow(): number {
-  return topView ? 0.6 : 0.89;
+  return topView ? 0.66 : 0.89;
+}
+function originYNow(): number {
+  return topView ? 12 : 12.6;
 }
 
 /** 몸통 — 본색 그대로. */
@@ -186,7 +191,7 @@ export function project(x: number, y: number, z: number): [number, number] {
   const sn = Math.sin(th);
   const rx = x * c + y * sn;
   const ry = -x * sn + y * c;
-  return [r2(VIEW.originX + rx), r2(VIEW.originY + ry * groundSquashNow() - z * zScaleNow())];
+  return [r2(VIEW.originX + rx), r2(originYNow() + ry * groundSquashNow() - z * zScaleNow())];
 }
 
 /** 3D 꼭짓점 목록 → 닫힌 직선 패스. (곡선이 필요하면 결과 좌표를 Q로 이어 다듬는다.) */
