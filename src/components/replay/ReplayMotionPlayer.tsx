@@ -702,6 +702,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...hornFaces(-0.5, -5.5, 0.8, -1.2, -7.1, 1.3, 0.8),
     ];
   },
+  /* 핵탄두(요청·테스트) — 몸통 원통 + 둥근 탄두 + 꼬리 날개 넷. */
+  nuke: () => [
+    ...cylinderFaces3(0, 0, 1.7, 7.4),
+    ...domeFaces3(0, 0, 1.7, 3, 7.4),
+    ...hornFaces(-1.5, 0, 0.4, -3.1, 0, 2.6, 1),
+    ...hornFaces(1.5, 0, 0.4, 3.1, 0, 2.6, 1),
+    ...hornFaces(0, -1.3, 0.4, 0, -2.8, 2.6, 0.9),
+    ...hornFaces(0, 1.3, 0.4, 0, 2.8, 2.6, 0.9),
+  ],
+
   /* 오버로드 — 풍선 몸통(요잉 불변) + 곤충 다리 셋(요청: 촉수·칼이 아니라 무릎이 꺾인
      곤충 다리) — 윗마디는 바깥-아래로, 아랫마디는 무릎에서 안-아래로 꺾인다. */
   ovie: () => {
@@ -3021,22 +3031,47 @@ export default function ReplayMotionPlayer({
         {/* 마법 — 떨어진 자리에 이름이 잠깐 떠오른다. 핵만은 이름에 폭발 파문까지
             얹는다(요청: "핵 떨어지는거도 효과") — 경기 하나에 몇 번 없는, 그 판의 가장
             큰 사건이라 다른 마법과 같은 글자 한 줄로는 안 보였다. */}
-        {castsNow.map(([, x, y, tech, raw], i) => (
-          // 한글명을 모르는 기술은 아예 안 띄운다(요청: 텍스트는 전부 한글로).
-          TECH_KO[tech] ? (
+        {castsNow.map(([sec, x, y, tech, raw], i) => {
+          if (!TECH_KO[tech]) return null; // 한글명을 모르는 기술은 안 띄운다(요청).
+          if (tech === "Nuclear Strike") {
+            /* 핵(요청·테스트) — 처음 2초는 탄두가 내려오고, 닿는 순간 폭발 광원: 백열
+               섬광 → 주황 화구 → 퍼지는 링. 광원은 mix-blend(screen)로 지형을 실제로
+               밝힌다. */
+            const age = t - sec;
+            const falling = age < 2;
+            return (
+              <span
+                key={`c-${i}`}
+                className="scr-motion-nukefx"
+                style={{ left: pct(x, grid.width), top: pct(y, grid.height) }}
+              >
+                {falling ? (
+                  <span className="scr-motion-nuke-fall" style={{ color: modeColor(raw, teamOfRaw(raw)) }}>
+                    <ShapeIcon kind="nuke" />
+                  </span>
+                ) : (
+                  <>
+                    <span className="scr-motion-nuke-flash" />
+                    <span className="scr-motion-nuke-fire" />
+                    <span className="scr-motion-nuke-ring" />
+                  </>
+                )}
+              </span>
+            );
+          }
+          return (
             <span
               key={`c-${i}`}
               className={cx(
                 "scr-motion-cast",
-                tech === "Nuclear Strike" && "scr-motion-nuke",
                 teamOfRaw(raw) === 2 ? "scr-motion-team2" : "scr-motion-team1",
               )}
               style={{ left: pct(x, grid.width), top: pct(y, grid.height), ...castStyle(raw, teamOfRaw(raw)) }}
             >
               {TECH_KO[tech]}
             </span>
-          ) : null
-        ))}
+          );
+        })}
 
         {/* 드랍·태움(요청: 셔틀·드랍십·오버로드의 태우기와 드랍 표현) — 내린 자리엔
             '드랍', 제 수송선을 찍어 태운 자리엔 '태움'이 마법처럼 잠깐 떠오른다. */}

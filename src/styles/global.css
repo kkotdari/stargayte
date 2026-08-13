@@ -12747,3 +12747,54 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-model-thumb { width: 44px; height: 44px; color: #5ea2ff; display: inline-flex; }
 .scr-model-thumb .scr-motion-shape-svg { width: 100%; height: 100%; }
 .scr-model-label { font-size: var(--fs-micro); color: var(--muted); }
+
+/* ── 핵 연출(요청·테스트) — 낙하하는 탄두 + 폭발 광원 ─────────────────────────── */
+.scr-motion-nukefx { pointer-events: none; z-index: 30000; }
+.scr-motion-nuke-fall {
+  display: inline-flex; width: 26px; height: 26px;
+  transform: rotate(180deg); /* 탄두가 아래를 향해 떨어진다. */
+  animation: scr-nuke-fall 2s linear forwards;
+}
+.scr-motion-nuke-fall .scr-motion-shape-svg { width: 100%; height: 100%; }
+@keyframes scr-nuke-fall {
+  from { translate: 0 -140px; opacity: 0.4; }
+  to { translate: 0 0; opacity: 1; }
+}
+/* 백열 섬광 — 한순간 화면을 때리는 흰 빛(광원: screen 블렌드로 지형을 실제로 밝힌다). */
+.scr-motion-nuke-flash {
+  position: absolute; left: 50%; top: 50%; width: 240px; height: 240px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,240,200,0.55) 30%, transparent 70%);
+  mix-blend-mode: screen;
+  animation: scr-nuke-flash 0.9s ease-out forwards;
+}
+@keyframes scr-nuke-flash {
+  0% { opacity: 0; scale: 0.2; }
+  12% { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: 1.35; }
+}
+/* 화구 — 주황 불덩이가 부풀며 사그라든다. */
+.scr-motion-nuke-fire {
+  position: absolute; left: 50%; top: 50%; width: 110px; height: 110px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(255,220,120,0.95) 0%, rgba(255,120,30,0.8) 40%, rgba(160,40,10,0.3) 70%, transparent 75%);
+  mix-blend-mode: screen;
+  animation: scr-nuke-fire 2.6s ease-out forwards;
+}
+@keyframes scr-nuke-fire {
+  0% { opacity: 0; scale: 0.3; }
+  18% { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: 1.7; }
+}
+/* 충격 링 — 얇은 빛 고리가 퍼진다. */
+.scr-motion-nuke-ring {
+  position: absolute; left: 50%; top: 50%; width: 60px; height: 60px;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  border: 2px solid rgba(255,230,170,0.9);
+  mix-blend-mode: screen;
+  animation: scr-nuke-ring 1.8s ease-out 2 forwards;
+}
+@keyframes scr-nuke-ring {
+  from { opacity: 0.9; scale: 0.4; }
+  to { opacity: 0; scale: 3.4; }
+}
