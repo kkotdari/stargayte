@@ -1323,22 +1323,44 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       capFace(groundEllipse(mx3, my3, 0.8, 0.45), 0.4),
     ];
   },
-  /* 스파이어 — 3단 좁아지는 탑 + 꼭대기 뿔. */
-  spire: () => [
-    ...cylinderFaces3(0, 0, 3.6, 2.2),
-    ...cylinderFaces3(0, 0, 2.7, 2.4, 2.2),
-    ...cylinderFaces3(0, 0, 1.9, 2.6, 4.6),
-    ...hornFaces(0, 0, 7, 0.6, -0.6, 9.6, 1.2),
-  ],
-  /* 그레이터 스파이어 — 더 높은 탑 + 옆 뿔들. */
-  gspire: () => [
-    ...cylinderFaces3(0, 0, 3.8, 2.4),
-    ...cylinderFaces3(0, 0, 2.9, 2.6, 2.4),
-    ...cylinderFaces3(0, 0, 2.1, 2.8, 5),
-    ...hornFaces(0, 0, 7.6, 0.7, -0.7, 10.6, 1.3),
-    ...hornFaces(-2.4, -1, 3.4, -3.6, -1.6, 6.2, 0.9),
-    ...hornFaces(2.4, -1.2, 3.4, 3.6, -1.9, 5.8, 0.9),
-  ],
+  /* 스파이어(정정) — 높은 곳의 동그란 둥지를 긴 다리들이 받치는 공중 둥지. */
+  spire: () => {
+    const leg = (ang: number, zTop: number): ShapeFace[] => {
+      const a = (ang * Math.PI) / 180;
+      return hornFaces(
+        Math.sin(a) * 1.7, Math.cos(a) * 1.7, zTop,
+        Math.sin(a) * 3.4, Math.cos(a) * 3.4, 0, 0.75,
+      );
+    };
+    const [bx2, by2] = project(0, 0, 6.2);
+    return [
+      ...leg(150, 6.3), ...leg(210, 6.3), ...leg(90, 6.3), ...leg(270, 6.3),
+      bodyFace(groundEllipse(bx2, by2, 2.4, 1.1)),
+      ...domeFaces3(0, 0, 2.4, 2.2, 6.2),
+      ...hornFaces(0, 0, 8.3, 0.5, -0.5, 9.7, 0.8),
+      ...leg(30, 6.3), ...leg(-30, 6.3),
+    ];
+  },
+  /* 그레이터 스파이어(정정) — 같은 공중 둥지를 더 높게, 둥지에 옆 뿔들. */
+  gspire: () => {
+    const leg = (ang: number): ShapeFace[] => {
+      const a = (ang * Math.PI) / 180;
+      return hornFaces(
+        Math.sin(a) * 1.8, Math.cos(a) * 1.8, 7.4,
+        Math.sin(a) * 3.7, Math.cos(a) * 3.7, 0, 0.8,
+      );
+    };
+    const [bx2, by2] = project(0, 0, 7.3);
+    return [
+      ...leg(150), ...leg(210), ...leg(90), ...leg(270),
+      bodyFace(groundEllipse(bx2, by2, 2.6, 1.2)),
+      ...domeFaces3(0, 0, 2.6, 2.4, 7.3),
+      ...hornFaces(0, 0, 9.6, 0.6, -0.6, 11, 0.9),
+      ...hornFaces(-2.2, -0.8, 8.4, -3.4, -1.2, 9.8, 0.7),
+      ...hornFaces(2.2, -0.8, 8.4, 3.4, -1.2, 9.8, 0.7),
+      ...leg(30), ...leg(-30),
+    ];
+  },
   /* 퀸즈 네스트(정정) — 반구형 몸에 아래쪽 밑단을 따라 긴 입구들이 빙 둘러 뚫린다. */
   queensnest: () => {
     const slit = (ang: number): string => {
