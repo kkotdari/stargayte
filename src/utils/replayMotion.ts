@@ -202,6 +202,8 @@ function foldTrack(
 function trackOf(
   orders: { frame: number; x: number; y: number; kind?: "attack" | "move"; by?: string; n?: number; g?: number }[],
   armyStartSec: number,
+  zerg = false,
+  home: [number, number] | null = null,
 ): {
   pts: TrackPt[]; spts: TrackPt[];
   tpts: TrackPt[]; opts: TrackPt[];
@@ -215,8 +217,13 @@ function trackOf(
      밀당하며 순간이동한다. */
   const worker = (o: O): boolean => o.by === "Worker";
   const carrier = (o: O): boolean => o.by === "Transport" && (o.n ?? 1) === 1;
-  const lone = (o: O): boolean => o.n === 1 && o.by === undefined;
   const early = (o: O): boolean => o.frame * SECONDS_PER_FRAME < armyStartSec;
+  const lone = (o: O): boolean => (o.n === 1 && o.by === undefined)
+    /* 옛 분석본 폴백(지적: 오버로드가 초반에 정찰을 안 한다) — n(선택 크기)이 없던
+       시절 자료에선 시작 오버로드의 홑 클릭을 알 길이 없어 일꾼 정찰(spts)에 묻혔다.
+       저그의 이른 무명 원거리 클릭(집에서 25타일 너머)은 오버로드 정찰로 본다. */
+    || (zerg && o.n === undefined && o.by === undefined && early(o)
+      && home !== null && Math.hypot(o.x - home[0], o.y - home[1]) > 25);
   const scout = (o: O): boolean => worker(o) || carrier(o) || lone(o) || early(o);
   const army = movable.filter((o) => !scout(o));
   /* 정체가 드러난 유닛은 제 자취로(요청: 유닛별 위치) — 무명 명령만 '부대'로 남는다.
@@ -454,7 +461,10 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       for (const f of frames) armyStartSec = Math.min(armyStartSec, f * SECONDS_PER_FRAME);
     }
     if (armyStartSec === Infinity) armyStartSec = 0;
-    const { pts, spts, tpts, opts, upts } = trackOf(sg.orderPositions ?? [], armyStartSec);
+    const { pts, spts, tpts, opts, upts } = trackOf(
+      sg.orderPositions ?? [], armyStartSec, p.race === "저그",
+      p.startX !== null && p.startY !== null ? [p.startX, p.startY] : null,
+    );
     const units = unitTimeline(sg.unitFrames ?? {});
     // 생산 슬롯 — 시작 본진(0초) + 지어진 본진 건물들(건설 시간 지나서부터).
     const slotOpenSecs = [0, ...(sg.buildPositions ?? [])
