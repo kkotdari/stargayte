@@ -1711,19 +1711,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ]);
     return [bodyFace(hull), topFace(hull, 0.16), ...domeFaces3(0, 0.6, 0.7, 0.55, 6.2)];
   },
-  /* 캐리어(정정) — 매끈한 잎 세 장이 모인 형태: 뒤 둥근 밑동에서 위 한 장·옆 두 장의
-     긴 잎이 앞 끝으로 모인다. 아래엔 격납 판. */
+  /* 캐리어(정정 둘: 정말 심플하게) — 기다란 꽃잎 세 장이 서로 마주 보며 다물린 것이
+     전부다. 아래엔 옅은 격납 판만. */
   carrier: () => {
-    const [bx2, by2] = project(0, 0.2, 5);
-    const [hx3, hy3] = project(0, 0.8, 4.98);
+    const [bx2, by2] = project(0, 0.4, 4.9);
     return [
-      bodyFace(groundEllipse(bx2, by2, 2.5, 1.05)),
-      capFace(groundEllipse(hx3, hy3, 1.6, 0.65), 0.4),
-      ...domeFaces3(0, -2.3, 1.6, 1.25, 5),
-      // 잎 세 장 — 옆 둘 먼저, 위 한 장이 덮는다.
-      ...hornFaces(-1.5, -2.2, 5.4, -0.6, 3.7, 5.2, 1.9),
-      ...hornFaces(1.5, -2.2, 5.4, 0.6, 3.7, 5.2, 1.9),
-      ...hornFaces(0, -2.5, 6.3, 0, 3.9, 5.5, 2.2),
+      bodyFace(groundEllipse(bx2, by2, 2.2, 0.9)),
+      capFace(groundEllipse(bx2, by2, 1.4, 0.55), 0.35),
+      ...hornFaces(-1.35, -3.6, 5.5, -0.5, 4.4, 5.3, 1.75),
+      ...hornFaces(1.35, -3.6, 5.5, 0.5, 4.4, 5.3, 1.75),
+      ...hornFaces(0, -3.9, 6.3, 0, 4.7, 5.6, 2),
     ];
   },
   /* 아비터(정정) — 방패 날개는 세로가 아니라 가로로 길쭉하고 뒤쪽이 뾰족하다.
