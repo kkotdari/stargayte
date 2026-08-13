@@ -3135,7 +3135,9 @@ const pathOf = (d: string): Path2D => {
   if (!p) { p = new Path2D(d); PATH2D_CACHE.set(d, p); }
   return p;
 };
-function UnitLayer({ ops, zoom }: { ops: UnitDrawOp[]; zoom: number }) {
+function UnitLayer({ ops, zoom, pan }: {
+  ops: UnitDrawOp[]; zoom: number; pan: { x: number; y: number };
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
   // 의존성 없는 effect — 매 렌더(t 걸음)마다 다시 그린다. ops는 렌더마다 새로 모인다.
   useEffect(() => {
@@ -3144,14 +3146,13 @@ function UnitLayer({ ops, zoom }: { ops: UnitDrawOp[]; zoom: number }) {
     const cw = cv.clientWidth;
     const ch = cv.clientHeight;
     if (!cw || !ch) return;
-    /* 배킹 해상도 — 렌즈 줌은 CSS 확대라 래스터가 흐려진다. dpr×줌으로 그려 확대
-       중에도 또렷하게. 첫 판의 상한 3은 dpr 3짜리 폰에서 줌만 걸면 바로 포화돼 흐렸다
-       (지적: 모바일 줌인 해상도 저하) — 상한을 dpr×3으로 올리되, 배킹 최장변 4096px
-       (GPU 텍스처 한계·메모리)로만 막는다. */
+    /* 선명한 확대(지적: 확대가 선명하게 돼야) — 렌즈의 CSS 확대에 태우면 배킹 해상도가
+       줌을 따라 커져야 해서 한계(4096px)에 막혀 흐려졌다. 이제 캔버스는 렌즈 밖에서
+       뷰포트 크기 그대로 두고, 줌·팬을 그리기 좌표에 직접 입힌다 — 어느 배율에서도
+       화면 픽셀(dpr) 그대로라 늘 또렷하고, 화면 밖 마커는 걸러 깊은 줌일수록 그릴
+       것이 오히려 준다. */
     const dpr = window.devicePixelRatio || 1;
-    /* 줌 상한 12(요청: 모바일 확대 허용치 크게)에 맞춰 배킹도 5까지 따라간다 — 그 위는
-       4096px 한계가 알아서 막는다. */
-    const B = Math.min(dpr * Math.min(zoom, 5), 4096 / Math.max(cw, ch, 1));
+    const B = Math.min(dpr, 4096 / Math.max(cw, ch, 1));
     const bw = Math.round(cw * B);
     const bh = Math.round(ch * B);
     if (cv.width !== bw) cv.width = bw;
@@ -3160,12 +3161,23 @@ function UnitLayer({ ops, zoom }: { ops: UnitDrawOp[]; zoom: number }) {
     if (!ctx) return;
     ctx.setTransform(B, 0, 0, B, 0, 0);
     ctx.clearRect(0, 0, cw, ch);
-    // SVG 도형의 그림자(drop-shadow 0 1px 1.5px)와 같은 값 — 품질 동일.
+    // SVG 도형의 그림자(drop-shadow 0 1px 1.5px)와 같은 값 — CSS 확대 시절과 같게
+    // 줌 배율을 태운다(그림자도 도형과 함께 커져야 결이 같다).
     ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
-    ctx.shadowOffsetY = 1;
-    ctx.shadowBlur = 1.5;
+    ctx.shadowOffsetY = zoom;
+    ctx.shadowBlur = 1.5 * zoom;
+    // 렌즈 CSS(translate(pan) scale(zoom), 원점 가운데)와 같은 사상 — 분수 자리를
+    // 확대·팬이 실린 화면 픽셀로 푼다.
+    const zx = (f: number): number => (f - 0.5) * cw * zoom + cw / 2 + pan.x;
+    const zy = (f: number): number => (f - 0.5) * ch * zoom + ch / 2 + pan.y;
     const sorted = [...ops].sort((a, b) => a.z - b.z);
     for (const op of sorted) {
+      const sx = zx(op.fx);
+      const sy = zy(op.fy);
+      // 화면 밖은 걸러낸다 — 깊은 줌에서 그리기가 오히려 줄어드는 이유.
+      const ext = (op.wFrac !== undefined
+        ? Math.max(op.wFrac, op.hFrac ?? 0) * cw : op.sizePx) * zoom + 24;
+      if (sx < -ext || sx > cw + ext || sy < -ext || sy > ch + ext) continue;
       ctx.save();
       // 건물은 그림자 없음(지적: 떠 보임 — 유닛만 그림자) — SVG 시절 filter:none과 동일.
       ctx.shadowColor = op.noShadow ? "transparent" : "rgba(0, 0, 0, 0.6)";
@@ -3173,22 +3185,22 @@ function UnitLayer({ ops, zoom }: { ops: UnitDrawOp[]; zoom: number }) {
         // 부속건물 + 같은 글자 하나 — 스팬 글자와 같은 굵기·가운데 앵커.
         ctx.globalAlpha = op.alpha;
         ctx.fillStyle = op.color;
-        ctx.font = `700 ${op.sizePx}px sans-serif`;
+        ctx.font = `700 ${op.sizePx * zoom}px sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(op.textGlyph, op.fx * cw, op.fy * ch);
+        ctx.fillText(op.textGlyph, sx, sy);
         ctx.restore();
         continue;
       }
       if (op.wFrac !== undefined && op.hFrac !== undefined) {
         // 건물 상자 — 스팬의 % 폭 + aspectRatio(폭 기준)를 그대로 픽셀로 푼 것.
-        const wPx = op.wFrac * cw;
-        const hPx = op.hFrac * cw;
+        const wPx = op.wFrac * cw * zoom;
+        const hPx = op.hFrac * cw * zoom;
         if (op.boxFit === "fill") {
           // 맨 네모(전용 도형 없는 건물) — 상자를 그대로 채운다(.scr-motion-sq).
           ctx.globalAlpha = op.alpha;
           ctx.fillStyle = op.color;
-          ctx.fillRect(op.fx * cw - wPx / 2, op.fy * ch - hPx / 2, wPx, hPx);
+          ctx.fillRect(sx - wPx / 2, sy - hPx / 2, wPx, hPx);
           ctx.restore();
           continue;
         }
@@ -3196,7 +3208,7 @@ function UnitLayer({ ops, zoom }: { ops: UnitDrawOp[]; zoom: number }) {
         const { faces } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
         if (faces) {
           const s = (op.fitWidth ? wPx : Math.min(wPx, hPx)) / 16;
-          ctx.translate(op.fx * cw, op.fy * ch + hPx / 2);
+          ctx.translate(sx, sy + hPx / 2);
           ctx.scale(s, s);
           ctx.translate(-8, -16);
           for (const [d, o, fill] of faces) {
@@ -3210,10 +3222,11 @@ function UnitLayer({ ops, zoom }: { ops: UnitDrawOp[]; zoom: number }) {
       }
       const { faces, rot } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
       if (!faces) { ctx.restore(); continue; }
+      const px = op.sizePx * zoom;
       // 스팬의 가운데 앵커 + 발끝 띄움(translateY(-24%))을 그대로 재현한다.
-      ctx.translate(op.fx * cw, op.fy * ch - op.sizePx * 0.24);
+      ctx.translate(sx, sy - px * 0.24);
       if (rot) ctx.rotate((rot * Math.PI) / 180);
-      ctx.scale(op.sizePx / 16, op.sizePx / 16);
+      ctx.scale(px / 16, px / 16);
       ctx.translate(-8, -8);
       for (const [d, o, fill] of faces) {
         ctx.globalAlpha = op.alpha * o;
@@ -4802,12 +4815,6 @@ export default function ReplayMotionPlayer({
           )
           : <div className="scr-motion-canvas scr-motion-canvas-blank" />}
 
-        {/* 유닛 캔버스 층(요청: 캔버스 전환 — 성능) — 낱개 유닛 도형 수백 개는 여기 한
-            장에 그린다. z-index는 건물 스팬들 위·말풍선(20000) 아래다: 유닛 z 공식이
-            건물 z(1000+초)보다 대체로 커서 어차피 위였다. unitOps는 아래 마커 계산부가
-            이 렌더에서 채우고, 커밋 뒤 effect가 그린다. */}
-        <UnitLayer ops={unitOps} zoom={zoom} />
-
         {/* 건물(요청: 합치기 대신) — 기본은 작은 이름이 늘 떠 있되, 가까이 겹치는 같은
             이름은 하나만 적고 나머지는 점(지적: 겹치면 안 보인다). 긴 이름은 폰트를 한
             단계 줄인다. 생산·연구 중이면 심장처럼 뛴다(요청). */}
@@ -6131,6 +6138,11 @@ export default function ReplayMotionPlayer({
           return [...mk(p.drops, "dr"), ...mk(p.loads, "ld")];
         })}
         </div>
+        {/* 유닛 캔버스 층(요청: 캔버스 전환 — 성능, 지적: 확대가 선명해야) — 렌즈 밖에
+            둔다: CSS 확대에 태우지 않고 줌·팬을 그리기 좌표에 직접 입혀, 어느 배율에서도
+            화면 해상도 그대로 또렷하다. unitOps는 렌즈 안 마커 계산부가 이 렌더에서
+            채우고, 커밋 뒤 effect가 그린다. */}
+        <UnitLayer ops={unitOps} zoom={zoom} pan={pan} />
         {/* (삭제) PC 확대 조절바 — PC에서는 확대 기능을 통째로 걷었다(요청). 확대·이동은
             이제 모바일 손짓(더블탭·두 손가락)만의 것이다. */}
       </div>
