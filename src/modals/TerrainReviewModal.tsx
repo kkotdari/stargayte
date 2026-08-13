@@ -81,7 +81,8 @@ export default function TerrainReviewModal({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.clearRect(0, 0, grid.w, grid.h);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.62)";
+    // 형광 라임(지적: 검정은 어두운 지형과 구분이 안 된다) — 미니맵에 없는 색이라 또렷하다.
+    ctx.fillStyle = "rgba(198, 255, 0, 0.55)";
     for (let y = 0; y < grid.h; y += 1) {
       for (let x = 0; x < grid.w; x += 1) {
         if (!grid.walk[y * grid.w + x]) ctx.fillRect(x, y, 1, 1);
@@ -166,7 +167,7 @@ export default function TerrainReviewModal({
         </div>
         <div className="scr-modal-body">
           <p className="scr-terrain-hint">
-            어두운 칸이 <b>이동 불가</b>예요. 붓은 막고, 지우개는 열고, 요술봉은 비슷한 색을
+            라임색 칸이 <b>이동 불가</b>예요. 붓은 막고, 지우개는 열고, 요술봉은 비슷한 색을
             한꺼번에 뒤집어요 — 자동 분석이 놓친 램프·다리를 열어 주세요.
           </p>
           {err && <div className="scr-err">{err}</div>}
