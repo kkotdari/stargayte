@@ -3993,8 +3993,11 @@ export default function ReplayMotionPlayer({
       };
     };
     const onTM = (e: TouchEvent) => {
+      /* 맵 위 손짓은 무조건 삼킨다(재지적: 2D·3D 모두 드래그가 모달로 전파) —
+         touch-action만으로는 iOS가 이미 시작한 스크롤을 못 막는 판이 있어,
+         손가락 수와 무관하게 여기서 기본 동작을 끊는다. */
+      if (e.cancelable) e.preventDefault();
       if (!pinch || e.touches.length !== 2) return;
-      e.preventDefault();
       const r = el.getBoundingClientRect();
       const ox = r.left + r.width / 2;
       const oy = r.top + r.height / 2;
@@ -4021,7 +4024,11 @@ export default function ReplayMotionPlayer({
       el.removeEventListener("touchend", onTE);
       el.removeEventListener("touchcancel", onTE);
     };
-  }, []);
+    /* big 의존(재지적: 모달에서 드래그가 계속 전파) — 확대 모달을 여닫으면 맵이 다른
+       트리의 새 엘리먼트로 옮겨 심기는데, 빈 의존성이라 리스너가 옛 엘리먼트에 남아
+       모달의 맵엔 아무 것도 안 붙어 있었다. IO effect와 같은 이유다. */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [big]);
   /* 건물 자리 회피(요청: 밟고 지나가지 않고 돌아간다) — 서 있는 건물 발자국(+여유
      0.5타일) 안으로 들어온 유닛 자리는 가장 가까운 변 밖으로 밀어낸다. 선분이 발자국을
      가로지르면 안쪽 구간이 변을 따라 미끄러져, 돌아가는 걸음으로 보인다. */
