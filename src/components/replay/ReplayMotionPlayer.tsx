@@ -2213,6 +2213,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 뒤 발광 엔진 둘.
       topFace(groundEllipse(e1x, e1y, 0.5, 0.4), 0.5),
       topFace(groundEllipse(e2x, e2y, 0.5, 0.4), 0.5),
+      // 아래 매달린 포드(지적: 레이스처럼 아래쪽에도) — 가는 지주 + 작은 캡슐.
+      ...hornFaces(0, -0.4, 5.6, 0, -0.6, 4, 0.24),
+      ...tubeFaces(0, -1.5, 0, 0.4, 0.34, 3.5),
     ];
   },
   /* 스카웃(실물 참고) — 길고 홀쭉한 금빛 코 몸통, 뒤로 젖힌 큰 날개 두 장, 뒤 엔진
