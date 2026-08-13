@@ -65,15 +65,15 @@ export function withTopView<T>(fn: () => T): T {
 export function groundSquashNow(): number {
   /* 0.66 → 0.55(수리: 넥서스 앞 바닥·기둥이 뷰박스 밖으로 잘렸다) — 앞쪽 깊이가
      원점(아래 originYNow)과 함께 16칸 안에 들어오는 선까지만 부감을 준다. */
-  /* (보류) 입체 판 0.71 — 45도 정합보다 모양 보존이 우선(지적: 점점 찌그러짐).
-     표준 굽기와 같은 값으로 중립화해 두고, 판 갈림길만 남긴다. */
-  return pitchView ? GROUND_SQUASH : topView ? 0.55 : GROUND_SQUASH;
+  /* 입체 판 피칭(지적: 이제 피칭만 손보면 됨) — 표준(0.45)과 45도 정합(0.71)의
+     중간 0.62로 한 단계. 더 눕히거나 세울 때 이 두 값만 만지면 된다. */
+  return pitchView ? 0.62 : topView ? 0.55 : GROUND_SQUASH;
 }
 function zScaleNow(): number {
-  return pitchView ? 0.89 : topView ? 0.66 : 0.89;
+  return pitchView ? 0.78 : topView ? 0.66 : 0.89;
 }
 function originYNow(): number {
-  return pitchView ? 12.6 : topView ? 12 : 12.6;
+  return pitchView ? 12.4 : topView ? 12 : 12.6;
 }
 
 /** 몸통 — 본색 그대로. */

@@ -3788,7 +3788,8 @@ export default function ReplayMotionPlayer({
     // 각은 뒤 축소(q) 전의 원근 공간에서 잰다 — q를 곱하면 각이 약해진다(지적).
     const k = PITCH_P / (PITCH_P - v * S);
     /* 요잉이 아니라 시각 밀림의 각(지적: 소실점이 시각을 반영해야 — 돌리면 찌그러짐).
-       오른쪽 마커 양, 왼쪽 음. ShapeIcon이 tan을 취해 깊이 비례 가로 밀림으로 쓴다. */
+       ShapeIcon이 tan을 취해 깊이 비례 가로 밀림으로 쓴다. 부호는 실화면 확인으로
+       이쪽이 정답("지금까지 중 제일 나아") — 다시 뒤집지 말 것. */
     return (Math.atan2(u * k, PITCH_P) * 180) / Math.PI;
   };
   const depthMk = (x: number, y: number): React.CSSProperties => {
