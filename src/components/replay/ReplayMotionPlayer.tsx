@@ -2621,14 +2621,17 @@ export default function ReplayMotionPlayer({
        기록이 남는 마법은 최근 12초 안에 맞은 만큼 더 빨리 녹고(피해·무력화), 내가 건
        만큼 천천히 녹는다(상대 화력 묶음). 디바우러 산성 포자는 일반 공격이라 기록이
        없어 못 센다. */
+    /* EMP는 실드 종족에만 크게(지적) — 실드를 통째로 벗기니 프로토스 상대 0.25,
+       그 밖엔 에너지 소진 몫만 0.05. */
     const COMBAT_CASTS: Record<string, number> = {
       "Psionic Storm": 0.25, Plague: 0.25, Irradiate: 0.15,
       Lockdown: 0.15, Maelstrom: 0.15, "Stasis Field": 0.15,
-      Ensnare: 0.1, "EMP Shockwave": 0.15,
+      Ensnare: 0.1,
     };
-    const castsOf = (pred: (raw: string) => boolean): [number, number][] => motion.casts
-      .filter((c) => COMBAT_CASTS[c[3]] !== undefined && pred(c[4]))
-      .map((c) => [c[0], COMBAT_CASTS[c[3]]]);
+    const raceOf = (raw: string): string | undefined => bases.find((b) => b.key === raw)?.race;
+    const castsOf = (pred: (raw: string) => boolean, empW: number): [number, number][] => motion.casts
+      .filter((c) => (COMBAT_CASTS[c[3]] !== undefined || c[3] === "EMP Shockwave") && pred(c[4]))
+      .map((c) => [c[0], c[3] === "EMP Shockwave" ? empW : COMBAT_CASTS[c[3]]]);
     const upTimes = (raw: string, names: Set<string>): number[] =>
       (motion.players.find((q) => q.raw === raw)?.ups ?? [])
         .filter(([, n]) => names.has(n)).map(([us]) => us).sort((a, b) => a - b);
@@ -2644,10 +2647,29 @@ export default function ReplayMotionPlayer({
       const foeWeapons = motion.players
         .filter((q) => q.raw !== p.raw && teamOfRaw(q.raw) !== teamOfRaw(p.raw))
         .map((q) => upTimes(q.raw, WEAPON_UPS));
-      const foeCasts = castsOf((raw) => teamOfRaw(raw) !== teamOfRaw(p.raw));
-      const myCasts = castsOf((raw) => raw === p.raw);
+      const foeCasts = castsOf(
+        (raw) => teamOfRaw(raw) !== teamOfRaw(p.raw),
+        raceOf(p.raw) === "프로토스" ? 0.25 : 0.05,
+      );
+      const myCasts = castsOf(
+        (raw) => raw === p.raw,
+        motion.players.some((q) => teamOfRaw(q.raw) !== teamOfRaw(p.raw) && raceOf(q.raw) === "프로토스")
+          ? 0.25 : 0.05,
+      );
       const castBoost = (list: [number, number][], sec: number): number =>
         list.reduce((a, [cs, w]) => a + (cs <= sec && sec - cs <= 12 ? w : 0), 0);
+      /* 디바우러 산성 포자(지적: 곁에 있으면 공중이 약해진다) — 캐스트 기록은 없지만
+         생산 기록은 있다. 상대 디바우러 수 × 내 공중 비중만큼 더 녹는다(기당 5%,
+         상한 15%). */
+      const prodTimes = (q: MotionTrack, filt: (u: string) => boolean): number[] =>
+        Object.entries(q.prod ?? {}).filter(([u]) => filt(u))
+          .flatMap(([u, secs]) => secs.map((x2) => x2 + (UNIT_SEC[u] ?? 20)))
+          .sort((a, b) => a - b);
+      const myAir = prodTimes(p, (u) => !!UNIT_KO[u] && isAirUnit(u));
+      const myAll = prodTimes(p, (u) => !!UNIT_KO[u]);
+      const foeDevourers = motion.players
+        .filter((q) => teamOfRaw(q.raw) !== teamOfRaw(p.raw))
+        .map((q) => prodTimes(q, (u) => u === "Devourer"));
       // 눈금: 완성 시각 + 전투 경계와 그 안의 5초 간격 — 구간이 경계를 안 넘게 쪼갠다.
       const marks = new Set<number>([0, ...done]);
       for (const [a, b] of hot) {
@@ -2666,7 +2688,9 @@ export default function ReplayMotionPlayer({
           const atk = Math.max(0, ...foeWeapons.map((w) => countBy(w, prev)));
           const mult = (1 + 0.08 * atk) / (1 + 0.06 * countBy(myArmor, prev))
             * (1 + Math.min(0.6, castBoost(foeCasts, prev)))
-            / (1 + Math.min(0.3, castBoost(myCasts, prev) * 0.6));
+            / (1 + Math.min(0.3, castBoost(myCasts, prev) * 0.6))
+            * (1 + Math.min(0.15, Math.max(0, ...foeDevourers.map((d2) => countBy(d2, prev))) * 0.05)
+              * (countBy(myAll, prev) > 0 ? countBy(myAir, prev) / countBy(myAll, prev) : 0));
           size = Math.max(0, size * Math.exp(-PROP * mult * dt2) - LIN * mult * dt2);
         }
         while (di < done.length && done[di] <= now) { size += 1; di += 1; }
@@ -2676,7 +2700,7 @@ export default function ReplayMotionPlayer({
       out.set(p.raw, series);
     }
     return out;
-  }, [motion, completionsByRaw, teamOfRaw]);
+  }, [motion, completionsByRaw, teamOfRaw, bases]);
 
   /* 본진 건물(확장 포함)의 자리 — 채굴 일꾼이 오갈 목적지다(지적: 자원 지대가 기준이고,
      거기서 가장 가까운 본진 건물로 왔다 갔다). 커맨드·넥서스·해처리 계열이 대상이다. */
