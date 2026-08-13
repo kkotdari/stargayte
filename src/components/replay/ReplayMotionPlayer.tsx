@@ -2021,14 +2021,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...hornFaces(m2 * 5.15, -1.2, 5.6, m2 * 5.6, -1.8, 5.95, 0.3),
       ...hornFaces(m2 * 4.45, -1.2, 5.6, m2 * 4, -1.8, 5.95, 0.3),
     ];
-    /* 컵 추진기(수리: 단면이 이상했다) — 검증된 캡슐 관으로 그리고, 꽁무니에 몸색
-       벌어진 테만 한 겹 두른다(뒤는 시청자 반대편이라 어두운 구멍은 안 보이는 게 맞다). */
+    /* 로켓 노즐(사진 참고: 새턴 V) — 뒤로 벌어지는 종 몸통과 그 끝에 정확히 얹힌
+       노즐 입(몸색 테 + 어두운 속). 끝 타원은 종 끝점·끝폭에 그대로 맞춰 이음매가
+       없다(앞판의 어긋남은 세로 보정 탓이었다). */
     const cup = (cx2: number, z2: number): ShapeFace[] => {
-      const [rx2, ry2] = project(cx2, -3.8, z2);
+      const [ax2, ay2] = project(cx2, -2.1, z2);
+      const [bx2, by2] = project(cx2, -3.9, z2);
+      const dxv = bx2 - ax2;
+      const dyv = by2 - ay2;
+      const L = Math.hypot(dxv, dyv) || 1;
+      const nx3 = -dyv / L;
+      const ny3 = dxv / L;
       return [
-        ...tubeFaces(cx2, -3.8, cx2, -2.2, 0.5, z2),
-        bodyFace(groundEllipse(rx2, ry2 - 0.22, 0.66, 0.5)),
-        sideFace(groundEllipse(rx2, ry2 - 0.22, 0.66, 0.5), 0.16),
+        bodyFace(`M${ax2 + nx3 * 0.36} ${ay2 + ny3 * 0.36} L${bx2 + nx3 * 0.7} ${by2 + ny3 * 0.7}`
+          + ` L${bx2 - nx3 * 0.7} ${by2 - ny3 * 0.7} L${ax2 - nx3 * 0.36} ${ay2 - ny3 * 0.36} Z`),
+        bodyFace(groundEllipse(bx2, by2, 0.7, 0.52)),
+        capFace(groundEllipse(bx2, by2, 0.5, 0.36), 0.45),
       ];
     };
     return [
