@@ -756,13 +756,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...pillar(-5.6, 5.6), ...pillar(5.6, 5.6));
     return out;
   },
-  /* 게이트웨이(실물 참고) — 낮은 사방 경사로 마당 위에 위로 뾰족한 황금 물방울 돛,
-     가운데 빛나는 소환창, 곁의 검은 굽은 뿔들과 가는 안테나 관. */
+  /* 게이트웨이(실물 점검) — 낮은 사방 경사로 마당 위에 마주 기운 어금니 탑 한 쌍이
+     사이를 띄워 문을 이루고, 그 사이에 소환 빛이 선다. */
   gate: () => {
-    const pt = (x: number, y: number, z: number): string => {
-      const [px, py] = project(x, y, z);
-      return `${px} ${py}`;
-    };
     const h = 1.1;
     const a = 3.1;
     const b = 2.4;
