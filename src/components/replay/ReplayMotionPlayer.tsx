@@ -1822,37 +1822,71 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ];
   },
   /* ── 기계·함선 유닛들(요청: 만들 수 있는 건 다) — 정면 +y, 공중은 높이 띄운다. ── */
-  /* 시즈 탱크 — 차체 + 포탑 + 앞으로 내민 포신. */
+  /* 시즈 탱크(실물 참고) — 양옆 궤도 블록 + 차체 + 포탑의 쌍포신. */
   tank: () => [
-    ...boxFaces3(0, -0.3, 3.4, 4, 1.6, 3.4),
-    ...domeFaces3(0, -0.6, 1.5, 1.1, 5),
-    ...tubeFaces(0.4, 0.6, 0.4, 4.6, 0.42, 5.6),
+    ...boxFaces3(-1.9, 0, 1.5, 4.4, 1.4),
+    ...boxFaces3(1.9, 0, 1.5, 4.4, 1.4),
+    ...boxFaces3(0, -0.2, 3, 3.6, 1.2, 1.2),
+    ...boxFaces3(0, -0.4, 2, 2.2, 1.2, 2.4),
+    ...tubeFaces(-0.45, 1, -0.45, 3.4, 0.22, 3.1),
+    ...tubeFaces(0.45, 1, 0.45, 3.4, 0.22, 3.1),
   ],
-  /* 벌처 — 부양 빛 위 뾰족한 몸판 + 라이더 혹 + 뒤 분사구 둘. */
-  vulture: () => {
-    const [gx, gy] = project(0, 0, 3.1);
-    const deck = polyPath3([[0, 4.4, 4.2], [1.5, 0.6, 4.4], [0.9, -2.6, 4.4], [-0.9, -2.6, 4.4], [-1.5, 0.6, 4.4]]);
+  /* 시즈 모드(실물 참고) — 사방으로 벌린 궤도 발 넷 + 올라선 포탑 + 위-앞으로 겨눈
+     큰 포신. */
+  tanksiege: () => {
+    const [ax2, ay2] = project(0, 0.7, 3.9);
+    const [bx2, by2] = project(0, 2.9, 6.8);
+    const dx2 = bx2 - ax2;
+    const dy2 = by2 - ay2;
+    const L = Math.hypot(dx2, dy2) || 1;
+    const nx2 = (-dy2 / L) * 0.3;
+    const ny2 = (dx2 / L) * 0.3;
     return [
-      topFace(groundEllipse(gx, gy, 1.9, 0.9), 0.25),
-      bodyFace(deck), topFace(deck, 0.18),
-      ...domeFaces3(0, -0.9, 0.9, 0.9, 4.5),
-      ...tubeFaces(-0.7, -2.9, -0.7, -1.7, 0.35, 4.2),
-      ...tubeFaces(0.7, -2.9, 0.7, -1.7, 0.35, 4.2),
+      ...boxFaces3(-2.4, 1.9, 1.5, 2.2, 1.1),
+      ...boxFaces3(2.4, 1.9, 1.5, 2.2, 1.1),
+      ...boxFaces3(-2.6, -1.9, 1.5, 2.2, 1.1),
+      ...boxFaces3(2.6, -1.9, 1.5, 2.2, 1.1),
+      ...boxFaces3(0, -0.3, 2.6, 2.6, 1.6, 1),
+      ...frustumFaces3(0, -0.5, 2.2, 1.8, 1.6, 1.4, 1.6, 2.6),
+      bodyFace(`M${ax2 + nx2} ${ay2 + ny2} L${bx2 + nx2} ${by2 + ny2} L${bx2 - nx2} ${by2 - ny2} L${ax2 - nx2} ${ay2 - ny2} Z`),
+      capFace(groundEllipse(bx2, by2, 0.34, 0.28), 0.4),
+    ];
+  },
+  /* 벌처(실물 참고) — 뒤 엔진 통 둘, 가운데 좌석·라이더 혹, 앞으로 길고 뾰족하게
+     뻗는 칼날 스키드 코. */
+  vulture: () => {
+    const [gx, gy] = project(0, 0.4, 3);
+    const nose = polyPath3([[-1, -0.3, 4.35], [1, -0.3, 4.35], [0.4, 4.8, 3.55], [-0.05, 4.9, 3.55]]);
+    return [
+      topFace(groundEllipse(gx, gy, 2, 0.85), 0.22),
+      ...tubeFaces(-0.5, -2.9, -0.5, -1.3, 0.55, 4.6),
+      ...tubeFaces(0.6, -3, 0.6, -1.4, 0.5, 4.2),
+      bodyFace(polyPath3([[1.1, -0.2, 4.4], [0.9, -2.4, 4.5], [-0.9, -2.4, 4.5], [-1.1, -0.2, 4.4]])),
+      ...domeFaces3(0, -1, 0.85, 0.85, 4.6),
+      bodyFace(nose),
+      topFace(nose, 0.18),
+      sideFace(polyPath3([[1, -0.3, 4.35], [0.4, 4.8, 3.55], [0.35, 4.75, 3.2], [0.95, -0.3, 3.9]]), 0.2),
     ];
   },
   /* 골리앗 — 두 다리 위 상자 몸통 + 양옆 총 포드 + 머리. */
   goliath: () => [
-    // 기계식 꺾인 다리(지적: 길이 살짝 축소) — 몸을 한 뼘 내려 다리를 줄였다.
+    // 기계식 꺾인 다리(짧게 유지).
     ...hornFaces(-1.2, -0.2, 4.8, -1.7, -1.2, 2.9, 0.8),
     ...hornFaces(-1.7, -1.2, 2.9, -1.9, 0.7, 0.9, 0.65),
     ...boxFaces3(-1.9, 0.8, 1.1, 1.6, 0.5),
     ...hornFaces(1.2, -0.2, 4.8, 1.7, -1.2, 2.9, 0.8),
     ...hornFaces(1.7, -1.2, 2.9, 1.9, 0.7, 0.9, 0.65),
     ...boxFaces3(1.9, 0.8, 1.1, 1.6, 0.5),
+    // 몸통 + 옆에 매달린 큰 팔 총 포드(앞 총열).
     ...boxFaces3(0, -0.2, 2.6, 2.2, 2, 4.8),
-    ...boxFaces3(-1.9, -0.2, 0.9, 1.5, 1.1, 5.3),
-    ...boxFaces3(1.9, -0.2, 0.9, 1.5, 1.1, 5.3),
-    ...domeFaces3(0, 0.2, 0.8, 0.6, 6.8),
+    ...boxFaces3(-2.25, 0, 1.25, 1.9, 1.8, 4.3),
+    ...tubeFaces(-2.25, 0.9, -2.25, 2.3, 0.28, 5),
+    ...boxFaces3(2.25, 0, 1.25, 1.9, 1.8, 4.3),
+    ...tubeFaces(2.25, 0.9, 2.25, 2.3, 0.28, 5),
+    // 콕핏 머리 — 앞 창 + 안테나.
+    ...domeFaces3(0, 0.2, 0.9, 0.7, 6.8),
+    capFace(polyPath3([[-0.5, 0.95, 7.2], [0.5, 0.95, 7.2], [0.4, 1.05, 6.9], [-0.4, 1.05, 6.9]]), 0.4),
+    ...hornFaces(-0.5, -0.6, 7.4, -0.8, -0.9, 8.4, 0.22),
   ],
   /* 리버 — 애벌레 마디 돔 넷 + 앞 입. */
   reaver: () => {
@@ -2536,6 +2570,7 @@ const UNIT_3D: Record<string, string> = {
   Marine: "gunner", Firebat: "fbat", Ghost: "gunner", Medic: "inf",
   // 기계·함선(요청: 만들 수 있는 건 다).
   Vulture: "vulture", "Siege Tank": "tank", "Siege Tank (Tank Mode)": "tank",
+  "Siege Tank (Siege Mode)": "tanksiege",
   Goliath: "goliath", Reaver: "reaver", Wraith: "wraith", Battlecruiser: "bc",
   Valkyrie: "valk", "Science Vessel": "vessel",
   Mutalisk: "muta", Guardian: "guardian", Devourer: "devourer", Scourge: "scourge",
@@ -2583,7 +2618,7 @@ export const SHAPE_GALLERY: { kind: string; label: string }[] = (() => {
     ["scv", "SCV"], ["probe", "프로브"], ["drone", "드론"],
     ["zling", "저글링"], ["hydra", "히드라"], ["ultra", "울트라리스크"],
     ["htemp", "하이 템플러"],
-    ["tank", "시즈 탱크"], ["vulture", "벌처"], ["goliath", "골리앗"], ["reaver", "리버"],
+    ["tank", "시즈 탱크"], ["tanksiege", "시즈 탱크(시즈)"], ["vulture", "벌처"], ["goliath", "골리앗"], ["reaver", "리버"],
     ["wraith", "레이스"], ["bc", "배틀크루저"], ["valk", "발키리"], ["vessel", "사이언스 베슬"],
     ["muta", "뮤탈리스크"], ["guardian", "가디언"], ["devourer", "디바우러"], ["scourge", "스커지"],
     ["queen", "퀸"], ["corsair", "커세어"], ["scout", "스카웃"], ["carrier", "캐리어"],
