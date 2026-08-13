@@ -704,6 +704,51 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
   troop: [
     ["M8 1.6 L14.6 14.2 H1.4 Z", 1],
   ],
+  /* ── 유닛 갈래 도형(요청: 마커를 지대지/지대공/공대공/공대지/마법 지상·공중으로 분리) —
+     지상은 채운 도형, 공중은 속 빈(구멍 뚫린) 도형이라는 큰 규칙 하나로 하늘·땅이
+     한눈에 갈리고, 꼴(삼각·화살촉·마름모·별)이 공격 갈래를 말한다. */
+  // 지대공만 — 위로 쏘는 화살촉(다트). 지상이라 채운다.
+  gAA: [["M8 2.6 L14.4 13.4 L8 9.6 L1.6 13.4 Z", 1]],
+  // 지대공+지대지 — 채운 마름모: 사방을 다 친다.
+  gBoth: [["M8 1.6 L14.4 8 L8 14.4 L1.6 8 Z", 1]],
+  // 공대공만 — 갈매기 날개 띠(속이 빈 산꼴): 하늘에서 하늘만.
+  aAir: [["M1.6 12 L8 3.4 L14.4 12 L10.9 12 L8 8.1 L5.1 12 Z", 1]],
+  // 공대지 포함 공중 — 마름모 고리(구멍 = 공중 규칙).
+  aBoth: [["M8 1.6 L14.4 8 L8 14.4 L1.6 8 Z M8 4.8 L4.8 8 L8 11.2 L11.2 8 Z", 1]],
+  // 마법·기술 전용 지상 — 채운 네 갈래 별.
+  gCast: [["M8 1.6 L9.7 6.3 L14.4 8 L9.7 9.7 L8 14.4 L6.3 9.7 L1.6 8 L6.3 6.3 Z", 1]],
+  // 마법·기술 전용 공중 — 속 빈 네 갈래 별.
+  aCast: [[
+    "M8 1.6 L9.7 6.3 L14.4 8 L9.7 9.7 L8 14.4 L6.3 9.7 L1.6 8 L6.3 6.3 Z"
+    + " M8 5 L7.2 7.2 L5 8 L7.2 8.8 L8 11 L8.8 8.8 L11 8 L8.8 7.2 Z", 1]],
+};
+/* 유닛 → 마커 갈래(요청) — 표에 없는 유닛은 지대지 병력으로 본다. 수송·일꾼·오버로드는
+   기존 갈래(수송선 도형·점·풍선)가 이미 따로 있다. */
+const UNIT_CLASS: Record<string, string> = {
+  // 지상 — 지대지만.
+  Zealot: "troop", Zergling: "troop", Ultralisk: "troop", Lurker: "troop",
+  "Dark Templar": "troop", Firebat: "troop", Vulture: "troop",
+  "Siege Tank (Tank Mode)": "troop", "Siege Tank": "troop", Reaver: "troop",
+  "Infested Terran": "troop", Broodling: "troop",
+  // 지상 — 지대공+지대지.
+  Marine: "gBoth", Ghost: "gBoth", Goliath: "gBoth", Hydralisk: "gBoth",
+  Dragoon: "gBoth", Archon: "gBoth",
+  // 공중 — 공대공만.
+  Corsair: "aAir", Valkyrie: "aAir", Devourer: "aAir", Scourge: "aAir",
+  // 공중 — 공대지 포함(가디언·캐리어도 여기).
+  Wraith: "aBoth", Mutalisk: "aBoth", Battlecruiser: "aBoth", Scout: "aBoth",
+  Guardian: "aBoth", Carrier: "aBoth",
+  // 마법·기술 전용.
+  "High Templar": "gCast", Defiler: "gCast", Medic: "gCast", "Dark Archon": "gCast",
+  "Science Vessel": "aCast", Arbiter: "aCast", Queen: "aCast", Observer: "aCast",
+};
+/* 유닛 덩치(요청: 소형/중형/대형 크기 구분) — 브루드워의 유닛 크기 분류를 따른다.
+   표에 없으면 대형으로 본다(큰 것들이 표에서 빠졌을 때 눈에 띄는 쪽이 덜 틀린다). */
+const UNIT_BULK: Record<string, 0 | 1 | 2> = {
+  Marine: 0, Firebat: 0, Ghost: 0, Medic: 0, Zealot: 0, "High Templar": 0,
+  "Dark Templar": 0, Observer: 0, Zergling: 0, Scourge: 0, Mutalisk: 0,
+  Broodling: 0, "Infested Terran": 0,
+  Hydralisk: 1, Vulture: 1, Corsair: 1, Lurker: 1, Queen: 1, Defiler: 1,
 };
 /** 도형째 돌려 그리는 각도(시계방향) — 스타게이트는 45도(요청). */
 const SHAPE_ROT: Record<string, number> = { arch: 45 };
@@ -2375,36 +2420,65 @@ export default function ReplayMotionPlayer({
             const cloaked = g.unit === "Observer" || g.unit === "Dark Templar"
               || (g.unit === "Wraith" && (p.ups ?? []).some(([us, n]) => n === "Cloaking Field" && us <= t))
               || (g.unit === "Ghost" && (p.ups ?? []).some(([us, n]) => n === "Personnel Cloaking" && us <= t));
-            return (
-              <span
-                key={`${p.raw}-u${g.unit}-${gi}`}
-                className={cx(
-                  "scr-motion-army",
-                  "scr-motion-dot",
-                  // 일꾼은 적당히 작은 점으로 통일(요청) — 부대 점보다 작고 옅은 정찰 점 크기.
-                  g.unit === "Worker" && "scr-motion-scout",
-                  team === 2 ? "scr-motion-team2" : "scr-motion-team1",
-                  cloaked && "scr-motion-cloaked",
-                )}
-                style={{
-                  left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
-                  // 겹침 차례는 마지막 명령 시각(지적: 유닛이 무조건 위가 아니라).
-                  zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
-                  ...glyphStyle(p.raw, team),
-                }}
-              >
-                {/* 수송선은 점·이름 대신 늘 제 도형(요청) — 오버로드 풍선·드랍십·셔틀. */}
-                {g.unit === "Transport"
-                  ? (
-                    <ShapeIcon
-                      kind={race === "저그" ? "ovie" : race === "테란" ? "dship" : "shuttle"}
-                      className="scr-motion-ovie"
-                    />
-                  )
-                  // 병력은 육각형, 일꾼은 점(요청: 아이콘 구분).
-                  : g.unit === "Worker" ? "●" : <ShapeIcon kind="troop" className="scr-motion-troop" />}
-              </span>
-            );
+            // 수송선·일꾼은 낱개로 안 흩는다 — 수는 원래 안 적던 갈래다(제 도형·점 하나).
+            if (g.unit === "Transport" || g.unit === "Worker") {
+              return (
+                <span
+                  key={`${p.raw}-u${g.unit}-${gi}`}
+                  className={cx(
+                    "scr-motion-army",
+                    "scr-motion-dot",
+                    g.unit === "Worker" && "scr-motion-scout",
+                    team === 2 ? "scr-motion-team2" : "scr-motion-team1",
+                    cloaked && "scr-motion-cloaked",
+                  )}
+                  style={{
+                    left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
+                    zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
+                    ...glyphStyle(p.raw, team),
+                  }}
+                >
+                  {g.unit === "Transport"
+                    ? (
+                      <ShapeIcon
+                        kind={race === "저그" ? "ovie" : race === "테란" ? "dship" : "shuttle"}
+                        className="scr-motion-ovie"
+                      />
+                    )
+                    : "●"}
+                </span>
+              );
+            }
+            /* 낱개 마커(요청: 같은 유닛이라도 합치지 말고 하나하나 — 대신 작게) — 수만큼
+               도형을 해바라기 나선으로 촘촘히 흩는다(결정적 — 프레임마다 안 튄다). 갈래
+               도형(UNIT_CLASS)과 덩치 크기(UNIT_BULK)가 유닛의 정체를 말한다. */
+            const n = Math.max(1, Math.min(36, alive));
+            const kind = UNIT_CLASS[g.unit] ?? "troop";
+            const bulk = UNIT_BULK[g.unit] ?? 2;
+            return Array.from({ length: n }, (_, di) => {
+              const r = di === 0 ? 0 : (0.5 + 0.14 * bulk) * Math.sqrt(di);
+              const dx = Math.cos(di * 2.4) * r;
+              const dy = Math.sin(di * 2.4) * r;
+              return (
+                <span
+                  key={`${p.raw}-u${g.unit}-${gi}-i${di}`}
+                  className={cx(
+                    "scr-motion-army",
+                    "scr-motion-dot",
+                    `scr-motion-unit-${bulk === 0 ? "s" : bulk === 1 ? "m" : "l"}`,
+                    team === 2 ? "scr-motion-team2" : "scr-motion-team1",
+                    cloaked && "scr-motion-cloaked",
+                  )}
+                  style={{
+                    left: pct(pos.x + dx, grid.width), top: pct(pos.y + dy, grid.height),
+                    zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
+                    ...glyphStyle(p.raw, team),
+                  }}
+                >
+                  <ShapeIcon kind={kind} className="scr-motion-troop" />
+                </span>
+              );
+            });
           });
           const squadNodes = squads.map((rp, si) => {
             /* 첫 부대 명령 전에는 아예 없다(지적: 시작하자마자 이상한 데 멈춰 있다) —
@@ -2470,11 +2544,22 @@ export default function ReplayMotionPlayer({
                   ? [[(UNIT_KO[unit] ?? SCOUT_KO[unit])!, shownSize] as [string, number]]
                   : []));
             }
-            /* 도형은 뭉치지 않는다(지적) — 규모만큼 낱개 점을 촘촘히 흩어 놓는다(해바라기
-               나선 — 결정적이라 프레임마다 안 튄다). 곁 부대는 규모를 모르니 점 하나다. */
-            const dots = si === primary ? Math.min(9, Math.max(1, Math.round(shownSize / 3) || 1)) : 1;
-            return Array.from({ length: dots }, (_, di) => {
-              const r = di === 0 ? 0 : 0.7 + 0.55 * Math.sqrt(di);
+            /* 낱개 마커(요청: 같은 유닛이라도 합치지 말고 하나하나 — 대신 작게) — 구성
+               (parts)의 유닛 수만큼 각자의 갈래 도형·덩치 크기로 흩는다. 구성을 모르면
+               우세 유닛의 도형으로 규모만큼, 곁 부대는 규모를 모르니 하나다. */
+            const glyphs: string[] = [];
+            if (si === primary) {
+              const src: [string, number][] = parts.length > 0
+                ? parts
+                : (unit ? [[unit, Math.max(1, shownSize)]] : []);
+              for (const [u, cnt] of src) {
+                for (let i = 0; i < cnt && glyphs.length < 36; i += 1) glyphs.push(u);
+              }
+            }
+            if (glyphs.length === 0) glyphs.push(unit || "Marine");
+            return glyphs.map((u, di) => {
+              const bulk = UNIT_BULK[u] ?? 2;
+              const r = di === 0 ? 0 : (0.5 + 0.14 * bulk) * Math.sqrt(di);
               const dx = Math.cos(di * 2.4) * r;
               const dy = Math.sin(di * 2.4) * r;
               return (
@@ -2483,6 +2568,7 @@ export default function ReplayMotionPlayer({
                   className={cx(
                     "scr-motion-army",
                     "scr-motion-dot",
+                    `scr-motion-unit-${bulk === 0 ? "s" : bulk === 1 ? "m" : "l"}`,
                     team === 2 ? "scr-motion-team2" : "scr-motion-team1",
                   )}
                   style={{
@@ -2492,8 +2578,7 @@ export default function ReplayMotionPlayer({
                     ...glyphStyle(p.raw, team),
                   }}
                 >
-                  {/* 무명 부대는 병력이다 — 육각형(요청: 일꾼과 아이콘 구분). */}
-                  <ShapeIcon kind="troop" className="scr-motion-troop" />
+                  <ShapeIcon kind={UNIT_CLASS[u] ?? "troop"} className="scr-motion-troop" />
                 </span>
               );
             });
@@ -2699,8 +2784,13 @@ export default function ReplayMotionPlayer({
       <div className="scr-motion-toolrow">
         <div className="scr-motion-toolrow-mid">
           <div className="scr-motion-legend">
-            {/* 병력은 육각형(요청: 일꾼과 아이콘 구분) — 지도의 도형과 같은 벡터를 쓴다. */}
-            <span><i className="scr-motion-legend-troop"><ShapeIcon kind="troop" /></i> 병력</span>
+            {/* 유닛 갈래 도형(요청: 지대지/지대공/공중/마법으로 분리) — 지상은 채운 도형,
+                공중은 속 빈 도형. 크기(소·중·대형)는 마커 크기가 말한다. */}
+            <span><i className="scr-motion-legend-troop"><ShapeIcon kind="troop" /></i> 지상</span>
+            <span><i className="scr-motion-legend-troop"><ShapeIcon kind="gBoth" /></i> 지상(대공)</span>
+            <span><i className="scr-motion-legend-troop"><ShapeIcon kind="aAir" /></i> 공대공</span>
+            <span><i className="scr-motion-legend-troop"><ShapeIcon kind="aBoth" /></i> 공중</span>
+            <span><i className="scr-motion-legend-troop"><ShapeIcon kind="gCast" /></i> 마법</span>
             <span>■ 건물</span>
             {/* 일꾼은 채굴·정찰 없이 전부 같은 작은 점이다(요청: 통일). 기호는 지도의
                 점과 같은 ●를 부대보다 한 단 작게(지적: •는 너무 작았다). */}

@@ -11175,6 +11175,17 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 일꾼은 점 클래스가 겹쳐도 늘 작다(지적: 어떤 일꾼이 병력만큼 커 보임) — 일꾼 마커는
    scout(7px)와 dot(9px)를 같이 달고 있는데, 뒤에 선언된 dot이 이겨 부대 크기가 됐다. */
 .scr-motion-dot.scr-motion-scout { font-size: 7px; }
+/* 유닛 낱개 마커의 덩치(요청: 소형/중형/대형을 다이나믹하게, 전체적으로는 작게) —
+   같은 유닛도 하나하나 제 도형이므로 크기 차이가 곧 소·중·대형 구분이다. 겹침 완화로
+   기존 부대 점(9px)보다 소·중형은 작다. PC 확대 화면 값은 아래 미디어. */
+.scr-motion-dot.scr-motion-unit-s { font-size: 6px; }
+.scr-motion-dot.scr-motion-unit-m { font-size: 8px; }
+.scr-motion-dot.scr-motion-unit-l { font-size: 11px; }
+@media (min-width: 1160px) {
+  .scr-motion-dot.scr-motion-unit-s { font-size: 8px; }
+  .scr-motion-dot.scr-motion-unit-m { font-size: 11px; }
+  .scr-motion-dot.scr-motion-unit-l { font-size: 15px; }
+}
 /* 도형은 아주 살짝 뒤가 비친다(요청: 모바일·PC 모두) — 지도 위에 도형이 빽빽하면 겹친
    것끼리 서로를 완전히 지운다. 살짝 비치면 뒤에 무엇이 깔렸는지가 보이면서도 앞의 도형이
    흐려지지는 않는다. 활성(생산 중)일 때는 거의 불투명으로 올려 '지금 일한다'를 지킨다.
