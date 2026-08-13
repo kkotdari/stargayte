@@ -65,12 +65,13 @@ export function withTopView<T>(fn: () => T): T {
 export function groundSquashNow(): number {
   /* 0.66 → 0.55(수리: 넥서스 앞 바닥·기둥이 뷰박스 밖으로 잘렸다) — 앞쪽 깊이가
      원점(아래 originYNow)과 함께 16칸 안에 들어오는 선까지만 부감을 준다. */
-  /* 입체 판 피칭 — 0.62도 0.54도 누워 보였다(지적 연쇄). 원하는 방향은 반대: 표준
-     (0.45)보다도 세운 0.36. 더 눕히거나 세울 때 이 두 값만 만지면 된다. */
-  return pitchView ? 0.36 : topView ? 0.55 : GROUND_SQUASH;
+  /* 입체 판 피칭(지적: 납작비가 아니라 피치가 안 맞음) — 지형의 화면 기하에 수치로
+     맞춘다: 깊이 = 컨테이너 눌림 0.74 × cos45 ≈ 0.52, 높이 = cos45 ≈ 0.71. 여태
+     높이를 0.84~0.94로 거의 안 줄여 모델만 껑충했던 게 피치 불일치의 정체다. */
+  return pitchView ? 0.52 : topView ? 0.55 : GROUND_SQUASH;
 }
 function zScaleNow(): number {
-  return pitchView ? 0.94 : topView ? 0.66 : 0.89;
+  return pitchView ? 0.71 : topView ? 0.66 : 0.89;
 }
 function originYNow(): number {
   return pitchView ? 12.6 : topView ? 12 : 12.6;
