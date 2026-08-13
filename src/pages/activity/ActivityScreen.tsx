@@ -10,6 +10,7 @@ import ConfirmDialog from "../../components/common/ConfirmDialog";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import { challengePhoto, shareThumb } from "../../utils/kakaoShare";
 import GameResultCardBody, { type SearchListRow } from "./GameResultCardBody";
+import { GameDetailCloseContext } from "./gameDetailClose";
 import { ActivityCard } from "./ActivityCard";
 import Select from "../../components/common/Select";
 import { resolveSlotName } from "./GameResultSides";
@@ -1999,7 +2000,11 @@ export default function ActivityScreen() {
               {/* 사진은 이 껍데기가 아니라 창이 깐다(바로 위) — 여기서는 사진 위 글자에
                   테두리를 주는 규칙만 물려받으면 되므로 클래스만 남긴다. */}
               <div className="scr-activity-row-body">
-                {renderCard(detailItem)}
+                {/* 상세 안의 연속 재생에 닫기 통로를 준다(요청: PC는 게임 결과만 확대창이
+                    기본, 기존 상세는 미사용) — 확대창을 닫으면 이 상세도 함께 닫힌다. */}
+                <GameDetailCloseContext.Provider value={() => setDetailItem(null)}>
+                  {renderCard(detailItem)}
+                </GameDetailCloseContext.Provider>
               </div>
             </div>
           </div>

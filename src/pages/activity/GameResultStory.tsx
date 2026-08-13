@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent } from "react";
+import { useContext, useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent } from "react";
 import ReplayMinimap, { ARROW_MIN_TILES, type MinimapArrow, type MinimapMarker } from "../../components/replay/ReplayMinimap";
 import ReplayStoryTimeline from "../../components/replay/ReplayStoryTimeline";
 import ReplayMotionPlayer from "../../components/replay/ReplayMotionPlayer";
 import ActivityComments from "./ActivityComments";
 import RosterSide, { outcomeFor, resolveSlotName } from "./GameResultSides";
 import RaceBadge from "../../components/common/RaceBadge";
+import Avatar from "../../components/common/Avatar";
+import { GameDetailCloseContext } from "./gameDetailClose";
 import { useReplayMap } from "../../hooks/useReplayMap";
 import { cleanMapName } from "../../utils/mapName";
 import { cx } from "../../utils/format";
@@ -328,6 +330,19 @@ export default function GameResultStory({
   active?: boolean;
 }) {
   const grid = useReplayMap(gameResult.mapHash);
+  /* 상세 팝업의 닫기 통로(요청: PC는 게임 결과만 확대창 기본, 기존 상세 미사용) — 상세
+     팝업 안에서만 값이 있고, 목록·전체 보기에서는 null이라 예전 그대로다. */
+  const detailClose = useContext(GameDetailCloseContext);
+  // 확대 창 왼쪽 기둥의 타임스탬프(요청) — 리플레이 실제 시작 시각, 없으면 경기 날짜.
+  const stampText = (() => {
+    const iso = gameResult.gameStartedAt;
+    if (!iso) return gameResult.date;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return gameResult.date;
+    const two = (n: number) => String(n).padStart(2, "0");
+    return d.getFullYear() + "." + two(d.getMonth() + 1) + "." + two(d.getDate())
+      + " " + two(d.getHours()) + ":" + two(d.getMinutes());
+  })();
   const rootRef = useRef<HTMLDivElement>(null);
 
   // 이름 풀기 — 요약은 리플레이 원본 게임 아이디로 저장돼 있어서, 볼 때마다 지금의 회원
@@ -1720,6 +1735,21 @@ export default function GameResultStory({
         <ReplayMotionPlayer
           grid={storyMap} motion={motionData} endSec={endSecVal}
           bases={bases} teamOfRaw={teamOfRaw} active={active}
+          stamp={stampText}
+          registrant={gameResult.createdBy ? (
+            <>
+              <Avatar
+                member={{
+                  id: gameResult.createdBy.id,
+                  nickname: gameResult.createdBy.nickname,
+                  avatar: memberOf(gameResult.createdBy.id)?.avatar ?? null,
+                }}
+                size={16}
+              />
+              <span>{gameResult.createdBy.nickname} 등록</span>
+            </>
+          ) : undefined}
+          onDetailClose={detailClose ?? undefined}
           winnerTeam={gameResult.result === "team1" ? 1 : gameResult.result === "team2" ? 2 : undefined}
           /* 확대 모드의 오른쪽 영역엔 이 경기의 댓글(지적: "리플" = 댓글) — 활동 카드
              하단과 같은 컴포넌트를 그대로 앉힌다. 모달(z 210) 안이라 overModal. */

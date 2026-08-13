@@ -427,22 +427,27 @@ const SHAPE_KIND: Record<string, string> = {
    완만하게 벌어지는 오목 곡선), 바닥은 거미줄처럼 사방으로 퍼지는 가닥들(지적). */
 // 머리(윗부분) 폭을 한 단 좁혔다(지적: 너무 두꺼움).
 const ZERG_MOUND =
-  /* 해처리(재설명 반영) — 본 기둥은 약간 후지산스러운 둔덕(낮춘 정수리 5.5), 다리 기둥들은
-     반원통이 불가사리처럼 사방으로 펼쳐지고 그 사이사이가 치마(갈퀴)로 이어진다. */
-  "M6.2 5.5 Q8 4.8 9.8 5.5 Q10.5 10.5 14.2 12.6 Q8 13.8 1.8 12.6 Q5.5 10.5 6.2 5.5 Z"
-  + " M2.6 11"
-  + " Q1 11.7 1.1 12.7 Q1.2 13.4 1.9 13.3"
-  + " Q2.5 13.2 2.9 12.7"
-  + " Q3.3 13.9 4.3 14 Q5.1 14 5.5 13.3"
-  + " Q6.3 13.6 6.9 13.4"
-  + " Q7.2 14.4 7.9 14.4 Q8.6 14.4 8.8 13.4"
-  + " Q9.4 13.6 10.1 13.3"
-  + " Q10.5 14 11.3 14 Q12.3 13.9 12.7 12.7"
-  + " Q13.1 13.2 13.7 13.3"
-  + " Q14.4 13.4 14.5 12.7 Q14.6 11.7 13 11"
-  + " Q8 12.4 2.6 11 Z";
+  /* 해처리(재설명) — 본 기둥은 후지산 둔덕. 다리 기둥들은 본 기둥 옆구리에서 바로 이어져
+     나오는 원통형 능선이라(지적: 틈이 보이면 안 된다) 치마의 안쪽 변이 둔덕 속(y10)에서
+     시작해 밖으로 흘러내리고, 사이사이는 갈퀴로 이어진다. */
+  "M5.4 6.2 Q8 5.8 10.6 6.2 Q10.9 10.7 14.2 12.6 Q8 13.8 1.8 12.6 Q5.1 10.7 5.4 6.2 Z"
+  + " M4.5 10"
+  + " Q1.2 10.8 0.8 12.4 Q0.7 13.5 1.9 13.5"
+  + " Q2.7 13.4 3.1 12.8"
+  + " Q3.4 14 4.4 14.1 Q5.2 14.1 5.6 13.4"
+  + " Q6.3 13.7 6.9 13.5"
+  + " Q7.2 14.5 7.9 14.5 Q8.6 14.5 8.8 13.5"
+  + " Q9.4 13.7 10.1 13.4"
+  + " Q10.4 14.1 11.4 14.1 Q12.4 14 12.7 12.8"
+  + " Q13.1 13.4 13.9 13.5"
+  + " Q15.1 13.5 15 12.4 Q14.6 10.8 11.5 10"
+  + " Q8 11.4 4.5 10 Z";
 /** 저그 본진 머리의 평평한 윗면(요청) — 둥근 머리 위 밝은 타원. 더 얇게(지적: 뚜껑). */
-const ZERG_TOP = "M6.6 5.35a1.4 0.45 0 1 0 2.8 0a1.4 0.45 0 1 0-2.8 0Z";
+// 윗면은 잘린 윗둥 너비만큼 넓게(요청: 높이는 줄이고 윗면은 넓게).
+const ZERG_TOP = "M6 6.15a2 0.5 0 1 0 4 0a2 0.5 0 1 0-4 0Z";
+/** 사선 시점의 어두운 오른 옆면(지적: 평면 회전이 아니라 xyz 사선 입체) — 다른 건물들의
+ *  입체 규칙(밝은 윗면·어두운 옆면)과 같은 결. */
+const ZERG_SHADE = "M9.9 6.1 Q10.9 10.7 14.2 12.6 Q11.5 13.4 8.6 13.6 Q9.6 10 9.9 6.1 Z";
 /* 전부 입체(면 겹침)로 옮겼다(요청: "무조건 입체로") — 홑겹 도형은 이제 없다. */
 const SHAPE_PATHS: Record<string, string> = {};
 /** 본진 아바타용 실루엣(요청: "아바타를 본진 안에", "아바타용 모양들도 크기 비슷하게") —
@@ -540,11 +545,12 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
   ],
   /* 저그 본진 3형제 — 몸통 + 밝은 윗면(요청: "해처리 윗부분 동그란 평평한 면 표현").
      레어·하이브는 그 위에 뿔·가시(요청). */
-  hatchery: [[ZERG_MOUND, 1], [ZERG_TOP, 0.3, "#fff"]],
+  hatchery: [[ZERG_MOUND, 1], [ZERG_SHADE, 0.22, "#000"], [ZERG_TOP, 0.3, "#fff"]],
   /* 레어(정정) — 바닥 기둥 끝에서 위로 솟는 가시. 쪽마다 두 기둥 중 하나에만 나고,
      높이는 본(중심) 기둥보다 높다. */
   lair: [
-    [`${ZERG_MOUND} M0.6 9.6 Q0.1 5.8 1.2 2.2 Q2 6 2.4 9.9 Z M15.4 9.6 Q15.9 5.8 14.8 2.2 Q14 6 13.6 9.9 Z`, 1],
+    [`${ZERG_MOUND} M0.7 12.9 Q0.2 7.5 1.4 3.4 Q2.2 7.8 2.5 13 Z M15.3 12.9 Q15.8 7.5 14.6 3.4 Q13.8 7.8 13.5 13 Z`, 1],
+    [ZERG_SHADE, 0.22, "#000"],
     [ZERG_TOP, 0.3, "#fff"],
   ],
   /* 하이브 — 본 건물보다 훨씬 긴 뿔 셋이 위로 솟고, 가시는 그 뿔에서 본 건물 쪽(안쪽)
@@ -555,6 +561,7 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
       + " M6.9 11 Q7.3 4 8 0.3 Q8.7 4 9.1 11 Z"
       + " M14 12.4 Q15.2 6.6 13.6 0.8 Q12.6 6.6 11.6 11.4 Z"
       + " M2.9 7.4 L5.6 8.6 L3.4 9.6 Z M13.1 7.4 L10.4 8.6 L12.6 9.6 Z", 1],
+    [ZERG_SHADE, 0.22, "#000"],
     [ZERG_TOP, 0.3, "#fff"],
   ],
   /* 파일런 — 얇은 마름모 크리스탈의 허리를 둘러싼 납작한 고리(요청: "기둥을 둘러싼
@@ -890,6 +897,9 @@ function unitAt(units: [number, string][], t: number): string {
   return name;
 }
 
+/** 상세 팝업 자동 확대의 자리 잡기 — 묶음 상세(카드 여럿)에서 첫 판만 확대창을 연다. */
+const autoBigHolder = { taken: false };
+
 /* 한 번에 한 판만 돈다(요청) — 목록에 게임 카드가 여럿 펼쳐져 있으면 저마다 자동재생을
    시작해 지도가 사방에서 움직인다. 마지막으로 재생을 잡은 플레이어가 앞 임자를 멈춘다. */
 let playbackHolder: { current: () => void } | null = null;
@@ -909,6 +919,7 @@ const fmtClock = (sec: number): string => {
 
 export default function ReplayMotionPlayer({
   grid, motion, endSec, bases, teamOfRaw, active = true, winnerTeam, side, menu,
+  stamp, registrant, onDetailClose,
 }: {
   grid: ReplayMapGrid;
   motion: SummaryMotion;
@@ -928,6 +939,13 @@ export default function ReplayMotionPlayer({
   /** 케밥 메뉴(요청: PC 기본이 확대인 만큼 확대 창에도 케밥·닫기) — 확대 창 오른쪽 위,
    *  닫기(X) 옆에 앉는다. 인라인에선 카드 윗줄의 원본이 이미 있으니 안 그린다. */
   menu?: React.ReactNode;
+  /** 확대 창 왼쪽 기둥 맨 위의 타임스탬프(요청) — 경기 시각. */
+  stamp?: React.ReactNode;
+  /** 확대 창 왼쪽 기둥 맨 아래의 등록자 정보(요청). */
+  registrant?: React.ReactNode;
+  /** 상세 팝업 닫기(요청: PC는 게임 결과만 확대창이 기본, 기존 상세는 미사용) — 값이
+   *  오면 PC에서 마운트되자마자 확대창을 열고, 확대창을 닫을 때 상세까지 함께 닫는다. */
+  onDetailClose?: () => void;
   // (삭제·요청) caps — 자막 표시를 걷으면서 함께.
 }) {
   const total = useMemo(() => {
@@ -1319,7 +1337,12 @@ export default function ReplayMotionPlayer({
   useLockBodyScroll(big);
   useEffect(() => {
     if (!big) return undefined;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setBig(false); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      // 상세 팝업 기본 확대(요청)면 상세까지 함께 닫는다.
+      if (onDetailClose) onDetailClose();
+      else setBig(false);
+    };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [big]);
@@ -1342,6 +1365,24 @@ export default function ReplayMotionPlayer({
   const bigByDefault = () => {
     if (!shrunk.current && typeof window !== "undefined"
       && window.matchMedia?.("(min-width: 1160px)").matches) setBig(true);
+  };
+
+  /* PC 상세는 확대창이 곧 화면이다(요청: 기존 상세 미사용) — 상세 팝업 안(onDetailClose가
+     온 자리)에서 마운트되자마자 확대창을 연다. 묶음 상세에 카드가 여럿이면 첫 판만 연다
+     (autoBigHolder). */
+  useEffect(() => {
+    if (!onDetailClose) return undefined;
+    if (typeof window === "undefined" || !window.matchMedia?.("(min-width: 1160px)").matches) return undefined;
+    if (autoBigHolder.taken) return undefined;
+    autoBigHolder.taken = true;
+    setBig(true);
+    return () => { autoBigHolder.taken = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const closeBig = () => {
+    if (onDetailClose) { onDetailClose(); return; }
+    shrunk.current = true;
+    setBig(false);
   };
 
   /* 한 번에 한 판만(요청) — 재생을 시작하는 순간 먼저 돌던 판을 멈춘다. */
@@ -1747,6 +1788,26 @@ export default function ReplayMotionPlayer({
         );
       })}
     </div>
+  );
+
+  /* 범례 한 벌 — 지도 아래(인라인)와 확대 창 왼쪽 기둥(요청: 2열)이 같은 항목을 쓴다. */
+  const legendItems = (
+    <>
+      {/* 유닛 갈래 도형(요청: 지대지/지대공/공중/마법으로 분리) — 지상은 채운 도형,
+          공중은 속 빈 도형. 크기(소·중·대형)는 마커 크기가 말한다. */}
+      <span><i className="scr-motion-legend-troop"><ShapeIcon kind="troop" /></i> 지상</span>
+      <span><i className="scr-motion-legend-troop"><ShapeIcon kind="gBoth" /></i> 지상(대공)</span>
+      <span><i className="scr-motion-legend-troop"><ShapeIcon kind="aAir" /></i> 공대공</span>
+      <span><i className="scr-motion-legend-troop"><ShapeIcon kind="aBoth" /></i> 공중</span>
+      <span><i className="scr-motion-legend-troop"><ShapeIcon kind="gCast" /></i> 마법</span>
+      <span>■ 건물</span>
+      {/* 일꾼은 채굴·정찰 없이 전부 같은 작은 점이다(요청: 통일). 기호는 지도의
+          점과 같은 ●를 부대보다 한 단 작게(지적: •는 너무 작았다). */}
+      <span><i className="scr-motion-legend-worker">●</i> 일꾼</span>
+      <span>🚧 건설 중</span>
+      <span>⏳ 생산 중</span>
+      <span>🧪 업그레이드 중</span>
+    </>
   );
 
   const body = (
@@ -2845,22 +2906,7 @@ export default function ReplayMotionPlayer({
           PC 전용(모바일은 핀치 확대), 큰 화면 모달에선 범례·지형이 숨어 토글만 남는다. */}
       <div className="scr-motion-toolrow">
         <div className="scr-motion-toolrow-mid">
-          <div className="scr-motion-legend">
-            {/* 유닛 갈래 도형(요청: 지대지/지대공/공중/마법으로 분리) — 지상은 채운 도형,
-                공중은 속 빈 도형. 크기(소·중·대형)는 마커 크기가 말한다. */}
-            <span><i className="scr-motion-legend-troop"><ShapeIcon kind="troop" /></i> 지상</span>
-            <span><i className="scr-motion-legend-troop"><ShapeIcon kind="gBoth" /></i> 지상(대공)</span>
-            <span><i className="scr-motion-legend-troop"><ShapeIcon kind="aAir" /></i> 공대공</span>
-            <span><i className="scr-motion-legend-troop"><ShapeIcon kind="aBoth" /></i> 공중</span>
-            <span><i className="scr-motion-legend-troop"><ShapeIcon kind="gCast" /></i> 마법</span>
-            <span>■ 건물</span>
-            {/* 일꾼은 채굴·정찰 없이 전부 같은 작은 점이다(요청: 통일). 기호는 지도의
-                점과 같은 ●를 부대보다 한 단 작게(지적: •는 너무 작았다). */}
-            <span><i className="scr-motion-legend-worker">●</i> 일꾼</span>
-            <span>🚧 건설 중</span>
-            <span>⏳ 생산 중</span>
-            <span>🧪 업그레이드 중</span>
-          </div>
+          <div className="scr-motion-legend">{legendItems}</div>
           <div className="scr-motion-terrain-row">
             {typeof grid.imageId === "number" && grid.image && (
               <button
@@ -2882,7 +2928,7 @@ export default function ReplayMotionPlayer({
           <button
             type="button" className="scr-motion-btn scr-motion-expand"
             // 사람이 줄였으면 기억한다(위 shrunk 주석) — 재생을 다시 눌러도 안 커진다.
-            onClick={() => setBig((v) => { if (v) shrunk.current = true; return !v; })}
+            onClick={() => { if (big) closeBig(); else setBig(true); }}
             aria-label={big ? "닫기" : "크게 보기"} title={big ? "닫기" : "크게 보기"}
           >
             {big ? <X size={14} /> : <Maximize2 size={12} />}
@@ -2963,6 +3009,10 @@ export default function ReplayMotionPlayer({
         </button>
         <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
       </div>
+      {/* 확대 창 왼쪽 기둥(요청) — 맨 위 타임스탬프, 로스터(기존), 범례 2열, 맨 아래 등록자. */}
+      {big && stamp ? <div className="scr-motion-stamp">{stamp}</div> : null}
+      {big ? <div className="scr-motion-legend scr-motion-legend-side">{legendItems}</div> : null}
+      {big && registrant ? <div className="scr-motion-registrant">{registrant}</div> : null}
       {/* 확대 모드의 오른쪽 댓글 영역(지적: "리플" = 댓글) — 맵 오른쪽 그리드 4번째 칸. */}
       {big && side ? <div className="scr-motion-sidewrap">{side}</div> : null}
       {terrainOpen && typeof grid.imageId === "number" && grid.image && (
@@ -2984,7 +3034,7 @@ export default function ReplayMotionPlayer({
             어두운 막. 누르면 축소로 돌아간다(사람의 축소로 기억). */}
         <div
           className="scr-motion-big-backdrop"
-          onClick={() => { shrunk.current = true; setBig(false); }}
+          onClick={closeBig}
         />
         {/* 폭 상한 = (가용 높이 − 위아래 여백·슬림 탐색바 몫) × 맵 가로세로비 + 양쪽 기둥
             몫(요청: 왼쪽 기둥에 로스터·조작부, 오른쪽 기둥에 댓글 — 맵은 최대 크기) —

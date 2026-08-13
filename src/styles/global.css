@@ -11369,7 +11369,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   transform: none; height: fit-content;
 }
 /* 팝업에는 맵과 조작부만(요청) — 범례·지형 수정은 감춘다. */
-.scr-motion-big .scr-motion-legend, .scr-motion-big .scr-motion-terrain-row { display: none; }
+.scr-motion-big .scr-motion-terrain-row { display: none; }
 /* 확대 모드 배치(요청: 댓글 영역과 균형을 맞춰 로스터와 버튼을 전부 왼쪽 기둥으로) —
    [왼쪽 기둥: 1팀·2팀 로스터(위쪽부터) → 조작부] | [맵 최대 크기 + 아래 슬림 탐색바] |
    [오른쪽 기둥: 댓글]. 맵줄(.scr-motion-maprow)을 contents로 풀어 로스터 기둥 둘을
@@ -11388,8 +11388,23 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    조작부는 로스터 바로 밑이 아니라 기둥의 아래쪽에 붙는다(요청) — 늘어나는 줄(1fr)을
    차지하고 스스로 바닥 정렬한다. */
 .scr-motion-big .scr-motion-teamcol { width: auto; }
-.scr-motion-big .scr-motion-teamcol:first-of-type { grid-column: 1; grid-row: 1; }
-.scr-motion-big .scr-motion-teamcol:last-of-type { grid-column: 2; grid-row: 1; }
+/* 왼쪽 기둥 차례(요청) — 1행 타임스탬프, 2행 로스터, 3행 범례(2열), 바닥(5행) 등록자. */
+.scr-motion-big .scr-motion-teamcol:first-of-type { grid-column: 1; grid-row: 2; }
+.scr-motion-big .scr-motion-teamcol:last-of-type { grid-column: 2; grid-row: 2; }
+.scr-motion-stamp {
+  grid-column: 1 / 3; grid-row: 1;
+  font-size: var(--fs-caption); color: var(--muted); font-variant-numeric: tabular-nums;
+}
+.scr-motion-legend-side {
+  grid-column: 1 / 3; grid-row: 3;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 10px; justify-items: start; text-align: left;
+}
+.scr-motion-registrant {
+  grid-column: 1 / 3; grid-row: 5; align-self: center;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: var(--fs-caption); color: var(--muted);
+}
 .scr-motion-big .scr-motion-bar-controls { grid-column: 1 / 3; grid-row: 4; align-self: end; }
 .scr-motion-big .scr-motion-toolrow { display: contents; }
 .scr-motion-big .scr-motion-toolrow-mid { display: none; }
