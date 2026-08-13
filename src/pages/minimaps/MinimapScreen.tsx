@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Trash2, Upload, Link2Off, ImageUp, Mountain } from "lucide-react";
+import { Trash2, Upload, Link2Off, ImageUp, Mountain, RefreshCcw } from "lucide-react";
 import TerrainReviewModal from "../../modals/TerrainReviewModal";
+import { analyzeMinimap, encodeWalk } from "../../utils/minimapTerrain";
 import ReplayMapCanvas from "../../components/replay/ReplayMapCanvas";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import Select from "../../components/common/Select";
@@ -370,6 +371,33 @@ export default function MinimapScreen() {
                   title="지형 검수"
                 >
                   <Mountain size={14} />
+                </button>
+                {/* 재분석(요청) — 새 분석 규칙(색 순위·빵꾸 메우기)으로 지형을 다시 만들어
+                    바로 저장한다. 손 검수한 값을 덮으니 필요할 때만. */}
+                <button
+                  type="button" className="scr-icon-btn"
+                  onClick={async () => {
+                    setBusy(true);
+                    setErr("");
+                    try {
+                      const g = await analyzeMinimap(i.image);
+                      if (!g) throw new Error("그림을 분석하지 못했어요.");
+                      const updated = await api.updateMinimapWalk(i.id, encodeWalk(g));
+                      setCatalog((prev) => (prev ? {
+                        ...prev,
+                        images: prev.images.map((im) => (im.id === updated.id ? updated : im)),
+                      } : prev));
+                    } catch (e) {
+                      setErr(e instanceof Error ? e.message : "지형을 재분석하지 못했어요.");
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                  disabled={busy}
+                  aria-label={`${i.name} 지형 재분석`}
+                  title="지형 재분석(자동 분석으로 다시 저장)"
+                >
+                  <RefreshCcw size={14} />
                 </button>
                 <button
                   type="button" className="scr-icon-btn"
