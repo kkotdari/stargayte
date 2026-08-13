@@ -2004,16 +2004,41 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...tubeFaces(0, -2.2, 0, -0.4, 0.4, 2.8),
     ];
   },
-  /* 배틀크루저(확정: 장도리 판) — 앞 장도리(가로 머리+갈라진 두 발), 뒤 T자 양날개,
-     함교. */
-  bc: () => [
-    ...boxFaces3(0, -2.2, 5.6, 1.2, 0.8, 5.9),
-    ...boxFaces3(0, -0.2, 2.4, 4.6, 1.6, 5.4),
-    ...boxFaces3(0, 2.5, 3.6, 1.2, 1.4, 5.5),
-    ...hornFaces(1.4, 3, 6, 1.8, 4.4, 5.7, 0.6),
-    ...hornFaces(-1.4, 3, 6, -1.8, 4.4, 5.7, 0.6),
-    ...boxFaces3(0, -1.2, 1.2, 1.2, 0.8, 7),
-  ],
+  /* 배틀크루저(장도리 판 다듬기) — 앞 가시는 뭉뚝한 원통 한 쌍으로, T 양 날개 끝엔
+     방패 포신, 뒤엔 로켓 추진기 셋. */
+  bc: () => {
+    const blunt = (tx: number): ShapeFace => {
+      const [px2, py2] = project(tx, 4.4, 5.7);
+      return bodyFace(groundEllipse(px2, py2 - 0.16, 0.42, 0.34));
+    };
+    const shieldGun = (m2: 1 | -1): ShapeFace[] => {
+      const [sx2, sy2] = project(m2 * 2.9, -2.2, 6.2);
+      return [
+        ...tubeFaces(m2 * 2.9, -2, m2 * 2.9, -0.3, 0.22, 6),
+        bodyFace(groundEllipse(sx2, sy2, 0.6, 1)),
+        ...(m2 === 1
+          ? [sideFace(groundEllipse(sx2, sy2, 0.6, 1), 0.2)]
+          : [topFace(groundEllipse(sx2, sy2, 0.6, 1), 0.16)]),
+      ];
+    };
+    return [
+      // 로켓 추진기 셋 — 꽁무니 뒤로.
+      ...tubeFaces(-1.1, -3.6, -1.1, -2.5, 0.36, 5.6),
+      ...tubeFaces(0, -3.8, 0, -2.6, 0.4, 5.6),
+      ...tubeFaces(1.1, -3.6, 1.1, -2.5, 0.36, 5.6),
+      ...boxFaces3(0, -2.2, 5.6, 1.2, 0.8, 5.9),
+      ...shieldGun(-1),
+      ...shieldGun(1),
+      ...boxFaces3(0, -0.2, 2.4, 4.6, 1.6, 5.4),
+      ...boxFaces3(0, 2.5, 3.6, 1.2, 1.4, 5.5),
+      // 앞은 뭉뚝한 원통 한 쌍.
+      ...tubeFaces(-1.35, 3.1, -1.35, 4.4, 0.4, 5.7),
+      blunt(-1.35),
+      ...tubeFaces(1.35, 3.1, 1.35, 4.4, 0.4, 5.7),
+      blunt(1.35),
+      ...boxFaces3(0, -1.2, 1.2, 1.2, 0.8, 7),
+    ];
+  },
   /* 발키리(실물 참고) — 뭉툭한 큰 몸통에 둥근 코, 지붕의 미사일 튜브 다발 두 줄,
      양옆의 납작한 판 날개, 뒤 엔진 블록. */
   valk: () => {
