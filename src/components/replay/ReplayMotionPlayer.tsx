@@ -1289,6 +1289,182 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ];
   },
 
+  /* ── 기계·함선 유닛들(요청: 만들 수 있는 건 다) — 정면 +y, 공중은 높이 띄운다. ── */
+  /* 시즈 탱크 — 차체 + 포탑 + 앞으로 내민 포신. */
+  tank: () => [
+    ...boxFaces3(0, -0.3, 3.4, 4, 1.6, 3.4),
+    ...domeFaces3(0, -0.6, 1.5, 1.1, 5),
+    ...tubeFaces(0.4, 0.6, 0.4, 4.6, 0.42, 5.6),
+  ],
+  /* 벌처 — 부양 빛 위 뾰족한 몸판 + 라이더 혹 + 뒤 분사구 둘. */
+  vulture: () => {
+    const [gx, gy] = project(0, 0, 3.1);
+    const deck = polyPath3([[0, 4.4, 4.2], [1.5, 0.6, 4.4], [0.9, -2.6, 4.4], [-0.9, -2.6, 4.4], [-1.5, 0.6, 4.4]]);
+    return [
+      topFace(groundEllipse(gx, gy, 1.9, 0.9), 0.25),
+      bodyFace(deck), topFace(deck, 0.18),
+      ...domeFaces3(0, -0.9, 0.9, 0.9, 4.5),
+      ...tubeFaces(-0.7, -2.9, -0.7, -1.7, 0.35, 4.2),
+      ...tubeFaces(0.7, -2.9, 0.7, -1.7, 0.35, 4.2),
+    ];
+  },
+  /* 골리앗 — 두 다리 위 상자 몸통 + 양옆 총 포드 + 머리. */
+  goliath: () => [
+    ...boxFaces3(-1.2, 0.4, 0.85, 1.1, 2.6, 3.2),
+    ...boxFaces3(1.2, 0.4, 0.85, 1.1, 2.6, 3.2),
+    ...boxFaces3(0, -0.2, 2.6, 2.2, 2, 5.6),
+    ...boxFaces3(-1.9, -0.2, 0.9, 1.5, 1.1, 6.1),
+    ...boxFaces3(1.9, -0.2, 0.9, 1.5, 1.1, 6.1),
+    ...domeFaces3(0, 0.2, 0.8, 0.6, 7.6),
+  ],
+  /* 리버 — 애벌레 마디 돔 넷 + 앞 입. */
+  reaver: () => {
+    const [mx2, my2] = project(0, 3.6, 4);
+    return [
+      ...domeFaces3(0, -2.4, 1.5, 1.6, 3.4),
+      ...domeFaces3(0, -0.8, 1.7, 1.9, 3.4),
+      ...domeFaces3(0, 1, 1.6, 1.7, 3.4),
+      ...domeFaces3(0, 2.6, 1.3, 1.3, 3.4),
+      capFace(groundEllipse(mx2, my2, 0.55, 0.35), 0.4),
+    ];
+  },
+  /* 레이스 — 뒤로 젖힌 쌍날개 다트 + 콕핏. */
+  wraith: () => {
+    const hull = polyPath3([
+      [0, 4.8, 6], [1.1, 0.6, 6.1], [3.2, -2.2, 5.9], [0.9, -1.6, 6.1],
+      [0, -2.8, 6.1], [-0.9, -1.6, 6.1], [-3.2, -2.2, 5.9], [-1.1, 0.6, 6.1],
+    ]);
+    const [cx2, cy2] = project(0, 1.6, 6.15);
+    return [bodyFace(hull), topFace(hull, 0.16), capFace(groundEllipse(cx2, cy2, 0.5, 0.38), 0.4)];
+  },
+  /* 배틀크루저 — 긴 몸통 + 뾰족 뱃머리 + 함교. */
+  bc: () => {
+    const prow = polyPath3([[-1.3, 2.1, 6.6], [1.3, 2.1, 6.6], [0, 4.6, 5.9]]);
+    return [
+      ...boxFaces3(0, -0.4, 2.6, 5, 1.7, 5.4),
+      bodyFace(prow), topFace(prow, 0.2),
+      ...boxFaces3(0, -1.8, 1.3, 1.3, 0.9, 7.1),
+    ];
+  },
+  /* 발키리 — 넓은 날개 + 미사일 포드 둘. */
+  valk: () => {
+    const hull = polyPath3([
+      [0, 3.6, 6], [3.6, -0.6, 5.8], [2.2, -2.4, 5.9], [0, -1.2, 6.1], [-2.2, -2.4, 5.9], [-3.6, -0.6, 5.8],
+    ]);
+    return [
+      bodyFace(hull), topFace(hull, 0.16),
+      ...tubeFaces(-2.2, -1.4, -2.2, 0.6, 0.4, 6),
+      ...tubeFaces(2.2, -1.4, 2.2, 0.6, 0.4, 6),
+    ];
+  },
+  /* 사이언스 베슬 — 접시 링 위 구 + 앞 눈. */
+  vessel: () => {
+    const [dx2, dy2] = project(0, 0, 6);
+    const [ex2, ey2] = project(0, 2.9, 6);
+    return [
+      bodyFace(groundEllipse(dx2, dy2, 3.4, 1.4)),
+      topFace(groundEllipse(dx2, dy2 - 0.1, 2.6, 1), 0.18),
+      ...domeFaces3(0, 0, 1.9, 1.7, 5.9),
+      capFace(groundEllipse(ex2, ey2, 0.5, 0.3), 0.35),
+    ];
+  },
+  /* 뮤탈리스크 — 낫 날개 한 쌍 + 몸 + 꼬리. */
+  muta: () => {
+    const wing = (m: 1 | -1): string => polyPath3([
+      [m * 0.6, 0.4, 6.1], [m * 2.8, 1.9, 5.8], [m * 4.2, 0.4, 5.6], [m * 2.2, 0.2, 5.9],
+    ]);
+    return [
+      bodyFace(wing(1)), sideFace(wing(1), 0.16),
+      bodyFace(wing(-1)), topFace(wing(-1), 0.14),
+      ...domeFaces3(0, 0.4, 0.85, 0.7, 5.9),
+      ...hornFaces(0, -0.2, 6.1, 0, -1.8, 5.7, 0.5),
+    ];
+  },
+  /* 가디언 — 게딱지 몸 + 앞으로 드리운 다리들. */
+  guardian: () => [
+    ...domeFaces3(0, -0.6, 1.9, 1.5, 5.6),
+    ...hornFaces(1.3, 0.6, 6, 2.2, 2.6, 5.2, 0.6),
+    ...hornFaces(-1.3, 0.6, 6, -2.2, 2.6, 5.2, 0.6),
+    ...hornFaces(0.5, 0.9, 6, 0.9, 2.9, 5.3, 0.5),
+    ...hornFaces(-0.5, 0.9, 6, -0.9, 2.9, 5.3, 0.5),
+  ],
+  /* 디바우러 — 뚱뚱한 몸 + 짧은 날개 + 입. */
+  devourer: () => {
+    const wing = (m: 1 | -1): string => polyPath3([
+      [m * 1.2, 0.4, 6.6], [m * 3.4, 1.6, 6.2], [m * 2.6, -0.8, 6.4],
+    ]);
+    const [mx2, my2] = project(0, 1.8, 6.2);
+    return [
+      ...domeFaces3(0, -0.4, 2, 1.7, 5.6),
+      bodyFace(wing(1)), sideFace(wing(1), 0.16),
+      bodyFace(wing(-1)), topFace(wing(-1), 0.14),
+      capFace(groundEllipse(mx2, my2, 0.5, 0.3), 0.4),
+    ];
+  },
+  /* 스커지 — 작은 몸 + 날개 한 쌍. */
+  scourge: () => {
+    const wing = (m: 1 | -1): string => polyPath3([
+      [m * 0.5, 0.2, 6.3], [m * 2, 1.2, 6], [m * 1.4, -0.6, 6.1],
+    ]);
+    return [
+      ...domeFaces3(0, 0, 0.75, 0.65, 5.9),
+      bodyFace(wing(1)), sideFace(wing(1), 0.16),
+      bodyFace(wing(-1)), topFace(wing(-1), 0.14),
+    ];
+  },
+  /* 퀸 — 날개 달린 몸 + 늘어진 꼬리. */
+  queen: () => {
+    const wing = (m: 1 | -1): string => polyPath3([
+      [m * 0.8, 0.6, 6.4], [m * 3, 1.8, 6], [m * 2.2, -0.4, 6.2],
+    ]);
+    return [
+      ...domeFaces3(0, 0.4, 1.1, 0.9, 5.9),
+      bodyFace(wing(1)), sideFace(wing(1), 0.16),
+      bodyFace(wing(-1)), topFace(wing(-1), 0.14),
+      ...hornFaces(0, -0.4, 6.2, 0.4, -2.6, 5.6, 0.6),
+    ];
+  },
+  /* 커세어 — 둥근 몸 + 앞 프롱 둘. */
+  corsair: () => [
+    ...domeFaces3(0, -0.4, 1.4, 1, 5.8),
+    ...hornFaces(0.9, 0.6, 6.1, 1.5, 3, 5.7, 0.6),
+    ...hornFaces(-0.9, 0.6, 6.1, -1.5, 3, 5.7, 0.6),
+  ],
+  /* 스카웃 — 긴 코 전투기 + 콕핏 혹. */
+  scout: () => {
+    const hull = polyPath3([
+      [0, 4.2, 6], [1.2, 0.8, 6.1], [1.7, -2.4, 5.9], [0, -1.4, 6.1], [-1.7, -2.4, 5.9], [-1.2, 0.8, 6.1],
+    ]);
+    return [bodyFace(hull), topFace(hull, 0.16), ...domeFaces3(0, 0.6, 0.7, 0.55, 6.2)];
+  },
+  /* 캐리어 — 아래 격납 판(어두운 격납구) 위 큰 몸. */
+  carrier: () => {
+    const [bx2, by2] = project(0, 0.4, 5.3);
+    const [hx3, hy3] = project(0, 1, 5.28);
+    return [
+      bodyFace(groundEllipse(bx2, by2, 2.6, 1.1)),
+      capFace(groundEllipse(hx3, hy3, 1.7, 0.7), 0.4),
+      ...domeFaces3(0, 0, 2.9, 2.1, 5.4),
+    ];
+  },
+  /* 아비터 — 접시 몸 + 뒤 지느러미 + 가운데 돔. */
+  arbiter: () => {
+    const [dx2, dy2] = project(0, 0, 6);
+    return [
+      ...hornFaces(0, -0.6, 6.1, 0, -2.8, 7.6, 0.8),
+      bodyFace(groundEllipse(dx2, dy2, 3, 1.3)),
+      topFace(groundEllipse(dx2, dy2, 2.2, 0.9), 0.2),
+      ...domeFaces3(0, 0.4, 1, 0.8, 6),
+    ];
+  },
+  /* 옵저버 — 작은 구 + 위 안테나 둘 + 아래 다리 둘. */
+  observer: () => [
+    ...domeFaces3(0, 0, 0.8, 0.7, 5.9),
+    ...hornFaces(0.5, -0.3, 6.5, 1.3, -1.1, 7.4, 0.3),
+    ...hornFaces(-0.5, -0.3, 6.5, -1.3, -1.1, 7.4, 0.3),
+    ...hornFaces(0.5, 0.4, 5.9, 1.2, 1, 5, 0.3),
+    ...hornFaces(-0.5, 0.4, 5.9, -1.2, 1, 5, 0.3),
+  ],
   /* SCV(실물 참고) — 각진 몸통 + 양옆 포드 + 위 머리 + 앞으로 굽는 집게 드릴 한 쌍. */
   scv: () => [
     ...boxFaces3(0, -0.4, 2.6, 2.4, 2.6, 3.4),
@@ -1473,9 +1649,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...claw3(-1, 0.8, 4),
   ],
   hydra: () => [
-    // 뱀몸 — 긴 통 위에 코브라 두건.
+    // 뱀몸 — 긴 통 위에 코브라 두건 + 길쭉한 머리(요청).
     ...cylinderFaces3(0, -0.8, 1.3, 3.4, 3.4),
     ...domeFaces3(0, -0.4, 1.5, 1.2, 6.7),
+    ...hornFaces(0, 0.2, 7.4, 0.3, 2.2, 8.8, 0.95),
     ...claw3(1, 1, 4.4),
     ...claw3(-1, 1, 4.4),
   ],
@@ -1499,6 +1676,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     }
     out.push(...domeFaces3(0, -0.2, 2.4, 1.9, 3.6));
     out.push(...domeFaces3(0, 1.1, 1.3, 1, 3.9));
+    // 길쭉한 머리(요청) — 앞으로 길게 내민 주둥이.
+    out.push(...hornFaces(0, 1.6, 4.4, 0.2, 3.8, 5.4, 0.9));
     return out;
   },
   /* 디파일러 — 뒤 꼬리(끝이 위로 말림) + 앞 양 집게(요청). */
@@ -1506,6 +1685,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...hornFaces(0, -1.6, 4, 0.8, -4.6, 4.4, 0.9),
     ...hornFaces(0.8, -4.6, 4.4, 1.4, -5.8, 6, 0.6),
     ...domeFaces3(0, -0.4, 2.4, 1.8, 3.5),
+    // 옆다리(요청) — 양옆으로 두 쌍씩 뻗는 잔다리.
+    ...hornFaces(1.3, -0.2, 3.9, 2.4, 0.2, 2.2, 0.5),
+    ...hornFaces(1.3, -1.2, 3.9, 2.4, -1.5, 2.2, 0.5),
+    ...hornFaces(-1.3, -0.2, 3.9, -2.4, 0.2, 2.2, 0.5),
+    ...hornFaces(-1.3, -1.2, 3.9, -2.4, -1.5, 2.2, 0.5),
     ...hornFaces(1.6, 0.8, 4.2, 3, 3.6, 4.6, 0.8),
     ...hornFaces(3, 3.6, 4.6, 1.8, 5.2, 3.8, 0.6),
     ...hornFaces(-1.6, 0.8, 4.2, -3, 3.6, 4.6, 0.8),
@@ -1660,6 +1844,13 @@ const UNIT_CLASS: Record<string, string> = {
    표에 없는 지상 유닛은 기본 쐐기(wedge)로 방향만 갖는다. */
 const UNIT_3D: Record<string, string> = {
   Marine: "gunner", Firebat: "gunner", Ghost: "gunner", Medic: "inf",
+  // 기계·함선(요청: 만들 수 있는 건 다).
+  Vulture: "vulture", "Siege Tank": "tank", "Siege Tank (Tank Mode)": "tank",
+  Goliath: "goliath", Reaver: "reaver", Wraith: "wraith", Battlecruiser: "bc",
+  Valkyrie: "valk", "Science Vessel": "vessel",
+  Mutalisk: "muta", Guardian: "guardian", Devourer: "devourer", Scourge: "scourge",
+  Queen: "queen", Corsair: "corsair", Scout: "scout", Carrier: "carrier",
+  Arbiter: "arbiter", Observer: "observer",
   Zealot: "zealot", "Dark Templar": "dtemp", Dragoon: "goon", "High Templar": "htemp",
   Archon: "archon", "Dark Archon": "darchon",
   Zergling: "zling", Hydralisk: "hydra", Ultralisk: "ultra", Broodling: "zclaw",
@@ -1707,6 +1898,11 @@ export const SHAPE_GALLERY: { kind: string; label: string }[] = (() => {
     ["scv", "SCV"], ["probe", "프로브"], ["drone", "드론"],
     ["zling", "저글링"], ["hydra", "히드라"], ["ultra", "울트라리스크"],
     ["htemp", "하이 템플러"],
+    ["tank", "시즈 탱크"], ["vulture", "벌처"], ["goliath", "골리앗"], ["reaver", "리버"],
+    ["wraith", "레이스"], ["bc", "배틀크루저"], ["valk", "발키리"], ["vessel", "사이언스 베슬"],
+    ["muta", "뮤탈리스크"], ["guardian", "가디언"], ["devourer", "디바우러"], ["scourge", "스커지"],
+    ["queen", "퀸"], ["corsair", "커세어"], ["scout", "스카웃"], ["carrier", "캐리어"],
+    ["arbiter", "아비터"], ["observer", "옵저버"],
   ] as [string, string][]) {
     if (!seen.has(kind)) { seen.add(kind); out.push({ kind, label }); }
   }
