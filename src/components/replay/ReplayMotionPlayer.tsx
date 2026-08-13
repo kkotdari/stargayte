@@ -2909,7 +2909,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const pod = (tx: number): void => {
       const [ax2, ay2] = project(tx, -2.8, 3.2);
       const [bx2, by2] = project(tx, 2.6, 3.2);
-      const r = 1.4;
+      // 1.4 → 1.1(지적: 실린더 지름 줄이기).
+      const r = 1.1;
       const zr = r * 0.9;
       const dx2 = bx2 - ax2;
       const dy2 = by2 - ay2;
@@ -2929,11 +2930,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 폭 축소(지적: 몸체 폭 줄이기) — 포드 자리 ±3.1 → ±2.6, 판도 따라 좁힌다.
     pod(-2.6);
     pod(2.6);
-    const plate = `M${pt(-2.6, 0.8, 5.3)} Q${pt(0, 2, 6.1)} ${pt(2.6, 0.8, 5.3)}`
+    /* 판 앞을 실린더 앞과 맞춘다(지적: 판 길이를 길게 — 앞부분이 실린더 앞과 같게) —
+       앞 가장자리를 y 0.8 → 2.6(포드 앞끝)으로 내민다. */
+    const plate = `M${pt(-2.6, 2.6, 5.3)} Q${pt(0, 3.4, 6.1)} ${pt(2.6, 2.6, 5.3)}`
       + ` L${pt(2.6, -1.8, 5.1)} Q${pt(0, -2.8, 5.7)} ${pt(-2.6, -1.8, 5.1)} Z`;
     // 판 두께감(지적) — 앞 가장자리 아래로 내려앉는 옆면 띠.
-    const edge = `M${pt(-2.6, 0.8, 5.3)} Q${pt(0, 2, 6.1)} ${pt(2.6, 0.8, 5.3)}`
-      + ` L${pt(2.6, 0.8, 4.6)} Q${pt(0, 2, 5.4)} ${pt(-2.6, 0.8, 4.6)} Z`;
+    const edge = `M${pt(-2.6, 2.6, 5.3)} Q${pt(0, 3.4, 6.1)} ${pt(2.6, 2.6, 5.3)}`
+      + ` L${pt(2.6, 2.6, 4.6)} Q${pt(0, 3.4, 5.4)} ${pt(-2.6, 2.6, 4.6)} Z`;
     out.push(bodyFace(edge), sideFace(edge, 0.22));
     out.push(bodyFace(plate), topFace(plate, 0.18));
     // 뒤 추진체 셋(지적) — 꽁무니에서 뒤로 내민 짧은 통, 꽁무니가 보이면 분사구 발광.
@@ -2955,33 +2958,35 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const [px, py] = project(x, y, z);
       return `${px} ${py}`;
     };
-    const [cx, cy] = project(0, -0.8, 3.8);
+    const [cx, cy] = project(0, -0.6, 3.8);
     const out: ShapeFace[] = [];
-    // 뒷다리(요청) — 뒤 옆구리에서 나와 앞을 향해 굽는다. 뿌리는 몸통이 덮는다.
-    out.push(...hornFaces(-3, -2.4, 3.7, -4.6, -1.2, 3.5, 0.9));
-    out.push(...hornFaces(-4.6, -1.2, 3.5, -4.4, 1.6, 3.3, 0.7));
-    out.push(...hornFaces(3, -2.4, 3.7, 4.6, -1.2, 3.5, 0.9));
-    out.push(...hornFaces(4.6, -1.2, 3.5, 4.4, 1.6, 3.3, 0.7));
-    // 몸통 — 둥근 게딱지.
-    out.push(bodyFace(groundEllipse(cx, cy, 3.8, 3)));
-    out.push(sideFace(`M${cx + 1.2} ${cy - 2.6} Q${cx + 3.8} ${cy - 1.6} ${cx + 3.5} ${cy + 1.6} Q${cx + 3.5} ${cy - 1} ${cx + 1.2} ${cy - 2.6} Z`, 0.2));
-    out.push(topFace(groundEllipse(cx - 1.2, cy - 1.3, 1.7, 1.1), 0.25));
+    /* 뒷다리(정정: 바깥쪽으로 더 벌어지게) — 뒤 옆구리에서 나와 더 옆으로 뻗은 뒤
+       앞으로 굽는다. */
+    out.push(...hornFaces(-2.4, -2, 3.7, -4.9, -1, 3.5, 0.85));
+    out.push(...hornFaces(-4.9, -1, 3.5, -5.2, 1.6, 3.3, 0.65));
+    out.push(...hornFaces(2.4, -2, 3.7, 4.9, -1, 3.5, 0.85));
+    out.push(...hornFaces(4.9, -1, 3.5, 5.2, 1.6, 3.3, 0.65));
+    // 몸통 — 둥근 게딱지. 많이 줄였다(지적: 본체 크기 많이 축소 — 3.8×3 → 2.8×2.2).
+    out.push(bodyFace(groundEllipse(cx, cy, 2.8, 2.2)));
+    out.push(sideFace(`M${cx + 0.9} ${cy - 1.9} Q${cx + 2.8} ${cy - 1.2} ${cx + 2.6} ${cy + 1.2} Q${cx + 2.6} ${cy - 0.7} ${cx + 0.9} ${cy - 1.9} Z`, 0.2));
+    out.push(topFace(groundEllipse(cx - 0.9, cy - 1, 1.25, 0.8), 0.25));
     // 옆구리 밝은 홈 한 쌍.
-    out.push(topFace(groundEllipse(...project(-3.1, -0.4, 3.9), 0.5, 0.7), 0.4));
-    out.push(topFace(groundEllipse(...project(3.1, -0.4, 3.9), 0.5, 0.7), 0.4));
-    // 등 뒤 엔진 짐 — 껍데기 위 뒤쪽에 얹힌 세 덩이.
-    out.push(...domeFaces3(-1.6, -2.9, 1.25, 1, 4.25));
-    out.push(...domeFaces3(1.6, -2.9, 1.25, 1, 4.25));
-    out.push(...domeFaces3(0, -3.3, 1, 0.9, 4.35));
-    // 아가리 — 집게 사이 어두운 속과 그 위 빛 줄. 집게 간격을 벌린 만큼 넓힌다.
-    out.push(capFace(`M${pt(-2, 1.2, 3.9)} Q${pt(0, 2.2, 3.9)} ${pt(2, 1.2, 3.9)} L${pt(1, 4.2, 3.9)} Q${pt(0, 4.8, 3.9)} ${pt(-1, 4.2, 3.9)} Z`, 0.45));
-    out.push(topFace(`M${pt(-1.8, 1.3, 3.95)} Q${pt(0, 2.3, 3.95)} ${pt(1.8, 1.3, 3.95)} L${pt(1.6, 1.7, 3.95)} Q${pt(0, 2.7, 3.95)} ${pt(-1.6, 1.7, 3.95)} Z`, 0.5));
-    /* 집게(정정 둘: 더 뾰족하게 + 사이 벌리기) — 바깥 변과 안 변이 한 점에서 만나는
-       뾰족 끝이고, 끝이 가운데로 덜 오므려 사이 공간이 넓다. */
+    out.push(topFace(groundEllipse(...project(-2.3, -0.3, 3.9), 0.4, 0.55), 0.4));
+    out.push(topFace(groundEllipse(...project(2.3, -0.3, 3.9), 0.4, 0.55), 0.4));
+    // 등 뒤 엔진 짐 — 껍데기 위 뒤쪽에 얹힌 세 덩이(몸을 따라 축소).
+    out.push(...domeFaces3(-1.2, -2.1, 0.95, 0.8, 4.2));
+    out.push(...domeFaces3(1.2, -2.1, 0.95, 0.8, 4.2));
+    out.push(...domeFaces3(0, -2.5, 0.8, 0.7, 4.3));
+    // 아가리 — 집게 사이 어두운 속과 그 위 빛 줄.
+    out.push(capFace(`M${pt(-1.8, 1, 3.85)} Q${pt(0, 1.9, 3.85)} ${pt(1.8, 1, 3.85)} L${pt(0.9, 3.8, 3.6)} Q${pt(0, 4.3, 3.55)} ${pt(-0.9, 3.8, 3.6)} Z`, 0.45));
+    out.push(topFace(`M${pt(-1.6, 1.1, 3.9)} Q${pt(0, 2, 3.9)} ${pt(1.6, 1.1, 3.9)} L${pt(1.4, 1.5, 3.9)} Q${pt(0, 2.4, 3.9)} ${pt(-1.4, 1.5, 3.9)} Z`, 0.5));
+    /* 집게(정정 셋: 더 두껍게 + 약간 아래로 기울이기 + 뾰족·사이 벌림 유지) — 바깥
+       변을 더 바깥으로 부풀려 살을 찌우고, 앞으로 갈수록 z를 낮춰 끝이 아래를 향해
+       내려간다. */
     const claw = (m: 1 | -1): string =>
-      `M${pt(m * 4.1, 0.2, 3.9)} Q${pt(m * 4.6, 3, 3.9)} ${pt(m * 2.2, 6.1, 3.9)}`
-      + ` Q${pt(m * 2.5, 3.6, 3.9)} ${pt(m * 2.6, 1.6, 3.9)}`
-      + ` Q${pt(m * 2.7, 0.4, 3.9)} ${pt(m * 4.1, 0.2, 3.9)} Z`;
+      `M${pt(m * 3.3, 0.5, 3.85)} Q${pt(m * 4.5, 3, 3.65)} ${pt(m * 2.1, 5.8, 3.25)}`
+      + ` Q${pt(m * 2.4, 3.4, 3.6)} ${pt(m * 2.5, 1.4, 3.8)}`
+      + ` Q${pt(m * 2.6, 0.4, 3.85)} ${pt(m * 3.3, 0.5, 3.85)} Z`;
     out.push(bodyFace(claw(1)), sideFace(claw(1), 0.16));
     out.push(bodyFace(claw(-1)), topFace(claw(-1), 0.14));
     return out;
