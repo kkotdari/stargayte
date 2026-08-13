@@ -13,7 +13,7 @@ import {
   bodyFace, capFace, groundEllipse, sideFace, topFace, type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
   domeFaces3, faceLight, facingRatio, frustumFaces3, hornFaces, limbFaces, pyramidFaces3, tubeFaces,
-  wallDiscPath, wallFrame, withPitchView, withTopView, withViewShear, withYaw,
+  wallDiscPath, wallFrame, withPitchView, withTopView, withViewShear, withYaw, zsorted,
 } from "../../utils/shapeOblique";
 import type { MinimapMarker } from "./ReplayMinimap";
 
@@ -2298,23 +2298,23 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [e1x, e1y] = project(-0.85, -1.5, 5.6);
     const [e2x, e2y] = project(0.85, -1.5, 5.6);
     return [
-      // 각진 방패 몸 — 한 단 작게.
+      // 각진 방패 몸 — 또 한 단 작게(재지적: 몸통 크기 축소).
       bodyFace(polyPath3([
-        [0, 2.1, 5.9], [1.6, 1, 5.95], [2, -0.7, 5.85], [0.9, -1.7, 5.8],
-        [-0.9, -1.7, 5.8], [-2, -0.7, 5.85], [-1.6, 1, 5.95],
+        [0, 1.75, 5.9], [1.35, 0.85, 5.95], [1.7, -0.6, 5.85], [0.75, -1.45, 5.8],
+        [-0.75, -1.45, 5.8], [-1.7, -0.6, 5.85], [-1.35, 0.85, 5.95],
       ])),
-      topFace(polyPath3([[0, 2.1, 5.9], [-1.6, 1, 5.95], [-1.1, -0.3, 5.9], [0, 0.3, 5.92]]), 0.18),
-      sideFace(polyPath3([[0, 2.1, 5.9], [1.6, 1, 5.95], [2, -0.7, 5.85], [0.85, -0.15, 5.9]]), 0.18),
+      topFace(polyPath3([[0, 1.75, 5.9], [-1.35, 0.85, 5.95], [-0.9, -0.25, 5.9], [0, 0.25, 5.92]]), 0.18),
+      sideFace(polyPath3([[0, 1.75, 5.9], [1.35, 0.85, 5.95], [1.7, -0.6, 5.85], [0.7, -0.12, 5.9]]), 0.18),
       /* 양팔(재지적: 포신보다 완만하게 휜 가시 느낌) — 밖으로 벌었다가 앞으로 모이는
          두 마디 곡선 가시. */
       ...hornFaces(1.5, -0.6, 5.9, 2.5, 1.3, 5.7, 0.6),
       ...hornFaces(2.5, 1.3, 5.7, 2.1, 3.3, 5.5, 0.36),
       ...hornFaces(-1.5, -0.6, 5.9, -2.5, 1.3, 5.7, 0.6),
       ...hornFaces(-2.5, 1.3, 5.7, -2.1, 3.3, 5.5, 0.36),
-      /* 하단 팔 하나(재재지적: 위로 휘기가 아니라 아래에 팔 추가) — 몸 밑에서 앞으로
-         뻗다 끝이 팔처럼 위로 말린다. */
-      ...hornFaces(0, -0.4, 5.3, 0, 1.7, 5.05, 0.5),
-      ...hornFaces(0, 1.7, 5.05, 0, 3.3, 5.75, 0.3),
+      /* 하단 팔 하나(재보정: 아래 75도로 붙는다) — 몸 밑에서 가파르게 아래·앞으로
+         떨어졌다가 끝이 팔처럼 위로 말린다. */
+      ...hornFaces(0, -0.2, 5.4, 0, 0.6, 2.6, 0.5),
+      ...hornFaces(0, 0.6, 2.6, 0, 1.7, 3.3, 0.3),
       // 콕핏 혹.
       ...domeFaces3(0, 0.4, 0.7, 0.55, 6.05),
       // 뒤 발광 엔진 둘.
@@ -3105,6 +3105,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     topFace(groundEllipse(...project(-0.9, 0.3, 4.4), 0.55, 0.35), 0.15),
   ],
 };
+/* 부품 깊이 정렬(지적: 일부만 가려지는 파트에서 뒤 요소가 비쳐 보임 — 가장 큰 문제) —
+   빌더의 그리기 순서는 표준 시점 기준 고정이라, 요잉으로 뒤로 돌아간 부품이 앞 부품
+   위에 그려졌다. 프리미티브(상자·절두·기둥·돔·뿔·관·다리)가 제 중심 깊이를 면에 달아
+   두므로, 모든 빌더를 요잉 버킷마다 뒤→앞 안정 정렬로 감싼다 — 깊이 없는 손 면은
+   직전 부품에 붙어 다녀(장식 규칙) 기존 결이 안 깨진다. */
+for (const k of Object.keys(SHAPE_BUILDERS)) {
+  const orig = SHAPE_BUILDERS[k];
+  SHAPE_BUILDERS[k] = () => zsorted(orig());
+}
 
 
 const SHAPE_FACES: Record<string, ShapeFace[]> = {
