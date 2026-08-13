@@ -1817,8 +1817,8 @@ export default function ReplayMotionPlayer({
           점과 같은 ●를 부대보다 한 단 작게(지적: •는 너무 작았다). */}
       <span><i className="scr-motion-legend-worker">●</i> 일꾼</span>
       <span>🔨 건설 중</span>
-      <span>⏳ 생산 중</span>
-      <span>🧪 업그레이드 중</span>
+      <span>⏳🥚✨ 생산 중</span>
+      <span>🧪🧬🔮 업그레이드 중</span>
     </>
   );
 
@@ -2035,11 +2035,16 @@ export default function ReplayMotionPlayer({
                     흰색 고정도 아니다): 밝은 개인색 위엔 검정, 어두운 색 위엔 흰색이라
                     제 색 도형 위에서도 늘 보인다. */}
                 {(() => {
-                  /* 이모지로(요청: 아이콘보다 잘 보이게) — 공사 🔨, 생산은 톱니 대신
-                     모래시계 ⏳(뽑는 중), 연구 🧪. */
+                  /* 이모지로(요청: 아이콘보다 잘 보이게) — 공사 🔨. 생산·연구는 종족
+                     따라(요청): 생산 = 테란 ⏳ · 저그 알 🥚 · 프로토스 소환 ✨, 연구 =
+                     테란 🧪 · 저그 유전자 🧬 · 프로토스 🔮(좀 더 고급). */
+                  const jobRace = bases.find((b) => b.key === raw)?.race;
                   const job = raising ? "🔨"
-                    : producing && !afloat ? "⏳"
-                      : researching && !afloat ? "🧪" : null;
+                    : producing && !afloat
+                      ? (jobRace === "저그" ? "🥚" : jobRace === "프로토스" ? "✨" : "⏳")
+                      : researching && !afloat
+                        ? (jobRace === "저그" ? "🧬" : jobRace === "프로토스" ? "🔮" : "🧪")
+                        : null;
                   if (!job) return null;
                   return <span className="scr-motion-raising scr-motion-job">{job}</span>;
                 })()}
