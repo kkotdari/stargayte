@@ -1335,24 +1335,26 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...domeFaces3(1.8, 2.1, 1.1, 0.9),
     ...hornFaces(-2.4, -2, 2.2, -3.2, -2.8, 5.4, 1),
   ],
-  /* 디파일러 마운드 — 둔덕 + 큰 옆 아가리 + 가시들. */
+  /* 디파일러 마운드(정정: 납작하게) — 낮게 퍼진 둔덕 + 큰 옆 아가리 + 가시들. */
   dmound: () => {
-    const [mx3, my3] = project(2.9, 1.8, 1.6);
+    const [mx3, my3] = project(2.9, 1.8, 1.1);
     return [
-      ...domeFaces3(0, 0, 4.8, 3.1),
-      capFace(groundEllipse(mx3, my3, 1.8, 1), 0.45),
-      ...hornFaces(-2.6, -1.6, 2.6, -3.6, -2.4, 5.8, 1),
-      ...hornFaces(-0.4, -2.8, 2.4, -0.8, -4, 4.8, 0.9),
+      ...domeFaces3(0, 0, 5, 1.8),
+      capFace(groundEllipse(mx3, my3, 1.9, 0.95), 0.45),
+      ...hornFaces(-2.6, -1.6, 1.5, -3.6, -2.4, 4.4, 1),
+      ...hornFaces(-0.4, -2.8, 1.4, -0.8, -4, 3.6, 0.9),
     ];
   },
-  /* 울트라리스크 캐번 — 둔덕 + 큰 엄니 둘 + 입. */
+  /* 울트라리스크 캐번(정정) — 크고 통통한 소라: 불룩한 몸 위로 나선 단이 겹겹이
+     말려 올라가 비스듬한 꼭지로 끝나고, 앞엔 큰 입이 뚫린다. */
   cavern: () => {
-    const [mx3, my3] = project(0, 3.6, 1.2);
+    const [mx3, my3] = project(0.6, 3.8, 1.6);
     return [
-      ...domeFaces3(0, 0, 4.9, 3.3),
-      ...hornFaces(-2.2, 2.6, 1.6, -3.6, 4.4, 5, 1.3),
-      ...hornFaces(2.2, 2.6, 1.6, 3.6, 4.4, 5, 1.3),
-      capFace(groundEllipse(mx3, my3, 1.4, 0.65), 0.45),
+      ...domeFaces3(0, 0, 4.9, 3.8),
+      ...domeFaces3(-1.2, -1.2, 3.4, 2.6, 1.8),
+      ...domeFaces3(-2.2, -2, 2.2, 1.8, 3.6),
+      ...hornFaces(-2.8, -2.6, 4.8, -3.7, -3.3, 6.8, 1.4),
+      capFace(groundEllipse(mx3, my3, 1.7, 0.8), 0.45),
     ];
   },
   /* 나이더스 커널 — 점액 테 + 어두운 아가리 + 이빨 뿔들. */
