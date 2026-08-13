@@ -4283,6 +4283,9 @@ export default function ReplayMotionPlayer({
         style={{
           aspectRatio: `${grid.width} / ${grid.height}`,
           ...(zoom > 1 || pitched ? { overflow: "hidden" } : {}),
+          /* 원근은 부모 속성으로(수리: transform 함수형 perspective는 브라우저에 따라
+             자식 preserve-3d 합성이 깨져 빌보드가 안 서고 다 누워 보였다). */
+          ...(pitched ? { perspective: "900px" } : {}),
           ...(zoom > 1 ? { cursor: dragRef.current ? "grabbing" : "grab" } : {}),
         }}
       >
@@ -4299,7 +4302,7 @@ export default function ReplayMotionPlayer({
             const mapH = mapRef.current?.clientHeight ?? 600;
             const fit = Math.min(1, ((900 - Math.sin((38 * Math.PI) / 180) * (mapH / 2)) / 900) * 0.97);
             const tf = [
-              pitched ? `perspective(900px) rotateX(38deg) scale(${fit.toFixed(3)})` : "",
+              pitched ? `rotateX(38deg) scale(${fit.toFixed(3)})` : "",
               zoom > 1 ? `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` : "",
             ].filter(Boolean).join(" ");
             return tf === "" ? undefined : {
