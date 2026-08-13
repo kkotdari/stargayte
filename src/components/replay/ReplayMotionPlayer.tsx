@@ -1711,16 +1711,26 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ]);
     return [bodyFace(hull), topFace(hull, 0.16), ...domeFaces3(0, 0.6, 0.7, 0.55, 6.2)];
   },
-  /* 캐리어(정정 둘: 정말 심플하게) — 기다란 꽃잎 세 장이 서로 마주 보며 다물린 것이
-     전부다. 아래엔 옅은 격납 판만. */
+  /* 캐리어(정정 셋) — 아래 판 없이, 부드러운 타원 꽃잎 세 장(옆 둘 + 위 하나)만
+     서로 마주 보며 다물린다. 모형 공간 타원이라 곡선이 매끈하다. */
   carrier: () => {
-    const [bx2, by2] = project(0, 0.4, 4.9);
+    const petal = (cx2: number, z0: number, xr: number, yr: number): string => polyPath3(
+      Array.from({ length: 12 }, (_, i) => {
+        const a = (i / 12) * Math.PI * 2;
+        return [
+          cx2 + Math.cos(a) * xr,
+          0.3 + Math.sin(a) * yr,
+          z0 - Math.sin(a) * 0.3,
+        ] as [number, number, number];
+      }),
+    );
     return [
-      bodyFace(groundEllipse(bx2, by2, 2.2, 0.9)),
-      capFace(groundEllipse(bx2, by2, 1.4, 0.55), 0.35),
-      ...hornFaces(-1.35, -3.6, 5.5, -0.5, 4.4, 5.3, 1.75),
-      ...hornFaces(1.35, -3.6, 5.5, 0.5, 4.4, 5.3, 1.75),
-      ...hornFaces(0, -3.9, 6.3, 0, 4.7, 5.6, 2),
+      bodyFace(petal(-1.35, 5.5, 0.95, 3.9)),
+      topFace(petal(-1.35, 5.5, 0.95, 3.9), 0.16),
+      bodyFace(petal(1.35, 5.5, 0.95, 3.9)),
+      sideFace(petal(1.35, 5.5, 0.95, 3.9), 0.18),
+      bodyFace(petal(0, 6.2, 1.15, 4.2)),
+      topFace(petal(0, 6.2, 1.15, 4.2), 0.1),
     ];
   },
   /* 아비터(정정 둘) — 작은 몸체 양옆에 긴 타원형 날개가 방패처럼 뒤를 향해 길게
@@ -1730,7 +1740,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       Array.from({ length: 10 }, (_, i) => {
         const a = (i / 10) * Math.PI * 2;
         return [
-          m2 * 2.2 + Math.cos(a) * 1.05,
+          m2 * 1.7 + Math.cos(a) * 1.05,
           -1 + Math.sin(a) * 2.9,
           6.05 - Math.sin(a) * 0.25,
         ] as [number, number, number];
