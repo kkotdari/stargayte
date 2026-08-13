@@ -1599,30 +1599,34 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(capFace(groundEllipse(cx2, cy2 - 0.1, 0.7, 0.4), 0.5));
     return out;
   },
-  /* 퀸즈 네스트(정정) — 반구형 몸에 아래쪽 밑단을 따라 긴 입구들이 빙 둘러 뚫린다. */
+  /* 퀸즈 네스트(실물 참고) — 살덩이 엽이 겹겹이 쌓인 봉분: 아랫단 엽 다섯, 사이 어두운
+     세로 골, 중간 단 셋, 꼭대기 덮개와 작은 뿔들, 밑동 촉수. */
   queensnest: () => {
-    const slit = (ang: number): string => {
-      const a = (ang * Math.PI) / 180;
-      const sx = Math.sin(a);
-      const sy = Math.cos(a);
-      const tx = Math.cos(a);
-      const ty = -Math.sin(a);
-      return polyPath3(Array.from({ length: 8 }, (_, i) => {
-        const t = (i / 8) * Math.PI * 2;
-        return [
-          sx * 3.55 + tx * 1.35 * Math.cos(t),
-          sy * 3.55 + ty * 1.35 * Math.cos(t),
-          0.85 + 0.55 * Math.sin(t),
-        ] as [number, number, number];
-      }));
+    const slit = (sx2: number, sy2: number, sz2: number): ShapeFace => {
+      const [px2, py2] = project(sx2, sy2, sz2);
+      return capFace(groundEllipse(px2, py2, 0.28, 0.85), 0.4);
     };
     return [
-      ...domeFaces3(0, 0, 4.4, 3.6),
-      capFace(slit(0), 0.45),
-      capFace(slit(52), 0.45),
-      capFace(slit(-52), 0.45),
-      capFace(slit(104), 0.38),
-      capFace(slit(-104), 0.38),
+      // 아랫단 엽 다섯.
+      ...domeFaces3(-3, -0.8, 1.6, 2.2),
+      ...domeFaces3(3, -0.9, 1.6, 2.2),
+      ...domeFaces3(-2.4, 1, 1.7, 2.4),
+      ...domeFaces3(2.1, 1, 1.7, 2.4),
+      ...domeFaces3(-0.2, 1.6, 1.8, 2.6),
+      // 사이 어두운 세로 골.
+      slit(-1.4, 1.8, 1.1), slit(1.1, 1.8, 1.1), slit(-2.9, 0.4, 1),
+      // 중간 단 셋.
+      ...domeFaces3(-1.3, 0, 1.8, 2.4, 1.9),
+      ...domeFaces3(1.2, 0, 1.8, 2.4, 1.9),
+      ...domeFaces3(0, -1, 1.9, 2.4, 1.9),
+      // 꼭대기 덮개 + 작은 뿔들.
+      ...domeFaces3(0, -0.2, 1.9, 1.9, 3.9),
+      ...hornFaces(-0.9, -0.9, 5.3, -1.5, -1.4, 6.5, 0.5),
+      ...hornFaces(0.9, -0.9, 5.3, 1.5, -1.4, 6.5, 0.5),
+      ...hornFaces(0, -1.3, 5.1, 0, -2, 6.1, 0.5),
+      // 밑동 촉수.
+      ...hornFaces(-2.6, 2.2, 0.6, -3.4, 3, 0.1, 0.5),
+      ...hornFaces(2.6, 2.2, 0.6, 3.4, 3, 0.1, 0.5),
     ];
   },
   /* 디파일러 마운드(실물 참고) — 낮게 퍼진 살덩이 위에 검은 수정 조각 무더기가 솟고,
