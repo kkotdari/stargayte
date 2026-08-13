@@ -12833,6 +12833,26 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   from { opacity: 0.6; scale: 0.4; }
   to { opacity: 0; scale: 3.3; }
 }
+/* ── 입체 보기(정정: 원근법) — 렌즈를 perspective+rotateX(38도)로 눕히고, 서 있는
+   것들(유닛·건물·배지·말풍선·광선)은 바닥점 기준 반대 회전(빌보드)으로 도로 세운다.
+   바닥에 깔리는 넓이 효과(스톰·스웜·핵 폭발)는 그대로 눕는다. */
+.scr-motion-pitched .scr-motion-lens { transform-style: preserve-3d; }
+.scr-motion-pitched .scr-motion-army,
+.scr-motion-pitched .scr-motion-fresh,
+.scr-motion-pitched .scr-motion-miner,
+.scr-motion-pitched .scr-motion-cast,
+.scr-motion-pitched .scr-motion-build {
+  transform: rotateX(-38deg); transform-origin: 50% 100%;
+}
+.scr-motion-pitched .scr-motion-lens > .scr-motion-bubble {
+  transform: translate(-50%, calc(-100% - 8px)) rotateX(-38deg); transform-origin: 50% 100%;
+}
+.scr-motion-pitched .scr-motion-beam {
+  transform: translate(-50%, -100%) rotateX(-38deg); transform-origin: 50% 100%;
+}
+.scr-motion-pitched .scr-motion-lift {
+  transform: translate(-50%, -50%) rotateX(-38deg);
+}
 /* ── 다크 스웜(요청) — 갈색 반투명 구름이 우글거린다. 지름은 인라인 width(6타일). */
 .scr-motion-swarmfx {
   pointer-events: none; z-index: 24000; position: absolute;

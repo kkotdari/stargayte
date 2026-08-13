@@ -2311,7 +2311,6 @@ export default function ReplayMotionPlayer({
      컨테이너 세로비가 맡아서 %자리가 저절로 따라온다. 휠 확대·드래그 이동은 기존
      렌즈(zoom·pan) 그대로다. */
   const [pitched, setPitched] = useState(false);
-  const PITCH_K = 0.6;
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   useEffect(() => {
     const el = mapRef.current;
@@ -2632,6 +2631,33 @@ export default function ReplayMotionPlayer({
     const castsOf = (pred: (raw: string) => boolean, empW: number): [number, number][] => motion.casts
       .filter((c) => (COMBAT_CASTS[c[3]] !== undefined || c[3] === "EMP Shockwave") && pred(c[4]))
       .map((c) => [c[0], c[3] === "EMP Shockwave" ? empW : COMBAT_CASTS[c[3]]]);
+    /* 상성 반영(요청: 메딕 있으면 바이오닉 강해지고, 이런 상성 최대한) — 생산 기록으로
+       아는 유명 카운터만 조심스럽게: 상대 카운터 유닛이 쌓일수록(6기에 만렙) 내 피카운터
+       비중만큼 더 녹고, 메딕은 내 바이오닉 몫을 지킨다(기당 5%, 상한 20%). */
+    const COUNTERS: [string, string, number][] = [
+      ["Vulture", "Zealot", 0.5], ["Vulture", "Zergling", 0.5],
+      ["Siege Tank", "Dragoon", 0.5], ["Siege Tank", "Goliath", 0.4],
+      ["Siege Tank", "Hydralisk", 0.4], ["Siege Tank", "Lurker", 0.4],
+      ["Firebat", "Zergling", 0.5], ["Firebat", "Zealot", 0.4],
+      ["Archon", "Zergling", 0.4], ["Archon", "Mutalisk", 0.4],
+      ["Lurker", "Marine", 0.5], ["Lurker", "Zergling", 0.4],
+      ["Reaver", "Marine", 0.4], ["Reaver", "Zergling", 0.4], ["Reaver", "Zealot", 0.4],
+      ["Corsair", "Mutalisk", 0.5], ["Corsair", "Scourge", 0.4],
+      ["Valkyrie", "Mutalisk", 0.5],
+      ["Goliath", "Mutalisk", 0.4], ["Goliath", "Wraith", 0.4], ["Goliath", "Battlecruiser", 0.4],
+      ["Dark Templar", "Zergling", 0.3],
+    ];
+    const unitTimesOf = (q: MotionTrack): Map<string, number[]> => {
+      const m2 = new Map<string, number[]>();
+      for (const [u, secs] of Object.entries(q.prod ?? {})) {
+        const k2 = u.startsWith("Siege Tank") ? "Siege Tank" : u;
+        const arr = m2.get(k2) ?? [];
+        for (const x2 of secs) arr.push(x2 + (UNIT_SEC[u] ?? 20));
+        m2.set(k2, arr);
+      }
+      for (const arr of m2.values()) arr.sort((a, b) => a - b);
+      return m2;
+    };
     const upTimes = (raw: string, names: Set<string>): number[] =>
       (motion.players.find((q) => q.raw === raw)?.ups ?? [])
         .filter(([, n]) => names.has(n)).map(([us]) => us).sort((a, b) => a - b);
@@ -2674,6 +2700,14 @@ export default function ReplayMotionPlayer({
          강해진다. 내 스웜이 최근 30초 안에 깔렸으면 20% 천천히 녹는다. */
       const mySwarms = motion.casts
         .filter((c) => c[3] === "Dark Swarm" && c[4] === p.raw).map((c) => c[0]);
+      const myUnits = unitTimesOf(p);
+      const foeUnits = new Map<string, number[]>();
+      for (const q of motion.players) {
+        if (teamOfRaw(q.raw) === teamOfRaw(p.raw)) continue;
+        for (const [u, ts2] of unitTimesOf(q)) {
+          foeUnits.set(u, [...(foeUnits.get(u) ?? []), ...ts2].sort((a, b) => a - b));
+        }
+      }
       // 눈금: 완성 시각 + 전투 경계와 그 안의 5초 간격 — 구간이 경계를 안 넘게 쪼갠다.
       const marks = new Set<number>([0, ...done]);
       for (const [a, b] of hot) {
@@ -2696,7 +2730,18 @@ export default function ReplayMotionPlayer({
             * (1 + Math.min(0.15, Math.max(0, ...foeDevourers.map((d2) => countBy(d2, prev))) * 0.05)
               * (countBy(myAll, prev) > 0 ? countBy(myAir, prev) / countBy(myAll, prev) : 0))
             / (mySwarms.some((cs) => cs <= prev && prev - cs <= 30) ? 1.2 : 1);
-          size = Math.max(0, size * Math.exp(-PROP * mult * dt2) - LIN * mult * dt2);
+          const myTot = Math.max(1, countBy(myAll, prev));
+          let counterUp = 0;
+          for (const [au, vu, w] of COUNTERS) {
+            const eC = countBy(foeUnits.get(au) ?? [], prev);
+            if (eC === 0) continue;
+            counterUp += w * Math.min(1, eC / 6) * (countBy(myUnits.get(vu) ?? [], prev) / myTot);
+          }
+          const medics = countBy(myUnits.get("Medic") ?? [], prev);
+          const bioN = countBy(myUnits.get("Marine") ?? [], prev) + countBy(myUnits.get("Firebat") ?? [], prev);
+          const heal = Math.min(0.2, medics * 0.05) * Math.min(1, bioN / myTot);
+          const mult2 = mult * (1 + Math.min(0.3, counterUp)) / (1 + heal);
+          size = Math.max(0, size * Math.exp(-PROP * mult2 * dt2) - LIN * mult2 * dt2);
         }
         while (di < done.length && done[di] <= now) { size += 1; di += 1; }
         series.push([now, size]);
@@ -2914,28 +2959,39 @@ export default function ReplayMotionPlayer({
       className={cx("scr-motion", big && "scr-motion-big")}
       // 확대 모드에선 폭 상한을 안 건다 — 모달 폭(아래 포털)이 이미 맵+양옆 세로 조작부
       // 기준으로 확정돼 있고, 여기까지 조이면 이중 제약으로 맵이 더 작아진다.
-      style={big ? undefined : { maxWidth: `calc((100dvh - 230px) * ${(grid.width / (grid.height * (pitched ? PITCH_K : 1))).toFixed(4)})`, margin: "0 auto" }}
+      style={big ? undefined : { maxWidth: `calc((100dvh - 230px) * ${(grid.width / grid.height).toFixed(4)})`, margin: "0 auto" }}
     >
       <div className="scr-motion-maprow">
       {teamCol(1)}
       <div
-        className="scr-motion-map" ref={mapRef}
+        className={cx("scr-motion-map", pitched && "scr-motion-pitched")} ref={mapRef}
         onPointerDown={onMapPointerDown}
         onPointerMove={onMapPointerMove}
         onPointerUp={onMapPointerUp}
         onPointerCancel={onMapPointerUp}
         style={{
-          aspectRatio: `${grid.width} / ${grid.height * (pitched ? PITCH_K : 1)}`,
-          ...(zoom > 1 ? { overflow: "hidden", cursor: dragRef.current ? "grabbing" : "grab" } : {}),
+          aspectRatio: `${grid.width} / ${grid.height}`,
+          ...(zoom > 1 || pitched ? { overflow: "hidden" } : {}),
+          ...(zoom > 1 ? { cursor: dragRef.current ? "grabbing" : "grab" } : {}),
         }}
       >
         {/* 렌즈 상자 — PC 휠 줌(요청)이 이 층을 통째로 키운다(마커·자취까지 같이). */}
         <div
           className="scr-motion-lens"
-          style={zoom > 1 ? {
-            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-            transformOrigin: "center",
-          } : undefined}
+          style={(() => {
+            /* 입체 보기(정정: 원근법 적용) — 렌즈를 perspective+rotateX로 눕히고, 확대·
+               이동(zoom·pan)은 눕힌 판 위에서 움직인다. 서 있는 마커는 CSS 빌보드
+               (scr-motion-pitched 규칙)가 도로 세운다. */
+            const tf = [
+              pitched ? "perspective(900px) rotateX(38deg)" : "",
+              zoom > 1 ? `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` : "",
+            ].filter(Boolean).join(" ");
+            return tf === "" ? undefined : {
+              transform: tf,
+              transformOrigin: "center",
+              ...(pitched ? { transformStyle: "preserve-3d" as const } : {}),
+            };
+          })()}
         >
         {grid.image
           ? <img className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`} draggable={false} />
