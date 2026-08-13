@@ -1929,8 +1929,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...boxFaces3(-3.5, -2.7, 1.8, 1.4, 0.55),
       ...hornFaces(1.8, -1.5, 1.8, 3.3, -2.5, 0.5, 0.8),
       ...boxFaces3(3.5, -2.7, 1.8, 1.4, 0.55),
-      ...boxFaces3(0, -0.3, 3.8, 3.4, 1.6, 1),
-      ...frustumFaces3(0, -0.5, 3, 2.4, 2.2, 1.8, 1.6, 2.6),
+      // 옆이 아니라 앞뒤로 긴 차체(정정).
+      ...boxFaces3(0, -0.3, 2.8, 4.8, 1.6, 1),
+      ...frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.6),
       bodyFace(`M${ax2 + nx2} ${ay2 + ny2} L${bx2 + nx2} ${by2 + ny2} L${bx2 - nx2} ${by2 - ny2} L${ax2 - nx2} ${ay2 - ny2} Z`),
       capFace(groundEllipse(bx2, by2, 0.34, 0.28), 0.4),
     ];
