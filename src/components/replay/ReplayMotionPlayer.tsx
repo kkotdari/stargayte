@@ -774,44 +774,50 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...hornFaces(5.7, 2, 4.2, 4.8, 2.4, 6, 0.8));
     return out;
   },
-  /* 스타게이트(다시 셋, 지적: 대각선 대칭이동) — 두 손이 사이를 띄우고 마주 보되
-     위 손은 왼위에서, 아래 손은 오른아래에서 굽는다. 가운데 빈 통로가 정면(앞왼쪽)을
-     향해 열려 함선이 그리로 나온다. 손바닥 안쪽 파란 창 줄, 등 갈빗살, 말린 손끝. */
+  /* 스타게이트(다시 넷, 지적) — 가운데 원통형 통로가 대각선(좌상단이 정면)으로 놓이고,
+     양옆의 굽은 판이 그 통로를 감싼다. 함선은 좌상단 아가리로 나온다. 판 등엔 갈빗살과
+     파란 창 점, 끝은 아가리 쪽으로 말린 갈고리. */
   arch: () => {
-    const pt = (x: number, y: number, z: number): string => {
-      const [px, py] = project(x, y, z);
-      return `${px} ${py}`;
+    const [axp, ayp] = project(3.6, -0.8, 1.4);
+    const [bxp, byp] = project(-3.4, 0.6, 8.8);
+    const dx = bxp - axp;
+    const dy = byp - ayp;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    const Pn = (t: number, sOff: number): [number, number] =>
+      [axp + dx * t + nx * sOff, ayp + dy * t + ny * sOff];
+    const P = (t: number, sOff: number): string => {
+      const [px, py] = Pn(t, sOff);
+      return `${Math.round(px * 100) / 100} ${Math.round(py * 100) / 100}`;
     };
     const out: ShapeFace[] = [sideFace(discPath3(0, 0.2, 0, 5), 0.22)];
-    // 아래 손 — 오른아래에서 위로 굽는 판.
-    const lower = `M${pt(-3.4, 0.5, 0.5)} Q${pt(2.6, 0.7, 0.3)} ${pt(5.8, 0.9, 4.4)}`
-      + ` L${pt(4, 0.9, 5.7)} Q${pt(1.9, 0.6, 3.1)} ${pt(-2.8, 0.5, 3)} Z`;
-    out.push(bodyFace(lower), sideFace(lower, 0.14));
-    // 위 손 — 왼위에서 아래로 굽는 판(광원을 받아 살짝 밝게).
-    const upper = `M${pt(3.4, 0, 10.7)} Q${pt(-2.6, -0.2, 10.9)} ${pt(-5.8, -0.4, 6.8)}`
-      + ` L${pt(-4, -0.4, 5.5)} Q${pt(-1.9, -0.1, 8.1)} ${pt(2.8, 0, 8.2)} Z`;
-    out.push(bodyFace(upper), topFace(upper, 0.1));
-    // 손끝 말림 — 마주 보는 손 쪽으로 갈고리.
-    out.push(...hornFaces(5.4, 0.9, 4.6, 6.6, 1, 6.6, 0.9));
-    out.push(...hornFaces(-5.4, -0.4, 6.6, -6.6, -0.5, 4.6, 0.9));
-    // 파란 창 줄 — 두 손바닥 안쪽(통로 쪽)을 따라.
-    for (const [wx2, wz] of [[-1.6, 1.8], [0.2, 1.9], [2, 2.4], [3.6, 3.4]] as [number, number][]) {
-      out.push(topFace(groundEllipse(...project(wx2, 0.7, wz), 0.6, 0.45), 0.5));
+    // 원통 통로 — 뒤꽁무니는 둥글게, 몸은 대각선 관.
+    out.push(bodyFace(groundEllipse(axp, ayp, 1.8, 1.45)));
+    out.push(bodyFace(`M${P(0, 1.7)} L${P(1, 1.7)} L${P(1, -1.7)} L${P(0, -1.7)} Z`));
+    out.push(sideFace(`M${P(0, 1.7)} L${P(1, 1.7)} L${P(1, 1.1)} L${P(0, 1.1)} Z`, 0.2));
+    // 통로 아가리 — 좌상단 정면의 둥근 입(테두리 + 어두운 속).
+    out.push(bodyFace(groundEllipse(bxp, byp, 2.05, 1.65)));
+    out.push(topFace(groundEllipse(bxp, byp, 2.05, 1.65), 0.14));
+    out.push(capFace(groundEllipse(bxp, byp, 1.5, 1.2), 0.45));
+    // 감싸는 판 — 통로 양옆에 대각선으로 붙는 초승달 껍데기.
+    const plateR = `M${P(0, 1.4)} Q${P(0.4, 4.8)} ${P(0.88, 1.6)} L${P(0.78, 0.9)} Q${P(0.4, 2.4)} ${P(0.08, 0.8)} Z`;
+    const plateL = `M${P(0, -1.4)} Q${P(0.4, -4.8)} ${P(0.88, -1.6)} L${P(0.78, -0.9)} Q${P(0.4, -2.4)} ${P(0.08, -0.8)} Z`;
+    out.push(bodyFace(plateR), sideFace(plateR, 0.16));
+    out.push(bodyFace(plateL), topFace(plateL, 0.12));
+    // 판 갈빗살 — 통로와 직각으로 가로지르는 가는 골.
+    for (const t of [0.22, 0.42, 0.62]) {
+      out.push(sideFace(`M${P(t, 1.7)} L${P(t, 3.1)} L${P(t + 0.05, 3.1)} L${P(t + 0.05, 1.7)} Z`, 0.15));
+      out.push(sideFace(`M${P(t, -1.7)} L${P(t, -3.1)} L${P(t + 0.05, -3.1)} L${P(t + 0.05, -1.7)} Z`, 0.15));
     }
-    for (const [wx2, wz] of [[1.6, 9.5], [-0.2, 9.4], [-2, 8.9], [-3.6, 7.9]] as [number, number][]) {
-      out.push(topFace(groundEllipse(...project(wx2, -0.2, wz), 0.55, 0.4), 0.45));
+    // 파란 창 점 — 판 등을 따라.
+    for (const t of [0.28, 0.46, 0.64]) {
+      out.push(topFace(groundEllipse(...Pn(t, 2.5), 0.5, 0.4), 0.45));
+      out.push(topFace(groundEllipse(...Pn(t, -2.5), 0.5, 0.4), 0.4));
     }
-    // 갈빗살 — 판을 가로지르는 가는 골.
-    for (const [ox, oz, ix2, iz] of [
-      [4.8, 3.6, 3.6, 5], [3, 1.6, 2.2, 3.4], [0.8, 0.7, 0.5, 2.9],
-    ] as [number, number, number, number][]) {
-      out.push(sideFace(polyPath3([[ox, 0.85, oz], [ix2, 0.75, iz], [ix2 - 0.3, 0.75, iz], [ox - 0.3, 0.85, oz]]), 0.18));
-    }
-    for (const [ox, oz, ix2, iz] of [
-      [-4.8, 7.6, -3.6, 6.1], [-3, 9.7, -2.2, 7.9], [-0.8, 10.5, -0.5, 8.4],
-    ] as [number, number, number, number][]) {
-      out.push(sideFace(polyPath3([[ox, -0.35, oz], [ix2, -0.25, iz], [ix2 + 0.3, -0.25, iz], [ox + 0.3, -0.35, oz]]), 0.15));
-    }
+    // 판 끝 갈고리 — 아가리 양옆으로 말린다.
+    out.push(bodyFace(`M${P(0.88, 1.6)} Q${P(1.04, 2.5)} ${P(1.1, 1.2)} L${P(0.97, 0.95)} Z`));
+    out.push(bodyFace(`M${P(0.88, -1.6)} Q${P(1.04, -2.5)} ${P(1.1, -1.2)} L${P(0.97, -0.95)} Z`));
     return out;
   },
   /* 파일런(정정 둘) — 고리를 수정 허리께로 더 올리고(지적), 수정은 매끈한 육각
