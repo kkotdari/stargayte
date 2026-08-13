@@ -1367,41 +1367,56 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       capFace(groundEllipse(mx3, my3, 0.8, 0.45), 0.4),
     ];
   },
-  /* 스파이어(정정) — 높은 곳의 동그란 둥지를 긴 다리들이 받치는 공중 둥지. */
+  /* 스파이어(정정 둘) — 더 높이 올린 둥지를, 무릎이 꺾인 곤충 다리인지 덩쿨인지 모를
+     다리들이 받치고, 발치는 나무 뿌리처럼 잔뿌리를 벌려 땅에 심긴다. */
   spire: () => {
     const leg = (ang: number, zTop: number): ShapeFace[] => {
       const a = (ang * Math.PI) / 180;
-      return hornFaces(
-        Math.sin(a) * 1.7, Math.cos(a) * 1.7, zTop,
-        Math.sin(a) * 3.4, Math.cos(a) * 3.4, 0, 0.75,
-      );
+      const sx = Math.sin(a);
+      const sy = Math.cos(a);
+      const tx2 = Math.cos(a);
+      const ty2 = -Math.sin(a);
+      return [
+        // 위마디는 밖-위로 살짝 들리고, 아랫마디가 덩쿨처럼 길게 내리꽂힌다.
+        ...hornFaces(sx * 1.6, sy * 1.6, zTop, sx * 3.1, sy * 3.1, zTop + 0.5, 0.7),
+        ...hornFaces(sx * 3.1, sy * 3.1, zTop + 0.5, sx * 3.9, sy * 3.9, 0, 0.6),
+        // 발치 잔뿌리 — 좌우로 벌어져 땅에 심긴다.
+        ...hornFaces(sx * 3.9, sy * 3.9, 0.35, sx * 4.2 + tx2 * 1.1, sy * 4.2 + ty2 * 1.1, 0.05, 0.4),
+        ...hornFaces(sx * 3.9, sy * 3.9, 0.35, sx * 4.2 - tx2 * 1.1, sy * 4.2 - ty2 * 1.1, 0.05, 0.4),
+      ];
     };
-    const [bx2, by2] = project(0, 0, 6.2);
+    const [bx2, by2] = project(0, 0, 7.9);
     return [
-      ...leg(150, 6.3), ...leg(210, 6.3), ...leg(90, 6.3), ...leg(270, 6.3),
+      ...leg(150, 8), ...leg(210, 8), ...leg(90, 8), ...leg(270, 8),
       bodyFace(groundEllipse(bx2, by2, 2.4, 1.1)),
-      ...domeFaces3(0, 0, 2.4, 2.2, 6.2),
-      ...hornFaces(0, 0, 8.3, 0.5, -0.5, 9.7, 0.8),
-      ...leg(30, 6.3), ...leg(-30, 6.3),
+      ...domeFaces3(0, 0, 2.4, 2.2, 7.9),
+      ...hornFaces(0, 0, 10, 0.5, -0.5, 11.4, 0.8),
+      ...leg(30, 8), ...leg(-30, 8),
     ];
   },
-  /* 그레이터 스파이어(정정) — 같은 공중 둥지를 더 높게, 둥지에 옆 뿔들. */
+  /* 그레이터 스파이어(정정 둘) — 같은 덩쿨 다리 둥지를 한층 더 높게 + 둥지 옆 뿔. */
   gspire: () => {
     const leg = (ang: number): ShapeFace[] => {
       const a = (ang * Math.PI) / 180;
-      return hornFaces(
-        Math.sin(a) * 1.8, Math.cos(a) * 1.8, 7.4,
-        Math.sin(a) * 3.7, Math.cos(a) * 3.7, 0, 0.8,
-      );
+      const sx = Math.sin(a);
+      const sy = Math.cos(a);
+      const tx2 = Math.cos(a);
+      const ty2 = -Math.sin(a);
+      return [
+        ...hornFaces(sx * 1.7, sy * 1.7, 9.2, sx * 3.3, sy * 3.3, 9.7, 0.75),
+        ...hornFaces(sx * 3.3, sy * 3.3, 9.7, sx * 4.1, sy * 4.1, 0, 0.65),
+        ...hornFaces(sx * 4.1, sy * 4.1, 0.35, sx * 4.4 + tx2 * 1.2, sy * 4.4 + ty2 * 1.2, 0.05, 0.42),
+        ...hornFaces(sx * 4.1, sy * 4.1, 0.35, sx * 4.4 - tx2 * 1.2, sy * 4.4 - ty2 * 1.2, 0.05, 0.42),
+      ];
     };
-    const [bx2, by2] = project(0, 0, 7.3);
+    const [bx2, by2] = project(0, 0, 9.1);
     return [
       ...leg(150), ...leg(210), ...leg(90), ...leg(270),
       bodyFace(groundEllipse(bx2, by2, 2.6, 1.2)),
-      ...domeFaces3(0, 0, 2.6, 2.4, 7.3),
-      ...hornFaces(0, 0, 9.6, 0.6, -0.6, 11, 0.9),
-      ...hornFaces(-2.2, -0.8, 8.4, -3.4, -1.2, 9.8, 0.7),
-      ...hornFaces(2.2, -0.8, 8.4, 3.4, -1.2, 9.8, 0.7),
+      ...domeFaces3(0, 0, 2.6, 2.4, 9.1),
+      ...hornFaces(0, 0, 11.4, 0.6, -0.6, 12.8, 0.9),
+      ...hornFaces(-2.2, -0.8, 10.2, -3.4, -1.2, 11.6, 0.7),
+      ...hornFaces(2.2, -0.8, 10.2, 3.4, -1.2, 11.6, 0.7),
       ...leg(30), ...leg(-30),
     ];
   },
