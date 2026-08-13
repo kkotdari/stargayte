@@ -593,17 +593,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 서플라이(단순화, 지적) — 본체 상자 + 지붕 큰 회전 통풍구 + 앞면의 더 큰 둥근 팬
      둘 + 왼앞 줄무늬 차단바. 잔장식(등판·캐니스터·탱크)은 걷어냈다. */
   trapezoid: () => {
-    const out: ShapeFace[] = [...boxFaces3(0, 0, 10.8, 6.8, 4.6)];
+    // 높이 상향(지적: 4.6→6).
+    const out: ShapeFace[] = [...boxFaces3(0, 0, 10.8, 6.8, 6)];
     // 지붕 회전 통풍구 — 크게.
-    out.push(capFace(discPath3(-2.3, 0.3, 4.65, 2.8), 0.3));
-    out.push(bodyFace(discPath3(-2.3, 0.3, 4.7, 2.3)));
+    out.push(capFace(discPath3(-2.3, 0.3, 6.05, 2.8), 0.3));
+    out.push(bodyFace(discPath3(-2.3, 0.3, 6.1, 2.3)));
     for (const ang of [0, 45, 90, 135]) {
       const a = (ang * Math.PI) / 180;
       out.push(capFace(polyPath3([
-        [-2.3 - Math.sin(a) * 2.05, 0.3 - Math.cos(a) * 2.05, 4.75],
-        [-2.3 + Math.sin(a) * 2.05, 0.3 + Math.cos(a) * 2.05, 4.75],
-        [-2.3 + Math.sin(a) * 2.05 + Math.cos(a) * 0.32, 0.3 + Math.cos(a) * 2.05 - Math.sin(a) * 0.32, 4.75],
-        [-2.3 - Math.sin(a) * 2.05 + Math.cos(a) * 0.32, 0.3 - Math.cos(a) * 2.05 - Math.sin(a) * 0.32, 4.75],
+        [-2.3 - Math.sin(a) * 2.05, 0.3 - Math.cos(a) * 2.05, 6.15],
+        [-2.3 + Math.sin(a) * 2.05, 0.3 + Math.cos(a) * 2.05, 6.15],
+        [-2.3 + Math.sin(a) * 2.05 + Math.cos(a) * 0.32, 0.3 + Math.cos(a) * 2.05 - Math.sin(a) * 0.32, 6.15],
+        [-2.3 - Math.sin(a) * 2.05 + Math.cos(a) * 0.32, 0.3 - Math.cos(a) * 2.05 - Math.sin(a) * 0.32, 6.15],
       ]), 0.35));
     }
     // 앞면 둥근 팬 둘 — 더 크게(지적), 앞면에 바로 얹는다.
@@ -616,8 +617,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         out.push(capFace(`M${px} ${py} L${px + Math.cos(a) * r * 0.7} ${py + Math.sin(a) * r * 0.64} A${r * 0.7} ${r * 0.64} 0 0 1 ${px + Math.cos(a + 1.1) * r * 0.7} ${py + Math.sin(a + 1.1) * r * 0.64} Z`, 0.32));
       }
     };
-    fan(0.8, 2.3, 2.05);
-    fan(3.7, 2.2, 1.6);
+    fan(0.8, 3, 2.05);
+    fan(3.7, 2.9, 1.6);
     // 왼앞 줄무늬 차단바.
     out.push(...boxFaces3(-3.3, 4.05, 3.6, 0.9, 1.15));
     for (let i = 0; i < 4; i += 1) {
@@ -1134,29 +1135,30 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 아카데미(실물 참고, 디테일) — 받침 위에 슬릿 난 관측 돔 드럼(왼앞), 어두운 캡의
      원통 탑 둘(뒤), 기둥 위 기운 큰 고리 접시(오른쪽), 다리 달린 테이블 단과 꼭지(앞). */
   academy: () => {
-    const [sx2, sy2] = project(-2.6, 2.5, 4.4);
-    const [dx3, dy3] = project(2.9, 0.2, 4.9);
+    const [sx2, sy2] = project(-2.6, 2.5, 5.6);
+    const [dx3, dy3] = project(2.9, 0.2, 6.1);
     return [
-      ...boxFaces3(0, 0.4, 8.8, 5.6, 1.4),
+      // 본건물 높이 증가(지적: 1.4→2.6) — 위 요소들도 함께 오른다.
+      ...boxFaces3(0, 0.4, 8.8, 5.6, 2.6),
       // 관측 돔 드럼 — 앞에 가로 슬릿.
-      ...cylinderFaces3(-2.6, 0.8, 1.9, 2.4, 1.4),
-      ...domeFaces3(-2.6, 0.8, 1.9, 1.6, 3.8),
+      ...cylinderFaces3(-2.6, 0.8, 1.9, 2.4, 2.6),
+      ...domeFaces3(-2.6, 0.8, 1.9, 1.6, 5),
       capFace(groundEllipse(sx2, sy2, 0.95, 0.26), 0.45),
       // 뒤 원통 탑 둘 — 위에 어두운 캡, 가는 목.
-      ...cylinderFaces3(-0.5, -1.7, 1.1, 5, 1.4),
-      capFace(discPath3(-0.5, -1.7, 6.45, 0.78), 0.4),
-      ...cylinderFaces3(1.1, -2.3, 0.75, 4, 1.4),
-      capFace(discPath3(1.1, -2.3, 5.45, 0.5), 0.35),
+      ...cylinderFaces3(-0.5, -1.7, 1.1, 5, 2.6),
+      capFace(discPath3(-0.5, -1.7, 7.65, 0.78), 0.4),
+      ...cylinderFaces3(1.1, -2.3, 0.75, 4, 2.6),
+      capFace(discPath3(1.1, -2.3, 6.65, 0.5), 0.35),
       // 오른쪽 기운 큰 고리 접시 — 기둥이 받친다.
-      ...cylinderFaces3(2.9, 0.4, 0.7, 3, 1.4),
+      ...cylinderFaces3(2.9, 0.4, 0.7, 3, 2.6),
       bodyFace(groundEllipse(dx3, dy3, 2.35, 1.5)),
       topFace(groundEllipse(dx3, dy3 - 0.15, 1.95, 1.2), 0.18),
       capFace(groundEllipse(dx3, dy3, 1.25, 0.78), 0.42),
       // 앞 테이블 단 — 네 다리 위 판과 가운데 꼭지.
-      ...hornFaces(0.9, 2.2, 1.4, 0.9, 2.2, 3.1, 0.35),
-      ...hornFaces(2.4, 2.6, 1.4, 2.4, 2.6, 3.1, 0.35),
-      ...boxFaces3(1.6, 2.3, 2.5, 1.9, 0.45, 3.1),
-      ...domeFaces3(1.6, 2.3, 0.5, 0.45, 3.55),
+      ...hornFaces(0.9, 2.2, 2.6, 0.9, 2.2, 4.3, 0.35),
+      ...hornFaces(2.4, 2.6, 2.6, 2.4, 2.6, 4.3, 0.35),
+      ...boxFaces3(1.6, 2.3, 2.5, 1.9, 0.45, 4.3),
+      ...domeFaces3(1.6, 2.3, 0.5, 0.45, 4.75),
     ];
   },
   /* 엔지니어링 베이(복원) — 사방 대각 팔 끝의 원반 발 넷, 각진 몸체 더미, 끝이
