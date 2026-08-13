@@ -844,53 +844,51 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...hornFaces(2.7, 0, 0.8, 1, -0.3, 9.6, 2.3));
     return out;
   },
-  /* 스타게이트(재정정, 힌트: 잎의 '넓은 면'들이 배를 서로 마주본다 — 꼭지점·모서리가
-     아니라) — 관문 축(앞뒤 방향)을 둘러싼 통꽃: 나뭇잎 잎날 넷이 위·아래·왼·오른쪽에
-     서서 저마다 넓은 배 면을 축 가운데로 향한다. 잎 길이는 앞뒤로 뻗고, 가운데가 축
-     쪽으로 살짝 다가오는 휨이라 배(볼록면)가 서로를 본다. 각 잎의 안쪽 면엔 밝은 발광
+  /* 스타게이트(재재정정, 설명: 잎은 긴 육각형에 가깝고, 길게 서서 빙 한 바퀴 두른
+     꼴이 앞으로 누워 구멍이 앞뒤를 향한다) — 앞뒤 축을 두른 원통 관문: 긴 육각형
+     잎날 넷이 축을 따라 길게 눕고(위·아래·왼·오), 저마다 넓은 배 면을 축 가운데로
+     향해 서로 마주본다. 구멍(관문)은 앞뒤로 뚫려 있다. 각 잎의 안쪽 면엔 밝은 발광
      잎. 판·받침은 없다(요청). */
   arch: () => {
-    // 그림자는 옅고 아담하게 — 봉오리가 떠 있는 자리만 알리면 된다.
+    // 그림자는 옅고 아담하게 — 관문이 떠 있는 자리만 알리면 된다.
     const out: ShapeFace[] = [sideFace(discPath3(0, 0.2, 0, 3.4), 0.16)];
     const C = 5; // 관문 축 높이
-    const R = 2.9; // 축에서 잎 배까지 반지름
-    /* 잎 하나 — 축 둘레 각 phi(0=위) 자리, 길이는 고리 접선 방향. tilt만큼 관문 평면
-       에서 안쪽으로 기울어(반쯤 벌어진 봉오리) 넓은 배 면이 축 가운데와 시청자 쪽을
-       함께 본다 — 완전히 눕히면(관 모양) 정면에서 모로 서 안 보이던 것의 절충이다.
-       바깥 가장자리는 뒤로 눕고 안 가장자리가 시청자 쪽으로 나온다. */
-    const leaf = (
-      phi: number, rr: number, ll: number, ww: number, dy: number,
-    ): string => {
+    const R = 2.7; // 축에서 잎 배까지 반지름
+    /* 잎 하나 — 축 둘레 각 phi(0=위) 자리, 길이는 앞뒤(y·축 방향), 폭은 접선 방향,
+       배 면은 축을 본다. 윤곽은 긴 육각형: 양 끝 꼭지 + 나란한 중간 변. */
+    const leaf = (phi: number, rr: number, ll: number, ww: number): string => {
       const rx = Math.sin(phi); // 축에서 바깥 방향(x·z 평면)
       const rz = Math.cos(phi);
       const tx = Math.cos(phi); // 접선 방향
       const tz = -Math.sin(phi);
-      const ct = Math.cos(0.92); // 기울기 ≈ 53도
-      const st = Math.sin(0.92);
-      const N = 9;
-      const A: [number, number, number][] = [];
-      const B: [number, number, number][] = [];
-      for (let i = 0; i <= N; i += 1) {
-        const t2 = i / N;
-        const al = (t2 * 2 - 1) * ll;
-        const hw = ww * Math.sin(Math.PI * t2) ** 0.75; // 양 끝이 뾰족한 잎 폭
-        const bow = 0.35 * Math.sin(Math.PI * t2); // 가운데가 축으로 살짝 다가온다
-        for (const [list, sign] of [[A, 1], [B, -1]] as [typeof A, 1 | -1][]) {
-          const rad = rr - bow + sign * hw * ct;
-          list.push([rx * rad + tx * al, -sign * hw * st + dy, C + rz * rad + tz * al]);
-        }
-      }
-      return polyPath3([...A, ...B.reverse()]);
+      // 긴 육각형 여섯 꼭짓점 — (앞뒤 위치, 접선 반폭). 0.5부터 변이 나란하다.
+      const HEX: [number, number][] = [
+        [-1, 0], [-0.5, 1], [0.5, 1], [1, 0], [0.5, -1], [-0.5, -1],
+      ];
+      /* 앞벌림(나팔) — 곧은 관은 정면에서 좌우 잎이 모로 서 통이 안 읽혔다. 앞쪽
+         반지름을 벌려 구멍 속으로 네 잎의 안쪽 면이 다 들여다보인다. */
+      /* 앞들림 — 우리 카메라는 높은 부감이라, 수평으로 누운 관은 구멍이 안 보인다.
+         원작 스프라이트처럼 관 앞을 35도쯤 들어 구멍이 앞-위를 향하게 한다. */
+      const TIP = 0.95;
+      const ctp = Math.cos(TIP);
+      const stp = Math.sin(TIP);
+      return polyPath3(HEX.map(([a, w]) => {
+        const rad = rr + 0.9 * a;
+        const px = rx * rad + tx * (w * ww);
+        const py = a * ll;
+        const pz = rz * rad + tz * (w * ww);
+        return [px, py * ctp - pz * stp, C + pz * ctp + py * stp] as [number, number, number];
+      }));
     };
     const PHIS = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
     for (const phi of PHIS) {
-      const d = leaf(phi, R, 2, 1.15, 0);
+      const d = leaf(phi, R, 2.7, 1.18);
       out.push(bodyFace(d));
       if (Math.cos(phi) > 0.5) out.push(topFace(d, 0.18)); // 위 잎 등이 빛을 받고
       else if (Math.cos(phi) < -0.5) out.push(sideFace(d, 0.24)); // 아래 잎은 어둡다
       else if (Math.sin(phi) > 0.5) out.push(sideFace(d, 0.12)); // 오른 잎은 옅은 그늘
-      // 잎 안쪽(배) 발광 — 시청자 쪽 면 위에 밝은 작은 잎.
-      out.push(topFace(leaf(phi, R - 0.12, 1.25, 0.62, 0.14), 0.5));
+      // 잎 안쪽(배) 발광 — 축을 보는 면에 밝은 작은 육각 잎.
+      out.push(topFace(leaf(phi, R - 0.18, 1.7, 0.66), 0.5));
     }
     return out;
   },
@@ -2308,9 +2306,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...domeFaces3(0, 0.9, 0.6, 0.5, 6.3),
     ];
   },
-  /* 캐리어(정정: 오므림 반대) — 옆 꽃잎이 안쪽을 향해 오므려 보였다(지적). 바깥쪽이
-     볼록한 봉오리가 맞다: 옆 두 장은 안쪽 가장자리가 올라 등이 바깥으로 부풀고, 위
-     꽃잎은 양 가장자리가 처져 등이 위로 아치를 그린다 — 세 장 다 볼록한 등. */
+  /* 캐리어(정정 둘: 옆 잎 등의 방향) — 옆 두 장은 안 가장자리가 아래로 처져 등이
+     '아래'를 향하고(지적: 위가 아니라 아래), 위 꽃잎은 양 가장자리가 처져 등이 위로
+     아치를 그린다. */
   carrier: () => {
     const petal = (cx2: number, m2: 0 | 1 | -1, z0: number, xr: number, yr: number): string => polyPath3(
       Array.from({ length: 12 }, (_, i) => {
@@ -2320,7 +2318,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           cx2 + co * xr,
           0.3 + Math.sin(a) * yr,
           z0 - Math.sin(a) * 0.28
-            + (m2 !== 0 ? Math.max(0, -m2 * co) * 1.35 : -Math.abs(co) * 0.55),
+            + (m2 !== 0 ? -Math.max(0, -m2 * co) * 1.35 : -Math.abs(co) * 0.55),
         ] as [number, number, number];
       }),
     );
