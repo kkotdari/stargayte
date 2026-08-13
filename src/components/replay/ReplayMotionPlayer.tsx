@@ -458,6 +458,9 @@ const ZERG_MOUND =
 const ZERG_TOP = groundEllipse(8, 5.65, 2, 0.5);
 /** 입 아래의 어두운 목띠(실물 참고) — 셋이 함께 쓴다. */
 const ZERG_COLLAR = "M5.9 5.75 L10.1 5.75 Q10.2 6.9 8 7.2 Q5.8 6.9 5.9 5.75 Z";
+/** 뒤-오른 다리의 끝 — 반원통을 뒤에서 본 볼록한 등(지적)이라, 구멍 대신 둥근 끝에
+ *  얇은 음영 초승달을 얹어 볼록함을 말한다. */
+const ZERG_BACKLEG_END = "M15.1 9.85 Q16 9.95 15.95 10.5 Q15.9 10.9 15.55 11.1 Q15.9 10.4 15.1 9.85 Z";
 /** 사선 시점의 어두운 오른 옆면(지적: 평면 회전이 아니라 xyz 사선 입체) — 다른 건물들의
  *  입체 규칙(밝은 윗면·어두운 옆면)과 같은 결. */
 const ZERG_SHADE = "M9.9 5.6 Q10.9 10.4 14.2 12.6 Q11.5 13.4 8.6 13.6 Q9.6 10 9.9 5.6 Z";
@@ -572,7 +575,7 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
   /* 저그 본진 3형제 — 몸통 + 밝은 윗면(요청: "해처리 윗부분 동그란 평평한 면 표현").
      레어·하이브는 그 위에 뿔·가시(요청). */
   hatchery: [
-    bodyFace(ZERG_MOUND), sideFace(ZERG_SHADE, 0.22), capFace(ZERG_CAPS_ALL),
+    bodyFace(ZERG_MOUND), sideFace(ZERG_SHADE, 0.22), sideFace(ZERG_BACKLEG_END, 0.25), capFace(ZERG_CAPS_ALL),
     sideFace(ZERG_COLLAR, 0.35), topFace(ZERG_TOP),
   ],
   /* 레어(정정) — 바닥 기둥 끝에서 위로 솟는 가시. 쪽마다 두 기둥 중 하나에만 나고,
@@ -584,6 +587,7 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
       + " M2.3 10.2 Q1.3 5.4 4 2.5 Q5.5 1.1 6.8 1.9 Q5.7 2.1 5 3.6 Q3.9 6.1 4.5 10 Z"
       + " M14.6 10.6 Q15.6 5.6 13.2 2.6 Q11.8 1.2 10.6 1.9 Q11.7 2.1 12.4 3.6 Q13.3 6.1 12.6 10.2 Z", 1],
     sideFace(ZERG_SHADE, 0.22),
+    sideFace(ZERG_BACKLEG_END, 0.25),
     capFace(ZERG_CAPS_ALL),
     sideFace(ZERG_COLLAR, 0.35),
     topFace("M5.4 1.5 L6.8 1.9 L5.2 2.9 Z M12.2 1.5 L10.6 1.9 L12.3 3 Z", 0.5),
@@ -601,6 +605,7 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
       + " M4.9 15 Q3.7 15.7 3.2 15 Q4 14.8 4.3 14.2 Z"
       + " M10.5 14.4 Q11.7 15.1 12.3 14.4 Q11.4 14.2 11.1 13.7 Z", 1],
     sideFace(ZERG_SHADE, 0.22),
+    sideFace(ZERG_BACKLEG_END, 0.25),
     capFace(ZERG_CAPS_ALL),
     sideFace(ZERG_COLLAR, 0.35),
     topFace("M5.2 0.7 L6.6 1.1 L5 2.1 Z M12.4 1.5 L10.8 1.3 L12.1 2.6 Z M9.9 1 Q10.4 0.1 10.9 1.1 L10.4 2.1 Z", 0.5),
