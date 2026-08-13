@@ -151,7 +151,7 @@ export function discPath3(cx: number, cy: number, z: number, r: number): string 
 /** 세운 상자 — 바닥 중심 (cx,cy), 가로 w(x)·세로 d(y)·높이 h. 표준 시점에서는 앞면과
  *  오른면이 보인다: 몸통(앞면+오른면+윗면 실루엣) · 윗면 밝게 · 오른면 어둡게. */
 export function boxFaces3(
-  cx: number, cy: number, w: number, d: number, h: number,
+  cx: number, cy: number, w: number, d: number, h: number, z0 = 0,
 ): ShapeFace[] {
   const hw = w / 2;
   const hd = d / 2;
@@ -160,14 +160,15 @@ export function boxFaces3(
   const fr: [number, number] = [cx + hw, cy + hd];
   const br: [number, number] = [cx + hw, cy - hd];
   const bl: [number, number] = [cx - hw, cy - hd];
+  const zt = z0 + h;
   const top = polyPath3([
-    [fl[0], fl[1], h], [fr[0], fr[1], h], [br[0], br[1], h], [bl[0], bl[1], h],
+    [fl[0], fl[1], zt], [fr[0], fr[1], zt], [br[0], br[1], zt], [bl[0], bl[1], zt],
   ]);
   const front = polyPath3([
-    [fl[0], fl[1], h], [fr[0], fr[1], h], [fr[0], fr[1], 0], [fl[0], fl[1], 0],
+    [fl[0], fl[1], zt], [fr[0], fr[1], zt], [fr[0], fr[1], z0], [fl[0], fl[1], z0],
   ]);
   const right = polyPath3([
-    [fr[0], fr[1], h], [br[0], br[1], h], [br[0], br[1], 0], [fr[0], fr[1], 0],
+    [fr[0], fr[1], zt], [br[0], br[1], zt], [br[0], br[1], z0], [fr[0], fr[1], z0],
   ]);
   return [bodyFace(`${front} ${right} ${top}`), sideFace(right), topFace(top)];
 }
@@ -190,6 +191,36 @@ export function cylinderFaces3(
  *  길이 len, 폭 w. 단면(동굴 입구)의 보임은 각도가 정한다(요잉이 이미 계산에 들어간다):
  *  실효각 |β| < 55°면 앞(단면 크게), < 100°면 옆(작게), 그 너머는 뒤(없음). 뒤로 뻗는
  *  다리는 몸통에 가려질 수 있으니 부르는 쪽이 그릴지 말지를 정한다. */
+/** X축으로 길게 눕힌 각기둥 — profile은 단면(y,z) 꼭짓점들(위→앞→아래 차례), hw는 반길이.
+ *  몸통(앞쪽 면들+오른쪽 끝 단면) + 첫 면(윗면) 밝게 + 끝 단면 어둡게. 팩토리류. */
+export function prismXFaces(profile: [number, number][], hw: number): ShapeFace[] {
+  const cap = polyPath3(profile.map(([y, z]) => [hw, y, z] as [number, number, number]));
+  const quads: string[] = [];
+  for (let i = 0; i < profile.length - 1; i += 1) {
+    const [y1, z1] = profile[i];
+    const [y2, z2] = profile[i + 1];
+    quads.push(polyPath3([[-hw, y1, z1], [hw, y1, z1], [hw, y2, z2], [-hw, y2, z2]]));
+  }
+  return [bodyFace(`${quads.join(" ")} ${cap}`), sideFace(cap, OP.sideDeep), topFace(quads[0])];
+}
+
+/** 넙적 피라미드 — 바닥 (w×d), 꼭짓점 높이 h. 앞면+오른면 실루엣, 오른면 어둡게. */
+export function pyramidFaces3(
+  cx: number, cy: number, w: number, d: number, h: number, z0 = 0,
+): ShapeFace[] {
+  const hw = w / 2;
+  const hd = d / 2;
+  const apex: [number, number, number] = [cx, cy, z0 + h];
+  const fl: [number, number, number] = [cx - hw, cy + hd, z0];
+  const fr: [number, number, number] = [cx + hw, cy + hd, z0];
+  const br: [number, number, number] = [cx + hw, cy - hd, z0];
+  const bl: [number, number, number] = [cx - hw, cy - hd, z0];
+  const front = polyPath3([apex, fl, fr]);
+  const right = polyPath3([apex, fr, br]);
+  const left = polyPath3([apex, bl, fl]);
+  return [bodyFace(`${front} ${right} ${left}`), sideFace(right, OP.sideSoft)];
+}
+
 export function limbFaces(
   angleDeg: number, len: number, w: number, r0 = 1.6, capOpen = true,
 ): ShapeFace[] {
