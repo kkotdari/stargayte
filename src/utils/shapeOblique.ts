@@ -194,10 +194,10 @@ export function boxFaces3(
 
 /** 세운 원통 — 바닥 중심 (cx,cy), 반지름 r, 높이 h. 몸통 + 밝은 윗면 + 오른쪽 세로 음영. */
 export function cylinderFaces3(
-  cx: number, cy: number, r: number, h: number,
+  cx: number, cy: number, r: number, h: number, z0 = 0,
 ): ShapeFace[] {
-  const [bx, by] = project(cx, cy, 0);
-  const [, ty] = project(cx, cy, h);
+  const [bx, by] = project(cx, cy, z0);
+  const [, ty] = project(cx, cy, z0 + h);
   const ry = r * VIEW.squash;
   const body = `M${r2(bx - r)} ${r2(ty)} L${r2(bx + r)} ${r2(ty)} L${r2(bx + r)} ${r2(by)}`
     + `a${r2(r)} ${r2(ry)} 0 1 1-${r2(r * 2)} 0Z`;
