@@ -798,7 +798,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [gx, gy] = project(0, 0, 7.2);
     out.push(bodyFace(`M${gx} ${gy - 2.7} L${gx + 1.25} ${gy - 0.9} L${gx} ${gy + 0.55} L${gx - 1.25} ${gy - 0.9} Z`));
     out.push(topFace(`M${gx} ${gy - 2.7} L${gx - 1.25} ${gy - 0.9} L${gx} ${gy + 0.55} L${gx - 0.4} ${gy - 0.95} Z`, 0.45));
-    /* 사방 삼각형 진입받침(요청) — 면 가운데에 기대어 바닥으로 벌어지는 낮은 비탈. */
+    /* 사방 삼각형 출구 발판(정정: 바깥쪽이 뾰족한 삼각형) — 넓은 변이 피라미드
+       밑동에 기대고, 꼭짓점이 바깥 바닥을 향해 뾰족하게 뻗는다. 전엔 반대(안쪽
+       꼭짓점·바깥 넓은 변)였다. */
     for (const ang of [0, 90, 180, 270]) {
       const a = (ang * Math.PI) / 180;
       const sx = Math.sin(a);
@@ -808,9 +810,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const { visible, face } = faceLight(sx, sy);
       if (!visible) continue;
       const d = polyPath3([
-        [sx * 3.9, sy * 3.9, 3.4],
-        [sx * 8 + cxa * 2.4, sy * 8 + sya * 2.4, 0],
-        [sx * 8 - cxa * 2.4, sy * 8 - sya * 2.4, 0],
+        [sx * 4.2 + cxa * 2.2, sy * 4.2 + sya * 2.2, 1.5],
+        [sx * 4.2 - cxa * 2.2, sy * 4.2 - sya * 2.2, 1.5],
+        [sx * 8.4, sy * 8.4, 0],
       ]);
       out.push(bodyFace(d), ...face(d));
     }
@@ -844,54 +846,51 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...hornFaces(2.7, 0, 0.8, 1, -0.3, 9.6, 2.3));
     return out;
   },
-  /* 스타게이트(재정정, 힌트: 잎의 '넓은 면'들이 배를 서로 마주본다 — 꼭지점·모서리가
-     아니라) — 관문 축(앞뒤 방향)을 둘러싼 통꽃: 나뭇잎 잎날 넷이 위·아래·왼·오른쪽에
-     서서 저마다 넓은 배 면을 축 가운데로 향한다. 잎 길이는 앞뒤로 뻗고, 가운데가 축
-     쪽으로 살짝 다가오는 휨이라 배(볼록면)가 서로를 본다. 각 잎의 안쪽 면엔 밝은 발광
-     잎. 판·받침은 없다(요청).
-     육각·관·나팔 시도들 뒤 이 판으로 원복(요청: 처음에 보여준 게 제일 맞다). */
+  /* 스타게이트(확정, 요청: 보여준 육각형판으로 — 길이만 조금 짧게) — 긴 육각형
+     잎날 넷이 앞뒤 축을 빙 둘러 배 면끼리 마주보는 관(구멍이 앞뒤). 높은 부감
+     카메라에서 구멍이 보이도록 관 앞을 35도쯤 들고 앞을 살짝 나팔로 벌렸다.
+     각 잎의 안쪽 면엔 밝은 발광 잎. 판·받침은 없다. */
   arch: () => {
-    // 그림자는 옅고 아담하게 — 봉오리가 떠 있는 자리만 알리면 된다.
+    // 그림자는 옅고 아담하게 — 관문이 떠 있는 자리만 알리면 된다.
     const out: ShapeFace[] = [sideFace(discPath3(0, 0.2, 0, 3.4), 0.16)];
     const C = 5; // 관문 축 높이
-    const R = 2.9; // 축에서 잎 배까지 반지름
-    /* 잎 하나 — 축 둘레 각 phi(0=위) 자리, 길이는 고리 접선 방향. tilt만큼 관문 평면
-       에서 안쪽으로 기울어(반쯤 벌어진 봉오리) 넓은 배 면이 축 가운데와 시청자 쪽을
-       함께 본다 — 완전히 눕히면(관 모양) 정면에서 모로 서 안 보이던 것의 절충이다.
-       바깥 가장자리는 뒤로 눕고 안 가장자리가 시청자 쪽으로 나온다. */
-    const leaf = (
-      phi: number, rr: number, ll: number, ww: number, dy: number,
-    ): string => {
+    const R = 2.7; // 축에서 잎 배까지 반지름
+    /* 잎 하나 — 축 둘레 각 phi(0=위) 자리, 길이는 앞뒤(y·축 방향), 폭은 접선 방향,
+       배 면은 축을 본다. 윤곽은 긴 육각형: 양 끝 꼭지 + 나란한 중간 변. */
+    const leaf = (phi: number, rr: number, ll: number, ww: number): string => {
       const rx = Math.sin(phi); // 축에서 바깥 방향(x·z 평면)
       const rz = Math.cos(phi);
       const tx = Math.cos(phi); // 접선 방향
       const tz = -Math.sin(phi);
-      const ct = Math.cos(0.92); // 기울기 ≈ 53도
-      const st = Math.sin(0.92);
-      const N = 9;
-      const A: [number, number, number][] = [];
-      const B: [number, number, number][] = [];
-      for (let i = 0; i <= N; i += 1) {
-        const t2 = i / N;
-        const al = (t2 * 2 - 1) * ll;
-        const hw = ww * Math.sin(Math.PI * t2) ** 0.75; // 양 끝이 뾰족한 잎 폭
-        const bow = 0.35 * Math.sin(Math.PI * t2); // 가운데가 축으로 살짝 다가온다
-        for (const [list, sign] of [[A, 1], [B, -1]] as [typeof A, 1 | -1][]) {
-          const rad = rr - bow + sign * hw * ct;
-          list.push([rx * rad + tx * al, -sign * hw * st + dy, C + rz * rad + tz * al]);
-        }
-      }
-      return polyPath3([...A, ...B.reverse()]);
+      // 긴 육각형 여섯 꼭짓점 — (앞뒤 위치, 접선 반폭). 0.5부터 변이 나란하다.
+      const HEX: [number, number][] = [
+        [-1, 0], [-0.5, 1], [0.5, 1], [1, 0], [0.5, -1], [-0.5, -1],
+      ];
+      /* 앞벌림(나팔) — 곧은 관은 정면에서 좌우 잎이 모로 서 통이 안 읽혔다. 앞쪽
+         반지름을 벌려 구멍 속으로 네 잎의 안쪽 면이 들여다보인다. */
+      /* 앞들림 — 우리 카메라는 높은 부감이라, 수평으로 누운 관은 구멍이 안 보인다.
+         원작 스프라이트처럼 관 앞을 35도쯤 들어 구멍이 앞-위를 향하게 한다. */
+      const TIP = 0.62;
+      const ctp = Math.cos(TIP);
+      const stp = Math.sin(TIP);
+      return polyPath3(HEX.map(([a, w]) => {
+        const rad = rr + 0.75 * a;
+        const px = rx * rad + tx * (w * ww);
+        const py = a * ll;
+        const pz = rz * rad + tz * (w * ww);
+        return [px, py * ctp - pz * stp, C + pz * ctp + py * stp] as [number, number, number];
+      }));
     };
     const PHIS = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
     for (const phi of PHIS) {
-      const d = leaf(phi, R, 2, 1.15, 0);
+      // 길이 2.7 → 2.2(요청: 육각형 길이를 조금만 짧게).
+      const d = leaf(phi, R, 2.2, 1.05);
       out.push(bodyFace(d));
       if (Math.cos(phi) > 0.5) out.push(topFace(d, 0.18)); // 위 잎 등이 빛을 받고
       else if (Math.cos(phi) < -0.5) out.push(sideFace(d, 0.24)); // 아래 잎은 어둡다
       else if (Math.sin(phi) > 0.5) out.push(sideFace(d, 0.12)); // 오른 잎은 옅은 그늘
-      // 잎 안쪽(배) 발광 — 시청자 쪽 면 위에 밝은 작은 잎.
-      out.push(topFace(leaf(phi, R - 0.12, 1.25, 0.62, 0.14), 0.5));
+      // 잎 안쪽(배) 발광 — 축을 보는 면에 밝은 작은 육각 잎.
+      out.push(topFace(leaf(phi, R - 0.18, 1.35, 0.58), 0.5));
     }
     return out;
   },
@@ -1980,13 +1979,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* ── 기계·함선 유닛들(요청: 만들 수 있는 건 다) — 정면 +y, 공중은 높이 띄운다. ── */
   /* 시즈 탱크(실물 참고) — 양옆 궤도 블록 + 차체 + 포탑의 쌍포신. */
   tank: () => [
-    // 몸체를 더 넙적하게(지적).
-    ...boxFaces3(-2.5, 0, 1.8, 5.2, 1.5),
-    ...boxFaces3(2.5, 0, 1.8, 5.2, 1.5),
-    ...boxFaces3(0, -0.2, 4.2, 4.4, 1.3, 1.2),
+    /* 앞뒤로 길게 + 궤도(바퀴)는 더 안쪽으로(지적) — 궤도가 차체 밑으로 반쯤
+       깔려, 넙적한 상자가 아니라 길쭉한 전차로 읽힌다. */
+    ...boxFaces3(-2, 0, 1.7, 6.4, 1.5),
+    ...boxFaces3(2, 0, 1.7, 6.4, 1.5),
+    ...boxFaces3(0, -0.2, 3.9, 5.6, 1.3, 1.2),
     ...boxFaces3(0, -0.4, 2.6, 2.6, 1.3, 2.5),
-    ...tubeFaces(-0.55, 1.2, -0.55, 3.9, 0.24, 3.3),
-    ...tubeFaces(0.55, 1.2, 0.55, 3.9, 0.24, 3.3),
+    ...tubeFaces(-0.55, 1.2, -0.55, 4.4, 0.24, 3.3),
+    ...tubeFaces(0.55, 1.2, 0.55, 4.4, 0.24, 3.3),
   ],
   /* 시즈 모드(실물 참고) — 사방으로 벌린 궤도 발 넷 + 올라선 포탑 + 위-앞으로 겨눈
      큰 포신. */
@@ -3715,6 +3715,11 @@ export default function ReplayMotionPlayer({
     const home = homeOf(p.raw);
     return [
       ...(p.drops ?? []),
+      /* 리콜 자리도 워프 후보(요청: 갑작스런 등장은 드랍·리콜·태어남뿐) — 아비터
+         리콜로 옮겨진 부대는 걸어온 자취 없이 그 자리에서 시작하는 게 맞다. */
+      ...motion.casts
+        .filter((c) => c[4] === p.raw && c[3] === "Recall")
+        .map((c) => [c[0], c[1], c[2]] as [number, number, number]),
       ...(p.tpts ?? [])
         .filter(([, x, y]) => !home || Math.hypot(x - home[0], y - home[1]) > 15)
         .map(([s, x, y]) => [s, x, y] as [number, number, number]),
@@ -5428,7 +5433,14 @@ export default function ReplayMotionPlayer({
               if (sec > t) break;
               sinceCmd = t - sec;
             }
-            if (sinceCmd > SQUAD_FADE_SEC) return [];
+            /* 전투 없이는 안 걷는다(요청: 유닛이 전투 없이 사라지지 않게) — 침묵만으로
+               지우던 규칙을 걷었다. 조용한 부대는 마지막 자리에 그대로 서 있고, 걷는
+               근거는 전투(deadBy)·태움·흡수·함락·핵뿐이다. 예외 하나: 본진 곁(6타일)
+               으로 돌아와 조용해진 부대는 기지 표현에 흡수된 것으로 본다(정찰 점과
+               같은 원칙). */
+            const homeT = homeOf(p.raw);
+            if (sinceCmd > SQUAD_FADE_SEC && !pos.moving && homeT
+              && Math.hypot(pos.x - homeT[0], pos.y - homeT[1]) <= 6) return [];
             if (Number.isFinite(sinceCmd) && deadBy(t - sinceCmd)) return [];
             // 태워진 동안은 숨는다(요청) — 내리면 나타난다.
             if (carriedGone(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : -1, pos.moving)) return [];
@@ -5651,7 +5663,11 @@ export default function ReplayMotionPlayer({
               if (sec > t) break;
               sinceCmd = t - sec;
             }
-            if (si !== primary && sinceCmd > SQUAD_FADE_SEC) return null;
+            /* 전투 없이는 안 걷는다(요청) — 곁 부대도 침묵만으로 지우지 않는다. 본진
+               곁으로 돌아와 조용해진 부대만 기지 표현에 흡수돼 걷힌다. */
+            const homeS = homeOf(p.raw);
+            if (sinceCmd > SQUAD_FADE_SEC && !pos.moving && homeS
+              && Math.hypot(pos.x - homeS[0], pos.y - homeS[1]) <= 6) return null;
             /* 전투에서 정리된 부대(요청: 유닛은 새로 이동하지 않는 한 그 자리에 있고,
                전투 후 다시 액션이 없다면 그 전투에서 죽은 것). */
             if (Number.isFinite(sinceCmd) && deadBy(t - sinceCmd)) return null;
