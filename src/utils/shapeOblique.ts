@@ -184,6 +184,10 @@ export function faceLight(nxModel: number, nyModel: number): { visible: boolean;
   return { visible: ny > 0.02, face };
 }
 
+/* 모형 내부 원근(요청: 모델 안에서도 원근법 — 건물은 특히) — 앞(시청자 쪽)으로 나온
+   점은 크게, 뒤로 물러난 점은 작게. 발밑 원점을 눈 축으로 삼아 깊이 나눗셈을 한다.
+   project를 지나는 모든 프리미티브(상자·절두·기둥·다리·관·뿔)가 저절로 받는다. */
+const MODEL_PERSP = 30;
 /** 모형 좌표 (x,y,z) → 화면 [sx, sy]. y(앞)는 아래로, z(위)는 위로 간다. */
 export function project(x: number, y: number, z: number): [number, number] {
   const th = ((yawOverride ?? VIEW.yawDeg) * Math.PI) / 180;
@@ -191,7 +195,8 @@ export function project(x: number, y: number, z: number): [number, number] {
   const sn = Math.sin(th);
   const rx = x * c + y * sn;
   const ry = -x * sn + y * c;
-  return [r2(VIEW.originX + rx), r2(originYNow() + ry * groundSquashNow() - z * zScaleNow())];
+  const f = MODEL_PERSP / (MODEL_PERSP - Math.max(-10, Math.min(10, ry)));
+  return [r2(VIEW.originX + rx * f), r2(originYNow() + (ry * groundSquashNow() - z * zScaleNow()) * f)];
 }
 
 /** 3D 꼭짓점 목록 → 닫힌 직선 패스. (곡선이 필요하면 결과 좌표를 Q로 이어 다듬는다.) */

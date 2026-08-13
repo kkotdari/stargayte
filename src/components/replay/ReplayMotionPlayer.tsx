@@ -3617,6 +3617,8 @@ export default function ReplayMotionPlayer({
      컨테이너 세로비가 맡아서 %자리가 저절로 따라온다. 휠 확대·드래그 이동은 기존
      렌즈(zoom·pan) 그대로다. */
   const [pitched, setPitched] = useState(false);
+  // 모바일(터치 기기)은 입체 보기를 아직 안 연다(요청) — 아래에서 버튼을 감춘다.
+  const coarsePointer = typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches;
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   useEffect(() => {
     const el = mapRef.current;
@@ -3707,23 +3709,37 @@ export default function ReplayMotionPlayer({
      얹는다. 깊이 배율(--mk)도 같은 k를 쓴다. */
   const PITCH_TH = Math.PI / 4;
   const PITCH_P = 650;
-  const pitchK = (y: number): number => {
-    if (!pitched) return 1;
-    const h = mapRef.current?.clientHeight ?? 220;
-    const v = (y / grid.height - 0.5) * h;
-    return PITCH_P / (PITCH_P - v * Math.sin(PITCH_TH));
-  };
-  const posStyle = (x: number, y: number): { left: string; top: string } => {
-    if (!pitched) return { ...posStyle(x, y) };
+  /* 맞춤 축소(지적: 또 예전 끝 잘림) — 원근 확대로 가까운 변이 상자를 넘쳤다. 가까운
+     변이 상자에 딱 맞는 배율 q로 전체를 줄이고, 세로는 cy만큼 올려 가운데 정렬한다.
+     지형 그림(transform)과 마커 공식이 같은 q·cy를 쓴다. */
+  const pitchGeom = () => {
     const el = mapRef.current;
     const w = el?.clientWidth ?? 320;
     const h = el?.clientHeight ?? 220;
+    const S = Math.sin(PITCH_TH);
+    const C = Math.cos(PITCH_TH);
+    const H = h / 2;
+    const q = Math.max(0.2, (PITCH_P - H * S) / PITCH_P);
+    const kFar = PITCH_P / (PITCH_P + H * S);
+    const cy = (C * H * (1 - q * kFar)) / 2;
+    return { w, h, S, C, q, cy };
+  };
+  const pitchK = (y: number): number => {
+    if (!pitched) return 1;
+    const { h, S, q } = pitchGeom();
+    const v = (y / grid.height - 0.5) * h;
+    return (q * PITCH_P) / (PITCH_P - v * S);
+  };
+  const posStyle = (x: number, y: number): { left: string; top: string } => {
+    // (수리) 평면 보기가 저를 다시 불러 무한 재귀였다 — 맨 백분율로 돌려준다.
+    if (!pitched) return { left: pct(x, grid.width), top: pct(y, grid.height) };
+    const { w, h, S, C, q, cy } = pitchGeom();
     const u = (x / grid.width - 0.5) * w;
     const v = (y / grid.height - 0.5) * h;
-    const k = PITCH_P / (PITCH_P - v * Math.sin(PITCH_TH));
+    const k = (q * PITCH_P) / (PITCH_P - v * S);
     return {
       left: `${(50 + ((u * k) / w) * 100).toFixed(3)}%`,
-      top: `${(50 + ((v * Math.cos(PITCH_TH) * k) / h) * 100).toFixed(3)}%`,
+      top: `${(50 + ((v * C * k - cy) / h) * 100).toFixed(3)}%`,
     };
   };
   const depthMk = (y: number): React.CSSProperties =>
@@ -4406,7 +4422,10 @@ export default function ReplayMotionPlayer({
             <img
               className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`}
               draggable={false}
-              style={pitched ? { transform: `perspective(${PITCH_P}px) rotateX(45deg)` } : undefined}
+              style={pitched ? (() => {
+                const { q, cy } = pitchGeom();
+                return { transform: `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${PITCH_P}px) rotateX(45deg)` };
+              })() : undefined}
             />
           )
           : <div className="scr-motion-canvas scr-motion-canvas-blank" />}
@@ -4576,7 +4595,11 @@ export default function ReplayMotionPlayer({
                   /* 겹침 차례는 마지막 명령 시각(지적: 유닛이 무조건 위가 아니라 —
                      건물이 위일 수 있다) — 방금 착공했거나 지금 생산·연구·비행 중인
                      건물은 조용한 유닛 점 위로 온다. 유닛 마커도 같은 자로 잰다. */
-                  zIndex: 1000 + Math.round(producing || researching || afloat ? t : sec),
+                  /* 입체 보기는 화가 순서(지적: 반투명 아닌데 뒤 건물이 보임) — 겹침을
+                     명령 시각이 아니라 화면 앞뒤(바닥 y)로 잰다. */
+                  zIndex: pitched
+                    ? 1000 + Math.round((by + footDy(unit)) * 8)
+                    : 1000 + Math.round(producing || researching || afloat ? t : sec),
                   ...(fade < 1 ? { opacity: fade } : {}),
                   ...depthMk(by + footDy(unit)),
                   ...posStyle(
@@ -5166,9 +5189,9 @@ export default function ReplayMotionPlayer({
                   )}
                   style={{
                     ...(() => { const [ax3, ay3] = dodge(pos.x, pos.y); return { ...posStyle(ax3, ay3) }; })(),
-                  ...depthMk(pos.y),
                     ...depthMk(pos.y),
-                    zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
+                    zIndex: pitched ? 1000 + Math.round(pos.y * 8)
+                      : 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
                     ...glyphStyle(p.raw, team),
                   }}
                 >
@@ -5241,7 +5264,8 @@ export default function ReplayMotionPlayer({
                   style={{
                     ...(() => { const [ax3, ay3] = dodge(pos.x + dx, pos.y + dy); return { ...posStyle(ax3, ay3) }; })(),
                     ...depthMk(pos.y + dy),
-                    zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
+                    zIndex: pitched ? 1000 + Math.round((pos.y + dy) * 8)
+                      : 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
                     ...glyphStyle(p.raw, team),
                   }}
                 >
@@ -5379,8 +5403,9 @@ export default function ReplayMotionPlayer({
                   style={{
                     ...(() => { const [ax3, ay3] = dodge(pos.x + dx, pos.y + dy); return { ...posStyle(ax3, ay3) }; })(),
                     ...depthMk(pos.y + dy),
-                    // 겹침 차례는 마지막 명령 시각(지적).
-                    zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
+                    // 겹침 차례 — 평면은 마지막 명령 시각, 입체는 화면 앞뒤(지적).
+                    zIndex: pitched ? 1000 + Math.round((pos.y + dy) * 8)
+                      : 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
                     ...glyphStyle(p.raw, team),
                   }}
                 >
@@ -5502,8 +5527,9 @@ export default function ReplayMotionPlayer({
                 style={{
                   ...(() => { const [ax3, ay3] = dodge(pos.x, pos.y); return { ...posStyle(ax3, ay3) }; })(),
                   ...depthMk(pos.y),
-                  // 겹침 차례는 마지막 명령 시각(지적).
-                  zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
+                  // 겹침 차례 — 평면은 마지막 명령 시각, 입체는 화면 앞뒤(지적).
+                  zIndex: pitched ? 1000 + Math.round(pos.y * 8)
+                    : 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
                   ...(activeNow ? chipStyle(p.raw, team) : glyphStyle(p.raw, team)),
                 }}
               >
@@ -5857,14 +5883,16 @@ export default function ReplayMotionPlayer({
           >
             {colorMode === "team" ? "개인컬러 보기" : "팀컬러 보기"}
           </button>
-          {/* 피칭 보기(요청) — 수직 부감 ↔ 비스듬한 정면. */}
-          <button
-            type="button" className="scr-motion-btn scr-motion-colorbtn"
-            onClick={() => setPitched((v) => !v)}
-            title="시점 전환"
-          >
-            {pitched ? "수직 보기" : "입체 보기"}
-          </button>
+          {/* 피칭 보기(요청) — 수직 부감 ↔ 비스듬한 정면. 모바일은 아직 안 연다(요청). */}
+          {!coarsePointer && (
+            <button
+              type="button" className="scr-motion-btn scr-motion-colorbtn"
+              onClick={() => setPitched((v) => !v)}
+              title="시점 전환"
+            >
+              {pitched ? "수직 보기" : "입체 보기"}
+            </button>
+          )}
           {/* 지형 수정(요청, 지적: 따로 두면 자리가 애매하고 너무 컸다) — 인라인의 산
               버튼과 같은 작은 원형으로 조작부 배속 무리 끝에 앉는다. */}
           {big && typeof grid.imageId === "number" && grid.image ? (
