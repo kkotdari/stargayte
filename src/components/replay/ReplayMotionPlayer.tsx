@@ -1594,9 +1594,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...hornFaces(-0.5, 2.7, 0.6, -0.6, 3.5, 0.1, 0.5));
     out.push(...hornFaces(0.9, 2.6, 0.6, 1.1, 3.4, 0.1, 0.5));
     out.push(...hornFaces(2, 2.2, 0.6, 2.5, 2.9, 0.1, 0.5));
-    // 줄기 — 좁아졌다 위에서 다시 벌어진다.
-    out.push(...frustumFaces3(0, 0, 4, 3, 2.2, 1.8, 4.4, 1.4));
-    out.push(...frustumFaces3(0, 0, 2.3, 1.9, 3, 2.4, 2.4, 5.6));
+    // 줄기 — 각지지 않게(지적): 둥근 통을 층층이 쌓아 좁아졌다 다시 벌어진다.
+    out.push(...cylinderFaces3(0, 0, 2.4, 1.8, 1.4));
+    out.push(...cylinderFaces3(0, 0, 2, 1.6, 3));
+    out.push(...cylinderFaces3(0, 0, 1.7, 1.4, 4.4));
+    out.push(...cylinderFaces3(0, 0, 2.1, 1.6, 5.6));
+    out.push(...domeFaces3(0, 0, 2.3, 1.2, 6.8));
     // 앞면 골진 붉은 살 띠.
     out.push(bodyFace(polyPath3([[-0.8, 1.85, 1.9], [0.8, 1.85, 1.9], [0.5, 1.35, 6], [-0.5, 1.35, 6]])));
     out.push(capFace(polyPath3([[-0.68, 1.86, 2.7], [0.68, 1.86, 2.7], [0.64, 1.76, 3], [-0.64, 1.76, 3]]), 0.2));
