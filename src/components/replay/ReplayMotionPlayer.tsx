@@ -1209,21 +1209,23 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...boxFaces3(-2.2, -0.2, 1.3, 1.8, 1.9, 3.6),
     ...boxFaces3(2.2, -0.2, 1.3, 1.8, 1.9, 3.6),
     ...domeFaces3(0, -0.6, 0.9, 0.7, 6),
-    ...hornFaces(0.9, 1.2, 4, 1.4, 3.6, 2.6, 0.7),
-    ...hornFaces(-0.9, 1.2, 4, -1.4, 3.6, 2.6, 0.7),
+    // 두 팔은 직육면체 기둥(지적) — 앞으로 내민 각진 기둥 한 쌍.
+    ...boxFaces3(-1.75, 1.5, 1.15, 1.2, 2.7, 2.7),
+    ...boxFaces3(1.75, 1.5, 1.15, 1.2, 2.7, 2.7),
   ],
   /* 프로브(실물 참고) — 팔각 보석 몸(밝은 윗판 층층) + 방사 가시들. */
   probe: () => {
     const out: ShapeFace[] = [];
+    // 가지는 길고 입체적으로, 몸체는 작게(지적) — 끝이 아래로 처지는 굵은 원뿔.
     const spike = (ang: number, len: number, w: number): ShapeFace[] => {
       const a = (ang * Math.PI) / 180;
       return hornFaces(
-        Math.sin(a) * 1.4, Math.cos(a) * 1.4, 4.6,
-        Math.sin(a) * (1.4 + len), Math.cos(a) * (1.4 + len), 4.3, w,
+        Math.sin(a) * 1.1, Math.cos(a) * 1.1, 4.6,
+        Math.sin(a) * (1.1 + len), Math.cos(a) * (1.1 + len), 3.7, w,
       );
     };
-    for (const ang of [150, 180, 210]) out.push(...spike(ang, 4.4, 0.85));
-    for (const ang of [95, -95]) out.push(...spike(ang, 3.6, 0.8));
+    for (const ang of [150, 180, 210]) out.push(...spike(ang, 5.8, 1.05));
+    for (const ang of [95, -95]) out.push(...spike(ang, 5, 1));
     const [cx, cy] = project(0, 0, 4.6);
     const oct = (r: number): string => {
       let d = "";
@@ -1233,20 +1235,28 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       }
       return `${d}Z`;
     };
-    out.push(bodyFace(oct(2.7)));
-    out.push(topFace(oct(1.9), 0.26));
-    out.push(topFace(oct(1.1), 0.3));
-    for (const ang of [38, -38]) out.push(...spike(ang, 3, 0.75));
+    out.push(bodyFace(oct(2)));
+    out.push(topFace(oct(1.35), 0.26));
+    out.push(topFace(oct(0.8), 0.3));
+    for (const ang of [38, -38]) out.push(...spike(ang, 4.2, 0.95));
     return out;
   },
-  /* 드론(실물 참고) — 등 뒤로 젖혀진 등딱지 볏 + 몸 + 앞으로 늘어진 집게 둘. */
-  drone: () => [
-    ...hornFaces(0, -1.2, 4.6, -0.6, -3.8, 7, 1.9),
-    ...hornFaces(0.8, -0.8, 4.8, 1.8, -3, 6.6, 1.4),
-    ...domeFaces3(0, -0.2, 2.2, 1.9, 3.5),
-    ...hornFaces(0.9, 1, 4, 1.5, 3.8, 2.8, 0.7),
-    ...hornFaces(-0.9, 1, 4, -1.5, 3.8, 2.8, 0.7),
-  ],
+  /* 드론(지적: 갈퀴치마가 핵심) — 몸통(꼬리처럼 뒤로 긴 겹돔)과 칼날팔 한 쌍, 그 둘을
+     잇는 톱니 갈퀴치마 막. 나머지 장식은 뺐다. */
+  drone: () => {
+    const skirt = polyPath3([
+      [-1.7, 0.4, 4.3], [-2.1, 3.1, 2.8], [-1.1, 2.6, 3.1], [-0.5, 3.6, 2.6],
+      [0, 2.7, 3.1], [0.5, 3.6, 2.6], [1.1, 2.6, 3.1], [2.1, 3.1, 2.8], [1.7, 0.4, 4.3],
+    ]);
+    return [
+      ...domeFaces3(0, -2.1, 1.5, 1.2, 3.5),
+      ...domeFaces3(0, -0.7, 2, 1.7, 3.5),
+      bodyFace(skirt),
+      sideFace(skirt, 0.15),
+      ...hornFaces(1.5, 0.4, 4.4, 2.6, 3.6, 2.9, 0.8),
+      ...hornFaces(-1.5, 0.4, 4.4, -2.6, 3.6, 2.9, 0.8),
+    ];
+  },
 
   /* ── 유닛 상징물(요청: 유닛 마커도 방향을 갖게 기본 3D화) — 정면은 +y. 세밀한 움직임
      대신 정체를 말하는 상징물이다. 회전 중심(8,8) 근처에 몸이 오도록 공중에 띄워 깎는다. */
@@ -1390,6 +1400,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     pod(3.1);
     const plate = `M${pt(-3.1, 0.8, 5.3)} Q${pt(0, 2, 6.1)} ${pt(3.1, 0.8, 5.3)}`
       + ` L${pt(3.1, -1.8, 5.1)} Q${pt(0, -2.8, 5.7)} ${pt(-3.1, -1.8, 5.1)} Z`;
+    // 판 두께감(지적) — 앞 가장자리 아래로 내려앉는 옆면 띠.
+    const edge = `M${pt(-3.1, 0.8, 5.3)} Q${pt(0, 2, 6.1)} ${pt(3.1, 0.8, 5.3)}`
+      + ` L${pt(3.1, 0.8, 4.6)} Q${pt(0, 2, 5.4)} ${pt(-3.1, 0.8, 4.6)} Z`;
+    out.push(bodyFace(edge), sideFace(edge, 0.22));
     out.push(bodyFace(plate), topFace(plate, 0.18));
     return out;
   },
