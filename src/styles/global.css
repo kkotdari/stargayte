@@ -11178,6 +11178,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    버튼이 아직 알약꼴) — 뒤에 오는 .scr-motion-btn의 height 22px·radius가 원을 덮었다. */
 .scr-motion-btn.scr-motion-rbtn {
   width: 34px; height: 34px; min-width: 34px; padding: 0; border-radius: 50%;
+  /* 완전 원 보증(재지적) — 어떤 규칙이 폭·높이를 흔들어도 1:1을 지킨다. */
+  aspect-ratio: 1; box-sizing: border-box;
   display: inline-flex; align-items: center; justify-content: center;
   /* 세 글자(개인색)도 한 줄로 원 안에 — 감기면 원이 찌그러진다. */
   font-size: 9px; letter-spacing: -0.4px; white-space: nowrap; line-height: 1;

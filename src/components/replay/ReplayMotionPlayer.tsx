@@ -2531,19 +2531,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         return [Math.cos(a) * r, Math.sin(a) * r, z] as [number, number, number];
       }),
     );
-    out.push(bodyFace(oct(2, 4.6)));
-    out.push(topFace(oct(1.35, 4.85), 0.26));
-    out.push(topFace(oct(0.8, 5.1), 0.3));
-    // 동그란 눈 두 개 — 흰색으로(지적), 정면(+y)에 붙어 같이 돈다.
-    const [e1x, e1y] = project(-0.75, 1.85, 4.7);
-    const [e2x, e2y] = project(0.75, 1.85, 4.7);
-    out.push(topFace(groundEllipse(e1x, e1y, 0.42, 0.4), 0.88));
-    out.push(topFace(groundEllipse(e2x, e2y, 0.42, 0.4), 0.88));
-    // 옆면 둥근 포트(실물 참고) — 앞옆 비스듬한 면의 원형 해치 한 쌍.
-    const [p1x, p1y] = project(-1.75, 0.7, 4.75);
-    const [p2x, p2y] = project(1.75, 0.7, 4.75);
-    out.push(topFace(groundEllipse(p1x, p1y, 0.34, 0.3), 0.3));
-    out.push(topFace(groundEllipse(p2x, p2y, 0.34, 0.3), 0.3));
+    // 몸통 축소(지적: 몸체 크기 축소) — 팔각 반지름 2 → 1.6, 겹층도 함께.
+    out.push(bodyFace(oct(1.6, 4.6)));
+    out.push(topFace(oct(1.08, 4.85), 0.26));
+    out.push(topFace(oct(0.64, 5.1), 0.3));
+    // 눈 두 개 — 납작하게(지적: 눈 납작하게), 정면(+y)에 붙어 같이 돈다.
+    const [e1x, e1y] = project(-0.6, 1.5, 4.7);
+    const [e2x, e2y] = project(0.6, 1.5, 4.7);
+    out.push(topFace(groundEllipse(e1x, e1y, 0.38, 0.16), 0.88));
+    out.push(topFace(groundEllipse(e2x, e2y, 0.38, 0.16), 0.88));
+    // 옆면 둥근 포트(실물 참고) — 앞옆 비스듬한 면의 원형 해치 한 쌍(몸을 따라 축소).
+    const [p1x, p1y] = project(-1.4, 0.6, 4.75);
+    const [p2x, p2y] = project(1.4, 0.6, 4.75);
+    out.push(topFace(groundEllipse(p1x, p1y, 0.28, 0.25), 0.3));
+    out.push(topFace(groundEllipse(p2x, p2y, 0.28, 0.25), 0.3));
     // 앞다리 한 쌍 — 몸에 딱 붙여 더 가늘고 짧게(지적), 이것도 납작한 날개판.
     for (const ang of [14, -14]) out.push(...wing(ang, 0.9, 0.9, 0.26, 0.13, 4.15, 3.15));
     return out;
@@ -2960,12 +2961,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     };
     const [cx, cy] = project(0, -0.6, 3.8);
     const out: ShapeFace[] = [];
-    /* 뒷다리(정정: 바깥쪽으로 더 벌어지게) — 뒤 옆구리에서 나와 더 옆으로 뻗은 뒤
-       앞으로 굽는다. */
-    out.push(...hornFaces(-2.4, -2, 3.7, -4.9, -1, 3.5, 0.85));
-    out.push(...hornFaces(-4.9, -1, 3.5, -5.2, 1.6, 3.3, 0.65));
-    out.push(...hornFaces(2.4, -2, 3.7, 4.9, -1, 3.5, 0.85));
-    out.push(...hornFaces(4.9, -1, 3.5, 5.2, 1.6, 3.3, 0.65));
+    /* 뒷다리(정정 셋: 꺾인 관절이 아니라 곡선 변의 삼각형) — 두 뿔을 잇던 팔꿈치를
+       걷고, 몸 옆구리에 뿌리를 둔 채 바깥·앞으로 쓸리는 지느러미꼴 삼각형 하나로
+       그린다. 세 변이 다 완만한 곡선이다. */
+    const leg = (m: 1 | -1): string =>
+      `M${pt(m * 2.1, -2.2, 3.75)} Q${pt(m * 4.8, -1.8, 3.5)} ${pt(m * 5.2, 1.2, 3.3)}`
+      + ` Q${pt(m * 3.7, 0.6, 3.65)} ${pt(m * 2.4, 0.1, 3.8)}`
+      + ` Q${pt(m * 2.1, -1, 3.78)} ${pt(m * 2.1, -2.2, 3.75)} Z`;
+    out.push(bodyFace(leg(-1)), sideFace(leg(-1), 0.18));
+    out.push(bodyFace(leg(1)), sideFace(leg(1), 0.18));
     // 몸통 — 둥근 게딱지. 많이 줄였다(지적: 본체 크기 많이 축소 — 3.8×3 → 2.8×2.2).
     out.push(bodyFace(groundEllipse(cx, cy, 2.8, 2.2)));
     out.push(sideFace(`M${cx + 0.9} ${cy - 1.9} Q${cx + 2.8} ${cy - 1.2} ${cx + 2.6} ${cy + 1.2} Q${cx + 2.6} ${cy - 0.7} ${cx + 0.9} ${cy - 1.9} Z`, 0.2));
@@ -5639,7 +5643,10 @@ export default function ReplayMotionPlayer({
                   ? dotGlyphPx("dot", 1.7, ay3)
                   : unitGlyphPx(0, ay3),
                 color: modeColor(p.raw, team),
-                alpha: 0.82 * (cloaked ? 0.45 : 1),
+                /* 유닛은 불투명(지적: 모델 안에서 뒤 요소가 비쳐 보임) — 전체 0.82가
+                   불투명해야 할 몸판(bodyFace)까지 눌러 속이 비쳤다. 반투명은 클로킹의
+                   말이니 클로킹만 남긴다. 아래 모든 유닛 op가 같은 규칙이다. */
+                alpha: cloaked ? 0.45 : 1,
                 air: g.unit === "Transport",
               });
               return null;
@@ -5707,7 +5714,7 @@ export default function ReplayMotionPlayer({
                 flat: !pitched, pitch: pitched,
                 sizePx: unitPxOf(u, ay3),
                 color: modeColor(p.raw, team),
-                alpha: 0.82 * (cloaked ? 0.45 : 1),
+                alpha: cloaked ? 0.45 : 1,
                 air: uAir,
               });
               const hasFx = fighting && (
@@ -5881,7 +5888,7 @@ export default function ReplayMotionPlayer({
                 flat: !pitched, pitch: pitched,
                 sizePx: unitPxOf(u, ay3),
                 color: modeColor(p.raw, team),
-                alpha: 0.82,
+                alpha: 1,
                 air: uAir,
               });
               const hasFx = fighting && (
@@ -6007,7 +6014,7 @@ export default function ReplayMotionPlayer({
                   ? dotGlyphPx("dot", 1.7, ay3)
                   : unitGlyphPx(0, ay3),
               color: modeColor(p.raw, team),
-              alpha: 0.82,
+              alpha: 1,
               air: isOvie || g.kind === "carrier",
             });
             return null;
@@ -6034,7 +6041,7 @@ export default function ReplayMotionPlayer({
               fx, fy, z: 1000, kind: "ovie",
               viewYaw: viewYawOf(home[0] + 2.5, home[1] - 2.5), flat: !pitched, pitch: pitched,
               sizePx: dotGlyphPx("dot", 1.7, home[1] - 2.5),
-              color: modeColor(p.raw, team), alpha: 0.82, air: true,
+              color: modeColor(p.raw, team), alpha: 1, air: true,
             });
           }
           return [];
