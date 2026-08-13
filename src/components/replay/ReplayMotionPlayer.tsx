@@ -1946,19 +1946,32 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(groundEllipse(px2, py2, 0.6, 0.85), 0.25),
     ];
   },
-  /* 테란 보병 — 긴 원통 몸 + 총관은 위를 향해 겨눈다(지적). */
-  gunner: () => [
-    ...cylinderFaces3(0, -0.4, 1.4, 3.2, 3.4),
-    ...domeFaces3(0, -0.9, 1.2, 0.95, 6.6),
-    ...hornFaces(1, 0.6, 4.4, 1.1, 1.9, 8, 0.55),
-  ],
-  /* 파이어뱃 — 보병 + 등의 화염통 둘(요청) + 짧은 화염 관. */
+  /* 테란 보병 — 긴 원통 몸 + 총(정정: 칼 같았다 — 폭이 한결같은 총열·총몸·총구). */
+  gunner: () => {
+    const [ax2, ay2] = project(1, 0.8, 4.5);
+    const [bx2, by2] = project(1.2, 2, 8);
+    const dx2 = bx2 - ax2;
+    const dy2 = by2 - ay2;
+    const L = Math.hypot(dx2, dy2) || 1;
+    const nx2 = (-dy2 / L) * 0.26;
+    const ny2 = (dx2 / L) * 0.26;
+    return [
+      ...cylinderFaces3(0, -0.4, 1.4, 3.2, 3.4),
+      ...domeFaces3(0, -0.9, 1.2, 0.95, 6.6),
+      ...boxFaces3(1, 0.9, 0.7, 1, 0.8, 4.1),
+      bodyFace(`M${ax2 + nx2} ${ay2 + ny2} L${bx2 + nx2} ${by2 + ny2} L${bx2 - nx2} ${by2 - ny2} L${ax2 - nx2} ${ay2 - ny2} Z`),
+      capFace(groundEllipse(bx2, by2, 0.3, 0.24), 0.4),
+    ];
+  },
+  /* 파이어뱃(정정) — 등에 큰 방사통 실린더 둘 + 앞에 포 형태의 굵은 화염포. */
   fbat: () => [
-    ...cylinderFaces3(-0.7, -1.7, 0.5, 1.9, 4.3),
-    ...cylinderFaces3(0.7, -1.7, 0.5, 1.9, 4.3),
+    ...cylinderFaces3(-0.85, -1.9, 0.72, 2.7, 4),
+    ...domeFaces3(-0.85, -1.9, 0.72, 0.5, 6.7),
+    ...cylinderFaces3(0.85, -1.9, 0.72, 2.7, 4),
+    ...domeFaces3(0.85, -1.9, 0.72, 0.5, 6.7),
     ...cylinderFaces3(0, -0.4, 1.4, 3.2, 3.4),
     ...domeFaces3(0, -0.9, 1.2, 0.95, 6.6),
-    ...tubeFaces(0.9, 0.6, 0.9, 4.4, 0.5, 4.6),
+    ...tubeFaces(0.9, 0.8, 0.9, 3.4, 0.55, 4.5, true),
   ],
   /* 질럿 — 검 두 자루(요청). */
   zealot: () => [
