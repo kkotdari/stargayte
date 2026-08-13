@@ -1175,16 +1175,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      기어(가운데 허브). */
   forge: () => {
     const out: ShapeFace[] = [...domeFaces3(0, -1.6, 3.1, 2.8)];
-    // 앞 톱니바퀴 — 뒤쪽 이빨 → 바퀴 몸 → 앞쪽 이빨 순으로 겹친다.
-    const tooth = (ang: number): ShapeFace[] => {
+    /* 앞 톱니바퀴(정정: 방향) — 눕지 않고 세워진 바퀴가 반쯤 묻혀 위 반원만 보인다.
+       세운 바퀴라 화면 원 그대로 그린다. */
+    const [gx3, gy3] = project(0, 2.2, 0);
+    const R2 = 2.6;
+    out.push(bodyFace(`M${gx3 - R2} ${gy3} A${R2} ${R2} 0 0 1 ${gx3 + R2} ${gy3} Z`));
+    out.push(topFace(`M${gx3 - R2 * 0.62} ${gy3} A${R2 * 0.62} ${R2 * 0.62} 0 0 1 ${gx3 + R2 * 0.62} ${gy3} Z`, 0.2));
+    out.push(capFace(`M${gx3 - R2 * 0.28} ${gy3} A${R2 * 0.28} ${R2 * 0.28} 0 0 1 ${gx3 + R2 * 0.28} ${gy3} Z`, 0.4));
+    for (const ang of [22, 56, 90, 124, 158]) {
       const a = (ang * Math.PI) / 180;
-      return boxFaces3(Math.sin(a) * 2.35, 1.8 + Math.cos(a) * 2.35, 0.6, 0.6, 1.15);
-    };
-    for (const ang of [180, 135, 225, 90, 270]) out.push(...tooth(ang));
-    out.push(...cylinderFaces3(0, 1.8, 2.2, 1.2));
-    out.push(topFace(discPath3(0, 1.8, 1.22, 1.55), 0.2));
-    out.push(capFace(discPath3(0, 1.8, 1.25, 0.85), 0.4));
-    for (const ang of [45, 315, 0]) out.push(...tooth(ang));
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
+      const tx2 = -sa * 0.26;
+      const ty2 = -ca * 0.26;
+      out.push(bodyFace(`M${gx3 + ca * 2.45 + tx2} ${gy3 - sa * 2.45 + ty2}`
+        + ` L${gx3 + ca * 3.05 + tx2} ${gy3 - sa * 3.05 + ty2}`
+        + ` L${gx3 + ca * 3.05 - tx2} ${gy3 - sa * 3.05 - ty2}`
+        + ` L${gx3 + ca * 2.45 - tx2} ${gy3 - sa * 2.45 - ty2} Z`));
+    }
     return out;
   },
   /* 사이버네틱스 코어(정정) — 아래쪽을 큰 구슬들이 빙 두른 원통 + 돔 + 위 빛 구. */
@@ -1216,7 +1224,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [gx2, gy2] = project(0, 0, 8);
     return [
       ...boxFaces3(0, 0, 7, 5.4, 1.6),
+      // 끝의 뾰족 부분(지적) — 네 귀에서 바깥으로 솟는 침.
+      ...hornFaces(-3.1, -2.3, 1.6, -4, -3, 3.6, 0.85),
+      ...hornFaces(3.1, -2.3, 1.6, 4, -3, 3.6, 0.85),
       ...domeFaces3(0, 0, 3.2, 2.9, 1.6),
+      ...hornFaces(-3.1, 2.3, 1.6, -4, 3, 3.4, 0.85),
+      ...hornFaces(3.1, 2.3, 1.6, 4, 3, 3.4, 0.85),
       bodyFace(`M${gx2} ${gy2 - 1.4} L${gx2 + 0.85} ${gy2} L${gx2} ${gy2 + 1.05} L${gx2 - 0.85} ${gy2} Z`),
       topFace(`M${gx2} ${gy2 - 1.4} L${gx2 - 0.85} ${gy2} L${gx2} ${gy2 + 1.05} L${gx2 - 0.28} ${gy2} Z`, 0.3),
     ];
