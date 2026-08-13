@@ -14,7 +14,7 @@ import {
   bodyFace, capFace, groundEllipse, sideFace, topFace, type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
   domeFaces3, faceLight, frustumFaces3, hornFaces, limbFaces, tubeFaces,
-  withTopView,
+  withTopView, withYaw, VIEW,
 } from "../../utils/shapeOblique";
 import type { MinimapMarker } from "./ReplayMinimap";
 
@@ -2738,6 +2738,8 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
    높이 0.6으로 다시 구운 것. 입체 보기가 아닐 때 지도 마커가 이쪽을 쓴다. */
 const SHAPE_FACES_TOP: Record<string, ShapeFace[]> = withTopView(() =>
   Object.fromEntries(Object.entries(SHAPE_BUILDERS).map(([k, b]) => [k, b()])));
+/** 방향(요잉) 굽기 갈무리 — kind×15도 버킷×(부감 여부)마다 한 번 굽는다. */
+const HEAD_FACES = new Map<string, ShapeFace[]>();
 /* (삭제·요청) 유닛 → 마커 갈래 표 — 전 유닛이 제 모델을 갖게 되어 갈래 표는 걷었다. */
 /* 유닛 → 3D 상징물(요청) — 지상 유닛만(지적: 저그도 지상만). 공중은 2D 기호 그대로.
    표에 없는 지상 유닛은 기본 쐐기(wedge)로 방향만 갖는다. */
@@ -2815,8 +2817,28 @@ export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg, flat,
   /** 원본 비율 유지(요청: 자료실에서 보는 비율 그대로 — 캔버스에 맞춰 늘리기 금지). */
   keepRatio?: boolean;
 }) {
-  const faces = facesOverride ?? (flat ? SHAPE_FACES_TOP[kind] : undefined) ?? SHAPE_FACES[kind];
-  const rot = (SHAPE_ROT[kind] ?? 0) + (rotDeg ?? 0);
+  /* 방향은 요잉으로(지적: 화면 회전은 2D 시점에서 모델을 뒤집는다) — 3D 빌더가 있는
+     도형은 rotDeg를 화면 회전 대신 모델 요잉 재투영으로 처리한다. 15도 버킷으로 한 번
+     굽어 갈무리한다. 위쪽을 봐도 높이는 늘 위를 향한다. */
+  let faces = facesOverride;
+  let rot = SHAPE_ROT[kind] ?? 0;
+  const builder = SHAPE_BUILDERS[kind];
+  if (!faces && rotDeg !== undefined && rotDeg !== 0 && builder) {
+    const bucket = ((Math.round(rotDeg / 15) * 15) % 360 + 360) % 360;
+    if (bucket !== 0) {
+      const key = `${kind}:${bucket}:${flat ? 1 : 0}`;
+      let f = HEAD_FACES.get(key);
+      if (!f) {
+        const bake = (): ShapeFace[] => withYaw(VIEW.yawDeg - bucket, builder);
+        f = flat ? withTopView(bake) : bake();
+        HEAD_FACES.set(key, f);
+      }
+      faces = f;
+    }
+  } else if (!builder) {
+    rot += rotDeg ?? 0;
+  }
+  faces = faces ?? (flat ? SHAPE_FACES_TOP[kind] : undefined) ?? SHAPE_FACES[kind];
   return (
     // preserveAspectRatio="none" — 상자(발자국 비율)에 맞춰 그림째 눌린다(요청: 캔버스
     // 비율을 정확하게). 정사각 상자(유닛 마커 등)에서는 아무 일도 안 일어난다.
