@@ -10341,6 +10341,8 @@ html.scr-light-theme .scr-activity-add-fab, html.scr-light-theme .scr-scrolltop 
     0 6px 16px -8px rgba(0, 0, 0, 0.16);
 }
 .scr-activity-add-backdrop { position: fixed; inset: 0; z-index: 89; background: transparent; }
+/* 드롭다운(z 500)과 짝인 백드롭 — 상세 팝업(130)·확대창(205+) 위에서도 클릭을 받는다. */
+.scr-menu-pop-backdrop { z-index: 499; }
 .scr-activity-add-menu {
   position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%);
   z-index: 90; min-width: 180px; padding: 6px;

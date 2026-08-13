@@ -120,7 +120,10 @@ function GameResultActionsMenu({
         // 눌리지 않게 백드롭과 드롭 양쪽에서 끊는다(위 시트와 같은 이유).
         <>
           <div
-            className="scr-activity-add-backdrop"
+            /* 상세 팝업(z 130)·확대창 안에서도 닫혀야 한다(지적: 다른 데를 눌러도 안 닫힘)
+               — 기본 백드롭(z 89)은 그 창들 밑에 깔려 클릭을 못 받았다. 드롭(500) 바로
+               아래 층의 백드롭을 쓴다. */
+            className="scr-activity-add-backdrop scr-menu-pop-backdrop"
             onClick={(e) => { e.stopPropagation(); setOpen(false); }}
             aria-hidden
           />
