@@ -11265,7 +11265,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    규칙으로 준다(지적: 흰색 고정도, 플레이어색도 아니다). */
 .scr-motion-raising {
   position: absolute; top: 50%; left: 0; right: auto;
-  transform: translate(-55%, -50%); pointer-events: none;
+  /* 건물 왼쪽 모서리에 살짝 걸치되 좀 더 안쪽으로(지적). */
+  transform: translate(-15%, -50%); pointer-events: none;
 }
 /* 하는 일 이모지(요청: 아이콘 축소) — 이모지는 글자라 폰트 크기로 줄인다. */
 .scr-motion-job { font-size: 8px; line-height: 1; }
