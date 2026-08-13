@@ -775,7 +775,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     return out;
   },
   /* 스타게이트(다시 다섯, 지적: 전판 폐기) — 세운 원통을 세로로 반 갈라 두 쪽을 사이
-     띄워 마주 세운 꼴. 윗단면 반고리로 속이 빈 관임이 보이고, 함선은 그 사이로 나온다. */
+     띄워 마주 세운 꼴. 앞단면의 반고리 구멍으로 속이 빈 관임이 보이고, 함선은 그 사이로 나온다. */
   arch: () => {
     const [xcL] = project(-1.9, 0, 0);
     const [xcR] = project(1.9, 0, 0);
@@ -789,7 +789,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         body: `M${xc} ${tyS - ry} A${R} ${ry} 0 0 ${sw} ${xc + m * R} ${tyS}`
           + ` L${xc + m * R} ${byS} A${R} ${ry} 0 0 ${sw} ${xc} ${byS + ry} L${xc} ${tyS + ry} Z`,
         top: `M${xc} ${tyS - ry} A${R} ${ry} 0 0 ${sw} ${xc} ${tyS + ry} Z`,
-        hole: `M${xc} ${tyS - ry * 0.6} A${R * 0.6} ${ry * 0.6} 0 0 ${sw} ${xc} ${tyS + ry * 0.6} Z`,
+        // 구멍은 앞단면(지적: 뒷구멍이 아니라 앞구멍이 보여야 한다) — 아래(앞) 끝에 판다.
+        hole: `M${xc} ${byS - ry * 0.6} A${R * 0.6} ${ry * 0.6} 0 0 ${sw} ${xc} ${byS + ry * 0.6} Z`,
       };
     };
     const L2 = half(xcL, -1);
@@ -1200,6 +1201,98 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...hornFaces(0, 1.3, 0.4, 0, 2.8, 2.6, 0.9),
   ],
 
+  /* ── 유닛 상징물(요청: 유닛 마커도 방향을 갖게 기본 3D화) — 정면은 +y. 세밀한 움직임
+     대신 정체를 말하는 상징물이다. 회전 중심(8,8) 근처에 몸이 오도록 공중에 띄워 깎는다. */
+  /* 기본 유닛 — 앞이 보이는 화살 쐐기 + 몸 혹. */
+  wedge: () => [
+    bodyFace(polyPath3([[0, 4.6, 3.4], [2.6, -2.6, 3.4], [0, -1, 3.4], [-2.6, -2.6, 3.4]])),
+    topFace(polyPath3([[0, 4.6, 3.4], [2.6, -2.6, 3.4], [0, -1, 3.4], [-2.6, -2.6, 3.4]]), 0.16),
+    ...domeFaces3(0, -0.4, 1.6, 1.3, 3.4),
+  ],
+  /* 테란 보병(메딕) — 총 없는 몸통·머리. */
+  inf: () => [
+    ...domeFaces3(0, -0.4, 2.5, 2.2, 3.4),
+    ...domeFaces3(0, -1.1, 1.3, 1, 5.4),
+  ],
+  /* 테란 보병 — 총관(요청)을 앞으로 내민다. */
+  gunner: () => [
+    ...domeFaces3(0, -0.4, 2.5, 2.2, 3.4),
+    ...domeFaces3(0, -1.1, 1.3, 1, 5.4),
+    ...tubeFaces(0.9, 0.6, 0.9, 5.6, 0.5, 4.4),
+  ],
+  /* 질럿 — 검 두 자루(요청). */
+  zealot: () => [
+    ...domeFaces3(0, -0.4, 2.5, 2.3, 3.4),
+    ...domeFaces3(0, -1.1, 1.3, 1, 5.5),
+    ...hornFaces(1.9, 0.8, 4.4, 2.3, 5.8, 4.2, 0.75),
+    ...hornFaces(-1.9, 0.8, 4.4, -2.3, 5.8, 4.2, 0.75),
+  ],
+  /* 다크 템플러 — 검 한 자루(요청). */
+  dtemp: () => [
+    ...domeFaces3(0, -0.4, 2.5, 2.3, 3.4),
+    ...domeFaces3(0, -1.1, 1.3, 1, 5.5),
+    ...hornFaces(1.7, 0.8, 4.4, 2.5, 6.2, 4.1, 0.8),
+  ],
+  /* 드라군 — 몸통 + 네 다리(요청). 뒤 두 다리 → 몸 → 앞 두 다리. */
+  goon: () => [
+    ...hornFaces(-1.7, -1.6, 4.6, -3.6, -3.4, 1.9, 0.85),
+    ...hornFaces(1.7, -1.6, 4.6, 3.6, -3.4, 1.9, 0.85),
+    ...domeFaces3(0, -0.2, 2.9, 2.7, 3.6),
+    ...hornFaces(-1.9, 1.2, 4.6, -3.8, 3, 1.9, 0.85),
+    ...hornFaces(1.9, 1.2, 4.6, 3.8, 3, 1.9, 0.85),
+  ],
+  /* 아콘 — 반투명 밝은 구(요청). */
+  archon: () => {
+    const [cx, cy] = project(0, 0, 5);
+    return [
+      [groundEllipse(cx, cy, 3.6, 3.4), 0.55] as ShapeFace,
+      topFace(groundEllipse(cx, cy, 3.6, 3.4), 0.3),
+      topFace(groundEllipse(cx - 1.1, cy - 1.1, 1.4, 1.1), 0.4),
+    ];
+  },
+  /* 다크 아콘 — 반투명 어두운 구(요청). */
+  darchon: () => {
+    const [cx, cy] = project(0, 0, 5);
+    return [
+      [groundEllipse(cx, cy, 3.6, 3.4), 0.55] as ShapeFace,
+      capFace(groundEllipse(cx, cy, 3.6, 3.4), 0.3),
+      topFace(groundEllipse(cx - 1.1, cy - 1.1, 1.2, 0.9), 0.3),
+    ];
+  },
+  /* 저그 지상 — 웅크린 몸 + 앞 갈고리 칼날 둘(요청). */
+  zclaw: () => [
+    ...domeFaces3(0, -0.6, 2.5, 2, 3.4),
+    ...hornFaces(1.5, 0.6, 4, 2.6, 3.4, 4.6, 0.8),
+    ...hornFaces(2.6, 3.4, 4.6, 1.6, 5.4, 3.6, 0.6),
+    ...hornFaces(-1.5, 0.6, 4, -2.6, 3.4, 4.6, 0.8),
+    ...hornFaces(-2.6, 3.4, 4.6, -1.6, 5.4, 3.6, 0.6),
+  ],
+  /* 러커 — 거미다리(요청) 세 쌍: 위마디 밖-위로, 아랫마디 밖-아래로. */
+  lurker: () => {
+    const out: ShapeFace[] = [];
+    for (const m of [1, -1] as const) {
+      out.push(...hornFaces(m * 1.4, -2, 4.4, m * 3.6, -2.6, 5.8, 0.7));
+      out.push(...hornFaces(m * 3.6, -2.6, 5.8, m * 4.6, -2.9, 2.4, 0.55));
+      out.push(...hornFaces(m * 1.6, 0, 4.4, m * 4, 0, 6, 0.7));
+      out.push(...hornFaces(m * 4, 0, 6, m * 5, 0, 2.4, 0.55));
+      out.push(...hornFaces(m * 1.4, 2, 4.4, m * 3.6, 2.6, 5.8, 0.7));
+      out.push(...hornFaces(m * 3.6, 2.6, 5.8, m * 4.6, 2.9, 2.4, 0.55));
+    }
+    out.push(...domeFaces3(0, -0.2, 2.4, 1.9, 3.6));
+    out.push(...domeFaces3(0, 1.1, 1.3, 1, 3.9));
+    return out;
+  },
+  /* 디파일러 — 뒤 꼬리(끝이 위로 말림) + 앞 양 집게(요청). */
+  defiler: () => [
+    ...hornFaces(0, -1.6, 4, 0.8, -4.6, 4.4, 0.9),
+    ...hornFaces(0.8, -4.6, 4.4, 1.4, -5.8, 6, 0.6),
+    ...domeFaces3(0, -0.4, 2.4, 1.8, 3.5),
+    ...hornFaces(1.6, 0.8, 4.2, 3, 3.6, 4.6, 0.8),
+    ...hornFaces(3, 3.6, 4.6, 1.8, 5.2, 3.8, 0.6),
+    ...hornFaces(-1.6, 0.8, 4.2, -3, 3.6, 4.6, 0.8),
+    ...hornFaces(-3, 3.6, 4.6, -1.8, 5.2, 3.8, 0.6),
+  ],
+
   /* 오버로드 — 풍선 몸통(요잉 불변) + 곤충 다리 셋(요청: 촉수·칼이 아니라 무릎이 꺾인
      곤충 다리) — 윗마디는 바깥-아래로, 아랫마디는 무릎에서 안-아래로 꺾인다. */
   ovie: () => {
@@ -1335,6 +1428,22 @@ const UNIT_CLASS: Record<string, string> = {
   "High Templar": "gCast", Defiler: "gCast", Medic: "gCast", "Dark Archon": "gCast",
   "Science Vessel": "aCast", Arbiter: "aCast", Queen: "aCast", Observer: "aCast",
 };
+/* 유닛 → 3D 상징물(요청) — 지상 유닛만(지적: 저그도 지상만). 공중은 2D 기호 그대로.
+   표에 없는 지상 유닛은 기본 쐐기(wedge)로 방향만 갖는다. */
+const UNIT_3D: Record<string, string> = {
+  Marine: "gunner", Firebat: "gunner", Ghost: "gunner", Medic: "inf",
+  Zealot: "zealot", "Dark Templar": "dtemp", Dragoon: "goon",
+  Archon: "archon", "Dark Archon": "darchon",
+  Zergling: "zclaw", Hydralisk: "zclaw", Ultralisk: "zclaw", Broodling: "zclaw",
+  "Infested Terran": "zclaw", Lurker: "lurker", Defiler: "defiler",
+};
+const GROUND_CLASSES = new Set(["troop", "gAA", "gBoth", "gCast"]);
+const unitMarkerKind = (u: string): string => {
+  const k = UNIT_3D[u];
+  if (k) return k;
+  const cls = UNIT_CLASS[u] ?? "troop";
+  return GROUND_CLASSES.has(cls) ? "wedge" : cls;
+};
 /* 유닛 덩치(요청: 소형/중형/대형 크기 구분) — 브루드워의 유닛 크기 분류를 따른다.
    표에 없으면 대형으로 본다(큰 것들이 표에서 빠졌을 때 눈에 띄는 쪽이 덜 틀린다). */
 const UNIT_BULK: Record<string, 0 | 1 | 2> = {
@@ -1358,19 +1467,25 @@ export const SHAPE_GALLERY: { kind: string; label: string }[] = (() => {
     ["pool", "스포닝 풀"], ["troop", "지상(지대지)"], ["gAA", "지대공"], ["gBoth", "지상(겸용)"],
     ["aAir", "공대공"], ["aBoth", "공중(겸용)"], ["gCast", "마법(지상)"], ["aCast", "마법(공중)"],
     ["ovie", "오버로드"], ["dship", "드랍십"], ["shuttle", "셔틀"],
+    ["wedge", "기본 유닛"], ["gunner", "테란 보병(총)"], ["inf", "메딕"],
+    ["zealot", "질럿"], ["dtemp", "다크 템플러"], ["goon", "드라군"],
+    ["archon", "아콘"], ["darchon", "다크 아콘"], ["zclaw", "저그 지상"],
+    ["lurker", "러커"], ["defiler", "디파일러"],
   ] as [string, string][]) {
     if (!seen.has(kind)) { seen.add(kind); out.push({ kind, label }); }
   }
   return out;
 })();
 
-export function ShapeIcon({ kind, className, faces: facesOverride }: {
+export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg }: {
   kind: string; className?: string;
   /** 뷰어의 요잉 회전(요청) — withYaw로 다시 투영한 면 목록을 그대로 그린다. */
   faces?: ShapeFace[];
+  /** 이동 방향 회전(요청: 유닛 마커도 방향) — 시계방향 도. */
+  rotDeg?: number;
 }) {
   const faces = facesOverride ?? SHAPE_FACES[kind];
-  const rot = SHAPE_ROT[kind];
+  const rot = (SHAPE_ROT[kind] ?? 0) + (rotDeg ?? 0);
   return (
     // preserveAspectRatio="none" — 상자(발자국 비율)에 맞춰 그림째 눌린다(요청: 캔버스
     // 비율을 정확하게). 정사각 상자(유닛 마커 등)에서는 아무 일도 안 일어난다.
@@ -2874,6 +2989,9 @@ export default function ReplayMotionPlayer({
                 }
               }
               if (t > arrive + FRESH_HOLD_SEC) continue;
+              // 이동 방향(요청) — 랠리 목적지를 향한다.
+              const hdg = rx !== null && ry !== null && Math.hypot(rx - fx, ry - fy) > 0.1
+                ? Math.atan2(-(rx - fx), ry - fy) * (180 / Math.PI) : 0;
               out.push(
                 <span
                   key={`fresh-${p.raw}-${unit}-${si}`}
@@ -2886,7 +3004,7 @@ export default function ReplayMotionPlayer({
                 >
                   {/* 갓 나온 것도 병력이면 육각형, 일꾼이면 점(요청: 아이콘 구분). */}
                   {unit === "SCV" || unit === "Probe" || unit === "Drone"
-                    ? "●" : <ShapeIcon kind="troop" className="scr-motion-troop" />}
+                    ? "●" : <ShapeIcon kind={unitMarkerKind(unit)} rotDeg={GROUND_CLASSES.has(UNIT_CLASS[unit] ?? "troop") ? hdg : 0} className="scr-motion-troop" />}
                 </span>,
               );
             }
@@ -3299,6 +3417,10 @@ export default function ReplayMotionPlayer({
             }
             /* 같은 자리 무리는 아주 촘촘히 겹친다(지적: 퍼짐이 심해졌다 — 겹치면서도
                규모는 보이게). 묶음(gi)마다 나선을 돌려 두 무리가 포개지지 않게만 한다. */
+            /* 이동 방향(요청: 유닛 마커도 방향) — 조금 전 자리와의 차가 향한 곳. */
+            const hp = posAt(g.walk, Math.max(0, t - 0.8), null);
+            const hdg = hp && Math.hypot(pos.x - hp.x, pos.y - hp.y) > 0.1
+              ? Math.atan2(-(pos.x - hp.x), pos.y - hp.y) * (180 / Math.PI) : 0;
             const seed = gi * 1.7;
             return glyphUnits.map((u, di) => {
               const bulk = UNIT_BULK[u] ?? 2;
@@ -3321,7 +3443,7 @@ export default function ReplayMotionPlayer({
                     ...glyphStyle(p.raw, team),
                   }}
                 >
-                  <ShapeIcon kind={UNIT_CLASS[u] ?? "troop"} className="scr-motion-troop" />
+                  <ShapeIcon kind={unitMarkerKind(u)} rotDeg={GROUND_CLASSES.has(UNIT_CLASS[u] ?? "troop") ? hdg : 0} className="scr-motion-troop" />
                 </span>
               );
             });
@@ -3404,6 +3526,10 @@ export default function ReplayMotionPlayer({
             }
             if (glyphs.length === 0) glyphs.push(unit || "Marine");
             // 퍼짐 보정(요청) — 위 typeNodes의 seed 주석과 같은 규칙(부대 번호로 나선 회전).
+            /* 이동 방향(요청) — 위 typeNodes와 같은 규칙. */
+            const hp = posAt(rp, Math.max(0, t - 0.8), null);
+            const hdg = hp && Math.hypot(pos.x - hp.x, pos.y - hp.y) > 0.1
+              ? Math.atan2(-(pos.x - hp.x), pos.y - hp.y) * (180 / Math.PI) : 0;
             const seed = si * 1.7;
             return glyphs.map((u, di) => {
               const bulk = UNIT_BULK[u] ?? 2;
@@ -3427,7 +3553,7 @@ export default function ReplayMotionPlayer({
                     ...glyphStyle(p.raw, team),
                   }}
                 >
-                  <ShapeIcon kind={UNIT_CLASS[u] ?? "troop"} className="scr-motion-troop" />
+                  <ShapeIcon kind={unitMarkerKind(u)} rotDeg={GROUND_CLASSES.has(UNIT_CLASS[u] ?? "troop") ? hdg : 0} className="scr-motion-troop" />
                 </span>
               );
             });
@@ -3510,6 +3636,9 @@ export default function ReplayMotionPlayer({
             /* 정찰은 이름을 아예 안 띄운다(지적: 일꾼 이름 뜨는 게 문제 맞다) — 일꾼은
                늘 작은 점, 수송선·오버로드는 늘 제 도형이다. 칩으로 커지는 일이 없으니
                커졌다 작아졌다도 없다. */
+            const hp2 = posAt(rp, Math.max(0, t - 0.8), null);
+            const hdg = hp2 && Math.hypot(pos.x - hp2.x, pos.y - hp2.y) > 0.1
+              ? Math.atan2(-(pos.x - hp2.x), pos.y - hp2.y) * (180 / Math.PI) : 0;
             const activeNow = false;
             return (
               <span
@@ -3534,7 +3663,7 @@ export default function ReplayMotionPlayer({
                   ? <ShapeIcon kind="ovie" className="scr-motion-ovie" />
                   : g.kind === "carrier"
                     ? <ShapeIcon kind={race === "테란" ? "dship" : "shuttle"} className="scr-motion-ovie" />
-                    : g.kind === "worker" ? "●" : <ShapeIcon kind="troop" className="scr-motion-troop" />}
+                    : g.kind === "worker" ? "●" : <ShapeIcon kind="wedge" rotDeg={hdg} className="scr-motion-troop" />}
               </span>
             );
           });
