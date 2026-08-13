@@ -1351,13 +1351,34 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...leg(67), ...leg(-67), ...leg(22), ...leg(-22),
     ];
   },
-  /* 에볼루션 챔버 — 겹둔덕 + 숨구멍 혹 + 옆 굴뚝. */
-  evo: () => [
-    ...domeFaces3(0, 0.4, 4.6, 3),
-    ...domeFaces3(-1.6, -1, 2.6, 2.4, 1.4),
-    ...domeFaces3(2, 0.6, 1.7, 1.5, 2.2),
-    ...hornFaces(-3, -2, 2, -3.8, -2.6, 5.2, 1.1),
-  ],
+  /* 에볼루션 챔버(실물 참고) — 장기·심장 같은 살덩이 두 엽(결절 점·숨구멍 입),
+     뒤의 검은 굴뚝 등걸, 가운데 흰 힘줄 띠, 앞오른쪽 촉수 술. */
+  evo: () => {
+    const nod = (nx2: number, ny2: number, nz2: number): ShapeFace => {
+      const [px2, py2] = project(nx2, ny2, nz2);
+      return capFace(groundEllipse(px2, py2, 0.3, 0.24), 0.35);
+    };
+    const [mx3, my3] = project(-2.6, 2.4, 0.9);
+    const band = polyPath3([[-0.7, 1.7, 2.7], [1.5, 0.9, 3], [1.7, 0.2, 2.2], [-0.5, 1, 1.9]]);
+    return [
+      // 뒤 검은 굴뚝 등걸 — 속이 빈 그루터기.
+      ...boxFaces3(0.7, -1.9, 2, 1.7, 3.7),
+      capFace(discPath3(0.7, -1.9, 3.75, 0.75), 0.5),
+      // 심장 같은 살덩이 두 엽.
+      ...domeFaces3(-1.9, 1, 2.4, 2.1),
+      ...domeFaces3(2, 0.3, 2.2, 1.9),
+      // 결절 점들과 앞 숨구멍 입.
+      nod(-2.9, 1.9, 1.6), nod(-1.2, 2.2, 1.9), nod(2.7, 1.2, 1.7), nod(1.5, -0.4, 2.4),
+      capFace(groundEllipse(mx3, my3, 0.55, 0.4), 0.5),
+      // 가운데 흰 힘줄 띠.
+      topFace(band, 0.4),
+      // 앞오른쪽 촉수 술.
+      ...hornFaces(2.2, 1.8, 0.9, 2.6, 2.9, 0.1, 0.3),
+      ...hornFaces(2.8, 1.4, 0.9, 3.5, 2.3, 0.1, 0.3),
+      ...hornFaces(3.2, 0.8, 0.9, 4.1, 1.4, 0.1, 0.3),
+      ...hornFaces(1.7, 2.2, 0.8, 1.8, 3.3, 0.1, 0.28),
+    ];
+  },
   /* 히드라리스크 덴(실물 참고) — 둔덕 위로 갈퀴막이 걸린 큰 돛가시들이 둘러서고,
      앞에는 마디진 꼬리가 똬리를 튼다. */
   hydraden: () => {
@@ -1752,8 +1773,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       bodyFace(plate(1)), sideFace(plate(1), 0.2),
       bodyFace(plate(-1)), topFace(plate(-1), 0.14),
       ...boxFaces3(0, -0.4, 2.8, 3.8, 2.2, 5),
-      // 둥근 코 — 몸체 폭에서 자연스럽게 이어져 좁아진다(정정: 갑자기 튀어나오지 않게).
-      ...hornFaces(0, 0.8, 6.1, 0, 3.3, 5.9, 2.7),
+      // 둥근 코 — 몸체 폭에서 이어져 좁아지되 끝은 뭉툭하게 눌러 막는다(정정).
+      ...hornFaces(0, 0.8, 6.1, 0, 3, 5.95, 2.7),
+      bodyFace(groundEllipse(...project(0, 2.75, 5.95), 0.95, 0.78)),
+      topFace(groundEllipse(...project(-0.25, 2.7, 6.15), 0.4, 0.3), 0.25),
       // 지붕 미사일 튜브 다발.
       ...tubeFaces(-0.7, -1.7, -0.7, 0.9, 0.5, 7.2),
       ...tubeNose(-0.7),
