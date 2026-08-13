@@ -90,12 +90,15 @@ const SPIKE_FAR_RATE = 0.22;
 const SPIKE_BACK_RATE = 0.1;
 /** 나들이로 볼 수 있는 최대 연속 점 수 — 이보다 길게 머물렀으면 그건 진짜 그 자리다. */
 const SPIKE_MAX_RUN = 4;
-/** 부대 묶기(요청: 가까운 유닛만 합침) — 앞 부대의 마지막 자리에서 이 안이면 같은 부대다. */
-const SQUAD_MERGE_TILES = 14;
+/** 부대 묶기(요청: 가까운 유닛만 합침) — 앞 부대의 마지막 자리에서 이 안이면 같은 부대다.
+ *  14 → 9(지적: 유닛이 갑자기 합쳐지고 커진다) — 14타일이면 화면에서 뚜렷이 떨어져 선
+ *  두 무리도 한 부대로 삼켜, 마커들이 한 점으로 훅 모여들었다. */
+const SQUAD_MERGE_TILES = 9;
 /** 유닛별 마커의 뭉침 반경(요청: "같은 종류유닛을 무조건 뭉치는게 아니라 아주 가까울때만")
  *  — 부대 반경보다 훨씬 좁다. */
 const TYPE_MERGE_TILES = 6;
-const SQUAD_MAX = 4;
+// 4 → 8(지적: 합쳐짐) — 자리가 다 차면 새 무리가 못 태어나 기존 부대에 흡수됐다.
+const SQUAD_MAX = 8;
 /** 다 찼을 때 이보다 먼 점은 아예 빠뜨린다(지적: 동선이 튄다) — 가장 가까운 부대에
  *  이어도 맵을 가로지르는 유령 걸음이 된다. */
 const SQUAD_TELEPORT_TILES = 45;
@@ -252,10 +255,11 @@ function splitSquads(
       if (g !== undefined) gToSquad.set(g, prevIdx);
       continue;
     }
-    /* 다 찼으면 가장 가까운 부대가 그리로 걸어간다(지적: 순간이동) — 예전에는 가장 오래
-       조용한 부대를 골라, 맵 반대편의 부대가 유령처럼 가로질러 걸었다. 그마저도 아주 멀거나
-       그 부대가 한참 잠들어 있었으면 빠뜨린다 — 놓치는 것보다 유령이 더 큰 거짓말이다. */
-    if (bestD <= SQUAD_TELEPORT_TILES
+    /* 다 찼으면 가까운(묶음 반경 안) 부대만 그리로 걸어간다(지적 둘: 순간이동 + 유닛이
+       갑자기 합쳐짐) — 예전엔 45타일까지 기존 부대에 이어 붙여, 자리가 차면 딴 무리의
+       명령이 옛 부대로 빨려 들어가 마커가 훅 합쳐졌다. 놓치는 것보다 합체가 더 큰
+       거짓말이다. */
+    if (bestD <= mergeTiles
       && pt[0] - squads[best][squads[best].length - 1][0] <= SQUAD_RETIRE_SEC) {
       squads[best].push(pt);
       prevIdx = best;
