@@ -1277,12 +1277,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(groundEllipse(gx2, gy2, 0.8, 0.5), 0.4),
     ];
   },
-  /* 실드 배터리 — 납작 통 + 빛나는 유리 돔. */
-  sbattery: () => [
-    ...cylinderFaces3(0, 0, 3.9, 1.5),
-    ...domeFaces3(0, 0, 2.9, 2.2, 1.5),
-    topFace(discPath3(0, 0, 2.6, 1.9), 0.3),
-  ],
+  /* 실드 배터리(정정) — 작은 본체를 가지 같은 다리들이 빙 두른 형태. */
+  sbattery: () => {
+    const leg = (ang: number): ShapeFace[] => {
+      const a = (ang * Math.PI) / 180;
+      return hornFaces(
+        Math.sin(a) * 1.1, Math.cos(a) * 1.1, 2.2,
+        Math.sin(a) * 3.5, Math.cos(a) * 3.5, 0.3, 0.6,
+      );
+    };
+    const [gx2, gy2] = project(0, 0, 3);
+    return [
+      ...leg(157), ...leg(203), ...leg(112), ...leg(248),
+      ...cylinderFaces3(0, 0, 1.5, 1.5),
+      ...domeFaces3(0, 0, 1.5, 1.4, 1.5),
+      topFace(groundEllipse(gx2, gy2, 0.6, 0.45), 0.4),
+      ...leg(67), ...leg(-67), ...leg(22), ...leg(-22),
+    ];
+  },
   /* 에볼루션 챔버 — 겹둔덕 + 숨구멍 혹 + 옆 굴뚝. */
   evo: () => [
     ...domeFaces3(0, 0.4, 4.6, 3),
