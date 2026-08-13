@@ -258,10 +258,11 @@ export function project(x: number, y: number, z: number): [number, number] {
      지도의 소실 기울기(u/P)와 정확히 같아진다(지적: 노란선-빨간선 어긋남). */
   /* 가로 밀림은 앞숙임 제외한 원래 깊이(ry)에만(지적: 가장자리에서 안쪽으로 롤 된
      느낌) — 숙임 몫(z×0.34)까지 태우면 바닥 앞변만 바깥으로 밀려 세로선이 기운다.
-     세로 기둥의 기울기는 지형 남북선의 소실 수렴과 같은 방향(가운데 쪽)이어야
-     한다(지적: 초록 기대선, 바깥 0.8은 엄청 반대로 기움) — 부호 음, 크기는 u/P 일치. */
+     세로 기울임은 + 방향(초록 기대선)이 맞고, 0.8은 과했다(지적 왕복: -0.8은 이상,
+     +0.8은 수정탑이 통째 이동해 떨어져 보임 — 그건 파일런 보석의 화면 좌표 문제로
+     따로 수리) — 절반쯤인 +0.5로. */
   const rx2 = rx + ry * groundSquashNow() * viewShear
-    + (pitchView ? -z * 0.8 * viewShear : 0);
+    + (pitchView ? z * 0.5 * viewShear : 0);
   return [r2(VIEW.originX + rx2 * f), r2(originYNow() + ry2 * groundSquashNow() - z * zScaleNow())];
 }
 

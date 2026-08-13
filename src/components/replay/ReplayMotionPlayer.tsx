@@ -868,12 +868,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [gx, gy] = project(0, 0, 7.4);
     const R = 5.2;
     const W = 2.6;
-    const gem = `M${gx} ${gy - R} L${gx + W * 0.82} ${gy - R * 0.42} L${gx + W} ${gy + R * 0.28} L${gx} ${gy + R * 0.72} L${gx - W} ${gy + R * 0.28} L${gx - W * 0.82} ${gy - R * 0.42} Z`;
+    /* 수정 보석도 높이별 기울임(지적: 수정 기둥만 밀림·기울임 영향을 안 받았다) —
+       화면 한 점(gx,gy) 둘레 좌표라 통째 옆 이동만 됐다. 꼭짓점 높이마다 그 높이의
+       투영 x(hx)를 쓴다 — 평면·부감 판에선 밀림이 0이라 예전과 똑같다. */
+    const hx = (dy: number): number => project(0, 0, 7.4 - dy)[0];
+    const gem = `M${hx(-R)} ${gy - R} L${hx(-R * 0.42) + W * 0.82} ${gy - R * 0.42} L${hx(R * 0.28) + W} ${gy + R * 0.28} L${hx(R * 0.72)} ${gy + R * 0.72} L${hx(R * 0.28) - W} ${gy + R * 0.28} L${hx(-R * 0.42) - W * 0.82} ${gy - R * 0.42} Z`;
     out.push(bodyFace(gem));
     // 왼 면 밝게 · 오른 면 어둡게 · 세로 능선은 좁게.
-    out.push(topFace(`M${gx} ${gy - R} L${gx - W * 0.82} ${gy - R * 0.42} L${gx - W} ${gy + R * 0.28} L${gx} ${gy + R * 0.72} L${gx - W * 0.3} ${gy + R * 0.24} L${gx - W * 0.3} ${gy - R * 0.36} Z`, 0.26));
-    out.push(sideFace(`M${gx} ${gy - R} L${gx + W * 0.82} ${gy - R * 0.42} L${gx + W} ${gy + R * 0.28} L${gx} ${gy + R * 0.72} L${gx + W * 0.3} ${gy + R * 0.24} L${gx + W * 0.3} ${gy - R * 0.36} Z`, 0.22));
-    out.push(topFace(`M${gx} ${gy - R} L${gx + W * 0.3} ${gy - R * 0.36} L${gx} ${gy - R * 0.1} L${gx - W * 0.3} ${gy - R * 0.36} Z`, 0.4));
+    out.push(topFace(`M${hx(-R)} ${gy - R} L${hx(-R * 0.42) - W * 0.82} ${gy - R * 0.42} L${hx(R * 0.28) - W} ${gy + R * 0.28} L${hx(R * 0.72)} ${gy + R * 0.72} L${hx(R * 0.24) - W * 0.3} ${gy + R * 0.24} L${hx(-R * 0.36) - W * 0.3} ${gy - R * 0.36} Z`, 0.26));
+    out.push(sideFace(`M${hx(-R)} ${gy - R} L${hx(-R * 0.42) + W * 0.82} ${gy - R * 0.42} L${hx(R * 0.28) + W} ${gy + R * 0.28} L${hx(R * 0.72)} ${gy + R * 0.72} L${hx(R * 0.24) + W * 0.3} ${gy + R * 0.24} L${hx(-R * 0.36) + W * 0.3} ${gy - R * 0.36} Z`, 0.22));
+    out.push(topFace(`M${hx(-R)} ${gy - R} L${hx(-R * 0.36) + W * 0.3} ${gy - R * 0.36} L${hx(-R * 0.1)} ${gy - R * 0.1} L${hx(-R * 0.36) - W * 0.3} ${gy - R * 0.36} Z`, 0.4));
     out.push(bodyFace(ringFront), topFace(ringFront, 0.22));
     for (const ang of [90, -90]) out.push(...claw(ang, 9.7));
     for (const ang of [45, -45, 0]) out.push(...claw(ang, 9.2));
