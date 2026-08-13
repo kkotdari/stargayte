@@ -1416,6 +1416,31 @@ export default function ReplayMotionPlayer({
   /* 정찰 자취도 걸어서 가고(지적: 갑자기 이동 — 직선이되 일꾼 걸음), 갈래·부대로 갈라
      각자의 점이 된다(지적: 드랍십 순간이동 — 일꾼 정찰과 셔틀 원정이 한 점을 놓고
      밀당했다). 갈래는 이름을 정한다(지적: 오버로드 이름이 안 나온다). */
+  /* 정찰(수송선·오버로드) 사슬(지적: 가다 멈췄다 순간이동, 특히 초반 — 실측 데이터로
+     확인: 클릭 간 거리가 부대 반경(28타일)을 넘으면 한 마리가 유령 마커 여럿으로 쪼개
+     졌다) — 거리 반경 대신 '그 시간에 그 걸음으로 닿을 수 있나'로 잇는다. 닿을 수 있으면
+     같은 마리, 없으면(동시에 딴 곳을 찍는 두 마리) 딴 마리다. */
+  const chainScout = (
+    pts: TrackPt[], speed: number, home: [number, number] | null,
+  ): TrackPt[][] => {
+    const tracks: TrackPt[][] = [];
+    for (const pt of pts) {
+      let best = -1;
+      let bestSlack = Infinity;
+      for (let ti = 0; ti < tracks.length; ti += 1) {
+        const last = tracks[ti][tracks[ti].length - 1];
+        const need = Math.hypot(pt[1] - last[1], pt[2] - last[2]);
+        // 여유 14타일 — 명령 좌표는 '목표'라 실제 위치보다 과대(실측: 되돌림 스팸 클릭).
+        const avail = Math.max(0, pt[0] - last[0]) * speed * 1.5 + 14;
+        if (need <= avail && avail - need < bestSlack) { best = ti; bestSlack = avail - need; }
+      }
+      if (best >= 0) tracks[best].push(pt);
+      else if (tracks.length === 0 && home) tracks.push([[pt[0], home[0], home[1]], pt]);
+      else tracks.push([pt]);
+    }
+    return tracks;
+  };
+
   const scoutSquads = useMemo(() => motion.players.map((p) => {
     const kinds: { kind: "worker" | "carrier" | "lone"; src: TrackPt[] }[] = [
       { kind: "worker", src: p.spts ?? [] },
@@ -1442,9 +1467,10 @@ export default function ReplayMotionPlayer({
     const home0 = homeOf(p.raw);
     const ovieHome: [number, number] | null = home0 && race === "저그"
       ? [home0[0] + 2.5, home0[1] - 2.5] : home0;
-    return kinds.flatMap(({ kind, src }) => (src.length === 0 ? [] : splitSquads(
-      src, kind === "worker" ? home0 : ovieHome, kind === "worker" ? undefined : 28,
-    )
+    const carrierSpeed = race === "저그" ? 0.6 : race === "테란" ? 4.1 : 3.3;
+    return kinds.flatMap(({ kind, src }) => (src.length === 0 ? [] : (kind === "worker"
+      ? splitSquads(src, home0)
+      : chainScout(src, kind === "carrier" || race === "저그" ? carrierSpeed : SCOUT_WALK_SPEED, ovieHome))
       .map((sq) => ({
         kind, raw: sq,
         walk: walkTrack(
