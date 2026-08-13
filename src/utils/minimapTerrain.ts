@@ -151,8 +151,9 @@ export async function analyzeMinimap(
     const L = lum[i];
     // ① 절대 — 우주·심연.
     if (L < 26) continue;
-    // ① 절대 — 물(채도 높은 진짜 파랑만 — 지적: 빠른무한의 청회색 바닥이 물로 먹혔다).
-    if (b > r + 40 && b > g + 20 && L < 105) continue;
+    // ① 절대 — 물: 비율 판정(지적 둘: 절대 차이 +18은 빠른무한 바닥을 물로 먹고, +40은
+    //    탁한 강물을 놓쳤다) — 파랑이 최댓채널의 1.25배를 넘고 어두우면 물이다.
+    if (b > Math.max(r, g) * 1.25 && L < 120) continue;
     // ② 상대 — 주변보다 뚜렷이 어두운 능선(절벽·벽·언덕 경계).
     if (L < localAvg[i] * RIDGE_RATIO) continue;
     walk[i] = 1;
@@ -237,7 +238,7 @@ export async function analyzeMinimap(
       const g = data[i * 4 + 1];
       const b = data[i * 4 + 2];
       const L = lum[i];
-      if (L < 15 || (b > r + 40 && b > g + 20 && L < 105)) banned[i] = 1;
+      if (L < 15 || (b > Math.max(r, g) * 1.25 && L < 120)) banned[i] = 1;
     }
     const famCount = new Map<number, number>();
     for (let i = 0; i < w * h; i += 1) {
