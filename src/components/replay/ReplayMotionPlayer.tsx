@@ -866,18 +866,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const HEX: [number, number][] = [
         [-1, 0], [-0.5, 1], [0.5, 1], [1, 0], [0.5, -1], [-0.5, -1],
       ];
-      /* 앞벌림(나팔) — 곧은 관은 정면에서 좌우 잎이 모로 서 통이 안 읽혔다. 앞쪽
-         반지름을 벌려 구멍 속으로 네 잎의 안쪽 면이 들여다보인다. */
+      /* 곧은 관(정정: 자꾸 뒤쪽을 벌리지 말 것) — 나팔 벌림을 걷었다. 잎 넷이
+         나란히 서서 반지름이 앞뒤 내내 같다. */
       /* 앞들림 — 우리 카메라는 높은 부감이라, 수평으로 누운 관은 구멍이 안 보인다.
          원작 스프라이트처럼 관 앞을 35도쯤 들어 구멍이 앞-위를 향하게 한다. */
       const TIP = 0.62;
       const ctp = Math.cos(TIP);
       const stp = Math.sin(TIP);
       return polyPath3(HEX.map(([a, w]) => {
-        const rad = rr + 0.75 * a;
-        const px = rx * rad + tx * (w * ww);
+        const px = rx * rr + tx * (w * ww);
         const py = a * ll;
-        const pz = rz * rad + tz * (w * ww);
+        const pz = rz * rr + tz * (w * ww);
         return [px, py * ctp - pz * stp, C + pz * ctp + py * stp] as [number, number, number];
       }));
     };
