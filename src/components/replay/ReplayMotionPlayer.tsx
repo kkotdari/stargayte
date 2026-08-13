@@ -1327,14 +1327,32 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...hornFaces(-2.4, -1, 3.4, -3.6, -1.6, 6.2, 0.9),
     ...hornFaces(2.4, -1.2, 3.4, 3.6, -1.9, 5.8, 0.9),
   ],
-  /* 퀸즈 네스트 — 둔덕 + 알 무더기 + 뿔. */
-  queensnest: () => [
-    ...domeFaces3(0, -0.4, 4.4, 2.8),
-    ...domeFaces3(-1.8, 2.2, 1.2, 1),
-    ...domeFaces3(0.2, 2.8, 1, 0.85),
-    ...domeFaces3(1.8, 2.1, 1.1, 0.9),
-    ...hornFaces(-2.4, -2, 2.2, -3.2, -2.8, 5.4, 1),
-  ],
+  /* 퀸즈 네스트(정정) — 반구형 몸에 아래쪽 밑단을 따라 긴 입구들이 빙 둘러 뚫린다. */
+  queensnest: () => {
+    const slit = (ang: number): string => {
+      const a = (ang * Math.PI) / 180;
+      const sx = Math.sin(a);
+      const sy = Math.cos(a);
+      const tx = Math.cos(a);
+      const ty = -Math.sin(a);
+      return polyPath3(Array.from({ length: 8 }, (_, i) => {
+        const t = (i / 8) * Math.PI * 2;
+        return [
+          sx * 3.55 + tx * 1.35 * Math.cos(t),
+          sy * 3.55 + ty * 1.35 * Math.cos(t),
+          0.85 + 0.55 * Math.sin(t),
+        ] as [number, number, number];
+      }));
+    };
+    return [
+      ...domeFaces3(0, 0, 4.4, 3.6),
+      capFace(slit(0), 0.45),
+      capFace(slit(52), 0.45),
+      capFace(slit(-52), 0.45),
+      capFace(slit(104), 0.38),
+      capFace(slit(-104), 0.38),
+    ];
+  },
   /* 디파일러 마운드(정정: 납작하게) — 낮게 퍼진 둔덕 + 큰 옆 아가리 + 가시들. */
   dmound: () => {
     const [mx3, my3] = project(2.9, 1.8, 1.1);
