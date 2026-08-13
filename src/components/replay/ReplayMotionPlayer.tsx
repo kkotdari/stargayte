@@ -1234,8 +1234,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         Math.sin(a) * (1.1 + len), Math.cos(a) * (1.1 + len), tipZ, w,
       );
     };
-    for (const ang of [152, 208]) out.push(...spikeTo(ang, 6.2, 3.6, 1.05));
-    for (const ang of [170, 190]) out.push(...spikeTo(ang, 5.4, 1.2, 1));
+    // 물고기처럼 보인다(지적) — 뒤 안테나 둘은 얇고 짧게, 아래 다리 둘은 양옆으로
+    // 벌려 더 팍 내리꽂고 얇게.
+    for (const ang of [168, 192]) out.push(...spikeTo(ang, 4.6, 4.2, 0.7));
+    for (const ang of [138, 222]) out.push(...spikeTo(ang, 5.6, 0.2, 0.8));
     for (const ang of [95, -95]) out.push(...spike(ang, 2, 0.8));
     /* 몸통·눈도 모델 공간(수리: 화면 공간이라 돌아도 고정돼 있었다 — 지적) — 팔각도
        눈도 요잉을 따라 함께 돈다. */
