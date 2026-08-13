@@ -2739,6 +2739,14 @@ export default function ReplayMotionPlayer({
   /* 무너진 기지의 유닛도 대개 같이 죽는다(지적: 확률은 높은데 완벽하진 않음 — 그래서
      침묵 조건을 같이 건다) — 내 건물이 무너진 자리 곁(8타일)에 서 있었고, 무너진 뒤로
      새 명령 없이 한참(DEAD_QUIET_SEC) 지난 마커는 그 함락에서 정리된 것으로 본다. */
+  /* 핵 착탄 몰살(요청: 피통 계산까지) — 핵 피해는 최소 500(또는 최대체력의 2/3 중 큰
+     쪽)이라 브루드워 유닛은 전부 체력이 모자란다(풀피 배틀크루저 500이 딱 경계). 착탄
+     순간 반경(4.5타일) 안에 서 있었고(마지막 명령이 착탄 전) 그 뒤 새 명령이 없는
+     마커는 그 핵에 정리된 것으로 본다. 건물은 위 goneEff(파괴 판정 당김)가 맡는다. */
+  const nukedGone = (pos: { x: number; y: number }, lastOrderSec: number): boolean =>
+    nukeImpacts.some((nk) => nk.sec <= t && lastOrderSec <= nk.sec
+      && Math.hypot(pos.x - nk.x, pos.y - nk.y) <= 4.5);
+
   const razedNearby = (
     p: MotionTrack, pos: { x: number; y: number }, lastOrderSec: number,
   ): boolean => motion.builds.some(([, bx2, by2, bu, br, g2]) => {
@@ -3499,6 +3507,7 @@ export default function ReplayMotionPlayer({
               && buildAbsorbed(p, pos, t - sinceCmd)) return [];
             // 무너진 기지 곁에서 침묵 — 그 함락에서 정리된 것(지적).
             if (razedNearby(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return [];
+            if (nukedGone(pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return [];
             return [{ g, gi, pos, sinceCmd }];
           });
           const shownUnits = new Set(typeMarks.flatMap(({ g }) => BY_UNITS[g.unit] ?? [g.unit]));
@@ -3675,6 +3684,7 @@ export default function ReplayMotionPlayer({
             if (carriedGone(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : -1, pos.moving)) return null;
             // 무너진 기지 곁에서 침묵 — 그 함락에서 정리된 것(지적).
             if (razedNearby(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return null;
+            if (nukedGone(pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return null;
             /* 유닛 수는 컨트롤이 먼저다(요청: 컨트롤 기준으로 죽음 처리를 안 해서 계속
                쌓여만 간다) — 완성 누계 어림은 전투 감쇠로만 줄어서 실제 전멸을 못 따라간다.
                최근 이 자리를 찍은 선택의 최대 크기가 12 미만이면 남은 병력을 그 크기로
@@ -3838,6 +3848,7 @@ export default function ReplayMotionPlayer({
               && buildAbsorbed(p, pos, t - sinceCmd)) return null;
             // 무너진 기지 곁에서 침묵 — 그 함락에서 정리된 것(지적).
             if (razedNearby(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return null;
+            if (nukedGone(pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return null;
             /* 정찰은 이름을 아예 안 띄운다(지적: 일꾼 이름 뜨는 게 문제 맞다) — 일꾼은
                늘 작은 점, 수송선·오버로드는 늘 제 도형이다. 칩으로 커지는 일이 없으니
                커졌다 작아졌다도 없다. */
