@@ -247,7 +247,9 @@ export async function analyzeMinimap(
       const snap = (ci: number): number => {
         const cx = ci % w;
         const cy = Math.floor(ci / w);
-        for (let rr = 0; rr <= 3; rr += 1) {
+        // 반경 5칸(지적: 집합화가 이상함 — 안쪽 자원을 중심 쪽으로 민 자리가 두꺼운
+        // 구조물 속이면 3칸 스냅이 대량 실패해, 모든 후보가 전제에서 탈락했다).
+        for (let rr = 0; rr <= 5; rr += 1) {
           for (let dy = -rr; dy <= rr; dy += 1) {
             for (let dx = -rr; dx <= rr; dx += 1) {
               const nx = cx + dx;
@@ -260,7 +262,8 @@ export async function analyzeMinimap(
         return -1;
       };
       const starts = spots.map(snap).filter((v) => v >= 0);
-      if (starts.length < spots.length * 0.75) return false;
+      // 스냅 실패는 그 앵커만 빼고 본다 — 절반 이상 찾았으면 연결로 판정한다.
+      if (starts.length < Math.max(3, spots.length * 0.5)) return false;
       const seen = new Uint8Array(w * h);
       const stack = [starts[0]];
       seen[starts[0]] = 1;
@@ -276,7 +279,7 @@ export async function analyzeMinimap(
         }
       }
       const okN = starts.filter((st) => seen[st]).length;
-      return okN >= starts.length * 0.75;
+      return okN >= starts.length * 0.7;
     };
     let solved = false;
     for (const fam of families.slice(0, 24)) {
@@ -286,6 +289,10 @@ export async function analyzeMinimap(
       }
       if (connected()) { solved = true; break; }
     }
+    // 진단(임시) — 다음 라운드에 어디서 갈리는지 콘솔로 확인한다.
+    console.info(
+      `[terrain] anchors=${anchorIdx.length} families=${families.length} included=${included.size} solved=${solved}`,
+    );
     if (solved) {
       walk.set(tryWalk);
       /* 땅 밝기 — 땅에 둘러싸인 작은 장식(풀)을 열지 판단할 기준. */
