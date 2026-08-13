@@ -774,41 +774,41 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...hornFaces(5.7, 2, 4.2, 4.8, 2.4, 6, 0.8));
     return out;
   },
-  /* 스타게이트(다시 둘, 지적) — 두 손이 사이를 띄우고 마주 보는 꼴: 아래 손은
-     왼아래에서 위로, 위 손은 오른위에서 아래로 굽는 오목한 판이고 가운데는 그냥
-     빈틈이다(광원 없음). 손바닥 안쪽엔 파란 창 줄, 등에는 갈빗살, 끝은 말린 손끝. */
+  /* 스타게이트(다시 셋, 지적: 대각선 대칭이동) — 두 손이 사이를 띄우고 마주 보되
+     위 손은 왼위에서, 아래 손은 오른아래에서 굽는다. 가운데 빈 통로가 정면(앞왼쪽)을
+     향해 열려 함선이 그리로 나온다. 손바닥 안쪽 파란 창 줄, 등 갈빗살, 말린 손끝. */
   arch: () => {
     const pt = (x: number, y: number, z: number): string => {
       const [px, py] = project(x, y, z);
       return `${px} ${py}`;
     };
     const out: ShapeFace[] = [sideFace(discPath3(0, 0.2, 0, 5), 0.22)];
-    // 아래 손 — 왼아래에서 위로 굽는 판.
-    const lower = `M${pt(3.4, 0.5, 0.5)} Q${pt(-2.6, 0.7, 0.3)} ${pt(-5.8, 0.9, 4.4)}`
-      + ` L${pt(-4, 0.9, 5.7)} Q${pt(-1.9, 0.6, 3.1)} ${pt(2.8, 0.5, 3)} Z`;
+    // 아래 손 — 오른아래에서 위로 굽는 판.
+    const lower = `M${pt(-3.4, 0.5, 0.5)} Q${pt(2.6, 0.7, 0.3)} ${pt(5.8, 0.9, 4.4)}`
+      + ` L${pt(4, 0.9, 5.7)} Q${pt(1.9, 0.6, 3.1)} ${pt(-2.8, 0.5, 3)} Z`;
     out.push(bodyFace(lower), sideFace(lower, 0.14));
-    // 위 손 — 오른위에서 아래로 굽는 판(광원을 받아 살짝 밝게).
-    const upper = `M${pt(-3.4, 0, 10.7)} Q${pt(2.6, -0.2, 10.9)} ${pt(5.8, -0.4, 6.8)}`
-      + ` L${pt(4, -0.4, 5.5)} Q${pt(1.9, -0.1, 8.1)} ${pt(-2.8, 0, 8.2)} Z`;
+    // 위 손 — 왼위에서 아래로 굽는 판(광원을 받아 살짝 밝게).
+    const upper = `M${pt(3.4, 0, 10.7)} Q${pt(-2.6, -0.2, 10.9)} ${pt(-5.8, -0.4, 6.8)}`
+      + ` L${pt(-4, -0.4, 5.5)} Q${pt(-1.9, -0.1, 8.1)} ${pt(2.8, 0, 8.2)} Z`;
     out.push(bodyFace(upper), topFace(upper, 0.1));
     // 손끝 말림 — 마주 보는 손 쪽으로 갈고리.
-    out.push(...hornFaces(-5.4, 0.9, 4.6, -6.6, 1, 6.6, 0.9));
-    out.push(...hornFaces(5.4, -0.4, 6.6, 6.6, -0.5, 4.6, 0.9));
-    // 파란 창 줄 — 두 손바닥 안쪽을 따라.
-    for (const [wx2, wz] of [[1.6, 1.8], [-0.2, 1.9], [-2, 2.4], [-3.6, 3.4]] as [number, number][]) {
+    out.push(...hornFaces(5.4, 0.9, 4.6, 6.6, 1, 6.6, 0.9));
+    out.push(...hornFaces(-5.4, -0.4, 6.6, -6.6, -0.5, 4.6, 0.9));
+    // 파란 창 줄 — 두 손바닥 안쪽(통로 쪽)을 따라.
+    for (const [wx2, wz] of [[-1.6, 1.8], [0.2, 1.9], [2, 2.4], [3.6, 3.4]] as [number, number][]) {
       out.push(topFace(groundEllipse(...project(wx2, 0.7, wz), 0.6, 0.45), 0.5));
     }
-    for (const [wx2, wz] of [[-1.6, 9.5], [0.2, 9.4], [2, 8.9], [3.6, 7.9]] as [number, number][]) {
+    for (const [wx2, wz] of [[1.6, 9.5], [-0.2, 9.4], [-2, 8.9], [-3.6, 7.9]] as [number, number][]) {
       out.push(topFace(groundEllipse(...project(wx2, -0.2, wz), 0.55, 0.4), 0.45));
     }
     // 갈빗살 — 판을 가로지르는 가는 골.
     for (const [ox, oz, ix2, iz] of [
-      [-4.8, 3.6, -3.6, 5], [-3, 1.6, -2.2, 3.4], [-0.8, 0.7, -0.5, 2.9],
+      [4.8, 3.6, 3.6, 5], [3, 1.6, 2.2, 3.4], [0.8, 0.7, 0.5, 2.9],
     ] as [number, number, number, number][]) {
-      out.push(sideFace(polyPath3([[ox, 0.85, oz], [ix2, 0.75, iz], [ix2 + 0.3, 0.75, iz], [ox + 0.3, 0.85, oz]]), 0.18));
+      out.push(sideFace(polyPath3([[ox, 0.85, oz], [ix2, 0.75, iz], [ix2 - 0.3, 0.75, iz], [ox - 0.3, 0.85, oz]]), 0.18));
     }
     for (const [ox, oz, ix2, iz] of [
-      [4.8, 7.6, 3.6, 6.1], [3, 9.7, 2.2, 7.9], [0.8, 10.5, 0.5, 8.4],
+      [-4.8, 7.6, -3.6, 6.1], [-3, 9.7, -2.2, 7.9], [-0.8, 10.5, -0.5, 8.4],
     ] as [number, number, number, number][]) {
       out.push(sideFace(polyPath3([[ox, -0.35, oz], [ix2, -0.25, iz], [ix2 + 0.3, -0.25, iz], [ox + 0.3, -0.35, oz]]), 0.15));
     }
