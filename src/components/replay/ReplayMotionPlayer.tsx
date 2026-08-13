@@ -1112,13 +1112,26 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(groundEllipse(ax2, ay2, 1.3, 0.55), 0.3),
     ];
   },
-  /* 엔지니어링 베이 — 상자 + 연구 돔 둘 + 짧은 침. */
-  ebay: () => [
-    ...boxFaces3(0, 0.2, 9, 5.4, 3.4),
-    ...domeFaces3(-2.2, -0.6, 2, 1.7, 3.4),
-    ...domeFaces3(1.9, -0.4, 1.5, 1.3, 3.4),
-    ...hornFaces(3.4, 1.4, 3.4, 3.4, 1.4, 5.8, 0.4),
-  ],
+  /* 엔지니어링 베이(실물 참고) — 사방 대각으로 뻗은 팔 끝의 원반 발 넷, 각진 몸체
+     더미, 앞의 끝이 빛나는 통, 지붕 안테나. */
+  ebay: () => {
+    const foot = (fx: number, fy: number): ShapeFace[] => [
+      ...hornFaces(fx * 0.45, fy * 0.45, 1.9, fx * 0.85, fy * 0.85, 0.7, 0.9),
+      bodyFace(discPath3(fx, fy, 0.35, 1.5)),
+      topFace(discPath3(fx, fy, 0.38, 1), 0.25),
+      ...cylinderFaces3(fx, fy, 0.32, 1, 0.35),
+    ];
+    return [
+      ...foot(-5, -3), ...foot(5, -3),
+      ...boxFaces3(0, -0.4, 6.6, 4, 3),
+      ...boxFaces3(-0.8, -1, 3, 2.4, 1.5, 3),
+      ...boxFaces3(1.8, -1.4, 1.5, 1.5, 2.3, 3),
+      ...tubeFaces(1.7, 0.6, 1.7, 2.5, 0.65, 1.9),
+      topFace(groundEllipse(...project(1.7, 2.5, 2.4), 0.5, 0.4), 0.35),
+      ...hornFaces(-2.3, -1.7, 4.5, -2.3, -1.7, 6.5, 0.32),
+      ...foot(-5.2, 3.2), ...foot(5.2, 3.2),
+    ];
+  },
   /* 아머리(정정: 유명한 삼발이) — 세 다리 위에 올린 둥근 몸 + 위 굴뚝. */
   armory: () => {
     const leg = (ang: number): ShapeFace[] => {
@@ -1146,14 +1159,32 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...cylinderFaces3(-3.2, -1.6, 0.6, 1.4, 3),
     ...cylinderFaces3(3.2, -1.6, 0.6, 1.4, 3),
   ],
-  /* 포지 — 낮은 몸 + 앞 빛 슬릿 + 모서리 뿔. */
+  /* 포지(실물 참고) — 큰 렌즈 돔(뒤 오른)과 작은 렌즈 돔(앞 오른), 가운데 총알 기둥
+     무리, 그 사이를 잇는 배관, 왼앞의 아치 별채. */
   forge: () => {
-    const [sx2, sy2] = project(0, 2.65, 1.6);
+    const lens = (x: number, y: number, z: number, r: number): ShapeFace[] => {
+      const [px2, py2] = project(x, y, z);
+      return [
+        topFace(groundEllipse(px2, py2, r, r * 0.7), 0.3),
+        topFace(groundEllipse(px2, py2, r * 0.55, r * 0.4), 0.5),
+      ];
+    };
     return [
-      ...boxFaces3(0, 0, 7.8, 5, 3.6),
-      topFace(groundEllipse(sx2, sy2, 2.2, 0.5), 0.35),
-      ...hornFaces(-3.2, -1.8, 3.6, -3.7, -2.2, 6, 0.8),
-      ...hornFaces(3.2, -1.8, 3.6, 3.7, -2.2, 6, 0.8),
+      ...boxFaces3(-3, 1.6, 3.4, 3, 2.4),
+      ...domeFaces3(-3, 1.6, 1.5, 1.1, 2.4),
+      // 총알 기둥 무리 — 높이 다른 넷.
+      ...cylinderFaces3(-2.9, -2.6, 0.75, 3.6), ...domeFaces3(-2.9, -2.6, 0.75, 0.7, 3.6),
+      ...cylinderFaces3(-1.6, -1.6, 0.85, 4.6), ...domeFaces3(-1.6, -1.6, 0.85, 0.8, 4.6),
+      ...cylinderFaces3(-0.2, -2.4, 0.8, 5.4), ...domeFaces3(-0.2, -2.4, 0.8, 0.75, 5.4),
+      ...cylinderFaces3(0.6, -0.8, 0.7, 3.2), ...domeFaces3(0.6, -0.8, 0.7, 0.65, 3.2),
+      // 배관 — 기둥에서 큰 돔으로 흘러든다.
+      ...tubeFaces(0.2, -1.8, 2.6, -1.1, 0.4, 2.6),
+      ...tubeFaces(0.4, -1.2, 2.8, -0.5, 0.4, 1.7),
+      // 렌즈 돔 큰 것·작은 것.
+      ...domeFaces3(3, -1.2, 2.5, 2.3),
+      ...lens(3, -1.2, 2.35, 1.05),
+      ...domeFaces3(2.8, 2.4, 1.55, 1.3),
+      ...lens(2.8, 2.4, 1.35, 0.65),
     ];
   },
   /* 사이버네틱스 코어(정정) — 아래쪽을 큰 구슬들이 빙 두른 원통 + 돔 + 위 빛 구. */
