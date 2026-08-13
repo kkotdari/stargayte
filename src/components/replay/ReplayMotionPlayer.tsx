@@ -638,13 +638,33 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
   ],
   /* 파일런 — 얇은 마름모 크리스탈의 허리를 둘러싼 납작한 고리(요청: "기둥을 둘러싼
      고리") — 토성 고리처럼 좌우로 삐져나온다. */
-  diamond: [
-    ["M8 1 12 8 8 15 4 8Z", 1],
-    // 왼쪽 면을 밝혀 크리스탈의 입체를 살린다(요청: 전부 입체).
-    ["M8 1 L4 8 L8 15 Z", 0.25, "#fff"],
-    // 안쪽 타원은 감는 방향을 뒤집어 구멍이 된다(nonzero 규칙) — 그래야 '고리'다.
-    ["M2.6 8a5.4 1.5 0 1 0 10.8 0a5.4 1.5 0 1 0-10.8 0Z M4 8a4 0.9 0 1 1 8 0a4 0.9 0 1 1-8 0Z", 0.4, "#000"],
-  ],
+  /* 파일런(3D 재작도, 지적: 위아래 틀어짐·그림자 없음·고리 뒷면이 수정을 안 가림) —
+     세운 수정(팔면체)과 허리의 토성 고리를 투영으로 그린다. 그리는 차례가 곧 앞뒤다:
+     바닥 그림자 → 고리 뒷반쪽 → 수정 → 고리 앞반쪽. */
+  diamond: (() => {
+    const [cx, cy] = project(0, 0, 4);
+    const rxo = 3.3;
+    const ryo = rxo * 0.45;
+    const rxi = 2.4;
+    const ryi = rxi * 0.45;
+    const ringBack = `M${cx - rxo} ${cy} A${rxo} ${ryo} 0 0 1 ${cx + rxo} ${cy} L${cx + rxi} ${cy} A${rxi} ${ryi} 0 0 0 ${cx - rxi} ${cy} Z`;
+    const ringFront = `M${cx - rxo} ${cy} A${rxo} ${ryo} 0 0 0 ${cx + rxo} ${cy} L${cx + rxi} ${cy} A${rxi} ${ryi} 0 0 1 ${cx - rxi} ${cy} Z`;
+    const [tx, ty] = project(0, 0, 8);
+    const [bx, by] = project(0, 0, 0.4);
+    const [lx, ly] = project(-1.8, 0.9, 4.2);
+    const [rx, ry] = project(1.8, 0.9, 4.2);
+    const crystal = `M${tx} ${ty} L${rx} ${ry} L${bx} ${by} L${lx} ${ly} Z`;
+    return [
+      sideFace(discPath3(0, 0, 0, 2.4), 0.28),
+      bodyFace(ringBack),
+      sideFace(ringBack, 0.3),
+      bodyFace(crystal),
+      topFace(`M${tx} ${ty} L${lx} ${ly} L${bx} ${by} Z`, 0.25),
+      sideFace(`M${tx} ${ty} L${rx} ${ry} L${bx} ${by} Z`, 0.25),
+      bodyFace(ringFront),
+      topFace(ringFront, 0.22),
+    ];
+  })(),
   /* 스타포트 — 스크린샷 대조(지적: 종이비행기 설명은 오해였다): 몸통 위에 큰 원형 착륙
      패드가 얹히고, 대각선으로 안테나 팔(끝에 둥근 등)이 뻗으며, 벌어진 다리들이 받친다.
      패드를 맨 나중에 그려 팔·몸통의 밑동을 덮는다(패드 뒤에서 나온 것처럼). */
@@ -679,23 +699,24 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
     ["M8 3.4 L11.4 6.4 L9.6 13.8 L6.2 10.8 Z", 1],
     ["M8 3.4 L11.4 6.4 L9.6 13.8 Z", 0.2, "#000"],
   ],
-  /* 게이트(재편) — 바닥은 원판이 아니라 사방으로 놓인 아주 넓고 완만한 경사로(요청):
-     낮은 절두 피라미드를 투영해 위 평평한 단 + 사방 비탈을 만든다. 첨탑과 소환구는
-     그 단 위에 그대로 선다. */
+  /* 게이트(재편 둘) — 발판은 하나가 아니라 사방으로 나뉜 네 경사로다(지적). 크기는
+     사방이 똑같고, 가운데 단(플래토)에 첨탑·소환구가 선다. 뒤 경사로는 첨탑이 가린다. */
   gate: (() => {
-    const b = 7.4;
-    const bd = 4.8;
-    const tw = 5.4;
-    const td = 3.2;
     const h = 1.1;
-    const top = polyPath3([[-tw, td, h], [tw, td, h], [tw, -td, h], [-tw, -td, h]]);
-    const front = polyPath3([[-tw, td, h], [tw, td, h], [b, bd, 0], [-b, bd, 0]]);
-    const right = polyPath3([[tw, td, h], [tw, -td, h], [b, -bd, 0], [b, bd, 0]]);
-    const left = polyPath3([[-tw, -td, h], [-tw, td, h], [-b, bd, 0], [-b, -bd, 0]]);
+    const a = 2.7;
+    const b = 2;
+    const run = 2.3;
+    const widen = 1;
+    const plateau = polyPath3([[-a, b, h], [a, b, h], [a, -b, h], [-a, -b, h]]);
+    const front = polyPath3([[-a, b, h], [a, b, h], [a + widen, b + run, 0], [-a - widen, b + run, 0]]);
+    const back = polyPath3([[-a, -b, h], [a, -b, h], [a + widen, -b - run, 0], [-a - widen, -b - run, 0]]);
+    const right = polyPath3([[a, -b, h], [a, b, h], [a + run, b + widen, 0], [a + run, -b - widen, 0]]);
+    const left = polyPath3([[-a, -b, h], [-a, b, h], [-a - run, b + widen, 0], [-a - run, -b - widen, 0]]);
     return [
-      bodyFace(`${top} ${front} ${right} ${left}`),
-      topFace(top, 0.22),
+      bodyFace(`${back} ${left} ${right} ${plateau} ${front}`),
+      sideFace(back, 0.2),
       sideFace(right, 0.3),
+      topFace(plateau, 0.22),
       ["M8 4 L11 11.8 L5 11.8 Z", 1],
       ["M8 4 L11 11.8 L8 11.8 Z", 0.22, "#000"],
       ["M5.3 10.78a2 1.2 18 1 0 3.8 1.24a2 1.2 18 1 0-3.8-1.24Z", 0.45, "#000"],
