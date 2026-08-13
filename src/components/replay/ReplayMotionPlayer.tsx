@@ -3692,10 +3692,32 @@ export default function ReplayMotionPlayer({
   /* 건물 자리 회피(요청: 밟고 지나가지 않고 돌아간다) — 서 있는 건물 발자국(+여유
      0.5타일) 안으로 들어온 유닛 자리는 가장 가까운 변 밖으로 밀어낸다. 선분이 발자국을
      가로지르면 안쪽 구간이 변을 따라 미끄러져, 돌아가는 걸음으로 보인다. */
-  /* 입체 보기 원근(지적) — 가까운(아래) 마커일수록 크게. 마커 공통 transform의 --mk
-     배율 변수로 먹인다. */
+  /* 입체 보기 원근(지적: 유닛만 원근이고 맵이 그대로) — 지형 그림에 CSS
+     perspective+rotateX를 걸고, 마커 자리는 같은 사영 공식으로 매핑해 그림 위 제자리에
+     얹는다. 깊이 배율(--mk)도 같은 k를 쓴다. */
+  const PITCH_TH = Math.PI / 4;
+  const PITCH_P = 650;
+  const pitchK = (y: number): number => {
+    if (!pitched) return 1;
+    const h = mapRef.current?.clientHeight ?? 220;
+    const v = (y / grid.height - 0.5) * h;
+    return PITCH_P / (PITCH_P - v * Math.sin(PITCH_TH));
+  };
+  const posStyle = (x: number, y: number): { left: string; top: string } => {
+    if (!pitched) return { ...posStyle(x, y) };
+    const el = mapRef.current;
+    const w = el?.clientWidth ?? 320;
+    const h = el?.clientHeight ?? 220;
+    const u = (x / grid.width - 0.5) * w;
+    const v = (y / grid.height - 0.5) * h;
+    const k = PITCH_P / (PITCH_P - v * Math.sin(PITCH_TH));
+    return {
+      left: `${(50 + ((u * k) / w) * 100).toFixed(3)}%`,
+      top: `${(50 + ((v * Math.cos(PITCH_TH) * k) / h) * 100).toFixed(3)}%`,
+    };
+  };
   const depthMk = (y: number): React.CSSProperties =>
-    (pitched ? { "--mk": (0.72 + 0.6 * (y / grid.height)).toFixed(3) } as React.CSSProperties : {});
+    (pitched ? { "--mk": pitchK(y).toFixed(3) } as React.CSSProperties : {});
   const dodge = (px: number, py: number): [number, number] => {
     for (const [bs, bx2, by2, bu, , g2, liftAt2] of motion.builds) {
       if (bs > t) continue;
@@ -4356,7 +4378,7 @@ export default function ReplayMotionPlayer({
         style={{
           /* 입체 보기(재구성: CSS 3D 빌보드가 브라우저 따라 누워 보임) — 바닥(자리·그림)만
              세로로 누르고, 마커는 눌리지 않은 채 서 있는 2.5D. */
-          aspectRatio: `${grid.width} / ${grid.height * (pitched ? 0.52 : 1)}`,
+          aspectRatio: `${grid.width} / ${grid.height * (pitched ? 0.74 : 1)}`,
           ...(zoom > 1 || pitched ? { overflow: "hidden" } : {}),
           ...(zoom > 1 ? { cursor: dragRef.current ? "grabbing" : "grab" } : {}),
         }}
@@ -4370,7 +4392,13 @@ export default function ReplayMotionPlayer({
           } : undefined}
         >
         {grid.image
-          ? <img className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`} draggable={false} />
+          ? (
+            <img
+              className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`}
+              draggable={false}
+              style={pitched ? { transform: `perspective(${PITCH_P}px) rotateX(45deg)` } : undefined}
+            />
+          )
           : <div className="scr-motion-canvas scr-motion-canvas-blank" />}
 
         {/* 건물(요청: 합치기 대신) — 기본은 작은 이름이 늘 떠 있되, 가까이 겹치는 같은
@@ -4541,7 +4569,13 @@ export default function ReplayMotionPlayer({
                   zIndex: 1000 + Math.round(producing || researching || afloat ? t : sec),
                   ...(fade < 1 ? { opacity: fade } : {}),
                   ...depthMk(by + footDy(unit)),
-                  left: pct(bx + footDx(unit) - (ADDONS.has(unit) ? 1.6 : 0), grid.width),
+                  ...posStyle(
+                    bx + footDx(unit) - (ADDONS.has(unit) ? 1.6 : 0),
+                    by + footDy(unit) + (ADDONS.has(unit) ? 0.4 : 0)
+                      + (text !== name && !ADDONS.has(unit)
+                        ? (shapeKind ? -riseOf(unit) / 2 : (FOOTPRINT[unit] ?? [3, 2])[1] * 0.1)
+                        : 0),
+                  ),
                   // 건물은 바닥 위로 솟는다(지적: "실제 건물은 바닥위에 높이가 있어") —
                   // 캔버스 높이에 그 몫(riseOf, 발자국 폭 비례)을 더하고, 늘어난 만큼
                   // 위로 올려 바닥선은 발자국 그대로다. 단 전용 벡터가 있는 건물만이다
@@ -4549,13 +4583,6 @@ export default function ReplayMotionPlayer({
                   // 높이 몫까지 늘어나면 발자국보다 세로로 긴 거짓 기둥이 된다.
                   // 벡터 없는 네모는 발자국의 80%로만 그린다(요청) — 대신 아래로 내려
                   // 바닥선은 발자국 바닥 그대로다.
-                  top: pct(
-                    by + footDy(unit) + (ADDONS.has(unit) ? 0.4 : 0)
-                      + (text !== name && !ADDONS.has(unit)
-                        ? (shapeKind ? -riseOf(unit) / 2 : (FOOTPRINT[unit] ?? [3, 2])[1] * 0.1)
-                        : 0),
-                    grid.height,
-                  ),
                   // 캔버스 비율 = 발자국 폭 × (발자국 높이 + 벡터 건물만 높이 몫)(요청·지적).
                   ...(text !== name && (!ADDONS.has(unit) || shapeKind)
                     ? {
@@ -4718,8 +4745,7 @@ export default function ReplayMotionPlayer({
                   key={`fresh-${p.raw}-${unit}-${si}`}
                   className="scr-motion-fresh"
                   style={{
-                    left: pct(fx, grid.width),
-                    top: pct(fy, grid.height),
+                    ...posStyle(fx, fy),
                     ...depthMk(fy),
                     ...glyphStyle(p.raw, team),
                   }}
@@ -4813,7 +4839,7 @@ export default function ReplayMotionPlayer({
                 key={`mine-${ri}-${i}`}
                 className="scr-motion-miner"
                 style={{
-                  left: pct(x, grid.width), top: pct(y, grid.height),
+                  ...posStyle(x, y),
                   ...depthMk(y),
                   ...glyphStyle(owner!.raw, team),
                 }}
@@ -4838,7 +4864,7 @@ export default function ReplayMotionPlayer({
             <span
               key={m.key}
               className={cx("scr-motion-base", m.ghost && "scr-motion-base-ghost")}
-              style={{ left: pct(m.x, grid.width), top: pct(m.y, grid.height) }}
+              style={{ ...posStyle(m.x, m.y) }}
             >
               {/* 테두리 한 겹(요청: 중복 제거) — 지금 색 모드의 색으로. 어두운 색에 받치던
                   흰 겉테두리는 걷었다(요청: 흰 테두리 제거) — 아바타가 커진 뒤로는 색 테가
@@ -5129,7 +5155,7 @@ export default function ReplayMotionPlayer({
                     cloaked && "scr-motion-cloaked",
                   )}
                   style={{
-                    ...(() => { const [ax3, ay3] = dodge(pos.x, pos.y); return { left: pct(ax3, grid.width), top: pct(ay3, grid.height) }; })(),
+                    ...(() => { const [ax3, ay3] = dodge(pos.x, pos.y); return { ...posStyle(ax3, ay3) }; })(),
                   ...depthMk(pos.y),
                     ...depthMk(pos.y),
                     zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
@@ -5203,7 +5229,7 @@ export default function ReplayMotionPlayer({
                     cloaked && "scr-motion-cloaked",
                   )}
                   style={{
-                    ...(() => { const [ax3, ay3] = dodge(pos.x + dx, pos.y + dy); return { left: pct(ax3, grid.width), top: pct(ay3, grid.height) }; })(),
+                    ...(() => { const [ax3, ay3] = dodge(pos.x + dx, pos.y + dy); return { ...posStyle(ax3, ay3) }; })(),
                     ...depthMk(pos.y + dy),
                     zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
                     ...glyphStyle(p.raw, team),
@@ -5339,7 +5365,7 @@ export default function ReplayMotionPlayer({
                     team === 2 ? "scr-motion-team2" : "scr-motion-team1",
                   )}
                   style={{
-                    ...(() => { const [ax3, ay3] = dodge(pos.x + dx, pos.y + dy); return { left: pct(ax3, grid.width), top: pct(ay3, grid.height) }; })(),
+                    ...(() => { const [ax3, ay3] = dodge(pos.x + dx, pos.y + dy); return { ...posStyle(ax3, ay3) }; })(),
                     ...depthMk(pos.y + dy),
                     // 겹침 차례는 마지막 명령 시각(지적).
                     zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
@@ -5386,7 +5412,7 @@ export default function ReplayMotionPlayer({
                   key={`${p.raw}-bub${bi}`}
                   className="scr-motion-bubble"
                   style={{
-                    left: pct(b.x, grid.width), top: pct(by, grid.height),
+                    ...posStyle(b.x, by),
                     zIndex: 20000 + bi,
                     ...chipStyle(p.raw, team),
                     "--bub": bg,
@@ -5460,7 +5486,7 @@ export default function ReplayMotionPlayer({
                   team === 2 ? "scr-motion-team2" : "scr-motion-team1",
                 )}
                 style={{
-                  ...(() => { const [ax3, ay3] = dodge(pos.x, pos.y); return { left: pct(ax3, grid.width), top: pct(ay3, grid.height) }; })(),
+                  ...(() => { const [ax3, ay3] = dodge(pos.x, pos.y); return { ...posStyle(ax3, ay3) }; })(),
                   ...depthMk(pos.y),
                   // 겹침 차례는 마지막 명령 시각(지적).
                   zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
@@ -5503,7 +5529,7 @@ export default function ReplayMotionPlayer({
             <span
               key={`ovie0-${p.raw}`}
               className={cx("scr-motion-army", "scr-motion-dot", team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
-              style={{ left: pct(home[0] + 2.5, grid.width), top: pct(home[1] - 2.5, grid.height), ...glyphStyle(p.raw, team) }}
+              style={{ ...posStyle(home[0] + 2.5, home[1] - 2.5), ...glyphStyle(p.raw, team) }}
             >
               <ShapeIcon kind="ovie" flat={!pitched} className="scr-motion-ovie" />
             </span>
@@ -5541,8 +5567,7 @@ export default function ReplayMotionPlayer({
               key={`scv-${i}`}
               className="scr-motion-fresh"
               style={{
-                left: pct(cx0 + sx2, grid.width),
-                top: pct(cy0 + sy2, grid.height),
+                ...posStyle(cx0 + sx2, cy0 + sy2),
                 ...glyphStyle(raw, teamOfRaw(raw)),
               }}
             >
@@ -5570,7 +5595,7 @@ export default function ReplayMotionPlayer({
                 key={`c-${i}`}
                 className="scr-motion-nukefx"
                 style={{
-                  left: pct(x, grid.width), top: pct(y, grid.height),
+                  ...posStyle(x, y),
                   width: pct(8, grid.width),
                 }}
               >
@@ -5618,7 +5643,7 @@ export default function ReplayMotionPlayer({
                   key={`c-${i}`}
                   className={`scr-motion-castfx scr-fx-${fx[0]}`}
                   style={{
-                    left: pct(x, grid.width), top: pct(y, grid.height),
+                    ...posStyle(x, y),
                     width: pct(fx[1], grid.width),
                   }}
                 />
@@ -5633,7 +5658,7 @@ export default function ReplayMotionPlayer({
                 key={`c-${i}`}
                 className="scr-motion-swarmfx"
                 style={{
-                  left: pct(x, grid.width), top: pct(y, grid.height),
+                  ...posStyle(x, y),
                   width: pct(6, grid.width),
                 }}
               >
@@ -5651,7 +5676,7 @@ export default function ReplayMotionPlayer({
                 key={`c-${i}`}
                 className="scr-motion-stormfx"
                 style={{
-                  left: pct(x, grid.width), top: pct(y, grid.height),
+                  ...posStyle(x, y),
                   width: pct(3, grid.width),
                 }}
               >
@@ -5671,7 +5696,7 @@ export default function ReplayMotionPlayer({
                 "scr-motion-cast",
                 teamOfRaw(raw) === 2 ? "scr-motion-team2" : "scr-motion-team1",
               )}
-              style={{ left: pct(x, grid.width), top: pct(y, grid.height), ...castStyle(raw, teamOfRaw(raw)) }}
+              style={{ ...posStyle(x, y), ...castStyle(raw, teamOfRaw(raw)) }}
             >
               {TECH_KO[tech]}
             </span>
@@ -5701,7 +5726,7 @@ export default function ReplayMotionPlayer({
                       노랗게 내리쬔다. */}
                   <span
                     className="scr-motion-beam"
-                    style={{ left: pct(cx2, grid.width), top: pct(cy2, grid.height) }}
+                    style={{ ...posStyle(cx2, cy2) }}
                   />
                   {/* 유닛 승강(요청) — 태울 땐 광선 속으로 떠오르고, 내릴 땐 내려온다. */}
                   {[0, 1].map((di) => (
@@ -5713,8 +5738,7 @@ export default function ReplayMotionPlayer({
                         di === 1 && "scr-motion-lift-b",
                       )}
                       style={{
-                        left: pct(cx2 + (di === 1 ? 0.7 : -0.4), grid.width),
-                        top: pct(cy2, grid.height),
+                        ...posStyle(cx2 + (di === 1 ? 0.7 : -0.4), cy2),
                         color: modeColor(p.raw, team),
                       }}
                     />
