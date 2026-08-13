@@ -1566,8 +1566,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     return [
       bodyFace(hull), topFace(hull, 0.16),
       capFace(groundEllipse(cx2, cy2, 0.5, 0.38), 0.4),
-      // 아래 꼬리총(요청, 정정: 연결축 짧게).
-      ...hornFaces(0, -2.4, 5.9, 0, -3.1, 5.2, 0.4),
+      // 미사일 포신(정정 둘) — 가는 지주로 본 몸체 아래에 한참 떨어져 매달린다.
+      ...hornFaces(0, -1.7, 5.9, 0, -1.9, 4.3, 0.28),
+      ...tubeFaces(0, -2.9, 0, -1.1, 0.42, 3.8),
     ];
   },
   /* 배틀크루저(지적) — 앞은 장도리(가로 머리 + 갈라진 두 발), 뒤는 T자 양날개. */
@@ -4428,6 +4429,17 @@ export default function ReplayMotionPlayer({
                   {fighting && (di + cyc) % 7 === 0 && (
                     <span key={`pf-${cyc}`} className="scr-motion-puff" />
                   )}
+                  {/* 캐리어는 전투 때 인터셉터가 주위를 난다(요청) — 작은 점 셋이 궤도. */}
+                  {fighting && u === "Carrier" && [0, 1, 2].map((ci) => (
+                    <span
+                      key={`ic-${ci}`}
+                      className="scr-motion-ceptor"
+                      style={{
+                        left: `${50 + Math.cos(t * 2.2 + ci * 2.1) * 95}%`,
+                        top: `${50 + Math.sin(t * 2.9 + ci * 2.1) * 85}%`,
+                      }}
+                    />
+                  ))}
                 </span>
               );
             });
@@ -4576,6 +4588,17 @@ export default function ReplayMotionPlayer({
                   {fighting && (di + cyc) % 7 === 0 && (
                     <span key={`pf-${cyc}`} className="scr-motion-puff" />
                   )}
+                  {/* 캐리어는 전투 때 인터셉터가 주위를 난다(요청) — 작은 점 셋이 궤도. */}
+                  {fighting && u === "Carrier" && [0, 1, 2].map((ci) => (
+                    <span
+                      key={`ic-${ci}`}
+                      className="scr-motion-ceptor"
+                      style={{
+                        left: `${50 + Math.cos(t * 2.2 + ci * 2.1) * 95}%`,
+                        top: `${50 + Math.sin(t * 2.9 + ci * 2.1) * 85}%`,
+                      }}
+                    />
+                  ))}
                 </span>
               );
             });

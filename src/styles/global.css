@@ -12873,6 +12873,13 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   50% { opacity: 0.9; scale: 1; }
   100% { opacity: 0.2; scale: 0.75; }
 }
+/* 캐리어 인터셉터(요청) — 전투 중 모함 주위를 도는 작은 점. */
+.scr-motion-ceptor {
+  position: absolute; width: 3px; height: 3px; border-radius: 50%;
+  background: currentColor; opacity: 0.85; pointer-events: none;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 2px currentColor;
+}
 .scr-motion-puff {
   position: absolute; left: 50%; top: 50%; width: 16px; height: 16px;
   transform: translate(-50%, -50%); pointer-events: none; border-radius: 50%;
