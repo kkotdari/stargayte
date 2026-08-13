@@ -1205,6 +1205,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...hornFaces(0, 1.3, 0.4, 0, 2.8, 2.6, 0.9),
   ],
 
+  /* 핵 화구 돔(요청: 반구형 돔) — 폭발 화구를 3D 반구로. 색은 감싼 쪽의 주황
+     (currentColor)이 정하고, 재생 쪽 CSS가 부풀리며 사그라뜨린다. */
+  nukedome: () => {
+    const [hx3, hy3] = project(-1.8, -1.2, 3.4);
+    return [
+      ...domeFaces3(0, 0, 7, 5),
+      topFace(groundEllipse(hx3, hy3, 2.2, 1.5), 0.35),
+    ];
+  },
   /* ── 갈래 기호도 전부 3D(요청: 마법·공중까지) — 삼각형은 삼각뿔로. 공중은 높이 떠
      있고 꼬리 지느러미가 달린다. 정면은 +y. */
   troop: () => {
@@ -4118,7 +4127,8 @@ export default function ReplayMotionPlayer({
                 ) : (
                   <>
                     <span className="scr-motion-nuke-flash" />
-                    <span className="scr-motion-nuke-fire" />
+                    {/* 화구는 반구 돔(요청) — 평면 원 대신 3D 돔이 부푼다. */}
+                    <span className="scr-motion-nuke-domewrap"><ShapeIcon kind="nukedome" /></span>
                     <span className="scr-motion-nuke-ring" />
                   </>
                 )}

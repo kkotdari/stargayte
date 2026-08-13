@@ -12808,18 +12808,22 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   12% { opacity: 1; scale: 1; }
   100% { opacity: 0; scale: 1.35; }
 }
-/* 화구 — 주황 불덩이가 부풀며 사그라든다. */
-.scr-motion-nuke-fire {
-  position: absolute; left: 50%; top: 50%; width: 55%; height: 55%;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(circle, rgba(255,220,120,0.6) 0%, rgba(255,120,30,0.45) 40%, rgba(160,40,10,0.2) 70%, transparent 75%);
-  mix-blend-mode: screen;
-  animation: scr-nuke-fire 2.6s ease-out forwards;
+/* 화구는 반구 돔(요청) — 3D 돔이 부풀며 사그라든다. 주황은 wrap의 color(currentColor). */
+.scr-motion-nuke-domewrap {
+  position: absolute; left: 50%; top: 50%; width: 72%; aspect-ratio: 1;
+  transform: translate(-50%, -79%);
+  color: #ff9d4a; mix-blend-mode: screen; pointer-events: none;
+  animation: scr-nuke-dome 2.6s ease-out forwards;
 }
-@keyframes scr-nuke-fire {
+.scr-motion-nuke-domewrap .scr-motion-shape-svg { width: 100%; height: 100%; filter: none; }
+@keyframes scr-nuke-dome {
   0% { opacity: 0; scale: 0.3; }
-  18% { opacity: 1; scale: 1; }
-  100% { opacity: 0; scale: 1.7; }
+  18% { opacity: 0.85; scale: 1; }
+  100% { opacity: 0; scale: 1.6; }
+}
+/* 입체 보기에서는 돔을 바닥선 기준으로 도로 세운다(빌보드). */
+.scr-motion-pitched .scr-motion-nuke-domewrap {
+  transform: translate(-50%, -79%) rotateX(-38deg); transform-origin: 50% 79%;
 }
 /* 충격 링 — 얇은 빛 고리가 퍼진다. */
 .scr-motion-nuke-ring {
