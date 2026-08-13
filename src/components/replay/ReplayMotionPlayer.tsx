@@ -461,6 +461,16 @@ const ZERG_COLLAR = "M5.9 5.75 L10.1 5.75 Q10.2 6.9 8 7.2 Q5.8 6.9 5.9 5.75 Z";
 /** 뒤-오른 다리의 끝 — 반원통을 뒤에서 본 볼록한 등(지적)이라, 구멍 대신 둥근 끝에
  *  얇은 음영 초승달을 얹어 볼록함을 말한다. */
 const ZERG_BACKLEG_END = "M15.1 9.85 Q16 9.95 15.95 10.5 Q15.9 10.9 15.55 11.1 Q15.9 10.4 15.1 9.85 Z";
+/* 뿔 그림자(요청: 모든 3D 요소는 제 그림자를 갖는다) — 빛이 왼쪽 위라 뿔마다 오른쪽
+   반쪽이 어둡다. 가운데 뿔은 이 어둠이 몸통과의 구분선 노릇도 한다(지적: 구분 안 됨). */
+const ZERG_HORN_SHADE_LAIR =
+  "M5.6 3 Q5.4 6.6 6.1 10.3 L5.2 10.2 Q4.8 6.2 5.6 3 Z"
+  + " M10.2 3.4 Q11.1 5.8 10.6 10.1 L9.9 10.1 Q10.3 5.8 10.2 3.4 Z"
+  + " M14.9 3.6 Q15.9 6.8 14.9 10.8 L14.4 10.7 Q15.2 6.8 14.9 3.6 Z";
+const ZERG_HORN_SHADE_HIVE =
+  "M5.5 1.6 Q5.1 6.6 5.9 10.2 L5 10.1 Q4.4 6 5.5 1.6 Z"
+  + " M10.1 0.8 Q11.3 4.4 10.7 10 L9.9 10 Q10.4 4.6 10.1 0.8 Z"
+  + " M14.8 1.6 Q16 6 14.7 10.9 L14.1 10.7 Q15.1 6.2 14.8 1.6 Z";
 /** 사선 시점의 어두운 오른 옆면(지적: 평면 회전이 아니라 xyz 사선 입체) — 다른 건물들의
  *  입체 규칙(밝은 윗면·어두운 옆면)과 같은 결. */
 const ZERG_SHADE = "M9.9 5.6 Q10.9 10.4 14.2 12.6 Q11.5 13.4 8.6 13.6 Q9.6 10 9.9 5.6 Z";
@@ -588,6 +598,7 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
       + " M9 10.2 Q9.2 5.4 10.2 3.4 Q11.1 5.8 10.6 10.1 Z"
       + " M14.9 10.8 Q15.9 6.8 14.9 3.6 Q13.9 7 13.9 10.5 Z", 1],
     sideFace(ZERG_SHADE, 0.22),
+    sideFace(ZERG_HORN_SHADE_LAIR, 0.28),
     sideFace(ZERG_BACKLEG_END, 0.25),
     capFace(ZERG_CAPS_ALL),
     sideFace(ZERG_COLLAR, 0.35),
@@ -606,6 +617,7 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
       + " M4.9 15 Q3.7 15.7 3.2 15 Q4 14.8 4.3 14.2 Z"
       + " M10.5 14.4 Q11.7 15.1 12.3 14.4 Q11.4 14.2 11.1 13.7 Z", 1],
     sideFace(ZERG_SHADE, 0.22),
+    sideFace(ZERG_HORN_SHADE_HIVE, 0.28),
     sideFace(ZERG_BACKLEG_END, 0.25),
     capFace(ZERG_CAPS_ALL),
     sideFace(ZERG_COLLAR, 0.35),
