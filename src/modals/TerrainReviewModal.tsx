@@ -171,8 +171,8 @@ export default function TerrainReviewModal({
         </div>
         <div className="scr-modal-body">
           <p className="scr-terrain-hint">
-            라임색 칸이 <b>이동 불가</b>예요. 붓은 막고, 지우개는 열고, 요술봉은 비슷한 색을
-            한꺼번에 뒤집어요 — 자동 분석이 놓친 램프·다리를 열어 주세요.
+            <b>지상 유닛이 다니지 못하는 곳만</b> 라임색으로 칠해 주세요 — 붓은 막고,
+            지우개는 열고, 요술봉은 비슷한 색을 한꺼번에 뒤집어요.
           </p>
           {err && <div className="scr-err">{err}</div>}
           {loading ? (
