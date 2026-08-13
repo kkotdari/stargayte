@@ -3508,6 +3508,57 @@ export default function ReplayMotionPlayer({
 
   /* 드래그 팬(지적: 확대 후 드래그가 이상함 — 브라우저의 이미지 드래그가 끌려 나왔다)
      — 확대 중에는 드래그로 지도를 민다. 경계 죔은 휠과 같은 식. */
+  /* 지도 위에서만 핀치 줌·팬(요청) — 페이지 줌은 도로 막고, 지도(mapRef)에 붙인
+     네이티브 두 손가락 처리로 확대·이동한다. 손가락 가운데 점이 고정되도록 pan을
+     함께 푼다. 한 손가락 끌기는 기존 pointer 드래그(zoom>1)가 맡는다. */
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  const panRef = useRef(pan);
+  panRef.current = pan;
+  useEffect(() => {
+    const el = mapRef.current;
+    if (!el) return;
+    let pinch: { d: number; z: number; cx: number; cy: number; px: number; py: number } | null = null;
+    const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const onTS = (e: TouchEvent) => {
+      if (e.touches.length !== 2) return;
+      e.preventDefault();
+      pinch = {
+        d: dist(e.touches), z: zoomRef.current,
+        cx: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+        cy: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+        px: panRef.current.x, py: panRef.current.y,
+      };
+    };
+    const onTM = (e: TouchEvent) => {
+      if (!pinch || e.touches.length !== 2) return;
+      e.preventDefault();
+      const r = el.getBoundingClientRect();
+      const ox = r.left + r.width / 2;
+      const oy = r.top + r.height / 2;
+      const z = Math.min(5, Math.max(1, (pinch.z * dist(e.touches)) / pinch.d));
+      const mx2 = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const my2 = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      // 핀치 시작점 아래의 지도 지점이 손가락을 따라오도록 pan을 푼다.
+      const ux = (pinch.cx - ox - pinch.px) / pinch.z;
+      const uy = (pinch.cy - oy - pinch.py) / pinch.z;
+      setZoom(z);
+      setPan(z <= 1 ? { x: 0, y: 0 } : { x: mx2 - ox - z * ux, y: my2 - oy - z * uy });
+    };
+    const onTE = (e: TouchEvent) => {
+      if (e.touches.length < 2) pinch = null;
+    };
+    el.addEventListener("touchstart", onTS, { passive: false });
+    el.addEventListener("touchmove", onTM, { passive: false });
+    el.addEventListener("touchend", onTE);
+    el.addEventListener("touchcancel", onTE);
+    return () => {
+      el.removeEventListener("touchstart", onTS);
+      el.removeEventListener("touchmove", onTM);
+      el.removeEventListener("touchend", onTE);
+      el.removeEventListener("touchcancel", onTE);
+    };
+  }, []);
   const dragRef = useRef<{ id: number; sx: number; sy: number; px: number; py: number } | null>(null);
   const onMapPointerDown = (e: React.PointerEvent) => {
     if (zoom <= 1 || e.button !== 0) return;

@@ -51,9 +51,9 @@ function isEditableTarget(el: Element): boolean {
 }
 
 function onScrollIntent(e: Event) {
-  /* 두 손가락 제스처(핀치 줌)는 스크롤이 아니다 — 여기서 막으면 모달이 떠 있는 동안
-     화면 확대/축소가 통째로 안 된다(지적). 브라우저에 그대로 맡긴다. */
-  if (e.type === "touchmove" && (e as TouchEvent).touches?.length >= 2) return;
+  /* (회수·지적: 너무 이상해짐) 두 손가락 통과 — 모달 위 페이지 핀치를 허용해 봤지만
+     확대된 채 모달이 어긋나는 등 부작용이 커서 도로 막는다. 지도 확대는 지도 자체의
+     핀치 처리(ReplayMotionPlayer)가 맡는다. */
   const el = e.target instanceof Element ? e.target : null;
   if (!el) return;
   /* 글칸에서 시작한 문지름에는 손대지 않는다 — 거기서 손가락을 끄는 건 글자를 고르는
@@ -82,8 +82,6 @@ export function swallowNextClick(): void {
 // touchstart까지 막아야 배경 요소의 :active/터치 하이라이트(눌린 시각 효과)가 아예 안
 // 생긴다 — pointerdown/click 차단만으로는 iOS가 시각 반응을 먼저 그려버린다.
 function onTouchStart(e: Event) {
-  // 두 손가락(핀치)은 통과 — 위 onScrollIntent와 같은 이유.
-  if ((e as TouchEvent).touches?.length >= 2) return;
   if (isShieldedTarget(e.target)) e.preventDefault();
 }
 function onPointerDown(e: Event) {
