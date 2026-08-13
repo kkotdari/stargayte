@@ -1984,26 +1984,7 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
    높이 0.6으로 다시 구운 것. 입체 보기가 아닐 때 지도 마커가 이쪽을 쓴다. */
 const SHAPE_FACES_TOP: Record<string, ShapeFace[]> = withTopView(() =>
   Object.fromEntries(Object.entries(SHAPE_BUILDERS).map(([k, b]) => [k, b()])));
-/* 유닛 → 마커 갈래(요청) — 표에 없는 유닛은 지대지 병력으로 본다. 수송·일꾼·오버로드는
-   기존 갈래(수송선 도형·점·풍선)가 이미 따로 있다. */
-const UNIT_CLASS: Record<string, string> = {
-  // 지상 — 지대지만.
-  Zealot: "troop", Zergling: "troop", Ultralisk: "troop", Lurker: "troop",
-  "Dark Templar": "troop", Firebat: "troop", Vulture: "troop",
-  "Siege Tank (Tank Mode)": "troop", "Siege Tank": "troop", Reaver: "troop",
-  "Infested Terran": "troop", Broodling: "troop",
-  // 지상 — 지대공+지대지.
-  Marine: "gBoth", Ghost: "gBoth", Goliath: "gBoth", Hydralisk: "gBoth",
-  Dragoon: "gBoth", Archon: "gBoth",
-  // 공중 — 공대공만.
-  Corsair: "aAir", Valkyrie: "aAir", Devourer: "aAir", Scourge: "aAir",
-  // 공중 — 공대지 포함(가디언·캐리어도 여기).
-  Wraith: "aBoth", Mutalisk: "aBoth", Battlecruiser: "aBoth", Scout: "aBoth",
-  Guardian: "aBoth", Carrier: "aBoth",
-  // 마법·기술 전용.
-  "High Templar": "gCast", Defiler: "gCast", Medic: "gCast", "Dark Archon": "gCast",
-  "Science Vessel": "aCast", Arbiter: "aCast", Queen: "aCast", Observer: "aCast",
-};
+/* (삭제·요청) 유닛 → 마커 갈래 표 — 전 유닛이 제 모델을 갖게 되어 갈래 표는 걷었다. */
 /* 유닛 → 3D 상징물(요청) — 지상 유닛만(지적: 저그도 지상만). 공중은 2D 기호 그대로.
    표에 없는 지상 유닛은 기본 쐐기(wedge)로 방향만 갖는다. */
 const UNIT_3D: Record<string, string> = {
