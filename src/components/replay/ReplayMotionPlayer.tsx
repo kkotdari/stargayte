@@ -865,7 +865,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 뒤 발톱들 → 뒤 링 → 수정 → 앞 링 → 앞 발톱들 순으로 겹친다.
     for (const ang of [135, 180, -135]) out.push(...claw(ang, 9.4));
     out.push(bodyFace(ringBack), sideFace(ringBack, 0.3));
-    const [gx, gy] = project(0, 0, 7.4);
+    const [, gy] = project(0, 0, 7.4);
     const R = 5.2;
     const W = 2.6;
     /* 수정 보석도 높이별 기울임(지적: 수정 기둥만 밀림·기울임 영향을 안 받았다) —
