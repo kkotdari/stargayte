@@ -1728,7 +1728,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const hull = polyPath3([
       [0, 4.2, 6], [1.2, 0.8, 6.1], [1.7, -2.4, 5.9], [0, -1.4, 6.1], [-1.7, -2.4, 5.9], [-1.2, 0.8, 6.1],
     ]);
-    return [bodyFace(hull), topFace(hull, 0.16), ...domeFaces3(0, 0.6, 0.7, 0.55, 6.2)];
+    // 뒤쪽 전투기 날개 한 쌍(요청) — 뒤로 젖혀 벌어진다.
+    const wing = (m2: 1 | -1): string => polyPath3([
+      [m2 * 1.1, -0.6, 6], [m2 * 3.2, -2.6, 5.8], [m2 * 2.4, -3.2, 5.9], [m2 * 1.2, -1.8, 6],
+    ]);
+    return [
+      bodyFace(wing(1)), sideFace(wing(1), 0.18),
+      bodyFace(wing(-1)), topFace(wing(-1), 0.14),
+      bodyFace(hull), topFace(hull, 0.16),
+      ...domeFaces3(0, 0.6, 0.7, 0.55, 6.2),
+    ];
   },
   /* 캐리어(정정 셋) — 아래 판 없이, 부드러운 타원 꽃잎 세 장(옆 둘 + 위 하나)만
      서로 마주 보며 다물린다. 모형 공간 타원이라 곡선이 매끈하다. */
@@ -4265,6 +4274,10 @@ export default function ReplayMotionPlayer({
           const squadsOfUnit = new Map<string, number>();
           for (const { g } of typeMarks) squadsOfUnit.set(g.unit, (squadsOfUnit.get(g.unit) ?? 0) + 1);
           const seenOfUnit = new Map<string, number>();
+          /* 아비터 은신장(요청) — 아비터 곁(6타일)의 아군 유닛은 반투명해진다. */
+          const arbSpots = typeMarks
+            .filter(({ g }) => (BY_UNITS[g.unit] ?? [g.unit]).includes("Arbiter"))
+            .map(({ pos }) => pos);
           const typeNodes = typeMarks.map(({ g, gi, pos, sinceCmd }) => {
             const members = BY_UNITS[g.unit] ?? [g.unit];
             const aliveAll = members.reduce((n, u) => n + aliveOf(u), 0);
@@ -4313,6 +4326,8 @@ export default function ReplayMotionPlayer({
             /* 클로킹 유닛은 반투명(요청) — 옵저버·다크는 늘, 레이스·고스트는 클로킹 연구
                뒤부터. 칩이든 점이든 같이 옅어진다(요청). */
             const cloaked = g.unit === "Observer" || g.unit === "Dark Templar"
+              || (!(BY_UNITS[g.unit] ?? [g.unit]).includes("Arbiter")
+                && arbSpots.some((ap) => Math.hypot(ap.x - pos.x, ap.y - pos.y) <= 6))
               || (g.unit === "Wraith" && (p.ups ?? []).some(([us, n]) => n === "Cloaking Field" && us <= t))
               || (g.unit === "Ghost" && (p.ups ?? []).some(([us, n]) => n === "Personnel Cloaking" && us <= t));
             // 수송선·일꾼은 낱개로 안 흩는다 — 수는 원래 안 적던 갈래다(제 도형·점 하나).
