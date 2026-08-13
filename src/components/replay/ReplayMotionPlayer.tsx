@@ -2028,10 +2028,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...hornFaces(m2 * 4.8, 1, 5.55, m2 * 4.8, 2.4, 5.5, 0.5),
     ];
     return [
-      // 추진기 셋 — 원통(삼각 배치).
-      ...cylinderFaces3(0, -3.4, 0.55, 1.7, 6),
-      ...cylinderFaces3(-0.95, -3.2, 0.55, 1.6, 4.9),
-      ...cylinderFaces3(0.95, -3.2, 0.55, 1.6, 4.9),
+      // 추진기 셋(정정: 뒤쪽을 향해 눕힌 원통) — 꽁무니 밖으로 길게 나오고, 어느
+      // 요잉에서도 보이게 뒤끝에 둥근 뭉치를 함께 둔다.
+      ...tubeFaces(0, -4.7, 0, -2.4, 0.55, 6.5),
+      bodyFace(groundEllipse(...(() => { const [px2, py2] = project(0, -4.7, 6.5); return [px2, py2 - 0.25] as [number, number]; })(), 0.52, 0.42)),
+      ...tubeFaces(-0.95, -4.5, -0.95, -2.3, 0.55, 5.3),
+      bodyFace(groundEllipse(...(() => { const [px2, py2] = project(-0.95, -4.5, 5.3); return [px2, py2 - 0.25] as [number, number]; })(), 0.52, 0.42)),
+      ...tubeFaces(0.95, -4.5, 0.95, -2.3, 0.55, 5.3),
+      bodyFace(groundEllipse(...(() => { const [px2, py2] = project(0.95, -4.5, 5.3); return [px2, py2 - 0.25] as [number, number]; })(), 0.52, 0.42)),
       // 붐 날개 + 미사일.
       ...hornFaces(-1.4, -1.4, 6, -4.5, -0.8, 5.7, 0.4),
       ...missile(-1),
