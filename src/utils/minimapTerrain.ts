@@ -131,16 +131,9 @@ export async function analyzeMinimap(url: string): Promise<TerrainGrid | null> {
      그때 켜면 맵이 통째로 불가가 된다. */
   const keyOf = (i: number): number =>
     ((data[i * 4] >> 5) << 6) | ((data[i * 4 + 1] >> 5) << 3) | (data[i * 4 + 2] >> 5);
-  const freq = new Map<number, number>();
-  for (let i = 0; i < w * h; i += 1) freq.set(keyOf(i), (freq.get(keyOf(i)) ?? 0) + 1);
-  const MINOR_SHARE = 0.015;
-  const majors = new Set<number>();
-  let majorCells = 0;
-  for (const [k, n] of freq) {
-    if (n >= w * h * MINOR_SHARE) { majors.add(k); majorCells += n; }
-  }
-  const rankRule = majorCells >= w * h * 0.5;
-
+  /* ①·② 먼저 — 우주·물·능선을 거른 '땅 후보'를 만든다. ③의 주요 색은 이 후보 안에서만
+     센다(지적: 우주맵에서 가능/불가가 반대로 — 우주(검정)가 맵의 주요 색이 되면서 정작
+     플랫폼 땅 색들이 소수파로 몰려 통째로 막혔다). */
   const walk = new Uint8Array(w * h);
   for (let i = 0; i < w * h; i += 1) {
     const r = data[i * 4];
@@ -153,9 +146,26 @@ export async function analyzeMinimap(url: string): Promise<TerrainGrid | null> {
     if (b > r + 18 && b > g + 8 && L < 110) continue;
     // ② 상대 — 주변보다 뚜렷이 어두운 능선(절벽·벽·언덕 경계).
     if (L < localAvg[i] * RIDGE_RATIO) continue;
-    // ③ 색 순위 — 주요 타일이 아닌 색은 불가(요청).
-    if (rankRule && !majors.has(keyOf(i))) continue;
     walk[i] = 1;
+  }
+  // ③ 색 순위(요청) — 땅 후보 색을 뭉쳐 세고, 후보 속 소수파 색(장식·바위)은 막는다.
+  const freq = new Map<number, number>();
+  let candidates = 0;
+  for (let i = 0; i < w * h; i += 1) {
+    if (!walk[i]) continue;
+    candidates += 1;
+    freq.set(keyOf(i), (freq.get(keyOf(i)) ?? 0) + 1);
+  }
+  const MINOR_SHARE = 0.015;
+  const majors = new Set<number>();
+  let majorCells = 0;
+  for (const [k, n] of freq) {
+    if (n >= candidates * MINOR_SHARE) { majors.add(k); majorCells += n; }
+  }
+  if (candidates > 0 && majorCells >= candidates * 0.5) {
+    for (let i = 0; i < w * h; i += 1) {
+      if (walk[i] && !majors.has(keyOf(i))) walk[i] = 0;
+    }
   }
   /* ④ 작은 빵꾸 메우기(요청) — 자잘한 고립 조각은 오판일 확률이 높아 주변 값으로 맞춘다.
      걷는 조각(벽 사이 빵꾸)은 5칸까지 막고, 막힌 점은 2칸까지만 연다 — 막힌 쪽을 크게
