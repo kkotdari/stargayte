@@ -4279,7 +4279,15 @@ export default function ReplayMotionPlayer({
                 }
               }
             }
-            if (goneEff > 0 && t >= goneEff) return null;
+            /* 페이드 인·아웃(요청) — 지어질 때 1.2초 스르륵 나타나고, 없어질 때 1.2초
+               스르륵 사라진다. */
+            const FADE_SEC = 1.2;
+            const fade = Math.min(
+              sec > 0 ? Math.min(1, (t - sec) / FADE_SEC) : 1,
+              goneEff > 0 && t >= goneEff ? Math.max(0, 1 - (t - goneEff) / FADE_SEC) : 1,
+            );
+            if (goneEff > 0 && t >= goneEff + FADE_SEC) return null;
+            if (fade <= 0) return null;
             // 떠 있는 구간(지적: 건물 떠 있는 게 표현이 안 된다) — 이륙부터 착륙(=goneAt)
             // 까지 옛 자리에서 둥실거린다.
             const afloat = !!liftAt && t >= liftAt;
@@ -4408,6 +4416,7 @@ export default function ReplayMotionPlayer({
                      건물이 위일 수 있다) — 방금 착공했거나 지금 생산·연구·비행 중인
                      건물은 조용한 유닛 점 위로 온다. 유닛 마커도 같은 자로 잰다. */
                   zIndex: 1000 + Math.round(producing || researching || afloat ? t : sec),
+                  ...(fade < 1 ? { opacity: 0.85 * fade } : {}),
                   left: pct(bx + footDx(unit) - (ADDONS.has(unit) ? 1.6 : 0), grid.width),
                   // 건물은 바닥 위로 솟는다(지적: "실제 건물은 바닥위에 높이가 있어") —
                   // 캔버스 높이에 그 몫(riseOf, 발자국 폭 비례)을 더하고, 늘어난 만큼
