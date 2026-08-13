@@ -1376,16 +1376,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       capFace(groundEllipse(mx3, my3, 2.7, 1.5), 0.45),
     ];
   },
-  /* 나이더스 커널 — 점액 테 + 어두운 아가리 + 이빨 뿔들. */
+  /* 나이더스 커널(정정) — 땅굴 동굴 입구: 뒤가 높은 둔덕 테와 앞 낮은 입술 사이로
+     겹겹이 어두워지는 목구멍이 크게 뚫리고, 뒤 테두리에 이빨이 돋는다. */
   nydus: () => {
-    const [cx2, cy2] = project(0, 0, 1.2);
+    const [cx2, cy2] = project(0, 0.3, 1);
     return [
-      ...domeFaces3(0, 0, 4.2, 1.6),
-      capFace(groundEllipse(cx2, cy2, 2.6, 1.35), 0.5),
-      ...hornFaces(-2.2, -1.8, 1.4, -1.6, -1.2, 3, 0.7),
-      ...hornFaces(2.2, -1.8, 1.4, 1.6, -1.2, 3, 0.7),
-      ...hornFaces(-2.4, 1.6, 1.3, -1.8, 1.1, 2.9, 0.7),
-      ...hornFaces(2.4, 1.6, 1.3, 1.8, 1.1, 2.9, 0.7),
+      ...domeFaces3(0, -0.6, 4.3, 2.2),
+      ...domeFaces3(0, 1, 3.6, 1.3),
+      capFace(groundEllipse(cx2, cy2 + 0.3, 2.9, 1.7), 0.35),
+      capFace(groundEllipse(cx2, cy2 + 0.5, 2.2, 1.25), 0.45),
+      capFace(groundEllipse(cx2, cy2 + 0.7, 1.4, 0.8), 0.55),
+      ...hornFaces(-2.6, -1.2, 2.2, -2, -0.6, 3.4, 0.6),
+      ...hornFaces(2.6, -1.2, 2.2, 2, -0.6, 3.4, 0.6),
+      ...hornFaces(0, -2.4, 2.4, 0, -1.5, 3.6, 0.6),
     ];
   },
 
