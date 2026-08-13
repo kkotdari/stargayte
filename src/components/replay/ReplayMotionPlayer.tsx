@@ -3813,9 +3813,21 @@ export default function ReplayMotionPlayer({
               const ja = h2 - Math.floor(h2);
               const rj = r * (0.85 + jr * 0.5);
               const aj = di * 2.4 + seed + ja * 1.1;
-              const wob = 0.22 + 0.1 * jr;
-              const dx = Math.cos(aj) * rj + Math.cos(t * 0.7 + di * 1.7) * wob;
-              const dy = Math.sin(aj) * rj + Math.sin(t * 0.9 + di * 2.3) * wob;
+              /* 걸으며 이동(지적: 대형이 통째로 미끄러지면 이상) — 이동 중엔 진행 방향으로
+                 앞서거니 뒤서거니 보폭과 좌우 살랑을 섞고, 제자리 배회는 줄인다. */
+              const mvx = hp ? pos.x - hp.x : 0;
+              const mvy = hp ? pos.y - hp.y : 0;
+              const mvL = Math.hypot(mvx, mvy);
+              const marching = mvL > 0.1;
+              const ux2 = marching ? mvx / mvL : 0;
+              const uy2 = marching ? mvy / mvL : 0;
+              const step = marching ? Math.sin(t * 4 + di * 2.1 + jr * 6.3) * 0.35 : 0;
+              const sway = marching ? Math.cos(t * 3.1 + di * 1.3) * 0.12 : 0;
+              const wob = marching ? 0.08 : 0.22 + 0.1 * jr;
+              const dx = Math.cos(aj) * rj + Math.cos(t * 0.7 + di * 1.7) * wob
+                + ux2 * step - uy2 * sway;
+              const dy = Math.sin(aj) * rj + Math.sin(t * 0.9 + di * 2.3) * wob
+                + uy2 * step + ux2 * sway;
               return (
                 <span
                   key={`${p.raw}-u${g.unit}-${gi}-i${di}`}
@@ -3944,9 +3956,21 @@ export default function ReplayMotionPlayer({
               const ja = h2 - Math.floor(h2);
               const rj = r * (0.85 + jr * 0.5);
               const aj = di * 2.4 + seed + ja * 1.1;
-              const wob = 0.22 + 0.1 * jr;
-              const dx = Math.cos(aj) * rj + Math.cos(t * 0.7 + di * 1.7) * wob;
-              const dy = Math.sin(aj) * rj + Math.sin(t * 0.9 + di * 2.3) * wob;
+              /* 걸으며 이동(지적: 대형이 통째로 미끄러지면 이상) — 이동 중엔 진행 방향으로
+                 앞서거니 뒤서거니 보폭과 좌우 살랑을 섞고, 제자리 배회는 줄인다. */
+              const mvx = hp ? pos.x - hp.x : 0;
+              const mvy = hp ? pos.y - hp.y : 0;
+              const mvL = Math.hypot(mvx, mvy);
+              const marching = mvL > 0.1;
+              const ux2 = marching ? mvx / mvL : 0;
+              const uy2 = marching ? mvy / mvL : 0;
+              const step = marching ? Math.sin(t * 4 + di * 2.1 + jr * 6.3) * 0.35 : 0;
+              const sway = marching ? Math.cos(t * 3.1 + di * 1.3) * 0.12 : 0;
+              const wob = marching ? 0.08 : 0.22 + 0.1 * jr;
+              const dx = Math.cos(aj) * rj + Math.cos(t * 0.7 + di * 1.7) * wob
+                + ux2 * step - uy2 * sway;
+              const dy = Math.sin(aj) * rj + Math.sin(t * 0.9 + di * 2.3) * wob
+                + uy2 * step + ux2 * sway;
               return (
                 <span
                   key={`${p.raw}-s${si}-d${di}`}
