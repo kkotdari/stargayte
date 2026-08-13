@@ -4196,7 +4196,17 @@ export default function ReplayMotionPlayer({
                 {age < NUKE_FALL_SEC - 2 ? (
                   <span className="scr-motion-nuke-dot" />
                 ) : age < NUKE_FALL_SEC && landed ? (
-                  <span className="scr-motion-nuke-fall" style={{ color: modeColor(raw, teamOfRaw(raw)) }}>
+                  /* 낙하를 게임 시간으로 직접(수리: CSS 실시간 2초 애니라 배속에서 탄두가
+                     덜 내려왔는데 폭발로 넘어갔다) — 마지막 2초의 진행률로 높이를 잰다. */
+                  <span
+                    className="scr-motion-nuke-fall"
+                    style={{
+                      color: modeColor(raw, teamOfRaw(raw)),
+                      animation: "none",
+                      translate: `0 ${Math.round(-140 * (1 - (age - (NUKE_FALL_SEC - 2)) / 2))}px`,
+                      opacity: 0.4 + 0.6 * ((age - (NUKE_FALL_SEC - 2)) / 2),
+                    }}
+                  >
                     <ShapeIcon kind="nuke" />
                   </span>
                 ) : (
