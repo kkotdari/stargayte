@@ -2021,19 +2021,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...hornFaces(m2 * 5.15, -1.2, 5.6, m2 * 5.6, -1.8, 5.95, 0.3),
       ...hornFaces(m2 * 4.45, -1.2, 5.6, m2 * 4, -1.8, 5.95, 0.3),
     ];
+    /* 컵 추진기(수리: 단면이 이상했다) — 검증된 캡슐 관으로 그리고, 꽁무니에 몸색
+       벌어진 테만 한 겹 두른다(뒤는 시청자 반대편이라 어두운 구멍은 안 보이는 게 맞다). */
     const cup = (cx2: number, z2: number): ShapeFace[] => {
-      const [ax2, ay2] = project(cx2, -2.2, z2);
-      const [bx2, by2] = project(cx2, -3.9, z2);
-      const dx2 = bx2 - ax2;
-      const dy2 = by2 - ay2;
-      const L = Math.hypot(dx2, dy2) || 1;
-      const nfx = (-dy2 / L);
-      const nfy = (dx2 / L);
+      const [rx2, ry2] = project(cx2, -3.8, z2);
       return [
-        bodyFace(`M${ax2 + nfx * 0.34} ${ay2 + nfy * 0.34 - 0.4} L${bx2 + nfx * 0.62} ${by2 + nfy * 0.62 - 0.4}`
-          + ` L${bx2 - nfx * 0.62} ${by2 - nfy * 0.62 - 0.4} L${ax2 - nfx * 0.34} ${ay2 - nfy * 0.34 - 0.4} Z`),
-        bodyFace(groundEllipse(bx2, by2 - 0.4, 0.62, 0.5)),
-        capFace(groundEllipse(bx2, by2 - 0.4, 0.45, 0.35), 0.4),
+        ...tubeFaces(cx2, -3.8, cx2, -2.2, 0.5, z2),
+        bodyFace(groundEllipse(rx2, ry2 - 0.22, 0.66, 0.5)),
+        sideFace(groundEllipse(rx2, ry2 - 0.22, 0.66, 0.5), 0.16),
       ];
     };
     return [
