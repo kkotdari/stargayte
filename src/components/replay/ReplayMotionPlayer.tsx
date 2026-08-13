@@ -2088,6 +2088,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     return [
       bodyFace(legs.join(" ")),
       bodyFace(groundEllipse(cx, cy, 4.4, 4.1)),
+      // 양쪽 큰 반구 눈(요청) — 불룩 솟은 눈알과 하이라이트.
+      bodyFace(groundEllipse(cx - 3.4, cy + 0.7, 1.5, 1.4)),
+      topFace(groundEllipse(cx - 3.7, cy + 0.35, 0.55, 0.5), 0.35),
+      bodyFace(groundEllipse(cx + 3.4, cy + 0.7, 1.5, 1.4)),
+      sideFace(groundEllipse(cx + 3.4, cy + 0.7, 1.5, 1.4), 0.18),
+      topFace(groundEllipse(cx + 3.05, cy + 0.35, 0.55, 0.5), 0.3),
       sideFace(`M${cx + 1.4} ${cy - 3.4} Q${cx + 4.4} ${cy - 1.6} ${cx + 3.4} ${cy + 2.4} Q${cx + 3.9} ${cy - 1} ${cx + 1.4} ${cy - 3.4} Z`, 0.22),
       topFace(groundEllipse(cx - 1.2, cy - 2.2, 1.8, 1.1), 0.35),
     ];
