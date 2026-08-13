@@ -221,6 +221,17 @@ export function faceLight(nxModel: number, nyModel: number): { visible: boolean;
   return { visible: ny * Math.cos(vphi) - nx * Math.sin(vphi) > 0.02, face };
 }
 
+/** 면이 카메라를 얼마나 마주보는가(−1~1) — faceLight의 보임 판정을 눈금으로 돌려준다.
+ *  둥근 몸에 붙은 장식(어시밀레이터 알 등)을 모서리에서 뚝 끊지 않고, 돌아 나가며
+ *  서서히 줄이는 데 쓴다. */
+export function facingRatio(nxModel: number, nyModel: number): number {
+  const th = (currentYaw() * Math.PI) / 180;
+  const nx = nxModel * Math.cos(th) + nyModel * Math.sin(th);
+  const ny = -nxModel * Math.sin(th) + nyModel * Math.cos(th);
+  const vphi = Math.atan(viewShear);
+  return ny * Math.cos(vphi) - nx * Math.sin(vphi);
+}
+
 /* 모형 내부 원근(요청: 모델 안에서도 원근법 — 건물은 특히) — 앞(시청자 쪽)으로 나온
    점은 크게, 뒤로 물러난 점은 작게. 발밑 원점을 눈 축으로 삼아 깊이 나눗셈을 한다.
    project를 지나는 모든 프리미티브(상자·절두·기둥·다리·관·뿔)가 저절로 받는다. */
@@ -279,6 +290,57 @@ export function polyPath3(pts: [number, number, number][]): string {
 export function discPath3(cx: number, cy: number, z: number, r: number): string {
   const [sx, sy] = project(cx, cy, z);
   return groundEllipse(sx, sy, r, r * groundSquashNow());
+}
+
+/* 켤레 지름 타원 — 평면 위 원을 투영하면 화면에선 두 켤레 반지름 벡터 u·v로 표현되는
+   타원이 된다(P(t) = C + u·cos t + v·sin t). 주축 반지름·기움각을 풀어 호 둘로 그린다.
+   groundEllipse의 밀림 처리와 같은 수법을 일반화한 것. */
+function conjugateEllipsePath(
+  cx: number, cy: number, ax: number, ay: number, bx: number, by: number,
+): string {
+  const dot = ax * bx + ay * by;
+  const t0 = 0.5 * Math.atan2(2 * dot, ax * ax + ay * ay - (bx * bx + by * by));
+  const ux = ax * Math.cos(t0) + bx * Math.sin(t0);
+  const uy = ay * Math.cos(t0) + by * Math.sin(t0);
+  const R1 = Math.max(Math.hypot(ux, uy), 0.01);
+  const R2 = Math.max(Math.abs(ax * by - ay * bx) / R1, 0.01);
+  const angDeg = r2((Math.atan2(uy, ux) * 180) / Math.PI);
+  return `M${r2(cx - ux)} ${r2(cy - uy)}a${r2(R1)} ${r2(R2)} ${angDeg} 1 0 ${r2(2 * ux)} ${r2(2 * uy)}`
+    + `a${r2(R1)} ${r2(R2)} ${angDeg} 1 0 ${r2(-2 * ux)} ${r2(-2 * uy)}Z`;
+}
+
+/** 세로 벽에 붙은 원 무늬(지적: 서플라이 앞 팬·어시밀레이터 앞 알이 각도 따라 본체와
+ *  따로 놈) — 화면 좌표에 동그라미를 그리면 요잉해도 시청자만 바라봐 벽에서 떨어져
+ *  보인다. 벽 평면(x축과 나란, 깊이 y) 위 중심 (cx, cz)·반지름 rx(가로)·rz(세로)를
+ *  제 투영으로 구워, 벽과 함께 돌고 눌리게 한다. */
+export function wallDiscPath(
+  cx: number, y: number, cz: number, rx: number, rz: number = rx,
+): string {
+  const [sx, sy] = project(cx, y, cz);
+  const [axx, axy] = project(cx + rx, y, cz);
+  const [bxx, bxy] = project(cx, y, cz + rz);
+  return conjugateEllipsePath(sx, sy, axx - sx, axy - sy, bxx - sx, bxy - sy);
+}
+
+/** 벽 무늬의 평면 좌표계 — 중심과 켤레 축을 돌려주어, 부속 장식(팬 날개 등)을 같은
+ *  평면 안에서 그릴 수 있게 한다. pt(각, 가로배율, 세로배율)가 화면 점을 준다. */
+export function wallFrame(
+  cx: number, y: number, cz: number, rx: number, rz: number = rx,
+): { c: [number, number]; pt: (t: number, kx?: number, kz?: number) => [number, number] } {
+  const [sx, sy] = project(cx, y, cz);
+  const [axx, axy] = project(cx + rx, y, cz);
+  const [bxx, bxy] = project(cx, y, cz + rz);
+  const ux = axx - sx;
+  const uy = axy - sy;
+  const vx = bxx - sx;
+  const vy = bxy - sy;
+  return {
+    c: [sx, sy],
+    pt: (t, kx = 1, kz = kx) => [
+      r2(sx + ux * kx * Math.cos(t) + vx * kz * Math.sin(t)),
+      r2(sy + uy * kx * Math.cos(t) + vy * kz * Math.sin(t)),
+    ],
+  };
 }
 
 /** 세운 상자 — frustum의 특수형. 보이는 면·세계 광원은 frustumFaces3가 맡는다. */

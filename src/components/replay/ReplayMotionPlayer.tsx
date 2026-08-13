@@ -13,8 +13,8 @@ import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } f
 import {
   bodyFace, capFace, groundEllipse, sideFace, topFace, type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
-  domeFaces3, faceLight, frustumFaces3, hornFaces, limbFaces, tubeFaces,
-  withPitchView, withTopView, withViewShear, withYaw,
+  domeFaces3, faceLight, facingRatio, frustumFaces3, hornFaces, limbFaces, tubeFaces,
+  wallDiscPath, wallFrame, withPitchView, withTopView, withViewShear, withYaw,
 } from "../../utils/shapeOblique";
 import type { MinimapMarker } from "./ReplayMinimap";
 
@@ -580,17 +580,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(capFace(discPath3(3.4, -2.2, 5.5, 1.25), 0.5));
     // 관제 모듈 — 돔 꼭대기의 상자 + 앞면 빛 띠 + 지붕 돔.
     out.push(...boxFaces3(0, 0.2, 3, 2.6, 1.8, 5.5));
-    out.push(capFace(polyPath3([[-1.2, 1.51, 5.9], [1.2, 1.51, 5.9], [1.2, 1.51, 6.3], [-1.2, 1.51, 6.3]]), 0.5));
-    out.push(topFace(polyPath3([[-1, 1.52, 5.95], [1, 1.52, 5.95], [1, 1.52, 6.25], [-1, 1.52, 6.25]]), 0.35));
+    /* 앞면 장식(빛 띠·전개 램프)은 앞이 보일 때만(지적: 시점에 따라 기대와 다른 위치) —
+       뒤로 돌린 각도에서도 그리면 몸 위로 떠올라 팔처럼 삐져나와 보였다. */
+    const frontVisible = faceLight(0, 1).visible;
+    if (frontVisible) {
+      out.push(capFace(polyPath3([[-1.2, 1.51, 5.9], [1.2, 1.51, 5.9], [1.2, 1.51, 6.3], [-1.2, 1.51, 6.3]]), 0.5));
+      out.push(topFace(polyPath3([[-1, 1.52, 5.95], [1, 1.52, 5.95], [1, 1.52, 6.25], [-1, 1.52, 6.25]]), 0.35));
+    }
     out.push(...domeFaces3(0, 0.2, 1.15, 0.85, 7.3));
-    // 전개 램프(실물) — 선체 중턱 해치에서 앞 바닥으로.
-    const ramp = polyPath3([[-1.3, 6, 2.4], [1.3, 6, 2.4], [2.1, 9.6, 0], [-2.1, 9.6, 0]]);
-    out.push(bodyFace(ramp), topFace(ramp, 0.16));
-    for (const t of [0.25, 0.5, 0.75]) {
-      const yy = 6 + 3.6 * t;
-      const zz = 2.4 * (1 - t);
-      const ww = 1.3 + 0.8 * t;
-      out.push(capFace(polyPath3([[-ww, yy, zz + 0.02], [ww, yy, zz + 0.02], [ww, yy + 0.3, zz - 0.18], [-ww, yy + 0.3, zz - 0.18]]), 0.3));
+    if (frontVisible) {
+      // 전개 램프(실물) — 선체 중턱 해치에서 앞 바닥으로.
+      const ramp = polyPath3([[-1.3, 6, 2.4], [1.3, 6, 2.4], [2.1, 9.6, 0], [-2.1, 9.6, 0]]);
+      out.push(bodyFace(ramp), topFace(ramp, 0.16));
+      for (const t of [0.25, 0.5, 0.75]) {
+        const yy = 6 + 3.6 * t;
+        const zz = 2.4 * (1 - t);
+        const ww = 1.3 + 0.8 * t;
+        out.push(capFace(polyPath3([[-ww, yy, zz + 0.02], [ww, yy, zz + 0.02], [ww, yy + 0.3, zz - 0.18], [-ww, yy + 0.3, zz - 0.18]]), 0.3));
+      }
     }
     out.push(...pod(-5.6, 3.9), ...pod(5.6, 3.9));
     return out;
@@ -628,25 +635,36 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         [-2.3 - Math.sin(a) * 2.05 + Math.cos(a) * 0.32, 0.3 - Math.cos(a) * 2.05 - Math.sin(a) * 0.32, 6.15],
       ]), 0.35));
     }
-    // 앞면 둥근 팬 둘 — 더 크게(지적), 앞면에 바로 얹는다.
-    const fan = (fx: number, fz: number, r: number): void => {
-      const [px, py] = project(fx, 3.41, fz);
-      out.push(capFace(groundEllipse(px, py, r, r * 0.94), 0.42));
-      out.push(bodyFace(groundEllipse(px, py, r * 0.78, r * 0.72)));
-      for (const ang of [15, 105, 195, 285]) {
-        const a = (ang * Math.PI) / 180;
-        out.push(capFace(`M${px} ${py} L${px + Math.cos(a) * r * 0.7} ${py + Math.sin(a) * r * 0.64} A${r * 0.7} ${r * 0.64} 0 0 1 ${px + Math.cos(a + 1.1) * r * 0.7} ${py + Math.sin(a + 1.1) * r * 0.64} Z`, 0.32));
-      }
-    };
-    fan(0.8, 3, 2.05);
-    fan(3.7, 2.9, 1.6);
-    // 왼앞 줄무늬 차단바.
+    /* 앞면 둥근 팬 둘 — 벽 무늬로(지적: 각도에 따라 본체와 따로 노는 느낌) — 화면
+       좌표에 동그라미를 그리면 요잉해도 시청자만 바라봐 벽에서 떨어져 보였다. 벽
+       평면에 구워 벽과 함께 돌고, 앞면이 안 보이는 각도에선 아예 그리지 않는다. */
+    const frontVisible = faceLight(0, 1).visible;
+    if (frontVisible) {
+      const fan = (fx: number, fz: number, r: number): void => {
+        out.push(capFace(wallDiscPath(fx, 3.41, fz, r, r * 0.94), 0.42));
+        out.push(bodyFace(wallDiscPath(fx, 3.41, fz, r * 0.78, r * 0.72)));
+        // 날개도 같은 벽 평면 안에서 — 부채꼴을 평면 좌표계(wallFrame)로 그린다.
+        const { c, pt } = wallFrame(fx, 3.41, fz, r * 0.7, r * 0.64);
+        for (const ang of [15, 105, 195, 285]) {
+          const a = (ang * Math.PI) / 180;
+          const p1 = pt(a);
+          const p2 = pt(a + 0.55, 1.06);
+          const p3 = pt(a + 1.1);
+          out.push(capFace(`M${c[0]} ${c[1]} L${p1[0]} ${p1[1]} Q${p2[0]} ${p2[1]} ${p3[0]} ${p3[1]} Z`, 0.32));
+        }
+      };
+      fan(0.8, 3, 2.05);
+      fan(3.7, 2.9, 1.6);
+    }
+    // 왼앞 줄무늬 차단바 — 줄무늬는 앞면 무늬라 앞이 안 보이면 함께 숨긴다(지적).
     out.push(...boxFaces3(-3.3, 4.05, 3.6, 0.9, 1.15));
-    for (let i = 0; i < 4; i += 1) {
-      const x0 = -4.9 + i * 0.9;
-      out.push(capFace(polyPath3([
-        [x0, 4.51, 0.15], [x0 + 0.45, 4.51, 0.15], [x0 + 0.85, 4.51, 1], [x0 + 0.4, 4.51, 1],
-      ]), 0.4));
+    if (frontVisible) {
+      for (let i = 0; i < 4; i += 1) {
+        const x0 = -4.9 + i * 0.9;
+        out.push(capFace(polyPath3([
+          [x0, 4.51, 0.15], [x0 + 0.45, 4.51, 0.15], [x0 + 0.85, 4.51, 1], [x0 + 0.4, 4.51, 1],
+        ]), 0.4));
+      }
     }
     return out;
   },
@@ -929,7 +947,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 매끈한 흰 가시 — 바깥으로 살짝 기운 원뿔 셋.
     for (const [hx, hy, tx2, ty2] of [[-3.4, 5.2, -4.2, 6.6], [3.5, 5, 4.3, 6.3], [-6.4, -1, -7.9, -1.3]] as [number, number, number, number][]) {
       out.push(...hornFaces(hx, hy, 1.8, tx2, ty2, 4.2, 1.05));
-      out.push(topFace(groundEllipse(...project(tx2 * 0.94, ty2 * 0.94, 3.2), 0.32, 0.5), 0.4));
+      /* 끝 발광은 가시가 뒤로 돌아가면 숨긴다(지적: 시점 따라 위치가 따로 놈) — 가시
+         몸은 테두리에 가려지는데 발광 점만 남아 허공에 떠 보였다. */
+      const hl = Math.hypot(tx2, ty2) || 1;
+      if (facingRatio(tx2 / hl, ty2 / hl) > -0.15) {
+        out.push(topFace(groundEllipse(...project(tx2 * 0.94, ty2 * 0.94, 3.2), 0.32, 0.5), 0.4));
+      }
     }
     /* 위 구조물은 고치(지적: 띠가 아니라) — 뒤 테두리에서 솟아 웅덩이 위로 몸을
        숙인 통통한 번데기 덩어리. 등에는 마디 주름, 머리와 코끝에 발광. */
@@ -940,11 +963,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 마디 주름 — 등을 가로지르는 가는 골 둘.
     out.push(sideFace(`M${pt(-5.9, -3, 4.6)} Q${pt(-5, -2.6, 5.2)} ${pt(-3.3, -2, 4.9)} L${pt(-3.4, -2.1, 4.4)} Q${pt(-5, -2.7, 4.7)} ${pt(-5.8, -3, 4.1)} Z`, 0.2));
     out.push(sideFace(`M${pt(-5.8, -3.1, 7)} Q${pt(-4.6, -2.5, 7.6)} ${pt(-3, -1.9, 7.1)} L${pt(-3.1, -2, 6.6)} Q${pt(-4.6, -2.6, 7.1)} ${pt(-5.7, -3.1, 6.5)} Z`, 0.2));
-    // 머리·코끝 발광.
-    const [hx2, hy2] = project(-0.5, 0.3, 6.2);
-    out.push(topFace(groundEllipse(hx2, hy2, 0.55, 0.6), 0.5));
-    const [ax2, ay2] = project(-3.2, -2, 9.3);
-    out.push(topFace(groundEllipse(ax2, ay2, 1, 0.65), 0.4));
+    /* 머리·코끝 발광 — 고치가 모로 누운 각도에선 숨긴다(지적: 시점 따라 위치가 따로
+       놈) — 활 곡선이 바늘처럼 얇아지면 발광 점만 허공에 떠 보였다. 고치가 뻗는 방향
+       (-5.6,-2.8)→(-0.3,0.4)의 직각 법선으로 모로 섰는지를 잰다. */
+    if (Math.abs(facingRatio(-0.52, 0.86)) > 0.35) {
+      const [hx2, hy2] = project(-0.5, 0.3, 6.2);
+      out.push(topFace(groundEllipse(hx2, hy2, 0.55, 0.6), 0.5));
+      const [ax2, ay2] = project(-3.2, -2, 9.3);
+      out.push(topFace(groundEllipse(ax2, ay2, 1, 0.65), 0.4));
+    }
     return out;
   },
   /* 터렛(실물 참고) — 원통 받침 + 상자 머리 + 세로 미사일 랙 둘 + 옆으로 빠지는 배관. */
@@ -1118,10 +1145,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(topFace(groundEllipse(vx, vy, 0.8, 0.55), 0.3));
       out.push(capFace(groundEllipse(vx, vy, 0.55, 0.35), 0.45));
     }
-    // 가운데 큰 알 — 빛나는 청록 물방울(윤곽 테 + 발광 속).
-    const [ex, ey] = project(0, 2.4, 2.1);
-    out.push(capFace(groundEllipse(ex, ey, 2.4, 3), 0.35));
-    out.push(topFace(groundEllipse(ex, ey, 2, 2.6), 0.55));
+    /* 가운데 큰 알(지적: 각도에 따라 본체와 따로 노는 느낌) — 알은 벽 그림이 아니라
+       돔에 박힌 불룩한 덩어리라, 윤곽은 어느 각도에서나 통통한 타원이다. 자리만 몸을
+       따라 돌고, 옆으로 돌수록 폭을 줄이다가 뒤로 넘어가면 돔에 가려져 사라진다 —
+       전엔 뒤에서도 그대로 그려져 몸과 따로 놀았다. */
+    const eggFace = facingRatio(0, 1);
+    if (eggFace > 0.15) {
+      const k = 0.45 + 0.55 * Math.min(1, (eggFace - 0.15) / 0.35);
+      const [ex, ey] = project(0, 2.4, 2.1);
+      out.push(capFace(groundEllipse(ex, ey, 2.4 * k, 3), 0.35));
+      out.push(topFace(groundEllipse(ex, ey, 2 * k, 2.6), 0.55));
+    }
     return out;
   },
   /* 익스트랙터(실물 참고) — 점액 받침 위 좌우 갈색 통(초록 발광 뚜껑 + 흘러내리는 힘줄
@@ -1751,8 +1785,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...domeFaces3(0, -1, 4.2, 3.7),
       ...domeFaces3(-1.7, 0.1, 2.6, 2.2, 1.3),
       ...domeFaces3(1.9, 0.3, 2.4, 2, 1.1),
-      // 거대한 아가리 — 어두운 속.
-      capFace(groundEllipse(mx3, my3, 2.5, 1.6), 0.5),
+      /* 거대한 아가리 — 어두운 속. 앞이 보일 때만(지적: 시점 따라 기대와 다른 위치) —
+         뒤로 돌린 각도에선 등짝에 어두운 얼룩처럼 찍혀 보였다. */
+      ...(faceLight(0, 1).visible
+        ? [capFace(groundEllipse(mx3, my3, 2.5, 1.6), 0.5)] : []),
       // 큰 금 엄니 — 아가리 양옆에서 아래로 굽는다(끝 밝게).
       ...hornFaces(-2, 2.4, 3.6, -1.2, 3.9, 0.4, 1.05),
       topFace(polyPath3([[-1.7, 2.9, 2.6], [-1.25, 3.7, 0.6], [-1.5, 3.5, 0.5], [-1.95, 2.8, 2.4]]), 0.4),

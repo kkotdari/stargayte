@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SHAPE_BUILDERS, SHAPE_GALLERY, ShapeIcon } from "../../components/replay/ReplayMotionPlayer";
 import { withYaw, VIEW } from "../../utils/shapeOblique";
 
@@ -8,6 +8,23 @@ import { withYaw, VIEW } from "../../utils/shapeOblique";
 export default function ModelGalleryScreen() {
   const [kind, setKind] = useState(SHAPE_GALLERY[0]?.kind ?? "");
   const [yaw, setYaw] = useState<number>(VIEW.yawDeg);
+  /* 자동 무한 회전(요청) — 무대가 저절로 부드럽게 돈다. 수동 버튼을 누르면 멈춰 그
+     각도를 살펴볼 수 있고, '자동 회전'으로 다시 돌린다. */
+  const [auto, setAuto] = useState(true);
+  useEffect(() => {
+    if (!auto) return undefined;
+    let raf = 0;
+    let last = performance.now();
+    const tick = (now: number): void => {
+      // 탭 전환 등으로 프레임이 크게 벌어지면 그만큼 건너뛰지 않게 100ms로 자른다.
+      const dt = Math.min(100, now - last);
+      last = now;
+      setYaw((y) => (y + dt * 0.03) % 360); // 30°/s — 한 바퀴 12초.
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [auto]);
   const builder: (() => ReturnType<(typeof SHAPE_BUILDERS)[string]>) | undefined =
     Object.prototype.hasOwnProperty.call(SHAPE_BUILDERS, kind) ? SHAPE_BUILDERS[kind] : undefined;
   const faces = useMemo(
@@ -26,10 +43,15 @@ export default function ModelGalleryScreen() {
           </div>
           {builder ? (
             <div className="scr-model-controls">
-              <button type="button" className="scr-btn scr-btn-sm" onClick={() => setYaw((y) => y - 15)}>⟲ 요잉 15°</button>
-              <button type="button" className="scr-btn scr-btn-sm" onClick={() => setYaw(VIEW.yawDeg)}>기본 시점</button>
-              <button type="button" className="scr-btn scr-btn-sm" onClick={() => setYaw((y) => y + 15)}>요잉 15° ⟳</button>
-              <span className="scr-model-yaw">{yaw}°</span>
+              <button type="button" className="scr-btn scr-btn-sm" onClick={() => { setAuto(false); setYaw((y) => Math.round(y / 15) * 15 - 15); }}>⟲ 요잉 15°</button>
+              <button
+                type="button" className="scr-btn scr-btn-sm"
+                onClick={() => setAuto((a) => !a)}
+              >
+                {auto ? "❚❚ 멈춤" : "▶ 자동 회전"}
+              </button>
+              <button type="button" className="scr-btn scr-btn-sm" onClick={() => { setAuto(false); setYaw((y) => Math.round(y / 15) * 15 + 15); }}>요잉 15° ⟳</button>
+              <span className="scr-model-yaw">{Math.round(((yaw % 360) + 360) % 360)}°</span>
             </div>
           ) : (
             <div className="scr-model-note">전투 갈래 기호는 2D 기호라 회전이 없어요.</div>
@@ -40,7 +62,7 @@ export default function ModelGalleryScreen() {
             <button
               key={k} type="button"
               className={k === kind ? "scr-model-item scr-model-item-on" : "scr-model-item"}
-              onClick={() => { setKind(k); setYaw(VIEW.yawDeg); }}
+              onClick={() => { setKind(k); setYaw(VIEW.yawDeg); setAuto(true); }}
             >
               <span className="scr-model-thumb"><ShapeIcon kind={k} /></span>
               <span className="scr-model-label">{label}</span>
