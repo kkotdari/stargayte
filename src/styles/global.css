@@ -10944,6 +10944,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   transition: width 0.3s ease, margin-left 0.3s ease;
 }
 .scr-motion-lens { position: absolute; inset: 0; transform-origin: 0 0; }
+/* 유닛 캔버스 층(캔버스 전환·성능) — 낱개 유닛 도형을 한 장에 그린다. 건물 스팬 위·
+   말풍선(20000) 아래. 입력은 안 받는다. */
+.scr-motion-unitlayer {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 6000;
+}
 /* (삭제) PC 확대 조절바(.scr-motion-zoom) — PC의 확대 기능을 통째로 걷었다(요청). */
 /* 래디우스 없음(요청: 제거) — 화면 폭 확대에서 모서리가 둥글면 가장자리가 뜬다. */
 .scr-motion-canvas {
