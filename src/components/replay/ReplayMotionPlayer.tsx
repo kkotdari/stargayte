@@ -742,23 +742,35 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(groundEllipse(cx - 1.2, cy - 2.2, 1.8, 1.1), 0.35),
     ];
   },
-  /* 드랍십 — 엔진 포드 관 둘 + 가운데 판. */
+  /* 드랍십(실물 참고) — 양옆 굵은 엔진 포드(앞 단면이 둥글게 보인다) + 가운데 각진
+     몸통 + 뒤쪽 수직 꼬리날개. */
   dship: () => [
-    ...tubeFaces(-2.3, -2.8, -2.3, 3, 1.15, 4),
-    ...tubeFaces(2.3, -2.8, 2.3, 3, 1.15, 4),
-    ...boxFaces3(0, 0.2, 3.2, 4.6, 1.7, 3.3),
+    ...tubeFaces(-2.4, -3, -2.4, 3.1, 1.3, 3.8, true),
+    ...tubeFaces(2.4, -3, 2.4, 3.1, 1.3, 3.8, true),
+    ...boxFaces3(0, -0.4, 3.5, 4.6, 1.9, 2.9),
+    ...boxFaces3(0, 2.6, 2.6, 1.6, 1.2, 3.2),
+    ...hornFaces(0.3, -2.9, 4.6, 0.7, -3.7, 8.4, 1.2),
   ],
-  /* 셔틀 — 둥근 몸통 + 몽키스패너 집게 둘(앞으로). */
+  /* 셔틀(실물 참고) — 넓은 타원 몸통 + 앞 집게 둘(몽키스패너) + 등 콕핏 + 후미 엔진. */
   shuttle: () => {
-    const [cx, cy] = project(-0.8, 0, 4);
+    const [cx, cy] = project(-0.6, 0, 4);
     const jaw = (side: 1 | -1): string => polyPath3([
-      [1.2, side * 1, 4.4], [4.6, side * 2.4, 4.4], [5.4, side * 1.5, 4.4], [2.4, side * 0.5, 4.4],
+      [1.4, side * 1.1, 4.3], [4.8, side * 2.5, 4.3], [5.6, side * 1.5, 4.3], [2.6, side * 0.5, 4.3],
     ]);
+    const [ex, ey] = project(-3.1, 0, 4.6);
     return [
-      bodyFace(groundEllipse(cx, cy, 3.6, 2.9)),
+      ...boxFaces3(-3.1, 0, 2.2, 2.6, 1.6, 3.6),
+      ...tubeFaces(-3.6, -0.9, -3.6, 0.9, 0.4, 5.3),
+      bodyFace(groundEllipse(cx, cy, 3.7, 2.9)),
       bodyFace(`${jaw(1)} ${jaw(-1)}`),
-      sideFace(`M${cx + 0.8} ${cy - 2.4} Q${cx + 3.6} ${cy - 1} ${cx + 2.8} ${cy + 1.8} Q${cx + 3.1} ${cy - 0.6} ${cx + 0.8} ${cy - 2.4} Z`, 0.22),
+      // 집게 사이 앞 홈 — 어두운 쐐기.
+      capFace(polyPath3([[1.6, 0.5, 4.35], [3.4, 0, 4.35], [1.6, -0.5, 4.35]]), 0.4),
+      sideFace(`M${cx + 0.9} ${cy - 2.4} Q${cx + 3.7} ${cy - 1} ${cx + 2.9} ${cy + 1.8} Q${cx + 3.2} ${cy - 0.6} ${cx + 0.9} ${cy - 2.4} Z`, 0.22),
       topFace(groundEllipse(cx - 1, cy - 1.4, 1.5, 0.9), 0.3),
+      // 등 콕핏 — 어두운 점.
+      capFace(groundEllipse(cx + 0.6, cy - 0.6, 0.8, 0.5), 0.5),
+      // 후미 엔진 배관 하이라이트.
+      topFace(groundEllipse(ex, ey, 0.9, 0.4), 0.35),
     ];
   },
 };
