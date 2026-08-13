@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties } from "react";
+import ModalHash from "../utils/modalHash";
 import { createPortal } from "react-dom";
 import { Spinner } from "../components/common/Feedback";
 import KakaoShareButton from "../components/common/KakaoShareButton";
@@ -208,6 +209,7 @@ export default function ChallengeInboxModal({
 
   return createPortal(
     <div className={`scr-modal-overlay${shareBackdrop ? " scr-challenge-share" : ""}`}>
+      <ModalHash hash="callout-inbox" onClose={onClose} />
       {/* 카톡 공유로 열렸을 때만 뒤에 흰 벽지("너 나와~" 반복)를 깐다(요청). 봉투/편지지보다
           아래(z-index 없음)에 위치해 배경으로만 보인다. */}
       {shareBackdrop && <div className="scr-challenge-share-bg" aria-hidden="true" />}

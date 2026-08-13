@@ -1,4 +1,5 @@
 import { useRef, useState, type ChangeEvent } from "react";
+import ModalHash from "../utils/modalHash";
 import { createPortal } from "react-dom";
 import { Camera, Trash2, X } from "lucide-react";
 import Avatar from "../components/common/Avatar";
@@ -61,6 +62,7 @@ export default function CreateMemberModal({ onClose }: CreateMemberModalProps) {
 
   return createPortal(
     <div className="scr-modal-overlay">
+      <ModalHash hash="member-new" onClose={onClose} />
       <div className="scr-modal scr-modal-profile">
         <div className="scr-modal-head">
           <span>회원 생성</span>

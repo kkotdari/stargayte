@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ModalHash from "../utils/modalHash";
 import { createPortal } from "react-dom";
 import { X, RefreshCw } from "lucide-react";
 import Avatar from "../components/common/Avatar";
@@ -105,6 +106,7 @@ export default function MemberDetailModal({ member, onClose }: MemberDetailModal
 
   return createPortal(
     <div className="scr-modal-overlay">
+      <ModalHash hash={`member-edit-${member.id}`} onClose={onClose} />
       <div className="scr-modal scr-modal-sm">
         <div className="scr-modal-head">
           <span>회원 상세</span>

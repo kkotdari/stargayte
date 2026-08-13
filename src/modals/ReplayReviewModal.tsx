@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ModalHash from "../utils/modalHash";
 import { createPortal } from "react-dom";
 import { Upload, X } from "lucide-react";
 import MemberMultiSelect from "../components/select/MemberMultiSelect";
@@ -319,6 +320,7 @@ export default function ReplayReviewModal({
 
   return createPortal(
     <div className="scr-modal-overlay">
+      <ModalHash hash="replay-review" onClose={onClose} />
       <div className={cx("scr-modal scr-modal-match", visibleIndices.length === 0 && "scr-modal-match-compact")}>
         <div className="scr-modal-head">
           <span>등록 내용 확인 {visibleIndices.length > 0 && `(${visibleIndices.length}건)`}</span>

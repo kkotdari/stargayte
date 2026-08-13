@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import ModalHash from "../utils/modalHash";
 import { createPortal } from "react-dom";
 import { X, Phone, ImagePlus } from "lucide-react";
 import { cx } from "../utils/format";
@@ -192,6 +193,7 @@ export default function ChallengeFormModal({ onClose, onCreated, presetTargetIds
 
   return createPortal(
     <div className="scr-modal-overlay">
+      <ModalHash hash="callout-new" onClose={onClose} />
       <div className="scr-modal scr-modal-sm scr-challenge-form-modal">
         <div className="scr-modal-head">
           <span>{modalTitle}</span>

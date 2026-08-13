@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ModalHash from "../utils/modalHash";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Spinner } from "../components/common/Feedback";
@@ -47,6 +48,7 @@ export default function ChallengeTimeEditModal({
 
   return createPortal(
     <div className="scr-modal-overlay" onClick={onClose}>
+      <ModalHash hash={`callout-time-${challenge.id}`} onClose={onClose} />
       <div className="scr-modal scr-modal-sm" onClick={(e) => e.stopPropagation()}>
         <div className="scr-modal-head">
           <span>일시 수정</span>

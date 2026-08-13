@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ModalHash from "../utils/modalHash";
 import { createPortal } from "react-dom";
 import { Spinner } from "../components/common/Feedback";
 import Avatar, { type AvatarMember } from "../components/common/Avatar";
@@ -70,6 +71,7 @@ export default function ChallengeResultInboxModal({ challenges, onClose }: Chall
 
   return createPortal(
     <div className="scr-modal-overlay">
+      <ModalHash hash="callout-results" onClose={onClose} />
       <div className="scr-modal scr-modal-sm scr-challenge-inbox-modal">
         <div className="scr-challenge-inbox-title">지난 너 나와! 결과를 입력해 주세요</div>
         <div className="scr-modal-body scr-challenge-inbox-body">

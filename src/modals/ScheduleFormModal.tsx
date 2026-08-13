@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import ModalHash from "../utils/modalHash";
 import { createPortal } from "react-dom";
 import { X, CalendarPlus, Paperclip, Clock } from "lucide-react";
 import { cx } from "../utils/format";
@@ -124,6 +125,7 @@ export default function ScheduleFormModal({ initial, onClose, onSaved }: {
 
   return createPortal(
     <div className="scr-modal-overlay">
+      <ModalHash hash={initial ? `schedule-edit-${initial.id}` : "schedule-new"} onClose={onClose} />
       <div className="scr-modal scr-modal-sm scr-schedule-form-modal">
         <div className="scr-modal-head">
           <span>{initial ? "일정 수정" : "일정 등록"}</span>

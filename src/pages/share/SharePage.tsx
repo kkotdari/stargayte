@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { GameDetailCloseContext } from "../activity/gameDetailClose";
 import { LoadingMark } from "../../components/common/Feedback";
 import ChallengeInboxModal from "../../modals/ChallengeInboxModal";
 import { api } from "../../api/client";
@@ -164,12 +165,16 @@ export default function SharePage({ target, onExit }: { target: ShareTarget; onE
           // 경기 한 장 공유 — 묶음 공유와 마찬가지로 활동의 그 카드를 그대로 쓴다(요청).
           // 예전엔 목록(GameResultCardBody)을 날것으로 얹어서, 활동에는 없는 숫자 날짜 머리글이
           // 뜨고 카드 머리(시각·등록자·제목)는 없는 다른 모양이었다.
-          <div className="scr-activity-list">
-            <GameResultCard
-              item={gameResultItem(gameResult)} memberOf={memberOf} onDeleted={() => {}}
-              dateLabel={shortDate(gameResult.date)}
-            />
-          </div>
+          /* 공유 랜딩도 확대판이 기본(요청) — PC에선 카드가 아니라 곧장 확대 재생 창이
+             뜨고, 닫으면 "스타게이트로"(onExit)와 같은 길로 나간다. 모바일은 카드 그대로. */
+          <GameDetailCloseContext.Provider value={onExit}>
+            <div className="scr-activity-list">
+              <GameResultCard
+                item={gameResultItem(gameResult)} memberOf={memberOf} onDeleted={() => {}}
+                dateLabel={shortDate(gameResult.date)}
+              />
+            </div>
+          </GameDetailCloseContext.Provider>
         ) : shift ? (
           // 순위변동 공유 — 활동와 같은 카드 한 장(읽기 전용, 케밥/상세/댓글 없이).
           <div className="scr-activity-list">

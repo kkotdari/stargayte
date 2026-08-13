@@ -1,4 +1,5 @@
 import { useRef, useState, type ChangeEvent } from "react";
+import ModalHash from "../utils/modalHash";
 import { createPortal } from "react-dom";
 import { X, Camera, Trash2 } from "lucide-react";
 import Avatar from "../components/common/Avatar";
@@ -95,6 +96,7 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
 
   return createPortal(
     <div className="scr-modal-overlay">
+      <ModalHash hash="profile" onClose={onClose} />
       <div className="scr-modal scr-modal-profile">
         <div className="scr-modal-head">
           <span>내 정보 수정</span>

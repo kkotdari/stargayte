@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ModalHash from "../utils/modalHash";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Spinner } from "../components/common/Feedback";
@@ -44,6 +45,7 @@ export default function LeagueCreateModal({ onClose, onCreated }: LeagueCreateMo
 
   return createPortal(
     <div className="scr-modal-overlay">
+      <ModalHash hash="league-new" onClose={onClose} />
       <div className="scr-modal scr-modal-profile">
         <div className="scr-modal-head">
           <span>새 리그 만들기</span>

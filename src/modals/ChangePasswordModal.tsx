@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ModalHash from "../utils/modalHash";
 import { X } from "lucide-react";
 import { Spinner } from "../components/common/Feedback";
 import { useAppStore } from "../store/appStore";
@@ -51,6 +52,7 @@ export default function ChangePasswordModal({ onClose }: ChangePasswordModalProp
 
   return (
     <div className="scr-modal-overlay">
+      <ModalHash hash="password" onClose={onClose} />
       <div className="scr-modal scr-modal-sm">
         <div className="scr-modal-head">
           <span>비밀번호 변경</span>

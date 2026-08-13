@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ModalHash from "../utils/modalHash";
 import { createPortal } from "react-dom";
 import { X, Trash2 } from "lucide-react";
 import { Spinner } from "../components/common/Feedback";
@@ -118,6 +119,7 @@ export default function VersionManageModal({ onClose }: VersionManageModalProps)
   return createPortal(
     // 바깥을 눌러도 안 닫히게 한다(제어판과 같은 원칙) — 닫기는 헤더의 X 버튼으로만.
     <div className="scr-modal-overlay">
+      <ModalHash hash="versions" onClose={onClose} />
       <div className="scr-modal scr-modal-sm scr-notice-settings-modal">
         <div className="scr-modal-head">
           <span>버전 등록</span>

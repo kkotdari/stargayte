@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import ModalHash from "../../utils/modalHash";
 import { X, Share } from "lucide-react";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 
@@ -10,6 +11,7 @@ export default function InstallGuideModal({ onClose }: { onClose: () => void }) 
   useLockBodyScroll(true, onClose);
   return createPortal(
     <div className="scr-modal-overlay" onClick={onClose}>
+      <ModalHash hash="install-guide" onClose={onClose} />
       <div className="scr-modal scr-modal-sm scr-install-guide-modal" onClick={(e) => e.stopPropagation()}>
         <div className="scr-modal-head">
           <span>홈 화면에 추가</span>

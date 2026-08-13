@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import ModalHash from "../../utils/modalHash";
 import { createPortal } from "react-dom";
 import { readAsDataUrl, loadImage, MAX_SIDE, JPEG_QUALITY } from "../../utils/image";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
@@ -96,6 +97,7 @@ export default function AvatarCropModal({ file, onCancel, onDone }: AvatarCropMo
 
   return createPortal(
     <div className="scr-modal-overlay">
+      <ModalHash hash="avatar-crop" onClose={onCancel} />
       <div className="scr-modal scr-modal-sm scr-modal-crop">
         <div className="scr-modal-head">
           <span>사진 위치 조절</span>

@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import ModalHash from "../utils/modalHash";
 import { X } from "lucide-react";
 import { cx } from "../utils/format";
 import { epithetGuideRows, type EpithetRank } from "../utils/statEpithet";
@@ -19,6 +20,7 @@ export default function EpithetGuideModal({ onClose }: { onClose: () => void }) 
 
   return createPortal(
     <div className="scr-modal-overlay" onClick={onClose}>
+      <ModalHash hash="epithet-guide" onClose={onClose} />
       <div className="scr-modal scr-epithet-guide" onClick={(e) => e.stopPropagation()}>
         <div className="scr-modal-head">
           <span>칭호 설명</span>

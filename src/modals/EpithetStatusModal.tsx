@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ModalHash from "../utils/modalHash";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import Avatar from "../components/common/Avatar";
@@ -59,6 +60,7 @@ export default function EpithetStatusModal({ onClose }: { onClose: () => void })
 
   return createPortal(
     <div className="scr-modal-overlay" onClick={onClose}>
+      <ModalHash hash="epithet-status" onClose={onClose} />
       <div className="scr-modal scr-epithet-status" onClick={(e) => e.stopPropagation()}>
         <div className="scr-modal-head">
           <span>칭호 시뮬레이션</span>

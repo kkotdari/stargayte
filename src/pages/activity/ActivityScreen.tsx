@@ -11,6 +11,7 @@ import KakaoShareButton from "../../components/common/KakaoShareButton";
 import { challengePhoto, shareThumb } from "../../utils/kakaoShare";
 import GameResultCardBody, { type SearchListRow } from "./GameResultCardBody";
 import { GameDetailCloseContext } from "./gameDetailClose";
+import ModalHash from "../../utils/modalHash";
 import { ActivityCard } from "./ActivityCard";
 import Select from "../../components/common/Select";
 import { resolveSlotName } from "./GameResultSides";
@@ -299,6 +300,18 @@ export function sessionDateOf(it: GameResultItem): string {
 // 세션 날짜로 이름표를 단다 — 새벽 2시 경기가 맨 위에 있다고 "오늘"로 적히면 안 된다.
 /** 목록 보기 한 줄의 키 — 펼쳐 둔 줄을 기억하는 데 쓴다. 종류마다 id 공간이 달라
  *  접두어로 갈라 둔다(게임결과 3번과 너 나와 3번이 같은 줄이 되면 안 된다). */
+/** 상세 팝업의 주소 해시(요청: 모달마다 고유값) — 게임은 경기 번호, 너나와는 그 id,
+ *  일정·알림·순위변동·리그도 제 pk다. 묶음은 날짜가 고유값이다. */
+function detailHashOf(it: DisplayItem): string {
+  if (it.kind === "gameResult") return `game-${it.gameResult.id}`;
+  if (it.kind === "challenge") return `callout-${it.challenge.id}`;
+  if (it.kind === "schedule") return `schedule-${it.schedule.id}`;
+  if (it.kind === "notice") return `notice-${it.notice.id}`;
+  if (it.kind === "rankingShift") return `rank-${it.shift.id}`;
+  if (it.kind === "leagueMatch") return `league-${it.match.id}`;
+  return `games-${it.date}`;
+}
+
 function rowKeyOf(it: DisplayItem): string {
   return it.kind === "challenge" ? `c-${it.challenge.id}`
     : it.kind === "notice" ? `nt-${it.notice.id}`
@@ -1203,6 +1216,25 @@ export default function ActivityScreen() {
     return items.sort((a, b) => sortMsOf(b) - sortMsOf(a));
   }, [challenges, gameResults, rankShifts, leagueMatches, schedules, notices]);
 
+  /* 해시 → 상세(요청: 앞으로가기·딥링크) — #game-12 같은 해시로 서 있는데 상세가 닫혀
+     있으면 그 항목을 찾아 연다. 닫기는 ModalHash(뒤로가기)가 맡으므로 여기선 열기만 한다.
+     다른 모달의 해시(member-…)는 feed에 없어 자연히 무시된다. */
+  const detailRef = useRef<DisplayItem | null>(null);
+  detailRef.current = detailItem;
+  useEffect(() => {
+    const tryOpen = () => {
+      if (detailRef.current) return;
+      const h = decodeURIComponent(window.location.hash.slice(1));
+      if (!h) return;
+      const hit = feed.find((it) => detailHashOf(it) === h);
+      if (hit) setDetailItem(hit);
+    };
+    tryOpen();
+    window.addEventListener("popstate", tryOpen);
+    return () => window.removeEventListener("popstate", tryOpen);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feed]);
+
   /* 예전에는 여기서 "이미 불러온 가장 오래된 경기보다 과거인 너나와·변동"을 보류했다 —
      경기만 페이지로 나눠 받고 나머지는 통째로 받았기에, 아직 안 받은 경기 자리에 옛
      너나와가 먼저 내려와 시간순이 뒤섞여 보였기 때문이다. 이제 셋을 한 목록으로 함께
@@ -1958,6 +1990,8 @@ export default function ActivityScreen() {
           createPortal을 쓰고 있던 것이 같은 이유다. */}
       {detailItem && createPortal(
         <div className="scr-modal-overlay">
+          {/* 뒤/앞으로가기(요청) — 상세가 주소 해시(#game-12 …)를 얹는다. */}
+          <ModalHash hash={detailHashOf(detailItem)} onClose={() => setDetailItem(null)} />
           {/* 창 뒤를 덮는 투명 판 — 이 창은 전면이 아니라 작게 뜨는 탓에 뒤에 떠 있는
               탭바·등록 버튼·맨 위로 버튼이 그대로 눌렸다(지적). 딤은 안 씌우고 눌림만
               막으며, 그 누름은 닫기로 받는다. */}

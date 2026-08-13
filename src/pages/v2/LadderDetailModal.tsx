@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ModalHash from "../../utils/modalHash";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import Avatar from "../../components/common/Avatar";
@@ -147,6 +148,7 @@ export default function LadderDetailModal({
   return createPortal(
     // 바깥(딤) 클릭으로는 안 닫는다 — 옛 랭킹 상세와 같은 규칙(닫기는 X로만).
     <div className="scr-modal-overlay">
+      <ModalHash hash={`ladder-${member.id}`} onClose={onClose} />
       <div className="scr-modal scr-modal-sm scr-modal-rank-detail">
         <div className="scr-modal-head">
           <span>래더 상세</span>

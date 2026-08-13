@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import ModalHash from "../utils/modalHash";
 import { X, Sparkles } from "lucide-react";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 
@@ -21,6 +22,7 @@ export default function AppUpdateNoticeModal({ notes, onClose }: AppUpdateNotice
 
   return createPortal(
     <div className="scr-modal-overlay" onClick={onClose}>
+      <ModalHash hash="app-update" onClose={onClose} />
       <div className="scr-modal scr-modal-sm scr-update-notice-modal" onClick={(e) => e.stopPropagation()}>
         <div className="scr-modal-head">
           <span><Sparkles size={15} className="scr-update-notice-icon" /> 업데이트 안내</span>
