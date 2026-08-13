@@ -2158,26 +2158,27 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...domeFaces3(0, 0.6, 0.7, 0.55, 6.2),
     ];
   },
-  /* 캐리어(정정 셋) — 아래 판 없이, 부드러운 타원 꽃잎 세 장(옆 둘 + 위 하나)만
-     서로 마주 보며 다물린다. 모형 공간 타원이라 곡선이 매끈하다. */
+  /* 캐리어(정정 넷: 마주 보며 감싸기) — 옆 꽃잎 두 장은 바깥 가장자리가 말려 올라
+     가운데를 향해 오므리고, 위 꽃잎이 그 사이를 덮는다 — 세 면이 감싸 안는 봉오리. */
   carrier: () => {
-    const petal = (cx2: number, z0: number, xr: number, yr: number): string => polyPath3(
+    const petal = (cx2: number, m2: 0 | 1 | -1, z0: number, xr: number, yr: number): string => polyPath3(
       Array.from({ length: 12 }, (_, i) => {
         const a = (i / 12) * Math.PI * 2;
+        const co = Math.cos(a);
         return [
-          cx2 + Math.cos(a) * xr,
+          cx2 + co * xr,
           0.3 + Math.sin(a) * yr,
-          z0 - Math.sin(a) * 0.3,
+          z0 - Math.sin(a) * 0.28 + (m2 !== 0 ? Math.max(0, m2 * co) * 1.35 : 0),
         ] as [number, number, number];
       }),
     );
     return [
-      bodyFace(petal(-1.35, 5.5, 0.95, 3.9)),
-      topFace(petal(-1.35, 5.5, 0.95, 3.9), 0.16),
-      bodyFace(petal(1.35, 5.5, 0.95, 3.9)),
-      sideFace(petal(1.35, 5.5, 0.95, 3.9), 0.18),
-      bodyFace(petal(0, 6.2, 1.15, 4.2)),
-      topFace(petal(0, 6.2, 1.15, 4.2), 0.1),
+      bodyFace(petal(-1.3, -1, 5.1, 1.05, 3.9)),
+      topFace(petal(-1.3, -1, 5.1, 1.05, 3.9), 0.16),
+      bodyFace(petal(1.3, 1, 5.1, 1.05, 3.9)),
+      sideFace(petal(1.3, 1, 5.1, 1.05, 3.9), 0.18),
+      bodyFace(petal(0, 0, 6.5, 1.05, 4.1)),
+      topFace(petal(0, 0, 6.5, 1.05, 4.1), 0.1),
     ];
   },
   /* 아비터(정정 둘) — 작은 몸체 양옆에 긴 타원형 날개가 방패처럼 뒤를 향해 길게
