@@ -14,6 +14,7 @@ import {
   bodyFace, capFace, groundEllipse, sideFace, topFace, type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
   domeFaces3, faceLight, frustumFaces3, hornFaces, limbFaces, tubeFaces,
+  withTopView,
 } from "../../utils/shapeOblique";
 import type { MinimapMarker } from "./ReplayMinimap";
 
@@ -756,11 +757,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       sideFace(right, 0.3),
       topFace(plateau, 0.22),
     ];
-    // 왼쪽 검은 뿔 — 마당에서 솟아 돛 쪽으로 감긴다.
-    out.push(...hornFaces(-4.4, 0.6, 0.8, -5.9, 0, 4.8, 1.2));
-    out.push(...hornFaces(-5.9, 0, 4.6, -4.7, -0.5, 6.8, 0.9));
-    // 가는 안테나 관 — 마당을 가로지른다.
-    out.push(...tubeFaces(-6.6, 1.6, 7, 1, 0.22, 3.9));
+    // (삭제·지적) 검은 뿔·안테나 가지들 — 이상한 뒷가지로 읽혀 걷어냈다.
     // 중앙 돛 — 위로 뾰족하게 굽는 황금 판.
     const sail = `M${pt(-2.9, 0.2, 0.7)} Q${pt(-3.7, 0.2, 5.6)} ${pt(-0.4, 0, 10)}`
       + ` Q${pt(0.5, -0.1, 11.2)} ${pt(1, -0.1, 9.5)}`
@@ -771,9 +768,6 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [wx, wy] = project(-0.2, 0.1, 4.9);
     out.push(capFace(groundEllipse(wx, wy, 1.5, 2.3), 0.4));
     out.push(topFace(groundEllipse(wx, wy, 1.05, 1.8), 0.5));
-    // 오른앞 굽은 뿔 — 돛 앞을 스치듯.
-    out.push(...hornFaces(4.5, 1.4, 0.8, 5.7, 2, 4.4, 1.1));
-    out.push(...hornFaces(5.7, 2, 4.2, 4.8, 2.4, 6, 0.8));
     return out;
   },
   /* 스타게이트(다시 다섯, 지적: 전판 폐기) — 세운 원통을 세로로 반 갈라 두 쪽을 사이
@@ -810,7 +804,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   diamond: () => {
     // 고리가 바닥에 붙어 보인다(지적) — 그림자를 줄이고 고리를 공중으로 더 올린다.
     const out: ShapeFace[] = [sideFace(discPath3(0, 0, 0, 3), 0.24)];
-    const [cx, cy] = project(0, 0, 4.6);
+    // 고리 많이 위로(지적) — 수정 허리에 걸린다.
+    const [cx, cy] = project(0, 0, 6.4);
     const rxo = 4.6;
     const ryo = rxo * 0.45;
     const rxi = 3.2;
@@ -819,10 +814,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const ringFront = `M${cx - rxo} ${cy} A${rxo} ${ryo} 0 0 0 ${cx + rxo} ${cy} L${cx + rxi} ${cy} A${rxi} ${ryi} 0 0 1 ${cx - rxi} ${cy} Z`;
     const claw = (ang: number, h: number): ShapeFace[] => {
       const a = (ang * Math.PI) / 180;
-      return hornFaces(Math.sin(a) * 3.9, Math.cos(a) * 3.9, 4.4, Math.sin(a) * 3, Math.cos(a) * 3, h, 1.05);
+      return hornFaces(Math.sin(a) * 3.9, Math.cos(a) * 3.9, 6.2, Math.sin(a) * 3, Math.cos(a) * 3, h, 1.05);
     };
     // 뒤 발톱들 → 뒤 링 → 수정 → 앞 링 → 앞 발톱들 순으로 겹친다.
-    for (const ang of [135, 180, -135]) out.push(...claw(ang, 8));
+    for (const ang of [135, 180, -135]) out.push(...claw(ang, 9.4));
     out.push(bodyFace(ringBack), sideFace(ringBack, 0.3));
     const [gx, gy] = project(0, 0, 7.4);
     const R = 5.2;
@@ -834,8 +829,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(sideFace(`M${gx} ${gy - R} L${gx + W * 0.82} ${gy - R * 0.42} L${gx + W} ${gy + R * 0.28} L${gx} ${gy + R * 0.72} L${gx + W * 0.3} ${gy + R * 0.24} L${gx + W * 0.3} ${gy - R * 0.36} Z`, 0.22));
     out.push(topFace(`M${gx} ${gy - R} L${gx + W * 0.3} ${gy - R * 0.36} L${gx} ${gy - R * 0.1} L${gx - W * 0.3} ${gy - R * 0.36} Z`, 0.4));
     out.push(bodyFace(ringFront), topFace(ringFront, 0.22));
-    for (const ang of [90, -90]) out.push(...claw(ang, 8.3));
-    for (const ang of [45, -45, 0]) out.push(...claw(ang, 7.8));
+    for (const ang of [90, -90]) out.push(...claw(ang, 9.7));
+    for (const ang of [45, -45, 0]) out.push(...claw(ang, 9.2));
     return out;
   },
   /* 로보틱스(실물 참고, 곡선의 미) — 둥근 대야와 도톰한 링 테두리, 어두운 격자 구덩이,
@@ -1580,6 +1575,10 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
   ...Object.fromEntries(Object.entries(SHAPE_BUILDERS).map(([k, b]) => [k, b()])),
   // (2D 기호 삭제·요청) — 갈래 기호도 전부 3D 빌더가 만든다: 삼각형은 삼각뿔로.
 };
+/* 위에서 본 판(요청: 입체 아닌 모드에서 좀 더 부감으로) — 같은 빌더를 납작비 0.66·
+   높이 0.6으로 다시 구운 것. 입체 보기가 아닐 때 지도 마커가 이쪽을 쓴다. */
+const SHAPE_FACES_TOP: Record<string, ShapeFace[]> = withTopView(() =>
+  Object.fromEntries(Object.entries(SHAPE_BUILDERS).map(([k, b]) => [k, b()])));
 /* 유닛 → 마커 갈래(요청) — 표에 없는 유닛은 지대지 병력으로 본다. 수송·일꾼·오버로드는
    기존 갈래(수송선 도형·점·풍선)가 이미 따로 있다. */
 const UNIT_CLASS: Record<string, string> = {
@@ -1655,14 +1654,16 @@ export const SHAPE_GALLERY: { kind: string; label: string }[] = (() => {
   return out;
 })();
 
-export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg }: {
+export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg, flat }: {
   kind: string; className?: string;
   /** 뷰어의 요잉 회전(요청) — withYaw로 다시 투영한 면 목록을 그대로 그린다. */
   faces?: ShapeFace[];
   /** 이동 방향 회전(요청: 유닛 마커도 방향) — 시계방향 도. */
   rotDeg?: number;
+  /** 위에서 본 판(요청) — 입체 보기가 아닐 때의 지도 마커가 켠다. */
+  flat?: boolean;
 }) {
-  const faces = facesOverride ?? SHAPE_FACES[kind];
+  const faces = facesOverride ?? (flat ? SHAPE_FACES_TOP[kind] : undefined) ?? SHAPE_FACES[kind];
   const rot = (SHAPE_ROT[kind] ?? 0) + (rotDeg ?? 0);
   return (
     // preserveAspectRatio="none" — 상자(발자국 비율)에 맞춰 그림째 눌린다(요청: 캔버스
@@ -3208,7 +3209,7 @@ export default function ReplayMotionPlayer({
                     입체는 직접 깎은 도형만이다(지적) — 이름 없는 나머지 건물은 예전대로
                     네모, 대신 크기만 발자국에 맞춘다. */}
                 {shapeKind && text !== name
-                  ? <ShapeIcon kind={shapeKind} />
+                  ? <ShapeIcon kind={shapeKind} flat={!pitched} />
                   : text === "■"
                     // 캔버스가 이미 발자국 비율이라(위 aspectRatio — 벡터 없으면 높이 몫도
                     // 없다) 네모는 그 상자를 그대로 채운다(CSS width/height 100%).
@@ -3225,12 +3226,13 @@ export default function ReplayMotionPlayer({
                      따라(요청): 생산 = 테란 ⏳ · 저그 알 🥚 · 프로토스 소환 ✨, 연구 =
                      테란 🧪 · 저그 유전자 🧬 · 프로토스 🔮(좀 더 고급). */
                   const jobRace = bases.find((b) => b.key === raw)?.race;
-                  const job = raising ? "🔨"
+                  /* 요청: 건설 = 테란 망치 🔨 · 프로토스 소환 동그라미 💫 · 저그 번데기
+                     고치 🐛, 생산 소환은 소용돌이 시공 🌀, 업그레이드는 전부 반짝이 ✨. */
+                  const job = raising
+                    ? (jobRace === "저그" ? "🐛" : jobRace === "프로토스" ? "💫" : "🔨")
                     : producing && !afloat
-                      ? (jobRace === "저그" ? "🥚" : jobRace === "프로토스" ? "✨" : "⏳")
-                      : researching && !afloat
-                        ? (jobRace === "저그" ? "🧬" : jobRace === "프로토스" ? "🔮" : "🧪")
-                        : null;
+                      ? (jobRace === "저그" ? "🥚" : jobRace === "프로토스" ? "🌀" : "⏳")
+                      : researching && !afloat ? "✨" : null;
                   if (!job) return null;
                   return <span className="scr-motion-raising scr-motion-job">{job}</span>;
                 })()}
@@ -3365,7 +3367,7 @@ export default function ReplayMotionPlayer({
                   }}
                 >
                   {/* 갓 나온 유닛도 상징물(요청) — 일꾼도 제 모델로 랠리까지 걷는다. */}
-                  <ShapeIcon kind={unitMarkerKind(unit)} rotDeg={hdg} className="scr-motion-troop" />
+                  <ShapeIcon kind={unitMarkerKind(unit)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
                 </span>,
               );
             }
@@ -3458,7 +3460,7 @@ export default function ReplayMotionPlayer({
                 }}
               >
                 {/* 일꾼류는 직접 모델링(요청) — 종족 일꾼 상징물이 오간다. */}
-                <ShapeIcon kind={workerKindOf(ownerRace)} rotDeg={hdg} className="scr-motion-troop" />
+                <ShapeIcon kind={workerKindOf(ownerRace)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
               </span>
             );
           });
@@ -3768,10 +3770,10 @@ export default function ReplayMotionPlayer({
                     ? (
                       <ShapeIcon
                         kind={race === "저그" ? "ovie" : race === "테란" ? "dship" : "shuttle"}
-                        className="scr-motion-ovie"
+                        className="scr-motion-ovie" flat={!pitched}
                       />
                     )
-                    : <ShapeIcon kind={workerKindOf(race)} className="scr-motion-troop" />}
+                    : <ShapeIcon kind={workerKindOf(race)} flat={!pitched} className="scr-motion-troop" />}
                 </span>
               );
             }
@@ -3853,7 +3855,7 @@ export default function ReplayMotionPlayer({
                     ...glyphStyle(p.raw, team),
                   }}
                 >
-                  <ShapeIcon kind={unitMarkerKind(u)} rotDeg={hdg} className="scr-motion-troop" />
+                  <ShapeIcon kind={unitMarkerKind(u)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
                   {/* 전투 불꽃·사망 퍼프(요청) — 대여섯에 하나씩 불꽃, 일곱에 하나씩
                       돌아가며 퍼프(1.5초 주기 결정적 순환이라 프레임마다 안 튄다). */}
                   {fighting && di % 5 === 0 && <span className="scr-motion-fight" />}
@@ -4001,7 +4003,7 @@ export default function ReplayMotionPlayer({
                     ...glyphStyle(p.raw, team),
                   }}
                 >
-                  <ShapeIcon kind={unitMarkerKind(u)} rotDeg={hdg} className="scr-motion-troop" />
+                  <ShapeIcon kind={unitMarkerKind(u)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
                   {/* 전투 불꽃·사망 퍼프(요청) — 대여섯에 하나씩 불꽃, 일곱에 하나씩
                       돌아가며 퍼프(1.5초 주기 결정적 순환이라 프레임마다 안 튄다). */}
                   {fighting && di % 5 === 0 && <span className="scr-motion-fight" />}
@@ -4115,12 +4117,12 @@ export default function ReplayMotionPlayer({
                 {/* 수송선·오버로드는 점 대신 제 도형(요청) — 풍선·드랍십·셔틀.
                     일꾼은 점 그대로, 그 밖의 단독 정찰(병력)은 육각형(요청: 아이콘 구분). */}
                 {race === "저그" && g.kind !== "worker"
-                  ? <ShapeIcon kind="ovie" className="scr-motion-ovie" />
+                  ? <ShapeIcon kind="ovie" flat={!pitched} className="scr-motion-ovie" />
                   : g.kind === "carrier"
-                    ? <ShapeIcon kind={race === "테란" ? "dship" : "shuttle"} className="scr-motion-ovie" />
+                    ? <ShapeIcon kind={race === "테란" ? "dship" : "shuttle"} flat={!pitched} className="scr-motion-ovie" />
                     : g.kind === "worker"
-                      ? <ShapeIcon kind={workerKindOf(race)} rotDeg={hdg} className="scr-motion-troop" />
-                      : <ShapeIcon kind="wedge" rotDeg={hdg} className="scr-motion-troop" />}
+                      ? <ShapeIcon kind={workerKindOf(race)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
+                      : <ShapeIcon kind="wedge" rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />}
               </span>
             );
           });
@@ -4145,7 +4147,7 @@ export default function ReplayMotionPlayer({
               className={cx("scr-motion-army", "scr-motion-dot", team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
               style={{ left: pct(home[0] + 2.5, grid.width), top: pct(home[1] - 2.5, grid.height), ...glyphStyle(p.raw, team) }}
             >
-              <ShapeIcon kind="ovie" className="scr-motion-ovie" />
+              <ShapeIcon kind="ovie" flat={!pitched} className="scr-motion-ovie" />
             </span>
           )];
         })}
@@ -4169,7 +4171,7 @@ export default function ReplayMotionPlayer({
                 ...glyphStyle(raw, teamOfRaw(raw)),
               }}
             >
-              <ShapeIcon kind="scv" rotDeg={(ang * 180) / Math.PI} className="scr-motion-troop" />
+              <ShapeIcon kind="scv" rotDeg={(ang * 180) / Math.PI} flat={!pitched} className="scr-motion-troop" />
             </span>
           );
         })}
@@ -4211,13 +4213,13 @@ export default function ReplayMotionPlayer({
                       opacity: 0.4 + 0.6 * ((age - (NUKE_FALL_SEC - 2)) / 2),
                     }}
                   >
-                    <ShapeIcon kind="nuke" />
+                    <ShapeIcon kind="nuke" flat={!pitched} />
                   </span>
                 ) : (
                   <>
                     <span className="scr-motion-nuke-flash" />
                     {/* 화구는 반구 돔(요청) — 평면 원 대신 3D 돔이 부푼다. */}
-                    <span className="scr-motion-nuke-domewrap"><ShapeIcon kind="nukedome" /></span>
+                    <span className="scr-motion-nuke-domewrap"><ShapeIcon kind="nukedome" flat={!pitched} /></span>
                     <span className="scr-motion-nuke-ring" />
                   </>
                 )}

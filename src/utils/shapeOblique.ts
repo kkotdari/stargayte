@@ -38,6 +38,25 @@ export const OP = {
 /** 바닥 원의 납작비 — 사선 시점에서 눌려 보이는 정도(ry = rx × 0.45). */
 export const GROUND_SQUASH = 0.45;
 
+/* 위에서 본 모드(요청: 입체 아닌 모드에서 에셋을 좀 더 부감으로) — 이 블록 안에서 구우면
+   바닥 원은 더 동그랗고(0.66) 높이는 더 낮게(0.6) 투영된다. withYaw와 같은 수법. */
+let topView = false;
+export function withTopView<T>(fn: () => T): T {
+  topView = true;
+  try {
+    return fn();
+  } finally {
+    topView = false;
+  }
+}
+/** 지금 유효한 바닥 납작비. */
+export function groundSquashNow(): number {
+  return topView ? 0.66 : GROUND_SQUASH;
+}
+function zScaleNow(): number {
+  return topView ? 0.6 : 0.89;
+}
+
 /** 몸통 — 본색 그대로. */
 export const bodyFace = (d: string): ShapeFace => [d, 1];
 /** 밝은 윗면 — 흰 반투명(기본 OP.top). */
@@ -49,7 +68,7 @@ export const capFace = (d: string, opacity: number = OP.cap): ShapeFace => [d, o
 
 /** 바닥에 놓인 원(납작 타원) 패스 — 밝은 윗면·발판·고리에 두루 쓴다. */
 export const groundEllipse = (
-  cx: number, cy: number, rx: number, ry: number = rx * GROUND_SQUASH,
+  cx: number, cy: number, rx: number, ry: number = rx * groundSquashNow(),
 ): string =>
   `M${r2(cx - rx)} ${r2(cy)}a${r2(rx)} ${r2(ry)} 0 1 0 ${r2(rx * 2)} 0`
   + `a${r2(rx)} ${r2(ry)} 0 1 0-${r2(rx * 2)} 0Z`;
@@ -167,7 +186,7 @@ export function project(x: number, y: number, z: number): [number, number] {
   const sn = Math.sin(th);
   const rx = x * c + y * sn;
   const ry = -x * sn + y * c;
-  return [r2(VIEW.originX + rx), r2(VIEW.originY + ry * VIEW.squash - z * VIEW.zScale)];
+  return [r2(VIEW.originX + rx), r2(VIEW.originY + ry * groundSquashNow() - z * zScaleNow())];
 }
 
 /** 3D 꼭짓점 목록 → 닫힌 직선 패스. (곡선이 필요하면 결과 좌표를 Q로 이어 다듬는다.) */
@@ -343,7 +362,7 @@ export function domeFaces3(
 ): ShapeFace[] {
   const [bx, by] = project(cx, cy, z0);
   const [, ty] = project(cx, cy, z0 + hh);
-  const ry = r * GROUND_SQUASH;
+  const ry = r * groundSquashNow();
   const body = `M${r2(bx - r)} ${r2(by)} Q${r2(bx - r)} ${r2(ty)} ${r2(bx)} ${r2(ty)}`
     + ` Q${r2(bx + r)} ${r2(ty)} ${r2(bx + r)} ${r2(by)}`
     + `a${r2(r)} ${r2(ry)} 0 1 1-${r2(r * 2)} 0Z`;
