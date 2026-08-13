@@ -1237,23 +1237,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     for (const ang of [152, 208]) out.push(...spikeTo(ang, 6.2, 3.6, 1.05));
     for (const ang of [170, 190]) out.push(...spikeTo(ang, 5.4, 1.2, 1));
     for (const ang of [95, -95]) out.push(...spike(ang, 2, 0.8));
-    const [cx, cy] = project(0, 0, 4.6);
-    const oct = (r: number): string => {
-      let d = "";
-      for (let i = 0; i < 8; i += 1) {
+    /* 몸통·눈도 모델 공간(수리: 화면 공간이라 돌아도 고정돼 있었다 — 지적) — 팔각도
+       눈도 요잉을 따라 함께 돈다. */
+    const oct = (r: number, z: number): string => polyPath3(
+      Array.from({ length: 8 }, (_, i) => {
         const a = ((i * 45 + 22.5) * Math.PI) / 180;
-        d += `${i === 0 ? "M" : "L"}${Math.round((cx + Math.cos(a) * r) * 100) / 100} ${Math.round((cy + Math.sin(a) * r * 0.82) * 100) / 100} `;
-      }
-      return `${d}Z`;
-    };
-    out.push(bodyFace(oct(2)));
-    out.push(topFace(oct(1.35), 0.26));
-    out.push(topFace(oct(0.8), 0.3));
-    // 앞은 다리 없이 동그란 눈 두 개(정정) — 귀엽게.
-    out.push(capFace(groundEllipse(cx - 0.75, cy + 1.15, 0.42, 0.4), 0.5));
-    out.push(capFace(groundEllipse(cx + 0.75, cy + 1.15, 0.42, 0.4), 0.5));
-    out.push(topFace(groundEllipse(cx - 0.62, cy + 1.02, 0.14, 0.13), 0.6));
-    out.push(topFace(groundEllipse(cx + 0.88, cy + 1.02, 0.14, 0.13), 0.6));
+        return [Math.cos(a) * r, Math.sin(a) * r, z] as [number, number, number];
+      }),
+    );
+    out.push(bodyFace(oct(2, 4.6)));
+    out.push(topFace(oct(1.35, 4.85), 0.26));
+    out.push(topFace(oct(0.8, 5.1), 0.3));
+    // 앞은 다리 없이 동그란 눈 두 개(정정) — 정면(+y)에 붙어 같이 돈다.
+    const [e1x, e1y] = project(-0.75, 1.85, 4.7);
+    const [e2x, e2y] = project(0.75, 1.85, 4.7);
+    out.push(capFace(groundEllipse(e1x, e1y, 0.42, 0.4), 0.5));
+    out.push(capFace(groundEllipse(e2x, e2y, 0.42, 0.4), 0.5));
+    out.push(topFace(groundEllipse(e1x + 0.13, e1y - 0.13, 0.14, 0.13), 0.6));
+    out.push(topFace(groundEllipse(e2x + 0.13, e2y - 0.13, 0.14, 0.13), 0.6));
     return out;
   },
   /* 드론(정정) — 갈퀴치마는 집게 사이가 아니라 집게팔과 꼬리 사이, 양옆에 부채처럼
@@ -1420,10 +1421,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const L = Math.hypot(dx2, dy2) || 1;
       const nx2 = (-dy2 / L) * r;
       const ny2 = (dx2 / L) * r;
+      /* 끝 마감은 A 호가 아니라 축 방향으로 내민 Q 곡선(수리: 이 대각 방향에서 호의
+         굽는 쪽이 뒤집혀 몸 안으로 파고들며 별처럼 뚫려 보였다 — 지적). */
+      const ux = (dx2 / L) * r * 1.25;
+      const uy = (dy2 / L) * r * 1.25;
       out.push(bodyFace(`M${ax2 + nx2} ${ay2 + ny2 - zr} L${bx2 + nx2} ${by2 + ny2 - zr}`
-        + ` A${r} ${r * 0.8} 0 0 1 ${bx2 - nx2} ${by2 - ny2 - zr}`
+        + ` Q${bx2 + ux} ${by2 + uy - zr} ${bx2 - nx2} ${by2 - ny2 - zr}`
         + ` L${ax2 - nx2} ${ay2 - ny2 - zr}`
-        + ` A${r} ${r * 0.8} 0 0 1 ${ax2 + nx2} ${ay2 + ny2 - zr} Z`));
+        + ` Q${ax2 - ux} ${ay2 - uy - zr} ${ax2 + nx2} ${ay2 + ny2 - zr} Z`));
       out.push(topFace(groundEllipse((ax2 + bx2) / 2 - 0.4, (ay2 + by2) / 2 - zr - 0.2, 0.9, 0.5), 0.2));
     };
     pod(-3.1);
