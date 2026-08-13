@@ -1372,7 +1372,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...domeFaces3(-1.2, -1.2, 3.4, 2.6, 1.8),
       ...domeFaces3(-2.2, -2, 2.2, 1.8, 3.6),
       ...hornFaces(-2.8, -2.6, 4.8, -3.7, -3.3, 6.8, 1.4),
-      capFace(groundEllipse(mx3, my3, 1.7, 0.8), 0.45),
+      // 입구 크게(지적) — 앞면을 넓게 뚫는다.
+      capFace(groundEllipse(mx3, my3, 2.7, 1.5), 0.45),
     ];
   },
   /* 나이더스 커널 — 점액 테 + 어두운 아가리 + 이빨 뿔들. */
