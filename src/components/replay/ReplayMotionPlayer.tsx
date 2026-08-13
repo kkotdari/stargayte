@@ -2544,13 +2544,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(topFace(wallDiscPath(-0.55, 1.5, 4.72, 0.26, 0.16), 0.88 * k));
       out.push(topFace(wallDiscPath(0.55, 1.5, 4.72, 0.26, 0.16), 0.88 * k));
     }
-    // 옆면 둥근 포트(실물 참고) — 앞옆 비스듬한 면의 원형 해치 한 쌍(몸을 따라 축소).
-    const [p1x, p1y] = project(-1.4, 0.6, 4.75);
-    const [p2x, p2y] = project(1.4, 0.6, 4.75);
-    out.push(topFace(groundEllipse(p1x, p1y, 0.28, 0.25), 0.3));
-    out.push(topFace(groundEllipse(p2x, p2y, 0.28, 0.25), 0.3));
-    // 앞다리 한 쌍 — 몸에 딱 붙여 더 가늘고 짧게(지적), 이것도 납작한 날개판.
-    for (const ang of [14, -14]) out.push(...wing(ang, 0.9, 0.9, 0.26, 0.13, 4.15, 3.15));
+    /* 옆면 둥근 포트(실물 참고) — 몸이 줄면서 가장자리 밖으로 삐져나와 떠 보였다(확인)
+       — 몸 안쪽으로 당기고 더 작게. */
+    const [p1x, p1y] = project(-1, 0.5, 4.72);
+    const [p2x, p2y] = project(1, 0.5, 4.72);
+    out.push(topFace(groundEllipse(p1x, p1y, 0.22, 0.18), 0.3));
+    out.push(topFace(groundEllipse(p2x, p2y, 0.22, 0.18), 0.3));
+    /* 앞다리 한 쌍(재지적: 길이 축소 + 두 다리 사이 벌리기 + 몸에 더 딱) — 뿌리를
+       몸 바로 밑(0.65)까지 당기고, 각도를 ±14→±30으로 벌리고, 길이는 반 남짓으로. */
+    for (const ang of [30, -30]) out.push(...wing(ang, 0.65, 0.5, 0.24, 0.12, 4.15, 3.55));
     return out;
   },
   /* 드론(정정) — 갈퀴치마는 집게 사이가 아니라 집게팔과 꼬리 사이, 양옆에 부채처럼
@@ -2826,7 +2828,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 앞 칼다리.
       out.push(...hornFaces(m2 * 1.6, 0.6, 4, m2 * 3.6, 1.7, 2.2, 0.7));
       out.push(...hornFaces(m2 * 3.6, 1.7, 2.2, m2 * 2.9, 2.8, 0.3, 0.5));
+      /* 앞 가시갈고리 한 쌍(지적) — 몸 앞에서 앞을 향해 뻗다 끝이 갈고리처럼
+         아래로 말린다. */
+      out.push(...hornFaces(m2 * 0.6, 1.9, 3.5, m2 * 1.1, 3.4, 2.3, 0.42));
+      out.push(...hornFaces(m2 * 1.1, 3.4, 2.3, m2 * 0.8, 4.1, 0.5, 0.28));
     }
+    // 꽁무니 다리 하나 더(지적) — 뒤 가운데에서 뒤로 뻗어 땅을 짚는다.
+    out.push(...hornFaces(0, -1.5, 3.6, 0, -3.3, 1.6, 0.6));
+    out.push(...hornFaces(0, -3.3, 1.6, 0, -4, 0.3, 0.42));
     // 넓은 등딱지 + 등 가시들.
     out.push(...domeFaces3(0, -0.2, 2.5, 2, 3.4));
     out.push(...hornFaces(-0.9, -0.9, 5, -1.3, -1.3, 6.2, 0.4));
@@ -2839,29 +2848,31 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(capFace(polyPath3([[-0.5, 2.4, 3.5], [0.5, 2.4, 3.5], [0.35, 2.65, 3.3], [-0.35, 2.65, 3.3]]), 0.42));
     return out;
   },
-  /* 디파일러(정정 둘: 바닥을 긴다) — 몸을 낮게 붙이고, 다리는 곧게 서지 않고 옆으로
-     넓게 뻗다 끝만 살짝 굽어 땅을 짚는 납작 포복 다리 여섯. */
-  defiler: () => [
-    ...hornFaces(-1.1, -1.2, 2.2, -2.4, -1.5, 1.1, 0.38),
-    ...hornFaces(-2.4, -1.5, 1.1, -3.1, -1.7, 0.1, 0.3),
-    ...hornFaces(-1.3, 0, 2.2, -2.7, 0, 1.1, 0.38),
-    ...hornFaces(-2.7, 0, 1.1, -3.4, 0, 0.1, 0.3),
-    ...hornFaces(-1.1, 1.2, 2.2, -2.4, 1.5, 1.1, 0.38),
-    ...hornFaces(-2.4, 1.5, 1.1, -3.1, 1.7, 0.1, 0.3),
-    ...hornFaces(1.1, -1.2, 2.2, 2.4, -1.5, 1.1, 0.38),
-    ...hornFaces(2.4, -1.5, 1.1, 3.1, -1.7, 0.1, 0.3),
-    ...hornFaces(1.3, 0, 2.2, 2.7, 0, 1.1, 0.38),
-    ...hornFaces(2.7, 0, 1.1, 3.4, 0, 0.1, 0.3),
-    ...hornFaces(1.1, 1.2, 2.2, 2.4, 1.5, 1.1, 0.38),
-    ...hornFaces(2.4, 1.5, 1.1, 3.1, 1.7, 0.1, 0.3),
-    // 낮게 붙은 몸 — 넓적한 앞몸과 뒤 혹.
-    ...domeFaces3(0, 0.3, 1.9, 1.1, 2),
-    ...domeFaces3(0, -1.3, 1.5, 1.4, 2.1),
-    ...domeFaces3(0, 1.9, 0.7, 0.5, 2),
-    ...hornFaces(0.25, 2.4, 2.4, 1.7, 4.5, 3.6, 0.18),
-    ...hornFaces(-0.25, 2.4, 2.4, -1.7, 4.5, 3.6, 0.18),
-    ...hornFaces(0, -2.5, 2.4, 0.2, -3.4, 4, 0.4),
-  ],
+  /* 디파일러(재정정: 몸이 납작하고 길며 꼬리로 갈수록 가늘어짐 + 다리 여섯이 전부
+     몸 앞쪽에 붙어 앞을 향함) — 사마귀처럼 앞에 몰린 다리와, 뒤로 길게 끌리는
+     마디 배. */
+  defiler: () => {
+    const out: ShapeFace[] = [];
+    // 다리 여섯 — 양쪽 3개씩, 뿌리가 다 앞몸(y 1.3~2)에 있고 앞·바깥으로 뻗는다.
+    for (const m2 of [1, -1] as const) {
+      out.push(...hornFaces(m2 * 0.55, 2, 1.7, m2 * 1.1, 3.6, 0.1, 0.34));
+      out.push(...hornFaces(m2 * 0.75, 1.65, 1.7, m2 * 1.9, 3.2, 0.1, 0.36));
+      out.push(...hornFaces(m2 * 0.95, 1.3, 1.7, m2 * 2.6, 2.7, 0.1, 0.38));
+    }
+    // 납작한 앞몸(머리·가슴) — 높이를 낮게 깐다.
+    out.push(...domeFaces3(0, 1.9, 0.75, 0.55, 1.5));
+    out.push(...domeFaces3(0, 1, 1.05, 0.8, 1.4));
+    // 긴 배 — 뒤로 갈수록 반지름·높이가 주는 마디 넷 + 꼬리끝 뿔.
+    out.push(...domeFaces3(0, -0.2, 0.95, 0.7, 1.3));
+    out.push(...domeFaces3(0, -1.4, 0.78, 0.58, 1.2));
+    out.push(...domeFaces3(0, -2.5, 0.6, 0.46, 1.1));
+    out.push(...domeFaces3(0, -3.4, 0.44, 0.36, 1));
+    out.push(...hornFaces(0, -3.7, 1.2, 0, -4.8, 0.3, 0.3));
+    // 앞 더듬이 한 쌍 — 위로 굽는 가는 뿔(원안 유지).
+    out.push(...hornFaces(0.25, 2.3, 1.9, 1.5, 4.2, 3.2, 0.16));
+    out.push(...hornFaces(-0.25, 2.3, 1.9, -1.5, 4.2, 3.2, 0.16));
+    return out;
+  },
 
   /* 오버로드 — 풍선 몸통(요잉 불변) + 곤충 다리 셋(요청: 촉수·칼이 아니라 무릎이 꺾인
      곤충 다리) — 윗마디는 바깥-아래로, 아랫마디는 무릎에서 안-아래로 꺾인다. */
@@ -3217,8 +3228,10 @@ function UnitLayer({ ops, zoom, pan }: {
       ctx.save();
       /* 건물은 그림자 없음(지적: 떠 보임 — 유닛만 그림자) — SVG 시절 filter:none과 동일.
          공중 유닛도 자체 그림자는 걷는다(지적) — 바닥 타원이 그림자를 맡으니, 몸에 또
-         드리우면 그림자가 두 겹이 된다. */
-      ctx.shadowColor = op.noShadow || op.air ? "transparent" : "rgba(0, 0, 0, 0.6)";
+         드리우면 그림자가 두 겹이 된다. 일꾼 셋도 떠다니는 기계라 같은 규칙(지적:
+         일꾼들도 공중에 떠 있으니 바닥 그림자) — 다만 몸은 안 들어올린다. */
+      const hover = op.air || op.kind === "scv" || op.kind === "probe" || op.kind === "drone";
+      ctx.shadowColor = op.noShadow || hover ? "transparent" : "rgba(0, 0, 0, 0.6)";
       if (op.textGlyph) {
         // 부속건물 + 같은 글자 하나 — 스팬 글자와 같은 굵기·가운데 앵커.
         ctx.globalAlpha = op.alpha;
@@ -3264,7 +3277,7 @@ function UnitLayer({ ops, zoom, pan }: {
       /* 공중 유닛(요청: 높이 더 높이 + 바닥 그림자) — 발밑 자리에 그림자 타원을 깔고
          몸은 반 키만큼 위로 띄운다. 떠 있음이 땅 유닛과 한눈에 갈린다. */
       const lift = op.air ? px * 0.55 : 0;
-      if (op.air) {
+      if (hover) {
         ctx.save();
         ctx.shadowColor = "transparent";
         ctx.globalAlpha = op.alpha * 0.3;
