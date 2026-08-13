@@ -1384,12 +1384,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const tx2 = Math.cos(a);
       const ty2 = -Math.sin(a);
       return [
-        // 위마디는 밖-위로 살짝 들리고, 아랫마디가 덩쿨처럼 길게 내리꽂힌다.
-        ...hornFaces(sx * 1.6, sy * 1.6, zTop, sx * 3.1, sy * 3.1, zTop + 0.5, 0.7),
-        ...hornFaces(sx * 3.1, sy * 3.1, zTop + 0.5, sx * 3.9, sy * 3.9, 0, 0.6),
+        // 다리는 둥지 아래 가운데에 모여 꺾임 없이 길게 쭉 내려온다(정정).
+        ...hornFaces(sx * 0.9, sy * 0.9, zTop, sx * 2.2, sy * 2.2, 0, 0.65),
         // 발치 잔뿌리 — 좌우로 벌어져 땅에 심긴다.
-        ...hornFaces(sx * 3.9, sy * 3.9, 0.35, sx * 4.2 + tx2 * 1.1, sy * 4.2 + ty2 * 1.1, 0.05, 0.4),
-        ...hornFaces(sx * 3.9, sy * 3.9, 0.35, sx * 4.2 - tx2 * 1.1, sy * 4.2 - ty2 * 1.1, 0.05, 0.4),
+        ...hornFaces(sx * 2.2, sy * 2.2, 0.35, sx * 2.5 + tx2 * 1, sy * 2.5 + ty2 * 1, 0.05, 0.4),
+        ...hornFaces(sx * 2.2, sy * 2.2, 0.35, sx * 2.5 - tx2 * 1, sy * 2.5 - ty2 * 1, 0.05, 0.4),
       ];
     };
     const [bx2, by2] = project(0, 0, 7.9);
@@ -1410,10 +1409,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const tx2 = Math.cos(a);
       const ty2 = -Math.sin(a);
       return [
-        ...hornFaces(sx * 1.7, sy * 1.7, 9.2, sx * 3.3, sy * 3.3, 9.7, 0.75),
-        ...hornFaces(sx * 3.3, sy * 3.3, 9.7, sx * 4.1, sy * 4.1, 0, 0.65),
-        ...hornFaces(sx * 4.1, sy * 4.1, 0.35, sx * 4.4 + tx2 * 1.2, sy * 4.4 + ty2 * 1.2, 0.05, 0.42),
-        ...hornFaces(sx * 4.1, sy * 4.1, 0.35, sx * 4.4 - tx2 * 1.2, sy * 4.4 - ty2 * 1.2, 0.05, 0.42),
+        ...hornFaces(sx * 1, sy * 1, 9.2, sx * 2.4, sy * 2.4, 0, 0.7),
+        ...hornFaces(sx * 2.4, sy * 2.4, 0.35, sx * 2.7 + tx2 * 1.1, sy * 2.7 + ty2 * 1.1, 0.05, 0.42),
+        ...hornFaces(sx * 2.4, sy * 2.4, 0.35, sx * 2.7 - tx2 * 1.1, sy * 2.7 - ty2 * 1.1, 0.05, 0.42),
       ];
     };
     const [bx2, by2] = project(0, 0, 9.1);
