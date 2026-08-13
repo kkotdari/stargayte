@@ -28,6 +28,12 @@ function isEditable(el: Element | null): boolean {
   return !!el?.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])");
 }
 
+/** 리플레이 지도인가 — 그 위 손짓(팬·핀치)은 지도의 몫이다(지적: 2D·3D 모두 맵 드래그가
+ *  모달로 전파 — 맵 쪽에서 아무리 막아도, 문서 위임인 이 훅이 시트를 끌고 있었다). */
+function isMotionMap(el: Element | null): boolean {
+  return !!el?.closest(".scr-motion-map");
+}
+
 // 터치 지점에서 위로 올라가며 실제로 스크롤되는(overflow-y auto/scroll) 가장 가까운
 // 조상을 찾는다 — 이 컨테이너의 scrollTop이 0(최상단)일 때만 닫기 드래그로 본다.
 function findScroller(from: Element | null, stopAt: Element): HTMLElement | null {
@@ -86,7 +92,7 @@ export function useModalDragDismiss(): void {
          리바운드 차단)가 다 preventDefault를 불러 네이티브 선택 드래그를 끊는다(지적).
          그렇다고 시트나 페이지가 딸려 움직이지도 않는다: 글칸 자체에 touch-action을 줘서
          브라우저가 애초에 패닝을 시작하지 않는다(global.css). */
-      if (isEditable(target)) { mode = "idle"; return; }
+      if (isEditable(target) || isMotionMap(target)) { mode = "idle"; return; }
       const s = target?.closest<HTMLElement>(SHEET_SELECTOR) ?? null;
       if (!s) { mode = "idle"; return; }
       sheet = s;
