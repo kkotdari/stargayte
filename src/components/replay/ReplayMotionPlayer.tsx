@@ -1119,13 +1119,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...domeFaces3(1.9, -0.4, 1.5, 1.3, 3.4),
     ...hornFaces(3.4, 1.4, 3.4, 3.4, 1.4, 5.8, 0.4),
   ],
-  /* 아머리 — 상자 + 옆 포탑 통 + 굴뚝. */
-  armory: () => [
-    ...boxFaces3(-0.6, 0.2, 7.6, 5.2, 3.8),
-    ...cylinderFaces3(3.4, 0.6, 1.5, 2.6, 1.2),
-    ...domeFaces3(3.4, 0.6, 1.5, 1, 3.8),
-    ...cylinderFaces3(-2.8, -1.4, 0.7, 2.4, 3.8),
-  ],
+  /* 아머리(정정: 유명한 삼발이) — 세 다리 위에 올린 둥근 몸 + 위 굴뚝. */
+  armory: () => {
+    const leg = (ang: number): ShapeFace[] => {
+      const a = (ang * Math.PI) / 180;
+      return [
+        ...hornFaces(Math.sin(a) * 1.3, Math.cos(a) * 1.3, 4, Math.sin(a) * 3.9, Math.cos(a) * 3.9, 0, 1.15),
+        bodyFace(discPath3(Math.sin(a) * 4, Math.cos(a) * 4, 0.3, 1)),
+      ];
+    };
+    return [
+      ...leg(180),
+      ...cylinderFaces3(0, 0, 2.7, 1.6, 3.4),
+      ...domeFaces3(0, 0, 2.3, 1.9, 5),
+      ...cylinderFaces3(1.2, -1, 0.5, 1.8, 6),
+      ...leg(60),
+      ...leg(-60),
+    ];
+  },
   /* 사이언스 퍼실리티 — 받침 + 큰 구 + 위 포드. */
   scifac: () => [
     ...boxFaces3(0, 0.3, 7.8, 5, 2.2),
@@ -1142,12 +1153,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...hornFaces(3.2, -1.8, 3.6, 3.7, -2.2, 6, 0.8),
     ];
   },
-  /* 사이버네틱스 코어 — 원통 + 돔 + 위 빛 구. */
+  /* 사이버네틱스 코어(정정) — 아래쪽을 큰 구슬들이 빙 두른 원통 + 돔 + 위 빛 구. */
   cyber: () => {
     const [gx2, gy2] = project(0, 0, 6.9);
+    const orb = (ang: number): ShapeFace[] => {
+      const a = (ang * Math.PI) / 180;
+      return domeFaces3(Math.sin(a) * 4, Math.cos(a) * 4, 1.05, 0.95);
+    };
     return [
-      ...cylinderFaces3(0, 0, 4.2, 2.6),
-      ...domeFaces3(0, 0, 3.4, 2.6, 2.6),
+      ...orb(150), ...orb(210), ...orb(90), ...orb(270),
+      ...cylinderFaces3(0, 0, 3.6, 2.6),
+      ...domeFaces3(0, 0, 3, 2.4, 2.6),
+      ...orb(30), ...orb(330),
       [groundEllipse(gx2, gy2, 1, 0.95), 0.6] as ShapeFace,
       topFace(groundEllipse(gx2 - 0.3, gy2 - 0.3, 0.4, 0.35), 0.5),
     ];
