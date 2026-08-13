@@ -1411,8 +1411,14 @@ export default function ReplayMotionPlayer({
        멈췄다 나중에 몰아 움직임) — 한 마리가 맵을 크게 가로지르는 클릭들이 좁은 반경에서
        여러 부대로 갈라지고, '조용한 부대가 저리 옮겨 간 것' 재배정에 튕기며 가다 서다
        몰아치기가 됐다. 일꾼 정찰은 종전 반경 그대로다(여럿이 딴 데를 볼 수 있다). */
+    /* 시작 오버로드는 해처리 옆에 떠 있다(지적: 트랙이 본진 좌표에서 출발해, 한 번
+       해처리로 이동했다 움직이기 시작함) — 저그의 수송·단독 정찰은 걸어 나가는 출발점을
+       풍선이 서 있는 그 자리(본진 오른쪽 위 2.5타일)로 잡는다. */
+    const home0 = homeOf(p.raw);
+    const ovieHome: [number, number] | null = home0 && race === "저그"
+      ? [home0[0] + 2.5, home0[1] - 2.5] : home0;
     return kinds.flatMap(({ kind, src }) => (src.length === 0 ? [] : splitSquads(
-      src, homeOf(p.raw), kind === "worker" ? undefined : 28,
+      src, kind === "worker" ? home0 : ovieHome, kind === "worker" ? undefined : 28,
     )
       .map((sq) => ({
         kind, raw: sq,

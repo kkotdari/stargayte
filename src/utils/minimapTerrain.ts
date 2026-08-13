@@ -191,50 +191,48 @@ export async function analyzeMinimap(
   for (const [k, n] of freq) {
     if (n >= candidates * MINOR_SHARE) { majors.add(k); majorCells += n; }
   }
-  /* 앵커 보정(지적: 빠른무한 반전, 풀 장식 오차단) — 앵커 칸의 패턴 열쇠는 무조건 주요
-     무리다(자원 밭 위 칸이니 땅이 확실하다). ②능선이 잘못 막은 땅색 칸도 앵커 열쇠면
-     되살린다. */
-  const anchorKeys = new Set<number>();
+  /* 앵커 학습 분류기(지적: 빠른무한이 완전 엉망 — 색 규칙들이 서로 싸운다) — 앵커가
+     충분하면 규칙 더미 대신 발상을 바꾼다: 앵커(자원 지대) 반경 2칸은 확실한 땅이니,
+     거기서 땅의 '색 가족'과 '밝기 대역'을 배우고, 그와 닮은 칸을 전부 연다.
+       · 색 가족 — 표본 칸들의 뭉친 색(8단계/채널) 집합.
+       · 밝기 대역 — 표본 밝기의 5~95% 구간을 0.75~1.25배로 벌린 범위.
+     걷는 칸 = 우주·물이 아니고 (색 가족이거나 밝기 대역 안). 절벽·벽은 땅보다 뚜렷이
+     어둡거나 밝아 대역 밖으로 떨어진다. 광장처럼 색이 달라도 밝기가 땅급이면 열린다. */
   const anchorIdx: number[] = [];
   for (const [fx, fy] of anchors ?? []) {
     const ax = Math.min(w - 1, Math.max(0, Math.round(fx * w)));
     const ay = Math.min(h - 1, Math.max(0, Math.round(fy * h)));
-    const ai = ay * w + ax;
-    anchorIdx.push(ai);
-    anchorKeys.add(patternKeyOf(ai));
+    anchorIdx.push(ay * w + ax);
   }
-  for (const k of anchorKeys) majors.add(k);
-  if (candidates > 0 && majorCells >= candidates * 0.5) {
-    for (let i = 0; i < w * h; i += 1) {
-      if (walk[i] && !majors.has(patternKeyOf(i))) walk[i] = 0;
-    }
-  }
-  if (anchorKeys.size > 0) {
-    for (let i = 0; i < w * h; i += 1) {
-      // 절대 규칙(우주·물)은 존중하고, 능선·순위가 막은 것만 앵커 열쇠로 되살린다.
-      if (!walk[i] && lum[i] >= 26 && anchorKeys.has(patternKeyOf(i))) walk[i] = 1;
-    }
-  }
-  /* 티일셋 어긋남 복구(지적: 반전) — 앵커의 절반도 걷는 땅이 안 됐으면 규칙이 이 그림과
-     안 맞는 것이다. 앵커 밝기를 기준으로 문턱을 다시 잡아 한 번 더 돈다: 우주 문턱은
-     앵커 중간 밝기의 35%, 능선 비율은 절반으로 완화. */
   if (anchorIdx.length >= 3) {
-    const okN = anchorIdx.filter((ai) => walk[ai]).length;
-    if (okN < anchorIdx.length / 2) {
-      const lums = anchorIdx.map((ai) => lum[ai]).sort((a, b) => a - b);
-      const Lg = lums[Math.floor(lums.length / 2)];
-      const spaceCut = Math.min(26, Lg * 0.35);
-      for (let i = 0; i < w * h; i += 1) {
-        const r = data[i * 4];
-        const g = data[i * 4 + 1];
-        const b = data[i * 4 + 2];
-        const L = lum[i];
-        walk[i] = 0;
-        if (L < spaceCut) continue;
-        if (b > r + 18 && b > g + 8 && L < 110) continue;
-        if (L < localAvg[i] * 0.5) continue;
-        walk[i] = 1;
+    const groundKeys = new Set<number>();
+    const sampleLums: number[] = [];
+    for (const ai of anchorIdx) {
+      const ax = ai % w;
+      const ay = Math.floor(ai / w);
+      for (let dy = -2; dy <= 2; dy += 1) {
+        for (let dx = -2; dx <= 2; dx += 1) {
+          const nx = ax + dx;
+          const ny = ay + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const ni = ny * w + nx;
+          groundKeys.add(keyOf(ni));
+          sampleLums.push(lum[ni]);
+        }
       }
+    }
+    sampleLums.sort((a, b) => a - b);
+    const lo = sampleLums[Math.floor(sampleLums.length * 0.05)] * 0.75;
+    const hi = sampleLums[Math.floor(sampleLums.length * 0.95)] * 1.25;
+    for (let i = 0; i < w * h; i += 1) {
+      const r = data[i * 4];
+      const g = data[i * 4 + 1];
+      const b = data[i * 4 + 2];
+      const L = lum[i];
+      walk[i] = 0;
+      if (L < 15) continue; // 우주·심연
+      if (b > r + 18 && b > g + 8 && L < 110) continue; // 물
+      if (groundKeys.has(keyOf(i)) || (L >= lo && L <= hi)) walk[i] = 1;
     }
   }
   /* ④ 작은 빵꾸 메우기(요청) — 자잘한 고립 조각은 오판일 확률이 높아 주변 값으로 맞춘다.
