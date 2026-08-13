@@ -148,13 +148,34 @@ export async function analyzeMinimap(url: string): Promise<TerrainGrid | null> {
     if (L < localAvg[i] * RIDGE_RATIO) continue;
     walk[i] = 1;
   }
-  // ③ 색 순위(요청) — 땅 후보 색을 뭉쳐 세고, 후보 속 소수파 색(장식·바위)은 막는다.
+  /* ③ 색·패턴 순위(요청: 색뿐 아니라 패턴도 — 바둑판 타일) — 칸의 열쇠를 '제 색 +
+     이웃(4방향) 다수색'의 정렬 쌍으로 만든다. 바둑판처럼 두 색이 교대하는 타일은 양쪽
+     칸이 같은 쌍(A,B)을 갖게 돼 한 무리로 묶이고, 단색 땅은 (A,A)다. 이 열쇠의 소수파
+     (장식·바위)만 막는다. */
+  const patternKeyOf = (i: number): number => {
+    const own = keyOf(i);
+    const x = i % w;
+    const counts = new Map<number, number>();
+    for (const d of [-1, 1, -w, w]) {
+      const nx = i + d;
+      if (nx < 0 || nx >= w * h) continue;
+      if (Math.abs((nx % w) - x) > 1) continue;
+      const k = keyOf(nx);
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    let nb = own;
+    let best = 0;
+    for (const [k, n] of counts) {
+      if (n > best || (n === best && k < nb)) { best = n; nb = k; }
+    }
+    return own <= nb ? own * 512 + nb : nb * 512 + own;
+  };
   const freq = new Map<number, number>();
   let candidates = 0;
   for (let i = 0; i < w * h; i += 1) {
     if (!walk[i]) continue;
     candidates += 1;
-    freq.set(keyOf(i), (freq.get(keyOf(i)) ?? 0) + 1);
+    freq.set(patternKeyOf(i), (freq.get(patternKeyOf(i)) ?? 0) + 1);
   }
   const MINOR_SHARE = 0.015;
   const majors = new Set<number>();
@@ -164,7 +185,7 @@ export async function analyzeMinimap(url: string): Promise<TerrainGrid | null> {
   }
   if (candidates > 0 && majorCells >= candidates * 0.5) {
     for (let i = 0; i < w * h; i += 1) {
-      if (walk[i] && !majors.has(keyOf(i))) walk[i] = 0;
+      if (walk[i] && !majors.has(patternKeyOf(i))) walk[i] = 0;
     }
   }
   /* ④ 작은 빵꾸 메우기(요청) — 자잘한 고립 조각은 오판일 확률이 높아 주변 값으로 맞춘다.
