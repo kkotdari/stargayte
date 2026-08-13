@@ -1406,11 +1406,29 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   ],
   /* 다크 템플러 — 검 한 자루(요청). */
   dtemp: () => [
+    // 망토(요청) — 어깨 뒤에서 제비꼬리로 드리운다. 몸이 앞을 덮게 먼저 그린다.
+    bodyFace(polyPath3([
+      [-1.3, -0.9, 6.2], [1.3, -0.9, 6.2], [1.9, -1.8, 3.2],
+      [0.6, -1.5, 3.7], [0, -1.7, 3.2], [-0.6, -1.5, 3.7], [-1.9, -1.8, 3.2],
+    ])),
+    sideFace(polyPath3([
+      [-1.3, -0.9, 6.2], [1.3, -0.9, 6.2], [1.9, -1.8, 3.2],
+      [0.6, -1.5, 3.7], [0, -1.7, 3.2], [-0.6, -1.5, 3.7], [-1.9, -1.8, 3.2],
+    ]), 0.18),
     ...cylinderFaces3(0, -0.4, 1.4, 3.4, 3.4),
     ...domeFaces3(0, -0.9, 1.2, 0.95, 6.8),
     // 칼 한 자루 — 오른 옆구리에서 아래로(지적).
     ...hornFaces(1.7, 0.3, 4.7, 2.4, 1.5, 0.9, 0.75),
   ],
+  /* 하이 템플러(요청) — 떠 있는 로브: 바닥에서 띄운 짧은 로브 통 + 머리, 발밑 부양 빛. */
+  htemp: () => {
+    const [gx, gy] = project(0, 0.2, 3.2);
+    return [
+      topFace(groundEllipse(gx, gy, 1.6, 0.8), 0.3),
+      ...cylinderFaces3(0, -0.3, 1.3, 2.4, 4.4),
+      ...domeFaces3(0, -0.7, 1.05, 0.85, 6.8),
+    ];
+  },
   /* 드라군 — 몸통 + 네 다리(요청). 뒤 두 다리 → 몸 → 앞 두 다리. */
   goon: () => [
     ...hornFaces(-1.7, -1.6, 4.6, -3.6, -3.4, 1.9, 0.85),
@@ -1642,7 +1660,7 @@ const UNIT_CLASS: Record<string, string> = {
    표에 없는 지상 유닛은 기본 쐐기(wedge)로 방향만 갖는다. */
 const UNIT_3D: Record<string, string> = {
   Marine: "gunner", Firebat: "gunner", Ghost: "gunner", Medic: "inf",
-  Zealot: "zealot", "Dark Templar": "dtemp", Dragoon: "goon",
+  Zealot: "zealot", "Dark Templar": "dtemp", Dragoon: "goon", "High Templar": "htemp",
   Archon: "archon", "Dark Archon": "darchon",
   Zergling: "zling", Hydralisk: "hydra", Ultralisk: "ultra", Broodling: "zclaw",
   "Infested Terran": "zclaw", Lurker: "lurker", Defiler: "defiler",
@@ -1688,6 +1706,7 @@ export const SHAPE_GALLERY: { kind: string; label: string }[] = (() => {
     ["lurker", "러커"], ["defiler", "디파일러"],
     ["scv", "SCV"], ["probe", "프로브"], ["drone", "드론"],
     ["zling", "저글링"], ["hydra", "히드라"], ["ultra", "울트라리스크"],
+    ["htemp", "하이 템플러"],
   ] as [string, string][]) {
     if (!seen.has(kind)) { seen.add(kind); out.push({ kind, label }); }
   }
