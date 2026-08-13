@@ -3685,6 +3685,10 @@ export default function ReplayMotionPlayer({
   /* 건물 자리 회피(요청: 밟고 지나가지 않고 돌아간다) — 서 있는 건물 발자국(+여유
      0.5타일) 안으로 들어온 유닛 자리는 가장 가까운 변 밖으로 밀어낸다. 선분이 발자국을
      가로지르면 안쪽 구간이 변을 따라 미끄러져, 돌아가는 걸음으로 보인다. */
+  /* 입체 보기 원근(지적) — 가까운(아래) 마커일수록 크게. 마커 공통 transform의 --mk
+     배율 변수로 먹인다. */
+  const depthMk = (y: number): React.CSSProperties =>
+    (pitched ? { "--mk": (0.72 + 0.6 * (y / grid.height)).toFixed(3) } as React.CSSProperties : {});
   const dodge = (px: number, py: number): [number, number] => {
     for (const [bs, bx2, by2, bu, , g2, liftAt2] of motion.builds) {
       if (bs > t) continue;
@@ -4345,7 +4349,7 @@ export default function ReplayMotionPlayer({
         style={{
           /* 입체 보기(재구성: CSS 3D 빌보드가 브라우저 따라 누워 보임) — 바닥(자리·그림)만
              세로로 누르고, 마커는 눌리지 않은 채 서 있는 2.5D. */
-          aspectRatio: `${grid.width} / ${grid.height * (pitched ? 0.62 : 1)}`,
+          aspectRatio: `${grid.width} / ${grid.height * (pitched ? 0.52 : 1)}`,
           ...(zoom > 1 || pitched ? { overflow: "hidden" } : {}),
           ...(zoom > 1 ? { cursor: dragRef.current ? "grabbing" : "grab" } : {}),
         }}
@@ -4529,6 +4533,7 @@ export default function ReplayMotionPlayer({
                      건물은 조용한 유닛 점 위로 온다. 유닛 마커도 같은 자로 잰다. */
                   zIndex: 1000 + Math.round(producing || researching || afloat ? t : sec),
                   ...(fade < 1 ? { opacity: fade } : {}),
+                  ...depthMk(by + footDy(unit)),
                   left: pct(bx + footDx(unit) - (ADDONS.has(unit) ? 1.6 : 0), grid.width),
                   // 건물은 바닥 위로 솟는다(지적: "실제 건물은 바닥위에 높이가 있어") —
                   // 캔버스 높이에 그 몫(riseOf, 발자국 폭 비례)을 더하고, 늘어난 만큼
@@ -4708,6 +4713,7 @@ export default function ReplayMotionPlayer({
                   style={{
                     left: pct(fx, grid.width),
                     top: pct(fy, grid.height),
+                    ...depthMk(fy),
                     ...glyphStyle(p.raw, team),
                   }}
                 >
@@ -4801,6 +4807,7 @@ export default function ReplayMotionPlayer({
                 className="scr-motion-miner"
                 style={{
                   left: pct(x, grid.width), top: pct(y, grid.height),
+                  ...depthMk(y),
                   ...glyphStyle(owner!.raw, team),
                 }}
               >
@@ -5116,6 +5123,8 @@ export default function ReplayMotionPlayer({
                   )}
                   style={{
                     ...(() => { const [ax3, ay3] = dodge(pos.x, pos.y); return { left: pct(ax3, grid.width), top: pct(ay3, grid.height) }; })(),
+                  ...depthMk(pos.y),
+                    ...depthMk(pos.y),
                     zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
                     ...glyphStyle(p.raw, team),
                   }}
@@ -5188,6 +5197,7 @@ export default function ReplayMotionPlayer({
                   )}
                   style={{
                     ...(() => { const [ax3, ay3] = dodge(pos.x + dx, pos.y + dy); return { left: pct(ax3, grid.width), top: pct(ay3, grid.height) }; })(),
+                    ...depthMk(pos.y + dy),
                     zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
                     ...glyphStyle(p.raw, team),
                   }}
@@ -5323,6 +5333,7 @@ export default function ReplayMotionPlayer({
                   )}
                   style={{
                     ...(() => { const [ax3, ay3] = dodge(pos.x + dx, pos.y + dy); return { left: pct(ax3, grid.width), top: pct(ay3, grid.height) }; })(),
+                    ...depthMk(pos.y + dy),
                     // 겹침 차례는 마지막 명령 시각(지적).
                     zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
                     ...glyphStyle(p.raw, team),
@@ -5443,6 +5454,7 @@ export default function ReplayMotionPlayer({
                 )}
                 style={{
                   ...(() => { const [ax3, ay3] = dodge(pos.x, pos.y); return { left: pct(ax3, grid.width), top: pct(ay3, grid.height) }; })(),
+                  ...depthMk(pos.y),
                   // 겹침 차례는 마지막 명령 시각(지적).
                   zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
                   ...(activeNow ? chipStyle(p.raw, team) : glyphStyle(p.raw, team)),
