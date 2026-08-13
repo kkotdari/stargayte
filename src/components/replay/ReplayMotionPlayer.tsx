@@ -3804,8 +3804,18 @@ export default function ReplayMotionPlayer({
             return glyphUnits.map((u, di) => {
               const bulk = UNIT_BULK[u] ?? 2;
               const r = (0.4 + 0.12 * bulk) * Math.sqrt(di + 0.35);
-              const dx = Math.cos(di * 2.4 + seed) * r;
-              const dy = Math.sin(di * 2.4 + seed) * r;
+              /* 랜덤성 섞기(지적: 고정 나선이 부자연스럽다) — 해시 지터(반경·각을
+                 유닛마다 조금씩 어긋냄)와 위상 다른 느린 배회를 얹는다. 전부 (di,seed,t)의
+                 순수 함수라 프레임마다 안 튀고, 같은 유닛은 늘 같은 버릇으로 서성인다. */
+              const h1 = Math.sin(di * 127.1 + seed * 311.7) * 43758.5453;
+              const jr = h1 - Math.floor(h1);
+              const h2 = Math.sin(di * 269.5 + seed * 183.3) * 28001.8384;
+              const ja = h2 - Math.floor(h2);
+              const rj = r * (0.85 + jr * 0.5);
+              const aj = di * 2.4 + seed + ja * 1.1;
+              const wob = 0.22 + 0.1 * jr;
+              const dx = Math.cos(aj) * rj + Math.cos(t * 0.7 + di * 1.7) * wob;
+              const dy = Math.sin(aj) * rj + Math.sin(t * 0.9 + di * 2.3) * wob;
               return (
                 <span
                   key={`${p.raw}-u${g.unit}-${gi}-i${di}`}
@@ -3925,8 +3935,18 @@ export default function ReplayMotionPlayer({
               const bulk = UNIT_BULK[u] ?? 2;
               // 아주 촘촘히(지적: 퍼짐이 심해졌다 — 겹치되 규모는 보이게).
               const r = (0.4 + 0.12 * bulk) * Math.sqrt(di + 0.35);
-              const dx = Math.cos(di * 2.4 + seed) * r;
-              const dy = Math.sin(di * 2.4 + seed) * r;
+              /* 랜덤성 섞기(지적: 고정 나선이 부자연스럽다) — 해시 지터(반경·각을
+                 유닛마다 조금씩 어긋냄)와 위상 다른 느린 배회를 얹는다. 전부 (di,seed,t)의
+                 순수 함수라 프레임마다 안 튀고, 같은 유닛은 늘 같은 버릇으로 서성인다. */
+              const h1 = Math.sin(di * 127.1 + seed * 311.7) * 43758.5453;
+              const jr = h1 - Math.floor(h1);
+              const h2 = Math.sin(di * 269.5 + seed * 183.3) * 28001.8384;
+              const ja = h2 - Math.floor(h2);
+              const rj = r * (0.85 + jr * 0.5);
+              const aj = di * 2.4 + seed + ja * 1.1;
+              const wob = 0.22 + 0.1 * jr;
+              const dx = Math.cos(aj) * rj + Math.cos(t * 0.7 + di * 1.7) * wob;
+              const dy = Math.sin(aj) * rj + Math.sin(t * 0.9 + di * 2.3) * wob;
               return (
                 <span
                   key={`${p.raw}-s${si}-d${di}`}
