@@ -2870,6 +2870,16 @@ const UNIT_3D: Record<string, string> = {
 const workerKindOf = (race?: string): string =>
   race === "테란" ? "scv" : race === "저그" ? "drone" : "probe";
 /* 기본 쐐기도 폐기(요청) — 표에 없는 낯선 유닛은 그 종족의 기본 보병 꼴로 그린다. */
+/* 유닛별 전투 효과(요청: 불 말고 무기 특성) — 근접은 없음. */
+const ATTACK_FX: Record<string, string> = {
+  Marine: "gun", Ghost: "gun", Vulture: "gun", Goliath: "gun", Wraith: "gun",
+  Battlecruiser: "bolt", "Siege Tank": "cannon", "Siege Tank (Tank Mode)": "cannon",
+  "Siege Tank (Siege Mode)": "cannon", Firebat: "flame", Medic: "heal",
+  Hydralisk: "spine", Lurker: "spine", Mutalisk: "glave", Devourer: "acid",
+  Guardian: "acid", Queen: "acid", Valkyrie: "missile", Scourge: "glave",
+  Dragoon: "bolt", Scout: "bolt", Corsair: "bolt", Arbiter: "bolt", Carrier: "bolt",
+  "High Templar": "bolt", Reaver: "cannon",
+};
 const unitMarkerKind = (u: string, race?: string): string =>
   UNIT_3D[u] ?? (race === "테란" ? "gunner" : race === "저그" ? "zling" : "zealot");
 /* 유닛 덩치(요청: 소형/중형/대형 크기 구분) — 브루드워의 유닛 크기 분류를 따른다.
@@ -5238,7 +5248,9 @@ export default function ReplayMotionPlayer({
                   <ShapeIcon kind={unitMarkerKind(u, bases.find((b) => b.key === p.raw)?.race)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
                   {/* 전투 불꽃·사망 퍼프(요청) — 대여섯에 하나씩 불꽃, 일곱에 하나씩
                       돌아가며 퍼프(1.5초 주기 결정적 순환이라 프레임마다 안 튄다). */}
-                  {fighting && di % 5 === 0 && <span className="scr-motion-fight" />}
+                  {fighting && ATTACK_FX[u] && di % 4 === 0 && (
+                    <span className={`scr-motion-atkfx scr-fxa-${ATTACK_FX[u]}`} />
+                  )}
                   {fighting && (di + cyc) % 7 === 0 && (
                     <span key={`pf-${cyc}`} className="scr-motion-puff" />
                   )}
@@ -5375,7 +5387,9 @@ export default function ReplayMotionPlayer({
                   <ShapeIcon kind={unitMarkerKind(u, bases.find((b) => b.key === p.raw)?.race)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
                   {/* 전투 불꽃·사망 퍼프(요청) — 대여섯에 하나씩 불꽃, 일곱에 하나씩
                       돌아가며 퍼프(1.5초 주기 결정적 순환이라 프레임마다 안 튄다). */}
-                  {fighting && di % 5 === 0 && <span className="scr-motion-fight" />}
+                  {fighting && ATTACK_FX[u] && di % 4 === 0 && (
+                    <span className={`scr-motion-atkfx scr-fxa-${ATTACK_FX[u]}`} />
+                  )}
                   {fighting && (di + cyc) % 7 === 0 && (
                     <span key={`pf-${cyc}`} className="scr-motion-puff" />
                   )}
