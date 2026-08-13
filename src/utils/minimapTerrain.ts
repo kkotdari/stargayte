@@ -21,7 +21,9 @@ export interface TerrainGrid {
 /** 가로 격자 수 — 세로는 그림 비율을 따른다. 96이면 128×128 맵에서 한 칸이 1.3타일쯤 —
  *  64에서 올렸다(지적: 벽을 전혀 못 잡는다 — 절벽선은 한두 타일 굵기라 굵은 격자에서는
  *  이웃 땅과 섞여 평균색이 밝아진다). */
-const GRID_W = 96;
+// 96 → 128(지적: 벽을 너무 많이 놓침) — 가는 벽이 바닥과 섞여 평균색이 물러지는 것을
+// 해상도로 줄인다.
+const GRID_W = 128;
 /** 상대 명암의 창 반지름(칸) — 절벽·벽 판정의 "주변"이 이만큼이다. */
 const LOCAL_R = 4;
 /** 주변 평균의 이 비율보다 어두우면 절벽·벽으로 본다(지적: 절대 밝기만으론 벽을 못 잡는다
@@ -300,7 +302,7 @@ export async function analyzeMinimap(
          어둡다(절벽 그림자) — 연결 해답 위에 그 대비를 얹어 걷어낸다. */
       for (let i = 0; i < w * h; i += 1) {
         if (!walk[i]) continue;
-        if (lum[i] > localAvg[i] * 1.3 || lum[i] < localAvg[i] * 0.7) walk[i] = 0;
+        if (lum[i] > localAvg[i] * 1.18 || lum[i] < localAvg[i] * 0.78) walk[i] = 0;
       }
       /* 땅 밝기 — 땅에 둘러싸인 작은 장식(풀)을 열지 판단할 기준. */
       let lsum = 0;
@@ -332,6 +334,9 @@ export async function analyzeMinimap(
           }
         }
         if (touchesBanned || comp.length > 40) continue;
+        /* 아주 작은 둘러싸인 조각(≤12칸)은 무조건 연다(지적: 시작 지점 아이콘이 잡힘) —
+           미니맵에 그려 넣은 표식(시작점 초록 등)이지 지형이 아니다. */
+        if (comp.length <= 12) { for (const i of comp) walk[i] = 1; continue; }
         const mean = comp.reduce((a, i) => a + lum[i], 0) / comp.length;
         if (mean >= gMean * 0.8 && mean <= gMean * 1.2) for (const i of comp) walk[i] = 1;
       }
