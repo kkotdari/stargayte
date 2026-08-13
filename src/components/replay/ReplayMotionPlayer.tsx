@@ -548,24 +548,26 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
      다리 넷 중 셋이 보인다(요청: 입체라 하나는 가려짐). */
   /* 배럭(3D 재편) — 상자를 boxFaces3로 투영(요잉·피칭 자동), 다리 셋은 상자 밑
      모서리에서 짧은 기둥으로. */
+  /* 배럭(3D) — 상자 + 다리 셋. 16박스를 채우게 키웠다(지적: 변환분이 작아졌다). */
   cube: [
-    ...boxFaces3(0, 0, 5.6, 3.8, 3.9, 0.8),
+    ...boxFaces3(0, 0, 10.4, 6.4, 6.4, 1.3),
     bodyFace(
-      polyPath3([[-2.4, 1.9, 0.8], [-1.8, 1.9, 0.8], [-1.8, 1.9, 0], [-2.4, 1.9, 0]])
-      + " " + polyPath3([[0.4, 1.9, 0.8], [1, 1.9, 0.8], [1, 1.9, 0], [0.4, 1.9, 0]])
-      + " " + polyPath3([[2.4, -1.9, 0.8], [3, -1.9, 0.8], [3, -1.9, 0], [2.4, -1.9, 0]]),
+      polyPath3([[-4.4, 3.2, 1.3], [-3.4, 3.2, 1.3], [-3.4, 3.2, 0], [-4.4, 3.2, 0]])
+      + " " + polyPath3([[0.6, 3.2, 1.3], [1.6, 3.2, 1.3], [1.6, 3.2, 0], [0.6, 3.2, 0]])
+      + " " + polyPath3([[4.2, -3.2, 1.3], [5.2, -3.2, 1.3], [5.2, -3.2, 0], [4.2, -3.2, 0]]),
     ),
   ],
   /* 팩토리 — 8각 단면의 각기둥을 사선으로 본 것(지적: 옆면이 8각, 앞면의 위아래 꺾임은
      그 단면의 앞모서리를 공유한다). 스크린샷 대조(지적: 설명과 다름) — 옆면은 더 작고
      정팔각형에 가깝게, 앞면은 더 넓게, 앞면 밑에는 평평한 발 셋이 받친다. */
   /* 팩토리(3D 재편) — 8각 단면을 X축으로 눕힌 각기둥(prismXFaces) + 평평한 발 셋. */
+  /* 팩토리(3D) — 8각 단면 각기둥 + 발 셋(16박스 크기). */
   factory: [
-    ...prismXFaces([[-1.4, 4], [1, 3.6], [2, 2.2], [1.6, 0.6], [0.2, 0]], 4.6),
+    ...prismXFaces([[-2.4, 7], [1.7, 6.3], [3.4, 3.9], [2.8, 1.1], [0.3, 0]], 6.4),
     bodyFace(
-      polyPath3([[-3.4, 1.9, 0.5], [-2.2, 1.9, 0.5], [-2.2, 1.9, 0], [-3.4, 1.9, 0]])
-      + " " + polyPath3([[-0.6, 1.9, 0.5], [0.6, 1.9, 0.5], [0.6, 1.9, 0], [-0.6, 1.9, 0]])
-      + " " + polyPath3([[2.2, 1.9, 0.5], [3.4, 1.9, 0.5], [3.4, 1.9, 0], [2.2, 1.9, 0]]),
+      polyPath3([[-4.8, 3.3, 0.9], [-3.2, 3.3, 0.9], [-3.2, 3.3, 0], [-4.8, 3.3, 0]])
+      + " " + polyPath3([[-0.8, 3.3, 0.9], [0.8, 3.3, 0.9], [0.8, 3.3, 0], [-0.8, 3.3, 0]])
+      + " " + polyPath3([[3.2, 3.3, 0.9], [4.8, 3.3, 0.9], [4.8, 3.3, 0], [3.2, 3.3, 0]]),
     ),
   ],
   /* 커맨드 — 사선으로 본 입체(요청): 돔 위에 밝은 윗면 타원, 꼭대기 판은 그대로.
@@ -581,11 +583,12 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
   /* 넥서스 — 뾰족한 넙적 피라미드 그대로(지적: 위를 자르지 말 것) + 양옆 기둥. 사선
      느낌은 바닥의 두 직선(모서리로 본 네모 발자국)이 낸다(지적). */
   /* 넥서스(3D 재편) — 넙적 피라미드(pyramidFaces3) + 좌우 바닥 꼭짓점의 기둥 둘. */
+  /* 넥서스(3D) — 넙적 피라미드 + 좌우 기둥(지적: 게이트보다 작았다 — 16박스 크기로). */
   pyramidWide: [
-    ...pyramidFaces3(0, 0, 8.6, 5.2, 6.2),
+    ...pyramidFaces3(0, 0, 13.4, 7, 9.6),
     bodyFace(
-      polyPath3([[-4.3, 0, 0], [-3.9, 0, 4.6], [-3.3, 0, 0]])
-      + " " + polyPath3([[4.3, 0, 0], [3.9, 0, 4.6], [3.3, 0, 0]]),
+      polyPath3([[-6.7, 0, 0], [-6, 0, 7.2], [-5.2, 0, 0]])
+      + " " + polyPath3([[6.7, 0, 0], [6, 0, 7.2], [5.2, 0, 0]]),
     ),
   ],
   /* 저그 본진 3형제 — 몸통 + 밝은 윗면(요청: "해처리 윗부분 동그란 평평한 면 표현").
@@ -647,22 +650,23 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
      패드를 맨 나중에 그려 팔·몸통의 밑동을 덮는다(패드 뒤에서 나온 것처럼). */
   /* 스타포트(3D 재편) — 다리 셋이 받치는 높이 3의 착륙 패드(discPath3). 패드를 나중에
      그려 다리 밑동을 덮는다. */
+  /* 스타포트(3D) — 다리 셋 위 착륙 패드(16박스 크기). */
   plane: (() => {
     const leg = (angle: number): string => {
       const a = (angle * Math.PI) / 180;
-      const bx = Math.sin(a) * 2.6;
-      const byy = Math.cos(a) * 1.9;
-      const tx2 = Math.sin(a) * 4.2;
-      const ty2 = Math.cos(a) * 3.1;
-      return polyPath3([[bx - 0.55, byy, 2.6], [bx + 0.55, byy, 2.6], [tx2 + 0.55, ty2, 0], [tx2 - 0.55, ty2, 0]]);
+      const bx = Math.sin(a) * 3.6;
+      const byy = Math.cos(a) * 2.7;
+      const tx2 = Math.sin(a) * 6;
+      const ty2 = Math.cos(a) * 4.4;
+      return polyPath3([[bx - 0.8, byy, 3.7], [bx + 0.8, byy, 3.7], [tx2 + 0.8, ty2, 0], [tx2 - 0.8, ty2, 0]]);
     };
     return [
       bodyFace(`${leg(-45)} ${leg(35)} ${leg(150)}`),
       sideFace(`${leg(-45)} ${leg(35)} ${leg(150)}`, 0.3),
-      bodyFace(boxFaces3(-3.6, 0.8, 2.2, 1.4, 1.5)[0][0]),
-      bodyFace(discPath3(0, 0, 3, 5.4)),
-      topFace(discPath3(0, 0, 3.02, 4.2), 0.28),
-      sideFace(discPath3(0, 0, 3.04, 3.2), 0.25),
+      bodyFace(boxFaces3(-5.2, 1.2, 3, 2, 2.2)[0][0]),
+      bodyFace(discPath3(0, 0, 4.3, 7.6)),
+      topFace(discPath3(0, 0, 4.33, 5.9), 0.28),
+      sideFace(discPath3(0, 0, 4.36, 4.5), 0.25),
     ];
   })(),
   /* 스타게이트 — 똑같은 긴 마름모 두 개가 나란히 사선으로 붙는다(지적: 둘이 같은
@@ -692,49 +696,52 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
      상자는 직각이 아니라 위가 살짝 좁은 사다리꼴이고, 두께(높이)는 얇게, 크기는 위의
      뚜껑(무덤)과 비슷하게(요청). */
   /* 벙커(3D 재편) — 낮은 상자(boxFaces3) 위에 둥근 무덤 뚜껑. */
+  /* 벙커(3D) — 낮은 상자 + 둥근 무덤 뚜껑(16박스 크기). */
   tombFlat: (() => {
-    const [lx, ly] = project(-2.6, 0, 2);
-    const [rx2, ry2] = project(2.6, 0, 2);
-    const [mx, my] = project(0, 0, 5.6);
+    const [lx, ly] = project(-4.4, 0, 3.4);
+    const [rx2, ry2] = project(4.4, 0, 3.4);
+    const [mx, my] = project(0, 0, 9.4);
     const lid = `M${lx} ${ly} Q${mx} ${my} ${rx2} ${ry2} Z`;
-    const [sx1, sy1] = project(1.1, 0, 5);
+    const [sx1, sy1] = project(1.9, 0, 8.4);
     return [
-      ...boxFaces3(0, 0, 6.4, 4, 2),
+      ...boxFaces3(0, 0, 10.8, 6.6, 3.4),
       bodyFace(lid),
-      sideFace(`M${sx1} ${sy1} Q${rx2} ${ry2 - 1} ${rx2} ${ry2} L${sx1} ${ry2} Z`, 0.25),
-      topFace(groundEllipse((lx + mx) / 2 + 0.4, (ly + my) / 2 + 0.7, 1.7, 0.75)),
+      sideFace(`M${sx1} ${sy1} Q${rx2} ${ry2 - 1.6} ${rx2} ${ry2} L${sx1} ${ry2} Z`, 0.25),
+      topFace(groundEllipse((lx + mx) / 2 + 0.7, (ly + my) / 2 + 1.1, 2.9, 1.25)),
     ];
   })(),
   /* 서플라이 — 제대로 된 사선 상자(지적: "옆면과 윗면도 보이게 사선으로") — 살짝 기운
      앞면 + 밝은 윗면 + 어두운 옆면, 앞면에 동그라미 해치 둘(요청). */
   /* 서플라이(3D 재편) — boxFaces3 상자 + 앞면의 동그라미 해치 둘. */
+  /* 서플라이(3D) — 상자 + 앞면 해치 둘(16박스 크기). */
   trapezoid: (() => {
     const hatch = (cx: number): string => {
-      const [hx, hy] = project(cx, 1.7, 1.5);
-      return groundEllipse(hx, hy, 1.15, 0.95);
+      const [hx, hy] = project(cx, 2.9, 2.6);
+      return groundEllipse(hx, hy, 2, 1.65);
     };
     return [
-      ...boxFaces3(0, 0, 5.8, 3.4, 3.4),
-      sideFace(`${hatch(-1.4)} ${hatch(1.2)}`, 0.3),
+      ...boxFaces3(0, 0, 10.8, 5.8, 5.8),
+      sideFace(`${hatch(-2.5)} ${hatch(2.1)}`, 0.3),
     ];
   })(),
   /* (삭제) 가스 — 직접 그린 게 아니라 네모로 돌아갔다(지적). */
   /* 로보틱스 — 뭉뚝한 꼬깔모자(요청): 위가 둥글게 잘린 원뿔이 넓은 받침에 앉는다.
      몸통에는 격자무늬(요청) — 가로 두 줄·세로 두 줄의 옅은 골. */
   /* 로보틱스(3D 재편) — 낮은 받침 원통 + 위가 둥근 꼬깔. 골은 옅은 줄 둘. */
+  /* 로보틱스(3D) — 받침 원통 + 뭉뚝 꼬깔(16박스 크기). */
   dome: (() => {
-    const [ax, ay] = project(-1.1, 0, 6.3);
-    const [bx, by] = project(1.1, 0, 6.3);
-    const [tx, ty] = project(0, 0, 7.1);
-    const [flx, fly] = project(-2.6, 0.6, 1.6);
-    const [frx, fry] = project(2.6, 0.6, 1.6);
+    const [ax, ay] = project(-2, 0, 10.6);
+    const [bx, by] = project(2, 0, 10.6);
+    const [tx, ty] = project(0, 0, 12);
+    const [flx, fly] = project(-4.6, 1, 2.8);
+    const [frx, fry] = project(4.6, 1, 2.8);
     const cone = `M${ax} ${ay} Q${tx} ${ty} ${bx} ${by} L${frx} ${fry} L${flx} ${fly} Z`;
     return [
-      ...cylinderFaces3(0, 0, 4.1, 1.7),
+      ...cylinderFaces3(0, 0, 7, 2.9),
       bodyFace(cone),
       sideFace(`M${bx} ${by} L${frx} ${fry} L${(frx + bx) / 2} ${fry} Z`, 0.22),
-      topFace(discPath3(0, 0, 6.35, 1.05)),
-      sideFace(`M${flx + 1} ${fly - 1.6} L${frx - 1} ${fry - 1.6} L${frx - 1.2} ${fry - 1.2} L${flx + 1.2} ${fly - 1.2} Z`, 0.25),
+      topFace(discPath3(0, 0, 10.7, 1.9)),
+      sideFace(`M${flx + 1.6} ${fly - 2.6} L${frx - 1.6} ${fry - 2.6} L${frx - 1.9} ${fry - 2} L${flx + 1.9} ${fly - 2} Z`, 0.25),
     ];
   })(),
   /* 터렛 — 옆에서 본 미사일 포드 두 개가 대각선으로 눕고(지적), 그 아래 기둥은 좀 더
