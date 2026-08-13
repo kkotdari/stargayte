@@ -543,14 +543,23 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       return [bodyFace(d), topFace(d, 0.14), sideFace(polyPath3([[rx + 1.1, 2.4, 1.2], [rx + 1.3, 5.2, 0], [rx + 1.05, 5.2, 0], [rx + 0.88, 2.4, 1.2]]), 0.25)];
     }),
   ],
-  /* 스타포트(실물 참고) — 벌어진 다리 넷 + 드럼 몸통 + 큰 원형 패드 + 대각으로 뻗는
-     팔 넷(끝 혹). */
+  /* 스타포트(실물 참고 + 지적) — 다리 여섯, 앞으로 뾰족 튀어나온 코, 옆 날개. 드럼 위
+     큰 원형 패드와 대각 팔 넷은 그대로. */
   plane: () => {
     const out: ShapeFace[] = [];
-    for (const [px, py] of [[-4.6, 3.4], [4.6, 3.4], [-4.6, -3.4], [4.6, -3.4]] as [number, number][]) {
+    for (const [px, py] of [
+      [-4.6, 3.4], [4.6, 3.4], [-5.2, 0], [5.2, 0], [-4.6, -3.4], [4.6, -3.4],
+    ] as [number, number][]) {
       out.push(...legAndFoot(px, py, 2.4));
     }
     out.push(...cylinderFaces3(0, 0, 5, 3.2, 0.8));
+    // 앞코 — 뾰족하게 튀어나온 부분(지적).
+    out.push(bodyFace(polyPath3([[-1.5, 4.6, 3.2], [1.5, 4.6, 3.2], [0, 7.4, 2.2]])));
+    out.push(sideFace(polyPath3([[0.2, 4.6, 3.2], [1.5, 4.6, 3.2], [0, 7.4, 2.2]]), 0.25));
+    // 옆 날개(지적) — 좌우로 짧게 뻗는 판.
+    out.push(bodyFace(polyPath3([[-5, 1, 3.4], [-8, 0.2, 2.6], [-7.6, -1, 2.6], [-4.8, -0.6, 3.4]])));
+    out.push(bodyFace(polyPath3([[5, 1, 3.4], [8, 0.2, 2.6], [7.6, -1, 2.6], [4.8, -0.6, 3.4]])));
+    out.push(sideFace(polyPath3([[5, 1, 3.4], [8, 0.2, 2.6], [7.6, -1, 2.6], [4.8, -0.6, 3.4]]), 0.2));
     out.push(bodyFace(discPath3(0, 0, 4.1, 6.4)));
     out.push(topFace(discPath3(0, 0, 4.13, 5.2), 0.25));
     out.push(capFace(discPath3(0, 0, 4.16, 3.9), 0.35));
