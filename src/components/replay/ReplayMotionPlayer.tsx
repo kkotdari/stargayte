@@ -706,7 +706,8 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
     const a = 2.7;
     const b = 2;
     const run = 2.3;
-    const widen = 1;
+    // 경사로는 사다리꼴이 아니라 직사각(요청) — 바깥 변을 벌리지 않는다.
+    const widen = 0;
     const plateau = polyPath3([[-a, b, h], [a, b, h], [a, -b, h], [-a, -b, h]]);
     const front = polyPath3([[-a, b, h], [a, b, h], [a + widen, b + run, 0], [-a - widen, b + run, 0]]);
     const back = polyPath3([[-a, -b, h], [a, -b, h], [a + widen, -b - run, 0], [-a - widen, -b - run, 0]]);
