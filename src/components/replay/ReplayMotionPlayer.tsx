@@ -2923,7 +2923,7 @@ export const SHAPE_GALLERY: { kind: string; label: string }[] = (() => {
   return out;
 })();
 
-export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg, flat, keepRatio }: {
+export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg, flat, keepRatio, viewYaw }: {
   kind: string; className?: string;
   /** 뷰어의 요잉 회전(요청) — withYaw로 다시 투영한 면 목록을 그대로 그린다. */
   faces?: ShapeFace[];
@@ -2933,6 +2933,8 @@ export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg, flat,
   flat?: boolean;
   /** 원본 비율 유지(요청: 자료실에서 보는 비율 그대로 — 캔버스에 맞춰 늘리기 금지). */
   keepRatio?: boolean;
+  /** 좌우 시점(지적: 입체 보기 시점이 정면 고정) — 카메라가 비껴 본 각(도). */
+  viewYaw?: number;
 }) {
   /* 방향은 요잉으로(지적: 화면 회전은 2D 시점에서 모델을 뒤집는다) — 3D 빌더가 있는
      도형은 rotDeg를 화면 회전 대신 모델 요잉 재투영으로 처리한다. 15도 버킷으로 한 번
@@ -2940,15 +2942,17 @@ export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg, flat,
   let faces = facesOverride;
   let rot = SHAPE_ROT[kind] ?? 0;
   const builder = SHAPE_BUILDERS[kind];
-  if (!faces && rotDeg !== undefined && builder) {
+  // 좌우 시점(지적) — 6도 스텝으로 갈무리해 굽는 판 수를 묶는다.
+  const vq = viewYaw ? Math.max(-36, Math.min(36, Math.round(viewYaw / 6) * 6)) : 0;
+  if (!faces && (rotDeg !== undefined || vq !== 0) && builder) {
     /* 기본은 정면(지적: 사선이 어색) — rotDeg 0이 요잉 0(정면 아래)이 되도록 굽는다.
-       건물은 rotDeg를 안 주므로 기존 사선(-20) 시점 그대로다. */
+       건물은 rotDeg가 없어 좌우 시점(vq)만 받는다. */
     // 16방향(요청: 원작 스프라이트처럼 22.5도 스텝) — 자연스러운 회전 단위.
-    const bucket = ((Math.round(rotDeg / 22.5) * 22.5) % 360 + 360) % 360;
-    const key = `${kind}:${bucket}:${flat ? 1 : 0}`;
+    const bucket = rotDeg !== undefined ? ((Math.round(rotDeg / 22.5) * 22.5) % 360 + 360) % 360 : 0;
+    const key = `${kind}:${bucket}:${flat ? 1 : 0}:${vq}`;
     let f = HEAD_FACES.get(key);
     if (!f) {
-      const bake = (): ShapeFace[] => withYaw(-bucket, builder);
+      const bake = (): ShapeFace[] => withYaw(vq - bucket, builder);
       f = flat ? withTopView(bake) : bake();
       HEAD_FACES.set(key, f);
     }
@@ -3708,7 +3712,9 @@ export default function ReplayMotionPlayer({
      perspective+rotateX를 걸고, 마커 자리는 같은 사영 공식으로 매핑해 그림 위 제자리에
      얹는다. 깊이 배율(--mk)도 같은 k를 쓴다. */
   const PITCH_TH = Math.PI / 4;
-  const PITCH_P = 650;
+  /* 650 → 520(지적: 확대폭이 작다) — 원근을 더 세게. 맞춤 축소(q)가 끝 잘림을 막아
+     주므로 세게 걸어도 안 잘린다. */
+  const PITCH_P = 520;
   /* 맞춤 축소(지적: 또 예전 끝 잘림) — 원근 확대로 가까운 변이 상자를 넘쳤다. 가까운
      변이 상자에 딱 맞는 배율 q로 전체를 줄이고, 세로는 cy만큼 올려 가운데 정렬한다.
      지형 그림(transform)과 마커 공식이 같은 q·cy를 쓴다. */
@@ -3741,6 +3747,17 @@ export default function ReplayMotionPlayer({
       left: `${(50 + ((u * k) / w) * 100).toFixed(3)}%`,
       top: `${(50 + ((v * C * k - cy) / h) * 100).toFixed(3)}%`,
     };
+  };
+  /* 좌우 시점(지적: 시점이 정면 고정, 좌우가 없다) — 카메라(화면 가운데, 거리 P)에서
+     비껴 보이는 마커는 그 각도만큼 모델 요잉을 틀어 굽는다. 왼쪽 마커는 오른옆이,
+     오른쪽 마커는 왼옆이 보인다. */
+  const viewYawOf = (x: number, y: number): number => {
+    if (!pitched) return 0;
+    const { w, h, S, q } = pitchGeom();
+    const u = (x / grid.width - 0.5) * w;
+    const v = (y / grid.height - 0.5) * h;
+    const k = (q * PITCH_P) / (PITCH_P - v * S);
+    return (-Math.atan2(u * k, PITCH_P) * 180) / Math.PI;
   };
   const depthMk = (y: number): React.CSSProperties =>
     (pitched ? { "--mk": pitchK(y).toFixed(3) } as React.CSSProperties : {});
@@ -4554,6 +4571,9 @@ export default function ReplayMotionPlayer({
             // 시작 건물은 액티브도 없다(요청: 처음 등장하는 건물·유닛은 액티브 안 주기).
             // (요청) 착공 직후 이름 창도 걷었다 — 모델이 정체를 말한다.
             const activeBuild = false;
+            // 차례 계산에서 빠졌지만(지적: 무조건 신규 건물 우선) 판정 기반은 남겨둔다.
+            void producing;
+            void researching;
             const name = BUILDING_KO[unit] ?? UNIT_KO[unit];
             /* 비활성이면 무조건 도형이다(지적: 서플라이·파일런·포토·터렛이 영영 안 변했다 —
                "겹치지만 않으면 이름 상시 노출"이던 옛 규칙을 걷었다). */
@@ -4596,10 +4616,12 @@ export default function ReplayMotionPlayer({
                      건물이 위일 수 있다) — 방금 착공했거나 지금 생산·연구·비행 중인
                      건물은 조용한 유닛 점 위로 온다. 유닛 마커도 같은 자로 잰다. */
                   /* 입체 보기는 화가 순서(지적: 반투명 아닌데 뒤 건물이 보임) — 겹침을
-                     명령 시각이 아니라 화면 앞뒤(바닥 y)로 잰다. */
+                     화면 앞뒤(발자국 앞변 y)로 잰다. 같은 자리면 새 건물이 위(지적:
+                     건물 위치 겹침 — 무조건 신규 우선). 평면도 신규 우선 — 생산·연구
+                     부양(t)은 빼고 착공 시각만 본다(나는 중만 예외로 맨 위). */
                   zIndex: pitched
-                    ? 1000 + Math.round((by + footDy(unit)) * 8)
-                    : 1000 + Math.round(producing || researching || afloat ? t : sec),
+                    ? 1000 + Math.round((by + footDy(unit) * 2) * 80) + Math.min(70, Math.round(sec / 60))
+                    : 1000 + Math.round(afloat ? t : sec),
                   ...(fade < 1 ? { opacity: fade } : {}),
                   ...depthMk(by + footDy(unit)),
                   ...posStyle(
@@ -4640,12 +4662,12 @@ export default function ReplayMotionPlayer({
                     <ShapeIcon
                       kind={(bases.find((b) => b.key === raw)?.race) === "저그" ? "cocoon"
                         : (bases.find((b) => b.key === raw)?.race) === "프로토스" ? "warpin" : "scaffold"}
-                      flat={!pitched} keepRatio
+                      flat={!pitched} keepRatio viewYaw={viewYawOf(bx + footDx(unit), by + footDy(unit))}
                       className={(bases.find((b) => b.key === raw)?.race) === "저그" ? "scr-motion-cocoon" : undefined}
                     />
                   )
                   : shapeKind && text !== name
-                  ? <ShapeIcon kind={shapeKind} flat={!pitched} keepRatio />
+                  ? <ShapeIcon kind={shapeKind} flat={!pitched} keepRatio viewYaw={viewYawOf(bx + footDx(unit), by + footDy(unit))} />
                   : text === "■"
                     // 캔버스가 이미 발자국 비율이라(위 aspectRatio — 벡터 없으면 높이 몫도
                     // 없다) 네모는 그 상자를 그대로 채운다(CSS width/height 100%).
@@ -4784,7 +4806,7 @@ export default function ReplayMotionPlayer({
                   }}
                 >
                   {/* 갓 나온 유닛도 상징물(요청) — 일꾼도 제 모델로 랠리까지 걷는다. */}
-                  <ShapeIcon kind={unitMarkerKind(unit, bases.find((b) => b.key === p.raw)?.race)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
+                  <ShapeIcon kind={unitMarkerKind(unit, bases.find((b) => b.key === p.raw)?.race)} rotDeg={hdg} flat={!pitched} viewYaw={viewYawOf(fx, fy)} className="scr-motion-troop" />
                 </span>,
               );
             }
@@ -4878,7 +4900,7 @@ export default function ReplayMotionPlayer({
                 }}
               >
                 {/* 일꾼류는 직접 모델링(요청) — 종족 일꾼 상징물이 오간다. */}
-                <ShapeIcon kind={workerKindOf(ownerRace)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
+                <ShapeIcon kind={workerKindOf(ownerRace)} rotDeg={hdg} flat={!pitched} viewYaw={viewYawOf(x, y)} className="scr-motion-troop" />
               </span>
             );
           });
@@ -5188,10 +5210,16 @@ export default function ReplayMotionPlayer({
                     cloaked && "scr-motion-cloaked",
                   )}
                   style={{
-                    ...(() => { const [ax3, ay3] = dodge(pos.x, pos.y); return { ...posStyle(ax3, ay3) }; })(),
-                    ...depthMk(pos.y),
-                    zIndex: pitched ? 1000 + Math.round(pos.y * 8)
-                      : 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
+                    /* 자리·깊이·차례 모두 회피 좌표로(지적: 건물 뒤 유닛이 보임) —
+                       회피가 건물 뒤로 밀어냈으면 차례도 뒤여야 한다. */
+                    ...(() => {
+                      const [ax3, ay3] = dodge(pos.x, pos.y);
+                      return {
+                        ...posStyle(ax3, ay3), ...depthMk(ay3),
+                        zIndex: pitched ? 1000 + Math.round(ay3 * 80)
+                          : 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
+                      };
+                    })(),
                     ...glyphStyle(p.raw, team),
                   }}
                 >
@@ -5200,10 +5228,10 @@ export default function ReplayMotionPlayer({
                       <ShapeIcon
                         kind={race === "저그" ? "ovie" : race === "테란" ? "dship" : "shuttle"}
                         rotDeg={headingOf(g.walk, pos)}
-                        className="scr-motion-ovie" flat={!pitched}
+                        className="scr-motion-ovie" flat={!pitched} viewYaw={viewYawOf(pos.x, pos.y)}
                       />
                     )
-                    : <ShapeIcon kind={workerKindOf(race)} flat={!pitched} className="scr-motion-troop" />}
+                    : <ShapeIcon kind={workerKindOf(race)} flat={!pitched} viewYaw={viewYawOf(pos.x, pos.y)} className="scr-motion-troop" />}
                 </span>
               );
             }
@@ -5262,14 +5290,18 @@ export default function ReplayMotionPlayer({
                     cloaked && "scr-motion-cloaked",
                   )}
                   style={{
-                    ...(() => { const [ax3, ay3] = dodge(pos.x + dx, pos.y + dy); return { ...posStyle(ax3, ay3) }; })(),
-                    ...depthMk(pos.y + dy),
-                    zIndex: pitched ? 1000 + Math.round((pos.y + dy) * 8)
-                      : 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
+                    ...(() => {
+                      const [ax3, ay3] = dodge(pos.x + dx, pos.y + dy);
+                      return {
+                        ...posStyle(ax3, ay3), ...depthMk(ay3),
+                        zIndex: pitched ? 1000 + Math.round(ay3 * 80)
+                          : 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
+                      };
+                    })(),
                     ...glyphStyle(p.raw, team),
                   }}
                 >
-                  <ShapeIcon kind={unitMarkerKind(u, bases.find((b) => b.key === p.raw)?.race)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
+                  <ShapeIcon kind={unitMarkerKind(u, bases.find((b) => b.key === p.raw)?.race)} rotDeg={hdg} flat={!pitched} viewYaw={viewYawOf(pos.x + dx, pos.y + dy)} className="scr-motion-troop" />
                   {/* 전투 불꽃·사망 퍼프(요청) — 대여섯에 하나씩 불꽃, 일곱에 하나씩
                       돌아가며 퍼프(1.5초 주기 결정적 순환이라 프레임마다 안 튄다). */}
                   {fighting && ATTACK_FX[u] && di % 4 === 0 && (
@@ -5401,15 +5433,19 @@ export default function ReplayMotionPlayer({
                     team === 2 ? "scr-motion-team2" : "scr-motion-team1",
                   )}
                   style={{
-                    ...(() => { const [ax3, ay3] = dodge(pos.x + dx, pos.y + dy); return { ...posStyle(ax3, ay3) }; })(),
-                    ...depthMk(pos.y + dy),
-                    // 겹침 차례 — 평면은 마지막 명령 시각, 입체는 화면 앞뒤(지적).
-                    zIndex: pitched ? 1000 + Math.round((pos.y + dy) * 8)
-                      : 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
+                    ...(() => {
+                      const [ax3, ay3] = dodge(pos.x + dx, pos.y + dy);
+                      return {
+                        ...posStyle(ax3, ay3), ...depthMk(ay3),
+                        // 겹침 차례 — 평면은 마지막 명령 시각, 입체는 화면 앞뒤(회피 좌표).
+                        zIndex: pitched ? 1000 + Math.round(ay3 * 80)
+                          : 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
+                      };
+                    })(),
                     ...glyphStyle(p.raw, team),
                   }}
                 >
-                  <ShapeIcon kind={unitMarkerKind(u, bases.find((b) => b.key === p.raw)?.race)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
+                  <ShapeIcon kind={unitMarkerKind(u, bases.find((b) => b.key === p.raw)?.race)} rotDeg={hdg} flat={!pitched} viewYaw={viewYawOf(pos.x + dx, pos.y + dy)} className="scr-motion-troop" />
                   {/* 전투 불꽃·사망 퍼프(요청) — 대여섯에 하나씩 불꽃, 일곱에 하나씩
                       돌아가며 퍼프(1.5초 주기 결정적 순환이라 프레임마다 안 튄다). */}
                   {fighting && ATTACK_FX[u] && di % 4 === 0 && (
@@ -5525,26 +5561,30 @@ export default function ReplayMotionPlayer({
                   team === 2 ? "scr-motion-team2" : "scr-motion-team1",
                 )}
                 style={{
-                  ...(() => { const [ax3, ay3] = dodge(pos.x, pos.y); return { ...posStyle(ax3, ay3) }; })(),
-                  ...depthMk(pos.y),
-                  // 겹침 차례 — 평면은 마지막 명령 시각, 입체는 화면 앞뒤(지적).
-                  zIndex: pitched ? 1000 + Math.round(pos.y * 8)
-                    : 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
+                  ...(() => {
+                    const [ax3, ay3] = dodge(pos.x, pos.y);
+                    return {
+                      ...posStyle(ax3, ay3), ...depthMk(ay3),
+                      // 겹침 차례 — 평면은 마지막 명령 시각, 입체는 화면 앞뒤(회피 좌표).
+                      zIndex: pitched ? 1000 + Math.round(ay3 * 80)
+                        : 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
+                    };
+                  })(),
                   ...(activeNow ? chipStyle(p.raw, team) : glyphStyle(p.raw, team)),
                 }}
               >
                 {/* 수송선·오버로드는 점 대신 제 도형(요청) — 풍선·드랍십·셔틀.
                     일꾼은 점 그대로, 그 밖의 단독 정찰(병력)은 육각형(요청: 아이콘 구분). */}
                 {race === "저그" && g.kind !== "worker"
-                  ? <ShapeIcon kind="ovie" rotDeg={hdg} flat={!pitched} className="scr-motion-ovie" />
+                  ? <ShapeIcon kind="ovie" rotDeg={hdg} flat={!pitched} viewYaw={viewYawOf(pos.x, pos.y)} className="scr-motion-ovie" />
                   : g.kind === "carrier"
-                    ? <ShapeIcon kind={race === "테란" ? "dship" : "shuttle"} rotDeg={hdg} flat={!pitched} className="scr-motion-ovie" />
+                    ? <ShapeIcon kind={race === "테란" ? "dship" : "shuttle"} rotDeg={hdg} flat={!pitched} viewYaw={viewYawOf(pos.x, pos.y)} className="scr-motion-ovie" />
                     : g.kind === "worker"
-                      ? <ShapeIcon kind={workerKindOf(race)} rotDeg={hdg} flat={!pitched} className="scr-motion-troop" />
+                      ? <ShapeIcon kind={workerKindOf(race)} rotDeg={hdg} flat={!pitched} viewYaw={viewYawOf(pos.x, pos.y)} className="scr-motion-troop" />
                       : (
                         <ShapeIcon
                           kind={race === "테란" ? "gunner" : race === "저그" ? "zling" : "zealot"}
-                          rotDeg={hdg} flat={!pitched} className="scr-motion-troop"
+                          rotDeg={hdg} flat={!pitched} viewYaw={viewYawOf(pos.x, pos.y)} className="scr-motion-troop"
                         />
                       )}
               </span>
@@ -5571,7 +5611,7 @@ export default function ReplayMotionPlayer({
               className={cx("scr-motion-army", "scr-motion-dot", team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
               style={{ ...posStyle(home[0] + 2.5, home[1] - 2.5), ...glyphStyle(p.raw, team) }}
             >
-              <ShapeIcon kind="ovie" flat={!pitched} className="scr-motion-ovie" />
+              <ShapeIcon kind="ovie" flat={!pitched} viewYaw={viewYawOf(home[0] + 2.5, home[1] - 2.5)} className="scr-motion-ovie" />
             </span>
           )];
         })}
@@ -5611,7 +5651,7 @@ export default function ReplayMotionPlayer({
                 ...glyphStyle(raw, teamOfRaw(raw)),
               }}
             >
-              <ShapeIcon kind="scv" rotDeg={hdg2} flat={!pitched} className="scr-motion-troop" />
+              <ShapeIcon kind="scv" rotDeg={hdg2} flat={!pitched} viewYaw={viewYawOf(cx0 + sx2, cy0 + sy2)} className="scr-motion-troop" />
             </span>
           );
         })}
