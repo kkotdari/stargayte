@@ -11071,11 +11071,14 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-cloaked { opacity: 0.45; }
 /* 오버로드 풍선 도형은 점 크기(1em)로는 다리가 안 보인다(지적: "오버로드 모양이 안
    나오는듯") — 한 단 키운다. */
-.scr-motion-shape-svg.scr-motion-ovie { width: 3.4em; height: 3.4em; }
+/* 유닛 크기(요청) — 기본은 실제 크기, 2배 버튼(scr-motion-unit2x)이 예전 두 배. */
+.scr-motion-shape-svg.scr-motion-ovie { width: 1.7em; height: 1.7em; }
+.scr-motion-unit2x .scr-motion-shape-svg.scr-motion-ovie { width: 3.4em; height: 3.4em; }
 /* 병력 쐐기(요청: 일꾼과 아이콘 구분 — 육각형은 점 크기에서 원과 안 갈렸다는 지적으로
    삼각 쐐기로) — 점(●)과 같은 급의 표시라 점 크기를 따라간다. */
-/* 유닛은 실제보다 2배 크게(요청). */
-.scr-motion-shape-svg.scr-motion-troop { width: 2.3em; height: 2.3em; }
+/* 유닛 크기 — 기본 실제 크기, 2배는 토글(요청: 원래는 실제 크기로). */
+.scr-motion-shape-svg.scr-motion-troop { width: 1.15em; height: 1.15em; }
+.scr-motion-unit2x .scr-motion-shape-svg.scr-motion-troop { width: 2.3em; height: 2.3em; }
 /* 저그 공사 고치(요청) — 통통 바운스. */
 .scr-motion-cocoon { animation: scr-cocoon 0.9s ease-in-out infinite alternate; }
 @keyframes scr-cocoon {
