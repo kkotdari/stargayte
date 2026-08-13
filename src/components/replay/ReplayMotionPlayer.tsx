@@ -803,29 +803,41 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...hornFaces(2.7, 0, 0.8, 1, -0.3, 9.6, 2.3));
     return out;
   },
-  /* 스타게이트(완전 리디자인, 실물 참고) — 비스듬한 두꺼운 슬래브 몸에 길게 얹힌
-     지붕 칼날 핀, 앞면 그릴의 청록 창 슬릿 줄, 뒤로 흐르는 곡선 리본, 앞 아래 금 침. */
+  /* 스타게이트(복원 — 슬래브 판 폐기) — 세운 원통을 세로로 반 갈라 두 쪽을 사이 띄워
+     마주 세운 꼴. 구멍은 앞단면(아래)에 파여 함선이 그 사이·앞으로 나온다. 반쪽마다
+     청록 창 점 세 개. */
   arch: () => {
-    const out: ShapeFace[] = [];
-    // 뒤 곡선 리본 두 가닥.
-    out.push(...hornFaces(2.6, -2, 3.2, 4.6, -3.2, 5, 0.5));
-    out.push(...hornFaces(4.6, -3.2, 4.8, 3.6, -4.2, 6.6, 0.4));
-    // 슬래브 몸.
-    out.push(...boxFaces3(0, -0.4, 6.8, 4.4, 4.2, 0.6));
-    // 지붕 칼날 핀 — 대각으로 길게.
-    const fin = polyPath3([[-3.6, 0.7, 5.1], [3.4, -1.2, 5.3], [3.9, -1.5, 6.7], [-3.2, 1, 6.3]]);
-    out.push(bodyFace(fin), topFace(fin, 0.2));
-    // 앞면 그릴 — 어두운 틀에 청록 창 슬릿 넉 장.
-    out.push(capFace(polyPath3([[-2.8, 1.81, 1], [1.6, 1.81, 1], [1.6, 1.81, 3.5], [-2.8, 1.81, 3.5]]), 0.35));
-    for (let i = 0; i < 4; i += 1) {
-      const x0 = -2.5 + i * 1.05;
-      out.push(topFace(polyPath3([
-        [x0, 1.82, 1.3], [x0 + 0.7, 1.82, 1.3], [x0 + 0.7, 1.82, 3.2], [x0, 1.82, 3.2],
-      ]), 0.45));
-    }
-    // 앞 아래 금 침.
-    out.push(...hornFaces(-2.4, 2.4, 0.9, -3.5, 3.7, 0.2, 0.7));
-    return out;
+    const [xcL] = project(-1.9, 0, 0);
+    const [xcR] = project(1.9, 0, 0);
+    const [, tyS] = project(0, 0, 8.2);
+    const [, byS] = project(0, 0, 0);
+    const R = 2.3;
+    const ry = R * 0.45;
+    const half = (xc: number, m2: 1 | -1): { body: string; top: string; hole: string } => {
+      const sw = m2 === -1 ? 0 : 1;
+      return {
+        body: `M${xc} ${tyS - ry} A${R} ${ry} 0 0 ${sw} ${xc + m2 * R} ${tyS}`
+          + ` L${xc + m2 * R} ${byS} A${R} ${ry} 0 0 ${sw} ${xc} ${byS + ry} L${xc} ${tyS + ry} Z`,
+        top: `M${xc} ${tyS - ry} A${R} ${ry} 0 0 ${sw} ${xc} ${tyS + ry} Z`,
+        hole: `M${xc} ${byS - ry * 0.6} A${R * 0.6} ${ry * 0.6} 0 0 ${sw} ${xc} ${byS + ry * 0.6} Z`,
+      };
+    };
+    const L2 = half(xcL, -1);
+    const R2 = half(xcR, 1);
+    const win = (xc: number, m2: 1 | -1): ShapeFace[] => {
+      const yMid = (tyS + byS) / 2;
+      return [0, 1, 2].map((i) =>
+        topFace(groundEllipse(xc + m2 * 1.05, yMid - 1.4 + i * 1.4, 0.3, 0.42), 0.45));
+    };
+    return [
+      sideFace(discPath3(0, 0.2, 0, 5), 0.22),
+      bodyFace(L2.body), topFace(L2.top), capFace(L2.hole, 0.4),
+      topFace(`M${xcL - R} ${tyS} L${xcL - R + 0.6} ${tyS + 0.3} L${xcL - R + 0.6} ${byS} L${xcL - R} ${byS} Z`, 0.14),
+      ...win(xcL, -1),
+      bodyFace(R2.body), topFace(R2.top), capFace(R2.hole, 0.4),
+      sideFace(`M${xcR + R} ${tyS} L${xcR + R - 0.6} ${tyS + 0.3} L${xcR + R - 0.6} ${byS} L${xcR + R} ${byS} Z`, 0.2),
+      ...win(xcR, 1),
+    ];
   },
   /* 파일런(정정 둘) — 고리를 수정 허리께로 더 올리고(지적), 수정은 매끈한 육각
      보석으로 다듬었다: 위 뾰족·어깨·허리·아래 뾰족이 좌우대칭. */
