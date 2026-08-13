@@ -4516,13 +4516,45 @@ export default function ReplayMotionPlayer({
     });
     return m;
   }, [scoutSquads, motion]);
+  /* 수송선이 실제로 있고 나서다(지적: 수송선도 없는 시점·자리에 드랍 효과가 계속) —
+     드랍·태움 신호는 번호 정체 어림에서 나와 오염될 수 있다. 테란·토스는 첫 수송선
+     완성 전, 저그는 수송 업그레이드(Ventral Sacs) 연구 전의 신호는 전부 거짓이다. */
+  const transportReadyAt = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of motion.players) {
+      const race = bases.find((b) => b.key === p.raw)?.race;
+      if (race === "저그") {
+        const v = (p.ups ?? []).find(([, n]) => n === "Ventral Sacs");
+        m.set(p.raw, v ? v[0] : Infinity);
+        continue;
+      }
+      const unit = race === "테란" ? "Dropship" : "Shuttle";
+      const secs = p.prod?.[unit];
+      m.set(p.raw, secs && secs.length > 0 ? secs[0] + (UNIT_SEC[unit] ?? 20) : Infinity);
+    }
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [motion, bases]);
+  /* 그리고 그 순간 수송선 자취가 곁에 있어야 한다(지적: 수송선 없는 데서 계속 나옴) —
+     신호 자리에서 12타일 안에 수송선이 없으면 그 드랍·태움은 어림이 헛짚은 것이다. */
+  const carrierNearAt = (raw: string, sec: number, x: number, y: number): boolean => {
+    for (const w of carrierWalks.get(raw) ?? []) {
+      if (w.length === 0 || sec < w[0][0] - 5) continue;
+      const tp = posAt(w, sec, null);
+      if (tp && Math.hypot(tp.x - x, tp.y - y) <= 12) return true;
+    }
+    return false;
+  };
   const carriedGone = (
     p: MotionTrack, pos: { x: number; y: number }, lastOrderSec: number,
     // 지금 걷는 중인가 — 걷는 부대는 탄 것일 수 없다(아래 암묵 태움 판정의 걸림막).
     moving = false,
   ): boolean => {
+    const ready = transportReadyAt.get(p.raw) ?? Infinity;
     for (const [ls, lx, ly] of p.loads ?? []) {
       if (ls > t) break;
+      // 수송선이 없던 시절·자리의 태움 신호는 버린다(위 주석).
+      if (ls < ready || !carrierNearAt(p.raw, ls, lx, ly)) continue;
       const ds = (p.drops ?? []).find(([s]) => s > ls)?.[0] ?? Infinity;
       if (t >= ls && t < ds && lastOrderSec <= ls
         && Math.hypot(pos.x - lx, pos.y - ly) <= 5) return true;
@@ -5950,6 +5982,11 @@ export default function ReplayMotionPlayer({
             '드랍', 제 수송선을 찍어 태운 자리엔 '태움'이 마법처럼 잠깐 떠오른다. */}
         {motion.players.flatMap((p) => {
           const team = teamOfRaw(p.raw);
+          /* 수송선 실존 걸림막(지적: 수송선도 없는 시점·자리에 드랍 효과가 계속) —
+             드랍·태움 신호는 번호 정체 어림이라 오염될 수 있다. 첫 수송선이 생기기
+             전(저그는 Ventral Sacs 연구 전)의 신호와, 그 순간 수송선 자취가 곁(12타일)에
+             없는 자리의 신호는 효과를 그리지 않는다. */
+          const ready = transportReadyAt.get(p.raw) ?? Infinity;
           const mk = (pts: [number, number, number][] | undefined, kp: "dr" | "ld") => {
             /* 몰린 클릭 접기(지적: 태움·내림 효과가 계속 남아 이상하다) — 여러 기를 태울
                때 수송선을 잇달아 찍으므로, 10초·5타일 안에 몰린 클릭은 첫 것 하나만 배지가
@@ -5962,7 +5999,8 @@ export default function ReplayMotionPlayer({
               folded.push(pt);
             }
             return folded
-              .filter(([s]) => s <= t && t - s <= CAST_HOLD_SEC)
+              .filter(([s, cx2, cy2]) => s <= t && t - s <= CAST_HOLD_SEC
+                && s >= ready && carrierNearAt(p.raw, s, cx2, cy2))
               .map(([s, cx2, cy2]) => (
                 <React.Fragment key={`${kp}-${p.raw}-${s}-${cx2}-${cy2}`}>
                   {/* 우주선 광선(요청: 글씨 없이 광선만) — 위(수송선)에서 유닛 자리로
