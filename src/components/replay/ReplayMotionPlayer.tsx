@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Maximize2, Mountain, Pause, Play, RotateCcw, Shield, X } from "lucide-react";
+import { Maximize2, Pause, Play, RotateCcw, Shield, X } from "lucide-react";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
-import TerrainReviewModal from "../../modals/TerrainReviewModal";
 import Avatar from "../common/Avatar";
 import { cx } from "../../utils/format";
 import { UNIT_KO, BUILDING_KO, TECH_KO } from "../../utils/replaySummaryText";
@@ -29,7 +28,8 @@ import type { MinimapMarker } from "./ReplayMinimap";
    이 자취는 "그 사람 부대가 어디서 무엇을 하고 있었나"의 어림이다. */
 
 /** 배속 갈래(요청: 1·2·3·5·10·20) — 뜯어보는 ×1부터 훑어 넘기는 ×20까지. */
-const SPEEDS = [1, 2, 3, 5, 10, 20] as const;
+// ×3을 걷고 기본은 ×2(요청: 배속 정리 — x1 x2 x5 x10 x20, 기본 2).
+const SPEEDS = [1, 2, 5, 10, 20] as const;
 /** 착공 직후 이름이 떠 있는 시간(초) — 그 뒤로는 곧장 도형+망치다(요청: "건물은 처음
  *  짓기 시작할때 잠깐 이름으로 표시하고 아이콘에 망치"). 예전엔 다 지어지고도 한참
  *  이름이었는데, 그 시간 내내 이름이 화면을 차지했다. 생산·연구가 돌면 그때 다시
@@ -3557,16 +3557,9 @@ export default function ReplayMotionPlayer({
   useEffect(() => { rallyRoutes.current.clear(); }, [terrain, terrainRaw]);
   /* 지형 수정(요청: 모든 경기 리플레이 화면에서, 아무나) — 산 버튼이 검수 모달을 연다.
      저장하면 이 자리에서 바로 새 지형으로 갈아 끼운다(맵 캐시는 다음 로드에 새 값을 받는다). */
-  const [terrainOpen, setTerrainOpen] = useState(false);
-  const [walkOverride, setWalkOverride] = useState<string | null>(null);
-  /* 모달에 주는 image는 같은 값이면 같은 객체여야 한다(지적: 칠하면 까맣게 깜빡이고
-     되돌아감) — 재생은 매 프레임 리렌더라, 인라인 객체를 만들면 모달의 초기화 effect가
-     프레임마다 다시 돌아 격자를 원본으로 리셋했다. */
-  const terrainModalImage = useMemo(() => ({
-    // 제목은 대표맵 이름(요청) — 리플레이 원본 이름은 색 제어문자가 섞여 지저분하다.
-    id: grid.imageId ?? 0, name: grid.imageName || grid.name || "미니맵",
-    image: grid.image ?? "", walk: walkOverride ?? grid.walk,
-  }), [grid.imageId, grid.imageName, grid.name, grid.image, grid.walk, walkOverride]);
+  /* (제거·요청: 지형 편집) — 재생 화면의 검수 모달·산 버튼을 걷었다. 검수 저장분은
+     서버의 grid.walk로 이미 들어오므로 화면 임시 덮개는 더 필요 없다. */
+  const walkOverride: string | null = null;
   useEffect(() => {
     let cancelled = false;
     /* 검수한 지형(grid.walk, 방금 이 자리에서 고쳤으면 walkOverride)이 있으면 그쪽이
@@ -3886,7 +3879,7 @@ export default function ReplayMotionPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [motion, terrain, terrainRaw, grid.width, grid.height, bases]);
   // 기본은 ×3이다(요청: ×8 → ×4였다가 눈금이 1·2·3·5·10·20으로 바뀌며 가장 가까운 값).
-  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(3);
+  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(2);
   /* 탐색바(지적: 다이얼 드래그가 안 되고, 부드럽지 않고 반응이 느림) — 제어 입력은 매
      프레임 React가 값을 덮어써 잡은 손잡이와 싸웠고, 끌 때마다 지도 전체가 그려져 손을
      못 따라왔다. 입력을 비제어로 두고(손잡이는 브라우저 몫), 재생 중의 위치는 ref로 직접
@@ -6238,27 +6231,10 @@ export default function ReplayMotionPlayer({
       {teamCol(2)}
       </div>
 
-      {/* 지도 아래 도구줄(요청: 범례·지형 수정·확대 토글을 전부 같은 한 줄에) — 가운데
-          칸에 범례와 지형 버튼, 오른쪽 칸에 확대 토글. 범례의 본진(★)은 지웠다(요청) —
-          본진 건물들이 저마다 제 도형을 갖게 되면서 ★는 더 이상 안 그려진다. 확대 토글은
-          PC 전용(모바일은 핀치 확대), 큰 화면 모달에선 범례·지형이 숨어 토글만 남는다. */}
+      {/* 지도 아래 도구줄 — 오른쪽 칸에 확대 토글만 남았다. 범례는 모델이 대신하고,
+          지형 편집(산 버튼)도 걷었다(요청: 버튼 정리). */}
       <div className="scr-motion-toolrow">
-        <div className="scr-motion-toolrow-mid">
-          {/* (삭제·요청) 범례 — 모델이 곧 범례다. */}
-          <div className="scr-motion-terrain-row">
-            {typeof grid.imageId === "number" && grid.image && (
-              <button
-                type="button" className="scr-motion-btn scr-motion-terrain"
-                onClick={() => { setPlaying(false); setTerrainOpen(true); }}
-                aria-label="지형 수정" title="지형 수정"
-              >
-                <Mountain size={12} />
-              </button>
-            )}
-            {/* (삭제·요청: 모바일 확대 제거) — 화면 폭 확대 버튼이 있던 자리. 상세 모달이
-                전체화면이 되며 맵이 늘 최대 크기다. */}
-          </div>
-        </div>
+        <div className="scr-motion-toolrow-mid" />
         {/* 케밥은 왼쪽 위(요청: PC 게임 상세에서도 케밥은 왼쪽) — X와 갈라 세운다. */}
         {big && menu ? <div className="scr-motion-menu-left">{menu}</div> : null}
         <div className="scr-motion-expand-row">
@@ -6302,41 +6278,57 @@ export default function ReplayMotionPlayer({
           aria-label="재생 위치"
         />
       </div>
-      {/* 보기 설정 줄(요청: 팀컬러·수직보기·유닛크기·지형편집은 윗줄로 따로). */}
+      {/* 보기 설정 줄(정리·요청) — 원형 버튼 11개 중 윗줄 여섯: 보기(2D/3D)·컬러(팀색/
+          개인색)·모델크기(×1/×2)를 짝 버튼으로, 종류 사이엔 갭. 지형 편집은 걷었다. */}
       <div className="scr-motion-bar scr-motion-viewrow">
-        <button
-          type="button" className="scr-motion-btn scr-motion-colorbtn"
-          onClick={() => setColorMode((v) => (v === "team" ? "personal" : "team"))}
-          title="색 기준 전환"
-        >
-          {colorMode === "team" ? "개인컬러 보기" : "팀컬러 보기"}
-        </button>
-        {/* 피칭 보기(요청) — 수직 부감 ↔ 비스듬한 정면. 캔버스 전환으로 유닛·건물이
-            전부 한 장에 그려져 폰에서도 감당돼(실측), 모바일에도 연다(요청). */}
-        <button
-          type="button" className="scr-motion-btn scr-motion-colorbtn"
-          onClick={() => setPitched((v) => !v)}
-          title="시점 전환"
-        >
-          {pitched ? "수직 보기" : "입체 보기"}
-        </button>
-        {/* 유닛 크기(요청) — 기본은 실제 크기, 누르면 2배. */}
-        <button
-          type="button" className="scr-motion-btn scr-motion-colorbtn"
-          onClick={() => setUnitX2((v) => !v)}
-          title="유닛 크기 전환"
-        >
-          {unitX2 ? "유닛 실제 크기" : "유닛 2배 크기"}
-        </button>
-        {big && typeof grid.imageId === "number" && grid.image ? (
+        <span className="scr-motion-btngroup" role="group" aria-label="보기">
           <button
-            type="button" className="scr-motion-btn scr-motion-terrain"
-            onClick={() => { setPlaying(false); setTerrainOpen(true); }}
-            aria-label="지형 수정" title="지형 수정"
+            type="button"
+            className={cx("scr-motion-btn", "scr-motion-rbtn", !pitched && "scr-motion-speed-on")}
+            onClick={() => setPitched(false)}
           >
-            <Mountain size={12} />
+            2D
           </button>
-        ) : null}
+          <button
+            type="button"
+            className={cx("scr-motion-btn", "scr-motion-rbtn", pitched && "scr-motion-speed-on")}
+            onClick={() => setPitched(true)}
+          >
+            3D
+          </button>
+        </span>
+        <span className="scr-motion-btngroup" role="group" aria-label="컬러">
+          <button
+            type="button"
+            className={cx("scr-motion-btn", "scr-motion-rbtn", colorMode === "team" && "scr-motion-speed-on")}
+            onClick={() => setColorMode("team")}
+          >
+            팀색
+          </button>
+          <button
+            type="button"
+            className={cx("scr-motion-btn", "scr-motion-rbtn", colorMode === "personal" && "scr-motion-speed-on")}
+            onClick={() => setColorMode("personal")}
+          >
+            개인색
+          </button>
+        </span>
+        <span className="scr-motion-btngroup" role="group" aria-label="모델 크기">
+          <button
+            type="button"
+            className={cx("scr-motion-btn", "scr-motion-rbtn", !unitX2 && "scr-motion-speed-on")}
+            onClick={() => setUnitX2(false)}
+          >
+            ×1
+          </button>
+          <button
+            type="button"
+            className={cx("scr-motion-btn", "scr-motion-rbtn", unitX2 && "scr-motion-speed-on")}
+            onClick={() => setUnitX2(true)}
+          >
+            ×2
+          </button>
+        </span>
       </div>
       <div className="scr-motion-bar scr-motion-bar-controls">
         {/* 차례가 곧 그리드 칸이다(지적: 재생이 줄 가운데, 배속은 왼쪽에 필터처럼) —
@@ -6345,7 +6337,7 @@ export default function ReplayMotionPlayer({
           {SPEEDS.map((v) => (
             <button
               key={v} type="button"
-              className={cx("scr-motion-btn", "scr-motion-speed", speed === v && "scr-motion-speed-on")}
+              className={cx("scr-motion-btn", "scr-motion-rbtn", speed === v && "scr-motion-speed-on")}
               onClick={() => setSpeed(v)}
             >
               ×{v}
@@ -6375,14 +6367,6 @@ export default function ReplayMotionPlayer({
       {big && registrant ? <div className="scr-motion-registrant">{registrant}</div> : null}
       {/* 확대 모드의 오른쪽 댓글 영역(지적: "리플" = 댓글) — 맵 오른쪽 그리드 4번째 칸. */}
       {big && side ? <div className="scr-motion-sidewrap">{side}</div> : null}
-      {terrainOpen && typeof grid.imageId === "number" && grid.image && (
-        <TerrainReviewModal
-          image={terrainModalImage}
-          anchors={(grid.resources ?? []).map(([x, y]) => [x / grid.width, y / grid.height] as [number, number])}
-          onClose={() => setTerrainOpen(false)}
-          onSaved={(updated) => setWalkOverride(updated.walk ?? null)}
-        />
-      )}
     </div>
   );
 
