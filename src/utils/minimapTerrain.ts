@@ -28,6 +28,39 @@ const LOCAL_R = 4;
  *  — 벽은 검은 게 아니라 제 주변보다 어두운 능선이다). */
 const RIDGE_RATIO = 0.68;
 
+/** 같은 값으로 이어진 작은 고립 조각을 주변 값으로 뒤집는다(분석 ④). 4방향 연결. */
+function fillSpecks(w: number, h: number, walk: Uint8Array): void {
+  const WALK_SPECK_MAX = 5;
+  const BLOCK_SPECK_MAX = 2;
+  const seen = new Uint8Array(w * h);
+  const stack: number[] = [];
+  const comp: number[] = [];
+  for (let start = 0; start < w * h; start += 1) {
+    if (seen[start]) continue;
+    const v = walk[start];
+    const cap = v === 1 ? WALK_SPECK_MAX : BLOCK_SPECK_MAX;
+    stack.length = 0;
+    comp.length = 0;
+    stack.push(start);
+    seen[start] = 1;
+    let small = true;
+    while (stack.length > 0) {
+      const cur = stack.pop()!;
+      comp.push(cur);
+      if (comp.length > cap) { small = false; }
+      const x = cur % w;
+      for (const d of [-1, 1, -w, w]) {
+        const nx = cur + d;
+        if (nx < 0 || nx >= w * h || seen[nx] || walk[nx] !== v) continue;
+        if (Math.abs((nx % w) - x) > 1) continue; // 줄 끝 감김 금지
+        seen[nx] = 1;
+        stack.push(nx);
+      }
+    }
+    if (small) for (const i of comp) walk[i] = v === 1 ? 0 : 1;
+  }
+}
+
 const cache = new Map<string, Promise<TerrainGrid | null>>();
 
 /** 그림을 격자로 내려 읽는다 — 검수 화면(초기값)과 재생 화면(저장값 없을 때)이 함께 쓴다. */
@@ -124,6 +157,10 @@ export async function analyzeMinimap(url: string): Promise<TerrainGrid | null> {
     if (rankRule && !majors.has(keyOf(i))) continue;
     walk[i] = 1;
   }
+  /* ④ 작은 빵꾸 메우기(요청) — 자잘한 고립 조각은 오판일 확률이 높아 주변 값으로 맞춘다.
+     걷는 조각(벽 사이 빵꾸)은 5칸까지 막고, 막힌 점은 2칸까지만 연다 — 막힌 쪽을 크게
+     열면 ③이 잡은 장식 타일이 도로 풀린다. */
+  fillSpecks(w, h, walk);
   return { w, h, walk };
 }
 
