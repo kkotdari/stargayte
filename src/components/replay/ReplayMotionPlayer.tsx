@@ -1209,9 +1209,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...boxFaces3(-2.2, -0.2, 1.3, 1.8, 1.9, 3.6),
     ...boxFaces3(2.2, -0.2, 1.3, 1.8, 1.9, 3.6),
     ...domeFaces3(0, -0.6, 0.9, 0.7, 6),
-    // 두 팔은 직육면체 기둥(지적) — 앞으로 내민 각진 기둥 한 쌍.
-    ...boxFaces3(-1.75, 1.5, 1.15, 1.2, 2.7, 2.7),
-    ...boxFaces3(1.75, 1.5, 1.15, 1.2, 2.7, 2.7),
+    // 팔·다리는 지면과 평행(정정) — 팔 한 쌍은 넓게 벌려 위에, 다리 한 쌍은 모아 아래에.
+    ...boxFaces3(-2.5, 1.6, 1.05, 2.7, 1.05, 4.1),
+    ...boxFaces3(2.5, 1.6, 1.05, 2.7, 1.05, 4.1),
+    ...boxFaces3(-0.85, 1.9, 0.95, 2.5, 0.95, 2.3),
+    ...boxFaces3(0.85, 1.9, 0.95, 2.5, 0.95, 2.3),
   ],
   /* 프로브(실물 참고) — 팔각 보석 몸(밝은 윗판 층층) + 방사 가시들. */
   probe: () => {
@@ -1224,8 +1226,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         Math.sin(a) * (1.1 + len), Math.cos(a) * (1.1 + len), 3.7, w,
       );
     };
-    for (const ang of [150, 180, 210]) out.push(...spike(ang, 5.8, 1.05));
-    for (const ang of [95, -95]) out.push(...spike(ang, 5, 1));
+    // 뒤쪽 두 다리(길게) + 뒤아래로 기운 두 다리(더 가파르게), 옆은 짧게(정정).
+    const spikeTo = (ang: number, len: number, tipZ: number, w: number): ShapeFace[] => {
+      const a = (ang * Math.PI) / 180;
+      return hornFaces(
+        Math.sin(a) * 1.1, Math.cos(a) * 1.1, 4.6,
+        Math.sin(a) * (1.1 + len), Math.cos(a) * (1.1 + len), tipZ, w,
+      );
+    };
+    for (const ang of [152, 208]) out.push(...spikeTo(ang, 6.2, 3.6, 1.05));
+    for (const ang of [170, 190]) out.push(...spikeTo(ang, 5.4, 1.2, 1));
+    for (const ang of [95, -95]) out.push(...spike(ang, 2, 0.8));
     const [cx, cy] = project(0, 0, 4.6);
     const oct = (r: number): string => {
       let d = "";
@@ -1238,21 +1249,28 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(bodyFace(oct(2)));
     out.push(topFace(oct(1.35), 0.26));
     out.push(topFace(oct(0.8), 0.3));
-    for (const ang of [38, -38]) out.push(...spike(ang, 4.2, 0.95));
+    // 앞은 다리 없이 동그란 눈 두 개(정정) — 귀엽게.
+    out.push(capFace(groundEllipse(cx - 0.75, cy + 1.15, 0.42, 0.4), 0.5));
+    out.push(capFace(groundEllipse(cx + 0.75, cy + 1.15, 0.42, 0.4), 0.5));
+    out.push(topFace(groundEllipse(cx - 0.62, cy + 1.02, 0.14, 0.13), 0.6));
+    out.push(topFace(groundEllipse(cx + 0.88, cy + 1.02, 0.14, 0.13), 0.6));
     return out;
   },
-  /* 드론(지적: 갈퀴치마가 핵심) — 몸통(꼬리처럼 뒤로 긴 겹돔)과 칼날팔 한 쌍, 그 둘을
-     잇는 톱니 갈퀴치마 막. 나머지 장식은 뺐다. */
+  /* 드론(정정) — 갈퀴치마는 집게 사이가 아니라 집게팔과 꼬리 사이, 양옆에 부채처럼
+     펼쳐진다. 몸통(꼬리 겹돔) + 칼날팔 한 쌍 + 양옆 톱니 부채막. */
   drone: () => {
-    const skirt = polyPath3([
-      [-1.7, 0.4, 4.3], [-2.1, 3.1, 2.8], [-1.1, 2.6, 3.1], [-0.5, 3.6, 2.6],
-      [0, 2.7, 3.1], [0.5, 3.6, 2.6], [1.1, 2.6, 3.1], [2.1, 3.1, 2.8], [1.7, 0.4, 4.3],
+    const fan = (m: 1 | -1): string => polyPath3([
+      [m * 1.5, 0.6, 4.2],
+      [m * 2.6, 2.2, 3], [m * 2.3, 1.2, 3.3],
+      [m * 3.2, 0.4, 2.9], [m * 2.6, -0.4, 3.2],
+      [m * 3.3, -1.4, 2.8], [m * 2.2, -2.2, 3.1],
+      [m * 0.9, -3, 3.4],
     ]);
     return [
+      bodyFace(fan(1)), sideFace(fan(1), 0.16),
+      bodyFace(fan(-1)), sideFace(fan(-1), 0.13),
       ...domeFaces3(0, -2.1, 1.5, 1.2, 3.5),
       ...domeFaces3(0, -0.7, 2, 1.7, 3.5),
-      bodyFace(skirt),
-      sideFace(skirt, 0.15),
       ...hornFaces(1.5, 0.4, 4.4, 2.6, 3.6, 2.9, 0.8),
       ...hornFaces(-1.5, 0.4, 4.4, -2.6, 3.6, 2.9, 0.8),
     ];
@@ -1390,11 +1408,23 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       return `${px} ${py}`;
     };
     const out: ShapeFace[] = [...hornFaces(0, -2.6, 5, -0.3, -3.6, 7.8, 1)];
+    /* 포드는 캡슐 한 덩이(정정: 앞 뭉치가 본체와 떨어져 보였고 검정이 끼었다) —
+       양 끝이 둥근 외곽선 하나로 그려 이음매도 어두운 단면도 없다. */
     const pod = (tx: number): void => {
-      out.push(...tubeFaces(tx, -2.8, tx, 2.6, 1.4, 3.2));
-      const [fx2, fy2] = project(tx, 2.6, 3.2);
-      out.push(bodyFace(groundEllipse(fx2, fy2 - 0.63, 1.33, 1.1)));
-      out.push(topFace(groundEllipse(fx2 - 0.35, fy2 - 0.9, 0.63, 0.42), 0.25));
+      const [ax2, ay2] = project(tx, -2.8, 3.2);
+      const [bx2, by2] = project(tx, 2.6, 3.2);
+      const r = 1.4;
+      const zr = r * 0.9;
+      const dx2 = bx2 - ax2;
+      const dy2 = by2 - ay2;
+      const L = Math.hypot(dx2, dy2) || 1;
+      const nx2 = (-dy2 / L) * r;
+      const ny2 = (dx2 / L) * r;
+      out.push(bodyFace(`M${ax2 + nx2} ${ay2 + ny2 - zr} L${bx2 + nx2} ${by2 + ny2 - zr}`
+        + ` A${r} ${r * 0.8} 0 0 1 ${bx2 - nx2} ${by2 - ny2 - zr}`
+        + ` L${ax2 - nx2} ${ay2 - ny2 - zr}`
+        + ` A${r} ${r * 0.8} 0 0 1 ${ax2 + nx2} ${ay2 + ny2 - zr} Z`));
+      out.push(topFace(groundEllipse((ax2 + bx2) / 2 - 0.4, (ay2 + by2) / 2 - zr - 0.2, 0.9, 0.5), 0.2));
     };
     pod(-3.1);
     pod(3.1);
