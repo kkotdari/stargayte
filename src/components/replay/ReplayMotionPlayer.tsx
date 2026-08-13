@@ -3032,6 +3032,9 @@ const UNIT_BULK: Record<string, 0 | 1 | 2> = {
   Marine: 0, Firebat: 0, Ghost: 0, Medic: 0, Zealot: 0, "High Templar": 0,
   "Dark Templar": 0, Observer: 0, Zergling: 0, Scourge: 0, Mutalisk: 0,
   Broodling: 0, "Infested Terran": 0,
+  // 일꾼도 소형(지적: 같은 화면에서 유닛 크기가 제각각) — 표에서 빠져 대형(15px)으로
+  // 그려졌다. 브루드워 분류대로 소형이다.
+  SCV: 0, Probe: 0, Drone: 0,
   Hydralisk: 1, Vulture: 1, Corsair: 1, Lurker: 1, Queen: 1, Defiler: 1,
 };
 /** 도형째 돌려 그리는 각도(시계방향) — 옛 스타게이트(반쪽 원통)용 45도는 봉오리
@@ -5247,7 +5250,7 @@ export default function ReplayMotionPlayer({
               z: pitched ? 1000 + Math.round(y * 80) : 900,
               kind: workerKindOf(ownerRace), rotDeg: hdg, viewYaw: viewYawOf(x, y),
               flat: !pitched, pitch: pitched,
-              sizePx: dotGlyphPx("scout", 1.15, y),
+              sizePx: unitGlyphPx(0, y),
               color: modeColor(owner!.raw, team),
               alpha: 1,
             });
@@ -5554,7 +5557,7 @@ export default function ReplayMotionPlayer({
                 viewYaw: viewYawOf(pos.x, pos.y), flat: !pitched, pitch: pitched,
                 sizePx: g.unit === "Transport"
                   ? dotGlyphPx("dot", 1.7, ay3)
-                  : dotGlyphPx("scout", 1.15, ay3),
+                  : unitGlyphPx(0, ay3),
                 color: modeColor(p.raw, team),
                 alpha: 0.82 * (cloaked ? 0.45 : 1),
               });
@@ -5736,11 +5739,14 @@ export default function ReplayMotionPlayer({
               const src: [string, number][] = parts.length > 0
                 ? parts
                 : (unit ? [[unit, Math.max(1, shownSize)]] : []);
+              // 36개 상한 해제(요청) — 캔버스 전환 뒤라 수백 개도 값싸다. 수가 곧 규모다.
               for (const [u, cnt] of src) {
-                for (let i = 0; i < cnt && glyphs.length < 36; i += 1) glyphs.push(u);
+                for (let i = 0; i < cnt; i += 1) glyphs.push(u);
               }
             }
-            if (glyphs.length === 0) glyphs.push(unit || "Marine");
+            /* 정체 모를 한 기는 중형 물음 도형(지적: 크기 제각각) — Marine으로 두면
+               소형(8px)이라, 곁의 대형 부대와 나란히 설 때 유독 작아 보였다. */
+            if (glyphs.length === 0) glyphs.push(unit || "?");
             // 퍼짐 보정(요청) — 위 typeNodes의 seed 주석과 같은 규칙(부대 번호로 나선 회전).
             /* 전투 중(요청) — 위 typeNodes와 같은 규칙. */
             const fighting = sinceCmd <= 15
@@ -5749,7 +5755,7 @@ export default function ReplayMotionPlayer({
             const hdg = headingOf(rp, pos);
             const seed = si * 1.7;
             return glyphs.map((u, di) => {
-              const bulk = UNIT_BULK[u] ?? 2;
+              const bulk = u === "?" ? 1 : (UNIT_BULK[u] ?? 2);
               // 아주 촘촘히(지적: 퍼짐이 심해졌다 — 겹치되 규모는 보이게).
               /* 겹침 허용도는 덩치별로(지적: 큰 유닛은 겹치면 더 어색) — 소형은 좁혀
                  붙이고, 대형은 간격을 확 벌린다. */
@@ -5894,7 +5900,7 @@ export default function ReplayMotionPlayer({
                  있다) — dot 눈금(17px)은 수송선용이라, 보병 정찰이 부대의 소형 보병
                  (8px)보다 두 배로 컸다. 수송선·오버로드만 큰 dot 눈금을 쓴다. */
               sizePx: g.kind === "worker"
-                ? dotGlyphPx("scout", 1.15, ay3)
+                ? unitGlyphPx(0, ay3)
                 : isOvie || g.kind === "carrier"
                   ? dotGlyphPx("dot", 1.7, ay3)
                   : unitGlyphPx(0, ay3),
