@@ -1695,25 +1695,37 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...hornFaces(-4.2, 1.2, 0.5, -5.4, 1.7, 0.1, 0.38),
     ];
   },
-  /* 나이더스 커널(실물 참고) — 뒤로 크게 늘어진 살 엽 둘(끝 잿빛 갑판) 아래에
-     발광하는 구덩이가 열리고, 앞 테두리엔 엄니와 발톱들. */
+  /* 나이더스 커널(재작도) — 좌우로 감싸 늘어진 큰 엽(잿빛 꼭대기 캡) 사이로 세로로
+     발광하는 균열 속이 드러나고, 앞 아래엔 이빨 줄과 발톱. */
   nydus: () => {
-    const [px2, py2] = project(0, 0.9, 0.7);
+    const [px2, py2] = project(0, 1.5, 2.3);
+    const cap = (cx2: number, cy2: number, cz2: number, r2: number, op: number): ShapeFace => {
+      const [qx, qy] = project(cx2, cy2, cz2);
+      return topFace(groundEllipse(qx, qy, r2, r2 * 0.6), op);
+    };
     return [
-      // 늘어진 큰 엽 둘.
-      ...domeFaces3(-1.7, -1.6, 2.2, 2.7),
-      topFace(groundEllipse(...project(-2.3, -0.6, 2.6), 0.95, 0.55), 0.3),
-      ...domeFaces3(1.9, -1.4, 2, 2.4),
-      topFace(groundEllipse(...project(2.5, -0.4, 2.3), 0.9, 0.5), 0.26),
-      // 발광 구덩이 — 어두운 테에 밝은 속.
-      capFace(groundEllipse(px2, py2, 2.35, 1.35), 0.45),
-      topFace(groundEllipse(px2, py2, 1.65, 0.95), 0.4),
-      // 앞 테두리 엄니와 발톱.
-      ...hornFaces(-1.6, 2.2, 0.5, -1.9, 2.9, 1.9, 0.5),
-      ...hornFaces(0, 2.5, 0.5, 0, 3.2, 2, 0.5),
-      ...hornFaces(1.6, 2.2, 0.5, 1.9, 2.9, 1.9, 0.5),
-      ...hornFaces(-2.9, 1.4, 0.5, -3.7, 2, 0.1, 0.45),
-      ...hornFaces(2.9, 1.4, 0.5, 3.7, 2, 0.1, 0.45),
+      // 뒤 몸통 덩어리.
+      ...domeFaces3(0, -1, 3.2, 3.4),
+      // 세로 발광 균열 — 어두운 테와 밝은 속.
+      capFace(groundEllipse(px2, py2, 1.5, 2.05), 0.45),
+      topFace(groundEllipse(px2, py2, 1.02, 1.55), 0.42),
+      // 좌우로 늘어지는 큰 엽 + 잿빛 꼭대기 캡.
+      ...domeFaces3(-2.1, 0.4, 1.9, 2.9),
+      cap(-2.2, -0.1, 2.55, 0.95, 0.3),
+      ...domeFaces3(2.2, 0.3, 1.9, 2.9),
+      cap(2.3, -0.2, 2.55, 0.9, 0.24),
+      // 위 덮개 엽.
+      ...domeFaces3(0, -0.7, 2, 2.1, 2.3),
+      cap(0, -1.1, 4.1, 1, 0.28),
+      // 앞 아래 이빨 줄.
+      ...hornFaces(-1.7, 2.4, 0.4, -1.9, 2.7, 1.7, 0.4),
+      ...hornFaces(-0.85, 2.7, 0.4, -0.95, 3, 1.9, 0.4),
+      ...hornFaces(0, 2.8, 0.4, 0, 3.1, 2, 0.4),
+      ...hornFaces(0.85, 2.7, 0.4, 0.95, 3, 1.9, 0.4),
+      ...hornFaces(1.7, 2.4, 0.4, 1.9, 2.7, 1.7, 0.4),
+      // 발톱 둘.
+      ...hornFaces(-2.2, 2.7, 0.5, -2.8, 3.5, 0.1, 0.5),
+      ...hornFaces(2.2, 2.7, 0.5, 2.8, 3.5, 0.1, 0.5),
     ];
   },
 
