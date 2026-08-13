@@ -254,8 +254,11 @@ export function project(x: number, y: number, z: number): [number, number] {
      시각 밀림(viewShear)은 화면 깊이(ry×납작비)에 태워, 바닥의 남북 선 기울기가
      지도의 소실 기울기(u/P)와 정확히 같아진다(지적: 노란선-빨간선 어긋남). */
   /* 가로 밀림은 앞숙임 제외한 원래 깊이(ry)에만(지적: 가장자리에서 안쪽으로 롤 된
-     느낌) — 숙임 몫(z×0.34)까지 태우면 바닥 앞변만 바깥으로 밀려 세로선이 기운다. */
-  const rx2 = rx + ry * groundSquashNow() * viewShear;
+     느낌) — 숙임 몫(z×0.34)까지 태우면 바닥 앞변만 바깥으로 밀려 세로선이 기운다.
+     대신 위쪽만 살짝 바깥으로(요청) — 높이에 비례해 시각 방향으로 0.25씩 민다.
+     바닥은 붙은 채 꼭대기만 소실점 반대쪽으로 기운다. */
+  const rx2 = rx + ry * groundSquashNow() * viewShear
+    + (pitchView ? z * 0.25 * viewShear : 0);
   return [r2(VIEW.originX + rx2 * f), r2(originYNow() + ry2 * groundSquashNow() - z * zScaleNow())];
 }
 
