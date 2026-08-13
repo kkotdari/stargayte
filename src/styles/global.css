@@ -12748,9 +12748,13 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* ── 관리자 모델링 뷰어(요청: 유닛·건물 도형을 상당히 크게) ─────────────────────── */
 .scr-model-viewer { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 14px; }
 .scr-model-stage {
-  width: min(360px, 80vw); height: min(360px, 80vw);
+  /* 360 → 300(지적: 목록부가 짧다) — 뷰어를 줄여 목록 몫을 키운다. */
+  width: min(300px, 70vw); height: min(300px, 70vw);
   color: #5ea2ff; display: flex; align-items: center; justify-content: center;
 }
+/* 뷰어 그림자 완화(지적: 검은 부분이 너무 강함) — 큰 무대에선 마커용 그림자를 뗀다. */
+.scr-model-stage .scr-motion-shape-svg { filter: none; }
+.scr-model-thumb .scr-motion-shape-svg { filter: none; }
 .scr-model-stage .scr-motion-shape-svg { width: 100%; height: 100%; }
 .scr-model-controls { display: flex; gap: 6px; align-items: center; }
 .scr-model-yaw { font-size: var(--fs-caption); color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -12759,7 +12763,7 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    스크롤은 목록에만 준다. 뷰어는 그대로 붙박이. */
 .scr-model-screen .scr-minimap-panel {
   display: flex; flex-direction: column;
-  height: calc(100dvh - 150px); overflow: hidden;
+  height: calc(100dvh - 110px); overflow: hidden;
 }
 .scr-model-viewer { flex: none; }
 .scr-model-gallery {
