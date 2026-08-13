@@ -509,14 +509,16 @@ function legAndFoot(px: number, py: number, zTop: number): ShapeFace[] {
   ];
 }
 
-/** 3단 갈고리(요청: 직선이 아닌 세 마디 휨) — 밖-앞 → 앞 → 안-아래로 말린다.
- *  m은 좌우, s는 덩치 배율, z0는 뿌리 높이. */
+/** 저그 갈고리(정정: 마디가 아니라 쭉 이어진 휘어진 칼) — 밖-앞으로 나갔다 안으로
+ *  감기는 한 장의 낫 날. m은 좌우, s는 덩치 배율, z0는 뿌리 높이. */
 function claw3(m: 1 | -1, s: number, z0: number): ShapeFace[] {
-  return [
-    ...hornFaces(m * 1.2 * s, 0.5 * s, z0, m * 2.1 * s, 1.8 * s, z0 + 0.6, 0.7 * s),
-    ...hornFaces(m * 2.1 * s, 1.8 * s, z0 + 0.6, m * 1.9 * s, 3.2 * s, z0 + 0.2, 0.55 * s),
-    ...hornFaces(m * 1.9 * s, 3.2 * s, z0 + 0.2, m * 1.1 * s, 4.2 * s, z0 - 0.9, 0.4 * s),
-  ];
+  const [a1x, a1y] = project(m * 0.7 * s, 0.6 * s, z0);
+  const [a2x, a2y] = project(m * 1.5 * s, 0.2 * s, z0);
+  const [ox, oy] = project(m * 2.9 * s, 2.4 * s, z0 + 0.6);
+  const [tx, ty] = project(m * 1 * s, 4.4 * s, z0 - 0.6);
+  const [ix, iy] = project(m * 1.9 * s, 1.9 * s, z0 + 0.2);
+  const d = `M${a1x} ${a1y} Q${ox} ${oy} ${tx} ${ty} Q${ix} ${iy} ${a2x} ${a2y} Z`;
+  return [bodyFace(d), sideFace(d, 0.16)];
 }
 
 /** 크립 갈퀴 바닥(지적: 콜로니 바닥은 동그라미가 아니라 갈퀴) — 사방으로 뻗는 납작한
@@ -1965,11 +1967,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [mx2, my2] = project(0, 3.6, 4);
     return [
       // 반원 아치 + 머리·꼬리로 갈수록 몸도 얇아진다(지적).
-      ...domeFaces3(0, -2.5, 0.95, 0.85, 3.4),
+      ...domeFaces3(0, -2.6, 0.65, 0.6, 3.4),
       ...domeFaces3(0, -1.2, 1.4, 1.8, 3.4),
       ...domeFaces3(0, 0.1, 1.68, 2.4, 3.4),
       ...domeFaces3(0, 1.4, 1.4, 1.8, 3.4),
-      ...domeFaces3(0, 2.6, 0.95, 0.85, 3.4),
+      ...domeFaces3(0, 2.6, 0.65, 0.6, 3.4),
       capFace(groundEllipse(mx2, my2, 0.55, 0.35), 0.4),
     ];
   },
