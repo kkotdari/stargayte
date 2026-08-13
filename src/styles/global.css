@@ -11267,6 +11267,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   position: absolute; top: 50%; left: 0; right: auto;
   transform: translate(-55%, -50%); pointer-events: none;
 }
+/* 하는 일 이모지(요청: 아이콘 축소) — 이모지는 글자라 폰트 크기로 줄인다. */
+.scr-motion-job { font-size: 8px; line-height: 1; }
 /* 방패 속 팀 번호(요청) — 방패가 곧 바탕이라 판 없이 숫자만 얹는다. 방패 아랫단이
    뾰족해 눈금 중심이 살짝 위라, 숫자도 반 픽셀 위로 당긴다. */
 .scr-motion-team-n {
