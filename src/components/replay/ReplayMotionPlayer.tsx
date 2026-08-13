@@ -2837,7 +2837,7 @@ const SHAPE_FACES: Record<string, ShapeFace[]> = {
    높이 0.6으로 다시 구운 것. 입체 보기가 아닐 때 지도 마커가 이쪽을 쓴다. */
 const SHAPE_FACES_TOP: Record<string, ShapeFace[]> = withTopView(() =>
   Object.fromEntries(Object.entries(SHAPE_BUILDERS).map(([k, b]) => [k, b()])));
-/** 방향(요잉) 굽기 갈무리 — kind×15도 버킷×(부감 여부)마다 한 번 굽는다. */
+/** 방향(요잉) 굽기 갈무리 — kind×22.5도(16방향) 버킷×(부감 여부)마다 한 번 굽는다. */
 const HEAD_FACES = new Map<string, ShapeFace[]>();
 /* (삭제·요청) 유닛 → 마커 갈래 표 — 전 유닛이 제 모델을 갖게 되어 갈래 표는 걷었다. */
 /* 유닛 → 3D 상징물(요청) — 지상 유닛만(지적: 저그도 지상만). 공중은 2D 기호 그대로.
@@ -2926,7 +2926,8 @@ export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg, flat,
   if (!faces && rotDeg !== undefined && builder) {
     /* 기본은 정면(지적: 사선이 어색) — rotDeg 0이 요잉 0(정면 아래)이 되도록 굽는다.
        건물은 rotDeg를 안 주므로 기존 사선(-20) 시점 그대로다. */
-    const bucket = ((Math.round(rotDeg / 15) * 15) % 360 + 360) % 360;
+    // 16방향(요청: 원작 스프라이트처럼 22.5도 스텝) — 자연스러운 회전 단위.
+    const bucket = ((Math.round(rotDeg / 22.5) * 22.5) % 360 + 360) % 360;
     const key = `${kind}:${bucket}:${flat ? 1 : 0}`;
     let f = HEAD_FACES.get(key);
     if (!f) {
