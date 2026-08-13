@@ -1430,8 +1430,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(groundEllipse(gx2 - 0.5, gy2 - 0.5, 0.6, 0.5), 0.5),
     ];
   },
-  /* 아비터 트리뷰널(정정: 불가사리 바닥) — 네 개의 넓은 팔다리가 불가사리처럼 사방
-     대각으로 뻗어 바닥을 이루고, 가운데 돔 위에 큰 구슬이 얹힌다. */
+  /* 아비터 트리뷰널(정정 둘) — 불가사리 팔 네 개의 바닥은 유지하되, 위 구슬 대신
+     돔 둘레에서 서로 마주 보며 안으로 기운 짧은 기둥 다섯. */
   tribunal: () => {
     const arm = (ang: number): ShapeFace[] => {
       const a = (ang * Math.PI) / 180;
@@ -1440,13 +1440,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         Math.sin(a) * 4.7, Math.cos(a) * 4.7, 0.15, 2.3,
       );
     };
-    const [gx2, gy2] = project(0, 0, 4.4);
+    const post = (ang: number): ShapeFace[] => {
+      const a = (ang * Math.PI) / 180;
+      return hornFaces(
+        Math.sin(a) * 2.1, Math.cos(a) * 2.1, 2.6,
+        Math.sin(a) * 1.3, Math.cos(a) * 1.3, 4.6, 0.75,
+      );
+    };
     return [
       ...arm(135), ...arm(225),
+      ...post(180), ...post(108), ...post(252),
       ...arm(45), ...arm(-45),
       ...domeFaces3(0, 0, 2.6, 2.2, 0.8),
-      [groundEllipse(gx2, gy2, 1.75, 1.65), 0.6] as ShapeFace,
-      topFace(groundEllipse(gx2 - 0.55, gy2 - 0.55, 0.65, 0.55), 0.5),
+      ...post(36), ...post(-36),
     ];
   },
   /* 실드 배터리(정정 둘) — 몸은 얇게, 다리는 빨대: 가늘게 수평으로 뻗다가 끝이
