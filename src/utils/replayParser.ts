@@ -253,6 +253,9 @@ export interface ReplayMapGrid {
   walk?: string | null;
   /** 그 그림의 번호 — 재생 화면의 지형 수정 버튼이 저장할 곳(요청: 아무나 업데이트). */
   imageId?: number | null;
+  /** 그 그림의 이름 — 지형 검수 창 제목이 리플레이 원본 이름(제어문자 섞임) 대신 쓰는
+   *  대표맵 이름(요청). */
+  imageName?: string | null;
 }
 
 export interface ParsedReplay {
@@ -701,9 +704,46 @@ function collectSignals(
       // 착륙 — 좌표가 실린다(요청: 띄우기 판단). 이륙(Lift Off)은 자리가 안 남아 착륙만 쓴다.
       const pos = posOf(c.Pos);
       if (pos && frame !== null) s.lands.push({ frame, x: pos.x, y: pos.y });
-    } else if (cmdName && cmdName.startsWith("Cancel Construct") && frame !== null) {
+    } else if (cmdName === "Cancel Build" && frame !== null) {
       // 짓다 물린 것(요청) — 어느 건물인지는 재생이 어림한다.
+      // screp의 실제 이름은 "Cancel Build"다 — 예전의 startsWith("Cancel Construct")는
+      // 한 번도 맞은 적이 없어 취소 신호가 통째로 죽어 있었다(이번에 발견).
       s.cancelBuilds.push(frame);
+    } else if (!wasted && (cmdName === "Cancel Train" || cmdName === "Cancel Morph")
+      && frame !== null) {
+      /* 생산 큐 취소(요청: 라바 포함 취소를 체크해 정확한 유닛 수 추적) — 취소 커맨드에는
+         무엇을 물렀는지가 안 실린다. 대신 그때 골라져 있던 것이 그 건물(Cancel Train)
+         이거나 그 알(Cancel Morph — 라바가 알이 돼도 번호는 그대로다)이므로, 같은 태그로
+         큐된 생산 중 가장 최근 것을 물린 것으로 본다. 태그를 모르면 직전 생산이다 —
+         취소는 보통 방금 누른 것을 무르는 손이다. */
+      const selTags = sel.get(c.PlayerID) ?? [];
+      let bestUnit: string | null = null;
+      let bestIdx = -1;
+      let bestFrame = -1;
+      let bestByTag = false;
+      /* 너무 옛 생산은 못 무른다 — 이미 나와서 싸운 유닛을 지우면 수가 거꾸로 틀린다.
+         큐가 길어도 취소 대상은 대개 방금 것이라 100초쯤이면 넉넉하다. */
+      const CANCEL_LOOKBACK_FRAMES = 2400;
+      for (const [unit, frames] of Object.entries(s.unitFrames)) {
+        const tags = s.trainTags[unit] ?? [];
+        for (let i = frames.length - 1; i >= 0; i -= 1) {
+          if (frames[i] > frame || frames[i] < frame - CANCEL_LOOKBACK_FRAMES) continue;
+          const byTag = tags[i] > 0 && selTags.includes(tags[i]);
+          // 태그 일치가 우선, 그 안에서는 최근 것 — 둘 다 아니면 그냥 최근 것.
+          if ((byTag && (!bestByTag || frames[i] > bestFrame))
+            || (!byTag && !bestByTag && frames[i] > bestFrame)) {
+            bestUnit = unit;
+            bestIdx = i;
+            bestFrame = frames[i];
+            bestByTag = byTag;
+          }
+        }
+      }
+      if (bestUnit !== null && bestIdx >= 0) {
+        s.unitFrames[bestUnit].splice(bestIdx, 1);
+        (s.trainTags[bestUnit] ?? []).splice(bestIdx, 1);
+        s.unitCounts[bestUnit] = Math.max(0, (s.unitCounts[bestUnit] ?? 1) - 1);
+      }
     }
     // ── 무엇을 골라 두고 있나 — 탱크 번호를 알아내는 데 쓴다(위 pending 주석) ──
     if (cmdName === "Select") sel.set(c.PlayerID, tagsOf(c));

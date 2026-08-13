@@ -9122,28 +9122,32 @@ html.scr-light-theme .scr-rivalry-overlay { background: rgba(244, 246, 250, 0.62
     width: calc(100vw - 32px); max-width: none;
     padding-left: var(--scr-detail-pad-x); padding-right: var(--scr-detail-pad-x);
   }
-  /* 미니맵 화면 폭 확대(요청: 모달이 아니라 미니맵만 확장) — 창 크기는 그대로 두고,
-     확대 중에만 창의 클리핑(overflow:hidden)을 풀고 본문 상자를 뷰포트 폭으로 넓혀
-     (마진과 패딩이 서로 지워져 내용 자리는 안 변한다) 맵 줄(50% − 50vw 트릭)이
-     화면 가장자리까지 나가게 한다. */
-  .scr-activity-detail-modal:has(.scr-motion-wide) { overflow: visible; }
-  .scr-activity-detail-modal:has(.scr-motion-wide) > .scr-activity-detail-body {
-    margin-inline: calc(50% - 50vw);
-    padding-inline: calc(50vw - 50%);
-    /* 본문 상자가 뷰포트 폭이 되면 세로 스크롤바가 화면 오른쪽 끝(바디 자리)으로
-       옮겨 보인다(지적: 방지) — 확대 중에만 숨긴다. 스크롤 자체는 그대로다. */
-    scrollbar-width: none;
-    scrollbar-gutter: auto;
-  }
-  .scr-activity-detail-modal:has(.scr-motion-wide) > .scr-activity-detail-body::-webkit-scrollbar {
-    display: none;
-  }
+  /* (삭제·요청: 모바일 확대 제거 둘째 판) — 화면 폭 확대 토글(.scr-motion-wide)의
+     클리핑 풀기·본문 넓히기 규칙이 있던 자리. 게임 상세가 전체화면 창이 되면서
+     (.scr-activity-detail-full) 맵은 늘 화면 폭이라 토글이 필요 없다. */
   /* 본문은 창의 좌우 패딩을 음수 마진으로 물렸다가 제 패딩으로 되돌리는 구조라
      (스크롤바를 안쪽 벽에 붙이려는 것) 여기서도 같은 값으로 맞춘다. */
   .scr-activity-detail-modal > .scr-activity-detail-body {
     margin-inline: calc(-1 * var(--scr-detail-pad-x));
     padding-inline: var(--scr-detail-pad-x);
   }
+  /* 전체화면 게임 상세(요청)의 모바일 — 맵 줄만 뷰포트 폭으로(50% − 50vw 트릭). 본문
+     글줄은 제 여백을 지키고, 맵만 화면의 짧은 변(세로 화면의 가로 폭)에 꽉 찬다. */
+  .scr-activity-detail-full { overflow: visible; }
+  .scr-activity-detail-full .scr-motion-map { width: 100vw; margin-left: calc(50% - 50vw); }
+  .scr-activity-detail-full > .scr-activity-detail-body {
+    scrollbar-width: none;
+    scrollbar-gutter: auto;
+  }
+  .scr-activity-detail-full > .scr-activity-detail-body::-webkit-scrollbar { display: none; }
+}
+/* 게임 상세는 애초에 전체화면이다(요청) — 화면을 다 쓰는 창이라야 미니맵이 짧은 변에
+   최대로 맞는다. 가운데 뜨는 작은 창의 이동(translate)·둥근 모서리·폭 상한을 걷는다. */
+.scr-activity-detail-full {
+  left: 0; top: 0; transform: none;
+  width: 100vw; max-width: none;
+  height: 100dvh; max-height: none;
+  border-radius: 0;
 }
 .scr-activity-detail-body { padding-top: var(--scr-detail-head-h); }
 /* 경기 케밥만 기준면이 다르다 — 카드가 아니라 그 안의 경기 한 판(.scr-game-result-trow)에
@@ -10882,7 +10886,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    아래 요소들은 맵이 커진 만큼 자연히 내려간다 — 폭 트랜지션이 곧 그 내려감의
    트랜지션이다. 확대는 맵만이다(지적: 로스터 수평 위치는 변하면 안 됨) — 맵 요소만
    넓히고, 위 로스터 줄은 제자리를 지킨다. */
-.scr-motion-wide .scr-motion-map { width: 100vw; margin-left: calc(50% - 50vw); }
+/* (삭제·요청: 모바일 확대 제거 둘째 판) — .scr-motion-wide 규칙이 있던 자리. 전체화면
+   게임 상세(.scr-activity-detail-full)가 같은 트릭을 상시로 쓴다. */
 .scr-motion-teamcol { display: flex; flex-direction: column; gap: 10px; width: 88px; flex: 0 0 auto; }
 .scr-motion-teamcol-item { position: relative; display: flex; align-items: center; gap: 6px; }
 .scr-motion-teamcol-text { display: flex; flex-direction: column; min-width: 0; }
@@ -10934,6 +10939,26 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-map > span, .scr-motion-lens > span {
   position: absolute; transform: translate(-50%, -50%) scale(var(--mk, 1)); white-space: nowrap;
   --mk: var(--mk-unit, 1);
+}
+/* 액티브 말풍선(요청: 마커는 도형 그대로, 무엇인지는 말풍선이) — 앵커 점 위에 뜨고 아래로
+   꼬리를 내민다. 폰트는 수와 무관하게 고정(요청)이고, 바탕·글자색은 인라인(chipStyle),
+   꼬리색은 --bub(같은 바탕색)이다. 마커 공통 transform(-50%,-50%)보다 이 선택자가
+   구체적이라 제 자리 규칙이 이긴다. */
+.scr-motion-map > .scr-motion-bubble, .scr-motion-lens > .scr-motion-bubble {
+  transform: translate(-50%, calc(-100% - 8px));
+  display: flex; flex-direction: column; align-items: center; gap: 0;
+  padding: 2px 6px; border-radius: 6px;
+  font-size: 10px; font-weight: 700; line-height: 1.3;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.scr-motion-bubble::after {
+  content: ""; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
+  border: 4px solid transparent; border-top: 5px solid var(--bub, #222); border-bottom: none;
+}
+/* 모바일은 한 단 작게(요청). */
+@media (max-width: 1159px) {
+  .scr-motion-map > .scr-motion-bubble, .scr-motion-lens > .scr-motion-bubble { font-size: 9px; }
 }
 .scr-motion-lens > .scr-motion-build, .scr-motion-lens > .scr-motion-workers { --mk: var(--mk-build, 1); }
 /* (삭제) PC 마커 1.2배 transform(--mk) — 래스터를 GPU로 늘려 마커가 뿌옇게 보였다(지적:
@@ -11308,11 +11333,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-toolrow { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
 .scr-motion-toolrow-mid { grid-column: 2; display: flex; align-items: center; justify-content: center; gap: 10px; }
 .scr-motion-terrain-row { display: flex; justify-content: center; gap: 6px; }
-/* 화면 폭 확대 버튼(요청: 산 아이콘 옆)은 모바일 전용 — PC는 팝업 확대(big)가 따로 있다. */
-@media (min-width: 1160px) {
-  .scr-motion-widebtn { display: none; }
-  .scr-motion-wide .scr-motion-map { width: 100%; margin-left: 0; }
-}
+/* (삭제·요청: 모바일 확대 제거 둘째 판) — 화면 폭 확대 버튼 규칙이 있던 자리. */
 /* 큰 화면 보기 토글(요청: PC 전용 — 대각선 화살표). */
 .scr-motion-expand-row { display: none; }
 @media (min-width: 1160px) { .scr-motion-expand-row { grid-column: 3; display: flex; justify-content: flex-end; } }

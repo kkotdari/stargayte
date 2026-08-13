@@ -1972,6 +1972,10 @@ export default function ActivityScreen() {
           <div
             className={cx(
               "scr-modal scr-modal-page scr-modal-fit scr-activity-detail-modal",
+              /* 게임 상세는 애초에 전체화면이다(요청) — 미니맵을 화면의 짧은 변에 최대로
+                 맞추려면 창이 화면을 다 써야 한다. 다른 갈래(너나와·일정·칭호)는 내용이
+                 작아 가운데 창 그대로다. */
+              detailItem.kind === "gameResult" && "scr-activity-detail-full",
               rowPhoto(detailItem) && "scr-activity-detail-photo",
             )}
             {...(rowPhoto(detailItem)

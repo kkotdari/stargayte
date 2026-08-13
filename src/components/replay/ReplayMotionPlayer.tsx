@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Cog, FlaskConical, Hammer, Maximize2, Minimize2, Mountain, Pause, Play, RotateCcw, Shield, X } from "lucide-react";
+import { Cog, FlaskConical, Hammer, Maximize2, Mountain, Pause, Play, RotateCcw, Shield, X } from "lucide-react";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import TerrainReviewModal from "../../modals/TerrainReviewModal";
 import Avatar from "../common/Avatar";
@@ -517,9 +517,10 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
      직선이라야 사선 뷰가 갈린다). */
   tomb: [
     // 바닥도 둥글다(지적: 직각·직선이 아니라) — 아래로 살짝 부푼 타원 배.
-    ["M1.5 12 Q1.5 4.8 8 4.8 Q14.5 4.8 14.5 12 Q13.2 14.4 8 14.4 Q2.8 14.4 1.5 12 Z", 1],
-    ["M3.4 6.4a4.6 1.5 0 1 0 9.2 0a4.6 1.5 0 1 0-9.2 0Z", 0.28, "#fff"],
-    ["M6.2 3.6 H9.8 V4.3 H6.2 Z", 1],
+    // 돔을 한 단 낮췄다(요청: 조금 더 납작하게) — 정수리가 4.8 → 6.2.
+    ["M1.5 12 Q1.5 6.2 8 6.2 Q14.5 6.2 14.5 12 Q13.2 14.4 8 14.4 Q2.8 14.4 1.5 12 Z", 1],
+    ["M3.4 7.5a4.6 1.3 0 1 0 9.2 0a4.6 1.3 0 1 0-9.2 0Z", 0.28, "#fff"],
+    ["M6.2 5.1 H9.8 V5.8 H6.2 Z", 1],
   ],
   /* 넥서스 — 뾰족한 넙적 피라미드 그대로(지적: 위를 자르지 말 것) + 양옆 기둥. 사선
      느낌은 바닥의 두 직선(모서리로 본 네모 발자국)이 낸다(지적). */
@@ -599,20 +600,23 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
   ],
   /* 나머지 건물도 전부 위 오른쪽 사선 입체(요청: "모든 건물이 위 우측에서 본 사선") —
      밝은 윗면 한 겹씩. */
-  /* 벙커 — 납작한 사각 상자 위에 둥근 무덤이 올라앉은 것을 위-오른쪽에서 본 모습(지적:
-     입체가 아니었다). */
+  /* 벙커 — 사선(위-오른쪽)에서 본 모습을 더 눕혀 윗면·옆면이 잘 드러나게(요청). 아래
+     상자는 직각이 아니라 위가 살짝 좁은 사다리꼴이고, 두께(높이)는 얇게, 크기는 위의
+     뚜껑(무덤)과 비슷하게(요청). */
   tombFlat: [
-    // 상자 윗면(밝음) — 위-오른쪽 사선.
-    ["M2.4 9.6 L3.6 8.2 L15 8.2 L13.8 9.6 Z", 1],
-    ["M2.4 9.6 L3.6 8.2 L15 8.2 L13.8 9.6 Z", 0.3, "#fff"],
-    // 상자 앞면.
-    ["M2.4 9.6 H13.8 V12.6 H2.4 Z", 1],
-    // 상자 오른쪽 옆면(어두움).
-    ["M13.8 9.6 L15 8.2 L15 11.2 L13.8 12.6 Z", 1],
-    ["M13.8 9.6 L15 8.2 L15 11.2 L13.8 12.6 Z", 0.35, "#000"],
-    // 둥근 무덤 — 상자 윗면 가운데에 앉는다.
-    ["M4.6 8.2 Q4.6 4.6 8.6 4.6 Q12.6 4.6 12.6 8.2 Z", 1],
-    ["M5.6 6a1.6 0.8 0 1 0 3.2 0a1.6 0.8 0 1 0-3.2 0Z", 0.3, "#fff"],
+    // 상자 윗면(밝음) — 깊이를 늘려 윗면이 넓게 보인다.
+    ["M3 10.2 L4.8 8 L14.4 8 L12.6 10.2 Z", 1],
+    ["M3 10.2 L4.8 8 L14.4 8 L12.6 10.2 Z", 0.3, "#fff"],
+    // 상자 앞면 — 위가 살짝 좁은 얇은 사다리꼴.
+    ["M3 10.2 L12.6 10.2 L12.9 12 L2.7 12 Z", 1],
+    // 상자 오른쪽 옆면(어두움) — 사선이 눕은 만큼 넓어졌다.
+    ["M12.6 10.2 L14.4 8 L14.7 9.8 L12.9 12 Z", 1],
+    ["M12.6 10.2 L14.4 8 L14.7 9.8 L12.9 12 Z", 0.35, "#000"],
+    // 둥근 무덤(뚜껑) — 상자와 비슷한 크기로 윗면에 앉는다.
+    ["M4.6 8 Q4.6 4.2 8.9 4.2 Q13.2 4.2 13.2 8 Z", 1],
+    // 무덤 오른쪽 면은 어둡게 — 옆면이 드러난다(요청).
+    ["M8.9 4.2 Q13.2 4.2 13.2 8 L11.2 8 Q11.2 4.9 8.9 4.2 Z", 0.25, "#000"],
+    ["M5.8 5.7a1.8 0.8 0 1 0 3.6 0a1.8 0.8 0 1 0-3.6 0Z", 0.3, "#fff"],
   ],
   /* 서플라이 — 제대로 된 사선 상자(지적: "옆면과 윗면도 보이게 사선으로") — 살짝 기운
      앞면 + 밝은 윗면 + 어두운 옆면, 앞면에 동그라미 해치 둘(요청). */
@@ -638,12 +642,13 @@ const SHAPE_FACES: Record<string, [string, number, string?][]> = {
   /* 터렛 — 옆에서 본 미사일 포드 두 개가 대각선으로 눕고(지적), 그 아래 기둥은 좀 더
      높다(지적). 포드 끝(위 오른쪽)은 밝은 캡. */
   turret: [
-    // 기둥은 더 크게(지적) — 폭·높이 다 키운다.
-    ["M5.8 15.4 H10.2 V8.8 H5.8 Z", 1],
-    ["M5.8 15.4 H10.2 V8.8 H5.8 Z", 0.3, "#000"],
-    ["M3.6 8.8 L9 3.4 L10.6 5 L5.2 10.4 Z", 1],
-    ["M5.6 10.8 L11 5.4 L12.6 7 L7.2 12.4 Z", 1],
-    ["M9 3.4 L10.6 5 L9.8 5.8 L8.2 4.2 Z M11 5.4 L12.6 7 L11.8 7.8 L10.2 6.2 Z", 0.35, "#fff"],
+    // 기둥은 더 두껍게(요청) — 폭 4.4 → 6.
+    ["M5 15.4 H11 V8.8 H5 Z", 1],
+    ["M5 15.4 H11 V8.8 H5 Z", 0.3, "#000"],
+    // 미사일 포드 — 옆면(대각 막대)을 더 넓은 사각형으로(요청): 두께 2.3 → 3.1.
+    ["M3 8.6 L8.8 2.8 L11 5 L5.2 10.8 Z", 1],
+    ["M5.4 11 L11.2 5.2 L13.4 7.4 L7.6 13.2 Z", 1],
+    ["M8.8 2.8 L11 5 L9.9 6.1 L7.7 3.9 Z M11.2 5.2 L13.4 7.4 L12.3 8.5 L10.1 6.3 Z", 0.35, "#fff"],
   ],
   /* 포토캐논 — 톱니 두른 원(박카스 로고, 지적) + 아래 그림자·위 반짝임으로 입체. */
   coil: [
@@ -969,9 +974,10 @@ export default function ReplayMotionPlayer({
      되돌아감) — 재생은 매 프레임 리렌더라, 인라인 객체를 만들면 모달의 초기화 effect가
      프레임마다 다시 돌아 격자를 원본으로 리셋했다. */
   const terrainModalImage = useMemo(() => ({
-    id: grid.imageId ?? 0, name: grid.name || "미니맵",
+    // 제목은 대표맵 이름(요청) — 리플레이 원본 이름은 색 제어문자가 섞여 지저분하다.
+    id: grid.imageId ?? 0, name: grid.imageName || grid.name || "미니맵",
     image: grid.image ?? "", walk: walkOverride ?? grid.walk,
-  }), [grid.imageId, grid.name, grid.image, grid.walk, walkOverride]);
+  }), [grid.imageId, grid.imageName, grid.name, grid.image, grid.walk, walkOverride]);
   useEffect(() => {
     let cancelled = false;
     /* 검수한 지형(grid.walk, 방금 이 자리에서 고쳤으면 walkOverride)이 있으면 그쪽이
@@ -1157,9 +1163,16 @@ export default function ReplayMotionPlayer({
     const b = bases.find((m) => m.key === raw);
     return b ? [b.x, b.y] : null;
   };
+  /* 수송선 명령 자리도 워프 후보다(요청: 새로운 셔틀 위치에서 명령이 갑자기 시작되면
+     내린 것) — 드랍 신호(drops)가 안 잡혀도, 수송선이 들른 자리 곁에서 태어나는 새 명령
+     뭉치는 수송선이 날라 준 부대라 걸어온 자취 없이 그 자리에서 시작해야 한다. */
+  const warpsOf = (p: MotionTrack): [number, number, number][] => [
+    ...(p.drops ?? []),
+    ...(p.tpts ?? []).map(([s, x, y]) => [s, x, y] as [number, number, number]),
+  ];
   const squadPts = useMemo(
     () => basePts.map((pts, pi) => splitSquads(
-      pts, homeOf(motion.players[pi].raw), SQUAD_MERGE_TILES, motion.players[pi].drops,
+      pts, homeOf(motion.players[pi].raw), SQUAD_MERGE_TILES, warpsOf(motion.players[pi]),
     )),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [basePts, motion, bases],
@@ -1172,7 +1185,7 @@ export default function ReplayMotionPlayer({
      마커로 뭉쳤다. 6타일이면 화면에서 실제로 붙어 보이는 것만 하나가 된다. */
   const typeSquads = useMemo(
     () => motion.players.map((p) => Object.entries(p.upts ?? {})
-      .flatMap(([unit, pts]) => splitSquads(pts, homeOf(p.raw), TYPE_MERGE_TILES, p.drops)
+      .flatMap(([unit, pts]) => splitSquads(pts, homeOf(p.raw), TYPE_MERGE_TILES, warpsOf(p))
         .map((sq) => ({ unit, raw: sq, walk: walkTrack(sq, p, false, unit) })))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [motion, terrain, terrainRaw, grid.width, grid.height, bases],
@@ -1233,9 +1246,9 @@ export default function ReplayMotionPlayer({
      같은 컴포넌트 트리를 통째로 포털 모달 안으로 옮겨 심으므로 재생 상태가 그대로
      이어진다. Esc로도 닫는다. */
   const [big, setBig] = useState(false);
-  /* 모바일 화면 폭 확대(요청: 산 아이콘 옆 확대 버튼) — 맵이 모달·카드 폭을 벗어나
-     화면 폭 전체를 쓴다. PC 팝업(big)과 별개의 인라인 확장이다. */
-  const [wide, setWide] = useState(false);
+  /* (삭제·요청: 모바일 확대 기능 제거 둘째 판) — 화면 폭 확대 토글(wide)도 걷었다.
+     게임 상세 모달이 애초에 전체화면이 되면서(요청) 맵은 늘 화면의 짧은 변에 최대로
+     맞고, 눌러서 넓히는 중간 상태가 설 자리가 없다. */
   useLockBodyScroll(big);
   useEffect(() => {
     if (!big) return undefined;
@@ -1520,6 +1533,15 @@ export default function ReplayMotionPlayer({
      태움 지점 곁에 서 있던, 그 뒤로 새 명령이 없는 마커는 다음 드랍(없으면 계속)까지
      숨는다. 내리면(드랍 시각이 지나면) 도로 나타난다 — 다 내렸는지는 알 수 없으니
      시각만 근거다. */
+  /* 수송선 자취(걸어 편 것) — 아래 '곁에서 명령 끊김 = 탐' 판정이 그 시각의 수송선
+     자리를 물어보는 데 쓴다. */
+  const carrierWalks = useMemo(() => {
+    const m = new Map<string, TrackPt[][]>();
+    motion.players.forEach((p, pi) => {
+      m.set(p.raw, scoutSquads[pi].filter((g) => g.kind === "carrier").map((g) => g.walk));
+    });
+    return m;
+  }, [scoutSquads, motion]);
   const carriedGone = (
     p: MotionTrack, pos: { x: number; y: number }, lastOrderSec: number,
   ): boolean => {
@@ -1528,6 +1550,22 @@ export default function ReplayMotionPlayer({
       const ds = (p.drops ?? []).find(([s]) => s > ls)?.[0] ?? Infinity;
       if (t >= ls && t < ds && lastOrderSec <= ls
         && Math.hypot(pos.x - lx, pos.y - ly) <= 5) return true;
+    }
+    /* 셔틀 곁에서 명령이 끊긴 애들은 탄 것(요청) — 태움 클릭이 안 잡혔어도, 마지막 명령
+       순간 수송선이 바로 곁(3.5타일)에 있었고 그 수송선이 곧(25초 안) 10타일 넘게 날아
+       갔으면 태워진 것으로 본다. 뒤 조건이 핵심 갈림막이다 — 부대 위에 그냥 떠 있는
+       오버로드는 안 날아가므로 이 판정에 안 걸린다. 내림은 위 규칙과 같이 다음 드랍
+       신호까지다(없으면 계속 — 새 자리의 명령이 새 부대로 태어나 그쪽이 이어 말한다). */
+    if (Number.isFinite(lastOrderSec) && lastOrderSec > 0) {
+      for (const w of carrierWalks.get(p.raw) ?? []) {
+        if (w.length === 0 || lastOrderSec < w[0][0]) continue;
+        const tp0 = posAt(w, lastOrderSec, null);
+        if (!tp0 || Math.hypot(tp0.x - pos.x, tp0.y - pos.y) > 3.5) continue;
+        const tp1 = posAt(w, lastOrderSec + 25, null);
+        if (!tp1 || Math.hypot(tp1.x - tp0.x, tp1.y - tp0.y) < 10) continue;
+        const ds = (p.drops ?? []).find(([s]) => s > lastOrderSec)?.[0] ?? Infinity;
+        if (t >= lastOrderSec && t < ds) return true;
+      }
     }
     return false;
   };
@@ -1630,7 +1668,7 @@ export default function ReplayMotionPlayer({
 
   const body = (
     <div
-      className={cx("scr-motion", big && "scr-motion-big", wide && !big && "scr-motion-wide")}
+      className={cx("scr-motion", big && "scr-motion-big")}
       // 확대 모드에선 폭 상한을 안 건다 — 모달 폭(아래 포털)이 이미 맵+양옆 세로 조작부
       // 기준으로 확정돼 있고, 여기까지 조이면 이중 제약으로 맵이 더 작아진다.
       style={big ? undefined : { maxWidth: `calc((100dvh - 230px) * ${(grid.width / grid.height).toFixed(4)})`, margin: "0 auto" }}
@@ -1714,7 +1752,9 @@ export default function ReplayMotionPlayer({
             // 짓는 동안은 공사중 아이콘(요청: 반투명 말고) — 반투명은 "저기 뭐가 있긴 한데"
             // 로만 읽히고, 도형의 반투명(뒤 비침)과도 헷갈렸다. 날아온 건물은 이미 다 선
             // 건물이라 망치를 안 든다.
-            const raising = !razed && !flownFrom && t - sec < (BUILD_SEC[unit] ?? 30);
+            // 시작 건물(합성된 0초 홀)도 망치를 안 든다(지적: 처음 홀에 망치 표시는 왜?) —
+            // 경기 시작에 이미 다 서 있던 건물이지, 짓는 중이 아니다.
+            const raising = !razed && !flownFrom && sec > 0 && t - sec < (BUILD_SEC[unit] ?? 30);
             const team = teamOfRaw(raw);
             const tagOrd = tagOrdinals.get(`${raw}|${unit}`);
             const typeList = buildsByType.get(`${raw}|${unit}`) ?? [];
@@ -1743,7 +1783,8 @@ export default function ReplayMotionPlayer({
             // 이름 창 = 착공 직후 잠깐뿐(요청) — 그 뒤 공사 중에는 도형+망치이고, 생산·
             // 연구 중에도 이름 대신 라임 글로우가 말한다(요청: "생산중인 건물은 이름을
             // 띄우지 말고 액티브").
-            const activeBuild = !razed && t - sec <= BUILD_NAME_SEC;
+            // 시작 건물은 액티브도 없다(요청: 처음 등장하는 건물·유닛은 액티브 안 주기).
+            const activeBuild = !razed && sec > 0 && t - sec <= BUILD_NAME_SEC;
             const name = BUILDING_KO[unit] ?? UNIT_KO[unit];
             /* 비활성이면 무조건 도형이다(지적: 서플라이·파일런·포토·터렛이 영영 안 변했다 —
                "겹치지만 않으면 이름 상시 노출"이던 옛 규칙을 걷었다). */
@@ -2263,6 +2304,22 @@ export default function ReplayMotionPlayer({
             return [{ g, gi, pos, sinceCmd }];
           });
           const shownUnits = new Set(typeMarks.flatMap(({ g }) => BY_UNITS[g.unit] ?? [g.unit]));
+          /* 액티브 말풍선(요청: 이름 칩으로 바꾸지 말고 도형은 유지, 말풍선으로 무엇인지
+             알려주기) — 액티브인 마커들이 여기에 제 구성([한글 이름, 수])을 적어 두면,
+             가까운 것끼리(8타일) 한 풍선으로 묶여 마커 위에 뜬다(요청: 겹치지 않게 가까운
+             유닛들은 하나의 말주머니로). */
+          const bubbles: { x: number; y: number; parts: [string, number][] }[] = [];
+          const addBubble = (x: number, y: number, parts: [string, number][]) => {
+            if (parts.length === 0) return;
+            const near = bubbles.find((b) => Math.hypot(b.x - x, b.y - y) <= 8);
+            if (!near) { bubbles.push({ x, y, parts: [...parts] }); return; }
+            // 같은 이름은 수를 합친다 — "질럿 4"와 "질럿 3"이 두 줄이면 딴 부대로 읽힌다.
+            for (const [ko, n] of parts) {
+              const hit = near.parts.find((q) => q[0] === ko);
+              if (hit) hit[1] += n;
+              else near.parts.push([ko, n]);
+            }
+          };
           /* 같은 종류가 여러 부대로 갈라졌으면 수도 갈라 적는다(지적: 저글링 10이 5·5,
              3·3·4처럼 갈라지는 모션) — 어느 쪽에 몇이 갔는지는 안 남으니 고르게 나눈다. */
           const squadsOfUnit = new Map<string, number>();
@@ -2293,10 +2350,7 @@ export default function ReplayMotionPlayer({
                하나여도(리플레이가 스팀팩 같은 묶음 커맨드 단위로만 정체를 말한다) 이름은
                식구별로 갈라 적는다: "마린 8 · 메딕 2". 같은 한글 이름(시즈/퉁퉁 탱크)은
                하나로 합산하고, 수를 하나도 모르면 묶음 이름으로 물러난다. */
-            /* 유닛마다 제 칩이다(지적: 한 칩에 " · "로 이어 적으니 여전히 한데 표시로
-               읽혔다) — 무명 부대와 같은 세로 쌓기로 가른다. 자리는 하나뿐이다(묶음
-               커맨드는 묶음 단위로만 자리를 말한다). */
-            const groupChips: string[] = (() => {
+            const groupParts: [string, number][] = (() => {
               if (members.length > 1 && aliveAll > 0) {
                 const factor = alive / aliveAll;
                 const byKo = new Map<string, number>();
@@ -2305,33 +2359,28 @@ export default function ReplayMotionPlayer({
                   const n = Math.round(aliveOf(u) * factor);
                   if (n > 0) byKo.set(ko, (byKo.get(ko) ?? 0) + n);
                 }
-                if (byKo.size > 0) {
-                  return [...byKo].sort((a, b) => b[1] - a[1]).map(([ko, n]) => `${ko} ${n}`);
-                }
+                if (byKo.size > 0) return [...byKo].sort((a, b) => b[1] - a[1]);
               }
-              return [`${groupKo}${alive > 0 ? ` ${alive}` : ""}`];
+              return [[groupKo, alive]];
             })();
-            const label = groupChips[0];
             /* 일꾼과 수송선은 이름을 안 띄운다(요청) — 일꾼은 늘 작은 점, 수송선은 늘
                제 도형(오버로드 풍선·드랍십·셔틀)이다. */
             const noName = g.unit === "Worker" || g.unit === "Transport";
             const activeNow = !noName && sinceCmd <= ACTIVE_HOLD_SEC;
+            /* 액티브라도 마커는 도형 그대로다(요청: 이름으로 바꾸지 말고 말풍선으로) —
+               무엇인지는 위의 말풍선이 말한다. */
+            if (activeNow) addBubble(pos.x, pos.y, groupParts);
             /* 클로킹 유닛은 반투명(요청) — 옵저버·다크는 늘, 레이스·고스트는 클로킹 연구
                뒤부터. 칩이든 점이든 같이 옅어진다(요청). */
             const cloaked = g.unit === "Observer" || g.unit === "Dark Templar"
               || (g.unit === "Wraith" && (p.ups ?? []).some(([us, n]) => n === "Cloaking Field" && us <= t))
               || (g.unit === "Ghost" && (p.ups ?? []).some(([us, n]) => n === "Personnel Cloaking" && us <= t));
-            const chipFont = Math.min(11, 7 + Math.round(Math.sqrt(Math.max(alive, 1))));
-            /* 이름이 뜬 동안은 유닛마다 제 칩으로 쌓는다(지적: 다른 유닛을 한데 표시하지
-               말라고 했는데 한 칩으로 — 무명 부대와 같은 세로 쌓기). 아닐 때는 점·도형
-               하나다. */
-            const rows = activeNow && g.unit !== "Transport" ? groupChips : [label];
-            return rows.map((text, ci) => (
+            return (
               <span
-                key={`${p.raw}-u${g.unit}-${gi}-c${ci}`}
+                key={`${p.raw}-u${g.unit}-${gi}`}
                 className={cx(
                   "scr-motion-army",
-                  activeNow ? "scr-motion-chip" : "scr-motion-dot",
+                  "scr-motion-dot",
                   // 일꾼은 적당히 작은 점으로 통일(요청) — 부대 점보다 작고 옅은 정찰 점 크기.
                   g.unit === "Worker" && "scr-motion-scout",
                   team === 2 ? "scr-motion-team2" : "scr-motion-team1",
@@ -2341,12 +2390,7 @@ export default function ReplayMotionPlayer({
                   left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
                   // 겹침 차례는 마지막 명령 시각(지적: 유닛이 무조건 위가 아니라).
                   zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
-                  // 칩 글씨 한 단 축소(지적: 너무 큼).
-                  ...(activeNow
-                    ? { fontSize: ci === 0 ? chipFont : 10, ...chipStyle(p.raw, team) }
-                    : glyphStyle(p.raw, team)),
-                  // 첫 칩 아래로 한 줄씩 내려 쌓는다 — 무명 부대 칩과 같은 규칙.
-                  ...(ci > 0 ? { marginTop: chipFont + 4 + (ci - 1) * 14 } : {}),
+                  ...glyphStyle(p.raw, team),
                 }}
               >
                 {/* 수송선은 점·이름 대신 늘 제 도형(요청) — 오버로드 풍선·드랍십·셔틀. */}
@@ -2357,11 +2401,10 @@ export default function ReplayMotionPlayer({
                       className="scr-motion-ovie"
                     />
                   )
-                  : activeNow ? text
-                    // 병력은 육각형, 일꾼은 점(요청: 아이콘 구분).
-                    : g.unit === "Worker" ? "●" : <ShapeIcon kind="troop" className="scr-motion-troop" />}
+                  // 병력은 육각형, 일꾼은 점(요청: 아이콘 구분).
+                  : g.unit === "Worker" ? "●" : <ShapeIcon kind="troop" className="scr-motion-troop" />}
               </span>
-            ));
+            );
           });
           const squadNodes = squads.map((rp, si) => {
             /* 첫 부대 명령 전에는 아예 없다(지적: 시작하자마자 이상한 데 멈춰 있다) —
@@ -2405,8 +2448,6 @@ export default function ReplayMotionPlayer({
                이름으로 덮여 정작 새 명령이 안 보인다. 창이 지나면 걷는 중이어도 점이다. */
             const activeNow = sinceCmd <= ACTIVE_HOLD_SEC || freshDone;
             const showName = si === primary && activeNow && !!unit && (shownSize >= 1 || !!SCOUT_KO[unit]);
-            // 칩 글씨 한 단 축소(지적: 너무 큼) — 16 상한/1.6 기울기 → 12/1.1.
-            const fontPx = Math.min(12, 7 + Math.round(Math.sqrt(shownSize) * 1.1));
             /* 무명 부대의 구성 — 제 마커를 가진 종류(shownUnits)는 뺀다: 같은 탱크가 제
                마커와 부대 칩에 두 번 적히면 수가 배로 읽힌다.
                컨트롤이 합계를 눌렀으면 구성도 같은 비율로 눌러 적는다 — 합은 12인데
@@ -2419,67 +2460,75 @@ export default function ReplayMotionPlayer({
               if (alive >= 1) parts.push([u, alive]);
             }
             parts.sort((a, b) => b[1] - a[1]);
-            /* 도형일 땐 뭉치지 않는다(지적: 이름일 때만 뭉침) — 규모만큼 낱개 점을 촘촘히
-               흩어 놓는다(해바라기 나선 — 결정적이라 프레임마다 안 튄다). 곁 부대는 규모를
-               모르니 점 하나다. */
-            if (!showName) {
-              const dots = si === primary ? Math.min(9, Math.max(1, Math.round(shownSize / 3) || 1)) : 1;
-              return Array.from({ length: dots }, (_, di) => {
-                const r = di === 0 ? 0 : 0.7 + 0.55 * Math.sqrt(di);
-                const dx = Math.cos(di * 2.4) * r;
-                const dy = Math.sin(di * 2.4) * r;
-                return (
-                  <span
-                    key={`${p.raw}-s${si}-d${di}`}
-                    className={cx(
-                      "scr-motion-army",
-                      "scr-motion-dot",
-                      team === 2 ? "scr-motion-team2" : "scr-motion-team1",                    )}
-                    style={{
-                      left: pct(pos.x + dx, grid.width), top: pct(pos.y + dy, grid.height),
-                      // 겹침 차례는 마지막 명령 시각(지적).
-                      zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
-                      ...glyphStyle(p.raw, team),
-                    }}
-                  >
-                    {/* 무명 부대는 병력이다 — 육각형(요청: 일꾼과 아이콘 구분). */}
-                    <ShapeIcon kind="troop" className="scr-motion-troop" />
-                  </span>
-                );
-              });
+            /* 액티브면 구성을 말풍선에 적는다(요청: 마커는 도형 유지, 말풍선으로) — 자리는
+               부대 자리 하나뿐이라 풍선도 하나고, 곁의 액티브 유닛 마커들과는 addBubble이
+               알아서 합친다. */
+            if (showName) {
+              addBubble(pos.x, pos.y, parts.length > 0
+                ? parts.map(([u, n]) => [UNIT_KO[u] ?? u, n] as [string, number])
+                : (UNIT_KO[unit] || SCOUT_KO[unit]
+                  ? [[(UNIT_KO[unit] ?? SCOUT_KO[unit])!, shownSize] as [string, number]]
+                  : []));
             }
-            /* 유닛마다 제 칩이다(지적: "왜 아직도 합쳐서 나와 유닛이?") — "질럿 93 ·
-               옵저버 5 · 하이템플러 4"를 한 칩에 이어 적으면 세 유닛이 한 덩어리로 읽힌다.
-               자리는 하나뿐이라(이 유닛들은 제 위치가 드러난 적이 없어 부대 자리밖에
-               모른다) 같은 자리에 세로로 쌓되, 칩은 유닛별로 가른다. 첫 칩(가장 많은
-               유닛)만 규모 글씨·심장박동을 갖고 나머지는 작게 딸린다. */
-            const chips: string[] = parts.length > 0
-              ? parts.map(([u, n]) => `${UNIT_KO[u]} ${n}`)
-              : [UNIT_KO[unit] ? `${UNIT_KO[unit]} ${shownSize}`.trim() : SCOUT_KO[unit] ?? "●"];
-            return chips.map((text, ci) => (
-              <span
-                key={`${p.raw}-s${si}-c${ci}`}
-                className={cx(
-                  "scr-motion-army",
-                  "scr-motion-chip",
-                  // (삭제) 심장박동 — 유닛 액티브 효과 취소(요청). 게다가 scale 맥동은
-                  // 글자 래스터를 늘려 확대 화면에서 칩이 내내 뿌옇게 보였다(지적).
-                  team === 2 ? "scr-motion-team2" : "scr-motion-team1",
-                )}
-                style={{
-                  left: pct(pos.x, grid.width), top: pct(pos.y, grid.height),
-                  fontSize: ci === 0 ? fontPx : 10,
-                  // 첫 칩 아래로 한 줄씩 내려 쌓는다 — 마진은 transform(가운데 앵커)보다
-                  // 먼저 먹으므로 앵커는 그대로고 상자만 내려간다.
-                  ...(ci > 0 ? { marginTop: fontPx + 4 + (ci - 1) * 14 } : {}),
-                  ...chipStyle(p.raw, team),
-                }}
-              >
-                {text}
-              </span>
-            ));
+            /* 도형은 뭉치지 않는다(지적) — 규모만큼 낱개 점을 촘촘히 흩어 놓는다(해바라기
+               나선 — 결정적이라 프레임마다 안 튄다). 곁 부대는 규모를 모르니 점 하나다. */
+            const dots = si === primary ? Math.min(9, Math.max(1, Math.round(shownSize / 3) || 1)) : 1;
+            return Array.from({ length: dots }, (_, di) => {
+              const r = di === 0 ? 0 : 0.7 + 0.55 * Math.sqrt(di);
+              const dx = Math.cos(di * 2.4) * r;
+              const dy = Math.sin(di * 2.4) * r;
+              return (
+                <span
+                  key={`${p.raw}-s${si}-d${di}`}
+                  className={cx(
+                    "scr-motion-army",
+                    "scr-motion-dot",
+                    team === 2 ? "scr-motion-team2" : "scr-motion-team1",
+                  )}
+                  style={{
+                    left: pct(pos.x + dx, grid.width), top: pct(pos.y + dy, grid.height),
+                    // 겹침 차례는 마지막 명령 시각(지적).
+                    zIndex: 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
+                    ...glyphStyle(p.raw, team),
+                  }}
+                >
+                  {/* 무명 부대는 병력이다 — 육각형(요청: 일꾼과 아이콘 구분). */}
+                  <ShapeIcon kind="troop" className="scr-motion-troop" />
+                </span>
+              );
+            });
           });
-          return [...typeNodes, ...squadNodes];
+          /* 말풍선 그리기 — 위에서 모인 것을 자리(겹침 회피)만 다듬어 얹는다. 폰트는 수와
+             무관하게 고정이고(요청) 모바일 축소는 CSS 미디어가 맡는다. */
+          const placed: { x: number; y: number }[] = [];
+          const bubbleNodes = bubbles
+            .sort((a, b) => a.y - b.y)
+            .map((b, bi) => {
+              let by = b.y;
+              // 겹치지 않게(요청) — 앞서 놓인 풍선과 가로로 가깝고 세로로도 붙으면 위로 민다.
+              for (const q of placed) {
+                if (Math.abs(q.x - b.x) < 16 && Math.abs(q.y - by) < 5) by = q.y - 5;
+              }
+              placed.push({ x: b.x, y: by });
+              const bg = modeColor(p.raw, team);
+              return (
+                <span
+                  key={`${p.raw}-bub${bi}`}
+                  className="scr-motion-bubble"
+                  style={{
+                    left: pct(b.x, grid.width), top: pct(by, grid.height),
+                    zIndex: 20000 + bi,
+                    ...chipStyle(p.raw, team),
+                    "--bub": bg,
+                  } as React.CSSProperties}
+                >
+                  {b.parts.map(([ko, n]) => (
+                    <span key={ko}>{ko}{n > 0 ? ` ${n}` : ""}</span>
+                  ))}
+                </span>
+              );
+            });
+          return [...typeNodes, ...squadNodes, ...bubbleNodes];
         })}
 
         {/* 정찰 자취 — 부대 자취에서 걷어낸 명령들이다(지적: 일꾼 정찰이 하나도 안
@@ -2670,16 +2719,8 @@ export default function ReplayMotionPlayer({
                 <Mountain size={12} />
               </button>
             )}
-            {/* 모바일 확대(요청: 산 아이콘 옆) — 누르면 맵이 모달 폭을 벗어나 화면 폭을
-                다 쓰고, 아래 요소들은 그만큼 내려간다(트랜지션은 CSS). PC는 팝업 확대가
-                따로 있어 이 버튼을 감춘다(CSS). */}
-            <button
-              type="button" className="scr-motion-btn scr-motion-widebtn"
-              onClick={() => setWide((v) => !v)}
-              aria-label={wide ? "원래 폭" : "화면 폭 확대"} title={wide ? "원래 폭" : "화면 폭 확대"}
-            >
-              {wide ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-            </button>
+            {/* (삭제·요청: 모바일 확대 제거) — 화면 폭 확대 버튼이 있던 자리. 상세 모달이
+                전체화면이 되며 맵이 늘 최대 크기다. */}
           </div>
         </div>
         <div className="scr-motion-expand-row">
