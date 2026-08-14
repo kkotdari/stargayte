@@ -82,6 +82,10 @@ export interface UnitTracksV2 {
   ups: [number, string, number][];
   /** 좌표가 남는 마법 [초, x, y, 기술 이름, 플레이어] — 스톰·스웜·리콜·마인…. */
   casts: [number, number, number, string, number][];
+  /** 미니맵 핑 [초, x, y, 플레이어](요청: 클릭도 기록 — 좌표가 온전히 남는다. 실측 4:4
+   *  에서 59개). 카메라 시야는 리플레이에 저장되지 않아 여기 없다 — 인게임 리플레이의
+   *  '시야'는 엔진이 명령을 재시뮬레이션해 유닛 위치로 안개를 다시 계산하는 것이다. */
+  pings?: [number, number, number, number][];
   /** 보정 재료(지적: 놓치는 요소를 뒷결과로 잴 체계) — 강한 앵커가 몇 번 나왔고, 명령
    *  귀속이 얼마나 됐는지. 재생기·후속 분석이 모델의 어긋남을 잴 때 쓴다. */
   stats: { cmds: number; attributed: number; anchors: number; lives: number; tags: number };
@@ -258,6 +262,7 @@ export function buildUnitTracks(
   const ups: [number, string, number][] = [];
   const upSeen = new Set<string>();
   const casts: [number, number, number, string, number][] = [];
+  const pings: [number, number, number, number][] = [];
   let attributed = 0;
   let anchors = 0;
   let totalOrders = 0;
@@ -344,6 +349,13 @@ export function buildUnitTracks(
       continue;
     }
     if (!playing.has(pid)) continue;
+
+    // ── 미니맵 핑(요청: 클릭 기록) — 좌표(픽셀)가 온전히 실려 온다. ──
+    if (cmdName === "Minimap Ping") {
+      const pp = posOf(c);
+      if (pp) pings.push([Math.round(sec), r1(pp.x), r1(pp.y), pid]);
+      continue;
+    }
 
     const tags = sel.get(pid) ?? [];
     const orderName = nameOf(c.Order);
@@ -628,6 +640,7 @@ export function buildUnitTracks(
     ents,
     ups,
     casts,
+    pings,
     stats: { cmds: totalOrders, attributed, anchors, lives, tags: byTag.size },
   };
 }

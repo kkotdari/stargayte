@@ -8465,6 +8465,21 @@ export default function ReplayMotionPlayer({
         {/* 마법 — 떨어진 자리에 이름이 잠깐 떠오른다. 핵만은 이름에 폭발 파문까지
             얹는다(요청: "핵 떨어지는거도 효과") — 경기 하나에 몇 번 없는, 그 판의 가장
             큰 사건이라 다른 마법과 같은 글자 한 줄로는 안 보였다. */}
+        {/* 미니맵 핑(요청: 클릭도 기록 — 리플레이에 좌표가 온전히 남는다) — v2 트랙에만
+            있다. 찍은 사람 색의 물결 고리가 3초 동안 퍼진다. 카메라 시야는 리플레이에
+            저장되지 않아 못 그린다(엔진 재시뮬레이션의 몫). */}
+        {entOn && (entData?.pings ?? []).map(([ps, px, py, ppid], i) => {
+          if (t < ps || t - ps > 3) return null;
+          const raw = entData?.players.find((pl) => pl.id === ppid)?.name ?? "";
+          return (
+            <span
+              key={`ping-${i}`}
+              className="scr-motion-pingfx"
+              style={{ ...posStyle(px, py), color: modeColor(raw, teamOfRaw(raw)), zIndex: 1500 }}
+            />
+          );
+        })}
+
         {castsNow.map(([sec, x, y, tech, raw], i) => {
           if (!TECH_KO[tech]) return null; // 한글명을 모르는 기술은 안 띄운다(요청).
           if (tech === "Nuclear Strike") {
