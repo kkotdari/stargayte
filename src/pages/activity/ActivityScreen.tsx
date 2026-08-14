@@ -975,8 +975,22 @@ export default function ActivityScreen() {
       `${window.location.pathname}?${params.toString()}`,
     );
     pushedGameRef.current = true;
-    void api.pingAccess("activity_game", `game#${item.gameResult.id}`);
   };
+  /* 접속 이력에 개별 게임 상세도(요청) — 클릭이든 새로고침·공유 링크 직진입이든,
+     게임 페이지가 열릴 때마다 activity_game 코드에 game#<번호> 상세로 한 번 남긴다. */
+  const pingedGameRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!gameItem || gameItem.kind !== "gameResult") {
+      pingedGameRef.current = null;
+      return;
+    }
+    const id = gameItem.gameResult.id;
+    if (pingedGameRef.current === id) return;
+    pingedGameRef.current = id;
+    void api.pingAccess("activity_game", `game#${id}`);
+    // 조회수도 테이블에(요청) — 같은 열림에 한 번씩.
+    void api.markGameViewed(id).catch(() => {});
+  }, [gameItem]);
   const closeGamePage = () => {
     if (pushedGameRef.current) {
       window.history.back();
@@ -2007,10 +2021,17 @@ export default function ActivityScreen() {
               <h1 className="scr-title scr-v2-toolbar-title">
                 <button type="button" className="scr-activity-crumb-root" onClick={gotoActivityRoot}>활동</button>
                 <span className="scr-activity-crumb-sep">›</span>
-                <button type="button" className="scr-activity-crumb-root" onClick={gotoGameList}>게임</button>
+                {/* 가운데 '게임'은 그룹 페이지의 끝 조각과 같은 크기(지적: 크기가 달랐다)
+                    — 누를 수 있는 것만 다르다. */}
+                <button
+                  type="button" className="scr-activity-crumb-root scr-activity-crumb-mid"
+                  onClick={gotoGameList}
+                >
+                  게임
+                </button>
                 <span className="scr-activity-crumb-sep">›</span>
                 <span className="scr-activity-crumb-leaf scr-activity-crumb-no">
-                  {gameItem.kind === "gameResult" ? gameItem.gameResult.matchNo : ""}
+                  {gameItem.kind === "gameResult" ? gameItem.gameResult.id : ""}
                 </span>
               </h1>
             </div>

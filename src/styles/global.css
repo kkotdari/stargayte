@@ -12825,8 +12825,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    갈래 이름만 목록 소제목과 같은 18px이다. 둘을 같은 크기로 두면 어느 쪽이 지금 자리인지가
    안 갈리고, 갈래 이름을 더 키우면 밖에서 누른 그 소제목과 다른 것처럼 보인다. */
 .scr-activity-crumb-sep { margin: 0 6px; color: var(--dim); font-weight: 400; }
-/* 게임번호 끝 조각(요청: 활동 › 게임 › 번호) — 열네 자리 숫자라 제목 급이면 줄을 다
-   먹는다. 한 단 작고 옅게, 숫자는 등폭으로. */
+/* 게임 페이지 크럼(요청: 활동 › 게임 › 번호) — 가운데 '게임'은 그룹 페이지의 끝
+   조각과 같은 크기(지적: 두 화면에서 크기가 달랐다), 끝의 ID 번호는 한 단 작고 옅게. */
+.scr-activity-crumb-mid { font-size: var(--fs-lead); }
 .scr-activity-crumb-no {
   font-size: var(--fs-caption); color: var(--muted);
   font-variant-numeric: tabular-nums; font-weight: 600;

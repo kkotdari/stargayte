@@ -286,6 +286,11 @@ export const api = {
   },
 
   // 카카오톡 공유 링크가 여는 "이 경기만 보이는" 화면용 단건 조회.
+  /** 게임 상세 페이지 조회수 +1(요청: 테이블에 기록) — 페이지가 열릴 때마다 부른다. */
+  async markGameViewed(id: number): Promise<void> {
+    await request<void>(`/api/game-results/${id}/view`, { method: "POST" });
+  },
+
   async getGameResult(id: number): Promise<GameResult> {
     return gameResultFromWire(await request<WireGameResult>(`/api/game-results/${id}`));
   },

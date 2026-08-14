@@ -224,6 +224,8 @@ export interface GameResult {
   // 오지 않고(같은 맵을 쓰는 경기가 수십 건이라 22KB짜리가 되풀이된다) 이 해시로 따로
   // 받아 온다(api.getReplayMaps). 리플레이 없는 수기 등록과 옛 경기는 null.
   mapHash: string | null;
+  // 게임 상세 페이지 조회수(요청) — 페이지가 열릴 때마다 서버가 1씩 늘린다.
+  viewCount?: number;
 }
 
 // 경기 생성/수정 요청 (id, 작성자는 서버가 채움). 리플레이는 업로드 payload(id 없음)로 보낸다.
