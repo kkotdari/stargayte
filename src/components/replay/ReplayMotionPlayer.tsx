@@ -6035,9 +6035,10 @@ export default function ReplayMotionPlayer({
       className={cx("scr-motion", big && "scr-motion-big")}
       // 확대 모드에선 폭 상한을 안 건다 — 모달 폭(아래 포털)이 이미 맵+양옆 세로 조작부
       // 기준으로 확정돼 있고, 여기까지 조이면 이중 제약으로 맵이 더 작아진다.
-      // 230 → 150px(요청: PC도 이제 페이지라 기본맵 더 크게) — 모달 시절엔 플레이어
-      // 전체가 한 화면에 들어야 했지만 페이지는 스크롤이 있다. 로스터·조작부 몫만 남긴다.
-      style={big ? undefined : { maxWidth: `calc((100dvh - 150px) * ${(grid.width / grid.height).toFixed(4)})`, margin: "0 auto" }}
+      // 230 → 150 → 230px(요청: 페이지라 더 크게 → 재지적: 노트북에서 맵이 다 안 들어옴)
+      // — 150은 페이지 머리(크럼·카드 헤드 ≈200px)를 잊은 값이라 맵 자체가 화면을 넘쳤다.
+      // 230이면 맵이 통째로 들어오고, 페이지 폭 상한(760px)은 그대로라 여전히 예전보다 크다.
+      style={big ? undefined : { maxWidth: `calc((100dvh - 230px) * ${(grid.width / grid.height).toFixed(4)})`, margin: "0 auto" }}
     >
       <div className="scr-motion-maprow">
       {teamCol(1)}
