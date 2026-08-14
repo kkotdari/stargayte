@@ -405,10 +405,11 @@ export function cylinderFaces3(
     + `a${r2(r)} ${r2(ry)} 0 1 1-${r2(r * 2)} 0Z`;
   const shade = `M${r2(tx + r * 0.35)} ${r2(ty)} L${r2(tx + r)} ${r2(ty)} L${r2(bx + r)} ${r2(by)}`
     + `a${r2(r)} ${r2(ry)} 0 0 1-${r2(r * 0.65)} ${r2(ry * 0.92)}Z`;
-  // 깊이 키 = 가장 앞점(중심 + 반지름) — 중앙값 기준의 오차를 줄인다(지적).
+  /* 깊이 키 = 가장 앞점, 단 제 높이만큼만(재지적: 넓고 낮은 받침이 몸통을 덮음) —
+     부품이 이웃을 가릴 수 있는 건 제 키 높이까지라, 앞으로 뻗은 만큼을 높이로 자른다. */
   return tagKey(
     [bodyFace(body), sideFace(shade, OP.sideSoft), topFace(groundEllipse(tx, ty, r, ry))],
-    depthNow(cx, cy) + r,
+    depthNow(cx, cy) + Math.min(h, r),
   );
 }
 
@@ -444,7 +445,10 @@ export function prismXFaces(profile: [number, number][], hw: number): ShapeFace[
   }
   return tagKey(
     [bodyFace(bodyParts.join(" ")), ...out],
-    Math.max(...profile.map(([y]) => y * depthNow(0, 1))) + hw * Math.abs(depthNow(1, 0)),
+    Math.min(
+      Math.max(...profile.map(([y]) => y * depthNow(0, 1))) + hw * Math.abs(depthNow(1, 0)),
+      Math.max(...profile.map(([, z]) => z)) - Math.min(...profile.map(([, z]) => z)),
+    ),
   );
 }
 
@@ -476,7 +480,8 @@ export function pyramidFaces3(
   }
   return tagKey(
     [bodyFace(bodyParts.join(" ")), ...out],
-    depthNow(cx, cy) + (w / 2) * Math.abs(depthNow(1, 0)) + (d / 2) * Math.abs(depthNow(0, 1)),
+    depthNow(cx, cy)
+      + Math.min(h, (w / 2) * Math.abs(depthNow(1, 0)) + (d / 2) * Math.abs(depthNow(0, 1))),
   );
 }
 
@@ -518,7 +523,9 @@ export function limbFaces(
     const rr = (Math.hypot(c2x - c1x, c2y - c1y) / 2) * 1.05;
     faces.push(capFace(`M${c1x} ${c1y} A${r2(rr)} ${r2(rr * 0.95)} 0 0 1 ${c2x} ${c2y} Z`));
   }
-  return tagKey(faces, Math.max(depthNow(rootX, rootY), depthNow(tipX, tipY)));
+  const dR = depthNow(rootX, rootY);
+  const dT = depthNow(tipX, tipY);
+  return tagKey(faces, (dR + dT) / 2 + Math.min(w, Math.abs(dR - dT) / 2));
 }
 
 /* ── 전면 3D화 프리미티브(요청: 모든 건물·수송선을 3D 도형으로) ──────────────────── */
@@ -556,9 +563,11 @@ export function frustumFaces3(
   }
   return tagKey(
     [bodyFace(bodyParts.join(" ")), ...out, topFace(top)],
-    depthNow(cx, cy)
-      + (Math.max(wB, wT) / 2) * Math.abs(depthNow(1, 0))
-      + (Math.max(dB, dT) / 2) * Math.abs(depthNow(0, 1)),
+    depthNow(cx, cy) + Math.min(
+      h,
+      (Math.max(wB, wT) / 2) * Math.abs(depthNow(1, 0))
+        + (Math.max(dB, dT) / 2) * Math.abs(depthNow(0, 1)),
+    ),
   );
 }
 
@@ -576,7 +585,10 @@ export function domeFaces3(
   const shine = groundEllipse((bx + tx) / 2 - r * 0.25, (by + ty) / 2 - (by - ty) * 0.22, r * 0.4, r * 0.18);
   const shade = `M${r2(tx + r * 0.35)} ${r2(ty + (by - ty) * 0.08)} Q${r2(tx + r)} ${r2(ty + (by - ty) * 0.25)} ${r2(bx + r)} ${r2(by)}`
     + ` Q${r2(bx + r * 0.55)} ${r2(by + ry * 0.6)} ${r2(bx + r * 0.35)} ${r2(by)}Z`;
-  return tagKey([bodyFace(body), sideFace(shade, OP.sideSoft), topFace(shine)], depthNow(cx, cy) + r);
+  return tagKey(
+    [bodyFace(body), sideFace(shade, OP.sideSoft), topFace(shine)],
+    depthNow(cx, cy) + Math.min(hh, r),
+  );
 }
 
 /** 눕힌 원통(관) — 평면 두 점 사이를 반지름 r로 잇는다. 몸통 + (보이는 쪽) 끝 단면.
@@ -608,7 +620,9 @@ export function tubeFaces(
     `M${r2(ax + nx)} ${r2(ay + ny - zr * 0.2)} L${r2(bx + nx)} ${r2(by + ny - zr * 0.2)} L${r2(bx + nx)} ${r2(by + ny)} L${r2(ax + nx)} ${r2(ay + ny)} Z`,
     OP.sideSoft,
   ));
-  return tagKey(faces, Math.max(depthNow(x1, y1), depthNow(x2, y2)));
+  const dA = depthNow(x1, y1);
+  const dB2 = depthNow(x2, y2);
+  return tagKey(faces, (dA + dB2) / 2 + Math.min(r * 2, Math.abs(dA - dB2) / 2));
 }
 
 /** 뿔·가시 — 평면 밑점(bx,by,z0)에서 평면 끝점(tx,ty,zt)으로 솟는 가는 원뿔. */
@@ -626,5 +640,10 @@ export function hornFaces(
     + ` Q${r2((ax + cx2) / 2 - nx)} ${r2((ay + cy2) / 2 - ny)} ${r2(ax - nx)} ${r2(ay - ny)} Z`;
   const shade = `M${r2(cx2)} ${r2(cy2)} Q${r2((ax + cx2) / 2 - nx)} ${r2((ay + cy2) / 2 - ny)} ${r2(ax - nx)} ${r2(ay - ny)}`
     + ` L${r2(ax - nx * 0.2)} ${r2(ay - ny * 0.2)} Z`;
-  return tagKey([bodyFace(body), sideFace(shade, OP.sideSoft)], Math.max(depthNow(bx, by), depthNow(tx, ty)));
+  const dRt = depthNow(bx, by);
+  const dTp = depthNow(tx, ty);
+  return tagKey(
+    [bodyFace(body), sideFace(shade, OP.sideSoft)],
+    (dRt + dTp) / 2 + Math.min(Math.abs(zt - z0) + w, Math.abs(dRt - dTp) / 2),
+  );
 }

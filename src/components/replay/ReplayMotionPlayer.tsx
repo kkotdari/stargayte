@@ -702,13 +702,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...boxFaces3(0, 5.2, 4.2, 3.2, 1.9, 0.9));
     out.push(topFace(polyPath3([[-2.1, 3.6, 2.8], [2.1, 3.6, 2.8], [1.7, 6.8, 2.8], [-1.7, 6.8, 2.8]]), 0.2));
     out.push(capFace(polyPath3([[-1.3, 4.2, 2.83], [1.3, 4.2, 2.83], [1.1, 6.2, 2.83], [-1.1, 6.2, 2.83]]), 0.25));
-    // 옆 날개(지적) — 좌우로 짧게 뻗는 판.
-    out.push(bodyFace(polyPath3([[-5, 1, 3.4], [-8, 0.2, 2.6], [-7.6, -1, 2.6], [-4.8, -0.6, 3.4]])));
-    out.push(bodyFace(polyPath3([[5, 1, 3.4], [8, 0.2, 2.6], [7.6, -1, 2.6], [4.8, -0.6, 3.4]])));
-    out.push(sideFace(polyPath3([[5, 1, 3.4], [8, 0.2, 2.6], [7.6, -1, 2.6], [4.8, -0.6, 3.4]]), 0.2));
-    out.push(bodyFace(discPath3(0, 0, 4.1, 6.4)));
-    out.push(topFace(discPath3(0, 0, 4.13, 5.2), 0.25));
-    out.push(capFace(discPath3(0, 0, 4.16, 3.9), 0.35));
+    // 옆 날개(지적) — 좌우로 짧게 뻗는 판. 제 자리 깊이를 단다(앞 착륙장 키에 안 묻게).
+    out.push(...tagKey([bodyFace(polyPath3([[-5, 1, 3.4], [-8, 0.2, 2.6], [-7.6, -1, 2.6], [-4.8, -0.6, 3.4]]))], depthNow(-6.4, 0)));
+    out.push(...tagKey([
+      bodyFace(polyPath3([[5, 1, 3.4], [8, 0.2, 2.6], [7.6, -1, 2.6], [4.8, -0.6, 3.4]])),
+      sideFace(polyPath3([[5, 1, 3.4], [8, 0.2, 2.6], [7.6, -1, 2.6], [4.8, -0.6, 3.4]]), 0.2),
+    ], depthNow(6.4, 0)));
+    /* 윗 원판은 지붕이라 어느 각에서도 맨 위(지적: 정면 말고는 앞 다리·착륙장에 살짝
+       가려짐) — 아주 큰 키로 못 박는다. 그 위 네 기둥·등은 뒤이어 그려져 그대로 위다. */
+    out.push(...tagKey([
+      bodyFace(discPath3(0, 0, 4.1, 6.4)),
+      topFace(discPath3(0, 0, 4.13, 5.2), 0.25),
+      capFace(discPath3(0, 0, 4.16, 3.9), 0.35),
+    ], 50));
     for (const ang of [45, 135, 225, 315]) {
       const a = (ang * Math.PI) / 180;
       const bx2 = Math.sin(a) * 4.6;
