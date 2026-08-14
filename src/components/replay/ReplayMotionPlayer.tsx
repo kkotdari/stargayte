@@ -541,6 +541,12 @@ function legAndFoot(px: number, py: number, zTop: number): ShapeFace[] {
 
 /** 저그 갈고리(정정: 마디가 아니라 쭉 이어진 휘어진 칼) — 밖-앞으로 나갔다 안으로
  *  감기는 한 장의 낫 날. m은 좌우, s는 덩치 배율, z0는 뿌리 높이. */
+/* 상아색 발톱(지적: 모든 다리·팔 끝마디를 흰 톤 상아색으로) — 몸판(색 없는 면)에만
+   상아색을 입히고, 그늘 덮개 면은 그대로 둬 입체감을 지킨다. */
+const IVORY = "#eae3d2";
+function ivory(faces: ShapeFace[]): ShapeFace[] {
+  return faces.map(([d, o, f, k]) => [d, o, f ?? IVORY, k] as ShapeFace);
+}
 function claw3(m: 1 | -1, s: number, z0: number): ShapeFace[] {
   const [a1x, a1y] = project(m * 0.7 * s, 0.6 * s, z0);
   const [a2x, a2y] = project(m * 1.5 * s, 0.2 * s, z0);
@@ -3457,7 +3463,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   zling: () => [
     ...hornFaces(0, -1.6, 3.6, 0, -3.2, 3.3, 0.5),
     ...hornFaces(-0.9, -0.8, 3.6, -1.6, -1.4, 2.1, 0.45),
+    ...ivory(hornFaces(-1.43, -1.25, 2.48, -1.6, -1.4, 2.1, 0.3)),
     ...hornFaces(0.9, -0.8, 3.6, 1.6, -1.4, 2.1, 0.45),
+    ...ivory(hornFaces(1.43, -1.25, 2.48, 1.6, -1.4, 2.1, 0.3)),
     ...domeFaces3(0, -0.4, 1.3, 1.1, 3.2),
     // 등 날개 볏 — 위로 세운 돛 한 쌍.
     bodyFace(polyPath3([[-0.4, -0.6, 4.2], [-1.5, -1.7, 6.3], [-0.9, -0.2, 5.6], [-0.3, 0, 4.4]])),
@@ -3465,13 +3473,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     bodyFace(polyPath3([[0.4, -0.6, 4.2], [1.5, -1.7, 6.3], [0.9, -0.2, 5.6], [0.3, 0, 4.4]])),
     topFace(polyPath3([[0.4, -0.6, 4.2], [1.5, -1.7, 6.3], [0.9, -0.2, 5.6], [0.3, 0, 4.4]]), 0.14),
     ...hornFaces(-0.8, 0.6, 3.4, -1.3, 1.4, 2, 0.4),
+    ...ivory(hornFaces(-1.18, 1.2, 2.35, -1.3, 1.4, 2, 0.28)),
     ...hornFaces(0.8, 0.6, 3.4, 1.3, 1.4, 2, 0.4),
+    ...ivory(hornFaces(1.18, 1.2, 2.35, 1.3, 1.4, 2, 0.28)),
     /* 어깨 갈고리낫 한 쌍(지적: 얼굴 양옆 어깨에서 올라오는, 위가 볼록한 낫) —
        어깨 뿌리에서 위로 솟았다가 볼록한 꼭대기를 지나 앞아래로 낫끝이 말린다. */
     ...hornFaces(-0.85, 0.7, 3.4, -1.4, 1.15, 5.1, 0.42),
-    ...hornFaces(-1.4, 1.15, 5.1, -1.2, 2.4, 3.9, 0.3),
+    ...ivory(hornFaces(-1.4, 1.15, 5.1, -1.2, 2.4, 3.9, 0.3)),
     ...hornFaces(0.85, 0.7, 3.4, 1.4, 1.15, 5.1, 0.42),
-    ...hornFaces(1.4, 1.15, 5.1, 1.2, 2.4, 3.9, 0.3),
+    ...ivory(hornFaces(1.4, 1.15, 5.1, 1.2, 2.4, 3.9, 0.3)),
     ...domeFaces3(0, 1.2, 0.95, 0.8, 3.1),
     capFace(polyPath3([[-0.45, 2, 3.35], [0.45, 2, 3.35], [0.3, 2.25, 3.15], [-0.3, 2.25, 3.15]]), 0.4),
   ],
@@ -3489,8 +3499,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...hornFaces(0, -4.3, 0.6, 0, -5.3, 0.12, 0.3),
       // 몸기둥도 꼬리 뿌리까지 내려 잇는다(같은 지적) — 예전엔 3.9에서 떠 시작했다.
       ...cylinderFaces3(0, 0, 1.05, 5.3, 1.5),
-      ...claw3(1, 0.85, 5),
-      ...claw3(-1, 0.85, 5),
+      ...ivory(claw3(1, 0.85, 5)),
+      ...ivory(claw3(-1, 0.85, 5)),
       ...domeFaces3(0, 0.2, 0.75, 0.6, 6.8),
       bodyFace(hood),
       topFace(hood, 0.14),
@@ -3505,31 +3515,32 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...domeFaces3(0, 1.6, 2, 1.6, 3.9),
     ...cylinderFaces3(-2.2, 1.1, 0.8, 3, 0.3),
     ...cylinderFaces3(2.2, 1.1, 0.8, 3, 0.3),
-    ...claw3(1, 2.1, 5.4),
-    ...claw3(-1, 2.1, 5.4),
+    ...ivory(claw3(1, 2.1, 5.4)),
+    ...ivory(claw3(-1, 2.1, 5.4)),
   ],
   /* 러커(실물 참고) — 넓은 가시 등딱지, 사방으로 벌린 낫 칼다리 두 쌍(끝이 안으로
      말림), 앞 입. */
   lurker: () => {
     const out: ShapeFace[] = [];
     for (const m2 of [1, -1] as const) {
-      /* 칼다리는 꺽쇠(재지적: 다리가 살짝 아래로 향하는데 실제 그림은 위로 향해
-         시작했다 아래로 꺾인다 — 완만한 각도) — 뿌리에서 바깥·위로 올라 꼭대기를
-         찍고, 거기서 완만하게 아래로 내려와 땅을 짚는다. */
+      /* 칼다리는 꺽쇠(재재지적: 더 완만하게) — 뿌리에서 바깥·위로 살짝만 올라
+         꼭대기를 찍고, 완만한 각도로 내려와 땅을 짚는다. 내려오는 끝마디는
+         상아색 발톱(지적)이다. */
       // 뒤 칼다리.
-      out.push(...hornFaces(m2 * 1.5, -0.9, 3.8, m2 * 2.8, -1.7, 5.1, 0.7));
-      out.push(...hornFaces(m2 * 2.8, -1.7, 5.1, m2 * 4, -2.6, 1.4, 0.5));
+      out.push(...hornFaces(m2 * 1.5, -0.9, 3.8, m2 * 2.8, -1.7, 4.15, 0.7));
+      out.push(...ivory(hornFaces(m2 * 2.8, -1.7, 4.15, m2 * 4.1, -2.7, 1.4, 0.5)));
       // 앞 칼다리.
-      out.push(...hornFaces(m2 * 1.6, 0.6, 3.8, m2 * 2.9, 1.35, 5.1, 0.7));
-      out.push(...hornFaces(m2 * 2.9, 1.35, 5.1, m2 * 4.2, 2.2, 1.4, 0.5));
+      out.push(...hornFaces(m2 * 1.6, 0.6, 3.8, m2 * 2.9, 1.35, 4.15, 0.7));
+      out.push(...ivory(hornFaces(m2 * 2.9, 1.35, 4.15, m2 * 4.3, 2.25, 1.4, 0.5)));
       /* 앞 가시갈고리 한 쌍(지적) — 몸 앞에서 앞을 향해 뻗다 끝이 갈고리처럼
          아래로 말린다. */
       out.push(...hornFaces(m2 * 0.6, 1.9, 3.5, m2 * 1.1, 3.4, 2.3, 0.42));
-      out.push(...hornFaces(m2 * 1.1, 3.4, 2.3, m2 * 0.8, 4.1, 0.5, 0.28));
+      out.push(...ivory(hornFaces(m2 * 1.1, 3.4, 2.3, m2 * 0.8, 4.1, 0.5, 0.28)));
     }
     // 꽁무니 다리 하나 더(지적) — 뒤 가운데에서 뒤로 뻗어 땅을 짚는다.
-    out.push(...hornFaces(0, -1.5, 3.6, 0, -3.3, 1.6, 0.6));
-    out.push(...hornFaces(0, -3.3, 1.6, 0, -4, 0.3, 0.42));
+    // 꽁무니 다리도 꺽쇠(재지적: 뒷다리도 그렇게) — 완만히 올랐다 내려온다.
+    out.push(...hornFaces(0, -1.5, 3.6, 0, -2.6, 4.3, 0.6));
+    out.push(...ivory(hornFaces(0, -2.6, 4.3, 0, -4, 1.2, 0.42)));
     // 넓은 등딱지 + 등 가시들.
     out.push(...domeFaces3(0, -0.2, 2.5, 2, 3.4));
     out.push(...hornFaces(-0.9, -0.9, 5, -1.3, -1.3, 6.2, 0.4));
@@ -3550,8 +3561,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 다리 여섯 — 양쪽 3개씩, 뿌리가 다 앞몸(y 1.3~2)에 있고 앞·바깥으로 뻗는다.
     for (const m2 of [1, -1] as const) {
       out.push(...hornFaces(m2 * 0.55, 2, 1.7, m2 * 1.1, 3.6, 0.1, 0.34));
+      out.push(...ivory(hornFaces(m2 * 0.96, 3.2, 0.5, m2 * 1.1, 3.6, 0.1, 0.24)));
       out.push(...hornFaces(m2 * 0.75, 1.65, 1.7, m2 * 1.9, 3.2, 0.1, 0.36));
+      out.push(...ivory(hornFaces(m2 * 1.61, 2.81, 0.5, m2 * 1.9, 3.2, 0.1, 0.26)));
       out.push(...hornFaces(m2 * 0.95, 1.3, 1.7, m2 * 2.6, 2.7, 0.1, 0.38));
+      out.push(...ivory(hornFaces(m2 * 2.19, 2.35, 0.5, m2 * 2.6, 2.7, 0.1, 0.28)));
     }
     // 납작한 앞몸(머리·가슴) — 높이를 낮게 깐다.
     out.push(...domeFaces3(0, 1.9, 0.75, 0.55, 1.5));
@@ -3573,6 +3587,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   ovie: () => {
     const [cx, cy] = project(0, 0, 5.2);
     const legs: string[] = [];
+    // 끝마디는 상아 발톱(지적: 모든 다리·팔 끝마디) — 몸색과 갈라 따로 칠한다.
+    const tips: string[] = [];
     /* 마디 — 시작·끝 굵기를 따로 받아 사다리꼴로 그린다(재지적: 집게팔은 뿌리가
        얇고 집게 쪽에서 확 두꺼워져야 한다). 끝 굵기를 안 주면 곧은 막대다. */
     const seg = (
@@ -3598,15 +3614,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       for (const lyy of [-0.5, 1]) {
         // 가늘게(재지적) — 매달린 실다리 느낌.
         legs.push(seg(sx * 1.9, lyy, 3.4, sx * 3.1, lyy, 1.2, 0.34));
-        legs.push(seg(sx * 3.1, lyy, 1.2, sx * 2.5, lyy, -0.9, 0.26));
+        tips.push(seg(sx * 3.1, lyy, 1.2, sx * 2.5, lyy, -0.9, 0.26));
       }
       // 앞 집게팔(재재지적: 뒷다리보다 살짝 짧게, 뿌리는 얇고 집게 쪽에서 확 굵게) —
       // 사다리꼴 마디로 아래로 갈수록 부풀고, 발끝은 옆다리(-0.9)보다 조금 위에서 끝난다.
       legs.push(seg(sx * 0.8, 1.7, 3.2, sx * 1.3, 2.7, 1.4, 0.3, 0.5));
       legs.push(seg(sx * 1.3, 2.7, 1.4, sx * 1.15, 3.3, 0.2, 0.5, 0.95));
       // 집게 — 굵은 밑동에서 두 갈래로 좁아지는 날.
-      legs.push(seg(sx * 1.15, 3.3, 0.2, sx * 1.7, 3.75, -0.6, 0.7, 0.25));
-      legs.push(seg(sx * 1.15, 3.3, 0.2, sx * 0.6, 3.85, -0.55, 0.7, 0.25));
+      tips.push(seg(sx * 1.15, 3.3, 0.2, sx * 1.7, 3.75, -0.6, 0.7, 0.25));
+      tips.push(seg(sx * 1.15, 3.3, 0.2, sx * 0.6, 3.85, -0.55, 0.7, 0.25));
     }
     /* 허파(재지적: 양옆 렌즈는 눈이 아니라 허파 같은 기관 — 흰색 말고 보라색으로,
        두껍게가 아니라 '넓게') — 접평면 부착은 그대로 두고, 접선 방향으로 길쭉한
@@ -3643,6 +3659,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [g2x, g2y] = project(-0.3, -2.3, 7);
     return [
       bodyFace(legs.join(" ")),
+      [tips.join(" "), 1, IVORY] as ShapeFace,
       ...lens(-1),
       ...lens(1),
       ...face,
