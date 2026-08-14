@@ -4242,10 +4242,21 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
             }
           }
         }
+        /* 프레임당 밀림 상한(재지적: 가만히 선 유닛끼리 자리 경쟁하듯 괜히 움직이고,
+           이동 중에도 점프) — 이완은 스무딩 뒤 캔버스 단계라, 이웃이 조금만 움직여도
+           (잔걸음·교전 당김) 해법이 확 바뀌며 점프를 도로 만들었다. 한 프레임에 3px
+           까지만 밀고(밀림은 다음 프레임에 이어 받는다) 0.4px 미만 떨림은 버린다. */
         for (let m = 0; m < mov.length; m += 1) {
           const o = sorted[mov[m]];
-          o.fx = (px[m] - cw / 2 - pan.x) / (cw * zoom) + 0.5;
-          o.fy = (py[m] - ch / 2 - pan.y) / (ch * zoom) + 0.5;
+          const x0 = zx(o.fx);
+          const y0 = zy(o.fy);
+          let ddx = px[m] - x0;
+          let ddy = py[m] - y0;
+          const dd = Math.hypot(ddx, ddy);
+          if (dd < 0.4) continue;
+          if (dd > 3) { ddx = (ddx / dd) * 3; ddy = (ddy / dd) * 3; }
+          o.fx = (x0 + ddx - cw / 2 - pan.x) / (cw * zoom) + 0.5;
+          o.fy = (y0 + ddy - ch / 2 - pan.y) / (ch * zoom) + 0.5;
         }
       }
     }
@@ -6663,6 +6674,25 @@ export default function ReplayMotionPlayer({
             const wFrac = (wTiles / grid.width) * mkK;
             const hFrac = (hTiles / grid.width) * mkK;
             const race2 = bases.find((b) => b.key === raw)?.race;
+            /* 짓는 SCV(요청: SCV 위치도 건물에 붙이자 → 재지적: 완공되면 갑자기 사라짐)
+               — 공사 내내 불티 곁에 서 있고, 완공 뒤 1.2초 동안 옅어지며 물러난다.
+               드론은 제 몸이 건물이 되고 프로브는 소환만 걸고 떠나니 테란만이다. */
+            if (race2 === "테란" && !flownFrom && sec > 0 && !razed
+              && t - sec < (BUILD_SEC[unit] ?? 30) + 1.2) {
+              const doneGap = t - sec - (BUILD_SEC[unit] ?? 30);
+              const scvX = centerX - fp2[0] / 2 + 0.35;
+              const scvY = centerY + fp2[1] / 2 - 0.35;
+              const [sfx2, sfy2] = posFrac(scvX, scvY);
+              unitOps.push({
+                fx: sfx2, fy: sfy2, z: z + 1, kind: "scv",
+                rotDeg: Math.atan2(-(centerX - scvX), centerY - scvY) * (180 / Math.PI),
+                viewYaw: viewYawOf(scvX, scvY), flat: !pitched, pitch: pitched,
+                sizePx: unitGlyphPx(0, scvY),
+                color: modeColor(raw, teamOfRaw(raw)),
+                alpha: doneGap > 0 ? Math.max(0, 1 - doneGap / 1.2) : 1,
+                noSep: true,
+              });
+            }
             if (raising) {
               // 공사는 종족 공용 모델(고치·소환구·공사장)이 말한다.
               /* 저그 고치는 크기 자체가 두근거린다(요청: 확대 바운스) — 10Hz t의 사인
@@ -6693,22 +6723,7 @@ export default function ReplayMotionPlayer({
                  반 타일 위로: 불티가 공사장 몸체에 반쯤 얹힌다. */
               const bfxX = race2 === "테란" ? centerX - fp2[0] / 2 + 0.9 : centerX;
               const bfxY = race2 === "테란" ? centerY + fp2[1] / 2 - 0.6 : centerY;
-              /* 짓는 SCV(요청: SCV 위치도 건물에 붙이자) — 불티 바로 밖에서 건물을
-                 바라보고 선다. 드론은 제 몸이 건물이 되고 프로브는 소환만 걸고 떠나니
-                 테란만이다. 완공되면 걷힌다(이 가지는 raising 동안만 탄다). */
-              if (race2 === "테란") {
-                const scvX = bfxX - 0.55;
-                const scvY = bfxY + 0.25;
-                const [sfx2, sfy2] = posFrac(scvX, scvY);
-                unitOps.push({
-                  fx: sfx2, fy: sfy2, z: z + 1, kind: "scv",
-                  rotDeg: Math.atan2(-(centerX - scvX), centerY - scvY) * (180 / Math.PI),
-                  viewYaw: viewYawOf(scvX, scvY), flat: !pitched, pitch: pitched,
-                  sizePx: unitGlyphPx(0, scvY),
-                  color: modeColor(raw, teamOfRaw(raw)),
-                  alpha: 1, noSep: true,
-                });
-              }
+
               return (
                 <span
                   key={`bfx-${i}`}
@@ -6728,9 +6743,9 @@ export default function ReplayMotionPlayer({
                         key={k}
                         className="scr-bfx-weld"
                         style={{
-                          width: `${Math.max(0.5, 0.7 * ws).toFixed(1)}px`,
-                          height: `${((1.2 + ((i * 7 + k * 5) % 5) * 0.4) * ws).toFixed(1)}px`,
-                          transform: `rotate(${k * 60 + ((i * 13 + k * 29) % 30)}deg) translateY(${((1.2 + ((i + k * 3) % 3) * 0.8) * ws).toFixed(1)}px)`,
+                          width: `${Math.max(0.4, 0.5 * ws).toFixed(1)}px`,
+                          height: `${((0.9 + ((i * 7 + k * 5) % 5) * 0.3) * ws).toFixed(1)}px`,
+                          transform: `rotate(${k * 60 + ((i * 13 + k * 29) % 30)}deg) translateY(${((0.9 + ((i + k * 3) % 3) * 0.6) * ws).toFixed(1)}px)`,
                           animationDelay: `${((i * 3 + k * 7) % 9) / 10}s`,
                         }}
                       />
@@ -8060,8 +8075,9 @@ export default function ReplayMotionPlayer({
           return scoutSquads[pi].map((g, si) => {
             const rp = g.walk;
             if (rp.length === 0 || t < rp[0][0]) return null;
-            const pos = posAt(rp, t, null);
+            let pos = posAt(rp, t, null);
             if (!pos) return null;
+            pos = smoothPosOf(`${p.raw}-xw${si}`, pos);
             let sinceCmd = Infinity;
             for (const [sec] of g.raw) {
               if (sec > t) break;
