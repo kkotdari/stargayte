@@ -4520,8 +4520,10 @@ const ENGAGE_FLEE = new Set(["Worker", "Transport", "Overlord", "Dropship", "Shu
 const ENGAGE_FLEE_SIGHT = 5;
 /** 갓 뽑힌 유닛이 건물 앞에 머무는 시간(초). */
 const FRESH_HOLD_SEC = 12;
-/** 랠리 대기 뒤 부대로 걸어가 스며드는 데 주는 최대 시간(초) — 못 닿으면 페이드. */
-const FRESH_MERGE_MAX = 14;
+/** 랠리 대기 뒤 부대로 걸어가 스며드는 데 주는 최대 시간(초) — 못 닿으면 페이드.
+ *  14 → 60(재지적: 합류면 걸어가야지, 시간 안에 못 간다며 지우는 건 추적 잘못) —
+ *  맵 대각선도 제 속도로 끝까지 걷고 닿아서 사라진다. 60초는 무한 방랑 안전망일 뿐. */
+const FRESH_MERGE_MAX = 60;
 
 /** 자취에서 t 시각의 자리 — 사이는 보간(지상은 가운데로 휘는 곡선), 틈이 크면 앞 점에 머문다.
  *  moving(두 점 사이를 미끄러지는 중)과 sinceLast(마지막 명령에서 지난 초)도 함께 낸다 —
@@ -6818,14 +6820,14 @@ export default function ReplayMotionPlayer({
                   /* 목표는 걷기 시작(holdEnd) 시점의 부대 자리로 고정(재지적: 후반에
                      벽 뚫고 직진하다 사라짐) — 매 프레임 움직이는 부대를 쫓으면 경로
                      캐시가 못 서고, 목표가 조금 어긋나도 닿는 순간 부대 마커가 이어받아
-                     티가 안 난다. 너무 먼 합류(30타일)는 화면 밖 이야기라 페이드. */
+                     티가 안 난다. 거리 상한은 없다(재재지적: 합류면 끝까지 걸어가야지)
+                     — 먼 부대도 제 속도로 다 걸어가 닿고서야 스며든다. */
                   for (const sq of refinedSquads[pIdx] ?? []) {
                     const pos2 = posAt(sq, holdEnd, null);
                     if (!pos2) continue;
                     const d2 = Math.hypot(pos2.x - fx, pos2.y - fy);
                     if (d2 < bestD) { bestD = d2; tx = pos2.x; ty = pos2.y; }
                   }
-                  if (bestD > 30) { tx = null; ty = null; }
                 }
                 const v2 = isWorkerU ? 3.7 : Math.max(1.5, speedOf(unit, done, p.ups));
                 const walked = (t - holdEnd) * v2;
