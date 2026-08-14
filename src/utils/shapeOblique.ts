@@ -401,7 +401,11 @@ export function cylinderFaces3(
      몸통이 바깥 롤·앞숙임을 안 타고 수직으로만 서서, 기운 바닥 타원과 어긋난다. */
   const [tx, ty] = project(cx, cy, z0 + h);
   const ry = r * groundSquashNow();
-  const body = `M${r2(tx - r)} ${r2(ty)} L${r2(tx + r)} ${r2(ty)} L${r2(bx + r)} ${r2(by)}`
+  /* 실루엣의 윗변은 직선 현이 아니라 윗타원의 '뒤 반호'(수리·지적: 동그란 판 뒤 반쪽이
+     검게 뚫림) — 직선으로 자르면 납작하고 넓은 드럼일수록 윗면 뒤 반쪽이 몸에 안 담겨
+     배경이 비쳤다. 뒤 반호(위로 볼록) + 오른 벽 + 앞 반호(아래로 볼록) + 왼 벽. */
+  const body = `M${r2(tx - r)} ${r2(ty)} A${r2(r)} ${r2(ry)} 0 0 1 ${r2(tx + r)} ${r2(ty)}`
+    + ` L${r2(bx + r)} ${r2(by)}`
     + `a${r2(r)} ${r2(ry)} 0 1 1-${r2(r * 2)} 0Z`;
   const shade = `M${r2(tx + r * 0.35)} ${r2(ty)} L${r2(tx + r)} ${r2(ty)} L${r2(bx + r)} ${r2(by)}`
     + `a${r2(r)} ${r2(ry)} 0 0 1-${r2(r * 0.65)} ${r2(ry * 0.92)}Z`;

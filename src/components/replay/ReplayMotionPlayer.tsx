@@ -571,24 +571,34 @@ function creepSplat(r: number): ShapeFace[] {
 function rodFaces(
   x1: number, y1: number, z1: number, x2: number, y2: number, z2: number, w: number,
 ): ShapeFace[] {
+  /* 원기둥 투영으로(재수리·지적: 질럿·드라군·레이스 막대는 그대로) — tubeFaces와 같은
+     끝 처리: 스타디움 호 대신 축 방향으로 돌린 끝 타원 두 장 + 접선 사각. 화면축 기움
+     (ang)을 타원에 실어 어느 방향에서도 끝이 물리거나 뚫리지 않는다. */
   const [ax, ay] = project(x1, y1, z1);
   const [bx, by] = project(x2, y2, z2);
   const dx = bx - ax;
   const dy = by - ay;
-  const L = Math.hypot(dx, dy) || 1;
+  const L = Math.hypot(dx, dy);
   const r = w / 2;
-  const nx = (-dy / L) * r;
-  const ny = (dx / L) * r;
-  const d = `M${ax + nx} ${ay + ny} L${bx + nx} ${by + ny}`
-    + ` A${r} ${r * 0.9} 0 0 1 ${bx - nx} ${by - ny} L${ax - nx} ${ay - ny}`
-    + ` A${r} ${r * 0.9} 0 0 1 ${ax + nx} ${ay + ny} Z`;
+  const re = r * 0.62;
+  const ang = Math.round(((Math.atan2(dy, dx) * 180) / Math.PI) * 100) / 100;
+  const nx = L < 0.05 ? 0 : (-dy / L) * r;
+  const ny = L < 0.05 ? r : (dx / L) * r;
+  const endDisc = (ex: number, ey: number): string =>
+    `M${ex + nx} ${ey + ny} A${re} ${r} ${ang} 1 1 ${ex - nx} ${ey - ny}`
+    + ` A${re} ${r} ${ang} 1 1 ${ex + nx} ${ey + ny} Z`;
+  const faces: ShapeFace[] = [bodyFace(endDisc(ax, ay)), bodyFace(endDisc(bx, by))];
+  if (L >= 0.05) {
+    faces.push(
+      bodyFace(`M${ax + nx} ${ay + ny} L${bx + nx} ${by + ny}`
+        + ` L${bx - nx} ${by - ny} L${ax - nx} ${ay - ny} Z`),
+      sideFace(`M${ax} ${ay} L${bx} ${by} L${bx - nx} ${by - ny} L${ax - nx} ${ay - ny} Z`, 0.2),
+    );
+  }
   const dA = depthNow(x1, y1);
   const dB = depthNow(x2, y2);
   return tagKey(
-    [
-      bodyFace(d),
-      sideFace(`M${ax} ${ay} L${bx} ${by} L${bx - nx} ${by - ny} L${ax - nx} ${ay - ny} Z`, 0.2),
-    ],
+    faces,
     (dA + dB) / 2 + Math.min(Math.abs(z2 - z1) + w, Math.abs(dA - dB) / 2),
   );
 }
@@ -751,11 +761,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...boxFaces3(-0.6, -0.6, 9.8, 6, 5.8, 1.2),
     ...boxFaces3(3.2, 2.8, 4, 2.8, 3.6, 1.2),
     // 지붕 규칙(지적: 굴뚝 가려짐) — 지붕 얹힘들은 붙박이 큰 키.
-    ...tagKey(cylinderFaces3(-3.4, -2, 0.85, 1.7, 7), 30),
-    ...tagKey(cylinderFaces3(-1.5, -2.2, 0.85, 1.7, 7), 31),
-    ...tagKey(cylinderFaces3(0.4, -2.4, 0.85, 1.7, 7), 32),
-    ...tagKey(boxFaces3(3.4, -2.2, 2.8, 2.2, 2.4, 7), 33),
-    ...tagKey(tubeFaces(3, -3, 5.4, -3, 0.45, 9.6), 34),
+    ...tagKey(cylinderFaces3(-3.4, -2, 0.85, 1.7, 7), 24 + depthNow(-3.4, -2)),
+    ...tagKey(cylinderFaces3(-1.5, -2.2, 0.85, 1.7, 7), 24 + depthNow(-1.5, -2.2)),
+    ...tagKey(cylinderFaces3(0.4, -2.4, 0.85, 1.7, 7), 24 + depthNow(0.4, -2.4)),
+    ...tagKey(boxFaces3(3.4, -2.2, 2.8, 2.2, 2.4, 7), 24 + depthNow(3.4, -2.2)),
+    ...tagKey(tubeFaces(3, -3, 5.4, -3, 0.45, 9.6), 26 + depthNow(4.2, -3)),
     /* 다리는 없다(지적) — 대신 앞으로 나란히 내려오는 경사로 셋. 제 깊이를 달아
        뒤로 돌면 몸통 뒤로 들어간다(재지적: 뒤에서도 보임 — 손 면이라 깊이가 없었다). */
     ...[-3.8, -1, 1.8].flatMap((rx) => {
@@ -1137,7 +1147,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...tubeFaces(-2.6, 2.2, -4.4, 3.4, 0.55, 1.2),
     /* 머리 상자도 얹힘(지적: 넓은 밑둥 판과 순서가 요잉 따라 어긋남) — 지붕 규칙로
        밑둥(반지름 키 3.1)보다 큰 붙박이 키. 포드(40)·다리(41)보단 작게. */
-    ...tagKey(boxFaces3(0, 0, 3.6, 2.8, 3.6, 3.6), 39),
+    ...tagKey(boxFaces3(0, 0, 3.6, 2.8, 3.6, 3.6), 20 + depthNow(0, 0)),
     /* 미사일 포드 — 약간 하늘을 향해 기운다(지적): 위가 뒤로 1.4 물러난 기운 판. */
     /* 미사일 포드(지적) — 옆모습이 마름모가 아니라 직사각형: 위만 미는 전단이 아니라
        상자를 통째로 뒤로 기울인다. 하늘을 향한 기울기는 그대로. */
@@ -1187,9 +1197,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         faces.push(bodyFace(d), ...sl.face(d));
       }
       faces.push(bodyFace(top), topFace(top, 0.2));
-      return tagKey(faces, 40);
+      return tagKey(faces, 24 + depthNow(rx, 0.2));
     }),
-    ...tagKey(boxFaces3(0, -0.2, 2.2, 1.8, 1.6, 7.2), 41),
+    ...tagKey(boxFaces3(0, -0.2, 2.2, 1.8, 1.6, 7.2), 24 + depthNow(0, -0.2)),
   ],
   /* 포톤 캐논(실물 참고) — 납작한 원형 판(고리 무늬) + 테두리 포드 여덟 + 가운데 가는
      수정 기둥(빛나는 끝). */
@@ -1382,27 +1392,27 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...cylinderFaces3(-2.6, 0.8, 1.9, 2.4, 2.6),
         ...domeFaces3(-2.6, 0.8, 1.9, 1.6, 5),
         capFace(groundEllipse(sx2, sy2, 0.95, 0.26), 0.45),
-      ], 30),
+      ], 24 + depthNow(-2.6, 0.8)),
       ...tagKey([
         ...cylinderFaces3(-0.5, -1.7, 1.1, 5, 2.6),
         capFace(discPath3(-0.5, -1.7, 7.65, 0.78), 0.4),
-      ], 31),
+      ], 24 + depthNow(-0.5, -1.7)),
       ...tagKey([
         ...cylinderFaces3(1.1, -2.3, 0.75, 4, 2.6),
         capFace(discPath3(1.1, -2.3, 6.65, 0.5), 0.35),
-      ], 32),
+      ], 24 + depthNow(1.1, -2.3)),
       ...tagKey([
         ...cylinderFaces3(2.9, 0.4, 0.7, 3, 2.6),
         bodyFace(groundEllipse(dx3, dy3, 2.35, 1.5)),
         topFace(groundEllipse(dx3, dy3 - 0.15, 1.95, 1.2), 0.18),
         capFace(groundEllipse(dx3, dy3, 1.25, 0.78), 0.42),
-      ], 33),
+      ], 24 + depthNow(2.9, 0.3)),
       ...tagKey([
         ...hornFaces(0.9, 2.2, 2.6, 0.9, 2.2, 4.3, 0.35),
         ...hornFaces(2.4, 2.6, 2.6, 2.4, 2.6, 4.3, 0.35),
         ...boxFaces3(1.6, 2.3, 2.5, 1.9, 0.45, 4.3),
         ...domeFaces3(1.6, 2.3, 0.5, 0.45, 4.75),
-      ], 34),
+      ], 24 + depthNow(1.6, 2.3)),
     ];
   },
   /* 엔지니어링 베이(복원) — 사방 대각 팔 끝의 원반 발 넷, 각진 몸체 더미, 끝이
@@ -1485,11 +1495,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         return boxFaces3(Math.sin(a) * 4.72, Math.cos(a) * 4.72, 0.52, 0.52, 1.6, 1.35);
       }).flat(),
       /* 각진 본체(재지적: 본체가 안 돎) — 원기둥·돔은 회전 대칭이라 돌아도 티가
-         안 났다. 실물처럼 각진 슬래브 + 윗상자로 바꿔 요잉이 보인다. */
-      ...boxFaces3(0, 0, 6.4, 4.6, 2.1, 3.2),
-      ...boxFaces3(0, -0.5, 3.8, 2.9, 1.9, 5.3),
-      ...domeFaces3(0, -0.5, 1.5, 1.2, 7.2),
-      ...cylinderFaces3(2.1, 1.6, 1, 2, 3.2),
+         안 났다. 실물처럼 각진 슬래브 + 윗상자로 바꿔 요잉이 보인다. 적층끼리 순서가
+         요잉에 꼬여(재재지적) 단마다 띠 키(20/22/24) + 제 깊이로 계단을 놓는다. */
+      ...tagKey(boxFaces3(0, 0, 6.4, 4.6, 2.1, 3.2), 20 + depthNow(0, 0)),
+      ...tagKey(boxFaces3(0, -0.5, 3.8, 2.9, 1.9, 5.3), 22 + depthNow(0, -0.5)),
+      ...tagKey(domeFaces3(0, -0.5, 1.5, 1.2, 7.2), 24 + depthNow(0, -0.5)),
+      ...tagKey(cylinderFaces3(2.1, 1.6, 1, 2, 3.2), 20 + depthNow(2.1, 1.6)),
       glow(-2.9, 2.6, 2.2), glow(-1.6, 3.3, 2.2), glow(3.3, 1.9, 2.6),
       ...foot(-1.2, 3.5), ...foot(2.9, 3),
     ];
@@ -1508,29 +1519,32 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 왼앞 아치 별채.
       ...boxFaces3(-3, 1.6, 3.2, 2.9, 2.3),
       ...domeFaces3(-3, 1.6, 1.4, 1, 2.3),
-      /* 앞 톱니바퀴(요청: 포지의 포인트) — 별채 앞벽의 기어 데칼: 테 고리 + 속판 +
-         축 + 둘레 이 여덟. 벽 데칼이라 요잉을 따라 돌고, 앞이 보일 때만 그린다. */
-      ...(facingRatio(0, 1) > -0.02 ? ((): ShapeFace[] => {
-        const k = Math.min(1, (facingRatio(0, 1) + 0.02) / 0.35);
-        const fr = wallFrame(-3, 3.06, 1.15, 0.62, 0.62);
-        const g: ShapeFace[] = [
-          capFace(wallDiscPath(-3, 3.06, 1.15, 0.95, 0.95), 0.22 * k),
-          topFace(wallDiscPath(-3, 3.07, 1.15, 0.62, 0.62), 0.3 * k),
-          capFace(wallDiscPath(-3, 3.08, 1.15, 0.24, 0.24), 0.4 * k),
-        ];
-        for (let i = 0; i < 8; i += 1) {
-          const t = (i / 8) * Math.PI * 2;
-          const p1 = fr.pt(t - 0.16, 1.5);
-          const p2 = fr.pt(t + 0.16, 1.5);
-          const p3 = fr.pt(t + 0.1, 2.05);
-          const p4 = fr.pt(t - 0.1, 2.05);
-          g.push(topFace(
-            `M${p1[0]} ${p1[1]} L${p2[0]} ${p2[1]} L${p3[0]} ${p3[1]} L${p4[0]} ${p4[1]} Z`,
-            0.3 * k,
-          ));
+      /* 앞 톱니바퀴(재지적: 상자에 가려지고 평면 같음) — 벽 데칼이 아니라 별채 앞에
+         비껴 선 입체 기어: 톱니 실루엣 고리 두 장(뒤·앞 판)을 테 띠로 봉합하고 축
+         원판을 박는다. 제 깊이를 달아 앞을 보면 상자 위, 돌아서면 상자 뒤로 들어간다. */
+      ...((): ShapeFace[] => {
+        const gearRing = (y: number): [number, number, number][] => {
+          const pts: [number, number, number][] = [];
+          for (let i = 0; i < 8; i += 1) {
+            const base = (i / 8) * Math.PI * 2;
+            for (const [da, rr] of [[-0.24, 0.95], [-0.15, 1.3], [0.15, 1.3], [0.24, 0.95]] as const) {
+              pts.push([-3 + Math.cos(base + da) * rr, y, 1.35 + Math.sin(base + da) * rr]);
+            }
+          }
+          return pts;
+        };
+        const backP = gearRing(3.18);
+        const frontP = gearRing(3.5);
+        const g: ShapeFace[] = [bodyFace(polyPath3(backP)), sideFace(polyPath3(backP), 0.22)];
+        for (let i = 0; i < backP.length; i += 1) {
+          const j = (i + 1) % backP.length;
+          g.push(bodyFace(polyPath3([backP[i], backP[j], frontP[j], frontP[i]])));
         }
-        return tagKey(g, depthNow(-3, 1.6) + 1.6);
-      })() : []),
+        const fd = polyPath3(frontP);
+        g.push(bodyFace(fd), topFace(fd, 0.12));
+        g.push(capFace(wallDiscPath(-3, 3.51, 1.35, 0.34, 0.34), 0.4));
+        return tagKey(g, depthNow(-3, 3.35) + 0.5);
+      })(),
       // 총알 기둥 무리.
       ...cylinderFaces3(-2.9, -2.6, 0.75, 3.6),
       ...domeFaces3(-2.9, -2.6, 0.75, 0.7, 3.6),
@@ -2373,24 +2387,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       capFace(polyPath3([[-0.4, 1.86, 7], [0.4, 1.86, 7], [0.35, 1.86, 6.6], [-0.35, 1.86, 6.6]]), 0.4),
       // 핵심 포인트(지적: 훨씬 길게) — 몸 아래로 낮게 매달린 긴 포신.
       ...hornFaces(0, -0.9, 5.3, 0, -1.1, 3.3, 0.26),
-      /* 막힌 원통 막대(재지적: 뚫린 원통형이 이상함) — 관 대신 양끝이 둥근 캡슐 실루엣
-         하나로 그린다. */
-      ...((): ShapeFace[] => {
-        const [ax2, ay2] = project(0, -3.4, 2.8);
-        const [bx2, by2] = project(0, 1.8, 2.8);
-        const dx2 = bx2 - ax2;
-        const dy2 = by2 - ay2;
-        const L = Math.hypot(dx2, dy2) || 1;
-        const nx2 = (-dy2 / L) * 0.4;
-        const ny2 = (dx2 / L) * 0.4;
-        const d = `M${ax2 + nx2} ${ay2 + ny2} L${bx2 + nx2} ${by2 + ny2}`
-          + ` A0.4 0.36 0 0 1 ${bx2 - nx2} ${by2 - ny2} L${ax2 - nx2} ${ay2 - ny2}`
-          + ` A0.4 0.36 0 0 1 ${ax2 + nx2} ${ay2 + ny2} Z`;
-        return tagKey(
-          [bodyFace(d), sideFace(`M${ax2} ${ay2} L${bx2} ${by2} L${bx2 - nx2} ${by2 - ny2} L${ax2 - nx2} ${ay2 - ny2} Z`, 0.2)],
-          (depthNow(0, -3.4) + depthNow(0, 1.8)) / 2 + Math.min(0.8, Math.abs(depthNow(0, -3.4) - depthNow(0, 1.8)) / 2),
-        );
-      })(),
+      /* 막힌 원통 막대(재재지적) — 손 캡슐 대신 rodFaces: 축 정렬 끝 타원이라 어느
+         요잉에서도 끝이 안 물린다. */
+      ...rodFaces(0, -3.4, 2.8, 0, 1.8, 2.8, 0.8),
     ];
   },
   /* 배틀크루저(전면 단순화 — 지적: 가는 붐·캡슐 조합이 조각나 보임) — 전부 몸에 붙은
@@ -2790,13 +2789,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...tagKey(boxFaces3(0, 0.2, 5.6, 4.4, 2.6), depthNow(0, 0.2)),
       /* 지붕 부품은 붙박이 큰 키(지적: 받침 판·기둥·접시 앞뒤가 요잉 따라 어긋남) —
          지붕 규칙: 받침 위 얹힘은 어떤 각에서도 받침 뒤로 못 가게 30대 키를 못 박는다. */
-      ...tagKey(cylinderFaces3(0.3, -0.4, 0.5, 1.6, 2.6), 30),
+      ...tagKey(cylinderFaces3(0.3, -0.4, 0.5, 1.6, 2.6), 24 + depthNow(0.3, -0.4)),
       ...tagKey([
         bodyFace(groundEllipse(dx3, dy3, 2, 1)),
         topFace(groundEllipse(dx3, dy3, 1.5, 0.7), 0.2),
         capFace(groundEllipse(dx3, dy3, 0.4, 0.22), 0.35),
-      ], 31),
-      ...tagKey(hornFaces(0.3, -0.4, 5.2, 0.7, 0.3, 6.8, 0.2), 32),
+      ], 26 + depthNow(0.3, -0.4)),
+      ...tagKey(hornFaces(0.3, -0.4, 5.2, 0.7, 0.3, 6.8, 0.2), 28 + depthNow(0.5, 0)),
     ];
   },
   /* 핵 사일로(요청) — 받침 위 둥근 사일로 통과 돔 뚜껑, 해치 씸. */
@@ -2804,13 +2803,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 받침 슬래브는 중심 깊이만(지적: 애드온 바닥이 위 부품을 덮음).
     ...tagKey(boxFaces3(0, 0.2, 5.6, 4.4, 1.6), depthNow(0, 0.2)),
     // 지붕 규칙(지적: 받침 판과 통·돔 순서) — 얹힘 부품은 붙박이 큰 키.
-    ...tagKey(cylinderFaces3(0, 0, 2.3, 2.4, 1.6), 30),
+    ...tagKey(cylinderFaces3(0, 0, 2.3, 2.4, 1.6), 24 + depthNow(0, 0)),
     ...tagKey([
       ...domeFaces3(0, 0, 2.3, 1.5, 4),
       capFace(discPath3(0, 0, 4.05, 1.6), 0.22),
       topFace(discPath3(0, 0, 5.1, 0.75), 0.3),
       capFace(discPath3(0, 0, 5.13, 0.4), 0.35),
-    ], 31),
+    ], 26 + depthNow(0, 0)),
   ],
   /* 머신 샵(애드온, 요청: 부속건물 모델링) — 낮은 작업동 + 왼뒤 굴뚝 + 오른앞 부속함,
      앞면 셔터 문 씸. */
@@ -2823,8 +2822,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...tagKey([
       ...cylinderFaces3(-1.6, -1.2, 0.6, 2, 3),
       capFace(discPath3(-1.6, -1.2, 5.05, 0.6), 0.4),
-    ], 30),
-    ...tagKey(boxFaces3(1.6, 1.2, 2.2, 1.6, 1, 3), 31),
+    ], 24 + depthNow(-1.6, -1.2)),
+    ...tagKey(boxFaces3(1.6, 1.2, 2.2, 1.6, 1, 3), 24 + depthNow(1.6, 1.2)),
   ],
   /* 컨트롤 타워(애드온, 요청) — 받침 위 높은 관제탑 + 꼭대기 유리 띠 + 안테나. */
   ctower: () => [
@@ -2837,7 +2836,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...tagKey([
       ...cylinderFaces3(0.9, -0.6, 0.18, 2.2, 6.6),
       topFace(discPath3(0.9, -0.6, 8.8, 0.4), 0.4),
-    ], 30),
+    ], 24 + depthNow(0.9, -0.6)),
   ],
   /* 코버트 옵스(애드온, 요청) — 어두운 지붕의 첩보동 + 감시 안테나 둘. */
   covert: () => [
@@ -2848,11 +2847,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...tagKey([
       ...cylinderFaces3(-1.5, -0.8, 0.24, 2.2, 3),
       capFace(discPath3(-1.5, -0.8, 5.25, 0.5), 0.4),
-    ], 30),
+    ], 24 + depthNow(-1.5, -0.8)),
     ...tagKey([
       ...cylinderFaces3(1.7, 0.6, 0.24, 1.5, 3),
       capFace(discPath3(1.7, 0.6, 4.55, 0.4), 0.4),
-    ], 31),
+    ], 24 + depthNow(1.7, 0.6)),
   ],
   /* 피직스 랩(애드온, 요청) — 연구동 위 관측 돔 + 오른앞 배기 원통. */
   physlab: () => [
@@ -2862,8 +2861,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...tagKey([
       ...domeFaces3(0, -0.2, 1.9, 1.6, 2.4),
       capFace(discPath3(0, -0.2, 2.45, 1.9), 0.2),
-    ], 30),
-    ...tagKey(cylinderFaces3(2, 1.4, 0.35, 1.2, 2.4), 31),
+    ], 24 + depthNow(0, -0.2)),
+    ...tagKey(cylinderFaces3(2, 1.4, 0.35, 1.2, 2.4), 24 + depthNow(2, 1.4)),
   ],
   /* ── 공사 표현 공용 셋(요청: 아이콘 대신 모델) ───────────────────────────── */
   /* 저그 고치 — 크립 위 통통한 번데기(재생 쪽 CSS가 바운스시킨다). */
@@ -3816,6 +3815,50 @@ const pathOf = (d: string): Path2D => {
   if (!p) { p = new Path2D(d); PATH2D_CACHE.set(d, p); }
   return p;
 };
+/* ── 유닛 스프라이트 캐시(수리·지적: 캔버스 전환 뒤 프레임 뚝뚝) — 병목은 프레임마다
+   유닛 하나에 면 8~20장을 '그림자 블러를 켠 채' fill하는 것: 수백 유닛이면 프레임당
+   수천 번의 가우시안 블러 합성이라 PC에서도 버벅였다. 같은 (종류·방향·시각·색·크기)
+   조합은 한 번만 오프스크린 캔버스에 굽고, 프레임에선 drawImage 한 번으로 찍는다.
+   줌 중엔 크기 양자화 칸이 바뀌며 다시 굽지만 멈추면 전부 캐시 적중이다. */
+const SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number }>();
+function unitSprite(
+  op: UnitDrawOp, pxq: number, B: number, zq: number, shadow: boolean,
+): { cv: HTMLCanvasElement; pad: number; l: number } | null {
+  const rotB = op.rotDeg !== undefined
+    ? ((Math.round(op.rotDeg / 22.5) * 22.5) % 360 + 360) % 360 : -1;
+  const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
+  const key = `${op.kind}|${rotB}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}`
+    + `|${op.color}|${pxq}|${B.toFixed(2)}|${shadow ? zq : 0}`;
+  const hit = SPRITE_CACHE.get(key);
+  if (hit) return hit;
+  const { faces } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
+  if (!faces) return null;
+  const pad = shadow ? Math.ceil(2 + 2.5 * zq) : 2;
+  const l = pxq + pad * 2;
+  const cv = document.createElement("canvas");
+  cv.width = Math.max(1, Math.ceil(l * B));
+  cv.height = cv.width;
+  const c2 = cv.getContext("2d");
+  if (!c2) return null;
+  c2.setTransform(B, 0, 0, B, 0, 0);
+  if (shadow) {
+    c2.shadowColor = "rgba(0, 0, 0, 0.6)";
+    c2.shadowOffsetY = zq;
+    c2.shadowBlur = 1.5 * zq;
+  }
+  c2.translate(pad, pad);
+  c2.scale(pxq / 16, pxq / 16);
+  for (const [d, o, fill] of faces) {
+    c2.globalAlpha = o;
+    c2.fillStyle = fill ?? op.color;
+    c2.fill(pathOf(d));
+  }
+  // 무한히 크지 않게 — 색·크기 조합이 쌓이면 통째로 비운다(다음 프레임에 필요분만 재적재).
+  if (SPRITE_CACHE.size > 700) SPRITE_CACHE.clear();
+  const entry = { cv, pad, l };
+  SPRITE_CACHE.set(key, entry);
+  return entry;
+}
 function UnitLayer({ ops, zoom, pan }: {
   ops: UnitDrawOp[]; zoom: number; pan: { x: number; y: number };
 }) {
@@ -3851,6 +3894,8 @@ function UnitLayer({ ops, zoom, pan }: {
     // 확대·팬이 실린 화면 픽셀로 푼다.
     const zx = (f: number): number => (f - 0.5) * cw * zoom + cw / 2 + pan.x;
     const zy = (f: number): number => (f - 0.5) * ch * zoom + ch / 2 + pan.y;
+    // 그림자 굽기용 줌 양자화 — 스프라이트 키가 줌마다 갈리지 않게 반 칸 단위.
+    const zq = Math.max(0.5, Math.round(zoom * 2) / 2);
     const sorted = [...ops].sort((a, b) => a.z - b.z);
     for (const op of sorted) {
       const sx = zx(op.fx);
@@ -3924,9 +3969,25 @@ function UnitLayer({ ops, zoom, pan }: {
         ctx.fill();
         ctx.restore();
       }
-      // 스팬의 가운데 앵커 + 발끝 띄움(translateY(-24%))을 그대로 재현한다.
+      /* 스프라이트로 찍는다(수리: 프레임 뚝뚝) — 면 낱장 fill 대신 구운 판 한 장.
+         크기는 2px 칸으로 양자화해 캐시를 맞추고, 블릿에서 잔차 배율을 입힌다. */
+      const pxq = Math.max(4, Math.round(px / 2) * 2);
+      const spr = unitSprite(op, pxq, B, zq, !(op.noShadow || hover));
       ctx.translate(sx, sy - px * 0.24 - lift);
       if (rot) ctx.rotate((rot * Math.PI) / 180);
+      if (spr) {
+        const k = px / pxq;
+        ctx.shadowColor = "transparent";
+        ctx.globalAlpha = op.alpha;
+        ctx.drawImage(
+          spr.cv,
+          -(spr.pad + pxq / 2) * k, -(spr.pad + pxq / 2) * k,
+          spr.l * k, spr.l * k,
+        );
+        ctx.restore();
+        continue;
+      }
+      // 스프라이트를 못 구우면 예전 직접 그리기로.
       ctx.scale(px / 16, px / 16);
       ctx.translate(-8, -8);
       for (const [d, o, fill] of faces) {
