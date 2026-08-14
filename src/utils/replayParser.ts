@@ -1109,15 +1109,14 @@ const RESOURCE_CLUSTER_MAX = 40;
 /** 미네랄 밭·가스를 가까운 것끼리 묶어 자원 지대로 만든다 — 낱개를 다 그리면 노이즈라
  *  '어디에 자원이 있나'만 남긴다. 좌표 단위는 타일(screp은 타일×32라 32로 나눈다). */
 function clusterResources(md: ScrepResult["MapData"]): [number, number, 0 | 1][] {
-  type P = { x: number; y: number; gas: boolean };
+  /* 가스는 군집에 안 삼킨다(지적: 가스가 10개면 10개 다 붙어야 — 미네랄 밭과 한
+     지대로 묶여 지대당 모델 하나만 남아 간헐천 두엇만 그려졌다). 미네랄만 밭으로
+     묶고, 간헐천은 제 자리마다 낱개 항목으로 내보낸다. */
+  type P = { x: number; y: number };
   const pts: P[] = [];
-  for (const m of md?.MineralFields ?? []) pts.push({ x: m.X / 32, y: m.Y / 32, gas: false });
-  for (const g of md?.Geysers ?? []) {
-    if (g.Point) pts.push({ x: g.Point.X / 32, y: g.Point.Y / 32, gas: true });
-  }
-  if (pts.length === 0) return [];
+  for (const m of md?.MineralFields ?? []) pts.push({ x: m.X / 32, y: m.Y / 32 });
   const r2 = RESOURCE_CLUSTER_RADIUS * RESOURCE_CLUSTER_RADIUS;
-  const clusters: { xs: number; ys: number; n: number; gas: boolean }[] = [];
+  const clusters: { xs: number; ys: number; n: number }[] = [];
   for (const p of pts) {
     // 이미 있는 지대 중 가까운 곳에 넣고, 없으면 새 지대를 연다. 지대 중심은 넣을 때마다
     // 갱신하지만 이미 넣은 점을 다시 옮기진 않는다(어림 군집이면 충분하다).
@@ -1127,17 +1126,26 @@ function clusterResources(md: ScrepResult["MapData"]): [number, number, 0 | 1][]
       const dy = c.ys / c.n - p.y;
       if (dx * dx + dy * dy <= r2) { hit = c; break; }
     }
-    if (hit) { hit.xs += p.x; hit.ys += p.y; hit.n += 1; hit.gas = hit.gas || p.gas; }
-    else clusters.push({ xs: p.x, ys: p.y, n: 1, gas: p.gas });
+    if (hit) { hit.xs += p.x; hit.ys += p.y; hit.n += 1; }
+    else clusters.push({ xs: p.x, ys: p.y, n: 1 });
   }
-  return clusters
+  const zones: [number, number, 0 | 1][] = clusters
     .sort((a, b) => b.n - a.n)
     .slice(0, RESOURCE_CLUSTER_MAX)
     .map((c) => [
       Math.round((c.xs / c.n) * 10) / 10,
       Math.round((c.ys / c.n) * 10) / 10,
-      c.gas ? 1 : 0,
+      0,
     ]);
+  for (const g of md?.Geysers ?? []) {
+    if (!g.Point) continue;
+    zones.push([
+      Math.round((g.Point.X / 32) * 10) / 10,
+      Math.round((g.Point.Y / 32) * 10) / 10,
+      1,
+    ]);
+  }
+  return zones;
 }
 
 export async function parseReplayFile(file: File): Promise<ParsedReplay> {

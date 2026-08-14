@@ -4697,7 +4697,8 @@ export default function ReplayMotionPlayer({
       const ox = e.clientX - (rect.left + rect.width / 2);
       const oy = e.clientY - (rect.top + rect.height / 2);
       setZoom((z) => {
-        const nz = Math.min(5, Math.max(1, z * (e.deltaY < 0 ? 1.2 : 1 / 1.2)));
+        // 상한 5 → 10(요청: PC 확대폭 2배) — 휠 줌도 더 깊이 들어간다.
+        const nz = Math.min(10, Math.max(1, z * (e.deltaY < 0 ? 1.2 : 1 / 1.2)));
         setPan((p) => {
           if (nz <= 1) return { x: 0, y: 0 };
           const k = nz / z;
@@ -5972,7 +5973,9 @@ export default function ReplayMotionPlayer({
             || gasBuildings.some((g) => Math.hypot(g.x - res[0], g.y - res[1]) <= 6);
           const mkK = pitchK(res[1]);
           const [fx, fy] = posFrac(res[0], res[1]);
-          const wTiles = gasSpot ? 3.6 : 3.2;
+          /* 간헐천은 두 칸 폭(지적: 한 칸처럼 작았다) — 미네랄 밭(3.2)의 두 배로.
+             색도 제 기본색(지적): 미네랄은 반투명 파란 수정, 가스는 회갈색 바위. */
+          const wTiles = gasSpot ? 6.4 : 3.2;
           unitOps.push({
             fx, fy,
             z: pitched ? 990 + Math.round(res[1] * 80) : 900 + ri,
@@ -5982,8 +5985,8 @@ export default function ReplayMotionPlayer({
             wFrac: (wTiles / grid.width) * mkK,
             hFrac: ((wTiles * 0.75) / grid.width) * mkK,
             boxFit: "meet", fitWidth: true,
-            color: gasSpot ? "#93b06f" : "#8fb9e8",
-            alpha: 1, noShadow: true,
+            color: gasSpot ? "#8f8274" : "#8fb9e8",
+            alpha: gasSpot ? 1 : 0.75, noShadow: true,
           });
           return null;
         })}
