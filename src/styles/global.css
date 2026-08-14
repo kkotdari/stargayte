@@ -13036,9 +13036,10 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   animation: scr-weld 0.9s linear infinite;
 }
 @keyframes scr-weld {
-  0%, 54% { opacity: 0; }
-  58%, 74% { opacity: 1; }
-  80%, 100% { opacity: 0; }
+  /* 켜진 창을 넓힌다(지적: 동시에 3~5개) — 절반 넘게 켜져 있어 다섯 중 서넛이 늘 보인다. */
+  0%, 26% { opacity: 0; }
+  30%, 86% { opacity: 1; }
+  92%, 100% { opacity: 0; }
 }
 @keyframes scr-spark-a {
   0% { opacity: 0; transform: translate(0, 0); }
@@ -13217,6 +13218,11 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   80% { opacity: 0.9; }
   100% { opacity: 0; }
 }
+
+/* v2 전투 효과 축소(지적: 트레이서 너무 크고 두꺼워) — 개체 하나하나에 달리므로 부대
+   마커 시절 크기의 6할로 줄인다. */
+.scr-v2fx .scr-motion-tracer { width: 1px; height: 6px; margin-left: -0.5px; }
+.scr-v2fx .scr-motion-puff { transform: scale(0.7); }
 
 /* ── 미니맵 핑(요청: 클릭도 기록 — v2 트랙) — 찍은 사람 색(currentColor)의 물결 고리가
    1초 주기로 퍼진다. 표시 창(3초)은 재생 쪽이 자르고 여기는 반복만 한다. ── */

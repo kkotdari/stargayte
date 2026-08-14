@@ -3632,23 +3632,6 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         topFace(polyPath3(ring(0.5)), 0.5),
       ], depthNow(cxL, cyL));
     };
-    /* 흰 가시(공식 컨셉) — 풍선 윗면 여기저기서 바깥으로 솟는 짧은 가시. 밝은 덮개를
-       얹어 몸색과 갈라 희게 읽힌다. 모델 좌표라 요잉을 따라 돌고, 제 깊이를 달아
-       뒤로 간 가시는 풍선이 가린다. */
-    const spike = (ux: number, uy: number, uz: number): ShapeFace[] => {
-      const L = Math.hypot(ux, uy, uz) || 1;
-      const nx2 = ux / L;
-      const ny2 = uy / L;
-      const nz2 = uz / L;
-      const faces = hornFaces(
-        nx2 * 2.6, ny2 * 2.6, 5.2 + nz2 * 2.45,
-        nx2 * 3.8, ny2 * 3.8, 5.2 + nz2 * 3.6, 0.4,
-      );
-      return tagKey(
-        [...faces, ...faces.map(([d]) => topFace(d, 0.5))],
-        depthNow(nx2 * 2.6, ny2 * 2.6) + 0.6,
-      );
-    };
     /* 등의 가스 주머니(공식 컨셉: 뒤 위에 얹힌 큰 광택 물집) — 큰 것 하나와 작은 것
        하나. 광 하이라이트를 크게 얹어 유리알처럼 반들거린다. */
     const [g1x, g1y] = project(1.4, -1.8, 6.2);
@@ -3658,25 +3641,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...lens(-1),
       ...lens(1),
       // 혹 완전 축소(재지적: 머리 혹 줄이기) — 살짝 도드라지는 정도만.
-      ...tagKey([
-        bodyFace(groundEllipse(g1x, g1y, 0.95, 0.85)),
-        topFace(groundEllipse(g1x - 0.28, g1y - 0.3, 0.42, 0.3), 0.5),
-      ], depthNow(1.4, -1.8)),
-      ...tagKey([
-        bodyFace(groundEllipse(g2x, g2y, 0.5, 0.45)),
-        topFace(groundEllipse(g2x - 0.13, g2y - 0.16, 0.22, 0.16), 0.5),
-      ], depthNow(-0.3, -2.3)),
-      ...spike(-1.2, -0.5, 1),
-      ...spike(0.1, -1.2, 1.1),
-      ...spike(1.3, -0.2, 1),
-      ...spike(-0.5, 0.8, 1.1),
-      ...spike(0.9, 1, 0.9),
-      ...spike(-1.8, 0.2, 0.5),
-      // 풍선 축소(재요청: 3.6 → 3.0) — 몸도 제 깊이(가운데 0)로.
-      ...tagKey([
-        bodyFace(groundEllipse(cx, cy, 3, 2.85)),
-        topFace(groundEllipse(cx - 1, cy - 1.85, 1.5, 0.92), 0.35),
-      ], depthNow(0, 0)),
+      // 광택 제거(지적) — 혹은 몸판만, 반들거림 없이.
+      ...tagKey([bodyFace(groundEllipse(g1x, g1y, 0.95, 0.85))], depthNow(1.4, -1.8)),
+      ...tagKey([bodyFace(groundEllipse(g2x, g2y, 0.5, 0.45))], depthNow(-0.3, -2.3)),
+      // 풍선 축소(재요청: 3.6 → 3.0) — 몸도 제 깊이(가운데 0)로. 광택 하이라이트는
+      // 걷었다(지적: 광택 제거).
+      ...tagKey([bodyFace(groundEllipse(cx, cy, 3, 2.85))], depthNow(0, 0)),
     ];
   },
   /* 드랍십(실물 참고) — 양옆 굵은 엔진 포드(앞 단면이 둥글게 보인다) + 가운데 각진
@@ -4046,6 +4016,19 @@ const WORKER_KIND_SET = new Set(["scv", "probe", "drone"]);
 /** ShapeIcon의 면 목록 결정을 떼어 낸 것 — 캔버스 유닛 층(UnitLayer)이 같은 판(같은
  *  굽기 캐시)을 그대로 그리려면 SVG 밖에서도 이 결정을 불러야 한다. 결과가 같은 함수
  *  하나이므로 SVG와 캔버스의 픽셀이 같은 도형에서 나온다(품질 동일의 근거). */
+/* 본 게임과 같은 요잉(지적: 45도 시계방향) — 건물 모델의 기본 방향을 원작 아이소메트릭
+   느낌으로 튼다. 원작 스프라이트 방향이 다른 모델(서플라이 디포 등)은 아래 보정표에
+   도(°)를 더한다 — 값은 지적받는 대로 채운다. */
+const BUILDING_BASE_YAW = 45;
+const MODEL_YAW_TWEAK: Record<string, number> = {};
+const buildingYawOf = (kind: string): number =>
+  BUILDING_BASE_YAW + (MODEL_YAW_TWEAK[kind] ?? 0);
+
+/* 음영 증폭(지적: 모델들 그림자가 너무 없어 — 갤러리보다 더 진하게) — 흑·백 덮개 면의
+   불투명도를 1.45배로 키운다. 몸판(덮개색 없는 면)은 그대로라 색은 안 변하고 그늘·광만
+   뚜렷해진다. */
+const shadeBoost = (o: number, fill?: string): number => (fill ? Math.min(0.85, o * 1.45) : o);
+
 function resolveShapeFaces(
   kind: string, rotDeg?: number, flat?: boolean, viewYaw?: number, pitchView?: boolean,
 ): { faces: ShapeFace[] | undefined; rot: number } {
@@ -4088,6 +4071,8 @@ type UnitDrawOp = {
   fx: number; fy: number;
   /** 화가 순서 — 기존 zIndex 공식 값 그대로. */
   z: number;
+  /** 발밑 접지 그림자(지적: 건물·지상 유닛에도 옅게) — 아주 작은 타원만. */
+  groundShadow?: boolean;
   kind: string; rotDeg?: number; viewYaw?: number; flat?: boolean; pitch?: boolean;
   /** 도형 한 변(px) — 글자 크기 × 도형 배수(1.15/1.7) × 2배 토글 × 깊이 배율까지 포함. */
   sizePx: number;
@@ -4152,7 +4137,7 @@ function unitSprite(
   c2.translate(pad, pad);
   c2.scale(pxq / 16, pxq / 16);
   for (const [d, o, fill] of faces) {
-    c2.globalAlpha = o;
+    c2.globalAlpha = shadeBoost(o, fill);
     c2.fillStyle = fill ?? op.color;
     c2.fill(pathOf(d));
   }
@@ -4169,10 +4154,10 @@ function buildingSprite(
   op: UnitDrawOp, sideQ: number, B: number,
 ): { cv: HTMLCanvasElement; pad: number; l: number; side: number } | null {
   const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
-  const key = `${op.kind}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}|${op.color}|${sideQ}|${B.toFixed(2)}`;
+  const key = `${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}|${op.color}|${sideQ}|${B.toFixed(2)}`;
   const hit = BLD_SPRITE_CACHE.get(key);
   if (hit) return hit;
-  const { faces } = resolveShapeFaces(op.kind, undefined, op.flat, op.viewYaw, op.pitch);
+  const { faces } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
   if (!faces) return null;
   const pad = Math.ceil(sideQ * 0.15) + 2;
   const l = sideQ + pad * 2;
@@ -4186,7 +4171,7 @@ function buildingSprite(
   c2.scale(sideQ / 16, sideQ / 16);
   c2.translate(-8, -16);
   for (const [d, o, fill] of faces) {
-    c2.globalAlpha = o;
+    c2.globalAlpha = shadeBoost(o, fill);
     c2.fillStyle = fill ?? op.color;
     c2.fill(pathOf(d));
   }
@@ -4237,7 +4222,9 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
     // 확대·팬이 실린 화면 픽셀로 푼다.
     const zx = (f: number): number => (f - 0.5) * cw * zoom + cw / 2 + pan.x;
     const zy = (f: number): number => (f - 0.5) * ch * zoom + ch / 2 + pan.y;
-    const sorted = [...ops].sort((a, b) => a.z - b.z);
+    /* 공중은 늘 위층(지적: 공중 유닛이 뒤·아래 건물에 가려짐) — 화가 순서에서 공중
+       유닛을 통째로 지상·건물 위로 올린다. 공중끼리는 제 z 순서 그대로다. */
+    const sorted = [...ops].sort((a, b) => (a.z + (a.air ? 100000 : 0)) - (b.z + (b.air ? 100000 : 0)));
     /* ── 겹침 불가 원칙(요청: 유닛·건물은 겹쳐지지 않는다, 공중은 예외) — 그리기 전에
        지상 유닛 마커를 서로·건물과 겹치지 않게 밀어낸다. 화면 픽셀 좌표에서 2회 이완:
        ① 건물 상자 안에 든 유닛은 가장 가까운 변 밖으로, ② 유닛끼리는 반지름 합의 0.8
@@ -4359,6 +4346,18 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         // 건물 상자 — 스팬의 % 폭 + aspectRatio(폭 기준)를 그대로 픽셀로 푼 것.
         const wPx = op.wFrac * cw * zoom;
         const hPx = op.hFrac * cw * zoom;
+        /* 접지 그림자(지적: 건물에도 옅게, 단 떠 보이지 않게 아주 좁게) — 발자국
+           바닥선에 얇은 타원 하나. */
+        if (op.groundShadow) {
+          ctx.save();
+          ctx.shadowColor = "transparent";
+          ctx.globalAlpha = op.alpha * 0.16;
+          ctx.fillStyle = "#000";
+          ctx.beginPath();
+          ctx.ellipse(sx, sy + hPx * 0.46, wPx * 0.4, Math.max(1.5, wPx * 0.08), 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
         if (op.boxFit === "fill") {
           // 맨 네모(전용 도형 없는 건물) — 상자를 그대로 채운다(.scr-motion-sq).
           ctx.globalAlpha = op.alpha;
@@ -4390,7 +4389,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
           ctx.scale(s, s);
           ctx.translate(-8, -16);
           for (const [d, o, fill] of faces) {
-            ctx.globalAlpha = op.alpha * o;
+            ctx.globalAlpha = op.alpha * shadeBoost(o, fill);
             ctx.fillStyle = fill ?? op.color;
             ctx.fill(pathOf(d));
           }
@@ -4411,11 +4410,23 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         /* 떠다니는 지상 유닛(일꾼·벌처·아콘류)은 겨우 발밑만 떠 있다(지적: 그림자가
            너무 크고 진해) — 높이 나는 공중 유닛보다 작고 옅은 타원. */
         // 그림자 살짝 축소(지적) — 높이 나는 만큼 발밑 그림자는 작고 옅게.
-        const shw = px * (op.air ? 0.26 : 0.2);
+        const shw = px * (op.air ? 0.26 : 0.16);
         ctx.globalAlpha = op.alpha * (op.air ? 0.22 : 0.16);
         ctx.fillStyle = "#000";
+        // 떠다니는 지상 유닛은 그림자를 발끝에 바짝(지적: 너무 높이 떠 보임 — 몸과
+        // 그림자의 틈이 곧 뜬 높이로 읽힌다) — 살짝만 뜬 느낌으로.
+        ctx.ellipse(sx, sy + px * (op.air ? 0.06 : 0.24), shw, shw * 0.4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      } else if (!op.air && UNIT_KIND_SET.has(op.kind)) {
+        /* 지상 유닛 접지 그림자(지적: 옅게, 떠 보이지 않게 아주 작은 영역만) — 발끝
+           바로 밑의 짧은 타원. */
+        ctx.save();
+        ctx.shadowColor = "transparent";
+        ctx.globalAlpha = op.alpha * 0.15;
+        ctx.fillStyle = "#000";
         ctx.beginPath();
-        ctx.ellipse(sx, sy + px * 0.06, shw, shw * 0.4, 0, 0, Math.PI * 2);
+        ctx.ellipse(sx, sy + px * 0.28, px * 0.3, px * 0.1, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -4441,7 +4452,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
       ctx.scale(px / 16, px / 16);
       ctx.translate(-8, -8);
       for (const [d, o, fill] of faces) {
-        ctx.globalAlpha = op.alpha * o;
+        ctx.globalAlpha = op.alpha * shadeBoost(o, fill);
         ctx.fillStyle = fill ?? op.color;
         ctx.fill(pathOf(d));
       }
@@ -4898,6 +4909,10 @@ export default function ReplayMotionPlayer({
      자리를 기억해, 적이 곁에 있는 동안 거기 세운다. 적이 사라지면(죽거나 멀어지면)
      기억을 걷고 다시 걷는다. 시간을 되감으면(t가 기억보다 앞) 기억을 버린다. */
   const engageHoldRef = useRef(new Map<string, { x: number; y: number; t0: number; tLast: number }>());
+  /* 교전으로 멈춘 시간의 합(지적: 어택한 경우 교전이 끝나고 살아 있으면 어택 지점까지
+     이동해야 — 다른 명령으로 덮이지 않는 한) — 멈춘 만큼 걸음 시계를 미뤄, 교전이
+     끝나면 순간이동 없이 멈춘 자리에서 이어 걷는다. */
+  const engageDelayRef = useRef(new Map<string, { delay: number; since: number }>());
   /* 초반 무명 개체의 폴백(지적: 일꾼밖에 없는데 저글링이 정찰 감) — 정체를 모르는
      개체는 그 사람의 '첫 전투 유닛이 태어난 시각' 전이면 일꾼으로, 뒤면 종족 보병으로
      그린다. 그 시각 전에는 저글링이 존재할 수 없다(뒤 스토리 제약). */
@@ -7103,18 +7118,19 @@ export default function ReplayMotionPlayer({
                       건물 번호 해시로 결정적이다. 크기는 타일 크기에 비례(재지적: 왜케
                       커 — 고정 px라 모바일의 작은 맵에선 막대가 건물만 했다). */}
                   {race2 === "테란" && (() => {
-                    /* 절반 크기(재재지적: 왜케 커) — 막대 대여섯 px가 아니라 일꾼
-                       발치의 불티 두어 px. 여섯 개만 좁게 튄다. */
-                    const ws = Math.max(0.35, ((mapRef.current?.clientWidth ?? 320) / grid.width) / 5);
-                    return [0, 1, 2, 3, 4, 5].map((k) => (
+                    /* 실선 불티(재재재지적: 아무리 봐도 로딩바 같다) — 굵은 막대 대신
+                       거의 실선(0.3px대)이고 짧은 선 다섯이 저마다 다른 박자로 튄다.
+                       켜져 있는 창을 넓혀 한순간에 3~5개가 함께 보인다. */
+                    const ws = Math.max(0.3, ((mapRef.current?.clientWidth ?? 320) / grid.width) / 5);
+                    return [0, 1, 2, 3, 4].map((k) => (
                       <span
                         key={k}
                         className="scr-bfx-weld"
                         style={{
-                          width: `${Math.max(0.4, 0.5 * ws).toFixed(1)}px`,
-                          height: `${((0.9 + ((i * 7 + k * 5) % 5) * 0.3) * ws).toFixed(1)}px`,
-                          transform: `rotate(${k * 60 + ((i * 13 + k * 29) % 30)}deg) translateY(${((0.9 + ((i + k * 3) % 3) * 0.6) * ws).toFixed(1)}px)`,
-                          animationDelay: `${((i * 3 + k * 7) % 9) / 10}s`,
+                          width: `${Math.max(0.3, 0.3 * ws).toFixed(1)}px`,
+                          height: `${((0.5 + ((i * 7 + k * 5) % 4) * 0.2) * ws).toFixed(1)}px`,
+                          transform: `rotate(${k * 72 + ((i * 13 + k * 29) % 34)}deg) translateY(${((0.6 + ((i + k * 3) % 3) * 0.45) * ws).toFixed(1)}px)`,
+                          animationDelay: `${((i * 3 + k * 7) % 10) / 20}s`,
                         }}
                       />
                     ));
@@ -7125,6 +7141,9 @@ export default function ReplayMotionPlayer({
             if (shapeKind) {
               unitOps.push({
                 fx: fxF, fy: fyF, z, kind: shapeKind,
+                // 원작처럼 45도 시계방향 요잉(지적) + 모델별 보정표.
+                rotDeg: buildingYawOf(shapeKind),
+                groundShadow: true,
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
                 sizePx: 0, wFrac: wFrac * pulse, hFrac: hFrac * pulse, boxFit: "meet",
                 /* 전 건물 폭 기준(요청: 바닥을 발자국에, 높이는 제 비율로) — meet
@@ -7134,6 +7153,19 @@ export default function ReplayMotionPlayer({
                 fitWidth: true,
                 color, alpha, noShadow: true,
               });
+              /* 애드온 연결 통로(지적: 본체와 잇는 방식 고민 — 원작 배치 참고) — 원작
+                 에서 부속건물은 본체 오른쪽 아래에 붙는다: 애드온 왼쪽 모서리에서 본체
+                 쪽으로 낮은 복도 판을 깐다. */
+              if (ADDONS.has(unit)) {
+                const mkA = pitchK(centerY);
+                const [lfx, lfy] = posFrac(centerX - fp2[0] / 2 - 0.5, centerY + fp2[1] * 0.18);
+                unitOps.push({
+                  fx: lfx, fy: lfy, z: z - 1, kind: "addonlink",
+                  viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
+                  sizePx: 0, wFrac: (1.4 / grid.width) * mkA, hFrac: (0.5 / grid.width) * mkA,
+                  boxFit: "fill", fitWidth: true, color, alpha: alpha * 0.85, noShadow: true,
+                });
+              }
               /* 방어 사격(재지적: 터렛은 골리앗 대공과 동일, 벙커는 안에 든 것 따라) —
                  사거리 안 적 마커가 있으면 건물에서도 트레이서가 나간다. 터렛은 공중
                  상대만 미사일(8타일), 벙커는 총알(6타일)에 임자가 파벳을 뽑아 뒀고 적이
@@ -7448,7 +7480,10 @@ export default function ReplayMotionPlayer({
             g.sec <= t && (g.gone === 0 || t < g.gone)
             && Math.hypot(g.x - res[0], g.y - res[1]) <= 4)) return null;
           // 고갈된 미네랄(요청)은 밭이 사라진다. 가스는 아래에서 색만 죽인다.
-          const depleted = (depleteAt.get(ri) ?? Infinity) <= t;
+          /* v2에서는 고갈 어림을 끈다(지적: 미네랄·간헐천에 모델 적용해야지 — 후반에
+             자원이 통째로 사라져 있었다). 고갈은 일꾼 수로 짐작한 v1 어림이라 인과
+             증거가 없다 — v2는 자원 모델을 늘 세워 둔다. */
+          const depleted = !entOn && (depleteAt.get(ri) ?? Infinity) <= t;
           if (!gasSpot && depleted) return null;
           const wTiles = gasSpot ? 6.4 : 2.4;
           unitOps.push({
@@ -8606,7 +8641,12 @@ export default function ReplayMotionPlayer({
           if (rp.length === 0 || t < rp[0][0]) return null;
           if (e.d !== null && t >= e.d + 1.2) return null;
           const team = teamOfRaw(e.raw);
-          const rawPos = posAt(rp, t, null);
+          const holdKey0 = `${e.raw}-v2e${ei}`;
+          // 교전으로 멈췄던 시간만큼 걸음 시계를 미룬다(위 engageDelayRef 주석).
+          const dmem = engageDelayRef.current.get(holdKey0);
+          const walkDelay = dmem && t >= dmem.since ? dmem.delay : 0;
+          if (dmem && t < dmem.since) engageDelayRef.current.delete(holdKey0);
+          const rawPos = posAt(rp, Math.max(rp[0][0], t - walkDelay), null);
           if (!rawPos) return null;
           const race = bases.find((b) => b.key === e.raw)?.race;
           const u = e.unit;
@@ -8629,10 +8669,12 @@ export default function ReplayMotionPlayer({
           for (let ai = e.atkAt.length - 1; ai >= 0; ai -= 1) {
             const [as2, atg] = e.atkAt[ai];
             if (as2 > t) continue;
-            if (t - as2 <= 30 && atg > 0) {
+            if (t - as2 <= 12 && atg > 0) {
               const tp = entPosByTag.get(atg);
               if (tp && tp.team !== (team ?? 0)) {
-                foe = { bx: tp.x, by: tp.y, bd: Math.hypot(tp.x - rawPos.x, tp.y - rawPos.y), air: tp.air };
+                const td = Math.hypot(tp.x - rawPos.x, tp.y - rawPos.y);
+                // 너무 먼 표적은 안 겨눈다(지적: 타겟팅 오인) — 이미 딴 데 간 옛 표적이다.
+                if (td <= ENGAGE_SIGHT_TILES * 1.6) foe = { bx: tp.x, by: tp.y, bd: td, air: tp.air };
               }
             }
             break;
@@ -8653,7 +8695,12 @@ export default function ReplayMotionPlayer({
               ? { ...rawPos, x: base.x + ((foe.bx - base.x) / gap) * pull, y: base.y + ((foe.by - base.y) / gap) * pull }
               : { ...rawPos, x: base.x, y: base.y };
           } else {
-            engageHoldRef.current.delete(holdKey);
+            const mem = engageHoldRef.current.get(holdKey);
+            if (mem && t >= mem.t0) {
+              // 교전이 막 끝났다 — 멈춘 시간을 걸음 지연에 넘겨 이어 걷게 한다.
+              engageDelayRef.current.set(holdKey, { delay: walkDelay + (mem.tLast - mem.t0), since: t });
+              engageHoldRef.current.delete(holdKey);
+            }
           }
           const [ax3, ay3] = [pos.x, pos.y];
           const [fx, fy] = posFrac(ax3, ay3);
@@ -8670,11 +8717,15 @@ export default function ReplayMotionPlayer({
               </span>
             );
           }
+          /* 러커 버로우(지적: 판정이 안 됨) — v1과 같은 규칙: 러커가 제자리(이동
+             없음)면 버로우로 보고 땅 구멍만 그린다. */
+          const burrowed = drawUnit === "Lurker" && !rawPos.moving;
           unitOps.push({
             fx, fy,
             z: pitched ? 1000 + Math.round(ay3 * 80) : 1000 + (ei % 137),
-            kind: isWorker ? workerKindOf(race) : unitMarkerKind(drawUnit, race),
-            rotDeg: headingOf(rp, pos, holdKey),
+            kind: burrowed ? "burrowhole"
+              : isWorker ? workerKindOf(race) : unitMarkerKind(drawUnit, race),
+            rotDeg: burrowed ? undefined : headingOf(rp, pos, holdKey),
             viewYaw: viewYawOf(ax3, ay3), flat: !pitched, pitch: pitched,
             sizePx: drawUnit === "" || isWorker ? unitGlyphPx(0, ay3) : unitPxOf(drawUnit, ay3),
             color: modeColor(e.raw, team),
@@ -8696,7 +8747,7 @@ export default function ReplayMotionPlayer({
           return (
             <span
               key={`v2fx-${ei}`}
-              className="scr-motion-army scr-motion-dot"
+              className="scr-motion-army scr-motion-dot scr-v2fx"
               style={{ ...posStyle(ax3, ay3), zIndex: 1310, ...glyphStyle(e.raw, team) }}
             >
               {atkDeg !== null && ATTACK_FX[fxUnit] && ATTACK_FX[fxUnit] !== "heal" && (

@@ -523,12 +523,21 @@ export function buildUnitTracks(
         let life = lifeOf(tag, pid, sec);
         if (from) life = markKind(life, from, sec);
         if (unitName) {
-          // 정체가 바뀌며 이어진다 — 해처리→레어는 같은 몸이라 생애를 가르지 않고
-          // 새 이름을 다수결에 얹는다(재생기는 마지막 이름을 쓴다).
-          life.kinds.set(unitName, (life.kinds.get(unitName) ?? 0) + 2);
-          life.bld = true;
+          /* 변태로 생애를 갈라 잇는다(지적: 크립 콜로니→성큰·스포어를 못 잡음 — 예전엔
+             새 이름을 표에 +2로 얹었는데, 콜로니 표와 2:2로 비겨 옛 이름이 이겼다).
+             콜로니 생애를 여기서 닫고 같은 태그·같은 자리로 새 정체의 생애를 연다 —
+             해처리→레어→하이브·스파이어→그레이터도 같은 길이다. */
+          const site = [...life.ev].reverse().find((v) => v[3] === 2 || v[3] === 5);
+          done.push(life);
+          alive.delete(tag);
+          const next = lifeOf(tag, pid, sec);
+          next.kinds.set(unitName, 1);
+          next.bld = true;
+          life.morphTo = next;
+          if (site) next.ev.push([Math.round(sec), site[1], site[2], 2]);
+        } else {
+          life.last = sec;
         }
-        pushEv(life, sec, -1, -1, 4);
       }
       continue;
     }
@@ -677,6 +686,37 @@ export function buildUnitTracks(
     if (!byTag.has(life.tag)) byTag.set(life.tag, []);
     byTag.get(life.tag)!.push(life);
   }
+  /* 전투 사망 뒤 스토리(지적: 전투 시뮬레이션 되는 거 맞아? 유닛들이 전혀 안 죽는데) —
+     개별로 찍힌 죽음(표적 공격·번호 재사용)만으로는 큰 전투의 대부분이 산 채로 남는다.
+     공격 명령이 뭉친 자리(전투)가 지나간 뒤로 증거가 하나도 없는 유닛은 그 전투에서
+     죽은 것으로 본다 — 마지막 자리 곁(6타일)에 적의 공격 명령이 셋 이상, 5초 넘게
+     이어졌을 때만이다(찌르기 한 번에 온 부대를 죽이지 않게). 죽는 시각은 전투 시작
+     에서 태그 해시만큼(0~8초) 흩어 우수수 쓰러지게 한다. */
+  const atkEvts: { sec: number; x: number; y: number; owner: number }[] = [];
+  for (const life of done) {
+    for (const v of life.ev) {
+      if (v[3] === 7) atkEvts.push({ sec: v[0], x: v[1], y: v[2], owner: life.owner });
+    }
+  }
+  atkEvts.sort((a, b) => a.sec - b.sec);
+  const teamOfPid = new Map(players.map((pl) => [pl.id, pl.id]));
+  void teamOfPid;
+  const battleDeathOf = (life: Life): number | null => {
+    let lastPt: UnitEv | null = null;
+    for (let i = life.ev.length - 1; i >= 0; i -= 1) {
+      if (life.ev[i][1] >= 0) { lastPt = life.ev[i]; break; }
+    }
+    if (!lastPt) return null;
+    const hits: number[] = [];
+    for (const a of atkEvts) {
+      if (a.owner === life.owner) continue;
+      if (a.sec < lastPt[0] - 2) continue;
+      if (a.sec > lastPt[0] + 240) break;
+      if (Math.hypot(a.x - lastPt[1], a.y - lastPt[2]) <= 6) hits.push(a.sec);
+    }
+    if (hits.length < 3 || hits[hits.length - 1] - hits[0] < 5) return null;
+    return hits[0] + 1 + (life.tag % 8);
+  };
   const ents: UnitEnt[] = [];
   let lives = 0;
   for (const [, list] of byTag) {
@@ -699,6 +739,10 @@ export function buildUnitTracks(
       } else if (next) {
         d = Math.max(life.last, Math.min(next.born, life.last + 120));
         dk = "tag";
+      }
+      if (d === null && !life.bld) {
+        const bd2 = battleDeathOf(life);
+        if (bd2 !== null) { d = bd2; dk = "atk"; }
       }
       if (next && d !== null && d > next.born) d = next.born;
       const race = raceOf.get(life.owner) ?? "";
