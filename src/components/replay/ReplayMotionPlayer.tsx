@@ -4354,7 +4354,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
           ctx.globalAlpha = op.alpha * 0.16;
           ctx.fillStyle = "#000";
           ctx.beginPath();
-          ctx.ellipse(sx, sy + hPx * 0.46, wPx * 0.4, Math.max(1.5, wPx * 0.08), 0, 0, Math.PI * 2);
+          ctx.ellipse(sx, sy + hPx * 0.48, wPx * 0.3, Math.max(1, wPx * 0.05), 0, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         }
@@ -4402,8 +4402,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
       const px = op.sizePx * zoom;
       /* 공중 유닛(요청: 높이 더 높이 + 바닥 그림자) — 발밑 자리에 그림자 타원을 깔고
          몸은 반 키만큼 위로 띄운다. 떠 있음이 땅 유닛과 한눈에 갈린다. */
-      // 더 높이(지적: 공중 유닛 높이 더 높게) — 0.55 → 0.85.
-      const lift = op.air ? px * 0.85 : 0;
+      // 더 높이(재지적: 지금의 2배 — 진짜 하늘에 뜬 느낌, 특히 오버로드) — 0.85 → 1.6.
+      const lift = op.air ? px * 1.6 : 0;
       if (hover) {
         ctx.save();
         ctx.shadowColor = "transparent";
@@ -4419,14 +4419,14 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         ctx.fill();
         ctx.restore();
       } else if (!op.air && UNIT_KIND_SET.has(op.kind)) {
-        /* 지상 유닛 접지 그림자(지적: 옅게, 떠 보이지 않게 아주 작은 영역만) — 발끝
-           바로 밑의 짧은 타원. */
+        /* 지상 유닛 접지 그림자(재지적: 전부 떠 있는 느낌 — 발이 그림자에 닿아야 하고
+           훨씬 작아야) — 발끝 자리에 딱 붙는 아주 작은 타원. */
         ctx.save();
         ctx.shadowColor = "transparent";
-        ctx.globalAlpha = op.alpha * 0.15;
+        ctx.globalAlpha = op.alpha * 0.12;
         ctx.fillStyle = "#000";
         ctx.beginPath();
-        ctx.ellipse(sx, sy + px * 0.28, px * 0.3, px * 0.1, 0, 0, Math.PI * 2);
+        ctx.ellipse(sx, sy + px * 0.34, px * 0.16, px * 0.05, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -4808,9 +4808,11 @@ export default function ReplayMotionPlayer({
   /* 좌우 동시 보기(요청) — forceEnt면 뜨자마자 v2를 켠다. 시계 묶음(syncKey)의 주인은
      제 t를 신호줄에 흘리고, 따르는 쪽은 제 시계 없이(active=false로 온다) 받아 적는다. */
   useEffect(() => {
-    if (forceEnt && !entData && entLoad === "idle") void toggleEnt();
+    /* v2가 기본(요청: v1 완전 제거의 1단계) — 트랙이 있으면 뜨자마자 v2로 연다.
+       트랙이 없는 옛 경기(재분석 전)만 v1로 남는다. 소스 걷어내기는 다음 단계다. */
+    if (loadUnitTracks && !entData && entLoad === "idle") void toggleEnt();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [forceEnt]);
+  }, [forceEnt, loadUnitTracks]);
   useEffect(() => {
     if (!syncKey || syncRole !== "master") return;
     const subs = dualSyncBus.get(syncKey);
@@ -5353,6 +5355,8 @@ export default function ReplayMotionPlayer({
       raw: string; unit: string; b: number; d: number | null; tag: number;
       /** 공격 명령 목록 [초, 표적 태그] — 어택을 찍은 대상을 겨누는 재료(지적). */
       atkAt: [number, number][];
+      /** 시즈 켬·해제 [초, 켬1/해제0] — 커맨드 그대로(지적). */
+      sieges: [number, number][];
       walk: [number, number, number][];
     }[] = [];
     for (const e of entData.ents) {
@@ -5391,6 +5395,8 @@ export default function ReplayMotionPlayer({
       out.push({
         raw, unit: e.k, b: e.b, d: e.d, tag: e.t,
         atkAt: e.ev.filter((v) => v[3] === 7).map((v) => [v[0], v[4] ?? 0] as [number, number]),
+        sieges: e.ev.filter((v) => v[3] === 8 || v[3] === 9)
+          .map((v) => [v[0], v[3] === 8 ? 1 : 0] as [number, number]),
         // 정체를 알면 그 속도로, 모르면 부대 어림과 같은 규칙(그때의 우세 유닛·지상 길)로.
         walk: walkTrack(pts, p, false, e.k || undefined, undefined, e.k === ""),
       });
@@ -7118,19 +7124,21 @@ export default function ReplayMotionPlayer({
                       건물 번호 해시로 결정적이다. 크기는 타일 크기에 비례(재지적: 왜케
                       커 — 고정 px라 모바일의 작은 맵에선 막대가 건물만 했다). */}
                   {race2 === "테란" && (() => {
-                    /* 실선 불티(재재재지적: 아무리 봐도 로딩바 같다) — 굵은 막대 대신
-                       거의 실선(0.3px대)이고 짧은 선 다섯이 저마다 다른 박자로 튄다.
-                       켜져 있는 창을 넓혀 한순간에 3~5개가 함께 보인다. */
+                    /* 불티 파팟(재×4지적: 동그라미 로딩 아이콘 같다) — 원인은 72도 균등
+                       방사 배치 + 제각각 박자(= 도는 스피너). 이제 한 점에서 위쪽
+                       부채꼴로 흩어진 제각각 길이의 실선들이 '같은 박자'로 파팟(두 번
+                       연속) 튀고, 쉬었다가 반복한다(키프레임 scr-weld). 각은 위 반원에
+                       건물 해시로 흩어 놓아 돌지 않는다. */
                     const ws = Math.max(0.3, ((mapRef.current?.clientWidth ?? 320) / grid.width) / 5);
                     return [0, 1, 2, 3, 4].map((k) => (
                       <span
                         key={k}
                         className="scr-bfx-weld"
                         style={{
-                          width: `${Math.max(0.3, 0.3 * ws).toFixed(1)}px`,
-                          height: `${((0.5 + ((i * 7 + k * 5) % 4) * 0.2) * ws).toFixed(1)}px`,
-                          transform: `rotate(${k * 72 + ((i * 13 + k * 29) % 34)}deg) translateY(${((0.6 + ((i + k * 3) % 3) * 0.45) * ws).toFixed(1)}px)`,
-                          animationDelay: `${((i * 3 + k * 7) % 10) / 20}s`,
+                          width: "0.3px",
+                          height: `${((0.4 + ((i * 7 + k * 5) % 5) * 0.28) * ws).toFixed(1)}px`,
+                          transform: `rotate(${-90 + (k - 2) * 34 + ((i * 13 + k * 29) % 22) - 11}deg) translateY(${(0.2 * ws).toFixed(1)}px)`,
+                          animationDelay: `${(i % 5) / 10}s`,
                         }}
                       />
                     ));
@@ -7141,8 +7149,10 @@ export default function ReplayMotionPlayer({
             if (shapeKind) {
               unitOps.push({
                 fx: fxF, fy: fyF, z, kind: shapeKind,
-                // 원작처럼 45도 시계방향 요잉(지적) + 모델별 보정표.
-                rotDeg: buildingYawOf(shapeKind),
+                /* 원작처럼 45도 요잉(지적)은 3D에서만 — 2D(탑뷰)는 요잉된 모델을 위에서
+                   눌러 펴는 순간 옆면들이 거대한 검은 쐐기로 펴져 맵을 덮었다(지적: 이거
+                   뭐야 왜 이래 — 기지마다 방사형 삼각형). 탑뷰는 예전 그대로 정면 굽기다. */
+                rotDeg: pitched ? buildingYawOf(shapeKind) : undefined,
                 groundShadow: true,
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
                 sizePx: 0, wFrac: wFrac * pulse, hFrac: hFrac * pulse, boxFit: "meet",
@@ -8720,11 +8730,16 @@ export default function ReplayMotionPlayer({
           /* 러커 버로우(지적: 판정이 안 됨) — v1과 같은 규칙: 러커가 제자리(이동
              없음)면 버로우로 보고 땅 구멍만 그린다. */
           const burrowed = drawUnit === "Lurker" && !rawPos.moving;
+          /* 시즈모드(지적: 판정을 리플레이에서) — Siege/Unsiege 커맨드 증거 그대로. */
+          let siegeOn = 0;
+          for (const [ss2, on2] of e.sieges) { if (ss2 <= t) siegeOn = on2; else break; }
+          const drawUnit2 = siegeOn === 1 && drawUnit.startsWith("Siege Tank")
+            ? "Siege Tank (Siege Mode)" : drawUnit;
           unitOps.push({
             fx, fy,
             z: pitched ? 1000 + Math.round(ay3 * 80) : 1000 + (ei % 137),
             kind: burrowed ? "burrowhole"
-              : isWorker ? workerKindOf(race) : unitMarkerKind(drawUnit, race),
+              : isWorker ? workerKindOf(race) : unitMarkerKind(drawUnit2, race),
             rotDeg: burrowed ? undefined : headingOf(rp, pos, holdKey),
             viewYaw: viewYawOf(ax3, ay3), flat: !pitched, pitch: pitched,
             sizePx: drawUnit === "" || isWorker ? unitGlyphPx(0, ay3) : unitPxOf(drawUnit, ay3),

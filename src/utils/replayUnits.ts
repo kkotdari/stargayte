@@ -51,7 +51,8 @@ export interface UnitCmd {
  *  지은 자리), 3 멈춤·홀드·시즈·버로우(그 자리에 '선다'), 4 생산·랠리(건물이 일한 증거 —
  *  위치 정보 없음, x·y는 랠리 좌표거나 -1), 5 착륙 자리(띄운 건물의 이사 목적지),
  *  6 이륙(위치 없음, x·y는 -1), 7 공격 명령의 목적지(지적: 어택 찍으면 그 대상을
- *  공격해야 — 다섯째 값이 찍힌 대상의 태그, 땅 어택이면 0). */
+ *  공격해야 — 다섯째 값이 찍힌 대상의 태그, 땅 어택이면 0), 8 시즈모드 켬, 9 해제
+ *  (지적: 시즈 판정은 리플레이 커맨드 그대로 — 둘 다 위치 없음). */
 export type UnitEv = [number, number, number, number, number?];
 export interface UnitEnt {
   /** 유닛 번호. 물리 건물(선택된 적 없이 건설 좌표로만 아는 것)은 -1. */
@@ -562,7 +563,10 @@ export function buildUnitTracks(
         } else if (HALT_CMDS.has(cmdName)) {
           const lastPt = life.ev[life.ev.length - 1];
           if (lastPt && lastPt[1] >= 0) pushEv(life, sec, lastPt[1], lastPt[2], 3);
+          // 시즈 판정은 커맨드 그대로(지적) — 켠 시각을 증거로 남긴다.
+          if (cmdName === "Siege") life.ev.push([Math.round(sec), -1, -1, 8]);
         } else {
+          if (cmdName === "Unsiege") life.ev.push([Math.round(sec), -1, -1, 9]);
           life.last = sec;
         }
       }

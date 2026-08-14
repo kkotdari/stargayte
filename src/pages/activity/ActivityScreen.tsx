@@ -969,7 +969,8 @@ export default function ActivityScreen() {
     if (item.kind !== "gameResult") return;
     setGameItem(item);
     const params = new URLSearchParams(window.location.search);
-    params.set("game", String(item.gameResult.id));
+    // 주소는 경기번호로(요청) — 사람이 보고 지목하는 번호가 곧 주소다.
+    params.set("game", item.gameResult.matchNo || String(item.gameResult.id));
     window.history.pushState(
       { activityGame: item.gameResult.id }, "",
       `${window.location.pathname}?${params.toString()}`,
@@ -1349,8 +1350,10 @@ export default function ActivityScreen() {
     if (gameItem) return undefined;
     const idText = new URLSearchParams(window.location.search).get("game");
     if (!idText) return undefined;
+    // 경기번호(14자리)와 옛 등록 id 링크를 다 받는다 — 서버 단건 조회도 둘 다 푼다.
     const id = Number(idText);
-    const hit = feed.find((it) => it.kind === "gameResult" && it.gameResult.id === id);
+    const hit = feed.find((it) => it.kind === "gameResult"
+      && (it.gameResult.matchNo === idText || it.gameResult.id === id));
     if (hit) {
       setGameItem(hit);
       return undefined;
@@ -1370,9 +1373,11 @@ export default function ActivityScreen() {
       const idText = new URLSearchParams(window.location.search).get("game");
       const id = idText ? Number(idText) : null;
       setGameItem((cur) => {
-        if (id === null) return null;
-        if (cur && cur.kind === "gameResult" && cur.gameResult.id === id) return cur;
-        return feedRef.current.find((it) => it.kind === "gameResult" && it.gameResult.id === id) ?? null;
+        if (id === null || !idText) return null;
+        const match = (gr: { matchNo: string; id: number }): boolean =>
+          gr.matchNo === idText || gr.id === id;
+        if (cur && cur.kind === "gameResult" && match(cur.gameResult)) return cur;
+        return feedRef.current.find((it) => it.kind === "gameResult" && match(it.gameResult)) ?? null;
       });
     };
     window.addEventListener("popstate", onPop);
@@ -2031,7 +2036,9 @@ export default function ActivityScreen() {
                 </button>
                 <span className="scr-activity-crumb-sep">›</span>
                 <span className="scr-activity-crumb-leaf scr-activity-crumb-no">
-                  {gameItem.kind === "gameResult" ? gameItem.gameResult.id : ""}
+                  {/* 경기번호(요청) — 등록 id가 아니라 사람이 부르는 번호. */}
+                  {gameItem.kind === "gameResult"
+                    ? gameItem.gameResult.matchNo || gameItem.gameResult.id : ""}
                 </span>
               </h1>
             </div>

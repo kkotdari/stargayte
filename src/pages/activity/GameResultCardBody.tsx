@@ -31,7 +31,7 @@ function gameResultShareContent(gameResult: GameResult, memberOf: (id: string) =
     ...shareThumb("gameResult"),
     /* 직접 주소로(요청: 게임은 공유 주소(sv) 말고 페이지 주소) — 게임 상세가 주소를
        가진 페이지가 되면서, 카톡 링크도 그 페이지로 바로 들어간다. */
-    link: `${window.location.origin}/?screen=activity&group=gameResult&game=${gameResult.id}`,
+    link: `${window.location.origin}/?screen=activity&group=gameResult&game=${gameResult.matchNo || gameResult.id}`,
     fallbackText: `[스타게이트 게임결과]\n${t1} vs ${t2}\n결과: ${resultLabel}${mapPart}\n${gameResult.date}`,
   };
 }
