@@ -10,7 +10,7 @@ import { isAirUnit, type MotionTrack, type SummaryMotion, type TrackPt } from ".
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } from "../../utils/minimapTerrain";
 import {
-  bodyFace, capFace, depthNow, groundEllipse, sideFace, tagDepth, tagKey, topFace, type ShapeFace,
+  bodyFace, capFace, depthNow, groundEllipse, sideFace, tagKey, topFace, type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
   domeFaces3, faceLight, facingRatio, frustumFaces3, hornFaces, limbFaces, pyramidFaces3, tubeFaces,
   wallDiscPath, wallFrame, withPitchView, withTopView, withViewShear, withYaw, zsorted,
@@ -2399,35 +2399,30 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      잇는 얇은 방패 날개가 몸통 옆구리에 선다. */
   arbiter: () => {
     const wing = (m2: 1 | -1): ShapeFace[] => {
-      // 몸에 바짝(재보정: 첫 판은 몸과 떠 보였다) + 더 얇게.
-      const xi = m2 * 1.05;
-      const xo = m2 * 1.55;
-      const xm = m2 * 1.3;
-      /* 날개 앞판 (y, z) — 앞코는 뾰족점 대신 뭉뚝한 수직 변. 뒤는 -0.8쯤에서 끊고,
-         거기서 안판·바깥판이 '날개마다' 뿔 하나로 합쳐진다(재재지적: 몸통이 아니라
-         양 날개에 — 두 판으로 갈라진 채 끝나지 않게). */
-      const prof: [number, number][] = [
-        [2.2, 6.35], [1, 6.75], [-0.8, 6.6], [-0.9, 5.45], [0.9, 5.3], [2.35, 5.75],
+      /* 한 덩이 유선형(재재정정: 앞판·꼬리 뿔로 갈라 보이지 않게) — 두께가 코에서
+         좁고 가운데서 불룩하다가 꼬리 한 점으로 모이는 방추형. 안·바깥 두 판이
+         코와 꼬리를 공유하고 위 등마루 띠가 잇는다 — 하나의 몸으로 읽힌다. */
+      const prof: [number, number, number][] = [ // [y, z, 두께 비율]
+        [2.3, 6.05, 0.45], [1.1, 6.62, 1], [-0.9, 6.55, 0.85], [-3.6, 5.95, 0],
+        [-0.9, 5.35, 0.85], [1.1, 5.22, 1], [2.45, 5.6, 0.45],
       ];
-      const at = (x: number): string => polyPath3(
-        prof.map(([y, z]) => [x, y, z] as [number, number, number]));
-      const band = (i: number, j: number): string => polyPath3([
-        [xi, prof[i][0], prof[i][1]], [xo, prof[i][0], prof[i][1]],
-        [xo, prof[j][0], prof[j][1]], [xi, prof[j][0], prof[j][1]],
-      ]);
-      const o: ShapeFace[] = [
-        // 꼬리 뿔 — 이 날개의 두 판이 여기로 모여 하나가 된다(가운데 x의 뿔).
-        ...hornFaces(xm, -0.7, 6.05, xm, -3.7, 5.75, 0.55),
-      ];
-      // 앞판·두께 띠 — 손 면이 꼬리 깊이에 묻어가지 않게 제 깊이를 단다.
-      o.push(...tagDepth([bodyFace(at(xi))], xm, 0.8));
-      o.push(...tagDepth([bodyFace(band(5, 0)), sideFace(band(5, 0), 0.2)], xm, 2.3));
-      o.push(...tagDepth([bodyFace(band(0, 1)), topFace(band(0, 1), 0.2)], xm, 1.6));
-      o.push(...tagDepth(
-        [bodyFace(at(xo)), m2 === 1 ? sideFace(at(xo), 0.16) : topFace(at(xo), 0.12)],
-        xm, 0.8,
-      ));
-      return o;
+      const half = 0.3;
+      const at = (side: 1 | -1): string => polyPath3(
+        prof.map(([y, z, k]) => [m2 * (1.3 + side * half * k), y, z] as [number, number, number]));
+      const upperIn = prof.slice(0, 4)
+        .map(([y, z, k]) => [m2 * (1.3 - half * k), y, z] as [number, number, number]);
+      const upperOut = prof.slice(0, 4).reverse()
+        .map(([y, z, k]) => [m2 * (1.3 + half * k), y, z] as [number, number, number]);
+      const ridge = polyPath3([...upperIn, ...upperOut]);
+      return tagKey(
+        [
+          bodyFace(at(-1)),
+          bodyFace(ridge), topFace(ridge, 0.18),
+          bodyFace(at(1)),
+          m2 === 1 ? sideFace(at(1), 0.16) : topFace(at(1), 0.12),
+        ],
+        depthNow(m2 * 1.3, 2.45),
+      );
     };
     const [cx2, cy2] = project(0, 1.9, 5.7);
     return [
