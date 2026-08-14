@@ -4121,7 +4121,7 @@ function buildingSprite(
   BLD_SPRITE_CACHE.set(key, entry);
   return entry;
 }
-function UnitLayer({ ops, zoom, pan, wallMask, maskRects }: {
+function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
   ops: UnitDrawOp[]; zoom: number; pan: { x: number; y: number };
   /** 크립 차단 마스크(요청: 벽·램프·다리는 크립이 못 뚫는다) — 칸 하나가 픽셀 하나인
    *  지형 캔버스. clipWalk 판들을 깐 직후 destination-out으로 파낸다. */
@@ -4129,6 +4129,10 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects }: {
   /** 마스크를 얹을 화면 자리들 [원본 y, 원본 높이, fx0, fy0, fx1, fy1] — 평면은 맵
    *  전체 한 장, 입체는 원근이 줄마다 달라 지형 한 줄씩 근사한다. */
   maskRects?: [number, number, number, number, number, number][];
+  /** 크립을 가두는 맵 네 모서리(분수 좌표, 시계방향) — 평면은 단위 사각형이고 입체는
+   *  원근 투영된 사다리꼴이다(재지적: 3D에서 크립이 영역을 벗어남 — 직사각 클립은
+   *  평면에서만 맞았다). rotateX 원근은 호모그래피라 변이 직선으로 남아 네 점이면 된다. */
+  clipQuad?: [number, number][];
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   // 의존성 없는 effect — 매 렌더(t 걸음)마다 다시 그린다. ops는 렌더마다 새로 모인다.
@@ -4286,10 +4290,19 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects }: {
     if (creepList.length > 0 && wallMask && maskRects && maskRects.length > 0) {
       /* 크립은 맵 밖으로 못 나간다(지적: 미니맵 밖까지 나옴) — 컨테이너가 overflow:
          hidden이 아니라(모서리 마커를 안 자르려고) 가장자리 해처리의 크립 원이 그림
-         밖까지 그려졌다. 크립 판만 맵 사각형(fx·fy 0~1)으로 클립한다. */
+         밖까지 그려졌다. 크립 판만 맵 영역으로 클립한다 — 평면은 사각형, 입체는
+         원근 사다리꼴(clipQuad, 재지적: 3D에서 여전히 벗어남). */
       ctx.save();
       ctx.beginPath();
-      ctx.rect(zx(0), zy(0), cw * zoom, ch * zoom);
+      if (clipQuad && clipQuad.length >= 3) {
+        ctx.moveTo(zx(clipQuad[0][0]), zy(clipQuad[0][1]));
+        for (let qi = 1; qi < clipQuad.length; qi += 1) {
+          ctx.lineTo(zx(clipQuad[qi][0]), zy(clipQuad[qi][1]));
+        }
+        ctx.closePath();
+      } else {
+        ctx.rect(zx(0), zy(0), cw * zoom, ch * zoom);
+      }
       ctx.clip();
       paintOps(creepList);
       ctx.save();
@@ -7770,7 +7783,16 @@ export default function ReplayMotionPlayer({
             둔다: CSS 확대에 태우지 않고 줌·팬을 그리기 좌표에 직접 입혀, 어느 배율에서도
             화면 해상도 그대로 또렷하다. unitOps는 렌즈 안 마커 계산부가 이 렌더에서
             채우고, 커밋 뒤 effect가 그린다. */}
-        <UnitLayer ops={unitOps} zoom={zoom} pan={pan} wallMask={creepMask} maskRects={creepMaskRects} />
+        <UnitLayer
+          ops={unitOps} zoom={zoom} pan={pan} wallMask={creepMask} maskRects={creepMaskRects}
+          /* 크립을 가두는 맵 모서리(재지적: 3D에서 크립이 영역을 벗어남) — 입체는 원근
+             투영된 사다리꼴이라 네 모서리를 posFrac으로 투영해 넘긴다. 평면은 단위
+             사각형이 나와 기존 직사각 클립과 같다. */
+          clipQuad={[
+            posFrac(0, 0), posFrac(grid.width, 0),
+            posFrac(grid.width, grid.height), posFrac(0, grid.height),
+          ]}
+        />
         {/* (삭제) PC 확대 조절바 — PC에서는 확대 기능을 통째로 걷었다(요청). 확대·이동은
             이제 모바일 손짓(더블탭·두 손가락)만의 것이다. */}
       </div>
