@@ -1045,14 +1045,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         [rx - 0.5, s0[0], s0[1]], [rx + 0.5, s0[0], s0[1]],
         [rx + 0.5, s1[0], s1[1]], [rx - 0.5, s1[0], s1[1]],
       ]);
-      return [
+      /* 포드는 머리 위 얹힘(지적: 밑둥이 포드에 안 가려짐 — 넓은 밑둥 기둥의 키가
+         더 커서 포드 위로 그려졌다) — 지붕 규칙로 큰 키를 못 박는다. */
+      return tagKey([
         bodyFace(`${front} ${side} ${top}`),
         sideFace(side, 0.28),
         topFace(top, 0.2),
         topFace(stripe, 0.35),
-      ];
+      ], 40);
     }),
-    ...boxFaces3(0, -0.2, 2.2, 1.8, 1.6, 7.2),
+    ...tagKey(boxFaces3(0, -0.2, 2.2, 1.8, 1.6, 7.2), 41),
   ],
   /* 포톤 캐논(실물 참고) — 납작한 원형 판(고리 무늬) + 테두리 포드 여덟 + 가운데 가는
      수정 기둥(빛나는 끝). */
@@ -1066,13 +1068,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...boxFaces3(Math.sin(a) * 5.2, Math.cos(a) * 5.2, 1.7, 1.7, 1.9));
     }
     out.push(...cylinderFaces3(0, 0, 0.55, 4.6, 1.3));
-    // 꼭대기는 주사바늘(지적) — 관 끝이 사선으로 깎여 왼쪽이 높다.
-    const [nx2, nyB] = project(0, 0, 5.85);
-    // 꼭대기 x도 제 투영으로(지적: 원통형 오류 일습).
-    const [nxL, nyL] = project(0, 0, 7.6);
-    const [nxR, nyR] = project(0, 0, 6.35);
-    out.push(bodyFace(`M${nxL - 0.55} ${nyL} L${nxR + 0.55} ${nyR} L${nx2 + 0.55} ${nyB} L${nx2 - 0.55} ${nyB} Z`));
-    out.push(topFace(`M${nxL - 0.55} ${nyL} L${nxR + 0.55} ${nyR} L${nxR + 0.55} ${nyR + 0.35} L${nxL - 0.55} ${nyL + 0.35} Z`, 0.5));
+    /* 꼭대기 주사바늘(재지적: 가운데 포탑이 안 돎) — 화면 고정 사선 대신 모델 좌표
+       뿔로: 축에서 −x 쪽으로 기운 높은 끝이라, 요잉하면 기운 방향이 함께 돈다. */
+    out.push(...hornFaces(0, 0, 5.7, -0.45, 0, 7.6, 1.05));
     return out;
   },
   /* 성큰(실물 참고) — 납작한 크립 더미 + 잔가시들 + 웅크린 큰 낫 발톱(끝 밝은 날). */
