@@ -13023,7 +13023,10 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 테란 용접 스파크(재지적: 노란 점 깜빡임이 전투 같다) — 발원점은 이제 투명한 축이고,
    JSX가 뿌린 흰빛 막대(.scr-bfx-weld) 여덟이 둥글게 서서 저마다 다른 박자로 튄다.
    막대 길이·각·지연은 인라인(건물 번호 해시)이 정한다. */
-.scr-bfx-terran { width: 0; height: 0; }
+/* margin도 끊는다(재재지적: 아직도 자리가 안 맞음) — 기반(.scr-motion-buildfx)의
+   18px 상자 가운데 맞춤용 margin -9px가 0×0 축에 그대로 남아, 불티 뭉치가 통째로
+   9px(작은 맵에선 두 타일 가까이) 왼쪽 위로 밀려 있었다. */
+.scr-bfx-terran { width: 0; height: 0; margin: 0; }
 .scr-bfx-weld {
   /* 앵커는 상자 가운데(재지적: 위치가 안 맞음) — left/top 0은 18px 상자의 왼쪽 위
      모서리라, 불티가 건물에서 9px(모바일선 3타일) 비껴 떠 있었다. */
