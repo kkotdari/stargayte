@@ -4742,6 +4742,43 @@ export default function ReplayMotionPlayer({
       setEntLoad("none");
     }
   };
+  /* v2 어댑터(요청: 건물까지 모든 정보를 한 테이블에 — 나중에 v1만 싹 걷어내게) — 개체
+     트랙의 건물·마법을 v1과 똑같은 튜플로 바꿔, 아래의 건물·크립·채굴·마법 렌더 전부가
+     소스만 갈아 끼우면 되게 한다. v2를 켜면 장면 전체(유닛·건물·마법)가 v2 데이터다. */
+  const buildsV2 = useMemo<SummaryMotion["builds"]>(() => {
+    if (!entData) return [];
+    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    const out: SummaryMotion["builds"] = [];
+    for (const e of entData.ents) {
+      if (!e.bld) continue;
+      const raw = nameOfId.get(e.o) ?? "";
+      if (!raw || !e.k) continue;
+      // 자리 증거 — 건설(2)이 태어난 자리, 착륙(5)이 이사한 자리다. 자리를 모르는
+      // 태그 건물(생산 기록만 있는 것)은 못 그린다.
+      const spots = e.ev.filter((v) => v[3] === 2 || v[3] === 5);
+      if (spots.length === 0) continue;
+      const gone = e.d ?? 0;
+      for (let i = 0; i < spots.length; i += 1) {
+        const [s, x, y, f] = spots[i];
+        const nextS = i + 1 < spots.length ? spots[i + 1][0] : null;
+        // 이 자리에 있는 동안의 이륙(6) — 그때부터 다음 착륙까지 '떠 있음'으로 그린다.
+        const lift = e.ev.find((v) => v[3] === 6 && v[0] >= s && (nextS === null || v[0] <= nextS));
+        const g = nextS !== null ? nextS : gone;
+        const born = f === 5 ? s : e.b;
+        out.push(lift ? [born, x, y, e.k, raw, g, lift[0]] : [born, x, y, e.k, raw, g]);
+      }
+    }
+    return out;
+  }, [entData]);
+  const castsV2 = useMemo<SummaryMotion["casts"]>(() => {
+    if (!entData) return [];
+    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    return (entData.casts ?? []).map(([s, x, y, tech, pidc]) =>
+      [s, x, y, tech, nameOfId.get(pidc) ?? ""] as SummaryMotion["casts"][number]);
+  }, [entData]);
+  const entOn = entMode && entData !== null;
+  const buildsSrc = entOn ? buildsV2 : motion.builds;
+  const castsSrc = entOn ? castsV2 : motion.casts;
   /* 밝은 톤(지적: 음영에 비해 팀색이 어두워 안 보인다)이되 너무 파스텔은 말고(지적) —
      쨍한 하늘·장미색의 중간 지점. */
   const TEAM_EDGE: Record<1 | 2, string> = { 1: "#5ea2ff", 2: "#ff7d95" };
@@ -5664,7 +5701,7 @@ export default function ReplayMotionPlayer({
     return { "--mk": pitchK(y).toFixed(3) } as React.CSSProperties;
   };
   const dodge = (px: number, py: number): [number, number] => {
-    for (const [bs, bx2, by2, bu, , g2, liftAt2] of motion.builds) {
+    for (const [bs, bx2, by2, bu, , g2, liftAt2] of buildsSrc) {
       if (bs > t) continue;
       const gone = g2 ?? 0;
       if (gone > 0 && t >= gone) continue;
@@ -5950,15 +5987,15 @@ export default function ReplayMotionPlayer({
   /** (임자, 건물 종류) 안에서 지은 순서 — builds 인덱스 → 순번, 그리고 그 역방향. */
   const buildsByType = useMemo(() => {
     const m = new Map<string, number[]>();
-    motion.builds.forEach((b, i) => {
+    buildsSrc.forEach((b, i) => {
       const key = `${b[4]}|${b[3]}`;
       const arr = m.get(key);
       if (arr) arr.push(i);
       else m.set(key, [i]);
     });
-    for (const arr of m.values()) arr.sort((a, b) => motion.builds[a][0] - motion.builds[b][0]);
+    for (const arr of m.values()) arr.sort((a, b) => buildsSrc[a][0] - buildsSrc[b][0]);
     return m;
-  }, [motion]);
+  }, [buildsSrc]);
 
   /* 부대 규모(지적: 말도 안 되게 부풀려진다 — 클릭 수로 세고 있었다) — 완성으로 센다.
      그 유닛을 뽑는 건물 수가 슬롯이고(저그는 해처리당 라바 3), 클릭이 와도 슬롯 대기가
@@ -5969,16 +6006,16 @@ export default function ReplayMotionPlayer({
       const done: number[] = [];
       const producersAt = (types: string[], atSec: number): number => {
         let n = 0;
-        for (let i = 0; i < motion.builds.length; i += 1) {
-          const [bs, bx, by, bu, br, bg] = motion.builds[i];
+        for (let i = 0; i < buildsSrc.length; i += 1) {
+          const [bs, bx, by, bu, br, bg] = buildsSrc[i];
           if (br !== p.raw || !types.includes(bu)) continue;
           if (bs + (BUILD_SEC[bu] ?? 30) > atSec) continue;
           if ((bg ?? 0) > 0 && atSec >= (bg ?? 0)) continue;
           // 같은 자리에 뒤 건물이 있으면(해처리→레어) 이건 옛 껍데기다.
           let dup = false;
-          for (let j = 0; j < motion.builds.length; j += 1) {
+          for (let j = 0; j < buildsSrc.length; j += 1) {
             if (j === i) continue;
-            const [s2, x2, y2, u2, r2] = motion.builds[j];
+            const [s2, x2, y2, u2, r2] = buildsSrc[j];
             if (r2 === p.raw && s2 > bs && s2 <= atSec && types.includes(u2)
               && Math.hypot(x2 - bx, y2 - by) <= 1.5) { dup = true; break; }
           }
@@ -6230,17 +6267,17 @@ export default function ReplayMotionPlayer({
      거기서 가장 가까운 본진 건물로 왔다 갔다). 커맨드·넥서스·해처리 계열이 대상이다. */
   // 좌표는 발자국 가운데로 옮긴다(FOOTPRINT 주석) — 일꾼이 건물 왼쪽 위 모서리가 아니라
   // 건물 한가운데로 오가야 한다.
-  const halls = useMemo(() => motion.builds
+  const halls = useMemo(() => buildsSrc
     .filter(([, , , unit]) => ["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(unit))
     .map(([sec, x, y, unit, raw, gone]) => ({
       sec, x: x + footDx(unit), y: y + footDy(unit), raw, gone: gone ?? 0,
-    })), [motion]);
+    })), [buildsSrc]);
   /** 가스 건물들 — 가스 지대에 일꾼을 보낼 자격이다(지적: 가스도 안 지었는데 왔다 갔다). */
-  const gasBuildings = useMemo(() => motion.builds
+  const gasBuildings = useMemo(() => buildsSrc
     .filter(([, , , unit]) => ["Refinery", "Assimilator", "Extractor"].includes(unit))
     .map(([sec, x, y, unit, raw, gone]) => ({
       sec, x: x + footDx(unit), y: y + footDy(unit), raw, gone: gone ?? 0,
-    })), [motion]);
+    })), [buildsSrc]);
   /* 가스 깃발이 정확한 판인가(지적: 미네랄과 가스를 헷갈림) — 간헐천 낱개화 이후의
      격자는 깃발(res[2])이 정확해서, '가스 건물 곁 6타일' 폴백을 쓰면 정제소 곁 미네랄
      밭까지 간헐천으로 그려 버린다. 폴백은 깃발이 하나도 없는 옛 격자에서만 쓴다. */
@@ -6320,7 +6357,7 @@ export default function ReplayMotionPlayer({
   /* 스파이더 마인(요청) — 심은 자리(캐스트 좌표)에 마인 모델을 깔고, 심고 4초 뒤부터
      적 자취가 2타일 안에 들어온 첫 순간 터진 것으로 본다(리플레이에 폭발이 안 남는
      어림 — 갑자기 죽는 이유가 보이게). 디텍팅 제거는 알 수 없어 안 터진 마인은 남는다. */
-  const mines = useMemo(() => motion.casts
+  const mines = useMemo(() => castsSrc
     .filter((c) => c[3] === "Spider Mines")
     .map(([sec, x, y, , raw]) => {
       let boom = 0;
@@ -6333,8 +6370,8 @@ export default function ReplayMotionPlayer({
         }
       }
       return { sec, x, y, raw, boom };
-    }), [motion, teamOfRaw]);
-  const castsNow = motion.casts.filter((c) => c[0] <= t
+    }), [castsSrc, motion, teamOfRaw]);
+  const castsNow = castsSrc.filter((c) => c[0] <= t
     && t - c[0] <= (c[3] === "Nuclear Strike" ? NUKE_FALL_SEC + 4
       : c[3] === "Dark Swarm" ? 30
         : c[3] === "Disruption Web" ? 25
@@ -6342,17 +6379,17 @@ export default function ReplayMotionPlayer({
   /* 핵 착탄들 + 성공 판정(지적: 실패가 더 많다) — 발사가 다 착탄이 아니다(고스트가
      끊기면 불발). 착탄 시각 언저리(−2초~+90초)에 반경 안 건물이 실제로 무너진 발사만
      '터진 핵'으로 본다. 불발은 표적 점만 보이다 만다. 유닛 몰살도 터진 핵만이다. */
-  const nukeImpacts = useMemo(() => motion.casts
+  const nukeImpacts = useMemo(() => castsSrc
     .filter((c) => c[3] === "Nuclear Strike")
     .map((c) => {
       const sec = c[0] + NUKE_FALL_SEC;
-      const confirmed = motion.builds.some(([bs, bx2, by2, bu, , g2]) => {
+      const confirmed = buildsSrc.some(([bs, bx2, by2, bu, , g2]) => {
         const gone = g2 ?? 0;
         return gone > 0 && gone >= sec - 2 && gone - sec <= 90 && bs <= sec
           && Math.hypot(bx2 + footDx(bu) - c[1], by2 + footDy(bu) - c[2]) <= 5;
       });
       return { sec, x: c[1], y: c[2], confirmed };
-    }), [motion]);
+    }), [castsSrc, buildsSrc]);
 
   /* 태워진 유닛은 잠깐 사라진다(요청: 태운 자리의 유닛들은 안 보이다가 내리면 나타남) —
      태움 지점 곁에 서 있던, 그 뒤로 새 명령이 없는 마커는 다음 드랍(없으면 계속)까지
@@ -6458,7 +6495,7 @@ export default function ReplayMotionPlayer({
      판정이 생겼다) — 집 자리(3타일)의 내 홀 계보에서 마지막 채가 무너졌고 재건이 없으면
      함락이다. 아바타 로스터의 유령화와 채굴 일꾼 걷기가 같이 쓴다. */
   const fallenHome = (m: MinimapMarker): boolean => {
-    const chain = motion.builds
+    const chain = buildsSrc
       .filter(([bs, x2, y2, bu, br]) => br === m.key && bs <= t
         && ["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(bu)
         && Math.hypot(x2 + footDx(bu) - m.x, y2 + footDy(bu) - m.y) <= 3)
@@ -6605,10 +6642,10 @@ export default function ReplayMotionPlayer({
              건물 위로 솟는데(지적: "높이땜에 뒤에 건물과 겹쳐보일수도"), 사선 뷰에서는
              앞(y가 큰) 건물이 뒤를 가리는 것이 맞다. i는 원래 인덱스 그대로 들고 간다
              (buildsByType 등이 그 인덱스로 잰다). */
-          const drawOrder = motion.builds.map((_, i) => i)
-            .sort((a, b) => motion.builds[a][2] - motion.builds[b][2]);
+          const drawOrder = buildsSrc.map((_, i) => i)
+            .sort((a, b) => buildsSrc[a][2] - buildsSrc[b][2]);
           return drawOrder.map((i) => {
-            const [sec, x, y, unit, raw, gone, liftAt] = motion.builds[i];
+            const [sec, x, y, unit, raw, gone, liftAt] = buildsSrc[i];
             if (sec > t) return null;
             const goneAt = gone ?? 0;
             // 없어진 건물은 그냥 사라진다(요청: ✕ 표시 없음) — 착륙 이사·변태와도 한 결이다.
@@ -6651,7 +6688,7 @@ export default function ReplayMotionPlayer({
             /* 같은 자리에 같은 계보의 새 건물이 서면(레어 진화·재건·콜로니 변태) 옛 것은
                걷는다(지적: 비활성 건물이 글자와 도형으로 동시 표시). 계보만 본다(지적:
                레어 되면서 없어짐 — 아무 새 건물이나 곁에 서면 옛 것을 지워 버렸다). */
-            if (!razed && motion.builds.some(([s2, x2, y2, u2, r2], j) =>
+            if (!razed && buildsSrc.some(([s2, x2, y2, u2, r2], j) =>
               j !== i && r2 === raw && s2 > sec && s2 <= t && Math.hypot(x2 - x, y2 - y) <= 1.5
               && (u2 === unit
                 || (["Hatchery", "Lair", "Hive"].includes(unit) && ["Hatchery", "Lair", "Hive"].includes(u2))
@@ -6666,7 +6703,7 @@ export default function ReplayMotionPlayer({
             /* 짝의 걷힌 시각이 실제로 있어야(> 0) 한다(지적: 첫 기지가 위에서 내려온다) —
                시작 홀은 시작 시각이 0이라, 조건이 "gone === 0"이 되면 살아 있는 같은 종류
                건물 아무거나와 짝이 돼 거기서 날아왔다. */
-            const flownFrom = sec > 0 && motion.builds.find(([, x2, y2, u2, r2, g2]) =>
+            const flownFrom = sec > 0 && buildsSrc.find(([, x2, y2, u2, r2, g2]) =>
               r2 === raw && u2 === unit && (g2 ?? 0) > 0 && (g2 ?? 0) === sec
               && (x2 !== x || y2 !== y)) || undefined;
             if (flownFrom) {
@@ -6707,7 +6744,7 @@ export default function ReplayMotionPlayer({
                아이콘) — 같은 종류 전부에 달면 어디서 하는지가 아니라 "다 한다"로 읽힌다.
                대표는 그 종류에서 가장 오래된, 지금 살아 있는 건물(대개 본진 쪽)이다. */
             const repOrd = typeList.findIndex((bi) => {
-              const [s2, , , , , g2] = motion.builds[bi];
+              const [s2, , , , , g2] = buildsSrc[bi];
               return s2 <= t && !((g2 ?? 0) > 0 && t >= (g2 ?? 0));
             });
             const producing = !razed && (prodByRawType.get(`${raw}|${unit}`) ?? [])
@@ -7235,7 +7272,7 @@ export default function ReplayMotionPlayer({
         {/* 저그 크립(요청) — 살아 있는 저그 건물마다 발밑에 보라 크립 블롭을 깐다.
             불투명 단색이라 이웃 크립과 겹치며 이음매 없이 한 덩어리로 이어지고,
             건물이 없어지면 페이드와 함께 곧 걷힌다(지적). 층은 자원(900)보다 아래. */}
-        {motion.builds.map(([sec, x, y, unit, raw, gone], i) => {
+        {buildsSrc.map(([sec, x, y, unit, raw, gone], i) => {
           if (sec > t) return null;
           const race = bases.find((b2) => b2.key === raw)?.race;
           if (race !== "저그") return null;
@@ -7253,7 +7290,7 @@ export default function ReplayMotionPlayer({
           let wTiles = 8;
           if (hallKind || colonyKind) {
             let startSec = sec;
-            for (const [s2, x2, y2, u2, r2] of motion.builds) {
+            for (const [s2, x2, y2, u2, r2] of buildsSrc) {
               if (r2 !== raw || s2 >= startSec || Math.hypot(x2 - x, y2 - y) > 1.5) continue;
               if ((hallKind && ["Hatchery", "Lair", "Hive"].includes(u2))
                 || (colonyKind && u2.includes("Colony"))) startSec = s2;
@@ -7284,10 +7321,10 @@ export default function ReplayMotionPlayer({
         {/* 건물 소멸 효과(요청: 종족별) — 무너진 순간 2초: 테란 주황 폭발+회색 연기,
             저그 보라 살점 퍼짐, 프로토스 파란 빛 붕괴. 이륙 이사·같은 계보 대체(진화·
             재건)는 폭발이 아니라 제외한다. */}
-        {motion.builds.map(([sec, x, y, unit, raw, gone, liftAt], i) => {
+        {buildsSrc.map(([sec, x, y, unit, raw, gone, liftAt], i) => {
           const goneAt = gone ?? 0;
           if (!goneAt || liftAt || t < goneAt || t > goneAt + 2) return null;
-          if (motion.builds.some(([s2, x2, y2, u2, r2], j) => j !== i && r2 === raw
+          if (buildsSrc.some(([s2, x2, y2, u2, r2], j) => j !== i && r2 === raw
             && s2 > sec && Math.hypot(x2 - x, y2 - y) <= 1.5
             && (u2 === unit
               || (["Hatchery", "Lair", "Hive"].includes(unit) && ["Hatchery", "Lair", "Hive"].includes(u2))
@@ -7392,7 +7429,7 @@ export default function ReplayMotionPlayer({
              가스가 된다. 채굴 일꾼 수에서 그만큼 뺀다. */
           const ownerRace = bases.find((b) => b.key === owner!.raw)?.race;
           if (ownerRace === "저그") {
-            const morphed = motion.builds.filter(([bs, , , bu, br]) =>
+            const morphed = buildsSrc.filter(([bs, , , bu, br]) =>
               br === owner!.raw && bu === "Extractor" && bs <= t).length;
             workerN = Math.max(0, workerN - morphed);
           }
@@ -8385,7 +8422,7 @@ export default function ReplayMotionPlayer({
 
         {/* 건설 SCV(정정: 빙빙이 아니라) — 건물 둘레 네 자리를 "이동→정지(작업)→이동"
             으로 옮겨 다닌다. 걷는 동안은 진행 방향, 멈추면 건물 쪽을 본다. */}
-        {motion.builds.map(([sec, bx3, by3, unit, raw], i) => {
+        {buildsSrc.map(([sec, bx3, by3, unit, raw], i) => {
           if (sec <= 0 || t < sec || t - sec >= (BUILD_SEC[unit] ?? 30)) return null;
           if (ADDONS.has(unit)) return null;
           const race2 = bases.find((b) => b.key === raw)?.race;
@@ -8688,24 +8725,25 @@ export default function ReplayMotionPlayer({
             크게
           </button>
         </span>
-        {/* 개체 트랙 v2 토글(요청: 별도 테이블과 비교) — 부대 어림 ↔ 태그 단위 개체. */}
+        {/* v1/v2 토글(요청: v2·v1 토글 — 나중에 v1만 싹 걷어내게) — v1은 부대 어림,
+            v2는 태그 단위 개체 트랙으로 장면 전체(유닛·건물·마법)를 그린다. */}
         {loadUnitTracks && (
-          <span className="scr-motion-btngroup" role="group" aria-label="유닛 추적">
+          <span className="scr-motion-btngroup" role="group" aria-label="추적 버전">
             <button
               type="button"
               className={cx("scr-motion-btn", "scr-motion-rbtn", !entMode && "scr-motion-speed-on")}
               onClick={() => setEntMode(false)}
             >
-              부대
+              v1
             </button>
             <button
               type="button"
               className={cx("scr-motion-btn", "scr-motion-rbtn", entMode && "scr-motion-speed-on")}
               onClick={() => { void toggleEnt(); }}
               disabled={entLoad === "loading"}
-              title={entLoad === "none" ? "이 경기엔 개체 트랙이 없어요(재등록하면 생겨요)" : undefined}
+              title={entLoad === "none" ? "이 경기엔 v2 트랙이 없어요(재등록하면 생겨요)" : undefined}
             >
-              {entLoad === "loading" ? "…" : entLoad === "none" ? "개체 없음" : "개체"}
+              {entLoad === "loading" ? "…" : entLoad === "none" ? "v2 없음" : "v2"}
             </button>
           </span>
         )}

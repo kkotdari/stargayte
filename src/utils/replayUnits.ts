@@ -15,7 +15,10 @@
 // 있어야 한다 — 지적: 우리가 놓치는 요소가 분명 있을 테니 뒷결과로 보정하는 체계가 필요).
 // 같은 이유로 보정 통계(앵커 개수·어긋남)를 함께 담아, 모델이 실제와 얼마나 다른지를
 // 리플레이마다 잴 수 있게 한다.
-import { CAST_ORDER_TO_UNIT, USE_CMD_TO_UNIT } from "./replayTechNames";
+import {
+  CAST_ORDER_TO_UNIT, USE_CMD_TO_UNIT, CAST_ORDER_TO_TECH, PLACE_MINE_ORDER,
+  normalizeUpgradeName,
+} from "./replayTechNames";
 import type { Race } from "../types";
 
 /* ── 입력 — screp 커맨드에서 쓰는 필드만 구조 타입으로 받는다(replayParser의 ScrepCmd와
@@ -33,6 +36,12 @@ export interface UnitCmd {
   Group?: number | { Name?: string };
   HotkeyType?: { Name?: string } | string;
   IneffKind?: number | string;
+  /** 연구 커맨드의 테크·업그레이드 이름 — 속업 판정(재생기)과 기록의 재료다. */
+  Tech?: { Name?: string } | string;
+  Upgrade?: { Name?: string } | string;
+  /** 시프트 예약 명령 — 지금이 아니라 앞선 일이 끝난 뒤의 일이라, '건설 무르기' 판정
+   *  (일꾼이 다른 데로 불려가면 취소)에서 뺀다. */
+  Queued?: boolean;
 }
 
 /* ── 출력 — 별도 테이블(game_result_unit_tracks)에 JSON으로 담긴다(요청: 별도 테이블로
@@ -40,7 +49,8 @@ export interface UnitCmd {
 /** 증거 한 점: [초, 타일x, 타일y, 종류]. 종류 — 0 이동명령의 목적지(여기로 '가라'),
  *  1 남이 찍은 자리(그 순간 실제로 '있던' 자리 — 강한 앵커), 2 건설 자리(일꾼이 가서
  *  지은 자리), 3 멈춤·홀드·시즈·버로우(그 자리에 '선다'), 4 생산·랠리(건물이 일한 증거 —
- *  위치 정보 없음, x·y는 랠리 좌표거나 -1). */
+ *  위치 정보 없음, x·y는 랠리 좌표거나 -1), 5 착륙 자리(띄운 건물의 이사 목적지),
+ *  6 이륙(위치 없음, x·y는 -1). */
 export type UnitEv = [number, number, number, number];
 export interface UnitEnt {
   /** 유닛 번호. 물리 건물(선택된 적 없이 건설 좌표로만 아는 것)은 -1. */
@@ -54,16 +64,24 @@ export interface UnitEnt {
   /** 죽음(마지막 확인) 초 — 근거가 없으면 null(끝까지 산 것으로 본다). */
   d: number | null;
   /** 죽음의 근거 — tag(번호 재사용: 다음 생애가 이 번호로 시작됐다), atk(공격받은 뒤
-   *  소식 없음), morph(변태로 이어짐 — 죽음이 아니라 다음 생애로 계속), "". */
-  dk: "tag" | "atk" | "morph" | "";
+   *  소식 없음), morph(변태로 이어짐 — 죽음이 아니라 다음 생애로 계속), cxl(건설 취소 —
+   *  취소 커맨드 또는 일꾼이 도착 전에 딴 데로 불려감), "". */
+  dk: "tag" | "atk" | "morph" | "cxl" | "";
   /** 건물이면 1. */
   bld: 0 | 1;
   ev: UnitEv[];
 }
 export interface UnitTracksV2 {
   v: 2;
-  players: { id: number; name: string; race: Race | "" }[];
+  /** color는 게임 내 개인색(#rrggbb) — v1을 걷어낸 뒤에도 이 테이블만으로 칠할 수 있게
+   *  함께 담는다(요청: 모든 정보를 다 모아서 한 테이블에). */
+  players: { id: number; name: string; race: Race | ""; color?: string | null }[];
   ents: UnitEnt[];
+  /** 연구 기록 [초, 이름, 플레이어] — 속업(이동 속도)·클로킹 판정의 재료. 이름은 v1과
+   *  같은 자(normalizeUpgradeName)로 통일한다. */
+  ups: [number, string, number][];
+  /** 좌표가 남는 마법 [초, x, y, 기술 이름, 플레이어] — 스톰·스웜·리콜·마인…. */
+  casts: [number, number, number, string, number][];
   /** 보정 재료(지적: 놓치는 요소를 뒷결과로 잴 체계) — 강한 앵커가 몇 번 나왔고, 명령
    *  귀속이 얼마나 됐는지. 재생기·후속 분석이 모델의 어긋남을 잴 때 쓴다. */
   stats: { cmds: number; attributed: number; anchors: number; lives: number; tags: number };
@@ -151,6 +169,7 @@ interface Life {
   lastAtk: number | null;   // 마지막으로 공격받은 초
   evAfterAtk: boolean;      // 공격받은 뒤에도 증거가 나왔나(살아남음)
   morphTo: Life | null;     // 변태로 이어진 다음 생애
+  cxl: number | null;       // 건설 취소 커맨드를 받은 초(건물 생애의 끝)
   ev: UnitEv[];
 }
 
@@ -165,6 +184,17 @@ function posOf(c: UnitCmd): { x: number; y: number } | null {
   const Y = p.Y ?? p.y;
   if (typeof X !== "number" || typeof Y !== "number") return null;
   return { x: X / PIXELS_PER_TILE, y: Y / PIXELS_PER_TILE };
+}
+/** 건설·착륙 커맨드의 좌표는 처음부터 '타일' 단위다 — 32로 나누면 전 건물이 왼쪽 위
+ *  구석에 뭉친다(실측: 지도 전체가 0~4 타일로 접혔다). v1 파서(buildPositions·lands)와
+ *  같은 규칙이다. */
+function posTileOf(c: UnitCmd): { x: number; y: number } | null {
+  const p = c.Pos;
+  if (!p) return null;
+  const X = p.X ?? p.x;
+  const Y = p.Y ?? p.y;
+  if (typeof X !== "number" || typeof Y !== "number") return null;
+  return { x: X, y: Y };
 }
 const r1 = (n: number): number => Math.round(n * 10) / 10;
 
@@ -200,7 +230,11 @@ function kindConflicts(life: Life, kind: string): boolean {
  *  이름·종족 — 명령 귀속과 일꾼·수송선 대표를 정하는 데 쓴다. */
 export function buildUnitTracks(
   cmds: UnitCmd[],
-  players: { id: number; name: string; race: Race | "" }[],
+  players: {
+    id: number; name: string; race: Race | ""; color?: string | null;
+    /** 시작 지점(타일 중심) — 시작 홀을 심는 재료다(아래 주석). */
+    startX?: number | null; startY?: number | null;
+  }[],
 ): UnitTracksV2 {
   const playing = new Set(players.map((p) => p.id));
   const raceOf = new Map(players.map((p) => [p.id, p.race] as const));
@@ -210,11 +244,36 @@ export function buildUnitTracks(
   /** 태그 → 지금 살아 있는 생애. 끝난 생애는 done으로 옮긴다. */
   const alive = new Map<number, Life>();
   const done: Life[] = [];
-  /** 물리 건물(건설 좌표로 아는 것) — 태그가 없어도 개체다(요청: 건물 파괴 파악). */
-  const built: { owner: number; kind: string; born: number; x: number; y: number; ev: UnitEv[] }[] = [];
+  /** 물리 건물(건설 좌표로 아는 것) — 태그가 없어도 개체다(요청: 건물 파괴 파악).
+   *  builder는 지은 일꾼의 태그 — 그 일꾼이 도착 전에 딴 데로 불려가면 건설 무르기다. */
+  const built: {
+    owner: number; kind: string; born: number; x: number; y: number;
+    builder: number | null; gone: number | null; goneKind: "cxl" | "atk" | null; ev: UnitEv[];
+  }[] = [];
+  /** 일꾼 태그 → 아직 확정 안 된 건설 — '도착 전'(arrive 예상 시각 앞)에 다른 데로
+   *  불려가야만 취소다. 도착 뒤의 재명령(테란 SCV 곁 세우기, 프로토스 워프 후 복귀)은
+   *  정상 조작이다 — 첫 판은 25초 뭉툭 창이라 물리건물 476채 중 248채를 취소로 오판했다. */
+  const pendingBuild = new Map<number, { sec: number; x: number; y: number; idx: number; arrive: number }>();
+  /** 연구 기록 — 같은 사람이 같은 이름을 연타(취소 후 재시작 포함)하면 첫 번만 남긴다. */
+  const ups: [number, string, number][] = [];
+  const upSeen = new Set<string>();
+  const casts: [number, number, number, string, number][] = [];
   let attributed = 0;
   let anchors = 0;
   let totalOrders = 0;
+  /* 시작 홀을 심는다(v1 replayMotion과 같은 규칙) — 시작 커맨드센터·해처리·넥서스는
+     건설 커맨드가 없어 그냥 두면 개체 목록에도, 파괴 판정에도 없다. 시작 지점에 종족
+     홀을 0초로 세우면 발치 공격 증거·철거/격퇴 판정이 다른 건물과 똑같이 걸린다.
+     좌표는 중심에서 발자국 절반(4×3)을 물려 왼쪽 위 타일로(builds 규약). */
+  for (const p of players) {
+    if (typeof p.startX !== "number" || typeof p.startY !== "number" || !p.race) continue;
+    const hall = p.race === "저그" ? "Hatchery" : p.race === "테란" ? "Command Center" : "Nexus";
+    built.push({
+      owner: p.id, kind: hall, born: 0,
+      x: Math.round(p.startX - 2), y: Math.round(p.startY - 1.5),
+      builder: null, gone: null, goneKind: null, ev: [],
+    });
+  }
 
   const lifeOf = (tag: number, owner: number, sec: number): Life => {
     let life = alive.get(tag);
@@ -229,7 +288,7 @@ export function buildUnitTracks(
     if (!life) {
       life = {
         tag, owner, kinds: new Map(), groupKinds: new Set(), bld: false,
-        born: sec, last: sec, lastAtk: null, evAfterAtk: false, morphTo: null, ev: [],
+        born: sec, last: sec, lastAtk: null, evAfterAtk: false, morphTo: null, cxl: null, ev: [],
       };
       alive.set(tag, life);
     }
@@ -291,21 +350,80 @@ export function buildUnitTracks(
     const unitName = nameOf(c.Unit);
     const pos = posOf(c);
 
+    // ── 연구 — 이름을 v1과 같은 자로 통일해 담는다(속업·클로킹 판정의 재료). ──
+    const techName = nameOf(c.Tech);
+    const upgradeName = nameOf(c.Upgrade);
+    const research = techName || (upgradeName ? normalizeUpgradeName(upgradeName) : "");
+    if (research) {
+      const seenKey = `${pid}:${research}`;
+      if (!upSeen.has(seenKey)) {
+        upSeen.add(seenKey);
+        ups.push([Math.round(sec), research, pid]);
+      }
+    }
+
     // ── 명령 → 골라 둔 번호들의 증거 ──
     const isOrder = cmdName === "Targeted Order" || cmdName === "Right Click";
     if (isOrder) totalOrders += 1;
     if (isOrder && tags.length > 0) attributed += 1;
 
     if (cmdName === "Build" || cmdName === "Build Addon" || cmdName === "Hatch") {
-      // 건설 — 고른 것은 일꾼이고, 자리(pos)로 걸어가 짓는다. 건물은 물리 개체로 태어난다.
+      // 건설 — 고른 것은 일꾼이고, 자리로 걸어가 짓는다. 건물은 물리 개체로 태어난다.
+      // 좌표는 타일 단위 그대로다(posTileOf 주석).
+      const bpos = posTileOf(c);
       const worker = RACE_WORKER[raceOf.get(pid) ?? ""] ?? "";
+      // 일꾼의 직전 위치 증거 — 자리까지의 도착 시각을 어림하는 재료다(무르기 판정).
+      let prevPt: UnitEv | null = null;
       for (const tag of tags) {
         let life = lifeOf(tag, pid, sec);
         if (worker && cmdName !== "Hatch") life = markKind(life, worker, sec);
-        if (pos) pushEv(life, sec, pos.x, pos.y, 2);
+        if (tags.length === 1) {
+          for (let i = life.ev.length - 1; i >= 0; i -= 1) {
+            if (life.ev[i][1] >= 0) { prevPt = life.ev[i]; break; }
+          }
+        }
+        if (bpos) pushEv(life, sec, bpos.x, bpos.y, 2);
       }
-      if (pos && unitName && cmdName !== "Hatch") {
-        built.push({ owner: pid, kind: unitName, born: sec, x: pos.x, y: pos.y, ev: [] });
+      if (bpos && unitName && cmdName !== "Hatch") {
+        // 같은 일꾼이 도착 전에 다른 건설을 또 냈으면 앞의 것은 무른 것이다(드론 건물
+        // 바꿔 앉히기 — v1 파서의 lastDroneBuild 무르기와 같은 현상).
+        const prevPending = tags.length === 1 ? pendingBuild.get(tags[0]) : undefined;
+        if (prevPending && !c.Queued && sec < prevPending.arrive) {
+          const pb = built[prevPending.idx];
+          if (pb.gone === null) { pb.gone = sec; pb.goneKind = "cxl"; }
+        }
+        built.push({
+          owner: pid, kind: unitName, born: sec, x: bpos.x, y: bpos.y,
+          builder: tags.length === 1 ? tags[0] : null, gone: null, goneKind: null, ev: [],
+        });
+        // 일꾼 하나가 낸 건설이면 무르기 판정 창을 연다(요청: SCV·프로브는 도착 전에
+        // 다른 명령이 오면 그 건설은 취소). 도착 예상은 직전 위치에서 일꾼 걸음(3.5)로
+        // 잰다 — 직전 위치를 모르거나 낡았으면(45초↑) 아예 안 무른다: 어림 창을 두면
+        // "건설 내리고 곧장 자원 복귀"라는 정상 조작이 죄다 취소로 오판된다(실측 4:4
+        // 에서 476채 중 196채). 모르면 지은 것으로 두는 쪽이 덜 틀린다.
+        if (tags.length === 1 && prevPt && sec - prevPt[0] < 45) {
+          const travel = Math.min(20, Math.max(1, Math.hypot(prevPt[1] - bpos.x, prevPt[2] - bpos.y) / 3.5));
+          pendingBuild.set(tags[0], { sec, x: bpos.x, y: bpos.y, idx: built.length - 1, arrive: sec + travel });
+        }
+      }
+      continue;
+    }
+    if (cmdName === "Cancel Build") {
+      // 건설 취소 — 고른 것은 짓던 건물(태그)이다. 물리 건물과는 자리로 못 이어(취소
+      // 커맨드엔 좌표가 없다) 그 사람의 '가장 최근에 시작한, 아직 살아 있는' 건설을
+      // 무른 것으로 본다 — 취소는 대개 방금 잘못 앉힌 것을 무르는 조작이다.
+      for (const tag of tags) {
+        const life = lifeOf(tag, pid, sec);
+        life.bld = true;
+        if (life.cxl === null) life.cxl = sec;
+      }
+      for (let i = built.length - 1; i >= 0; i -= 1) {
+        const b = built[i];
+        if (b.owner === pid && b.gone === null && sec - b.born < 180) {
+          b.gone = sec;
+          b.goneKind = "cxl";
+          break;
+        }
       }
       continue;
     }
@@ -366,8 +484,16 @@ export function buildUnitTracks(
       for (const tag of tags) {
         let life = lifeOf(tag, pid, sec);
         if (kind) life = markKind(life, kind, sec);
+        if (cmdName === "Land" && unitName) life = markKind(life, unitName, sec);
         if (isBld) life.bld = true;
-        if (HALT_CMDS.has(cmdName)) {
+        if (cmdName === "Land") {
+          // 착륙 — 띄운 건물의 이사 목적지다(커맨드에 자리·건물 이름이 실려 온다).
+          // 건설과 같은 타일 좌표다(posTileOf 주석).
+          const lpos = posTileOf(c);
+          if (lpos) pushEv(life, sec, lpos.x, lpos.y, 5);
+        } else if (cmdName === "Lift Off") {
+          pushEv(life, sec, -1, -1, 6);
+        } else if (HALT_CMDS.has(cmdName)) {
           const lastPt = life.ev[life.ev.length - 1];
           if (lastPt && lastPt[1] >= 0) pushEv(life, sec, lastPt[1], lastPt[2], 3);
         } else {
@@ -392,8 +518,22 @@ export function buildUnitTracks(
         if (worker) life = markKind(life, worker, sec);
       }
       if (isRally) { life.bld = true; pushEv(life, sec, -1, -1, 4); continue; }
+      /* (걷음) 이동 명령의 건설 무르기 — "건설을 내리고 곧장 자원으로 복귀"가 흔한
+         정상 조작이라, 일꾼의 직전 증거만으로는 도착 전·후를 못 가려 오판이 압도한다
+         (실측 4:4에서 물리건물 476채 중 185채 취소 — 실제 경기에선 있을 수 없는 수).
+         무르기는 확실한 근거 둘만 남긴다: 명시적 취소 커맨드(Cancel Build)와 같은
+         일꾼의 도착 전 재건설(아래 Build 분기). 이동 무르기의 진짜 판정은 나중 증거
+         (그 건물의 생산·피격 기록)로 뒤집는 후방 보정 쪽이 맞는 길이다. */
+      if (pos) pendingBuild.delete(tag);
       if (pos && !life.bld) pushEv(life, sec, pos.x, pos.y, 0);
       else life.last = sec;
+    }
+
+    // ── 마법 — 좌표가 남는 것만(스톰·스웜·리콜·마인…). 이름은 v1과 같은 기술명이다. ──
+    const castTech = CAST_ORDER_TO_TECH[orderName]
+      ?? (orderName === PLACE_MINE_ORDER ? "Spider Mines" : "");
+    if (castTech && pos && tags.length > 0) {
+      casts.push([Math.round(sec), r1(pos.x), r1(pos.y), castTech, pid]);
     }
 
     // ── 찍힌 대상 — 그 순간 거기 '있던' 개체다(강한 앵커). 공격이면 죽음의 근거가 된다. ──
@@ -445,6 +585,9 @@ export function buildUnitTracks(
       if (life.morphTo) {
         d = life.morphTo.born;
         dk = "morph";
+      } else if (life.cxl !== null) {
+        d = life.cxl;
+        dk = "cxl";
       } else if (life.lastAtk !== null && !life.evAfterAtk) {
         d = life.lastAtk + 4;
         dk = "atk";
@@ -460,19 +603,31 @@ export function buildUnitTracks(
       });
     }
   }
-  // 물리 건물 — 공격 증거만 싣고, 죽음 판정 자체는 재생기·비교 분석의 몫으로 남긴다
-  // (v1의 철거 전파와 견줄 대상이라 여기서 섣불리 못박지 않는다).
+  /* 물리 건물의 죽음(요청: 건물 파괴 파악) — 발치에 공격이 몰린 마지막 시각을 철거로
+     보되, 격퇴 증거로 뒤집는다: 주인이 그 뒤(180초 안)에 곁(12타일)에 새로 지었으면
+     자리를 지킨 것이다(v1의 격퇴 규칙과 같은 잣대 — 별도 테이블이니 결과를 비교한다).
+     취소(무르기)로 이미 끝난 건물은 그대로 둔다. */
   for (const b of built) {
+    if (b.gone === null && b.ev.length > 0) {
+      const lastAtk = b.ev[b.ev.length - 1][0];
+      const defended = built.some((o) =>
+        o !== b && o.owner === b.owner && o.born > lastAtk && o.born < lastAtk + 180
+        && Math.hypot(o.x - b.x, o.y - b.y) <= 12);
+      if (!defended) { b.gone = lastAtk + 8; b.goneKind = "atk"; }
+    }
     ents.push({
-      t: -1, o: b.owner, k: b.kind, b: Math.round(b.born), d: null, dk: "", bld: 1,
+      t: -1, o: b.owner, k: b.kind, b: Math.round(b.born),
+      d: b.gone === null ? null : Math.round(b.gone), dk: b.goneKind ?? "", bld: 1,
       ev: [[Math.round(b.born), r1(b.x), r1(b.y), 2], ...b.ev],
     });
   }
 
   return {
     v: 2,
-    players: players.map((p) => ({ id: p.id, name: p.name, race: p.race })),
+    players: players.map((p) => ({ id: p.id, name: p.name, race: p.race, color: p.color ?? null })),
     ents,
+    ups,
+    casts,
     stats: { cmds: totalOrders, attributed, anchors, lives, tags: byTag.size },
   };
 }

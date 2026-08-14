@@ -1426,7 +1426,15 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
     try {
       const trackPlayers = (res.Header.Players ?? [])
         .filter((p) => !p.Observer && p.Type?.Name !== "Observer")
-        .map((p) => ({ id: p.ID, name: p.Name, race: RACE_NAME_MAP[p.Race?.Name ?? ""] ?? "" as const }));
+        .map((p) => ({
+          id: p.ID, name: p.Name, race: RACE_NAME_MAP[p.Race?.Name ?? ""] ?? "" as const,
+          // 게임 내 개인색 — v1을 걷어낸 뒤에도 이 테이블만으로 칠할 수 있게(요청).
+          color: typeof p.Color?.RGB === "number"
+            ? `#${p.Color.RGB.toString(16).padStart(6, "0")}` : null,
+          // 시작 지점 — 시작 홀(첫 커맨드센터·해처리)을 개체로 심는 재료.
+          startX: startTileOf(p.SlotID)?.x ?? null,
+          startY: startTileOf(p.SlotID)?.y ?? null,
+        }));
       return JSON.stringify(buildUnitTracks(cmds, trackPlayers));
     } catch {
       return null;
