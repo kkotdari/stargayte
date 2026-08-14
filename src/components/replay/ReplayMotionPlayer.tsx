@@ -881,7 +881,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const R = 2.7; // 축에서 잎 배까지 반지름
     /* 잎 하나 — 축 둘레 각 phi(0=위) 자리, 길이는 앞뒤(y·축 방향), 폭은 접선 방향,
        배 면은 축을 본다. 윤곽은 긴 육각형: 양 끝 꼭지 + 나란한 중간 변. */
-    const leaf = (phi: number, rr: number, ll: number, ww: number): string => {
+    const leaf = (phi: number, rr: number, ll: number, ww: number): [number, number, number][] => {
       const rx = Math.sin(phi); // 축에서 바깥 방향(x·z 평면)
       const rz = Math.cos(phi);
       const tx = Math.cos(phi); // 접선 방향
@@ -894,18 +894,27 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          나란히 서서 반지름이 앞뒤 내내 같다. */
       /* 수평으로 눕는다(정정: 대각선으로 눕는 게 아니라) — 앞들림(35도)도 걷었다.
          관 축이 지면과 나란하고, 구멍은 앞뒤를 본다. 떠 있는 건 그림자가 말한다. */
-      return polyPath3(HEX.map(([a, w]) => [
+      return HEX.map(([a, w]) => [
         rx * rr + tx * (w * ww), a * ll, C + rz * rr + tz * (w * ww),
-      ] as [number, number, number]));
+      ] as [number, number, number]);
     };
     const PHIS = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
     for (const phi of PHIS) {
       // 길이 2.7 → 2.2(요청: 육각형 길이를 조금만 짧게).
-      const d = leaf(phi, R, 2.2, 1.05);
+      const inPts = leaf(phi, R, 2.2, 1.05);
+      const d = polyPath3(inPts);
       /* 판 두께(지적) — 바깥쪽(축 반대 방향)으로 한 겹 더 깔면 가장자리로 두께 테가
          비친다. */
-      const back = leaf(phi, R + 0.32, 2.2, 1.05);
-      const faces: ShapeFace[] = [bodyFace(back), sideFace(back, 0.28), bodyFace(d)];
+      const outPts = leaf(phi, R + 0.32, 2.2, 1.05);
+      const back = polyPath3(outPts);
+      const faces: ShapeFace[] = [bodyFace(back), sideFace(back, 0.28)];
+      /* 옆면 봉합(지적: 판 사이가 떠 보임) — 안판·바깥판의 대응 변 사이를 네모 띠로
+         이어 두께의 옆구리를 채운다. 여섯 변 전부라 어느 각에서도 틈이 없다. */
+      for (let i = 0; i < 6; i += 1) {
+        const j = (i + 1) % 6;
+        faces.push(bodyFace(polyPath3([inPts[i], inPts[j], outPts[j], outPts[i]])));
+      }
+      faces.push(bodyFace(d));
       /* 명암은 현재 시점 기준(재지적: 요잉 때 판이 뒤집혀 보임) — 위·아래 잎은 높이로,
          옆 잎은 지금 카메라를 등졌는지(facingRatio)로 정해, 돌아도 명암이 따라온다. */
       const fSide = facingRatio(Math.sin(phi), 0);
@@ -913,8 +922,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       else if (Math.cos(phi) < -0.5) faces.push(sideFace(d, 0.24));
       else if (fSide < -0.3) faces.push(sideFace(d, 0.26));
       else if (fSide < 0.3) faces.push(sideFace(d, 0.12));
-      // 잎 안쪽(배) 발광 — 축을 보는 면에 밝은 작은 육각 잎.
-      faces.push(topFace(leaf(phi, R - 0.18, 1.35, 0.58), 0.5));
+      /* 잎 안쪽(배) 발광 — 배가 시점을 향할 때만(지적: 바깥판 위에 밝은 점이 얹혀
+         보였다). 위 잎은 늘 바깥이 보이니 빼고, 아래 잎은 배가 위라 늘 켜고, 옆
+         잎은 바깥이 등을 돌린 쪽만 켠다. */
+      const bellyOn = Math.cos(phi) > 0.5 ? false
+        : Math.cos(phi) < -0.5 ? true : fSide < -0.1;
+      if (bellyOn) faces.push(topFace(polyPath3(leaf(phi, R - 0.18, 1.35, 0.58)), 0.5));
       /* 잎마다 제 깊이(지적: 뒤에 있는 판이 안 가려짐) — 손 면이라 깊이가 없어 원래
          순서대로 그려졌다. 요잉에 따라 왼·오른 잎이 앞뒤로 갈리므로 중심 깊이를 단다. */
       out.push(...tagKey(faces, depthNow(Math.sin(phi) * R, 0)));
@@ -2483,34 +2496,49 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      '아래'를 향하고(지적: 위가 아니라 아래), 위 꽃잎은 양 가장자리가 처져 등이 위로
      아치를 그린다. */
   carrier: () => {
-    const petal = (cx2: number, m2: 0 | 1 | -1, z0: number, xr: number, yr: number): string => polyPath3(
-      Array.from({ length: 12 }, (_, i) => {
-        const a = (i / 12) * Math.PI * 2;
-        const co = Math.cos(a);
-        return [
-          cx2 + co * xr,
-          0.3 + Math.sin(a) * yr,
-          z0 - Math.sin(a) * 0.28
-            + (m2 !== 0 ? -Math.max(0, -m2 * co) * 1.35 : -Math.abs(co) * 0.55),
-        ] as [number, number, number];
-      }),
-    );
+    const petalPts = (
+      cx2: number, m2: 0 | 1 | -1, z0: number, xr: number, yr: number,
+    ): [number, number, number][] => Array.from({ length: 12 }, (_, i) => {
+      const a = (i / 12) * Math.PI * 2;
+      const co = Math.cos(a);
+      return [
+        cx2 + co * xr,
+        0.3 + Math.sin(a) * yr,
+        z0 - Math.sin(a) * 0.28
+          + (m2 !== 0 ? -Math.max(0, -m2 * co) * 1.35 : -Math.abs(co) * 0.55),
+      ] as [number, number, number];
+    });
+    const petal = (cx2: number, m2: 0 | 1 | -1, z0: number, xr: number, yr: number): string =>
+      polyPath3(petalPts(cx2, m2, z0, xr, yr));
     /* 볼록 렌즈형(재재정정: 두께도) — 잎마다 세 겹이다: 아래로 볼록한 밑쉘(줄인
        판을 한 단 내려 깐다, 아래 두께가 실루엣 밖으로 살짝 비친다) + 본판(가장자리)
        + 위로 볼록한 윗판. 가장자리는 얇고 가운데가 위아래로 부푼 렌즈가 된다. */
     const lens = (
       cx2: number, m2: 0 | 1 | -1, z0: number, xr: number, yr: number,
       shade: "L" | "R" | "T",
-    ): ShapeFace[] => [
+    ): ShapeFace[] => {
       // 밑쉘은 본판과 거의 같은 윤곽(재지적: 두 장 판으로 보임 — 가장자리를 붙인다).
-      bodyFace(petal(cx2, m2, z0 - 0.38, xr * 0.97, yr * 0.97)),
-      sideFace(petal(cx2, m2, z0 - 0.38, xr * 0.97, yr * 0.97), 0.24),
-      bodyFace(petal(cx2, m2, z0, xr, yr)),
-      shade === "L" ? topFace(petal(cx2, m2, z0, xr, yr), 0.16)
-        : shade === "R" ? sideFace(petal(cx2, m2, z0, xr, yr), 0.18)
-          : topFace(petal(cx2, m2, z0, xr, yr), 0.1),
-      topFace(petal(cx2, m2, z0 + 0.45, xr * 0.62, yr * 0.6), shade === "T" ? 0.15 : 0.12),
-    ];
+      const shellPts = petalPts(cx2, m2, z0 - 0.38, xr * 0.97, yr * 0.97);
+      const mainPts = petalPts(cx2, m2, z0, xr, yr);
+      const faces: ShapeFace[] = [
+        bodyFace(polyPath3(shellPts)),
+        sideFace(polyPath3(shellPts), 0.24),
+      ];
+      /* 옆면 봉합(지적: 판 사이가 떠 보임) — 밑쉘과 본판의 대응 점들을 네모 띠로
+         이어 렌즈 테두리 옆구리를 채운다. */
+      for (let i = 0; i < 12; i += 1) {
+        const j = (i + 1) % 12;
+        faces.push(bodyFace(polyPath3([shellPts[i], shellPts[j], mainPts[j], mainPts[i]])));
+      }
+      const main = polyPath3(mainPts);
+      faces.push(
+        bodyFace(main),
+        shade === "L" ? topFace(main, 0.16)
+          : shade === "R" ? sideFace(main, 0.18) : topFace(main, 0.1),
+        topFace(petal(cx2, m2, z0 + 0.45, xr * 0.62, yr * 0.6), shade === "T" ? 0.15 : 0.12),
+      );
+      return faces;
+    };
     return [
       ...lens(-1.3, -1, 5.1, 1.05, 3.9, "L"),
       ...lens(1.3, 1, 5.1, 1.05, 3.9, "R"),
@@ -2537,10 +2565,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const upperOut = prof.slice(0, 4).reverse()
         .map(([y, z, k]) => [m2 * (1.3 + half * k), y, z] as [number, number, number]);
       const ridge = polyPath3([...upperIn, ...upperOut]);
+      /* 옆면 봉합(지적: 판 사이가 떠 보임) — 등마루 띠만 있고 배·앞 변은 안·바깥 판
+         사이가 뚫려 있었다. 아랫변(꼬리→앞 아래)과 앞변(앞 아래→앞 위)도 띠로 잇는다. */
+      const lowerIn = prof.slice(3)
+        .map(([y, z, k]) => [m2 * (1.3 - half * k), y, z] as [number, number, number]);
+      const lowerOut = prof.slice(3).reverse()
+        .map(([y, z, k]) => [m2 * (1.3 + half * k), y, z] as [number, number, number]);
+      const belly = polyPath3([...lowerIn, ...lowerOut]);
+      const frontIO = ([y, z, k]: [number, number, number], side: 1 | -1):
+      [number, number, number] => [m2 * (1.3 + side * half * k), y, z];
+      const front = polyPath3([
+        frontIO(prof[6], -1), frontIO(prof[0], -1), frontIO(prof[0], 1), frontIO(prof[6], 1),
+      ]);
       return tagKey(
         [
           bodyFace(at(-1)),
           bodyFace(ridge), topFace(ridge, 0.18),
+          bodyFace(belly), sideFace(belly, 0.2),
+          bodyFace(front),
           bodyFace(at(1)),
           m2 === 1 ? sideFace(at(1), 0.16) : topFace(at(1), 0.12),
         ],
@@ -2818,9 +2860,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(groundEllipse(fx2, fy2, 0.4, 0.34), 0.45),
       bodyFace(apron),
       topFace(apron, 0.3),
-      // 두 팔(요청) — 왼팔은 앞으로 내리고, 오른팔은 어깨에서 주사기로 잇는다.
-      ...hornFaces(-1.4, 0, 4.5, -1.15, 1.25, 3.05, 0.45),
-      ...hornFaces(1.4, 0, 4.5, 1.35, 0.5, 3.3, 0.45),
+      /* 두 팔(재지적: 위치·굽힘) — 위팔은 어깨뽕 아래(z 3.7)에서 나와 내려가고,
+         팔꿈치에서 굽는다. 왼팔은 앞으로, 오른팔은 주사기 뿌리로. */
+      ...hornFaces(-1.45, 0.1, 3.7, -1.2, 0.75, 2.8, 0.45),
+      ...hornFaces(-1.2, 0.75, 2.8, -0.85, 1.4, 3.1, 0.4),
+      ...hornFaces(1.5, 0.1, 3.7, 1.3, 0.55, 2.85, 0.45),
+      ...hornFaces(1.3, 0.55, 2.85, 1.35, 1.05, 3.1, 0.4),
       // 오른팔 주사기.
       ...tubeFaces(1.35, 0.3, 1.35, 1.4, 0.3, 3),
       ...hornFaces(1.35, 1.4, 3.1, 1.35, 2.2, 3, 0.16),
@@ -2842,9 +2887,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
       ...domeFaces3(0, -0.2, 0.8, 0.7, 4.2),
       topFace(groundEllipse(vx2, vy2, 0.42, 0.3), 0.5),
-      // 두 팔(요청: 두 손으로 총 든 모양) — 어깨에서 총몸으로 모아 쥔다.
-      ...hornFaces(-1.35, 0, 4.9, -0.1, 1.3, 3.35, 0.5),
-      ...hornFaces(1.4, 0, 4.9, 0.95, 1.15, 3.4, 0.5),
+      /* 두 팔(재지적: 위치·굽힘) — 위팔은 어깨뽕 '아래'(z 3.7)에서 나와 앞-아래로
+         내려가고, 팔꿈치에서 굽어 아래팔이 총몸으로 올라가 쥔다. 왼손은 앞손잡이,
+         오른손은 방아쇠 쪽. */
+      ...hornFaces(-1.45, 0.1, 3.7, -1.05, 0.8, 2.75, 0.5),
+      ...hornFaces(-1.05, 0.8, 2.75, 0.3, 1.85, 3.25, 0.42),
+      ...hornFaces(1.5, 0.1, 3.7, 1.25, 0.7, 2.8, 0.5),
+      ...hornFaces(1.25, 0.7, 2.8, 0.75, 1, 3.25, 0.42),
       // 소총은 앞을 향한다(지적: 가로로 들었었다) — 두 손 위 긴 총열 + 총구.
       ...boxFaces3(0.55, 1.5, 0.55, 2.4, 0.5, 3.1),
       capFace(groundEllipse(mx2, my2, 0.2, 0.16), 0.45),
@@ -2890,13 +2939,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 다리(지적: 다리가 없어 헷갈림) — 로브 아래로 두 기둥.
     ...cylinderFaces3(-0.55, 0, 0.45, 3.5, 0),
     ...cylinderFaces3(0.55, 0, 0.45, 3.5, 0),
-    ...cylinderFaces3(0, -0.4, 1.4, 3.4, 3.4),
-    ...domeFaces3(0, -0.9, 1.2, 0.95, 6.8),
-    // 프로토스 특유의 길쭉한 머리(요청) — 뒤로 흐르는 타원 볏.
-    ...hornFaces(0, -1.3, 7.2, 0, -3, 7.9, 0.7),
-    // 어깨 뽕 한 쌍(실물).
-    ...domeFaces3(-1.35, -0.2, 0.62, 0.5, 6),
-    ...domeFaces3(1.35, -0.2, 0.62, 0.5, 6),
+    /* 구부정한 자세(요청) — 몸통을 두 마디로 나눠 윗마디를 앞으로 기울이고, 머리를
+       어깨보다 앞·낮게 내민다. 볏은 그대로 뒤로 흐른다. */
+    ...cylinderFaces3(0, -0.5, 1.4, 2, 3.4),
+    ...cylinderFaces3(0, 0, 1.25, 1.3, 5.3),
+    ...domeFaces3(0, 0.35, 1.1, 0.85, 6.3),
+    ...hornFaces(0, 0, 6.9, 0, -2.1, 7.75, 0.7),
+    // 어깨 뽕 한 쌍(실물) — 숙인 머리보다 높아 굽은 등이 산다.
+    ...domeFaces3(-1.35, -0.25, 0.62, 0.5, 6),
+    ...domeFaces3(1.35, -0.25, 0.62, 0.5, 6),
     // 사이오닉 검 — 팔뚝에서 앞-아래로, 빛나는 날.
     ...hornFaces(1.7, 0.3, 4.7, 2.4, 1.4, 1, 0.7),
     topFace(polyPath3([[1.75, 0.45, 4.5], [2.35, 1.35, 1.15], [2.2, 1.25, 1.1], [1.6, 0.4, 4.4]]), 0.45),
@@ -2920,13 +2971,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 다리(지적) — 질럿과 같은 두 기둥.
     ...cylinderFaces3(-0.55, 0, 0.45, 3.5, 0),
     ...cylinderFaces3(0.55, 0, 0.45, 3.5, 0),
-    ...cylinderFaces3(0, -0.4, 1.4, 3.4, 3.4),
-    ...domeFaces3(0, -0.9, 1.2, 0.95, 6.8),
-    // 프로토스 길쭉한 머리(요청).
-    ...hornFaces(0, -1.3, 7.2, 0, -3, 7.9, 0.7),
-    // 등 볏 칼날 한 쌍(실물) — 뒤 위로 쓸려 올라간다.
-    ...hornFaces(-0.4, -1, 6.6, -1.6, -2.4, 8.9, 0.55),
-    ...hornFaces(0.4, -1, 6.6, 1.3, -2.6, 8.5, 0.5),
+    /* 구부정한 자세(요청) — 질럿과 같은 두 마디 몸통: 윗마디가 앞으로 기울고 머리가
+       앞·낮게 나온다. */
+    ...cylinderFaces3(0, -0.5, 1.4, 2, 3.4),
+    ...cylinderFaces3(0, 0, 1.25, 1.3, 5.3),
+    ...domeFaces3(0, 0.35, 1.1, 0.85, 6.3),
+    ...hornFaces(0, 0, 6.9, 0, -2.1, 7.6, 0.7),
+    // 등 볏 칼날 한 쌍(실물) — 굽은 등에서 뒤 위로 쓸려 올라간다.
+    ...hornFaces(-0.4, -0.75, 6.4, -1.6, -2.2, 8.7, 0.55),
+    ...hornFaces(0.4, -0.75, 6.4, 1.3, -2.4, 8.3, 0.5),
     // 낫 검 한 자루 — 오른 옆구리에서 아래로, 빛나는 날.
     ...hornFaces(1.7, 0.3, 4.7, 2.4, 1.5, 0.9, 0.75),
     topFace(polyPath3([[1.75, 0.45, 4.5], [2.35, 1.45, 1.05], [2.2, 1.35, 1], [1.6, 0.4, 4.4]]), 0.45),
@@ -2959,7 +3012,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   goon: () => {
     const leg = (m2: 1 | -1, fy: number): ShapeFace[] => [
       ...hornFaces(m2 * 1.1, fy * 0.8, 4.6, m2 * 3, fy * 1.35, 5.4, 1.2),
-      ...hornFaces(m2 * 3, fy * 1.35, 5.4, m2 * 3.6, fy * 1.55, 0.4, 0.95),
+      /* 다리 끝 뭉뚝하게(지적: 뾰족 말고 기계 형태) — 정강이는 발목(z 1.15)까지만
+         가늘어지고, 굵은 원기둥 발이 그대로 땅을 디딘다. */
+      ...hornFaces(m2 * 3, fy * 1.35, 5.4, m2 * 3.55, fy * 1.52, 1.15, 0.95),
+      ...cylinderFaces3(m2 * 3.55, fy * 1.52, 0.45, 1.25, 0),
     ];
     const [gx2, gy2] = project(-0.5, -0.5, 5.8);
     return [
@@ -3192,7 +3248,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         + ` Q${bx2 + ux} ${by2 + uy - zr} ${bx2 - nx2} ${by2 - ny2 - zr}`
         + ` L${ax2 - nx2} ${ay2 - ny2 - zr}`
         + ` Q${ax2 - ux} ${ay2 - uy - zr} ${ax2 + nx2} ${ay2 + ny2 - zr} Z`));
-      out.push(topFace(groundEllipse((ax2 + bx2) / 2 - 0.4, (ay2 + by2) / 2 - zr - 0.2, 0.9, 0.5), 0.2));
+      /* 광택은 축 따라 긴 띠(지적: 실린더 위 동그라미가 자리 이상) — 화면 고정 타원은
+         요잉과 무관하게 떠 보였다. 포드 등마루를 따라 도는 가늘고 긴 줄로 바꾼다. */
+      const s1x = ax2 + dx2 * 0.15;
+      const s1y = ay2 + dy2 * 0.15 - zr;
+      const s2x = ax2 + dx2 * 0.85;
+      const s2y = ay2 + dy2 * 0.85 - zr;
+      const hpx = (-dy2 / L) * 0.3;
+      const hpy = (dx2 / L) * 0.3;
+      out.push(topFace(
+        `M${s1x + hpx} ${s1y + hpy} L${s2x + hpx} ${s2y + hpy}`
+        + ` L${s2x - hpx} ${s2y - hpy} L${s1x - hpx} ${s1y - hpy} Z`, 0.2,
+      ));
     };
     // 폭 축소(지적: 몸체 폭 줄이기) — 포드 자리 ±3.1 → ±2.6, 판도 따라 좁힌다.
     pod(-2.6);

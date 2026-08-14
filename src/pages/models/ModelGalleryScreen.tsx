@@ -5,16 +5,15 @@ import { withYaw, VIEW } from "../../utils/shapeOblique";
 /* 자료실 > 모델링(요청) — 재생 화면의 3D 도형들을 큰 화면으로 살펴본다. 모두에게 열려
  * 있다(운영 아님). 전부 3D 빌더라 요잉(수평 시점)을 15도씩 돌려 볼 수 있고, 전투 갈래
  * 기호(2D)는 회전 없이 기호 그대로다. */
-/* 무대 색 고르기(요청) — 기본은 랜덤(재요청), 도록(시트)은 그대로 흰색으로 찍힌다. */
-const STAGE_COLORS = ["#f2f5f9", "#5ea2ff", "#ff6a5e", "#ffce54", "#7ed491"];
+/* 무대 색 고르기(요청) — 연두를 맨 위로 올려 두 테마 공통 기본색으로 쓴다(재재요청:
+   스타 게임 컨셉과 맞음). 도록(시트)도 이 기본 연두로 찍는다. */
+const STAGE_COLORS = ["#7ed491", "#f2f5f9", "#5ea2ff", "#ff6a5e", "#ffce54"];
+const WHITE = "#f2f5f9";
 
 export default function ModelGalleryScreen() {
   const [kind, setKind] = useState(SHAPE_GALLERY[0]?.kind ?? "");
   const [yaw, setYaw] = useState<number>(VIEW.yawDeg);
-  /* 기본 컬러는 랜덤(요청) — 들어올 때마다 견본 다섯 중 하나로 시작한다. */
-  const [color, setColor] = useState(
-    () => STAGE_COLORS[Math.floor(Math.random() * STAGE_COLORS.length)],
-  );
+  const [color, setColor] = useState(STAGE_COLORS[0]);
   /* 자동 회전은 16방 스텝(재정의: 렌더 순서가 16방 기준이니 갤러리도 16방으로) —
      22.5도씩 끊어 돌며 각 방향에서 잠깐 머문다. 지도 마커가 실제로 쓰는 각도들만
      보게 되고, 그리기 순서 검수도 방향 단위로 된다. */
@@ -56,7 +55,7 @@ export default function ModelGalleryScreen() {
           {/* 라이트 테마 대비(요청) — 흰 모델일 땐 무대에 어두운 배경을 깔아 형태가
               밝은 판에 묻히지 않게 한다(다크 테마에선 어차피 어두워 표시 없음). */}
           <div
-            className={color === STAGE_COLORS[0] ? "scr-model-stage scr-model-stage-dark" : "scr-model-stage"}
+            className={color === WHITE ? "scr-model-stage scr-model-stage-dark" : "scr-model-stage"}
             style={{ color }}
           >
             <ShapeIcon kind={kind} faces={faces} />
