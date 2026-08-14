@@ -565,6 +565,42 @@ function creepSplat(r: number): ShapeFace[] {
   return out;
 }
 
+/* 저그 크립(요청: 건물 아래 보라빛 크립) — 가장자리가 각지지 않게, 저주파 웨이브를
+   섞은 매끈한 닫힌 곡선(중점 Q 스무딩) 블롭. 씨앗만 다른 세 변형을 돌려 깔면 이웃
+   건물의 크립과 겹치며 자연스럽게 한 덩어리로 이어진다(같은 불투명 단색이라 이음매가
+   없다). 얼룩 반점 몇 개가 생물 질감을 낸다. */
+function creepBlobFaces(seed: number): ShapeFace[] {
+  const N = 16;
+  const pts: [number, number][] = [];
+  for (let i = 0; i < N; i += 1) {
+    const a = (i / N) * Math.PI * 2;
+    const w = Math.sin(a * 3 + seed) * 0.1 + Math.sin(a * 5 + seed * 2.7) * 0.08;
+    const r = 7.6 * (0.86 + w);
+    pts.push(project(Math.sin(a) * r, Math.cos(a) * r, 0.04));
+  }
+  let d = "";
+  for (let i = 0; i < N; i += 1) {
+    const p = pts[i];
+    const q = pts[(i + 1) % N];
+    const mx = (p[0] + q[0]) / 2;
+    const my = (p[1] + q[1]) / 2;
+    if (i === 0) d = `M${mx} ${my}`;
+    else d += ` Q${p[0]} ${p[1]} ${mx} ${my}`;
+  }
+  const p0 = pts[0];
+  const m0x = (p0[0] + pts[1][0]) / 2;
+  const m0y = (p0[1] + pts[1][1]) / 2;
+  d += ` Q${p0[0]} ${p0[1]} ${m0x} ${m0y} Z`;
+  const faces: ShapeFace[] = [bodyFace(d)];
+  for (let i = 0; i < 7; i += 1) {
+    const a = seed * 3.1 + i * 2.4;
+    const rr = 2 + ((Math.sin(a * 17.7) * 0.5 + 0.5) * 4);
+    const [sx, sy] = project(Math.sin(a) * rr, Math.cos(a) * rr, 0.05);
+    faces.push([groundEllipse(sx, sy, 0.55 + (i % 3) * 0.2), i % 2 ? 0.22 : 0.14, "#3d3244"] as ShapeFace);
+  }
+  return faces;
+}
+
 /* 공사 셋 고정색(요청: 팀색 대신 재질색) — 색 없는 밑칠(bodyFace)에만 바탕색을 입히고,
    흰/검 음영과 명시색 면은 그대로 둔다. */
 function paintBase(faces: ShapeFace[], base: string): ShapeFace[] {
@@ -3733,6 +3769,10 @@ SHAPE_BUILDERS.carrierbay = () => {
     ...cept(-2.1, 2.9, 7.1),
   ];
 };
+/* 크립 블롭 세 변형(요청: 저그 건물 아래 크립) — 씨앗만 다른 같은 생물 카펫. */
+SHAPE_BUILDERS.creeppatch = () => creepBlobFaces(0.7);
+SHAPE_BUILDERS.creeppatch2 = () => creepBlobFaces(2.3);
+SHAPE_BUILDERS.creeppatch3 = () => creepBlobFaces(4.1);
 /* 부품 깊이 정렬(지적: 일부만 가려지는 파트에서 뒤 요소가 비쳐 보임 — 가장 큰 문제) —
    빌더의 그리기 순서는 표준 시점 기준 고정이라, 요잉으로 뒤로 돌아간 부품이 앞 부품
    위에 그려졌다. 프리미티브(상자·절두·기둥·돔·뿔·관·다리)가 제 중심 깊이를 면에 달아
@@ -6270,6 +6310,34 @@ export default function ReplayMotionPlayer({
               style={{ ...posStyle(m.x, m.y), zIndex: 1500 }}
             />
           );
+        })}
+        {/* 저그 크립(요청) — 살아 있는 저그 건물마다 발밑에 보라 크립 블롭을 깐다.
+            불투명 단색이라 이웃 크립과 겹치며 이음매 없이 한 덩어리로 이어지고,
+            건물이 없어지면 페이드와 함께 곧 걷힌다(지적). 층은 자원(900)보다 아래. */}
+        {motion.builds.map(([sec, x, y, unit, raw, gone], i) => {
+          if (sec > t) return null;
+          const race = bases.find((b2) => b2.key === raw)?.race;
+          if (race !== "저그") return null;
+          const goneAt = gone ?? 0;
+          if (goneAt > 0 && t >= goneAt + 1.2) return null;
+          const cxb = x + footDx(unit);
+          const cyb = y + footDy(unit);
+          const [cfx, cfy] = posFrac(cxb, cyb);
+          const wTiles = ["Hatchery", "Lair", "Hive"].includes(unit) ? 14 : 9;
+          const mk3 = pitchK(cyb);
+          unitOps.push({
+            fx: cfx, fy: cfy, z: 880 + (i % 20),
+            kind: i % 3 === 0 ? "creeppatch" : i % 3 === 1 ? "creeppatch2" : "creeppatch3",
+            viewYaw: viewYawOf(cxb, cyb), flat: !pitched, pitch: pitched,
+            sizePx: 0,
+            wFrac: (wTiles / grid.width) * mk3,
+            hFrac: ((wTiles * 0.75) / grid.width) * mk3,
+            boxFit: "meet", fitWidth: true,
+            color: "#544659",
+            alpha: goneAt > 0 && t >= goneAt ? Math.max(0, 1 - (t - goneAt) / 1.2) : 1,
+            noShadow: true,
+          });
+          return null;
         })}
         {/* 건물 소멸 효과(요청: 종족별) — 무너진 순간 2초: 테란 주황 폭발+회색 연기,
             저그 보라 살점 퍼짐, 프로토스 파란 빛 붕괴. 이륙 이사·같은 계보 대체(진화·
