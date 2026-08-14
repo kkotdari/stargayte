@@ -8,31 +8,25 @@ import { withYaw, VIEW } from "../../utils/shapeOblique";
 export default function ModelGalleryScreen() {
   const [kind, setKind] = useState(SHAPE_GALLERY[0]?.kind ?? "");
   const [yaw, setYaw] = useState<number>(VIEW.yawDeg);
-  /* 자동 무한 회전(요청) — 무대가 저절로 부드럽게 돈다. 수동 버튼을 누르면 멈춰 그
-     각도를 살펴볼 수 있고, '자동 회전'으로 다시 돌린다. */
+  /* 자동 회전은 16방 스텝(재정의: 렌더 순서가 16방 기준이니 갤러리도 16방으로) —
+     22.5도씩 끊어 돌며 각 방향에서 잠깐 머문다. 지도 마커가 실제로 쓰는 각도들만
+     보게 되고, 그리기 순서 검수도 방향 단위로 된다. */
   const [auto, setAuto] = useState(true);
   useEffect(() => {
     if (!auto) return undefined;
-    let raf = 0;
-    let last = performance.now();
-    const tick = (now: number): void => {
-      // 탭 전환 등으로 프레임이 크게 벌어지면 그만큼 건너뛰지 않게 100ms로 자른다.
-      const dt = Math.min(100, now - last);
-      last = now;
-      setYaw((y) => (y + dt * 0.03) % 360); // 30°/s — 한 바퀴 12초.
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    const id = window.setInterval(() => {
+      setYaw((y) => (Math.round(y / 22.5) * 22.5 + 22.5) % 360);
+    }, 650);
+    return () => window.clearInterval(id);
   }, [auto]);
-  /* 수동 요잉은 키보드로(개편: 요잉 버튼 줄 제거) — ←/→가 15도씩 돌리고 자동을 멈춘다.
-     화면 검증 스크립트도 이 키를 쓴다. */
+  /* 수동 요잉은 키보드로(개편: 요잉 버튼 줄 제거) — ←/→가 16방 한 칸(22.5도)씩
+     돌리고 자동을 멈춘다. 화면 검증 스크립트도 이 키를 쓴다. */
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
       e.preventDefault();
       setAuto(false);
-      setYaw((y) => Math.round(y / 15) * 15 + (e.key === "ArrowRight" ? 15 : -15));
+      setYaw((y) => Math.round(y / 22.5) * 22.5 + (e.key === "ArrowRight" ? 22.5 : -22.5));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

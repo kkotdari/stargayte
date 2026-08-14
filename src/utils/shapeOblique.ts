@@ -207,10 +207,15 @@ export function depthNow(x: number, y: number): number {
   const th = (currentYaw() * Math.PI) / 180;
   return -x * Math.sin(th) + y * Math.cos(th);
 }
-/** 부품 면들에 중심 깊이를 매긴다 — 프리미티브가 제 중심으로 자동 호출한다. */
+/** 부품 면들에 중심 깊이를 매긴다 — 손 면 묶음이 제 자리를 밝힐 때 쓴다. */
 export function tagDepth(faces: ShapeFace[], x: number, y: number): ShapeFace[] {
   const d = depthNow(x, y);
   return faces.map(([p, o, f]) => [p, o, f, d] as ShapeFace);
+}
+/** 깊이 키를 그대로 매긴다 — 프리미티브가 '부품 전체에서 가장 앞점'을 셈해 단다
+ *  (지적: 중앙값 기준은 길쭉한 부품에서 틀린다 — 같은 부품도 깊이가 많이 다르다). */
+export function tagKey(faces: ShapeFace[], key: number): ShapeFace[] {
+  return faces.map(([p, o, f]) => [p, o, f, key] as ShapeFace);
 }
 /** 부품 깊이 정렬(지적: 요잉으로 뒤로 간 부품이 앞 부품 위에 그려져 '비쳐 보임') —
  *  깊이 있는 면은 뒤→앞으로, 깊이 없는 면은 직전 깊이를 물려받아(장식은 제 부품에
@@ -400,9 +405,10 @@ export function cylinderFaces3(
     + `a${r2(r)} ${r2(ry)} 0 1 1-${r2(r * 2)} 0Z`;
   const shade = `M${r2(tx + r * 0.35)} ${r2(ty)} L${r2(tx + r)} ${r2(ty)} L${r2(bx + r)} ${r2(by)}`
     + `a${r2(r)} ${r2(ry)} 0 0 1-${r2(r * 0.65)} ${r2(ry * 0.92)}Z`;
-  return tagDepth(
+  // 깊이 키 = 가장 앞점(중심 + 반지름) — 중앙값 기준의 오차를 줄인다(지적).
+  return tagKey(
     [bodyFace(body), sideFace(shade, OP.sideSoft), topFace(groundEllipse(tx, ty, r, ry))],
-    cx, cy,
+    depthNow(cx, cy) + r,
   );
 }
 
@@ -436,7 +442,10 @@ export function prismXFaces(profile: [number, number][], hw: number): ShapeFace[
     bodyParts.push(cap);
     out.push(...face(cap));
   }
-  return tagDepth([bodyFace(bodyParts.join(" ")), ...out], 0, 0);
+  return tagKey(
+    [bodyFace(bodyParts.join(" ")), ...out],
+    Math.max(...profile.map(([y]) => y * depthNow(0, 1))) + hw * Math.abs(depthNow(1, 0)),
+  );
 }
 
 /** 넙적 피라미드 — 네 삼각 면을 보이는 것만, 세계 광원 밝기로. */
@@ -465,7 +474,10 @@ export function pyramidFaces3(
     bodyParts.push(f.d);
     out.push(...face(f.d));
   }
-  return tagDepth([bodyFace(bodyParts.join(" ")), ...out], cx, cy);
+  return tagKey(
+    [bodyFace(bodyParts.join(" ")), ...out],
+    depthNow(cx, cy) + (w / 2) * Math.abs(depthNow(1, 0)) + (d / 2) * Math.abs(depthNow(0, 1)),
+  );
 }
 
 export function limbFaces(
@@ -506,7 +518,7 @@ export function limbFaces(
     const rr = (Math.hypot(c2x - c1x, c2y - c1y) / 2) * 1.05;
     faces.push(capFace(`M${c1x} ${c1y} A${r2(rr)} ${r2(rr * 0.95)} 0 0 1 ${c2x} ${c2y} Z`));
   }
-  return tagDepth(faces, (rootX + tipX) / 2, (rootY + tipY) / 2);
+  return tagKey(faces, Math.max(depthNow(rootX, rootY), depthNow(tipX, tipY)));
 }
 
 /* ── 전면 3D화 프리미티브(요청: 모든 건물·수송선을 3D 도형으로) ──────────────────── */
@@ -542,7 +554,12 @@ export function frustumFaces3(
     bodyParts.push(f.d);
     out.push(...face(f.d));
   }
-  return tagDepth([bodyFace(bodyParts.join(" ")), ...out, topFace(top)], cx, cy);
+  return tagKey(
+    [bodyFace(bodyParts.join(" ")), ...out, topFace(top)],
+    depthNow(cx, cy)
+      + (Math.max(wB, wT) / 2) * Math.abs(depthNow(1, 0))
+      + (Math.max(dB, dT) / 2) * Math.abs(depthNow(0, 1)),
+  );
 }
 
 /** 반구 돔 — 회전 대칭이라 요잉 불변. 바닥 중심 (cx,cy,z0), 반지름 r, 높이 h. */
@@ -559,7 +576,7 @@ export function domeFaces3(
   const shine = groundEllipse((bx + tx) / 2 - r * 0.25, (by + ty) / 2 - (by - ty) * 0.22, r * 0.4, r * 0.18);
   const shade = `M${r2(tx + r * 0.35)} ${r2(ty + (by - ty) * 0.08)} Q${r2(tx + r)} ${r2(ty + (by - ty) * 0.25)} ${r2(bx + r)} ${r2(by)}`
     + ` Q${r2(bx + r * 0.55)} ${r2(by + ry * 0.6)} ${r2(bx + r * 0.35)} ${r2(by)}Z`;
-  return tagDepth([bodyFace(body), sideFace(shade, OP.sideSoft), topFace(shine)], cx, cy);
+  return tagKey([bodyFace(body), sideFace(shade, OP.sideSoft), topFace(shine)], depthNow(cx, cy) + r);
 }
 
 /** 눕힌 원통(관) — 평면 두 점 사이를 반지름 r로 잇는다. 몸통 + (보이는 쪽) 끝 단면.
@@ -591,7 +608,7 @@ export function tubeFaces(
     `M${r2(ax + nx)} ${r2(ay + ny - zr * 0.2)} L${r2(bx + nx)} ${r2(by + ny - zr * 0.2)} L${r2(bx + nx)} ${r2(by + ny)} L${r2(ax + nx)} ${r2(ay + ny)} Z`,
     OP.sideSoft,
   ));
-  return tagDepth(faces, (x1 + x2) / 2, (y1 + y2) / 2);
+  return tagKey(faces, Math.max(depthNow(x1, y1), depthNow(x2, y2)));
 }
 
 /** 뿔·가시 — 평면 밑점(bx,by,z0)에서 평면 끝점(tx,ty,zt)으로 솟는 가는 원뿔. */
@@ -609,5 +626,5 @@ export function hornFaces(
     + ` Q${r2((ax + cx2) / 2 - nx)} ${r2((ay + cy2) / 2 - ny)} ${r2(ax - nx)} ${r2(ay - ny)} Z`;
   const shade = `M${r2(cx2)} ${r2(cy2)} Q${r2((ax + cx2) / 2 - nx)} ${r2((ay + cy2) / 2 - ny)} ${r2(ax - nx)} ${r2(ay - ny)}`
     + ` L${r2(ax - nx * 0.2)} ${r2(ay - ny * 0.2)} Z`;
-  return tagDepth([bodyFace(body), sideFace(shade, OP.sideSoft)], (bx + tx) / 2, (by + ty) / 2);
+  return tagKey([bodyFace(body), sideFace(shade, OP.sideSoft)], Math.max(depthNow(bx, by), depthNow(tx, ty)));
 }

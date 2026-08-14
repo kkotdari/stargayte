@@ -10,7 +10,7 @@ import { isAirUnit, type MotionTrack, type SummaryMotion, type TrackPt } from ".
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } from "../../utils/minimapTerrain";
 import {
-  bodyFace, capFace, depthNow, groundEllipse, sideFace, tagDepth, topFace, type ShapeFace,
+  bodyFace, capFace, depthNow, groundEllipse, sideFace, tagDepth, tagKey, topFace, type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
   domeFaces3, faceLight, facingRatio, frustumFaces3, hornFaces, limbFaces, pyramidFaces3, tubeFaces,
   wallDiscPath, wallFrame, withPitchView, withTopView, withViewShear, withYaw, zsorted,
@@ -1475,9 +1475,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         + ` Q${cx3 + ex} ${cy3 + ey} ${cx3 - nx} ${cy3 - ny} L${ax - nx} ${ay - ny} Z`;
       const edge = `M${cx3 + nx * 0.3} ${cy3 + ny * 0.3} Q${cx3 + ex} ${cy3 + ey} ${cx3 - nx} ${cy3 - ny}`
         + ` L${ax - nx} ${ay - ny} L${ax - nx * 0.5} ${ay - ny * 0.5} Z`;
-      return tagDepth(
+      // 깊이 키는 판 전체의 가장 앞점(뿌리·끝 중 앞) — 프리미티브와 같은 규칙.
+      return tagKey(
         [bodyFace(d), sideFace(edge, 0.18)],
-        (bx2 + tx2) / 2, (by2 + ty2) / 2,
+        Math.max(depthNow(bx2, by2), depthNow(tx2, ty2)),
       );
     };
     out.push(...plate(-1.4, -1.2, 1, -2.5, -2, 6.6, 2.1));
