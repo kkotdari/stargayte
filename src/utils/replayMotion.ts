@@ -44,6 +44,15 @@ const RAZE_SURE_ORDERS = 14;
 const RAZE_QUIET_SEC = 90;
 const RAZE_QUIET_RADIUS = 8;
 const RAZE_QUIET_MAX_ORDERS = 1;
+/* 격퇴 증거(지적: 지었던 스포닝풀이 갑자기 없어짐, 쳐들어오지도 않았는데) — 기지 안
+   방어전만 있어도 위 뭉치 판정이 곁 건물들을 죽은 것으로 봤다. 특히 돈맵에선 일꾼이
+   클릭 없이 캐서 '임자 침묵'이 쉽게 성립하고, 풀 같은 테크 건물은 지어 두고 안 쓰는
+   게 정상이라 살아 있다는 흔적도 없다. 그래서 철거 판정 뒤 얼마 안 돼 임자가 그 곁에
+   '다른 종류' 건물을 새로 지으면 — 밀린 자리에서 태연히 공사할 수는 없으니 — 막아 낸
+   것으로 보고 판정을 물린다. 같은 종류는 안 친다: 그 자리 재건축이야말로 진짜 철거의
+   증거다(아래 같은 자리 재건 규칙). */
+const RAZE_REBUILD_RADIUS = 12;
+const RAZE_REBUILD_WINDOW_SEC = 180;
 /** 일꾼 걸음(타일/초) — 착공 지연의 자다. 재생 쪽 SCOUT_WALK_SPEED와 같은 값. */
 const WORKER_TILES_PER_SEC = 3.7;
 /** 착공 지연 상한(초) — 몰래 건물이라도 이보다 오래 걷지는 않았다고 본다. */
@@ -428,6 +437,11 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
   );
   const tracks: MotionTrack[] = [];
   const builds: SummaryMotion["builds"] = [];
+  /* 부드러운 끝(지적: 지었던 스포닝풀이 갑자기 없어짐) — 모프(해처리→레어)나 건설 취소로
+     끝난 건물의 end는 '무너짐'이 아니다. 그런데 아래 파괴 전파가 end>0인 생산 건물을
+     전부 무너진 것으로 보고 곁 비생산 건물(풀·덴·익스트랙터)까지 걷어서, 레어만 가도
+     제 풀이 변태 시각에 사라졌다. 여기 든 항목은 전파의 근원이 되지 않는다. */
+  const softEnd = new Set<SummaryMotion["builds"][number]>();
   const casts: SummaryMotion["casts"] = [];
   /* 팀별 공격 명령 — 건물 무너짐 어림의 재료. 한 번만 모아 두고 건물마다 훑는다. */
   const attacksByTeam = new Map<number, { sec: number; x: number; y: number }[]>();
@@ -530,6 +544,8 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
     const ownOrders = (sg.orderPositions ?? [])
       .map((o) => ({ sec: o.frame * SECONDS_PER_FRAME, x: o.x, y: o.y }));
     const myBuildIdx: number[] = [];
+    // 건물 번호 → razedAt 원본 값(격퇴 증거 물리기용, RAZE_REBUILD 주석).
+    const razeByIdx = new Map<number, number>();
     /* 시작 본진을 심는다(지적: 본진 기지 건물은 절대 안 망함 + 요청: 기존 기지는 평범한
        기지 아이콘으로) — 시작 홀은 건설 커맨드가 없어 builds에 없었고, 그래서 무너짐
        판정의 대상조차 아니었다. 시작 지점에 종족 홀을 0초로 세우면 무너짐 어림·파괴
@@ -565,9 +581,12 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       const builtSec = Math.round(clickSec + travel);
       spts.push([Math.round(clickSec), Math.round(b.x), Math.round(b.y)]);
       myBuildIdx.push(builds.length);
+      // 철거 판정의 원본 값을 따로 적는다 — 아래 격퇴 증거 물리기가 '철거 판정이 그대로
+      // 남은' 항목만 만지기 위해서다(모프·취소가 덮은 끝은 그쪽 사정).
+      const rz = razedAt(builtSec, b.x, b.y, foeAttacks, ownOrders);
+      if (rz > 0) razeByIdx.set(builds.length, rz);
       builds.push([
-        builtSec, Math.round(b.x), Math.round(b.y), b.unit, p.rawName,
-        razedAt(builtSec, b.x, b.y, foeAttacks, ownOrders),
+        builtSec, Math.round(b.x), Math.round(b.y), b.unit, p.rawName, rz,
       ]);
     }
     spts.sort((a, b) => a[0] - b[0]);
@@ -589,6 +608,7 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       if (pick < 0) continue;
       const e = builds[pick];
       e[5] = e[5] > 0 ? Math.min(e[5], sec) : sec;
+      softEnd.add(e); // 변태로 물러난 것 — 무너진 게 아니다(위 softEnd 주석).
       myBuildIdx.push(builds.length);
       builds.push([sec, e[1], e[2], bm.to, p.rawName, razedAt(sec, e[1], e[2], foeAttacks, ownOrders)]);
     }
@@ -711,7 +731,21 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       if (pick >= 0) {
         const e = builds[pick];
         e[5] = e[5] > 0 ? Math.min(e[5], sec) : sec;
+        softEnd.add(e); // 취소로 물러난 것 — 무너진 게 아니다(위 softEnd 주석).
       }
+    }
+    /* 격퇴 증거로 철거 판정 물리기(지적: 스포닝풀이 갑자기 없어짐 — RAZE_REBUILD 주석)
+       — 철거로 봤던 시각 뒤 얼마 안 돼 임자가 그 곁에 다른 종류 건물을 새로 지었으면
+       막아 낸 것이다. 철거 값이 그대로 남은 항목만 만진다. */
+    for (const [k, rz] of razeByIdx) {
+      const a = builds[k];
+      if (a[5] !== rz) continue;
+      const defended = myBuildIdx.some((k2) => {
+        const b2 = builds[k2];
+        return b2[0] > rz && b2[0] - rz <= RAZE_REBUILD_WINDOW_SEC && b2[3] !== a[3]
+          && Math.hypot(b2[1] - a[1], b2[2] - a[2]) <= RAZE_REBUILD_RADIUS;
+      });
+      if (defended) a[5] = 0;
     }
     /* 랠리 포인트(지적) — 좌표·시각·건물 태그를 그대로 옮긴다. */
     const rly: [number, number, number, number][] = (sg.rallies ?? [])
@@ -785,9 +819,10 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
     "Barracks", "Factory", "Starport", "Gateway", "Stargate", "Robotics Facility",
   ]);
   for (const a of builds) {
-    if (a[5] <= 0 || !prodLike.has(a[3])) continue;
+    // softEnd(모프·취소)는 무너진 게 아니다 — 레어 변태가 곁 풀·덴을 걷어 갔다(지적).
+    if (a[5] <= 0 || !prodLike.has(a[3]) || softEnd.has(a)) continue;
     for (const b of builds) {
-      if (b === a || b[4] !== a[4] || prodLike.has(b[3])) continue;
+      if (b === a || b[4] !== a[4] || prodLike.has(b[3]) || softEnd.has(b)) continue;
       // 그 시각에 서 있던 것만 — 나중에 다시 지은 건물을 소급해 걷으면 안 된다.
       if (b[0] > a[5] || (b[5] > 0 && b[5] <= a[5])) continue;
       if (Math.hypot(a[1] - b[1], a[2] - b[2]) > PROP_RADIUS_TILES) continue;
@@ -800,7 +835,7 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
      같이 무너진 것으로 본다. 공격 근거 없이 전파하면 수비에 성공한 기지까지 걷는다. */
   const hallSet = new Set(["Command Center", "Nexus", "Hatchery", "Lair", "Hive"]);
   for (const a of builds) {
-    if (a[5] <= 0 || !prodLike.has(a[3]) || hallSet.has(a[3])) continue;
+    if (a[5] <= 0 || !prodLike.has(a[3]) || hallSet.has(a[3]) || softEnd.has(a)) continue;
     for (const b of builds) {
       if (b === a || b[5] > 0 || b[4] !== a[4] || !hallSet.has(b[3])) continue;
       if (b[0] > a[5] || Math.hypot(a[1] - b[1], a[2] - b[2]) > PROP_RADIUS_TILES) continue;
