@@ -3565,17 +3565,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   ovie: () => {
     const [cx, cy] = project(0, 0, 5.2);
     const legs: string[] = [];
+    /* 마디 — 시작·끝 굵기를 따로 받아 사다리꼴로 그린다(재지적: 집게팔은 뿌리가
+       얇고 집게 쪽에서 확 두꺼워져야 한다). 끝 굵기를 안 주면 곧은 막대다. */
     const seg = (
-      x1: number, y1: number, z1: number, x2: number, y2: number, z2: number, w: number,
+      x1: number, y1: number, z1: number, x2: number, y2: number, z2: number,
+      w: number, w2: number = w,
     ): string => {
       const [ax, ay] = project(x1, y1, z1);
       const [bx, by] = project(x2, y2, z2);
       const dx = bx - ax;
       const dy = by - ay;
       const len = Math.hypot(dx, dy) || 1;
-      const nx = (-dy / len) * (w / 2);
-      const ny = (dx / len) * (w / 2);
-      return `M${ax + nx} ${ay + ny} L${bx + nx} ${by + ny} L${bx - nx} ${by - ny} L${ax - nx} ${ay - ny} Z`;
+      const nx = -dy / len;
+      const ny = dx / len;
+      const a1 = w / 2;
+      const a2 = w2 / 2;
+      return `M${ax + nx * a1} ${ay + ny * a1} L${bx + nx * a2} ${by + ny * a2} L${bx - nx * a2} ${by - ny * a2} L${ax - nx * a1} ${ay - ny * a1} Z`;
     };
     /* 다리 개편(재재재지적: 다리는 몸통에 완전히 붙이고, 집게팔은 많이 두껍게) —
        뿌리를 풍선 실루엣 안쪽으로 밀어 넣어 몸에서 바로 돋아난 것으로 보이게 한다.
@@ -3586,12 +3591,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         legs.push(seg(sx * 1.9, lyy, 3.4, sx * 3.1, lyy, 1.2, 0.52));
         legs.push(seg(sx * 3.1, lyy, 1.2, sx * 2.5, lyy, -0.9, 0.4));
       }
-      // 앞 집게팔 — 뿌리는 몸속, 마디는 굵게.
-      legs.push(seg(sx * 0.8, 1.7, 3.2, sx * 1.35, 2.9, 0.2, 1));
-      legs.push(seg(sx * 1.35, 2.9, 0.2, sx * 1.1, 3.5, -1.7, 0.85));
-      // 집게 — 끝에서 두 갈래, 팔 굵기에 맞춘 날.
-      legs.push(seg(sx * 1.1, 3.5, -1.7, sx * 1.65, 3.95, -2.5, 0.6));
-      legs.push(seg(sx * 1.1, 3.5, -1.7, sx * 0.6, 4.05, -2.45, 0.6));
+      // 앞 집게팔(재재지적: 뒷다리보다 살짝 짧게, 뿌리는 얇고 집게 쪽에서 확 굵게) —
+      // 사다리꼴 마디로 아래로 갈수록 부풀고, 발끝은 옆다리(-0.9)보다 조금 위에서 끝난다.
+      legs.push(seg(sx * 0.8, 1.7, 3.2, sx * 1.3, 2.7, 1.4, 0.45, 0.7));
+      legs.push(seg(sx * 1.3, 2.7, 1.4, sx * 1.15, 3.3, 0.2, 0.7, 1.3));
+      // 집게 — 굵은 밑동에서 두 갈래로 좁아지는 날.
+      legs.push(seg(sx * 1.15, 3.3, 0.2, sx * 1.7, 3.75, -0.6, 0.95, 0.35));
+      legs.push(seg(sx * 1.15, 3.3, 0.2, sx * 0.6, 3.85, -0.55, 0.95, 0.35));
     }
     /* 눈(재재재재지적: 동그란 컨택트 렌즈꼴로, 얼굴 정면에서 45도 양쪽) — 풍선 표면의
        정면 기준 좌우 45도 자리에 붙는 렌즈 한 쌍: 진한 원판 위에 밝은 속원이 얹힌
