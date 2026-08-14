@@ -3600,22 +3600,26 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       legs.push(seg(sx * 1.15, 3.3, 0.2, sx * 1.7, 3.75, -0.6, 0.7, 0.25));
       legs.push(seg(sx * 1.15, 3.3, 0.2, sx * 0.6, 3.85, -0.55, 0.7, 0.25));
     }
-    /* 눈(재재재재지적: 동그란 컨택트 렌즈꼴로, 얼굴 정면에서 45도 양쪽) — 풍선 표면의
-       정면 기준 좌우 45도 자리에 붙는 렌즈 한 쌍: 진한 원판 위에 밝은 속원이 얹힌
-       볼록 렌즈다. 모델 좌표라 요잉을 따라 표면을 돌아 나가고, 깊이 키(depthNow)로
-       앞으로 돌아온 눈은 몸 위에, 뒤로 간 눈은 몸 뒤에 선다. */
-    // 양옆으로(재지적: 눈은 얇은 컨택트 렌즈꼴로 양옆에) — 정면 기준 90도.
-    const eyeA = Math.PI / 2;
-    const eyeR = 2.9;
-    const exs = Math.sin(eyeA) * eyeR;
-    const eys = Math.cos(eyeA) * eyeR;
-    const [b1x, b1y] = project(-exs, eys, 5.2);
-    const [b2x, b2y] = project(exs, eys, 5.2);
-    // 얇은 렌즈(재재지적) — 납작한 채로 폭만 줄였다.
-    const lens = (lx2: number, ly2: number): ShapeFace[] => [
-      bodyFace(groundEllipse(lx2, ly2, 0.9, 0.5)),
-      topFace(groundEllipse(lx2, ly2, 0.5, 0.26), 0.45),
-    ];
+    /* 눈(재×5지적: 납작한 면이 몸에 붙어야) — 콘택트 렌즈처럼 원판의 납작한 면이
+       풍선 표면(양옆 접평면)에 붙는다: 원판이 좌우를 보고 서므로 정면에서는 얇은
+       실루엣만 보이고, 옆으로 돌면 동그란 렌즈 면이 나온다. 원둘레를 모델 좌표로
+       돌려 굽기 때문에 요잉을 그대로 따른다. */
+    const lens = (sxSign: number): ShapeFace[] => {
+      const ring = (r: number): [number, number, number][] => {
+        const pts: [number, number, number][] = [];
+        for (let i = 0; i < 14; i += 1) {
+          const a = (i / 14) * Math.PI * 2;
+          pts.push([sxSign * 3.05, Math.cos(a) * r, 5.2 + Math.sin(a) * r]);
+        }
+        return pts;
+      };
+      return [
+        // 몸색과 갈라지게 — 렌즈 판은 살짝 어둡게 누르고 속원만 밝힌다.
+        bodyFace(polyPath3(ring(0.8))),
+        sideFace(polyPath3(ring(0.8)), 0.16),
+        topFace(polyPath3(ring(0.5)), 0.5),
+      ];
+    };
     /* 흰 가시(공식 컨셉) — 풍선 윗면 여기저기서 바깥으로 솟는 짧은 가시. 밝은 덮개를
        얹어 몸색과 갈라 희게 읽힌다. 모델 좌표라 요잉을 따라 돌고, 제 깊이를 달아
        뒤로 간 가시는 풍선이 가린다. */
@@ -3639,8 +3643,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [g2x, g2y] = project(-0.3, -2.3, 7);
     return [
       bodyFace(legs.join(" ")),
-      ...tagKey(lens(b1x, b1y), depthNow(-exs, eys)),
-      ...tagKey(lens(b2x, b2y), depthNow(exs, eys)),
+      ...tagKey(lens(-1), depthNow(-3.05, 0)),
+      ...tagKey(lens(1), depthNow(3.05, 0)),
       // 혹 완전 축소(재지적: 머리 혹 줄이기) — 살짝 도드라지는 정도만.
       ...tagKey([
         bodyFace(groundEllipse(g1x, g1y, 0.95, 0.85)),
