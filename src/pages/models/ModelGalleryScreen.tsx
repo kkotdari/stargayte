@@ -75,8 +75,9 @@ export default function ModelGalleryScreen() {
   );
   return (
     <div className="scr-screen scr-model-screen">
-      <div className="scr-v2-toolbar">
-        <h1 className="scr-title scr-v2-toolbar-title">모델링</h1>
+      {/* 이름은 짧게 '모델'(요청) — 제목 아래 갭도 화면 전용 CSS로 줄였다. */}
+      <div className="scr-v2-toolbar scr-model-toolbar">
+        <h1 className="scr-title scr-v2-toolbar-title">모델</h1>
       </div>
       <div className="scr-minimap-panel">
         <div className="scr-model-viewer">

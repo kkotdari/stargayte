@@ -10915,22 +10915,27 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 58px;
   align-self: flex-start;
 }
+/* 이름 두 벌(요청: 모바일은 한글 2글자) — 평소엔 온이름, 좁은 화면에선 줄인 이름만. */
+.scr-motion-teamcol-name .scr-tcn-short { display: none; }
 /* 모바일 세로 목록에서 2팀은 오른쪽 벽에 붙는다 — 칩이 flex-start로 왼쪽에 남지 않게. */
 @media (max-width: 1159px) {
   .scr-motion-teamcol:last-of-type .scr-motion-teamcol-name { align-self: flex-end; }
 }
 /* 모바일은 옆이 좁다(요청: 로스터를 위에) — 기둥 둘이 맵 위에서 1팀 왼쪽·2팀 오른쪽으로
    마주 본다. 아바타는 걷고 이름만 남긴다(요청) — 위 로스터는 명패지 얼굴첩이 아니고,
-   좁은 위 칸에서 아바타가 자리를 다 먹었다. 한 명이 무조건 한 줄이고(요청: 줄바꿈),
+   좁은 위 칸에서 아바타가 자리를 다 먹었다. 팀 안에서는 가로로 흘러 줄을 아낀다
+   (요청: 팀별 가로 배치 + 이름 두 글자) — 이름이 짧아져 한 줄에 여럿이 선다.
    두 팀 사이에는 흐린 세로 줄을 긋는다(요청). */
 @media (max-width: 1159px) {
   .scr-motion-maprow { display: grid; grid-template-columns: 1fr 1fr; row-gap: 6px; column-gap: 0; }
   .scr-motion-maprow .scr-motion-map { grid-column: 1 / -1; grid-row: 2; }
-  .scr-motion-teamcol { width: auto; flex-direction: column; gap: 3px; }
+  .scr-motion-teamcol { width: auto; flex-direction: row; flex-wrap: wrap; gap: 3px 5px; align-items: center; }
   .scr-motion-teamcol:last-of-type {
-    align-items: flex-end;
+    justify-content: flex-end;
     border-left: 1px solid var(--line-soft); padding-left: 8px; margin-left: 8px;
   }
+  .scr-motion-teamcol-name .scr-tcn-full { display: none; }
+  .scr-motion-teamcol-name .scr-tcn-short { display: inline; }
   .scr-motion-teamcol-item .scr-motion-base-ring { display: none; }
   /* 이름은 살짝 크게(요청) — 아바타가 빠져 이름이 곧 그 사람이다. */
   .scr-motion-teamcol-name { font-size: 11px; max-width: none; }
@@ -11359,9 +11364,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-range {
   flex: 1 1 0; min-width: 0; height: 16px; cursor: pointer;
   -webkit-appearance: none; appearance: none; background: transparent;
-  /* 끌기 시작하면 손짓은 탐색바 것이다(지적: 모바일에서 손잡이가 잘 안 잡힘) — 세로
-     스크롤이 제스처를 가로채면 드래그가 끊긴다. */
-  touch-action: none;
+  /* 가로 끌기만 탐색바 몫이다(재지적: 재생바 위에서 위아래 스와이프가 페이지 스크롤로
+     안 이어짐) — none은 세로 손짓까지 삼켰다. pan-y면 세로로 시작한 손짓은 브라우저가
+     스크롤로 가져가고(onPointerCancel이 드래그를 정리), 가로 끌기는 여전히 바가 갖는다. */
+  touch-action: pan-y;
 }
 /* 모바일 — 손가락 표적을 키운다(지적: 터치로 잡기가 안 됨). 상자 높이 16→32px에
    손잡이도 12→20px. 트랙(4px)은 가운데 정렬만 다시 맞춘다. */
@@ -11391,6 +11397,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-clock {
   font-size: var(--fs-9); color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap;
 }
+
+/* 맵연결 모달(요청: 게임 상세 버튼 줄) — 저장된 미니맵 이름 버튼들만 단정하게. */
+.scr-maplink-modal { max-width: 380px; }
+.scr-maplink-hint { font-size: var(--fs-caption); color: var(--muted); margin: 0 0 10px; }
+.scr-maplink-list { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* 지형 검수 모달(요청) — 그림을 크게, 그 위에 이동 불가 칸을 어둡게 겹친다. */
 .scr-terrain-modal { max-width: 640px; }
@@ -12833,6 +12844,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-model-note { font-size: var(--fs-caption); color: var(--muted); }
 /* 뷰어·목록 분리(지적: 아래 목록 보기 힘듦) — 패널을 화면 높이에 맞춰 세로로 나누고,
    스크롤은 목록에만 준다. 뷰어는 그대로 붙박이. */
+/* 모델 화면 제목 줄(요청: 제목 아래 갭 줄이기) — 공용 28px 예약 대신 바짝 8px. */
+.scr-model-screen .scr-model-toolbar { padding-bottom: 8px; min-height: 0; }
+
 .scr-model-screen .scr-minimap-panel {
   display: flex; flex-direction: column;
   height: calc(100dvh - 110px); overflow: hidden;
@@ -12907,7 +12921,8 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 테란은 튀는 용접 불티(재재재지적: 위치는 상자 가운데, 라이트가 아니라 스파크) —
    글로우 두른 불티 셋이 저마다 다른 방향으로 튀어 오르다 포물선으로 떨어진다. */
 .scr-bfx-terran {
-  width: 3px; height: 3px; margin: -2px 0 0 -1px; border-radius: 50%;
+  /* 스파크 발원점(재지적: 공사장보다 위에 뜸) — 왼쪽 아래로 당겨 공사장 몸통에 붙인다. */
+  width: 3px; height: 3px; margin: 1px 0 0 -4px; border-radius: 50%;
   background: #fff2c0; box-shadow: 0 0 4px 1px rgba(255, 200, 90, 0.9);
   opacity: 0;
   animation: scr-spark-a 1.4s ease-out infinite;

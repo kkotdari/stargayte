@@ -16,6 +16,9 @@ export interface TerrainGrid {
   h: number;
   /** 행 우선 — 1이면 걸을 수 있는 땅으로 본다. */
   walk: Uint8Array;
+  /** 행 우선, 1이면 크립이 못 퍼지는 칸(요청: 램프·다리) — 걷긴 하지만 크립은 못 앉는
+   *  땅이라 walk와 별개 층이다. 검수 모달에서 사람이 칠하고, 없으면 벽만 크립을 막는다. */
+  creep?: Uint8Array;
 }
 
 /** 가로 격자 수 — 세로는 그림 비율을 따른다. 96이면 128×128 맵에서 한 칸이 1.3타일쯤 —
@@ -442,30 +445,48 @@ export function terrainOf(url: string, anchors?: [number, number][]): Promise<Te
 
 /* ── 저장 직렬화 — 서버(minimap_images.walk)에 JSON 문자열로 오간다. ───────────── */
 
-export function encodeWalk(t: TerrainGrid): string {
+const hexOfBits = (arr: Uint8Array): string => {
   let hex = "";
-  for (let i = 0; i < t.walk.length; i += 4) {
+  for (let i = 0; i < arr.length; i += 4) {
     let nib = 0;
-    for (let j = 0; j < 4; j += 1) if (t.walk[i + j]) nib |= 1 << (3 - j);
+    for (let j = 0; j < 4; j += 1) if (arr[i + j]) nib |= 1 << (3 - j);
     hex += nib.toString(16);
   }
-  return JSON.stringify({ w: t.w, h: t.h, hex });
+  return hex;
+};
+
+const bitsOfHex = (hex: string, len: number): Uint8Array => {
+  const arr = new Uint8Array(len);
+  for (let i = 0; i < hex.length; i += 1) {
+    const nib = parseInt(hex[i], 16);
+    for (let j = 0; j < 4; j += 1) {
+      const idx = i * 4 + j;
+      if (idx < len && nib & (1 << (3 - j))) arr[idx] = 1;
+    }
+  }
+  return arr;
+};
+
+export function encodeWalk(t: TerrainGrid): string {
+  /* 크립 층(요청: 램프·다리 표시)은 칠한 게 있을 때만 함께 싣는다 — 옛 저장분과 같은
+     JSON에 선택 필드 하나라 서버(JSON 문자열 그대로 저장)는 몰라도 된다. */
+  const out: { w: number; h: number; hex: string; creep?: string } = {
+    w: t.w, h: t.h, hex: hexOfBits(t.walk),
+  };
+  if (t.creep && t.creep.some((v) => v)) out.creep = hexOfBits(t.creep);
+  return JSON.stringify(out);
 }
 
 export function decodeWalk(json: string | null | undefined): TerrainGrid | null {
   if (!json) return null;
   try {
-    const d = JSON.parse(json) as { w?: number; h?: number; hex?: string };
+    const d = JSON.parse(json) as { w?: number; h?: number; hex?: string; creep?: string };
     if (!d || !(d.w! > 0) || !(d.h! > 0) || typeof d.hex !== "string") return null;
-    const walk = new Uint8Array(d.w! * d.h!);
-    for (let i = 0; i < d.hex.length; i += 1) {
-      const nib = parseInt(d.hex[i], 16);
-      for (let j = 0; j < 4; j += 1) {
-        const idx = i * 4 + j;
-        if (idx < walk.length && nib & (1 << (3 - j))) walk[idx] = 1;
-      }
-    }
-    return { w: d.w!, h: d.h!, walk };
+    const len = d.w! * d.h!;
+    return {
+      w: d.w!, h: d.h!, walk: bitsOfHex(d.hex, len),
+      ...(typeof d.creep === "string" ? { creep: bitsOfHex(d.creep, len) } : {}),
+    };
   } catch {
     return null;
   }

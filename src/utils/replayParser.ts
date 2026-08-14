@@ -1103,8 +1103,11 @@ async function readMapGrid(res: ScrepResult): Promise<ReplayMapGrid | null> {
 
 // 같은 자원 지대로 볼 반경(타일) / 지대 수 상한. 빠른무한처럼 미네랄이 온 맵에 깔린 맵은
 // 지대가 수십 개 나올 수 있어 상한을 둔다(큰 것부터 남긴다).
-const RESOURCE_CLUSTER_RADIUS = 7;
-const RESOURCE_CLUSTER_MAX = 40;
+/* 반경 7 → 4.5, 상한 40 → 120(지적: 추가 미네랄이 몇 개는 잡히고 몇 개는 안 잡힘) —
+   본진 뒤 추가 미네랄이 7타일 반경에서는 본진 밭에 삼켜져 지대로 안 남았고, 상한 40은
+   미네랄 많은 맵에서 뒷차례 지대를 통째로 떨궜다. 서버 상한도 함께 키웠다(384). */
+const RESOURCE_CLUSTER_RADIUS = 4.5;
+const RESOURCE_CLUSTER_MAX = 120;
 
 /** 미네랄 밭·가스를 가까운 것끼리 묶어 자원 지대로 만든다 — 낱개를 다 그리면 노이즈라
  *  '어디에 자원이 있나'만 남긴다. 좌표 단위는 타일(screp은 타일×32라 32로 나눈다). */
@@ -1145,8 +1148,8 @@ function clusterResources(md: ScrepResult["MapData"]): [number, number, 0 | 1][]
       1,
     ]);
   }
-  // 서버 상한(128)에 맞춰 자른다 — 지대 40 + 가스 낱개가 넘칠 일은 드물지만 422는 막는다.
-  return zones.slice(0, 128);
+  // 서버 상한(384)에 맞춰 자른다 — 지대 120 + 가스 낱개가 넘칠 일은 드물지만 422는 막는다.
+  return zones.slice(0, 384);
 }
 
 export async function parseReplayFile(file: File): Promise<ParsedReplay> {

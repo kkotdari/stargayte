@@ -65,6 +65,13 @@ export async function primeReplayMaps(hashes: (string | null | undefined)[]): Pr
   for (const l of listeners) l();
 }
 
+/** 맵연결 직후(요청: 게임 상세의 맵연결 버튼) — 서버가 돌려준 새 격자(그림 포함)를
+ *  캐시에 바로 심어, 그 해시를 쓰는 모든 카드가 즉시 새 그림으로 갈아탄다. */
+export function applyReplayMap(grid: ReplayMapGrid): void {
+  cache.set(grid.hash, grid);
+  for (const l of listeners) l();
+}
+
 /** 그 해시의 맵 격자 — 서버에 없으면 null, '아직 조회 중'이면 undefined.
  *  (구분 이유·지적: 조회 중을 null로 뭉개면 카드가 첫 그림에 옛 로스터 폼을 그렸다가
  *  격자가 도착하면 재생 화면으로 갈아타며 로스터가 깜빡하고 사라져 보였다.) */

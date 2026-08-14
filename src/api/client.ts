@@ -485,6 +485,24 @@ export const api = {
     await request<void>(`/api/game-results/replay-maps/images/${id}`, { method: "DELETE" });
   },
 
+  /** 맵연결 고르기 목록(요청: 아무나) — 등록된 미니맵 그림의 번호·이름만(그림은 무거워서
+   *  안 싣는다 — 연결 뒤 격자 응답이 어차피 그림을 실어 온다). */
+  async listMinimapChoices(): Promise<{ id: number; name: string }[]> {
+    const res = await request<{ images: { id: number; name: string }[] }>(
+      "/api/game-results/replay-maps/images",
+    );
+    return res.images;
+  },
+
+  /** 게임 상세의 맵연결(요청: 아무나) — 이 경기의 맵 해시가 고른 그림을 가리키게 하고,
+   *  서버는 마지막 연결자(회원 pk)·시각을 남긴다. 새 격자(그림 포함)가 돌아온다. */
+  async linkReplayMap(hash: string, imageId: number | null): Promise<ReplayMapGrid> {
+    return request<ReplayMapGrid>(
+      `/api/game-results/replay-maps/${encodeURIComponent(hash)}/image`,
+      { method: "PUT", body: JSON.stringify({ imageId }) },
+    );
+  },
+
   /** 맵 여러 개를 한 그림에 묶거나(imageId) 떼어 낸다(null). */
   async assignMinimapImage(imageId: number | null, hashes: string[]): Promise<number> {
     const res = await request<{ changed: number }>("/api/game-results/replay-maps/assign", {

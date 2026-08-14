@@ -243,7 +243,7 @@ export default function Header({
           {/* 자료실(요청) — 운영급 별도 메뉴, 모두에게 개방. 운영보다 위(재요청). */}
           <AdminMenu
             screen={screen} onNavigate={go} variant="nav" title="자료실"
-            menuItems={[{ key: "models", label: "모델링", isActive: screen === "models", onSelect: () => go("models") }]}
+            menuItems={[{ key: "models", label: "모델", isActive: screen === "models", onSelect: () => go("models") }]}
           />
           {isAdmin && <AdminMenu screen={screen} onNavigate={go} variant="nav" />}
         </nav>
@@ -326,7 +326,7 @@ export default function Header({
               {/* 자료실이 운영보다 위(재요청) — 데스크톱 내비와 같은 차례. */}
               <AdminMenu
                 screen={screen} onNavigate={go} variant="drawer" title="자료실"
-                menuItems={[{ key: "models", label: "모델링", isActive: screen === "models", onSelect: () => go("models") }]}
+                menuItems={[{ key: "models", label: "모델", isActive: screen === "models", onSelect: () => go("models") }]}
               />
               {/* 운영은 접을 수 없는 고정 섹션(AdminMenu drawer 변형이 항상 펼쳐 그린다). */}
               {isAdmin && <AdminMenu screen={screen} onNavigate={go} variant="drawer" />}

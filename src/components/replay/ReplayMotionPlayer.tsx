@@ -6,6 +6,8 @@ import Avatar from "../common/Avatar";
 import { cx } from "../../utils/format";
 import { UNIT_KO, TECH_KO } from "../../utils/replaySummaryText";
 import type { ReplayMapGrid } from "../../utils/replayParser";
+import { api } from "../../api/client";
+import { applyReplayMap } from "../../hooks/useReplayMap";
 import { isAirUnit, type MotionTrack, type SummaryMotion, type TrackPt } from "../../utils/replayMotion";
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } from "../../utils/minimapTerrain";
@@ -56,6 +58,14 @@ const LERP_MAX_GAP_SEC = 24;
  *  (walkTrack)로 속도가 눌려 있지만, 부대 재배정·틈새로 새는 점이 남긴 초고속 미끄러짐을
  *  여기서 마지막으로 막는다. 스커지(6.7타일/초)가 실제 최고라 8이면 진짜 이동은 안 걸린다. */
 const GLIDE_MAX_SPEED = 8;
+/** 순간이동 다리(지적: 유닛이 얼었다 다음 점으로 튐 — 앞뒤 추적 강화) — 침묵 구간의
+ *  끝자락을 걸어 잇는 걸음 속도와, 초고속 구간을 행군으로 봐줄 상한(타일/초). 상한을
+ *  넘어야 닿는 점프만 예전처럼 앞 점에 머문다(그건 정말 딴 부대의 점이다). */
+const BRIDGE_WALK_SPEED = 6;
+const BRIDGE_MAX_SPEED = 16;
+/** 크립이 만개까지 퍼지는 시간(초) — 원작은 해처리·콜로니에서 몇 분에 걸쳐 타일이
+ *  번져 나간다(정확한 표는 공개돼 있지 않아 체감치). 시작 본진 해처리는 처음부터 만개. */
+const CREEP_SPREAD_SEC = 180;
 /** 전투가 끝나고 이만큼 침묵해야 '그 전투에서 정리됐다'고 본다(초) — 요청: "유닛 죽은게
  *  확실하지 않으면 남겨놓기". 예전 8초는 잠깐 손을 뗀 부대까지 걷어냈다. */
 const DEAD_QUIET_SEC = 45;
@@ -3737,7 +3747,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 가스 간헐천(재재정정: 전체 크기는 원래대로, 두 번째 분화구만 작게) — 언덕 위
      큰 분화구와 작은 분화구, 각자 어두운 구멍과 김. */
   geyser: () => [
-    ...domeFaces3(0, 0, 4.4, 1.5),
+    // 밑바닥 언덕 살짝 축소(지적) — 4.4는 두 칸 자리보다 치마가 넓었다.
+    ...domeFaces3(0, 0, 4, 1.5),
     /* 밑바닥 회전(지적: 안 돎) — 언덕은 회전 대칭이라 티가 없어, 둘레에 바위 혹
        셋을 심어 요잉이 보이게 한다. 자동 키로 앞뒤 가림도 자연히 맞는다. */
     ...domeFaces3(2.9, 1.9, 1.1, 0.75),
@@ -4026,6 +4037,9 @@ type UnitDrawOp = {
   noShadow?: boolean;
   /** 공중 유닛(요청: 더 높이 + 바닥 그림자) — 몸을 위로 띄우고 발밑에 그림자 타원. */
   air?: boolean;
+  /** 크립 판(요청: 크립은 벽·램프·다리를 못 넘는다) — 이 표시가 있는 판들은 먼저 깔고
+   *  지형 차단 마스크로 파낸 뒤 나머지를 얹는다. */
+  clipWalk?: boolean;
 };
 const PATH2D_CACHE = new Map<string, Path2D>();
 const pathOf = (d: string): Path2D => {
@@ -4110,8 +4124,14 @@ function buildingSprite(
   BLD_SPRITE_CACHE.set(key, entry);
   return entry;
 }
-function UnitLayer({ ops, zoom, pan }: {
+function UnitLayer({ ops, zoom, pan, wallMask, maskRects }: {
   ops: UnitDrawOp[]; zoom: number; pan: { x: number; y: number };
+  /** 크립 차단 마스크(요청: 벽·램프·다리는 크립이 못 뚫는다) — 칸 하나가 픽셀 하나인
+   *  지형 캔버스. clipWalk 판들을 깐 직후 destination-out으로 파낸다. */
+  wallMask?: HTMLCanvasElement | null;
+  /** 마스크를 얹을 화면 자리들 [원본 y, 원본 높이, fx0, fy0, fx1, fy1] — 평면은 맵
+   *  전체 한 장, 입체는 원근이 줄마다 달라 지형 한 줄씩 근사한다. */
+  maskRects?: [number, number, number, number, number, number][];
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   // 의존성 없는 effect — 매 렌더(t 걸음)마다 다시 그린다. ops는 렌더마다 새로 모인다.
@@ -4148,7 +4168,8 @@ function UnitLayer({ ops, zoom, pan }: {
     // 그림자 굽기용 줌 양자화 — 스프라이트 키가 줌마다 갈리지 않게 반 칸 단위.
     const zq = Math.max(0.5, Math.round(zoom * 2) / 2);
     const sorted = [...ops].sort((a, b) => a.z - b.z);
-    for (const op of sorted) {
+    const paintOps = (list: UnitDrawOp[]) => {
+    for (const op of list) {
       const sx = zx(op.fx);
       const sy = zy(op.fy);
       // 화면 밖은 걸러낸다 — 깊은 줌에서 그리기가 오히려 줄어드는 이유.
@@ -4263,6 +4284,27 @@ function UnitLayer({ ops, zoom, pan }: {
       }
       ctx.restore();
     }
+    };
+    /* 크립은 지형을 못 넘는다(요청: 벽·램프·다리) — 크립 판(clipWalk, z가 제일 낮다)만
+       먼저 깔고, 차단 마스크를 destination-out으로 파낸 다음 나머지를 얹는다. 캔버스에
+       아직 크립뿐이라 다른 그림은 안 다친다. */
+    const creepList = sorted.filter((o) => o.clipWalk);
+    if (creepList.length > 0 && wallMask && maskRects && maskRects.length > 0) {
+      paintOps(creepList);
+      ctx.save();
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.shadowColor = "transparent";
+      for (const [sy0, sh, fx0, fy0, fx1, fy1] of maskRects) {
+        ctx.drawImage(
+          wallMask, 0, sy0, wallMask.width, sh,
+          zx(fx0), zy(fy0), (fx1 - fx0) * cw * zoom, (fy1 - fy0) * ch * zoom,
+        );
+      }
+      ctx.restore();
+      paintOps(sorted.filter((o) => !o.clipWalk));
+    } else {
+      paintOps(sorted);
+    }
   });
   return <canvas ref={ref} className="scr-motion-unitlayer" aria-hidden />;
 }
@@ -4372,12 +4414,26 @@ function posAt(
     const [s0, x0, y0] = pts[i];
     const [s1, x1, y1] = pts[i + 1];
     if (t < s1) {
-      if (s1 - s0 > LERP_MAX_GAP_SEC) {
+      const gap = s1 - s0;
+      const dist = Math.hypot(x1 - x0, y1 - y0);
+      if (gap > LERP_MAX_GAP_SEC) {
+        /* 침묵 구간의 순간이동 방지(지적: 얼었다 다음 점으로 튐) — 대부분은 예전처럼
+           앞 점에 머물되, 도착 시각에 맞춰 끝자락(거리/걸음속도)만 걸어서 잇는다. */
+        const walkSec = Math.min(gap, Math.max(2, dist / BRIDGE_WALK_SPEED));
+        if (dist > 0.01 && t >= s1 - walkSec) {
+          const k = (t - (s1 - walkSec)) / walkSec;
+          return { x: x0 + (x1 - x0) * k, y: y0 + (y1 - y0) * k, stale: false, moving: true, sinceLast: 0 };
+        }
         return { x: x0, y: y0, stale: t - s0 > LERP_MAX_GAP_SEC, moving: false, sinceLast: t - s0 };
       }
-      /* 말이 안 되는 속도의 미끄러짐은 잇지 않는다(지적) — 앞 점에 머물다 다음 점에서
-         이어 간다. GLIDE_MAX_SPEED 주석 참고. */
-      if (Math.hypot(x1 - x0, y1 - y0) / Math.max(0.001, s1 - s0) > GLIDE_MAX_SPEED) {
+      /* 말이 안 되는 속도의 미끄러짐은 잇지 않는다(지적) — 다만 행군으로 봐줄 수 있는
+         빠르기(BRIDGE_MAX_SPEED)까지는 걸어 잇는다(재지적: 순간이동 금지). 그보다
+         빨라야 닿는 점만 앞 점에 머문다. GLIDE_MAX_SPEED 주석 참고. */
+      if (dist / Math.max(0.001, gap) > GLIDE_MAX_SPEED) {
+        if (dist / Math.max(0.001, gap) <= BRIDGE_MAX_SPEED) {
+          const k2 = (t - s0) / Math.max(0.001, gap);
+          return { x: x0 + (x1 - x0) * k2, y: y0 + (y1 - y0) * k2, stale: false, moving: true, sinceLast: 0 };
+        }
         return { x: x0, y: y0, stale: false, moving: false, sinceLast: t - s0 };
       }
       const k = (t - s0) / Math.max(0.001, s1 - s0);
@@ -4435,6 +4491,19 @@ const fmtClock = (sec: number): string => {
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${m}:${String(s).padStart(2, "0")}`;
+};
+
+/** 모바일 로스터의 줄인 이름(요청: 한글 2글자 기준) — 한글은 1, 그 밖(영문·숫자)은
+ *  0.5로 세어 너비 2까지 남긴다. 영문 닉네임은 넉 자쯤 남아 그래도 알아볼 만하다. */
+const shortName = (name: string): string => {
+  let w = 0;
+  let out = "";
+  for (const ch of name) {
+    w += /[ᄀ-ᇿ㄰-㆏가-힯]/.test(ch) ? 1 : 0.5;
+    if (w > 2) break;
+    out += ch;
+  }
+  return out || name;
 };
 
 export default function ReplayMotionPlayer({
@@ -4577,6 +4646,58 @@ export default function ReplayMotionPlayer({
       });
     return () => { cancelled = true; };
   }, [grid.image, grid.walk, walkOverride]);
+
+  /* 맵연결(요청: 게임 상세 버튼 줄에 맵연결 버튼) — 저장된 미니맵 그림(빠른 무한·헌터·
+     투혼 …) 중 하나를 골라 이 경기의 맵 해시에 연결한다. 아무나 할 수 있고, 서버가
+     마지막 연결자(회원 pk)·시각을 남긴다. 연결되면 캐시를 바로 갈아 끼워(applyReplayMap)
+     이 맵을 쓰는 모든 카드가 즉시 그 그림으로 그려진다. */
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkChoices, setLinkChoices] = useState<{ id: number; name: string }[] | null>(null);
+  const [linkBusy, setLinkBusy] = useState(false);
+  const [linkErr, setLinkErr] = useState("");
+  useEffect(() => {
+    if (!linkOpen || linkChoices !== null) return;
+    api.listMinimapChoices()
+      .then(setLinkChoices)
+      .catch(() => setLinkErr("맵 목록을 받지 못했어요."));
+  }, [linkOpen, linkChoices]);
+  const pickLink = async (id: number) => {
+    setLinkBusy(true);
+    setLinkErr("");
+    try {
+      const updated = await api.linkReplayMap(grid.hash, id);
+      applyReplayMap(updated);
+      setLinkOpen(false);
+    } catch (e) {
+      setLinkErr(e instanceof Error ? e.message : "연결하지 못했어요.");
+    } finally {
+      setLinkBusy(false);
+    }
+  };
+
+  /* 크립 차단 마스크(요청: 크립은 벽을 못 뚫고, 램프·다리도 못 넘는다) — 지형 칸 하나가
+     픽셀 하나인 캔버스. 못 걷는 칸(벽) + 검수 모달에서 사람이 칠한 크립 불가 칸(램프·
+     다리)을 검게 채워, 유닛 층이 크립 판을 깐 직후 이 판으로 파낸다. 검수 원본(terrainRaw)
+     기준 — 화면용 틈새 메움(closeNarrowGaps)은 크립과 무관하다. */
+  const creepMask = useMemo(() => {
+    const tg = terrainRaw;
+    if (!tg) return null;
+    if (typeof document === "undefined") return null;
+    const cv = document.createElement("canvas");
+    cv.width = tg.w;
+    cv.height = tg.h;
+    const mx = cv.getContext("2d");
+    if (!mx) return null;
+    let any = false;
+    mx.fillStyle = "#000";
+    for (let y = 0; y < tg.h; y += 1) {
+      for (let x = 0; x < tg.w; x += 1) {
+        const i = y * tg.w + x;
+        if (!tg.walk[i] || tg.creep?.[i]) { mx.fillRect(x, y, 1, 1); any = true; }
+      }
+    }
+    return any ? cv : null;
+  }, [terrainRaw]);
 
   /* 자취를 실제 이동으로 편다(지적: 클릭 자리로 순간이동해서 이상하다) — 명령은 도착이
      아니라 출발 신호다: 마커는 명령 시각에 그 자리에서 출발해, 경로(지상은 지형 BFS,
@@ -5091,6 +5212,26 @@ export default function ReplayMotionPlayer({
     const [fx, fy] = posFrac(x, y);
     return { left: `${(fx * 100).toFixed(3)}%`, top: `${(fy * 100).toFixed(3)}%` };
   };
+  /* 크립 차단 마스크의 화면 자리(요청) — 평면은 맵 전체에 한 장이면 되고, 입체는
+     원근 배율이 줄마다 달라 지형 한 줄씩 잘라 그 줄의 자리·폭으로 근사해 얹는다. */
+  const creepMaskRects: [number, number, number, number, number, number][] = [];
+  if (creepMask) {
+    if (!pitched) {
+      creepMaskRects.push([0, creepMask.height, 0, 0, 1, 1]);
+    } else {
+      const th = creepMask.height;
+      for (let gy = 0; gy < th; gy += 1) {
+        const yT0 = (gy / th) * grid.height;
+        const yT1 = ((gy + 1) / th) * grid.height;
+        const yMid = (yT0 + yT1) / 2;
+        const [fx0] = posFrac(0, yMid);
+        const [fx1] = posFrac(grid.width, yMid);
+        const [, fy0] = posFrac(0, yT0);
+        const [, fy1] = posFrac(0, yT1);
+        creepMaskRects.push([gy, 1, fx0, fy0, fx1, fy1]);
+      }
+    }
+  }
   /* 좌우 시점(지적: 시점이 정면 고정, 좌우가 없다) — 카메라(화면 가운데, 거리 P)에서
      비껴 보이는 마커는 그 각도만큼 모델 요잉을 틀어 굽는다. 왼쪽 마커는 오른옆이,
      오른쪽 마커는 왼옆이 보인다. */
@@ -5830,7 +5971,11 @@ export default function ReplayMotionPlayer({
               <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={22} />
             </span>
             <span className="scr-motion-teamcol-text">
-              <span className="scr-motion-teamcol-name" style={chipStyle(m.key, m.team)}>{m.name}</span>
+              {/* 이름 두 벌(요청: 모바일은 한글 2글자로) — CSS 미디어가 한쪽만 보인다. */}
+              <span className="scr-motion-teamcol-name" style={chipStyle(m.key, m.team)}>
+                <span className="scr-tcn-full">{m.name}</span>
+                <span className="scr-tcn-short">{shortName(m.name)}</span>
+              </span>
             </span>
             {winnerTeam && (m.team === 2 ? 2 : 1) === winnerTeam && t >= total - 0.5 && !fallen && (
               <span className="scr-motion-trophy">🏆</span>
@@ -6334,7 +6479,27 @@ export default function ReplayMotionPlayer({
           const cxb = x + footDx(unit);
           const cyb = y + footDy(unit);
           const [cfx, cfy] = posFrac(cxb, cyb);
-          const wTiles = ["Hatchery", "Lair", "Hive"].includes(unit) ? 14 : 9;
+          /* 크립 확산(요청: 원작 규칙) — 해처리(레어·하이브)와 콜로니류만 시간이 갈수록
+             크립이 넓게 퍼지고, 나머지 건물은 제 발밑만 적신다. 같은 자리의 앞선 같은
+             계열(해처리→레어, 크립→성큰)에서 확산 시계를 이어받고, 경기 시작 본진
+             해처리(sec 0)는 처음부터 만개다(원작: 첫 해처리는 크립을 다 깔고 시작). */
+          const hallKind = ["Hatchery", "Lair", "Hive"].includes(unit);
+          const colonyKind = unit.includes("Colony");
+          let wTiles = 8;
+          if (hallKind || colonyKind) {
+            let startSec = sec;
+            for (const [s2, x2, y2, u2, r2] of motion.builds) {
+              if (r2 !== raw || s2 >= startSec || Math.hypot(x2 - x, y2 - y) > 1.5) continue;
+              if ((hallKind && ["Hatchery", "Lair", "Hive"].includes(u2))
+                || (colonyKind && u2.includes("Colony"))) startSec = s2;
+            }
+            const maxW = hallKind ? 15 : 11;
+            const minW = hallKind ? 8 : 5.5;
+            const p = startSec <= 1 ? 1 : Math.min(1, Math.max(0, t - startSec) / CREEP_SPREAD_SEC);
+            // 앞이 빠르고 갈수록 느린 번짐 — 반 타일 눈금이라 스프라이트도 계단으로만 다시 굽는다.
+            const ease = 1 - (1 - p) * (1 - p);
+            wTiles = Math.round((minW + (maxW - minW) * ease) * 2) / 2;
+          }
           const mk3 = pitchK(cyb);
           unitOps.push({
             fx: cfx, fy: cfy, z: 880 + (i % 20),
@@ -6347,6 +6512,7 @@ export default function ReplayMotionPlayer({
             color: "#544659",
             alpha: goneAt > 0 && t >= goneAt ? Math.max(0, 1 - (t - goneAt) / 1.2) : 1,
             noShadow: true,
+            clipWalk: true,
           });
           return null;
         })}
@@ -6380,22 +6546,52 @@ export default function ReplayMotionPlayer({
             </span>
           );
         })}
-        {(grid.resources ?? []).flatMap((res, ri) => {
-          let owner: { x: number; y: number; raw: string } | null = null;
-          /* 18 → 10(지적: 엄청 떨어진 미네랄을 캐는 일꾼) — 그 거리면 확장이 아니라
-             잘못 클릭이다. 진짜 확장은 홀이 자원 곁에 서므로 10이면 넉넉하다. */
-          let best = 10;
-          for (const m of bases) {
-            // 함락된 본진(fallenHome)은 채굴 목적지가 아니다(지적: 본진이 안 망하던 문제).
-            if (m.ghost || fallenHome(m)) continue;
-            const d = Math.hypot(res[0] - m.x, res[1] - m.y);
-            if (d < best) { best = d; owner = { x: m.x, y: m.y, raw: m.key }; }
+        {(() => {
+          const resList = grid.resources ?? [];
+          /* 지대 임자를 먼저 한 번에 정한다(요청: 시작 일꾼 4기) — 아래에서 '임자가 같은
+             미네랄 지대 중 몇 번째로 가까운가'를 따져야 해서, 지대마다 따로 구하던 임자
+             찾기를 한 판 앞서 모아 계산한다. */
+          const owners = resList.map((res) => {
+            let owner: { x: number; y: number; raw: string; dist: number } | null = null;
+            /* 18 → 10(지적: 엄청 떨어진 미네랄을 캐는 일꾼) — 그 거리면 확장이 아니라
+               잘못 클릭이다. 진짜 확장은 홀이 자원 곁에 서므로 10이면 넉넉하다. */
+            let best = 10;
+            for (const m of bases) {
+              // 함락된 본진(fallenHome)은 채굴 목적지가 아니다(지적: 본진이 안 망하던 문제).
+              if (m.ghost || fallenHome(m)) continue;
+              const d = Math.hypot(res[0] - m.x, res[1] - m.y);
+              if (d < best) { best = d; owner = { x: m.x, y: m.y, raw: m.key, dist: d }; }
+            }
+            for (const hall of halls) {
+              if (hall.sec > t || (hall.gone > 0 && t >= hall.gone)) continue;
+              const d = Math.hypot(res[0] - hall.x, res[1] - hall.y);
+              if (d < best) { best = d; owner = { x: hall.x, y: hall.y, raw: hall.raw, dist: d }; }
+            }
+            return owner;
+          });
+          const gasFlagOf = (res: (typeof resList)[number]) => res[2] === 1
+            || (!gridHasGasFlags
+              && gasBuildings.some((g) => Math.hypot(g.x - res[0], g.y - res[1]) <= 6));
+          /* 임자별 미네랄 지대의 '가까운 차례'(요청: 시작 일꾼 4기는 가장 가까운 미네랄
+             4군데로) — 일꾼 수보다 먼 차례의 지대는 캐는 점이 안 선다. 초반 4기는 홀에서
+             가까운 네 지대만 오가고, 일꾼이 늘수록 바깥 지대까지 찬다. */
+          const mineralRank = new Map<number, number>();
+          {
+            const byOwner = new Map<string, number[]>();
+            resList.forEach((res2, ri2) => {
+              const o = owners[ri2];
+              if (!o || gasFlagOf(res2)) return;
+              const arr = byOwner.get(o.raw) ?? [];
+              arr.push(ri2);
+              byOwner.set(o.raw, arr);
+            });
+            for (const arr of byOwner.values()) {
+              arr.sort((a, b) => owners[a]!.dist - owners[b]!.dist);
+              arr.forEach((ri2, k) => mineralRank.set(ri2, k));
+            }
           }
-          for (const hall of halls) {
-            if (hall.sec > t || (hall.gone > 0 && t >= hall.gone)) continue;
-            const d = Math.hypot(res[0] - hall.x, res[1] - hall.y);
-            if (d < best) { best = d; owner = { x: hall.x, y: hall.y, raw: hall.raw }; }
-          }
+          return resList.flatMap((res, ri) => {
+          const owner = owners[ri];
           if (!owner) return [];
           /* 가스 지대 게이트(재지적: 가스 안 지은 곳에 가스 캐는 일꾼이 계속 나옴) —
              가스가 낀 지대는 가스 건물(정제소류)이 서기 전엔 일꾼이 안 간다. 예전의
@@ -6406,9 +6602,7 @@ export default function ReplayMotionPlayer({
           /* 깃발 안전망(재지적: 아직도 가스 없는 곳에 가스 캐는 일꾼) — 옛 맵 데이터에는
              가스 깃발(res[2])이 아예 없을 수 있다. 이 판에서 누군가 가스 건물을 지은
              자리는 깃발과 무관하게 가스 지대다. */
-          const gasSpot = res[2] === 1
-            || (!gridHasGasFlags
-              && gasBuildings.some((g) => Math.hypot(g.x - res[0], g.y - res[1]) <= 6));
+          const gasSpot = gasFlagOf(res);
           if (gasSpot) {
             const hasGasBuilding = gasBuildings.some((g) =>
               g.raw === owner!.raw && g.sec + 30 <= t && (g.gone === 0 || t < g.gone)
@@ -6416,10 +6610,12 @@ export default function ReplayMotionPlayer({
             if (!hasGasBuilding) return [];
           }
           const track = motion.players.find((p) => p.raw === owner!.raw);
-          let workerN = 0;
+          /* 시작 일꾼 4기(요청: 초반 4기 표현) — workers 집계는 생산 '누계'라 0에서
+             시작해, 경기 첫 화면에 채굴 일꾼이 하나도 없었다. 기본 4기를 밑절미로 더한다. */
+          let workerN = 4;
           for (const [sec, n] of track?.workers ?? []) {
             if (sec > t) break;
-            workerN = n;
+            workerN = 4 + n;
           }
           /* 저그 가스는 변태(지적) — 익스트랙터 하나마다 드론 하나가 사라져 그 자리에
              가스가 된다. 채굴 일꾼 수에서 그만큼 뺀다. */
@@ -6430,6 +6626,9 @@ export default function ReplayMotionPlayer({
             workerN = Math.max(0, workerN - morphed);
           }
           if (workerN === 0) return [];
+          /* 시작 4기는 가장 가까운 미네랄 4군데로(요청) — 일꾼 수보다 먼 차례의 미네랄
+             지대는 캐는 점이 안 선다. 일꾼이 늘면 바깥 지대도 차례로 찬다. */
+          if (!gasSpot && (mineralRank.get(ri) ?? 0) >= workerN) return [];
           const team = teamOfRaw(owner.raw);
           const dots = Math.min(3, Math.max(1, Math.ceil(workerN / 10)));
           /* 채굴 걸음을 실제 일꾼 걸음으로(지적: 일꾼 속도가 왜 이렇게 빠르냐) — 예전
@@ -6468,7 +6667,8 @@ export default function ReplayMotionPlayer({
             });
             return null;
           });
-        })}
+          });
+        })()}
 
         {/* (이동·요청: 아바타를 맵 밖으로) — 본진 아바타+이름은 맵 양옆 로스터 기둥
             (teamCol)으로 나갔다. 맵의 본진 자리는 합성된 시작 홀 도형이 말한다. */}
@@ -7445,7 +7645,7 @@ export default function ReplayMotionPlayer({
             둔다: CSS 확대에 태우지 않고 줌·팬을 그리기 좌표에 직접 입혀, 어느 배율에서도
             화면 해상도 그대로 또렷하다. unitOps는 렌즈 안 마커 계산부가 이 렌더에서
             채우고, 커밋 뒤 effect가 그린다. */}
-        <UnitLayer ops={unitOps} zoom={zoom} pan={pan} />
+        <UnitLayer ops={unitOps} zoom={zoom} pan={pan} wallMask={creepMask} maskRects={creepMaskRects} />
         {/* (삭제) PC 확대 조절바 — PC에서는 확대 기능을 통째로 걷었다(요청). 확대·이동은
             이제 모바일 손짓(더블탭·두 손가락)만의 것이다. */}
       </div>
@@ -7521,7 +7721,51 @@ export default function ReplayMotionPlayer({
             크게
           </button>
         </span>
+        {/* 맵연결(요청) — 저장된 미니맵 목록에서 골라 이 경기의 맵에 연결한다. */}
+        <button
+          type="button"
+          className="scr-motion-btn scr-motion-rbtn scr-motion-maplink"
+          onClick={() => setLinkOpen(true)}
+        >
+          맵연결
+        </button>
       </div>
+      {linkOpen && createPortal(
+        <div className="scr-modal-overlay scr-terrain-overlay" onClick={() => setLinkOpen(false)}>
+          <div className="scr-modal scr-maplink-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="scr-modal-head">
+              <span>맵연결{grid.imageName ? ` — 지금: ${grid.imageName}` : ""}</span>
+              <button className="scr-icon-btn" onClick={() => setLinkOpen(false)} aria-label="닫기"><X size={14} /></button>
+            </div>
+            <div className="scr-modal-body">
+              <p className="scr-maplink-hint">
+                이 경기의 맵을 저장된 미니맵 중에서 골라 연결해 주세요 — 같은 맵을 쓰는
+                모든 경기가 그 그림으로 그려져요.
+              </p>
+              {linkErr && <div className="scr-err">{linkErr}</div>}
+              {linkChoices === null && !linkErr ? (
+                <div className="scr-empty">불러오는 중…</div>
+              ) : (
+                <div className="scr-maplink-list">
+                  {(linkChoices ?? []).map((c) => (
+                    <button
+                      key={c.id} type="button" disabled={linkBusy}
+                      className={cx("scr-btn", "scr-btn-sm", grid.imageId === c.id && "scr-btn-primary")}
+                      onClick={() => void pickLink(c.id)}
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                  {(linkChoices ?? []).length === 0 && linkChoices !== null && (
+                    <div className="scr-empty">등록된 미니맵이 없어요.</div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
       {/* 조종간(요청: 두 줄) — 윗줄은 스크러버 하나, 아랫줄에 재생·배속·시간이 선다. */}
       <div className="scr-motion-bar">
         {/* 비제어 탐색바(지적: 드래그가 안 먹고 느림 — 위 rangeRef 주석). step이 없어야

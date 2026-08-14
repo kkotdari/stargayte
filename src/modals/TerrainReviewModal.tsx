@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import ModalHash from "../utils/modalHash";
 import { createPortal } from "react-dom";
-import { Eraser, Paintbrush, RefreshCcw, RotateCcw, Save, Undo2, Wand2, X } from "lucide-react";
+import { Eraser, Paintbrush, RefreshCcw, RotateCcw, Save, Undo2, Wand2, Waves, X } from "lucide-react";
 import { Spinner } from "../components/common/Feedback";
 import { api } from "../api/client";
 import {
@@ -13,7 +13,14 @@ import type { MinimapImage } from "../types";
 /* 지형 검수(요청) — 미니맵 그림을 크게 띄우고, 자동 분석이 만든 이동 가능/불가 격자를
  * 겹쳐 보여준다. 어두운 칸이 '이동 불가'다. 칸을 누르거나 끌면 뒤집힌다 — 자동 분석은
  * 색 어림이라(램프·다리를 못 가른다) 마지막 손질은 사람 몫이다. 저장하면 이 그림을
- * 쓰는 모든 맵의 연속 재생이 이 격자로 길을 찾는다. */
+ * 쓰는 모든 맵의 연속 재생이 이 격자로 길을 찾는다.
+ *
+ * 크립 층(요청: 램프·다리는 크립이 못 퍼진다 — 직접 설정) — 물결 버튼으로 층을 바꾸면
+ * 붓·지우개·요술봉이 '크립 못 퍼지는 칸'(주황)을 칠한다. 벽(라임)은 자동으로 크립을
+ * 막으니, 걷긴 하지만 크립은 못 앉는 램프·다리만 주황으로 칠하면 된다. */
+
+/** 한 획의 스냅샷 — 두 층을 함께 되돌려야 층을 오가며 칠해도 어긋나지 않는다. */
+type Snap = { walk: Uint8Array; creep: Uint8Array | null };
 
 export default function TerrainReviewModal({
   image, anchors, reanalyzable = false, onClose, onSaved,
@@ -35,20 +42,31 @@ export default function TerrainReviewModal({
   /* 도구 셋(요청: 아이콘 여섯) — 붓은 끌어서 막고(이동 불가), 지우개는 끌어서 열고(이동
      가능), 요술봉은 누른 칸과 색이 비슷한 칸 전부를 한 번에 뒤집는다. */
   const [tool, setTool] = useState<"paint" | "erase" | "wand">("paint");
+  /** 어느 층을 칠하나 — walk(이동 불가, 라임) / creep(크립 불가, 주황). */
+  const [layer, setLayer] = useState<"walk" | "creep">("walk");
   const [colors, setColors] = useState<Uint8ClampedArray | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   /** 끌기 한 번은 한 값으로만 칠한다 — 지나는 칸마다 뒤집으면 갈지자 자국이 남는다. */
   const paintRef = useRef<0 | 1 | null>(null);
   /* 되돌리기(요청) — 한 획(클릭·끌기 한 번, 일괄 붓 한 번)마다 이전 판을 쌓아 두고
      한 스텝씩 되돌린다. 전부 되돌리기는 처음 불러온 판(저장값 또는 자동 분석)으로. */
-  const historyRef = useRef<Uint8Array[]>([]);
-  const initialRef = useRef<Uint8Array | null>(null);
+  const historyRef = useRef<Snap[]>([]);
+  const initialRef = useRef<Snap | null>(null);
   const [histN, setHistN] = useState(0);
-  const snapshot = (walk: Uint8Array) => {
-    historyRef.current.push(new Uint8Array(walk));
+  const snapOf = (g: TerrainGrid): Snap => ({
+    walk: new Uint8Array(g.walk),
+    creep: g.creep ? new Uint8Array(g.creep) : null,
+  });
+  const snapshot = (g: TerrainGrid) => {
+    historyRef.current.push(snapOf(g));
     if (historyRef.current.length > 60) historyRef.current.shift();
     setHistN(historyRef.current.length);
   };
+  const applySnap = (g: TerrainGrid, s: Snap): TerrainGrid => ({
+    ...g,
+    walk: new Uint8Array(s.walk),
+    ...(s.creep ? { creep: new Uint8Array(s.creep) } : { creep: undefined }),
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -57,7 +75,7 @@ export default function TerrainReviewModal({
       const g = stored ?? (await analyzeMinimap(image.image, anchors));
       if (!cancelled) {
         setGrid(g);
-        initialRef.current = g ? new Uint8Array(g.walk) : null;
+        initialRef.current = g ? snapOf(g) : null;
         historyRef.current = [];
         setHistN(0);
         setLoading(false);
@@ -92,6 +110,16 @@ export default function TerrainReviewModal({
         if (!grid.walk[y * grid.w + x]) ctx.fillRect(x, y, 1, 1);
       }
     }
+    // 크립 불가(요청: 램프·다리) — 주황. 벽 위에 겹쳐 칠해도 주황이 이긴다(따로 보여야
+    // 지웠는지 안다).
+    if (grid.creep) {
+      ctx.fillStyle = "rgba(255, 140, 40, 0.65)";
+      for (let y = 0; y < grid.h; y += 1) {
+        for (let x = 0; x < grid.w; x += 1) {
+          if (grid.creep[y * grid.w + x]) ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    }
   }, [grid]);
 
   const cellAt = (e: React.PointerEvent): [number, number] | null => {
@@ -113,35 +141,43 @@ export default function TerrainReviewModal({
     const cell = cellAt(e);
     if (!cell) return;
     const idx = cell[1] * grid.w + cell[0];
+    /* 층 갈래(요청: 크립 층) — 크립 층에서는 붓이 '크립 불가 = 1'을 칠하고 지우개가
+       0으로 되돌린다. walk 층과 켜짐 값이 반대(walk는 붓이 0)라 여기서 갈라 둔다. */
+    const arr = layer === "creep" ? (grid.creep ?? new Uint8Array(grid.w * grid.h)) : grid.walk;
+    const put = (next: Uint8Array): TerrainGrid =>
+      layer === "creep" ? { ...grid, creep: next } : { ...grid, walk: next };
     if (tool === "wand") {
       // 요술봉(요청) — 클릭 한 번이 한 획: 누른 칸과 색이 가까운 칸 전부를 뒤집는다.
       if (!begin || !colors) return;
-      snapshot(grid.walk);
-      const v = grid.walk[idx] ? 0 : 1;
+      snapshot(grid);
+      const v = arr[idx] ? 0 : 1;
       const r0 = colors[idx * 4];
       const g0 = colors[idx * 4 + 1];
       const b0 = colors[idx * 4 + 2];
-      const walk = new Uint8Array(grid.walk);
-      for (let i = 0; i < walk.length; i += 1) {
+      const next = new Uint8Array(arr);
+      for (let i = 0; i < next.length; i += 1) {
         const dr = colors[i * 4] - r0;
         const dg = colors[i * 4 + 1] - g0;
         const db = colors[i * 4 + 2] - b0;
-        if (Math.sqrt(dr * dr + dg * dg + db * db) <= SIMILAR_DIST) walk[i] = v;
+        if (Math.sqrt(dr * dr + dg * dg + db * db) <= SIMILAR_DIST) next[i] = v;
       }
-      setGrid({ ...grid, walk });
+      setGrid(put(next));
       return;
     }
-    // 붓=막기(0), 지우개=열기(1) — 한 획 안에서 값이 안 변한다.
-    const v: 0 | 1 = tool === "paint" ? 0 : 1;
+    // 붓=막기, 지우개=열기 — 한 획 안에서 값이 안 변한다. walk 층은 붓이 0(못 걸음),
+    // 크립 층은 붓이 1(크립 불가)이다.
+    const v: 0 | 1 = layer === "creep"
+      ? (tool === "paint" ? 1 : 0)
+      : (tool === "paint" ? 0 : 1);
     if (begin) {
       paintRef.current = v;
-      snapshot(grid.walk);
+      snapshot(grid);
     }
     if (paintRef.current === null) return;
-    if (grid.walk[idx] === v) return;
-    const walk = new Uint8Array(grid.walk);
-    walk[idx] = v;
-    setGrid({ ...grid, walk });
+    if (arr[idx] === v) return;
+    const next = new Uint8Array(arr);
+    next[idx] = v;
+    setGrid(put(next));
   };
 
   const save = async () => {
@@ -171,8 +207,13 @@ export default function TerrainReviewModal({
         </div>
         <div className="scr-modal-body">
           <p className="scr-terrain-hint">
-            <b>지상 유닛이 다니지 못하는 곳만</b> 라임색으로 칠해 주세요 — 붓은 막고,
-            지우개는 열고, 요술봉은 비슷한 색을 한꺼번에 뒤집어요.
+            {layer === "walk" ? (
+              <><b>지상 유닛이 다니지 못하는 곳만</b> 라임색으로 칠해 주세요 — 붓은 막고,
+              지우개는 열고, 요술봉은 비슷한 색을 한꺼번에 뒤집어요.</>
+            ) : (
+              <><b>크립이 못 퍼지는 램프·다리만</b> 주황색으로 칠해 주세요 — 벽(라임)은
+              자동으로 크립을 막으니 걷는 길목만 칠하면 돼요.</>
+            )}
           </p>
           {err && <div className="scr-err">{err}</div>}
           {loading ? (
@@ -190,13 +231,23 @@ export default function TerrainReviewModal({
             </div>
           )}
           <div className="scr-terrain-actions">
-            {/* 아이콘 여섯(요청) — 붓 · 지우개 · 요술봉 | 되돌리기 · 완전 취소 · 저장. */}
+            {/* 아이콘들(요청) — [층: 이동/크립] 붓 · 지우개 · 요술봉 | 되돌리기 · 완전 취소 · 저장. */}
             <div className="scr-terrain-brushes">
+              <button
+                type="button"
+                className={layer === "creep" && !busy ? "scr-btn scr-btn-sm scr-btn-primary" : "scr-btn scr-btn-sm"}
+                onClick={() => setLayer((l) => (l === "walk" ? "creep" : "walk"))}
+                aria-label="크립 층"
+                title="크립 층 — 켜면 크립이 못 퍼지는 램프·다리(주황)를 칠해요"
+              >
+                <Waves size={14} />
+              </button>
               <button
                 type="button"
                 className={tool === "paint" && !busy ? "scr-btn scr-btn-sm scr-btn-primary" : "scr-btn scr-btn-sm"}
                 onClick={() => setTool("paint")}
-                aria-label="붓" title="붓 — 끌어서 이동 불가로 막아요"
+                aria-label="붓"
+                title={layer === "creep" ? "붓 — 끌어서 크립 불가로 칠해요" : "붓 — 끌어서 이동 불가로 막아요"}
               >
                 <Paintbrush size={14} />
               </button>
@@ -204,7 +255,8 @@ export default function TerrainReviewModal({
                 type="button"
                 className={tool === "erase" && !busy ? "scr-btn scr-btn-sm scr-btn-primary" : "scr-btn scr-btn-sm"}
                 onClick={() => setTool("erase")}
-                aria-label="지우개" title="지우개 — 끌어서 이동 가능으로 열어요"
+                aria-label="지우개"
+                title={layer === "creep" ? "지우개 — 끌어서 크립 불가 칠을 지워요" : "지우개 — 끌어서 이동 가능으로 열어요"}
               >
                 <Eraser size={14} />
               </button>
@@ -224,7 +276,7 @@ export default function TerrainReviewModal({
               onClick={() => {
                 const prev = historyRef.current.pop();
                 setHistN(historyRef.current.length);
-                if (prev && grid) setGrid({ ...grid, walk: prev });
+                if (prev && grid) setGrid(applySnap(grid, prev));
               }}
               aria-label="한 스텝 되돌리기" title="한 스텝 되돌리기 — 마지막 획을 되돌려요"
             >
@@ -235,7 +287,7 @@ export default function TerrainReviewModal({
               disabled={busy || histN === 0}
               onClick={() => {
                 if (initialRef.current && grid) {
-                  setGrid({ ...grid, walk: new Uint8Array(initialRef.current) });
+                  setGrid(applySnap(grid, initialRef.current));
                 }
                 historyRef.current = [];
                 setHistN(0);
@@ -254,7 +306,7 @@ export default function TerrainReviewModal({
                   setErr("");
                   const g = await analyzeMinimap(image.image, anchors);
                   setGrid(g);
-                  initialRef.current = g ? new Uint8Array(g.walk) : null;
+                  initialRef.current = g ? snapOf(g) : null;
                   historyRef.current = [];
                   setHistN(0);
                   setLoading(false);
