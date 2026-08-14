@@ -5385,7 +5385,9 @@ export default function ReplayMotionPlayer({
     }[] = [];
     for (const e of entData.ents) {
       // 건물(태그·물리 모두)은 v1 층이 계속 그린다 — 여기는 유닛만.
-      if (e.bld || e.t < 0) continue;
+      /* 건물(태그·물리 -1)은 v1 건물 층이 그린다. 합성 개체(원장 출신, -1000 이하)는
+         유닛이다(요청: 한 번도 안 집힌 유닛도 태어나 랠리로 걸어간다). */
+      if (e.bld || e.t === -1) continue;
       const raw = nameOfId.get(e.o) ?? "";
       const p = trackByName.get(raw);
       if (!p) continue;

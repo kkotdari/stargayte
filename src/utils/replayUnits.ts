@@ -90,7 +90,11 @@ export interface UnitTracksV2 {
   pings?: [number, number, number, number][];
   /** 보정 재료(지적: 놓치는 요소를 뒷결과로 잴 체계) — 강한 앵커가 몇 번 나왔고, 명령
    *  귀속이 얼마나 됐는지. 재생기·후속 분석이 모델의 어긋남을 잴 때 쓴다. */
-  stats: { cmds: number; attributed: number; anchors: number; lives: number; tags: number };
+  stats: {
+    cmds: number; attributed: number; anchors: number; lives: number; tags: number;
+    /** 생산 원장(요청: 큐된 유닛 전 생애) — 기입·결합·합성 개체 수. */
+    prod?: number; prodBound?: number; prodSyn?: number;
+  };
 }
 
 const SECONDS_PER_FRAME = 0.042;
@@ -114,6 +118,19 @@ const TRAIN_AT: Record<string, string> = {
 const MORPH_FROM: Record<string, string> = {
   Lurker: "Hydralisk", Guardian: "Mutalisk", Devourer: "Mutalisk",
 };
+/** 유닛 생산 시간(게임 프레임) — 원장 시뮬레이션(요청: 큐된 유닛 전 생애)의 시계.
+ *  sec = frames × 0.042. 방해(서플 막힘 등)는 리플레이로 알 수 없어 무시한다. */
+const UNIT_FRAMES: Record<string, number> = {
+  SCV: 300, Probe: 300, Drone: 300,
+  Marine: 360, Firebat: 360, Medic: 450, Ghost: 750,
+  Vulture: 450, Goliath: 600, "Siege Tank": 750, "Siege Tank (Tank Mode)": 750,
+  Wraith: 900, Dropship: 750, "Science Vessel": 1200, Battlecruiser: 2000, Valkyrie: 750,
+  Zealot: 600, Dragoon: 750, "High Templar": 750, "Dark Templar": 750,
+  Shuttle: 900, Reaver: 1050, Observer: 600, Scout: 1200, Carrier: 2100, Arbiter: 2400, Corsair: 600,
+  Zergling: 420, Hydralisk: 420, Overlord: 600, Mutalisk: 600, Scourge: 450,
+  Queen: 750, Ultralisk: 900, Defiler: 750,
+};
+
 /** 건물에서 건물로 변태 — 무엇이 되는지로 이전 정체를 안다. */
 const BUILDING_MORPH_FROM: Record<string, string> = {
   Lair: "Hatchery", Hive: "Lair", "Greater Spire": "Spire",
@@ -177,6 +194,10 @@ interface Life {
   morphTo: Life | null;     // 변태로 이어진 다음 생애
   cxl: number | null;       // 건설 취소 커맨드를 받은 초(건물 생애의 끝)
   solo: boolean;            // 홀로 골라져 명령받은 적이 있나(시작 오버로드 판별 재료)
+  /** 이 건물 생애에 찍힌 랠리들 [초, x, y] — 원장 유닛의 첫 행선지. */
+  rallies?: [number, number, number][];
+  /** 원장 결합으로 출생 이야기를 이미 받았다 — 어림 출고 보정은 건너뛴다. */
+  spawned?: boolean;
   ev: UnitEv[];
 }
 
@@ -274,6 +295,16 @@ export function buildUnitTracks(
     owner: number; kind: string; born: number; x: number; y: number;
     builder: number | null; gone: number | null; goneKind: "cxl" | "atk" | null; ev: UnitEv[];
   }[] = [];
+  /** 생산 원장(요청: 주먹구구 덧대기 말고 근본 수집 — 모든 큐된 유닛의 전 생애) —
+   *  Train·라바 변태 하나가 유닛 하나다: 시작 시각, 만드는 건물 태그, 완성 예정.
+   *  뒤에서 실제 태그 증거와 결합하고, 남으면 스스로 사는 합성 개체가 된다. */
+  const ledger: {
+    unit: string; pid: number; sec: number; done: number;
+    bldTag: number | null; cancelled: boolean; bound: boolean;
+  }[] = [];
+  /** 건물 태그별 생산 꼬리 시각 — 같은 건물의 큐는 한 줄로 이어진다(라바는 병렬). */
+  const prodTail = new Map<number, number>();
+  const prodStats = { total: 0, bound: 0, syn: 0 };
   /** 일꾼 태그 → 아직 확정 안 된 건설 — '도착 전'(arrive 예상 시각 앞)에 다른 데로
    *  불려가야만 취소다. 도착 뒤의 재명령(테란 SCV 곁 세우기, 프로토스 워프 후 복귀)은
    *  정상 조작이다 — 첫 판은 25초 뭉툭 창이라 물리건물 476채 중 248채를 취소로 오판했다. */
@@ -504,6 +535,17 @@ export function buildUnitTracks(
         if (at) life = markKind(life, at, sec);
         pushEv(life, sec, -1, -1, 4);
       }
+      /* 원장 기입(요청: 모든 큐된 유닛) — Train 하나가 유닛 하나다. 같은 건물의
+         큐는 꼬리를 물고 이어진다(다중 선택 Train은 첫 태그로 어림). */
+      if (cmdName === "Train" && unitName && UNIT_FRAMES[unitName]) {
+        const bldTag = tags.length > 0 ? tags[0] : null;
+        const dur = UNIT_FRAMES[unitName] * 0.042;
+        const tail = bldTag !== null ? prodTail.get(bldTag) ?? 0 : 0;
+        const start = Math.max(sec, tail);
+        const doneAt = start + dur;
+        if (bldTag !== null) prodTail.set(bldTag, doneAt);
+        ledger.push({ unit: unitName, pid, sec, done: doneAt, bldTag, cancelled: false, bound: false });
+      }
       continue;
     }
     if (cmdName === "Unit Morph") {
@@ -525,6 +567,16 @@ export function buildUnitTracks(
           }
         } else if (unitName) {
           life = markKind(life, unitName, sec);
+        }
+      }
+      /* 라바 변태도 원장(요청) — 라바는 병렬이라 큐 직렬화 없이 제 시간에 나온다.
+         저글링·스커지는 한 알에 두 마리. 히드라→러커류(MORPH_FROM)는 기존 유닛의
+         변태라 새 출생이 아니다. */
+      if (unitName && !MORPH_FROM[unitName] && UNIT_FRAMES[unitName]) {
+        const dur = UNIT_FRAMES[unitName] * 0.042;
+        const n = unitName === "Zergling" || unitName === "Scourge" ? 2 : 1;
+        for (let zi = 0; zi < n; zi += 1) {
+          ledger.push({ unit: unitName, pid, sec, done: sec + dur, bldTag: null, cancelled: false, bound: false });
         }
       }
       continue;
@@ -564,6 +616,17 @@ export function buildUnitTracks(
         if (kind) life = markKind(life, kind, sec);
         if (cmdName === "Land" && unitName) life = markKind(life, unitName, sec);
         if (isBld) life.bld = true;
+        if (cmdName === "Cancel Train") {
+          // 원장 취소(사용자 말대로 '취소가 없다면' — 있으면 무른다) — 그 건물의 막내부터.
+          for (let li = ledger.length - 1; li >= 0; li -= 1) {
+            const it = ledger[li];
+            if (it.cancelled || it.pid !== pid) continue;
+            if (it.bldTag !== tag && it.bldTag !== null) continue;
+            if (it.done <= sec) continue;
+            it.cancelled = true;
+            break;
+          }
+        }
         if (cmdName === "Land") {
           // 착륙 — 띄운 건물의 이사 목적지다(커맨드에 자리·건물 이름이 실려 온다).
           // 건설과 같은 타일 좌표다(posTileOf 주석).
@@ -610,7 +673,13 @@ export function buildUnitTracks(
         const worker = RACE_WORKER[raceOf.get(pid) ?? ""] ?? "";
         if (worker) life = markKind(life, worker, sec);
       }
-      if (isRally) { life.bld = true; pushEv(life, sec, -1, -1, 4); continue; }
+      if (isRally) {
+        life.bld = true;
+        // 랠리 좌표를 남긴다(요청: 원장 유닛이 완성되면 여기로 간다).
+        if (pos) (life.rallies ??= []).push([Math.round(sec), r1(pos.x), r1(pos.y)]);
+        pushEv(life, sec, -1, -1, 4);
+        continue;
+      }
       /* (걷음) 이동 명령의 건설 무르기 — "건설을 내리고 곧장 자원으로 복귀"가 흔한
          정상 조작이라, 일꾼의 직전 증거만으로는 도착 전·후를 못 가려 오판이 압도한다
          (실측 4:4에서 물리건물 476채 중 185채 취소 — 실제 경기에선 있을 수 없는 수).
@@ -702,6 +771,136 @@ export function buildUnitTracks(
     }
   }
 
+  /* ── 생산 원장 해소(요청: 큰 그림 먼저 — 생산·이동·전투·죽음까지 모든 큐된 유닛의
+        전 생애) — 원장의 각 항목에 출생지(만든 건물 발치)와 첫 행선지(랠리)를 정하고,
+        실제 태그 증거와 결합한다: 결합되면 그 생애의 출생 이야기가 되고(무명이면
+        정체까지), 끝내 안 집힌 유닛은 합성 개체로 스스로 산다 — 완성 시각에 태어나
+        랠리로 걸어가고, 전투 사망 보정의 심판도 똑같이 받는다. ──────────────── */
+  {
+    // 건물 태그 → [태어난 초, 자리 x, y, 랠리들] — 변태 사슬은 최신 생애가 이긴다.
+    const tagSites = new Map<number, { born: number; x: number; y: number; rallies: [number, number, number][] }[]>();
+    for (const life of done) {
+      if (!life.bld) continue;
+      const site = [...life.ev].reverse().find((v) => v[3] === 2 || v[3] === 5);
+      if (!site && !(life.rallies && life.rallies.length > 0)) continue;
+      const arr = tagSites.get(life.tag) ?? [];
+      arr.push({
+        born: life.born,
+        x: site ? site[1] + 1.5 : -1, y: site ? site[2] + 1.5 : -1,
+        rallies: life.rallies ?? [],
+      });
+      tagSites.set(life.tag, arr);
+    }
+    const hallsOf = (pid: number, at: number): { x: number; y: number }[] => built
+      .filter((b) => b.owner === pid && ["Hatchery", "Lair", "Hive", "Command Center", "Nexus"].includes(b.kind)
+        && b.born <= at && (b.gone === null || b.gone > at))
+      .map((b) => ({ x: b.x + 2, y: b.y + 1.5 }));
+    const lastRallyOf = (pid: number, at: number): [number, number] | null => {
+      let best: [number, number] | null = null;
+      let bs = -1;
+      for (const life of done) {
+        if (!life.bld || life.owner !== pid || !life.rallies) continue;
+        for (const [rs, rx, ry] of life.rallies) {
+          if (rs <= at && rs > bs) { bs = rs; best = [rx, ry]; }
+        }
+      }
+      return best;
+    };
+    // ① 출생지·랠리 결정.
+    const items = ledger.filter((it) => !it.cancelled).map((it, idx) => {
+      let sx = -1;
+      let sy = -1;
+      let rally: [number, number] | null = null;
+      if (it.bldTag !== null) {
+        const cands = (tagSites.get(it.bldTag) ?? []).filter((c) => c.born <= it.done);
+        const c = cands.length > 0 ? cands[cands.length - 1] : null;
+        if (c && c.x >= 0) { sx = c.x; sy = c.y; }
+        const rl = c ? c.rallies.filter(([rs]) => rs <= it.done) : [];
+        if (rl.length > 0) rally = [rl[rl.length - 1][1], rl[rl.length - 1][2]];
+      }
+      if (sx < 0) {
+        // 자리를 모르는 건물(라바 포함) — 그 종류의 실물 건물 중에서 고른다.
+        const prodKind = TRAIN_AT[it.unit] ?? "";
+        const pool = prodKind
+          ? built.filter((b) => b.owner === it.pid && b.kind === prodKind
+            && b.born + 40 <= it.done && (b.gone === null || b.gone > it.done))
+            .map((b) => ({ x: b.x + 1.5, y: b.y + 1 }))
+          : hallsOf(it.pid, it.done);
+        if (pool.length > 0) {
+          const pick = pool[idx % pool.length];
+          sx = pick.x; sy = pick.y;
+        }
+      }
+      if (!rally) rally = lastRallyOf(it.pid, it.done);
+      // 오버로드·일꾼은 랠리를 안 탄다(오버로드는 제자리, 일꾼은 자원 배정).
+      if (it.unit === "Overlord" || it.unit === RACE_WORKER[raceOf.get(it.pid) ?? ""]) rally = null;
+      return { it, sx, sy, rally };
+    }).filter((r) => r.sx >= 0);
+    // ② 실제 생애와 결합 — 같은 사람·같은 정체(1차), 무명(2차). 완성 뒤 300초 안 첫 증거.
+    const majorityOf = (life: Life): string => {
+      let best = "";
+      let bn = 0;
+      for (const [k, n] of life.kinds) { if (n > bn) { best = k; bn = n; } }
+      return best;
+    };
+    const candLives = done
+      .filter((l) => !l.bld && l.tag > 0 && l.born > 5 && !l.spawned)
+      .sort((a, b) => a.born - b.born);
+    const attach = (life: Life, r: (typeof items)[number]): void => {
+      const doneAt = Math.round(r.it.done);
+      const inserts: UnitEv[] = [[doneAt, r1(r.sx), r1(r.sy), 3]];
+      if (r.rally) {
+        const wd = Math.hypot(r.rally[0] - r.sx, r.rally[1] - r.sy);
+        const arriveAt = Math.round(doneAt + Math.min(30, wd / 4));
+        if (life.ev.length === 0 || arriveAt < life.ev[0][0]) {
+          inserts.push([arriveAt, r1(r.rally[0]), r1(r.rally[1]), 0]);
+        }
+      }
+      life.ev.unshift(...inserts);
+      life.born = Math.min(life.born, doneAt);
+      life.spawned = true;
+      r.it.bound = true;
+    };
+    for (const pass of [0, 1] as const) {
+      for (const r of items) {
+        if (r.it.bound) continue;
+        for (const life of candLives) {
+          if (life.spawned || life.owner !== r.it.pid) continue;
+          if (life.born < r.it.done - 8 || life.born - r.it.done > 300) continue;
+          const mk = majorityOf(life);
+          if (pass === 0 ? mk !== r.it.unit : mk !== "") continue;
+          if (pass === 1) life.kinds.set(r.it.unit, 1);
+          attach(life, r);
+          break;
+        }
+      }
+    }
+    // ③ 잔여는 합성 개체 — 한 번도 안 집힌 유닛도 태어나 랠리까지는 산다(요청).
+    let synTag = -1000;
+    let synN = 0;
+    for (const r of items) {
+      if (r.it.bound) continue;
+      const doneAt = Math.round(r.it.done);
+      const life: Life = {
+        tag: synTag, owner: r.it.pid, kinds: new Map([[r.it.unit, 1]]), groupKinds: new Set(),
+        bld: false, born: doneAt, last: doneAt, lastAtk: null, evAfterAtk: false,
+        morphTo: null, cxl: null, solo: false, spawned: true,
+        ev: [[doneAt, r1(r.sx), r1(r.sy), 3]],
+      };
+      if (r.rally) {
+        const wd = Math.hypot(r.rally[0] - r.sx, r.rally[1] - r.sy);
+        life.ev.push([Math.round(doneAt + Math.min(30, wd / 4)), r1(r.rally[0]), r1(r.rally[1]), 0]);
+        life.last = life.ev[life.ev.length - 1][0];
+      }
+      done.push(life);
+      synTag -= 1;
+      synN += 1;
+    }
+    prodStats.total = ledger.length;
+    prodStats.bound = items.filter((r) => r.it.bound).length;
+    prodStats.syn = synN;
+  }
+
   /* ── 뒤 스토리: 생산 출고(지적: 생산 모습이 없던 마린이 갑자기 나타나서 이동) —
         유닛 생애의 첫 증거는 첫 '명령'이라, 그 앞 이야기(생산 건물에서 나온 것)가
         비어 맵 한복판에서 솟아났다. 정체(모르면 종족 기본 생산소)의 생산 건물 중 첫
@@ -712,7 +911,7 @@ export function buildUnitTracks(
     const RACE_INFANTRY: Record<string, string> = { 테란: "Marine", 프로토스: "Zealot", 저그: "Zergling" };
     const RACE_PRODUCER: Record<string, string> = { 테란: "Barracks", 프로토스: "Gateway", 저그: "Hatchery" };
     for (const life of done) {
-      if (life.bld || life.ev.length === 0) continue;
+      if (life.bld || life.ev.length === 0 || life.spawned) continue;
       const first = life.ev.find((v) => v[1] >= 0);
       if (!first || first[0] < 40) continue;
       if (life.ev[0][0] === 0) continue; // 이미 본진 출발 보정을 받은 시작 유닛
@@ -879,7 +1078,10 @@ export function buildUnitTracks(
     ups,
     casts,
     pings,
-    stats: { cmds: totalOrders, attributed, anchors, lives, tags: byTag.size },
+    stats: {
+      cmds: totalOrders, attributed, anchors, lives, tags: byTag.size,
+      prod: prodStats.total, prodBound: prodStats.bound, prodSyn: prodStats.syn,
+    },
   };
 }
 
