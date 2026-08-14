@@ -604,8 +604,27 @@ function collectSignals(
      잡아 줘서(실측: mineral10 4:4에서 1초 간격 스포닝풀 두 번이 둘 다 유효로 남음)
      여기서 직접 무른다. 창(20초)은 옛 선택이 그대로 남은 채 한참 뒤에 딴 드론 무리로
      짓는 드문 경우를 막는 보험이다. */
-  const lastDroneBuild = new Map<number, { unit: string; frame: number }>();
+  const lastDroneBuild = new Map<number, { unit: string; frame: number; x: number | null; y: number | null; drone: boolean }>();
   const DRONE_REBUILD_WINDOW_FRAMES = Math.round(20 / SECONDS_PER_FRAME);
+  /* 테란·프로토스도 도달 전 재명령이면 앞 건설이 취소되는 건 같지만(지적), 일꾼이
+     소모되지 않아 "두 번째가 유효했다 = 첫째 미착공" 증명이 없다 — 실측으로 확인:
+     빠른무한 1:1에서 프로브가 선택 변경 없이 1.7초 간격으로 게이트웨이 둘을 놓았는데
+     훈련 태그 추적 결과 둘 다 실존했다(자리에 서 있으면 즉시 짓고 바로 다음을 짓는다).
+     그래서 SCV·프로브는 물리적으로 확실한 경우만 무른다: 같은 종류를 발자국이 겹치는
+     자리에 다시 놓으면 두 채가 같이 설 수 없으므로 앞 명령은 재배치다. 시프트 예약
+     걱정은 없다 — 브루드워의 Build 커맨드에는 Queued 필드 자체가 없어(Right Click
+     등에만 있다) 건설은 예약이 안 되고, 새 건설 명령이 늘 앞 것을 대체한다. */
+  const WORKER_FOOTPRINT: Record<string, [number, number]> = {
+    "Command Center": [4, 3], Barracks: [4, 3], Factory: [4, 3], Starport: [4, 3],
+    "Science Facility": [4, 3], "Engineering Bay": [4, 3], Refinery: [4, 2],
+    "Supply Depot": [3, 2], Academy: [3, 2], Armory: [3, 2], Bunker: [3, 2],
+    "Missile Turret": [2, 2],
+    Nexus: [4, 3], Gateway: [4, 3], Stargate: [4, 3], Assimilator: [4, 2],
+    Forge: [3, 2], "Cybernetics Core": [3, 2], "Shield Battery": [3, 2],
+    "Robotics Facility": [3, 2], Observatory: [3, 2], "Robotics Support Bay": [3, 2],
+    "Citadel of Adun": [3, 2], "Templar Archives": [3, 2], "Fleet Beacon": [3, 2],
+    "Arbiter Tribunal": [3, 2], Pylon: [2, 2], "Photon Cannon": [2, 2],
+  };
   const groups = new Map<string, number[]>();
   const unitOfTag = new Map<string, { from: number; name: string; last: number }[]>();
   const nameTag = (key: string, frame: number, named: string) => {
@@ -696,10 +715,22 @@ function collectSignals(
     } else if (!wasted && cmdName && BUILD_CMD_NAMES.has(cmdName)) {
       const b = nameOf(c.Unit);
       if (b) {
-        // 같은 드론 재명령 무르기(위 lastDroneBuild 주석) — 앞 예약의 기록을 걷어낸다.
-        if (nameOf(c.Order) === "DroneStartBuild" && frame !== null) {
+        // 같은 일꾼 재명령 무르기(위 lastDroneBuild 주석) — 앞 예약의 기록을 걷어낸다.
+        // 드론(소모형)은 무조건, SCV·프로브는 같은 종류가 발자국 겹치게 다시 놓일 때만.
+        const ordName = nameOf(c.Order);
+        const workerBuild = ordName === "DroneStartBuild"
+          || ordName === "PlaceBuilding" || ordName === "PlaceProtossBuilding";
+        if (workerBuild && frame !== null) {
+          const drone = ordName === "DroneStartBuild";
+          const posNow = posOf(c.Pos);
           const prev = lastDroneBuild.get(c.PlayerID);
-          if (prev && frame - prev.frame <= DRONE_REBUILD_WINDOW_FRAMES) {
+          const overlaps = !drone && prev && prev.unit === b
+            && prev.x !== null && prev.y !== null && posNow
+            ? Math.abs(posNow.x - prev.x) < (WORKER_FOOTPRINT[b] ?? [3, 2])[0]
+              && Math.abs(posNow.y - prev.y) < (WORKER_FOOTPRINT[b] ?? [3, 2])[1]
+            : false;
+          if (prev && frame - prev.frame <= DRONE_REBUILD_WINDOW_FRAMES
+            && (prev.drone ? drone : overlaps)) {
             s.buildingCounts[prev.unit] = Math.max(0, (s.buildingCounts[prev.unit] ?? 1) - 1);
             const bf = s.buildingFrames[prev.unit];
             if (bf) {
@@ -712,7 +743,9 @@ function collectSignals(
               if (bp.unit === prev.unit && bp.frame === prev.frame) { s.buildPositions.splice(pi, 1); break; }
             }
           }
-          lastDroneBuild.set(c.PlayerID, { unit: b, frame });
+          lastDroneBuild.set(c.PlayerID, {
+            unit: b, frame, x: posNow?.x ?? null, y: posNow?.y ?? null, drone,
+          });
         }
         s.buildingCounts[b] = (s.buildingCounts[b] ?? 0) + 1;
         if (frame !== null) {
