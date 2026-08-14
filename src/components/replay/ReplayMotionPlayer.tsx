@@ -4284,6 +4284,13 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects }: {
        아직 크립뿐이라 다른 그림은 안 다친다. */
     const creepList = sorted.filter((o) => o.clipWalk);
     if (creepList.length > 0 && wallMask && maskRects && maskRects.length > 0) {
+      /* 크립은 맵 밖으로 못 나간다(지적: 미니맵 밖까지 나옴) — 컨테이너가 overflow:
+         hidden이 아니라(모서리 마커를 안 자르려고) 가장자리 해처리의 크립 원이 그림
+         밖까지 그려졌다. 크립 판만 맵 사각형(fx·fy 0~1)으로 클립한다. */
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(zx(0), zy(0), cw * zoom, ch * zoom);
+      ctx.clip();
       paintOps(creepList);
       ctx.save();
       ctx.globalCompositeOperation = "destination-out";
@@ -4294,6 +4301,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects }: {
           zx(fx0), zy(fy0), (fx1 - fx0) * cw * zoom, (fy1 - fy0) * ch * zoom,
         );
       }
+      ctx.restore();
       ctx.restore();
       paintOps(sorted.filter((o) => !o.clipWalk));
     } else {
