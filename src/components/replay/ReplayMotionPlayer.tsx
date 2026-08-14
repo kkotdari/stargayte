@@ -1628,33 +1628,27 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     return [
       // 낮은 기단 — 발치를 한 판으로 받친다.
       ...frustumFaces3(-0.2, 0.4, 8.8, 6.2, 8, 5.4, 1),
-      // 왼쪽 드럼 몸통 — 앞뒤로 눕힌 원통(뒤로 물려, 앞은 아래 반원판이 마감한다).
-      ...tubeFaces(-3.2, -1.8, -3.2, 1.4, 1.6, 1.9),
-      // 드럼 위 얹은 가는 관 — 실물의 몸통 이음새.
-      ...tubeFaces(-3.2, -1.4, -3.2, 1.1, 0.65, 3.4),
-      /* 앞 반원판(재지적: 원통을 90도 돌려 얇게 자르고 윗반원만 보이게) — 앞을 보고
-         선 얇은 반원 바퀴다. 아랫변은 기단에 묻히고 위 반원만 솟는다: 뒤판·앞판 반원
-         두 장을 테 띠로 봉합하고 가운데 축 원판을 박았다(옛 톱니바퀴와 같은 짜임새,
-         이는 없이). */
+      /* 왼쪽 반원판(재재지적: 드럼통은 걷고 반원판만 — 옆면이 드럼 옆면이 보던 좌우를
+         보게 90도 돌려서) — 판이 좌우를 보고 앞뒤로 선 얇은 반원 바퀴다. 아랫변은
+         기단에 묻히고 위 반원만 솟는다: 반원 두 장을 옆으로 얇게 띄워 테 띠로 봉합. */
       ...((): ShapeFace[] => {
-        const half = (y: number): [number, number, number][] => {
+        const half = (x: number): [number, number, number][] => {
           const pts: [number, number, number][] = [];
           for (let i = 0; i <= 10; i += 1) {
             const a = Math.PI * (i / 10);
-            pts.push([-2.9 - Math.cos(a) * 2.2, y, 1 + Math.sin(a) * 2.2]);
+            pts.push([x, 0.4 - Math.cos(a) * 2.2, 1 + Math.sin(a) * 2.2]);
           }
           return pts;
         };
-        const backP = half(1.85);
-        const frontP = half(2.4);
-        const g: ShapeFace[] = [bodyFace(polyPath3(backP)), sideFace(polyPath3(backP), 0.2)];
-        for (let i = 0; i < backP.length - 1; i += 1) {
-          g.push(bodyFace(polyPath3([backP[i], backP[i + 1], frontP[i + 1], frontP[i]])));
+        const leftP = half(-3.5);
+        const rightP = half(-2.95);
+        const g: ShapeFace[] = [bodyFace(polyPath3(leftP)), sideFace(polyPath3(leftP), 0.2)];
+        for (let i = 0; i < leftP.length - 1; i += 1) {
+          g.push(bodyFace(polyPath3([leftP[i], leftP[i + 1], rightP[i + 1], rightP[i]])));
         }
-        const fd = polyPath3(frontP);
+        const fd = polyPath3(rightP);
         g.push(bodyFace(fd), topFace(fd, 0.14));
-        g.push(capFace(wallDiscPath(-2.9, 2.41, 1, 0.55, 0.55), 0.35));
-        return tagKey(g, depthNow(-2.9, 2.1) + 0.5);
+        return tagKey(g, depthNow(-3.2, 0.4) + 0.5);
       })(),
       // 가운데 결정 기둥 무리 — 높이 다른 네 자루, 끝이 뾰족하게 좁아진다.
       ...tagKey(hornFaces(-1.2, 0.1, 1, -1.3, 0, 6.4, 1.05), depthNow(-1.2, 0.1) + 1),
