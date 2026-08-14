@@ -5439,6 +5439,7 @@ export default function ReplayMotionPlayer({
       };
     };
     const onTM = (e: TouchEvent) => {
+      gestureRef.current = e.touches.length >= 2;
       /* 삼키는 건 지도 조작일 때만(재재지적: 모바일에서 아래로 스와이프가 안 됨) —
          무조건 preventDefault가 확대 안 한 한 손가락 스와이프(페이지 스크롤)까지
          막았다. 두 손가락(핀치)이거나 확대 중(드래그 팬)일 때만 기본 동작을 끊고,
@@ -5460,7 +5461,14 @@ export default function ReplayMotionPlayer({
       /* 프레임당 한 번만 커밋(지적: 확대축소가 튐) — touchmove는 프레임보다 잦게 와서
          매번 setState하면 무거운 리렌더가 겹겹이 밀려 손을 못 따라왔다. 마지막 값만
          rAF에 실어 한 프레임에 한 번 반영한다. */
-      pinchPend = { z, p: z <= 1 ? { x: 0, y: 0 } : { x: mx2 - ox - z * ux, y: my2 - oy - z * uy } };
+      /* 미세 떨림 사구간(지적: 떨림) — 손가락은 가만히 있어도 ±1px씩 떨린다. 배율
+         0.4%·이동 0.7px 미만의 변화는 버려 지도가 어른거리지 않게 한다. */
+      const np = z <= 1 ? { x: 0, y: 0 } : { x: mx2 - ox - z * ux, y: my2 - oy - z * uy };
+      if (pinchPend || Math.abs(z - zoomRef.current) / zoomRef.current > 0.004
+        || Math.hypot(np.x - panRef.current.x, np.y - panRef.current.y) > 0.7) {
+        pinchPend = { z, p: np };
+      }
+      if (!pinchPend) return;
       if (!pinchRaf) {
         pinchRaf = requestAnimationFrame(() => {
           pinchRaf = 0;
@@ -5469,7 +5477,7 @@ export default function ReplayMotionPlayer({
       }
     };
     const onTE = (e: TouchEvent) => {
-      if (e.touches.length < 2) pinch = null;
+      if (e.touches.length < 2) { pinch = null; gestureRef.current = false; }
     };
     el.addEventListener("touchstart", onTS, { passive: false });
     el.addEventListener("touchmove", onTM, { passive: false });
@@ -5775,6 +5783,10 @@ export default function ReplayMotionPlayer({
      뒤로는 리렌더가 한참 가벼워져 33ms 예산 안에 든다. 시간은 매 틱 어김없이
      쌓으므로(accRef) 재생 속도는 어느 주기든 같다. */
   const clockRef = useRef<{ raf: number; last: number; acc: number; drawn: number } | null>(null);
+  /* 핀치 중 재생 그리기 정지(지적: 확대축소 시 미니맵이 떨리고 튐) — 폰에서 20Hz
+     리렌더 하나가 수십 ms라, 핀치 커밋이 그 뒤에 줄 서며 제스처가 밀렸다. 두 손가락이
+     닿아 있는 동안은 시간도 표시도 멈추고 손짓에만 프레임을 쓴다. */
+  const gestureRef = useRef(false);
   useEffect(() => {
     if (!playing || !active) return undefined;
     // 모바일은 20Hz(재지적: 모바일과 PC는 주기가 달라야) — 폰 CPU에서 30Hz 리렌더는
@@ -5786,7 +5798,7 @@ export default function ReplayMotionPlayer({
          시간 전체가 돼, 돌아온 순간 그만큼을 한 번에 건너뛴다. 위의 정지가 대부분 막지만
          blur가 안 오는 경우(다른 모니터로 시선만 이동)를 위한 이중 잠금이다. */
       const dt = c ? Math.min((now - c.last) / 1000, 0.5) : 0;
-      const acc = (c?.acc ?? 0) + dt;
+      const acc = gestureRef.current ? 0 : (c?.acc ?? 0) + dt;
       const drawnAt = c?.drawn ?? 0;
       const draw = acc > 0 && now - drawnAt >= DRAW_GAP_MS;
       clockRef.current = {
