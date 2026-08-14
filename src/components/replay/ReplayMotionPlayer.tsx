@@ -57,12 +57,12 @@ const LERP_MAX_GAP_SEC = 24;
  *  머문다(지적: "아직도 유닛 갑자기 빠르게 이동하는 말도안되는 현상이"). 자취는 걷기
  *  (walkTrack)로 속도가 눌려 있지만, 부대 재배정·틈새로 새는 점이 남긴 초고속 미끄러짐을
  *  여기서 마지막으로 막는다. 스커지(6.7타일/초)가 실제 최고라 8이면 진짜 이동은 안 걸린다. */
-const GLIDE_MAX_SPEED = 8;
+const GLIDE_MAX_SPEED = 6.5;
 /** 순간이동 다리(지적: 유닛이 얼었다 다음 점으로 튐 — 앞뒤 추적 강화) — 침묵 구간의
  *  끝자락을 걸어 잇는 걸음 속도와, 초고속 구간을 행군으로 봐줄 상한(타일/초). 상한을
  *  넘어야 닿는 점프만 예전처럼 앞 점에 머문다(그건 정말 딴 부대의 점이다). */
-const BRIDGE_WALK_SPEED = 6;
-const BRIDGE_MAX_SPEED = 16;
+const BRIDGE_WALK_SPEED = 4.5;
+const BRIDGE_MAX_SPEED = 10;
 /** 크립이 만개까지 퍼지는 시간(초) — 원작은 해처리·콜로니에서 몇 분에 걸쳐 타일이
  *  번져 나간다(정확한 표는 공개돼 있지 않아 체감치). 시작 본진 해처리는 처음부터 만개. */
 const CREEP_SPREAD_SEC = 180;
@@ -6953,7 +6953,9 @@ export default function ReplayMotionPlayer({
                   total += d;
                 }
                 const v = Math.max(0.5, speedOf(unit, done, p.ups));
-                const travel = Math.min(60, total / v);
+                // 60초 상한 제거(지적: 실속도를 벗어나는 이동의 한 갈래) — 먼 랠리도
+                // 제 속도로 끝까지 걷는다.
+                const travel = total / v;
                 arrive = done + travel;
                 const k = travel > 0 ? Math.min(1, (t - done) / travel) : 1;
                 // 경로 길이 k 비율 지점까지 걷는다.
