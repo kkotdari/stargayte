@@ -3013,11 +3013,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 스파이더 마인(요청) — 땅에 반쯤 묻힌 작은 돔 + 감지침 셋. 맵에서 죽음의 원인이
      보이게 마인 자체를 그린다. */
   mine: () => [
-    sideFace(discPath3(0, 0, 0.02, 3.4), 0.2),
-    ...domeFaces3(0, 0, 2.6, 1.7),
-    ...hornFaces(0, 0, 1.6, 0, 0, 4.6, 0.35),
-    ...hornFaces(-1.4, 0.6, 1.1, -2.4, 1, 3.2, 0.3),
-    ...hornFaces(1.4, 0.6, 1.1, 2.4, 1, 3.2, 0.3),
+    // 몸은 납작한 삼각(재재지적) — 낮고 넓은 원뿔이라 어느 각에서도 납작 삼각 실루엣.
+    sideFace(discPath3(0, 0, 0.02, 3.6), 0.2),
+    ...hornFaces(0, 0, 0.1, 0, 0, 2.1, 3.9),
+    ...hornFaces(0, 0, 1.8, 0, 0, 3.4, 0.28),
+    ...hornFaces(-1.5, 0.5, 0.4, -2.5, 0.9, 2, 0.26),
+    ...hornFaces(1.5, 0.5, 0.4, 2.5, 0.9, 2, 0.26),
   ],
   /* 버로우 구멍(요청) — 버로우 중엔 유닛 대신 이 구멍만: 흙 둔덕 테 + 어두운 구멍.
      크기는 마커 크기(소·중·대형)를 그대로 탄다. */
@@ -6466,6 +6467,15 @@ export default function ReplayMotionPlayer({
             }
             return false;
           };
+          /* 죽음 연출(요청: 동시에 팍 사라져 어색) — 정리 시점부터 3초에 걸쳐 유닛별
+             해시 지연으로 하나씩 쓰러진다(결정적). 쓰러지는 순간엔 종족/타입별 효과. */
+          const deadSinceOf = (lastOrderSec: number): number => {
+            let t0 = Infinity;
+            for (const [a2, b2] of p.hot ?? []) {
+              if (lastOrderSec >= a2 && lastOrderSec <= b2) t0 = Math.min(t0, b2 + DEAD_QUIET_SEC);
+            }
+            return t0;
+          };
           const typeMarks = typeSquads[pi].flatMap((g, gi) => {
             const rp = g.walk;
             if (rp.length === 0 || t < rp[0][0]) return [];
@@ -6494,7 +6504,9 @@ export default function ReplayMotionPlayer({
                명령을 받았다는 것 자체가 그 전투·함락·핵에서 살아남았다는 증거다. */
             const hasLater = Number.isFinite(sinceCmd)
               && g.raw.some(([sec]) => sec > t - sinceCmd);
-            if (!hasLater && Number.isFinite(sinceCmd) && deadBy(t - sinceCmd)) return [];
+            const dSince = !hasLater && Number.isFinite(sinceCmd)
+              ? deadSinceOf(t - sinceCmd) : Infinity;
+            if (t > dSince + 3) return [];
             // 태워진 동안은 숨는다(요청) — 내리면 나타난다.
             if (carriedGone(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : -1, pos.moving)) return [];
             // 건설에 흡수(지적: 익스트랙터 만든 드론이 남는다) — 일꾼 묶음만.
@@ -6509,7 +6521,7 @@ export default function ReplayMotionPlayer({
               && (p.ups ?? []).some(([us, n]) => n === "Terran Ship Plating" && us <= t);
             if (!bcTough && !hasLater
               && nukedGone(pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return [];
-            return [{ g, gi, pos, sinceCmd }];
+            return [{ g, gi, pos, sinceCmd, dying: t > dSince ? (t - dSince) / 3 : 0 }];
           });
           const shownUnits = new Set(typeMarks.flatMap(({ g }) => BY_UNITS[g.unit] ?? [g.unit]));
           /* (삭제·요청: 말풍선 더 이상 사용 안 함) — 액티브 말풍선의 수집·병합 기반이
@@ -6523,7 +6535,7 @@ export default function ReplayMotionPlayer({
           const arbSpots = typeMarks
             .filter(({ g }) => (BY_UNITS[g.unit] ?? [g.unit]).includes("Arbiter"))
             .map(({ pos }) => pos);
-          const typeNodes = typeMarks.map(({ g, gi, pos, sinceCmd }) => {
+          const typeNodes = typeMarks.map(({ g, gi, pos, sinceCmd, dying }) => {
             const members = BY_UNITS[g.unit] ?? [g.unit];
             const aliveAll = members.reduce((n, u) => n + aliveOf(u), 0);
             const nSquads = squadsOfUnit.get(g.unit) ?? 1;
@@ -6657,6 +6669,24 @@ export default function ReplayMotionPlayer({
               const [sx0, sy0] = uAir ? [pos.x + dx, pos.y + dy] : groundedSpot(pos.x, pos.y, dx, dy);
               const [ax3, ay3] = dodge(sx0, sy0);
               const [fx, fy] = posFrac(ax3, ay3);
+              /* 죽음 연출(요청) — 정리 창(3초) 동안 해시 차례로 쓰러진다: 제 차례가
+                 지나면 사라지고, 쓰러지는 짧은 순간엔 종족/타입별 효과가 남는다. */
+              if (dying > 0) {
+                if (dying > jr + 0.3) return null;
+                if (dying > jr) {
+                  const dk = race === "저그" ? "zerg" : race === "프로토스" ? "toss"
+                    : (u === "Marine" || u === "Firebat" || u === "Medic" || u === "Ghost") ? "bio" : "mech";
+                  return (
+                    <span
+                      key={`${p.raw}-die-${gi}-${di}`}
+                      className="scr-motion-army scr-motion-dot"
+                      style={{ ...posStyle(ax3, ay3), zIndex: 1300 }}
+                    >
+                      <span className={`scr-motion-diefx scr-die-${dk}`} />
+                    </span>
+                  );
+                }
+              }
               /* 버로우 표시(요청) — 럴커는 제자리(이동 없음)면 버로우로 보고, 유닛 대신
                  크기 따라가는 땅 구멍만 그린다. 가시 공격 효과는 구멍 위에서 그대로 인다. */
               const burrowed = u === "Lurker" && !pos.moving;
