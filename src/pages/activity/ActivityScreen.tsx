@@ -14,7 +14,7 @@ import { GameDetailCloseContext } from "./gameDetailClose";
 import ModalHash from "../../utils/modalHash";
 import { ActivityCard } from "./ActivityCard";
 import Select from "../../components/common/Select";
-import { resolveSlotName } from "./GameResultSides";
+import { resolveSlotName, teamSummaryName } from "./GameResultSides";
 import { bestRawOf } from "../../utils/replaySummaryData";
 import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
@@ -995,6 +995,37 @@ export default function ActivityScreen() {
   useLayoutEffect(() => {
     if (gameItem) window.scrollTo({ top: 0, behavior: "instant" });
   }, [gameItem]);
+  /* 게임 페이지 크럼의 두 상행길(요청: 활동 › 게임 › 번호) — 히스토리를 되감는 대신
+     지금 칸의 주소를 갈아 끼운다: 뒤로가기는 여전히 들어온 길을 한 칸씩 되밟는다. */
+  const gotoActivityRoot = () => {
+    const params = new URLSearchParams(window.location.search);
+    params.delete("game");
+    params.delete("group");
+    const qs = params.toString();
+    window.history.replaceState(
+      window.history.state, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`,
+    );
+    setGameItem(null);
+    setOpenGroupKey(null);
+    pushedGameRef.current = false;
+    pushedGroupRef.current = false;
+  };
+  const gotoGameList = () => {
+    const params = new URLSearchParams(window.location.search);
+    params.delete("game");
+    params.set("group", "gameResult");
+    window.history.replaceState(
+      window.history.state, "", `${window.location.pathname}?${params.toString()}`,
+    );
+    setGameItem(null);
+    if (openGroupKey !== "gameResult") {
+      setOpenGroupKey("gameResult");
+      void api.pingAccess(GROUP_SCREEN_CODE.gameResult);
+    }
+    // 이 칸이 우리가 얹은 칸이었으면 그 소유권은 목록이 이어받는다(닫기=back 유지).
+    pushedGroupRef.current = pushedGameRef.current || pushedGroupRef.current;
+    pushedGameRef.current = false;
+  };
   useLayoutEffect(() => {
     if (openGroupKey === null && homeScrollRef.current > 0) {
       window.scrollTo({ top: homeScrollRef.current, behavior: "instant" });
@@ -1333,6 +1364,18 @@ export default function ActivityScreen() {
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
+  /* 브라우저 탭 제목(요청) — 게임 페이지는 "누구 vs 누구 M월 D일". 팀전은 대표 한 명에
+     "외 N명"(teamSummaryName), 날짜는 뒤에 선다. 닫으면 원래 제목으로 되돌린다. */
+  useEffect(() => {
+    if (!gameItem || gameItem.kind !== "gameResult") return undefined;
+    const gr = gameItem.gameResult;
+    const t1 = teamSummaryName(gr.team1, memberOf) || "팀1";
+    const t2 = teamSummaryName(gr.team2, memberOf) || "팀2";
+    const [, mo, da] = gr.date.split("-").map(Number);
+    const prev = document.title;
+    document.title = `${t1} vs ${t2} ${mo}월 ${da}일`;
+    return () => { document.title = prev; };
+  }, [gameItem, memberOf]);
 
   /* 예전에는 여기서 "이미 불러온 가장 오래된 경기보다 과거인 너나와·변동"을 보류했다 —
      경기만 페이지로 나눠 받고 나머지는 통째로 받았기에, 아직 안 받은 경기 자리에 옛
@@ -1959,10 +2002,16 @@ export default function ActivityScreen() {
         <div className="scr-activity-group-page">
           <div className="scr-v2-toolbar">
             <div className="scr-v2-toolbar-title-row">
+              {/* 활동 › 게임 › 번호(요청) — 활동은 목록 처음으로, 게임은 게임 전체
+                  목록으로, 끝은 이 판의 게임번호다. */}
               <h1 className="scr-title scr-v2-toolbar-title">
-                <button type="button" className="scr-activity-crumb-root" onClick={closeGamePage}>활동</button>
+                <button type="button" className="scr-activity-crumb-root" onClick={gotoActivityRoot}>활동</button>
                 <span className="scr-activity-crumb-sep">›</span>
-                <span className="scr-activity-crumb-leaf">게임</span>
+                <button type="button" className="scr-activity-crumb-root" onClick={gotoGameList}>게임</button>
+                <span className="scr-activity-crumb-sep">›</span>
+                <span className="scr-activity-crumb-leaf scr-activity-crumb-no">
+                  {gameItem.kind === "gameResult" ? gameItem.gameResult.matchNo : ""}
+                </span>
               </h1>
             </div>
           </div>
