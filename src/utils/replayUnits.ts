@@ -702,6 +702,50 @@ export function buildUnitTracks(
     }
   }
 
+  /* ── 뒤 스토리: 생산 출고(지적: 생산 모습이 없던 마린이 갑자기 나타나서 이동) —
+        유닛 생애의 첫 증거는 첫 '명령'이라, 그 앞 이야기(생산 건물에서 나온 것)가
+        비어 맵 한복판에서 솟아났다. 정체(모르면 종족 기본 생산소)의 생산 건물 중 첫
+        증거에 가장 가까운 자기 건물 발치에서 걸어 나온 것으로 태어남을 당긴다.
+        배럭·게이트 출신으로 잡힌 무명 개체는 일꾼일 수 없으니 기본 보병으로
+        식별한다(지적: 마린 같은데 SCV로 태어나서 이동). */
+  {
+    const RACE_INFANTRY: Record<string, string> = { 테란: "Marine", 프로토스: "Zealot", 저그: "Zergling" };
+    const RACE_PRODUCER: Record<string, string> = { 테란: "Barracks", 프로토스: "Gateway", 저그: "Hatchery" };
+    for (const life of done) {
+      if (life.bld || life.ev.length === 0) continue;
+      const first = life.ev.find((v) => v[1] >= 0);
+      if (!first || first[0] < 40) continue;
+      if (life.ev[0][0] === 0) continue; // 이미 본진 출발 보정을 받은 시작 유닛
+      const race = raceOf.get(life.owner) ?? "";
+      let kind = "";
+      let kn = 0;
+      for (const [k, n] of life.kinds) { if (n > kn) { kind = k; kn = n; } }
+      if (kind === (RACE_WORKER[race] ?? "") && kind !== "") continue; // 일꾼은 자원 곁 탄생이 자연스럽다
+      if (kind === "Overlord") continue;
+      const prodKind = (kind && TRAIN_AT[kind]) || RACE_PRODUCER[race] || "";
+      if (!prodKind) continue;
+      // 저그는 모두 해처리 계열 어느 것에서든 나온다.
+      const prodSet = prodKind === "Hatchery" ? ["Hatchery", "Lair", "Hive"] : [prodKind];
+      let best: { x: number; y: number } | null = null;
+      let bd = 60; // 이보다 먼 출고는 억지라 안 잇는다(드랍 등).
+      for (const b of built) {
+        if (b.owner !== life.owner || !prodSet.includes(b.kind)) continue;
+        if (b.born + 60 > first[0]) continue; // 아직 완공 전
+        if (b.gone !== null && b.gone < first[0]) continue;
+        const d = Math.hypot(b.x + 2 - first[1], b.y + 1.5 - first[2]);
+        if (d < bd) { bd = d; best = { x: b.x + 2, y: b.y + 3 }; }
+      }
+      if (!best || bd < 3) continue; // 이미 건물 곁이면 그대로다
+      const walkSec = Math.min(20, bd / 4);
+      const departSec = Math.max(1, first[0] - walkSec);
+      life.ev.unshift([Math.round(departSec), r1(best.x), r1(best.y), 3]);
+      life.born = Math.min(life.born, departSec);
+      if (kind === "" && (prodKind === "Barracks" || prodKind === "Gateway")) {
+        life.kinds.set(RACE_INFANTRY[race] ?? "", 1);
+      }
+    }
+  }
+
   /* ── 후방 보정 — 뒷결과로 앞을 고친다(지적). 태그별로 생애를 시간순으로 놓고,
         앞 생애의 죽음을 다음 생애의 태어남으로 눌러 잡는다. 공격받고 소식이 없으면
         그때 죽은 것으로, 공격받고도 증거가 이어졌으면 살아남은 것으로. ─────────── */

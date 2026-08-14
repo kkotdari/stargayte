@@ -3110,6 +3110,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     faces.push(bodyFace(polyPath3(hi)), topFace(polyPath3(hi), 0.18));
     return faces;
   },
+  /* 애드온 연결 통로(재지적: 판때기 디자인 교체) — 넓은 납작 사각 대신 제대로 된
+     낮은 관: 양끝 접합 칼라 두 개 사이를 몸통이 잇고, 지붕에 밝은 띠가 얹힌다. */
+  addonlink: () => [
+    ...boxFaces3(0, 0, 11, 4.2, 3, 0),
+    topFace(polyPath3([[-5.5, -0.9, 3.05], [5.5, -0.9, 3.05], [5.5, 0.9, 3.05], [-5.5, 0.9, 3.05]]), 0.3),
+    ...boxFaces3(-6.4, 0, 2.2, 5.4, 4, 0),
+    ...boxFaces3(6.4, 0, 2.2, 5.4, 4, 0),
+  ],
   /* 버로우 구멍(요청) — 버로우 중엔 유닛 대신 이 구멍만: 흙 둔덕 테 + 어두운 구멍.
      크기는 마커 크기(소·중·대형)를 그대로 탄다. */
   burrowhole: () => [
@@ -3489,16 +3497,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      뒤로 흐르는 두건. */
   hydra: () => {
     const hood = polyPath3([[0.5, 0.3, 7.1], [0.95, -1.5, 8.4], [0, -2.6, 8.7], [-0.95, -1.5, 8.4], [-0.5, 0.3, 7.1]]);
+    /* 매끈한 뱀꼬리(재지적: 애벌레 마디가 아니라 몸과 꼬리가 한 덩어리 — 배를 땅에
+       대고 걷고 그쪽이 둥글게 굽는다) — 몸통 뿌리 폭에서 한 곡선으로 가늘어져 끝이
+       점이 되는 실루엣 한 장 + 등마루 하이라이트 한 줄. */
+    const tailR: [number, number, number][] = [
+      [1.45, -0.2, 1.4], [1.12, -1.4, 0.85], [0.74, -2.7, 0.48], [0.38, -3.9, 0.22], [0, -5.1, 0.08],
+    ];
+    const tailPts = [
+      ...tailR,
+      ...[...tailR].reverse().slice(1).map(([x, y, z]) => [-x, y, z] as [number, number, number]),
+    ];
     return [
-      /* 바닥 원반을 꼬리로(지적: 바닥의 원을 굵은 꼬리처럼 몸에 이어 달라) — 몸기둥
-         밑에서 뒤로 갈수록 가늘어지며 땅에 끌리는 마디 꼬리 + 꼬리끝 뿔. */
-      ...domeFaces3(0, -0.8, 1.5, 1.1, 1.7),
-      ...domeFaces3(0, -2, 1.15, 0.9, 0.9),
-      ...domeFaces3(0, -3.1, 0.85, 0.7, 0.4),
-      ...domeFaces3(0, -4, 0.6, 0.5, 0.12),
-      ...hornFaces(0, -4.3, 0.6, 0, -5.3, 0.12, 0.3),
-      // 몸기둥도 꼬리 뿌리까지 내려 잇는다(같은 지적) — 예전엔 3.9에서 떠 시작했다.
-      ...cylinderFaces3(0, 0, 1.05, 5.3, 1.5),
+      bodyFace(polyPath3(tailPts)),
+      sideFace(polyPath3(tailPts), 0.1),
+      topFace(polyPath3(tailPts.map(([x, y, z]) => [x * 0.45, y, z + 0.16] as [number, number, number])), 0.13),
+      // 몸기둥을 꼬리 뿌리(z 1.2)까지 내려 한 몸으로 잇는다.
+      ...cylinderFaces3(0, 0, 1.05, 5.3, 1.2),
       ...ivory(claw3(1, 0.85, 5)),
       ...ivory(claw3(-1, 0.85, 5)),
       ...domeFaces3(0, 0.2, 0.75, 0.6, 6.8),
@@ -4123,6 +4137,22 @@ type UnitDrawOp = {
    *  채굴 동선은 건물·자원과 겹치는 게 실제 모습이다. */
   noSep?: boolean;
 };
+/* 구운 판의 실제 바닥(재재지적: 드론·해처리가 떠 있고 그림자가 이상하다) — 상자
+   바닥 기준 어림은 모델이 상자를 다 안 채우면(해처리 둔덕 등) 그림자가 발보다 한참
+   아래에 깔렸다. 알파를 성글게 훑어 가장 낮은 그린 픽셀 줄을 재고, 그림자를 거기에
+   붙인다. 판은 캐시되므로 측정도 한 번뿐이다. */
+function contentBottom(cv: HTMLCanvasElement): number {
+  const c2 = cv.getContext("2d", { willReadFrequently: true });
+  if (!c2 || cv.width === 0 || cv.height === 0) return cv.height;
+  const { data, width, height } = c2.getImageData(0, 0, cv.width, cv.height);
+  for (let y = height - 1; y >= 0; y -= 1) {
+    const row = y * width * 4;
+    for (let x = 3; x < width * 4; x += 12) {
+      if (data[row + x] > 10) return y + 1;
+    }
+  }
+  return cv.height;
+}
 const PATH2D_CACHE = new Map<string, Path2D>();
 const pathOf = (d: string): Path2D => {
   let p = PATH2D_CACHE.get(d);
@@ -4134,10 +4164,10 @@ const pathOf = (d: string): Path2D => {
    수천 번의 가우시안 블러 합성이라 PC에서도 버벅였다. 같은 (종류·방향·시각·색·크기)
    조합은 한 번만 오프스크린 캔버스에 굽고, 프레임에선 drawImage 한 번으로 찍는다.
    줌 중엔 크기 양자화 칸이 바뀌며 다시 굽지만 멈추면 전부 캐시 적중이다. */
-const SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number }>();
+const SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; bot: number }>();
 function unitSprite(
   op: UnitDrawOp, pxq: number, B: number,
-): { cv: HTMLCanvasElement; pad: number; l: number } | null {
+): { cv: HTMLCanvasElement; pad: number; l: number; bot: number } | null {
   const rotB = op.rotDeg !== undefined
     ? ((Math.round(op.rotDeg / 22.5) * 22.5) % 360 + 360) % 360 : -1;
   const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
@@ -4166,16 +4196,16 @@ function unitSprite(
   }
   // 무한히 크지 않게 — 색·크기 조합이 쌓이면 통째로 비운다(다음 프레임에 필요분만 재적재).
   if (SPRITE_CACHE.size > 700) SPRITE_CACHE.clear();
-  const entry = { cv, pad, l };
+  const entry = { cv, pad, l, bot: contentBottom(cv) };
   SPRITE_CACHE.set(key, entry);
   return entry;
 }
 /* 건물 스프라이트(요청: 건물도 병목 감축) — meet(비율 유지) 상자 건물을 같은 방식으로
    굽는다. 뷰박스 밖으로 살짝 삐치는 모델(높은 첨탑 등)을 위해 15% 머리방을 둔다. */
-const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; side: number }>();
+const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number }>();
 function buildingSprite(
   op: UnitDrawOp, sideQ: number, B: number,
-): { cv: HTMLCanvasElement; pad: number; l: number; side: number } | null {
+): { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number } | null {
   const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
   const key = `${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}|${op.color}|${sideQ}|${B.toFixed(2)}`;
   const hit = BLD_SPRITE_CACHE.get(key);
@@ -4199,7 +4229,7 @@ function buildingSprite(
     c2.fill(pathOf(d));
   }
   if (BLD_SPRITE_CACHE.size > 500) BLD_SPRITE_CACHE.clear();
-  const entry = { cv, pad, l, side: sideQ };
+  const entry = { cv, pad, l, side: sideQ, bot: contentBottom(cv) };
   BLD_SPRITE_CACHE.set(key, entry);
   return entry;
 }
@@ -4369,21 +4399,6 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         // 건물 상자 — 스팬의 % 폭 + aspectRatio(폭 기준)를 그대로 픽셀로 푼 것.
         const wPx = op.wFrac * cw * zoom;
         const hPx = op.hFrac * cw * zoom;
-        /* 접지 그림자(지적: 건물에도 옅게, 단 떠 보이지 않게 아주 좁게) — 발자국
-           바닥선에 얇은 타원 하나. */
-        if (op.groundShadow) {
-          ctx.save();
-          ctx.shadowColor = "transparent";
-          ctx.globalAlpha = op.alpha * 0.16;
-          ctx.fillStyle = "#000";
-          ctx.beginPath();
-          /* 발자국 전체를 덮고 바닥선에 딱(재지적: 2D 건물 그림자가 전체를 못 덮고
-             떠 보인다) — 반지름을 발자국 절반 폭(0.52)으로 넓히고, 상자 바닥(hPx/2)
-             에 정확히 붙인다. 입체 보기는 바닥 기울기만큼 더 누른다. */
-          ctx.ellipse(sx, sy + hPx / 2, wPx * 0.52, Math.max(1, wPx * 0.09 * (op.pitch ? 0.6 : 1)), 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        }
         if (op.boxFit === "fill") {
           // 맨 네모(전용 도형 없는 건물) — 상자를 그대로 채운다(.scr-motion-sq).
           ctx.globalAlpha = op.alpha;
@@ -4397,6 +4412,23 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         const sidePx = op.fitWidth ? wPx : Math.min(wPx, hPx);
         const sideQ = Math.max(4, Math.round(sidePx / 2) * 2);
         const bspr = buildingSprite(op, sideQ, B);
+        /* 접지 그림자(재재지적: 해처리가 떠 있다) — 상자 바닥 어림이 아니라 구운
+           판의 실제 바닥 픽셀(contentBottom)에 붙인다. 모델이 상자를 다 안 채워도
+           발이 그림자에 닿는다. */
+        if (op.groundShadow) {
+          const kS = bspr ? sidePx / sideQ : 1;
+          const gy = bspr
+            ? sy + hPx / 2 - (bspr.pad + sideQ) * kS + (bspr.bot / B) * kS - 1
+            : sy + hPx / 2;
+          ctx.save();
+          ctx.shadowColor = "transparent";
+          ctx.globalAlpha = op.alpha * 0.16;
+          ctx.fillStyle = "#000";
+          ctx.beginPath();
+          ctx.ellipse(sx, gy, wPx * 0.52, Math.max(1, wPx * 0.09 * (op.pitch ? 0.6 : 1)), 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
         if (bspr) {
           const k = sidePx / sideQ;
           ctx.globalAlpha = op.alpha;
@@ -4430,6 +4462,14 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
          몸은 반 키만큼 위로 띄운다. 떠 있음이 땅 유닛과 한눈에 갈린다. */
       // 더 높이(재지적: 지금의 2배 — 진짜 하늘에 뜬 느낌, 특히 오버로드) — 0.85 → 1.6.
       const lift = op.air ? px * 1.6 : 0;
+      /* 판을 먼저 굽는다 — 그림자를 어림 오프셋이 아니라 판의 실제 바닥 픽셀
+         (contentBottom)에 붙이기 위해서다(재재지적: 드론이 높이 떠 있다). */
+      const pxq = Math.max(4, Math.round(px / 2) * 2);
+      const spr = unitSprite(op, pxq, B);
+      const kU = px / pxq;
+      const footY = spr
+        ? sy - px * 0.24 - (spr.pad + pxq / 2) * kU + (spr.bot / B) * kU - 1
+        : sy + px * 0.28;
       if (hover) {
         ctx.save();
         ctx.shadowColor = "transparent";
@@ -4449,7 +4489,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         /* 바닥과 평행하게(재지적: 그림자 각도가 바닥과 평행이 아니다) — 입체 보기의
            바닥은 눌려 있는데 타원이 덜 납작해 비스듬히 선 판처럼 읽혔다. 입체에선
            세로 반지름을 바닥 기울기만큼 더 누른다. */
-        ctx.ellipse(sx, sy + px * 0.28, shw, shw * (op.air ? 0.4 : 0.3) * (op.pitch ? 0.5 : 1), 0, 0, Math.PI * 2);
+        ctx.ellipse(sx, footY + lift, shw, shw * (op.air ? 0.4 : 0.3) * (op.pitch ? 0.5 : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       } else if (!op.air && UNIT_KIND_SET.has(op.kind)) {
@@ -4460,15 +4500,13 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         ctx.globalAlpha = op.alpha * 0.12;
         ctx.fillStyle = "#000";
         ctx.beginPath();
-        // 발끝 접지(재재지적) — 0.34는 발보다 아래라 틈이 떠 보였다. 바닥선 0.28로.
-        ctx.ellipse(sx, sy + px * 0.28, px * 0.16, px * 0.05 * (op.pitch ? 0.6 : 1), 0, 0, Math.PI * 2);
+        // 발끝 접지(재재재지적) — 어림(0.28px)이 아니라 판의 실제 바닥 픽셀에.
+        ctx.ellipse(sx, footY, px * 0.16, px * 0.05 * (op.pitch ? 0.6 : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
       /* 스프라이트로 찍는다(수리: 프레임 뚝뚝) — 면 낱장 fill 대신 구운 판 한 장.
          크기는 2px 칸으로 양자화해 캐시를 맞추고, 블릿에서 잔차 배율을 입힌다. */
-      const pxq = Math.max(4, Math.round(px / 2) * 2);
-      const spr = unitSprite(op, pxq, B);
       ctx.translate(sx, sy - px * 0.24 - lift);
       if (rot) ctx.rotate((rot * Math.PI) / 180);
       if (spr) {
@@ -5458,7 +5496,9 @@ export default function ReplayMotionPlayer({
     let bd = Infinity;
     let bAir = false;
     for (const f of engageFoes) {
-      if (!team || f.team === team) continue;
+      /* 팀 미상(0)은 상대가 아니다(지적: 자기 유닛을 왜 공격해) — 로스터와 리플레이
+         이름이 안 맞아 팀을 못 찾은 마커를 적으로 치면 제 편끼리 쏘는 그림이 된다. */
+      if (!team || f.team === 0 || f.team === team) continue;
       const d = Math.hypot(f.x - x, f.y - y);
       if (d < bd) { bd = d; bx = f.x; by = f.y; bAir = f.air; }
     }
@@ -6702,14 +6742,15 @@ export default function ReplayMotionPlayer({
                  쪽으로 낮은 복도 판을 깐다. */
               if (ADDONS.has(unit)) {
                 const mkA = pitchK(centerY);
-                /* 간격 메우기(재지적: 애드온이 본체와 완전히 떨어져 있음) — 통로를
-                   2.6타일로 늘리고 본체 쪽으로 더 밀어 두 모델 사이 빈틈을 잇는다. */
-                const [lfx, lfy] = posFrac(centerX - fp2[0] / 2 - 1.1, centerY + fp2[1] * 0.18);
+                /* 통로 모델로 교체(재재지적: 판때기 디자인) — fillRect 사각 대신
+                   addonlink 빌더(낮은 관 + 접합 칼라)를 굽는다. 요잉은 안 태운다
+                   (연결선은 발자국 축 정렬이 맞다). */
+                const [lfx, lfy] = posFrac(centerX - fp2[0] / 2 - 1.2, centerY + fp2[1] * 0.1);
                 unitOps.push({
-                  fx: lfx, fy: lfy, z: z - 1, kind: "addonlink",
+                  fx: lfx, fy: lfy, z: z - 1, kind: "addonlink", rotDeg: 0,
                   viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
-                  sizePx: 0, wFrac: (2.6 / grid.width) * mkA, hFrac: (0.5 / grid.width) * mkA,
-                  boxFit: "fill", fitWidth: true, color, alpha: alpha * 0.85, noShadow: true,
+                  sizePx: 0, wFrac: (2.8 / grid.width) * mkA, hFrac: (1.4 / grid.width) * mkA,
+                  boxFit: "meet", fitWidth: true, color, alpha, noShadow: true,
                 });
               }
               /* 방어 사격(재지적: 터렛은 골리앗 대공과 동일, 벙커는 안에 든 것 따라) —
@@ -7194,7 +7235,8 @@ export default function ReplayMotionPlayer({
             if (as2 > t) continue;
             if (t - as2 <= 12 && atg > 0) {
               const tp = entPosByTag.get(atg);
-              if (tp && tp.team !== (team ?? 0)) {
+              // 팀 미상(0)은 표적으로도 안 삼는다(위 nearestFoe 주석과 같은 오인 방지).
+              if (tp && tp.team > 0 && (team ?? 0) > 0 && tp.team !== team) {
                 const td = Math.hypot(tp.x - rawPos.x, tp.y - rawPos.y);
                 // 너무 먼 표적은 안 겨눈다(지적: 타겟팅 오인) — 이미 딴 데 간 옛 표적이다.
                 if (td <= ENGAGE_SIGHT_TILES * 1.6) foe = { bx: tp.x, by: tp.y, bd: td, air: tp.air };
@@ -7304,6 +7346,10 @@ export default function ReplayMotionPlayer({
              없다) — 최근 적 공격 명령의 표적이 '나'면, 싸울 수 없는 유닛(오버로드·
              일꾼·수송)에도 맞는 불꽃이 튄다. */
           const hitNow = hitTagsNow !== null && e.tag > 0 && hitTagsNow.has(e.tag);
+          /* 효과는 가슴 높이(지적: 공격 효과가 너무 낮다 — 발밑에서 튀었다) — 마커
+             기준점은 발 자리라, 유닛 키의 1/3만큼 띄워 몸통에 맞춘다. */
+          const fxPx = drawUnit === "" || isWorker ? unitGlyphPx(0, ay3) : unitPxOf(drawUnit, ay3);
+          const fxLift = { marginTop: `${(-fxPx * 0.34).toFixed(1)}px` };
           if (hitNow && !fighting) {
             const cycH = Math.floor(t / 0.8);
             if ((ei + cycH) % 2 === 0) {
@@ -7311,7 +7357,7 @@ export default function ReplayMotionPlayer({
                 <span
                   key={`v2hit-${ei}`}
                   className="scr-motion-army scr-motion-dot scr-v2fx"
-                  style={{ ...posStyle(ax3, ay3), zIndex: 1310 }}
+                  style={{ ...posStyle(ax3, ay3), zIndex: 1310, ...fxLift }}
                 >
                   <span key={`hp-${cycH}`} className="scr-motion-puff scr-puff-hit" />
                 </span>
@@ -7330,7 +7376,7 @@ export default function ReplayMotionPlayer({
                 <span
                   key={`v2fix-${ei}`}
                   className="scr-motion-army scr-motion-dot scr-v2fx"
-                  style={{ ...posStyle(ax3, ay3), zIndex: 1310 }}
+                  style={{ ...posStyle(ax3, ay3), zIndex: 1310, ...fxLift }}
                 >
                   <span
                     key={`fx-${Math.floor(t / 1.1)}`}
@@ -7349,7 +7395,7 @@ export default function ReplayMotionPlayer({
             <span
               key={`v2fx-${ei}`}
               className="scr-motion-army scr-motion-dot scr-v2fx"
-              style={{ ...posStyle(ax3, ay3), zIndex: 1310, ...glyphStyle(e.raw, team) }}
+              style={{ ...posStyle(ax3, ay3), zIndex: 1310, ...glyphStyle(e.raw, team), ...fxLift }}
             >
               {atkDeg !== null && ATTACK_FX[fxUnit] && ATTACK_FX[fxUnit] !== "heal" && (
                 <span
