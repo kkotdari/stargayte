@@ -6698,51 +6698,35 @@ export default function ReplayMotionPlayer({
             const wFrac = (wTiles / grid.width) * mkK;
             const hFrac = (hTiles / grid.width) * mkK;
             const race2 = bases.find((b) => b.key === raw)?.race;
-            /* 짓는 SCV(요청: SCV 위치도 건물에 붙이자 → 재재지적: 완공돼도 소멸하지
-               말고 프로브처럼 다음 일을 받게) — 공사 내내 불티 곁에 서 있고, 완공되면
-               가장 가까운 제 미네랄 줄로 일꾼 걸음(3.7타일/초)으로 걸어가 스며든다.
-               곁에 미네랄이 없으면 1.2초 페이드. 드론은 제 몸이 건물이 되고 프로브는
-               소환만 걸고 떠나니 테란만이다. */
+            /* 짓는 SCV(재재재지적: 완공돼도 자원으로 보내지 말고 다음 명령을 받게) — 공사
+               내내 불티 곁에 서 있고, 완공 뒤에는 그 곁(5타일)에 떨어지는 임자의 첫 일꾼
+               명령(spts)을 '이 SCV가 받은 다음 명령'으로 보고 그 순간 일꾼 스트림에
+               넘긴다(그 클릭부터는 일꾼 점이 그린다). 명령이 안 오면 게으른 SCV 그대로
+               서 있고, 건물이 무너지면 함께 걷힌다. 지어낸 미네랄 왕복은 걷었다. */
             if (race2 === "테란" && !flownFrom && sec > 0 && !razed
-              && t - sec < (BUILD_SEC[unit] ?? 30) + 25) {
-              const doneGap = t - sec - (BUILD_SEC[unit] ?? 30);
-              let scvX = centerX - fp2[0] / 2 + 0.35;
-              let scvY = centerY + fp2[1] / 2 - 0.35;
-              let scvHdg = Math.atan2(-(centerX - scvX), centerY - scvY) * (180 / Math.PI);
-              let scvAlpha = 1;
-              let scvShow = true;
-              if (doneGap > 0) {
-                let mx3 = 0;
-                let my3 = 0;
-                let md3 = Infinity;
-                for (const rz of grid.resources ?? []) {
-                  if (rz[2] === 1) continue;
-                  const d3 = Math.hypot(rz[0] - scvX, rz[1] - scvY);
-                  if (d3 < md3) { md3 = d3; mx3 = rz[0]; my3 = rz[1]; }
+              && (goneEff === 0 || t < goneEff)) {
+              const bs2 = BUILD_SEC[unit] ?? 30;
+              const scvX = centerX - fp2[0] / 2 + 0.35;
+              const scvY = centerY + fp2[1] / 2 - 0.35;
+              let scvShow = t - sec >= 0;
+              if (t - sec >= bs2) {
+                const trk2 = motion.players.find((pp) => pp.raw === raw);
+                let nextCmd = Infinity;
+                for (const pt2 of trk2?.spts ?? []) {
+                  if (pt2[0] < sec + bs2 - 2) continue;
+                  if (Math.hypot(pt2[1] - scvX, pt2[2] - scvY) <= 5) { nextCmd = pt2[0]; break; }
                 }
-                if (Number.isFinite(md3) && md3 <= 15) {
-                  const walked3 = doneGap * 3.7;
-                  if (walked3 >= md3) scvShow = false; // 닿았다 — 채굴 줄이 이어받는다.
-                  else {
-                    const f3 = walked3 / md3;
-                    scvHdg = Math.atan2(-(mx3 - scvX), my3 - scvY) * (180 / Math.PI);
-                    scvX += (mx3 - scvX) * f3;
-                    scvY += (my3 - scvY) * f3;
-                  }
-                } else {
-                  scvAlpha = Math.max(0, 1 - doneGap / 1.2);
-                  if (scvAlpha <= 0) scvShow = false;
-                }
+                if (t >= nextCmd) scvShow = false;
               }
               if (scvShow) {
                 const [sfx2, sfy2] = posFrac(scvX, scvY);
                 unitOps.push({
                   fx: sfx2, fy: sfy2, z: z + 1, kind: "scv",
-                  rotDeg: scvHdg,
+                  rotDeg: Math.atan2(-(centerX - scvX), centerY - scvY) * (180 / Math.PI),
                   viewYaw: viewYawOf(scvX, scvY), flat: !pitched, pitch: pitched,
                   sizePx: unitGlyphPx(0, scvY),
                   color: modeColor(raw, teamOfRaw(raw)),
-                  alpha: scvAlpha,
+                  alpha: 1,
                   noSep: true,
                 });
               }
