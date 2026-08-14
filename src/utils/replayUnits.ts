@@ -148,10 +148,10 @@ const BUILDING_ONLY_CMDS = new Set<string>(["Train", "Cancel Train", "Building M
 /** 건물 이름 판별 — TRAIN_AT의 값들 + 흔한 건물들. bld 플래그를 세울 때 쓴다. */
 const BUILDING_NAMES = new Set<string>([
   ...Object.values(TRAIN_AT), ...Object.keys(BUILDING_MORPH_FROM), ...Object.values(BUILDING_MORPH_FROM),
-  "Hatchery", "Spawning Pool", "Hydralisk Den", "Spire", "Queen's Nest", "Ultralisk Cavern",
+  "Hatchery", "Spawning Pool", "Hydralisk Den", "Spire", "Queen's Nest", "Queens Nest", "Ultralisk Cavern",
   "Defiler Mound", "Evolution Chamber", "Extractor", "Nydus Canal",
   "Supply Depot", "Refinery", "Engineering Bay", "Academy", "Missile Turret", "Bunker",
-  "Armory", "Science Facility", "Comsat Station", "Nuclear Silo", "Machine Shop", "Control Tower",
+  "Armory", "Science Facility", "Comsat Station", "ComSat", "Nuclear Silo", "Machine Shop", "Control Tower",
   "Physics Lab", "Covert Ops",
   "Pylon", "Assimilator", "Forge", "Photon Cannon", "Cybernetics Core", "Citadel of Adun",
   "Templar Archives", "Robotics Support Bay", "Observatory", "Fleet Beacon", "Arbiter Tribunal",
@@ -207,9 +207,15 @@ const r1 = (n: number): number => Math.round(n * 10) / 10;
  *  대표(마린·수송선은 종족 것)로. */
 function settleKind(life: Life, race: Race | ""): string {
   if (life.kinds.size > 0) {
+    // 건물 생애는 건물 이름 표만 센다(지적: 드론 표가 이겨 건물 자리에 드론이 섰다).
+    const pool = life.bld
+      ? [...life.kinds].filter(([k]) => BUILDING_NAMES.has(k))
+      : [...life.kinds];
     let best = "";
     let bestN = 0;
-    for (const [k, n] of life.kinds) if (n > bestN) { best = k; bestN = n; }
+    for (const [k, n] of (pool.length > 0 ? pool : [...life.kinds])) {
+      if (n > bestN) { best = k; bestN = n; }
+    }
     return best;
   }
   for (const g of life.groupKinds) {
@@ -388,6 +394,7 @@ export function buildUnitTracks(
       const worker = RACE_WORKER[raceOf.get(pid) ?? ""] ?? "";
       // 일꾼의 직전 위치 증거 — 자리까지의 도착 시각을 어림하는 재료다(무르기 판정).
       let prevPt: UnitEv | null = null;
+      const zergBuild = raceOf.get(pid) === "저그" && cmdName === "Build";
       for (const tag of tags) {
         let life = lifeOf(tag, pid, sec);
         if (worker && cmdName !== "Hatch") life = markKind(life, worker, sec);
@@ -397,6 +404,19 @@ export function buildUnitTracks(
           }
         }
         if (bpos) pushEv(life, sec, bpos.x, bpos.y, 2);
+        /* 저그 건설은 드론이 건물로 '변태'다(지적: 해처리가 네모로 나옴 — 드론 태그가
+           그대로 건물 태그가 되는데, 채굴 클릭 표가 많아 정체 다수결에서 Drone이 이겨
+           건물 자리에 드론 이름의 개체가 섰다). 실제 엔진처럼 드론 생애를 여기서 닫고,
+           같은 태그로 건물 생애를 새로 연다. */
+        if (zergBuild && tags.length === 1 && unitName && bpos) {
+          done.push(life);
+          alive.delete(tag);
+          const next = lifeOf(tag, pid, sec);
+          next.kinds.set(unitName, 1);
+          next.bld = true;
+          life.morphTo = next;
+          pushEv(next, sec, bpos.x, bpos.y, 2);
+        }
       }
       if (bpos && unitName && cmdName !== "Hatch") {
         // 같은 일꾼이 도착 전에 다른 건설을 또 냈으면 앞의 것은 무른 것이다(드론 건물
@@ -431,12 +451,23 @@ export function buildUnitTracks(
         life.bld = true;
         if (life.cxl === null) life.cxl = sec;
       }
-      for (let i = built.length - 1; i >= 0; i -= 1) {
-        const b = built[i];
-        if (b.owner === pid && b.gone === null && sec - b.born < 180) {
-          b.gone = sec;
-          b.goneKind = "cxl";
-          break;
+      /* 어느 건물을 물렀나(지적: 저그 취소를 못 잡음) — 저그는 드론 태그가 그대로
+         건물 태그라, 골라 둔 태그가 곧 짓던 그 건물이다(builder로 저장돼 있다). 태그로
+         먼저 맞춰 보고, 안 맞으면(테란·프로토스 — 건물 제 태그라 builder와 다르다)
+         '가장 최근에 시작한 살아 있는 건설'로 물러난다. */
+      const byTagIdx = built.findIndex((b) =>
+        b.owner === pid && b.gone === null && b.builder !== null && tags.includes(b.builder));
+      if (byTagIdx >= 0) {
+        built[byTagIdx].gone = sec;
+        built[byTagIdx].goneKind = "cxl";
+      } else {
+        for (let i = built.length - 1; i >= 0; i -= 1) {
+          const b = built[i];
+          if (b.owner === pid && b.gone === null && sec - b.born < 180) {
+            b.gone = sec;
+            b.goneKind = "cxl";
+            break;
+          }
         }
       }
       continue;

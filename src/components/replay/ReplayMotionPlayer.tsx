@@ -460,6 +460,9 @@ const SHAPE_KIND: Record<string, string> = {
   Barracks: "cube", Factory: "factory", Starport: "plane",
   "Robotics Facility": "dome", Stargate: "arch",
   // 애드온(요청: 부속건물 전부 모델링) — 여섯 다 제 모델이다.
+  // screp가 쓰는 변형 이름(v2 트랙: ComSat·Queens Nest)도 같은 모델로 받는다(지적:
+  // 모델 없는 건물이 네모로 나옴).
+  ComSat: "comsat", "Queens Nest": "queensnest",
   "Comsat Station": "comsat", "Nuclear Silo": "nsilo",
   "Machine Shop": "mshop", "Control Tower": "ctower",
   "Covert Ops": "covert", "Physics Lab": "physlab",
@@ -4400,14 +4403,16 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
       const px = op.sizePx * zoom;
       /* 공중 유닛(요청: 높이 더 높이 + 바닥 그림자) — 발밑 자리에 그림자 타원을 깔고
          몸은 반 키만큼 위로 띄운다. 떠 있음이 땅 유닛과 한눈에 갈린다. */
-      const lift = op.air ? px * 0.55 : 0;
+      // 더 높이(지적: 공중 유닛 높이 더 높게) — 0.55 → 0.85.
+      const lift = op.air ? px * 0.85 : 0;
       if (hover) {
         ctx.save();
         ctx.shadowColor = "transparent";
         /* 떠다니는 지상 유닛(일꾼·벌처·아콘류)은 겨우 발밑만 떠 있다(지적: 그림자가
            너무 크고 진해) — 높이 나는 공중 유닛보다 작고 옅은 타원. */
-        const shw = px * (op.air ? 0.3 : 0.2);
-        ctx.globalAlpha = op.alpha * (op.air ? 0.3 : 0.16);
+        // 그림자 살짝 축소(지적) — 높이 나는 만큼 발밑 그림자는 작고 옅게.
+        const shw = px * (op.air ? 0.26 : 0.2);
+        ctx.globalAlpha = op.alpha * (op.air ? 0.22 : 0.16);
         ctx.fillStyle = "#000";
         ctx.beginPath();
         ctx.ellipse(sx, sy + px * 0.06, shw, shw * 0.4, 0, 0, Math.PI * 2);
@@ -4833,25 +4838,50 @@ export default function ReplayMotionPlayer({
   const buildsV2 = useMemo<SummaryMotion["builds"]>(() => {
     if (!entData) return [];
     const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
-    const out: SummaryMotion["builds"] = [];
+    type Row = { born: number; x: number; y: number; k: string; raw: string; gone: number; lift?: number };
+    const tagRows: Row[] = [];
+    const physRows: (Row & { used?: boolean })[] = [];
     for (const e of entData.ents) {
-      if (!e.bld) continue;
+      if (!e.bld || !e.k) continue;
       const raw = nameOfId.get(e.o) ?? "";
-      if (!raw || !e.k) continue;
-      // 자리 증거 — 건설(2)이 태어난 자리, 착륙(5)이 이사한 자리다. 자리를 모르는
-      // 태그 건물(생산 기록만 있는 것)은 못 그린다.
+      if (!raw) continue;
       const spots = e.ev.filter((v) => v[3] === 2 || v[3] === 5);
       if (spots.length === 0) continue;
       const gone = e.d ?? 0;
       for (let i = 0; i < spots.length; i += 1) {
-        const [s, x, y, f] = spots[i];
+        const [sSec, x, y, f] = spots[i];
         const nextS = i + 1 < spots.length ? spots[i + 1][0] : null;
-        // 이 자리에 있는 동안의 이륙(6) — 그때부터 다음 착륙까지 '떠 있음'으로 그린다.
-        const lift = e.ev.find((v) => v[3] === 6 && v[0] >= s && (nextS === null || v[0] <= nextS));
-        const g = nextS !== null ? nextS : gone;
-        const born = f === 5 ? s : e.b;
-        out.push(lift ? [born, x, y, e.k, raw, g, lift[0]] : [born, x, y, e.k, raw, g]);
+        const lift = e.ev.find((v) => v[3] === 6 && v[0] >= sSec && (nextS === null || v[0] <= nextS));
+        const row: Row = {
+          born: f === 5 ? sSec : e.b, x, y, k: e.k, raw,
+          gone: nextS !== null ? nextS : gone,
+          ...(lift ? { lift: lift[0] } : {}),
+        };
+        (e.t === -1 ? physRows : tagRows).push(row);
       }
+    }
+    /* 같은 건물이 두 번 선다(드론→건물 변태 분리의 산물) — 같은 자리엔 물리 줄(건설
+       좌표)과 태그 줄(드론 태그가 건물이 된 생애)이 함께 있다. 태그 줄이 정체(변태
+       반영: 크립 콜로니→성큰)와 취소를 더 잘 알고, 물리 줄은 발치 공격의 철거를 안다 —
+       태그 줄을 남기고 물리 줄의 무너짐만 승계한다. */
+    const out: SummaryMotion["builds"] = [];
+    for (const r of tagRows) {
+      const twin = physRows.find((p2) => !p2.used && p2.raw === r.raw
+        && Math.abs(p2.born - r.born) <= 3 && Math.hypot(p2.x - r.x, p2.y - r.y) <= 1.5);
+      let gone = r.gone;
+      if (twin) {
+        twin.used = true;
+        if (gone === 0 && twin.gone > 0) gone = twin.gone;
+      }
+      out.push(r.lift !== undefined
+        ? [r.born, r.x, r.y, r.k, r.raw, gone, r.lift]
+        : [r.born, r.x, r.y, r.k, r.raw, gone]);
+    }
+    for (const p2 of physRows) {
+      if (p2.used) continue;
+      out.push(p2.lift !== undefined
+        ? [p2.born, p2.x, p2.y, p2.k, p2.raw, p2.gone, p2.lift]
+        : [p2.born, p2.x, p2.y, p2.k, p2.raw, p2.gone]);
     }
     return out;
   }, [entData]);
@@ -4864,6 +4894,26 @@ export default function ReplayMotionPlayer({
   const entOn = entMode && entData !== null;
   const buildsSrc = entOn ? buildsV2 : motion.builds;
   const castsSrc = entOn ? castsV2 : motion.casts;
+  /* v2 교전 멈춤(지적: 어택땅 중 만나면 멈추고 싸워야 하는데 그냥 감) — 싸움이 시작된
+     자리를 기억해, 적이 곁에 있는 동안 거기 세운다. 적이 사라지면(죽거나 멀어지면)
+     기억을 걷고 다시 걷는다. 시간을 되감으면(t가 기억보다 앞) 기억을 버린다. */
+  const engageHoldRef = useRef(new Map<string, { x: number; y: number; t0: number; tLast: number }>());
+  /* 초반 무명 개체의 폴백(지적: 일꾼밖에 없는데 저글링이 정찰 감) — 정체를 모르는
+     개체는 그 사람의 '첫 전투 유닛이 태어난 시각' 전이면 일꾼으로, 뒤면 종족 보병으로
+     그린다. 그 시각 전에는 저글링이 존재할 수 없다(뒤 스토리 제약). */
+  const entCombatStart = useMemo(() => {
+    const m = new Map<string, number>();
+    if (!entData) return m;
+    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    for (const e of entData.ents) {
+      if (e.bld || !e.k) continue;
+      if (e.k === "SCV" || e.k === "Probe" || e.k === "Drone" || e.k === "Overlord") continue;
+      const raw = nameOfId.get(e.o) ?? "";
+      const cur = m.get(raw);
+      if (cur === undefined || e.b < cur) m.set(raw, e.b);
+    }
+    return m;
+  }, [entData]);
   /* 클릭 자국(요청: 클릭만 해보자 — 동그라미 안에 점, 납작하게) — 개체 증거 스트림의
      이동 명령 목적지(f=0)가 곧 그 사람의 클릭이다. 같은 클릭이 골라진 유닛 수만큼
      중복돼 있으니(12기 선택 우클릭 = 12개체에 같은 점) 사람·초·자리로 합친다.
@@ -5282,6 +5332,8 @@ export default function ReplayMotionPlayer({
     if (!entData) return [];
     const trackByName = new Map(motion.players.map((p) => [p.raw, p]));
     const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    /* 같은 클릭을 받은 개체들의 차례표 — 행렬 시차·도착 대형의 열쇠(아래 주석). */
+    const clickRank = new Map<string, number>();
     const out: { raw: string; unit: string; b: number; d: number | null; walk: [number, number, number][] }[] = [];
     for (const e of entData.ents) {
       // 건물(태그·물리 모두)은 v1 층이 계속 그린다 — 여기는 유닛만.
@@ -5290,9 +5342,31 @@ export default function ReplayMotionPlayer({
       const p = trackByName.get(raw);
       if (!p) continue;
       // 위치 없는 증거(생산·랠리, x=-1)는 걷기 재료가 아니다.
-      const pts = e.ev
-        .filter((v) => v[1] >= 0 && v[3] !== 4)
-        .map((v) => [v[0], v[1], v[2]] as TrackPt);
+      /* 행렬 물리(지적: 이동을 찍으면 한 번에 출발하는 게 아니라 한 줄이 되면서 간다) +
+         새 겹침 방지(지적: 다시 넣되 세련되게) — 같은 클릭(같은 사람·초·자리)을 받은
+         개체들에 차례를 매겨, (a) 출발을 0.22초씩 늦춰 자연스럽게 한 줄 행렬이 되고,
+         (b) 도착 자리는 클릭 지점 둘레 해바라기 나선으로 벌려 서로 안 포개진다 —
+         프레임마다 밀치는 이완 대신 목적지 대형으로 푸는 방식이라 떨림이 없다. */
+      const pts: TrackPt[] = [];
+      for (const v of e.ev) {
+        if (v[1] < 0 || v[3] === 4) continue;
+        if (v[3] === 0) {
+          const key = `${e.o}:${v[0]}:${v[1]}:${v[2]}`;
+          const idx = clickRank.get(key) ?? 0;
+          clickRank.set(key, idx + 1);
+          const rr = 0.55 * Math.sqrt(idx);
+          const aa = idx * 2.4;
+          pts.push([
+            v[0] + Math.min(2.4, idx * 0.22),
+            v[1] + Math.cos(aa) * rr,
+            v[2] + Math.sin(aa) * rr,
+          ]);
+        } else {
+          pts.push([v[0], v[1], v[2]]);
+        }
+      }
+      // 시차가 순서를 뒤집었으면(다음 명령이 바로 붙은 경우) 시간순으로 되돌린다.
+      pts.sort((a, b) => a[0] - b[0]);
       if (pts.length === 0) continue;
       out.push({
         raw, unit: e.k, b: e.b, d: e.d,
@@ -5343,24 +5417,49 @@ export default function ReplayMotionPlayer({
      조정으로 다가오므로 양쪽이 반씩 오면 꼭 목표 거리(근접 0.8타일, 원거리 사정거리)
      에서 만나고, 서로 원좌표 기준이라 지나쳐 겹치지 않는다. 시야(9타일) 밖은 안 끈다. */
   const engageFoes: { team: number; x: number; y: number; air: boolean }[] = [];
-  motion.players.forEach((p2, pi2) => {
-    const team2 = teamOfRaw(p2.raw) ?? 0;
-    for (const sq of refinedSquads[pi2] ?? []) {
-      if (sq.length === 0 || t < sq[0][0]) continue;
-      const q = posAt(sq, t, null);
-      if (q) engageFoes.push({ team: team2, x: q.x, y: q.y, air: false });
-    }
-    for (const g2 of typeSquads[pi2] ?? []) {
-      if (ENGAGE_SKIP.has(g2.unit)) continue;
-      if (g2.walk.length === 0 || t < g2.walk[0][0]) continue;
-      const q = posAt(g2.walk, t, null);
-      // 공중 무리인가(재지적: 레이스·골리앗은 공중 상대면 미사일) — 식구 전부가 공중일 때.
-      if (q) engageFoes.push({
-        team: team2, x: q.x, y: q.y,
-        air: (BY_UNITS[g2.unit] ?? [g2.unit]).every((u3) => isAirUnit(u3)),
+  if (entOn) {
+    /* v2 모드(지적: 유닛-건물 상호작용·어택땅 교전) — 교전 상대 목록을 v1 부대 어림이
+       아니라 v2 개체 위치로 채운다. 적의 방어 건물(성큰·캐논·터렛·벙커)도 상대다:
+       행군하던 유닛이 그 곁에서 멈춰 싸우고, 터렛·벙커 발사도 이 목록으로 겨눈다. */
+    for (const e of entWalks) {
+      if (e.walk.length === 0 || t < e.walk[0][0]) continue;
+      if (e.d !== null && t >= e.d) continue;
+      const q = posAt(e.walk, t, null);
+      if (!q) continue;
+      engageFoes.push({
+        team: teamOfRaw(e.raw) ?? 0, x: q.x, y: q.y,
+        air: e.unit !== "" && isAirUnit(e.unit),
       });
     }
-  });
+    for (const [bs, bx2, by2, bu, br, bg] of buildsSrc) {
+      if (!["Sunken Colony", "Spore Colony", "Photon Cannon", "Missile Turret", "Bunker"].includes(bu)) continue;
+      if (bs + (BUILD_SEC[bu] ?? 30) > t) continue;
+      if ((bg ?? 0) > 0 && t >= (bg ?? 0)) continue;
+      engageFoes.push({
+        team: teamOfRaw(br) ?? 0,
+        x: bx2 + footDx(bu), y: by2 + footDy(bu), air: false,
+      });
+    }
+  } else {
+    motion.players.forEach((p2, pi2) => {
+      const team2 = teamOfRaw(p2.raw) ?? 0;
+      for (const sq of refinedSquads[pi2] ?? []) {
+        if (sq.length === 0 || t < sq[0][0]) continue;
+        const q = posAt(sq, t, null);
+        if (q) engageFoes.push({ team: team2, x: q.x, y: q.y, air: false });
+      }
+      for (const g2 of typeSquads[pi2] ?? []) {
+        if (ENGAGE_SKIP.has(g2.unit)) continue;
+        if (g2.walk.length === 0 || t < g2.walk[0][0]) continue;
+        const q = posAt(g2.walk, t, null);
+        // 공중 무리인가(재지적: 레이스·골리앗은 공중 상대면 미사일) — 식구 전부가 공중일 때.
+        if (q) engageFoes.push({
+          team: team2, x: q.x, y: q.y,
+          air: (BY_UNITS[g2.unit] ?? [g2.unit]).every((u3) => isAirUnit(u3)),
+        });
+      }
+    });
+  }
   const nearestFoe = (team: number | undefined, x: number, y: number) => {
     let bx = 0;
     let by = 0;
@@ -8499,13 +8598,35 @@ export default function ReplayMotionPlayer({
           const team = teamOfRaw(e.raw);
           const rawPos = posAt(rp, t, null);
           if (!rawPos) return null;
-          /* v1의 화면 보정(위치 스무딩 smoothPosOf·건물 밀어내기 dodge)은 여기 안 얹는다
-             (지적: 로직을 깔끔하게 — 모든 조작 정보가 있으니 옛 보정은 걷고 뒤 스토리
-             보정만). 개체 걷기는 이미 연속이라 스무딩이 필요 없고, 겹침·어긋남이 보이면
-             그건 모델의 빈틈이라 숨기지 않고 원인으로 고친다. */
-          const pos = rawPos;
           const race = bases.find((b) => b.key === e.raw)?.race;
           const u = e.unit;
+          /* 초반 무명은 일꾼(지적: 일꾼밖에 없는데 저글링이 정찰) — 그 사람의 첫 전투
+             유닛이 태어나기 전의 무명 개체는 보병일 수 없다. */
+          const drawUnit = u !== "" ? u
+            : e.b < (entCombatStart.get(e.raw) ?? Infinity)
+              ? (race === "저그" ? "Drone" : race === "테란" ? "SCV" : "Probe") : "";
+          const isWorker = drawUnit === "SCV" || drawUnit === "Probe" || drawUnit === "Drone";
+          const uAir = drawUnit !== "" && isAirUnit(drawUnit);
+          /* 교전(지적: 상호작용 없음 + 어택땅 중 만나면 멈추고 싸워야) — 적 개체·방어
+             건물이 시야 안이면 싸움이다: 그 자리에 멈춰 서고(engageHoldRef), 트레이서·
+             불꽃이 인다. 일꾼·수송·옵저버는 안 싸운다(도망 대상일 뿐). */
+          const holdKey = `${e.raw}-v2e${ei}`;
+          const canFight = !isWorker && !uAir
+            && !(drawUnit !== "" && ENGAGE_SKIP.has(drawUnit));
+          const foe = nearestFoe(team, rawPos.x, rawPos.y);
+          const fighting = canFight && Number.isFinite(foe.bd) && foe.bd <= ENGAGE_SIGHT_TILES;
+          let pos = rawPos;
+          if (fighting && !uAir) {
+            const mem = engageHoldRef.current.get(holdKey);
+            if (mem && t >= mem.t0 && t - mem.tLast < 2.5) {
+              pos = { ...rawPos, x: mem.x, y: mem.y };
+              mem.tLast = t;
+            } else {
+              engageHoldRef.current.set(holdKey, { x: rawPos.x, y: rawPos.y, t0: t, tLast: t });
+            }
+          } else {
+            engageHoldRef.current.delete(holdKey);
+          }
           const [ax3, ay3] = [pos.x, pos.y];
           const [fx, fy] = posFrac(ax3, ay3);
           // 죽음 창(d~d+1.2초) — 마커 대신 종족별 사망 효과가 남는다.
@@ -8521,19 +8642,45 @@ export default function ReplayMotionPlayer({
               </span>
             );
           }
-          const isWorker = u === "SCV" || u === "Probe" || u === "Drone";
           unitOps.push({
             fx, fy,
             z: pitched ? 1000 + Math.round(ay3 * 80) : 1000 + (ei % 137),
-            kind: isWorker ? workerKindOf(race) : unitMarkerKind(u, race),
-            rotDeg: headingOf(rp, pos, `${e.raw}-v2e${ei}`),
+            kind: isWorker ? workerKindOf(race) : unitMarkerKind(drawUnit, race),
+            rotDeg: headingOf(rp, pos, holdKey),
             viewYaw: viewYawOf(ax3, ay3), flat: !pitched, pitch: pitched,
-            sizePx: u === "" || isWorker ? unitGlyphPx(0, ay3) : unitPxOf(u, ay3),
+            sizePx: drawUnit === "" || isWorker ? unitGlyphPx(0, ay3) : unitPxOf(drawUnit, ay3),
             color: modeColor(e.raw, team),
-            alpha: u === "" ? 0.7 : 1,
-            air: u !== "" && isAirUnit(u),
+            alpha: u === "" ? 0.8 : 1,
+            air: uAir,
+            /* 겹침 이완은 v2에선 안 쓴다(지적: 다시 넣되 새로) — 도착 대형(entWalks의
+               해바라기 나선)이 겹침을 미리 푸는 방식이라, 프레임마다 밀치는 이완의
+               떨림이 없다. */
+            noSep: true,
           });
-          return null;
+          /* 전투 효과(지적: 효과 다 살리기) — 유닛별 예광탄이 가장 가까운 적 쪽으로
+             뻗고, 이따금 퍼프가 터진다. DOM 수를 아끼려 세 개체에 하나만 효과를 단다. */
+          if (fighting && ei % 3 !== 0) return null;
+          if (!fighting) return null;
+          const fxUnit = drawUnit === "" ? (race === "저그" ? "Zergling" : race === "테란" ? "Marine" : "Zealot") : drawUnit;
+          const atkDeg = Number.isFinite(foe.bd) && foe.bd <= ENGAGE_SIGHT_TILES
+            ? Math.atan2(-(foe.bx - pos.x), foe.by - pos.y) * (180 / Math.PI) : null;
+          const cyc2 = Math.floor(t / 1.5);
+          return (
+            <span
+              key={`v2fx-${ei}`}
+              className="scr-motion-army scr-motion-dot"
+              style={{ ...posStyle(ax3, ay3), zIndex: 1310, ...glyphStyle(e.raw, team) }}
+            >
+              {atkDeg !== null && ATTACK_FX[fxUnit] && ATTACK_FX[fxUnit] !== "heal" && (
+                <span
+                  className={`scr-motion-tracer scr-tracer-${
+                    (fxUnit === "Wraith" || fxUnit === "Goliath") && foe.air ? "missile" : ATTACK_FX[fxUnit]}`}
+                  style={{ transform: `rotate(${atkDeg.toFixed(1)}deg)`, animationDelay: `${((ei * 7) % 5) / 10}s` }}
+                />
+              )}
+              {(ei + cyc2) % 5 === 0 && <span key={`pf-${cyc2}`} className="scr-motion-puff" />}
+            </span>
+          );
         })}
 
         {/* 건설 SCV(정정: 빙빙이 아니라) — 건물 둘레 네 자리를 "이동→정지(작업)→이동"
