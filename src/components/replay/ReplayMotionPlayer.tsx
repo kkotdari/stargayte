@@ -5737,15 +5737,14 @@ export default function ReplayMotionPlayer({
 
   /* 시계 — rAF로 게임 시간 t를 배속만큼 민다. state로 두는 이유는 매 프레임 그리는 것들
      (자취·건물·마법)이 전부 t의 함수라서다. */
-  /* 그리기는 10Hz다(실측: 중반 4대4는 마커 span만 750개라 한 리렌더가 수십~수백 ms —
-     rAF마다 밀면 재생 자체가 슬라이드가 된다. 프로덕션 빌드 실측 5.3fps→10Hz 상한이면
-     리렌더 수가 프레임 예산 안으로 들어온다). 시간은 매 틱 어김없이 쌓으므로(accRef)
-     재생 속도는 그대로고, 화면만 0.1초 걸음으로 따라온다 — 미니맵 걸음(초당 몇 타일)
-     에서는 눈으로 구분이 안 되는 간격이다. */
+  /* 그리기 30Hz(재지적: 1배속도 뚝뚝 — 10Hz의 0.1초 걸음이 눈에 밟혔다). 10Hz는
+     마커 span 750개 시절의 처방인데, 유닛이 캔버스(unitOps 일괄 그리기)로 옮겨 간
+     뒤로는 리렌더가 한참 가벼워져 33ms 예산 안에 든다. 시간은 매 틱 어김없이
+     쌓으므로(accRef) 재생 속도는 어느 주기든 같다. */
   const clockRef = useRef<{ raf: number; last: number; acc: number; drawn: number } | null>(null);
   useEffect(() => {
     if (!playing || !active) return undefined;
-    const DRAW_GAP_MS = 100;
+    const DRAW_GAP_MS = 33;
     const tick = (now: number) => {
       const c = clockRef.current;
       /* 한 틱 상한 — 브라우저가 rAF를 멈췄다 되살리면(백그라운드 탭) dt가 자리 비운
@@ -8085,7 +8084,22 @@ export default function ReplayMotionPlayer({
                 }
               }
               const parked = Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0];
-              if (t >= Math.max(dieAt, parked + 3)) return null;
+              const dieSec = Math.max(dieAt, parked + 3);
+              /* 격추 연출(재지적: 효과 없이 그냥 사라짐) — 잡히는 1.2초 동안 종족별
+                 죽음 효과가 남고, 그 뒤에 걷힌다. */
+              if (t >= dieSec) {
+                if (t > dieSec + 1.2) return null;
+                const dk2 = race === "저그" ? "zerg" : race === "프로토스" ? "toss" : "mech";
+                return (
+                  <span
+                    key={`${p.raw}-scdie-${si}`}
+                    className="scr-motion-army scr-motion-dot"
+                    style={{ ...posStyle(pos.x, pos.y), zIndex: 1300 }}
+                  >
+                    <span className={`scr-motion-diefx scr-die-${dk2}`} />
+                  </span>
+                );
+              }
             }
             /* 정찰은 이름을 아예 안 띄운다(지적: 일꾼 이름 뜨는 게 문제 맞다) — 일꾼은
                늘 작은 점, 수송선·오버로드는 늘 제 도형이다. 칩으로 커지는 일이 없으니
