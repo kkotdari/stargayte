@@ -3012,14 +3012,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
 
   /* 스파이더 마인(요청) — 땅에 반쯤 묻힌 작은 돔 + 감지침 셋. 맵에서 죽음의 원인이
      보이게 마인 자체를 그린다. */
-  mine: () => [
-    // 몸은 납작한 삼각(재재지적) — 낮고 넓은 원뿔이라 어느 각에서도 납작 삼각 실루엣.
-    sideFace(discPath3(0, 0, 0.02, 3.6), 0.2),
-    ...hornFaces(0, 0, 0.1, 0, 0, 2.1, 3.9),
-    ...hornFaces(0, 0, 1.8, 0, 0, 3.4, 0.28),
-    ...hornFaces(-1.5, 0.5, 0.4, -2.5, 0.9, 2, 0.26),
-    ...hornFaces(1.5, 0.5, 0.4, 2.5, 0.9, 2, 0.26),
-  ],
+  /* 마인은 그냥 납작한 삼각형 판(재재재지적) — 뿔도 장식도 없이, 땅에 놓인 삼각 판
+     한 장(살짝 두께만). */
+  mine: () => {
+    // 옆면 봉합(재지적) — 아랫판·윗판 대응 변을 띠로 이어 두께 옆구리를 채운다.
+    const pts = (z: number): [number, number, number][] =>
+      [[0, 2.6, z], [-2.3, -1.5, z], [2.3, -1.5, z]];
+    const lo = pts(0);
+    const hi = pts(0.8);
+    const faces: ShapeFace[] = [bodyFace(polyPath3(lo))];
+    for (let i = 0; i < 3; i += 1) {
+      const j = (i + 1) % 3;
+      faces.push(bodyFace(polyPath3([lo[i], lo[j], hi[j], hi[i]])));
+    }
+    faces.push(bodyFace(polyPath3(hi)), topFace(polyPath3(hi), 0.18));
+    return faces;
+  },
   /* 버로우 구멍(요청) — 버로우 중엔 유닛 대신 이 구멍만: 흙 둔덕 테 + 어두운 구멍.
      크기는 마커 크기(소·중·대형)를 그대로 탄다. */
   burrowhole: () => [
@@ -6200,6 +6208,30 @@ export default function ReplayMotionPlayer({
               key={`mine-${mi}`} className="scr-motion-mineboom"
               style={{ ...posStyle(m.x, m.y), zIndex: 1500 }}
             />
+          );
+        })}
+        {/* 건물 소멸 효과(요청: 종족별) — 무너진 순간 2초: 테란 주황 폭발+회색 연기,
+            저그 보라 살점 퍼짐, 프로토스 파란 빛 붕괴. 이륙 이사·같은 계보 대체(진화·
+            재건)는 폭발이 아니라 제외한다. */}
+        {motion.builds.map(([sec, x, y, unit, raw, gone, liftAt], i) => {
+          const goneAt = gone ?? 0;
+          if (!goneAt || liftAt || t < goneAt || t > goneAt + 2) return null;
+          if (motion.builds.some(([s2, x2, y2, u2, r2], j) => j !== i && r2 === raw
+            && s2 > sec && Math.hypot(x2 - x, y2 - y) <= 1.5
+            && (u2 === unit
+              || (["Hatchery", "Lair", "Hive"].includes(unit) && ["Hatchery", "Lair", "Hive"].includes(u2))
+              || (unit.includes("Colony") && u2.includes("Colony"))))) return null;
+          const race = bases.find((b2) => b2.key === raw)?.race;
+          const rk = race === "저그" ? "zerg" : race === "프로토스" ? "toss" : "terran";
+          return (
+            <span
+              key={`clp-${i}`}
+              className={`scr-motion-collapse scr-clp-${rk}`}
+              style={{ ...posStyle(x + footDx(unit), y + footDy(unit)), zIndex: 1450 }}
+            >
+              <span className="scr-clp-smoke" />
+              <span className="scr-clp-core" />
+            </span>
           );
         })}
         {(grid.resources ?? []).flatMap((res, ri) => {

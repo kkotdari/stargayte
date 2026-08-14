@@ -12898,6 +12898,36 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   100% { opacity: 0; transform: scale(1.7); }
 }
 
+/* 건물 소멸(요청: 종족별) — 테란 주황 폭발+회색 연기, 저그 보라 살점 퍼짐, 프로토스
+   파란 빛 붕괴(안으로 스러짐). 무너진 순간 2초 한 번 재생. */
+.scr-motion-collapse {
+  position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px;
+  pointer-events: none;
+}
+.scr-clp-core, .scr-clp-smoke { position: absolute; inset: 0; border-radius: 50%; }
+.scr-clp-terran .scr-clp-core { background: radial-gradient(circle, rgba(255, 224, 140, 0.95) 0%, rgba(255, 120, 50, 0.85) 40%, transparent 70%); animation: scr-clp-burst 2s ease-out forwards; }
+.scr-clp-terran .scr-clp-smoke { background: radial-gradient(circle, rgba(120, 120, 125, 0.55) 0%, rgba(80, 80, 85, 0.35) 55%, transparent 75%); animation: scr-clp-smoke 2s ease-out forwards; }
+.scr-clp-zerg .scr-clp-core { background: radial-gradient(circle, rgba(190, 110, 180, 0.9) 0%, rgba(120, 60, 120, 0.6) 50%, transparent 72%); animation: scr-clp-burst 2s ease-out forwards; }
+.scr-clp-zerg .scr-clp-smoke { background: radial-gradient(circle, rgba(140, 80, 60, 0.5) 0%, rgba(90, 50, 45, 0.3) 55%, transparent 75%); animation: scr-clp-smoke 2s ease-out forwards; }
+.scr-clp-toss .scr-clp-core { background: radial-gradient(circle, rgba(220, 240, 255, 0.95) 0%, rgba(110, 170, 255, 0.7) 45%, transparent 72%); animation: scr-clp-implode 2s ease-out forwards; }
+.scr-clp-toss .scr-clp-smoke { background: radial-gradient(circle, rgba(140, 190, 255, 0.35) 0%, transparent 70%); animation: scr-clp-smoke 2s ease-out forwards; }
+@keyframes scr-clp-burst {
+  0% { opacity: 0.2; transform: scale(0.3); }
+  18% { opacity: 1; transform: scale(1); }
+  60% { opacity: 0.5; transform: scale(1.5); }
+  100% { opacity: 0; transform: scale(1.9); }
+}
+@keyframes scr-clp-smoke {
+  0% { opacity: 0; transform: scale(0.6); }
+  30% { opacity: 0.8; transform: scale(1.1) translateY(-4px); }
+  100% { opacity: 0; transform: scale(1.6) translateY(-14px); }
+}
+@keyframes scr-clp-implode {
+  0% { opacity: 0.9; transform: scale(1.4); }
+  45% { opacity: 1; transform: scale(0.7); }
+  100% { opacity: 0; transform: scale(0.2); }
+}
+
 /* 마인 폭발(요청) — 한 번 터지고 끝나는 화구 파문. */
 .scr-motion-mineboom {
   position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px;
