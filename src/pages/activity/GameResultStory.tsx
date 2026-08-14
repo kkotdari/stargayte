@@ -336,10 +336,13 @@ export default function GameResultStory({
   /* 상세 팝업의 닫기 통로(요청: PC는 게임 결과만 확대창 기본, 기존 상세 미사용) — 상세
      팝업 안에서만 값이 있고, 목록·전체 보기에서는 null이라 예전 그대로다. */
   const detailClose = useContext(GameDetailCloseContext);
-  /* 좌우 동시 보기(요청: PC에서, 한 사람만 쓰는 검수용 — 운영자 한정) — v1 부대 어림과
-     v2 개체 트랙을 나란히 놓고 같은 시계로 돌린다. 모바일에서는 안 선다. */
+  /* 좌우 동시 보기(요청: PC에서, pk — 1번 회원 — 한 명만 쓰는 검수용) — v1 부대 어림과
+     v2 개체 트랙을 나란히 놓고 같은 시계로 돌린다. 처음엔 운영자 권한으로 걸었는데
+     pk 계정에 그 역할이 없어 버튼이 안 섰다(지적) — 1번 회원이거나 닉네임 pk면 열고,
+     운영자도 검수용으로 함께 열어 둔다. 모바일에서는 안 선다. */
   const me = useAppStore((s) => s.user);
-  const canDual = !!me && isAdminRole(me.roles)
+  const canDual = !!me
+    && (me.id === "1" || me.nickname === "pk" || isAdminRole(me.roles))
     && typeof window !== "undefined" && window.innerWidth >= 1160;
   const [dualOpen, setDualOpen] = useState(false);
   // 확대 창 왼쪽 기둥의 타임스탬프(요청: 공통 양식) — 앱 공용 시각 유틸(formatWhen)로,
