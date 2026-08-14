@@ -13225,6 +13225,13 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    마커 시절 크기의 6할로 줄인다. */
 .scr-v2fx .scr-motion-tracer { width: 1px; height: 6px; margin-left: -0.5px; }
 .scr-v2fx .scr-motion-puff { transform: scale(0.7); }
+/* 피격 불꽃(지적: 공격받는 쪽에도 효과) — 표적이 된 개체 위에서 튀는 주황 불티.
+   퍼프보다 작고 붉게, 위로 살짝 튄다. */
+.scr-v2fx .scr-puff-hit {
+  transform: translate(-50%, -70%) scale(0.5);
+  background: radial-gradient(circle, rgba(255, 170, 90, 0.95) 0%, rgba(255, 90, 40, 0.5) 45%, transparent 70%);
+  animation-duration: 0.7s;
+}
 
 /* ── 미니맵 핑(요청: 클릭도 기록 — v2 트랙) — 찍은 사람 색(currentColor)의 물결 고리가
    1초 주기로 퍼진다. 표시 창(3초)은 재생 쪽이 자르고 여기는 반복만 한다. ── */
