@@ -6515,43 +6515,20 @@ export default function ReplayMotionPlayer({
           const gasSpot = res[2] === 1
             || (!gridHasGasFlags
               && gasBuildings.some((g) => Math.hypot(g.x - res[0], g.y - res[1]) <= 6));
-          /* 홀 치마를 파고들면 물러선다(지적: 넥서스와 미네랄이 겹침) — 밭 모델(3.2타일
-             무더기)은 군집 낱밭들의 '평균 중심'에 서는 어림이라 빠른무한처럼 홀에 바짝
-             붙은 밭에선 중심이 홀 발자국 안까지 끌려 들어온다. 서 있는 홀 중심에서
-             (홀 반폭 2 + 밭 반폭 1.6 + 여유) 안이면, 홀→밭 방향으로 부족한 만큼만
-             밀어낸다. 실제 채굴 걸음(위 채굴 블록)은 원좌표 그대로라 동선은 안 변한다. */
-          let rx2 = res[0];
-          let ry2 = res[1];
-          if (!gasSpot) {
-            const NEED = 3.8;
-            let hx: number | null = null;
-            let hy: number | null = null;
-            let hd = NEED;
-            for (const m of bases) {
-              const d = Math.hypot(res[0] - m.x, res[1] - m.y);
-              if (d < hd) { hd = d; hx = m.x; hy = m.y; }
-            }
-            for (const hall of halls) {
-              if (hall.sec > t || (hall.gone > 0 && t >= hall.gone)) continue;
-              const d = Math.hypot(res[0] - hall.x, res[1] - hall.y);
-              if (d < hd) { hd = d; hx = hall.x; hy = hall.y; }
-            }
-            if (hx !== null && hy !== null && hd > 0.05) {
-              const k = (NEED - hd) / hd;
-              rx2 = res[0] + (res[0] - hx) * k;
-              ry2 = res[1] + (res[1] - hy) * k;
-            }
-          }
-          const mkK = pitchK(ry2);
-          const [fx, fy] = posFrac(rx2, ry2);
-          /* 간헐천은 두 칸 폭(지적: 한 칸처럼 작았다) — 미네랄 밭(3.2)의 두 배로.
-             색도 제 기본색(지적): 미네랄은 반투명 파란 수정, 가스는 회갈색 바위. */
-          const wTiles = gasSpot ? 6.4 : 3.2;
+          /* 정확한 좌표 우선(재지적: 겹치더라도 제자리에) — 홀 치마 회피 보정은 걷었다.
+             군집도 낱밭 수준(파서 반경 1.2)으로 좁혀, 밭이 홀에 붙은 맵은 붙은 그대로
+             그린다. */
+          const mkK = pitchK(res[1]);
+          const [fx, fy] = posFrac(res[0], res[1]);
+          /* 간헐천은 두 칸 폭(지적: 한 칸처럼 작았다). 미네랄은 낱밭 단위가 되면서
+             2×1 밭 폭에 맞춘 2.4타일 — 예전 3.2는 지대(여러 밭 묶음) 시절의 폭이다.
+             색은 제 기본색(지적): 미네랄은 반투명 파란 수정, 가스는 회갈색 바위. */
+          const wTiles = gasSpot ? 6.4 : 2.4;
           unitOps.push({
             fx, fy,
-            z: pitched ? 990 + Math.round(ry2 * 80) : 900 + ri,
+            z: pitched ? 990 + Math.round(res[1] * 80) : 900 + ri,
             kind: gasSpot ? "geyser" : "mineral",
-            viewYaw: viewYawOf(rx2, ry2), flat: !pitched, pitch: pitched,
+            viewYaw: viewYawOf(res[0], res[1]), flat: !pitched, pitch: pitched,
             sizePx: 0,
             wFrac: (wTiles / grid.width) * mkK,
             hFrac: ((wTiles * 0.75) / grid.width) * mkK,
