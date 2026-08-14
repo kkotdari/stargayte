@@ -137,6 +137,21 @@ export default function AdminMenu({
     ? cx("scr-mobile-tab", activeInAdmin && "scr-mobile-tab-active")
     : cx("scr-nav-tab", (open || activeInAdmin) && "scr-nav-tab-active");
 
+  if (variant === "nav") {
+    /* 레일(세로 기둥) 메뉴는 떠 있는 팝오버가 아니라 제자리 아코디언(지적: 자료실을
+       펼치면 아래 '운영'이 제자리라 목록에 가려짐) — 흐름 안에서 펼쳐 아래 항목을
+       밀어낸다. 바깥 클릭 닫기 효과들은 위에서 nav 변형에도 걸려 있어 그대로 동작한다. */
+    return (
+      <div className="scr-menu-pop scr-menu-pop-nav">
+        <button type="button" className={triggerClass} ref={anchorRef} onClick={() => setOpen((v) => !v)}>
+          <span>{title}</span>
+          <ChevronDown size={14} className={cx("scr-menu-pop-caret", open && "scr-menu-pop-caret-open")} />
+        </button>
+        {open && <div className="scr-menu-pop-drop-inline">{optionButtons}</div>}
+      </div>
+    );
+  }
+
   return (
     <div className={cx("scr-menu-pop", `scr-menu-pop-${variant}`)}>
       <button type="button" className={triggerClass} ref={anchorRef} onClick={() => setOpen((v) => !v)}>

@@ -4510,7 +4510,7 @@ const shortName = (name: string): string => {
 
 export default function ReplayMotionPlayer({
   grid, motion, endSec, bases, teamOfRaw, active = true, winnerTeam, side, menu,
-  stamp, registrant, onDetailClose,
+  stamp, registrant, onDetailClose, bestRaw,
 }: {
   grid: ReplayMapGrid;
   motion: SummaryMotion;
@@ -4537,6 +4537,9 @@ export default function ReplayMotionPlayer({
   /** 상세 팝업 닫기(요청: PC는 게임 결과만 확대창이 기본, 기존 상세는 미사용) — 값이
    *  오면 PC에서 마운트되자마자 확대창을 열고, 확대창을 닫을 때 상세까지 함께 닫는다. */
   onDetailClose?: () => void;
+  /** 그 판 BEST PLAYER의 원본 게임 아이디(요청: 헤드 칩 대신 로스터 이름에 배지) —
+   *  로스터 기둥에서 그 사람 이름 칩 옆에 금색 BEST 배지를 단다. */
+  bestRaw?: string | null;
   // (삭제·요청) caps — 자막 표시를 걷으면서 함께.
 }) {
   const total = useMemo(() => {
@@ -6019,6 +6022,8 @@ export default function ReplayMotionPlayer({
                 <span className="scr-tcn-short">{shortName(m.name)}</span>
               </span>
             </span>
+            {/* BEST 배지(요청: 헤드 줄 칩 대신 이름에) — 금색 테두리 작은 태그. */}
+            {bestRaw != null && m.key === bestRaw && <span className="scr-tc-best">BEST</span>}
             {winnerTeam && (m.team === 2 ? 2 : 1) === winnerTeam && t >= total - 0.5 && !fallen && (
               <span className="scr-motion-trophy">🏆</span>
             )}

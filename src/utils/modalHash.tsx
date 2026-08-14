@@ -24,15 +24,20 @@ export function useModalHash(hash: string, onClose: () => void): void {
   closeRef.current = onClose;
   useEffect(() => {
     const tag = `#${hash}`;
+    /* 우리가 얹은 해시인가(수리: 닫기가 뒤로가기까지 됨) — 새로고침·공유 링크·앞으로가기로
+       이미 주소에 서 있던 해시는 우리 몫의 히스토리 칸이 아니다. 그런데도 닫을 때
+       history.back()을 쏘면 모달 칸이 아니라 '그 전 페이지'로 실제로 물러난다. 우리가
+       직접 pushState한 경우에만 back()을 쓰고, 아니면 주소만 지운다(replaceState). */
+    let pushed = false;
     const pending = pendingRestore.get(hash);
     if (pending !== undefined) {
       // 재마운트 — 방금 예약된 주소 복원을 취소하는 것이 곧 '다시 얹기'다.
       window.clearTimeout(pending);
       pendingRestore.delete(hash);
+      pushed = true;
     } else if (window.location.hash !== tag) {
-      // 앞으로가기로 이미 해시가 서 있으면(재열림) 또 얹지 않는다 — 두 겹이 되면
-      // 뒤로가기가 두 번 필요해진다.
       window.history.pushState({ scrModal: hash }, "", tag);
+      pushed = true;
     }
     let closedByPop = false;
     const onPop = () => {
@@ -45,13 +50,20 @@ export function useModalHash(hash: string, onClose: () => void): void {
     window.addEventListener("popstate", onPop);
     return () => {
       window.removeEventListener("popstate", onPop);
-      // X·저장 등 화면 쪽 닫기 — 얹은 해시가 아직 주소에 있으면 한 칸 되돌려 주소를
-      // 화면과 맞춘다. 되돌리기는 위 유예를 거친다(StrictMode 재마운트 삼키기).
+      // X·저장 등 화면 쪽 닫기 — 얹은 해시가 아직 주소에 있으면 주소를 화면과 맞춘다.
+      // 우리가 얹은 칸이면 한 칸 되돌리고(StrictMode 재마운트 유예), 원래 있던 해시면
+      // 히스토리를 건드리지 않고 주소의 해시만 지운다(위 pushed 주석).
       if (!closedByPop && window.location.hash === tag) {
-        pendingRestore.set(hash, window.setTimeout(() => {
-          pendingRestore.delete(hash);
-          if (window.location.hash === tag) window.history.back();
-        }, 60));
+        if (pushed) {
+          pendingRestore.set(hash, window.setTimeout(() => {
+            pendingRestore.delete(hash);
+            if (window.location.hash === tag) window.history.back();
+          }, 60));
+        } else {
+          window.history.replaceState(
+            window.history.state, "", window.location.pathname + window.location.search,
+          );
+        }
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

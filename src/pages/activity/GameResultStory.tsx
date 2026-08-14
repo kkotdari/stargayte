@@ -4,7 +4,6 @@ import { ARROW_MIN_TILES, type MinimapArrow, type MinimapMarker } from "../../co
 import ReplayMotionPlayer from "../../components/replay/ReplayMotionPlayer";
 import ActivityComments from "./ActivityComments";
 import RosterSide, { outcomeFor, resolveSlotName } from "./GameResultSides";
-import RaceBadge from "../../components/common/RaceBadge";
 import Avatar from "../../components/common/Avatar";
 import { GameDetailCloseContext } from "./gameDetailClose";
 import { useReplayMap } from "../../hooks/useReplayMap";
@@ -1588,14 +1587,12 @@ export default function GameResultStory({
     }
     return `${o1 === "win" ? 1 : 2}팀 승`;
   })();
-  /* 그 판의 BEST PLAYER(요청: 승 표시 옆에 누가 뽑혔는지) — 요약이 원본 게임 아이디로 들고 있어서
-     여기서 지금의 회원 연결로 이름을 푼다. 팀전에만 있고(replaySummary의 bestOf), 옛
-     요약에는 없다. */
-  const mvp = (() => {
+  /* 그 판의 BEST PLAYER — 헤드 줄 칩은 걷었다(요청: 이름에 배지로). 로스터 칩에 달도록
+     원본 게임 아이디만 재생 쪽으로 내려보낸다(무승부·미개최엔 없음). */
+  const bestRaw = (() => {
     const raw = bestRawOf(gameResult.summaryData);
     if (!raw || result === "draw" || result === "not_held") return null;
-    const s = slots.find((x) => x.raw === raw);
-    return { name: s?.name ?? nameByRaw.get(raw) ?? raw, race: s?.slot.race ?? "" };
+    return raw;
   })();
   const mapName = cleanMapName(gameResult.mapName);
   const minutes = gameResult.durationSeconds != null
@@ -1671,30 +1668,26 @@ export default function GameResultStory({
           {mapName && <span className="scr-story-map-name">{mapName}</span>}
           {minutes !== null && <span className="scr-story-map-dur">{minutes}분</span>}
         </div>
-        {!showRoster && (result !== "not_held" || mvp) && (
-          <div className="scr-story-map-head-line">
+        {!showRoster && result !== "not_held" && (
+          /* 승리 배지는 이긴 팀 쪽에 선다(지적: 2팀이 이겼는데 왼쪽에 있으면 헷갈림) —
+             로스터가 1팀 왼쪽·2팀 오른쪽이라 배지도 그 편의 벽에 붙인다. BEST 칩은 이
+             줄에서 걷고 로스터 이름에 배지로 옮겼다(요청). */
+          <div className={cx(
+            "scr-story-map-head-line",
+            result === "team1" && "scr-story-head-left",
+            result === "team2" && "scr-story-head-right",
+          )}>
             {/* 로스터를 감춘 자리(모바일)에서는 승패를 여기서 알려야 한다 — vs 양옆의 승/무
                 배지가 로스터와 함께 사라지기 때문이다. 색이 곧 이긴 편이다. */}
-            {result !== "not_held" && (
-              <span
-                className={cx("scr-story-win",
-                  result === "draw" ? "scr-story-win-draw"
-                    : o1 === "win" ? "scr-story-win-t1" : "scr-story-win-t2")}
-              >
-                {winLabel}
-              </span>
-            )}
-            {/* 그 판의 BEST PLAYER — 이긴 편 표시 바로 옆이다(요청). 누가 이겼나 다음으로
-                궁금한 것이 "그래서 누가 잘했나"라, 두 표시는 한 벌로 읽힌다. */}
-            {mvp && (
-              <span className="scr-story-best">
-                <span className="scr-story-best-tag">BEST</span>
-                {mvp.name}
-                {/* 종족 배지(요청: 이름 옆에 배지) — 미니맵 이름표·로스터가 이름에 늘 종족을
-                    달고 다니는데, 로스터를 접은 자리에서는 이 이름만 맨몸이었다. */}
-                <RaceBadge race={mvp.race} size={11} circleLetter className="scr-story-best-race" />
-              </span>
-            )}
+            <span
+              className={cx("scr-story-win",
+                result === "draw" ? "scr-story-win-draw"
+                  : o1 === "win" ? "scr-story-win-t1" : "scr-story-win-t2")}
+            >
+              {winLabel}
+            </span>
+            {/* (이동·요청) BEST PLAYER 칩 — 이 줄에서 걷고 로스터의 그 사람 이름 칩에
+                배지로 단다(ReplayMotionPlayer의 bestRaw). */}
           </div>
         )}
       </div>
@@ -1720,6 +1713,7 @@ export default function GameResultStory({
             </>
           ) : undefined}
           onDetailClose={detailClose ?? undefined}
+          bestRaw={bestRaw}
           winnerTeam={gameResult.result === "team1" ? 1 : gameResult.result === "team2" ? 2 : undefined}
           /* 확대 모드의 오른쪽 영역엔 이 경기의 댓글(지적: "리플" = 댓글) — 활동 카드
              하단과 같은 컴포넌트를 그대로 앉힌다. 모달(z 210) 안이라 overModal. */
