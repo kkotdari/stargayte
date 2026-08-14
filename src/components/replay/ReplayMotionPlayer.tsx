@@ -4439,6 +4439,19 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
             sx - (bspr.pad + sideQ / 2) * k, sy + hPx / 2 - (bspr.pad + sideQ) * k,
             bspr.l * k, bspr.l * k,
           );
+          /* 건물 체력바(요청) — 다친 건물 위에만. 유닛 바와 같은 3색. */
+          if (op.hpFrac !== undefined && op.hpFrac > 0) {
+            const bw3 = Math.max(8, wPx * 0.7);
+            const bh3 = Math.max(1.8, wPx * 0.05);
+            const bx3 = sx - bw3 / 2;
+            // 상자 위 3px — 높은 첨탑 모델과 살짝 겹칠 수 있지만 자리로는 이게 안정적이다.
+            const byTop = sy - hPx / 2 - bh3 - 3;
+            ctx.globalAlpha = op.alpha * 0.9;
+            ctx.fillStyle = "rgba(10, 14, 10, 0.75)";
+            ctx.fillRect(bx3 - 0.5, byTop - 0.5, bw3 + 1, bh3 + 1);
+            ctx.fillStyle = op.hpFrac > 0.66 ? "#39c04f" : op.hpFrac > 0.33 ? "#d9b13b" : "#d5473d";
+            ctx.fillRect(bx3, byTop, bw3 * op.hpFrac, bh3);
+          }
           ctx.restore();
           continue;
         }
@@ -4966,6 +4979,24 @@ export default function ReplayMotionPlayer({
     const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
     return (entData.casts ?? []).map(([s, x, y, tech, pidc]) =>
       [s, x, y, tech, nameOfId.get(pidc) ?? ""] as SummaryMotion["casts"][number]);
+  }, [entData]);
+  /* 건물 체력 자취(요청: 건물 체력바 — 실드·회복·불·수리 반영은 분석이 했다) —
+     자리 열쇠(raw|x|y)로 그 건물의 체력 변곡점을 찾는다. */
+  const entBldHp = useMemo(() => {
+    const m = new Map<string, { born: number; hp: [number, number][] }[]>();
+    if (!entData) return m;
+    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    for (const e of entData.ents) {
+      if (!e.bld || !e.hp || e.hp.length === 0) continue;
+      const site = [...e.ev].reverse().find((v) => v[3] === 2 || v[3] === 5);
+      if (!site) continue;
+      const raw = nameOfId.get(e.o) ?? "";
+      const key = `${raw}|${Math.round(site[1])}|${Math.round(site[2])}`;
+      const arr = m.get(key) ?? [];
+      arr.push({ born: e.b, hp: e.hp });
+      m.set(key, arr);
+    }
+    return m;
   }, [entData]);
   const entOn = entMode && entData !== null;
   const buildsSrc = entOn ? buildsV2 : motion.builds;
@@ -6764,6 +6795,19 @@ export default function ReplayMotionPlayer({
                 /* 원작처럼 45도 요잉(지적) — 2D에도 적용(재지적: 2D도 45도 요잉해야지).
                    쐐기의 진범은 요잉이 아니라 hover 그림자의 beginPath 누락이었다. */
                 rotDeg: buildingYawOf(shapeKind),
+                hpFrac: (() => {
+                  if (!entOn) return undefined;
+                  const arr = entBldHp.get(`${raw}|${Math.round(x)}|${Math.round(y)}`);
+                  if (!arr) return undefined;
+                  const rec = [...arr].filter((r2) => r2.born <= sec + 5)
+                    .sort((a2, b2) => b2.born - a2.born)[0] ?? arr[0];
+                  let pct = 100;
+                  for (const [hs3, hv3] of rec.hp) {
+                    if (hs3 <= t) pct = hv3;
+                    else break;
+                  }
+                  return pct < 100 ? Math.max(0.04, pct / 100) : undefined;
+                })(),
                 groundShadow: true,
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
                 sizePx: 0, wFrac: wFrac * pulse, hFrac: hFrac * pulse, boxFit: "meet",

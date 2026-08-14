@@ -155,6 +155,24 @@ export const UNIT_STATS: Record<string, { hp: number; dps: number }> = {
   Bunker: { hp: 350, dps: 14 }, "Missile Turret": { hp: 200, dps: 0 },
 };
 const DEFAULT_UNIT_STATS = { hp: 70, dps: 6 };
+/** 건물 스탯(요청: 건물 체력바 — 실드·회복·불·수리까지) — [체력, 실드]. 실드는
+ *  프로토스만 있고 저절로 차오른다. */
+const BLD_STATS: Record<string, [number, number]> = {
+  "Command Center": [1500, 0], "Supply Depot": [500, 0], Barracks: [1000, 0], Refinery: [750, 0],
+  "Engineering Bay": [850, 0], Academy: [600, 0], Bunker: [350, 0], "Missile Turret": [200, 0],
+  Factory: [1250, 0], Starport: [1300, 0], Armory: [750, 0], "Science Facility": [850, 0],
+  "Comsat Station": [500, 0], "Machine Shop": [750, 0], "Control Tower": [500, 0],
+  Hatchery: [1250, 0], Lair: [1800, 0], Hive: [2500, 0], "Spawning Pool": [750, 0],
+  "Hydralisk Den": [850, 0], Spire: [600, 0], "Greater Spire": [1000, 0],
+  "Evolution Chamber": [750, 0], Extractor: [750, 0], "Creep Colony": [400, 0],
+  "Sunken Colony": [300, 0], "Spore Colony": [400, 0], "Queen's Nest": [850, 0],
+  "Queens Nest": [850, 0], "Ultralisk Cavern": [600, 0], "Defiler Mound": [850, 0],
+  Nexus: [750, 750], Pylon: [300, 300], Gateway: [500, 500], Assimilator: [450, 450],
+  Forge: [550, 550], "Photon Cannon": [100, 100], "Cybernetics Core": [500, 500],
+  "Citadel of Adun": [450, 450], "Templar Archives": [500, 500], "Robotics Facility": [500, 500],
+  "Robotics Support Bay": [450, 450], Observatory: [250, 250], Stargate: [600, 600],
+  "Fleet Beacon": [500, 500], "Arbiter Tribunal": [500, 500], "Shield Battery": [200, 200],
+};
 /** 공중 유닛(체력 원장의 방어건물 사거리 판정용) — 성큰은 지상만, 터렛은 공중만 쏜다. */
 const AIR_UNITS = new Set([
   "Overlord", "Mutalisk", "Scourge", "Guardian", "Devourer", "Queen",
@@ -1228,6 +1246,75 @@ export function buildUnitTracks(
     }
     return null;
   };
+  /* 건물 체력 원장(요청: 실드 차오름·저그 회복·테란 불·수리까지) — 곁에 떨어진 적
+     공격 명령(+방어건물끼리는 없음)이 깎고, 이벤트 사이 시간엔 종족 역학이 흐른다:
+     프로토스는 실드 풀만 초당 2%씩 차고, 저그는 체력이 초당 1.5씩 아물며, 테란은
+     체력 1/3 아래로 내려가면 불붙어 초당 1.2씩 잦아든다(수리가 오면 다시 차오른다).
+     0에 닿아도 그 뒤 증거(생산·랠리·발치 공격)가 있으면 살아남은 것이다. */
+  const bldHpSimOf = (
+    kind: string, owner: number, cx2: number, cy2: number,
+    born2: number, until2: number, tag2: number | null,
+    hasEvidenceAfter: (sec: number) => boolean,
+  ): [number, number][] => {
+    const race2 = raceOf.get(owner) ?? "";
+    const [maxHp, maxSh] = BLD_STATS[kind]
+      ?? (race2 === "프로토스" ? [500, 500] : [850, 0]) as [number, number];
+    const total = maxHp + maxSh;
+    let hp2 = maxHp;
+    let sh2 = maxSh;
+    const heals = tag2 !== null ? healsAt.get(tag2) ?? [] : [];
+    let hi2 = 0;
+    let prevSec = born2;
+    const trace: [number, number][] = [];
+    let lastPct = 100;
+    const push2 = (sec3: number): void => {
+      const p4 = Math.max(0, Math.round(((hp2 + sh2) / total) * 20) * 5);
+      if (p4 !== lastPct) { trace.push([Math.round(sec3), p4]); lastPct = p4; }
+    };
+    const flow = (from: number, to: number): void => {
+      // 이벤트 사이 종족 역학 — 상한 600초(그 이상은 수렴).
+      const dt = Math.min(600, Math.max(0, to - from));
+      if (dt <= 0) return;
+      if (race2 === "프로토스") sh2 = Math.min(maxSh, sh2 + maxSh * 0.02 * dt);
+      else if (race2 === "저그") hp2 = Math.min(maxHp, hp2 + 1.5 * dt);
+      else if (hp2 > 0 && hp2 < maxHp / 3) hp2 = Math.max(1, hp2 - 1.2 * dt);
+    };
+    for (const a of atkEvts) {
+      if (a.sec < born2 + 2) continue;
+      if (a.sec > until2 + 60) break;
+      if (!isFoeOf(a.owner, owner)) continue;
+      if (Math.hypot(a.x - cx2, a.y - cy2) > 7) continue;
+      flow(prevSec, a.sec);
+      while (hi2 < heals.length && heals[hi2] <= a.sec) {
+        hp2 = Math.min(maxHp, hp2 + maxHp * 0.35);
+        push2(heals[hi2]);
+        hi2 += 1;
+      }
+      let dmg2 = Math.min(120, a.dps * 1.6) * (1 + 0.1 * lvOf(wUpsBy, a.owner, a.sec));
+      // 실드 먼저 깎인다.
+      const fromSh = Math.min(sh2, dmg2);
+      sh2 -= fromSh;
+      dmg2 -= fromSh;
+      hp2 -= dmg2;
+      if (hp2 <= 0) {
+        if (hasEvidenceAfter(a.sec + 3)) {
+          hp2 = maxHp * 0.08;
+          push2(a.sec);
+        } else {
+          trace.push([Math.round(a.sec), 0]);
+          return trace;
+        }
+      } else push2(a.sec);
+      prevSec = a.sec;
+    }
+    // 남은 회복·역학 한 번 더 — 불타다 소강했으면 그 값이 마지막 상태다.
+    while (hi2 < heals.length) {
+      hp2 = Math.min(maxHp, hp2 + maxHp * 0.35);
+      push2(heals[hi2]);
+      hi2 += 1;
+    }
+    return trace;
+  };
   const ents: UnitEnt[] = [];
   let lives = 0;
   for (const [, list] of byTag) {
@@ -1258,6 +1345,18 @@ export function buildUnitTracks(
         const sim = hpSimOf(life);
         if (sim.trace.length > 0) hpTrace = sim.trace;
         if (d === null && sim.death !== null) { d = sim.death; dk = "atk"; }
+      } else {
+        // 건물 체력 원장(요청) — 자리를 아는 건물만.
+        const site2 = [...life.ev].reverse().find((v) => v[3] === 2 || v[3] === 5);
+        if (site2) {
+          const mk2 = majorityKindOf(life);
+          const tr2 = bldHpSimOf(
+            mk2, life.owner, site2[1] + 1.5, site2[2] + 1.5,
+            life.born, d ?? life.last, life.tag,
+            (sec3) => life.ev.some((v) => v[0] > sec3),
+          );
+          if (tr2.length > 0) hpTrace = tr2;
+        }
       }
       if (d === null && !life.bld) {
         // 체력 원장이 못 잡는 죽음(방어건물 화력은 공격 '명령'이 아니다) — 기존 보정.
@@ -1285,10 +1384,15 @@ export function buildUnitTracks(
         && Math.hypot(o.x - b.x, o.y - b.y) <= 12);
       if (!defended) { b.gone = lastAtk + 8; b.goneKind = "atk"; }
     }
+    const bHp = bldHpSimOf(
+      b.kind, b.owner, b.x + 1.5, b.y + 1.5, b.born, b.gone ?? b.born + 3600, null,
+      (sec3) => b.ev.some((v) => v[0] > sec3) || b.gone === null || b.gone > sec3 + 30,
+    );
     ents.push({
       t: -1, o: b.owner, k: b.kind, b: Math.round(b.born),
       d: b.gone === null ? null : Math.round(b.gone), dk: b.goneKind ?? "", bld: 1,
       ev: [[Math.round(b.born), r1(b.x), r1(b.y), 2], ...b.ev],
+      ...(bHp.length > 0 ? { hp: bHp } : {}),
     });
   }
 
