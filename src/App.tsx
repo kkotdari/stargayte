@@ -203,8 +203,16 @@ export default function App() {
   // 현재 화면을 URL에 반영 — 새로고침해도 같은 화면으로 돌아오도록.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("screen") === screen) return;
+    /* 활동 화면의 하위 주소(group·game)는 활동을 떠나면 걷는다(지적: 페이지 이동 시
+       &group=gameResult&game=500이 계속 붙음) — 그 둘의 정리는 활동 화면 안의 닫기
+       경로만 알고 있어서, 레일 메뉴로 다른 화면에 가면 아무도 안 지웠다. */
+    const stale = screen !== "activity" && (params.has("group") || params.has("game"));
+    if (params.get("screen") === screen && !stale) return;
     params.set("screen", screen);
+    if (screen !== "activity") {
+      params.delete("group");
+      params.delete("game");
+    }
     window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}${window.location.hash}`);
   }, [screen]);
 

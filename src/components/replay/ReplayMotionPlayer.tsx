@@ -1615,6 +1615,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 포지(렌더 참고 복원) — 왼앞 아치 별채, 가운데 총알 기둥 무리, 초록 배관 다발이
      오른쪽 큰 렌즈 돔으로 흘러들고, 앞오른쪽에 작은 렌즈 돔. */
   forge: () => {
+    /* 포지 다시(요청·실물 스샷) — 왼쪽에 눕힌 드럼(터빈 통), 가운데 세로 결정 기둥
+       무리, 오른쪽에 파란 렌즈 창이 박힌 큰 돔. 옛 모델(아치 별채·톱니바퀴·총알
+       기둥)은 실물과 구도가 달라 통째로 걷었다. */
     const lens = (x: number, y: number, z: number, r: number): ShapeFace[] => {
       const [px2, py2] = project(x, y, z);
       return [
@@ -1623,53 +1626,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ];
     };
     return [
-      // 왼앞 아치 별채.
-      ...boxFaces3(-3, 1.6, 3.2, 2.9, 2.3),
-      ...domeFaces3(-3, 1.6, 1.4, 1, 2.3),
-      /* 앞 톱니바퀴(재지적: 상자에 가려지고 평면 같음) — 벽 데칼이 아니라 별채 앞에
-         비껴 선 입체 기어: 톱니 실루엣 고리 두 장(뒤·앞 판)을 테 띠로 봉합하고 축
-         원판을 박는다. 제 깊이를 달아 앞을 보면 상자 위, 돌아서면 상자 뒤로 들어간다. */
-      ...((): ShapeFace[] => {
-        const gearRing = (y: number): [number, number, number][] => {
-          const pts: [number, number, number][] = [];
-          for (let i = 0; i < 8; i += 1) {
-            const base = (i / 8) * Math.PI * 2;
-            for (const [da, rr] of [[-0.24, 0.95], [-0.15, 1.3], [0.15, 1.3], [0.24, 0.95]] as const) {
-              pts.push([-3 + Math.cos(base + da) * rr, y, 1.35 + Math.sin(base + da) * rr]);
-            }
-          }
-          return pts;
-        };
-        const backP = gearRing(3.18);
-        const frontP = gearRing(3.5);
-        const g: ShapeFace[] = [bodyFace(polyPath3(backP)), sideFace(polyPath3(backP), 0.22)];
-        for (let i = 0; i < backP.length; i += 1) {
-          const j = (i + 1) % backP.length;
-          g.push(bodyFace(polyPath3([backP[i], backP[j], frontP[j], frontP[i]])));
-        }
-        const fd = polyPath3(frontP);
-        g.push(bodyFace(fd), topFace(fd, 0.12));
-        g.push(capFace(wallDiscPath(-3, 3.51, 1.35, 0.34, 0.34), 0.4));
-        return tagKey(g, depthNow(-3, 3.35) + 0.5);
-      })(),
-      // 총알 기둥 무리.
-      ...cylinderFaces3(-2.9, -2.6, 0.75, 3.6),
-      ...domeFaces3(-2.9, -2.6, 0.75, 0.7, 3.6),
-      ...cylinderFaces3(-1.6, -1.6, 0.85, 4.6),
-      ...domeFaces3(-1.6, -1.6, 0.85, 0.8, 4.6),
-      ...cylinderFaces3(-0.2, -2.4, 0.8, 5.4),
-      ...domeFaces3(-0.2, -2.4, 0.8, 0.75, 5.4),
-      ...cylinderFaces3(0.6, -0.8, 0.7, 3.2),
-      ...domeFaces3(0.6, -0.8, 0.7, 0.65, 3.2),
-      // 배관 다발 — 기둥에서 큰 돔으로 층층이.
-      ...tubeFaces(0.2, -1.8, 2.6, -1.1, 0.42, 2.8),
-      ...tubeFaces(0.3, -1.4, 2.7, -0.7, 0.42, 2),
-      ...tubeFaces(0.4, -1, 2.8, -0.3, 0.42, 1.2),
-      // 큰 렌즈 돔(뒤 오른) + 작은 렌즈 돔(앞 오른).
-      ...domeFaces3(3, -1.2, 2.5, 2.3),
-      ...lens(3, -1.2, 2.35, 1.05),
-      ...domeFaces3(2.8, 2.4, 1.55, 1.3),
-      ...lens(2.8, 2.4, 1.35, 0.65),
+      // 낮은 기단 — 발치를 한 판으로 받친다.
+      ...frustumFaces3(-0.2, 0.4, 8.8, 6.2, 8, 5.4, 1),
+      // 왼쪽 드럼 — 앞뒤로 눕힌 원통. 시청자 쪽 단면이 살짝 보인다.
+      ...tubeFaces(-3.2, -1.6, -3.2, 2.5, 1.75, 2),
+      // 드럼 위 얹은 가는 관 — 실물의 몸통 이음새.
+      ...tubeFaces(-3.2, -1.2, -3.2, 2.1, 0.7, 3.6),
+      // 가운데 결정 기둥 무리 — 높이 다른 네 자루, 끝이 뾰족하게 좁아진다.
+      ...tagKey(hornFaces(-1.2, 0.1, 1, -1.3, 0, 6.4, 1.05), depthNow(-1.2, 0.1) + 1),
+      ...tagKey(hornFaces(-0.2, -1, 1, -0.2, -1.1, 7.6, 1.15), depthNow(-0.2, -1) + 1),
+      ...tagKey(hornFaces(0.8, 0.5, 1, 0.9, 0.5, 5.8, 0.95), depthNow(0.8, 0.5) + 1),
+      ...tagKey(hornFaces(0.1, 1.3, 1, 0.1, 1.4, 4.9, 0.85), depthNow(0.1, 1.3) + 1),
+      // 오른쪽 큰 돔 — 렌즈 창 둘과 꼭대기 혹.
+      ...domeFaces3(3.1, 0.5, 2.5, 2.2, 0.9),
+      ...lens(2.5, 2, 2.1, 0.8),
+      ...lens(4, 1.1, 2.5, 0.6),
+      ...domeFaces3(3.1, 0.3, 0.95, 0.7, 3.05),
     ];
   },
   /* 사이버네틱스 코어(실물 참고) — 가운데 드럼 위 파란 발광 고리, 그 뒤로 솟는 발톱
@@ -3575,45 +3547,51 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   ovie: () => {
     const [cx, cy] = project(0, 0, 5.2);
     const legs: string[] = [];
-    // 다리 뿌리도 줄인 풍선에 맞춰 안쪽으로(재지적: 다리 위치).
-    for (const [lx, lyy] of [[-2, 0.55], [0.2, 1.15], [2.15, 0.45]] as [number, number][]) {
-      const seg = (
-        x1: number, y1: number, z1: number, x2: number, y2: number, z2: number, w: number,
-      ): string => {
-        const [ax, ay] = project(x1, y1, z1);
-        const [bx, by] = project(x2, y2, z2);
-        const dx = bx - ax;
-        const dy = by - ay;
-        const len = Math.hypot(dx, dy) || 1;
-        const nx = (-dy / len) * (w / 2);
-        const ny = (dx / len) * (w / 2);
-        return `M${ax + nx} ${ay + ny} L${bx + nx} ${by + ny} L${bx - nx} ${by - ny} L${ax - nx} ${ay - ny} Z`;
-      };
-      // 윗마디: 몸통 밑 → 무릎(바깥으로 벌어짐). 아랫마디: 무릎 → 발끝(안으로 모임).
-      const kneeX = lx * 1.55 + (lx === 0.2 ? 0.9 : 0);
-      legs.push(seg(lx, lyy, 2.8, kneeX, lyy, 0.4, 0.55));
-      legs.push(seg(kneeX, lyy, 0.4, lx * 1.15 + (lx === 0.2 ? 0.4 : 0), lyy, -2.6, 0.42));
+    const seg = (
+      x1: number, y1: number, z1: number, x2: number, y2: number, z2: number, w: number,
+    ): string => {
+      const [ax, ay] = project(x1, y1, z1);
+      const [bx, by] = project(x2, y2, z2);
+      const dx = bx - ax;
+      const dy = by - ay;
+      const len = Math.hypot(dx, dy) || 1;
+      const nx = (-dy / len) * (w / 2);
+      const ny = (dx / len) * (w / 2);
+      return `M${ax + nx} ${ay + ny} L${bx + nx} ${by + ny} L${bx - nx} ${by - ny} L${ax - nx} ${ay - ny} Z`;
+    };
+    /* 다리 개편(재지적) — 양옆에 두 개씩(무릎 꺾인 매달린 다리 넷) + 앞쪽엔 긴 다리
+       한 쌍인데 끝이 집게발이다: 아랫마디 끝에서 두 갈래가 짧게 벌어진다. */
+    for (const sx of [-1, 1]) {
+      for (const lyy of [-0.5, 1]) {
+        legs.push(seg(sx * 2.1, lyy, 2.7, sx * 3.1, lyy, 0.5, 0.52));
+        legs.push(seg(sx * 3.1, lyy, 0.5, sx * 2.4, lyy, -2.5, 0.4));
+      }
+      // 앞 집게발 다리 — 몸 앞쪽에서 앞·아래로 길게 뻗는다.
+      legs.push(seg(sx * 0.85, 2.2, 2.5, sx * 1.35, 3.3, -0.3, 0.5));
+      legs.push(seg(sx * 1.35, 3.3, -0.3, sx * 1.15, 4.1, -3, 0.42));
+      // 집게 — 끝에서 두 갈래.
+      legs.push(seg(sx * 1.15, 4.1, -3, sx * 1.65, 4.55, -3.9, 0.32));
+      legs.push(seg(sx * 1.15, 4.1, -3, sx * 0.65, 4.65, -3.8, 0.32));
     }
-    /* 눈은 양옆에(재재지적: 아래를 보고 있었다) — 바닥 돔이 아니라 풍선 옆구리에
-       반쯤 겹쳐 붙는 납작한 혹 한 쌍. 몸이 안쪽 반을 가려 바깥으로 볼록한 반구로
-       읽히고, 모델 좌표라 요잉을 따라 돌아 나간다. */
-    // 눈은 좀 더 앞쪽으로(재지적) + 몸과 안 맞던 스우시 그늘 제거.
-    // 풍선 축소(재요청)에 맞춰 눈도 몸 옆구리로 당긴다.
-    const [b1x, b1y] = project(-2.5, 1.7, 4.85);
-    const [b2x, b2y] = project(2.5, 1.7, 4.85);
-    /* 눈에 제 깊이(재재재지적: 앞으로 돌아온 눈이 몸에 가려짐) — 몸을 늘 나중에 그리면
-       시청자 쪽으로 돌아온 눈까지 덮는다. 눈·몸 모두 깊이 키를 달아 정렬이 정한다:
-       뒤로 간 눈은 몸이 덮고, 앞으로 온 눈은 몸 위로 볼록하게 얹힌다. */
+    /* 눈(재재재재지적: 동그란 컨택트 렌즈꼴로, 얼굴 정면에서 45도 양쪽) — 풍선 표면의
+       정면 기준 좌우 45도 자리에 붙는 렌즈 한 쌍: 진한 원판 위에 밝은 속원이 얹힌
+       볼록 렌즈다. 모델 좌표라 요잉을 따라 표면을 돌아 나가고, 깊이 키(depthNow)로
+       앞으로 돌아온 눈은 몸 위에, 뒤로 간 눈은 몸 뒤에 선다. */
+    const eyeA = Math.PI / 4;
+    const eyeR = 2.9;
+    const exs = Math.sin(eyeA) * eyeR;
+    const eys = Math.cos(eyeA) * eyeR;
+    const [b1x, b1y] = project(-exs, eys, 5.2);
+    const [b2x, b2y] = project(exs, eys, 5.2);
+    // 더 크고 납작하게(재지적) — 렌즈 폭을 키우고 세로를 눌렀다.
+    const lens = (lx2: number, ly2: number): ShapeFace[] => [
+      bodyFace(groundEllipse(lx2, ly2, 1.05, 0.62)),
+      topFace(groundEllipse(lx2, ly2, 0.62, 0.34), 0.45),
+    ];
     return [
       bodyFace(legs.join(" ")),
-      ...tagKey([
-        bodyFace(groundEllipse(b1x, b1y, 0.85, 0.72)),
-        topFace(groundEllipse(b1x - 0.22, b1y - 0.18, 0.36, 0.27), 0.3),
-      ], depthNow(-2.5, 1.7)),
-      ...tagKey([
-        bodyFace(groundEllipse(b2x, b2y, 0.85, 0.72)),
-        sideFace(groundEllipse(b2x, b2y, 0.85, 0.72), 0.18),
-      ], depthNow(2.5, 1.7)),
+      ...tagKey(lens(b1x, b1y), depthNow(-exs, eys)),
+      ...tagKey(lens(b2x, b2y), depthNow(exs, eys)),
       // 풍선 축소(재요청: 3.6 → 3.0) — 몸도 제 깊이(가운데 0)로.
       ...tagKey([
         bodyFace(groundEllipse(cx, cy, 3, 2.85)),
@@ -4660,9 +4638,13 @@ const shortName = (name: string): string => {
   return out || name;
 };
 
+/* 좌우 동시 보기(요청: PC에서 v1·v2를 좌우로 동시에) — 두 재생기를 한 시계로 묶는
+   신호줄. 주인(master)이 t를 흘리면 따르는(slave) 쪽이 제 시계를 세운 채 받아 적는다. */
+const dualSyncBus = new Map<string, Set<(t: number) => void>>();
+
 export default function ReplayMotionPlayer({
   grid, motion, endSec, bases, teamOfRaw, active = true, winnerTeam, side, menu,
-  stamp, registrant, onDetailClose, bestRaw, loadUnitTracks,
+  stamp, registrant, onDetailClose, bestRaw, loadUnitTracks, forceEnt, syncKey, syncRole,
 }: {
   grid: ReplayMapGrid;
   motion: SummaryMotion;
@@ -4696,6 +4678,11 @@ export default function ReplayMotionPlayer({
    *  줄에 '부대/개체' 토글이 선다. 개체 모드는 유닛 층만 태그 단위 트랙으로 바꿔 그리고,
    *  건물·자원·크립은 기존 그대로 둔다. null이 오면(옛 경기·분석 실패) 토글이 알린다. */
   loadUnitTracks?: () => Promise<string | null>;
+  /** 좌우 동시 보기(요청) — true면 뜨자마자 v2를 켜고 토글을 잠근다. */
+  forceEnt?: boolean;
+  /** 동시 보기의 시계 묶음 이름 — 같은 이름의 master가 흘리는 t를 slave가 받아 적는다. */
+  syncKey?: string;
+  syncRole?: "master" | "slave";
   // (삭제·요청) caps — 자막 표시를 걷으면서 함께.
 }) {
   const total = useMemo(() => {
@@ -4725,6 +4712,25 @@ export default function ReplayMotionPlayer({
   const [entLoad, setEntLoad] = useState<"idle" | "loading" | "none">("idle");
   /* 클릭 자국 토글(요청) — 기본은 끔: 클릭이 많은 경기에서는 자국이 화면을 덮는다. */
   const [clickFx, setClickFx] = useState(false);
+  /* 좌우 동시 보기(요청) — forceEnt면 뜨자마자 v2를 켠다. 시계 묶음(syncKey)의 주인은
+     제 t를 신호줄에 흘리고, 따르는 쪽은 제 시계 없이(active=false로 온다) 받아 적는다. */
+  useEffect(() => {
+    if (forceEnt && !entData && entLoad === "idle") void toggleEnt();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forceEnt]);
+  useEffect(() => {
+    if (!syncKey || syncRole !== "master") return;
+    const subs = dualSyncBus.get(syncKey);
+    if (subs) for (const fn of subs) fn(t);
+  }, [t, syncKey, syncRole]);
+  useEffect(() => {
+    if (!syncKey || syncRole !== "slave") return undefined;
+    let set = dualSyncBus.get(syncKey);
+    if (!set) { set = new Set(); dualSyncBus.set(syncKey, set); }
+    const fn = (nt: number): void => setT(nt);
+    set.add(fn);
+    return () => { set.delete(fn); };
+  }, [syncKey, syncRole]);
   const toggleEnt = async (): Promise<void> => {
     if (entMode) { setEntMode(false); return; }
     if (entData) { setEntMode(true); return; }
@@ -7373,7 +7379,11 @@ export default function ReplayMotionPlayer({
             </span>
           );
         })}
-        {(() => {
+        {/* 채굴 일꾼 점(v1 전용 장식 어림) — 일꾼 '수'로 자원 곁에 점을 찍는 층이라
+            실제 조작과 무관하게 그려진다(지적: 가스를 안 지었는데 캐러 다닌다 — 머니맵
+            특례가 맨 간헐천에도 점을 세웠다). v2는 실제 일꾼 개체가 제 클릭을 따라
+            움직이므로 이 층을 통째로 끈다 — 어림 장식이 아니라 증거만 남긴다. */}
+        {!entOn && (() => {
           const resList = grid.resources ?? [];
           /* 지대 임자를 먼저 한 번에 정한다(요청: 시작 일꾼 4기) — 아래에서 '임자가 같은
              미네랄 지대 중 몇 번째로 가까운가'를 따져야 해서, 지대마다 따로 구하던 임자
@@ -8412,10 +8422,14 @@ export default function ReplayMotionPlayer({
           const team = teamOfRaw(e.raw);
           const rawPos = posAt(rp, t, null);
           if (!rawPos) return null;
-          const pos = smoothPosOf(`${e.raw}-v2e${ei}`, rawPos);
+          /* v1의 화면 보정(위치 스무딩 smoothPosOf·건물 밀어내기 dodge)은 여기 안 얹는다
+             (지적: 로직을 깔끔하게 — 모든 조작 정보가 있으니 옛 보정은 걷고 뒤 스토리
+             보정만). 개체 걷기는 이미 연속이라 스무딩이 필요 없고, 겹침·어긋남이 보이면
+             그건 모델의 빈틈이라 숨기지 않고 원인으로 고친다. */
+          const pos = rawPos;
           const race = bases.find((b) => b.key === e.raw)?.race;
           const u = e.unit;
-          const [ax3, ay3] = dodge(pos.x, pos.y);
+          const [ax3, ay3] = [pos.x, pos.y];
           const [fx, fy] = posFrac(ax3, ay3);
           // 죽음 창(d~d+1.2초) — 마커 대신 종족별 사망 효과가 남는다.
           if (e.d !== null && t >= e.d) {
@@ -8780,8 +8794,9 @@ export default function ReplayMotionPlayer({
           </button>
         </span>
         {/* v1/v2 토글(요청: v2·v1 토글 — 나중에 v1만 싹 걷어내게) — v1은 부대 어림,
-            v2는 태그 단위 개체 트랙으로 장면 전체(유닛·건물·마법)를 그린다. */}
-        {loadUnitTracks && (
+            v2는 태그 단위 개체 트랙으로 장면 전체(유닛·건물·마법)를 그린다.
+            동시 보기(forceEnt)에서는 잠근다 — 그 판은 칸 자체가 버전이다. */}
+        {loadUnitTracks && !forceEnt && (
           <span className="scr-motion-btngroup" role="group" aria-label="추적 버전">
             <button
               type="button"

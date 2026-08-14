@@ -174,6 +174,7 @@ interface Life {
   evAfterAtk: boolean;      // 공격받은 뒤에도 증거가 나왔나(살아남음)
   morphTo: Life | null;     // 변태로 이어진 다음 생애
   cxl: number | null;       // 건설 취소 커맨드를 받은 초(건물 생애의 끝)
+  solo: boolean;            // 홀로 골라져 명령받은 적이 있나(시작 오버로드 판별 재료)
   ev: UnitEv[];
 }
 
@@ -293,7 +294,8 @@ export function buildUnitTracks(
     if (!life) {
       life = {
         tag, owner, kinds: new Map(), groupKinds: new Set(), bld: false,
-        born: sec, last: sec, lastAtk: null, evAfterAtk: false, morphTo: null, cxl: null, ev: [],
+        born: sec, last: sec, lastAtk: null, evAfterAtk: false, morphTo: null, cxl: null,
+        solo: false, ev: [],
       };
       alive.set(tag, life);
     }
@@ -320,7 +322,7 @@ export function buildUnitTracks(
     const prev = life.ev[life.ev.length - 1];
     // 같은 자리 연타는 한 점으로(스팸 클릭) — 초만 당겨 쓴다.
     if (prev && prev[3] === f && Math.abs(prev[1] - x) < 0.2 && Math.abs(prev[2] - y) < 0.2) {
-      prev[0] = sec;
+      prev[0] = Math.round(sec);
       return;
     }
     life.ev.push([Math.round(sec), r1(x), r1(y), f]);
@@ -524,6 +526,7 @@ export function buildUnitTracks(
       && !((c.Frame ?? 0) < EARLY_ALL_SELECT_FRAMES && tags.length >= 4);
     for (const tag of tags) {
       let life = lifeOf(tag, pid, sec);
+      if (tags.length === 1) life.solo = true;
       if (castKind) life = markKind(life, castKind, sec);
       if (resourceClick) {
         const worker = RACE_WORKER[raceOf.get(pid) ?? ""] ?? "";
@@ -575,6 +578,40 @@ export function buildUnitTracks(
   }
 
   for (const life of alive.values()) done.push(life);
+
+  /* ── 뒤 스토리 보정: 시작 유닛(지적: 처음 오버로드가 안 나온다) — 개체는 첫 증거에서
+        태어나는데, 시작 유닛의 첫 명령 '전' 이야기는 리플레이가 말해 준다: 본진에 서
+        있었다. 저그의 이른(90초 안) 단독 선택 이동체 중 자원·건설·정체 증거가 하나도
+        없는 첫 하나는 시작 오버로드다 — 그 시각에 홀로 움직일 다른 것이 없다(라바는
+        선택돼도 명령을 못 받고, 드론은 자원 클릭이 남는다). 이른(45초 안) 일꾼도 본진
+        에서 출발시킨다 — 어림 합성이 아니라 태어난 자리로 거슬러 얹는 보정이다. */
+  {
+    const startOf = new Map(
+      players
+        .filter((p) => typeof p.startX === "number" && typeof p.startY === "number")
+        .map((p) => [p.id, [p.startX as number, p.startY as number] as const]),
+    );
+    const overlordSeen = new Set<number>();
+    for (const life of [...done].sort((a, b) => a.born - b.born)) {
+      const home = startOf.get(life.owner);
+      if (!home) continue;
+      const race = raceOf.get(life.owner) ?? "";
+      const isUnknown = life.kinds.size === 0 && life.groupKinds.size === 0 && !life.bld;
+      if (race === "저그" && life.born <= 90 && isUnknown && life.solo && !overlordSeen.has(life.owner)) {
+        overlordSeen.add(life.owner);
+        life.kinds.set("Overlord", 1);
+        if (life.ev.length === 0 || life.ev[0][0] > 0) life.ev.unshift([0, r1(home[0]), r1(home[1]), 3]);
+        life.born = 0;
+      } else if (life.born <= 45 && !life.bld) {
+        const worker = RACE_WORKER[race] ?? "";
+        if (worker && life.kinds.has(worker)
+          && (life.ev.length === 0 || life.ev[0][0] > 0)) {
+          life.ev.unshift([0, r1(home[0]), r1(home[1]), 3]);
+          life.born = 0;
+        }
+      }
+    }
+  }
 
   /* ── 후방 보정 — 뒷결과로 앞을 고친다(지적). 태그별로 생애를 시간순으로 놓고,
         앞 생애의 죽음을 다음 생애의 태어남으로 눌러 잡는다. 공격받고 소식이 없으면

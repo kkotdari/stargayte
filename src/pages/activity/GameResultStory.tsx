@@ -1,4 +1,7 @@
 import { useContext, useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent } from "react";
+import { createPortal } from "react-dom";
+import { useAppStore } from "../../store/appStore";
+import { isAdminRole } from "../../constants/roles";
 import { formatWhen } from "../../utils/date";
 import { ARROW_MIN_TILES, type MinimapArrow, type MinimapMarker } from "../../components/replay/ReplayMinimap";
 import ReplayMotionPlayer from "../../components/replay/ReplayMotionPlayer";
@@ -333,6 +336,12 @@ export default function GameResultStory({
   /* 상세 팝업의 닫기 통로(요청: PC는 게임 결과만 확대창 기본, 기존 상세 미사용) — 상세
      팝업 안에서만 값이 있고, 목록·전체 보기에서는 null이라 예전 그대로다. */
   const detailClose = useContext(GameDetailCloseContext);
+  /* 좌우 동시 보기(요청: PC에서, 한 사람만 쓰는 검수용 — 운영자 한정) — v1 부대 어림과
+     v2 개체 트랙을 나란히 놓고 같은 시계로 돌린다. 모바일에서는 안 선다. */
+  const me = useAppStore((s) => s.user);
+  const canDual = !!me && isAdminRole(me.roles)
+    && typeof window !== "undefined" && window.innerWidth >= 1160;
+  const [dualOpen, setDualOpen] = useState(false);
   // 확대 창 왼쪽 기둥의 타임스탬프(요청: 공통 양식) — 앱 공용 시각 유틸(formatWhen)로,
   // 리플레이 실제 시작 시각(시각 포함), 없으면 경기 날짜.
   const stampText = formatWhen(gameResult.gameStartedAt ?? gameResult.date, { clock: true });
@@ -1687,6 +1696,15 @@ export default function GameResultStory({
               {mapName && <span className="scr-story-map-name">{mapName}</span>}
               {minutes !== null && <span className="scr-story-map-dur">{minutes}분</span>}
               {(result === "draw" || o1 !== "win") && winSpan}
+              {/* 좌우 동시 보기 입구(요청) — 운영자·PC에서만 보인다. */}
+              {canDual && motionData && (
+                <button
+                  type="button" className="scr-story-dualbtn"
+                  onClick={() => setDualOpen(true)}
+                >
+                  비교
+                </button>
+              )}
             </div>
           );
         })()}
@@ -1724,6 +1742,33 @@ export default function GameResultStory({
           menu={menu}
         />
       ) : null}
+      {/* 좌우 동시 보기(요청) — 왼쪽 v1이 시계의 주인이고, 오른쪽 v2는 제 시계 없이
+          같은 t를 받아 적는다(조종은 왼쪽에서만). 검수용 전체 화면 겹판. */}
+      {dualOpen && motionData && storyMap && createPortal(
+        <div className="scr-dualview">
+          <button type="button" className="scr-btn scr-dualview-close" onClick={() => setDualOpen(false)}>
+            닫기
+          </button>
+          <div className="scr-dualview-col">
+            <div className="scr-dualview-cap">v1 — 부대 어림</div>
+            <ReplayMotionPlayer
+              grid={storyMap} motion={motionData} endSec={endSecVal}
+              bases={bases} teamOfRaw={teamOfRaw} active
+              syncKey={`dual-${gameResult.id}`} syncRole="master"
+            />
+          </div>
+          <div className="scr-dualview-col scr-dualview-slave">
+            <div className="scr-dualview-cap">v2 — 개체 트랙</div>
+            <ReplayMotionPlayer
+              grid={storyMap} motion={motionData} endSec={endSecVal}
+              bases={bases} teamOfRaw={teamOfRaw} active={false}
+              forceEnt syncKey={`dual-${gameResult.id}`} syncRole="slave"
+              loadUnitTracks={() => api.getGameUnitTracks(gameResult.id).catch(() => null)}
+            />
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 
