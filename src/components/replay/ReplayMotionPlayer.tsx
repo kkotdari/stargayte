@@ -8712,6 +8712,33 @@ export default function ReplayMotionPlayer({
               engageHoldRef.current.delete(holdKey);
             }
           }
+          /* 가스 왕복(지적: 가스 캐는 일꾼이 하나도 없다) — 배정 클릭은 한 번만 남고
+             그 뒤는 게임이 자동 순환이라, 개체가 정제소 위에 서서 건물에 가려져 있었다.
+             제 정제소 곁(2타일)에 선 일꾼은 가장 가까운 홀과 그 사이를 결정적으로
+             왕복한다 — 어림 장식이 아니라, 그 일꾼이 실제로 가스에 배정된 개체다. */
+          if (isWorker && !fighting) {
+            const gasB = buildsSrc.find(([bs2, bx2, by2, bu2, br2, bg2]) =>
+              br2 === e.raw && (bu2 === "Refinery" || bu2 === "Assimilator" || bu2 === "Extractor")
+              && bs2 <= t && ((bg2 ?? 0) === 0 || t < (bg2 ?? 0))
+              && Math.hypot(bx2 + footDx(bu2) - pos.x, by2 + footDy(bu2) - pos.y) <= 2);
+            if (gasB) {
+              const gx3 = gasB[1] + footDx(gasB[3]);
+              const gy3 = gasB[2] + footDy(gasB[3]);
+              let hall: { x: number; y: number } | null = null;
+              let hd = 12;
+              for (const h of halls) {
+                if (h.raw !== e.raw || h.sec > t || (h.gone > 0 && t >= h.gone)) continue;
+                const d2 = Math.hypot(h.x - gx3, h.y - gy3);
+                if (d2 < hd) { hd = d2; hall = h; }
+              }
+              if (hall && hd > 1.5) {
+                const cyc3 = (t * 1.5 + ei * 2.3) % (2 * hd);
+                const k3 = (cyc3 < hd ? cyc3 : 2 * hd - cyc3) / hd;
+                const kk = 0.08 + k3 * 0.84;
+                pos = { ...pos, x: gx3 + (hall.x - gx3) * kk, y: gy3 + (hall.y - gy3) * kk };
+              }
+            }
+          }
           const [ax3, ay3] = [pos.x, pos.y];
           const [fx, fy] = posFrac(ax3, ay3);
           // 죽음 창(d~d+1.2초) — 마커 대신 종족별 사망 효과가 남는다.
