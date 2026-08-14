@@ -3109,6 +3109,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   burrowhole: () => [
     ...domeFaces3(0, 0, 4.6, 0.9),
     capFace(discPath3(0, 0, 0.92, 3.2), 0.6),
+    /* 구멍 깊이에 유닛이 살짝(아이디어 제공: 검정 구멍 안에 깊이 유닛색이 옅게
+       비치는 모양) — 검은 구멍 위, 더 깊은 자리(z 0.4)에 작은 원을 유닛색
+       반투명으로 얹는다. 숨은 놈이 어렴풋이 들여다보인다. */
+    [discPath3(0, 0, 0.4, 1.7), 0.3] as ShapeFace,
   ],
   /* SCV(실물 참고) — 각진 몸통 + 양옆 포드 + 위 머리 + 앞으로 굽는 집게 드릴 한 쌍. */
   scv: () => [
