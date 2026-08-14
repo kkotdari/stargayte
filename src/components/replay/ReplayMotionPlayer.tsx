@@ -6693,6 +6693,22 @@ export default function ReplayMotionPlayer({
                  반 타일 위로: 불티가 공사장 몸체에 반쯤 얹힌다. */
               const bfxX = race2 === "테란" ? centerX - fp2[0] / 2 + 0.9 : centerX;
               const bfxY = race2 === "테란" ? centerY + fp2[1] / 2 - 0.6 : centerY;
+              /* 짓는 SCV(요청: SCV 위치도 건물에 붙이자) — 불티 바로 밖에서 건물을
+                 바라보고 선다. 드론은 제 몸이 건물이 되고 프로브는 소환만 걸고 떠나니
+                 테란만이다. 완공되면 걷힌다(이 가지는 raising 동안만 탄다). */
+              if (race2 === "테란") {
+                const scvX = bfxX - 0.55;
+                const scvY = bfxY + 0.25;
+                const [sfx2, sfy2] = posFrac(scvX, scvY);
+                unitOps.push({
+                  fx: sfx2, fy: sfy2, z: z + 1, kind: "scv",
+                  rotDeg: Math.atan2(-(centerX - scvX), centerY - scvY) * (180 / Math.PI),
+                  viewYaw: viewYawOf(scvX, scvY), flat: !pitched, pitch: pitched,
+                  sizePx: unitGlyphPx(0, scvY),
+                  color: modeColor(raw, teamOfRaw(raw)),
+                  alpha: 1, noSep: true,
+                });
+              }
               return (
                 <span
                   key={`bfx-${i}`}
