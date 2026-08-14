@@ -704,8 +704,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const out: ShapeFace[] = [...pod(-5.4, -4.4), ...pod(5.4, -4.4)];
     out.push(...cylinderFaces3(0, 0, 6.4, 2.4));
     out.push(capFace(discPath3(0, 0, 2.42, 5.6), 0.2));
-    // 위뚜껑은 큰 돔(지적: 돔 형태를 살린다).
-    out.push(...domeFaces3(0, 0, 5.4, 3.4, 2.4));
+    // 위뚜껑은 큰 돔(지적: 돔 형태를 살린다). 반구 높이 증가(재지적: 구 높이 더).
+    out.push(...domeFaces3(0, 0, 5.4, 4.4, 2.4));
     /* 그릇 굴뚝·관제 모듈은 돔 위 얹힘(지적: 가려짐이 이상) — 돔의 큰 키(반지름
        몫)에 밀리지 않게 지붕 규칙 키를 준다. */
     out.push(...tagKey([
@@ -1242,7 +1242,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 터렛(실물 참고) — 원통 받침 + 상자 머리 + 세로 미사일 랙 둘 + 옆으로 빠지는 배관. */
   turret: () => [
     ...cylinderFaces3(0, 0.4, 3.1, 3.4),
-    ...tubeFaces(-2.6, 2.2, -4.4, 3.4, 0.55, 1.2),
+    // (제거·지적: 기둥 옆 막대기 제거) — 옆으로 삐친 관이 정체불명 막대로 보였다.
     /* 머리 상자도 얹힘(지적: 넓은 밑둥 판과 순서가 요잉 따라 어긋남) — 지붕 규칙로
        밑둥(반지름 키 3.1)보다 큰 붙박이 키. 포드(40)·다리(41)보단 작게. */
     ...tagKey(boxFaces3(0, 0, 3.6, 2.8, 3.6, 3.6), 20 + depthNow(0, 0)),
@@ -4353,7 +4353,10 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
           ctx.globalAlpha = op.alpha * 0.16;
           ctx.fillStyle = "#000";
           ctx.beginPath();
-          ctx.ellipse(sx, sy + hPx * 0.48, wPx * 0.3, Math.max(1, wPx * 0.05), 0, 0, Math.PI * 2);
+          /* 발자국 전체를 덮고 바닥선에 딱(재지적: 2D 건물 그림자가 전체를 못 덮고
+             떠 보인다) — 반지름을 발자국 절반 폭(0.52)으로 넓히고, 상자 바닥(hPx/2)
+             에 정확히 붙인다. 입체 보기는 바닥 기울기만큼 더 누른다. */
+          ctx.ellipse(sx, sy + hPx / 2, wPx * 0.52, Math.max(1, wPx * 0.09 * (op.pitch ? 0.6 : 1)), 0, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         }
@@ -4419,7 +4422,10 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         /* 발끝에 딱(재재지적: 그림자 각도·위치 — 발에 붙어야 하고 부양 유닛도 훨~씬
            낮게) — 그림자를 스프라이트 바닥선(0.28px)에 놓아 몸과 틈이 없다. 공중
            유닛만 몸이 위로 들려 그 틈이 곧 비행 높이로 읽힌다. */
-        ctx.ellipse(sx, sy + px * 0.28, shw, shw * (op.air ? 0.4 : 0.3), 0, 0, Math.PI * 2);
+        /* 바닥과 평행하게(재지적: 그림자 각도가 바닥과 평행이 아니다) — 입체 보기의
+           바닥은 눌려 있는데 타원이 덜 납작해 비스듬히 선 판처럼 읽혔다. 입체에선
+           세로 반지름을 바닥 기울기만큼 더 누른다. */
+        ctx.ellipse(sx, sy + px * 0.28, shw, shw * (op.air ? 0.4 : 0.3) * (op.pitch ? 0.5 : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       } else if (!op.air && UNIT_KIND_SET.has(op.kind)) {
@@ -4431,7 +4437,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         ctx.fillStyle = "#000";
         ctx.beginPath();
         // 발끝 접지(재재지적) — 0.34는 발보다 아래라 틈이 떠 보였다. 바닥선 0.28로.
-        ctx.ellipse(sx, sy + px * 0.28, px * 0.16, px * 0.05, 0, 0, Math.PI * 2);
+        ctx.ellipse(sx, sy + px * 0.28, px * 0.16, px * 0.05 * (op.pitch ? 0.6 : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -6591,11 +6597,14 @@ export default function ReplayMotionPlayer({
                  그리고 게임처럼 단계 성장(재지적: 너무 작음): 공사 진행에 따라 0.7배에서
                  1.5배까지 세 단계로 자란다. */
               const prog = Math.min(1, (t - sec) / (BUILD_SEC[unit] ?? 30));
-              const stage = prog < 0.33 ? 0.7 : prog < 0.7 ? 1.1 : 1.5;
+              // 시작을 크게(재지적: 처음에 너무 작음 — 훨씬 크게 시작) — 0.7 → 1.0.
+              const stage = prog < 0.33 ? 1 : prog < 0.7 ? 1.25 : 1.5;
               const beat = race2 === "저그" ? stage * (1 + 0.06 * Math.sin(t * 5.2)) : 1;
               unitOps.push({
                 fx: fxF, fy: fyF, z,
                 kind: race2 === "저그" ? "cocoon" : race2 === "프로토스" ? "warpin" : "scaffold",
+                // 공사 모델도 45도 요잉(지적: 고치·소환공·공사장도 45도 돌아야지).
+                rotDeg: BUILDING_BASE_YAW,
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
                 // 공사 모델도 완성 모델과 같은 폭 기준 — 바닥 폭이 발자국과 같아야 한다.
                 /* 소환구는 크기 통일(재지적: 게임에서도 모든 건물이 같다) — 발자국과
@@ -6669,11 +6678,13 @@ export default function ReplayMotionPlayer({
                  쪽으로 낮은 복도 판을 깐다. */
               if (ADDONS.has(unit)) {
                 const mkA = pitchK(centerY);
-                const [lfx, lfy] = posFrac(centerX - fp2[0] / 2 - 0.5, centerY + fp2[1] * 0.18);
+                /* 간격 메우기(재지적: 애드온이 본체와 완전히 떨어져 있음) — 통로를
+                   2.6타일로 늘리고 본체 쪽으로 더 밀어 두 모델 사이 빈틈을 잇는다. */
+                const [lfx, lfy] = posFrac(centerX - fp2[0] / 2 - 1.1, centerY + fp2[1] * 0.18);
                 unitOps.push({
                   fx: lfx, fy: lfy, z: z - 1, kind: "addonlink",
                   viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
-                  sizePx: 0, wFrac: (1.4 / grid.width) * mkA, hFrac: (0.5 / grid.width) * mkA,
+                  sizePx: 0, wFrac: (2.6 / grid.width) * mkA, hFrac: (0.5 / grid.width) * mkA,
                   boxFit: "fill", fitWidth: true, color, alpha: alpha * 0.85, noShadow: true,
                 });
               }
