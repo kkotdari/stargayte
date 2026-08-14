@@ -13235,6 +13235,22 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 }
 /* (재구성) 입체 보기 — CSS 3D 빌보드 폐기: 컨테이너 세로 눌림 2.5D로 처리한다(JSX). */
 /* ── 유닛별 전투 효과(요청: 불 대신 무기 특성 — 근접은 없음) ───────────────── */
+/* 예광탄(지적: 공격 효과가 빛뿐이라 누가 쏘고 누가 맞는지 안 보임) — 공격자 마커
+   가운데에서 가장 가까운 적 쪽으로 뻗는 가는 빛줄기. 위쪽 기준점(transform-origin
+   50% 0)에서 회전각이 적 방향을 가리키고, 밝았다 스러지길 반복한다. */
+.scr-motion-tracer {
+  position: absolute; left: 50%; top: 50%; width: 2px; height: 15px;
+  margin-left: -1px; border-radius: 1px; pointer-events: none;
+  transform-origin: 50% 0;
+  background: linear-gradient(to bottom, rgba(255, 244, 200, 0.95), rgba(255, 244, 200, 0));
+  animation: scr-tracer 0.55s linear infinite;
+  opacity: 0;
+}
+@keyframes scr-tracer {
+  0%, 18% { opacity: 0; }
+  24%, 60% { opacity: 1; }
+  75%, 100% { opacity: 0; }
+}
 .scr-motion-atkfx {
   position: absolute; left: 62%; top: 28%; width: 10px; height: 10px;
   pointer-events: none; transform: translate(-50%, -50%); mix-blend-mode: screen;

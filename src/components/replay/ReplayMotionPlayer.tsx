@@ -5527,6 +5527,31 @@ export default function ReplayMotionPlayer({
   /* 마커별 직전 방향 기억(지적: 회전 부드럽게) — headingOf의 각 스무딩 상태. 마커가
      사라지면 항목이 남지만 몇백 개 수준이라 판 하나 안에서는 무해하다. */
   const hdgMemRef = useRef(new Map<string, { h: number; t: number }>());
+  /* 위치 스무딩(재지적: 움직임 스무스는 못 했나) — 경유점 꺾임·교전 당김·명령 갱신으로
+     프레임 사이 위치가 툭툭 튀던 것을, 마커별로 직전 표시 위치를 기억해 목표 지점으로
+     감쇠 추적(반감기 짧은 저역 통과)하되 초당 10타일 상한을 둔다. 12타일 넘는 점프
+     (드랍·순간 재배치 의도)와 시킹(시간 역행·큰 건너뜀)은 그대로 스냅. */
+  const posMemRef = useRef(new Map<string, { x: number; y: number; t: number }>());
+  const smoothPosOf = <P extends { x: number; y: number }>(key: string, pos: P): P => {
+    const mem = posMemRef.current.get(key);
+    if (!mem || t <= mem.t || t - mem.t > 1.5) {
+      posMemRef.current.set(key, { x: pos.x, y: pos.y, t });
+      return pos;
+    }
+    const dt = t - mem.t;
+    const dx = pos.x - mem.x;
+    const dy = pos.y - mem.y;
+    const d = Math.hypot(dx, dy);
+    if (d < 0.001 || d > 12) {
+      posMemRef.current.set(key, { x: pos.x, y: pos.y, t });
+      return pos;
+    }
+    const step = Math.min(d * Math.min(1, dt * 6), 10 * dt);
+    const nx = mem.x + (dx / d) * step;
+    const ny = mem.y + (dy / d) * step;
+    posMemRef.current.set(key, { x: nx, y: ny, t });
+    return { ...pos, x: nx, y: ny };
+  };
   const headingOf = (walk: TrackPt[], pos: { x: number; y: number }, smoothKey?: string): number => {
     let target = 0;
     for (const back of [0.3, 0.8, 2, 4, 8, 15]) {
@@ -7344,7 +7369,7 @@ export default function ReplayMotionPlayer({
           const typeNodes = typeMarks.map(({ g, gi, pos: rawPos, sinceCmd, dying }) => {
             // 교전 붙기(engagePosOf 주석) — 표시 자리만 끈다. 컨트롤 수(ctrlNear)는
             // 원자리로 잰다(선택 클릭은 원자리 곁에 찍혔다).
-            const pos = engagePosOf(team, g.unit, rawPos);
+            const pos = smoothPosOf(`${p.raw}-t${gi}-${g.unit}`, engagePosOf(team, g.unit, rawPos));
             const members = BY_UNITS[g.unit] ?? [g.unit];
             const aliveAll = members.reduce((n, u) => n + aliveOf(u), 0);
             const nSquads = squadsOfUnit.get(g.unit) ?? 1;
@@ -7452,6 +7477,11 @@ export default function ReplayMotionPlayer({
             const fighting = (sinceCmd <= 15
               && (p.hot ?? []).some(([a2, b2]) => t >= a2 && t <= b2))
               || engagedNow(team, pos);
+            /* 예광탄 방향(지적: 누가 공격하고 누가 받는지 모르겠다) — 이 부대에서 가장
+               가까운 적 마커 쪽 각. 공격자에게서 피격자 쪽으로 빛줄기가 뻗는다. */
+            const foeDir = nearestFoe(team, pos.x, pos.y);
+            const atkDeg = fighting && Number.isFinite(foeDir.bd) && foeDir.bd <= ENGAGE_SIGHT_TILES
+              ? Math.atan2(-(foeDir.bx - pos.x), foeDir.by - pos.y) * (180 / Math.PI) : null;
             const cyc = Math.floor(t / 1.5);
             const hdg = headingOf(g.walk, pos, `${p.raw}-t${gi}-${g.unit}`);
             const seed = gi * 1.7;
@@ -7550,6 +7580,13 @@ export default function ReplayMotionPlayer({
                   {fighting && ATTACK_FX[u] && di % 3 === 0 && (
                     <span className={`scr-motion-atkfx scr-fxa-${ATTACK_FX[u]}`} />
                   )}
+                  {/* 예광탄(지적: 누가 쏘는지) — 공격자에게서 적 쪽으로 뻗는 빛줄기. */}
+                  {atkDeg !== null && ATTACK_FX[u] && di % 3 === 0 && (
+                    <span
+                      className="scr-motion-tracer"
+                      style={{ transform: `rotate(${atkDeg.toFixed(1)}deg)`, animationDelay: `${((di * 7) % 5) / 10}s` }}
+                    />
+                  )}
                   {fighting && (di + cyc) % 5 === 0 && (
                     <span key={`pf-${cyc}`} className="scr-motion-puff" />
                   )}
@@ -7635,7 +7672,7 @@ export default function ReplayMotionPlayer({
             /* 교전 붙기(engagePosOf 주석) — 죽음·흡수·태움 판정과 컨트롤 수까지 원자리로
                끝낸 뒤, 표시 자리만 가장 가까운 적 쪽으로 끈다. 무명 부대는 우세 유닛의
                사정거리를 쓴다(모르면 3타일). */
-            pos = engagePosOf(team, unit || null, pos);
+            pos = smoothPosOf(`${p.raw}-s${si}`, engagePosOf(team, unit || null, pos));
             /* 생산 직후에도 깨어 있다(요청) — 갓 나온 유닛은 명령을 안 받았어도 지금
                이야기의 일부다. 완성은 사람 단위 값이라 주 부대만 깨운다. */
             let freshDone = false;
@@ -7687,6 +7724,10 @@ export default function ReplayMotionPlayer({
             const fighting = (sinceCmd <= 15
               && (p.hot ?? []).some(([a2, b2]) => t >= a2 && t <= b2))
               || engagedNow(team, pos);
+            // 예광탄 방향 — 위 typeNodes와 같은 규칙.
+            const foeDir = nearestFoe(team, pos.x, pos.y);
+            const atkDeg = fighting && Number.isFinite(foeDir.bd) && foeDir.bd <= ENGAGE_SIGHT_TILES
+              ? Math.atan2(-(foeDir.bx - pos.x), foeDir.by - pos.y) * (180 / Math.PI) : null;
             const cyc = Math.floor(t / 1.5);
             const hdg = headingOf(rp, pos, `${p.raw}-s${si}`);
             const seed = si * 1.7;
@@ -7756,6 +7797,13 @@ export default function ReplayMotionPlayer({
                       돌아가며 퍼프(1.5초 주기 결정적 순환이라 프레임마다 안 튄다). */}
                   {fighting && ATTACK_FX[u] && di % 3 === 0 && (
                     <span className={`scr-motion-atkfx scr-fxa-${ATTACK_FX[u]}`} />
+                  )}
+                  {/* 예광탄(지적: 누가 쏘는지) — 공격자에게서 적 쪽으로 뻗는 빛줄기. */}
+                  {atkDeg !== null && ATTACK_FX[u] && di % 3 === 0 && (
+                    <span
+                      className="scr-motion-tracer"
+                      style={{ transform: `rotate(${atkDeg.toFixed(1)}deg)`, animationDelay: `${((di * 7) % 5) / 10}s` }}
+                    />
                   )}
                   {fighting && (di + cyc) % 5 === 0 && (
                     <span key={`pf-${cyc}`} className="scr-motion-puff" />
