@@ -253,6 +253,15 @@ export function buildUnitTracks(
 ): UnitTracksV2 {
   const playing = new Set(players.map((p) => p.id));
   const raceOf = new Map(players.map((p) => [p.id, p.race] as const));
+  /* 편 가르기 — 아군을 찍은 우클릭(수리·힐·따라가기)을 공격으로 오인하지 않게. 팀
+     정보가 없는 옛 리플레이는 '남 = 적'으로 남는다(종전과 같다). */
+  const teamNoOf = new Map(players.map((p) => [p.id, p.team ?? null] as const));
+  const sameSide = (a: number, b: number): boolean => {
+    if (a === b) return true;
+    const ta = teamNoOf.get(a);
+    const tb = teamNoOf.get(b);
+    return ta !== null && ta !== undefined && tb !== null && tb !== undefined && ta === tb;
+  };
 
   const sel = new Map<number, number[]>();
   const groups = new Map<string, number[]>();
@@ -583,8 +592,13 @@ export function buildUnitTracks(
        개체를 찍은 우클릭이다. 표적 태그를 증거에 실어 재생기가 그 대상을 겨눈다. */
     const tgtTag0 = c.UnitTag ?? 0;
     const tgtLife = tgtTag0 > 0 && tgtTag0 < 60000 ? alive.get(tgtTag0) : undefined;
-    const hostileClick = tgtLife !== undefined && tgtLife.owner !== pid;
+    /* 같은 팀은 적이 아니다(지적: 매딕은 아군 유닛도 치료) — 아군을 찍은 우클릭
+       (수리·힐·따라가기)이 공격으로 잡히면 아군이 '공격받고 소식 없음'으로 죽는다. */
+    const hostileClick = tgtLife !== undefined && !sameSide(tgtLife.owner, pid);
     const isAtkOrder = ATTACK_ORDERS.has(orderName) || (cmdName === "Right Click" && hostileClick);
+    /* 수리·힐(지적: 일꾼 수리 파싱 + 매딕은 아군까지) — 명령 자체가 정체(SCV·매딕)를
+       밝히고, 표적 자리로 걸어가 일하는 증거(f=10)가 된다. */
+    const isFixOrder = orderName === "Repair" || orderName === "HealMove";
     // 자원 클릭 → 일꾼(시작 직후의 통째 선택은 빼고 — 오버로드 오염 방지).
     const resourceClick = cmdName === "Right Click" && RESOURCE_TARGETS.has(unitName)
       && !((c.Frame ?? 0) < EARLY_ALL_SELECT_FRAMES && tags.length >= 4);
@@ -605,7 +619,10 @@ export function buildUnitTracks(
          (그 건물의 생산·피격 기록)로 뒤집는 후방 보정 쪽이 맞는 길이다. */
       if (pos) pendingBuild.delete(tag);
       if (pos && !life.bld) {
-        if (isAtkOrder) {
+        if (isFixOrder) {
+          life.last = sec;
+          life.ev.push([Math.round(sec), r1(pos.x), r1(pos.y), 10, tgtTag0]);
+        } else if (isAtkOrder) {
           life.last = sec;
           if (life.lastAtk !== null) life.evAfterAtk = true;
           life.ev.push([Math.round(sec), r1(pos.x), r1(pos.y), 7, hostileClick ? tgtTag0 : 0]);
@@ -629,7 +646,7 @@ export function buildUnitTracks(
       if (target) {
         anchors += 1;
         pushEv(target, sec, pos.x, pos.y, 1);
-        const hostile = target.owner !== pid
+        const hostile = !sameSide(target.owner, pid)
           && (ATTACK_ORDERS.has(orderName) || cmdName === "Right Click" || orderName === "");
         if (hostile) { target.lastAtk = sec; target.evAfterAtk = false; }
       }
@@ -640,7 +657,8 @@ export function buildUnitTracks(
     if (pos && (ATTACK_ORDERS.has(orderName)
       || (targetTag > 0 && targetTag < 60000 && cmdName === "Right Click"))) {
       for (const b of built) {
-        if (b.owner === pid || sec < b.born) continue;
+        // 아군 건물도 공격 대상이 아니다(같은 팀 오인 방지 — 위 sameSide 주석).
+        if (sameSide(b.owner, pid) || sec < b.born) continue;
         if (Math.abs(b.x - pos.x) <= 2.5 && Math.abs(b.y - pos.y) <= 2.5) {
           b.ev.push([Math.round(sec), r1(pos.x), r1(pos.y), 1]);
         }
@@ -705,15 +723,8 @@ export function buildUnitTracks(
     }
   }
   atkEvts.sort((a, b) => a.sec - b.sec);
-  /* 편 가르기(팀 정보) — 같은 팀의 공격 명령·방어건물은 위협이 아니다. 팀 정보가 없는
-     옛 트랙은 '다른 사람 = 적'으로 남는다(종전과 같다). */
-  const teamOfPid = new Map(players.map((pl) => [pl.id, pl.team ?? null]));
-  const isFoeOf = (a: number, b: number): boolean => {
-    if (a === b) return false;
-    const ta = teamOfPid.get(a);
-    const tb = teamOfPid.get(b);
-    return ta === null || tb === null || ta === undefined || tb === undefined || ta !== tb;
-  };
+  /* 편 가르기(팀 정보) — 같은 팀의 공격 명령·방어건물은 위협이 아니다(위 sameSide). */
+  const isFoeOf = (a: number, b: number): boolean => !sameSide(a, b);
   /* 방어건물 자리 — 수비측이 명령 한 번 없이 성큰·캐논·벙커로 막아낸 싸움에서도
      공격측이 죽게(지적: 왜케 안 죽어), 마지막 증거가 적 방어건물 발치인 유닛을 잡는다. */
   const DEF_KINDS = new Set(["Sunken Colony", "Photon Cannon", "Bunker"]);

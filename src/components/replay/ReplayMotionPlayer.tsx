@@ -4409,16 +4409,17 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         /* 떠다니는 지상 유닛(일꾼·벌처·아콘류)은 겨우 발밑만 떠 있다(지적: 그림자가
            너무 크고 진해) — 높이 나는 공중 유닛보다 작고 옅은 타원. */
         // 그림자 살짝 축소(지적) — 높이 나는 만큼 발밑 그림자는 작고 옅게.
-        const shw = px * (op.air ? 0.26 : 0.16);
-        ctx.globalAlpha = op.alpha * (op.air ? 0.22 : 0.16);
+        const shw = px * (op.air ? 0.26 : 0.17);
+        ctx.globalAlpha = op.alpha * (op.air ? 0.22 : 0.13);
         ctx.fillStyle = "#000";
         /* beginPath 필수(조사: 전 모드 거대 검은 쐐기의 진범) — 경로를 안 비우면
            ellipse가 직전 점에서 타원까지 선분을 이어 붙이며 프레임 내내 누적되고,
            fill이 맵을 가로지르는 검은 다각형들을 채웠다. 요잉과 무관했다. */
         ctx.beginPath();
-        // 떠다니는 지상 유닛은 그림자를 발끝에 바짝(지적: 너무 높이 떠 보임 — 몸과
-        // 그림자의 틈이 곧 뜬 높이로 읽힌다) — 살짝만 뜬 느낌으로.
-        ctx.ellipse(sx, sy + px * (op.air ? 0.06 : 0.24), shw, shw * 0.4, 0, 0, Math.PI * 2);
+        /* 발끝에 딱(재재지적: 그림자 각도·위치 — 발에 붙어야 하고 부양 유닛도 훨~씬
+           낮게) — 그림자를 스프라이트 바닥선(0.28px)에 놓아 몸과 틈이 없다. 공중
+           유닛만 몸이 위로 들려 그 틈이 곧 비행 높이로 읽힌다. */
+        ctx.ellipse(sx, sy + px * 0.28, shw, shw * (op.air ? 0.4 : 0.3), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       } else if (!op.air && UNIT_KIND_SET.has(op.kind)) {
@@ -4429,7 +4430,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         ctx.globalAlpha = op.alpha * 0.12;
         ctx.fillStyle = "#000";
         ctx.beginPath();
-        ctx.ellipse(sx, sy + px * 0.34, px * 0.16, px * 0.05, 0, 0, Math.PI * 2);
+        // 발끝 접지(재재지적) — 0.34는 발보다 아래라 틈이 떠 보였다. 바닥선 0.28로.
+        ctx.ellipse(sx, sy + px * 0.28, px * 0.16, px * 0.05, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -5309,6 +5311,8 @@ export default function ReplayMotionPlayer({
       atkAt: [number, number][];
       /** 시즈 켬·해제 [초, 켬1/해제0] — 커맨드 그대로(지적). */
       sieges: [number, number][];
+      /** 수리·힐 명령 초(지적: 일꾼 수리·매딕 힐) — 곁에서 일하는 효과의 창. */
+      fixes: number[];
       walk: [number, number, number][];
     }[] = [];
     for (const e of entData.ents) {
@@ -5351,6 +5355,7 @@ export default function ReplayMotionPlayer({
         atkAt: e.ev.filter((v) => v[3] === 7).map((v) => [v[0], v[4] ?? 0] as [number, number]),
         sieges: e.ev.filter((v) => v[3] === 8 || v[3] === 9)
           .map((v) => [v[0], v[3] === 8 ? 1 : 0] as [number, number]),
+        fixes: e.ev.filter((v) => v[3] === 10).map((v) => v[0]),
         // 정체를 알면 그 속도로, 모르면 부대 어림과 같은 규칙(그때의 우세 유닛·지상 길)로.
         walk: walkTrack(pts, p, false, e.k || undefined, undefined, e.k === ""),
       });
@@ -7278,6 +7283,27 @@ export default function ReplayMotionPlayer({
               );
             }
             return null;
+          }
+          /* 수리·힐 연출(지적: 일꾼 수리 + 매딕 힐) — 명령 뒤 8초 동안 그 자리에서
+             일한다: SCV는 용접 불티, 매딕은 흰 십자가 떠오른다. */
+          if (!fighting) {
+            const fixAt = e.fixes.length > 0
+              ? e.fixes.filter((fs) => fs <= t && t - fs <= 8).pop() : undefined;
+            if (fixAt !== undefined) {
+              const heal = drawUnit === "Medic";
+              return (
+                <span
+                  key={`v2fix-${ei}`}
+                  className="scr-motion-army scr-motion-dot scr-v2fx"
+                  style={{ ...posStyle(ax3, ay3), zIndex: 1310 }}
+                >
+                  <span
+                    key={`fx-${Math.floor(t / 1.1)}`}
+                    className={heal ? "scr-motion-healfx" : "scr-motion-puff scr-puff-weld"}
+                  />
+                </span>
+              );
+            }
           }
           if (fighting && ei % 3 !== 0) return null;
           if (!fighting) return null;

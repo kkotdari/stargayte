@@ -477,6 +477,9 @@ export const CAST_ORDER_TO_UNIT: Record<string, string> = {
   CastRestoration: "Medic",
   CastOpticalFlare: "Medic",
   MedicHeal: "Medic",
+  // 힐 무브·수리(지적: 일꾼 수리와 매딕 힐 파싱) — 낸 사람의 정체가 곧 드러난다.
+  HealMove: "Medic",
+  Repair: "SCV",
   CastDarkSwarm: "Defiler",
   CastPlague: "Defiler",
   CastConsume: "Defiler",
