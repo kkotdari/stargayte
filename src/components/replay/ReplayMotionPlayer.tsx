@@ -6681,8 +6681,10 @@ export default function ReplayMotionPlayer({
                  맡는다: 테란 빨간 불 깜빡, 저그 심장 박동, 프로토스 소환 글로우. */
               /* 스파크 자리(재지적: 일꾼 주변에 작게) — 테란은 SCV가 붙는 건물
                  왼쪽 아래 모서리에서 인다. 저그 박동·토스 글로우는 가운데 그대로. */
-              const bfxX = race2 === "테란" ? centerX - fp2[0] / 2 + 0.4 : centerX;
-              const bfxY = race2 === "테란" ? centerY + fp2[1] / 2 - 0.3 : centerY;
+              /* 모서리에 바짝(재지적: 일꾼이 너무 떨어져 있나) — 0.4 → 0.9타일 안쪽,
+                 반 타일 위로: 불티가 공사장 몸체에 반쯤 얹힌다. */
+              const bfxX = race2 === "테란" ? centerX - fp2[0] / 2 + 0.9 : centerX;
+              const bfxY = race2 === "테란" ? centerY + fp2[1] / 2 - 0.6 : centerY;
               return (
                 <span
                   key={`bfx-${i}`}
