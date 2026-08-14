@@ -240,12 +240,12 @@ export default function Header({
         {/* 데스크톱 네비게이션 */}
         <nav className="scr-nav scr-nav-desktop">
           {commonNavItems}
-          {isAdmin && <AdminMenu screen={screen} onNavigate={go} variant="nav" />}
-          {/* 자료실(요청) — 운영급 별도 메뉴, 모두에게 개방. */}
+          {/* 자료실(요청) — 운영급 별도 메뉴, 모두에게 개방. 운영보다 위(재요청). */}
           <AdminMenu
             screen={screen} onNavigate={go} variant="nav" title="자료실"
             menuItems={[{ key: "models", label: "모델링", isActive: screen === "models", onSelect: () => go("models") }]}
           />
+          {isAdmin && <AdminMenu screen={screen} onNavigate={go} variant="nav" />}
         </nav>
 
         <div className="scr-user">
@@ -323,12 +323,13 @@ export default function Header({
             {/* 탭바에 이미 있는 메뉴(commonNavItems)는 서랍에 안 보여준다(요청) —
                 서랍엔 탭바에 없는 운영 아코디언과 액션들만 남는다. */}
             <nav className="scr-drawer-nav">
-              {/* 운영은 접을 수 없는 고정 섹션(AdminMenu drawer 변형이 항상 펼쳐 그린다). */}
-              {isAdmin && <AdminMenu screen={screen} onNavigate={go} variant="drawer" />}
+              {/* 자료실이 운영보다 위(재요청) — 데스크톱 내비와 같은 차례. */}
               <AdminMenu
                 screen={screen} onNavigate={go} variant="drawer" title="자료실"
                 menuItems={[{ key: "models", label: "모델링", isActive: screen === "models", onSelect: () => go("models") }]}
               />
+              {/* 운영은 접을 수 없는 고정 섹션(AdminMenu drawer 변형이 항상 펼쳐 그린다). */}
+              {isAdmin && <AdminMenu screen={screen} onNavigate={go} variant="drawer" />}
             </nav>
 
             {/* 서랍의 낱말과 차례를 기둥(왼쪽 세로 메뉴)과 맞춘다(요청): 테마 → 앱 설치 →
