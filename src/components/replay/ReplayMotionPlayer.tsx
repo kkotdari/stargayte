@@ -6686,24 +6686,54 @@ export default function ReplayMotionPlayer({
             const wFrac = (wTiles / grid.width) * mkK;
             const hFrac = (hTiles / grid.width) * mkK;
             const race2 = bases.find((b) => b.key === raw)?.race;
-            /* 짓는 SCV(요청: SCV 위치도 건물에 붙이자 → 재지적: 완공되면 갑자기 사라짐)
-               — 공사 내내 불티 곁에 서 있고, 완공 뒤 1.2초 동안 옅어지며 물러난다.
-               드론은 제 몸이 건물이 되고 프로브는 소환만 걸고 떠나니 테란만이다. */
+            /* 짓는 SCV(요청: SCV 위치도 건물에 붙이자 → 재재지적: 완공돼도 소멸하지
+               말고 프로브처럼 다음 일을 받게) — 공사 내내 불티 곁에 서 있고, 완공되면
+               가장 가까운 제 미네랄 줄로 일꾼 걸음(3.7타일/초)으로 걸어가 스며든다.
+               곁에 미네랄이 없으면 1.2초 페이드. 드론은 제 몸이 건물이 되고 프로브는
+               소환만 걸고 떠나니 테란만이다. */
             if (race2 === "테란" && !flownFrom && sec > 0 && !razed
-              && t - sec < (BUILD_SEC[unit] ?? 30) + 1.2) {
+              && t - sec < (BUILD_SEC[unit] ?? 30) + 25) {
               const doneGap = t - sec - (BUILD_SEC[unit] ?? 30);
-              const scvX = centerX - fp2[0] / 2 + 0.35;
-              const scvY = centerY + fp2[1] / 2 - 0.35;
-              const [sfx2, sfy2] = posFrac(scvX, scvY);
-              unitOps.push({
-                fx: sfx2, fy: sfy2, z: z + 1, kind: "scv",
-                rotDeg: Math.atan2(-(centerX - scvX), centerY - scvY) * (180 / Math.PI),
-                viewYaw: viewYawOf(scvX, scvY), flat: !pitched, pitch: pitched,
-                sizePx: unitGlyphPx(0, scvY),
-                color: modeColor(raw, teamOfRaw(raw)),
-                alpha: doneGap > 0 ? Math.max(0, 1 - doneGap / 1.2) : 1,
-                noSep: true,
-              });
+              let scvX = centerX - fp2[0] / 2 + 0.35;
+              let scvY = centerY + fp2[1] / 2 - 0.35;
+              let scvHdg = Math.atan2(-(centerX - scvX), centerY - scvY) * (180 / Math.PI);
+              let scvAlpha = 1;
+              let scvShow = true;
+              if (doneGap > 0) {
+                let mx3 = 0;
+                let my3 = 0;
+                let md3 = Infinity;
+                for (const rz of grid.resources ?? []) {
+                  if (rz[2] === 1) continue;
+                  const d3 = Math.hypot(rz[0] - scvX, rz[1] - scvY);
+                  if (d3 < md3) { md3 = d3; mx3 = rz[0]; my3 = rz[1]; }
+                }
+                if (Number.isFinite(md3) && md3 <= 15) {
+                  const walked3 = doneGap * 3.7;
+                  if (walked3 >= md3) scvShow = false; // 닿았다 — 채굴 줄이 이어받는다.
+                  else {
+                    const f3 = walked3 / md3;
+                    scvHdg = Math.atan2(-(mx3 - scvX), my3 - scvY) * (180 / Math.PI);
+                    scvX += (mx3 - scvX) * f3;
+                    scvY += (my3 - scvY) * f3;
+                  }
+                } else {
+                  scvAlpha = Math.max(0, 1 - doneGap / 1.2);
+                  if (scvAlpha <= 0) scvShow = false;
+                }
+              }
+              if (scvShow) {
+                const [sfx2, sfy2] = posFrac(scvX, scvY);
+                unitOps.push({
+                  fx: sfx2, fy: sfy2, z: z + 1, kind: "scv",
+                  rotDeg: scvHdg,
+                  viewYaw: viewYawOf(scvX, scvY), flat: !pitched, pitch: pitched,
+                  sizePx: unitGlyphPx(0, scvY),
+                  color: modeColor(raw, teamOfRaw(raw)),
+                  alpha: scvAlpha,
+                  noSep: true,
+                });
+              }
             }
             if (raising) {
               // 공사는 종족 공용 모델(고치·소환구·공사장)이 말한다.
