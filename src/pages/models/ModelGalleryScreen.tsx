@@ -50,7 +50,12 @@ export default function ModelGalleryScreen() {
         <div className="scr-model-viewer">
           {/* 조작부 개편(요청: 버튼 줄 제거) — 각도는 무대 우상단, 멈춤·재생은 무대
               우하단 오버레이. 수동 회전은 ←/→ 키. */}
-          <div className="scr-model-stage" style={{ color }}>
+          {/* 라이트 테마 대비(요청) — 흰 모델일 땐 무대에 어두운 배경을 깔아 형태가
+              밝은 판에 묻히지 않게 한다(다크 테마에선 어차피 어두워 표시 없음). */}
+          <div
+            className={color === STAGE_COLORS[0] ? "scr-model-stage scr-model-stage-dark" : "scr-model-stage"}
+            style={{ color }}
+          >
             <ShapeIcon kind={kind} faces={faces} />
             {builder && (
               <>

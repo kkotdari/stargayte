@@ -12840,15 +12840,26 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   align-content: start;
 }
 /* 무대 색 견본(요청) — 좌하단 작은 원 점들. 기본 흰색. */
+/* 색 견본은 왼쪽 세로줄(요청: 아래는 이미 좁아) — 무대 왼편 가운데에 세로로 늘어선다. */
 .scr-model-colors {
-  position: absolute; bottom: 10px; left: 8px;
-  display: inline-flex; gap: 5px; align-items: center;
+  position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+  display: inline-flex; flex-direction: column; gap: 6px; align-items: center;
 }
 .scr-model-swatch {
   width: 14px; height: 14px; border-radius: 50%; padding: 0; cursor: pointer;
   border: 1px solid var(--line-soft);
 }
 .scr-model-swatch-on { box-shadow: 0 0 0 2px rgba(94, 162, 255, 0.55); }
+/* 라이트 테마 + 흰 모델(요청) — 흰 도형이 밝은 판에 그대로 묻혀서, 흰 견본을 고른
+   동안만 무대에 어두운 배경을 깐다. 다크 테마는 바탕이 이미 어두워 굳이 안 깐다.
+   무대 위 오버레이(각도·멈춤)는 어두운 판 위에서 읽히게 밝은 잉크로 뒤집는다. */
+.scr-light-theme .scr-model-stage-dark { background: #10141d; border-radius: 14px; }
+.scr-light-theme .scr-model-stage-dark .scr-model-yaw { color: rgba(255, 255, 255, 0.55); }
+.scr-light-theme .scr-model-stage-dark .scr-model-pause {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
 .scr-model-item {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 8px 4px; border-radius: 8px; border: 1px solid transparent;
