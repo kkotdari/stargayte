@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, ZoomIn } from "lucide-react";
 import { SHAPE_BUILDERS, SHAPE_GALLERY, ShapeIcon } from "../../components/replay/ReplayMotionPlayer";
 import { withYaw, VIEW } from "../../utils/shapeOblique";
@@ -19,7 +20,8 @@ export default function ModelGalleryScreen() {
   /* 돋보기 팝업(요청) — 무대의 돋보기를 누르면 최대 크기로 띄워 본다. 같은 faces를
      그대로 그려서 팝업 안에서도 자동 회전이 이어진다. */
   const [zoomed, setZoomed] = useState(false);
-  useLockBodyScroll(zoomed);
+  // 실드 밖 탭(사이드바 등)도 닫기로 — 팝업 밖 어디를 눌러도 닫힌다.
+  useLockBodyScroll(zoomed, () => setZoomed(false));
   useEffect(() => {
     if (!zoomed) return undefined;
     const onKey = (e: KeyboardEvent): void => {
@@ -28,6 +30,20 @@ export default function ModelGalleryScreen() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [zoomed]);
+  /* 팝업 세로 가운데(지적: 그림이 너무 아래) — 모델은 뷰박스 바닥(y 16)에 서 있어
+     팝업처럼 큰 판에선 위가 텅 빈다. 열릴 때 내용 bbox를 재서 그림 가운데가 판
+     가운데에 오도록 svg를 올린다(모델이 바뀌면 다시 잰다). */
+  const zoomBoxRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!zoomed) return;
+    const svg = zoomBoxRef.current?.querySelector("svg");
+    if (!svg) return;
+    try {
+      const bb = (svg as SVGSVGElement).getBBox();
+      const cy = bb.y + bb.height / 2;
+      (svg as SVGSVGElement).style.transform = `translateY(${(((8 - cy) / 16) * 100).toFixed(1)}%)`;
+    } catch { /* getBBox는 미부착 svg에서 던질 수 있다 — 그냥 바닥 정렬로 둔다. */ }
+  }, [zoomed, kind]);
   /* 자동 회전은 16방 스텝(재정의: 렌더 순서가 16방 기준이니 갤러리도 16방으로) —
      22.5도씩 끊어 돌며 각 방향에서 잠깐 머문다. 지도 마커가 실제로 쓰는 각도들만
      보게 되고, 그리기 순서 검수도 방향 단위로 된다. */
@@ -131,10 +147,14 @@ export default function ModelGalleryScreen() {
         </div>
       </div>
       {/* 최대 크기 팝업(요청) — 어두운 라이트박스 위에 같은 faces로 그려 회전이 이어진다.
-          배경을 항상 어둡게 두어 어느 테마·어느 색이든 모델이 산다. */}
-      {zoomed && builder && (
+          배경을 항상 어둡게 두어 어느 테마·어느 색이든 모델이 산다. body 포털(수리:
+          조상 transform이 fixed를 가둬 사이드바를 못 덮었고, 실드가 클릭을 삼켰다). */}
+      {zoomed && builder && createPortal(
         <div className="scr-model-zoom-pop" onClick={() => setZoomed(false)}>
-          <div className="scr-model-zoom-box" style={{ color }} onClick={(e) => e.stopPropagation()}>
+          <div
+            ref={zoomBoxRef} className="scr-model-zoom-box" style={{ color }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <ShapeIcon kind={kind} faces={faces} />
             <span className="scr-model-yaw">{Math.round(((yaw % 360) + 360) % 360)}°</span>
             <button
@@ -144,7 +164,8 @@ export default function ModelGalleryScreen() {
               <X size={18} />
             </button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

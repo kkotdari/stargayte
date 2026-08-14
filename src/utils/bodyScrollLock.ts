@@ -21,7 +21,9 @@ const outsideStack: Array<{ onOutside?: () => void }> = [];
 // 상단 배너다 — 실드가 이걸 "본문"으로 보고 터치/클릭을 막으면 모달(초대장 봉투 등)이
 // 떠 있는 동안 "기본 브라우저로 열기"·닫기 버튼이 안 눌린다(지적: "모달 영역 밖 터치가
 // 막혀 있음"). 허용 목록에 넣어 실드에서 제외한다.
-const INLINE_ALLOW = ".scr-modal, .scr-photo-overlay, .scr-drawer, .scr-inapp-notice";
+/* 모델 돋보기 팝업(.scr-model-zoom-pop)도 본문 안 인라인 모달이다 — 허용 목록에 없으면
+   실드가 팝업 자체(닫기 단추 포함)의 클릭을 다 삼켜 닫히지 않는다(지적). */
+const INLINE_ALLOW = ".scr-modal, .scr-photo-overlay, .scr-drawer, .scr-inapp-notice, .scr-model-zoom-pop";
 
 function isShieldedTarget(t: EventTarget | null): boolean {
   const el = t instanceof Element ? t : null;

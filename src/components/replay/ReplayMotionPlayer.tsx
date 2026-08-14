@@ -850,6 +850,30 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         out.push(bodyFace(`${tread} ${riser}`), topFace(tread, 0.22), ...face(riser));
       }
     }
+    /* 경사면 사이 메움(지적: 네 날개 사이가 뚫림) — 이웃 날개의 맞닿는 빗변끼리 능선
+       사각(안쪽 두 점이 거의 붙어 사실상 삼각)으로 잇고, 같은 경사 법선으로 판정한다. */
+    for (const ang of [0, 90, 180, 270]) {
+      const a0 = (ang * Math.PI) / 180;
+      const a1 = ((ang + 90) * Math.PI) / 180;
+      const edge = (a: number, side: 1 | -1): [number, number, number][] => {
+        const sx = Math.sin(a);
+        const sy = Math.cos(a);
+        const cxa = Math.cos(a);
+        const sya = -Math.sin(a);
+        return [
+          [sx * 2 + side * cxa * 2.4, sy * 2 + side * sya * 2.4, 2.6],
+          [sx * 5.6 + side * cxa * 3.3, sy * 5.6 + side * sya * 3.3, 0],
+        ];
+      };
+      const [inA, outA] = edge(a0, 1);
+      const [inB, outB] = edge(a1, -1);
+      const nx = (Math.sin(a0) + Math.sin(a1)) / Math.SQRT2;
+      const ny = (Math.cos(a0) + Math.cos(a1)) / Math.SQRT2;
+      const { visible, face } = faceLight(nx, ny, 3.6 / Math.hypot(2.6, 3.6));
+      if (!visible) continue;
+      const d = polyPath3([inA, outA, outB, inB]);
+      out.push(bodyFace(d), ...face(d));
+    }
     // 뚜껑은 납작하게(지적) — 낮은 돔과 그 높이에 맞춘 해치.
     out.push(...domeFaces3(0, 0, 3.6, 2.4, 1.6));
     out.push(topFace(discPath3(0, 0, 4.05, 1.7), 0.3));
@@ -977,21 +1001,26 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          비친다. */
       const outPts = leaf(phi, R + 0.32, 2.2, 1.05);
       const back = polyPath3(outPts);
-      const faces: ShapeFace[] = [bodyFace(back), sideFace(back, 0.28)];
+      /* 명암·순서는 현재 시점 기준(재재지적: 겉판·속판 순서 — 시청자 쪽 잎은 겉판이
+         가깝다) — 위 잎과 카메라를 마주 보는 옆 잎은 겉판을 나중에, 아래 잎과 등 돌린
+         옆 잎은 속판을 나중에 그린다. */
+      const fSide = facingRatio(Math.sin(phi), 0);
+      const outerNear = Math.cos(phi) > 0.5 ? true
+        : Math.cos(phi) < -0.5 ? false : fSide > 0;
+      const faces: ShapeFace[] = [bodyFace(outerNear ? d : back)];
+      if (!outerNear) faces.push(sideFace(back, 0.28)); // 두께 테 그늘 — 속판 뒤 테두리.
       /* 옆면 봉합(지적: 판 사이가 떠 보임) — 안판·바깥판의 대응 변 사이를 네모 띠로
          이어 두께의 옆구리를 채운다. 여섯 변 전부라 어느 각에서도 틈이 없다. */
       for (let i = 0; i < 6; i += 1) {
         const j = (i + 1) % 6;
         faces.push(bodyFace(polyPath3([inPts[i], inPts[j], outPts[j], outPts[i]])));
       }
-      faces.push(bodyFace(d));
-      /* 명암은 현재 시점 기준(재지적: 요잉 때 판이 뒤집혀 보임) — 위·아래 잎은 높이로,
-         옆 잎은 지금 카메라를 등졌는지(facingRatio)로 정해, 돌아도 명암이 따라온다. */
-      const fSide = facingRatio(Math.sin(phi), 0);
-      if (Math.cos(phi) > 0.5) faces.push(topFace(d, 0.18));
-      else if (Math.cos(phi) < -0.5) faces.push(sideFace(d, 0.24));
-      else if (fSide < -0.3) faces.push(sideFace(d, 0.26));
-      else if (fSide < 0.3) faces.push(sideFace(d, 0.12));
+      const top2 = outerNear ? back : d;
+      faces.push(bodyFace(top2));
+      if (Math.cos(phi) > 0.5) faces.push(topFace(top2, 0.18));
+      else if (Math.cos(phi) < -0.5) faces.push(sideFace(top2, 0.24));
+      else if (fSide < -0.3) faces.push(sideFace(top2, 0.26));
+      else if (fSide < 0.3) faces.push(sideFace(top2, 0.12));
       /* 잎 안쪽(배) 발광 — 배가 시점을 향할 때만(지적: 바깥판 위에 밝은 점이 얹혀
          보였다). 위 잎은 늘 바깥이 보이니 빼고, 아래 잎은 배가 위라 늘 켜고, 옆
          잎은 바깥이 등을 돌린 쪽만 켠다. */
@@ -1105,7 +1134,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   turret: () => [
     ...cylinderFaces3(0, 0.4, 3.1, 3.4),
     ...tubeFaces(-2.6, 2.2, -4.4, 3.4, 0.55, 1.2),
-    ...boxFaces3(0, 0, 3.6, 2.8, 3.6, 3.6),
+    /* 머리 상자도 얹힘(지적: 넓은 밑둥 판과 순서가 요잉 따라 어긋남) — 지붕 규칙로
+       밑둥(반지름 키 3.1)보다 큰 붙박이 키. 포드(40)·다리(41)보단 작게. */
+    ...tagKey(boxFaces3(0, 0, 3.6, 2.8, 3.6, 3.6), 39),
     /* 미사일 포드 — 약간 하늘을 향해 기운다(지적): 위가 뒤로 1.4 물러난 기운 판. */
     /* 미사일 포드(지적) — 옆모습이 마름모가 아니라 직사각형: 위만 미는 전단이 아니라
        상자를 통째로 뒤로 기울인다. 하늘을 향한 기울기는 그대로. */
@@ -2701,59 +2732,82 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     return [
       // 받침 슬래브는 중심 깊이만(지적: 애드온 바닥이 위 부품을 덮음).
     ...tagKey(boxFaces3(0, 0.2, 5.6, 4.4, 2.6), depthNow(0, 0.2)),
-      ...cylinderFaces3(0.3, -0.4, 0.5, 1.6, 2.6),
-      bodyFace(groundEllipse(dx3, dy3, 2, 1)),
-      topFace(groundEllipse(dx3, dy3, 1.5, 0.7), 0.2),
-      capFace(groundEllipse(dx3, dy3, 0.4, 0.22), 0.35),
-      ...hornFaces(0.3, -0.4, 5.2, 0.7, 0.3, 6.8, 0.2),
+      /* 지붕 부품은 붙박이 큰 키(지적: 받침 판·기둥·접시 앞뒤가 요잉 따라 어긋남) —
+         지붕 규칙: 받침 위 얹힘은 어떤 각에서도 받침 뒤로 못 가게 30대 키를 못 박는다. */
+      ...tagKey(cylinderFaces3(0.3, -0.4, 0.5, 1.6, 2.6), 30),
+      ...tagKey([
+        bodyFace(groundEllipse(dx3, dy3, 2, 1)),
+        topFace(groundEllipse(dx3, dy3, 1.5, 0.7), 0.2),
+        capFace(groundEllipse(dx3, dy3, 0.4, 0.22), 0.35),
+      ], 31),
+      ...tagKey(hornFaces(0.3, -0.4, 5.2, 0.7, 0.3, 6.8, 0.2), 32),
     ];
   },
   /* 핵 사일로(요청) — 받침 위 둥근 사일로 통과 돔 뚜껑, 해치 씸. */
   nsilo: () => [
     // 받침 슬래브는 중심 깊이만(지적: 애드온 바닥이 위 부품을 덮음).
     ...tagKey(boxFaces3(0, 0.2, 5.6, 4.4, 1.6), depthNow(0, 0.2)),
-    ...cylinderFaces3(0, 0, 2.3, 2.4, 1.6),
-    ...domeFaces3(0, 0, 2.3, 1.5, 4),
-    capFace(discPath3(0, 0, 4.05, 1.6), 0.22),
-    topFace(discPath3(0, 0, 5.1, 0.75), 0.3),
-    capFace(discPath3(0, 0, 5.13, 0.4), 0.35),
+    // 지붕 규칙(지적: 받침 판과 통·돔 순서) — 얹힘 부품은 붙박이 큰 키.
+    ...tagKey(cylinderFaces3(0, 0, 2.3, 2.4, 1.6), 30),
+    ...tagKey([
+      ...domeFaces3(0, 0, 2.3, 1.5, 4),
+      capFace(discPath3(0, 0, 4.05, 1.6), 0.22),
+      topFace(discPath3(0, 0, 5.1, 0.75), 0.3),
+      capFace(discPath3(0, 0, 5.13, 0.4), 0.35),
+    ], 31),
   ],
   /* 머신 샵(애드온, 요청: 부속건물 모델링) — 낮은 작업동 + 왼뒤 굴뚝 + 오른앞 부속함,
      앞면 셔터 문 씸. */
   mshop: () => [
     // 받침 슬래브는 중심 깊이만(지적: 애드온 바닥이 위 부품을 덮음).
     ...tagKey(boxFaces3(0, 0.2, 5.6, 4.4, 3), depthNow(0, 0.2)),
-    ...cylinderFaces3(-1.6, -1.2, 0.6, 2, 3),
-    capFace(discPath3(-1.6, -1.2, 5.05, 0.6), 0.4),
-    ...boxFaces3(1.6, 1.2, 2.2, 1.6, 1, 3),
+    // 셔터 문은 받침 앞면 데칼 — 받침 바로 뒤에 두어 같은 키를 물려받는다.
     capFace(polyPath3([[-0.9, 2.41, 0.3], [2.1, 2.41, 0.3], [2.1, 2.41, 2.2], [-0.9, 2.41, 2.2]]), 0.3),
+    // 지붕 규칙(지적: 판·굴뚝 순서) — 굴뚝·부속함은 붙박이 큰 키.
+    ...tagKey([
+      ...cylinderFaces3(-1.6, -1.2, 0.6, 2, 3),
+      capFace(discPath3(-1.6, -1.2, 5.05, 0.6), 0.4),
+    ], 30),
+    ...tagKey(boxFaces3(1.6, 1.2, 2.2, 1.6, 1, 3), 31),
   ],
   /* 컨트롤 타워(애드온, 요청) — 받침 위 높은 관제탑 + 꼭대기 유리 띠 + 안테나. */
   ctower: () => [
-    ...boxFaces3(0, 0.4, 4.6, 3.8, 2),
+    // 받침 슬래브는 중심 깊이만(지적: 받침 판과 탑 순서가 요잉 따라 어긋남).
+    ...tagKey(boxFaces3(0, 0.4, 4.6, 3.8, 2), depthNow(0, 0.4)),
     ...boxFaces3(0, 0, 3.4, 3, 4.6, 2),
     // 관제실 유리 띠 — 앞면 위쪽에 밝은 가로 띠.
     capFace(polyPath3([[-1.5, 1.51, 5.4], [1.5, 1.51, 5.4], [1.5, 1.51, 6.2], [-1.5, 1.51, 6.2]]), 0.45),
-    ...cylinderFaces3(0.9, -0.6, 0.18, 2.2, 6.6),
-    topFace(discPath3(0.9, -0.6, 8.8, 0.4), 0.4),
+    // 안테나는 탑 꼭대기 얹힘 — 지붕 규칙 붙박이 키.
+    ...tagKey([
+      ...cylinderFaces3(0.9, -0.6, 0.18, 2.2, 6.6),
+      topFace(discPath3(0.9, -0.6, 8.8, 0.4), 0.4),
+    ], 30),
   ],
   /* 코버트 옵스(애드온, 요청) — 어두운 지붕의 첩보동 + 감시 안테나 둘. */
   covert: () => [
     // 받침 슬래브는 중심 깊이만(지적: 애드온 바닥이 위 부품을 덮음).
     ...tagKey(boxFaces3(0, 0.2, 5.6, 4.4, 3), depthNow(0, 0.2)),
     topFace(polyPath3([[-2.4, 1.9, 3.05], [2.4, 1.9, 3.05], [2.4, -1.6, 3.05], [-2.4, -1.6, 3.05]]), 0.16),
-    ...cylinderFaces3(-1.5, -0.8, 0.24, 2.2, 3),
-    ...cylinderFaces3(1.7, 0.6, 0.24, 1.5, 3),
-    capFace(discPath3(-1.5, -0.8, 5.25, 0.5), 0.4),
-    capFace(discPath3(1.7, 0.6, 4.55, 0.4), 0.4),
+    // 지붕 규칙(지적) — 안테나 둘은 붙박이 큰 키, 제 끄트머리 원반을 달고.
+    ...tagKey([
+      ...cylinderFaces3(-1.5, -0.8, 0.24, 2.2, 3),
+      capFace(discPath3(-1.5, -0.8, 5.25, 0.5), 0.4),
+    ], 30),
+    ...tagKey([
+      ...cylinderFaces3(1.7, 0.6, 0.24, 1.5, 3),
+      capFace(discPath3(1.7, 0.6, 4.55, 0.4), 0.4),
+    ], 31),
   ],
   /* 피직스 랩(애드온, 요청) — 연구동 위 관측 돔 + 오른앞 배기 원통. */
   physlab: () => [
     // 받침 슬래브는 중심 깊이만(지적: 애드온 바닥이 위 부품을 덮음).
     ...tagKey(boxFaces3(0, 0.2, 5.6, 4.4, 2.4), depthNow(0, 0.2)),
-    ...domeFaces3(0, -0.2, 1.9, 1.6, 2.4),
-    capFace(discPath3(0, -0.2, 2.45, 1.9), 0.2),
-    ...cylinderFaces3(2, 1.4, 0.35, 1.2, 2.4),
+    // 지붕 규칙(지적) — 관측 돔·배기 원통은 붙박이 큰 키.
+    ...tagKey([
+      ...domeFaces3(0, -0.2, 1.9, 1.6, 2.4),
+      capFace(discPath3(0, -0.2, 2.45, 1.9), 0.2),
+    ], 30),
+    ...tagKey(cylinderFaces3(2, 1.4, 0.35, 1.2, 2.4), 31),
   ],
   /* ── 공사 표현 공용 셋(요청: 아이콘 대신 모델) ───────────────────────────── */
   /* 저그 고치 — 크립 위 통통한 번데기(재생 쪽 CSS가 바운스시킨다). */
@@ -2997,13 +3051,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   },
   /* 질럿 — 검 두 자루(요청). */
   zealot: () => [
-    // 다리(지적: 다리가 없어 헷갈림) — 로브 아래로 두 기둥.
-    ...cylinderFaces3(-0.55, 0, 0.45, 3.5, 0),
-    ...cylinderFaces3(0.55, 0, 0.45, 3.5, 0),
-    /* 구부정한 자세(요청) — 몸통을 두 마디로 나눠 윗마디를 앞으로 기울이고, 머리를
-       어깨보다 앞·낮게 내민다. 볏은 그대로 뒤로 흐른다. */
-    ...cylinderFaces3(0, -0.5, 1.4, 2, 3.4),
-    ...cylinderFaces3(0, 0, 1.25, 1.3, 5.3),
+    /* 다리에 무릎 관절(재요청: 살짝 굽힌 상태) — 넓적다리는 앞으로, 정강이는 도로
+       뒤로 내려서는 캡슐 막대 두 마디씩. */
+    ...rodFaces(-0.55, -0.3, 3.6, -0.62, 0.45, 1.9, 0.9),
+    ...rodFaces(-0.62, 0.45, 1.9, -0.58, -0.15, 0.2, 0.8),
+    ...rodFaces(0.55, -0.3, 3.6, 0.62, 0.45, 1.9, 0.9),
+    ...rodFaces(0.62, 0.45, 1.9, 0.58, -0.15, 0.2, 0.8),
+    /* 구부정한 자세(재요청: 두 마디로 쪼개지 말고 몸통 원통 하나가 기울게) — 앞으로
+       숙는 캡슐 막대 하나. 머리는 어깨보다 앞·낮게. */
+    ...rodFaces(0, -0.6, 3.3, 0, 0.35, 6.3, 2.7),
     ...domeFaces3(0, 0.35, 1.1, 0.85, 6.3),
     ...hornFaces(0, 0, 6.9, 0, -2.1, 7.75, 0.7),
     // 어깨 뽕 한 쌍(실물) — 숙인 머리보다 높아 굽은 등이 산다.
@@ -3029,13 +3085,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         [0.8, -1.6, 3.3], [0, -1.9, 2.4], [-0.8, -1.6, 3.3], [-2.7, -2.1, 2.2],
       ]), 0.18),
     ], depthNow(0, -1.5) + 0.6),
-    // 다리(지적) — 질럿과 같은 두 기둥.
-    ...cylinderFaces3(-0.55, 0, 0.45, 3.5, 0),
-    ...cylinderFaces3(0.55, 0, 0.45, 3.5, 0),
-    /* 구부정한 자세(요청) — 질럿과 같은 두 마디 몸통: 윗마디가 앞으로 기울고 머리가
-       앞·낮게 나온다. */
-    ...cylinderFaces3(0, -0.5, 1.4, 2, 3.4),
-    ...cylinderFaces3(0, 0, 1.25, 1.3, 5.3),
+    // 다리(재요청) — 질럿과 같은 무릎 굽힌 캡슐 막대 두 마디씩.
+    ...rodFaces(-0.55, -0.3, 3.6, -0.62, 0.45, 1.9, 0.9),
+    ...rodFaces(-0.62, 0.45, 1.9, -0.58, -0.15, 0.2, 0.8),
+    ...rodFaces(0.55, -0.3, 3.6, 0.62, 0.45, 1.9, 0.9),
+    ...rodFaces(0.62, 0.45, 1.9, 0.58, -0.15, 0.2, 0.8),
+    /* 구부정한 자세(재요청: 쪼개지 말고 원통 하나가 기울게) — 앞으로 숙는 캡슐 막대
+       하나. 머리는 어깨보다 앞·낮게. */
+    ...rodFaces(0, -0.6, 3.3, 0, 0.35, 6.3, 2.7),
     ...domeFaces3(0, 0.35, 1.1, 0.85, 6.3),
     ...hornFaces(0, 0, 6.9, 0, -2.1, 7.6, 0.7),
     // 등 볏 칼날 한 쌍(실물) — 굽은 등에서 뒤 위로 쓸려 올라간다.
