@@ -3981,6 +3981,8 @@ export const SHAPE_GALLERY: { kind: string; label: string; group: "유닛" | "�
 /** 유닛(지상 이동체) 모델 kind 집합 — 겹침 방지 이완의 대상 판별에 쓴다(도록의 유닛
  *  갈래 그대로). 건물·자원·크립은 여기 없어 안 밀린다. */
 const UNIT_KIND_SET = new Set(SHAPE_GALLERY.filter((g) => g.group === "유닛").map((g) => g.kind));
+/** 일꾼 모델 — 겹침 이완에서 제 일꾼끼리는 서로 안 밀어낸다(지적: 자원 곁 포개짐 허용). */
+const WORKER_KIND_SET = new Set(["scv", "probe", "drone"]);
 
 /** ShapeIcon의 면 목록 결정을 떼어 낸 것 — 캔버스 유닛 층(UnitLayer)이 같은 판(같은
  *  굽기 캐시)을 그대로 그리려면 SVG 밖에서도 이 결정을 불러야 한다. 결과가 같은 함수
@@ -4228,6 +4230,12 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
                 if (!bucket) continue;
                 for (const n of bucket) {
                   if (n <= m) continue;
+                  /* 제 일꾼끼리는 겹침 허용(지적) — 자원 곁에 몰린 일꾼은 실제로도
+                     포개져 일하니 서로 안 밀어낸다. 남의 일꾼·전투 유닛과는 민다. */
+                  const oa = sorted[mov[m]];
+                  const ob = sorted[mov[n]];
+                  if (WORKER_KIND_SET.has(oa.kind) && WORKER_KIND_SET.has(ob.kind)
+                    && oa.color === ob.color) continue;
                   let dx = px[n] - px[m];
                   let dy = py[n] - py[m];
                   let d = Math.hypot(dx, dy);
