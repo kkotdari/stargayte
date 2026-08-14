@@ -4136,6 +4136,8 @@ type UnitDrawOp = {
   /** 겹침 방지 이완에서 뺀다(지적: 채굴 일꾼이 해처리 밖으로 밀려 엉뚱한 데서 캠) —
    *  채굴 동선은 건물·자원과 겹치는 게 실제 모습이다. */
   noSep?: boolean;
+  /** 남은 체력 비율 0~1(요청: 스탯을 지닌 생애주기) — 다쳤을 때만 와서 바가 뜬다. */
+  hpFrac?: number;
 };
 /* 구운 판의 실제 바닥(재재지적: 드론·해처리가 떠 있고 그림자가 이상하다) — 상자
    바닥 기준 어림은 모델이 상자를 다 안 채우면(해처리 둔덕 등) 그림자가 발보다 한참
@@ -4503,6 +4505,22 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         // 발끝 접지(재재재지적) — 어림(0.28px)이 아니라 판의 실제 바닥 픽셀에.
         ctx.ellipse(sx, footY, px * 0.16, px * 0.05 * (op.pitch ? 0.6 : 1), 0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
+      }
+      /* 체력바(요청: 체력을 지니고 다니는 생애주기) — 다친 유닛 머리 위에 원작풍
+         바: 초록(>66%)·노랑(>33%)·빨강. 성한 유닛에는 안 띄워 화면을 아낀다. */
+      if (op.hpFrac !== undefined && op.hpFrac > 0) {
+        const bw2 = Math.max(6, px * 0.95);
+        const bh2 = Math.max(1.6, px * 0.09);
+        const bx2 = sx - bw2 / 2;
+        const by2 = sy - px * 0.24 - lift - px * 0.66;
+        ctx.save();
+        ctx.shadowColor = "transparent";
+        ctx.globalAlpha = op.alpha * 0.9;
+        ctx.fillStyle = "rgba(10, 14, 10, 0.75)";
+        ctx.fillRect(bx2 - 0.5, by2 - 0.5, bw2 + 1, bh2 + 1);
+        ctx.fillStyle = op.hpFrac > 0.66 ? "#39c04f" : op.hpFrac > 0.33 ? "#d9b13b" : "#d5473d";
+        ctx.fillRect(bx2, by2, bw2 * op.hpFrac, bh2);
         ctx.restore();
       }
       /* 스프라이트로 찍는다(수리: 프레임 뚝뚝) — 면 낱장 fill 대신 구운 판 한 장.
@@ -5381,6 +5399,8 @@ export default function ReplayMotionPlayer({
       sieges: [number, number][];
       /** 수리·힐 명령 초(지적: 일꾼 수리·매딕 힐) — 곁에서 일하는 효과의 창. */
       fixes: number[];
+      /** 체력 변곡점 [초, 퍼센트](요청: 스탯 생애주기) — 체력바의 재료. */
+      hp: [number, number][];
       walk: [number, number, number][];
     }[] = [];
     for (const e of entData.ents) {
@@ -5426,6 +5446,7 @@ export default function ReplayMotionPlayer({
         sieges: e.ev.filter((v) => v[3] === 8 || v[3] === 9)
           .map((v) => [v[0], v[3] === 8 ? 1 : 0] as [number, number]),
         fixes: e.ev.filter((v) => v[3] === 10).map((v) => v[0]),
+        hp: e.hp ?? [],
         // 정체를 알면 그 속도로, 모르면 부대 어림과 같은 규칙(그때의 우세 유닛·지상 길)로.
         walk: walkTrack(pts, p, false, e.k || undefined, undefined, e.k === ""),
       });
@@ -7326,11 +7347,18 @@ export default function ReplayMotionPlayer({
           const bodyHdg = fighting && foeDeg !== null
             ? foeDeg
             : headingOfDisplay(holdKey, pos.x, pos.y, headingOf(rp, rawPos));
+          // 지금 체력(요청: 체력을 지니고 다닌다) — 변곡점 목록에서 t 시점 값.
+          let hpPct = 100;
+          for (const [hs2, hv2] of e.hp) {
+            if (hs2 <= t) hpPct = hv2;
+            else break;
+          }
           unitOps.push({
             fx, fy,
             z: pitched ? 1000 + Math.round(ay3 * 80) : 1000 + (ei % 137),
             kind: burrowed ? "burrowhole"
               : isWorker ? workerKindOf(race) : unitMarkerKind(drawUnit2, race),
+            hpFrac: hpPct < 100 ? Math.max(0.04, hpPct / 100) : undefined,
             rotDeg: burrowed ? undefined : bodyHdg,
             viewYaw: viewYawOf(ax3, ay3), flat: !pitched, pitch: pitched,
             sizePx: drawUnit === "" || isWorker ? unitGlyphPx(0, ay3) : unitPxOf(drawUnit, ay3),

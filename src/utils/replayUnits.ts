@@ -71,6 +71,8 @@ export interface UnitEnt {
   dk: "tag" | "atk" | "morph" | "cxl" | "";
   /** 건물이면 1. */
   bld: 0 | 1;
+  /** 체력 변곡점 [초, 퍼센트 0~100](요청: 스탯을 지닌 생애주기) — 피격·회복·죽음. */
+  hp?: [number, number][];
   ev: UnitEv[];
 }
 export interface UnitTracksV2 {
@@ -130,6 +132,29 @@ const UNIT_FRAMES: Record<string, number> = {
   Zergling: 420, Hydralisk: 420, Overlord: 600, Mutalisk: 600, Scourge: 450,
   Queen: 750, Ultralisk: 900, Defiler: 750,
 };
+
+/** 유닛 기본 스탯(요청: 체력·방어력·공격력·기술을 지니고 이벤트를 겪는 생애주기) —
+ *  hp는 체력+실드 합, dps는 지상 상대 어림. 원작 수치의 근사값이다. */
+export const UNIT_STATS: Record<string, { hp: number; dps: number }> = {
+  SCV: { hp: 60, dps: 5 }, Probe: { hp: 40, dps: 4 }, Drone: { hp: 40, dps: 4 },
+  Marine: { hp: 40, dps: 6 }, Firebat: { hp: 50, dps: 12 }, Medic: { hp: 60, dps: 0 },
+  Ghost: { hp: 45, dps: 7 }, Vulture: { hp: 80, dps: 9 }, Goliath: { hp: 125, dps: 9 },
+  "Siege Tank": { hp: 150, dps: 14 }, "Siege Tank (Tank Mode)": { hp: 150, dps: 14 },
+  "Siege Tank (Siege Mode)": { hp: 150, dps: 24 },
+  Wraith: { hp: 120, dps: 6 }, Dropship: { hp: 150, dps: 0 }, "Science Vessel": { hp: 200, dps: 0 },
+  Battlecruiser: { hp: 500, dps: 17 }, Valkyrie: { hp: 200, dps: 8 },
+  Zealot: { hp: 160, dps: 13 }, Dragoon: { hp: 180, dps: 10 }, "High Templar": { hp: 80, dps: 3 },
+  "Dark Templar": { hp: 120, dps: 22 }, Archon: { hp: 360, dps: 20 }, "Dark Archon": { hp: 225, dps: 0 },
+  Shuttle: { hp: 140, dps: 0 }, Reaver: { hp: 180, dps: 26 }, Observer: { hp: 60, dps: 0 },
+  Scout: { hp: 250, dps: 8 }, Carrier: { hp: 450, dps: 22 }, Arbiter: { hp: 350, dps: 7 },
+  Corsair: { hp: 180, dps: 6 },
+  Zergling: { hp: 35, dps: 5 }, Hydralisk: { hp: 80, dps: 8 }, Lurker: { hp: 125, dps: 14 },
+  Mutalisk: { hp: 120, dps: 7 }, Scourge: { hp: 25, dps: 0 }, Queen: { hp: 120, dps: 0 },
+  Ultralisk: { hp: 400, dps: 18 }, Defiler: { hp: 80, dps: 0 }, Overlord: { hp: 200, dps: 0 },
+  "Sunken Colony": { hp: 300, dps: 13 }, "Photon Cannon": { hp: 200, dps: 11 },
+  Bunker: { hp: 350, dps: 14 }, "Missile Turret": { hp: 200, dps: 0 },
+};
+const DEFAULT_UNIT_STATS = { hp: 70, dps: 6 };
 
 /** 건물에서 건물로 변태 — 무엇이 되는지로 이전 정체를 안다. */
 const BUILDING_MORPH_FROM: Record<string, string> = {
@@ -959,13 +984,84 @@ export function buildUnitTracks(
      죽은 것으로 본다 — 마지막 자리 곁(6타일)에 적의 공격 명령이 셋 이상, 5초 넘게
      이어졌을 때만이다(찌르기 한 번에 온 부대를 죽이지 않게). 죽는 시각은 전투 시작
      에서 태그 해시만큼(0~8초) 흩어 우수수 쓰러지게 한다. */
-  const atkEvts: { sec: number; x: number; y: number; owner: number }[] = [];
+  /* 정체 다수결(사전) — 체력 원장과 공격 화력 계산에 쓰인다. */
+  const majorityKindOf = (life: Life): string => {
+    let best = "";
+    let bn = 0;
+    for (const [k, n] of life.kinds) { if (n > bn) { best = k; bn = n; } }
+    return best;
+  };
+  const atkEvts: { sec: number; x: number; y: number; owner: number; dps: number }[] = [];
+  /* 표적 힐·수리(f=10) — 태그별 [초] 목록. 체력 원장의 회복 이벤트. */
+  const healsAt = new Map<number, number[]>();
   for (const life of done) {
+    const mk = majorityKindOf(life);
+    const dps = (UNIT_STATS[mk] ?? DEFAULT_UNIT_STATS).dps;
     for (const v of life.ev) {
-      if (v[3] === 7) atkEvts.push({ sec: v[0], x: v[1], y: v[2], owner: life.owner });
+      if (v[3] === 7) atkEvts.push({ sec: v[0], x: v[1], y: v[2], owner: life.owner, dps: Math.max(3, dps) });
+      if (v[3] === 10 && (v[4] ?? 0) > 0) {
+        const arr = healsAt.get(v[4] as number) ?? [];
+        arr.push(v[0]);
+        healsAt.set(v[4] as number, arr);
+      }
     }
   }
   atkEvts.sort((a, b) => a.sec - b.sec);
+  /* ── 체력 원장(요청: 체력·공격력을 지니고 이벤트를 겪는 생애주기) — 유닛이 제
+        최대 체력으로 태어나, 곁에 떨어진 적 공격 명령의 화력만큼 깎이고 힐·수리로
+        회복한다. 0에 닿았을 때 그 뒤 증거가 있으면 '살아남은 것'(뒤 스토리 — 체력
+        바닥에서 회복 시작), 없으면 그때 죽은 것이다. 결과는 hp 퍼센트 변곡점 목록. */
+  const posAtSec = (life: Life, sec: number): [number, number] | null => {
+    let best: [number, number] | null = null;
+    let bd = Infinity;
+    for (const v of life.ev) {
+      if (v[1] < 0) continue;
+      const d = Math.abs(v[0] - sec);
+      if (d < bd) { bd = d; best = [v[1], v[2]]; }
+    }
+    return bd <= 45 ? best : null;
+  };
+  const hpSimOf = (life: Life): { trace: [number, number][]; death: number | null } => {
+    const mk = majorityKindOf(life);
+    const max = (UNIT_STATS[mk] ?? DEFAULT_UNIT_STATS).hp;
+    const lastEvSec = life.ev.length > 0 ? life.ev[life.ev.length - 1][0] : life.last;
+    const heals = healsAt.get(life.tag) ?? [];
+    let cur = max;
+    let hi = 0;
+    const trace: [number, number][] = [];
+    const pct = (): number => Math.max(0, Math.round((cur / max) * 20) * 5);
+    let lastPct = 100;
+    for (const a of atkEvts) {
+      if (a.sec < life.born) continue;
+      if (a.sec > lastEvSec + 240) break;
+      if (!isFoeOf(a.owner, life.owner)) continue;
+      const pos = posAtSec(life, a.sec);
+      if (!pos || Math.hypot(a.x - pos[0], a.y - pos[1]) > 7) continue;
+      // 회복이 먼저 왔으면 반영 — 메딕 힐·SCV 수리 한 번에 4할.
+      while (hi < heals.length && heals[hi] <= a.sec) {
+        cur = Math.min(max, cur + max * 0.4);
+        const p2 = pct();
+        if (p2 !== lastPct) { trace.push([Math.round(heals[hi]), p2]); lastPct = p2; }
+        hi += 1;
+      }
+      // 공격 명령 하나 = 그 유닛이 1.4초쯤 이 자리를 두들긴 것으로 친다.
+      cur -= Math.min(80, a.dps * 1.4);
+      if (cur <= 0) {
+        const survived = life.ev.some((v) => v[1] >= 0 && v[0] > a.sec + 2);
+        if (survived) {
+          // 뒤 스토리 — 그 뒤에도 움직였으니 죽지 않았다: 체력 바닥에서 다시 시작.
+          cur = max * 0.08;
+          if (lastPct !== 10) { trace.push([Math.round(a.sec), 10]); lastPct = 10; }
+          continue;
+        }
+        trace.push([Math.round(a.sec), 0]);
+        return { trace, death: a.sec + 1 + (Math.abs(life.tag) % 4) };
+      }
+      const p3 = pct();
+      if (p3 !== lastPct) { trace.push([Math.round(a.sec), p3]); lastPct = p3; }
+    }
+    return { trace, death: null };
+  };
   /* 편 가르기(팀 정보) — 같은 팀의 공격 명령·방어건물은 위협이 아니다(위 sameSide). */
   const isFoeOf = (a: number, b: number): boolean => !sameSide(a, b);
   /* 방어건물 자리 — 수비측이 명령 한 번 없이 성큰·캐논·벙커로 막아낸 싸움에서도
@@ -1040,7 +1136,16 @@ export function buildUnitTracks(
         d = Math.max(life.last, Math.min(next.born, life.last + 120));
         dk = "tag";
       }
+      /* 체력 원장(요청) — 유닛은 스탯을 지니고 이벤트를 겪는다: 피격에 깎이고
+         힐·수리에 차오르며, 0에 닿고 뒤 증거가 없으면 그 자리에서 죽는다. */
+      let hpTrace: [number, number][] | undefined;
+      if (!life.bld) {
+        const sim = hpSimOf(life);
+        if (sim.trace.length > 0) hpTrace = sim.trace;
+        if (d === null && sim.death !== null) { d = sim.death; dk = "atk"; }
+      }
       if (d === null && !life.bld) {
+        // 체력 원장이 못 잡는 죽음(방어건물 화력은 공격 '명령'이 아니다) — 기존 보정.
         const bd2 = battleDeathOf(life);
         if (bd2 !== null) { d = bd2; dk = "atk"; }
       }
@@ -1049,6 +1154,7 @@ export function buildUnitTracks(
       ents.push({
         t: life.tag, o: life.owner, k: settleKind(life, race), b: Math.round(life.born),
         d: d === null ? null : Math.round(d), dk, bld: life.bld ? 1 : 0, ev: life.ev,
+        ...(hpTrace ? { hp: hpTrace } : {}),
       });
     }
   }
