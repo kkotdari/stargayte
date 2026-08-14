@@ -7104,8 +7104,10 @@ export default function ReplayMotionPlayer({
             const toHall = u < leg ? 1 : u < leg + MINE_DWELL ? 0 : u < 2 * leg + MINE_DWELL ? -1 : 0;
             const hdg = toHall !== 0
               ? Math.atan2(-((owner!.x - res[0]) * toHall), (owner!.y - res[1]) * toHall) * (180 / Math.PI) : 0;
+            // 잔걸음(요청: 걷는 중 위아래 살짝) — 왕복 구간에서만, 캐는 동안은 잠잠.
+            const bobY = toHall !== 0 ? Math.sin(t * 9 + i * 1.7 + ri) * 0.14 : 0;
             // (캔버스 전환) — 채굴 일꾼도 unitOps로. 종족 일꾼 상징물이 오간다.
-            const [fx, fy] = posFrac(x, y);
+            const [fx, fy] = posFrac(x, y + bobY);
             unitOps.push({
               fx, fy,
               z: pitched ? 1000 + Math.round(y * 80) : 900,
@@ -7427,7 +7429,9 @@ export default function ReplayMotionPlayer({
             // (캔버스 전환) 자리·차례 계산은 그대로, 그리기만 unitOps로 간다.
             if (g.unit === "Transport" || g.unit === "Worker") {
               const [ax3, ay3] = dodge(pos.x, pos.y);
-              const [fx, fy] = posFrac(ax3, ay3);
+              // 잔걸음(요청) — 걷는 동안만 위아래 살짝.
+              const bobY = pos.moving ? Math.sin(t * 9 + gi * 2.3) * 0.14 : 0;
+              const [fx, fy] = posFrac(ax3, ay3 + bobY);
               unitOps.push({
                 fx, fy,
                 z: pitched ? 1000 + Math.round(ay3 * 80)
@@ -7510,7 +7514,10 @@ export default function ReplayMotionPlayer({
               const uAir = isAirUnit(u);
               const [sx0, sy0] = uAir ? [pos.x + dx, pos.y + dy] : groundedSpot(pos.x, pos.y, dx, dy);
               const [ax3, ay3] = dodge(sx0, sy0);
-              const [fx, fy] = posFrac(ax3, ay3);
+              /* 잔걸음(요청: 공격하거나 걷는 중에 위아래로 살짝) — 낱개마다 위상을
+                 어긋낸 사인 0.16타일. 멈춰서 안 싸우면 잠잠하다. */
+              const bobY = pos.moving || fighting ? Math.sin(t * 9 + di * 1.7) * 0.16 : 0;
+              const [fx, fy] = posFrac(ax3, ay3 + bobY);
               /* 죽음 연출(요청) — 정리 창(3초) 동안 해시 차례로 쓰러진다: 제 차례가
                  지나면 사라지고, 쓰러지는 짧은 순간엔 종족/타입별 효과가 남는다. */
               if (dying > 0) {
@@ -7757,7 +7764,9 @@ export default function ReplayMotionPlayer({
               const uAir = u !== "?" && isAirUnit(u);
               const [sx0, sy0] = uAir ? [pos.x + dx, pos.y + dy] : groundedSpot(pos.x, pos.y, dx, dy);
               const [ax3, ay3] = dodge(sx0, sy0);
-              const [fx, fy] = posFrac(ax3, ay3);
+              // 잔걸음(요청) — 위 typeNodes 낱개와 같은 규칙.
+              const bobY = pos.moving || fighting ? Math.sin(t * 9 + di * 1.7 + si) * 0.16 : 0;
+              const [fx, fy] = posFrac(ax3, ay3 + bobY);
               unitOps.push({
                 fx, fy,
                 z: pitched ? 1000 + Math.round(ay3 * 80)
@@ -7882,7 +7891,9 @@ export default function ReplayMotionPlayer({
             const hdg = headingOf(rp, pos, `${p.raw}-x${si}`);
             // (캔버스 전환) — 정찰 점·수송선 도형도 unitOps로 간다. 계산은 그대로다.
             const [ax3, ay3] = dodge(pos.x, pos.y);
-            const [fx, fy] = posFrac(ax3, ay3);
+            // 잔걸음(요청) — 걷는 동안만 위아래 살짝.
+            const bobY = pos.moving ? Math.sin(t * 9 + si * 2.3) * 0.14 : 0;
+            const [fx, fy] = posFrac(ax3, ay3 + bobY);
             const isOvie = race === "저그" && g.kind !== "worker";
             /* 낱개(lone) 자취의 종족 기본 모델은 첫 전투 유닛 완성 뒤에만(지적: 게이트도
                없는데 일꾼이 질럿으로) — 그 전의 낱개 자취는 일꾼일 수밖에 없어 일꾼
