@@ -13175,6 +13175,33 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-model-thumb .scr-motion-shape-svg { width: 100%; height: 100%; }
 .scr-model-label { font-size: var(--fs-micro); color: var(--muted); }
 
+/* ── 클릭 자국(요청: 동그라미 안에 점, 납작하게 + 토글) — 브루드워 이동 클릭 표시처럼
+   납작한(가로:세로 2:1) 고리가 살짝 오므라들며 사라지고, 가운데 점은 그대로 있다.
+   색은 찍은 사람 색(currentColor). 표시 창(0.9초)은 재생 쪽이 자른다. ── */
+.scr-motion-clickfx { position: absolute; width: 0; height: 0; pointer-events: none; }
+.scr-motion-clickfx::before {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: 18px; height: 9px; margin: -4.5px 0 0 -9px;
+  border: 1.5px solid currentColor; border-radius: 50%;
+  animation: scr-clickfx 0.9s ease-out forwards;
+}
+.scr-motion-clickfx::after {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px;
+  border-radius: 50%; background: currentColor;
+  animation: scr-clickdot 0.9s ease-out forwards;
+}
+@keyframes scr-clickfx {
+  0% { transform: scale(1.15); opacity: 0.95; }
+  70% { transform: scale(0.75); opacity: 0.8; }
+  100% { transform: scale(0.6); opacity: 0; }
+}
+@keyframes scr-clickdot {
+  0% { opacity: 1; }
+  80% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+
 /* ── 미니맵 핑(요청: 클릭도 기록 — v2 트랙) — 찍은 사람 색(currentColor)의 물결 고리가
    1초 주기로 퍼진다. 표시 창(3초)은 재생 쪽이 자르고 여기는 반복만 한다. ── */
 .scr-motion-pingfx { position: absolute; width: 0; height: 0; pointer-events: none; }

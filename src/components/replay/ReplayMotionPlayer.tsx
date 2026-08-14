@@ -4723,6 +4723,8 @@ export default function ReplayMotionPlayer({
   const [entMode, setEntMode] = useState(false);
   const [entData, setEntData] = useState<UnitTracksV2 | null>(null);
   const [entLoad, setEntLoad] = useState<"idle" | "loading" | "none">("idle");
+  /* 클릭 자국 토글(요청) — 기본은 끔: 클릭이 많은 경기에서는 자국이 화면을 덮는다. */
+  const [clickFx, setClickFx] = useState(false);
   const toggleEnt = async (): Promise<void> => {
     if (entMode) { setEntMode(false); return; }
     if (entData) { setEntMode(true); return; }
@@ -4779,6 +4781,29 @@ export default function ReplayMotionPlayer({
   const entOn = entMode && entData !== null;
   const buildsSrc = entOn ? buildsV2 : motion.builds;
   const castsSrc = entOn ? castsV2 : motion.casts;
+  /* 클릭 자국(요청: 클릭만 해보자 — 동그라미 안에 점, 납작하게) — 개체 증거 스트림의
+     이동 명령 목적지(f=0)가 곧 그 사람의 클릭이다. 같은 클릭이 골라진 유닛 수만큼
+     중복돼 있으니(12기 선택 우클릭 = 12개체에 같은 점) 사람·초·자리로 합친다.
+     별도 저장이 필요 없어 이미 재분석된 경기에서도 바로 나온다. */
+  const entClicks = useMemo<[number, number, number, string][]>(() => {
+    if (!entData) return [];
+    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    const seen = new Set<string>();
+    const out: [number, number, number, string][] = [];
+    for (const e of entData.ents) {
+      if (e.t < 0) continue;
+      const raw = nameOfId.get(e.o) ?? "";
+      if (!raw) continue;
+      for (const v of e.ev) {
+        if (v[3] !== 0) continue;
+        const key = `${e.o}:${v[0]}:${v[1]}:${v[2]}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push([v[0], v[1], v[2], raw]);
+      }
+    }
+    return out.sort((a, b) => a[0] - b[0]);
+  }, [entData]);
   /* 밝은 톤(지적: 음영에 비해 팀색이 어두워 안 보인다)이되 너무 파스텔은 말고(지적) —
      쨍한 하늘·장미색의 중간 지점. */
   const TEAM_EDGE: Record<1 | 2, string> = { 1: "#5ea2ff", 2: "#ff7d95" };
@@ -8465,6 +8490,20 @@ export default function ReplayMotionPlayer({
         {/* 마법 — 떨어진 자리에 이름이 잠깐 떠오른다. 핵만은 이름에 폭발 파문까지
             얹는다(요청: "핵 떨어지는거도 효과") — 경기 하나에 몇 번 없는, 그 판의 가장
             큰 사건이라 다른 마법과 같은 글자 한 줄로는 안 보였다. */}
+        {/* 클릭 자국(요청: 동그라미 안에 점, 납작하게 + 토글) — 브루드워의 이동 클릭
+            표시처럼, 명령이 떨어진 자리에 찍은 사람 색의 납작한 고리+가운데 점이 잠깐
+            남는다. v2 데이터로 그리므로 v2 모드 + 클릭 토글이 켜져 있을 때만이다. */}
+        {entOn && clickFx && entClicks.map(([cs, cx2, cy2, raw], i) => {
+          if (t < cs || t - cs > 0.9) return null;
+          return (
+            <span
+              key={`clk-${i}`}
+              className="scr-motion-clickfx"
+              style={{ ...posStyle(cx2, cy2), color: modeColor(raw, teamOfRaw(raw)), zIndex: 1490 }}
+            />
+          );
+        })}
+
         {/* 미니맵 핑(요청: 클릭도 기록 — 리플레이에 좌표가 온전히 남는다) — v2 트랙에만
             있다. 찍은 사람 색의 물결 고리가 3초 동안 퍼진다. 카메라 시야는 리플레이에
             저장되지 않아 못 그린다(엔진 재시뮬레이션의 몫). */}
@@ -8761,6 +8800,16 @@ export default function ReplayMotionPlayer({
               {entLoad === "loading" ? "…" : entLoad === "none" ? "v2 없음" : "v2"}
             </button>
           </span>
+        )}
+        {/* 클릭 자국 토글(요청) — v2 데이터로 그리므로 v2가 켜져 있을 때만 선다. */}
+        {entOn && (
+          <button
+            type="button"
+            className={cx("scr-motion-btn", "scr-motion-rbtn", clickFx && "scr-motion-speed-on")}
+            onClick={() => setClickFx((v) => !v)}
+          >
+            클릭
+          </button>
         )}
         {/* 맵연결(요청) — 저장된 미니맵 목록에서 골라 이 경기의 맵에 연결한다. */}
         <button
