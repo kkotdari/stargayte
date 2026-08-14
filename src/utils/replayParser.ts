@@ -11,7 +11,7 @@ import {
   normalizeUpgradeName, CAST_ORDER_TO_TECH, USE_CMD_TO_TECH, PLACE_MINE_ORDER,
   CAST_ORDER_TO_UNIT, USE_CMD_TO_UNIT,
 } from "./replayTechNames";
-import { buildUnitTracks } from "./replayUnits";
+import { buildUnitTracks, serializeUnitTracks } from "./replayUnits";
 import type { Race, GameType } from "../types";
 
 const RACE_NAME_MAP: Record<string, Race> = {
@@ -1435,7 +1435,8 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
           startX: startTileOf(p.SlotID)?.x ?? null,
           startY: startTileOf(p.SlotID)?.y ?? null,
         }));
-      return JSON.stringify(buildUnitTracks(cmds, trackPlayers));
+      // 서버 상한(200만 자)을 넘는 긴 경기는 이동 증거를 솎아 들여보낸다(모듈 주석).
+      return serializeUnitTracks(buildUnitTracks(cmds, trackPlayers));
     } catch {
       return null;
     }

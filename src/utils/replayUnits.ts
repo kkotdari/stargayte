@@ -631,3 +631,30 @@ export function buildUnitTracks(
     stats: { cmds: totalOrders, attributed, anchors, lives, tags: byTag.size },
   };
 }
+
+/* ── 크기 지킴 직렬화 — 서버 저장 상한은 200만 자다(schemas.UnitTracksWrite). 아주 긴
+      경기(빠른무한 팀전)는 증거 스트림이 그 위로 갈 수 있고, 그때 그냥 올리면 서버가
+      422로 거절해 트랙이 조용히 빈다(지적: 재분석했는데 안 들어옴 — 실패가 안 보이는
+      게 더 큰 문제였다). 넘치면 개체별 이동 증거(f=0)를 촘촘한 것부터 솎아 상한 안으로
+      들여보낸다 — 앵커(1)·건설(2)·정지(3)·랠리(4)·이착륙(5·6)은 안 건드린다: 수가 적고
+      생애·건물 판정의 근거다. ─────────────────────────────────────────────── */
+const SERIALIZE_CAP = 1_900_000;
+export function serializeUnitTracks(tracks: UnitTracksV2): string {
+  let json = JSON.stringify(tracks);
+  for (let round = 0; round < 4 && json.length > SERIALIZE_CAP; round += 1) {
+    // 이동 증거가 많은 개체부터, 한 회마다 절반으로 솎는다(둘에 하나 — 시작·끝은 남긴다).
+    const THIN_OVER = 24 >> round;
+    for (const e of tracks.ents) {
+      const moves = e.ev.filter((v) => v[3] === 0).length;
+      if (moves <= THIN_OVER) continue;
+      let nth = 0;
+      e.ev = e.ev.filter((v, i) => {
+        if (v[3] !== 0 || i === 0 || i === e.ev.length - 1) return true;
+        nth += 1;
+        return nth % 2 === 0;
+      });
+    }
+    json = JSON.stringify(tracks);
+  }
+  return json;
+}
