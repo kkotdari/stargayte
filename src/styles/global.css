@@ -11477,10 +11477,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 }
 .scr-motion-big .scr-motion-maprow { display: contents; }
 .scr-motion-big .scr-motion-map { grid-column: 3; grid-row: 1 / 5; }
-/* 보기 버튼 줄과 탐색바가 같은 칸에 겹쳤다(지적: 버튼이 재생바 위에 얹힘) — 행을
-   나눠 5행 버튼 줄, 6행 탐색바로 가른다. */
-.scr-motion-big .scr-motion-viewrow { grid-column: 3; grid-row: 5; }
-.scr-motion-big .scr-motion-bar:not(.scr-motion-bar-controls):not(.scr-motion-viewrow) { grid-column: 3; grid-row: 6; }
+/* 탐색바는 제자리(맵 바로 아래, 재재지적) — 보기 버튼 여섯은 왼쪽 기둥의 배속/재생
+   줄 '위'로 옮긴다: 4행(늘어나는 줄) 바닥에 버튼, 5행에 조종부, 6행에 등록자. */
+.scr-motion-big .scr-motion-bar:not(.scr-motion-bar-controls):not(.scr-motion-viewrow) { grid-column: 3; grid-row: 5; }
+.scr-motion-big .scr-motion-viewrow {
+  grid-column: 1 / 3; grid-row: 4; align-self: end;
+  justify-content: flex-start;
+}
 /* 왼쪽 — 같은 팀은 세로로(지적), 두 팀 기둥이 나란히 서고 줄(행)이 서로 맞는다.
    조작부는 로스터 바로 밑이 아니라 기둥의 아래쪽에 붙는다(요청) — 늘어나는 줄(1fr)을
    차지하고 스스로 바닥 정렬한다. */
@@ -11506,11 +11509,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   margin-top: 4px;
 }
 .scr-motion-registrant {
-  grid-column: 1 / 3; grid-row: 5; align-self: center;
+  grid-column: 1 / 3; grid-row: 6; align-self: center;
   display: inline-flex; align-items: center; gap: 6px;
   font-size: var(--fs-caption); color: var(--muted);
 }
-.scr-motion-big .scr-motion-bar-controls { grid-column: 1 / 3; grid-row: 4; align-self: end; }
+.scr-motion-big .scr-motion-bar-controls { grid-column: 1 / 3; grid-row: 5; align-self: end; }
 .scr-motion-big .scr-motion-toolrow { display: contents; }
 .scr-motion-big .scr-motion-toolrow-mid { display: none; }
 /* 케밥·닫기(요청: PC 기본이 확대인 만큼) — 모달 오른쪽 위 구석에 나란히 떠 있다. */
