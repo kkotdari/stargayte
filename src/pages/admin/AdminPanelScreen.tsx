@@ -168,6 +168,9 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
               mapName: r.mapName, gameStartedAt: r.gameStartedAt,
               durationSeconds: r.durationSeconds, slots: r.slots,
             });
+            // 개체 트랙 v2 — 재분석이 옛 경기에도 별도 테이블을 채워 준다(요청: 재분석
+            // 한 번으로). 실패해도 재분석 본체는 성공으로 친다 — 트랙만 비는 것이다.
+            if (r.unitTracks) await api.putGameUnitTracks(id, r.unitTracks).catch(() => {});
           } else {
             // 일꾼을 못 쓰는 환경(옛 브라우저 등)에서는 예전처럼 화면 쪽에서 읽는다.
             const parsed = await parseReplayFile(new File([blob], `${id}.rep`));
@@ -183,6 +186,7 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
                 buildCount: p.buildCount, buildMix: p.buildMix,
               })),
             });
+            if (parsed.unitTracks) await api.putGameUnitTracks(id, parsed.unitTracks).catch(() => {});
           }
         } catch {
           failed += 1;
