@@ -5702,6 +5702,10 @@ export default function ReplayMotionPlayer({
     dragRef.current = { id: e.pointerId, sx: e.clientX, sy: e.clientY, px: pan.x, py: pan.y };
   };
   const onMapPointerMove = (e: React.PointerEvent) => {
+    /* 핀치 중엔 드래그 팬 봉인(지적: 확대축소 때 전혀 다른 곳이 깜빡) — 두 손가락이
+       닿아 있는 동안엔 각 손가락의 pointermove가 저마다 팬으로 처리돼, 핀치가 계산한
+       pan과 엉뚱한 pan이 번갈아 이기며 화면이 다른 자리로 튀었다. */
+    if (gestureRef.current) { dragRef.current = null; return; }
     const d = dragRef.current;
     if (!d || d.id !== e.pointerId) return;
     const el = mapRef.current;
