@@ -13344,6 +13344,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   position: absolute; left: 62%; top: 28%; width: 6px; height: 6px;
   pointer-events: none; transform: translate(-50%, -50%); mix-blend-mode: screen;
 }
+/* 방어 건물 사격 축(재지적: 터렛·벙커도 쏜다) — 건물 가운데 0×0 축, 안의 트레이서가
+   적 방향으로 뻗는다. */
+.scr-motion-deffire { position: absolute; width: 0; height: 0; pointer-events: none; }
 /* 총구 래퍼(지적: 공격 효과는 총구 앞에 작게) — 유닛 가운데 0×0 축을 적 방향으로
    돌려, 안의 섬광이 그 방향 앞(아래 = 회전 후 적 쪽)에서 인다. */
 .scr-motion-muzzle {

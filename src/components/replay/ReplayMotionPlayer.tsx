@@ -6705,6 +6705,39 @@ export default function ReplayMotionPlayer({
                 fitWidth: true,
                 color, alpha, noShadow: true,
               });
+              /* 방어 사격(재지적: 터렛은 골리앗 대공과 동일, 벙커는 안에 든 것 따라) —
+                 사거리 안 적 마커가 있으면 건물에서도 트레이서가 나간다. 터렛은 공중
+                 상대만 미사일(8타일), 벙커는 총알(6타일)에 임자가 파벳을 뽑아 뒀고 적이
+                 코앞(3.5타일)이면 화염을 섞는다 — 안에 누가 들었는지는 리플레이에 안
+                 남아, 그 시점 보유 병종으로 어림한다. */
+              if ((unit === "Missile Turret" || unit === "Bunker")
+                && !raising && (goneEff === 0 || t < goneEff)) {
+                const teamB = teamOfRaw(raw);
+                const foeB = nearestFoe(teamB, centerX, centerY);
+                const degB = Math.atan2(-(foeB.bx - centerX), foeB.by - centerY) * (180 / Math.PI);
+                const fire: React.ReactNode[] = [];
+                if (unit === "Missile Turret" && foeB.air && foeB.bd <= 8) {
+                  fire.push(<span key="t" className="scr-motion-tracer scr-tracer-missile" style={{ transform: `rotate(${degB.toFixed(1)}deg)` }} />);
+                }
+                if (unit === "Bunker" && !foeB.air && foeB.bd <= 6) {
+                  fire.push(<span key="g" className="scr-motion-tracer" style={{ transform: `rotate(${degB.toFixed(1)}deg)` }} />);
+                  const hasBat = (unitDoneByRaw.get(raw) ?? []).some(([u2, ds]) =>
+                    u2 === "Firebat" && ds.length > 0 && ds[0] <= t);
+                  if (hasBat && foeB.bd <= 3.5) {
+                    fire.push(<span key="f" className="scr-motion-tracer scr-tracer-flame" style={{ transform: `rotate(${degB.toFixed(1)}deg)`, animationDelay: "0.2s" }} />);
+                  }
+                }
+                if (fire.length > 0) {
+                  return (
+                    <span
+                      key={`dfx-${i}`} className="scr-motion-deffire"
+                      style={{ ...posStyle(centerX, centerY), zIndex: z + 2 }}
+                    >
+                      {fire}
+                    </span>
+                  );
+                }
+              }
               return null;
             }
             // 전용 도형이 없는 건물 — 발자국 80% 네모(.scr-motion-sq와 같은 채움·0.82).
