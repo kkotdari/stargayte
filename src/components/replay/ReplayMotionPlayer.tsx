@@ -5573,6 +5573,10 @@ export default function ReplayMotionPlayer({
     .map(([sec, x, y, unit, raw, gone]) => ({
       sec, x: x + footDx(unit), y: y + footDy(unit), raw, gone: gone ?? 0,
     })), [motion]);
+  /* 가스 깃발이 정확한 판인가(지적: 미네랄과 가스를 헷갈림) — 간헐천 낱개화 이후의
+     격자는 깃발(res[2])이 정확해서, '가스 건물 곁 6타일' 폴백을 쓰면 정제소 곁 미네랄
+     밭까지 간헐천으로 그려 버린다. 폴백은 깃발이 하나도 없는 옛 격자에서만 쓴다. */
+  const gridHasGasFlags = (grid.resources ?? []).some((r) => r[2] === 1);
   /* 스파이더 마인(요청) — 심은 자리(캐스트 좌표)에 마인 모델을 깔고, 심고 4초 뒤부터
      적 자취가 2타일 안에 들어온 첫 순간 터진 것으로 본다(리플레이에 폭발이 안 남는
      어림 — 갑자기 죽는 이유가 보이게). 디텍팅 제거는 알 수 없어 안 터진 마인은 남는다. */
@@ -6218,7 +6222,8 @@ export default function ReplayMotionPlayer({
             아래 층에 깔린다. */}
         {(grid.resources ?? []).map((res, ri) => {
           const gasSpot = res[2] === 1
-            || gasBuildings.some((g) => Math.hypot(g.x - res[0], g.y - res[1]) <= 6);
+            || (!gridHasGasFlags
+              && gasBuildings.some((g) => Math.hypot(g.x - res[0], g.y - res[1]) <= 6));
           const mkK = pitchK(res[1]);
           const [fx, fy] = posFrac(res[0], res[1]);
           /* 간헐천은 두 칸 폭(지적: 한 칸처럼 작았다) — 미네랄 밭(3.2)의 두 배로.
@@ -6308,7 +6313,8 @@ export default function ReplayMotionPlayer({
              가스 깃발(res[2])이 아예 없을 수 있다. 이 판에서 누군가 가스 건물을 지은
              자리는 깃발과 무관하게 가스 지대다. */
           const gasSpot = res[2] === 1
-            || gasBuildings.some((g) => Math.hypot(g.x - res[0], g.y - res[1]) <= 6);
+            || (!gridHasGasFlags
+              && gasBuildings.some((g) => Math.hypot(g.x - res[0], g.y - res[1]) <= 6));
           if (gasSpot) {
             const hasGasBuilding = gasBuildings.some((g) =>
               g.raw === owner!.raw && g.sec + 30 <= t && (g.gone === 0 || t < g.gone)
