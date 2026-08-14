@@ -12860,6 +12860,38 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    무대 위 오버레이(각도·멈춤)는 어두운 판 위에서 읽히게 밝은 잉크로 뒤집는다. */
 .scr-light-theme .scr-model-stage-dark { background: #10141d; border-radius: 14px; }
 .scr-light-theme .scr-model-stage-dark .scr-model-yaw { color: rgba(255, 255, 255, 0.55); }
+/* 돋보기(요청) — 무대 좌상단 작은 원 단추, 누르면 최대 크기 팝업. */
+.scr-model-zoom-btn {
+  position: absolute; top: 4px; left: 6px;
+  width: 26px; height: 26px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; background: none; color: var(--muted); cursor: pointer; padding: 0;
+}
+.scr-light-theme .scr-model-stage-dark .scr-model-zoom-btn { color: rgba(255, 255, 255, 0.55); }
+/* 팝업은 라이트박스 — 배경을 항상 어둡게 두면 어느 테마·어느 색이든 모델이 산다. */
+.scr-model-zoom-pop {
+  position: fixed; inset: 0; z-index: 320;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+.scr-model-zoom-box {
+  width: min(94vw, 86vh); height: min(94vw, 86vh);
+  display: flex; align-items: center; justify-content: center; position: relative;
+  border-radius: 18px; background: #10141d;
+}
+.scr-model-zoom-box .scr-motion-shape-svg { width: 100%; height: 100%; filter: none; }
+/* 팝업의 각도 표시는 좌하단(수리: 우상단 닫기 단추와 겹침). */
+.scr-model-zoom-box .scr-model-yaw {
+  color: rgba(255, 255, 255, 0.55);
+  top: auto; right: auto; bottom: 12px; left: 16px;
+}
+.scr-model-zoom-close {
+  position: absolute; top: 10px; right: 10px;
+  width: 32px; height: 32px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.22); background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.75); cursor: pointer; padding: 0;
+}
 .scr-model-item {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 8px 4px; border-radius: 8px; border: 1px solid transparent;

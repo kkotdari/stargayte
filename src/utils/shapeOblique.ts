@@ -604,20 +604,33 @@ export function tubeFaces(
   const nx = (-dy / len) * r;
   const ny = (dx / len) * r;
   const zr = r * 0.9;
+  /* 옆벽은 화면 아래쪽 긴 변에 건다(수리·지적: 배틀 날개·발키리 지붕 미사일 — 요잉으로
+     축 투영이 뒤집히면 벽이 먼 변에 붙어 옆면이 사라져 보였다). 윤곽 스타디움은 그대로
+     두고 벽·음영 띠만 아래 변(화면 y가 큰 쪽)을 고른다. */
+  const ws: 1 | -1 = ny >= 0 ? 1 : -1;
+  const wnx = nx * ws;
+  const wny = ny * ws;
   const body = `M${r2(ax + nx)} ${r2(ay + ny - zr)} L${r2(bx + nx)} ${r2(by + ny - zr)}`
     + ` A${r2(r)} ${r2(r * 0.8)} 0 0 1 ${r2(bx - nx)} ${r2(by - ny - zr)}`
     + ` L${r2(ax - nx)} ${r2(ay - ny - zr)}`
     + ` A${r2(r)} ${r2(r * 0.8)} 0 0 1 ${r2(ax + nx)} ${r2(ay + ny - zr)} Z`
-    + ` M${r2(ax + nx)} ${r2(ay + ny - zr)} L${r2(bx + nx)} ${r2(by + ny - zr)}`
-    + ` L${r2(bx + nx)} ${r2(by + ny)} L${r2(ax + nx)} ${r2(ay + ny)} Z`;
+    + ` M${r2(ax + wnx)} ${r2(ay + wny - zr)} L${r2(bx + wnx)} ${r2(by + wny - zr)}`
+    + ` L${r2(bx + wnx)} ${r2(by + wny)} L${r2(ax + wnx)} ${r2(ay + wny)} Z`;
   const faces: ShapeFace[] = [bodyFace(body)];
+  /* 끝 단면은 그 끝이 시청자를 향할 때만(수리·지적: 앞뒤 구멍이 아무 데서나 보임) —
+     화면 y 비교 대신 모형 축 방향의 facing으로 판정하고, 마주볼수록 또렷하게. */
   if (capOpen) {
-    // 시청자 쪽 끝(화면 y가 큰 쪽)에만 어두운 단면.
-    const toward = by >= ay ? [bx, by] : [ax, ay];
-    faces.push(capFace(groundEllipse(toward[0], toward[1] - zr / 2, r * 0.85, r * 0.7)));
+    const ml = Math.hypot(x2 - x1, y2 - y1) || 1;
+    const fB = facingRatio((x2 - x1) / ml, (y2 - y1) / ml);
+    const f = Math.abs(fB);
+    if (f > 0.05) {
+      const [tx2, ty2] = fB > 0 ? [bx, by] : [ax, ay];
+      const k = Math.min(1, (f - 0.05) / 0.4);
+      faces.push(capFace(groundEllipse(tx2, ty2 - zr / 2, r * 0.85 * (0.35 + 0.65 * k), r * 0.7), 0.4 * k));
+    }
   }
   faces.push(sideFace(
-    `M${r2(ax + nx)} ${r2(ay + ny - zr * 0.2)} L${r2(bx + nx)} ${r2(by + ny - zr * 0.2)} L${r2(bx + nx)} ${r2(by + ny)} L${r2(ax + nx)} ${r2(ay + ny)} Z`,
+    `M${r2(ax + wnx)} ${r2(ay + wny - zr * 0.2)} L${r2(bx + wnx)} ${r2(by + wny - zr * 0.2)} L${r2(bx + wnx)} ${r2(by + wny)} L${r2(ax + wnx)} ${r2(ay + wny)} Z`,
     OP.sideSoft,
   ));
   const dA = depthNow(x1, y1);

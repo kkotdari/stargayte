@@ -565,6 +565,76 @@ function creepSplat(r: number): ShapeFace[] {
   return out;
 }
 
+/* 일정 폭 막대 사지(지적: 드라군 다리 '통' 느낌) — 뿔과 달리 두께가 끝까지 같고 양 끝이
+   반원인 캡슐 막대. 레이스 아래 포신과 같은 화면 투영 스타디움이라 어느 요잉에서도
+   결이 같다. 깊이 키는 뿔과 같은 규칙. */
+function rodFaces(
+  x1: number, y1: number, z1: number, x2: number, y2: number, z2: number, w: number,
+): ShapeFace[] {
+  const [ax, ay] = project(x1, y1, z1);
+  const [bx, by] = project(x2, y2, z2);
+  const dx = bx - ax;
+  const dy = by - ay;
+  const L = Math.hypot(dx, dy) || 1;
+  const r = w / 2;
+  const nx = (-dy / L) * r;
+  const ny = (dx / L) * r;
+  const d = `M${ax + nx} ${ay + ny} L${bx + nx} ${by + ny}`
+    + ` A${r} ${r * 0.9} 0 0 1 ${bx - nx} ${by - ny} L${ax - nx} ${ay - ny}`
+    + ` A${r} ${r * 0.9} 0 0 1 ${ax + nx} ${ay + ny} Z`;
+  const dA = depthNow(x1, y1);
+  const dB = depthNow(x2, y2);
+  return tagKey(
+    [
+      bodyFace(d),
+      sideFace(`M${ax} ${ay} L${bx} ${by} L${bx - nx} ${by - ny} L${ax - nx} ${ay - ny} Z`, 0.2),
+    ],
+    (dA + dB) / 2 + Math.min(Math.abs(z2 - z1) + w, Math.abs(dA - dB) / 2),
+  );
+}
+
+/* 탱크 궤도(재지적: 캐터필러 넷의 옆면이 알약꼴이어야) — (y,z) 알약 윤곽을 x 폭으로
+   밀어낸 슬래브. 안·바깥 옆판과 대응 점을 잇는 둘레 띠로 채워 어느 각에서도 틈이 없고,
+   보이는 옆판엔 음영을 얹는다. 바닥은 z 0. */
+function trackFaces(cx: number, yA: number, yB: number, h: number, w: number): ShapeFace[] {
+  const rc = h / 2;
+  const yAc = yA + rc;
+  const yBc = yB - rc;
+  const ring = (x: number): [number, number, number][] => {
+    const pts: [number, number, number][] = [];
+    const N = 6;
+    for (let i = 0; i <= N; i += 1) { // 앞 반원: 위 → 앞 → 아래.
+      const t = Math.PI / 2 - (i / N) * Math.PI;
+      pts.push([x, yBc + Math.cos(t) * rc, rc + Math.sin(t) * rc]);
+    }
+    for (let i = 0; i <= N; i += 1) { // 뒤 반원: 아래 → 뒤 → 위.
+      const t = -Math.PI / 2 - (i / N) * Math.PI;
+      pts.push([x, yAc + Math.cos(t) * rc, rc + Math.sin(t) * rc]);
+    }
+    return pts;
+  };
+  const inn = ring(cx - w / 2);
+  const out2 = ring(cx + w / 2);
+  const faces: ShapeFace[] = [bodyFace(polyPath3(inn))];
+  const M = inn.length;
+  for (let i = 0; i < M; i += 1) {
+    const j = (i + 1) % M;
+    faces.push(bodyFace(polyPath3([inn[i], inn[j], out2[j], out2[i]])));
+  }
+  // 윗 평면 띠(두 반원 사이)는 밝게.
+  faces.push(topFace(polyPath3([inn[M - 1], inn[0], out2[0], out2[M - 1]]), 0.15));
+  faces.push(bodyFace(polyPath3(out2)));
+  const fx = facingRatio(1, 0);
+  if (fx > 0.05) faces.push(sideFace(polyPath3(out2), 0.14 * Math.min(1, fx * 2)));
+  else if (fx < -0.05) faces.push(sideFace(polyPath3(inn), 0.14 * Math.min(1, -fx * 2)));
+  const sAbs = Math.abs(depthNow(1, 0));
+  const cAbs = Math.abs(depthNow(0, 1));
+  return tagKey(
+    faces,
+    depthNow(cx, (yA + yB) / 2) + Math.min(h, (w / 2) * sAbs + ((yB - yA) / 2) * cAbs),
+  );
+}
+
 export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 커맨드 센터(실물 참고) — 넓은 원반 선체 3단 + 위 관제 모듈(빛 띠·돔) + 앞으로
      내려오는 전개 램프 + 네 귀 돔 발. */
@@ -2086,19 +2156,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* ── 기계·함선 유닛들(요청: 만들 수 있는 건 다) — 정면 +y, 공중은 높이 띄운다. ── */
   /* 시즈 탱크(실물 참고) — 양옆 궤도 블록 + 차체 + 포탑의 쌍포신. */
   tank: () => [
-    /* 궤도는 양쪽 두 개씩(지적) — 앞쪽이 짧고 뒤쪽이 긴 캐터필러 한 쌍이 사이를
-       살짝 띄우고 잇달아 선다. 안쪽(±2)으로 넣어 차체 밑에 반쯤 깔리는 건 그대로. */
-    ...boxFaces3(-2, 2, 1.7, 2.2, 1.4),
-    ...boxFaces3(2, 2, 1.7, 2.2, 1.4),
-    ...boxFaces3(-2, -1.4, 1.7, 3.6, 1.5),
-    ...boxFaces3(2, -1.4, 1.7, 3.6, 1.5),
-    /* 캐터필러 라운딩(요청) — 네 궤도 블록의 앞뒤 끝을 반구 캡으로 둥글린다. */
-    ...[-2, 2].flatMap((rx) => [
-      ...domeFaces3(rx, 3, 0.8, 1.3),
-      ...domeFaces3(rx, 1, 0.8, 1.3),
-      ...domeFaces3(rx, 0.3, 0.82, 1.4),
-      ...domeFaces3(rx, -3.1, 0.82, 1.4),
-    ]),
+    /* 궤도는 양쪽 두 개씩(지적) — 앞쪽이 짧고 뒤쪽이 긴 캐터필러 한 쌍. 상자+반구 캡
+       대신 옆면이 알약꼴인 궤도 슬래브(재지적)로 그린다. */
+    ...trackFaces(-2, 0.9, 3.1, 1.4, 1.7),
+    ...trackFaces(2, 0.9, 3.1, 1.4, 1.7),
+    ...trackFaces(-2, -3.2, 0.4, 1.5, 1.7),
+    ...trackFaces(2, -3.2, 0.4, 1.5, 1.7),
     ...boxFaces3(0, -0.2, 3.9, 5.6, 1.3, 1.2),
     ...boxFaces3(0, -0.4, 2.6, 2.6, 1.3, 2.5),
     ...tubeFaces(-0.55, 1.2, -0.55, 4.4, 0.24, 3.3),
@@ -2112,18 +2175,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const barrelTop = polyPath3([[-0.7, 0.7, 4], [0.7, 0.7, 4], [0.7, 2.9, 6.9], [-0.7, 2.9, 6.9]]);
     return [
       /* 캐터필러는 시즈에서도 그대로다(지적: 시즈 모드에서 궤도가 없어지진 않는다) —
-         탱크 모드와 같은 양쪽 두 쌍(앞 짧고 뒤 긴). */
-      ...boxFaces3(-2, 2, 1.7, 2.2, 1.4),
-      ...boxFaces3(2, 2, 1.7, 2.2, 1.4),
-      ...boxFaces3(-2, -1.4, 1.7, 3.6, 1.5),
-      ...boxFaces3(2, -1.4, 1.7, 3.6, 1.5),
-      /* 캐터필러 라운딩(요청) — 궤도 양 끝을 반구 캡으로 둥글린다(탱크 모드와 동일). */
-      ...[-2, 2].flatMap((rx) => [
-        ...domeFaces3(rx, 3, 0.8, 1.3),
-        ...domeFaces3(rx, 1, 0.8, 1.3),
-        ...domeFaces3(rx, 0.3, 0.82, 1.4),
-        ...domeFaces3(rx, -3.1, 0.82, 1.4),
-      ]),
+         탱크 모드와 같은 알약 옆면 궤도 두 쌍(앞 짧고 뒤 긴, 재지적). */
+      ...trackFaces(-2, 0.9, 3.1, 1.4, 1.7),
+      ...trackFaces(2, 0.9, 3.1, 1.4, 1.7),
+      ...trackFaces(-2, -3.2, 0.4, 1.5, 1.7),
+      ...trackFaces(2, -3.2, 0.4, 1.5, 1.7),
       /* 고정 발(정정 둘: 양옆·뒤 + 더 가늘게) — 차체에서 수평으로 뻗은 가는 팔이
          끝에서 직각으로 꺾여 내려서고, 바닥엔 작은 발판. 윗부분(차체·포탑·포신)은
          그대로. */
@@ -2285,9 +2341,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const plate = (m2: 1 | -1): string => polyPath3([
       [m2 * 1.6, 0.8, 5.6], [m2 * 3.6, 0.2, 5.4], [m2 * 3.4, -1.8, 5.5], [m2 * 1.6, -1.2, 5.7],
     ]);
+    /* 튜브 코는 앞이 보일 때만(지적: 뒤에서도 동그라미가 떠 보임) — 앞(+y) facing으로
+       게이트하고, 마주볼수록 도톰해진다. */
     const tubeNose = (tx: number): ShapeFace[] => {
+      const f = facingRatio(0, 1);
+      if (f <= 0.05) return [];
+      const k = Math.min(1, (f - 0.05) / 0.4);
       const [px2, py2] = project(tx, 0.9, 7.2);
-      return [bodyFace(groundEllipse(px2, py2 - 0.45 * 0.45, 0.48, 0.4))];
+      return [bodyFace(groundEllipse(px2, py2 - 0.45 * 0.45, 0.48, 0.4 * (0.35 + 0.65 * k)))];
     };
     return [
       ...boxFaces3(0, -2.3, 2.2, 1, 1.5, 5.3),
@@ -3010,11 +3071,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 드라군(재지적: 몸통 반으로 + 다리는 더 두꺼운 기계 느낌) — 작은 머리 돔에 굵은
      관절 다리 넷. */
   goon: () => {
+    /* 다리 자체가 통(재재지적: 발만 통이 아니라) — 넓적다리·정강이를 뿔 대신 두께가
+       끝까지 같은 캡슐 막대(rodFaces)로 잇고, 굵은 원기둥 발이 땅을 디딘다. */
     const leg = (m2: 1 | -1, fy: number): ShapeFace[] => [
-      ...hornFaces(m2 * 1.1, fy * 0.8, 4.6, m2 * 3, fy * 1.35, 5.4, 1.2),
-      /* 다리 끝 뭉뚝하게(지적: 뾰족 말고 기계 형태) — 정강이는 발목(z 1.15)까지만
-         가늘어지고, 굵은 원기둥 발이 그대로 땅을 디딘다. */
-      ...hornFaces(m2 * 3, fy * 1.35, 5.4, m2 * 3.55, fy * 1.52, 1.15, 0.95),
+      ...rodFaces(m2 * 1.1, fy * 0.8, 4.6, m2 * 3, fy * 1.35, 5.4, 1.15),
+      ...rodFaces(m2 * 3, fy * 1.35, 5.4, m2 * 3.55, fy * 1.52, 1.1, 0.9),
       ...cylinderFaces3(m2 * 3.55, fy * 1.52, 0.45, 1.25, 0),
     ];
     const [gx2, gy2] = project(-0.5, -0.5, 5.8);
@@ -3206,15 +3267,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 눈은 좀 더 앞쪽으로(재지적) + 몸과 안 맞던 스우시 그늘 제거.
     const [b1x, b1y] = project(-2.95, 1.9, 4.9);
     const [b2x, b2y] = project(2.95, 1.9, 4.9);
+    /* 눈에 제 깊이(재재재지적: 앞으로 돌아온 눈이 몸에 가려짐) — 몸을 늘 나중에 그리면
+       시청자 쪽으로 돌아온 눈까지 덮는다. 눈·몸 모두 깊이 키를 달아 정렬이 정한다:
+       뒤로 간 눈은 몸이 덮고, 앞으로 온 눈은 몸 위로 볼록하게 얹힌다. */
     return [
       bodyFace(legs.join(" ")),
-      bodyFace(groundEllipse(b1x, b1y, 0.95, 0.8)),
-      topFace(groundEllipse(b1x - 0.25, b1y - 0.2, 0.4, 0.3), 0.3),
-      bodyFace(groundEllipse(b2x, b2y, 0.95, 0.8)),
-      sideFace(groundEllipse(b2x, b2y, 0.95, 0.8), 0.18),
-      // 머리 축소(지적) + 몸이 옆 혹의 안쪽 반을 덮는다.
-      bodyFace(groundEllipse(cx, cy, 3.6, 3.4)),
-      topFace(groundEllipse(cx - 1.2, cy - 2.2, 1.8, 1.1), 0.35),
+      ...tagKey([
+        bodyFace(groundEllipse(b1x, b1y, 0.95, 0.8)),
+        topFace(groundEllipse(b1x - 0.25, b1y - 0.2, 0.4, 0.3), 0.3),
+      ], depthNow(-2.95, 1.9)),
+      ...tagKey([
+        bodyFace(groundEllipse(b2x, b2y, 0.95, 0.8)),
+        sideFace(groundEllipse(b2x, b2y, 0.95, 0.8), 0.18),
+      ], depthNow(2.95, 1.9)),
+      // 머리 축소(지적) — 몸도 제 깊이(가운데 0)로.
+      ...tagKey([
+        bodyFace(groundEllipse(cx, cy, 3.6, 3.4)),
+        topFace(groundEllipse(cx - 1.2, cy - 2.2, 1.8, 1.1), 0.35),
+      ], depthNow(0, 0)),
     ];
   },
   /* 드랍십(실물 참고) — 양옆 굵은 엔진 포드(앞 단면이 둥글게 보인다) + 가운데 각진
@@ -3357,8 +3427,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
 };
 /* 캐리어(인터셉터) — 갤러리용 별본(요청): 캐리어 둘레에 인터셉터 넷이 떠 있다. */
 SHAPE_BUILDERS.carrierbay = () => {
-  // 인터셉터는 작은 쌍안경꼴(재지적) — 나란한 두 알.
+  // 인터셉터는 작은 쌍안경꼴(재지적) — 나란한 두 알 + 사이를 잇는 좁은 다리판(재재지적).
   const cept = (x: number, y: number, z: number): ShapeFace[] => [
+    ...boxFaces3(x, y, 0.4, 0.12, 0.08, z + 0.05),
     ...domeFaces3(x - 0.24, y, 0.2, 0.3, z),
     ...domeFaces3(x + 0.24, y, 0.2, 0.3, z),
   ];
@@ -3675,7 +3746,10 @@ function UnitLayer({ ops, zoom, pan }: {
          공중 유닛도 자체 그림자는 걷는다(지적) — 바닥 타원이 그림자를 맡으니, 몸에 또
          드리우면 그림자가 두 겹이 된다. 일꾼 셋도 떠다니는 기계라 같은 규칙(지적:
          일꾼들도 공중에 떠 있으니 바닥 그림자) — 다만 몸은 안 들어올린다. */
-      const hover = op.air || op.kind === "scv" || op.kind === "probe" || op.kind === "drone";
+      /* 떠다니는 지상 유닛도 같은 규칙(지적) — 벌처·아콘·다크 아콘·하이 템플러는
+         부양 유닛이라 발밑 그림자를 깔고 자체 그림자는 걷는다. */
+      const hover = op.air || op.kind === "scv" || op.kind === "probe" || op.kind === "drone"
+        || op.kind === "vulture" || op.kind === "archon" || op.kind === "darchon" || op.kind === "htemp";
       ctx.shadowColor = op.noShadow || hover ? "transparent" : "rgba(0, 0, 0, 0.6)";
       if (op.textGlyph) {
         // 부속건물 + 같은 글자 하나 — 스팬 글자와 같은 굵기·가운데 앵커.
