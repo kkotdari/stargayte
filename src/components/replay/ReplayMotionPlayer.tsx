@@ -4413,6 +4413,10 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         const shw = px * (op.air ? 0.26 : 0.16);
         ctx.globalAlpha = op.alpha * (op.air ? 0.22 : 0.16);
         ctx.fillStyle = "#000";
+        /* beginPath 필수(조사: 전 모드 거대 검은 쐐기의 진범) — 경로를 안 비우면
+           ellipse가 직전 점에서 타원까지 선분을 이어 붙이며 프레임 내내 누적되고,
+           fill이 맵을 가로지르는 검은 다각형들을 채웠다. 요잉과 무관했다. */
+        ctx.beginPath();
         // 떠다니는 지상 유닛은 그림자를 발끝에 바짝(지적: 너무 높이 떠 보임 — 몸과
         // 그림자의 틈이 곧 뜬 높이로 읽힌다) — 살짝만 뜬 느낌으로.
         ctx.ellipse(sx, sy + px * (op.air ? 0.06 : 0.24), shw, shw * 0.4, 0, 0, Math.PI * 2);
@@ -7151,10 +7155,9 @@ export default function ReplayMotionPlayer({
             if (shapeKind) {
               unitOps.push({
                 fx: fxF, fy: fyF, z, kind: shapeKind,
-                /* 원작처럼 45도 요잉(지적)은 3D에서만 — 2D(탑뷰)는 요잉된 모델을 위에서
-                   눌러 펴는 순간 옆면들이 거대한 검은 쐐기로 펴져 맵을 덮었다(지적: 이거
-                   뭐야 왜 이래 — 기지마다 방사형 삼각형). 탑뷰는 예전 그대로 정면 굽기다. */
-                rotDeg: pitched ? buildingYawOf(shapeKind) : undefined,
+                /* 원작처럼 45도 요잉(지적) — 2D에도 적용(재지적: 2D도 45도 요잉해야지).
+                   쐐기의 진범은 요잉이 아니라 hover 그림자의 beginPath 누락이었다. */
+                rotDeg: buildingYawOf(shapeKind),
                 groundShadow: true,
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
                 sizePx: 0, wFrac: wFrac * pulse, hFrac: hFrac * pulse, boxFit: "meet",
