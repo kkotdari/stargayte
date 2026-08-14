@@ -3513,12 +3513,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   lurker: () => {
     const out: ShapeFace[] = [];
     for (const m2 of [1, -1] as const) {
+      /* 칼다리는 꺽쇠(재지적: 다리가 살짝 아래로 향하는데 실제 그림은 위로 향해
+         시작했다 아래로 꺾인다 — 완만한 각도) — 뿌리에서 바깥·위로 올라 꼭대기를
+         찍고, 거기서 완만하게 아래로 내려와 땅을 짚는다. */
       // 뒤 칼다리.
-      out.push(...hornFaces(m2 * 1.5, -0.9, 4, m2 * 3.4, -2.1, 2, 0.7));
-      out.push(...hornFaces(m2 * 3.4, -2.1, 2, m2 * 2.7, -3, 0.3, 0.5));
+      out.push(...hornFaces(m2 * 1.5, -0.9, 3.8, m2 * 2.8, -1.7, 5.1, 0.7));
+      out.push(...hornFaces(m2 * 2.8, -1.7, 5.1, m2 * 4, -2.6, 1.4, 0.5));
       // 앞 칼다리.
-      out.push(...hornFaces(m2 * 1.6, 0.6, 4, m2 * 3.6, 1.7, 2.2, 0.7));
-      out.push(...hornFaces(m2 * 3.6, 1.7, 2.2, m2 * 2.9, 2.8, 0.3, 0.5));
+      out.push(...hornFaces(m2 * 1.6, 0.6, 3.8, m2 * 2.9, 1.35, 5.1, 0.7));
+      out.push(...hornFaces(m2 * 2.9, 1.35, 5.1, m2 * 4.2, 2.2, 1.4, 0.5));
       /* 앞 가시갈고리 한 쌍(지적) — 몸 앞에서 앞을 향해 뻗다 끝이 갈고리처럼
          아래로 말린다. */
       out.push(...hornFaces(m2 * 0.6, 1.9, 3.5, m2 * 1.1, 3.4, 2.3, 0.42));
