@@ -10957,6 +10957,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    hidden이면 모서리 본진의 마커가 반쪽이 된다. 둥근 모서리는 그림이 제 몫으로 갖는다. */
 .scr-motion-map {
   position: relative; width: 100%; margin-left: 0;
+  /* 스태킹 격리(지적: 가스가 뒤로가기 버튼 위에) — 유닛 캔버스(z 6000)·마커(z 1000+)의
+     z-index가 페이지 전역과 겨루지 않게 맵 상자 안에 가둔다. 맵 밖 떠 있는 버튼·바는
+     이제 늘 맵 내용물 위다. */
+  isolation: isolate;
   /* 화면 폭 확대(위 .scr-motion-wide)의 넓어짐·되돌아옴이 부드럽게 — 아래 요소들의
      내려감도 이 폭 트랜지션이 그대로 만든다. */
   transition: width 0.3s ease, margin-left 0.3s ease;

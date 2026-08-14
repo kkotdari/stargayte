@@ -6624,18 +6624,23 @@ export default function ReplayMotionPlayer({
                 >
                   {/* 테란 용접 스파크(지적: 빨간 깜빡임이 전투 같다) — 밝은 흰빛의 길이가
                       다른 짧은 막대들을 둥글게 배치, 저마다 다른 박자로 튄다. 길이·각은
-                      건물 번호 해시로 결정적이다. */}
-                  {race2 === "테란" && [0, 1, 2, 3, 4, 5, 6, 7].map((k) => (
-                    <span
-                      key={k}
-                      className="scr-bfx-weld"
-                      style={{
-                        height: `${3 + ((i * 7 + k * 5) % 5)}px`,
-                        transform: `rotate(${k * 45 + ((i * 13 + k * 29) % 22)}deg) translateY(${4 + ((i + k * 3) % 4)}px)`,
-                        animationDelay: `${((i * 3 + k * 7) % 9) / 10}s`,
-                      }}
-                    />
-                  ))}
+                      건물 번호 해시로 결정적이다. 크기는 타일 크기에 비례(재지적: 왜케
+                      커 — 고정 px라 모바일의 작은 맵에선 막대가 건물만 했다). */}
+                  {race2 === "테란" && (() => {
+                    const ws = Math.max(0.35, ((mapRef.current?.clientWidth ?? 320) / grid.width) / 5);
+                    return [0, 1, 2, 3, 4, 5, 6, 7].map((k) => (
+                      <span
+                        key={k}
+                        className="scr-bfx-weld"
+                        style={{
+                          width: `${Math.max(0.8, 1.5 * ws).toFixed(1)}px`,
+                          height: `${((3 + ((i * 7 + k * 5) % 5)) * ws).toFixed(1)}px`,
+                          transform: `rotate(${k * 45 + ((i * 13 + k * 29) % 22)}deg) translateY(${((4 + ((i + k * 3) % 4)) * ws).toFixed(1)}px)`,
+                          animationDelay: `${((i * 3 + k * 7) % 9) / 10}s`,
+                        }}
+                      />
+                    ));
+                  })()}
                 </span>
               );
             }
