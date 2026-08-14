@@ -5059,9 +5059,8 @@ export default function ReplayMotionPlayer({
     if (!big) return undefined;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      // 상세 팝업 기본 확대(요청)면 상세까지 함께 닫는다.
-      if (onDetailClose) onDetailClose();
-      else setBig(false);
+      // 닫기 버튼과 같은 길(closeBig) — PC 상세 기본 확대에서만 상세까지 함께 닫는다.
+      closeBig();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -5094,7 +5093,15 @@ export default function ReplayMotionPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const closeBig = () => {
-    if (onDetailClose) { onDetailClose(); return; }
+    /* 확대창 닫기가 상세까지 닫는 것은 PC뿐(지적: 플레이어 창 닫기가 뒤로가기까지 됨) —
+       PC는 상세가 곧 자동 확대창이라 함께 닫는 게 맞지만, 모바일의 확대는 상세 위에
+       사람이 연 겹창이다. 거기서 onDetailClose로 상세째 닫으면 상세의 주소 해시가
+       history.back()으로 걷히며 뒤로가기처럼 보였다. 모바일은 확대만 걷고 상세로 돌아간다. */
+    if (onDetailClose && typeof window !== "undefined"
+      && !!window.matchMedia?.("(min-width: 1160px)").matches) {
+      onDetailClose();
+      return;
+    }
     setBig(false);
   };
 
