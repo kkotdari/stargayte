@@ -7936,10 +7936,10 @@ export default function ReplayMotionPlayer({
         />
         {/* 폭 상한 = (가용 높이 − 위아래 여백·슬림 탐색바 몫) × 맵 가로세로비 + 양쪽 기둥
             몫(요청: 왼쪽 기둥에 로스터·조작부, 오른쪽 기둥에 댓글 — 맵은 최대 크기) —
-            기둥 둘 300px씩 + 간격·패딩 60px. */}
+            왼쪽 기둥 220px(110×2, 지적: 폭 줄이기) + 오른쪽 300px + 간격·패딩 60px. */}
         <div
           className="scr-modal scr-motion-big-modal"
-          style={{ width: `min(94vw, calc((100dvh - 88px) * ${(grid.width / grid.height).toFixed(4)} + 660px))` }}
+          style={{ width: `min(94vw, calc((100dvh - 88px) * ${(grid.width / grid.height).toFixed(4)} + 580px))` }}
         >{body}</div>
       </div>,
       document.body,
