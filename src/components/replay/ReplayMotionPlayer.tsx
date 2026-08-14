@@ -4400,6 +4400,8 @@ const PRODUCER_OF: Record<string, string[]> = (() => {
 })();
 /** 갓 뽑힌 유닛이 건물 앞에 머무는 시간(초). */
 const FRESH_HOLD_SEC = 12;
+/** 랠리 대기 뒤 부대로 걸어가 스며드는 데 주는 최대 시간(초) — 못 닿으면 페이드. */
+const FRESH_MERGE_MAX = 14;
 
 /** 자취에서 t 시각의 자리 — 사이는 보간(지상은 가운데로 휘는 곡선), 틈이 크면 앞 점에 머문다.
  *  moving(두 점 사이를 미끄러지는 중)과 sinceLast(마지막 명령에서 지난 초)도 함께 낸다 —
@@ -4652,7 +4654,9 @@ export default function ReplayMotionPlayer({
      마지막 연결자(회원 pk)·시각을 남긴다. 연결되면 캐시를 바로 갈아 끼워(applyReplayMap)
      이 맵을 쓰는 모든 카드가 즉시 그 그림으로 그려진다. */
   const [linkOpen, setLinkOpen] = useState(false);
-  const [linkChoices, setLinkChoices] = useState<{ id: number; name: string }[] | null>(null);
+  const [linkChoices, setLinkChoices] = useState<
+    { id: number; name: string; image: string; matches: number }[] | null
+  >(null);
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkErr, setLinkErr] = useState("");
   useEffect(() => {
@@ -4910,6 +4914,37 @@ export default function ReplayMotionPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [squadPts, terrain, terrainRaw, grid.width, grid.height, motion],
   );
+  /* 생산 완료 시각 직렬화(지적: 일꾼이 말도 안 되게 빠른 속도로 연달아 생산돼 나옴) —
+     훈련 클릭 연타가 전부 prod에 남지만, 실제 생산은 슬롯(테란·토스는 건물당 1, 저그는
+     해처리당 라바 3)당 한 번에 하나다. 서 있는 생산 건물 수만큼의 슬롯에 차례로 배정해
+     같은 슬롯은 앞 유닛이 끝나야 다음이 시작된다 — 연타 물량이 실제 간격으로 벌어진다. */
+  const freshDone = useMemo(() => {
+    const out = new Map<string, Map<string, number[]>>();
+    for (const p of motion.players) {
+      const race = bases.find((b) => b.key === p.raw)?.race;
+      const perUnit = new Map<string, number[]>();
+      for (const [unit, secs] of Object.entries(p.prod ?? {})) {
+        const producers = PRODUCER_OF[unit];
+        if (!producers) continue;
+        const buildSec = UNIT_SEC[unit] ?? 20;
+        const slots: number[] = [];
+        perUnit.set(unit, secs.map((sec) => {
+          const standing = motion.builds.filter(([bs, , , bu, br, bg]) =>
+            br === p.raw && bs <= sec && ((bg ?? 0) === 0 || sec < (bg ?? 0))
+            && producers.includes(bu)).length;
+          const cap = Math.max(1, standing) * (race === "저그" ? 3 : 1);
+          while (slots.length < cap) slots.push(0);
+          let best = 0;
+          for (let k = 1; k < cap; k += 1) if (slots[k] < slots[best]) best = k;
+          const start = Math.max(sec, slots[best]);
+          slots[best] = start + buildSec;
+          return start + buildSec;
+        }));
+      }
+      out.set(p.raw, perUnit);
+    }
+    return out;
+  }, [motion, bases]);
   /* 정찰 자취도 걸어서 가고(지적: 갑자기 이동 — 직선이되 일꾼 걸음), 갈래·부대로 갈라
      각자의 점이 된다(지적: 드랍십 순간이동 — 일꾼 정찰과 셔틀 원정이 한 점을 놓고
      밀당했다). 갈래는 이름을 정한다(지적: 오버로드 이름이 안 나온다). */
@@ -6278,16 +6313,18 @@ export default function ReplayMotionPlayer({
             갑자기 사라졌다 — 실제로는 랠리로 걸어간 것이다). 랠리에 닿고 잠시 뒤 걷히는
             것은 그 자리의 부대에 합류한 것으로 읽힌다. 같은 종류 건물이 여럿이면(게이트
             여럿) 차례로 나눠 놓는다. */}
-        {motion.players.flatMap((p) => {
+        {motion.players.flatMap((p, pIdx) => {
           const team = teamOfRaw(p.raw);
           const out: React.ReactNode[] = [];
           for (const [unit, secs] of Object.entries(p.prod ?? {})) {
             const producers = PRODUCER_OF[unit];
             if (!producers) continue;
             for (let si = 0; si < secs.length; si += 1) {
-              const done = secs[si] + (UNIT_SEC[unit] ?? 20);
-              // 랠리까지 걷는 시간(최대 60초) + 머무는 시간보다 지난 것은 볼 것도 없다.
-              if (t < done || t - done > 60 + FRESH_HOLD_SEC) continue;
+              // 직렬화된 완료 시각(지적: 연타 물량이 한꺼번에 쏟아짐) — freshDone 주석.
+              const done = freshDone.get(p.raw)?.get(unit)?.[si]
+                ?? (secs[si] + (UNIT_SEC[unit] ?? 20));
+              // 랠리까지 걷는 시간(최대 60초) + 머무는·합류 시간보다 지난 것은 볼 것도 없다.
+              if (t < done || t - done > 60 + FRESH_HOLD_SEC + FRESH_MERGE_MAX) continue;
               // 그 시각에 서 있는 그 종류 건물들 — 태그를 알면 그 건물, 모르면 돌려 가며.
               const cands = motion.builds.filter(([bs, , , bu, br, bg]) =>
                 br === p.raw && bs <= secs[si] && ((bg ?? 0) === 0 || secs[si] < (bg ?? 0))
@@ -6384,7 +6421,6 @@ export default function ReplayMotionPlayer({
                   want -= lens[ri - 1];
                 }
               }
-              if (t > arrive + FRESH_HOLD_SEC) continue;
               /* 이동 방향(요청) — 랠리 목적지를 향하고, 다 걸어온 뒤에도 걸어온 방향을
                  지킨다(지적: 랠리로 이동한 유닛들이 무조건 정면을 봄 — 도착하는 순간
                  남은 거리가 0이 되며 0도(정면)로 튕겼다). */
@@ -6394,6 +6430,46 @@ export default function ReplayMotionPlayer({
                   hdg = Math.atan2(-(rx - fx), ry - fy) * (180 / Math.PI);
                 } else if (Math.hypot(rx - exitX, ry - exitY) > 0.1) {
                   hdg = Math.atan2(-(rx - exitX), ry - exitY) * (180 / Math.PI);
+                }
+              }
+              /* 랠리 대기가 끝나면 걸어서 스며든다(지적: 랠리포인트에 대기하던 유닛이
+                 갑자기 순간이동) — 예전엔 여기서 그냥 걷어내, 곁의 부대 마커로 튄 것처럼
+                 보였다. 이제 그 시각의 가장 가까운 부대 마커 자리로 제 속도로 걸어가고,
+                 닿으면 그 마커가 이어받는다. 일꾼은 부대가 아니라 채굴 줄에 스며드는
+                 것이라 짧은 페이드로 정리한다. */
+              let alpha = 1;
+              const holdEnd = arrive + FRESH_HOLD_SEC;
+              if (t > holdEnd) {
+                const isWorkerU = unit === "SCV" || unit === "Probe" || unit === "Drone";
+                let tx: number | null = null;
+                let ty: number | null = null;
+                let bestD = Infinity;
+                if (!isWorkerU) {
+                  for (const sq of refinedSquads[pIdx] ?? []) {
+                    const pos2 = posAt(sq, t, null);
+                    if (!pos2) continue;
+                    const d2 = Math.hypot(pos2.x - fx, pos2.y - fy);
+                    if (d2 < bestD) { bestD = d2; tx = pos2.x; ty = pos2.y; }
+                  }
+                }
+                const v2 = Math.max(1.5, speedOf(unit, done, p.ups));
+                const walked = (t - holdEnd) * v2;
+                if (tx === null || ty === null || bestD <= 0.15) {
+                  // 갈 곳이 없거나 이미 부대 위 — 짧은 페이드로 스며든다.
+                  if (t > holdEnd + 1) continue;
+                  alpha = Math.max(0, 1 - (t - holdEnd));
+                } else if (walked >= bestD) {
+                  continue; // 부대에 닿았다 — 그 마커가 이어받는다.
+                } else {
+                  if (t > holdEnd + FRESH_MERGE_MAX) continue;
+                  hdg = Math.atan2(-(tx - fx), ty - fy) * (180 / Math.PI);
+                  const f2 = walked / bestD;
+                  fx += (tx - fx) * f2;
+                  fy += (ty - fy) * f2;
+                  // 부대가 계속 도망가 오래 못 닿으면 마지막 2초는 페이드로 정리.
+                  if (t > holdEnd + FRESH_MERGE_MAX - 2) {
+                    alpha = Math.max(0, (holdEnd + FRESH_MERGE_MAX - t) / 2);
+                  }
                 }
               }
               // (캔버스 전환) 갓 나온 유닛도 unitOps로 — 제 모델로 랠리까지 걷는다.
@@ -6408,7 +6484,7 @@ export default function ReplayMotionPlayer({
                      고정 13/9px라 곁의 부대 질럿(소형 8/6px)보다 한참 컸다. */
                   sizePx: unitPxOf(unit, fy),
                   color: modeColor(p.raw, team),
-                  alpha: 1,
+                  alpha,
                   air: isAirUnit(unit),
                 });
               }
@@ -7747,13 +7823,17 @@ export default function ReplayMotionPlayer({
                 <div className="scr-empty">불러오는 중…</div>
               ) : (
                 <div className="scr-maplink-list">
+                  {/* 세로 목록(요청) — 왼쪽 썸네일, 가운데 이름, 오른쪽 작은 글씨로
+                      그 그림에 연결된 리플레이 수. */}
                   {(linkChoices ?? []).map((c) => (
                     <button
                       key={c.id} type="button" disabled={linkBusy}
-                      className={cx("scr-btn", "scr-btn-sm", grid.imageId === c.id && "scr-btn-primary")}
+                      className={cx("scr-maplink-item", grid.imageId === c.id && "scr-maplink-item-on")}
                       onClick={() => void pickLink(c.id)}
                     >
-                      {c.name}
+                      <img className="scr-maplink-thumb" src={c.image} alt="" draggable={false} />
+                      <span className="scr-maplink-name">{c.name}</span>
+                      <span className="scr-maplink-count">리플레이 {c.matches}</span>
                     </button>
                   ))}
                   {(linkChoices ?? []).length === 0 && linkChoices !== null && (

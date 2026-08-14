@@ -11398,10 +11398,30 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   font-size: var(--fs-9); color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 
-/* 맵연결 모달(요청: 게임 상세 버튼 줄) — 저장된 미니맵 이름 버튼들만 단정하게. */
-.scr-maplink-modal { max-width: 380px; }
+/* 맵연결 모달(요청: 게임 상세 버튼 줄) — 저장된 미니맵 이름 버튼들만 단정하게.
+   게임 상세 팝업(130)·확대창(210) 위에 떠야 한다(지적: 모달 뒤로 다른 화면이 비침) —
+   지형 검수 모달과 같은 이유·같은 값. */
+.scr-maplink-modal { max-width: 380px; z-index: 300; }
 .scr-maplink-hint { font-size: var(--fs-caption); color: var(--muted); margin: 0 0 10px; }
-.scr-maplink-list { display: flex; flex-wrap: wrap; gap: 6px; }
+/* 세로 목록(요청) — 한 줄 = [썸네일 | 이름 | 리플레이 수]. */
+.scr-maplink-list { display: flex; flex-direction: column; gap: 6px; padding-bottom: 14px; }
+.scr-maplink-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line-soft);
+  background: none; color: var(--text); cursor: pointer; text-align: left;
+}
+.scr-maplink-item:disabled { opacity: 0.55; cursor: default; }
+/* 지금 연결된 그림 — 테두리로 조용히 표시한다. */
+.scr-maplink-item-on { border-color: var(--text); }
+.scr-maplink-thumb {
+  width: 44px; height: 44px; object-fit: cover; border-radius: 6px; flex: 0 0 auto;
+  background: rgba(0, 0, 0, 0.25);
+}
+.scr-maplink-name {
+  flex: 1 1 auto; min-width: 0; font-weight: 700; font-size: var(--fs-caption);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.scr-maplink-count { flex: 0 0 auto; font-size: var(--fs-9); color: var(--muted); }
 
 /* 지형 검수 모달(요청) — 그림을 크게, 그 위에 이동 불가 칸을 어둡게 겹친다. */
 .scr-terrain-modal { max-width: 640px; }

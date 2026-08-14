@@ -485,10 +485,10 @@ export const api = {
     await request<void>(`/api/game-results/replay-maps/images/${id}`, { method: "DELETE" });
   },
 
-  /** 맵연결 고르기 목록(요청: 아무나) — 등록된 미니맵 그림의 번호·이름만(그림은 무거워서
-   *  안 싣는다 — 연결 뒤 격자 응답이 어차피 그림을 실어 온다). */
-  async listMinimapChoices(): Promise<{ id: number; name: string }[]> {
-    const res = await request<{ images: { id: number; name: string }[] }>(
+  /** 맵연결 고르기 목록(요청: 아무나) — 썸네일 그림과 그 그림에 연결된 리플레이 수까지
+   *  (요청: 목록 왼쪽 썸네일 + 오른쪽 작은 글씨 리플레이 수). 그림은 몇 장뿐이라 가볍다. */
+  async listMinimapChoices(): Promise<{ id: number; name: string; image: string; matches: number }[]> {
+    const res = await request<{ images: { id: number; name: string; image: string; matches: number }[] }>(
       "/api/game-results/replay-maps/images",
     );
     return res.images;
