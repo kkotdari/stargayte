@@ -4413,6 +4413,26 @@ const PRODUCER_OF: Record<string, string[]> = (() => {
   }
   return m;
 })();
+/* 교전 붙기의 자(아래 engagePosOf 주석) — 시야·당김 상한(타일), 근접 유닛, 유닛별
+   사정거리(타일, 대략). 싸움과 무관한 유닛(일꾼·수송·캐스터)은 안 끈다 — 시즈 탱크
+   (시즈 모드)와 러커는 제자리 화력이라 끌면 오히려 거짓말이 된다. */
+const ENGAGE_SIGHT_TILES = 9;
+const ENGAGE_PULL_CAP = 2.6;
+const ENGAGE_MELEE = new Set([
+  "Zealot", "Dark Templar", "Zergling", "Ultralisk", "Firebat", "Broodling", "Scourge",
+  "Archon", "Infested Terran",
+]);
+const ENGAGE_RANGE: Record<string, number> = {
+  Marine: 4, Ghost: 7, Bionic: 4, Hydralisk: 4, Dragoon: 4,
+  "Siege Tank": 7, "Siege Tank (Tank Mode)": 7, Goliath: 5, Vulture: 5, Wraith: 5,
+  Mutalisk: 3, Scout: 4, Corsair: 5, Battlecruiser: 6, Valkyrie: 6,
+  Reaver: 8, Carrier: 8, Guardian: 8, Devourer: 6,
+};
+const ENGAGE_SKIP = new Set([
+  "Worker", "Transport", "Overlord", "Dropship", "Shuttle", "Observer", "Science Vessel",
+  "Defiler", "Queen", "High Templar", "Dark Archon", "Medic", "Arbiter", "Lurker",
+  "Siege Tank (Siege Mode)",
+]);
 /** 갓 뽑힌 유닛이 건물 앞에 머무는 시간(초). */
 const FRESH_HOLD_SEC = 12;
 /** 랠리 대기 뒤 부대로 걸어가 스며드는 데 주는 최대 시간(초) — 못 닿으면 페이드. */
@@ -4933,6 +4953,45 @@ export default function ReplayMotionPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [squadPts, terrain, terrainRaw, grid.width, grid.height, motion],
   );
+  /* ── 교전 붙기(지적: 적이 가까이 있는데 전투를 안 한다 — 시야에 들면 맞붙는 게
+     자연스럽다. 근접 유닛은 이동해 붙어서 싸우고, 원거리는 사정거리까지만 이동) —
+     그리기 직전의 표시 조정이다. 원본 자취(명령 좌표)는 그대로 두고, 이 프레임의 가장
+     가까운 적 유닛 마커를 향해 '남은 거리의 반'만 끌어당긴다. 반씩인 이유: 상대도 같은
+     조정으로 다가오므로 양쪽이 반씩 오면 꼭 목표 거리(근접 0.8타일, 원거리 사정거리)
+     에서 만나고, 서로 원좌표 기준이라 지나쳐 겹치지 않는다. 시야(9타일) 밖은 안 끈다. */
+  const engageFoes: { team: number; x: number; y: number }[] = [];
+  motion.players.forEach((p2, pi2) => {
+    const team2 = teamOfRaw(p2.raw) ?? 0;
+    for (const sq of refinedSquads[pi2] ?? []) {
+      if (sq.length === 0 || t < sq[0][0]) continue;
+      const q = posAt(sq, t, null);
+      if (q) engageFoes.push({ team: team2, x: q.x, y: q.y });
+    }
+    for (const g2 of typeSquads[pi2] ?? []) {
+      if (ENGAGE_SKIP.has(g2.unit)) continue;
+      if (g2.walk.length === 0 || t < g2.walk[0][0]) continue;
+      const q = posAt(g2.walk, t, null);
+      if (q) engageFoes.push({ team: team2, x: q.x, y: q.y });
+    }
+  });
+  const engagePosOf = <P extends { x: number; y: number }>(
+    team: number | undefined, unitName: string | null, pos: P,
+  ): P => {
+    if (unitName && ENGAGE_SKIP.has(unitName)) return pos;
+    const melee = unitName ? ENGAGE_MELEE.has(unitName) : false;
+    const target = melee ? 0.8 : unitName ? ENGAGE_RANGE[unitName] ?? 3 : 3;
+    let bx = 0;
+    let by = 0;
+    let bd = Infinity;
+    for (const f of engageFoes) {
+      if (!team || f.team === team) continue;
+      const d = Math.hypot(f.x - pos.x, f.y - pos.y);
+      if (d < bd) { bd = d; bx = f.x; by = f.y; }
+    }
+    if (!Number.isFinite(bd) || bd > ENGAGE_SIGHT_TILES || bd <= Math.max(target, 0.01)) return pos;
+    const pull = Math.min((bd - target) / 2, ENGAGE_PULL_CAP);
+    return { ...pos, x: pos.x + ((bx - pos.x) / bd) * pull, y: pos.y + ((by - pos.y) / bd) * pull };
+  };
   /* 생산 완료 시각 직렬화(지적: 일꾼이 말도 안 되게 빠른 속도로 연달아 생산돼 나옴) —
      훈련 클릭 연타가 전부 prod에 남지만, 실제 생산은 슬롯(테란·토스는 건물당 1, 저그는
      해처리당 라바 3)당 한 번에 하나다. 서 있는 생산 건물 수만큼의 슬롯에 차례로 배정해
@@ -7036,7 +7095,10 @@ export default function ReplayMotionPlayer({
           const arbSpots = typeMarks
             .filter(({ g }) => (BY_UNITS[g.unit] ?? [g.unit]).includes("Arbiter"))
             .map(({ pos }) => pos);
-          const typeNodes = typeMarks.map(({ g, gi, pos, sinceCmd, dying }) => {
+          const typeNodes = typeMarks.map(({ g, gi, pos: rawPos, sinceCmd, dying }) => {
+            // 교전 붙기(engagePosOf 주석) — 표시 자리만 끈다. 컨트롤 수(ctrlNear)는
+            // 원자리로 잰다(선택 클릭은 원자리 곁에 찍혔다).
+            const pos = engagePosOf(team, g.unit, rawPos);
             const members = BY_UNITS[g.unit] ?? [g.unit];
             const aliveAll = members.reduce((n, u) => n + aliveOf(u), 0);
             const nSquads = squadsOfUnit.get(g.unit) ?? 1;
@@ -7045,8 +7107,8 @@ export default function ReplayMotionPlayer({
             const aliveGuess = aliveAll > 0
               ? Math.floor(aliveAll / nSquads) + (idx < aliveAll % nSquads ? 1 : 0)
               : 0;
-            // 실제 컨트롤 수가 있으면 그것이 먼저다(요청) — 어림은 폴백.
-            const ctrl = ctrlNear(p, pos);
+            // 실제 컨트롤 수가 있으면 그것이 먼저다(요청) — 어림은 폴백. 원자리 기준.
+            const ctrl = ctrlNear(p, rawPos);
             const alive = ctrl > 0 ? ctrl : aliveGuess;
             /* 파서의 묶음 이름이 유닛명이 아닌 경우("Transport"·"Worker")는 그 종족의 실제
                이름으로 부른다(지적: "transport가 뭐지" — 영문 키가 그대로 샜다). */
@@ -7280,7 +7342,7 @@ export default function ReplayMotionPlayer({
             if (rp.length === 0 || t < rp[0][0]) return null;
             if (t < firstArmyDone) return null;
             // 걷은 자취에는 곡선을 안 얹는다 — 위 typeMarks의 bend 주석과 같은 이유.
-            const pos = posAt(rp, t, null);
+            let pos = posAt(rp, t, null);
             if (!pos) return null;
             // 활동 판정은 원본 명령 점으로 잰다 — 경로로 편 점은 촘촘해 늘 '방금'이 된다.
             let sinceCmd = Infinity;
@@ -7314,6 +7376,10 @@ export default function ReplayMotionPlayer({
                선택은 "12 이상"이라는 하한일 뿐이라(대군은 부대지정 여러 개) 어림을 둔다. */
             const ctrl = ctrlNear(p, pos);
             const shownSize = ctrl > 0 && ctrl < 12 && ctrl < size ? ctrl : size;
+            /* 교전 붙기(engagePosOf 주석) — 죽음·흡수·태움 판정과 컨트롤 수까지 원자리로
+               끝낸 뒤, 표시 자리만 가장 가까운 적 쪽으로 끈다. 무명 부대는 우세 유닛의
+               사정거리를 쓴다(모르면 3타일). */
+            pos = engagePosOf(team, unit || null, pos);
             /* 생산 직후에도 깨어 있다(요청) — 갓 나온 유닛은 명령을 안 받았어도 지금
                이야기의 일부다. 완성은 사람 단위 값이라 주 부대만 깨운다. */
             let freshDone = false;
