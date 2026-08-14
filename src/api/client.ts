@@ -779,7 +779,9 @@ export const api = {
      ("gameResult#12" 꼴)를 적는 데만 쓴다(요청: "접속로그에 공유페이지 열어본거도
      표시(어떤 페이지인지도)"). 공유는 화면 코드가 다 같은 "share"라, 이게 없으면
      무엇을 열어 봤는지가 통째로 안 남는다. */
-  async pingAccess(screen: ScreenKey | "share", detail?: string): Promise<void> {
+  /* 화면 코드에 활동 전체 보기 갈래(activity_notice/schedule/league/call/game)도 온다
+     (요청) — 서버 ScreenCode 목록과 짝이다. */
+  async pingAccess(screen: ScreenKey | "share" | (string & {}), detail?: string): Promise<void> {
     await request<void>("/api/auth/access-ping", {
       method: "POST",
       body: JSON.stringify({ screen, detail: detail ?? null }),

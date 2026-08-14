@@ -679,6 +679,22 @@ const GROUP_DEFS: { key: ActivityGroupKey; label: string }[] = [
   { key: "gameResult", label: "게임" },
 ];
 
+/* 전체 보기의 주소·스크린 코드(요청: 해시 말고 페이지 경로로 + 갈래마다 코드) —
+   화면 주소와 같은 결의 쿼리(?screen=activity&group=gameResult)로 남긴다. 새로고침해도
+   그 목록으로 돌아오고, 진입 이력은 갈래별 코드로 남는다(서버 ScreenCode와 짝). */
+const GROUP_SCREEN_CODE: Record<ActivityGroupKey, string> = {
+  notice: "activity_notice",
+  schedule: "activity_schedule",
+  league: "activity_league",
+  call: "activity_call",
+  gameResult: "activity_game",
+};
+
+function groupFromUrl(): ActivityGroupKey | null {
+  const g = new URLSearchParams(window.location.search).get("group");
+  return GROUP_DEFS.some((d) => d.key === g) ? (g as ActivityGroupKey) : null;
+}
+
 /** 이 항목이 어느 덩어리로 가나. */
 function groupKeyOf(item: ActivityItem): ActivityGroupKey {
   return item.kind === "gameResult" ? "gameResult"
@@ -886,7 +902,11 @@ export default function ActivityScreen() {
      사람들이 모두 포함된 경우 / 선택된 사람만 있는 경우 둘로 나누고 싶다")도 그 화면
      안에서 관리한다.
      지금 들어와 있는 "전체 보기" 갈래 — null이면 활동 목록(홈)이다. */
-  const [openGroupKey, setOpenGroupKey] = useState<ActivityGroupKey | null>(null);
+  // 새로고침해도 보던 전체 보기 그대로(요청: 페이지 경로) — 주소의 group을 그대로 잇는다.
+  const [openGroupKey, setOpenGroupKey] = useState<ActivityGroupKey | null>(groupFromUrl);
+  /* 우리가 얹은 히스토리 칸인가 — 새로고침·링크로 바로 들어온 자리에서 닫을 때
+     history.back()을 쏘면 앱 밖(이전 페이지)으로 물러난다. 그때는 주소만 지운다. */
+  const pushedGroupRef = useRef(false);
   /* 제목 줄의 닉네임을 자를지 — 폰에서만 자른다(요청: PC에서는 줄이지 않기). 글자 수를
      JS가 자르는 값이라 CSS 미디어쿼리로는 되돌릴 수 없어, 폭을 여기서 본다. */
   const isMobile = useIsMobile();
@@ -895,30 +915,48 @@ export default function ActivityScreen() {
      되돌리는 것도 instant다(요청: 즉시 전환) — 문서 루트의 smooth를 그대로 두면 돌아오자마자
      화면이 스스로 굴러간다. */
   const homeScrollRef = useRef(0);
-  /* 전체 보기는 이력에 한 칸을 남긴다(요청: 뒤로가기 버튼이 먹히게) — 이 화면은 주소가
-     안 바뀌는 '화면 안의 화면'이라, 폰에서 뒤로가기를 누르면 활동으로 돌아가는 대신 앱을
-     통째로 벗어났다. 해시만 바꿔 두면 그 한 번이 이 화면을 닫는 데 쓰인다. */
+  /* 전체 보기는 이력에 한 칸을 남긴다(요청: 뒤로가기 버튼이 먹히게) — 주소는 해시가
+     아니라 화면 주소와 같은 쿼리(?group=…)다(요청: 페이지 경로). 진입 이력도 갈래별
+     스크린 코드로 남긴다(요청). */
   const openGroup = (key: ActivityGroupKey) => {
     homeScrollRef.current = window.scrollY;
     setOpenGroupKey(key);
-    window.history.pushState({ activityGroup: key }, "", `#${key}`);
+    const params = new URLSearchParams(window.location.search);
+    params.set("group", key);
+    window.history.pushState({ activityGroup: key }, "", `${window.location.pathname}?${params.toString()}`);
+    pushedGroupRef.current = true;
+    void api.pingAccess(GROUP_SCREEN_CODE[key]);
   };
-  /* 닫을 때는 상태를 직접 지우지 않고 이력을 되감는다 — 직접 지우면 남겨 둔 해시 칸이
-     그대로 남아, 다음 뒤로가기가 아무 일도 안 하는 것처럼 한 번 헛돈다. */
+  /* 닫기 — 우리가 얹은 칸이면 이력을 되감고(뒤로가기와 결과가 같다), 새로고침·링크로
+     바로 들어온 자리면 히스토리를 안 건드리고 주소의 group만 지운다. */
   const closeGroup = () => {
-    if (window.location.hash) window.history.back();
-    else setOpenGroupKey(null);
+    if (pushedGroupRef.current) {
+      window.history.back();
+      return;
+    }
+    const params = new URLSearchParams(window.location.search);
+    params.delete("group");
+    const qs = params.toString();
+    window.history.replaceState(
+      window.history.state, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`,
+    );
+    setOpenGroupKey(null);
   };
   useEffect(() => {
-    /* 뒤로가기(popstate)는 '내 해시가 걷혔을 때만' 전체 보기를 닫는다(지적: 고질병 —
-       게임 상세·너나와 팝업의 닫기가 제 해시 칸을 back()으로 되감을 때도 이 리스너가
-       무조건 전체 보기를 닫아 활동 목록으로 튕겼다). 팝업이 제 칸만 되감으면 주소는
-       도로 #<그룹>이라 전체 보기는 남고, 정말 그룹 칸이 걷힌 뒤로가기에서만 닫힌다. */
+    /* 뒤로/앞으로가기 — 주소의 group이 곧 상태다. 그룹 칸이 걷히면 닫히고, 앞으로가기로
+       되살아나면 다시 열린다. 다른 무엇도 이 리스너로 닫히지 않는다(고질 지적의 교훈). */
     const onPop = () => {
-      setOpenGroupKey((key) => (key && window.location.hash === `#${key}` ? key : null));
+      pushedGroupRef.current = false;
+      setOpenGroupKey(groupFromUrl());
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  /* 새로고침·링크로 바로 들어온 전체 보기도 이력에 남긴다(요청: 갈래별 스크린 코드) —
+     openGroup을 안 거친 진입이라 여기서 한 번 찍는다. */
+  useEffect(() => {
+    if (openGroupKey) void api.pingAccess(GROUP_SCREEN_CODE[openGroupKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 마운트 시 초기값만
   }, []);
   useLayoutEffect(() => {
     if (openGroupKey === null && homeScrollRef.current > 0) {
