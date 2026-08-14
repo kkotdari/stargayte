@@ -3399,7 +3399,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   ovie: () => {
     const [cx, cy] = project(0, 0, 5.2);
     const legs: string[] = [];
-    for (const [lx, lyy] of [[-2.4, 0.6], [0.2, 1.3], [2.6, 0.5]] as [number, number][]) {
+    // 다리 뿌리도 줄인 풍선에 맞춰 안쪽으로(재지적: 다리 위치).
+    for (const [lx, lyy] of [[-2, 0.55], [0.2, 1.15], [2.15, 0.45]] as [number, number][]) {
       const seg = (
         x1: number, y1: number, z1: number, x2: number, y2: number, z2: number, w: number,
       ): string => {
