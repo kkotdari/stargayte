@@ -8254,10 +8254,14 @@ export default function ReplayMotionPlayer({
               "EMP Shockwave": ["emp", 6], "Stasis Field": ["stasis", 4],
               Lockdown: ["lock", 2.2], Maelstrom: ["mael", 5], Recall: ["recall", 4],
               "Scanner Sweep": ["scan", 8], "Disruption Web": ["dweb", 5.5],
+              /* 야마토(정정: 리플레이에 FireYamatoGun 명령이 좌표까지 남는다 — "안
+                 남는다"던 앞선 말은 틀렸다) — 표적에 청백 에너지 구체가 작렬한다. */
+              "Yamato Gun": ["yamato", 2.6],
             };
             const fx = AREA_FX[tech];
             if (fx) {
               if (tech === "EMP Shockwave" && t - sec > 1.6) return null;
+              if (tech === "Yamato Gun" && t - sec > 2.2) return null;
               return (
                 <span
                   key={`c-${i}`}

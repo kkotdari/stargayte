@@ -13347,6 +13347,20 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 방어 건물 사격 축(재지적: 터렛·벙커도 쏜다) — 건물 가운데 0×0 축, 안의 트레이서가
    적 방향으로 뻗는다. */
 .scr-motion-deffire { position: absolute; width: 0; height: 0; pointer-events: none; }
+/* 야마토 작렬(정정: FireYamatoGun이 좌표까지 남는다) — 표적 자리의 청백 에너지 구체가
+   확 밝았다 스러진다. */
+.scr-fx-yamato {
+  aspect-ratio: 1; border-radius: 50%; mix-blend-mode: screen;
+  background: radial-gradient(circle,
+    rgba(255, 255, 255, 0.95) 0 16%, rgba(160, 205, 255, 0.85) 38%,
+    rgba(95, 145, 255, 0.4) 62%, transparent 72%);
+  animation: scr-yamato 2.2s ease-out forwards;
+}
+@keyframes scr-yamato {
+  0% { opacity: 0.25; }
+  14%, 55% { opacity: 1; }
+  100% { opacity: 0; }
+}
 /* 총구 래퍼(지적: 공격 효과는 총구 앞에 작게) — 유닛 가운데 0×0 축을 적 방향으로
    돌려, 안의 섬광이 그 방향 앞(아래 = 회전 후 적 쪽)에서 인다. */
 .scr-motion-muzzle {
