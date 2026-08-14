@@ -910,9 +910,13 @@ export default function ActivityScreen() {
     else setOpenGroupKey(null);
   };
   useEffect(() => {
-    // 뒤로가기(popstate)는 늘 '전체 보기를 닫는다'로 받는다 — 이 화면에서 이력에 남기는
-    // 것이 이 한 가지뿐이라, 어느 칸으로 돌아가든 결과는 같다.
-    const onPop = () => setOpenGroupKey(null);
+    /* 뒤로가기(popstate)는 '내 해시가 걷혔을 때만' 전체 보기를 닫는다(지적: 고질병 —
+       게임 상세·너나와 팝업의 닫기가 제 해시 칸을 back()으로 되감을 때도 이 리스너가
+       무조건 전체 보기를 닫아 활동 목록으로 튕겼다). 팝업이 제 칸만 되감으면 주소는
+       도로 #<그룹>이라 전체 보기는 남고, 정말 그룹 칸이 걷힌 뒤로가기에서만 닫힌다. */
+    const onPop = () => {
+      setOpenGroupKey((key) => (key && window.location.hash === `#${key}` ? key : null));
+    };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);

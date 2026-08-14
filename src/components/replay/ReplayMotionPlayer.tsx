@@ -4495,14 +4495,15 @@ const fmtClock = (sec: number): string => {
   return `${m}:${String(s).padStart(2, "0")}`;
 };
 
-/** 모바일 로스터의 줄인 이름(요청: 한글 2글자 기준) — 한글은 1, 그 밖(영문·숫자)은
- *  0.5로 세어 너비 2까지 남긴다. 영문 닉네임은 넉 자쯤 남아 그래도 알아볼 만하다. */
+/** 로스터의 줄인 이름(재요청: 한글 3자·영문 5자) — 한글은 1, 그 밖(영문·숫자)은 0.6으로
+ *  세어 너비 3까지 남긴다(한글 3자 = 영문 5자). 기둥이 좁아진 확대창·모바일 로스터가
+ *  같이 쓴다. */
 const shortName = (name: string): string => {
   let w = 0;
   let out = "";
   for (const ch of name) {
-    w += /[ᄀ-ᇿ㄰-㆏가-힯]/.test(ch) ? 1 : 0.5;
-    if (w > 2) break;
+    w += /[ᄀ-ᇿ㄰-㆏가-힯]/.test(ch) ? 1 : 0.6;
+    if (w > 3.01) break;
     out += ch;
   }
   return out || name;
@@ -6016,13 +6017,12 @@ export default function ReplayMotionPlayer({
               <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={22} />
             </span>
             <span className="scr-motion-teamcol-text">
-              {/* 이름 두 벌(요청: 모바일은 한글 2글자로) — CSS 미디어가 한쪽만 보인다. */}
+              {/* 줄인 이름 하나로(재요청: 한글 3·영문 5 제한) — 전체 이름은 카드·댓글에서. */}
               <span className="scr-motion-teamcol-name" style={chipStyle(m.key, m.team)}>
-                <span className="scr-tcn-full">{m.name}</span>
-                <span className="scr-tcn-short">{shortName(m.name)}</span>
+                {shortName(m.name)}
               </span>
             </span>
-            {/* BEST 배지(요청: 헤드 줄 칩 대신 이름에) — 금색 테두리 작은 태그. */}
+            {/* BEST 배지(재요청: 이름 칩에 겹쳐서) — 칩 오른쪽 위 모서리에 얹힌다. */}
             {bestRaw != null && m.key === bestRaw && <span className="scr-tc-best">BEST</span>}
             {winnerTeam && (m.team === 2 ? 2 : 1) === winnerTeam && t >= total - 0.5 && !fallen && (
               <span className="scr-motion-trophy">🏆</span>
