@@ -5372,9 +5372,11 @@ export default function ReplayMotionPlayer({
          (b) 도착 자리는 클릭 지점 둘레 해바라기 나선으로 벌려 서로 안 포개진다 —
          프레임마다 밀치는 이완 대신 목적지 대형으로 푸는 방식이라 떨림이 없다. */
       const pts: TrackPt[] = [];
+      // 일꾼은 대형 없이 그대로(지적: 일꾼끼리는 자원 캐는 동안 겹침이 원작 동작).
+      const isWk = e.k === "SCV" || e.k === "Probe" || e.k === "Drone";
       for (const v of e.ev) {
         if (v[1] < 0 || v[3] === 4) continue;
-        if (v[3] === 0 || v[3] === 7) {
+        if (!isWk && (v[3] === 0 || v[3] === 7)) {
           const key = `${e.o}:${v[0]}:${v[1]}:${v[2]}`;
           const idx = clickRank.get(key) ?? 0;
           clickRank.set(key, idx + 1);
