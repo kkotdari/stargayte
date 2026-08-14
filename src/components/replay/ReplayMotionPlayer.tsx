@@ -3972,6 +3972,10 @@ export const SHAPE_GALLERY: { kind: string; label: string; group: "유닛" | "�
   { kind: "geyser", label: "가스 간헐천", group: "건물" },
 ];
 
+/** 유닛(지상 이동체) 모델 kind 집합 — 겹침 방지 이완의 대상 판별에 쓴다(도록의 유닛
+ *  갈래 그대로). 건물·자원·크립은 여기 없어 안 밀린다. */
+const UNIT_KIND_SET = new Set(SHAPE_GALLERY.filter((g) => g.group === "유닛").map((g) => g.kind));
+
 /** ShapeIcon의 면 목록 결정을 떼어 낸 것 — 캔버스 유닛 층(UnitLayer)이 같은 판(같은
  *  굽기 캐시)을 그대로 그리려면 SVG 밖에서도 이 결정을 불러야 한다. 결과가 같은 함수
  *  하나이므로 SVG와 캔버스의 픽셀이 같은 도형에서 나온다(품질 동일의 근거). */
@@ -4164,6 +4168,78 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
     const zx = (f: number): number => (f - 0.5) * cw * zoom + cw / 2 + pan.x;
     const zy = (f: number): number => (f - 0.5) * ch * zoom + ch / 2 + pan.y;
     const sorted = [...ops].sort((a, b) => a.z - b.z);
+    /* ── 겹침 불가 원칙(요청: 유닛·건물은 겹쳐지지 않는다, 공중은 예외) — 그리기 전에
+       지상 유닛 마커를 서로·건물과 겹치지 않게 밀어낸다. 화면 픽셀 좌표에서 2회 이완:
+       ① 건물 상자 안에 든 유닛은 가장 가까운 변 밖으로, ② 유닛끼리는 반지름 합의 0.8
+       보다 가까우면 절반씩 서로 반대로. 자리 계산(명령 좌표)은 그대로고 표시만 민다. */
+    {
+      const obst: { x: number; y: number; hw: number; hh: number }[] = [];
+      const mov: number[] = [];
+      for (let i = 0; i < sorted.length; i += 1) {
+        const o = sorted[i];
+        if (o.clipWalk || o.textGlyph) continue;
+        if (o.wFrac !== undefined && o.hFrac !== undefined) {
+          obst.push({ x: zx(o.fx), y: zy(o.fy), hw: (o.wFrac * cw * zoom) / 2, hh: (o.hFrac * cw * zoom) / 2 });
+          continue;
+        }
+        if (!o.air && UNIT_KIND_SET.has(o.kind)) mov.push(i);
+      }
+      if (mov.length > 0) {
+        const px = mov.map((i) => zx(sorted[i].fx));
+        const py = mov.map((i) => zy(sorted[i].fy));
+        const pr = mov.map((i) => Math.max(2, sorted[i].sizePx * zoom * 0.32));
+        for (let it = 0; it < 2; it += 1) {
+          // ① 건물 밖으로 — 침투가 얕은 축으로 밀어낸다.
+          for (let m = 0; m < mov.length; m += 1) {
+            for (const b of obst) {
+              const dx = px[m] - b.x;
+              const dy = py[m] - b.y;
+              const ox = b.hw + pr[m] - Math.abs(dx);
+              const oy = b.hh + pr[m] - Math.abs(dy);
+              if (ox <= 0 || oy <= 0) continue;
+              if (ox < oy) px[m] += (dx >= 0 ? 1 : -1) * ox;
+              else py[m] += (dy >= 0 ? 1 : -1) * oy;
+            }
+          }
+          // ② 유닛끼리 — 촘촘한 전장 대비 균일 격자로 이웃만 본다.
+          const cell = 28;
+          const gridMap = new Map<number, number[]>();
+          for (let m = 0; m < mov.length; m += 1) {
+            const key = (Math.floor(px[m] / cell) * 4096 + Math.floor(py[m] / cell)) | 0;
+            const bucket = gridMap.get(key);
+            if (bucket) bucket.push(m);
+            else gridMap.set(key, [m]);
+          }
+          for (let m = 0; m < mov.length; m += 1) {
+            const cx0 = Math.floor(px[m] / cell);
+            const cy0 = Math.floor(py[m] / cell);
+            for (let gx = cx0 - 1; gx <= cx0 + 1; gx += 1) {
+              for (let gy = cy0 - 1; gy <= cy0 + 1; gy += 1) {
+                const bucket = gridMap.get((gx * 4096 + gy) | 0);
+                if (!bucket) continue;
+                for (const n of bucket) {
+                  if (n <= m) continue;
+                  let dx = px[n] - px[m];
+                  let dy = py[n] - py[m];
+                  let d = Math.hypot(dx, dy);
+                  const min = (pr[m] + pr[n]) * 0.8;
+                  if (d >= min) continue;
+                  if (d < 0.01) { dx = ((m * 37) % 7) - 3 || 1; dy = ((n * 53) % 7) - 3 || -1; d = Math.hypot(dx, dy); }
+                  const push = (min - d) / 2 / d;
+                  px[m] -= dx * push; py[m] -= dy * push;
+                  px[n] += dx * push; py[n] += dy * push;
+                }
+              }
+            }
+          }
+        }
+        for (let m = 0; m < mov.length; m += 1) {
+          const o = sorted[mov[m]];
+          o.fx = (px[m] - cw / 2 - pan.x) / (cw * zoom) + 0.5;
+          o.fy = (py[m] - ch / 2 - pan.y) / (ch * zoom) + 0.5;
+        }
+      }
+    }
     const paintOps = (list: UnitDrawOp[]) => {
     for (const op of list) {
       const sx = zx(op.fx);
@@ -4433,6 +4509,9 @@ const ENGAGE_SKIP = new Set([
   "Defiler", "Queen", "High Templar", "Dark Archon", "Medic", "Arbiter", "Lurker",
   "Siege Tank (Siege Mode)",
 ]);
+/** 그중 도망가는 비무장 이동체(지적: 공격당하면 도망) — 캐스터는 제자리가 일이라 뺀다. */
+const ENGAGE_FLEE = new Set(["Worker", "Transport", "Overlord", "Dropship", "Shuttle", "Observer"]);
+const ENGAGE_FLEE_SIGHT = 5;
 /** 갓 뽑힌 유닛이 건물 앞에 머무는 시간(초). */
 const FRESH_HOLD_SEC = 12;
 /** 랠리 대기 뒤 부대로 걸어가 스며드는 데 주는 최대 시간(초) — 못 닿으면 페이드. */
@@ -4974,24 +5053,49 @@ export default function ReplayMotionPlayer({
       if (q) engageFoes.push({ team: team2, x: q.x, y: q.y });
     }
   });
-  const engagePosOf = <P extends { x: number; y: number }>(
-    team: number | undefined, unitName: string | null, pos: P,
-  ): P => {
-    if (unitName && ENGAGE_SKIP.has(unitName)) return pos;
-    const melee = unitName ? ENGAGE_MELEE.has(unitName) : false;
-    const target = melee ? 0.8 : unitName ? ENGAGE_RANGE[unitName] ?? 3 : 3;
+  const nearestFoe = (team: number | undefined, x: number, y: number) => {
     let bx = 0;
     let by = 0;
     let bd = Infinity;
     for (const f of engageFoes) {
       if (!team || f.team === team) continue;
-      const d = Math.hypot(f.x - pos.x, f.y - pos.y);
+      const d = Math.hypot(f.x - x, f.y - y);
       if (d < bd) { bd = d; bx = f.x; by = f.y; }
     }
+    return { bx, by, bd };
+  };
+  const engagePosOf = <P extends { x: number; y: number }>(
+    team: number | undefined, unitName: string | null, pos: P,
+  ): P => {
+    if (unitName && ENGAGE_SKIP.has(unitName)) {
+      /* 도망(지적: 공격력 없는 애들은 공격당하면 도망간다) — 싸움과 무관한 유닛 중
+         비무장 이동체는 적이 코앞(5타일)이면 반대쪽으로 물러난다. 가까울수록 세게,
+         최대 2타일 — 명령 좌표는 그대로고 표시만 슬쩍 피한다. */
+      if (!unitName || !ENGAGE_FLEE.has(unitName)) return pos;
+      const { bx, by, bd } = nearestFoe(team, pos.x, pos.y);
+      if (!Number.isFinite(bd) || bd > ENGAGE_FLEE_SIGHT || bd < 0.01) return pos;
+      const away = Math.min((ENGAGE_FLEE_SIGHT - bd) * 0.6, 2);
+      return { ...pos, x: pos.x - ((bx - pos.x) / bd) * away, y: pos.y - ((by - pos.y) / bd) * away };
+    }
+    /* 시즈 모드(지적: 시즈탱크는 어느 이상 근접은 공격 못 함 — 최소 사정거리) — 멈춰
+       선 탱크는 시즈로 그려지는데(아래 siegedNow), 시즈는 제자리 화력이라 안 끈다. */
+    if (unitName === "Siege Tank" && (pos as { moving?: boolean }).moving === false) return pos;
+    const melee = unitName ? ENGAGE_MELEE.has(unitName) : false;
+    const target = melee ? 0.8 : unitName ? ENGAGE_RANGE[unitName] ?? 3 : 3;
+    const { bx, by, bd } = nearestFoe(team, pos.x, pos.y);
     if (!Number.isFinite(bd) || bd > ENGAGE_SIGHT_TILES || bd <= Math.max(target, 0.01)) return pos;
     const pull = Math.min((bd - target) / 2, ENGAGE_PULL_CAP);
     return { ...pos, x: pos.x + ((bx - pos.x) / bd) * pull, y: pos.y + ((by - pos.y) / bd) * pull };
   };
+  /* 시즈 모드 표시(지적: 시즈모드를 거의 본 적이 없음) — 리플레이에 시즈 토글의 자리가
+     안 남아 상태를 어림한다: 탱크 부대가 멈춰 서 있고 적이 포 사정권 언저리(14타일)에
+     있으면 앉은 것으로 본다. 이동을 시작하면 도로 탱크 모드다. */
+  const siegedNow = (team: number | undefined, pos: { x: number; y: number; moving?: boolean }): boolean =>
+    pos.moving === false && nearestFoe(team, pos.x, pos.y).bd <= 14;
+  /* 교전 중 판정(지적: 공격 효과를 거의 못 본다) — 상대 공격 명령 창(hot)에만 기대면
+     드물어서, 적 마커가 곁(6타일)에 있는 것도 싸움으로 본다. */
+  const engagedNow = (team: number | undefined, pos: { x: number; y: number }): boolean =>
+    nearestFoe(team, pos.x, pos.y).bd <= 6;
   /* 생산 완료 시각 직렬화(지적: 일꾼이 말도 안 되게 빠른 속도로 연달아 생산돼 나옴) —
      훈련 클릭 연타가 전부 prod에 남지만, 실제 생산은 슬롯(테란·토스는 건물당 1, 저그는
      해처리당 라바 3)당 한 번에 하나다. 서 있는 생산 건물 수만큼의 슬롯에 차례로 배정해
@@ -5396,15 +5500,31 @@ export default function ReplayMotionPlayer({
      방향을 문다: 가까운 창부터 점점 멀리(최대 15초) 되짚어 처음 잡히는 변위의 방향이다.
      첫 창을 0.3초로 좁혔다(지적: 가끔 옆을 보고 걷는 듯) — 0.8초 창은 모퉁이를 돈 직후
      두 구간에 걸친 평균 방향(대각선)을 물어, 꺾고 나서도 한동안 비껴 보였다. */
-  const headingOf = (walk: TrackPt[], pos: { x: number; y: number }): number => {
+  /* 마커별 직전 방향 기억(지적: 회전 부드럽게) — headingOf의 각 스무딩 상태. 마커가
+     사라지면 항목이 남지만 몇백 개 수준이라 판 하나 안에서는 무해하다. */
+  const hdgMemRef = useRef(new Map<string, { h: number; t: number }>());
+  const headingOf = (walk: TrackPt[], pos: { x: number; y: number }, smoothKey?: string): number => {
+    let target = 0;
     for (const back of [0.3, 0.8, 2, 4, 8, 15]) {
       const hp = posAt(walk, Math.max(0, t - back), null);
       if (!hp) break;
       const dx = pos.x - hp.x;
       const dy = pos.y - hp.y;
-      if (Math.hypot(dx, dy) > 0.08) return (Math.atan2(-dx, dy) * 180) / Math.PI;
+      if (Math.hypot(dx, dy) > 0.08) { target = (Math.atan2(-dx, dy) * 180) / Math.PI; break; }
     }
-    return 0;
+    if (!smoothKey) return target;
+    /* 회전을 부드럽게(지적: 움직임·회전 좀 부드럽게) — 경유점을 꺾는 순간 방향이 즉시
+       홱 돌던 것을, 마커별로 지난 프레임의 각을 기억해 초당 300도 상한으로 따라잡게
+       한다. 시킹(시간이 뒤로 가거나 크게 점프)이나 첫 등장은 그대로 스냅. */
+    const mem = hdgMemRef.current.get(smoothKey);
+    hdgMemRef.current.set(smoothKey, { h: target, t });
+    if (!mem || t <= mem.t || t - mem.t > 1.5) return target;
+    let diff = ((target - mem.h) % 360 + 540) % 360 - 180;
+    const maxTurn = 300 * (t - mem.t);
+    if (Math.abs(diff) > maxTurn) diff = Math.sign(diff) * maxTurn;
+    const h = mem.h + diff;
+    hdgMemRef.current.set(smoothKey, { h, t });
+    return h;
   };
   /* 캔버스 유닛 층의 재료(요청: 캔버스 전환 — 성능) — 이번 렌더에서 그릴 낱개 유닛
      도형들. 아래 마커 계산부가 push하고, 렌즈 안의 <UnitLayer>가 커밋 뒤 한 번에 그린다.
@@ -6370,7 +6490,22 @@ export default function ReplayMotionPlayer({
                   key={`bfx-${i}`}
                   className={`scr-motion-buildfx scr-bfx-${race2 === "저그" ? "zerg" : race2 === "프로토스" ? "toss" : "terran"}`}
                   style={{ ...posStyle(centerX, centerY), zIndex: z + 1 }}
-                />
+                >
+                  {/* 테란 용접 스파크(지적: 빨간 깜빡임이 전투 같다) — 밝은 흰빛의 길이가
+                      다른 짧은 막대들을 둥글게 배치, 저마다 다른 박자로 튄다. 길이·각은
+                      건물 번호 해시로 결정적이다. */}
+                  {race2 === "테란" && [0, 1, 2, 3, 4, 5, 6, 7].map((k) => (
+                    <span
+                      key={k}
+                      className="scr-bfx-weld"
+                      style={{
+                        height: `${3 + ((i * 7 + k * 5) % 5)}px`,
+                        transform: `rotate(${k * 45 + ((i * 13 + k * 29) % 22)}deg) translateY(${4 + ((i + k * 3) % 4)}px)`,
+                        animationDelay: `${((i * 3 + k * 7) % 9) / 10}s`,
+                      }}
+                    />
+                  ))}
+                </span>
               );
             }
             if (shapeKind) {
@@ -7164,7 +7299,7 @@ export default function ReplayMotionPlayer({
                 kind: g.unit === "Transport"
                   ? (race === "저그" ? "ovie" : race === "테란" ? "dship" : "shuttle")
                   : workerKindOf(race),
-                rotDeg: g.unit === "Transport" ? headingOf(g.walk, pos) : undefined,
+                rotDeg: g.unit === "Transport" ? headingOf(g.walk, pos, `${p.raw}-tp${gi}`) : undefined,
                 viewYaw: viewYawOf(pos.x, pos.y), flat: !pitched, pitch: pitched,
                 sizePx: g.unit === "Transport"
                   ? dotGlyphPx("dot", 1.7, ay3)
@@ -7200,11 +7335,14 @@ export default function ReplayMotionPlayer({
             /* 같은 자리 무리는 아주 촘촘히 겹친다(지적: 퍼짐이 심해졌다 — 겹치면서도
                규모는 보이게). 묶음(gi)마다 나선을 돌려 두 무리가 포개지지 않게만 한다. */
             /* 전투 중(요청: 전투 효과) — 이 사람의 전투 구간(hot) 안이고 이 부대가
-               방금도 부려졌으면 불꽃이 튀고, 주기적으로 사망 퍼프가 터진다. */
-            const fighting = sinceCmd <= 15
-              && (p.hot ?? []).some(([a2, b2]) => t >= a2 && t <= b2);
+               방금도 부려졌으면 불꽃이 튀고, 주기적으로 사망 퍼프가 터진다. 적 마커가
+               곁에 있어도 싸움이다(지적: 공격 효과를 거의 못 봄 — hot 창은 성긴 어림이라
+               맞붙어 있는데도 조용했다). */
+            const fighting = (sinceCmd <= 15
+              && (p.hot ?? []).some(([a2, b2]) => t >= a2 && t <= b2))
+              || engagedNow(team, pos);
             const cyc = Math.floor(t / 1.5);
-            const hdg = headingOf(g.walk, pos);
+            const hdg = headingOf(g.walk, pos, `${p.raw}-t${gi}-${g.unit}`);
             const seed = gi * 1.7;
             return glyphUnits.map((u, di) => {
               const bulk = UNIT_BULK[u] ?? 2;
@@ -7257,7 +7395,11 @@ export default function ReplayMotionPlayer({
                 fx, fy,
                 z: pitched ? 1000 + Math.round(ay3 * 80)
                   : 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
-                kind: burrowed ? "burrowhole" : unitMarkerKind(u, bases.find((b) => b.key === p.raw)?.race),
+                kind: burrowed ? "burrowhole"
+                  : unitMarkerKind(
+                    u === "Siege Tank" && siegedNow(team, pos) ? "Siege Tank (Siege Mode)" : u,
+                    bases.find((b) => b.key === p.raw)?.race,
+                  ),
                 rotDeg: burrowed ? undefined : hdg, viewYaw: viewYawOf(ax3, ay3),
                 flat: !pitched, pitch: pitched,
                 sizePx: unitPxOf(u, ay3),
@@ -7274,7 +7416,7 @@ export default function ReplayMotionPlayer({
                 ? dodge(ax3 - Math.sin(hrad) * 4.5, ay3 + Math.cos(hrad) * 4.5)
                 : null;
               const hasFx = fighting && (
-                (ATTACK_FX[u] && di % 4 === 0) || (di + cyc) % 7 === 0 || u === "Carrier");
+                (ATTACK_FX[u] && di % 3 === 0) || (di + cyc) % 5 === 0 || u === "Carrier");
               if (!hasFx) return null;
               const unitSpan = (
                 <span
@@ -7294,10 +7436,10 @@ export default function ReplayMotionPlayer({
                 >
                   {/* 전투 불꽃·사망 퍼프(요청) — 대여섯에 하나씩 불꽃, 일곱에 하나씩
                       돌아가며 퍼프(1.5초 주기 결정적 순환이라 프레임마다 안 튄다). */}
-                  {fighting && ATTACK_FX[u] && di % 4 === 0 && (
+                  {fighting && ATTACK_FX[u] && di % 3 === 0 && (
                     <span className={`scr-motion-atkfx scr-fxa-${ATTACK_FX[u]}`} />
                   )}
-                  {fighting && (di + cyc) % 7 === 0 && (
+                  {fighting && (di + cyc) % 5 === 0 && (
                     <span key={`pf-${cyc}`} className="scr-motion-puff" />
                   )}
                   {/* 캐리어는 전투 때 인터셉터가 주위를 난다(요청) — 작은 점 셋이 궤도. */}
@@ -7427,11 +7569,12 @@ export default function ReplayMotionPlayer({
                소형(8px)이라, 곁의 대형 부대와 나란히 설 때 유독 작아 보였다. */
             if (glyphs.length === 0) glyphs.push(unit || "?");
             // 퍼짐 보정(요청) — 위 typeNodes의 seed 주석과 같은 규칙(부대 번호로 나선 회전).
-            /* 전투 중(요청) — 위 typeNodes와 같은 규칙. */
-            const fighting = sinceCmd <= 15
-              && (p.hot ?? []).some(([a2, b2]) => t >= a2 && t <= b2);
+            /* 전투 중(요청) — 위 typeNodes와 같은 규칙(적 곁 판정 포함). */
+            const fighting = (sinceCmd <= 15
+              && (p.hot ?? []).some(([a2, b2]) => t >= a2 && t <= b2))
+              || engagedNow(team, pos);
             const cyc = Math.floor(t / 1.5);
-            const hdg = headingOf(rp, pos);
+            const hdg = headingOf(rp, pos, `${p.raw}-s${si}`);
             const seed = si * 1.7;
             return glyphs.map((u, di) => {
               /* 물음 도형은 빌린 모델과 같은 소형(재지적: 아직도 큰 애들) — 중형으로
@@ -7464,7 +7607,10 @@ export default function ReplayMotionPlayer({
                 fx, fy,
                 z: pitched ? 1000 + Math.round(ay3 * 80)
                   : 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0]),
-                kind: unitMarkerKind(u, bases.find((b) => b.key === p.raw)?.race),
+                kind: unitMarkerKind(
+                  u === "Siege Tank" && siegedNow(team, pos) ? "Siege Tank (Siege Mode)" : u,
+                  bases.find((b) => b.key === p.raw)?.race,
+                ),
                 rotDeg: hdg, viewYaw: viewYawOf(ax3, ay3),
                 flat: !pitched, pitch: pitched,
                 sizePx: unitPxOf(u, ay3),
@@ -7473,7 +7619,7 @@ export default function ReplayMotionPlayer({
                 air: uAir,
               });
               const hasFx = fighting && (
-                (ATTACK_FX[u] && di % 4 === 0) || (di + cyc) % 7 === 0 || u === "Carrier");
+                (ATTACK_FX[u] && di % 3 === 0) || (di + cyc) % 5 === 0 || u === "Carrier");
               if (!hasFx) return null;
               return (
                 <span
@@ -7494,10 +7640,10 @@ export default function ReplayMotionPlayer({
                 >
                   {/* 전투 불꽃·사망 퍼프(요청) — 대여섯에 하나씩 불꽃, 일곱에 하나씩
                       돌아가며 퍼프(1.5초 주기 결정적 순환이라 프레임마다 안 튄다). */}
-                  {fighting && ATTACK_FX[u] && di % 4 === 0 && (
+                  {fighting && ATTACK_FX[u] && di % 3 === 0 && (
                     <span className={`scr-motion-atkfx scr-fxa-${ATTACK_FX[u]}`} />
                   )}
-                  {fighting && (di + cyc) % 7 === 0 && (
+                  {fighting && (di + cyc) % 5 === 0 && (
                     <span key={`pf-${cyc}`} className="scr-motion-puff" />
                   )}
                   {/* 캐리어는 전투 때 인터셉터가 주위를 난다(요청) — 작은 점 셋이 궤도. */}
@@ -7528,7 +7674,7 @@ export default function ReplayMotionPlayer({
         {motion.players.flatMap((p, pi) => {
           const race = bases.find((b) => b.key === p.raw)?.race;
           const team = teamOfRaw(p.raw);
-          return scoutSquads[pi].map((g) => {
+          return scoutSquads[pi].map((g, si) => {
             const rp = g.walk;
             if (rp.length === 0 || t < rp[0][0]) return null;
             const pos = posAt(rp, t, null);
@@ -7571,7 +7717,7 @@ export default function ReplayMotionPlayer({
             /* 정찰은 이름을 아예 안 띄운다(지적: 일꾼 이름 뜨는 게 문제 맞다) — 일꾼은
                늘 작은 점, 수송선·오버로드는 늘 제 도형이다. 칩으로 커지는 일이 없으니
                커졌다 작아졌다도 없다. */
-            const hdg = headingOf(rp, pos);
+            const hdg = headingOf(rp, pos, `${p.raw}-x${si}`);
             // (캔버스 전환) — 정찰 점·수송선 도형도 unitOps로 간다. 계산은 그대로다.
             const [ax3, ay3] = dodge(pos.x, pos.y);
             const [fx, fy] = posFrac(ax3, ay3);
