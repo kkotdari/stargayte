@@ -2401,32 +2401,35 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 몸에 바짝(재보정: 첫 판은 몸과 떠 보였다) + 더 얇게.
       const xi = m2 * 1.05;
       const xo = m2 * 1.55;
-      /* 날개 옆모습 (y, z) — 물고기 몸통꼴. 앞코는 뾰족점 대신 뭉뚝한 수직 변
-         (재지적), 뒤는 짧게 끊는다 — 꼬리는 아래 가운데 뿔 하나가 맡는다(재지적:
-         두 판으로 갈라지지 말고 하나로). */
+      const xm = m2 * 1.3;
+      /* 날개 앞판 (y, z) — 앞코는 뾰족점 대신 뭉뚝한 수직 변. 뒤는 -0.8쯤에서 끊고,
+         거기서 안판·바깥판이 '날개마다' 뿔 하나로 합쳐진다(재재지적: 몸통이 아니라
+         양 날개에 — 두 판으로 갈라진 채 끝나지 않게). */
       const prof: [number, number][] = [
-        [2.2, 6.35], [1, 6.75], [-1, 6.7], [-2.2, 6.2],
-        [-1.2, 5.5], [0.9, 5.3], [2.35, 5.75],
+        [2.2, 6.35], [1, 6.75], [-0.8, 6.6], [-0.9, 5.45], [0.9, 5.3], [2.35, 5.75],
       ];
       const at = (x: number): string => polyPath3(
         prof.map(([y, z]) => [x, y, z] as [number, number, number]));
-      const o: ShapeFace[] = [bodyFace(at(xi))];
-      // 두께 띠 — 뭉뚝 코의 수직 변과 그 위·아래(앞이 도톰하다는 지적 그대로).
       const band = (i: number, j: number): string => polyPath3([
         [xi, prof[i][0], prof[i][1]], [xo, prof[i][0], prof[i][1]],
         [xo, prof[j][0], prof[j][1]], [xi, prof[j][0], prof[j][1]],
       ]);
-      o.push(bodyFace(band(6, 0)), sideFace(band(6, 0), 0.2));
-      o.push(bodyFace(band(0, 1)), topFace(band(0, 1), 0.2));
-      o.push(bodyFace(band(5, 6)), sideFace(band(5, 6), 0.16));
-      o.push(bodyFace(at(xo)));
-      o.push(m2 === 1 ? sideFace(at(xo), 0.16) : topFace(at(xo), 0.12));
+      const o: ShapeFace[] = [
+        // 꼬리 뿔 — 이 날개의 두 판이 여기로 모여 하나가 된다(가운데 x의 뿔).
+        ...hornFaces(xm, -0.7, 6.05, xm, -3.7, 5.75, 0.55),
+      ];
+      // 앞판·두께 띠 — 손 면이 꼬리 깊이에 묻어가지 않게 제 깊이를 단다.
+      o.push(...tagDepth([bodyFace(at(xi))], xm, 0.8));
+      o.push(...tagDepth([bodyFace(band(5, 0)), sideFace(band(5, 0), 0.2)], xm, 2.3));
+      o.push(...tagDepth([bodyFace(band(0, 1)), topFace(band(0, 1), 0.2)], xm, 1.6));
+      o.push(...tagDepth(
+        [bodyFace(at(xo)), m2 === 1 ? sideFace(at(xo), 0.16) : topFace(at(xo), 0.12)],
+        xm, 0.8,
+      ));
       return o;
     };
     const [cx2, cy2] = project(0, 1.9, 5.7);
     return [
-      // 꼬리 — 두 날개가 뒤에서 하나로 합쳐지는 가운데 뿔(재지적).
-      ...hornFaces(0, -1.7, 6.15, 0, -4.1, 5.7, 0.75),
       ...wing(-1),
       ...wing(1),
       // 몸체는 구(지적: 곤충 같음) — 동그란 공 하나에 하이라이트만. 날개에 안 묻히게 한 단 크게.
