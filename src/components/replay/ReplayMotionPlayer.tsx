@@ -5015,9 +5015,23 @@ export default function ReplayMotionPlayer({
     ];
   };
   const squadPts = useMemo(
-    () => basePts.map((pts, pi) => splitSquads(
-      pts, homeOf(motion.players[pi].raw), SQUAD_MERGE_TILES, warpsOf(motion.players[pi]),
-    )),
+    () => basePts.map((pts, pi) => {
+      /* 같은 병력 두 갈래 근본 봉합(재지적: 같은 유닛이 두 부대로 두 번 적진으로 감) —
+         혼성 부대는 클릭이 무명(pts)과 정체 갈래(upts)를 오간다: 그냥 어택땅은 무명,
+         스팀·시즈로 정체가 드러난 클릭은 유닛별 스트림. 같은 병력의 두 그림자가 나란히
+         행군하던 원인이다. 무명 점이 정체 갈래 점과 같은 시공간(±20초·8타일)에 있으면
+         같은 병력이므로 정체 쪽만 남기고 무명 점을 걷는다 — 멀리 떨어진 진짜 딴 무리는
+         그대로 남는다. 일꾼·수송 갈래는 병력이 아니라 잣대에서 뺀다. */
+      const ups = Object.entries(motion.players[pi].upts ?? {})
+        .filter(([u2]) => u2 !== "Worker" && u2 !== "Transport")
+        .flatMap(([, v]) => v);
+      const filtered = ups.length === 0 ? pts : pts.filter((pt) =>
+        !ups.some((u2) => Math.abs(u2[0] - pt[0]) <= 20
+          && Math.hypot(u2[1] - pt[1], u2[2] - pt[2]) <= 8));
+      return splitSquads(
+        filtered, homeOf(motion.players[pi].raw), SQUAD_MERGE_TILES, warpsOf(motion.players[pi]),
+      );
+    }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [basePts, motion, bases],
   );
@@ -6618,26 +6632,32 @@ export default function ReplayMotionPlayer({
               });
               /* 공사 애니(요청) — 모델은 캐시 스프라이트라 못 움직이니 CSS 오버레이가
                  맡는다: 테란 빨간 불 깜빡, 저그 심장 박동, 프로토스 소환 글로우. */
+              /* 스파크 자리(재지적: 일꾼 주변에 작게) — 테란은 SCV가 붙는 건물
+                 왼쪽 아래 모서리에서 인다. 저그 박동·토스 글로우는 가운데 그대로. */
+              const bfxX = race2 === "테란" ? centerX - fp2[0] / 2 + 0.4 : centerX;
+              const bfxY = race2 === "테란" ? centerY + fp2[1] / 2 - 0.3 : centerY;
               return (
                 <span
                   key={`bfx-${i}`}
                   className={`scr-motion-buildfx scr-bfx-${race2 === "저그" ? "zerg" : race2 === "프로토스" ? "toss" : "terran"}`}
-                  style={{ ...posStyle(centerX, centerY), zIndex: z + 1 }}
+                  style={{ ...posStyle(bfxX, bfxY), zIndex: z + 1 }}
                 >
                   {/* 테란 용접 스파크(지적: 빨간 깜빡임이 전투 같다) — 밝은 흰빛의 길이가
                       다른 짧은 막대들을 둥글게 배치, 저마다 다른 박자로 튄다. 길이·각은
                       건물 번호 해시로 결정적이다. 크기는 타일 크기에 비례(재지적: 왜케
                       커 — 고정 px라 모바일의 작은 맵에선 막대가 건물만 했다). */}
                   {race2 === "테란" && (() => {
+                    /* 절반 크기(재재지적: 왜케 커) — 막대 대여섯 px가 아니라 일꾼
+                       발치의 불티 두어 px. 여섯 개만 좁게 튄다. */
                     const ws = Math.max(0.35, ((mapRef.current?.clientWidth ?? 320) / grid.width) / 5);
-                    return [0, 1, 2, 3, 4, 5, 6, 7].map((k) => (
+                    return [0, 1, 2, 3, 4, 5].map((k) => (
                       <span
                         key={k}
                         className="scr-bfx-weld"
                         style={{
-                          width: `${Math.max(0.8, 1.5 * ws).toFixed(1)}px`,
-                          height: `${((3 + ((i * 7 + k * 5) % 5)) * ws).toFixed(1)}px`,
-                          transform: `rotate(${k * 45 + ((i * 13 + k * 29) % 22)}deg) translateY(${((4 + ((i + k * 3) % 4)) * ws).toFixed(1)}px)`,
+                          width: `${Math.max(0.6, 0.9 * ws).toFixed(1)}px`,
+                          height: `${((1.5 + ((i * 7 + k * 5) % 5) * 0.5) * ws).toFixed(1)}px`,
+                          transform: `rotate(${k * 60 + ((i * 13 + k * 29) % 30)}deg) translateY(${((1.5 + ((i + k * 3) % 3)) * ws).toFixed(1)}px)`,
                           animationDelay: `${((i * 3 + k * 7) % 9) / 10}s`,
                         }}
                       />
@@ -7658,7 +7678,14 @@ export default function ReplayMotionPlayer({
                   {/* 전투 불꽃·사망 퍼프(요청) — 대여섯에 하나씩 불꽃, 일곱에 하나씩
                       돌아가며 퍼프(1.5초 주기 결정적 순환이라 프레임마다 안 튄다). */}
                   {fighting && ATTACK_FX[u] && di % 3 === 0 && (
-                    <span className={`scr-motion-atkfx scr-fxa-${ATTACK_FX[u]}`} />
+                    atkDeg !== null ? (
+                      /* 총구 앞(재지적) — 적 방향으로 살짝 밀어 단 자리에서 인다. */
+                      <span className="scr-motion-muzzle" style={{ transform: `rotate(${atkDeg.toFixed(1)}deg)` }}>
+                        <span className={`scr-motion-atkfx scr-fxa-${ATTACK_FX[u]}`} />
+                      </span>
+                    ) : (
+                      <span className={`scr-motion-atkfx scr-fxa-${ATTACK_FX[u]}`} />
+                    )
                   )}
                   {/* 예광탄(지적: 누가 쏘는지) — 공격자에게서 적 쪽으로 뻗는 빛줄기. */}
                   {atkDeg !== null && ATTACK_FX[u] && di % 3 === 0 && (
@@ -7878,7 +7905,14 @@ export default function ReplayMotionPlayer({
                   {/* 전투 불꽃·사망 퍼프(요청) — 대여섯에 하나씩 불꽃, 일곱에 하나씩
                       돌아가며 퍼프(1.5초 주기 결정적 순환이라 프레임마다 안 튄다). */}
                   {fighting && ATTACK_FX[u] && di % 3 === 0 && (
-                    <span className={`scr-motion-atkfx scr-fxa-${ATTACK_FX[u]}`} />
+                    atkDeg !== null ? (
+                      /* 총구 앞(재지적) — 적 방향으로 살짝 밀어 단 자리에서 인다. */
+                      <span className="scr-motion-muzzle" style={{ transform: `rotate(${atkDeg.toFixed(1)}deg)` }}>
+                        <span className={`scr-motion-atkfx scr-fxa-${ATTACK_FX[u]}`} />
+                      </span>
+                    ) : (
+                      <span className={`scr-motion-atkfx scr-fxa-${ATTACK_FX[u]}`} />
+                    )
                   )}
                   {/* 예광탄(지적: 누가 쏘는지) — 공격자에게서 적 쪽으로 뻗는 빛줄기. */}
                   {atkDeg !== null && ATTACK_FX[u] && di % 3 === 0 && (

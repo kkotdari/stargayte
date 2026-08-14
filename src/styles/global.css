@@ -13243,7 +13243,7 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    가운데에서 가장 가까운 적 쪽으로 뻗는 가는 빛줄기. 위쪽 기준점(transform-origin
    50% 0)에서 회전각이 적 방향을 가리키고, 밝았다 스러지길 반복한다. */
 .scr-motion-tracer {
-  position: absolute; left: 50%; top: 50%; width: 2px; height: 15px;
+  position: absolute; left: 50%; top: 50%; width: 1.5px; height: 9px;
   margin-left: -1px; border-radius: 1px; pointer-events: none;
   transform-origin: 50% 0;
   background: linear-gradient(to bottom, rgba(255, 244, 200, 0.95), rgba(255, 244, 200, 0));
@@ -13256,30 +13256,37 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   75%, 100% { opacity: 0; }
 }
 .scr-motion-atkfx {
-  position: absolute; left: 62%; top: 28%; width: 10px; height: 10px;
+  position: absolute; left: 62%; top: 28%; width: 6px; height: 6px;
   pointer-events: none; transform: translate(-50%, -50%); mix-blend-mode: screen;
 }
+/* 총구 래퍼(지적: 공격 효과는 총구 앞에 작게) — 유닛 가운데 0×0 축을 적 방향으로
+   돌려, 안의 섬광이 그 방향 앞(아래 = 회전 후 적 쪽)에서 인다. */
+.scr-motion-muzzle {
+  position: absolute; left: 50%; top: 50%; width: 0; height: 0;
+  pointer-events: none; transform-origin: 0 0;
+}
+.scr-motion-muzzle > .scr-motion-atkfx { left: 0; top: 6px; }
 /* 총 — 총구 섬광. */
 .scr-fxa-gun { background: radial-gradient(circle, rgba(255, 240, 160, 0.95) 0 25%, transparent 60%); animation: fxa-blink 0.18s steps(2, jump-none) infinite; }
 /* 포(탱크·리버) — 큰 섬광. */
-.scr-fxa-cannon { width: 16px; height: 16px; background: radial-gradient(circle, rgba(255, 230, 150, 0.95) 0 30%, rgba(255, 150, 60, 0.5) 55%, transparent 70%); animation: fxa-blink 0.55s steps(2, jump-none) infinite; }
+.scr-fxa-cannon { width: 9px; height: 9px; background: radial-gradient(circle, rgba(255, 230, 150, 0.95) 0 30%, rgba(255, 150, 60, 0.5) 55%, transparent 70%); animation: fxa-blink 0.55s steps(2, jump-none) infinite; }
 /* 화염방사. */
-.scr-fxa-flame { width: 15px; height: 9px; border-radius: 50%; background: linear-gradient(90deg, rgba(255, 200, 80, 0.9), rgba(255, 110, 30, 0.6), transparent); animation: fxa-flick 0.22s steps(2, jump-none) infinite; }
+.scr-fxa-flame { width: 9px; height: 6px; border-radius: 50%; background: linear-gradient(90deg, rgba(255, 200, 80, 0.9), rgba(255, 110, 30, 0.6), transparent); animation: fxa-flick 0.22s steps(2, jump-none) infinite; }
 /* 치료 십자. */
 .scr-fxa-heal { animation: fxa-pulse 0.8s ease-in-out infinite; }
 .scr-fxa-heal::before, .scr-fxa-heal::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(255, 255, 255, 0.92); }
-.scr-fxa-heal::before { width: 8px; height: 2.4px; }
-.scr-fxa-heal::after { width: 2.4px; height: 8px; }
+.scr-fxa-heal::before { width: 5px; height: 1.6px; }
+.scr-fxa-heal::after { width: 1.6px; height: 5px; }
 /* 독침(히드라·러커). */
-.scr-fxa-spine { width: 12px; height: 2px; background: linear-gradient(90deg, rgba(230, 255, 200, 0.9), transparent); animation: fxa-dash 0.3s linear infinite; }
+.scr-fxa-spine { width: 8px; height: 1.5px; background: linear-gradient(90deg, rgba(230, 255, 200, 0.9), transparent); animation: fxa-dash 0.3s linear infinite; }
 /* 가시 투척(뮤탈·스커지). */
-.scr-fxa-glave { width: 6px; height: 6px; border-radius: 50%; background: rgba(210, 255, 210, 0.85); animation: fxa-dash 0.35s linear infinite; }
+.scr-fxa-glave { width: 4px; height: 4px; border-radius: 50%; background: rgba(210, 255, 210, 0.85); animation: fxa-dash 0.35s linear infinite; }
 /* 산성 가스(디바우러·가디언·퀸). */
-.scr-fxa-acid { width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle, rgba(150, 230, 80, 0.85) 0 40%, rgba(90, 180, 50, 0.4) 70%, transparent 75%); animation: fxa-lob 0.7s ease-out infinite; }
+.scr-fxa-acid { width: 6px; height: 6px; border-radius: 50%; background: radial-gradient(circle, rgba(150, 230, 80, 0.85) 0 40%, rgba(90, 180, 50, 0.4) 70%, transparent 75%); animation: fxa-lob 0.7s ease-out infinite; }
 /* 미사일(발키리). */
-.scr-fxa-missile { width: 12px; height: 3px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.9), rgba(255, 200, 120, 0.6), transparent); animation: fxa-dash 0.25s linear infinite; }
+.scr-fxa-missile { width: 8px; height: 2px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.9), rgba(255, 200, 120, 0.6), transparent); animation: fxa-dash 0.25s linear infinite; }
 /* 광탄(드라군·함선·템플러). */
-.scr-fxa-bolt { width: 8px; height: 8px; border-radius: 50%; background: radial-gradient(circle, rgba(150, 200, 255, 0.95) 0 35%, transparent 65%); animation: fxa-blink 0.35s steps(2, jump-none) infinite; }
+.scr-fxa-bolt { width: 5px; height: 5px; border-radius: 50%; background: radial-gradient(circle, rgba(150, 200, 255, 0.95) 0 35%, transparent 65%); animation: fxa-blink 0.35s steps(2, jump-none) infinite; }
 @keyframes fxa-blink {
   0% { opacity: 0; }
   50% { opacity: 1; }
@@ -13322,8 +13329,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   transform: translate(-50%, -50%);
   box-shadow: 0 0 2px currentColor;
 }
+/* 절반 크기(지적: 피격 효과도 커 봐야 유닛 크기) — 16 → 9px. */
 .scr-motion-puff {
-  position: absolute; left: 50%; top: 50%; width: 16px; height: 16px;
+  position: absolute; left: 50%; top: 50%; width: 9px; height: 9px;
   transform: translate(-50%, -50%); pointer-events: none; border-radius: 50%;
   background: radial-gradient(circle, rgba(255, 210, 130, 0.85) 0%, rgba(120, 120, 120, 0.4) 45%, transparent 70%);
   mix-blend-mode: screen;
