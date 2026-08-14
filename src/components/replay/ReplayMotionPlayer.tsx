@@ -7229,11 +7229,24 @@ export default function ReplayMotionPlayer({
               )];
             });
           });
+          /* 첫 전투 유닛 완성 시각 — 이 전에는 무명 부대 마커를 아예 안 그린다(지적:
+             시작 25초에 있을 리 없는 질럿 — 초반 일꾼 클릭이 부대 자취로 새면, 병력이
+             0인데도 '정체 모를 1기'가 서고 그 도형이 종족 기본 모델(프로토스=질럿)을
+             빌려 크게 그려졌다). 일꾼은 병력이 아니다 — 채굴·정찰 점이 따로 맡는다. */
+          const firstArmyDone = (() => {
+            let first = Infinity;
+            for (const [du, doneSecs] of unitDoneByRaw.get(p.raw) ?? []) {
+              if (du === "SCV" || du === "Probe" || du === "Drone") continue;
+              if (doneSecs.length > 0) first = Math.min(first, doneSecs[0]);
+            }
+            return first;
+          })();
           const squadNodes = squads.map((rp, si) => {
             /* 첫 부대 명령 전에는 아예 없다(지적: 시작하자마자 이상한 데 멈춰 있다) —
                posAt은 첫 점 이전이면 첫 점 자리를 돌려줘서, 병력이 생기기도 전에 마커가
                '앞으로 갈 자리'에 서 있었다. 그동안의 움직임은 정찰 점(spts)이 맡는다. */
             if (rp.length === 0 || t < rp[0][0]) return null;
+            if (t < firstArmyDone) return null;
             // 걷은 자취에는 곡선을 안 얹는다 — 위 typeMarks의 bend 주석과 같은 이유.
             const pos = posAt(rp, t, null);
             if (!pos) return null;

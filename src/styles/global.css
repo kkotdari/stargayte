@@ -1423,6 +1423,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 /* 래핑 div가 부모(.scr-nav/.scr-drawer-nav/.scr-mobile-tabbar)의 flex 자식 크기 계산에
    끼어들지 않도록 display:contents로 없앤다 — 실제 트리거 버튼이 형제 탭들과 동일하게 취급된다 */
 .scr-menu-pop { display: contents; }
+/* 레일 아코디언 묶음(지적: 하위 메뉴가 아래 항목과 겹침) — contents 평탄화 대신 제
+   상자를 가진 세로 묶음. 트리거와 펼친 목록이 한 덩어리로 서서 아래 항목을 밀어낸다. */
+.scr-menu-pop-rail { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .scr-menu-pop-caret { color: var(--dim); transition: transform .15s; }
 .scr-menu-pop-caret-open { transform: rotate(180deg); color: var(--text); }
 /* (배경/블러/라운드/그림자는 파일 뒤 "드롭다운 통일" 섹션 공통 규칙 한 벌 — CSS 정리
@@ -1770,10 +1773,14 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
      위아래 auto 마진(1:1)으로는 이 비를 못 만든다. 대신 기둥 자신의 ::before/::after를
      늘어나는 빈 칸으로 세우고 flex 값으로 비를 준다 — order로 자리를 지정하므로 메뉴
      위(2)와 아래(4)에 정확히 하나씩 선다. */
+  /* 위 칸은 고정, 아래 칸만 늘어난다(지적: 아코디언을 펴면 메뉴가 위로도 움직임) —
+     2:3 탄력 분배는 메뉴 높이가 변할 때마다 전체를 다시 가운데로 놓아, 하위 목록이
+     펴지는 순간 위 항목들까지 밀렸다. 위를 뷰포트 비례 고정값으로 두면 아코디언이
+     제자리에서 아래로만 자란다. 22vh는 950px 화면에서 예전 2:3 자리와 비슷한 높이다. */
   .scr-header-inner::before,
   .scr-header-inner::after { content: ""; flex-basis: 0; min-height: 0; }
-  .scr-header-inner::before { order: 2; flex-grow: 2; }
-  .scr-header-inner::after { order: 4; flex-grow: 3; }
+  .scr-header-inner::before { order: 2; flex-grow: 0; flex-basis: 22vh; }
+  .scr-header-inner::after { order: 4; flex-grow: 1; }
   .scr-nav-tab { justify-content: flex-start; padding: 9px 10px; border-radius: 6px; margin-left: 2px; }
   /* 기둥에서는 메뉴 글자를 키운다(요청): body(16) → subhead(20). 가로 띠에서 16px인 건
      옆에 로고·프로필과 나란히 서느라 눌러 둔 값인데, 기둥에서는 이 넷이 화면 왼쪽에서

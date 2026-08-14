@@ -64,7 +64,10 @@ export default function AdminMenu({
   // 해서 계속 포털+Floating UI를 쓴다.
   // useLayoutEffect(페인트 전)로 위치를 잡아 드롭다운이 즉시 제자리에 뜨게 한다(요청).
   useLayoutEffect(() => {
-    if (variant === "drawer" || !open || !anchorRef.current || !dropRef.current) return;
+    /* 플로팅 팝오버는 모바일 탭바 변형만(지적: 레일 아코디언이 운영과 겹침) — nav는
+       이제 제자리 아코디언이라, 여기서 위치를 잡아 버리면 목록이 흐름 밖으로 빠져
+       아래 항목을 못 밀어낸다. */
+    if (variant !== "mobile" || !open || !anchorRef.current || !dropRef.current) return;
     return attachPopover(anchorRef.current, dropRef.current, { growToContent: true, maxWidth: 200 });
   }, [open, variant]);
 
@@ -142,12 +145,18 @@ export default function AdminMenu({
        펼치면 아래 '운영'이 제자리라 목록에 가려짐) — 흐름 안에서 펼쳐 아래 항목을
        밀어낸다. 바깥 클릭 닫기 효과들은 위에서 nav 변형에도 걸려 있어 그대로 동작한다. */
     return (
-      <div className="scr-menu-pop scr-menu-pop-nav">
+      /* scr-menu-pop(display:contents)을 안 쓴다(지적: 하위 메뉴가 운영과 겹침) —
+         평탄화 속에서 인라인 목록이 흐름 밖으로 빠졌다. 제 상자를 가진 세로 묶음이면
+         목록이 아래 항목을 확실히 밀어낸다. */
+      <div className="scr-menu-pop-rail">
         <button type="button" className={triggerClass} ref={anchorRef} onClick={() => setOpen((v) => !v)}>
           <span>{title}</span>
           <ChevronDown size={14} className={cx("scr-menu-pop-caret", open && "scr-menu-pop-caret-open")} />
         </button>
-        {open && <div className="scr-menu-pop-drop-inline">{optionButtons}</div>}
+        {/* dropRef를 여기에도 단다(지적: 하위 메뉴 클릭이 이동 없이 닫히기만 함) —
+            바깥 클릭 닫기(pointerdown)가 이 목록을 제 것으로 알아봐야, 항목 클릭이
+            언마운트보다 먼저 살아서 onSelect까지 간다. */}
+        {open && <div className="scr-menu-pop-drop-inline" ref={dropRef}>{optionButtons}</div>}
       </div>
     );
   }
