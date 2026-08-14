@@ -4489,6 +4489,12 @@ const PRODUCER_OF: Record<string, string[]> = (() => {
   }
   return m;
 })();
+/* 자원 고갈(요청: 어느 정도 캐면 고갈, 무한맵 제외) — 미네랄 밭 1500을 두어 기가
+   캐면 약 12분, 가스 5000은 세 기가 약 17분이라는 어림. 고갈된 미네랄은 사라지고
+   가스는 색이 죽는다(원작: 고갈 가스도 2씩은 나온다). */
+const MINERAL_DEPLETE_SEC = 720;
+const GAS_DEPLETE_SEC = 1020;
+
 /* 교전 붙기의 자(아래 engagePosOf 주석) — 시야·당김 상한(타일), 근접 유닛, 유닛별
    사정거리(타일, 대략). 싸움과 무관한 유닛(일꾼·수송·캐스터)은 안 끈다 — 시즈 탱크
    (시즈 모드)와 러커는 제자리 화력이라 끌면 오히려 거짓말이 된다. */
@@ -6004,6 +6010,73 @@ export default function ReplayMotionPlayer({
      격자는 깃발(res[2])이 정확해서, '가스 건물 곁 6타일' 폴백을 쓰면 정제소 곁 미네랄
      밭까지 간헐천으로 그려 버린다. 폴백은 깃발이 하나도 없는 옛 격자에서만 쓴다. */
   const gridHasGasFlags = (grid.resources ?? []).some((r) => r[2] === 1);
+  /* 무한맵 검출(요청: 무한맵은 고갈 제외) — 겹쳐 쌓인 자원(1타일 안 두 항목)이 있으면
+     돈맵이다. 일반 맵은 밭이 겹치지 않는다. */
+  const moneyMap = useMemo(() => {
+    const rs = grid.resources ?? [];
+    for (let i = 0; i < rs.length; i += 1) {
+      for (let j = i + 1; j < rs.length; j += 1) {
+        if (Math.hypot(rs[i][0] - rs[j][0], rs[i][1] - rs[j][1]) < 0.9) return true;
+      }
+    }
+    return false;
+  }, [grid]);
+  /* 자원별 고갈 시각(위 MINERAL_DEPLETE_SEC 주석) — 미네랄은 '가까운 차례'가 처음
+     일꾼으로 채워진 시각 + 12분, 가스는 그 자리 가스 건물의 첫 완공 + 17분. 임자·차례는
+     채굴 표시와 같은 어림(가장 가까운 본진·홀)이되, 시각 의존을 피해 홀은 선 시각과
+     무관하게 본다 — 고갈은 분 단위 어림이라 그 오차는 티가 안 난다. */
+  const depleteAt = useMemo(() => {
+    const rs = grid.resources ?? [];
+    const out = new Map<number, number>();
+    if (moneyMap) return out;
+    const gasIdx = new Set<number>();
+    rs.forEach((r, ri) => {
+      if (r[2] === 1 || (!gridHasGasFlags
+        && gasBuildings.some((g) => Math.hypot(g.x - r[0], g.y - r[1]) <= 6))) gasIdx.add(ri);
+    });
+    const ownerOf = rs.map((r) => {
+      let best = 10;
+      let raw: string | null = null;
+      for (const m of bases) {
+        const d = Math.hypot(r[0] - m.x, r[1] - m.y);
+        if (d < best) { best = d; raw = m.key; }
+      }
+      for (const h of halls) {
+        const d = Math.hypot(r[0] - h.x, r[1] - h.y);
+        if (d < best) { best = d; raw = h.raw; }
+      }
+      return { raw, dist: best };
+    });
+    const byOwner = new Map<string, number[]>();
+    rs.forEach((_r, ri) => {
+      const o = ownerOf[ri];
+      if (o.raw && !gasIdx.has(ri)) {
+        const a = byOwner.get(o.raw) ?? [];
+        a.push(ri);
+        byOwner.set(o.raw, a);
+      }
+    });
+    for (const [raw, arr] of byOwner) {
+      arr.sort((a, b) => ownerOf[a].dist - ownerOf[b].dist);
+      const wk = motion.players.find((p) => p.raw === raw)?.workers ?? [];
+      arr.forEach((ri, rank) => {
+        let start = rank < 4 ? 0 : Infinity;
+        for (const [sec, n] of wk) {
+          if (4 + n > rank) { start = Math.min(start, sec); break; }
+        }
+        if (Number.isFinite(start)) out.set(ri, start + MINERAL_DEPLETE_SEC);
+      });
+    }
+    rs.forEach((r, ri) => {
+      if (!gasIdx.has(ri)) return;
+      let first = Infinity;
+      for (const g of gasBuildings) {
+        if (Math.hypot(g.x - r[0], g.y - r[1]) <= 4) first = Math.min(first, g.sec + 30);
+      }
+      if (Number.isFinite(first)) out.set(ri, first + GAS_DEPLETE_SEC);
+    });
+    return out;
+  }, [grid, moneyMap, gridHasGasFlags, gasBuildings, bases, halls, motion]);
   /* 스파이더 마인(요청) — 심은 자리(캐스트 좌표)에 마인 모델을 깔고, 심고 4초 뒤부터
      적 자취가 2타일 안에 들어온 첫 순간 터진 것으로 본다(리플레이에 폭발이 안 남는
      어림 — 갑자기 죽는 이유가 보이게). 디텍팅 제거는 알 수 없어 안 터진 마인은 남는다. */
@@ -6745,6 +6818,14 @@ export default function ReplayMotionPlayer({
           /* 간헐천은 두 칸 폭(지적: 한 칸처럼 작았다). 미네랄은 낱밭 단위가 되면서
              2×1 밭 폭에 맞춘 2.4타일 — 예전 3.2는 지대(여러 밭 묶음) 시절의 폭이다.
              색은 제 기본색(지적): 미네랄은 반투명 파란 수정, 가스는 회갈색 바위. */
+          /* 가스 위 건물(지적: 가스에 건물을 지으면 간헐천 모델은 사라져야) — 정제소류가
+             서 있는 동안은 간헐천을 감춘다. 취소·파괴로 걷히면(gone) 도로 나타난다. */
+          if (gasSpot && gasBuildings.some((g) =>
+            g.sec <= t && (g.gone === 0 || t < g.gone)
+            && Math.hypot(g.x - res[0], g.y - res[1]) <= 4)) return null;
+          // 고갈된 미네랄(요청)은 밭이 사라진다. 가스는 아래에서 색만 죽인다.
+          const depleted = (depleteAt.get(ri) ?? Infinity) <= t;
+          if (!gasSpot && depleted) return null;
           const wTiles = gasSpot ? 6.4 : 2.4;
           unitOps.push({
             fx, fy,
@@ -6755,7 +6836,7 @@ export default function ReplayMotionPlayer({
             wFrac: (wTiles / grid.width) * mkK,
             hFrac: ((wTiles * 0.75) / grid.width) * mkK,
             boxFit: "meet", fitWidth: true,
-            color: gasSpot ? "#8f8274" : "#8fb9e8",
+            color: gasSpot ? (depleted ? "#5d564c" : "#8f8274") : "#8fb9e8",
             alpha: gasSpot ? 1 : 0.75, noShadow: true,
           });
           return null;
@@ -6890,6 +6971,8 @@ export default function ReplayMotionPlayer({
              4군데로) — 일꾼 수보다 먼 차례의 지대는 캐는 점이 안 선다. 초반 4기는 홀에서
              가까운 네 지대만 오가고, 일꾼이 늘수록 바깥 지대까지 찬다. */
           const mineralRank = new Map<number, number>();
+          // 임자별 미네랄 밭 수(요청: 밭당 일꾼 수 배분의 분모).
+          const ownerMineralCount = new Map<string, number>();
           {
             const byOwner = new Map<string, number[]>();
             resList.forEach((res2, ri2) => {
@@ -6903,6 +6986,7 @@ export default function ReplayMotionPlayer({
               arr.sort((a, b) => owners[a]!.dist - owners[b]!.dist);
               arr.forEach((ri2, k) => mineralRank.set(ri2, k));
             }
+            for (const [raw2, arr] of byOwner) ownerMineralCount.set(raw2, arr.length);
           }
           return resList.flatMap((res, ri) => {
           const owner = owners[ri];
@@ -6918,9 +7002,12 @@ export default function ReplayMotionPlayer({
              자리는 깃발과 무관하게 가스 지대다. */
           const gasSpot = gasFlagOf(res);
           if (gasSpot) {
+            /* 반경 10 → 4(지적: 건물 없는 가스에 일꾼이 붙음) — 돈맵처럼 간헐천이
+               몰려 있으면 하나의 정제소가 10타일 안 이웃 간헐천까지 전부 열어 버렸다.
+               정제소는 간헐천 위에 서므로 4타일이면 짝이 정확하다. */
             const hasGasBuilding = gasBuildings.some((g) =>
               g.raw === owner!.raw && g.sec + 30 <= t && (g.gone === 0 || t < g.gone)
-              && Math.hypot(g.x - res[0], g.y - res[1]) <= 10);
+              && Math.hypot(g.x - res[0], g.y - res[1]) <= 4);
             if (!hasGasBuilding) return [];
           }
           const track = motion.players.find((p) => p.raw === owner!.raw);
@@ -6943,8 +7030,14 @@ export default function ReplayMotionPlayer({
           /* 시작 4기는 가장 가까운 미네랄 4군데로(요청) — 일꾼 수보다 먼 차례의 미네랄
              지대는 캐는 점이 안 선다. 일꾼이 늘면 바깥 지대도 차례로 찬다. */
           if (!gasSpot && (mineralRank.get(ri) ?? 0) >= workerN) return [];
+          // 고갈된 미네랄(요청)엔 일꾼도 안 간다. 고갈 가스는 원작처럼 계속 캔다(2씩).
+          if (!gasSpot && (depleteAt.get(ri) ?? Infinity) <= t) return [];
           const team = teamOfRaw(owner.raw);
-          const dots = Math.min(3, Math.max(1, Math.ceil(workerN / 10)));
+          /* 일꾼 수 규칙(지적: 하나에 한 마리가 아니다) — 가스는 세 마리, 미네랄은 밭당
+             1~3마리에서 시작해 후반엔 네 마리까지: 임자의 일꾼 수를 밭 수로 나눈 몫이다. */
+          const dots = gasSpot
+            ? Math.min(3, workerN)
+            : Math.max(1, Math.min(4, Math.round(workerN / Math.max(1, ownerMineralCount.get(owner.raw) ?? 8))));
           /* 채굴 걸음을 실제 일꾼 걸음으로(지적: 일꾼 속도가 왜 이렇게 빠르냐) — 예전
              사인파는 거리와 무관하게 7초에 한 왕복이라, 먼 홀(18타일까지)에선 점이 실제
              일꾼(3.7타일/초)보다 빨리 내달렸고 캐는 멈춤도 없었다. 이제 구간 길이만큼
