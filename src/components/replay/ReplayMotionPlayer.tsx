@@ -1628,10 +1628,34 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     return [
       // 낮은 기단 — 발치를 한 판으로 받친다.
       ...frustumFaces3(-0.2, 0.4, 8.8, 6.2, 8, 5.4, 1),
-      // 왼쪽 드럼 — 앞뒤로 눕힌 원통. 시청자 쪽 단면이 살짝 보인다.
-      ...tubeFaces(-3.2, -1.6, -3.2, 2.5, 1.75, 2),
+      // 왼쪽 드럼 몸통 — 앞뒤로 눕힌 원통(뒤로 물려, 앞은 아래 반원판이 마감한다).
+      ...tubeFaces(-3.2, -1.8, -3.2, 1.4, 1.6, 1.9),
       // 드럼 위 얹은 가는 관 — 실물의 몸통 이음새.
-      ...tubeFaces(-3.2, -1.2, -3.2, 2.1, 0.7, 3.6),
+      ...tubeFaces(-3.2, -1.4, -3.2, 1.1, 0.65, 3.4),
+      /* 앞 반원판(재지적: 원통을 90도 돌려 얇게 자르고 윗반원만 보이게) — 앞을 보고
+         선 얇은 반원 바퀴다. 아랫변은 기단에 묻히고 위 반원만 솟는다: 뒤판·앞판 반원
+         두 장을 테 띠로 봉합하고 가운데 축 원판을 박았다(옛 톱니바퀴와 같은 짜임새,
+         이는 없이). */
+      ...((): ShapeFace[] => {
+        const half = (y: number): [number, number, number][] => {
+          const pts: [number, number, number][] = [];
+          for (let i = 0; i <= 10; i += 1) {
+            const a = Math.PI * (i / 10);
+            pts.push([-2.9 - Math.cos(a) * 2.2, y, 1 + Math.sin(a) * 2.2]);
+          }
+          return pts;
+        };
+        const backP = half(1.85);
+        const frontP = half(2.4);
+        const g: ShapeFace[] = [bodyFace(polyPath3(backP)), sideFace(polyPath3(backP), 0.2)];
+        for (let i = 0; i < backP.length - 1; i += 1) {
+          g.push(bodyFace(polyPath3([backP[i], backP[i + 1], frontP[i + 1], frontP[i]])));
+        }
+        const fd = polyPath3(frontP);
+        g.push(bodyFace(fd), topFace(fd, 0.14));
+        g.push(capFace(wallDiscPath(-2.9, 2.41, 1, 0.55, 0.55), 0.35));
+        return tagKey(g, depthNow(-2.9, 2.1) + 0.5);
+      })(),
       // 가운데 결정 기둥 무리 — 높이 다른 네 자루, 끝이 뾰족하게 좁아진다.
       ...tagKey(hornFaces(-1.2, 0.1, 1, -1.3, 0, 6.4, 1.05), depthNow(-1.2, 0.1) + 1),
       ...tagKey(hornFaces(-0.2, -1, 1, -0.2, -1.1, 7.6, 1.15), depthNow(-0.2, -1) + 1),
@@ -3559,19 +3583,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const ny = (dx / len) * (w / 2);
       return `M${ax + nx} ${ay + ny} L${bx + nx} ${by + ny} L${bx - nx} ${by - ny} L${ax - nx} ${ay - ny} Z`;
     };
-    /* 다리 개편(재지적) — 양옆에 두 개씩(무릎 꺾인 매달린 다리 넷) + 앞쪽엔 긴 다리
-       한 쌍인데 끝이 집게발이다: 아랫마디 끝에서 두 갈래가 짧게 벌어진다. */
+    /* 다리 개편(재재지적: 앞다리는 그렇게 길지 않고, 뒷다리는 많이 굽고 짧다) —
+       양옆 두 개씩은 무릎을 높이 꺾어 짧게 매달리고, 앞쪽 집게발 한 쌍만 조금 길게
+       내려와 끝이 두 갈래로 벌어진다(공식 컨셉의 큰 집게 팔). */
     for (const sx of [-1, 1]) {
       for (const lyy of [-0.5, 1]) {
-        legs.push(seg(sx * 2.1, lyy, 2.7, sx * 3.1, lyy, 0.5, 0.52));
-        legs.push(seg(sx * 3.1, lyy, 0.5, sx * 2.4, lyy, -2.5, 0.4));
+        legs.push(seg(sx * 2.1, lyy, 2.6, sx * 3.2, lyy, 1.2, 0.5));
+        legs.push(seg(sx * 3.2, lyy, 1.2, sx * 2.55, lyy, -0.9, 0.4));
       }
-      // 앞 집게발 다리 — 몸 앞쪽에서 앞·아래로 길게 뻗는다.
-      legs.push(seg(sx * 0.85, 2.2, 2.5, sx * 1.35, 3.3, -0.3, 0.5));
-      legs.push(seg(sx * 1.35, 3.3, -0.3, sx * 1.15, 4.1, -3, 0.42));
+      // 앞 집게발 — 몸 앞에서 완만히 내려온다(길이 줄임).
+      legs.push(seg(sx * 0.85, 2.1, 2.4, sx * 1.3, 2.9, 0.2, 0.5));
+      legs.push(seg(sx * 1.3, 2.9, 0.2, sx * 1.1, 3.5, -1.7, 0.42));
       // 집게 — 끝에서 두 갈래.
-      legs.push(seg(sx * 1.15, 4.1, -3, sx * 1.65, 4.55, -3.9, 0.32));
-      legs.push(seg(sx * 1.15, 4.1, -3, sx * 0.65, 4.65, -3.8, 0.32));
+      legs.push(seg(sx * 1.1, 3.5, -1.7, sx * 1.5, 3.9, -2.4, 0.32));
+      legs.push(seg(sx * 1.1, 3.5, -1.7, sx * 0.7, 4, -2.35, 0.32));
     }
     /* 눈(재재재재지적: 동그란 컨택트 렌즈꼴로, 얼굴 정면에서 45도 양쪽) — 풍선 표면의
        정면 기준 좌우 45도 자리에 붙는 렌즈 한 쌍: 진한 원판 위에 밝은 속원이 얹힌
@@ -3588,10 +3613,45 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       bodyFace(groundEllipse(lx2, ly2, 1.05, 0.62)),
       topFace(groundEllipse(lx2, ly2, 0.62, 0.34), 0.45),
     ];
+    /* 흰 가시(공식 컨셉) — 풍선 윗면 여기저기서 바깥으로 솟는 짧은 가시. 밝은 덮개를
+       얹어 몸색과 갈라 희게 읽힌다. 모델 좌표라 요잉을 따라 돌고, 제 깊이를 달아
+       뒤로 간 가시는 풍선이 가린다. */
+    const spike = (ux: number, uy: number, uz: number): ShapeFace[] => {
+      const L = Math.hypot(ux, uy, uz) || 1;
+      const nx2 = ux / L;
+      const ny2 = uy / L;
+      const nz2 = uz / L;
+      const faces = hornFaces(
+        nx2 * 2.6, ny2 * 2.6, 5.2 + nz2 * 2.45,
+        nx2 * 3.8, ny2 * 3.8, 5.2 + nz2 * 3.6, 0.4,
+      );
+      return tagKey(
+        [...faces, ...faces.map(([d]) => topFace(d, 0.5))],
+        depthNow(nx2 * 2.6, ny2 * 2.6) + 0.6,
+      );
+    };
+    /* 등의 가스 주머니(공식 컨셉: 뒤 위에 얹힌 큰 광택 물집) — 큰 것 하나와 작은 것
+       하나. 광 하이라이트를 크게 얹어 유리알처럼 반들거린다. */
+    const [g1x, g1y] = project(1.4, -1.8, 6.2);
+    const [g2x, g2y] = project(-0.3, -2.3, 7);
     return [
       bodyFace(legs.join(" ")),
       ...tagKey(lens(b1x, b1y), depthNow(-exs, eys)),
       ...tagKey(lens(b2x, b2y), depthNow(exs, eys)),
+      ...tagKey([
+        bodyFace(groundEllipse(g1x, g1y, 1.9, 1.75)),
+        topFace(groundEllipse(g1x - 0.55, g1y - 0.6, 0.95, 0.68), 0.5),
+      ], depthNow(1.4, -1.8)),
+      ...tagKey([
+        bodyFace(groundEllipse(g2x, g2y, 0.95, 0.88)),
+        topFace(groundEllipse(g2x - 0.25, g2y - 0.3, 0.45, 0.32), 0.5),
+      ], depthNow(-0.3, -2.3)),
+      ...spike(-1.2, -0.5, 1),
+      ...spike(0.1, -1.2, 1.1),
+      ...spike(1.3, -0.2, 1),
+      ...spike(-0.5, 0.8, 1.1),
+      ...spike(0.9, 1, 0.9),
+      ...spike(-1.8, 0.2, 0.5),
       // 풍선 축소(재요청: 3.6 → 3.0) — 몸도 제 깊이(가운데 0)로.
       ...tagKey([
         bodyFace(groundEllipse(cx, cy, 3, 2.85)),
