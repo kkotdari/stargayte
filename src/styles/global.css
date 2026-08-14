@@ -12942,8 +12942,11 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 
 /* 건물 소멸(요청: 종족별) — 테란 주황 폭발+회색 연기, 저그 보라 살점 퍼짐, 프로토스
    파란 빛 붕괴(안으로 스러짐). 무너진 순간 2초 한 번 재생. */
+/* 크기는 발자국 비례(재지적: 핵폭발급) — 인라인 %폭이 정하고, 정사각 비율과 가운데
+   앵커는 여기서. */
 .scr-motion-collapse {
-  position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px;
+  position: absolute; width: 34px; aspect-ratio: 1; height: auto;
+  transform: translate(-50%, -50%);
   pointer-events: none;
 }
 .scr-clp-core, .scr-clp-smoke { position: absolute; inset: 0; border-radius: 50%; }

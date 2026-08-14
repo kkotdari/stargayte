@@ -2960,7 +2960,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      힘줄 선. 크립은 탁한 보라. */
   cocoon: () => [
     // 가시는 걷었다(지적: 성큰류와 헷갈린다) — 민둥한 겹돔 고치만.
-    ...paintBase(creepSplat(4.4), "#9a87a3"),
+    // 가시 돋친 크립 대신 부드러운 원반(재지적: 고치 옆 가시 제거).
+    sideFace(discPath3(0, 0, 0.04, 4.2), 0.3),
     ...paintBase([
       ...domeFaces3(0, 0.3, 2.6, 3.2),
       ...domeFaces3(0, 1.1, 1.9, 1.5),
@@ -4965,10 +4966,13 @@ export default function ReplayMotionPlayer({
       };
     };
     const onTM = (e: TouchEvent) => {
-      /* 맵 위 손짓은 무조건 삼킨다(재지적: 2D·3D 모두 드래그가 모달로 전파) —
-         touch-action만으로는 iOS가 이미 시작한 스크롤을 못 막는 판이 있어,
-         손가락 수와 무관하게 여기서 기본 동작을 끊는다. */
-      if (e.cancelable) e.preventDefault();
+      /* 삼키는 건 지도 조작일 때만(재재지적: 모바일에서 아래로 스와이프가 안 됨) —
+         무조건 preventDefault가 확대 안 한 한 손가락 스와이프(페이지 스크롤)까지
+         막았다. 두 손가락(핀치)이거나 확대 중(드래그 팬)일 때만 기본 동작을 끊고,
+         평상시 한 손가락은 페이지 스크롤로 흘려보낸다. */
+      if (e.touches.length >= 2 || zoomRef.current > 1) {
+        if (e.cancelable) e.preventDefault();
+      }
       if (!pinch || e.touches.length !== 2) return;
       const r = el.getBoundingClientRect();
       const ox = r.left + r.width / 2;
@@ -6028,12 +6032,15 @@ export default function ReplayMotionPlayer({
             const race2 = bases.find((b) => b.key === raw)?.race;
             if (raising) {
               // 공사는 종족 공용 모델(고치·소환구·공사장)이 말한다.
+              /* 저그 고치는 크기 자체가 두근거린다(요청: 확대 바운스) — 10Hz t의 사인
+                 박동. 스프라이트는 2px 칸 양자화라 두어 가지 크기를 오가며 캐시된다. */
+              const beat = race2 === "저그" ? 1 + 0.06 * Math.sin(t * 5.2) : 1;
               unitOps.push({
                 fx: fxF, fy: fyF, z,
                 kind: race2 === "저그" ? "cocoon" : race2 === "프로토스" ? "warpin" : "scaffold",
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
                 // 공사 모델도 완성 모델과 같은 폭 기준 — 바닥 폭이 발자국과 같아야 한다.
-                sizePx: 0, wFrac, hFrac, boxFit: "meet", fitWidth: true,
+                sizePx: 0, wFrac: wFrac * beat, hFrac: hFrac * beat, boxFit: "meet", fitWidth: true,
                 color, alpha, noShadow: true,
               });
               /* 공사 애니(요청) — 모델은 캐시 스프라이트라 못 움직이니 CSS 오버레이가
@@ -6277,11 +6284,17 @@ export default function ReplayMotionPlayer({
               || (unit.includes("Colony") && u2.includes("Colony"))))) return null;
           const race = bases.find((b2) => b2.key === raw)?.race;
           const rk = race === "저그" ? "zerg" : race === "프로토스" ? "toss" : "terran";
+          /* 크기는 건물 발자국의 1.35배(지적: 핵폭발급으로 컸다) — 퍼센트 폭이라 맵
+             확대에도 비례한다. */
+          const clpW = (((FOOTPRINT[unit] ?? [3, 2])[0] * 1.35) / grid.width) * 100;
           return (
             <span
               key={`clp-${i}`}
               className={`scr-motion-collapse scr-clp-${rk}`}
-              style={{ ...posStyle(x + footDx(unit), y + footDy(unit)), zIndex: 1450 }}
+              style={{
+                ...posStyle(x + footDx(unit), y + footDy(unit)),
+                width: `${clpW}%`, zIndex: 1450,
+              }}
             >
               <span className="scr-clp-smoke" />
               <span className="scr-clp-core" />
@@ -6290,7 +6303,9 @@ export default function ReplayMotionPlayer({
         })}
         {(grid.resources ?? []).flatMap((res, ri) => {
           let owner: { x: number; y: number; raw: string } | null = null;
-          let best = 18;
+          /* 18 → 10(지적: 엄청 떨어진 미네랄을 캐는 일꾼) — 그 거리면 확장이 아니라
+             잘못 클릭이다. 진짜 확장은 홀이 자원 곁에 서므로 10이면 넉넉하다. */
+          let best = 10;
           for (const m of bases) {
             // 함락된 본진(fallenHome)은 채굴 목적지가 아니다(지적: 본진이 안 망하던 문제).
             if (m.ghost || fallenHome(m)) continue;
