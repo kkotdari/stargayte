@@ -39,11 +39,11 @@ export default function TerrainReviewModal({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  /* 도구 셋(요청: 아이콘 여섯) — 붓은 끌어서 막고(이동 불가), 지우개는 끌어서 열고(이동
-     가능), 요술봉은 누른 칸과 색이 비슷한 칸 전부를 한 번에 뒤집는다. */
-  const [tool, setTool] = useState<"paint" | "erase" | "wand">("paint");
-  /** 어느 층을 칠하나 — walk(이동 불가, 라임) / creep(크립 불가, 주황). */
-  const [layer, setLayer] = useState<"walk" | "creep">("walk");
+  /* 도구 셋(요청: 아이콘 배타 선택) — 붓은 끌어서 막고(이동 불가), 지우개는 끌어서 열고
+     (이동 가능), 요술봉은 누른 칸과 색이 비슷한 칸 전부를 한 번에 뒤집고, 램프(물결)는
+     크립 불가 칸(주황)을 칠한다 — 이미 칠한 칸에서 시작하면 그 획은 지우기다. 층 토글로
+     두다가 도구와 중복 선택되던 것을 하나의 배타 도구로 바꿨다(지적). */
+  const [tool, setTool] = useState<"paint" | "erase" | "wand" | "creep">("paint");
   const [colors, setColors] = useState<Uint8ClampedArray | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   /** 끌기 한 번은 한 값으로만 칠한다 — 지나는 칸마다 뒤집으면 갈지자 자국이 남는다. */
@@ -141,11 +141,11 @@ export default function TerrainReviewModal({
     const cell = cellAt(e);
     if (!cell) return;
     const idx = cell[1] * grid.w + cell[0];
-    /* 층 갈래(요청: 크립 층) — 크립 층에서는 붓이 '크립 불가 = 1'을 칠하고 지우개가
-       0으로 되돌린다. walk 층과 켜짐 값이 반대(walk는 붓이 0)라 여기서 갈라 둔다. */
-    const arr = layer === "creep" ? (grid.creep ?? new Uint8Array(grid.w * grid.h)) : grid.walk;
+    /* 램프 도구(지적: 층 토글이 다른 도구와 중복 선택됨 — 배타 도구로) — 크립 불가 층을
+       칠한다. 첫 칸이 이미 칠해져 있으면 그 획은 지우기가 되어 버튼 하나로 오간다. */
+    const arr = tool === "creep" ? (grid.creep ?? new Uint8Array(grid.w * grid.h)) : grid.walk;
     const put = (next: Uint8Array): TerrainGrid =>
-      layer === "creep" ? { ...grid, creep: next } : { ...grid, walk: next };
+      tool === "creep" ? { ...grid, creep: next } : { ...grid, walk: next };
     if (tool === "wand") {
       // 요술봉(요청) — 클릭 한 번이 한 획: 누른 칸과 색이 가까운 칸 전부를 뒤집는다.
       if (!begin || !colors) return;
@@ -164,19 +164,18 @@ export default function TerrainReviewModal({
       setGrid(put(next));
       return;
     }
-    // 붓=막기, 지우개=열기 — 한 획 안에서 값이 안 변한다. walk 층은 붓이 0(못 걸음),
-    // 크립 층은 붓이 1(크립 불가)이다.
-    const v: 0 | 1 = layer === "creep"
-      ? (tool === "paint" ? 1 : 0)
+    // 붓=막기(0), 지우개=열기(1), 램프=첫 칸의 반대값 — 한 획 안에서 값이 안 변한다.
+    const v: 0 | 1 = tool === "creep"
+      ? (arr[idx] ? 0 : 1)
       : (tool === "paint" ? 0 : 1);
     if (begin) {
       paintRef.current = v;
       snapshot(grid);
     }
     if (paintRef.current === null) return;
-    if (arr[idx] === v) return;
+    if (arr[idx] === paintRef.current) return;
     const next = new Uint8Array(arr);
-    next[idx] = v;
+    next[idx] = paintRef.current;
     setGrid(put(next));
   };
 
@@ -206,15 +205,7 @@ export default function TerrainReviewModal({
           <button className="scr-icon-btn" onClick={onClose} aria-label="닫기"><X size={14} /></button>
         </div>
         <div className="scr-modal-body">
-          <p className="scr-terrain-hint">
-            {layer === "walk" ? (
-              <><b>지상 유닛이 다니지 못하는 곳만</b> 라임색으로 칠해 주세요 — 붓은 막고,
-              지우개는 열고, 요술봉은 비슷한 색을 한꺼번에 뒤집어요.</>
-            ) : (
-              <><b>크립이 못 퍼지는 램프·다리만</b> 주황색으로 칠해 주세요 — 벽(라임)은
-              자동으로 크립을 막으니 걷는 길목만 칠하면 돼요.</>
-            )}
-          </p>
+          {/* (제거·요청) 맨 위 설명 — 도구 툴팁이 대신 말한다. */}
           {err && <div className="scr-err">{err}</div>}
           {loading ? (
             <div className="scr-empty"><Spinner size={18} /></div>
@@ -231,23 +222,15 @@ export default function TerrainReviewModal({
             </div>
           )}
           <div className="scr-terrain-actions">
-            {/* 아이콘들(요청) — [층: 이동/크립] 붓 · 지우개 · 요술봉 | 되돌리기 · 완전 취소 · 저장. */}
+            {/* 아이콘들(요청: 배타 선택) — 붓 · 지우개 · 요술봉 · 램프 | 되돌리기 · 완전
+                취소 · 저장. */}
             <div className="scr-terrain-brushes">
-              <button
-                type="button"
-                className={layer === "creep" && !busy ? "scr-btn scr-btn-sm scr-btn-primary" : "scr-btn scr-btn-sm"}
-                onClick={() => setLayer((l) => (l === "walk" ? "creep" : "walk"))}
-                aria-label="크립 층"
-                title="크립 층 — 켜면 크립이 못 퍼지는 램프·다리(주황)를 칠해요"
-              >
-                <Waves size={14} />
-              </button>
               <button
                 type="button"
                 className={tool === "paint" && !busy ? "scr-btn scr-btn-sm scr-btn-primary" : "scr-btn scr-btn-sm"}
                 onClick={() => setTool("paint")}
                 aria-label="붓"
-                title={layer === "creep" ? "붓 — 끌어서 크립 불가로 칠해요" : "붓 — 끌어서 이동 불가로 막아요"}
+                title="붓 — 끌어서 이동 불가(라임)로 막아요"
               >
                 <Paintbrush size={14} />
               </button>
@@ -256,7 +239,7 @@ export default function TerrainReviewModal({
                 className={tool === "erase" && !busy ? "scr-btn scr-btn-sm scr-btn-primary" : "scr-btn scr-btn-sm"}
                 onClick={() => setTool("erase")}
                 aria-label="지우개"
-                title={layer === "creep" ? "지우개 — 끌어서 크립 불가 칠을 지워요" : "지우개 — 끌어서 이동 가능으로 열어요"}
+                title="지우개 — 끌어서 이동 가능으로 열어요"
               >
                 <Eraser size={14} />
               </button>
@@ -268,6 +251,15 @@ export default function TerrainReviewModal({
                 aria-label="요술봉" title="요술봉 — 누른 칸과 색이 비슷한 칸 전부를 한 번에 뒤집어요"
               >
                 <Wand2 size={14} />
+              </button>
+              <button
+                type="button"
+                className={tool === "creep" && !busy ? "scr-btn scr-btn-sm scr-btn-primary" : "scr-btn scr-btn-sm"}
+                onClick={() => setTool("creep")}
+                aria-label="램프·다리"
+                title="램프·다리 — 크립이 못 퍼지는 곳(주황)을 칠해요. 칠한 칸에서 시작하면 지워져요"
+              >
+                <Waves size={14} />
               </button>
             </div>
             <button
