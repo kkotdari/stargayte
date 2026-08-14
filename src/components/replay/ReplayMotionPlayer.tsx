@@ -5334,7 +5334,12 @@ export default function ReplayMotionPlayer({
     const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
     /* 같은 클릭을 받은 개체들의 차례표 — 행렬 시차·도착 대형의 열쇠(아래 주석). */
     const clickRank = new Map<string, number>();
-    const out: { raw: string; unit: string; b: number; d: number | null; walk: [number, number, number][] }[] = [];
+    const out: {
+      raw: string; unit: string; b: number; d: number | null; tag: number;
+      /** 공격 명령 목록 [초, 표적 태그] — 어택을 찍은 대상을 겨누는 재료(지적). */
+      atkAt: [number, number][];
+      walk: [number, number, number][];
+    }[] = [];
     for (const e of entData.ents) {
       // 건물(태그·물리 모두)은 v1 층이 계속 그린다 — 여기는 유닛만.
       if (e.bld || e.t < 0) continue;
@@ -5350,7 +5355,7 @@ export default function ReplayMotionPlayer({
       const pts: TrackPt[] = [];
       for (const v of e.ev) {
         if (v[1] < 0 || v[3] === 4) continue;
-        if (v[3] === 0) {
+        if (v[3] === 0 || v[3] === 7) {
           const key = `${e.o}:${v[0]}:${v[1]}:${v[2]}`;
           const idx = clickRank.get(key) ?? 0;
           clickRank.set(key, idx + 1);
@@ -5369,7 +5374,8 @@ export default function ReplayMotionPlayer({
       pts.sort((a, b) => a[0] - b[0]);
       if (pts.length === 0) continue;
       out.push({
-        raw, unit: e.k, b: e.b, d: e.d,
+        raw, unit: e.k, b: e.b, d: e.d, tag: e.t,
+        atkAt: e.ev.filter((v) => v[3] === 7).map((v) => [v[0], v[4] ?? 0] as [number, number]),
         // 정체를 알면 그 속도로, 모르면 부대 어림과 같은 규칙(그때의 우세 유닛·지상 길)로.
         walk: walkTrack(pts, p, false, e.k || undefined, undefined, e.k === ""),
       });
@@ -5417,6 +5423,8 @@ export default function ReplayMotionPlayer({
      조정으로 다가오므로 양쪽이 반씩 오면 꼭 목표 거리(근접 0.8타일, 원거리 사정거리)
      에서 만나고, 서로 원좌표 기준이라 지나쳐 겹치지 않는다. 시야(9타일) 밖은 안 끈다. */
   const engageFoes: { team: number; x: number; y: number; air: boolean }[] = [];
+  /* v2 개체의 지금 위치(태그별) — 어택이 찍은 '그 대상'을 겨누는 지도(지적). */
+  const entPosByTag = new Map<number, { x: number; y: number; team: number; air: boolean }>();
   if (entOn) {
     /* v2 모드(지적: 유닛-건물 상호작용·어택땅 교전) — 교전 상대 목록을 v1 부대 어림이
        아니라 v2 개체 위치로 채운다. 적의 방어 건물(성큰·캐논·터렛·벙커)도 상대다:
@@ -5426,10 +5434,12 @@ export default function ReplayMotionPlayer({
       if (e.d !== null && t >= e.d) continue;
       const q = posAt(e.walk, t, null);
       if (!q) continue;
-      engageFoes.push({
+      const row = {
         team: teamOfRaw(e.raw) ?? 0, x: q.x, y: q.y,
         air: e.unit !== "" && isAirUnit(e.unit),
-      });
+      };
+      engageFoes.push(row);
+      if (e.tag > 0) entPosByTag.set(e.tag, row);
     }
     for (const [bs, bx2, by2, bu, br, bg] of buildsSrc) {
       if (!["Sunken Colony", "Spore Colony", "Photon Cannon", "Missile Turret", "Bunker"].includes(bu)) continue;
@@ -8613,17 +8623,35 @@ export default function ReplayMotionPlayer({
           const holdKey = `${e.raw}-v2e${ei}`;
           const canFight = !isWorker && !uAir
             && !(drawUnit !== "" && ENGAGE_SKIP.has(drawUnit));
-          const foe = nearestFoe(team, rawPos.x, rawPos.y);
+          /* 표적 우선(지적: 어택 찍으면 그 대상을 공격해야) — 최근(30초 안) 공격 명령이
+             찍은 태그가 아직 살아 움직이면 그쪽이 상대다. 없으면 가장 가까운 적. */
+          let foe = nearestFoe(team, rawPos.x, rawPos.y);
+          for (let ai = e.atkAt.length - 1; ai >= 0; ai -= 1) {
+            const [as2, atg] = e.atkAt[ai];
+            if (as2 > t) continue;
+            if (t - as2 <= 30 && atg > 0) {
+              const tp = entPosByTag.get(atg);
+              if (tp && tp.team !== (team ?? 0)) {
+                foe = { bx: tp.x, by: tp.y, bd: Math.hypot(tp.x - rawPos.x, tp.y - rawPos.y), air: tp.air };
+              }
+            }
+            break;
+          }
           const fighting = canFight && Number.isFinite(foe.bd) && foe.bd <= ENGAGE_SIGHT_TILES;
           let pos = rawPos;
           if (fighting && !uAir) {
             const mem = engageHoldRef.current.get(holdKey);
-            if (mem && t >= mem.t0 && t - mem.tLast < 2.5) {
-              pos = { ...rawPos, x: mem.x, y: mem.y };
-              mem.tLast = t;
-            } else {
-              engageHoldRef.current.set(holdKey, { x: rawPos.x, y: rawPos.y, t0: t, tLast: t });
-            }
+            const base = mem && t >= mem.t0 && t - mem.tLast < 2.5
+              ? mem : { x: rawPos.x, y: rawPos.y, t0: t, tLast: t };
+            if (base === mem) mem.tLast = t;
+            else engageHoldRef.current.set(holdKey, base);
+            /* 반격 접근(지적: 공격받으면 가서 때리고) — 멈춘 자리에서 상대 쪽으로
+               사정거리(어림 2.2타일)까지 다가붙는다. 상대가 움직이면 따라 겨눈다. */
+            const gap = Math.hypot(foe.bx - base.x, foe.by - base.y);
+            const pull = Math.min(2.5, Math.max(0, gap - 2.2));
+            pos = gap > 0.01
+              ? { ...rawPos, x: base.x + ((foe.bx - base.x) / gap) * pull, y: base.y + ((foe.by - base.y) / gap) * pull }
+              : { ...rawPos, x: base.x, y: base.y };
           } else {
             engageHoldRef.current.delete(holdKey);
           }

@@ -50,8 +50,9 @@ export interface UnitCmd {
  *  1 남이 찍은 자리(그 순간 실제로 '있던' 자리 — 강한 앵커), 2 건설 자리(일꾼이 가서
  *  지은 자리), 3 멈춤·홀드·시즈·버로우(그 자리에 '선다'), 4 생산·랠리(건물이 일한 증거 —
  *  위치 정보 없음, x·y는 랠리 좌표거나 -1), 5 착륙 자리(띄운 건물의 이사 목적지),
- *  6 이륙(위치 없음, x·y는 -1). */
-export type UnitEv = [number, number, number, number];
+ *  6 이륙(위치 없음, x·y는 -1), 7 공격 명령의 목적지(지적: 어택 찍으면 그 대상을
+ *  공격해야 — 다섯째 값이 찍힌 대상의 태그, 땅 어택이면 0). */
+export type UnitEv = [number, number, number, number, number?];
 export interface UnitEnt {
   /** 유닛 번호. 물리 건물(선택된 적 없이 건설 좌표로만 아는 것)은 -1. */
   t: number;
@@ -446,10 +447,21 @@ export function buildUnitTracks(
       // 건설 취소 — 고른 것은 짓던 건물(태그)이다. 물리 건물과는 자리로 못 이어(취소
       // 커맨드엔 좌표가 없다) 그 사람의 '가장 최근에 시작한, 아직 살아 있는' 건설을
       // 무른 것으로 본다 — 취소는 대개 방금 잘못 앉힌 것을 무르는 조작이다.
+      const cxlWorker = RACE_WORKER[raceOf.get(pid) ?? ""] ?? "";
       for (const tag of tags) {
         const life = lifeOf(tag, pid, sec);
         life.bld = true;
         if (life.cxl === null) life.cxl = sec;
+        /* 저그 환불(지적: 일꾼 번호 승계) — 취소하면 드론이 같은 태그로 돌아온다.
+           건물 생애를 여기서 닫고 드론 생애를 새로 열지 않으면, 그 뒤 그 드론의 명령이
+           전부 건물 랠리로 오인돼 버려진다(건물 생애는 이동 증거를 안 받는다). */
+        if (raceOf.get(pid) === "저그" && cxlWorker) {
+          done.push(life);
+          alive.delete(tag);
+          const back = lifeOf(tag, pid, sec);
+          back.kinds.set(cxlWorker, 1);
+          life.morphTo = back;
+        }
       }
       /* 어느 건물을 물렀나(지적: 저그 취소를 못 잡음) — 저그는 드론 태그가 그대로
          건물 태그라, 골라 둔 태그가 곧 짓던 그 건물이다(builder로 저장돼 있다). 태그로
@@ -552,6 +564,12 @@ export function buildUnitTracks(
     // ── 우클릭·표적 명령 ──
     const castKind = CAST_ORDER_TO_UNIT[orderName] ?? "";
     const isRally = orderName === "RallyPointTile" || orderName === "RallyPointUnit";
+    /* 공격 명령인가(지적: 어택 찍으면 그 대상을 공격해야) — 어택류 오더거나, 남의
+       개체를 찍은 우클릭이다. 표적 태그를 증거에 실어 재생기가 그 대상을 겨눈다. */
+    const tgtTag0 = c.UnitTag ?? 0;
+    const tgtLife = tgtTag0 > 0 && tgtTag0 < 60000 ? alive.get(tgtTag0) : undefined;
+    const hostileClick = tgtLife !== undefined && tgtLife.owner !== pid;
+    const isAtkOrder = ATTACK_ORDERS.has(orderName) || (cmdName === "Right Click" && hostileClick);
     // 자원 클릭 → 일꾼(시작 직후의 통째 선택은 빼고 — 오버로드 오염 방지).
     const resourceClick = cmdName === "Right Click" && RESOURCE_TARGETS.has(unitName)
       && !((c.Frame ?? 0) < EARLY_ALL_SELECT_FRAMES && tags.length >= 4);
@@ -571,8 +589,15 @@ export function buildUnitTracks(
          일꾼의 도착 전 재건설(아래 Build 분기). 이동 무르기의 진짜 판정은 나중 증거
          (그 건물의 생산·피격 기록)로 뒤집는 후방 보정 쪽이 맞는 길이다. */
       if (pos) pendingBuild.delete(tag);
-      if (pos && !life.bld) pushEv(life, sec, pos.x, pos.y, 0);
-      else life.last = sec;
+      if (pos && !life.bld) {
+        if (isAtkOrder) {
+          life.last = sec;
+          if (life.lastAtk !== null) life.evAfterAtk = true;
+          life.ev.push([Math.round(sec), r1(pos.x), r1(pos.y), 7, hostileClick ? tgtTag0 : 0]);
+        } else {
+          pushEv(life, sec, pos.x, pos.y, 0);
+        }
+      } else life.last = sec;
     }
 
     // ── 마법 — 좌표가 남는 것만(스톰·스웜·리콜·마인…). 이름은 v1과 같은 기술명이다. ──
