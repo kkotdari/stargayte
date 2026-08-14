@@ -3600,25 +3600,34 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       legs.push(seg(sx * 1.15, 3.3, 0.2, sx * 1.7, 3.75, -0.6, 0.7, 0.25));
       legs.push(seg(sx * 1.15, 3.3, 0.2, sx * 0.6, 3.85, -0.55, 0.7, 0.25));
     }
-    /* 눈(재×5지적: 납작한 면이 몸에 붙어야) — 콘택트 렌즈처럼 원판의 납작한 면이
-       풍선 표면(양옆 접평면)에 붙는다: 원판이 좌우를 보고 서므로 정면에서는 얇은
-       실루엣만 보이고, 옆으로 돌면 동그란 렌즈 면이 나온다. 원둘레를 모델 좌표로
-       돌려 굽기 때문에 요잉을 그대로 따른다. */
+    /* 눈(재×6지적: 좌우에) — 납작한 면이 표면에 붙는 건 그대로 두고, 접점을 순수
+       옆(90도)에서 앞쪽으로 당겼다(정면 기준 ±50도). 순수 옆이면 정면 시점에서 두 눈
+       다 얇은 날로 사라져, 흔히 보는 각도에서 좌우로 렌즈가 반쯤 보이는 자리가 맞다.
+       원둘레를 접평면 기저(가로 접선 t1·세로 z)로 돌려 구워 요잉을 그대로 따른다. */
     const lens = (sxSign: number): ShapeFace[] => {
+      const th = Math.PI * (50 / 180);
+      const cxL = Math.sin(th) * 3.05 * sxSign;
+      const cyL = Math.cos(th) * 3.05;
+      const t1x = Math.cos(th) * sxSign;
+      const t1y = -Math.sin(th);
       const ring = (r: number): [number, number, number][] => {
         const pts: [number, number, number][] = [];
         for (let i = 0; i < 14; i += 1) {
           const a = (i / 14) * Math.PI * 2;
-          pts.push([sxSign * 3.05, Math.cos(a) * r, 5.2 + Math.sin(a) * r]);
+          pts.push([
+            cxL + Math.cos(a) * r * t1x,
+            cyL + Math.cos(a) * r * t1y,
+            5.2 + Math.sin(a) * r,
+          ]);
         }
         return pts;
       };
-      return [
+      return tagKey([
         // 몸색과 갈라지게 — 렌즈 판은 살짝 어둡게 누르고 속원만 밝힌다.
         bodyFace(polyPath3(ring(0.8))),
         sideFace(polyPath3(ring(0.8)), 0.16),
         topFace(polyPath3(ring(0.5)), 0.5),
-      ];
+      ], depthNow(cxL, cyL));
     };
     /* 흰 가시(공식 컨셉) — 풍선 윗면 여기저기서 바깥으로 솟는 짧은 가시. 밝은 덮개를
        얹어 몸색과 갈라 희게 읽힌다. 모델 좌표라 요잉을 따라 돌고, 제 깊이를 달아
@@ -3643,8 +3652,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [g2x, g2y] = project(-0.3, -2.3, 7);
     return [
       bodyFace(legs.join(" ")),
-      ...tagKey(lens(-1), depthNow(-3.05, 0)),
-      ...tagKey(lens(1), depthNow(3.05, 0)),
+      ...lens(-1),
+      ...lens(1),
       // 혹 완전 축소(재지적: 머리 혹 줄이기) — 살짝 도드라지는 정도만.
       ...tagKey([
         bodyFace(groundEllipse(g1x, g1y, 0.95, 0.85)),
