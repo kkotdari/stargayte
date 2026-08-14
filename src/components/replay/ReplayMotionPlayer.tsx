@@ -3058,8 +3058,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [cx, cy] = project(0, 0, 3.4);
     return [
       topFace(groundEllipse(gx0, gy0, 3.6, 1.7), 0.16),
-      [groundEllipse(cx, cy, 3.1, 2.9), 0.45, "#9fd4ff"] as ShapeFace,
-      [groundEllipse(cx, cy, 2.2, 2.05), 0.55, "#c4e6ff"] as ShapeFace,
+      /* 더 투명하게(재지적: 주변이 안 보임) + 속이 비지 않게 밝은 심을 채운다. */
+      [groundEllipse(cx, cy, 3.1, 2.9), 0.28, "#9fd4ff"] as ShapeFace,
+      [groundEllipse(cx, cy, 2.2, 2.05), 0.38, "#c4e6ff"] as ShapeFace,
+      [groundEllipse(cx, cy, 1.05, 0.98), 0.85, "#eaf6ff"] as ShapeFace,
       topFace(groundEllipse(cx - 0.7, cy - 0.7, 1.05, 0.85), 0.4),
       topFace(groundEllipse(cx, cy, 1.15, 1.05), 0.55),
       topFace(groundEllipse(cx + 1.7, cy + 0.9, 0.3, 0.25), 0.5),
@@ -6084,7 +6086,12 @@ export default function ReplayMotionPlayer({
                 kind: race2 === "저그" ? "cocoon" : race2 === "프로토스" ? "warpin" : "scaffold",
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
                 // 공사 모델도 완성 모델과 같은 폭 기준 — 바닥 폭이 발자국과 같아야 한다.
-                sizePx: 0, wFrac: wFrac * beat, hFrac: hFrac * beat, boxFit: "meet", fitWidth: true,
+                /* 소환구는 크기 통일(재지적: 게임에서도 모든 건물이 같다) — 발자국과
+                   무관하게 소형 기준 고정. */
+                sizePx: 0,
+                wFrac: race2 === "프로토스" ? (3.4 / grid.width) * mkK : wFrac * beat,
+                hFrac: race2 === "프로토스" ? (2.6 / grid.width) * mkK : hFrac * beat,
+                boxFit: "meet", fitWidth: true,
                 color, alpha, noShadow: true,
               });
               /* 공사 애니(요청) — 모델은 캐시 스프라이트라 못 움직이니 CSS 오버레이가

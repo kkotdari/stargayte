@@ -12948,13 +12948,13 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    빛나는 느낌을 살리되 크기는 아담하게. */
 .scr-bfx-toss {
   width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(235, 248, 255, 0.9) 0%, rgba(150, 200, 255, 0.5) 45%, transparent 72%);
-  box-shadow: 0 0 10px 2px rgba(140, 190, 255, 0.55);
+  background: radial-gradient(circle, rgba(235, 248, 255, 0.75) 0%, rgba(150, 200, 255, 0.35) 45%, transparent 72%);
+  box-shadow: 0 0 6px 1px rgba(140, 190, 255, 0.35);
   animation: scr-bfx-glow 2s ease-in-out infinite;
 }
 @keyframes scr-bfx-glow {
-  0%, 100% { opacity: 0.4; transform: scale(0.85); }
-  50% { opacity: 0.9; transform: scale(1.1); }
+  0%, 100% { opacity: 0.3; transform: scale(0.85); }
+  50% { opacity: 0.6; transform: scale(1.1); }
 }
 
 /* 건물 소멸(요청: 종족별) — 테란 주황 폭발+회색 연기, 저그 보라 살점 퍼짐, 프로토스
