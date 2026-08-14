@@ -958,6 +958,43 @@ export default function ActivityScreen() {
     if (openGroupKey) void api.pingAccess(GROUP_SCREEN_CODE[openGroupKey]);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 마운트 시 초기값만
   }, []);
+
+  /* 게임 상세는 이제 페이지다(요청: 모달·확대 개념이 아니라 주소를 가진 화면 —
+     ?screen=activity&group=gameResult&game=<번호>). 누르면 이 주소로 들어오고,
+     새로고침·공유 링크로도 그대로 이 화면이다. 다른 갈래(너나와·일정·공지)는 모달
+     그대로다. */
+  const [gameItem, setGameItem] = useState<DisplayItem | null>(null);
+  const pushedGameRef = useRef(false);
+  const openGamePage = (item: DisplayItem) => {
+    if (item.kind !== "gameResult") return;
+    setGameItem(item);
+    const params = new URLSearchParams(window.location.search);
+    params.set("game", String(item.gameResult.id));
+    window.history.pushState(
+      { activityGame: item.gameResult.id }, "",
+      `${window.location.pathname}?${params.toString()}`,
+    );
+    pushedGameRef.current = true;
+    void api.pingAccess("activity_game", `game#${item.gameResult.id}`);
+  };
+  const closeGamePage = () => {
+    if (pushedGameRef.current) {
+      window.history.back();
+      return;
+    }
+    // 새로고침·공유 링크로 바로 들어온 자리 — 히스토리를 안 건드리고 주소만 지운다.
+    const params = new URLSearchParams(window.location.search);
+    params.delete("game");
+    const qs = params.toString();
+    window.history.replaceState(
+      window.history.state, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`,
+    );
+    setGameItem(null);
+  };
+  // 페이지답게 맨 위에서 시작한다 — 목록을 내려 보다 눌러도 새 화면은 꼭대기부터.
+  useLayoutEffect(() => {
+    if (gameItem) window.scrollTo({ top: 0, behavior: "instant" });
+  }, [gameItem]);
   useLayoutEffect(() => {
     if (openGroupKey === null && homeScrollRef.current > 0) {
       window.scrollTo({ top: homeScrollRef.current, behavior: "instant" });
@@ -1258,24 +1295,44 @@ export default function ActivityScreen() {
     return items.sort((a, b) => sortMsOf(b) - sortMsOf(a));
   }, [challenges, gameResults, rankShifts, leagueMatches, schedules, notices]);
 
-  /* 해시 → 상세(요청: 앞으로가기·딥링크) — #game-12 같은 해시로 서 있는데 상세가 닫혀
-     있으면 그 항목을 찾아 연다. 닫기는 ModalHash(뒤로가기)가 맡으므로 여기선 열기만 한다.
-     다른 모달의 해시(member-…)는 feed에 없어 자연히 무시된다. */
-  const detailRef = useRef<DisplayItem | null>(null);
-  detailRef.current = detailItem;
+  /* 주소 → 게임 페이지(요청: 새로고침·공유 링크 직진입) — ?game=<번호>가 서 있으면 그
+     경기 페이지를 연다. 피드에 있으면 그 항목으로, 아직 안 실렸으면(피드 뒤쪽·옛 경기)
+     단건 API로 받아 온다. */
+  const feedRef = useRef<DisplayItem[]>([]);
+  feedRef.current = feed;
   useEffect(() => {
-    const tryOpen = () => {
-      if (detailRef.current) return;
-      const h = decodeURIComponent(window.location.hash.slice(1));
-      if (!h) return;
-      const hit = feed.find((it) => detailHashOf(it) === h);
-      if (hit) setDetailItem(hit);
-    };
-    tryOpen();
-    window.addEventListener("popstate", tryOpen);
-    return () => window.removeEventListener("popstate", tryOpen);
+    if (gameItem) return undefined;
+    const idText = new URLSearchParams(window.location.search).get("game");
+    if (!idText) return undefined;
+    const id = Number(idText);
+    const hit = feed.find((it) => it.kind === "gameResult" && it.gameResult.id === id);
+    if (hit) {
+      setGameItem(hit);
+      return undefined;
+    }
+    let cancelled = false;
+    api.getGameResult(id)
+      .then((gr) => { if (!cancelled) setGameItem(gameResultItem(gr)); })
+      .catch(() => {});
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feed]);
+  }, [feed, gameItem]);
+  /* 뒤로/앞으로가기 — 주소의 game이 곧 페이지 상태다. 걷히면 닫히고, 되살아나면
+     다시 연다(피드에서 찾고, 없으면 위 직진입 이펙트가 단건으로 받아 온다). */
+  useEffect(() => {
+    const onPop = () => {
+      pushedGameRef.current = false;
+      const idText = new URLSearchParams(window.location.search).get("game");
+      const id = idText ? Number(idText) : null;
+      setGameItem((cur) => {
+        if (id === null) return null;
+        if (cur && cur.kind === "gameResult" && cur.gameResult.id === id) return cur;
+        return feedRef.current.find((it) => it.kind === "gameResult" && it.gameResult.id === id) ?? null;
+      });
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   /* 예전에는 여기서 "이미 불러온 가장 오래된 경기보다 과거인 너나와·변동"을 보류했다 —
      경기만 페이지로 나눠 받고 나머지는 통째로 받았기에, 아직 안 받은 경기 자리에 옛
@@ -1404,6 +1461,19 @@ export default function ActivityScreen() {
        판 id라 그 판을 지우면 열쇠가 바뀌어 줄이 통째로 접혔다), 상세가 팝업이 되면서 열쇠가
        아니라 항목 자체를 들고 있게 돼 그 문제가 사라졌다. */
     setDetailItem((it) => (it && it.kind === "gameResult" && it.gameResult.id === id ? null : it));
+    // 게임 페이지로 보던 판을 지웠으면 페이지도 접는다(요청: 페이지 승격 뒤에도 같은 규칙).
+    setGameItem((it) => {
+      if (it && it.kind === "gameResult" && it.gameResult.id === id) {
+        const params = new URLSearchParams(window.location.search);
+        params.delete("game");
+        const qs = params.toString();
+        window.history.replaceState(
+          window.history.state, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`,
+        );
+        return null;
+      }
+      return it;
+    });
     patchFeed((prev) => prev
       .map((it) => (it.gameResults.some((g) => g.id === id)
         ? { ...it, gameResults: it.gameResults.filter((g) => g.id !== id) }
@@ -1831,7 +1901,8 @@ export default function ActivityScreen() {
         <button
           type="button"
           className={cx("scr-activity-row", rowVoid(item) && "scr-activity-row-void")}
-          onClick={() => setDetailItem(item)}
+          // 게임 한 판은 모달이 아니라 페이지로 간다(요청) — 나머지 갈래는 모달 그대로.
+          onClick={() => (item.kind === "gameResult" ? openGamePage(item) : setDetailItem(item))}
         >
           <span className="scr-activity-row-main">
             <span className="scr-activity-row-desc">
@@ -1881,7 +1952,26 @@ export default function ActivityScreen() {
 
   return (
     <div className="scr-screen scr-activity-screen">
-      {groupPage && openGroupKey && (
+      {/* 게임 페이지(요청: 상세 모달·확대 개념이 아니라 주소 가진 화면) — 전체 보기와
+          같은 껍데기에 [활동 › 게임] 크럼과 그 판의 카드 하나를 편다. GameDetailClose
+          컨텍스트를 안 씌우므로 재생도 카드 인라인 그대로다. */}
+      {gameItem && (
+        <div className="scr-activity-group-page">
+          <div className="scr-v2-toolbar">
+            <div className="scr-v2-toolbar-title-row">
+              <h1 className="scr-title scr-v2-toolbar-title">
+                <button type="button" className="scr-activity-crumb-root" onClick={closeGamePage}>활동</button>
+                <span className="scr-activity-crumb-sep">›</span>
+                <span className="scr-activity-crumb-leaf">게임</span>
+              </h1>
+            </div>
+          </div>
+          <div className="scr-activity-list">
+            <div className="scr-activity-row-body">{renderCard(gameItem)}</div>
+          </div>
+        </div>
+      )}
+      {!gameItem && groupPage && openGroupKey && (
         <ActivityGroupPage
           groupKey={openGroupKey}
           label={groupPage.def.label}
@@ -1903,11 +1993,11 @@ export default function ActivityScreen() {
         "scr-activity-add-fab-wrap scr-activity-add-wrap",
         fabHidden && "scr-activity-add-fab-wrap-hidden",
       )}>
-        {groupPage ? (
+        {gameItem || groupPage ? (
           <button
             type="button"
             className="scr-activity-add-fab"
-            onClick={closeGroup}
+            onClick={gameItem ? closeGamePage : closeGroup}
             aria-label="활동으로 돌아가기"
           >
             <ChevronLeft size={20} aria-hidden />
@@ -1925,7 +2015,7 @@ export default function ActivityScreen() {
             {parsingReplays ? <Spinner size={18} /> : "등록"}
           </button>
         )}
-        {!groupPage && addMenuOpen && (
+        {!groupPage && !gameItem && addMenuOpen && (
           <>
             <div className="scr-activity-add-backdrop" onClick={() => setAddMenuOpen(false)} aria-hidden />
             <div className="scr-activity-add-menu scr-activity-add-menu-up" role="menu">
@@ -1956,7 +2046,7 @@ export default function ActivityScreen() {
         />
       </div>
 
-      {!groupPage && (
+      {!groupPage && !gameItem && (
       <>
       <div className="scr-v2-toolbar">
         <div className="scr-v2-toolbar-title-row">
