@@ -1132,12 +1132,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 위 구조물은 왕고치 하나(재재지적: 고치 넷 무더기 걷고 딱 하나 높게) — 테두리
        뒤편에 우뚝 선 큰 번데기. 껍질에도 격자무늬: 그 높이의 껍질 반지름으로 도는
        가로 테 고리 + 앞면을 타는 세로 이음선을 두른다. */
-    const KX = -3.4;
-    const KY = -2.1;
-    out.push(...domeFaces3(KX, KY, 2, 6, 1.8));
+    // 두 배쯤 크게(재요청) — 반지름 2→2.9, 키 6→9.5. 자리는 살짝 안쪽으로.
+    const KX = -3;
+    const KY = -1.9;
+    out.push(...domeFaces3(KX, KY, 2.9, 9.5, 1.8));
     const sq = groundSquashNow();
     // 가로 테 — 도넛 고리(바깥 정방향 + 안 역방향 감김이 구멍을 낸다).
-    for (const [gz, gr] of [[3.1, 1.86], [4.7, 1.52], [6.1, 1.06]] as const) {
+    for (const [gz, gr] of [[3.6, 2.72], [6.2, 2.28], [8.6, 1.5]] as const) {
       const [ex, ey] = project(KX, KY, gz);
       const ri = gr - 0.16;
       out.push(sideFace(
@@ -1152,8 +1153,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const dys = Math.cos(a);
       if (facingRatio(dxs, dys) < 0.15) continue;
       const seam: [number, number, number][] = [];
-      for (const [zf, rf] of [[1.9, 0.97], [3.4, 0.93], [4.9, 0.76], [6.4, 0.5], [7.3, 0.22]] as const) {
-        seam.push([KX + dxs * 2 * rf, KY + dys * 2 * rf, zf]);
+      for (const [zf, rf] of [[2.1, 0.97], [4.2, 0.92], [6.4, 0.76], [8.6, 0.5], [10.2, 0.22]] as const) {
+        seam.push([KX + dxs * 2.9 * rf, KY + dys * 2.9 * rf, zf]);
       }
       for (let i = 0; i < seam.length - 1; i += 1) {
         const [p1x, p1y] = project(...seam[i]);
