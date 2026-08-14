@@ -4,7 +4,7 @@ import { Maximize2, Pause, Play, RotateCcw, Shield, X } from "lucide-react";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import Avatar from "../common/Avatar";
 import { cx } from "../../utils/format";
-import { UNIT_KO, BUILDING_KO, TECH_KO } from "../../utils/replaySummaryText";
+import { UNIT_KO, TECH_KO } from "../../utils/replaySummaryText";
 import type { ReplayMapGrid } from "../../utils/replayParser";
 import { isAirUnit, type MotionTrack, type SummaryMotion, type TrackPt } from "../../utils/replayMotion";
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
@@ -3238,37 +3238,112 @@ const UNIT_BULK: Record<string, 0 | 1 | 2> = {
  *  그림자까지 대각선으로 돌려 검은 얼룩처럼 보였다. */
 const SHAPE_ROT: Record<string, number> = {};
 /** 관리자 모델링 뷰어(요청) — 도형 카탈로그. 건물은 SHAPE_KIND에서, 유닛 갈래는 손으로. */
-export const SHAPE_GALLERY: { kind: string; label: string }[] = (() => {
-  const seen = new Set<string>();
-  const out: { kind: string; label: string }[] = [];
-  for (const [unit, kind] of Object.entries(SHAPE_KIND)) {
-    if (seen.has(kind)) continue;
-    seen.add(kind);
-    out.push({ kind, label: BUILDING_KO[unit] ?? unit });
-  }
-  for (const [kind, label] of [
-    ["pool", "스포닝 풀"],
-    ["ovie", "오버로드"], ["dship", "드랍십"], ["shuttle", "셔틀"],
-    ["gunner", "테란 보병(총)"], ["fbat", "파이어뱃"], ["inf", "메딕"],
-    ["zealot", "질럿"], ["dtemp", "다크 템플러"], ["goon", "드라군"],
-    ["archon", "아콘"], ["darchon", "다크 아콘"],
-    ["lurker", "러커"], ["defiler", "디파일러"],
-    ["cocoon", "공사 고치(저그)"], ["warpin", "소환구(프로토스)"], ["scaffold", "공사장(테란)"],
-    ["scv", "SCV"], ["probe", "프로브"], ["drone", "드론"],
-    ["zling", "저글링"], ["hydra", "히드라"], ["ultra", "울트라리스크"],
-    ["htemp", "하이 템플러"],
-    ["tank", "시즈 탱크"], ["tanksiege", "시즈 탱크(시즈)"], ["vulture", "벌처"], ["goliath", "골리앗"], ["reaver", "리버"],
-    ["wraith", "레이스"], ["bc", "배틀크루저"], ["valk", "발키리"], ["vessel", "사이언스 베슬"],
-    ["muta", "뮤탈리스크"], ["guardian", "가디언"], ["devourer", "디바우러"], ["scourge", "스커지"],
-    ["queen", "퀸"], ["corsair", "커세어"], ["scout", "스카웃"], ["carrier", "캐리어"],
-    ["carrierbay", "캐리어(인터셉터)"],
-    ["arbiter", "아비터"], ["observer", "옵저버"],
-    ["mineral", "미네랄"], ["geyser", "가스 간헐천"],
-  ] as [string, string][]) {
-    if (!seen.has(kind)) { seen.add(kind); out.push({ kind, label }); }
-  }
-  return out;
-})();
+/* 도록 차례(재편·요청) — 유닛/건물로 가르고, 각 갈래는 테란 → 프로토스 → 저그,
+   그 안에서는 기본 → 고급·후반 순이다. 갤러리 목록과 시트가 같은 차례를 쓴다. */
+export const SHAPE_GALLERY: { kind: string; label: string; group: "유닛" | "건물" }[] = [
+  // ── 유닛 · 테란 ──
+  { kind: "scv", label: "SCV", group: "유닛" },
+  { kind: "gunner", label: "마린", group: "유닛" },
+  { kind: "fbat", label: "파이어뱃", group: "유닛" },
+  { kind: "inf", label: "메딕", group: "유닛" },
+  { kind: "vulture", label: "벌처", group: "유닛" },
+  { kind: "tank", label: "시즈 탱크", group: "유닛" },
+  { kind: "tanksiege", label: "시즈 탱크(시즈)", group: "유닛" },
+  { kind: "goliath", label: "골리앗", group: "유닛" },
+  { kind: "wraith", label: "레이스", group: "유닛" },
+  { kind: "dship", label: "드랍십", group: "유닛" },
+  { kind: "vessel", label: "사이언스 베슬", group: "유닛" },
+  { kind: "valk", label: "발키리", group: "유닛" },
+  { kind: "bc", label: "배틀크루저", group: "유닛" },
+  // ── 유닛 · 프로토스 ──
+  { kind: "probe", label: "프로브", group: "유닛" },
+  { kind: "zealot", label: "질럿", group: "유닛" },
+  { kind: "goon", label: "드라군", group: "유닛" },
+  { kind: "htemp", label: "하이 템플러", group: "유닛" },
+  { kind: "dtemp", label: "다크 템플러", group: "유닛" },
+  { kind: "archon", label: "아콘", group: "유닛" },
+  { kind: "darchon", label: "다크 아콘", group: "유닛" },
+  { kind: "shuttle", label: "셔틀", group: "유닛" },
+  { kind: "reaver", label: "리버", group: "유닛" },
+  { kind: "observer", label: "옵저버", group: "유닛" },
+  { kind: "scout", label: "스카웃", group: "유닛" },
+  { kind: "corsair", label: "커세어", group: "유닛" },
+  { kind: "carrier", label: "캐리어", group: "유닛" },
+  { kind: "carrierbay", label: "캐리어(인터셉터)", group: "유닛" },
+  { kind: "arbiter", label: "아비터", group: "유닛" },
+  // ── 유닛 · 저그 ──
+  { kind: "drone", label: "드론", group: "유닛" },
+  { kind: "ovie", label: "오버로드", group: "유닛" },
+  { kind: "zling", label: "저글링", group: "유닛" },
+  { kind: "hydra", label: "히드라", group: "유닛" },
+  { kind: "lurker", label: "러커", group: "유닛" },
+  { kind: "muta", label: "뮤탈리스크", group: "유닛" },
+  { kind: "scourge", label: "스커지", group: "유닛" },
+  { kind: "queen", label: "퀸", group: "유닛" },
+  { kind: "ultra", label: "울트라리스크", group: "유닛" },
+  { kind: "defiler", label: "디파일러", group: "유닛" },
+  { kind: "guardian", label: "가디언", group: "유닛" },
+  { kind: "devourer", label: "디바우러", group: "유닛" },
+  // ── 건물 · 테란 ──
+  { kind: "tomb", label: "커맨드", group: "건물" },
+  { kind: "comsat", label: "컴샛", group: "건물" },
+  { kind: "nsilo", label: "핵 사일로", group: "건물" },
+  { kind: "trapezoid", label: "서플라이", group: "건물" },
+  { kind: "refinery", label: "리파이너리", group: "건물" },
+  { kind: "cube", label: "배럭", group: "건물" },
+  { kind: "ebay", label: "엔지니어링 베이", group: "건물" },
+  { kind: "tombFlat", label: "벙커", group: "건물" },
+  { kind: "academy", label: "아카데미", group: "건물" },
+  { kind: "turret", label: "터렛", group: "건물" },
+  { kind: "factory", label: "팩토리", group: "건물" },
+  { kind: "mshop", label: "머신샵", group: "건물" },
+  { kind: "plane", label: "스타포트", group: "건물" },
+  { kind: "ctower", label: "컨트롤 타워", group: "건물" },
+  { kind: "armory", label: "아머리", group: "건물" },
+  { kind: "scifac", label: "사이언스 퍼실리티", group: "건물" },
+  { kind: "covert", label: "코버트 옵스", group: "건물" },
+  { kind: "physlab", label: "피직스 랩", group: "건물" },
+  { kind: "scaffold", label: "공사장(테란)", group: "건물" },
+  // ── 건물 · 프로토스 ──
+  { kind: "pyramidWide", label: "넥서스", group: "건물" },
+  { kind: "diamond", label: "파일런", group: "건물" },
+  { kind: "assim", label: "어시밀레이터", group: "건물" },
+  { kind: "gate", label: "게이트", group: "건물" },
+  { kind: "forge", label: "포지", group: "건물" },
+  { kind: "coil", label: "포토", group: "건물" },
+  { kind: "sbattery", label: "실드 배터리", group: "건물" },
+  { kind: "cyber", label: "사이버네틱스 코어", group: "건물" },
+  { kind: "citadel", label: "시타델", group: "건물" },
+  { kind: "archives", label: "템플러 아카이브", group: "건물" },
+  { kind: "dome", label: "로보틱스", group: "건물" },
+  { kind: "robobay", label: "서포트 베이", group: "건물" },
+  { kind: "observatory", label: "옵저버토리", group: "건물" },
+  { kind: "arch", label: "스타게이트", group: "건물" },
+  { kind: "fleetbeacon", label: "플릿 비컨", group: "건물" },
+  { kind: "tribunal", label: "아칸 트리뷰널", group: "건물" },
+  { kind: "warpin", label: "소환구(프로토스)", group: "건물" },
+  // ── 건물 · 저그 ──
+  { kind: "hatchery", label: "해처리", group: "건물" },
+  { kind: "lair", label: "레어", group: "건물" },
+  { kind: "hive", label: "하이브", group: "건물" },
+  { kind: "creep", label: "크립 콜로니", group: "건물" },
+  { kind: "sunken", label: "성큰", group: "건물" },
+  { kind: "spore", label: "스포어", group: "건물" },
+  { kind: "extract", label: "익스트랙터", group: "건물" },
+  { kind: "pool", label: "스포닝풀", group: "건물" },
+  { kind: "evo", label: "에볼루션 챔버", group: "건물" },
+  { kind: "hydraden", label: "히드라 덴", group: "건물" },
+  { kind: "spire", label: "스파이어", group: "건물" },
+  { kind: "gspire", label: "그레이터 스파이어", group: "건물" },
+  { kind: "queensnest", label: "퀸즈 네스트", group: "건물" },
+  { kind: "nydus", label: "나이더스", group: "건물" },
+  { kind: "cavern", label: "울트라 동굴", group: "건물" },
+  { kind: "dmound", label: "디파일러 마운드", group: "건물" },
+  { kind: "cocoon", label: "공사 고치(저그)", group: "건물" },
+  // ── 자원 ──
+  { kind: "mineral", label: "미네랄", group: "건물" },
+  { kind: "geyser", label: "가스 간헐천", group: "건물" },
+];
 
 /** ShapeIcon의 면 목록 결정을 떼어 낸 것 — 캔버스 유닛 층(UnitLayer)이 같은 판(같은
  *  굽기 캐시)을 그대로 그리려면 SVG 밖에서도 이 결정을 불러야 한다. 결과가 같은 함수

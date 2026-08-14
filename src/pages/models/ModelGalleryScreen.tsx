@@ -5,9 +5,13 @@ import { withYaw, VIEW } from "../../utils/shapeOblique";
 /* 자료실 > 모델링(요청) — 재생 화면의 3D 도형들을 큰 화면으로 살펴본다. 모두에게 열려
  * 있다(운영 아님). 전부 3D 빌더라 요잉(수평 시점)을 15도씩 돌려 볼 수 있고, 전투 갈래
  * 기호(2D)는 회전 없이 기호 그대로다. */
+/* 무대 색 고르기(요청) — 기본은 흰색, 도록(시트)도 이 기본을 따라 흰색으로 찍힌다. */
+const STAGE_COLORS = ["#f2f5f9", "#5ea2ff", "#ff6a5e", "#ffce54", "#7ed491"];
+
 export default function ModelGalleryScreen() {
   const [kind, setKind] = useState(SHAPE_GALLERY[0]?.kind ?? "");
   const [yaw, setYaw] = useState<number>(VIEW.yawDeg);
+  const [color, setColor] = useState(STAGE_COLORS[0]);
   /* 자동 회전은 16방 스텝(재정의: 렌더 순서가 16방 기준이니 갤러리도 16방으로) —
      22.5도씩 끊어 돌며 각 방향에서 잠깐 머문다. 지도 마커가 실제로 쓰는 각도들만
      보게 되고, 그리기 순서 검수도 방향 단위로 된다. */
@@ -46,11 +50,22 @@ export default function ModelGalleryScreen() {
         <div className="scr-model-viewer">
           {/* 조작부 개편(요청: 버튼 줄 제거) — 각도는 무대 우상단, 멈춤·재생은 무대
               우하단 오버레이. 수동 회전은 ←/→ 키. */}
-          <div className="scr-model-stage">
+          <div className="scr-model-stage" style={{ color }}>
             <ShapeIcon kind={kind} faces={faces} />
             {builder && (
               <>
                 <span className="scr-model-yaw">{Math.round(((yaw % 360) + 360) % 360)}°</span>
+                {/* 색 고르기(요청) — 무대 좌하단의 작은 견본 점들. */}
+                <span className="scr-model-colors">
+                  {STAGE_COLORS.map((c) => (
+                    <button
+                      key={c} type="button" aria-label={`색 ${c}`}
+                      className={c === color ? "scr-model-swatch scr-model-swatch-on" : "scr-model-swatch"}
+                      style={{ background: c }}
+                      onClick={() => setColor(c)}
+                    />
+                  ))}
+                </span>
                 <button
                   type="button" className="scr-model-pause"
                   aria-label={auto ? "멈춤" : "자동 회전"}
@@ -62,16 +77,23 @@ export default function ModelGalleryScreen() {
             )}
           </div>
         </div>
-        <div className="scr-model-gallery">
-          {SHAPE_GALLERY.map(({ kind: k, label }) => (
-            <button
-              key={k} type="button"
-              className={k === kind ? "scr-model-item scr-model-item-on" : "scr-model-item"}
-              onClick={() => { setKind(k); setYaw(VIEW.yawDeg); setAuto(true); }}
-            >
-              <span className="scr-model-thumb"><ShapeIcon kind={k} /></span>
-              <span className="scr-model-label">{label}</span>
-            </button>
+        <div className="scr-model-list">
+          {(["유닛", "건물"] as const).map((grp) => (
+            <div key={grp}>
+              <div className="scr-model-group-title">{grp}</div>
+              <div className="scr-model-gallery">
+                {SHAPE_GALLERY.filter((g) => g.group === grp).map(({ kind: k, label }) => (
+                  <button
+                    key={k} type="button"
+                    className={k === kind ? "scr-model-item scr-model-item-on" : "scr-model-item"}
+                    onClick={() => { setKind(k); setYaw(VIEW.yawDeg); setAuto(true); }}
+                  >
+                    <span className="scr-model-thumb"><ShapeIcon kind={k} /></span>
+                    <span className="scr-model-label">{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </div>

@@ -12828,10 +12828,27 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   height: calc(100dvh - 110px); overflow: hidden;
 }
 .scr-model-viewer { flex: none; }
+/* 목록 재편(요청: 유닛/건물 갈래) — 스크롤은 바깥 목록이 맡고, 갈래마다 제목 + 그리드. */
+.scr-model-list { flex: 1; min-height: 0; overflow-y: auto; padding-right: 2px; }
+.scr-model-group-title {
+  font-size: var(--fs-caption); font-weight: 700; color: var(--muted);
+  margin: 10px 2px 6px;
+}
+.scr-model-list > div:first-child .scr-model-group-title { margin-top: 0; }
 .scr-model-gallery {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px;
-  flex: 1; min-height: 0; overflow-y: auto; align-content: start; padding-right: 2px;
+  align-content: start;
 }
+/* 무대 색 견본(요청) — 좌하단 작은 원 점들. 기본 흰색. */
+.scr-model-colors {
+  position: absolute; bottom: 10px; left: 8px;
+  display: inline-flex; gap: 5px; align-items: center;
+}
+.scr-model-swatch {
+  width: 14px; height: 14px; border-radius: 50%; padding: 0; cursor: pointer;
+  border: 1px solid var(--line-soft);
+}
+.scr-model-swatch-on { box-shadow: 0 0 0 2px rgba(94, 162, 255, 0.55); }
 .scr-model-item {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 8px 4px; border-radius: 8px; border: 1px solid transparent;
