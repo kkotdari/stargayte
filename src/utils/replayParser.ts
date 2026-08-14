@@ -11,6 +11,7 @@ import {
   normalizeUpgradeName, CAST_ORDER_TO_TECH, USE_CMD_TO_TECH, PLACE_MINE_ORDER,
   CAST_ORDER_TO_UNIT, USE_CMD_TO_UNIT,
 } from "./replayTechNames";
+import { buildUnitTracks } from "./replayUnits";
 import type { Race, GameType } from "../types";
 
 const RACE_NAME_MAP: Record<string, Race> = {
@@ -294,6 +295,11 @@ export interface ParsedReplay {
    *  가운데를 재는 데 쓴다(요청: 센터는 실제로 안 나왔더라도 모든 스타팅 포인트의 중심으로
    *  잡아야 한다). 못 읽었으면 빈 배열. */
   startSpots: [number, number][];
+  /** 개체 트랙 v2(JSON 문자열) — 태그(유닛 번호) 단위의 생애·정체·증거 스트림(요청: 유닛
+   *  위치를 저마다 기억하고 브루드워 엔진처럼 분석 + 건물 파괴 파악). 기존 부대 추적과
+   *  비교할 수 있게 별도 테이블(game_result_unit_tracks)에 저장된다. 분석이 실패해도
+   *  등록은 막지 않는다 — 그때는 null. */
+  unitTracks: string | null;
 }
 
 export class ReplayParseError extends Error {}
@@ -1411,6 +1417,22 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
     ? Math.round(frames * SECONDS_PER_FRAME)
     : null;
 
+  /* 개체 트랙 v2 — 커맨드 스트림을 태그 단위로 다시 읽는다(요청). 관전 의심자까지 포함해
+     실제 슬롯 전원을 준다(명령이 거의 없는 사람은 개체도 거의 안 만든다). 실측 77ms(4:4
+     22분)라 등록 흐름을 눈에 띄게 늦추지 않고, 어떤 실패도 등록을 막으면 안 되므로 통째로
+     감싼다. */
+  const unitTracks = ((): string | null => {
+    if (!cmds) return null;
+    try {
+      const trackPlayers = (res.Header.Players ?? [])
+        .filter((p) => !p.Observer && p.Type?.Name !== "Observer")
+        .map((p) => ({ id: p.ID, name: p.Name, race: RACE_NAME_MAP[p.Race?.Name ?? ""] ?? "" as const }));
+      return JSON.stringify(buildUnitTracks(cmds, trackPlayers));
+    } catch {
+      return null;
+    }
+  })();
+
   return {
     fileName: file.name,
     date,
@@ -1426,5 +1448,6 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
     teamSplitUncertain,
     mapGrid: await readMapGrid(res),
     startSpots: (res.MapData?.StartLocations ?? []).map((sp) => [sp.X / 32, sp.Y / 32] as [number, number]),
+    unitTracks,
   };
 }

@@ -295,6 +295,21 @@ export const api = {
     return gameResultFromWire(await request<WireGameResult>(`/api/game-results/${id}`));
   },
 
+  /** 개체 트랙 v2 저장 — 태그(유닛 번호) 단위 분석(JSON 문자열)을 별도 테이블에 올린다
+   *  (요청: 별도 테이블로 해서 기존 부대 추적과 비교). 등록 직후 한 번 부른다. */
+  async putGameUnitTracks(id: number, data: string): Promise<void> {
+    await request<void>(`/api/game-results/${id}/unit-tracks`, {
+      method: "PUT",
+      body: JSON.stringify({ data }),
+    });
+  },
+
+  /** 개체 트랙 v2 조회 — 없으면(옛 경기·분석 실패) data가 null이다. */
+  async getGameUnitTracks(id: number): Promise<string | null> {
+    const res = await request<{ data: string | null }>(`/api/game-results/${id}/unit-tracks`);
+    return res.data ?? null;
+  },
+
   // 전적통계 화면 전용 — 회원별로 이미 집계된 전적을 받는다.
   async getGameResultStats(params: GameResultStatsParams = {}): Promise<GameResultStatsResponse> {
     const qs = buildQuery({

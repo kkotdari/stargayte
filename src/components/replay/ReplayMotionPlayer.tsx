@@ -9,6 +9,7 @@ import type { ReplayMapGrid } from "../../utils/replayParser";
 import { api } from "../../api/client";
 import { applyReplayMap } from "../../hooks/useReplayMap";
 import { isAirUnit, type MotionTrack, type SummaryMotion, type TrackPt } from "../../utils/replayMotion";
+import type { UnitTracksV2 } from "../../utils/replayUnits";
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } from "../../utils/minimapTerrain";
 import {
@@ -4661,7 +4662,7 @@ const shortName = (name: string): string => {
 
 export default function ReplayMotionPlayer({
   grid, motion, endSec, bases, teamOfRaw, active = true, winnerTeam, side, menu,
-  stamp, registrant, onDetailClose, bestRaw,
+  stamp, registrant, onDetailClose, bestRaw, loadUnitTracks,
 }: {
   grid: ReplayMapGrid;
   motion: SummaryMotion;
@@ -4691,6 +4692,10 @@ export default function ReplayMotionPlayer({
   /** 그 판 BEST PLAYER의 원본 게임 아이디(요청: 헤드 칩 대신 로스터 이름에 배지) —
    *  로스터 기둥에서 그 사람 이름 칩 옆에 금색 BEST 배지를 단다. */
   bestRaw?: string | null;
+  /** 개체 트랙 v2 로더(요청: 태그 단위 분석을 별도 테이블로 저장해 비교) — 있으면 보기
+   *  줄에 '부대/개체' 토글이 선다. 개체 모드는 유닛 층만 태그 단위 트랙으로 바꿔 그리고,
+   *  건물·자원·크립은 기존 그대로 둔다. null이 오면(옛 경기·분석 실패) 토글이 알린다. */
+  loadUnitTracks?: () => Promise<string | null>;
   // (삭제·요청) caps — 자막 표시를 걷으면서 함께.
 }) {
   const total = useMemo(() => {
@@ -4713,6 +4718,30 @@ export default function ReplayMotionPlayer({
   /* 색은 한 벌만 칠한다(요청: 중복 표시 제거) — 팀색/개인색을 전환 버튼으로 오간다.
      개인색이 없는 옛 기록은 개인색 모드여도 팀색으로 떨어진다. */
   const [colorMode, setColorMode] = useState<"team" | "personal">("personal");
+  /* 개체 트랙 v2 토글(요청: 별도 테이블에 담아 기존 부대 추적과 비교) — 켜면 유닛 층만
+     태그(유닛 번호) 단위 트랙으로 갈아 끼운다. 데이터는 처음 켤 때 한 번 내려받는다. */
+  const [entMode, setEntMode] = useState(false);
+  const [entData, setEntData] = useState<UnitTracksV2 | null>(null);
+  const [entLoad, setEntLoad] = useState<"idle" | "loading" | "none">("idle");
+  const toggleEnt = async (): Promise<void> => {
+    if (entMode) { setEntMode(false); return; }
+    if (entData) { setEntMode(true); return; }
+    if (!loadUnitTracks || entLoad === "loading") return;
+    setEntLoad("loading");
+    try {
+      const raw = await loadUnitTracks();
+      const parsed = raw ? (JSON.parse(raw) as UnitTracksV2) : null;
+      if (parsed && parsed.v === 2 && Array.isArray(parsed.ents)) {
+        setEntData(parsed);
+        setEntMode(true);
+        setEntLoad("idle");
+      } else {
+        setEntLoad("none");
+      }
+    } catch {
+      setEntLoad("none");
+    }
+  };
   /* 밝은 톤(지적: 음영에 비해 팀색이 어두워 안 보인다)이되 너무 파스텔은 말고(지적) —
      쨍한 하늘·장미색의 중간 지점. */
   const TEAM_EDGE: Record<1 | 2, string> = { 1: "#5ea2ff", 2: "#ff7d95" };
@@ -4896,6 +4925,11 @@ export default function ReplayMotionPlayer({
   /* 자취 펴기 한 벌 — 부대는 지형 경로에 그 유닛의 속도로, 정찰(straight)은 직선에 일꾼
      걸음(3.7타일/초)으로 걷는다(지적: 일꾼·오버로드가 위치 찍으면 바로 이동하는 느낌 —
      정찰 점도 명령 시각에 출발해 걸어서 가야 한다). */
+  /* 길찾기 캐시(개체 트랙 v2) — 부대 몇십 개가 아니라 개체 천여 개를 걷게 되면서, 같은
+     두 지점(채굴 왕복·본대 행군)의 BFS가 수천 번 반복된다. 정확히 같은 출발·도착이면
+     길도 같으므로 좌표 그대로를 열쇠로 재사용한다(양자화 없음 — 기존 결과와 비트 단위로
+     같다). 지형이 바뀌면 통째로 비운다. */
+  const pathCacheRef = useRef<{ key: string; map: Map<string, [number, number][]> }>({ key: "", map: new Map() });
   const walkTrack = (
     src: TrackPt[], p: MotionTrack, straight: boolean, forcedUnit?: string,
     speedOverride?: number, forceGround?: boolean,
@@ -4923,20 +4957,32 @@ export default function ReplayMotionPlayer({
            직선이 아니라 차선(벽을 비싸게 취급하는 다익스트라)이다(지적: 지상 유닛이 벽을 막
            통과해 직진). 격자가 조각났거나 출발·도착이 못 걷는 칸 깊숙이 떨어져 스냅이
            실패하면 BFS는 null인데, 그때마다 직선을 그으면 벽 관통이 화면을 덮는다. */
-        const found = groundPath(
-          terrain,
-          atX / grid.width, atY / grid.height,
-          tx / grid.width, ty / grid.height,
-        ) ?? (terrainRaw ? groundPath(
-          terrainRaw,
-          atX / grid.width, atY / grid.height,
-          tx / grid.width, ty / grid.height,
-        ) : null) ?? groundPathSoft(
-          terrainRaw ?? terrain,
-          atX / grid.width, atY / grid.height,
-          tx / grid.width, ty / grid.height,
-        );
-        path = found.map(([fx, fy]) => [fx * grid.width, fy * grid.height] as [number, number]);
+        const cache = pathCacheRef.current;
+        const tkey = `${terrain.w}:${terrain.h}:${terrainRaw ? terrainRaw.w : 0}`;
+        if (cache.key !== tkey) { cache.key = tkey; cache.map.clear(); }
+        const ck = `${atX},${atY},${tx},${ty}`;
+        const hit = cache.map.get(ck);
+        if (hit) {
+          path = hit;
+        } else {
+          const found = groundPath(
+            terrain,
+            atX / grid.width, atY / grid.height,
+            tx / grid.width, ty / grid.height,
+          ) ?? (terrainRaw ? groundPath(
+            terrainRaw,
+            atX / grid.width, atY / grid.height,
+            tx / grid.width, ty / grid.height,
+          ) : null) ?? groundPathSoft(
+            terrainRaw ?? terrain,
+            atX / grid.width, atY / grid.height,
+            tx / grid.width, ty / grid.height,
+          );
+          path = found.map(([fx, fy]) => [fx * grid.width, fy * grid.height] as [number, number]);
+          // 무한히 자라지 않게만 막는다 — 넘치면 통째로 비워도 다시 채워지는 값이다.
+          if (cache.map.size > 30000) cache.map.clear();
+          cache.map.set(ck, path);
+        }
       }
       if (!path) path = [[tx, ty]];
       let total = 0;
@@ -5082,6 +5128,36 @@ export default function ReplayMotionPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [squadPts, terrain, terrainRaw, grid.width, grid.height, motion],
   );
+  /* 개체 걷기(v2·요청: 유닛 위치를 저마다 기억하고 브루드워 엔진처럼 분석) — 태그 하나가
+     곧 마커 하나다. 저장된 증거 점(이동 명령의 목적지·남이 찍은 자리·건설 자리·정지)을
+     그 유닛의 속도와 지형 길찾기(walkTrack)로 걸린다. 부대 어림(squadPts)과 달리 묶고
+     가르는 어림이 없어, 갑자기 나타나고 사라지는 유령이 원리상 안 생긴다 — 비교가 목적
+     이라 건물·자원·크립 층은 기존(v1) 그대로 둔다. 생애의 죽음(d)이 오면 마커를 걷는다. */
+  const entWalks = useMemo(() => {
+    if (!entData) return [];
+    const trackByName = new Map(motion.players.map((p) => [p.raw, p]));
+    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    const out: { raw: string; unit: string; b: number; d: number | null; walk: [number, number, number][] }[] = [];
+    for (const e of entData.ents) {
+      // 건물(태그·물리 모두)은 v1 층이 계속 그린다 — 여기는 유닛만.
+      if (e.bld || e.t < 0) continue;
+      const raw = nameOfId.get(e.o) ?? "";
+      const p = trackByName.get(raw);
+      if (!p) continue;
+      // 위치 없는 증거(생산·랠리, x=-1)는 걷기 재료가 아니다.
+      const pts = e.ev
+        .filter((v) => v[1] >= 0 && v[3] !== 4)
+        .map((v) => [v[0], v[1], v[2]] as TrackPt);
+      if (pts.length === 0) continue;
+      out.push({
+        raw, unit: e.k, b: e.b, d: e.d,
+        // 정체를 알면 그 속도로, 모르면 부대 어림과 같은 규칙(그때의 우세 유닛·지상 길)로.
+        walk: walkTrack(pts, p, false, e.k || undefined, undefined, e.k === ""),
+      });
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entData, terrain, terrainRaw, grid.width, grid.height, motion]);
   /* 유령 부대 흡수(지적: 1시에 쳐들어간 테란 병력이 아무것도 안 하고 계속 서 있음 —
      같은 부대를 다시 드래그하면 선택 묶음(g)이 갈려 새 부대가 되고, 옛 마커가 마지막
      명령 자리에 영영 남았다. 실측: 한 공격 방면에 묶음 여덟이 줄줄이). 부대 A의 마지막
@@ -6854,7 +6930,7 @@ export default function ReplayMotionPlayer({
             갑자기 사라졌다 — 실제로는 랠리로 걸어간 것이다). 랠리에 닿고 잠시 뒤 걷히는
             것은 그 자리의 부대에 합류한 것으로 읽힌다. 같은 종류 건물이 여럿이면(게이트
             여럿) 차례로 나눠 놓는다. */}
-        {motion.players.flatMap((p, pIdx) => {
+        {!entMode && motion.players.flatMap((p, pIdx) => {
           const team = teamOfRaw(p.raw);
           const out: React.ReactNode[] = [];
           for (const [unit, secs] of Object.entries(p.prod ?? {})) {
@@ -7484,7 +7560,7 @@ export default function ReplayMotionPlayer({
             이름·수·심장박동은 주 부대(가장 최근 명령을 받은 쪽)에만 붙는다 — 수는 사람
             단위 어림이라 부대별로 가를 근거가 없다. 곁 부대는 잠잠해지면 걷는다(본대에
             합류했거나 정리된 것이다). 유닛 칩의 팀 방패는 뺐다(요청). */}
-        {motion.players.flatMap((p, pi) => {
+        {!entMode && motion.players.flatMap((p, pi) => {
           const unit = unitNow(p, t);
           const team = teamOfRaw(p.raw);
           const squads = refinedSquads[pi];
@@ -8101,7 +8177,7 @@ export default function ReplayMotionPlayer({
             한 기는 저그면 오버로드라 부른다: 그 종족의 이름 없는 한 기는 대개 그것이다.
             명령이 이어지는 동안만 보이고 곧게 간다 — 정찰 하나에 지형 길찾기는 배보다
             배꼽이다. */}
-        {motion.players.flatMap((p, pi) => {
+        {!entMode && motion.players.flatMap((p, pi) => {
           const race = bases.find((b) => b.key === p.raw)?.race;
           const team = teamOfRaw(p.raw);
           return scoutSquads[pi].map((g, si) => {
@@ -8239,7 +8315,7 @@ export default function ReplayMotionPlayer({
         {/* 스타팅 오버로드(요청: 아이콘으로 바로 표시) — 명령이 있기 전에도 본진 곁에
             풍선이 떠 있다. 첫 수송·단독 정찰 자취가 시작되면 그쪽 점이 이어받는다(정찰도
             본진에서 걸어 나가므로 자리가 이어진다). */}
-        {motion.players.flatMap((p, pi) => {
+        {!entMode && motion.players.flatMap((p, pi) => {
           const race = bases.find((b) => b.key === p.raw)?.race;
           if (race !== "저그") return [];
           const firstScout = Math.min(Infinity, ...scoutSquads[pi]
@@ -8260,6 +8336,51 @@ export default function ReplayMotionPlayer({
             });
           }
           return [];
+        })}
+
+        {/* 개체 트랙 v2(요청: 태그 단위 분석을 별도 테이블에 담아 비교) — 태그 하나가
+            곧 마커 하나다. 부대 어림의 묶음·흡수·합류 규칙이 전혀 없이, 각 개체가 제
+            증거를 따라 걷고 제 죽음(d)에 종족 효과와 함께 걷힌다. 유닛 층만 바꿔 그리고
+            건물·자원·크립·마법은 v1 그대로다. 정체를 모르는 개체는 그 종족의 기본 보병
+            꼴을 반투명으로 — 아는 척은 안 하되 존재는 보인다. */}
+        {entMode && entWalks.map((e, ei) => {
+          const rp = e.walk;
+          if (rp.length === 0 || t < rp[0][0]) return null;
+          if (e.d !== null && t >= e.d + 1.2) return null;
+          const team = teamOfRaw(e.raw);
+          const rawPos = posAt(rp, t, null);
+          if (!rawPos) return null;
+          const pos = smoothPosOf(`${e.raw}-v2e${ei}`, rawPos);
+          const race = bases.find((b) => b.key === e.raw)?.race;
+          const u = e.unit;
+          const [ax3, ay3] = dodge(pos.x, pos.y);
+          const [fx, fy] = posFrac(ax3, ay3);
+          // 죽음 창(d~d+1.2초) — 마커 대신 종족별 사망 효과가 남는다.
+          if (e.d !== null && t >= e.d) {
+            const dk = race === "저그" ? "zerg" : race === "프로토스" ? "toss" : "mech";
+            return (
+              <span
+                key={`v2die-${ei}`}
+                className="scr-motion-army scr-motion-dot"
+                style={{ ...posStyle(ax3, ay3), zIndex: 1300 }}
+              >
+                <span className={`scr-motion-diefx scr-die-${dk}`} />
+              </span>
+            );
+          }
+          const isWorker = u === "SCV" || u === "Probe" || u === "Drone";
+          unitOps.push({
+            fx, fy,
+            z: pitched ? 1000 + Math.round(ay3 * 80) : 1000 + (ei % 137),
+            kind: isWorker ? workerKindOf(race) : unitMarkerKind(u, race),
+            rotDeg: headingOf(rp, pos, `${e.raw}-v2e${ei}`),
+            viewYaw: viewYawOf(ax3, ay3), flat: !pitched, pitch: pitched,
+            sizePx: u === "" || isWorker ? unitGlyphPx(0, ay3) : unitPxOf(u, ay3),
+            color: modeColor(e.raw, team),
+            alpha: u === "" ? 0.7 : 1,
+            air: u !== "" && isAirUnit(u),
+          });
+          return null;
         })}
 
         {/* 건설 SCV(정정: 빙빙이 아니라) — 건물 둘레 네 자리를 "이동→정지(작업)→이동"
@@ -8567,6 +8688,27 @@ export default function ReplayMotionPlayer({
             크게
           </button>
         </span>
+        {/* 개체 트랙 v2 토글(요청: 별도 테이블과 비교) — 부대 어림 ↔ 태그 단위 개체. */}
+        {loadUnitTracks && (
+          <span className="scr-motion-btngroup" role="group" aria-label="유닛 추적">
+            <button
+              type="button"
+              className={cx("scr-motion-btn", "scr-motion-rbtn", !entMode && "scr-motion-speed-on")}
+              onClick={() => setEntMode(false)}
+            >
+              부대
+            </button>
+            <button
+              type="button"
+              className={cx("scr-motion-btn", "scr-motion-rbtn", entMode && "scr-motion-speed-on")}
+              onClick={() => { void toggleEnt(); }}
+              disabled={entLoad === "loading"}
+              title={entLoad === "none" ? "이 경기엔 개체 트랙이 없어요(재등록하면 생겨요)" : undefined}
+            >
+              {entLoad === "loading" ? "…" : entLoad === "none" ? "개체 없음" : "개체"}
+            </button>
+          </span>
+        )}
         {/* 맵연결(요청) — 저장된 미니맵 목록에서 골라 이 경기의 맵에 연결한다. */}
         <button
           type="button"

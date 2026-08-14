@@ -52,6 +52,9 @@ export interface ReplayDraft {
   /** 미니맵을 그릴 맵의 지형 격자. 못 읽었으면 null이고 그 경기엔 미니맵이 안 붙는다.
    *  서버는 같은 해시를 이미 갖고 있으면 이 격자를 버리고 해시만 이어 붙인다. */
   mapGrid: ReplayMapGrid | null;
+  /** 개체 트랙 v2(JSON 문자열) — 등록이 끝난 뒤 별도 테이블에 따로 올린다(요청: 태그 단위
+   *  분석을 별도 테이블로 저장해 기존 부대 추적과 비교). 분석 실패면 null — 등록엔 지장 없다. */
+  unitTracks: string | null;
   parseError: string | null;
   // 자동(중복/컴퓨터) 또는 수동으로 이 리플레이를 전체 등록 대상에서 뺀 상태 — 배열에서
   // 지우지 않고 계속 화면에 보여주면서 토글만 한다(전체 등록 시에만 건너뛴다).
@@ -146,6 +149,7 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
       teamSplitUncertain: parsed.teamSplitUncertain,
       summaryData,
       mapGrid: parsed.mapGrid,
+      unitTracks: parsed.unitTracks,
       parseError: null,
       excluded: false,
       excludeReason: null,
@@ -170,6 +174,7 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
       teamSplitUncertain: false,
       summaryData: null,
       mapGrid: null,
+      unitTracks: null,
       parseError: e instanceof ReplayParseError ? e.message : "리플레이를 분석하지 못했어요. 직접 입력해 주세요.",
       excluded: false,
       excludeReason: null,

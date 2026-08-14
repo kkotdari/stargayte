@@ -2,6 +2,7 @@ import { useContext, useEffect, useMemo, useRef, useState, type MouseEvent, type
 import { formatWhen } from "../../utils/date";
 import { ARROW_MIN_TILES, type MinimapArrow, type MinimapMarker } from "../../components/replay/ReplayMinimap";
 import ReplayMotionPlayer from "../../components/replay/ReplayMotionPlayer";
+import { api } from "../../api/client";
 import ActivityComments from "./ActivityComments";
 import RosterSide, { outcomeFor, resolveSlotName } from "./GameResultSides";
 import Avatar from "../../components/common/Avatar";
@@ -1713,6 +1714,9 @@ export default function GameResultStory({
           ) : undefined}
           onDetailClose={detailClose ?? undefined}
           bestRaw={bestRaw}
+          /* 개체 트랙 v2(요청: 별도 테이블과 비교) — 재생기의 '부대/개체' 토글이 처음
+             켜질 때 한 번 내려받는다. 없는 경기(옛 등록·분석 실패)는 null이 온다. */
+          loadUnitTracks={() => api.getGameUnitTracks(gameResult.id).catch(() => null)}
           winnerTeam={gameResult.result === "team1" ? 1 : gameResult.result === "team2" ? 2 : undefined}
           /* 확대 모드의 오른쪽 영역엔 이 경기의 댓글(지적: "리플" = 댓글) — 활동 카드
              하단과 같은 컴포넌트를 그대로 앉힌다. 모달(z 210) 안이라 overModal. */
