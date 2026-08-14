@@ -5153,7 +5153,11 @@ export default function ReplayMotionPlayer({
     const target = melee ? 0.8 : unitName ? ENGAGE_RANGE[unitName] ?? 3 : 3;
     const { bx, by, bd } = nearestFoe(team, pos.x, pos.y);
     if (!Number.isFinite(bd) || bd > ENGAGE_SIGHT_TILES || bd <= Math.max(target, 0.01)) return pos;
-    const pull = Math.min((bd - target) / 2, ENGAGE_PULL_CAP);
+    /* 경계 램프(지적: 끊기게 순간이동 — 실측: 적이 시야 9타일을 드나들 때마다 당김이
+       0↔2.6타일로 토글돼 프레임당 2.6타일 점프가 반복됐다) — 시야 끝 3타일 구간에서
+       당김이 0부터 서서히 자라, 경계를 넘나들어도 위치가 연속이다. */
+    const edge = Math.min(1, (ENGAGE_SIGHT_TILES - bd) / 3);
+    const pull = Math.min((bd - target) / 2, ENGAGE_PULL_CAP) * edge;
     return { ...pos, x: pos.x + ((bx - pos.x) / bd) * pull, y: pos.y + ((by - pos.y) / bd) * pull };
   };
   /* 시즈 모드 표시(지적: 시즈모드를 거의 본 적이 없음) — 리플레이에 시즈 토글의 자리가
@@ -5602,10 +5606,14 @@ export default function ReplayMotionPlayer({
       posMemRef.current.set(key, { x: pos.x, y: pos.y, t });
       return pos;
     }
-    const step = Math.min(d * Math.min(1, dt * 6), 10 * dt);
+    // 추격 상한은 유닛 현실 속도 언저리(7타일/초) — 그보다 빠른 표시 이동이 곧
+    // '순간이동 같다'는 지적의 실체였다.
+    const step = Math.min(d * Math.min(1, dt * 5), 7 * dt);
     const nx = mem.x + (dx / d) * step;
     const ny = mem.y + (dy / d) * step;
     posMemRef.current.set(key, { x: nx, y: ny, t });
+    const dbg = (window as unknown as { __posLog?: unknown[] }).__posLog;
+    if (dbg) dbg.push([key, t, Math.round(nx * 10) / 10, Math.round(ny * 10) / 10]);
     return { ...pos, x: nx, y: ny };
   };
   const headingOf = (walk: TrackPt[], pos: { x: number; y: number }, smoothKey?: string): number => {
@@ -5760,7 +5768,7 @@ export default function ReplayMotionPlayer({
     if (!playing || !active) return undefined;
     // 모바일은 20Hz(재지적: 모바일과 PC는 주기가 달라야) — 폰 CPU에서 30Hz 리렌더는
     // 오히려 밀려서 더 뚝뚝해진다. PC는 30Hz.
-    const DRAW_GAP_MS = pcView ? 33 : 50;
+    const DRAW_GAP_MS = pcView ? 16 : 50;
     const tick = (now: number) => {
       const c = clockRef.current;
       /* 한 틱 상한 — 브라우저가 rAF를 멈췄다 되살리면(백그라운드 탭) dt가 자리 비운
