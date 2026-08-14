@@ -2976,19 +2976,36 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         [0.5, "#7c5d92"], [1.3, "#8a5f43"], [2.1, "#7c5d92"], [2.9, "#8a5f43"],
       ];
       const prof: [number, number][] = [[0.15, 0.99], [0.9, 0.95], [1.7, 0.83], [2.4, 0.62], [2.95, 0.34]];
+      /* 구불구불 + 가지(재지적: 직선이라 어색) — 마디마다 각도를 해시로 비틀며 오르고,
+         중간 마디에서 짧은 곁가지가 갈라진다. 전부 각도의 순수 함수라 결정적이다. */
+      const ptAt = (aa: number, z: number, rf: number): [number, number] =>
+        project(Math.sin(aa) * 2.6 * rf, 0.3 + Math.cos(aa) * 2.6 * rf, z);
+      const seg = (
+        p1: [number, number], p2: [number, number], w: number, col: string,
+      ): ShapeFace => [
+        `M${p1[0] - w} ${p1[1]} L${p2[0] - w} ${p2[1]} L${p2[0] + w} ${p2[1]} L${p1[0] + w} ${p1[1]} Z`,
+        0.8, col,
+      ] as ShapeFace;
       for (const [a, col] of veins) {
-        const dxs = Math.sin(a);
-        const dys = Math.cos(a);
-        if (facingRatio(dxs, dys) < 0.12) continue;
-        for (let i = 0; i < prof.length - 1; i += 1) {
-          const [z1, r1] = prof[i];
-          const [z2, r2b] = prof[i + 1];
-          const [p1x, p1y] = project(dxs * 2.6 * r1, 0.3 + dys * 2.6 * r1, z1);
-          const [p2x, p2y] = project(dxs * 2.6 * r2b, 0.3 + dys * 2.6 * r2b, z2);
-          out.push([
-            `M${p1x - 0.11} ${p1y} L${p2x - 0.11} ${p2y} L${p2x + 0.11} ${p2y} L${p1x + 0.11} ${p1y} Z`,
-            0.8, col,
-          ] as ShapeFace);
+        if (facingRatio(Math.sin(a), Math.cos(a)) < 0.12) continue;
+        /* 뿌리 높이·길이·굵기도 해시로 제각각(재재지적) — 어떤 건 밑동부터 길게,
+           어떤 건 중턱에서 짧게, 굵기도 저마다 다르다. */
+        const i0 = Math.sin(a * 71.3) > 0.2 ? 1 : 0;
+        const iEnd = Math.min(prof.length - 1, i0 + 2 + Math.round(Math.sin(a * 19.7) * 0.5 + 1));
+        const w0 = 0.09 + (Math.sin(a * 47.9) * 0.5 + 0.5) * 0.09;
+        let ang = a;
+        let prev = ptAt(ang, prof[i0][0], prof[i0][1]);
+        for (let i = i0 + 1; i <= iEnd; i += 1) {
+          ang += Math.sin(a * 37.3 + i * 2.1) * 0.26;
+          const cur = ptAt(ang, prof[i][0], prof[i][1]);
+          out.push(seg(prev, cur, Math.max(0.05, w0 - (i - i0) * 0.018), col));
+          if (i === i0 + 1 && iEnd - i0 >= 2) {
+            // 곁가지 — 옆으로 벌어져 반 마디만 뻗는다.
+            const bAng = ang + (Math.sin(a * 53.1) > 0 ? 0.5 : -0.5);
+            const mid: [number, number] = [(prof[i][0] + prof[i - 1][0]) / 2, (prof[i][1] + prof[i - 1][1]) / 2];
+            out.push(seg(cur, ptAt(bAng, mid[0], mid[1]), w0 * 0.55, col));
+          }
+          prev = cur;
         }
       }
       /* 껍질 위 키(수리: 앞 돔 키를 물려받아 큰 돔이 덮었다) — 보이는 쪽만 그리니
@@ -6015,7 +6032,15 @@ export default function ReplayMotionPlayer({
                 sizePx: 0, wFrac, hFrac, boxFit: "meet", fitWidth: true,
                 color, alpha, noShadow: true,
               });
-              return null;
+              /* 공사 애니(요청) — 모델은 캐시 스프라이트라 못 움직이니 CSS 오버레이가
+                 맡는다: 테란 빨간 불 깜빡, 저그 심장 박동, 프로토스 소환 글로우. */
+              return (
+                <span
+                  key={`bfx-${i}`}
+                  className={`scr-motion-buildfx scr-bfx-${race2 === "저그" ? "zerg" : race2 === "프로토스" ? "toss" : "terran"}`}
+                  style={{ ...posStyle(centerX, centerY), zIndex: z + 1 }}
+                />
+              );
             }
             if (shapeKind) {
               unitOps.push({
