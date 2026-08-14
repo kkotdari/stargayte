@@ -5038,6 +5038,24 @@ export default function ReplayMotionPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [squadPts, terrain, terrainRaw, grid.width, grid.height, motion],
   );
+  /* 유령 부대 흡수(지적: 1시에 쳐들어간 테란 병력이 아무것도 안 하고 계속 서 있음 —
+     같은 부대를 다시 드래그하면 선택 묶음(g)이 갈려 새 부대가 되고, 옛 마커가 마지막
+     명령 자리에 영영 남았다. 실측: 한 공격 방면에 묶음 여덟이 줄줄이). 부대 A의 마지막
+     명령 곁(8타일)에서 150초 안에 딴 부대 B가 첫 명령을 받으면 — 그 자리 유닛들을
+     다시 집은 것이다 — A는 그 순간 B에 흡수된 것으로 보고 걷는다. */
+  const squadGoneAt = useMemo(() => squadPts.map((sqs) => sqs.map((a) => {
+    const la = a[a.length - 1];
+    if (!la) return 0;
+    let gone = 0;
+    for (const b of sqs) {
+      if (b === a) continue;
+      const fb = b[0];
+      if (!fb || fb[0] < la[0] || fb[0] - la[0] > 150) continue;
+      if (Math.hypot(fb[1] - la[1], fb[2] - la[2]) > 8) continue;
+      if (gone === 0 || fb[0] < gone) gone = fb[0];
+    }
+    return gone;
+  })), [squadPts]);
   /* ── 교전 붙기(지적: 적이 가까이 있는데 전투를 안 한다 — 시야에 들면 맞붙는 게
      자연스럽다. 근접 유닛은 이동해 붙어서 싸우고, 원거리는 사정거리까지만 이동) —
      그리기 직전의 표시 조정이다. 원본 자취(명령 좌표)는 그대로 두고, 이 프레임의 가장
@@ -7576,6 +7594,9 @@ export default function ReplayMotionPlayer({
                '앞으로 갈 자리'에 서 있었다. 그동안의 움직임은 정찰 점(spts)이 맡는다. */
             if (rp.length === 0 || t < rp[0][0]) return null;
             if (t < firstArmyDone) return null;
+            // 후계 부대에 흡수된 유령 부대(위 squadGoneAt 주석)는 그 순간부터 걷는다.
+            const successorAt = squadGoneAt[pi]?.[si] ?? 0;
+            if (successorAt > 0 && t >= successorAt) return null;
             // 걷은 자취에는 곡선을 안 얹는다 — 위 typeMarks의 bend 주석과 같은 이유.
             let pos = posAt(rp, t, null);
             if (!pos) return null;
