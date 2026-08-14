@@ -1678,6 +1678,10 @@ export default function GameResultStory({
           ) : null;
           return (
             <div className="scr-story-map-head-line">
+              {/* 경기 시각(요청: 머리 타임스탬프가 자리를 차지 — 맵 이름 줄 왼쪽 끝으로
+                  합치자) — 게임 페이지에서만 CSS로 보이고, 목록·묶음 카드는 머리의 시각이
+                  그대로라 여기선 숨겨 둔다. absolute라 가운데 정렬(맵 이름)은 안 민다. */}
+              <span className="scr-story-when">{stampText}</span>
               {result !== "draw" && o1 === "win" && winSpan}
               {mapName && <span className="scr-story-map-name">{mapName}</span>}
               {minutes !== null && <span className="scr-story-map-dur">{minutes}분</span>}

@@ -11695,6 +11695,30 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 }
 .scr-story-map-head-line {
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center;
+  position: relative;
+}
+/* 경기 시각을 맵 이름 줄 왼쪽 끝에(요청: 머리 타임스탬프가 은근 자리를 차지 — 합치자) —
+   게임 페이지에서만 보인다. 목록·묶음 카드는 머리의 시각(.scr-activity-card-time)이
+   그대로 말하므로 두 번 나오지 않게 기본은 숨김. absolute라 맵 이름의 가운데 정렬을
+   안 민다. */
+.scr-story-when { display: none; }
+/* PC에서만(재확인: 모바일은 맵 폭이 좁아 왼쪽 끝 시각이 가운데 맵 이름과 겹쳤다 —
+   모바일은 기존 머리 시각을 그대로 둔다). */
+@media (min-width: 1160px) {
+  /* 줄 상자를 맵 폭까지 편다 — 조상 둘(.scr-story-map, .scr-story-map-head)이 다
+     align-items: center라 머리가 내용 폭(223px 실측)으로 줄어, 왼쪽 끝(absolute left:0)이
+     맵 이름 바로 옆이 돼 겹쳤다. 머리와 줄을 둘 다 stretch로 편다. */
+  .scr-activity-group-page .scr-story-map-head { align-self: stretch; }
+  .scr-activity-group-page .scr-story-map-head-line { align-self: stretch; }
+  .scr-activity-group-page .scr-story-when {
+    display: block; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    font-size: var(--fs-caption); color: var(--muted); font-variant-numeric: tabular-nums;
+    font-weight: 400;
+  }
+  /* 게임 페이지의 카드 머리(시각 한 줄)는 통째로 걷는다 — 시각은 맵 줄로 갔고, 제목
+     ("게임결과" 라벨)은 이 자리(.scr-activity-row-body)에서 원래 안 보이던 것이라 빈 띠만
+     남기 때문. 케밥은 머리의 형제(절대배치)라 그대로 산다. */
+  .scr-activity-group-page .scr-activity-card-head { display: none; }
 }
 /* 미니맵이 커진 PC에서는 그 위 요소(맵 이름·시간, 승/무 배지)도 같이 키운다(요청: 미니맵
    위 요소 알맞게 확대) — 작은 미니맵 시절 크기 그대로면 위아래 균형이 안 맞는다. */
