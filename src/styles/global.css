@@ -11663,6 +11663,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    본문 폭을 그대로 다 써서 760px까지 커져 있었다(실측). 어느 자리에 서든 걸리게 둔다.
    (320 → 400 → 480 → 560px, 요청에 따라 키워 왔다) */
 @media (min-width: 1160px) { .scr-story-map { max-width: 560px; } }
+/* 게임 페이지에서는 더 넓힌다(요청: PC도 이제 페이지라 기본맵 더 크게) — 모달 시절의
+   560px 상한은 목록 카드 몫으로 남기고, 제 페이지를 가진 게임 상세는 760px까지.
+   실제 크기는 플레이어의 높이 상한(100dvh 기반 인라인 maxWidth)과 함께 정해진다. */
+@media (min-width: 1160px) { .scr-activity-group-page .scr-story-map { max-width: 760px; } }
 /* 상세 모달 안에서는 그 상한을 푼다(요청: "PC에서 더 크게, 미니맵 모달 세로를 늘리고
    양옆 다 사용") — 모달 폭(820px)에서 좌우 틀만 남기고 지도가 다 가진다. 좌우 틀도
    16 → 8px로 조인다. */
