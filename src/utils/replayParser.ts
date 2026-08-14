@@ -596,6 +596,16 @@ function collectSignals(
      · pending: 명령 하나하나가 '그때의 선택'을 기억해 둔다 — 유닛 이름은 그 커맨드가
        나온 뒤에야 알 수 있어서, 다 훑은 뒤에 되돌아가 붙여야 그 앞의 이동도 놓치지 않는다. */
   const sel = new Map<number, number[]>();
+  /* 같은 드론에게 연달아 내린 건설(지적: 스포닝풀이 두 채 — 실제로는 첫 명령을 무르고
+     옆에 다시 지은 것) — 저그의 Build(DroneStartBuild)는 '드론아 가서 변해라'는 예약이라,
+     선택을 안 바꾼 채(같은 드론인 채) 곧 또 Build를 내리면 앞 예약은 없던 일이 된다.
+     드론이 이미 변태를 시작했다면 두 번째 명령을 받을 몸이 없으므로, 두 번째가 헛치지
+     않았다는 것 자체가 첫째가 착공도 못 했다는 증거다. screp은 이걸 IneffKind로 안
+     잡아 줘서(실측: mineral10 4:4에서 1초 간격 스포닝풀 두 번이 둘 다 유효로 남음)
+     여기서 직접 무른다. 창(20초)은 옛 선택이 그대로 남은 채 한참 뒤에 딴 드론 무리로
+     짓는 드문 경우를 막는 보험이다. */
+  const lastDroneBuild = new Map<number, { unit: string; frame: number }>();
+  const DRONE_REBUILD_WINDOW_FRAMES = Math.round(20 / SECONDS_PER_FRAME);
   const groups = new Map<string, number[]>();
   const unitOfTag = new Map<string, { from: number; name: string; last: number }[]>();
   const nameTag = (key: string, frame: number, named: string) => {
@@ -686,6 +696,24 @@ function collectSignals(
     } else if (!wasted && cmdName && BUILD_CMD_NAMES.has(cmdName)) {
       const b = nameOf(c.Unit);
       if (b) {
+        // 같은 드론 재명령 무르기(위 lastDroneBuild 주석) — 앞 예약의 기록을 걷어낸다.
+        if (nameOf(c.Order) === "DroneStartBuild" && frame !== null) {
+          const prev = lastDroneBuild.get(c.PlayerID);
+          if (prev && frame - prev.frame <= DRONE_REBUILD_WINDOW_FRAMES) {
+            s.buildingCounts[prev.unit] = Math.max(0, (s.buildingCounts[prev.unit] ?? 1) - 1);
+            const bf = s.buildingFrames[prev.unit];
+            if (bf) {
+              const bi = bf.lastIndexOf(prev.frame);
+              if (bi >= 0) bf.splice(bi, 1);
+            }
+            if (s.firstBuildingFrame[prev.unit] === prev.frame) delete s.firstBuildingFrame[prev.unit];
+            for (let pi = s.buildPositions.length - 1; pi >= 0; pi -= 1) {
+              const bp = s.buildPositions[pi];
+              if (bp.unit === prev.unit && bp.frame === prev.frame) { s.buildPositions.splice(pi, 1); break; }
+            }
+          }
+          lastDroneBuild.set(c.PlayerID, { unit: b, frame });
+        }
         s.buildingCounts[b] = (s.buildingCounts[b] ?? 0) + 1;
         if (frame !== null) {
           if (s.firstBuildingFrame[b] === undefined) s.firstBuildingFrame[b] = frame;
@@ -746,6 +774,10 @@ function collectSignals(
       }
     }
     // ── 무엇을 골라 두고 있나 — 탱크 번호를 알아내는 데 쓴다(위 pending 주석) ──
+    // 선택이 바뀌면 드론 건설 예약 무르기도 끝(위 lastDroneBuild 주석) — 다음 Build는
+    // 딴 드론의 것일 수 있다.
+    if (cmdName === "Select" || cmdName === "Select Add" || cmdName === "Select Remove"
+      || cmdName === "Hotkey") lastDroneBuild.delete(c.PlayerID);
     if (cmdName === "Select") sel.set(c.PlayerID, tagsOf(c));
     else if (cmdName === "Select Add") sel.set(c.PlayerID, [...(sel.get(c.PlayerID) ?? []), ...tagsOf(c)]);
     else if (cmdName === "Select Remove") {
