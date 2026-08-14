@@ -1434,6 +1434,9 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
           // 시작 지점 — 시작 홀(첫 커맨드센터·해처리)을 개체로 심는 재료.
           startX: startTileOf(p.SlotID)?.x ?? null,
           startY: startTileOf(p.SlotID)?.y ?? null,
+          /* 팀 번호(지적: 왜케 안 죽어 — 의 반대급부) — 전투 사망 보정이 아군의 공격
+             명령·방어건물을 적으로 오인해 제 유닛을 죽이지 않게 편 가르기 재료를 준다. */
+          team: typeof p.Team === "number" ? p.Team : null,
         }));
       // 서버 상한(200만 자)을 넘는 긴 경기는 이동 증거를 솎아 들여보낸다(모듈 주석).
       return serializeUnitTracks(buildUnitTracks(cmds, trackPlayers));

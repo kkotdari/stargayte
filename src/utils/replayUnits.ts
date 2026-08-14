@@ -247,6 +247,8 @@ export function buildUnitTracks(
     id: number; name: string; race: Race | ""; color?: string | null;
     /** 시작 지점(타일 중심) — 시작 홀을 심는 재료다(아래 주석). */
     startX?: number | null; startY?: number | null;
+    /** 팀 번호 — 전투 사망 보정에서 아군 공격·방어건물을 적으로 오인하지 않게. */
+    team?: number | null;
   }[],
 ): UnitTracksV2 {
   const playing = new Set(players.map((p) => p.id));
@@ -703,8 +705,34 @@ export function buildUnitTracks(
     }
   }
   atkEvts.sort((a, b) => a.sec - b.sec);
-  const teamOfPid = new Map(players.map((pl) => [pl.id, pl.id]));
-  void teamOfPid;
+  /* 편 가르기(팀 정보) — 같은 팀의 공격 명령·방어건물은 위협이 아니다. 팀 정보가 없는
+     옛 트랙은 '다른 사람 = 적'으로 남는다(종전과 같다). */
+  const teamOfPid = new Map(players.map((pl) => [pl.id, pl.team ?? null]));
+  const isFoeOf = (a: number, b: number): boolean => {
+    if (a === b) return false;
+    const ta = teamOfPid.get(a);
+    const tb = teamOfPid.get(b);
+    return ta === null || tb === null || ta === undefined || tb === undefined || ta !== tb;
+  };
+  /* 방어건물 자리 — 수비측이 명령 한 번 없이 성큰·캐논·벙커로 막아낸 싸움에서도
+     공격측이 죽게(지적: 왜케 안 죽어), 마지막 증거가 적 방어건물 발치인 유닛을 잡는다. */
+  const DEF_KINDS = new Set(["Sunken Colony", "Photon Cannon", "Bunker"]);
+  const defSpots: { owner: number; x: number; y: number; from: number; to: number }[] = [];
+  for (const b of built) {
+    if (DEF_KINDS.has(b.kind)) {
+      defSpots.push({ owner: b.owner, x: b.x + 1, y: b.y + 1, from: b.born + 40, to: b.gone ?? Infinity });
+    }
+  }
+  for (const life of done) {
+    if (!life.bld) continue;
+    let best = "";
+    let bestN = 0;
+    for (const [k, n] of life.kinds) { if (n > bestN) { best = k; bestN = n; } }
+    if (!DEF_KINDS.has(best)) continue;
+    const site = [...life.ev].reverse().find((v) => v[3] === 2 || v[3] === 5);
+    if (!site) continue;
+    defSpots.push({ owner: life.owner, x: site[1] + 1, y: site[2] + 1, from: life.born + 40, to: life.last + 300 });
+  }
   const battleDeathOf = (life: Life): number | null => {
     let lastPt: UnitEv | null = null;
     for (let i = life.ev.length - 1; i >= 0; i -= 1) {
@@ -713,13 +741,27 @@ export function buildUnitTracks(
     if (!lastPt) return null;
     const hits: number[] = [];
     for (const a of atkEvts) {
-      if (a.owner === life.owner) continue;
+      if (!isFoeOf(a.owner, life.owner)) continue;
       if (a.sec < lastPt[0] - 2) continue;
       if (a.sec > lastPt[0] + 240) break;
-      if (Math.hypot(a.x - lastPt[1], a.y - lastPt[2]) <= 6) hits.push(a.sec);
+      if (Math.hypot(a.x - lastPt[1], a.y - lastPt[2]) <= 7) hits.push(a.sec);
     }
-    if (hits.length < 3 || hits[hits.length - 1] - hits[0] < 5) return null;
-    return hits[0] + 1 + (life.tag % 8);
+    /* 문턱 완화(지적: 왜케 안 죽어) — 3발·5초는 큰 교전만 잡아, 수비측이 어택 한두
+       번으로 끝낸 싸움에선 공격측이 안 죽었다. 마지막 증거 곁에 적 공격 명령이 2발만
+       모여도(2초 이상) 그 뒤 소식 없는 유닛은 죽은 것으로 본다. */
+    if (hits.length >= 2 && hits[hits.length - 1] - hits[0] >= 2) {
+      return hits[0] + 1 + (life.tag % 8);
+    }
+    /* 방어건물 발치 사망 — 공격 명령(f=7)을 품은 유닛이 적 방어건물 곁(6타일)을
+       마지막으로 소식이 없으면 거기서 산화한 것이다. 명령 없이 스쳐 지나가다 선
+       유닛까지 죽이지 않게, 그 생애에 공격 명령이 있었을 때만이다. */
+    if (life.ev.some((v) => v[3] === 7)) {
+      const nd = defSpots.find((s) => isFoeOf(s.owner, life.owner)
+        && lastPt[0] >= s.from && lastPt[0] <= s.to
+        && Math.hypot(s.x - lastPt[1], s.y - lastPt[2]) <= 6);
+      if (nd) return lastPt[0] + 3 + (life.tag % 6);
+    }
+    return null;
   };
   const ents: UnitEnt[] = [];
   let lives = 0;
