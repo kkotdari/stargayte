@@ -7677,20 +7677,18 @@ export default function ReplayMotionPlayer({
                 >
                   {/* 전투 불꽃·사망 퍼프(요청) — 대여섯에 하나씩 불꽃, 일곱에 하나씩
                       돌아가며 퍼프(1.5초 주기 결정적 순환이라 프레임마다 안 튄다). */}
-                  {fighting && ATTACK_FX[u] && di % 3 === 0 && (
-                    atkDeg !== null ? (
-                      /* 총구 앞(재지적) — 적 방향으로 살짝 밀어 단 자리에서 인다. */
-                      <span className="scr-motion-muzzle" style={{ transform: `rotate(${atkDeg.toFixed(1)}deg)` }}>
-                        <span className={`scr-motion-atkfx scr-fxa-${ATTACK_FX[u]}`} />
-                      </span>
-                    ) : (
-                      <span className={`scr-motion-atkfx scr-fxa-${ATTACK_FX[u]}`} />
-                    )
+                  {/* 트레이서가 방향을 말하면 총구 섬광은 겹말(재지적: 따로 표시 안
+                      해도 됨) — 방향을 모를 때와 힐(방향 없음)만 옛 섬광으로 남긴다. */}
+                  {fighting && ATTACK_FX[u] && di % 3 === 0
+                    && (atkDeg === null || ATTACK_FX[u] === "heal") && (
+                    <span className={`scr-motion-atkfx scr-fxa-${ATTACK_FX[u]}`} />
                   )}
-                  {/* 예광탄(지적: 누가 쏘는지) — 공격자에게서 적 쪽으로 뻗는 빛줄기. */}
-                  {atkDeg !== null && ATTACK_FX[u] && di % 3 === 0 && (
+                  {/* 예광탄(지적: 누가 쏘는지 + 재지적: 효과는 유닛별로) — 무기 갈래
+                      (총알·포탄·화염·가시·전탄·글레이브·미사일·산) 마다 색·굵기·박자가
+                      다른 빛줄기가 적 쪽으로 뻗는다. */}
+                  {atkDeg !== null && ATTACK_FX[u] && ATTACK_FX[u] !== "heal" && di % 3 === 0 && (
                     <span
-                      className="scr-motion-tracer"
+                      className={`scr-motion-tracer scr-tracer-${ATTACK_FX[u]}`}
                       style={{ transform: `rotate(${atkDeg.toFixed(1)}deg)`, animationDelay: `${((di * 7) % 5) / 10}s` }}
                     />
                   )}
@@ -7904,20 +7902,18 @@ export default function ReplayMotionPlayer({
                 >
                   {/* 전투 불꽃·사망 퍼프(요청) — 대여섯에 하나씩 불꽃, 일곱에 하나씩
                       돌아가며 퍼프(1.5초 주기 결정적 순환이라 프레임마다 안 튄다). */}
-                  {fighting && ATTACK_FX[u] && di % 3 === 0 && (
-                    atkDeg !== null ? (
-                      /* 총구 앞(재지적) — 적 방향으로 살짝 밀어 단 자리에서 인다. */
-                      <span className="scr-motion-muzzle" style={{ transform: `rotate(${atkDeg.toFixed(1)}deg)` }}>
-                        <span className={`scr-motion-atkfx scr-fxa-${ATTACK_FX[u]}`} />
-                      </span>
-                    ) : (
-                      <span className={`scr-motion-atkfx scr-fxa-${ATTACK_FX[u]}`} />
-                    )
+                  {/* 트레이서가 방향을 말하면 총구 섬광은 겹말(재지적: 따로 표시 안
+                      해도 됨) — 방향을 모를 때와 힐(방향 없음)만 옛 섬광으로 남긴다. */}
+                  {fighting && ATTACK_FX[u] && di % 3 === 0
+                    && (atkDeg === null || ATTACK_FX[u] === "heal") && (
+                    <span className={`scr-motion-atkfx scr-fxa-${ATTACK_FX[u]}`} />
                   )}
-                  {/* 예광탄(지적: 누가 쏘는지) — 공격자에게서 적 쪽으로 뻗는 빛줄기. */}
-                  {atkDeg !== null && ATTACK_FX[u] && di % 3 === 0 && (
+                  {/* 예광탄(지적: 누가 쏘는지 + 재지적: 효과는 유닛별로) — 무기 갈래
+                      (총알·포탄·화염·가시·전탄·글레이브·미사일·산) 마다 색·굵기·박자가
+                      다른 빛줄기가 적 쪽으로 뻗는다. */}
+                  {atkDeg !== null && ATTACK_FX[u] && ATTACK_FX[u] !== "heal" && di % 3 === 0 && (
                     <span
-                      className="scr-motion-tracer"
+                      className={`scr-motion-tracer scr-tracer-${ATTACK_FX[u]}`}
                       style={{ transform: `rotate(${atkDeg.toFixed(1)}deg)`, animationDelay: `${((di * 7) % 5) / 10}s` }}
                     />
                   )}

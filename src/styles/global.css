@@ -13255,6 +13255,43 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   24%, 60% { opacity: 1; }
   75%, 100% { opacity: 0; }
 }
+/* 무기별 예광탄(재지적: 효과는 유닛별로) — 총알은 가늘고 빠르게, 포탄은 굵고 느리게,
+   화염은 짧고 넓게, 가시는 초록, 전탄(드라군·커세어류)은 파랗게, 글레이브는 방울,
+   미사일은 희고 길게, 산은 푸른 방울로. 기본(.scr-motion-tracer)이 총알 꼴이다. */
+.scr-tracer-cannon {
+  width: 2.5px; height: 12px;
+  background: linear-gradient(to bottom, rgba(255, 225, 150, 0.95), rgba(255, 140, 50, 0));
+  animation-duration: 0.85s;
+}
+.scr-tracer-flame {
+  width: 4px; height: 6px; border-radius: 2px;
+  background: linear-gradient(to bottom, rgba(255, 190, 80, 0.95), rgba(255, 90, 20, 0));
+  animation-duration: 0.3s;
+}
+.scr-tracer-spine {
+  background: linear-gradient(to bottom, rgba(205, 255, 170, 0.95), rgba(205, 255, 170, 0));
+  animation-duration: 0.45s;
+}
+.scr-tracer-bolt {
+  width: 2.5px; height: 8px;
+  background: linear-gradient(to bottom, rgba(150, 200, 255, 0.95), rgba(150, 200, 255, 0));
+  animation-duration: 0.6s;
+}
+.scr-tracer-glave {
+  width: 3px; height: 5px; border-radius: 50%;
+  background: rgba(190, 255, 190, 0.9);
+  animation-duration: 0.5s;
+}
+.scr-tracer-missile {
+  width: 2px; height: 12px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.95), rgba(255, 180, 100, 0));
+  animation-duration: 0.4s;
+}
+.scr-tracer-acid {
+  width: 3.5px; height: 6px; border-radius: 50%;
+  background: rgba(150, 220, 90, 0.9);
+  animation-duration: 0.75s;
+}
 .scr-motion-atkfx {
   position: absolute; left: 62%; top: 28%; width: 6px; height: 6px;
   pointer-events: none; transform: translate(-50%, -50%); mix-blend-mode: screen;
