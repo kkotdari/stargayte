@@ -5401,6 +5401,8 @@ export default function ReplayMotionPlayer({
       fixes: number[];
       /** 체력 변곡점 [초, 퍼센트](요청: 스탯 생애주기) — 체력바의 재료. */
       hp: [number, number][];
+      /** 탑승 구간 [탑승 초, 끝 초](요청: 수송선 승하차) — 이 동안 마커를 숨긴다. */
+      rides: [number, number][];
       walk: [number, number, number][];
     }[] = [];
     for (const e of entData.ents) {
@@ -5447,6 +5449,18 @@ export default function ReplayMotionPlayer({
           .map((v) => [v[0], v[3] === 8 ? 1 : 0] as [number, number]),
         fixes: e.ev.filter((v) => v[3] === 10).map((v) => v[0]),
         hp: e.hp ?? [],
+        rides: (() => {
+          const spans: [number, number][] = [];
+          for (let i = 0; i < e.ev.length; i += 1) {
+            if (e.ev[i][3] !== 12) continue;
+            let end = Infinity;
+            for (let j = i + 1; j < e.ev.length; j += 1) {
+              if (e.ev[j][0] > e.ev[i][0] + 0.5) { end = e.ev[j][0]; break; }
+            }
+            spans.push([e.ev[i][0], end]);
+          }
+          return spans;
+        })(),
         // 정체를 알면 그 속도로, 모르면 부대 어림과 같은 규칙(그때의 우세 유닛·지상 길)로.
         walk: walkTrack(pts, p, false, e.k || undefined, undefined, e.k === ""),
       });
@@ -7235,6 +7249,9 @@ export default function ReplayMotionPlayer({
           if (dmem && t < dmem.since) engageDelayRef.current.delete(holdKey0);
           const rawPos = posAt(rp, Math.max(rp[0][0], t - walkDelay), null);
           if (!rawPos) return null;
+          /* 탑승 중(요청: 수송선 승하차) — 배 안에 있으니 마커를 걷는다. 하차 지점
+             (f=13)이나 다음 제 명령에서 다시 나타나 걷는다. */
+          if (e.rides.some(([ra, rb]) => t >= ra + 1 && t < rb)) return null;
           const race = bases.find((b) => b.key === e.raw)?.race;
           const u = e.unit;
           /* 초반 무명은 일꾼(지적: 일꾼밖에 없는데 저글링이 정찰) — 그 사람의 첫 전투
@@ -7314,6 +7331,51 @@ export default function ReplayMotionPlayer({
                 const k3 = (cyc3 < hd ? cyc3 : 2 * hd - cyc3) / hd;
                 const kk = 0.08 + k3 * 0.84;
                 pos = { ...pos, x: gx3 + (hall.x - gx3) * kk, y: gy3 + (hall.y - gy3) * kk };
+              }
+            } else {
+              /* 미네랄 줄서기(요청 ②: 일꾼 원장의 자원 배분) — 패치 곁에 선 일꾼은
+                 그 패치와 홀을, 홀 곁에 유휴한 일꾼(합성 포함)은 배분받은 패치와 홀을
+                 결정적 박자로 왕복한다. 배분은 개체 번호로 갈라 패치마다 줄이 선다. */
+              const resList = grid.resources ?? [];
+              let mpx = -1;
+              let mpy = -1;
+              for (const r of resList) {
+                if (r[2] === 1) continue;
+                if (Math.hypot(r[0] - pos.x, r[1] - pos.y) <= 2.2) { mpx = r[0]; mpy = r[1]; break; }
+              }
+              let hallM: { x: number; y: number } | null = null;
+              let hdM = 5.5;
+              for (const h of halls) {
+                if (h.raw !== e.raw || h.sec > t || (h.gone > 0 && t >= h.gone)) continue;
+                const d4 = Math.hypot(h.x - pos.x, h.y - pos.y);
+                if (d4 < hdM) { hdM = d4; hallM = h; }
+              }
+              if (mpx < 0 && hallM && !rawPos.moving) {
+                const near = resList.filter((r) => r[2] !== 1
+                  && Math.hypot(r[0] - hallM!.x, r[1] - hallM!.y) <= 9);
+                if (near.length > 0) {
+                  const pick = near[ei % near.length];
+                  mpx = pick[0];
+                  mpy = pick[1];
+                }
+              }
+              if (mpx >= 0) {
+                // 패치에서 가장 가까운 제 홀로 왕복(패치 곁 일꾼은 홀이 5.5타일 밖일 수 있다).
+                let h2 = hallM;
+                let hd2 = hallM ? Math.hypot(hallM.x - mpx, hallM.y - mpy) : 12;
+                if (!h2) {
+                  for (const h of halls) {
+                    if (h.raw !== e.raw || h.sec > t || (h.gone > 0 && t >= h.gone)) continue;
+                    const d5 = Math.hypot(h.x - mpx, h.y - mpy);
+                    if (d5 < hd2) { hd2 = d5; h2 = h; }
+                  }
+                }
+                if (h2 && hd2 > 1.5 && hd2 < 12) {
+                  const cyc4 = (t * 1.6 + ei * 2.7) % (2 * hd2);
+                  const k4 = (cyc4 < hd2 ? cyc4 : 2 * hd2 - cyc4) / hd2;
+                  const kk2 = 0.06 + k4 * 0.86;
+                  pos = { ...pos, x: mpx + (h2.x - mpx) * kk2, y: mpy + (h2.y - mpy) * kk2 };
+                }
               }
             }
           }

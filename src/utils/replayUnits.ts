@@ -155,6 +155,12 @@ export const UNIT_STATS: Record<string, { hp: number; dps: number }> = {
   Bunker: { hp: 350, dps: 14 }, "Missile Turret": { hp: 200, dps: 0 },
 };
 const DEFAULT_UNIT_STATS = { hp: 70, dps: 6 };
+/** 공중 유닛(체력 원장의 방어건물 사거리 판정용) — 성큰은 지상만, 터렛은 공중만 쏜다. */
+const AIR_UNITS = new Set([
+  "Overlord", "Mutalisk", "Scourge", "Guardian", "Devourer", "Queen",
+  "Wraith", "Dropship", "Science Vessel", "Battlecruiser", "Valkyrie",
+  "Shuttle", "Observer", "Scout", "Corsair", "Carrier", "Arbiter",
+]);
 
 /** 건물에서 건물로 변태 — 무엇이 되는지로 이전 정체를 안다. */
 const BUILDING_MORPH_FROM: Record<string, string> = {
@@ -330,6 +336,27 @@ export function buildUnitTracks(
   /** 건물 태그별 생산 꼬리 시각 — 같은 건물의 큐는 한 줄로 이어진다(라바는 병렬). */
   const prodTail = new Map<number, number>();
   const prodStats = { total: 0, bound: 0, syn: 0 };
+  /** 수송선 승하차(요청 ③) — 제 수송선을 우클릭하면 탑승(f=12), Unload·MoveUnload로
+   *  내리면 하차(f=13). 탑승 중 제 명령을 받으면 그때 이미 내린 것이다. */
+  const ridersOf = new Map<number, number[]>();
+  const riderIn = new Map<number, number>();
+  const unloadRiders = (transTag: number, sec2: number, ux: number, uy: number): void => {
+    const list = ridersOf.get(transTag);
+    if (!list) return;
+    for (const rt of list) {
+      const rl = alive.get(rt);
+      if (rl && !rl.bld) {
+        rl.ev.push([Math.round(sec2), r1(ux), r1(uy), 13]);
+        rl.last = sec2;
+      }
+      riderIn.delete(rt);
+    }
+    ridersOf.delete(transTag);
+  };
+  const isTransportLife = (l: Life): boolean =>
+    l.kinds.has("Dropship") || l.kinds.has("Shuttle") || l.kinds.has("Overlord")
+    || l.groupKinds.has("Transport");
+  const ventralAt = new Map<number, number>();
   /** 일꾼 태그 → 아직 확정 안 된 건설 — '도착 전'(arrive 예상 시각 앞)에 다른 데로
    *  불려가야만 취소다. 도착 뒤의 재명령(테란 SCV 곁 세우기, 프로토스 워프 후 복귀)은
    *  정상 조작이다 — 첫 판은 25초 뭉툭 창이라 물리건물 476채 중 248채를 취소로 오판했다. */
@@ -448,6 +475,8 @@ export function buildUnitTracks(
       if (!upSeen.has(seenKey)) {
         upSeen.add(seenKey);
         ups.push([Math.round(sec), research, pid]);
+        // 오버로드 수송은 이 연구 뒤에만(요청 ③의 오인 방지) — 연구 시간 어림 100초.
+        if (research === "Ventral Sacs") ventralAt.set(pid, sec + 100);
       }
     }
 
@@ -641,6 +670,12 @@ export function buildUnitTracks(
         if (kind) life = markKind(life, kind, sec);
         if (cmdName === "Land" && unitName) life = markKind(life, unitName, sec);
         if (isBld) life.bld = true;
+        if (cmdName === "Unload All" || cmdName === "Unload") {
+          // 하차(요청 ③) — 좌표가 없으면 수송선의 마지막 알려진 자리에서.
+          const lp = [...life.ev].reverse().find((v) => v[1] >= 0);
+          const up = posOf(c) ?? (lp ? { x: lp[1], y: lp[2] } : null);
+          if (up) unloadRiders(tag, sec + 1, up.x, up.y);
+        }
         if (cmdName === "Cancel Train") {
           // 원장 취소(사용자 말대로 '취소가 없다면' — 있으면 무른다) — 그 건물의 막내부터.
           for (let li = ledger.length - 1; li >= 0; li -= 1) {
@@ -687,12 +722,32 @@ export function buildUnitTracks(
     /* 수리·힐(지적: 일꾼 수리 파싱 + 매딕은 아군까지) — 명령 자체가 정체(SCV·매딕)를
        밝히고, 표적 자리로 걸어가 일하는 증거(f=10)가 된다. */
     const isFixOrder = orderName === "Repair" || orderName === "HealMove";
+    /* 탑승(요청 ③) — 제(같은 사람) 수송선을 찍은 우클릭은 태우기다. */
+    const overlordOnly = tgtLife !== undefined && tgtLife.kinds.has("Overlord")
+      && !tgtLife.kinds.has("Dropship") && !tgtLife.kinds.has("Shuttle");
+    const isBoarding = cmdName === "Right Click" && tgtLife !== undefined
+      && tgtLife.owner === pid && !tgtLife.bld && isTransportLife(tgtLife)
+      // 오버로드는 수송 업그레이드 전엔 못 태운다 — 초반 '따라가기' 클릭 오인 방지.
+      && (!overlordOnly || (ventralAt.get(pid) ?? Infinity) <= sec);
     // 자원 클릭 → 일꾼(시작 직후의 통째 선택은 빼고 — 오버로드 오염 방지).
     const resourceClick = cmdName === "Right Click" && RESOURCE_TARGETS.has(unitName)
       && !((c.Frame ?? 0) < EARLY_ALL_SELECT_FRAMES && tags.length >= 4);
     for (const tag of tags) {
       let life = lifeOf(tag, pid, sec);
       if (tags.length === 1) life.solo = true;
+      /* 탑승 중 제 명령(요청 ③) — 이미 내렸다는 증거다: 장부에서 지운다. */
+      if (riderIn.has(tag) && !isBoarding) {
+        const tt = riderIn.get(tag)!;
+        riderIn.delete(tag);
+        ridersOf.set(tt, (ridersOf.get(tt) ?? []).filter((x) => x !== tag));
+      }
+      if (isBoarding && tag !== tgtTag0 && pos && !life.bld) {
+        life.ev.push([Math.round(sec), r1(pos.x), r1(pos.y), 12, tgtTag0]);
+        life.last = sec;
+        riderIn.set(tag, tgtTag0);
+        ridersOf.set(tgtTag0, [...(ridersOf.get(tgtTag0) ?? []), tag]);
+        continue;
+      }
       if (castKind) life = markKind(life, castKind, sec);
       if (resourceClick) {
         const worker = RACE_WORKER[raceOf.get(pid) ?? ""] ?? "";
@@ -726,6 +781,10 @@ export function buildUnitTracks(
       } else life.last = sec;
     }
 
+    /* MoveUnload(요청 ③) — 수송선이 그 자리로 가서 쏟는다: 도착 어림 4초 뒤 하차. */
+    if (orderName === "MoveUnload" && pos) {
+      for (const tag of tags) unloadRiders(tag, sec + 4, pos.x, pos.y);
+    }
     // ── 마법 — 좌표가 남는 것만(스톰·스웜·리콜·마인…). 이름은 v1과 같은 기술명이다. ──
     const castTech = CAST_ORDER_TO_TECH[orderName]
       ?? (orderName === PLACE_MINE_ORDER ? "Spider Mines" : "");
@@ -1007,6 +1066,22 @@ export function buildUnitTracks(
     }
   }
   atkEvts.sort((a, b) => a.sec - b.sec);
+  /* 업그레이드 반영(요청 ②) — 공업은 화력 +10%/렙, 방업은 받는 피해 -8%/렙(3렙 상한).
+     이름의 부류(보병·차량·근접…)까지 가르는 건 이 근사 모델엔 과하다 — 연구 명령 뒤
+     70초(연구 시간 어림)부터 그 사람 전체에 적용한다. */
+  const wUpsBy = new Map<number, number[]>();
+  const aUpsBy = new Map<number, number[]>();
+  for (const [usec, uname, upid] of ups) {
+    const isW = /Weapons|Attacks/.test(uname);
+    const isA = /Armor|Plating|Carapace|Plasma Shields/.test(uname);
+    if (!isW && !isA) continue;
+    const m = isW ? wUpsBy : aUpsBy;
+    const arr = m.get(upid) ?? [];
+    arr.push(usec + 70);
+    m.set(upid, arr);
+  }
+  const lvOf = (m: Map<number, number[]>, pid2: number, sec2: number): number =>
+    Math.min(3, (m.get(pid2) ?? []).filter((u2) => u2 <= sec2).length);
   /* ── 체력 원장(요청: 체력·공격력을 지니고 이벤트를 겪는 생애주기) — 유닛이 제
         최대 체력으로 태어나, 곁에 떨어진 적 공격 명령의 화력만큼 깎이고 힐·수리로
         회복한다. 0에 닿았을 때 그 뒤 증거가 있으면 '살아남은 것'(뒤 스토리 — 체력
@@ -1024,41 +1099,63 @@ export function buildUnitTracks(
   const hpSimOf = (life: Life): { trace: [number, number][]; death: number | null } => {
     const mk = majorityKindOf(life);
     const max = (UNIT_STATS[mk] ?? DEFAULT_UNIT_STATS).hp;
+    const isAir = AIR_UNITS.has(mk);
     const lastEvSec = life.ev.length > 0 ? life.ev[life.ev.length - 1][0] : life.last;
     const heals = healsAt.get(life.tag) ?? [];
-    let cur = max;
-    let hi = 0;
-    const trace: [number, number][] = [];
-    const pct = (): number => Math.max(0, Math.round((cur / max) * 20) * 5);
-    let lastPct = 100;
+    /* 피해 시간줄 — 적 공격 명령(공업 반영) + 적 방어건물 화력(요청 ③: 성큰·캐논·
+       벙커·터렛이 사거리 안 유닛을 실제로 깎는다)을 한 줄로 합친다. */
+    const dmg: [number, number][] = [];
     for (const a of atkEvts) {
       if (a.sec < life.born) continue;
       if (a.sec > lastEvSec + 240) break;
       if (!isFoeOf(a.owner, life.owner)) continue;
       const pos = posAtSec(life, a.sec);
       if (!pos || Math.hypot(a.x - pos[0], a.y - pos[1]) > 7) continue;
+      // 공격 명령 하나 = 그 유닛이 1.4초쯤 두들긴 것. 공업 +10%/렙.
+      dmg.push([a.sec, Math.min(80, a.dps * 1.4) * (1 + 0.1 * lvOf(wUpsBy, a.owner, a.sec))]);
+    }
+    for (let vi = 0; vi < life.ev.length; vi += 1) {
+      const v = life.ev[vi];
+      if (v[1] < 0) continue;
+      for (const sp of defSpots) {
+        if (!isFoeOf(sp.owner, life.owner)) continue;
+        if (v[0] < sp.from || v[0] > sp.to) continue;
+        if (sp.air !== undefined && sp.air !== isAir) continue;
+        if (Math.hypot(sp.x - v[1], sp.y - v[2]) > 7.5) continue;
+        // 증거 사이 머문 시간만큼 두들긴다(6초 상한) — 스치기만 하면 조금만 깎인다.
+        const nextSec = vi + 1 < life.ev.length ? life.ev[vi + 1][0] : v[0] + 4;
+        dmg.push([v[0], sp.dps * Math.min(6, Math.max(1.5, nextSec - v[0]))]);
+      }
+    }
+    dmg.sort((x, y) => x[0] - y[0]);
+    let cur = max;
+    let hi = 0;
+    const trace: [number, number][] = [];
+    const pct = (): number => Math.max(0, Math.round((cur / max) * 20) * 5);
+    let lastPct = 100;
+    for (const [dsec, draw] of dmg) {
       // 회복이 먼저 왔으면 반영 — 메딕 힐·SCV 수리 한 번에 4할.
-      while (hi < heals.length && heals[hi] <= a.sec) {
+      while (hi < heals.length && heals[hi] <= dsec) {
         cur = Math.min(max, cur + max * 0.4);
         const p2 = pct();
         if (p2 !== lastPct) { trace.push([Math.round(heals[hi]), p2]); lastPct = p2; }
         hi += 1;
       }
-      // 공격 명령 하나 = 그 유닛이 1.4초쯤 이 자리를 두들긴 것으로 친다.
-      cur -= Math.min(80, a.dps * 1.4);
+      // 방업 -8%/렙.
+      cur -= draw * (1 - 0.08 * lvOf(aUpsBy, life.owner, dsec));
       if (cur <= 0) {
-        const survived = life.ev.some((v) => v[1] >= 0 && v[0] > a.sec + 2);
+        const survived = life.ev.some((v) => v[1] >= 0 && v[0] > dsec + 2);
         if (survived) {
           // 뒤 스토리 — 그 뒤에도 움직였으니 죽지 않았다: 체력 바닥에서 다시 시작.
           cur = max * 0.08;
-          if (lastPct !== 10) { trace.push([Math.round(a.sec), 10]); lastPct = 10; }
+          if (lastPct !== 10) { trace.push([Math.round(dsec), 10]); lastPct = 10; }
           continue;
         }
-        trace.push([Math.round(a.sec), 0]);
-        return { trace, death: a.sec + 1 + (Math.abs(life.tag) % 4) };
+        trace.push([Math.round(dsec), 0]);
+        return { trace, death: dsec + 1 + (Math.abs(life.tag) % 4) };
       }
       const p3 = pct();
-      if (p3 !== lastPct) { trace.push([Math.round(a.sec), p3]); lastPct = p3; }
+      if (p3 !== lastPct) { trace.push([Math.round(dsec), p3]); lastPct = p3; }
     }
     return { trace, death: null };
   };
@@ -1066,11 +1163,23 @@ export function buildUnitTracks(
   const isFoeOf = (a: number, b: number): boolean => !sameSide(a, b);
   /* 방어건물 자리 — 수비측이 명령 한 번 없이 성큰·캐논·벙커로 막아낸 싸움에서도
      공격측이 죽게(지적: 왜케 안 죽어), 마지막 증거가 적 방어건물 발치인 유닛을 잡는다. */
-  const DEF_KINDS = new Set(["Sunken Colony", "Photon Cannon", "Bunker"]);
-  const defSpots: { owner: number; x: number; y: number; from: number; to: number }[] = [];
+  const DEF_KINDS = new Set(["Sunken Colony", "Photon Cannon", "Bunker", "Missile Turret"]);
+  /** 방어건물의 화력·표적(요청 ③) — air true는 공중만(터렛), false는 지상만(성큰),
+   *  undefined는 둘 다(캐논·벙커). */
+  const DEF_FIRE: Record<string, { dps: number; air?: boolean }> = {
+    "Sunken Colony": { dps: 13, air: false },
+    "Photon Cannon": { dps: 11 },
+    Bunker: { dps: 14 },
+    "Missile Turret": { dps: 9, air: true },
+  };
+  const defSpots: { owner: number; x: number; y: number; from: number; to: number; dps: number; air?: boolean }[] = [];
   for (const b of built) {
     if (DEF_KINDS.has(b.kind)) {
-      defSpots.push({ owner: b.owner, x: b.x + 1, y: b.y + 1, from: b.born + 40, to: b.gone ?? Infinity });
+      const f = DEF_FIRE[b.kind] ?? { dps: 10 };
+      defSpots.push({
+        owner: b.owner, x: b.x + 1, y: b.y + 1, from: b.born + 40, to: b.gone ?? Infinity,
+        dps: f.dps, ...(f.air !== undefined ? { air: f.air } : {}),
+      });
     }
   }
   for (const life of done) {
@@ -1081,7 +1190,11 @@ export function buildUnitTracks(
     if (!DEF_KINDS.has(best)) continue;
     const site = [...life.ev].reverse().find((v) => v[3] === 2 || v[3] === 5);
     if (!site) continue;
-    defSpots.push({ owner: life.owner, x: site[1] + 1, y: site[2] + 1, from: life.born + 40, to: life.last + 300 });
+    const f2 = DEF_FIRE[best] ?? { dps: 10 };
+    defSpots.push({
+      owner: life.owner, x: site[1] + 1, y: site[2] + 1, from: life.born + 40, to: life.last + 300,
+      dps: f2.dps, ...(f2.air !== undefined ? { air: f2.air } : {}),
+    });
   }
   const battleDeathOf = (life: Life): number | null => {
     let lastPt: UnitEv | null = null;
@@ -1106,10 +1219,12 @@ export function buildUnitTracks(
        마지막으로 소식이 없으면 거기서 산화한 것이다. 명령 없이 스쳐 지나가다 선
        유닛까지 죽이지 않게, 그 생애에 공격 명령이 있었을 때만이다. */
     if (life.ev.some((v) => v[3] === 7)) {
+      const isAir2 = AIR_UNITS.has(majorityKindOf(life));
       const nd = defSpots.find((s) => isFoeOf(s.owner, life.owner)
+        && (s.air === undefined || s.air === isAir2)
         && lastPt[0] >= s.from && lastPt[0] <= s.to
         && Math.hypot(s.x - lastPt[1], s.y - lastPt[2]) <= 6);
-      if (nd) return lastPt[0] + 3 + (life.tag % 6);
+      if (nd) return lastPt[0] + 3 + (Math.abs(life.tag) % 6);
     }
     return null;
   };
