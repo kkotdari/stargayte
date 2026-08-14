@@ -58,29 +58,32 @@ export default function ModelGalleryScreen() {
           >
             <ShapeIcon kind={kind} faces={faces} />
             {builder && (
-              <>
-                <span className="scr-model-yaw">{Math.round(((yaw % 360) + 360) % 360)}°</span>
-                {/* 색 고르기(요청) — 무대 좌하단의 작은 견본 점들. */}
-                <span className="scr-model-colors">
-                  {STAGE_COLORS.map((c) => (
-                    <button
-                      key={c} type="button" aria-label={`색 ${c}`}
-                      className={c === color ? "scr-model-swatch scr-model-swatch-on" : "scr-model-swatch"}
-                      style={{ background: c }}
-                      onClick={() => setColor(c)}
-                    />
-                  ))}
-                </span>
-                <button
-                  type="button" className="scr-model-pause"
-                  aria-label={auto ? "멈춤" : "자동 회전"}
-                  onClick={() => setAuto((a) => !a)}
-                >
-                  {auto ? "❚❚" : "▶"}
-                </button>
-              </>
+              <span className="scr-model-yaw">{Math.round(((yaw % 360) + 360) % 360)}°</span>
             )}
           </div>
+          {/* 버튼 좌우 정렬(요청: 공간이 넓으니) — 무대 밖 뷰어 양 끝에 앉힌다. 색
+              견본은 왼 끝 세로줄, 멈춤은 오른 끝. 무대가 좁은 화면에선 그대로 곁이다. */}
+          {builder && (
+            <>
+              <span className="scr-model-colors">
+                {STAGE_COLORS.map((c) => (
+                  <button
+                    key={c} type="button" aria-label={`색 ${c}`}
+                    className={c === color ? "scr-model-swatch scr-model-swatch-on" : "scr-model-swatch"}
+                    style={{ background: c }}
+                    onClick={() => setColor(c)}
+                  />
+                ))}
+              </span>
+              <button
+                type="button" className="scr-model-pause"
+                aria-label={auto ? "멈춤" : "자동 회전"}
+                onClick={() => setAuto((a) => !a)}
+              >
+                {auto ? "❚❚" : "▶"}
+              </button>
+            </>
+          )}
         </div>
         <div className="scr-model-list">
           {(["유닛", "건물"] as const).map((grp) => (

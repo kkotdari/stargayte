@@ -12795,8 +12795,12 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 @media (hover: hover) { .scr-activity-crumb-root:hover { opacity: 0.7; } }
 
 /* ── 관리자 모델링 뷰어(요청: 유닛·건물 도형을 상당히 크게) ─────────────────────── */
-/* 무대와 목록 사이 살짝만 갭(지적). */
-.scr-model-viewer { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 12px; }
+/* 무대와 목록 사이 살짝만 갭(지적). 버튼 오버레이(색 견본·멈춤)가 무대 밖 양 끝에
+   붙도록 뷰어가 기준 상자다(요청: 공간이 넓으니 좌우로 정렬). */
+.scr-model-viewer {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  margin-bottom: 12px; position: relative; width: 100%;
+}
 .scr-model-stage {
   /* 무대 축소 300 → 252(지적: 위쪽 여백 줄이고 목록 길이에 할애) — 뷰박스를 위로
      자르면 키 큰 모델(파일런 첨탑)이 잘려, 판 자체를 줄여 자리를 내준다. */
@@ -12814,7 +12818,8 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   font-size: var(--fs-caption); color: var(--muted); font-variant-numeric: tabular-nums;
 }
 .scr-model-pause {
-  position: absolute; bottom: 6px; right: 6px;
+  /* 오른 끝 가운데(요청: 좌우 정렬) — 왼쪽 색 견본 줄과 마주 본다. */
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
   width: 30px; height: 30px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
   border: 1px solid var(--line-hair); background: rgba(var(--overlay-rgb), 0.06);
@@ -12840,9 +12845,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   align-content: start;
 }
 /* 무대 색 견본(요청) — 좌하단 작은 원 점들. 기본 흰색. */
-/* 색 견본은 왼쪽 세로줄(요청: 아래는 이미 좁아) — 무대 왼편 가운데에 세로로 늘어선다. */
+/* 색 견본은 왼쪽 세로줄(요청: 아래는 이미 좁아) — 뷰어 왼 끝 가운데에 세로로 늘어선다. */
 .scr-model-colors {
-  position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
   display: inline-flex; flex-direction: column; gap: 6px; align-items: center;
 }
 .scr-model-swatch {
@@ -12855,11 +12860,6 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    무대 위 오버레이(각도·멈춤)는 어두운 판 위에서 읽히게 밝은 잉크로 뒤집는다. */
 .scr-light-theme .scr-model-stage-dark { background: #10141d; border-radius: 14px; }
 .scr-light-theme .scr-model-stage-dark .scr-model-yaw { color: rgba(255, 255, 255, 0.55); }
-.scr-light-theme .scr-model-stage-dark .scr-model-pause {
-  border-color: rgba(255, 255, 255, 0.25);
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.7);
-}
 .scr-model-item {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 8px 4px; border-radius: 8px; border: 1px solid transparent;
