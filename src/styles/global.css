@@ -11472,13 +11472,15 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    안 흔들린다(지적: 컬러 변경 시 미니맵 크기가 조금씩 변함). */
 .scr-motion-big {
   display: grid; grid-template-columns: 150px 150px minmax(0, 1fr) 300px;
-  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
   column-gap: 12px; row-gap: 8px; align-items: start;
 }
 .scr-motion-big .scr-motion-maprow { display: contents; }
 .scr-motion-big .scr-motion-map { grid-column: 3; grid-row: 1 / 5; }
-/* 탐색바는 맵 바로 아래 한 줄, 자리를 최대한 안 차지하게 슬림하게(요청). */
-.scr-motion-big .scr-motion-bar:not(.scr-motion-bar-controls) { grid-column: 3; grid-row: 5; }
+/* 보기 버튼 줄과 탐색바가 같은 칸에 겹쳤다(지적: 버튼이 재생바 위에 얹힘) — 행을
+   나눠 5행 버튼 줄, 6행 탐색바로 가른다. */
+.scr-motion-big .scr-motion-viewrow { grid-column: 3; grid-row: 5; }
+.scr-motion-big .scr-motion-bar:not(.scr-motion-bar-controls):not(.scr-motion-viewrow) { grid-column: 3; grid-row: 6; }
 /* 왼쪽 — 같은 팀은 세로로(지적), 두 팀 기둥이 나란히 서고 줄(행)이 서로 맞는다.
    조작부는 로스터 바로 밑이 아니라 기둥의 아래쪽에 붙는다(요청) — 늘어나는 줄(1fr)을
    차지하고 스스로 바닥 정렬한다. */

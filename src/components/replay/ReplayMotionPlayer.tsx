@@ -1102,7 +1102,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const [px, py] = project(x, y, z);
       return `${px} ${py}`;
     };
-    const out: ShapeFace[] = [...cylinderFaces3(0, 0, 6.6, 2.4)];
+    /* 밑부분은 후지산 밑둥(재요청: 드럼이 아니라) — 바닥이 넓고 위로 갈수록 좁아지는
+       둥근 절두 산자락. 윗타원 뒤 반호 + 빗벽 + 앞 반호로 실루엣을 닫는다. */
+    const out: ShapeFace[] = [...((): ShapeFace[] => {
+      const [bx0, by0] = project(0, 0, 0);
+      const [tx0, ty0] = project(0, 0, 2.4);
+      const rB = 8.3;
+      const rT = 6.4;
+      const sqv = groundSquashNow();
+      const body = `M${tx0 - rT} ${ty0} A${rT} ${rT * sqv} 0 0 1 ${tx0 + rT} ${ty0}`
+        + ` L${bx0 + rB} ${by0}`
+        + `a${rB} ${rB * sqv} 0 1 1 ${-2 * rB} 0Z`;
+      const shade = `M${tx0 + rT * 0.45} ${ty0} L${tx0 + rT} ${ty0} L${bx0 + rB} ${by0}`
+        + ` L${bx0 + rB * 0.55} ${by0 + rB * sqv * 0.6} Z`;
+      return tagKey(
+        [bodyFace(body), sideFace(shade, 0.16), topFace(groundEllipse(tx0, ty0, rT, rT * sqv), 0.08)],
+        depthNow(0, 0) + 2.4,
+      );
+    })()];
     // 구덩이 격자 — 까만 바닥판 없이(지적: 같은 톤) 밝은 줄만 얹는다.
     const bars: string[] = [];
     for (const o of [-2.8, -1, 1, 2.8]) {
@@ -3404,25 +3421,26 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        반쯤 겹쳐 붙는 납작한 혹 한 쌍. 몸이 안쪽 반을 가려 바깥으로 볼록한 반구로
        읽히고, 모델 좌표라 요잉을 따라 돌아 나간다. */
     // 눈은 좀 더 앞쪽으로(재지적) + 몸과 안 맞던 스우시 그늘 제거.
-    const [b1x, b1y] = project(-2.95, 1.9, 4.9);
-    const [b2x, b2y] = project(2.95, 1.9, 4.9);
+    // 풍선 축소(재요청)에 맞춰 눈도 몸 옆구리로 당긴다.
+    const [b1x, b1y] = project(-2.5, 1.7, 4.85);
+    const [b2x, b2y] = project(2.5, 1.7, 4.85);
     /* 눈에 제 깊이(재재재지적: 앞으로 돌아온 눈이 몸에 가려짐) — 몸을 늘 나중에 그리면
        시청자 쪽으로 돌아온 눈까지 덮는다. 눈·몸 모두 깊이 키를 달아 정렬이 정한다:
        뒤로 간 눈은 몸이 덮고, 앞으로 온 눈은 몸 위로 볼록하게 얹힌다. */
     return [
       bodyFace(legs.join(" ")),
       ...tagKey([
-        bodyFace(groundEllipse(b1x, b1y, 0.95, 0.8)),
-        topFace(groundEllipse(b1x - 0.25, b1y - 0.2, 0.4, 0.3), 0.3),
-      ], depthNow(-2.95, 1.9)),
+        bodyFace(groundEllipse(b1x, b1y, 0.85, 0.72)),
+        topFace(groundEllipse(b1x - 0.22, b1y - 0.18, 0.36, 0.27), 0.3),
+      ], depthNow(-2.5, 1.7)),
       ...tagKey([
-        bodyFace(groundEllipse(b2x, b2y, 0.95, 0.8)),
-        sideFace(groundEllipse(b2x, b2y, 0.95, 0.8), 0.18),
-      ], depthNow(2.95, 1.9)),
-      // 머리 축소(지적) — 몸도 제 깊이(가운데 0)로.
+        bodyFace(groundEllipse(b2x, b2y, 0.85, 0.72)),
+        sideFace(groundEllipse(b2x, b2y, 0.85, 0.72), 0.18),
+      ], depthNow(2.5, 1.7)),
+      // 풍선 축소(재요청: 3.6 → 3.0) — 몸도 제 깊이(가운데 0)로.
       ...tagKey([
-        bodyFace(groundEllipse(cx, cy, 3.6, 3.4)),
-        topFace(groundEllipse(cx - 1.2, cy - 2.2, 1.8, 1.1), 0.35),
+        bodyFace(groundEllipse(cx, cy, 3, 2.85)),
+        topFace(groundEllipse(cx - 1, cy - 1.85, 1.5, 0.92), 0.35),
       ], depthNow(0, 0)),
     ];
   },
@@ -3886,6 +3904,39 @@ function unitSprite(
   SPRITE_CACHE.set(key, entry);
   return entry;
 }
+/* 건물 스프라이트(요청: 건물도 병목 감축) — meet(비율 유지) 상자 건물을 같은 방식으로
+   굽는다. 뷰박스 밖으로 살짝 삐치는 모델(높은 첨탑 등)을 위해 15% 머리방을 둔다. */
+const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; side: number }>();
+function buildingSprite(
+  op: UnitDrawOp, sideQ: number, B: number,
+): { cv: HTMLCanvasElement; pad: number; l: number; side: number } | null {
+  const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
+  const key = `${op.kind}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}|${op.color}|${sideQ}|${B.toFixed(2)}`;
+  const hit = BLD_SPRITE_CACHE.get(key);
+  if (hit) return hit;
+  const { faces } = resolveShapeFaces(op.kind, undefined, op.flat, op.viewYaw, op.pitch);
+  if (!faces) return null;
+  const pad = Math.ceil(sideQ * 0.15) + 2;
+  const l = sideQ + pad * 2;
+  const cv = document.createElement("canvas");
+  cv.width = Math.max(1, Math.ceil(l * B));
+  cv.height = cv.width;
+  const c2 = cv.getContext("2d");
+  if (!c2) return null;
+  c2.setTransform(B, 0, 0, B, 0, 0);
+  c2.translate(pad + sideQ / 2, pad + sideQ);
+  c2.scale(sideQ / 16, sideQ / 16);
+  c2.translate(-8, -16);
+  for (const [d, o, fill] of faces) {
+    c2.globalAlpha = o;
+    c2.fillStyle = fill ?? op.color;
+    c2.fill(pathOf(d));
+  }
+  if (BLD_SPRITE_CACHE.size > 500) BLD_SPRITE_CACHE.clear();
+  const entry = { cv, pad, l, side: sideQ };
+  BLD_SPRITE_CACHE.set(key, entry);
+  return entry;
+}
 function UnitLayer({ ops, zoom, pan }: {
   ops: UnitDrawOp[]; zoom: number; pan: { x: number; y: number };
 }) {
@@ -3965,6 +4016,21 @@ function UnitLayer({ ops, zoom, pan }: {
           continue;
         }
         // keepRatio(xMidYMax meet) — 비율 유지로 상자에 맞추고 바닥 가운데 정렬.
+        // 스프라이트로 찍는다(요청: 건물도 병목 감축) — 실패 시 직접 그리기 폴백.
+        const sidePx = op.fitWidth ? wPx : Math.min(wPx, hPx);
+        const sideQ = Math.max(4, Math.round(sidePx / 2) * 2);
+        const bspr = buildingSprite(op, sideQ, B);
+        if (bspr) {
+          const k = sidePx / sideQ;
+          ctx.globalAlpha = op.alpha;
+          ctx.drawImage(
+            bspr.cv,
+            sx - (bspr.pad + sideQ / 2) * k, sy + hPx / 2 - (bspr.pad + sideQ) * k,
+            bspr.l * k, bspr.l * k,
+          );
+          ctx.restore();
+          continue;
+        }
         const { faces } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
         if (faces) {
           const s = (op.fitWidth ? wPx : Math.min(wPx, hPx)) / 16;

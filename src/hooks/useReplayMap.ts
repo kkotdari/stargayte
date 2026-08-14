@@ -65,8 +65,10 @@ export async function primeReplayMaps(hashes: (string | null | undefined)[]): Pr
   for (const l of listeners) l();
 }
 
-/** 그 해시의 맵 격자 — 아직 못 받았거나 서버에 없으면 null(그 카드는 미니맵 없이 그려진다). */
-export function useReplayMap(hash: string | null | undefined): ReplayMapGrid | null {
+/** 그 해시의 맵 격자 — 서버에 없으면 null, '아직 조회 중'이면 undefined.
+ *  (구분 이유·지적: 조회 중을 null로 뭉개면 카드가 첫 그림에 옛 로스터 폼을 그렸다가
+ *  격자가 도착하면 재생 화면으로 갈아타며 로스터가 깜빡하고 사라져 보였다.) */
+export function useReplayMap(hash: string | null | undefined): ReplayMapGrid | null | undefined {
   const [, bump] = useState(0);
   useEffect(() => {
     const listen = () => bump((n) => n + 1);
@@ -78,5 +80,6 @@ export function useReplayMap(hash: string | null | undefined): ReplayMapGrid | n
     waiting.add(hash);
     schedule();
   }, [hash]);
-  return hash ? cache.get(hash) ?? null : null;
+  if (!hash) return null;
+  return cache.has(hash) ? cache.get(hash) ?? null : undefined;
 }

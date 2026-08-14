@@ -1617,13 +1617,15 @@ export default function GameResultStory({
      그림이 없으면 옛 로스터+요약 문단으로 되돌아갔는데, 같은 경기가 맵 연결 여부에 따라
      아예 다른 화면으로 보였다. 맵 자체를 못 읽은 옛 경기(grid === null)만 예전 형식이다 —
      좌표계가 없어 아무것도 제자리에 못 놓는다. */
-  const storyMap = grid;
+  const storyMap = grid ?? null;
   /* (삭제·요청) 로스터/리플레이 탭 — 연속 재생이 서면서 다시 필요 없어졌다. 미니맵을
-     못 그리는 경기만 로스터로 보여준다(예전 규칙 그대로). */
-  const showRoster = storyMap === null;
+     못 그리는 경기만 로스터로 보여준다(예전 규칙 그대로).
+     격자를 아직 받는 중(undefined)엔 로스터도 그리지 않는다(지적: 열자마자 옛 로스터가
+     깜빡 떴다 사라짐) — 잠깐 비워 두는 쪽이 폼이 갈아타는 것보다 덜 튄다. */
+  const showRoster = grid === null;
   /* 맵은 읽었는데 그림만 아직 없는 경우 — 운영자가 연결해 주면 바로 이야기가 붙는다(요청).
      맵 자체를 못 읽은 옛 경기(grid === null)에는 연결할 대상이 없어 안 띄운다. */
-  const needMapImage = grid !== null && !grid.image;
+  const needMapImage = grid != null && !grid.image;
   const showMapLine = showRoster && Boolean(mapName || minutes !== null);
 
   /* 미니맵·자막·타임라인을 눌러도 카드가 접히지 않게 한다(요청) — 이 카드는 눌러서 접는
