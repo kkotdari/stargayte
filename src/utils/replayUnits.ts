@@ -135,23 +135,26 @@ const UNIT_FRAMES: Record<string, number> = {
 
 /** 유닛 기본 스탯(요청: 체력·방어력·공격력·기술을 지니고 이벤트를 겪는 생애주기) —
  *  hp는 체력+실드 합, dps는 지상 상대 어림. 원작 수치의 근사값이다. */
-export const UNIT_STATS: Record<string, { hp: number; dps: number }> = {
-  SCV: { hp: 60, dps: 5 }, Probe: { hp: 40, dps: 4 }, Drone: { hp: 40, dps: 4 },
+export const UNIT_STATS: Record<string, { hp: number; dps: number; sh?: number }> = {
+  SCV: { hp: 60, dps: 5 }, Probe: { hp: 20, sh: 20, dps: 4 }, Drone: { hp: 40, dps: 4 },
   Marine: { hp: 40, dps: 6 }, Firebat: { hp: 50, dps: 12 }, Medic: { hp: 60, dps: 0 },
   Ghost: { hp: 45, dps: 7 }, Vulture: { hp: 80, dps: 9 }, Goliath: { hp: 125, dps: 9 },
   "Siege Tank": { hp: 150, dps: 14 }, "Siege Tank (Tank Mode)": { hp: 150, dps: 14 },
   "Siege Tank (Siege Mode)": { hp: 150, dps: 24 },
   Wraith: { hp: 120, dps: 6 }, Dropship: { hp: 150, dps: 0 }, "Science Vessel": { hp: 200, dps: 0 },
   Battlecruiser: { hp: 500, dps: 17 }, Valkyrie: { hp: 200, dps: 8 },
-  Zealot: { hp: 160, dps: 13 }, Dragoon: { hp: 180, dps: 10 }, "High Templar": { hp: 80, dps: 3 },
-  "Dark Templar": { hp: 120, dps: 22 }, Archon: { hp: 360, dps: 20 }, "Dark Archon": { hp: 225, dps: 0 },
-  Shuttle: { hp: 140, dps: 0 }, Reaver: { hp: 180, dps: 26 }, Observer: { hp: 60, dps: 0 },
-  Scout: { hp: 250, dps: 8 }, Carrier: { hp: 450, dps: 22 }, Arbiter: { hp: 350, dps: 7 },
-  Corsair: { hp: 180, dps: 6 },
+  Zealot: { hp: 100, sh: 60, dps: 13 }, Dragoon: { hp: 100, sh: 80, dps: 10 },
+  "High Templar": { hp: 40, sh: 40, dps: 3 },
+  "Dark Templar": { hp: 80, sh: 40, dps: 22 }, Archon: { hp: 10, sh: 350, dps: 20 },
+  "Dark Archon": { hp: 25, sh: 200, dps: 0 },
+  Shuttle: { hp: 80, sh: 60, dps: 0 }, Reaver: { hp: 100, sh: 80, dps: 26 },
+  Observer: { hp: 40, sh: 20, dps: 0 },
+  Scout: { hp: 150, sh: 100, dps: 8 }, Carrier: { hp: 300, sh: 150, dps: 22 },
+  Arbiter: { hp: 200, sh: 150, dps: 7 }, Corsair: { hp: 100, sh: 80, dps: 6 },
   Zergling: { hp: 35, dps: 5 }, Hydralisk: { hp: 80, dps: 8 }, Lurker: { hp: 125, dps: 14 },
   Mutalisk: { hp: 120, dps: 7 }, Scourge: { hp: 25, dps: 0 }, Queen: { hp: 120, dps: 0 },
   Ultralisk: { hp: 400, dps: 18 }, Defiler: { hp: 80, dps: 0 }, Overlord: { hp: 200, dps: 0 },
-  "Sunken Colony": { hp: 300, dps: 13 }, "Photon Cannon": { hp: 200, dps: 11 },
+  "Sunken Colony": { hp: 300, dps: 13 }, "Photon Cannon": { hp: 100, sh: 100, dps: 11 },
   Bunker: { hp: 350, dps: 14 }, "Missile Turret": { hp: 200, dps: 0 },
 };
 const DEFAULT_UNIT_STATS = { hp: 70, dps: 6 };
@@ -1116,7 +1119,11 @@ export function buildUnitTracks(
   };
   const hpSimOf = (life: Life): { trace: [number, number][]; death: number | null } => {
     const mk = majorityKindOf(life);
-    const max = (UNIT_STATS[mk] ?? DEFAULT_UNIT_STATS).hp;
+    const st = UNIT_STATS[mk] ?? DEFAULT_UNIT_STATS;
+    const maxHp = st.hp;
+    const maxSh = st.sh ?? 0;
+    const max = maxHp + maxSh;
+    const race3 = raceOf.get(life.owner) ?? "";
     const isAir = AIR_UNITS.has(mk);
     const lastEvSec = life.ev.length > 0 ? life.ev[life.ev.length - 1][0] : life.last;
     const heals = healsAt.get(life.tag) ?? [];
@@ -1146,26 +1153,44 @@ export function buildUnitTracks(
       }
     }
     dmg.sort((x, y) => x[0] - y[0]);
-    let cur = max;
+    /* 두 풀 + 종족 역학(재질문 반영: 유닛도 회복·실드) — 실드부터 깎이고, 이벤트
+       사이엔 프로토스 실드가 초당 2%씩 도로 차며 저그 체력은 초당 0.6씩 아문다.
+       테란 유닛은 저절로는 안 낫는다(수리·힐이 회복의 전부다). */
+    let curHp = maxHp;
+    let curSh = maxSh;
+    let prevSec = life.born;
     let hi = 0;
     const trace: [number, number][] = [];
-    const pct = (): number => Math.max(0, Math.round((cur / max) * 20) * 5);
+    const pct = (): number => Math.max(0, Math.round(((curHp + curSh) / max) * 20) * 5);
     let lastPct = 100;
+    const flow = (from: number, to: number): void => {
+      const dt = Math.min(600, Math.max(0, to - from));
+      if (dt <= 0) return;
+      if (maxSh > 0) curSh = Math.min(maxSh, curSh + maxSh * 0.02 * dt);
+      if (race3 === "저그") curHp = Math.min(maxHp, curHp + 0.6 * dt);
+    };
     for (const [dsec, draw] of dmg) {
-      // 회복이 먼저 왔으면 반영 — 메딕 힐·SCV 수리 한 번에 4할.
+      flow(prevSec, dsec);
+      prevSec = dsec;
+      // 회복이 먼저 왔으면 반영 — 메딕 힐·SCV 수리 한 번에 체력 4할.
       while (hi < heals.length && heals[hi] <= dsec) {
-        cur = Math.min(max, cur + max * 0.4);
+        curHp = Math.min(maxHp, curHp + maxHp * 0.4);
         const p2 = pct();
         if (p2 !== lastPct) { trace.push([Math.round(heals[hi]), p2]); lastPct = p2; }
         hi += 1;
       }
-      // 방업 -8%/렙.
-      cur -= draw * (1 - 0.08 * lvOf(aUpsBy, life.owner, dsec));
-      if (cur <= 0) {
+      // 방업 -8%/렙. 실드 먼저.
+      let d2 = draw * (1 - 0.08 * lvOf(aUpsBy, life.owner, dsec));
+      const fromSh = Math.min(curSh, d2);
+      curSh -= fromSh;
+      d2 -= fromSh;
+      curHp -= d2;
+      if (curHp <= 0) {
         const survived = life.ev.some((v) => v[1] >= 0 && v[0] > dsec + 2);
         if (survived) {
           // 뒤 스토리 — 그 뒤에도 움직였으니 죽지 않았다: 체력 바닥에서 다시 시작.
-          cur = max * 0.08;
+          curHp = maxHp * 0.08;
+          curSh = 0;
           if (lastPct !== 10) { trace.push([Math.round(dsec), 10]); lastPct = 10; }
           continue;
         }
