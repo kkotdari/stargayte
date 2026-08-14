@@ -5043,19 +5043,34 @@ export default function ReplayMotionPlayer({
      명령 자리에 영영 남았다. 실측: 한 공격 방면에 묶음 여덟이 줄줄이). 부대 A의 마지막
      명령 곁(8타일)에서 150초 안에 딴 부대 B가 첫 명령을 받으면 — 그 자리 유닛들을
      다시 집은 것이다 — A는 그 순간 B에 흡수된 것으로 보고 걷는다. */
-  const squadGoneAt = useMemo(() => squadPts.map((sqs) => sqs.map((a) => {
-    const la = a[a.length - 1];
-    if (!la) return 0;
-    let gone = 0;
-    for (const b of sqs) {
-      if (b === a) continue;
-      const fb = b[0];
-      if (!fb || fb[0] < la[0] || fb[0] - la[0] > 150) continue;
-      if (Math.hypot(fb[1] - la[1], fb[2] - la[2]) > 8) continue;
-      if (gone === 0 || fb[0] < gone) gone = fb[0];
+  /* (확장·재지적: 유령 부대 아직도) — 무명 부대끼리만 보던 것을 유닛별 부대(upts,
+     바이오닉·탱크 같은 정체 드러난 무리)까지 넓혔다. 유령의 후계는 무명일 수도 유닛별
+     일 수도 있다. 일꾼·수송 무리는 싸움 부대가 아니라 대상에서도 후계에서도 뺀다. */
+  const squadGoneAt = useMemo(() => squadPts.map((sqs, pi) => {
+    const starts: [number, number, number][] = [];
+    for (const b of sqs) if (b.length > 0) starts.push([b[0][0], b[0][1], b[0][2]]);
+    for (const g of typeSquads[pi] ?? []) {
+      if (g.unit === "Worker" || g.unit === "Transport") continue;
+      if (g.raw.length > 0) starts.push([g.raw[0][0], g.raw[0][1], g.raw[0][2]]);
     }
-    return gone;
-  })), [squadPts]);
+    const goneOf = (a: TrackPt[]): number => {
+      const la = a[a.length - 1];
+      if (!la) return 0;
+      let gone = 0;
+      for (const [fs, fx0, fy0] of starts) {
+        if (fs < la[0] || fs - la[0] > 150) continue;
+        if (a.length > 0 && fs === a[0][0] && fx0 === a[0][1] && fy0 === a[0][2]) continue;
+        if (Math.hypot(fx0 - la[1], fy0 - la[2]) > 8) continue;
+        if (gone === 0 || fs < gone) gone = fs;
+      }
+      return gone;
+    };
+    return {
+      squads: sqs.map(goneOf),
+      types: (typeSquads[pi] ?? []).map((g) =>
+        g.unit === "Worker" || g.unit === "Transport" ? 0 : goneOf(g.raw)),
+    };
+  }), [squadPts, typeSquads]);
   /* ── 교전 붙기(지적: 적이 가까이 있는데 전투를 안 한다 — 시야에 들면 맞붙는 게
      자연스럽다. 근접 유닛은 이동해 붙어서 싸우고, 원거리는 사정거리까지만 이동) —
      그리기 직전의 표시 조정이다. 원본 자취(명령 좌표)는 그대로 두고, 이 프레임의 가장
@@ -6795,12 +6810,17 @@ export default function ReplayMotionPlayer({
                   }
                   if (bestD > 20) { tx = null; ty = null; }
                 } else {
+                  /* 목표는 걷기 시작(holdEnd) 시점의 부대 자리로 고정(재지적: 후반에
+                     벽 뚫고 직진하다 사라짐) — 매 프레임 움직이는 부대를 쫓으면 경로
+                     캐시가 못 서고, 목표가 조금 어긋나도 닿는 순간 부대 마커가 이어받아
+                     티가 안 난다. 너무 먼 합류(30타일)는 화면 밖 이야기라 페이드. */
                   for (const sq of refinedSquads[pIdx] ?? []) {
-                    const pos2 = posAt(sq, t, null);
+                    const pos2 = posAt(sq, holdEnd, null);
                     if (!pos2) continue;
                     const d2 = Math.hypot(pos2.x - fx, pos2.y - fy);
                     if (d2 < bestD) { bestD = d2; tx = pos2.x; ty = pos2.y; }
                   }
+                  if (bestD > 30) { tx = null; ty = null; }
                 }
                 const v2 = isWorkerU ? 3.7 : Math.max(1.5, speedOf(unit, done, p.ups));
                 const walked = (t - holdEnd) * v2;
@@ -6812,10 +6832,53 @@ export default function ReplayMotionPlayer({
                   continue; // 닿았다 — 부대 마커(또는 채굴 점)가 이어받는다.
                 } else {
                   if (t > holdEnd + FRESH_MERGE_MAX) continue;
-                  hdg = Math.atan2(-(tx - fx), ty - fy) * (180 / Math.PI);
-                  const f2 = walked / bestD;
-                  fx += (tx - fx) * f2;
-                  fy += (ty - fy) * f2;
+                  /* 지상 유닛은 합류도 지형 길로(재지적: 벽 뚫고 직진) — 랠리 걸음과
+                     같은 경로 캐시를 쓴다. 목표가 holdEnd 기준 고정이라 키가 안 튄다. */
+                  const airM = isAirUnit(unit);
+                  let mroute: [number, number][] = [[fx, fy], [tx, ty]];
+                  if (!airM && terrain) {
+                    const mkey = `m:${Math.round(fx)},${Math.round(fy)}>${Math.round(tx)},${Math.round(ty)}`;
+                    let hit = rallyRoutes.current.get(mkey);
+                    if (!hit) {
+                      const found = groundPath(
+                        terrain, fx / grid.width, fy / grid.height,
+                        tx / grid.width, ty / grid.height,
+                      ) ?? (terrainRaw ? groundPath(
+                        terrainRaw, fx / grid.width, fy / grid.height,
+                        tx / grid.width, ty / grid.height,
+                      ) : null) ?? groundPathSoft(
+                        terrainRaw ?? terrain, fx / grid.width, fy / grid.height,
+                        tx / grid.width, ty / grid.height,
+                      );
+                      hit = found
+                        ? [[fx, fy] as [number, number],
+                          ...found.map(([nx, ny]) => [nx * grid.width, ny * grid.height] as [number, number])]
+                        : mroute;
+                      rallyRoutes.current.set(mkey, hit);
+                    }
+                    mroute = hit;
+                  }
+                  let mtotal = 0;
+                  const mlens: number[] = [];
+                  for (let mi2 = 1; mi2 < mroute.length; mi2 += 1) {
+                    const d3 = Math.hypot(mroute[mi2][0] - mroute[mi2 - 1][0], mroute[mi2][1] - mroute[mi2 - 1][1]);
+                    mlens.push(d3);
+                    mtotal += d3;
+                  }
+                  if (walked >= mtotal) continue; // 닿았다 — 부대 마커가 이어받는다.
+                  let want2 = walked;
+                  fx = mroute[mroute.length - 1][0];
+                  fy = mroute[mroute.length - 1][1];
+                  for (let mi2 = 1; mi2 < mroute.length; mi2 += 1) {
+                    if (want2 <= mlens[mi2 - 1]) {
+                      const f3 = mlens[mi2 - 1] > 0 ? want2 / mlens[mi2 - 1] : 1;
+                      fx = mroute[mi2 - 1][0] + (mroute[mi2][0] - mroute[mi2 - 1][0]) * f3;
+                      fy = mroute[mi2 - 1][1] + (mroute[mi2][1] - mroute[mi2 - 1][1]) * f3;
+                      hdg = Math.atan2(-(mroute[mi2][0] - mroute[mi2 - 1][0]), mroute[mi2][1] - mroute[mi2 - 1][1]) * (180 / Math.PI);
+                      break;
+                    }
+                    want2 -= mlens[mi2 - 1];
+                  }
                   // 목적지가 계속 멀면 마지막 2초는 페이드로 정리.
                   if (t > holdEnd + FRESH_MERGE_MAX - 2) {
                     alpha = Math.max(0, (holdEnd + FRESH_MERGE_MAX - t) / 2);
@@ -7312,6 +7375,9 @@ export default function ReplayMotionPlayer({
           const typeMarks = typeSquads[pi].flatMap((g, gi) => {
             const rp = g.walk;
             if (rp.length === 0 || t < rp[0][0]) return [];
+            // 후계 부대에 흡수된 유령(위 squadGoneAt 주석) — 유닛별 부대도 걷는다.
+            const goneT = squadGoneAt[pi]?.types[gi] ?? 0;
+            if (goneT > 0 && t >= goneT) return [];
             /* 가운데로 휘는 곡선(bend)은 걷은 자취에 안 얹는다(지적: 일꾼·유닛이 왜 이렇게
                빠르냐) — walkTrack이 이미 유닛 속도로 시간을 배분해 놨는데, 그 구간을 곡선
                으로 늘리면 같은 시간에 더 긴 길을 미끄러져 실제보다 빨라 보였다(실측 3.7
@@ -7639,7 +7705,7 @@ export default function ReplayMotionPlayer({
             if (rp.length === 0 || t < rp[0][0]) return null;
             if (t < firstArmyDone) return null;
             // 후계 부대에 흡수된 유령 부대(위 squadGoneAt 주석)는 그 순간부터 걷는다.
-            const successorAt = squadGoneAt[pi]?.[si] ?? 0;
+            const successorAt = squadGoneAt[pi]?.squads[si] ?? 0;
             if (successorAt > 0 && t >= successorAt) return null;
             // 걷은 자취에는 곡선을 안 얹는다 — 위 typeMarks의 bend 주석과 같은 이유.
             let pos = posAt(rp, t, null);
