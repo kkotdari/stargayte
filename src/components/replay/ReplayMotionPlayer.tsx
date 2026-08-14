@@ -3010,6 +3010,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     [groundEllipse(...project(2.9, -1.9, 4.5), 0.24, 0.19), 0.8, "#ff5f4b"] as ShapeFace,
   ],
 
+  /* 스파이더 마인(요청) — 땅에 반쯤 묻힌 작은 돔 + 감지침 셋. 맵에서 죽음의 원인이
+     보이게 마인 자체를 그린다. */
+  mine: () => [
+    sideFace(discPath3(0, 0, 0.02, 3.4), 0.2),
+    ...domeFaces3(0, 0, 2.6, 1.7),
+    ...hornFaces(0, 0, 1.6, 0, 0, 4.6, 0.35),
+    ...hornFaces(-1.4, 0.6, 1.1, -2.4, 1, 3.2, 0.3),
+    ...hornFaces(1.4, 0.6, 1.1, 2.4, 1, 3.2, 0.3),
+  ],
+  /* 버로우 구멍(요청) — 버로우 중엔 유닛 대신 이 구멍만: 흙 둔덕 테 + 어두운 구멍.
+     크기는 마커 크기(소·중·대형)를 그대로 탄다. */
+  burrowhole: () => [
+    ...domeFaces3(0, 0, 4.6, 0.9),
+    capFace(discPath3(0, 0, 0.92, 3.2), 0.6),
+  ],
   /* SCV(실물 참고) — 각진 몸통 + 양옆 포드 + 위 머리 + 앞으로 굽는 집게 드릴 한 쌍. */
   scv: () => [
     ...boxFaces3(0, -0.4, 2.6, 2.4, 2.6, 3.4),
@@ -3754,6 +3769,7 @@ export const SHAPE_GALLERY: { kind: string; label: string; group: "유닛" | "�
   { kind: "fbat", label: "파이어뱃", group: "유닛" },
   { kind: "inf", label: "메딕", group: "유닛" },
   { kind: "vulture", label: "벌처", group: "유닛" },
+  { kind: "mine", label: "스파이더 마인", group: "유닛" },
   { kind: "tank", label: "시즈 탱크", group: "유닛" },
   { kind: "tanksiege", label: "시즈 탱크(시즈)", group: "유닛" },
   { kind: "goliath", label: "골리앗", group: "유닛" },
@@ -5507,6 +5523,23 @@ export default function ReplayMotionPlayer({
     .map(([sec, x, y, unit, raw, gone]) => ({
       sec, x: x + footDx(unit), y: y + footDy(unit), raw, gone: gone ?? 0,
     })), [motion]);
+  /* 스파이더 마인(요청) — 심은 자리(캐스트 좌표)에 마인 모델을 깔고, 심고 4초 뒤부터
+     적 자취가 2타일 안에 들어온 첫 순간 터진 것으로 본다(리플레이에 폭발이 안 남는
+     어림 — 갑자기 죽는 이유가 보이게). 디텍팅 제거는 알 수 없어 안 터진 마인은 남는다. */
+  const mines = useMemo(() => motion.casts
+    .filter((c) => c[3] === "Spider Mines")
+    .map(([sec, x, y, , raw]) => {
+      let boom = 0;
+      for (const q of motion.players) {
+        if (teamOfRaw(q.raw) === teamOfRaw(raw)) continue;
+        for (const [ps, px, py] of [...q.pts, ...Object.values(q.upts ?? {}).flat()]) {
+          if (ps <= sec + 4 || Math.hypot(px - x, py - y) > 2) continue;
+          if (boom === 0 || ps < boom) boom = ps;
+          break;
+        }
+      }
+      return { sec, x, y, raw, boom };
+    }), [motion, teamOfRaw]);
   const castsNow = motion.casts.filter((c) => c[0] <= t
     && t - c[0] <= (c[3] === "Nuclear Strike" ? NUKE_FALL_SEC + 4
       : c[3] === "Dark Swarm" ? 30
@@ -6147,6 +6180,27 @@ export default function ReplayMotionPlayer({
           });
           return null;
         })}
+        {/* 스파이더 마인(요청) — 안 터졌으면 모델, 터지는 1.2초는 폭발 스팬. */}
+        {mines.map((m, mi) => {
+          if (t < m.sec || (m.boom > 0 && t >= m.boom + 1.2)) return null;
+          const [mfx, mfy] = posFrac(m.x, m.y);
+          if (m.boom === 0 || t < m.boom) {
+            unitOps.push({
+              fx: mfx, fy: mfy, z: 960 + mi, kind: "mine",
+              viewYaw: viewYawOf(m.x, m.y), flat: !pitched, pitch: pitched,
+              sizePx: dotGlyphPx("dot", 0.8, m.y),
+              color: modeColor(m.raw, teamOfRaw(m.raw) ?? 1),
+              alpha: 0.95, noShadow: true,
+            });
+            return null;
+          }
+          return (
+            <span
+              key={`mine-${mi}`} className="scr-motion-mineboom"
+              style={{ ...posStyle(m.x, m.y), zIndex: 1500 }}
+            />
+          );
+        })}
         {(grid.resources ?? []).flatMap((res, ri) => {
           let owner: { x: number; y: number; raw: string } | null = null;
           let best = 18;
@@ -6603,22 +6657,33 @@ export default function ReplayMotionPlayer({
               const [sx0, sy0] = uAir ? [pos.x + dx, pos.y + dy] : groundedSpot(pos.x, pos.y, dx, dy);
               const [ax3, ay3] = dodge(sx0, sy0);
               const [fx, fy] = posFrac(ax3, ay3);
+              /* 버로우 표시(요청) — 럴커는 제자리(이동 없음)면 버로우로 보고, 유닛 대신
+                 크기 따라가는 땅 구멍만 그린다. 가시 공격 효과는 구멍 위에서 그대로 인다. */
+              const burrowed = u === "Lurker" && !pos.moving;
               unitOps.push({
                 fx, fy,
                 z: pitched ? 1000 + Math.round(ay3 * 80)
                   : 1000 + Math.round(Number.isFinite(sinceCmd) ? t - sinceCmd : g.walk[0][0]),
-                kind: unitMarkerKind(u, bases.find((b) => b.key === p.raw)?.race),
-                rotDeg: hdg, viewYaw: viewYawOf(ax3, ay3),
+                kind: burrowed ? "burrowhole" : unitMarkerKind(u, bases.find((b) => b.key === p.raw)?.race),
+                rotDeg: burrowed ? undefined : hdg, viewYaw: viewYawOf(ax3, ay3),
                 flat: !pitched, pitch: pitched,
                 sizePx: unitPxOf(u, ay3),
                 color: modeColor(p.raw, team),
                 alpha: cloaked ? 0.45 : 1,
-                air: uAir,
+                air: uAir && !burrowed,
               });
+              /* 시즈 포격 연출(요청) — 포구 섬광(기존 cannon fx)에 더해, 살짝 딜레이를
+                 두고 조준 방향 앞쪽에 착탄 폭발이 터진다(1.5초 주기 결정적 재생). */
+              const shellHit = fighting && ATTACK_FX[u] === "cannon" && di % 4 === 0
+                && (u.startsWith("Siege Tank") || u === "Reaver");
+              const hrad = (hdg * Math.PI) / 180;
+              const shellSpot = shellHit
+                ? dodge(ax3 - Math.sin(hrad) * 4.5, ay3 + Math.cos(hrad) * 4.5)
+                : null;
               const hasFx = fighting && (
                 (ATTACK_FX[u] && di % 4 === 0) || (di + cyc) % 7 === 0 || u === "Carrier");
               if (!hasFx) return null;
-              return (
+              const unitSpan = (
                 <span
                   key={`${p.raw}-u${g.unit}-${gi}-i${di}`}
                   className={cx(
@@ -6655,6 +6720,14 @@ export default function ReplayMotionPlayer({
                   ))}
                 </span>
               );
+              if (!shellSpot) return unitSpan;
+              return [unitSpan, (
+                <span
+                  key={`${p.raw}-sh-${gi}-${di}-${cyc}`}
+                  className="scr-motion-shellhit"
+                  style={{ ...posStyle(shellSpot[0], shellSpot[1]), zIndex: 1400 }}
+                />
+              )];
             });
           });
           const squadNodes = squads.map((rp, si) => {

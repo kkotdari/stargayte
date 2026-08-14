@@ -12865,6 +12865,34 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    무대 위 오버레이(각도·멈춤)는 어두운 판 위에서 읽히게 밝은 잉크로 뒤집는다. */
 .scr-light-theme .scr-model-stage-dark { background: #10141d; border-radius: 14px; }
 .scr-light-theme .scr-model-stage-dark .scr-model-yaw { color: rgba(255, 255, 255, 0.55); }
+/* 시즈 착탄(요청) — 포성 뒤 살짝 딜레이를 두고 조준 방향 앞에서 터지는 작은 화구.
+   1.5초 전투 주기에 맞춘 무한 반복이라 프레임과 안 어긋난다. */
+.scr-motion-shellhit {
+  position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px;
+  border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 214, 120, 0.95) 0%, rgba(255, 118, 60, 0.8) 45%, transparent 70%);
+  opacity: 0; transform: scale(0.3);
+  animation: scr-shellhit 1.5s ease-out infinite;
+}
+@keyframes scr-shellhit {
+  0%, 28% { opacity: 0; transform: scale(0.3); }
+  36% { opacity: 1; transform: scale(1); }
+  62% { opacity: 0; transform: scale(1.7); }
+  100% { opacity: 0; transform: scale(1.7); }
+}
+/* 마인 폭발(요청) — 한 번 터지고 끝나는 화구 파문. */
+.scr-motion-mineboom {
+  position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px;
+  border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 228, 150, 0.95) 0%, rgba(255, 110, 50, 0.85) 40%, rgba(120, 60, 30, 0.4) 60%, transparent 72%);
+  animation: scr-mineboom 1.2s ease-out forwards;
+}
+@keyframes scr-mineboom {
+  0% { opacity: 0.2; transform: scale(0.2); }
+  25% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(2); }
+}
+
 /* 돋보기(요청) — 무대 좌상단 작은 원 단추, 누르면 최대 크기 팝업. */
 .scr-model-zoom-btn {
   position: absolute; top: 4px; left: 6px;
