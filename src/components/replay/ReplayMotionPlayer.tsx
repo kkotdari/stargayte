@@ -565,6 +565,12 @@ function creepSplat(r: number): ShapeFace[] {
   return out;
 }
 
+/* 공사 셋 고정색(요청: 팀색 대신 재질색) — 색 없는 밑칠(bodyFace)에만 바탕색을 입히고,
+   흰/검 음영과 명시색 면은 그대로 둔다. */
+function paintBase(faces: ShapeFace[], base: string): ShapeFace[] {
+  return faces.map(([d, o, f, k]) => [d, o, f ?? base, k] as ShapeFace);
+}
+
 /* 일정 폭 막대 사지(지적: 드라군 다리 '통' 느낌) — 뿔과 달리 두께가 끝까지 같고 양 끝이
    반원인 캡슐 막대. 레이스 아래 포신과 같은 화면 투영 스타디움이라 어느 요잉에서도
    결이 같다. 깊이 키는 뿔과 같은 규칙. */
@@ -1152,16 +1158,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 두 배쯤 크게(재요청) — 반지름 2→2.9, 키 6→9.5. 자리는 살짝 안쪽으로.
     const KX = -3;
     const KY = -1.9;
-    out.push(...domeFaces3(KX, KY, 2.9, 9.5, 1.8));
+    /* 왕고치는 판 위 얹힘(재재지적: 판 격자·테가 위에 씻겨 투명해 보임) — 지붕 띠
+       키로 늘 판을 이긴다. 격자무늬는 판의 격자와 같은 흰 줄(요청)로, 가로 테를 더
+       촘촘히 두른다. */
+    const shell: ShapeFace[] = [...domeFaces3(KX, KY, 2.9, 9.5, 1.8)];
     const sq = groundSquashNow();
-    // 가로 테 — 도넛 고리(바깥 정방향 + 안 역방향 감김이 구멍을 낸다).
-    for (const [gz, gr] of [[3.6, 2.72], [6.2, 2.28], [8.6, 1.5]] as const) {
+    // 가로 테(촘촘히) — 도넛 고리(바깥 정방향 + 안 역방향 감김이 구멍을 낸다).
+    for (const [gz, gr] of [
+      [2.7, 2.8], [3.9, 2.66], [5.1, 2.48], [6.3, 2.22], [7.5, 1.84], [8.7, 1.4],
+    ] as const) {
       const [ex, ey] = project(KX, KY, gz);
-      const ri = gr - 0.16;
-      out.push(sideFace(
+      const ri = gr - 0.14;
+      shell.push(topFace(
         `M${ex - gr} ${ey}a${gr} ${gr * sq} 0 1 0 ${gr * 2} 0a${gr} ${gr * sq} 0 1 0 ${-gr * 2} 0Z`
         + `M${ex - ri} ${ey}a${ri} ${ri * sq} 0 1 1 ${ri * 2} 0a${ri} ${ri * sq} 0 1 1 ${-ri * 2} 0Z`,
-        0.16,
+        0.22,
       ));
     }
     // 세로 이음선 — 앞을 보는 각도의 이음만, 껍질 반지름을 따라 휘어 오른다.
@@ -1176,12 +1187,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       for (let i = 0; i < seam.length - 1; i += 1) {
         const [p1x, p1y] = project(...seam[i]);
         const [p2x, p2y] = project(...seam[i + 1]);
-        out.push(sideFace(
+        shell.push(topFace(
           `M${p1x - 0.07} ${p1y} L${p2x - 0.07} ${p2y} L${p2x + 0.07} ${p2y} L${p1x + 0.07} ${p1y} Z`,
-          0.16,
+          0.22,
         ));
       }
     }
+    out.push(...tagKey(shell, 20 + depthNow(KX, KY)));
     void pt;
     return out;
   },
@@ -1258,10 +1270,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const a = (i * 45 * Math.PI) / 180;
       out.push(...boxFaces3(Math.sin(a) * 6.15, Math.cos(a) * 6.15, 1.5, 1.5, 1.7));
     }
-    out.push(...cylinderFaces3(0, 0, 0.55, 4.6, 1.3));
-    /* 꼭대기 주사바늘(재지적: 가운데 포탑이 안 돎) — 화면 고정 사선 대신 모델 좌표
-       뿔로: 축에서 −x 쪽으로 기운 높은 끝이라, 요잉하면 기운 방향이 함께 돈다. */
-    out.push(...hornFaces(0, 0, 5.7, -0.45, 0, 7.6, 1.05));
+    /* 가운데 포탑은 받침 위 얹힘(재지적: 바닥이 포탑을 가림) — 지붕 띠 키로 받침
+       (반지름 키)·이음 원반들을 늘 이긴다. */
+    out.push(...tagKey([
+      ...cylinderFaces3(0, 0, 0.55, 4.6, 1.3),
+      /* 꼭대기 주사바늘(재지적: 가운데 포탑이 안 돎) — 화면 고정 사선 대신 모델 좌표
+         뿔로: 축에서 −x 쪽으로 기운 높은 끝이라, 요잉하면 기운 방향이 함께 돈다. */
+      ...hornFaces(0, 0, 5.7, -0.45, 0, 7.6, 1.05),
+    ], 24 + depthNow(0, 0)));
     return out;
   },
   /* 성큰(실물 참고) — 납작한 크립 더미 + 잔가시들 + 웅크린 큰 낫 발톱(끝 밝은 날). */
@@ -2343,11 +2359,25 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 차체는 탱크 모드와 똑같이(지적: 시즈·보통 모드의 몸통이 달라) — 같은 상자.
       ...boxFaces3(0, -0.2, 3.9, 5.6, 1.3, 1.2),
       ...frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.5),
+      /* 포신 입체 벽 두르기(재지적: 캐리어처럼) — 오른벽 하나만 박혀 있던 것을 윗판·
+         밑판 + 좌우 옆벽(faceLight 판정) + 포구 단면(앞이 보일 때만)으로 닫는다. */
       bodyFace(barrelTop),
       topFace(barrelTop, 0.18),
-      bodyFace(polyPath3([[0.7, 0.7, 4], [0.7, 2.9, 6.9], [0.7, 2.9, 6.5], [0.7, 0.7, 3.6]])),
-      sideFace(polyPath3([[0.7, 0.7, 4], [0.7, 2.9, 6.9], [0.7, 2.9, 6.5], [0.7, 0.7, 3.6]]), 0.24),
-      capFace(polyPath3([[-0.7, 2.9, 6.9], [0.7, 2.9, 6.9], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]), 0.4),
+      bodyFace(polyPath3([[-0.7, 0.7, 3.6], [0.7, 0.7, 3.6], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]])),
+      ...([1, -1] as const).flatMap((m2): ShapeFace[] => {
+        const sl = faceLight(m2, 0);
+        if (!sl.visible) return [];
+        const d = polyPath3([
+          [m2 * 0.7, 0.7, 4], [m2 * 0.7, 2.9, 6.9], [m2 * 0.7, 2.9, 6.5], [m2 * 0.7, 0.7, 3.6],
+        ]);
+        return [bodyFace(d), ...sl.face(d)];
+      }),
+      ...((): ShapeFace[] => {
+        const mz = faceLight(0, 0.71, 0.71);
+        if (!mz.visible) return [];
+        const d = polyPath3([[-0.7, 2.9, 6.9], [0.7, 2.9, 6.9], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]);
+        return [bodyFace(d), capFace(d, 0.4)];
+      })(),
     ];
   },
   /* 벌처(실물 참고) — 뒤 엔진 통 둘, 가운데 좌석·라이더 혹, 앞으로 길고 뾰족하게
@@ -2508,16 +2538,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         capFace(polyPath3([[-1.15, 1.35, 7.5], [1.15, 1.35, 7.5], [1.05, 1.75, 6.85], [-1.05, 1.75, 6.85]]), 0.45),
         topFace(polyPath3([[-0.95, 1.42, 7.35], [-0.1, 1.42, 7.35], [-0.18, 1.66, 6.98], [-0.9, 1.66, 6.98]]), 0.3),
       ], depthNow(0, 1.55) + 1.1),
-      // 지붕 미사일 튜브 다발.
-      ...tubeFaces(-0.7, -1.7, -0.7, 0.9, 0.5, 7.2),
-      ...tubeNose(-0.7),
-      ...tubeFaces(0.7, -1.7, 0.7, 0.9, 0.5, 7.2),
-      ...tubeNose(0.7),
+      /* 지붕 미사일 튜브 다발 — 지붕 띠 키(재지적: 콕핏·코 데칼이 위에 씻겨 투명해
+         보임): 몸 위 얹힘이라 어느 각에서도 몸·데칼 뒤로 안 간다. */
+      ...tagKey([
+        ...tubeFaces(-0.7, -1.7, -0.7, 0.9, 0.5, 7.2),
+        ...tubeNose(-0.7),
+      ], 20 + depthNow(-0.7, -0.4)),
+      ...tagKey([
+        ...tubeFaces(0.7, -1.7, 0.7, 0.9, 0.5, 7.2),
+        ...tubeNose(0.7),
+      ], 20 + depthNow(0.7, -0.4)),
     ];
   },
   /* 사이언스 베슬(정정) — 구 몸통 아래에 구형 추진기 세 개가 달린다. */
   vessel: () => {
-    const [ex2, ey2] = project(0, 2.2, 6.3);
     // 몸통은 구(지적: 무덤이 아니라 구형) — 공 + 오른 그늘 초승달 + 윗 하이라이트.
     const [bx, by] = project(0, 0, 6.1);
     return [
@@ -2528,7 +2562,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       sideFace(`M${bx + 1} ${by - 2.2} A2.45 2.35 0 0 1 ${bx + 1} ${by + 2.2}`
         + ` A3.6 3.4 0 0 0 ${bx + 1} ${by - 2.2} Z`, 0.16),
       topFace(groundEllipse(bx - 0.85, by - 0.9, 1.15, 0.95), 0.28),
-      capFace(groundEllipse(ex2, ey2, 0.5, 0.32), 0.35),
+      /* 앞 검은 점 제거(지적: 정체불명) → 대신 네모 창 넉 장을 가로로 나란히(요청).
+         앞면 벽 데칼이라 요잉을 따라 돌고, 앞이 보일 때만 서서히 나타난다. */
+      ...(facingRatio(0, 1) > 0.05 ? ((): ShapeFace[] => {
+        const k = Math.min(1, (facingRatio(0, 1) - 0.05) / 0.4);
+        const win: ShapeFace[] = [];
+        for (const wx of [-1.35, -0.45, 0.45, 1.35]) {
+          win.push(capFace(polyPath3([
+            [wx - 0.26, 1.9, 5.85], [wx + 0.26, 1.9, 5.85],
+            [wx + 0.26, 1.9, 6.4], [wx - 0.26, 1.9, 6.4],
+          ]), 0.32 * k));
+        }
+        return win;
+      })() : []),
     ];
   },
   /* 뮤탈리스크(정정) — 날개는 위에 달리고, 긴 몸통이 앞-아래로 휘어 입이 아래로 나온다. */
@@ -2910,43 +2956,58 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   ],
   /* ── 공사 표현 공용 셋(요청: 아이콘 대신 모델) ───────────────────────────── */
   /* 저그 고치 — 크립 위 통통한 번데기(재생 쪽 CSS가 바운스시킨다). */
+  /* 저그 변태 고치 — 고정색(요청: 팀색 말고): 장기 느낌의 연한 살색 몸 + 붉은·갈·보라
+     힘줄 선. 크립은 탁한 보라. */
   cocoon: () => [
     // 가시는 걷었다(지적: 성큰류와 헷갈린다) — 민둥한 겹돔 고치만.
-    ...creepSplat(4.4),
-    ...domeFaces3(0, 0.3, 2.6, 3.2),
-    ...domeFaces3(0, 1.1, 1.9, 1.5),
+    ...paintBase(creepSplat(4.4), "#9a87a3"),
+    ...paintBase([
+      ...domeFaces3(0, 0.3, 2.6, 3.2),
+      ...domeFaces3(0, 1.1, 1.9, 1.5),
+    ], "#e6c8b4"),
     capFace(polyPath3([[-1.9, 0.5, 2.1], [1.9, 0.5, 2.1], [1.7, 0.3, 2.5], [-1.7, 0.3, 2.5]]), 0.18),
     capFace(polyPath3([[-1.5, 1.3, 1.2], [1.5, 1.3, 1.2], [1.35, 1.1, 1.6], [-1.35, 1.1, 1.6]]), 0.18),
+    // 힘줄 선 셋 — 껍질 위를 타는 가는 핏줄.
+    [polyPath3([[-2.2, 1, 0.6], [-1.1, 1.7, 1.8], [0.3, 1.8, 2.4], [0.4, 1.6, 2.2], [-1, 1.4, 1.5], [-2, 0.8, 0.45]]), 0.6, "#b0584a"] as ShapeFace,
+    [polyPath3([[2.3, 0.6, 0.7], [1.4, 1.4, 1.9], [0.3, 1.5, 2.5], [0.35, 1.3, 2.3], [1.2, 1.1, 1.6], [2.1, 0.4, 0.55]]), 0.55, "#8a5f43"] as ShapeFace,
+    [polyPath3([[-0.6, -2.4, 1.9], [-0.2, -1.2, 3], [0.2, 0.4, 3.35], [0.3, 0.3, 3.1], [-0.05, -1.2, 2.75], [-0.4, -2.3, 1.7]]), 0.5, "#7c5d92"] as ShapeFace,
   ],
   /* 프로토스 소환구 — 겹겹의 빛 고리와 중심 빛기둥. 다 지어지면 건물이 드러난다. */
   /* 프로토스 소환구(재정의: 신비로운 에너지 구) — 바닥 빛무리 위에 반투명 겹구가
-     떠 있고, 밝은 심과 반짝이 둘이 돈다. 다 지어지면 건물이 드러난다. */
+     떠 있고, 밝은 심과 반짝이 둘이 돈다. 고정색(요청): 밝은 하늘빛·하얀 글로우. */
   warpin: () => {
     const [gx0, gy0] = project(0, 0, 0.2);
     const [cx, cy] = project(0, 0, 3.4);
     return [
       topFace(groundEllipse(gx0, gy0, 3.6, 1.7), 0.16),
-      [groundEllipse(cx, cy, 3.1, 2.9), 0.45] as ShapeFace,
-      [groundEllipse(cx, cy, 2.2, 2.05), 0.55] as ShapeFace,
+      [groundEllipse(cx, cy, 3.1, 2.9), 0.45, "#9fd4ff"] as ShapeFace,
+      [groundEllipse(cx, cy, 2.2, 2.05), 0.55, "#c4e6ff"] as ShapeFace,
       topFace(groundEllipse(cx - 0.7, cy - 0.7, 1.05, 0.85), 0.4),
       topFace(groundEllipse(cx, cy, 1.15, 1.05), 0.55),
       topFace(groundEllipse(cx + 1.7, cy + 0.9, 0.3, 0.25), 0.5),
       topFace(groundEllipse(cx - 2, cy + 1.3, 0.22, 0.18), 0.45),
     ];
   },
-  /* 테란 공사장 — 기초 슬래브 + 뼈대 기둥 넷 + 가로 보 + 크레인. */
+  /* 테란 공사장 — 기초 슬래브 + 뼈대 기둥 넷 + 가로 보 + 크레인.
+     고정색(요청): 공사 쇳빛 + 빨간 불빛. */
   scaffold: () => [
-    ...boxFaces3(0, 0, 7, 5, 0.8),
-    ...boxFaces3(-2.9, 1.9, 0.5, 0.5, 3.4, 0.8),
-    ...boxFaces3(2.9, 1.9, 0.5, 0.5, 3.4, 0.8),
-    ...boxFaces3(-2.9, -1.9, 0.5, 0.5, 3.4, 0.8),
-    ...boxFaces3(2.9, -1.9, 0.5, 0.5, 3.4, 0.8),
-    ...boxFaces3(0, 1.9, 6.2, 0.4, 0.4, 4.2),
-    ...boxFaces3(0, -1.9, 6.2, 0.4, 0.4, 4.2),
-    // 크레인 — 기둥 + 지브 + 갈고리 줄.
-    ...boxFaces3(2.3, -1.5, 0.45, 0.45, 6.4, 0.8),
-    bodyFace(polyPath3([[2.3, -1.7, 7.2], [-0.9, -1.7, 6.9], [-0.9, -1.5, 6.9], [2.3, -1.3, 7.2]])),
-    ...hornFaces(-0.7, -1.6, 6.9, -0.7, -1.6, 5.2, 0.16),
+    ...paintBase([
+      ...boxFaces3(0, 0, 7, 5, 0.8),
+      ...boxFaces3(-2.9, 1.9, 0.5, 0.5, 3.4, 0.8),
+      ...boxFaces3(2.9, 1.9, 0.5, 0.5, 3.4, 0.8),
+      ...boxFaces3(-2.9, -1.9, 0.5, 0.5, 3.4, 0.8),
+      ...boxFaces3(2.9, -1.9, 0.5, 0.5, 3.4, 0.8),
+      ...boxFaces3(0, 1.9, 6.2, 0.4, 0.4, 4.2),
+      ...boxFaces3(0, -1.9, 6.2, 0.4, 0.4, 4.2),
+      // 크레인 — 기둥 + 지브 + 갈고리 줄.
+      ...boxFaces3(2.3, -1.5, 0.45, 0.45, 6.4, 0.8),
+      bodyFace(polyPath3([[2.3, -1.7, 7.2], [-0.9, -1.7, 6.9], [-0.9, -1.5, 6.9], [2.3, -1.3, 7.2]])),
+      ...hornFaces(-0.7, -1.6, 6.9, -0.7, -1.6, 5.2, 0.16),
+    ], "#9aa3ad"),
+    // 빨간 공사 등 — 크레인 꼭대기와 앞뒤 보 끝.
+    [groundEllipse(...project(2.3, -1.5, 7.4), 0.3, 0.24), 0.85, "#ff5f4b"] as ShapeFace,
+    [groundEllipse(...project(-2.9, 1.9, 4.5), 0.24, 0.19), 0.8, "#ff5f4b"] as ShapeFace,
+    [groundEllipse(...project(2.9, -1.9, 4.5), 0.24, 0.19), 0.8, "#ff5f4b"] as ShapeFace,
   ],
 
   /* SCV(실물 참고) — 각진 몸통 + 양옆 포드 + 위 머리 + 앞으로 굽는 집게 드릴 한 쌍. */
@@ -3580,8 +3641,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...domeFaces3(-1.2, -3.3, 1, 0.68),
     ...frustumFaces3(-0.7, 0.4, 3.4, 2.8, 2.2, 1.8, 1.5, 1.2),
     capFace(groundEllipse(...project(-0.7, 0.4, 2.75), 1.4, 0.68), 0.5),
-    ...frustumFaces3(2.2, -1.3, 1.5, 1.3, 0.95, 0.8, 0.9, 1.05),
-    capFace(groundEllipse(...project(2.2, -1.3, 2), 0.52, 0.27), 0.5),
+    /* 작은 분화구 접지(지적: 땅에 안 붙음) — 공중(z 1.05)에서 시작하던 것을 바닥
+       가까이(0.15)로 내리고 밑을 넓혀 언덕 비탈에 묻는다. */
+    ...frustumFaces3(2.2, -1.3, 1.9, 1.7, 0.95, 0.8, 1.75, 0.15),
+    capFace(groundEllipse(...project(2.2, -1.3, 1.9), 0.52, 0.27), 0.5),
     // 김 뭉치도 제 깊이(지적: 가려짐 문제) — 분화구 키에 묻어 언덕이 덮었다.
     ...tagKey([topFace(groundEllipse(...project(-0.4, 0.7, 3.5), 0.85, 0.5), 0.22)], depthNow(-0.4, 0.7) + 2),
     ...tagKey([topFace(groundEllipse(...project(1.9, -1, 2.8), 0.42, 0.26), 0.18)], depthNow(1.9, -1) + 2),
