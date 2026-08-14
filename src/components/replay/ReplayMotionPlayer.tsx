@@ -5886,6 +5886,22 @@ export default function ReplayMotionPlayer({
      같은 큐 시뮬레이션을 유닛별로 가른 것. 어느 유닛이 죽었는지는 모르니, 전투 감모는
      합계의 감모 비율(살아남은 몫)을 유닛마다 같은 비율로 나눠 얹는다 — 전투에서 질럿만
      죽고 리버는 멀쩡했는지까지는 리플레이가 말해 주지 않는다. */
+  /* 적진에 앉은 정찰의 최후(지적: 11시 본진 오버로드는 언제 잡히나) — 리플레이엔
+     죽음이 없지만, 적 본진 안에 눌러앉은 정찰은 대공이 생기는 순간 잡히는 게 현실이다.
+     임자별 첫 대공 유닛 완성 시각(아래 memo)과 대공 건물(터렛·포토·스포어)의 완공을
+     잣대로 쓴다. */
+  const firstAADoneOf = (raw: string): number => {
+    const AA = new Set([
+      "Marine", "Ghost", "Goliath", "Wraith", "Valkyrie", "Battlecruiser",
+      "Dragoon", "Archon", "Scout", "Corsair", "Carrier",
+      "Hydralisk", "Mutalisk", "Scourge", "Devourer",
+    ]);
+    let first = Infinity;
+    for (const [u, ds] of unitDoneByRaw.get(raw) ?? []) {
+      if (AA.has(u) && ds.length > 0) first = Math.min(first, ds[0]);
+    }
+    return first;
+  };
   const unitDoneByRaw = useMemo(() => {
     const m = new Map<string, [string, number[]][]>();
     for (const p of motion.players) {
@@ -7988,6 +8004,43 @@ export default function ReplayMotionPlayer({
               && razedNearby(p, pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return null;
             if (!hasLater
               && nukedGone(pos, Number.isFinite(sinceCmd) ? t - sinceCmd : 0)) return null;
+            /* 적진에 눌러앉은 정찰(지적: 11시 본진 오버로드는 언제 잡히나) — 뒤 명령
+               없이 적 본진·홀 8타일 안에 서 있으면, 그 적의 첫 대공 유닛 완성 12초 뒤
+               (그새 쏘러 온다) 또는 곁 대공 건물 완공 5초 뒤에 잡힌 것으로 본다. 지상
+               정찰(일꾼)은 대공 여부와 무관하게 첫 전투 유닛이 잣대다. */
+            if (!hasLater) {
+              const isGroundScout = g.kind === "worker";
+              let dieAt = Infinity;
+              for (const p2 of motion.players) {
+                if (teamOfRaw(p2.raw) === team) continue;
+                const b2 = bases.find((bb) => bb.key === p2.raw);
+                let near = b2 ? Math.hypot(pos.x - b2.x, pos.y - b2.y) <= 8 : false;
+                if (!near) {
+                  near = halls.some((h) => h.raw === p2.raw && h.sec <= t
+                    && (h.gone === 0 || t < h.gone)
+                    && Math.hypot(pos.x - h.x, pos.y - h.y) <= 8);
+                }
+                if (!near) continue;
+                if (isGroundScout) {
+                  const list = unitDoneByRaw.get(p2.raw) ?? [];
+                  for (const [u2, ds] of list) {
+                    if (u2 === "SCV" || u2 === "Probe" || u2 === "Drone") continue;
+                    if (ds.length > 0) dieAt = Math.min(dieAt, ds[0] + 12);
+                  }
+                } else {
+                  dieAt = Math.min(dieAt, firstAADoneOf(p2.raw) + 12);
+                  for (const [bs, bx2, by2, bu2, br2, bg2] of motion.builds) {
+                    if (br2 !== p2.raw) continue;
+                    if (bu2 !== "Missile Turret" && bu2 !== "Photon Cannon" && bu2 !== "Spore Colony") continue;
+                    if ((bg2 ?? 0) > 0 && t >= (bg2 ?? 0)) continue;
+                    if (Math.hypot(pos.x - bx2, pos.y - by2) > 8) continue;
+                    dieAt = Math.min(dieAt, bs + 30 + 5);
+                  }
+                }
+              }
+              const parked = Number.isFinite(sinceCmd) ? t - sinceCmd : rp[0][0];
+              if (t >= Math.max(dieAt, parked + 3)) return null;
+            }
             /* 정찰은 이름을 아예 안 띄운다(지적: 일꾼 이름 뜨는 게 문제 맞다) — 일꾼은
                늘 작은 점, 수송선·오버로드는 늘 제 도형이다. 칩으로 커지는 일이 없으니
                커졌다 작아졌다도 없다. */
