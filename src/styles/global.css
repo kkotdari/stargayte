@@ -12826,13 +12826,15 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    안 갈리고, 갈래 이름을 더 키우면 밖에서 누른 그 소제목과 다른 것처럼 보인다. */
 .scr-activity-crumb-sep { margin: 0 6px; color: var(--dim); font-weight: 400; }
 /* 게임 페이지 크럼(요청: 활동 › 게임 › 번호) — 가운데 '게임'은 그룹 페이지의 끝
-   조각과 같은 크기(지적: 두 화면에서 크기가 달랐다), 끝의 ID 번호는 한 단 작고 옅게. */
-.scr-activity-crumb-mid { font-size: var(--fs-lead); }
-.scr-activity-crumb-no {
+   조각과 같은 크기(지적: 두 화면에서 크기가 달랐다), 끝의 ID 번호는 한 단 작고 옅게.
+   두 클래스 선택자(재지적: 통일 안 됨) — 뒤에 오는 .scr-activity-crumb-root의
+   font: inherit 단축 속성이 크기를 도로 제목 급으로 덮었다. */
+.scr-activity-crumb-root.scr-activity-crumb-mid { font-size: var(--fs-lead); }
+.scr-activity-crumb-leaf { font-size: var(--fs-lead); }
+.scr-activity-crumb-leaf.scr-activity-crumb-no {
   font-size: var(--fs-caption); color: var(--muted);
   font-variant-numeric: tabular-nums; font-weight: 600;
 }
-.scr-activity-crumb-leaf { font-size: var(--fs-lead); }
 
 /* 게임 줄의 승·무·패 동그라미(요청: vs 양옆에 작은 정원 배지, 배지색 채우고 글자는 기본색).
    유형 배지(.scr-kind-*)와 같은 규칙을 쓴다 — 바탕을 제 색으로 꽉 채우고 글자는 먹색 하나라,
