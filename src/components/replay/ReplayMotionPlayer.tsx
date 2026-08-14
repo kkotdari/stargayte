@@ -750,11 +750,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   factory: () => [
     ...boxFaces3(-0.6, -0.6, 9.8, 6, 5.8, 1.2),
     ...boxFaces3(3.2, 2.8, 4, 2.8, 3.6, 1.2),
-    ...cylinderFaces3(-3.4, -2, 0.85, 1.7, 7),
-    ...cylinderFaces3(-1.5, -2.2, 0.85, 1.7, 7),
-    ...cylinderFaces3(0.4, -2.4, 0.85, 1.7, 7),
-    ...boxFaces3(3.4, -2.2, 2.8, 2.2, 2.4, 7),
-    ...tubeFaces(3, -3, 5.4, -3, 0.45, 9.6),
+    // 지붕 규칙(지적: 굴뚝 가려짐) — 지붕 얹힘들은 붙박이 큰 키.
+    ...tagKey(cylinderFaces3(-3.4, -2, 0.85, 1.7, 7), 30),
+    ...tagKey(cylinderFaces3(-1.5, -2.2, 0.85, 1.7, 7), 31),
+    ...tagKey(cylinderFaces3(0.4, -2.4, 0.85, 1.7, 7), 32),
+    ...tagKey(boxFaces3(3.4, -2.2, 2.8, 2.2, 2.4, 7), 33),
+    ...tagKey(tubeFaces(3, -3, 5.4, -3, 0.45, 9.6), 34),
     /* 다리는 없다(지적) — 대신 앞으로 나란히 내려오는 경사로 셋. 제 깊이를 달아
        뒤로 돌면 몸통 뒤로 들어간다(재지적: 뒤에서도 보임 — 손 면이라 깊이가 없었다). */
     ...[-3.8, -1, 1.8].flatMap((rx) => {
@@ -1153,9 +1154,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         [rx - 0.75, fb[0], fb[1]], [rx + 0.75, fb[0], fb[1]],
         [rx + 0.75, ft[0], ft[1]], [rx - 0.75, ft[0], ft[1]],
       ]);
-      const side = polyPath3([
-        [rx + 0.75, fb[0], fb[1]], [rx + 0.75, ft[0], ft[1]],
-        [rx + 0.75, bt[0], bt[1]], [rx + 0.75, bb[0], bb[1]],
+      const backQ = polyPath3([
+        [rx - 0.75, bb[0], bb[1]], [rx + 0.75, bb[0], bb[1]],
+        [rx + 0.75, bt[0], bt[1]], [rx - 0.75, bt[0], bt[1]],
+      ]);
+      const sideQ = (m2: 1 | -1): string => polyPath3([
+        [rx + m2 * 0.75, fb[0], fb[1]], [rx + m2 * 0.75, ft[0], ft[1]],
+        [rx + m2 * 0.75, bt[0], bt[1]], [rx + m2 * 0.75, bb[0], bb[1]],
       ]);
       const top = polyPath3([
         [rx - 0.75, ft[0], ft[1]], [rx + 0.75, ft[0], ft[1]],
@@ -1167,14 +1172,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         [rx - 0.5, s0[0], s0[1]], [rx + 0.5, s0[0], s0[1]],
         [rx + 0.5, s1[0], s1[1]], [rx - 0.5, s1[0], s1[1]],
       ]);
-      /* 포드는 머리 위 얹힘(지적: 밑둥이 포드에 안 가려짐 — 넓은 밑둥 기둥의 키가
-         더 커서 포드 위로 그려졌다) — 지붕 규칙로 큰 키를 못 박는다. */
-      return tagKey([
-        bodyFace(`${front} ${side} ${top}`),
-        sideFace(side, 0.28),
-        topFace(top, 0.2),
-        topFace(stripe, 0.35),
-      ], 40);
+      /* 포드는 머리 위 얹힘(지적) — 지붕 규칙로 큰 키. 면들은 고정으로 그리지 않고
+         faceLight 판정(재지적: 옆면이 한쪽뿐이라 가려지거나 남았다) — 앞·뒤는 기운
+         법선(0,±0.96,0.27), 옆은 (±1,0)로 보이는 면만 제 음영과 함께. */
+      const faces: ShapeFace[] = [];
+      const fr = faceLight(0, 0.96, 0.27);
+      if (fr.visible) faces.push(bodyFace(front), ...fr.face(front), topFace(stripe, 0.35));
+      const bk = faceLight(0, -0.96, 0.27);
+      if (bk.visible) faces.push(bodyFace(backQ), ...bk.face(backQ));
+      for (const m2 of [1, -1] as const) {
+        const sl = faceLight(m2, 0);
+        if (!sl.visible) continue;
+        const d = sideQ(m2);
+        faces.push(bodyFace(d), ...sl.face(d));
+      }
+      faces.push(bodyFace(top), topFace(top, 0.2));
+      return tagKey(faces, 40);
     }),
     ...tagKey(boxFaces3(0, -0.2, 2.2, 1.8, 1.6, 7.2), 41),
   ],
@@ -1185,9 +1198,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(capFace(discPath3(0, 0, 1.35, 4.4), 0.3));
     out.push(topFace(discPath3(0, 0, 1.38, 3.2), 0.2));
     out.push(capFace(discPath3(0, 0, 1.41, 2.1), 0.3));
+    /* 톱니는 몸통 밖에(지적: 반쯤 파묻힌 톱니가 통째로 비쳐 어색) — 벽에 살짝만 닿게
+       반지름을 밖으로 빼면, 앞 톱니는 벽 앞·뒤 톱니는 벽 뒤로 자연히 갈린다. */
     for (let i = 0; i < 8; i += 1) {
       const a = (i * 45 * Math.PI) / 180;
-      out.push(...boxFaces3(Math.sin(a) * 5.2, Math.cos(a) * 5.2, 1.7, 1.7, 1.9));
+      out.push(...boxFaces3(Math.sin(a) * 6.15, Math.cos(a) * 6.15, 1.5, 1.5, 1.7));
     }
     out.push(...cylinderFaces3(0, 0, 0.55, 4.6, 1.3));
     /* 꼭대기 주사바늘(재지적: 가운데 포탑이 안 돎) — 화면 고정 사선 대신 모델 좌표
@@ -1362,25 +1377,32 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     return [
       // 본건물 높이 증가(지적: 1.4→2.6) — 위 요소들도 함께 오른다.
       ...boxFaces3(0, 0.4, 8.8, 5.6, 2.6),
-      // 관측 돔 드럼 — 앞에 가로 슬릿.
-      ...cylinderFaces3(-2.6, 0.8, 1.9, 2.4, 2.6),
-      ...domeFaces3(-2.6, 0.8, 1.9, 1.6, 5),
-      capFace(groundEllipse(sx2, sy2, 0.95, 0.26), 0.45),
-      // 뒤 원통 탑 둘 — 위에 어두운 캡, 가는 목.
-      ...cylinderFaces3(-0.5, -1.7, 1.1, 5, 2.6),
-      capFace(discPath3(-0.5, -1.7, 7.65, 0.78), 0.4),
-      ...cylinderFaces3(1.1, -2.3, 0.75, 4, 2.6),
-      capFace(discPath3(1.1, -2.3, 6.65, 0.5), 0.35),
-      // 오른쪽 기운 큰 고리 접시 — 기둥이 받친다.
-      ...cylinderFaces3(2.9, 0.4, 0.7, 3, 2.6),
-      bodyFace(groundEllipse(dx3, dy3, 2.35, 1.5)),
-      topFace(groundEllipse(dx3, dy3 - 0.15, 1.95, 1.2), 0.18),
-      capFace(groundEllipse(dx3, dy3, 1.25, 0.78), 0.42),
-      // 앞 테이블 단 — 네 다리 위 판과 가운데 꼭지.
-      ...hornFaces(0.9, 2.2, 2.6, 0.9, 2.2, 4.3, 0.35),
-      ...hornFaces(2.4, 2.6, 2.6, 2.4, 2.6, 4.3, 0.35),
-      ...boxFaces3(1.6, 2.3, 2.5, 1.9, 0.45, 4.3),
-      ...domeFaces3(1.6, 2.3, 0.5, 0.45, 4.75),
+      /* 지붕 규칙(지적: 굴뚝·안테나 기둥 가려짐) — 지붕 위 얹힘들 전부 붙박이 큰 키. */
+      ...tagKey([
+        ...cylinderFaces3(-2.6, 0.8, 1.9, 2.4, 2.6),
+        ...domeFaces3(-2.6, 0.8, 1.9, 1.6, 5),
+        capFace(groundEllipse(sx2, sy2, 0.95, 0.26), 0.45),
+      ], 30),
+      ...tagKey([
+        ...cylinderFaces3(-0.5, -1.7, 1.1, 5, 2.6),
+        capFace(discPath3(-0.5, -1.7, 7.65, 0.78), 0.4),
+      ], 31),
+      ...tagKey([
+        ...cylinderFaces3(1.1, -2.3, 0.75, 4, 2.6),
+        capFace(discPath3(1.1, -2.3, 6.65, 0.5), 0.35),
+      ], 32),
+      ...tagKey([
+        ...cylinderFaces3(2.9, 0.4, 0.7, 3, 2.6),
+        bodyFace(groundEllipse(dx3, dy3, 2.35, 1.5)),
+        topFace(groundEllipse(dx3, dy3 - 0.15, 1.95, 1.2), 0.18),
+        capFace(groundEllipse(dx3, dy3, 1.25, 0.78), 0.42),
+      ], 33),
+      ...tagKey([
+        ...hornFaces(0.9, 2.2, 2.6, 0.9, 2.2, 4.3, 0.35),
+        ...hornFaces(2.4, 2.6, 2.6, 2.4, 2.6, 4.3, 0.35),
+        ...boxFaces3(1.6, 2.3, 2.5, 1.9, 0.45, 4.3),
+        ...domeFaces3(1.6, 2.3, 0.5, 0.45, 4.75),
+      ], 34),
     ];
   },
   /* 엔지니어링 베이(복원) — 사방 대각 팔 끝의 원반 발 넷, 각진 몸체 더미, 끝이
@@ -1455,7 +1477,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     };
     return [
       ...foot(-3.6, -2.2), ...foot(3.8, -2),
+      /* 밑 큰 몸통(재지적: 반원처럼 보이고 안 돎) — 드럼은 온전한 원기둥으로 두고,
+         둘레에 세로 이음판 여덟을 벽 밖으로 살짝 내밀어 도는 게 보이게 한다. */
       ...cylinderFaces3(0, 0, 4.6, 1.9, 1.3),
+      ...Array.from({ length: 8 }, (_, i) => {
+        const a = (i / 8) * Math.PI * 2 + 0.35;
+        return boxFaces3(Math.sin(a) * 4.72, Math.cos(a) * 4.72, 0.52, 0.52, 1.6, 1.35);
+      }).flat(),
       /* 각진 본체(재지적: 본체가 안 돎) — 원기둥·돔은 회전 대칭이라 돌아도 티가
          안 났다. 실물처럼 각진 슬래브 + 윗상자로 바꿔 요잉이 보인다. */
       ...boxFaces3(0, 0, 6.4, 4.6, 2.1, 3.2),
@@ -1480,6 +1508,29 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 왼앞 아치 별채.
       ...boxFaces3(-3, 1.6, 3.2, 2.9, 2.3),
       ...domeFaces3(-3, 1.6, 1.4, 1, 2.3),
+      /* 앞 톱니바퀴(요청: 포지의 포인트) — 별채 앞벽의 기어 데칼: 테 고리 + 속판 +
+         축 + 둘레 이 여덟. 벽 데칼이라 요잉을 따라 돌고, 앞이 보일 때만 그린다. */
+      ...(facingRatio(0, 1) > -0.02 ? ((): ShapeFace[] => {
+        const k = Math.min(1, (facingRatio(0, 1) + 0.02) / 0.35);
+        const fr = wallFrame(-3, 3.06, 1.15, 0.62, 0.62);
+        const g: ShapeFace[] = [
+          capFace(wallDiscPath(-3, 3.06, 1.15, 0.95, 0.95), 0.22 * k),
+          topFace(wallDiscPath(-3, 3.07, 1.15, 0.62, 0.62), 0.3 * k),
+          capFace(wallDiscPath(-3, 3.08, 1.15, 0.24, 0.24), 0.4 * k),
+        ];
+        for (let i = 0; i < 8; i += 1) {
+          const t = (i / 8) * Math.PI * 2;
+          const p1 = fr.pt(t - 0.16, 1.5);
+          const p2 = fr.pt(t + 0.16, 1.5);
+          const p3 = fr.pt(t + 0.1, 2.05);
+          const p4 = fr.pt(t - 0.1, 2.05);
+          g.push(topFace(
+            `M${p1[0]} ${p1[1]} L${p2[0]} ${p2[1]} L${p3[0]} ${p3[1]} L${p4[0]} ${p4[1]} Z`,
+            0.3 * k,
+          ));
+        }
+        return tagKey(g, depthNow(-3, 1.6) + 1.6);
+      })() : []),
       // 총알 기둥 무리.
       ...cylinderFaces3(-2.9, -2.6, 0.75, 3.6),
       ...domeFaces3(-2.9, -2.6, 0.75, 0.7, 3.6),
@@ -1515,10 +1566,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     };
     const [cx2, cy2] = project(0, -0.2, 3.6);
     return [
-      // 뒤 발톱 손가락 셋.
-      ...hornFaces(-0.9, -1.5, 3.8, -1.3, -2.1, 8, 1),
-      ...hornFaces(0, -1.8, 3.8, 0, -2.5, 8.6, 1.1),
-      ...hornFaces(0.9, -1.5, 3.8, 1.3, -2.1, 8, 1),
+      /* 뒤 발톱 손가락 셋 — 세로로 선 뿔은 뿌리·끝의 평면 깊이 차가 작아 자동 키가
+         너무 얕고, 드럼(반지름 키)이 요잉 따라 덮었다(지적: 기둥 가려짐). 제 자리
+         깊이 + 키 높이만큼으로 명시한다. */
+      ...tagKey(hornFaces(-0.9, -1.5, 3.8, -1.3, -2.1, 8, 1), depthNow(-1.1, -1.8) + 1.2),
+      ...tagKey(hornFaces(0, -1.8, 3.8, 0, -2.5, 8.6, 1.1), depthNow(0, -2.1) + 1.2),
+      ...tagKey(hornFaces(0.9, -1.5, 3.8, 1.3, -2.1, 8, 1), depthNow(1.1, -1.8) + 1.2),
       ...orbPod(-2.9, -1.5),
       ...orbPod(2.9, -1.5),
       // 가운데 드럼.
@@ -1605,11 +1658,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const a = (ang * Math.PI) / 180;
       out.push(...boxFaces3(Math.sin(a) * 4.7, Math.cos(a) * 4.7, 0.8, 0.8, 0.9));
     }
-    // 오목 대접 + 심 발광.
-    out.push(capFace(discPath3(0, 0, 1.15, 3), 0.3));
-    out.push(capFace(discPath3(0, 0, 1.18, 2.1), 0.45));
+    /* 오목 대접 + 심 발광 — 받침 키에 명시로 묶는다(지적: 기둥 가려짐 — 마지막 톱니
+       키를 물려받아 요잉 따라 아주 늦게 그려지며 뒤 판들을 덮었다). */
     const [gx2, gy2] = project(0, 0, 1.25);
-    out.push(topFace(groundEllipse(gx2, gy2, 0.7, 0.4), 0.5));
+    out.push(...tagKey([
+      capFace(discPath3(0, 0, 1.15, 3), 0.3),
+      capFace(discPath3(0, 0, 1.18, 2.1), 0.45),
+      topFace(groundEllipse(gx2, gy2, 0.7, 0.4), 0.5),
+    ], depthNow(0, 0) + 1.1));
     /* 뒤 기둥들(재지적: 뾰족뿔이 아니라 끝이 둥근 넙적판) — 바깥으로 기운 넓은 판,
        꼭대기는 둥근 캡. */
     const plate = (
@@ -3472,6 +3528,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      큰 분화구와 작은 분화구, 각자 어두운 구멍과 김. */
   geyser: () => [
     ...domeFaces3(0, 0, 4.4, 1.5),
+    /* 밑바닥 회전(지적: 안 돎) — 언덕은 회전 대칭이라 티가 없어, 둘레에 바위 혹
+       셋을 심어 요잉이 보이게 한다. 자동 키로 앞뒤 가림도 자연히 맞는다. */
+    ...domeFaces3(2.9, 1.9, 1.1, 0.75),
+    ...domeFaces3(-3.2, 1.1, 0.9, 0.6),
+    ...domeFaces3(-1.2, -3.3, 1, 0.68),
     ...frustumFaces3(-0.7, 0.4, 3.4, 2.8, 2.2, 1.8, 1.5, 1.2),
     capFace(groundEllipse(...project(-0.7, 0.4, 2.75), 1.4, 0.68), 0.5),
     ...frustumFaces3(2.2, -1.3, 1.5, 1.3, 0.95, 0.8, 0.9, 1.05),
@@ -6903,38 +6964,9 @@ export default function ReplayMotionPlayer({
         </div>
       </div>
 
-      {/* 조종간(요청: 두 줄) — 윗줄은 스크러버 하나, 아랫줄에 재생·배속·시간이 선다. */}
-      <div className="scr-motion-bar">
-        {/* 비제어 탐색바(지적: 드래그가 안 먹고 느림 — 위 rangeRef 주석). step이 없어야
-            ×4에서도 손잡이가 툭툭 안 뛴다. --p는 지나온 자리를 채우는 그라데이션 경계다. */}
-        <input
-          ref={rangeRef}
-          className="scr-motion-range" type="range"
-          min={0} max={total} step="any" defaultValue={t}
-          onPointerDown={() => { scrubbing.current = true; }}
-          onPointerUp={() => { scrubbing.current = false; }}
-          onPointerCancel={() => { scrubbing.current = false; }}
-          onInput={(e) => {
-            const el = e.target as HTMLInputElement;
-            const v = Number(el.value);
-            el.style.setProperty("--p", `${total > 0 ? (v / total) * 100 : 0}%`);
-            // 지도는 프레임당 한 번만 따라온다 — 끌기 이벤트마다 그리면 손이 밀린다.
-            if (seekPending.current === null) {
-              requestAnimationFrame(() => {
-                const sv = seekPending.current;
-                seekPending.current = null;
-                if (sv === null) return;
-                setT(sv);
-                setDone(sv >= total);
-              });
-            }
-            seekPending.current = v;
-          }}
-          aria-label="재생 위치"
-        />
-      </div>
       {/* 보기 설정 줄(정리·요청) — 원형 버튼 11개 중 윗줄 여섯: 보기(2D/3D)·컬러(팀색/
-          개인색)·모델크기(×1/×2)를 짝 버튼으로, 종류 사이엔 갭. 지형 편집은 걷었다. */}
+          개인색)·모델크기(×1/×2)를 짝 버튼으로, 종류 사이엔 갭. 지형 편집은 걷었다.
+          자리는 조종부 위(재지적: 탐색바와 겹침) — 스크러버보다 먼저 선다. */}
       <div className="scr-motion-bar scr-motion-viewrow">
         <span className="scr-motion-btngroup" role="group" aria-label="보기">
           <button
@@ -6984,6 +7016,36 @@ export default function ReplayMotionPlayer({
             크게
           </button>
         </span>
+      </div>
+      {/* 조종간(요청: 두 줄) — 윗줄은 스크러버 하나, 아랫줄에 재생·배속·시간이 선다. */}
+      <div className="scr-motion-bar">
+        {/* 비제어 탐색바(지적: 드래그가 안 먹고 느림 — 위 rangeRef 주석). step이 없어야
+            ×4에서도 손잡이가 툭툭 안 뛴다. --p는 지나온 자리를 채우는 그라데이션 경계다. */}
+        <input
+          ref={rangeRef}
+          className="scr-motion-range" type="range"
+          min={0} max={total} step="any" defaultValue={t}
+          onPointerDown={() => { scrubbing.current = true; }}
+          onPointerUp={() => { scrubbing.current = false; }}
+          onPointerCancel={() => { scrubbing.current = false; }}
+          onInput={(e) => {
+            const el = e.target as HTMLInputElement;
+            const v = Number(el.value);
+            el.style.setProperty("--p", `${total > 0 ? (v / total) * 100 : 0}%`);
+            // 지도는 프레임당 한 번만 따라온다 — 끌기 이벤트마다 그리면 손이 밀린다.
+            if (seekPending.current === null) {
+              requestAnimationFrame(() => {
+                const sv = seekPending.current;
+                seekPending.current = null;
+                if (sv === null) return;
+                setT(sv);
+                setDone(sv >= total);
+              });
+            }
+            seekPending.current = v;
+          }}
+          aria-label="재생 위치"
+        />
       </div>
       <div className="scr-motion-bar scr-motion-bar-controls">
         {/* 차례가 곧 그리드 칸이다(지적: 재생이 줄 가운데, 배속은 왼쪽에 필터처럼) —

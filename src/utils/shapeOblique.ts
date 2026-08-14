@@ -596,44 +596,54 @@ export function domeFaces3(
 export function tubeFaces(
   x1: number, y1: number, x2: number, y2: number, r: number, z = 0, capOpen = false,
 ): ShapeFace[] {
-  const [ax, ay] = project(x1, y1, z);
-  const [bx, by] = project(x2, y2, z);
+  /* 원기둥 투영 그대로(재재수리·지적: 원통 끝면 처리) — 스타디움·벽 짜깁기를 걷고,
+     원기둥의 실제 투영으로 그린다: 축 양끝의 단면 타원 두 장 + 그 사이 접선 사각.
+     단면 타원은 축과 수직 지름이 2r, 축 방향 두께는 축이 화면을 마주보는 만큼
+     (facing) 도톰해진다. 어느 요잉에서도 끝이 물리거나 뚫리지 않는다. */
+  const zr = r * 0.9;
+  const dzc = -zr / 2; // 예전 배치(투영선이 관의 배)와 눈높이를 맞추는 오프셋.
+  const [ax0, ay0] = project(x1, y1, z);
+  const [bx0, by0] = project(x2, y2, z);
+  const ax = ax0;
+  const ay = ay0 + dzc;
+  const bx = bx0;
+  const by = by0 + dzc;
   const dx = bx - ax;
   const dy = by - ay;
-  const len = Math.hypot(dx, dy) || 1;
-  const nx = (-dy / len) * r;
-  const ny = (dx / len) * r;
-  const zr = r * 0.9;
-  /* 몸통은 스타디움 두 장(재수리·지적: 끝 반원 밑에 검은 조각) — 예전 벽은 긴 변에만
-     매달린 네모라, 끝 호가 드리우는 처마 밑이 안 채워져 각도에 따라 물어뜯긴 조각이
-     보였다. 같은 윤곽을 관 두께만큼 내려 한 장 더 깔면(위 장이 윗면, 아래 장이 배)
-     볼록 윤곽의 압출 실루엣이 어느 방향에서도 닫힌다. 옆벽 선택 논리도 필요 없다. */
-  const stad = (dz: number): string =>
-    `M${r2(ax + nx)} ${r2(ay + ny + dz)} L${r2(bx + nx)} ${r2(by + ny + dz)}`
-    + ` A${r2(r)} ${r2(r * 0.8)} 0 0 1 ${r2(bx - nx)} ${r2(by - ny + dz)}`
-    + ` L${r2(ax - nx)} ${r2(ay - ny + dz)}`
-    + ` A${r2(r)} ${r2(r * 0.8)} 0 0 1 ${r2(ax + nx)} ${r2(ay + ny + dz)} Z`;
-  const faces: ShapeFace[] = [bodyFace(stad(0)), bodyFace(stad(-zr))];
-  // 음영 띠는 화면 아래쪽 긴 변에 — 관의 배 쪽 그늘.
-  const ws: 1 | -1 = ny >= 0 ? 1 : -1;
-  const wnx = nx * ws;
-  const wny = ny * ws;
-  /* 끝 단면은 그 끝이 시청자를 향할 때만(수리·지적: 앞뒤 구멍이 아무 데서나 보임) —
-     화면 y 비교 대신 모형 축 방향의 facing으로 판정하고, 마주볼수록 또렷하게. */
-  if (capOpen) {
-    const ml = Math.hypot(x2 - x1, y2 - y1) || 1;
-    const fB = facingRatio((x2 - x1) / ml, (y2 - y1) / ml);
-    const f = Math.abs(fB);
-    if (f > 0.05) {
-      const [tx2, ty2] = fB > 0 ? [bx, by] : [ax, ay];
-      const k = Math.min(1, (f - 0.05) / 0.4);
-      faces.push(capFace(groundEllipse(tx2, ty2 - zr / 2, r * 0.85 * (0.35 + 0.65 * k), r * 0.7), 0.4 * k));
-    }
+  const len = Math.hypot(dx, dy);
+  const ml = Math.hypot(x2 - x1, y2 - y1) || 1;
+  const fB = facingRatio((x2 - x1) / ml, (y2 - y1) / ml);
+  const f = Math.abs(fB);
+  // 축 방향 반두께 — 옆을 볼 땐 납작(내려다봄 몫만), 마주볼수록 원에 가깝다.
+  const re = r * Math.max(0.22, f);
+  const ang = r2((Math.atan2(dy, dx) * 180) / Math.PI);
+  const endDisc = (ex: number, ey: number, k = 1): string => {
+    const nx2 = len < 0.05 ? 0 : (-dy / len) * r * k;
+    const ny2 = len < 0.05 ? r * k : (dx / len) * r * k;
+    return `M${r2(ex + nx2)} ${r2(ey + ny2)} A${r2(re * k)} ${r2(r * k)} ${ang} 1 1 ${r2(ex - nx2)} ${r2(ey - ny2)}`
+      + ` A${r2(re * k)} ${r2(r * k)} ${ang} 1 1 ${r2(ex + nx2)} ${r2(ey + ny2)} Z`;
+  };
+  const faces: ShapeFace[] = [bodyFace(endDisc(ax, ay)), bodyFace(endDisc(bx, by))];
+  if (len >= 0.05) {
+    const nx = (-dy / len) * r;
+    const ny = (dx / len) * r;
+    faces.push(bodyFace(`M${r2(ax + nx)} ${r2(ay + ny)} L${r2(bx + nx)} ${r2(by + ny)}`
+      + ` L${r2(bx - nx)} ${r2(by - ny)} L${r2(ax - nx)} ${r2(ay - ny)} Z`));
+    // 배 쪽 음영 띠 — 화면 아래쪽 긴 변.
+    const ws: 1 | -1 = ny >= 0 ? 1 : -1;
+    faces.push(sideFace(
+      `M${r2(ax + nx * ws * 0.55)} ${r2(ay + ny * ws * 0.55)} L${r2(bx + nx * ws * 0.55)} ${r2(by + ny * ws * 0.55)}`
+      + ` L${r2(bx + nx * ws)} ${r2(by + ny * ws)} L${r2(ax + nx * ws)} ${r2(ay + ny * ws)} Z`,
+      OP.sideSoft,
+    ));
   }
-  faces.push(sideFace(
-    `M${r2(ax + wnx)} ${r2(ay + wny - zr * 0.2)} L${r2(bx + wnx)} ${r2(by + wny - zr * 0.2)} L${r2(bx + wnx)} ${r2(by + wny)} L${r2(ax + wnx)} ${r2(ay + wny)} Z`,
-    OP.sideSoft,
-  ));
+  /* 시청자를 향한 끝의 단면 — capOpen이면 어두운 포구, 아니면 옅은 끝판 씸(막힌
+     원기둥의 끝면이 읽히게). 마주볼수록 또렷해진다. */
+  if (f > 0.08) {
+    const k = Math.min(1, (f - 0.08) / 0.4);
+    const [ex, ey] = fB > 0 ? [bx, by] : [ax, ay];
+    faces.push(capFace(endDisc(ex, ey, capOpen ? 0.78 : 0.92), (capOpen ? 0.42 : 0.14) * k));
+  }
   const dA = depthNow(x1, y1);
   const dB2 = depthNow(x2, y2);
   return tagKey(faces, (dA + dB2) / 2 + Math.min(r * 2, Math.abs(dA - dB2) / 2));
