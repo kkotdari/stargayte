@@ -6073,8 +6073,12 @@ export default function ReplayMotionPlayer({
             if (raising) {
               // 공사는 종족 공용 모델(고치·소환구·공사장)이 말한다.
               /* 저그 고치는 크기 자체가 두근거린다(요청: 확대 바운스) — 10Hz t의 사인
-                 박동. 스프라이트는 2px 칸 양자화라 두어 가지 크기를 오가며 캐시된다. */
-              const beat = race2 === "저그" ? 1 + 0.06 * Math.sin(t * 5.2) : 1;
+                 박동. 스프라이트는 2px 칸 양자화라 두어 가지 크기를 오가며 캐시된다.
+                 그리고 게임처럼 단계 성장(재지적: 너무 작음): 공사 진행에 따라 0.7배에서
+                 1.5배까지 세 단계로 자란다. */
+              const prog = Math.min(1, (t - sec) / (BUILD_SEC[unit] ?? 30));
+              const stage = prog < 0.33 ? 0.7 : prog < 0.7 ? 1.1 : 1.5;
+              const beat = race2 === "저그" ? stage * (1 + 0.06 * Math.sin(t * 5.2)) : 1;
               unitOps.push({
                 fx: fxF, fy: fyF, z,
                 kind: race2 === "저그" ? "cocoon" : race2 === "프로토스" ? "warpin" : "scaffold",

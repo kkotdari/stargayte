@@ -12904,40 +12904,57 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   position: absolute; pointer-events: none;
   width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%;
 }
-/* 테란은 용접 스파크(재재지적: 불빛 말고) — 노란 불티가 불규칙하게 탁탁 튄다.
-   본체 점 + 곁 불티 둘(의사요소)이 한 주기에 세 번, 어긋난 타이밍으로 번쩍인다. */
+/* 테란은 튀는 용접 불티(재재재지적: 위치는 상자 가운데, 라이트가 아니라 스파크) —
+   글로우 두른 불티 셋이 저마다 다른 방향으로 튀어 오르다 포물선으로 떨어진다. */
 .scr-bfx-terran {
-  width: 4px; height: 4px; margin: -8px 0 0 -1px;
-  border-radius: 50%; opacity: 0;
-  background: radial-gradient(circle, #fff7d8 0%, #ffd76a 55%, transparent 78%);
-  animation: scr-bfx-spark 1.7s steps(1) infinite;
+  width: 3px; height: 3px; margin: -2px 0 0 -1px; border-radius: 50%;
+  background: #fff2c0; box-shadow: 0 0 4px 1px rgba(255, 200, 90, 0.9);
+  opacity: 0;
+  animation: scr-spark-a 1.4s ease-out infinite;
 }
 .scr-bfx-terran::before,
 .scr-bfx-terran::after {
-  content: ""; position: absolute; width: 2px; height: 2px; border-radius: 50%;
-  background: #ffe9a8;
+  content: ""; position: absolute; left: 0; top: 0;
+  width: 2px; height: 2px; border-radius: 50%;
+  background: #ffd76a; box-shadow: 0 0 3px 1px rgba(255, 190, 80, 0.8);
+  opacity: 0;
 }
-.scr-bfx-terran::before { left: -3px; top: -2px; }
-.scr-bfx-terran::after { left: 4px; top: -3px; }
-@keyframes scr-bfx-spark {
-  0%, 6% { opacity: 1; }
-  7%, 22% { opacity: 0; }
-  23%, 28% { opacity: 1; }
-  29%, 58% { opacity: 0; }
-  59%, 63% { opacity: 1; }
-  64%, 100% { opacity: 0; }
+.scr-bfx-terran::before { animation: scr-spark-b 1.4s ease-out infinite 0.15s; }
+.scr-bfx-terran::after { animation: scr-spark-c 1.4s ease-out infinite 0.45s; }
+@keyframes scr-spark-a {
+  0% { opacity: 0; transform: translate(0, 0); }
+  5% { opacity: 1; }
+  30% { opacity: 1; transform: translate(4px, -6px); }
+  55% { opacity: 0; transform: translate(6px, -1px); }
+  100% { opacity: 0; transform: translate(6px, -1px); }
+}
+@keyframes scr-spark-b {
+  0% { opacity: 0; transform: translate(0, 0); }
+  8% { opacity: 1; }
+  35% { opacity: 1; transform: translate(-5px, -5px); }
+  60% { opacity: 0; transform: translate(-7px, 1px); }
+  100% { opacity: 0; transform: translate(-7px, 1px); }
+}
+@keyframes scr-spark-c {
+  0% { opacity: 0; transform: translate(0, 0); }
+  6% { opacity: 1; }
+  32% { opacity: 1; transform: translate(2px, -7px); }
+  58% { opacity: 0; transform: translate(4px, -3px); }
+  100% { opacity: 0; transform: translate(4px, -3px); }
 }
 /* 저그는 글로우 없음(재지적) — 고치 자체가 말한다. */
 .scr-bfx-zerg { display: none; }
-/* 프로토스는 더 작고 은은하게(재지적). */
+/* 프로토스는 또렷한 발광(재재지적: 거의 안 보였다) — 밝은 심 + 블룸 그림자로
+   빛나는 느낌을 살리되 크기는 아담하게. */
 .scr-bfx-toss {
-  width: 12px; height: 12px; margin: -6px 0 0 -6px;
-  background: radial-gradient(circle, rgba(210, 235, 255, 0.55) 0%, rgba(120, 180, 255, 0.25) 55%, transparent 75%);
-  animation: scr-bfx-glow 2.2s ease-in-out infinite;
+  width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(235, 248, 255, 0.9) 0%, rgba(150, 200, 255, 0.5) 45%, transparent 72%);
+  box-shadow: 0 0 10px 2px rgba(140, 190, 255, 0.55);
+  animation: scr-bfx-glow 2s ease-in-out infinite;
 }
 @keyframes scr-bfx-glow {
-  0%, 100% { opacity: 0.25; transform: scale(0.85); }
-  50% { opacity: 0.6; transform: scale(1.05); }
+  0%, 100% { opacity: 0.4; transform: scale(0.85); }
+  50% { opacity: 0.9; transform: scale(1.1); }
 }
 
 /* 건물 소멸(요청: 종족별) — 테란 주황 폭발+회색 연기, 저그 보라 살점 퍼짐, 프로토스
