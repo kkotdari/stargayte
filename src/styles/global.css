@@ -13025,7 +13025,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    막대 길이·각·지연은 인라인(건물 번호 해시)이 정한다. */
 .scr-bfx-terran { width: 0; height: 0; }
 .scr-bfx-weld {
-  position: absolute; left: 0; top: 0; width: 1.5px; border-radius: 1px;
+  /* 앵커는 상자 가운데(재지적: 위치가 안 맞음) — left/top 0은 18px 상자의 왼쪽 위
+     모서리라, 불티가 건물에서 9px(모바일선 3타일) 비껴 떠 있었다. */
+  position: absolute; left: 50%; top: 50%; width: 1.5px; border-radius: 1px;
   background: #fff; box-shadow: 0 0 3px rgba(255, 255, 255, 0.95);
   transform-origin: 50% 0; opacity: 0;
   animation: scr-weld 0.9s linear infinite;

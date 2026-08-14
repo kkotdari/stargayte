@@ -5410,6 +5410,8 @@ export default function ReplayMotionPlayer({
     const el = mapRef.current;
     if (!el) return;
     let pinch: { d: number; z: number; cx: number; cy: number; px: number; py: number } | null = null;
+    let pinchPend: { z: number; p: { x: number; y: number } } | null = null;
+    let pinchRaf = 0;
     const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
     const onTS = (e: TouchEvent) => {
       if (e.touches.length !== 2) return;
@@ -5440,8 +5442,16 @@ export default function ReplayMotionPlayer({
       // 핀치 시작점 아래의 지도 지점이 손가락을 따라오도록 pan을 푼다.
       const ux = (pinch.cx - ox - pinch.px) / pinch.z;
       const uy = (pinch.cy - oy - pinch.py) / pinch.z;
-      setZoom(z);
-      setPan(z <= 1 ? { x: 0, y: 0 } : { x: mx2 - ox - z * ux, y: my2 - oy - z * uy });
+      /* 프레임당 한 번만 커밋(지적: 확대축소가 튐) — touchmove는 프레임보다 잦게 와서
+         매번 setState하면 무거운 리렌더가 겹겹이 밀려 손을 못 따라왔다. 마지막 값만
+         rAF에 실어 한 프레임에 한 번 반영한다. */
+      pinchPend = { z, p: z <= 1 ? { x: 0, y: 0 } : { x: mx2 - ox - z * ux, y: my2 - oy - z * uy } };
+      if (!pinchRaf) {
+        pinchRaf = requestAnimationFrame(() => {
+          pinchRaf = 0;
+          if (pinchPend) { setZoom(pinchPend.z); setPan(pinchPend.p); pinchPend = null; }
+        });
+      }
     };
     const onTE = (e: TouchEvent) => {
       if (e.touches.length < 2) pinch = null;
@@ -5451,6 +5461,7 @@ export default function ReplayMotionPlayer({
     el.addEventListener("touchend", onTE);
     el.addEventListener("touchcancel", onTE);
     return () => {
+      if (pinchRaf) cancelAnimationFrame(pinchRaf);
       el.removeEventListener("touchstart", onTS);
       el.removeEventListener("touchmove", onTM);
       el.removeEventListener("touchend", onTE);
@@ -6691,9 +6702,9 @@ export default function ReplayMotionPlayer({
                         key={k}
                         className="scr-bfx-weld"
                         style={{
-                          width: `${Math.max(0.6, 0.9 * ws).toFixed(1)}px`,
-                          height: `${((1.5 + ((i * 7 + k * 5) % 5) * 0.5) * ws).toFixed(1)}px`,
-                          transform: `rotate(${k * 60 + ((i * 13 + k * 29) % 30)}deg) translateY(${((1.5 + ((i + k * 3) % 3)) * ws).toFixed(1)}px)`,
+                          width: `${Math.max(0.5, 0.7 * ws).toFixed(1)}px`,
+                          height: `${((1.2 + ((i * 7 + k * 5) % 5) * 0.4) * ws).toFixed(1)}px`,
+                          transform: `rotate(${k * 60 + ((i * 13 + k * 29) % 30)}deg) translateY(${((1.2 + ((i + k * 3) % 3) * 0.8) * ws).toFixed(1)}px)`,
                           animationDelay: `${((i * 3 + k * 7) % 9) / 10}s`,
                         }}
                       />
