@@ -341,9 +341,12 @@ export default function GameResultStory({
      pk 계정에 그 역할이 없어 버튼이 안 섰다(지적) — 1번 회원이거나 닉네임 pk면 열고,
      운영자도 검수용으로 함께 열어 둔다. 모바일에서는 안 선다. */
   const me = useAppStore((s) => s.user);
+  /* 폭 문턱 1160 → 900(지적: 운영자인데 버튼이 안 보임) — 브라우저 확대율(125%↑)을
+     쓰면 창이 넓어도 innerWidth가 1160 아래로 내려가 입구가 조용히 사라졌다. 두 판을
+     나란히 두는 데는 900이면 충분하다. */
   const canDual = !!me
     && (me.id === "1" || me.nickname === "pk" || isAdminRole(me.roles))
-    && typeof window !== "undefined" && window.innerWidth >= 1160;
+    && typeof window !== "undefined" && window.innerWidth >= 900;
   const [dualOpen, setDualOpen] = useState(false);
   // 확대 창 왼쪽 기둥의 타임스탬프(요청: 공통 양식) — 앱 공용 시각 유틸(formatWhen)로,
   // 리플레이 실제 시작 시각(시각 포함), 없으면 경기 날짜.
