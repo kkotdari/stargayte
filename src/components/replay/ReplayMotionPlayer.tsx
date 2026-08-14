@@ -3588,31 +3588,33 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        마디로 내려와 끝이 두 갈래로 벌어진다(공식 컨셉의 큰 집게 팔). */
     for (const sx of [-1, 1]) {
       for (const lyy of [-0.5, 1]) {
-        legs.push(seg(sx * 1.9, lyy, 3.4, sx * 3.1, lyy, 1.2, 0.52));
-        legs.push(seg(sx * 3.1, lyy, 1.2, sx * 2.5, lyy, -0.9, 0.4));
+        // 가늘게(재지적) — 매달린 실다리 느낌.
+        legs.push(seg(sx * 1.9, lyy, 3.4, sx * 3.1, lyy, 1.2, 0.34));
+        legs.push(seg(sx * 3.1, lyy, 1.2, sx * 2.5, lyy, -0.9, 0.26));
       }
       // 앞 집게팔(재재지적: 뒷다리보다 살짝 짧게, 뿌리는 얇고 집게 쪽에서 확 굵게) —
       // 사다리꼴 마디로 아래로 갈수록 부풀고, 발끝은 옆다리(-0.9)보다 조금 위에서 끝난다.
-      legs.push(seg(sx * 0.8, 1.7, 3.2, sx * 1.3, 2.7, 1.4, 0.45, 0.7));
-      legs.push(seg(sx * 1.3, 2.7, 1.4, sx * 1.15, 3.3, 0.2, 0.7, 1.3));
+      legs.push(seg(sx * 0.8, 1.7, 3.2, sx * 1.3, 2.7, 1.4, 0.3, 0.5));
+      legs.push(seg(sx * 1.3, 2.7, 1.4, sx * 1.15, 3.3, 0.2, 0.5, 0.95));
       // 집게 — 굵은 밑동에서 두 갈래로 좁아지는 날.
-      legs.push(seg(sx * 1.15, 3.3, 0.2, sx * 1.7, 3.75, -0.6, 0.95, 0.35));
-      legs.push(seg(sx * 1.15, 3.3, 0.2, sx * 0.6, 3.85, -0.55, 0.95, 0.35));
+      legs.push(seg(sx * 1.15, 3.3, 0.2, sx * 1.7, 3.75, -0.6, 0.7, 0.25));
+      legs.push(seg(sx * 1.15, 3.3, 0.2, sx * 0.6, 3.85, -0.55, 0.7, 0.25));
     }
     /* 눈(재재재재지적: 동그란 컨택트 렌즈꼴로, 얼굴 정면에서 45도 양쪽) — 풍선 표면의
        정면 기준 좌우 45도 자리에 붙는 렌즈 한 쌍: 진한 원판 위에 밝은 속원이 얹힌
        볼록 렌즈다. 모델 좌표라 요잉을 따라 표면을 돌아 나가고, 깊이 키(depthNow)로
        앞으로 돌아온 눈은 몸 위에, 뒤로 간 눈은 몸 뒤에 선다. */
-    const eyeA = Math.PI / 4;
+    // 양옆으로(재지적: 눈은 얇은 컨택트 렌즈꼴로 양옆에) — 정면 기준 90도.
+    const eyeA = Math.PI / 2;
     const eyeR = 2.9;
     const exs = Math.sin(eyeA) * eyeR;
     const eys = Math.cos(eyeA) * eyeR;
     const [b1x, b1y] = project(-exs, eys, 5.2);
     const [b2x, b2y] = project(exs, eys, 5.2);
-    // 더 크고 납작하게(재지적) — 렌즈 폭을 키우고 세로를 눌렀다.
+    // 얇은 렌즈(재재지적) — 납작한 채로 폭만 줄였다.
     const lens = (lx2: number, ly2: number): ShapeFace[] => [
-      bodyFace(groundEllipse(lx2, ly2, 1.05, 0.62)),
-      topFace(groundEllipse(lx2, ly2, 0.62, 0.34), 0.45),
+      bodyFace(groundEllipse(lx2, ly2, 0.9, 0.5)),
+      topFace(groundEllipse(lx2, ly2, 0.5, 0.26), 0.45),
     ];
     /* 흰 가시(공식 컨셉) — 풍선 윗면 여기저기서 바깥으로 솟는 짧은 가시. 밝은 덮개를
        얹어 몸색과 갈라 희게 읽힌다. 모델 좌표라 요잉을 따라 돌고, 제 깊이를 달아
@@ -3639,13 +3641,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       bodyFace(legs.join(" ")),
       ...tagKey(lens(b1x, b1y), depthNow(-exs, eys)),
       ...tagKey(lens(b2x, b2y), depthNow(exs, eys)),
+      // 혹 완전 축소(재지적: 머리 혹 줄이기) — 살짝 도드라지는 정도만.
       ...tagKey([
-        bodyFace(groundEllipse(g1x, g1y, 1.9, 1.75)),
-        topFace(groundEllipse(g1x - 0.55, g1y - 0.6, 0.95, 0.68), 0.5),
+        bodyFace(groundEllipse(g1x, g1y, 0.95, 0.85)),
+        topFace(groundEllipse(g1x - 0.28, g1y - 0.3, 0.42, 0.3), 0.5),
       ], depthNow(1.4, -1.8)),
       ...tagKey([
-        bodyFace(groundEllipse(g2x, g2y, 0.95, 0.88)),
-        topFace(groundEllipse(g2x - 0.25, g2y - 0.3, 0.45, 0.32), 0.5),
+        bodyFace(groundEllipse(g2x, g2y, 0.5, 0.45)),
+        topFace(groundEllipse(g2x - 0.13, g2y - 0.16, 0.22, 0.16), 0.5),
       ], depthNow(-0.3, -2.3)),
       ...spike(-1.2, -0.5, 1),
       ...spike(0.1, -1.2, 1.1),
