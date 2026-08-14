@@ -3837,14 +3837,20 @@ const workerKindOf = (race?: string): string =>
   race === "테란" ? "scv" : race === "저그" ? "drone" : "probe";
 /* 기본 쐐기도 폐기(요청) — 표에 없는 낯선 유닛은 그 종족의 기본 보병 꼴로 그린다. */
 /* 유닛별 전투 효과(요청: 불 말고 무기 특성) — 근접은 없음. */
+/* 무기 세분화(재지적: 이왕 한 거 세분화) — 드라군은 포톤캐논과 같은 광자포(photon),
+   커세어는 광자 집중 지지기(flare), 배틀·레이스는 광선 뾱뾱(laser, 레이스·골리앗은
+   공중 상대면 미사일 — 그리는 쪽에서 가른다), 캐리어는 두두두두 다발총(burst), 아콘은
+   번개 줄기 지지기(zap), 뮤탈은 가시 투척(glave를 투척 다트로), 럴커는 초록 줄이 아닌
+   가시(spike), 가디언은 노란 독구체(acidball). 템플러는 물리 공격이 없고(스톰은 캐스트
+   가 따로 그린다) 스커지는 자폭(죽음이 곧 공격)이라 뺀다. */
 const ATTACK_FX: Record<string, string> = {
-  Marine: "gun", Ghost: "gun", Vulture: "gun", Goliath: "gun", Wraith: "gun",
-  Battlecruiser: "bolt", "Siege Tank": "cannon", "Siege Tank (Tank Mode)": "cannon",
+  Marine: "gun", Ghost: "gun", Vulture: "gun", Goliath: "gun", Wraith: "laser",
+  Battlecruiser: "laser", "Siege Tank": "cannon", "Siege Tank (Tank Mode)": "cannon",
   "Siege Tank (Siege Mode)": "cannon", Firebat: "flame", Medic: "heal",
-  Hydralisk: "spine", Lurker: "spine", Mutalisk: "glave", Devourer: "acid",
-  Guardian: "acid", Queen: "acid", Valkyrie: "missile", Scourge: "glave",
-  Dragoon: "bolt", Scout: "bolt", Corsair: "bolt", Arbiter: "bolt", Carrier: "bolt",
-  "High Templar": "bolt", Reaver: "cannon",
+  Hydralisk: "spine", Lurker: "spike", Mutalisk: "glave", Devourer: "acid",
+  Guardian: "acidball", Queen: "acid", Valkyrie: "missile",
+  Dragoon: "photon", Scout: "bolt", Corsair: "flare", Arbiter: "bolt", Carrier: "burst",
+  Archon: "zap", Reaver: "cannon",
 };
 const unitMarkerKind = (u: string, race?: string): string =>
   UNIT_3D[u] ?? (race === "테란" ? "gunner" : race === "저그" ? "zling" : "zealot");
@@ -5093,31 +5099,36 @@ export default function ReplayMotionPlayer({
      가까운 적 유닛 마커를 향해 '남은 거리의 반'만 끌어당긴다. 반씩인 이유: 상대도 같은
      조정으로 다가오므로 양쪽이 반씩 오면 꼭 목표 거리(근접 0.8타일, 원거리 사정거리)
      에서 만나고, 서로 원좌표 기준이라 지나쳐 겹치지 않는다. 시야(9타일) 밖은 안 끈다. */
-  const engageFoes: { team: number; x: number; y: number }[] = [];
+  const engageFoes: { team: number; x: number; y: number; air: boolean }[] = [];
   motion.players.forEach((p2, pi2) => {
     const team2 = teamOfRaw(p2.raw) ?? 0;
     for (const sq of refinedSquads[pi2] ?? []) {
       if (sq.length === 0 || t < sq[0][0]) continue;
       const q = posAt(sq, t, null);
-      if (q) engageFoes.push({ team: team2, x: q.x, y: q.y });
+      if (q) engageFoes.push({ team: team2, x: q.x, y: q.y, air: false });
     }
     for (const g2 of typeSquads[pi2] ?? []) {
       if (ENGAGE_SKIP.has(g2.unit)) continue;
       if (g2.walk.length === 0 || t < g2.walk[0][0]) continue;
       const q = posAt(g2.walk, t, null);
-      if (q) engageFoes.push({ team: team2, x: q.x, y: q.y });
+      // 공중 무리인가(재지적: 레이스·골리앗은 공중 상대면 미사일) — 식구 전부가 공중일 때.
+      if (q) engageFoes.push({
+        team: team2, x: q.x, y: q.y,
+        air: (BY_UNITS[g2.unit] ?? [g2.unit]).every((u3) => isAirUnit(u3)),
+      });
     }
   });
   const nearestFoe = (team: number | undefined, x: number, y: number) => {
     let bx = 0;
     let by = 0;
     let bd = Infinity;
+    let bAir = false;
     for (const f of engageFoes) {
       if (!team || f.team === team) continue;
       const d = Math.hypot(f.x - x, f.y - y);
-      if (d < bd) { bd = d; bx = f.x; by = f.y; }
+      if (d < bd) { bd = d; bx = f.x; by = f.y; bAir = f.air; }
     }
-    return { bx, by, bd };
+    return { bx, by, bd, air: bAir };
   };
   const engagePosOf = <P extends { x: number; y: number }>(
     team: number | undefined, unitName: string | null, pos: P,
@@ -7704,7 +7715,8 @@ export default function ReplayMotionPlayer({
                       다른 빛줄기가 적 쪽으로 뻗는다. */}
                   {atkDeg !== null && ATTACK_FX[u] && ATTACK_FX[u] !== "heal" && di % 3 === 0 && (
                     <span
-                      className={`scr-motion-tracer scr-tracer-${ATTACK_FX[u]}`}
+                      className={`scr-motion-tracer scr-tracer-${
+                        (u === "Wraith" || u === "Goliath") && foeDir.air ? "missile" : ATTACK_FX[u]}`}
                       style={{ transform: `rotate(${atkDeg.toFixed(1)}deg)`, animationDelay: `${((di * 7) % 5) / 10}s` }}
                     />
                   )}
@@ -7929,7 +7941,8 @@ export default function ReplayMotionPlayer({
                       다른 빛줄기가 적 쪽으로 뻗는다. */}
                   {atkDeg !== null && ATTACK_FX[u] && ATTACK_FX[u] !== "heal" && di % 3 === 0 && (
                     <span
-                      className={`scr-motion-tracer scr-tracer-${ATTACK_FX[u]}`}
+                      className={`scr-motion-tracer scr-tracer-${
+                        (u === "Wraith" || u === "Goliath") && foeDir.air ? "missile" : ATTACK_FX[u]}`}
                       style={{ transform: `rotate(${atkDeg.toFixed(1)}deg)`, animationDelay: `${((di * 7) % 5) / 10}s` }}
                     />
                   )}

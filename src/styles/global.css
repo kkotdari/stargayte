@@ -13278,9 +13278,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   animation-duration: 0.6s;
 }
 .scr-tracer-glave {
-  width: 3px; height: 5px; border-radius: 50%;
-  background: rgba(190, 255, 190, 0.9);
-  animation-duration: 0.5s;
+  width: 2px; height: 5px; border-radius: 1px;
+  background: linear-gradient(to bottom, rgba(200, 230, 170, 0.95), rgba(140, 170, 110, 0.6));
+  animation-name: scr-shot; animation-duration: 0.45s;
 }
 .scr-tracer-missile {
   width: 2px; height: 12px;
@@ -13291,6 +13291,54 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   width: 3.5px; height: 6px; border-radius: 50%;
   background: rgba(150, 220, 90, 0.9);
   animation-duration: 0.75s;
+}
+/* 세분화(재지적) — 광자포는 파란 구슬이 날아가고(photon), 커세어는 광자 집중
+   지지기(flare), 테란 광선은 붉게 뾱뾱(laser), 캐리어 요격기는 두두두두(burst),
+   아콘은 번개 줄기(zap), 럴커는 땅에서 솟는 가시 줄(spike), 가디언은 노란
+   독구체(acidball). 날아가는 것들은 translate 애니(scr-shot)로 실제로 나아간다 —
+   회전(transform)은 그대로 두고 translate 속성만 움직인다. */
+@keyframes scr-shot {
+  0% { translate: 0 2px; opacity: 0; }
+  12% { opacity: 1; }
+  70% { translate: 0 9px; opacity: 1; }
+  100% { translate: 0 12px; opacity: 0; }
+}
+.scr-tracer-photon {
+  width: 3.5px; height: 3.5px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(190, 220, 255, 0.95) 0 45%, rgba(110, 160, 255, 0.5) 75%, transparent 80%);
+  animation-name: scr-shot; animation-duration: 0.5s;
+}
+.scr-tracer-flare {
+  width: 2px; height: 7px;
+  background: linear-gradient(to bottom, rgba(200, 230, 255, 0.95), rgba(120, 180, 255, 0));
+  animation-duration: 0.22s;
+}
+.scr-tracer-laser {
+  width: 1.5px; height: 7px;
+  background: linear-gradient(to bottom, rgba(255, 120, 100, 0.95), rgba(255, 120, 100, 0));
+  animation-duration: 0.3s;
+}
+.scr-tracer-burst {
+  width: 1.5px; height: 8px;
+  background: linear-gradient(to bottom, rgba(255, 244, 200, 0.95), rgba(255, 244, 200, 0));
+  animation-duration: 0.22s;
+}
+.scr-tracer-zap {
+  width: 2.5px; height: 9px;
+  background: repeating-linear-gradient(
+    to bottom, rgba(210, 230, 255, 0.95) 0 2px, rgba(140, 170, 255, 0.5) 2px 3px);
+  animation-duration: 0.2s;
+}
+.scr-tracer-spike {
+  width: 3px; height: 8px;
+  background: repeating-linear-gradient(
+    to bottom, rgba(190, 210, 150, 0.9) 0 2px, transparent 2px 4px);
+  animation-duration: 0.5s;
+}
+.scr-tracer-acidball {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(235, 220, 90, 0.95) 0 45%, rgba(180, 170, 40, 0.5) 75%, transparent 80%);
+  animation-name: scr-shot; animation-duration: 0.9s;
 }
 .scr-motion-atkfx {
   position: absolute; left: 62%; top: 28%; width: 6px; height: 6px;
