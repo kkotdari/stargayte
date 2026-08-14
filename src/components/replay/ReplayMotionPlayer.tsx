@@ -6450,13 +6450,23 @@ export default function ReplayMotionPlayer({
                  닿으면 그 마커가 이어받는다. 일꾼은 부대가 아니라 채굴 줄에 스며드는
                  것이라 짧은 페이드로 정리한다. */
               let alpha = 1;
-              const holdEnd = arrive + FRESH_HOLD_SEC;
+              const isWorkerU = unit === "SCV" || unit === "Probe" || unit === "Drone";
+              // 일꾼은 랠리에서 서성이지 않는다(지적) — 닿는 즉시 미네랄로 향한다.
+              const holdEnd = arrive + (isWorkerU ? 0 : FRESH_HOLD_SEC);
               if (t > holdEnd) {
-                const isWorkerU = unit === "SCV" || unit === "Probe" || unit === "Drone";
                 let tx: number | null = null;
                 let ty: number | null = null;
                 let bestD = Infinity;
-                if (!isWorkerU) {
+                if (isWorkerU) {
+                  /* 일꾼은 가장 가까운 미네랄 밭으로(지적: 미네랄로 안 가고 페이드아웃) —
+                     일꾼 걸음으로 걸어가 스며들고, 닿는 순간부터는 채굴 점이 이어받는다. */
+                  for (const rz of grid.resources ?? []) {
+                    if (rz[2] === 1) continue;
+                    const d2 = Math.hypot(rz[0] - fx, rz[1] - fy);
+                    if (d2 < bestD) { bestD = d2; tx = rz[0]; ty = rz[1]; }
+                  }
+                  if (bestD > 20) { tx = null; ty = null; }
+                } else {
                   for (const sq of refinedSquads[pIdx] ?? []) {
                     const pos2 = posAt(sq, t, null);
                     if (!pos2) continue;
@@ -6464,21 +6474,21 @@ export default function ReplayMotionPlayer({
                     if (d2 < bestD) { bestD = d2; tx = pos2.x; ty = pos2.y; }
                   }
                 }
-                const v2 = Math.max(1.5, speedOf(unit, done, p.ups));
+                const v2 = isWorkerU ? 3.7 : Math.max(1.5, speedOf(unit, done, p.ups));
                 const walked = (t - holdEnd) * v2;
                 if (tx === null || ty === null || bestD <= 0.15) {
-                  // 갈 곳이 없거나 이미 부대 위 — 짧은 페이드로 스며든다.
+                  // 갈 곳이 없거나 이미 그 위 — 짧은 페이드로 스며든다.
                   if (t > holdEnd + 1) continue;
                   alpha = Math.max(0, 1 - (t - holdEnd));
                 } else if (walked >= bestD) {
-                  continue; // 부대에 닿았다 — 그 마커가 이어받는다.
+                  continue; // 닿았다 — 부대 마커(또는 채굴 점)가 이어받는다.
                 } else {
                   if (t > holdEnd + FRESH_MERGE_MAX) continue;
                   hdg = Math.atan2(-(tx - fx), ty - fy) * (180 / Math.PI);
                   const f2 = walked / bestD;
                   fx += (tx - fx) * f2;
                   fy += (ty - fy) * f2;
-                  // 부대가 계속 도망가 오래 못 닿으면 마지막 2초는 페이드로 정리.
+                  // 목적지가 계속 멀면 마지막 2초는 페이드로 정리.
                   if (t > holdEnd + FRESH_MERGE_MAX - 2) {
                     alpha = Math.max(0, (holdEnd + FRESH_MERGE_MAX - t) / 2);
                   }
@@ -7482,9 +7492,14 @@ export default function ReplayMotionPlayer({
             const [ax3, ay3] = dodge(pos.x, pos.y);
             const [fx, fy] = posFrac(ax3, ay3);
             const isOvie = race === "저그" && g.kind !== "worker";
+            /* 낱개(lone) 자취의 종족 기본 모델은 첫 전투 유닛 완성 뒤에만(지적: 게이트도
+               없는데 일꾼이 질럿으로) — 그 전의 낱개 자취는 일꾼일 수밖에 없어 일꾼
+               모델로 그린다. */
+            const armyBorn = (unitDoneByRaw.get(p.raw) ?? []).some(([du, ds]) =>
+              du !== "SCV" && du !== "Probe" && du !== "Drone" && ds.length > 0 && ds[0] <= t);
             const kind = isOvie ? "ovie"
               : g.kind === "carrier" ? (race === "테란" ? "dship" : "shuttle")
-                : g.kind === "worker" ? workerKindOf(race)
+                : g.kind === "worker" || !armyBorn ? workerKindOf(race)
                   : (race === "테란" ? "gunner" : race === "저그" ? "zling" : "zealot");
             unitOps.push({
               fx, fy,
