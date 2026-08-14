@@ -1145,7 +1145,8 @@ function clusterResources(md: ScrepResult["MapData"]): [number, number, 0 | 1][]
       1,
     ]);
   }
-  return zones;
+  // 서버 상한(128)에 맞춰 자른다 — 지대 40 + 가스 낱개가 넘칠 일은 드물지만 422는 막는다.
+  return zones.slice(0, 128);
 }
 
 export async function parseReplayFile(file: File): Promise<ParsedReplay> {
