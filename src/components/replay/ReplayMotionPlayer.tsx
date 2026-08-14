@@ -12,7 +12,7 @@ import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } f
 import {
   bodyFace, capFace, depthNow, groundEllipse, sideFace, tagKey, topFace, type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
-  domeFaces3, faceLight, facingRatio, frustumFaces3, hornFaces, limbFaces, pyramidFaces3, tubeFaces,
+  domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces, limbFaces, pyramidFaces3, tubeFaces,
   wallDiscPath, wallFrame, withPitchView, withTopView, withViewShear, withYaw, zsorted,
 } from "../../utils/shapeOblique";
 import type { MinimapMarker } from "./ReplayMinimap";
@@ -1129,15 +1129,41 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         out.push(topFace(groundEllipse(...project(tx2 * 0.94, ty2 * 0.94, 3.2), 0.32, 0.5), 0.4));
       }
     }
-    /* 위 구조물은 입체 고치(재지적: 띠 곡선이 아니라 몸이 있는 번데기) — 뒤 테두리
-       에서 웅덩이 위로 숙이는 돔 마디 무더기 + 숙인 머리 뿔. 진짜 3D 부품이라 요잉에
-       그대로 돌고 명암도 따라온다. */
-    out.push(...domeFaces3(-4.9, -2.5, 1.45, 1.25, 4.3));
-    out.push(...domeFaces3(-3.7, -2, 1.7, 1.5, 5.3));
-    out.push(...domeFaces3(-2.4, -1.4, 1.5, 1.3, 6.2));
-    out.push(...domeFaces3(-1.2, -0.8, 1.15, 1, 6.8));
-    out.push(...hornFaces(-0.9, -0.6, 7.5, -0.1, 0.2, 6.2, 0.55));
-    out.push(topFace(groundEllipse(...project(-0.25, 0.1, 6.5), 0.45, 0.4), 0.5));
+    /* 위 구조물은 왕고치 하나(재재지적: 고치 넷 무더기 걷고 딱 하나 높게) — 테두리
+       뒤편에 우뚝 선 큰 번데기. 껍질에도 격자무늬: 그 높이의 껍질 반지름으로 도는
+       가로 테 고리 + 앞면을 타는 세로 이음선을 두른다. */
+    const KX = -3.4;
+    const KY = -2.1;
+    out.push(...domeFaces3(KX, KY, 2, 6, 1.8));
+    const sq = groundSquashNow();
+    // 가로 테 — 도넛 고리(바깥 정방향 + 안 역방향 감김이 구멍을 낸다).
+    for (const [gz, gr] of [[3.1, 1.86], [4.7, 1.52], [6.1, 1.06]] as const) {
+      const [ex, ey] = project(KX, KY, gz);
+      const ri = gr - 0.16;
+      out.push(sideFace(
+        `M${ex - gr} ${ey}a${gr} ${gr * sq} 0 1 0 ${gr * 2} 0a${gr} ${gr * sq} 0 1 0 ${-gr * 2} 0Z`
+        + `M${ex - ri} ${ey}a${ri} ${ri * sq} 0 1 1 ${ri * 2} 0a${ri} ${ri * sq} 0 1 1 ${-ri * 2} 0Z`,
+        0.16,
+      ));
+    }
+    // 세로 이음선 — 앞을 보는 각도의 이음만, 껍질 반지름을 따라 휘어 오른다.
+    for (const a of [-0.7, 0.5, 1.6, 2.8]) {
+      const dxs = Math.sin(a);
+      const dys = Math.cos(a);
+      if (facingRatio(dxs, dys) < 0.15) continue;
+      const seam: [number, number, number][] = [];
+      for (const [zf, rf] of [[1.9, 0.97], [3.4, 0.93], [4.9, 0.76], [6.4, 0.5], [7.3, 0.22]] as const) {
+        seam.push([KX + dxs * 2 * rf, KY + dys * 2 * rf, zf]);
+      }
+      for (let i = 0; i < seam.length - 1; i += 1) {
+        const [p1x, p1y] = project(...seam[i]);
+        const [p2x, p2y] = project(...seam[i + 1]);
+        out.push(sideFace(
+          `M${p1x - 0.07} ${p1y} L${p2x - 0.07} ${p2y} L${p2x + 0.07} ${p2y} L${p1x + 0.07} ${p1y} Z`,
+          0.16,
+        ));
+      }
+    }
     void pt;
     return out;
   },
