@@ -4054,18 +4054,20 @@ const pathOf = (d: string): Path2D => {
    줌 중엔 크기 양자화 칸이 바뀌며 다시 굽지만 멈추면 전부 캐시 적중이다. */
 const SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number }>();
 function unitSprite(
-  op: UnitDrawOp, pxq: number, B: number, zq: number, shadow: boolean,
+  op: UnitDrawOp, pxq: number, B: number,
 ): { cv: HTMLCanvasElement; pad: number; l: number } | null {
   const rotB = op.rotDeg !== undefined
     ? ((Math.round(op.rotDeg / 22.5) * 22.5) % 360 + 360) % 360 : -1;
   const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
   const key = `${op.kind}|${rotB}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}`
-    + `|${op.color}|${pxq}|${B.toFixed(2)}|${shadow ? zq : 0}`;
+    + `|${op.color}|${pxq}|${B.toFixed(2)}`;
   const hit = SPRITE_CACHE.get(key);
   if (hit) return hit;
   const { faces } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
   if (!faces) return null;
-  const pad = shadow ? Math.ceil(2 + 2.5 * zq) : 2;
+  /* (제거·요청) 드롭섀도 굽기 — 건물·유닛 그림자를 다 걷어 굽는 판도 그림자 없이 민다.
+     pad는 안티에일리어싱 여유만. */
+  const pad = 2;
   const l = pxq + pad * 2;
   const cv = document.createElement("canvas");
   cv.width = Math.max(1, Math.ceil(l * B));
@@ -4073,11 +4075,6 @@ function unitSprite(
   const c2 = cv.getContext("2d");
   if (!c2) return null;
   c2.setTransform(B, 0, 0, B, 0, 0);
-  if (shadow) {
-    c2.shadowColor = "rgba(0, 0, 0, 0.6)";
-    c2.shadowOffsetY = zq;
-    c2.shadowBlur = 1.5 * zq;
-  }
   c2.translate(pad, pad);
   c2.scale(pxq / 16, pxq / 16);
   for (const [d, o, fill] of faces) {
@@ -4156,17 +4153,12 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects }: {
     if (!ctx) return;
     ctx.setTransform(B, 0, 0, B, 0, 0);
     ctx.clearRect(0, 0, cw, ch);
-    // SVG 도형의 그림자(drop-shadow 0 1px 1.5px)와 같은 값 — CSS 확대 시절과 같게
-    // 줌 배율을 태운다(그림자도 도형과 함께 커져야 결이 같다).
-    ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
-    ctx.shadowOffsetY = zoom;
-    ctx.shadowBlur = 1.5 * zoom;
+    /* (제거·요청) 도형 드롭섀도 — 건물·유닛 그림자를 다 걷었다(떠다니는 것 제외).
+       떠 있음은 아래 hover 분기의 발밑 타원만 말한다. */
     // 렌즈 CSS(translate(pan) scale(zoom), 원점 가운데)와 같은 사상 — 분수 자리를
     // 확대·팬이 실린 화면 픽셀로 푼다.
     const zx = (f: number): number => (f - 0.5) * cw * zoom + cw / 2 + pan.x;
     const zy = (f: number): number => (f - 0.5) * ch * zoom + ch / 2 + pan.y;
-    // 그림자 굽기용 줌 양자화 — 스프라이트 키가 줌마다 갈리지 않게 반 칸 단위.
-    const zq = Math.max(0.5, Math.round(zoom * 2) / 2);
     const sorted = [...ops].sort((a, b) => a.z - b.z);
     const paintOps = (list: UnitDrawOp[]) => {
     for (const op of list) {
@@ -4182,10 +4174,9 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects }: {
          드리우면 그림자가 두 겹이 된다. 일꾼 셋도 떠다니는 기계라 같은 규칙(지적:
          일꾼들도 공중에 떠 있으니 바닥 그림자) — 다만 몸은 안 들어올린다. */
       /* 떠다니는 지상 유닛도 같은 규칙(지적) — 벌처·아콘·다크 아콘·하이 템플러는
-         부양 유닛이라 발밑 그림자를 깔고 자체 그림자는 걷는다. */
+         부양 유닛이라 발밑 그림자를 깐다. */
       const hover = op.air || op.kind === "scv" || op.kind === "probe" || op.kind === "drone"
         || op.kind === "vulture" || op.kind === "archon" || op.kind === "darchon" || op.kind === "htemp";
-      ctx.shadowColor = op.noShadow || hover ? "transparent" : "rgba(0, 0, 0, 0.6)";
       if (op.textGlyph) {
         // 부속건물 + 같은 글자 하나 — 스팬 글자와 같은 굵기·가운데 앵커.
         ctx.globalAlpha = op.alpha;
@@ -4249,17 +4240,20 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects }: {
       if (hover) {
         ctx.save();
         ctx.shadowColor = "transparent";
-        ctx.globalAlpha = op.alpha * 0.3;
+        /* 떠다니는 지상 유닛(일꾼·벌처·아콘류)은 겨우 발밑만 떠 있다(지적: 그림자가
+           너무 크고 진해) — 높이 나는 공중 유닛보다 작고 옅은 타원. */
+        const shw = px * (op.air ? 0.3 : 0.2);
+        ctx.globalAlpha = op.alpha * (op.air ? 0.3 : 0.16);
         ctx.fillStyle = "#000";
         ctx.beginPath();
-        ctx.ellipse(sx, sy + px * 0.06, px * 0.3, px * 0.12, 0, 0, Math.PI * 2);
+        ctx.ellipse(sx, sy + px * 0.06, shw, shw * 0.4, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
       /* 스프라이트로 찍는다(수리: 프레임 뚝뚝) — 면 낱장 fill 대신 구운 판 한 장.
          크기는 2px 칸으로 양자화해 캐시를 맞추고, 블릿에서 잔차 배율을 입힌다. */
       const pxq = Math.max(4, Math.round(px / 2) * 2);
-      const spr = unitSprite(op, pxq, B, zq, !(op.noShadow || hover));
+      const spr = unitSprite(op, pxq, B);
       ctx.translate(sx, sy - px * 0.24 - lift);
       if (rot) ctx.rotate((rot * Math.PI) / 180);
       if (spr) {
@@ -6041,7 +6035,9 @@ export default function ReplayMotionPlayer({
       className={cx("scr-motion", big && "scr-motion-big")}
       // 확대 모드에선 폭 상한을 안 건다 — 모달 폭(아래 포털)이 이미 맵+양옆 세로 조작부
       // 기준으로 확정돼 있고, 여기까지 조이면 이중 제약으로 맵이 더 작아진다.
-      style={big ? undefined : { maxWidth: `calc((100dvh - 230px) * ${(grid.width / grid.height).toFixed(4)})`, margin: "0 auto" }}
+      // 230 → 150px(요청: PC도 이제 페이지라 기본맵 더 크게) — 모달 시절엔 플레이어
+      // 전체가 한 화면에 들어야 했지만 페이지는 스크롤이 있다. 로스터·조작부 몫만 남긴다.
+      style={big ? undefined : { maxWidth: `calc((100dvh - 150px) * ${(grid.width / grid.height).toFixed(4)})`, margin: "0 auto" }}
     >
       <div className="scr-motion-maprow">
       {teamCol(1)}
