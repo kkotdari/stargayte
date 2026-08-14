@@ -890,12 +890,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     for (const phi of PHIS) {
       // 길이 2.7 → 2.2(요청: 육각형 길이를 조금만 짧게).
       const d = leaf(phi, R, 2.2, 1.05);
-      out.push(bodyFace(d));
-      if (Math.cos(phi) > 0.5) out.push(topFace(d, 0.18)); // 위 잎 등이 빛을 받고
-      else if (Math.cos(phi) < -0.5) out.push(sideFace(d, 0.24)); // 아래 잎은 어둡다
-      else if (Math.sin(phi) > 0.5) out.push(sideFace(d, 0.12)); // 오른 잎은 옅은 그늘
+      /* 판 두께(지적) — 바깥쪽(축 반대 방향)으로 한 겹 더 깔면 가장자리로 두께 테가
+         비친다. */
+      const back = leaf(phi, R + 0.32, 2.2, 1.05);
+      const faces: ShapeFace[] = [bodyFace(back), sideFace(back, 0.28), bodyFace(d)];
+      if (Math.cos(phi) > 0.5) faces.push(topFace(d, 0.18)); // 위 잎 등이 빛을 받고
+      else if (Math.cos(phi) < -0.5) faces.push(sideFace(d, 0.24)); // 아래 잎은 어둡다
+      else if (Math.sin(phi) > 0.5) faces.push(sideFace(d, 0.12)); // 오른 잎은 옅은 그늘
       // 잎 안쪽(배) 발광 — 축을 보는 면에 밝은 작은 육각 잎.
-      out.push(topFace(leaf(phi, R - 0.18, 1.35, 0.58), 0.5));
+      faces.push(topFace(leaf(phi, R - 0.18, 1.35, 0.58), 0.5));
+      /* 잎마다 제 깊이(지적: 뒤에 있는 판이 안 가려짐) — 손 면이라 깊이가 없어 원래
+         순서대로 그려졌다. 요잉에 따라 왼·오른 잎이 앞뒤로 갈리므로 중심 깊이를 단다. */
+      out.push(...tagKey(faces, depthNow(Math.sin(phi) * R, 0)));
     }
     return out;
   },
@@ -2170,6 +2176,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...boxFaces3(0, 2.2, 1.2, 2.6, 0.9, 5.7),
     ...boxFaces3(0, 4.1, 3.6, 1.2, 1.4, 5.5),
     ...boxFaces3(0, -1.4, 1.2, 1.2, 0.8, 7),
+    /* 야마토 포문 홈(요청) — 머리 앞면 가운데의 어두운 구멍과 옅은 테. 앞면 벽 데칼
+       (wallDiscPath)이라 요잉과 함께 돌고, 뒤에선 몸에 가려 안 그린다. */
+    ...(facingRatio(0, 1) > -0.05
+      ? ((): ShapeFace[] => {
+        const k = Math.min(1, (facingRatio(0, 1) + 0.05) / 0.4);
+        return [
+          topFace(wallDiscPath(0, 4.72, 6.2, 0.6, 0.5), 0.18 * k),
+          capFace(wallDiscPath(0, 4.72, 6.2, 0.42, 0.34), 0.5 * k),
+        ];
+      })()
+      : []),
   ],
   /* 발키리(실물 참고) — 뭉툭한 큰 몸통에 둥근 코, 지붕의 미사일 튜브 다발 두 줄,
      양옆의 납작한 판 날개, 뒤 엔진 블록. */
@@ -2385,19 +2402,25 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ] as [number, number, number];
       }),
     );
-    /* 볼륨감(재정정: 돔을 얹는 게 아니라 꽃잎 자체가 가운데 두툼한 렌즈꼴) — 잎마다
-       가운데를 향해 줄인 볼록판을 한 단 띄워 겹치면, 가장자리는 얇고 중심이 부푼
-       렌즈로 읽힌다. */
+    /* 볼록 렌즈형(재재정정: 두께도) — 잎마다 세 겹이다: 아래로 볼록한 밑쉘(줄인
+       판을 한 단 내려 깐다, 아래 두께가 실루엣 밖으로 살짝 비친다) + 본판(가장자리)
+       + 위로 볼록한 윗판. 가장자리는 얇고 가운데가 위아래로 부푼 렌즈가 된다. */
+    const lens = (
+      cx2: number, m2: 0 | 1 | -1, z0: number, xr: number, yr: number,
+      shade: "L" | "R" | "T",
+    ): ShapeFace[] => [
+      bodyFace(petal(cx2, m2, z0 - 0.45, xr * 0.82, yr * 0.82)),
+      sideFace(petal(cx2, m2, z0 - 0.45, xr * 0.82, yr * 0.82), 0.24),
+      bodyFace(petal(cx2, m2, z0, xr, yr)),
+      shade === "L" ? topFace(petal(cx2, m2, z0, xr, yr), 0.16)
+        : shade === "R" ? sideFace(petal(cx2, m2, z0, xr, yr), 0.18)
+          : topFace(petal(cx2, m2, z0, xr, yr), 0.1),
+      topFace(petal(cx2, m2, z0 + 0.45, xr * 0.62, yr * 0.6), shade === "T" ? 0.15 : 0.12),
+    ];
     return [
-      bodyFace(petal(-1.3, -1, 5.1, 1.05, 3.9)),
-      topFace(petal(-1.3, -1, 5.1, 1.05, 3.9), 0.16),
-      topFace(petal(-1.3, -1, 5.5, 0.62, 2.3), 0.14),
-      bodyFace(petal(1.3, 1, 5.1, 1.05, 3.9)),
-      sideFace(petal(1.3, 1, 5.1, 1.05, 3.9), 0.18),
-      topFace(petal(1.3, 1, 5.5, 0.62, 2.3), 0.08),
-      bodyFace(petal(0, 0, 6.5, 1.05, 4.1)),
-      topFace(petal(0, 0, 6.5, 1.05, 4.1), 0.1),
-      topFace(petal(0, 0, 6.95, 0.62, 2.4), 0.15),
+      ...lens(-1.3, -1, 5.1, 1.05, 3.9, "L"),
+      ...lens(1.3, 1, 5.1, 1.05, 3.9, "R"),
+      ...lens(0, 0, 6.5, 1.05, 4.1, "T"),
     ];
   },
   /* 아비터(재정정: 날개는 지면과 수직으로 몸에 붙고, 특히 앞쪽에 두께감) — 수평으로
@@ -2816,33 +2839,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      길게 늘어지는 두 팔. */
   archon: () => {
     const [cx, cy] = project(0, 0, 5);
-    /* 구 속 형체가 요잉에 돈다(지적: 요잉에도 안 움직임) — 화면 좌표 상수 대신 모델
-       x축의 투영(u)을 따라 가로 오프셋을 놓는다: 구는 어느 각에서나 같지만, 속의
-       종잇장 형체는 함께 돌아 비스듬히 눌리고 옆에선 실루엣만 남는다. */
-    const [ax1, ay1] = project(1, 0, 5);
-    const ux = ax1 - cx;
-    const uy = ay1 - cy;
-    const P = (dx: number, dy: number): string => `${cx + dx * ux} ${cy + dy + dx * uy}`;
-    /* 몸통 타원도 같은 평면 사상으로(재지적: 돌 때 몸통이 떨림) — 축 고정 타원에
-       가로 눌림만 주니 함께 도는 머리·팔과 결이 어긋나 흔들려 보였다. 같은 P()로
-       그린 다각 타원이라 형체 전체가 한 몸으로 돈다. */
-    const fig = (rx: number, ry: number, dy0: number, dx0 = 0): string => Array.from(
-      { length: 12 },
-      (_, i) => {
-        const t2 = (i / 12) * Math.PI * 2;
-        return `${i === 0 ? "M" : "L"}${P(dx0 + Math.cos(t2) * rx, dy0 + Math.sin(t2) * ry)}`;
-      },
-    ).join(" ") + " Z";
+    /* 속 형체도 입체(재지적) — 종잇장 평면 사상 대신 진짜 3D 부품(돔 몸통·뿔 머리·
+       뿔 팔)을 어두운 실루엣으로 겹친다: 프리미티브의 몸판 패스만 받아 검정 반투명
+       한 겹으로 칠하면, 요잉에 자연히 돌고 어느 각에서도 부피가 산다. */
+    const dark = (faces: ShapeFace[], o: number): ShapeFace[] =>
+      faces.filter(([, fo, fill]) => fo === 1 && !fill).map(([d]) => [d, o, "#000"] as ShapeFace);
     return [
       [groundEllipse(cx, cy, 3.6, 3.4), 0.55] as ShapeFace,
       topFace(groundEllipse(cx, cy, 3.6, 3.4), 0.3),
-      // 구 속 형체 — 머리 불꽃·몸·양팔이 다 P()로, 요잉을 따라 돈다.
-      capFace(`M${P(0, -2.5)} L${P(0.55, -1.5)} L${P(-0.5, -1.45)} Z`, 0.4),
-      capFace(fig(0.75, 1.15, -0.4), 0.35),
-      capFace(`M${P(-0.6, -1.2)} Q${P(-1.9, -0.4)} ${P(-1.6, 1.3)}`
-        + ` L${P(-1.3, 1.2)} Q${P(-1.4, -0.2)} ${P(-0.4, -0.8)} Z`, 0.35),
-      capFace(`M${P(0.6, -1.2)} Q${P(1.9, -0.2)} ${P(1.5, 1.5)}`
-        + ` L${P(1.2, 1.4)} Q${P(1.4, 0)} ${P(0.4, -0.8)} Z`, 0.35),
+      // 몸통 — 낮은 타원 돔. 머리 불꽃 — 위로 솟는 뿔. 팔 — 어깨에서 밖·아래로.
+      ...dark(domeFaces3(0, 0, 0.95, 1.9, 3.5), 0.35),
+      ...dark(hornFaces(0, 0, 5.6, 0, 0.35, 7.3, 0.7), 0.4),
+      ...dark(hornFaces(-0.65, 0.15, 5.4, -1.75, 0.55, 3.5, 0.5), 0.35),
+      ...dark(hornFaces(0.65, 0.15, 5.4, 1.75, 0.55, 3.5, 0.5), 0.35),
       topFace(groundEllipse(cx - 1.2, cy - 1.2, 1.3, 1), 0.4),
     ];
   },
@@ -2850,28 +2859,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      구 밖으로 가는 수염 호가 흩날린다. */
   darchon: () => {
     const [cx, cy] = project(0, 0, 5);
-    // 속 형체의 요잉 — 아콘과 같은 규칙(u축 투영). 수염 호·광택은 구 둘레 장식이라 그대로.
-    const [ax1, ay1] = project(1, 0, 5);
-    const ux = ax1 - cx;
-    const uy = ay1 - cy;
-    const P = (dx: number, dy: number): string => `${cx + dx * ux} ${cy + dy + dx * uy}`;
-    // 몸통 타원도 같은 평면 사상으로 — 아콘의 fig와 같은 이유(돌 때 떨림).
-    const fig = (rx: number, ry: number, dy0: number, dx0 = 0): string => Array.from(
-      { length: 12 },
-      (_, i) => {
-        const t2 = (i / 12) * Math.PI * 2;
-        return `${i === 0 ? "M" : "L"}${P(dx0 + Math.cos(t2) * rx, dy0 + Math.sin(t2) * ry)}`;
-      },
-    ).join(" ") + " Z";
+    // 속 형체도 입체(재지적) — 아콘과 같은 dark() 기법. 수염 호·광택은 구 둘레 장식.
+    const dark = (faces: ShapeFace[], o: number): ShapeFace[] =>
+      faces.filter(([, fo, fill]) => fo === 1 && !fill).map(([d]) => [d, o, "#000"] as ShapeFace);
     return [
       [groundEllipse(cx, cy, 3.6, 3.4), 0.55] as ShapeFace,
       capFace(groundEllipse(cx, cy, 3.6, 3.4), 0.25),
-      // 속 형체 — 뿔귀 둘·몸·아래로 늘어지는 갈퀴 팔.
-      capFace(`M${P(-0.1, -2.2)} L${P(0.95, -0.95)} L${P(0.1, -0.85)} Z`, 0.45),
-      capFace(`M${P(-1.25, -1.75)} L${P(-0.3, -0.9)} L${P(-1.05, -0.65)} Z`, 0.45),
-      capFace(fig(0.7, 1, 0.1, -0.15), 0.4),
-      capFace(`M${P(-0.5, 0.6)} Q${P(-1.3, 1.2)} ${P(-1.1, 2.2)}`
-        + ` L${P(-0.8, 2.1)} Q${P(-0.95, 1.2)} ${P(-0.25, 0.8)} Z`, 0.4),
+      // 속 형체 — 낮은 돔 몸통, 벌어진 뿔귀 둘, 아래로 늘어지는 갈퀴 팔.
+      ...dark(domeFaces3(-0.1, 0.1, 0.9, 1.7, 3.6), 0.4),
+      ...dark(hornFaces(-0.35, 0.1, 5.2, -1.2, 0.4, 6.9, 0.55), 0.45),
+      ...dark(hornFaces(0.35, 0.1, 5.2, 1.05, 0.35, 6.7, 0.5), 0.45),
+      ...dark(hornFaces(-0.35, 0.25, 4, -1, 0.7, 2.5, 0.45), 0.4),
       // 바깥 수염 호 — 가늘게 흩날린다.
       topFace(`M${cx - 3.1} ${cy - 1.9} Q${cx - 4.6} ${cy - 0.6} ${cx - 4.1} ${cy + 1}`
         + ` L${cx - 3.9} ${cy + 0.9} Q${cx - 4.3} ${cy - 0.5} ${cx - 2.95} ${cy - 1.75} Z`, 0.4),
@@ -3154,6 +3152,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     topFace(groundEllipse(...project(-0.9, 0.3, 4.4), 0.55, 0.35), 0.15),
   ],
 };
+/* 캐리어(인터셉터) — 갤러리용 별본(요청): 캐리어 둘레에 인터셉터 넷이 떠 있다. */
+SHAPE_BUILDERS.carrierbay = () => [
+  ...SHAPE_BUILDERS.carrier(),
+  ...domeFaces3(3.1, 1.8, 0.34, 0.28, 6.2),
+  ...domeFaces3(-3.4, 0.6, 0.34, 0.28, 4.6),
+  ...domeFaces3(2.5, -2.6, 0.34, 0.28, 5.3),
+  ...domeFaces3(-2.1, 2.9, 0.34, 0.28, 7.1),
+];
 /* 부품 깊이 정렬(지적: 일부만 가려지는 파트에서 뒤 요소가 비쳐 보임 — 가장 큰 문제) —
    빌더의 그리기 순서는 표준 시점 기준 고정이라, 요잉으로 뒤로 돌아간 부품이 앞 부품
    위에 그려졌다. 프리미티브(상자·절두·기둥·돔·뿔·관·다리)가 제 중심 깊이를 면에 달아
@@ -3255,6 +3261,7 @@ export const SHAPE_GALLERY: { kind: string; label: string }[] = (() => {
     ["wraith", "레이스"], ["bc", "배틀크루저"], ["valk", "발키리"], ["vessel", "사이언스 베슬"],
     ["muta", "뮤탈리스크"], ["guardian", "가디언"], ["devourer", "디바우러"], ["scourge", "스커지"],
     ["queen", "퀸"], ["corsair", "커세어"], ["scout", "스카웃"], ["carrier", "캐리어"],
+    ["carrierbay", "캐리어(인터셉터)"],
     ["arbiter", "아비터"], ["observer", "옵저버"],
     ["mineral", "미네랄"], ["geyser", "가스 간헐천"],
   ] as [string, string][]) {
