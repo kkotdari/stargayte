@@ -4050,6 +4050,9 @@ type UnitDrawOp = {
   /** 크립 판(요청: 크립은 벽·램프·다리를 못 넘는다) — 이 표시가 있는 판들은 먼저 깔고
    *  지형 차단 마스크로 파낸 뒤 나머지를 얹는다. */
   clipWalk?: boolean;
+  /** 겹침 방지 이완에서 뺀다(지적: 채굴 일꾼이 해처리 밖으로 밀려 엉뚱한 데서 캠) —
+   *  채굴 동선은 건물·자원과 겹치는 게 실제 모습이다. */
+  noSep?: boolean;
 };
 const PATH2D_CACHE = new Map<string, Path2D>();
 const pathOf = (d: string): Path2D => {
@@ -4188,7 +4191,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
           obst.push({ x: zx(o.fx), y: zy(o.fy), hw: (o.wFrac * cw * zoom) / 2, hh: (o.hFrac * cw * zoom) / 2 });
           continue;
         }
-        if (!o.air && UNIT_KIND_SET.has(o.kind)) mov.push(i);
+        if (!o.air && !o.noSep && UNIT_KIND_SET.has(o.kind)) mov.push(i);
       }
       if (mov.length > 0) {
         const px = mov.map((i) => zx(sorted[i].fx));
@@ -5744,7 +5747,9 @@ export default function ReplayMotionPlayer({
   const clockRef = useRef<{ raf: number; last: number; acc: number; drawn: number } | null>(null);
   useEffect(() => {
     if (!playing || !active) return undefined;
-    const DRAW_GAP_MS = 33;
+    // 모바일은 20Hz(재지적: 모바일과 PC는 주기가 달라야) — 폰 CPU에서 30Hz 리렌더는
+    // 오히려 밀려서 더 뚝뚝해진다. PC는 30Hz.
+    const DRAW_GAP_MS = pcView ? 33 : 50;
     const tick = (now: number) => {
       const c = clockRef.current;
       /* 한 틱 상한 — 브라우저가 rAF를 멈췄다 되살리면(백그라운드 탭) dt가 자리 비운
@@ -6116,7 +6121,12 @@ export default function ReplayMotionPlayer({
     const rs = grid.resources ?? [];
     for (let i = 0; i < rs.length; i += 1) {
       for (let j = i + 1; j < rs.length; j += 1) {
-        if (Math.hypot(rs[i][0] - rs[j][0], rs[i][1] - rs[j][1]) < 0.9) return true;
+        const d = Math.hypot(rs[i][0] - rs[j][0], rs[i][1] - rs[j][1]);
+        if (d < 0.9) return true;
+        /* 간헐천끼리 3.5타일 안(재발견: mineral10 맵) — 간헐천 발자국이 4×2라 정상
+           맵에선 이보다 가까울 수 없다. 미네랄 스택은 파서 병합(반경 1.2)이 한 항목으로
+           접어 위 0.9 검사에 안 걸리는데, 그런 맵은 가스도 겹쳐 줄지어 있다. */
+        if (rs[i][2] === 1 && rs[j][2] === 1 && d < 3.5) return true;
       }
     }
     return false;
@@ -7265,6 +7275,7 @@ export default function ReplayMotionPlayer({
               sizePx: unitGlyphPx(0, y),
               color: modeColor(owner!.raw, team),
               alpha: 1,
+              noSep: true,
             });
             return null;
           });
