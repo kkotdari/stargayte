@@ -11698,13 +11698,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 이름·시간 한 단 작게(요청: 맵 이름 텍스트 줄이기) — 배지 줄과 급을 맞춘다. */
 .scr-story-map-name { font-weight: 700; color: var(--text); font-size: var(--fs-caption); }
 .scr-story-map-dur { color: var(--muted); font-size: var(--fs-caption); }
-/* 승리 배지는 이긴 팀 벽에(지적: 2팀 승이 왼쪽이면 헷갈림) — 1팀 왼쪽·2팀 오른쪽,
-   무승부만 가운데 그대로. 머리가 내용 폭으로 줄어드는 자리라 줄을 좌우로 펴야
-   벽 정렬이 실제로 보인다(width 100%). */
-.scr-story-map-head-line.scr-story-head-left,
-.scr-story-map-head-line.scr-story-head-right { align-self: stretch; width: 100%; }
-.scr-story-map-head-line.scr-story-head-left { justify-content: flex-start; }
-.scr-story-map-head-line.scr-story-head-right { justify-content: flex-end; }
+/* (제거·재요청) 벽 정렬 규칙 — 승리 배지가 맵 이름 좌우로 인라인 배치되며 필요 없어졌다. */
 /* 승패 — 로스터를 감춘 자리(모바일)에서 vs 양옆의 배지가 사라지므로 여기서 알린다.
    색이 곧 이긴 편이다(미니맵 표시의 팀 색과 같은 값). */
 /* 승패 배지와 BEST 배지는 나란히 서므로 높이를 값으로 못 박는다(지적: 둘의 높이가 살짝

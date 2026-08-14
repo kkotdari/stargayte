@@ -1660,25 +1660,14 @@ export default function GameResultStory({
 
   const mapBlock = storyMap && (
     <div className="scr-story-map" {...stopBubble}>
-      {/* 머리는 두 줄이다(요청) — 윗줄은 그 판이 벌어진 자리(맵·경기 시간), 아랫줄은 그
-          판의 결말(승패·BEST PLAYER). 한 줄에 넷을 늘어놓으면 "어디서 몇 분"과 "누가 이겼나"가
-          한 문장처럼 이어져, 좁은 화면에서는 어디서 끊어 읽어야 할지가 매번 달라졌다. */}
+      {/* 머리 한 줄(재요청: 승리 배지는 맵 이름 좌우로) — [1팀 승] 맵이름 시간 [2팀 승].
+          1팀이 이기면 이름 왼쪽, 2팀(또는 무승부)이면 오른쪽에 서서 배지 자리가 곧 편을
+          말한다. BEST 칩은 로스터 이름 배지로 나갔다(요청). */}
       <div className="scr-story-map-head">
-        <div className="scr-story-map-head-line">
-          {mapName && <span className="scr-story-map-name">{mapName}</span>}
-          {minutes !== null && <span className="scr-story-map-dur">{minutes}분</span>}
-        </div>
-        {!showRoster && result !== "not_held" && (
-          /* 승리 배지는 이긴 팀 쪽에 선다(지적: 2팀이 이겼는데 왼쪽에 있으면 헷갈림) —
-             로스터가 1팀 왼쪽·2팀 오른쪽이라 배지도 그 편의 벽에 붙인다. BEST 칩은 이
-             줄에서 걷고 로스터 이름에 배지로 옮겼다(요청). */
-          <div className={cx(
-            "scr-story-map-head-line",
-            result === "team1" && "scr-story-head-left",
-            result === "team2" && "scr-story-head-right",
-          )}>
-            {/* 로스터를 감춘 자리(모바일)에서는 승패를 여기서 알려야 한다 — vs 양옆의 승/무
-                배지가 로스터와 함께 사라지기 때문이다. 색이 곧 이긴 편이다. */}
+        {(() => {
+          const winSpan = !showRoster && result !== "not_held" ? (
+            /* 로스터를 감춘 자리(모바일)에서는 승패를 여기서 알려야 한다 — vs 양옆의
+               승/무 배지가 로스터와 함께 사라지기 때문이다. 색이 곧 이긴 편이다. */
             <span
               className={cx("scr-story-win",
                 result === "draw" ? "scr-story-win-draw"
@@ -1686,10 +1675,16 @@ export default function GameResultStory({
             >
               {winLabel}
             </span>
-            {/* (이동·요청) BEST PLAYER 칩 — 이 줄에서 걷고 로스터의 그 사람 이름 칩에
-                배지로 단다(ReplayMotionPlayer의 bestRaw). */}
-          </div>
-        )}
+          ) : null;
+          return (
+            <div className="scr-story-map-head-line">
+              {result !== "draw" && o1 === "win" && winSpan}
+              {mapName && <span className="scr-story-map-name">{mapName}</span>}
+              {minutes !== null && <span className="scr-story-map-dur">{minutes}분</span>}
+              {(result === "draw" || o1 !== "win") && winSpan}
+            </div>
+          );
+        })()}
       </div>
       {/* (이동) "미니맵 좌우를 눌러…" 안내 — 재생 버튼 아래로 내렸다(요청). 그림 바로 위에
           있을 때는 제목과 그림 사이를 갈라 놓아, 정작 읽어야 할 머리 두 줄이 안내에 밀렸다. */}
