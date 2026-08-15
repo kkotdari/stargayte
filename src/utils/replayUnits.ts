@@ -1228,17 +1228,12 @@ export function buildUnitTracks(
       }
       if (tech === "Dark Swarm") swarmZones.push([csec, cx7, cy7]);
     }
-    /* 일꾼은 어지간해선 유탄을 안 맞는다(지적: 공격당한 적 없는 SCV가 빨갛다) — 부대
-       겨냥 반경(7타일)은 커맨드를 때리는 클릭만으로 그 곁 채굴 일꾼까지 전부 깎았다.
-       일꾼 사냥은 대개 일꾼을 직접 찍으므로, 일꾼은 클릭이 바짝(3타일) 붙었을 때만
-       다친 것으로 본다. */
-    const atkRad = mk === "SCV" || mk === "Probe" || mk === "Drone" ? 3 : 7;
     for (const a of atkEvts) {
       if (a.sec < life.born) continue;
       if (a.sec > lastEvSec + 240) break;
       if (!isFoeOf(a.owner, life.owner)) continue;
       const pos = posAtSec(life, a.sec, dmgTol(life, a.sec));
-      if (!pos || Math.hypot(a.x - pos[0], a.y - pos[1]) > atkRad) continue;
+      if (!pos || Math.hypot(a.x - pos[0], a.y - pos[1]) > 7) continue;
       if (stasisSpans.some(([sa, sb]) => a.sec >= sa && a.sec <= sb)) continue;
       // 공격 명령 하나 = 그 유닛이 1.4초쯤 두들긴 것. 공업 +10%/렙.
       let base = Math.min(80, a.dps * 1.4) * (1 + 0.1 * lvOf(wUpsBy, a.owner, a.sec));
