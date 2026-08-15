@@ -13039,9 +13039,10 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 }
 .scr-motion-clickfx::after {
   content: ""; position: absolute; left: 50%; top: 50%;
-  /* 점은 보이게(재지적: 원은 반으로 줄여도 점은 좀 보여야) — 비율을 올리고 최소 2px. */
-  width: max(2px, calc(var(--ckw, 9px) * 0.3)); height: max(2px, calc(var(--ckw, 9px) * 0.3));
-  margin: calc(max(2px, var(--ckw, 9px) * 0.3) / -2) 0 0 calc(max(2px, var(--ckw, 9px) * 0.3) / -2);
+  /* 점 축소 + 납작(재재지적: 점이 너무 커 고리가 면으로 보였다) — 테두리 타원과 같은
+     2:1 비율로 눌린 작은 점. */
+  width: calc(var(--ckw, 9px) * 0.24); height: calc(var(--ckw, 9px) * 0.12);
+  margin: calc(var(--ckw, 9px) * -0.06) 0 0 calc(var(--ckw, 9px) * -0.12);
   border-radius: 50%; background: currentColor;
   animation: scr-clickdot 0.9s ease-out forwards;
 }
