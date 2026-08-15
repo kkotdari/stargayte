@@ -3083,21 +3083,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     for (let i = 0; i < 6; i += 1) {
       const [x1, y1] = P(i * 60 + 30, 1.2);
       const [t1x, t1y] = P(i * 60 + 30, 2.45);
-      // 다리 검회색(요청).
-      out.push(...paintBase(hornFaces(x1, y1, 5.2, t1x, t1y, 4, 0.65), "#3a3f46"));
+      // 다리 짙은 갈색(재지적).
+      out.push(...paintBase(hornFaces(x1, y1, 5.2, t1x, t1y, 4, 0.65), "#6b4732"));
     }
     out.push(...domeFaces3(0, -1.1, 1.95, 1.75, 5.3));
     out.push(spot(-0.6, -1.5), spot(0.4, -1.9), spot(0.1, -0.9));
-    out.push(...domeFaces3(0, 0.7, 1.2, 0.9, 5.5));
+    // 머리 짙은 갈색(요청).
+    out.push(...paintBase(domeFaces3(0, 0.7, 1.2, 0.9, 5.5), "#6b4732"));
     // 전갈 독침꼬리 — 검회색(요청).
     out.push(...paintBase(hornFaces(0, -2.2, 5.9, 0, -3, 7.8, 0.7), "#3a3f46"));
     out.push(...paintBase(hornFaces(0, -3, 7.7, 0, -1.6, 9.2, 0.55), "#3a3f46"));
     out.push(...paintBase(hornFaces(0, -1.6, 9.1, 0, -0.4, 8.8, 0.45), "#3a3f46"));
-    // 큰 집게 한 쌍.
-    out.push(...hornFaces(1.3, 1, 5.8, 2.6, 2.2, 5.6, 0.95));
-    out.push(...hornFaces(2.6, 2.2, 5.6, 1.9, 3.5, 5.2, 0.7));
-    out.push(...hornFaces(-1.3, 1, 5.8, -2.6, 2.2, 5.6, 0.95));
-    out.push(...hornFaces(-2.6, 2.2, 5.6, -1.9, 3.5, 5.2, 0.7));
+    // 큰 집게 한 쌍 — 앞팔 짙은 갈색(요청).
+    out.push(...paintBase(hornFaces(1.3, 1, 5.8, 2.6, 2.2, 5.6, 0.95), "#6b4732"));
+    out.push(...paintBase(hornFaces(2.6, 2.2, 5.6, 1.9, 3.5, 5.2, 0.7), "#6b4732"));
+    out.push(...paintBase(hornFaces(-1.3, 1, 5.8, -2.6, 2.2, 5.6, 0.95), "#6b4732"));
+    out.push(...paintBase(hornFaces(-2.6, 2.2, 5.6, -1.9, 3.5, 5.2, 0.7), "#6b4732"));
     return out;
   },
   /* 커세어(정정) — 몸통을 줄이고, 양팔과 아래 꼬리 포드가 모두 앞을 향해 뻗는 느낌. */
