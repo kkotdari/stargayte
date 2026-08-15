@@ -8383,8 +8383,20 @@ export default function ReplayMotionPlayer({
           {
             const mem2 = drawPosRef.current.get(holdKey);
             if (mem2 && t >= mem2.at && t - mem2.at < 1.5) {
-              const k5 = 1 - Math.exp(-(t - mem2.at) * 6);
-              pos = { ...pos, x: mem2.x + (pos.x - mem2.x) * k5, y: mem2.y + (pos.y - mem2.y) * k5 };
+              const dt5 = t - mem2.at;
+              const k5 = 1 - Math.exp(-dt5 * 6);
+              let nx5 = mem2.x + (pos.x - mem2.x) * k5;
+              let ny5 = mem2.y + (pos.y - mem2.y) * k5;
+              /* 활강 속도 상한(지적: 갓 태어난 유닛이 랠리로 확 미끄러짐) — 지수 추종은
+                 먼 어긋남일수록 초반이 광속이라, 표시 이동을 초당 9타일로 죈다. 큰
+                 점프도 '빠른 걸음'으로만 따라간다. */
+              const md5 = Math.hypot(nx5 - mem2.x, ny5 - mem2.y);
+              const cap5 = 9 * dt5;
+              if (md5 > cap5 && md5 > 0) {
+                nx5 = mem2.x + ((nx5 - mem2.x) / md5) * cap5;
+                ny5 = mem2.y + ((ny5 - mem2.y) / md5) * cap5;
+              }
+              pos = { ...pos, x: nx5, y: ny5 };
             }
             drawPosRef.current.set(holdKey, { x: pos.x, y: pos.y, at: t });
           }
