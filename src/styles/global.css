@@ -10878,9 +10878,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   width: auto; flex-direction: row; flex-wrap: wrap; gap: 3px 5px;
   align-items: center; justify-content: center; align-content: center;
 }
+/* 가운데 구분선(지적: 오른쪽으로 치우침 — 2팀 쪽 margin-left 8px이 경계선을 정중앙에서
+   밀었다) — 마진을 걷고 양쪽 패딩을 대칭으로: 1fr/1fr 그리드의 칸 경계 = 정중앙에
+   border가 정확히 선다. */
+.scr-motion:not(.scr-motion-big) .scr-motion-teamcol:first-of-type { padding-right: 8px; }
 .scr-motion:not(.scr-motion-big) .scr-motion-teamcol:last-of-type {
   justify-content: center;
-  border-left: 1px solid var(--line-soft); padding-left: 8px; margin-left: 8px;
+  border-left: 1px solid var(--line-soft); padding-left: 8px;
 }
 .scr-motion:not(.scr-motion-big) .scr-motion-teamcol-item .scr-motion-base-ring { display: none; }
 /* 이름은 살짝 크게(요청) — 아바타가 빠져 이름이 곧 그 사람이다. */

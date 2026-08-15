@@ -4525,12 +4525,11 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
           ctx.globalAlpha = op.alpha * 0.16;
           ctx.fillStyle = "#000";
           ctx.beginPath();
-          /* 발자국 면 전체를 발자국 '중앙'에서 덮는다(재재지적: 위아래가 작고 중심이
-             건물 중앙이 아님) — 구운 판 바닥 픽셀 기준의 납작 타원은 앞쪽에 치우친
-             띠였다. 발자국이 sy±hPx/2이므로 중심은 sy, 반지름은 발자국 절반 남짓. */
+          /* 캔버스 상자(sx±wPx/2, sy±hPx/2)에 '내접'하는 타원(재재재지적: 캔버스만큼만
+             덮어야지 — 0.55배와 원근 보정이 상자를 넘겨 건물보다 큰 검은 원이 됐다). */
           ctx.ellipse(
-            sx, sy, wPx * 0.55,
-            Math.max(2, hPx * 0.55 * (op.pitch ? 0.75 : 1)), 0, 0, Math.PI * 2,
+            sx, sy, wPx * 0.5,
+            Math.max(2, hPx * 0.5), 0, 0, Math.PI * 2,
           );
           ctx.fill();
           ctx.restore();
@@ -5588,6 +5587,8 @@ export default function ReplayMotionPlayer({
     const clickRank = new Map<string, number>();
     const out: {
       raw: string; unit: string; b: number; d: number | null; tag: number;
+      /** 건설에 흡수되는 시각(지적: 건설 일꾼 잔상) — 현장 도착부터 숨는다. */
+      buildHideAt: number | null;
       /** 공격 명령 목록 [초, 표적 태그] — 어택을 찍은 대상을 겨누는 재료(지적). */
       atkAt: [number, number][];
       /** 시즈 켬·해제 [초, 켬1/해제0] — 커맨드 그대로(지적). */
@@ -5671,8 +5672,22 @@ export default function ReplayMotionPlayer({
         }
         if (on >= 0) cloaks.push([on, Infinity]);
       }
+      /* 건설에 흡수(지적: 테란 일꾼이 건설을 시작하면 복제처럼 둘이 됐다가, 끝나면
+         원래 일꾼이 복제된 자리에 영영 서 있음) — 명령받은 진짜 일꾼 개체는 건설
+         앵커(f=2)가 마지막 증거라 생존 원칙으로 현장에 박제됐고, 공사 중 모습은 합성
+         건설 일꾼 연출이 따로 그려 둘로 보였다. 마지막 위치 증거가 건설 앵커면 현장
+         도착(걷기 마지막 점)부터 공사에 흡수시켜 숨긴다 — 그 뒤 제 증거가 생기는
+         일꾼은 애초에 이 조건에 안 걸려 그대로 걸어 나온다. */
+      let buildHideAt: number | null = null;
+      if (isWk) {
+        let lastPosF = -1;
+        for (let i = e.ev.length - 1; i >= 0; i -= 1) {
+          if (e.ev[i][1] >= 0) { lastPosF = e.ev[i][3]; break; }
+        }
+        if (lastPosF === 2 && wk.length > 0) buildHideAt = wk[wk.length - 1][0];
+      }
       out.push({
-        raw, unit: e.k, b: e.b, d: e.d, tag: e.t,
+        raw, unit: e.k, b: e.b, d: e.d, tag: e.t, buildHideAt,
         atkAt: e.ev.filter((v) => v[3] === 7).map((v) => [v[0], v[4] ?? 0] as [number, number]),
         sieges: e.ev.filter((v) => v[3] === 8 || v[3] === 9)
           .map((v) => [v[0], v[3] === 8 ? 1 : 0] as [number, number]),
@@ -7493,6 +7508,10 @@ export default function ReplayMotionPlayer({
           /* 탑승 중(요청: 수송선 승하차) — 배 안에 있으니 마커를 걷는다. 하차 지점
              (f=13)이나 다음 제 명령에서 다시 나타나 걷는다. */
           if (e.rides.some(([ra, rb]) => t >= ra + 1 && t < rb)) return null;
+          /* 건설에 흡수(지적: 건설 끝난 일꾼이 복제된 자리에 계속 서 있음) — 현장에
+             도착한 순간부터 숨는다. 공사 중 모습은 합성 건설 일꾼 연출의 몫이고,
+             죽음이 아니라 소멸 효과도 없다. */
+          if (e.buildHideAt !== null && t >= e.buildHideAt) return null;
           /* 빙결(전수조사: 스태시스·마엘스톰·락다운) — 걸린 자리에 얼어붙는다. */
           const frzSt = e.statuses.find(([sa2, sb2, sk2]) =>
             FREEZE_STATUS.has(sk2) && t >= sa2 && t < sb2);
