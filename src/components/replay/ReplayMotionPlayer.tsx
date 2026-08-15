@@ -7589,8 +7589,10 @@ export default function ReplayMotionPlayer({
           unitOps.push({
             fx, fy,
             /* 자원도 높이를 가진다(지적: 뒤 사물을 가려야) — 990 바닥층이 아니라 건물과
-               같은 y순 층에 선다. 발자국 아랫변(+0.7)이 정렬 기준이다. */
-            z: pitched ? 1000 + Math.round((res[1] + 0.7) * 80) : 900 + ri,
+               같은 y순 층에 선다. 기준은 그림 상자의 아랫변(+1.2 — 건물 z가 발자국
+               아랫변 기준이라 같은 자로 재야 함): +0.7로는 콜로니 뿔이 앞 미네랄을
+               덮었다(지적: 가려짐 에러). */
+            z: pitched ? 1000 + Math.round((res[1] + 1.2) * 80) : 900 + ri,
             kind: gasSpot ? "geyser" : "mineral",
             viewYaw: viewYawOf(res[0], res[1]), flat: !pitched, pitch: pitched,
             sizePx: 0,
