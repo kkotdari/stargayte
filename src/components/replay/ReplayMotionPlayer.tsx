@@ -4831,7 +4831,9 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         /* 그림자는 땅에(지적: 오버로드 위치는 해처리 위인데 그림자가 훨씬 아래) — 몸은
            lift만큼 '위로' 들리고 땅은 제자리(footY)인데, 여기에 lift를 '더해' 그림자가
            비행 높이만큼 남쪽으로 밀려 있었다. 발밑 땅 자리 그대로 둔다. */
-        ctx.ellipse(sx, footY - shw * 0.22, shw * 1.1, shw * (op.air ? 0.5 : 0.42) * (op.pitch ? 0.6 : 1), 0, 0, Math.PI * 2);
+        /* 3D에선 더 눕는다(지적: 그림자가 안 눕는 문제) — 0.6은 바닥 눌림(0.74×부감)에
+           비해 서 보였다. 0.38로 바짝 눕힌다. */
+        ctx.ellipse(sx, footY - shw * 0.22, shw * 1.1, shw * (op.air ? 0.5 : 0.42) * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       } else if (showShadows !== false && !op.air && UNIT_KIND_SET.has(op.kind)) {
@@ -4843,7 +4845,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         ctx.fillStyle = "#000";
         ctx.beginPath();
         // 바닥면 전체(재지적: 앞쪽만 납작) — 타원을 키우고 중심을 위로 당긴다.
-        ctx.ellipse(sx, footY - px * 0.09, px * 0.19, px * 0.11 * (op.pitch ? 0.6 : 1), 0, 0, Math.PI * 2);
+        ctx.ellipse(sx, footY - px * 0.09, px * 0.19, px * 0.11 * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -4858,7 +4860,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         ctx.lineWidth = Math.max(0.5, px * 0.025);
         ctx.beginPath();
         const ringY = op.air ? footY - lift : sy + px * 0.18;
-        ctx.ellipse(sx, ringY, px * 0.25, px * 0.14 * (op.pitch ? 0.6 : 1), 0, 0, Math.PI * 2);
+        ctx.ellipse(sx, ringY, px * 0.25, px * 0.14 * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
       }
@@ -4869,7 +4871,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         ctx.globalAlpha = op.alpha * 0.32;
         ctx.fillStyle = op.tint;
         ctx.beginPath();
-        ctx.ellipse(sx, sy - px * 0.08 - lift, px * 0.55, px * 0.42, 0, 0, Math.PI * 2);
+        // 상태 오라도 3D에선 눕는다(지적과 같은 결).
+        ctx.ellipse(sx, sy - px * 0.08 - lift, px * 0.55, px * 0.42 * (op.pitch ? 0.45 : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
