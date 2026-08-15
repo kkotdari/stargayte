@@ -1842,6 +1842,13 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
   .scr-league-screen { max-width: 1440px; margin-left: auto; margin-right: auto; width: 100%; }
   .scr-main:has(.scr-league-screen) { max-width: 1440px; }
 }
+/* 게임 페이지(전체 보기)도 같은 수법으로 넓힌다(재지적: 주소까지 보이며 "상세 맞잖아" —
+   맞았고, 진짜 벽은 셸이었다: .scr-main(860px) → .scr-story-map(760px)이 이중으로
+   플레이어 자리를 묶어, 자리 폭 게이트(≥860px)가 구조적으로 열릴 수 없었다). 부모까지
+   :has()로 함께 넓혀야 실제로 늘어난다(통계·리그와 같은 이유). */
+@media (min-width: 1160px) {
+  .scr-main:has(.scr-activity-group-page) { max-width: 1440px; }
+}
 
 /* 맨 위로 이동 플로팅 버튼 — 콘텐츠를 안 가리려고 페이지 하단에 큰 여백을 예약해뒀었는데,
    차지하는 공간 대비 실제로 누르는 일은 드문 보조 버튼이라 낭비가 컸다. 작고 가볍게 줄이고,
@@ -11586,10 +11593,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    본문 폭을 그대로 다 써서 760px까지 커져 있었다(실측). 어느 자리에 서든 걸리게 둔다.
    (320 → 400 → 480 → 560px, 요청에 따라 키워 왔다) */
 @media (min-width: 1160px) { .scr-story-map { max-width: 560px; } }
-/* 게임 페이지에서는 더 넓힌다(요청: PC도 이제 페이지라 기본맵 더 크게) — 모달 시절의
-   560px 상한은 목록 카드 몫으로 남기고, 제 페이지를 가진 게임 상세는 760px까지.
-   실제 크기는 플레이어의 높이 상한(100dvh 기반 인라인 maxWidth)과 함께 정해진다. */
-@media (min-width: 1160px) { .scr-activity-group-page .scr-story-map { max-width: 760px; } }
+/* 게임 페이지는 상한을 아예 걷는다(재지적: 주소줄까지 보여 주며 "상세 맞잖아" — 맞았고,
+   진짜 범인은 이 760px 상한이었다: 플레이어의 부모(.scr-story-map)를 묶어 자리 폭
+   게이트(≥860px)가 영영 안 열렸다). 넓은 배치는 그리드가 폭을 스스로 나눠 쓰므로
+   상한이 더는 필요 없고, 좁은 창에서는 플레이어의 높이 기반 인라인 maxWidth가 여전히
+   맵 크기를 잡는다. */
+@media (min-width: 900px) { .scr-activity-group-page .scr-story-map { max-width: none; width: 100%; } }
 /* 상세 모달 안에서는 그 상한을 푼다(요청: "PC에서 더 크게, 미니맵 모달 세로를 늘리고
    양옆 다 사용") — 모달 폭(820px)에서 좌우 틀만 남기고 지도가 다 가진다. 좌우 틀도
    16 → 8px로 조인다. */

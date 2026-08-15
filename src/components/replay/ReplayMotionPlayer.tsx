@@ -6961,8 +6961,15 @@ export default function ReplayMotionPlayer({
               // 시작을 크게(재지적: 처음에 너무 작음 — 훨씬 크게 시작) — 0.7 → 1.0.
               const stage = prog < 0.33 ? 1 : prog < 0.7 ? 1.25 : 1.5;
               const beat = race2 === "저그" ? stage * (1 + 0.06 * Math.sin(t * 5.2)) : 1;
+              /* 공사 모델은 바닥 맞춤(지적: 소환구보다 훨씬 아래쪽에 실제 건물이 생긴다)
+                 — 완성 모델은 '들어올린 칸'의 바닥 = 발자국 바닥에 앉는데, 소환구·고치는
+                 제 작은 상자가 칸 중심(위로 들어올린 앵커)에 걸려 바닥이 발자국보다 위에
+                 떴다. 상자 바닥을 발자국 바닥에 맞춘다. */
+              const modelHT = race2 === "프로토스" ? 2.6
+                : ((hFrac * grid.width) / mkK) * beat;
+              const [bfxF, bfyF] = posFrac(centerX, centerY + fp2[1] / 2 - modelHT / 2);
               unitOps.push({
-                fx: fxF, fy: fyF, z,
+                fx: bfxF, fy: bfyF, z,
                 kind: race2 === "저그" ? "cocoon" : race2 === "프로토스" ? "warpin" : "scaffold",
                 // 공사 모델도 45도 요잉(지적: 고치·소환공·공사장도 45도 돌아야지).
                 rotDeg: BUILDING_BASE_YAW,
