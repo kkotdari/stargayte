@@ -3935,15 +3935,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [gx, gy] = project(0, 0.2, 3.2);
     return [
       topFace(groundEllipse(gx, gy, 1.6, 0.8), 0.3),
-      // 망토 흰회색(요청).
-      [polyPath3([[-1.1, -0.8, 6.6], [1.1, -0.8, 6.6], [1.6, -1.6, 3.6], [-1.6, -1.6, 3.6]]), 1, "#dfe3e6"] as ShapeFace,
-      sideFace(polyPath3([[-1.1, -0.8, 6.6], [1.1, -0.8, 6.6], [1.6, -1.6, 3.6], [-1.6, -1.6, 3.6]]), 0.22),
-      // 몸통 더 축소(재지적) — 1.0 → 0.85.
-      ...paintBase(cylinderFaces3(0, -0.3, 0.85, 2.4, 4.4), "#d4af37"), // 몸 금색(요청)
+      /* 망토 흰회색(요청) — 날씬·길게(재지적): 어깨 폭을 좁히고 자락을 바닥 가까이
+         늘어뜨리되, 밑단을 제비꼬리 세 갈래로 찢어 귀신 옷자락처럼 나부끼게 한다. */
+      [polyPath3([
+        [-0.95, -0.8, 6.6], [0.95, -0.8, 6.6], [1.3, -1.5, 2.7],
+        [0.65, -1.35, 3.5], [0, -1.5, 2.9], [-0.65, -1.35, 3.5], [-1.3, -1.5, 2.7],
+      ]), 1, "#dfe3e6"] as ShapeFace,
+      sideFace(polyPath3([
+        [-0.95, -0.8, 6.6], [0.95, -0.8, 6.6], [1.3, -1.5, 2.7],
+        [0.65, -1.35, 3.5], [0, -1.5, 2.9], [-0.65, -1.35, 3.5], [-1.3, -1.5, 2.7],
+      ]), 0.22),
+      // 몸통 날씬·길게(재지적) — 반지름 0.85 → 0.68, 아래로 늘여 3.8부터 선다.
+      ...paintBase(cylinderFaces3(0, -0.3, 0.68, 3, 3.8), "#d4af37"), // 몸 금색(요청)
       // 머리·뿔 금색(요청) — 얼굴은 지붕 키(재지적: 몸통에 가려짐).
       ...tagKey(paintBase(domeFaces3(0, -0.7, 1.05, 0.85, 6.8), "#d4af37"), 20),
-      // 정수리 뿔은 개인색(재지적) — 초승달 후광만 금으로 남긴다.
-      ...hornFaces(0, -1.1, 7.1, 0, -2.7, 7.8, 0.65),
+      // 정수리 뿔 금색 복귀(재재지적).
+      ...paintBase(hornFaces(0, -1.1, 7.1, 0, -2.7, 7.8, 0.65), "#d4af37"),
       /* 초승달 후광(실물) — 머리 뒤에서 좌우로 감아 올라 마주 보는 큰 호. 금색(요청). */
       ...paintBase(hornFaces(-0.8, -1, 7, -1.4, -1.2, 9.4, 0.4), "#d4af37"),
       ...paintBase(hornFaces(-1.4, -1.2, 9.3, -0.35, -1.35, 10.2, 0.3), "#d4af37"),
@@ -5237,7 +5244,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
       const footX = spr
         ? sx - (spr.pad + pxq / 2) * kU + (spr.cx / B) * kU
         : sx;
-      if (hover && showShadows !== false) {
+      if (hover && !op.noShadow && showShadows !== false) {
         ctx.save();
         ctx.shadowColor = "transparent";
         /* 떠다니는 지상 유닛(일꾼·벌처·아콘류)은 겨우 발밑만 떠 있다(지적: 그림자가
@@ -8846,6 +8853,20 @@ export default function ReplayMotionPlayer({
                떨림이 없다. */
             noSep: true,
           });
+          /* 귀신 활강(요청: 하템이 약간 귀신처럼 이동) — 걷는 동안 지나온 자리에
+             몸 잔상 두 장을 점점 옅게 끌고 다닌다. 그림자·체력바·링 없이 몸만. */
+          if (kindMain === "htemp" && rawPos.moving && !fighting) {
+            const hr9 = (bodyHdg * Math.PI) / 180;
+            const mainOp = unitOps[unitOps.length - 1];
+            for (let gi = 1; gi <= 2; gi += 1) {
+              const [gfx9, gfy9] = posFrac(ax3 + Math.sin(hr9) * 0.45 * gi, ay3 - Math.cos(hr9) * 0.45 * gi);
+              unitOps.push({
+                ...mainOp, fx: gfx9, fy: gfy9, z: mainOp.z - gi,
+                alpha: mainOp.alpha * (gi === 1 ? 0.32 : 0.15),
+                selRing: undefined, hpFrac: undefined, tint: undefined, noShadow: true,
+              });
+            }
+          }
           /* 포탑 판(요청: 발포 시 포탑·포신만 움직임) — 쏘는 박자(1.5초 주기 앞 0.18초)에
              포탑만 뒤로 0.4타일 밀렸다 돌아온다. 차체 판(kindMain)은 제자리다. */
           if (gunKind) {
