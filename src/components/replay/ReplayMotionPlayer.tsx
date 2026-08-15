@@ -4025,6 +4025,35 @@ const MUZZLE_PX: Record<string, number> = {
   Zergling: 3, Lurker: 6, Mutalisk: 5, Guardian: 6, Devourer: 6, Queen: 5, Ultralisk: 5,
   "Photon Cannon": 6, "Sunken Colony": 5, "Missile Turret": 7, Bunker: 6,
 };
+/* 총구 모델 앵커(요청: 오프셋 표 말고 모델별로 — 승인) — 모델 공간 [x(우), y(앞), z(위)].
+   트레이서가 몸 중심이 아니라 이 점의 '투영 자리'에서 시작한다: 요잉 버킷·시각 밀림·
+   피칭까지 스프라이트 굽기와 같은 변환(project)을 태우므로 어느 방향을 보든 정확히 그
+   부위(탱크 포신·히드라 입·마린 총구·매딕 주사기)다. 좌표는 각 빌더의 해당 부품
+   좌표에서 따 왔고(마린·고스트는 빌더의 총구 캡 그대로), 표에 없는 유닛만 예전 픽셀
+   오프셋(MUZZLE_PX)으로 물러난다. */
+const MUZZLE_ANCHOR: Record<string, [number, number, number]> = {
+  gunner: [0.55, 2.8, 3.35], ghost: [0.5, 3.4, 3.5], fbat: [0.8, 2.6, 3],
+  inf: [0.5, 2.2, 3.2],
+  tank: [0.55, 4.4, 3.3], tanksiege: [0, 2.9, 6.9], goliath: [1.4, 2.2, 3.4],
+  vulture: [0, 3.4, 2.6], wraith: [0, 3.6, 2.8], bc: [0, 4.6, 3.8], valk: [0.9, 3.2, 3],
+  hydra: [0, 2.6, 4.2], lurker: [0, 3, 2.2], muta: [0, 3, 3], queen: [0, 3, 3],
+  guardian: [0, 3.2, 2.8], devourer: [0, 3.2, 2.8], ultra: [0, 3.6, 3.4],
+  goon: [0, 3.2, 3.6], zealot: [0.8, 2.4, 3], archon: [0, 2.2, 4.4], reaver: [0, 3.6, 2.4],
+  scout: [0, 3.4, 3], corsair: [0, 3.2, 3], carrier: [0, 4.4, 3.6], arbiter: [0, 3.4, 3.4],
+};
+/** 총구 앵커의 16-상자 투영 좌표 — 스프라이트와 같은 버킷·밀림·피칭으로 투영한다. */
+function muzzlePoint(
+  kind: string, rotDeg: number | undefined, viewYaw: number | undefined, pitch: boolean,
+): [number, number] | null {
+  const a = MUZZLE_ANCHOR[kind];
+  if (!a) return null;
+  const vq = viewYaw ? Math.max(-36, Math.min(36, Math.round(viewYaw / 6) * 6)) : 0;
+  const bucket = rotDeg !== undefined ? ((Math.round(rotDeg / 22.5) * 22.5) % 360 + 360) % 360 : 0;
+  const sh = Math.tan((vq * Math.PI) / 180);
+  const run = (): [number, number] =>
+    withViewShear(sh, () => withYaw(-bucket, () => project(a[0], a[1], a[2])));
+  return pitch ? withPitchView(run) : run();
+}
 const unitMarkerKind = (u: string, race?: string): string =>
   UNIT_3D[u] ?? (race === "테란" ? "gunner" : race === "저그" ? "zling" : "zealot");
 /* 유닛 덩치(요청: 소형/중형/대형 크기 구분) — 브루드워의 유닛 크기 분류를 따른다.
@@ -8015,6 +8044,19 @@ export default function ReplayMotionPlayer({
           const fxUnit = drawUnit === "" ? (race === "저그" ? "Zergling" : race === "테란" ? "Marine" : "Zealot") : drawUnit;
           const atkDeg = foeDeg;
           const cyc2 = Math.floor(t / 1.5);
+          /* 총구 모델 앵커(승인) — 몸 스프라이트와 같은 변환으로 앵커를 투영해, 그 자리
+             에서 트레이서를 시작한다. 16-상자 중심(8,8)이 마커 앵커(발 자리)다. 효과
+             스팬이 이미 가슴 높이(-0.34)로 떠 있고 몸 스프라이트는 -0.24만 떠 있어,
+             그 차(+0.10)를 세로에 되돌린다. 앵커 없는 유닛은 픽셀 오프셋 폴백. */
+          const fxKind = unitMarkerKind(
+            siegeOn === 1 && fxUnit.startsWith("Siege Tank") ? "Siege Tank (Siege Mode)" : fxUnit,
+            race,
+          );
+          const mzP = atkDeg !== null
+            ? muzzlePoint(fxKind, atkDeg, viewYawOf(ax3, ay3), pitched) : null;
+          const mzTf = mzP
+            ? `translate(${(((mzP[0] - 8) * fxPx) / 16).toFixed(1)}px, ${((((mzP[1] - 8) * fxPx) / 16) + 0.1 * fxPx).toFixed(1)}px) rotate(${atkDeg!.toFixed(1)}deg)`
+            : `rotate(${atkDeg?.toFixed(1)}deg) translateY(${MUZZLE_PX[fxUnit] ?? 4}px)`;
           return (
             <span
               key={`v2fx-${ei}`}
@@ -8025,8 +8067,7 @@ export default function ReplayMotionPlayer({
                 <span
                   className={`scr-motion-tracer scr-tracer-${
                     (fxUnit === "Wraith" || fxUnit === "Goliath") && foe.air ? "missile" : ATTACK_FX[fxUnit]}`}
-                  // 총구에서 나간다(요청: 탱크 포신·히드라 입·마린 총구) — 회전 뒤 앞으로.
-                  style={{ transform: `rotate(${atkDeg.toFixed(1)}deg) translateY(${MUZZLE_PX[fxUnit] ?? 4}px)`, animationDelay: `${((ei * 7) % 5) / 10}s` }}
+                  style={{ transform: mzTf, animationDelay: `${((ei * 7) % 5) / 10}s` }}
                 />
               )}
               {(ei + cyc2) % 5 === 0 && <span key={`pf-${cyc2}`} className="scr-motion-puff" />}
