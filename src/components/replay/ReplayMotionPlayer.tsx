@@ -3982,8 +3982,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     capFace(groundEllipse(...project(-0.7, 0.4, 2.75), 1.4, 0.68), 0.5),
     /* 작은 분화구 접지(지적: 땅에 안 붙음) — 공중(z 1.05)에서 시작하던 것을 바닥
        가까이(0.15)로 내리고 밑을 넓혀 언덕 비탈에 묻는다. */
-    ...frustumFaces3(2.2, -1.3, 1.9, 1.7, 0.95, 0.8, 1.75, 0.15),
-    capFace(groundEllipse(...project(2.2, -1.3, 1.9), 0.52, 0.27), 0.5),
+    /* 작은 분화구도 제 깊이(지적: 바닥 언덕에 가려짐) — 언덕 돔의 앞점 키가 이겨
+       덮었다. 제 자리 깊이 + 가산으로 언덕 위에 선다. */
+    ...tagKey([
+      ...frustumFaces3(2.2, -1.3, 1.9, 1.7, 0.95, 0.8, 1.75, 0.15),
+      capFace(groundEllipse(...project(2.2, -1.3, 1.9), 0.52, 0.27), 0.5),
+    ], depthNow(2.2, -1.3) + 1.5),
     // 김 뭉치도 제 깊이(지적: 가려짐 문제) — 분화구 키에 묻어 언덕이 덮었다.
     ...tagKey([topFace(groundEllipse(...project(-0.4, 0.7, 3.5), 0.85, 0.5), 0.22)], depthNow(-0.4, 0.7) + 2),
     ...tagKey([topFace(groundEllipse(...project(1.9, -1, 2.8), 0.42, 0.26), 0.18)], depthNow(1.9, -1) + 2),
