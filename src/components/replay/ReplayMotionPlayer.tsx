@@ -3480,56 +3480,66 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   zealot: () => [
     /* 다리에 무릎 관절(재요청: 살짝 굽힌 상태) — 넓적다리는 앞으로, 정강이는 도로
        뒤로 내려서는 캡슐 막대 두 마디씩. */
-    ...rodFaces(-0.55, -0.3, 3.6, -0.62, 0.45, 1.9, 0.9),
-    ...rodFaces(-0.62, 0.45, 1.9, -0.58, -0.15, 0.2, 0.8),
-    ...rodFaces(0.55, -0.3, 3.6, 0.62, 0.45, 1.9, 0.9),
-    ...rodFaces(0.62, 0.45, 1.9, 0.58, -0.15, 0.2, 0.8),
+    /* 이중 관절 다리(요청: 두 번 구부러지고 발이 길게 대각선) — 넓적다리 앞으로,
+       정강이 뒤로, 긴 발이 앞-아래 대각선으로 딛는 디지티그레이드. */
+    ...rodFaces(-0.55, -0.2, 3.5, -0.62, 0.5, 2.2, 0.7),
+    ...rodFaces(-0.62, 0.5, 2.2, -0.6, -0.5, 1.1, 0.6),
+    ...rodFaces(-0.6, -0.5, 1.1, -0.68, 0.8, 0.1, 0.5),
+    ...rodFaces(0.55, -0.2, 3.5, 0.62, 0.5, 2.2, 0.7),
+    ...rodFaces(0.62, 0.5, 2.2, 0.6, -0.5, 1.1, 0.6),
+    ...rodFaces(0.6, -0.5, 1.1, 0.68, 0.8, 0.1, 0.5),
     /* 구부정한 자세(재요청: 두 마디로 쪼개지 말고 몸통 원통 하나가 기울게) — 앞으로
        숙는 캡슐 막대 하나. 머리는 어깨보다 앞·낮게. */
-    // 몸통 더 가늘게(지적: 프로토스 인간형) — 2.7 → 2.0.
-    ...rodFaces(0, -0.6, 3.3, 0, 0.35, 6.3, 2),
+    // 몸통 더 축소(재지적) — 2.0 → 1.6.
+    ...rodFaces(0, -0.6, 3.3, 0, 0.35, 6.3, 1.6),
     ...domeFaces3(0, 0.35, 1.1, 0.85, 6.3),
     ...hornFaces(0, 0, 6.9, 0, -2.1, 7.75, 0.7),
     // 어깨 뽕 한 쌍(실물) — 숙인 머리보다 높아 굽은 등이 산다.
     ...domeFaces3(-1.35, -0.25, 0.62, 0.5, 6),
     ...domeFaces3(1.35, -0.25, 0.62, 0.5, 6),
-    // 사이오닉 검 — 팔뚝에서 앞-아래로, 빛나는 날.
-    ...hornFaces(1.7, 0.3, 4.7, 2.4, 1.4, 1, 0.7),
-    topFace(polyPath3([[1.75, 0.45, 4.5], [2.35, 1.35, 1.15], [2.2, 1.25, 1.1], [1.6, 0.4, 4.4]]), 0.45),
-    ...hornFaces(-1.7, 0.3, 4.7, -2.4, 1.4, 1, 0.7),
-    topFace(polyPath3([[-1.75, 0.45, 4.5], [-2.35, 1.35, 1.15], [-2.2, 1.25, 1.1], [-1.6, 0.4, 4.4]]), 0.45),
+    /* 사이오닉 검 — 더 들어 올린 자세(요청)로 팔뚝에서 앞-위로 겨눈다. 색은 형광
+       푸른빛 도는 하얀색(요청: 플라즈마). */
+    ...paintBase(hornFaces(1.7, 0.3, 4.9, 2.6, 1.1, 7.4, 0.7), "#e4f6ff"),
+    [polyPath3([[1.75, 0.4, 5.1], [2.55, 1.05, 7.2], [2.4, 1.1, 7.1], [1.6, 0.45, 4.9]]), 0.75, "#ffffff"] as ShapeFace,
+    ...paintBase(hornFaces(-1.7, 0.3, 4.9, -2.6, 1.1, 7.4, 0.7), "#e4f6ff"),
+    [polyPath3([[-1.75, 0.4, 5.1], [-2.55, 1.05, 7.2], [-2.4, 1.1, 7.1], [-1.6, 0.45, 4.9]]), 0.75, "#ffffff"] as ShapeFace,
   ],
   /* 다크 템플러 — 검 한 자루(요청). */
   dtemp: () => [
     /* 망토(재지적: 더 크게 + 몸에 안 가려지게) — 어깨보다 넓게 제비꼬리로 드리우고,
        제 깊이를 달아 뒤에서 보면 몸 위로 온다. */
+    /* 망토 검정(요청) — 개인색 대신 고정 검정 천. */
     ...tagKey([
-      bodyFace(polyPath3([
+      [polyPath3([
         [-1.6, -0.85, 6.7], [1.6, -0.85, 6.7], [2.7, -2.1, 2.2],
         [0.8, -1.6, 3.3], [0, -1.9, 2.4], [-0.8, -1.6, 3.3], [-2.7, -2.1, 2.2],
-      ])),
+      ]), 1, "#14171c"] as ShapeFace,
       sideFace(polyPath3([
         [-1.6, -0.85, 6.7], [1.6, -0.85, 6.7], [2.7, -2.1, 2.2],
         [0.8, -1.6, 3.3], [0, -1.9, 2.4], [-0.8, -1.6, 3.3], [-2.7, -2.1, 2.2],
       ]), 0.18),
     ], depthNow(0, -1.5) + 0.6),
     // 다리(재요청) — 질럿과 같은 무릎 굽힌 캡슐 막대 두 마디씩.
-    ...rodFaces(-0.55, -0.3, 3.6, -0.62, 0.45, 1.9, 0.9),
-    ...rodFaces(-0.62, 0.45, 1.9, -0.58, -0.15, 0.2, 0.8),
-    ...rodFaces(0.55, -0.3, 3.6, 0.62, 0.45, 1.9, 0.9),
-    ...rodFaces(0.62, 0.45, 1.9, 0.58, -0.15, 0.2, 0.8),
+    /* 이중 관절 다리(요청: 두 번 구부러지고 발이 길게 대각선) — 넓적다리 앞으로,
+       정강이 뒤로, 긴 발이 앞-아래 대각선으로 딛는 디지티그레이드. */
+    ...rodFaces(-0.55, -0.2, 3.5, -0.62, 0.5, 2.2, 0.7),
+    ...rodFaces(-0.62, 0.5, 2.2, -0.6, -0.5, 1.1, 0.6),
+    ...rodFaces(-0.6, -0.5, 1.1, -0.68, 0.8, 0.1, 0.5),
+    ...rodFaces(0.55, -0.2, 3.5, 0.62, 0.5, 2.2, 0.7),
+    ...rodFaces(0.62, 0.5, 2.2, 0.6, -0.5, 1.1, 0.6),
+    ...rodFaces(0.6, -0.5, 1.1, 0.68, 0.8, 0.1, 0.5),
     /* 구부정한 자세(재요청: 쪼개지 말고 원통 하나가 기울게) — 앞으로 숙는 캡슐 막대
        하나. 머리는 어깨보다 앞·낮게. */
-    // 몸통 더 가늘게(지적: 프로토스 인간형) — 2.7 → 2.0.
-    ...rodFaces(0, -0.6, 3.3, 0, 0.35, 6.3, 2),
+    // 몸통 더 축소(재지적) — 2.0 → 1.6.
+    ...rodFaces(0, -0.6, 3.3, 0, 0.35, 6.3, 1.6),
     ...domeFaces3(0, 0.35, 1.1, 0.85, 6.3),
     ...hornFaces(0, 0, 6.9, 0, -2.1, 7.6, 0.7),
     // 등 볏 칼날 한 쌍(실물) — 굽은 등에서 뒤 위로 쓸려 올라간다.
     ...hornFaces(-0.4, -0.75, 6.4, -1.6, -2.2, 8.7, 0.55),
     ...hornFaces(0.4, -0.75, 6.4, 1.3, -2.4, 8.3, 0.5),
-    // 낫 검 한 자루 — 오른 옆구리에서 아래로, 빛나는 날.
-    ...hornFaces(1.7, 0.3, 4.7, 2.4, 1.5, 0.9, 0.75),
-    topFace(polyPath3([[1.75, 0.45, 4.5], [2.35, 1.45, 1.05], [2.2, 1.35, 1], [1.6, 0.4, 4.4]]), 0.45),
+    // 낫 검 한 자루 — 오른 옆구리에서 아래로. 색은 플라즈마(요청: 형광 푸른빛 흰색).
+    ...paintBase(hornFaces(1.7, 0.3, 4.7, 2.4, 1.5, 0.9, 0.75), "#e4f6ff"),
+    [polyPath3([[1.75, 0.45, 4.5], [2.35, 1.45, 1.05], [2.2, 1.35, 1], [1.6, 0.4, 4.4]]), 0.75, "#ffffff"] as ShapeFace,
   ],
   /* 하이 템플러(요청) — 떠 있는 로브: 바닥에서 띄운 짧은 로브 통 + 머리, 발밑 부양 빛. */
   htemp: () => {
@@ -3539,8 +3549,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 어두운 망토 — 몸 뒤로 드리운다.
       bodyFace(polyPath3([[-1.1, -0.8, 6.6], [1.1, -0.8, 6.6], [1.6, -1.6, 3.6], [-1.6, -1.6, 3.6]])),
       sideFace(polyPath3([[-1.1, -0.8, 6.6], [1.1, -0.8, 6.6], [1.6, -1.6, 3.6], [-1.6, -1.6, 3.6]]), 0.22),
-      // 몸통 더 가늘게(지적: 프로토스 인간형) — 1.3 → 1.0.
-      ...cylinderFaces3(0, -0.3, 1, 2.4, 4.4),
+      // 몸통 더 축소(재지적) — 1.0 → 0.85.
+      ...cylinderFaces3(0, -0.3, 0.85, 2.4, 4.4),
       ...domeFaces3(0, -0.7, 1.05, 0.85, 6.8),
       // 프로토스 길쭉한 머리(요청).
       ...hornFaces(0, -1.1, 7.1, 0, -2.7, 7.8, 0.65),
@@ -4465,8 +4475,10 @@ function buildingSprite(
   BLD_SPRITE_CACHE.set(key, entry);
   return entry;
 }
-function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
+function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows, showOverlap, showHp, showCreep }: {
   ops: UnitDrawOp[]; zoom: number; pan: { x: number; y: number };
+  /** 사양 게이트(요청) — 끄면 접지·겹침 그림자/체력바/크립을 안 그린다. 기본 켬. */
+  showShadows?: boolean; showOverlap?: boolean; showHp?: boolean; showCreep?: boolean;
   /** 크립 차단 마스크(요청: 벽·램프·다리는 크립이 못 뚫는다) — 칸 하나가 픽셀 하나인
    *  지형 캔버스. clipWalk 판들을 깐 직후 destination-out으로 파낸다. */
   wallMask?: HTMLCanvasElement | null;
@@ -4604,7 +4616,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
        '나중에 그려지는(앞)' 쪽에 옅은 그림자를 켜 뒤 몸과 윤곽이 갈린다. 안 겹치면
        기존대로 그림자 없음. 이웃 탐색은 이완과 같은 균일 격자. */
     const airOverlap = new Set<UnitDrawOp>();
-    {
+    if (showOverlap !== false) {
       const cell2 = 48;
       const gmap = new Map<number, number[]>();
       const rOf = (o: UnitDrawOp): number => (o.wFrac !== undefined
@@ -4686,7 +4698,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         /* 접지 그림자(재재지적: 해처리가 떠 있다) — 상자 바닥 어림이 아니라 구운
            판의 실제 바닥 픽셀(contentBottom)에 붙인다. 모델이 상자를 다 안 채워도
            발이 그림자에 닿는다. */
-        if (op.groundShadow) {
+        if (op.groundShadow && showShadows !== false) {
           /* 바닥 '발자국'만 덮는다(정정: 칸(hPx)은 모델 높이까지 포함해, 칸 기준 타원은
              건물을 통째로 감싸는 큰 원이었다 — 내접으로 바꿔도 거의 그대로라 "적용 안
              됨"으로 보였다). 발자국 깊이 = 폭 × footRatio, 자리는 칸 바닥에 붙인다. */
@@ -4722,7 +4734,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
             bspr.l * k, bspr.l * k,
           );
           /* 건물 체력바(요청) — 다친 건물 위에만. 유닛 바와 같은 3색. */
-          if (op.hpFrac !== undefined && op.hpFrac > 0) {
+          if (showHp !== false && op.hpFrac !== undefined && op.hpFrac > 0) {
             /* 최대 체력의 제곱근 비례(재재지적: 정비례로 갔더니 적용이 안 된 듯 보이고
                작은 건물 바가 실오라기가 됨) — 넥서스(1500)와 성큰(300)이 √5≈2.2배 차이. */
             const bScale = Math.min(2, Math.max(0.4, Math.sqrt((op.hpMax ?? 800) / 1000)));
@@ -4770,7 +4782,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
       const footY = spr
         ? sy - px * 0.24 - (spr.pad + pxq / 2) * kU + (spr.bot / B) * kU - 1
         : sy + px * 0.28;
-      if (hover) {
+      if (hover && showShadows !== false) {
         ctx.save();
         ctx.shadowColor = "transparent";
         /* 떠다니는 지상 유닛(일꾼·벌처·아콘류)은 겨우 발밑만 떠 있다(지적: 그림자가
@@ -4798,7 +4810,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         ctx.ellipse(sx, footY - shw * 0.22, shw * 1.1, shw * (op.air ? 0.5 : 0.42) * (op.pitch ? 0.6 : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-      } else if (!op.air && UNIT_KIND_SET.has(op.kind)) {
+      } else if (showShadows !== false && !op.air && UNIT_KIND_SET.has(op.kind)) {
         /* 지상 유닛 접지 그림자(재지적: 전부 떠 있는 느낌 — 발이 그림자에 닿아야 하고
            훨씬 작아야) — 발끝 자리에 딱 붙는 아주 작은 타원. */
         ctx.save();
@@ -4839,7 +4851,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
       }
       /* 체력바(요청: 체력을 지니고 다니는 생애주기) — 다친 유닛 머리 위에 원작풍
          바: 초록(>66%)·노랑(>33%)·빨강. 성한 유닛에는 안 띄워 화면을 아낀다. */
-      if (op.hpFrac !== undefined && op.hpFrac > 0) {
+      if (showHp !== false && op.hpFrac !== undefined && op.hpFrac > 0) {
         /* 100% 길이 = 최대 체력의 제곱근 비례(재재지적: 정비례는 마린 바가 4px 바닥에
            눌리고 큰 유닛 바만 길어져 '적용 안 된' 것처럼 보였다) — 마린(40) 대비
            울트라(400)가 √10≈3.2배. 남은 칸과 색은 자기 비율(hpFrac) 그대로다. */
@@ -4892,7 +4904,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
     /* 크립은 지형을 못 넘는다(요청: 벽·램프·다리) — 크립 판(clipWalk, z가 제일 낮다)만
        먼저 깔고, 차단 마스크를 destination-out으로 파낸 다음 나머지를 얹는다. 캔버스에
        아직 크립뿐이라 다른 그림은 안 다친다. */
-    const creepList = sorted.filter((o) => o.clipWalk);
+    const creepList = showCreep === false ? [] : sorted.filter((o) => o.clipWalk);
     if (creepList.length > 0 && wallMask && maskRects && maskRects.length > 0) {
       /* 크립은 맵 밖으로 못 나간다(지적: 미니맵 밖까지 나옴) — 컨테이너가 overflow:
          hidden이 아니라(모서리 마커를 안 자르려고) 가장자리 해처리의 크립 원이 그림
@@ -5224,7 +5236,19 @@ export default function ReplayMotionPlayer({
   const [entData, setEntData] = useState<UnitTracksV2 | null>(null);
   const [entLoad, setEntLoad] = useState<"idle" | "loading" | "none">("idle");
   /* 클릭 자국 토글(요청) — 기본은 끔: 클릭이 많은 경기에서는 자국이 화면을 덮는다. */
-  const [clickFx, setClickFx] = useState(false);
+  const [clickFx, setClickFx] = useState(true); // 기본 켬(요청)
+  /* 사양 라디오(요청: 최저·저·중·고·최고 — 렌더 요소 단계별 온오프, 기본 중).
+     0 최저: 전부 끔 / 1 저: 체력바·죽음 효과 / 2 중: +그림자·전투·공사 애니·크립 /
+     3 고: +겹침 그림자 / 4 최고: +핑(전부 켬). */
+  const [quality, setQuality] = useState(2);
+  const qHp = quality >= 1;
+  const qDeath = quality >= 1;
+  const qShadows = quality >= 2;
+  const qCombat = quality >= 2;
+  const qBuildFx = quality >= 2;
+  const qCreep = quality >= 2;
+  const qOverlap = quality >= 3;
+  const qPing = quality >= 4;
   /* 좌우 동시 보기(요청) — forceEnt면 뜨자마자 v2를 켠다. 시계 묶음(syncKey)의 주인은
      제 t를 신호줄에 흘리고, 따르는 쪽은 제 시계 없이(active=false로 온다) 받아 적는다. */
   useEffect(() => {
@@ -7435,7 +7459,7 @@ export default function ReplayMotionPlayer({
                  같은 식(centerY + fp/2 − modelHT/2)으로 묶는다. */
               const bfxY = race2 === "테란" ? centerY + fp2[1] / 2 - 0.6
                 : race2 === "프로토스" ? centerY + fp2[1] / 2 - modelHT / 2 : centerY;
-
+              if (!qBuildFx) return null;
               return (
                 <span
                   key={`bfx-${i}`}
@@ -7534,7 +7558,7 @@ export default function ReplayMotionPlayer({
                  상대만 미사일(8타일), 벙커는 총알(6타일)에 임자가 파벳을 뽑아 뒀고 적이
                  코앞(3.5타일)이면 화염을 섞는다 — 안에 누가 들었는지는 리플레이에 안
                  남아, 그 시점 보유 병종으로 어림한다. */
-              if ((unit === "Missile Turret" || unit === "Bunker")
+              if (qCombat && (unit === "Missile Turret" || unit === "Bunker")
                 && !raising && (goneEff === 0 || t < goneEff)) {
                 const teamB = teamOfRaw(raw);
                 const foeB = nearestFoe(teamB, centerX, centerY);
@@ -7708,6 +7732,7 @@ export default function ReplayMotionPlayer({
               || (unit.includes("Colony") && u2.includes("Colony"))))) return null;
           const race = bases.find((b2) => b2.key === raw)?.race;
           const rk = race === "저그" ? "zerg" : race === "프로토스" ? "toss" : "terran";
+          if (!qDeath) return null;
           /* 크기는 건물 발자국의 0.7배(재지적: 그래도 너무 큼 — 반으로) — 퍼센트 폭이라
              맵 확대에도 비례한다. */
           const clpW = (((FOOTPRINT[unit] ?? [3, 2])[0] * 0.7) / grid.width) * 100;
@@ -8193,6 +8218,7 @@ export default function ReplayMotionPlayer({
           }
           // 죽음 창(dieAt~+1.2초) — 마커 대신 종족별 사망 효과가 남는다(체력 0 즉사 포함).
           if (dieAt !== null && t >= dieAt) {
+            if (!qDeath) return null;
             const dk = race === "저그" ? "zerg" : race === "프로토스" ? "toss" : "mech";
             return (
               <span
@@ -8305,7 +8331,7 @@ export default function ReplayMotionPlayer({
              기준점은 발 자리라, 유닛 키의 1/3만큼 띄워 몸통에 맞춘다. */
           const fxPx = drawUnit === "" || isWorker ? unitGlyphPx(0, ay3) : unitPxOf(drawUnit, ay3);
           const fxLift = { marginTop: `${(-fxPx * 0.34).toFixed(1)}px` };
-          if (hitNow && !fighting) {
+          if (qCombat && hitNow && !fighting) {
             const cycH = Math.floor(t / 0.8);
             if ((ei + cycH) % 2 === 0) {
               return (
@@ -8342,7 +8368,7 @@ export default function ReplayMotionPlayer({
             }
           }
           if (fighting && ei % 3 !== 0) return null;
-          if (!fighting) return null;
+          if (!fighting || !qCombat) return null;
           const fxUnit = drawUnit === "" ? (race === "저그" ? "Zergling" : race === "테란" ? "Marine" : "Zealot") : drawUnit;
           const atkDeg = foeDeg;
           const cyc2 = Math.floor(t / 1.5);
@@ -8445,7 +8471,7 @@ export default function ReplayMotionPlayer({
         {/* 미니맵 핑(요청: 클릭도 기록 — 리플레이에 좌표가 온전히 남는다) — v2 트랙에만
             있다. 찍은 사람 색의 물결 고리가 3초 동안 퍼진다. 카메라 시야는 리플레이에
             저장되지 않아 못 그린다(엔진 재시뮬레이션의 몫). */}
-        {entOn && (entData?.pings ?? []).map(([ps, px, py, ppid], i) => {
+        {entOn && qPing && (entData?.pings ?? []).map(([ps, px, py, ppid], i) => {
           if (t < ps || t - ps > 3) return null;
           const raw = entData?.players.find((pl) => pl.id === ppid)?.name ?? "";
           return (
@@ -8634,6 +8660,7 @@ export default function ReplayMotionPlayer({
             채우고, 커밋 뒤 effect가 그린다. */}
         <UnitLayer
           ops={unitOps} zoom={zoom} pan={pan} wallMask={creepMask} maskRects={creepMaskRects}
+          showShadows={qShadows} showOverlap={qOverlap} showHp={qHp} showCreep={qCreep}
           /* 크립을 가두는 맵 모서리(재지적: 3D에서 크립이 영역을 벗어남) — 입체는 원근
              투영된 사다리꼴이라 네 모서리를 posFrac으로 투영해 넘긴다. 평면은 단위
              사각형이 나와 기존 직사각 클립과 같다. */
@@ -8673,6 +8700,19 @@ export default function ReplayMotionPlayer({
       <div className="scr-motion-bar scr-motion-viewrow">
         {/* 라디오식 짝 버튼 → 라이팅 알약 라디오(요청: 게임 상세의 라디오 버튼 전부 —
             작게, 위에 라벨, PC·모바일 공통). 필터창과 같은 PillTabs를 쓴다. */}
+        {/* 사양(요청: PC는 로스터와 버튼 사이, 모바일은 버튼그룹 위) — 렌더 요소 단계. */}
+        <span className="scr-motion-radio scr-motion-qrow">
+          <span className="scr-motion-radio-label">사양</span>
+          <PillTabs
+            options={[
+              { value: "0", label: "최저" }, { value: "1", label: "저" },
+              { value: "2", label: "중" }, { value: "3", label: "고" }, { value: "4", label: "최고" },
+            ]}
+            value={String(quality)}
+            onChange={(v) => setQuality(Number(v))}
+            aria-label="사양"
+          />
+        </span>
         <span className="scr-motion-radio">
           <span className="scr-motion-radio-label">보기</span>
           <PillTabs
@@ -8685,7 +8725,7 @@ export default function ReplayMotionPlayer({
         <span className="scr-motion-radio">
           <span className="scr-motion-radio-label">컬러</span>
           <PillTabs
-            options={[{ value: "team", label: "팀색" }, { value: "personal", label: "개인색" }]}
+            options={[{ value: "personal", label: "개인색" }, { value: "team", label: "팀색" }]}
             value={colorMode}
             onChange={(v) => setColorMode(v)}
             aria-label="컬러"
@@ -8713,7 +8753,7 @@ export default function ReplayMotionPlayer({
           <span className="scr-motion-radio">
             <span className="scr-motion-radio-label">마우스 조작 표시</span>
             <PillTabs
-              options={[{ value: "off", label: "끔" }, { value: "on", label: "켬" }]}
+              options={[{ value: "on", label: "켬" }, { value: "off", label: "끔" }]}
               value={clickFx ? "on" : "off"}
               onChange={(v) => setClickFx(v === "on")}
               aria-label="마우스 조작 표시"
