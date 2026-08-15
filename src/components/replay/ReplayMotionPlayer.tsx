@@ -3261,9 +3261,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     return [
       ...wing(-1),
       ...wing(1),
-      // 몸체는 구(지적: 곤충 같음) — 동그란 공 하나에 하이라이트만. 날개에 안 묻히게 한 단 크게.
-      ...domeFaces3(0, 0.5, 1.35, 1.2, 5.2),
-      topFace(groundEllipse(cx2 - 0.3, cy2 - 0.5, 0.4, 0.32), 0.35),
+      // 몸체는 구 — 날개 깊이 키에 밀려 가려짐(지적) — 지붕 키로 늘 위에.
+      ...tagKey([
+        ...domeFaces3(0, 0.5, 1.35, 1.2, 5.2),
+        topFace(groundEllipse(cx2 - 0.3, cy2 - 0.5, 0.4, 0.32), 0.35),
+      ], 20),
     ];
   },
   /* 옵저버(실물 참고) — 작은 금빛 공 몸통 좌우에 둥근 귀 덩이, 위엔 부챗살 볏 돛,
