@@ -1113,9 +1113,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           bodyFace(discPath3(px, py, 0.45, 1.6)),
           sideFace(discPath3(px, py, 0.42, 1.6), 0.25),
         ], depthNow(px, py)),
-        ...hornFaces(px, py, 0.4, px, py, 8.8, 1.7),
-        // 기둥 끝 작은 삼각뿔 — 옥색~시안(요청).
-        ...paintBase(hornFaces(px, py, 8.5, px, py, 10.1, 0.85), "#3bd8c2"),
+        /* 기둥은 일정 폭 축으로, 끝 삼각뿔이 그 폭에서 그대로 이어진다(재지적:
+           자연스러운 연결) — 뿔 밑변 = 기둥 지름. */
+        ...rodFaces(px, py, 0.4, px, py, 7.6, 1.35),
+        ...paintBase(hornFaces(px, py, 7.45, px, py, 10.1, 1.35), "#3bd8c2"),
         topFace(groundEllipse(kx, ky, 0.45, 0.65), 0.5),
       ];
     };
