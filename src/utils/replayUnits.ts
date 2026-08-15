@@ -1344,6 +1344,29 @@ export function buildUnitTracks(
     }
   }
 
+  /* 메딕 상시 치료(재지적: 곁에 있고 이동 중이 아니면 계속 치료 — 아군(같은 팀)
+     유닛까지) — 명령이 없어도 자동으로 낫는 게 원작이라, 힐 '명령'만으로는 한참
+     모자랐다. 같은 편 메딕이 곁(4타일)에 있으면 생체 유닛은 싸움 중 피해가 줄고
+     (×0.65), 소강기에 초당 2.2씩 아문다. 메딕의 정지 여부는 증거로 정확히 알 수
+     없어 '곁에 있음'으로 갈음한다. */
+  const MECH_UNITS = new Set([
+    "Vulture", "Goliath", "Siege Tank", "Siege Tank (Tank Mode)", "Siege Tank (Siege Mode)",
+    "Wraith", "Dropship", "Science Vessel", "Battlecruiser", "Valkyrie",
+    "Probe", "Reaver", "Shuttle", "Observer", "Scout", "Carrier", "Arbiter", "Corsair",
+  ]);
+  const mediLives = done.filter((l) => !l.bld && majorityKindOf(l) === "Medic");
+  const medicNearAt = (life: Life, sec: number): boolean => {
+    const pos = posAtSec(life, sec, dmgTol(life, sec));
+    if (!pos) return false;
+    for (const m of mediLives) {
+      if (!sameSide(m.owner, life.owner)) continue;
+      if (sec < m.born - 2 || sec > m.last + 30) continue;
+      const mp = posAtSec(m, sec);
+      if (mp && Math.hypot(mp[0] - pos[0], mp[1] - pos[1]) <= 4) return true;
+    }
+    return false;
+  };
+
   const hpSimOf = (life: Life): { trace: [number, number][]; death: number | null } => {
     const mk = majorityKindOf(life);
     const st = UNIT_STATS[mk] ?? DEFAULT_UNIT_STATS;
@@ -1352,6 +1375,7 @@ export function buildUnitTracks(
     const max = maxHp + maxSh;
     const race3 = raceOf.get(life.owner) ?? "";
     const isAir = AIR_UNITS.has(mk);
+    const healable = !MECH_UNITS.has(mk) && mediLives.length > 0;
     const lastEvSec = life.ev.length > 0 ? life.ev[life.ev.length - 1][0] : life.last;
     const heals = healsAt.get(life.tag) ?? [];
     /* 피해 시간줄 — 적 공격 명령(공업 반영) + 적 방어건물 화력(요청 ③: 성큰·캐논·
@@ -1374,6 +1398,8 @@ export function buildUnitTracks(
     for (const [bsec, bAmt] of battleDmgOf.get(life) ?? []) {
       if (stasisSpans.some(([sa, sb]) => bsec >= sa && bsec <= sb)) continue;
       let amt = bAmt;
+      // 메딕이 곁이면 싸움 중에도 상처가 덜 벌어진다(상시 치료).
+      if (healable && medicNearAt(life, bsec)) amt *= 0.65;
       const pos = posAtSec(life, bsec, dmgTol(life, bsec));
       if (pos && swarmZones.some(([ws, wx, wy]) =>
         bsec - ws >= 0 && bsec - ws <= 25 && Math.hypot(wx - pos[0], wy - pos[1]) <= 2.5)) {
@@ -1448,6 +1474,10 @@ export function buildUnitTracks(
       if (dt <= 0) return;
       if (maxSh > 0) curSh = Math.min(maxSh, curSh + maxSh * 0.02 * dt);
       if (race3 === "저그") curHp = Math.min(maxHp, curHp + 0.6 * dt);
+      // 메딕 상시 치료(재지적) — 소강기에 곁에 있으면 초당 2.2씩 아문다(45초 상한).
+      if (healable && curHp < maxHp && medicNearAt(life, to)) {
+        curHp = Math.min(maxHp, curHp + 2.2 * Math.min(dt, 45));
+      }
     };
     for (const [dsec, draw, dknd] of dmg) {
       flow(prevSec, dsec);
