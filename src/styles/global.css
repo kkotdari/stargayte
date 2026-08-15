@@ -12941,16 +12941,19 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    납작한(가로:세로 2:1) 고리가 살짝 오므라들며 사라지고, 가운데 점은 그대로 있다.
    색은 찍은 사람 색(currentColor). 표시 창(0.9초)은 재생 쪽이 자른다. ── */
 .scr-motion-clickfx { position: absolute; width: 0; height: 0; pointer-events: none; }
-/* 축소(지적: 클릭 마커 너무 큼) — 18×9 → 11×5.5, 점도 반. */
+/* 게임 비율(재지적: 아직도 너무 큼) — 재생 쪽이 타일 폭(--ckw)을 넘겨 준다:
+   원작 이동 마커처럼 1.1타일 폭, 세로는 그 절반. 못 받으면 9px 폴백. */
 .scr-motion-clickfx::before {
   content: ""; position: absolute; left: 50%; top: 50%;
-  width: 11px; height: 5.5px; margin: -2.75px 0 0 -5.5px;
-  border: 1.2px solid currentColor; border-radius: 50%;
+  width: var(--ckw, 9px); height: calc(var(--ckw, 9px) / 2);
+  margin: calc(var(--ckw, 9px) / -4) 0 0 calc(var(--ckw, 9px) / -2);
+  border: max(0.8px, calc(var(--ckw, 9px) / 12)) solid currentColor; border-radius: 50%;
   animation: scr-clickfx 0.9s ease-out forwards;
 }
 .scr-motion-clickfx::after {
   content: ""; position: absolute; left: 50%; top: 50%;
-  width: 2px; height: 2px; margin: -1px 0 0 -1px;
+  width: calc(var(--ckw, 9px) * 0.18); height: calc(var(--ckw, 9px) * 0.18);
+  margin: calc(var(--ckw, 9px) * -0.09) 0 0 calc(var(--ckw, 9px) * -0.09);
   border-radius: 50%; background: currentColor;
   animation: scr-clickdot 0.9s ease-out forwards;
 }

@@ -7868,12 +7868,18 @@ export default function ReplayMotionPlayer({
             남는다. v2 데이터로 그리므로 v2 모드 + 클릭 토글이 켜져 있을 때만이다. */}
         {entOn && clickFx && entClicks.map(([cs, cx2, cy2, raw, ck], i) => {
           if (t < cs || t - cs > 0.9) return null;
+          /* 게임 비율(재지적: 아직도 너무 큼) — 원작 이동 마커처럼 1.1타일 폭.
+             고정 px는 작은 맵·모바일에서 유닛보다 컸다. */
+          const ckw = ((mapRef.current?.clientWidth ?? 320) / grid.width) * 1.1;
           // 공격 클릭은 붉은 고리로 갈라 보인다(지적: 클릭 종류 구분).
           return (
             <span
               key={`clk-${i}`}
               className={cx("scr-motion-clickfx", ck === 7 && "scr-clickfx-atk")}
-              style={{ ...posStyle(cx2, cy2), color: modeColor(raw, teamOfRaw(raw)), zIndex: 1490 }}
+              style={{
+                ...posStyle(cx2, cy2), color: modeColor(raw, teamOfRaw(raw)), zIndex: 1490,
+                "--ckw": `${ckw.toFixed(1)}px`,
+              } as React.CSSProperties}
             />
           );
         })}
