@@ -1310,14 +1310,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       nx /= nl;
       ny /= nl;
       const up = faceLight(nx, ny, 0.55);
+      // 수정 기둥도 옥색~시안(요청: 넥서스와 같은 색).
       if (up.visible) {
         const d = polyPath3([[0, 0, zT], [x1, y1, zM], [x2, y2, zM]]);
-        out.push(bodyFace(d), ...up.face(d));
+        out.push([d, 1, "#3bd8c2"] as ShapeFace, ...up.face(d));
       }
       const dn = faceLight(nx, ny, -0.55);
       if (dn.visible) {
         const d = polyPath3([[0, 0, zB], [x2, y2, zM], [x1, y1, zM]]);
-        out.push(bodyFace(d), ...dn.face(d));
+        out.push([d, 1, "#3bd8c2"] as ShapeFace, ...dn.face(d));
       }
     }
     out.push(bodyFace(ringFront), topFace(ringFront, 0.22));
