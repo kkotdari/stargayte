@@ -1466,7 +1466,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // (제거·지적: 기둥 옆 막대기 제거) — 옆으로 삐친 관이 정체불명 막대로 보였다.
     /* 머리 상자도 얹힘(지적: 넓은 밑둥 판과 순서가 요잉 따라 어긋남) — 지붕 규칙로
        밑둥(반지름 키 3.1)보다 큰 붙박이 키. 포드(40)·다리(41)보단 작게. */
-    ...tagKey(boxFaces3(0, 0, 3.6, 2.8, 3.6, 3.6), 20 + depthNow(0, 0)),
+    ...tagKey(paintBase(boxFaces3(0, 0, 3.6, 2.8, 3.6, 3.6), "#c9ced6"), 20 + depthNow(0, 0)), // 윗부분 은색(요청)
     /* 미사일 포드 — 약간 하늘을 향해 기운다(지적): 위가 뒤로 1.4 물러난 기운 판. */
     /* 미사일 포드(지적) — 옆모습이 마름모가 아니라 직사각형: 위만 미는 전단이 아니라
        상자를 통째로 뒤로 기울인다. 하늘을 향한 기울기는 그대로. */
@@ -1516,9 +1516,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         faces.push(bodyFace(d), ...sl.face(d));
       }
       faces.push(bodyFace(top), topFace(top, 0.2));
-      return tagKey(faces, 24 + depthNow(rx, 0.2));
+      return tagKey(paintBase(faces, "#c9ced6"), 24 + depthNow(rx, 0.2)); // 포드 은색(요청)
     }),
-    ...tagKey(boxFaces3(0, -0.2, 2.2, 1.8, 1.6, 7.2), 24 + depthNow(0, -0.2)),
+    ...tagKey(paintBase(boxFaces3(0, -0.2, 2.2, 1.8, 1.6, 7.2), "#c9ced6"), 24 + depthNow(0, -0.2)),
   ],
   /* 포톤 캐논(실물 참고) — 납작한 원형 판(고리 무늬) + 테두리 포드 여덟 + 가운데 가는
      수정 기둥(빛나는 끝). */
@@ -2672,8 +2672,6 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...paintBase(boxFaces3(0, -4.3, 0.9, 1, 0.28), "#c9ced6"), // 고정 발 은색(요청)
       // 차체는 탱크 모드와 똑같이(지적: 시즈·보통 모드의 몸통이 달라) — 같은 상자.
       ...paintBase(boxFaces3(0, -0.2, 3.9, 5.6, 1.3, 1.2), "#c9ced6"), // 차체 은색(요청: 포탑만 개인색)
-      // 포탑 받침은 붙박이 큰 키(지적: 맨위 개인색이 포신에 가려짐).
-      ...tagKey(frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.5), 40),
       /* 포신 입체 벽 두르기(재지적: 캐리어처럼) — 오른벽 하나만 박혀 있던 것을 윗판·
          밑판 + 좌우 옆벽(faceLight 판정) + 포구 단면(앞이 보일 때만)으로 닫는다. */
       [barrelTop, 1, GUNMETAL] as ShapeFace,
@@ -2693,6 +2691,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         const d = polyPath3([[-0.7, 2.9, 6.9], [0.7, 2.9, 6.9], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]);
         return [[d, 1, GUNMETAL] as ShapeFace, capFace(d, 0.4)];
       })(),
+      /* 포탑 받침은 맨 나중에(재수리: 앞에 두면 무깊이 포신 면들이 깊이 40을 물려받아
+         결국 위에 그려졌다 — zsorted는 무깊이 면에 직전 깊이를 준다). */
+      ...tagKey(frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.5), 40),
     ];
   },
   /* 발포 반동용 분해(요청) — 시즈 차체/포탑·포신 분리판. */
@@ -2715,8 +2716,6 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   tanksiegegun: () => {
     const barrelTop = polyPath3([[-0.7, 0.7, 4], [0.7, 0.7, 4], [0.7, 2.9, 6.9], [-0.7, 2.9, 6.9]]);
     return [
-      // 포탑 받침은 붙박이 큰 키(지적: 맨위 개인색이 포신에 가려짐).
-      ...tagKey(frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.5), 40),
       [barrelTop, 1, GUNMETAL] as ShapeFace,
       topFace(barrelTop, 0.18),
       [polyPath3([[-0.7, 0.7, 3.6], [0.7, 0.7, 3.6], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]), 1, GUNMETAL] as ShapeFace,
@@ -2734,6 +2733,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         const d = polyPath3([[-0.7, 2.9, 6.9], [0.7, 2.9, 6.9], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]);
         return [[d, 1, GUNMETAL] as ShapeFace, capFace(d, 0.4)];
       })(),
+      // 포탑 받침은 맨 나중에(재수리: zsorted 무깊이 상속 탓 — 위 합본과 같은 이유).
+      ...tagKey(frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.5), 40),
     ];
   },
   /* 벌처(실물 참고) — 뒤 엔진 통 둘, 가운데 좌석·라이더 혹, 앞으로 길고 뾰족하게
@@ -3176,10 +3177,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     };
     return [
       // 세 잎 다 금색(재지적) — 잎마다 겉 가운데에 개인색을 은은히 얹는다.
+      // 옆 두 잎의 개인색 장식은 아랫면으로(재지적).
       ...paintBase(lens(-1.3, -1, 5.1, 1.05, 3.9, "L"), "#d4af37"),
-      [petal(-1.3, -1, 5.62, 0.55, 1.95), 0.4] as ShapeFace,
+      [petal(-1.3, -1, 4.5, 0.55, 1.95), 0.4] as ShapeFace,
       ...paintBase(lens(1.3, 1, 5.1, 1.05, 3.9, "R"), "#d4af37"),
-      [petal(1.3, 1, 5.62, 0.55, 1.95), 0.4] as ShapeFace,
+      [petal(1.3, 1, 4.5, 0.55, 1.95), 0.4] as ShapeFace,
       ...paintBase(lens(0, 0, 6.5, 1.05, 4.1, "T"), "#d4af37"),
       [petal(0, 0, 7.02, 0.55, 2.05), 0.4] as ShapeFace,
     ];
@@ -3546,6 +3548,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 팔 앞부분 — 개인색.
     ...boxFaces3(-2.5, 1.65, 1.05, 0.9, 1.05, 4.1),
     ...boxFaces3(2.5, 1.65, 1.05, 0.9, 1.05, 4.1),
+    // 조종석 유리(요청) — 몸 앞면 창, 앞이 보일 때만.
+    ...((): ShapeFace[] => {
+      const f = facingRatio(0, 1);
+      if (f <= 0.05) return [];
+      return tagKey([[wallDiscPath(0, 0.82, 4.9, 0.8, 0.62), 0.65, "#bfe0ef"] as ShapeFace], 30);
+    })(),
     // 양팔 끝 연장(요청) — 왼팔 작은 드릴 원뿔, 오른팔 두 갈래 집게.
     ...paintBase(hornFaces(-2.5, 2.1, 4.6, -2.5, 3.1, 4.6, 0.42), GUNMETAL),
     ...paintBase([
@@ -3673,9 +3681,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...cylinderFaces3(0, -0.2, 1.25, 1.9, 2.3),
         ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
         ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
-        // 헬멧 더 반구형(지적).
-        ...domeFaces3(0, -0.2, 0.85, 0.8, 4.2),
       ], "#dfe3e6"),
+      // 헬멧 유리색(요청).
+      ...paintBase(domeFaces3(0, -0.2, 0.85, 0.8, 4.2), "#bfe0ef"),
       [groundEllipse(fx2, fy2, 0.42, 0.36), 0.55, "#ffffff"] as ShapeFace,
       bodyFace(apron),
       topFace(apron, 0.3),
@@ -3686,10 +3694,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...hornFaces(-1.2, 0.75, 2.8, -0.85, 1.4, 3.1, 0.4),
         ...hornFaces(1.5, 0.1, 3.7, 1.3, 0.55, 2.85, 0.45),
         ...hornFaces(1.3, 0.55, 2.85, 1.35, 1.05, 3.1, 0.4),
-        // 오른팔 주사기.
-        ...tubeFaces(1.35, 0.3, 1.35, 1.4, 0.3, 3),
-        ...hornFaces(1.35, 1.4, 3.1, 1.35, 2.2, 3, 0.16),
       ], "#dfe3e6"),
+      // 오른팔 주사기 — 녹색(요청).
+      ...paintBase(tubeFaces(1.35, 0.3, 1.35, 1.4, 0.3, 3), "#4db964"),
+      ...paintBase(hornFaces(1.35, 1.4, 3.1, 1.35, 2.2, 3, 0.16), "#4db964"),
     ];
   },
   /* 마린(실물 참고) — 큰 어깨 뽕 한 쌍의 파워드 아머, 금빛 바이저 머리, 가슴 앞에
@@ -3706,8 +3714,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...cylinderFaces3(0, -0.2, 1.25, 1.9, 2.3),
       ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
       ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
-      // 헬멧 더 반구형(지적) + 바이저는 흰 반투명 고정(지적).
-      ...domeFaces3(0, -0.2, 0.85, 0.8, 4.2),
+      // 헬멧 유리색(요청).
+      ...paintBase(domeFaces3(0, -0.2, 0.85, 0.8, 4.2), "#bfe0ef"),
       [groundEllipse(vx2, vy2, 0.45, 0.32), 0.55, "#ffffff"] as ShapeFace,
       /* 두 팔(재지적: 위치·굽힘) — 위팔은 어깨뽕 '아래'(z 3.7)에서 나와 앞-아래로
          내려가고, 팔꿈치에서 굽어 아래팔이 총몸으로 올라가 쥔다. 왼손은 앞손잡이,
@@ -3739,8 +3747,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...domeFaces3(-0.75, -0.15, 0.34, 0.3, 4.1),
       ...domeFaces3(0.75, -0.15, 0.34, 0.3, 4.1),
       // 작은 헬멧(마린 0.8 → 0.55) + 바이저.
-      // 고스트도 반구형 헬멧 + 흰 반투명 바이저(지적).
-      ...domeFaces3(0, -0.1, 0.58, 0.55, 4.35),
+      // 헬멧 유리색(요청).
+      ...paintBase(domeFaces3(0, -0.1, 0.58, 0.55, 4.35), "#bfe0ef"),
       [groundEllipse(vx2, vy2, 0.3, 0.21), 0.55, "#ffffff"] as ShapeFace,
       // 가는 두 팔 — 앞-아래로 내려가 총몸을 받쳐 쥔다. 회흰색(요청).
       ...paintBase([
@@ -3778,8 +3786,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...cylinderFaces3(0, -0.2, 1.25, 1.9, 2.3),
       ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
       ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
-      // 헬멧 더 반구형(지적) + 바이저 흰 반투명(지적).
-      ...domeFaces3(0, -0.2, 0.85, 0.8, 4.2),
+      // 헬멧 유리색(요청).
+      ...paintBase(domeFaces3(0, -0.2, 0.85, 0.8, 4.2), "#bfe0ef"),
       [groundEllipse(vx2, vy2, 0.42, 0.24), 0.55, "#ffffff"] as ShapeFace,
       // 두 팔(요청) — 어깨에서 건틀릿 뿌리로.
       ...hornFaces(-1.45, -0.2, 4.9, -1.4, 0.6, 3.2, 0.5),
@@ -3901,9 +3909,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       sideFace(polyPath3([[-1.1, -0.8, 6.6], [1.1, -0.8, 6.6], [1.6, -1.6, 3.6], [-1.6, -1.6, 3.6]]), 0.22),
       // 몸통 더 축소(재지적) — 1.0 → 0.85.
       ...cylinderFaces3(0, -0.3, 0.85, 2.4, 4.4),
-      ...domeFaces3(0, -0.7, 1.05, 0.85, 6.8),
-      // 프로토스 길쭉한 머리(요청).
-      ...hornFaces(0, -1.1, 7.1, 0, -2.7, 7.8, 0.65),
+      // 머리·뿔 금색(요청).
+      ...paintBase(domeFaces3(0, -0.7, 1.05, 0.85, 6.8), "#d4af37"),
+      ...paintBase(hornFaces(0, -1.1, 7.1, 0, -2.7, 7.8, 0.65), "#d4af37"),
       /* 초승달 후광(실물) — 머리 뒤에서 좌우로 감아 올라 마주 보는 큰 호. 금색(요청). */
       ...paintBase(hornFaces(-0.8, -1, 7, -1.4, -1.2, 9.4, 0.4), "#d4af37"),
       ...paintBase(hornFaces(-1.4, -1.2, 9.3, -0.35, -1.35, 10.2, 0.3), "#d4af37"),
@@ -4059,10 +4067,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...rodFaces(1.9, 0.7, 4.2, 2.5, 1.15, 5.4, 0.45),
       ...ivory(rodFaces(2.44, 1.1, 5.28, 2.9, 1.5, 6.9, 0.55)),
       ...ivory(hornFaces(2.9, 1.5, 6.9, 3.15, 2.1, 4.3, 0.55)),
-      // 얼굴·머리장식 갈색(요청) — 두건을 먼저 그려 얼굴이 안 가려진다(지적).
-      [hood, 1, "#8a5f43"] as ShapeFace,
-      topFace(hood, 0.14),
-      ...paintBase(domeFaces3(0, 0.2, 0.75, 0.6, 6.8), "#8a5f43"),
+      /* 얼굴·머리장식 갈색(요청) — 무깊이 두건이 직전 깊이를 물려받아 얼굴을 덮었다
+         (재지적: zsorted 상속) — 제 깊이를 달아 앞에선 얼굴이, 뒤에선 두건이 이긴다. */
+      ...tagKey([[hood, 1, "#8a5f43"] as ShapeFace, topFace(hood, 0.14)], depthNow(0, -1.6)),
+      ...tagKey(paintBase(domeFaces3(0, 0.2, 0.75, 0.6, 6.8), "#8a5f43"), depthNow(0, 0.5) + 1),
     ];
   },
   /* 울트라리스크(실물 참고) — 코끼리 다리 넷의 거체, 어깨에서 크게 휘는 거대 카이저
@@ -4255,7 +4263,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const [px, py] = project(x, y, z);
       return `${px} ${py}`;
     };
-    const out: ShapeFace[] = [...paintBase(hornFaces(0, -2.6, 5, -0.3, -3.6, 7.8, 1), "#1b1e23")]; // 등 사출구 검회색(요청)
+    const out: ShapeFace[] = [...paintBase(hornFaces(0, -2.6, 5, -0.3, -3.6, 7.8, 1), "#c9ced6")]; // 꼬리 은색(재지적)
     /* 포드는 캡슐 한 덩이(정정: 앞 뭉치가 본체와 떨어져 보였고 검정이 끼었다) —
        양 끝이 둥근 외곽선 하나로 그려 이음매도 어두운 단면도 없다. */
     const pod = (tx: number): void => {
@@ -4305,7 +4313,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(bodyFace(plate), topFace(plate, 0.18));
     // 뒤 추진체 셋(지적) — 꽁무니에서 뒤로 내민 짧은 통, 꽁무니가 보이면 분사구 발광.
     for (const tx of [-1.3, 0, 1.3]) {
-      out.push(...tubeFaces(tx, -2.5, tx, -3.5, 0.38, 5));
+      // 추진기 검정색(요청).
+      out.push(...paintBase(tubeFaces(tx, -2.5, tx, -3.5, 0.38, 5), "#1b1e23"));
     }
     if (facingRatio(0, -1) > -0.15) {
       for (const tx of [-1.3, 0, 1.3]) {
