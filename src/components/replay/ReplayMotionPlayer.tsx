@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Maximize2, Pause, Play, RotateCcw, Shield, X } from "lucide-react";
-import { useLockBodyScroll } from "../../utils/bodyScrollLock";
+import { Pause, Play, RotateCcw, Shield, X } from "lucide-react";
 import Avatar from "../common/Avatar";
 import { cx } from "../../utils/format";
 import { UNIT_KO, TECH_KO } from "../../utils/replayNames";
@@ -4927,7 +4926,7 @@ function unitAt(units: [number, string][], t: number): string {
 }
 
 /** 상세 팝업 자동 확대의 자리 잡기 — 묶음 상세(카드 여럿)에서 첫 판만 확대창을 연다. */
-const autoBigHolder = { taken: false };
+// (삭제·요청: 확대창 완전 제거) — autoBigHolder(묶음 상세의 첫 판만 확대)도 함께 걷었다.
 
 /* 한 번에 한 판만 돈다(요청) — 목록에 게임 카드가 여럿 펼쳐져 있으면 저마다 자동재생을
    시작해 지도가 사방에서 움직인다. 마지막으로 재생을 잡은 플레이어가 앞 임자를 멈춘다. */
@@ -5609,8 +5608,12 @@ export default function ReplayMotionPlayer({
          유닛이다(요청: 한 번도 안 집힌 유닛도 태어나 랠리로 걸어간다). */
       if (e.bld || e.t === -1) continue;
       const raw = nameOfId.get(e.o) ?? "";
-      const p = trackByName.get(raw);
-      if (!p) continue;
+      /* v1 트랙이 없어도 유닛은 걷는다(지적: 리플레이에 유닛이 안 나옴) — 요약이
+         사라지며 motion이 빈 껍데기(EMPTY_MOTION)로 오는데, 여기서 v1 트랙을 필수로
+         요구하니 개체 전부가 걸러져 유닛이 0개였다. 트랙은 걷기 속도의 속업(ups)
+         참고용일 뿐이라, 없으면 빈 스텁으로 걷는다(기본 속도). */
+      const p = trackByName.get(raw)
+        ?? { raw, pts: [], units: [], workers: [], size: [], prod: {} };
       // 위치 없는 증거(생산·랠리, x=-1)는 걷기 재료가 아니다.
       /* 행렬 물리(지적: 이동을 찍으면 한 번에 출발하는 게 아니라 한 줄이 되면서 간다) +
          새 겹침 방지(지적: 다시 넣되 세련되게) — 같은 클릭(같은 사람·초·자리)을 받은
@@ -5878,29 +5881,24 @@ export default function ReplayMotionPlayer({
   const mapRef = useRef<HTMLDivElement>(null);
   /* (삭제) 본진 아바타 클립 id — 사진을 도형으로 자르지 않게 되면서(지적) 클립 자체가
      없어졌다. */
-  /* 큰 화면 보기(요청: PC — 확대 아이콘을 누르면 맵과 조작부만 든 팝업이 엄청 크게) —
-     같은 컴포넌트 트리를 통째로 포털 모달 안으로 옮겨 심으므로 재생 상태가 그대로
-     이어진다. Esc로도 닫는다. */
-  /* 상세 팝업(PC)은 첫 렌더부터 확대다(지적: 승패·BEST 줄이 잠깐 보였다 사라짐 —
-     effect로 열면 인라인 카드가 한 프레임 먼저 그려진다). 초기값은 순수 계산만 하고,
-     자리 잡기(autoBigHolder)는 아래 effect가 맡는다. */
-  const [big, setBig] = useState<boolean>(() => Boolean(onDetailClose)
+  /* PC 상세 넓은 배치(요청: 확대창 제거, 관련 소스까지) — 겹창·포털·가리개는 걷고,
+     옛 확대창의 배치(맵 왼쪽 최대 + 오른쪽 기둥에 로스터·조작부·댓글, 케밥·닫기)는
+     상세 화면 안 인라인 기본이 됐다(요청: 댓글부를 미니맵 우측으로 — 기존 확대창 방식).
+     상세(onDetailClose가 온 자리) + PC 폭에서만 선다. 모바일 확대 버튼도 함께 걷었다 —
+     상세가 이미 전체 화면이다. */
+  const [wide] = useState<boolean>(() => Boolean(onDetailClose)
     && typeof window !== "undefined"
     && !!window.matchMedia?.("(min-width: 1160px)").matches);
-  /* (삭제·요청: 모바일 확대 기능 제거 둘째 판) — 화면 폭 확대 토글(wide)도 걷었다.
-     게임 상세 모달이 애초에 전체화면이 되면서(요청) 맵은 늘 화면의 짧은 변에 최대로
-     맞고, 눌러서 넓히는 중간 상태가 설 자리가 없다. */
-  useLockBodyScroll(big);
   useEffect(() => {
-    if (!big) return undefined;
+    if (!wide) return undefined;
+    // Esc = 닫기 버튼과 같은 길 — 상세를 닫는다.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      // 닫기 버튼과 같은 길(closeBig) — PC 상세 기본 확대에서만 상세까지 함께 닫는다.
-      closeBig();
+      if (e.key === "Escape") onDetailClose?.();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [big]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wide]);
 
   /* 재생이 손잡이를 민다 — 비제어라 React가 안 밀어 주므로 여기서 직접 쓴다. 잡고 있는
      동안은 안 민다(그 순간의 임자는 손이다). */
@@ -5912,34 +5910,8 @@ export default function ReplayMotionPlayer({
     el.style.setProperty("--p", `${total > 0 ? (t / total) * 100 : 0}%`);
   }, [t, total]);
 
-  /* (삭제·요청) PC 축소 장면 — 상세가 늘 확대창으로 열리면서 "재생 시작 시 확대"와
-     "축소 기억"(shrunk·bigByDefault)은 통째로 걷었다. */
-
-  /* PC 상세는 확대창이 곧 화면이다(요청: 기존 상세 미사용) — 상세 팝업 안(onDetailClose가
-     온 자리)에서 마운트되자마자 확대창을 연다. 묶음 상세에 카드가 여럿이면 첫 판만 연다
-     (autoBigHolder). */
-  useEffect(() => {
-    if (!onDetailClose) return undefined;
-    if (typeof window === "undefined" || !window.matchMedia?.("(min-width: 1160px)").matches) return undefined;
-    // 묶음 상세에서 다른 판이 이미 확대를 잡았으면 이쪽은 내려선다(초기값이 true였어도).
-    if (autoBigHolder.taken) { setBig(false); return undefined; }
-    autoBigHolder.taken = true;
-    setBig(true);
-    return () => { autoBigHolder.taken = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const closeBig = () => {
-    /* 확대창 닫기가 상세까지 닫는 것은 PC뿐(지적: 플레이어 창 닫기가 뒤로가기까지 됨) —
-       PC는 상세가 곧 자동 확대창이라 함께 닫는 게 맞지만, 모바일의 확대는 상세 위에
-       사람이 연 겹창이다. 거기서 onDetailClose로 상세째 닫으면 상세의 주소 해시가
-       history.back()으로 걷히며 뒤로가기처럼 보였다. 모바일은 확대만 걷고 상세로 돌아간다. */
-    if (onDetailClose && typeof window !== "undefined"
-      && !!window.matchMedia?.("(min-width: 1160px)").matches) {
-      onDetailClose();
-      return;
-    }
-    setBig(false);
-  };
+  /* (삭제·요청: 확대창 완전 제거) — 확대창 자동 열기(autoBigHolder)·closeBig·축소
+     기억 전부. 넓은 배치는 위의 wide가 인라인으로 잇는다. */
 
   /* PC 휠 줌(요청) — 맵 위에서 휠로 확대/축소, 커서 자리를 붙든 채 늘어난다. 팬은 줌
      계산에 함께 실려 경계 밖이 안 보이게 죈다. */
@@ -5980,7 +5952,9 @@ export default function ReplayMotionPlayer({
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [big]);
+    // 확대창(포털 재부착)이 사라져 맵 엘리먼트는 안 바뀐다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* 드래그 팬(지적: 확대 후 드래그가 이상함 — 브라우저의 이미지 드래그가 끌려 나왔다)
      — 확대 중에는 드래그로 지도를 민다. 경계 죔은 휠과 같은 식. */
@@ -6060,11 +6034,9 @@ export default function ReplayMotionPlayer({
       el.removeEventListener("touchend", onTE);
       el.removeEventListener("touchcancel", onTE);
     };
-    /* big 의존(재지적: 모달에서 드래그가 계속 전파) — 확대 모달을 여닫으면 맵이 다른
-       트리의 새 엘리먼트로 옮겨 심기는데, 빈 의존성이라 리스너가 옛 엘리먼트에 남아
-       모달의 맵엔 아무 것도 안 붙어 있었다. IO effect와 같은 이유다. */
+    // 확대창(포털 재부착)이 사라져 맵 엘리먼트는 안 바뀐다 — 마운트에 한 번이면 된다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [big]);
+  }, []);
   /* 건물 자리 회피(요청: 밟고 지나가지 않고 돌아간다) — 서 있는 건물 발자국(+여유
      0.5타일) 안으로 들어온 유닛 자리는 가장 가까운 변 밖으로 밀어낸다. 선분이 발자국을
      가로지르면 안쪽 구간이 변을 따라 미끄러져, 돌아가는 걸음으로 보인다. */
@@ -6260,7 +6232,7 @@ export default function ReplayMotionPlayer({
 
   /* 키보드(요청: PC) — ↑↓ 배속, ←→ 5초 뒤/앞. 댓글 입력 중에는 건드리지 않는다. */
   useEffect(() => {
-    if (!big) return undefined;
+    if (!wide) return undefined;
     const onKey = (e: KeyboardEvent) => {
       const t2 = e.target as HTMLElement | null;
       if (t2 && (t2.tagName === "INPUT" || t2.tagName === "TEXTAREA" || t2.isContentEditable)) return;
@@ -6281,7 +6253,7 @@ export default function ReplayMotionPlayer({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [big, total]);
+  }, [wide, total]);
 
   /* 한 번에 한 판만(요청) — 재생을 시작하는 순간 먼저 돌던 판을 멈춘다. */
   const pauseSelf = useRef(() => {});
@@ -6300,7 +6272,7 @@ export default function ReplayMotionPlayer({
      재생 유지)도 이것으로 막힌다. big이 바뀌면 맵이 다른 트리로 옮겨 심기므로 effect를
      다시 걸어 새 엘리먼트를 관찰한다. */
   useEffect(() => {
-    if (big) return undefined;
+    if (wide) return undefined;
     const el = mapRef.current;
     if (!el || typeof IntersectionObserver === "undefined") return undefined;
     const io = new IntersectionObserver((entries) => {
@@ -6308,7 +6280,7 @@ export default function ReplayMotionPlayer({
     }, { threshold: 0.2 });
     io.observe(el);
     return () => io.disconnect();
-  }, [big]);
+  }, [wide]);
 
   /* (삭제) 화면을 벗어날 때의 정지는 이제 스크롤 밖(IntersectionObserver)뿐이다 —
      창 전환(blur) 정지를 걷은 뒤에도 탭 숨김(visibilitychange) 정지가 남아 창을 덮으면
@@ -6671,13 +6643,13 @@ export default function ReplayMotionPlayer({
 
   const body = (
     <div
-      className={cx("scr-motion", big && "scr-motion-big")}
+      className={cx("scr-motion", wide && "scr-motion-big")}
       // 확대 모드에선 폭 상한을 안 건다 — 모달 폭(아래 포털)이 이미 맵+양옆 세로 조작부
       // 기준으로 확정돼 있고, 여기까지 조이면 이중 제약으로 맵이 더 작아진다.
       // 230 → 150 → 230px(요청: 페이지라 더 크게 → 재지적: 노트북에서 맵이 다 안 들어옴)
       // — 150은 페이지 머리(크럼·카드 헤드 ≈200px)를 잊은 값이라 맵 자체가 화면을 넘쳤다.
       // 230이면 맵이 통째로 들어오고, 페이지 폭 상한(760px)은 그대로라 여전히 예전보다 크다.
-      style={big ? undefined : { maxWidth: `calc((100dvh - 230px) * ${(grid.width / grid.height).toFixed(4)})`, margin: "0 auto" }}
+      style={wide ? undefined : { maxWidth: `calc((100dvh - 230px) * ${(grid.width / grid.height).toFixed(4)})`, margin: "0 auto" }}
     >
       <div className="scr-motion-maprow">
       {teamCol(1)}
@@ -8095,16 +8067,19 @@ export default function ReplayMotionPlayer({
       <div className="scr-motion-toolrow">
         <div className="scr-motion-toolrow-mid" />
         {/* 케밥은 왼쪽 위(요청: PC 게임 상세에서도 케밥은 왼쪽) — X와 갈라 세운다. */}
-        {big && menu ? <div className="scr-motion-menu-left">{menu}</div> : null}
-        <div className="scr-motion-expand-row">
-          <button
-            type="button" className="scr-motion-btn scr-motion-expand"
-            onClick={() => { if (big) closeBig(); else setBig(true); }}
-            aria-label={big ? "닫기" : "크게 보기"} title={big ? "닫기" : "크게 보기"}
-          >
-            {big ? <X size={14} /> : <Maximize2 size={12} />}
-          </button>
-        </div>
+        {wide && menu ? <div className="scr-motion-menu-left">{menu}</div> : null}
+        {/* 닫기(X) — 확대창이 걷혀(요청) 이제 상세 자체를 닫는 버튼이다. 넓은 배치에서만. */}
+        {wide && onDetailClose ? (
+          <div className="scr-motion-expand-row">
+            <button
+              type="button" className="scr-motion-btn scr-motion-expand"
+              onClick={() => onDetailClose()}
+              aria-label="닫기" title="닫기"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {/* 보기 설정 줄(정리·요청) — 원형 버튼 11개 중 윗줄 여섯: 보기(2D/3D)·컬러(팀색/
@@ -8286,36 +8261,17 @@ export default function ReplayMotionPlayer({
         </button>
         <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
       </div>
-      {/* 확대 창 왼쪽 기둥(요청) — 맨 위 타임스탬프, 로스터(기존), 범례 2열, 맨 아래 등록자. */}
-      {big && stamp ? <div className="scr-motion-stamp">{stamp}</div> : null}
-      
-      {big && registrant ? <div className="scr-motion-registrant">{registrant}</div> : null}
-      {/* 확대 모드의 오른쪽 댓글 영역(지적: "리플" = 댓글) — 맵 오른쪽 그리드 4번째 칸. */}
-      {big && side ? <div className="scr-motion-sidewrap">{side}</div> : null}
+      {/* 넓은 배치 왼쪽 기둥(요청) — 맨 위 타임스탬프, 로스터(기존), 범례 2열, 맨 아래 등록자. */}
+      {wide && stamp ? <div className="scr-motion-stamp">{stamp}</div> : null}
+
+      {wide && registrant ? <div className="scr-motion-registrant">{registrant}</div> : null}
+      {/* 오른쪽 댓글 영역(요청: PC에서 댓글부를 미니맵 우측으로 — 기존 확대창 방식 그대로,
+          다만 이제 겹창 없이 상세 화면 안 인라인이다). */}
+      {wide && side ? <div className="scr-motion-sidewrap">{side}</div> : null}
     </div>
   );
 
-  /* 큰 화면 보기(요청) — 같은 트리를 포털 모달에 옮겨 심는다: 재생 상태가 그대로 이어지고,
-     범례·지형 버튼은 CSS(.scr-motion-big)가 감춰 맵과 조작부만 남는다. */
-  if (big) {
-    return createPortal(
-      <div className="scr-modal-overlay">
-        {/* 뒤 상세 창 가리개(지적: 확대를 누르면 뒤에 창이 남아 보임) — 화면 전체를 덮는
-            어두운 막. 누르면 축소로 돌아간다(사람의 축소로 기억). */}
-        <div
-          className="scr-motion-big-backdrop"
-          onClick={closeBig}
-        />
-        {/* 폭 상한 = (가용 높이 − 위아래 여백·슬림 탐색바 몫) × 맵 가로세로비 + 양쪽 기둥
-            몫(요청: 왼쪽 기둥에 로스터·조작부, 오른쪽 기둥에 댓글 — 맵은 최대 크기) —
-            왼쪽 기둥 220px(110×2, 지적: 폭 줄이기) + 오른쪽 300px + 간격·패딩 60px. */}
-        <div
-          className="scr-modal scr-motion-big-modal"
-          style={{ width: `min(94vw, calc((100dvh - 88px) * ${(grid.width / grid.height).toFixed(4)} + 580px))` }}
-        >{body}</div>
-      </div>,
-      document.body,
-    );
-  }
+  /* (삭제·요청: PC 확대창 관련 소스 완전 제거) — 포털 모달·가리개·폭 공식 전부.
+     넓은 배치는 wide가 인라인으로 그린다. */
   return body;
 }
