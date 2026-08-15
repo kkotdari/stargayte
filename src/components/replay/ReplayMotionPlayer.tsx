@@ -4392,20 +4392,31 @@ type UnitDrawOp = {
    바닥 기준 어림은 모델이 상자를 다 안 채우면(해처리 둔덕 등) 그림자가 발보다 한참
    아래에 깔렸다. 알파를 성글게 훑어 가장 낮은 그린 픽셀 줄을 재고, 그림자를 거기에
    붙인다. 판은 캐시되므로 측정도 한 번뿐이다. */
-function contentBottom(cv: HTMLCanvasElement): number {
+/* 내용물 상자(재지적: 유닛·그림자·선택 고리가 다 안 맞음) — 바닥(y)만이 아니라 실제
+   그려진 픽셀의 가로 중심(cx)까지 잰다. 내용물이 16-상자 안에서 치우친 모델은 상자
+   중심에 붙인 그림자·링이 몸과 어긋났다. 전 픽셀 스캔, 캐시당 한 번. */
+function contentBox(cv: HTMLCanvasElement): { bot: number; cx: number } {
   const c2 = cv.getContext("2d", { willReadFrequently: true });
-  if (!c2 || cv.width === 0 || cv.height === 0) return cv.height;
+  if (!c2 || cv.width === 0 || cv.height === 0) return { bot: cv.height, cx: cv.width / 2 };
   const { data, width, height } = c2.getImageData(0, 0, cv.width, cv.height);
+  let bot = 0;
+  let minX = width;
+  let maxX = 0;
   for (let y = height - 1; y >= 0; y -= 1) {
     const row = y * width * 4;
-    /* 전 픽셀 스캔(지적: 유닛보다 그림자가 위) — 3픽셀 건너뛰던 샘플링이 1~2px 가는
-       다리를 놓쳐, 다리 달린 유닛의 '바닥'이 몸통 밑으로 잡혔다. 캐시당 한 번이라
-       전수로 봐도 싸다. */
-    for (let x = 3; x < width * 4; x += 4) {
-      if (data[row + x] > 10) return y + 1;
+    for (let x = 0; x < width; x += 1) {
+      if (data[row + x * 4 + 3] > 10) {
+        if (bot === 0) bot = y + 1;
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+      }
     }
   }
-  return cv.height;
+  if (bot === 0) return { bot: cv.height, cx: cv.width / 2 };
+  return { bot, cx: (minX + maxX + 1) / 2 };
+}
+function contentBottom(cv: HTMLCanvasElement): number {
+  return contentBox(cv).bot;
 }
 const PATH2D_CACHE = new Map<string, Path2D>();
 const pathOf = (d: string): Path2D => {
@@ -4418,10 +4429,10 @@ const pathOf = (d: string): Path2D => {
    수천 번의 가우시안 블러 합성이라 PC에서도 버벅였다. 같은 (종류·방향·시각·색·크기)
    조합은 한 번만 오프스크린 캔버스에 굽고, 프레임에선 drawImage 한 번으로 찍는다.
    줌 중엔 크기 양자화 칸이 바뀌며 다시 굽지만 멈추면 전부 캐시 적중이다. */
-const SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; bot: number }>();
+const SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; bot: number; cx: number }>();
 function unitSprite(
   op: UnitDrawOp, pxq: number, B: number,
-): { cv: HTMLCanvasElement; pad: number; l: number; bot: number } | null {
+): { cv: HTMLCanvasElement; pad: number; l: number; bot: number; cx: number } | null {
   const rotB = op.rotDeg !== undefined
     ? ((Math.round(op.rotDeg / 22.5) * 22.5) % 360 + 360) % 360 : -1;
   const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
@@ -4450,7 +4461,7 @@ function unitSprite(
   }
   // 무한히 크지 않게 — 색·크기 조합이 쌓이면 통째로 비운다(다음 프레임에 필요분만 재적재).
   if (SPRITE_CACHE.size > 700) SPRITE_CACHE.clear();
-  const entry = { cv, pad, l, bot: contentBottom(cv) };
+  const entry = { cv, pad, l, ...contentBox(cv) };
   SPRITE_CACHE.set(key, entry);
   return entry;
 }
@@ -4806,6 +4817,11 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
       const footY = spr
         ? sy - px * 0.24 - (spr.pad + pxq / 2) * kU + (spr.bot / B) * kU - 1
         : sy + px * 0.28;
+      /* 내용물 가로 중심(재지적: 그림자·링이 몸과 안 맞음) — 상자 중심이 아니라 실제
+         그려진 픽셀의 가운데에 붙인다. */
+      const footX = spr
+        ? sx - (spr.pad + pxq / 2) * kU + (spr.cx / B) * kU
+        : sx;
       if (hover && showShadows !== false) {
         ctx.save();
         ctx.shadowColor = "transparent";
@@ -4833,7 +4849,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
            비행 높이만큼 남쪽으로 밀려 있었다. 발밑 땅 자리 그대로 둔다. */
         /* 3D에선 더 눕는다(지적: 그림자가 안 눕는 문제) — 0.6은 바닥 눌림(0.74×부감)에
            비해 서 보였다. 0.38로 바짝 눕힌다. */
-        ctx.ellipse(sx, footY - shw * 0.22, shw * 1.1, shw * (op.air ? 0.5 : 0.42) * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
+        ctx.ellipse(footX, footY - shw * 0.22, shw * 1.1, shw * (op.air ? 0.5 : 0.42) * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       } else if (showShadows !== false && !op.air && UNIT_KIND_SET.has(op.kind)) {
@@ -4845,7 +4861,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         ctx.fillStyle = "#000";
         ctx.beginPath();
         // 바닥면 전체(재지적: 앞쪽만 납작) — 타원을 키우고 중심을 위로 당긴다.
-        ctx.ellipse(sx, footY - px * 0.09, px * 0.19, px * 0.11 * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
+        ctx.ellipse(footX, footY - px * 0.09, px * 0.19, px * 0.11 * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -4859,8 +4875,9 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         // 실처럼 가늘게 + 반으로(재지적: 선택 원 포함 전부 축소).
         ctx.lineWidth = Math.max(0.5, px * 0.025);
         ctx.beginPath();
-        const ringY = op.air ? footY - lift : sy + px * 0.18;
-        ctx.ellipse(sx, ringY, px * 0.25, px * 0.14 * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
+        // 링도 내용물 발끝에(재지적) — 상자 고정 오프셋은 작은 모델에서 몸 아래로 떨어졌다.
+        const ringY = op.air ? footY - lift : footY - px * 0.03;
+        ctx.ellipse(footX, ringY, px * 0.25, px * 0.14 * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
       }
