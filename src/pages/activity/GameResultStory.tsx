@@ -165,7 +165,23 @@ export default function GameResultStory({
               {/* 경기 시각(요청: 머리 타임스탬프가 자리를 차지 — 맵 이름 줄 왼쪽 끝으로
                   합치자) — 게임 페이지에서만 CSS로 보이고, 목록·묶음 카드는 머리의 시각이
                   그대로라 여기선 숨겨 둔다. absolute라 가운데 정렬(맵 이름)은 안 민다. */}
-              <span className="scr-story-when">{stampText}</span>
+              <span className="scr-story-when">
+                {stampText}
+                {/* 등록자(요청: 타임스탬프 우측에) — 기둥 맨 아래에서 여기로 옮겨 왔다. */}
+                {gameResult.createdBy && (
+                  <span className="scr-story-when-by">
+                    <Avatar
+                      member={{
+                        id: gameResult.createdBy.id,
+                        nickname: gameResult.createdBy.nickname,
+                        avatar: memberOf(gameResult.createdBy.id)?.avatar ?? null,
+                      }}
+                      size={16}
+                    />
+                    <span>{gameResult.createdBy.nickname} 등록</span>
+                  </span>
+                )}
+              </span>
               {result !== "draw" && o1 === "win" && winSpan}
               {mapName && <span className="scr-story-map-name">{mapName}</span>}
               {minutes !== null && <span className="scr-story-map-dur">{minutes}분</span>}
@@ -187,20 +203,6 @@ export default function GameResultStory({
       <ReplayMotionPlayer
         grid={storyMap} motion={EMPTY_MOTION} endSec={endSecVal}
         bases={bases} teamOfRaw={teamOfRaw} active={active}
-        stamp={stampText}
-        registrant={gameResult.createdBy ? (
-          <>
-            <Avatar
-              member={{
-                id: gameResult.createdBy.id,
-                nickname: gameResult.createdBy.nickname,
-                avatar: memberOf(gameResult.createdBy.id)?.avatar ?? null,
-              }}
-              size={16}
-            />
-            <span>{gameResult.createdBy.nickname} 등록</span>
-          </>
-        ) : undefined}
         onDetailClose={detailClose ?? undefined}
         /* 개체 트랙 v2(요청: 별도 테이블과 비교) — 재생기의 '부대/개체' 토글이 처음
            켜질 때 한 번 내려받는다. 없는 경기(옛 등록·분석 실패)는 null이 온다. */

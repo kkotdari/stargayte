@@ -4013,6 +4013,18 @@ const ATTACK_FX: Record<string, string> = {
   Dragoon: "photon", Scout: "bolt", Corsair: "flare", Arbiter: "bolt", Carrier: "burst",
   Archon: "zap", Reaver: "cannon",
 };
+/* 발사 지점(요청: 탱크는 포신, 히드라는 입, 마린·파뱃은 총구, 매딕은 주사기 — 효과가
+   몸 중심이 아니라 제 무기 끝에서) — 트레이서를 몸 방향 축으로 이만큼(px) 앞으로 민다.
+   회전 뒤 translateY라 어느 방향을 보든 정확히 총구 쪽이다. 표에 없으면 몸 가장자리
+   어림(4px). 유닛별 완전 모델링(총구 화염까지 제 모델)은 다음 단계다. */
+const MUZZLE_PX: Record<string, number> = {
+  "Siege Tank": 8, "Siege Tank (Tank Mode)": 8, "Siege Tank (Siege Mode)": 10,
+  Hydralisk: 5, Marine: 4, Firebat: 4, Ghost: 5, Vulture: 5, Goliath: 6,
+  Wraith: 6, Battlecruiser: 9, Valkyrie: 6,
+  Dragoon: 6, Zealot: 3, Archon: 6, Reaver: 7, Scout: 6, Corsair: 5, Carrier: 9, Arbiter: 6,
+  Zergling: 3, Lurker: 6, Mutalisk: 5, Guardian: 6, Devourer: 6, Queen: 5, Ultralisk: 5,
+  "Photon Cannon": 6, "Sunken Colony": 5, "Missile Turret": 7, Bunker: 6,
+};
 const unitMarkerKind = (u: string, race?: string): string =>
   UNIT_3D[u] ?? (race === "테란" ? "gunner" : race === "저그" ? "zling" : "zealot");
 /* 유닛 덩치(요청: 소형/중형/대형 크기 구분) — 브루드워의 유닛 크기 분류를 따른다.
@@ -4554,9 +4566,9 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
           );
           /* 건물 체력바(요청) — 다친 건물 위에만. 유닛 바와 같은 3색. */
           if (op.hpFrac !== undefined && op.hpFrac > 0) {
-            /* 건물도 최대 체력 정비례(재지적: 제곱근 압축 제거) — 넥서스(1500)가
-               성큰(300)의 다섯 배다. */
-            const bScale = Math.min(2, Math.max(0.25, (op.hpMax ?? 800) / 1000));
+            /* 최대 체력의 제곱근 비례(재재지적: 정비례로 갔더니 적용이 안 된 듯 보이고
+               작은 건물 바가 실오라기가 됨) — 넥서스(1500)와 성큰(300)이 √5≈2.2배 차이. */
+            const bScale = Math.min(2, Math.max(0.4, Math.sqrt((op.hpMax ?? 800) / 1000)));
             const bw3 = Math.max(6, wPx * 0.7 * bScale);
             const bh3 = Math.max(1.8, wPx * 0.05);
             const bx3 = sx - bw3 / 2;
@@ -4665,10 +4677,10 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
       /* 체력바(요청: 체력을 지니고 다니는 생애주기) — 다친 유닛 머리 위에 원작풍
          바: 초록(>66%)·노랑(>33%)·빨강. 성한 유닛에는 안 띄워 화면을 아낀다. */
       if (op.hpFrac !== undefined && op.hpFrac > 0) {
-        /* 100% 길이 = 최대 체력에 정비례(재지적: 길이 자체가 전체 체력을 반영 — 제곱근
-           압축을 걷었다). 마린(40) 대비 울트라(400)가 정말 열 배다. 남은 칸과 색은
-           자기 최대값에 대한 비율(hpFrac) 그대로다. */
-        const hpScale = Math.min(3.2, Math.max(0.22, (op.hpMax ?? 100) / 150));
+        /* 100% 길이 = 최대 체력의 제곱근 비례(재재지적: 정비례는 마린 바가 4px 바닥에
+           눌리고 큰 유닛 바만 길어져 '적용 안 된' 것처럼 보였다) — 마린(40) 대비
+           울트라(400)가 √10≈3.2배. 남은 칸과 색은 자기 비율(hpFrac) 그대로다. */
+        const hpScale = Math.min(3.2, Math.max(0.45, Math.sqrt((op.hpMax ?? 100) / 150)));
         const bw2 = Math.max(4, px * 0.95 * hpScale);
         const bh2 = Math.max(1.6, px * 0.09);
         const bx2 = sx - bw2 / 2;
@@ -4976,8 +4988,8 @@ const shortName = (name: string): string => {
 const dualSyncBus = new Map<string, Set<(t: number) => void>>();
 
 export default function ReplayMotionPlayer({
-  grid, motion, endSec, bases, teamOfRaw, active = true, winnerTeam, side, menu,
-  stamp, registrant, onDetailClose, loadUnitTracks, forceEnt, syncKey, syncRole,
+  grid, motion, endSec, bases, teamOfRaw, active = true, winnerTeam, side,
+  onDetailClose, loadUnitTracks, forceEnt, syncKey, syncRole,
 }: {
   grid: ReplayMapGrid;
   motion: SummaryMotion;
@@ -5215,6 +5227,10 @@ export default function ReplayMotionPlayer({
      이동해야 — 다른 명령으로 덮이지 않는 한) — 멈춘 만큼 걸음 시계를 미뤄, 교전이
      끝나면 순간이동 없이 멈춘 자리에서 이어 걷는다. */
   const engageDelayRef = useRef(new Map<string, { delay: number; since: number }>());
+  /* 화면 위치 스무딩(지적: 유닛이 뚝뚝 끊기고 조금씩 순간이동처럼 움직임) — 대형 오프셋
+     변경·교전 멈춤 해제·채굴 위상 전환 같은 잔점프를 지수 이동평균이 흡수한다. 큰 이동
+     (6타일 초과 — 드랍·리콜 등 진짜 순간이동)과 시간 되감기는 그대로 점프한다. */
+  const drawPosRef = useRef(new Map<string, { x: number; y: number; at: number }>());
   /* 초반 무명 개체의 폴백(지적: 일꾼밖에 없는데 저글링이 정찰 감) — 정체를 모르는
      개체는 그 사람의 '첫 전투 유닛이 태어난 시각' 전이면 일꾼으로, 뒤면 종족 보병으로
      그린다. 그 시각 전에는 저글링이 존재할 수 없다(뒤 스토리 제약). */
@@ -6835,6 +6851,18 @@ export default function ReplayMotionPlayer({
           touchAction: "none",
         }}
       >
+        {/* 맵연결(요청: 별도로 맵 좌상단에, 연결 안 된 경우만, 알약 형태) — 렌즈 밖이라
+            휠 줌에도 제자리다. 맵의 팬·줌 손짓에 안 딸리게 눌림을 끊는다. */}
+        {!grid.image && (
+          <button
+            type="button"
+            className="scr-motion-litbtn scr-motion-maplink"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); setLinkOpen(true); }}
+          >
+            맵연결
+          </button>
+        )}
         {/* 렌즈 상자 — PC 휠 줌(요청)이 이 층을 통째로 키운다(마커·자취까지 같이). */}
         <div
           className={cx("scr-motion-lens", unitX2 && "scr-motion-unit2x")}
@@ -7208,14 +7236,14 @@ export default function ReplayMotionPlayer({
                 const degB = Math.atan2(-(foeB.bx - centerX), foeB.by - centerY) * (180 / Math.PI);
                 const fire: React.ReactNode[] = [];
                 if (unit === "Missile Turret" && foeB.air && foeB.bd <= 8) {
-                  fire.push(<span key="t" className="scr-motion-tracer scr-tracer-missile" style={{ transform: `rotate(${degB.toFixed(1)}deg)` }} />);
+                  fire.push(<span key="t" className="scr-motion-tracer scr-tracer-missile" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)` }} />);
                 }
                 if (unit === "Bunker" && !foeB.air && foeB.bd <= 6) {
-                  fire.push(<span key="g" className="scr-motion-tracer" style={{ transform: `rotate(${degB.toFixed(1)}deg)` }} />);
+                  fire.push(<span key="g" className="scr-motion-tracer" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)` }} />);
                   const hasBat = (unitDoneByRaw.get(raw) ?? []).some(([u2, ds]) =>
                     u2 === "Firebat" && ds.length > 0 && ds[0] <= t);
                   if (hasBat && foeB.bd <= 3.5) {
-                    fire.push(<span key="f" className="scr-motion-tracer scr-tracer-flame" style={{ transform: `rotate(${degB.toFixed(1)}deg)`, animationDelay: "0.2s" }} />);
+                    fire.push(<span key="f" className="scr-motion-tracer scr-tracer-flame" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)`, animationDelay: "0.2s" }} />);
                   }
                 }
                 if (fire.length > 0) {
@@ -7369,9 +7397,9 @@ export default function ReplayMotionPlayer({
               || (unit.includes("Colony") && u2.includes("Colony"))))) return null;
           const race = bases.find((b2) => b2.key === raw)?.race;
           const rk = race === "저그" ? "zerg" : race === "프로토스" ? "toss" : "terran";
-          /* 크기는 건물 발자국의 1.35배(지적: 핵폭발급으로 컸다) — 퍼센트 폭이라 맵
-             확대에도 비례한다. */
-          const clpW = (((FOOTPRINT[unit] ?? [3, 2])[0] * 1.35) / grid.width) * 100;
+          /* 크기는 건물 발자국의 0.7배(재지적: 그래도 너무 큼 — 반으로) — 퍼센트 폭이라
+             맵 확대에도 비례한다. */
+          const clpW = (((FOOTPRINT[unit] ?? [3, 2])[0] * 0.7) / grid.width) * 100;
           return (
             <span
               key={`clp-${i}`}
@@ -7802,6 +7830,16 @@ export default function ReplayMotionPlayer({
             const fp2 = posAt(rp, Math.max(rp[0][0], frzSt[0]), null);
             if (fp2) pos = { ...pos, x: fp2.x, y: fp2.y };
           }
+          /* 화면 스무딩(지적: 뚝뚝 끊김) — 지난 프레임 표시 자리에서 목표로 지수 추종. */
+          {
+            const mem2 = drawPosRef.current.get(holdKey);
+            if (mem2 && t >= mem2.at && t - mem2.at < 1.5
+              && Math.hypot(pos.x - mem2.x, pos.y - mem2.y) < 6) {
+              const k5 = 1 - Math.exp(-(t - mem2.at) * 6);
+              pos = { ...pos, x: mem2.x + (pos.x - mem2.x) * k5, y: mem2.y + (pos.y - mem2.y) * k5 };
+            }
+            drawPosRef.current.set(holdKey, { x: pos.x, y: pos.y, at: t });
+          }
           const [ax3, ay3] = [pos.x, pos.y];
           const [fx, fy] = posFrac(ax3, ay3);
           /* 건설 일꾼 뒷그물(재지적: 좌하단의 '진짜' 일꾼이 남는다 — 앵커 판정
@@ -7987,7 +8025,8 @@ export default function ReplayMotionPlayer({
                 <span
                   className={`scr-motion-tracer scr-tracer-${
                     (fxUnit === "Wraith" || fxUnit === "Goliath") && foe.air ? "missile" : ATTACK_FX[fxUnit]}`}
-                  style={{ transform: `rotate(${atkDeg.toFixed(1)}deg)`, animationDelay: `${((ei * 7) % 5) / 10}s` }}
+                  // 총구에서 나간다(요청: 탱크 포신·히드라 입·마린 총구) — 회전 뒤 앞으로.
+                  style={{ transform: `rotate(${atkDeg.toFixed(1)}deg) translateY(${MUZZLE_PX[fxUnit] ?? 4}px)`, animationDelay: `${((ei * 7) % 5) / 10}s` }}
                 />
               )}
               {(ei + cyc2) % 5 === 0 && <span key={`pf-${cyc2}`} className="scr-motion-puff" />}
@@ -8271,8 +8310,7 @@ export default function ReplayMotionPlayer({
           지형 편집(산 버튼)도 걷었다(요청: 버튼 정리). */}
       <div className="scr-motion-toolrow">
         <div className="scr-motion-toolrow-mid" />
-        {/* 케밥은 왼쪽 위(요청: PC 게임 상세에서도 케밥은 왼쪽) — X와 갈라 세운다. */}
-        {wide && menu ? <div className="scr-motion-menu-left">{menu}</div> : null}
+        {/* (삭제·요청: PC 좌측 케밥 제거) — 케밥 없이 오른쪽 닫기(X)만 남는다. */}
         {/* 닫기(X) — 확대창이 걷혀(요청) 이제 상세 자체를 닫는 버튼이다. 넓은 배치에서만. */}
         {wide && onDetailClose ? (
           <div className="scr-motion-expand-row">
@@ -8328,25 +8366,18 @@ export default function ReplayMotionPlayer({
           </span>
         )}
         {/* 클릭 자국 토글(요청) — v2 데이터로 그리므로 v2가 켜져 있을 때만 선다. */}
-        {/* 클릭·맵연결(요청: 라디오와 높이 맞춘 둥근네모 라이팅 버튼) — 알약 라디오
-            곁이라 같은 24px, 켬 상태는 라이팅 알약 채움이다. */}
+        {/* 마우스 조작 표시(요청: 라벨 달고 라디오는 on/off) — 다른 라디오와 같은 꼴. */}
         {entOn && (
-          <button
-            type="button"
-            className={cx("scr-motion-litbtn", clickFx && "scr-motion-litbtn-on")}
-            onClick={() => setClickFx((v) => !v)}
-          >
-            클릭
-          </button>
+          <span className="scr-motion-radio">
+            <span className="scr-motion-radio-label">마우스 조작 표시</span>
+            <PillTabs
+              options={[{ value: "off", label: "끔" }, { value: "on", label: "켬" }]}
+              value={clickFx ? "on" : "off"}
+              onChange={(v) => setClickFx(v === "on")}
+              aria-label="마우스 조작 표시"
+            />
+          </span>
         )}
-        {/* 맵연결(요청) — 저장된 미니맵 목록에서 골라 이 경기의 맵에 연결한다. */}
-        <button
-          type="button"
-          className="scr-motion-litbtn scr-motion-maplink"
-          onClick={() => setLinkOpen(true)}
-        >
-          맵연결
-        </button>
       </div>
       {linkOpen && createPortal(
         <div className="scr-modal-overlay scr-terrain-overlay" onClick={() => setLinkOpen(false)}>
@@ -8448,10 +8479,8 @@ export default function ReplayMotionPlayer({
         </button>
         <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
       </div>
-      {/* 넓은 배치 왼쪽 기둥(요청) — 맨 위 타임스탬프, 로스터(기존), 범례 2열, 맨 아래 등록자. */}
-      {wide && stamp ? <div className="scr-motion-stamp">{stamp}</div> : null}
-
-      {wide && registrant ? <div className="scr-motion-registrant">{registrant}</div> : null}
+      {/* (삭제·지적: PC 타임스탬프 중복) — 기둥의 타임스탬프·등록자는 걷었다. 시각은
+          맵 이름 줄(.scr-story-when)이 말하고 등록자는 그 오른쪽에 붙는다(GameResultStory). */}
       {/* 오른쪽 댓글 영역(요청: PC에서 댓글부를 미니맵 우측으로 — 기존 확대창 방식 그대로,
           다만 이제 겹창 없이 상세 화면 안 인라인이다). */}
       {wide && side ? <div className="scr-motion-sidewrap">{side}</div> : null}

@@ -1188,7 +1188,7 @@ export function buildUnitTracks(
         최대 체력으로 태어나, 곁에 떨어진 적 공격 명령의 화력만큼 깎이고 힐·수리로
         회복한다. 0에 닿았을 때 그 뒤 증거가 있으면 '살아남은 것'(뒤 스토리 — 체력
         바닥에서 회복 시작), 없으면 그때 죽은 것이다. 결과는 hp 퍼센트 변곡점 목록. */
-  const posAtSec = (life: Life, sec: number): [number, number] | null => {
+  const posAtSec = (life: Life, sec: number, tol = 45): [number, number] | null => {
     let best: [number, number] | null = null;
     let bd = Infinity;
     for (const v of life.ev) {
@@ -1196,8 +1196,14 @@ export function buildUnitTracks(
       const d = Math.abs(v[0] - sec);
       if (d < bd) { bd = d; best = [v[1], v[2]]; }
     }
-    return bd <= 45 ? best : null;
+    return bd <= tol ? best : null;
   };
+  /* 갓 태어난 유닛은 만피다(지적: 태어나자마자 다쳐 있음) — 위 증거 창(±45초)이 어린
+     유닛에게는 '태어나기 한참 뒤의 증거'로 출생 순간의 자리를 어림해, 본진을 겨눈 적
+     어택 명령이 생산되자마자 체력을 깎았다. 산 지 얼마 안 된 시점의 피해는 그 무렵의
+     증거가 정말 곁에 있을 때만 받는다. */
+  const dmgTol = (life: Life, sec: number): number =>
+    Math.min(45, Math.max(2, sec - life.born));
   const hpSimOf = (life: Life): { trace: [number, number][]; death: number | null } => {
     const mk = majorityKindOf(life);
     const st = UNIT_STATS[mk] ?? DEFAULT_UNIT_STATS;
@@ -1226,7 +1232,7 @@ export function buildUnitTracks(
       if (a.sec < life.born) continue;
       if (a.sec > lastEvSec + 240) break;
       if (!isFoeOf(a.owner, life.owner)) continue;
-      const pos = posAtSec(life, a.sec);
+      const pos = posAtSec(life, a.sec, dmgTol(life, a.sec));
       if (!pos || Math.hypot(a.x - pos[0], a.y - pos[1]) > 7) continue;
       if (stasisSpans.some(([sa, sb]) => a.sec >= sa && a.sec <= sb)) continue;
       // 공격 명령 하나 = 그 유닛이 1.4초쯤 두들긴 것. 공업 +10%/렙.
@@ -1248,7 +1254,7 @@ export function buildUnitTracks(
       if (csec < life.born || csec > lastEvSec + 240) continue;
       if (tech === "Psionic Storm") {
         if (!isFoeOf(cpid, life.owner)) continue;
-        const pos = posAtSec(life, csec);
+        const pos = posAtSec(life, csec, dmgTol(life, csec));
         if (pos && Math.hypot(cx4 - pos[0], cy4 - pos[1]) <= 2) dmg.push([csec, 90, "spell"]);
       } else if (tech === "EMP Shockwave") {
         const pos = posAtSec(life, csec);

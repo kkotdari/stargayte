@@ -1847,7 +1847,9 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
    플레이어 자리를 묶어, 자리 폭 게이트(≥860px)가 구조적으로 열릴 수 없었다). 부모까지
    :has()로 함께 넓혀야 실제로 늘어난다(통계·리그와 같은 이유). */
 @media (min-width: 1160px) {
-  .scr-main:has(.scr-activity-group-page) { max-width: 1440px; }
+  /* 더 넓게(재지적: 맵 크기 제한을 더 풀어야 — 세로 공간이 남는다) — 1440 → 1720px.
+     맵 열(1fr)이 그만큼 커져 남던 높이를 쓴다. */
+  .scr-main:has(.scr-activity-group-page) { max-width: 1720px; }
 }
 
 /* 맨 위로 이동 플로팅 버튼 — 콘텐츠를 안 가리려고 페이지 하단에 큰 여백을 예약해뒀었는데,
@@ -11145,9 +11147,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   font-size: var(--fs-micro); font-weight: 700; color: var(--muted);
   line-height: 1; padding-left: 4px;
 }
-.scr-motion-radio .scr-pill-tabs { height: 24px; background: rgba(255, 255, 255, 0.08); }
+/* 두 단계 더 작게(요청: 뎁스가 깊은 버튼들) — 24px → 20px, 글자도 한 단 아래. */
+.scr-motion-radio .scr-pill-tabs { height: 20px; background: rgba(255, 255, 255, 0.08); }
 .scr-light-theme .scr-motion-radio .scr-pill-tabs { background: rgba(0, 0, 0, 0.06); }
-.scr-motion-radio .scr-pill-tab-btn { font-size: var(--fs-caption); padding: 0 8px; }
+.scr-motion-radio .scr-pill-tab-btn { font-size: var(--fs-micro); padding: 0 7px; }
 .scr-motion-radio .scr-pill-tab-btn:not(.scr-pill-tab-btn-active) { color: var(--muted); }
 @media (hover: hover) {
   .scr-motion-radio .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }
@@ -11155,8 +11158,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 클릭 토글·맵연결(요청: 라디오와 높이 맞춘 둥근네모 + 라이팅 테마) — 알약 트랙과 같은
    반투명 유리 바탕, 켬 상태는 라이팅 알약 채움(인디케이터와 같은 토큰)이다. */
 .scr-motion-litbtn {
-  height: 24px; padding: 0 10px; border-radius: var(--radius-sm); border: none;
-  cursor: pointer; font-family: inherit; font-size: var(--fs-caption); font-weight: 600;
+  height: 20px; padding: 0 8px; border-radius: var(--radius-sm); border: none;
+  cursor: pointer; font-family: inherit; font-size: var(--fs-micro); font-weight: 600;
   color: var(--muted); background: rgba(255, 255, 255, 0.08);
   box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.06);
 }
@@ -11174,6 +11177,14 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 }
 .scr-motion-litbtn.scr-motion-litbtn-on {
   background: var(--lit-pill-bg); box-shadow: var(--lit-pill-glow); color: #10151a;
+}
+/* 맵연결(요청: 별도로 맵 좌상단에) — 마커·칩(z 최대 3만대)보다 위, 어두운 지도 위라
+   유리 바탕을 한 겹 진하게. */
+/* 알약 형태(요청), 연결 안 된 맵에서만 뜬다(JSX). */
+.scr-motion-maplink {
+  position: absolute; top: 4px; left: 4px; z-index: 40000;
+  border-radius: 999px; padding: 0 10px;
+  background: rgba(10, 14, 18, 0.55); color: rgba(255, 255, 255, 0.85);
 }
 /* 원형 버튼 통일(요청: 11개 전부 같은 크기 정원). */
 /* .scr-motion-btn(아래 정의)과 같이 실리므로 두 클래스 선택자로 이겨야 한다(지적:
@@ -11511,16 +11522,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    조작부는 로스터 바로 밑이 아니라 기둥의 아래쪽에 붙는다(요청) — 늘어나는 줄(1fr)을
    차지하고 스스로 바닥 정렬한다. */
 .scr-motion-wide .scr-motion-teamcol { width: auto; }
-/* 왼쪽 기둥 차례(요청) — 1행 타임스탬프, 2행 로스터, 3행 범례(2열), 바닥(5행) 등록자. */
+/* 왼쪽 기둥 차례 — 2행 로스터, 3행 범례(2열), 5행 조작부. 기둥 타임스탬프는 걷었다
+   (지적: PC에서 타임스탬프가 두 번 — 맵 이름 줄의 시각이 그대로 말하고, 등록자는 그
+   시각 오른쪽에 붙는다 .scr-story-when-by). */
 .scr-motion-wide .scr-motion-teamcol:first-of-type { grid-column: 1; grid-row: 2; }
 .scr-motion-wide .scr-motion-teamcol:last-of-type { grid-column: 2; grid-row: 2; }
-.scr-motion-stamp {
-  grid-column: 1 / 3; grid-row: 1;
-  font-size: var(--fs-caption); color: var(--muted); font-variant-numeric: tabular-nums;
-  /* 케밥(왼쪽 위 절대배치) 자리 확보(지적: 겹침 → 옆이 아니라 아랫줄로) — 케밥 높이만큼
-     내려 그 아랫줄에 선다. */
-  margin-top: 32px;
-}
 .scr-motion-legend-side {
   grid-column: 1 / 3; grid-row: 3;
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -11531,26 +11537,22 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   padding: 10px 0;
   margin-top: 4px;
 }
-.scr-motion-registrant {
-  grid-column: 1 / 3; grid-row: 6; align-self: center;
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: var(--fs-caption); color: var(--muted);
-}
-/* 조종부 두 줄(요청: 배속 / 재생+시간 줄 나누기) — 윗줄은 배속 다섯을 작은 원으로
-   한 줄에 쏙, 아랫줄은 왼쪽 재생·오른쪽 시간. */
+/* 조종부 세 줄(요청: 재생 버튼과 시간 표시 줄 나누기, 각각 가운데 정렬) — 배속 /
+   재생(1.5배) / 시간. */
 .scr-motion-wide .scr-motion-bar-controls {
   grid-column: 1 / 3; grid-row: 5; align-self: end;
-  grid-template-columns: auto 1fr; grid-template-rows: auto auto;
-  grid-template-areas: "speeds speeds" "play clock";
-  row-gap: 4px;
+  grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto;
+  grid-template-areas: "speeds" "play" "clock";
+  row-gap: 6px;
 }
 .scr-motion-wide .scr-motion-speeds { grid-area: speeds; justify-self: start; }
-.scr-motion-wide .scr-motion-play { grid-area: play; justify-self: start; }
-.scr-motion-wide .scr-motion-clock { grid-area: clock; justify-self: end; align-self: center; }
-/* 배속 원 축소(요청: 한 줄에 쏙) — 34px 다섯은 220px을 넘쳐 30px로. */
-.scr-motion-wide .scr-motion-speeds .scr-motion-btn.scr-motion-rbtn {
-  width: 30px; height: 30px; min-width: 30px;
+/* 재생 버튼 1.5배(요청) — 46px 원 → 69px, 아이콘도 같은 비율. */
+.scr-motion-wide .scr-motion-play {
+  grid-area: play; justify-self: center;
+  width: 69px; height: 69px; min-width: 69px;
 }
+.scr-motion-wide .scr-motion-play svg { width: 39px; height: 39px; }
+.scr-motion-wide .scr-motion-clock { grid-area: clock; justify-self: center; align-self: center; }
 .scr-motion-wide .scr-motion-toolrow { display: contents; }
 .scr-motion-wide .scr-motion-toolrow-mid { display: none; }
 /* 케밥·닫기(요청: PC 기본이 확대인 만큼) — 모달 오른쪽 위 구석에 나란히 떠 있다. */
@@ -11558,8 +11560,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   position: absolute; top: 8px; right: 8px;
   display: flex; align-items: center; gap: 4px;
 }
-/* 케밥은 왼쪽 위(요청) — X(오른쪽)와 갈라 세운다. */
-.scr-motion-menu-left { position: absolute; top: 8px; left: 8px; z-index: 5; }
+/* (삭제·요청: PC 좌측 케밥 제거) — .scr-motion-menu-left. */
 /* (이동·지적) 지형 편집 버튼 — 따로 띄우니 자리가 애매하고 커 보였다. 조작부 배속 무리
    끝의 작은 원형(산 아이콘)으로 들어갔다. */
 /* (삭제·요청: 확대창 제거) — 뒤 상세 창 가리개(.scr-motion-big-backdrop)도 함께 걷었다. */
@@ -11684,14 +11685,20 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   .scr-activity-group-page .scr-story-map-head { align-self: stretch; }
   .scr-activity-group-page .scr-story-map-head-line { align-self: stretch; }
   .scr-activity-group-page .scr-story-when {
-    display: block; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    display: flex; align-items: center; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
     font-size: var(--fs-caption); color: var(--muted); font-variant-numeric: tabular-nums;
     font-weight: 400;
+  }
+  /* 등록자(요청: 타임스탬프 우측에) — 기둥 맨 아래에서 시각 옆으로 옮겨 왔다. */
+  .scr-story-when .scr-story-when-by {
+    display: inline-flex; align-items: center; gap: 5px; margin-left: 10px;
   }
   /* 게임 페이지의 카드 머리(시각 한 줄)는 통째로 걷는다 — 시각은 맵 줄로 갔고, 제목
      ("게임결과" 라벨)은 이 자리(.scr-activity-row-body)에서 원래 안 보이던 것이라 빈 띠만
      남기 때문. 케밥은 머리의 형제(절대배치)라 그대로 산다. */
   .scr-activity-group-page .scr-activity-card-head { display: none; }
+  /* 등록자는 시각 옆(.scr-story-when-by)이 말한다 — 우하단 등록 줄은 걷는다(요청). */
+  .scr-activity-group-page .scr-story-by { display: none; }
 }
 /* 미니맵이 커진 PC에서는 그 위 요소(맵 이름·시간, 승/무 배지)도 같이 키운다(요청: 미니맵
    위 요소 알맞게 확대) — 작은 미니맵 시절 크기 그대로면 위아래 균형이 안 맞는다. */
@@ -12776,9 +12783,10 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 }
 /* 죽음 효과(요청: 종족/타입별) — 쓰러지는 짧은 순간의 잔상: 테란 생체는 붉은 퍼프,
    메카닉은 주황 스파크 화구, 프로토스는 파랗게 스러지는 빛, 저그는 보라 살점 튐. */
+/* 반으로 축소(요청: 소멸·폭파 효과가 너무 큼) — 12px → 6px. */
 .scr-motion-diefx {
   position: absolute; left: 50%; top: 50%;
-  width: 12px; height: 12px; margin: -6px 0 0 -6px;
+  width: 6px; height: 6px; margin: -3px 0 0 -3px;
   border-radius: 50%; pointer-events: none;
   animation: scr-diefx 0.9s ease-out forwards;
 }
