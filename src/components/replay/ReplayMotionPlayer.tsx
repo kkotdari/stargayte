@@ -1123,10 +1123,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           bodyFace(discPath3(px, py, 0.45, 1.6)),
           sideFace(discPath3(px, py, 0.42, 1.6), 0.25),
         ], depthNow(px, py)),
-        /* 기둥은 일정 폭 축으로, 끝 삼각뿔이 그 폭에서 그대로 이어진다(재지적:
-           자연스러운 연결) — 뿔 밑변 = 기둥 지름. */
-        ...rodFaces(px, py, 0.4, px, py, 7.6, 1.35),
-        ...paintBase(hornFaces(px, py, 7.45, px, py, 10.1, 1.35), "#3bd8c2"),
+        // 원래 기둥 모양 유지(재재지적) — 끝이 좁아지는 뿔 그대로, 수정팁은 더 작게
+        // 좁아진 끝자락(8.2)에 심어 자연히 이어진다.
+        ...hornFaces(px, py, 0.4, px, py, 8.8, 1.7),
+        ...paintBase(hornFaces(px, py, 8.2, px, py, 9.5, 0.55), "#3bd8c2"),
         topFace(groundEllipse(kx, ky, 0.45, 0.65), 0.5),
       ];
     };
@@ -1876,7 +1876,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const [gx2, gy2] = project(px2, py2, 1.45);
       return [
         ...domeFaces3(px2, py2, 1.15, 0.9),
-        [groundEllipse(gx2, gy2, 0.85, 0.8), 0.6] as ShapeFace,
+        // 연한 시안 반투명 구슬(요청).
+        [groundEllipse(gx2, gy2, 0.85, 0.8), 0.55, "#a9ecf2"] as ShapeFace,
         topFace(groundEllipse(gx2 - 0.25, gy2 - 0.25, 0.32, 0.28), 0.5),
         ...hornFaces(px2 - 0.55, py2 + 0.75, 0.4, px2 - 0.75, py2 + 1.15, 1.5, 0.32),
         ...hornFaces(px2 + 0.55, py2 + 0.75, 0.4, px2 + 0.75, py2 + 1.15, 1.5, 0.32),
@@ -2082,7 +2083,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 큰 파란 구슬 — 몸 위 얹힘이라 지붕 키(지적: 구슬 가려짐 오류).
       ...tagKey([
         bodyFace(groundEllipse(gx2, gy2 + 0.25, 1.85, 1.7)),
-        [groundEllipse(gx2, gy2, 1.55, 1.45), 0.6] as ShapeFace,
+        // 연한 시안 반투명 구슬(요청).
+        [groundEllipse(gx2, gy2, 1.55, 1.45), 0.55, "#a9ecf2"] as ShapeFace,
         topFace(groundEllipse(gx2 - 0.5, gy2 - 0.5, 0.6, 0.5), 0.5),
       ], 30),
     ];
