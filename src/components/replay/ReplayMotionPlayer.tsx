@@ -8228,11 +8228,13 @@ export default function ReplayMotionPlayer({
             const fp2 = posAt(rp, Math.max(rp[0][0], frzSt[0]), null);
             if (fp2) pos = { ...pos, x: fp2.x, y: fp2.y };
           }
-          /* 화면 스무딩(지적: 뚝뚝 끊김) — 지난 프레임 표시 자리에서 목표로 지수 추종. */
+          /* 화면 스무딩(지적: 뚝뚝 끊김 → 재요청: 순간이동 무조건 제거, 아무리 짧아도
+             스무스) — 지난 프레임 표시 자리에서 목표로 지수 추종. 거리 상한(6타일 스냅)
+             을 걷어 드랍·리콜 급 큰 이동도 빠른 미끄럼으로 잇는다. 시간 되감기·큰 시간
+             건너뜀(탐색)만 그 자리 리셋이다. */
           {
             const mem2 = drawPosRef.current.get(holdKey);
-            if (mem2 && t >= mem2.at && t - mem2.at < 1.5
-              && Math.hypot(pos.x - mem2.x, pos.y - mem2.y) < 6) {
+            if (mem2 && t >= mem2.at && t - mem2.at < 1.5) {
               const k5 = 1 - Math.exp(-(t - mem2.at) * 6);
               pos = { ...pos, x: mem2.x + (pos.x - mem2.x) * k5, y: mem2.y + (pos.y - mem2.y) * k5 };
             }
