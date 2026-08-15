@@ -16,7 +16,7 @@ import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } f
 import {
   bodyFace, capFace, depthNow, groundEllipse, sideFace, tagKey, topFace, type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
-  domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces, limbFaces, pyramidFaces3, tubeFaces,
+  domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces, pyramidFaces3, tubeFaces,
   wallDiscPath, wallFrame, withPitchView, withTopView, withViewShear, withYaw, zsorted,
 } from "../../utils/shapeOblique";
 import type { MinimapMarker } from "./ReplayMinimap";
@@ -776,6 +776,73 @@ function trackFaces(cx: number, yA: number, yB: number, h: number, w: number): S
     faces,
     depthNow(cx, (yA + yB) / 2) + Math.min(h, (w / 2) * sAbs + ((yB - yA) / 2) * cAbs),
   );
+}
+
+/* 해처리 둔덕 한 벌 — 옆띠 색만 갈라 쓴다(하이브는 상아색, 요청). */
+function hatcheryMoundFaces(seamColor: string): ShapeFace[] {
+    const out: ShapeFace[] = [];
+    // (이동) 여섯 다리 전부 아래 방향별 묶음에서 — 60도 균등 배치.
+    /* 꼭대기 볏(실물) — 뒤로 벌어져 굽는 볏 뿔 한 쌍. 둔덕보다 먼저 그려 밑동이
+       가려진다(지적: 뿔이 비쳐 보였다). */
+    // 위 볏 뿔은 검정(요청).
+    out.push(...paintBase(hornFaces(-1.1, -0.7, 5.7, -3.2, -1.6, 9.4, 1.3), "#1b1e23"));
+    out.push(...paintBase(hornFaces(1.1, -0.6, 5.7, 3.3, -1.4, 9.6, 1.4), "#1b1e23"));
+    /* 본 기둥 — 뒤집힌 밥그릇(돔)이 아니라 후지산 둔덕(지적): 위는 좁게 잘리고 옆구리는
+       가파르다가 바닥에서 완만하게 벌어진다. 회전 대칭이라 요잉 불변. */
+    {
+      const [bx, by] = project(0, 0, 0);
+      const [tx, ty] = project(0, 0, 6.6);
+      const dt = tx - bx; // 꼭대기 x 이동(지적: 원통형 오류 일습).
+      const rB = 5.9;
+      const rT = 1.4;
+      const ryB = rB * 0.45;
+      const mound = `M${bx - rB} ${by}`
+        + ` Q${bx - rB * 0.86 + dt * 0.3} ${by - (by - ty) * 0.28} ${bx - rT + dt} ${ty}`
+        + ` L${bx + rT + dt} ${ty}`
+        + ` Q${bx + rB * 0.86} ${by - (by - ty) * 0.28} ${bx + rB} ${by}`
+        + `a${rB} ${ryB} 0 1 1-${rB * 2} 0Z`;
+      out.push(...tagKey([bodyFace(mound)], 0.2));
+      out.push(sideFace(
+        `M${bx + rT * 0.55} ${ty} Q${bx + rB * 0.8} ${by - (by - ty) * 0.26} ${bx + rB * 0.92} ${by}`
+        + ` Q${bx + rB * 0.55} ${by + ryB * 0.5} ${bx + rT * 0.4} ${by}`
+        + ` Q${bx + rB * 0.5} ${by - (by - ty) * 0.3} ${bx + rT * 0.55} ${ty} Z`,
+        0.2,
+      ));
+    }
+    const [mx, my] = project(0, 0, 6.35);
+    out.push(sideFace(`M${mx - 1.5} ${my} L${mx + 1.5} ${my} Q${mx + 1.4} ${my + 1} ${mx} ${my + 1.15} Q${mx - 1.4} ${my + 1} ${mx - 1.5} ${my} Z`, 0.35));
+    out.push(topFace(groundEllipse(mx, my, 1.4, 0.4)));
+    /* 옆선 여섯 + 입구발 여섯(재재재지적: 60도 균등, 옆선이 입구굴과 딱 맞게) —
+       다리와 얇은 경사면 옆선을 같은 각에 두고 방향별 깊이 키로 묶는다. 뒤로 돈
+       옆선은 안 그린다(둔덕이 가린다). */
+    for (const ang of [-160, -100, -40, 20, 80, 140]) {
+      const a2 = (ang * Math.PI) / 180;
+      const dxr = Math.sin(a2);
+      const dyr = Math.cos(a2);
+      const dep = depthNow(dxr * 4, dyr * 4);
+      /* 다리(사진 지적: 이 검은 상자들 제거) — 입구발 슬래브를 전부 걷고, 옆선이
+         꼭대기에서 바닥까지 이어져 입구굴을 대신 말한다. */
+      /* 옆띠는 바닥까지(재지적) + 실루엣 가장자리에서 뚝 사라지지 않게 문턱 완화 —
+         깊이 키가 앞뒤를 맡으니 게이트는 거의 옆까지 열어 둔다. */
+      if (facingRatio(dxr, dyr) > -0.45) {
+        const pxr = -dyr * 0.85;
+        const pyr = dxr * 0.85;
+        const seam = polyPath3([
+          [dxr * 1.25 + pxr, dyr * 1.25 + pyr, 5.8],
+          [dxr * 1.25 - pxr, dyr * 1.25 - pyr, 5.8],
+          [dxr * 5.7 - pxr, dyr * 5.7 - pyr, 0.05],
+          [dxr * 5.7 + pxr, dyr * 5.7 + pyr, 0.05],
+        ]);
+        out.push(...tagKey([[seam, 1, seamColor] as ShapeFace], dep + 0.3));
+      }
+    }
+    // 바닥 갈고리 덩굴(실물) — 다리 사이로 기다가 끝이 말려 올라간다.
+    // 옆 갈고리 가시도 검정(요청).
+    out.push(...paintBase(hornFaces(4.2, 4.2, 0.5, 6.6, 6, 0.9, 0.7), "#1b1e23"));
+    out.push(...paintBase(hornFaces(6.6, 6, 0.9, 7.4, 6.6, 2.4, 0.5), "#1b1e23"));
+    out.push(...paintBase(hornFaces(-5.6, 2, 0.5, -7.8, 2.8, 0.9, 0.7), "#1b1e23"));
+    out.push(...paintBase(hornFaces(-7.8, 2.8, 0.9, -8.6, 3, 2.2, 0.5), "#1b1e23"));
+    return out;
 }
 
 export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
@@ -2356,77 +2423,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   },
 
   /* 해처리 — 둔덕 + 방사 다리 여섯(요잉을 따라 도는 것이 핵심) + 윗면 입·목띠. */
-  hatchery: () => {
-    const out: ShapeFace[] = [];
-    // (이동) 여섯 다리 전부 아래 방향별 묶음에서 — 60도 균등 배치.
-    /* 꼭대기 볏(실물) — 뒤로 벌어져 굽는 볏 뿔 한 쌍. 둔덕보다 먼저 그려 밑동이
-       가려진다(지적: 뿔이 비쳐 보였다). */
-    // 위 볏 뿔은 검정(요청).
-    out.push(...paintBase(hornFaces(-1.1, -0.7, 5.7, -3.2, -1.6, 9.4, 1.3), "#1b1e23"));
-    out.push(...paintBase(hornFaces(1.1, -0.6, 5.7, 3.3, -1.4, 9.6, 1.4), "#1b1e23"));
-    /* 본 기둥 — 뒤집힌 밥그릇(돔)이 아니라 후지산 둔덕(지적): 위는 좁게 잘리고 옆구리는
-       가파르다가 바닥에서 완만하게 벌어진다. 회전 대칭이라 요잉 불변. */
-    {
-      const [bx, by] = project(0, 0, 0);
-      const [tx, ty] = project(0, 0, 6.6);
-      const dt = tx - bx; // 꼭대기 x 이동(지적: 원통형 오류 일습).
-      const rB = 5.9;
-      const rT = 1.4;
-      const ryB = rB * 0.45;
-      const mound = `M${bx - rB} ${by}`
-        + ` Q${bx - rB * 0.86 + dt * 0.3} ${by - (by - ty) * 0.28} ${bx - rT + dt} ${ty}`
-        + ` L${bx + rT + dt} ${ty}`
-        + ` Q${bx + rB * 0.86} ${by - (by - ty) * 0.28} ${bx + rB} ${by}`
-        + `a${rB} ${ryB} 0 1 1-${rB * 2} 0Z`;
-      out.push(...tagKey([bodyFace(mound)], 0.2));
-      out.push(sideFace(
-        `M${bx + rT * 0.55} ${ty} Q${bx + rB * 0.8} ${by - (by - ty) * 0.26} ${bx + rB * 0.92} ${by}`
-        + ` Q${bx + rB * 0.55} ${by + ryB * 0.5} ${bx + rT * 0.4} ${by}`
-        + ` Q${bx + rB * 0.5} ${by - (by - ty) * 0.3} ${bx + rT * 0.55} ${ty} Z`,
-        0.2,
-      ));
-    }
-    const [mx, my] = project(0, 0, 6.35);
-    out.push(sideFace(`M${mx - 1.5} ${my} L${mx + 1.5} ${my} Q${mx + 1.4} ${my + 1} ${mx} ${my + 1.15} Q${mx - 1.4} ${my + 1} ${mx - 1.5} ${my} Z`, 0.35));
-    out.push(topFace(groundEllipse(mx, my, 1.4, 0.4)));
-    /* 옆선 여섯 + 입구발 여섯(재재재지적: 60도 균등, 옆선이 입구굴과 딱 맞게) —
-       다리와 얇은 경사면 옆선을 같은 각에 두고 방향별 깊이 키로 묶는다. 뒤로 돈
-       옆선은 안 그린다(둔덕이 가린다). */
-    for (const ang of [-160, -100, -40, 20, 80, 140]) {
-      const a2 = (ang * Math.PI) / 180;
-      const dxr = Math.sin(a2);
-      const dyr = Math.cos(a2);
-      const dep = depthNow(dxr * 4, dyr * 4);
-      const rear = ang === 140 || ang === -160;
-      // 검은 동굴 단면 반원 제거(재지적: 바닥 검정 반원통) — capOpen을 끈다.
-      out.push(...tagKey(
-        paintBase(limbFaces(ang, rear ? 3 : 3.4, 1.7, rear ? 3.4 : 3.2, false), "#4e545c"),
-        dep,
-      ));
-      if (facingRatio(dxr, dyr) > -0.05) {
-        // 띠 너비 = 동굴 입구(다리 폭 1.7)와 같게(재지적).
-        const pxr = -dyr * 0.85;
-        const pyr = dxr * 0.85;
-        /* 바닥까지 내리지 않는다(재지적: 바닥의 까만 상자 모양) — 띠가 바닥(z 0.7)까지
-           내려가 다리 위에 겹쳐 검은 상자처럼 보였다. 경사 끝(z 1.6)에서 멈추면 다리가
-           자연히 이어받는다. */
-        const seam = polyPath3([
-          [dxr * 1.25 + pxr, dyr * 1.25 + pyr, 5.8],
-          [dxr * 1.25 - pxr, dyr * 1.25 - pyr, 5.8],
-          [dxr * 4.35 - pxr, dyr * 4.35 - pyr, 1.6],
-          [dxr * 4.35 + pxr, dyr * 4.35 + pyr, 1.6],
-        ]);
-        out.push(...tagKey([[seam, 1, "#1b1e23"] as ShapeFace], dep + 0.3));
-      }
-    }
-    // 바닥 갈고리 덩굴(실물) — 다리 사이로 기다가 끝이 말려 올라간다.
-    // 옆 갈고리 가시도 검정(요청).
-    out.push(...paintBase(hornFaces(4.2, 4.2, 0.5, 6.6, 6, 0.9, 0.7), "#1b1e23"));
-    out.push(...paintBase(hornFaces(6.6, 6, 0.9, 7.4, 6.6, 2.4, 0.5), "#1b1e23"));
-    out.push(...paintBase(hornFaces(-5.6, 2, 0.5, -7.8, 2.8, 0.9, 0.7), "#1b1e23"));
-    out.push(...paintBase(hornFaces(-7.8, 2.8, 0.9, -8.6, 3, 2.2, 0.5), "#1b1e23"));
-    return out;
-  },
+  hatchery: () => hatcheryMoundFaces("#1b1e23"),
   /* 레어 — 해처리 + 다리 끝 굽은 뿔 셋. */
   lair: () => [
     // 뿔은 동굴 입구 하나 건너 하나(지적) — 다리 각 -170·-40·80의 입구에서 솟는다.
@@ -2448,7 +2445,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ];
     let hi = 0;
     for (const [bx, by, bz, tx, ty, tz, w] of horns) {
-      if (hi === 1) out.push(...SHAPE_BUILDERS.hatchery());
+      if (hi === 1) out.push(...hatcheryMoundFaces(IVORY)); // 옆띠 상아색(요청)
       hi += 1;
       // 뿔은 황토색, 가시는 상아색(요청).
       out.push(...paintBase(hornFaces(bx, by, bz, tx, ty, tz, w), "#b3854a"));
