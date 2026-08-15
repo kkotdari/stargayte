@@ -1621,13 +1621,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        돔에 박힌 불룩한 덩어리라, 윤곽은 어느 각도에서나 통통한 타원이다. 자리만 몸을
        따라 돌고, 옆으로 돌수록 폭을 줄이다가 뒤로 넘어가면 돔에 가려져 사라진다 —
        전엔 뒤에서도 그대로 그려져 몸과 따로 놀았다. */
-    /* 알을 모델의 -y 면으로 이사(지적: 알 붙은 쪽이 앞인데 안 보임) — 요잉 보정
-       합계 -180이 되면서 +y가 등 뒤로 갔다. 알 자리만 반대편으로 옮겨 화면 앞을
-       그대로 보게 한다. */
-    const eggFace = facingRatio(0, -1);
+    // 알은 +y 앞면 원위치(재재지적: 몸을 180도 되돌리며 앞면이 다시 +y).
+    const eggFace = facingRatio(0, 1);
     if (eggFace > 0.15) {
       const k = 0.45 + 0.55 * Math.min(1, (eggFace - 0.15) / 0.35);
-      const [ex, ey] = project(0, -2.4, 2.1);
+      const [ex, ey] = project(0, 2.4, 2.1);
       out.push(capFace(groundEllipse(ex, ey, 2.4 * k, 3), 0.35));
       out.push(topFace(groundEllipse(ex, ey, 2 * k, 2.6), 0.55));
     }
@@ -1836,43 +1834,45 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         }
         const fd = polyPath3(rightP);
         g.push(bodyFace(fd), topFace(fd, 0.14));
+        /* 이빨(재지적: 이 반원판에) + 입체감(재재지적) — 안팎 두 판 사이를 이빨
+           슬래브가 잇는다: 바깥판 이빨(음영) + 안판 이빨 + 끝면 띠. */
+        for (const deg of [15, 45, 75, 105, 135, 165]) {
+          const a3 = (deg * Math.PI) / 180;
+          const c3 = Math.cos(a3);
+          const s3 = Math.sin(a3);
+          const yi = 0.4 - c3 * 2.1;
+          const zi = 1 + s3 * 2.1;
+          const yo = 0.4 - c3 * 2.8;
+          const zo = 1 + s3 * 2.8;
+          const tooth = (xx: number): [number, number, number][] => [
+            [xx, yi + s3 * 0.22, zi + c3 * 0.22],
+            [xx, yi - s3 * 0.22, zi - c3 * 0.22],
+            [xx, yo - s3 * 0.15, zo - c3 * 0.15],
+            [xx, yo + s3 * 0.15, zo + c3 * 0.15],
+          ];
+          const backT = polyPath3(tooth(-4.68));
+          g.push(bodyFace(backT), sideFace(backT, 0.22));
+          g.push(bodyFace(polyPath3([
+            tooth(-4.68)[3], tooth(-4.17)[3], tooth(-4.17)[2], tooth(-4.68)[2],
+          ])));
+          const frontT = polyPath3(tooth(-4.17));
+          g.push(bodyFace(frontT), topFace(frontT, 0.12));
+        }
         return tagKey(g, depthNow(-4.4, 0.4) + 0.5);
       })(),
-      /* 앞 톱니바퀴(요청: 이빨 달린 기어를 앞부분에) — 앞벽에 반쯤 묻힌 세로 원판과
-         둘레 이빨. 아래 반은 기단에 묻힌다. */
-      ...tagKey(((): ShapeFace[] => {
-        const cyF = 3.15;
-        const czF = 1.1;
-        const r = 1.6;
-        const g: ShapeFace[] = [
-          bodyFace(wallDiscPath(0, cyF, czF, r, r)),
-          topFace(wallDiscPath(0, cyF, czF, r, r), 0.12),
-          capFace(wallDiscPath(0, cyF, czF, 0.5, 0.45), 0.35),
-        ];
-        for (let i = 0; i < 7; i += 1) {
-          const a2 = Math.PI * ((i + 0.5) / 7);
-          const dx = Math.cos(a2);
-          const dz = Math.sin(a2);
-          g.push(bodyFace(polyPath3([
-            [dx * (r - 0.1) - 0.16, cyF, czF + dz * (r - 0.1) - 0.16],
-            [dx * (r - 0.1) + 0.16, cyF, czF + dz * (r - 0.1) + 0.16],
-            [dx * (r + 0.5) + 0.12, cyF, czF + dz * (r + 0.5) + 0.12],
-            [dx * (r + 0.5) - 0.12, cyF, czF + dz * (r + 0.5) - 0.12],
-          ])));
-        }
-        return g;
-      })(), depthNow(0, 3.15) + 1.2),
+// (이동·재지적) 앞 톱니 원판 — 왼쪽 반원판의 이빨로 옮겼다.
       // 가운데 결정 기둥 무리 — 높이 다른 네 자루, 끝이 뾰족하게 좁아진다.
       ...tagKey(hornFaces(-1.2, 0.1, 1, -1.3, 0, 6.4, 1.05), depthNow(-1.2, 0.1) + 1),
       ...tagKey(hornFaces(-0.2, -1, 1, -0.2, -1.1, 7.6, 1.15), depthNow(-0.2, -1) + 1),
       ...tagKey(hornFaces(0.8, 0.5, 1, 0.9, 0.5, 5.8, 0.95), depthNow(0.8, 0.5) + 1),
       ...tagKey(hornFaces(0.1, 1.3, 1, 0.1, 1.4, 4.9, 0.85), depthNow(0.1, 1.3) + 1),
-      // 오른쪽 큰 돔 — 렌즈 창 둘과 꼭대기 혹.
-      ...domeFaces3(3.1, 0.5, 2.5, 2.2, 0.9),
-      // 구슬 렌즈를 돔 표면 위로(지적: 바닥에 가려 안 보임) — z를 표면 위로 올린다.
-      ...lens(2.5, 1.9, 3, 0.8),
-      ...lens(4, 1, 2.9, 0.6),
-      ...domeFaces3(3.1, 0.3, 0.95, 0.7, 3.05),
+      // 오른쪽 큰 돔 — 렌즈 창 둘과 꼭대기 혹. 지붕 키(재지적: 기단 발판에 자꾸 가려짐).
+      ...tagKey([
+        ...domeFaces3(3.1, 0.5, 2.5, 2.2, 0.9),
+        ...lens(2.5, 1.9, 3, 0.8),
+        ...lens(4, 1, 2.9, 0.6),
+        ...domeFaces3(3.1, 0.3, 0.95, 0.7, 3.05),
+      ], 8),
     ];
   },
   /* 사이버네틱스 코어(실물 참고) — 가운데 드럼 위 파란 발광 고리, 그 뒤로 솟는 발톱
@@ -4478,8 +4478,8 @@ const WORKER_KIND_SET = new Set(["scv", "probe", "drone"]);
 const BUILDING_BASE_YAW = 45;
 const MODEL_YAW_TWEAK: Record<string, number> = {
   // 반시계 90도(지적) — 어시밀레이터·히드라 덴·서플·포지·테란 공사장.
-  // 어시밀레이터는 반시계 90 한 번 더(재지적) — 합계 -180.
-  assim: -180, hydraden: -90, trapezoid: -90, forge: -90, scaffold: -90,
+  // 어시밀레이터 180도 회전(재재지적) — 합계 0(기본 요잉만).
+  assim: 0, hydraden: -90, trapezoid: -90, forge: -90, scaffold: -90,
   // 시계 90도(지적) — 로보틱스·템플러 아카이브.
   dome: 90, archives: 90,
 };
