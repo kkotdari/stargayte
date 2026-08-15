@@ -3690,15 +3690,23 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        한 겹으로 칠하면, 요잉에 자연히 돌고 어느 각에서도 부피가 산다. */
     const dark = (faces: ShapeFace[], o: number): ShapeFace[] =>
       faces.filter(([, fo, fill]) => fo === 1 && !fill).map(([d]) => [d, o, "#000"] as ShapeFace);
+    /* 1.4배 + 모양 개선(요청) — 밝은 청백 에너지 소용돌이 구로: 사람 색 구 위에 옅은
+       청백 워시와 번개 호를 얹어 다크 아콘(어두운 보라+핏빛)과 확실히 갈린다. */
     return [
-      [groundEllipse(cx, cy, 3.6, 3.4), 0.55] as ShapeFace,
-      topFace(groundEllipse(cx, cy, 3.6, 3.4), 0.3),
+      [groundEllipse(cx, cy, 5.1, 4.8), 0.55] as ShapeFace,
+      [groundEllipse(cx, cy, 5.1, 4.8), 0.3, "#dff0ff"] as ShapeFace,
+      topFace(groundEllipse(cx, cy, 5.1, 4.8), 0.22),
       // 몸통 — 낮은 타원 돔. 머리 불꽃 — 위로 솟는 뿔. 팔 — 어깨에서 밖·아래로.
-      ...dark(domeFaces3(0, 0, 0.95, 1.9, 3.5), 0.35),
-      ...dark(hornFaces(0, 0, 5.6, 0, 0.35, 7.3, 0.7), 0.4),
-      ...dark(hornFaces(-0.65, 0.15, 5.4, -1.75, 0.55, 3.5, 0.5), 0.35),
-      ...dark(hornFaces(0.65, 0.15, 5.4, 1.75, 0.55, 3.5, 0.5), 0.35),
-      topFace(groundEllipse(cx - 1.2, cy - 1.2, 1.3, 1), 0.4),
+      ...dark(domeFaces3(0, 0, 1.35, 2.7, 3.2), 0.35),
+      ...dark(hornFaces(0, 0, 6.1, 0, 0.45, 8.6, 1), 0.4),
+      ...dark(hornFaces(-0.9, 0.2, 5.9, -2.45, 0.75, 3.2, 0.7), 0.35),
+      ...dark(hornFaces(0.9, 0.2, 5.9, 2.45, 0.75, 3.2, 0.7), 0.35),
+      // 에너지 번개 호 — 구면을 타는 청백 실선 둘.
+      [`M${cx - 4.2} ${cy - 1.6} Q${cx - 1.2} ${cy - 4.4} ${cx + 2.4} ${cy - 3.4}`
+        + ` L${cx + 2.2} ${cy - 3.1} Q${cx - 1.1} ${cy - 4} ${cx - 3.9} ${cy - 1.4} Z`, 0.8, "#eaf6ff"] as ShapeFace,
+      [`M${cx + 4.4} ${cy + 0.6} Q${cx + 1.8} ${cy + 3.6} ${cx - 2.2} ${cy + 3.2}`
+        + ` L${cx - 2} ${cy + 2.9} Q${cx + 1.6} ${cy + 3.2} ${cx + 4.1} ${cy + 0.4} Z`, 0.6, "#cfe6ff"] as ShapeFace,
+      topFace(groundEllipse(cx - 1.7, cy - 1.7, 1.9, 1.5), 0.4),
     ];
   },
   /* 다크 아콘(실물 참고) — 어두운 반투명 구 속에 뿔귀 머리와 갈퀴 팔의 형체가 비치고,
@@ -3708,20 +3716,26 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 속 형체도 입체(재지적) — 아콘과 같은 dark() 기법. 수염 호·광택은 구 둘레 장식.
     const dark = (faces: ShapeFace[], o: number): ShapeFace[] =>
       faces.filter(([, fo, fill]) => fo === 1 && !fill).map(([d]) => [d, o, "#000"] as ShapeFace);
+    /* 1.4배 + 구분 강화(요청) — 어두운 보랏빛 워시와 핏빛 글린트로 아콘(청백)과
+       한눈에 갈린다. 수염 호는 그대로 비례 확대. */
     return [
-      [groundEllipse(cx, cy, 3.6, 3.4), 0.55] as ShapeFace,
-      capFace(groundEllipse(cx, cy, 3.6, 3.4), 0.25),
+      [groundEllipse(cx, cy, 5.1, 4.8), 0.55] as ShapeFace,
+      [groundEllipse(cx, cy, 5.1, 4.8), 0.42, "#31204a"] as ShapeFace,
+      capFace(groundEllipse(cx, cy, 5.1, 4.8), 0.25),
       // 속 형체 — 낮은 돔 몸통, 벌어진 뿔귀 둘, 아래로 늘어지는 갈퀴 팔.
-      ...dark(domeFaces3(-0.1, 0.1, 0.9, 1.7, 3.6), 0.4),
-      ...dark(hornFaces(-0.35, 0.1, 5.2, -1.2, 0.4, 6.9, 0.55), 0.45),
-      ...dark(hornFaces(0.35, 0.1, 5.2, 1.05, 0.35, 6.7, 0.5), 0.45),
-      ...dark(hornFaces(-0.35, 0.25, 4, -1, 0.7, 2.5, 0.45), 0.4),
+      ...dark(domeFaces3(-0.15, 0.15, 1.25, 2.4, 3.4), 0.45),
+      ...dark(hornFaces(-0.5, 0.15, 5.6, -1.7, 0.55, 8, 0.8), 0.5),
+      ...dark(hornFaces(0.5, 0.15, 5.6, 1.5, 0.5, 7.7, 0.7), 0.5),
+      ...dark(hornFaces(-0.5, 0.35, 4.2, -1.4, 1, 2.2, 0.65), 0.45),
+      // 핏빛 글린트 — 구면 위 붉은 광 조각 둘.
+      [groundEllipse(cx + 1.9, cy - 1.1, 0.8, 0.55), 0.55, "#ff5d5d"] as ShapeFace,
+      [groundEllipse(cx - 1.3, cy + 1.7, 0.55, 0.4), 0.45, "#ff8080"] as ShapeFace,
       // 바깥 수염 호 — 가늘게 흩날린다.
-      topFace(`M${cx - 3.1} ${cy - 1.9} Q${cx - 4.6} ${cy - 0.6} ${cx - 4.1} ${cy + 1}`
-        + ` L${cx - 3.9} ${cy + 0.9} Q${cx - 4.3} ${cy - 0.5} ${cx - 2.95} ${cy - 1.75} Z`, 0.4),
-      topFace(`M${cx + 2.9} ${cy - 2.2} Q${cx + 4.5} ${cy - 1.4} ${cx + 4.6} ${cy + 0.2}`
-        + ` L${cx + 4.4} ${cy + 0.25} Q${cx + 4.2} ${cy - 1.2} ${cx + 2.75} ${cy - 2} Z`, 0.35),
-      topFace(groundEllipse(cx - 1.2, cy - 1.2, 1.2, 0.9), 0.3),
+      topFace(`M${cx - 4.4} ${cy - 2.7} Q${cx - 6.5} ${cy - 0.8} ${cx - 5.8} ${cy + 1.4}`
+        + ` L${cx - 5.5} ${cy + 1.3} Q${cx - 6.1} ${cy - 0.7} ${cx - 4.2} ${cy - 2.5} Z`, 0.4),
+      topFace(`M${cx + 4.1} ${cy - 3.1} Q${cx + 6.4} ${cy - 2} ${cx + 6.5} ${cy + 0.3}`
+        + ` L${cx + 6.2} ${cy + 0.35} Q${cx + 5.9} ${cy - 1.7} ${cx + 3.9} ${cy - 2.8} Z`, 0.35),
+      topFace(groundEllipse(cx - 1.7, cy - 1.7, 1.7, 1.3), 0.3),
     ];
   },
   /* 저글링·히드라·울트라(요청: 전용 모델) — 갈고리는 직선이 아니라 3단으로 휘어진다:
@@ -8695,10 +8709,10 @@ export default function ReplayMotionPlayer({
             남는다. v2 데이터로 그리므로 v2 모드 + 클릭 토글이 켜져 있을 때만이다. */}
         {entOn && clickFx && entClicks.map(([cs, cx2, cy2, raw, ck], i) => {
           if (t < cs || t - cs > 0.9) return null;
-          /* 반으로(재재지적: 조작 표시 원들이 전체적으로 너무 큼) — 1.1 → 0.55타일 폭.
-             하한 9px(재재재지적: 작으면 테두리가 붙어 꽉 찬 면으로 보임 — 채움 없이
-             테두리·구멍이 보이려면 최소 크기가 필요하다). */
-          const ckw = Math.max(9, ((mapRef.current?.clientWidth ?? 320) / grid.width) * 0.55);
+          /* UI 고정 크기(재재재재지적: 이제 너무 작음) — 줌 역배율로 화면 크기가 고정
+             되면서 하한 9px가 곧 실제 크기가 됐다. 기준 14px로 올린다(타일 비례는 큰
+             맵에서만 그보다 커진다). */
+          const ckw = Math.max(14, ((mapRef.current?.clientWidth ?? 320) / grid.width) * 0.55);
           // 공격 클릭은 붉은 고리로 갈라 보인다(지적: 클릭 종류 구분).
           return (
             <span
