@@ -1123,10 +1123,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           bodyFace(discPath3(px, py, 0.45, 1.6)),
           sideFace(discPath3(px, py, 0.42, 1.6), 0.25),
         ], depthNow(px, py)),
-        // 원래 기둥 모양 유지(재재지적) — 끝이 좁아지는 뿔 그대로, 수정팁은 더 작게
-        // 좁아진 끝자락(8.2)에 심어 자연히 이어진다.
+        /* 끝을 도려내고 팁을 꽂는다(재재재지적: 화살촉처럼 튀지 않게) — 팁 원뿔이
+           그 높이의 기둥 굵기보다 늘 살짝 굵어 기둥 끝을 완전히 감싼다. */
         ...hornFaces(px, py, 0.4, px, py, 8.8, 1.7),
-        ...paintBase(hornFaces(px, py, 8.2, px, py, 9.5, 0.55), "#3bd8c2"),
+        ...paintBase(hornFaces(px, py, 6.8, px, py, 8.9, 0.5), "#3bd8c2"),
         topFace(groundEllipse(kx, ky, 0.45, 0.65), 0.5),
       ];
     };
@@ -1169,7 +1169,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         [sx * 4.2 - cxa * 2.2, sy * 4.2 - sya * 2.2, 1.5],
         [sx * 8.4, sy * 8.4, 0],
       ]);
-      out.push(bodyFace(d), ...face(d));
+      // 발판도 제 깊이(지적: 기둥과 가려짐 순서) — 앞 발판만 기둥 위로.
+      out.push(...tagKey([bodyFace(d), ...face(d)], depthNow(sx * 5.5, sy * 5.5)));
     }
     out.push(...pillar(-5.6, 5.6), ...pillar(5.6, 5.6));
     return out;
@@ -1310,15 +1311,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       nx /= nl;
       ny /= nl;
       const up = faceLight(nx, ny, 0.55);
-      // 수정 기둥도 옥색~시안(요청: 넥서스와 같은 색).
+      // 수정 기둥은 코어 구슬과 같은 반투명 연시안(재지적).
       if (up.visible) {
         const d = polyPath3([[0, 0, zT], [x1, y1, zM], [x2, y2, zM]]);
-        out.push([d, 1, "#3bd8c2"] as ShapeFace, ...up.face(d));
+        out.push([d, 0.6, "#a9ecf2"] as ShapeFace, ...up.face(d));
       }
       const dn = faceLight(nx, ny, -0.55);
       if (dn.visible) {
         const d = polyPath3([[0, 0, zB], [x2, y2, zM], [x1, y1, zM]]);
-        out.push([d, 1, "#3bd8c2"] as ShapeFace, ...dn.face(d));
+        out.push([d, 0.6, "#a9ecf2"] as ShapeFace, ...dn.face(d));
       }
     }
     out.push(bodyFace(ringFront), topFace(ringFront, 0.22));
