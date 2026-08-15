@@ -3949,10 +3949,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...frustumFaces3(cx, cy, w, w * 0.85, w * 0.72, w * 0.62, h),
       ...pyramidFaces3(cx, cy, w * 0.72, w * 0.62, w * 0.8, h),
     ];
+    // 덩어리 넷(요청: 개수 늘리기) — 큰 둘 + 작은 둘이 지그재그로 놓인다.
     return [
-      ...pillar(-2.2, -0.8, 2.1, 2.4),
-      ...pillar(0.4, 0.9, 2.7, 4),
-      ...pillar(2.8, -1, 1.7, 1.8),
+      ...pillar(-2.6, -1, 2.1, 2.4),
+      ...pillar(-0.2, 1, 2.7, 4),
+      ...pillar(2.2, -1.2, 2.3, 2.9),
+      ...pillar(4, 0.9, 1.6, 1.7),
     ];
   },
   /* 가스 간헐천(재재정정: 전체 크기는 원래대로, 두 번째 분화구만 작게) — 언덕 위
@@ -7555,7 +7557,8 @@ export default function ReplayMotionPlayer({
              증거가 없다 — v2는 자원 모델을 늘 세워 둔다. */
           const depleted = !entOn && (depleteAt.get(ri) ?? Infinity) <= t;
           if (!gasSpot && depleted) return null;
-          const wTiles = gasSpot ? 6.4 : 2.4;
+          // 미네랄 살짝 확대(요청) — 2.4 → 2.9타일 폭.
+          const wTiles = gasSpot ? 6.4 : 2.9;
           unitOps.push({
             fx, fy,
             z: pitched ? 990 + Math.round(res[1] * 80) : 900 + ri,
