@@ -11151,7 +11151,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-cap-time { color: var(--dim); font-variant-numeric: tabular-nums; margin-right: 4px; }
 .scr-motion-bar { display: flex; align-items: center; gap: 6px; }
 /* 보기 설정 줄(정리·요청) — 보기·컬러·모델크기 짝 버튼 3그룹, 종류 사이 갭. */
-.scr-motion-viewrow { flex-wrap: wrap; justify-content: flex-end; margin-bottom: 2px; gap: 12px; align-items: flex-end; }
+/* 각 줄 스페이스 비트윈(요청) — flex-wrap의 줄마다 양끝까지 고르게 벌린다. */
+.scr-motion-viewrow { flex-wrap: wrap; justify-content: space-between; margin-bottom: 2px; gap: 12px; align-items: flex-end; }
 /* 게임 상세 라디오(요청: 라디오식 버튼을 라이팅 알약 라디오로 — 작게, 위에 라벨,
    PC·모바일 공통). 어두운 카드 위라 컴팩트 알약탭 컨텍스트처럼 테마 글자를 쓴다. */
 .scr-motion-radio { display: inline-flex; flex-direction: column; align-items: stretch; gap: 3px; }
@@ -11226,6 +11227,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
 }
 .scr-motion-bar-controls .scr-motion-speeds { justify-self: start; }
+/* 재생은 줄의 정중앙, 시계는 우측 끝(요청) — 배속이 보기 줄로 이사해 첫 칸이 비면
+   자동 배치가 재생을 1열(왼쪽)로 밀어 버린다. 열을 못박는다. */
+.scr-motion-bar-controls .scr-motion-play { grid-column: 2; }
 /* 옛 재생 버튼(.scr-story-play)과 같은 꼴(요청) — 46px 완전 원. */
 .scr-motion-play {
   justify-self: center; flex-shrink: 0;
@@ -11240,7 +11244,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-bar-controls .scr-motion-clock { justify-self: end; }
 /* 시계 옆 공유(요청: 진행바 아래 별도 버튼) — 오른쪽 칸에 [공유 | 시계]로 나란히. */
 .scr-motion-clockwrap {
-  justify-self: end; display: inline-flex; align-items: center; gap: 10px;
+  grid-column: 3; justify-self: end; display: inline-flex; align-items: center; gap: 10px;
 }
 .scr-motion-clockwrap .scr-kakao-icon-btn { color: var(--muted); }
 .scr-motion-btn {
@@ -11578,7 +11582,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   width: 69px; height: 69px; min-width: 69px;
 }
 .scr-motion-wide .scr-motion-play svg { width: 39px; height: 39px; }
-.scr-motion-wide .scr-motion-clock { grid-area: clock; justify-self: center; align-self: center; }
+.scr-motion-wide .scr-motion-clockwrap { grid-area: clock; justify-self: center; align-self: center; }
 .scr-motion-wide .scr-motion-toolrow { display: contents; }
 .scr-motion-wide .scr-motion-toolrow-mid { display: none; }
 /* 케밥·닫기(요청: PC 기본이 확대인 만큼) — 모달 오른쪽 위 구석에 나란히 떠 있다. */
