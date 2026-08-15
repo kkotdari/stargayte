@@ -619,6 +619,8 @@ function legAndFoot(px: number, py: number, zTop: number): ShapeFace[] {
 /* 상아색 발톱(지적: 모든 다리·팔 끝마디를 흰 톤 상아색으로) — 몸판(색 없는 면)에만
    상아색을 입히고, 그늘 덮개 면은 그대로 둬 입체감을 지킨다. */
 const IVORY = "#eae3d2";
+/* 진한 상아색(요청: 하이브 가시·옆띠). */
+const IVORY_DEEP = "#cdc0a0";
 /* 테란 화기 금속색(요청: 총구·포신은 어두운 회색). */
 const GUNMETAL = "#4b5058";
 /* 탱크 캐터필러 금속색(요청: 짙은 회은색). */
@@ -2445,7 +2447,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ];
     let hi = 0;
     for (const [bx, by, bz, tx, ty, tz, w] of horns) {
-      if (hi === 1) out.push(...hatcheryMoundFaces(IVORY)); // 옆띠 상아색(요청)
+      if (hi === 1) out.push(...hatcheryMoundFaces(IVORY_DEEP)); // 옆띠 진한 상아색(재지적)
       hi += 1;
       // 뿔은 황토색, 가시는 상아색(요청).
       out.push(...paintBase(hornFaces(bx, by, bz, tx, ty, tz, w), "#b3854a"));
@@ -2458,7 +2460,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         const olen = Math.hypot(px, py) || 1;
         const ox = (px / olen) * 1.7;
         const oy = (py / olen) * 1.7;
-        out.push(...paintBase(hornFaces(px, py, pz, px - ox, py - oy, pz + 0.7, 0.65), IVORY));
+        out.push(...paintBase(hornFaces(px, py, pz, px - ox, py - oy, pz + 0.7, 0.65), IVORY_DEEP));
       }
     }
     out.push(...hornFaces(-2.6, 4.6, 0.6, -4.4, 6, 2.6, 1));
