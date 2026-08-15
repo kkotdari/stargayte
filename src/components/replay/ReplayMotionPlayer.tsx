@@ -8980,47 +8980,6 @@ export default function ReplayMotionPlayer({
           );
         })}
 
-        {/* 건설 SCV(정정: 빙빙이 아니라) — 건물 둘레 네 자리를 "이동→정지(작업)→이동"
-            으로 옮겨 다닌다. 걷는 동안은 진행 방향, 멈추면 건물 쪽을 본다. */}
-        {buildsSrc.map(([sec, bx3, by3, unit, raw], i) => {
-          if (sec <= 0 || t < sec || t - sec >= (BUILD_SEC[unit] ?? 30)) return null;
-          if (ADDONS.has(unit)) return null;
-          const race2 = bases.find((b) => b.key === raw)?.race;
-          if (race2 !== "테란") return null;
-          const [fw2, fh2] = FOOTPRINT[unit] ?? [3, 2];
-          const cx0 = bx3 + footDx(unit);
-          const cy0 = by3 + footDy(unit);
-          const spots: [number, number][] = [
-            [fw2 / 2 + 0.9, 0], [0, fh2 / 2 + 0.8], [-(fw2 / 2 + 0.9), 0], [0, -(fh2 / 2 + 0.8)],
-          ];
-          const LEG = 3;
-          const k = (t - sec) / LEG + i * 0.7;
-          const idx = ((Math.floor(k) % 4) + 4) % 4;
-          const f = k - Math.floor(k);
-          const walkF = Math.min(1, f / 0.35);
-          const [x1, y1] = spots[idx];
-          const [x2, y2] = spots[(idx + 1) % 4];
-          const sx2 = x1 + (x2 - x1) * walkF;
-          const sy2 = y1 + (y2 - y1) * walkF;
-          // 걷는 중엔 진행 방향, 멈추면 건물(안쪽)을 본다.
-          const hdg2 = walkF < 1
-            ? (Math.atan2(-(x2 - x1), y2 - y1) * 180) / Math.PI
-            : (Math.atan2(sx2, -sy2) * 180) / Math.PI;
-          // (캔버스 전환) 건설 SCV도 unitOps로.
-          {
-            const [fx, fy] = posFrac(cx0 + sx2, cy0 + sy2);
-            unitOps.push({
-              fx, fy,
-              z: pitched ? 1000 + Math.round((cy0 + sy2) * 80) : 1000 + Math.round(t),
-              kind: "scv", rotDeg: hdg2, viewYaw: viewYawOf(cx0 + sx2, cy0 + sy2),
-              flat: !pitched, pitch: pitched,
-              // 다른 일꾼과 같은 소형 눈금(지적: 크기 제각각) — 고정 13/9px였다.
-              sizePx: unitGlyphPx(0, cy0 + sy2),
-              color: modeColor(raw, teamOfRaw(raw)), alpha: 1,
-            });
-          }
-          return null;
-        })}
 
         {/* 마법 — 떨어진 자리에 이름이 잠깐 떠오른다. 핵만은 이름에 폭발 파문까지
             얹는다(요청: "핵 떨어지는거도 효과") — 경기 하나에 몇 번 없는, 그 판의 가장

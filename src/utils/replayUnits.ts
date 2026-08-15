@@ -1283,7 +1283,9 @@ export function buildUnitTracks(
       if (!pos || Math.hypot(a.x - pos[0], a.y - pos[1]) > 7) continue;
       if (stasisSpans.some(([sa, sb]) => a.sec >= sa && a.sec <= sb)) continue;
       // 공격 명령 하나 = 그 유닛이 1.4초쯤 두들긴 것. 공업 +10%/렙.
-      let base = Math.min(80, a.dps * 1.4) * (1 + 0.1 * lvOf(wUpsBy, a.owner, a.sec));
+      /* 짧게 두들긴 것으로(재지적: 전원이 10%로 동시에 떨어짐 — 곁의 공격 명령
+         전부가 모든 유닛에 온전히 박히는 과대 계산이 원인). 피해는 무리에 흩어진다. */
+      let base = Math.min(55, a.dps * 0.9) * (1 + 0.1 * lvOf(wUpsBy, a.owner, a.sec));
       if (!a.melee && swarmZones.some(([ws, wx, wy]) =>
         a.sec - ws >= 0 && a.sec - ws <= 25 && Math.hypot(wx - pos[0], wy - pos[1]) <= 2.5)) {
         base *= 0.15;
@@ -1395,10 +1397,12 @@ export function buildUnitTracks(
       if (curHp <= 0) {
         const survived = life.ev.some((v) => v[1] >= 0 && v[0] > dsec + 2);
         if (survived) {
-          // 뒤 스토리 — 그 뒤에도 움직였으니 죽지 않았다: 체력 바닥에서 다시 시작.
-          curHp = maxHp * 0.08;
+          /* 뒤 스토리 — 그 뒤에도 움직였으니 죽지 않았다. 남은 체력은 개체 번호로
+             흩어(12~35%) 전원이 똑같은 값으로 살아나는 어색함(재지적)을 없앤다. */
+          curHp = maxHp * (0.12 + ((Math.abs(life.tag) * 37) % 24) / 100);
           curSh = 0;
-          if (lastPct !== 10) { trace.push([Math.round(dsec), 10]); lastPct = 10; }
+          const pS = pct();
+          if (pS !== lastPct) { trace.push([Math.round(dsec), pS]); lastPct = pS; }
           continue;
         }
         trace.push([Math.round(dsec), 0]);
