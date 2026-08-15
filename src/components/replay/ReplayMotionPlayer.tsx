@@ -3290,8 +3290,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     };
     // 뒤 위 날개 한 쌍 + 뒤 아래로 처지는 날개 한 쌍(옆다리는 제거 — 지적).
     // 몸을 높이고(지적: 땅에서 좀 더 높게 +0.8) 뒷다리는 더 가파르게 떨어뜨린다.
-    for (const ang of [168, 192]) out.push(...wing(ang, 1, 1.9, 0.5, 0.22, 5.4, 4.5));
-    for (const ang of [138, 222]) out.push(...wing(ang, 1, 2.2, 0.55, 0.25, 5.3, 1.7));
+    // 다리 전부 더 얇게, 뒷다리는 길이까지 축소(지적).
+    for (const ang of [168, 192]) out.push(...wing(ang, 1, 1.5, 0.34, 0.14, 5.4, 4.6));
+    for (const ang of [138, 222]) out.push(...wing(ang, 1, 1.55, 0.36, 0.15, 5.3, 1.9));
     /* 몸통·눈도 모델 공간(수리: 화면 공간이라 돌아도 고정돼 있었다 — 지적) — 팔각도
        눈도 요잉을 따라 함께 돈다. */
     const oct = (r: number, z: number): string => polyPath3(
@@ -3323,7 +3324,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(topFace(groundEllipse(p2x, p2y, 0.22, 0.18), 0.3));
     /* 앞다리 한 쌍(재지적: 길이 축소 + 두 다리 사이 벌리기 + 몸에 더 딱) — 뿌리를
        몸 바로 밑(0.65)까지 당기고, 각도를 ±14→±30으로 벌리고, 길이는 반 남짓으로. */
-    for (const ang of [30, -30]) out.push(...wing(ang, 0.65, 0.5, 0.24, 0.12, 4.95, 4.35));
+    for (const ang of [30, -30]) out.push(...wing(ang, 0.65, 0.5, 0.17, 0.08, 4.95, 4.35));
     return out;
   },
   /* 드론(정정) — 갈퀴치마는 집게 사이가 아니라 집게팔과 꼬리 사이, 양옆에 부채처럼
