@@ -3387,7 +3387,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 뒤 위 날개 한 쌍 + 뒤 아래로 처지는 날개 한 쌍(옆다리는 제거 — 지적).
     /* 1.6배 확대 + 더 높이 부양(지적: 프로브가 너무 작고 땅에 붙어 있음) — 몸통이
        상자의 16%만 채우고 있었다. 다리 얇음·가파름 비율은 유지. */
-    for (const ang of [168, 192]) out.push(...wing(ang, 1.6, 2.4, 0.5, 0.2, 6.2, 5.2));
+    // 꼬리 두 가닥은 안테나처럼 얇게(지적).
+    for (const ang of [168, 192]) out.push(...wing(ang, 1.6, 2.4, 0.16, 0.06, 6.2, 5.2));
     for (const ang of [138, 222]) out.push(...wing(ang, 1.6, 2.5, 0.55, 0.22, 6.1, 2.2));
     /* 몸통·눈도 모델 공간(수리: 화면 공간이라 돌아도 고정돼 있었다 — 지적) — 팔각도
        눈도 요잉을 따라 함께 돈다. */
@@ -3399,9 +3400,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     );
     // 몸통 축소(지적: 몸체 크기 축소) — 팔각 반지름 2 → 1.6, 겹층도 함께.
     // 원판 몸통만 축소(정정: '몸통'은 가운데 원판 파트 — 날개는 그대로).
-    out.push(bodyFace(oct(1.55, 6.2)));
-    out.push(topFace(oct(1.05, 6.5), 0.26));
-    out.push(topFace(oct(0.62, 6.8), 0.3));
+    // 몸통은 늘 다리 위(지적: 뒷다리에 가려짐) — 제 깊이 키를 크게 단다.
+    out.push(...tagKey([
+      bodyFace(oct(1.55, 6.2)),
+      topFace(oct(1.05, 6.5), 0.26),
+      topFace(oct(0.62, 6.8), 0.3),
+    ], depthNow(0, 0) + 2.5));
     /* 눈 두 개(재지적: 몸통에 수직으로 붙여 정면을 보게 + 더 작게) — 바닥에 눕던
        타원을 정면 벽 데칼(wallDiscPath)로 세운다. 벽과 함께 돌고 눌리며, 뒤로 돌면
        서서히 사라진다(어시밀레이터 알과 같은 규칙). */
@@ -8442,14 +8446,20 @@ export default function ReplayMotionPlayer({
           if (dieAt !== null && t >= dieAt) {
             if (!qDeath) return null;
             const dk = race === "저그" ? "zerg" : race === "프로토스" ? "toss" : "mech";
+            /* 죽은 자리에 못박기(지적: 체력 0으로 소멸한 유닛이 폭발하며 움직임) —
+               지금 표시 위치(스무딩·걸음이 계속 간다)가 아니라 죽은 '순간'의 자취
+               좌표에서 터진다. */
+            const dp0 = posAt(rp, Math.max(rp[0][0], dieAt), null);
+            const dpx = dp0 ? dp0.x : ax3;
+            const dpy = dp0 ? dp0.y : ay3;
             /* 공중은 떠 있던 몸 자리에서 터진다(지적) — 비행 높이만큼 위로. */
             const dieLift = uAir
-              ? (drawUnit === "" ? unitGlyphPx(0, ay3) : unitPxOf(drawUnit, ay3)) * 1.6 : 0;
+              ? (drawUnit === "" ? unitGlyphPx(0, dpy) : unitPxOf(drawUnit, dpy)) * 1.6 : 0;
             return (
               <span
                 key={`v2die-${ei}`}
                 className="scr-motion-army scr-motion-dot"
-                style={{ ...posStyle(ax3, ay3), zIndex: 1300, ...(dieLift ? { marginTop: `${(-dieLift).toFixed(1)}px` } : {}) }}
+                style={{ ...posStyle(dpx, dpy), zIndex: 1300, ...(dieLift ? { marginTop: `${(-dieLift).toFixed(1)}px` } : {}) }}
               >
                 <span className={`scr-motion-diefx scr-die-${dk}`} />
               </span>
