@@ -2410,13 +2410,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const dyr = Math.cos(a2);
       const dep = depthNow(dxr * 4, dyr * 4);
       const rear = ang === 140 || ang === -160;
+      // 검은 동굴 단면 반원 제거(재지적: 바닥 검정 반원통) — capOpen을 끈다.
       out.push(...tagKey(
-        paintBase(limbFaces(ang, rear ? 3 : 3.4, 1.7, rear ? 3.4 : 3.2), "#4e545c"),
+        paintBase(limbFaces(ang, rear ? 3 : 3.4, 1.7, rear ? 3.4 : 3.2, false), "#4e545c"),
         dep,
       ));
       if (facingRatio(dxr, dyr) > -0.05) {
-        const pxr = -dyr * 0.3;
-        const pyr = dxr * 0.3;
+        // 띠 너비 = 동굴 입구(다리 폭 1.7)와 같게(재지적).
+        const pxr = -dyr * 0.85;
+        const pyr = dxr * 0.85;
         const seam = polyPath3([
           [dxr * 1.25 + pxr, dyr * 1.25 + pyr, 5.8],
           [dxr * 1.25 - pxr, dyr * 1.25 - pyr, 5.8],
