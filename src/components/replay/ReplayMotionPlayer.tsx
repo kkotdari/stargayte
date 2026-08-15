@@ -6915,9 +6915,18 @@ export default function ReplayMotionPlayer({
     let pinch: { d: number; z: number; cx: number; cy: number; px: number; py: number } | null = null;
     let pinchPend: { z: number; p: { x: number; y: number } } | null = null;
     let pinchRaf = 0;
+    /* 더블탭 확대·축소(요청: 모바일에서 더블클릭류) — 한 손가락 탭 두 번(320ms·36px
+       안)이면 탭 지점 중심으로 4배 확대, 이미 확대 중이면 원래대로. 끌었으면(10px
+       초과) 탭이 아니다. */
+    let tap: { t: number; x: number; y: number } | null = null;
+    let tapStart: { x: number; y: number; moved: boolean } | null = null;
     const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
     const onTS = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        tapStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, moved: false };
+      }
       if (e.touches.length !== 2) return;
+      tapStart = null;
       e.preventDefault();
       pinch = {
         d: dist(e.touches), z: zoomRef.current,
@@ -6928,6 +6937,11 @@ export default function ReplayMotionPlayer({
     };
     const onTM = (e: TouchEvent) => {
       gestureRef.current = e.touches.length >= 2;
+      // 10px 넘게 끌리면 탭이 아니다(더블탭 판정용).
+      if (tapStart && e.touches.length === 1
+        && Math.hypot(e.touches[0].clientX - tapStart.x, e.touches[0].clientY - tapStart.y) > 10) {
+        tapStart.moved = true;
+      }
       /* 삼키는 건 지도 조작일 때만(재재지적: 모바일에서 아래로 스와이프가 안 됨) —
          무조건 preventDefault가 확대 안 한 한 손가락 스와이프(페이지 스크롤)까지
          막았다. 두 손가락(핀치)이거나 확대 중(드래그 팬)일 때만 기본 동작을 끊고,
@@ -6966,6 +6980,33 @@ export default function ReplayMotionPlayer({
     };
     const onTE = (e: TouchEvent) => {
       if (e.touches.length < 2) { pinch = null; gestureRef.current = false; }
+      // 더블탭 판정 — 손가락이 다 떨어진 순간, 안 끌린 탭만 센다.
+      if (e.touches.length === 0 && tapStart && !tapStart.moved && e.changedTouches.length === 1) {
+        const ct = e.changedTouches[0];
+        const now = performance.now();
+        if (tap && now - tap.t < 320 && Math.hypot(ct.clientX - tap.x, ct.clientY - tap.y) < 36) {
+          // 두 번째 탭 — 브라우저 더블탭 페이지 확대를 끊고 지도만 확대·복귀한다.
+          if (e.cancelable) e.preventDefault();
+          if (zoomRef.current > 1.05) {
+            setZoom(1);
+            setPan({ x: 0, y: 0 });
+          } else {
+            const r2 = el.getBoundingClientRect();
+            const ox2 = r2.left + r2.width / 2;
+            const oy2 = r2.top + r2.height / 2;
+            const z2 = 4;
+            // 핀치와 같은 수식 — 탭한 지점 아래의 지도 지점이 그 자리에 남는다.
+            const ux2 = (ct.clientX - ox2 - panRef.current.x) / zoomRef.current;
+            const uy2 = (ct.clientY - oy2 - panRef.current.y) / zoomRef.current;
+            setZoom(z2);
+            setPan({ x: ct.clientX - ox2 - z2 * ux2, y: ct.clientY - oy2 - z2 * uy2 });
+          }
+          tap = null;
+        } else {
+          tap = { t: now, x: ct.clientX, y: ct.clientY };
+        }
+      }
+      if (e.touches.length === 0) tapStart = null;
     };
     el.addEventListener("touchstart", onTS, { passive: false });
     el.addEventListener("touchmove", onTM, { passive: false });
