@@ -836,21 +836,27 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
           [dxr * 5.7 - pxr, dyr * 5.7 - pyr, 0.05],
           [dxr * 5.7 + pxr, dyr * 5.7 + pyr, 0.05],
         ]);
-        /* 캐노피는 모델 공간 수직 반원(재지적: 무조건 정면을 봤다) — 입구 방향에
-           직교하는 평면의 반원이라 요잉을 따라 제 굴을 향한다. */
-        const archPts = (rr: number, hh2: number): [number, number, number][] =>
+        /* 캐노피는 밖으로 쭉 뻗은 반원 터널(재재지적) — 둔덕 가장자리(r 4.95)에서
+           바깥(r 6.35)까지 아치 두 개를 지붕 띠로 잇고, 바깥 끝에 어두운 굴이 뚫린다.
+           모델 공간 아치라 요잉을 따라 제 방향을 본다. */
+        const archAt = (rad: number, rr: number, hh2: number): [number, number, number][] =>
           Array.from({ length: 9 }, (_, i) => {
             const th = (i / 8) * Math.PI;
             return [
-              dxr * 5.45 - dyr * Math.cos(th) * rr,
-              dyr * 5.45 + dxr * Math.cos(th) * rr,
+              dxr * rad - dyr * Math.cos(th) * rr,
+              dyr * rad + dxr * Math.cos(th) * rr,
               Math.sin(th) * hh2,
             ] as [number, number, number];
           });
+        const innA = archAt(4.95, 1.05, 1.05);
+        const outA = archAt(6.35, 1.05, 1.05);
+        const roof = polyPath3([...innA, ...[...outA].reverse()]);
         out.push(...tagKey([
           [seam, 1, seamColor] as ShapeFace,
-          [polyPath3(archPts(1.05, 1.05)), 1, seamColor] as ShapeFace,
-          [polyPath3(archPts(0.78, 0.78)), 0.9, "#101216"] as ShapeFace,
+          [roof, 1, seamColor] as ShapeFace,
+          sideFace(roof, 0.16),
+          [polyPath3(outA), 1, seamColor] as ShapeFace,
+          [polyPath3(archAt(6.35, 0.78, 0.78)), 0.9, "#101216"] as ShapeFace,
         ], dep + 0.3));
       }
     }
