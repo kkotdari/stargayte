@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Pause, Play, RotateCcw, Shield, X } from "lucide-react";
 import Avatar from "../common/Avatar";
+import ReplayMapCanvas from "./ReplayMapCanvas";
 import PillTabs from "../common/PillTabs";
 import { cx } from "../../utils/format";
 import { UNIT_KO, TECH_KO } from "../../utils/replayNames";
@@ -1683,7 +1684,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 몸집 1.2배(지적: 스타포트와 크기가 너무 다름 — 같은 4×3 발자국인데 모델이
        상자를 덜 채웠다) — 드럼·슬래브·발까지 비례로 키워 스타포트 링과 급을 맞춘다. */
     return [
-      ...foot(-4.3, -2.6), ...foot(4.6, -2.4),
+      // 발은 드럼(반지름 5.5) 바깥에(지적: 다리가 몸통을 뚫고 보임).
+      ...foot(-5.3, -3), ...foot(5.5, -2.8),
       /* 밑 큰 몸통(재지적: 반원처럼 보이고 안 돎) — 드럼은 온전한 원기둥으로 두고,
          둘레에 세로 이음판 여덟을 벽 밖으로 살짝 내밀어 도는 게 보이게 한다. */
       ...cylinderFaces3(0, 0, 5.5, 2.3, 1.3),
@@ -1699,7 +1701,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...tagKey(domeFaces3(0, -0.6, 1.8, 1.45, 8.4), 24 + depthNow(0, -0.6)),
       ...tagKey(cylinderFaces3(2.5, 1.9, 1.2, 2.4, 3.6), 20 + depthNow(2.5, 1.9)),
       glow(-3.5, 3.1, 2.6), glow(-1.9, 4, 2.6), glow(4, 2.3, 3),
-      ...foot(-1.4, 4.2), ...foot(3.5, 3.6),
+      ...foot(-2, 5.6), ...foot(4.3, 4.6),
     ];
   },
   /* 포지(렌더 참고 복원) — 왼앞 아치 별채, 가운데 총알 기둥 무리, 초록 배관 다발이
@@ -1726,20 +1728,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           const pts: [number, number, number][] = [];
           for (let i = 0; i <= 10; i += 1) {
             const a = Math.PI * (i / 10);
-            // 앞쪽으로(지적: 톱니 전체가 다 보이게) — 몸에 반쯤 가리던 것을 y +1.7.
-            pts.push([x, 2.1 - Math.cos(a) * 2.2, 1 + Math.sin(a) * 2.2]);
+            // 왼쪽으로(정정: 앞이 아니라 좌) — x를 밖으로 빼 전체가 보인다.
+            pts.push([x, 0.4 - Math.cos(a) * 2.2, 1 + Math.sin(a) * 2.2]);
           }
           return pts;
         };
-        const leftP = half(-3.5);
-        const rightP = half(-2.95);
+        const leftP = half(-4.7);
+        const rightP = half(-4.15);
         const g: ShapeFace[] = [bodyFace(polyPath3(leftP)), sideFace(polyPath3(leftP), 0.2)];
         for (let i = 0; i < leftP.length - 1; i += 1) {
           g.push(bodyFace(polyPath3([leftP[i], leftP[i + 1], rightP[i + 1], rightP[i]])));
         }
         const fd = polyPath3(rightP);
         g.push(bodyFace(fd), topFace(fd, 0.14));
-        return tagKey(g, depthNow(-3.2, 2.1) + 0.5);
+        return tagKey(g, depthNow(-4.4, 0.4) + 0.5);
       })(),
       // 가운데 결정 기둥 무리 — 높이 다른 네 자루, 끝이 뾰족하게 좁아진다.
       ...tagKey(hornFaces(-1.2, 0.1, 1, -1.3, 0, 6.4, 1.05), depthNow(-1.2, 0.1) + 1),
@@ -1748,8 +1750,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...tagKey(hornFaces(0.1, 1.3, 1, 0.1, 1.4, 4.9, 0.85), depthNow(0.1, 1.3) + 1),
       // 오른쪽 큰 돔 — 렌즈 창 둘과 꼭대기 혹.
       ...domeFaces3(3.1, 0.5, 2.5, 2.2, 0.9),
-      ...lens(2.5, 2, 2.1, 0.8),
-      ...lens(4, 1.1, 2.5, 0.6),
+      // 구슬 렌즈를 돔 표면 위로(지적: 바닥에 가려 안 보임) — z를 표면 위로 올린다.
+      ...lens(2.5, 1.9, 3, 0.8),
+      ...lens(4, 1, 2.9, 0.6),
       ...domeFaces3(3.1, 0.3, 0.95, 0.7, 3.05),
     ];
   },
@@ -1815,17 +1818,33 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 템플러 아카이브(리디자인, 실물 참고) — 큰 황금 공 몸에 테 물린 파란 렌즈가
      위에 박히고, 왼뒤로 뿔 한 쌍이 솟으며, 오른앞엔 골진 껍데기 꼬리(끝 원반). */
   archives: () => {
-    const [gx2, gy2] = project(0.1, 0.4, 4);
-    const [tx3, ty3] = project(3.8, 3, 1);
+    /* 껍데기 꼬리 45도 반시계(지적: 요잉 후 왼쪽 반구들이 어긋남) — 부품 좌표를
+       본체 중심 기준으로 돌린다. */
+    const RC = Math.cos(Math.PI / 4);
+    const RS = Math.sin(Math.PI / 4);
+    const R = (x: number, y: number): [number, number] => [x * RC - y * RS, x * RS + y * RC];
+    const [gx2, gy2] = project(0.1, 0.4, 2.9);
+    const [d1x, d1y] = R(2.4, 1.2);
+    const [d2x, d2y] = R(3.2, 2.2);
+    const [ttx, tty] = R(3.8, 3);
+    const [tx3, ty3] = project(ttx, tty, 1);
+    const seam = (px2: number, py2: number, pz2: number): [number, number, number] => {
+      const [rx2, ry2] = R(px2, py2);
+      return [rx2, ry2, pz2];
+    };
     return [
       // 왼뒤 뿔 한 쌍.
       ...hornFaces(-1.6, -1.4, 2.6, -3.2, -2.4, 6.6, 1.1),
       ...hornFaces(-0.2, -2, 2.8, -0.8, -3.2, 7, 1.2),
-      // 큰 황금 공 몸 + 받침.
+      // 큰 황금 몸 + 받침 — 더 납작하게(지적), 위는 분화구처럼 깎는다.
       ...cylinderFaces3(0, 0, 2.9, 0.7),
-      ...domeFaces3(0, 0, 2.9, 2.7, 0.7),
-      /* 세로줄(요청) — 본건물 둘레를 도는 세로 골. 보이는 쪽만, 요잉을 따라 돈다. */
-      ...[-64, -32, 0, 32, 64].flatMap((ang): ShapeFace[] => {
+      ...domeFaces3(0, 0, 2.9, 1.6, 0.7),
+      // 분화구 — 꼭대기를 깎은 어두운 접시 + 안쪽 더 깊은 그늘.
+      [groundEllipse(...project(0, 0, 2.15), 1.75, 1.05), 0.3, "#000"] as ShapeFace,
+      [groundEllipse(...project(0, 0, 2.05), 1.15, 0.7), 0.42, "#000"] as ShapeFace,
+      /* 세로줄(요청·재확인: 옆면을 한 바퀴 빙 두르게) — 전 방위로 두르고 보이는 쪽만
+         남긴다(faceLight). 납작해진 돔을 따라 끝 높이도 낮췄다. */
+      ...[-160, -128, -96, -64, -32, 0, 32, 64, 96, 128, 160].flatMap((ang): ShapeFace[] => {
         const a2 = (ang * Math.PI) / 180;
         const sx3 = Math.sin(a2);
         const sy3 = Math.cos(a2);
@@ -1835,19 +1854,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         return [capFace(polyPath3([
           [sx3 * 2.6 - txn, sy3 * 2.6 - tyn, 1],
           [sx3 * 2.6 + txn, sy3 * 2.6 + tyn, 1],
-          [sx3 * 2.1 + txn, sy3 * 2.1 + tyn, 2.9],
-          [sx3 * 2.1 - txn, sy3 * 2.1 - tyn, 2.9],
-        ]), 0.22)];
+          [sx3 * 2.15 + txn, sy3 * 2.15 + tyn, 2.1],
+          [sx3 * 2.15 - txn, sy3 * 2.15 - tyn, 2.1],
+        ]), 0.26)];
       }),
-      // 위 파란 렌즈 — 테에 물림.
-      bodyFace(groundEllipse(gx2, gy2, 1.35, 1.05)),
-      [groundEllipse(gx2, gy2, 1.02, 0.78), 0.6] as ShapeFace,
-      topFace(groundEllipse(gx2 - 0.35, gy2 - 0.3, 0.4, 0.3), 0.5),
-      // 오른앞 골진 껍데기 꼬리 — 굽은 마디 둘 + 골 줄 + 끝 작은 파란 원반.
-      ...domeFaces3(2.4, 1.2, 1.3, 1),
-      ...domeFaces3(3.2, 2.2, 1, 0.8),
-      sideFace(polyPath3([[1.8, 0.6, 1], [2.2, 1, 1.9], [2.6, 1.5, 1], [2.5, 1.4, 0.6]]), 0.18),
-      sideFace(polyPath3([[2.7, 1.6, 0.9], [3, 2, 1.6], [3.4, 2.5, 0.9], [3.3, 2.4, 0.5]]), 0.18),
+      // 위 파란 렌즈 — 분화구 턱에 물림.
+      bodyFace(groundEllipse(gx2, gy2, 1.15, 0.85)),
+      [groundEllipse(gx2, gy2, 0.85, 0.62), 0.6] as ShapeFace,
+      topFace(groundEllipse(gx2 - 0.3, gy2 - 0.25, 0.34, 0.25), 0.5),
+      // 골진 껍데기 꼬리(45도 반시계 이동) — 굽은 마디 둘 + 골 줄 + 끝 파란 원반.
+      ...domeFaces3(d1x, d1y, 1.3, 1),
+      ...domeFaces3(d2x, d2y, 1, 0.8),
+      sideFace(polyPath3([seam(1.8, 0.6, 1), seam(2.2, 1, 1.9), seam(2.6, 1.5, 1), seam(2.5, 1.4, 0.6)]), 0.18),
+      sideFace(polyPath3([seam(2.7, 1.6, 0.9), seam(3, 2, 1.6), seam(3.4, 2.5, 0.9), seam(3.3, 2.4, 0.5)]), 0.18),
       [groundEllipse(tx3, ty3, 0.5, 0.4), 0.55] as ShapeFace,
     ];
   },
@@ -2091,33 +2110,34 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      잿빛 머리와 골진 도넛 왕관(가운데 구멍). */
   spire: () => {
     const out: ShapeFace[] = [];
+    // 가로도 발자국만큼(지적: 바닥 상자에 비해 너무 작게 모델링) — 밑동·촉수·머리 전부 확대.
     // 밑동 — 초록 무지개 더미(밝은 윗빛).
-    out.push(...domeFaces3(0, 0.6, 2.7, 1.2));
-    out.push(topFace(groundEllipse(...project(0, 0.6, 1), 1.7, 0.85), 0.3));
+    out.push(...domeFaces3(0, 0.6, 4.4, 1.9));
+    out.push(topFace(groundEllipse(...project(0, 0.6, 1.5), 2.8, 1.4), 0.3));
     // 촉수 기둥 — 여섯 가닥이 위로 모인다. 훨씬 높게(지적: 스파이어 모델이 너무 작다).
     for (const ang of [150, 210, 90, 270, 30, -30]) {
       const a = (ang * Math.PI) / 180;
       out.push(...hornFaces(
-        Math.sin(a) * 2.5, 0.6 + Math.cos(a) * 2.5, 0.3,
-        Math.sin(a) * 0.85, Math.cos(a) * 0.85, 12.2, 0.55,
+        Math.sin(a) * 4.1, 0.6 + Math.cos(a) * 4.1, 0.3,
+        Math.sin(a) * 1.35, Math.cos(a) * 1.35, 12.2, 0.85,
       ));
     }
     // 잿빛 머리 판 — 왕관과 같은 지름으로(지적: 윗 원판과 아래 원통 크기가 달랐다).
-    out.push(...cylinderFaces3(0, 0, 2.15, 1.3, 12));
+    out.push(...cylinderFaces3(0, 0, 3.3, 1.5, 12));
     // 골진 도넛 왕관 — 방사 골 + 가운데 구멍. 원통 위에 살짝 걸치는 정도만 넓다.
-    const [cx2, cy2] = project(0, 0, 13.9);
-    out.push(bodyFace(groundEllipse(cx2, cy2, 2.3, 1.33)));
+    const [cx2, cy2] = project(0, 0, 14.1);
+    out.push(bodyFace(groundEllipse(cx2, cy2, 3.55, 2.05)));
     /* 골도 요잉을 탄다(지적: 뚜껑이 안 돎) — 화면 고정 각이던 골 위치에 현재 요잉을
        더해, 뚜껑이 함께 도는 것으로 보인다. */
     const yawRad = Math.atan2(-depthNow(1, 0), depthNow(0, 1));
     for (const ang of [200, 240, 280, 320, 20, 60, 100, 140]) {
       const a = (ang * Math.PI) / 180 + yawRad;
-      out.push(sideFace(`M${cx2 + Math.cos(a) * 1} ${cy2 + Math.sin(a) * 0.57}`
-        + ` L${cx2 + Math.cos(a) * 2.18} ${cy2 + Math.sin(a) * 1.26}`
-        + ` L${cx2 + Math.cos(a + 0.16) * 2.18} ${cy2 + Math.sin(a + 0.16) * 1.26}`
-        + ` L${cx2 + Math.cos(a + 0.16) * 1} ${cy2 + Math.sin(a + 0.16) * 0.57} Z`, 0.16));
+      out.push(sideFace(`M${cx2 + Math.cos(a) * 1.55} ${cy2 + Math.sin(a) * 0.9}`
+        + ` L${cx2 + Math.cos(a) * 3.35} ${cy2 + Math.sin(a) * 1.94}`
+        + ` L${cx2 + Math.cos(a + 0.16) * 3.35} ${cy2 + Math.sin(a + 0.16) * 1.94}`
+        + ` L${cx2 + Math.cos(a + 0.16) * 1.55} ${cy2 + Math.sin(a + 0.16) * 0.9} Z`, 0.16));
     }
-    out.push(capFace(groundEllipse(cx2, cy2 - 0.15, 0.75, 0.45), 0.5));
+    out.push(capFace(groundEllipse(cx2, cy2 - 0.2, 1.15, 0.68), 0.5));
     return out;
   },
   /* 그레이터 스파이어(정정: 바닥 제거·층 없는 한 몸·더 높게) — 허리가 잘록했다 위에서
@@ -3747,8 +3767,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     for (const sx of [-1, 1]) {
       for (const lyy of [-0.5, 1]) {
         // 가늘게(재지적) — 매달린 실다리 느낌.
-        legs.push(seg(sx * 1.9, lyy, 3.4, sx * 3.1, lyy, 1.2, 0.34));
-        tips.push(seg(sx * 3.1, lyy, 1.2, sx * 2.5, lyy, -0.9, 0.26));
+        /* 옆다리는 더 펴고 몸통 아래 안쪽으로(지적) — 뿌리를 안쪽(1.2)에서 내리고
+           무릎 꺾임을 줄여 거의 곧게 아래로 늘어뜨린다. */
+        legs.push(seg(sx * 1.2, lyy, 3.2, sx * 1.85, lyy, 0.5, 0.34));
+        tips.push(seg(sx * 1.85, lyy, 0.5, sx * 1.5, lyy, -1.3, 0.26));
       }
       // 앞 집게팔(재재지적: 뒷다리보다 살짝 짧게, 뿌리는 얇고 집게 쪽에서 확 굵게) —
       // 사다리꼴 마디로 아래로 갈수록 부풀고, 발끝은 옆다리(-0.9)보다 조금 위에서 끝난다.
@@ -4222,8 +4244,8 @@ const WORKER_KIND_SET = new Set(["scv", "probe", "drone"]);
    도(°)를 더한다 — 값은 지적받는 대로 채운다. */
 const BUILDING_BASE_YAW = 45;
 const MODEL_YAW_TWEAK: Record<string, number> = {
-  // 반시계 90도(지적) — 어시밀레이터·히드라 덴·서플·포지.
-  assim: -90, hydraden: -90, trapezoid: -90, forge: -90,
+  // 반시계 90도(지적) — 어시밀레이터·히드라 덴·서플·포지·테란 공사장.
+  assim: -90, hydraden: -90, trapezoid: -90, forge: -90, scaffold: -90,
   // 시계 90도(지적) — 로보틱스·템플러 아카이브.
   dome: 90, archives: 90,
 };
@@ -4549,20 +4571,41 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
       }
     }
     const paintOps = (list: UnitDrawOp[]) => {
-    /* 공중 겹침 그림자(지적: 공중 유닛끼리 겹치면 구분이 안 됨 — 겹친 것에만 살짝) —
-       몸이 닿는 공중 유닛만 골라 스프라이트 블릿에 옅은 그림자를 켠다. 안 겹치는
-       공중 유닛은 기존대로 그림자 없음(바닥 타원이 맡는다). */
+    /* 겹침 그림자(확대 적용 요청: 공중만 아니라 유닛·건물 공통) — 몸이 닿는 것들 중
+       '나중에 그려지는(앞)' 쪽에 옅은 그림자를 켜 뒤 몸과 윤곽이 갈린다. 안 겹치면
+       기존대로 그림자 없음. 이웃 탐색은 이완과 같은 균일 격자. */
     const airOverlap = new Set<UnitDrawOp>();
     {
-      const airs = list.filter((o) => o.air && o.wFrac === undefined && !o.textGlyph);
-      for (let a2 = 0; a2 < airs.length; a2 += 1) {
-        for (let b2 = a2 + 1; b2 < airs.length; b2 += 1) {
-          const oa = airs[a2];
-          const ob = airs[b2];
-          const dd2 = Math.hypot(zx(oa.fx) - zx(ob.fx), zy(oa.fy) - zy(ob.fy));
-          if (dd2 < (oa.sizePx + ob.sizePx) * 0.5 * zoom) {
-            airOverlap.add(oa);
-            airOverlap.add(ob);
+      const cell2 = 48;
+      const gmap = new Map<number, number[]>();
+      const rOf = (o: UnitDrawOp): number => (o.wFrac !== undefined
+        ? Math.max(o.wFrac, o.hFrac ?? 0) * cw * zoom * 0.5
+        : o.sizePx * zoom * 0.5);
+      const cand: number[] = [];
+      for (let i2 = 0; i2 < list.length; i2 += 1) {
+        const o = list[i2];
+        if (o.textGlyph || o.clipWalk) continue;
+        cand.push(i2);
+        const key2 = (Math.floor(zx(o.fx) / cell2) * 4096 + Math.floor(zy(o.fy) / cell2)) | 0;
+        const bucket = gmap.get(key2);
+        if (bucket) bucket.push(i2); else gmap.set(key2, [i2]);
+      }
+      for (const i2 of cand) {
+        const oa = list[i2];
+        const ax2 = zx(oa.fx);
+        const ay2 = zy(oa.fy);
+        const cx0 = Math.floor(ax2 / cell2);
+        const cy0 = Math.floor(ay2 / cell2);
+        for (let gx = cx0 - 1; gx <= cx0 + 1; gx += 1) {
+          for (let gy = cy0 - 1; gy <= cy0 + 1; gy += 1) {
+            const bucket = gmap.get((gx * 4096 + gy) | 0);
+            if (!bucket) continue;
+            for (const j2 of bucket) {
+              if (j2 <= i2) continue;
+              const ob = list[j2];
+              const dd2 = Math.hypot(zx(ob.fx) - ax2, zy(ob.fy) - ay2);
+              if (dd2 < (rOf(oa) + rOf(ob)) * 0.8) airOverlap.add(list[Math.max(i2, j2)]);
+            }
           }
         }
       }
@@ -4637,6 +4680,12 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         }
         if (bspr) {
           const k = sidePx / sideQ;
+          // 겹친 것만 살짝 그림자(확대 적용: 유닛·건물 공통).
+          if (airOverlap.has(op)) {
+            ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
+            ctx.shadowBlur = Math.max(1.5, sidePx * 0.06);
+            ctx.shadowOffsetY = Math.max(1, sidePx * 0.04);
+          } else ctx.shadowColor = "transparent";
           ctx.globalAlpha = op.alpha;
           ctx.drawImage(
             bspr.cv,
@@ -4785,8 +4834,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
       if (rot) ctx.rotate((rot * Math.PI) / 180);
       if (spr) {
         const k = px / pxq;
-        // 겹친 공중 유닛만 살짝 그림자(지적) — 아래 겹친 몸과 또렷이 갈린다.
-        if (op.air && airOverlap.has(op)) {
+        // 겹친 것만 살짝 그림자(확대 적용: 유닛·건물 공통) — 뒤 몸과 또렷이 갈린다.
+        if (airOverlap.has(op)) {
           ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
           ctx.shadowBlur = Math.max(1.5, px * 0.1);
           ctx.shadowOffsetY = Math.max(1, px * 0.07);
@@ -4913,6 +4962,8 @@ const STATUS_TINT: Record<string, string> = {
 const DETECTOR_UNITS = new Set(["Overlord", "Observer", "Science Vessel"]);
 const ADDONS = new Set([
   "Comsat Station", "Nuclear Silo", "Machine Shop", "Control Tower", "Covert Ops", "Physics Lab",
+  // v2 트랙의 변형 이름(지적: 커맨드 애드온에 통로가 안 붙음) — screp는 ComSat으로 준다.
+  "ComSat",
 ]);
 
 /** 폭 1칸짜리 실틈은 막힌 것으로 본다(요청: "벽과 벽 사이에 공간이 살짝 있어도 원래
@@ -5905,6 +5956,21 @@ export default function ReplayMotionPlayer({
       }
       // 시차가 순서를 뒤집었으면(다음 명령이 바로 붙은 경우) 시간순으로 되돌린다.
       pts.sort((a, b) => a[0] - b[0]);
+      /* 갑툭튀 방지(지적: 맵 중간에 갑자기 나타남) — 첫 위치 증거는 대개 '목적지'라,
+         출생보다 한참 늦고 본진에서 멀면 그 자리에서 태어난 것처럼 보였다. 출생 시각의
+         가장 가까운 제 홀에서 걸어(날아) 나오게 출발점을 심는다. */
+      if (pts.length > 0 && pts[0][0] > e.b + 1) {
+        let hx = -1;
+        let hy = -1;
+        let hd = Infinity;
+        for (const [bs4, bx4, by4, bu4, br4, bg4] of buildsSrc) {
+          if (br4 !== raw || bs4 > e.b || ((bg4 ?? 0) > 0 && e.b >= (bg4 ?? 0))) continue;
+          if (!["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(bu4)) continue;
+          const d6 = Math.hypot(bx4 - pts[0][1], by4 - pts[0][2]);
+          if (d6 < hd) { hd = d6; hx = bx4 + footDx(bu4); hy = by4 + footDy(bu4); }
+        }
+        if (hx >= 0 && hd > 8) pts.unshift([e.b, hx, hy]);
+      }
       if (pts.length === 0) continue;
       const wk = walkTrack(pts, p, false, e.k || undefined, undefined, e.k === "");
       /* 상태(전수조사) — 시전 순간 그 자리에 있었으면 걸린다. 적이 건 것만(스태시스는
@@ -6484,7 +6550,10 @@ export default function ReplayMotionPlayer({
     }
     const dx = x - mem.x;
     const dy = y - mem.y;
-    if (Math.hypot(dx, dy) < 0.04) {
+    /* 문턱 인하(지적: 방향 전환이 재렌더링 안 될 때가 있음) — 위치 스무딩(EMA)이 프레임당
+       변위를 눌러 0.04 문턱을 못 넘기면 방향이 옛값에 얼어붙었다. 스무딩이 떨림을 이미
+       걸러 주므로 문턱은 훨씬 낮아도 된다. */
+    if (Math.hypot(dx, dy) < 0.008) {
       dispHdgRef.current.set(key, { x, y, h: mem.h, t });
       return mem.h;
     }
@@ -7034,7 +7103,14 @@ export default function ReplayMotionPlayer({
               })() : undefined}
             />
           )
-          : <div className="scr-motion-canvas scr-motion-canvas-blank" />}
+          : (
+            /* 매핑 안 된 맵(정정: 샘플 녹색이 아니라 맵에서 실제 추출한 지형) — 리플레이
+               타일 격자 개략도(ReplayMapCanvas)를 바탕으로 깐다. 초록 계열 지형 램프가
+               곧 기본색이다. */
+            <div className="scr-motion-canvas scr-motion-canvas-blank">
+              <ReplayMapCanvas grid={grid} className="scr-motion-canvas-tiles" />
+            </div>
+          )}
 
         {/* 건물(요청: 합치기 대신) — 기본은 작은 이름이 늘 떠 있되, 가까이 겹치는 같은
             이름은 하나만 적고 나머지는 점(지적: 겹치면 안 보인다). 긴 이름은 폰트를 한
@@ -7196,8 +7272,11 @@ export default function ReplayMotionPlayer({
               + (!addonPlus ? (shapeKind ? -riseOf(unit) / 2 : fp2[1] * 0.1) : 0);
             const [fxF, fyF] = posFrac(anchorX, anchorY);
             const mkK = pitchK(centerY);
+            /* 나이 가산은 반 타일 몫(40) 아래로(지적: 연달아 놓인 가스 건물의 앞뒤
+               가려짐이 뒤바뀜) — 세로 간격이 좁으면 나이 항(최대 70)이 y 항(타일당 80)을
+               이겨 뒤 건물이 앞을 덮었다. */
             const z = pitched
-              ? 1000 + Math.round((by + footDy(unit) * 2) * 80) + Math.min(70, Math.round(sec / 60))
+              ? 1000 + Math.round((by + footDy(unit) * 2) * 80) + Math.min(30, Math.round(sec / 90))
               : 1000 + Math.round(afloat ? t : sec);
             const alpha = fade * (afloat ? 0.75 : 1);
             const color = modeColor(raw, team);
@@ -7282,8 +7361,8 @@ export default function ReplayMotionPlayer({
               unitOps.push({
                 fx: bfxF, fy: bfyF, z,
                 kind: race2 === "저그" ? "cocoon" : race2 === "프로토스" ? "warpin" : "scaffold",
-                // 공사 모델도 45도 요잉(지적: 고치·소환공·공사장도 45도 돌아야지).
-                rotDeg: BUILDING_BASE_YAW,
+                // 공사 모델도 45도 요잉(지적) + 종류별 보정(지적: 테란 공사장 반시계 90).
+                rotDeg: buildingYawOf(race2 === "저그" ? "cocoon" : race2 === "프로토스" ? "warpin" : "scaffold"),
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
                 // 공사 모델도 완성 모델과 같은 폭 기준 — 바닥 폭이 발자국과 같아야 한다.
                 /* 소환구는 크기 통일(재지적: 게임에서도 모든 건물이 같다) — 발자국과
@@ -8074,7 +8153,9 @@ export default function ReplayMotionPlayer({
           const selNow = clickFx && e.orders.some((os2) => t >= os2 && t - os2 <= 0.35);
           unitOps.push({
             fx, fy,
-            z: pitched ? 1000 + Math.round(ay3 * 80) : 1000 + (ei % 137),
+            /* 공중은 2D에서도 y순(지적: 공중 유닛 간 앞뒤 섞임) — ei 나머지는 무작위
+               순서라 뒤 풍선이 앞을 덮었다. */
+            z: pitched || uAir ? 1000 + Math.round(ay3 * 80) : 1000 + (ei % 137),
             kind: burrowed ? "burrowhole"
               : isWorker ? workerKindOf(race) : unitMarkerKind(drawUnit2, race),
             selRing: selNow || undefined,

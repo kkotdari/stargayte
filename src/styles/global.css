@@ -10931,7 +10931,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   -webkit-user-drag: none; user-select: none;
 }
 .scr-motion-map { user-select: none; }
-.scr-motion-canvas-blank { background: rgba(255, 255, 255, 0.04); }
+/* 매핑 안 된 맵(정정: 샘플 녹색이 아니라 맵에서 실제 추출한 지형) — 리플레이 타일
+   격자 개략도(ReplayMapCanvas)가 바탕을 채운다. */
+.scr-motion-canvas-blank { background: rgba(30, 42, 24, 0.6); overflow: hidden; }
+.scr-motion-canvas-blank .scr-minimap-canvas { width: 100%; height: 100%; display: block; }
 /* 렌즈가 끼면서 마커 스팬은 렌즈의 자식이 됐다 — 옛 선택자를 함께 둔다(렌즈 없는 화면 대비). */
 /* 마커의 확대 되돌림(요청: 확대해도 건물만 2배까지, 유닛은 그대로) — 렌즈가 지도째 z배로
    키우므로, 마커는 제 --mk(1/z 또는 min(z,2)/z — ReplayMotionPlayer의 렌즈 style)만큼
