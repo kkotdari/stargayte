@@ -4474,7 +4474,8 @@ const WORKER_KIND_SET = new Set(["scv", "probe", "drone"]);
 const BUILDING_BASE_YAW = 45;
 const MODEL_YAW_TWEAK: Record<string, number> = {
   // 반시계 90도(지적) — 어시밀레이터·히드라 덴·서플·포지·테란 공사장.
-  assim: -90, hydraden: -90, trapezoid: -90, forge: -90, scaffold: -90,
+  // 어시밀레이터는 반시계 90 한 번 더(재지적) — 합계 -180.
+  assim: -180, hydraden: -90, trapezoid: -90, forge: -90, scaffold: -90,
   // 시계 90도(지적) — 로보틱스·템플러 아카이브.
   dome: 90, archives: 90,
 };
