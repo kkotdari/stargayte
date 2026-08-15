@@ -12742,6 +12742,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   margin-bottom: 12px; position: relative; width: 100%;
 }
+/* 갤러리 위 잘림 방지(지적) — 16-상자를 넘는 높은 모델(스파이어 등)이 위로 삐져도
+   보이게 svg 클리핑을 푼다. */
+.scr-model-stage .scr-motion-shape-svg { overflow: visible; }
 .scr-model-stage {
   /* 무대 축소 300 → 252(지적: 위쪽 여백 줄이고 목록 길이에 할애) — 뷰박스를 위로
      자르면 키 큰 모델(파일런 첨탑)이 잘려, 판 자체를 줄여 자리를 내준다. */

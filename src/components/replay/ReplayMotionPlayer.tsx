@@ -2462,7 +2462,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   },
 
   /* 해처리 — 둔덕 + 방사 다리 여섯(요잉을 따라 도는 것이 핵심) + 윗면 입·목띠. */
-  hatchery: () => hatcheryMoundFaces("#1b1e23"),
+  // 띠·캐노피는 검정보다 한 단 연한 짙은 회색(재지적).
+  hatchery: () => hatcheryMoundFaces("#3a3f46"),
   /* 레어 — 해처리 + 다리 끝 굽은 뿔 셋. */
   lair: () => [
     // 뿔은 동굴 입구 하나 건너 하나(지적) — 다리 각 -170·-40·80의 입구에서 솟는다.
