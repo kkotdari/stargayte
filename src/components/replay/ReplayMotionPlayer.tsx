@@ -2135,8 +2135,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(groundEllipse(rx2, ry2, 0.6, 0.4), 0.3),
       // 큰 파란 구슬 — 몸 위 얹힘이라 지붕 키(지적: 구슬 가려짐 오류).
       ...tagKey([
-        bodyFace(groundEllipse(gx2, gy2 + 0.25, 1.85, 1.7)),
-        // 연한 시안 반투명 구슬(요청).
+        // 수정구를 감싸던 겉 구는 제거(요청) — 연한 시안 반투명 구슬만.
         [groundEllipse(gx2, gy2, 1.55, 1.45), 0.55, "#a9ecf2"] as ShapeFace,
         topFace(groundEllipse(gx2 - 0.5, gy2 - 0.5, 0.6, 0.5), 0.5),
       ], 30),
@@ -3917,9 +3916,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...paintBase(hornFaces(-1.4, -1.2, 9.3, -0.35, -1.35, 10.2, 0.3), "#d4af37"),
       ...paintBase(hornFaces(0.8, -1, 7, 1.4, -1.2, 9.4, 0.4), "#d4af37"),
       ...paintBase(hornFaces(1.4, -1.2, 9.3, 0.35, -1.35, 10.2, 0.3), "#d4af37"),
-      // 두 손을 들고 다닌다(요청) — 어깨에서 위-앞으로 든 팔 한 쌍.
-      ...hornFaces(1.1, 0.5, 5.8, 1.8, 1.3, 7.9, 0.5),
-      ...hornFaces(-1.1, 0.5, 5.8, -1.8, 1.3, 7.9, 0.5),
+      // 두 손을 들고 다닌다(요청) — 어깨에서 위-앞으로 든 팔 한 쌍. 금색(요청).
+      ...paintBase(hornFaces(1.1, 0.5, 5.8, 1.8, 1.3, 7.9, 0.5), "#d4af37"),
+      ...paintBase(hornFaces(-1.1, 0.5, 5.8, -1.8, 1.3, 7.9, 0.5), "#d4af37"),
     ];
   },
   /* 드라군(실물 참고) — 크고 둥근 금빛 껍데기 몸(앞 해치 슬릿), 굵게 꺾인 네 다리. */
