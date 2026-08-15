@@ -874,10 +874,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 커맨드 센터(실물 참고) — 넓은 원반 선체 3단 + 위 관제 모듈(빛 띠·돔) + 앞으로
      내려오는 전개 램프 + 네 귀 돔 발. */
   tomb: () => {
-    const pod = (px: number, py: number): ShapeFace[] => [
+    // 이륙 가능 건물의 발은 은색(요청) — 커맨드 네 귀 돔 발.
+    const pod = (px: number, py: number): ShapeFace[] => paintBase([
       ...cylinderFaces3(px, py, 1.1, 1.1),
       ...domeFaces3(px, py, 1.6, 1.4, 1.05),
-    ];
+    ], "#c9ced6");
     const out: ShapeFace[] = [...pod(-5.4, -4.4), ...pod(5.4, -4.4)];
     out.push(...cylinderFaces3(0, 0, 6.4, 2.4));
     out.push(capFace(discPath3(0, 0, 2.42, 5.6), 0.2));
@@ -1716,12 +1717,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 엔지니어링 베이(복원) — 사방 대각 팔 끝의 원반 발 넷, 각진 몸체 더미, 끝이
      빛나는 앞 통, 지붕 안테나. */
   ebay: () => {
-    const foot = (fx: number, fy: number): ShapeFace[] => [
+    const foot = (fx: number, fy: number): ShapeFace[] => paintBase([
       ...hornFaces(fx * 0.45, fy * 0.45, 1.9, fx * 0.85, fy * 0.85, 0.7, 0.9),
       bodyFace(discPath3(fx, fy, 0.35, 1.5)),
       topFace(discPath3(fx, fy, 0.38, 1), 0.25),
       ...cylinderFaces3(fx, fy, 0.32, 1, 0.35),
-    ];
+    ], "#c9ced6"); // 발 은색(요청: 이륙 가능 건물)
     return [
       ...foot(-5, -3), ...foot(5, -3),
       ...boxFaces3(0, -0.4, 6.6, 4, 3),
@@ -1774,11 +1775,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 사이언스 퍼실리티(정정: 엔베가 아니라 이 건물이었다) — 드럼 발 위에 떠 있는
      둥근 층층 플랫폼, 가운데 큰 갈빗살 돔(농구공 반쪽), 원통 모듈, 초록 불 띠. */
   scifac: () => {
-    const foot = (fx: number, fy: number): ShapeFace[] => [
+    // 발 은색(요청: 이륙 가능 건물).
+    const foot = (fx: number, fy: number): ShapeFace[] => paintBase([
       ...cylinderFaces3(fx, fy, 1.05, 1.3),
       bodyFace(discPath3(fx, fy, 0.25, 1.4)),
       capFace(discPath3(fx, fy, 1.32, 0.55), 0.3),
-    ];
+    ], "#c9ced6");
     const glow = (gx2: number, gy2: number, gz2: number): ShapeFace => {
       const [px2, py2] = project(gx2, gy2, gz2);
       return topFace(groundEllipse(px2, py2, 0.45, 0.2), 0.45);
