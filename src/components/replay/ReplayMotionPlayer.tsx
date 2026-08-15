@@ -4373,7 +4373,10 @@ function contentBottom(cv: HTMLCanvasElement): number {
   const { data, width, height } = c2.getImageData(0, 0, cv.width, cv.height);
   for (let y = height - 1; y >= 0; y -= 1) {
     const row = y * width * 4;
-    for (let x = 3; x < width * 4; x += 12) {
+    /* 전 픽셀 스캔(지적: 유닛보다 그림자가 위) — 3픽셀 건너뛰던 샘플링이 1~2px 가는
+       다리를 놓쳐, 다리 달린 유닛의 '바닥'이 몸통 밑으로 잡혔다. 캐시당 한 번이라
+       전수로 봐도 싸다. */
+    for (let x = 3; x < width * 4; x += 4) {
       if (data[row + x] > 10) return y + 1;
     }
   }
