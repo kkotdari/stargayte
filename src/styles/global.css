@@ -13258,6 +13258,13 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 
 /* ── 미니맵 핑(요청: 클릭도 기록 — v2 트랙) — 찍은 사람 색(currentColor)의 물결 고리가
    1초 주기로 퍼진다. 표시 창(3초)은 재생 쪽이 자르고 여기는 반복만 한다. ── */
+/* 캐리어 인터셉터(요청: 개수 실시간) — 본체 둘레를 도는 작은 점. 각도는 재생 시계가
+   프레임마다 주므로 CSS 애니메이션 없이 돈다. */
+.scr-ic-dot {
+  position: absolute; left: 50%; top: 50%; width: 2.6px; height: 2.6px;
+  margin: -1.3px 0 0 -1.3px; border-radius: 50%; background: currentColor;
+  opacity: 0.9; pointer-events: none;
+}
 .scr-motion-pingfx { position: absolute; width: 0; height: 0; pointer-events: none; }
 .scr-motion-pingfx::before {
   content: ""; position: absolute; left: 50%; top: 50%;

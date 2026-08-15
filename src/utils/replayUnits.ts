@@ -73,6 +73,8 @@ export interface UnitEnt {
   bld: 0 | 1;
   /** 체력 변곡점 [초, 퍼센트 0~100](요청: 스탯을 지닌 생애주기) — 피격·회복·죽음. */
   hp?: [number, number][];
+  /** 캐리어 인터셉터 개수 변곡점 [초, 개수](요청: 실시간 적용). */
+  ic?: [number, number][];
   ev: UnitEv[];
 }
 export interface UnitTracksV2 {
@@ -378,6 +380,8 @@ export function buildUnitTracks(
     l.kinds.has("Dropship") || l.kinds.has("Shuttle") || l.kinds.has("Overlord")
     || l.groupKinds.has("Transport");
   const ventralAt = new Map<number, number>();
+  /** 캐리어 태그 → 인터셉터 개수 변곡점 [초, 개수](요청: 실시간 적용). */
+  const icptOf = new Map<number, [number, number][]>();
   /** 표적 주문(재질문: 모든 기술 전수조사) — [표적 태그, 초, 기술]. 이라디에잇·
    *  야마토·브루들링(즉사)·디펜시브 매트릭스(흡수)·락다운(정지)이 태그를 찍는다. */
   const targCast: { tag: number; sec: number; tech: string }[] = [];
@@ -612,6 +616,15 @@ export function buildUnitTracks(
         let life = lifeOf(tag, pid, sec);
         if (at) life = markKind(life, at, sec);
         pushEv(life, sec, -1, -1, 4);
+      }
+      /* 인터셉터 개수 실시간(요청) — Train Fighter 하나가 인터셉터 하나다:
+         12.6초 뒤 +1, 여덟 상한. 캐리어 화력이 이 개수를 탄다. */
+      if (cmdName === "Train Fighter" && tags.length > 0) {
+        const ct = tags[0];
+        const arr = icptOf.get(ct) ?? [];
+        const cur = arr.length > 0 ? arr[arr.length - 1][1] : 0;
+        if (cur < 8) arr.push([Math.round(sec + 12.6), Math.min(8, cur + 1)]);
+        icptOf.set(ct, arr);
       }
       /* 원장 기입(요청: 모든 큐된 유닛) — Train 하나가 유닛 하나다. 같은 건물의
          큐는 꼬리를 물고 이어진다(다중 선택 Train은 첫 태그로 어림). */
@@ -1103,15 +1116,34 @@ export function buildUnitTracks(
     if (tech === "Ensnare") slowCasts.push([csec, cxs, cys, cpid]);
     if (tech === "Disruption Web") webCasts.push([csec, cxs, cys]);
   }
+  /* 디바우러 산성 포자(재지적: 공속 느려지는 것 — 인스네어 말고도) — 디바우러의
+     공격이 닿은 언저리의 적 공중 유닛은 한동안 손이 무뎌진다. */
+  const devAtk: [number, number, number, number][] = [];
+  for (const life of done) {
+    if (majorityKindOf(life) !== "Devourer") continue;
+    for (const v of life.ev) {
+      if (v[3] === 7) devAtk.push([v[0], v[1], v[2], life.owner]);
+    }
+  }
   for (const life of done) {
     const mk = majorityKindOf(life);
     const dps = (UNIT_STATS[mk] ?? DEFAULT_UNIT_STATS).dps;
     const melee = MELEE_UNITS.has(mk);
     const stims = life.ev.filter((v) => v[3] === 16).map((v) => v[0]);
+    const isAirMk = AIR_UNITS.has(mk);
+    const myIcpt = mk === "Carrier" ? icptOf.get(life.tag) ?? [] : null;
     for (const v of life.ev) {
       if (v[3] === 7) {
         let d = Math.max(3, dps);
+        // 캐리어(요청) — 그 순간의 인터셉터 개수만큼만 때린다.
+        if (myIcpt) {
+          let ic = 0;
+          for (const [is2, iv2] of myIcpt) { if (is2 <= v[0]) ic = iv2; else break; }
+          d *= Math.max(0.1, ic / 8);
+        }
         if (stims.some((ss) => v[0] - ss >= 0 && v[0] - ss <= 12)) d *= 1.35;
+        if (isAirMk && devAtk.some(([ds2, dx2, dy2, do2]) => !sameSide(do2, life.owner)
+          && v[0] - ds2 >= 0 && v[0] - ds2 <= 20 && Math.hypot(dx2 - v[1], dy2 - v[2]) <= 3)) d *= 0.75;
         if (slowCasts.some(([cs2, cx5, cy5, cp5]) => !sameSide(cp5, life.owner)
           && v[0] - cs2 >= 0 && v[0] - cs2 <= 25 && Math.hypot(cx5 - v[1], cy5 - v[2]) <= 3)) d *= 0.7;
         if (webCasts.some(([cs3, cx6, cy6]) =>
@@ -1502,10 +1534,12 @@ export function buildUnitTracks(
       }
       if (next && d !== null && d > next.born) d = next.born;
       const race = raceOf.get(life.owner) ?? "";
+      const icArr = icptOf.get(life.tag);
       ents.push({
         t: life.tag, o: life.owner, k: settleKind(life, race), b: Math.round(life.born),
         d: d === null ? null : Math.round(d), dk, bld: life.bld ? 1 : 0, ev: life.ev,
         ...(hpTrace ? { hp: hpTrace } : {}),
+        ...(icArr && icArr.length > 0 ? { ic: icArr } : {}),
       });
     }
   }

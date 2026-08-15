@@ -5463,6 +5463,8 @@ export default function ReplayMotionPlayer({
       fixes: number[];
       /** 체력 변곡점 [초, 퍼센트](요청: 스탯 생애주기) — 체력바의 재료. */
       hp: [number, number][];
+      /** 인터셉터 개수 변곡점(요청: 실시간 적용) — 캐리어 둘레를 도는 점들. */
+      ic: [number, number][];
       /** 탑승 구간 [탑승 초, 끝 초](요청: 수송선 승하차) — 이 동안 마커를 숨긴다. */
       rides: [number, number][];
       /** 상태 구간 [시작, 끝, 종류](전수조사) — 빙결은 정지, 나머지는 색 오라. */
@@ -5537,6 +5539,7 @@ export default function ReplayMotionPlayer({
           .map((v) => [v[0], v[3] === 8 ? 1 : 0] as [number, number]),
         fixes: e.ev.filter((v) => v[3] === 10).map((v) => v[0]),
         hp: e.hp ?? [],
+        ic: e.ic ?? [],
         rides: (() => {
           const spans: [number, number][] = [];
           for (let i = 0; i < e.ev.length; i += 1) {
@@ -7579,6 +7582,32 @@ export default function ReplayMotionPlayer({
           /* 피격 연출(지적: 마린 트레이서는 있는데 공격받는 오버로드엔 피격효과가
              없다) — 최근 적 공격 명령의 표적이 '나'면, 싸울 수 없는 유닛(오버로드·
              일꾼·수송)에도 맞는 불꽃이 튄다. */
+          /* 인터셉터(요청: 개수 실시간) — 캐리어 둘레를 도는 작은 점들. 개수는
+             Train Fighter 변곡점 그대로다. */
+          if (drawUnit === "Carrier" && e.ic.length > 0) {
+            let icN = 0;
+            for (const [is3, iv3] of e.ic) {
+              if (is3 <= t) icN = iv3;
+              else break;
+            }
+            if (icN > 0) {
+              return (
+                <span
+                  key={`v2ic-${ei}`}
+                  className="scr-motion-army scr-motion-dot"
+                  style={{ ...posStyle(ax3, ay3), zIndex: 1305, color: modeColor(e.raw, team) }}
+                >
+                  {Array.from({ length: icN }).map((_, ki) => (
+                    <span
+                      key={ki}
+                      className="scr-ic-dot"
+                      style={{ transform: `rotate(${((ki * 360) / icN + t * 50) % 360}deg) translateX(10px)` }}
+                    />
+                  ))}
+                </span>
+              );
+            }
+          }
           const hitNow = hitTagsNow !== null && e.tag > 0 && hitTagsNow.has(e.tag);
           /* 효과는 가슴 높이(지적: 공격 효과가 너무 낮다 — 발밑에서 튀었다) — 마커
              기준점은 발 자리라, 유닛 키의 1/3만큼 띄워 몸통에 맞춘다. */
