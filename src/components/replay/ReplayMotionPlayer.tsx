@@ -9001,7 +9001,14 @@ export default function ReplayMotionPlayer({
                 <span
                   className={`scr-motion-tracer scr-tracer-${
                     (fxUnit === "Wraith" || fxUnit === "Goliath") && foe.air ? "missile" : ATTACK_FX[fxUnit]}`}
-                  style={{ transform: mzTf, animationDelay: `${((ei * 7) % 5) / 10}s` }}
+                  /* 럴커 가시는 표적까지 실거리(요청) — 고정 길이 대신 상대와의 거리를
+                     타일 픽셀로 풀어 그만큼 솟는다(사거리 7타일 상한). */
+                  style={{
+                    transform: mzTf, animationDelay: `${((ei * 7) % 5) / 10}s`,
+                    ...(lurkStrike ? {
+                      height: `${(Math.min(7, foe.bd) * ((mapRef.current?.clientWidth ?? 320) / grid.width)).toFixed(1)}px`,
+                    } : {}),
+                  }}
                 />
               )}
               {(ei + cyc2) % 5 === 0 && <span key={`pf-${cyc2}`} className="scr-motion-puff" />}
