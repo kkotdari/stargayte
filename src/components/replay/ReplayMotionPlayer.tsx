@@ -6669,7 +6669,15 @@ export default function ReplayMotionPlayer({
     const target = (Math.atan2(-dx, dy) * 180) / Math.PI;
     let diff = ((target - mem.h) % 360 + 540) % 360 - 180;
     const maxTurn = 420 * (t - mem.t);
-    if (Math.abs(diff) > maxTurn) diff = Math.sign(diff) * maxTurn;
+    if (Math.abs(diff) > maxTurn) {
+      /* 큰 반전은 즉시 돈다(지적: 유닛이 뒤로 이동) — 반환점(120도 넘는 방향 전환)을
+         회전 상한이 몇 프레임에 걸쳐 늘려 잡는 동안 몸이 등지고 걸었다. */
+      if (Math.abs(diff) > 120) {
+        dispHdgRef.current.set(key, { x, y, h: target, t });
+        return target;
+      }
+      diff = Math.sign(diff) * maxTurn;
+    }
     const h = mem.h + diff;
     dispHdgRef.current.set(key, { x, y, h, t });
     return h;
@@ -8202,15 +8210,15 @@ export default function ReplayMotionPlayer({
                 }
               }
               if (mpx >= 0) {
-                // 패치에서 가장 가까운 제 홀로 왕복(패치 곁 일꾼은 홀이 5.5타일 밖일 수 있다).
-                let h2 = hallM;
-                let hd2 = hallM ? Math.hypot(hallM.x - mpx, hallM.y - mpy) : 12;
-                if (!h2) {
-                  for (const h of halls) {
-                    if (h.raw !== e.raw || h.sec > t || (h.gone > 0 && t >= h.gone)) continue;
-                    const d5 = Math.hypot(h.x - mpx, h.y - mpy);
-                    if (d5 < hd2) { hd2 = d5; h2 = h; }
-                  }
+                /* 반납은 늘 '패치에서 가장 가까운' 제 홀로(지적: 더 가까운 기지를 놔두고
+                   먼 데 반납) — 예전엔 일꾼 몸 곁 홀(hallM)을 우선해, 두 기지 사이에 선
+                   일꾼이 패치 반대편 먼 홀로 왕복했다. */
+                let h2: { x: number; y: number } | null = null;
+                let hd2 = 12;
+                for (const h of halls) {
+                  if (h.raw !== e.raw || h.sec > t || (h.gone > 0 && t >= h.gone)) continue;
+                  const d5 = Math.hypot(h.x - mpx, h.y - mpy);
+                  if (d5 < hd2) { hd2 = d5; h2 = h; }
                 }
                 if (h2 && hd2 > 1.5 && hd2 < 12) {
                   const cyc4 = (t * 1.6 + ei * 2.7) % (2 * hd2);
