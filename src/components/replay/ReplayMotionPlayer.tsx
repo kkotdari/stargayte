@@ -4957,8 +4957,9 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         ctx.shadowColor = "transparent";
         ctx.globalAlpha = op.alpha * 0.85;
         ctx.strokeStyle = "rgba(240, 255, 240, 0.95)";
-        // 실처럼 가늘게 + 반으로(재지적: 선택 원 포함 전부 축소).
-        ctx.lineWidth = Math.max(0.5, px * 0.025);
+        /* 선 굵기는 화면 고정(지적: 링은 UI 요소 — 확대에 굵어지면 안 됨) — 반지름은
+           유닛(px)을 따라가되 굵기에서 zoom을 뺀다. */
+        ctx.lineWidth = Math.max(0.7, op.sizePx * 0.025);
         ctx.beginPath();
         // 링도 내용물 발끝에(재지적) — 상자 고정 오프셋은 작은 모델에서 몸 아래로 떨어졌다.
         const ringY = op.air ? footY - lift : footY - px * 0.03;
@@ -7321,10 +7322,15 @@ export default function ReplayMotionPlayer({
         {/* 렌즈 상자 — PC 휠 줌(요청)이 이 층을 통째로 키운다(마커·자취까지 같이). */}
         <div
           className={cx("scr-motion-lens", unitX2 && "scr-motion-unit2x")}
-          style={zoom > 1 ? {
-            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-            transformOrigin: "center",
-          } : undefined}
+          style={{
+            /* 줌 역배율 변수(지적: 클릭 마커·링은 UI라 확대에 굵어지면 안 됨) —
+               UI성 마커가 scale(1/--mz)로 제 화면 크기를 지킨다. */
+            "--mz": zoom,
+            ...(zoom > 1 ? {
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+              transformOrigin: "center",
+            } : {}),
+          } as React.CSSProperties}
         >
         {grid.image
           ? (

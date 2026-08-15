@@ -13023,7 +13023,11 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* ── 클릭 자국(요청: 동그라미 안에 점, 납작하게 + 토글) — 브루드워 이동 클릭 표시처럼
    납작한(가로:세로 2:1) 고리가 살짝 오므라들며 사라지고, 가운데 점은 그대로 있다.
    색은 찍은 사람 색(currentColor). 표시 창(0.9초)은 재생 쪽이 자른다. ── */
-.scr-motion-clickfx { position: absolute; width: 0; height: 0; pointer-events: none; }
+/* UI 요소라 확대에 안 굵어진다(지적) — 렌즈 줌의 역배율로 제 화면 크기를 지킨다. */
+.scr-motion-clickfx {
+  position: absolute; width: 0; height: 0; pointer-events: none;
+  transform: scale(calc(1 / var(--mz, 1)));
+}
 /* 게임 비율(재재지적: 반으로) — 재생 쪽이 타일 폭(--ckw)을 넘겨 준다(이제 0.55타일).
    못 받으면 9px 폴백. */
 .scr-motion-clickfx::before {
