@@ -2404,6 +2404,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [mx, my] = project(0, 0, 6.35);
     out.push(sideFace(`M${mx - 1.5} ${my} L${mx + 1.5} ${my} Q${mx + 1.4} ${my + 1} ${mx} ${my + 1.15} Q${mx - 1.4} ${my + 1} ${mx - 1.5} ${my} Z`, 0.35));
     out.push(topFace(groundEllipse(mx, my, 1.4, 0.4)));
+    /* 입구 다리 잇는 경사면 힘줄 덮개(요청) — 다리 뿌리마다 반원통 능선을 짙은 회색
+       으로 얹는다(다섯: 앞·옆 넷 + 왼뒤 하나). 캡슐 막대라 요잉에도 결이 같다. */
+    for (const ang of [-100, -40, 20, 80, 130]) {
+      const a2 = (ang * Math.PI) / 180;
+      const dxr = Math.sin(a2);
+      const dyr = Math.cos(a2);
+      out.push(...paintBase(
+        rodFaces(dxr * 2.1, dyr * 2.1, 3.6, dxr * 4.7, dyr * 4.7, 0.7, 1.1),
+        "#4e545c",
+      ));
+    }
     for (const ang of [-40, 20, -100, 80]) out.push(...limbFaces(ang, 3.4, 1.7, 3.2));
     // 바닥 갈고리 덩굴(실물) — 다리 사이로 기다가 끝이 말려 올라간다.
     out.push(...hornFaces(4.2, 4.2, 0.5, 6.6, 6, 0.9, 0.7));
