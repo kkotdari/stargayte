@@ -4151,9 +4151,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...paintBase(hornFaces(m2 * 0.95, 1.3, 1.7, m2 * 2.6, 2.7, 0.1, 0.38), "#3a3f46"));
       out.push(...ivory(hornFaces(m2 * 2.19, 2.35, 0.5, m2 * 2.6, 2.7, 0.1, 0.28)));
     }
-    // 납작한 앞몸(머리·가슴) — 높이를 낮게 깐다.
-    out.push(...domeFaces3(0, 1.9, 0.75, 0.55, 1.5));
-    out.push(...domeFaces3(0, 1, 1.05, 0.8, 1.4));
+    // 납작한 앞몸(머리·가슴) — 짙은 갈색(요청: 꼬리 말고 몸통·머리).
+    out.push(...paintBase(domeFaces3(0, 1.9, 0.75, 0.55, 1.5), "#6b4732"));
+    out.push(...paintBase(domeFaces3(0, 1, 1.05, 0.8, 1.4), "#6b4732"));
     // 긴 배 — 뒤로 갈수록 반지름·높이가 주는 마디 넷 + 꼬리끝 뿔.
     out.push(...domeFaces3(0, -0.2, 0.95, 0.7, 1.3));
     out.push(...domeFaces3(0, -1.4, 0.78, 0.58, 1.2));
