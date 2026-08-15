@@ -1621,10 +1621,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        돔에 박힌 불룩한 덩어리라, 윤곽은 어느 각도에서나 통통한 타원이다. 자리만 몸을
        따라 돌고, 옆으로 돌수록 폭을 줄이다가 뒤로 넘어가면 돔에 가려져 사라진다 —
        전엔 뒤에서도 그대로 그려져 몸과 따로 놀았다. */
-    const eggFace = facingRatio(0, 1);
+    /* 알을 모델의 -y 면으로 이사(지적: 알 붙은 쪽이 앞인데 안 보임) — 요잉 보정
+       합계 -180이 되면서 +y가 등 뒤로 갔다. 알 자리만 반대편으로 옮겨 화면 앞을
+       그대로 보게 한다. */
+    const eggFace = facingRatio(0, -1);
     if (eggFace > 0.15) {
       const k = 0.45 + 0.55 * Math.min(1, (eggFace - 0.15) / 0.35);
-      const [ex, ey] = project(0, 2.4, 2.1);
+      const [ex, ey] = project(0, -2.4, 2.1);
       out.push(capFace(groundEllipse(ex, ey, 2.4 * k, 3), 0.35));
       out.push(topFace(groundEllipse(ex, ey, 2 * k, 2.6), 0.55));
     }
