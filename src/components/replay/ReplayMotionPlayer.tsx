@@ -1198,7 +1198,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 실물 점검(스프라이트 시트) — 게이트는 돛 하나가 아니라 마주 기운 어금니 탑
     // 한 쌍이 사이를 띄우고 문을 이룬다. 사이엔 소환 빛.
     const [wx, wy] = project(0, 0.1, 3.6);
-    out.push(topFace(groundEllipse(wx, wy, 1.9, 2.4), 0.4));
+    // 가운데 소환 구체도 연시안 반투명(요청) — 코어 구슬과 한 벌.
+    out.push([groundEllipse(wx, wy, 1.9, 2.4), 0.55, "#a9ecf2"] as ShapeFace);
     out.push(...hornFaces(-3.5, 0, 0.8, -1.3, -0.3, 9.6, 3));
     out.push(...hornFaces(3.5, 0, 0.8, 1.3, -0.3, 9.6, 3));
     return out;
