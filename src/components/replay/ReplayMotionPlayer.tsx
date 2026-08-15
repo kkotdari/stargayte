@@ -81,7 +81,11 @@ export interface SummaryMotion {
 }
 
 /** 공중 유닛인가 — 마법 유닛(베슬·퀸 등)은 자취 목적상 지상 취급을 유지한다(옛 규칙 그대로). */
-export const isAirUnit = (unit: string): boolean => AIR_UNITS.has(unit) && !CASTER_UNITS.has(unit);
+/* 오버로드는 통계용 AIR_UNITS(병력 구성 집합)에 없어서 지상으로 정렬됐다(지적: 스포닝
+   풀이 오버로드 머리를 덮음) — 공중 우선(+100000) 화가 순서를 못 받아 건물이 풍선 위에
+   그려졌다. 재생 판정에만 오버로드를 더한다(직선 비행·이완 제외도 같이 맞는 값이다). */
+export const isAirUnit = (unit: string): boolean =>
+  unit === "Overlord" || (AIR_UNITS.has(unit) && !CASTER_UNITS.has(unit));
 
 /** 본진 로스터 한 사람 — 위치(x·y)는 이제 요약이 사라져 실려 오지 않을 수 있다.
  *  좌표가 없으면 지형 앵커·채굴 임자 어림 같은 위치 계산에서 조용히 빠진다. */
