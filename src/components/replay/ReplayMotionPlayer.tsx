@@ -1443,21 +1443,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 터렛(실물 참고) — 원통 받침 + 상자 머리 + 세로 미사일 랙 둘 + 옆으로 빠지는 배관. */
   turret: () => [
     ...cylinderFaces3(0, 0.4, 3.1, 3.4),
-    /* 아래 기둥 공사장 노랑·검정 대각선 띠(요청) — 원통은 요잉해도 실루엣이 같아
-       화면 좌표 띠로 그려도 함께 도는 것으로 보인다. */
+    /* 아래 기둥 공사장 노랑·검정 대각선 띠(재지적: 화면 고정 말고 원통에 삥 두르고,
+       위쪽 말고 바닥쪽) — 원통 벽에 모델 공간 조각 24개를 감고, 위 모서리를 10도
+       비틀어 사선을 만든다. 보이는 쪽 조각만 그린다. */
     ...((): ShapeFace[] => {
-      const [hx0, hy0] = project(0, 0.4, 0.9);
-      const [hx1, hy1] = project(0, 0.4, 2.2);
-      const band = `M${hx0 - 2.9} ${hy0} L${hx0 + 2.9} ${hy0} L${hx1 + 2.9} ${hy1} L${hx1 - 2.9} ${hy1} Z`;
-      const faces: ShapeFace[] = [[band, 1, "#d9ae35"] as ShapeFace];
-      for (let i = 0; i < 5; i += 1) {
-        const x0 = -2.9 + i * 1.16;
+      const faces: ShapeFace[] = [];
+      const P = (aDeg: number, z: number): [number, number, number] => {
+        const a = (aDeg * Math.PI) / 180;
+        return [Math.sin(a) * 3.16, 0.4 + Math.cos(a) * 3.16, z];
+      };
+      for (let i = 0; i < 24; i += 1) {
+        const a0 = i * 15;
+        const mid = ((a0 + 7.5) * Math.PI) / 180;
+        if (facingRatio(Math.sin(mid), Math.cos(mid)) < 0.05) continue;
         faces.push([
-          `M${hx0 + x0} ${hy0} L${hx0 + x0 + 0.58} ${hy0} L${hx1 + x0 + 1.16} ${hy1} L${hx1 + x0 + 0.58} ${hy1} Z`,
-          1, "#1b1e23",
+          polyPath3([P(a0, 0.2), P(a0 + 15, 0.2), P(a0 + 25, 1.3), P(a0 + 10, 1.3)]),
+          1, i % 2 === 0 ? "#d9ae35" : "#1b1e23",
         ] as ShapeFace);
       }
-      faces.push(sideFace(band, 0.12));
       return faces;
     })(),
     // (제거·지적: 기둥 옆 막대기 제거) — 옆으로 삐친 관이 정체불명 막대로 보였다.
@@ -1613,14 +1616,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...cylinderFaces3(1.4, 2.9, 1.6, 3.4));
     out.push(...domeFaces3(1.4, 2.9, 1.6, 1.1, 3.4));
     out.push(...domeFaces3(-4.9, 2.3, 1.3, 1.4, 2.2));
-    // 왼앞 경사로 — 아래쪽에 사선 줄무늬.
+    // 왼앞 경사로 — 공사장 고정색(요청): 노랑 바탕에 검정 사선 줄무늬.
     const ramp = polyPath3([[-3.9, 2.2, 2.2], [-1.7, 2.2, 2.2], [-1.2, 5, 0], [-4.4, 5, 0]]);
-    out.push(bodyFace(ramp), topFace(ramp, 0.15));
+    out.push([ramp, 1, "#d9ae35"] as ShapeFace, topFace(ramp, 0.15));
     for (let i = 0; i < 3; i += 1) {
       const x0 = -4.2 + i * 1;
-      out.push(capFace(polyPath3([
+      out.push([polyPath3([
         [x0, 4.3, 0.5], [x0 + 0.5, 4.3, 0.5], [x0 + 0.9, 4.9, 0.08], [x0 + 0.4, 4.9, 0.08],
-      ]), 0.4));
+      ]), 1, "#1b1e23"] as ShapeFace);
     }
     return out;
   },
@@ -3217,8 +3220,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 좌우 귀 덩이.
       ...domeFaces3(-1.15, -0.3, 0.62, 0.55, 5.55),
       ...domeFaces3(1.15, -0.3, 0.62, 0.55, 5.55),
-      // 몸통 공.
-      ...domeFaces3(0, 0, 0.98, 0.9, 5.5),
+      /* 완전 구형 몸통(요청) — 중심만 투영하고 가로세로 같은 원이라 어느 시점에서도
+         안 눌린다(소환구와 같은 규칙). */
+      bodyFace(groundEllipse(...project(0, 0, 6), 1.05, 1.05)),
+      topFace(groundEllipse(...project(-0.35, -0.3, 6.35), 0.4, 0.34), 0.25),
       /* 위 부챗살 볏 돛(재지적: 부채가 안 돎) — 화면 고정 반원 대신 앞뒤(y)·위(z)
          축의 투영으로 세운 세로 반원이라 요잉을 타고 옆에선 얇아진다. */
       ...((): ShapeFace[] => {
@@ -3240,9 +3245,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           depthNow(0, -0.3) + 0.6,
         );
       })(),
-      // 앞 렌즈 고리.
-      capFace(groundEllipse(lx2, ly2, 0.34, 0.3), 0.4),
-      topFace(groundEllipse(lx2 - 0.1, ly2 - 0.1, 0.13, 0.11), 0.5),
+      // 앞 렌즈 — 반투명 연한 사이언색(요청).
+      [groundEllipse(lx2, ly2, 0.42, 0.36), 0.6, "#a9ecf2"] as ShapeFace,
+      topFace(groundEllipse(lx2 - 0.1, ly2 - 0.1, 0.15, 0.12), 0.4),
     ];
   },
   /* 컴샛 스테이션(스캔 애드온, 요청) — 낮은 몸체 위 기울어진 접시 안테나와 침. */
@@ -3253,13 +3258,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...tagKey(boxFaces3(0, 0.2, 5.6, 4.4, 2.6), depthNow(0, 0.2)),
       /* 지붕 부품은 붙박이 큰 키(지적: 받침 판·기둥·접시 앞뒤가 요잉 따라 어긋남) —
          지붕 규칙: 받침 위 얹힘은 어떤 각에서도 받침 뒤로 못 가게 30대 키를 못 박는다. */
-      ...tagKey(cylinderFaces3(0.3, -0.4, 0.5, 1.6, 2.6), 24 + depthNow(0.3, -0.4)),
+      // 안테나(기둥·접시·침) 은색(요청).
+      ...tagKey(paintBase(cylinderFaces3(0.3, -0.4, 0.5, 1.6, 2.6), "#c9ced6"), 24 + depthNow(0.3, -0.4)),
       ...tagKey([
-        bodyFace(groundEllipse(dx3, dy3, 2, 1)),
+        [groundEllipse(dx3, dy3, 2, 1), 1, "#c9ced6"] as ShapeFace,
         topFace(groundEllipse(dx3, dy3, 1.5, 0.7), 0.2),
         capFace(groundEllipse(dx3, dy3, 0.4, 0.22), 0.35),
       ], 26 + depthNow(0.3, -0.4)),
-      ...tagKey(hornFaces(0.3, -0.4, 5.2, 0.7, 0.3, 6.8, 0.2), 28 + depthNow(0.5, 0)),
+      ...tagKey(paintBase(hornFaces(0.3, -0.4, 5.2, 0.7, 0.3, 6.8, 0.2), "#c9ced6"), 28 + depthNow(0.5, 0)),
     ];
   },
   /* 핵 사일로(요청) — 받침 위 둥근 사일로 통과 돔 뚜껑, 해치 씸. */
