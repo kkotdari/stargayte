@@ -13023,9 +13023,13 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* ── 클릭 자국(요청: 동그라미 안에 점, 납작하게 + 토글) — 브루드워 이동 클릭 표시처럼
    납작한(가로:세로 2:1) 고리가 살짝 오므라들며 사라지고, 가운데 점은 그대로 있다.
    색은 찍은 사람 색(currentColor). 표시 창(0.9초)은 재생 쪽이 자른다. ── */
-/* UI 요소라 확대에 안 굵어진다(지적) — 렌즈 줌의 역배율로 제 화면 크기를 지킨다. */
-.scr-motion-clickfx {
-  position: absolute; width: 0; height: 0; pointer-events: none;
+/* UI 요소라 확대에 안 굵어진다(지적) — 렌즈 줌의 역배율로 제 화면 크기를 지킨다.
+   특이도 수리(재지적: 아직도 두껍고 중심이 어긋남) — 공용 스팬 규칙(.scr-motion-lens >
+   span, 0-1-1)이 이 클래스(0-1-0)의 transform을 이겨 역배율이 아예 안 먹고 있었다.
+   같은 조합 선택자로 확실히 이긴다. 0×0 상자라 원점이 곧 클릭 지점이다. */
+.scr-motion-clickfx { position: absolute; width: 0; height: 0; pointer-events: none; }
+.scr-motion-lens > .scr-motion-clickfx,
+.scr-motion-map > .scr-motion-clickfx {
   transform: scale(calc(1 / var(--mz, 1)));
 }
 /* 게임 비율(재재지적: 반으로) — 재생 쪽이 타일 폭(--ckw)을 넘겨 준다(이제 0.55타일).
@@ -13038,7 +13042,8 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   width: var(--ckw, 9px); height: calc(var(--ckw, 9px) / 2);
   margin: calc(var(--ckw, 9px) / -4) 0 0 calc(var(--ckw, 9px) / -2);
   /* 실처럼 가늘게(재지적: 색으로 구분되니 선은 실 굵기) — 0.5~0.7px 고정 헤어라인. */
-  border: max(0.5px, calc(var(--ckw, 9px) / 40)) solid currentColor; border-radius: 50%;
+  /* 선택 링과 같은 화면 고정 실선(재지적). */
+  border: 0.6px solid currentColor; border-radius: 50%;
   background: transparent;
   animation: scr-clickfx 0.9s ease-out forwards;
 }
