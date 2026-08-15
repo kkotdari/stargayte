@@ -9149,10 +9149,20 @@ export default function ReplayMotionPlayer({
                 }}
               >
                 <span className="scr-motion-storm-glow" />
+                <span className="scr-motion-storm-flash" />
+                {/* 원작 스톰(참고 이미지) — 굵은 수직 낙뢰 여러 가닥이 영역 가득 제각각
+                    내리꽂힌다. 가닥마다 잔가지가 붙고, 흰 심지에 파란 광채를 두른다. */}
                 <svg className="scr-motion-storm-bolts" viewBox="0 0 48 48" aria-hidden>
-                  <path d="M10 4 L16 16 L8 18 L20 32 L14 34 L24 46" />
-                  <path d="M30 2 L26 14 L36 16 L28 30 L38 32 L30 44" />
-                  <path d="M42 8 L36 18 L44 22 L34 38" />
+                  <path d="M6 3 L11 9 L7 16 L12 22 L5 31 L11 38 L7 46" />
+                  <path d="M16 0 L13 12 L19 18 L14 29 L18 37 L13 47" />
+                  <path d="M24 4 L21 10 L27 15 L23 24 L28 33 L23 41 L27 47" />
+                  <path d="M33 1 L36 8 L30 17 L35 25 L29 35 L34 44" />
+                  <path d="M41 3 L38 12 L44 20 L39 30 L43 39 L40 47" />
+                  <path d="M46 8 L44 16 L47 25 L43 35 L46 43" />
+                  <path d="M11 9 L16 12" />
+                  <path d="M30 17 L25 20" />
+                  <path d="M28 33 L33 36" />
+                  <path d="M14 29 L9 32" />
                 </svg>
               </span>
             );
