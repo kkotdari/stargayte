@@ -7542,7 +7542,9 @@ export default function ReplayMotionPlayer({
             /* 바닥은 실제 발자국 그대로(요청: 건물 바닥크기를 캔버스에 맞추기) — 기지를
                1.3배 부풀리던 보정을 걷었다: 바닥 폭이 타일 발자국과 같아야 하고, 높이는
                모델 제 비율이 바닥 폭을 따라 정한다(아래 fitWidth). */
-            const wTiles = fp2[0] * (shapeKind ? 1 : 0.8);
+            /* 애드온은 한 단 크게(지적: 너무 작아 연결 통로만 도드라짐) — 작은 부속
+               모델들이 상자를 덜 채워 왜소했다. */
+            const wTiles = fp2[0] * (shapeKind ? (ADDONS.has(unit) ? 1.35 : 1) : 0.8);
             const hTiles = wTiles * ((fp2[1] + (shapeKind ? riseOf(unit) : 0)) / fp2[0]);
             const wFrac = (wTiles / grid.width) * mkK;
             const hFrac = (hTiles / grid.width) * mkK;
@@ -7728,7 +7730,7 @@ export default function ReplayMotionPlayer({
                 unitOps.push({
                   fx: lfx, fy: lfy, z: z - 1, kind: "addonlink", rotDeg: 0,
                   viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
-                  sizePx: 0, wFrac: (linkW / grid.width) * mkA, hFrac: ((linkW * 0.5) / grid.width) * mkA,
+                  sizePx: 0, wFrac: (linkW / grid.width) * mkA, hFrac: ((linkW * 0.36) / grid.width) * mkA,
                   boxFit: "meet", fitWidth: true, color, alpha, noShadow: true,
                 });
               }
