@@ -619,6 +619,8 @@ function legAndFoot(px: number, py: number, zTop: number): ShapeFace[] {
 /* 상아색 발톱(지적: 모든 다리·팔 끝마디를 흰 톤 상아색으로) — 몸판(색 없는 면)에만
    상아색을 입히고, 그늘 덮개 면은 그대로 둬 입체감을 지킨다. */
 const IVORY = "#eae3d2";
+/* 테란 화기 금속색(요청: 총구·포신은 어두운 회색). */
+const GUNMETAL = "#4b5058";
 function ivory(faces: ShapeFace[]): ShapeFace[] {
   return faces.map(([d, o, f, k]) => [d, o, f ?? IVORY, k] as ShapeFace);
 }
@@ -2505,8 +2507,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...trackFaces(2, -3.2, 0.4, 1.5, 1.7),
     ...boxFaces3(0, -0.2, 3.9, 5.6, 1.3, 1.2),
     ...boxFaces3(0, -0.4, 2.6, 2.6, 1.3, 2.5),
-    ...tubeFaces(-0.55, 1.2, -0.55, 4.4, 0.24, 3.3),
-    ...tubeFaces(0.55, 1.2, 0.55, 4.4, 0.24, 3.3),
+    ...paintBase(tubeFaces(-0.55, 1.2, -0.55, 4.4, 0.24, 3.3), GUNMETAL),
+    ...paintBase(tubeFaces(0.55, 1.2, 0.55, 4.4, 0.24, 3.3), GUNMETAL),
   ],
   /* 발포 반동용 분해(요청: 발포 시 포탑·포신만 움직이게) — 차체와 포탑을 딴 판으로
      구워, 쏘는 순간 포탑 판만 살짝 밀렸다 돌아온다. 갤러리·v1은 합본(tank)을 그대로
@@ -2520,8 +2522,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   ],
   tankgun: () => [
     ...boxFaces3(0, -0.4, 2.6, 2.6, 1.3, 2.5),
-    ...tubeFaces(-0.55, 1.2, -0.55, 4.4, 0.24, 3.3),
-    ...tubeFaces(0.55, 1.2, 0.55, 4.4, 0.24, 3.3),
+    ...paintBase(tubeFaces(-0.55, 1.2, -0.55, 4.4, 0.24, 3.3), GUNMETAL),
+    ...paintBase(tubeFaces(0.55, 1.2, 0.55, 4.4, 0.24, 3.3), GUNMETAL),
   ],
   /* 시즈 모드(실물 참고) — 사방으로 벌린 궤도 발 넷 + 올라선 포탑 + 위-앞으로 겨눈
      큰 포신. */
@@ -2556,22 +2558,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.5),
       /* 포신 입체 벽 두르기(재지적: 캐리어처럼) — 오른벽 하나만 박혀 있던 것을 윗판·
          밑판 + 좌우 옆벽(faceLight 판정) + 포구 단면(앞이 보일 때만)으로 닫는다. */
-      bodyFace(barrelTop),
+      [barrelTop, 1, GUNMETAL] as ShapeFace,
       topFace(barrelTop, 0.18),
-      bodyFace(polyPath3([[-0.7, 0.7, 3.6], [0.7, 0.7, 3.6], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]])),
+      [polyPath3([[-0.7, 0.7, 3.6], [0.7, 0.7, 3.6], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]), 1, GUNMETAL] as ShapeFace,
       ...([1, -1] as const).flatMap((m2): ShapeFace[] => {
         const sl = faceLight(m2, 0);
         if (!sl.visible) return [];
         const d = polyPath3([
           [m2 * 0.7, 0.7, 4], [m2 * 0.7, 2.9, 6.9], [m2 * 0.7, 2.9, 6.5], [m2 * 0.7, 0.7, 3.6],
         ]);
-        return [bodyFace(d), ...sl.face(d)];
+        return [[d, 1, GUNMETAL] as ShapeFace, ...sl.face(d)];
       }),
       ...((): ShapeFace[] => {
         const mz = faceLight(0, 0.71, 0.71);
         if (!mz.visible) return [];
         const d = polyPath3([[-0.7, 2.9, 6.9], [0.7, 2.9, 6.9], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]);
-        return [bodyFace(d), capFace(d, 0.4)];
+        return [[d, 1, GUNMETAL] as ShapeFace, capFace(d, 0.4)];
       })(),
     ];
   },
@@ -2596,22 +2598,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const barrelTop = polyPath3([[-0.7, 0.7, 4], [0.7, 0.7, 4], [0.7, 2.9, 6.9], [-0.7, 2.9, 6.9]]);
     return [
       ...frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.5),
-      bodyFace(barrelTop),
+      [barrelTop, 1, GUNMETAL] as ShapeFace,
       topFace(barrelTop, 0.18),
-      bodyFace(polyPath3([[-0.7, 0.7, 3.6], [0.7, 0.7, 3.6], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]])),
+      [polyPath3([[-0.7, 0.7, 3.6], [0.7, 0.7, 3.6], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]), 1, GUNMETAL] as ShapeFace,
       ...([1, -1] as const).flatMap((m2): ShapeFace[] => {
         const sl = faceLight(m2, 0);
         if (!sl.visible) return [];
         const d = polyPath3([
           [m2 * 0.7, 0.7, 4], [m2 * 0.7, 2.9, 6.9], [m2 * 0.7, 2.9, 6.5], [m2 * 0.7, 0.7, 3.6],
         ]);
-        return [bodyFace(d), ...sl.face(d)];
+        return [[d, 1, GUNMETAL] as ShapeFace, ...sl.face(d)];
       }),
       ...((): ShapeFace[] => {
         const mz = faceLight(0, 0.71, 0.71);
         if (!mz.visible) return [];
         const d = polyPath3([[-0.7, 2.9, 6.9], [0.7, 2.9, 6.9], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]);
-        return [bodyFace(d), capFace(d, 0.4)];
+        return [[d, 1, GUNMETAL] as ShapeFace, capFace(d, 0.4)];
       })(),
     ];
   },
@@ -2643,9 +2645,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 몸통 + 옆에 매달린 큰 팔 총 포드(앞 총열).
     ...boxFaces3(0, -0.2, 2.6, 2.2, 2, 4.8),
     ...boxFaces3(-2.25, 0, 1.25, 1.9, 1.8, 4.3),
-    ...tubeFaces(-2.25, 0.9, -2.25, 2.3, 0.28, 5),
+    ...paintBase(tubeFaces(-2.25, 0.9, -2.25, 2.3, 0.28, 5), GUNMETAL),
     ...boxFaces3(2.25, 0, 1.25, 1.9, 1.8, 4.3),
-    ...tubeFaces(2.25, 0.9, 2.25, 2.3, 0.28, 5),
+    ...paintBase(tubeFaces(2.25, 0.9, 2.25, 2.3, 0.28, 5), GUNMETAL),
     // 콕핏 머리 — 앞 창 + 안테나.
     ...domeFaces3(0, 0.2, 0.9, 0.7, 6.8),
     capFace(polyPath3([[-0.5, 0.95, 7.2], [0.5, 0.95, 7.2], [0.4, 1.05, 6.9], [-0.4, 1.05, 6.9]]), 0.4),
@@ -2682,14 +2684,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const wingR = polyPath3([[0.85, 0.6, 5.9], [3.1, -1.1, 5.7], [3.1, -2.3, 5.75], [0.85, -1.2, 5.95]]);
     return [
       // 뒤 엔진 꽁무니 둘.
-      ...tubeFaces(-0.5, -2.8, -0.5, -1.7, 0.32, 5.4),
-      ...tubeFaces(0.5, -2.8, 0.5, -1.7, 0.32, 5.4),
+      ...paintBase(tubeFaces(-0.5, -2.8, -0.5, -1.7, 0.32, 5.4), GUNMETAL),
+      ...paintBase(tubeFaces(0.5, -2.8, 0.5, -1.7, 0.32, 5.4), GUNMETAL),
       // 날개 — 사각 평판 두 장.
       bodyFace(wingL), topFace(wingL, 0.16),
       bodyFace(wingR), sideFace(wingR, 0.18),
-      // 날개 끝 긴 포신 각각.
-      ...gun(-3.1),
-      ...gun(3.1),
+      // 날개 끝 긴 포신 각각 — 건메탈(요청).
+      ...paintBase(gun(-3.1), GUNMETAL),
+      ...paintBase(gun(3.1), GUNMETAL),
       // 몸통 상자 + 콕핏 상자.
       ...boxFaces3(0, 0.3, 1.7, 4.2, 1.1, 5.4),
       ...boxFaces3(0, 1, 1.1, 1.7, 0.7, 6.5),
@@ -2777,11 +2779,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          보임): 몸 위 얹힘이라 어느 각에서도 몸·데칼 뒤로 안 간다. */
       ...tagKey([
         ...tubeFaces(-0.7, -1.7, -0.7, 0.9, 0.5, 7.2),
-        ...tubeNose(-0.7),
+        ...paintBase(tubeNose(-0.7), GUNMETAL),
       ], 20 + depthNow(-0.7, -0.4)),
       ...tagKey([
         ...tubeFaces(0.7, -1.7, 0.7, 0.9, 0.5, 7.2),
-        ...tubeNose(0.7),
+        ...paintBase(tubeNose(0.7), GUNMETAL),
       ], 20 + depthNow(0.7, -0.4)),
     ];
   },
@@ -3505,8 +3507,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...hornFaces(-1.05, 0.8, 2.75, 0.3, 1.85, 3.25, 0.42),
       ...hornFaces(1.5, 0.1, 3.7, 1.25, 0.7, 2.8, 0.5),
       ...hornFaces(1.25, 0.7, 2.8, 0.75, 1, 3.25, 0.42),
-      // 소총은 앞을 향한다(지적: 가로로 들었었다) — 두 손 위 긴 총열 + 총구.
-      ...boxFaces3(0.55, 1.5, 0.55, 2.4, 0.5, 3.1),
+      // 소총은 앞을 향한다(지적: 가로로 들었었다) — 두 손 위 긴 총열 + 총구. 건메탈(요청).
+      ...paintBase(boxFaces3(0.55, 1.5, 0.55, 2.4, 0.5, 3.1), GUNMETAL),
       capFace(groundEllipse(mx2, my2, 0.2, 0.16), 0.45),
     ];
   },
@@ -3534,8 +3536,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...hornFaces(-0.6, 0.9, 2.9, 0.25, 1.7, 3.3, 0.26),
       ...hornFaces(0.85, 0.1, 3.9, 0.7, 0.8, 2.95, 0.3),
       ...hornFaces(0.7, 0.8, 2.95, 0.45, 1.2, 3.3, 0.26),
-      // C-10 저격소총 — 마린 소총보다 길고 가는 총열 + 총구.
-      ...boxFaces3(0.4, 1.6, 0.3, 3.4, 0.34, 3.25),
+      // C-10 저격소총 — 마린 소총보다 길고 가는 총열 + 총구. 건메탈(요청).
+      ...paintBase(boxFaces3(0.4, 1.6, 0.3, 3.4, 0.34, 3.25), GUNMETAL),
       capFace(groundEllipse(mx2, my2, 0.14, 0.11), 0.45),
     ];
   },
@@ -3569,9 +3571,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...hornFaces(1.45, -0.2, 4.9, 1.4, 0.6, 3.2, 0.5),
       // 화염 건틀릿 두 팔.
       // 앞으로 더 내민 화염 건틀릿(지적: 총구가 앞을 향하게).
-      ...tubeFaces(-1.4, 0.4, -1.4, 2.2, 0.42, 2.9),
+      ...paintBase(tubeFaces(-1.4, 0.4, -1.4, 2.2, 0.42, 2.9), GUNMETAL),
       noz(-1.4),
-      ...tubeFaces(1.4, 0.4, 1.4, 2.2, 0.42, 2.9),
+      ...paintBase(tubeFaces(1.4, 0.4, 1.4, 2.2, 0.42, 2.9), GUNMETAL),
       noz(1.4),
     ];
   },
@@ -3778,8 +3780,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 매끈한 뱀꼬리(재지적: 애벌레 마디가 아니라 몸과 꼬리가 한 덩어리 — 배를 땅에
        대고 걷고 그쪽이 둥글게 굽는다) — 몸통 뿌리 폭에서 한 곡선으로 가늘어져 끝이
        점이 되는 실루엣 한 장 + 등마루 하이라이트 한 줄. */
+    /* 꼬리 뿌리는 몸통 지름(1.05)에 맞춤(지적: 시작부가 몸통보다 두꺼워 삐져나옴). */
     const tailR: [number, number, number][] = [
-      [1.45, -0.2, 1.4], [1.12, -1.4, 0.85], [0.74, -2.7, 0.48], [0.38, -3.9, 0.22], [0, -5.1, 0.08],
+      [1.02, -0.2, 1.4], [0.82, -1.4, 0.85], [0.56, -2.7, 0.48], [0.3, -3.9, 0.22], [0, -5.1, 0.08],
     ];
     const tailPts = [
       ...tailR,
@@ -3791,8 +3794,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(polyPath3(tailPts.map(([x, y, z]) => [x * 0.45, y, z + 0.16] as [number, number, number])), 0.13),
       // 몸기둥을 꼬리 뿌리(z 1.2)까지 내려 한 몸으로 잇는다.
       ...cylinderFaces3(0, 0, 1.05, 5.3, 1.2),
-      ...ivory(claw3(1, 0.85, 5)),
-      ...ivory(claw3(-1, 0.85, 5)),
+      /* 가시낫은 팔로 몸통과 잇는다(지적) — 한 번 굽은 위팔이 어깨에서 밖·앞으로
+         나가고, 낫은 거기서 확 꺾여 아래를 향한다. */
+      ...hornFaces(-0.8, 0.25, 5.3, -1.7, 0.75, 4.3, 0.5),
+      ...ivory(hornFaces(-1.7, 0.75, 4.3, -2.05, 1.2, 1.3, 0.6)),
+      ...hornFaces(0.8, 0.25, 5.3, 1.7, 0.75, 4.3, 0.5),
+      ...ivory(hornFaces(1.7, 0.75, 4.3, 2.05, 1.2, 1.3, 0.6)),
       ...domeFaces3(0, 0.2, 0.75, 0.6, 6.8),
       bodyFace(hood),
       topFace(hood, 0.14),
