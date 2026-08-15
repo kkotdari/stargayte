@@ -1658,17 +1658,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(topFace(groundEllipse(vx, vy, 0.8, 0.55), 0.3));
       out.push(capFace(groundEllipse(vx, vy, 0.55, 0.35), 0.45));
     }
-    /* 가운데 큰 알(지적: 각도에 따라 본체와 따로 노는 느낌) — 알은 벽 그림이 아니라
-       돔에 박힌 불룩한 덩어리라, 윤곽은 어느 각도에서나 통통한 타원이다. 자리만 몸을
-       따라 돌고, 옆으로 돌수록 폭을 줄이다가 뒤로 넘어가면 돔에 가려져 사라진다 —
-       전엔 뒤에서도 그대로 그려져 몸과 따로 놀았다. */
-    // 알은 +y 앞면 원위치(재재지적: 몸을 180도 되돌리며 앞면이 다시 +y).
-    const eggFace = facingRatio(0, 1);
-    if (eggFace > 0.15) {
-      const k = 0.45 + 0.55 * Math.min(1, (eggFace - 0.15) / 0.35);
+    /* 입구 동그란 거울(알)은 제거(요청) — 대신 파일런 수정구 색(반투명 연사이언)의
+       납작한 볼록 렌즈: 좌우 끝이 뾰족한 렌즈꼴 판. 자리만 몸을 따라 돌고 옆으로
+       돌수록 폭이 줄며 뒤에선 사라지는 규칙은 그대로. */
+    const lensFace = facingRatio(0, 1);
+    if (lensFace > 0.15) {
+      const k = 0.45 + 0.55 * Math.min(1, (lensFace - 0.15) / 0.35);
       const [ex, ey] = project(0, 2.4, 2.1);
-      out.push(capFace(groundEllipse(ex, ey, 2.4 * k, 3), 0.35));
-      out.push(topFace(groundEllipse(ex, ey, 2 * k, 2.6), 0.55));
+      const w = 2.6 * k;
+      out.push([`M${ex - w} ${ey} Q${ex} ${ey - 1.7} ${ex + w} ${ey} Q${ex} ${ey + 1.7} ${ex - w} ${ey} Z`, 0.6, "#a9ecf2"] as ShapeFace);
+      out.push([`M${ex - w * 0.55} ${ey - 0.2} Q${ex} ${ey - 1} ${ex + w * 0.55} ${ey - 0.2} Q${ex} ${ey + 0.3} ${ex - w * 0.55} ${ey - 0.2} Z`, 0.5, "#e6fbff"] as ShapeFace);
     }
     return out;
   },
@@ -4607,8 +4606,8 @@ const WORKER_KIND_SET = new Set(["scv", "probe", "drone"]);
 const BUILDING_BASE_YAW = 45;
 const MODEL_YAW_TWEAK: Record<string, number> = {
   // 반시계 90도(지적) — 어시밀레이터·히드라 덴·서플·포지·테란 공사장.
-  // 어시밀레이터 180도 회전(재재지적) 후 45도 반시계(재재재지적) — 합계 -45.
-  assim: -45, hydraden: -90, trapezoid: -90, forge: -90, scaffold: -90,
+  // 어시밀레이터: 180도(재재지적)→-45도→다시 180도(재재재재지적) — 합계 135.
+  assim: 135, hydraden: -90, trapezoid: -90, forge: -90, scaffold: -90,
   // 시계 90도(지적) — 로보틱스·템플러 아카이브.
   dome: 90, archives: 90,
 };
