@@ -2832,20 +2832,32 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(groundEllipse(bx - 0.9, by - 1, 1.2, 1), 0.28),
     ], 0));
     // 껍질 방패 셋(90·210·330도) — 은색 렌즈꼴 판이 구를 옆에서 감싼다.
-    /* 방패는 아래위로 긴 판(재지적) — 세로로 길고 폭도 도톰한 은색 타원 판이 구 옆을
-       세워 감싼다. */
+    /* 방패 셋(재재지적) — 세로 팔각 판이 구를 '감싸듯' 안으로 굽는다: 위아래 끝이
+       구 쪽으로 당겨지고 가운데가 밖으로 부푼 활꼴. 길이는 줄이고(±2.2) 폭은 얇게. */
     for (const ang of [90, 210, 330]) {
       const a2 = (ang * Math.PI) / 180;
-      const mx = Math.sin(a2) * 3.3;
-      const my = Math.cos(a2) * 3.3;
+      const mx = Math.sin(a2) * 3.25;
+      const my = Math.cos(a2) * 3.25;
       const [ax, ay] = project(mx, my, 6.4);
       const vx = ax - bx;
       const vy = ay - by;
       const L = Math.hypot(vx, vy) || 1;
+      const ux = vx / L;
+      const uy = vy / L;
+      const hH = 2.2;
+      const hW = 0.62;
+      const oct: [number, number][] = [
+        [-hH + 0.55, -hW], [-hH, -hW * 0.35], [-hH, hW * 0.35], [-hH + 0.55, hW],
+        [hH - 0.55, hW], [hH, hW * 0.35], [hH, -hW * 0.35], [hH - 0.55, -hW],
+      ];
+      const ptOf = (tv: number, sv: number): string => {
+        const bow = 0.85 * (1 - (tv / hH) * (tv / hH));
+        return `${ax + sv + ux * bow} ${ay + tv + uy * bow}`;
+      };
+      const d = `M${oct.map(([tv, sv], i) => `${i === 0 ? "" : "L"}${ptOf(tv, sv)}`).join(" ")} Z`;
       out.push(...tagKey([
-        [groundEllipse(ax, ay, 1.05, 3.1), 1, "#c9ced6"] as ShapeFace,
-        sideFace(groundEllipse(ax + (vx / L) * 0.4, ay + (vy / L) * 0.4, 0.62, 2.75), 0.2),
-        topFace(groundEllipse(ax - (vx / L) * 0.35, ay - (vy / L) * 0.35 - 0.6, 0.4, 1.6), 0.28),
+        [d, 1, "#c9ced6"] as ShapeFace,
+        sideFace(d, 0.14),
       ], depthNow(mx, my)));
     }
     return zsorted(out);
