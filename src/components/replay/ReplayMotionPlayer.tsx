@@ -5532,11 +5532,28 @@ export default function ReplayMotionPlayer({
       }
       return lo;
     };
+    /* 미네랄·가스도 벽이다(요청: 우회하기에 넣기) — 자원은 경기 내내 그 자리라 판마다
+       같은 도장을 찍는다. 미네랄은 2×1, 간헐천은 4×2타일 어림(좌표는 가운데). */
+    const stampRes = (walk: Uint8Array): void => {
+      for (const r of grid.resources ?? []) {
+        const gas = r[2] === 1;
+        const hw = gas ? 2 : 1;
+        const hh = gas ? 1 : 0.5;
+        const x0 = Math.max(0, Math.floor(((r[0] - hw) / grid.width) * terrain.w));
+        const x1 = Math.min(terrain.w - 1, Math.ceil(((r[0] + hw) / grid.width) * terrain.w) - 1);
+        const y0 = Math.max(0, Math.floor(((r[1] - hh) / grid.height) * terrain.h));
+        const y1 = Math.min(terrain.h - 1, Math.ceil(((r[1] + hh) / grid.height) * terrain.h) - 1);
+        for (let yy = y0; yy <= y1; yy += 1) {
+          for (let xx = x0; xx <= x1; xx += 1) walk[yy * terrain.w + xx] = 0;
+        }
+      }
+    };
     const gridAt = (sec: number): TerrainGrid => {
       const ver = verOf(sec);
       let g = cache.get(ver);
       if (!g) {
         const walk = new Uint8Array(terrain.walk);
+        stampRes(walk);
         for (const [bs, bxT, byT, bu, , bg] of buildsSrc) {
           if (ADDONS.has(bu)) continue;
           if (bs > sec || ((bg ?? 0) > 0 && sec >= (bg ?? 0))) continue;
@@ -5555,7 +5572,7 @@ export default function ReplayMotionPlayer({
       return g;
     };
     return { gridAt, verOf };
-  }, [terrain, buildsSrc, grid.width, grid.height]);
+  }, [terrain, buildsSrc, grid.resources, grid.width, grid.height]);
   const walkTrack = (
     src: TrackPt[], p: MotionTrack, straight: boolean, forcedUnit?: string,
     speedOverride?: number, forceGround?: boolean,
