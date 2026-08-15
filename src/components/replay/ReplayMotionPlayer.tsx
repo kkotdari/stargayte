@@ -4205,6 +4205,9 @@ type UnitDrawOp = {
   z: number;
   /** 발밑 접지 그림자(지적: 건물·지상 유닛에도 옅게) — 아주 작은 타원만. */
   groundShadow?: boolean;
+  /** 발자국 세로/가로 비(건물) — 접지 그림자가 '바닥 발자국'만 덮게 하는 자(지적:
+   *  칸(hPx)은 모델 높이까지 포함해, 칸 기준 타원은 건물을 통째로 덮는 큰 원이 됐다). */
+  footRatio?: number;
   kind: string; rotDeg?: number; viewYaw?: number; flat?: boolean; pitch?: boolean;
   /** 도형 한 변(px) — 글자 크기 × 도형 배수(1.15/1.7) × 2배 토글 × 깊이 배율까지 포함. */
   sizePx: number;
@@ -4520,16 +4523,18 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
            판의 실제 바닥 픽셀(contentBottom)에 붙인다. 모델이 상자를 다 안 채워도
            발이 그림자에 닿는다. */
         if (op.groundShadow) {
+          /* 바닥 '발자국'만 덮는다(정정: 칸(hPx)은 모델 높이까지 포함해, 칸 기준 타원은
+             건물을 통째로 감싸는 큰 원이었다 — 내접으로 바꿔도 거의 그대로라 "적용 안
+             됨"으로 보였다). 발자국 깊이 = 폭 × footRatio, 자리는 칸 바닥에 붙인다. */
+          const fdPx = wPx * (op.footRatio ?? 0.6);
           ctx.save();
           ctx.shadowColor = "transparent";
           ctx.globalAlpha = op.alpha * 0.16;
           ctx.fillStyle = "#000";
           ctx.beginPath();
-          /* 캔버스 상자(sx±wPx/2, sy±hPx/2)에 '내접'하는 타원(재재재지적: 캔버스만큼만
-             덮어야지 — 0.55배와 원근 보정이 상자를 넘겨 건물보다 큰 검은 원이 됐다). */
           ctx.ellipse(
-            sx, sy, wPx * 0.5,
-            Math.max(2, hPx * 0.5), 0, 0, Math.PI * 2,
+            sx, sy + hPx / 2 - fdPx / 2, wPx * 0.5,
+            Math.max(2, fdPx * 0.5), 0, 0, Math.PI * 2,
           );
           ctx.fill();
           ctx.restore();
@@ -7023,6 +7028,8 @@ export default function ReplayMotionPlayer({
                   return pct < 100 ? Math.max(0.04, pct / 100) : undefined;
                 })(),
                 groundShadow: true,
+                // 접지 그림자의 발자국 비(지적: 그림자는 바닥 발자국만) — 세로/가로.
+                footRatio: (FOOTPRINT[unit] ?? [3, 2])[1] / (FOOTPRINT[unit] ?? [3, 2])[0],
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
                 sizePx: 0, wFrac: wFrac * pulse, hFrac: hFrac * pulse, boxFit: "meet",
                 /* 전 건물 폭 기준(요청: 바닥을 발자국에, 높이는 제 비율로) — meet
