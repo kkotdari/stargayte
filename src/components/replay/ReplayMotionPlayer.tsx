@@ -2815,17 +2815,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   bc: () => [
     // (제거·지적) 추진기 — 어느 판도 마음에 안 들어 걷었다.
     // 양팔 복구(지적) — 붐 팔 + 캡슐 미사일(탄두).
-    ...hornFaces(-1.4, -1.4, 6, -4.5, -0.8, 5.7, 0.4),
-    ...tubeFaces(-4.8, -1.6, -4.8, 1, 0.55, 5.3),
-    ...hornFaces(-4.8, 1, 5.55, -4.8, 2.4, 5.5, 0.5),
-    ...hornFaces(1.4, -1.4, 6, 4.5, -0.8, 5.7, 0.4),
-    ...tubeFaces(4.8, -1.6, 4.8, 1, 0.55, 5.3),
-    ...hornFaces(4.8, 1, 5.55, 4.8, 2.4, 5.5, 0.5),
+    // 목만 빼고 전체 은색(요청).
+    ...paintBase([
+      ...hornFaces(-1.4, -1.4, 6, -4.5, -0.8, 5.7, 0.4),
+      ...tubeFaces(-4.8, -1.6, -4.8, 1, 0.55, 5.3),
+      ...hornFaces(-4.8, 1, 5.55, -4.8, 2.4, 5.5, 0.5),
+      ...hornFaces(1.4, -1.4, 6, 4.5, -0.8, 5.7, 0.4),
+      ...tubeFaces(4.8, -1.6, 4.8, 1, 0.55, 5.3),
+      ...hornFaces(4.8, 1, 5.55, 4.8, 2.4, 5.5, 0.5),
+    ], "#c9ced6"),
     // 장도리 몸(정정 둘: 몸 짧게, 목 길게) — 몸통·긴 목·가로 머리·함교.
-    ...boxFaces3(0, -0.6, 2.4, 3.4, 1.6, 5.4),
-    ...boxFaces3(0, 2.2, 1.2, 2.6, 0.9, 5.7),
-    ...boxFaces3(0, 4.1, 3.6, 1.2, 1.4, 5.5),
-    ...boxFaces3(0, -1.4, 1.2, 1.2, 0.8, 7),
+    ...paintBase(boxFaces3(0, -0.6, 2.4, 3.4, 1.6, 5.4), "#c9ced6"),
+    ...boxFaces3(0, 2.2, 1.2, 2.6, 0.9, 5.7), // 목 — 개인색 유지.
+    ...paintBase(boxFaces3(0, 4.1, 3.6, 1.2, 1.4, 5.5), "#c9ced6"),
+    ...paintBase(boxFaces3(0, -1.4, 1.2, 1.2, 0.8, 7), "#c9ced6"),
     /* 야마토 포문 홈(요청) — 머리 앞면 가운데의 어두운 구멍과 옅은 테. 앞면 벽 데칼
        (wallDiscPath)이라 요잉과 함께 돌고, 뒤에선 몸에 가려 안 그린다. */
     ...(facingRatio(0, 1) > -0.05
@@ -2855,10 +2858,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       return [bodyFace(groundEllipse(px2, py2 - 0.45 * 0.45, 0.48, 0.4 * (0.35 + 0.65 * k)))];
     };
     return [
-      ...boxFaces3(0, -2.3, 2.2, 1, 1.5, 5.3),
+      // 날개만 빼고 전체 은색(요청).
+      ...paintBase(boxFaces3(0, -2.3, 2.2, 1, 1.5, 5.3), "#c9ced6"),
       bodyFace(plate(1)), sideFace(plate(1), 0.2),
       bodyFace(plate(-1)), topFace(plate(-1), 0.14),
-      ...boxFaces3(0, -0.4, 2.8, 3.8, 2.2, 5),
+      ...paintBase(boxFaces3(0, -0.4, 2.8, 3.8, 2.2, 5), "#c9ced6"),
       /* 코(재재지적: 경사 네 면의 보임) — 면을 고정으로 그려서 왼 면이 아예 없고 오른
          면은 어느 각에서나 남았다. 앞·좌·우 기운 면을 faceLight로 판정해 보이는 면만
          제 밑칠과 음영으로 그린다. 윗면은 내려다보는 카메라라 늘 보인다. */
@@ -2876,7 +2880,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           const d = polyPath3(pts);
           nose.push(bodyFace(d), ...face(d));
         }
-        return nose;
+        return paintBase(nose, "#c9ced6");
       })(), depthNow(0, 2.1) + 0.9),
       ...tagKey([
         capFace(polyPath3([[-1.15, 1.35, 7.5], [1.15, 1.35, 7.5], [1.05, 1.75, 6.85], [-1.05, 1.75, 6.85]]), 0.45),
@@ -2885,11 +2889,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 지붕 미사일 튜브 다발 — 지붕 띠 키(재지적: 콕핏·코 데칼이 위에 씻겨 투명해
          보임): 몸 위 얹힘이라 어느 각에서도 몸·데칼 뒤로 안 간다. */
       ...tagKey([
-        ...tubeFaces(-0.7, -1.7, -0.7, 0.9, 0.5, 7.2),
+        ...paintBase(tubeFaces(-0.7, -1.7, -0.7, 0.9, 0.5, 7.2), "#c9ced6"),
         ...paintBase(tubeNose(-0.7), GUNMETAL),
       ], 20 + depthNow(-0.7, -0.4)),
       ...tagKey([
-        ...tubeFaces(0.7, -1.7, 0.7, 0.9, 0.5, 7.2),
+        ...paintBase(tubeFaces(0.7, -1.7, 0.7, 0.9, 0.5, 7.2), "#c9ced6"),
         ...paintBase(tubeNose(0.7), GUNMETAL),
       ], 20 + depthNow(0.7, -0.4)),
     ];
@@ -2914,7 +2918,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     }
     // 구 몸통 — 한 단 더 축소(3.3 → 2.7, 재지적) + 그늘 초승달 + 하이라이트.
     out.push(...tagKey([
-      bodyFace(groundEllipse(bx, by, 2.7, 2.58)),
+      // 구체 짙은 은색(요청).
+      [groundEllipse(bx, by, 2.7, 2.58), 1, "#9ba3ad"] as ShapeFace,
       sideFace(`M${bx + 1.05} ${by - 2.3} A2.6 2.5 0 0 1 ${bx + 1.05} ${by + 2.3}`
         + ` A3.8 3.7 0 0 0 ${bx + 1.05} ${by - 2.3} Z`, 0.16),
       topFace(groundEllipse(bx - 0.9, by - 1, 1.2, 1), 0.28),
