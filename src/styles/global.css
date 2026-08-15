@@ -11536,6 +11536,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 확대 기둥의 댓글은 위 구분선이 필요 없다(요청) — 카드 인라인용 경계선(.scr-activity-notes
    border-top)은 본문과 댓글을 가르는 선인데, 여기선 기둥 자체가 이미 제 영역이다. */
 .scr-motion-sidewrap .scr-activity-notes { border-top: none; margin-top: 0; padding-top: 0; }
+/* 넓은 배치에선 댓글이 오른쪽 기둥(sidewrap)에 선다 — 카드 아래의 원래 댓글부는 숨긴다
+   (지적: 댓글이 옆과 아래 모두 노출). 직계 자식만 겨눠야 기둥 안 댓글(같은 클래스를
+   제 몸에 겸함)은 안 걸린다. */
+.scr-activity-card:has(.scr-motion-wide) > .scr-activity-card-comment { display: none; }
 .scr-terrain-hint { margin: 0 0 8px; font-size: var(--fs-caption); color: var(--muted); }
 .scr-terrain-stage { position: relative; width: 100%; }
 .scr-terrain-img { display: block; width: 100%; user-select: none; border-radius: var(--radius-sm); }
