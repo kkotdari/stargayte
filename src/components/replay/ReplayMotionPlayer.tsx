@@ -3656,7 +3656,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 양옆 갈퀴 짙은 살색(요청: 주황끼).
       [fan(1), 1, "#c68a62"] as ShapeFace, sideFace(fan(1), 0.16),
       [fan(-1), 1, "#c68a62"] as ShapeFace, sideFace(fan(-1), 0.13),
-      ...domeFaces3(0, -2.1, 1.5, 1.2, 3.5),
+      // 뒷몸 짙은 갈색(요청).
+      ...paintBase(domeFaces3(0, -2.1, 1.5, 1.2, 3.5), "#6b4732"),
       ...domeFaces3(0, -0.7, 2, 1.7, 3.5),
       // 팔도 다른 갈고리와 같은 휘어진 낫 날(지적) — 낫 상아색(요청).
       ...ivory(claw3(1, 0.7, 4)),
@@ -4207,15 +4208,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     };
     /* 얼굴(재지적: 얼굴은 앞쪽 아래쪽에 작은 반구형으로) — 몸 앞아래 표면에 붙는
        작은 돔 하나. */
-    const face = tagKey(domeFaces3(0, 2.75, 0.78, 0.6, 3.3), depthNow(0, 2.75));
+    // 얼굴 짙은 갈색(요청).
+    const face = tagKey(paintBase(domeFaces3(0, 2.75, 0.78, 0.6, 3.3), "#6b4732"), depthNow(0, 2.75));
     /* 등의 가스 주머니(공식 컨셉: 뒤 위에 얹힌 큰 광택 물집) — 큰 것 하나와 작은 것
        하나. 광 하이라이트를 크게 얹어 유리알처럼 반들거린다. */
     const [g1x, g1y] = project(1.4, -1.8, 6.2);
     const [g2x, g2y] = project(-0.3, -2.3, 7);
     return [
-      bodyFace(legs.join(" ")),
-      // 상아색 제거(지적: 집게·가시도 몸색으로).
-      bodyFace(tips.join(" ")),
+      // 다리 짙은 갈색(요청).
+      [legs.join(" "), 1, "#6b4732"] as ShapeFace,
+      [tips.join(" "), 1, "#6b4732"] as ShapeFace,
       ...lens(-1),
       ...lens(1),
       ...face,
