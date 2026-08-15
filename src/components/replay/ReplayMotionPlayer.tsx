@@ -16,7 +16,7 @@ import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } f
 import {
   bodyFace, capFace, depthNow, groundEllipse, sideFace, tagKey, topFace, type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
-  domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces, limbFaces, pyramidFaces3, tubeFaces,
+  domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces, limbFaces, tubeFaces,
   wallDiscPath, wallFrame, withPitchView, withTopView, withViewShear, withYaw, zsorted,
 } from "../../utils/shapeOblique";
 import type { MinimapMarker } from "./ReplayMinimap";
@@ -3301,22 +3301,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       }),
     );
     // 몸통 축소(지적: 몸체 크기 축소) — 팔각 반지름 2 → 1.6, 겹층도 함께.
-    out.push(bodyFace(oct(1.6, 5.4)));
-    out.push(topFace(oct(1.08, 5.65), 0.26));
-    out.push(topFace(oct(0.64, 5.9), 0.3));
+    // 몸통 한 단 더 축소(지적) — 1.6 → 1.3.
+    out.push(bodyFace(oct(1.3, 5.4)));
+    out.push(topFace(oct(0.88, 5.65), 0.26));
+    out.push(topFace(oct(0.52, 5.9), 0.3));
     /* 눈 두 개(재지적: 몸통에 수직으로 붙여 정면을 보게 + 더 작게) — 바닥에 눕던
        타원을 정면 벽 데칼(wallDiscPath)로 세운다. 벽과 함께 돌고 눌리며, 뒤로 돌면
        서서히 사라진다(어시밀레이터 알과 같은 규칙). */
     const fEye = facingRatio(0, 1);
     if (fEye > -0.05) {
       const k = Math.min(1, (fEye + 0.05) / 0.4);
-      out.push(topFace(wallDiscPath(-0.55, 1.5, 5.52, 0.26, 0.16), 0.88 * k));
-      out.push(topFace(wallDiscPath(0.55, 1.5, 5.52, 0.26, 0.16), 0.88 * k));
+      // 눈은 형광 연두(지적).
+      out.push([wallDiscPath(-0.45, 1.22, 5.52, 0.24, 0.15), 0.92 * k, "#a6ff3e"] as ShapeFace);
+      out.push([wallDiscPath(0.45, 1.22, 5.52, 0.24, 0.15), 0.92 * k, "#a6ff3e"] as ShapeFace);
     }
     /* 옆면 둥근 포트(실물 참고) — 몸이 줄면서 가장자리 밖으로 삐져나와 떠 보였다(확인)
        — 몸 안쪽으로 당기고 더 작게. */
-    const [p1x, p1y] = project(-1, 0.5, 5.52);
-    const [p2x, p2y] = project(1, 0.5, 5.52);
+    const [p1x, p1y] = project(-0.82, 0.4, 5.52);
+    const [p2x, p2y] = project(0.82, 0.4, 5.52);
     out.push(topFace(groundEllipse(p1x, p1y, 0.22, 0.18), 0.3));
     out.push(topFace(groundEllipse(p2x, p2y, 0.22, 0.18), 0.3));
     /* 앞다리 한 쌍(재지적: 길이 축소 + 두 다리 사이 벌리기 + 몸에 더 딱) — 뿌리를
