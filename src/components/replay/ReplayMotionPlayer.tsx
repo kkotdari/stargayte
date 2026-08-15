@@ -3879,8 +3879,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [gx, gy] = project(0, 0.2, 3.2);
     return [
       topFace(groundEllipse(gx, gy, 1.6, 0.8), 0.3),
-      // 어두운 망토 — 몸 뒤로 드리운다.
-      bodyFace(polyPath3([[-1.1, -0.8, 6.6], [1.1, -0.8, 6.6], [1.6, -1.6, 3.6], [-1.6, -1.6, 3.6]])),
+      // 망토 흰회색(요청).
+      [polyPath3([[-1.1, -0.8, 6.6], [1.1, -0.8, 6.6], [1.6, -1.6, 3.6], [-1.6, -1.6, 3.6]]), 1, "#dfe3e6"] as ShapeFace,
       sideFace(polyPath3([[-1.1, -0.8, 6.6], [1.1, -0.8, 6.6], [1.6, -1.6, 3.6], [-1.6, -1.6, 3.6]]), 0.22),
       // 몸통 더 축소(재지적) — 1.0 → 0.85.
       ...cylinderFaces3(0, -0.3, 0.85, 2.4, 4.4),
@@ -3930,9 +3930,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 1.4배 + 모양 개선(요청) — 밝은 청백 에너지 소용돌이 구로: 사람 색 구 위에 옅은
        청백 워시와 번개 호를 얹어 다크 아콘(어두운 보라+핏빛)과 확실히 갈린다. */
     return [
-      [groundEllipse(cx, cy, 5.1, 4.8), 0.55] as ShapeFace,
-      [groundEllipse(cx, cy, 5.1, 4.8), 0.3, "#dff0ff"] as ShapeFace,
+      // 에너지구는 플라즈마색, 개인색은 가운데 띠만(요청).
+      [groundEllipse(cx, cy, 5.1, 4.8), 0.72, "#dff0ff"] as ShapeFace,
       topFace(groundEllipse(cx, cy, 5.1, 4.8), 0.22),
+      [`M${cx - 5.02} ${cy} A5.02 2 0 0 0 ${cx + 5.02} ${cy} A5.02 1.1 0 0 1 ${cx - 5.02} ${cy} Z`, 0.85] as ShapeFace,
       // 몸통 — 낮은 타원 돔. 머리 불꽃 — 위로 솟는 뿔. 팔 — 어깨에서 밖·아래로.
       ...dark(domeFaces3(0, 0, 1.35, 2.7, 3.2), 0.35),
       ...dark(hornFaces(0, 0, 6.1, 0, 0.45, 8.6, 1), 0.4),
@@ -3956,9 +3957,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 1.4배 + 구분 강화(요청) — 어두운 보랏빛 워시와 핏빛 글린트로 아콘(청백)과
        한눈에 갈린다. 수염 호는 그대로 비례 확대. */
     return [
-      [groundEllipse(cx, cy, 5.1, 4.8), 0.55] as ShapeFace,
-      [groundEllipse(cx, cy, 5.1, 4.8), 0.42, "#31204a"] as ShapeFace,
+      // 에너지구는 붉은색, 개인색은 가운데 띠만(요청).
+      [groundEllipse(cx, cy, 5.1, 4.8), 0.7, "#8a2833"] as ShapeFace,
+      [groundEllipse(cx, cy, 5.1, 4.8), 0.28, "#c03a3a"] as ShapeFace,
       capFace(groundEllipse(cx, cy, 5.1, 4.8), 0.25),
+      [`M${cx - 5.02} ${cy} A5.02 2 0 0 0 ${cx + 5.02} ${cy} A5.02 1.1 0 0 1 ${cx - 5.02} ${cy} Z`, 0.85] as ShapeFace,
       // 속 형체 — 낮은 돔 몸통, 벌어진 뿔귀 둘, 아래로 늘어지는 갈퀴 팔.
       ...dark(domeFaces3(-0.15, 0.15, 1.25, 2.4, 3.4), 0.45),
       ...dark(hornFaces(-0.5, 0.15, 5.6, -1.7, 0.55, 8, 0.8), 0.5),
@@ -4036,8 +4039,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...rodFaces(1.9, 0.7, 4.2, 2.5, 1.15, 5.4, 0.45),
       ...ivory(rodFaces(2.44, 1.1, 5.28, 2.9, 1.5, 6.9, 0.55)),
       ...ivory(hornFaces(2.9, 1.5, 6.9, 3.15, 2.1, 4.3, 0.55)),
-      ...domeFaces3(0, 0.2, 0.75, 0.6, 6.8),
-      bodyFace(hood),
+      // 얼굴·머리장식 갈색(요청).
+      ...paintBase(domeFaces3(0, 0.2, 0.75, 0.6, 6.8), "#8a5f43"),
+      [hood, 1, "#8a5f43"] as ShapeFace,
       topFace(hood, 0.14),
     ];
   },
@@ -4068,8 +4072,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...paintBase(hornFaces(m2 * 1.6, 0.6, 3.8, m2 * 3.6, 1.7, 4.35, 0.7), "#3a3f46"));
       out.push(...ivory(hornFaces(m2 * 3.6, 1.7, 4.35, m2 * 4.8, 2.5, 1.4, 0.5)));
       /* 앞 가시갈고리 한 쌍(지적) — 몸 앞에서 앞을 향해 뻗다 끝이 갈고리처럼
-         아래로 말린다. */
-      out.push(...hornFaces(m2 * 0.6, 1.9, 3.5, m2 * 1.1, 3.4, 2.3, 0.42));
+         아래로 말린다. 머리장식 갈색(요청). */
+      out.push(...paintBase(hornFaces(m2 * 0.6, 1.9, 3.5, m2 * 1.1, 3.4, 2.3, 0.42), "#8a5f43"));
       out.push(...ivory(hornFaces(m2 * 1.1, 3.4, 2.3, m2 * 0.8, 4.1, 0.5, 0.28)));
     }
     // 꽁무니 다리 하나 더(지적) — 뒤 가운데에서 뒤로 뻗어 땅을 짚는다.
@@ -4078,13 +4082,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...ivory(hornFaces(0, -3.2, 4.5, 0, -4.6, 1.2, 0.42)));
     // 넓은 등딱지 + 등 가시들.
     out.push(...domeFaces3(0, -0.2, 2.5, 2, 3.4));
-    out.push(...hornFaces(-0.9, -0.9, 5, -1.3, -1.3, 6.2, 0.4));
-    out.push(...hornFaces(0.9, -0.9, 5, 1.3, -1.3, 6.2, 0.4));
-    out.push(...hornFaces(0, -0.2, 5.4, 0, -0.4, 6.7, 0.45));
-    out.push(...hornFaces(-0.7, 0.7, 5, -1, 1, 6, 0.38));
-    out.push(...hornFaces(0.7, 0.7, 5, 1, 1, 6, 0.38));
-    // 앞 입.
-    out.push(...domeFaces3(0, 1.7, 1, 0.75, 3.2));
+    // 등 가시들 검회색(요청).
+    out.push(...paintBase(hornFaces(-0.9, -0.9, 5, -1.3, -1.3, 6.2, 0.4), "#3a3f46"));
+    out.push(...paintBase(hornFaces(0.9, -0.9, 5, 1.3, -1.3, 6.2, 0.4), "#3a3f46"));
+    out.push(...paintBase(hornFaces(0, -0.2, 5.4, 0, -0.4, 6.7, 0.45), "#3a3f46"));
+    out.push(...paintBase(hornFaces(-0.7, 0.7, 5, -1, 1, 6, 0.38), "#3a3f46"));
+    out.push(...paintBase(hornFaces(0.7, 0.7, 5, 1, 1, 6, 0.38), "#3a3f46"));
+    // 앞 입 — 머리 갈색(요청).
+    out.push(...paintBase(domeFaces3(0, 1.7, 1, 0.75, 3.2), "#8a5f43"));
     out.push(capFace(polyPath3([[-0.5, 2.4, 3.5], [0.5, 2.4, 3.5], [0.35, 2.65, 3.3], [-0.35, 2.65, 3.3]]), 0.42));
     return out;
   },
@@ -4095,11 +4100,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const out: ShapeFace[] = [];
     // 다리 여섯 — 양쪽 3개씩, 뿌리가 다 앞몸(y 1.3~2)에 있고 앞·바깥으로 뻗는다.
     for (const m2 of [1, -1] as const) {
-      out.push(...hornFaces(m2 * 0.55, 2, 1.7, m2 * 1.1, 3.6, 0.1, 0.34));
+      // 다리 검회색(요청) — 발톱은 상아색 유지.
+      out.push(...paintBase(hornFaces(m2 * 0.55, 2, 1.7, m2 * 1.1, 3.6, 0.1, 0.34), "#3a3f46"));
       out.push(...ivory(hornFaces(m2 * 0.96, 3.2, 0.5, m2 * 1.1, 3.6, 0.1, 0.24)));
-      out.push(...hornFaces(m2 * 0.75, 1.65, 1.7, m2 * 1.9, 3.2, 0.1, 0.36));
+      out.push(...paintBase(hornFaces(m2 * 0.75, 1.65, 1.7, m2 * 1.9, 3.2, 0.1, 0.36), "#3a3f46"));
       out.push(...ivory(hornFaces(m2 * 1.61, 2.81, 0.5, m2 * 1.9, 3.2, 0.1, 0.26)));
-      out.push(...hornFaces(m2 * 0.95, 1.3, 1.7, m2 * 2.6, 2.7, 0.1, 0.38));
+      out.push(...paintBase(hornFaces(m2 * 0.95, 1.3, 1.7, m2 * 2.6, 2.7, 0.1, 0.38), "#3a3f46"));
       out.push(...ivory(hornFaces(m2 * 2.19, 2.35, 0.5, m2 * 2.6, 2.7, 0.1, 0.28)));
     }
     // 납작한 앞몸(머리·가슴) — 높이를 낮게 깐다.
