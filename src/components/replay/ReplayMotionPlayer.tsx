@@ -6138,6 +6138,14 @@ export default function ReplayMotionPlayer({
     for (const e of entWalks) {
       if (e.walk.length === 0 || t < e.walk[0][0]) continue;
       if (e.d !== null && t >= e.d) continue;
+      /* 유령 상대 제거(지적: 주변에 공격할 게 없는데 공격 모션) — 화면 규칙으로 이미
+         죽었거나(체력 0 조기 사망) 숨은(수송 탑승·건설 흡수) 개체가 목록에 남아, 곁
+         유닛이 빈 땅에 대고 계속 쐈다. 표시와 같은 잣대로 거른다. */
+      const hpZero0 = e.hp.find(([, hv0]) => hv0 <= 0)?.[0];
+      const dieAt0 = hpZero0 !== undefined && (e.d === null || hpZero0 < e.d) ? hpZero0 : e.d;
+      if (dieAt0 !== null && t >= dieAt0) continue;
+      if (e.rides.some(([ra0, rb0]) => t >= ra0 + 1 && t < rb0)) continue;
+      if (e.buildHides.some(([ba0, bb0]) => t >= ba0 && t < bb0)) continue;
       const q = posAt(e.walk, t, null);
       if (!q) continue;
       const row = {
@@ -8740,6 +8748,16 @@ export default function ReplayMotionPlayer({
             aria-label="모델 크기"
           />
         </span>
+        {/* 배속(재요청: 다른 라디오와 동등하게) — 조종부 줄에서 보기 줄로 올라왔다. */}
+        <span className="scr-motion-radio scr-motion-speeds">
+          <span className="scr-motion-radio-label">배속</span>
+          <PillTabs
+            options={SPEEDS.map((v) => ({ value: String(v), label: `×${v}` }))}
+            value={String(speed)}
+            onChange={(v) => setSpeed(SPEEDS.find((s) => String(s) === v) ?? SPEEDS[0])}
+            aria-label="배속"
+          />
+        </span>
         {/* (v1 제거·요청: 두 개가 섞여 헷갈린다) — v1/v2 토글이 있던 자리. 개체 트랙이
             없는 옛 경기만 재분석 안내를 띄운다. */}
         {loadUnitTracks && entLoad === "none" && (
@@ -8834,16 +8852,6 @@ export default function ReplayMotionPlayer({
       <div className="scr-motion-bar scr-motion-bar-controls">
         {/* 차례가 곧 그리드 칸이다(지적: 재생이 줄 가운데, 배속은 왼쪽에 필터처럼) —
             [배속 | 재생 | 시간]. 재생 버튼을 먼저 적으면 왼쪽 칸에 앉아 버린다. */}
-        {/* 배속도 같은 라이팅 알약 라디오(요청) — 위에 라벨, 작게. */}
-        <span className="scr-motion-radio scr-motion-speeds">
-          <span className="scr-motion-radio-label">배속</span>
-          <PillTabs
-            options={SPEEDS.map((v) => ({ value: String(v), label: `×${v}` }))}
-            value={String(speed)}
-            onChange={(v) => setSpeed(SPEEDS.find((s) => String(s) === v) ?? SPEEDS[0])}
-            aria-label="배속"
-          />
-        </span>
         {/* 옛 스냅 타임라인의 재생 버튼과 같은 꼴(요청) — 46px 완전 원, 속 채운 삼각형. */}
         <button
           type="button" className="scr-motion-play"
