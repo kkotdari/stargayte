@@ -113,7 +113,7 @@ export default function GameResultStory({
   const showRoster = grid === null;
   /* 맵은 읽었는데 그림만 아직 없는 경우 — 운영자가 연결해 주면 바로 재생이 붙는다(요청).
      맵 자체를 못 읽은 옛 경기(grid === null)에는 연결할 대상이 없어 안 띄운다. */
-  const needMapImage = grid != null && !grid.image;
+  // (삭제·요청) needMapImage 안내 — 맵연결 버튼·미연결 한 줄이 대신한다.
   const showMapLine = showRoster && Boolean(mapName || minutes !== null);
 
   /* 미니맵을 눌러도 카드가 접히지 않게 한다(요청) — 이 카드는 눌러서 접는 동작을 갖고
@@ -270,12 +270,8 @@ export default function GameResultStory({
           {minutes !== null && <span className="scr-game-result-trow-dur">({minutes}분)</span>}
         </div>
       )}
-      {/* 맵은 읽었는데 미니맵 그림이 아직 안 붙은 경우(요청) — 무엇이 빠졌는지, 어디서
-          채우는지를 그 자리에 적는다. 운영자가 운영 > 미니맵에서 한 번 연결하면 그
-          맵을 쓰는 옛 경기까지 한꺼번에 재생이 붙는다. */}
-      {needMapImage && (
-        <div className="scr-story-map-missing">운영메뉴에서 미니맵 이미지를 연결해주세요</div>
-      )}
+      {/* (삭제·요청) "운영메뉴에서 미니맵 이미지를 연결해주세요" 안내 — 맵 정중앙의
+          맵연결 버튼과 그 아래 미연결 한 줄이 대신 말한다. */}
       {/* 누가 올린 경기인가 — 재생 바 아래다(요청). */}
       {gameResult.createdBy && (
         <div className="scr-story-by">{gameResult.createdBy.nickname} 등록</div>

@@ -1176,8 +1176,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 파일런(정정 둘) — 고리를 수정 허리께로 더 올리고(지적), 수정은 매끈한 육각
      보석으로 다듬었다: 위 뾰족·어깨·허리·아래 뾰족이 좌우대칭. */
   diamond: () => {
-    // 고리가 바닥에 붙어 보인다(지적) — 그림자를 줄이고 고리를 공중으로 더 올린다.
-    const out: ShapeFace[] = [sideFace(discPath3(0, 0, 0, 3), 0.24)];
+    // 자체 그림자 제거(요청) — 모델에 구운 바닥 원판을 걷는다. 접지 그림자는 공용
+    // groundShadow가 맡아, 구운 판과 겹쳐 두 겹으로 보이던 것을 없앤다.
+    const out: ShapeFace[] = [];
     // 수정이 너무 높게 떴다(재지적) — 고리·수정·발톱을 한 단씩 내린다.
     const [cx, cy] = project(0, 0, 5.3);
     const rxo = 4.6;
