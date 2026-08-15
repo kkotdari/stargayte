@@ -921,11 +921,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   cube: () => [
     // 평면을 정사각에 가깝게(지적: 실물이 거의 정사각) — 발자국 눌림은 캔버스가 맡는다.
     // 다리 여섯(지적) — 앞·가운데·뒤 세 쌍.
+    // 앞뒤 세 개씩(지적) — 옆 가운데 다리를 앞뒤 가운데로 옮겼다.
     ...legAndFoot(-3.9, 3.4, 2.8),
+    ...legAndFoot(0, 4.3, 2.8),
     ...legAndFoot(3.9, 3.4, 2.8),
-    ...legAndFoot(-4.4, 0, 2.8),
-    ...legAndFoot(4.4, 0, 2.8),
     ...legAndFoot(-3.9, -3.4, 2.8),
+    ...legAndFoot(0, -4.3, 2.8),
     ...legAndFoot(3.9, -3.4, 2.8),
     ...boxFaces3(0, 0, 5.8, 6.6, 5, 2.6),
     ...boxFaces3(-3.9, 0, 2.7, 5.6, 7.4, 2.2),
