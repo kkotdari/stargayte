@@ -789,25 +789,25 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const out: ShapeFace[] = [...pod(-5.4, -4.4), ...pod(5.4, -4.4)];
     out.push(...cylinderFaces3(0, 0, 6.4, 2.4));
     out.push(capFace(discPath3(0, 0, 2.42, 5.6), 0.2));
-    // 위뚜껑은 큰 돔 — 훨씬 더 높게(재재지적: 4.4 → 6.8).
-    out.push(...domeFaces3(0, 0, 5.4, 6.8, 2.4));
+    // 위뚜껑은 큰 돔(지적: 돔 형태를 살린다). 반구 높이 증가(재지적: 구 높이 더).
+    out.push(...domeFaces3(0, 0, 5.4, 4.4, 2.4));
     /* 그릇 굴뚝·관제 모듈은 돔 위 얹힘(지적: 가려짐이 이상) — 돔의 큰 키(반지름
        몫)에 밀리지 않게 지붕 규칙 키를 준다. */
     out.push(...tagKey([
-      ...cylinderFaces3(3.4, -2.2, 1.15, 1.3, 5.6),
-      bodyFace(discPath3(3.4, -2.2, 6.95, 1.7)),
-      capFace(discPath3(3.4, -2.2, 7, 1.25), 0.5),
+      ...cylinderFaces3(3.4, -2.2, 1.15, 1.3, 4.1),
+      bodyFace(discPath3(3.4, -2.2, 5.45, 1.7)),
+      capFace(discPath3(3.4, -2.2, 5.5, 1.25), 0.5),
     ], 30));
-    // 관제 모듈 — 돔 꼭대기의 상자 + 앞면 빛 띠 + 지붕 돔. 돔이 높아진 만큼 위로.
-    out.push(...tagKey(boxFaces3(0, 0.2, 3, 2.6, 1.8, 7.6), 31));
+    // 관제 모듈 — 돔 꼭대기의 상자 + 앞면 빛 띠 + 지붕 돔.
+    out.push(...tagKey(boxFaces3(0, 0.2, 3, 2.6, 1.8, 5.5), 31));
     /* 앞면 장식(빛 띠·전개 램프)은 앞이 보일 때만(지적: 시점에 따라 기대와 다른 위치) —
        뒤로 돌린 각도에서도 그리면 몸 위로 떠올라 팔처럼 삐져나와 보였다. */
     const frontVisible = faceLight(0, 1).visible;
     if (frontVisible) {
-      out.push(capFace(polyPath3([[-1.2, 1.51, 8], [1.2, 1.51, 8], [1.2, 1.51, 8.4], [-1.2, 1.51, 8.4]]), 0.5));
-      out.push(topFace(polyPath3([[-1, 1.52, 8.05], [1, 1.52, 8.05], [1, 1.52, 8.35], [-1, 1.52, 8.35]]), 0.35));
+      out.push(capFace(polyPath3([[-1.2, 1.51, 5.9], [1.2, 1.51, 5.9], [1.2, 1.51, 6.3], [-1.2, 1.51, 6.3]]), 0.5));
+      out.push(topFace(polyPath3([[-1, 1.52, 5.95], [1, 1.52, 5.95], [1, 1.52, 6.25], [-1, 1.52, 6.25]]), 0.35));
     }
-    out.push(...tagKey(domeFaces3(0, 0.2, 1.15, 0.85, 9.4), 32));
+    out.push(...tagKey(domeFaces3(0, 0.2, 1.15, 0.85, 7.3), 32));
     if (frontVisible) {
       // 전개 램프(실물) — 선체 중턱 해치에서 앞 바닥으로. 제 깊이(지적: 가려짐 이상).
       const ramp = polyPath3([[-1.3, 6, 2.4], [1.3, 6, 2.4], [2.1, 9.6, 0], [-2.1, 9.6, 0]]);
