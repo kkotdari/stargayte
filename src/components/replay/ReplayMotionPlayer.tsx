@@ -4520,17 +4520,18 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
            판의 실제 바닥 픽셀(contentBottom)에 붙인다. 모델이 상자를 다 안 채워도
            발이 그림자에 닿는다. */
         if (op.groundShadow) {
-          const kS = bspr ? sidePx / sideQ : 1;
-          const gy = bspr
-            ? sy + hPx / 2 - (bspr.pad + sideQ) * kS + (bspr.bot / B) * kS - 1
-            : sy + hPx / 2;
           ctx.save();
           ctx.shadowColor = "transparent";
           ctx.globalAlpha = op.alpha * 0.16;
           ctx.fillStyle = "#000";
           ctx.beginPath();
-          // 발자국 면을 덮는다(재지적: 앞쪽만 납작) — 세로를 키우고 중심을 위로.
-          ctx.ellipse(sx, gy - wPx * 0.08, wPx * 0.52, Math.max(1.5, wPx * 0.16 * (op.pitch ? 0.6 : 1)), 0, 0, Math.PI * 2);
+          /* 발자국 면 전체를 발자국 '중앙'에서 덮는다(재재지적: 위아래가 작고 중심이
+             건물 중앙이 아님) — 구운 판 바닥 픽셀 기준의 납작 타원은 앞쪽에 치우친
+             띠였다. 발자국이 sy±hPx/2이므로 중심은 sy, 반지름은 발자국 절반 남짓. */
+          ctx.ellipse(
+            sx, sy, wPx * 0.55,
+            Math.max(2, hPx * 0.55 * (op.pitch ? 0.75 : 1)), 0, 0, Math.PI * 2,
+          );
           ctx.fill();
           ctx.restore();
         }
@@ -4544,9 +4545,10 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
           );
           /* 건물 체력바(요청) — 다친 건물 위에만. 유닛 바와 같은 3색. */
           if (op.hpFrac !== undefined && op.hpFrac > 0) {
-            // 건물도 최대 체력 비례(지적) — 넥서스(1500)가 성큰(300)보다 길다.
-            const bScale = Math.min(1.15, Math.max(0.35, Math.sqrt((op.hpMax ?? 800) / 1200)));
-            const bw3 = Math.max(8, wPx * 0.7 * bScale);
+            /* 건물도 최대 체력 정비례(재지적: 제곱근 압축 제거) — 넥서스(1500)가
+               성큰(300)의 다섯 배다. */
+            const bScale = Math.min(2, Math.max(0.25, (op.hpMax ?? 800) / 1000));
+            const bw3 = Math.max(6, wPx * 0.7 * bScale);
             const bh3 = Math.max(1.8, wPx * 0.05);
             const bx3 = sx - bw3 / 2;
             // 상자 위 3px — 높은 첨탑 모델과 살짝 겹칠 수 있지만 자리로는 이게 안정적이다.
@@ -4654,10 +4656,11 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
       /* 체력바(요청: 체력을 지니고 다니는 생애주기) — 다친 유닛 머리 위에 원작풍
          바: 초록(>66%)·노랑(>33%)·빨강. 성한 유닛에는 안 띄워 화면을 아낀다. */
       if (op.hpFrac !== undefined && op.hpFrac > 0) {
-        // 100% 길이 ∝ 최대 체력(지적) — 제곱근으로 눌러 울트라(400)가 마린(40)의
-        // 열 배가 아니라 세 배쯤 길게, 원작 감각에 맞춘다.
-        const hpScale = Math.min(1.25, Math.max(0.3, Math.sqrt((op.hpMax ?? 100) / 300)));
-        const bw2 = Math.max(5, px * 0.95 * hpScale);
+        /* 100% 길이 = 최대 체력에 정비례(재지적: 길이 자체가 전체 체력을 반영 — 제곱근
+           압축을 걷었다). 마린(40) 대비 울트라(400)가 정말 열 배다. 남은 칸과 색은
+           자기 최대값에 대한 비율(hpFrac) 그대로다. */
+        const hpScale = Math.min(3.2, Math.max(0.22, (op.hpMax ?? 100) / 150));
+        const bw2 = Math.max(4, px * 0.95 * hpScale);
         const bh2 = Math.max(1.6, px * 0.09);
         const bx2 = sx - bw2 / 2;
         const by2 = sy - px * 0.24 - lift - px * 0.66;
@@ -5086,7 +5089,10 @@ export default function ReplayMotionPlayer({
       if (!raw) continue;
       const spots = e.ev.filter((v) => v[3] === 2 || v[3] === 5);
       if (spots.length === 0) continue;
-      const gone = e.d ?? 0;
+      /* 체력 0 = 즉시 소멸(요청) — 건물도 체력 자취가 0에 닿으면 사망 기록(d)보다
+         앞당겨 걷는다. */
+      const hpZero = (e.hp ?? []).find(([, hv0]) => hv0 <= 0)?.[0];
+      const gone = hpZero !== undefined && (e.d === null || hpZero < e.d) ? hpZero : (e.d ?? 0);
       for (let i = 0; i < spots.length; i += 1) {
         const [sSec, x, y, f] = spots[i];
         const nextS = i + 1 < spots.length ? spots[i + 1][0] : null;
@@ -7471,7 +7477,11 @@ export default function ReplayMotionPlayer({
         {entMode && entWalks.map((e, ei) => {
           const rp = e.walk;
           if (rp.length === 0 || t < rp[0][0]) return null;
-          if (e.d !== null && t >= e.d + 1.2) return null;
+          /* 체력 0 = 즉사(요청: 체력바가 0이 되면 바로 폭발·소멸) — 사망 기록(d)이
+             늦게 오거나 없어도, 체력 자취가 0에 닿은 순간을 죽음으로 앞당긴다. */
+          const hpZero = e.hp.find(([, hv0]) => hv0 <= 0)?.[0];
+          const dieAt = hpZero !== undefined && (e.d === null || hpZero < e.d) ? hpZero : e.d;
+          if (dieAt !== null && t >= dieAt + 1.2) return null;
           const team = teamOfRaw(e.raw);
           const holdKey0 = `${e.raw}-v2e${ei}`;
           // 교전으로 멈췄던 시간만큼 걸음 시계를 미룬다(위 engageDelayRef 주석).
@@ -7619,8 +7629,8 @@ export default function ReplayMotionPlayer({
           }
           const [ax3, ay3] = [pos.x, pos.y];
           const [fx, fy] = posFrac(ax3, ay3);
-          // 죽음 창(d~d+1.2초) — 마커 대신 종족별 사망 효과가 남는다.
-          if (e.d !== null && t >= e.d) {
+          // 죽음 창(dieAt~+1.2초) — 마커 대신 종족별 사망 효과가 남는다(체력 0 즉사 포함).
+          if (dieAt !== null && t >= dieAt) {
             const dk = race === "저그" ? "zerg" : race === "프로토스" ? "toss" : "mech";
             return (
               <span
