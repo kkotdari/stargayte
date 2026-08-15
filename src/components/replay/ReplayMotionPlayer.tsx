@@ -5636,9 +5636,13 @@ const shortName = (name: string): string => {
    신호줄. 주인(master)이 t를 흘리면 따르는(slave) 쪽이 제 시계를 세운 채 받아 적는다. */
 const dualSyncBus = new Map<string, Set<(t: number) => void>>();
 
+/** 경기별 현재 재생 시각(요청: 특정 시간으로 카톡 공유) — 재생기가 제 clockKey로 지금
+ *  t를 계속 적어 두면, 공유 버튼이 링크에 &t=로 실어 보낸다. */
+export const playbackClockOf = new Map<string, number>();
+
 export default function ReplayMotionPlayer({
   grid, motion, endSec, bases, teamOfRaw, active = true, winnerTeam, side,
-  onDetailClose, loadUnitTracks, forceEnt, syncKey, syncRole,
+  onDetailClose, loadUnitTracks, forceEnt, syncKey, syncRole, initialSec, clockKey,
 }: {
   grid: ReplayMapGrid;
   motion: SummaryMotion;
@@ -5674,6 +5678,10 @@ export default function ReplayMotionPlayer({
   /** 동시 보기의 시계 묶음 이름 — 같은 이름의 master가 흘리는 t를 slave가 받아 적는다. */
   syncKey?: string;
   syncRole?: "master" | "slave";
+  /** 이 시각(초)부터 재생 시작(요청: 카톡 공유 링크의 &t=) — 경기 길이를 넘으면 무시. */
+  initialSec?: number;
+  /** 현재 재생 시각을 적어 둘 열쇠(경기번호) — 공유 링크가 &t=로 실어 보낸다. */
+  clockKey?: string;
   // (삭제·요청) caps — 자막 표시를 걷으면서 함께.
 }) {
   const total = useMemo(() => {
@@ -5685,8 +5693,16 @@ export default function ReplayMotionPlayer({
     return Math.max(60, last);
   }, [motion, endSec]);
 
-  const [t, setT] = useState(0);
+  // 공유 링크의 시작 시각(요청) — 경기 길이 안일 때만 그 시점에서 시계를 세운다.
+  const [t, setT] = useState(() =>
+    initialSec !== undefined && initialSec > 0 && initialSec < total - 1 ? initialSec : 0);
   const [playing, setPlaying] = useState(true);
+  /* 현재 재생 시각 기록(요청: 특정 시간으로 카톡 공유) — 공유 버튼이 이 값을 읽어
+     링크에 &t=로 싣는다. 사라질 땐 지워 엉뚱한 경기에 안 붙게 한다. */
+  useEffect(() => {
+    if (clockKey) playbackClockOf.set(clockKey, t);
+  }, [t, clockKey]);
+  useEffect(() => () => { if (clockKey) playbackClockOf.delete(clockKey); }, [clockKey]);
   /* 배지 색 규칙(요청) — 배경은 팀 컬러, 테두리는 개인(게임 내) 컬러, 글자는 배경과
      대비되는 흰/검이다. 역할이 고정되면서 팀색/개인색 토글은 걷었다. */
   const colorByRaw = useMemo(() => {

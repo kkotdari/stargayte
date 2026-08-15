@@ -55,6 +55,18 @@ export default function GameResultStory({
     && (me.id === "1" || me.nickname === "pk" || isAdminRole(me.roles))
     && typeof window !== "undefined" && window.innerWidth >= 900;
   const [dualOpen, setDualOpen] = useState(false);
+  /* 특정 시간 공유(요청: 카톡 링크로 열면 그 시각부터 재생) — 주소의 &t=<초>는 이
+     경기(game 파라미터가 일치할 때)에만 적용한다. 피드의 다른 카드가 같이 점프하면
+     안 되니 경기번호·id 둘 다로 맞춰 본다. 첫 마운트에 한 번만 읽는다. */
+  const initialSec = useMemo(() => {
+    const q = new URLSearchParams(window.location.search);
+    const gameParam = q.get("game");
+    if (!gameParam) return undefined;
+    if (gameParam !== gameResult.matchNo && Number(gameParam) !== gameResult.id) return undefined;
+    const v = Number(q.get("t"));
+    return Number.isFinite(v) && v > 0 ? Math.floor(v) : undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // 확대 창 왼쪽 기둥의 타임스탬프(요청: 공통 양식) — 앱 공용 시각 유틸(formatWhen)로,
   // 리플레이 실제 시작 시각(시각 포함), 없으면 경기 날짜.
   const stampText = formatWhen(gameResult.gameStartedAt ?? gameResult.date, { clock: true });
@@ -203,6 +215,10 @@ export default function GameResultStory({
       <ReplayMotionPlayer
         grid={storyMap} motion={EMPTY_MOTION} endSec={endSecVal}
         bases={bases} teamOfRaw={teamOfRaw} active={active}
+        /* 특정 시간 공유(요청) — 링크의 &t=면 그 시점부터, 공유 버튼은 clockKey로
+           지금 재생 시각을 읽어 링크에 싣는다. */
+        initialSec={initialSec}
+        clockKey={String(gameResult.matchNo || gameResult.id)}
         onDetailClose={detailClose ?? undefined}
         /* 개체 트랙 v2(요청: 별도 테이블과 비교) — 재생기의 '부대/개체' 토글이 처음
            켜질 때 한 번 내려받는다. 없는 경기(옛 등록·분석 실패)는 null이 온다. */
