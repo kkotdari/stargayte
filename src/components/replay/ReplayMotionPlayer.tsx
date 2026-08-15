@@ -1680,24 +1680,26 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const [px2, py2] = project(gx2, gy2, gz2);
       return topFace(groundEllipse(px2, py2, 0.45, 0.2), 0.45);
     };
+    /* 몸집 1.2배(지적: 스타포트와 크기가 너무 다름 — 같은 4×3 발자국인데 모델이
+       상자를 덜 채웠다) — 드럼·슬래브·발까지 비례로 키워 스타포트 링과 급을 맞춘다. */
     return [
-      ...foot(-3.6, -2.2), ...foot(3.8, -2),
+      ...foot(-4.3, -2.6), ...foot(4.6, -2.4),
       /* 밑 큰 몸통(재지적: 반원처럼 보이고 안 돎) — 드럼은 온전한 원기둥으로 두고,
          둘레에 세로 이음판 여덟을 벽 밖으로 살짝 내밀어 도는 게 보이게 한다. */
-      ...cylinderFaces3(0, 0, 4.6, 1.9, 1.3),
+      ...cylinderFaces3(0, 0, 5.5, 2.3, 1.3),
       ...Array.from({ length: 8 }, (_, i) => {
         const a = (i / 8) * Math.PI * 2 + 0.35;
-        return boxFaces3(Math.sin(a) * 4.72, Math.cos(a) * 4.72, 0.52, 0.52, 1.6, 1.35);
+        return boxFaces3(Math.sin(a) * 5.64, Math.cos(a) * 5.64, 0.62, 0.62, 1.9, 1.35);
       }).flat(),
       /* 각진 본체(재지적: 본체가 안 돎) — 원기둥·돔은 회전 대칭이라 돌아도 티가
          안 났다. 실물처럼 각진 슬래브 + 윗상자로 바꿔 요잉이 보인다. 적층끼리 순서가
          요잉에 꼬여(재재지적) 단마다 띠 키(20/22/24) + 제 깊이로 계단을 놓는다. */
-      ...tagKey(boxFaces3(0, 0, 6.4, 4.6, 2.1, 3.2), 20 + depthNow(0, 0)),
-      ...tagKey(boxFaces3(0, -0.5, 3.8, 2.9, 1.9, 5.3), 22 + depthNow(0, -0.5)),
-      ...tagKey(domeFaces3(0, -0.5, 1.5, 1.2, 7.2), 24 + depthNow(0, -0.5)),
-      ...tagKey(cylinderFaces3(2.1, 1.6, 1, 2, 3.2), 20 + depthNow(2.1, 1.6)),
-      glow(-2.9, 2.6, 2.2), glow(-1.6, 3.3, 2.2), glow(3.3, 1.9, 2.6),
-      ...foot(-1.2, 3.5), ...foot(2.9, 3),
+      ...tagKey(boxFaces3(0, 0, 7.7, 5.5, 2.5, 3.6), 20 + depthNow(0, 0)),
+      ...tagKey(boxFaces3(0, -0.6, 4.6, 3.5, 2.3, 6.1), 22 + depthNow(0, -0.6)),
+      ...tagKey(domeFaces3(0, -0.6, 1.8, 1.45, 8.4), 24 + depthNow(0, -0.6)),
+      ...tagKey(cylinderFaces3(2.5, 1.9, 1.2, 2.4, 3.6), 20 + depthNow(2.5, 1.9)),
+      glow(-3.5, 3.1, 2.6), glow(-1.9, 4, 2.6), glow(4, 2.3, 3),
+      ...foot(-1.4, 4.2), ...foot(3.5, 3.6),
     ];
   },
   /* 포지(렌더 참고 복원) — 왼앞 아치 별채, 가운데 총알 기둥 무리, 초록 배관 다발이
@@ -1724,7 +1726,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           const pts: [number, number, number][] = [];
           for (let i = 0; i <= 10; i += 1) {
             const a = Math.PI * (i / 10);
-            pts.push([x, 0.4 - Math.cos(a) * 2.2, 1 + Math.sin(a) * 2.2]);
+            // 앞쪽으로(지적: 톱니 전체가 다 보이게) — 몸에 반쯤 가리던 것을 y +1.7.
+            pts.push([x, 2.1 - Math.cos(a) * 2.2, 1 + Math.sin(a) * 2.2]);
           }
           return pts;
         };
@@ -1736,7 +1739,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         }
         const fd = polyPath3(rightP);
         g.push(bodyFace(fd), topFace(fd, 0.14));
-        return tagKey(g, depthNow(-3.2, 0.4) + 0.5);
+        return tagKey(g, depthNow(-3.2, 2.1) + 0.5);
       })(),
       // 가운데 결정 기둥 무리 — 높이 다른 네 자루, 끝이 뾰족하게 좁아진다.
       ...tagKey(hornFaces(-1.2, 0.1, 1, -1.3, 0, 6.4, 1.05), depthNow(-1.2, 0.1) + 1),
@@ -7373,14 +7376,23 @@ export default function ReplayMotionPlayer({
                  쪽으로 낮은 복도 판을 깐다. */
               if (ADDONS.has(unit)) {
                 const mkA = pitchK(centerY);
-                /* 통로 모델로 교체(재재지적: 판때기 디자인) — fillRect 사각 대신
-                   addonlink 빌더(낮은 관 + 접합 칼라)를 굽는다. 요잉은 안 태운다
-                   (연결선은 발자국 축 정렬이 맞다). */
-                const [lfx, lfy] = posFrac(centerX - fp2[0] / 2 - 1.2, centerY + fp2[1] * 0.1);
+                /* 본체를 찾아 정확히 잇는다(재재재지적: 연결이 너무 구림 — 통로가 본체
+                   오른변에 안 닿고 허공에 떴다) — 같은 임자의 살아 있는 비-애드온 중
+                   '오른변이 애드온 왼변과 맞닿는' 건물이 부모다. 통로는 부모 오른변에서
+                   애드온 왼변까지, 양끝을 0.5타일씩 물려 이음매 없이 깐다. */
+                const par = buildsSrc.find(([ps3, pxT, pyT, pu3, pr3, pg3]) =>
+                  pr3 === raw && !ADDONS.has(pu3) && ps3 <= t
+                  && ((pg3 ?? 0) === 0 || t < (pg3 ?? 0))
+                  && Math.abs((pxT + (FOOTPRINT[pu3] ?? [4, 3])[0]) - x) <= 2
+                  && Math.abs(pyT - y) <= 4);
+                const leftEdge = par ? par[1] + (FOOTPRINT[par[3]] ?? [4, 3])[0] - 0.5 : x - 1.7;
+                const rightEdge = x + 0.5;
+                const linkW = Math.max(1.6, rightEdge - leftEdge);
+                const [lfx, lfy] = posFrac((leftEdge + rightEdge) / 2, centerY + fp2[1] * 0.1);
                 unitOps.push({
                   fx: lfx, fy: lfy, z: z - 1, kind: "addonlink", rotDeg: 0,
                   viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
-                  sizePx: 0, wFrac: (2.8 / grid.width) * mkA, hFrac: (1.4 / grid.width) * mkA,
+                  sizePx: 0, wFrac: (linkW / grid.width) * mkA, hFrac: ((linkW * 0.5) / grid.width) * mkA,
                   boxFit: "meet", fitWidth: true, color, alpha, noShadow: true,
                 });
               }
