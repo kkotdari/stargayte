@@ -5250,12 +5250,12 @@ export default function ReplayMotionPlayer({
   /* 클릭 자국 토글(요청) — 기본은 끔: 클릭이 많은 경기에서는 자국이 화면을 덮는다. */
   const [clickFx, setClickFx] = useState(true); // 기본 켬(요청)
   /* 사양 라디오(요청: 최저·저·중·고·최고 — 렌더 요소 단계별 온오프, 기본 중).
-     0 최저: 전부 끔 / 1 저: 체력바·죽음 효과 / 2 중: +그림자·전투·공사 애니·크립 /
-     3 고: +겹침 그림자 / 4 최고: +핑(전부 켬). */
+     0 최저: 접지 그림자만(재요청: 그림자는 최저부터) / 1 저: +체력바·죽음 효과 /
+     2 중: +전투·공사 애니·크립 / 3 고: +겹침 그림자 / 4 최고: +핑(전부 켬). */
   const [quality, setQuality] = useState(2);
   const qHp = quality >= 1;
   const qDeath = quality >= 1;
-  const qShadows = quality >= 2;
+  const qShadows = true;
   const qCombat = quality >= 2;
   const qBuildFx = quality >= 2;
   const qCreep = quality >= 2;
