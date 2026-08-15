@@ -2788,24 +2788,25 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 사이언스 베슬(정정) — 구 몸통 아래에 구형 추진기 세 개가 달린다. */
   vessel: () => {
     // 몸통은 구(지적: 무덤이 아니라 구형) — 공 + 오른 그늘 초승달 + 윗 하이라이트.
-    const [bx, by] = project(0, 0, 6.1);
+    // 1.75배 확대(지적: 사베가 작아 보임 — 상자의 32%만 채우고 있었다).
+    const [bx, by] = project(0, 0, 6.4);
     return [
-      ...domeFaces3(0, -1.6, 0.8, 1.4, 4.3),
-      ...domeFaces3(-1.4, 1, 0.8, 1.4, 4.3),
-      ...domeFaces3(1.4, 1, 0.8, 1.4, 4.3),
-      bodyFace(groundEllipse(bx, by, 2.55, 2.45)),
-      sideFace(`M${bx + 1} ${by - 2.2} A2.45 2.35 0 0 1 ${bx + 1} ${by + 2.2}`
-        + ` A3.6 3.4 0 0 0 ${bx + 1} ${by - 2.2} Z`, 0.16),
-      topFace(groundEllipse(bx - 0.85, by - 0.9, 1.15, 0.95), 0.28),
+      ...domeFaces3(0, -2.9, 1.4, 2.4, 3.9),
+      ...domeFaces3(-2.5, 1.8, 1.4, 2.4, 3.9),
+      ...domeFaces3(2.5, 1.8, 1.4, 2.4, 3.9),
+      bodyFace(groundEllipse(bx, by, 4.4, 4.25)),
+      sideFace(`M${bx + 1.75} ${by - 3.85} A4.3 4.1 0 0 1 ${bx + 1.75} ${by + 3.85}`
+        + ` A6.3 6 0 0 0 ${bx + 1.75} ${by - 3.85} Z`, 0.16),
+      topFace(groundEllipse(bx - 1.5, by - 1.6, 2, 1.7), 0.28),
       /* 앞 검은 점 제거(지적: 정체불명) → 대신 네모 창 넉 장을 가로로 나란히(요청).
          앞면 벽 데칼이라 요잉을 따라 돌고, 앞이 보일 때만 서서히 나타난다. */
       ...(facingRatio(0, 1) > 0.05 ? ((): ShapeFace[] => {
         const k = Math.min(1, (facingRatio(0, 1) - 0.05) / 0.4);
         const win: ShapeFace[] = [];
-        for (const wx of [-1.35, -0.45, 0.45, 1.35]) {
+        for (const wx of [-2.4, -0.8, 0.8, 2.4]) {
           win.push(capFace(polyPath3([
-            [wx - 0.26, 1.9, 5.85], [wx + 0.26, 1.9, 5.85],
-            [wx + 0.26, 1.9, 6.4], [wx - 0.26, 1.9, 6.4],
+            [wx - 0.45, 3.3, 5.5], [wx + 0.45, 3.3, 5.5],
+            [wx + 0.45, 3.3, 6.5], [wx - 0.45, 3.3, 6.5],
           ]), 0.32 * k));
         }
         return win;
