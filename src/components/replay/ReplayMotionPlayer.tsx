@@ -8328,10 +8328,12 @@ export default function ReplayMotionPlayer({
           </span>
         )}
         {/* 클릭 자국 토글(요청) — v2 데이터로 그리므로 v2가 켜져 있을 때만 선다. */}
+        {/* 클릭·맵연결(요청: 라디오와 높이 맞춘 둥근네모 라이팅 버튼) — 알약 라디오
+            곁이라 같은 24px, 켬 상태는 라이팅 알약 채움이다. */}
         {entOn && (
           <button
             type="button"
-            className={cx("scr-motion-btn", "scr-motion-rbtn", clickFx && "scr-motion-speed-on")}
+            className={cx("scr-motion-litbtn", clickFx && "scr-motion-litbtn-on")}
             onClick={() => setClickFx((v) => !v)}
           >
             클릭
@@ -8340,7 +8342,7 @@ export default function ReplayMotionPlayer({
         {/* 맵연결(요청) — 저장된 미니맵 목록에서 골라 이 경기의 맵에 연결한다. */}
         <button
           type="button"
-          className="scr-motion-btn scr-motion-rbtn scr-motion-maplink"
+          className="scr-motion-litbtn scr-motion-maplink"
           onClick={() => setLinkOpen(true)}
         >
           맵연결
