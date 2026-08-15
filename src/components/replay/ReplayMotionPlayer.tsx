@@ -3573,7 +3573,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        상자의 16%만 채우고 있었다. 다리 얇음·가파름 비율은 유지. */
     // 꼬리 두 가닥은 안테나처럼 얇게(지적).
     for (const ang of [168, 192]) out.push(...wing(ang, 1.6, 2.4, 0.16, 0.06, 6.2, 5.2));
-    for (const ang of [138, 222]) out.push(...wing(ang, 1.6, 2.5, 0.55, 0.22, 6.1, 2.2));
+    // 긴 뒷다리 한 쌍은 길이·두께 2/3(지적).
+    for (const ang of [138, 222]) out.push(...wing(ang, 1.6, 1.67, 0.37, 0.15, 6.1, 3.5));
     /* 몸통·눈도 모델 공간(수리: 화면 공간이라 돌아도 고정돼 있었다 — 지적) — 팔각도
        눈도 요잉을 따라 함께 돈다. */
     const oct = (r: number, z: number): string => polyPath3(
