@@ -3289,8 +3289,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       );
     };
     // 뒤 위 날개 한 쌍 + 뒤 아래로 처지는 날개 한 쌍(옆다리는 제거 — 지적).
-    for (const ang of [168, 192]) out.push(...wing(ang, 1, 1.9, 0.5, 0.22, 4.6, 3.8));
-    for (const ang of [138, 222]) out.push(...wing(ang, 1, 2.2, 0.55, 0.25, 4.5, 2.4));
+    // 몸을 높이고(지적: 땅에서 좀 더 높게 +0.8) 뒷다리는 더 가파르게 떨어뜨린다.
+    for (const ang of [168, 192]) out.push(...wing(ang, 1, 1.9, 0.5, 0.22, 5.4, 4.5));
+    for (const ang of [138, 222]) out.push(...wing(ang, 1, 2.2, 0.55, 0.25, 5.3, 1.7));
     /* 몸통·눈도 모델 공간(수리: 화면 공간이라 돌아도 고정돼 있었다 — 지적) — 팔각도
        눈도 요잉을 따라 함께 돈다. */
     const oct = (r: number, z: number): string => polyPath3(
@@ -3300,27 +3301,27 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       }),
     );
     // 몸통 축소(지적: 몸체 크기 축소) — 팔각 반지름 2 → 1.6, 겹층도 함께.
-    out.push(bodyFace(oct(1.6, 4.6)));
-    out.push(topFace(oct(1.08, 4.85), 0.26));
-    out.push(topFace(oct(0.64, 5.1), 0.3));
+    out.push(bodyFace(oct(1.6, 5.4)));
+    out.push(topFace(oct(1.08, 5.65), 0.26));
+    out.push(topFace(oct(0.64, 5.9), 0.3));
     /* 눈 두 개(재지적: 몸통에 수직으로 붙여 정면을 보게 + 더 작게) — 바닥에 눕던
        타원을 정면 벽 데칼(wallDiscPath)로 세운다. 벽과 함께 돌고 눌리며, 뒤로 돌면
        서서히 사라진다(어시밀레이터 알과 같은 규칙). */
     const fEye = facingRatio(0, 1);
     if (fEye > -0.05) {
       const k = Math.min(1, (fEye + 0.05) / 0.4);
-      out.push(topFace(wallDiscPath(-0.55, 1.5, 4.72, 0.26, 0.16), 0.88 * k));
-      out.push(topFace(wallDiscPath(0.55, 1.5, 4.72, 0.26, 0.16), 0.88 * k));
+      out.push(topFace(wallDiscPath(-0.55, 1.5, 5.52, 0.26, 0.16), 0.88 * k));
+      out.push(topFace(wallDiscPath(0.55, 1.5, 5.52, 0.26, 0.16), 0.88 * k));
     }
     /* 옆면 둥근 포트(실물 참고) — 몸이 줄면서 가장자리 밖으로 삐져나와 떠 보였다(확인)
        — 몸 안쪽으로 당기고 더 작게. */
-    const [p1x, p1y] = project(-1, 0.5, 4.72);
-    const [p2x, p2y] = project(1, 0.5, 4.72);
+    const [p1x, p1y] = project(-1, 0.5, 5.52);
+    const [p2x, p2y] = project(1, 0.5, 5.52);
     out.push(topFace(groundEllipse(p1x, p1y, 0.22, 0.18), 0.3));
     out.push(topFace(groundEllipse(p2x, p2y, 0.22, 0.18), 0.3));
     /* 앞다리 한 쌍(재지적: 길이 축소 + 두 다리 사이 벌리기 + 몸에 더 딱) — 뿌리를
        몸 바로 밑(0.65)까지 당기고, 각도를 ±14→±30으로 벌리고, 길이는 반 남짓으로. */
-    for (const ang of [30, -30]) out.push(...wing(ang, 0.65, 0.5, 0.24, 0.12, 4.15, 3.55));
+    for (const ang of [30, -30]) out.push(...wing(ang, 0.65, 0.5, 0.24, 0.12, 4.95, 4.35));
     return out;
   },
   /* 드론(정정) — 갈퀴치마는 집게 사이가 아니라 집게팔과 꼬리 사이, 양옆에 부채처럼
