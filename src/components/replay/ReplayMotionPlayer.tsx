@@ -4526,7 +4526,11 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
           /* 바닥 '발자국'만 덮는다(정정: 칸(hPx)은 모델 높이까지 포함해, 칸 기준 타원은
              건물을 통째로 감싸는 큰 원이었다 — 내접으로 바꿔도 거의 그대로라 "적용 안
              됨"으로 보였다). 발자국 깊이 = 폭 × footRatio, 자리는 칸 바닥에 붙인다. */
-          const fdPx = wPx * (op.footRatio ?? 0.6);
+          /* 2D는 바닥이 의도적으로 눌려 있다(지적) — 원작 이동 마커와 같은 2:1 지면
+             관례라, 그림자 세로도 그만큼(0.55) 줄인다. 3D(pitch)는 사영이 이미 칸을
+             눌러 놓아 그대로다. */
+          const squish = op.pitch ? 1 : 0.55;
+          const fdPx = wPx * (op.footRatio ?? 0.6) * squish;
           ctx.save();
           ctx.shadowColor = "transparent";
           ctx.globalAlpha = op.alpha * 0.16;
@@ -7661,6 +7665,26 @@ export default function ReplayMotionPlayer({
           }
           const [ax3, ay3] = [pos.x, pos.y];
           const [fx, fy] = posFrac(ax3, ay3);
+          /* 건설 일꾼 뒷그물(재지적: 좌하단의 '진짜' 일꾼이 남는다 — 앵커 판정
+             buildHideAt을 비껴간 경우) — 조용히 서 있는 일꾼이, 제 최근 활동 무렵
+             '이후'에 선 내 건물 발자국에 붙어 있으면(회피가 모서리로 밀어낸 그 자리)
+             그 공사에 흡수된 것으로 본다. 오래전부터 서 있던 본진 곁 일꾼은 건물이
+             제 활동보다 한참 앞서라 안 걸린다. */
+          if (isWorker && !rawPos.moving) {
+            let lastAct = e.b;
+            for (const os3 of e.orders) {
+              if (os3 <= t) lastAct = os3;
+              else break;
+            }
+            const absorbed = buildsSrc.some(([bs4, bx4, by4, bu4, br4, bg4]) => {
+              if (br4 !== e.raw || bs4 > t || ((bg4 ?? 0) > 0 && t >= (bg4 ?? 0))) return false;
+              if (bs4 < lastAct - 60) return false;
+              const [fw4, fh4] = FOOTPRINT[bu4] ?? [3, 2];
+              return Math.abs(pos.x - (bx4 + fw4 / 2)) <= fw4 / 2 + 1.2
+                && Math.abs(pos.y - (by4 + fh4 / 2)) <= fh4 / 2 + 1.2;
+            });
+            if (absorbed) return null;
+          }
           // 죽음 창(dieAt~+1.2초) — 마커 대신 종족별 사망 효과가 남는다(체력 0 즉사 포함).
           if (dieAt !== null && t >= dieAt) {
             const dk = race === "저그" ? "zerg" : race === "프로토스" ? "toss" : "mech";
