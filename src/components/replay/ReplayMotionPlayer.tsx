@@ -2815,39 +2815,32 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     for (const ang of [30, 150, 270]) {
       const a2 = (ang * Math.PI) / 180;
       out.push(...tagKey(
-        domeFaces3(Math.sin(a2) * 3.7, Math.cos(a2) * 3.7, 1.4, 2.4, 3.9),
-        depthNow(Math.sin(a2) * 3.7, Math.cos(a2) * 3.7),
+        domeFaces3(Math.sin(a2) * 3.2, Math.cos(a2) * 3.2, 1.3, 2.2, 3.9),
+        depthNow(Math.sin(a2) * 3.2, Math.cos(a2) * 3.2),
       ));
     }
-    // 구 몸통 — 살짝 축소(4.4 → 3.3) + 그늘 초승달 + 하이라이트. 가운데 깊이 0.
+    // 구 몸통 — 한 단 더 축소(3.3 → 2.7, 재지적) + 그늘 초승달 + 하이라이트.
     out.push(...tagKey([
-      bodyFace(groundEllipse(bx, by, 3.3, 3.15)),
-      sideFace(`M${bx + 1.3} ${by - 2.85} A3.2 3.05 0 0 1 ${bx + 1.3} ${by + 2.85}`
-        + ` A4.7 4.5 0 0 0 ${bx + 1.3} ${by - 2.85} Z`, 0.16),
-      topFace(groundEllipse(bx - 1.1, by - 1.2, 1.5, 1.25), 0.28),
+      bodyFace(groundEllipse(bx, by, 2.7, 2.58)),
+      sideFace(`M${bx + 1.05} ${by - 2.3} A2.6 2.5 0 0 1 ${bx + 1.05} ${by + 2.3}`
+        + ` A3.8 3.7 0 0 0 ${bx + 1.05} ${by - 2.3} Z`, 0.16),
+      topFace(groundEllipse(bx - 0.9, by - 1, 1.2, 1), 0.28),
     ], 0));
     // 껍질 방패 셋(90·210·330도) — 은색 렌즈꼴 판이 구를 옆에서 감싼다.
+    /* 방패는 아래위로 긴 판(재지적) — 세로로 길고 폭도 도톰한 은색 타원 판이 구 옆을
+       세워 감싼다. */
     for (const ang of [90, 210, 330]) {
       const a2 = (ang * Math.PI) / 180;
-      const mx = Math.sin(a2) * 3.9;
-      const my = Math.cos(a2) * 3.9;
+      const mx = Math.sin(a2) * 3.3;
+      const my = Math.cos(a2) * 3.3;
       const [ax, ay] = project(mx, my, 6.4);
       const vx = ax - bx;
       const vy = ay - by;
       const L = Math.hypot(vx, vy) || 1;
-      const nx = -vy / L;
-      const ny = vx / L;
-      const p1x = ax + nx * 2.7;
-      const p1y = ay + ny * 2.7;
-      const p2x = ax - nx * 2.7;
-      const p2y = ay - ny * 2.7;
-      const oX = ax + (vx / L) * 1.25;
-      const oY = ay + (vy / L) * 1.25;
-      const iX = ax + (vx / L) * 0.1;
-      const iY = ay + (vy / L) * 0.1;
       out.push(...tagKey([
-        [`M${p1x} ${p1y} Q${oX} ${oY} ${p2x} ${p2y} Q${iX} ${iY} ${p1x} ${p1y} Z`, 1, "#c9ced6"] as ShapeFace,
-        sideFace(`M${ax} ${ay} Q${oX} ${oY} ${p2x} ${p2y} Q${(ax + p2x) / 2} ${(ay + p2y) / 2} ${ax} ${ay} Z`, 0.2),
+        [groundEllipse(ax, ay, 1.05, 3.1), 1, "#c9ced6"] as ShapeFace,
+        sideFace(groundEllipse(ax + (vx / L) * 0.4, ay + (vy / L) * 0.4, 0.62, 2.75), 0.2),
+        topFace(groundEllipse(ax - (vx / L) * 0.35, ay - (vy / L) * 0.35 - 0.6, 0.4, 1.6), 0.28),
       ], depthNow(mx, my)));
     }
     return zsorted(out);
