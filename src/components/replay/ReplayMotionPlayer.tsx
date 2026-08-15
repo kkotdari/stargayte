@@ -5907,9 +5907,12 @@ export default function ReplayMotionPlayer({
      상세 화면 안 인라인 기본이 됐다(요청: 댓글부를 미니맵 우측으로 — 기존 확대창 방식).
      상세(onDetailClose가 온 자리) + PC 폭에서만 선다. 모바일 확대 버튼도 함께 걷었다 —
      상세가 이미 전체 화면이다. */
-  const [wide] = useState<boolean>(() => Boolean(onDetailClose)
-    && typeof window !== "undefined"
-    && !!window.matchMedia?.("(min-width: 1160px)").matches);
+  /* PC 판정 문턱 1160 → 900px(지적: 댓글부가 오른쪽으로 안 옮겨짐 — 창이 1160보다
+     좁으면 넓은 배치가 아예 안 켜졌다. 좌우가 남는 화면이면 충분하다). 상세 여부
+     (onDetailClose)는 파생으로 두어 늦게 와도 따라간다. */
+  const [isPc] = useState<boolean>(() => typeof window !== "undefined"
+    && !!window.matchMedia?.("(min-width: 900px)").matches);
+  const wide = Boolean(onDetailClose) && isPc;
   useEffect(() => {
     if (!wide) return undefined;
     // Esc = 닫기 버튼과 같은 길 — 상세를 닫는다.
