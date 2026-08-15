@@ -5642,7 +5642,7 @@ export const playbackClockOf = new Map<string, number>();
 
 export default function ReplayMotionPlayer({
   grid, motion, endSec, bases, teamOfRaw, active = true, winnerTeam, side,
-  onDetailClose, loadUnitTracks, forceEnt, syncKey, syncRole, initialSec, clockKey,
+  onDetailClose, loadUnitTracks, forceEnt, syncKey, syncRole, initialSec, clockKey, shareNode,
 }: {
   grid: ReplayMapGrid;
   motion: SummaryMotion;
@@ -5682,6 +5682,8 @@ export default function ReplayMotionPlayer({
   initialSec?: number;
   /** 현재 재생 시각을 적어 둘 열쇠(경기번호) — 공유 링크가 &t=로 실어 보낸다. */
   clockKey?: string;
+  /** 진행바 아래 공유 버튼(요청: 케밥은 그대로, 별도 버튼) — 시계 옆에 앉는다. */
+  shareNode?: React.ReactNode;
   // (삭제·요청) caps — 자막 표시를 걷으면서 함께.
 }) {
   const total = useMemo(() => {
@@ -9510,7 +9512,12 @@ export default function ReplayMotionPlayer({
               ? <RotateCcw size={26} />
               : <Play size={26} fill="currentColor" />}
         </button>
-        <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
+        {/* 진행바 아래 별도 공유(요청: 케밥은 그대로) — 시계 옆 카카오 아이콘. 지금
+            재생 시각이 링크에 &t=로 실려, 받은 쪽은 이 장면부터 본다. */}
+        <span className="scr-motion-clockwrap">
+          {shareNode}
+          <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
+        </span>
       </div>
       {/* (삭제·지적: PC 타임스탬프 중복) — 기둥의 타임스탬프·등록자는 걷었다. 시각은
           맵 이름 줄(.scr-story-when)이 말하고 등록자는 그 오른쪽에 붙는다(GameResultStory). */}

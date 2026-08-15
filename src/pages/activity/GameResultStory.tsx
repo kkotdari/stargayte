@@ -6,6 +6,8 @@ import { formatWhen } from "../../utils/date";
 import ReplayMotionPlayer, { type MotionBase, type SummaryMotion } from "../../components/replay/ReplayMotionPlayer";
 import { api } from "../../api/client";
 import ActivityComments from "./ActivityComments";
+import KakaoShareButton from "../../components/common/KakaoShareButton";
+import { gameResultShareContent } from "./gameShare";
 import RosterSide, { outcomeFor, resolveSlotName } from "./GameResultSides";
 import Avatar from "../../components/common/Avatar";
 import { GameDetailCloseContext } from "./gameDetailClose";
@@ -219,6 +221,14 @@ export default function GameResultStory({
            지금 재생 시각을 읽어 링크에 싣는다. */
         initialSec={initialSec}
         clockKey={String(gameResult.matchNo || gameResult.id)}
+        /* 진행바 아래 별도 공유 버튼(요청: 케밥은 그대로) — 지금 재생 시각이 링크에
+           실려, 받은 쪽은 이 장면부터 본다. */
+        shareNode={(
+          <KakaoShareButton
+            variant="icon"
+            content={() => gameResultShareContent(gameResult, memberOf)}
+          />
+        )}
         onDetailClose={detailClose ?? undefined}
         /* 개체 트랙 v2(요청: 별도 테이블과 비교) — 재생기의 '부대/개체' 토글이 처음
            켜질 때 한 번 내려받는다. 없는 경기(옛 등록·분석 실패)는 null이 온다. */

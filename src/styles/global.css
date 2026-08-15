@@ -11229,6 +11229,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   .scr-motion-play:hover { color: var(--text); background: var(--lit-hover-bg); box-shadow: var(--lit-hover-glow); }
 }
 .scr-motion-bar-controls .scr-motion-clock { justify-self: end; }
+/* 시계 옆 공유(요청: 진행바 아래 별도 버튼) — 오른쪽 칸에 [공유 | 시계]로 나란히. */
+.scr-motion-clockwrap {
+  justify-self: end; display: inline-flex; align-items: center; gap: 10px;
+}
+.scr-motion-clockwrap .scr-kakao-icon-btn { color: var(--muted); }
 .scr-motion-btn {
   min-width: 28px; height: 22px; padding: 0 6px; border-radius: var(--radius-sm);
   border: 1px solid var(--line-hair); background: transparent; color: var(--muted);
