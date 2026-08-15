@@ -4348,10 +4348,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 옆구리 밝은 홈 한 쌍.
     out.push(topFace(groundEllipse(...project(-2.3, -0.3, 3.9), 0.4, 0.55), 0.4));
     out.push(topFace(groundEllipse(...project(2.3, -0.3, 3.9), 0.4, 0.55), 0.4));
-    // 등 뒤 엔진 짐 — 껍데기 위 뒤쪽에 얹힌 세 덩이(몸을 따라 축소).
-    out.push(...domeFaces3(-1.2, -2.1, 0.95, 0.8, 4.2));
-    out.push(...domeFaces3(1.2, -2.1, 0.95, 0.8, 4.2));
-    out.push(...domeFaces3(0, -2.5, 0.8, 0.7, 4.3));
+    // 등 뒤 엔진 짐 — 하나만 남기고 밝은 사이언색(요청).
+    out.push(...paintBase(domeFaces3(0, -2.3, 0.95, 0.8, 4.2), "#a9ecf2"));
     // 아가리 어두운 속은 제거(지적: 앞 검정 반투명 부품) — 빛 줄만 남긴다.
     out.push(topFace(`M${pt(-1.6, 1.1, 3.9)} Q${pt(0, 2, 3.9)} ${pt(1.6, 1.1, 3.9)} L${pt(1.4, 1.5, 3.9)} Q${pt(0, 2.4, 3.9)} ${pt(-1.4, 1.5, 3.9)} Z`, 0.5));
     /* 집게(정정 셋: 더 두껍게 + 약간 아래로 기울이기 + 뾰족·사이 벌림 유지) — 바깥
