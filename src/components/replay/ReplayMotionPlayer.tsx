@@ -2672,7 +2672,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...paintBase(boxFaces3(0, -4.3, 0.9, 1, 0.28), "#c9ced6"), // 고정 발 은색(요청)
       // 차체는 탱크 모드와 똑같이(지적: 시즈·보통 모드의 몸통이 달라) — 같은 상자.
       ...paintBase(boxFaces3(0, -0.2, 3.9, 5.6, 1.3, 1.2), "#c9ced6"), // 차체 은색(요청: 포탑만 개인색)
-      ...frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.5),
+      // 포탑 받침은 붙박이 큰 키(지적: 맨위 개인색이 포신에 가려짐).
+      ...tagKey(frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.5), 40),
       /* 포신 입체 벽 두르기(재지적: 캐리어처럼) — 오른벽 하나만 박혀 있던 것을 윗판·
          밑판 + 좌우 옆벽(faceLight 판정) + 포구 단면(앞이 보일 때만)으로 닫는다. */
       [barrelTop, 1, GUNMETAL] as ShapeFace,
@@ -2714,7 +2715,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   tanksiegegun: () => {
     const barrelTop = polyPath3([[-0.7, 0.7, 4], [0.7, 0.7, 4], [0.7, 2.9, 6.9], [-0.7, 2.9, 6.9]]);
     return [
-      ...frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.5),
+      // 포탑 받침은 붙박이 큰 키(지적: 맨위 개인색이 포신에 가려짐).
+      ...tagKey(frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.5), 40),
       [barrelTop, 1, GUNMETAL] as ShapeFace,
       topFace(barrelTop, 0.18),
       [polyPath3([[-0.7, 0.7, 3.6], [0.7, 0.7, 3.6], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]), 1, GUNMETAL] as ShapeFace,
@@ -2741,10 +2743,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const nose = polyPath3([[-1, -0.3, 4.35], [1, -0.3, 4.35], [0.4, 4.8, 3.55], [-0.05, 4.9, 3.55]]);
     return [
       topFace(groundEllipse(gx, gy, 2, 0.85), 0.22),
-      ...tubeFaces(-0.5, -2.9, -0.5, -1.3, 0.55, 4.6),
-      ...tubeFaces(0.6, -3, 0.6, -1.4, 0.5, 4.2),
-      bodyFace(polyPath3([[1.1, -0.2, 4.4], [0.9, -2.4, 4.5], [-0.9, -2.4, 4.5], [-1.1, -0.2, 4.4]])),
-      ...domeFaces3(0, -1, 0.85, 0.85, 4.6),
+      // 앞코만 개인색, 나머지 은색(요청) — 조종석 유리는 유리색.
+      ...paintBase(tubeFaces(-0.5, -2.9, -0.5, -1.3, 0.55, 4.6), "#c9ced6"),
+      ...paintBase(tubeFaces(0.6, -3, 0.6, -1.4, 0.5, 4.2), "#c9ced6"),
+      [polyPath3([[1.1, -0.2, 4.4], [0.9, -2.4, 4.5], [-0.9, -2.4, 4.5], [-1.1, -0.2, 4.4]]), 1, "#c9ced6"] as ShapeFace,
+      ...paintBase(domeFaces3(0, -1, 0.85, 0.85, 4.6), "#bfe0ef"),
       bodyFace(nose),
       topFace(nose, 0.18),
       sideFace(polyPath3([[1, -0.3, 4.35], [0.4, 4.8, 3.55], [0.35, 4.75, 3.2], [0.95, -0.3, 3.9]]), 0.2),
@@ -3169,10 +3172,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       return faces;
     };
     return [
-      // 중앙 장식(가운데 꽃잎)만 개인색, 옆 꽃잎은 금색(요청).
+      // 세 잎 다 금색(재지적) — 잎마다 겉 가운데에 개인색을 은은히 얹는다.
       ...paintBase(lens(-1.3, -1, 5.1, 1.05, 3.9, "L"), "#d4af37"),
+      [petal(-1.3, -1, 5.62, 0.55, 1.95), 0.4] as ShapeFace,
       ...paintBase(lens(1.3, 1, 5.1, 1.05, 3.9, "R"), "#d4af37"),
-      ...lens(0, 0, 6.5, 1.05, 4.1, "T"),
+      [petal(1.3, 1, 5.62, 0.55, 1.95), 0.4] as ShapeFace,
+      ...paintBase(lens(0, 0, 6.5, 1.05, 4.1, "T"), "#d4af37"),
+      [petal(0, 0, 7.02, 0.55, 2.05), 0.4] as ShapeFace,
     ];
   },
   /* 아비터(재정정: 날개는 지면과 수직으로 몸에 붙고, 특히 앞쪽에 두께감) — 수평으로
@@ -3481,12 +3487,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       [[0, 2.6, z], [-2.3, -1.5, z], [2.3, -1.5, z]];
     const lo = pts(0);
     const hi = pts(0.8);
-    const faces: ShapeFace[] = [bodyFace(polyPath3(lo))];
+    // 은색 몸 + 윗판 개인색 동그라미(요청).
+    const faces: ShapeFace[] = [[polyPath3(lo), 1, "#c9ced6"] as ShapeFace];
     for (let i = 0; i < 3; i += 1) {
       const j = (i + 1) % 3;
-      faces.push(bodyFace(polyPath3([lo[i], lo[j], hi[j], hi[i]])));
+      faces.push([polyPath3([lo[i], lo[j], hi[j], hi[i]]), 1, "#c9ced6"] as ShapeFace);
     }
-    faces.push(bodyFace(polyPath3(hi)), topFace(polyPath3(hi), 0.18));
+    faces.push([polyPath3(hi), 1, "#c9ced6"] as ShapeFace, topFace(polyPath3(hi), 0.18));
+    faces.push(bodyFace(groundEllipse(...project(0, -0.1, 0.82), 0.72, 0.5)));
     return faces;
   },
   /* 애드온 연결 통로(재지적: 판때기 디자인 교체) — 넓은 납작 사각 대신 제대로 된
@@ -3581,9 +3589,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 1.6배 확대 + 더 높이 부양(지적: 프로브가 너무 작고 땅에 붙어 있음) — 몸통이
        상자의 16%만 채우고 있었다. 다리 얇음·가파름 비율은 유지. */
     // 꼬리 두 가닥은 안테나처럼 얇게(지적).
-    for (const ang of [168, 192]) out.push(...wing(ang, 1.6, 2.4, 0.16, 0.06, 6.2, 5.2));
+    // 등딱지(몸통 원판)만 개인색, 날개·다리 금색(요청).
+    for (const ang of [168, 192]) out.push(...paintBase(wing(ang, 1.6, 2.4, 0.16, 0.06, 6.2, 5.2), "#d4af37"));
     // 긴 뒷다리 한 쌍은 길이·두께 2/3(지적).
-    for (const ang of [138, 222]) out.push(...wing(ang, 1.6, 1.67, 0.37, 0.15, 6.1, 3.5));
+    for (const ang of [138, 222]) out.push(...paintBase(wing(ang, 1.6, 1.67, 0.37, 0.15, 6.1, 3.5), "#d4af37"));
     /* 몸통·눈도 모델 공간(수리: 화면 공간이라 돌아도 고정돼 있었다 — 지적) — 팔각도
        눈도 요잉을 따라 함께 돈다. */
     const oct = (r: number, z: number): string => polyPath3(
@@ -3618,7 +3627,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(topFace(groundEllipse(p2x, p2y, 0.28, 0.22), 0.3));
     /* 앞다리 한 쌍(재지적: 길이 축소 + 두 다리 사이 벌리기 + 몸에 더 딱) — 뿌리를
        몸 바로 밑(0.65)까지 당기고, 각도를 ±14→±30으로 벌리고, 길이는 반 남짓으로. */
-    for (const ang of [30, -30]) out.push(...wing(ang, 1.05, 0.8, 0.27, 0.13, 5.7, 5));
+    for (const ang of [30, -30]) out.push(...paintBase(wing(ang, 1.05, 0.8, 0.27, 0.13, 5.7, 5), "#d4af37"));
     return out;
   },
   /* 드론(정정) — 갈퀴치마는 집게 사이가 아니라 집게팔과 꼬리 사이, 양옆에 부채처럼
@@ -3652,28 +3661,32 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [fx2, fy2] = project(0, 0.5, 4.55);
     const apron = polyPath3([[-0.5, 1.05, 2.9], [0.5, 1.05, 2.9], [0.35, 1.2, 0.9], [-0.35, 1.2, 0.9]]);
     return [
-      // 다리를 또렷하게(지적: 다리가 없어 헷갈림) — 벌린 두 기둥 + 둥근 발.
-      ...cylinderFaces3(-0.62, 0, 0.4, 2.3, 0.1),
-      ...cylinderFaces3(0.62, 0, 0.4, 2.3, 0.1),
-      ...domeFaces3(-0.62, 0.25, 0.5, 0.35, 0.05),
-      ...domeFaces3(0.62, 0.25, 0.5, 0.35, 0.05),
-      ...cylinderFaces3(0, -0.2, 1.25, 1.9, 2.3),
-      ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
-      ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
-      // 헬멧 더 반구형(지적) + 바이저 흰 반투명(지적).
-      ...domeFaces3(0, -0.2, 0.85, 0.8, 4.2),
+      // 앞 가림치마만 개인색, 나머지 흰회색(요청).
+      ...paintBase([
+        ...cylinderFaces3(-0.62, 0, 0.4, 2.3, 0.1),
+        ...cylinderFaces3(0.62, 0, 0.4, 2.3, 0.1),
+        ...domeFaces3(-0.62, 0.25, 0.5, 0.35, 0.05),
+        ...domeFaces3(0.62, 0.25, 0.5, 0.35, 0.05),
+        ...cylinderFaces3(0, -0.2, 1.25, 1.9, 2.3),
+        ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
+        ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
+        // 헬멧 더 반구형(지적).
+        ...domeFaces3(0, -0.2, 0.85, 0.8, 4.2),
+      ], "#dfe3e6"),
       [groundEllipse(fx2, fy2, 0.42, 0.36), 0.55, "#ffffff"] as ShapeFace,
       bodyFace(apron),
       topFace(apron, 0.3),
       /* 두 팔(재지적: 위치·굽힘) — 위팔은 어깨뽕 아래(z 3.7)에서 나와 내려가고,
          팔꿈치에서 굽는다. 왼팔은 앞으로, 오른팔은 주사기 뿌리로. */
-      ...hornFaces(-1.45, 0.1, 3.7, -1.2, 0.75, 2.8, 0.45),
-      ...hornFaces(-1.2, 0.75, 2.8, -0.85, 1.4, 3.1, 0.4),
-      ...hornFaces(1.5, 0.1, 3.7, 1.3, 0.55, 2.85, 0.45),
-      ...hornFaces(1.3, 0.55, 2.85, 1.35, 1.05, 3.1, 0.4),
-      // 오른팔 주사기.
-      ...tubeFaces(1.35, 0.3, 1.35, 1.4, 0.3, 3),
-      ...hornFaces(1.35, 1.4, 3.1, 1.35, 2.2, 3, 0.16),
+      ...paintBase([
+        ...hornFaces(-1.45, 0.1, 3.7, -1.2, 0.75, 2.8, 0.45),
+        ...hornFaces(-1.2, 0.75, 2.8, -0.85, 1.4, 3.1, 0.4),
+        ...hornFaces(1.5, 0.1, 3.7, 1.3, 0.55, 2.85, 0.45),
+        ...hornFaces(1.3, 0.55, 2.85, 1.35, 1.05, 3.1, 0.4),
+        // 오른팔 주사기.
+        ...tubeFaces(1.35, 0.3, 1.35, 1.4, 0.3, 3),
+        ...hornFaces(1.35, 1.4, 3.1, 1.35, 2.2, 3, 0.16),
+      ], "#dfe3e6"),
     ];
   },
   /* 마린(실물 참고) — 큰 어깨 뽕 한 쌍의 파워드 아머, 금빛 바이저 머리, 가슴 앞에
@@ -4176,9 +4189,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         }
         return pts;
       };
+      /* 렌즈는 양쪽 보라 하나씩만(재지적: 반경 분리로 겹렌즈처럼 보였다) — 거의
+         한 중심으로 되돌리고, 속을 어두운 보라로 눌러 볼록이 아니라 오목하게 뒤집는다. */
       return tagKey([
-        [polyPath3(ring(1.55, 0.95, 2.62)), 0.92, "#7d55b4"] as ShapeFace,
-        [polyPath3(ring(1.05, 0.6, 2.35)), 0.85, "#a97fe0"] as ShapeFace,
+        [polyPath3(ring(1.55, 0.95, 2.56)), 0.92, "#7d55b4"] as ShapeFace,
+        [polyPath3(ring(0.92, 0.52, 2.48)), 0.5, "#41295e"] as ShapeFace,
       ], depthNow(cxL, cyL));
     };
     /* 얼굴(재지적: 얼굴은 앞쪽 아래쪽에 작은 반구형으로) — 몸 앞아래 표면에 붙는
