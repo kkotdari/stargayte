@@ -2437,11 +2437,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 레어 — 해처리 + 다리 끝 굽은 뿔 셋. */
   lair: () => [
     // 뿔은 동굴 입구 하나 건너 하나(지적) — 다리 각 -170·-40·80의 입구에서 솟는다.
-    // 뒤 입구(-170) 뿔은 둔덕이 가리도록 먼저(지적: 비쳐 보였다).
-    ...hornFaces(-1.15, -6.5, 0.9, -1.4, -7.7, 9, 1.5),
+    // 뒤 입구(-170) 뿔은 둔덕이 가리도록 먼저(지적: 비쳐 보였다). 뿔은 검회색(요청).
+    ...paintBase(hornFaces(-1.15, -6.5, 0.9, -1.4, -7.7, 9, 1.5), "#4a4e55"),
     ...SHAPE_BUILDERS.hatchery(),
-    ...hornFaces(-4.25, 5.05, 0.9, -5, 6, 10.4, 1.7),
-    ...hornFaces(6.5, 1.15, 1, 7.7, 1.4, 11, 1.9),
+    ...paintBase(hornFaces(-4.25, 5.05, 0.9, -5, 6, 10.4, 1.7), "#4a4e55"),
+    ...paintBase(hornFaces(6.5, 1.15, 1, 7.7, 1.4, 11, 1.9), "#4a4e55"),
   ],
   /* 하이브 — 더 길고 굵은 뿔 셋(뿔 등에 가시들, 요청) + 앞 컬. */
   hive: () => {
@@ -2457,7 +2457,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     for (const [bx, by, bz, tx, ty, tz, w] of horns) {
       if (hi === 1) out.push(...SHAPE_BUILDERS.hatchery());
       hi += 1;
-      out.push(...hornFaces(bx, by, bz, tx, ty, tz, w));
+      // 뿔은 황토색, 가시는 상아색(요청).
+      out.push(...paintBase(hornFaces(bx, by, bz, tx, ty, tz, w), "#b3854a"));
       /* 뿔 등의 가시(요청, 정정: 안쪽을 향한다) — 뿔 길이를 따라 서너 개가 본 건물
          쪽으로 돋는다. */
       for (const t of [0.35, 0.55, 0.75]) {
@@ -2467,7 +2468,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         const olen = Math.hypot(px, py) || 1;
         const ox = (px / olen) * 1.7;
         const oy = (py / olen) * 1.7;
-        out.push(...hornFaces(px, py, pz, px - ox, py - oy, pz + 0.7, 0.65));
+        out.push(...paintBase(hornFaces(px, py, pz, px - ox, py - oy, pz + 0.7, 0.65), IVORY));
       }
     }
     out.push(...hornFaces(-2.6, 4.6, 0.6, -4.4, 6, 2.6, 1));
