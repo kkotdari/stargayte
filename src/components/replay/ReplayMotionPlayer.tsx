@@ -2789,31 +2789,51 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   },
   /* 사이언스 베슬(정정) — 구 몸통 아래에 구형 추진기 세 개가 달린다. */
   vessel: () => {
-    // 몸통은 구(지적: 무덤이 아니라 구형) — 공 + 오른 그늘 초승달 + 윗 하이라이트.
-    // 1.75배 확대(지적: 사베가 작아 보임 — 상자의 32%만 채우고 있었다).
+    /* 재설계(요청) — 창문 제거, 구는 살짝 줄이고, 구를 옆에서 감싸는 은색 껍질 방패
+       셋(120도 간격), 그 사이사이(60도 오프셋)에 추진체 돔. 방패는 모델 각도를
+       투영해 요잉을 따라 돈다. */
     const [bx, by] = project(0, 0, 6.4);
-    return [
-      ...domeFaces3(0, -2.9, 1.4, 2.4, 3.9),
-      ...domeFaces3(-2.5, 1.8, 1.4, 2.4, 3.9),
-      ...domeFaces3(2.5, 1.8, 1.4, 2.4, 3.9),
-      bodyFace(groundEllipse(bx, by, 4.4, 4.25)),
-      sideFace(`M${bx + 1.75} ${by - 3.85} A4.3 4.1 0 0 1 ${bx + 1.75} ${by + 3.85}`
-        + ` A6.3 6 0 0 0 ${bx + 1.75} ${by - 3.85} Z`, 0.16),
-      topFace(groundEllipse(bx - 1.5, by - 1.6, 2, 1.7), 0.28),
-      /* 앞 검은 점 제거(지적: 정체불명) → 대신 네모 창 넉 장을 가로로 나란히(요청).
-         앞면 벽 데칼이라 요잉을 따라 돌고, 앞이 보일 때만 서서히 나타난다. */
-      ...(facingRatio(0, 1) > 0.05 ? ((): ShapeFace[] => {
-        const k = Math.min(1, (facingRatio(0, 1) - 0.05) / 0.4);
-        const win: ShapeFace[] = [];
-        for (const wx of [-2.4, -0.8, 0.8, 2.4]) {
-          win.push(capFace(polyPath3([
-            [wx - 0.45, 3.3, 5.5], [wx + 0.45, 3.3, 5.5],
-            [wx + 0.45, 3.3, 6.5], [wx - 0.45, 3.3, 6.5],
-          ]), 0.32 * k));
-        }
-        return win;
-      })() : []),
-    ];
+    const out: ShapeFace[] = [];
+    // 추진체 — 방패 사이 자리(30·150·270도).
+    for (const ang of [30, 150, 270]) {
+      const a2 = (ang * Math.PI) / 180;
+      out.push(...tagKey(
+        domeFaces3(Math.sin(a2) * 3.7, Math.cos(a2) * 3.7, 1.4, 2.4, 3.9),
+        depthNow(Math.sin(a2) * 3.7, Math.cos(a2) * 3.7),
+      ));
+    }
+    // 구 몸통 — 살짝 축소(4.4 → 3.3) + 그늘 초승달 + 하이라이트. 가운데 깊이 0.
+    out.push(...tagKey([
+      bodyFace(groundEllipse(bx, by, 3.3, 3.15)),
+      sideFace(`M${bx + 1.3} ${by - 2.85} A3.2 3.05 0 0 1 ${bx + 1.3} ${by + 2.85}`
+        + ` A4.7 4.5 0 0 0 ${bx + 1.3} ${by - 2.85} Z`, 0.16),
+      topFace(groundEllipse(bx - 1.1, by - 1.2, 1.5, 1.25), 0.28),
+    ], 0));
+    // 껍질 방패 셋(90·210·330도) — 은색 렌즈꼴 판이 구를 옆에서 감싼다.
+    for (const ang of [90, 210, 330]) {
+      const a2 = (ang * Math.PI) / 180;
+      const mx = Math.sin(a2) * 3.9;
+      const my = Math.cos(a2) * 3.9;
+      const [ax, ay] = project(mx, my, 6.4);
+      const vx = ax - bx;
+      const vy = ay - by;
+      const L = Math.hypot(vx, vy) || 1;
+      const nx = -vy / L;
+      const ny = vx / L;
+      const p1x = ax + nx * 2.7;
+      const p1y = ay + ny * 2.7;
+      const p2x = ax - nx * 2.7;
+      const p2y = ay - ny * 2.7;
+      const oX = ax + (vx / L) * 1.25;
+      const oY = ay + (vy / L) * 1.25;
+      const iX = ax + (vx / L) * 0.1;
+      const iY = ay + (vy / L) * 0.1;
+      out.push(...tagKey([
+        [`M${p1x} ${p1y} Q${oX} ${oY} ${p2x} ${p2y} Q${iX} ${iY} ${p1x} ${p1y} Z`, 1, "#c9ced6"] as ShapeFace,
+        sideFace(`M${ax} ${ay} Q${oX} ${oY} ${p2x} ${p2y} Q${(ax + p2x) / 2} ${(ay + p2y) / 2} ${ax} ${ay} Z`, 0.2),
+      ], depthNow(mx, my)));
+    }
+    return zsorted(out);
   },
   /* 뮤탈리스크(정정) — 날개는 위에 달리고, 긴 몸통이 앞-아래로 휘어 입이 아래로 나온다. */
   muta: () => {
