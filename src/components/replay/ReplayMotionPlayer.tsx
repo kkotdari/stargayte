@@ -5916,14 +5916,23 @@ export default function ReplayMotionPlayer({
      상세 화면 안 인라인 기본이 됐다(요청: 댓글부를 미니맵 우측으로 — 기존 확대창 방식).
      상세(onDetailClose가 온 자리) + PC 폭에서만 선다. 모바일 확대 버튼도 함께 걷었다 —
      상세가 이미 전체 화면이다. */
-  /* PC 판정 문턱 1160 → 900px(지적: 댓글부가 오른쪽으로 안 옮겨짐 — 창이 1160보다
-     좁으면 넓은 배치가 아예 안 켜졌다. 좌우가 남는 화면이면 충분하다). 상세 여부
-     (onDetailClose)는 파생으로 두어 늦게 와도 따라간다. */
-  const [isPc] = useState<boolean>(() => typeof window !== "undefined"
-    && !!window.matchMedia?.("(min-width: 900px)").matches);
-  const wide = Boolean(onDetailClose) && isPc;
+  /* 넓은 배치 판정(재지적: 댓글부가 우측으로 안 감 — 원인 찾음) — 여태 "상세(onDetailClose)
+     + 창 폭"으로 묶어 뒀는데, 사용자가 보던 화면은 상세가 아니라 '활동 카드'였다. 카드
+     자리에서는 창이 아무리 넓어도 게이트가 안 열렸다. 이제 이 플레이어가 앉은 '자리의
+     실제 폭'(부모 상자, ≥860px)만 본다 — 상세든 카드든 자리가 넓으면 옛 확대창 배치
+     (맵 왼쪽 + 오른쪽 댓글 기둥)를 쓴다. 좁은 자리는 그대로 세로 배치다. 닫기(X·Esc)는
+     여전히 상세에서만이다. */
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [wide, setWide] = useState(false);
   useEffect(() => {
-    if (!wide) return undefined;
+    const host = rootRef.current?.parentElement;
+    if (!host || typeof ResizeObserver === "undefined") return undefined;
+    const ro = new ResizeObserver(() => setWide(host.clientWidth >= 860));
+    ro.observe(host);
+    return () => ro.disconnect();
+  }, []);
+  useEffect(() => {
+    if (!wide || !onDetailClose) return undefined;
     // Esc = 닫기 버튼과 같은 길 — 상세를 닫는다.
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onDetailClose?.();
@@ -5931,7 +5940,7 @@ export default function ReplayMotionPlayer({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wide]);
+  }, [wide, onDetailClose]);
 
   /* 재생이 손잡이를 민다 — 비제어라 React가 안 밀어 주므로 여기서 직접 쓴다. 잡고 있는
      동안은 안 민다(그 순간의 임자는 손이다). */
@@ -6678,7 +6687,8 @@ export default function ReplayMotionPlayer({
     <div
       // 넓은 배치 클래스(확인·요청: 옛 확대창 클래스가 아닌지) — 옛 확대창(.scr-motion-big
       // -modal/-backdrop)은 소스째 삭제됐고, 이 .scr-motion-wide가 인라인 넓은 배치의
-      // 유일한 클래스다(혼동을 없애려 -big에서 개명).
+      // 유일한 클래스다(혼동을 없애려 -big에서 개명). ref는 자리 폭 재기(wide 판정)용.
+      ref={rootRef}
       className={cx("scr-motion", wide && "scr-motion-wide")}
       // 확대 모드에선 폭 상한을 안 건다 — 모달 폭(아래 포털)이 이미 맵+양옆 세로 조작부
       // 기준으로 확정돼 있고, 여기까지 조이면 이중 제약으로 맵이 더 작아진다.
