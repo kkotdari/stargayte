@@ -3957,10 +3957,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       cx: number, cy: number, w: number, h: number, lx = 0, ly = 0,
     ): ShapeFace[] => tagKey([
       ...frustumFaces3(cx, cy, w, w * 0.85, w * 0.72, w * 0.62, h),
-      lx === 0 && ly === 0
+      ...(lx === 0 && ly === 0
         ? pyramidFaces3(cx, cy, w * 0.72, w * 0.62, w * 1.1, h)
-        : hornFaces(cx, cy, h - 0.15, cx + lx, cy + ly, h + w * 1.1, w * 0.72),
-    ].flat(), depthNow(cx, cy));
+        : hornFaces(cx, cy, h - 0.15, cx + lx, cy + ly, h + w * 1.1, w * 0.72)),
+    ], depthNow(cx, cy));
     return [
       ...pillar(-1.9, -0.9, 2.1, 3.2, -0.85, 0),
       ...pillar(-0.1, 0.7, 2.7, 5, 0, 0.9),
