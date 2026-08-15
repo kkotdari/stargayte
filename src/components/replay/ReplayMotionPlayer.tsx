@@ -1235,8 +1235,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const out: ShapeFace[] = [...((): ShapeFace[] => {
       const [bx0, by0] = project(0, 0, 0);
       const [tx0, ty0] = project(0, 0, 2.4);
-      const rB = 8.3;
-      const rT = 6.4;
+      // 받침 축소(지적: 너무 크고 상자 밖으로 잘림) — 8.3/6.4 → 6.6/5.1.
+      const rB = 6.6;
+      const rT = 5.1;
       const sqv = groundSquashNow();
       const body = `M${tx0 - rT} ${ty0} A${rT} ${rT * sqv} 0 0 1 ${tx0 + rT} ${ty0}`
         + ` L${bx0 + rB} ${by0}`
@@ -1250,22 +1251,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     })()];
     // 구덩이 격자 — 까만 바닥판 없이(지적: 같은 톤) 밝은 줄만 얹는다.
     const bars: string[] = [];
-    for (const o of [-2.8, -1, 1, 2.8]) {
-      bars.push(polyPath3([[-4.6, o + 0.12, 2.5], [4.6, o + 0.12, 2.5], [4.6, o - 0.12, 2.5], [-4.6, o - 0.12, 2.5]]));
-      bars.push(polyPath3([[o + 0.12, -4.6, 2.5], [o + 0.12, 4.6, 2.5], [o - 0.12, 4.6, 2.5], [o - 0.12, -4.6, 2.5]]));
+    for (const o of [-2.2, -0.8, 0.8, 2.2]) {
+      bars.push(polyPath3([[-3.6, o + 0.12, 2.5], [3.6, o + 0.12, 2.5], [3.6, o - 0.12, 2.5], [-3.6, o - 0.12, 2.5]]));
+      bars.push(polyPath3([[o + 0.12, -3.6, 2.5], [o + 0.12, 3.6, 2.5], [o - 0.12, 3.6, 2.5], [o - 0.12, -3.6, 2.5]]));
     }
     out.push(topFace(bars.join(" "), 0.22));
     // 도톰한 링 테두리 — 위 테를 둥근 띠로 두른다.
     const [rcx, rcy] = project(0, 0, 2.5);
-    out.push(bodyFace(`M${rcx - 6.9} ${rcy} a6.9 3.35 0 1 0 13.8 0a6.9 3.35 0 1 0 -13.8 0`
-      + ` M${rcx - 5.5} ${rcy} a5.5 2.65 0 1 1 11 0a5.5 2.65 0 1 1 -11 0`));
+    out.push(bodyFace(`M${rcx - 5.5} ${rcy} a5.5 2.67 0 1 0 11 0a5.5 2.67 0 1 0 -11 0`
+      + ` M${rcx - 4.4} ${rcy} a4.4 2.12 0 1 1 8.8 0a4.4 2.12 0 1 1 -8.8 0`));
     // 테두리 빛 눈금 — 앞쪽 띠의 밝은 조각들.
     for (const ang of [115, 80, 45, 245]) {
       const a2 = (ang * Math.PI) / 180;
-      out.push(topFace(groundEllipse(rcx + Math.cos(a2) * 6.2, rcy + Math.sin(a2) * 3, 0.55, 0.3), 0.45));
+      out.push(topFace(groundEllipse(rcx + Math.cos(a2) * 4.95, rcy + Math.sin(a2) * 2.4, 0.5, 0.27), 0.45));
     }
     // 매끈한 흰 가시 — 바깥으로 살짝 기운 원뿔 셋.
-    for (const [hx, hy, tx2, ty2] of [[-3.4, 5.2, -4.2, 6.6], [3.5, 5, 4.3, 6.3], [-6.4, -1, -7.9, -1.3]] as [number, number, number, number][]) {
+    for (const [hx, hy, tx2, ty2] of [[-2.7, 4.2, -3.4, 5.3], [2.8, 4, 3.4, 5], [-5.1, -0.8, -6.3, -1]] as [number, number, number, number][]) {
       out.push(...hornFaces(hx, hy, 1.8, tx2, ty2, 4.2, 1.05));
       /* 끝 발광은 가시가 뒤로 돌아가면 숨긴다(지적: 시점 따라 위치가 따로 놈) — 가시
          몸은 테두리에 가려지는데 발광 점만 남아 허공에 떠 보였다. */
@@ -1283,8 +1284,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 왕고치는 판 위 얹힘(재재지적: 판 격자·테가 위에 씻겨 투명해 보임) — 지붕 띠
        키로 늘 판을 이긴다. 격자무늬는 판의 격자와 같은 흰 줄(요청)로, 가로 테를 더
        촘촘히 두른다. */
-    const shell: ShapeFace[] = [...domeFaces3(KX, KY, 2.9, 9.5, 1.8)];
     const sq = groundSquashNow();
+    /* 고치 실루엣 밑판(지적: 위 고치 뒤가 비침) — 격자 고리의 도넛 구멍과 돔 면 틈으로
+       뒤 배경이 비쳐서, 몸색 꽉 찬 실루엣 한 장을 껍질 맨 뒤에 깐다. */
+    const [kbx, kby] = project(KX, KY, 1.8);
+    const [ktx, kty] = project(KX, KY, 11.3);
+    const shell: ShapeFace[] = [
+      bodyFace(
+        `M${kbx - 2.9} ${kby}`
+        + ` Q${ktx - 2.9} ${(kby + kty) / 2} ${ktx} ${kty}`
+        + ` Q${ktx + 2.9} ${(kby + kty) / 2} ${kbx + 2.9} ${kby}`
+        + `a2.9 ${(2.9 * sq).toFixed(2)} 0 1 1 ${-5.8} 0Z`,
+      ),
+      ...domeFaces3(KX, KY, 2.9, 9.5, 1.8),
+    ];
     // 가로 테(촘촘히) — 도넛 고리(바깥 정방향 + 안 역방향 감김이 구멍을 낸다).
     for (const [gz, gr] of [
       [2.7, 2.8], [3.9, 2.66], [5.1, 2.48], [6.3, 2.22], [7.5, 1.84], [8.7, 1.4],
@@ -2086,20 +2099,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         Math.sin(a) * 0.85, Math.cos(a) * 0.85, 12.2, 0.55,
       ));
     }
-    // 잿빛 머리 판.
-    out.push(...cylinderFaces3(0, 0, 1.6, 1.3, 12));
-    // 골진 도넛 왕관 — 방사 골 + 가운데 구멍.
+    // 잿빛 머리 판 — 왕관과 같은 지름으로(지적: 윗 원판과 아래 원통 크기가 달랐다).
+    out.push(...cylinderFaces3(0, 0, 2.15, 1.3, 12));
+    // 골진 도넛 왕관 — 방사 골 + 가운데 구멍. 원통 위에 살짝 걸치는 정도만 넓다.
     const [cx2, cy2] = project(0, 0, 13.9);
-    out.push(bodyFace(groundEllipse(cx2, cy2, 2.6, 1.5)));
+    out.push(bodyFace(groundEllipse(cx2, cy2, 2.3, 1.33)));
     /* 골도 요잉을 탄다(지적: 뚜껑이 안 돎) — 화면 고정 각이던 골 위치에 현재 요잉을
        더해, 뚜껑이 함께 도는 것으로 보인다. */
     const yawRad = Math.atan2(-depthNow(1, 0), depthNow(0, 1));
     for (const ang of [200, 240, 280, 320, 20, 60, 100, 140]) {
       const a = (ang * Math.PI) / 180 + yawRad;
-      out.push(sideFace(`M${cx2 + Math.cos(a) * 1.1} ${cy2 + Math.sin(a) * 0.62}`
-        + ` L${cx2 + Math.cos(a) * 2.45} ${cy2 + Math.sin(a) * 1.4}`
-        + ` L${cx2 + Math.cos(a + 0.16) * 2.45} ${cy2 + Math.sin(a + 0.16) * 1.4}`
-        + ` L${cx2 + Math.cos(a + 0.16) * 1.1} ${cy2 + Math.sin(a + 0.16) * 0.62} Z`, 0.16));
+      out.push(sideFace(`M${cx2 + Math.cos(a) * 1} ${cy2 + Math.sin(a) * 0.57}`
+        + ` L${cx2 + Math.cos(a) * 2.18} ${cy2 + Math.sin(a) * 1.26}`
+        + ` L${cx2 + Math.cos(a + 0.16) * 2.18} ${cy2 + Math.sin(a + 0.16) * 1.26}`
+        + ` L${cx2 + Math.cos(a + 0.16) * 1} ${cy2 + Math.sin(a + 0.16) * 0.57} Z`, 0.16));
     }
     out.push(capFace(groundEllipse(cx2, cy2 - 0.15, 0.75, 0.45), 0.5));
     return out;
@@ -2393,7 +2406,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       bodyFace(ring),
       sideFace(`M${cx - 6.4} ${cy} a6.4 3.1 0 0 0 12.8 0a6.4 2.5 0 0 1 -12.8 0`, 0.2),
       topFace(`M${cx - 6.4} ${cy} a6.4 3.1 0 0 1 12.8 0a6.4 2.6 0 0 0 -12.8 0`, 0.14),
-      capFace(groundEllipse(cx, cy, 4.7, 2.15), 0.5),
+      // 풀 물색(요청: 약간 형광톤의 연두녹색) — 어둡게 누르던 캡 대신 제 색을 채운다.
+      [groundEllipse(cx, cy, 4.7, 2.15), 0.9, "#8ef23e"] as ShapeFace,
       // 안쪽 뒤편 그늘 — 테두리가 물에 드리우는 그림자.
       capFace(`M${cx - 4.7} ${cy} A4.7 2.15 0 0 1 ${cx + 4.7} ${cy} A4.7 1.55 0 0 0 ${cx - 4.7} ${cy} Z`, 0.25),
       topFace(groundEllipse(cx - 1.3, cy + 0.4, 2.4, 0.9), 0.18),
@@ -4204,7 +4218,12 @@ const WORKER_KIND_SET = new Set(["scv", "probe", "drone"]);
    느낌으로 튼다. 원작 스프라이트 방향이 다른 모델(서플라이 디포 등)은 아래 보정표에
    도(°)를 더한다 — 값은 지적받는 대로 채운다. */
 const BUILDING_BASE_YAW = 45;
-const MODEL_YAW_TWEAK: Record<string, number> = {};
+const MODEL_YAW_TWEAK: Record<string, number> = {
+  // 반시계 90도(지적) — 어시밀레이터·히드라 덴·서플·포지.
+  assim: -90, hydraden: -90, trapezoid: -90, forge: -90,
+  // 시계 90도(지적) — 로보틱스·템플러 아카이브.
+  dome: 90, archives: 90,
+};
 const buildingYawOf = (kind: string): number =>
   BUILDING_BASE_YAW + (MODEL_YAW_TWEAK[kind] ?? 0);
 
@@ -4527,6 +4546,24 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
       }
     }
     const paintOps = (list: UnitDrawOp[]) => {
+    /* 공중 겹침 그림자(지적: 공중 유닛끼리 겹치면 구분이 안 됨 — 겹친 것에만 살짝) —
+       몸이 닿는 공중 유닛만 골라 스프라이트 블릿에 옅은 그림자를 켠다. 안 겹치는
+       공중 유닛은 기존대로 그림자 없음(바닥 타원이 맡는다). */
+    const airOverlap = new Set<UnitDrawOp>();
+    {
+      const airs = list.filter((o) => o.air && o.wFrac === undefined && !o.textGlyph);
+      for (let a2 = 0; a2 < airs.length; a2 += 1) {
+        for (let b2 = a2 + 1; b2 < airs.length; b2 += 1) {
+          const oa = airs[a2];
+          const ob = airs[b2];
+          const dd2 = Math.hypot(zx(oa.fx) - zx(ob.fx), zy(oa.fy) - zy(ob.fy));
+          if (dd2 < (oa.sizePx + ob.sizePx) * 0.5 * zoom) {
+            airOverlap.add(oa);
+            airOverlap.add(ob);
+          }
+        }
+      }
+    }
     for (const op of list) {
       const sx = zx(op.fx);
       const sy = zy(op.fy);
@@ -4745,7 +4782,12 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
       if (rot) ctx.rotate((rot * Math.PI) / 180);
       if (spr) {
         const k = px / pxq;
-        ctx.shadowColor = "transparent";
+        // 겹친 공중 유닛만 살짝 그림자(지적) — 아래 겹친 몸과 또렷이 갈린다.
+        if (op.air && airOverlap.has(op)) {
+          ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
+          ctx.shadowBlur = Math.max(1.5, px * 0.1);
+          ctx.shadowOffsetY = Math.max(1, px * 0.07);
+        } else ctx.shadowColor = "transparent";
         ctx.globalAlpha = op.alpha;
         ctx.drawImage(
           spr.cv,
