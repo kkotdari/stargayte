@@ -3737,7 +3737,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        두껍게가 아니라 '넓게') — 접평면 부착은 그대로 두고, 접선 방향으로 길쭉한
        보라 타원 기관으로 바꾼다. 속에 밝은 보라 속살을 한 겹 얹는다. */
     const lens = (sxSign: number): ShapeFace[] => {
-      const th = Math.PI * (50 / 180);
+      // 더 뒤쪽(재지적: 거의 옆면의 가운데) + 살짝 위(아래 z 5.2 → 5.65) — 50° → 82°.
+      const th = Math.PI * (82 / 180);
       const cxL = Math.sin(th) * 3.05 * sxSign;
       const cyL = Math.cos(th) * 3.05;
       const t1x = Math.cos(th) * sxSign;
@@ -3749,7 +3750,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           pts.push([
             cxL + Math.cos(a) * rt * t1x,
             cyL + Math.cos(a) * rt * t1y,
-            5.2 + Math.sin(a) * rz,
+            5.65 + Math.sin(a) * rz,
           ]);
         }
         return pts;
@@ -3768,7 +3769,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [g2x, g2y] = project(-0.3, -2.3, 7);
     return [
       bodyFace(legs.join(" ")),
-      [tips.join(" "), 1, IVORY] as ShapeFace,
+      // 상아색 제거(지적: 집게·가시도 몸색으로).
+      bodyFace(tips.join(" ")),
       ...lens(-1),
       ...lens(1),
       ...face,
@@ -6132,33 +6134,57 @@ export default function ReplayMotionPlayer({
   useEffect(() => {
     const el = mapRef.current;
     if (!el) return undefined;
+    /* 업데이터 밖에서 한 번에 계산한다(지적: 줌아웃을 맵 외곽에서 하면 강제로 안쪽
+       어딘가로 이동) — 예전엔 setZoom 업데이터 '안'에서 setPan을 불렀는데, 업데이터는
+       순수해야 해서 리액트가 재실행하면 커서 고정 보정이 두 번 적용됐다. 한계 죔과
+       겹치면 외곽에서 팬이 엉뚱한 안쪽 값으로 튀었다. 지금 값(ref)으로 새 줌·팬을
+       같이 셈해 각각 한 번씩만 놓는다. */
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const rect = el.getBoundingClientRect();
       const ox = e.clientX - (rect.left + rect.width / 2);
       const oy = e.clientY - (rect.top + rect.height / 2);
-      setZoom((z) => {
-        // 상한 10 → 20(재요청: 2배 더 — 세부 렌더링 확인용) — 휠 줌이 더 깊이 들어간다.
-        const nz = Math.min(20, Math.max(1, z * (e.deltaY < 0 ? 1.2 : 1 / 1.2)));
-        setPan((p) => {
-          if (nz <= 1) return { x: 0, y: 0 };
-          const k = nz / z;
-          let nx = ox + (p.x - ox) * k;
-          let ny = oy + (p.y - oy) * k;
-          const maxX = ((nz - 1) * rect.width) / 2;
-          const maxY = ((nz - 1) * rect.height) / 2;
-          nx = Math.min(maxX, Math.max(-maxX, nx));
-          ny = Math.min(maxY, Math.max(-maxY, ny));
-          return { x: nx, y: ny };
-        });
-        return nz;
-      });
+      const z = zoomRef.current;
+      // 상한 10 → 20(재요청: 2배 더 — 세부 렌더링 확인용) — 휠 줌이 더 깊이 들어간다.
+      const nz = Math.min(20, Math.max(1, z * (e.deltaY < 0 ? 1.2 : 1 / 1.2)));
+      if (nz === z) return;
+      let nx = 0;
+      let ny = 0;
+      if (nz > 1) {
+        const p = panRef.current;
+        const k = nz / z;
+        nx = ox + (p.x - ox) * k;
+        ny = oy + (p.y - oy) * k;
+        const maxX = ((nz - 1) * rect.width) / 2;
+        const maxY = ((nz - 1) * rect.height) / 2;
+        nx = Math.min(maxX, Math.max(-maxX, nx));
+        ny = Math.min(maxY, Math.max(-maxY, ny));
+      }
+      setZoom(nz);
+      setPan({ x: nx, y: ny });
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
     // 확대창(포털 재부착)이 사라져 맵 엘리먼트는 안 바뀐다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  /* 팬 재죔(지적: 줌인아웃하다 맵을 벗어나면 문제) — 팬 한계는 '그때의 맵 상자'로
+     계산되는데, 줌 단계·보기 전환(3D 피칭은 세로가 0.74로 눌린다)으로 상자가 변하면
+     이미 서 있던 팬이 새 한계를 넘어 맵 가장자리 밖(빈 바탕)이 드러나고 마커가 맵을
+     벗어나 그려졌다. 상자가 변할 때마다 팬을 새 한계 안으로 되죈다. */
+  useEffect(() => {
+    const el = mapRef.current;
+    if (!el) return;
+    if (zoom <= 1) return;
+    const rect = el.getBoundingClientRect();
+    const maxX = ((zoom - 1) * rect.width) / 2;
+    const maxY = ((zoom - 1) * rect.height) / 2;
+    setPan((p) => {
+      const nx = Math.min(maxX, Math.max(-maxX, p.x));
+      const ny = Math.min(maxY, Math.max(-maxY, p.y));
+      return nx === p.x && ny === p.y ? p : { x: nx, y: ny };
+    });
+  }, [zoom, pitched, wide]);
 
   /* 드래그 팬(지적: 확대 후 드래그가 이상함 — 브라우저의 이미지 드래그가 끌려 나왔다)
      — 확대 중에는 드래그로 지도를 민다. 경계 죔은 휠과 같은 식. */

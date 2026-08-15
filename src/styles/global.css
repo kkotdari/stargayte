@@ -11498,7 +11498,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-wide {
   /* 왼쪽 기둥 축소(지적: 너무 넓어짐 — 줄을 나눠 폭 줄이기) — 150×2에서 110×2로.
      보기 버튼 일곱(맵연결 포함)·배속 무리는 flex-wrap이 두 줄로 자연히 접는다. */
-  display: grid; grid-template-columns: 110px 110px minmax(0, 1fr) 300px;
+  /* 댓글 기둥 폭 = 왼쪽 기둥 폭(요청) — 110 + 12(간격) + 110 = 232px. */
+  display: grid; grid-template-columns: 110px 110px minmax(0, 1fr) 232px;
   grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
   column-gap: 12px; row-gap: 8px; align-items: start;
 }
