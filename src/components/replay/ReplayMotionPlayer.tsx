@@ -8954,8 +8954,13 @@ export default function ReplayMotionPlayer({
               );
             }
           }
-          if (fighting && ei % 3 !== 0) return null;
-          if (!fighting || !qCombat) return null;
+          /* 럴커 가시(지적: 가시 표현이 안 나옴) — 럴커는 교전 돌입 목록(ENGAGE_SKIP)
+             밖이라 fighting이 영영 거짓이었고 가시 트레이서도 안 나왔다. 원작대로
+             버로우한 채 적이 사거리(6타일, 여유 7) 안이면 명령 없이도 가시를 쏜다.
+             럴커는 수가 적으니 1/3 솎기도 안 태운다. */
+          const lurkStrike = burrowed && !frzSt && Number.isFinite(foe.bd) && foe.bd <= 7;
+          if (fighting && !lurkStrike && ei % 3 !== 0) return null;
+          if ((!fighting && !lurkStrike) || !qCombat) return null;
           const fxUnit = drawUnit === "" ? (race === "저그" ? "Zergling" : race === "테란" ? "Marine" : "Zealot") : drawUnit;
           const atkDeg = foeDeg;
           const cyc2 = Math.floor(t / 1.5);
@@ -8989,7 +8994,8 @@ export default function ReplayMotionPlayer({
             <span
               key={`v2fx-${ei}`}
               className="scr-motion-army scr-motion-dot scr-v2fx"
-              style={{ ...posStyle(ax3, ay3), zIndex: 1310, ...glyphStyle(e.raw, team), ...fxLift }}
+              /* 럴커 가시는 가슴 높이가 아니라 땅에서 솟는다 — 들어올림 없이. */
+              style={{ ...posStyle(ax3, ay3), zIndex: 1310, ...glyphStyle(e.raw, team), ...(lurkStrike ? {} : fxLift) }}
             >
               {atkDeg !== null && ATTACK_FX[fxUnit] && ATTACK_FX[fxUnit] !== "heal" && (
                 <span

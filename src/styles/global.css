@@ -13302,12 +13302,26 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
     to bottom, rgba(210, 230, 255, 0.95) 0 2px, rgba(140, 170, 255, 0.5) 2px 3px);
   animation-duration: 0.2s;
 }
+/* 럴커 가시(재지적: 안 나옴 + 허접) — 뼈가시 토막 줄이 땅에서 상대 쪽으로 차례로
+   솟아 나간다. 위(럴커 자리) 고정 원점에서 길이가 드러나며 물결이 달려 나가고,
+   끝까지 닿으면 사그라든다. */
 .scr-tracer-spike {
-  width: 3px; height: 8px;
+  width: 4.5px; height: 24px;
+  border-radius: 0;
   background: repeating-linear-gradient(
-    to bottom, rgba(190, 210, 150, 0.9) 0 2px, transparent 2px 4px);
-  animation-duration: 0.5s;
+    to bottom, rgba(228, 220, 188, 0.95) 0 2.5px, rgba(150, 140, 105, 0.45) 2.5px 3.5px,
+    transparent 3.5px 6.5px);
+  animation-name: scr-spike-run; animation-duration: 0.6s;
 }
+@keyframes scr-spike-run {
+  0% { clip-path: inset(0 0 100% 0); opacity: 1; }
+  55% { clip-path: inset(0 0 0 0); opacity: 1; }
+  80% { clip-path: inset(0 0 0 0); opacity: 0.85; }
+  100% { clip-path: inset(0 0 0 0); opacity: 0; }
+}
+/* v2 축소 규칙(.scr-v2fx .scr-motion-tracer 1×6px)이 특이도로 이겨 가시가 실오라기가
+   됐다(조사: 가시 표현이 안 나옴의 두 번째 범인) — 가시만 제 크기로 돌려놓는다. */
+.scr-v2fx .scr-tracer-spike { width: 4.5px; height: 22px; }
 .scr-tracer-acidball {
   width: 5px; height: 5px; border-radius: 50%;
   background: radial-gradient(circle, rgba(235, 220, 90, 0.95) 0 45%, rgba(180, 170, 40, 0.5) 75%, transparent 80%);
