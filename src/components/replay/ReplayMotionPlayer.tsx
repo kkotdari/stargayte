@@ -8783,16 +8783,6 @@ export default function ReplayMotionPlayer({
             aria-label="모델 크기"
           />
         </span>
-        {/* 배속(재요청: 다른 라디오와 동등하게) — 조종부 줄에서 보기 줄로 올라왔다. */}
-        <span className="scr-motion-radio scr-motion-speeds">
-          <span className="scr-motion-radio-label">배속</span>
-          <PillTabs
-            options={SPEEDS.map((v) => ({ value: String(v), label: `×${v}` }))}
-            value={String(speed)}
-            onChange={(v) => setSpeed(SPEEDS.find((s) => String(s) === v) ?? SPEEDS[0])}
-            aria-label="배속"
-          />
-        </span>
         {/* (v1 제거·요청: 두 개가 섞여 헷갈린다) — v1/v2 토글이 있던 자리. 개체 트랙이
             없는 옛 경기만 재분석 안내를 띄운다. */}
         {loadUnitTracks && entLoad === "none" && (
@@ -8813,6 +8803,17 @@ export default function ReplayMotionPlayer({
             />
           </span>
         )}
+        {/* 배속(재재요청: 제일 마지막) — 보기 줄 맨 끝. */}
+        <span className="scr-motion-radio scr-motion-speeds">
+          <span className="scr-motion-radio-label">배속</span>
+          <PillTabs
+            options={SPEEDS.map((v) => ({ value: String(v), label: `×${v}` }))}
+            value={String(speed)}
+            onChange={(v) => setSpeed(SPEEDS.find((s) => String(s) === v) ?? SPEEDS[0])}
+            aria-label="배속"
+          />
+        </span>
+
       </div>
       {linkOpen && createPortal(
         <div className="scr-modal-overlay scr-terrain-overlay" onClick={() => setLinkOpen(false)}>
