@@ -8247,7 +8247,12 @@ export default function ReplayMotionPlayer({
             }
             break;
           }
-          const fighting = canFight && !frzSt && Number.isFinite(foe.bd) && foe.bd <= ENGAGE_SIGHT_TILES;
+          /* 히스테리시스(지적: 이동 중 위치가 앞뒤로 잘게 플리커) — 시야 경계에 선
+             적 때문에 교전이 프레임마다 켜졌다 꺼지면, '멈춘 자리'와 '지연 걸음' 사이를
+             오가며 흔들렸다. 들어올 땐 시야, 나갈 땐 시야×1.3이라 경계에서 안 떨린다. */
+          const engagedBefore = engageHoldRef.current.has(holdKey);
+          const fighting = canFight && !frzSt && Number.isFinite(foe.bd)
+            && foe.bd <= ENGAGE_SIGHT_TILES * (engagedBefore ? 1.3 : 1);
           let pos = rawPos;
           if (fighting && !uAir) {
             const mem = engageHoldRef.current.get(holdKey);
@@ -8265,8 +8270,12 @@ export default function ReplayMotionPlayer({
           } else {
             const mem = engageHoldRef.current.get(holdKey);
             if (mem && t >= mem.t0) {
-              // 교전이 막 끝났다 — 멈춘 시간을 걸음 지연에 넘겨 이어 걷게 한다.
-              engageDelayRef.current.set(holdKey, { delay: walkDelay + (mem.tLast - mem.t0), since: t });
+              /* 교전이 막 끝났다 — 멈춘 시간을 걸음 지연에 넘겨 이어 걷게 한다.
+                 찰나(0.4초 미만)의 스침은 지연으로 안 쌓는다(지적: 플리커) — 잘게
+                 쌓인 지연이 걸음 시계를 앞뒤로 흔들었다. */
+              if (mem.tLast - mem.t0 > 0.4) {
+                engageDelayRef.current.set(holdKey, { delay: walkDelay + (mem.tLast - mem.t0), since: t });
+              }
               engageHoldRef.current.delete(holdKey);
             }
           }
