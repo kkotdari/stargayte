@@ -3238,13 +3238,23 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 버로우 구멍(요청) — 버로우 중엔 유닛 대신 이 구멍만: 흙 둔덕 테 + 어두운 구멍.
      크기는 마커 크기(소·중·대형)를 그대로 탄다. */
   burrowhole: () => [
-    // 흙 둔덕은 흙색 고정(지적: 구멍 밖 개인색 부분 제거) — 개인색은 구멍 속 비침만.
-    ...paintBase(domeFaces3(0, 0, 4.6, 0.9), "#7a6a52"),
-    capFace(discPath3(0, 0, 0.92, 3.2), 0.6),
-    /* 구멍 깊이에 유닛이 살짝(아이디어 제공: 검정 구멍 안에 깊이 유닛색이 옅게
-       비치는 모양) — 검은 구멍 위, 더 깊은 자리(z 0.4)에 작은 원을 유닛색
-       반투명으로 얹는다. 숨은 놈이 어렴풋이 들여다보인다. */
-    [discPath3(0, 0, 0.4, 1.7), 0.3] as ShapeFace,
+    /* 둔덕 제거(재지적) — 구멍 둘레의 납작한 흙 띠(도넛)만 두른다: 바깥 정방향 +
+       안 역방향 감김이 구멍을 낸다. */
+    ...paintBase(((): ShapeFace[] => {
+      const [ex, ey] = project(0, 0, 0.25);
+      const sq = groundSquashNow();
+      const ro = 4.2;
+      const ri = 2.9;
+      return [bodyFace(
+        `M${ex - ro} ${ey}a${ro} ${(ro * sq).toFixed(2)} 0 1 0 ${ro * 2} 0a${ro} ${(ro * sq).toFixed(2)} 0 1 0 ${-ro * 2} 0Z`
+        + `M${ex - ri} ${ey}a${ri} ${(ri * sq).toFixed(2)} 0 1 1 ${ri * 2} 0a${ri} ${(ri * sq).toFixed(2)} 0 1 1 ${-ri * 2} 0Z`,
+      )];
+    })(), "#7a6a52"),
+    // 어두운 구멍.
+    capFace(discPath3(0, 0, 0.1, 3), 0.6),
+    /* 숨은 유닛 비침(재지적: 납작한 렌즈 반구의 윗부분만 살짝) — 낮은 돔을 유닛색
+       반투명으로 구멍 위에 살짝 내민다. */
+    ...domeFaces3(0, 0, 1.9, 0.55, 0.05).map(([d, o, f, k]) => [d, o * 0.45, f, k] as ShapeFace),
   ],
   /* SCV(실물 참고) — 각진 몸통 + 양옆 포드 + 위 머리 + 앞으로 굽는 집게 드릴 한 쌍. */
   scv: () => [
