@@ -2969,9 +2969,26 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   },
   /* 뮤탈리스크(정정) — 날개는 위에 달리고, 긴 몸통이 앞-아래로 휘어 입이 아래로 나온다. */
   muta: () => {
-    const wing = (m2: 1 | -1): string => polyPath3([
-      [m2 * 0.5, 0, 7.1], [m2 * 2.6, 1.3, 7.6], [m2 * 4.1, 0.2, 7.2], [m2 * 2.1, -0.4, 7],
-    ]);
+    /* 날개 더 크게 + 두 번 꺾이게(요청) — 스팬 방향 마디 네 곳(뿌리→관절1 위로→
+       관절2 아래로→끝 위로)을 앞뒤 폭 있는 판 세 장으로 잇는다. */
+    const wing = (m2: 1 | -1): ShapeFace[] => {
+      const st: [number, number, number, number][] = [ // [x, 앞y, 뒤y, z]
+        [0.5, 0.6, -0.5, 7],
+        [2.4, 1.1, -0.2, 8.5],
+        [4.4, 0.7, -0.5, 7.3],
+        [6, 0.3, -0.6, 8.3],
+      ];
+      const out2: ShapeFace[] = [];
+      for (let i = 0; i < 3; i += 1) {
+        const [x0, f0, r0, z0] = st[i];
+        const [x1, f1, r1, z1] = st[i + 1];
+        const d = polyPath3([
+          [m2 * x0, f0, z0], [m2 * x1, f1, z1], [m2 * x1, r1, z1], [m2 * x0, r0, z0],
+        ]);
+        out2.push(bodyFace(d), i % 2 === 0 ? topFace(d, m2 > 0 ? 0.15 : 0.1) : sideFace(d, 0.2));
+      }
+      return out2;
+    };
     const [mx2, my2] = project(0, 2.5, 3.9);
     return [
       // 굽는 몸통 — 날개 밑에서 앞-아래로 마디지며 내려간다. 몸체 갈색(요청).
@@ -2985,8 +3002,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 꼬리 — 뒤로 처진다. 더 진한 갈색(재지적).
       ...paintBase(hornFaces(0, -0.6, 6.6, 0, -2.2, 5.8, 0.5), "#6b4732"),
       // 날개 — 위에서 펼쳐진다.
-      bodyFace(wing(1)), sideFace(wing(1), 0.16),
-      bodyFace(wing(-1)), topFace(wing(-1), 0.14),
+      ...wing(1),
+      ...wing(-1),
     ];
   },
   /* 가디언(지적: 꽃게 모양) — 옆으로 넓적한 게딱지 + 앞 양 집게 + 옆 잔다리. */
