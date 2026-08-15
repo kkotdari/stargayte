@@ -4521,7 +4521,19 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
     const zy = (f: number): number => (f - 0.5) * ch * zoom + ch / 2 + pan.y;
     /* 공중은 늘 위층(지적: 공중 유닛이 뒤·아래 건물에 가려짐) — 화가 순서에서 공중
        유닛을 통째로 지상·건물 위로 올린다. 공중끼리는 제 z 순서 그대로다. */
-    const sorted = [...ops].sort((a, b) => (a.z + (a.air ? 100000 : 0)) - (b.z + (b.air ? 100000 : 0)));
+    /* 화면 밖 선별(지적: 줌·드래그 버벅임) — 이완·겹침·그리기 전에 뷰포트 밖(여유
+       160px)을 통째로 걸러낸다. 깊은 줌일수록 남는 일이 급감한다. 크립 판은 맵
+       전체 클립이라 남긴다. */
+    const CULL = 160;
+    const inView0 = (o: UnitDrawOp): boolean => {
+      if (o.clipWalk) return true;
+      const ex0 = (o.wFrac !== undefined
+        ? Math.max(o.wFrac, o.hFrac ?? 0) * cw : o.sizePx) * zoom + CULL;
+      const vx0 = zx(o.fx);
+      const vy0 = zy(o.fy);
+      return vx0 >= -ex0 && vx0 <= cw + ex0 && vy0 >= -ex0 && vy0 <= ch + ex0;
+    };
+    const sorted = [...ops].sort((a, b) => (a.z + (a.air ? 100000 : 0)) - (b.z + (b.air ? 100000 : 0))).filter(inView0);
     /* ── 겹침 불가 원칙(요청: 유닛·건물은 겹쳐지지 않는다, 공중은 예외) — 그리기 전에
        지상 유닛 마커를 서로·건물과 겹치지 않게 밀어낸다. 화면 픽셀 좌표에서 2회 이완:
        ① 건물 상자 안에 든 유닛은 가장 가까운 변 밖으로, ② 유닛끼리는 반지름 합의 0.8
@@ -6371,19 +6383,24 @@ export default function ReplayMotionPlayer({
        순수해야 해서 리액트가 재실행하면 커서 고정 보정이 두 번 적용됐다. 한계 죔과
        겹치면 외곽에서 팬이 엉뚱한 안쪽 값으로 튀었다. 지금 값(ref)으로 새 줌·팬을
        같이 셈해 각각 한 번씩만 놓는다. */
+    /* 프레임당 한 번만 상태를 놓는다(지적: 줌·드래그 버벅임) — 휠은 초당 수십 번
+       튀는데 틱마다 setState면 그때마다 전체 마커 렌더가 돌았다. 목표값을 모아 rAF
+       한 번에 반영한다(연타는 pend 기준으로 이어 계산해 커서 고정이 안 깨진다). */
+    let wheelPend: { z: number; x: number; y: number } | null = null;
+    let wheelRaf = 0;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const rect = el.getBoundingClientRect();
       const ox = e.clientX - (rect.left + rect.width / 2);
       const oy = e.clientY - (rect.top + rect.height / 2);
-      const z = zoomRef.current;
+      const z = wheelPend ? wheelPend.z : zoomRef.current;
       // 상한 10 → 20(재요청: 2배 더 — 세부 렌더링 확인용) — 휠 줌이 더 깊이 들어간다.
       const nz = Math.min(20, Math.max(1, z * (e.deltaY < 0 ? 1.2 : 1 / 1.2)));
       if (nz === z) return;
       let nx = 0;
       let ny = 0;
       if (nz > 1) {
-        const p = panRef.current;
+        const p = wheelPend ? { x: wheelPend.x, y: wheelPend.y } : panRef.current;
         const k = nz / z;
         nx = ox + (p.x - ox) * k;
         ny = oy + (p.y - oy) * k;
@@ -6392,8 +6409,16 @@ export default function ReplayMotionPlayer({
         nx = Math.min(maxX, Math.max(-maxX, nx));
         ny = Math.min(maxY, Math.max(-maxY, ny));
       }
-      setZoom(nz);
-      setPan({ x: nx, y: ny });
+      wheelPend = { z: nz, x: nx, y: ny };
+      if (!wheelRaf) {
+        wheelRaf = requestAnimationFrame(() => {
+          wheelRaf = 0;
+          if (!wheelPend) return;
+          setZoom(wheelPend.z);
+          setPan({ x: wheelPend.x, y: wheelPend.y });
+          wheelPend = null;
+        });
+      }
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
@@ -6674,6 +6699,8 @@ export default function ReplayMotionPlayer({
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     dragRef.current = { id: e.pointerId, sx: e.clientX, sy: e.clientY, px: pan.x, py: pan.y };
   };
+  const dragRafRef = useRef(0);
+  const dragPendRef = useRef<{ x: number; y: number } | null>(null);
   const onMapPointerMove = (e: React.PointerEvent) => {
     /* 핀치 중엔 드래그 팬 봉인(지적: 확대축소 때 전혀 다른 곳이 깜빡) — 두 손가락이
        닿아 있는 동안엔 각 손가락의 pointermove가 저마다 팬으로 처리돼, 핀치가 계산한
@@ -6686,10 +6713,18 @@ export default function ReplayMotionPlayer({
     const rect = el.getBoundingClientRect();
     const maxX = ((zoom - 1) * rect.width) / 2;
     const maxY = ((zoom - 1) * rect.height) / 2;
-    setPan({
+    /* 프레임당 한 번(지적: 드래그 버벅임) — pointermove는 120Hz까지 튄다. */
+    dragPendRef.current = {
       x: Math.min(maxX, Math.max(-maxX, d.px + (e.clientX - d.sx))),
       y: Math.min(maxY, Math.max(-maxY, d.py + (e.clientY - d.sy))),
-    });
+    };
+    if (!dragRafRef.current) {
+      dragRafRef.current = requestAnimationFrame(() => {
+        dragRafRef.current = 0;
+        if (dragPendRef.current) setPan(dragPendRef.current);
+        dragPendRef.current = null;
+      });
+    }
   };
   const onMapPointerUp = (e: React.PointerEvent) => {
     if (dragRef.current?.id === e.pointerId) dragRef.current = null;
