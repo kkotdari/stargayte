@@ -1398,8 +1398,6 @@ export function buildUnitTracks(
     for (const [bsec, bAmt] of battleDmgOf.get(life) ?? []) {
       if (stasisSpans.some(([sa, sb]) => bsec >= sa && bsec <= sb)) continue;
       let amt = bAmt;
-      // 메딕이 곁이면 싸움 중에도 상처가 덜 벌어진다(상시 치료).
-      if (healable && medicNearAt(life, bsec)) amt *= 0.65;
       const pos = posAtSec(life, bsec, dmgTol(life, bsec));
       if (pos && swarmZones.some(([ws, wx, wy]) =>
         bsec - ws >= 0 && bsec - ws <= 25 && Math.hypot(wx - pos[0], wy - pos[1]) <= 2.5)) {
@@ -1512,6 +1510,9 @@ export function buildUnitTracks(
       const fromSh = Math.min(curSh, d2);
       curSh -= fromSh;
       d2 -= fromSh;
+      /* 메딕 경감(재지적: 실드는 못 채워줌) — 메딕은 살만 꿰맨다. 실드에 박히는
+         피해는 그대로 두고, 실드를 뚫고 체력에 닿는 몫만 줄인다(주문은 못 막음). */
+      if (d2 > 0 && dknd !== "spell" && healable && medicNearAt(life, dsec)) d2 *= 0.65;
       curHp -= d2;
       if (curHp <= 0) {
         const survived = life.ev.some((v) => v[1] >= 0 && v[0] > dsec + 2);
