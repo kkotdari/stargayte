@@ -1749,6 +1749,30 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         g.push(bodyFace(fd), topFace(fd, 0.14));
         return tagKey(g, depthNow(-4.4, 0.4) + 0.5);
       })(),
+      /* 앞 톱니바퀴(요청: 이빨 달린 기어를 앞부분에) — 앞벽에 반쯤 묻힌 세로 원판과
+         둘레 이빨. 아래 반은 기단에 묻힌다. */
+      ...tagKey(((): ShapeFace[] => {
+        const cyF = 3.15;
+        const czF = 1.1;
+        const r = 1.6;
+        const g: ShapeFace[] = [
+          bodyFace(wallDiscPath(0, cyF, czF, r, r)),
+          topFace(wallDiscPath(0, cyF, czF, r, r), 0.12),
+          capFace(wallDiscPath(0, cyF, czF, 0.5, 0.45), 0.35),
+        ];
+        for (let i = 0; i < 7; i += 1) {
+          const a2 = Math.PI * ((i + 0.5) / 7);
+          const dx = Math.cos(a2);
+          const dz = Math.sin(a2);
+          g.push(bodyFace(polyPath3([
+            [dx * (r - 0.1) - 0.16, cyF, czF + dz * (r - 0.1) - 0.16],
+            [dx * (r - 0.1) + 0.16, cyF, czF + dz * (r - 0.1) + 0.16],
+            [dx * (r + 0.5) + 0.12, cyF, czF + dz * (r + 0.5) + 0.12],
+            [dx * (r + 0.5) - 0.12, cyF, czF + dz * (r + 0.5) - 0.12],
+          ])));
+        }
+        return g;
+      })(), depthNow(0, 3.15) + 1.2),
       // 가운데 결정 기둥 무리 — 높이 다른 네 자루, 끝이 뾰족하게 좁아진다.
       ...tagKey(hornFaces(-1.2, 0.1, 1, -1.3, 0, 6.4, 1.05), depthNow(-1.2, 0.1) + 1),
       ...tagKey(hornFaces(-0.2, -1, 1, -0.2, -1.1, 7.6, 1.15), depthNow(-0.2, -1) + 1),
@@ -2484,6 +2508,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...tubeFaces(-0.55, 1.2, -0.55, 4.4, 0.24, 3.3),
     ...tubeFaces(0.55, 1.2, 0.55, 4.4, 0.24, 3.3),
   ],
+  /* 발포 반동용 분해(요청: 발포 시 포탑·포신만 움직이게) — 차체와 포탑을 딴 판으로
+     구워, 쏘는 순간 포탑 판만 살짝 밀렸다 돌아온다. 갤러리·v1은 합본(tank)을 그대로
+     쓰고 v2 렌더만 이 짝을 쓴다. */
+  tankbody: () => [
+    ...trackFaces(-2, 0.9, 3.1, 1.4, 1.7),
+    ...trackFaces(2, 0.9, 3.1, 1.4, 1.7),
+    ...trackFaces(-2, -3.2, 0.4, 1.5, 1.7),
+    ...trackFaces(2, -3.2, 0.4, 1.5, 1.7),
+    ...boxFaces3(0, -0.2, 3.9, 5.6, 1.3, 1.2),
+  ],
+  tankgun: () => [
+    ...boxFaces3(0, -0.4, 2.6, 2.6, 1.3, 2.5),
+    ...tubeFaces(-0.55, 1.2, -0.55, 4.4, 0.24, 3.3),
+    ...tubeFaces(0.55, 1.2, 0.55, 4.4, 0.24, 3.3),
+  ],
   /* 시즈 모드(실물 참고) — 사방으로 벌린 궤도 발 넷 + 올라선 포탑 + 위-앞으로 겨눈
      큰 포신. */
   tanksiege: () => {
@@ -2517,6 +2556,46 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.5),
       /* 포신 입체 벽 두르기(재지적: 캐리어처럼) — 오른벽 하나만 박혀 있던 것을 윗판·
          밑판 + 좌우 옆벽(faceLight 판정) + 포구 단면(앞이 보일 때만)으로 닫는다. */
+      bodyFace(barrelTop),
+      topFace(barrelTop, 0.18),
+      bodyFace(polyPath3([[-0.7, 0.7, 3.6], [0.7, 0.7, 3.6], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]])),
+      ...([1, -1] as const).flatMap((m2): ShapeFace[] => {
+        const sl = faceLight(m2, 0);
+        if (!sl.visible) return [];
+        const d = polyPath3([
+          [m2 * 0.7, 0.7, 4], [m2 * 0.7, 2.9, 6.9], [m2 * 0.7, 2.9, 6.5], [m2 * 0.7, 0.7, 3.6],
+        ]);
+        return [bodyFace(d), ...sl.face(d)];
+      }),
+      ...((): ShapeFace[] => {
+        const mz = faceLight(0, 0.71, 0.71);
+        if (!mz.visible) return [];
+        const d = polyPath3([[-0.7, 2.9, 6.9], [0.7, 2.9, 6.9], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]);
+        return [bodyFace(d), capFace(d, 0.4)];
+      })(),
+    ];
+  },
+  /* 발포 반동용 분해(요청) — 시즈 차체/포탑·포신 분리판. */
+  tanksiegebody: () => [
+    ...trackFaces(-2, 0.9, 3.1, 1.4, 1.7),
+    ...trackFaces(2, 0.9, 3.1, 1.4, 1.7),
+    ...trackFaces(-2, -3.2, 0.4, 1.5, 1.7),
+    ...trackFaces(2, -3.2, 0.4, 1.5, 1.7),
+    ...boxFaces3(-3.15, 0, 1.4, 0.5, 0.32, 1.6),
+    ...boxFaces3(-3.95, 0, 0.45, 0.45, 1.7),
+    ...boxFaces3(-3.95, 0, 1, 0.9, 0.28),
+    ...boxFaces3(3.15, 0, 1.4, 0.5, 0.32, 1.6),
+    ...boxFaces3(3.95, 0, 0.45, 0.45, 1.7),
+    ...boxFaces3(3.95, 0, 1, 0.9, 0.28),
+    ...boxFaces3(0, -3.5, 0.5, 1.4, 0.32, 1.6),
+    ...boxFaces3(0, -4.3, 0.45, 0.45, 1.7),
+    ...boxFaces3(0, -4.3, 0.9, 1, 0.28),
+    ...boxFaces3(0, -0.2, 3.9, 5.6, 1.3, 1.2),
+  ],
+  tanksiegegun: () => {
+    const barrelTop = polyPath3([[-0.7, 0.7, 4], [0.7, 0.7, 4], [0.7, 2.9, 6.9], [-0.7, 2.9, 6.9]]);
+    return [
+      ...frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.5),
       bodyFace(barrelTop),
       topFace(barrelTop, 0.18),
       bodyFace(polyPath3([[-0.7, 0.7, 3.6], [0.7, 0.7, 3.6], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]])),
@@ -3381,8 +3460,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...cylinderFaces3(0, -0.2, 1.25, 1.9, 2.3),
       ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
       ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
-      ...domeFaces3(0, -0.2, 0.8, 0.7, 4.2),
-      topFace(groundEllipse(fx2, fy2, 0.4, 0.34), 0.45),
+      // 헬멧 더 반구형(지적) + 바이저 흰 반투명(지적).
+      ...domeFaces3(0, -0.2, 0.85, 0.8, 4.2),
+      [groundEllipse(fx2, fy2, 0.42, 0.36), 0.55, "#ffffff"] as ShapeFace,
       bodyFace(apron),
       topFace(apron, 0.3),
       /* 두 팔(재지적: 위치·굽힘) — 위팔은 어깨뽕 아래(z 3.7)에서 나와 내려가고,
@@ -3410,8 +3490,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...cylinderFaces3(0, -0.2, 1.25, 1.9, 2.3),
       ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
       ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
-      ...domeFaces3(0, -0.2, 0.8, 0.7, 4.2),
-      topFace(groundEllipse(vx2, vy2, 0.42, 0.3), 0.5),
+      // 헬멧 더 반구형(지적) + 바이저는 흰 반투명 고정(지적).
+      ...domeFaces3(0, -0.2, 0.85, 0.8, 4.2),
+      [groundEllipse(vx2, vy2, 0.45, 0.32), 0.55, "#ffffff"] as ShapeFace,
       /* 두 팔(재지적: 위치·굽힘) — 위팔은 어깨뽕 '아래'(z 3.7)에서 나와 앞-아래로
          내려가고, 팔꿈치에서 굽어 아래팔이 총몸으로 올라가 쥔다. 왼손은 앞손잡이,
          오른손은 방아쇠 쪽. */
@@ -3440,8 +3521,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...domeFaces3(-0.75, -0.15, 0.34, 0.3, 4.1),
       ...domeFaces3(0.75, -0.15, 0.34, 0.3, 4.1),
       // 작은 헬멧(마린 0.8 → 0.55) + 바이저.
-      ...domeFaces3(0, -0.1, 0.55, 0.5, 4.35),
-      topFace(groundEllipse(vx2, vy2, 0.28, 0.19), 0.5),
+      // 고스트도 반구형 헬멧 + 흰 반투명 바이저(지적).
+      ...domeFaces3(0, -0.1, 0.58, 0.55, 4.35),
+      [groundEllipse(vx2, vy2, 0.3, 0.21), 0.55, "#ffffff"] as ShapeFace,
       // 가는 두 팔 — 앞-아래로 내려가 총몸을 받쳐 쥔다.
       ...hornFaces(-0.8, 0.1, 3.9, -0.6, 0.9, 2.9, 0.3),
       ...hornFaces(-0.6, 0.9, 2.9, 0.25, 1.7, 3.3, 0.26),
@@ -3474,8 +3556,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...cylinderFaces3(0, -0.2, 1.25, 1.9, 2.3),
       ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
       ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
-      ...domeFaces3(0, -0.2, 0.8, 0.7, 4.2),
-      capFace(groundEllipse(vx2, vy2, 0.4, 0.22), 0.4),
+      // 헬멧 더 반구형(지적) + 바이저 흰 반투명(지적).
+      ...domeFaces3(0, -0.2, 0.85, 0.8, 4.2),
+      [groundEllipse(vx2, vy2, 0.42, 0.24), 0.55, "#ffffff"] as ShapeFace,
       // 두 팔(요청) — 어깨에서 건틀릿 뿌리로.
       ...hornFaces(-1.45, -0.2, 4.9, -1.4, 0.6, 3.2, 0.5),
       ...hornFaces(1.45, -0.2, 4.9, 1.4, 0.6, 3.2, 0.5),
@@ -3508,13 +3591,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 어깨 뽕 한 쌍(실물) — 숙인 머리보다 높아 굽은 등이 산다.
     ...domeFaces3(-1.35, -0.25, 0.62, 0.5, 6),
     ...domeFaces3(1.35, -0.25, 0.62, 0.5, 6),
-    /* 사이오닉 검 — 더 들어 올린 자세(요청)로 팔뚝에서 앞-위로 겨눈다. 색은 형광
-       푸른빛 도는 하얀색(요청: 플라즈마). */
-    // 너무 높았다(재지적) — 앞쪽보다 살짝 아래로 겨눈다(손 4.9 → 끝 4.1).
-    ...paintBase(hornFaces(1.7, 0.3, 4.9, 2.7, 1.3, 4.1, 0.7), "#e4f6ff"),
-    [polyPath3([[1.75, 0.4, 4.95], [2.65, 1.25, 4.25], [2.5, 1.3, 4.1], [1.6, 0.45, 4.75]]), 0.75, "#ffffff"] as ShapeFace,
-    ...paintBase(hornFaces(-1.7, 0.3, 4.9, -2.7, 1.3, 4.1, 0.7), "#e4f6ff"),
-    [polyPath3([[-1.75, 0.4, 4.95], [-2.65, 1.25, 4.25], [-2.5, 1.3, 4.1], [-1.6, 0.45, 4.75]]), 0.75, "#ffffff"] as ShapeFace,
+    // 상완(요청: 어깨와 칼을 잇는 팔) — 어깨뽕 밑에서 칼 뿌리로.
+    ...rodFaces(-1.35, -0.2, 5.9, -1.7, 0.3, 4.9, 0.55),
+    ...rodFaces(1.35, -0.2, 5.9, 1.7, 0.3, 4.9, 0.55),
+    /* 사이오닉 검 — 앞쪽보다 살짝 아래, 길이 1.5배(요청). 색은 플라즈마(형광 푸른 흰색). */
+    ...paintBase(hornFaces(1.7, 0.3, 4.9, 3.2, 1.8, 3.7, 0.7), "#e4f6ff"),
+    [polyPath3([[1.75, 0.4, 4.95], [3.15, 1.75, 3.85], [3, 1.8, 3.7], [1.6, 0.45, 4.75]]), 0.75, "#ffffff"] as ShapeFace,
+    ...paintBase(hornFaces(-1.7, 0.3, 4.9, -3.2, 1.8, 3.7, 0.7), "#e4f6ff"),
+    [polyPath3([[-1.75, 0.4, 4.95], [-3.15, 1.75, 3.85], [-3, 1.8, 3.7], [-1.6, 0.45, 4.75]]), 0.75, "#ffffff"] as ShapeFace,
   ],
   /* 다크 템플러 — 검 한 자루(요청). */
   dtemp: () => [
@@ -3522,13 +3606,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        제 깊이를 달아 뒤에서 보면 몸 위로 온다. */
     /* 망토 검정(요청) — 개인색 대신 고정 검정 천. */
     ...tagKey([
+      /* 시작을 낮은 어깨로·시작 폭 좁게·더 길게(재지적). */
       [polyPath3([
-        [-1.6, -0.85, 6.7], [1.6, -0.85, 6.7], [2.7, -2.1, 2.2],
-        [0.8, -1.6, 3.3], [0, -1.9, 2.4], [-0.8, -1.6, 3.3], [-2.7, -2.1, 2.2],
+        [-1.05, -0.8, 5.9], [1.05, -0.8, 5.9], [3, -2.4, 0.9],
+        [0.85, -1.75, 2.1], [0, -2.05, 1.1], [-0.85, -1.75, 2.1], [-3, -2.4, 0.9],
       ]), 1, "#14171c"] as ShapeFace,
       sideFace(polyPath3([
-        [-1.6, -0.85, 6.7], [1.6, -0.85, 6.7], [2.7, -2.1, 2.2],
-        [0.8, -1.6, 3.3], [0, -1.9, 2.4], [-0.8, -1.6, 3.3], [-2.7, -2.1, 2.2],
+        [-1.05, -0.8, 5.9], [1.05, -0.8, 5.9], [3, -2.4, 0.9],
+        [0.85, -1.75, 2.1], [0, -2.05, 1.1], [-0.85, -1.75, 2.1], [-3, -2.4, 0.9],
       ]), 0.18),
     ], depthNow(0, -1.5) + 0.6),
     // 다리(재요청) — 질럿과 같은 무릎 굽힌 캡슐 막대 두 마디씩.
@@ -3952,7 +4037,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(bodyFace(leg(1)), sideFace(leg(1), 0.18));
     // 몸통 — 둥근 게딱지. 많이 줄였다(지적: 본체 크기 많이 축소 — 3.8×3 → 2.8×2.2).
     out.push(bodyFace(groundEllipse(cx, cy, 2.8, 2.2)));
-    out.push(sideFace(`M${cx + 0.9} ${cy - 1.9} Q${cx + 2.8} ${cy - 1.2} ${cx + 2.6} ${cy + 1.2} Q${cx + 2.6} ${cy - 0.7} ${cx + 0.9} ${cy - 1.9} Z`, 0.2));
+    // (삭제·지적) 앞부분 검은 반투명 홈 — 정체불명 얼룩으로 보여 걷었다.
     out.push(topFace(groundEllipse(cx - 0.9, cy - 1, 1.25, 0.8), 0.25));
     // 옆구리 밝은 홈 한 쌍.
     out.push(topFace(groundEllipse(...project(-2.3, -0.3, 3.9), 0.4, 0.55), 0.4));
@@ -7511,7 +7596,8 @@ export default function ReplayMotionPlayer({
                  — 완성 모델은 '들어올린 칸'의 바닥 = 발자국 바닥에 앉는데, 소환구·고치는
                  제 작은 상자가 칸 중심(위로 들어올린 앵커)에 걸려 바닥이 발자국보다 위에
                  떴다. 상자 바닥을 발자국 바닥에 맞춘다. */
-              const modelHT = race2 === "프로토스" ? 2.6
+              // 소환구는 정사각 상자(재재지적: 3D에서 찌그러짐) — 어디서도 안 눌린다.
+              const modelHT = race2 === "프로토스" ? 3.4
                 : ((hFrac * grid.width) / mkK) * beat;
               /* 고치가 살짝 왼쪽으로 치우침(지적) — 모델 무게중심 보정으로 저그만 +0.25타일. */
               const [bfxF, bfyF] = posFrac(centerX + (race2 === "저그" ? 0.25 : 0), centerY + fp2[1] / 2 - modelHT / 2);
@@ -7526,7 +7612,7 @@ export default function ReplayMotionPlayer({
                    무관하게 소형 기준 고정. */
                 sizePx: 0,
                 wFrac: race2 === "프로토스" ? (3.4 / grid.width) * mkK : wFrac * beat,
-                hFrac: race2 === "프로토스" ? (2.6 / grid.width) * mkK : hFrac * beat,
+                hFrac: race2 === "프로토스" ? (3.4 / grid.width) * mkK : hFrac * beat,
                 boxFit: "meet", fitWidth: true,
                 color, alpha, noShadow: true,
               });
@@ -7646,7 +7732,11 @@ export default function ReplayMotionPlayer({
                 && !raising && (goneEff === 0 || t < goneEff)) {
                 const teamB = teamOfRaw(raw);
                 const foeB = nearestFoe(teamB, centerX, centerY);
-                const degB = Math.atan2(-(foeB.bx - centerX), foeB.by - centerY) * (180 / Math.PI);
+                // 화면 기준 조준(지적: 공중 각도·지면 평행) — 유닛 트레이서와 같은 셈.
+                const tPxB = (mapRef.current?.clientWidth ?? 320) / grid.width;
+                let dgy = (foeB.by - centerY) * tPxB * (pitched ? 0.74 : 1);
+                if (foeB.air) dgy -= unitGlyphPx(0, foeB.by) * 1.6;
+                const degB = Math.atan2(-((foeB.bx - centerX) * tPxB), dgy) * (180 / Math.PI);
                 const fire: React.ReactNode[] = [];
                 if (unit === "Missile Turret" && foeB.air && foeB.bd <= 8) {
                   fire.push(<span key="t" className="scr-motion-tracer scr-tracer-missile" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)` }} />);
@@ -8306,11 +8396,14 @@ export default function ReplayMotionPlayer({
           if (dieAt !== null && t >= dieAt) {
             if (!qDeath) return null;
             const dk = race === "저그" ? "zerg" : race === "프로토스" ? "toss" : "mech";
+            /* 공중은 떠 있던 몸 자리에서 터진다(지적) — 비행 높이만큼 위로. */
+            const dieLift = uAir
+              ? (drawUnit === "" ? unitGlyphPx(0, ay3) : unitPxOf(drawUnit, ay3)) * 1.6 : 0;
             return (
               <span
                 key={`v2die-${ei}`}
                 className="scr-motion-army scr-motion-dot"
-                style={{ ...posStyle(ax3, ay3), zIndex: 1300 }}
+                style={{ ...posStyle(ax3, ay3), zIndex: 1300, ...(dieLift ? { marginTop: `${(-dieLift).toFixed(1)}px` } : {}) }}
               >
                 <span className={`scr-motion-diefx scr-die-${dk}`} />
               </span>
@@ -8341,13 +8434,18 @@ export default function ReplayMotionPlayer({
              (드래그든 부대지정이든) 잡혔다는 뜻이다. 클릭 토글이 켜져 있으면 명령
              직후 0.35초 동안 몸에 흰 링이 켜져, 함께 잡힌 무리가 한눈에 보인다. */
           const selNow = clickFx && e.orders.some((os2) => t >= os2 && t - os2 <= 0.35);
+          /* 시즈탱크 반동(요청: 발포 시 포탑·포신만) — 차체/포탑을 딴 판으로 밀어,
+             쏘는 박자에 포탑 판만 뒤로 살짝 밀렸다 돌아온다. */
+          const kind0 = burrowed ? "burrowhole"
+            : isWorker ? workerKindOf(race) : unitMarkerKind(drawUnit2, race);
+          const gunKind = kind0 === "tank" ? "tankgun" : kind0 === "tanksiege" ? "tanksiegegun" : null;
+          const kindMain = kind0 === "tank" ? "tankbody" : kind0 === "tanksiege" ? "tanksiegebody" : kind0;
           unitOps.push({
             fx, fy,
             /* 공중은 2D에서도 y순(지적: 공중 유닛 간 앞뒤 섞임) — ei 나머지는 무작위
                순서라 뒤 풍선이 앞을 덮었다. */
             z: pitched || uAir ? 1000 + Math.round(ay3 * 80) : 1000 + (ei % 137),
-            kind: burrowed ? "burrowhole"
-              : isWorker ? workerKindOf(race) : unitMarkerKind(drawUnit2, race),
+            kind: kindMain,
             selRing: selNow || undefined,
             hpFrac: hpPct < 100 ? Math.max(0.04, hpPct / 100) : undefined,
             hpMax: (() => {
@@ -8381,6 +8479,20 @@ export default function ReplayMotionPlayer({
                떨림이 없다. */
             noSep: true,
           });
+          /* 포탑 판(요청: 발포 시 포탑·포신만 움직임) — 쏘는 박자(1.5초 주기 앞 0.18초)에
+             포탑만 뒤로 0.4타일 밀렸다 돌아온다. 차체 판(kindMain)은 제자리다. */
+          if (gunKind) {
+            const fireK = fighting && foeDeg !== null && ((t + ei * 0.7) % 1.5) < 0.18 ? 1 : 0;
+            const gdx = foeDeg !== null ? -Math.sin((foeDeg * Math.PI) / 180) : 0;
+            const gdy = foeDeg !== null ? Math.cos((foeDeg * Math.PI) / 180) : 0;
+            const last = unitOps[unitOps.length - 1];
+            const [gfx, gfy] = posFrac(ax3 - gdx * 0.4 * fireK, ay3 - gdy * 0.4 * fireK);
+            unitOps.push({
+              ...last, kind: gunKind, fx: gfx, fy: gfy, z: last.z + 1,
+              selRing: undefined, hpFrac: undefined, hpMax: undefined,
+              tint: undefined, groundShadow: undefined,
+            });
+          }
           /* 전투 효과(지적: 효과 다 살리기) — 유닛별 예광탄이 가장 가까운 적 쪽으로
              뻗고, 이따금 퍼프가 터진다. DOM 수를 아끼려 세 개체에 하나만 효과를 단다. */
           /* 피격 연출(지적: 마린 트레이서는 있는데 공격받는 오버로드엔 피격효과가
@@ -8458,6 +8570,19 @@ export default function ReplayMotionPlayer({
           const fxUnit = drawUnit === "" ? (race === "저그" ? "Zergling" : race === "테란" ? "Marine" : "Zealot") : drawUnit;
           const atkDeg = foeDeg;
           const cyc2 = Math.floor(t / 1.5);
+          /* 조준각은 화면 기준(지적 둘: 공중 표적 각도가 안 맞음 + 지상 사격은 지면과
+             평행해야) — 타일 각을 그대로 돌리면 3D의 바닥 눌림(0.74)과 떠 있는 몸
+             (lift)이 무시된다. 화면 픽셀 델타로 재고, 공중 표적·공중 사수는 비행
+             높이를 가감한다. */
+          const aimDeg = (fx9: number, fy9: number, fAir: boolean): number => {
+            const tPx9 = (mapRef.current?.clientWidth ?? 320) / grid.width;
+            const ddx = (fx9 - pos.x) * tPx9;
+            let ddy = (fy9 - pos.y) * tPx9 * (pitched ? 0.74 : 1);
+            if (fAir) ddy -= fxPx * 1.6;
+            if (uAir) ddy += fxPx * 1.6;
+            return (Math.atan2(-ddx, ddy) * 180) / Math.PI;
+          };
+          const beamDeg = atkDeg !== null ? aimDeg(foe.bx, foe.by, foe.air) : null;
           /* 총구 모델 앵커(승인) — 몸 스프라이트와 같은 변환으로 앵커를 투영해, 그 자리
              에서 트레이서를 시작한다. 16-상자 중심(8,8)이 마커 앵커(발 자리)다. 효과
              스팬이 이미 가슴 높이(-0.34)로 떠 있고 몸 스프라이트는 -0.24만 떠 있어,
@@ -8469,8 +8594,8 @@ export default function ReplayMotionPlayer({
           const mzP = atkDeg !== null
             ? muzzlePoint(fxKind, atkDeg, viewYawOf(ax3, ay3), pitched) : null;
           const mzTf = mzP
-            ? `translate(${(((mzP[0] - 8) * fxPx) / 16).toFixed(1)}px, ${((((mzP[1] - 8) * fxPx) / 16) + 0.1 * fxPx).toFixed(1)}px) rotate(${atkDeg!.toFixed(1)}deg)`
-            : `rotate(${atkDeg?.toFixed(1)}deg) translateY(${MUZZLE_PX[fxUnit] ?? 4}px)`;
+            ? `translate(${(((mzP[0] - 8) * fxPx) / 16).toFixed(1)}px, ${((((mzP[1] - 8) * fxPx) / 16) + 0.1 * fxPx).toFixed(1)}px) rotate(${beamDeg!.toFixed(1)}deg)`
+            : `rotate(${beamDeg?.toFixed(1)}deg) translateY(${MUZZLE_PX[fxUnit] ?? 4}px)`;
           return (
             <span
               key={`v2fx-${ei}`}
@@ -8539,8 +8664,10 @@ export default function ReplayMotionPlayer({
             남는다. v2 데이터로 그리므로 v2 모드 + 클릭 토글이 켜져 있을 때만이다. */}
         {entOn && clickFx && entClicks.map(([cs, cx2, cy2, raw, ck], i) => {
           if (t < cs || t - cs > 0.9) return null;
-          /* 반으로(재재지적: 조작 표시 원들이 전체적으로 너무 큼) — 1.1 → 0.55타일 폭. */
-          const ckw = ((mapRef.current?.clientWidth ?? 320) / grid.width) * 0.55;
+          /* 반으로(재재지적: 조작 표시 원들이 전체적으로 너무 큼) — 1.1 → 0.55타일 폭.
+             하한 9px(재재재지적: 작으면 테두리가 붙어 꽉 찬 면으로 보임 — 채움 없이
+             테두리·구멍이 보이려면 최소 크기가 필요하다). */
+          const ckw = Math.max(9, ((mapRef.current?.clientWidth ?? 320) / grid.width) * 0.55);
           // 공격 클릭은 붉은 고리로 갈라 보인다(지적: 클릭 종류 구분).
           return (
             <span

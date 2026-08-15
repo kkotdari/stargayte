@@ -13035,6 +13035,7 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   margin: calc(var(--ckw, 9px) / -4) 0 0 calc(var(--ckw, 9px) / -2);
   /* 실처럼 가늘게(재지적: 색으로 구분되니 선은 실 굵기) — 0.5~0.7px 고정 헤어라인. */
   border: max(0.5px, calc(var(--ckw, 9px) / 40)) solid currentColor; border-radius: 50%;
+  background: transparent;
   animation: scr-clickfx 0.9s ease-out forwards;
 }
 .scr-motion-clickfx::after {
@@ -13082,14 +13083,15 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    십자는 두 막대(::before/::after)가 아니라 한 요소의 clip-path다(지적: + 두 막대의
    중심이 안 맞음 — 반픽셀 렌더링이 막대마다 다르게 굴러 어긋났다. 한 조각이면 어긋날
    상대가 없다). */
+/* 1/10 크기 + 연녹색(요청) — 아주 작은 연둣빛 십자. */
 .scr-motion-healfx {
-  position: absolute; left: 50%; top: 50%; width: 4px; height: 4px;
+  position: absolute; left: 50%; top: 50%; width: 2px; height: 2px;
   transform: translate(-50%, -50%); pointer-events: none;
   animation: scr-healfx 1.1s ease-out forwards;
 }
 .scr-motion-healfx::before {
   content: ""; position: absolute; inset: 0;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(178, 240, 190, 0.95);
   clip-path: polygon(34% 0, 66% 0, 66% 34%, 100% 34%, 100% 66%, 66% 66%, 66% 100%, 34% 100%, 34% 66%, 0 66%, 0 34%, 34% 34%);
   filter: drop-shadow(0 0 2px rgba(160, 255, 200, 0.9));
 }
