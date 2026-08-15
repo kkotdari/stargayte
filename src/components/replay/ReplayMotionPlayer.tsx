@@ -4138,6 +4138,8 @@ type UnitDrawOp = {
   noSep?: boolean;
   /** 남은 체력 비율 0~1(요청: 스탯을 지닌 생애주기) — 다쳤을 때만 와서 바가 뜬다. */
   hpFrac?: number;
+  /** 상태 오라 색(전수조사: 인스네어·플레이그·빙결…) — 몸 밑에 색빛이 밴다. */
+  tint?: string;
 };
 /* 구운 판의 실제 바닥(재재지적: 드론·해처리가 떠 있고 그림자가 이상하다) — 상자
    바닥 기준 어림은 모델이 상자를 다 안 채우면(해처리 둔덕 등) 그림자가 발보다 한참
@@ -4520,6 +4522,17 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         ctx.fill();
         ctx.restore();
       }
+      /* 상태 오라(전수조사) — 걸린 유닛 밑에 그 기술의 색빛. */
+      if (op.tint) {
+        ctx.save();
+        ctx.shadowColor = "transparent";
+        ctx.globalAlpha = op.alpha * 0.32;
+        ctx.fillStyle = op.tint;
+        ctx.beginPath();
+        ctx.ellipse(sx, sy - px * 0.08 - lift, px * 0.55, px * 0.42, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
       /* 체력바(요청: 체력을 지니고 다니는 생애주기) — 다친 유닛 머리 위에 원작풍
          바: 초록(>66%)·노랑(>33%)·빨강. 성한 유닛에는 안 띄워 화면을 아낀다. */
       if (op.hpFrac !== undefined && op.hpFrac > 0) {
@@ -4645,6 +4658,24 @@ export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg, flat,
 
 /** 테란 부속건물 — 이름 대신 + 하나로 본체 옆에 붙는다(요청). 제 건설 좌표가 본체
  *  오른쪽 아래라 저절로 옆자리다. */
+/* 상태 주문 표(재질문: 모든 기술 전수조사) — 좌표 마법이 그 순간 그 자리의 개체에
+   남기는 상태: 지속·반경·종류. 빙결류(스태시스·마엘스톰·락다운)는 그 자리에 얼어붙고,
+   나머지는 색 오라로 몸에 밴다. */
+const STATUS_CASTS: Record<string, { dur: number; r: number; kind: string; any?: boolean }> = {
+  Ensnare: { dur: 25, r: 2.5, kind: "ensnare" },
+  Plague: { dur: 25, r: 2.5, kind: "plague" },
+  "Stasis Field": { dur: 30, r: 2, kind: "stasis", any: true },
+  Maelstrom: { dur: 12, r: 2, kind: "mael" },
+  Lockdown: { dur: 30, r: 1.2, kind: "lock" },
+  Irradiate: { dur: 30, r: 1, kind: "irr" },
+};
+const FREEZE_STATUS = new Set(["stasis", "mael", "lock"]);
+const STATUS_TINT: Record<string, string> = {
+  ensnare: "#79c74c", plague: "#b4452e", stasis: "#69b7e8",
+  mael: "#a86ae0", lock: "#c8c8d2", irr: "#e8c84a",
+};
+/** 디텍터(전수조사: 투명화 카운터) — 이들이 곁에 있으면 은신이 벗겨진다. */
+const DETECTOR_UNITS = new Set(["Overlord", "Observer", "Science Vessel"]);
 const ADDONS = new Set([
   "Comsat Station", "Nuclear Silo", "Machine Shop", "Control Tower", "Covert Ops", "Physics Lab",
 ]);
@@ -5434,6 +5465,10 @@ export default function ReplayMotionPlayer({
       hp: [number, number][];
       /** 탑승 구간 [탑승 초, 끝 초](요청: 수송선 승하차) — 이 동안 마커를 숨긴다. */
       rides: [number, number][];
+      /** 상태 구간 [시작, 끝, 종류](전수조사) — 빙결은 정지, 나머지는 색 오라. */
+      statuses: [number, number, string][];
+      /** 개인 클로킹 구간(레이스·고스트 f=14/15). */
+      cloaks: [number, number][];
       walk: [number, number, number][];
     }[] = [];
     for (const e of entData.ents) {
@@ -5473,6 +5508,28 @@ export default function ReplayMotionPlayer({
       // 시차가 순서를 뒤집었으면(다음 명령이 바로 붙은 경우) 시간순으로 되돌린다.
       pts.sort((a, b) => a[0] - b[0]);
       if (pts.length === 0) continue;
+      const wk = walkTrack(pts, p, false, e.k || undefined, undefined, e.k === "");
+      /* 상태(전수조사) — 시전 순간 그 자리에 있었으면 걸린다. 적이 건 것만(스태시스는
+         아군 오폭도 언다). */
+      const statuses: [number, number, string][] = [];
+      for (const [cs5, cx9, cy9, tech5, craw5] of castsV2) {
+        const cfg = STATUS_CASTS[tech5];
+        if (!cfg) continue;
+        if (!cfg.any && craw5 === raw) continue;
+        const pp5 = posAt(wk, cs5, null);
+        if (!pp5 || Math.hypot(cx9 - pp5.x, cy9 - pp5.y) > cfg.r) continue;
+        statuses.push([cs5, cs5 + cfg.dur, cfg.kind]);
+      }
+      /* 개인 클로킹(f=14 켬 / 15 끔) 구간. */
+      const cloaks: [number, number][] = [];
+      {
+        let on = -1;
+        for (const v of e.ev) {
+          if (v[3] === 14 && on < 0) on = v[0];
+          else if (v[3] === 15 && on >= 0) { cloaks.push([on, v[0]]); on = -1; }
+        }
+        if (on >= 0) cloaks.push([on, Infinity]);
+      }
       out.push({
         raw, unit: e.k, b: e.b, d: e.d, tag: e.t,
         atkAt: e.ev.filter((v) => v[3] === 7).map((v) => [v[0], v[4] ?? 0] as [number, number]),
@@ -5493,7 +5550,9 @@ export default function ReplayMotionPlayer({
           return spans;
         })(),
         // 정체를 알면 그 속도로, 모르면 부대 어림과 같은 규칙(그때의 우세 유닛·지상 길)로.
-        walk: walkTrack(pts, p, false, e.k || undefined, undefined, e.k === ""),
+        walk: wk,
+        statuses,
+        cloaks,
       });
     }
     return out;
@@ -5511,6 +5570,10 @@ export default function ReplayMotionPlayer({
      조정으로 다가오므로 양쪽이 반씩 오면 꼭 목표 거리(근접 0.8타일, 원거리 사정거리)
      에서 만나고, 서로 원좌표 기준이라 지나쳐 겹치지 않는다. 시야(9타일) 밖은 안 끈다. */
   const engageFoes: { team: number; x: number; y: number; air: boolean }[] = [];
+  /** 아비터 은신장(전수조사) — 같은 사람 유닛이 곁(4.5타일)에 있으면 흐려진다. */
+  const arbiterSpots: { raw: string; x: number; y: number }[] = [];
+  /** 디텍터 명단 — 적 디텍터가 곁(9타일)이면 은신이 벗겨진다. */
+  const detectorSpots: { team: number; x: number; y: number }[] = [];
   /* v2 개체의 지금 위치(태그별) — 어택이 찍은 '그 대상'을 겨누는 지도(지적). */
   const entPosByTag = new Map<number, { x: number; y: number; team: number; air: boolean }>();
   if (entOn) {
@@ -5528,6 +5591,9 @@ export default function ReplayMotionPlayer({
       };
       engageFoes.push(row);
       if (e.tag > 0) entPosByTag.set(e.tag, row);
+      // 아비터 은신장·디텍터(전수조사) — 이번 프레임 위치를 명단에 올린다.
+      if (e.unit === "Arbiter") arbiterSpots.push({ raw: e.raw, x: q.x, y: q.y });
+      if (DETECTOR_UNITS.has(e.unit)) detectorSpots.push({ team: row.team, x: q.x, y: q.y });
     }
     for (const [bs, bx2, by2, bu, br, bg] of buildsSrc) {
       if (!["Sunken Colony", "Spore Colony", "Photon Cannon", "Missile Turret", "Bunker"].includes(bu)) continue;
@@ -5537,6 +5603,15 @@ export default function ReplayMotionPlayer({
         team: teamOfRaw(br) ?? 0,
         x: bx2 + footDx(bu), y: by2 + footDy(bu), air: false,
       });
+      // 방어 디텍터(전수조사) — 터렛·스포어·캐논은 은신을 벗긴다.
+      if (bu === "Missile Turret" || bu === "Spore Colony" || bu === "Photon Cannon") {
+        detectorSpots.push({ team: teamOfRaw(br) ?? 0, x: bx2 + footDx(bu), y: by2 + footDy(bu) });
+      }
+    }
+    // 스캐너 스윕(전수조사) — 12초 동안 그 자리가 디텍터다.
+    for (const [cs6, cx10, cy10, tech6, craw6] of castsSrc) {
+      if (tech6 !== "Scanner Sweep" || t < cs6 || t - cs6 > 12) continue;
+      detectorSpots.push({ team: teamOfRaw(craw6) ?? 0, x: cx10, y: cy10 });
     }
   } else {
     motion.players.forEach((p2, pi2) => {
@@ -7296,6 +7371,9 @@ export default function ReplayMotionPlayer({
           /* 탑승 중(요청: 수송선 승하차) — 배 안에 있으니 마커를 걷는다. 하차 지점
              (f=13)이나 다음 제 명령에서 다시 나타나 걷는다. */
           if (e.rides.some(([ra, rb]) => t >= ra + 1 && t < rb)) return null;
+          /* 빙결(전수조사: 스태시스·마엘스톰·락다운) — 걸린 자리에 얼어붙는다. */
+          const frzSt = e.statuses.find(([sa2, sb2, sk2]) =>
+            FREEZE_STATUS.has(sk2) && t >= sa2 && t < sb2);
           const race = bases.find((b) => b.key === e.raw)?.race;
           const u = e.unit;
           /* 초반 무명은 일꾼(지적: 일꾼밖에 없는데 저글링이 정찰) — 그 사람의 첫 전투
@@ -7328,7 +7406,7 @@ export default function ReplayMotionPlayer({
             }
             break;
           }
-          const fighting = canFight && Number.isFinite(foe.bd) && foe.bd <= ENGAGE_SIGHT_TILES;
+          const fighting = canFight && !frzSt && Number.isFinite(foe.bd) && foe.bd <= ENGAGE_SIGHT_TILES;
           let pos = rawPos;
           if (fighting && !uAir) {
             const mem = engageHoldRef.current.get(holdKey);
@@ -7423,6 +7501,10 @@ export default function ReplayMotionPlayer({
               }
             }
           }
+          if (frzSt) {
+            const fp2 = posAt(rp, Math.max(rp[0][0], frzSt[0]), null);
+            if (fp2) pos = { ...pos, x: fp2.x, y: fp2.y };
+          }
           const [ax3, ay3] = [pos.x, pos.y];
           const [fx, fy] = posFrac(ax3, ay3);
           // 죽음 창(d~d+1.2초) — 마커 대신 종족별 사망 효과가 남는다.
@@ -7465,11 +7547,27 @@ export default function ReplayMotionPlayer({
             kind: burrowed ? "burrowhole"
               : isWorker ? workerKindOf(race) : unitMarkerKind(drawUnit2, race),
             hpFrac: hpPct < 100 ? Math.max(0.04, hpPct / 100) : undefined,
+            tint: (() => {
+              const actSt = e.statuses.find(([sa3, sb3]) => t >= sa3 && t < sb3);
+              return actSt ? STATUS_TINT[actSt[2]] : undefined;
+            })(),
             rotDeg: burrowed ? undefined : bodyHdg,
             viewYaw: viewYawOf(ax3, ay3), flat: !pitched, pitch: pitched,
             sizePx: drawUnit === "" || isWorker ? unitGlyphPx(0, ay3) : unitPxOf(drawUnit, ay3),
             color: modeColor(e.raw, team),
-            alpha: u === "" ? 0.8 : 1,
+            alpha: (() => {
+              /* 클로킹(전수조사) — 개인 클록(f=14/15)·상시 은신(다크·옵저버)·아비터
+                 은신장. 적 디텍터(오버로드·옵저버·베슬·터렛·스포어·캐논·스캔)가
+                 곁이면 반쯤 벗겨진다. */
+              const cloakedNow = e.cloaks.some(([ca, cb]) => t >= ca && t < cb)
+                || drawUnit === "Dark Templar" || drawUnit === "Observer"
+                || (drawUnit !== "Arbiter" && arbiterSpots.some((asp) =>
+                  asp.raw === e.raw && Math.hypot(asp.x - pos.x, asp.y - pos.y) <= 4.5));
+              if (!cloakedNow) return u === "" ? 0.8 : 1;
+              const detected = detectorSpots.some((dsp) => dsp.team > 0
+                && dsp.team !== (team ?? 0) && Math.hypot(dsp.x - pos.x, dsp.y - pos.y) <= 9);
+              return detected ? 0.72 : 0.4;
+            })(),
             air: uAir,
             /* 겹침 이완은 v2에선 안 쓴다(지적: 다시 넣되 새로) — 도착 대형(entWalks의
                해바라기 나선)이 겹침을 미리 푸는 방식이라, 프레임마다 밀치는 이완의

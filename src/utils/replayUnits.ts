@@ -378,6 +378,9 @@ export function buildUnitTracks(
     l.kinds.has("Dropship") || l.kinds.has("Shuttle") || l.kinds.has("Overlord")
     || l.groupKinds.has("Transport");
   const ventralAt = new Map<number, number>();
+  /** 표적 주문(재질문: 모든 기술 전수조사) — [표적 태그, 초, 기술]. 이라디에잇·
+   *  야마토·브루들링(즉사)·디펜시브 매트릭스(흡수)·락다운(정지)이 태그를 찍는다. */
+  const targCast: { tag: number; sec: number; tech: string }[] = [];
   /** 일꾼 태그 → 아직 확정 안 된 건설 — '도착 전'(arrive 예상 시각 앞)에 다른 데로
    *  불려가야만 취소다. 도착 뒤의 재명령(테란 SCV 곁 세우기, 프로토스 워프 후 복귀)은
    *  정상 조작이다 — 첫 판은 25초 뭉툭 창이라 물리건물 476채 중 248채를 취소로 오판했다. */
@@ -680,6 +683,15 @@ export function buildUnitTracks(
       }
       continue;
     }
+    if (cmdName === "Cloak" || cmdName === "Decloak") {
+      // 개인 클로킹(재질문: 투명화) — 레이스·고스트의 켬(f=14)·끔(f=15)을 그대로 싣는다.
+      for (const tag of tags) {
+        const life = lifeOf(tag, pid, sec);
+        life.ev.push([Math.round(sec), -1, -1, cmdName === "Cloak" ? 14 : 15]);
+        life.last = sec;
+      }
+      continue;
+    }
     if (HALT_CMDS.has(cmdName) || cmdName === "Unsiege" || cmdName === "Unburrow"
       || cmdName === "Stim" || cmdName === "Merge Archon" || cmdName === "Merge Dark Archon"
       || cmdName === "Unload All" || cmdName === "Lift Off" || cmdName === "Land"
@@ -715,6 +727,10 @@ export function buildUnitTracks(
           if (lpos) pushEv(life, sec, lpos.x, lpos.y, 5);
         } else if (cmdName === "Lift Off") {
           pushEv(life, sec, -1, -1, 6);
+        } else if (cmdName === "Stim") {
+          // 스팀(전수조사) — 제 피 10을 태워 잠깐 빨라진다: 증거 f=16.
+          life.ev.push([Math.round(sec), -1, -1, 16]);
+          life.last = sec;
         } else if (HALT_CMDS.has(cmdName)) {
           const lastPt = life.ev[life.ev.length - 1];
           if (lastPt && lastPt[1] >= 0) pushEv(life, sec, lastPt[1], lastPt[2], 3);
@@ -802,6 +818,10 @@ export function buildUnitTracks(
       } else life.last = sec;
     }
 
+    if (tgtTag0 > 0 && tgtTag0 < 60000
+      && ["CastIrradiate", "FireYamatoGun", "CastSpawnBroodlings", "CastDefensiveMatrix", "CastLockdown"].includes(orderName)) {
+      targCast.push({ tag: tgtTag0, sec, tech: CAST_ORDER_TO_TECH[orderName] ?? orderName });
+    }
     /* MoveUnload(요청 ③) — 수송선이 그 자리로 가서 쏟는다: 도착 어림 4초 뒤 하차. */
     if (orderName === "MoveUnload" && pos) {
       for (const tag of tags) unloadRiders(tag, sec + 4, pos.x, pos.y);
@@ -1071,14 +1091,33 @@ export function buildUnitTracks(
     for (const [k, n] of life.kinds) { if (n > bn) { best = k; bn = n; } }
     return best;
   };
-  const atkEvts: { sec: number; x: number; y: number; owner: number; dps: number }[] = [];
+  const MELEE_UNITS = new Set(["Zergling", "Zealot", "Dark Templar", "Ultralisk", "Firebat", "SCV", "Probe", "Drone"]);
+  const atkEvts: { sec: number; x: number; y: number; owner: number; dps: number; melee: boolean }[] = [];
   /* 표적 힐·수리(f=10) — 태그별 [초] 목록. 체력 원장의 회복 이벤트. */
   const healsAt = new Map<number, number[]>();
+  /* 공격자 쪽 기술(전수조사) — 스팀은 12초 동안 공속 +35%, 적 인스네어에 젖으면
+     -30%(공속 저하 지적), 디스럽션 웹 안에선 지상 공격이 거의 멎는다. */
+  const slowCasts: [number, number, number, number][] = [];
+  const webCasts: [number, number, number][] = [];
+  for (const [csec, cxs, cys, tech, cpid] of casts) {
+    if (tech === "Ensnare") slowCasts.push([csec, cxs, cys, cpid]);
+    if (tech === "Disruption Web") webCasts.push([csec, cxs, cys]);
+  }
   for (const life of done) {
     const mk = majorityKindOf(life);
     const dps = (UNIT_STATS[mk] ?? DEFAULT_UNIT_STATS).dps;
+    const melee = MELEE_UNITS.has(mk);
+    const stims = life.ev.filter((v) => v[3] === 16).map((v) => v[0]);
     for (const v of life.ev) {
-      if (v[3] === 7) atkEvts.push({ sec: v[0], x: v[1], y: v[2], owner: life.owner, dps: Math.max(3, dps) });
+      if (v[3] === 7) {
+        let d = Math.max(3, dps);
+        if (stims.some((ss) => v[0] - ss >= 0 && v[0] - ss <= 12)) d *= 1.35;
+        if (slowCasts.some(([cs2, cx5, cy5, cp5]) => !sameSide(cp5, life.owner)
+          && v[0] - cs2 >= 0 && v[0] - cs2 <= 25 && Math.hypot(cx5 - v[1], cy5 - v[2]) <= 3)) d *= 0.7;
+        if (webCasts.some(([cs3, cx6, cy6]) =>
+          v[0] - cs3 >= 0 && v[0] - cs3 <= 25 && Math.hypot(cx6 - v[1], cy6 - v[2]) <= 2.5)) d *= 0.1;
+        atkEvts.push({ sec: v[0], x: v[1], y: v[2], owner: life.owner, dps: d, melee });
+      }
       if (v[3] === 10 && (v[4] ?? 0) > 0) {
         const arr = healsAt.get(v[4] as number) ?? [];
         arr.push(v[0]);
@@ -1129,15 +1168,70 @@ export function buildUnitTracks(
     const heals = healsAt.get(life.tag) ?? [];
     /* 피해 시간줄 — 적 공격 명령(공업 반영) + 적 방어건물 화력(요청 ③: 성큰·캐논·
        벙커·터렛이 사거리 안 유닛을 실제로 깎는다)을 한 줄로 합친다. */
-    const dmg: [number, number][] = [];
+    const dmg: [number, number, string?][] = [];
+    /* 스태시스(전수조사) — 얼음 속은 무적이다: 창 안의 피해를 걸러낸다. */
+    const stasisSpans: [number, number][] = [];
+    /* 다크스웜 — 스웜 아래선 원거리 피해가 거의 안 박힌다(근접은 그대로). */
+    const swarmZones: [number, number, number][] = [];
+    for (const [csec, cx7, cy7, tech] of casts) {
+      if (tech === "Stasis Field") {
+        const pos = posAtSec(life, csec);
+        if (pos && Math.hypot(cx7 - pos[0], cy7 - pos[1]) <= 2) stasisSpans.push([csec, csec + 30]);
+      }
+      if (tech === "Dark Swarm") swarmZones.push([csec, cx7, cy7]);
+    }
     for (const a of atkEvts) {
       if (a.sec < life.born) continue;
       if (a.sec > lastEvSec + 240) break;
       if (!isFoeOf(a.owner, life.owner)) continue;
       const pos = posAtSec(life, a.sec);
       if (!pos || Math.hypot(a.x - pos[0], a.y - pos[1]) > 7) continue;
+      if (stasisSpans.some(([sa, sb]) => a.sec >= sa && a.sec <= sb)) continue;
       // 공격 명령 하나 = 그 유닛이 1.4초쯤 두들긴 것. 공업 +10%/렙.
-      dmg.push([a.sec, Math.min(80, a.dps * 1.4) * (1 + 0.1 * lvOf(wUpsBy, a.owner, a.sec))]);
+      let base = Math.min(80, a.dps * 1.4) * (1 + 0.1 * lvOf(wUpsBy, a.owner, a.sec));
+      if (!a.melee && swarmZones.some(([ws, wx, wy]) =>
+        a.sec - ws >= 0 && a.sec - ws <= 25 && Math.hypot(wx - pos[0], wy - pos[1]) <= 2.5)) {
+        base *= 0.15;
+      }
+      dmg.push([a.sec, base]);
+    }
+    // 스팀 자해(전수조사) — 한 번에 피 10.
+    for (const v of life.ev) {
+      if (v[3] === 16) dmg.push([v[0], 10, "spell"]);
+    }
+    /* 주문 영향(재질문: 스톰·플레이그·이라디에잇·EMP 등) — 좌표 마법이 그 순간 그
+       자리에 있던 개체를 잡는다. 스톰·이라디에잇은 방업 무시, EMP는 실드 소거,
+       플레이그는 체력을 1/4로 무너뜨리되 죽이지는 못한다(원작 규칙). */
+    for (const [csec, cx4, cy4, tech, cpid] of casts) {
+      if (csec < life.born || csec > lastEvSec + 240) continue;
+      if (tech === "Psionic Storm") {
+        if (!isFoeOf(cpid, life.owner)) continue;
+        const pos = posAtSec(life, csec);
+        if (pos && Math.hypot(cx4 - pos[0], cy4 - pos[1]) <= 2) dmg.push([csec, 90, "spell"]);
+      } else if (tech === "EMP Shockwave") {
+        const pos = posAtSec(life, csec);
+        if (pos && Math.hypot(cx4 - pos[0], cy4 - pos[1]) <= 2.5) dmg.push([csec, 0, "emp"]);
+      } else if (tech === "Plague") {
+        if (!isFoeOf(cpid, life.owner)) continue;
+        const pos = posAtSec(life, csec);
+        if (pos && Math.hypot(cx4 - pos[0], cy4 - pos[1]) <= 2.5) dmg.push([csec, 0, "plague"]);
+      }
+    }
+    let matrixFrom = -1;
+    let matrixLeft = 250;
+    for (const tc of targCast) {
+      if (tc.tag !== life.tag || tc.sec < life.born || tc.sec > lastEvSec + 240) continue;
+      if (tc.tech === "Irradiate") dmg.push([tc.sec + 6, 130, "spell"], [tc.sec + 14, 90, "spell"]);
+      else if (tc.tech === "Yamato Gun") dmg.push([tc.sec + 2, 260, "spell"]);
+      else if (tc.tech === "Spawn Broodlings") dmg.push([tc.sec + 1, 9999, "spell"]);
+      else if (tc.tech === "Defensive Matrix") matrixFrom = tc.sec;
+    }
+    // 핵(전수조사) — 찍힌 자리 곁 8타일은 초토화된다(발사까지 8초 어림).
+    for (const [csec, cx8, cy8, tech, cpid] of casts) {
+      if (tech !== "Nuclear Strike" || !isFoeOf(cpid, life.owner)) continue;
+      if (csec < life.born || csec > lastEvSec + 240) continue;
+      const pos = posAtSec(life, csec + 8);
+      if (pos && Math.hypot(cx8 - pos[0], cy8 - pos[1]) <= 8) dmg.push([csec + 8, 466, "spell"]);
     }
     for (let vi = 0; vi < life.ev.length; vi += 1) {
       const v = life.ev[vi];
@@ -1169,7 +1263,7 @@ export function buildUnitTracks(
       if (maxSh > 0) curSh = Math.min(maxSh, curSh + maxSh * 0.02 * dt);
       if (race3 === "저그") curHp = Math.min(maxHp, curHp + 0.6 * dt);
     };
-    for (const [dsec, draw] of dmg) {
+    for (const [dsec, draw, dknd] of dmg) {
       flow(prevSec, dsec);
       prevSec = dsec;
       // 회복이 먼저 왔으면 반영 — 메딕 힐·SCV 수리 한 번에 체력 4할.
@@ -1179,8 +1273,26 @@ export function buildUnitTracks(
         if (p2 !== lastPct) { trace.push([Math.round(heals[hi]), p2]); lastPct = p2; }
         hi += 1;
       }
-      // 방업 -8%/렙. 실드 먼저.
-      let d2 = draw * (1 - 0.08 * lvOf(aUpsBy, life.owner, dsec));
+      if (dknd === "emp") {
+        curSh = 0;
+        const pE = pct();
+        if (pE !== lastPct) { trace.push([Math.round(dsec), pE]); lastPct = pE; }
+        continue;
+      }
+      if (dknd === "plague") {
+        curHp = Math.max(3, curHp * 0.25);
+        const pP = pct();
+        if (pP !== lastPct) { trace.push([Math.round(dsec), pP]); lastPct = pP; }
+        continue;
+      }
+      // 방업 -8%/렙(주문은 무시). 실드 먼저.
+      let d2 = draw * (dknd === "spell" ? 1 : 1 - 0.08 * lvOf(aUpsBy, life.owner, dsec));
+      // 디펜시브 매트릭스(전수조사) — 60초 동안 250까지 대신 받아 준다.
+      if (matrixFrom >= 0 && dsec >= matrixFrom && dsec <= matrixFrom + 60 && matrixLeft > 0) {
+        const absorb = Math.min(matrixLeft, d2);
+        matrixLeft -= absorb;
+        d2 -= absorb;
+      }
       const fromSh = Math.min(curSh, d2);
       curSh -= fromSh;
       d2 -= fromSh;
