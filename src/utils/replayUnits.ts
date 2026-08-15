@@ -1605,5 +1605,25 @@ export function serializeUnitTracks(tracks: UnitTracksV2): string {
     }
     json = JSON.stringify(tracks);
   }
+  /* 체력·앵커 솎기(수리: 긴 경기 8건이 상한을 넘어 업로드 거절 — 체력 자취·합성
+     개체가 몸집을 키웠다) — 이동 솎기로 모자라면 체력 변곡점을 둘에 하나로(끝값은
+     남긴다), 그다음 강한 앵커(f=1)를 둘에 하나로 줄인다. */
+  for (let round = 0; round < 3 && json.length > SERIALIZE_CAP; round += 1) {
+    for (const e of tracks.ents) {
+      if (e.hp && e.hp.length > 6) {
+        e.hp = e.hp.filter((_, i) => i % 2 === 0 || i === e.hp!.length - 1);
+      }
+      const anchors2 = e.ev.filter((v) => v[3] === 1).length;
+      if (anchors2 > 8) {
+        let nth2 = 0;
+        e.ev = e.ev.filter((v) => {
+          if (v[3] !== 1) return true;
+          nth2 += 1;
+          return nth2 % 2 === 0;
+        });
+      }
+    }
+    json = JSON.stringify(tracks);
+  }
   return json;
 }
