@@ -5371,6 +5371,8 @@ export default function ReplayMotionPlayer({
      0 최저: 접지 그림자만(재요청: 그림자는 최저부터) / 1 저: +체력바·죽음 효과 /
      2 중: +전투·공사 애니·크립 / 3 고: +겹침 그림자 / 4 최고: +핑(전부 켬). */
   const [quality, setQuality] = useState(2);
+  // 체력바 보임/숨김(요청: 라디오화) — 사양 게이트(저 이상)와 곱해진다.
+  const [hpShow, setHpShow] = useState(true);
   const qHp = quality >= 1;
   const qDeath = quality >= 1;
   const qShadows = true;
@@ -8888,7 +8890,7 @@ export default function ReplayMotionPlayer({
             채우고, 커밋 뒤 effect가 그린다. */}
         <UnitLayer
           ops={unitOps} zoom={zoom} pan={pan} wallMask={creepMask} maskRects={creepMaskRects}
-          showShadows={qShadows} showOverlap={qOverlap} showHp={qHp} showCreep={qCreep}
+          showShadows={qShadows} showOverlap={qOverlap} showHp={qHp && hpShow} showCreep={qCreep}
           /* 크립을 가두는 맵 모서리(재지적: 3D에서 크립이 영역을 벗어남) — 입체는 원근
              투영된 사다리꼴이라 네 모서리를 posFrac으로 투영해 넘긴다. 평면은 단위
              사각형이 나와 기존 직사각 클립과 같다. */
@@ -8976,6 +8978,16 @@ export default function ReplayMotionPlayer({
           </span>
         )}
         {/* 클릭 자국 토글(요청) — v2 데이터로 그리므로 v2가 켜져 있을 때만 선다. */}
+        {/* 체력바(요청: 라디오화, 마우스 조작 앞 순서). */}
+        <span className="scr-motion-radio">
+          <span className="scr-motion-radio-label">체력바</span>
+          <PillTabs
+            options={[{ value: "on", label: "보임" }, { value: "off", label: "숨김" }]}
+            value={hpShow ? "on" : "off"}
+            onChange={(v) => setHpShow(v === "on")}
+            aria-label="체력바"
+          />
+        </span>
         {/* 마우스 조작 표시(요청: 라벨 달고 라디오는 on/off) — 다른 라디오와 같은 꼴. */}
         {entOn && (
           <span className="scr-motion-radio">
