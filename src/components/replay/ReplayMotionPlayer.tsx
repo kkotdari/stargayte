@@ -4239,6 +4239,8 @@ type UnitDrawOp = {
   hpMax?: number;
   /** 상태 오라 색(전수조사: 인스네어·플레이그·빙결…) — 몸 밑에 색빛이 밴다. */
   tint?: string;
+  /** 방금 명령을 받아 잡혀 있음 — 발밑에 흰 선택 링(지적: 드래그 선택 구분). */
+  selRing?: boolean;
 };
 /* 구운 판의 실제 바닥(재재지적: 드론·해처리가 떠 있고 그림자가 이상하다) — 상자
    바닥 기준 어림은 모델이 상자를 다 안 채우면(해처리 둔덕 등) 그림자가 발보다 한참
@@ -4625,6 +4627,18 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         // 바닥면 전체(재지적: 앞쪽만 납작) — 타원을 키우고 중심을 위로 당긴다.
         ctx.ellipse(sx, footY - px * 0.09, px * 0.19, px * 0.11 * (op.pitch ? 0.6 : 1), 0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
+      }
+      /* 선택 링(지적: 드래그 선택 구분) — 잡힌 유닛 발밑의 가는 흰 타원 테. */
+      if (op.selRing) {
+        ctx.save();
+        ctx.shadowColor = "transparent";
+        ctx.globalAlpha = op.alpha * 0.85;
+        ctx.strokeStyle = "rgba(240, 255, 240, 0.95)";
+        ctx.lineWidth = Math.max(0.8, px * 0.05);
+        ctx.beginPath();
+        ctx.ellipse(sx, sy + px * 0.18, px * 0.5, px * 0.28 * (op.pitch ? 0.6 : 1), 0, 0, Math.PI * 2);
+        ctx.stroke();
         ctx.restore();
       }
       /* 상태 오라(전수조사) — 걸린 유닛 밑에 그 기술의 색빛. */
@@ -5166,21 +5180,23 @@ export default function ReplayMotionPlayer({
      이동 명령 목적지(f=0)가 곧 그 사람의 클릭이다. 같은 클릭이 골라진 유닛 수만큼
      중복돼 있으니(12기 선택 우클릭 = 12개체에 같은 점) 사람·초·자리로 합친다.
      별도 저장이 필요 없어 이미 재분석된 경기에서도 바로 나온다. */
-  const entClicks = useMemo<[number, number, number, string][]>(() => {
+  const entClicks = useMemo<[number, number, number, string, number][]>(() => {
     if (!entData) return [];
     const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
     const seen = new Set<string>();
-    const out: [number, number, number, string][] = [];
+    /* 다섯째 값은 클릭의 종류(지적: 클릭·우클릭이 구분이 안 된다) — 0 이동 우클릭,
+       7 공격 클릭. 선택(드래그)은 자리가 아니라 잡힌 유닛들 몸에 켜지는 링이 맡는다. */
+    const out: [number, number, number, string, number][] = [];
     for (const e of entData.ents) {
       if (e.t < 0) continue;
       const raw = nameOfId.get(e.o) ?? "";
       if (!raw) continue;
       for (const v of e.ev) {
-        if (v[3] !== 0) continue;
+        if (v[3] !== 0 && v[3] !== 7) continue;
         const key = `${e.o}:${v[0]}:${v[1]}:${v[2]}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        out.push([v[0], v[1], v[2], raw]);
+        out.push([v[0], v[1], v[2], raw, v[3]]);
       }
     }
     return out.sort((a, b) => a[0] - b[0]);
@@ -5583,6 +5599,8 @@ export default function ReplayMotionPlayer({
       statuses: [number, number, string][];
       /** 개인 클로킹 구간(레이스·고스트 f=14/15). */
       cloaks: [number, number][];
+      /** 명령(이동·공격·정지) 시각들 — 선택 링(지적: 드래그 선택 구분)의 재료. */
+      orders: number[];
       walk: [number, number, number][];
     }[] = [];
     for (const e of entData.ents) {
@@ -5652,6 +5670,7 @@ export default function ReplayMotionPlayer({
         fixes: e.ev.filter((v) => v[3] === 10).map((v) => v[0]),
         hp: e.hp ?? [],
         ic: e.ic ?? [],
+        orders: e.ev.filter((v) => v[3] === 0 || v[3] === 7 || v[3] === 3).map((v) => v[0]),
         rides: (() => {
           const spans: [number, number][] = [];
           for (let i = 0; i < e.ev.length; i += 1) {
@@ -7662,11 +7681,16 @@ export default function ReplayMotionPlayer({
             if (hs2 <= t) hpPct = hv2;
             else break;
           }
+          /* 선택 표시(지적: 드래그 선택 구분) — 방금 명령을 받았다는 것은 그 직전에
+             (드래그든 부대지정이든) 잡혔다는 뜻이다. 클릭 토글이 켜져 있으면 명령
+             직후 0.35초 동안 몸에 흰 링이 켜져, 함께 잡힌 무리가 한눈에 보인다. */
+          const selNow = clickFx && e.orders.some((os2) => t >= os2 && t - os2 <= 0.35);
           unitOps.push({
             fx, fy,
             z: pitched ? 1000 + Math.round(ay3 * 80) : 1000 + (ei % 137),
             kind: burrowed ? "burrowhole"
               : isWorker ? workerKindOf(race) : unitMarkerKind(drawUnit2, race),
+            selRing: selNow || undefined,
             hpFrac: hpPct < 100 ? Math.max(0.04, hpPct / 100) : undefined,
             hpMax: (() => {
               const st2 = UNIT_STATS[drawUnit2] ?? UNIT_STATS[drawUnit];
@@ -7842,12 +7866,13 @@ export default function ReplayMotionPlayer({
         {/* 클릭 자국(요청: 동그라미 안에 점, 납작하게 + 토글) — 브루드워의 이동 클릭
             표시처럼, 명령이 떨어진 자리에 찍은 사람 색의 납작한 고리+가운데 점이 잠깐
             남는다. v2 데이터로 그리므로 v2 모드 + 클릭 토글이 켜져 있을 때만이다. */}
-        {entOn && clickFx && entClicks.map(([cs, cx2, cy2, raw], i) => {
+        {entOn && clickFx && entClicks.map(([cs, cx2, cy2, raw, ck], i) => {
           if (t < cs || t - cs > 0.9) return null;
+          // 공격 클릭은 붉은 고리로 갈라 보인다(지적: 클릭 종류 구분).
           return (
             <span
               key={`clk-${i}`}
-              className="scr-motion-clickfx"
+              className={cx("scr-motion-clickfx", ck === 7 && "scr-clickfx-atk")}
               style={{ ...posStyle(cx2, cy2), color: modeColor(raw, teamOfRaw(raw)), zIndex: 1490 }}
             />
           );
