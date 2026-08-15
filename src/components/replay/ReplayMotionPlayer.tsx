@@ -4256,7 +4256,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const [px, py] = project(x, y, z);
       return `${px} ${py}`;
     };
-    const out: ShapeFace[] = [...paintBase(hornFaces(0, -2.6, 5, -0.3, -3.6, 7.8, 1), "#c9ced6")]; // 꼬리 은색(재지적)
+    const out: ShapeFace[] = []; // 꼬리 제거(재재지적)
     /* 포드는 캡슐 한 덩이(정정: 앞 뭉치가 본체와 떨어져 보였고 검정이 끼었다) —
        양 끝이 둥근 외곽선 하나로 그려 이음매도 어두운 단면도 없다. */
     const pod = (tx: number): void => {
@@ -4304,10 +4304,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       + ` L${pt(2.6, 2.6, 4.6)} Q${pt(0, 3.4, 5.4)} ${pt(-2.6, 2.6, 4.6)} Z`;
     out.push(bodyFace(edge), sideFace(edge, 0.22));
     out.push(bodyFace(plate), topFace(plate, 0.18));
-    // 뒤 추진체 셋(지적) — 꽁무니에서 뒤로 내민 짧은 통, 꽁무니가 보이면 분사구 발광.
-    for (const tx of [-1.3, 0, 1.3]) {
-      // 추진기 검정색(요청).
-      out.push(...paintBase(tubeFaces(tx, -2.5, tx, -3.5, 0.38, 5), "#1b1e23"));
+    /* 뒤 추진체 셋 — 짙은 은색(재지적). 앞에서 볼 때도 몸을 뚫고 보이던 문제(지적:
+       안 가려짐)는 꽁무니가 돌아앉으면 아예 그리지 않는 것으로 해결 — 몸판이 무깊이
+       면이라 painter로는 못 가린다. */
+    if (facingRatio(0, -1) > -0.15) {
+      for (const tx of [-1.3, 0, 1.3]) {
+        out.push(...paintBase(tubeFaces(tx, -2.5, tx, -3.5, 0.38, 5), "#9ba3ad"));
+      }
     }
     if (facingRatio(0, -1) > -0.15) {
       for (const tx of [-1.3, 0, 1.3]) {
