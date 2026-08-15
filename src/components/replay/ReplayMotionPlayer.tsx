@@ -7579,7 +7579,9 @@ export default function ReplayMotionPlayer({
           const wTiles = gasSpot ? 6.4 : 2.9;
           unitOps.push({
             fx, fy,
-            z: pitched ? 990 + Math.round(res[1] * 80) : 900 + ri,
+            /* 자원도 높이를 가진다(지적: 뒤 사물을 가려야) — 990 바닥층이 아니라 건물과
+               같은 y순 층에 선다. 발자국 아랫변(+0.7)이 정렬 기준이다. */
+            z: pitched ? 1000 + Math.round((res[1] + 0.7) * 80) : 900 + ri,
             kind: gasSpot ? "geyser" : "mineral",
             viewYaw: viewYawOf(res[0], res[1]), flat: !pitched, pitch: pitched,
             sizePx: 0,
@@ -7587,7 +7589,8 @@ export default function ReplayMotionPlayer({
             hFrac: ((wTiles * 0.75) / grid.width) * mkK,
             boxFit: "meet", fitWidth: true,
             color: gasSpot ? (depleted ? "#5d564c" : "#8f8274") : "#8fb9e8",
-            alpha: gasSpot ? 1 : 0.75, noShadow: true,
+            // 미네랄 반투명(요청) — 뒤가 어렴풋이 비치는 수정 결정.
+            alpha: gasSpot ? 1 : 0.55, noShadow: true,
           });
           return null;
         })}
