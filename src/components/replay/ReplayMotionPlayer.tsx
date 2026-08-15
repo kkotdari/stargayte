@@ -16,7 +16,7 @@ import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } f
 import {
   bodyFace, capFace, depthNow, groundEllipse, sideFace, tagKey, topFace, type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
-  domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces, limbFaces, tubeFaces,
+  domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces, limbFaces, pyramidFaces3, tubeFaces,
   wallDiscPath, wallFrame, withPitchView, withTopView, withViewShear, withYaw, zsorted,
 } from "../../utils/shapeOblique";
 import type { MinimapMarker } from "./ReplayMinimap";
@@ -3947,17 +3947,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 미네랄(재정정: 삼각뿔 말고 보석 기둥) — 세운 기둥 결정 + 뾰족 갓 셋, 키가 다
      다르다. 색은 그리는 쪽이 하늘색을 넣는다(팀색과 무관한 지물). */
   mineral: () => {
-    /* 결정 갈래로(재지적: 꼭대기 피라미드가 밑 기둥에 가려짐 + 너무 수직) — 절두+피라미드
-       적층을 걷고 뿔 하나짜리 결정 넷으로: 끝까지 한 몸이라 가려질 이음매가 없고, 끝점을
-       옆으로 밀어 저마다 다른 방향으로 비스듬히 자란다. */
-    const shard = (
-      cx: number, cy: number, dx: number, dy: number, h: number, w: number,
-    ): ShapeFace[] => hornFaces(cx, cy, 0.15, cx + dx, cy + dy, h, w);
+    /* 보석 기둥 복귀(재재지적: 뿔 결정은 따로따로 솟아 보임 — 아까 기둥 모양 유지) —
+       절두+피라미드 기둥 넷을 바짝 뭉치고 키를 올린다. 기둥마다 깊이 키 하나로 묶어
+       꼭대기 피라미드가 제 기둥에 안 가려진다(지적). */
+    const pillar = (cx: number, cy: number, w: number, h: number): ShapeFace[] => tagKey([
+      ...frustumFaces3(cx, cy, w, w * 0.85, w * 0.72, w * 0.62, h),
+      ...pyramidFaces3(cx, cy, w * 0.72, w * 0.62, w * 1.1, h),
+    ], depthNow(cx, cy));
     return [
-      ...shard(-2.6, -1, -0.9, -0.5, 2.7, 1.3),
-      ...shard(-0.2, 1, 0.55, 0.7, 4.3, 1.7),
-      ...shard(2.2, -1.2, 0.8, -0.45, 3.2, 1.4),
-      ...shard(4, 0.9, 0.75, 0.55, 2, 1),
+      ...pillar(-1.9, -0.9, 2.1, 3.2),
+      ...pillar(-0.1, 0.7, 2.7, 5),
+      ...pillar(1.8, -0.8, 2.3, 3.8),
+      ...pillar(3.1, 0.6, 1.6, 2.4),
     ];
   },
   /* 가스 간헐천(재재정정: 전체 크기는 원래대로, 두 번째 분화구만 작게) — 언덕 위
@@ -8094,6 +8095,15 @@ export default function ReplayMotionPlayer({
                 }
               }
             }
+          }
+          /* 자원 반납 순간은 숨는다(요청: 기지 겹침은 허용하되 들어간 순간 렌더링에선
+             숨기기) — 왕복 자리가 제 홀 발자국 안이면 그 프레임은 안 그린다. 원작도
+             반납하는 일꾼은 건물 속으로 잠깐 사라진다. */
+          if (isWorker) {
+            const inHall = halls.some((h) => h.raw === e.raw && h.sec <= t
+              && (h.gone === 0 || t < h.gone)
+              && Math.abs(h.x - pos.x) <= 1.8 && Math.abs(h.y - pos.y) <= 1.3);
+            if (inHall) return null;
           }
           if (frzSt) {
             const fp2 = posAt(rp, Math.max(rp[0][0], frzSt[0]), null);
