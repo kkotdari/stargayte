@@ -11700,6 +11700,32 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   /* 등록자는 시각 옆(.scr-story-when-by)이 말한다 — 우하단 등록 줄은 걷는다(요청). */
   .scr-activity-group-page .scr-story-by { display: none; }
 }
+/* 모바일 한 줄 머리(요청: 타임스탬프·맵이름·승패까지 한 줄에, 폰트 한 단씩 축소) —
+   게임 페이지·전체화면 상세에서만: 시각을 줄 안으로 들이고(카드 머리의 시각 줄은 걷는다)
+   전부 한 단씩 줄여 좁은 폭에 한 줄로 선다. 등록자는 모바일에선 아래 등록 줄이 말한다. */
+@media (max-width: 1159px) {
+  .scr-activity-group-page .scr-story-when,
+  .scr-activity-detail-full .scr-story-when {
+    display: inline-flex; align-items: center; position: static; transform: none;
+    font-size: var(--fs-micro); color: var(--muted); font-variant-numeric: tabular-nums;
+    font-weight: 400;
+  }
+  .scr-activity-group-page .scr-story-when .scr-story-when-by,
+  .scr-activity-detail-full .scr-story-when .scr-story-when-by { display: none; }
+  .scr-activity-group-page .scr-story-map-head-line,
+  .scr-activity-detail-full .scr-story-map-head-line { flex-wrap: nowrap; }
+  .scr-activity-group-page .scr-story-map-name,
+  .scr-activity-detail-full .scr-story-map-name { font-size: var(--fs-micro); white-space: nowrap; }
+  .scr-activity-group-page .scr-story-map-dur,
+  .scr-activity-detail-full .scr-story-map-dur { font-size: 10px; }
+  .scr-activity-group-page .scr-story-win,
+  .scr-activity-detail-full .scr-story-win { font-size: 10px; height: 16px; padding: 0 5px; }
+  .scr-activity-group-page .scr-activity-card-head,
+  .scr-activity-detail-full .scr-activity-card-head { display: none; }
+  /* 게임 페이지의 모바일 맵도 뷰포트 폭(요청: 좌우 패딩 없이 최대한 넓게) — 전체화면
+     상세(.scr-activity-detail-full)와 같은 트릭. */
+  .scr-activity-group-page .scr-motion-map { width: 100vw; margin-left: calc(50% - 50vw); }
+}
 /* 미니맵이 커진 PC에서는 그 위 요소(맵 이름·시간, 승/무 배지)도 같이 키운다(요청: 미니맵
    위 요소 알맞게 확대) — 작은 미니맵 시절 크기 그대로면 위아래 균형이 안 맞는다. */
 @media (min-width: 1160px) {
