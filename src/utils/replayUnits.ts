@@ -1360,6 +1360,22 @@ export function buildUnitTracks(
       const p3 = pct();
       if (p3 !== lastPct) { trace.push([Math.round(dsec), p3]); lastPct = p3; }
     }
+    /* 남은 재생을 자취로(지적: 체력바 뜨는 유닛이 전부 같은 빨강 — 바닥을 친 유닛이
+       10%에 얼어붙었다) — 이벤트 사이 재생(flow)은 값만 올리고 자취 점이 없어, 표시가
+       마지막 사건의 퍼센트에 영영 멈췄다. 마지막 사건 뒤의 저그 체력·프로토스 실드
+       재생을 중간·완료 두 점으로 남긴다. 테란은 원작대로 저절로 안 낫는다. */
+    if (curHp + curSh < max - 0.5 && (race3 === "저그" || maxSh > 0)) {
+      const durSh = maxSh > 0 ? (maxSh - curSh) / (maxSh * 0.02) : 0;
+      const durHp = race3 === "저그" ? (maxHp - curHp) / 0.6 : 0;
+      const dur = Math.max(durSh, durHp);
+      if (dur > 1) {
+        const endHp = race3 === "저그" ? maxHp : curHp;
+        const endPct = Math.max(0, Math.round(((endHp + maxSh) / max) * 20) * 5);
+        const midPct = Math.max(0, Math.round((((curHp + endHp) / 2 + (curSh + maxSh) / 2) / max) * 20) * 5);
+        if (midPct !== lastPct) { trace.push([Math.round(prevSec + dur / 2), midPct]); lastPct = midPct; }
+        if (endPct !== lastPct) trace.push([Math.round(prevSec + dur), endPct]);
+      }
+    }
     return { trace, death: null };
   };
   /* 편 가르기(팀 정보) — 같은 팀의 공격 명령·방어건물은 위협이 아니다(위 sameSide). */

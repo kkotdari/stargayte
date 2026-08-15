@@ -3173,18 +3173,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 프로토스 소환구(재정의: 신비로운 에너지 구) — 바닥 빛무리 위에 반투명 겹구가
      떠 있고, 밝은 심과 반짝이 둘이 돈다. 고정색(요청): 밝은 하늘빛·하얀 글로우. */
   warpin: () => {
-    const [gx0, gy0] = project(0, 0, 0.2);
-    const [cx, cy] = project(0, 0, 3.4);
+    /* 입체 재작업(지적: 평면 팬케이크 적층이라 3D에서 찌그러짐) — project 기반 돔
+       프리미티브로 다시 짠다: 다른 모델과 똑같이 요잉·피칭을 탄다. 반투명 파란
+       에너지 돔 + 밝은 심 + 바닥 빛무리. */
     return [
-      topFace(groundEllipse(gx0, gy0, 3.6, 1.7), 0.16),
-      /* 더 투명하게(재지적: 주변이 안 보임) + 속이 비지 않게 밝은 심을 채운다. */
-      [groundEllipse(cx, cy, 3.1, 2.9), 0.28, "#9fd4ff"] as ShapeFace,
-      [groundEllipse(cx, cy, 2.2, 2.05), 0.38, "#c4e6ff"] as ShapeFace,
-      [groundEllipse(cx, cy, 1.05, 0.98), 0.85, "#eaf6ff"] as ShapeFace,
-      topFace(groundEllipse(cx - 0.7, cy - 0.7, 1.05, 0.85), 0.4),
-      topFace(groundEllipse(cx, cy, 1.15, 1.05), 0.55),
-      topFace(groundEllipse(cx + 1.7, cy + 0.9, 0.3, 0.25), 0.5),
-      topFace(groundEllipse(cx - 2, cy + 1.3, 0.22, 0.18), 0.45),
+      topFace(groundEllipse(...project(0, 0, 0.15), 3.6, 1.7), 0.14),
+      ...paintBase(domeFaces3(0, 0, 3.15, 3.3, 0.15), "#9fd4ff")
+        .map(([d, o, f, k]) => [d, o * 0.55, f, k] as ShapeFace),
+      [discPath3(0, 0, 2.5, 1.5), 0.8, "#eaf6ff"] as ShapeFace,
+      topFace(discPath3(0, 0, 3.3, 0.95), 0.5),
     ];
   },
   /* 테란 공사장 — 기초 슬래브 + 뼈대 기둥 넷 + 가로 보 + 크레인.
