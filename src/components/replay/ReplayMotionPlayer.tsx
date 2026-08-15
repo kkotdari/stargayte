@@ -621,6 +621,8 @@ function legAndFoot(px: number, py: number, zTop: number): ShapeFace[] {
 const IVORY = "#eae3d2";
 /* 테란 화기 금속색(요청: 총구·포신은 어두운 회색). */
 const GUNMETAL = "#4b5058";
+/* 탱크 캐터필러 금속색(요청: 짙은 회은색). */
+const TRACK_STEEL = "#5c636d";
 function ivory(faces: ShapeFace[]): ShapeFace[] {
   return faces.map(([d, o, f, k]) => [d, o, f ?? IVORY, k] as ShapeFace);
 }
@@ -2501,10 +2503,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   tank: () => [
     /* 궤도는 양쪽 두 개씩(지적) — 앞쪽이 짧고 뒤쪽이 긴 캐터필러 한 쌍. 상자+반구 캡
        대신 옆면이 알약꼴인 궤도 슬래브(재지적)로 그린다. */
-    ...trackFaces(-2, 0.9, 3.1, 1.4, 1.7),
-    ...trackFaces(2, 0.9, 3.1, 1.4, 1.7),
-    ...trackFaces(-2, -3.2, 0.4, 1.5, 1.7),
-    ...trackFaces(2, -3.2, 0.4, 1.5, 1.7),
+    ...paintBase(trackFaces(-2, 0.9, 3.1, 1.4, 1.7), TRACK_STEEL),
+    ...paintBase(trackFaces(2, 0.9, 3.1, 1.4, 1.7), TRACK_STEEL),
+    ...paintBase(trackFaces(-2, -3.2, 0.4, 1.5, 1.7), TRACK_STEEL),
+    ...paintBase(trackFaces(2, -3.2, 0.4, 1.5, 1.7), TRACK_STEEL),
     ...boxFaces3(0, -0.2, 3.9, 5.6, 1.3, 1.2),
     ...boxFaces3(0, -0.4, 2.6, 2.6, 1.3, 2.5),
     ...paintBase(tubeFaces(-0.55, 1.2, -0.55, 4.4, 0.24, 3.3), GUNMETAL),
@@ -2514,10 +2516,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      구워, 쏘는 순간 포탑 판만 살짝 밀렸다 돌아온다. 갤러리·v1은 합본(tank)을 그대로
      쓰고 v2 렌더만 이 짝을 쓴다. */
   tankbody: () => [
-    ...trackFaces(-2, 0.9, 3.1, 1.4, 1.7),
-    ...trackFaces(2, 0.9, 3.1, 1.4, 1.7),
-    ...trackFaces(-2, -3.2, 0.4, 1.5, 1.7),
-    ...trackFaces(2, -3.2, 0.4, 1.5, 1.7),
+    ...paintBase(trackFaces(-2, 0.9, 3.1, 1.4, 1.7), TRACK_STEEL),
+    ...paintBase(trackFaces(2, 0.9, 3.1, 1.4, 1.7), TRACK_STEEL),
+    ...paintBase(trackFaces(-2, -3.2, 0.4, 1.5, 1.7), TRACK_STEEL),
+    ...paintBase(trackFaces(2, -3.2, 0.4, 1.5, 1.7), TRACK_STEEL),
     ...boxFaces3(0, -0.2, 3.9, 5.6, 1.3, 1.2),
   ],
   tankgun: () => [
@@ -2534,10 +2536,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     return [
       /* 캐터필러는 시즈에서도 그대로다(지적: 시즈 모드에서 궤도가 없어지진 않는다) —
          탱크 모드와 같은 알약 옆면 궤도 두 쌍(앞 짧고 뒤 긴, 재지적). */
-      ...trackFaces(-2, 0.9, 3.1, 1.4, 1.7),
-      ...trackFaces(2, 0.9, 3.1, 1.4, 1.7),
-      ...trackFaces(-2, -3.2, 0.4, 1.5, 1.7),
-      ...trackFaces(2, -3.2, 0.4, 1.5, 1.7),
+      ...paintBase(trackFaces(-2, 0.9, 3.1, 1.4, 1.7), TRACK_STEEL),
+      ...paintBase(trackFaces(2, 0.9, 3.1, 1.4, 1.7), TRACK_STEEL),
+      ...paintBase(trackFaces(-2, -3.2, 0.4, 1.5, 1.7), TRACK_STEEL),
+      ...paintBase(trackFaces(2, -3.2, 0.4, 1.5, 1.7), TRACK_STEEL),
       /* 고정 발(정정 둘: 양옆·뒤 + 더 가늘게) — 차체에서 수평으로 뻗은 가는 팔이
          끝에서 직각으로 꺾여 내려서고, 바닥엔 작은 발판. 윗부분(차체·포탑·포신)은
          그대로. */
@@ -2579,10 +2581,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   },
   /* 발포 반동용 분해(요청) — 시즈 차체/포탑·포신 분리판. */
   tanksiegebody: () => [
-    ...trackFaces(-2, 0.9, 3.1, 1.4, 1.7),
-    ...trackFaces(2, 0.9, 3.1, 1.4, 1.7),
-    ...trackFaces(-2, -3.2, 0.4, 1.5, 1.7),
-    ...trackFaces(2, -3.2, 0.4, 1.5, 1.7),
+    ...paintBase(trackFaces(-2, 0.9, 3.1, 1.4, 1.7), TRACK_STEEL),
+    ...paintBase(trackFaces(2, 0.9, 3.1, 1.4, 1.7), TRACK_STEEL),
+    ...paintBase(trackFaces(-2, -3.2, 0.4, 1.5, 1.7), TRACK_STEEL),
+    ...paintBase(trackFaces(2, -3.2, 0.4, 1.5, 1.7), TRACK_STEEL),
     ...boxFaces3(-3.15, 0, 1.4, 0.5, 0.32, 1.6),
     ...boxFaces3(-3.95, 0, 0.45, 0.45, 1.7),
     ...boxFaces3(-3.95, 0, 1, 0.9, 0.28),
