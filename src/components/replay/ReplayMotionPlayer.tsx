@@ -3711,11 +3711,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [vx2, vy2] = project(0, 0.5, 4.55);
     const [mx2, my2] = project(0.5, 3.4, 3.5);
     return [
-      // 가는 다리 + 작은 발.
-      ...cylinderFaces3(-0.45, 0, 0.24, 2.3, 0.1),
-      ...cylinderFaces3(0.45, 0, 0.24, 2.3, 0.1),
-      ...domeFaces3(-0.45, 0.22, 0.32, 0.24, 0.05),
-      ...domeFaces3(0.45, 0.22, 0.32, 0.24, 0.05),
+      // 가는 다리 + 작은 발 — 회흰색(요청).
+      ...paintBase([
+        ...cylinderFaces3(-0.45, 0, 0.24, 2.3, 0.1),
+        ...cylinderFaces3(0.45, 0, 0.24, 2.3, 0.1),
+        ...domeFaces3(-0.45, 0.22, 0.32, 0.24, 0.05),
+        ...domeFaces3(0.45, 0.22, 0.32, 0.24, 0.05),
+      ], "#d3d7db"),
       // 가는 몸통(마린 1.25 → 0.7) — 어깨장갑 없이 작은 어깨 라운드만.
       ...cylinderFaces3(0, -0.1, 0.7, 2, 2.3),
       ...domeFaces3(-0.75, -0.15, 0.34, 0.3, 4.1),
@@ -3724,11 +3726,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 고스트도 반구형 헬멧 + 흰 반투명 바이저(지적).
       ...domeFaces3(0, -0.1, 0.58, 0.55, 4.35),
       [groundEllipse(vx2, vy2, 0.3, 0.21), 0.55, "#ffffff"] as ShapeFace,
-      // 가는 두 팔 — 앞-아래로 내려가 총몸을 받쳐 쥔다.
-      ...hornFaces(-0.8, 0.1, 3.9, -0.6, 0.9, 2.9, 0.3),
-      ...hornFaces(-0.6, 0.9, 2.9, 0.25, 1.7, 3.3, 0.26),
-      ...hornFaces(0.85, 0.1, 3.9, 0.7, 0.8, 2.95, 0.3),
-      ...hornFaces(0.7, 0.8, 2.95, 0.45, 1.2, 3.3, 0.26),
+      // 가는 두 팔 — 앞-아래로 내려가 총몸을 받쳐 쥔다. 회흰색(요청).
+      ...paintBase([
+        ...hornFaces(-0.8, 0.1, 3.9, -0.6, 0.9, 2.9, 0.3),
+        ...hornFaces(-0.6, 0.9, 2.9, 0.25, 1.7, 3.3, 0.26),
+        ...hornFaces(0.85, 0.1, 3.9, 0.7, 0.8, 2.95, 0.3),
+        ...hornFaces(0.7, 0.8, 2.95, 0.45, 1.2, 3.3, 0.26),
+      ], "#d3d7db"),
       // C-10 저격소총 — 마린 소총보다 길고 가는 총열 + 총구. 건메탈(요청).
       ...paintBase(boxFaces3(0.4, 1.6, 0.3, 3.4, 0.34, 3.25), GUNMETAL),
       capFace(groundEllipse(mx2, my2, 0.14, 0.11), 0.45),
@@ -3743,11 +3747,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       return capFace(groundEllipse(px2, py2 - 0.19, 0.3, 0.24), 0.4);
     };
     return [
-      // 등 연료통 둘 — 먼저 그려 어깨가 뿌리를 덮는다.
-      ...cylinderFaces3(-0.7, -1.3, 0.5, 2.4, 3.2),
-      ...domeFaces3(-0.7, -1.3, 0.5, 0.4, 5.6),
-      ...cylinderFaces3(0.7, -1.3, 0.5, 2.4, 3.2),
-      ...domeFaces3(0.7, -1.3, 0.5, 0.4, 5.6),
+      // 등 연료통 둘 — 먼저 그려 어깨가 뿌리를 덮는다. 붉은색(요청).
+      ...paintBase([
+        ...cylinderFaces3(-0.7, -1.3, 0.5, 2.4, 3.2),
+        ...domeFaces3(-0.7, -1.3, 0.5, 0.4, 5.6),
+        ...cylinderFaces3(0.7, -1.3, 0.5, 2.4, 3.2),
+        ...domeFaces3(0.7, -1.3, 0.5, 0.4, 5.6),
+      ], "#b83a2c"),
       // 다리를 또렷하게(지적: 다리가 없어 헷갈림) — 벌린 두 기둥 + 둥근 발.
       ...cylinderFaces3(-0.62, 0, 0.4, 2.3, 0.1),
       ...cylinderFaces3(0.62, 0, 0.4, 2.3, 0.1),
