@@ -9,7 +9,7 @@ import type { ReplayMapGrid } from "../../utils/replayParser";
 import { api } from "../../api/client";
 import { applyReplayMap } from "../../hooks/useReplayMap";
 import { AIR_UNITS, CASTER_UNITS } from "../../utils/replayBuildMix";
-import type { UnitTracksV2 } from "../../utils/replayUnits";
+import { BLD_STATS, UNIT_STATS, type UnitTracksV2 } from "../../utils/replayUnits";
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } from "../../utils/minimapTerrain";
 import {
@@ -3359,6 +3359,34 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       capFace(groundEllipse(mx2, my2, 0.2, 0.16), 0.45),
     ];
   },
+  /* 고스트(지적: 여태 마린 모델을 빌려 입고 있었다) — 마린과 비슷하되 어깨장갑이
+     없고 헬멧이 작으며 몸통·팔다리가 훨씬 가늘다. 긴 C-10 저격소총을 받쳐 든다. */
+  ghost: () => {
+    const [vx2, vy2] = project(0, 0.5, 4.55);
+    const [mx2, my2] = project(0.5, 3.4, 3.5);
+    return [
+      // 가는 다리 + 작은 발.
+      ...cylinderFaces3(-0.45, 0, 0.24, 2.3, 0.1),
+      ...cylinderFaces3(0.45, 0, 0.24, 2.3, 0.1),
+      ...domeFaces3(-0.45, 0.22, 0.32, 0.24, 0.05),
+      ...domeFaces3(0.45, 0.22, 0.32, 0.24, 0.05),
+      // 가는 몸통(마린 1.25 → 0.7) — 어깨장갑 없이 작은 어깨 라운드만.
+      ...cylinderFaces3(0, -0.1, 0.7, 2, 2.3),
+      ...domeFaces3(-0.75, -0.15, 0.34, 0.3, 4.1),
+      ...domeFaces3(0.75, -0.15, 0.34, 0.3, 4.1),
+      // 작은 헬멧(마린 0.8 → 0.55) + 바이저.
+      ...domeFaces3(0, -0.1, 0.55, 0.5, 4.35),
+      topFace(groundEllipse(vx2, vy2, 0.28, 0.19), 0.5),
+      // 가는 두 팔 — 앞-아래로 내려가 총몸을 받쳐 쥔다.
+      ...hornFaces(-0.8, 0.1, 3.9, -0.6, 0.9, 2.9, 0.3),
+      ...hornFaces(-0.6, 0.9, 2.9, 0.25, 1.7, 3.3, 0.26),
+      ...hornFaces(0.85, 0.1, 3.9, 0.7, 0.8, 2.95, 0.3),
+      ...hornFaces(0.7, 0.8, 2.95, 0.45, 1.2, 3.3, 0.26),
+      // C-10 저격소총 — 마린 소총보다 길고 가는 총열 + 총구.
+      ...boxFaces3(0.4, 1.6, 0.3, 3.4, 0.34, 3.25),
+      capFace(groundEllipse(mx2, my2, 0.14, 0.11), 0.45),
+    ];
+  },
   /* 파이어뱃(실물 참고) — 같은 파워드 아머에 어깨 위로 보이는 등 연료통 둘, 어두운
      바이저 슬릿, 앞으로 내민 굵은 화염 건틀릿 두 팔. */
   fbat: () => {
@@ -3945,7 +3973,7 @@ const HEAD_FACES = new Map<string, ShapeFace[]>();
 /* 유닛 → 3D 상징물(요청) — 지상 유닛만(지적: 저그도 지상만). 공중은 2D 기호 그대로.
    표에 없는 지상 유닛은 기본 쐐기(wedge)로 방향만 갖는다. */
 const UNIT_3D: Record<string, string> = {
-  Marine: "gunner", Firebat: "fbat", Ghost: "gunner", Medic: "inf",
+  Marine: "gunner", Firebat: "fbat", Ghost: "ghost", Medic: "inf",
   // 기계·함선(요청: 만들 수 있는 건 다).
   Vulture: "vulture", "Siege Tank": "tank", "Siege Tank (Tank Mode)": "tank",
   "Siege Tank (Siege Mode)": "tanksiege",
@@ -4009,6 +4037,7 @@ export const SHAPE_GALLERY: { kind: string; label: string; group: "유닛" | "�
   // ── 유닛 · 테란 ──
   { kind: "scv", label: "SCV", group: "유닛" },
   { kind: "gunner", label: "마린", group: "유닛" },
+  { kind: "ghost", label: "고스트", group: "유닛" },
   { kind: "fbat", label: "파이어뱃", group: "유닛" },
   { kind: "inf", label: "메딕", group: "유닛" },
   { kind: "vulture", label: "벌처", group: "유닛" },
@@ -4205,6 +4234,9 @@ type UnitDrawOp = {
   noSep?: boolean;
   /** 남은 체력 비율 0~1(요청: 스탯을 지닌 생애주기) — 다쳤을 때만 와서 바가 뜬다. */
   hpFrac?: number;
+  /** 최대 체력(실드 합) — 바의 100% 길이가 이 값에 비례한다(지적: 저글링과 울트라의
+   *  만피가 같은 길이면 기준이 이상하다). */
+  hpMax?: number;
   /** 상태 오라 색(전수조사: 인스네어·플레이그·빙결…) — 몸 밑에 색빛이 밴다. */
   tint?: string;
 };
@@ -4496,7 +4528,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
           ctx.globalAlpha = op.alpha * 0.16;
           ctx.fillStyle = "#000";
           ctx.beginPath();
-          ctx.ellipse(sx, gy, wPx * 0.52, Math.max(1, wPx * 0.09 * (op.pitch ? 0.6 : 1)), 0, 0, Math.PI * 2);
+          // 발자국 면을 덮는다(재지적: 앞쪽만 납작) — 세로를 키우고 중심을 위로.
+          ctx.ellipse(sx, gy - wPx * 0.08, wPx * 0.52, Math.max(1.5, wPx * 0.16 * (op.pitch ? 0.6 : 1)), 0, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         }
@@ -4510,7 +4543,9 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
           );
           /* 건물 체력바(요청) — 다친 건물 위에만. 유닛 바와 같은 3색. */
           if (op.hpFrac !== undefined && op.hpFrac > 0) {
-            const bw3 = Math.max(8, wPx * 0.7);
+            // 건물도 최대 체력 비례(지적) — 넥서스(1500)가 성큰(300)보다 길다.
+            const bScale = Math.min(1.15, Math.max(0.35, Math.sqrt((op.hpMax ?? 800) / 1200)));
+            const bw3 = Math.max(8, wPx * 0.7 * bScale);
             const bh3 = Math.max(1.8, wPx * 0.05);
             const bx3 = sx - bw3 / 2;
             // 상자 위 3px — 높은 첨탑 모델과 살짝 겹칠 수 있지만 자리로는 이게 안정적이다.
@@ -4573,7 +4608,10 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         /* 바닥과 평행하게(재지적: 그림자 각도가 바닥과 평행이 아니다) — 입체 보기의
            바닥은 눌려 있는데 타원이 덜 납작해 비스듬히 선 판처럼 읽혔다. 입체에선
            세로 반지름을 바닥 기울기만큼 더 누른다. */
-        ctx.ellipse(sx, footY + lift, shw, shw * (op.air ? 0.4 : 0.3) * (op.pitch ? 0.5 : 1), 0, 0, Math.PI * 2);
+        /* 바닥면 전체(재지적: 그림자가 캔버스를 못 채우고 앞쪽만 납작하게) — 가장
+           앞 픽셀(footY)에 붙이면 앞모서리 조각만 보인다. 타원을 키우고 중심을
+           위로 당겨 몸 아래 발자국을 덮는다. */
+        ctx.ellipse(sx, footY + lift - shw * 0.22, shw * 1.1, shw * (op.air ? 0.5 : 0.42) * (op.pitch ? 0.6 : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       } else if (!op.air && UNIT_KIND_SET.has(op.kind)) {
@@ -4584,8 +4622,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         ctx.globalAlpha = op.alpha * 0.12;
         ctx.fillStyle = "#000";
         ctx.beginPath();
-        // 발끝 접지(재재재지적) — 어림(0.28px)이 아니라 판의 실제 바닥 픽셀에.
-        ctx.ellipse(sx, footY, px * 0.16, px * 0.05 * (op.pitch ? 0.6 : 1), 0, 0, Math.PI * 2);
+        // 바닥면 전체(재지적: 앞쪽만 납작) — 타원을 키우고 중심을 위로 당긴다.
+        ctx.ellipse(sx, footY - px * 0.09, px * 0.19, px * 0.11 * (op.pitch ? 0.6 : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -4603,7 +4641,10 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
       /* 체력바(요청: 체력을 지니고 다니는 생애주기) — 다친 유닛 머리 위에 원작풍
          바: 초록(>66%)·노랑(>33%)·빨강. 성한 유닛에는 안 띄워 화면을 아낀다. */
       if (op.hpFrac !== undefined && op.hpFrac > 0) {
-        const bw2 = Math.max(6, px * 0.95);
+        // 100% 길이 ∝ 최대 체력(지적) — 제곱근으로 눌러 울트라(400)가 마린(40)의
+        // 열 배가 아니라 세 배쯤 길게, 원작 감각에 맞춘다.
+        const hpScale = Math.min(1.25, Math.max(0.3, Math.sqrt((op.hpMax ?? 100) / 300)));
+        const bw2 = Math.max(5, px * 0.95 * hpScale);
         const bh2 = Math.max(1.6, px * 0.09);
         const bx2 = sx - bw2 / 2;
         const by2 = sy - px * 0.24 - lift - px * 0.66;
@@ -6946,6 +6987,10 @@ export default function ReplayMotionPlayer({
                 /* 원작처럼 45도 요잉(지적) — 2D에도 적용(재지적: 2D도 45도 요잉해야지).
                    쐐기의 진범은 요잉이 아니라 hover 그림자의 beginPath 누락이었다. */
                 rotDeg: buildingYawOf(shapeKind),
+                hpMax: (() => {
+                  const bs2 = BLD_STATS[unit];
+                  return bs2 ? bs2[0] + bs2[1] : undefined;
+                })(),
                 hpFrac: (() => {
                   if (!entOn) return undefined;
                   const arr = entBldHp.get(`${raw}|${Math.round(x)}|${Math.round(y)}`);
@@ -7623,6 +7668,10 @@ export default function ReplayMotionPlayer({
             kind: burrowed ? "burrowhole"
               : isWorker ? workerKindOf(race) : unitMarkerKind(drawUnit2, race),
             hpFrac: hpPct < 100 ? Math.max(0.04, hpPct / 100) : undefined,
+            hpMax: (() => {
+              const st2 = UNIT_STATS[drawUnit2] ?? UNIT_STATS[drawUnit];
+              return st2 ? st2.hp + (st2.sh ?? 0) : undefined;
+            })(),
             tint: (() => {
               const actSt = e.statuses.find(([sa3, sb3]) => t >= sa3 && t < sb3);
               return actSt ? STATUS_TINT[actSt[2]] : undefined;

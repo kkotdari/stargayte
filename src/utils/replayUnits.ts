@@ -162,7 +162,7 @@ export const UNIT_STATS: Record<string, { hp: number; dps: number; sh?: number }
 const DEFAULT_UNIT_STATS = { hp: 70, dps: 6 };
 /** 건물 스탯(요청: 건물 체력바 — 실드·회복·불·수리까지) — [체력, 실드]. 실드는
  *  프로토스만 있고 저절로 차오른다. */
-const BLD_STATS: Record<string, [number, number]> = {
+export const BLD_STATS: Record<string, [number, number]> = {
   "Command Center": [1500, 0], "Supply Depot": [500, 0], Barracks: [1000, 0], Refinery: [750, 0],
   "Engineering Bay": [850, 0], Academy: [600, 0], Bunker: [350, 0], "Missile Turret": [200, 0],
   Factory: [1250, 0], Starport: [1300, 0], Armory: [750, 0], "Science Facility": [850, 0],
