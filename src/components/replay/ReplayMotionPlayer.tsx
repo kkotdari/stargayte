@@ -607,11 +607,12 @@ const AVATAR_ZERG_DECO: Record<string, string | undefined> = {
    표준 시점 결과는 아래 SHAPE_FACES에 한 번 구워 쓴다. */
 /** 벌어진 다리 + 원반 발(테란 실물 공통) — 몸통 밑에서 바깥-아래로 뻗고 발판이 받친다. */
 function legAndFoot(px: number, py: number, zTop: number): ShapeFace[] {
-  return [
+  // 테란 이착륙 패드 다리발은 은색(요청).
+  return paintBase([
     ...hornFaces(px * 0.72, py * 0.72, zTop, px * 1.12, py * 1.12, 0.7, 1.1),
     bodyFace(discPath3(px * 1.16, py * 1.16, 0.35, 1.15)),
     sideFace(discPath3(px * 1.16, py * 1.16, 0.32, 1.15), 0.25),
-  ];
+  ], "#c9ced6");
 }
 
 /** 저그 갈고리(정정: 마디가 아니라 쭉 이어진 휘어진 칼) — 밖-앞으로 나갔다 안으로
@@ -987,17 +988,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...boxFaces3(-0.6, -0.6, 9.8, 6, 5.8, 1.2),
     ...boxFaces3(3.2, 2.8, 4, 2.8, 3.6, 1.2),
     // 지붕 규칙(지적: 굴뚝 가려짐) — 지붕 얹힘들은 붙박이 큰 키.
-    ...tagKey(cylinderFaces3(-3.4, -2, 0.85, 1.7, 7), 24 + depthNow(-3.4, -2)),
-    ...tagKey(cylinderFaces3(-1.5, -2.2, 0.85, 1.7, 7), 24 + depthNow(-1.5, -2.2)),
-    ...tagKey(cylinderFaces3(0.4, -2.4, 0.85, 1.7, 7), 24 + depthNow(0.4, -2.4)),
+    // 굴뚝 셋 은색(요청).
+    ...tagKey(paintBase(cylinderFaces3(-3.4, -2, 0.85, 1.7, 7), "#c9ced6"), 24 + depthNow(-3.4, -2)),
+    ...tagKey(paintBase(cylinderFaces3(-1.5, -2.2, 0.85, 1.7, 7), "#c9ced6"), 24 + depthNow(-1.5, -2.2)),
+    ...tagKey(paintBase(cylinderFaces3(0.4, -2.4, 0.85, 1.7, 7), "#c9ced6"), 24 + depthNow(0.4, -2.4)),
     ...tagKey(boxFaces3(3.4, -2.2, 2.8, 2.2, 2.4, 7), 24 + depthNow(3.4, -2.2)),
     ...tagKey(tubeFaces(3, -3, 5.4, -3, 0.45, 9.6), 26 + depthNow(4.2, -3)),
     /* 다리는 없다(지적) — 대신 앞으로 나란히 내려오는 경사로 셋. 제 깊이를 달아
        뒤로 돌면 몸통 뒤로 들어간다(재지적: 뒤에서도 보임 — 손 면이라 깊이가 없었다). */
     ...[-3.8, -1, 1.8].flatMap((rx) => {
       const d = polyPath3([[rx - 1.1, 2.4, 1.2], [rx + 1.1, 2.4, 1.2], [rx + 1.3, 5.2, 0], [rx - 1.3, 5.2, 0]]);
+      // 진출 경사로 은색(요청).
       return tagKey([
-        bodyFace(d),
+        [d, 1, "#c9ced6"] as ShapeFace,
         topFace(d, 0.14),
         sideFace(polyPath3([[rx + 1.1, 2.4, 1.2], [rx + 1.3, 5.2, 0], [rx + 1.05, 5.2, 0], [rx + 0.88, 2.4, 1.2]]), 0.25),
       ], depthNow(rx, 3.8) + 1.2);
