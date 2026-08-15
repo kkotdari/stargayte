@@ -1029,20 +1029,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       return [
         // 받침 원반도 제 깊이(지적: 기둥 바닥의 원들이 안 가려짐).
         ...tagKey([
-          bodyFace(discPath3(px, py, 0.45, 1.9)),
-          sideFace(discPath3(px, py, 0.42, 1.9), 0.25),
+          bodyFace(discPath3(px, py, 0.45, 1.6)),
+          sideFace(discPath3(px, py, 0.42, 1.6), 0.25),
         ], depthNow(px, py)),
-        ...hornFaces(px, py, 0.4, px, py, 8.8, 2),
+        ...hornFaces(px, py, 0.4, px, py, 8.8, 1.7),
         topFace(groundEllipse(kx, ky, 0.45, 0.65), 0.5),
       ];
     };
     /* 기둥 자리 6.6 → 6.0(수리: 대각 모서리 기둥이 요잉 투영에서 뷰박스 가로(±8)를
        넘어 잘려 떨어져 나간 듯 보였다 — rx = 6.6cos20 + 6.6sin20 ≈ 8.46). */
     // 6.0 → 5.6(재지적: 왼뒤 기둥이 너무 바깥) — 받침 원반이 피라미드 모서리에 걸치게 붙인다.
-    const out: ShapeFace[] = [...pillar(-5.6, -5.6), ...pillar(5.6, -5.6)];
-    out.push(...frustumFaces3(0, 0, 10.6, 10.6, 3.2, 3.2, 6.4));
+    /* 상자 정규화(지적: 넥서스가 발자국을 초과) — 기둥·받침이 요잉 투영에서 ±9까지
+       나가 16칸 상자를 넘쳤다. 전체를 0.85배로 눌러 안에 들인다. */
+    const out: ShapeFace[] = [...pillar(-4.7, -4.7), ...pillar(4.7, -4.7)];
+    out.push(...frustumFaces3(0, 0, 9, 9, 2.8, 2.8, 6.4));
     // 앞면 능선 띠 — 경사면을 따라 층층이 가로 띠.
-    const half = (z: number): number => 5.3 - (5.3 - 1.6) * (z / 6.4);
+    const half = (z: number): number => 4.5 - (4.5 - 1.4) * (z / 6.4);
     for (const bz of [1.4, 3, 4.6]) {
       const w0 = half(bz) - 0.35;
       const w1 = half(bz + 0.6) - 0.35;
@@ -1080,10 +1082,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 게이트웨이(실물 점검) — 낮은 사방 경사로 마당 위에 마주 기운 어금니 탑 한 쌍이
      사이를 띄워 문을 이루고, 그 사이에 소환 빛이 선다. */
   gate: () => {
+    // 상자 정규화(지적: 게이트가 발자국보다 너무 좁게 차지) — 가로 1.3배.
     const h = 1.1;
-    const a = 3.1;
-    const b = 2.4;
-    const run = 2.5;
+    const a = 4;
+    const b = 3.1;
+    const run = 3.2;
     const plateau = polyPath3([[-a, b, h], [a, b, h], [a, -b, h], [-a, -b, h]]);
     const front = polyPath3([[-a, b, h], [a, b, h], [a, b + run, 0], [-a, b + run, 0]]);
     const back = polyPath3([[-a, -b, h], [a, -b, h], [a, -b - run, 0], [-a, -b - run, 0]]);
@@ -1099,9 +1102,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 실물 점검(스프라이트 시트) — 게이트는 돛 하나가 아니라 마주 기운 어금니 탑
     // 한 쌍이 사이를 띄우고 문을 이룬다. 사이엔 소환 빛.
     const [wx, wy] = project(0, 0.1, 3.6);
-    out.push(topFace(groundEllipse(wx, wy, 1.45, 2), 0.4));
-    out.push(...hornFaces(-2.7, 0, 0.8, -1, -0.3, 9.6, 2.3));
-    out.push(...hornFaces(2.7, 0, 0.8, 1, -0.3, 9.6, 2.3));
+    out.push(topFace(groundEllipse(wx, wy, 1.9, 2.4), 0.4));
+    out.push(...hornFaces(-3.5, 0, 0.8, -1.3, -0.3, 9.6, 3));
+    out.push(...hornFaces(3.5, 0, 0.8, 1.3, -0.3, 9.6, 3));
     return out;
   },
   /* 스타게이트(확정, 요청: 보여준 육각형판으로 — 길이만 조금 짧게) — 긴 육각형
@@ -1180,16 +1183,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // groundShadow가 맡아, 구운 판과 겹쳐 두 겹으로 보이던 것을 없앤다.
     const out: ShapeFace[] = [];
     // 수정이 너무 높게 떴다(재지적) — 고리·수정·발톱을 한 단씩 내린다.
+    // 상자 정규화(지적: 파일런이 발자국보다 너무 좁게 차지) — 가로를 1.35배 넓힌다.
     const [cx, cy] = project(0, 0, 5.3);
-    const rxo = 4.6;
+    const rxo = 6.2;
     const ryo = rxo * 0.45;
-    const rxi = 3.2;
+    const rxi = 4.3;
     const ryi = rxi * 0.45;
     const ringBack = `M${cx - rxo} ${cy} A${rxo} ${ryo} 0 0 1 ${cx + rxo} ${cy} L${cx + rxi} ${cy} A${rxi} ${ryi} 0 0 0 ${cx - rxi} ${cy} Z`;
     const ringFront = `M${cx - rxo} ${cy} A${rxo} ${ryo} 0 0 0 ${cx + rxo} ${cy} L${cx + rxi} ${cy} A${rxi} ${ryi} 0 0 1 ${cx - rxi} ${cy} Z`;
     const claw = (ang: number, h: number): ShapeFace[] => {
       const a = (ang * Math.PI) / 180;
-      return hornFaces(Math.sin(a) * 3.9, Math.cos(a) * 3.9, 5.1, Math.sin(a) * 3, Math.cos(a) * 3, h, 1.05);
+      return hornFaces(Math.sin(a) * 5.3, Math.cos(a) * 5.3, 5.1, Math.sin(a) * 4, Math.cos(a) * 4, h, 1.35);
     };
     // 뒤 발톱들 → 뒤 링 → 수정 → 앞 링 → 앞 발톱들 순으로 겹친다.
     for (const ang of [135, 180, -135]) out.push(...claw(ang, 8.2));
@@ -1199,7 +1203,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const zB = 3.1;
     const zM = 6.1;
     const zT = 9.6;
-    const w = 2.3;
+    const w = 3.1;
     const eq: [number, number][] = [[w, 0], [0, w], [-w, 0], [0, -w]];
     for (let i = 0; i < 4; i += 1) {
       const [x1, y1] = eq[i];
