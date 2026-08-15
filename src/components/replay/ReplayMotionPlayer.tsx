@@ -2413,19 +2413,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const len = ang === 130 ? 3 : 3.4;
       const hh = ang === 130 ? 3.4 : 3.2;
       out.push(...tagKey(paintBase(limbFaces(ang, len, 1.7, hh), "#4e545c"), dep));
-      if (facingRatio(dxr, dyr) > -0.05) {
-        /* 반원통 전부 제거(재재재지적: 너무 이상함) — 그냥 평평한 띠 하나만 경사면에
-           깔아 다리와 잇는다. */
-        const pxr = -dyr * 0.62;
-        const pyr = dxr * 0.62;
-        const band = polyPath3([
-          [dxr * 1.2 + pxr, dyr * 1.2 + pyr, 5.9],
-          [dxr * 1.2 - pxr, dyr * 1.2 - pyr, 5.9],
-          [dxr * 5.2 - pxr, dyr * 5.2 - pyr, 0.7],
-          [dxr * 5.2 + pxr, dyr * 5.2 + pyr, 0.7],
-        ]);
-        out.push(...tagKey([[band, 1, "#4e545c"] as ShapeFace], dep + 0.3));
-      }
+      // (제거·재지적) 경사면 띠·반원통 전부 — 다리 색만 남긴다.
     }
     // 바닥 갈고리 덩굴(실물) — 다리 사이로 기다가 끝이 말려 올라간다.
     out.push(...hornFaces(4.2, 4.2, 0.5, 6.6, 6, 0.9, 0.7));
