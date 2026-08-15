@@ -1550,13 +1550,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const out: ShapeFace[] = [];
     for (const ang of [0, 60, 120, 180, 240, 300]) {
       const a = (ang * Math.PI) / 180;
-      // 아래 베이스 갈래는 검회색(요청).
-      out.push(...paintBase(hornFaces(
+      // 다리는 몸색으로 되돌림(재지적: 검게 칠할 건 다리가 아니라 베이스).
+      out.push(...hornFaces(
         Math.sin(a) * 1.4, Math.cos(a) * 1.4, 0.8,
         Math.sin(a) * 5.5, Math.cos(a) * 5.5, 0.15, 1.7,
-      ), "#1b1e23"));
+      ));
     }
-    out.push(...domeFaces3(0, 0, 3.3, 1.2));
+    // 베이스 검회색(재지적: 검정 말고 검회색).
+    out.push(...paintBase(domeFaces3(0, 0, 3.3, 1.2), "#3a3f46"));
     // 혓바닥 — 몸 뒤로 넓게 늘어져 끝이 둥글다. 가운데 골.
     const tongue = polyPath3([
       [0.9, -1.2, 1.5], [1.15, -3.3, 0.7], [0.65, -4.6, 0.35], [0, -5, 0.3],
@@ -1571,8 +1572,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 스포어(정정: 가시가 아니라 굴뚝이 포인트) — 크립 밑동과 몸통 덩어리 위에, 왼뒤에서
      굵게 서는 아가리 뚫린 굴뚝 관. */
   spore: () => [
-    // 아래 베이스 검회색(요청).
-    ...paintBase(domeFaces3(0, 0, 5.4, 1.5), "#1b1e23"),
+    // 아래 베이스 검회색(재지적: 검정 말고 검회색).
+    ...paintBase(domeFaces3(0, 0, 5.4, 1.5), "#3a3f46"),
     // 가운데 몸통 — 겹친 불룩 덩어리 둘(유지).
     ...domeFaces3(0.6, 0.2, 3, 4.6),
     ...domeFaces3(1.6, 1.4, 2.1, 2.9),
@@ -1587,7 +1588,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      번진 점액 자락. */
   creep: () => [
     // 바닥은 동그라미가 아니라 갈퀴(지적) — 검회색(요청).
-    ...paintBase(creepSplat(6.2), "#1b1e23"),
+    ...paintBase(creepSplat(6.2), "#3a3f46"),
     ...domeFaces3(0, 0, 4.6, 3.4),
     ...domeFaces3(0.4, -0.6, 2, 2.4, 3),
     capFace(discPath3(0.4, -0.6, 5.35, 0.75), 0.45),
@@ -1616,9 +1617,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...cylinderFaces3(1.4, 2.9, 1.6, 3.4));
     out.push(...domeFaces3(1.4, 2.9, 1.6, 1.1, 3.4));
     out.push(...domeFaces3(-4.9, 2.3, 1.3, 1.4, 2.2));
-    // 왼앞 경사로 — 공사장 고정색(요청): 노랑 바탕에 검정 사선 줄무늬.
+    /* 왼앞 경사로(재지적: 안전 구역만 노랗고 그 위는 은색) — 경사로 몸은 은색,
+       아래 끝 안전 구역만 노랑 바탕에 검정 사선. */
     const ramp = polyPath3([[-3.9, 2.2, 2.2], [-1.7, 2.2, 2.2], [-1.2, 5, 0], [-4.4, 5, 0]]);
-    out.push([ramp, 1, "#d9ae35"] as ShapeFace, topFace(ramp, 0.15));
+    out.push([ramp, 1, "#c9ced6"] as ShapeFace, topFace(ramp, 0.15));
+    out.push([polyPath3([[-4.28, 4.3, 0.55], [-1.33, 4.3, 0.55], [-1.2, 5, 0], [-4.4, 5, 0]]), 1, "#d9ae35"] as ShapeFace);
     for (let i = 0; i < 3; i += 1) {
       const x0 = -4.2 + i * 1;
       out.push([polyPath3([
@@ -1894,6 +1897,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           g.push(bodyFace(polyPath3([
             tooth(-4.68)[3], tooth(-4.17)[3], tooth(-4.17)[2], tooth(-4.68)[2],
           ])));
+          // 이빨 옆면 두 짝도 봉합(재지적: 옆이 뚫려 보였다).
+          const flankA = polyPath3([tooth(-4.68)[1], tooth(-4.17)[1], tooth(-4.17)[2], tooth(-4.68)[2]]);
+          const flankB = polyPath3([tooth(-4.68)[0], tooth(-4.17)[0], tooth(-4.17)[3], tooth(-4.68)[3]]);
+          g.push(bodyFace(flankA), sideFace(flankA, 0.18));
+          g.push(bodyFace(flankB), topFace(flankB, 0.1));
           const frontT = polyPath3(tooth(-4.17));
           g.push(bodyFace(frontT), topFace(frontT, 0.12));
         }
@@ -3428,6 +3436,25 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       bodyFace(polyPath3([[2.3, -1.7, 7.2], [-0.9, -1.7, 6.9], [-0.9, -1.5, 6.9], [2.3, -1.3, 7.2]])),
       ...hornFaces(-0.7, -1.6, 6.9, -0.7, -1.6, 5.2, 0.16),
     ], "#9aa3ad"),
+    /* 공사장 안전 띠(요청: 터렛에 붙인 패턴을 적절히) — 기초 슬래브 네 옆면에
+       노랑 바탕·검정 사선. 면마다 facing으로 보일 때만 그린다. */
+    ...((): ShapeFace[] => {
+      const faces: ShapeFace[] = [];
+      const side = (
+        nx: number, ny: number, pt: (t: number, z: number) => [number, number, number], len: number,
+      ): void => {
+        if (facingRatio(nx, ny) < 0.05) return;
+        faces.push([polyPath3([pt(0, 0.05), pt(len, 0.05), pt(len, 0.75), pt(0, 0.75)]), 1, "#d9ae35"] as ShapeFace);
+        for (let t = 0.35; t < len - 0.95; t += 1.4) {
+          faces.push([polyPath3([pt(t, 0.05), pt(t + 0.55, 0.05), pt(t + 0.95, 0.75), pt(t + 0.4, 0.75)]), 1, "#1b1e23"] as ShapeFace);
+        }
+      };
+      side(0, 1, (t, z) => [-3.5 + t, 2.51, z], 7);
+      side(0, -1, (t, z) => [3.5 - t, -2.51, z], 7);
+      side(1, 0, (t, z) => [3.51, 2.5 - t, z], 5);
+      side(-1, 0, (t, z) => [-3.51, -2.5 + t, z], 5);
+      return faces;
+    })(),
     // 빨간 공사 등 — 크레인 꼭대기와 앞뒤 보 끝.
     [groundEllipse(...project(2.3, -1.5, 7.4), 0.3, 0.24), 0.85, "#ff5f4b"] as ShapeFace,
     [groundEllipse(...project(-2.9, 1.9, 4.5), 0.24, 0.19), 0.8, "#ff5f4b"] as ShapeFace,
@@ -4564,8 +4591,8 @@ const WORKER_KIND_SET = new Set(["scv", "probe", "drone"]);
 const BUILDING_BASE_YAW = 45;
 const MODEL_YAW_TWEAK: Record<string, number> = {
   // 반시계 90도(지적) — 어시밀레이터·히드라 덴·서플·포지·테란 공사장.
-  // 어시밀레이터 180도 회전(재재지적) — 합계 0(기본 요잉만).
-  assim: 0, hydraden: -90, trapezoid: -90, forge: -90, scaffold: -90,
+  // 어시밀레이터 180도 회전(재재지적) 후 45도 반시계(재재재지적) — 합계 -45.
+  assim: -45, hydraden: -90, trapezoid: -90, forge: -90, scaffold: -90,
   // 시계 90도(지적) — 로보틱스·템플러 아카이브.
   dome: 90, archives: 90,
 };
