@@ -7380,7 +7380,11 @@ export default function ReplayMotionPlayer({
               /* 모서리에 바짝(재지적: 일꾼이 너무 떨어져 있나) — 0.4 → 0.9타일 안쪽,
                  반 타일 위로: 불티가 공사장 몸체에 반쯤 얹힌다. */
               const bfxX = race2 === "테란" ? centerX - fp2[0] / 2 + 0.9 : centerX;
-              const bfxY = race2 === "테란" ? centerY + fp2[1] / 2 - 0.6 : centerY;
+              /* 소환구 글로우는 모델과 같은 앵커(지적: 소환구와 글로우가 어긋남) — 모델은
+                 바닥 맞춤으로 위로 당겨 앉는데 글로우만 발자국 가운데라 서로 떨어졌다.
+                 같은 식(centerY + fp/2 − modelHT/2)으로 묶는다. */
+              const bfxY = race2 === "테란" ? centerY + fp2[1] / 2 - 0.6
+                : race2 === "프로토스" ? centerY + fp2[1] / 2 - modelHT / 2 : centerY;
 
               return (
                 <span
