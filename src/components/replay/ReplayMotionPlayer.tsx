@@ -8710,10 +8710,9 @@ export default function ReplayMotionPlayer({
             남는다. v2 데이터로 그리므로 v2 모드 + 클릭 토글이 켜져 있을 때만이다. */}
         {entOn && clickFx && entClicks.map(([cs, cx2, cy2, raw, ck], i) => {
           if (t < cs || t - cs > 0.9) return null;
-          /* UI 고정 크기(재재재재지적: 이제 너무 작음) — 줌 역배율로 화면 크기가 고정
-             되면서 하한 9px가 곧 실제 크기가 됐다. 기준 14px로 올린다(타일 비례는 큰
-             맵에서만 그보다 커진다). */
-          const ckw = Math.max(14, ((mapRef.current?.clientWidth ?? 320) / grid.width) * 0.55);
+          /* UI 고정 크기 — 가장 축소(줌 1)에서도 또렷한 18px 기준(재지적). 타일 비례는
+             큰 화면에서만 그보다 커진다. */
+          const ckw = Math.max(18, ((mapRef.current?.clientWidth ?? 320) / grid.width) * 0.55);
           // 공격 클릭은 붉은 고리로 갈라 보인다(지적: 클릭 종류 구분).
           return (
             <span
