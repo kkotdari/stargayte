@@ -6667,7 +6667,10 @@ export default function ReplayMotionPlayer({
 
   const body = (
     <div
-      className={cx("scr-motion", wide && "scr-motion-big")}
+      // 넓은 배치 클래스(확인·요청: 옛 확대창 클래스가 아닌지) — 옛 확대창(.scr-motion-big
+      // -modal/-backdrop)은 소스째 삭제됐고, 이 .scr-motion-wide가 인라인 넓은 배치의
+      // 유일한 클래스다(혼동을 없애려 -big에서 개명).
+      className={cx("scr-motion", wide && "scr-motion-wide")}
       // 확대 모드에선 폭 상한을 안 건다 — 모달 폭(아래 포털)이 이미 맵+양옆 세로 조작부
       // 기준으로 확정돼 있고, 여기까지 조이면 이중 제약으로 맵이 더 작아진다.
       // 230 → 150 → 230px(요청: 페이지라 더 크게 → 재지적: 노트북에서 맵이 다 안 들어옴)
