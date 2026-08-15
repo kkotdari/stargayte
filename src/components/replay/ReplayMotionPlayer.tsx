@@ -3709,8 +3709,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
         ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
       ], "#dfe3e6"),
-      // 헬멧 유리색(요청).
-      ...paintBase(domeFaces3(0, -0.2, 0.85, 0.8, 4.2), "#bfe0ef"),
+      // 헬멧 유리색(요청) — 지붕 키(재지적: 몸통·어깨에 가려짐).
+      ...tagKey(paintBase(domeFaces3(0, -0.2, 0.85, 0.8, 4.2), "#bfe0ef"), 20),
       [groundEllipse(fx2, fy2, 0.42, 0.36), 0.55, "#ffffff"] as ShapeFace,
       bodyFace(apron),
       topFace(apron, 0.3),
@@ -3741,8 +3741,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...cylinderFaces3(0, -0.2, 1.25, 1.9, 2.3),
       ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
       ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
-      // 헬멧 유리색(요청).
-      ...paintBase(domeFaces3(0, -0.2, 0.85, 0.8, 4.2), "#bfe0ef"),
+      // 헬멧 유리색(요청) — 지붕 키(재지적: 몸통·어깨에 가려짐).
+      ...tagKey(paintBase(domeFaces3(0, -0.2, 0.85, 0.8, 4.2), "#bfe0ef"), 20),
       [groundEllipse(vx2, vy2, 0.45, 0.32), 0.55, "#ffffff"] as ShapeFace,
       /* 두 팔(재지적: 위치·굽힘) — 위팔은 어깨뽕 '아래'(z 3.7)에서 나와 앞-아래로
          내려가고, 팔꿈치에서 굽어 아래팔이 총몸으로 올라가 쥔다. 왼손은 앞손잡이,
@@ -3774,8 +3774,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...domeFaces3(-0.75, -0.15, 0.34, 0.3, 4.1),
       ...domeFaces3(0.75, -0.15, 0.34, 0.3, 4.1),
       // 작은 헬멧(마린 0.8 → 0.55) + 바이저.
-      // 헬멧 유리색(요청).
-      ...paintBase(domeFaces3(0, -0.1, 0.58, 0.55, 4.35), "#bfe0ef"),
+      // 헬멧 유리색(요청) — 지붕 키(재지적: 가려짐).
+      ...tagKey(paintBase(domeFaces3(0, -0.1, 0.58, 0.55, 4.35), "#bfe0ef"), 20),
       [groundEllipse(vx2, vy2, 0.3, 0.21), 0.55, "#ffffff"] as ShapeFace,
       // 가는 두 팔 — 앞-아래로 내려가 총몸을 받쳐 쥔다. 회흰색(요청).
       ...paintBase([
@@ -3813,8 +3813,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...cylinderFaces3(0, -0.2, 1.25, 1.9, 2.3),
       ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
       ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
-      // 헬멧 유리색(요청).
-      ...paintBase(domeFaces3(0, -0.2, 0.85, 0.8, 4.2), "#bfe0ef"),
+      // 헬멧 유리색(요청) — 지붕 키(재지적: 몸통·어깨에 가려짐).
+      ...tagKey(paintBase(domeFaces3(0, -0.2, 0.85, 0.8, 4.2), "#bfe0ef"), 20),
       [groundEllipse(vx2, vy2, 0.42, 0.24), 0.55, "#ffffff"] as ShapeFace,
       // 두 팔(요청) — 어깨에서 건틀릿 뿌리로.
       ...hornFaces(-1.45, -0.2, 4.9, -1.4, 0.6, 3.2, 0.5),
