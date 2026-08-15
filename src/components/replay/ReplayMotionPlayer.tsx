@@ -4193,36 +4193,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        두껍게가 아니라 '넓게') — 접평면 부착은 그대로 두고, 접선 방향으로 길쭉한
        보라 타원 기관으로 바꾼다. 속에 밝은 보라 속살을 한 겹 얹는다. */
     const lens = (sxSign: number): ShapeFace[] => {
-      // 더 뒤쪽(재지적: 거의 옆면의 가운데) + 살짝 위(아래 z 5.2 → 5.65) — 50° → 82°.
       const th = Math.PI * (82 / 180);
-      // 몸에 딱 붙게(지적) — 렌즈 가장자리(접선 반경 1.55)까지가 몸 실루엣(3.0) 안에
-      // 들도록 중심 반경을 안으로 당긴다.
-      const cxL = Math.sin(th) * 2.55 * sxSign;
-      const cyL = Math.cos(th) * 2.55;
-      const t1x = Math.cos(th) * sxSign;
-      const t1y = -Math.sin(th);
-      /* 볼록 방향 반대로(지적) — 테는 밖으로, 속살은 몸 안쪽으로 꺼진 오목 렌즈:
-         바깥 고리는 반경 2.62, 속 타원은 2.35로 파고든다. */
-      const ring = (rt: number, rz: number, rad: number): [number, number, number][] => {
-        const rX = Math.sin(th) * rad * sxSign;
-        const rY = Math.cos(th) * rad;
-        const pts: [number, number, number][] = [];
-        for (let i = 0; i < 14; i += 1) {
-          const a = (i / 14) * Math.PI * 2;
-          pts.push([
-            rX + Math.cos(a) * rt * t1x,
-            rY + Math.cos(a) * rt * t1y,
-            5.65 + Math.sin(a) * rz,
-          ]);
-        }
-        return pts;
-      };
-      /* 렌즈는 양쪽 보라 하나씩만(재지적: 반경 분리로 겹렌즈처럼 보였다) — 거의
-         한 중심으로 되돌리고, 속을 어두운 보라로 눌러 볼록이 아니라 오목하게 뒤집는다. */
+      /* 완전 동그란 볼록 렌즈(재재지적: 오목 아님 — 밖으로 튀어나오게) — 중심만
+         투영한 진짜 원(가로세로 같음)을 몸 실루엣 살짝 밖(반경 2.9)에 붙이고, 위에
+         밝은 점광을 얹어 바깥으로 부푼 방향이 읽히게 한다. */
+      const lx = Math.sin(th) * 2.9 * sxSign;
+      const ly = Math.cos(th) * 2.9;
+      const [px, py] = project(lx, ly, 5.65);
       return tagKey([
-        [polyPath3(ring(1.55, 0.95, 2.56)), 0.92, "#7d55b4"] as ShapeFace,
-        [polyPath3(ring(0.92, 0.52, 2.48)), 0.5, "#41295e"] as ShapeFace,
-      ], depthNow(cxL, cyL));
+        [groundEllipse(px, py, 1.2, 1.2), 0.95, "#7d55b4"] as ShapeFace,
+        [groundEllipse(px - 0.35 * sxSign, py - 0.35, 0.5, 0.5), 0.7, "#a97fe0"] as ShapeFace,
+      ], depthNow(lx, ly));
     };
     /* 얼굴(재지적: 얼굴은 앞쪽 아래쪽에 작은 반구형으로) — 몸 앞아래 표면에 붙는
        작은 돔 하나. */
