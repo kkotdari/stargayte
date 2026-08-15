@@ -2835,12 +2835,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [bx, by] = project(0, 0, 6.4);
     const out: ShapeFace[] = [];
     // 추진체 — 방패 사이 자리(30·150·270도).
+    /* 납작한 접시로(재지적) — 키 큰 돔 대신 살짝 도톰한 원반, 크기도 축소(1.3→1.1). */
     for (const ang of [30, 150, 270]) {
       const a2 = (ang * Math.PI) / 180;
-      out.push(...tagKey(
-        domeFaces3(Math.sin(a2) * 3.2, Math.cos(a2) * 3.2, 1.3, 2.2, 3.9),
-        depthNow(Math.sin(a2) * 3.2, Math.cos(a2) * 3.2),
-      ));
+      const px5 = Math.sin(a2) * 3.2;
+      const py5 = Math.cos(a2) * 3.2;
+      out.push(...tagKey([
+        ...domeFaces3(px5, py5, 1.1, 0.38, 5.7),
+        topFace(discPath3(px5, py5, 6.06, 0.62), 0.22),
+      ], depthNow(px5, py5)));
     }
     // 구 몸통 — 한 단 더 축소(3.3 → 2.7, 재지적) + 그늘 초승달 + 하이라이트.
     out.push(...tagKey([
