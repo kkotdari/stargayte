@@ -7109,8 +7109,15 @@ export default function ReplayMotionPlayer({
           : (
             /* 매핑 안 된 맵(정정: 샘플 녹색이 아니라 맵에서 실제 추출한 지형) — 리플레이
                타일 격자 개략도(ReplayMapCanvas)를 바탕으로 깐다. 초록 계열 지형 램프가
-               곧 기본색이다. */
-            <div className="scr-motion-canvas scr-motion-canvas-blank">
+               곧 기본색이다. 3D에선 실제 그림과 똑같은 기울임을 입는다(지적: 기본 파싱
+               맵은 입체 효과가 안 됨). */
+            <div
+              className="scr-motion-canvas scr-motion-canvas-blank"
+              style={pitched ? (() => {
+                const { q, cy } = pitchGeom();
+                return { transform: `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${PITCH_P}px) rotateX(45deg)` };
+              })() : undefined}
+            >
               <ReplayMapCanvas grid={grid} className="scr-motion-canvas-tiles" />
             </div>
           )}
