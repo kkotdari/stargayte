@@ -3,8 +3,6 @@ import type { BuildMix } from "./replayBuildMix";
 import { parseReplayFile, ReplayParseError } from "./replayParser";
 import type { ReplayMapGrid } from "./replayParser";
 import { matchReplayPlayerToMember } from "./replayMemberMatch";
-import { buildReplaySummary } from "./replaySummary";
-import type { ReplaySummaryData } from "./replaySummaryData";
 import { api } from "../api/client";
 import { isComputerSlot, newComputerSlotId } from "../constants/computerSlot";
 import { newUnregisteredSlotId } from "../constants/unregisteredSlot";
@@ -46,9 +44,6 @@ export interface ReplayDraft {
   // screp이 이 리플레이의 팀을 두 편으로 못 나눠서(일부 UMS 맵의 알려진 한계) team1에
   // 전원이 몰리고 team2가 비어있는 상태 — 자동 등록에 맡기지 않고 사람이 직접 편을 갈라야 한다.
   teamSplitUncertain: boolean;
-  /** 리플레이에서 뽑은 요약 데이터. 재료가 모자라면 null — 그땐 요약 없이 등록한다. 문장이 아니라 '무슨 일이 있었나'라서, 나중에 닉네임이나
-   *  표현이 바뀌어도 보는 시점의 값으로 읽힌다(replaySummaryData.ts 참고). */
-  summaryData: ReplaySummaryData | null;
   /** 미니맵을 그릴 맵의 지형 격자. 못 읽었으면 null이고 그 경기엔 미니맵이 안 붙는다.
    *  서버는 같은 해시를 이미 갖고 있으면 이 격자를 버리고 해시만 이어 붙인다. */
   mapGrid: ReplayMapGrid | null;
@@ -126,10 +121,6 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
     const t1 = assign(parsed.team1);
     const t2 = assign(parsed.team2);
 
-    // 요약은 사람 이름이 아니라 리플레이 원본 게임 아이디로 만들어진다 — 회원 매칭에
-    // 기대지 않으므로 여기서 만들어도 되고, 나중에 매칭이 바뀌어도 보는 쪽이 따라온다.
-    const summaryData = buildReplaySummary(parsed);
-
     return {
       fileName: file.name,
       mapName: parsed.mapName,
@@ -147,7 +138,6 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
       winnerSide: parsed.winnerSide,
       guessedObservers: parsed.guessedObservers,
       teamSplitUncertain: parsed.teamSplitUncertain,
-      summaryData,
       mapGrid: parsed.mapGrid,
       unitTracks: parsed.unitTracks,
       parseError: null,
@@ -172,7 +162,6 @@ async function buildDraft(file: File, members: Member[]): Promise<ReplayDraft> {
       winnerSide: null,
       guessedObservers: [],
       teamSplitUncertain: false,
-      summaryData: null,
       mapGrid: null,
       unitTracks: null,
       parseError: e instanceof ReplayParseError ? e.message : "리플레이를 분석하지 못했어요. 직접 입력해 주세요.",
@@ -330,10 +319,8 @@ function draftToMergePayload(d: ReplayDraft, gameStartedAt: string) {
     result: d.winnerSide,
     mapName: d.mapName || null,
     durationSeconds: d.durationSeconds,
-    // 요약은 파싱해야만 나오는 값이라, 예전에 등록해 요약이 비어 있는 경기도 리플레이를
-    // 다시 올리면 이 경로로 채워진다(요청: 배치 업로드에서 갱신).
-    summaryData: d.summaryData,
-    // 미니맵도 같은 이유로 여기서 채워진다 — 옛 경기에 미니맵을 붙일 유일한 길이다.
+    // 미니맵은 파싱해야만 나오는 값이라, 예전에 등록해 비어 있는 경기도 리플레이를
+    // 다시 올리면 이 경로로 채워진다 — 옛 경기에 미니맵을 붙일 유일한 길이다.
     mapData: d.mapGrid,
     players: [...fromSlots, ...fromUnmatched].filter((p) => p.playerName),
   };

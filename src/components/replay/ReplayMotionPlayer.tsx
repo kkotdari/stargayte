@@ -4,11 +4,11 @@ import { Maximize2, Pause, Play, RotateCcw, Shield, X } from "lucide-react";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import Avatar from "../common/Avatar";
 import { cx } from "../../utils/format";
-import { UNIT_KO, TECH_KO } from "../../utils/replaySummaryText";
+import { UNIT_KO, TECH_KO } from "../../utils/replayNames";
 import type { ReplayMapGrid } from "../../utils/replayParser";
 import { api } from "../../api/client";
 import { applyReplayMap } from "../../hooks/useReplayMap";
-import { isAirUnit, type MotionTrack, type SummaryMotion, type TrackPt } from "../../utils/replayMotion";
+import { AIR_UNITS, CASTER_UNITS } from "../../utils/replayBuildMix";
 import type { UnitTracksV2 } from "../../utils/replayUnits";
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } from "../../utils/minimapTerrain";
@@ -19,6 +19,73 @@ import {
   wallDiscPath, wallFrame, withPitchView, withTopView, withViewShear, withYaw, zsorted,
 } from "../../utils/shapeOblique";
 import type { MinimapMarker } from "./ReplayMinimap";
+
+/* ── 모션 트랙 타입(옛 utils/replayMotion.ts에서 이사) ─────────────────────────────
+   요약(summaryData) 생성이 걷히면서 트랙을 만드는 쪽(motionOf)은 사라졌고, 저장돼 있던
+   모션을 읽어 그리는 이 파일이 타입의 유일한 사용처라 여기로 옮겨 왔다. 좌표는 전부
+   타일이고, 시각은 초(정수)다. */
+
+/** 자취 한 점 [초, x, y, 선택 묶음 번호?] — 넷째 값(g)은 같은 부대지정으로 내린 명령끼리
+ *  같은 번호다(지적: 단축키 부대 이동의 순간이동). 옛 분석본에는 없다. */
+export type TrackPt = [number, number, number, number?];
+
+/** 한 사람의 자취 — 원본 게임 아이디(raw)로 부른다. */
+export interface MotionTrack {
+  raw: string;
+  /** 게임 내 색(#rrggbb, 요청) — 재생 화면이 팀 2색 대신 이 색으로 칠한다. 없으면 팀 색. */
+  color?: string;
+  /** [초, x, y, g?] — 버킷의 마지막 명령 자리. 안 움직인 버킷은 접혀 있다. */
+  pts: TrackPt[];
+  /** 일꾼의 자취 — 부대 자취(pts)에서 걷어낸, 정체가 일꾼으로 드러난 명령들. */
+  spts?: TrackPt[];
+  /** 수송선(오버로드 포함)의 자취. */
+  tpts?: TrackPt[];
+  /** 정체 모를 한 기짜리 클릭의 자취 — 시작 오버로드·옵저버 정찰이 대부분이다. */
+  opts?: TrackPt[];
+  /** 뜬 건물의 비행 클릭 자취. */
+  fpts?: TrackPt[];
+  /** 명령의 선택 크기 자취 [초, x, y, 몇 기 골랐나]. */
+  sels?: [number, number, number, number][];
+  /** 수송선 드랍 지점 [초, x, y]. */
+  drops?: [number, number, number][];
+  /** 태우기 지점 [초, x, y] — 제 수송선을 찍은 우클릭. */
+  loads?: [number, number, number][];
+  /** 정체가 드러난 유닛별 자취 — 키는 그 이름("Siege Tank"·"Bionic"·"Lurker"…). */
+  upts?: Record<string, TrackPt[]>;
+  /** [초, x, y, 건물 태그] — 생산 건물의 랠리 포인트. */
+  rly?: [number, number, number, number][];
+  /** [초, 유닛 영문명] — 그때까지 가장 많이 뽑은 전투 유닛이 바뀐 순간들(이름표 재료). */
+  units: [number, string][];
+  /** [초, 누적 일꾼 수] — "여태 뽑은 일꾼"으로 읽어야 한다(죽음은 리플레이에 없다). */
+  workers: [number, number][];
+  /** [초, 업그레이드 영문명] — 속도 업그레이드의 연구 시점. */
+  ups?: [number, string][];
+  /** 유닛 영문명 → 생산 시각(초)들 — "생산할 때 건물 이름 켜기"의 재료. */
+  prod: Record<string, number[]>;
+  /** prod와 나란한 '그때 골라져 있던 건물 번호(태그)'. */
+  ptag?: Record<string, number[]>;
+  /** [초, 병력 규모] — 최근 3분 안에 뽑은 전투 유닛 수. */
+  size: [number, number][];
+  /** [시작, 끝] 초 — 상대의 공격 명령이 내 부대 자리 곁에 몰린 구간(전투 어림). */
+  hot?: [number, number][];
+}
+
+export interface SummaryMotion {
+  v: 1;
+  step: number;
+  players: MotionTrack[];
+  /** [초, x, y, 건물 영문명, raw, 무너진 초(0이면 살아 있음), 이륙한 초?]. */
+  builds: [number, number, number, string, string, number, number?][];
+  /** [초, x, y, 기술 영문명, raw] — 좌표가 남는 마법(스톰·스웜·리콜…). */
+  casts: [number, number, number, string, string][];
+}
+
+/** 공중 유닛인가 — 마법 유닛(베슬·퀸 등)은 자취 목적상 지상 취급을 유지한다(옛 규칙 그대로). */
+export const isAirUnit = (unit: string): boolean => AIR_UNITS.has(unit) && !CASTER_UNITS.has(unit);
+
+/** 본진 로스터 한 사람 — 위치(x·y)는 이제 요약이 사라져 실려 오지 않을 수 있다.
+ *  좌표가 없으면 지형 앵커·채굴 임자 어림 같은 위치 계산에서 조용히 빠진다. */
+export type MotionBase = Omit<MinimapMarker, "x" | "y"> & { x?: number; y?: number };
 
 /* ── 연속 재생 플레이어(요청: 장면 선정 없이 전부 연속으로, 이미지 대신 텍스트로) ──────
    스냅 미니맵(ReplayMinimap)이 '고른 장면'을 화살표·이모지로 그렸다면, 여기는 시간이 그냥
@@ -4844,14 +4911,14 @@ const dualSyncBus = new Map<string, Set<(t: number) => void>>();
 
 export default function ReplayMotionPlayer({
   grid, motion, endSec, bases, teamOfRaw, active = true, winnerTeam, side, menu,
-  stamp, registrant, onDetailClose, bestRaw, loadUnitTracks, forceEnt, syncKey, syncRole,
+  stamp, registrant, onDetailClose, loadUnitTracks, forceEnt, syncKey, syncRole,
 }: {
   grid: ReplayMapGrid;
   motion: SummaryMotion;
-  /** 경기 길이(초) — 요약의 end(프레임)에서 온다. 없으면 트랙의 끝으로 잡는다. */
+  /** 경기 길이(초) — 경기 메타(durationSeconds)에서 온다. 없으면 트랙의 끝으로 잡는다. */
   endSec: number | null;
-  /** 본진 표시(아바타+이름) — 스냅 미니맵과 같은 재료를 그대로 받는다. */
-  bases: MinimapMarker[];
+  /** 본진 로스터(아바타+이름) — 좌표는 옛 요약에서만 왔으므로 이제 없을 수 있다. */
+  bases: MotionBase[];
   /** 원본 게임 아이디 → 팀 — 텍스트 색을 가른다. */
   teamOfRaw: (raw: string) => 1 | 2 | undefined;
   /** 화면에 실제로 보이는 카드인가 — 안 보이는 카드의 시계는 세우지 않는다. */
@@ -4871,9 +4938,6 @@ export default function ReplayMotionPlayer({
   /** 상세 팝업 닫기(요청: PC는 게임 결과만 확대창이 기본, 기존 상세는 미사용) — 값이
    *  오면 PC에서 마운트되자마자 확대창을 열고, 확대창을 닫을 때 상세까지 함께 닫는다. */
   onDetailClose?: () => void;
-  /** 그 판 BEST PLAYER의 원본 게임 아이디(요청: 헤드 칩 대신 로스터 이름에 배지) —
-   *  로스터 기둥에서 그 사람 이름 칩 옆에 금색 BEST 배지를 단다. */
-  bestRaw?: string | null;
   /** 개체 트랙 v2 로더(요청: 태그 단위 분석을 별도 테이블로 저장해 비교) — 있으면 보기
    *  줄에 '부대/개체' 토글이 선다. 개체 모드는 유닛 층만 태그 단위 트랙으로 바꿔 그리고,
    *  건물·자원·크립은 기존 그대로 둔다. null이 오면(옛 경기·분석 실패) 토글이 알린다. */
@@ -5085,7 +5149,12 @@ export default function ReplayMotionPlayer({
   const TEAM_EDGE: Record<1 | 2, string> = { 1: "#5ea2ff", 2: "#ff7d95" };
   const modeColor = (raw: string, team: 1 | 2 | undefined): string => {
     const teamColor = team === 2 ? TEAM_EDGE[2] : TEAM_EDGE[1];
-    if (colorMode === "personal") return colorByRaw.get(raw) ?? teamColor;
+    // 요약 폐지 뒤 개인색의 원천은 개체 트랙이다(수리: 색이 팀 2색으로 퇴행).
+    if (colorMode === "personal") {
+      return colorByRaw.get(raw)
+        ?? entData?.players.find((pl) => pl.name === raw)?.color
+        ?? teamColor;
+    }
     return teamColor;
   };
   /** 색의 밝기 — 어두운 개인색은 흰 반투명 음영을 받쳐야 보인다(지적). */
@@ -5159,7 +5228,8 @@ export default function ReplayMotionPlayer({
       // 앵커(지적: 빠른무한 반전) — 자원 지대 + 시작 지점(둘 다 확실한 땅). 분수 좌표.
       [
         ...(grid.resources ?? []).map(([x, y]) => [x / grid.width, y / grid.height] as [number, number]),
-        ...bases.filter((m) => !m.ghost).map((m) => [m.x / grid.width, m.y / grid.height] as [number, number]),
+        ...bases.flatMap((m) => (!m.ghost && m.x !== undefined && m.y !== undefined
+          ? [[m.x / grid.width, m.y / grid.height] as [number, number]] : [])),
       ],
     )
       .then((tg) => {
@@ -5381,7 +5451,7 @@ export default function ReplayMotionPlayer({
      가르고, 어느 부대에서도 먼 점은 가장 오래 조용한 부대가 그리로 옮겨 간 것으로 본다. */
   const homeOf = (raw: string): [number, number] | null => {
     const b = bases.find((m) => m.key === raw);
-    return b ? [b.x, b.y] : null;
+    return b && b.x !== undefined && b.y !== undefined ? [b.x, b.y] : null;
   };
   /* 수송선 명령 자리도 워프 후보다(요청: 새로운 셔틀 위치에서 명령이 갑자기 시작되면
      내린 것) — 드랍 신호(drops)가 안 잡혀도, 수송선이 들른 자리 곁에서 태어나는 새 명령
@@ -6356,6 +6426,7 @@ export default function ReplayMotionPlayer({
       let best = 10;
       let raw: string | null = null;
       for (const m of bases) {
+        if (m.x === undefined || m.y === undefined) continue;
         const d = Math.hypot(r[0] - m.x, r[1] - m.y);
         if (d < best) { best = d; raw = m.key; }
       }
@@ -6480,11 +6551,13 @@ export default function ReplayMotionPlayer({
   /* 본진이 무너졌나(지적: 본진 기지 건물은 절대 안 망했다 — 시작 홀을 builds에 합성하며
      판정이 생겼다) — 집 자리(3타일)의 내 홀 계보에서 마지막 채가 무너졌고 재건이 없으면
      함락이다. 아바타 로스터의 유령화와 채굴 일꾼 걷기가 같이 쓴다. */
-  const fallenHome = (m: MinimapMarker): boolean => {
+  const fallenHome = (m: MotionBase): boolean => {
+    const { x: mx, y: my } = m;
+    if (mx === undefined || my === undefined) return false;
     const chain = buildsSrc
       .filter(([bs, x2, y2, bu, br]) => br === m.key && bs <= t
         && ["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(bu)
-        && Math.hypot(x2 + footDx(bu) - m.x, y2 + footDy(bu) - m.y) <= 3)
+        && Math.hypot(x2 + footDx(bu) - mx, y2 + footDy(bu) - my) <= 3)
       .sort((a, b) => a[0] - b[0]);
     const last = chain[chain.length - 1];
     return !!last && (last[5] ?? 0) > 0 && t >= (last[5] ?? 0);
@@ -6524,8 +6597,6 @@ export default function ReplayMotionPlayer({
                 {shortName(m.name)}
               </span>
             </span>
-            {/* BEST 배지(재요청: 이름 칩에 겹쳐서) — 칩 오른쪽 위 모서리에 얹힌다. */}
-            {bestRaw != null && m.key === bestRaw && <span className="scr-tc-best">BEST</span>}
             {winnerTeam && (m.team === 2 ? 2 : 1) === winnerTeam && t >= total - 0.5 && !fallen && (
               <span className="scr-motion-trophy">🏆</span>
             )}
@@ -7120,7 +7191,7 @@ export default function ReplayMotionPlayer({
             let best = 10;
             for (const m of bases) {
               // 함락된 본진(fallenHome)은 채굴 목적지가 아니다(지적: 본진이 안 망하던 문제).
-              if (m.ghost || fallenHome(m)) continue;
+              if (m.ghost || fallenHome(m) || m.x === undefined || m.y === undefined) continue;
               const d = Math.hypot(res[0] - m.x, res[1] - m.y);
               if (d < best) { best = d; owner = { x: m.x, y: m.y, raw: m.key, dist: d }; }
             }
@@ -7258,7 +7329,7 @@ export default function ReplayMotionPlayer({
             <span
               key={m.key}
               className={cx("scr-motion-base", m.ghost && "scr-motion-base-ghost")}
-              style={{ ...posStyle(m.x, m.y) }}
+              style={{ ...posStyle(m.x ?? 0, m.y ?? 0) }}
             >
               {/* 테두리 한 겹(요청: 중복 제거) — 지금 색 모드의 색으로. 어두운 색에 받치던
                   흰 겉테두리는 걷었다(요청: 흰 테두리 제거) — 아바타가 커진 뒤로는 색 테가

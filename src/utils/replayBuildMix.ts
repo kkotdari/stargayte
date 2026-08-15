@@ -10,7 +10,7 @@
 // 어차피 비율로 읽는 값이라 갈래마다 같은 자로 재는 것이 중요하지, 절대 수가 중요하지 않다.
 
 import type { ReplayPlayerSignals } from "./replayParser";
-import { BUILDING_KO, TECH_KO, UNIT_KO } from "./replaySummaryText";
+import { BUILDING_KO, TECH_KO, UNIT_KO } from "./replayNames";
 import { upgradeLevel, type UpgradeName } from "./replayTechNames";
 
 /** 초당 프레임(다른 파일들과 같은 값) — 초반 일꾼 수를 셀 때만 쓴다. */

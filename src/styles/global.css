@@ -2242,29 +2242,6 @@ html:not(.scr-light-theme) .scr-app-hasbg .scr-header {
 .scr-stat-name-main {
   display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; flex: 1;
 }
-/* 닉네임 아래 한 줄 별명(요청, statEpithet.ts). 닉네임과 확실히 갈리게 두 단계 내린다 —
-   크기(micro)와 색(--dim) 둘 다. 이 줄은 훑을 때 읽는 글자가 아니라 눈이 한 번 멈췄을 때
-   읽는 글자다: 같은 무게로 적으면 표에서 이름이 둘로 보인다.
-   말줄임 대신 줄바꿈을 택한 이유는, 잘린 별명("공포의 럴커…")은 아예 안 붙은 것만 못하기
-   때문이다. 대신 낱말 가운데서는 안 자른다(keep-all) — 좁은 유저 칸에서 "부대"가 "부/대"로
-   갈리는 것이 이 줄에서 제일 흔한 사고였다. */
-.scr-stat-name-epithet {
-  max-width: 100%;
-  /* 색은 --dim에서 한 단계 올렸다(요청: 더 진하게) — 이름 아래 제 줄로 내려오면서 닉네임과
-     겹쳐 읽힐 걱정이 없어졌고, 그러자 이번엔 너무 눌려 읽히지가 않았다. 크기도 한 단계
-     올렸다(요청: "칭호 더 크게") — micro(12) → caption(14).
-     자리는 이제 프사·닉네임 '위'다(요청: "칭호를 닉네임아바타 위로") — 부르는 말이 먼저,
-     누구인지는 그 아래서 확인된다. 이탤릭(요청)까지 더해 닉네임과 성격이 다른 줄임을
-     글꼴에서부터 가른다. */
-  font-size: var(--fs-caption); font-style: italic; line-height: 1.3; color: var(--muted);
-  word-break: keep-all;
-  /* 눌러서 까닭을 펼치는 자리다(InfoTip의 트리거) — 겉모습은 예전 span 그대로 두고 손 모양만
-     얹는다. 까닭 말풍선 자체는 여기서 안 그린다: 이 칸의 조상들이 하나같이 잘라 내서
-     (overflow:hidden/auto, sticky) ::after로는 어떻게 해도 갇힌다(지적: 툴팁이 유저 컬럼
-     안으로 제한돼). InfoTip이 body로 포털해 띄운다 — .scr-infotip-bubble 참고.
-     칭호가 없어 "칭호 없음"만 적는 줄은 이 규칙 중 글자 관련만 받는다. */
-  cursor: pointer;
-}
 .scr-stat-name-btn {
   /* 원래는 행의 다른 칸들과 같은 크기(상속)였는데, 닉네임을 눈에 잘 띄게 키웠다가(19px)
      너무 커 보인다는 피드백으로 그 값의 80%(20% 축소)로 다시 낮춘다. */
@@ -3396,9 +3373,6 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
 .scr-stats-list-panel-v2 .scr-stat-name-stack { align-items: center; flex: none; min-width: 0; }
 /* 글자 크기는 모바일/PC 분기 없이 하나로 통일(요청) — 기본(subhead, 19px)보다 작게. */
 .scr-stats-list-panel-v2 .scr-stat-name-btn { text-align: center; font-size: var(--fs-body); }
-/* 유저 칸이 가운데 정렬이라(요청) 별명도 가운데 — 두 줄로 넘어갈 때 왼쪽으로 붙으면
-   닉네임과 축이 어긋나 다른 칸의 글자처럼 보인다. */
-.scr-stats-list-panel-v2 .scr-stat-name-epithet { text-align: center; }
 /* 프사는 동그란 크롭(요청). */
 
 /* 종족별 전적 칸의 막대 세 줄(테/프/저) 사이 수직 간격을 더 좁혀서 그만큼 행 높이도 줄인다.
@@ -3463,12 +3437,7 @@ html:not(.scr-light-theme) .scr-stats-list-panel-v2 .scr-stat-name-cell, html:no
   /* 108 → 119px(요청: 모바일 유저 칸 폭 10% 확대). 칭호가 두세 줄로 접히던 것을 한 줄에
      더 담기 위한 자리다 — 아래 칭호 글자를 한 단계 줄인 것과 한 짝이다. */
   .scr-stats-list-panel-v2 .scr-stat-row { --scr-stat-name-w: 119px; }
-  /* 칭호만 한 단계 작게(요청) — caption(14) → micro(12). 닉네임보다 아래에 붙는 곁말이고,
-     이 칸에서 줄바꿈을 가장 많이 일으키는 것도 이 줄이다. PC는 그대로 둔다. */
-  .scr-stats-list-panel-v2 .scr-stat-name-epithet { font-size: var(--fs-micro); }
-  /* 모바일도 세로 두 줄이다(지적: 칭호가 옆이 아니라 아바타+닉네임 전체 아래로) — 여기서
-     row로 되돌리고 있던 탓에 폰에서만 칭호가 닉네임 옆에 붙어 있었다. 가로로 서는 몫은
-     안쪽 덩어리(.scr-stat-name-main)가 맡는다. */
+  /* 모바일도 세로 두 줄이다 — 가로로 서는 몫은 안쪽 덩어리(.scr-stat-name-main)가 맡는다. */
   .scr-stats-list-panel-v2 .scr-stat-name-cell {
     flex-direction: column; align-items: center; justify-content: center; gap: 6px;
     padding-left: 7px; padding-right: 7px;
@@ -3945,7 +3914,6 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    최소폭이 줄바꿈도 맡는다: 둘이 이 폭 아래로는 안 줄어드니, 좁아지면 뒤따르는 꼬리
    (유형+건수)가 아랫줄로 밀린다 — 예전에 유저 검색의 기준폭 220px이 하던 일이다. */
 .scr-activity-screen .scr-search-filter-float { flex: 1 1 0; min-width: 120px; }
-.scr-activity-screen .scr-activity-content-search { flex: 1 1 0; min-width: 120px; max-width: none; }
 .scr-filter-inline-tail {
   display: flex; align-items: center; justify-content: space-between;
   gap: 10px; flex: 1 1 auto; min-width: 0;
@@ -4157,22 +4125,6 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 .scr-light-theme .scr-search-filter-float .scr-list-search-input {
   background: rgba(0,0,0,0.06); border: none; box-shadow: none;
 }
-/* 경기 내용 검색(요청) — 유저 검색과 한 줄에 서는 두 번째 입력이라 생김새가 같아야 한다
-   (지적: 디자인 통일). 그쪽 값(배경·높이·라운드·글자 크기)을 그대로 받는다 — 유저 검색은
-   칩이 담기는 상자라 규칙이 그 상자(.scr-search-filter-float)에 걸려 있어서, 흐름에 놓이는
-   이 입력은 같은 값을 따로 적는 수밖에 없다.
-   .scr-list-search-input은 안 쓴다 — 그 클래스는 흰 배경(칩용)이라 이 자리에서는 혼자
-   하얗게 떴다(지적 스크린샷). */
-.scr-activity-content-search {
-  flex: 1 1 180px; min-width: 0; max-width: 260px;
-  background: rgba(255, 255, 255, 0.08); border: none; border-radius: 10px;
-  box-shadow: none; padding: 0 12px;
-  height: 30px; min-height: 30px; box-sizing: border-box;
-  color: var(--text); font-size: var(--fs-caption);
-}
-.scr-activity-content-search::placeholder { color: var(--dim); font-size: var(--fs-caption); }
-.scr-activity-content-search:focus { outline: none; border: none; }
-.scr-light-theme .scr-activity-content-search { background: rgba(0, 0, 0, 0.06); }
 
 /* 배경이 테마색이 됐으니 글자/placeholder도 테마를 따른다(예전 흰 배경 기준 어두운 고정 톤 대체). */
 /* 검색창 폰트도 필터와 같은 방향으로 한 스텝 낮춘다(요청) — 입력/placeholder body(16)
@@ -6540,17 +6492,6 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
 .scr-status-withdrawn { color: var(--dim); border-color: var(--line); }
 .scr-status-admin { color: var(--point); border-color: var(--point); }
 
-/* 칭호 — 닉네임 위 한 줄(요청, statEpithet.ts). 통계 표의 것과 같은 톤(작고 옅게)이되
-   여기서는 이름보다 먼저 읽히는 자리라 자간을 조금 벌린다: 짧은 말 한 줄이 큰 이름 위에
-   붙을 때는 글자가 뭉쳐 보여 수식어가 아니라 이름의 일부처럼 읽힌다. */
-.scr-member-detail-epithet {
-  font-size: var(--fs-micro); color: var(--dim);
-  letter-spacing: 0.04em; margin-bottom: 2px; word-break: keep-all;
-}
-/* 그 칭호가 붙은 까닭 — 칭호보다 한 단계 더 눌러 둔다. 같은 굵기로 적으면 둘이 한 문장으로
-   읽혀 정작 부르는 말이 어디까지인지가 흐려진다. */
-/* (삭제) .scr-member-detail-epithet-why — 팝업에서 근거를 걷었다(요청). 그 말은 이제
-   표의 칭호를 눌렀을 때 말풍선으로 뜬다(.scr-stat-name-epithet → InfoTip). */
 .scr-member-detail-name { font-size: var(--fs-subhead); font-weight: 700; }
 .scr-member-detail-tag { font-size: var(--fs-body); color: var(--dim); margin-top: 2px; }
 .scr-member-detail-resize { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-caption); margin-top: 6px; }
@@ -10922,15 +10863,6 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 58px;
   align-self: flex-start;
 }
-/* BEST 배지(재요청: 이름 칩에 겹쳐서) — 자리를 안 먹게 칩 오른쪽 위 모서리에 얹는다.
-   기둥(.scr-motion-teamcol-item)이 position:relative라 그 상자 기준이다. */
-.scr-tc-best {
-  position: absolute; top: -7px; right: -5px; z-index: 2;
-  font-size: 7px; font-weight: 800; line-height: 1;
-  color: #f5c542; background: rgba(20, 18, 10, 0.85);
-  border: 1px solid rgba(245, 197, 66, 0.65); border-radius: 3px;
-  padding: 1px 3px; letter-spacing: 0.2px;
-}
 /* 로스터는 맵 위(요청: 모바일은 옆이 좁다 → 지적: PC 기본 상세도 옆 로스터가 꼭 맵과
    관련된 것처럼 보여 헷갈림) — 원래 모바일(1159px 이하) 전용이던 이 배치를 확대창 아닌
    모든 플레이어로 넓혔다. 기둥 둘이 맵 위에서 1팀 왼쪽·2팀 오른쪽으로 마주 보고,
@@ -11759,53 +11691,6 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-story-win-t1 { background: #2475cc; }
 .scr-story-win-t2 { background: #cf3f55; }
 .scr-story-win-draw { background: rgba(var(--overlay-rgb), 0.34); color: var(--text); }
-/* BEST PLAYER — 이긴 편 배지 바로 옆(요청). 승패 배지가 편의 색을 입은 채움 배지라, 이쪽은
-   테두리만 두른 금색으로 둬 둘이 서로를 안 먹게 한다. 'BEST' 넉 자는 이름과 붙어 한
-   덩어리로 읽혀야 해서 같은 상자 안에 둔다. */
-.scr-story-best {
-  display: inline-flex; align-items: center; gap: 4px;
-  box-sizing: border-box; height: var(--scr-story-pill-h, 20px);
-  font-weight: 700; font-size: var(--fs-micro); line-height: 1;
-  padding: 0 6px; border-radius: 6px;
-  color: var(--best-ink); border: 1px solid var(--best-line); background: var(--best-bg);
-}
-/* 'BEST' 넉 자에만 메탈 그라데이션을 입힌다 — 상자의 채움은 바깥(.scr-story-best)이 들고
-   있어서, 글자만 오려 내는 background-clip이 여기서는 아무것도 안 지운다. */
-.scr-story-best-tag {
-  font-size: var(--fs-11); font-weight: 800; letter-spacing: 0.04em;
-  background-image: var(--best-metal);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-/* 종족 배지는 제 종족색을 그대로 쓴다 — 금색 상자 안이지만 여기서 색을 물들이면 어느
-   종족인지가 글자 한 자에만 남는다. 배지가 이름에 붙어 보이도록 앞 간격만 좁힌다. */
-.scr-story-best-race { flex: none; margin-left: -1px; }
-/* 닉네임에 붙는 작은 BEST 배지 — 목록 줄의 제목과 로스터가 함께 쓴다(요청).
-   머리의 큰 배지(.scr-story-best)와 달리 여기는 이름 사이에 끼는 표시라, 테두리 없이
-   글자만 둔다: 상자를 두르면 이름 여덟이 늘어선 줄에서 그 상자가 이름보다 먼저 눈에
-   들어온다. 그래서 색이 곧 이 배지의 전부다 — 백금 메탈을 글자에 그대로 입힌다(요청).
-   목록 줄은 폭을 눌러 맞추므로(FlatLine의 scaleX) 이 배지도 함께 눌린다 — 글자라서
-   눌려도 읽힌다. */
-.scr-best-mini {
-  margin-left: 3px; font-size: var(--fs-9); font-weight: 800; letter-spacing: 0.03em;
-  vertical-align: 1px; white-space: nowrap;
-  background-image: var(--best-metal);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-/* (삭제) 목록 줄 제목에서 이름 위에 얹던 배지 — 이제 그 자리에서는 닉네임 자체가 백금이다
-   (요청). 로스터(.scr-roster-name 옆)의 같은 배지는 흐름에 그대로 서 있다. */
-/* (삭제) 제목의 BEST 배지가 앉던 빈 띠와 그 기준 상자 — 배지 대신 닉네임 자체를 백금으로
-   적으면서(요청, 아래 .scr-activity-row-em-best) 흐름 밖에 얹을 것이 없어졌다. 줄 위에
-   자리를 비워 둘 이유도, 이름 상자가 넘침을 열어 둘 이유도 함께 사라진다. */
-/* BEST PLAYER의 닉네임(요청: 배지 말고 이름을 백금 메탈로) — 여덟 이름이 한 줄에 눌려
-   서는 자리라, 배지는 그 줄에서 유일하게 '이름이 아닌 것'이 되어 눈이 먼저 거기 걸렸다.
-   색만 달라지면 줄의 생김새는 그대로면서 누가 뽑혔는지는 그대로 보인다.
-   글자에 그라데이션을 오려 넣는 방식이라 색을 transparent로 비워야 한다 — 바탕이 비치는
-   것이 아니라 그 자리에 그라데이션이 그려진다(.scr-best-mini와 같은 처방). */
-.scr-activity-row-em-best {
-  background-image: var(--best-metal);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-
 /* ── 미니맵 그림 ── */
 /* 이름표는 이제 지도 안에 들어간다(요청: 테두리 제거하고 이름표는 미니맵 안에서
    위치조정으로 커버) — 그 자리를 마련하려고 두던 바깥 여백(PC 40px·모바일 20px)이
@@ -12554,59 +12439,6 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   }
 }
 
-/* ── 활동 알림 카드(요청: 활동 피드에 알림 유형) ──────────────────────────────────
-   지금은 칭호 변경뿐이라 줄 하나가 [프사·닉네임·옛 칭호 → 새 칭호·근거]다. 랭크 변동
-   카드처럼 표를 짜지 않는 이유는 담는 것이 적어서다 — 세 낱말짜리 줄에 격자를 씌우면
-   빈 칸만 늘어난다. 넘치면 줄바꿈으로 흐르게 두고, 자리만 맞춰 둔다. */
-/* 줄 사이는 18px(요청: 더 넓게 — 8 → 12 → 18) — 한 줄이 길어서 좁으면 위아래 글자가
-   서로 이어 읽힌다. 프사 지름(24px)의 3/4쯤 되어야 줄마다 제 덩어리로 끊긴다.
-   이 카드는 줄이 몇 개 안 되므로 넉넉히 벌려도 카드가 길어지지 않는다. */
-/* 줄 사이 18 → 10px(요청: 줄간격 축소) — 한 줄이 두 단이 되면서(이름 줄 / 근거 줄) 그 안에서
-   이미 위아래로 벌어져, 바깥 간격까지 넓으니 사람마다 따로 떨어진 카드처럼 보였다. */
-.scr-notice-list { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
-/* 한 줄이 두 단이다(요청): 위는 [프사·닉네임], 아래는 [옛 칭호 → 새 칭호 · 근거].
-   칭호를 이름 옆에 이어 붙이면 "Rex 핵보유국"이 한 사람 이름처럼 읽힌다 — 가운뎃점으로
-   끊어도 봤지만, 줄을 바꾸는 편이 부호 하나보다 확실하다. */
-.scr-notice-row {
-  display: flex; flex-direction: column; gap: 2px;
-  font-size: var(--fs-body); line-height: 1.4;
-}
-/* 첫 줄 — [프사·닉네임 — 옛 칭호 → 새 칭호]. 좁은 화면에서 넘치면 줄바꿈으로 흐른다. */
-.scr-notice-who { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 6px; }
-/* 근거는 프사 폭(24px)+사이(6px)만큼 들여 쓴다 — 이름 아래에서 시작해야 누구 이야기인지가
-   줄만 봐도 이어진다. */
-.scr-notice-why { padding-left: 30px; }
-/* 닉네임은 본문 크기 그대로다(요청) — 한때 한 단계 내렸던 건 이름과 칭호가 부호 없이 붙어
-   있어 줄이 무거워 보였기 때문인데, 이제 긴 줄표(—)가 그 경계를 긋고 근거도 아랫줄로
-   내려가 한 줄이 짧아졌다. 크기로 눌러 둘 이유가 없어졌다. */
-.scr-notice-name { font-weight: 700; }
-/* 옛 칭호와 새 칭호는 크기와 밝기로만 가른다(요청: 색은 무채색) — 한때 새 칭호에 자몽색을
-   입혔는데, 갈래 색은 배지 하나로 이미 말하고 있어 본문까지 물들이면 그 카드만 색이 두 번
-   난다. 지나간 말은 작고 눌러 두고, 지금 부르는 말은 본문 크기에 굵게 — 그것만으로 어느
-   쪽이 지금인지 갈린다(랭크 변동에서 겪은, 무게가 같으면 매번 세어 봐야 하는 문제). */
-/* 옛 칭호는 한 단계 작게도 둔다(요청) — 색만으로 가르면 두 낱말이 같은 크기라 여전히
-   한 덩어리로 읽힌다. 크기와 색이 함께 움직여야 '지나간 말'과 '지금 부르는 말'이 갈린다. */
-.scr-notice-from { color: var(--dim); font-size: var(--fs-11); }
-.scr-notice-arrow { color: var(--dim); font-size: var(--fs-11); }
-/* 새 칭호는 본문 크기 그대로다(요청: 너무 작다) — 이 줄이 알리려는 것이 바로 이 말이라
-   작게 두면 정작 무엇이 바뀌었는지가 눈에 안 걸린다. 대신 색을 한 단계 눌러(--muted)
-   닉네임과 무게를 갈라 두고, 이름과는 가운뎃점으로 끊는다(.scr-notice-sep). */
-/* 칭호 색은 본문 잉크 그대로다(요청: 원래대로) — 눌러 봤더니 이 줄이 알리려는 말이
-   이름보다 연해져, 정작 무엇이 바뀌었는지가 뒤로 물러났다. */
-.scr-notice-to { font-weight: 700; color: var(--text); }
-/* 이름과 칭호 사이 — 긴 줄표(요청). 양옆에 숨 쉴 자리를 조금 더 준다: 줄표는 글자폭을
-   꽉 채우는 부호라 바짝 붙이면 앞뒤 글자에 달라붙어 보인다. */
-.scr-notice-sep { color: var(--dim); margin: 0 2px; }
-/* (삭제) 칭호를 감싸던 따옴표 — 걷었다(요청). 닉네임과 칭호의 경계는 따옴표가 아니라
-   크기 차이(옛 칭호 11px)와 굵기(새 칭호 700)가 긋는다. 부호를 하나 더 세우면 줄이
-   그만큼 길어지는데, 이 카드는 한 줄에 이름·옛 칭호·새 칭호·근거가 이미 다 들어간다. */
-/* 근거는 한 단계 더 아래 — 통계 표의 칭호 툴팁과 같은 문장이다. */
-.scr-notice-why { font-size: var(--fs-11); color: var(--dim); }
-
-/* 칭호가 없는 줄(요청: 도저히 줄 게 없으면 칭호 없음) — 있는 칭호보다 더 눌러 둔다.
-   자리를 지키는 것이 목적이라 읽으라고 적는 글자가 아니다. */
-.scr-stat-name-epithet-none { opacity: 0.45; }
-
 /* ===== 래더(리더보드) =========================================================
    요청: 래더와 내전은 아예 다른 메뉴·다른 페이지다. 내전은 칸이 여섯인 넓은 통계표라
    가로 스크롤을 전제로 만들어졌지만, 래더는 다섯 칸짜리 순위표라 어느 폭에서도 한 화면에
@@ -12767,95 +12599,6 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-stat-best-cell .scr-stat-delta {
   color: color-mix(in srgb, var(--best-ink) 62%, transparent);
 }
-
-/* 회원 프로필의 보유 칭호(요청) — 닉네임 아래 한 줄. 통계 표의 칭호와 같은 값이라 같은
-   톤(옅게)으로 적는다. */
-.scr-member-profile-epithet { color: var(--muted); font-size: var(--fs-caption); margin-top: 2px; word-break: keep-all; }
-
-/* 프로필의 '보유 칭호'(요청: 저장된 하나가 아니라 조건을 만족하는 것을 쭉) — 줄마다
-   [이름 + 근거 / 표시 배지] 두 칸이고, 배지는 오른쪽 끝에 붙는다(요청). 배지가 붙는 줄만
-   글자를 먹색으로 올려, 목록을 훑을 때 "지금 표에 나가는 건 이거"가 한눈에 잡히게 한다. */
-.scr-profile-epithets { margin-top: 14px; }
-.scr-profile-epithets-head {
-  margin: 0 0 8px; font-size: var(--fs-caption); font-weight: 800; color: var(--muted);
-}
-.scr-profile-epithets-none { margin: 0; color: var(--dim); font-size: var(--fs-caption); }
-.scr-profile-epithet-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.scr-profile-epithet-row {
-  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
-}
-.scr-profile-epithet-text { display: flex; flex-direction: column; min-width: 0; }
-.scr-profile-epithet-label {
-  font-size: var(--fs-caption); font-weight: 700; color: var(--muted); word-break: keep-all;
-}
-.scr-profile-epithet-row-shown .scr-profile-epithet-label { color: var(--text); }
-.scr-profile-epithet-why {
-  color: var(--dim); font-size: var(--fs-micro); line-height: 1.4; word-break: keep-all;
-}
-/* 배지는 줄 높이만큼 줄어들지 않게 고정하고(flex 0 0 auto), 글자 첫 줄에 눈높이를 맞춘다.
-   색은 포인트(--point) — 테마마다 이미 제 값이 잡혀 있어 다크·라이트를 따로 안 적어도 된다.
-   바탕을 옅게 깔고 글자만 제 색으로 두는 것은 다른 상태 배지들과 같은 규칙이다. */
-.scr-profile-epithet-badge {
-  flex: 0 0 auto; margin-top: 1px; padding: 1px 7px; border-radius: 999px;
-  font-size: var(--fs-micro); font-weight: 800; letter-spacing: 0.02em;
-  color: var(--point); background: rgba(var(--point-rgb), 0.14);
-  border: 1px solid rgba(var(--point-rgb), 0.42);
-}
-
-/* 칭호 설명 모달(요청: 부활 + 목록) — 등급 머리 아래 [이름 / 조건] 두 칸 줄. */
-.scr-epithet-guide { max-width: 520px; }
-.scr-epithet-guide-lead {
-  margin: 0 0 12px; color: var(--muted); font-size: var(--fs-caption); line-height: 1.5;
-  word-break: keep-all;
-}
-.scr-epithet-guide-group + .scr-epithet-guide-group { margin-top: 16px; }
-.scr-epithet-guide-rank {
-  margin: 0 0 8px; font-size: var(--fs-caption); font-weight: 800; color: var(--muted);
-  letter-spacing: 0.04em;
-}
-.scr-epithet-guide-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
-/* 표로(요청: 목록 대신 칭호/조건/최소판 세 열, 글씨는 한 단계 작게) — 목록 시절의
-   .scr-epithet-guide-row(그리드 두 열)를 대체한다. 머리말(lead)도 함께 걷었다(요청). */
-.scr-epithet-guide-table {
-  width: 100%; border-collapse: collapse;
-  /* fs-9는 너무 작았다(지적) — 한 단계 위(캡션)로. */
-  font-size: var(--fs-caption); line-height: 1.45;
-}
-.scr-epithet-guide-table th {
-  text-align: left; font-weight: 700; color: var(--dim); letter-spacing: 0.03em;
-  padding: 0 8px 6px 0; border-bottom: 1px solid var(--line-soft); white-space: nowrap;
-}
-.scr-epithet-guide-table td {
-  padding: 5px 8px 5px 0; border-bottom: 1px solid var(--line-hair);
-  vertical-align: top; word-break: keep-all;
-}
-.scr-epithet-guide-table tr:last-child > td { border-bottom: none; }
-/* 묶음 경계(요청: 그룹화) — 줄마다 이미 헤어라인이 있어, 경계는 조금 더 진한 선이다. */
-.scr-epithet-guide-row-newgroup > td { border-top: 1px solid var(--line-soft); padding-top: 8px; }
-.scr-epithet-guide-name { font-weight: 700; color: var(--text); width: 34%; }
-.scr-epithet-guide-name-line { display: block; }
-.scr-epithet-guide-how { color: var(--muted); }
-.scr-epithet-guide-min { color: var(--muted); white-space: nowrap; }
-.scr-epithet-guide-won { color: var(--dim); }
-
-/* 칭호 시뮬레이션(관리자) — 회원 한 덩어리에 [프사 닉네임] 아래 자격 전부가 줄줄이 선다.
-   실제로 받는 한 줄만 왕관을 달고 진하게, 내준 자격은 옅게 — 이 창의 물음이 "칭호가 어디에
-   몰리고 무엇이 사장되나"라, 그 둘이 한눈에 갈려야 한다. */
-.scr-epithet-status { max-width: 560px; }
-.scr-epithet-status-list { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; list-style: none; }
-.scr-epithet-status-row {
-  display: flex; flex-direction: column; gap: 6px; min-width: 0;
-  padding: 10px 0; border-bottom: 1px solid var(--line-hair);
-}
-.scr-epithet-status-row:last-child { border-bottom: none; }
-.scr-epithet-status-who { display: flex; align-items: center; gap: 8px; }
-.scr-epithet-status-name { font-weight: 700; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.scr-epithet-status-claims { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0 0 0 36px; list-style: none; }
-.scr-epithet-status-claim { display: flex; flex-direction: column; gap: 0; color: var(--muted); }
-.scr-epithet-status-claim-got .scr-epithet-status-label { color: var(--text); }
-.scr-epithet-status-label { font-weight: 700; word-break: keep-all; }
-.scr-epithet-status-why { color: var(--dim); font-size: var(--fs-micro); line-height: 1.4; word-break: keep-all; }
-.scr-epithet-status-none { color: var(--dim); opacity: 0.7; padding-left: 36px; }
 
 /* 전체 보기 제목의 빵부스러기(요청: "활동 > 게임") — 앞의 '활동'은 화면 제목 크기 그대로고,
    갈래 이름만 목록 소제목과 같은 18px이다. 둘을 같은 크기로 두면 어느 쪽이 지금 자리인지가

@@ -6,7 +6,7 @@ import { useAppStore } from "../../store/appStore";
 import { cx } from "../../utils/format";
 import { PER_WINDOW_SECONDS, topEntries, type BuildMix, type TopEntry } from "../../utils/replayBuildMix";
 // 건물 이름표(BUILDING_KO)는 더 안 쓴다 — 건물 Top5를 걷었다(요청).
-import { TECH_KO, UNIT_KO } from "../../utils/replaySummaryText";
+import { TECH_KO, UNIT_KO } from "../../utils/replayNames";
 import type { BaseRace, Member, MemberStats } from "../../types";
 
 /** 유닛·스킬 칸에 적는 줄 수(요청: Top5). */
@@ -378,24 +378,13 @@ interface MemberStatRowProps {
   // false면 프사를 아예 그리지 않는다 — 닉네임 버튼을 눌러도 프로필은 그대로 열린다.
   avatar?: boolean;
   /* (삭제) compact — 전적 막대의 짧은 표기(StatBar) 스위치였다. 막대가 없어졌다. */
-  /** 닉네임 아래 한 줄로 붙는 별명(요청, statEpithet.ts) — "물량 끝판왕", "공포의 럴커
-   *  부대"처럼 그 사람의 기록에서 뽑은 말이다. 기준은 내전 전체 누적이라 화면을 바꿔도
-   *  안 흔들린다(useEpithets). 한 판도 안 뛴 사람에게는 안 온다. */
-  epithet?: { label: string; why: string };
-  /** 칭호 한 벌을 이미 받아 왔나 — 아직 받는 중이면 "칭호 없음"을 적으면 안 된다(없는 것과
-   *  아직 모르는 것은 다른 말이다). */
-  epithetReady?: boolean;
 }
 
 // 전적통계 목록의 테이블 한 행.
-/* (삭제) 칭호 등급 색 — 전설(보라)·에픽(파랑)으로 칭호 글자에 색을 입혔다가 걷었다(요청).
-   등급은 이름이 이미 말한다(3점대 이상만 여왕·퀸·여제를 쓴다) — 색까지 얹으면 표에서
-   한 줄에 두 번 같은 말을 하는 셈이었다. */
 
 export default function MemberStatRow({
   member, stats, byRace, me = false, showBest = false,
   avatar = true,
-  epithet, epithetReady = false,
 }: MemberStatRowProps) {
   const openMemberProfile = useAppStore((s) => s.openMemberProfile);
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -403,18 +392,6 @@ export default function MemberStatRow({
   return (
     <div className={cx("scr-stat-row", me && "scr-stat-row-me")}>
       <div className="scr-stat-name-cell">
-        {/* (삭제·요청) 칭호 근거 말풍선(InfoTip) — 표에서는 이름만 적는다. */}
-        {/* 툴팁(근거 말풍선)은 걷었다(요청) — 근거는 관리자 시뮬레이션·프로필의 몫이고,
-            표에서는 이름 한 줄이면 된다. */}
-        {epithet ? (
-          <span className="scr-stat-name-epithet">{epithet.label}</span>
-        ) : epithetReady && (
-          /* 줄 게 없으면 그렇다고 적는다(요청) — 자리를 통째로 비우면 그 줄만 이름이 아래로
-             내려와 표가 들쭉날쭉해지고, 아직 안 받아온 것인지 없는 것인지도 구분이 안 된다. */
-          <span className="scr-stat-name-epithet scr-stat-name-epithet-none">칭호 없음</span>
-        )}
-        {/* 프사와 닉네임을 한 덩어리로 묶는다 — 칭호가 이 둘 '위'에 서야 하기 때문이다(요청).
-            묶지 않으면 칭호가 프사 옆(닉네임 위)에 남아, 프사와 이름과 칭호가 ㄱ자로 어긋난다. */}
         <div className="scr-stat-name-main">
         {avatar && (
           <button type="button" className="scr-stat-avatar-btn" onClick={() => setPhotoOpen(true)} aria-label={`${member.nickname} 사진 보기`}>

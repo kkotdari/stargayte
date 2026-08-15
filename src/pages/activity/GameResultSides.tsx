@@ -52,14 +52,10 @@ export function resolveSlotName(slot: GameResultSlot, players: GameResultSlot[],
 // 세로 나열한다(요청: "게임결과의 팀로스터와 너 나와의 팀로스터를 맞출거야"). 프사를
 // 더하고, 종족 배지는 닉네임 오른쪽(기존 규칙 유지). 컴퓨터/비회원은 작은 아이콘으로 구분.
 export default function RosterSide({
-  team, memberOf, highlightMemberIds, highlightTerms, bestRaw,
+  team, memberOf, highlightMemberIds, highlightTerms,
 }: {
   team: GameResultSlot[]; memberOf: (id: string) => Member | undefined;
   highlightMemberIds?: Set<string>; highlightTerms?: string[];
-  /** 그 판 BEST PLAYER의 원본 게임 아이디(요약의 best) — 그 사람 닉네임 뒤에 작은 배지를
-   *  붙인다(요청). 닉네임이 아니라 원본 아이디로 가르는 이유는 같은 닉네임이 둘일 수
-   *  있어서다. 팀전이 아니거나 옛 요약이면 안 넘어온다. */
-  bestRaw?: string;
 }) {
   return (
     <div className="scr-roster-side">
@@ -84,7 +80,6 @@ export default function RosterSide({
                   <Avatar member={{ id: s.memberId, nickname: name, avatar: m?.avatar ?? null }} size={20} />
                 )}
                 <span className="scr-roster-name">{name}</span>
-                {!!bestRaw && s.rawName === bestRaw && <span className="scr-best-mini">BEST</span>}
                 <RaceBadge race={s.race} size={13} circleLetter className="scr-team-name-race" />
               </span>
             </div>

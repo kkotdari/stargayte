@@ -14,7 +14,6 @@ import type {
   LeagueMatchSide,
   Schedule, ScheduleWrite,
 } from "../types";
-import type { ReplaySummaryData } from "../utils/replaySummaryData";
 import type { ReplayMapGrid } from "../utils/replayParser";
 
 // undefined/""/"all"(필터 미지정 관례) 값은 아예 뺀 쿼리스트링을 만든다 — 서버는 파라미터가
@@ -399,7 +398,6 @@ export const api = {
     result: "team1" | "team2" | "draw" | null;
     mapName: string | null;
     durationSeconds: number | null;
-    summaryData: ReplaySummaryData | null;
     mapData: ReplayMapGrid | null;
     players: {
       playerName: string;
@@ -581,26 +579,6 @@ export const api = {
    *  너 나와·랭크 변동·게임결과가 같은 아이템으로 오고, 내용도 댓글도 그 안에 있다.
    *  예전에는 세 곳을 따로 받아 화면이 제 손으로 섞었는데, 그러면 섞는 규칙이 서버(번호를
    *  세니까)와 화면 양쪽에 있어야 하고 한쪽만 고쳐지는 순간 번호가 줄과 어긋났다. */
-  /** 지금 칭호 한 벌을 서버에 알린다 — 달라진 사람이 있으면 활동에 알림 한 줄이 남는다
-   *  (요청). 계산은 화면이 하고(statEpithet.ts) 서버는 견주기만 한다. 응답은 바뀐 사람 수.
-   *  실패해도 화면은 그대로다 — 부르는 쪽이 조용히 넘긴다. */
-  /** 저장된 칭호 한 벌을 읽는다 — 통계 화면이 쓰는 값이다(요청: 화면 진입 때 다시 계산하지
-   *  않는다). 계산은 경기 등록 때 한 번 돌고 그 결과가 서버에 남아 있다. */
-  async getEpithets(): Promise<{ memberId: string; label: string; why: string }[]> {
-    const res = await request<{ epithets: { memberId: string; label: string; why: string }[] }>(
-      "/api/activities/epithets",
-    );
-    return res.epithets ?? [];
-  },
-
-  async reportEpithets(epithets: { memberId: string; label: string; why: string }[]): Promise<number> {
-    const res = await request<{ changed: number }>("/api/activities/epithets", {
-      method: "PUT",
-      body: JSON.stringify({ epithets }),
-    });
-    return res.changed;
-  },
-
   async listActivityFeed(params: { cursor?: string; limit?: number } = {}): Promise<ActivityFeedPage> {
     const q = new URLSearchParams();
     if (params.cursor) q.set("cursor", params.cursor);
@@ -693,16 +671,15 @@ export const api = {
    *  '경기 재분석'). 리플레이를 읽는 파서가 화면 쪽에만 있어서, 화면이 내려받아 다시
    *  분석한 결과를 올린다.
    *
-   *  올리는 것은 '리플레이가 말해 주는 값'뿐이다(요청: 요약뿐 아니라 다른 모든 데이터를
-   *  재분석하되 절대 바뀌면 안 되는 것은 그대로) — 요약·지형 격자에 더해 맵 이름·실제
-   *  시작 시각·경기 길이, 그리고 사람별 지표(종족·APM·EAPM·커맨드·생산·생산 구성)다.
+   *  올리는 것은 '리플레이가 말해 주는 값'뿐이다(요청: 절대 바뀌면 안 되는 것은 그대로)
+   *  — 지형 격자에 더해 맵 이름·실제 시작 시각·경기 길이, 그리고 사람별 지표(종족·APM·
+   *  EAPM·커맨드·생산·생산 구성)다.
    *  사람이 정한 것은 아예 안 보낸다: 등록자·등록 시각·경기번호·날짜·분류·승패·회원
    *  연결·첨부 리플레이. 슬롯의 짝은 회원 pk가 아니라 원본 게임 아이디(rawName)로 맞춰야
    *  한다 — 회원 연결은 사람이 고쳤을 수 있고, rawName은 그 경기 시점의 유일한 증거다. */
   async reanalyzeGameResult(
     gameResultId: number,
     body: {
-      summaryData: ReplaySummaryData | null;
       mapData?: ReplayMapGrid | null;
       mapName?: string | null;
       gameStartedAt?: string | null;

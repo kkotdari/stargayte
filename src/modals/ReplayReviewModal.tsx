@@ -302,7 +302,6 @@ export default function ReplayReviewModal({
           date: d.date, team1: d.team1, team2: d.team2, result: d.result as GameOutcome, matchType: d.matchType,
           replay: d.replay,
           mapName: d.mapName || null, gameStartedAt: d.gameStartedAt, durationSeconds: d.durationSeconds,
-          summaryData: d.summaryData,
           mapData: d.mapGrid,
         };
         const saved = await addGameResult(payload);

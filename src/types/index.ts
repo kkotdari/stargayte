@@ -1,5 +1,4 @@
 import type { BuildMix } from "../utils/replayBuildMix";
-import type { ReplaySummaryData } from "../utils/replaySummaryData";
 import type { ReplayMapGrid } from "../utils/replayParser";
 
 // ===== 도메인 공용 타입 =====
@@ -216,10 +215,6 @@ export interface GameResult {
   mapName: string | null;
   gameStartedAt: string | null; // ISO 8601 (리플레이 실제 시작 시각 — date와 별개)
   durationSeconds: number | null;
-  // 리플레이에서 규칙으로 만든 전황 요약. 완성된 문장이 아니라 '무슨 일이 있었나'의 목록이라
-  // (replaySummaryData.ts 참고), 닉네임이나 표현이 나중에 바뀌어도 보는 시점의 값으로 읽힌다.
-  // 사람이 쓴 글이 아니라 파생 데이터라 리플레이를 다시 올리면 덮어쓴다. 재료가 모자라면 null.
-  summaryData: ReplaySummaryData | null;
   // 이 경기 맵의 지형 격자를 가리키는 해시 — 미니맵을 그리는 데 쓴다. 격자 자체는 경기마다
   // 오지 않고(같은 맵을 쓰는 경기가 수십 건이라 22KB짜리가 되풀이된다) 이 해시로 따로
   // 받아 온다(api.getReplayMaps). 리플레이 없는 수기 등록과 옛 경기는 null.
@@ -287,14 +282,6 @@ export interface MemberStats {
    *  시간이 필요해서, 그만큼 길지 않은 경기는 아예 세지 않는다(요청). 옛 기록처럼 업그레이드
    *  값을 안 실은 경기도 여기서 빠진다 — 0으로 세면 평균이 그만큼 깎인다. */
   upPlays: number | null;
-  /** 이 조건에서 '무엇을 몇 번 했나' — 리플레이 요약의 문장 틀 키별 횟수다(요청: 자막에서
-   *  강조되는 옆탱·센포 같은 것들을 칭호에도). 키는 replaySummaryText의 TEMPLATES 키와 같다.
-   *  요약이 없는 경기(수기 등록·옛 경기)는 안 들어온다 — 서버가 새 필드를 안 내려주는
-   *  사이에도 화면이 깨지지 않게 선택 항목으로 둔다. */
-  tactics?: Record<string, number>;
-  /** 맵 이름 → [판수, 승수] — "○○의 지배자" 칭호가 고르는 재료다(요청). 맵 이름은
-   *  리플레이에만 있어 수기 등록 경기는 빠진다. */
-  maps?: Record<string, [number, number]>;
 }
 
 // 서버 집계(GET /api/game-results/stats) 응답 — 통계/랭킹 화면이 매치 원본을 직접 스캔하지 않고
@@ -303,14 +290,6 @@ export interface MemberStats {
 export interface MemberStatsEntry {
   memberId: string;
   overall: MemberStats;
-  /** 이긴 판만 놓고 낸 같은 값 — 칭호가 '무엇으로 판을 풀었나'를 물을 때 쓴다(요청).
-   *  전적(판수·승률)은 이 안에서 뜻이 없다: 이긴 판만 모았으니 늘 100%다. 구성비·분당
-   *  값·원장만 읽어야 한다. 옛 응답에는 없다. */
-  won?: MemberStats;
-  /** 갈래(ground/air/magic) → [그렇게 싸운 판수, 그중 이긴 판수] — 지상전·공중전·마법 퀸이
-   *  "그 싸움의 승률"을 내는 재료(요청: 많이 뽑아 활약해 승리로 이끌어야). 판 판정(지상
-   *  30기·8할, 공중 12기, 마법 5기)은 서버(_combat_split)가 한다. 옛 응답에는 없다. */
-  combat?: Record<string, [number, number]>;
   byRace: Record<BaseRace, MemberStats>;
   mostPlayedRace: Race | null;
   // 랭킹 순서 — 서버가 사람단위 점수(참가+우열) → 상대 강함(SoS) 순으로 가른 결과다.
@@ -715,34 +694,22 @@ export interface ScheduleWrite {
   files: (ScheduleFile | { name: string; data: string })[];
 }
 
-/** 활동에 뜨는 알림 하나(요청: 활동 피드에 알림 유형) — 지금은 칭호 변경뿐이지만,
- *  앞으로 랭킹 변동 같은 것도 같은 그릇으로 들어온다. 무엇을 그릴지는 kind가 정한다. */
+/** 활동에 뜨는 알림 하나(요청: 활동 피드에 알림 유형) — 서버가 남기는 한 줄이다.
+ *  무엇을 그릴지는 kind가 정한다. */
 export interface ActivityNotice {
   id: number;
-  /** "epithet" 등. 모르는 종류는 화면이 조용히 건너뛴다. */
+  /** "rankingShift" 등. 모르는 종류는 화면이 조용히 건너뛴다. */
   kind: string;
-  /** 그 종류가 쓰는 값. 칭호 변경은 { changes: [{ memberId, from, to, why }] }.
-   *  닉네임은 안 담겨 있다 — 이름은 바뀌므로 볼 때 지금 회원 정보로 푼다. */
   /** 그 종류가 쓰는 값.
-   *  - epithet: { changes: [{ memberId, from, to, why }] }
    *  - rankingShift: 스냅샷 그대로({ reason, matchIds, sections }) — 저장은 여전히
    *    제 테이블에 있고 활동에서만 알림으로 감싸 나온다(요청: 표시만 통합).
    *  닉네임은 안 담겨 있다 — 이름은 바뀌므로 볼 때 지금 회원 정보로 푼다. */
   payload: {
-    changes?: EpithetChange[];
     reason?: RankingShift["reason"];
     matchIds?: number[];
     sections?: RankingShiftSection[];
   };
   createdAt: string;
-}
-
-export interface EpithetChange {
-  memberId: string;
-  /** 없다가 생긴 칭호면 null. */
-  from: string | null;
-  to: string;
-  why?: string;
 }
 
 export interface ActivityFeedItem {

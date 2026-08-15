@@ -1,6 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import NoticeCard, { noticeLine, NoticeMenu } from "./NoticeCard";
 import RankingShiftCard, { RankingShiftMenu } from "./RankingShiftCard";
 import LeagueMatchCard from "./LeagueMatchCard";
 import { CalendarPlus, ChevronLeft, ClipboardList, MoreHorizontal, Phone, Upload, X } from "lucide-react";
@@ -15,7 +14,6 @@ import ModalHash from "../../utils/modalHash";
 import { ActivityCard } from "./ActivityCard";
 import Select from "../../components/common/Select";
 import { resolveSlotName, teamSummaryName } from "./GameResultSides";
-import { bestRawOf } from "../../utils/replaySummaryData";
 import { isComputerSlot } from "../../constants/computerSlot";
 import { isUnregisteredSlot } from "../../constants/unregisteredSlot";
 import { ChallengeCard, ChallengeTimeHeadEdit, challengeStatusInfo } from "../challenge/ChallengeScreen";
@@ -29,7 +27,6 @@ import { formatWhen, formatAgo, serverMs } from "../../utils/date";
 import { useAppStore } from "../../store/appStore";
 import { isAdminRole } from "../../constants/roles";
 import { activeMemberSearchTerms, memberMatchesTerm, normalizeSearchText, splitSearchTerms } from "../../utils/memberSearch";
-import { renderReplaySummary } from "../../utils/replaySummaryText";
 import { cx } from "../../utils/format";
 import { api } from "../../api/client";
 import { useCursorPagination } from "../../hooks/useCursorPagination";
@@ -41,7 +38,7 @@ import {
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import { hasAppUpdatePreloadErrorOccurred } from "../../utils/appUpdate";
 import type {
-  ActivityFeedItem, ActivityNotice, Challenge, ActivityTargetType, GameOutcome, GameResult, GameResultSlot,
+  ActivityFeedItem, Challenge, ActivityTargetType, GameOutcome, GameResult, GameResultSlot,
   LeagueMatchActivity, Member, RankingShift, Schedule,
 } from "../../types";
 
@@ -124,17 +121,8 @@ interface ScheduleItem {
   schedule: Schedule;
 }
 
-/** 서버가 남긴 알림 한 줄(요청: 활동 피드에 알림 유형) — 지금은 칭호 변경뿐이지만,
- *  앞으로 다른 알림도 같은 자리로 들어온다. 무엇을 그릴지는 notice.kind가 정한다. */
-interface NoticeItem {
-  kind: "notice";
-  time: number;
-  withClock: boolean;
-  notice: ActivityNotice;
-}
-
 type ActivityItem =
-  | ChallengeItem | GameResultItem | RankingShiftItem | LeagueMatchItem | ScheduleItem | NoticeItem;
+  | ChallengeItem | GameResultItem | RankingShiftItem | LeagueMatchItem | ScheduleItem;
 
 // 같은 '세션'의 게임결과가 활동에서 2개 이상 연속되면 겹침 스택 하나로 묶는다.
 export interface GameResultPostItem {
@@ -175,10 +163,6 @@ function rankShiftItem(shift: RankingShift): RankingShiftItem {
     withClock: true,
     shift,
   };
-}
-
-function noticeItem(n: ActivityNotice): NoticeItem {
-  return { kind: "notice", time: serverMs(n.createdAt), withClock: true, notice: n };
 }
 
 function challengeItem(c: Challenge): ChallengeItem {
@@ -306,7 +290,6 @@ function detailHashOf(it: DisplayItem): string {
   if (it.kind === "gameResult") return `game-${it.gameResult.id}`;
   if (it.kind === "challenge") return `callout-${it.challenge.id}`;
   if (it.kind === "schedule") return `schedule-${it.schedule.id}`;
-  if (it.kind === "notice") return `notice-${it.notice.id}`;
   if (it.kind === "rankingShift") return `rank-${it.shift.id}`;
   if (it.kind === "leagueMatch") return `league-${it.match.id}`;
   return `games-${it.date}`;
@@ -314,8 +297,7 @@ function detailHashOf(it: DisplayItem): string {
 
 function rowKeyOf(it: DisplayItem): string {
   return it.kind === "challenge" ? `c-${it.challenge.id}`
-    : it.kind === "notice" ? `nt-${it.notice.id}`
-      : it.kind === "rankingShift" ? `rs-${it.shift.id}`
+    : it.kind === "rankingShift" ? `rs-${it.shift.id}`
       : it.kind === "leagueMatch" ? `lm-${it.match.id}`
         : it.kind === "schedule" ? `sc-${it.schedule.id}`
           : it.kind === "gameResultPost" ? `ms-${it.items[0].gameResult.id}`
@@ -701,7 +683,7 @@ function groupKeyOf(item: ActivityItem): ActivityGroupKey {
     : item.kind === "challenge" ? "call"
     : item.kind === "leagueMatch" ? "league"
     : item.kind === "schedule" ? "schedule"
-    : "notice"; // notice · rankingShift
+    : "notice"; // rankingShift
 }
 
 /** 한 덩어리를 접었을 때 목록에 보이는 최대 줄 수 — 그 이상은 "전체 보기"로.
@@ -736,32 +718,12 @@ function ActivityGroupPage({
 }) {
   const searchable = SEARCHABLE_GROUPS.has(groupKey);
   const [search, setSearch] = useState("");
-  /* 경기 내용 검색(요청) — 자막에 적힌 말로 찾는다("포토러시", "핵", "커널"…). 유저 검색과
-     따로 두는 까닭은 찾는 것이 다르기 때문이다: 이쪽은 사람이 아니라 그 판에서 무슨 일이
-     있었나다. 그래서 닉네임은 일부러 안 찾는다(요청) — 아래 captionOf가 이름 자리를 기호로
-     바꿔 글에서 아예 지운다. 안 그러면 사람 이름이 두 검색창에 다 걸려, 이 칸이 유저
-     검색을 두 번 하는 자리가 된다. */
-  const [content, setContent] = useState("");
   /* 고른 사람들을 어떻게 읽을 것인가 — 활동 목록이 전에 쓰던 것과 같은 두 갈래다.
        all  — 포함 : 고른 사람이 다 나온 판이면 된다. 다른 사람이 더 껴 있어도 걸린다.
        only — 일치 : 그 판에 나온 사람이 고른 사람들과 정확히 같아야 한다. */
   const [userMode, setUserMode] = useState<"all" | "only">("all");
   const suggestions = useMemo(() => activeMemberSearchTerms(members), [members]);
   const searchTerms = useMemo(() => splitSearchTerms(search), [search]);
-  const contentTerms = useMemo(() => splitSearchTerms(content), [content]);
-  /* 자막 한 벌은 한 번만 만든다 — 글자 하나 칠 때마다 목록 전체의 문장을 다시 짓는 일이라,
-     캐시가 없으면 타이핑이 그대로 멈춘다. 열쇠는 경기 번호다(문장은 그 경기의 요약에서만
-     나온다). */
-  const captions = useRef(new Map<number, string>());
-  const captionOf = (g: GameResult): string => {
-    const hit = captions.current.get(g.id);
-    if (hit !== undefined) return hit;
-    /* 이름은 죄다 같은 기호로 바꾼다(요청: 닉네임은 아님) — 문장 틀은 이름의 받침을 보고
-       조사를 고르므로, 지우는 대신 한 글자로 바꿔야 문장이 그대로 선다. */
-    const text = normalizeSearchText(renderReplaySummary(g.summaryData, () => "○") ?? "");
-    captions.current.set(g.id, text);
-    return text;
-  };
 
   const slotMatchesTerm = (slot: GameResultSlot, term: string): boolean => {
     const m = memberOf(slot.memberId);
@@ -776,18 +738,9 @@ function ActivityGroupPage({
   };
 
   const filtered = useMemo(() => {
-    if (!searchable || (searchTerms.length === 0 && contentTerms.length === 0)) return items;
+    if (!searchable || searchTerms.length === 0) return items;
     const onlyThese = userMode === "only";
     return items.filter((item) => {
-      /* 경기 내용으로 찾는 중이면 경기만 남는다 — 너 나와·리그 줄에는 자막 자체가 없어서
-         "안 걸린 것"이 아니라 "잴 수 없는 것"이다. 목록에 그대로 두면 걸러진 결과처럼
-         보인다. */
-      if (contentTerms.length > 0) {
-        if (item.kind !== "gameResult") return false;
-        const caption = captionOf(item.gameResult);
-        if (!contentTerms.every((term) => caption.includes(term))) return false;
-      }
-      if (searchTerms.length === 0) return true;
       if (item.kind === "gameResult") {
         const slots = [...item.gameResult.team1, ...item.gameResult.team2];
         if (!searchTerms.every((term) => slots.some((slot) => slotMatchesTerm(slot, term)))) return false;
@@ -814,7 +767,7 @@ function ActivityGroupPage({
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- slotMatchesTerm/challengeMatchesTerm은 memberOf로 충분히 표현됨
-  }, [items, searchTerms, contentTerms, userMode, searchable, memberOf]);
+  }, [items, searchTerms, userMode, searchable, memberOf]);
 
   /* 페이지로 들어온 것이니 맨 위에서 시작한다 — 활동 목록을 한참 내려보다 눌렀을 때 그
      스크롤 위치를 그대로 물려받으면, 새 화면이 중간부터 열린 것처럼 보인다.
@@ -853,17 +806,6 @@ function ActivityGroupPage({
           onSearchChange={setSearch}
           searchPlaceholder="유저 입력 또는 @로 목록 띄우기"
           suggestions={suggestions}
-          /* 경기 갈래에만 둔다(요청: 게임 전체 목록에 경기 내용 검색) — 자막이 있는 갈래가
-             여기뿐이다. PC에서는 유저 검색과 한 줄, 모바일에서는 아랫줄이다(trailing). */
-          trailing={groupKey === "gameResult" ? (
-            <input
-              className="scr-input scr-activity-content-search"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="경기 내용 검색"
-              aria-label="경기 내용 검색"
-            />
-          ) : undefined}
           searchLeading={(
             <Select
               className="scr-user-mode-select"
@@ -1167,12 +1109,6 @@ export default function ActivityScreen() {
     () => feedItems.flatMap((it) => (it.schedule ? [it.schedule] : [])),
     [feedItems],
   );
-  /* 랭크 변동은 위에서 스냅샷으로 돌려 그리므로 여기서는 뺀다 — 안 그러면 같은 줄이
-     알림 카드와 랭크 변동 카드로 두 번 선다. */
-  const notices = useMemo(
-    () => feedItems.flatMap((it) => (it.notice && it.notice.kind !== "rankingShift" ? [it.notice] : [])),
-    [feedItems],
-  );
   /* 댓글도 같은 응답에 실려 온다 — 카드마다 따로 부르면 답이 제각각 도착하며 카드 키가
      뒤늦게 자라, 들어올 때 "현재"에 맞춰 둔 자리가 그만큼 밀린다. 페이지를 이어 받을
      때마다 다시 담는다(표는 통째로 새로 만든다). */
@@ -1334,12 +1270,11 @@ export default function ActivityScreen() {
       ...rankShifts.map(rankShiftItem),
       ...leagueMatches.map(leagueMatchItem),
       ...schedules.map(scheduleItem),
-      ...notices.map(noticeItem),
     ];
     // 정렬 기준은 time이 아니라 sortTime이다 — 너 나와만 표시용 시각과 꽂히는 자리가
     // 다르다(위 challengeSortMs). 나머지는 sortTime이 없어 time을 그대로 쓴다.
     return items.sort((a, b) => sortMsOf(b) - sortMsOf(a));
-  }, [challenges, gameResults, rankShifts, leagueMatches, schedules, notices]);
+  }, [challenges, gameResults, rankShifts, leagueMatches, schedules]);
 
   /* 주소 → 게임 페이지(요청: 새로고침·공유 링크 직진입) — ?game=<번호>가 서 있으면 그
      경기 페이지를 연다. 피드에 있으면 그 항목으로, 아직 안 실렸으면(피드 뒤쪽·옛 경기)
@@ -1653,18 +1588,10 @@ export default function ActivityScreen() {
        같은 길이로 서 있는 모양에서 이미 드러난다. */
     return kept.join("");
   };
-  const sideNodes = (slots: GameResultSlot[], bestRaw: string | undefined): ReactNode[] =>
+  const sideNodes = (slots: GameResultSlot[]): ReactNode[] =>
     slots.flatMap((s, i) => [
       ...(i > 0 ? [<span className="scr-activity-row-slash" key={`s${i}`} aria-hidden>/</span>] : []),
-      /* BEST PLAYER는 배지 대신 닉네임 자체를 백금 메탈로 적는다(요청) — 여덟 이름이 한
-         줄에 눌려 서는 자리라, 배지는 그 줄에서 유일하게 '이름이 아닌 것'이 되어 눈이 먼저
-         거기 걸렸다. 이름 색만 달라지면 줄의 생김새는 그대로면서 누가 뽑혔는지는 그대로
-         보인다. 자리도 안 먹으므로 눌리는 비율(FlatLine)도 안 건드린다. */
-      <span
-        className={cx("scr-activity-row-em", !!bestRaw && s.rawName === bestRaw && "scr-activity-row-em-best")}
-        key={`n${i}`}
-        title={!!bestRaw && s.rawName === bestRaw ? "BEST PLAYER" : undefined}
-      >
+      <span className="scr-activity-row-em" key={`n${i}`}>
         {/* 이름 규칙은 그 편 전체를 봐야 정해진다(컴퓨터 슬롯 번호 매기기) — 자르는 건
             그렇게 정해진 이름을 적을 때다. */}
         {clipName(resolveSlotName(s, slots, memberOf))}
@@ -1735,13 +1662,6 @@ export default function ActivityScreen() {
         </span>
       );
     }
-    if (item.kind === "notice") {
-      return (
-        <span className="scr-activity-row-names">
-          {noticeLine(item.notice, (id) => memberOf(id)?.nickname ?? id)}
-        </span>
-      );
-    }
     if (item.kind === "rankingShift") {
       // 같은 사람이 개인전·팀전에 다 올랐으면 한 번만 부른다.
       const names: string[] = [];
@@ -1779,7 +1699,7 @@ export default function ActivityScreen() {
             배지와 한 줄 안에서 서로 다툰다. */}
         {/* 두 편이 한 줄에 서고, 넘치는 만큼은 FlatLine이 가로로 눌러 맞춘다(요청). */}
         <span className="scr-activity-row-name">
-          <span className="scr-activity-row-name-main">{sideNodes(g.team1, bestRawOf(g.summaryData))}</span>
+          <span className="scr-activity-row-name-main">{sideNodes(g.team1)}</span>
         </span>
         {/* vs 양옆에 그 편의 결과를 동그란 배지로(요청) — 이름만 늘어선 줄에서는 누가 이겼는지가
             펼쳐 봐야 나왔다. 무승부는 양쪽 다 '무'이고, 미실시는 아무 표시도 안 한다(치르지
@@ -1791,7 +1711,7 @@ export default function ActivityScreen() {
           <OutcomeDot result={g.result} side="team2" />
         </span>
         <span className="scr-activity-row-name">
-          <span className="scr-activity-row-name-main">{sideNodes(g.team2, bestRawOf(g.summaryData))}</span>
+          <span className="scr-activity-row-name-main">{sideNodes(g.team2)}</span>
         </span>
       </FlatLine>
     );
@@ -1832,21 +1752,6 @@ export default function ActivityScreen() {
           timeText={formatWhen(item.time, { clock: item.withClock })}
           dateLabel={dateLabelOf(item)}
           footer={<ActivityCardComments targetType="leagueMatch" targetId={item.match.id} />}
-        />
-      </div>
-    ) : item.kind === "notice" ? (
-      <div
-        className="scr-activity-card-stack-wrapper scr-activity-card-head-off"
-        key={`nt-${item.notice.id}`}
-      >
-        <NoticeCard
-          notice={item.notice}
-          timeText={formatWhen(item.time, { clock: item.withClock })}
-          dateLabel={dateLabelOf(item)}
-          memberOf={memberOf}
-          /* 알림도 공유한다(요청) — 케밥 하나에 카카오 공유만 들어 있다. */
-          actions={<NoticeMenu notice={item.notice} nameOf={(id) => memberOf(id)?.nickname ?? id} />}
-          footer={<ActivityCardComments targetType="notice" targetId={item.notice.id} />}
         />
       </div>
     ) : item.kind === "rankingShift" ? (

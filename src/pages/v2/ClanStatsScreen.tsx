@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { LoadingMark } from "../../components/common/Feedback";
 import SearchFilterBar from "../../components/common/SearchFilterBar";
 import MemberStatRow from "../stats/MemberStatRow";
-import { useEpithets } from "../../utils/useEpithets";
 import { useAppStore } from "../../store/appStore";
 import { api } from "../../api/client";
 import { activeMemberSearchTerms, memberMatchesQuery } from "../../utils/memberSearch";
@@ -241,11 +240,6 @@ export default function ClanStatsScreen() {
      이 표는 순위를 매기는 화면이 아니다. 메달만 남으면 순위가 아닌 것에 순위 표시가
      붙는 셈이 된다. */
 
-  /* 닉네임 아래 한 줄로 붙는 별명(요청) — 기준·범위는 useEpithets가 한 벌로 못 박는다
-     (전체 누적·모든 유형·모든 종족). 이 화면의 기간·종족 필터를 안 따르는 이유는 그 주석에
-     있다: 별명이 화면과 필터마다 달라지면 그건 부르는 말이 아니다. */
-  const epithetByMember = useEpithets();
-
   /* (삭제) maxOverallPlays·maxApm·maxCmd — 막대의 기준값이었다. 주요지표가 수로 바뀌면서
      (요청) 이 목록의 1등이 몇인지를 알 필요가 없어졌다. */
 
@@ -342,9 +336,6 @@ export default function ClanStatsScreen() {
                     showBest
                     // 종족 칸 셋이 각자 제 것을 집는다(요청: 종족별로 반복).
                     byRace={c.entry?.byRace}
-                    // 닉네임 아래 한 줄 — 위 epithetByMember 참고(늘 내전 전체 누적 기준).
-                    epithet={epithetByMember.get(c.member.id)}
-                    epithetReady={epithetByMember.size > 0}
                   />
                 ))}
               </div>
