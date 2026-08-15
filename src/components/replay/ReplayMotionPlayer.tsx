@@ -1987,16 +1987,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           [sx3 * 2.15 - txn, sy3 * 2.15 - tyn, 2.1],
         ]), 0.26)];
       }),
-      // 위 파란 렌즈 — 분화구 턱에 물림.
+      // 위 렌즈 구슬 — 옥색(요청).
       bodyFace(groundEllipse(gx2, gy2, 1.15, 0.85)),
-      [groundEllipse(gx2, gy2, 0.85, 0.62), 0.6] as ShapeFace,
+      [groundEllipse(gx2, gy2, 0.85, 0.62), 0.6, "#3bd8c2"] as ShapeFace,
       topFace(groundEllipse(gx2 - 0.3, gy2 - 0.25, 0.34, 0.25), 0.5),
       // 골진 껍데기 꼬리(45도 반시계 이동) — 굽은 마디 둘 + 골 줄 + 끝 파란 원반.
       ...domeFaces3(d1x, d1y, 1.3, 1),
       ...domeFaces3(d2x, d2y, 1, 0.8),
       sideFace(polyPath3([seam(1.8, 0.6, 1), seam(2.2, 1, 1.9), seam(2.6, 1.5, 1), seam(2.5, 1.4, 0.6)]), 0.18),
       sideFace(polyPath3([seam(2.7, 1.6, 0.9), seam(3, 2, 1.6), seam(3.4, 2.5, 0.9), seam(3.3, 2.4, 0.5)]), 0.18),
-      [groundEllipse(tx3, ty3, 0.5, 0.4), 0.55] as ShapeFace,
+      // 꼬리 끝 동그란 구도 옥색(요청).
+      [groundEllipse(tx3, ty3, 0.5, 0.4), 0.55, "#3bd8c2"] as ShapeFace,
     ];
   },
   /* 로보틱스 서포트 베이(실물 참고) — 톱니 테 받침판 가운데 오목한 대접(심 발광),
