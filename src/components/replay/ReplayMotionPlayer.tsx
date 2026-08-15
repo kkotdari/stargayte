@@ -4888,8 +4888,9 @@ export default function ReplayMotionPlayer({
   const total = useMemo(() => {
     if (endSec && endSec > 0) return endSec;
     let last = 0;
-    for (const p of motion.players) for (const pt of p.pts) last = Math.max(last, pt[0]);
+    // (스토리 다이어트) pts가 사라져 건물·마법 시각으로 어림한다 — endSec이 원래 주다.
     for (const b of motion.builds) last = Math.max(last, b[0]);
+    for (const c of motion.casts) last = Math.max(last, c[0]);
     return Math.max(60, last);
   }, [motion, endSec]);
 
@@ -6401,16 +6402,17 @@ export default function ReplayMotionPlayer({
     .filter((c) => c[3] === "Spider Mines")
     .map(([sec, x, y, , raw]) => {
       let boom = 0;
-      for (const q of motion.players) {
+      // (스토리 다이어트) 적 접근은 v2 개체 자취로 잰다 — v1 pts는 더 안 실린다.
+      for (const q of entWalks) {
         if (teamOfRaw(q.raw) === teamOfRaw(raw)) continue;
-        for (const [ps, px, py] of [...q.pts, ...Object.values(q.upts ?? {}).flat()]) {
+        for (const [ps, px, py] of q.walk) {
           if (ps <= sec + 4 || Math.hypot(px - x, py - y) > 2) continue;
           if (boom === 0 || ps < boom) boom = ps;
           break;
         }
       }
       return { sec, x, y, raw, boom };
-    }), [castsSrc, motion, teamOfRaw]);
+    }), [castsSrc, entWalks, teamOfRaw]);
   const castsNow = castsSrc.filter((c) => c[0] <= t
     && t - c[0] <= (c[3] === "Nuclear Strike" ? NUKE_FALL_SEC + 4
       : c[3] === "Dark Swarm" ? 30

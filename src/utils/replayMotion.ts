@@ -19,15 +19,6 @@ const TRACK_CAP = 400;
 const SAME_SPOT_TILES = 3;
 /** 부대 이름표가 너무 촐싹대지 않게, 우세 유닛이 바뀌어도 이만큼은 지나야 갈아 준다(초). */
 const UNIT_HOLD_SEC = 10;
-/* 업그레이드·테크의 연구 시작을 전부 싣는다(요청: 업그레이드 중인 건물 표시) — 속도
-   업그레이드만 골라 싣던 것을 넓혔다. 재생 쪽이 이름으로 속업(9종)과 연구 건물을 가른다.
-   가짓수가 몇십이라 트랙 무게는 티가 안 난다. */
-/** 일꾼 수의 버킷(초) — 매 마리마다 점을 찍으면 트랙만 굵어진다. */
-const WORKER_STEP_SEC = 15;
-/** 병력 규모의 버킷·창(초) — 최근 이 창 안의 생산 수를 규모로 본다(요청: 크기로 수를). */
-const SIZE_STEP_SEC = 15;
-const SIZE_WINDOW_SEC = 180;
-const WORKER_UNITS = ["SCV", "Probe", "Drone"];
 /* 건물 무너짐 어림(요청) — 상대의 공격 명령이 건물 반경(타일) 안에서 창(초) 동안 이만큼
    몰리면, 그 창의 끝을 무너진 때로 본다. 리플레이에 파괴가 안 남아 명령 밀도로 어림한다. */
 /* 판정 정밀화(요청: 어느 시점 이후 액션이 없으면 없어진 것) — 공격 뭉치 하나만으로는
@@ -299,104 +290,11 @@ function unitTimeline(unitFrames: Record<string, number[]>): [number, string][] 
 }
 
 
-/** 일꾼 건조 시간(초) — 세 종족 모두 비슷한 눈금이다. */
-const WORKER_BUILD_SEC = 13;
 /** 본진 건물이 지어져 생산 슬롯이 되기까지(초) — 커맨드·넥서스·해처리의 어림 건설 시간. */
 const HALL_BUILD_SEC = 55;
 
-/** 누적 일꾼 수의 변천 — 완료 시각 기준이다(지적: 누른다고 다 뽑는 게 아니다 — 시간을
- *  계산해야 한다). 생산 슬롯(본진 건물 수)마다 한 기씩 직렬로 뽑는 큐를 시뮬레이션해서,
- *  명령을 몰아 눌러도 완료는 건조 시간 간격으로 흩어진다. */
-function workerTimeline(
-  unitFrames: Record<string, number[]>, slotOpenSecs: number[],
-): [number, number][] {
-  const cmds = WORKER_UNITS.flatMap((u) => unitFrames[u] ?? [])
-    .map((f) => f * SECONDS_PER_FRAME)
-    .sort((a, b) => a - b);
-  if (cmds.length === 0) return [];
-  // 슬롯마다 '언제부터 비나' — 본진 건물이 지어지는 대로 슬롯이 는다.
-  const free = (slotOpenSecs.length > 0 ? slotOpenSecs : [0]).slice().sort((a, b) => a - b);
-  const doneSecs: number[] = [];
-  for (const c of cmds) {
-    let bi = 0;
-    for (let i = 1; i < free.length; i += 1) if (free[i] < free[bi]) bi = i;
-    const fin = Math.max(c, free[bi]) + WORKER_BUILD_SEC;
-    free[bi] = fin;
-    doneSecs.push(fin);
-  }
-  doneSecs.sort((a, b) => a - b);
-  const out: [number, number][] = [];
-  let n = 0;
-  let bucket = -1;
-  for (const sec of doneSecs) {
-    n += 1;
-    const b = Math.floor(sec / WORKER_STEP_SEC);
-    if (b !== bucket) {
-      bucket = b;
-      out.push([Math.round(sec), n]);
-    } else {
-      out[out.length - 1] = [out[out.length - 1][0], n];
-    }
-  }
-  return out;
-}
 
-/** 병력 규모의 변천 — SIZE_STEP_SEC 버킷마다 최근 SIZE_WINDOW_SEC 안의 전투 유닛 생산 수. */
-function sizeTimeline(unitFrames: Record<string, number[]>): [number, number][] {
-  const secs: number[] = [];
-  for (const [unit, frames] of Object.entries(unitFrames)) {
-    if (NOT_ARMY.has(unit)) continue;
-    for (const f of frames) secs.push(f * SECONDS_PER_FRAME);
-  }
-  if (secs.length === 0) return [];
-  secs.sort((a, b) => a - b);
-  const out: [number, number][] = [];
-  const lastSec = secs[secs.length - 1];
-  let prev = -1;
-  for (let t = 0; t <= lastSec + SIZE_WINDOW_SEC; t += SIZE_STEP_SEC) {
-    const n = secs.filter((v) => v > t - SIZE_WINDOW_SEC && v <= t).length;
-    if (n !== prev) {
-      out.push([Math.round(t), n]);
-      prev = n;
-    }
-  }
-  return out;
-}
 
-/* 전투 구간 어림(MotionTrack.hot) — 버킷(초)마다 '그때 내 부대 자리'에서 반경 안에 떨어진
-   상대 공격 명령을 세고, 문턱을 넘긴 버킷을 구간으로 잇는다. 반경·문턱은 건물 무너짐
-   어림(razedAt)과 같은 결이되, 부대는 건물보다 움직이니 반경을 조금 넓게 잡는다. */
-const FIGHT_STEP_SEC = 10;
-const FIGHT_RADIUS = 10;
-const FIGHT_MIN_ORDERS = 5;
-
-function hotOf(
-  pts: TrackPt[],
-  foeAttacks: { sec: number; x: number; y: number }[],
-): [number, number][] {
-  if (pts.length === 0 || foeAttacks.length === 0) return [];
-  // 그 시각의 내 자리 — 자취는 시간순이라 한 손가락으로 따라가며 읽는다.
-  let pi = 0;
-  const counts = new Map<number, number>();
-  for (const a of foeAttacks) {
-    while (pi + 1 < pts.length && pts[pi + 1][0] <= a.sec) pi += 1;
-    const [, x, y] = pts[pi];
-    if (Math.hypot(a.x - x, a.y - y) <= FIGHT_RADIUS) {
-      const b = Math.floor(a.sec / FIGHT_STEP_SEC);
-      counts.set(b, (counts.get(b) ?? 0) + 1);
-    }
-  }
-  const hot: [number, number][] = [];
-  for (const b of [...counts.keys()].sort((x, y) => x - y)) {
-    if ((counts.get(b) ?? 0) < FIGHT_MIN_ORDERS) continue;
-    const start = b * FIGHT_STEP_SEC;
-    const end = start + FIGHT_STEP_SEC;
-    const last = hot[hot.length - 1];
-    if (last && start <= last[1]) last[1] = end;
-    else hot.push([start, end]);
-  }
-  return hot;
-}
 
 /** 건물이 무너진 때의 어림 — 상대 공격 뭉치(후보) + 그 뒤 임자의 침묵(확인). 위 정밀화
  *  주석 참고. 안 무너졌으면 0. */
@@ -479,7 +377,7 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       for (const f of frames) armyStartSec = Math.min(armyStartSec, f * SECONDS_PER_FRAME);
     }
     if (armyStartSec === Infinity) armyStartSec = 0;
-    const { pts, spts, tpts, opts, upts } = trackOf(
+    const { spts } = trackOf(
       sg.orderPositions ?? [], armyStartSec, p.race === "저그",
       p.startX !== null && p.startY !== null ? [p.startX, p.startY] : null,
     );
@@ -489,31 +387,10 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       .filter((b) => b.frame !== null
         && ["Command Center", "Nexus", "Hatchery"].includes(b.unit))
       .map((b) => b.frame! * SECONDS_PER_FRAME + HALL_BUILD_SEC)];
-    const workers = workerTimeline(sg.unitFrames ?? {}, slotOpenSecs);
-    const size = sizeTimeline(sg.unitFrames ?? {});
+    void slotOpenSecs;
     /* 비행·드랍·태움(요청: 엔베 띄워 정찰, 수송선 태우기·드랍 표현). */
     const fpts = foldTrack(sg.flyPositions ?? []);
-    /* 명령의 선택 크기(요청: 유닛 수는 실제 컨트롤되는 수로 — 명령을 받는다는 건 그
-       자리에 계속 있었다는 뜻) — 이동·공격 명령의 n을 자취로 남긴다. 가까운 연속 클릭은
-       최대값 하나로 접어 저장량을 줄인다. */
-    const sels: [number, number, number, number][] = [];
-    for (const o of sg.orderPositions ?? []) {
-      if (o.kind === undefined || o.by === "Building" || !o.n) continue;
-      const sec = Math.round(o.frame * SECONDS_PER_FRAME);
-      const last = sels[sels.length - 1];
-      if (last && sec - last[0] <= 5 && Math.hypot(o.x - last[1], o.y - last[2]) <= 6) {
-        if (o.n > last[3]) last[3] = o.n;
-        last[0] = sec;
-        last[1] = Math.round(o.x);
-        last[2] = Math.round(o.y);
-        continue;
-      }
-      sels.push([sec, Math.round(o.x), Math.round(o.y), o.n]);
-    }
-    const drops: [number, number, number][] = (sg.unloadPositions ?? [])
-      .map((u) => [Math.round(u.frame * SECONDS_PER_FRAME), Math.round(u.x), Math.round(u.y)]);
-    const loads: [number, number, number][] = (sg.loadPositions ?? [])
-      .map((u) => [Math.round(u.frame * SECONDS_PER_FRAME), Math.round(u.x), Math.round(u.y)]);
+    // (스토리 다이어트) 선택 크기·승하차 자취는 v2가 대체 — 더 안 만든다.
     const ups: [number, string][] = [];
     for (const [name, frame] of Object.entries(sg.firstUpgradeFrame ?? {})) {
       ups.push([Math.round(frame * SECONDS_PER_FRAME), name]);
@@ -747,32 +624,19 @@ export function motionOf(replay: ParsedReplay): SummaryMotion | null {
       });
       if (defended) a[5] = 0;
     }
-    /* 랠리 포인트(지적) — 좌표·시각·건물 태그를 그대로 옮긴다. */
-    const rly: [number, number, number, number][] = (sg.rallies ?? [])
-      .map((r) => [Math.round(r.frame * SECONDS_PER_FRAME), Math.round(r.x), Math.round(r.y), r.tag]);
-    /* 트랙은 여기서 싣는다 — 위 건설 걸음이 spts에 점을 더한 뒤라야, 일꾼 명령이
-       하나도 없던 사람의 건설 걸음도 함께 실린다. */
-    if (pts.length > 0 || spts.length > 0 || tpts.length > 0 || opts.length > 0
-      || units.length > 0 || workers.length > 0 || fpts.length > 0) {
-      const hot = hotOf(
-        [...pts, ...Object.values(upts).flat()].sort((a, b) => a[0] - b[0]),
-        // 공격 명령 뭉치 + 나를 직접 찍은 공격(위 hitsOnRaw 주석) — 시간순으로 다시 섞는다.
-        [...foeAttacks, ...(hitsOnRaw.get(p.rawName) ?? [])].sort((a, b) => a.sec - b.sec),
-      );
+    /* 스토리 다이어트(요청: 비트 단위 스토리 저장 완전 삭제 — 용량 확보) — v2 개체
+       트랙이 장면을 통째로 대체한 뒤라, v1 자취(pts·tpts·opts·upts)·선택 크기(sels)·
+       승하차(drops·loads)·랠리(rly)·규모(size)·전투 구간(hot)·일꾼 수(workers)는
+       아무도 안 읽는다. 남기는 것은 걸음 속도 재료(units·ups), 생산 깜빡(prod·ptag),
+       비행 자취(fpts), 건설 걸음(spts), 그리고 색뿐이다. */
+    if (spts.length > 0 || units.length > 0 || fpts.length > 0
+      || Object.keys(prod).length > 0) {
       tracks.push({
         raw: p.rawName, ...(p.color ? { color: p.color } : {}),
-        ...(ups.length > 0 ? { ups } : {}), pts, units, workers, size, prod,
+        ...(ups.length > 0 ? { ups } : {}), pts: [], units, workers: [], size: [], prod,
         ...(spts.length > 0 ? { spts } : {}),
-        ...(tpts.length > 0 ? { tpts } : {}),
-        ...(opts.length > 0 ? { opts } : {}),
         ...(fpts.length > 0 ? { fpts } : {}),
-        ...(sels.length > 0 ? { sels } : {}),
-        ...(drops.length > 0 ? { drops } : {}),
-        ...(loads.length > 0 ? { loads } : {}),
-        ...(Object.keys(upts).length > 0 ? { upts } : {}),
         ...(Object.keys(ptag).length > 0 ? { ptag } : {}),
-        ...(rly.length > 0 ? { rly } : {}),
-        ...(hot.length > 0 ? { hot } : {}),
       });
     }
     for (const c of sg.castPositions ?? []) {
