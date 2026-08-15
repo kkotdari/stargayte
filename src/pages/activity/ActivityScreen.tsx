@@ -1917,6 +1917,14 @@ export default function ActivityScreen() {
     }
     : null;
 
+  /* 모바일 게임 상세에선 탭바 숨김(요청) — 재생 화면이 세로 공간을 다 쓰도록, 상세가
+     떠 있는 동안 body에 표식을 달고 CSS가 탭바를 걷는다. 닫히면 되돌린다. */
+  useEffect(() => {
+    if (!gameItem) return undefined;
+    document.body.classList.add("scr-gamepage-open");
+    return () => document.body.classList.remove("scr-gamepage-open");
+  }, [gameItem]);
+
   return (
     <div className="scr-screen scr-activity-screen">
       {/* 게임 페이지(요청: 상세 모달·확대 개념이 아니라 주소 가진 화면) — 전체 보기와

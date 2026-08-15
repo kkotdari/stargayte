@@ -5970,6 +5970,11 @@ html.scr-light-theme .scr-mobile-tabbar {
 .scr-mobile-tabbar-hidden {
   visibility: hidden; pointer-events: none; transition: none;
 }
+/* 모바일 게임 상세(요청: 탭바 숨기기) — 상세 페이지가 body에 표식을 다는 동안 탭바를
+   걷어 재생 화면이 세로를 다 쓴다. 키보드 숨김과 같은 완전 숨김 꼴. */
+body.scr-gamepage-open .scr-mobile-tabbar {
+  visibility: hidden; pointer-events: none; transition: none;
+}
 /* 아래로 스크롤 중에는 완전히 숨기는 대신 80%로 축소한다(요청: 60%→80%) — 바닥 중앙을
    기준으로 줄어들어 자리(하단)는 유지하고, 계속 누를 수 있게 pointer-events는 살려둔다.
    완전 숨김(-hidden)은 키보드가 떠 있을 때만 쓴다. 축소되면 전폭 바가 아니라 떠 있는
