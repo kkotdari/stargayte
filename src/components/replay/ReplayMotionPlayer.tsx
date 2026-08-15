@@ -2078,18 +2078,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 밑동 — 초록 무지개 더미(밝은 윗빛).
     out.push(...domeFaces3(0, 0.6, 2.7, 1.2));
     out.push(topFace(groundEllipse(...project(0, 0.6, 1), 1.7, 0.85), 0.3));
-    // 촉수 기둥 — 여섯 가닥이 위로 모인다.
+    // 촉수 기둥 — 여섯 가닥이 위로 모인다. 훨씬 높게(지적: 스파이어 모델이 너무 작다).
     for (const ang of [150, 210, 90, 270, 30, -30]) {
       const a = (ang * Math.PI) / 180;
       out.push(...hornFaces(
         Math.sin(a) * 2.5, 0.6 + Math.cos(a) * 2.5, 0.3,
-        Math.sin(a) * 0.85, Math.cos(a) * 0.85, 8.3, 0.55,
+        Math.sin(a) * 0.85, Math.cos(a) * 0.85, 12.2, 0.55,
       ));
     }
     // 잿빛 머리 판.
-    out.push(...cylinderFaces3(0, 0, 1.6, 1.3, 8.1));
+    out.push(...cylinderFaces3(0, 0, 1.6, 1.3, 12));
     // 골진 도넛 왕관 — 방사 골 + 가운데 구멍.
-    const [cx2, cy2] = project(0, 0, 9.8);
+    const [cx2, cy2] = project(0, 0, 13.9);
     out.push(bodyFace(groundEllipse(cx2, cy2, 2.6, 1.5)));
     /* 골도 요잉을 탄다(지적: 뚜껑이 안 돎) — 화면 고정 각이던 골 위치에 현재 요잉을
        더해, 뚜껑이 함께 도는 것으로 보인다. */
@@ -2109,8 +2109,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   gspire: () => {
     const out: ShapeFace[] = [];
     const [bx, by] = project(0, 0.4, 0);
-    const [wx, wy] = project(0, 0.4, 6.2);
-    const [tx, ty] = project(0, 0.4, 9.6);
+    // 훨씬 높게(지적: 스파이어와 함께) — 허리 6.2→9, 꼭대기 9.6→14.
+    const [wx, wy] = project(0, 0.4, 9);
+    const [tx, ty] = project(0, 0.4, 14);
     // 허리·꼭대기 x 이동(지적: 원통형 오류 일습).
     const dw = wx - bx;
     const dt = tx - bx;
@@ -2134,23 +2135,23 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        혹이 늘 위에 그려졌다. 0이면 뒤로 돈 혹(음수 키)은 줄기 뒤로 들어간다. */
     for (const f of out) f[3] = 0;
     // 앞 붉은 살 띠 — 길게, 가로 골 셋.
-    out.push(bodyFace(polyPath3([[-0.85, 2.2, 1.4], [0.85, 2.2, 1.4], [0.45, 1.1, 7.6], [-0.45, 1.1, 7.6]])));
-    out.push(capFace(polyPath3([[-0.7, 2.1, 2.6], [0.7, 2.1, 2.6], [0.66, 2, 2.9], [-0.66, 2, 2.9]]), 0.2));
-    out.push(capFace(polyPath3([[-0.62, 1.85, 4.2], [0.62, 1.85, 4.2], [0.58, 1.75, 4.5], [-0.58, 1.75, 4.5]]), 0.2));
-    out.push(capFace(polyPath3([[-0.54, 1.55, 5.8], [0.54, 1.55, 5.8], [0.5, 1.45, 6.1], [-0.5, 1.45, 6.1]]), 0.2));
+    out.push(bodyFace(polyPath3([[-0.85, 2.2, 1.4], [0.85, 2.2, 1.4], [0.45, 1.1, 11.2], [-0.45, 1.1, 11.2]])));
+    out.push(capFace(polyPath3([[-0.7, 2.1, 3.8], [0.7, 2.1, 3.8], [0.66, 2, 4.2], [-0.66, 2, 4.2]]), 0.2));
+    out.push(capFace(polyPath3([[-0.62, 1.85, 6.1], [0.62, 1.85, 6.1], [0.58, 1.75, 6.5], [-0.58, 1.75, 6.5]]), 0.2));
+    out.push(capFace(polyPath3([[-0.54, 1.55, 8.5], [0.54, 1.55, 8.5], [0.5, 1.45, 8.9], [-0.5, 1.45, 8.9]]), 0.2));
     // 옆 혹 둘.
-    out.push(...domeFaces3(-1.7, 1, 0.95, 0.8, 3.2));
-    out.push(...domeFaces3(1.8, 0.7, 0.85, 0.7, 4.6));
+    out.push(...domeFaces3(-1.7, 1, 0.95, 0.8, 4.6));
+    out.push(...domeFaces3(1.8, 0.7, 0.85, 0.7, 6.7));
     // 깃 뿔 한 쌍 — 꼭대기 옆에서 위로.
-    out.push(...hornFaces(-1.9, -0.4, 7.6, -2.9, -0.9, 11, 0.95));
-    out.push(...hornFaces(1.9, -0.4, 7.6, 2.9, -0.9, 11, 0.95));
+    out.push(...hornFaces(-1.9, -0.4, 11.2, -2.9, -0.9, 14.9, 0.95));
+    out.push(...hornFaces(1.9, -0.4, 11.2, 2.9, -0.9, 14.9, 0.95));
     // 꼭대기 살덩이 엽 아가리.
-    const [cx2, cy2] = project(0, 0, 10.1);
-    out.push(...domeFaces3(-1.15, -0.4, 1.1, 0.9, 9.4));
-    out.push(...domeFaces3(1.15, -0.4, 1.05, 0.85, 9.4));
-    out.push(...domeFaces3(-0.75, 0.75, 0.95, 0.8, 9.4));
-    out.push(...domeFaces3(0.85, 0.75, 0.95, 0.8, 9.4));
-    out.push(...domeFaces3(0, -1.05, 0.95, 0.8, 9.4));
+    const [cx2, cy2] = project(0, 0, 14.6);
+    out.push(...domeFaces3(-1.15, -0.4, 1.1, 0.9, 13.8));
+    out.push(...domeFaces3(1.15, -0.4, 1.05, 0.85, 13.8));
+    out.push(...domeFaces3(-0.75, 0.75, 0.95, 0.8, 13.8));
+    out.push(...domeFaces3(0.85, 0.75, 0.95, 0.8, 13.8));
+    out.push(...domeFaces3(0, -1.05, 0.95, 0.8, 13.8));
     out.push(capFace(groundEllipse(cx2, cy2 - 0.1, 0.75, 0.45), 0.5));
     return out;
   },
