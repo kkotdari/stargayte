@@ -874,7 +874,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       capFace(discPath3(3.4, -2.2, 5.5, 1.25), 0.5),
     ], 30));
     // 관제 모듈 — 돔 꼭대기의 상자 + 앞면 빛 띠 + 지붕 돔.
-    out.push(...tagKey(boxFaces3(0, 0.2, 3, 2.6, 1.8, 5.5), 31));
+    // 관제 모듈 상자는 구리색(요청).
+    out.push(...tagKey(paintBase(boxFaces3(0, 0.2, 3, 2.6, 1.8, 5.5), "#b87748"), 31));
     /* 앞면 장식(빛 띠·전개 램프)은 앞이 보일 때만(지적: 시점에 따라 기대와 다른 위치) —
        뒤로 돌린 각도에서도 그리면 몸 위로 떠올라 팔처럼 삐져나와 보였다. */
     const frontVisible = faceLight(0, 1).visible;
@@ -886,7 +887,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     if (frontVisible) {
       // 전개 램프(실물) — 선체 중턱 해치에서 앞 바닥으로. 제 깊이(지적: 가려짐 이상).
       const ramp = polyPath3([[-1.3, 6, 2.4], [1.3, 6, 2.4], [2.1, 9.6, 0], [-2.1, 9.6, 0]]);
-      const rampFaces: ShapeFace[] = [bodyFace(ramp), topFace(ramp, 0.16)];
+      // 진출입 경사로는 은색(요청).
+      const rampFaces: ShapeFace[] = [[ramp, 1, "#c9ced6"] as ShapeFace, topFace(ramp, 0.16)];
       for (const t of [0.25, 0.5, 0.75]) {
         const yy = 6 + 3.6 * t;
         const zz = 2.4 * (1 - t);
