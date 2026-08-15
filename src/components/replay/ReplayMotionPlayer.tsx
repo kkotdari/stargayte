@@ -2979,10 +2979,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...domeFaces3(0, 0.8, 0.9, 0.75, 5.6),
         ...domeFaces3(0, 1.6, 0.8, 0.65, 4.8),
         ...hornFaces(0, 2, 4.6, 0, 2.6, 3.7, 0.7),
-      ], "#8a5f43"),
+      ], "#6b4732"),
       capFace(groundEllipse(mx2, my2, 0.42, 0.3), 0.45),
-      // 꼬리 — 뒤로 처진다.
-      ...paintBase(hornFaces(0, -0.6, 6.6, 0, -2.2, 5.8, 0.5), "#8a5f43"),
+      // 꼬리 — 뒤로 처진다. 더 진한 갈색(재지적).
+      ...paintBase(hornFaces(0, -0.6, 6.6, 0, -2.2, 5.8, 0.5), "#6b4732"),
       // 날개 — 위에서 펼쳐진다.
       bodyFace(wing(1)), sideFace(wing(1), 0.16),
       bodyFace(wing(-1)), topFace(wing(-1), 0.14),
@@ -4048,21 +4048,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...rodFaces(1.9, 0.7, 4.2, 2.5, 1.15, 5.4, 0.45),
       ...ivory(rodFaces(2.44, 1.1, 5.28, 2.9, 1.5, 6.9, 0.55)),
       ...ivory(hornFaces(2.9, 1.5, 6.9, 3.15, 2.1, 4.3, 0.55)),
-      // 얼굴·머리장식 갈색(요청).
-      ...paintBase(domeFaces3(0, 0.2, 0.75, 0.6, 6.8), "#8a5f43"),
+      // 얼굴·머리장식 갈색(요청) — 두건을 먼저 그려 얼굴이 안 가려진다(지적).
       [hood, 1, "#8a5f43"] as ShapeFace,
       topFace(hood, 0.14),
+      ...paintBase(domeFaces3(0, 0.2, 0.75, 0.6, 6.8), "#8a5f43"),
     ];
   },
   /* 울트라리스크(실물 참고) — 코끼리 다리 넷의 거체, 어깨에서 크게 휘는 거대 카이저
      낫 두 자루. */
   ultra: () => [
-    ...cylinderFaces3(-2, -2, 0.8, 3, 0.3),
-    ...cylinderFaces3(2, -2, 0.8, 3, 0.3),
+    // 다리·머리 짙은 갈색(요청).
+    ...paintBase(cylinderFaces3(-2, -2, 0.8, 3, 0.3), "#6b4732"),
+    ...paintBase(cylinderFaces3(2, -2, 0.8, 3, 0.3), "#6b4732"),
     ...domeFaces3(0, -0.9, 3.2, 3, 3.4),
-    ...domeFaces3(0, 1.6, 2, 1.6, 3.9),
-    ...cylinderFaces3(-2.2, 1.1, 0.8, 3, 0.3),
-    ...cylinderFaces3(2.2, 1.1, 0.8, 3, 0.3),
+    ...paintBase(domeFaces3(0, 1.6, 2, 1.6, 3.9), "#6b4732"),
+    ...paintBase(cylinderFaces3(-2.2, 1.1, 0.8, 3, 0.3), "#6b4732"),
+    ...paintBase(cylinderFaces3(2.2, 1.1, 0.8, 3, 0.3), "#6b4732"),
     ...ivory(claw3(1, 2.1, 5.4)),
     ...ivory(claw3(-1, 2.1, 5.4)),
   ],
@@ -4081,8 +4082,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...paintBase(hornFaces(m2 * 1.6, 0.6, 3.8, m2 * 3.6, 1.7, 4.35, 0.7), "#3a3f46"));
       out.push(...ivory(hornFaces(m2 * 3.6, 1.7, 4.35, m2 * 4.8, 2.5, 1.4, 0.5)));
       /* 앞 가시갈고리 한 쌍(지적) — 몸 앞에서 앞을 향해 뻗다 끝이 갈고리처럼
-         아래로 말린다. 머리장식 갈색(요청). */
-      out.push(...paintBase(hornFaces(m2 * 0.6, 1.9, 3.5, m2 * 1.1, 3.4, 2.3, 0.42), "#8a5f43"));
+         아래로 말린다. 상부 검회색(재지적). */
+      out.push(...paintBase(hornFaces(m2 * 0.6, 1.9, 3.5, m2 * 1.1, 3.4, 2.3, 0.42), "#3a3f46"));
       out.push(...ivory(hornFaces(m2 * 1.1, 3.4, 2.3, m2 * 0.8, 4.1, 0.5, 0.28)));
     }
     // 꽁무니 다리 하나 더(지적) — 뒤 가운데에서 뒤로 뻗어 땅을 짚는다.
