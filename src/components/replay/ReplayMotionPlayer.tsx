@@ -2374,8 +2374,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // (이동) 여섯 다리 전부 아래 방향별 묶음에서 — 60도 균등 배치.
     /* 꼭대기 볏(실물) — 뒤로 벌어져 굽는 볏 뿔 한 쌍. 둔덕보다 먼저 그려 밑동이
        가려진다(지적: 뿔이 비쳐 보였다). */
-    out.push(...hornFaces(-1.1, -0.7, 5.7, -3.2, -1.6, 9.4, 1.3));
-    out.push(...hornFaces(1.1, -0.6, 5.7, 3.3, -1.4, 9.6, 1.4));
+    // 위 볏 뿔은 검정(요청).
+    out.push(...paintBase(hornFaces(-1.1, -0.7, 5.7, -3.2, -1.6, 9.4, 1.3), "#1b1e23"));
+    out.push(...paintBase(hornFaces(1.1, -0.6, 5.7, 3.3, -1.4, 9.6, 1.4), "#1b1e23"));
     /* 본 기둥 — 뒤집힌 밥그릇(돔)이 아니라 후지산 둔덕(지적): 위는 좁게 잘리고 옆구리는
        가파르다가 바닥에서 완만하게 벌어진다. 회전 대칭이라 요잉 불변. */
     {
@@ -2419,30 +2420,34 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         // 띠 너비 = 동굴 입구(다리 폭 1.7)와 같게(재지적).
         const pxr = -dyr * 0.85;
         const pyr = dxr * 0.85;
+        /* 바닥까지 내리지 않는다(재지적: 바닥의 까만 상자 모양) — 띠가 바닥(z 0.7)까지
+           내려가 다리 위에 겹쳐 검은 상자처럼 보였다. 경사 끝(z 1.6)에서 멈추면 다리가
+           자연히 이어받는다. */
         const seam = polyPath3([
           [dxr * 1.25 + pxr, dyr * 1.25 + pyr, 5.8],
           [dxr * 1.25 - pxr, dyr * 1.25 - pyr, 5.8],
-          [dxr * 5.1 - pxr, dyr * 5.1 - pyr, 0.7],
-          [dxr * 5.1 + pxr, dyr * 5.1 + pyr, 0.7],
+          [dxr * 4.35 - pxr, dyr * 4.35 - pyr, 1.6],
+          [dxr * 4.35 + pxr, dyr * 4.35 + pyr, 1.6],
         ]);
-        out.push(...tagKey([[seam, 1, "#4e545c"] as ShapeFace], dep + 0.3));
+        out.push(...tagKey([[seam, 1, "#1b1e23"] as ShapeFace], dep + 0.3));
       }
     }
     // 바닥 갈고리 덩굴(실물) — 다리 사이로 기다가 끝이 말려 올라간다.
-    out.push(...hornFaces(4.2, 4.2, 0.5, 6.6, 6, 0.9, 0.7));
-    out.push(...hornFaces(6.6, 6, 0.9, 7.4, 6.6, 2.4, 0.5));
-    out.push(...hornFaces(-5.6, 2, 0.5, -7.8, 2.8, 0.9, 0.7));
-    out.push(...hornFaces(-7.8, 2.8, 0.9, -8.6, 3, 2.2, 0.5));
+    // 옆 갈고리 가시도 검정(요청).
+    out.push(...paintBase(hornFaces(4.2, 4.2, 0.5, 6.6, 6, 0.9, 0.7), "#1b1e23"));
+    out.push(...paintBase(hornFaces(6.6, 6, 0.9, 7.4, 6.6, 2.4, 0.5), "#1b1e23"));
+    out.push(...paintBase(hornFaces(-5.6, 2, 0.5, -7.8, 2.8, 0.9, 0.7), "#1b1e23"));
+    out.push(...paintBase(hornFaces(-7.8, 2.8, 0.9, -8.6, 3, 2.2, 0.5), "#1b1e23"));
     return out;
   },
   /* 레어 — 해처리 + 다리 끝 굽은 뿔 셋. */
   lair: () => [
     // 뿔은 동굴 입구 하나 건너 하나(지적) — 다리 각 -170·-40·80의 입구에서 솟는다.
     // 뒤 입구(-170) 뿔은 둔덕이 가리도록 먼저(지적: 비쳐 보였다). 뿔은 검회색(요청).
-    ...paintBase(hornFaces(-1.15, -6.5, 0.9, -1.4, -7.7, 9, 1.5), "#4a4e55"),
+    ...paintBase(hornFaces(-1.15, -6.5, 0.9, -1.4, -7.7, 9, 1.5), "#1b1e23"),
     ...SHAPE_BUILDERS.hatchery(),
-    ...paintBase(hornFaces(-4.25, 5.05, 0.9, -5, 6, 10.4, 1.7), "#4a4e55"),
-    ...paintBase(hornFaces(6.5, 1.15, 1, 7.7, 1.4, 11, 1.9), "#4a4e55"),
+    ...paintBase(hornFaces(-4.25, 5.05, 0.9, -5, 6, 10.4, 1.7), "#1b1e23"),
+    ...paintBase(hornFaces(6.5, 1.15, 1, 7.7, 1.4, 11, 1.9), "#1b1e23"),
   ],
   /* 하이브 — 더 길고 굵은 뿔 셋(뿔 등에 가시들, 요청) + 앞 컬. */
   hive: () => {
