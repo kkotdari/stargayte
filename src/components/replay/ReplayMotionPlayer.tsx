@@ -8,7 +8,7 @@ import { UNIT_KO, TECH_KO } from "../../utils/replayNames";
 import type { ReplayMapGrid } from "../../utils/replayParser";
 import { api } from "../../api/client";
 import { applyReplayMap } from "../../hooks/useReplayMap";
-import { AIR_UNITS, CASTER_UNITS } from "../../utils/replayBuildMix";
+import { AIR_UNITS } from "../../utils/replayBuildMix";
 import { BLD_STATS, UNIT_STATS, type UnitTracksV2 } from "../../utils/replayUnits";
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } from "../../utils/minimapTerrain";
@@ -83,9 +83,12 @@ export interface SummaryMotion {
 /** 공중 유닛인가 — 마법 유닛(베슬·퀸 등)은 자취 목적상 지상 취급을 유지한다(옛 규칙 그대로). */
 /* 오버로드는 통계용 AIR_UNITS(병력 구성 집합)에 없어서 지상으로 정렬됐다(지적: 스포닝
    풀이 오버로드 머리를 덮음) — 공중 우선(+100000) 화가 순서를 못 받아 건물이 풍선 위에
-   그려졌다. 재생 판정에만 오버로드를 더한다(직선 비행·이완 제외도 같이 맞는 값이다). */
+   그려졌다. 재생 판정에만 오버로드를 더한다(직선 비행·이완 제외도 같이 맞는 값이다).
+   캐스터 제외(!CASTER_UNITS)도 걷었다(재검토 요청: "옵저버 같은 것도") — 그 조건이
+   실제로 떨어뜨리던 것은 지상 캐스터가 아니라 아비터·베슬·퀸(나는 캐스터) 셋뿐이라,
+   이들도 지상 취급돼 건물에 덮이고 지형 길찾기로 걸었다. 옵저버는 원래 정상이었다. */
 export const isAirUnit = (unit: string): boolean =>
-  unit === "Overlord" || (AIR_UNITS.has(unit) && !CASTER_UNITS.has(unit));
+  unit === "Overlord" || AIR_UNITS.has(unit);
 
 /** 본진 로스터 한 사람 — 위치(x·y)는 이제 요약이 사라져 실려 오지 않을 수 있다.
  *  좌표가 없으면 지형 앵커·채굴 임자 어림 같은 위치 계산에서 조용히 빠진다. */
