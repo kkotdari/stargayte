@@ -3011,9 +3011,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 뿔 한 쌍 — 앞 옆에서 위-뒤로 젖혀진다. 짙은 상아색(요청).
     ...paintBase(hornFaces(1.4, 1, 5.9, 2.4, -0.8, 8.1, 0.6), IVORY_DEEP),
     ...paintBase(hornFaces(-1.4, 1, 5.9, -2.4, -0.8, 8.1, 0.6), IVORY_DEEP),
-    // 앞 아래 작은 턱.
-    ...hornFaces(0.5, 2.1, 4.5, 0.8, 3, 3.9, 0.4),
-    ...hornFaces(-0.5, 2.1, 4.5, -0.8, 3, 3.9, 0.4),
+    // 앞 아래 작은 턱 — 짙은 상아색(요청).
+    ...paintBase(hornFaces(0.5, 2.1, 4.5, 0.8, 3, 3.9, 0.4), IVORY_DEEP),
+    ...paintBase(hornFaces(-0.5, 2.1, 4.5, -0.8, 3, 3.9, 0.4), IVORY_DEEP),
   ],
   /* 스커지 — 작은 몸 + 날개 한 쌍. */
   scourge: () => {
@@ -3022,8 +3022,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ]);
     return [
       ...domeFaces3(0, 0, 0.75, 0.65, 5.9),
-      bodyFace(wing(1)), sideFace(wing(1), 0.16),
-      bodyFace(wing(-1)), topFace(wing(-1), 0.14),
+      // 날개는 드론 갈퀴 색(요청).
+      [wing(1), 1, "#c68a62"] as ShapeFace, sideFace(wing(1), 0.16),
+      [wing(-1), 1, "#c68a62"] as ShapeFace, topFace(wing(-1), 0.14),
     ];
   },
   /* 퀸(정정 셋) — 더듬이 없이, 전갈처럼 위로 솟아 앞으로 휘는 꼬리. 다리 여섯은
@@ -4011,12 +4012,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 칼다리는 꺽쇠(재재지적: 더 완만하게) — 뿌리에서 바깥·위로 살짝만 올라
          꼭대기를 찍고, 완만한 각도로 내려와 땅을 짚는다. 내려오는 끝마디는
          상아색 발톱(지적)이다. */
-      // 뒤 칼다리.
-      out.push(...hornFaces(m2 * 1.5, -0.9, 3.8, m2 * 2.8, -1.7, 4.15, 0.7));
-      out.push(...ivory(hornFaces(m2 * 2.8, -1.7, 4.15, m2 * 4.1, -2.7, 1.4, 0.5)));
-      // 앞 칼다리.
-      out.push(...hornFaces(m2 * 1.6, 0.6, 3.8, m2 * 2.9, 1.35, 4.15, 0.7));
-      out.push(...ivory(hornFaces(m2 * 2.9, 1.35, 4.15, m2 * 4.3, 2.25, 1.4, 0.5)));
+      // 뒤 칼다리 — 윗마디 더 길게(지적).
+      out.push(...hornFaces(m2 * 1.5, -0.9, 3.8, m2 * 3.5, -2.1, 4.35, 0.7));
+      out.push(...ivory(hornFaces(m2 * 3.5, -2.1, 4.35, m2 * 4.7, -3, 1.4, 0.5)));
+      // 앞 칼다리 — 윗마디 더 길게(지적).
+      out.push(...hornFaces(m2 * 1.6, 0.6, 3.8, m2 * 3.6, 1.7, 4.35, 0.7));
+      out.push(...ivory(hornFaces(m2 * 3.6, 1.7, 4.35, m2 * 4.8, 2.5, 1.4, 0.5)));
       /* 앞 가시갈고리 한 쌍(지적) — 몸 앞에서 앞을 향해 뻗다 끝이 갈고리처럼
          아래로 말린다. */
       out.push(...hornFaces(m2 * 0.6, 1.9, 3.5, m2 * 1.1, 3.4, 2.3, 0.42));
@@ -4024,8 +4025,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     }
     // 꽁무니 다리 하나 더(지적) — 뒤 가운데에서 뒤로 뻗어 땅을 짚는다.
     // 꽁무니 다리도 꺽쇠(재지적: 뒷다리도 그렇게) — 완만히 올랐다 내려온다.
-    out.push(...hornFaces(0, -1.5, 3.6, 0, -2.6, 4.3, 0.6));
-    out.push(...ivory(hornFaces(0, -2.6, 4.3, 0, -4, 1.2, 0.42)));
+    out.push(...hornFaces(0, -1.5, 3.6, 0, -3.2, 4.5, 0.6));
+    out.push(...ivory(hornFaces(0, -3.2, 4.5, 0, -4.6, 1.2, 0.42)));
     // 넓은 등딱지 + 등 가시들.
     out.push(...domeFaces3(0, -0.2, 2.5, 2, 3.4));
     out.push(...hornFaces(-0.9, -0.9, 5, -1.3, -1.3, 6.2, 0.4));
