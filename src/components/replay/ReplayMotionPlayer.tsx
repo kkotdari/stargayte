@@ -3951,15 +3951,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 보석 기둥 복귀(재재지적: 뿔 결정은 따로따로 솟아 보임 — 아까 기둥 모양 유지) —
        절두+피라미드 기둥 넷을 바짝 뭉치고 키를 올린다. 기둥마다 깊이 키 하나로 묶어
        꼭대기 피라미드가 제 기둥에 안 가려진다(지적). */
-    const pillar = (cx: number, cy: number, w: number, h: number): ShapeFace[] => tagKey([
+    /* 끝만 기울인다(지적: 두 개는 바깥쪽, 맨 앞 것은 앞쪽으로 살짝) — 기둥은 수직
+       그대로 두고 꼭대기 보석뿔의 끝점을 밀어 기운 인상을 낸다. */
+    const pillar = (
+      cx: number, cy: number, w: number, h: number, lx = 0, ly = 0,
+    ): ShapeFace[] => tagKey([
       ...frustumFaces3(cx, cy, w, w * 0.85, w * 0.72, w * 0.62, h),
-      ...pyramidFaces3(cx, cy, w * 0.72, w * 0.62, w * 1.1, h),
-    ], depthNow(cx, cy));
+      lx === 0 && ly === 0
+        ? pyramidFaces3(cx, cy, w * 0.72, w * 0.62, w * 1.1, h)
+        : hornFaces(cx, cy, h - 0.15, cx + lx, cy + ly, h + w * 1.1, w * 0.72),
+    ].flat(), depthNow(cx, cy));
     return [
-      ...pillar(-1.9, -0.9, 2.1, 3.2),
-      ...pillar(-0.1, 0.7, 2.7, 5),
+      ...pillar(-1.9, -0.9, 2.1, 3.2, -0.85, 0),
+      ...pillar(-0.1, 0.7, 2.7, 5, 0, 0.9),
       ...pillar(1.8, -0.8, 2.3, 3.8),
-      ...pillar(3.1, 0.6, 1.6, 2.4),
+      ...pillar(3.1, 0.6, 1.6, 2.4, 0.75, 0.15),
     ];
   },
   /* 가스 간헐천(재재정정: 전체 크기는 원래대로, 두 번째 분화구만 작게) — 언덕 위
