@@ -13013,8 +13013,8 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    납작한(가로:세로 2:1) 고리가 살짝 오므라들며 사라지고, 가운데 점은 그대로 있다.
    색은 찍은 사람 색(currentColor). 표시 창(0.9초)은 재생 쪽이 자른다. ── */
 .scr-motion-clickfx { position: absolute; width: 0; height: 0; pointer-events: none; }
-/* 게임 비율(재지적: 아직도 너무 큼) — 재생 쪽이 타일 폭(--ckw)을 넘겨 준다:
-   원작 이동 마커처럼 1.1타일 폭, 세로는 그 절반. 못 받으면 9px 폴백. */
+/* 게임 비율(재재지적: 반으로) — 재생 쪽이 타일 폭(--ckw)을 넘겨 준다(이제 0.55타일).
+   못 받으면 9px 폴백. */
 .scr-motion-clickfx::before {
   content: ""; position: absolute; left: 50%; top: 50%;
   /* 전역 리셋(* { box-sizing })은 가상요소를 안 덮는다 — content-box로 그려져 테두리
@@ -13022,20 +13022,20 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   box-sizing: border-box;
   width: var(--ckw, 9px); height: calc(var(--ckw, 9px) / 2);
   margin: calc(var(--ckw, 9px) / -4) 0 0 calc(var(--ckw, 9px) / -2);
-  /* 선은 거의 실선처럼 가늘게(지적: 너무 두꺼움) — 타일 폭의 1/24, 최소 0.6px. */
-  border: max(0.6px, calc(var(--ckw, 9px) / 24)) solid currentColor; border-radius: 50%;
+  /* 실처럼 가늘게(재지적: 색으로 구분되니 선은 실 굵기) — 0.5~0.7px 고정 헤어라인. */
+  border: max(0.5px, calc(var(--ckw, 9px) / 40)) solid currentColor; border-radius: 50%;
   animation: scr-clickfx 0.9s ease-out forwards;
 }
 .scr-motion-clickfx::after {
   content: ""; position: absolute; left: 50%; top: 50%;
-  width: calc(var(--ckw, 9px) * 0.18); height: calc(var(--ckw, 9px) * 0.18);
-  margin: calc(var(--ckw, 9px) * -0.09) 0 0 calc(var(--ckw, 9px) * -0.09);
+  /* 점은 보이게(재지적: 원은 반으로 줄여도 점은 좀 보여야) — 비율을 올리고 최소 2px. */
+  width: max(2px, calc(var(--ckw, 9px) * 0.3)); height: max(2px, calc(var(--ckw, 9px) * 0.3));
+  margin: calc(max(2px, var(--ckw, 9px) * 0.3) / -2) 0 0 calc(max(2px, var(--ckw, 9px) * 0.3) / -2);
   border-radius: 50%; background: currentColor;
   animation: scr-clickdot 0.9s ease-out forwards;
 }
-/* 공격 클릭(지적: 클릭 종류 구분) — 붉은 고리로 갈린다. 가운데 점은 사람 색을
-   지킨다(지적: 공격 마커에도 개인 색이 있어야 누가 찍었는지 구분된다). */
-.scr-clickfx-atk::before { border-color: #e0483c; }
+/* 공격 클릭(재지적: 뒤집기) — 외곽 고리는 자기 색 그대로, 가운데 점만 빨강이다. */
+.scr-clickfx-atk::after { background: #e0483c; }
 @keyframes scr-clickfx {
   0% { transform: scale(1.15); opacity: 0.95; }
   70% { transform: scale(0.75); opacity: 0.8; }
@@ -13102,7 +13102,8 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   /* 클릭 자국과 같은 함정 — 전역 리셋이 가상요소를 안 덮어 테두리만큼 중심이 밀린다. */
   box-sizing: border-box;
   width: 30px; height: 30px; margin: -15px 0 0 -15px;
-  border: 2px solid currentColor; border-radius: 50%;
+  /* 실처럼(재지적: 모든 선 가늘게). */
+  border: 0.7px solid currentColor; border-radius: 50%;
   animation: scr-pingfx 1s ease-out infinite;
 }
 @keyframes scr-pingfx {

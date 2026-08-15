@@ -4699,10 +4699,11 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         ctx.shadowColor = "transparent";
         ctx.globalAlpha = op.alpha * 0.85;
         ctx.strokeStyle = "rgba(240, 255, 240, 0.95)";
-        ctx.lineWidth = Math.max(0.8, px * 0.05);
+        // 실처럼 가늘게 + 반으로(재지적: 선택 원 포함 전부 축소).
+        ctx.lineWidth = Math.max(0.5, px * 0.025);
         ctx.beginPath();
         const ringY = op.air ? footY - lift : sy + px * 0.18;
-        ctx.ellipse(sx, ringY, px * 0.5, px * 0.28 * (op.pitch ? 0.6 : 1), 0, 0, Math.PI * 2);
+        ctx.ellipse(sx, ringY, px * 0.25, px * 0.14 * (op.pitch ? 0.6 : 1), 0, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
       }
@@ -8195,9 +8196,8 @@ export default function ReplayMotionPlayer({
             남는다. v2 데이터로 그리므로 v2 모드 + 클릭 토글이 켜져 있을 때만이다. */}
         {entOn && clickFx && entClicks.map(([cs, cx2, cy2, raw, ck], i) => {
           if (t < cs || t - cs > 0.9) return null;
-          /* 게임 비율(재지적: 아직도 너무 큼) — 원작 이동 마커처럼 1.1타일 폭.
-             고정 px는 작은 맵·모바일에서 유닛보다 컸다. */
-          const ckw = ((mapRef.current?.clientWidth ?? 320) / grid.width) * 1.1;
+          /* 반으로(재재지적: 조작 표시 원들이 전체적으로 너무 큼) — 1.1 → 0.55타일 폭. */
+          const ckw = ((mapRef.current?.clientWidth ?? 320) / grid.width) * 0.55;
           // 공격 클릭은 붉은 고리로 갈라 보인다(지적: 클릭 종류 구분).
           return (
             <span
