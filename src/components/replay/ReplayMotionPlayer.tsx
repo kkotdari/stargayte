@@ -2371,8 +2371,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 해처리 — 둔덕 + 방사 다리 여섯(요잉을 따라 도는 것이 핵심) + 윗면 입·목띠. */
   hatchery: () => {
     const out: ShapeFace[] = [];
-    // 오른뒤 다리(반원통 없음)만 여기(둔덕 뒤 층). 나머지 다섯은 아래 방향별 묶음에서.
-    out.push(...limbFaces(-170, 3, 1.7, 3.4));
+    // (이동) 여섯 다리 전부 아래 방향별 묶음에서 — 60도 균등 배치.
     /* 꼭대기 볏(실물) — 뒤로 벌어져 굽는 볏 뿔 한 쌍. 둔덕보다 먼저 그려 밑동이
        가려진다(지적: 뿔이 비쳐 보였다). */
     out.push(...hornFaces(-1.1, -0.7, 5.7, -3.2, -1.6, 9.4, 1.3));
@@ -2402,18 +2401,30 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [mx, my] = project(0, 0, 6.35);
     out.push(sideFace(`M${mx - 1.5} ${my} L${mx + 1.5} ${my} Q${mx + 1.4} ${my + 1} ${mx} ${my + 1.15} Q${mx - 1.4} ${my + 1} ${mx - 1.5} ${my} Z`, 0.35));
     out.push(topFace(groundEllipse(mx, my, 1.4, 0.4)));
-    /* 반원통+입구발 방향별 묶음(재재지적: 뒤가 다 비쳐 부자연) — 다리·반원통을 그
-       방향의 깊이 키로 묶어, 뒤로 돈 것은 둔덕(키 0.2) '뒤'로 들어가고 앞 것만 위에
-       얹힌다. 뒤를 향한 반원통은 아예 안 그린다(어차피 둔덕이 가린다). */
-    for (const ang of [-100, -40, 20, 80, 130]) {
+    /* 옆선 여섯 + 입구발 여섯(재재재지적: 60도 균등, 옆선이 입구굴과 딱 맞게) —
+       다리와 얇은 경사면 옆선을 같은 각에 두고 방향별 깊이 키로 묶는다. 뒤로 돈
+       옆선은 안 그린다(둔덕이 가린다). */
+    for (const ang of [-160, -100, -40, 20, 80, 140]) {
       const a2 = (ang * Math.PI) / 180;
       const dxr = Math.sin(a2);
       const dyr = Math.cos(a2);
       const dep = depthNow(dxr * 4, dyr * 4);
-      const len = ang === 130 ? 3 : 3.4;
-      const hh = ang === 130 ? 3.4 : 3.2;
-      out.push(...tagKey(paintBase(limbFaces(ang, len, 1.7, hh), "#4e545c"), dep));
-      // (제거·재지적) 경사면 띠·반원통 전부 — 다리 색만 남긴다.
+      const rear = ang === 140 || ang === -160;
+      out.push(...tagKey(
+        paintBase(limbFaces(ang, rear ? 3 : 3.4, 1.7, rear ? 3.4 : 3.2), "#4e545c"),
+        dep,
+      ));
+      if (facingRatio(dxr, dyr) > -0.05) {
+        const pxr = -dyr * 0.3;
+        const pyr = dxr * 0.3;
+        const seam = polyPath3([
+          [dxr * 1.25 + pxr, dyr * 1.25 + pyr, 5.8],
+          [dxr * 1.25 - pxr, dyr * 1.25 - pyr, 5.8],
+          [dxr * 5.1 - pxr, dyr * 5.1 - pyr, 0.7],
+          [dxr * 5.1 + pxr, dyr * 5.1 + pyr, 0.7],
+        ]);
+        out.push(...tagKey([[seam, 1, "#4e545c"] as ShapeFace], dep + 0.3));
+      }
     }
     // 바닥 갈고리 덩굴(실물) — 다리 사이로 기다가 끝이 말려 올라간다.
     out.push(...hornFaces(4.2, 4.2, 0.5, 6.6, 6, 0.9, 0.7));
