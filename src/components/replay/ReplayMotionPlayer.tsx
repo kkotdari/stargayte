@@ -4673,7 +4673,10 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         /* 바닥면 전체(재지적: 그림자가 캔버스를 못 채우고 앞쪽만 납작하게) — 가장
            앞 픽셀(footY)에 붙이면 앞모서리 조각만 보인다. 타원을 키우고 중심을
            위로 당겨 몸 아래 발자국을 덮는다. */
-        ctx.ellipse(sx, footY + lift - shw * 0.22, shw * 1.1, shw * (op.air ? 0.5 : 0.42) * (op.pitch ? 0.6 : 1), 0, 0, Math.PI * 2);
+        /* 그림자는 땅에(지적: 오버로드 위치는 해처리 위인데 그림자가 훨씬 아래) — 몸은
+           lift만큼 '위로' 들리고 땅은 제자리(footY)인데, 여기에 lift를 '더해' 그림자가
+           비행 높이만큼 남쪽으로 밀려 있었다. 발밑 땅 자리 그대로 둔다. */
+        ctx.ellipse(sx, footY - shw * 0.22, shw * 1.1, shw * (op.air ? 0.5 : 0.42) * (op.pitch ? 0.6 : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       } else if (!op.air && UNIT_KIND_SET.has(op.kind)) {
@@ -4689,7 +4692,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         ctx.fill();
         ctx.restore();
       }
-      /* 선택 링(지적: 드래그 선택 구분) — 잡힌 유닛 발밑의 가는 흰 타원 테. */
+      /* 선택 링(지적: 드래그 선택 구분) — 잡힌 유닛 발밑의 가는 흰 타원 테.
+         공중 유닛은 링도 공중이다(지적: 유닛 바닥에) — 들린 몸의 바닥선에 붙인다. */
       if (op.selRing) {
         ctx.save();
         ctx.shadowColor = "transparent";
@@ -4697,7 +4701,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad }: {
         ctx.strokeStyle = "rgba(240, 255, 240, 0.95)";
         ctx.lineWidth = Math.max(0.8, px * 0.05);
         ctx.beginPath();
-        ctx.ellipse(sx, sy + px * 0.18, px * 0.5, px * 0.28 * (op.pitch ? 0.6 : 1), 0, 0, Math.PI * 2);
+        const ringY = op.air ? footY - lift : sy + px * 0.18;
+        ctx.ellipse(sx, ringY, px * 0.5, px * 0.28 * (op.pitch ? 0.6 : 1), 0, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
       }
@@ -5214,6 +5219,27 @@ export default function ReplayMotionPlayer({
     return m;
   }, [entData]);
   const entOn = entMode && entData !== null;
+  /* 건설 SCV 떠남 시각(지적: SCV들이 건설현장에 남는다) — 일꾼 개체의 건설 앵커(f=2)
+     마다 [앵커 자리, 앵커 초, 그 뒤 첫 위치 증거 초]를 색인한다. 합성 건설 SCV는 그
+     '첫 위치 증거' 순간(진짜 SCV가 현장을 떠나 걸어 나가는 순간)에 걷힌다. */
+  const builderLeave = useMemo(() => {
+    const m: { x: number; y: number; s: number; end: number }[] = [];
+    if (!entData) return m;
+    for (const e of entData.ents) {
+      if (e.bld || e.t === -1) continue;
+      if (e.k !== "SCV" && e.k !== "") continue;
+      for (let i = 0; i < e.ev.length; i += 1) {
+        const v = e.ev[i];
+        if (v[3] !== 2 || v[1] < 0) continue;
+        let end = Infinity;
+        for (let j = i + 1; j < e.ev.length; j += 1) {
+          if (e.ev[j][1] >= 0 && e.ev[j][0] > v[0] + 1) { end = e.ev[j][0]; break; }
+        }
+        m.push({ x: v[1], y: v[2], s: v[0], end });
+      }
+    }
+    return m;
+  }, [entData]);
   const buildsSrc = entOn ? buildsV2 : motion.builds;
   const castsSrc = entOn ? castsV2 : motion.casts;
   /* 건물 겹침 해소(요청: 캔버스에서 건물끼리 겹침 불가) — 같은 시기에 함께 서 있는 두
@@ -7147,6 +7173,17 @@ export default function ReplayMotionPlayer({
                   if (Math.hypot(pt2[1] - scvX, pt2[2] - scvY) <= 5) { nextCmd = pt2[0]; break; }
                 }
                 if (t >= nextCmd) scvShow = false;
+              }
+              /* v2에선 진짜 개체가 답을 안다(지적: SCV들이 건설현장에 남는다 — v2 모드는
+                 motion이 빈 껍데기라 위 spts 게이트가 영영 안 열렸다) — 이 현장의 건설
+                 앵커(f=2)를 남긴 일꾼 개체의 '앵커 뒤 첫 위치 증거' 시각이 곧 그 SCV가
+                 현장을 떠난 순간이다. 그때부터는 개체 마커가 걸어 나가며 그리므로 합성
+                 SCV를 걷는다. */
+              if (scvShow && entOn) {
+                const lv = builderLeave.find((b2) =>
+                  Math.abs(b2.x - centerX) <= fp2[0] / 2 + 2 && Math.abs(b2.y - centerY) <= fp2[1] / 2 + 2
+                  && b2.s >= sec - 15 && b2.s <= sec + bs2);
+                if (lv && t >= lv.end) scvShow = false;
               }
               if (scvShow) {
                 const [sfx2, sfy2] = posFrac(scvX, scvY);
