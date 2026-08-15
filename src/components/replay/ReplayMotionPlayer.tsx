@@ -3492,6 +3492,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 팔 앞부분 — 개인색.
     ...boxFaces3(-2.5, 1.65, 1.05, 0.9, 1.05, 4.1),
     ...boxFaces3(2.5, 1.65, 1.05, 0.9, 1.05, 4.1),
+    // 양팔 끝 연장(요청) — 왼팔 작은 드릴 원뿔, 오른팔 두 갈래 집게.
+    ...paintBase(hornFaces(-2.5, 2.1, 4.6, -2.5, 3.1, 4.6, 0.42), GUNMETAL),
+    ...paintBase([
+      ...hornFaces(2.3, 2.1, 4.6, 2.42, 3, 4.6, 0.24),
+      ...hornFaces(2.7, 2.1, 4.6, 2.58, 3, 4.6, 0.24),
+    ], GUNMETAL),
   ],
   /* 프로브(실물 참고) — 팔각 보석 몸(밝은 윗판 층층) + 방사 가시들. */
   probe: () => {
@@ -3935,17 +3941,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(polyPath3(tailPts.map(([x, y, z]) => [x * 0.45, y, z + 0.16] as [number, number, number])), 0.13),
       // 몸기둥을 꼬리 뿌리(z 1.2)까지 내려 한 몸으로 잇는다.
       ...cylinderFaces3(0, 0, 1.05, 5.3, 1.2),
-      /* 팔은 굽히기(재지적) — 위팔이 밖-아래로 내려갔다 아래팔이 다시 위-앞으로
-         굽는다. 낫은 팔 끝에서 위로 오르다 꼭대기에서 구부러져 아래로 내려오는
-         갈고리 형태(요청). */
-      ...hornFaces(-0.8, 0.25, 5.3, -1.9, 0.7, 4.2, 0.5),
-      ...hornFaces(-1.9, 0.7, 4.2, -2.5, 1.15, 5.4, 0.45),
-      ...ivory(hornFaces(-2.5, 1.15, 5.4, -2.9, 1.5, 7, 0.6)),
-      ...ivory(hornFaces(-2.9, 1.5, 7, -3.15, 2.1, 4.3, 0.5)),
-      ...hornFaces(0.8, 0.25, 5.3, 1.9, 0.7, 4.2, 0.5),
-      ...hornFaces(1.9, 0.7, 4.2, 2.5, 1.15, 5.4, 0.45),
-      ...ivory(hornFaces(2.5, 1.15, 5.4, 2.9, 1.5, 7, 0.6)),
-      ...ivory(hornFaces(2.9, 1.5, 7, 3.15, 2.1, 4.3, 0.5)),
+      /* 팔은 굽히기(재지적) + 넥서스 기둥식 이음(재재지적: 갈고리와 팔이 자연스럽게)
+         — 팔 두 마디는 끝이 안 뾰족한 캡슐 막대(rodFaces), 갈고리는 손목 살짝 안에서
+         팔보다 조금 굵게 시작해 '도려내고 꽂은' 소켓처럼 잇는다. 오르는 마디는 굵기
+         일정한 막대, 꼭대기에서 꺾여 내려오는 마디만 끝이 점으로 가늘어진다. */
+      ...rodFaces(-0.8, 0.25, 5.3, -1.9, 0.7, 4.2, 0.5),
+      ...rodFaces(-1.9, 0.7, 4.2, -2.5, 1.15, 5.4, 0.45),
+      ...ivory(rodFaces(-2.44, 1.1, 5.28, -2.9, 1.5, 6.9, 0.55)),
+      ...ivory(hornFaces(-2.9, 1.5, 6.9, -3.15, 2.1, 4.3, 0.55)),
+      ...rodFaces(0.8, 0.25, 5.3, 1.9, 0.7, 4.2, 0.5),
+      ...rodFaces(1.9, 0.7, 4.2, 2.5, 1.15, 5.4, 0.45),
+      ...ivory(rodFaces(2.44, 1.1, 5.28, 2.9, 1.5, 6.9, 0.55)),
+      ...ivory(hornFaces(2.9, 1.5, 6.9, 3.15, 2.1, 4.3, 0.55)),
       ...domeFaces3(0, 0.2, 0.75, 0.6, 6.8),
       bodyFace(hood),
       topFace(hood, 0.14),
@@ -4077,8 +4084,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const lens = (sxSign: number): ShapeFace[] => {
       // 더 뒤쪽(재지적: 거의 옆면의 가운데) + 살짝 위(아래 z 5.2 → 5.65) — 50° → 82°.
       const th = Math.PI * (82 / 180);
-      const cxL = Math.sin(th) * 3.05 * sxSign;
-      const cyL = Math.cos(th) * 3.05;
+      // 몸에 딱 붙게(지적) — 렌즈 가장자리(접선 반경 1.55)까지가 몸 실루엣(3.0) 안에
+      // 들도록 중심 반경을 안으로 당긴다.
+      const cxL = Math.sin(th) * 2.55 * sxSign;
+      const cyL = Math.cos(th) * 2.55;
       const t1x = Math.cos(th) * sxSign;
       const t1y = -Math.sin(th);
       const ring = (rt: number, rz: number): [number, number, number][] => {
@@ -4218,8 +4227,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...domeFaces3(-1.2, -2.1, 0.95, 0.8, 4.2));
     out.push(...domeFaces3(1.2, -2.1, 0.95, 0.8, 4.2));
     out.push(...domeFaces3(0, -2.5, 0.8, 0.7, 4.3));
-    // 아가리 — 집게 사이 어두운 속과 그 위 빛 줄.
-    out.push(capFace(`M${pt(-1.8, 1, 3.85)} Q${pt(0, 1.9, 3.85)} ${pt(1.8, 1, 3.85)} L${pt(0.9, 3.8, 3.6)} Q${pt(0, 4.3, 3.55)} ${pt(-0.9, 3.8, 3.6)} Z`, 0.45));
+    // 아가리 어두운 속은 제거(지적: 앞 검정 반투명 부품) — 빛 줄만 남긴다.
     out.push(topFace(`M${pt(-1.6, 1.1, 3.9)} Q${pt(0, 2, 3.9)} ${pt(1.6, 1.1, 3.9)} L${pt(1.4, 1.5, 3.9)} Q${pt(0, 2.4, 3.9)} ${pt(-1.4, 1.5, 3.9)} Z`, 0.5));
     /* 집게(정정 셋: 더 두껍게 + 약간 아래로 기울이기 + 뾰족·사이 벌림 유지) — 바깥
        변을 더 바깥으로 부풀려 살을 찌우고, 앞으로 갈수록 z를 낮춰 끝이 아래를 향해
