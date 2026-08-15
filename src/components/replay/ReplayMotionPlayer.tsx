@@ -2414,14 +2414,29 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const hh = ang === 130 ? 3.4 : 3.2;
       out.push(...tagKey(paintBase(limbFaces(ang, len, 1.7, hh), "#4e545c"), dep));
       if (facingRatio(dxr, dyr) > -0.05) {
-        out.push(...tagKey(paintBase(
-          rodFaces(dxr * 1.15, dyr * 1.15, 6.1, dxr * 5.2, dyr * 5.2, 0.5, 1.35),
-          "#4e545c",
-        ), dep + 0.3));
-        out.push(...tagKey(paintBase(
-          rodFaces(dxr * 1.3, dyr * 1.3, 6.25, dxr * 4.9, dyr * 4.9, 0.85, 0.5),
-          "#6a7078",
-        ), dep + 0.35));
+        /* 반원통(재재지적: 옆에서 보면 반달 단면) — 경사면에 엎어 놓은 D자 관:
+           불투명 몸 띠 + 능선 하이라이트 + 발치의 반달 단면캡. */
+        const pxr = -dyr * 0.7;
+        const pyr = dxr * 0.7;
+        const band = polyPath3([
+          [dxr * 1.15 + pxr, dyr * 1.15 + pyr, 6.05],
+          [dxr * 1.15 - pxr, dyr * 1.15 - pyr, 6.05],
+          [dxr * 5.2 - pxr, dyr * 5.2 - pyr, 0.7],
+          [dxr * 5.2 + pxr, dyr * 5.2 + pyr, 0.7],
+        ]);
+        const crest = polyPath3([
+          [dxr * 1.25 + pxr * 0.35, dyr * 1.25 + pyr * 0.35, 6.3],
+          [dxr * 1.25 - pxr * 0.35, dyr * 1.25 - pyr * 0.35, 6.3],
+          [dxr * 5 - pxr * 0.35, dyr * 5 - pyr * 0.35, 1.05],
+          [dxr * 5 + pxr * 0.35, dyr * 5 + pyr * 0.35, 1.05],
+        ]);
+        const [ex2, ey2] = project(dxr * 5.2, dyr * 5.2, 0.75);
+        out.push(...tagKey([
+          [band, 1, "#4e545c"] as ShapeFace,
+          [crest, 1, "#6a7078"] as ShapeFace,
+          // 반달 단면 — 아랫변 평평, 위 반원.
+          [`M${ex2 - 0.72} ${ey2} A0.72 0.62 0 0 1 ${ex2 + 0.72} ${ey2} Z`, 1, "#3a3f46"] as ShapeFace,
+        ], dep + 0.3));
       }
     }
     // 바닥 갈고리 덩굴(실물) — 다리 사이로 기다가 끝이 말려 올라간다.
@@ -2835,33 +2850,27 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(groundEllipse(bx - 0.9, by - 1, 1.2, 1), 0.28),
     ], 0));
     // 껍질 방패 셋(90·210·330도) — 은색 렌즈꼴 판이 구를 옆에서 감싼다.
-    /* 방패 셋(재재지적) — 세로 팔각 판이 구를 '감싸듯' 안으로 굽는다: 위아래 끝이
-       구 쪽으로 당겨지고 가운데가 밖으로 부푼 활꼴. 길이는 줄이고(±2.2) 폭은 얇게. */
+    /* 방패 셋(재재재지적: 캐리어 꽃잎 한 장처럼 굽히기) — 점 고리를 모델 공간에서
+       구면에 감아 만든다: 세로(z)로 길고 폭은 얇으며, 위아래 끝일수록 반경이 안으로
+       당겨져 구를 감싸 안는 꽃잎 판이 된다. */
     for (const ang of [90, 210, 330]) {
       const a2 = (ang * Math.PI) / 180;
-      const mx = Math.sin(a2) * 3.25;
-      const my = Math.cos(a2) * 3.25;
-      const [ax, ay] = project(mx, my, 6.4);
-      const vx = ax - bx;
-      const vy = ay - by;
-      const L = Math.hypot(vx, vy) || 1;
-      const ux = vx / L;
-      const uy = vy / L;
-      const hH = 2.2;
-      const hW = 0.62;
-      const oct: [number, number][] = [
-        [-hH + 0.55, -hW], [-hH, -hW * 0.35], [-hH, hW * 0.35], [-hH + 0.55, hW],
-        [hH - 0.55, hW], [hH, hW * 0.35], [hH, -hW * 0.35], [hH - 0.55, -hW],
-      ];
-      const ptOf = (tv: number, sv: number): string => {
-        const bow = 0.85 * (1 - (tv / hH) * (tv / hH));
-        return `${ax + sv + ux * bow} ${ay + tv + uy * bow}`;
-      };
-      const d = `M${oct.map(([tv, sv], i) => `${i === 0 ? "" : "L"}${ptOf(tv, sv)}`).join(" ")} Z`;
+      const dxs = Math.sin(a2);
+      const dys = Math.cos(a2);
+      const txs = -dys;
+      const tys = dxs;
+      const pts: [number, number, number][] = Array.from({ length: 12 }, (_, i) => {
+        const th = (i / 12) * Math.PI * 2;
+        const v = Math.sin(th) * 2.1;
+        const l = Math.cos(th) * 0.78;
+        const rad = 3.35 - 0.95 * Math.sin(th) * Math.sin(th);
+        return [dxs * rad + txs * l, dys * rad + tys * l, 6.4 + v] as [number, number, number];
+      });
+      const d = polyPath3(pts);
       out.push(...tagKey([
         [d, 1, "#c9ced6"] as ShapeFace,
         sideFace(d, 0.14),
-      ], depthNow(mx, my)));
+      ], depthNow(dxs * 3.35, dys * 3.35)));
     }
     return zsorted(out);
   },
