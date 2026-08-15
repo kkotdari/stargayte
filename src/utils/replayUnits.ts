@@ -1049,6 +1049,53 @@ export function buildUnitTracks(
     prodStats.syn = synN;
   }
 
+  /* ── 스타트 일꾼 넷(요청: 경기 시작부터 4기 + 명령·태그 번호 매핑 유지) — 시작 일꾼은
+        생산된 적이 없어 원장에 없고, 처음 집히기 전까진 증거도 없어 화면에 늦게 나타났다.
+        ① 이른 시기(150초 안)에 등장한 일꾼(또는 정체 미상) '태그' 생애의 앞쪽 4기를
+           시작 홀 발치 출생(0초)으로 당긴다 — 그 태그가 나중에 받는 명령이 그대로 그
+           일꾼의 자취다(요청: 명령·태그 매핑).
+        ② 4기가 안 채워지면 나머지는 홀 발치의 합성 일꾼으로 세운다 — 채굴 왕복 표시가
+           유휴 일꾼으로 받아 간다. */
+  {
+    const HALL_KINDS = new Set(["Command Center", "Nexus", "Hatchery", "Lair", "Hive"]);
+    const hallOf = new Map<number, [number, number]>();
+    for (const b of built) {
+      if (b.born <= 5 && HALL_KINDS.has(b.kind) && !hallOf.has(b.owner)) {
+        hallOf.set(b.owner, [b.x + 2, b.y + 1.5]);
+      }
+    }
+    const byOwner = new Map<number, Life[]>();
+    for (const life of done) {
+      if (life.bld || life.spawned || life.born > 150) continue;
+      // majorityKindOf는 아래에서 선언돼 인라인으로 같은 다수결을 쓴다.
+      const mk = [...life.kinds.entries()].sort((k1, k2) => k2[1] - k1[1])[0]?.[0] ?? "";
+      if (!(mk === "SCV" || mk === "Probe" || mk === "Drone" || mk === "")) continue;
+      const arr = byOwner.get(life.owner) ?? [];
+      arr.push(life);
+      byOwner.set(life.owner, arr);
+    }
+    let synTag2 = -20000;
+    for (const [pid, hall] of hallOf) {
+      const arr = (byOwner.get(pid) ?? []).sort((x, y) => x.born - y.born).slice(0, 4);
+      for (let i = 0; i < arr.length; i += 1) {
+        const life = arr[i];
+        if (life.born > 0) {
+          life.born = 0;
+          life.ev.unshift([0, r1(hall[0] - 1.5 + i), r1(hall[1] + 2), 3]);
+        }
+      }
+      for (let i = arr.length; i < 4; i += 1) {
+        done.push({
+          tag: synTag2, owner: pid, kinds: new Map(), groupKinds: new Set(),
+          bld: false, born: 0, last: 0, lastAtk: null, evAfterAtk: false,
+          morphTo: null, cxl: null, solo: false, spawned: true,
+          ev: [[0, r1(hall[0] - 1.5 + i), r1(hall[1] + 2), 3]],
+        });
+        synTag2 -= 1;
+      }
+    }
+  }
+
   /* ── 뒤 스토리: 생산 출고(지적: 생산 모습이 없던 마린이 갑자기 나타나서 이동) —
         유닛 생애의 첫 증거는 첫 '명령'이라, 그 앞 이야기(생산 건물에서 나온 것)가
         비어 맵 한복판에서 솟아났다. 정체(모르면 종족 기본 생산소)의 생산 건물 중 첫
