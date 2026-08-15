@@ -781,14 +781,14 @@ function trackFaces(cx: number, yA: number, yB: number, h: number, w: number): S
 }
 
 /* 해처리 둔덕 한 벌 — 옆띠 색만 갈라 쓴다(하이브는 상아색, 요청). */
-function hatcheryMoundFaces(seamColor: string): ShapeFace[] {
+function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFace[] {
     const out: ShapeFace[] = [];
     // (이동) 여섯 다리 전부 아래 방향별 묶음에서 — 60도 균등 배치.
     /* 꼭대기 볏(실물) — 뒤로 벌어져 굽는 볏 뿔 한 쌍. 둔덕보다 먼저 그려 밑동이
        가려진다(지적: 뿔이 비쳐 보였다). */
-    // 위 볏 뿔은 검정(요청).
-    out.push(...paintBase(hornFaces(-1.1, -0.7, 5.7, -3.2, -1.6, 9.4, 1.3), "#1b1e23"));
-    out.push(...paintBase(hornFaces(1.1, -0.6, 5.7, 3.3, -1.4, 9.6, 1.4), "#1b1e23"));
+    // 위 볏 뿔 — 해처리·레어 검정, 하이브 진한 상아(spikeColor).
+    out.push(...paintBase(hornFaces(-1.1, -0.7, 5.7, -3.2, -1.6, 9.4, 1.3), spikeColor));
+    out.push(...paintBase(hornFaces(1.1, -0.6, 5.7, 3.3, -1.4, 9.6, 1.4), spikeColor));
     /* 본 기둥 — 뒤집힌 밥그릇(돔)이 아니라 후지산 둔덕(지적): 위는 좁게 잘리고 옆구리는
        가파르다가 바닥에서 완만하게 벌어진다. 회전 대칭이라 요잉 불변. */
     {
@@ -824,9 +824,10 @@ function hatcheryMoundFaces(seamColor: string): ShapeFace[] {
       const dep = depthNow(dxr * 4, dyr * 4);
       /* 다리(사진 지적: 이 검은 상자들 제거) — 입구발 슬래브를 전부 걷고, 옆선이
          꼭대기에서 바닥까지 이어져 입구굴을 대신 말한다. */
-      /* 옆띠는 바닥까지(재지적) + 실루엣 가장자리에서 뚝 사라지지 않게 문턱 완화 —
-         깊이 키가 앞뒤를 맡으니 게이트는 거의 옆까지 열어 둔다. */
-      if (facingRatio(dxr, dyr) > -0.45) {
+      /* 가림 문턱 완전 제거(재재지적) — 늘 그리고 앞뒤는 깊이 키가 정한다(뒤로 돈
+         것은 둔덕 뒤). 옆띠는 바닥까지, 발치에 진짜 반원형 캐노피 입구굴을 복원한다:
+         띠 색 반원 테 + 속 어두운 굴. */
+      {
         const pxr = -dyr * 0.85;
         const pyr = dxr * 0.85;
         const seam = polyPath3([
@@ -835,15 +836,20 @@ function hatcheryMoundFaces(seamColor: string): ShapeFace[] {
           [dxr * 5.7 - pxr, dyr * 5.7 - pyr, 0.05],
           [dxr * 5.7 + pxr, dyr * 5.7 + pyr, 0.05],
         ]);
-        out.push(...tagKey([[seam, 1, seamColor] as ShapeFace], dep + 0.3));
+        const [ex9, ey9] = project(dxr * 5.45, dyr * 5.45, 0.05);
+        out.push(...tagKey([
+          [seam, 1, seamColor] as ShapeFace,
+          [`M${ex9 - 1.05} ${ey9} A1.05 0.92 0 0 1 ${ex9 + 1.05} ${ey9} Z`, 1, seamColor] as ShapeFace,
+          [`M${ex9 - 0.78} ${ey9} A0.78 0.66 0 0 1 ${ex9 + 0.78} ${ey9} Z`, 0.9, "#101216"] as ShapeFace,
+        ], dep + 0.3));
       }
     }
     // 바닥 갈고리 덩굴(실물) — 다리 사이로 기다가 끝이 말려 올라간다.
-    // 옆 갈고리 가시도 검정(요청).
-    out.push(...paintBase(hornFaces(4.2, 4.2, 0.5, 6.6, 6, 0.9, 0.7), "#1b1e23"));
-    out.push(...paintBase(hornFaces(6.6, 6, 0.9, 7.4, 6.6, 2.4, 0.5), "#1b1e23"));
-    out.push(...paintBase(hornFaces(-5.6, 2, 0.5, -7.8, 2.8, 0.9, 0.7), "#1b1e23"));
-    out.push(...paintBase(hornFaces(-7.8, 2.8, 0.9, -8.6, 3, 2.2, 0.5), "#1b1e23"));
+    // 옆 갈고리 가시 — spikeColor(하이브는 진한 상아, 재지적).
+    out.push(...paintBase(hornFaces(4.2, 4.2, 0.5, 6.6, 6, 0.9, 0.7), spikeColor));
+    out.push(...paintBase(hornFaces(6.6, 6, 0.9, 7.4, 6.6, 2.4, 0.5), spikeColor));
+    out.push(...paintBase(hornFaces(-5.6, 2, 0.5, -7.8, 2.8, 0.9, 0.7), spikeColor));
+    out.push(...paintBase(hornFaces(-7.8, 2.8, 0.9, -8.6, 3, 2.2, 0.5), spikeColor));
     return out;
 }
 
@@ -1106,6 +1112,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           sideFace(discPath3(px, py, 0.42, 1.6), 0.25),
         ], depthNow(px, py)),
         ...hornFaces(px, py, 0.4, px, py, 8.8, 1.7),
+        // 기둥 끝 작은 삼각뿔 — 옥색~시안(요청).
+        ...paintBase(hornFaces(px, py, 8.5, px, py, 10.1, 0.85), "#3bd8c2"),
         topFace(groundEllipse(kx, ky, 0.45, 0.65), 0.5),
       ];
     };
@@ -1126,11 +1134,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         [w1, half(bz + 0.6), bz + 0.6], [-w1, half(bz + 0.6), bz + 0.6],
       ]), 0.2));
     }
-    // 꼭대기 받침 + 파란 수정.
-    out.push(...boxFaces3(0, 0, 2.9, 2.9, 0.8, 6.4));
-    const [gx, gy] = project(0, 0, 7.2);
-    out.push(bodyFace(`M${gx} ${gy - 2.7} L${gx + 1.25} ${gy - 0.9} L${gx} ${gy + 0.55} L${gx - 1.25} ${gy - 0.9} Z`));
-    out.push(topFace(`M${gx} ${gy - 2.7} L${gx - 1.25} ${gy - 0.9} L${gx} ${gy + 0.55} L${gx - 0.4} ${gy - 0.95} Z`, 0.45));
+    // 꼭대기 받침 + 수정 — 지붕 키로 가림 해결(지적) + 옥색~시안 고정색(지적).
+    out.push(...tagKey([
+      ...boxFaces3(0, 0, 2.9, 2.9, 0.8, 6.4),
+      [`M${project(0, 0, 7.2)[0]} ${project(0, 0, 7.2)[1] - 2.7} L${project(0, 0, 7.2)[0] + 1.25} ${project(0, 0, 7.2)[1] - 0.9} L${project(0, 0, 7.2)[0]} ${project(0, 0, 7.2)[1] + 0.55} L${project(0, 0, 7.2)[0] - 1.25} ${project(0, 0, 7.2)[1] - 0.9} Z`, 1, "#3bd8c2"] as ShapeFace,
+      topFace(`M${project(0, 0, 7.2)[0]} ${project(0, 0, 7.2)[1] - 2.7} L${project(0, 0, 7.2)[0] - 1.25} ${project(0, 0, 7.2)[1] - 0.9} L${project(0, 0, 7.2)[0]} ${project(0, 0, 7.2)[1] + 0.55} L${project(0, 0, 7.2)[0] - 0.4} ${project(0, 0, 7.2)[1] - 0.95} Z`, 0.45),
+    ], 45));
     /* 사방 삼각형 출구 발판(정정: 바깥쪽이 뾰족한 삼각형) — 넓은 변이 피라미드
        밑동에 기대고, 꼭짓점이 바깥 바닥을 향해 뾰족하게 뻗는다. 전엔 반대(안쪽
        꼭짓점·바깥 넓은 변)였다. */
@@ -1762,9 +1771,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 각진 본체(재지적: 본체가 안 돎) — 원기둥·돔은 회전 대칭이라 돌아도 티가
          안 났다. 실물처럼 각진 슬래브 + 윗상자로 바꿔 요잉이 보인다. 적층끼리 순서가
          요잉에 꼬여(재재지적) 단마다 띠 키(20/22/24) + 제 깊이로 계단을 놓는다. */
-      ...tagKey(boxFaces3(0, 0, 7.7, 5.5, 2.5, 3.6), 20 + depthNow(0, 0)),
-      ...tagKey(boxFaces3(0, -0.6, 4.6, 3.5, 2.3, 6.1), 22 + depthNow(0, -0.6)),
-      ...tagKey(domeFaces3(0, -0.6, 1.8, 1.45, 8.4), 24 + depthNow(0, -0.6)),
+      // 2~3층 두께 축소(지적) — 2.5/2.3 → 1.9/1.7, 위 요소들이 따라 내려온다.
+      ...tagKey(boxFaces3(0, 0, 7.7, 5.5, 1.9, 3.6), 20 + depthNow(0, 0)),
+      ...tagKey(boxFaces3(0, -0.6, 4.6, 3.5, 1.7, 5.5), 22 + depthNow(0, -0.6)),
+      ...tagKey(domeFaces3(0, -0.6, 1.8, 1.45, 7.2), 24 + depthNow(0, -0.6)),
       ...tagKey(cylinderFaces3(2.5, 1.9, 1.2, 2.4, 3.6), 20 + depthNow(2.5, 1.9)),
       glow(-3.5, 3.1, 2.6), glow(-1.9, 4, 2.6), glow(4, 2.3, 3),
       ...foot(-2, 5.6), ...foot(4.3, 4.6),
@@ -2447,7 +2457,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ];
     let hi = 0;
     for (const [bx, by, bz, tx, ty, tz, w] of horns) {
-      if (hi === 1) out.push(...hatcheryMoundFaces(IVORY_DEEP)); // 옆띠 진한 상아색(재지적)
+      if (hi === 1) out.push(...hatcheryMoundFaces(IVORY_DEEP, IVORY_DEEP)); // 옆띠·위·옆 가시 진한 상아(재지적)
       hi += 1;
       // 뿔은 황토색, 가시는 상아색(요청).
       out.push(...paintBase(hornFaces(bx, by, bz, tx, ty, tz, w), "#b3854a"));
@@ -8594,7 +8604,8 @@ export default function ReplayMotionPlayer({
             const last = unitOps[unitOps.length - 1];
             const [gfx, gfy] = posFrac(ax3 - gdx * 0.4 * fireK, ay3 - gdy * 0.4 * fireK);
             unitOps.push({
-              ...last, kind: gunKind, fx: gfx, fy: gfy, z: last.z + 1,
+              // 포신 가려짐 해결(지적) — 곁 유닛의 z가 포탑을 얇게 자르지 않게 여유 있게.
+              ...last, kind: gunKind, fx: gfx, fy: gfy, z: last.z + 30,
               selRing: undefined, hpFrac: undefined, hpMax: undefined,
               tint: undefined, groundShadow: undefined,
             });
