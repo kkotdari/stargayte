@@ -5165,6 +5165,47 @@ export default function ReplayMotionPlayer({
   const entOn = entMode && entData !== null;
   const buildsSrc = entOn ? buildsV2 : motion.builds;
   const castsSrc = entOn ? castsV2 : motion.casts;
+  /* 건물 겹침 해소(요청: 캔버스에서 건물끼리 겹침 불가) — 같은 시기에 함께 서 있는 두
+     발자국이 포개지면, 늦게 선 쪽을 얕게 겹친 축으로 밀어낸다. 좌표는 커맨드 그대로가
+     원칙이라 밀림은 화면에만 적용한다(근접 판정·경로 차단은 원좌표).
+     · 부속건물은 본체에 붙는 것이 맞음이라 뺀다.
+     · 같은 임자의 같은 자리(1.5타일 안) 짝은 변태·재건 계보라 겹침으로 안 본다 —
+       옛 것은 렌더의 계보 규칙이 걷는다. */
+  const bldNudge = useMemo(() => {
+    const m = new Map<number, [number, number]>();
+    const placed: {
+      x: number; y: number; w: number; h: number; a: number; b: number;
+      raw: string; ox: number; oy: number;
+    }[] = [];
+    const order = buildsSrc.map((_, i) => i).sort((a, b) => buildsSrc[a][0] - buildsSrc[b][0]);
+    for (const i of order) {
+      const [bs, x, y, u, raw, bg] = buildsSrc[i];
+      if (ADDONS.has(u)) continue;
+      const [fw, fh] = FOOTPRINT[u] ?? [3, 2];
+      let nx = x;
+      let ny = y;
+      const a = bs;
+      const b = (bg ?? 0) > 0 ? (bg as number) : Infinity;
+      for (let iter = 0; iter < 6; iter += 1) {
+        const hit = placed.find((q) => !(b <= q.a || a >= q.b)
+          && !(q.raw === raw && Math.hypot(q.ox - x, q.oy - y) <= 1.5)
+          && nx < q.x + q.w && q.x < nx + fw && ny < q.y + q.h && q.y < ny + fh);
+        if (!hit) break;
+        const pushR = hit.x + hit.w - nx;
+        const pushL = nx + fw - hit.x;
+        const pushD = hit.y + hit.h - ny;
+        const pushU = ny + fh - hit.y;
+        const min = Math.min(pushR, pushL, pushD, pushU);
+        if (min === pushR) nx = hit.x + hit.w;
+        else if (min === pushL) nx = hit.x - fw;
+        else if (min === pushD) ny = hit.y + hit.h;
+        else ny = hit.y - fh;
+      }
+      placed.push({ x: nx, y: ny, w: fw, h: fh, a, b, raw, ox: x, oy: y });
+      if (nx !== x || ny !== y) m.set(i, [nx - x, ny - y]);
+    }
+    return m;
+  }, [buildsSrc]);
   /* v2 교전 멈춤(지적: 어택땅 중 만나면 멈추고 싸워야 하는데 그냥 감) — 싸움이 시작된
      자리를 기억해, 적이 곁에 있는 동안 거기 세운다. 적이 사라지면(죽거나 멀어지면)
      기억을 걷고 다시 걷는다. 시간을 되감으면(t가 기억보다 앞) 기억을 버린다. */
@@ -5385,6 +5426,54 @@ export default function ReplayMotionPlayer({
      길도 같으므로 좌표 그대로를 열쇠로 재사용한다(양자화 없음 — 기존 결과와 비트 단위로
      같다). 지형이 바뀌면 통째로 비운다. */
   const pathCacheRef = useRef<{ key: string; map: Map<string, [number, number][]> }>({ key: "", map: new Map() });
+  /* 건물은 벽이다(요청: 유닛이 건물을 우회해 걷기) — 그 시각에 서 있는 건물 발자국
+     칸을 막은 지형판으로 길을 찾는다. 건물이 서고 사라질 때마다 판이 갈리므로 사건
+     시각(착공·소멸)으로 판 번호를 매기고, 판마다 한 번만 굽는다(9KB 복사 × 판 수).
+     부속건물은 본체에 붙은 작은 덩어리라 안 막는다. 채굴 왕복(결정적 미끄럼)은 이
+     길찾기를 안 타므로 자원~기지 사이 일꾼 겹침은 원작대로 남는다(요청). */
+  const bldGrid = useMemo(() => {
+    if (!terrain) return null;
+    const evs = new Set<number>();
+    for (const [bs, , , bu, , bg] of buildsSrc) {
+      if (ADDONS.has(bu)) continue;
+      evs.add(bs);
+      if ((bg ?? 0) > 0) evs.add(bg as number);
+    }
+    const times = [...evs].sort((a, b) => a - b);
+    const cache = new Map<number, TerrainGrid>();
+    const verOf = (sec: number): number => {
+      let lo = 0;
+      let hi = times.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (times[mid] <= sec) lo = mid + 1; else hi = mid;
+      }
+      return lo;
+    };
+    const gridAt = (sec: number): TerrainGrid => {
+      const ver = verOf(sec);
+      let g = cache.get(ver);
+      if (!g) {
+        const walk = new Uint8Array(terrain.walk);
+        for (const [bs, bxT, byT, bu, , bg] of buildsSrc) {
+          if (ADDONS.has(bu)) continue;
+          if (bs > sec || ((bg ?? 0) > 0 && sec >= (bg ?? 0))) continue;
+          const [fw, fh] = FOOTPRINT[bu] ?? [3, 2];
+          const x0 = Math.max(0, Math.floor((bxT / grid.width) * terrain.w));
+          const x1 = Math.min(terrain.w - 1, Math.ceil(((bxT + fw) / grid.width) * terrain.w) - 1);
+          const y0 = Math.max(0, Math.floor((byT / grid.height) * terrain.h));
+          const y1 = Math.min(terrain.h - 1, Math.ceil(((byT + fh) / grid.height) * terrain.h) - 1);
+          for (let yy = y0; yy <= y1; yy += 1) {
+            for (let xx = x0; xx <= x1; xx += 1) walk[yy * terrain.w + xx] = 0;
+          }
+        }
+        g = { ...terrain, walk };
+        cache.set(ver, g);
+      }
+      return g;
+    };
+    return { gridAt, verOf };
+  }, [terrain, buildsSrc, grid.width, grid.height]);
   const walkTrack = (
     src: TrackPt[], p: MotionTrack, straight: boolean, forcedUnit?: string,
     speedOverride?: number, forceGround?: boolean,
@@ -5413,14 +5502,24 @@ export default function ReplayMotionPlayer({
            통과해 직진). 격자가 조각났거나 출발·도착이 못 걷는 칸 깊숙이 떨어져 스냅이
            실패하면 BFS는 null인데, 그때마다 직선을 그으면 벽 관통이 화면을 덮는다. */
         const cache = pathCacheRef.current;
-        const tkey = `${terrain.w}:${terrain.h}:${terrainRaw ? terrainRaw.w : 0}`;
+        const tkey = `${terrain.w}:${terrain.h}:${terrainRaw ? terrainRaw.w : 0}:${buildsSrc.length}`;
         if (cache.key !== tkey) { cache.key = tkey; cache.map.clear(); }
-        const ck = `${atX},${atY},${tx},${ty}`;
+        /* 건물판 번호가 열쇠에 든다(요청: 건물 우회) — 같은 두 지점이라도 그 사이에
+           건물이 서면 딴 길이다. */
+        const bver = bldGrid ? bldGrid.verOf(orderSec) : 0;
+        const ck = `${bver}:${atX},${atY},${tx},${ty}`;
         const hit = cache.map.get(ck);
         if (hit) {
           path = hit;
         } else {
-          const found = groundPath(
+          /* 건물을 막은 판이 먼저다(요청: 건물 우회) — 건물 탓에 길이 끊기면(심시티
+             벽 등) 건물 없는 판으로 물러난다: 뚫고 가는 것은 막힌 채 서 있는 것보다
+             작은 거짓말이다. */
+          const found = (bldGrid ? groundPath(
+            bldGrid.gridAt(orderSec),
+            atX / grid.width, atY / grid.height,
+            tx / grid.width, ty / grid.height,
+          ) : null) ?? groundPath(
             terrain,
             atX / grid.width, atY / grid.height,
             tx / grid.width, ty / grid.height,
@@ -5575,13 +5674,13 @@ export default function ReplayMotionPlayer({
       .flatMap(([unit, pts]) => splitSquads(pts, homeOf(p.raw), TYPE_MERGE_TILES, warpsOf(p))
         .map((sq) => ({ unit, raw: sq, walk: walkTrack(sq, p, false, unit) })))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [motion, terrain, terrainRaw, grid.width, grid.height, bases],
+    [motion, terrain, terrainRaw, bldGrid, grid.width, grid.height, bases],
   );
   const refinedSquads = useMemo(
     () => motion.players.map((p, pi) => squadPts[pi].map((sq) =>
       walkTrack(sq, p, false, undefined, undefined, true))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [squadPts, terrain, terrainRaw, grid.width, grid.height, motion],
+    [squadPts, terrain, terrainRaw, bldGrid, grid.width, grid.height, motion],
   );
   /* 개체 걷기(v2·요청: 유닛 위치를 저마다 기억하고 브루드워 엔진처럼 분석) — 태그 하나가
      곧 마커 하나다. 저장된 증거 점(이동 명령의 목적지·남이 찍은 자리·건설 자리·정지)을
@@ -5598,6 +5697,9 @@ export default function ReplayMotionPlayer({
       raw: string; unit: string; b: number; d: number | null; tag: number;
       /** 건설에 흡수되는 시각(지적: 건설 일꾼 잔상) — 현장 도착부터 숨는다. */
       buildHideAt: number | null;
+      /** 공사 중 숨김 구간들(재재지적: 도는 SCV와 원래 SCV 이중 표시) — 앵커마다
+       *  [앵커 시각, 다음 위치 증거). 그동안은 합성 건설 일꾼이 그 SCV다. */
+      buildHides: [number, number][];
       /** 공격 명령 목록 [초, 표적 태그] — 어택을 찍은 대상을 겨누는 재료(지적). */
       atkAt: [number, number][];
       /** 시즈 켬·해제 [초, 켬1/해제0] — 커맨드 그대로(지적). */
@@ -5688,15 +5790,29 @@ export default function ReplayMotionPlayer({
          도착(걷기 마지막 점)부터 공사에 흡수시켜 숨긴다 — 그 뒤 제 증거가 생기는
          일꾼은 애초에 이 조건에 안 걸려 그대로 걸어 나온다. */
       let buildHideAt: number | null = null;
+      /* 공사 중 숨김 구간들(재재지적: 건설 중에 도는 SCV와 원래 SCV가 둘 다 나옴) —
+         마지막 증거가 앵커일 때만 숨기던 규칙은, 공사가 '끝난 뒤' 딴 명령을 받는 일꾼을
+         공사 '중'에는 안 숨겼다. 앵커(f=2)마다 [앵커 시각, 다음 위치 증거)를 숨김
+         구간으로 잡는다 — 그동안은 합성 건설 일꾼이 그 SCV다. */
+      const buildHides: [number, number][] = [];
       if (isWk) {
         let lastPosF = -1;
         for (let i = e.ev.length - 1; i >= 0; i -= 1) {
           if (e.ev[i][1] >= 0) { lastPosF = e.ev[i][3]; break; }
         }
         if (lastPosF === 2 && wk.length > 0) buildHideAt = wk[wk.length - 1][0];
+        for (let i = 0; i < e.ev.length; i += 1) {
+          const v2 = e.ev[i];
+          if (v2[3] !== 2) continue;
+          let end = Infinity;
+          for (let j = i + 1; j < e.ev.length; j += 1) {
+            if (e.ev[j][1] >= 0 && e.ev[j][0] > v2[0] + 1) { end = e.ev[j][0]; break; }
+          }
+          buildHides.push([v2[0], end]);
+        }
       }
       out.push({
-        raw, unit: e.k, b: e.b, d: e.d, tag: e.t, buildHideAt,
+        raw, unit: e.k, b: e.b, d: e.d, tag: e.t, buildHideAt, buildHides,
         atkAt: e.ev.filter((v) => v[3] === 7).map((v) => [v[0], v[4] ?? 0] as [number, number]),
         sieges: e.ev.filter((v) => v[3] === 8 || v[3] === 9)
           .map((v) => [v[0], v[3] === 8 ? 1 : 0] as [number, number]),
@@ -5724,7 +5840,7 @@ export default function ReplayMotionPlayer({
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entData, terrain, terrainRaw, grid.width, grid.height, motion]);
+  }, [entData, terrain, terrainRaw, bldGrid, grid.width, grid.height, motion]);
   /* 유령 부대 흡수(지적: 1시에 쳐들어간 테란 병력이 아무것도 안 하고 계속 서 있음 —
      같은 부대를 다시 드래그하면 선택 묶음(g)이 갈려 새 부대가 되고, 옛 마커가 마지막
      명령 자리에 영영 남았다. 실측: 한 공격 방면에 묶음 여덟이 줄줄이). 부대 A의 마지막
@@ -5893,7 +6009,7 @@ export default function ReplayMotionPlayer({
         ),
       }))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [motion, terrain, terrainRaw, grid.width, grid.height, bases]);
+  }), [motion, terrain, terrainRaw, bldGrid, grid.width, grid.height, bases]);
   // 기본은 ×3이다(요청: ×8 → ×4였다가 눈금이 1·2·3·5·10·20으로 바뀌며 가장 가까운 값).
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(2);
   /* 탐색바(지적: 다이얼 드래그가 안 되고, 부드럽지 않고 반응이 느림) — 제어 입력은 매
@@ -6807,6 +6923,9 @@ export default function ReplayMotionPlayer({
                속도로 잇는다. */
             let bx = x;
             let by = y;
+            /* 겹침 해소(요청: 건물끼리 캔버스 겹침 불가) — 화면 자리만 민다(위 bldNudge). */
+            const nud = bldNudge.get(i);
+            if (nud) { bx += nud[0]; by += nud[1]; }
             /* 짝의 걷힌 시각이 실제로 있어야(> 0) 한다(지적: 첫 기지가 위에서 내려온다) —
                시작 홀은 시작 시각이 0이라, 조건이 "gone === 0"이 되면 살아 있는 같은 종류
                건물 아무거나와 짝이 돼 거기서 날아왔다. */
@@ -7546,6 +7665,8 @@ export default function ReplayMotionPlayer({
              도착한 순간부터 숨는다. 공사 중 모습은 합성 건설 일꾼 연출의 몫이고,
              죽음이 아니라 소멸 효과도 없다. */
           if (e.buildHideAt !== null && t >= e.buildHideAt) return null;
+          // 공사 중 구간(재재지적: 이중 표시) — 앵커~다음 증거 사이는 공사에 흡수돼 있다.
+          if (e.buildHides.some(([ba2, bb2]) => t >= ba2 && t < bb2)) return null;
           /* 빙결(전수조사: 스태시스·마엘스톰·락다운) — 걸린 자리에 얼어붙는다. */
           const frzSt = e.statuses.find(([sa2, sb2, sk2]) =>
             FREEZE_STATUS.has(sk2) && t >= sa2 && t < sb2);
