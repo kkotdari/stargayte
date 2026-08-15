@@ -4195,16 +4195,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        보라 타원 기관으로 바꾼다. 속에 밝은 보라 속살을 한 겹 얹는다. */
     const lens = (sxSign: number): ShapeFace[] => {
       const th = Math.PI * (82 / 180);
-      /* 완전 동그란 볼록 렌즈(재재지적: 오목 아님 — 밖으로 튀어나오게) — 중심만
-         투영한 진짜 원(가로세로 같음)을 몸 실루엣 살짝 밖(반경 2.9)에 붙이고, 위에
-         밝은 점광을 얹어 바깥으로 부푼 방향이 읽히게 한다. */
-      const lx = Math.sin(th) * 2.9 * sxSign;
-      const ly = Math.cos(th) * 2.9;
-      const [px, py] = project(lx, ly, 5.65);
+      /* 콘택트렌즈꼴(재재재지적: 구가 아니라 렌즈!) — 몸 옆면에 얹힌 얇은 초승달
+         껍질: 안쪽 변은 몸 실루엣을 따라 붙고, 바깥 변만 볼록하게 밖으로 부푼다. */
+      const at = (rad: number, z: number): [number, number] =>
+        project(Math.sin(th) * rad * sxSign, Math.cos(th) * rad, z);
+      const [tx, ty] = at(2.75, 6.75);
+      const [bx, by] = at(2.75, 4.6);
+      const [ox, oy] = at(4.15, 5.68);
+      const [ix, iy] = at(3.05, 5.68);
+      const [t2x, t2y] = at(2.95, 6.4);
+      const [b2x, b2y] = at(2.95, 5);
+      const [o2x, o2y] = at(3.85, 5.68);
       return tagKey([
-        [groundEllipse(px, py, 1.2, 1.2), 0.95, "#7d55b4"] as ShapeFace,
-        [groundEllipse(px - 0.35 * sxSign, py - 0.35, 0.5, 0.5), 0.7, "#a97fe0"] as ShapeFace,
-      ], depthNow(lx, ly));
+        [`M${tx} ${ty} Q${ox} ${oy} ${bx} ${by} Q${ix} ${iy} ${tx} ${ty} Z`, 0.95, "#7d55b4"] as ShapeFace,
+        [`M${t2x} ${t2y} Q${o2x} ${o2y} ${b2x} ${b2y} Q${ix} ${iy} ${t2x} ${t2y} Z`, 0.6, "#a97fe0"] as ShapeFace,
+      ], depthNow(Math.sin(th) * 2.9 * sxSign, Math.cos(th) * 2.9));
     };
     /* 얼굴(재지적: 얼굴은 앞쪽 아래쪽에 작은 반구형으로) — 몸 앞아래 표면에 붙는
        작은 돔 하나. */
