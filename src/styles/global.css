@@ -5970,10 +5970,14 @@ html.scr-light-theme .scr-mobile-tabbar {
 .scr-mobile-tabbar-hidden {
   visibility: hidden; pointer-events: none; transition: none;
 }
-/* 모바일 게임 상세(요청: 탭바 숨기기) — 상세 페이지가 body에 표식을 다는 동안 탭바를
-   걷어 재생 화면이 세로를 다 쓴다. 키보드 숨김과 같은 완전 숨김 꼴. */
+/* 모바일 게임 상세(요청: 탭바 숨기기 + 페이드) — 상세 페이지가 body에 표식을 다는
+   동안 탭바가 페이드아웃하며 아래로 미끄러져 빠진다. visibility는 페이드가 끝난 뒤에
+   꺼지고(0.28s 지연), 표식이 걷히면 base의 트랜지션(위 .scr-mobile-tabbar)이 그대로
+   페이드인을 맡는다 — visibility 복귀는 base 목록에 없어 즉시라 걸림이 없다. */
 body.scr-gamepage-open .scr-mobile-tabbar {
-  visibility: hidden; pointer-events: none; transition: none;
+  opacity: 0; transform: translateY(16px) scale(0.94);
+  visibility: hidden; pointer-events: none;
+  transition: opacity 0.22s ease-in-out, transform 0.28s ease-in-out, visibility 0s linear 0.28s;
 }
 /* 아래로 스크롤 중에는 완전히 숨기는 대신 80%로 축소한다(요청: 60%→80%) — 바닥 중앙을
    기준으로 줄어들어 자리(하단)는 유지하고, 계속 누를 수 있게 pointer-events는 살려둔다.
