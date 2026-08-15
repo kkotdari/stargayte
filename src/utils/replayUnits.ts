@@ -380,6 +380,9 @@ export function buildUnitTracks(
     l.kinds.has("Dropship") || l.kinds.has("Shuttle") || l.kinds.has("Overlord")
     || l.groupKinds.has("Transport");
   const ventralAt = new Map<number, number>();
+  /** 떠 있는 건물 태그(요청: summary motion 완전 제거의 마지막 재료) — 이륙~착륙
+   *  사이의 이동 클릭을 비행 자취(f=0)로 싣는다. */
+  const liftedTags = new Set<number>();
   /** 캐리어 태그 → 인터셉터 개수 변곡점 [초, 개수](요청: 실시간 적용). */
   const icptOf = new Map<number, [number, number][]>();
   /** 표적 주문(재질문: 모든 기술 전수조사) — [표적 태그, 초, 기술]. 이라디에잇·
@@ -738,8 +741,10 @@ export function buildUnitTracks(
           // 건설과 같은 타일 좌표다(posTileOf 주석).
           const lpos = posTileOf(c);
           if (lpos) pushEv(life, sec, lpos.x, lpos.y, 5);
+          liftedTags.delete(tag);
         } else if (cmdName === "Lift Off") {
           pushEv(life, sec, -1, -1, 6);
+          liftedTags.add(tag);
         } else if (cmdName === "Stim") {
           // 스팀(전수조사) — 제 피 10을 태워 잠깐 빨라진다: 증거 f=16.
           life.ev.push([Math.round(sec), -1, -1, 16]);
@@ -817,6 +822,11 @@ export function buildUnitTracks(
          일꾼의 도착 전 재건설(아래 Build 분기). 이동 무르기의 진짜 판정은 나중 증거
          (그 건물의 생산·피격 기록)로 뒤집는 후방 보정 쪽이 맞는 길이다. */
       if (pos) pendingBuild.delete(tag);
+      if (pos && life.bld && liftedTags.has(tag)) {
+        // 비행 클릭(요청) — 뜬 건물이 나는 길. 착륙 전까지의 이동 자취다.
+        pushEv(life, sec, pos.x, pos.y, 0);
+        continue;
+      }
       if (pos && !life.bld) {
         if (isFixOrder) {
           life.last = sec;
