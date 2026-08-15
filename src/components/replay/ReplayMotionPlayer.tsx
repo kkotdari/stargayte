@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Pause, Play, RotateCcw, Shield, X } from "lucide-react";
 import Avatar from "../common/Avatar";
+import PillTabs from "../common/PillTabs";
 import { cx } from "../../utils/format";
 import { UNIT_KO, TECH_KO } from "../../utils/replayNames";
 import type { ReplayMapGrid } from "../../utils/replayParser";
@@ -8290,53 +8291,34 @@ export default function ReplayMotionPlayer({
           개인색)·모델크기(×1/×2)를 짝 버튼으로, 종류 사이엔 갭. 지형 편집은 걷었다.
           자리는 조종부 위(재지적: 탐색바와 겹침) — 스크러버보다 먼저 선다. */}
       <div className="scr-motion-bar scr-motion-viewrow">
-        <span className="scr-motion-btngroup" role="group" aria-label="보기">
-          <button
-            type="button"
-            className={cx("scr-motion-btn", "scr-motion-rbtn", !pitched && "scr-motion-speed-on")}
-            onClick={() => setPitched(false)}
-          >
-            2D
-          </button>
-          <button
-            type="button"
-            className={cx("scr-motion-btn", "scr-motion-rbtn", pitched && "scr-motion-speed-on")}
-            onClick={() => setPitched(true)}
-          >
-            3D
-          </button>
+        {/* 라디오식 짝 버튼 → 라이팅 알약 라디오(요청: 게임 상세의 라디오 버튼 전부 —
+            작게, 위에 라벨, PC·모바일 공통). 필터창과 같은 PillTabs를 쓴다. */}
+        <span className="scr-motion-radio">
+          <span className="scr-motion-radio-label">보기</span>
+          <PillTabs
+            options={[{ value: "2d", label: "2D" }, { value: "3d", label: "3D" }]}
+            value={pitched ? "3d" : "2d"}
+            onChange={(v) => setPitched(v === "3d")}
+            aria-label="보기"
+          />
         </span>
-        <span className="scr-motion-btngroup" role="group" aria-label="컬러">
-          <button
-            type="button"
-            className={cx("scr-motion-btn", "scr-motion-rbtn", colorMode === "team" && "scr-motion-speed-on")}
-            onClick={() => setColorMode("team")}
-          >
-            팀색
-          </button>
-          <button
-            type="button"
-            className={cx("scr-motion-btn", "scr-motion-rbtn", colorMode === "personal" && "scr-motion-speed-on")}
-            onClick={() => setColorMode("personal")}
-          >
-            개인색
-          </button>
+        <span className="scr-motion-radio">
+          <span className="scr-motion-radio-label">컬러</span>
+          <PillTabs
+            options={[{ value: "team", label: "팀색" }, { value: "personal", label: "개인색" }]}
+            value={colorMode}
+            onChange={(v) => setColorMode(v)}
+            aria-label="컬러"
+          />
         </span>
-        <span className="scr-motion-btngroup" role="group" aria-label="모델 크기">
-          <button
-            type="button"
-            className={cx("scr-motion-btn", "scr-motion-rbtn", !unitX2 && "scr-motion-speed-on")}
-            onClick={() => setUnitX2(false)}
-          >
-            작게
-          </button>
-          <button
-            type="button"
-            className={cx("scr-motion-btn", "scr-motion-rbtn", unitX2 && "scr-motion-speed-on")}
-            onClick={() => setUnitX2(true)}
-          >
-            크게
-          </button>
+        <span className="scr-motion-radio">
+          <span className="scr-motion-radio-label">모델 크기</span>
+          <PillTabs
+            options={[{ value: "s", label: "작게" }, { value: "l", label: "크게" }]}
+            value={unitX2 ? "l" : "s"}
+            onChange={(v) => setUnitX2(v === "l")}
+            aria-label="모델 크기"
+          />
         </span>
         {/* (v1 제거·요청: 두 개가 섞여 헷갈린다) — v1/v2 토글이 있던 자리. 개체 트랙이
             없는 옛 경기만 재분석 안내를 띄운다. */}
@@ -8437,16 +8419,15 @@ export default function ReplayMotionPlayer({
       <div className="scr-motion-bar scr-motion-bar-controls">
         {/* 차례가 곧 그리드 칸이다(지적: 재생이 줄 가운데, 배속은 왼쪽에 필터처럼) —
             [배속 | 재생 | 시간]. 재생 버튼을 먼저 적으면 왼쪽 칸에 앉아 버린다. */}
-        <span className="scr-motion-speeds" role="group" aria-label="배속">
-          {SPEEDS.map((v) => (
-            <button
-              key={v} type="button"
-              className={cx("scr-motion-btn", "scr-motion-rbtn", speed === v && "scr-motion-speed-on")}
-              onClick={() => setSpeed(v)}
-            >
-              ×{v}
-            </button>
-          ))}
+        {/* 배속도 같은 라이팅 알약 라디오(요청) — 위에 라벨, 작게. */}
+        <span className="scr-motion-radio scr-motion-speeds">
+          <span className="scr-motion-radio-label">배속</span>
+          <PillTabs
+            options={SPEEDS.map((v) => ({ value: String(v), label: `×${v}` }))}
+            value={String(speed)}
+            onChange={(v) => setSpeed(SPEEDS.find((s) => String(s) === v) ?? SPEEDS[0])}
+            aria-label="배속"
+          />
         </span>
         {/* 옛 스냅 타임라인의 재생 버튼과 같은 꼴(요청) — 46px 완전 원, 속 채운 삼각형. */}
         <button

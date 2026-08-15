@@ -11137,7 +11137,21 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-cap-time { color: var(--dim); font-variant-numeric: tabular-nums; margin-right: 4px; }
 .scr-motion-bar { display: flex; align-items: center; gap: 6px; }
 /* 보기 설정 줄(정리·요청) — 보기·컬러·모델크기 짝 버튼 3그룹, 종류 사이 갭. */
-.scr-motion-viewrow { flex-wrap: wrap; justify-content: flex-end; margin-bottom: 2px; gap: 12px; }
+.scr-motion-viewrow { flex-wrap: wrap; justify-content: flex-end; margin-bottom: 2px; gap: 12px; align-items: flex-end; }
+/* 게임 상세 라디오(요청: 라디오식 버튼을 라이팅 알약 라디오로 — 작게, 위에 라벨,
+   PC·모바일 공통). 어두운 카드 위라 컴팩트 알약탭 컨텍스트처럼 테마 글자를 쓴다. */
+.scr-motion-radio { display: inline-flex; flex-direction: column; align-items: stretch; gap: 3px; }
+.scr-motion-radio-label {
+  font-size: var(--fs-micro); font-weight: 700; color: var(--muted);
+  line-height: 1; padding-left: 4px;
+}
+.scr-motion-radio .scr-pill-tabs { height: 24px; background: rgba(255, 255, 255, 0.08); }
+.scr-light-theme .scr-motion-radio .scr-pill-tabs { background: rgba(0, 0, 0, 0.06); }
+.scr-motion-radio .scr-pill-tab-btn { font-size: var(--fs-caption); padding: 0 8px; }
+.scr-motion-radio .scr-pill-tab-btn:not(.scr-pill-tab-btn-active) { color: var(--muted); }
+@media (hover: hover) {
+  .scr-motion-radio .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }
+}
 /* 원형 버튼 통일(요청: 11개 전부 같은 크기 정원). */
 /* .scr-motion-btn(아래 정의)과 같이 실리므로 두 클래스 선택자로 이겨야 한다(지적:
    버튼이 아직 알약꼴) — 뒤에 오는 .scr-motion-btn의 height 22px·radius가 원을 덮었다. */
@@ -11174,7 +11188,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   border: 1px solid var(--line-hair); background: transparent; color: var(--muted);
   font-size: var(--fs-9); font-weight: 700; cursor: pointer;
 }
-.scr-motion-speeds { display: inline-flex; gap: 2px; align-items: center; }
+/* 배속도 라디오 알약(요청) — 배치는 .scr-motion-radio(세로: 라벨 위, 알약 아래)를 따른다. */
 /* 아랫줄은 한 줄(요청: 배속·재생·시간 한 줄) — [배속 | 재생 | 시간] 그리드 그대로,
    배속 다섯이 원형으로 줄어 한 줄에 넉넉히 선다. */
 /* 유저 컬러 테두리 칩(요청) — 색을 아는 사람의 라벨은 그 색 테두리를 두른다. */
