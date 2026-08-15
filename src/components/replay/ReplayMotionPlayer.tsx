@@ -3398,9 +3398,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       }),
     );
     // 몸통 축소(지적: 몸체 크기 축소) — 팔각 반지름 2 → 1.6, 겹층도 함께.
-    out.push(bodyFace(oct(2.1, 6.2)));
-    out.push(topFace(oct(1.42, 6.55), 0.26));
-    out.push(topFace(oct(0.84, 6.9), 0.3));
+    // 원판 몸통만 축소(정정: '몸통'은 가운데 원판 파트 — 날개는 그대로).
+    out.push(bodyFace(oct(1.55, 6.2)));
+    out.push(topFace(oct(1.05, 6.5), 0.26));
+    out.push(topFace(oct(0.62, 6.8), 0.3));
     /* 눈 두 개(재지적: 몸통에 수직으로 붙여 정면을 보게 + 더 작게) — 바닥에 눕던
        타원을 정면 벽 데칼(wallDiscPath)로 세운다. 벽과 함께 돌고 눌리며, 뒤로 돌면
        서서히 사라진다(어시밀레이터 알과 같은 규칙). */
@@ -3408,15 +3409,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     if (fEye > -0.05) {
       const k = Math.min(1, (fEye + 0.05) / 0.4);
       // 눈은 형광 연두(지적).
-      out.push([wallDiscPath(-0.7, 1.95, 6.35, 0.36, 0.23), 0.92 * k, "#a6ff3e"] as ShapeFace);
-      out.push([wallDiscPath(0.7, 1.95, 6.35, 0.36, 0.23), 0.92 * k, "#a6ff3e"] as ShapeFace);
+      out.push([wallDiscPath(-0.52, 1.45, 6.3, 0.28, 0.18), 0.92 * k, "#a6ff3e"] as ShapeFace);
+      out.push([wallDiscPath(0.52, 1.45, 6.3, 0.28, 0.18), 0.92 * k, "#a6ff3e"] as ShapeFace);
     }
     /* 옆면 둥근 포트(실물 참고) — 몸이 줄면서 가장자리 밖으로 삐져나와 떠 보였다(확인)
        — 몸 안쪽으로 당기고 더 작게. */
-    const [p1x, p1y] = project(-1.3, 0.65, 6.35);
-    const [p2x, p2y] = project(1.3, 0.65, 6.35);
-    out.push(topFace(groundEllipse(p1x, p1y, 0.35, 0.28), 0.3));
-    out.push(topFace(groundEllipse(p2x, p2y, 0.35, 0.28), 0.3));
+    const [p1x, p1y] = project(-0.98, 0.5, 6.3);
+    const [p2x, p2y] = project(0.98, 0.5, 6.3);
+    out.push(topFace(groundEllipse(p1x, p1y, 0.28, 0.22), 0.3));
+    out.push(topFace(groundEllipse(p2x, p2y, 0.28, 0.22), 0.3));
     /* 앞다리 한 쌍(재지적: 길이 축소 + 두 다리 사이 벌리기 + 몸에 더 딱) — 뿌리를
        몸 바로 밑(0.65)까지 당기고, 각도를 ±14→±30으로 벌리고, 길이는 반 남짓으로. */
     for (const ang of [30, -30]) out.push(...wing(ang, 1.05, 0.8, 0.27, 0.13, 5.7, 5));
