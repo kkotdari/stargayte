@@ -2371,7 +2371,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 해처리 — 둔덕 + 방사 다리 여섯(요잉을 따라 도는 것이 핵심) + 윗면 입·목띠. */
   hatchery: () => {
     const out: ShapeFace[] = [];
-    for (const ang of [130, -170]) out.push(...limbFaces(ang, 3, 1.7, 3.4));
+    // 왼뒤 다리는 반원통과 색을 맞춘다(재지적: 입구발도 이어지게). 오른뒤는 그대로.
+    out.push(...paintBase(limbFaces(130, 3, 1.7, 3.4), "#4e545c"));
+    out.push(...limbFaces(-170, 3, 1.7, 3.4));
     /* 꼭대기 볏(실물) — 뒤로 벌어져 굽는 볏 뿔 한 쌍. 둔덕보다 먼저 그려 밑동이
        가려진다(지적: 뿔이 비쳐 보였다). */
     out.push(...hornFaces(-1.1, -0.7, 5.7, -3.2, -1.6, 9.4, 1.3));
@@ -2401,18 +2403,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [mx, my] = project(0, 0, 6.35);
     out.push(sideFace(`M${mx - 1.5} ${my} L${mx + 1.5} ${my} Q${mx + 1.4} ${my + 1} ${mx} ${my + 1.15} Q${mx - 1.4} ${my + 1} ${mx - 1.5} ${my} Z`, 0.35));
     out.push(topFace(groundEllipse(mx, my, 1.4, 0.4)));
-    /* 입구 다리 잇는 경사면 힘줄 덮개(요청) — 다리 뿌리마다 반원통 능선을 짙은 회색
-       으로 얹는다(다섯: 앞·옆 넷 + 왼뒤 하나). 캡슐 막대라 요잉에도 결이 같다. */
+    /* 반원통 다섯(재지적: 원통을 반으로 가른 꼴, 불투명, 꼭대기에서 시작해 바닥의
+       입구발까지 이어짐) — 굵은 불투명 반원통 몸 + 능선 하이라이트 한 줄로 '반쪽
+       원통'의 곡면을 읽힌다. 각 능선이 제 입구발(같은 각) 뿌리로 떨어진다. */
     for (const ang of [-100, -40, 20, 80, 130]) {
       const a2 = (ang * Math.PI) / 180;
       const dxr = Math.sin(a2);
       const dyr = Math.cos(a2);
       out.push(...paintBase(
-        rodFaces(dxr * 2.1, dyr * 2.1, 3.6, dxr * 4.7, dyr * 4.7, 0.7, 1.1),
+        rodFaces(dxr * 1.15, dyr * 1.15, 6.1, dxr * 5.2, dyr * 5.2, 0.5, 1.35),
         "#4e545c",
       ));
+      out.push(...paintBase(
+        rodFaces(dxr * 1.3, dyr * 1.3, 6.25, dxr * 4.9, dyr * 4.9, 0.85, 0.5),
+        "#6a7078",
+      ));
     }
-    for (const ang of [-40, 20, -100, 80]) out.push(...limbFaces(ang, 3.4, 1.7, 3.2));
+    // 입구발도 같은 색으로 이어진다(재지적).
+    for (const ang of [-40, 20, -100, 80]) out.push(...paintBase(limbFaces(ang, 3.4, 1.7, 3.2), "#4e545c"));
     // 바닥 갈고리 덩굴(실물) — 다리 사이로 기다가 끝이 말려 올라간다.
     out.push(...hornFaces(4.2, 4.2, 0.5, 6.6, 6, 0.9, 0.7));
     out.push(...hornFaces(6.6, 6, 0.9, 7.4, 6.6, 2.4, 0.5));
