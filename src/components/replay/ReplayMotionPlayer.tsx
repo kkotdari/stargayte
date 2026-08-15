@@ -2414,29 +2414,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const hh = ang === 130 ? 3.4 : 3.2;
       out.push(...tagKey(paintBase(limbFaces(ang, len, 1.7, hh), "#4e545c"), dep));
       if (facingRatio(dxr, dyr) > -0.05) {
-        /* 반원통(재재지적: 옆에서 보면 반달 단면) — 경사면에 엎어 놓은 D자 관:
-           불투명 몸 띠 + 능선 하이라이트 + 발치의 반달 단면캡. */
-        const pxr = -dyr * 0.7;
-        const pyr = dxr * 0.7;
+        /* 반원통 전부 제거(재재재지적: 너무 이상함) — 그냥 평평한 띠 하나만 경사면에
+           깔아 다리와 잇는다. */
+        const pxr = -dyr * 0.62;
+        const pyr = dxr * 0.62;
         const band = polyPath3([
-          [dxr * 1.15 + pxr, dyr * 1.15 + pyr, 6.05],
-          [dxr * 1.15 - pxr, dyr * 1.15 - pyr, 6.05],
+          [dxr * 1.2 + pxr, dyr * 1.2 + pyr, 5.9],
+          [dxr * 1.2 - pxr, dyr * 1.2 - pyr, 5.9],
           [dxr * 5.2 - pxr, dyr * 5.2 - pyr, 0.7],
           [dxr * 5.2 + pxr, dyr * 5.2 + pyr, 0.7],
         ]);
-        const crest = polyPath3([
-          [dxr * 1.25 + pxr * 0.35, dyr * 1.25 + pyr * 0.35, 6.3],
-          [dxr * 1.25 - pxr * 0.35, dyr * 1.25 - pyr * 0.35, 6.3],
-          [dxr * 5 - pxr * 0.35, dyr * 5 - pyr * 0.35, 1.05],
-          [dxr * 5 + pxr * 0.35, dyr * 5 + pyr * 0.35, 1.05],
-        ]);
-        const [ex2, ey2] = project(dxr * 5.2, dyr * 5.2, 0.75);
-        out.push(...tagKey([
-          [band, 1, "#4e545c"] as ShapeFace,
-          [crest, 1, "#6a7078"] as ShapeFace,
-          // 반달 단면 — 아랫변 평평, 위 반원.
-          [`M${ex2 - 0.72} ${ey2} A0.72 0.62 0 0 1 ${ex2 + 0.72} ${ey2} Z`, 1, "#3a3f46"] as ShapeFace,
-        ], dep + 0.3));
+        out.push(...tagKey([[band, 1, "#4e545c"] as ShapeFace], dep + 0.3));
       }
     }
     // 바닥 갈고리 덩굴(실물) — 다리 사이로 기다가 끝이 말려 올라간다.
