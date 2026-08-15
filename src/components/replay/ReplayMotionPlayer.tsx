@@ -2745,8 +2745,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     return [
       topFace(groundEllipse(gx, gy, 2, 0.85), 0.22),
       // 앞코만 개인색, 나머지 은색(요청) — 조종석 유리는 유리색.
-      ...paintBase(tubeFaces(-0.5, -2.9, -0.5, -1.3, 0.55, 4.6), "#c9ced6"),
-      ...paintBase(tubeFaces(0.6, -3, 0.6, -1.4, 0.5, 4.2), "#c9ced6"),
+      // 추진체 둘 수평 정렬(지적) — 높이·반지름·길이를 같게.
+      ...paintBase(tubeFaces(-0.55, -2.9, -0.55, -1.3, 0.52, 4.4), "#c9ced6"),
+      ...paintBase(tubeFaces(0.55, -2.9, 0.55, -1.3, 0.52, 4.4), "#c9ced6"),
       [polyPath3([[1.1, -0.2, 4.4], [0.9, -2.4, 4.5], [-0.9, -2.4, 4.5], [-1.1, -0.2, 4.4]]), 1, "#c9ced6"] as ShapeFace,
       ...paintBase(domeFaces3(0, -1, 0.85, 0.85, 4.6), "#bfe0ef"),
       /* 앞코 윗판도 은색(재지적) — 대신 코의 옆치마 두 쪽과 앞끝 단면은 개인색으로
@@ -2823,8 +2824,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 날개 끝 긴 포신 각각 — 건메탈(요청).
       ...paintBase(gun(-3.1), GUNMETAL),
       ...paintBase(gun(3.1), GUNMETAL),
-      // 몸통 상자 + 콕핏 상자.
-      ...boxFaces3(0, 0.3, 1.7, 4.2, 1.1, 5.4),
+      // 몸통 상자 은색(요청) + 콕핏 상자.
+      ...paintBase(boxFaces3(0, 0.3, 1.7, 4.2, 1.1, 5.4), "#c9ced6"),
       ...boxFaces3(0, 1, 1.1, 1.7, 0.7, 6.5),
       capFace(polyPath3([[-0.4, 1.86, 7], [0.4, 1.86, 7], [0.35, 1.86, 6.6], [-0.35, 1.86, 6.6]]), 0.4),
       // 핵심 포인트(지적: 훨씬 길게) — 몸 아래로 낮게 매달린 긴 포신. 은색(요청).
