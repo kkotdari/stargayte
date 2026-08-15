@@ -376,6 +376,12 @@ export function buildUnitTracks(
     }
     ridersOf.delete(transTag);
   };
+  const majorityKindOf2 = (l: Life): string => {
+    let best = "";
+    let bn = 0;
+    for (const [k, n] of l.kinds) { if (n > bn) { best = k; bn = n; } }
+    return best;
+  };
   const isTransportLife = (l: Life): boolean =>
     l.kinds.has("Dropship") || l.kinds.has("Shuttle") || l.kinds.has("Overlord")
     || l.groupKinds.has("Transport");
@@ -780,10 +786,15 @@ export function buildUnitTracks(
     /* 탑승(요청 ③) — 제(같은 사람) 수송선을 찍은 우클릭은 태우기다. */
     const overlordOnly = tgtLife !== undefined && tgtLife.kinds.has("Overlord")
       && !tgtLife.kinds.has("Dropship") && !tgtLife.kinds.has("Shuttle");
-    const isBoarding = cmdName === "Right Click" && tgtLife !== undefined
+    /* 벙커 태우기(질문: 구현했나 — 이제 한다) — 제 벙커를 찍은 우클릭은 보병이 들어가는
+       것이다. 수송선과 같은 승차(f=12) 증거로 남아 마커가 벙커 안으로 사라지고,
+       Unload All이나 제 다음 명령에서 도로 나온다. */
+    const isBunkerIn = cmdName === "Right Click" && tgtLife !== undefined
+      && tgtLife.owner === pid && tgtLife.bld && tgtLife.kinds.has("Bunker");
+    const isBoarding = (cmdName === "Right Click" && tgtLife !== undefined
       && tgtLife.owner === pid && !tgtLife.bld && isTransportLife(tgtLife)
       // 오버로드는 수송 업그레이드 전엔 못 태운다 — 초반 '따라가기' 클릭 오인 방지.
-      && (!overlordOnly || (ventralAt.get(pid) ?? Infinity) <= sec);
+      && (!overlordOnly || (ventralAt.get(pid) ?? Infinity) <= sec)) || isBunkerIn;
     // 자원 클릭 → 일꾼(시작 직후의 통째 선택은 빼고 — 오버로드 오염 방지).
     const resourceClick = cmdName === "Right Click" && RESOURCE_TARGETS.has(unitName)
       && !((c.Frame ?? 0) < EARLY_ALL_SELECT_FRAMES && tags.length >= 4);
@@ -797,6 +808,14 @@ export function buildUnitTracks(
         ridersOf.set(tt, (ridersOf.get(tt) ?? []).filter((x) => x !== tag));
       }
       if (isBoarding && tag !== tgtTag0 && pos && !life.bld) {
+        if (isBunkerIn) {
+          // 벙커는 보병만 탄다 — 기계·대형이 섞인 선택이면 그들은 그냥 이동이다.
+          const mk3 = majorityKindOf2(life);
+          if (mk3 !== "" && !["Marine", "Firebat", "Ghost", "Medic"].includes(mk3)) {
+            pushEv(life, sec, pos.x, pos.y, 0);
+            continue;
+          }
+        }
         life.ev.push([Math.round(sec), r1(pos.x), r1(pos.y), 12, tgtTag0]);
         life.last = sec;
         riderIn.set(tag, tgtTag0);
@@ -1251,6 +1270,80 @@ export function buildUnitTracks(
      증거가 정말 곁에 있을 때만 받는다. */
   const dmgTol = (life: Life, sec: number): number =>
     Math.min(45, Math.max(2, sec - life.born));
+  /* ── 교전 원장(재지적: 전투 시뮬레이션이 제일 중요 — 체력 이슈의 근본) ─────────
+        지금까지는 공격 명령 하나가 곁 7타일의 '모든' 유닛에게 각자 온전히 박혀, 20기
+        뭉치 곁 명령 하나가 실제의 20배 피해가 됐다(전원 빈사 증후군). 또 클릭이 잦은
+        사람일수록 화력이 커지는 역설도 있었다. 이제 피해를 '보존'한다:
+        ① 공격 명령들을 시공간(8타일·12초)으로 뭉쳐 교전을 만들고,
+        ② 교전 참가자를 그 시각의 위치로 가려 뽑은 뒤,
+        ③ 한 편이 주는 총피해 = 참가 유닛 DPS 합 × 교전 시간 × 가동률(0.7)을
+           상대편 참가자 수로 나눠 배분한다 — 명령 수가 아니라 병력이 화력을 정한다. */
+  type Battle = {
+    x: number; y: number; n: number; start: number; end: number;
+    sides: Map<string, Life[]>;
+  };
+  const battles: Battle[] = [];
+  for (const a of atkEvts) {
+    let hit: Battle | null = null;
+    for (let bi = battles.length - 1; bi >= 0; bi -= 1) {
+      const b = battles[bi];
+      if (a.sec - b.end > 12) break; // 시간순 입력이라 더 옛 교전은 볼 필요 없다.
+      if (Math.hypot(a.x - b.x, a.y - b.y) <= 8) { hit = b; break; }
+    }
+    if (hit) {
+      hit.end = Math.max(hit.end, a.sec);
+      hit.x = (hit.x * hit.n + a.x) / (hit.n + 1);
+      hit.y = (hit.y * hit.n + a.y) / (hit.n + 1);
+      hit.n += 1;
+    } else {
+      battles.push({ x: a.x, y: a.y, n: 1, start: a.sec, end: a.sec, sides: new Map() });
+    }
+  }
+  const sideKeyOf = (owner: number): string => {
+    const tn = teamNoOf.get(owner);
+    return tn === null || tn === undefined ? `o${owner}` : `t${tn}`;
+  };
+  for (const life of done) {
+    if (life.bld) continue;
+    const lastSec = life.ev.length > 0 ? life.ev[life.ev.length - 1][0] : life.last;
+    for (const b of battles) {
+      if (b.end < life.born || b.start > lastSec + 30) continue;
+      const mid = (b.start + b.end) / 2;
+      const pos = posAtSec(life, mid, dmgTol(life, mid));
+      if (!pos || Math.hypot(b.x - pos[0], b.y - pos[1]) > 8) continue;
+      const key = sideKeyOf(life.owner);
+      const arr = b.sides.get(key) ?? [];
+      arr.push(life);
+      b.sides.set(key, arr);
+    }
+  }
+  /** 생애 → 교전에서 받는 피해 조각들 [초, 양] — hpSim이 이 시간줄을 읽는다. */
+  const battleDmgOf = new Map<Life, [number, number][]>();
+  for (const b of battles) {
+    const dur = Math.max(2, b.end - b.start + 2);
+    for (const [key, mine] of b.sides) {
+      let foeDps = 0;
+      for (const [k2, list] of b.sides) {
+        if (k2 === key) continue;
+        for (const l2 of list) {
+          const st2 = UNIT_STATS[majorityKindOf(l2)] ?? DEFAULT_UNIT_STATS;
+          foeDps += Math.max(2, st2.dps) * (1 + 0.1 * lvOf(wUpsBy, l2.owner, b.start));
+        }
+      }
+      if (foeDps <= 0) continue;
+      const per = (foeDps * dur * 0.7) / mine.length;
+      // 서서히 깎이게 교전을 2~5조각으로 나눈다.
+      const chunks = Math.min(5, Math.max(2, Math.round(dur / 3)));
+      for (const l3 of mine) {
+        const arr = battleDmgOf.get(l3) ?? [];
+        for (let ci = 0; ci < chunks; ci += 1) {
+          arr.push([b.start + ((ci + 1) / chunks) * dur, per / chunks]);
+        }
+        battleDmgOf.set(l3, arr);
+      }
+    }
+  }
+
   const hpSimOf = (life: Life): { trace: [number, number][]; death: number | null } => {
     const mk = majorityKindOf(life);
     const st = UNIT_STATS[mk] ?? DEFAULT_UNIT_STATS;
@@ -1275,22 +1368,18 @@ export function buildUnitTracks(
       }
       if (tech === "Dark Swarm") swarmZones.push([csec, cx7, cy7]);
     }
-    for (const a of atkEvts) {
-      if (a.sec < life.born) continue;
-      if (a.sec > lastEvSec + 240) break;
-      if (!isFoeOf(a.owner, life.owner)) continue;
-      const pos = posAtSec(life, a.sec, dmgTol(life, a.sec));
-      if (!pos || Math.hypot(a.x - pos[0], a.y - pos[1]) > 7) continue;
-      if (stasisSpans.some(([sa, sb]) => a.sec >= sa && a.sec <= sb)) continue;
-      // 공격 명령 하나 = 그 유닛이 1.4초쯤 두들긴 것. 공업 +10%/렙.
-      /* 짧게 두들긴 것으로(재지적: 전원이 10%로 동시에 떨어짐 — 곁의 공격 명령
-         전부가 모든 유닛에 온전히 박히는 과대 계산이 원인). 피해는 무리에 흩어진다. */
-      let base = Math.min(55, a.dps * 0.9) * (1 + 0.1 * lvOf(wUpsBy, a.owner, a.sec));
-      if (!a.melee && swarmZones.some(([ws, wx, wy]) =>
-        a.sec - ws >= 0 && a.sec - ws <= 25 && Math.hypot(wx - pos[0], wy - pos[1]) <= 2.5)) {
-        base *= 0.15;
+    /* 교전 배분 피해(교전 원장 주석) — 명령별 개별 타격 대신, 참가한 교전에서
+       제 몫으로 나눠 받은 조각들이다. 스태시스 창은 무적, 다크스웜 아래선 크게
+       줄어든다(근접·원거리 혼재라 0.35로 뭉뚱그린다). */
+    for (const [bsec, bAmt] of battleDmgOf.get(life) ?? []) {
+      if (stasisSpans.some(([sa, sb]) => bsec >= sa && bsec <= sb)) continue;
+      let amt = bAmt;
+      const pos = posAtSec(life, bsec, dmgTol(life, bsec));
+      if (pos && swarmZones.some(([ws, wx, wy]) =>
+        bsec - ws >= 0 && bsec - ws <= 25 && Math.hypot(wx - pos[0], wy - pos[1]) <= 2.5)) {
+        amt *= 0.35;
       }
-      dmg.push([a.sec, base]);
+      dmg.push([bsec, amt]);
     }
     // 스팀 자해(전수조사) — 한 번에 피 10.
     for (const v of life.ev) {
