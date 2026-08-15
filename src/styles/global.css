@@ -11183,6 +11183,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 }
 /* 맵연결(요청: 별도로 맵 좌상단에) — 마커·칩(z 최대 3만대)보다 위, 어두운 지도 위라
    유리 바탕을 한 겹 진하게. */
+/* 미연결 안내 한 줄(요청: 작게) — 버튼 바로 아래, 지도 위라 밝은 글자 + 얇은 그림자. */
+.scr-motion-maplink-note {
+  position: absolute; top: calc(50% + 15px); left: 50%; transform: translateX(-50%);
+  z-index: 40000; font-size: var(--fs-micro); color: rgba(255, 255, 255, 0.65);
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.8); white-space: nowrap; pointer-events: none;
+}
 /* 알약 형태(요청), 연결 안 된 맵에서만 뜬다(JSX). 맵 정중앙(재요청: 좌상단 → 중앙). */
 .scr-motion-maplink {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 40000;

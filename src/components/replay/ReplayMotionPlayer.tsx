@@ -7110,6 +7110,11 @@ export default function ReplayMotionPlayer({
             맵연결
           </button>
         )}
+        {/* 미연결 안내(요청: 작게) — 지형(벽) 정보가 없어 유닛이 벽을 뚫고 다닌다는 것을
+            알린다. 버튼 바로 아래 한 줄. */}
+        {!grid.image && (
+          <span className="scr-motion-maplink-note">미연결 상태에선 유닛이 벽을 뚫고 다녀요</span>
+        )}
         {/* 렌즈 상자 — PC 휠 줌(요청)이 이 층을 통째로 키운다(마커·자취까지 같이). */}
         <div
           className={cx("scr-motion-lens", unitX2 && "scr-motion-unit2x")}
