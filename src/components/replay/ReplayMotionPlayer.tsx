@@ -5625,7 +5625,15 @@ export default function ReplayMotionPlayer({
      부속건물은 본체에 붙은 작은 덩어리라 안 막는다. 채굴 왕복(결정적 미끄럼)은 이
      길찾기를 안 타므로 자원~기지 사이 일꾼 겹침은 원작대로 남는다(요청). */
   const bldGrid = useMemo(() => {
-    if (!terrain) return null;
+    /* 지형이 없어도(매핑 안 된 맵) 건물·자원 벽은 선다(지적: 유닛이 전부 관통) —
+       전면 보행 가능한 합성 격자를 바닥으로 깔고 그 위에 도장만 찍는다. 절벽은 못
+       알지만 건물·미네랄 우회는 산다. */
+    const base: TerrainGrid = terrain ?? (() => {
+      const w = 96;
+      const h = Math.max(8, Math.round((96 * grid.height) / Math.max(1, grid.width)));
+      const walk = new Uint8Array(w * h).fill(1);
+      return { w, h, walk };
+    })();
     const evs = new Set<number>();
     for (const [bs, , , bu, , bg] of buildsSrc) {
       if (ADDONS.has(bu)) continue;
@@ -5650,12 +5658,12 @@ export default function ReplayMotionPlayer({
         const gas = r[2] === 1;
         const hw = gas ? 2 : 1;
         const hh = gas ? 1 : 0.5;
-        const x0 = Math.max(0, Math.floor(((r[0] - hw) / grid.width) * terrain.w));
-        const x1 = Math.min(terrain.w - 1, Math.ceil(((r[0] + hw) / grid.width) * terrain.w) - 1);
-        const y0 = Math.max(0, Math.floor(((r[1] - hh) / grid.height) * terrain.h));
-        const y1 = Math.min(terrain.h - 1, Math.ceil(((r[1] + hh) / grid.height) * terrain.h) - 1);
+        const x0 = Math.max(0, Math.floor(((r[0] - hw) / grid.width) * base.w));
+        const x1 = Math.min(base.w - 1, Math.ceil(((r[0] + hw) / grid.width) * base.w) - 1);
+        const y0 = Math.max(0, Math.floor(((r[1] - hh) / grid.height) * base.h));
+        const y1 = Math.min(base.h - 1, Math.ceil(((r[1] + hh) / grid.height) * base.h) - 1);
         for (let yy = y0; yy <= y1; yy += 1) {
-          for (let xx = x0; xx <= x1; xx += 1) walk[yy * terrain.w + xx] = 0;
+          for (let xx = x0; xx <= x1; xx += 1) walk[yy * base.w + xx] = 0;
         }
       }
     };
@@ -5663,21 +5671,21 @@ export default function ReplayMotionPlayer({
       const ver = verOf(sec);
       let g = cache.get(ver);
       if (!g) {
-        const walk = new Uint8Array(terrain.walk);
+        const walk = new Uint8Array(base.walk);
         stampRes(walk);
         for (const [bs, bxT, byT, bu, , bg] of buildsSrc) {
           if (ADDONS.has(bu)) continue;
           if (bs > sec || ((bg ?? 0) > 0 && sec >= (bg ?? 0))) continue;
           const [fw, fh] = FOOTPRINT[bu] ?? [3, 2];
-          const x0 = Math.max(0, Math.floor((bxT / grid.width) * terrain.w));
-          const x1 = Math.min(terrain.w - 1, Math.ceil(((bxT + fw) / grid.width) * terrain.w) - 1);
-          const y0 = Math.max(0, Math.floor((byT / grid.height) * terrain.h));
-          const y1 = Math.min(terrain.h - 1, Math.ceil(((byT + fh) / grid.height) * terrain.h) - 1);
+          const x0 = Math.max(0, Math.floor((bxT / grid.width) * base.w));
+          const x1 = Math.min(base.w - 1, Math.ceil(((bxT + fw) / grid.width) * base.w) - 1);
+          const y0 = Math.max(0, Math.floor((byT / grid.height) * base.h));
+          const y1 = Math.min(base.h - 1, Math.ceil(((byT + fh) / grid.height) * base.h) - 1);
           for (let yy = y0; yy <= y1; yy += 1) {
-            for (let xx = x0; xx <= x1; xx += 1) walk[yy * terrain.w + xx] = 0;
+            for (let xx = x0; xx <= x1; xx += 1) walk[yy * base.w + xx] = 0;
           }
         }
-        g = { ...terrain, walk };
+        g = { ...base, walk };
         cache.set(ver, g);
       }
       return g;
@@ -5706,13 +5714,13 @@ export default function ReplayMotionPlayer({
          난다. */
       const air = !forceGround && unit !== "" && isAirUnit(unit);
       let path: [number, number][] | null = null;
-      if (!straight && !air && terrain) {
+      if (!straight && !air && (terrain || bldGrid)) {
         /* 조인 격자 먼저, 끊겼으면 원본으로 한 번 더(위 terrainRaw 주석) — 둘 다 끊겼으면
            직선이 아니라 차선(벽을 비싸게 취급하는 다익스트라)이다(지적: 지상 유닛이 벽을 막
            통과해 직진). 격자가 조각났거나 출발·도착이 못 걷는 칸 깊숙이 떨어져 스냅이
            실패하면 BFS는 null인데, 그때마다 직선을 그으면 벽 관통이 화면을 덮는다. */
         const cache = pathCacheRef.current;
-        const tkey = `${terrain.w}:${terrain.h}:${terrainRaw ? terrainRaw.w : 0}:${buildsSrc.length}`;
+        const tkey = `${terrain ? `${terrain.w}:${terrain.h}` : "syn"}:${terrainRaw ? terrainRaw.w : 0}:${buildsSrc.length}`;
         if (cache.key !== tkey) { cache.key = tkey; cache.map.clear(); }
         /* 건물판 번호가 열쇠에 든다(요청: 건물 우회) — 같은 두 지점이라도 그 사이에
            건물이 서면 딴 길이다. */
@@ -5729,23 +5737,23 @@ export default function ReplayMotionPlayer({
             bldGrid.gridAt(orderSec),
             atX / grid.width, atY / grid.height,
             tx / grid.width, ty / grid.height,
-          ) : null) ?? groundPath(
+          ) : null) ?? (terrain ? groundPath(
             terrain,
             atX / grid.width, atY / grid.height,
             tx / grid.width, ty / grid.height,
-          ) ?? (terrainRaw ? groundPath(
+          ) : null) ?? (terrainRaw ? groundPath(
             terrainRaw,
             atX / grid.width, atY / grid.height,
             tx / grid.width, ty / grid.height,
-          ) : null) ?? groundPathSoft(
-            terrainRaw ?? terrain,
+          ) : null) ?? (terrainRaw ?? terrain ? groundPathSoft(
+            terrainRaw ?? (terrain as TerrainGrid),
             atX / grid.width, atY / grid.height,
             tx / grid.width, ty / grid.height,
-          );
-          path = found.map(([fx, fy]) => [fx * grid.width, fy * grid.height] as [number, number]);
+          ) : null);
+          path = found ? found.map(([fx, fy]) => [fx * grid.width, fy * grid.height] as [number, number]) : null;
           // 무한히 자라지 않게만 막는다 — 넘치면 통째로 비워도 다시 채워지는 값이다.
           if (cache.map.size > 30000) cache.map.clear();
-          cache.map.set(ck, path);
+          if (path) cache.map.set(ck, path);
         }
       }
       if (!path) path = [[tx, ty]];
@@ -7378,7 +7386,8 @@ export default function ReplayMotionPlayer({
                  떴다. 상자 바닥을 발자국 바닥에 맞춘다. */
               const modelHT = race2 === "프로토스" ? 2.6
                 : ((hFrac * grid.width) / mkK) * beat;
-              const [bfxF, bfyF] = posFrac(centerX, centerY + fp2[1] / 2 - modelHT / 2);
+              /* 고치가 살짝 왼쪽으로 치우침(지적) — 모델 무게중심 보정으로 저그만 +0.25타일. */
+              const [bfxF, bfyF] = posFrac(centerX + (race2 === "저그" ? 0.25 : 0), centerY + fp2[1] / 2 - modelHT / 2);
               unitOps.push({
                 fx: bfxF, fy: bfyF, z,
                 kind: race2 === "저그" ? "cocoon" : race2 === "프로토스" ? "warpin" : "scaffold",
@@ -8114,6 +8123,15 @@ export default function ReplayMotionPlayer({
               && (h.gone === 0 || t < h.gone)
               && Math.abs(h.x - pos.x) <= 1.8 && Math.abs(h.y - pos.y) <= 1.3);
             if (inHall) return null;
+            /* 가스 건물도 같은 규칙(지적: 가스 일꾼이 들어가기 한참 전에 사라짐) —
+               발자국 한가운데(문턱 1.4×0.7)에 정말 '들어간 순간'만 숨는다. 다가가는
+               동안은 그대로 보인다. */
+            const inGas = buildsSrc.some(([bs6, bx6, by6, bu6, br6, bg6]) =>
+              br6 === e.raw && bs6 <= t && ((bg6 ?? 0) === 0 || t < (bg6 ?? 0))
+              && (bu6 === "Refinery" || bu6 === "Assimilator" || bu6 === "Extractor")
+              && Math.abs(bx6 + footDx(bu6) - pos.x) <= 1.4
+              && Math.abs(by6 + footDy(bu6) - pos.y) <= 0.7);
+            if (inGas) return null;
           }
           if (frzSt) {
             const fp2 = posAt(rp, Math.max(rp[0][0], frzSt[0]), null);
