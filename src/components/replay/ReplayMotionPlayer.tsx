@@ -4042,11 +4042,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 칼다리는 꺽쇠(재재지적: 더 완만하게) — 뿌리에서 바깥·위로 살짝만 올라
          꼭대기를 찍고, 완만한 각도로 내려와 땅을 짚는다. 내려오는 끝마디는
          상아색 발톱(지적)이다. */
-      // 뒤 칼다리 — 윗마디 더 길게(지적).
-      out.push(...hornFaces(m2 * 1.5, -0.9, 3.8, m2 * 3.5, -2.1, 4.35, 0.7));
+      // 뒤 칼다리 — 윗마디 더 길게(지적) + 검회색(요청).
+      out.push(...paintBase(hornFaces(m2 * 1.5, -0.9, 3.8, m2 * 3.5, -2.1, 4.35, 0.7), "#3a3f46"));
       out.push(...ivory(hornFaces(m2 * 3.5, -2.1, 4.35, m2 * 4.7, -3, 1.4, 0.5)));
-      // 앞 칼다리 — 윗마디 더 길게(지적).
-      out.push(...hornFaces(m2 * 1.6, 0.6, 3.8, m2 * 3.6, 1.7, 4.35, 0.7));
+      // 앞 칼다리 — 윗마디 더 길게(지적) + 검회색(요청).
+      out.push(...paintBase(hornFaces(m2 * 1.6, 0.6, 3.8, m2 * 3.6, 1.7, 4.35, 0.7), "#3a3f46"));
       out.push(...ivory(hornFaces(m2 * 3.6, 1.7, 4.35, m2 * 4.8, 2.5, 1.4, 0.5)));
       /* 앞 가시갈고리 한 쌍(지적) — 몸 앞에서 앞을 향해 뻗다 끝이 갈고리처럼
          아래로 말린다. */
@@ -4055,7 +4055,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     }
     // 꽁무니 다리 하나 더(지적) — 뒤 가운데에서 뒤로 뻗어 땅을 짚는다.
     // 꽁무니 다리도 꺽쇠(재지적: 뒷다리도 그렇게) — 완만히 올랐다 내려온다.
-    out.push(...hornFaces(0, -1.5, 3.6, 0, -3.2, 4.5, 0.6));
+    out.push(...paintBase(hornFaces(0, -1.5, 3.6, 0, -3.2, 4.5, 0.6), "#3a3f46"));
     out.push(...ivory(hornFaces(0, -3.2, 4.5, 0, -4.6, 1.2, 0.42)));
     // 넓은 등딱지 + 등 가시들.
     out.push(...domeFaces3(0, -0.2, 2.5, 2, 3.4));
@@ -4154,21 +4154,25 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const cyL = Math.cos(th) * 2.55;
       const t1x = Math.cos(th) * sxSign;
       const t1y = -Math.sin(th);
-      const ring = (rt: number, rz: number): [number, number, number][] => {
+      /* 볼록 방향 반대로(지적) — 테는 밖으로, 속살은 몸 안쪽으로 꺼진 오목 렌즈:
+         바깥 고리는 반경 2.62, 속 타원은 2.35로 파고든다. */
+      const ring = (rt: number, rz: number, rad: number): [number, number, number][] => {
+        const rX = Math.sin(th) * rad * sxSign;
+        const rY = Math.cos(th) * rad;
         const pts: [number, number, number][] = [];
         for (let i = 0; i < 14; i += 1) {
           const a = (i / 14) * Math.PI * 2;
           pts.push([
-            cxL + Math.cos(a) * rt * t1x,
-            cyL + Math.cos(a) * rt * t1y,
+            rX + Math.cos(a) * rt * t1x,
+            rY + Math.cos(a) * rt * t1y,
             5.65 + Math.sin(a) * rz,
           ]);
         }
         return pts;
       };
       return tagKey([
-        [polyPath3(ring(1.55, 0.95)), 0.92, "#7d55b4"] as ShapeFace,
-        [polyPath3(ring(1.05, 0.6)), 0.85, "#a97fe0"] as ShapeFace,
+        [polyPath3(ring(1.55, 0.95, 2.62)), 0.92, "#7d55b4"] as ShapeFace,
+        [polyPath3(ring(1.05, 0.6, 2.35)), 0.85, "#a97fe0"] as ShapeFace,
       ], depthNow(cxL, cyL));
     };
     /* 얼굴(재지적: 얼굴은 앞쪽 아래쪽에 작은 반구형으로) — 몸 앞아래 표면에 붙는
@@ -4279,8 +4283,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       `M${pt(m * 2.1, -2.2, 3.75)} Q${pt(m * 4.8, -1.8, 3.5)} ${pt(m * 5.2, 1.2, 3.3)}`
       + ` Q${pt(m * 3.7, 0.6, 3.65)} ${pt(m * 2.4, 0.1, 3.8)}`
       + ` Q${pt(m * 2.1, -1, 3.78)} ${pt(m * 2.1, -2.2, 3.75)} Z`;
-    out.push(bodyFace(leg(-1)), sideFace(leg(-1), 0.18));
-    out.push(bodyFace(leg(1)), sideFace(leg(1), 0.18));
+    // 집게·다리 네 장 금색(요청).
+    out.push([leg(-1), 1, "#d4af37"] as ShapeFace, sideFace(leg(-1), 0.18));
+    out.push([leg(1), 1, "#d4af37"] as ShapeFace, sideFace(leg(1), 0.18));
     // 몸통 — 둥근 게딱지. 많이 줄였다(지적: 본체 크기 많이 축소 — 3.8×3 → 2.8×2.2).
     out.push(bodyFace(groundEllipse(cx, cy, 2.8, 2.2)));
     // (삭제·지적) 앞부분 검은 반투명 홈 — 정체불명 얼룩으로 보여 걷었다.
@@ -4301,8 +4306,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       `M${pt(m * 3.3, 0.5, 3.85)} Q${pt(m * 4.5, 3, 3.65)} ${pt(m * 2.1, 5.8, 3.25)}`
       + ` Q${pt(m * 2.4, 3.4, 3.6)} ${pt(m * 2.5, 1.4, 3.8)}`
       + ` Q${pt(m * 2.6, 0.4, 3.85)} ${pt(m * 3.3, 0.5, 3.85)} Z`;
-    out.push(bodyFace(claw(1)), sideFace(claw(1), 0.16));
-    out.push(bodyFace(claw(-1)), topFace(claw(-1), 0.14));
+    out.push([claw(1), 1, "#d4af37"] as ShapeFace, sideFace(claw(1), 0.16));
+    out.push([claw(-1), 1, "#d4af37"] as ShapeFace, topFace(claw(-1), 0.14));
     return out;
   },
   /* 미네랄(재정정: 삼각뿔 말고 보석 기둥) — 세운 기둥 결정 + 뾰족 갓 셋, 키가 다
