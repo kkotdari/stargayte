@@ -4589,13 +4589,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 울트라리스크(실물 참고) — 코끼리 다리 넷의 거체, 어깨에서 크게 휘는 거대 카이저
      낫 두 자루. */
   ultra: () => [
-    // 다리·머리 짙은 갈색(요청).
-    ...paintBase(cylinderFaces3(-2, -2, 0.8, 3, 0.3), "#6b4732"),
-    ...paintBase(cylinderFaces3(2, -2, 0.8, 3, 0.3), "#6b4732"),
+    /* 다리를 스파이어 기둥으로(요청) — 코끼리 다리 넷이 위로 갈수록 살짝 얇아지며
+       부드럽게 안으로 굽는다. 짙은 갈색. */
+    ...([[-2, -2], [2, -2], [-2.2, 1.1], [2.2, 1.1]] as [number, number][])
+      .flatMap(([lx9, ly9]): ShapeFace[] => spirePillar({
+        x: lx9, y: ly9, z0: 0.25, h: 3.15, w: 0.86, tipW: 0.66,
+        segs: 4, sides: 8, hold: 0.15,
+        leanX: -lx9 * 0.12, leanY: -ly9 * 0.1,
+        curveX: -lx9 * 0.16, curveY: -ly9 * 0.12,
+        fill: "#6b4732",
+      })),
     ...domeFaces3(0, -0.9, 3.2, 3, 3.4),
     ...paintBase(domeFaces3(0, 1.6, 2, 1.6, 3.9), "#6b4732"),
-    ...paintBase(cylinderFaces3(-2.2, 1.1, 0.8, 3, 0.3), "#6b4732"),
-    ...paintBase(cylinderFaces3(2.2, 1.1, 0.8, 3, 0.3), "#6b4732"),
     ...ivory(claw3(1, 2.1, 5.4)),
     ...ivory(claw3(-1, 2.1, 5.4)),
   ],
