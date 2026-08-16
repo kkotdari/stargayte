@@ -722,28 +722,39 @@ function spirePillar(o: {
     });
   };
   const out: ShapeFace[] = [];
+  /* 옆면은 마디별로 따로 정렬하면 안 된다(재지적: 마디 단면이 비쳐 보임) — 마디마다
+     제 안에서만 순서를 잡으면 기울거나 휜 기둥에서 뒤 마디가 앞 마디를 덮어 속이
+     들여다보인다. 모든 마디의 모든 옆면을 한 번에 모아 각 면 중심의 화면 깊이로
+     정렬해야 painter 순서가 기둥 전체에서 옳다. */
+  const walls: { d: string; nx: number; ny: number; dep: number }[] = [];
   for (let s2 = 0; s2 < segs; s2 += 1) {
-    const lo = ring(s2 / segs);
-    const hi = ring((s2 + 1) / segs);
-    /* 옆면은 걸러내지 않고 뒤 향한 것부터(다른 입체들과 같은 규칙) — 걸러내면 그
-       자리로 뒤가 비치고, 정렬해 두면 앞면이 늘 위에 온다. */
-    const walls = lo.map((_, i) => {
+    const t0 = s2 / segs;
+    const t1 = (s2 + 1) / segs;
+    const lo = ring(t0);
+    const hi = ring(t1);
+    const c0 = axis(t0);
+    const c1 = axis(t1);
+    for (let i = 0; i < sides; i += 1) {
       const j = (i + 1) % sides;
-      const mx = (lo[i][0] + lo[j][0]) / 2 - axis(s2 / segs)[0];
-      const my = (lo[i][1] + lo[j][1]) / 2 - axis(s2 / segs)[1];
+      const mx = (lo[i][0] + lo[j][0]) / 2 - c0[0];
+      const my = (lo[i][1] + lo[j][1]) / 2 - c0[1];
       const ml = Math.hypot(mx, my) || 1;
-      return {
+      // 면 중심의 화면 깊이 — 축 중심이 앞뒤로 움직여도 제 자리를 안다.
+      const fx = (lo[i][0] + lo[j][0] + hi[i][0] + hi[j][0]) / 4;
+      const fy = (lo[i][1] + lo[j][1] + hi[i][1] + hi[j][1]) / 4;
+      walls.push({
         d: polyPath3([lo[i], lo[j], hi[j], hi[i]]),
-        nx: mx / ml, ny: my / ml, f: facingRatio(mx / ml, my / ml),
-      };
-    }).sort((q, w) => q.f - w.f);
-    for (const wl of walls) {
-      const fl = faceLight(wl.nx, wl.ny, 0.3);
-      // 앞·뒤 색을 따로 받으면 면 법선의 y 부호로 갈라 칠한다(요청).
-      const side = wl.ny >= 0 ? o.fillFront : o.fillBack;
-      out.push(side ? [wl.d, 1, side] as ShapeFace : bodyFace(wl.d),
-        ...(fl.visible ? fl.face(wl.d) : [sideFace(wl.d, 0.42)]));
+        nx: mx / ml, ny: my / ml, dep: depthNow(fx, fy) + (c1[2] - c0[2]) * 0.02,
+      });
     }
+  }
+  walls.sort((q, w) => q.dep - w.dep);
+  for (const wl of walls) {
+    const fl = faceLight(wl.nx, wl.ny, 0.3);
+    // 앞·뒤 색을 따로 받으면 면 법선의 y 부호로 갈라 칠한다(요청).
+    const side = wl.ny >= 0 ? o.fillFront : o.fillBack;
+    out.push(side ? [wl.d, 1, side] as ShapeFace : bodyFace(wl.d),
+      ...(fl.visible ? fl.face(wl.d) : [sideFace(wl.d, 0.42)]));
   }
   /* 끝 단면은 옆면 뒤에 덮되, 바깥을 향할 때만 그린다(재지적: 각도에 따라 내부
      단면이 비쳐 보임) — 아래 뚜껑의 법선은 -T, 위 뚜껑은 +T다. 안쪽을 향한 뚜껑을
