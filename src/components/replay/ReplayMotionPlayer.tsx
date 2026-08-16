@@ -761,6 +761,16 @@ function protossLegs(thighFill?: string, shinFill?: string, lift = 0): ShapeFace
   }
   return out;
 }
+/** 저그 갈고리 — 밖·앞으로 나갔다 안으로 감기는 한 장의 낫 날(원복). */
+function claw3(m: 1 | -1, s: number, z0: number): ShapeFace[] {
+  const [a1x, a1y] = project(m * 0.7 * s, 0.6 * s, z0);
+  const [a2x, a2y] = project(m * 1.5 * s, 0.2 * s, z0);
+  const [ox, oy] = project(m * 2.9 * s, 2.4 * s, z0 + 0.6);
+  const [tx, ty] = project(m * 1 * s, 4.4 * s, z0 - 0.6);
+  const [ix, iy] = project(m * 1.9 * s, 1.9 * s, z0 + 0.2);
+  const d = `M${a1x} ${a1y} Q${ox} ${oy} ${tx} ${ty} Q${ix} ${iy} ${a2x} ${a2y} Z`;
+  return [bodyFace(d), sideFace(d, 0.16)];
+}
 function ivory(faces: ShapeFace[]): ShapeFace[] {
   return faces.map(([d, o, f, k]) => [d, o, f ?? IVORY, k] as ShapeFace);
 }
@@ -3346,14 +3356,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...hornFaces(b2[0], b2[1], b2[2], m2 * 4.55, -1.5, 9.1, 0.18),
       ];
     };
-    const [mx2, my2] = project(0, 2.5, 3.9);
     return [
       /* 몸통을 디바우러식 겹비늘로(요청) — 머리 반구 뒤 바닥에서 마디들이 아래로
          이어지고, 아래로 갈수록 앞으로 심하게 말린다. 앞 마디가 뒤를 덮는 고정 키. */
       ...((): ShapeFace[] => {
+        /* 휨은 아래로 갈수록 급격하게(요청) — 위 두 마디는 거의 안 휘고 아래로
+           갈수록 크게 앞으로 튄다. */
         const segs9: [number, number, number, number][] = [ // [y, 반지름, 높이, 바닥 z]
-          [1.85, 0.34, 0.34, 3.5], [1.25, 0.5, 0.46, 4.05],
-          [0.72, 0.66, 0.6, 4.6], [0.3, 0.85, 0.75, 5.15],
+          [2.09, 0.34, 0.34, 3.5], [1.04, 0.5, 0.46, 4.05],
+          [0.42, 0.66, 0.6, 4.6], [0.3, 0.85, 0.75, 5.15],
         ];
         const out9: ShapeFace[] = [];
         segs9.forEach(([sy9, r9, h9, z9], i9) => {
@@ -3363,12 +3374,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         out9.push(...tagKey(paintBase(domeFaces3(0, -0.35, 1.05, 0.95, 5.9), "#6b4732"), 18));
         return out9;
       })(),
-      capFace(groundEllipse(mx2, my2, 0.42, 0.3), 0.45),
+      // (제거·요청) 끝의 까만 원 — 마디 끝이 스스로 마감한다.
       // 꼬리 — 뒤로 처진다. 더 진한 갈색(재지적).
       ...paintBase(hornFaces(0, -0.6, 6.6, 0, -2.2, 5.8, 0.5), "#6b4732"),
-      // 날개 — 위에서 펼쳐진다.
-      ...wing(1),
-      ...wing(-1),
+      // 날개 — 위에서 펼쳐진다. 몸통 마디(키 10~18)보다 위(지적: 날개가 가려짐).
+      ...tagKey(wing(1), 24),
+      ...tagKey(wing(-1), 24),
     ];
   },
   /* 가디언(지적: 꽃게 모양) — 옆으로 넓적한 게딱지 + 앞 양 집게 + 옆 잔다리. */
@@ -4078,14 +4089,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...domeFaces3(0, -0.7, 2, 1.7, 3.5),
       /* 갈고리를 스파이어 기둥으로 재해석(요청) — 밑동은 굵은 다각 기둥, 끝으로
          갈수록 가늘어지며 앞·안으로 휜다. 상아색. */
-      /* 갈고리는 앞으로 뻗고 안쪽으로 살짝만 휜다(재지적) — 기둥은 아래에서 위로
-         자라므로 '앞 끝(낮고 안쪽)에서 어깨(높고 바깥)로' 정의한다. */
-      ...([-1, 1] as const).flatMap((m9): ShapeFace[] => spirePillar({
-        x: m9 * 0.75, y: 3.1, z0: 2.5, h: 1.5, w: 0.05, tipW: 0.42,
-        segs: 4, sides: 6, hold: 0,
-        leanX: m9 * 0.45, leanY: -3.3, curveX: -m9 * 0.15, curveY: -0.4,
-        fill: IVORY,
-      })),
+      // 팔도 다른 갈고리와 같은 휘어진 낫 날(원복).
+      ...ivory(claw3(1, 0.7, 4)),
+      ...ivory(claw3(-1, 0.7, 4)),
     ];
   },
 
@@ -4599,15 +4605,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...paintBase(domeFaces3(0, 1.6, 2, 1.6, 3.9), "#6b4732"),
     ...paintBase(cylinderFaces3(-2.2, 1.1, 0.8, 3, 0.3), "#6b4732"),
     ...paintBase(cylinderFaces3(2.2, 1.1, 0.8, 3, 0.3), "#6b4732"),
-    /* 카이저 낫(재지적: 위가 아니라 아래를 향하고 아래에서 안쪽으로 휜다) — 기둥은
-       아래에서 위로 자라므로 '낫 끝(아래·안쪽)에서 어깨(위·바깥)로' 정의한다.
-       끝이 가늘고 어깨가 굵다. */
-    ...([-1, 1] as const).flatMap((m9): ShapeFace[] => spirePillar({
-      x: m9 * 1.5, y: 2.9, z0: 0.5, h: 4, w: 0.08, tipW: 0.95,
-      segs: 5, sides: 6, hold: 0,
-      leanX: m9 * 0.9, leanY: -1.4, curveX: -m9 * 0.3, curveY: -1.1,
-      fill: IVORY,
-    })),
+    ...ivory(claw3(1, 2.1, 5.4)),
+    ...ivory(claw3(-1, 2.1, 5.4)),
   ],
   /* 러커(실물 참고) — 넓은 가시 등딱지, 사방으로 벌린 낫 칼다리 두 쌍(끝이 안으로
      말림), 앞 입. */
