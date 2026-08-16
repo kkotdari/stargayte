@@ -122,6 +122,12 @@ const TRAIN_AT: Record<string, string> = {
 const MORPH_FROM: Record<string, string> = {
   Lurker: "Hydralisk", Guardian: "Mutalisk", Devourer: "Mutalisk",
 };
+/** 건물에서 나오지 않는 유닛 — 다른 유닛이 합쳐지거나 변태해서 생긴다(지적: 아콘·
+ *  다크아콘이 게이트에서 바로 태어난 것처럼 보인다). 생산 출고 보정이 이들을 제 생산소
+ *  발치에서 걸어 나오게 만들면, 합체한 자리가 아니라 게이트에서 솟는 그림이 된다. */
+const NOT_TRAINED = new Set([
+  "Archon", "Dark Archon", "Lurker", "Guardian", "Devourer", "Infested Terran",
+]);
 /** 유닛 생산 시간(게임 프레임) — 원장 시뮬레이션(요청: 큐된 유닛 전 생애)의 시계.
  *  sec = frames × 0.042. 방해(서플 막힘 등)는 리플레이로 알 수 없어 무시한다. */
 const UNIT_FRAMES: Record<string, number> = {
@@ -1270,6 +1276,11 @@ export function buildUnitTracks(
       for (const [k, n] of life.kinds) { if (n > kn) { kind = k; kn = n; } }
       if (kind === (RACE_WORKER[race] ?? "") && kind !== "") continue; // 일꾼은 자원 곁 탄생이 자연스럽다
       if (kind === "Overlord") continue;
+      /* 합체·변태 유닛은 건물에서 안 나온다(지적) — 아콘은 템플러 둘이 녹은 자리에서,
+         러커·가디언·디바우러는 제 몸이 변태한 자리에서 태어난다. 이 보정이 걸리면
+         TRAIN_AT에 없는 정체가 종족 기본 생산소(프로토스=게이트)로 떨어져, 합체 자리
+         대신 게이트 발치에서 걸어 나오는 그림이 됐다. */
+      if (NOT_TRAINED.has(kind)) continue;
       const prodKind = (kind && TRAIN_AT[kind]) || RACE_PRODUCER[race] || "";
       if (!prodKind) continue;
       // 저그는 모두 해처리 계열 어느 것에서든 나온다.
