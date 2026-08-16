@@ -5951,8 +5951,8 @@ function unitSprite(
    넷을 흩어 놓은 무리라 요청대로 손대지 않는다. */
 const BLD_FILL_SKIP = new Set(["addonlink", "mineral"]);
 /** 프로토스 소환구 상자(타일)와 지면에서 띄우는 높이(타일) — 요청: 축소 + 더 띄우기. */
-const WARP_TILES = 2.4;
-const WARP_LIFT = 0.6;
+const WARP_TILES = 1.8;
+const WARP_LIFT = 0.75;
 /** 건물 모델이 제 발자국 상자를 채우는 몫 — 종류마다 한 번만 잰다. */
 const BLD_FILL_CACHE = new Map<string, number>();
 /* 발자국 대비 그릴 몫 — 기본은 0.95(발자국을 꽉 채운다). 본진 셋만 예외로 넘겨 그린다
@@ -6300,8 +6300,9 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
                0.6~1.4배로 조이고 폭 기준도 0.7 → 0.6으로 낮춘다. */
             /* 유닛 바와 같이 얇고 짧게(요청) — 길이 0.6 → 0.4배, 두께 0.05 → 0.03배. */
             const bScale = Math.min(1.4, Math.max(0.6, Math.sqrt((op.hpMax ?? 800) / 1000)));
-            const bw3 = Math.max(3.5, wPx * 0.4 * bScale);
-            const bh3 = Math.max(1, wPx * 0.03);
+            // 유닛과 같은 몫으로(요청) — 0.4 → 0.267, 0.03 → 0.015.
+            const bw3 = Math.max(2.5, wPx * 0.267 * bScale);
+            const bh3 = Math.max(0.6, wPx * 0.015);
             const bx3 = sx - bw3 / 2;
             /* 머리 바로 위(재재지적: 너무 위) — 그려진 픽셀 꼭대기에 살짝만 띄운다. */
             const byTop = bTop9 + (bspr.top / B) * k - bh3 - 2;
@@ -6452,8 +6453,9 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         /* 전체적으로 상당히 얇고 짧게(요청) — 길이 0.85 → 0.58배, 두께 0.085 → 0.05배.
            바닥값도 함께 내려(3 → 2px, 1.4 → 0.9px) 작은 유닛에서 굵어 보이지 않게. */
         const hpScale = Math.min(1.25, Math.max(0.75, Math.sqrt((op.hpMax ?? 100) / 150)));
-        const bw2 = Math.max(2, px * 0.58 * hpScale);
-        const bh2 = Math.max(0.9, px * 0.05);
+        // 다시 길이 2/3 · 두께 1/2(요청) — 0.58 → 0.387, 0.05 → 0.025.
+        const bw2 = Math.max(1.5, px * 0.387 * hpScale);
+        const bh2 = Math.max(0.5, px * 0.025);
         const bx2 = sx - bw2 / 2;
         /* 머리 바로 위(재재지적: 너무 위) — 실제 그려진 픽셀 꼭대기(contentBox.top)에
            살짝만 띄운다. */
@@ -8321,11 +8323,17 @@ export default function ReplayMotionPlayer({
      로 잰 방향은 실제 화면 이동과 어긋나 뒤로 걷는 것처럼 보였다. 직전 프레임의 표시
      위치 변화로 방향을 재면 정의상 몸이 늘 진행 방향을 본다. */
   const dispHdgRef = useRef(new Map<string, { x: number; y: number; h: number; t: number }>());
-  const headingOfDisplay = (key: string, x: number, y: number, fallback: number): number => {
+  /* 원작에는 옆걸음·뒷걸음이 없다(요청: 어떤 경우에도 유닛이 뒤나 옆으로 밀리거나
+     걷지 않는다 — 무조건 이동 방향을 보고 간다) — 그래서 '움직이면 이동 방향'이 늘
+     이긴다. 표적을 보는 것은 제자리에 선 순간뿐이다(stillFace). */
+  const headingOfDisplay = (
+    key: string, x: number, y: number, fallback: number, stillFace?: number | null,
+  ): number => {
     const mem = dispHdgRef.current.get(key);
     if (!mem || t <= mem.t || t - mem.t > 1.5) {
-      dispHdgRef.current.set(key, { x, y, h: mem?.h ?? fallback, t });
-      return mem?.h ?? fallback;
+      const h0 = stillFace ?? mem?.h ?? fallback;
+      dispHdgRef.current.set(key, { x, y, h: h0, t });
+      return h0;
     }
     const dx = x - mem.x;
     const dy = y - mem.y;
@@ -8333,16 +8341,19 @@ export default function ReplayMotionPlayer({
        변위를 눌러 0.04 문턱을 못 넘기면 방향이 옛값에 얼어붙었다. 스무딩이 떨림을 이미
        걸러 주므로 문턱은 훨씬 낮아도 된다. */
     if (Math.hypot(dx, dy) < 0.008) {
-      dispHdgRef.current.set(key, { x, y, h: mem.h, t });
-      return mem.h;
+      // 멈춰 있을 때만 표적 쪽으로 몸을 돌린다.
+      const hs = stillFace ?? mem.h;
+      dispHdgRef.current.set(key, { x, y, h: hs, t });
+      return hs;
     }
     const target = (Math.atan2(-dx, dy) * 180) / Math.PI;
     let diff = ((target - mem.h) % 360 + 540) % 360 - 180;
-    const maxTurn = 420 * (t - mem.t);
+    /* 회전 상한을 크게(요청: 옆으로 걷는 순간이 없어야) — 420도/초는 급회전 때 몇
+       프레임 동안 몸과 걸음이 어긋났다. 1200도/초면 한 프레임 안에 따라붙는다. */
+    const maxTurn = 1200 * (t - mem.t);
     if (Math.abs(diff) > maxTurn) {
-      /* 큰 반전은 즉시 돈다(지적: 유닛이 뒤로 이동) — 반환점(120도 넘는 방향 전환)을
-         회전 상한이 몇 프레임에 걸쳐 늘려 잡는 동안 몸이 등지고 걸었다. */
-      if (Math.abs(diff) > 120) {
+      // 큰 반전은 즉시 돈다 — 문턱도 120 → 60도로 내려 되돌아설 때 등지고 걷지 않는다.
+      if (Math.abs(diff) > 60) {
         dispHdgRef.current.set(key, { x, y, h: target, t });
         return target;
       }
@@ -9216,6 +9227,12 @@ export default function ReplayMotionPlayer({
                 wFrac: race2 === "프로토스" ? (WARP_TILES / grid.width) * mkK : wFrac * beat,
                 hFrac: race2 === "프로토스" ? (WARP_TILES / grid.width) * mkK : hFrac * beat,
                 boxFit: "meet", fitWidth: true,
+                /* 소환구는 떠 있다(요청: 그림자 작게 표현해 공중 느낌) — 발자국 폭의
+                   절반짜리 작은 타원만 바닥에 깔린다. 몸은 WARP_LIFT만큼 떠 있으니
+                   그 틈이 곧 높이로 읽힌다. 저그 고치·테란 공사장은 땅에 앉는다. */
+                ...(race2 === "프로토스"
+                  ? { groundShadow: true, footRatio: 0.5 }
+                  : {}),
                 color, alpha, noShadow: true,
               });
               /* 공사 애니(요청) — 모델은 캐시 스프라이트라 못 움직이니 CSS 오버레이가
@@ -9459,7 +9476,11 @@ export default function ReplayMotionPlayer({
                같은 y순 층에 선다. 기준은 그림 상자의 아랫변(+1.2 — 건물 z가 발자국
                아랫변 기준이라 같은 자로 재야 함): +0.7로는 콜로니 뿔이 앞 미네랄을
                덮었다(지적: 가려짐 에러). */
-            z: pitched ? 1000 + Math.round((res[1] + 1.2) * 80) : 900 + ri,
+            /* 자원은 같은 줄 건물보다 앞(지적: 미네랄이 가려진다) — 본진 셋을 발자국
+               보다 크게 그리기 시작하면서, 앞줄 미네랄이 뒷줄 본진 그림에 덮였다. 자원의
+               z를 반 타일(+40)만큼 올려 같은 줄이면 자원이 이긴다. 정말 앞에 선 건물
+               (한 타일 이상 아래)은 여전히 자원을 가린다. */
+            z: pitched ? 1000 + Math.round((res[1] + 1.2) * 80) + 40 : 900 + ri,
             kind: gasSpot ? "geyser" : "mineral",
             viewYaw: viewYawOf(res[0], res[1]), flat: !pitched, pitch: pitched,
             sizePx: 0,
@@ -10198,9 +10219,13 @@ export default function ReplayMotionPlayer({
              걸을 땐 실제 화면 이동 방향을 본다(headingOfDisplay). */
           const foeDeg = Number.isFinite(foe.bd) && foe.bd <= ENGAGE_SIGHT_TILES
             ? Math.atan2(-(foe.bx - pos.x), foe.by - pos.y) * (180 / Math.PI) : null;
-          const bodyHdg = fighting && foeDeg !== null
-            ? foeDeg
-            : headingOfDisplay(holdKey, pos.x, pos.y, headingOf(rp, rawPos));
+          /* 싸울 때도 '움직이면 이동 방향'이 먼저다(요청) — 표적 고정 요잉은 잽으로
+             파고들거나 진형이 밀릴 때 몸이 옆·뒤로 미끄러지게 만들었다. 제자리에 선
+             순간에만 표적을 본다. */
+          const bodyHdg = headingOfDisplay(
+            holdKey, pos.x, pos.y, headingOf(rp, rawPos),
+            fighting && foeDeg !== null ? foeDeg : null,
+          );
           /* 지금 체력(요청: 체력을 지니고 다닌다) — 변곡점 목록에서 t 시점 값.
              내려간 변곡점의 시각은 곧 '이 개체가 실제로 맞은 순간'이라, 피격 불티를
              그 자리·그 때에 띄우는 자로 함께 쓴다(요청: 피격 표현 재검토). */
