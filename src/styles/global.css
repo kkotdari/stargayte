@@ -5419,8 +5419,10 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
     display: flex; flex-wrap: wrap; align-items: center; gap: 7px;
   }
   .scr-v2-toolbar-title .scr-activity-crumb-sep { margin: 0; }
-  /* 더 축소 + 우측 정렬(재재지적). */
-  .scr-header-inner { padding: 6px 8px 2px; gap: 12px; justify-content: flex-end; }
+  /* 더 축소 + 우측 정렬(재재지적). 줄 갭 축소(재요청: 세 군데) — 위 여백 6→2px,
+     헤더 자체의 최소 여백도 2px로. */
+  .scr-header { padding-top: max(var(--safe-top), 2px); }
+  .scr-header-inner { padding: 2px 8px 2px; gap: 12px; justify-content: flex-end; }
   /* 우측 버튼 묶음(.scr-user)은 모바일에서 자식이 전부 숨김인데 margin-left:auto가 남아
      justify-content:center를 무력화했다(지적: 가로 가운데가 안 됨) — 묶음째 숨긴다. */
   .scr-user { display: none; }
@@ -5435,8 +5437,8 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
     /* 16 → 8px(요청: 모바일 모든 화면 좌우 여백 8px) — 좁은 화면에서 이 여백은 모든
        화면의 모든 줄에서 같은 만큼을 먹는데, 정작 읽어야 하는 건 그 안쪽 내용이다.
        이 값 하나가 --card-bleed·--card-pad-bx 등으로 퍼져 카드·목록·필터가 함께 따라온다. */
-    /* 헤더 아래 세로 갭 크게 축소(요청: 모바일 모든 페이지) — 30 → 8px. */
-    --main-pad-x: 8px; padding: 8px var(--main-pad-x) 48px;
+    /* 헤더 아래 세로 갭 크게 축소(요청: 모바일 모든 페이지) — 30 → 8 → 4px. */
+    --main-pad-x: 8px; padding: 4px var(--main-pad-x) 48px;
     --card-pad-bx: 0px; --card-head-pad-l: 0px;
   }
   /* 너나와 카드 좌우 내부 패딩 축소(요청: "모바일 좌우 패딩은 메인이 아니라 너나와 카드
@@ -5448,11 +5450,19 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
      느껴진다는 피드백 — 툴바 자체 여백(padding-bottom)과 .scr-screen의 형제간 gap을
      모바일에서만 줄인다. */
   /* 모바일도 타이틀 아래 갭 두 배로(요청) — 8→16px. min-height도 짝을 맞춰 키운다. */
-  /* 타이틀 줄 아래 갭도 축소(요청) — 16 → 4px. */
-  .scr-v2-toolbar { padding-bottom: 4px; min-height: calc(var(--field-h-sm) + 4px); }
-  /* 크럼과 카드 사이 빈 공간(재지적: 사진의 갭) — 카드 본문 위 패딩 12 → 4px. */
-  .scr-activity-card-body.scr-activity-game-result-body { padding-top: 4px; }
-  .scr-screen { gap: 4px; }
+  /* 타이틀 줄 아래 갭도 축소(요청) — 16 → 4 → 2px. */
+  .scr-v2-toolbar { padding-bottom: 2px; min-height: calc(var(--field-h-sm) + 2px); }
+  /* 크럼과 카드 사이 빈 공간(재지적: 사진의 갭) — 카드 본문 위 패딩 12 → 2px.
+     뒤쪽 9897행이 `.scr-activity-card > …` 세 클래스로 12px을 다시 박으므로,
+     그보다 무겁게 게임 페이지 스코프를 붙여야 실제로 이긴다(실측: 안 붙이면 12px 그대로). */
+  body.scr-gamepage-open .scr-activity-card > .scr-activity-card-body.scr-activity-game-result-body { padding-top: 2px; }
+  .scr-screen { gap: 2px; }
+  /* 세 번째 갭(사진의 마지막 원): 게임 타이틀 로우와 로스터 사이 — 헤드 아래 여백 8px에
+     맵줄 그리드의 row-gap 6px이 겹쳐 14px이 뜬다. 게임 상세에서만 둘 다 3px로 줄인다. */
+  body.scr-gamepage-open .scr-story-map-head { margin-bottom: 3px; }
+  body.scr-gamepage-open .scr-motion:not(.scr-motion-wide) .scr-motion-maprow { row-gap: 3px; }
+  /* 헤드와 로스터 사이엔 .scr-story-map의 gap 6px도 겹친다(실측) — 같이 3px로. */
+  body.scr-gamepage-open .scr-story-map { gap: 3px; }
   .scr-brand-text { display: none; }
   /* 모바일 헤더에서 내 정보(프로필 칩)를 키운다. Avatar는 크기를 JS(size prop)의
      인라인 style로 그리므로, 여기서 CSS로 덮어쓰려면 !important가 필요하다(다른 화면의
