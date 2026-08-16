@@ -503,6 +503,19 @@ export function buildUnitTracks(
     life.ev.push([Math.round(sec), r1(x), r1(y), f]);
   };
 
+  /* 태그별 '마지막 등장' 시각(요청 수리: 아콘만 많이 탔는데 프로브로 나온다) — 합체는
+     짝을 지어 아콘을 만드는데, 어느 쪽 태그가 살아남는지는 리플레이가 말해 주지 않는다.
+     합체 뒤에도 다시 명령·표적으로 나타나는 태그가 곧 살아남은 아콘이다. 미리 한 번 훑어
+     그 시각을 적어 둔다. */
+  const tagLastSeen = new Map<number, number>();
+  for (const c of cmds) {
+    const f9 = (c.Frame ?? 0) * SECONDS_PER_FRAME;
+    for (const tg of c.UnitTags ?? []) {
+      if (tg > 0 && tg !== 65535) tagLastSeen.set(tg, Math.max(tagLastSeen.get(tg) ?? -1, f9));
+    }
+    const ut9 = c.UnitTag ?? 0;
+    if (ut9 > 0 && ut9 !== 65535) tagLastSeen.set(ut9, Math.max(tagLastSeen.get(ut9) ?? -1, f9));
+  }
   for (const c of cmds) {
     const cmdName = nameOf(c.Type);
     if (!cmdName) continue;
@@ -756,6 +769,39 @@ export function buildUnitTracks(
       || cmdName === "Cancel Train" || cmdName === "Unload") {
       const kind = USE_CMD_TO_UNIT[cmdName] ?? "";
       const isBld = BUILDING_ONLY_CMDS.has(cmdName);
+      /* 합체는 '짝'이다(지적: 아콘만 많이 탔는데 한 기로 뭉쳤다) — 템플러 N기를 골라
+         합체를 누르면 원작은 짝을 지어 floor(N/2)기의 아콘을 만든다(홀수 하나는 그대로
+         남는다). 예전엔 명령 하나에 아콘 하나만 만들고 나머지를 그 아콘으로 녹여, 7기를
+         고른 합체가 아콘 한 기가 됐다 — 그 뒤 실려 간 나머지 태그들은 아콘이 아닌 옛
+         정체(템플러·프로브)로 남아 드랍 명단이 엉뚱해졌다.
+         어느 태그가 살아남는지는 기록에 없으므로, 합체 뒤에도 다시 나타나는 태그를
+         살아남은 쪽으로 본다(tagLastSeen). */
+      if (cmdName === "Merge Archon" || cmdName === "Merge Dark Archon") {
+        const kindName9 = cmdName === "Merge Archon" ? "Archon" : "Dark Archon";
+        const ordered9 = [...tags].sort(
+          (a, b) => (tagLastSeen.get(b) ?? -1) - (tagLastSeen.get(a) ?? -1),
+        );
+        const pairs9 = Math.floor(ordered9.length / 2);
+        for (let pi9 = 0; pi9 < pairs9; pi9 += 1) {
+          const keepTag = ordered9[pi9];
+          const eatTag = ordered9[ordered9.length - 1 - pi9];
+          if (keepTag === eatTag) break;
+          const keepLife = lifeOf(keepTag, pid, sec);
+          const eatLife = lifeOf(eatTag, pid, sec);
+          const lastPt9 = [...keepLife.ev].reverse().find((v) => v[1] >= 0)
+            ?? [...eatLife.ev].reverse().find((v) => v[1] >= 0);
+          done.push(keepLife);
+          alive.delete(keepTag);
+          done.push(eatLife);
+          alive.delete(eatTag);
+          const arch9 = lifeOf(keepTag, pid, sec + 4);
+          arch9.kinds.set(kindName9, 9);
+          if (lastPt9) pushEv(arch9, sec + 4, lastPt9[1], lastPt9[2], 3);
+          keepLife.morphTo = arch9;
+          eatLife.morphTo = arch9;
+        }
+        continue;
+      }
       let mergedTo: Life | null = null;
       for (const tag of tags) {
         let life = lifeOf(tag, pid, sec);
@@ -1266,11 +1312,32 @@ export function buildUnitTracks(
       unloadsBy.set(ttag, arr);
     }
     for (const arr of unloadsBy.values()) arr.sort((a, b) => a[0] - b[0]);
+    /* 태그별 생애 색인(수리: 아콘이 탔는데 프로브가 탄 것으로 나왔다) — alive는 그 태그의
+       '지금(경기 끝) 생애'를 주므로, 태그가 나중에 재사용되면 승선 증거가 엉뚱한 후대
+       생애에 붙는다. 태운 시각에 살아 있던 생애를 골라야 한다. */
+    const livesByTag = new Map<number, Life[]>();
+    for (const l of [...done, ...alive.values()]) {
+      if (l.bld) continue;
+      const arr = livesByTag.get(l.tag) ?? [];
+      arr.push(l);
+      livesByTag.set(l.tag, arr);
+    }
+    for (const arr of livesByTag.values()) arr.sort((a, b) => a.born - b.born);
+    const lifeAt = (tag: number, at: number): Life | null => {
+      const arr = livesByTag.get(tag);
+      if (!arr) return null;
+      let found: Life | null = null;
+      for (const l of arr) { if (l.born <= at + 1) found = l; else break; }
+      return found;
+    };
     let promoted = 0;
     for (const [bsec, rtag, ttag, bx, by, bpid] of pendBoard) {
       if (transTagOwner.get(ttag) !== bpid) continue;
-      const rl = alive.get(rtag) ?? [...done].reverse().find((l) => l.tag === rtag && l.born <= bsec);
-      if (!rl || rl.bld) continue;
+      /* 수송선은 승객이 될 수 없다(수리: 셔틀 여덟이 서로 탄 것으로 나왔다) — 수송선
+         여럿을 함께 잡은 채 무언가를 우클릭하면 그 선택 전부가 승객 후보로 적혔다. */
+      if (transTagOwner.has(rtag)) continue;
+      const rl = lifeAt(rtag, bsec);
+      if (!rl || rl.bld || rl.owner !== bpid) continue;
       // 이미 같은 시각에 승선 증거가 있으면 겹쳐 넣지 않는다.
       if (rl.ev.some((v) => v[3] === 12 && Math.abs(v[0] - bsec) < 1)) continue;
       const drop = (unloadsBy.get(ttag) ?? []).find(([usec]) => usec > bsec && usec - bsec < 600);
