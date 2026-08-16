@@ -1374,14 +1374,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const ringFront = `M${cx - rxo} ${cy} A${rxo} ${ryo} 0 0 0 ${cx + rxo} ${cy} L${cx + rxi} ${cy} A${rxi} ${ryi} 0 0 1 ${cx - rxi} ${cy} Z`;
     /* 세로 갈고리 — 링 자리에서 위·아래로 뻗는 한 쌍의 뿔. 끝이 안쪽으로 모여
        수정을 감싼다. */
+    /* 갈고리는 링에 안 가린다(지적) — 링은 무깊이 손 면이라 직전 깊이를 물려받아
+       요잉에 따라 갈고리를 덮었다. 갈고리마다 제 자리 깊이를 달아, 앞쪽 갈고리는
+       링 위로 뒤쪽 갈고리는 링 뒤로 간다. */
     const claw = (ang: number): ShapeFace[] => {
       const a = (ang * Math.PI) / 180;
       const bx = Math.sin(a) * 4.95;
       const by = Math.cos(a) * 4.95;
-      return [
+      return tagKey([
         ...hornFaces(bx, by, PY_M - 0.5, bx * 0.72, by * 0.72, PY_M + 3.6, 1.05),
         ...hornFaces(bx, by, PY_M + 0.5, bx * 0.72, by * 0.72, PY_M - 3.6, 1.05),
-      ];
+      ], depthNow(bx, by) + 1);
     };
     // 링에 박힌 청록 띠 — 갈고리 사이사이.
     const gems: ShapeFace[] = [];
@@ -1392,7 +1395,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     }
     // 뒤 갈고리 → 뒤 링 → 수정 → 앞 링 → 앞 갈고리 순으로 겹친다.
     for (const ang of [180, 120, 240]) out.push(...claw(ang));
-    out.push(bodyFace(ringBack), sideFace(ringBack, 0.3), ...gems.slice(3));
+    out.push(...tagKey([bodyFace(ringBack), sideFace(ringBack, 0.3), ...gems.slice(3)],
+      depthNow(0, -4.95)));
     /* 수정 — 네 모서리 양뿔(비피라미드)을 모델 좌표 삼각면으로 짠다: 요잉에 통째로
        돌고, 보이는 면만 그려 속면이 안 비친다. 위가 더 길고 뾰족하다(사진). */
     const zB = PY_B;
@@ -1420,7 +1424,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         out.push([d, 0.6, "#a9ecf2"] as ShapeFace, ...dn.face(d));
       }
     }
-    out.push(bodyFace(ringFront), topFace(ringFront, 0.22), ...gems.slice(0, 3));
+    out.push(...tagKey([bodyFace(ringFront), topFace(ringFront, 0.22), ...gems.slice(0, 3)],
+      depthNow(0, 4.95)));
     for (const ang of [0, 60, 300]) out.push(...claw(ang));
     return out;
   },
