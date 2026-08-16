@@ -4045,24 +4045,36 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const dy = Math.cos(a);
       const nx = Math.cos(a);
       const ny = -Math.sin(a);
-      /* 입체·두껍게(재지적: 평면 말고) — 윗판과 아래로 내린 밑판을 겹쳐 두께
-         옆구리를 만들고, 폭도 키운다. */
-      const quadAt = (z9: number): string => polyPath3([
-        [dx * 1.1 + nx * 0.72, dy * 1.1 + ny * 0.72, z9],
-        [dx * 1.1 - nx * 0.72, dy * 1.1 - ny * 0.72, z9],
-        [dx * 3.1 - nx * 0.88, dy * 3.1 - ny * 0.88, z9 + 0.8],
-        [dx * 3.1 + nx * 0.88, dy * 3.1 + ny * 0.88, z9 + 0.8],
-      ]);
-      const shinAt = (z9: number): string => polyPath3([
-        [dx * 3.1 + nx * 0.78, dy * 3.1 + ny * 0.78, z9],
-        [dx * 3.1 - nx * 0.78, dy * 3.1 - ny * 0.78, z9],
-        [dx * 3.75, dy * 3.75, 0],
-      ]);
+      /* 진짜 입체(재재지적: 겹친 종이 두 장 말고) — 대퇴는 능선이 위로 선 삼각기둥
+         (좌·우 경사면 + 무릎 단면), 하지는 무릎 삼각 단면에서 발끝 한 점으로 모이는
+         삼각뿔. 대퇴는 더 길게(재지적: 엉덩이 1.0 → 무릎 3.5). */
+      const hipX = dx * 1;
+      const hipY = dy * 1;
+      const kneX = dx * 3.5;
+      const kneY = dy * 3.5;
+      const rH: [number, number, number] = [hipX, hipY, 5.05];
+      const rK: [number, number, number] = [kneX, kneY, 6.15];
+      const blH: [number, number, number] = [hipX - nx * 0.8, hipY - ny * 0.8, 4.15];
+      const brH: [number, number, number] = [hipX + nx * 0.8, hipY + ny * 0.8, 4.15];
+      const blK: [number, number, number] = [kneX - nx * 0.9, kneY - ny * 0.9, 5.25];
+      const brK: [number, number, number] = [kneX + nx * 0.9, kneY + ny * 0.9, 5.25];
+      const sT: [number, number, number] = [kneX, kneY, 5.9];
+      const sL: [number, number, number] = [kneX - nx * 0.75, kneY - ny * 0.75, 5];
+      const sR: [number, number, number] = [kneX + nx * 0.75, kneY + ny * 0.75, 5];
+      const foot: [number, number, number] = [dx * 4.05, dy * 4.05, 0];
+      const thighR = polyPath3([rH, rK, brK, brH]);
+      const thighL = polyPath3([rH, rK, blK, blH]);
+      const thighCap = polyPath3([rK, brK, blK]);
+      const shinBot = polyPath3([sL, sR, foot]);
+      const shinR = polyPath3([sT, sR, foot]);
+      const shinL = polyPath3([sT, sL, foot]);
       return tagKey(paintBase([
-        bodyFace(quadAt(4.1)), sideFace(quadAt(4.1), 0.25),
-        bodyFace(shinAt(4.9)), sideFace(shinAt(4.9), 0.25),
-        bodyFace(quadAt(4.7)), topFace(quadAt(4.7), 0.16),
-        bodyFace(shinAt(5.5)), topFace(shinAt(5.5), 0.1),
+        bodyFace(shinBot),
+        bodyFace(shinR), sideFace(shinR, 0.22),
+        bodyFace(shinL), topFace(shinL, 0.14),
+        bodyFace(thighR), sideFace(thighR, 0.2),
+        bodyFace(thighL), topFace(thighL, 0.15),
+        bodyFace(thighCap), sideFace(thighCap, 0.3),
       ], "#d4af37"), depthNow(dx * 2.4, dy * 2.4));
     };
     const [gx2, gy2] = project(-0.5, -0.5, 5.8);
