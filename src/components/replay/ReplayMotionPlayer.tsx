@@ -4502,8 +4502,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        좌표계를 쓴다. 위 회색 광택 원은 제거(요청). */
     const POD_Z = 4.2;
     const pod = (tx: number): void => {
-      out.push(...tagKey(paintBase(tubeFaces(tx, -2.9, tx, 0.4, 0.82, POD_Z), "#c9ced6"),
-        depthNow(tx, -1.25) + 1.6));
+      /* 깊이 보정을 걷는다(재지적: 사선에서 가려져야 할 실린더가 앞으로 튄다) —
+         관이 스스로 다는 깊이면 판·꼬리와 자연스럽게 앞뒤가 갈린다. */
+      out.push(...paintBase(tubeFaces(tx, -2.9, tx, 0.4, 0.82, POD_Z), "#c9ced6"));
     };
     // 폭 축소(지적: 몸체 폭 줄이기) — 포드 자리 ±3.1 → ±2.6.
     pod(-2.6);
@@ -4544,17 +4545,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        면이라 painter로는 못 가린다. */
     /* 추진체 넷(요청) — 본체 둘과 포드마다 하나씩, 크기를 키웠다. 꽁무니가 돌아앉으면
        아예 안 그린다(몸판이 무깊이 면이라 painter로는 못 가린다). */
-    if (facingRatio(0, -1) > -0.55) {
-      /* 몸 뒤로 확실히 빼고 붙박이 키로 얹는다(재지적: 추진기 안 보임) — 포드
-         꽁무니(y -2.9)보다 뒤에 세운다. */
-      // 포드 추진체는 실린더 중심 높이에 맞춘다(재지적).
-      const jets: [number, number][] = [[-0.85, 5.6], [0.85, 5.6], [-2.6, POD_Z], [2.6, POD_Z]];
-      for (const [tx, tz] of jets) {
-        out.push(...tagKey(paintBase(tubeFaces(tx, -2.95, tx, -3.85, 0.82, tz), "#9ba3ad"), 30));
-      }
-      for (const [tx, tz] of jets) {
-        out.push(...tagKey([topFace(groundEllipse(...project(tx, -3.95, tz + 0.1), 0.62, 0.5), 0.45)], 32));
-      }
+    /* 추진체 넷(재지적: 보여야 하는데 안 보임) — 꽁무니 각도 게이트와 붙박이 키를
+       걷고 관 자체 깊이로 둔다. 뒤에서 보면 몸 밖으로 나와 보이고 앞에서 보면 몸이
+       가린다. 뒤 하얀 분사 원은 제거(요청). */
+    // 포드 추진체는 실린더 중심 높이에 맞춘다(재지적).
+    for (const [tx, tz] of [[-0.85, 5.6], [0.85, 5.6], [-2.6, POD_Z], [2.6, POD_Z]] as [number, number][]) {
+      out.push(...paintBase(tubeFaces(tx, -2.95, tx, -3.95, 0.82, tz), "#9ba3ad"));
     }
     /* 꼬리(재지적: 축을 몸통에 붙이고 비행기 꼬리 스타일로) — 등판 뒤끝에서 곧장
        솟는 수직 안정판과, 그 위에서 좌우로 뻗는 수평 안정판 한 쌍. */
