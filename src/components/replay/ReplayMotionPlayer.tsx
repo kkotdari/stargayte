@@ -2873,12 +2873,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       fill: "#b3543a",
     }), depthNow(0, 3.4) * 1.6));
     // 동굴 입구 — 밑동 앞면에 뚫린 검은 구멍.
-    if (facingRatio(0, 1) > 0.08) {
+    /* 입구는 앞이 제대로 보일 때만(지적: 안 가려짐) — 옆으로 돌면 납작한 구멍판이
+       줄기 실루엣 밖으로 삐져나온다. 문턱을 올리고 면도 살짝 안으로 묻는다. */
+    if (facingRatio(0, 1) > 0.45) {
       const hole = polyPath3(Array.from({ length: 9 }, (_, i) => {
         const th = (i / 8) * Math.PI;
-        return [Math.cos(th) * 1.2, 0.4 + gsLoR(1.4) * 0.92, Math.sin(th) * 1.9] as [number, number, number];
+        return [Math.cos(th) * 1.2, 0.4 + gsLoR(1.4) * 0.86, Math.sin(th) * 1.9] as [number, number, number];
       }));
-      out.push(...tagKey([[hole, 0.92, "#101216"] as ShapeFace], depthNow(0, 3.6) * 1.6));
+      out.push(...tagKey([[hole, 0.92, "#101216"] as ShapeFace], depthNow(0, 3.4) * 1.6));
     }
     // 옆 혹 둘 — 줄기 옆선에 붙는다.
     out.push(...tagKey(domeFaces3(-gsLoR(4.6) * 0.8, 0.4, 0.95, 0.8, 4.6), depthNow(-2, 0.4) * 1.6));
@@ -2895,7 +2897,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...tagKey(spikeHorn(
         bx9, by9, bz9, bx9 + dxr * 1.5, by9 + dyr * 1.5, bz9 + len,
         1, IVORY_DEEP, 6, 0.7, dxr, dyr,
-      ), depthNow(bx9, by9) * 1.6 + 6));
+      /* 뒤로 돈 깃 뿔은 줄기 뒤로(지적: 안 가려짐) — 붙박이 보정(+6)을 걷고 제 자리
+         깊이만 쓴다. 줄기 키(0·1)보다 낮아지면 저절로 묻힌다. */
+      ), depthNow(bx9, by9) * 1.6));
     }
     // 꼭대기 살덩이 엽 아가리.
     const [cx2, cy2] = project(0, 0.4, GS_T + 0.7);
