@@ -4538,13 +4538,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...tagKey(spirePillar({
         x: 0, y: 0, h: 1, w: 0.12, tipW: 1.05,
         segs: 9, sides: 8, hold: 0,
+        /* 축은 삼차 베지어(재지적) — 꼬리 끝에서 바닥을 따라 뒤로 뻗다가, 허리로
+           오르는 구간에서 한 번 앞으로 기울었다가 확 뒤로 꺾인다. 제어점 둘로 S자를
+           만든다: P0 꼬리끝 → C1 앞·낮게 → C2 뒤·높게 → P3 허리. */
         path: (t9: number): [number, number, number] => {
           const u9 = 1 - t9;
-          return [
-            0,
-            u9 * u9 * -5 + 2 * u9 * t9 * -0.5,
-            u9 * u9 * 0.1 + 2 * u9 * t9 * 0.14 + t9 * t9 * 3.6,
-          ];
+          const bez = (p0: number, c1: number, c2: number, p3: number): number =>
+            u9 * u9 * u9 * p0 + 3 * u9 * u9 * t9 * c1 + 3 * u9 * t9 * t9 * c2 + t9 * t9 * t9 * p3;
+          return [0, bez(-5, 0.9, -1.5, 0), bez(0.1, 0.3, 2.6, 3.6)];
         },
         fill: "#c68a62", fillFront: IVORY, fillBack: "#6b4732",
       }), 6),
