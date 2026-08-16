@@ -9403,12 +9403,12 @@ export default function ReplayMotionPlayer({
         {/* 마우스 조작 표시(요청: 라벨 달고 라디오는 on/off) — 다른 라디오와 같은 꼴. */}
         {entOn && (
           <span className="scr-motion-radio">
-            <span className="scr-motion-radio-label">마우스 조작 표시</span>
+            <span className="scr-motion-radio-label">마우스 조작</span>
             <PillTabs
-              options={[{ value: "on", label: "켬" }, { value: "off", label: "끔" }]}
+              options={[{ value: "on", label: "보임" }, { value: "off", label: "숨김" }]}
               value={clickFx ? "on" : "off"}
               onChange={(v) => setClickFx(v === "on")}
-              aria-label="마우스 조작 표시"
+              aria-label="마우스 조작"
               fit
             />
           </span>
