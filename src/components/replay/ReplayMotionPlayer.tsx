@@ -1421,7 +1421,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const a = 3;
     const b = 2.33;
     const run = 2.4;
-    const th = 0.55; // 경사로 두께
+    const th = 0.95; // 경사로 두께(지적: 옆면이 잘 안 보임 — 두껍게)
     const out: ShapeFace[] = [];
     /* 경사로 하나 — 안쪽 높은 변(w 반폭, z h)에서 바깥 낮은 변(w*0.88, z 0)으로.
        윗면·아랫면과 둘레 옆면으로 두께를 준다. dir는 바깥으로 뻗는 방향. */
@@ -1446,9 +1446,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           nx: mx9 / ml9, ny: my9 / ml9, f: facingRatio(mx9 / ml9, my9 / ml9),
         };
       }).sort((q9, w2) => q9.f - w2.f);
+      /* 옆면 두께가 얇아 잘 안 보인다(지적) — 음영 대비를 키워(밝은 0.16 / 어두운
+         0.46) 경사로 옆구리가 또렷하게 드러나게 한다. */
       for (const wl9 of walls9) {
         const fl9 = faceLight(wl9.nx, wl9.ny, 0.3);
-        f9.push(bodyFace(wl9.d), ...(fl9.visible ? fl9.face(wl9.d) : [sideFace(wl9.d, 0.4)]));
+        f9.push(bodyFace(wl9.d),
+          ...(fl9.visible ? fl9.face(wl9.d) : [sideFace(wl9.d, 0.46)]));
       }
       f9.push(bodyFace(polyPath3(top9)), topFace(polyPath3(top9), 0.2));
       return tagKey(f9, depthNow(dx9 * (inner + run * 0.5), dy9 * (inner + run * 0.5)));
