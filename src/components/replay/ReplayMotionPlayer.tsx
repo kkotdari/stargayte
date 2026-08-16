@@ -2746,9 +2746,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 포신 입체 벽 두르기(재지적: 캐리어처럼) — 오른벽 하나만 박혀 있던 것을 윗판·
          밑판 + 좌우 옆벽(faceLight 판정) + 포구 단면(앞이 보일 때만)으로 닫는다.
          포신은 받침(키 40)보다 위(재지적: 포신 가려짐). */
-      [barrelTop, 1, GUNMETAL, 45] as ShapeFace,
-      topFace(barrelTop, 0.18),
-      [polyPath3([[-0.7, 0.7, 3.6], [0.7, 0.7, 3.6], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]), 1, GUNMETAL] as ShapeFace,
+      /* 면 순서(재지적: 비침·순서) — 내려다보는 카메라라 밑판이 맨 아래, 옆벽,
+         포구 단면, 윗판 차례로 얹혀야 한다. 윗판을 먼저 그리면 옆벽이 그 위를 덮어
+         포신이 뚫린 것처럼 보였다. 키(45)는 첫 면인 밑판이 정의하고 나머지가 물려받는다. */
+      [polyPath3([[-0.7, 0.7, 3.6], [0.7, 0.7, 3.6], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]),
+        1, GUNMETAL, 45] as ShapeFace,
       /* 좌우 벽은 둘 다 그리되 뒤 향한 쪽부터(재지적: 면이 비치고 서로 가림) —
          하나를 걸러내면 그 자리로 뒤가 비친다. */
       ...([1, -1] as [1, -1])
@@ -2766,6 +2768,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         // 포구 단면도 늘 그린다(재지적: 걸러내면 그 틈으로 비친다).
         return [[d, 1, GUNMETAL] as ShapeFace, ...(mz.visible ? [capFace(d, 0.4)] : [capFace(d, 0.5)])];
       })(),
+      // 윗판은 맨 나중 — 위에서 보는 화면에서 늘 꼭대기다.
+      [barrelTop, 1, GUNMETAL] as ShapeFace,
+      topFace(barrelTop, 0.18),
       /* 포탑 받침은 맨 나중에(재수리: 앞에 두면 무깊이 포신 면들이 깊이 40을 물려받아
          결국 위에 그려졌다 — zsorted는 무깊이 면에 직전 깊이를 준다). */
       ...tagKey(frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.5), 40),
@@ -2798,9 +2803,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const barrelTop = polyPath3([[-0.7, 0.7, 4], [0.7, 0.7, 4], [0.7, 2.9, 6.9], [-0.7, 2.9, 6.9]]);
     return [
       // 포신은 받침(키 40)보다 위(재지적: 포신 가려짐) — 뒤 무깊이 면들이 45를 상속한다.
-      [barrelTop, 1, GUNMETAL, 45] as ShapeFace,
-      topFace(barrelTop, 0.18),
-      [polyPath3([[-0.7, 0.7, 3.6], [0.7, 0.7, 3.6], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]), 1, GUNMETAL] as ShapeFace,
+      /* 면 순서(재지적: 비침·순서) — 내려다보는 카메라라 밑판이 맨 아래, 옆벽,
+         포구 단면, 윗판 차례로 얹혀야 한다. 윗판을 먼저 그리면 옆벽이 그 위를 덮어
+         포신이 뚫린 것처럼 보였다. 키(45)는 첫 면인 밑판이 정의하고 나머지가 물려받는다. */
+      [polyPath3([[-0.7, 0.7, 3.6], [0.7, 0.7, 3.6], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]),
+        1, GUNMETAL, 45] as ShapeFace,
       /* 좌우 벽은 둘 다 그리되 뒤 향한 쪽부터(재지적: 면이 비치고 서로 가림) —
          하나를 걸러내면 그 자리로 뒤가 비친다. */
       ...([1, -1] as [1, -1])
@@ -2818,6 +2825,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         // 포구 단면도 늘 그린다(재지적: 걸러내면 그 틈으로 비친다).
         return [[d, 1, GUNMETAL] as ShapeFace, ...(mz.visible ? [capFace(d, 0.4)] : [capFace(d, 0.5)])];
       })(),
+      // 윗판은 맨 나중 — 위에서 보는 화면에서 늘 꼭대기다.
+      [barrelTop, 1, GUNMETAL] as ShapeFace,
+      topFace(barrelTop, 0.18),
       // 포탑 받침은 맨 나중에(재수리: zsorted 무깊이 상속 탓 — 위 합본과 같은 이유).
       ...tagKey(frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.5), 40),
       // 뚜껑만 은색(요청) — 옆면은 개인색.
