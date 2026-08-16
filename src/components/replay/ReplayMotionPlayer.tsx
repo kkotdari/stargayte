@@ -1949,11 +1949,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         /* 양 끝의 뾰족한 모서리를 깎는다(요청) — 폭이 끝까지 계속 벌어지면 뿔처럼
            튀어나와 위 부품(반원판·돔) 밖으로 삐친다. 끝 15% 구간에서 도로 좁혀
            모따기한 것처럼 마감한다. */
-        const XE9 = 4.3;
+        const XE9 = 3.9;
         const halfAt = (v9: number): number => {
           const t9 = Math.min(1, Math.abs(v9) / XE9);
-          const base9 = 1.85 + 2.35 * t9 ** 1.3;
-          return base9 * (t9 > 0.85 ? 1 - ((t9 - 0.85) / 0.15) * 0.42 : 1);
+          // 더 뭉뚝하게(재지적) — 끝 35% 구간을 크게 좁혀 뭉툭한 마감으로.
+          const base9 = 1.8 + 2.1 * t9 ** 1.2;
+          return base9 * (t9 > 0.65 ? 1 - ((t9 - 0.65) / 0.35) * 0.62 : 1);
         };
         // 허리 축 교환(재지적) — 90도 요잉 뒤에도 같은 방향으로 잘록하게.
         const rim9 = (z9: number): [number, number, number][] => {
