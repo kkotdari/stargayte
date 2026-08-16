@@ -1874,29 +1874,54 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 스포어(정정: 가시가 아니라 굴뚝이 포인트) — 크립 밑동과 몸통 덩어리 위에, 왼뒤에서
      굵게 서는 아가리 뚫린 굴뚝 관. */
   spore: () => [
-    // 아래 베이스 검회색(재지적: 검정 말고 검회색).
-    ...paintBase(domeFaces3(0, 0, 5.4, 1.5), "#3a3f46"),
-    // 가운데 몸통 — 겹친 불룩 덩어리 둘(유지).
-    ...domeFaces3(0.6, 0.2, 3, 4.6),
-    ...domeFaces3(1.6, 1.4, 2.1, 2.9),
-    // 큰 굴뚝 — 벌어진 테와 어두운 속.
-    ...cylinderFaces3(-2.6, -1.4, 1.3, 6.2, 0.8),
-    bodyFace(discPath3(-2.6, -1.4, 7.05, 1.65)),
-    capFace(discPath3(-2.6, -1.4, 7.1, 1.05), 0.5),
-    // 앞오른쪽 작은 덩이(유지).
-    ...domeFaces3(3.4, 2.6, 1.5, 1.7),
+    /* 스포어(요청: 뿔기둥 전격 활용) — 검회색 밑동 둔덕 위에 살덩이 몸통 기둥이 서고,
+       왼뒤에 아가리 뚫린 굵은 굴뚝 기둥이 솟는다. */
+    ...tagKey(paintBase(spirePillar({
+      x: 0, y: 0, z0: 0, h: 1.6, w: 5.4, tipW: 3.4,
+      segs: 3, sides: 14, hold: 0.15, taper: 1.8,
+    }), "#3a3f46"), 0.2),
+    ...tagKey(spirePillar({
+      x: 0.6, y: 0.2, z0: 1.2, h: 4.4, w: 3, tipW: 1.1,
+      segs: 6, sides: 12, hold: 0.08, taper: 1.7,
+    }), 6),
+    ...tagKey(spirePillar({
+      x: 1.6, y: 1.4, z0: 4.4, h: 2.1, w: 1.5, tipW: 0.55,
+      segs: 4, sides: 10, hold: 0.1, taper: 1.5,
+    }), 10),
+    // 굴뚝 — 벌어진 테와 어두운 속.
+    ...tagKey([
+      ...spirePillar({
+        x: -2.6, y: -1.4, z0: 0.8, h: 5.6, w: 1.05, tipW: 1.45,
+        segs: 5, sides: 10, hold: 0.2,
+      }),
+      capFace(discPath3(-2.6, -1.4, 7.05, 1.05), 0.5),
+    ], 14 + depthNow(-2.6, -1.4)),
+    // 앞오른쪽 작은 덩이.
+    ...tagKey(spirePillar({
+      x: 3.4, y: 2.6, z0: 0.6, h: 1.7, w: 1.5, tipW: 0.45,
+      segs: 4, sides: 10, hold: 0.1, taper: 1.6,
+    }), 8 + depthNow(3.4, 2.6)),
   ],
   /* 크립 콜로니(실물 참고) — 처진 붉은 둔덕 + 꼭대기 주름 혹(입) + 옆 가시 + 바닥에
      번진 점액 자락. */
   creep: () => [
-    // 바닥은 동그라미가 아니라 갈퀴(지적) — 검회색(요청).
+    /* 크립 콜로니(요청: 뿔기둥 전격 활용) — 갈퀴 바닥 위에 후지산 꼴 살덩이 둔덕이
+       앉고, 꼭대기 주름 혹과 옆 가시 셋이 모두 공용 기둥·뿔로 선다. */
     ...paintBase(creepSplat(6.2), "#3a3f46"),
-    ...domeFaces3(0, 0, 4.6, 3.4),
-    ...domeFaces3(0.4, -0.6, 2, 2.4, 3),
-    capFace(discPath3(0.4, -0.6, 5.35, 0.75), 0.45),
-    ...hornFaces(-3.4, -1.4, 1.6, -4.6, -2, 3.4, 0.9),
-    ...hornFaces(-1.6, -3, 1.6, -2.2, -4.2, 3.2, 0.9),
-    ...hornFaces(3.4, -1.8, 1.6, 4.6, -2.6, 3.2, 0.9),
+    ...tagKey(spirePillar({
+      x: 0, y: 0, z0: 0, h: 3.6, w: 4.6, tipW: 1.5,
+      segs: 7, sides: 14, hold: 0, taper: 2,
+    }), 0.2),
+    ...tagKey(spirePillar({
+      x: 0.4, y: -0.6, z0: 3.3, h: 2.1, w: 1.6, tipW: 0.5,
+      segs: 5, sides: 10, hold: 0.1, taper: 1.6,
+    }), 8),
+    ...tagKey(spikeHorn(-3.4, -1.4, 1.6, -4.6, -2, 3.4, 0.9, undefined, 6, 0.5, -0.9, -0.4),
+      depthNow(-3.4, -1.4) * 1.6),
+    ...tagKey(spikeHorn(-1.6, -3, 1.6, -2.2, -4.2, 3.2, 0.9, undefined, 6, 0.5, -0.4, -0.9),
+      depthNow(-1.6, -3) * 1.6),
+    ...tagKey(spikeHorn(3.4, -1.8, 1.6, 4.6, -2.6, 3.2, 0.9, undefined, 6, 0.5, 0.9, -0.4),
+      depthNow(3.4, -1.8) * 1.6),
   ],
 
   /* 리파이너리(실물 참고) — 낮은 받침 + 좌우 어두운 탑 + 가운데 나팔 굴뚝 + 은빛
@@ -2878,12 +2903,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        (중심 방향)으로(요청). 안쪽 방향은 밑동 자리의 반대 부호다. */
     // 휨 방향 반전(재지적) — 배가 바깥으로 부풀며 끝이 안으로 감긴다.
     // 뿌리를 조금 더 바깥으로(요청) — 둔덕 옆구리 반경 4.6 → 5.4.
-    ...tagKey(spikeHorn(-0.95, -5.35, 1.1, -1.1, -6.6, 10.2, 2.4, "#1b1e23", 6, 1.5, -0.17, -0.98), -2),
+    /* 앞뒤는 요잉이 정한다(재지적) — 제 자리 깊이를 키워 써 앞 뿔은 둔덕 위, 뒤로
+       돌아간 뿔은 둔덕 뒤로 간다. */
+    ...tagKey(spikeHorn(-0.95, -5.35, 1.1, -1.1, -6.6, 10.2, 2.4, "#1b1e23", 6, 1.5, -0.17, -0.98),
+      depthNow(-0.95, -5.35) * 1.6),
     ...SHAPE_BUILDERS.hatchery(),
     ...tagKey(spikeHorn(-3.45, 4.1, 1.1, -3.9, 5.1, 11.6, 2.6, "#1b1e23", 6, 1.6, -0.64, 0.77),
-      26 + depthNow(-3.45, 4.1)),
+      depthNow(-3.45, 4.1) * 1.6),
     ...tagKey(spikeHorn(5.3, 0.95, 1.2, 5.9, 1.1, 12.2, 2.8, "#1b1e23", 6, 1.6, 0.98, 0.17),
-      26 + depthNow(5.3, 0.95)),
+      depthNow(5.3, 0.95) * 1.6),
   ],
   /* 하이브 — 더 길고 굵은 뿔 셋(뿔 등에 가시들, 요청) + 앞 컬. */
   hive: () => {
@@ -2905,8 +2933,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       hi += 1;
       // 뿔은 황토색, 가시는 상아색(요청).
       // 뿔에 제 자리 깊이(지적: 가려짐) — 첫 뿔(뒤)은 둔덕 뒤, 나머지는 둔덕 앞.
+      /* 앞뒤는 요잉이 정한다(재지적: 뒤로 돈 뿔이 안 가려짐) — 고정 키를 쓰면 뒤로
+         돌아도 늘 앞에 그려진다. 제 자리 깊이를 키워 쓰면 앞은 둔덕 위, 뒤는 아래다. */
       out.push(...tagKey(spikeHorn(bx, by, bz, tx, ty, tz, w, "#b3854a", 6, 1.8, inX, inY),
-        hi === 1 ? -2 : 26 + depthNow(bx, by)));
+        depthNow(bx, by) * 1.6));
       /* 뿔 등의 가시(요청, 정정: 안쪽을 향한다) — 뿔 길이를 따라 서너 개가 본 건물
          쪽으로 돋는다. */
       /* 가시는 휜 뿔의 곡선 위에 앉는다(지적: 위치가 어긋남) — spikeHorn과 같은
@@ -2921,7 +2951,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         const oy = (py / olen) * 1.7;
         out.push(...tagKey(paintBase(
           hornFaces(px, py, pz, px - ox, py - oy, pz + 0.7, 0.65), IVORY_DEEP,
-        ), hi === 1 ? -1 : 14 + depthNow(px, py)));
+        ), depthNow(px, py) * 1.6 + 0.2));
       }
     }
     out.push(...hornFaces(-2.6, 4.6, 0.6, -4.4, 6, 2.6, 1));
