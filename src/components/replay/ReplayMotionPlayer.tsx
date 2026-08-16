@@ -1288,9 +1288,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        휜다. 길이는 건물 높이(9.6)의 반쯤. 두 마디로 굽혀 휨을 낸다. */
     for (const sy9 of [1, -1] as const) {
       const ry9 = sy9 * (b + run * 0.5);
+      /* 아래는 굵기 일정한 기둥, 위만 끝이 뾰족한 뿔(재지적) — 합쳐서 하나의 뿔로
+         읽힌다. 뿔 뿌리를 기둥보다 살짝 굵게 잡아 '꽂은' 이음이 된다. */
       out.push(...tagKey([
-        ...hornFaces(0, ry9, 0.1, 0, ry9 - sy9 * 0.25, 3.3, 0.85),
-        ...hornFaces(0, ry9 - sy9 * 0.25, 3.3, 0, ry9 - sy9 * 1.5, 5.1, 0.6),
+        ...rodFaces(0, ry9, 0.1, 0, ry9 - sy9 * 0.25, 3.2, 0.8),
+        ...hornFaces(0, ry9 - sy9 * 0.22, 3.05, 0, ry9 - sy9 * 1.5, 5.2, 0.88),
       ], depthNow(0, ry9)));
     }
     return out;
