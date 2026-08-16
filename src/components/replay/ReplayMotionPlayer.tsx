@@ -636,9 +636,12 @@ function spikeHorn(
 ): ShapeFace[] {
   const bxDir = bowX ?? 0;
   const byDir = bowY ?? 1;
+  /* 중간에 잘록해지지 않게(지적: 하나의 뿔로 보이게) — 마디를 촘촘히(10) 나눠
+     곡선을 매끈하게 하고, 굵기는 밑동에서 완만하게 시작해(taper 1.5) 끝으로 갈수록
+     빨리 가늘어진다. hold는 두지 않는다(굵기 유지 구간이 있으면 그 끝이 턱이 된다). */
   return spirePillar({
     x: 0, y: 0, h: 1, w: w * 0.62, tipW: 0.02,
-    segs: 6, sides, hold: 0.12, fill,
+    segs: 10, sides, hold: 0, taper: 1.5, fill,
     path: (t9: number): [number, number, number] => {
       const s9 = Math.sin(Math.PI * t9) * bow;
       return [
