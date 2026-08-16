@@ -10929,8 +10929,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   align-self: center; justify-self: center; color: var(--dim);
   font-size: 11px; font-weight: 700; padding: 0 7px; pointer-events: none;
 }
-/* PC(wide) — 두 팀 기둥(1·2열) 사이 한가운데 겹쳐 선다. */
-.scr-motion-wide .scr-motion-teamvs { grid-column: 1 / 3; grid-row: 2; z-index: 1; align-self: start; margin-top: 2px; }
+/* PC(wide) — 두 팀 기둥(1·2열) 사이, 가로·세로 다 가운데(재지적: 상단 말고). */
+.scr-motion-wide .scr-motion-teamvs { grid-column: 1 / 3; grid-row: 2; z-index: 1; align-self: center; }
 .scr-motion:not(.scr-motion-wide) .scr-motion-teamcol-item .scr-motion-base-ring { display: none; }
 /* 이름은 살짝 크게(요청) — 아바타가 빠져 이름이 곧 그 사람이다. */
 .scr-motion:not(.scr-motion-wide) .scr-motion-teamcol-name { font-size: 11px; max-width: none; }
@@ -11278,11 +11278,14 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   align-items: flex-end; gap: 2px;
 }
 .scr-motion-clockwrap .scr-kakao-icon-btn { color: var(--muted); }
+/* 공유 줄(재지적: 조종간 아랫줄로 따로) — 오른끝 정렬. */
+.scr-motion-sharerow { display: flex; justify-content: flex-end; margin-top: 2px; }
+.scr-motion-wide .scr-motion-sharerow { grid-column: 3; }
 /* 시각 아래 작게(요청) — 컴팩트: 높이 18px, 여백 최소, 글꼴 10px. */
-.scr-motion-clockwrap .scr-kakao-share-btn {
-  height: 18px; padding: 0 5px; font-size: 10px; gap: 3px; white-space: nowrap;
+.scr-motion-sharerow .scr-kakao-share-btn {
+  height: 20px; padding: 0 7px; font-size: 11px; gap: 3px; white-space: nowrap;
 }
-.scr-motion-clockwrap .scr-kakao-share-btn svg { width: 11px; height: 11px; }
+.scr-motion-sharerow .scr-kakao-share-btn svg { width: 11px; height: 11px; }
 .scr-motion-btn {
   min-width: 28px; height: 22px; padding: 0 6px; border-radius: var(--radius-sm);
   border: 1px solid var(--line-hair); background: transparent; color: var(--muted);

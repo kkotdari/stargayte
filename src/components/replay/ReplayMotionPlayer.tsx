@@ -9507,12 +9507,12 @@ export default function ReplayMotionPlayer({
           }}
           aria-label="재생 위치"
         />
-        {/* 시각 위, 공유 아래(요청) — 오른끝 세로 스택. */}
         <span className="scr-motion-clockwrap">
           <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
-          {shareNode}
         </span>
       </div>
+      {/* 현재 장면 공유는 조종간 아랫줄에 따로(재지적) — 오른끝 정렬 한 줄. */}
+      {shareNode && <div className="scr-motion-bar scr-motion-sharerow">{shareNode}</div>}
       {/* (삭제·지적: PC 타임스탬프 중복) — 기둥의 타임스탬프·등록자는 걷었다. 시각은
           맵 이름 줄(.scr-story-when)이 말하고 등록자는 그 오른쪽에 붙는다(GameResultStory). */}
       {/* 오른쪽 댓글 영역(요청: PC에서 댓글부를 미니맵 우측으로 — 기존 확대창 방식 그대로,
