@@ -2865,21 +2865,25 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        낮아지는 겹비늘 마디 다섯(앞마디가 뒤를 덮는 고정 키). 전체 금색. 등쪽 반원
        무늬는 화면 고정 호가 떠 보였으니 모델 공간 판으로 등에 붙여 요잉을 탄다.
        앞 바닥엔 아주 작은 반의반 구 머리. */
+    // 등을 더 높인다(재지적) — 가운데가 솟은 반달이 더 도드라진다.
     const segs: [number, number, number][] = [ // [y, 반지름, 높이] — 뒤에서 앞으로.
-      [-2.25, 0.8, 0.9], [-1.25, 1.3, 1.7], [-0.1, 1.6, 2.2], [1.05, 1.5, 1.9], [2.05, 1.05, 1.2],
+      [-2.25, 0.8, 1.2], [-1.25, 1.3, 2.4], [-0.1, 1.6, 3.2], [1.05, 1.5, 2.7], [2.05, 1.05, 1.6],
     ];
     const out: ShapeFace[] = [];
     segs.forEach(([cy, r, h], i) => {
       out.push(...tagKey(paintBase(domeFaces3(0, cy, r, h, 3.4), "#d4af37"), 10 + i * 2));
       if (i >= 1 && i <= 3) {
         for (const m9 of [-1, 1] as const) {
-          const cxm = m9 * r * 0.4;
-          const w9 = r * 0.32;
-          // 모델 공간 반원 — 평평한 변이 앞 경계, 볼록이 뒤로. 등 위 z에 눕는다.
+          const cxm = m9 * r * 0.42;
+          const w9 = r * 0.3;
+          /* 갑각 표면에 붙인다(재지적: 떠 보임) — 무늬 중심의 가로 오프셋만큼 돔이
+             낮아지므로, 그 높이(반원 프로필)를 풀어 등껍질에 얹는다. */
+          const kz9 = Math.sqrt(Math.max(0.04, 1 - (cxm / r) ** 2));
+          const zTop = 3.4 + h * kz9 * 0.97;
           const pts9: [number, number, number][] = [];
           for (let a9 = 0; a9 <= 6; a9 += 1) {
             const th9 = (a9 / 6) * Math.PI;
-            pts9.push([cxm + Math.cos(th9) * w9, cy + 0.55 - Math.sin(th9) * w9 * 1.1, 3.4 + h * 0.85]);
+            pts9.push([cxm + Math.cos(th9) * w9, cy + 0.5 - Math.sin(th9) * w9 * 1.15, zTop]);
           }
           out.push([polyPath3(pts9), 0.95] as ShapeFace);
         }
