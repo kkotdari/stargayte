@@ -626,6 +626,71 @@ const IVORY_DEEP = "#cdc0a0";
 const GUNMETAL = "#4b5058";
 /* 탱크 캐터필러 금속색(요청: 짙은 회은색). */
 const TRACK_STEEL = "#5c636d";
+/** 꺾임 있는 뿔기둥(요청: 여러 곳에 쓰는 형태라 이름을 붙여 공용화) — 다각 단면의
+ *  마디를 이어 세우고, 마디마다 축을 조금씩 꺾으며 굵기를 줄여 끝을 뾰족하게 한다.
+ *  게이트 발판 뿔·미네랄 결정·건물 첨탑처럼 "밑은 기둥, 위는 뿔"인 것들이 같은 자를
+ *  쓴다. 각도(lean·curve)·마디 수(segs)·단면 각(sides)이 모두 파라미터다.
+ *
+ *  x·y·z0  뿌리 자리, h 전체 높이, w 뿌리 반폭, tipW 끝 반폭(0이면 뾰족)
+ *  segs    마디 수(많을수록 휨이 매끈하다), sides 단면 다각형의 변 수
+ *  leanX·leanY  끝이 곧게 밀리는 양(기울기), curveX·curveY  끝으로 갈수록 더해지는 휨
+ *  hold    아래 이 비율까지는 굵기를 그대로 둔다(기둥 구간, 0~1) */
+function spirePillar(o: {
+  x: number; y: number; z0?: number; h: number; w: number; tipW?: number;
+  segs?: number; sides?: number;
+  leanX?: number; leanY?: number; curveX?: number; curveY?: number;
+  hold?: number; fill?: string;
+}): ShapeFace[] {
+  const z0 = o.z0 ?? 0;
+  const segs = Math.max(1, o.segs ?? 3);
+  const sides = Math.max(3, o.sides ?? 4);
+  const tipW = o.tipW ?? 0;
+  const hold = Math.min(0.9, Math.max(0, o.hold ?? 0.45));
+  const axis = (t: number): [number, number, number] => [
+    o.x + (o.leanX ?? 0) * t + (o.curveX ?? 0) * t * t,
+    o.y + (o.leanY ?? 0) * t + (o.curveY ?? 0) * t * t,
+    z0 + o.h * t,
+  ];
+  const widthAt = (t: number): number => {
+    if (t <= hold) return o.w;
+    const k = (t - hold) / (1 - hold);
+    return o.w + (tipW - o.w) * k;
+  };
+  const ring = (t: number): [number, number, number][] => {
+    const [ax, ay, az] = axis(t);
+    const r = widthAt(t);
+    return Array.from({ length: sides }, (_, i) => {
+      const a = (i / sides) * Math.PI * 2 + Math.PI / sides;
+      return [ax + Math.cos(a) * r, ay + Math.sin(a) * r, az] as [number, number, number];
+    });
+  };
+  const out: ShapeFace[] = [bodyFace(polyPath3(ring(0)))];
+  for (let s2 = 0; s2 < segs; s2 += 1) {
+    const lo = ring(s2 / segs);
+    const hi = ring((s2 + 1) / segs);
+    /* 옆면은 걸러내지 않고 뒤 향한 것부터(다른 입체들과 같은 규칙) — 걸러내면 그
+       자리로 뒤가 비치고, 정렬해 두면 앞면이 늘 위에 온다. */
+    const walls = lo.map((_, i) => {
+      const j = (i + 1) % sides;
+      const mx = (lo[i][0] + lo[j][0]) / 2 - axis(s2 / segs)[0];
+      const my = (lo[i][1] + lo[j][1]) / 2 - axis(s2 / segs)[1];
+      const ml = Math.hypot(mx, my) || 1;
+      return {
+        d: polyPath3([lo[i], lo[j], hi[j], hi[i]]),
+        nx: mx / ml, ny: my / ml, f: facingRatio(mx / ml, my / ml),
+      };
+    }).sort((q, w) => q.f - w.f);
+    for (const wl of walls) {
+      const fl = faceLight(wl.nx, wl.ny, 0.3);
+      out.push(bodyFace(wl.d), ...(fl.visible ? fl.face(wl.d) : [sideFace(wl.d, 0.42)]));
+    }
+  }
+  if (tipW > 0.01) {
+    const cap = polyPath3(ring(1));
+    out.push(bodyFace(cap), topFace(cap, 0.18));
+  }
+  return tagKey(o.fill ? paintBase(out, o.fill) : out, depthNow(o.x, o.y));
+}
 /* 프로토스 금·플라즈마(요청) — 인간형 다섯(질럿·하템·다크·아콘·다크아콘)이 나눠 쓴다. */
 const P_GOLD = "#d4af37";
 const P_PLASMA = "#e4f6ff";
@@ -1292,12 +1357,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        휜다. 길이는 건물 높이(9.6)의 반쯤. 두 마디로 굽혀 휨을 낸다. */
     for (const sy9 of [1, -1] as const) {
       const ry9 = sy9 * (b + run * 0.5);
-      /* 아래는 굵기 일정한 기둥, 위만 끝이 뾰족한 뿔(재지적) — 합쳐서 하나의 뿔로
-         읽힌다. 뿔 뿌리를 기둥보다 살짝 굵게 잡아 '꽂은' 이음이 된다. */
-      out.push(...tagKey([
-        ...rodFaces(0, ry9, 0.1, 0, ry9 - sy9 * 0.25, 3.2, 0.8),
-        ...hornFaces(0, ry9 - sy9 * 0.22, 3.05, 0, ry9 - sy9 * 1.5, 5.2, 0.88),
-      ], depthNow(0, ry9)));
+      // 아래는 기둥, 위는 뿔 — 공용 도형(spirePillar)으로 세운다.
+      out.push(...spirePillar({
+        x: 0, y: ry9, z0: 0.1, h: 5.1, w: 0.72, tipW: 0,
+        segs: 4, sides: 6, curveY: -sy9 * 1.4, hold: 0.5,
+      }));
     }
     return out;
   },
