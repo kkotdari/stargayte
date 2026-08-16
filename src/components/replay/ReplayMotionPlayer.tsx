@@ -4532,9 +4532,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const lx = Math.sin(th) * 2.18 * sxSign;
       const ly = Math.cos(th) * 2.18;
       const [px, py] = project(lx, ly, 5.65);
+      // 동그란 기관(재지적: 럭비공 꼴) — 가로·세로 반지름을 같게 둔 진짜 원.
       return tagKey([
-        [groundEllipse(px, py, 0.5, 1.08), 0.95, "#7d55b4"] as ShapeFace,
-        [groundEllipse(px - 0.1 * sxSign, py, 0.32, 0.76), 0.6, "#a97fe0"] as ShapeFace,
+        [groundEllipse(px, py, 0.92, 0.92), 0.95, "#7d55b4"] as ShapeFace,
+        [groundEllipse(px - 0.12 * sxSign, py - 0.1, 0.55, 0.55), 0.6, "#a97fe0"] as ShapeFace,
       ], depthNow(lx, ly));
     };
     /* 얼굴(재지적: 얼굴은 앞쪽 아래쪽에 작은 반구형으로) — 몸 앞아래 표면에 붙는
