@@ -4224,7 +4224,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        요잉에 따라 몸통 막대를 이겨 앞으로 튀었다. 맨 뒤 고정 키로 못 박는다. */
     ...tagKey(frustumFaces3(0, -0.1, 1.75, 1.5, 1.15, 1, 0.85, 3.15), -100),
     // 얼굴 — 공통 턱주가리(요청). 뒤로 솟던 머리 뿔은 제거.
-    ...tagKey(protossFace(P_GOLD), 20),
+    /* 머리 깊이는 제 자리로(지적: 몸통에 안 가려짐) — 붙박이 키 20은 뒤에서 볼 때도
+       머리가 몸통을 뚫고 나왔다. 앞으로 숙인 머리의 중심(y 0.4) 깊이를 쓰면 앞에선
+       머리가, 뒤에선 몸통이 이긴다. */
+    ...tagKey(protossFace(P_GOLD), depthNow(0, 0.4) + 0.7),
     /* 뒤통수 묶음머리(재지적: 한 마디 더·더 두껍게·더 곧게) — 끝은 금색 마감과
        플라즈마 불꽃. 다발은 개인색. */
     // 각도 더 낮춘다(재재지적) — 뒤로 갈수록 더 처진다.
@@ -4275,7 +4278,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...protossLegs(P_GOLD, P_GOLD),
     ...protossTorso(P_GOLD),
     // 얼굴 — 공통 턱주가리(요청). 뒤로 솟던 머리 뿔은 제거.
-    ...tagKey(protossFace(P_GOLD), 20),
+    /* 머리 깊이는 제 자리로(지적: 몸통에 안 가려짐) — 붙박이 키 20은 뒤에서 볼 때도
+       머리가 몸통을 뚫고 나왔다. 앞으로 숙인 머리의 중심(y 0.4) 깊이를 쓰면 앞에선
+       머리가, 뒤에선 몸통이 이긴다. */
+    ...tagKey(protossFace(P_GOLD), depthNow(0, 0.4) + 0.7),
     // 왼팔 두 마디 — 금색.
     ...paintBase(rodFaces(-1.05, -0.15, 5.65, -1.5, 0.4, 4.55, 0.5), P_GOLD),
     ...paintBase(rodFaces(-1.5, 0.4, 4.55, -1.1, 1.2, 3.7, 0.45), P_GOLD),
@@ -4312,7 +4318,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         return [bodyFace(d), sideFace(d, 0.14)];
       })(),
       // 얼굴 — 공통 턱주가리(요청). 정수리 뿔·뒤 장식 뿔은 제거.
-      ...tagKey(protossFace(P_GOLD, L), 20),
+      ...tagKey(protossFace(P_GOLD, L), depthNow(0, 0.4) + 0.7),
       // 어깨 갑옷 한 쌍 — 개인색.
       ...domeFaces3(-1.15, -0.25, 0.55, 0.45, 5.8 + L),
       ...domeFaces3(1.15, -0.25, 0.55, 0.45, 5.8 + L),
