@@ -3384,22 +3384,28 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 디바우러(실물 참고) — 판갑으로 덮인 큰 공 몸통, 그 아래로 골진 배가 앞으로 말려
      들어가고, 앞 옆에서 흰 뿔 한 쌍이 위로 젖혀진다. */
   devourer: () => [
-    /* 디바우러(요청) — 머리는 짙은 갈색으로 앞에 있고, 몸통은 그 머리 뒤에서 시작해
-       앞·아래로 굽어 내려온다. 뒤 마디부터 그려 앞 머리가 위에 온다. */
-    // 몸통 — 뒤에서 앞으로 굽는 판갑 마디들.
-    ...paintBase(domeFaces3(0, -2.2, 1.5, 1.3, 5.4), "#1b1e23"),
-    ...paintBase(domeFaces3(0, -0.9, 2.1, 1.9, 5), "#1b1e23"),
-    ...paintBase(domeFaces3(0, 0.4, 1.85, 1.6, 4.5), "#1b1e23"),
-    sideFace(polyPath3([[0, -2.6, 5], [0, -2.4, 6.6], [0, 0.6, 6], [0.16, 0.6, 6], [0.16, -2.4, 6.6], [0.16, -2.6, 5]]), 0.16),
-    // 머리 — 짙은 갈색, 몸 앞끝에서 아래로 숙는다.
-    ...paintBase(domeFaces3(0, 1.7, 1.3, 1.05, 4), "#6b4732"),
-    ...paintBase(domeFaces3(0, 2.5, 0.9, 0.7, 3.6), "#6b4732"),
+    /* 디바우러(재지적) — 머리통은 큰 반구 하나로 되돌리고, 그 뒤쪽 끝에서 아래로
+       마디들이 리버처럼 겹비늘로 이어진다(앞 마디가 뒤를 덮는 고정 키). */
+    ...((): ShapeFace[] => {
+      const segs9: [number, number, number, number][] = [ // [y, 반지름, 높이, 바닥 z]
+        [-3.5, 0.85, 0.8, 2.2], [-2.7, 1.1, 1.05, 2.9], [-1.85, 1.4, 1.35, 3.5],
+      ];
+      const out9: ShapeFace[] = [];
+      segs9.forEach(([sy9, r9, h9, z9], i9) => {
+        out9.push(...tagKey(paintBase(domeFaces3(0, sy9, r9, h9, z9), "#1b1e23"), 10 + i9 * 2));
+      });
+      // 머리통 — 큰 반구(원복). 짙은 갈색, 마디보다 앞·위.
+      out9.push(...tagKey(paintBase(domeFaces3(0, 0.2, 2.3, 2.1, 4.3), "#6b4732"), 18));
+      return out9;
+    })(),
+    // 등판 이음선.
+    sideFace(polyPath3([[0, -3.4, 3], [0, -2.6, 4.1], [0, -0.4, 6.3], [0.16, -0.4, 6.3], [0.16, -2.6, 4.1], [0.16, -3.4, 3]]), 0.16),
     // 뿔 한 쌍 — 머리 옆에서 위·뒤로 젖혀진다. 짙은 상아색(요청).
-    ...paintBase(hornFaces(1.3, 1.5, 5, 2.3, -0.4, 7.4, 0.6), IVORY_DEEP),
-    ...paintBase(hornFaces(-1.3, 1.5, 5, -2.3, -0.4, 7.4, 0.6), IVORY_DEEP),
+    ...paintBase(hornFaces(1.35, 0.8, 5.4, 2.4, -1, 7.6, 0.6), IVORY_DEEP),
+    ...paintBase(hornFaces(-1.35, 0.8, 5.4, -2.4, -1, 7.6, 0.6), IVORY_DEEP),
     // 앞 아래 작은 턱 — 짙은 상아색(요청).
-    ...paintBase(hornFaces(0.5, 2.6, 3.6, 0.8, 3.4, 3, 0.4), IVORY_DEEP),
-    ...paintBase(hornFaces(-0.5, 2.6, 3.6, -0.8, 3.4, 3, 0.4), IVORY_DEEP),
+    ...paintBase(hornFaces(0.5, 1.9, 4.4, 0.8, 2.7, 3.8, 0.4), IVORY_DEEP),
+    ...paintBase(hornFaces(-0.5, 1.9, 4.4, -0.8, 2.7, 3.8, 0.4), IVORY_DEEP),
   ],
   /* 스커지 — 작은 몸 + 날개 한 쌍. */
   scourge: () => {
