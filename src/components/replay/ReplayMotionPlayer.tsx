@@ -2885,14 +2885,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         for (const m9 of [-1, 1] as const) {
           const cxm = m9 * r * 0.42;
           const w9 = r * 0.3;
-          /* 갑각 표면에 붙인다(재지적: 떠 보임) — 무늬 중심의 가로 오프셋만큼 돔이
-             낮아지므로, 그 높이(반원 프로필)를 풀어 등껍질에 얹는다. */
-          const kz9 = Math.sqrt(Math.max(0.04, 1 - (cxm / r) ** 2));
-          const zTop = 3.4 + h * kz9 * 0.97;
+          /* 갑각 곡면을 따라 휜다(재지적: 딱 맞추려면 휘어져 붙어야) — 무늬의 점마다
+             그 자리의 돔 표면 높이를 풀어 얹는다. 평평한 판이 아니라 껍질에 밀착한
+             얇은 딱지가 된다. */
           const pts9: [number, number, number][] = [];
-          for (let a9 = 0; a9 <= 6; a9 += 1) {
-            const th9 = (a9 / 6) * Math.PI;
-            pts9.push([cxm + Math.cos(th9) * w9, cy + 0.5 - Math.sin(th9) * w9 * 1.15, zTop]);
+          for (let a9 = 0; a9 <= 10; a9 += 1) {
+            const th9 = (a9 / 10) * Math.PI;
+            const px9 = cxm + Math.cos(th9) * w9;
+            const py9 = cy + 0.5 - Math.sin(th9) * w9 * 1.15;
+            const d9 = Math.min(0.985, Math.hypot(px9, py9 - cy) / r);
+            pts9.push([px9, py9, 3.4 + h * Math.sqrt(1 - d9 * d9) * 0.99]);
           }
           out.push([polyPath3(pts9), 0.95] as ShapeFace);
         }
