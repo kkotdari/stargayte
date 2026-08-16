@@ -645,6 +645,9 @@ function spirePillar(o: {
   /** 축을 직접 그리는 경로(요청: 관절 없이 L자로 구부리기) — t 0~1로 [x,y,z]를 낸다.
    *  주면 x·y·z0·h·lean·curve는 무시되고 이 곡선이 기둥의 등뼈가 된다. */
   path?: (t: number) => [number, number, number];
+  /** 굵기가 줄어드는 곡률(요청: 후지산) — 1이면 선형, 1보다 작으면 아래는 완만하고
+   *  위로 갈수록 급해진다(0.5쯤이 후지산 옆선). */
+  taper?: number;
 }): ShapeFace[] {
   const z0 = o.z0 ?? 0;
   const segs = Math.max(1, o.segs ?? 3);
@@ -656,10 +659,12 @@ function spirePillar(o: {
     o.y + (o.leanY ?? 0) * t + (o.curveY ?? 0) * t * t,
     z0 + o.h * t,
   ]);
+  const taper = o.taper ?? 1;
   const widthAt = (t: number): number => {
     if (t <= hold) return o.w;
     const k = (t - hold) / (1 - hold);
-    return o.w + (tipW - o.w) * k;
+    // taper 1이면 선형, 1보다 작으면 아래 완만·위 급격(후지산 옆선).
+    return tipW + (o.w - tipW) * (1 - k) ** taper;
   };
   /* 단면은 축에 수직으로(지적: 기울인 기둥이 눌려 보임) — 수평 단면을 쓰면 축이
      기울수록 원이 늘어나 찌그러진다. 축의 접선을 구해 그에 수직인 두 벡터로 단면을
@@ -961,9 +966,17 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
     /* 둔덕을 스파이어 기둥으로(요청) — 후지산 꼴: 넓은 밑동에서 위로 갈수록 좁아지되
        아래쪽은 굵기를 오래 유지(hold)해 완만한 치마가 되고 위는 가파르다. 회전 대칭
        (16각)이라 요잉에 흔들림이 없다. */
+    /* 후지산 옆선(재지적) — 아래는 완만하고 위로 갈수록 급해진다: 굵기 곡률(taper)을
+       0.55로 줘 한 기둥으로 낸다. 옆면 띠도 이 옆선을 그대로 타고 올라 둔덕과 한 몸이
+       된다(두 덩이를 겹치지 않는다). */
+    const MND_H = 6.6;
+    const MND_RB = 5.9;
+    const MND_RT = 1.4;
+    const MND_P = 0.55;
+    const moundR = (t9: number): number => MND_RT + (MND_RB - MND_RT) * (1 - t9) ** MND_P;
     out.push(...tagKey(spirePillar({
-      x: 0, y: 0, z0: 0, h: 6.6, w: 5.9, tipW: 1.4,
-      segs: 5, sides: 16, hold: 0.12,
+      x: 0, y: 0, z0: 0, h: MND_H, w: MND_RB, tipW: MND_RT,
+      segs: 8, sides: 16, hold: 0, taper: MND_P,
     }), 0.2));
     const [mx, my] = project(0, 0, 6.35);
     out.push(sideFace(`M${mx - 1.5} ${my} L${mx + 1.5} ${my} Q${mx + 1.4} ${my + 1} ${mx} ${my + 1.15} Q${mx - 1.4} ${my + 1} ${mx - 1.5} ${my} Z`, 0.35));
@@ -986,17 +999,20 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
            밑동까지 흐르는 가는 기둥이고, 캐노피는 그 발치에서 바깥으로 뻗는 굵은
            기둥이다. 둘 다 둔덕 표면을 타고 앉는다. */
         const seamPillar = spirePillar({
-          x: dxr * 5.55, y: dyr * 5.55, z0: 0.05, h: 5.9,
-          w: 0.62, tipW: 0.4, segs: 6, sides: 6, hold: 0,
-          leanX: -dxr * 4.3, leanY: -dyr * 4.3,
-          curveX: dxr * 0.35, curveY: dyr * 0.35,
+          x: 0, y: 0, h: 1, w: 0.66, tipW: 0.42,
+          segs: 8, sides: 6, hold: 0,
+          // 둔덕 옆선을 그대로 타는 축 — 표면에 반쯤 묻혀 한 몸으로 이어진다.
+          path: (t9: number): [number, number, number] => {
+            const r9 = moundR(t9) * 0.99;
+            return [dxr * r9, dyr * r9, MND_H * t9];
+          },
           fill: seamColor,
         });
         // 캐노피 — 밑동에서 바깥으로 뻗는 짧고 굵은 터널.
         const canopy = spirePillar({
-          x: dxr * 4.6, y: dyr * 4.6, z0: 0.05, h: 0.55,
-          w: 1.15, tipW: 1, segs: 2, sides: 8, hold: 0.5,
-          leanX: dxr * 1.9, leanY: dyr * 1.9,
+          x: dxr * 4.5, y: dyr * 4.5, z0: 0.05, h: 0.5,
+          w: 1.2, tipW: 1.02, segs: 2, sides: 8, hold: 0.5,
+          leanX: dxr * 2, leanY: dyr * 2,
           fill: seamColor,
         });
         // 굴 입구 — 캐노피 바깥 끝의 어두운 구멍.
