@@ -5417,14 +5417,23 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
      헤더 로고 줄을 통째로 걷고, 모든 페이지의 타이틀(h1) 앞에 별 포함 워드마크를
      타이틀 글자 높이(0.95em)로 얹는다. 탭바·서랍은 포털이라 헤더를 숨겨도 산다. */
   .scr-header { display: none; }
+  /* 로고 포함 크럼 전부 세로 가운데(요청) — 타이틀을 플렉스 줄로 바꾼다.
+     흐름 여백이 사라지므로 gap이 낱말 사이를 맡고, 구분자(›) 제 마진은 걷는다. */
+  .scr-v2-toolbar-title {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 7px;
+  }
+  .scr-v2-toolbar-title .scr-activity-crumb-sep { margin: 0; }
   .scr-v2-toolbar-title::before {
-    content: ""; display: inline-block; vertical-align: -0.08em;
-    height: 0.95em; width: calc(0.95em * 6.412); margin-right: 10px;
+    content: ""; display: inline-block; flex: none;
+    /* 살짝 축소(재지적) — 0.95em → 0.78em. */
+    height: 0.78em; width: calc(0.78em * 6.412); margin-right: 3px;
     background: url("/images/logo/logo_white.png") no-repeat center / contain;
   }
   .scr-light-theme .scr-v2-toolbar-title::before {
     background-image: url("/images/logo/logo_black.png");
   }
+  /* 경기번호 폰트 축소(재지적) — 기본 규칙(두 클래스, 소스 뒤쪽)을 세 겹으로 이긴다. */
+  .scr-v2-toolbar-title .scr-activity-crumb-leaf.scr-activity-crumb-no { font-size: var(--fs-9); }
   .scr-header-inner { padding: 10px 12px; gap: 12px; justify-content: center; }
   /* 우측 버튼 묶음(.scr-user)은 모바일에서 자식이 전부 숨김인데 margin-left:auto가 남아
      justify-content:center를 무력화했다(지적: 가로 가운데가 안 됨) — 묶음째 숨긴다. */
