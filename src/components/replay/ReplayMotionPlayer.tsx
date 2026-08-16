@@ -1362,9 +1362,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const out: ShapeFace[] = [];
     // 수정이 너무 높게 떴다(재지적) — 고리·수정·발톱을 한 단씩 내린다.
     // 상자 정규화(지적: 파일런이 발자국보다 너무 좁게 차지) — 가로를 1.35배 넓힌다.
-    /* 수정 기둥이 기준이다(재지적) — 고리·발톱은 제자리에 두고, 기둥을 내려 그 가장
-       불룩한 허리(zM)가 고리 높이에 걸리게 맞춘다. */
-    const [cx, cy] = project(0, 0, 2.4);
+    /* 수정 기둥이 기준이다(재재지적) — 허리(zM)는 기둥 길이의 딱 절반이고, 고리는
+       그 허리에 걸린다. 기둥은 지면 바로 위에서 시작한다. */
+    const PY_B = 0.2;
+    const PY_T = 10.2;
+    const PY_M = (PY_B + PY_T) / 2;
+    const [cx, cy] = project(0, 0, PY_M);
     const rxo = 6.2;
     const ryo = rxo * 0.45;
     const rxi = 4.3;
@@ -1376,15 +1379,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       return hornFaces(Math.sin(a) * 5.3, Math.cos(a) * 5.3, 0.9, Math.sin(a) * 4, Math.cos(a) * 4, h, 1.35);
     };
     // 뒤 발톱들 → 뒤 링 → 수정 → 앞 링 → 앞 발톱들 순으로 겹친다.
-    for (const ang of [135, 180, -135]) out.push(...claw(ang, 5.2));
+    for (const ang of [135, 180, -135]) out.push(...claw(ang, 7.2));
     out.push(bodyFace(ringBack), sideFace(ringBack, 0.3));
     /* 수정 입체화(재지적: 평면이네) — 네 모서리 양뿔(비피라미드)을 모델 좌표 삼각
        면으로 짠다: 요잉에 통째로 돌고, 보이는 면만 그려 속면이 안 비친다. */
     // 수정구는 더 길게(요청) — 아래는 지면 가까이, 위는 더 높이.
-    // 허리를 고리에 맞춘다 — 아래 끝은 지면 바로 위, 위로 길게.
-    const zB = 0.1;
-    const zM = 2.6;
-    const zT = 11.8;
+    const zB = PY_B;
+    const zM = PY_M;
+    const zT = PY_T;
     const w = 3.1;
     const eq: [number, number][] = [[w, 0], [0, w], [-w, 0], [0, -w]];
     for (let i = 0; i < 4; i += 1) {
@@ -1408,8 +1410,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       }
     }
     out.push(bodyFace(ringFront), topFace(ringFront, 0.22));
-    for (const ang of [90, -90]) out.push(...claw(ang, 5.5));
-    for (const ang of [45, -45, 0]) out.push(...claw(ang, 4.9));
+    for (const ang of [90, -90]) out.push(...claw(ang, 7.6));
+    for (const ang of [45, -45, 0]) out.push(...claw(ang, 6.9));
     return out;
   },
   /* 로보틱스(실물 참고, 곡선의 미) — 둥근 대야와 도톰한 링 테두리, 어두운 격자 구덩이,
