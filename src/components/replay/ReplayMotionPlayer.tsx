@@ -1941,10 +1941,40 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     };
     return [
       // 낮은 기단 — 발치를 한 판으로 받친다.
-      /* 기단은 모래시계 꼴(요청) — 아래·위가 넓고 허리가 잘록하다. 절두체 둘을
-         허리에서 맞물려 세운다. */
-      ...frustumFaces3(-0.2, 0.4, 8.8, 6.2, 6.4, 4.4, 0.55),
-      ...frustumFaces3(-0.2, 0.4, 6.4, 4.4, 8.2, 5.6, 0.55, 0.55),
+      /* 기단은 위에서 봤을 때 모래시계(재지적) — 세로로 쌓은 절두체가 아니라 평면
+         윤곽 자체가 가운데로 잘록하게 파인 장구 꼴이다. 위·아래 판과 둘레 옆면으로
+         두께를 준다. */
+      ...((): ShapeFace[] => {
+        const N9 = 12;
+        const halfAt = (y9: number): number => 1.9 + 2.6 * (Math.abs(y9) / 4.6) ** 1.5;
+        const rim9 = (z9: number): [number, number, number][] => {
+          const pts9: [number, number, number][] = [];
+          for (let i9 = 0; i9 <= N9; i9 += 1) {
+            const y9 = -4.6 + (9.2 * i9) / N9;
+            pts9.push([-0.2 + halfAt(y9), 0.4 + y9, z9]);
+          }
+          for (let i9 = N9; i9 >= 0; i9 -= 1) {
+            const y9 = -4.6 + (9.2 * i9) / N9;
+            pts9.push([-0.2 - halfAt(y9), 0.4 + y9, z9]);
+          }
+          return pts9;
+        };
+        const lo9 = rim9(0);
+        const hi9 = rim9(1.1);
+        const f9: ShapeFace[] = [bodyFace(polyPath3(lo9))];
+        for (let i9 = 0; i9 < lo9.length; i9 += 1) {
+          const j9 = (i9 + 1) % lo9.length;
+          const mx9 = (lo9[i9][0] + lo9[j9][0]) / 2 + 0.2;
+          const my9 = (lo9[i9][1] + lo9[j9][1]) / 2 - 0.4;
+          const ml9 = Math.hypot(mx9, my9) || 1;
+          const fl9 = faceLight(mx9 / ml9, my9 / ml9, 0.3);
+          if (!fl9.visible) continue;
+          const d9 = polyPath3([lo9[i9], lo9[j9], hi9[j9], hi9[i9]]);
+          f9.push(bodyFace(d9), ...fl9.face(d9));
+        }
+        f9.push(bodyFace(polyPath3(hi9)), topFace(polyPath3(hi9), 0.1));
+        return tagKey(f9, depthNow(-0.2, 0.4) + 1.1);
+      })(),
       /* 왼쪽 반원판(재재지적: 드럼통은 걷고 반원판만 — 옆면이 드럼 옆면이 보던 좌우를
          보게 90도 돌려서) — 판이 좌우를 보고 앞뒤로 선 얇은 반원 바퀴다. 아랫변은
          기단에 묻히고 위 반원만 솟는다: 반원 두 장을 옆으로 얇게 띄워 테 띠로 봉합. */
