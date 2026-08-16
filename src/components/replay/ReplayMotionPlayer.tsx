@@ -5234,8 +5234,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
       const px = op.sizePx * zoom;
       /* 공중 유닛(요청: 높이 더 높이 + 바닥 그림자) — 발밑 자리에 그림자 타원을 깔고
          몸은 반 키만큼 위로 띄운다. 떠 있음이 땅 유닛과 한눈에 갈린다. */
-      // 더 높이(재지적: 지금의 2배 — 진짜 하늘에 뜬 느낌, 특히 오버로드) — 0.85 → 1.6.
-      const lift = op.air ? px * 1.6 : 0;
+      // 높이 반으로(재재지적) — 1.6 → 0.8.
+      const lift = op.air ? px * 0.8 : 0;
       /* 판을 먼저 굽는다 — 그림자를 어림 오프셋이 아니라 판의 실제 바닥 픽셀
          (contentBottom)에 붙이기 위해서다(재재지적: 드론이 높이 떠 있다). */
       const pxq = Math.max(4, Math.round(px / 2) * 2);
@@ -5256,6 +5256,9 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
            너무 크고 진해) — 높이 나는 공중 유닛보다 작고 옅은 타원. */
         // 그림자 살짝 축소(지적) — 높이 나는 만큼 발밑 그림자는 작고 옅게.
         const shw = px * (op.air ? 0.26 : 0.17);
+        /* 하이템플러 부양 로브(지적: 그림자가 몸에서 떨어져 분신 같다) — 그림자를
+           위로 당겨 몸에 겹친다. */
+        const shUp = op.kind === "htemp" ? px * 0.16 : 0;
         ctx.globalAlpha = op.alpha * (op.air ? 0.22 : 0.13);
         ctx.fillStyle = "#000";
         /* beginPath 필수(조사: 전 모드 거대 검은 쐐기의 진범) — 경로를 안 비우면
@@ -5276,7 +5279,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
            비행 높이만큼 남쪽으로 밀려 있었다. 발밑 땅 자리 그대로 둔다. */
         /* 3D에선 더 눕는다(지적: 그림자가 안 눕는 문제) — 0.6은 바닥 눌림(0.74×부감)에
            비해 서 보였다. 0.38로 바짝 눕힌다. */
-        ctx.ellipse(footX, footY - shw * 0.22, shw * 1.1, shw * (op.air ? 0.5 : 0.42) * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
+        ctx.ellipse(footX, footY - shw * 0.22 - shUp, shw * 1.1, shw * (op.air ? 0.5 : 0.42) * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       } else if (showShadows !== false && !op.air && UNIT_KIND_SET.has(op.kind)) {
@@ -5288,7 +5291,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         ctx.fillStyle = "#000";
         ctx.beginPath();
         // 바닥면 전체(재지적: 앞쪽만 납작) — 타원을 키우고 중심을 위로 당긴다.
-        ctx.ellipse(footX, footY - px * 0.09, px * 0.19, px * 0.11 * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
+        ctx.ellipse(footX, footY - px * 0.09 - (op.kind === "htemp" ? px * 0.16 : 0), px * 0.19, px * 0.11 * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -9155,8 +9158,9 @@ export default function ReplayMotionPlayer({
             const tPx9 = (mapRef.current?.clientWidth ?? 320) / grid.width;
             const ddx = (fx9 - pos.x) * tPx9;
             let ddy = (fy9 - pos.y) * tPx9 * (pitched ? 0.74 : 1);
-            if (fAir) ddy -= fxPx * 1.6;
-            if (uAir) ddy += fxPx * 1.6;
+            // 비행 높이 반감(재재지적)과 함께 0.8로.
+            if (fAir) ddy -= fxPx * 0.8;
+            if (uAir) ddy += fxPx * 0.8;
             return (Math.atan2(-ddx, ddy) * 180) / Math.PI;
           };
           const beamDeg = atkDeg !== null ? aimDeg(foe.bx, foe.by, foe.air) : null;
