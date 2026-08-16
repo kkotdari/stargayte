@@ -129,7 +129,11 @@ export default function MobileTabBar({ screen, menuOpen, hidden, mini, onNavigat
   // rAF로 직접 굴리는 짧은 감속 애니메이션을 쓴다(smoothScrollRootToTop).
   // (키보드 닫힘 복원을 취소하던 호출은 그 훅과 함께 제거했다 — App.tsx 주석 참고.)
   const activate = (key: ScreenKey) => {
-    if (screen === key) smoothScrollRootToTop();
+    /* 같은 탭 재탭이라도 하위 페이지(?game=/?group=)가 서 있으면 초기 화면으로(요청:
+       활동을 누르면 파라미터 없는 활동 초기화면) — onNavigate가 파라미터를 걷는다.
+       진짜 초기 화면에서의 재탭만 맨 위로 스크롤한다. */
+    const hasSub = ["game", "group"].some((k) => new URLSearchParams(window.location.search).has(k));
+    if (screen === key && !hasSub) smoothScrollRootToTop();
     else onNavigate(key);
   };
   // pointerdown으로 이미 처리한 탭이 만들어내는 후속 click은 무시한다 — click 경로는

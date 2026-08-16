@@ -110,7 +110,23 @@ export default function App() {
   const shownScreen = useRef<ScreenKey | null>(null);
   // 화면을 옮기면 항상 처음 상태로 — 이전 화면의 스크롤 위치/필터/검색 등은 기억하지
   // 않는다(요청: "페이지 상태 유지 기능 삭제 — 페이지 이동시 항상 초기상태로 로딩").
-  const navigate = (next: ScreenKey) => setScreen(next);
+  /* 탭바·PC 메뉴의 '활동'을 누르면 파라미터 없는 초기 화면으로(요청) — 게임 상세
+     (?game=)·그룹 페이지(?group=)는 주소가 곧 상태라, 파라미터를 걷고 popstate를 쏘면
+     활동 화면이 스스로 접는다. 화면 상태(setScreen)만 바꾸면 이미 활동일 때 아무 일도
+     안 일어났다. 새 이력 칸을 얹어 브라우저 뒤로가기는 보던 상세로 되돌아간다. */
+  const navigate = (next: ScreenKey) => {
+    const params = new URLSearchParams(window.location.search);
+    let dirty = false;
+    for (const k of ["game", "group", "t"]) {
+      if (params.has(k)) { params.delete(k); dirty = true; }
+    }
+    if (dirty) {
+      const qs = params.toString();
+      window.history.pushState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }
+    setScreen(next);
+  };
 
   /* (삭제) 활동로 돌아오면 보던 자리로 되돌리던 장치 — 요청으로 걷어냈다. 스크롤 위치를
      기억해 뒀다가 돌아올 때 옮겨 놓는 방식이었는데, 실제로는 제자리를 못 찾는 일이 잦았다
