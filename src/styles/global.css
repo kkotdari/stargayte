@@ -11163,6 +11163,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 사양 라디오(요청) — 모바일에선 버튼그룹 '위' 제 줄을 통째로 차지하고, PC 넓은 배치
    (세로 기둥)에선 자연히 로스터·범례 아래, 버튼들 위에 선다. */
 .scr-motion-qrow { width: 100%; }
+/* 성능만 폭이 넓다(지적) — 줄은 통째로 차지하되 알약은 내용 폭만큼만. 100% 늘어난
+   알약이 다섯 옵션을 화면 가득 벌려 놓았다. */
+.scr-motion-qrow .scr-pill-tabs { align-self: flex-start; }
 /* 두 단계 더 작게(요청: 뎁스가 깊은 버튼들) — 24px → 20px, 글자도 한 단 아래. */
 .scr-motion-radio .scr-pill-tabs { height: 20px; background: rgba(255, 255, 255, 0.08); }
 .scr-light-theme .scr-motion-radio .scr-pill-tabs { background: rgba(0, 0, 0, 0.06); }
