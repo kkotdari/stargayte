@@ -5413,6 +5413,18 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   /* 헤더 높이 20% 축소(요청) — 위아래 패딩 13→10px. 모바일 헤더엔 로고만 남았으니
      가로도 정가운데 정렬(요청). */
     /* 본문 좌우 여백(12px)과 같은 값으로 맞춘다(요청). */
+  /* 로고를 타이틀 줄로(요청: 세로 공간 아끼기 — [로고 타이틀 › 중타이틀] 한 줄) —
+     헤더 로고 줄을 통째로 걷고, 모든 페이지의 타이틀(h1) 앞에 별 포함 워드마크를
+     타이틀 글자 높이(0.95em)로 얹는다. 탭바·서랍은 포털이라 헤더를 숨겨도 산다. */
+  .scr-header { display: none; }
+  .scr-v2-toolbar-title::before {
+    content: ""; display: inline-block; vertical-align: -0.08em;
+    height: 0.95em; width: calc(0.95em * 6.412); margin-right: 10px;
+    background: url("/images/logo/logo_white.png") no-repeat center / contain;
+  }
+  .scr-light-theme .scr-v2-toolbar-title::before {
+    background-image: url("/images/logo/logo_black.png");
+  }
   .scr-header-inner { padding: 10px 12px; gap: 12px; justify-content: center; }
   /* 우측 버튼 묶음(.scr-user)은 모바일에서 자식이 전부 숨김인데 margin-left:auto가 남아
      justify-content:center를 무력화했다(지적: 가로 가운데가 안 됨) — 묶음째 숨긴다. */
