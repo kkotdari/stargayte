@@ -3478,8 +3478,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       leanY: -3.4, curveY: 1.7,
       fill: "#6b4732",
     }), 12),
-    // 머리통 — 큰 반구. 짙은 갈색, 기둥보다 앞·위.
-    ...tagKey(paintBase(domeFaces3(0, 0.2, 2.3, 2.1, 4.3), "#6b4732"), 18),
+    // 머리통 — 큰 반구. 개인색(요청), 기둥보다 앞·위.
+    ...tagKey(domeFaces3(0, 0.2, 2.3, 2.1, 4.3), 18),
     /* 머리 앞의 동그란 얼굴 — 반구 앞면에 쏙 박힌 구. */
     ...tagKey([
       [groundEllipse(...project(0, 1.75, 5.1), 0.95, 0.95), 1, "#4a3428"] as ShapeFace,
