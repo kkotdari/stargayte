@@ -642,17 +642,20 @@ function spirePillar(o: {
   hold?: number; fill?: string;
   /** 앞(+y)·뒤(-y)를 향한 옆면의 색을 따로 줄 때(요청: 배는 상아색, 등은 갈색). */
   fillFront?: string; fillBack?: string;
+  /** 축을 직접 그리는 경로(요청: 관절 없이 L자로 구부리기) — t 0~1로 [x,y,z]를 낸다.
+   *  주면 x·y·z0·h·lean·curve는 무시되고 이 곡선이 기둥의 등뼈가 된다. */
+  path?: (t: number) => [number, number, number];
 }): ShapeFace[] {
   const z0 = o.z0 ?? 0;
   const segs = Math.max(1, o.segs ?? 3);
   const sides = Math.max(3, o.sides ?? 4);
   const tipW = o.tipW ?? 0;
   const hold = Math.min(0.9, Math.max(0, o.hold ?? 0.45));
-  const axis = (t: number): [number, number, number] => [
+  const axis = o.path ?? ((t: number): [number, number, number] => [
     o.x + (o.leanX ?? 0) * t + (o.curveX ?? 0) * t * t,
     o.y + (o.leanY ?? 0) * t + (o.curveY ?? 0) * t * t,
     z0 + o.h * t,
-  ];
+  ]);
   const widthAt = (t: number): number => {
     if (t <= hold) return o.w;
     const k = (t - hold) / (1 - hold);
@@ -4526,21 +4529,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 꼬리는 거의 L자(재지적) — 바닥에 눕는 꼬리와 곧게 선 하반신이 직각으로 꺾여
          만난다. 눕는 마디는 낮은 기둥을 뒤로 길게 눕혀 만들고, 선 마디는 그 꺾임점
          에서 허리(z 3.6, 굵기 1.05)까지 올려 상반신과 굵기가 딱 맞게 잇는다. */
-      /* 하반신 부품들은 층을 못 박는다(재지적: 반구 받침·허리 윗면이 비쳐 보임) —
-         꼬리·받침·하반신·상반신이 거의 같은 자리(0,-0.35)라 깊이가 겹쳐 그리는 순서가
-         프레임마다 뒤집혔다. 뒤(꼬리)부터 앞(상반신)으로 키를 갈라 준다. */
+      /* 꼬리와 하반신을 관절 없이 한 몸으로(요청) — 축을 이차 베지어로 그려 바닥을
+         따라 뒤로 뻗다가 급히 위로 꺾여 허리로 이어진다. 꼬리 끝은 가늘고 허리는
+         굵으며, 배(앞)는 상아색·등(뒤)은 짙은 갈색. */
       ...tagKey(spirePillar({
-        x: 0, y: -0.35, z0: 0.06, h: 0.62, w: 0.62, tipW: 0.12,
-        segs: 5, sides: 8, hold: 0.15, leanY: -4.4, curveY: -0.5,
+        x: 0, y: 0, h: 1, w: 0.12, tipW: 1.05,
+        segs: 9, sides: 8, hold: 0,
+        path: (t9: number): [number, number, number] => {
+          const u9 = 1 - t9;
+          return [
+            0,
+            u9 * u9 * -5 + 2 * u9 * t9 * -0.5,
+            u9 * u9 * 0.1 + 2 * u9 * t9 * 0.14 + t9 * t9 * 3.6,
+          ];
+        },
         fill: "#c68a62", fillFront: IVORY, fillBack: "#6b4732",
-      }), 4),
-      // 꺾임점 덩이 — 두 마디 이음매의 틈을 막는다.
-      ...tagKey(paintBase(domeFaces3(0, -0.35, 0.95, 0.9, 0.06), "#6b4732"), 6),
-      ...tagKey(spirePillar({
-        x: 0, y: -0.35, z0: 0.06, h: 3.54, w: 0.92, tipW: 1.05,
-        segs: 3, sides: 8, hold: 0.25, leanY: 0.35,
-        fill: "#c68a62", fillFront: IVORY, fillBack: "#6b4732",
-      }), 8),
+      }), 6),
       // 꼬리 등의 자잘한 짙은 상아색 가시들(요청).
       ...paintBase(hornFaces(0.25, -1.5, 1.15, 0.5, -1.85, 2, 0.28), IVORY_DEEP),
       ...paintBase(hornFaces(-0.2, -2.5, 0.75, -0.45, -2.85, 1.55, 0.24), IVORY_DEEP),
