@@ -3652,8 +3652,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 원판 몸통만 축소(정정: '몸통'은 가운데 원판 파트 — 날개는 그대로).
     // 몸통은 늘 다리 위(지적: 뒷다리에 가려짐) — 제 깊이 키를 크게 단다.
     out.push(...tagKey([
-      bodyFace(oct(1.55, 6.2)),
-      topFace(oct(1.05, 6.5), 0.26),
+      // 몸통 금색, 몸통 위 원판만 개인색(요청).
+      [oct(1.55, 6.2), 1, "#d4af37"] as ShapeFace,
+      [oct(1.05, 6.5), 1] as ShapeFace,
       topFace(oct(0.62, 6.8), 0.3),
     ], depthNow(0, 0) + 2.5));
     /* 눈 두 개(재지적: 몸통에 수직으로 붙여 정면을 보게 + 더 작게) — 바닥에 눕던
@@ -3867,6 +3868,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ];
     })(),
     ...paintBase(hornFaces(0, 0, 6.9, 0, -2.1, 7.75, 0.7), "#d4af37"),
+    /* 뒤통수 묶음머리(요청) — 원통 다발이 무릎 높이까지 늘어지고 중간을 금색 띠로
+       묶었다. 다발은 개인색. */
+    ...rodFaces(0, -0.85, 6.7, 0, -1.5, 4.6, 0.5),
+    ...paintBase(rodFaces(0, -1.5, 4.85, 0, -1.56, 4.25, 0.6), "#d4af37"),
+    ...rodFaces(0, -1.53, 4.4, 0, -1.75, 2.2, 0.45),
+    // 짧은 치마 방어구(요청) — 허리에 두른 개인색 치마.
+    ...frustumFaces3(0, -0.1, 2.3, 2, 1.5, 1.3, 1.2, 3.3),
     // 어깨 갑주 한 쌍 — 개인색(재재재지적: 어깨 갑옷은 그 사람 색).
     ...domeFaces3(-1.35, -0.25, 0.62, 0.5, 6),
     ...domeFaces3(1.35, -0.25, 0.62, 0.5, 6),
@@ -3945,6 +3953,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         [-0.95, -0.8, 6.6], [0.95, -0.8, 6.6], [1.3, -1.5, 2.7],
         [0.65, -1.35, 3.5], [0, -1.5, 2.9], [-0.65, -1.35, 3.5], [-1.3, -1.5, 2.7],
       ]), 0.22),
+      // 다리(요청: 다리 있음 — 떠 있을 뿐) — 로브 밑에서 늘어진 가는 두 다리(고유색).
+      ...rodFaces(-0.32, -0.2, 4, -0.38, 0.1, 2.5, 0.4),
+      ...rodFaces(0.32, -0.2, 4, 0.38, 0.1, 2.5, 0.4),
       // 몸통 날씬·길게(재지적) — 반지름 0.85 → 0.68, 아래로 늘여 3.8부터 선다.
       ...cylinderFaces3(0, -0.3, 0.68, 3, 3.8), // 몸통 개인색(재재지적: 금색 → 그 사람 색)
       // 머리·뿔 금색(요청) — 얼굴은 지붕 키(재지적: 몸통에 가려짐).
@@ -3970,18 +3981,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 다리 자체가 통(재재지적: 발만 통이 아니라) — 넓적다리·정강이를 뿔 대신 두께가
        끝까지 같은 캡슐 막대(rodFaces)로 잇고, 굵은 원기둥 발이 땅을 디딘다. */
     // 다리 금색(요청).
-    const leg = (m2: 1 | -1, fy: number): ShapeFace[] => paintBase([
-      ...rodFaces(m2 * 1.1, fy * 0.8, 4.6, m2 * 3, fy * 1.35, 5.4, 1.15),
-      ...rodFaces(m2 * 3, fy * 1.35, 5.4, m2 * 3.55, fy * 1.52, 1.1, 0.9),
-      ...cylinderFaces3(m2 * 3.55, fy * 1.52, 0.45, 1.25, 0),
-    ], "#d4af37");
+    // 다리 사방 90도(지적) — 대각 X 배치를 앞·뒤·좌·우 + 배치로.
+    const leg = (ang: number): ShapeFace[] => {
+      const a = (ang * Math.PI) / 180;
+      const dx = Math.sin(a);
+      const dy = Math.cos(a);
+      return paintBase([
+        ...rodFaces(dx * 1.1, dy * 1.1, 4.6, dx * 3.1, dy * 3.1, 5.4, 1.15),
+        ...rodFaces(dx * 3.1, dy * 3.1, 5.4, dx * 3.6, dy * 3.6, 1.1, 0.9),
+        ...cylinderFaces3(dx * 3.6, dy * 3.6, 0.45, 1.25, 0),
+      ], "#d4af37");
+    };
     const [gx2, gy2] = project(-0.5, -0.5, 5.8);
     return [
-      ...leg(-1, -1.5), ...leg(1, -1.5),
+      ...leg(180), ...leg(-90), ...leg(90),
       ...domeFaces3(0, -0.1, 1.6, 1.5, 4.4),
       capFace(polyPath3([[-0.5, 1.4, 5.2], [0.5, 1.4, 5.2], [0.36, 1.56, 4.75], [-0.36, 1.56, 4.75]]), 0.4),
       topFace(groundEllipse(gx2, gy2, 0.6, 0.4), 0.25),
-      ...leg(-1, 1.3), ...leg(1, 1.3),
+      ...leg(0),
     ];
   },
   /* 아콘(실물 참고) — 반투명 발광 구 속에 어두운 형체가 비친다: 뾰족한 머리, 몸통,
@@ -4231,12 +4248,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         // 가늘게(재지적) — 매달린 실다리 느낌.
         /* 옆다리는 더 펴고 몸통 아래 안쪽으로(지적) — 뿌리를 안쪽(1.2)에서 내리고
            무릎 꺾임을 줄여 거의 곧게 아래로 늘어뜨린다. */
-        legs.push(seg(sx * 1.2, lyy, 3.2, sx * 1.85, lyy, 0.5, 0.34));
-        tips.push(seg(sx * 1.85, lyy, 0.5, sx * 1.5, lyy, -1.3, 0.26));
+        // 몸 80%·다리 120%(요청) — 뿌리는 줄어든 몸에, 끝은 더 길게 아래로.
+        legs.push(seg(sx * 0.96, lyy * 0.8, 3.2, sx * 1.9, lyy * 0.8, -0.1, 0.34));
+        tips.push(seg(sx * 1.9, lyy * 0.8, -0.1, sx * 1.5, lyy * 0.8, -2.3, 0.26));
       }
       // 앞 집게팔(재재지적: 뒷다리보다 살짝 짧게, 뿌리는 얇고 집게 쪽에서 확 굵게) —
       // 사다리꼴 마디로 아래로 갈수록 부풀고, 발끝은 옆다리(-0.9)보다 조금 위에서 끝난다.
-      legs.push(seg(sx * 0.8, 1.7, 3.2, sx * 1.3, 2.7, 1.4, 0.3, 0.5));
+      legs.push(seg(sx * 0.64, 1.36, 3.2, sx * 1.3, 2.7, 1.4, 0.3, 0.5));
       legs.push(seg(sx * 1.3, 2.7, 1.4, sx * 1.15, 3.3, 0.2, 0.5, 0.95));
       // 집게 — 굵은 밑동에서 두 갈래로 좁아지는 날.
       tips.push(seg(sx * 1.15, 3.3, 0.2, sx * 1.7, 3.75, -0.6, 0.7, 0.25));
@@ -4250,22 +4268,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 구 표면에 칠한 원(재정의: 사용자 설명) — 풍선 옆구리의 데칼: 옆으로 갈수록
          원이 모로 보이니 바깥 방향으로만 눌린 세로 타원으로 그린다. 튀어나오지도
          파이지도 않는다. */
-      const lx = Math.sin(th) * 2.72 * sxSign;
-      const ly = Math.cos(th) * 2.72;
+      const lx = Math.sin(th) * 2.18 * sxSign;
+      const ly = Math.cos(th) * 2.18;
       const [px, py] = project(lx, ly, 5.65);
       return tagKey([
-        [groundEllipse(px, py, 0.62, 1.35), 0.95, "#7d55b4"] as ShapeFace,
-        [groundEllipse(px - 0.12 * sxSign, py, 0.4, 0.95), 0.6, "#a97fe0"] as ShapeFace,
+        [groundEllipse(px, py, 0.5, 1.08), 0.95, "#7d55b4"] as ShapeFace,
+        [groundEllipse(px - 0.1 * sxSign, py, 0.32, 0.76), 0.6, "#a97fe0"] as ShapeFace,
       ], depthNow(lx, ly));
     };
     /* 얼굴(재지적: 얼굴은 앞쪽 아래쪽에 작은 반구형으로) — 몸 앞아래 표면에 붙는
        작은 돔 하나. */
     // 얼굴 짙은 갈색(요청).
-    const face = tagKey(paintBase(domeFaces3(0, 2.75, 0.78, 0.6, 3.3), "#6b4732"), depthNow(0, 2.75));
+    const face = tagKey(paintBase(domeFaces3(0, 2.2, 0.62, 0.48, 3.4), "#6b4732"), depthNow(0, 2.2));
     /* 등의 가스 주머니(공식 컨셉: 뒤 위에 얹힌 큰 광택 물집) — 큰 것 하나와 작은 것
        하나. 광 하이라이트를 크게 얹어 유리알처럼 반들거린다. */
-    const [g1x, g1y] = project(1.4, -1.8, 6.2);
-    const [g2x, g2y] = project(-0.3, -2.3, 7);
+    const [g1x, g1y] = project(1.12, -1.44, 6);
+    const [g2x, g2y] = project(-0.24, -1.84, 6.6);
     return [
       // 다리 짙은 갈색(요청).
       [legs.join(" "), 1, "#6b4732"] as ShapeFace,
@@ -4275,11 +4293,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...face,
       // 혹 완전 축소(재지적: 머리 혹 줄이기) — 살짝 도드라지는 정도만.
       // 광택 제거(지적) — 혹은 몸판만, 반들거림 없이.
-      ...tagKey([bodyFace(groundEllipse(g1x, g1y, 0.95, 0.85))], depthNow(1.4, -1.8)),
-      ...tagKey([bodyFace(groundEllipse(g2x, g2y, 0.5, 0.45))], depthNow(-0.3, -2.3)),
+      ...tagKey([bodyFace(groundEllipse(g1x, g1y, 0.76, 0.68))], depthNow(1.12, -1.44)),
+      ...tagKey([bodyFace(groundEllipse(g2x, g2y, 0.4, 0.36))], depthNow(-0.24, -1.84)),
       // 풍선 축소(재요청: 3.6 → 3.0) — 몸도 제 깊이(가운데 0)로. 광택 하이라이트는
       // 걷었다(지적: 광택 제거).
-      ...tagKey([bodyFace(groundEllipse(cx, cy, 3, 2.85))], depthNow(0, 0)),
+      // 몸통 80%(요청).
+      ...tagKey([bodyFace(groundEllipse(cx, cy, 2.4, 2.28))], depthNow(0, 0)),
     ];
   },
   /* 드랍십(실물 참고) — 양옆 굵은 엔진 포드(앞 단면이 둥글게 보인다) + 가운데 각진
