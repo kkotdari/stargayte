@@ -2796,19 +2796,25 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      머리 앞에 띄우던 입 원반은 걷었다(지적: 머리쪽 검은 원이 떠 있음 — 몸에서 떨어져
      보일 뿐 정보가 없다). */
   reaver: () => {
-    /* 재지적: 머리·꼬리 마디 제거, 전체 금색 — 각 마디 앞면에 개인색 손톱꼴 띠
-       (둥근 위·평평한 밑 반타원). 띠는 제 마디 바로 뒤에 끼워 깊이를 물려받는다. */
-    const segs: [number, number, number][] = [[-1.2, 1.4, 1.8], [0.1, 1.68, 2.4], [1.4, 1.4, 1.8]];
+    /* 재재지적(원복+재작업): 벌레식 겹비늘 마디 다섯 — 앞마디가 뒷마디를 감싸며
+       덮는다(앞으로 갈수록 큰 키로 뒤를 덮는 해부학적 겹침, 요잉과 무관). 전체 금색.
+       장식은 머리·꼬리를 뺀 가운데 세 마디의 등쪽에 개인색 반원 한 쌍씩 — 평평한
+       변이 마디 앞 경계선에 닿고, 앞마디가 그 경계를 덮으며 잘라 준다(무깊이 면이
+       제 마디 키를 물려받아 다음 마디보다 먼저 그려진다). */
+    const segs: [number, number, number][] = [ // [y, 반지름, 높이] — 뒤에서 앞으로.
+      [-2.2, 0.95, 1.2], [-1.15, 1.25, 1.6], [-0.05, 1.5, 2], [1.05, 1.55, 2.1], [2.1, 1.45, 1.9],
+    ];
     const out: ShapeFace[] = [];
-    const frontOn = facingRatio(0, 1) > 0.05;
-    for (const [cy, r, h] of segs) {
-      out.push(...paintBase(domeFaces3(0, cy, r, h, 3.4), "#d4af37"));
-      if (frontOn) {
-        const [px9, py9] = project(0, cy + r * 0.72, 3.75);
-        const w9 = r * 0.55;
-        out.push([`M${px9 - w9} ${py9} A${w9} ${r * 0.6} 0 0 1 ${px9 + w9} ${py9} Z`, 0.95] as ShapeFace);
+    segs.forEach(([cy, r, h], i) => {
+      out.push(...tagKey(paintBase(domeFaces3(0, cy, r, h, 3.4), "#d4af37"), 10 + i * 2));
+      if (i >= 1 && i <= 3) {
+        for (const m9 of [-1, 1] as const) {
+          const [bx9, by9] = project(m9 * r * 0.42, cy + 0.6, 3.4 + h * 0.88);
+          const w9 = r * 0.3;
+          out.push([`M${bx9 - w9} ${by9} A${w9} ${w9 * 0.75} 0 0 1 ${bx9 + w9} ${by9} Z`, 0.95] as ShapeFace);
+        }
       }
-    }
+    });
     return out;
   },
   /* 레이스(정정: 세모 아님) — 사각형들로 짠 몸: 상자 몸통 + 콕핏 상자 + 뒤로 젖힌
@@ -4431,6 +4437,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(bodyFace(groundEllipse(cx, cy, 2.8, 2.2)));
     // (삭제·지적) 앞부분 검은 반투명 홈 — 정체불명 얼룩으로 보여 걷었다.
     out.push(topFace(groundEllipse(cx - 0.9, cy - 1, 1.25, 0.8), 0.25));
+    /* 말굽 파트(요청) — 두 앞집게는 실은 한 말굽: 둘을 둥글게 잇는 반고리 띠가
+       몸통 위에 얹힌다. 금색, 트인 쪽이 앞(집게 쪽). */
+    {
+      const [hx9, hy9] = project(0, 0.3, 4.15);
+      const ro9 = 2.35;
+      const ri9 = 1.55;
+      const shoe = `M${hx9 - ro9} ${hy9} A${ro9} ${ro9 * 0.62} 0 0 1 ${hx9 + ro9} ${hy9}`
+        + ` L${hx9 + ri9} ${hy9} A${ri9} ${ri9 * 0.62} 0 0 0 ${hx9 - ri9} ${hy9} Z`;
+      out.push([shoe, 1, "#d4af37"] as ShapeFace, topFace(shoe, 0.16));
+    }
     // 옆구리 밝은 홈 한 쌍.
     out.push(topFace(groundEllipse(...project(-2.3, -0.3, 3.9), 0.4, 0.55), 0.4));
     out.push(topFace(groundEllipse(...project(2.3, -0.3, 3.9), 0.4, 0.55), 0.4));
