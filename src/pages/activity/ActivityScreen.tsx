@@ -1002,6 +1002,13 @@ export default function ActivityScreen() {
      그 보정은 '카드가 줄 아래로 열려 화면 밖으로 나가는' 문제를 푸는 것이었는데, 팝업은
      애초에 화면 가운데에 뜨므로 풀 문제가 없다. 목록도 안 밀린다 — 뒤에 그대로 있다. */
   const [detailItem, setDetailItem] = useState<DisplayItem | null>(null);
+  /* 메뉴·탭의 화면 이동 신호(요청: 전체화면들에서도 활동 누르면 초기화면) — 주소에 안
+     실리는 전체화면 상세는 popstate로는 안 닫히므로, 내비 신호를 듣고 직접 접는다. */
+  useEffect(() => {
+    const onNav = () => setDetailItem(null);
+    window.addEventListener("scr-screen-nav", onNav);
+    return () => window.removeEventListener("scr-screen-nav", onNav);
+  }, []);
 
   const user = useAppStore((s) => s.user);
   const isAdmin = !!user && isAdminRole(user.roles);

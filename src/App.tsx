@@ -125,6 +125,9 @@ export default function App() {
       window.history.pushState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
       window.dispatchEvent(new PopStateEvent("popstate"));
     }
+    /* 주소에 안 실리는 오버레이(전체화면 상세 등)도 초기화면 신호를 듣고 닫는다(요청:
+       전체화면들에서도 활동을 누르면 활동 초기화면). */
+    window.dispatchEvent(new CustomEvent("scr-screen-nav", { detail: next }));
     setScreen(next);
   };
 
