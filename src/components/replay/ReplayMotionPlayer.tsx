@@ -1362,8 +1362,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        청록 띠가 점점이 박힌다. 자체 그림자는 없다(공용 groundShadow가 맡는다). */
     const out: ShapeFace[] = [];
     // 수정 기둥이 기준 — 허리는 길이의 딱 절반이고 링이 거기 걸린다.
-    const PY_B = 0.4;
-    const PY_T = 11.6;
+    // 지상에서 띄운 높이 반으로(요청) — 아래 끝 0.4 → 0.2.
+    const PY_B = 0.2;
+    const PY_T = 11.4;
     const PY_M = (PY_B + PY_T) / 2;
     const [cx, cy] = project(0, 0, PY_M);
     const rxo = 5.5;
