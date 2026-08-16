@@ -2795,15 +2795,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 리버(복구) — 반지름이 비슷한 마디 돔 다섯을 촘촘히 겹친 매끈한 애벌레.
      머리 앞에 띄우던 입 원반은 걷었다(지적: 머리쪽 검은 원이 떠 있음 — 몸에서 떨어져
      보일 뿐 정보가 없다). */
-  reaver: () => [
-    // 반원 아치 + 머리·꼬리로 갈수록 몸도 얇아진다(지적).
-    // 앞에서 두 번째 마디만 개인색, 나머지 금색(요청).
-    ...paintBase(domeFaces3(0, -2.6, 0.65, 0.6, 3.4), "#d4af37"),
-    ...paintBase(domeFaces3(0, -1.2, 1.4, 1.8, 3.4), "#d4af37"),
-    ...paintBase(domeFaces3(0, 0.1, 1.68, 2.4, 3.4), "#d4af37"),
-    ...domeFaces3(0, 1.4, 1.4, 1.8, 3.4),
-    ...paintBase(domeFaces3(0, 2.6, 0.65, 0.6, 3.4), "#d4af37"),
-  ],
+  reaver: () => {
+    /* 재지적: 머리·꼬리 마디 제거, 전체 금색 — 각 마디 앞면에 개인색 손톱꼴 띠
+       (둥근 위·평평한 밑 반타원). 띠는 제 마디 바로 뒤에 끼워 깊이를 물려받는다. */
+    const segs: [number, number, number][] = [[-1.2, 1.4, 1.8], [0.1, 1.68, 2.4], [1.4, 1.4, 1.8]];
+    const out: ShapeFace[] = [];
+    const frontOn = facingRatio(0, 1) > 0.05;
+    for (const [cy, r, h] of segs) {
+      out.push(...paintBase(domeFaces3(0, cy, r, h, 3.4), "#d4af37"));
+      if (frontOn) {
+        const [px9, py9] = project(0, cy + r * 0.72, 3.75);
+        const w9 = r * 0.55;
+        out.push([`M${px9 - w9} ${py9} A${w9} ${r * 0.6} 0 0 1 ${px9 + w9} ${py9} Z`, 0.95] as ShapeFace);
+      }
+    }
+    return out;
+  },
   /* 레이스(정정: 세모 아님) — 사각형들로 짠 몸: 상자 몸통 + 콕핏 상자 + 뒤로 젖힌
      사각 날개 두 장, 그리고 양 날개 끝마다 앞으로 뻗는 긴 포신 하나씩. */
   wraith: () => {
