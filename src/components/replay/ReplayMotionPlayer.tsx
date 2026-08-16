@@ -1042,14 +1042,9 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
           },
           fill: seamColor,
         });
-        /* 캐노피는 제거(요청) — 대신 옆면 기둥의 아래 단면 자체가 입구가 된다:
-           밑동에서 기둥을 조금 더 굵게 열고, 그 단면 안쪽에 어두운 굴을 앉혀 자연스러운
-           들머리로 보이게 한다. */
-        const [ex9, ey9] = project(dxr * (moundR(0) * 0.99), dyr * (moundR(0) * 0.99), 0.42);
-        out.push(...tagKey([
-          ...seamPillar,
-          [groundEllipse(ex9, ey9, 0.5, 0.42), 0.92, "#101216"] as ShapeFace,
-        ], dep + 0.3));
+        /* 캐노피·동그라미 입구 표현 모두 제거(재지적) — 옆면 기둥의 굵게 열린 아래
+           단면 자체가 들머리 노릇을 한다. */
+        out.push(...tagKey(seamPillar, dep + 0.3));
       }
     }
     // 바닥 갈고리 덩굴(실물) — 다리 사이로 기다가 끝이 말려 올라간다.
@@ -2848,10 +2843,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   lair: () => [
     // 뿔은 동굴 입구 하나 건너 하나(지적) — 다리 각 -170·-40·80의 입구에서 솟는다.
     // 뒤 입구(-170) 뿔은 둔덕이 가리도록 먼저(지적: 비쳐 보였다). 뿔은 검회색(요청).
-    ...spikeHorn(-1.15, -6.5, 0.9, -1.4, -7.7, 9, 1.5, "#1b1e23", 6, -0.7),
+    /* 뿔에 제 자리 깊이(지적: 가려짐) — 둔덕이 큰 반지름 키를 써서 앞쪽 뿔까지
+       덮었다. 뒤 뿔은 둔덕보다 낮은 키, 앞 뿔은 높은 키로 갈라 준다. */
+    ...tagKey(spikeHorn(-1.15, -6.5, 0.9, -1.4, -7.7, 9, 1.5, "#1b1e23", 6, -0.7), -2),
     ...SHAPE_BUILDERS.hatchery(),
-    ...spikeHorn(-4.25, 5.05, 0.9, -5, 6, 10.4, 1.7, "#1b1e23", 6, -0.8),
-    ...spikeHorn(6.5, 1.15, 1, 7.7, 1.4, 11, 1.9, "#1b1e23", 6, -0.8),
+    ...tagKey(spikeHorn(-4.25, 5.05, 0.9, -5, 6, 10.4, 1.7, "#1b1e23", 6, -0.8),
+      12 + depthNow(-4.25, 5.05)),
+    ...tagKey(spikeHorn(6.5, 1.15, 1, 7.7, 1.4, 11, 1.9, "#1b1e23", 6, -0.8),
+      12 + depthNow(6.5, 1.15)),
   ],
   /* 하이브 — 더 길고 굵은 뿔 셋(뿔 등에 가시들, 요청) + 앞 컬. */
   hive: () => {
@@ -2868,7 +2867,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       if (hi === 1) out.push(...hatcheryMoundFaces(IVORY_DEEP, IVORY_DEEP)); // 옆띠·위·옆 가시 진한 상아(재지적)
       hi += 1;
       // 뿔은 황토색, 가시는 상아색(요청).
-      out.push(...spikeHorn(bx, by, bz, tx, ty, tz, w, "#b3854a", 6, -0.9));
+      // 뿔에 제 자리 깊이(지적: 가려짐) — 첫 뿔(뒤)은 둔덕 뒤, 나머지는 둔덕 앞.
+      out.push(...tagKey(spikeHorn(bx, by, bz, tx, ty, tz, w, "#b3854a", 6, -0.9),
+        hi === 1 ? -2 : 12 + depthNow(bx, by)));
       /* 뿔 등의 가시(요청, 정정: 안쪽을 향한다) — 뿔 길이를 따라 서너 개가 본 건물
          쪽으로 돋는다. */
       for (const t of [0.35, 0.55, 0.75]) {
