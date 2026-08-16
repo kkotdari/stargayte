@@ -11297,8 +11297,19 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   box-shadow: var(--lit-pill-glow);
 }
 .scr-motion-sharerow .scr-kakao-share-btn svg { width: 11px; height: 11px; color: #10151a; }
+/* 라이트 프라이머리는 흰 알약이 아니라 라이팅 알약(하늘색 반투명 + 글로우)이다(지적:
+   "프라이머리면 라이트에선 글로우 블루 아니야?") — 이 규칙이 902행의 라이트 프라이머리보다
+   뒤에 있어 흰색이 이기고 있었다. .scr-light-theme .scr-btn-primary와 같은 배색으로 맞춘다. */
+.scr-light-theme .scr-motion-sharerow .scr-kakao-share-btn {
+  background: var(--lit-pill-bg); border-color: transparent; color: var(--text);
+}
+.scr-light-theme .scr-motion-sharerow .scr-kakao-share-btn svg { color: var(--text); }
 @media (hover: hover) {
   .scr-motion-sharerow .scr-kakao-share-btn:hover { filter: brightness(0.95); }
+  .scr-light-theme .scr-motion-sharerow .scr-kakao-share-btn:hover {
+    filter: none;
+    box-shadow: 0 0 12px rgba(var(--lit-rgb), 0.25), 0 0 28px rgba(var(--lit-rgb), 0.13);
+  }
 }
 .scr-motion-btn {
   min-width: 28px; height: 22px; padding: 0 6px; border-radius: var(--radius-sm);
