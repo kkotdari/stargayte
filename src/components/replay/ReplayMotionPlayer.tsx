@@ -5961,10 +5961,10 @@ const BLD_FILL_CACHE = new Map<string, number>();
 const BLD_FILL_TARGET: Record<string, number> = {
   tomb: 1.2, pyramidWide: 1.2, hatchery: 1.2, lair: 1.2, hive: 1.2,
 };
-const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number; w: number }>();
+const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number; w: number; cx: number }>();
 function buildingSprite(
   op: UnitDrawOp, sideQ: number, B: number,
-): { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number; w: number } | null {
+): { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number; w: number; cx: number } | null {
   const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
   const key = `${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}|${op.color}|${sideQ}|${B.toFixed(2)}`;
   const hit = BLD_SPRITE_CACHE.get(key);
@@ -5989,7 +5989,9 @@ function buildingSprite(
   }
   if (BLD_SPRITE_CACHE.size > 500) BLD_SPRITE_CACHE.clear();
   const box9 = contentBox(cv);
-  const entry = { cv, pad, l, side: sideQ, bot: box9.bot, top: box9.top, w: box9.w };
+  const entry = {
+    cv, pad, l, side: sideQ, bot: box9.bot, top: box9.top, w: box9.w, cx: box9.cx,
+  };
   BLD_SPRITE_CACHE.set(key, entry);
   return entry;
 }
@@ -6280,9 +6282,14 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
              위에 있는 만큼의 틈이 배율만큼 함께 커져 건물이 떠 보인다. 그린 픽셀의
              실제 바닥(bot)을 발자국 바닥선에 앉힌다. */
           const bTop9 = sy + hPx / 2 - (bspr.bot / B) * k;
+          /* 좌우 어긋남 수리(지적: 건물이 살짝 왼쪽·오른쪽으로 어긋난다) — 상자 중심에
+             맞춰 찍었는데 모델이 제 16-상자 안에서 치우쳐 그려진 것들이 있다. 발자국을
+             채우려 배율을 키우면 그 치우침도 함께 커져 눈에 띈다. 그린 픽셀의 가로
+             중심(cx)을 발자국 중심에 앉힌다 — 바닥(bot)을 땅에 앉힌 것과 같은 결. */
+          const bLeft9 = sx - (bspr.cx / B) * k;
           ctx.drawImage(
             bspr.cv,
-            sx - (bspr.pad + sideQ / 2) * k, bTop9,
+            bLeft9, bTop9,
             bspr.l * k, bspr.l * k,
           );
           /* 건물 체력바(요청) — 다친 건물 위에만. 유닛 바와 같은 3색. */
@@ -10025,7 +10032,8 @@ export default function ReplayMotionPlayer({
               if (hall && hd > 1.5) {
                 const cyc3 = (t * 1.5 + ei * 2.3) % (2 * hd);
                 const k3 = (cyc3 < hd ? cyc3 : 2 * hd - cyc3) / hd;
-                const kk = 0.08 + k3 * 0.84;
+                // 가스 왕복도 같은 결 — 0.84 → 0.72.
+                const kk = 0.08 + k3 * 0.72;
                 pos = { ...pos, x: gx3 + (hall.x - gx3) * kk, y: gy3 + (hall.y - gy3) * kk };
               }
             } else {
@@ -10046,7 +10054,14 @@ export default function ReplayMotionPlayer({
                 const d4 = Math.hypot(h.x - pos.x, h.y - pos.y);
                 if (d4 < hdM) { hdM = d4; hallM = h; }
               }
-              if (mpx < 0 && hallM && !rawPos.moving) {
+              /* 집에 있는 일꾼은 캔다(지적: 첫 4기가 바로 채취해야 하는데 안 됨) —
+                 예전 조건은 '멈춰 있을 때'뿐이라, 시작 일꾼처럼 증거 점이 띄엄띄엄한
+                 개체는 두 점 사이를 하염없이 미끄러지는 '이동 중'으로 잡혀 왕복을 못
+                 탔다(실측: 경기 20초에 일꾼 41기가 홀 발자국 안에 겹쳐 있었다). 최근
+                 3초 안에 제 명령이 없으면 — 즉 지금 무엇을 하러 가는 길이 아니면 —
+                 집 앞 일꾼은 캐는 것이 참이다. */
+              const idleHome9 = !e.orders.some((os9) => os9 <= t && t - os9 <= 3);
+              if (mpx < 0 && hallM && (!rawPos.moving || idleHome9)) {
                 const near = resList.filter((r) => r[2] !== 1
                   && Math.hypot(r[0] - hallM!.x, r[1] - hallM!.y) <= 9);
                 if (near.length > 0) {
@@ -10069,7 +10084,8 @@ export default function ReplayMotionPlayer({
                 if (h2 && hd2 > 1.5 && hd2 < 12) {
                   const cyc4 = (t * 1.6 + ei * 2.7) % (2 * hd2);
                   const k4 = (cyc4 < hd2 ? cyc4 : 2 * hd2 - cyc4) / hd2;
-                  const kk2 = 0.06 + k4 * 0.86;
+                  // 반납은 홀 문턱까지만(위 숨김 창과 짝) — 0.86 → 0.72.
+                  const kk2 = 0.06 + k4 * 0.72;
                   pos = { ...pos, x: mpx + (h2.x - mpx) * kk2, y: mpy + (h2.y - mpy) * kk2 };
                 }
               }
@@ -10079,9 +10095,13 @@ export default function ReplayMotionPlayer({
              숨기기) — 왕복 자리가 제 홀 발자국 안이면 그 프레임은 안 그린다. 원작도
              반납하는 일꾼은 건물 속으로 잠깐 사라진다. */
           if (isWorker) {
+            /* 숨김 창을 좁힌다(지적: 첫 4기가 채취하는 게 안 보인다) — ±1.8×1.3타일은
+               4×3 발자국의 거의 전부라, 반납 왕복의 절반을 건물 속으로 삼켰다(실측:
+               경기 20초에 일꾼 41기가 이 규칙으로 사라졌다). 정말 안으로 들어간
+               한가운데(±1.15×0.85)만 숨긴다. */
             const inHall = halls.some((h) => h.raw === e.raw && h.sec <= t
               && (h.gone === 0 || t < h.gone)
-              && Math.abs(h.x - pos.x) <= 1.8 && Math.abs(h.y - pos.y) <= 1.3);
+              && Math.abs(h.x - pos.x) <= 1.15 && Math.abs(h.y - pos.y) <= 0.85);
             if (inHall) return null;
             /* 가스 건물도 같은 규칙(지적: 가스 일꾼이 들어가기 한참 전에 사라짐) —
                발자국 한가운데(문턱 1.4×0.7)에 정말 '들어간 순간'만 숨는다. 다가가는
