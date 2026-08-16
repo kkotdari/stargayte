@@ -13299,6 +13299,24 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   background: linear-gradient(to bottom, rgba(255, 190, 80, 0.95), rgba(255, 90, 20, 0));
   animation-duration: 0.3s;
 }
+/* 근접 베기(기획서 1-G) — 몸 가장자리에서 짧은 흰 호가 표적 쪽으로 쓸린다.
+   rotate 속성은 인라인 transform(조준 회전)과 따로 합성돼 축을 안 깨뜨린다. */
+.scr-tracer-slash {
+  width: 6px; height: 6px; background: none;
+  border: 1.2px solid transparent;
+  border-top-color: rgba(255, 250, 235, 0.95);
+  border-right-color: rgba(255, 250, 235, 0.5);
+  border-radius: 50%;
+  animation: scr-slash 0.55s ease-out infinite;
+}
+/* v2 축소 규칙(.scr-v2fx .scr-motion-tracer)이 특이도로 이겨 호가 실오라기가 되는 것 방지. */
+.scr-v2fx .scr-tracer-slash { width: 6px; height: 6px; background: none; }
+@keyframes scr-slash {
+  0%, 10% { opacity: 0; rotate: -70deg; }
+  18% { opacity: 1; }
+  40% { opacity: 1; rotate: 45deg; }
+  58%, 100% { opacity: 0; rotate: 65deg; }
+}
 .scr-tracer-spine {
   background: linear-gradient(to bottom, rgba(205, 255, 170, 0.95), rgba(205, 255, 170, 0));
   animation-duration: 0.45s;

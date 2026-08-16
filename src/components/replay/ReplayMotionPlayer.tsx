@@ -4530,6 +4530,10 @@ const ATTACK_FX: Record<string, string> = {
   Guardian: "acidball", Queen: "acid", Valkyrie: "missile",
   Dragoon: "photon", Scout: "bolt", Corsair: "flare", Arbiter: "bolt", Carrier: "burst",
   Archon: "zap", Reaver: "cannon",
+  /* 근접 베기(기획서 1-G) — 붙어서 때리는 게 보이게. 무명 개체는 fxUnit 폴백
+     (Zealot·Zergling·Marine)을 타므로 여기 항목으로 함께 해결된다. */
+  Zealot: "slash", Zergling: "slash", Ultralisk: "slash", "Dark Templar": "slash",
+  Broodling: "slash", "Infested Terran": "slash",
 };
 /* 발사 지점(요청: 탱크는 포신, 히드라는 입, 마린·파뱃은 총구, 매딕은 주사기 — 효과가
    몸 중심이 아니라 제 무기 끝에서) — 트레이서를 몸 방향 축으로 이만큼(px) 앞으로 민다.
@@ -9111,7 +9115,8 @@ export default function ReplayMotionPlayer({
              버로우한 채 적이 사거리(6타일, 여유 7) 안이면 명령 없이도 가시를 쏜다.
              럴커는 수가 적으니 1/3 솎기도 안 태운다. */
           const lurkStrike = burrowed && !frzSt && Number.isFinite(foe.bd) && foe.bd <= 7;
-          if (fighting && !lurkStrike && ei % 3 !== 0) return null;
+          // 근접은 덜 솎는다(기획서 1-G) — 베기가 안 보이면 '싸우는 척'이 된다.
+          if (fighting && !lurkStrike && ei % (MELEE_UNITS.has(drawUnit) || drawUnit === "" ? 2 : 3) !== 0) return null;
           if ((!fighting && !lurkStrike) || !qCombat) return null;
           const fxUnit = drawUnit === "" ? (race === "저그" ? "Zergling" : race === "테란" ? "Marine" : "Zealot") : drawUnit;
           const atkDeg = foeDeg;
