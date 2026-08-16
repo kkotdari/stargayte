@@ -4606,7 +4606,30 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...paintBase(domeFaces3(0, -2.3, 0.95, 0.8, 4.2), "#a9ecf2"));
     // 아가리 어두운 속은 제거(지적: 앞 검정 반투명 부품) — 빛 줄만 남긴다.
     out.push(topFace(`M${pt(-1.6, 1.1, 3.9)} Q${pt(0, 2, 3.9)} ${pt(1.6, 1.1, 3.9)} L${pt(1.4, 1.5, 3.9)} Q${pt(0, 2.4, 3.9)} ${pt(-1.4, 1.5, 3.9)} Z`, 0.5));
-    // (제거·요청) 말굽·앞다리 — 처음부터 다시 만들 자리다.
+    /* 앞 집게 한 쌍(요청·실물 사진) — 초승달 꼴: 바깥은 크게 부풀고 안쪽은 오목해
+       끝이 뾰족하며, 두 끝이 서로 오므라들어 마주 본다. 앞으로 갈수록 살짝 내려앉고
+       윗판·아랫판과 테두리 띠로 두께를 준다. 금색. */
+    {
+      const OUT9: [number, number][] = [[2.15, -0.2], [3.45, 1.5], [3.55, 3.1], [2.8, 4.6], [1.05, 5.8]];
+      const IN9: [number, number][] = [[1.6, 4.5], [1.95, 2.9], [1.85, 1.3], [1.5, -0.2]];
+      const zAt9 = (y9: number, dz: number): number => 4.15 - (y9 + 0.2) * 0.2 + dz;
+      const ring9 = (m9: 1 | -1, dz: number): [number, number, number][] => [
+        ...OUT9.map(([x9, y9]) => [m9 * x9, y9, zAt9(y9, dz)] as [number, number, number]),
+        ...IN9.map(([x9, y9]) => [m9 * x9, y9, zAt9(y9, dz)] as [number, number, number]),
+      ];
+      for (const m9 of [-1, 1] as const) {
+        const lo9 = ring9(m9, 0);
+        const hi9 = ring9(m9, 0.62);
+        const faces9: ShapeFace[] = [[polyPath3(lo9), 1, "#d4af37"] as ShapeFace,
+          sideFace(polyPath3(lo9), 0.3)];
+        for (let i9 = 0; i9 < lo9.length; i9 += 1) {
+          const j9 = (i9 + 1) % lo9.length;
+          faces9.push([polyPath3([lo9[i9], lo9[j9], hi9[j9], hi9[i9]]), 1, "#d4af37"] as ShapeFace);
+        }
+        faces9.push([polyPath3(hi9), 1, "#d4af37"] as ShapeFace, topFace(polyPath3(hi9), 0.18));
+        out.push(...tagKey(faces9, depthNow(m9 * 2.5, 2.6)));
+      }
+    }
     return out;
   },
   /* 미네랄(재정정: 삼각뿔 말고 보석 기둥) — 세운 기둥 결정 + 뾰족 갓 셋, 키가 다
