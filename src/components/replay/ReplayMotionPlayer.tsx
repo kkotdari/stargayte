@@ -806,7 +806,8 @@ function protossFace(fill?: string, lift = 0, s = 1): ShapeFace[] {
      (0, 0.6, 6+lift)다. 머리 축의 t=2/3 지점이 정확히 그 점에 오도록 뿌리를 잡는다:
      y = 0.6 + 1.85·(2/3) ≈ 1.83, z = 6 − 1.85·(2/3) ≈ 4.77. */
   return spirePillar({
-    x: 0, y: 1.83 * s, z0: 4.77 + lift, h: 1.85 * s,
+    // 머리통을 몸통에서 좀더 위로(요청) — 물린 깊이를 얕게: 4.77 → 5.32.
+    x: 0, y: 1.83 * s, z0: 5.32 + lift, h: 1.85 * s,
     // 아래(턱)는 뭉뚝, 위(정수리)는 굵게 — hold 없이 매끈하게 부푼다.
     w: 0.22 * s, tipW: 0.6 * s,
     segs: 5, sides: 8, hold: 0,
@@ -2034,35 +2035,75 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 익스트랙터(실물 참고) — 점액 받침 위 좌우 갈색 통(초록 발광 뚜껑 + 흘러내리는 힘줄
      우리)과 그 위 뿔 돋은 검은 덮개, 가운데 비스듬히 기댄 골진 붉은 애벌레 몸통. */
   extract: () => {
+    /* 익스트랙터(요청·사진: 뿔기둥 전면 활용) — 검은 덮개를 쓴 살덩이 통 둘이 좌우에
+       서고, 통마다 옆구리를 타는 힘줄 기둥과 크게 휜 상아 뿔이 돋는다. 가운데는
+       앞으로 기어 나오는 붉은 애벌레 몸통. 키는 저그 건물 공통 자(제 자리 깊이 ×
+       1.6)를 쓴다. */
     const out: ShapeFace[] = [sideFace(discPath3(0, 0.4, 0, 7.2), 0.2)];
-    const vat = (px: number, py: number, r: number): void => {
-      out.push(...cylinderFaces3(px, py, r, 3.4));
-      const [gx, gy] = project(px, py, 3.45);
-      out.push(topFace(groundEllipse(gx, gy, r * 0.82, r * 0.4), 0.5));
-      // 힘줄 우리 — 통 옆면을 타고 내리는 가는 다리들.
+    const vat = (px: number, py: number, r: number, m: 1 | -1): void => {
+      const key = depthNow(px, py) * 1.6;
+      const VH = 3.6;
+      const vatR = (t9: number): number => r * 0.86 + r * 0.24 * (1 - t9) ** 1.6;
+      // 통 — 아래가 굵고 위로 갈수록 살짝 좁아지는 살덩이 기둥.
+      out.push(...tagKey(spirePillar({
+        x: px, y: py, z0: 0, h: VH, w: r * 1.1, tipW: r * 0.86,
+        segs: 5, sides: 12, hold: 0, taper: 1.6, fill: "#8a5f43",
+      }), key));
+      // 힘줄 우리 — 통 옆면을 그대로 타고 내리는 가는 기둥 다섯.
       for (const ang of [150, 210, 30, -30, 90]) {
         const a2 = (ang * Math.PI) / 180;
-        out.push(...hornFaces(
-          px + Math.sin(a2) * r * 0.7, py + Math.cos(a2) * r * 0.7, 3.6,
-          px + Math.sin(a2) * r * 1.25, py + Math.cos(a2) * r * 1.25, 0.2, 0.5,
-        ));
+        const dxr = Math.sin(a2);
+        const dyr = Math.cos(a2);
+        out.push(...tagKey(spirePillar({
+          x: 0, y: 0, h: 1, w: 0.62, tipW: 0.3, segs: 6, sides: 6, hold: 0.1, taper: 1.4,
+          path: (t9: number): [number, number, number] => {
+            const r9 = vatR(t9) * 1.02;
+            return [px + dxr * r9, py + dyr * r9, VH * t9];
+          },
+          fill: "#6b4732",
+        }), depthNow(px + dxr * r, py + dyr * r) * 1.6));
       }
-      // 검은 덮개와 굽은 뿔들 — 뿔은 상아색(요청).
-      out.push(...domeFaces3(px, py, r * 1.15, 1.6, 3.4));
-      out.push(...paintBase(hornFaces(px - 0.6, py - 0.5, 4.6, px - 1.9, py - 1.2, 8.6, 1.3), IVORY));
-      out.push(...paintBase(hornFaces(px + 0.8, py - 0.3, 4.6, px + 2, py - 1, 7.6, 1.1), IVORY));
-      out.push(...paintBase(hornFaces(px, py + 0.5, 4.4, px + 0.4, py + 1.4, 6.4, 0.9), IVORY));
+      // 검은 덮개 — 통 윗지름을 그대로 받아 위로 좁아진다.
+      out.push(...tagKey(paintBase(spirePillar({
+        x: px, y: py, z0: VH - 0.15, h: 1.5, w: r * 0.86, tipW: r * 0.4,
+        segs: 4, sides: 12, hold: 0.05, taper: 1.7,
+      }), "#3a3f46"), key + 9));
+      // 덮개에서 솟는 상아 뿔 셋 — 바깥·뒤로 크게 휘며 끝이 뾰족하다.
+      out.push(...tagKey(spikeHorn(px - m * 0.7, py - 0.4, 4.6, px - m * 2.4, py - 1.6, 9.4, 1.35,
+        IVORY, 6, 1.2, -m, -0.5), key + 10));
+      out.push(...tagKey(spikeHorn(px + m * 0.9, py - 0.2, 4.5, px + m * 2.5, py - 1.2, 8.2, 1.15,
+        IVORY, 6, 1, m, -0.4), key + 10));
+      out.push(...tagKey(spikeHorn(px, py + 0.7, 4.3, px + m * 0.5, py + 2, 7, 0.95,
+        IVORY, 6, 0.8, 0, 1), key + 11));
     };
-    vat(-3.9, -0.6, 2.4);
-    vat(4, -0.4, 2.2);
-    // 가운데 붉은 애벌레 몸통 — 골진 마디가 비스듬히 기댄다.
-    for (let i = 0; i < 4; i += 1) {
-      out.push(...domeFaces3(0.2 - i * 0.15, 2.6 - i * 1.1, 2 - i * 0.28, 1.5, 0.4 + i * 1.35));
+    vat(-3.9, -0.6, 2.4, -1);
+    vat(4, -0.4, 2.2, 1);
+    /* 가운데 붉은 애벌레 — 뒤 바닥에서 나와 앞으로 기어 오르는 굵은 기둥 하나.
+       마디는 그 위를 감싸는 얇은 테로 낸다. */
+    const GRB = (t9: number): [number, number, number] => [
+      0.2 - t9 * 0.3,
+      -2.2 + t9 * 5.4,
+      0.5 + Math.sin(Math.PI * t9 * 0.85) * 3.2,
+    ];
+    out.push(...tagKey(spirePillar({
+      x: 0, y: 0, h: 1, w: 1.5, tipW: 1.05, segs: 10, sides: 10, hold: 0.1, taper: 1.2,
+      path: GRB, fill: "#b3543a",
+    }), depthNow(0, 0.4) * 1.6 + 4));
+    for (const t9 of [0.28, 0.46, 0.64, 0.82]) {
+      const [gx9, gy9, gz9] = GRB(t9);
+      out.push(...tagKey(paintBase(spirePillar({
+        x: gx9, y: gy9, z0: gz9 - 0.16, h: 0.32, w: 1.45, tipW: 1.45,
+        segs: 1, sides: 10, hold: 1,
+      }), "#8a3f2c"), depthNow(gx9, gy9) * 1.6 + 5));
     }
-    out.push(...paintBase(hornFaces(0, -1.6, 4.4, -0.4, -2.6, 7, 1.4), IVORY)); // 뿔 상아색(요청)
-    // 잿빛 가시 조각.
-    out.push(...hornFaces(-1.6, 3.4, 0.4, -2.4, 4.6, 2.2, 0.8));
-    out.push(...hornFaces(1.8, 3.2, 0.4, 2.6, 4.2, 2, 0.8));
+    // 애벌레 끝 상아 뿔.
+    out.push(...tagKey(spikeHorn(0, -1.7, 4.2, -0.5, -2.9, 7.2, 1.3, IVORY, 6, 0.7, 0, -1),
+      depthNow(0, -2.3) * 1.6 + 5));
+    // 앞 잿빛 가시 조각 한 쌍.
+    out.push(...tagKey(spikeHorn(-1.7, 3.4, 0.4, -2.6, 4.8, 2.4, 0.8, undefined, 6, 0.4, -0.6, 0.8),
+      depthNow(-2.1, 4.1) * 1.6));
+    out.push(...tagKey(spikeHorn(1.9, 3.2, 0.4, 2.8, 4.4, 2.2, 0.8, undefined, 6, 0.4, 0.6, 0.8),
+      depthNow(2.3, 3.8) * 1.6));
     return out;
   },
 
@@ -2670,134 +2711,192 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 스파이어(실물 참고) — 초록 밑동에서 촉수 여러 가닥이 모여 오르는 기둥, 그 위
      잿빛 머리와 골진 도넛 왕관(가운데 구멍). */
   spire: () => {
+    /* 스파이어(요청·사진: 뿔기둥 전면 활용) — 초록 연못 위 후지산 밑동에서 촉수
+       기둥 여섯이 위로 모여 오르고, 그 위에 잿빛 머리와 골진 도넛 왕관이 얹힌다. */
     const out: ShapeFace[] = [];
-    // 바닥 연녹색 연못(요청: 스파이어류) — 스포닝풀 물색.
     const [plx, ply] = project(0, 0.6, 0.02);
     out.push(sideFace(groundEllipse(plx, ply, 6.1, 2.95), 0.22));
     out.push([groundEllipse(plx, ply, 5.5, 2.6), 0.8, "#8ef23e"] as ShapeFace);
-    // 가로도 발자국만큼(지적: 바닥 상자에 비해 너무 작게 모델링) — 밑동·촉수·머리 전부 확대.
-    // 밑동 — 초록 무지개 더미(밝은 윗빛).
-    out.push(...domeFaces3(0, 0.6, 4.4, 1.9));
-    out.push(topFace(groundEllipse(...project(0, 0.6, 1.5), 2.8, 1.4), 0.3));
-    // 촉수 기둥 — 여섯 가닥이 위로 모인다. 훨씬 높게(지적: 스파이어 모델이 너무 작다).
+    // 밑동 — 후지산 꼴 기둥 하나.
+    const MB_H = 2.6;
+    const MB_RB = 4.5;
+    const MB_RT = 2.2;
+    const mbR = (t9: number): number => MB_RT + (MB_RB - MB_RT) * (1 - t9) ** 2;
+    out.push(...tagKey(paintBase(spirePillar({
+      x: 0, y: 0.6, z0: 0, h: MB_H, w: MB_RB, tipW: MB_RT,
+      segs: 5, sides: 14, hold: 0, taper: 2,
+    }), "#4f7a2e"), 0));
+    // 촉수 기둥 여섯 — 밑동 옆구리에 뿌리를 두고 위로 모이며 가늘어진다.
     for (const ang of [150, 210, 90, 270, 30, -30]) {
-      const a = (ang * Math.PI) / 180;
-      out.push(...hornFaces(
-        Math.sin(a) * 4.1, 0.6 + Math.cos(a) * 4.1, 0.3,
-        Math.sin(a) * 1.35, Math.cos(a) * 1.35, 12.2, 0.85,
-      ));
+      const a2 = (ang * Math.PI) / 180;
+      const dxr = Math.sin(a2);
+      const dyr = Math.cos(a2);
+      const rr9 = mbR(0.35) * 0.96;
+      const bx9 = dxr * rr9;
+      const by9 = 0.6 + dyr * rr9;
+      out.push(...tagKey(spirePillar({
+        x: bx9, y: by9, z0: MB_H * 0.35, h: 10.6, w: 1.05, tipW: 0.42,
+        segs: 9, sides: 6, hold: 0.05, taper: 1.35,
+        leanX: -dxr * (rr9 - 1.15), leanY: -dyr * (rr9 - 1.15),
+        curveX: dxr * 0.85, curveY: dyr * 0.85,
+        fill: "#8a5f43",
+      }), depthNow(bx9, by9) * 1.6));
     }
-    // 잿빛 머리 판 — 왕관과 같은 지름으로(지적: 윗 원판과 아래 원통 크기가 달랐다).
-    out.push(...cylinderFaces3(0, 0, 3.3, 1.5, 12));
-    // 골진 도넛 왕관 — 방사 골 + 가운데 구멍. 원통 위에 살짝 걸치는 정도만 넓다.
-    const [cx2, cy2] = project(0, 0, 14.1);
-    out.push(bodyFace(groundEllipse(cx2, cy2, 3.55, 2.05)));
+    // 잿빛 머리 — 위로 살짝 벌어지는 짧은 기둥.
+    out.push(...tagKey(paintBase(spirePillar({
+      x: 0, y: 0, z0: 11.1, h: 1.9, w: 2.6, tipW: 3.3,
+      segs: 3, sides: 14, hold: 0.15,
+    }), "#7d7a72"), 20));
+    // 골진 도넛 왕관 — 방사 골 + 가운데 구멍.
+    const [cx2, cy2] = project(0, 0, 13.1);
+    out.push(...tagKey([bodyFace(groundEllipse(cx2, cy2, 3.55, 2.05))], 22));
     /* 골도 요잉을 탄다(지적: 뚜껑이 안 돎) — 화면 고정 각이던 골 위치에 현재 요잉을
        더해, 뚜껑이 함께 도는 것으로 보인다. */
     const yawRad = Math.atan2(-depthNow(1, 0), depthNow(0, 1));
+    const crown: ShapeFace[] = [];
     for (const ang of [200, 240, 280, 320, 20, 60, 100, 140]) {
       const a = (ang * Math.PI) / 180 + yawRad;
-      out.push(sideFace(`M${cx2 + Math.cos(a) * 1.55} ${cy2 + Math.sin(a) * 0.9}`
+      crown.push(sideFace(`M${cx2 + Math.cos(a) * 1.55} ${cy2 + Math.sin(a) * 0.9}`
         + ` L${cx2 + Math.cos(a) * 3.35} ${cy2 + Math.sin(a) * 1.94}`
         + ` L${cx2 + Math.cos(a + 0.16) * 3.35} ${cy2 + Math.sin(a + 0.16) * 1.94}`
         + ` L${cx2 + Math.cos(a + 0.16) * 1.55} ${cy2 + Math.sin(a + 0.16) * 0.9} Z`, 0.16));
     }
-    out.push(capFace(groundEllipse(cx2, cy2 - 0.2, 1.15, 0.68), 0.5));
+    crown.push(capFace(groundEllipse(cx2, cy2 - 0.2, 1.15, 0.68), 0.5));
+    out.push(...tagKey(crown, 23));
     return out;
   },
   /* 그레이터 스파이어(정정: 바닥 제거·층 없는 한 몸·더 높게) — 허리가 잘록했다 위에서
      벌어지는 매끈한 줄기 하나, 앞 붉은 살 띠, 옆 혹, 꼭대기 살덩이 엽 아가리와 깃 뿔. */
   gspire: () => {
+    /* 그레이터 스파이어(요청·사진: 뿔기둥 전면 활용) — 허리가 잘록했다 위에서 다시
+       벌어지는 줄기를 기둥 둘로 잇고(아래는 좁아지고 위는 벌어진다), 앞 붉은 살
+       띠는 그 옆선을 타는 가는 기둥으로, 꼭대기 깃 뿔은 spikeHorn으로 낸다. */
     const out: ShapeFace[] = [];
-    // 바닥 연녹색 연못(요청: 스파이어류).
     const [plx, ply] = project(0, 0.4, 0.02);
     out.push(sideFace(groundEllipse(plx, ply, 5.9, 2.85), 0.22));
     out.push([groundEllipse(plx, ply, 5.3, 2.5), 0.8, "#8ef23e"] as ShapeFace);
-    const [bx, by] = project(0, 0.4, 0);
-    // 훨씬 높게(지적: 스파이어와 함께) — 허리 6.2→9, 꼭대기 9.6→14.
-    const [wx, wy] = project(0, 0.4, 9);
-    const [tx, ty] = project(0, 0.4, 14);
-    // 허리·꼭대기 x 이동(지적: 원통형 오류 일습).
-    const dw = wx - bx;
-    const dt = tx - bx;
-    out.push(bodyFace(
-      `M${bx - 2.9} ${by}`
-      + ` Q${bx - 2.5 + dw * 0.5} ${(by + wy) / 2} ${bx - 1.55 + dw} ${wy}`
-      + ` Q${bx - 1.75 + (dw + dt) / 2} ${(wy + ty) / 2} ${bx - 2.35 + dt} ${ty}`
-      + ` L${bx + 2.35 + dt} ${ty}`
-      + ` Q${bx + 1.75 + (dw + dt) / 2} ${(wy + ty) / 2} ${bx + 1.55 + dw} ${wy}`
-      + ` Q${bx + 2.5} ${(by + wy) / 2} ${bx + 2.9} ${by}`
-      + `a2.9 1.3 0 1 1 -5.8 0Z`,
-    ));
-    out.push(sideFace(
-      `M${bx + 1.05} ${wy} Q${bx + 1.25} ${(wy + ty) / 2} ${bx + 1.75} ${ty - 0.4}`
-      + ` L${bx + 2.3} ${ty}`
-      + ` Q${bx + 1.7} ${(wy + ty) / 2} ${bx + 1.5} ${wy}`
-      + ` Q${bx + 2.4} ${(by + wy) / 2} ${bx + 2.8} ${by}`
-      + ` Q${bx + 1.9} ${(by + wy) / 2} ${bx + 1.05} ${wy} Z`, 0.16,
-    ));
-    /* 줄기에 깊이 0을 박는다(지적: 옆 혹이 안 가려짐) — 손 면 줄기가 -1e9로 깔려
-       혹이 늘 위에 그려졌다. 0이면 뒤로 돈 혹(음수 키)은 줄기 뒤로 들어간다. */
-    for (const f of out) f[3] = 0;
-    // 앞 붉은 살 띠 — 길게, 가로 골 셋.
-    out.push(bodyFace(polyPath3([[-0.85, 2.2, 1.4], [0.85, 2.2, 1.4], [0.45, 1.1, 11.2], [-0.45, 1.1, 11.2]])));
-    out.push(capFace(polyPath3([[-0.7, 2.1, 3.8], [0.7, 2.1, 3.8], [0.66, 2, 4.2], [-0.66, 2, 4.2]]), 0.2));
-    out.push(capFace(polyPath3([[-0.62, 1.85, 6.1], [0.62, 1.85, 6.1], [0.58, 1.75, 6.5], [-0.58, 1.75, 6.5]]), 0.2));
-    out.push(capFace(polyPath3([[-0.54, 1.55, 8.5], [0.54, 1.55, 8.5], [0.5, 1.45, 8.9], [-0.5, 1.45, 8.9]]), 0.2));
-    // 동굴 입구(요청: 좀 보이게) — 줄기 밑동 앞면에 뚫린 검은 구멍.
+    const GS_W = 9;
+    const GS_T = 14;
+    const gsLoR = (z9: number): number => 1.7 + 1.7 * (1 - z9 / GS_W) ** 1.6;
+    // 아래 줄기 — 넓은 밑동에서 허리로.
+    out.push(...tagKey(paintBase(spirePillar({
+      x: 0, y: 0.4, z0: 0, h: GS_W, w: 3.4, tipW: 1.7,
+      segs: 8, sides: 14, hold: 0, taper: 1.6,
+    }), "#8a5f43"), 0));
+    // 위 줄기 — 허리에서 꼭대기로 다시 벌어진다.
+    out.push(...tagKey(paintBase(spirePillar({
+      x: 0, y: 0.4, z0: GS_W, h: GS_T - GS_W, w: 1.7, tipW: 3.1,
+      segs: 5, sides: 14, hold: 0,
+    }), "#8a5f43"), 1));
+    // 앞 붉은 살 띠 — 아래 줄기 옆선을 그대로 타고 오른다.
+    out.push(...tagKey(spirePillar({
+      x: 0, y: 0, h: 1, w: 1.2, tipW: 0.5, segs: 9, sides: 6, hold: 0.06, taper: 1.4,
+      path: (t9: number): [number, number, number] => {
+        const z9 = 0.8 + t9 * (GS_W - 0.8);
+        return [0, 0.4 + gsLoR(z9) * 0.95, z9];
+      },
+      fill: "#b3543a",
+    }), depthNow(0, 3.4) * 1.6));
+    // 동굴 입구 — 밑동 앞면에 뚫린 검은 구멍.
     if (facingRatio(0, 1) > 0.08) {
       const hole = polyPath3(Array.from({ length: 9 }, (_, i) => {
         const th = (i / 8) * Math.PI;
-        return [Math.cos(th) * 1.2, 2.2, Math.sin(th) * 1.9] as [number, number, number];
+        return [Math.cos(th) * 1.2, 0.4 + gsLoR(1.4) * 0.92, Math.sin(th) * 1.9] as [number, number, number];
       }));
-      out.push([hole, 0.92, "#101216"] as ShapeFace);
+      out.push(...tagKey([[hole, 0.92, "#101216"] as ShapeFace], depthNow(0, 3.6) * 1.6));
     }
-    // 옆 혹 둘.
-    out.push(...domeFaces3(-1.7, 1, 0.95, 0.8, 4.6));
-    out.push(...domeFaces3(1.8, 0.7, 0.85, 0.7, 6.7));
-    // 깃 뿔 한 쌍 — 꼭대기 옆에서 위로.
-    out.push(...hornFaces(-1.9, -0.4, 11.2, -2.9, -0.9, 14.9, 0.95));
-    out.push(...hornFaces(1.9, -0.4, 11.2, 2.9, -0.9, 14.9, 0.95));
+    // 옆 혹 둘 — 줄기 옆선에 붙는다.
+    out.push(...tagKey(domeFaces3(-gsLoR(4.6) * 0.8, 0.4, 0.95, 0.8, 4.6), depthNow(-2, 0.4) * 1.6));
+    out.push(...tagKey(domeFaces3(gsLoR(6.7) * 0.85, 0.4, 0.85, 0.7, 6.7), depthNow(1.7, 0.4) * 1.6));
+    // 꼭대기 깃 뿔 여섯 — 왕관처럼 둘레에서 바깥·위로 벌어진다.
+    for (const [ang, len] of [[165, 4.4], [195, 4.4], [125, 3.8], [235, 3.8], [70, 3.2], [290, 3.2]] as [number, number][]) {
+      const a2 = (ang * Math.PI) / 180;
+      const dxr = Math.sin(a2);
+      const dyr = Math.cos(a2);
+      const bz9 = GS_T - 2.6;
+      const rr9 = 2.5;
+      const bx9 = dxr * rr9;
+      const by9 = 0.4 + dyr * rr9;
+      out.push(...tagKey(spikeHorn(
+        bx9, by9, bz9, bx9 + dxr * 1.5, by9 + dyr * 1.5, bz9 + len,
+        1, IVORY_DEEP, 6, 0.7, dxr, dyr,
+      ), depthNow(bx9, by9) * 1.6 + 6));
+    }
     // 꼭대기 살덩이 엽 아가리.
-    const [cx2, cy2] = project(0, 0, 14.6);
-    out.push(...domeFaces3(-1.15, -0.4, 1.1, 0.9, 13.8));
-    out.push(...domeFaces3(1.15, -0.4, 1.05, 0.85, 13.8));
-    out.push(...domeFaces3(-0.75, 0.75, 0.95, 0.8, 13.8));
-    out.push(...domeFaces3(0.85, 0.75, 0.95, 0.8, 13.8));
-    out.push(...domeFaces3(0, -1.05, 0.95, 0.8, 13.8));
-    out.push(capFace(groundEllipse(cx2, cy2 - 0.1, 0.75, 0.45), 0.5));
+    const [cx2, cy2] = project(0, 0.4, GS_T + 0.7);
+    const maw: ShapeFace[] = [
+      ...domeFaces3(-1.15, 0, 1.1, 0.9, GS_T - 0.2),
+      ...domeFaces3(1.15, 0, 1.05, 0.85, GS_T - 0.2),
+      ...domeFaces3(-0.75, 1.15, 0.95, 0.8, GS_T - 0.2),
+      ...domeFaces3(0.85, 1.15, 0.95, 0.8, GS_T - 0.2),
+      ...domeFaces3(0, -0.65, 0.95, 0.8, GS_T - 0.2),
+      capFace(groundEllipse(cx2, cy2 - 0.1, 0.75, 0.45), 0.5),
+    ];
+    out.push(...tagKey(maw, 24));
     return out;
   },
   /* 퀸즈 네스트(실물 참고) — 살덩이 엽이 겹겹이 쌓인 봉분: 아랫단 엽 다섯, 사이 어두운
      세로 골, 중간 단 셋, 꼭대기 덮개와 작은 뿔들, 밑동 촉수. */
   queensnest: () => {
-    const slit = (sx2: number, sy2: number, sz2: number): ShapeFace => {
-      const [px2, py2] = project(sx2, sy2, sz2);
-      return capFace(groundEllipse(px2, py2, 0.28, 0.85), 0.4);
-    };
-    return [
-      // 아랫단 엽 다섯.
-      ...domeFaces3(-3, -0.8, 1.6, 2.2),
-      ...domeFaces3(3, -0.9, 1.6, 2.2),
-      ...domeFaces3(-2.4, 1, 1.7, 2.4),
-      ...domeFaces3(2.1, 1, 1.7, 2.4),
-      ...domeFaces3(-0.2, 1.6, 1.8, 2.6),
-      // 사이 어두운 세로 골.
-      slit(-1.4, 1.8, 1.1), slit(1.1, 1.8, 1.1), slit(-2.9, 0.4, 1),
-      // 중간 단 셋.
-      ...domeFaces3(-1.3, 0, 1.8, 2.4, 1.9),
-      ...domeFaces3(1.2, 0, 1.8, 2.4, 1.9),
-      ...domeFaces3(0, -1, 1.9, 2.4, 1.9),
-      // 꼭대기 덮개 + 작은 뿔들.
-      ...domeFaces3(0, -0.2, 1.9, 1.9, 3.9),
-      // 가시 검회색(요청).
-      ...paintBase(hornFaces(-0.9, -0.9, 5.3, -1.5, -1.4, 6.5, 0.5), "#1b1e23"),
-      ...paintBase(hornFaces(0.9, -0.9, 5.3, 1.5, -1.4, 6.5, 0.5), "#1b1e23"),
-      ...paintBase(hornFaces(0, -1.3, 5.1, 0, -2, 6.1, 0.5), "#1b1e23"),
-      // 밑동 촉수.
-      ...hornFaces(-2.6, 2.2, 0.6, -3.4, 3, 0.1, 0.5),
-      ...hornFaces(2.6, 2.2, 0.6, 3.4, 3, 0.1, 0.5),
-    ];
+    /* 퀸즈 네스트(요청·사진: 뿔기둥 전면 활용) — 살덩이 봉분 하나 위로 겹친 엽 여섯이
+       옆선을 타고 오르고, 꼭대기 덮개 둘레에서 창백한 왕관 뿔이 부챗살로 벌어진다.
+       키는 저그 건물 공통 자(봉분 0, 나머지는 제 자리 깊이 × 1.6). */
+    const QN_H = 4.2;
+    const QN_RB = 4.4;
+    const QN_RT = 2;
+    const QN_P = 1.9;
+    const qnR = (t9: number): number => QN_RT + (QN_RB - QN_RT) * (1 - t9) ** QN_P;
+    const out: ShapeFace[] = [];
+    out.push(...tagKey(paintBase(spirePillar({
+      x: 0, y: 0, z0: 0, h: QN_H, w: QN_RB, tipW: QN_RT,
+      segs: 7, sides: 14, hold: 0, taper: QN_P,
+    }), "#8a5f43"), 0));
+    // 겹친 살덩이 엽 여섯 — 봉분 옆선을 타는 짧고 굵은 기둥.
+    for (const ang of [-150, -90, -30, 30, 90, 150]) {
+      const a2 = (ang * Math.PI) / 180;
+      const dxr = Math.sin(a2);
+      const dyr = Math.cos(a2);
+      out.push(...tagKey(spirePillar({
+        x: 0, y: 0, h: 1, w: 1.35, tipW: 0.5, segs: 8, sides: 6, hold: 0.1, taper: 1.5,
+        path: (t9: number): [number, number, number] => {
+          const r9 = qnR(t9) * 0.96;
+          return [dxr * r9, dyr * r9, QN_H * t9];
+        },
+        fill: "#a8613f",
+      }), depthNow(dxr * 3.4, dyr * 3.4) * 1.6));
+    }
+    // 꼭대기 덮개 — 봉분 윗지름을 그대로 받아 얹는다.
+    out.push(...tagKey(spirePillar({
+      x: 0, y: -0.2, z0: QN_H - 0.15, h: 1.6, w: QN_RT, tipW: 0.9,
+      segs: 4, sides: 12, hold: 0.12, taper: 1.6, fill: "#8a5f43",
+    }), 9));
+    // 왕관 뿔 여섯 — 덮개 둘레에서 부챗살로 벌어지는 창백한 뿔.
+    for (const [ang, len, w9] of [
+      [-160, 3.4, 0.75], [-105, 4.2, 0.85], [-50, 3.8, 0.8],
+      [40, 3, 0.7], [100, 3.4, 0.72], [155, 3, 0.7],
+    ] as [number, number, number][]) {
+      const a2 = (ang * Math.PI) / 180;
+      const dxr = Math.sin(a2);
+      const dyr = Math.cos(a2);
+      const bx9 = dxr * 1.6;
+      const by9 = -0.2 + dyr * 1.6;
+      out.push(...tagKey(spikeHorn(
+        bx9, by9, QN_H + 0.5, bx9 + dxr * 1.8, by9 + dyr * 1.8, QN_H + 0.5 + len,
+        w9, IVORY_DEEP, 6, 0.8, dxr, dyr,
+      ), depthNow(bx9, by9) * 1.6 + 10));
+    }
+    // 아래 어두운 들머리 — 앞 옆선의 굴.
+    out.push(...tagKey([capFace(groundEllipse(...project(0, qnR(0.12) * 0.95, 0.75), 1.1, 0.75), 0.55)],
+      depthNow(0, 4) * 1.6 + 1));
+    // 밑동 촉수 넷 — 바닥을 기다 끝이 살짝 든다.
+    for (const [tx9, ty9, ex9, ey9] of [
+      [-2.7, 2.3, -4.1, 3.4], [2.7, 2.3, 4.1, 3.4],
+      [-3.6, -0.6, -5.2, -0.9], [3.5, -1, 5, -1.5],
+    ] as [number, number, number, number][]) {
+      out.push(...tagKey(spikeHorn(tx9, ty9, 0.7, ex9, ey9, 1.3, 0.55, "#6b4732", 6, 0.4,
+        ex9 - tx9, ey9 - ty9), depthNow(ex9, ey9) * 1.6));
+    }
+    return out;
   },
   /* 디파일러 마운드(실물 참고) — 낮게 퍼진 살덩이 위에 검은 수정 조각 무더기가 솟고,
      왼쪽엔 말려 올라간 촉수, 가운데엔 흰 애벌레 마디, 앞엔 구덩이 입. */
@@ -3560,19 +3659,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 아래 몸통은 뮤탈처럼 스파이어 기둥 한 몸으로(요청) — 머리 반구 바닥 뒤끝에서
        시작해 아래로 내려가며 앞으로 급히 휘고, 끝은 뭉뚝하다. 짙은 갈색.
        기둥은 아래에서 위로 자라니 '꼬리 끝 → 반구 밑' 순으로 정의한다. */
+    /* 더 길고 끝이 더 좁게(요청) — 꼬리 끝 굵기를 1.25 → 0.62로 줄이고, taper를 1
+       아래로 내려 가는 굵기가 오래 이어지다 머리 쪽에서 확 벌어지게 한다. */
     ...tagKey(spirePillar({
-      // 굵기 크게 증가(요청) — 0.62/1.45 → 1.25/2.05.
-      x: 0, y: 1.9, z0: 0.9, h: 3.4, w: 1.25, tipW: 2.05,
-      segs: 6, sides: 8, hold: 0,
-      leanY: -3.4, curveY: 1.7,
+      x: 0, y: 2.7, z0: 0.3, h: 4, w: 0.62, tipW: 2.05,
+      segs: 9, sides: 8, hold: 0, taper: 0.68,
+      leanY: -3.7, curveY: 2.5,
       fill: "#6b4732",
     }), 12),
     // 머리통 — 큰 반구. 개인색(요청), 기둥보다 앞·위.
     ...tagKey(domeFaces3(0, 0.2, 2.3, 2.1, 4.3), 18),
     /* 머리 앞의 동그란 얼굴 — 반구 앞면에 쏙 박힌 구. */
     ...tagKey([
-      [groundEllipse(...project(0, 1.75, 5.1), 0.95, 0.95), 1, "#4a3428"] as ShapeFace,
-      topFace(groundEllipse(...project(-0.3, 1.5, 5.4), 0.34, 0.34), 0.22),
+      // 얼굴을 좀더 아래로(요청) — 5.1 → 4.5.
+      [groundEllipse(...project(0, 1.75, 4.5), 0.95, 0.95), 1, "#4a3428"] as ShapeFace,
+      topFace(groundEllipse(...project(-0.3, 1.5, 4.8), 0.34, 0.34), 0.22),
     ], 19),
     // 등판 이음선.
     sideFace(polyPath3([[0, 1.75, 1.9], [0, 0.5, 3], [0, -0.4, 6.3], [0.16, -0.4, 6.3], [0.16, 0.5, 3], [0.16, 1.75, 1.9]]), 0.16),
@@ -3581,9 +3682,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...tagKey(paintBase([
       ...hornFaces(1.35, 0.8, 5.4, 2.4, -1, 7.6, 0.6),
       ...hornFaces(-1.35, 0.8, 5.4, -2.4, -1, 7.6, 0.6),
-      ...hornFaces(0.5, 1.9, 4.4, 0.8, 2.7, 3.8, 0.4),
-      ...hornFaces(-0.5, 1.9, 4.4, -0.8, 2.7, 3.8, 0.4),
     ], IVORY_DEEP), 20),
+    /* 얼굴 밑에 있던 작은 가시 한 쌍은 몸통 끝으로(요청) — 꼬리 끝(0, 2.7, 0.3)에서
+       앞·아래로 짧게 뻗는다. */
+    ...tagKey(paintBase([
+      ...hornFaces(0.3, 2.55, 0.85, 0.62, 3.45, 0.35, 0.32),
+      ...hornFaces(-0.3, 2.55, 0.85, -0.62, 3.45, 0.35, 0.32),
+    ], IVORY_DEEP), 13),
   ],
   /* 스커지 — 작은 몸 + 날개 한 쌍. */
   scourge: () => {
@@ -4764,9 +4869,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         fill: "#6b4732",
       })),
     ...domeFaces3(0, -0.9, 3.2, 3, 3.4),
-    ...paintBase(domeFaces3(0, 1.6, 2, 1.6, 3.9), "#6b4732"),
-    ...ivory(claw3(1, 2.1, 5.4)),
-    ...ivory(claw3(-1, 2.1, 5.4)),
+    // 머리 축소(요청) — 2×1.6 → 1.5×1.2. 갈고리도 그만큼 안·아래로 당긴다.
+    ...paintBase(domeFaces3(0, 1.75, 1.5, 1.2, 3.9), "#6b4732"),
+    ...ivory(claw3(1, 1.7, 4.95)),
+    ...ivory(claw3(-1, 1.7, 4.95)),
   ],
   /* 러커(실물 참고) — 넓은 가시 등딱지, 사방으로 벌린 낫 칼다리 두 쌍(끝이 안으로
      말림), 앞 입. */
@@ -5081,7 +5187,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     {
       const OUT9: [number, number][] = [[2.15, -0.2], [3.45, 1.5], [3.55, 3.1], [2.8, 4.6], [1.05, 5.8]];
       const IN9: [number, number][] = [[1.6, 4.5], [1.95, 2.9], [1.85, 1.3], [1.5, -0.2]];
-      const zAt9 = (y9: number, dz: number): number => 4.15 - (y9 + 0.2) * 0.2 + dz;
+      /* 앞으로 갈수록 더 가파르게 내려앉는다(요청: 양쪽 끝이 살짝 아래로 휘게) —
+         선형 기울기만 있으면 곧은 판이라, 2차항을 더해 끝에서 휨이 커진다. */
+      const zAt9 = (y9: number, dz: number): number =>
+        4.15 - (y9 + 0.2) * 0.1 - (y9 + 0.2) ** 2 * 0.028 + dz;
       const ring9 = (m9: 1 | -1, dz: number): [number, number, number][] => [
         ...OUT9.map(([x9, y9]) => [m9 * x9, y9, zAt9(y9, dz)] as [number, number, number]),
         ...IN9.map(([x9, y9]) => [m9 * x9, y9, zAt9(y9, dz)] as [number, number, number]),
