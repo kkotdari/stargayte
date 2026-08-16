@@ -2700,36 +2700,75 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...leg(67), ...leg(-67), ...leg(22), ...leg(-22),
     ];
   },
-  /* 에볼루션 챔버(실물 참고) — 장기·심장 같은 살덩이 두 엽(결절 점·숨구멍 입),
-     뒤의 검은 굴뚝 등걸, 가운데 흰 힘줄 띠, 앞오른쪽 촉수 술. */
+  /* 에볼루션 챔버(재모델링·사진) — 결절이 박힌 큰 살덩이 엽 둘(개인색)이 앞을
+     차지하고, 뒤에는 뒤틀린 검은 등걸이 가지를 뻗는다. 오른쪽에는 창백한 뼈판이
+     기대고, 발치에는 검은 촉수 다발이 엉킨다. 키는 저그 공통 자(제 자리 깊이 × 1.6). */
   evo: () => {
-    const nod = (nx2: number, ny2: number, nz2: number): ShapeFace => {
-      const [px2, py2] = project(nx2, ny2, nz2);
-      return capFace(groundEllipse(px2, py2, 0.3, 0.24), 0.35);
+    const out: ShapeFace[] = [...tagKey(creepSplat(6.2), -20)];
+    /* 살덩이 엽 둘 — 볼록한 종 모양 기둥. 개인색이라 fill을 주지 않는다. */
+    const lobe = (lx9: number, ly9: number, r9: number, h9: number): void => {
+      out.push(...tagKey(spirePillar({
+        x: lx9, y: ly9, z0: 0, h: h9, w: r9, tipW: r9 * 0.42,
+        segs: 7, sides: 12, hold: 0, taper: 0.55,
+      }), depthNow(lx9, ly9) * 1.6));
+      /* 결절 — 엽 표면에 박힌 잿빛 눈알 여섯. 옆선 위에 정확히 앉힌다. */
+      const lobeR = (t9: number): number => r9 * 0.42 + r9 * 0.58 * (1 - t9) ** 0.55;
+      for (const [ang, t9, nr9] of [
+        [-140, 0.28, 0.42], [-70, 0.5, 0.36], [-10, 0.3, 0.4],
+        [55, 0.55, 0.32], [120, 0.34, 0.38], [175, 0.6, 0.3],
+      ] as [number, number, number][]) {
+        const a9 = (ang * Math.PI) / 180;
+        const dxr = Math.sin(a9);
+        const dyr = Math.cos(a9);
+        const rr9 = lobeR(t9) * 0.94;
+        const nx9 = lx9 + dxr * rr9;
+        const ny9 = ly9 + dyr * rr9;
+        out.push(...tagKey(paintBase(
+          domeFaces3(nx9, ny9, nr9 * r9 * 0.5, nr9 * r9 * 0.32, h9 * t9), "#6e7d86",
+        ), depthNow(nx9, ny9) * 1.6 + 0.4));
+      }
     };
-    const [mx3, my3] = project(-2.6, 2.4, 0.9);
-    return [
-      /* 사각기둥 제거(재지적) — 그 자리(0.7,-1.9)에 혈관 파이프들이 수직으로 선다:
-         높이·기울기 다른 캡슐 네 가닥. */
-      // 혈관 검갈색·검회색 번갈아(요청).
-      ...paintBase(rodFaces(0.4, -1.7, 0.2, 0.3, -1.85, 4.3, 0.6), "#4a3428"),
-      ...paintBase(rodFaces(1.15, -2.1, 0.2, 1.35, -2.25, 3.4, 0.5), "#3a3f46"),
-      ...paintBase(rodFaces(0.75, -1.45, 0.2, 0.95, -1.25, 2.8, 0.45), "#4a3428"),
-      ...paintBase(rodFaces(0.15, -2.35, 0.2, -0.05, -2.55, 2.3, 0.4), "#3a3f46"),
-      // 심장 같은 살덩이 두 엽 — 더 크고 구형으로, 높이 더 높게(재지적). 크기 차 유지.
-      ...domeFaces3(-2.1, 1, 2.9, 3.6),
-      ...domeFaces3(2.2, 0.2, 2.3, 2.9),
-      // 결절 점들과 앞 숨구멍 입.
-      nod(-2.9, 1.9, 1.6), nod(-1.2, 2.2, 1.9), nod(2.7, 1.2, 1.7), nod(1.5, -0.4, 2.4),
-      capFace(groundEllipse(mx3, my3, 0.55, 0.4), 0.5),
-      // (이동·재지적) 사이 혈관 — 사각기둥 자리의 수직 다발로 옮겼다(위).
-      // 앞오른쪽 촉수 술.
-      ...hornFaces(2.2, 1.8, 0.9, 2.6, 2.9, 0.1, 0.3),
-      ...hornFaces(2.8, 1.4, 0.9, 3.5, 2.3, 0.1, 0.3),
-      ...hornFaces(3.2, 0.8, 0.9, 4.1, 1.4, 0.1, 0.3),
-      ...hornFaces(1.7, 2.2, 0.8, 1.8, 3.3, 0.1, 0.28),
-    ];
+    lobe(-2.4, 1.2, 3.1, 3.9);
+    lobe(2.3, 0.4, 2.5, 3.2);
+    /* 뒤 검은 등걸 — 뒤틀려 오르는 굵은 기둥 하나와 갈라진 가지 둘. */
+    out.push(...tagKey(spirePillar({
+      x: 0, y: 0, h: 1, w: 1.9, tipW: 0.85, segs: 10, sides: 7, hold: 0.05, taper: 1.3,
+      path: (t9: number): [number, number, number] => [
+        -0.4 + Math.sin(t9 * 2.4) * 1.1,
+        -2.2 - t9 * 0.9,
+        t9 * 7.2,
+      ],
+      fill: "#3a2c22",
+    }), depthNow(-0.4, -2.6) * 1.6 + 2));
+    for (const [ex9, ey9, ez9, bw9] of [
+      [-2.4, -3.2, 6.4, 0.85], [1.9, -3.6, 5.4, 0.75], [0.5, -1.4, 7.8, 0.6],
+    ] as [number, number, number, number][]) {
+      out.push(...tagKey(spikeHorn(-0.1, -2.7, 4.4, ex9, ey9, ez9, bw9, "#3a2c22", 6, 0.6,
+        ex9 * 0.4, ey9 * 0.4 - 0.6), depthNow(ex9, ey9) * 1.6 + 2));
+    }
+    /* 오른쪽 뼈판 — 등걸에 기댄 창백한 널 둘. */
+    for (const [bx9, by9, bz9, tx9, ty9, tz9, w9] of [
+      [3.1, -0.9, 0.4, 2.3, -2.4, 5.2, 0.95],
+      [3.9, 0.3, 0.4, 3.2, -1.3, 4.2, 0.75],
+    ] as [number, number, number, number, number, number, number][]) {
+      out.push(...tagKey(spirePillar({
+        x: bx9, y: by9, z0: bz9, h: tz9 - bz9, w: w9, tipW: w9 * 0.55,
+        segs: 4, sides: 4, hold: 0.2, taper: 1.3,
+        leanX: tx9 - bx9, leanY: ty9 - by9,
+        fill: IVORY_DEEP,
+      }), depthNow(bx9, by9) * 1.6 + 3));
+    }
+    /* 발치 촉수 다발 — 앞오른쪽 바닥에서 기어 나와 끝이 말려 오른다. */
+    for (const [tx9, ty9, ex9, ey9, ez9] of [
+      [2.2, 1.9, 2.8, 3.4, 0.9], [3, 1.4, 3.9, 2.6, 0.8],
+      [3.5, 0.7, 4.6, 1.4, 0.7], [1.6, 2.3, 1.9, 3.8, 1], [4, -0.2, 5.1, -0.4, 0.6],
+    ] as [number, number, number, number, number][]) {
+      out.push(...tagKey(spikeHorn(tx9, ty9, 0.5, ex9, ey9, ez9, 0.42, "#2b241d", 6, 0.5,
+        ex9 - tx9, ey9 - ty9), depthNow(ex9, ey9) * 1.6 + 1));
+    }
+    return out;
   },
+
   /* 히드라리스크 덴(실물 참고) — 둔덕 위로 갈퀴막이 걸린 큰 돛가시들이 둘러서고,
      앞에는 마디진 꼬리가 똬리를 튼다. */
   hydraden: () => {
@@ -3058,7 +3097,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      개인색 뚜껑이 굴을 덮고, 아래 테두리에는 짧은 엄니 몇 개만 남긴다. 키는 저그
      건물 공통 자(둔덕 0, 나머지는 제 자리 깊이 × 1.6). */
   nydus: () => {
-    const out: ShapeFace[] = [...paintBase(creepSplat(6.4), "#4a3428")];
+    // 크립 갈퀴는 맨 아래 붙박이 키(면에 깊이가 없어 앞 부품 값을 물려받으면 안 된다).
+    const out: ShapeFace[] = [...tagKey(creepSplat(6.4), -20)];
     // 둔덕 — 볼록한 종 모양 살덩이. 입구를 낼 자리라 뒤로 조금 물려 앉힌다.
     out.push(...tagKey(paintBase(spirePillar({
       x: 0, y: -0.6, z0: 0, h: 4.2, w: 4.4, tipW: 1.5,
@@ -3088,13 +3128,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       fill: "#c68a62",
     }), mouthKey + 0.4));
     /* 윗뚜껑 — 개인색(요청). 둔덕 뒤 위에서 앞으로 내밀어 굴 입구를 덮는다.
-       키는 붙박이 보정 없이 제 자리 깊이만(지적: 키값 고장 — +6을 얹었더니 뒤에서
-       봐도 둔덕을 뚫고 보였다). 앞으로 내민 몫만큼 앞점(y 1)으로 잰다. */
-    const hoodKey = depthNow(0, 1) * 1.6;
+       뚜껑은 둔덕 꼭대기 위로 솟은 지붕 얹힘이다(재지적: 키값이 아직 이상) — 제
+       자리 깊이만 쓰면 뒤로 돌 때마다 통째로 둔덕에 묻혀 사라진다. 지붕 규칙대로
+       붙박이 큰 키에 제 자리 깊이를 얹어, 둔덕은 늘 이기되 뚜껑끼리·기관끼리의
+       앞뒤는 요잉이 정하게 한다. 아치와 겹치지 않게 내민 길이도 줄인다. */
+    const hoodKey = 12 + depthNow(0, 1) * 1.6;
     out.push(...tagKey(spirePillar({
       x: 0, y: -1.4, z0: 2.5, h: 2.4, w: 3, tipW: 1.7,
       segs: 6, sides: 12, hold: 0.08, taper: 0.7,
-      leanY: 3.3, curveY: 0.9,
+      leanY: 2.5, curveY: 0.9,
     }), hoodKey));
     /* 뚜껑 등의 잿빛 기관 한 쌍(사진) — 둔덕 속에 묻히지 않게 뚜껑 위에 얹고,
        뚜껑보다 한 칸만 위 키를 준다. */
