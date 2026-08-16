@@ -4048,85 +4048,59 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 다리 자체가 통(재재지적: 발만 통이 아니라) — 넓적다리·정강이를 뿔 대신 두께가
        끝까지 같은 캡슐 막대(rodFaces)로 잇고, 굵은 원기둥 발이 땅을 디딘다. */
     // 다리 금색(요청).
-    /* 다리 사방 90도(지적) + 형태(재지적: 원통 아님) — 대퇴는 삼각기둥 슬래브,
-       하지는 발끝이 뾰족한 삼각뿔 날. */
+    /* 다리 전면 재작업(재재재지적: 아무리 해도 평면) — 대퇴·하지를 각각 사각 단면의
+       각기둥·각뿔로 세운다. 사각이면 어느 각도에서도 두 면 이상이 보이고, 네 면에
+       위·아래·좌·우 서로 다른 음영을 박아 두께가 늘 읽힌다. 사방 90도 배치. */
+    const prism = (
+      ax9: number, ay9: number, az9: number,
+      bx9: number, by9: number, bz9: number,
+      wA9: number, wB9: number,
+    ): ShapeFace[] => {
+      const dX = bx9 - ax9;
+      const dY = by9 - ay9;
+      const dZ = bz9 - az9;
+      const hl9 = Math.hypot(dX, dY) || 1;
+      // n: 축의 좌우(수평면 안), u: 축·n 모두에 수직(대략 위아래).
+      const nX = -dY / hl9;
+      const nY = dX / hl9;
+      let uX = dY * 0 - dZ * nY;
+      let uY = dZ * nX - dX * 0;
+      let uZ = dX * nY - dY * nX;
+      const ul9 = Math.hypot(uX, uY, uZ) || 1;
+      uX /= ul9; uY /= ul9; uZ /= ul9;
+      const quad = (cx9: number, cy9: number, cz9: number, w9: number): [number, number, number][] => [
+        [cx9 + nX * w9 + uX * w9, cy9 + nY * w9 + uY * w9, cz9 + uZ * w9],
+        [cx9 - nX * w9 + uX * w9, cy9 - nY * w9 + uY * w9, cz9 + uZ * w9],
+        [cx9 - nX * w9 - uX * w9, cy9 - nY * w9 - uY * w9, cz9 - uZ * w9],
+        [cx9 + nX * w9 - uX * w9, cy9 + nY * w9 - uY * w9, cz9 - uZ * w9],
+      ];
+      const A4 = quad(ax9, ay9, az9, wA9);
+      const B4 = quad(bx9, by9, bz9, wB9);
+      const side = (k9: number): string => polyPath3([A4[k9], A4[(k9 + 1) % 4], B4[(k9 + 1) % 4], B4[k9]]);
+      /* 네 면의 음영은 고정 — 위 0.16(밝음), 오른 0.3, 왼 0.42, 아래 0.5(어두움).
+         시청자를 향한 좌우가 바뀌면 두 값을 맞바꿔 늘 한쪽이 밝다. */
+      const rightNear = facingRatio(nX, nY) >= 0;
+      const opRight = rightNear ? 0.26 : 0.46;
+      const opLeft = rightNear ? 0.46 : 0.26;
+      const faces9: ShapeFace[] = [];
+      // 아래 → 좌우 → 위 순서로 그려 밝은 면이 위에 온다.
+      faces9.push(bodyFace(side(2)), sideFace(side(2), 0.5));
+      faces9.push(bodyFace(side(1)), sideFace(side(1), opLeft));
+      faces9.push(bodyFace(side(3)), sideFace(side(3), opRight));
+      faces9.push(bodyFace(side(0)), topFace(side(0), 0.18));
+      // 끝 단면 — 무릎·발끝 마감.
+      faces9.push(bodyFace(polyPath3(B4)), capFace(polyPath3(B4), 0.34));
+      return faces9;
+    };
     const leg = (ang: number): ShapeFace[] => {
       const a = (ang * Math.PI) / 180;
       const dx = Math.sin(a);
       const dy = Math.cos(a);
-      const nx = Math.cos(a);
-      const ny = -Math.sin(a);
-      /* 진짜 입체(재재지적: 겹친 종이 두 장 말고) — 대퇴는 능선이 위로 선 삼각기둥
-         (좌·우 경사면 + 무릎 단면), 하지는 무릎 삼각 단면에서 발끝 한 점으로 모이는
-         삼각뿔. 대퇴는 더 길게(재지적: 엉덩이 1.0 → 무릎 3.5). */
-      const hipX = dx * 1;
-      const hipY = dy * 1;
-      const kneX = dx * 3.5;
-      const kneY = dy * 3.5;
-      /* 두께 증가 + 정삼각(재지적) — 단면이 정삼각형이 되게 능선 높이를 폭×√3으로
-         잡는다(폭 1.05 → 높이 1.82). */
-      // 대퇴는 얇게(재지적) — 1.05 → 0.78. 하지는 조금 굵게 남긴다.
-      const w9 = 0.78;
-      const ws9 = 0.9;
-      const h9 = w9 * 1.732;
-      const rH: [number, number, number] = [hipX, hipY, 4 + h9];
-      const rK: [number, number, number] = [kneX, kneY, 5 + h9];
-      const blH: [number, number, number] = [hipX - nx * w9, hipY - ny * w9, 4];
-      const brH: [number, number, number] = [hipX + nx * w9, hipY + ny * w9, 4];
-      const blK: [number, number, number] = [kneX - nx * w9, kneY - ny * w9, 5];
-      const brK: [number, number, number] = [kneX + nx * w9, kneY + ny * w9, 5];
-      const sT: [number, number, number] = [kneX, kneY, 4.9 + ws9 * 1.732];
-      const sL: [number, number, number] = [kneX - nx * ws9, kneY - ny * ws9, 4.9];
-      const sR: [number, number, number] = [kneX + nx * ws9, kneY + ny * ws9, 4.9];
-      /* 하지는 절두 삼각뿔(재재지적: 아직 평평) — 발끝을 한 점이 아니라 작은 삼각
-         단면으로 끊어, 세 옆면이 사다리꼴이 되고 발바닥 면까지 생겨 부피가 선다. */
-      const fw9 = 0.34;
-      const fT: [number, number, number] = [dx * 4.05, dy * 4.05, fw9 * 1.732];
-      const fL: [number, number, number] = [dx * 4.05 - nx * fw9, dy * 4.05 - ny * fw9, 0];
-      const fR: [number, number, number] = [dx * 4.05 + nx * fw9, dy * 4.05 + ny * fw9, 0];
-      const thighR = polyPath3([rH, rK, brK, brH]);
-      const thighL = polyPath3([rH, rK, blK, blH]);
-      const thighCap = polyPath3([rK, brK, blK]);
-      const shinBot = polyPath3([sL, sR, fR, fL]);
-      const shinR = polyPath3([sT, sR, fR, fT]);
-      const shinL = polyPath3([sT, sL, fL, fT]);
-      const shinCap = polyPath3([fT, fR, fL]);
-      /* 하지 입체감(재지적: 아직 평평) — 세 면의 음영을 크게 벌리고 무릎 단면을
-         덮개로 얹어 삼각뿔의 모서리가 읽히게 한다. */
-      /* 면은 사라지지 않는다(재지적: 살짝만 정면을 벗어나도 옆면이 안 보임) —
-         faceLight.visible로 면을 걷어내면 볼록체의 옆면이 통째로 없어져 납작해진다.
-         늘 그리되 밝기만 광원이 정하고, 뒤를 향한 면부터 그려 앞면이 위에 오게
-         정렬한다(볼록체라 이 순서면 뒷면이 저절로 가려진다). */
-      /* 입체감은 좌우 대비로 못 박는다(재재지적: 아무리 해도 평면으로 보임) —
-         faceLight는 요잉에 따라 두 경사면 밝기가 비슷해지는 구간이 있어 능선이
-         사라졌다. 시청자를 향한 면은 확실히 밝게, 반대 면은 확실히 어둡게 칠하고
-         어두운 쪽을 먼저 그린다. */
-      const rRight = facingRatio(nx, ny);
-      const pair = (dR: string, dL: string): ShapeFace[] => {
-        const bright = rRight >= 0 ? dR : dL;
-        const dark = rRight >= 0 ? dL : dR;
-        return [
-          bodyFace(dark), sideFace(dark, 0.46),
-          bodyFace(bright), topFace(bright, 0.2),
-        ];
-      };
-      // 능선 하이라이트 — 모서리를 따라 가는 밝은 줄(입체를 읽는 기준선).
-      const ridgeOf = (q1: [number, number, number], q2: [number, number, number]): string => {
-        const [r1x, r1y] = project(...q1);
-        const [r2x, r2y] = project(...q2);
-        return `M${r1x - 0.09} ${r1y} L${r2x - 0.09} ${r2y} L${r2x + 0.09} ${r2y} L${r1x + 0.09} ${r1y} Z`;
-      };
       return tagKey(paintBase([
-        // 하지 — 배면 먼저, 그 위에 좌우 경사면(밝은 쪽이 나중).
-        bodyFace(shinBot), sideFace(shinBot, 0.5),
-        ...pair(shinR, shinL),
-        bodyFace(shinCap), capFace(shinCap, 0.4),
-        bodyFace(polyPath3([sT, sR, sL])), capFace(polyPath3([sT, sR, sL]), 0.34),
-        topFace(ridgeOf(sT, fT), 0.28),
-        // 대퇴 — 능선 좌우 경사면과 무릎 단면.
-        ...pair(thighR, thighL),
-        bodyFace(thighCap), sideFace(thighCap, 0.32),
-        topFace(ridgeOf(rH, rK), 0.3),
+        // 대퇴 — 엉덩이에서 무릎으로, 굵기 거의 일정한 사각기둥.
+        ...prism(dx * 0.9, dy * 0.9, 4.5, dx * 3.4, dy * 3.4, 5.5, 0.78, 0.86),
+        // 하지 — 무릎에서 발끝으로 좁아지는 사각뿔.
+        ...prism(dx * 3.4, dy * 3.4, 5.5, dx * 4.05, dy * 4.05, 0.25, 0.86, 0.32),
       ], "#d4af37"), depthNow(dx * 2.4, dy * 2.4));
     };
     const [gx2, gy2] = project(-0.5, -0.5, 5.8);
