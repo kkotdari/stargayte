@@ -1875,13 +1875,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   scifac: () => {
     // 발 은색(요청: 이륙 가능 건물).
     // 발은 몸 안쪽으로(요청: 윗부분이 안 보이게) — 자리는 아래 호출부에서 당긴다.
-    /* 발마다 제 깊이(재지적: 발 비침) — 무깊이 면이라 직전 부품 깊이를 물려받아
-       드럼 앞뒤 판정이 어긋났다. */
+    /* 발은 늘 몸 뒤(재지적: 본건물 옆면이 발에 가려짐) — 안쪽으로 당긴 발이 앞에
+       그려지면 드럼·슬래브 옆면을 덮는다. 맨 뒤 키로 못 박아 몸 밖으로 나온 발판만
+       보이게 한다. */
     const foot = (fx: number, fy: number): ShapeFace[] => tagKey(paintBase([
       ...cylinderFaces3(fx, fy, 1.05, 1.3),
       bodyFace(discPath3(fx, fy, 0.25, 1.4)),
       capFace(discPath3(fx, fy, 1.32, 0.55), 0.3),
-    ], "#c9ced6"), depthNow(fx, fy));
+    ], "#c9ced6"), -100);
     const glow = (gx2: number, gy2: number, gz2: number): ShapeFace => {
       const [px2, py2] = project(gx2, gy2, gz2);
       return topFace(groundEllipse(px2, py2, 0.45, 0.2), 0.45);
