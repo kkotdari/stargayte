@@ -626,6 +626,43 @@ const IVORY_DEEP = "#cdc0a0";
 const GUNMETAL = "#4b5058";
 /* 탱크 캐터필러 금속색(요청: 짙은 회은색). */
 const TRACK_STEEL = "#5c636d";
+/* 프로토스 금·플라즈마(요청) — 인간형 다섯(질럿·하템·다크·아콘·다크아콘)이 나눠 쓴다. */
+const P_GOLD = "#d4af37";
+const P_PLASMA = "#e4f6ff";
+/* 프로토스 인간형 공통 얼굴(요청: 다섯이 같은 얼굴) — 크고 길쭉하며, 턱이 몸통 위끝보다
+   아래로 내밀어 '턱주가리'가 된다. 정수리는 둥근 캡, 양볼이 앞아래 턱 끝 한 점으로
+   모인다. fill 없이 부르면 색 없는 몸판이라 아콘의 dark() 실루엣이 그대로 집어 간다. */
+function protossFace(fill?: string, lift = 0, s = 1): ShapeFace[] {
+  const [hx, hy] = project(0, 0.05, 7.7 + lift);
+  const [jx, jy] = project(0, 1.8 * s, 5.2 + lift);
+  const w = 0.8 * s;
+  const my = (hy + jy) / 2;
+  const outline = `M${hx - w} ${hy} A${w} ${w * 0.72} 0 0 1 ${hx + w} ${hy}`
+    + ` Q${hx + w * 1.05} ${my} ${jx} ${jy}`
+    + ` Q${hx - w * 1.05} ${my} ${hx - w} ${hy} Z`;
+  const cap = `M${hx - w} ${hy} A${w} ${w * 0.72} 0 0 1 ${hx + w} ${hy}`
+    + ` A${w} ${w * 0.4} 0 0 0 ${hx - w} ${hy} Z`;
+  return [[outline, 1, fill] as ShapeFace, topFace(cap, 0.2)];
+}
+/* 프로토스 인간형 공통 몸통(요청: 하템도 질럿·다크와 같은 굽은 몸통) — 앞으로 숙는
+   캡슐 막대 하나. 두께·길이 축소(재지적). */
+function protossTorso(fill: string, lift = 0): ShapeFace[] {
+  return paintBase(rodFaces(0, -0.5, 3.9 + lift, 0, 0.3, 6.1 + lift, 1.25), fill);
+}
+/* 프로토스 인간형 공통 다리(요청: 하템도 같은 2관절) — 넓적다리 앞, 정강이 뒤, 긴 발이
+   앞아래 대각선. 대퇴·하지 색을 따로 받는다(하템은 하지가 개인색). */
+function protossLegs(thighFill?: string, shinFill?: string, lift = 0): ShapeFace[] {
+  const paint = (f: ShapeFace[], c?: string): ShapeFace[] => (c ? paintBase(f, c) : f);
+  const out: ShapeFace[] = [];
+  for (const m of [-1, 1] as const) {
+    out.push(...paint(rodFaces(m * 0.55, -0.2, 3.6 + lift, m * 0.62, 0.5, 2.3 + lift, 0.66), thighFill));
+    out.push(...paint([
+      ...rodFaces(m * 0.62, 0.5, 2.3 + lift, m * 0.6, -0.5, 1.2 + lift, 0.56),
+      ...rodFaces(m * 0.6, -0.5, 1.2 + lift, m * 0.68, 0.8, 0.15 + lift, 0.47),
+    ], shinFill));
+  }
+  return out;
+}
 function ivory(faces: ShapeFace[]): ShapeFace[] {
   return faces.map(([d, o, f, k]) => [d, o, f ?? IVORY, k] as ShapeFace);
 }
@@ -3860,173 +3897,109 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   },
   /* 질럿 — 검 두 자루(요청). */
   zealot: () => [
-    /* 다리에 무릎 관절(재요청: 살짝 굽힌 상태) — 넓적다리는 앞으로, 정강이는 도로
-       뒤로 내려서는 캡슐 막대 두 마디씩. */
-    /* 이중 관절 다리(요청: 두 번 구부러지고 발이 길게 대각선) — 넓적다리 앞으로,
-       정강이 뒤로, 긴 발이 앞-아래 대각선으로 딛는 디지티그레이드. */
-    // 대퇴도 금색(재재지적) — 다리 전체 금색.
-    ...paintBase(rodFaces(-0.55, -0.2, 3.5, -0.62, 0.5, 2.2, 0.7), "#d4af37"),
-    ...paintBase(rodFaces(-0.62, 0.5, 2.2, -0.6, -0.5, 1.1, 0.6), "#d4af37"),
-    ...paintBase(rodFaces(-0.6, -0.5, 1.1, -0.68, 0.8, 0.1, 0.5), "#d4af37"),
-    ...paintBase(rodFaces(0.55, -0.2, 3.5, 0.62, 0.5, 2.2, 0.7), "#d4af37"),
-    ...paintBase(rodFaces(0.62, 0.5, 2.2, 0.6, -0.5, 1.1, 0.6), "#d4af37"),
-    ...paintBase(rodFaces(0.6, -0.5, 1.1, 0.68, 0.8, 0.1, 0.5), "#d4af37"),
-    /* 구부정한 자세(재요청: 두 마디로 쪼개지 말고 몸통 원통 하나가 기울게) — 앞으로
-       숙는 캡슐 막대 하나. 머리는 어깨보다 앞·낮게. */
-    // 몸통 더 축소(재지적) — 2.0 → 1.6.
-    ...paintBase(rodFaces(0, -0.6, 3.3, 0, 0.35, 6.3, 1.6), "#d4af37"), // 몸 금색(요청: 상완·대퇴만 고유색)
-    /* 얼굴 계란형(재지적: 더 작게 + 턱이 앞으로 튀어나오게 기울이기) — 정수리는
-       둥근 캡, 양볼이 앞으로 내민 턱 끝 한 점으로 모인다. */
-    ...((): ShapeFace[] => {
-      const [hx, hy] = project(0, 0.3, 7);
-      const [cxx, cyy] = project(0, 1.1, 6.2);
-      return [
-        // 얼굴 금색(요청).
-        [`M${hx - 0.58} ${hy} A0.58 0.45 0 0 1 ${hx + 0.58} ${hy}`
-          + ` Q${hx + 0.5} ${hy + 0.5} ${cxx} ${cyy} Q${hx - 0.5} ${hy + 0.5} ${hx - 0.58} ${hy} Z`, 1, "#d4af37"] as ShapeFace,
-        topFace(`M${hx - 0.58} ${hy} A0.58 0.45 0 0 1 ${hx + 0.58} ${hy} A0.58 0.28 0 0 0 ${hx - 0.58} ${hy} Z`, 0.2),
-      ];
-    })(),
-    ...paintBase(hornFaces(0, 0, 6.9, 0, -2.1, 7.75, 0.7), "#d4af37"),
-    /* 뒤통수 묶음머리(요청) — 원통 다발이 무릎 높이까지 늘어지고 중간을 금색 띠로
-       묶었다. 다발은 개인색. */
-    // 달릴 때처럼 뒤로 들려 날린다(재지적).
-    ...rodFaces(0, -0.85, 6.7, 0, -1.95, 5.7, 0.5),
-    ...paintBase(rodFaces(0, -1.9, 5.85, 0, -2.05, 5.3, 0.6), "#d4af37"),
-    ...rodFaces(0, -2.02, 5.45, 0, -2.9, 4.1, 0.45),
-    // 짧은 치마 방어구(요청) — 허리에 두른 개인색 치마.
-    /* 치마는 몸통 뒤로(재재지적: 아직도 몸통이 가려짐) — 프러스텀의 반지름 키가
-       몸통 막대(깊이 0)보다 커서 위에 그려졌다. 낮은 키를 박아 몸통이 이긴다. */
-    ...tagKey(frustumFaces3(0, -0.1, 1.9, 1.6, 1.25, 1.05, 0.9, 3.1), -0.5),
-    // 어깨 갑주 한 쌍 — 개인색(재재재지적: 어깨 갑옷은 그 사람 색).
-    ...domeFaces3(-1.35, -0.25, 0.62, 0.5, 6),
-    ...domeFaces3(1.35, -0.25, 0.62, 0.5, 6),
-    /* 팔 두 마디(요청: 다리처럼 상완-하완, 손 대신 검) — 상완 고유색, 하완 금색,
-       검은 손목에서 뻗는다. */
-    // 상완도 금색(재재지적).
-    ...paintBase(rodFaces(-1.35, -0.2, 5.9, -1.75, 0.15, 4.9, 0.55), "#d4af37"),
-    ...paintBase(rodFaces(-1.75, 0.15, 4.9, -2.05, 0.75, 4.15, 0.48), "#d4af37"),
-    ...paintBase(rodFaces(1.35, -0.2, 5.9, 1.75, 0.15, 4.9, 0.55), "#d4af37"),
-    ...paintBase(rodFaces(1.75, 0.15, 4.9, 2.05, 0.75, 4.15, 0.48), "#d4af37"),
-    /* 사이오닉 검 — 하완과 1자로 쭉(재지적: 손목이 밖으로 꺾이지 않게) — 하완 방향
-       그대로 이어 뻗는다. 색은 플라즈마(형광 푸른 흰색). */
-    ...paintBase(hornFaces(2, 0.63, 4.3, 2.75, 2.1, 2.45, 0.7), "#e4f6ff"),
-    [polyPath3([[2.05, 0.8, 4.2], [2.7, 2.05, 2.55], [2.57, 2.1, 2.4], [1.92, 0.85, 4]]), 0.75, "#ffffff"] as ShapeFace,
-    ...paintBase(hornFaces(-2, 0.63, 4.3, -2.75, 2.1, 2.45, 0.7), "#e4f6ff"),
-    [polyPath3([[-2.05, 0.8, 4.2], [-2.7, 2.05, 2.55], [-2.57, 2.1, 2.4], [-1.92, 0.85, 4]]), 0.75, "#ffffff"] as ShapeFace,
+    // 다리·몸통은 프로토스 인간형 공통(요청) — 2관절 다리 + 앞으로 숙는 몸통.
+    ...protossLegs(P_GOLD, P_GOLD),
+    ...protossTorso(P_GOLD),
+    /* 치마는 언제나 몸통 뒤(재재재지적: 아직도 가려짐) — 프러스텀의 반지름 깊이가
+       요잉에 따라 몸통 막대를 이겨 앞으로 튀었다. 맨 뒤 고정 키로 못 박는다. */
+    ...tagKey(frustumFaces3(0, -0.1, 1.75, 1.5, 1.15, 1, 0.85, 3.15), -100),
+    // 얼굴 — 공통 턱주가리(요청). 뒤로 솟던 머리 뿔은 제거.
+    ...tagKey(protossFace(P_GOLD), 20),
+    /* 뒤통수 묶음머리(재지적: 한 마디 더·더 두껍게·더 곧게) — 끝은 금색 마감과
+       플라즈마 불꽃. 다발은 개인색. */
+    ...rodFaces(0, -0.75, 7, 0, -2, 6.55, 0.62),
+    ...paintBase(rodFaces(0, -1.95, 6.57, 0, -2.25, 6.45, 0.72), P_GOLD),
+    ...rodFaces(0, -2.2, 6.47, 0, -3.5, 5.95, 0.58),
+    ...rodFaces(0, -3.45, 5.97, 0, -4.75, 5.45, 0.52),
+    ...paintBase(rodFaces(0, -4.65, 5.49, 0, -5, 5.35, 0.6), P_GOLD),
+    ...paintBase(domeFaces3(0, -5.25, 0.4, 0.38, 5.15), P_PLASMA),
+    [groundEllipse(...project(0, -5.45, 5.35), 0.5, 0.5), 0.45, P_PLASMA] as ShapeFace,
+    // 어깨 갑주 한 쌍 — 개인색.
+    ...domeFaces3(-1.3, -0.25, 0.6, 0.48, 5.8),
+    ...domeFaces3(1.3, -0.25, 0.6, 0.48, 5.8),
+    /* 팔 두 마디(요청: 다리처럼 상완-하완, 손 대신 검) — 검은 하완과 1자로 이어진다. */
+    ...paintBase(rodFaces(-1.3, -0.2, 5.7, -1.7, 0.15, 4.75, 0.52), P_GOLD),
+    ...paintBase(rodFaces(-1.7, 0.15, 4.75, -2, 0.75, 4, 0.46), P_GOLD),
+    ...paintBase(rodFaces(1.3, -0.2, 5.7, 1.7, 0.15, 4.75, 0.52), P_GOLD),
+    ...paintBase(rodFaces(1.7, 0.15, 4.75, 2, 0.75, 4, 0.46), P_GOLD),
+    /* 사이오닉 검 — 하완 방향 그대로. 색은 플라즈마(형광 푸른 흰색). */
+    ...paintBase(hornFaces(1.95, 0.62, 4.15, 2.7, 2.1, 2.3, 0.7), P_PLASMA),
+    [polyPath3([[2, 0.78, 4.05], [2.65, 2.05, 2.4], [2.52, 2.1, 2.25], [1.87, 0.83, 3.85]]), 0.75, "#ffffff"] as ShapeFace,
+    ...paintBase(hornFaces(-1.95, 0.62, 4.15, -2.7, 2.1, 2.3, 0.7), P_PLASMA),
+    [polyPath3([[-2, 0.78, 4.05], [-2.65, 2.05, 2.4], [-2.52, 2.1, 2.25], [-1.87, 0.83, 3.85]]), 0.75, "#ffffff"] as ShapeFace,
   ],
   /* 다크 템플러 — 검 한 자루(요청). */
   dtemp: () => [
-    /* 망토(재지적: 더 크게 + 몸에 안 가려지게) — 어깨보다 넓게 제비꼬리로 드리우고,
-       제 깊이를 달아 뒤에서 보면 몸 위로 온다. */
-    /* 망토 검정(요청) — 개인색 대신 고정 검정 천. */
-    ...tagKey([
-      /* 시작을 낮은 어깨로·시작 폭 좁게·더 길게(재지적). */
-      // 망토 개인색(재지적: 검정 고정 → 그 사람 색).
-      /* 펄럭이는 자락(재지적: 위 더 좁게·아래 살짝 좁게·지그재그 다섯 갈래). */
-      [polyPath3([
-        [-0.7, -0.8, 5.9], [0.7, -0.8, 5.9], [2.7, -2.35, 1],
-        [1.7, -1.85, 2.3], [1.05, -2.1, 0.8], [0.3, -1.8, 2.2],
-        [-0.5, -2.15, 0.9], [-1.3, -1.8, 2.4], [-2.7, -2.35, 1],
-      ]), 1] as ShapeFace,
-      sideFace(polyPath3([
-        [-0.7, -0.8, 5.9], [0.7, -0.8, 5.9], [2.7, -2.35, 1],
-        [1.7, -1.85, 2.3], [1.05, -2.1, 0.8], [0.3, -1.8, 2.2],
-        [-0.5, -2.15, 0.9], [-1.3, -1.8, 2.4], [-2.7, -2.35, 1],
-      ]), 0.18),
-    ], depthNow(0, -1.5) + 0.6),
-    // 다리(재요청) — 질럿과 같은 무릎 굽힌 캡슐 막대 두 마디씩. 개인색 원복(재지적).
-    ...paintBase(rodFaces(-0.55, -0.2, 3.5, -0.62, 0.5, 2.2, 0.7), "#d4af37"), // 허벅지 금색(요청)
-    ...paintBase(rodFaces(-0.62, 0.5, 2.2, -0.6, -0.5, 1.1, 0.6), "#d4af37"),
-    ...paintBase(rodFaces(-0.6, -0.5, 1.1, -0.68, 0.8, 0.1, 0.5), "#d4af37"),
-    ...paintBase(rodFaces(0.55, -0.2, 3.5, 0.62, 0.5, 2.2, 0.7), "#d4af37"),
-    ...paintBase(rodFaces(0.62, 0.5, 2.2, 0.6, -0.5, 1.1, 0.6), "#d4af37"),
-    ...paintBase(rodFaces(0.6, -0.5, 1.1, 0.68, 0.8, 0.1, 0.5), "#d4af37"),
-    /* 구부정한 자세(재요청: 쪼개지 말고 원통 하나가 기울게) — 앞으로 숙는 캡슐 막대
-       하나. 머리는 어깨보다 앞·낮게. */
-    // 몸통 더 축소(재지적) — 2.0 → 1.6.
-    ...paintBase(rodFaces(0, -0.6, 3.3, 0, 0.35, 6.3, 1.6), "#d4af37"), // 몸 금색(요청: 상완·대퇴만 고유색)
-    /* 얼굴 계란형(재지적: 더 작게 + 턱이 앞으로 튀어나오게 기울이기) — 정수리는
-       둥근 캡, 양볼이 앞으로 내민 턱 끝 한 점으로 모인다. */
-    ...((): ShapeFace[] => {
-      const [hx, hy] = project(0, 0.3, 7);
-      const [cxx, cyy] = project(0, 1.1, 6.2);
-      return [
-        // 얼굴 금색(요청).
-        [`M${hx - 0.58} ${hy} A0.58 0.45 0 0 1 ${hx + 0.58} ${hy}`
-          + ` Q${hx + 0.5} ${hy + 0.5} ${cxx} ${cyy} Q${hx - 0.5} ${hy + 0.5} ${hx - 0.58} ${hy} Z`, 1, "#d4af37"] as ShapeFace,
-        topFace(`M${hx - 0.58} ${hy} A0.58 0.45 0 0 1 ${hx + 0.58} ${hy} A0.58 0.28 0 0 0 ${hx - 0.58} ${hy} Z`, 0.2),
-      ];
-    })(),
-    ...paintBase(hornFaces(0, 0, 6.9, 0, -2.1, 7.6, 0.7), "#d4af37"),
-    /* 팔 추가(요청) — 왼팔은 위팔+아래팔 전체, 오른팔(칼 팔)은 상완만 달아 끝이
-       칼 뿌리(1.7, 0.3, 4.7)에 물린다. 금색. */
-    // 상완은 고유색(재재지적) — 아래팔만 몸 따라 금색.
-    // 팔 금색(요청).
-    ...paintBase(rodFaces(-1.05, -0.15, 5.7, -1.5, 0.4, 4.6, 0.5), "#d4af37"),
-    ...paintBase(rodFaces(-1.5, 0.4, 4.6, -1.1, 1.2, 3.7, 0.45), "#d4af37"),
-    /* 왼손 — 하이템플러식 큰 손(재지적: 개인색 손 제거): 흰 손바닥 + 긴 손가락 셋. */
+    /* 망토(재지적: 더 들리고 끝단은 완만한 물결) — 어깨에서 시작해 뒤로 들린 자락,
+       밑단은 지그재그가 아니라 사인 물결이다. 제 깊이를 달아 뒤에서 보면 몸 위로 온다. */
+    ...tagKey(((): ShapeFace[] => {
+      const pts: [number, number, number][] = [[-0.62, -0.75, 6], [0.62, -0.75, 6], [2.5, -2.5, 3.6]];
+      for (let i = 0; i <= 10; i += 1) {
+        const u = i / 10;
+        pts.push([2.5 - u * 5, -2.6, 3.15 + Math.sin(u * Math.PI * 2.5) * 0.5]);
+      }
+      pts.push([-2.5, -2.5, 3.6]);
+      const d = polyPath3(pts);
+      return [[d, 1] as ShapeFace, sideFace(d, 0.18)];
+    })(), depthNow(0, -1.5) + 0.6),
+    // 다리·몸통은 프로토스 인간형 공통(요청).
+    ...protossLegs(P_GOLD, P_GOLD),
+    ...protossTorso(P_GOLD),
+    // 얼굴 — 공통 턱주가리(요청). 뒤로 솟던 머리 뿔은 제거.
+    ...tagKey(protossFace(P_GOLD), 20),
+    // 왼팔 두 마디 — 금색.
+    ...paintBase(rodFaces(-1.05, -0.15, 5.65, -1.5, 0.4, 4.55, 0.5), P_GOLD),
+    ...paintBase(rodFaces(-1.5, 0.4, 4.55, -1.1, 1.2, 3.7, 0.45), P_GOLD),
+    /* 왼손 — 하이템플러식 큰 손: 흰 손바닥 + 긴 손가락 셋. */
     ...paintBase([
       ...domeFaces3(-1.1, 1.25, 0.34, 0.28, 3.5),
       ...hornFaces(-1.28, 1.3, 3.6, -1.42, 1.75, 3.1, 0.15),
       ...hornFaces(-1.08, 1.35, 3.6, -1.06, 1.85, 3.05, 0.15),
       ...hornFaces(-0.9, 1.28, 3.6, -0.75, 1.7, 3.1, 0.15),
     ], "#e9edf0"),
-    /* 오른팔도 두 마디(요청: 상완-하완, 손 대신 검). */
-    ...paintBase(rodFaces(1.05, -0.15, 5.7, 1.6, 0.35, 4.8, 0.5), "#d4af37"),
-    ...paintBase(rodFaces(1.6, 0.35, 4.8, 1.72, 0.75, 3.9, 0.45), "#d4af37"),
-    // 낫 검 한 자루 — 오른 옆구리에서 아래로. 색은 플라즈마(요청: 형광 푸른빛 흰색).
-    // 낫 검도 하완과 1자로(재지적: 손목 꺾임 제거).
-    ...paintBase(hornFaces(1.68, 0.62, 4.2, 2.12, 2.1, 0.9, 0.75), "#e4f6ff"),
-    [polyPath3([[1.74, 0.75, 4], [2.14, 2, 1.05], [2, 1.9, 1], [1.6, 0.7, 3.9]]), 0.75, "#ffffff"] as ShapeFace,
+    /* 오른팔은 뒤로(요청) — 검을 뒤로 늘어뜨린 자세. 하완과 검이 1자다. */
+    ...paintBase(rodFaces(1.05, -0.15, 5.65, 1.5, -0.9, 4.85, 0.5), P_GOLD),
+    ...paintBase(rodFaces(1.5, -0.9, 4.85, 1.62, -1.55, 4.1, 0.45), P_GOLD),
+    ...paintBase(hornFaces(1.6, -1.62, 3.95, 1.92, -2.85, 1.55, 0.75), P_PLASMA),
+    [polyPath3([[1.66, -1.5, 3.8], [1.98, -2.75, 1.6], [1.85, -2.8, 1.5], [1.53, -1.55, 3.7]]), 0.75, "#ffffff"] as ShapeFace,
   ],
   /* 하이 템플러(요청) — 떠 있는 로브: 바닥에서 띄운 짧은 로브 통 + 머리, 발밑 부양 빛. */
   htemp: () => {
     const [gx, gy] = project(0, 0.2, 3.2);
+    // 떠 있을 뿐 다리는 있다(요청) — 공통 다리·몸통을 통째로 띄운다.
+    const L = 0.8;
     return [
       topFace(groundEllipse(gx, gy, 1.6, 0.8), 0.3),
-      // (제거·요청) 뒷망토 — 걷었다.
-      // 다리 — 금색(재재지적: 몸·다리·팔 모두 금색).
-      ...paintBase(rodFaces(-0.32, -0.2, 4, -0.38, 0.1, 2.5, 0.4), "#d4af37"),
-      ...paintBase(rodFaces(0.32, -0.2, 4, 0.38, 0.1, 2.5, 0.4), "#d4af37"),
-      // 몸통 날씬·길게(재지적) — 반지름 0.85 → 0.68, 아래로 늘여 3.8부터 선다.
-      ...paintBase(cylinderFaces3(0, -0.3, 0.68, 3, 3.8), "#d4af37"), // 몸 금색(재재재지적)
-      // 앞가리개(요청) — 허리부터 발목까지 늘어지는 개인색 자락.
-      bodyFace(polyPath3([[-0.42, 0.5, 4.6], [0.42, 0.5, 4.6], [0.3, 0.72, 2.3], [-0.3, 0.72, 2.3]])),
-      sideFace(polyPath3([[-0.42, 0.5, 4.6], [0.42, 0.5, 4.6], [0.3, 0.72, 2.3], [-0.3, 0.72, 2.3]]), 0.14),
-      /* 얼굴은 질럿과 같은 계란형(재재지적) — 정수리 둥근 캡, 양볼이 앞 턱 끝으로
-         모인다. 지붕 키 유지(몸통에 안 가리게). */
-      ...tagKey(((): ShapeFace[] => {
-        const [hx, hy] = project(0, -0.55, 7.5);
-        const [cxx, cyy] = project(0, 0.25, 6.75);
-        return [
-          [`M${hx - 0.55} ${hy} A0.55 0.42 0 0 1 ${hx + 0.55} ${hy}`
-            + ` Q${hx + 0.48} ${hy + 0.48} ${cxx} ${cyy} Q${hx - 0.48} ${hy + 0.48} ${hx - 0.55} ${hy} Z`, 1, "#d4af37"] as ShapeFace,
-          topFace(`M${hx - 0.55} ${hy} A0.55 0.42 0 0 1 ${hx + 0.55} ${hy} A0.55 0.26 0 0 0 ${hx - 0.55} ${hy} Z`, 0.2),
-        ];
-      })(), 20),
-      // 정수리 뿔 금색 복귀(재재지적).
-      ...paintBase(hornFaces(0, -1.1, 7.1, 0, -2.7, 7.8, 0.65), "#d4af37"),
-      // (제거·요청) 뒷 장식 뿔 두 개(초승달 후광) — 걷었다.
-      // 어깨 갑옷 한 쌍(요청) — 개인색.
-      ...domeFaces3(-1, -0.25, 0.48, 0.4, 5.95),
-      ...domeFaces3(1, -0.25, 0.48, 0.4, 5.95),
-      /* 팔 두 마디(재재지적: 살짝만 앞으로 드는 정도로 내림) — 상완 아래로, 하완
-         앞으로 완만히. */
+      // 하지는 개인색, 대퇴는 금색(요청).
+      ...protossLegs(P_GOLD, undefined, L),
+      ...protossTorso(P_GOLD, L),
+      /* 앞가리개(요청) — 허리부터 발목까지. 몸에 딱 붙인다(재지적: 떠 보였다) —
+         몸통 앞면(y 0.55)에 얹고 아래로 살짝만 벌어진다. */
+      ...((): ShapeFace[] => {
+        const d = polyPath3([
+          [-0.42, 0.5, 4.8 + L], [0.42, 0.5, 4.8 + L],
+          [0.34, 0.62, 1.3 + L], [-0.34, 0.62, 1.3 + L],
+        ]);
+        return [bodyFace(d), sideFace(d, 0.14)];
+      })(),
+      // 얼굴 — 공통 턱주가리(요청). 정수리 뿔·뒤 장식 뿔은 제거.
+      ...tagKey(protossFace(P_GOLD, L), 20),
+      // 어깨 갑옷 한 쌍 — 개인색.
+      ...domeFaces3(-1.15, -0.25, 0.55, 0.45, 5.8 + L),
+      ...domeFaces3(1.15, -0.25, 0.55, 0.45, 5.8 + L),
+      /* 팔 두 마디 — 상완 금색, 하완 개인색(요청). 살짝만 앞으로 든다. */
+      ...paintBase(rodFaces(1.05, -0.2, 5.7 + L, 1.35, 0.25, 4.7 + L, 0.45), P_GOLD),
+      ...rodFaces(1.35, 0.25, 4.7 + L, 1.2, 1, 4.45 + L, 0.38),
+      ...paintBase(rodFaces(-1.05, -0.2, 5.7 + L, -1.35, 0.25, 4.7 + L, 0.45), P_GOLD),
+      ...rodFaces(-1.35, 0.25, 4.7 + L, -1.2, 1, 4.45 + L, 0.38),
+      /* 손(요청) — 흰색, 손가락 긴 형태. */
       ...paintBase([
-        ...rodFaces(1.05, -0.2, 5.9, 1.35, 0.25, 4.8, 0.45),
-        ...rodFaces(1.35, 0.25, 4.8, 1.2, 1, 4.55, 0.38),
-        ...rodFaces(-1.05, -0.2, 5.9, -1.35, 0.25, 4.8, 0.45),
-        ...rodFaces(-1.35, 0.25, 4.8, -1.2, 1, 4.55, 0.38),
-      ], "#d4af37"),
-      /* 손(요청) — 흰색, 손가락 긴 형태: 손바닥 + 가늘고 긴 손가락 둘씩. */
-      ...paintBase([
-        ...domeFaces3(1.2, 1.05, 0.24, 0.2, 4.45),
-        ...hornFaces(1.14, 1.1, 4.5, 1.1, 1.62, 4.05, 0.13),
-        ...hornFaces(1.3, 1.05, 4.5, 1.38, 1.52, 4.05, 0.13),
-        ...domeFaces3(-1.2, 1.05, 0.24, 0.2, 4.45),
-        ...hornFaces(-1.14, 1.1, 4.5, -1.1, 1.62, 4.05, 0.13),
-        ...hornFaces(-1.3, 1.05, 4.5, -1.38, 1.52, 4.05, 0.13),
+        ...domeFaces3(1.2, 1.05, 0.26, 0.22, 4.35 + L),
+        ...hornFaces(1.14, 1.1, 4.4 + L, 1.1, 1.62, 3.95 + L, 0.13),
+        ...hornFaces(1.3, 1.05, 4.4 + L, 1.38, 1.52, 3.95 + L, 0.13),
+        ...domeFaces3(-1.2, 1.05, 0.26, 0.22, 4.35 + L),
+        ...hornFaces(-1.14, 1.1, 4.4 + L, -1.1, 1.62, 3.95 + L, 0.13),
+        ...hornFaces(-1.3, 1.05, 4.4 + L, -1.38, 1.52, 3.95 + L, 0.13),
       ], "#e9edf0"),
     ];
   },
@@ -4052,15 +4025,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const hipY = dy * 1;
       const kneX = dx * 3.5;
       const kneY = dy * 3.5;
-      const rH: [number, number, number] = [hipX, hipY, 5.05];
-      const rK: [number, number, number] = [kneX, kneY, 6.15];
-      const blH: [number, number, number] = [hipX - nx * 0.8, hipY - ny * 0.8, 4.15];
-      const brH: [number, number, number] = [hipX + nx * 0.8, hipY + ny * 0.8, 4.15];
-      const blK: [number, number, number] = [kneX - nx * 0.9, kneY - ny * 0.9, 5.25];
-      const brK: [number, number, number] = [kneX + nx * 0.9, kneY + ny * 0.9, 5.25];
-      const sT: [number, number, number] = [kneX, kneY, 5.9];
-      const sL: [number, number, number] = [kneX - nx * 0.75, kneY - ny * 0.75, 5];
-      const sR: [number, number, number] = [kneX + nx * 0.75, kneY + ny * 0.75, 5];
+      /* 두께 증가 + 정삼각(재지적) — 단면이 정삼각형이 되게 능선 높이를 폭×√3으로
+         잡는다(폭 1.05 → 높이 1.82). */
+      const w9 = 1.05;
+      const h9 = w9 * 1.732;
+      const rH: [number, number, number] = [hipX, hipY, 4 + h9];
+      const rK: [number, number, number] = [kneX, kneY, 5 + h9];
+      const blH: [number, number, number] = [hipX - nx * w9, hipY - ny * w9, 4];
+      const brH: [number, number, number] = [hipX + nx * w9, hipY + ny * w9, 4];
+      const blK: [number, number, number] = [kneX - nx * w9, kneY - ny * w9, 5];
+      const brK: [number, number, number] = [kneX + nx * w9, kneY + ny * w9, 5];
+      const sT: [number, number, number] = [kneX, kneY, 4.9 + w9 * 1.732];
+      const sL: [number, number, number] = [kneX - nx * w9, kneY - ny * w9, 4.9];
+      const sR: [number, number, number] = [kneX + nx * w9, kneY + ny * w9, 4.9];
       const foot: [number, number, number] = [dx * 4.05, dy * 4.05, 0];
       const thighR = polyPath3([rH, rK, brK, brH]);
       const thighL = polyPath3([rH, rK, blK, blH]);
@@ -4104,7 +4081,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       [`M${cx - 5.02} ${cy} A5.02 2 0 0 0 ${cx + 5.02} ${cy} A5.02 1.1 0 0 1 ${cx - 5.02} ${cy} Z`, 0.85] as ShapeFace,
       // 몸통 — 낮은 타원 돔. 머리 불꽃 — 위로 솟는 뿔. 팔 — 어깨에서 밖·아래로.
       ...dark(domeFaces3(0, 0, 1.35, 2.7, 3.2), 0.35),
-      ...dark(hornFaces(0, 0, 6.1, 0, 0.45, 8.6, 1), 0.4),
+      // 머리는 공통 얼굴 실루엣(요청: 뒤로 솟은 뿔 제거).
+      ...dark(protossFace(undefined, -0.9), 0.4),
       // 팔 마디(재지적) — 팔꿈치에서 한 번 꺾인다.
       ...dark(hornFaces(-0.9, 0.2, 5.9, -1.9, 0.55, 4.6, 0.7), 0.35),
       ...dark(hornFaces(-1.9, 0.55, 4.6, -2.6, 1, 3, 0.55), 0.35),
@@ -4135,8 +4113,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       [`M${cx - 5.02} ${cy} A5.02 2 0 0 0 ${cx + 5.02} ${cy} A5.02 1.1 0 0 1 ${cx - 5.02} ${cy} Z`, 0.85] as ShapeFace,
       // 속 형체 — 낮은 돔 몸통, 벌어진 뿔귀 둘, 아래로 늘어지는 갈퀴 팔.
       ...dark(domeFaces3(-0.15, 0.15, 1.25, 2.4, 3.4), 0.45),
-      ...dark(hornFaces(-0.5, 0.15, 5.6, -1.7, 0.55, 8, 0.8), 0.5),
-      ...dark(hornFaces(0.5, 0.15, 5.6, 1.5, 0.5, 7.7, 0.7), 0.5),
+      // 머리는 공통 얼굴 실루엣(요청: 뿔귀 제거).
+      ...dark(protossFace(undefined, -1), 0.5),
       // 갈퀴 팔 마디(재지적).
       ...dark(hornFaces(-0.5, 0.35, 4.2, -1.1, 0.7, 3.1, 0.65), 0.45),
       ...dark(hornFaces(-1.1, 0.7, 3.1, -1.7, 1.3, 2, 0.5), 0.45),
