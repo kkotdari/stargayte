@@ -4114,23 +4114,30 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const shinCap = polyPath3([fT, fR, fL]);
       /* 하지 입체감(재지적: 아직 평평) — 세 면의 음영을 크게 벌리고 무릎 단면을
          덮개로 얹어 삼각뿔의 모서리가 읽히게 한다. */
-      /* 면 음영은 세계 광원에 맡긴다(재지적: 각도에 따라 평면으로 보임) — 고정
-         농도를 쓰면 다리를 돌렸을 때 좌우 면 밝기가 그대로라 납작해 보였다.
-         faceLight는 요잉을 반영해 왼쪽 면은 밝고 오른쪽 면은 어둡게 만든다. */
-      const lit = (d9: string, nx9: number, ny9: number, nz9 = 0): ShapeFace[] => {
-        const fl9 = faceLight(nx9, ny9, nz9);
-        return fl9.visible ? [bodyFace(d9), ...fl9.face(d9)] : [];
-      };
+      /* 면은 사라지지 않는다(재지적: 살짝만 정면을 벗어나도 옆면이 안 보임) —
+         faceLight.visible로 면을 걷어내면 볼록체의 옆면이 통째로 없어져 납작해진다.
+         늘 그리되 밝기만 광원이 정하고, 뒤를 향한 면부터 그려 앞면이 위에 오게
+         정렬한다(볼록체라 이 순서면 뒷면이 저절로 가려진다). */
+      const lit = (items: [string, number, number, number][]): ShapeFace[] => [...items]
+        .sort((q9, w9) => facingRatio(q9[1], q9[2]) - facingRatio(w9[1], w9[2]))
+        .flatMap(([d9, nx9, ny9, nz9]) => {
+          const fl9 = faceLight(nx9, ny9, nz9);
+          return [bodyFace(d9), ...(fl9.visible ? fl9.face(d9) : [sideFace(d9, 0.38)])];
+        });
       return tagKey(paintBase([
-        // 하지 — 아래를 향한 배면과 좌우 경사면, 발바닥·무릎 단면.
-        ...lit(shinBot, -dx, -dy, -0.4),
-        ...lit(shinR, nx, ny, 0.3),
-        ...lit(shinL, -nx, -ny, 0.3),
+        // 하지 — 좌우 경사면과 아래를 향한 배면, 발바닥·무릎 단면.
+        ...lit([
+          [shinBot, -dx, -dy, -0.4],
+          [shinR, nx, ny, 0.3],
+          [shinL, -nx, -ny, 0.3],
+        ]),
         bodyFace(shinCap), capFace(shinCap, 0.38),
         bodyFace(polyPath3([sT, sR, sL])), capFace(polyPath3([sT, sR, sL]), 0.32),
         // 대퇴 — 능선 좌우 경사면과 무릎 단면.
-        ...lit(thighR, nx, ny, 0.55),
-        ...lit(thighL, -nx, -ny, 0.55),
+        ...lit([
+          [thighR, nx, ny, 0.55],
+          [thighL, -nx, -ny, 0.55],
+        ]),
         bodyFace(thighCap), sideFace(thighCap, 0.3),
       ], "#d4af37"), depthNow(dx * 2.4, dy * 2.4));
     };
@@ -5055,6 +5062,8 @@ type UnitDrawOp = {
   noShadow?: boolean;
   /** 공중 유닛(요청: 더 높이 + 바닥 그림자) — 몸을 위로 띄우고 발밑에 그림자 타원. */
   air?: boolean;
+  /** 추가 부양(요청: 수송 승하차) — 크기 px에 대한 배수만큼 더 띄운다(빔에 빨려 오름). */
+  rise?: number;
   /** 크립 판(요청: 크립은 벽·램프·다리를 못 넘는다) — 이 표시가 있는 판들은 먼저 깔고
    *  지형 차단 마스크로 파낸 뒤 나머지를 얹는다. */
   clipWalk?: boolean;
@@ -5491,7 +5500,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
       /* 공중 유닛(요청: 높이 더 높이 + 바닥 그림자) — 발밑 자리에 그림자 타원을 깔고
          몸은 반 키만큼 위로 띄운다. 떠 있음이 땅 유닛과 한눈에 갈린다. */
       // 높이 반으로(재재지적) — 1.6 → 0.8.
-      const lift = op.air ? px * 0.8 : 0;
+      const lift = (op.air ? px * 0.8 : 0) + (op.rise ?? 0) * px;
       /* 판을 먼저 굽는다 — 그림자를 어림 오프셋이 아니라 판의 실제 바닥 픽셀
          (contentBottom)에 붙이기 위해서다(재재지적: 드론이 높이 떠 있다). */
       const pxq = Math.max(4, Math.round(px / 2) * 2);
@@ -8928,8 +8937,16 @@ export default function ReplayMotionPlayer({
           const rawPos = posAt(rp, Math.max(rp[0][0], t - walkDelay), null);
           if (!rawPos) return null;
           /* 탑승 중(요청: 수송선 승하차) — 배 안에 있으니 마커를 걷는다. 하차 지점
-             (f=13)이나 다음 제 명령에서 다시 나타나 걷는다. */
-          if (e.rides.some(([ra, rb]) => t >= ra + 1 && t < rb)) return null;
+             (f=13)이나 다음 제 명령에서 다시 나타나 걷는다.
+             승하차 연출(요청) — 태울 땐 빛기둥이 내리고 그 안에서 몸이 작아지며 떠올라
+             사라지고, 내릴 땐 거꾸로다. rideK 0=제 모습, 1=완전히 빨려듦. */
+          const RIDE_FX = 0.9;
+          if (e.rides.some(([ra, rb]) => t >= ra + RIDE_FX && t < rb)) return null;
+          let rideK = 0;
+          const rideIn9 = e.rides.find(([ra]) => t >= ra && t < ra + RIDE_FX);
+          const rideOut9 = e.rides.find(([, rb]) => t >= rb && t < rb + RIDE_FX);
+          if (rideIn9) rideK = Math.min(1, (t - rideIn9[0]) / RIDE_FX);
+          else if (rideOut9) rideK = Math.max(0, 1 - (t - rideOut9[1]) / RIDE_FX);
           /* 건설에 흡수(지적: 건설 끝난 일꾼이 복제된 자리에 계속 서 있음) — 현장에
              도착한 순간부터 숨는다. 공사 중 모습은 합성 건설 일꾼 연출의 몫이고,
              죽음이 아니라 소멸 효과도 없다. */
@@ -9277,7 +9294,9 @@ export default function ReplayMotionPlayer({
             })(),
             rotDeg: burrowed ? undefined : bodyHdg,
             viewYaw: viewYawOf(ax3, ay3), flat: !pitched, pitch: pitched,
-            sizePx: drawUnit === "" || isWorker ? unitGlyphPx(0, ay3) : unitPxOf(drawUnit, ay3),
+            sizePx: (drawUnit === "" || isWorker ? unitGlyphPx(0, ay3) : unitPxOf(drawUnit, ay3))
+              * (1 - rideK * 0.75), // 승하차 축소(요청)
+            rise: rideK * 1.5, // 빔을 타고 둥둥 오른다(요청)
             color: modeColor(e.raw, team),
             alpha: (() => {
               /* 클로킹(전수조사) — 개인 클록(f=14/15)·상시 은신(다크·옵저버)·아비터
@@ -9291,7 +9310,7 @@ export default function ReplayMotionPlayer({
               const detected = detectorSpots.some((dsp) => dsp.team > 0
                 && dsp.team !== (team ?? 0) && Math.hypot(dsp.x - pos.x, dsp.y - pos.y) <= 9);
               return detected ? 0.72 : 0.4;
-            })(),
+            })() * (1 - rideK * 0.95), // 승하차 페이드(요청)
             air: uAir,
             /* 겹침 이완은 v2에선 안 쓴다(지적: 다시 넣되 새로) — 도착 대형(entWalks의
                해바라기 나선)이 겹침을 미리 푸는 방식이라, 프레임마다 밀치는 이완의
