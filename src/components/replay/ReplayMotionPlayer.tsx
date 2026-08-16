@@ -2711,8 +2711,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 차체는 탱크 모드와 똑같이(지적: 시즈·보통 모드의 몸통이 달라) — 같은 상자.
       ...paintBase(boxFaces3(0, -0.2, 3.9, 5.6, 1.3, 1.2), "#c9ced6"), // 차체 은색(요청: 포탑만 개인색)
       /* 포신 입체 벽 두르기(재지적: 캐리어처럼) — 오른벽 하나만 박혀 있던 것을 윗판·
-         밑판 + 좌우 옆벽(faceLight 판정) + 포구 단면(앞이 보일 때만)으로 닫는다. */
-      [barrelTop, 1, GUNMETAL] as ShapeFace,
+         밑판 + 좌우 옆벽(faceLight 판정) + 포구 단면(앞이 보일 때만)으로 닫는다.
+         포신은 받침(키 40)보다 위(재지적: 포신 가려짐). */
+      [barrelTop, 1, GUNMETAL, 45] as ShapeFace,
       topFace(barrelTop, 0.18),
       [polyPath3([[-0.7, 0.7, 3.6], [0.7, 0.7, 3.6], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]), 1, GUNMETAL] as ShapeFace,
       ...([1, -1] as const).flatMap((m2): ShapeFace[] => {
@@ -2754,7 +2755,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   tanksiegegun: () => {
     const barrelTop = polyPath3([[-0.7, 0.7, 4], [0.7, 0.7, 4], [0.7, 2.9, 6.9], [-0.7, 2.9, 6.9]]);
     return [
-      [barrelTop, 1, GUNMETAL] as ShapeFace,
+      // 포신은 받침(키 40)보다 위(재지적: 포신 가려짐) — 뒤 무깊이 면들이 45를 상속한다.
+      [barrelTop, 1, GUNMETAL, 45] as ShapeFace,
       topFace(barrelTop, 0.18),
       [polyPath3([[-0.7, 0.7, 3.6], [0.7, 0.7, 3.6], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]), 1, GUNMETAL] as ShapeFace,
       ...([1, -1] as const).flatMap((m2): ShapeFace[] => {
@@ -3043,27 +3045,30 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   muta: () => {
     /* 날개 더 크게 + 두 번 꺾이게(요청) — 스팬 방향 마디 네 곳(뿌리→관절1 위로→
        관절2 아래로→끝 위로)을 앞뒤 폭 있는 판 세 장으로 잇는다. */
+    /* 서양 용 날개(요청) — 앞 가장자리를 따라 굽은 팔뼈가 서고, 그 뒤로 손가락뼈
+       사이가 오목하게 파인 막이 늘어진다. 뼈·막 모두 모델 공간이라 요잉을 함께 탄다. */
     const wing = (m2: 1 | -1): ShapeFace[] => {
-      /* 위아래 뒤집기(재지적) 후 더 위로 모음(재재지적) — 바깥 마디들을 끌어올려
-         날개가 위로 치켜든 자세. 꺾임(내려갔다 오르는)은 유지. */
-      // 뿌리는 몸에 딱 붙이고(재지적) 바깥은 더 위로 모은다(재재재지적).
-      const st: [number, number, number, number][] = [ // [x, 앞y, 뒤y, z]
-        [0.2, 0.6, -0.5, 6.9],
-        [1.9, 1.1, -0.2, 6.7],
-        [3.4, 0.7, -0.5, 9.4],
-        // 마지막 마디 더 길게(재지적) — 끝을 밖·위로 쭉 뺀다.
-        [5.6, 0.3, -0.6, 8.5],
+      const P = (x: number, y: number, z: number): [number, number, number] => [m2 * x, y, z];
+      // 팔뼈 마디 — 어깨에서 위·밖으로 굽어 오른다.
+      const b0 = P(0.25, 0.55, 6.9);
+      const b1 = P(2.1, 1.05, 8.8);
+      const b2 = P(4.3, 0.55, 9.9);
+      // 막 — 손가락 끝 셋과 그 사이 오목한 골.
+      const web = polyPath3([
+        b0, b1, b2,
+        P(4.55, -1.5, 9.1), P(3.35, -0.85, 8.6),
+        P(3.05, -2.4, 8), P(2.05, -1.15, 7.5),
+        P(1.5, -2.45, 6.9), P(0.55, -0.95, 6.6),
+        P(0.2, -0.5, 6.6),
+      ]);
+      return [
+        bodyFace(web), m2 > 0 ? sideFace(web, 0.18) : topFace(web, 0.12),
+        // 팔뼈·손가락뼈는 막보다 살짝 밝게.
+        ...rodFaces(b0[0], b0[1], b0[2], b1[0], b1[1], b1[2], 0.3),
+        ...rodFaces(b1[0], b1[1], b1[2], b2[0], b2[1], b2[2], 0.26),
+        ...hornFaces(b1[0], b1[1], b1[2], m2 * 3.05, -2.4, 8, 0.2),
+        ...hornFaces(b2[0], b2[1], b2[2], m2 * 4.55, -1.5, 9.1, 0.18),
       ];
-      const out2: ShapeFace[] = [];
-      for (let i = 0; i < 3; i += 1) {
-        const [x0, f0, r0, z0] = st[i];
-        const [x1, f1, r1, z1] = st[i + 1];
-        const d = polyPath3([
-          [m2 * x0, f0, z0], [m2 * x1, f1, z1], [m2 * x1, r1, z1], [m2 * x0, r0, z0],
-        ]);
-        out2.push(bodyFace(d), i % 2 === 0 ? topFace(d, m2 > 0 ? 0.15 : 0.1) : sideFace(d, 0.2));
-      }
-      return out2;
     };
     const [mx2, my2] = project(0, 2.5, 3.9);
     return [
@@ -3694,9 +3699,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        상자의 16%만 채우고 있었다. 다리 얇음·가파름 비율은 유지. */
     // 꼬리 두 가닥은 안테나처럼 얇게(지적).
     // 등딱지(몸통 원판)만 개인색, 날개·다리 금색(요청).
-    for (const ang of [168, 192]) out.push(...paintBase(wing(ang, 1.6, 2.4, 0.16, 0.06, 6.2, 5.2), "#d4af37"));
+    // 다리 뿌리를 몸통(팔각 반지름 1.55) 안으로 밀어 틈 없이 붙인다(지적).
+    for (const ang of [168, 192]) out.push(...paintBase(wing(ang, 1.1, 2.4, 0.16, 0.06, 6.2, 5.2), "#d4af37"));
     // 긴 뒷다리 한 쌍은 길이·두께 2/3(지적).
-    for (const ang of [138, 222]) out.push(...paintBase(wing(ang, 1.6, 1.67, 0.37, 0.15, 6.1, 3.5), "#d4af37"));
+    // 짧은 뒷다리 한 쌍은 더 짧게(지적) — 1.67 → 1.05.
+    for (const ang of [138, 222]) out.push(...paintBase(wing(ang, 1.1, 1.05, 0.37, 0.15, 6.1, 4.4), "#d4af37"));
     /* 몸통·눈도 모델 공간(수리: 화면 공간이라 돌아도 고정돼 있었다 — 지적) — 팔각도
        눈도 요잉을 따라 함께 돈다. */
     const oct = (r: number, z: number): string => polyPath3(
@@ -3732,7 +3739,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(topFace(groundEllipse(p2x, p2y, 0.28, 0.22), 0.3));
     /* 앞다리 한 쌍(재지적: 길이 축소 + 두 다리 사이 벌리기 + 몸에 더 딱) — 뿌리를
        몸 바로 밑(0.65)까지 당기고, 각도를 ±14→±30으로 벌리고, 길이는 반 남짓으로. */
-    for (const ang of [30, -30]) out.push(...paintBase(wing(ang, 1.05, 0.8, 0.27, 0.13, 5.7, 5), "#d4af37"));
+    for (const ang of [30, -30]) out.push(...paintBase(wing(ang, 0.85, 0.8, 0.27, 0.13, 5.7, 5), "#d4af37"));
     return out;
   },
   /* 드론(정정) — 갈퀴치마는 집게 사이가 아니라 집게팔과 꼬리 사이, 양옆에 부채처럼
@@ -4319,21 +4326,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        양옆 두 개씩은 무릎을 높이 꺾어 짧게 매달리고, 앞쪽 집게팔 한 쌍은 굵직한
        마디로 내려와 끝이 두 갈래로 벌어진다(공식 컨셉의 큰 집게 팔). */
     for (const sx of [-1, 1]) {
-      for (const lyy of [-0.5, 1]) {
+      // 뒤에 한 쌍 더(요청) — 뒷다리 세 쌍.
+      for (const lyy of [-1.7, -0.5, 1]) {
         // 가늘게(재지적) — 매달린 실다리 느낌.
         /* 옆다리는 더 펴고 몸통 아래 안쪽으로(지적) — 뿌리를 안쪽(1.2)에서 내리고
            무릎 꺾임을 줄여 거의 곧게 아래로 늘어뜨린다. */
         // 몸 80%·다리 120%(요청) — 뿌리는 줄어든 몸에, 끝은 더 길게 아래로.
-        legs.push(seg(sx * 0.96, lyy * 0.8, 3.2, sx * 1.9, lyy * 0.8, -0.1, 0.34));
-        tips.push(seg(sx * 1.9, lyy * 0.8, -0.1, sx * 1.5, lyy * 0.8, -2.3, 0.26));
+        // 길이 80%(요청) — 끝을 위로 당긴다.
+        legs.push(seg(sx * 0.96, lyy * 0.8, 3.2, sx * 1.78, lyy * 0.8, 0.45, 0.34));
+        tips.push(seg(sx * 1.78, lyy * 0.8, 0.45, sx * 1.45, lyy * 0.8, -1.2, 0.26));
       }
       // 앞 집게팔(재재지적: 뒷다리보다 살짝 짧게, 뿌리는 얇고 집게 쪽에서 확 굵게) —
       // 사다리꼴 마디로 아래로 갈수록 부풀고, 발끝은 옆다리(-0.9)보다 조금 위에서 끝난다.
-      legs.push(seg(sx * 0.64, 1.36, 3.2, sx * 1.3, 2.7, 1.4, 0.3, 0.5));
-      legs.push(seg(sx * 1.3, 2.7, 1.4, sx * 1.15, 3.3, 0.2, 0.5, 0.95));
+      // 앞 집게팔은 수직에 가깝게(요청) — 앞으로 크게 뻗던 것을 곧게 내린다.
+      legs.push(seg(sx * 0.64, 1.36, 3.2, sx * 0.95, 1.85, 1.4, 0.3, 0.5));
+      legs.push(seg(sx * 0.95, 1.85, 1.4, sx * 1, 2.05, 0.2, 0.5, 0.95));
       // 집게 — 굵은 밑동에서 두 갈래로 좁아지는 날.
-      tips.push(seg(sx * 1.15, 3.3, 0.2, sx * 1.7, 3.75, -0.6, 0.7, 0.25));
-      tips.push(seg(sx * 1.15, 3.3, 0.2, sx * 0.6, 3.85, -0.55, 0.7, 0.25));
+      tips.push(seg(sx * 1, 2.05, 0.2, sx * 1.45, 2.35, -0.5, 0.7, 0.25));
+      tips.push(seg(sx * 1, 2.05, 0.2, sx * 0.55, 2.45, -0.45, 0.7, 0.25));
     }
     /* 허파(재지적: 양옆 렌즈는 눈이 아니라 허파 같은 기관 — 흰색 말고 보라색으로,
        두껍게가 아니라 '넓게') — 접평면 부착은 그대로 두고, 접선 방향으로 길쭉한
@@ -4421,18 +4431,23 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         + ` L${s2x - hpx} ${s2y - hpy} L${s1x - hpx} ${s1y - hpy} Z`, 0.2,
       ));
     };
-    // 폭 축소(지적: 몸체 폭 줄이기) — 포드 자리 ±3.1 → ±2.6, 판도 따라 좁힌다.
-    pod(-2.6);
-    pod(2.6);
-    /* 판 앞을 실린더 앞과 맞춘다(지적: 판 길이를 길게 — 앞부분이 실린더 앞과 같게) —
-       앞 가장자리를 y 0.8 → 2.6(포드 앞끝)으로 내민다. */
+    /* 가운데 통이 먼저, 실린더가 나중(요청: 양 실린더 안으로 쳐박히게) — 판을 먼저
+       그려 두 포드가 그 위를 덮으면 판 끝이 실린더 속으로 파고든 것으로 읽힌다.
+       판은 은색이고, 개인색은 등마루 띠 한 줄만(요청). */
     const plate = `M${pt(-2.6, 2.6, 5.3)} Q${pt(0, 3.4, 6.1)} ${pt(2.6, 2.6, 5.3)}`
       + ` L${pt(2.6, -1.8, 5.1)} Q${pt(0, -2.8, 5.7)} ${pt(-2.6, -1.8, 5.1)} Z`;
     // 판 두께감(지적) — 앞 가장자리 아래로 내려앉는 옆면 띠.
     const edge = `M${pt(-2.6, 2.6, 5.3)} Q${pt(0, 3.4, 6.1)} ${pt(2.6, 2.6, 5.3)}`
       + ` L${pt(2.6, 2.6, 4.6)} Q${pt(0, 3.4, 5.4)} ${pt(-2.6, 2.6, 4.6)} Z`;
-    out.push(bodyFace(edge), sideFace(edge, 0.22));
-    out.push(bodyFace(plate), topFace(plate, 0.18));
+    out.push([edge, 1, "#c9ced6"] as ShapeFace, sideFace(edge, 0.22));
+    out.push([plate, 1, "#c9ced6"] as ShapeFace, topFace(plate, 0.18));
+    // 등마루 개인색 띠 한 줄(요청).
+    out.push(bodyFace(polyPath3([
+      [-0.45, 2.5, 5.45], [0.45, 2.5, 5.45], [0.45, -1.75, 5.25], [-0.45, -1.75, 5.25],
+    ])));
+    // 폭 축소(지적: 몸체 폭 줄이기) — 포드 자리 ±3.1 → ±2.6.
+    pod(-2.6);
+    pod(2.6);
     /* 뒤 추진체 셋 — 짙은 은색(재지적). 앞에서 볼 때도 몸을 뚫고 보이던 문제(지적:
        안 가려짐)는 꽁무니가 돌아앉으면 아예 그리지 않는 것으로 해결 — 몸판이 무깊이
        면이라 painter로는 못 가린다. */
@@ -4468,8 +4483,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 집게·다리 네 장 금색(요청).
     out.push([leg(-1), 1, "#d4af37"] as ShapeFace, sideFace(leg(-1), 0.18));
     out.push([leg(1), 1, "#d4af37"] as ShapeFace, sideFace(leg(1), 0.18));
-    // 몸통 — 둥근 게딱지. 많이 줄였다(지적: 본체 크기 많이 축소 — 3.8×3 → 2.8×2.2).
-    out.push(bodyFace(groundEllipse(cx, cy, 2.8, 2.2)));
+    /* 몸통은 뒤쪽 반만(요청) — 앞은 곧은 변, 뒤는 반원인 납작 반구. 모델 공간이라
+       요잉을 함께 탄다. */
+    {
+      const halfPts: [number, number, number][] = [];
+      for (let i9 = 0; i9 <= 12; i9 += 1) {
+        const a9 = (i9 / 12) * Math.PI;
+        halfPts.push([Math.cos(a9) * 2.8, -0.5 - Math.sin(a9) * 2.2, 3.8]);
+      }
+      const half = polyPath3(halfPts);
+      out.push(bodyFace(half), topFace(half, 0.12));
+    }
     // (삭제·지적) 앞부분 검은 반투명 홈 — 정체불명 얼룩으로 보여 걷었다.
     out.push(topFace(groundEllipse(cx - 0.9, cy - 1, 1.25, 0.8), 0.25));
     /* 말굽(재지적: 끊김 없이) — 두 앞집게 뿌리를 몸 위로 실제로 잇는 납작한 반원
