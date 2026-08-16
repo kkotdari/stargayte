@@ -3359,7 +3359,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           bodyFace(at(1)),
           m2 === 1 ? sideFace(at(1), 0.16) : topFace(at(1), 0.12),
         ], "#d4af37"),
-        depthNow(m2 * 1.3, -0.8),
+        /* 날개 키(재지적: 각도에 따라 몸체에 가려짐) — 몸 돔은 depthNow에 반지름
+           보정(+1.2)이 붙어 늘 앞섰다. 날개도 같은 보정을 얹고 중심을 몸 앞쪽으로
+           잡아, 옆에서는 좌우가 제대로 갈리고 정면에서는 몸에 안 묻힌다. */
+        depthNow(m2 * 1.3, 0.5) + 1.35,
       );
     };
     const [cx2, cy2] = project(0, 1.9, 5.7);
