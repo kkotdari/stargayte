@@ -1324,40 +1324,59 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 게이트웨이(실물 점검) — 낮은 사방 경사로 마당 위에 마주 기운 어금니 탑 한 쌍이
      사이를 띄워 문을 이루고, 그 사이에 소환 빛이 선다. */
   gate: () => {
-    // 상자 정규화(지적: 게이트가 발자국보다 너무 좁게 차지) — 가로 1.3배.
-    const h = 1.1;
-    const a = 4;
-    const b = 3.1;
-    // 사방 발판 너비 축소(요청) — 3.2 → 2.4.
+    /* 대(臺)는 제거하고 사방 경사로만 입체로(요청) — 가운데 평평한 판 없이, 네
+       경사로가 각자 두께를 가진 쐐기로 서서 안쪽 높은 변끼리 맞물린다. */
+    const h = 1.4;
+    const a = 3;
+    const b = 2.33;
     const run = 2.4;
-    const plateau = polyPath3([[-a, b, h], [a, b, h], [a, -b, h], [-a, -b, h]]);
-    /* 경사로 폭 25% 축소(요청) — 대(臺)의 변 전체를 쓰던 것을 가운데 75%만 쓴다.
-       바깥으로 갈수록 조금 더 좁아져 사다리꼴로 빠진다. */
-    const aw = a * 0.75;
-    const bw = b * 0.75;
-    const front = polyPath3([[-aw, b, h], [aw, b, h], [aw * 0.88, b + run, 0], [-aw * 0.88, b + run, 0]]);
-    const back = polyPath3([[-aw, -b, h], [aw, -b, h], [aw * 0.88, -b - run, 0], [-aw * 0.88, -b - run, 0]]);
-    const right = polyPath3([[a, -bw, h], [a, bw, h], [a + run, bw * 0.88, 0], [a + run, -bw * 0.88, 0]]);
-    const left = polyPath3([[-a, -bw, h], [-a, bw, h], [-a - run, bw * 0.88, 0], [-a - run, -bw * 0.88, 0]]);
-    const out: ShapeFace[] = [
-      bodyFace(`${back} ${left} ${right} ${plateau} ${front}`),
-      sideFace(back, 0.2),
-      sideFace(right, 0.3),
-      topFace(plateau, 0.22),
-    ];
-    // (삭제·지적) 검은 뿔·안테나 가지들 — 이상한 뒷가지로 읽혀 걷어냈다.
-    // 실물 점검(스프라이트 시트) — 게이트는 돛 하나가 아니라 마주 기운 어금니 탑
-    // 한 쌍이 사이를 띄우고 문을 이룬다. 사이엔 소환 빛.
+    const th = 0.55; // 경사로 두께
+    const out: ShapeFace[] = [];
+    /* 경사로 하나 — 안쪽 높은 변(w 반폭, z h)에서 바깥 낮은 변(w*0.88, z 0)으로.
+       윗면·아랫면과 둘레 옆면으로 두께를 준다. dir는 바깥으로 뻗는 방향. */
+    const ramp = (dx9: number, dy9: number, inner: number, w9: number): ShapeFace[] => {
+      const nx9 = -dy9;
+      const ny9 = dx9;
+      const top9: [number, number, number][] = [
+        [dx9 * inner + nx9 * w9, dy9 * inner + ny9 * w9, h],
+        [dx9 * inner - nx9 * w9, dy9 * inner - ny9 * w9, h],
+        [dx9 * (inner + run) - nx9 * w9 * 0.88, dy9 * (inner + run) - ny9 * w9 * 0.88, 0.1],
+        [dx9 * (inner + run) + nx9 * w9 * 0.88, dy9 * (inner + run) + ny9 * w9 * 0.88, 0.1],
+      ];
+      const bot9 = top9.map(([x9, y9, z9]) => [x9, y9, Math.max(0, z9 - th)] as [number, number, number]);
+      const f9: ShapeFace[] = [bodyFace(polyPath3(bot9))];
+      const walls9 = top9.map((_, i9) => {
+        const j9 = (i9 + 1) % 4;
+        const mx9 = (top9[i9][0] + top9[j9][0]) / 2;
+        const my9 = (top9[i9][1] + top9[j9][1]) / 2;
+        const ml9 = Math.hypot(mx9, my9) || 1;
+        return {
+          d: polyPath3([bot9[i9], bot9[j9], top9[j9], top9[i9]]),
+          nx: mx9 / ml9, ny: my9 / ml9, f: facingRatio(mx9 / ml9, my9 / ml9),
+        };
+      }).sort((q9, w2) => q9.f - w2.f);
+      for (const wl9 of walls9) {
+        const fl9 = faceLight(wl9.nx, wl9.ny, 0.3);
+        f9.push(bodyFace(wl9.d), ...(fl9.visible ? fl9.face(wl9.d) : [sideFace(wl9.d, 0.4)]));
+      }
+      f9.push(bodyFace(polyPath3(top9)), topFace(polyPath3(top9), 0.2));
+      return tagKey(f9, depthNow(dx9 * (inner + run * 0.5), dy9 * (inner + run * 0.5)));
+    };
+    out.push(...ramp(0, 1, b, a * 0.75));
+    out.push(...ramp(0, -1, b, a * 0.75));
+    out.push(...ramp(1, 0, a, b * 0.75));
+    out.push(...ramp(-1, 0, a, b * 0.75));
+    /* 실물 점검(스프라이트 시트) — 게이트는 돛 하나가 아니라 마주 기운 어금니 탑
+       한 쌍이 사이를 띄우고 문을 이룬다. 사이엔 소환 빛. */
     const [wx, wy] = project(0, 0.1, 3.6);
     // 가운데 소환 구체도 연시안 반투명(요청) — 코어 구슬과 한 벌.
     out.push([groundEllipse(wx, wy, 1.9, 2.4), 0.55, "#a9ecf2"] as ShapeFace);
     out.push(...hornFaces(-3.5, 0, 0.8, -1.3, -0.3, 9.6, 3));
     out.push(...hornFaces(3.5, 0, 0.8, 1.3, -0.3, 9.6, 3));
-    /* 발판 뿔(재지적) — 앞뒤 발판 한가운데에서 곧게 솟아 끝이 살짝 안쪽(건물 쪽)으로
-       휜다. 길이는 건물 높이(9.6)의 반쯤. 두 마디로 굽혀 휨을 낸다. */
+    /* 발판 뿔(요청) — 앞뒤 경사로 한가운데에서 솟아 끝이 안쪽으로 휜다. 아래는 기둥,
+       위는 뿔인 공용 도형(spirePillar). */
     for (const sy9 of [1, -1] as const) {
       const ry9 = sy9 * (b + run * 0.5);
-      // 아래는 기둥, 위는 뿔 — 공용 도형(spirePillar)으로 세운다.
       out.push(...spirePillar({
         x: 0, y: ry9, z0: 0.1, h: 5.1, w: 0.72, tipW: 0,
         segs: 4, sides: 6, curveY: -sy9 * 1.4, hold: 0.5,
