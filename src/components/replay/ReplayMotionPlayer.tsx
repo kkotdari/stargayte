@@ -1362,9 +1362,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const out: ShapeFace[] = [];
     // 수정이 너무 높게 떴다(재지적) — 고리·수정·발톱을 한 단씩 내린다.
     // 상자 정규화(지적: 파일런이 발자국보다 너무 좁게 차지) — 가로를 1.35배 넓힌다.
-    /* 지면 가까이 내린다(재지적: 살짝만 띄움) — 고리를 6.6 → 2.4로 낮추고 발톱·수정
-       뿌리도 함께 내린다. 수정은 대신 위로 더 길게 뽑는다. */
-    const [cx, cy] = project(0, 0, 2.4);
+    /* 몸은 더 낮게, 고리만 올린다(재지적) — 발톱·수정 뿌리는 지면 가까이(0.9) 내리고
+       고리는 그보다 한참 위(4.2)에 걸린다. */
+    const [cx, cy] = project(0, 0, 4.2);
     const rxo = 6.2;
     const ryo = rxo * 0.45;
     const rxi = 4.3;
@@ -1373,17 +1373,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const ringFront = `M${cx - rxo} ${cy} A${rxo} ${ryo} 0 0 0 ${cx + rxo} ${cy} L${cx + rxi} ${cy} A${rxi} ${ryi} 0 0 1 ${cx - rxi} ${cy} Z`;
     const claw = (ang: number, h: number): ShapeFace[] => {
       const a = (ang * Math.PI) / 180;
-      return hornFaces(Math.sin(a) * 5.3, Math.cos(a) * 5.3, 2.2, Math.sin(a) * 4, Math.cos(a) * 4, h, 1.35);
+      return hornFaces(Math.sin(a) * 5.3, Math.cos(a) * 5.3, 0.9, Math.sin(a) * 4, Math.cos(a) * 4, h, 1.35);
     };
     // 뒤 발톱들 → 뒤 링 → 수정 → 앞 링 → 앞 발톱들 순으로 겹친다.
-    for (const ang of [135, 180, -135]) out.push(...claw(ang, 6.2));
+    for (const ang of [135, 180, -135]) out.push(...claw(ang, 5.6));
     out.push(bodyFace(ringBack), sideFace(ringBack, 0.3));
     /* 수정 입체화(재지적: 평면이네) — 네 모서리 양뿔(비피라미드)을 모델 좌표 삼각
        면으로 짠다: 요잉에 통째로 돌고, 보이는 면만 그려 속면이 안 비친다. */
     // 수정구는 더 길게(요청) — 아래는 지면 가까이, 위는 더 높이.
-    const zB = 0.5;
-    const zM = 5.6;
-    const zT = 13.6;
+    const zB = 0.2;
+    const zM = 5.2;
+    const zT = 13.2;
     const w = 3.1;
     const eq: [number, number][] = [[w, 0], [0, w], [-w, 0], [0, -w]];
     for (let i = 0; i < 4; i += 1) {
@@ -1407,8 +1407,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       }
     }
     out.push(bodyFace(ringFront), topFace(ringFront, 0.22));
-    for (const ang of [90, -90]) out.push(...claw(ang, 6.5));
-    for (const ang of [45, -45, 0]) out.push(...claw(ang, 5.9));
+    for (const ang of [90, -90]) out.push(...claw(ang, 5.9));
+    for (const ang of [45, -45, 0]) out.push(...claw(ang, 5.3));
     return out;
   },
   /* 로보틱스(실물 참고, 곡선의 미) — 둥근 대야와 도톰한 링 테두리, 어두운 격자 구덩이,
