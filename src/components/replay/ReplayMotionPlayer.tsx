@@ -4520,11 +4520,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...tailR,
       ...[...tailR].reverse().slice(1).map(([x, y, z]) => [-x, y, z] as [number, number, number]),
     ];
+    void tailPts;
     return [
-      // 꼬리 짙은 살색(요청).
-      [polyPath3(tailPts), 1, "#c68a62"] as ShapeFace,
-      sideFace(polyPath3(tailPts), 0.1),
-      topFace(polyPath3(tailPts.map(([x, y, z]) => [x * 0.45, y, z + 0.16] as [number, number, number])), 0.13),
+      /* 몸통 아래~꼬리 끝을 한 기둥으로(요청) — 납작한 꼬리 판을 걷고, 공용 도형
+         spirePillar를 뒤·아래로 크게 휘어 세운다. 위(허리)에서 굵고 꼬리 끝으로
+         갈수록 가늘어져 한 몸으로 이어진다. 짙은 살색. */
+      ...spirePillar({
+        x: 0, y: 0, z0: 3.6, h: 3.4, w: 1.05, tipW: 0.12,
+        segs: 6, sides: 8, hold: 0.1,
+        leanY: -2.4, curveY: -2.9, curveX: 0,
+        fill: "#c68a62",
+      }),
       // 꼬리 등의 자잘한 짙은 상아색 가시들(요청).
       ...paintBase(hornFaces(0.25, -1.5, 1.15, 0.5, -1.85, 2, 0.28), IVORY_DEEP),
       ...paintBase(hornFaces(-0.2, -2.5, 0.75, -0.45, -2.85, 1.55, 0.24), IVORY_DEEP),
@@ -4532,7 +4538,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 몸기둥 — 아래 절반은 짙은 살색 원통 그대로, 위 절반은 뒤로 살짝 휘는 스파이어
          기둥(요청) — 공용 도형 spirePillar로 세워 어깨 쪽으로 갈수록 굵기가 줄며
          뒤로 젖혀진다. 개인색. */
-      ...paintBase(cylinderFaces3(0, 0, 1.05, 2.4, 1.2), "#c68a62"),
+      // (제거) 아래 원통 — 위 기둥이 꼬리까지 한 몸으로 잇는다.
       ...spirePillar({
         x: 0, y: 0, z0: 3.5, h: 3.1, w: 1.05, tipW: 0.78,
         segs: 4, sides: 8, curveY: -0.85, hold: 0.2,
