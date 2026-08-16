@@ -1283,6 +1283,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push([groundEllipse(wx, wy, 1.9, 2.4), 0.55, "#a9ecf2"] as ShapeFace);
     out.push(...hornFaces(-3.5, 0, 0.8, -1.3, -0.3, 9.6, 3));
     out.push(...hornFaces(3.5, 0, 0.8, 1.3, -0.3, 9.6, 3));
+    /* 앞뒤 발판에 뿔(요청·사진) — 경사로 끝에서 바깥·위로 솟는 갈고리 한 쌍씩.
+       제 깊이를 달아 앞 뿔은 몸 앞, 뒤 뿔은 몸 뒤로 간다. */
+    for (const sy9 of [1, -1] as const) {
+      for (const sx9 of [-1, 1] as const) {
+        const rx9 = sx9 * 2.5;
+        const ry9 = sy9 * (b + run * 0.55);
+        out.push(...tagKey(
+          hornFaces(rx9, ry9, 0.1, sx9 * 3.5, sy9 * (b + run * 0.95), 3.4, 0.95),
+          depthNow(rx9, ry9),
+        ));
+      }
+    }
     return out;
   },
   /* 스타게이트(확정, 요청: 보여준 육각형판으로 — 길이만 조금 짧게) — 긴 육각형
@@ -5066,7 +5078,7 @@ const BUILDING_BASE_YAW = 45;
 const MODEL_YAW_TWEAK: Record<string, number> = {
   // 반시계 90도(지적) — 어시밀레이터·히드라 덴·서플·포지·테란 공사장.
   // 어시밀레이터: 180도(재재지적)→-45도→다시 180도(재재재재지적) — 합계 135.
-  assim: 135, hydraden: -90, trapezoid: -90, forge: -180, scaffold: -90,
+  assim: 135, hydraden: -90, trapezoid: -90, forge: -90, scaffold: -90,
   // 시계 90도(지적) — 템플러 아카이브. 로보틱스는 모델 자체가 앞을 보게 고쳐 보정 0.
   dome: 0, archives: 90,
 };
