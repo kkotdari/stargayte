@@ -11286,7 +11286,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-clockwrap .scr-kakao-icon-btn { color: var(--muted); }
 /* 공유 줄(재재지적: 가운데 정렬). */
 .scr-motion-sharerow { display: flex; justify-content: center; margin-top: 2px; }
-.scr-motion-wide .scr-motion-sharerow { grid-column: 3; }
+/* PC: 진행바 아랫줄(7행)에 오른끝 정렬(지적: 겹침). */
+.scr-motion-wide .scr-motion-sharerow { grid-column: 3; grid-row: 7; justify-content: flex-end; }
 /* 시각 아래 작게(요청) — 컴팩트: 높이 18px, 여백 최소, 글꼴 10px. */
 /* 프라이머리 테마(재재지적) — 앱의 주요 버튼(.scr-btn-primary)과 같은 흰 알약 +
    글로우. 둥근 네모 유지, 컴팩트 높이. */
@@ -11605,7 +11606,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 탐색바는 맵 바로 아래(재재지적) — 맵이 5행까지 차지하므로 6행이 곧 '맵 바로 아래'다.
    보기 버튼 여섯은 왼쪽 기둥의 배속/재생 줄 '위'로: 4행(늘어나는 줄) 바닥에 버튼,
    5행에 조종부, 6행엔 등록자와 탐색바가 나란히 선다. */
-.scr-motion-wide .scr-motion-bar:not(.scr-motion-bar-controls):not(.scr-motion-viewrow) { grid-column: 3; grid-row: 6; }
+/* 공유 줄은 제외(지적: PC에서 진행바와 장면공유 버튼 겹침) — 6행을 나눠 쓰지 않는다. */
+.scr-motion-wide .scr-motion-bar:not(.scr-motion-bar-controls):not(.scr-motion-viewrow):not(.scr-motion-sharerow) { grid-column: 3; grid-row: 6; }
 /* 보기 버튼은 왼쪽 기둥에서 종류별로 한 줄씩(요청) — 짝 버튼(2D/3D·팀색/개인색·작게/
    크게)과 홑 버튼이 각자 제 줄에 선다. */
 .scr-motion-wide .scr-motion-viewrow {
