@@ -741,13 +741,22 @@ function spirePillar(o: {
         ...(fl.visible ? fl.face(wl.d) : [sideFace(wl.d, 0.42)]));
     }
   }
-  /* 끝 단면은 옆면 뒤에(지적: 속 단면이 비쳐 보임) — 먼저 그리면 기운 기둥에서
-     안쪽 면이 앞으로 나와 뚫린 것처럼 보였다. 위·아래 뚜껑을 맨 나중에 덮는다. */
-  const bot = polyPath3(ring(0));
-  out.push(bodyFace(bot), sideFace(bot, 0.3));
+  /* 끝 단면은 옆면 뒤에 덮되, 바깥을 향할 때만 그린다(재지적: 각도에 따라 내부
+     단면이 비쳐 보임) — 아래 뚜껑의 법선은 -T, 위 뚜껑은 +T다. 안쪽을 향한 뚜껑을
+     그리면 기둥 속을 들여다보는 그림이 된다. */
+  const T0 = tangentAt(0);
+  const T1 = tangentAt(1);
+  const botLit = faceLight(-T0[0], -T0[1], -T0[2]);
+  if (botLit.visible) {
+    const bot = polyPath3(ring(0));
+    out.push(bodyFace(bot), ...botLit.face(bot));
+  }
   if (tipW > 0.01) {
-    const cap = polyPath3(ring(1));
-    out.push(bodyFace(cap), topFace(cap, 0.18));
+    const capLit = faceLight(T1[0], T1[1], T1[2]);
+    if (capLit.visible) {
+      const cap = polyPath3(ring(1));
+      out.push(bodyFace(cap), ...capLit.face(cap));
+    }
   }
   return tagKey(o.fill ? paintBase(out, o.fill) : out, depthNow(o.x, o.y));
 }
