@@ -733,9 +733,25 @@ export function buildUnitTracks(
       || cmdName === "Cancel Train" || cmdName === "Unload") {
       const kind = USE_CMD_TO_UNIT[cmdName] ?? "";
       const isBld = BUILDING_ONLY_CMDS.has(cmdName);
+      let mergedTo: Life | null = null;
       for (const tag of tags) {
         let life = lifeOf(tag, pid, sec);
         if (kind) life = markKind(life, kind, sec);
+        if (cmdName === "Merge Archon" || cmdName === "Merge Dark Archon") {
+          /* 합체(지적: 아콘이 화면에 안 나옴) — Merge는 정체(하이/다크 템플러)만
+             남기고 아콘을 안 만들었다. 두 템플러가 하나로 녹는다: 첫 태그가 4초 뒤
+             아콘 생애로 이어지고, 나머지 선택 태그는 같은 생애로 흡수(morph)된다. */
+          const lastPt9 = [...life.ev].reverse().find((v) => v[1] >= 0);
+          done.push(life);
+          alive.delete(tag);
+          if (!mergedTo) {
+            mergedTo = lifeOf(tag, pid, sec + 4);
+            mergedTo.kinds.set(cmdName === "Merge Archon" ? "Archon" : "Dark Archon", 9);
+            if (lastPt9) pushEv(mergedTo, sec + 4, lastPt9[1], lastPt9[2], 3);
+          }
+          life.morphTo = mergedTo;
+          continue;
+        }
         if (cmdName === "Land" && unitName) life = markKind(life, unitName, sec);
         if (isBld) life.bld = true;
         if (cmdName === "Unload All" || cmdName === "Unload") {
@@ -822,6 +838,24 @@ export function buildUnitTracks(
         const tt = riderIn.get(tag)!;
         riderIn.delete(tag);
         ridersOf.set(tt, (ridersOf.get(tt) ?? []).filter((x) => x !== tag));
+      }
+      /* 역방향 승선(지적: 셔틀 드랍인데 유닛이 직접 걸어감) — 수송선을 골라 둔 채
+         제 유닛을 우클릭해도 태우기다: 찍힌 유닛을 승선 장부에 올리고 수송선은
+         그 자리로 이동한다. */
+      if (cmdName === "Right Click" && pos && !life.bld && isTransportLife(life)
+        && tgtLife !== undefined && tgtLife !== life && tgtLife.owner === pid
+        && !tgtLife.bld && !isTransportLife(tgtLife)
+        && (!life.kinds.has("Overlord") || (ventralAt.get(pid) ?? Infinity) <= sec)) {
+        tgtLife.ev.push([Math.round(sec), r1(pos.x), r1(pos.y), 12, tag]);
+        tgtLife.last = sec;
+        if (riderIn.has(tgtTag0)) {
+          const tt9 = riderIn.get(tgtTag0)!;
+          ridersOf.set(tt9, (ridersOf.get(tt9) ?? []).filter((x) => x !== tgtTag0));
+        }
+        riderIn.set(tgtTag0, tag);
+        ridersOf.set(tag, [...(ridersOf.get(tag) ?? []).filter((x) => x !== tgtTag0), tgtTag0]);
+        pushEv(life, sec, pos.x, pos.y, 0);
+        continue;
       }
       if (isBoarding && tag !== tgtTag0 && pos && !life.bld) {
         if (isBunkerIn) {
