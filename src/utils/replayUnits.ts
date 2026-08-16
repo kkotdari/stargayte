@@ -944,16 +944,27 @@ export function buildUnitTracks(
         정체까지), 끝내 안 집힌 유닛은 합성 개체로 스스로 산다 — 완성 시각에 태어나
         랠리로 걸어가고, 전투 사망 보정의 심판도 똑같이 받는다. ──────────────── */
   {
+    /* 생산 건물 발자국 — 유닛은 건물 '아래쪽'(남쪽 출구)에서 나온다(요청). 건설 명령
+       좌표는 발자국 왼위 앵커라, 가로는 가운데·세로는 바닥 아래 0.6타일에서 태어난다. */
+    const PROD_FOOT: Record<string, [number, number]> = {
+      "Command Center": [4, 3], Nexus: [4, 3], Hatchery: [4, 3], Lair: [4, 3], Hive: [4, 3],
+      Barracks: [4, 3], Factory: [4, 3], Starport: [4, 3], Gateway: [4, 3], Stargate: [4, 3],
+      "Robotics Facility": [3, 2],
+    };
     // 건물 태그 → [태어난 초, 자리 x, y, 랠리들] — 변태 사슬은 최신 생애가 이긴다.
     const tagSites = new Map<number, { born: number; x: number; y: number; rallies: [number, number, number][] }[]>();
     for (const life of done) {
       if (!life.bld) continue;
       const site = [...life.ev].reverse().find((v) => v[3] === 2 || v[3] === 5);
       if (!site && !(life.rallies && life.rallies.length > 0)) continue;
+      let bk9 = "";
+      let bn9 = 0;
+      for (const [k9, n9] of life.kinds) if (n9 > bn9) { bk9 = k9; bn9 = n9; }
+      const [fw9, fh9] = PROD_FOOT[bk9] ?? [3, 2.5];
       const arr = tagSites.get(life.tag) ?? [];
       arr.push({
         born: life.born,
-        x: site ? site[1] + 1.5 : -1, y: site ? site[2] + 1.5 : -1,
+        x: site ? site[1] + fw9 / 2 : -1, y: site ? site[2] + fh9 + 0.6 : -1,
         rallies: life.rallies ?? [],
       });
       tagSites.set(life.tag, arr);
@@ -961,7 +972,8 @@ export function buildUnitTracks(
     const hallsOf = (pid: number, at: number): { x: number; y: number }[] => built
       .filter((b) => b.owner === pid && ["Hatchery", "Lair", "Hive", "Command Center", "Nexus"].includes(b.kind)
         && b.born <= at && (b.gone === null || b.gone > at))
-      .map((b) => ({ x: b.x + 2, y: b.y + 1.5 }));
+      // 홀도 아래쪽 출구(요청: 유닛은 건물 아래에서 생산) — 4×3 바닥 밑 0.6타일.
+      .map((b) => ({ x: b.x + 2, y: b.y + 3.6 }));
     const lastRallyOf = (pid: number, at: number): [number, number] | null => {
       let best: [number, number] | null = null;
       let bs = -1;
@@ -991,7 +1003,11 @@ export function buildUnitTracks(
         const pool = prodKind
           ? built.filter((b) => b.owner === it.pid && b.kind === prodKind
             && b.born + 40 <= it.done && (b.gone === null || b.gone > it.done))
-            .map((b) => ({ x: b.x + 1.5, y: b.y + 1 }))
+            // 아래쪽 출구(요청) — 발자국 바닥 밑 0.6타일.
+            .map((b) => ({
+              x: b.x + (PROD_FOOT[prodKind]?.[0] ?? 3) / 2,
+              y: b.y + (PROD_FOOT[prodKind]?.[1] ?? 2.5) + 0.6,
+            }))
           : hallsOf(it.pid, it.done);
         if (pool.length > 0) {
           const pick = pool[idx % pool.length];

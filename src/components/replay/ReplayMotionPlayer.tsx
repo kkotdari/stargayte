@@ -7449,6 +7449,22 @@ export default function ReplayMotionPlayer({
      격자는 깃발(res[2])이 정확해서, '가스 건물 곁 6타일' 폴백을 쓰면 정제소 곁 미네랄
      밭까지 간헐천으로 그려 버린다. 폴백은 깃발이 하나도 없는 옛 격자에서만 쓴다. */
   const gridHasGasFlags = (grid.resources ?? []).some((r) => r[2] === 1);
+  /* 정제소가 감추는 건 '제' 간헐천 하나(지적: 가스 건물을 지으면 곁 간헐천까지
+     사라짐 — mineral10처럼 간헐천이 3.5타일 안에 몰린 맵에서 반경 4타일 뭉뚱그림이
+     이웃까지 지웠다) — 건물마다 가장 가까운 간헐천 자리를 집어 그 자리만 감춘다. */
+  const gasHideOf = useMemo(() => {
+    const rs = (grid.resources ?? []).filter((r) => !gridHasGasFlags || r[2] === 1);
+    return gasBuildings.map((g) => {
+      let gx = -1;
+      let gy = -1;
+      let gd = Infinity;
+      for (const r of rs) {
+        const d = Math.hypot(g.x - r[0], g.y - r[1]);
+        if (d < gd) { gd = d; gx = r[0]; gy = r[1]; }
+      }
+      return { ...g, gx, gy, gd };
+    });
+  }, [gasBuildings, grid, gridHasGasFlags]);
   /* 무한맵 검출(요청: 무한맵은 고갈 제외) — 겹쳐 쌓인 자원(1타일 안 두 항목)이 있으면
      돈맵이다. 일반 맵은 밭이 겹치지 않는다. */
   const moneyMap = useMemo(() => {
@@ -8198,10 +8214,11 @@ export default function ReplayMotionPlayer({
              2×1 밭 폭에 맞춘 2.4타일 — 예전 3.2는 지대(여러 밭 묶음) 시절의 폭이다.
              색은 제 기본색(지적): 미네랄은 반투명 파란 수정, 가스는 회갈색 바위. */
           /* 가스 위 건물(지적: 가스에 건물을 지으면 간헐천 모델은 사라져야) — 정제소류가
-             서 있는 동안은 간헐천을 감춘다. 취소·파괴로 걷히면(gone) 도로 나타난다. */
-          if (gasSpot && gasBuildings.some((g) =>
-            g.sec <= t && (g.gone === 0 || t < g.gone)
-            && Math.hypot(g.x - res[0], g.y - res[1]) <= 4)) return null;
+             서 있는 동안은 '제' 간헐천만 감춘다(재지적: 곁 간헐천까지 사라짐 — 최근접
+             매칭으로 바꿈). 취소·파괴로 걷히면(gone) 도로 나타난다. */
+          if (gasSpot && gasHideOf.some((g) =>
+            g.sec <= t && (g.gone === 0 || t < g.gone) && g.gd <= 4
+            && Math.abs(g.gx - res[0]) < 0.5 && Math.abs(g.gy - res[1]) < 0.5)) return null;
           // 고갈된 미네랄(요청)은 밭이 사라진다. 가스는 아래에서 색만 죽인다.
           /* v2에서는 고갈 어림을 끈다(지적: 미네랄·간헐천에 모델 적용해야지 — 후반에
              자원이 통째로 사라져 있었다). 고갈은 일꾼 수로 짐작한 v1 어림이라 인과
