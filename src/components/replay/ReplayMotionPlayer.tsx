@@ -1940,44 +1940,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ];
     };
     return [
-      // 낮은 기단 — 발치를 한 판으로 받친다.
-      /* 기단은 위에서 봤을 때 모래시계(재지적) — 세로로 쌓은 절두체가 아니라 평면
-         윤곽 자체가 가운데로 잘록하게 파인 장구 꼴이다. 위·아래 판과 둘레 옆면으로
-         두께를 준다. */
+      /* 밑판은 제거(요청) — 대신 왼쪽 톱니 바퀴와 오른쪽 돔 장식 사이를 잇는 좁은
+         연결 판만 남긴다. 낮고 짧아 바닥에 깔린다. */
       ...((): ShapeFace[] => {
-        const N9 = 12;
-        /* 양 끝의 뾰족한 모서리를 깎는다(요청) — 폭이 끝까지 계속 벌어지면 뿔처럼
-           튀어나와 위 부품(반원판·돔) 밖으로 삐친다. 끝 15% 구간에서 도로 좁혀
-           모따기한 것처럼 마감한다. */
-        /* 양 끝은 평평하게 잘라낸다(재재지적: 뾰족한 뿔) — 좁혀 가며 한 점으로 모으면
-           결국 뿔이 된다. 테이퍼를 없애고 끝에서 폭을 그대로 둔 채 잘라, 짧은 직선
-           변으로 마감한다. */
-        const XE9 = 3.55;
-        const halfAt = (v9: number): number => {
-          const t9 = Math.min(1, Math.abs(v9) / XE9);
-          return 1.75 + 1.6 * t9 ** 1.15;
-        };
-        // 허리 축 교환(재지적) — 90도 요잉 뒤에도 같은 방향으로 잘록하게.
-        const rim9 = (z9: number): [number, number, number][] => {
-          const pts9: [number, number, number][] = [];
-          for (let i9 = 0; i9 <= N9; i9 += 1) {
-            const x9 = -XE9 + (XE9 * 2 * i9) / N9;
-            pts9.push([-0.2 + x9, 0.4 + halfAt(x9), z9]);
-          }
-          for (let i9 = N9; i9 >= 0; i9 -= 1) {
-            const x9 = -XE9 + (XE9 * 2 * i9) / N9;
-            pts9.push([-0.2 + x9, 0.4 - halfAt(x9), z9]);
-          }
-          return pts9;
-        };
-        const lo9 = rim9(0);
-        const hi9 = rim9(1.1);
-        /* 옆면은 걸러내지 않는다(지적: 각도에 따라 안 보임) — visible로 빼면 그 자리로
-           뒤가 비친다. 전부 그리되 뒤 향한 면부터 깔아 앞면이 위에 오게 정렬한다. */
+        const lo9: [number, number, number][] = [
+          [-4.3, 1.5, 0], [3.2, 1.5, 0], [3.2, -0.7, 0], [-4.3, -0.7, 0],
+        ];
+        const hi9 = lo9.map(([x9, y9]) => [x9, y9, 0.75] as [number, number, number]);
         const f9: ShapeFace[] = [bodyFace(polyPath3(lo9))];
         const walls9 = lo9.map((_, i9) => {
           const j9 = (i9 + 1) % lo9.length;
-          const mx9 = (lo9[i9][0] + lo9[j9][0]) / 2 + 0.2;
+          const mx9 = (lo9[i9][0] + lo9[j9][0]) / 2 + 0.55;
           const my9 = (lo9[i9][1] + lo9[j9][1]) / 2 - 0.4;
           const ml9 = Math.hypot(mx9, my9) || 1;
           return {
@@ -1988,11 +1961,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           };
         }).sort((q9, w9) => q9.f - w9.f);
         for (const w9 of walls9) {
-          const fl9 = faceLight(w9.nx, w9.ny, 0.3);
+          const fl9 = faceLight(w9.nx, w9.ny, 0.25);
           f9.push(bodyFace(w9.d), ...(fl9.visible ? fl9.face(w9.d) : [sideFace(w9.d, 0.4)]));
         }
-        f9.push(bodyFace(polyPath3(hi9)), topFace(polyPath3(hi9), 0.1));
-        return tagKey(f9, depthNow(-0.2, 0.4) + 1.1);
+        f9.push(bodyFace(polyPath3(hi9)), topFace(polyPath3(hi9), 0.12));
+        return tagKey(f9, depthNow(-0.55, 0.4) + 0.75);
       })(),
       /* 왼쪽 반원판(재재지적: 드럼통은 걷고 반원판만 — 옆면이 드럼 옆면이 보던 좌우를
          보게 90도 돌려서) — 판이 좌우를 보고 앞뒤로 선 얇은 반원 바퀴다. 아랫변은
