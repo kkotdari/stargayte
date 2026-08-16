@@ -4606,51 +4606,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...paintBase(domeFaces3(0, -2.3, 0.95, 0.8, 4.2), "#a9ecf2"));
     // 아가리 어두운 속은 제거(지적: 앞 검정 반투명 부품) — 빛 줄만 남긴다.
     out.push(topFace(`M${pt(-1.6, 1.1, 3.9)} Q${pt(0, 2, 3.9)} ${pt(1.6, 1.1, 3.9)} L${pt(1.4, 1.5, 3.9)} Q${pt(0, 2.4, 3.9)} ${pt(-1.4, 1.5, 3.9)} Z`, 0.5));
-    /* 말굽 + 앞다리 한 덩이(재지적) — U자 굽이 앞아래로 30도쯤 숙고(뒤 볼록부가 높고
-       앞 양 끝이 낮다), 두 앞다리는 그 양 끝에서 곧장 이어져 앞으로 뻗는 입체 뿔이다.
-       금색. */
-    {
-      const N9 = 12;
-      /* 앞(+y)으로 갈수록 z가 내려간다 — tan30 ≈ 0.577. 굽 전체를 앞으로 크게
-         내민다(재지적: 말굽과 앞다리 같이 앞으로). */
-      const FWD9 = 1.9;
-      // 평평하게(재지적) — 기울기를 걷고 한 높이에 눕힌다.
-      const zOf = (): number => 3.7;
-      const P9 = (r: number, u: number, dz: number): [number, number, number] => {
-        const th9 = Math.PI * u;
-        const y9 = 0.5 + FWD9 - Math.sin(th9) * r * 0.85;
-        return [Math.cos(th9) * r, y9, zOf() + dz];
-      };
-      const ring9 = (dz: number): string => {
-        const pts9: [number, number, number][] = [];
-        for (let i9 = 0; i9 <= N9; i9 += 1) pts9.push(P9(3.15, i9 / N9, dz));
-        for (let i9 = N9; i9 >= 0; i9 -= 1) pts9.push(P9(1.95, i9 / N9, dz));
-        return polyPath3(pts9);
-      };
-      const lo9 = ring9(0);
-      const hi9 = ring9(1.44); // 두께 두 배(재지적)
-      out.push(...tagKey([
-        [lo9, 1, "#d4af37"] as ShapeFace, sideFace(lo9, 0.28),
-        ...Array.from({ length: N9 }, (_, i9) => ([
-          polyPath3([
-            P9(3.15, i9 / N9, 0), P9(3.15, (i9 + 1) / N9, 0),
-            P9(3.15, (i9 + 1) / N9, 1.44), P9(3.15, i9 / N9, 1.44),
-          ]), 1, "#d4af37",
-        ] as ShapeFace)),
-        [hi9, 1, "#d4af37"] as ShapeFace, topFace(hi9, 0.18),
-      ], depthNow(0, -1.4) + 0.4));
-      /* 앞다리 — 말굽 양 끝(±3.15, 0.5)에서 시작해 앞·안으로 굽으며 계속 내려간다.
-         뿔 프리미티브라 판이 아니라 부피가 있다. */
-      /* 앞다리 — 말굽 양 끝에서 그대로 이어지고, 굵기도 굽 너비(3.15-1.95=1.2)에
-         맞춘다(재지적: 두 팔도 말굽 너비만큼 두껍게). */
-      for (const m9 of [-1, 1] as const) {
-        const rz9 = zOf() + 0.72;
-        out.push(...tagKey(paintBase([
-          ...rodFaces(m9 * 2.55, 0.5 + FWD9, rz9, m9 * 2.9, 2.9 + FWD9, rz9 - 1.35, 1.2),
-          ...hornFaces(m9 * 2.9, 2.9 + FWD9, rz9 - 1.35, m9 * 1.9, 5.3 + FWD9, rz9 - 2.7, 1.05),
-        ], "#d4af37"), depthNow(m9 * 2.4, 3.4 + FWD9)));
-      }
-    }
+    // (제거·요청) 말굽·앞다리 — 처음부터 다시 만들 자리다.
     return out;
   },
   /* 미네랄(재정정: 삼각뿔 말고 보석 기둥) — 세운 기둥 결정 + 뾰족 갓 셋, 키가 다
