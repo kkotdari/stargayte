@@ -2003,7 +2003,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           for (let i = 0; i <= 10; i += 1) {
             const a = Math.PI * (i / 10);
             // 왼쪽으로(정정: 앞이 아니라 좌) — x를 밖으로 빼 전체가 보인다.
-            pts.push([x, 0.4 - Math.cos(a) * 2.2, 1 + Math.sin(a) * 2.2]);
+            // 반원 바퀴는 바닥에 닿게(요청) — 밑변 z 1 → 0.
+            pts.push([x, 0.4 - Math.cos(a) * 2.2, Math.sin(a) * 2.2]);
           }
           return pts;
         };
@@ -2022,9 +2023,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           const c3 = Math.cos(a3);
           const s3 = Math.sin(a3);
           const yi = 0.4 - c3 * 2.1;
-          const zi = 1 + s3 * 2.1;
+          const zi = s3 * 2.1;
           const yo = 0.4 - c3 * 2.8;
-          const zo = 1 + s3 * 2.8;
+          const zo = s3 * 2.8;
           const tooth = (xx: number): [number, number, number][] => [
             [xx, yi + s3 * 0.22, zi + c3 * 0.22],
             [xx, yi - s3 * 0.22, zi - c3 * 0.22],
