@@ -639,12 +639,14 @@ function protossFace(fill?: string, lift = 0, s = 1): ShapeFace[] {
   const [hx, hy] = project(0, 0.05, 7.45 + lift);
   const [jlx, jly] = project(-0.24 * s, 1.7 * s, 5.55 + lift);
   const [jrx, jry] = project(0.24 * s, 1.7 * s, 5.55 + lift);
-  const w = 0.54 * s;
+  /* 통통한 씨앗 꼴(재지적) — 볼 제어점을 바깥으로 크게 밀어 위가 부풀고 아래로
+     갸름해지는 씨앗 실루엣이 된다. */
+  const w = 0.62 * s;
   const my = (hy + (jly + jry) / 2) / 2;
   const outline = `M${hx - w} ${hy} A${w} ${w * 0.62} 0 0 1 ${hx + w} ${hy}`
-    + ` Q${hx + w * 1.1} ${my} ${jrx} ${jry}`
+    + ` Q${hx + w * 1.42} ${my - w * 0.18} ${jrx} ${jry}`
     + ` L${jlx} ${jly}`
-    + ` Q${hx - w * 1.1} ${my} ${hx - w} ${hy} Z`;
+    + ` Q${hx - w * 1.42} ${my - w * 0.18} ${hx - w} ${hy} Z`;
   return [
     [outline, 1, fill] as ShapeFace,
     topFace(groundEllipse(hx, hy - w * 0.16, w * 0.66, w * 0.32), 0.22),
@@ -662,15 +664,17 @@ function protossLegs(thighFill?: string, shinFill?: string, lift = 0): ShapeFace
   const paint = (f: ShapeFace[], c?: string): ShapeFace[] => (c ? paintBase(f, c) : f);
   const out: ShapeFace[] = [];
   for (const m of [-1, 1] as const) {
-    out.push(...paint(rodFaces(m * 0.55, -0.2, 3.6 + lift, m * 0.62, 0.5, 2.3 + lift, 0.66), thighFill));
+    /* 대퇴는 길고 곧게 세우고, 정강이는 더 굽히며, 무릎·발끝이 바깥으로 벌어지는
+       팔자다리(재지적) — 발 관절은 지면(z 0)에 맞춰 마지막 마디가 눕는다. */
+    out.push(...paint(rodFaces(m * 0.5, -0.3, 3.95 + lift, m * 0.82, 0.3, 2.2 + lift, 0.66), thighFill));
     out.push(...paint([
-      ...rodFaces(m * 0.62, 0.5, 2.3 + lift, m * 0.6, -0.5, 1.2 + lift, 0.56),
-      ...rodFaces(m * 0.6, -0.5, 1.2 + lift, m * 0.68, 0.8, 0.15 + lift, 0.47),
+      ...rodFaces(m * 0.82, 0.3, 2.2 + lift, m * 0.95, -0.75, 1 + lift, 0.56),
+      ...rodFaces(m * 0.95, -0.75, 1 + lift, m * 1.04, 0.5, 0.15 + lift, 0.47),
     ], shinFill));
     /* 발끝 팁(요청) — 지면에 수평으로 눕는 삼각 말굽. 윗판·밑판과 옆면 띠로 두께를
        줘 납작한 판이 아니라 굽으로 보인다. */
-    const fx = m * 0.72;
-    const fy = 0.95;
+    const fx = m * 1.08;
+    const fy = 0.65;
     const fz = 0.06 + lift;
     const tri = (z: number): [number, number, number][] => [
       [fx - 0.34, fy - 0.42, z], [fx + 0.34, fy - 0.42, z], [fx + m * 0.06, fy + 0.6, z],
@@ -3970,14 +3974,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 망토(재지적: 더 들리고 끝단은 완만한 물결) — 어깨에서 시작해 뒤로 들린 자락,
        밑단은 지그재그가 아니라 사인 물결이다. 제 깊이를 달아 뒤에서 보면 몸 위로 온다. */
     ...tagKey(((): ShapeFace[] => {
-      /* 어깨에 딱 붙이고(재지적) 길이 1.5배(요청) — 어깨 폭(±1.3)에서 시작해 자락이
-         무릎 아래까지 내려온다. */
-      const pts: [number, number, number][] = [[-1.28, -0.5, 5.85], [1.28, -0.5, 5.85], [2.6, -2.5, 1.7]];
+      /* 어깨높이에 딱 붙고 몸통을 감싸듯 굽는다(재지적) — 어깨선은 가운데가 뒤로
+         물러난 곡선(몸을 두른다), 옆구리를 지나 아래로 퍼지며, 자락은 아래로 갈수록
+         뒤·위로 젖혀져 나부낀다. */
+      const pts: [number, number, number][] = [
+        [-1.32, -0.35, 5.85], [-0.7, -0.7, 6], [0, -0.8, 6.02], [0.7, -0.7, 6], [1.32, -0.35, 5.85],
+        [1.85, -1.05, 4.5], [2.45, -1.95, 2.9], [2.7, -2.75, 1.9],
+      ];
       for (let i = 0; i <= 10; i += 1) {
         const u = i / 10;
-        pts.push([2.6 - u * 5.2, -2.65, 1.15 + Math.sin(u * Math.PI * 2.5) * 0.6]);
+        // 밑단 — 완만한 물결에 바깥으로 갈수록 살짝 들린다.
+        pts.push([2.55 - u * 5.1, -2.95 - Math.sin(u * Math.PI) * 0.35,
+          1.5 + Math.sin(u * Math.PI * 2.5) * 0.55]);
       }
-      pts.push([-2.6, -2.5, 1.7]);
+      pts.push([-2.7, -2.75, 1.9], [-2.45, -1.95, 2.9], [-1.85, -1.05, 4.5]);
       const d = polyPath3(pts);
       return [[d, 1] as ShapeFace, sideFace(d, 0.18)];
     })(), depthNow(0, -1.5) + 0.6),
