@@ -703,23 +703,23 @@ const P_PLASMA = "#e4f6ff";
    아래로 내밀어 '턱주가리'가 된다. 정수리는 둥근 캡, 양볼이 앞아래 턱 끝 한 점으로
    모인다. fill 없이 부르면 색 없는 몸판이라 아콘의 dark() 실루엣이 그대로 집어 간다. */
 function protossFace(fill?: string, lift = 0, s = 1): ShapeFace[] {
-  // 뒤통수 축소·턱 끝은 뭉뚝하게(재지적) — 폭 0.8 → 0.6, 턱은 한 점이 아니라 짧은 변.
-  /* 얼굴 길이 살짝 축소 + 뒤통수(정수리 캡) 축소해 반구형에 가깝게, 정수리는 볼록
-     하이라이트로(재지적: 오목해 보임). */
-  const [hx, hy] = project(0, 0.05, 7.45 + lift);
-  const [jlx, jly] = project(-0.24 * s, 1.7 * s, 5.55 + lift);
-  const [jrx, jry] = project(0.24 * s, 1.7 * s, 5.55 + lift);
-  /* 통통한 씨앗 꼴(재지적) — 볼 제어점을 바깥으로 크게 밀어 위가 부풀고 아래로
-     갸름해지는 씨앗 실루엣이 된다. */
-  const w = 0.62 * s;
-  const my = (hy + (jly + jry) / 2) / 2;
-  const outline = `M${hx - w} ${hy} A${w} ${w * 0.62} 0 0 1 ${hx + w} ${hy}`
-    + ` Q${hx + w * 1.42} ${my - w * 0.18} ${jrx} ${jry}`
-    + ` L${jlx} ${jly}`
-    + ` Q${hx - w * 1.42} ${my - w * 0.18} ${hx - w} ${hy} Z`;
+  /* 물방울 머리(요청) — 아래는 둥근 구, 위는 가늘어지는 스파이어 기둥. 둘을 이어
+     붙이면 턱이 둥글고 정수리가 뾰족한 물방울이 된다. 앞(+y)으로 살짝 숙인다.
+     fill 없이 부르면 색 없는 몸판이라 아콘의 dark() 실루엣이 그대로 집어 간다. */
+  const r9 = 0.62 * s;
+  const zB = 5.75 + lift;
+  const [bx9, by9] = project(0, 0.1 * s, zB);
   return [
-    [outline, 1, fill] as ShapeFace,
-    topFace(groundEllipse(hx, hy - w * 0.16, w * 0.66, w * 0.32), 0.22),
+    // 턱 — 중심만 투영한 진짜 원이라 어느 시점에서도 안 눌린다.
+    [groundEllipse(bx9, by9, r9, r9), 1, fill] as ShapeFace,
+    // 머리통 — 위로 갈수록 가늘어지며 앞으로 살짝 숙는 기둥.
+    ...spirePillar({
+      x: 0, y: 0.1 * s, z0: zB, h: 2 * s, w: r9 * 0.92, tipW: 0.05,
+      segs: 4, sides: 8, hold: 0.2,
+      leanY: 0.3 * s, curveY: 0.22 * s,
+      fill,
+    }),
+    topFace(groundEllipse(bx9 - r9 * 0.3, by9 - r9 * 0.32, r9 * 0.42, r9 * 0.34), 0.2),
   ];
 }
 /* 프로토스 인간형 공통 몸통(요청: 하템도 질럿·다크와 같은 굽은 몸통) — 앞으로 숙는
