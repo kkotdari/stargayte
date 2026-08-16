@@ -1357,56 +1357,48 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 파일런(정정 둘) — 고리를 수정 허리께로 더 올리고(지적), 수정은 매끈한 육각
      보석으로 다듬었다: 위 뾰족·어깨·허리·아래 뾰족이 좌우대칭. */
   diamond: () => {
-    // 자체 그림자 제거(요청) — 모델에 구운 바닥 원판을 걷는다. 접지 그림자는 공용
-    // groundShadow가 맡아, 구운 판과 겹쳐 두 겹으로 보이던 것을 없앤다.
+    /* 파일런(사진 참고) — 위아래로 뾰족한 큰 파란 수정을 가운데 두고, 그 허리를
+       수평 금 링이 감싼다. 링 둘레에는 세로 갈고리 여섯이 위아래로 뻗고, 링 자체엔
+       청록 띠가 점점이 박힌다. 자체 그림자는 없다(공용 groundShadow가 맡는다). */
     const out: ShapeFace[] = [];
-    // 수정이 너무 높게 떴다(재지적) — 고리·수정·발톱을 한 단씩 내린다.
-    // 상자 정규화(지적: 파일런이 발자국보다 너무 좁게 차지) — 가로를 1.35배 넓힌다.
-    /* 수정 기둥이 기준이다(재재지적) — 허리(zM)는 기둥 길이의 딱 절반이고, 고리는
-       그 허리에 걸린다. 기둥은 지면 바로 위에서 시작한다. */
-    const PY_B = 0.2;
-    const PY_T = 10.2;
+    // 수정 기둥이 기준 — 허리는 길이의 딱 절반이고 링이 거기 걸린다.
+    const PY_B = 0.4;
+    const PY_T = 11.6;
     const PY_M = (PY_B + PY_T) / 2;
-    void project(0, 0, PY_M); // (고리를 세로 띠로 바꾸며 화면 좌표 중심은 안 쓴다)
-    /* 고리는 지면에 수직인 띠(요청) — 수정 기둥을 감싸고 세로로 선 원. 모델 공간
-       yz 평면(x=0)에 놓아 앞(y+)·뒤(y-) 반원이 자연히 갈리고, 그 사이에 기둥이 낀다.
-       띠 둘레에는 작은 수정 보석이 빙 둘러 박힌다. */
-    const RG_O = 5.5;
-    const RG_I = 4.5;
-    const rgPt = (r: number, u: number): [number, number, number] => {
-      const th = u * Math.PI;
-      return [0, Math.cos(th) * r, PY_M + Math.sin(th) * r];
-    };
-    const halfBand = (from: number, to: number): string => {
-      const N9 = 10;
-      const pts: [number, number, number][] = [];
-      for (let i9 = 0; i9 <= N9; i9 += 1) pts.push(rgPt(RG_O, from + ((to - from) * i9) / N9));
-      for (let i9 = N9; i9 >= 0; i9 -= 1) pts.push(rgPt(RG_I, from + ((to - from) * i9) / N9));
-      return polyPath3(pts);
-    };
-    // 위 반(u 0~1: 앞→뒤 위쪽)과 아래 반(u 1~2)으로 나눠 기둥을 사이에 낀다.
-    const ringBack = halfBand(1, 2);
-    const ringFront = halfBand(0, 1);
-    // 띠에 박힌 작은 수정 보석들.
-    const gems: ShapeFace[] = [];
-    for (let i9 = 0; i9 < 16; i9 += 1) {
-      const [gx9, gy9, gz9] = rgPt((RG_O + RG_I) / 2, (i9 / 16) * 2);
-      gems.push([groundEllipse(...project(gx9, gy9, gz9), 0.36, 0.36), 0.85, "#a9ecf2"] as ShapeFace);
-    }
-    const claw = (ang: number, h: number): ShapeFace[] => {
+    const [cx, cy] = project(0, 0, PY_M);
+    const rxo = 5.5;
+    const ryo = rxo * 0.45;
+    const rxi = 4.4;
+    const ryi = rxi * 0.45;
+    const ringBack = `M${cx - rxo} ${cy} A${rxo} ${ryo} 0 0 1 ${cx + rxo} ${cy} L${cx + rxi} ${cy} A${rxi} ${ryi} 0 0 0 ${cx - rxi} ${cy} Z`;
+    const ringFront = `M${cx - rxo} ${cy} A${rxo} ${ryo} 0 0 0 ${cx + rxo} ${cy} L${cx + rxi} ${cy} A${rxi} ${ryi} 0 0 1 ${cx - rxi} ${cy} Z`;
+    /* 세로 갈고리 — 링 자리에서 위·아래로 뻗는 한 쌍의 뿔. 끝이 안쪽으로 모여
+       수정을 감싼다. */
+    const claw = (ang: number): ShapeFace[] => {
       const a = (ang * Math.PI) / 180;
-      return hornFaces(Math.sin(a) * 5.3, Math.cos(a) * 5.3, 0.9, Math.sin(a) * 4, Math.cos(a) * 4, h, 1.35);
+      const bx = Math.sin(a) * 4.95;
+      const by = Math.cos(a) * 4.95;
+      return [
+        ...hornFaces(bx, by, PY_M - 0.5, bx * 0.72, by * 0.72, PY_M + 3.6, 1.05),
+        ...hornFaces(bx, by, PY_M + 0.5, bx * 0.72, by * 0.72, PY_M - 3.6, 1.05),
+      ];
     };
-    // 뒤 발톱들 → 뒤 링 → 수정 → 앞 링 → 앞 발톱들 순으로 겹친다.
-    for (const ang of [135, 180, -135]) out.push(...claw(ang, 7.2));
-    out.push(bodyFace(ringBack), sideFace(ringBack, 0.3), ...gems.slice(8));
-    /* 수정 입체화(재지적: 평면이네) — 네 모서리 양뿔(비피라미드)을 모델 좌표 삼각
-       면으로 짠다: 요잉에 통째로 돌고, 보이는 면만 그려 속면이 안 비친다. */
-    // 수정구는 더 길게(요청) — 아래는 지면 가까이, 위는 더 높이.
+    // 링에 박힌 청록 띠 — 갈고리 사이사이.
+    const gems: ShapeFace[] = [];
+    for (const ang of [30, 90, 150, 210, 270, 330]) {
+      const a = (ang * Math.PI) / 180;
+      gems.push([groundEllipse(cx + Math.cos(a) * 4.95, cy + Math.sin(a) * 2.23, 0.62, 0.3),
+        0.9, "#3bd8c2"] as ShapeFace);
+    }
+    // 뒤 갈고리 → 뒤 링 → 수정 → 앞 링 → 앞 갈고리 순으로 겹친다.
+    for (const ang of [180, 120, 240]) out.push(...claw(ang));
+    out.push(bodyFace(ringBack), sideFace(ringBack, 0.3), ...gems.slice(3));
+    /* 수정 — 네 모서리 양뿔(비피라미드)을 모델 좌표 삼각면으로 짠다: 요잉에 통째로
+       돌고, 보이는 면만 그려 속면이 안 비친다. 위가 더 길고 뾰족하다(사진). */
     const zB = PY_B;
-    const zM = PY_M;
+    const zM = PY_M - 0.6;
     const zT = PY_T;
-    const w = 3.1;
+    const w = 2.6;
     const eq: [number, number][] = [[w, 0], [0, w], [-w, 0], [0, -w]];
     for (let i = 0; i < 4; i += 1) {
       const [x1, y1] = eq[i];
@@ -1417,7 +1409,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       nx /= nl;
       ny /= nl;
       const up = faceLight(nx, ny, 0.55);
-      // 수정 기둥은 코어 구슬과 같은 반투명 연시안(재지적).
+      // 수정은 코어 구슬과 같은 반투명 연시안.
       if (up.visible) {
         const d = polyPath3([[0, 0, zT], [x1, y1, zM], [x2, y2, zM]]);
         out.push([d, 0.6, "#a9ecf2"] as ShapeFace, ...up.face(d));
@@ -1428,9 +1420,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         out.push([d, 0.6, "#a9ecf2"] as ShapeFace, ...dn.face(d));
       }
     }
-    out.push(bodyFace(ringFront), topFace(ringFront, 0.22), ...gems.slice(0, 8));
-    for (const ang of [90, -90]) out.push(...claw(ang, 7.6));
-    for (const ang of [45, -45, 0]) out.push(...claw(ang, 6.9));
+    out.push(bodyFace(ringFront), topFace(ringFront, 0.22), ...gems.slice(0, 3));
+    for (const ang of [0, 60, 300]) out.push(...claw(ang));
     return out;
   },
   /* 로보틱스(실물 참고, 곡선의 미) — 둥근 대야와 도톰한 링 테두리, 어두운 격자 구덩이,
@@ -1879,11 +1870,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   scifac: () => {
     // 발 은색(요청: 이륙 가능 건물).
     // 발은 몸 안쪽으로(요청: 윗부분이 안 보이게) — 자리는 아래 호출부에서 당긴다.
-    const foot = (fx: number, fy: number): ShapeFace[] => paintBase([
+    /* 발마다 제 깊이(재지적: 발 비침) — 무깊이 면이라 직전 부품 깊이를 물려받아
+       드럼 앞뒤 판정이 어긋났다. */
+    const foot = (fx: number, fy: number): ShapeFace[] => tagKey(paintBase([
       ...cylinderFaces3(fx, fy, 1.05, 1.3),
       bodyFace(discPath3(fx, fy, 0.25, 1.4)),
       capFace(discPath3(fx, fy, 1.32, 0.55), 0.3),
-    ], "#c9ced6");
+    ], "#c9ced6"), depthNow(fx, fy));
     const glow = (gx2: number, gy2: number, gz2: number): ShapeFace => {
       const [px2, py2] = project(gx2, gy2, gz2);
       return topFace(groundEllipse(px2, py2, 0.45, 0.2), 0.45);
