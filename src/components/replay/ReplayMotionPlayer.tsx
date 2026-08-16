@@ -1947,15 +1947,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...((): ShapeFace[] => {
         const N9 = 12;
         const halfAt = (y9: number): number => 1.9 + 2.6 * (Math.abs(y9) / 4.6) ** 1.5;
+        // 허리 축 교환(재지적) — 90도 요잉 뒤에도 같은 방향으로 잘록하게.
         const rim9 = (z9: number): [number, number, number][] => {
           const pts9: [number, number, number][] = [];
           for (let i9 = 0; i9 <= N9; i9 += 1) {
-            const y9 = -4.6 + (9.2 * i9) / N9;
-            pts9.push([-0.2 + halfAt(y9), 0.4 + y9, z9]);
+            const x9 = -4.6 + (9.2 * i9) / N9;
+            pts9.push([-0.2 + x9, 0.4 + halfAt(x9), z9]);
           }
           for (let i9 = N9; i9 >= 0; i9 -= 1) {
-            const y9 = -4.6 + (9.2 * i9) / N9;
-            pts9.push([-0.2 - halfAt(y9), 0.4 + y9, z9]);
+            const x9 = -4.6 + (9.2 * i9) / N9;
+            pts9.push([-0.2 + x9, 0.4 - halfAt(x9), z9]);
           }
           return pts9;
         };
@@ -5072,7 +5073,7 @@ const BUILDING_BASE_YAW = 45;
 const MODEL_YAW_TWEAK: Record<string, number> = {
   // 반시계 90도(지적) — 어시밀레이터·히드라 덴·서플·포지·테란 공사장.
   // 어시밀레이터: 180도(재재지적)→-45도→다시 180도(재재재재지적) — 합계 135.
-  assim: 135, hydraden: -90, trapezoid: -90, forge: -90, scaffold: -90,
+  assim: 135, hydraden: -90, trapezoid: -90, forge: -180, scaffold: -90,
   // 시계 90도(지적) — 템플러 아카이브. 로보틱스는 모델 자체가 앞을 보게 고쳐 보정 0.
   dome: 0, archives: 90,
 };
