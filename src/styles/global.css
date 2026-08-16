@@ -5419,7 +5419,8 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
     display: flex; flex-wrap: wrap; align-items: center; gap: 7px;
   }
   .scr-v2-toolbar-title .scr-activity-crumb-sep { margin: 0; }
-  .scr-header-inner { padding: 6px 8px 2px; gap: 12px; justify-content: flex-start; }
+  /* 더 축소 + 우측 정렬(재재지적). */
+  .scr-header-inner { padding: 6px 8px 2px; gap: 12px; justify-content: flex-end; }
   /* 우측 버튼 묶음(.scr-user)은 모바일에서 자식이 전부 숨김인데 margin-left:auto가 남아
      justify-content:center를 무력화했다(지적: 가로 가운데가 안 됨) — 묶음째 숨긴다. */
   .scr-user { display: none; }
@@ -5458,9 +5459,8 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
      원형 강제 오버라이드와 같은 패턴). */
   /* 로고/아바타 확대 + 닉네임 1스텝 확대(요청, 재조정: 로고 32·아바타 36) — 닉네임은
      보이던 크기(body 16) 기준 한 스텝 위인 subhead(20). */
-  /* 타이틀 줄에 있던 그 크기(재재재지적: "방금 줄인 크기") — 당시 전체 로고 높이
-     0.78em(≈23px)은 별 포함 판 기준이라, 별 뺀 워드마크로는 17px이 같은 폭(≈150px)이다. */
-  .scr-brand-logo-img { height: 17px; }
+  /* 더 축소(재재재재지적) — 17px → 13px(전체 폭 ≈115px), 우측 정렬. */
+  .scr-brand-logo-img { height: 13px; }
   /* 모바일 헤더에선 프로필 칩(프사)을 아예 숨긴다(요청) — 프로필은 서랍이 보여주고,
      내 정보/로그아웃도 서랍 액션에 있다. */
   .scr-user-chip { display: none; }
