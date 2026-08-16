@@ -2159,24 +2159,28 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       -2.2 + t9 * 5.4,
       0.5 + Math.sin(Math.PI * t9 * 0.85) * 3.2,
     ];
+    /* 가운데 구조물은 개인색(요청) — fill을 주지 않으면 그리는 쪽이 팀색을 넣는다.
+       마디 테는 같은 팀색 위에 어두운 그늘을 덧대 골로 읽힌다. */
     out.push(...tagKey(spirePillar({
       x: 0, y: 0, h: 1, w: 1.5, tipW: 1.05, segs: 10, sides: 10, hold: 0.1, taper: 1.2,
-      path: GRB, fill: "#b3543a",
+      path: GRB,
     }), depthNow(0, 0.4) * 1.6 + 4));
     for (const t9 of [0.28, 0.46, 0.64, 0.82]) {
       const [gx9, gy9, gz9] = GRB(t9);
-      out.push(...tagKey(paintBase(spirePillar({
+      const rib9 = spirePillar({
         x: gx9, y: gy9, z0: gz9 - 0.16, h: 0.32, w: 1.45, tipW: 1.45,
         segs: 1, sides: 10, hold: 1,
-      }), "#8a3f2c"), depthNow(gx9, gy9) * 1.6 + 5));
+      });
+      out.push(...tagKey([...rib9, ...rib9.map(([d9]) => sideFace(d9, 0.2))],
+        depthNow(gx9, gy9) * 1.6 + 5));
     }
     // 애벌레 끝 상아 뿔.
     out.push(...tagKey(spikeHorn(0, -1.7, 4.2, -0.5, -2.9, 7.2, 1.3, IVORY, 6, 0.7, 0, -1),
       depthNow(0, -2.3) * 1.6 + 5));
-    // 앞 잿빛 가시 조각 한 쌍.
-    out.push(...tagKey(spikeHorn(-1.7, 3.4, 0.4, -2.6, 4.8, 2.4, 0.8, undefined, 6, 0.4, -0.6, 0.8),
+    // 땅에서 솟는 앞 가시 둘 — 다른 뿔과 같은 상아색(요청).
+    out.push(...tagKey(spikeHorn(-1.7, 3.4, 0.4, -2.6, 4.8, 2.4, 0.8, IVORY, 6, 0.4, -0.6, 0.8),
       depthNow(-2.1, 4.1) * 1.6));
-    out.push(...tagKey(spikeHorn(1.9, 3.2, 0.4, 2.8, 4.4, 2.2, 0.8, undefined, 6, 0.4, 0.6, 0.8),
+    out.push(...tagKey(spikeHorn(1.9, 3.2, 0.4, 2.8, 4.4, 2.2, 0.8, IVORY, 6, 0.4, 0.6, 0.8),
       depthNow(2.3, 3.8) * 1.6));
     return out;
   },
@@ -2932,7 +2936,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       x: 0, y: 0, z0: 0, h: QN_H, w: QN_RB, tipW: QN_RT,
       segs: 7, sides: 14, hold: 0, taper: QN_P,
     }), "#8a5f43"), 0));
-    // 겹친 살덩이 엽 여섯 — 봉분 옆선을 타는 짧고 굵은 기둥.
+    // 겹친 살덩이 엽 여섯 — 봉분 옆선을 타는 짧고 굵은 기둥. 개인색(요청).
     for (const ang of [-150, -90, -30, 30, 90, 150]) {
       const a2 = (ang * Math.PI) / 180;
       const dxr = Math.sin(a2);
@@ -2943,7 +2947,6 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           const r9 = qnR(t9) * 0.96;
           return [dxr * r9, dyr * r9, QN_H * t9];
         },
-        fill: "#a8613f",
       }), depthNow(dxr * 3.4, dyr * 3.4) * 1.6));
     }
     // 꼭대기 덮개 — 봉분 윗지름을 그대로 받아 얹는다.
