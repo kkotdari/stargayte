@@ -490,6 +490,9 @@ const FOOTPRINT: Record<string, [number, number]> = {
   "Command Center": [4, 3], Nexus: [4, 3], Hatchery: [4, 3], Lair: [4, 3], Hive: [4, 3],
   Barracks: [4, 3], Factory: [4, 3], Starport: [4, 3], "Science Facility": [4, 3],
   Gateway: [4, 3], Stargate: [4, 3], "Engineering Bay": [4, 3],
+  /* 전수조사에서 빠져 있던 4×3 건물들 — 폴백 3×2로 그려져 옆 건물보다 한 단 작았다.
+     나머지(아카데미·포지·풀·에보 등)는 폴백 3×2가 원작 발자국과 같아 그대로 둔다. */
+  "Robotics Facility": [4, 3], "Fleet Beacon": [4, 3],
   Refinery: [4, 2], Assimilator: [4, 2], Extractor: [4, 2],
   Pylon: [2, 2], "Missile Turret": [2, 2], "Photon Cannon": [2, 2],
   "Creep Colony": [2, 2], "Sunken Colony": [2, 2], "Spore Colony": [2, 2],
@@ -497,6 +500,10 @@ const FOOTPRINT: Record<string, [number, number]> = {
   // 테란 부속건물(요청: 모델링·매핑) — 실제 발자국 2×2로 본체 오른쪽에 붙는다.
   "Comsat Station": [2, 2], "Nuclear Silo": [2, 2], "Machine Shop": [2, 2],
   "Control Tower": [2, 2], "Covert Ops": [2, 2], "Physics Lab": [2, 2],
+  /* screp가 쓰는 변형 이름(SHAPE_KIND에는 이미 있던 별칭)도 같은 발자국으로 — 전수조사
+     에서 컴샛만 홀로 4타일(폴백 3×2 × 애드온 보정)로 그려져, 옆에 붙은 머신샵(2.7타일)
+     보다 1.5배 컸다. */
+  ComSat: [2, 2], "Queens Nest": [3, 2], "Queen's Nest": [3, 2],
 };
 const footDx = (unit: string): number => (FOOTPRINT[unit] ?? [3, 2])[0] / 2;
 const footDy = (unit: string): number => (FOOTPRINT[unit] ?? [3, 2])[1] / 2;
@@ -5595,15 +5602,28 @@ function muzzlePoint(
 const unitMarkerKind = (u: string, race?: string): string =>
   UNIT_3D[u] ?? (race === "테란" ? "gunner" : race === "저그" ? "zling" : "zealot");
 /* 유닛 덩치(요청: 소형/중형/대형 크기 구분) — 브루드워의 유닛 크기 분류를 따른다.
-   표에 없으면 대형으로 본다(큰 것들이 표에서 빠졌을 때 눈에 띄는 쪽이 덜 틀린다). */
+   전수조사(요청) 결과 표가 절반쯤 비어 있었고, 빠진 유닛은 전부 대형으로 떨어졌다.
+   대형 폴백은 "큰 쪽이 덜 틀린다"는 어림이었지만, 실제로는 커세어·퀸 같은 중형과
+   드라군·탱크 같은 대형이 한 칸에 뭉쳐 크기로는 아무것도 구분되지 않았다. 이제 전
+   유닛을 원작 분류(Small/Medium/Large) 그대로 적는다 — 폴백도 대형이 아니라 중형
+   (가운데로 틀린다). 이 등급이 곧 화면 크기의 유일한 손잡이다(UNIT_TILES). */
 const UNIT_BULK: Record<string, 0 | 1 | 2> = {
-  Marine: 0, Firebat: 0, Ghost: 0, Medic: 0, Zealot: 0, "High Templar": 0,
-  "Dark Templar": 0, Observer: 0, Zergling: 0, Scourge: 0, Mutalisk: 0,
-  Broodling: 0, "Infested Terran": 0,
-  // 일꾼도 소형(지적: 같은 화면에서 유닛 크기가 제각각) — 표에서 빠져 대형(15px)으로
-  // 그려졌다. 브루드워 분류대로 소형이다.
-  SCV: 0, Probe: 0, Drone: 0,
-  Hydralisk: 1, Vulture: 1, Corsair: 1, Lurker: 1, Queen: 1, Defiler: 1,
+  // ── 테란 ──
+  SCV: 0, Marine: 0, Firebat: 0, Ghost: 0, Medic: 0, "Spider Mine": 0,
+  Vulture: 1,
+  "Siege Tank": 2, "Siege Tank (Tank Mode)": 2, "Siege Tank (Siege Mode)": 2,
+  Goliath: 2, Wraith: 2, Dropship: 2, "Science Vessel": 2, Battlecruiser: 2, Valkyrie: 2,
+  // ── 프로토스 ──
+  Probe: 0, Zealot: 0, "High Templar": 0, "Dark Templar": 0, Observer: 0, Interceptor: 0,
+  Corsair: 1,
+  Dragoon: 2, Archon: 2, "Dark Archon": 2, Reaver: 2, Shuttle: 2, Scout: 2,
+  Carrier: 2, Arbiter: 2,
+  // ── 저그 ──
+  Larva: 0, Drone: 0, Zergling: 0, Mutalisk: 0, Scourge: 0, Broodling: 0,
+  "Infested Terran": 0,
+  Hydralisk: 1, Queen: 1, Defiler: 1,
+  // 럴커는 원작에서 대형이다(조사: 중형으로 잘못 적혀 있었다).
+  Lurker: 2, Ultralisk: 2, Overlord: 2, Guardian: 2, Devourer: 2,
 };
 /** 도형째 돌려 그리는 각도(시계방향) — 옛 스타게이트(반쪽 원통)용 45도는 봉오리
  *  재설계로 걷었다: 잎이 정확히 위아래·좌우에 서야 하고(요청), 화면 회전은 바닥
@@ -5839,9 +5859,9 @@ type UnitDrawOp = {
 /* 내용물 상자(재지적: 유닛·그림자·선택 고리가 다 안 맞음) — 바닥(y)만이 아니라 실제
    그려진 픽셀의 가로 중심(cx)까지 잰다. 내용물이 16-상자 안에서 치우친 모델은 상자
    중심에 붙인 그림자·링이 몸과 어긋났다. 전 픽셀 스캔, 캐시당 한 번. */
-function contentBox(cv: HTMLCanvasElement): { bot: number; cx: number; top: number } {
+function contentBox(cv: HTMLCanvasElement): { bot: number; cx: number; top: number; w: number } {
   const c2 = cv.getContext("2d", { willReadFrequently: true });
-  if (!c2 || cv.width === 0 || cv.height === 0) return { bot: cv.height, cx: cv.width / 2, top: 0 };
+  if (!c2 || cv.width === 0 || cv.height === 0) return { bot: cv.height, cx: cv.width / 2, top: 0, w: cv.width };
   const { data, width, height } = c2.getImageData(0, 0, cv.width, cv.height);
   let bot = 0;
   let top = height;
@@ -5858,8 +5878,11 @@ function contentBox(cv: HTMLCanvasElement): { bot: number; cx: number; top: numb
       }
     }
   }
-  if (bot === 0) return { bot: cv.height, cx: cv.width / 2, top: 0 };
-  return { bot, cx: (minX + maxX + 1) / 2, top };
+  if (bot === 0) return { bot: cv.height, cx: cv.width / 2, top: 0, w: cv.width };
+  /* 잉크 폭(전수조사: "너무 크게/작게 그려지는 것") — 상자는 등급대로 같아도 모델이
+     상자를 채우는 몫이 제각각이라, 같은 소형끼리도 어떤 놈은 커 보이고 어떤 놈은
+     작아 보인다. 그 몫을 재서 그리기 단계가 되돌린다. */
+  return { bot, cx: (minX + maxX + 1) / 2, top, w: maxX - minX + 1 };
 }
 const PATH2D_CACHE = new Map<string, Path2D>();
 const pathOf = (d: string): Path2D => {
@@ -5872,10 +5895,15 @@ const pathOf = (d: string): Path2D => {
    수천 번의 가우시안 블러 합성이라 PC에서도 버벅였다. 같은 (종류·방향·시각·색·크기)
    조합은 한 번만 오프스크린 캔버스에 굽고, 프레임에선 drawImage 한 번으로 찍는다.
    줌 중엔 크기 양자화 칸이 바뀌며 다시 굽지만 멈추면 전부 캐시 적중이다. */
-const SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; bot: number; cx: number; top: number }>();
+/** 상자 채움 보정에서 빼는 조각 — 본체와 짝을 이뤄 그려지는 부품들. */
+const FILL_SKIP = new Set(["tankgun", "burrowhole"]);
+/** 모델별 상자 채움 몫(잉크 폭 / 상자 폭) — 종류마다 한 번만 재고 계속 쓴다. 방향마다
+ *  다시 재면 몸이 도는 동안 크기가 출렁이고, 판도 두 배로 굽게 된다. */
+const FILL_CACHE = new Map<string, number>();
+const SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; bot: number; cx: number; top: number; w: number }>();
 function unitSprite(
   op: UnitDrawOp, pxq: number, B: number,
-): { cv: HTMLCanvasElement; pad: number; l: number; bot: number; cx: number; top: number } | null {
+): { cv: HTMLCanvasElement; pad: number; l: number; bot: number; cx: number; top: number; w: number } | null {
   const rotB = op.rotDeg !== undefined
     ? ((Math.round(op.rotDeg / 22.5) * 22.5) % 360 + 360) % 360 : -1;
   const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
@@ -6221,9 +6249,11 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
           if (showHp !== false && op.hpFrac !== undefined && op.hpFrac > 0) {
             /* 최대 체력의 제곱근 비례(재재지적: 정비례로 갔더니 적용이 안 된 듯 보이고
                작은 건물 바가 실오라기가 됨) — 넥서스(1500)와 성큰(300)이 √5≈2.2배 차이. */
-            const bScale = Math.min(2, Math.max(0.4, Math.sqrt((op.hpMax ?? 800) / 1000)));
-            const bw3 = Math.max(6, wPx * 0.7 * bScale);
-            const bh3 = Math.max(1.8, wPx * 0.05);
+            /* 유닛 바와 같은 원칙(전수조사) — 바는 제 건물보다 넓지 않다. 배율은
+               0.6~1.4배로 조이고 폭 기준도 0.7 → 0.6으로 낮춘다. */
+            const bScale = Math.min(1.4, Math.max(0.6, Math.sqrt((op.hpMax ?? 800) / 1000)));
+            const bw3 = Math.max(5, wPx * 0.6 * bScale);
+            const bh3 = Math.max(1.6, wPx * 0.05);
             const bx3 = sx - bw3 / 2;
             /* 머리 바로 위(재재지적: 너무 위) — 그려진 픽셀 꼭대기에 살짝만 띄운다. */
             const byTop = sy + hPx / 2 - (bspr.pad + sideQ) * k + (bspr.top / B) * k - bh3 - 2;
@@ -6253,7 +6283,22 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
       }
       const { faces, rot } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
       if (!faces) { ctx.restore(); continue; }
-      const px = op.sizePx * zoom;
+      /* 상자를 덜 채운 몫을 되돌린다(전수조사: "너무 크게/작게 그려지는 것 체크") —
+         등급으로 상자는 같게 맞췄어도, 모델이 그 상자를 채우는 몫이 24~69%로 제각각
+         이라 눈에 보이는 몸은 여전히 세 배 가까이 벌어져 있었다(실측: 프로브·저글링
+         0.24, 질럿·SCV 0.42, 셔틀 0.69 — 같은 소형끼리도 1.8배). 구운 판의 실제 잉크
+         폭을 재서 목표 몫까지 키운다. 키우기만 하고(≥1) 상한을 두어(1.55), 잘 채운
+         모델은 건드리지 않는다. 시즈 포신·버로우 구멍처럼 본체와 짝을 이루는 조각은
+         제 크기를 지켜야 하므로 뺀다 — 혼자 부풀면 본체와 어긋난다. */
+      const px0 = op.sizePx * zoom;
+      let fillW = FILL_CACHE.get(op.kind);
+      if (fillW === undefined && !FILL_SKIP.has(op.kind)) {
+        const pq0 = Math.max(4, Math.round(px0 / 2) * 2);
+        const sp0 = unitSprite(op, pq0, B);
+        fillW = sp0 && sp0.w > 0 ? (sp0.w / B) / pq0 : 1;
+        FILL_CACHE.set(op.kind, fillW);
+      }
+      const px = px0 * Math.min(1.55, Math.max(1, 0.58 / (fillW ?? 1)));
       /* 공중 유닛(요청: 높이 더 높이 + 바닥 그림자) — 발밑 자리에 그림자 타원을 깔고
          몸은 반 키만큼 위로 띄운다. 떠 있음이 땅 유닛과 한눈에 갈린다. */
       // 높이 반으로(재재지적) — 1.6 → 0.8.
@@ -6352,9 +6397,13 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         /* 100% 길이 = 최대 체력의 제곱근 비례(재재지적: 정비례는 마린 바가 4px 바닥에
            눌리고 큰 유닛 바만 길어져 '적용 안 된' 것처럼 보였다) — 마린(40) 대비
            울트라(400)가 √10≈3.2배. 남은 칸과 색은 자기 비율(hpFrac) 그대로다. */
-        const hpScale = Math.min(3.2, Math.max(0.45, Math.sqrt((op.hpMax ?? 100) / 150)));
-        const bw2 = Math.max(4, px * 0.95 * hpScale);
-        const bh2 = Math.max(1.6, px * 0.09);
+        /* 다만 바가 유닛보다 커지면 안 된다(전수조사: 크기를 타일 비례로 바로잡고 나니
+           3.2배까지 늘어난 바가 몸을 덮어, 지도가 유닛이 아니라 초록 막대밭으로 읽혔다)
+           — 배율은 0.7~1.7배로 조인다. 등급 자체가 이미 몸 크기를 가르므로(소 1.9 ↔
+           대 3.3타일) 저글링과 울트라의 바 길이 차이는 그대로 4배쯤 난다. */
+        const hpScale = Math.min(1.25, Math.max(0.75, Math.sqrt((op.hpMax ?? 100) / 150)));
+        const bw2 = Math.max(3, px * 0.85 * hpScale);
+        const bh2 = Math.max(1.4, px * 0.085);
         const bx2 = sx - bw2 / 2;
         /* 머리 바로 위(재재지적: 너무 위) — 실제 그려진 픽셀 꼭대기(contentBox.top)에
            살짝만 띄운다. */
@@ -8273,20 +8322,30 @@ export default function ReplayMotionPlayer({
     return m;
   })() : null;
   // 글자 크기 CSS(모바일/PC 미디어)와 같은 값 — 캔버스는 CSS를 못 읽으니 여기서 정한다.
+  // 이제 크기는 캔버스가 정한다 — 이 값은 그리기 주기(아래 DRAW_GAP_MS)에만 쓰인다.
   const pcView = typeof window !== "undefined" && !!window.matchMedia?.("(min-width: 1160px)").matches;
   const x2Mul = unitX2 ? 2 : 1;
-  /** 낱개 유닛 도형 크기(px) — 덩치(unit-s/m/l 6·8·11/PC 8·11·15) × troop 1.15 × 2배 × 깊이. */
+  /* ── 유닛 크기의 자(전수조사·요청: "실제 캔버스 × 소·중·대로 균일하게") ─────────
+     예전엔 등급마다 고정 픽셀(모바일 6·8·11 / PC 8·11·15)이었다. 화면 폭이나 맵
+     격자와 무관한 값이라, 같은 마린이 맵마다 제멋대로 커 보였다: 64×64 맵의 한 타일은
+     128×128의 두 배라 같은 6px이 절반 크기로 읽힌다. 건물은 진작부터 발자국(타일)
+     비례였으니 유닛만 홀로 다른 자를 쓰고 있었던 셈이다.
+     이제 둘이 한 자를 쓴다 — 한 타일의 화면 픽셀 × 등급비(소·중·대). 줌은 그리기
+     단계에서 곱해지므로 어느 배율에서도 타일 대비 크기는 그대로다. */
+  const tilePx = Math.max(1.2, (mapRef.current?.clientWidth ?? 320) / Math.max(1, grid.width));
+  /* 등급별 크기(타일) — 소·중·대. 원작 스프라이트(마린 0.6·탱크 1.25·배틀 2.8타일)
+     보다는 크게 잡는다: 128×128 맵에서 한 타일은 3px 안팎이라 실물 비례로 그리면
+     보병이 점 하나가 된다. 대신 등급 간 비율(1 : 1.3 : 1.75)은 원작에 맞추고, 본진
+     발자국(4타일)보다는 확실히 작게 둔다 — 고정 픽셀 시절 대형은 4.3타일이라 커맨드
+     센터보다 넓었고(전수조사), 수송선은 1.7배가 더 붙어 5~7타일까지 갔다. */
+  const UNIT_TILES = [1.9, 2.5, 3.3] as const;
+  /** 낱개 유닛 도형 크기(px) — 타일 × 등급비(소·중·대) × 2배 토글 × 깊이. */
   const unitGlyphPx = (bulk: 0 | 1 | 2, depthY: number): number =>
-    (pcView ? [8, 11, 15] : [6, 8, 11])[bulk] * 1.15 * x2Mul * pitchK(depthY);
-  /** 점 갈래 크기(px) — dot 9/17·scout/miner 7/10에 도형 배수(troop 1.15·ovie 1.7). */
-  const dotGlyphPx = (kindCss: "dot" | "scout", mult: number, depthY: number): number =>
-    (kindCss === "dot" ? (pcView ? 17 : 9) : (pcView ? 10 : 7)) * mult * x2Mul * pitchK(depthY);
-  /** 유닛 이름 → 낱개 도형 크기 — 수송선은 어디서 그리든 dot 눈금(전용 마커와 같은 크기)
-   *  이어야 한다: 부대 구성·갓 생산 길에서 덩치 눈금(대형)으로 서면 유독 커 보인다. */
+    tilePx * UNIT_TILES[bulk] * x2Mul * pitchK(depthY);
+  /** 유닛 이름 → 낱개 도형 크기 — 수송선도 이제 제 등급(대형)일 뿐, 따로 부풀리지
+   *  않는다(전수조사: dot 눈금 1.7배가 오버로드를 본진보다 크게 그렸다). */
   const unitPxOf = (u: string, depthY: number): number =>
-    (u === "Shuttle" || u === "Dropship" || u === "Overlord")
-      ? dotGlyphPx("dot", 1.7, depthY)
-      : unitGlyphPx(u === "?" ? 0 : (UNIT_BULK[u] ?? 2), depthY);
+    unitGlyphPx(u === "?" ? 0 : (UNIT_BULK[u] ?? 1), depthY);
   const dragRef = useRef<{ id: number; sx: number; sy: number; px: number; py: number } | null>(null);
   const onMapPointerDown = (e: React.PointerEvent) => {
     if (zoom <= 1 || e.button !== 0) return;
@@ -9017,7 +9076,8 @@ export default function ReplayMotionPlayer({
               // 모델 없는 부속건물 폴백 — + 하나(캔버스 전환 첫 판이 모델까지 +로 덮던
               // 것을 바로잡았다: 이제 여섯 애드온 다 모델이 있어 여긴 안전망이다).
               unitOps.push({
-                fx: fxF, fy: fyF, z, kind: "", sizePx: (pcView ? 11 : 7) * mkK * pulse,
+                // 폴백 + 글자도 같은 자로(전수조사) — 고정 7/11px이었다.
+                fx: fxF, fy: fyF, z, kind: "", sizePx: tilePx * 2 * mkK * pulse,
                 color, alpha, textGlyph: "+", noShadow: true,
               });
               return null;
@@ -9084,7 +9144,9 @@ export default function ReplayMotionPlayer({
                  1.5배까지 세 단계로 자란다. */
               const prog = Math.min(1, (t - sec) / (BUILD_SEC[unit] ?? 30));
               // 시작을 크게(재지적: 처음에 너무 작음 — 훨씬 크게 시작) — 0.7 → 1.0.
-              const stage = prog < 0.33 ? 1 : prog < 0.7 ? 1.25 : 1.5;
+              /* 자라되 완성 건물을 넘지 않는다(전수조사: 1.0→1.5배라 4타일 해처리의
+                 고치가 6.4타일 — 다 지어진 건물보다 컸다). 발자국의 0.8 → 1.0으로. */
+              const stage = prog < 0.33 ? 0.8 : prog < 0.7 ? 0.9 : 1;
               const beat = race2 === "저그" ? stage * (1 + 0.06 * Math.sin(t * 5.2)) : 1;
               /* 공사 모델은 바닥 맞춤(지적: 소환구보다 훨씬 아래쪽에 실제 건물이 생긴다)
                  — 완성 모델은 '들어올린 칸'의 바닥 = 발자국 바닥에 앉는데, 소환구·고치는
@@ -9298,7 +9360,10 @@ export default function ReplayMotionPlayer({
           const depleted = !entOn && (depleteAt.get(ri) ?? Infinity) <= t;
           if (!gasSpot && depleted) return null;
           // 미네랄 살짝 확대(요청) — 2.4 → 2.9타일 폭.
-          const wTiles = gasSpot ? 6.4 : 2.9;
+          /* 간헐천은 제 발자국 그대로 4타일(전수조사: 6.4타일로 그려져 제 발자국(4×2)
+             보다 60% 넓었다 — 그 위에 앉는 정제소(4타일)가 못 덮어 가스 건물 주위로
+             간헐천이 삐져나오던 원인이기도 하다). */
+          const wTiles = gasSpot ? 4 : 2.9;
           unitOps.push({
             fx, fy,
             /* 자원도 높이를 가진다(지적: 뒤 사물을 가려야) — 990 바닥층이 아니라 건물과
@@ -9326,7 +9391,8 @@ export default function ReplayMotionPlayer({
             unitOps.push({
               fx: mfx, fy: mfy, z: 960 + mi, kind: "mine",
               viewYaw: viewYawOf(m.x, m.y), flat: !pitched, pitch: pitched,
-              sizePx: dotGlyphPx("dot", 0.8, m.y),
+              // 스파이더 마인은 원작 분류대로 소형(전수조사: dot 눈금 0.8배였다).
+              sizePx: unitGlyphPx(0, m.y),
               color: modeColor(m.raw, teamOfRaw(m.raw) ?? 1),
               alpha: 0.95, noShadow: true,
             });
