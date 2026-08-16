@@ -1411,10 +1411,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        위는 뿔인 공용 도형(spirePillar). */
     for (const sy9 of [1, -1] as const) {
       const ry9 = sy9 * (b + run * 0.5);
+      /* 작은 뿔이 어금니 탑(키 30)에 안 묻히게(지적) — 앞쪽 뿔은 탑보다 큰 키,
+         뒤쪽 뿔은 탑보다 작은 키를 줘 앞뒤가 제대로 갈린다. */
       out.push(...tagKey(spirePillar({
         x: 0, y: ry9, z0: 0.1, h: 5.1, w: 0.72, tipW: 0,
         segs: 4, sides: 6, curveY: -sy9 * 1.4, hold: 0.5,
-      }), 28 + depthNow(0, ry9)));
+      }), facingRatio(0, sy9) >= 0 ? 34 : 26));
     }
     return out;
   },
