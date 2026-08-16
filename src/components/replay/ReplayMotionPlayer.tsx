@@ -5527,6 +5527,12 @@ const ENGAGE_SKIP = new Set([
   "Defiler", "Queen", "High Templar", "Dark Archon", "Medic", "Arbiter", "Lurker",
   "Siege Tank (Siege Mode)",
 ]);
+/* 근접 유닛(지적: 질럿이 가까이 가지 않고 멀리서 싸움) — 이들은 당김 상한(2.5타일)에
+   걸려 6~7타일 밖에 멈춰 서면 안 되고, 표적에 몸이 닿을 때까지 걸어 들어가야 한다.
+   파이어뱃은 사거리 1타일이라 근접으로 친다. */
+const MELEE_UNITS = new Set([
+  "Zealot", "Zergling", "Ultralisk", "Dark Templar", "Broodling", "Infested Terran", "Firebat",
+]);
 
 /** 자취에서 t 시각의 자리 — 사이는 보간(지상은 가운데로 휘는 곡선), 틈이 크면 앞 점에 머문다.
  *  moving(두 점 사이를 미끄러지는 중)과 sinceLast(마지막 명령에서 지난 초)도 함께 낸다 —
@@ -5834,6 +5840,27 @@ export default function ReplayMotionPlayer({
       m.set(key, arr);
     }
     return m;
+  }, [entData]);
+  /* 건물 태그 → 자리(지적: 질럿이 해처리에 붙지 않고 멀리서 싸움) — 어택 명령이 찍는
+     표적은 해처리 같은 일반 건물일 때가 많은데, 표적 지도(entPosByTag)에 유닛과 방어
+     건물만 있어 그 건물을 겨누지도, 다가붙지도 못했다. 건물은 안 움직이니 생애와 중심
+     자리만 한 번 색인해 두고, 프레임마다 살아 있는 것만 지도에 올린다. */
+  const bldTagSpots = useMemo(() => {
+    const rows: { tag: number; x: number; y: number; raw: string; born: number; gone: number }[] = [];
+    if (!entData) return rows;
+    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    for (const e of entData.ents) {
+      if (!e.bld || e.t <= 0) continue;
+      const site = [...e.ev].reverse().find((v) => v[3] === 2 || v[3] === 5);
+      if (!site) continue;
+      const hpZero = (e.hp ?? []).find(([, hv]) => hv <= 0)?.[0];
+      const gone = hpZero !== undefined && (e.d === null || hpZero < e.d) ? hpZero : (e.d ?? 0);
+      rows.push({
+        tag: e.t, x: site[1] + footDx(e.k), y: site[2] + footDy(e.k),
+        raw: nameOfId.get(e.o) ?? "", born: e.b, gone,
+      });
+    }
+    return rows;
   }, [entData]);
   const entOn = entMode && entData !== null;
   /* 건설 SCV 떠남 시각(지적: SCV들이 건설현장에 남는다) — 일꾼 개체의 건설 앵커(f=2)
@@ -6596,7 +6623,7 @@ export default function ReplayMotionPlayer({
   /** 디텍터 명단 — 적 디텍터가 곁(9타일)이면 은신이 벗겨진다. */
   const detectorSpots: { team: number; x: number; y: number }[] = [];
   /* v2 개체의 지금 위치(태그별) — 어택이 찍은 '그 대상'을 겨누는 지도(지적). */
-  const entPosByTag = new Map<number, { x: number; y: number; team: number; air: boolean }>();
+  const entPosByTag = new Map<number, { x: number; y: number; team: number; air: boolean; bld?: boolean }>();
   if (entOn) {
     /* v2 모드(지적: 유닛-건물 상호작용·어택땅 교전) — 교전 상대 목록을 v1 부대 어림이
        아니라 v2 개체 위치로 채운다. 적의 방어 건물(성큰·캐논·터렛·벙커)도 상대다:
@@ -6636,6 +6663,14 @@ export default function ReplayMotionPlayer({
       if (bu === "Missile Turret" || bu === "Spore Colony" || bu === "Photon Cannon") {
         detectorSpots.push({ team: teamOfRaw(br) ?? 0, x: bx2 + footDx(bu), y: by2 + footDy(bu) });
       }
+    }
+    /* 일반 건물도 표적 지도에(지적: 질럿이 해처리에 안 붙음) — engageFoes(교전 유발)엔
+       안 넣는다: 건물이 보인다고 싸움이 시작되면 안 되고, 어택이 그 태그를 찍었을 때만
+       겨눔·접근의 표적이 된다. 유닛 태그와 겹치면 유닛이 우선(위에서 이미 set). */
+    for (const bt of bldTagSpots) {
+      if (t < bt.born + 2 || (bt.gone > 0 && t >= bt.gone)) continue;
+      if (entPosByTag.has(bt.tag)) continue;
+      entPosByTag.set(bt.tag, { x: bt.x, y: bt.y, team: teamOfRaw(bt.raw) ?? 0, air: false, bld: true });
     }
     // 스캐너 스윕(전수조사) — 12초 동안 그 자리가 디텍터다.
     for (const [cs6, cx10, cy10, tech6, craw6] of castsSrc) {
@@ -8630,17 +8665,23 @@ export default function ReplayMotionPlayer({
             && !(drawUnit !== "" && ENGAGE_SKIP.has(drawUnit));
           /* 표적 우선(지적: 어택 찍으면 그 대상을 공격해야) — 최근(30초 안) 공격 명령이
              찍은 태그가 아직 살아 움직이면 그쪽이 상대다. 없으면 가장 가까운 적. */
-          let foe = nearestFoe(team, rawPos.x, rawPos.y);
+          let foe: { bx: number; by: number; bd: number; air: boolean; bld?: boolean } =
+            nearestFoe(team, rawPos.x, rawPos.y);
           for (let ai = e.atkAt.length - 1; ai >= 0; ai -= 1) {
             const [as2, atg] = e.atkAt[ai];
             if (as2 > t) continue;
-            if (t - as2 <= 12 && atg > 0) {
+            if (atg > 0) {
               const tp = entPosByTag.get(atg);
               // 팀 미상(0)은 표적으로도 안 삼는다(위 nearestFoe 주석과 같은 오인 방지).
-              if (tp && tp.team > 0 && (team ?? 0) > 0 && tp.team !== team) {
+              /* 건물 표적은 창을 길게(45초) — 건물 철거는 어택 한 번 찍고 오래 두들기는
+                 일이라, 12초 만에 표적을 놓으면 두들기다 말고 딴 데를 보는 그림이 된다. */
+              if (tp && tp.team > 0 && (team ?? 0) > 0 && tp.team !== team
+                && t - as2 <= (tp.bld ? 45 : 12)) {
                 const td = Math.hypot(tp.x - rawPos.x, tp.y - rawPos.y);
                 // 너무 먼 표적은 안 겨눈다(지적: 타겟팅 오인) — 이미 딴 데 간 옛 표적이다.
-                if (td <= ENGAGE_SIGHT_TILES * 1.6) foe = { bx: tp.x, by: tp.y, bd: td, air: tp.air };
+                if (td <= ENGAGE_SIGHT_TILES * 1.6) {
+                  foe = { bx: tp.x, by: tp.y, bd: td, air: tp.air, ...(tp.bld ? { bld: true } : {}) };
+                }
               }
             }
             break;
@@ -8660,8 +8701,17 @@ export default function ReplayMotionPlayer({
             else engageHoldRef.current.set(holdKey, base);
             /* 반격 접근(지적: 공격받으면 가서 때리고) — 멈춘 자리에서 상대 쪽으로
                사정거리(어림 2.2타일)까지 다가붙는다. 상대가 움직이면 따라 겨눈다. */
+            /* 근접 유닛은 몸이 닿을 때까지(지적: 질럿이 가까이 가지 않고 멀리서 싸움) —
+               당김 상한 2.5타일이 근접까지 6~7타일 밖에 세워 뒀다. 근접은 교전 시작
+               순간부터 걸음 속도(2.6타일/초)로 계속 파고들어 유닛엔 1.1타일, 건물엔
+               중심 기준 2타일(가장자리 접촉)에서 선다. 원거리는 종전대로 2.5 상한 —
+               멀리서 쏘는 게 제 모습이다. */
             const gap = Math.hypot(foe.bx - base.x, foe.by - base.y);
-            const pull = Math.min(2.5, Math.max(0, gap - 2.2));
+            const melee9 = MELEE_UNITS.has(drawUnit);
+            const stopR9 = melee9 ? (foe.bld ? 2.0 : 1.1) : 2.2;
+            const pull = melee9
+              ? Math.min(Math.max(0, gap - stopR9), 2.5 + Math.max(0, t - base.t0) * 2.6)
+              : Math.min(2.5, Math.max(0, gap - stopR9));
             pos = gap > 0.01
               ? { ...rawPos, x: base.x + ((foe.bx - base.x) / gap) * pull, y: base.y + ((foe.by - base.y) / gap) * pull }
               : { ...rawPos, x: base.x, y: base.y };
