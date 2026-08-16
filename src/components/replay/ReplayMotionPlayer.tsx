@@ -5846,7 +5846,7 @@ export default function ReplayMotionPlayer({
      건물만 있어 그 건물을 겨누지도, 다가붙지도 못했다. 건물은 안 움직이니 생애와 중심
      자리만 한 번 색인해 두고, 프레임마다 살아 있는 것만 지도에 올린다. */
   const bldTagSpots = useMemo(() => {
-    const rows: { tag: number; x: number; y: number; raw: string; born: number; gone: number }[] = [];
+    const rows: { tag: number; x: number; y: number; raw: string; born: number; gone: number; k: string }[] = [];
     if (!entData) return rows;
     const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
     for (const e of entData.ents) {
@@ -5857,7 +5857,7 @@ export default function ReplayMotionPlayer({
       const gone = hpZero !== undefined && (e.d === null || hpZero < e.d) ? hpZero : (e.d ?? 0);
       rows.push({
         tag: e.t, x: site[1] + footDx(e.k), y: site[2] + footDy(e.k),
-        raw: nameOfId.get(e.o) ?? "", born: e.b, gone,
+        raw: nameOfId.get(e.o) ?? "", born: e.b, gone, k: e.k,
       });
     }
     return rows;
@@ -6617,13 +6617,13 @@ export default function ReplayMotionPlayer({
      가까운 적 유닛 마커를 향해 '남은 거리의 반'만 끌어당긴다. 반씩인 이유: 상대도 같은
      조정으로 다가오므로 양쪽이 반씩 오면 꼭 목표 거리(근접 0.8타일, 원거리 사정거리)
      에서 만나고, 서로 원좌표 기준이라 지나쳐 겹치지 않는다. 시야(9타일) 밖은 안 끈다. */
-  const engageFoes: { team: number; x: number; y: number; air: boolean }[] = [];
+  const engageFoes: { team: number; x: number; y: number; air: boolean; bld?: boolean; k?: string }[] = [];
   /** 아비터 은신장(전수조사) — 같은 사람 유닛이 곁(4.5타일)에 있으면 흐려진다. */
   const arbiterSpots: { raw: string; x: number; y: number }[] = [];
   /** 디텍터 명단 — 적 디텍터가 곁(9타일)이면 은신이 벗겨진다. */
   const detectorSpots: { team: number; x: number; y: number }[] = [];
   /* v2 개체의 지금 위치(태그별) — 어택이 찍은 '그 대상'을 겨누는 지도(지적). */
-  const entPosByTag = new Map<number, { x: number; y: number; team: number; air: boolean; bld?: boolean }>();
+  const entPosByTag = new Map<number, { x: number; y: number; team: number; air: boolean; bld?: boolean; k?: string }>();
   if (entOn) {
     /* v2 모드(지적: 유닛-건물 상호작용·어택땅 교전) — 교전 상대 목록을 v1 부대 어림이
        아니라 v2 개체 위치로 채운다. 적의 방어 건물(성큰·캐논·터렛·벙커)도 상대다:
@@ -6655,9 +6655,10 @@ export default function ReplayMotionPlayer({
       if (!["Sunken Colony", "Spore Colony", "Photon Cannon", "Missile Turret", "Bunker"].includes(bu)) continue;
       if (bs + (BUILD_SEC[bu] ?? 30) > t) continue;
       if ((bg ?? 0) > 0 && t >= (bg ?? 0)) continue;
+      // 방어 건물도 bld·종류를 실어 발자국 기준 정지·창 규칙을 태운다(기획서 1-D).
       engageFoes.push({
         team: teamOfRaw(br) ?? 0,
-        x: bx2 + footDx(bu), y: by2 + footDy(bu), air: false,
+        x: bx2 + footDx(bu), y: by2 + footDy(bu), air: false, bld: true, k: bu,
       });
       // 방어 디텍터(전수조사) — 터렛·스포어·캐논은 은신을 벗긴다.
       if (bu === "Missile Turret" || bu === "Spore Colony" || bu === "Photon Cannon") {
@@ -6670,7 +6671,7 @@ export default function ReplayMotionPlayer({
     for (const bt of bldTagSpots) {
       if (t < bt.born + 2 || (bt.gone > 0 && t >= bt.gone)) continue;
       if (entPosByTag.has(bt.tag)) continue;
-      entPosByTag.set(bt.tag, { x: bt.x, y: bt.y, team: teamOfRaw(bt.raw) ?? 0, air: false, bld: true });
+      entPosByTag.set(bt.tag, { x: bt.x, y: bt.y, team: teamOfRaw(bt.raw) ?? 0, air: false, bld: true, k: bt.k });
     }
     // 스캐너 스윕(전수조사) — 12초 동안 그 자리가 디텍터다.
     for (const [cs6, cx10, cy10, tech6, craw6] of castsSrc) {
@@ -6702,14 +6703,16 @@ export default function ReplayMotionPlayer({
     let by = 0;
     let bd = Infinity;
     let bAir = false;
+    let bBld: boolean | undefined;
+    let bK: string | undefined;
     for (const f of engageFoes) {
       /* 팀 미상(0)은 상대가 아니다(지적: 자기 유닛을 왜 공격해) — 로스터와 리플레이
          이름이 안 맞아 팀을 못 찾은 마커를 적으로 치면 제 편끼리 쏘는 그림이 된다. */
       if (!team || f.team === 0 || f.team === team) continue;
       const d = Math.hypot(f.x - x, f.y - y);
-      if (d < bd) { bd = d; bx = f.x; by = f.y; bAir = f.air; }
+      if (d < bd) { bd = d; bx = f.x; by = f.y; bAir = f.air; bBld = f.bld; bK = f.k; }
     }
-    return { bx, by, bd, air: bAir };
+    return { bx, by, bd, air: bAir, bld: bBld, k: bK };
   };
   /* 정찰 자취도 걸어서 가고(지적: 갑자기 이동 — 직선이되 일꾼 걸음), 갈래·부대로 갈라
      각자의 점이 된다(지적: 드랍십 순간이동 — 일꾼 정찰과 셔틀 원정이 한 점을 놓고
@@ -8665,7 +8668,7 @@ export default function ReplayMotionPlayer({
             && !(drawUnit !== "" && ENGAGE_SKIP.has(drawUnit));
           /* 표적 우선(지적: 어택 찍으면 그 대상을 공격해야) — 최근(30초 안) 공격 명령이
              찍은 태그가 아직 살아 움직이면 그쪽이 상대다. 없으면 가장 가까운 적. */
-          let foe: { bx: number; by: number; bd: number; air: boolean; bld?: boolean } =
+          let foe: { bx: number; by: number; bd: number; air: boolean; bld?: boolean; k?: string } =
             nearestFoe(team, rawPos.x, rawPos.y);
           /* 표적 우선(재수리·기획서 1-B): 최신 1건만 보던 규칙은 어택땅 연타 한 번에
              건물 표적을 지웠다 — nearestFoe에는 일반 건물이 없어 폴백도 없다. 창
@@ -8683,7 +8686,7 @@ export default function ReplayMotionPlayer({
               const td = Math.hypot(tp.x - rawPos.x, tp.y - rawPos.y);
               // 너무 먼 표적은 안 겨눈다(지적: 타겟팅 오인) — 이미 딴 데 간 옛 표적이다.
               if (td <= ENGAGE_SIGHT_TILES * 1.6) {
-                foe = { bx: tp.x, by: tp.y, bd: td, air: tp.air, ...(tp.bld ? { bld: true } : {}) };
+                foe = { bx: tp.x, by: tp.y, bd: td, air: tp.air, ...(tp.bld ? { bld: true, k: tp.k } : {}) };
                 break;
               }
             }
