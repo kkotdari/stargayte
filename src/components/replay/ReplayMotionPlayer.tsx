@@ -16,7 +16,7 @@ import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } f
 import {
   bodyFace, capFace, depthNow, groundEllipse, sideFace, tagKey, topFace, type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
-  domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces, pyramidFaces3, tubeFaces,
+  domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces, tubeFaces,
   wallDiscPath, wallFrame, withPitchView, withTopView, withViewShear, withYaw, zsorted,
 } from "../../utils/shapeOblique";
 import type { MinimapMarker } from "./ReplayMinimap";
@@ -3069,12 +3069,25 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   goliath: () => [
     // 상완(팔 총 포드)만 개인색, 나머지 전부 은색(요청).
     ...paintBase([
-      // 기계식 꺾인 다리(짧게 유지).
-      ...hornFaces(-1.2, -0.2, 4.8, -1.7, -1.2, 2.9, 0.8),
-      ...hornFaces(-1.7, -1.2, 2.9, -1.9, 0.7, 0.9, 0.65),
+      /* 기계식 꺾인 다리(재지적: 뿔이 아니라 사각 기둥) — 공용 도형으로 넓적다리와
+         정강이를 각각 사각 단면 기둥으로 세운다. 굵기는 거의 일정하다. */
+      ...spirePillar({
+        x: -1.2, y: -0.2, z0: 2.9, h: 1.9, w: 0.42, tipW: 0.4,
+        segs: 1, sides: 4, leanX: -0.5, leanY: -1, hold: 0.9,
+      }),
+      ...spirePillar({
+        x: -1.7, y: -1.2, z0: 0.9, h: 2, w: 0.4, tipW: 0.34,
+        segs: 1, sides: 4, leanX: -0.2, leanY: 1.9, hold: 0.9,
+      }),
       ...boxFaces3(-1.9, 0.8, 1.1, 1.6, 0.5),
-      ...hornFaces(1.2, -0.2, 4.8, 1.7, -1.2, 2.9, 0.8),
-      ...hornFaces(1.7, -1.2, 2.9, 1.9, 0.7, 0.9, 0.65),
+      ...spirePillar({
+        x: 1.2, y: -0.2, z0: 2.9, h: 1.9, w: 0.42, tipW: 0.4,
+        segs: 1, sides: 4, leanX: 0.5, leanY: -1, hold: 0.9,
+      }),
+      ...spirePillar({
+        x: 1.7, y: -1.2, z0: 0.9, h: 2, w: 0.4, tipW: 0.34,
+        segs: 1, sides: 4, leanX: 0.2, leanY: 1.9, hold: 0.9,
+      }),
       ...boxFaces3(1.9, 0.8, 1.1, 1.6, 0.5),
       ...boxFaces3(0, -0.2, 2.6, 2.2, 2, 4.8),
       // 콕핏 머리 + 안테나.
@@ -4347,8 +4360,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       return tagKey(paintBase([
         // 대퇴 — 엉덩이에서 무릎 앞까지, 가늘어진 사각기둥.
         ...prism(dx * 0.9, dy * 0.9, 4.5, dx * 3.15, dy * 3.15, 5.4, 0.56, 0.6),
-        // 관절 — 두 마디를 잇는 작은 덩이.
-        ...domeFaces3(dx * 3.3, dy * 3.3, 0.62, 0.5, 5.15),
+        // 관절 — 두 마디를 잇는 작은 덩이. 다리 면에 안 묻히게 위로(지적).
+        ...tagKey(domeFaces3(dx * 3.3, dy * 3.3, 0.62, 0.5, 5.15), 8),
         // 하지 — 무릎 아래에서 발끝으로 좁아지는 사각뿔.
         ...prism(dx * 3.45, dy * 3.45, 5.15, dx * 4.05, dy * 4.05, 0.25, 0.6, 0.26),
       ], "#d4af37"), depthNow(dx * 2.4, dy * 2.4));
@@ -4877,24 +4890,27 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 미네랄(재정정: 삼각뿔 말고 보석 기둥) — 세운 기둥 결정 + 뾰족 갓 셋, 키가 다
      다르다. 색은 그리는 쪽이 하늘색을 넣는다(팀색과 무관한 지물). */
   mineral: () => {
-    /* 보석 기둥 복귀(재재지적: 뿔 결정은 따로따로 솟아 보임 — 아까 기둥 모양 유지) —
-       절두+피라미드 기둥 넷을 바짝 뭉치고 키를 올린다. 기둥마다 깊이 키 하나로 묶어
-       꼭대기 피라미드가 제 기둥에 안 가려진다(지적). */
-    /* 끝만 기울인다(지적: 두 개는 바깥쪽, 맨 앞 것은 앞쪽으로 살짝) — 기둥은 수직
-       그대로 두고 꼭대기 보석뿔의 끝점을 밀어 기운 인상을 낸다. */
-    const pillar = (
-      cx: number, cy: number, w: number, h: number, lx = 0, ly = 0,
-    ): ShapeFace[] => tagKey([
-      ...frustumFaces3(cx, cy, w, w * 0.85, w * 0.72, w * 0.62, h),
-      ...(lx === 0 && ly === 0
-        ? pyramidFaces3(cx, cy, w * 0.72, w * 0.62, w * 1.1, h)
-        : hornFaces(cx, cy, h - 0.15, cx + lx, cy + ly, h + w * 1.1, w * 0.72)),
-    ], depthNow(cx, cy));
+    /* 미네랄 결정 무리(요청: 새 공용 도형으로 화려하게) — spirePillar로 세운 육각
+       기둥 결정 일곱. 큰 셋이 가운데를 이루고 작은 넷이 발치를 감싸며, 저마다 다른
+       각도로 기울어 끝이 뾰족하다. 색은 그리는 쪽이 하늘색을 넣는다. */
+    const gem = (
+      x9: number, y9: number, h9: number, w9: number, lx9: number, ly9: number,
+    ): ShapeFace[] => spirePillar({
+      x: x9, y: y9, h: h9, w: w9, tipW: w9 * 0.12,
+      segs: 3, sides: 6, hold: 0.35,
+      leanX: lx9 * 0.45, leanY: ly9 * 0.45, curveX: lx9 * 0.55, curveY: ly9 * 0.55,
+    });
     return [
-      ...pillar(-1.9, -0.9, 2.1, 3.2, -0.85, 0),
-      ...pillar(-0.1, 0.7, 2.7, 5, 0, 0.9),
-      ...pillar(1.8, -0.8, 2.3, 3.8),
-      ...pillar(3.1, 0.6, 1.6, 2.4, 0.75, 0.15),
+      // 뒤쪽 작은 것들 먼저 — 앞 결정이 위로 온다.
+      ...gem(-2.9, -1.4, 3.4, 0.75, -1.1, -0.5),
+      ...gem(2.6, -1.6, 3, 0.7, 1.2, -0.4),
+      // 가운데 큰 셋.
+      ...gem(-1.4, -0.2, 6.2, 1.15, -0.7, 0.2),
+      ...gem(0.3, 0.6, 7.6, 1.35, 0.1, 0.5),
+      ...gem(1.9, -0.3, 5.4, 1, 0.9, 0.1),
+      // 앞 발치의 작은 둘.
+      ...gem(-0.9, 2, 2.9, 0.62, -0.5, 1),
+      ...gem(1.2, 2.2, 3.6, 0.7, 0.6, 1.1),
     ];
   },
   /* 가스 간헐천(재재정정: 전체 크기는 원래대로, 두 번째 분화구만 작게) — 언덕 위
