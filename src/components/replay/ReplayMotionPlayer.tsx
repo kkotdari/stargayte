@@ -1736,15 +1736,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     if (lensFace > 0.12) {
       /* 정면 입구 렌즈(재지적) — 몸 앞면(반지름 5.6)에 바짝 붙이고 더 크게. 라이트
          사이언 반투명, 안에 밝은 속심. 앞이 보일 때만 그린다. */
+      /* 벽에 수직으로 붙은 렌즈(재지적: 지금은 지면과 평행) — 벽 평면(wallFrame)에
+         그려 몸이 돌면 렌즈도 벽과 함께 눕고 기울어진다. 좌우 끝이 뾰족한 렌즈꼴. */
       const k = 0.5 + 0.5 * Math.min(1, (lensFace - 0.12) / 0.35);
-      const [ex, ey] = project(0, 3.6, 2.5);
-      const w = 3.3 * k;
+      const lensPath = (rx9: number, rz9: number, bulge: number): string => {
+        const { pt } = wallFrame(0, 3.55, 2.9, rx9, rz9);
+        const p0 = pt(0);
+        const p2 = pt(Math.PI);
+        const up = pt(Math.PI / 2, 1, bulge);
+        const dn = pt(-Math.PI / 2, 1, bulge);
+        return `M${p0[0]} ${p0[1]} Q${up[0]} ${up[1]} ${p2[0]} ${p2[1]}`
+          + ` Q${dn[0]} ${dn[1]} ${p0[0]} ${p0[1]} Z`;
+      };
       out.push(...tagKey([
-        [`M${ex - w} ${ey} Q${ex} ${ey - 2.1} ${ex + w} ${ey} Q${ex} ${ey + 2.1} ${ex - w} ${ey} Z`,
-          0.62, "#a9ecf2"] as ShapeFace,
-        [`M${ex - w * 0.58} ${ey - 0.15} Q${ex} ${ey - 1.25} ${ex + w * 0.58} ${ey - 0.15}`
-          + ` Q${ex} ${ey + 0.5} ${ex - w * 0.58} ${ey - 0.15} Z`, 0.55, "#e6fbff"] as ShapeFace,
-      ], depthNow(0, 3.6) + 1));
+        [lensPath(3.2 * k, 1.9, 1.35), 0.62, "#a9ecf2"] as ShapeFace,
+        [lensPath(1.85 * k, 1.05, 1.3), 0.55, "#e6fbff"] as ShapeFace,
+      ], depthNow(0, 3.55) + 1));
     }
     return out;
   },
