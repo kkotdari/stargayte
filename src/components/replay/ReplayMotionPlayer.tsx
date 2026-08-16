@@ -2682,7 +2682,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...paintBase(trackFaces(-2, -3.2, 0.4, 1.5, 1.7), TRACK_STEEL),
     ...paintBase(trackFaces(2, -3.2, 0.4, 1.5, 1.7), TRACK_STEEL),
     ...paintBase(boxFaces3(0, -0.2, 3.9, 5.6, 1.3, 1.2), "#c9ced6"), // 차체 은색(요청: 포탑만 개인색)
-    ...boxFaces3(0, -0.4, 2.6, 2.6, 1.3, 2.5),
+    // 포탑은 차체보다 위(지적: 일반 모드 포탑 가려짐) — 붙박이 키 40.
+    ...tagKey(boxFaces3(0, -0.4, 2.6, 2.6, 1.3, 2.5), 40),
     ...paintBase(tubeFaces(-0.55, 1.2, -0.55, 4.4, 0.24, 3.3), GUNMETAL),
     ...paintBase(tubeFaces(0.55, 1.2, 0.55, 4.4, 0.24, 3.3), GUNMETAL),
   ],
@@ -2697,7 +2698,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...paintBase(boxFaces3(0, -0.2, 3.9, 5.6, 1.3, 1.2), "#c9ced6"), // 차체 은색(요청: 포탑만 개인색)
   ],
   tankgun: () => [
-    ...boxFaces3(0, -0.4, 2.6, 2.6, 1.3, 2.5),
+    // 포탑은 차체보다 위(지적: 일반 모드 포탑 가려짐) — 붙박이 키 40.
+    ...tagKey(boxFaces3(0, -0.4, 2.6, 2.6, 1.3, 2.5), 40),
     ...paintBase(tubeFaces(-0.55, 1.2, -0.55, 4.4, 0.24, 3.3), GUNMETAL),
     ...paintBase(tubeFaces(0.55, 1.2, 0.55, 4.4, 0.24, 3.3), GUNMETAL),
   ],
@@ -4469,13 +4471,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       + ` L${pt(2.6, 2.6, 4.6)} Q${pt(0, 3.4, 5.4)} ${pt(-2.6, 2.6, 4.6)} Z`;
     out.push([edge, 1, "#c9ced6"] as ShapeFace, sideFace(edge, 0.22));
     out.push([plate, 1, "#c9ced6"] as ShapeFace, topFace(plate, 0.18));
-    // 등마루 개인색 띠 한 줄(요청).
-    out.push(bodyFace(polyPath3([
-      [-0.45, 2.5, 5.45], [0.45, 2.5, 5.45], [0.45, -1.75, 5.25], [-0.45, -1.75, 5.25],
-    ])));
     // 폭 축소(지적: 몸체 폭 줄이기) — 포드 자리 ±3.1 → ±2.6.
     pod(-2.6);
     pod(2.6);
+    /* 기체 앞부분 개인색 띠(재지적: 등마루 띠 제거) — 양 실린더와 가운데 판을 통틀어
+       가로로 넓게 두른다. 앞이 보일 때만(뒤에선 몸에 가려야 할 무깊이 면이라). */
+    if (facingRatio(0, 1) > 0.02) {
+      out.push(...tagKey([bodyFace(polyPath3([
+        [-3.35, 1.5, 4.6], [3.35, 1.5, 4.6], [3.35, 2.55, 4.75], [-3.35, 2.55, 4.75],
+      ]))], depthNow(0, 2.6) + 1));
+    }
     /* 뒤 추진체 셋 — 짙은 은색(재지적). 앞에서 볼 때도 몸을 뚫고 보이던 문제(지적:
        안 가려짐)는 꽁무니가 돌아앉으면 아예 그리지 않는 것으로 해결 — 몸판이 무깊이
        면이라 painter로는 못 가린다. */
@@ -4489,6 +4494,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         out.push(topFace(groundEllipse(...project(tx, -3.6, 5.3), 0.3, 0.24), 0.45));
       }
     }
+    /* 꼬리(요청) — 추진체 뒤로 선 작은 기둥과 양쪽 꼬리 날개. */
+    out.push(...tagKey([
+      ...paintBase(rodFaces(0, -3.2, 5.4, 0, -3.9, 6.5, 0.28), "#c9ced6"),
+      ...paintBase([
+        ...rodFaces(0, -3.75, 6.25, -1.15, -4.1, 6.05, 0.2),
+        ...rodFaces(0, -3.75, 6.25, 1.15, -4.1, 6.05, 0.2),
+      ], "#9ba3ad"),
+    ], depthNow(0, -3.6)));
     return out;
   },
   /* 셔틀(다시 둘, 실물 참고) — 둥근 게딱지 몸통 앞(+y)으로 굵은 집게 두 개가 안쪽으로
