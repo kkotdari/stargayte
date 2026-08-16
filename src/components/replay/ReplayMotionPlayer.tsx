@@ -3402,6 +3402,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       });
       // 머리통 — 큰 반구(원복). 짙은 갈색, 마디보다 앞·위.
       out9.push(...tagKey(paintBase(domeFaces3(0, 0.2, 2.3, 2.1, 4.3), "#6b4732"), 18));
+      /* 머리 앞의 동그란 얼굴(요청) — 반구 앞면에 쏙 박힌 구. 중심만 투영한 진짜
+         원이라 어느 시점에서도 안 눌리고, 반구 안쪽에 두어 파묻힌 것으로 보인다. */
+      out9.push(...tagKey([
+        [groundEllipse(...project(0, 1.75, 5.1), 0.95, 0.95), 1, "#4a3428"] as ShapeFace,
+        topFace(groundEllipse(...project(-0.3, 1.5, 5.4), 0.34, 0.34), 0.22),
+      ], 19));
       return out9;
     })(),
     // 등판 이음선.
