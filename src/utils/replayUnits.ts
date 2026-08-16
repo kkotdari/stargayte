@@ -1449,7 +1449,7 @@ export function buildUnitTracks(
     return false;
   };
 
-  const hpSimOf = (life: Life): { trace: [number, number][]; death: number | null } => {
+  const hpSimOf = (life: Life): { trace: [number, number][]; death: number | null; splitVi?: number } => {
     const mk = majorityKindOf(life);
     const st = UNIT_STATS[mk] ?? DEFAULT_UNIT_STATS;
     const maxHp = st.hp;
@@ -1603,6 +1603,26 @@ export function buildUnitTracks(
       if (curHp <= 0) {
         const survived = life.ev.some((v) => v[1] >= 0 && v[0] > dsec + 2);
         if (survived) {
+          /* 부활이 그럴듯한가(재질문: 죽여야 할 걸 살았다고 강제로 붙잡을 수 있다) —
+             죽은 자리에서 다음 증거까지 유닛 최고 속도(초당 ~5타일)로도 못 가는
+             거리·시간이면, 그 증거는 같은 유닛일 수 없다: 태그를 물려받은 새 유닛이다.
+             그때는 진짜 죽음으로 접고, 꼬리 증거를 분리하라고 알린다(splitVi). */
+          /* 최소 1개 증거는 부모에 남긴다(수리: splitVi 0이면 꼬리가 부모와 같아져
+             무한 분열) — 죽음이 '모든' 증거보다 앞서면 출생 전 교전 조각이 만든 가짜
+             죽음이므로 부활 쪽으로 흘린다. */
+          const nvi = life.ev.findIndex((v) => v[1] >= 0 && v[0] > dsec + 2);
+          if (nvi >= 1) {
+            const dpos = posAtSec(life, dsec, 60);
+            const nv = life.ev[nvi];
+            if (dpos) {
+              const spd = Math.hypot(nv[1] - dpos[0], nv[2] - dpos[1])
+                / Math.max(1, nv[0] - dsec);
+              if (spd > 6) {
+                trace.push([Math.round(dsec), 0]);
+                return { trace, death: dsec + 1 + (Math.abs(life.tag) % 4), splitVi: nvi };
+              }
+            }
+          }
           /* 뒤 스토리 — 그 뒤에도 움직였으니 죽지 않았다. 남은 체력은 개체 번호로
              흩고(20~43%), 남은 피해는 눅여(위 dmgScale) 8% 언저리에 얼어붙지 않게. */
           dmgScale *= 0.55;
@@ -1804,6 +1824,34 @@ export function buildUnitTracks(
         const sim = hpSimOf(life);
         if (sim.trace.length > 0) hpTrace = sim.trace;
         if (d === null && sim.death !== null) { d = sim.death; dk = "atk"; }
+        /* 재사용 꼬리 분리(재질문) — 죽음 '뒤'의 증거가 물리적으로 같은 유닛일 수
+           없으면(위 splitVi), 이 생애는 여기서 죽고 꼬리는 새 개체로 바로 다음
+           순번에 선다. 전투 피해 배분(battleDmgOf)은 생애 단위라 꼬리엔 없지만,
+           주문·방어건물 피해는 제 hpSim이 다시 계산한다. */
+        if (sim.splitVi !== undefined && sim.splitVi >= 1 && d !== null && dk === "atk" && sim.splitVi < life.ev.length) {
+          const tailEv = life.ev.splice(sim.splitVi);
+          if (tailEv.length > 0) {
+            const tail: Life = {
+              tag: life.tag + 1000000,
+              owner: life.owner,
+              kinds: new Map(life.kinds),
+              groupKinds: new Set(life.groupKinds),
+              bld: false,
+              born: tailEv[0][0],
+              last: tailEv[tailEv.length - 1][0],
+              lastAtk: null,
+              evAfterAtk: false,
+              morphTo: life.morphTo,
+              cxl: null,
+              solo: false,
+              spawned: true,
+              ev: tailEv,
+            };
+            life.morphTo = null;
+            life.last = life.ev.length > 0 ? life.ev[life.ev.length - 1][0] : life.born;
+            list.splice(i + 1, 0, tail);
+          }
+        }
       } else {
         // 건물 체력 원장(요청) — 자리를 아는 건물만.
         const site2 = [...life.ev].reverse().find((v) => v[3] === 2 || v[3] === 5);
