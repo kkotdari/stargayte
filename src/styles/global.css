@@ -5982,14 +5982,13 @@ html.scr-light-theme .scr-mobile-tabbar {
 .scr-mobile-tabbar-hidden {
   visibility: hidden; pointer-events: none; transition: none;
 }
-/* 모바일 게임 상세(요청: 탭바 숨기기 + 페이드) — 상세 페이지가 body에 표식을 다는
-   동안 탭바가 페이드아웃하며 아래로 미끄러져 빠진다. visibility는 페이드가 끝난 뒤에
-   꺼지고(0.28s 지연), 표식이 걷히면 base의 트랜지션(위 .scr-mobile-tabbar)이 그대로
-   페이드인을 맡는다 — visibility 복귀는 base 목록에 없어 즉시라 걸림이 없다. */
+/* 게임 상세(재재지적: 숨기는 대신 축소 상태) — 탭바를 미니(축소) 상태로 강제한다.
+   들어오기 전에 이미 축소돼 있었으면 같은 변환값이라 그 자리 그대로고, 전폭이었으면
+   기본 트랜지션(transform .28s)을 타고 자연스럽게 줄어들며 내려앉는다. 왼쪽 빈자리는
+   뒤로 버튼(FAB)이 쓴다 — 목록의 등록 버튼과 같은 배치다. */
 body.scr-gamepage-open .scr-mobile-tabbar {
-  opacity: 0; transform: translateY(16px) scale(0.94);
-  visibility: hidden; pointer-events: none;
-  transition: opacity 0.22s ease-in-out, transform 0.28s ease-in-out, visibility 0s linear 0.28s;
+  transform: scale(0.72);
+  transform-origin: 50% 100%;
 }
 /* 아래로 스크롤 중에는 완전히 숨기는 대신 80%로 축소한다(요청: 60%→80%) — 바닥 중앙을
    기준으로 줄어들어 자리(하단)는 유지하고, 계속 누를 수 있게 pointer-events는 살려둔다.
