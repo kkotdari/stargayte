@@ -4567,11 +4567,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        금색. */
     {
       const N9 = 12;
-      // 앞(+y)으로 갈수록 z가 내려간다 — tan30 ≈ 0.577.
-      const zOf = (y9: number): number => 3.15 - (y9 - 0.5) * 0.577;
+      /* 앞(+y)으로 갈수록 z가 내려간다 — tan30 ≈ 0.577. 굽 전체를 앞으로 크게
+         내민다(재지적: 말굽과 앞다리 같이 앞으로). */
+      const FWD9 = 1.9;
+      const zOf = (y9: number): number => 3.35 - (y9 - 0.5 - FWD9) * 0.577;
       const P9 = (r: number, u: number, dz: number): [number, number, number] => {
         const th9 = Math.PI * u;
-        const y9 = 0.5 - Math.sin(th9) * r * 0.85;
+        const y9 = 0.5 + FWD9 - Math.sin(th9) * r * 0.85;
         return [Math.cos(th9) * r, y9, zOf(y9) + dz];
       };
       const ring9 = (dz: number): string => {
@@ -4581,25 +4583,27 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         return polyPath3(pts9);
       };
       const lo9 = ring9(0);
-      const hi9 = ring9(0.72);
+      const hi9 = ring9(1.44); // 두께 두 배(재지적)
       out.push(...tagKey([
         [lo9, 1, "#d4af37"] as ShapeFace, sideFace(lo9, 0.28),
         ...Array.from({ length: N9 }, (_, i9) => ([
           polyPath3([
             P9(3.15, i9 / N9, 0), P9(3.15, (i9 + 1) / N9, 0),
-            P9(3.15, (i9 + 1) / N9, 0.72), P9(3.15, i9 / N9, 0.72),
+            P9(3.15, (i9 + 1) / N9, 1.44), P9(3.15, i9 / N9, 1.44),
           ]), 1, "#d4af37",
         ] as ShapeFace)),
         [hi9, 1, "#d4af37"] as ShapeFace, topFace(hi9, 0.18),
       ], depthNow(0, -1.4) + 0.4));
       /* 앞다리 — 말굽 양 끝(±3.15, 0.5)에서 시작해 앞·안으로 굽으며 계속 내려간다.
          뿔 프리미티브라 판이 아니라 부피가 있다. */
+      /* 앞다리 — 말굽 양 끝에서 그대로 이어지고, 굵기도 굽 너비(3.15-1.95=1.2)에
+         맞춘다(재지적: 두 팔도 말굽 너비만큼 두껍게). */
       for (const m9 of [-1, 1] as const) {
-        const rz9 = zOf(0.5) + 0.36;
+        const rz9 = zOf(0.5 + FWD9) + 0.72;
         out.push(...tagKey(paintBase([
-          ...rodFaces(m9 * 3.15, 0.5, rz9, m9 * 3.35, 2.9, rz9 - 1.35, 0.92),
-          ...hornFaces(m9 * 3.35, 2.9, rz9 - 1.35, m9 * 2.15, 5.5, rz9 - 2.85, 0.78),
-        ], "#d4af37"), depthNow(m9 * 2.8, 2.8)));
+          ...rodFaces(m9 * 2.55, 0.5 + FWD9, rz9, m9 * 2.9, 2.9 + FWD9, rz9 - 1.35, 1.2),
+          ...hornFaces(m9 * 2.9, 2.9 + FWD9, rz9 - 1.35, m9 * 1.9, 5.3 + FWD9, rz9 - 2.7, 1.05),
+        ], "#d4af37"), depthNow(m9 * 2.4, 3.4 + FWD9)));
       }
     }
     return out;
