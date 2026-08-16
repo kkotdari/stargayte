@@ -4540,18 +4540,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 꼬리는 거의 L자(재지적) — 바닥에 눕는 꼬리와 곧게 선 하반신이 직각으로 꺾여
          만난다. 눕는 마디는 낮은 기둥을 뒤로 길게 눕혀 만들고, 선 마디는 그 꺾임점
          에서 허리(z 3.6, 굵기 1.05)까지 올려 상반신과 굵기가 딱 맞게 잇는다. */
-      ...spirePillar({
+      /* 하반신 부품들은 층을 못 박는다(재지적: 반구 받침·허리 윗면이 비쳐 보임) —
+         꼬리·받침·하반신·상반신이 거의 같은 자리(0,-0.35)라 깊이가 겹쳐 그리는 순서가
+         프레임마다 뒤집혔다. 뒤(꼬리)부터 앞(상반신)으로 키를 갈라 준다. */
+      ...tagKey(spirePillar({
         x: 0, y: -0.35, z0: 0.06, h: 0.62, w: 0.62, tipW: 0.12,
         segs: 5, sides: 8, hold: 0.15, leanY: -4.4, curveY: -0.5,
         fill: "#c68a62", fillFront: IVORY, fillBack: "#6b4732",
-      }),
-      // 꺾임점 덩이 — 두 마디 이음매의 틈을 막는다(지적: 하반신이 비쳐 보임).
-      ...paintBase(domeFaces3(0, -0.35, 0.95, 0.9, 0.06), "#6b4732"),
-      ...spirePillar({
+      }), 4),
+      // 꺾임점 덩이 — 두 마디 이음매의 틈을 막는다.
+      ...tagKey(paintBase(domeFaces3(0, -0.35, 0.95, 0.9, 0.06), "#6b4732"), 6),
+      ...tagKey(spirePillar({
         x: 0, y: -0.35, z0: 0.06, h: 3.54, w: 0.92, tipW: 1.05,
         segs: 3, sides: 8, hold: 0.25, leanY: 0.35,
         fill: "#c68a62", fillFront: IVORY, fillBack: "#6b4732",
-      }),
+      }), 8),
       // 꼬리 등의 자잘한 짙은 상아색 가시들(요청).
       ...paintBase(hornFaces(0.25, -1.5, 1.15, 0.5, -1.85, 2, 0.28), IVORY_DEEP),
       ...paintBase(hornFaces(-0.2, -2.5, 0.75, -0.45, -2.85, 1.55, 0.24), IVORY_DEEP),
@@ -4560,10 +4563,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          기둥(요청) — 공용 도형 spirePillar로 세워 어깨 쪽으로 갈수록 굵기가 줄며
          뒤로 젖혀진다. 개인색. */
       // (제거) 아래 원통 — 위 기둥이 꼬리까지 한 몸으로 잇는다.
-      ...spirePillar({
+      ...tagKey(spirePillar({
         x: 0, y: 0, z0: 3.5, h: 3.1, w: 1.05, tipW: 0.78,
         segs: 4, sides: 8, curveY: -0.85, hold: 0.2,
-      }),
+      }), 10),
       /* 팔은 굽히기(재지적) + 넥서스 기둥식 이음(재재지적: 갈고리와 팔이 자연스럽게)
          — 팔 두 마디는 끝이 안 뾰족한 캡슐 막대(rodFaces), 갈고리는 손목 살짝 안에서
          팔보다 조금 굵게 시작해 '도려내고 꽂은' 소켓처럼 잇는다. 오르는 마디는 굵기
