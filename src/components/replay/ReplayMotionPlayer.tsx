@@ -2923,7 +2923,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const QN_H = 4.2;
     const QN_RB = 4.4;
     const QN_RT = 2;
-    const QN_P = 1.9;
+    /* 옆선은 볼록하게(요청) — 해처리와 반대로 위가 완만하고 아래로 갈수록 가팔라지는
+       종 모양이라야 한다: 굵기 곡률을 1 아래로 내린다. */
+    const QN_P = 0.55;
     const qnR = (t9: number): number => QN_RT + (QN_RB - QN_RT) * (1 - t9) ** QN_P;
     const out: ShapeFace[] = [];
     out.push(...tagKey(paintBase(spirePillar({
