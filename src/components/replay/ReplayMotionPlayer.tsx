@@ -5851,20 +5851,33 @@ export default function ReplayMotionPlayer({
      자리만 한 번 색인해 두고, 프레임마다 살아 있는 것만 지도에 올린다. */
   const bldTagSpots = useMemo(() => {
     const rows: { tag: number; x: number; y: number; raw: string; born: number; gone: number; k: string }[] = [];
-    if (!entData) return rows;
+    /* 태그 없는 물리 건물 자리(기획서 2-D) — 시작 홀 등 태그 생애가 없는 건물의
+       자리 색인. 태그 미해석 어택의 폴백 표적이 된다. */
+    const sites: { x: number; y: number; raw: string; born: number; gone: number; k: string }[] = [];
+    if (!entData) return { rows, sites };
     const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
     for (const e of entData.ents) {
-      if (!e.bld || e.t <= 0) continue;
+      if (!e.bld) continue;
       const site = [...e.ev].reverse().find((v) => v[3] === 2 || v[3] === 5);
       if (!site) continue;
       const hpZero = (e.hp ?? []).find(([, hv]) => hv <= 0)?.[0];
       const gone = hpZero !== undefined && (e.d === null || hpZero < e.d) ? hpZero : (e.d ?? 0);
-      rows.push({
+      const row = {
         tag: e.t, x: site[1] + footDx(e.k), y: site[2] + footDy(e.k),
         raw: nameOfId.get(e.o) ?? "", born: e.b, gone, k: e.k,
-      });
+      };
+      if (e.t > 0) rows.push(row);
+      else sites.push(row);
     }
-    return rows;
+    /* 허수아비 방지(기획서 2-D) — 태그 생애가 소멸 시각을 모르면(gone=0) 같은 자리
+       물리 행의 철거 시각을 물려받아, 무너진 건물이 45초 표적으로 남지 않게 한다. */
+    for (const r of rows) {
+      if (r.gone > 0) continue;
+      const m = sites.find((s0) => s0.k === r.k && s0.gone > 0
+        && Math.abs(s0.x - r.x) <= 3 && Math.abs(s0.y - r.y) <= 3 && s0.gone > r.born);
+      if (m) r.gone = m.gone;
+    }
+    return { rows, sites };
   }, [entData]);
   const entOn = entMode && entData !== null;
   /* 건설 SCV 떠남 시각(지적: SCV들이 건설현장에 남는다) — 일꾼 개체의 건설 앵커(f=2)
@@ -6454,8 +6467,9 @@ export default function ReplayMotionPlayer({
       /** 공사 중 숨김 구간들(재재지적: 도는 SCV와 원래 SCV 이중 표시) — 앵커마다
        *  [앵커 시각, 다음 위치 증거). 그동안은 합성 건설 일꾼이 그 SCV다. */
       buildHides: [number, number][];
-      /** 공격 명령 목록 [초, 표적 태그] — 어택을 찍은 대상을 겨누는 재료(지적). */
-      atkAt: [number, number][];
+      /** 공격 명령 목록 [초, 표적 태그, 클릭x, 클릭y] — 어택 표적 겨눔 + 태그
+       *  미해석 시 자리 폴백(기획서 2-D)의 재료. */
+      atkAt: [number, number, number, number][];
       /** 시즈 켬·해제 [초, 켬1/해제0] — 커맨드 그대로(지적). */
       sieges: [number, number][];
       /** 수리·힐 명령 초(지적: 일꾼 수리·매딕 힐) — 곁에서 일하는 효과의 창. */
@@ -6582,7 +6596,7 @@ export default function ReplayMotionPlayer({
       }
       out.push({
         raw, unit: e.k, b: e.b, d: e.d, tag: e.t, buildHideAt, buildHides,
-        atkAt: e.ev.filter((v) => v[3] === 7).map((v) => [v[0], v[4] ?? 0] as [number, number]),
+        atkAt: e.ev.filter((v) => v[3] === 7).map((v) => [v[0], v[4] ?? 0, v[1], v[2]] as [number, number, number, number]),
         sieges: e.ev.filter((v) => v[3] === 8 || v[3] === 9)
           .map((v) => [v[0], v[3] === 8 ? 1 : 0] as [number, number]),
         fixes: e.ev.filter((v) => v[3] === 10).map((v) => v[0]),
@@ -6672,7 +6686,7 @@ export default function ReplayMotionPlayer({
     /* 일반 건물도 표적 지도에(지적: 질럿이 해처리에 안 붙음) — engageFoes(교전 유발)엔
        안 넣는다: 건물이 보인다고 싸움이 시작되면 안 되고, 어택이 그 태그를 찍었을 때만
        겨눔·접근의 표적이 된다. 유닛 태그와 겹치면 유닛이 우선(위에서 이미 set). */
-    for (const bt of bldTagSpots) {
+    for (const bt of bldTagSpots.rows) {
       if (t < bt.born + 2 || (bt.gone > 0 && t >= bt.gone)) continue;
       if (entPosByTag.has(bt.tag)) continue;
       entPosByTag.set(bt.tag, { x: bt.x, y: bt.y, team: teamOfRaw(bt.raw) ?? 0, air: false, bld: true, k: bt.k });
@@ -8686,11 +8700,23 @@ export default function ReplayMotionPlayer({
              (건물 45초/유닛 12초) 안에서 역순으로 훑되, 태그 없는 명령(어택땅)은
              건너뛰고 태그 있는 가장 최근 명령을 채택한다. */
           for (let ai = e.atkAt.length - 1; ai >= 0; ai -= 1) {
-            const [as2, atg] = e.atkAt[ai];
+            const [as2, atg, akx, aky] = e.atkAt[ai];
             if (as2 > t) continue;
             if (t - as2 > 45) break;
             if (atg <= 0) continue;
-            const tp = entPosByTag.get(atg);
+            let tp = entPosByTag.get(atg);
+            /* 태그 미해석 폴백(기획서 2-D) — 태그가 지도에 없으면(시작 홀·태그 재활용
+               분리) 클릭 좌표에서 3타일 안의 살아 있는 적 건물 자리로 잇는다. 어택땅
+               (atg=0)은 여기 못 온다 — 건물이 보인다고 싸움이 나면 안 된다. */
+            if (!tp) {
+              const st9 = bldTagSpots.sites.find((s9) =>
+                t >= s9.born + 2 && (s9.gone === 0 || t < s9.gone)
+                && Math.abs(s9.x - akx) <= 3 && Math.abs(s9.y - aky) <= 3
+                && (teamOfRaw(s9.raw) ?? 0) > 0 && teamOfRaw(s9.raw) !== team);
+              if (st9) {
+                tp = { x: st9.x, y: st9.y, team: teamOfRaw(st9.raw) ?? 0, air: false, bld: true, k: st9.k };
+              }
+            }
             // 팀 미상(0)은 표적으로도 안 삼는다(위 nearestFoe 주석과 같은 오인 방지).
             if (tp && tp.team > 0 && (team ?? 0) > 0 && tp.team !== team
               && t - as2 <= (tp.bld ? 45 : 12)) {
