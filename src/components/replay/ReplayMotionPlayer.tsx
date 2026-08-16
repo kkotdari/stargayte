@@ -3728,7 +3728,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 꼬리 두 가닥은 안테나처럼 얇게(지적).
     // 등딱지(몸통 원판)만 개인색, 날개·다리 금색(요청).
     // 다리 뿌리를 몸통(팔각 반지름 1.55) 안으로 밀어 틈 없이 붙인다(지적).
-    for (const ang of [168, 192]) out.push(...paintBase(wing(ang, 1.1, 2.4, 0.16, 0.06, 6.2, 5.2), "#d4af37"));
+    // 꼬리 두 가닥 길이 1/3(요청) — 2.4 → 0.8.
+    for (const ang of [168, 192]) out.push(...paintBase(wing(ang, 1.1, 0.8, 0.16, 0.06, 6.2, 5.85), "#d4af37"));
     // 긴 뒷다리 한 쌍은 길이·두께 2/3(지적).
     // 짧은 뒷다리 한 쌍은 더 짧게(지적) — 1.67 → 1.05.
     for (const ang of [138, 222]) out.push(...paintBase(wing(ang, 1.1, 1.05, 0.37, 0.15, 6.1, 4.4), "#d4af37"));
