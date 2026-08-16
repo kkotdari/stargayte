@@ -991,8 +991,12 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
     /* 꼭대기 볏(실물) — 뒤로 벌어져 굽는 볏 뿔 한 쌍. 둔덕보다 먼저 그려 밑동이
        가려진다(지적: 뿔이 비쳐 보였다). */
     // 위 볏 뿔 — 해처리·레어 검정, 하이브 진한 상아(spikeColor).
-    out.push(...spikeHorn(-1.1, -0.7, 5.7, -3.2, -1.6, 9.4, 1.3, spikeColor, 6, -0.5));
-    out.push(...spikeHorn(1.1, -0.6, 5.7, 3.3, -1.4, 9.6, 1.4, spikeColor, 6, -0.5));
+    /* 볏 뿔에도 제 자리 깊이(지적: 해처리도 가려짐) — 둔덕 뒤(-y)로 뻗는 뿔이라
+       뒤에서는 둔덕에 가리고 앞에서는 위로 온다. */
+    out.push(...tagKey(spikeHorn(-1.1, -0.7, 5.7, -3.2, -1.6, 9.4, 1.3, spikeColor, 6, -0.5),
+      depthNow(-2.2, -1.2) + 6));
+    out.push(...tagKey(spikeHorn(1.1, -0.6, 5.7, 3.3, -1.4, 9.6, 1.4, spikeColor, 6, -0.5),
+      depthNow(2.2, -1) + 6));
     /* 본 기둥 — 뒤집힌 밥그릇(돔)이 아니라 후지산 둔덕(지적): 위는 좁게 잘리고 옆구리는
        가파르다가 바닥에서 완만하게 벌어진다. 회전 대칭이라 요잉 불변. */
     /* 둔덕을 스파이어 기둥으로(요청) — 후지산 꼴: 넓은 밑동에서 위로 갈수록 좁아지되
@@ -1049,10 +1053,10 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
     }
     // 바닥 갈고리 덩굴(실물) — 다리 사이로 기다가 끝이 말려 올라간다.
     // 옆 갈고리 가시 — spikeColor(하이브는 진한 상아, 재지적).
-    out.push(...spikeHorn(4.2, 4.2, 0.5, 6.6, 6, 0.9, 0.7, spikeColor));
-    out.push(...spikeHorn(6.6, 6, 0.9, 7.4, 6.6, 2.4, 0.5, spikeColor));
-    out.push(...spikeHorn(-5.6, 2, 0.5, -7.8, 2.8, 0.9, 0.7, spikeColor));
-    out.push(...spikeHorn(-7.8, 2.8, 0.9, -8.6, 3, 2.2, 0.5, spikeColor));
+    out.push(...tagKey(spikeHorn(4.2, 4.2, 0.5, 6.6, 6, 0.9, 0.7, spikeColor), depthNow(5.4, 5.1) + 6));
+    out.push(...tagKey(spikeHorn(6.6, 6, 0.9, 7.4, 6.6, 2.4, 0.5, spikeColor), depthNow(7, 6.3) + 6));
+    out.push(...tagKey(spikeHorn(-5.6, 2, 0.5, -7.8, 2.8, 0.9, 0.7, spikeColor), depthNow(-6.7, 2.4) + 6));
+    out.push(...tagKey(spikeHorn(-7.8, 2.8, 0.9, -8.6, 3, 2.2, 0.5, spikeColor), depthNow(-8.2, 2.9) + 6));
     return out;
 }
 
