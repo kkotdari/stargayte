@@ -1684,8 +1684,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 지면에 앉힌다(재재지적: 아직도 높이 떠 있음) — 아래 끝을 0으로 붙이고 기둥
        자체를 짧게 줄여 링·갈고리까지 통째로 내린다. */
     const PY_B = 0;
-    const PY_T = 9;
-    const PY_M = (PY_B + PY_T) / 2;
+    /* 수정 기둥 1.25배(요청) — 9 → 11.25. 링·갈고리는 구조물에 박힌 띠라 제 높이를
+       지켜야 해서, 허리(PY_M)는 예전 길이(9)의 절반에 그대로 둔다: 기둥만 위로
+       길어지고 그 위가 더 뾰족해진다. */
+    const PY_T = 11.25;
+    const PY_M = (PY_B + 9) / 2;
     const [cx, cy] = project(0, 0, PY_M);
     const rxo = 5.5;
     const ryo = rxo * 0.45;
@@ -5947,6 +5950,9 @@ function unitSprite(
    부속 사이를 잇는 폭이 곧 제 길이라 늘리면 어긋난다. 미네랄은 발자국이 아니라 덩이
    넷을 흩어 놓은 무리라 요청대로 손대지 않는다. */
 const BLD_FILL_SKIP = new Set(["addonlink", "mineral"]);
+/** 프로토스 소환구 상자(타일)와 지면에서 띄우는 높이(타일) — 요청: 축소 + 더 띄우기. */
+const WARP_TILES = 2.4;
+const WARP_LIFT = 0.6;
 /** 건물 모델이 제 발자국 상자를 채우는 몫 — 종류마다 한 번만 잰다. */
 const BLD_FILL_CACHE = new Map<string, number>();
 /* 발자국 대비 그릴 몫 — 기본은 0.95(발자국을 꽉 채운다). 본진 셋만 예외로 넘겨 그린다
@@ -6285,9 +6291,10 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
                작은 건물 바가 실오라기가 됨) — 넥서스(1500)와 성큰(300)이 √5≈2.2배 차이. */
             /* 유닛 바와 같은 원칙(전수조사) — 바는 제 건물보다 넓지 않다. 배율은
                0.6~1.4배로 조이고 폭 기준도 0.7 → 0.6으로 낮춘다. */
+            /* 유닛 바와 같이 얇고 짧게(요청) — 길이 0.6 → 0.4배, 두께 0.05 → 0.03배. */
             const bScale = Math.min(1.4, Math.max(0.6, Math.sqrt((op.hpMax ?? 800) / 1000)));
-            const bw3 = Math.max(5, wPx * 0.6 * bScale);
-            const bh3 = Math.max(1.6, wPx * 0.05);
+            const bw3 = Math.max(3.5, wPx * 0.4 * bScale);
+            const bh3 = Math.max(1, wPx * 0.03);
             const bx3 = sx - bw3 / 2;
             /* 머리 바로 위(재재지적: 너무 위) — 그려진 픽셀 꼭대기에 살짝만 띄운다. */
             const byTop = bTop9 + (bspr.top / B) * k - bh3 - 2;
@@ -6435,9 +6442,11 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
            3.2배까지 늘어난 바가 몸을 덮어, 지도가 유닛이 아니라 초록 막대밭으로 읽혔다)
            — 배율은 0.7~1.7배로 조인다. 등급 자체가 이미 몸 크기를 가르므로(소 1.9 ↔
            대 3.3타일) 저글링과 울트라의 바 길이 차이는 그대로 4배쯤 난다. */
+        /* 전체적으로 상당히 얇고 짧게(요청) — 길이 0.85 → 0.58배, 두께 0.085 → 0.05배.
+           바닥값도 함께 내려(3 → 2px, 1.4 → 0.9px) 작은 유닛에서 굵어 보이지 않게. */
         const hpScale = Math.min(1.25, Math.max(0.75, Math.sqrt((op.hpMax ?? 100) / 150)));
-        const bw2 = Math.max(3, px * 0.85 * hpScale);
-        const bh2 = Math.max(1.4, px * 0.085);
+        const bw2 = Math.max(2, px * 0.58 * hpScale);
+        const bh2 = Math.max(0.9, px * 0.05);
         const bx2 = sx - bw2 / 2;
         /* 머리 바로 위(재재지적: 너무 위) — 실제 그려진 픽셀 꼭대기(contentBox.top)에
            살짝만 띄운다. */
@@ -9177,11 +9186,16 @@ export default function ReplayMotionPlayer({
                  제 작은 상자가 칸 중심(위로 들어올린 앵커)에 걸려 바닥이 발자국보다 위에
                  떴다. 상자 바닥을 발자국 바닥에 맞춘다. */
               // 소환구는 정사각 상자(재재지적: 3D에서 찌그러짐) — 어디서도 안 눌린다.
-              const modelHT = race2 === "프로토스" ? 3.4
+              /* 소환구 축소 + 더 띄우기(요청) — 상자 3.4 → 2.4타일이고, 발자국
+                 바닥에서 0.6타일 위로 띄운다(워프 중인 건물은 아직 땅에 안 앉았다). */
+              const modelHT = race2 === "프로토스" ? WARP_TILES
                 : ((hFrac * grid.width) / mkK) * beat;
               /* 고치 치우침(재지적) — +0.25타일 보정 대신 모델 자체 무게중심을 상자
                  가운데로 옮겨 보정 없이 맞는다. */
-              const [bfxF, bfyF] = posFrac(centerX, centerY + fp2[1] / 2 - modelHT / 2);
+              const [bfxF, bfyF] = posFrac(
+                centerX,
+                centerY + fp2[1] / 2 - modelHT / 2 - (race2 === "프로토스" ? WARP_LIFT : 0),
+              );
               unitOps.push({
                 fx: bfxF, fy: bfyF, z,
                 kind: race2 === "저그" ? "cocoon" : race2 === "프로토스" ? "warpin" : "scaffold",
@@ -9192,8 +9206,8 @@ export default function ReplayMotionPlayer({
                 /* 소환구는 크기 통일(재지적: 게임에서도 모든 건물이 같다) — 발자국과
                    무관하게 소형 기준 고정. */
                 sizePx: 0,
-                wFrac: race2 === "프로토스" ? (3.4 / grid.width) * mkK : wFrac * beat,
-                hFrac: race2 === "프로토스" ? (3.4 / grid.width) * mkK : hFrac * beat,
+                wFrac: race2 === "프로토스" ? (WARP_TILES / grid.width) * mkK : wFrac * beat,
+                hFrac: race2 === "프로토스" ? (WARP_TILES / grid.width) * mkK : hFrac * beat,
                 boxFit: "meet", fitWidth: true,
                 color, alpha, noShadow: true,
               });
