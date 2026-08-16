@@ -934,26 +934,13 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
     out.push(...paintBase(hornFaces(1.1, -0.6, 5.7, 3.3, -1.4, 9.6, 1.4), spikeColor));
     /* 본 기둥 — 뒤집힌 밥그릇(돔)이 아니라 후지산 둔덕(지적): 위는 좁게 잘리고 옆구리는
        가파르다가 바닥에서 완만하게 벌어진다. 회전 대칭이라 요잉 불변. */
-    {
-      const [bx, by] = project(0, 0, 0);
-      const [tx, ty] = project(0, 0, 6.6);
-      const dt = tx - bx; // 꼭대기 x 이동(지적: 원통형 오류 일습).
-      const rB = 5.9;
-      const rT = 1.4;
-      const ryB = rB * 0.45;
-      const mound = `M${bx - rB} ${by}`
-        + ` Q${bx - rB * 0.86 + dt * 0.3} ${by - (by - ty) * 0.28} ${bx - rT + dt} ${ty}`
-        + ` L${bx + rT + dt} ${ty}`
-        + ` Q${bx + rB * 0.86} ${by - (by - ty) * 0.28} ${bx + rB} ${by}`
-        + `a${rB} ${ryB} 0 1 1-${rB * 2} 0Z`;
-      out.push(...tagKey([bodyFace(mound)], 0.2));
-      out.push(sideFace(
-        `M${bx + rT * 0.55} ${ty} Q${bx + rB * 0.8} ${by - (by - ty) * 0.26} ${bx + rB * 0.92} ${by}`
-        + ` Q${bx + rB * 0.55} ${by + ryB * 0.5} ${bx + rT * 0.4} ${by}`
-        + ` Q${bx + rB * 0.5} ${by - (by - ty) * 0.3} ${bx + rT * 0.55} ${ty} Z`,
-        0.2,
-      ));
-    }
+    /* 둔덕을 스파이어 기둥으로(요청) — 후지산 꼴: 넓은 밑동에서 위로 갈수록 좁아지되
+       아래쪽은 굵기를 오래 유지(hold)해 완만한 치마가 되고 위는 가파르다. 회전 대칭
+       (16각)이라 요잉에 흔들림이 없다. */
+    out.push(...tagKey(spirePillar({
+      x: 0, y: 0, z0: 0, h: 6.6, w: 5.9, tipW: 1.4,
+      segs: 5, sides: 16, hold: 0.12,
+    }), 0.2));
     const [mx, my] = project(0, 0, 6.35);
     out.push(sideFace(`M${mx - 1.5} ${my} L${mx + 1.5} ${my} Q${mx + 1.4} ${my + 1} ${mx} ${my + 1.15} Q${mx - 1.4} ${my + 1} ${mx - 1.5} ${my} Z`, 0.35));
     out.push(topFace(groundEllipse(mx, my, 1.4, 0.4)));
@@ -971,35 +958,29 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
          것은 둔덕 뒤). 옆띠는 바닥까지, 발치에 진짜 반원형 캐노피 입구굴을 복원한다:
          띠 색 반원 테 + 속 어두운 굴. */
       {
-        const pxr = -dyr * 0.85;
-        const pyr = dxr * 0.85;
-        const seam = polyPath3([
-          [dxr * 1.25 + pxr, dyr * 1.25 + pyr, 5.8],
-          [dxr * 1.25 - pxr, dyr * 1.25 - pyr, 5.8],
-          [dxr * 5.7 - pxr, dyr * 5.7 - pyr, 0.05],
-          [dxr * 5.7 + pxr, dyr * 5.7 + pyr, 0.05],
-        ]);
-        /* 캐노피는 밖으로 쭉 뻗은 반원 터널(재재지적) — 둔덕 가장자리(r 4.95)에서
-           바깥(r 6.35)까지 아치 두 개를 지붕 띠로 잇고, 바깥 끝에 어두운 굴이 뚫린다.
-           모델 공간 아치라 요잉을 따라 제 방향을 본다. */
-        const archAt = (rad: number, rr: number, hh2: number): [number, number, number][] =>
-          Array.from({ length: 9 }, (_, i) => {
-            const th = (i / 8) * Math.PI;
-            return [
-              dxr * rad - dyr * Math.cos(th) * rr,
-              dyr * rad + dxr * Math.cos(th) * rr,
-              Math.sin(th) * hh2,
-            ] as [number, number, number];
-          });
-        const innA = archAt(4.95, 1.05, 1.05);
-        const outA = archAt(6.35, 1.05, 1.05);
-        const roof = polyPath3([...innA, ...[...outA].reverse()]);
+        /* 옆면 띠와 입구 캐노피를 스파이어 기둥으로(요청) — 띠는 꼭대기 언저리에서
+           밑동까지 흐르는 가는 기둥이고, 캐노피는 그 발치에서 바깥으로 뻗는 굵은
+           기둥이다. 둘 다 둔덕 표면을 타고 앉는다. */
+        const seamPillar = spirePillar({
+          x: dxr * 5.55, y: dyr * 5.55, z0: 0.05, h: 5.9,
+          w: 0.62, tipW: 0.4, segs: 6, sides: 6, hold: 0,
+          leanX: -dxr * 4.3, leanY: -dyr * 4.3,
+          curveX: dxr * 0.35, curveY: dyr * 0.35,
+          fill: seamColor,
+        });
+        // 캐노피 — 밑동에서 바깥으로 뻗는 짧고 굵은 터널.
+        const canopy = spirePillar({
+          x: dxr * 4.6, y: dyr * 4.6, z0: 0.05, h: 0.55,
+          w: 1.15, tipW: 1, segs: 2, sides: 8, hold: 0.5,
+          leanX: dxr * 1.9, leanY: dyr * 1.9,
+          fill: seamColor,
+        });
+        // 굴 입구 — 캐노피 바깥 끝의 어두운 구멍.
+        const [hx9, hy9] = project(dxr * 6.4, dyr * 6.4, 0.6);
         out.push(...tagKey([
-          [seam, 1, seamColor] as ShapeFace,
-          [roof, 1, seamColor] as ShapeFace,
-          sideFace(roof, 0.16),
-          [polyPath3(outA), 1, seamColor] as ShapeFace,
-          [polyPath3(archAt(6.35, 0.78, 0.78)), 0.9, "#101216"] as ShapeFace,
+          ...seamPillar,
+          ...canopy,
+          [groundEllipse(hx9, hy9, 0.72, 0.62), 0.9, "#101216"] as ShapeFace,
         ], dep + 0.3));
       }
     }
