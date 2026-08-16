@@ -1018,10 +1018,14 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
     // 위 볏 뿔 — 해처리·레어 검정, 하이브 진한 상아(spikeColor).
     /* 볏 뿔에도 제 자리 깊이(지적: 해처리도 가려짐) — 둔덕 뒤(-y)로 뻗는 뿔이라
        뒤에서는 둔덕에 가리고 앞에서는 위로 온다. */
+    /* 키는 한 자로 잰다(요청: 해처리·레어·하이브는 구조가 복잡해 키값을 잘 따져야
+       한다) — 둔덕이 0이고, 둔덕에 붙는 모든 부품은 제 뿌리의 깊이 × 1.6을 쓴다.
+       그러면 앞으로 돈 것은 둔덕 위로, 뒤로 돈 것은 둔덕 뒤로 저절로 갈린다.
+       볏 뿔만은 둔덕 꼭대기 위(z 5.7~)에 얹히므로 +9를 더해 늘 위로 올린다. */
     out.push(...tagKey(spikeHorn(-1.1, -0.7, 5.7, -3.2, -1.6, 9.4, 1.3, spikeColor, 6, -0.5),
-      depthNow(-2.2, -1.2) + 6));
+      depthNow(-2.2, -1.2) * 1.6 + 9));
     out.push(...tagKey(spikeHorn(1.1, -0.6, 5.7, 3.3, -1.4, 9.6, 1.4, spikeColor, 6, -0.5),
-      depthNow(2.2, -1) + 6));
+      depthNow(2.2, -1) * 1.6 + 9));
     /* 본 기둥 — 뒤집힌 밥그릇(돔)이 아니라 후지산 둔덕(지적): 위는 좁게 잘리고 옆구리는
        가파르다가 바닥에서 완만하게 벌어진다. 회전 대칭이라 요잉 불변. */
     /* 둔덕을 스파이어 기둥으로(요청) — 후지산 꼴: 넓은 밑동에서 위로 갈수록 좁아지되
@@ -1039,7 +1043,7 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
     out.push(...tagKey(spirePillar({
       x: 0, y: 0, z0: 0, h: MND_H, w: MND_RB, tipW: MND_RT,
       segs: 9, sides: 16, hold: 0, taper: MND_P,
-    }), 0.2));
+    }), 0));
     const [mx, my] = project(0, 0, 6.35);
     out.push(sideFace(`M${mx - 1.5} ${my} L${mx + 1.5} ${my} Q${mx + 1.4} ${my + 1} ${mx} ${my + 1.15} Q${mx - 1.4} ${my + 1} ${mx - 1.5} ${my} Z`, 0.35));
     out.push(topFace(groundEllipse(mx, my, 1.4, 0.4)));
@@ -1050,7 +1054,7 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
       const a2 = (ang * Math.PI) / 180;
       const dxr = Math.sin(a2);
       const dyr = Math.cos(a2);
-      const dep = depthNow(dxr * 4, dyr * 4);
+      const dep = depthNow(dxr * 4.2, dyr * 4.2);
       /* 다리(사진 지적: 이 검은 상자들 제거) — 입구발 슬래브를 전부 걷고, 옆선이
          꼭대기에서 바닥까지 이어져 입구굴을 대신 말한다. */
       /* 가림 문턱 완전 제거(재재지적) — 늘 그리고 앞뒤는 깊이 키가 정한다(뒤로 돈
@@ -1073,15 +1077,16 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
         });
         /* 캐노피·동그라미 입구 표현 모두 제거(재지적) — 옆면 기둥의 굵게 열린 아래
            단면 자체가 들머리 노릇을 한다. */
-        out.push(...tagKey(seamPillar, dep + 0.3));
+        out.push(...tagKey(seamPillar, dep * 1.6));
       }
     }
     // 바닥 갈고리 덩굴(실물) — 다리 사이로 기다가 끝이 말려 올라간다.
     // 옆 갈고리 가시 — spikeColor(하이브는 진한 상아, 재지적).
-    out.push(...tagKey(spikeHorn(4.2, 4.2, 0.5, 6.6, 6, 0.9, 0.7, spikeColor), depthNow(5.4, 5.1) + 6));
-    out.push(...tagKey(spikeHorn(6.6, 6, 0.9, 7.4, 6.6, 2.4, 0.5, spikeColor), depthNow(7, 6.3) + 6));
-    out.push(...tagKey(spikeHorn(-5.6, 2, 0.5, -7.8, 2.8, 0.9, 0.7, spikeColor), depthNow(-6.7, 2.4) + 6));
-    out.push(...tagKey(spikeHorn(-7.8, 2.8, 0.9, -8.6, 3, 2.2, 0.5, spikeColor), depthNow(-8.2, 2.9) + 6));
+    // 바닥 덩굴도 같은 자 — 둔덕 밖이라 앞뒤만 옳으면 된다.
+    out.push(...tagKey(spikeHorn(4.2, 4.2, 0.5, 6.6, 6, 0.9, 0.7, spikeColor), depthNow(5.4, 5.1) * 1.6));
+    out.push(...tagKey(spikeHorn(6.6, 6, 0.9, 7.4, 6.6, 2.4, 0.5, spikeColor), depthNow(7, 6.3) * 1.6));
+    out.push(...tagKey(spikeHorn(-5.6, 2, 0.5, -7.8, 2.8, 0.9, 0.7, spikeColor), depthNow(-6.7, 2.4) * 1.6));
+    out.push(...tagKey(spikeHorn(-7.8, 2.8, 0.9, -8.6, 3, 2.2, 0.5, spikeColor), depthNow(-8.2, 2.9) * 1.6));
     return out;
 }
 
@@ -1709,12 +1714,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const a2 = (ang * Math.PI) / 180;
       out.push([groundEllipse(rcx + Math.cos(a2) * 3.75, rcy + Math.sin(a2) * 1.82, 0.4, 0.22), 0.6, "#3bd8c2"] as ShapeFace);
     }
-    // 매끈한 흰 가시 — 테두리에서 바깥으로 살짝 기운 원뿔들.
-    for (const [hx, hy, tx2, ty2] of [
-      [-2.1, 3.3, -2.7, 4.2], [2.2, 3.2, 2.7, 4], [-4.1, -0.7, -5, -0.8], [3.9, -1.5, 4.7, -1.8],
-    ] as [number, number, number, number][]) {
-      out.push(...paintBase(hornFaces(hx, hy, 2.5, tx2, ty2, 4.6, 0.85), IVORY));
-    }
+    // (삭제·요청) 테두리 흰 가시 — 크레인만 남긴다.
     /* 위는 집게 크레인(요청·사진: 고치 제거) — 뒤쪽에서 솟은 기둥이 앞으로 크게 굽어
        우물 위로 드리우고, 끝에 두 갈래 집게와 청록 발광이 달린다. 판 위 얹힘이라
        지붕 키로 늘 대야를 이긴다. */
@@ -1873,56 +1873,77 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   },
   /* 스포어(정정: 가시가 아니라 굴뚝이 포인트) — 크립 밑동과 몸통 덩어리 위에, 왼뒤에서
      굵게 서는 아가리 뚫린 굴뚝 관. */
-  spore: () => [
-    /* 스포어(요청: 뿔기둥 전격 활용) — 검회색 밑동 둔덕 위에 살덩이 몸통 기둥이 서고,
-       왼뒤에 아가리 뚫린 굵은 굴뚝 기둥이 솟는다. */
-    ...tagKey(paintBase(spirePillar({
-      x: 0, y: 0, z0: 0, h: 1.6, w: 5.4, tipW: 3.4,
+  spore: () => {
+    /* 스포어(요청: 뿔기둥 전격 활용 / 지적: 뚜껑 위치·키 어긋남) — 밑동·몸통·뚜껑을
+       한 축에 세워 아래 단의 윗지름과 위 단의 밑지름을 그대로 맞물린다. 굴뚝만
+       옆에 서므로 제 자리 깊이 키를 쓴다. */
+    const out: ShapeFace[] = [];
+    // 밑동 — 검회색 받침.
+    out.push(...tagKey(paintBase(spirePillar({
+      x: 0, y: 0, z0: 0, h: 1.5, w: 5.2, tipW: 3.2,
       segs: 3, sides: 14, hold: 0.15, taper: 1.8,
-    }), "#3a3f46"), 0.2),
-    ...tagKey(spirePillar({
-      x: 0.6, y: 0.2, z0: 1.2, h: 4.4, w: 3, tipW: 1.1,
+    }), "#3a3f46"), 0));
+    // 몸통 — 밑동 윗지름(3.2)에서 시작해 1.15로 좁아진다.
+    out.push(...tagKey(spirePillar({
+      x: 0, y: 0, z0: 1.35, h: 4.2, w: 3.2, tipW: 1.15,
       segs: 6, sides: 12, hold: 0.08, taper: 1.7,
-    }), 6),
-    ...tagKey(spirePillar({
-      x: 1.6, y: 1.4, z0: 4.4, h: 2.1, w: 1.5, tipW: 0.55,
-      segs: 4, sides: 10, hold: 0.1, taper: 1.5,
-    }), 10),
-    // 굴뚝 — 벌어진 테와 어두운 속.
-    ...tagKey([
+    }), 6));
+    // 뚜껑 — 몸통 윗지름(1.15)을 그대로 받아 얹는다.
+    out.push(...tagKey(spirePillar({
+      x: 0, y: 0, z0: 5.4, h: 1.9, w: 1.15, tipW: 0.4,
+      segs: 4, sides: 10, hold: 0.12, taper: 1.6,
+    }), 9));
+    // 굴뚝 — 왼뒤에 따로 선다. 벌어진 테와 어두운 속.
+    out.push(...tagKey([
       ...spirePillar({
-        x: -2.6, y: -1.4, z0: 0.8, h: 5.6, w: 1.05, tipW: 1.45,
+        x: -2.7, y: -1.5, z0: 0.9, h: 5.4, w: 1.05, tipW: 1.45,
         segs: 5, sides: 10, hold: 0.2,
       }),
-      capFace(discPath3(-2.6, -1.4, 7.05, 1.05), 0.5),
-    ], 14 + depthNow(-2.6, -1.4)),
-    // 앞오른쪽 작은 덩이.
-    ...tagKey(spirePillar({
-      x: 3.4, y: 2.6, z0: 0.6, h: 1.7, w: 1.5, tipW: 0.45,
+      capFace(discPath3(-2.7, -1.5, 6.95, 1.05), 0.5),
+    ], depthNow(-2.7, -1.5) * 1.6));
+    // 앞오른쪽 작은 덩이 — 밑동 옆구리에 붙는다.
+    out.push(...tagKey(spirePillar({
+      x: 3.1, y: 2.4, z0: 0.7, h: 1.7, w: 1.5, tipW: 0.45,
       segs: 4, sides: 10, hold: 0.1, taper: 1.6,
-    }), 8 + depthNow(3.4, 2.6)),
-  ],
+    }), depthNow(3.1, 2.4) * 1.6));
+    return out;
+  },
   /* 크립 콜로니(실물 참고) — 처진 붉은 둔덕 + 꼭대기 주름 혹(입) + 옆 가시 + 바닥에
      번진 점액 자락. */
-  creep: () => [
-    /* 크립 콜로니(요청: 뿔기둥 전격 활용) — 갈퀴 바닥 위에 후지산 꼴 살덩이 둔덕이
-       앉고, 꼭대기 주름 혹과 옆 가시 셋이 모두 공용 기둥·뿔로 선다. */
-    ...paintBase(creepSplat(6.2), "#3a3f46"),
-    ...tagKey(spirePillar({
-      x: 0, y: 0, z0: 0, h: 3.6, w: 4.6, tipW: 1.5,
-      segs: 7, sides: 14, hold: 0, taper: 2,
-    }), 0.2),
-    ...tagKey(spirePillar({
-      x: 0.4, y: -0.6, z0: 3.3, h: 2.1, w: 1.6, tipW: 0.5,
-      segs: 5, sides: 10, hold: 0.1, taper: 1.6,
-    }), 8),
-    ...tagKey(spikeHorn(-3.4, -1.4, 1.6, -4.6, -2, 3.4, 0.9, undefined, 6, 0.5, -0.9, -0.4),
-      depthNow(-3.4, -1.4) * 1.6),
-    ...tagKey(spikeHorn(-1.6, -3, 1.6, -2.2, -4.2, 3.2, 0.9, undefined, 6, 0.5, -0.4, -0.9),
-      depthNow(-1.6, -3) * 1.6),
-    ...tagKey(spikeHorn(3.4, -1.8, 1.6, 4.6, -2.6, 3.2, 0.9, undefined, 6, 0.5, 0.9, -0.4),
-      depthNow(3.4, -1.8) * 1.6),
-  ],
+  creep: () => {
+    /* 크립 콜로니(요청: 뿔기둥 전격 활용 / 지적: 뚜껑·가시가 어긋남) — 둔덕 옆선을
+       식으로 두고, 뚜껑은 그 꼭대기 원 위에, 가시는 그 옆면 위에 앉힌다. 키는
+       해처리와 같은 자(둔덕 0, 나머지는 제 자리 깊이 × 1.6). */
+    const CR_H = 3.6;
+    const CR_RB = 4.6;
+    const CR_RT = 1.5;
+    const CR_P = 2;
+    const crR = (t9: number): number => CR_RT + (CR_RB - CR_RT) * (1 - t9) ** CR_P;
+    const out: ShapeFace[] = [...paintBase(creepSplat(6.2), "#3a3f46")];
+    out.push(...tagKey(spirePillar({
+      x: 0, y: 0, z0: 0, h: CR_H, w: CR_RB, tipW: CR_RT,
+      segs: 7, sides: 14, hold: 0, taper: CR_P,
+    }), 0));
+    // 뚜껑 — 둔덕 꼭대기 원(반지름 CR_RT) 위에 그대로 얹는 주름 혹.
+    out.push(...tagKey(spirePillar({
+      x: 0, y: 0, z0: CR_H - 0.15, h: 2, w: CR_RT, tipW: 0.45,
+      segs: 5, sides: 12, hold: 0.12, taper: 1.7,
+    }), 9));
+    // 옆 가시 셋 — 뿌리를 둔덕 옆면 위에 정확히 두고 바깥·위로 뻗는다.
+    for (const [ang, tz9] of [[-150, 3.3], [-90, 3.1], [-30, 3.2]] as [number, number][]) {
+      const a9 = (ang * Math.PI) / 180;
+      const dxr = Math.sin(a9);
+      const dyr = Math.cos(a9);
+      const zr9 = 1.35;
+      const rr9 = crR(zr9 / CR_H) * 0.95;
+      const bx9 = dxr * rr9;
+      const by9 = dyr * rr9;
+      out.push(...tagKey(spikeHorn(
+        bx9, by9, zr9, dxr * (rr9 + 1.5), dyr * (rr9 + 1.5), tz9, 0.9, undefined, 6, 0.4, dxr, dyr,
+      ), depthNow(bx9, by9) * 1.6));
+    }
+    return out;
+  },
 
   /* 리파이너리(실물 참고) — 낮은 받침 + 좌우 어두운 탑 + 가운데 나팔 굴뚝 + 은빛
      팔꿈치 배관들 + 앞 은색 탱크 + 왼앞 줄무늬 경사로. */
@@ -2954,8 +2975,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ), depthNow(px, py) * 1.6 + 0.2));
       }
     }
-    out.push(...hornFaces(-2.6, 4.6, 0.6, -4.4, 6, 2.6, 1));
-    out.push(...hornFaces(2.8, 4.4, 0.6, 4.6, 5.6, 2.4, 1));
+    out.push(...tagKey(hornFaces(-2.6, 4.6, 0.6, -4.4, 6, 2.6, 1), depthNow(-3.5, 5.3) * 1.6));
+    out.push(...tagKey(hornFaces(2.8, 4.4, 0.6, 4.6, 5.6, 2.4, 1), depthNow(3.7, 5) * 1.6));
     return out;
   },
   /* 스포닝 풀(입체감, 지적) — 살 테두리를 땅에서 도톰하게 올리고 앞으로 흘러내리는
