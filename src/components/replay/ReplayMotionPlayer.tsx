@@ -4963,8 +4963,8 @@ const MODEL_YAW_TWEAK: Record<string, number> = {
   // 반시계 90도(지적) — 어시밀레이터·히드라 덴·서플·포지·테란 공사장.
   // 어시밀레이터: 180도(재재지적)→-45도→다시 180도(재재재재지적) — 합계 135.
   assim: 135, hydraden: -90, trapezoid: -90, forge: -90, scaffold: -90,
-  // 시계 90도(지적) — 템플러 아카이브. 로보틱스는 두 번 더 돌려 270(재재지적).
-  dome: 270, archives: 90,
+  // 시계 90도(지적) — 템플러 아카이브. 로보틱스는 처음(90)에서 시계 90도 더해 180.
+  dome: 180, archives: 90,
 };
 const buildingYawOf = (kind: string): number =>
   BUILDING_BASE_YAW + (MODEL_YAW_TWEAK[kind] ?? 0);
