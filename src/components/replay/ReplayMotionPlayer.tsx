@@ -10328,6 +10328,16 @@ export default function ReplayMotionPlayer({
                     ...(lurkStrike ? {
                       height: `${(Math.min(7, foe.bd) * ((mapRef.current?.clientWidth ?? 320) / grid.width)).toFixed(1)}px`,
                     } : {}),
+                    /* 근접 휘두름 호는 제 몸에 맞춘다(지적: "부메랑 모양이 계속 나온다")
+                       — 6px 고정이라 유닛 크기를 캔버스 비례로 바로잡고 나니 호가 몸통
+                       만 해져, 칼자국이 아니라 옆에 뜬 부메랑으로 보였다. 몸의 절반
+                       크기에 테두리도 그만큼 얇게. */
+                    ...(ATTACK_FX[fxUnit] === "slash" ? {
+                      width: `${(fxPx * 0.34).toFixed(1)}px`,
+                      height: `${(fxPx * 0.34).toFixed(1)}px`,
+                      borderWidth: `${Math.max(0.4, fxPx * 0.05).toFixed(2)}px`,
+                      opacity: 0.85,
+                    } : {}),
                   }}
                 />
               )}
