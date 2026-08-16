@@ -8696,7 +8696,10 @@ export default function ReplayMotionPlayer({
              오가며 흔들렸다. 들어올 땐 시야, 나갈 땐 시야×1.3이라 경계에서 안 떨린다. */
           const engagedBefore = engageHoldRef.current.has(holdKey);
           const fighting = canFight && !frzSt && Number.isFinite(foe.bd)
-            && foe.bd <= ENGAGE_SIGHT_TILES * (engagedBefore ? 1.3 : 1);
+            && (foe.bd <= ENGAGE_SIGHT_TILES * (engagedBefore ? 1.3 : 1)
+              /* 어택이 찍은 건물은 14.4타일부터 접근 시작(기획서 1-E — 수리: 시야
+                 게이트가 철거 행군을 9타일 밖에서 세워 뒀다). */
+              || (foe.bld === true && foe.bd <= ENGAGE_SIGHT_TILES * 1.6));
           let pos = rawPos;
           if (fighting && !uAir) {
             const mem = engageHoldRef.current.get(holdKey);
