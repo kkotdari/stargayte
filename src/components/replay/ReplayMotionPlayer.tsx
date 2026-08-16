@@ -703,14 +703,21 @@ function spirePillar(o: {
     const l9 = Math.hypot(d9[0], d9[1], d9[2]) || 1;
     return [d9[0] / l9, d9[1] / l9, d9[2] / l9];
   };
+  /* 단면 기준 벡터 — 축 전체 방향과 가장 어긋난 축을 골라 한 번만 정한다. */
+  const TA = tangentAt(0.5);
+  const REF: [number, number, number] = Math.abs(TA[2]) < 0.9 ? [0, 0, 1]
+    : (Math.abs(TA[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0]);
   const ring = (t: number): [number, number, number][] => {
     const [ax, ay, az] = axis(t);
     const r = widthAt(t);
     const T = tangentAt(t);
-    // u = T × 위(0,0,1) — 축이 수직이면 0이 되므로 x축으로 폴백.
-    let ux = T[1];
-    let uy = -T[0];
-    let uz = 0;
+    /* 기준 벡터는 마디마다 새로 뽑지 않는다(지적: 뿔이 중간에 뒤틀린다) — T가 수직에
+       가까울수록 T×위가 요동쳐 단면이 홱 돌아간다. 축 전체 방향으로 한 번 고른 기준을
+       각 지점에서 T에 수직화(그람-슈미트)해 연속적으로 잇는다. */
+    const dot9 = REF[0] * T[0] + REF[1] * T[1] + REF[2] * T[2];
+    let ux = REF[0] - T[0] * dot9;
+    let uy = REF[1] - T[1] * dot9;
+    let uz = REF[2] - T[2] * dot9;
     const ul9 = Math.hypot(ux, uy, uz);
     if (ul9 < 1e-4) { ux = 1; uy = 0; uz = 0; } else { ux /= ul9; uy /= ul9; uz /= ul9; }
     // v = T × u — u·T 모두에 수직.
@@ -2874,9 +2881,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...tagKey(spikeHorn(-0.95, -5.35, 1.1, -1.1, -6.6, 10.2, 2.4, "#1b1e23", 6, 1.5, -0.17, -0.98), -2),
     ...SHAPE_BUILDERS.hatchery(),
     ...tagKey(spikeHorn(-3.45, 4.1, 1.1, -3.9, 5.1, 11.6, 2.6, "#1b1e23", 6, 1.6, -0.64, 0.77),
-      12 + depthNow(-3.45, 4.1)),
+      26 + depthNow(-3.45, 4.1)),
     ...tagKey(spikeHorn(5.3, 0.95, 1.2, 5.9, 1.1, 12.2, 2.8, "#1b1e23", 6, 1.6, 0.98, 0.17),
-      12 + depthNow(5.3, 0.95)),
+      26 + depthNow(5.3, 0.95)),
   ],
   /* 하이브 — 더 길고 굵은 뿔 셋(뿔 등에 가시들, 요청) + 앞 컬. */
   hive: () => {
@@ -2899,17 +2906,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 뿔은 황토색, 가시는 상아색(요청).
       // 뿔에 제 자리 깊이(지적: 가려짐) — 첫 뿔(뒤)은 둔덕 뒤, 나머지는 둔덕 앞.
       out.push(...tagKey(spikeHorn(bx, by, bz, tx, ty, tz, w, "#b3854a", 6, 1.8, inX, inY),
-        hi === 1 ? -2 : 12 + depthNow(bx, by)));
+        hi === 1 ? -2 : 26 + depthNow(bx, by)));
       /* 뿔 등의 가시(요청, 정정: 안쪽을 향한다) — 뿔 길이를 따라 서너 개가 본 건물
          쪽으로 돋는다. */
+      /* 가시는 휜 뿔의 곡선 위에 앉는다(지적: 위치가 어긋남) — spikeHorn과 같은
+         사인 휨을 그대로 더해 뿔 등에 붙인다. */
       for (const t of [0.35, 0.55, 0.75]) {
-        const px = bx + (tx - bx) * t;
-        const py = by + (ty - by) * t;
-        const pz = bz + (tz - bz) * t;
+        const s9 = Math.sin(Math.PI * t) * 1.8;
+        const px = bx + (tx - bx) * t + s9 * inX;
+        const py = by + (ty - by) * t + s9 * inY;
+        const pz = bz + (tz - bz) * t + s9 * 0.2;
         const olen = Math.hypot(px, py) || 1;
         const ox = (px / olen) * 1.7;
         const oy = (py / olen) * 1.7;
-        out.push(...paintBase(hornFaces(px, py, pz, px - ox, py - oy, pz + 0.7, 0.65), IVORY_DEEP));
+        out.push(...tagKey(paintBase(
+          hornFaces(px, py, pz, px - ox, py - oy, pz + 0.7, 0.65), IVORY_DEEP,
+        ), hi === 1 ? -1 : 14 + depthNow(px, py)));
       }
     }
     out.push(...hornFaces(-2.6, 4.6, 0.6, -4.4, 6, 2.6, 1));
