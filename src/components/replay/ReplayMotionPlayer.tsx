@@ -6184,15 +6184,20 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
           /* 2D는 바닥이 의도적으로 눌려 있다(지적) — 원작 이동 마커와 같은 2:1 지면
              관례라, 그림자 세로도 그만큼(0.55) 줄인다. 3D(pitch)는 사영이 이미 칸을
              눌러 놓아 그대로다. */
-          const squish = op.pitch ? 1 : 0.55;
-          const fdPx = wPx * (op.footRatio ?? 0.6) * squish;
+          /* 발자국보다 작게(재지적: 건물 그림자가 또 말썽 — 바닥에 맞는 크기로) —
+             건물은 45도로 요잉해 세워서, 상자 폭을 그대로 쓰면 실제 닿는 바닥보다
+             한참 넓은 타원이 깔린다. 발자국 폭의 0.72만 덮는다. 3D도 지면 사영을
+             한 번 더 눌러(0.68) 납작하게 붙인다. */
+          const squish = op.pitch ? 0.68 : 0.55;
+          const footW = wPx * 0.72;
+          const fdPx = footW * (op.footRatio ?? 0.6) * squish;
           ctx.save();
           ctx.shadowColor = "transparent";
           ctx.globalAlpha = op.alpha * 0.16;
           ctx.fillStyle = "#000";
           ctx.beginPath();
           ctx.ellipse(
-            sx, sy + hPx / 2 - fdPx / 2, wPx * 0.5,
+            sx, sy + hPx / 2 - fdPx / 2, footW * 0.5,
             Math.max(2, fdPx * 0.5), 0, 0, Math.PI * 2,
           );
           ctx.fill();
@@ -6402,7 +6407,10 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
        먼저 깔고, 차단 마스크를 destination-out으로 파낸 다음 나머지를 얹는다. 캔버스에
        아직 크립뿐이라 다른 그림은 안 다친다. */
     const creepList = showCreep === false ? [] : sorted.filter((o) => o.clipWalk);
-    if (creepList.length > 0 && wallMask && maskRects && maskRects.length > 0) {
+    /* 클립은 벽 마스크와 무관하다(재지적: 3D에서 아직도 미니맵을 벗어남) — 전에는
+       마스크가 있을 때만 이 갈래로 들어와, 마스크가 아직 안 구워진 판에서는 클립
+       자체가 안 걸려 크립이 맵 밖으로 샜다. 이제 크립이 있으면 늘 가둔다. */
+    if (creepList.length > 0) {
       /* 크립은 맵 밖으로 못 나간다(지적: 미니맵 밖까지 나옴) — 컨테이너가 overflow:
          hidden이 아니라(모서리 마커를 안 자르려고) 가장자리 해처리의 크립 원이 그림
          밖까지 그려졌다. 크립 판만 맵 영역으로 클립한다 — 평면은 사각형, 입체는
@@ -6420,16 +6428,19 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
       }
       ctx.clip();
       paintOps(creepList);
-      ctx.save();
-      ctx.globalCompositeOperation = "destination-out";
-      ctx.shadowColor = "transparent";
-      for (const [sy0, sh, fx0, fy0, fx1, fy1] of maskRects) {
-        ctx.drawImage(
-          wallMask, 0, sy0, wallMask.width, sh,
-          zx(fx0), zy(fy0), (fx1 - fx0) * cw * zoom, (fy1 - fy0) * ch * zoom,
-        );
+      // 지형 차단은 마스크가 구워졌을 때만 파낸다.
+      if (wallMask && maskRects && maskRects.length > 0) {
+        ctx.save();
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.shadowColor = "transparent";
+        for (const [sy0, sh, fx0, fy0, fx1, fy1] of maskRects) {
+          ctx.drawImage(
+            wallMask, 0, sy0, wallMask.width, sh,
+            zx(fx0), zy(fy0), (fx1 - fx0) * cw * zoom, (fy1 - fy0) * ch * zoom,
+          );
+        }
+        ctx.restore();
       }
-      ctx.restore();
       ctx.restore();
       paintOps(sorted.filter((o) => !o.clipWalk));
     } else {
