@@ -5199,7 +5199,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
             const bh3 = Math.max(1.8, wPx * 0.05);
             const bx3 = sx - bw3 / 2;
             // 상자 위 3px — 높은 첨탑 모델과 살짝 겹칠 수 있지만 자리로는 이게 안정적이다.
-            const byTop = sy - hPx / 2 - bh3 - 3;
+            // 표시 위치 낮추기(요청) — 상자 위 3px 띄움을 걷고 상자 머리에 붙인다.
+            const byTop = sy - hPx / 2 - bh3 + 3;
             ctx.globalAlpha = op.alpha * 0.9;
             ctx.fillStyle = "rgba(10, 14, 10, 0.75)";
             ctx.fillRect(bx3 - 0.5, byTop - 0.5, bw3 + 1, bh3 + 1);
@@ -5326,7 +5327,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         const bw2 = Math.max(4, px * 0.95 * hpScale);
         const bh2 = Math.max(1.6, px * 0.09);
         const bx2 = sx - bw2 / 2;
-        const by2 = sy - px * 0.24 - lift - px * 0.66;
+        // 표시 위치 낮추기(요청) — 0.66 → 0.45.
+        const by2 = sy - px * 0.24 - lift - px * 0.45;
         ctx.save();
         ctx.shadowColor = "transparent";
         ctx.globalAlpha = op.alpha * 0.9;
@@ -8098,7 +8100,7 @@ export default function ReplayMotionPlayer({
                 hpFrac: (() => {
                   if (!entOn) return undefined;
                   const arr = entBldHp.get(`${raw}|${Math.round(x)}|${Math.round(y)}`);
-                  if (!arr) return undefined;
+                  if (!arr) return 1; // 기록 없는 성한 건물도 만피 바(요청).
                   const rec = [...arr].filter((r2) => r2.born <= sec + 5)
                     .sort((a2, b2) => b2.born - a2.born)[0] ?? arr[0];
                   let pct = 100;
@@ -8106,7 +8108,7 @@ export default function ReplayMotionPlayer({
                     if (hs3 <= t) pct = hv3;
                     else break;
                   }
-                  return pct < 100 ? Math.max(0.04, pct / 100) : undefined;
+                  return Math.max(0.04, pct / 100);
                 })(),
                 groundShadow: true,
                 // 접지 그림자의 발자국 비(지적: 그림자는 바닥 발자국만) — 세로/가로.
@@ -8897,7 +8899,8 @@ export default function ReplayMotionPlayer({
             z: pitched || uAir ? 1000 + Math.round(ay3 * 80) : 1000 + (ei % 137),
             kind: kindMain,
             selRing: selNow || undefined,
-            hpFrac: hpPct < 100 ? Math.max(0.04, hpPct / 100) : undefined,
+            // 보임 토글이면 만피여도 표시(요청: 모든 유닛·건물 다 표시).
+            hpFrac: Math.max(0.04, hpPct / 100),
             hpMax: (() => {
               const st2 = UNIT_STATS[drawUnit2] ?? UNIT_STATS[drawUnit];
               return st2 ? st2.hp + (st2.sh ?? 0) : undefined;

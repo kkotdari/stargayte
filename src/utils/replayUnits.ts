@@ -904,6 +904,67 @@ export function buildUnitTracks(
 
   for (const life of alive.values()) done.push(life);
 
+  /* ── 태그 재사용 분리(요청: 체력 로직을 위한 태그 관리 개선) — 브루드워는 죽은
+        유닛의 태그를 새로 태어난 유닛이 물려받는다. 한 태그를 한 생애로 묶으면
+        ① 옛 유닛이 죽은 '뒤'의 새 유닛 증거가 생존 증거로 오인돼 빈사 부활 산포가
+        같은 값으로 반복되고(체력이 8%쯤에 얼어붙는 증상), ② 전투 근처에도 안 간
+        새 유닛이 옛 유닛의 누적 피해를 상속해 갑자기 빈사가 된다. 과분리(어택땅으로
+        먼 좌표를 찍은 산 유닛을 자르는 것)를 막기 위해 세 증거가 다 맞을 때만 자른다:
+        위치 증거가 90초 넘게 끊긴 채 20타일 밖에서 재등장 + 사라지기 직전 공격받고
+        있었음 + 재등장 무렵(±90초) 같은 주인의 정체 맞는 생산 완성이 있음. 잘린
+        뒤쪽은 spawned를 비워 생산 원장이 제 출생 이야기를 새로 붙일 수 있다. */
+  {
+    const queue = done.filter((l) => !l.bld && l.ev.length >= 2);
+    for (let round = 0; round < 3 && queue.length > 0; round += 1) {
+      const next: Life[] = [];
+      for (const life of queue) {
+        /* 시공간 공백만으론 못 가른다(실측: 분리 0건) — 명령 좌표는 유닛 위치가 아니라
+           클릭한 '목표' 지점이라, 산 유닛의 먼 어택땅과 재사용 태그가 똑같이 보인다.
+           강한 앵커(f=1)만은 유닛의 실제 위치다: 연속 앵커 사이 요구 속력이 물리적으로
+           불가능하면(12타일 넘게를 초당 9타일 이상으로) 같은 유닛일 수 없다. 승하차
+           (f=12/13)가 사이에 있으면 수송 이동이므로 제외한다. */
+        let prevA: { i: number; v: UnitEv } | null = null;
+        for (let vi = 0; vi < life.ev.length; vi += 1) {
+          const v = life.ev[vi];
+          if (v[1] < 0 || v[3] !== 1) continue;
+          if (prevA
+            && v[0] - prevA.v[0] >= 2
+            && Math.hypot(v[1] - prevA.v[1], v[2] - prevA.v[2]) >= 12
+            && Math.hypot(v[1] - prevA.v[1], v[2] - prevA.v[2])
+              / Math.max(1, v[0] - prevA.v[0]) >= 9
+            && !life.ev.slice(prevA.i + 1, vi).some((w) => w[3] === 12 || w[3] === 13)) {
+            const rest = life.ev.splice(vi);
+            const seg: Life = {
+              tag: life.tag + 1000000,
+              owner: life.owner,
+              kinds: new Map(life.kinds),
+              groupKinds: new Set(life.groupKinds),
+              bld: false,
+              born: rest[0][0],
+              last: life.last,
+              lastAtk: life.lastAtk !== null && life.lastAtk >= rest[0][0] ? life.lastAtk : null,
+              evAfterAtk: false,
+              morphTo: life.morphTo,
+              cxl: null,
+              solo: false,
+              spawned: false,
+              ev: rest,
+            };
+            life.last = life.ev[life.ev.length - 1][0];
+            if (life.lastAtk !== null && life.lastAtk > life.last + 30) life.lastAtk = life.last;
+            life.morphTo = null;
+            done.push(seg);
+            next.push(seg);
+            break;
+          }
+          prevA = { i: vi, v };
+        }
+      }
+      queue.length = 0;
+      queue.push(...next);
+    }
+  }
+
   /* ── 뒤 스토리 보정: 시작 유닛(지적: 처음 오버로드가 안 나온다) — 개체는 첫 증거에서
         태어나는데, 시작 유닛의 첫 명령 '전' 이야기는 리플레이가 말해 준다: 본진에 서
         있었다. 저그의 이른(90초 안) 단독 선택 이동체 중 자원·건설·정체 증거가 하나도
@@ -1325,7 +1386,12 @@ export function buildUnitTracks(
     for (const b of battles) {
       if (b.end < life.born || b.start > lastSec + 30) continue;
       const mid = (b.start + b.end) / 2;
-      const pos = posAtSec(life, mid, dmgTol(life, mid));
+      /* 참가 증거 창 조이기(재지적: 전투 없이 갑자기 빈사) — ±45초 창은 교전 40초
+         '전'에 그 자리를 지나간 유닛까지 참가자로 끌어들여, 지나가기만 한 유닛이
+         피해를 배분받았다. 창을 교전 길이에 비례(반길이+15초)로 죈다 — 실제 싸운
+         유닛은 교전 중 제 명령 증거가 있어 걸리고, 스쳐 간 유닛은 빠진다. */
+      const tol = Math.min(dmgTol(life, mid), (b.end - b.start) / 2 + 15);
+      const pos = posAtSec(life, mid, tol);
       if (!pos || Math.hypot(b.x - pos[0], b.y - pos[1]) > 8) continue;
       const key = sideKeyOf(life.owner);
       const arr = b.sides.get(key) ?? [];
@@ -1445,6 +1511,10 @@ export function buildUnitTracks(
     }
     let matrixFrom = -1;
     let matrixLeft = 250;
+    /* 부활 눅임(재지적: 체력이 8%에서 더는 안 깎임) — 산 유닛을 죽였다는 건 이 유닛에
+       대한 피해 배분이 과했다는 뜻이다. 되살릴 때마다 남은 물리 피해를 반쯤(0.55×)
+       눅여, 죽음→같은 값 부활이 무한 반복되며 체력이 한 값에 얼어붙는 순환을 끊는다. */
+    let dmgScale = 1;
     for (const tc of targCast) {
       if (tc.tag !== life.tag || tc.sec < life.born || tc.sec > lastEvSec + 240) continue;
       if (tc.tech === "Irradiate") dmg.push([tc.sec + 6, 130, "spell"], [tc.sec + 14, 90, "spell"]);
@@ -1515,8 +1585,8 @@ export function buildUnitTracks(
         if (pP !== lastPct) { trace.push([Math.round(dsec), pP]); lastPct = pP; }
         continue;
       }
-      // 방업 -8%/렙(주문은 무시). 실드 먼저.
-      let d2 = draw * (dknd === "spell" ? 1 : 1 - 0.08 * lvOf(aUpsBy, life.owner, dsec));
+      // 방업 -8%/렙(주문은 무시). 실드 먼저. 부활 눅임(dmgScale)도 물리에만 탄다.
+      let d2 = draw * (dknd === "spell" ? 1 : (1 - 0.08 * lvOf(aUpsBy, life.owner, dsec)) * dmgScale);
       // 디펜시브 매트릭스(전수조사) — 60초 동안 250까지 대신 받아 준다.
       if (matrixFrom >= 0 && dsec >= matrixFrom && dsec <= matrixFrom + 60 && matrixLeft > 0) {
         const absorb = Math.min(matrixLeft, d2);
@@ -1534,8 +1604,9 @@ export function buildUnitTracks(
         const survived = life.ev.some((v) => v[1] >= 0 && v[0] > dsec + 2);
         if (survived) {
           /* 뒤 스토리 — 그 뒤에도 움직였으니 죽지 않았다. 남은 체력은 개체 번호로
-             흩어(12~35%) 전원이 똑같은 값으로 살아나는 어색함(재지적)을 없앤다. */
-          curHp = maxHp * (0.12 + ((Math.abs(life.tag) * 37) % 24) / 100);
+             흩고(20~43%), 남은 피해는 눅여(위 dmgScale) 8% 언저리에 얼어붙지 않게. */
+          dmgScale *= 0.55;
+          curHp = maxHp * (0.2 + ((Math.abs(life.tag) * 37) % 24) / 100);
           curSh = 0;
           const pS = pct();
           if (pS !== lastPct) { trace.push([Math.round(dsec), pS]); lastPct = pS; }
