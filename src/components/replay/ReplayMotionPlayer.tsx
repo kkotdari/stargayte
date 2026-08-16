@@ -7676,6 +7676,8 @@ export default function ReplayMotionPlayer({
     >
       <div className="scr-motion-maprow">
       {teamCol(1)}
+      {/* 로스터 가운데 vs(요청: 구분선 말고 vs — 모바일·PC 공통). */}
+      <span className="scr-motion-teamvs" aria-hidden>vs</span>
       <div
         className={cx("scr-motion-map", pitched && "scr-motion-pitched", unitX2 && "scr-motion-unit2x")} ref={mapRef}
         onPointerDown={onMapPointerDown}
