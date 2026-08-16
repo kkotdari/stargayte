@@ -4527,9 +4527,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...paintBase(hornFaces(0.25, -1.5, 1.15, 0.5, -1.85, 2, 0.28), IVORY_DEEP),
       ...paintBase(hornFaces(-0.2, -2.5, 0.75, -0.45, -2.85, 1.55, 0.24), IVORY_DEEP),
       ...paintBase(hornFaces(0.15, -3.5, 0.45, 0.35, -3.85, 1.15, 0.2), IVORY_DEEP),
-      /* 몸기둥 — 아래는 짙은 살색, 위는 개인색(요청). 꼬리 뿌리(z 1.2)까지 한 몸. */
+      /* 몸기둥 — 아래 절반은 짙은 살색 원통 그대로, 위 절반은 뒤로 살짝 휘는 스파이어
+         기둥(요청) — 공용 도형 spirePillar로 세워 어깨 쪽으로 갈수록 굵기가 줄며
+         뒤로 젖혀진다. 개인색. */
       ...paintBase(cylinderFaces3(0, 0, 1.05, 2.4, 1.2), "#c68a62"),
-      ...cylinderFaces3(0, 0, 1.05, 2.9, 3.6),
+      ...spirePillar({
+        x: 0, y: 0, z0: 3.5, h: 3.1, w: 1.05, tipW: 0.78,
+        segs: 4, sides: 8, curveY: -0.85, hold: 0.2,
+      }),
       /* 팔은 굽히기(재지적) + 넥서스 기둥식 이음(재재지적: 갈고리와 팔이 자연스럽게)
          — 팔 두 마디는 끝이 안 뾰족한 캡슐 막대(rodFaces), 갈고리는 손목 살짝 안에서
          팔보다 조금 굵게 시작해 '도려내고 꽂은' 소켓처럼 잇는다. 오르는 마디는 굵기
