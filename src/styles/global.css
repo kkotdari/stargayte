@@ -5413,31 +5413,13 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   /* 헤더 높이 20% 축소(요청) — 위아래 패딩 13→10px. 모바일 헤더엔 로고만 남았으니
      가로도 정가운데 정렬(요청). */
     /* 본문 좌우 여백(12px)과 같은 값으로 맞춘다(요청). */
-  /* 로고를 타이틀 줄로(요청: 세로 공간 아끼기 — [로고 타이틀 › 중타이틀] 한 줄) —
-     헤더 로고 줄을 통째로 걷고, 모든 페이지의 타이틀(h1) 앞에 별 포함 워드마크를
-     타이틀 글자 높이(0.95em)로 얹는다. 탭바·서랍은 포털이라 헤더를 숨겨도 산다. */
-  .scr-header { display: none; }
-  /* 로고 포함 크럼 전부 세로 가운데(요청) — 타이틀을 플렉스 줄로 바꾼다.
-     흐름 여백이 사라지므로 gap이 낱말 사이를 맡고, 구분자(›) 제 마진은 걷는다. */
+  /* 로고·크럼 재분리(재재지적) — 로고는 다시 제 줄, 다만 작게(22px)·왼쪽 정렬.
+     크럼은 플렉스 세로 가운데 정렬만 유지한다. 경기번호 자간은 원복. */
   .scr-v2-toolbar-title {
     display: flex; flex-wrap: wrap; align-items: center; gap: 7px;
   }
   .scr-v2-toolbar-title .scr-activity-crumb-sep { margin: 0; }
-  .scr-v2-toolbar-title::before {
-    content: ""; display: inline-block; flex: none;
-    /* 살짝 축소(재지적) — 0.95em → 0.78em. */
-    height: 0.78em; width: calc(0.78em * 6.412); margin-right: 3px;
-    background: url("/images/logo/logo_white.png") no-repeat center / contain;
-  }
-  .scr-light-theme .scr-v2-toolbar-title::before {
-    background-image: url("/images/logo/logo_black.png");
-  }
-  /* 경기번호 — 글자 크기는 원래(fs-caption)대로 두고 폭만 줄인다(재재지적: 너무
-     작다): 넓은 고정폭 숫자의 자간을 좁혀 14자리가 덜 벌어지게. */
-  .scr-v2-toolbar-title .scr-activity-crumb-leaf.scr-activity-crumb-no {
-    letter-spacing: -0.07em;
-  }
-  .scr-header-inner { padding: 10px 12px; gap: 12px; justify-content: center; }
+  .scr-header-inner { padding: 6px 8px 2px; gap: 12px; justify-content: flex-start; }
   /* 우측 버튼 묶음(.scr-user)은 모바일에서 자식이 전부 숨김인데 margin-left:auto가 남아
      justify-content:center를 무력화했다(지적: 가로 가운데가 안 됨) — 묶음째 숨긴다. */
   .scr-user { display: none; }
@@ -5465,16 +5447,18 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
      느껴진다는 피드백 — 툴바 자체 여백(padding-bottom)과 .scr-screen의 형제간 gap을
      모바일에서만 줄인다. */
   /* 모바일도 타이틀 아래 갭 두 배로(요청) — 8→16px. min-height도 짝을 맞춰 키운다. */
-  /* 타이틀 줄 아래 갭도 축소(요청) — 16 → 6px. */
-  .scr-v2-toolbar { padding-bottom: 6px; min-height: calc(var(--field-h-sm) + 6px); }
-  .scr-screen { gap: 6px; }
+  /* 타이틀 줄 아래 갭도 축소(요청) — 16 → 4px. */
+  .scr-v2-toolbar { padding-bottom: 4px; min-height: calc(var(--field-h-sm) + 4px); }
+  /* 크럼과 카드 사이 빈 공간(재지적: 사진의 갭) — 카드 본문 위 패딩 12 → 4px. */
+  .scr-activity-card-body.scr-activity-game-result-body { padding-top: 4px; }
+  .scr-screen { gap: 4px; }
   .scr-brand-text { display: none; }
   /* 모바일 헤더에서 내 정보(프로필 칩)를 키운다. Avatar는 크기를 JS(size prop)의
      인라인 style로 그리므로, 여기서 CSS로 덮어쓰려면 !important가 필요하다(다른 화면의
      원형 강제 오버라이드와 같은 패턴). */
   /* 로고/아바타 확대 + 닉네임 1스텝 확대(요청, 재조정: 로고 32·아바타 36) — 닉네임은
      보이던 크기(body 16) 기준 한 스텝 위인 subhead(20). */
-  .scr-brand-logo-img { height: 24px; }
+  .scr-brand-logo-img { height: 22px; } /* 타이틀 줄 시절 크기 유지(재재지적) */
   /* 모바일 헤더에선 프로필 칩(프사)을 아예 숨긴다(요청) — 프로필은 서랍이 보여주고,
      내 정보/로그아웃도 서랍 액션에 있다. */
   .scr-user-chip { display: none; }
