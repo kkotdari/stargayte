@@ -4535,7 +4535,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           const u9 = 1 - t9;
           const bez = (p0: number, c1: number, c2: number, p3: number): number =>
             u9 * u9 * u9 * p0 + 3 * u9 * u9 * t9 * c1 + 3 * u9 * t9 * t9 * c2 + t9 * t9 * t9 * p3;
-          return [0, bez(-5, 0.9, -1.5, 0), bez(0.1, 0.3, 2.6, 3.6)];
+          /* 갈고리 꼬리(재지적·사진) — 끝이 앞·바닥에 놓이고, 뒤로 크게 감아 돌아
+             허리로 올라온다. y: 앞(3.2) → 더 앞으로 눌렸다가 → 뒤(-3.4) → 허리(0). */
+          return [0, bez(3.2, 2.4, -3.4, 0), bez(0.12, 0.05, 1.1, 3.6)];
         },
         fill: "#c68a62", fillFront: IVORY, fillBack: "#6b4732",
       }), 6),
