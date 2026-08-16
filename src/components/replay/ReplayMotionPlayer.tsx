@@ -490,9 +490,10 @@ const FOOTPRINT: Record<string, [number, number]> = {
   "Command Center": [4, 3], Nexus: [4, 3], Hatchery: [4, 3], Lair: [4, 3], Hive: [4, 3],
   Barracks: [4, 3], Factory: [4, 3], Starport: [4, 3], "Science Facility": [4, 3],
   Gateway: [4, 3], Stargate: [4, 3], "Engineering Bay": [4, 3],
-  /* 전수조사에서 빠져 있던 4×3 건물들 — 폴백 3×2로 그려져 옆 건물보다 한 단 작았다.
-     나머지(아카데미·포지·풀·에보 등)는 폴백 3×2가 원작 발자국과 같아 그대로 둔다. */
-  "Robotics Facility": [4, 3], "Fleet Beacon": [4, 3],
+  /* 전수조사에서 빠져 있던 4×3 건물 — 폴백 3×2로 그려져 옆 건물보다 한 단 작았다.
+     나머지(아카데미·포지·풀·에보 등)는 폴백 3×2가 원작 발자국과 같아 그대로 둔다.
+     로보틱스는 여기 넣었다가 뺐다(지적: 크기가 비정상) — 원작 발자국이 3×2다. */
+  "Fleet Beacon": [4, 3],
   Refinery: [4, 2], Assimilator: [4, 2], Extractor: [4, 2],
   Pylon: [2, 2], "Missile Turret": [2, 2], "Photon Cannon": [2, 2],
   "Creep Colony": [2, 2], "Sunken Colony": [2, 2], "Spore Colony": [2, 2],
@@ -5761,7 +5762,7 @@ const MODEL_YAW_TWEAK: Record<string, number> = {
   // 어시밀레이터: 180도(재재지적)→-45도→다시 180도(재재재재지적) — 합계 135.
   assim: 135, hydraden: -90, trapezoid: -90, forge: -90, scaffold: -90,
   // 시계 90도(지적) — 템플러 아카이브. 로보틱스는 모델 자체가 앞을 보게 고쳐 보정 0.
-  dome: 0, archives: 90,
+  dome: 0, archives: -90,
 };
 const buildingYawOf = (kind: string): number =>
   BUILDING_BASE_YAW + (MODEL_YAW_TWEAK[kind] ?? 0);
@@ -5948,6 +5949,12 @@ function unitSprite(
 const BLD_FILL_SKIP = new Set(["addonlink", "mineral"]);
 /** 건물 모델이 제 발자국 상자를 채우는 몫 — 종류마다 한 번만 잰다. */
 const BLD_FILL_CACHE = new Map<string, number>();
+/* 발자국 대비 그릴 몫 — 기본은 0.95(발자국을 꽉 채운다). 본진 셋만 예외로 넘겨 그린다
+   (요청: "넥서스 해처리 커맨드는 예외로 더 크게, 실제 게임처럼") — 원작에서도 이 셋의
+   그림은 4×3 발자국을 넘어 앉는다. 레어·하이브는 해처리의 다음 단계라 같은 몫이다. */
+const BLD_FILL_TARGET: Record<string, number> = {
+  tomb: 1.2, pyramidWide: 1.2, hatchery: 1.2, lair: 1.2, hive: 1.2,
+};
 const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number; w: number }>();
 function buildingSprite(
   op: UnitDrawOp, sideQ: number, B: number,
@@ -6254,7 +6261,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
             BLD_FILL_CACHE.set(op.kind, bFill);
           }
           const kFit = op.clipWalk || BLD_FILL_SKIP.has(op.kind) || !bFill
-            ? 1 : Math.min(2.5, Math.max(0.7, 0.95 / bFill));
+            ? 1 : Math.min(2.5, Math.max(0.7, (BLD_FILL_TARGET[op.kind] ?? 0.95) / bFill));
           const k = (sidePx * kFit) / sideQ;
           // 겹친 것만 살짝 그림자(확대 적용: 유닛·건물 공통).
           if (airOverlap.has(op)) {
@@ -9257,21 +9264,38 @@ export default function ReplayMotionPlayer({
                연출이 아예 없어, 해처리가 깎이는 동안 화면에서 터지는 것은 때리는 쪽
                유닛의 연기뿐이었다. 그래서 "피해 객체와 멀리 떨어진 곳에서 나온다"로
                보였다. 크기는 발자국에 매어(폭의 0.3배) 작은 건물에서 과하지 않게. */
+            const bldTile9 = (mapRef.current?.clientWidth ?? 320) / grid.width;
+            /* 건물도 실드가 남았으면 막이 번쩍인다(요청) — 프로토스 건물은 전부 실드를
+               지녔고, 자취는 체력+실드 합이라 남은 비율로 갈린다. */
+            const bs9 = BLD_STATS[unit];
+            const bShShare9 = bs9 && bs9[1] > 0 ? bs9[1] / (bs9[0] + bs9[1]) : 0;
+            const bShieldUp9 = bShShare9 > 0 && (bldHp.frac ?? 1) > 1 - bShShare9 + 0.001;
             const bldHitFx = bldHp.hurt > -99 && t - bldHp.hurt <= 0.8 ? (
               <span
                 key={`bhit-${i}`}
                 className="scr-motion-army scr-motion-dot scr-v2fx"
                 style={{ ...posStyle(centerX, centerY), zIndex: z + 3 }}
               >
-                <span
-                  key={`bh-${Math.round(bldHp.hurt * 10)}`}
-                  className="scr-motion-puff scr-puff-hit"
-                  style={{
-                    width: `${(fp2[0] * 0.3 * ((mapRef.current?.clientWidth ?? 320) / grid.width)).toFixed(1)}px`,
-                    height: `${(fp2[0] * 0.3 * ((mapRef.current?.clientWidth ?? 320) / grid.width)).toFixed(1)}px`,
-                    transform: "translate(-50%, -50%)",
-                  }}
-                />
+                {bShieldUp9 ? (
+                  <span
+                    key={`bshd-${Math.round(bldHp.hurt * 10)}`}
+                    className="scr-motion-shieldfx"
+                    style={{
+                      width: `${(fp2[0] * 0.95 * bldTile9).toFixed(1)}px`,
+                      height: `${(fp2[0] * 0.95 * bldTile9).toFixed(1)}px`,
+                    }}
+                  />
+                ) : (
+                  <span
+                    key={`bh-${Math.round(bldHp.hurt * 10)}`}
+                    className="scr-motion-puff scr-puff-hit"
+                    style={{
+                      width: `${(fp2[0] * 0.3 * bldTile9).toFixed(1)}px`,
+                      height: `${(fp2[0] * 0.3 * bldTile9).toFixed(1)}px`,
+                      transform: "translate(-50%, -50%)",
+                    }}
+                  />
+                )}
               </span>
             ) : null;
             if (shapeKind) {
@@ -10279,16 +10303,34 @@ export default function ReplayMotionPlayer({
              유닛 크기를 캔버스 비례로 바로잡은 뒤엔 작은 유닛 위에서 유독 컸다.
              몸 상자의 0.55배로 잡고 가슴 높이에 띄운다. 싸우는 중이어도 맞으면
              띄운다 — 맞는 것과 때리는 것은 따로다. */
+          /* 프로토스는 실드가 먼저 깎인다(요청: 실드가 남은 유닛·건물은 반투명 실드가
+             깜빡이는 표현으로) — 체력 자취는 실드까지 합친 몫이라, 남은 비율이 체력
+             몫보다 크면 아직 실드가 버티는 중이다. 그동안은 불티 대신 몸을 감싼 푸른
+             막이 한 번 번쩍인다. */
+          const st9 = UNIT_STATS[drawUnit2] ?? UNIT_STATS[drawUnit];
+          const shShare9 = st9 && st9.sh ? st9.sh / (st9.hp + st9.sh) : 0;
+          const shieldUp9 = shShare9 > 0 && hpPct / 100 > 1 - shShare9 + 0.001;
           const hitSpark = qCombat && hitNow ? (
-            <span
-              key={`hit-${Math.round(hurtAt * 10)}`}
-              className="scr-motion-puff scr-puff-hit"
-              style={{
-                width: `${(fxPx * 0.55).toFixed(1)}px`,
-                height: `${(fxPx * 0.55).toFixed(1)}px`,
-                transform: "translate(-50%, -60%)",
-              }}
-            />
+            shieldUp9 ? (
+              <span
+                key={`shd-${Math.round(hurtAt * 10)}`}
+                className="scr-motion-shieldfx"
+                style={{
+                  width: `${(fxPx * 1.05).toFixed(1)}px`,
+                  height: `${(fxPx * 1.05).toFixed(1)}px`,
+                }}
+              />
+            ) : (
+              <span
+                key={`hit-${Math.round(hurtAt * 10)}`}
+                className="scr-motion-puff scr-puff-hit"
+                style={{
+                  width: `${(fxPx * 0.55).toFixed(1)}px`,
+                  height: `${(fxPx * 0.55).toFixed(1)}px`,
+                  transform: "translate(-50%, -60%)",
+                }}
+              />
+            )
           ) : null;
           if (hitSpark && !fighting) {
             return (

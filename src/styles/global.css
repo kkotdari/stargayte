@@ -13512,6 +13512,25 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   0% { opacity: 0.9; scale: 0.3; }
   100% { opacity: 0; scale: 1.6; }
 }
+/* 프로토스 실드 피격(요청: 실드가 남은 유닛·건물은 반투명 실드가 깜빡이는 표현으로)
+   — 불티 대신 몸을 감싼 푸른 막이 한 번 번쩍인다. 지름은 인라인 width가 정한다(몸
+   상자의 1.05배 / 건물 발자국의 0.95배). 두 번 밝아지는 곡선이 '깜빡'을 만든다. */
+.scr-motion-shieldfx {
+  position: absolute; left: 50%; top: 50%; border-radius: 50%;
+  transform: translate(-50%, -55%); pointer-events: none;
+  background: radial-gradient(circle,
+    rgba(150, 220, 255, 0.26) 0%, rgba(110, 190, 255, 0.18) 58%, rgba(90, 170, 255, 0) 74%);
+  border: 0.6px solid rgba(195, 238, 255, 0.8);
+  box-shadow: 0 0 3px rgba(140, 210, 255, 0.55);
+  animation: scr-shieldfx 0.55s ease-out forwards;
+}
+@keyframes scr-shieldfx {
+  0% { opacity: 0; scale: 0.78; }
+  16% { opacity: 1; }
+  42% { opacity: 0.4; }
+  64% { opacity: 0.95; }
+  100% { opacity: 0; scale: 1.14; }
+}
 /* ── 특징 기술 효과들(요청) — 이름 배지 대신 실제 영역 크기의 전용 연출. 지름은
    인라인 width가 정한다. */
 .scr-motion-castfx {
