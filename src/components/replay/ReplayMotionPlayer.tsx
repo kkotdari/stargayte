@@ -8635,8 +8635,15 @@ export default function ReplayMotionPlayer({
           const holdKey0 = `${e.raw}-v2e${ei}`;
           // 교전으로 멈췄던 시간만큼 걸음 시계를 미룬다(위 engageDelayRef 주석).
           const dmem = engageDelayRef.current.get(holdKey0);
-          const walkDelay = dmem && t >= dmem.since ? dmem.delay : 0;
-          if (dmem && t < dmem.since) engageDelayRef.current.delete(holdKey0);
+          let walkDelay = dmem && t >= dmem.since ? dmem.delay : 0;
+          if (dmem && t < dmem.since) { engageDelayRef.current.delete(holdKey0); walkDelay = 0; }
+          /* 새 명령 재동기화(기획서 1-F — 수리: 지연이 무한 누적돼 걸음 시계가 영구히
+             뒤처졌다) — 적립 이후 실제 명령이 나오면 그 명령 좌표가 현실이므로 지연을
+             걷는다. */
+          if (dmem && walkDelay > 0 && e.orders.some((os0) => os0 > dmem.since && os0 <= t)) {
+            engageDelayRef.current.delete(holdKey0);
+            walkDelay = 0;
+          }
           const rawPos = posAt(rp, Math.max(rp[0][0], t - walkDelay), null);
           if (!rawPos) return null;
           /* 탑승 중(요청: 수송선 승하차) — 배 안에 있으니 마커를 걷는다. 하차 지점
