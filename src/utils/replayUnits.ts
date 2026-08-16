@@ -209,8 +209,21 @@ const RESOURCE_TARGETS = new Set<string>([
 const EARLY_ALL_SELECT_FRAMES = 720;
 /** 표적 명령 중 '공격'으로 칠 것들 — 죽음(공격받고 소식 없음)의 근거가 된다. 남의 유닛을
  *  찍은 우클릭도 공격이다(주인 판정 뒤의 2차 패스에서 가른다). */
+/* 건물 발자국(기획서 2-F) — 렌더러 FOOTPRINT와 같은 표(발치 공격 증거 판정용). */
+const FOOT_WH: Record<string, [number, number]> = {
+  "Command Center": [4, 3], Nexus: [4, 3], Hatchery: [4, 3], Lair: [4, 3], Hive: [4, 3],
+  Barracks: [4, 3], Factory: [4, 3], Starport: [4, 3], "Science Facility": [4, 3],
+  Gateway: [4, 3], Stargate: [4, 3], "Engineering Bay": [4, 3],
+  Refinery: [4, 2], Assimilator: [4, 2], Extractor: [4, 2],
+  Pylon: [2, 2], "Missile Turret": [2, 2], "Photon Cannon": [2, 2],
+  "Creep Colony": [2, 2], "Sunken Colony": [2, 2], "Spore Colony": [2, 2],
+  Spire: [2, 2], "Greater Spire": [2, 2], "Nydus Canal": [2, 2],
+};
+
 const ATTACK_ORDERS = new Set<string>([
-  "Attack1", "Attack2", "AttackUnit", "AttackMove", "CastPsionicStorm", "CastNuclearStrike",
+  // AttackFixedRange 누락(기획서 2-B) — 이 오더의 어택이 f=0 이동으로 격하됐었다.
+  "Attack1", "Attack2", "AttackUnit", "AttackMove", "AttackFixedRange",
+  "CastPsionicStorm", "CastNuclearStrike",
   "CastPlague", "CastEnsnare", "CastStasisField", "CastLockdown", "CastIrradiate",
   "CastSpawnBroodlings", "CastMaelstrom", "FireYamatoGun", "CastMindControl", "CastFeedback",
 ]);
@@ -775,11 +788,14 @@ export function buildUnitTracks(
     /* 공격 명령인가(지적: 어택 찍으면 그 대상을 공격해야) — 어택류 오더거나, 남의
        개체를 찍은 우클릭이다. 표적 태그를 증거에 실어 재생기가 그 대상을 겨눈다. */
     const tgtTag0 = c.UnitTag ?? 0;
-    const tgtLife = tgtTag0 > 0 && tgtTag0 < 60000 ? alive.get(tgtTag0) : undefined;
+    /* 태그 유효성(기획서 2-C) — BW 태그는 11비트 인덱스+5비트 재활용 카운터라
+       59392~65534도 정상 태그다. 무효는 65535뿐. */
+    const tgtLife = tgtTag0 > 0 && tgtTag0 !== 65535 ? alive.get(tgtTag0) : undefined;
     /* 같은 팀은 적이 아니다(지적: 매딕은 아군 유닛도 치료) — 아군을 찍은 우클릭
        (수리·힐·따라가기)이 공격으로 잡히면 아군이 '공격받고 소식 없음'으로 죽는다. */
     const hostileClick = tgtLife !== undefined && !sameSide(tgtLife.owner, pid);
-    const isAtkOrder = ATTACK_ORDERS.has(orderName) || (cmdName === "Right Click" && hostileClick);
+    const isAtkOrder = ATTACK_ORDERS.has(orderName) || orderName.startsWith("Attack")
+      || (cmdName === "Right Click" && hostileClick);
     /* 수리·힐(지적: 일꾼 수리 파싱 + 매딕은 아군까지) — 명령 자체가 정체(SCV·매딕)를
        밝히고, 표적 자리로 걸어가 일하는 증거(f=10)가 된다. */
     const isFixOrder = orderName === "Repair" || orderName === "HealMove";
@@ -853,14 +869,18 @@ export function buildUnitTracks(
         } else if (isAtkOrder) {
           life.last = sec;
           if (life.lastAtk !== null) life.evAfterAtk = true;
-          life.ev.push([Math.round(sec), r1(pos.x), r1(pos.y), 7, hostileClick ? tgtTag0 : 0]);
+          /* 표적 태그는 명시적 어택류 오더면 무조건 싣는다(기획서 2-A — 수리: 표적에
+             Life(명령 이력)가 없으면 atg=0이 돼 시작 홀 등은 원천적으로 못 겨눴다).
+             hostileClick은 우클릭을 어택으로 격상하는 판정에만 쓴다. */
+          life.ev.push([Math.round(sec), r1(pos.x), r1(pos.y), 7,
+            ATTACK_ORDERS.has(orderName) || orderName.startsWith("Attack") || hostileClick ? tgtTag0 : 0]);
         } else {
           pushEv(life, sec, pos.x, pos.y, 0);
         }
       } else life.last = sec;
     }
 
-    if (tgtTag0 > 0 && tgtTag0 < 60000
+    if (tgtTag0 > 0 && tgtTag0 !== 65535
       && ["CastIrradiate", "FireYamatoGun", "CastSpawnBroodlings", "CastDefensiveMatrix", "CastLockdown"].includes(orderName)) {
       targCast.push({ tag: tgtTag0, sec, tech: CAST_ORDER_TO_TECH[orderName] ?? orderName });
     }
@@ -877,7 +897,7 @@ export function buildUnitTracks(
 
     // ── 찍힌 대상 — 그 순간 거기 '있던' 개체다(강한 앵커). 공격이면 죽음의 근거가 된다. ──
     const targetTag = c.UnitTag ?? 0;
-    if (targetTag > 0 && targetTag < 60000 && pos) {
+    if (targetTag > 0 && targetTag !== 65535 && pos) {
       const target = alive.get(targetTag);
       if (target) {
         anchors += 1;
@@ -891,11 +911,15 @@ export function buildUnitTracks(
     // 건물 발치의 공격 명령은 그 건물이 맞고 있다는 증거다(실측: 1:1 경기의 건물 공격이
     // 어택무브뿐이라 태그 표적만 보면 0건으로 잡혔다). 자리로 잇는다.
     if (pos && (ATTACK_ORDERS.has(orderName)
-      || (targetTag > 0 && targetTag < 60000 && cmdName === "Right Click"))) {
+      || (targetTag > 0 && targetTag !== 65535 && cmdName === "Right Click"))) {
       for (const b of built) {
         // 아군 건물도 공격 대상이 아니다(같은 팀 오인 방지 — 위 sameSide 주석).
         if (sameSide(b.owner, pid) || sec < b.born) continue;
-        if (Math.abs(b.x - pos.x) <= 2.5 && Math.abs(b.y - pos.y) <= 2.5) {
+        /* 발자국 기준 판정(기획서 2-F) — 왼쪽 위 앵커 ±2.5 고정 박스는 4×3 건물의
+           먼쪽(오른·아래 가장자리) 클릭을 흘렸다. 발자국 전체 +0.5 여유로 잡는다. */
+        const [fw, fh] = FOOT_WH[b.kind] ?? [3, 2];
+        if (pos.x >= b.x - 0.5 && pos.x <= b.x + fw + 0.5
+          && pos.y >= b.y - 0.5 && pos.y <= b.y + fh + 0.5) {
           b.ev.push([Math.round(sec), r1(pos.x), r1(pos.y), 1]);
         }
       }
@@ -2104,7 +2128,10 @@ export function buildUnitTracks(
       } else if (life.cxl !== null) {
         d = life.cxl;
         dk = "cxl";
-      } else if (life.lastAtk !== null && !life.evAfterAtk) {
+      } else if (!life.bld && life.lastAtk !== null && !life.evAfterAtk) {
+        /* 건물 가드(기획서 2-E) — 공격을 버텨낸 건물이 '주인의 후속 명령 부재'만으로
+           lastAtk+4에 조기 사망 처리됐다. 건물 파괴는 물리 행(built)의 철거 판정과
+           체력 원장이 정한다. */
         d = life.lastAtk + 4;
         dk = "atk";
       } else if (next) {
@@ -2123,7 +2150,21 @@ export function buildUnitTracks(
         if (d === null && sd9 !== undefined) { d = sd9; dk = "atk"; }
       } else {
         // 건물 체력 원장(요청) — 자리를 아는 건물만.
-        const site2 = [...life.ev].reverse().find((v) => v[3] === 2 || v[3] === 5);
+        let site2 = [...life.ev].reverse().find((v) => v[3] === 2 || v[3] === 5);
+        /* 자리 없는 건물 생애의 앵커 승격(기획서 2-D) — 시작 홀·테란/프로토스 건설
+           건물은 f=2|5가 없어 표적 지도·체력 원장에서 빠졌다. 적 클릭 앵커(f=1)가
+           둘 이상이면 그 중앙값(클릭은 그 건물 위였다)을 자리로 승격해 ev에 싣는다
+           (중앙값-1.5 = 대략 왼쪽 위 앵커 — 기존 site 규약과 같은 기준점). */
+        if (!site2) {
+          const anchors3 = life.ev.filter((v) => v[3] === 1 && v[1] >= 0);
+          if (anchors3.length >= 2) {
+            const xs3 = anchors3.map((v) => v[1]).sort((q, w) => q - w);
+            const ys3 = anchors3.map((v) => v[2]).sort((q, w) => q - w);
+            site2 = [anchors3[0][0], r1(xs3[Math.floor(xs3.length / 2)] - 1.5),
+              r1(ys3[Math.floor(ys3.length / 2)] - 1.5), 2];
+            life.ev.unshift(site2);
+          }
+        }
         if (site2) {
           const mk2 = majorityKindOf(life);
           const tr2 = bldHpSimOf(
@@ -2162,10 +2203,18 @@ export function buildUnitTracks(
         && Math.hypot(o.x - b.x, o.y - b.y) <= 12);
       if (!defended) { b.gone = lastAtk + 8; b.goneKind = "atk"; }
     }
-    const bHp = bldHpSimOf(
+    let bHp = bldHpSimOf(
       b.kind, b.owner, b.x + 1.5, b.y + 1.5, b.born, b.gone ?? b.born + 3600, null,
       (sec3) => b.ev.some((v) => v[0] > sec3) || b.gone === null || b.gone > sec3 + 30,
     );
+    /* 붕괴 결합(기획서 2-E) — 명령 원장만으로는 체력 80~100%가 남은 채 철거 시각에
+       돌연 무너졌다. 붕괴가 확정된 건물은 8초 전부터 0으로 선형 수렴시킨다. */
+    if (b.gone !== null && bHp.length > 0) {
+      const g8 = Math.max(b.born, b.gone - 8);
+      const lastQ = [...bHp].reverse().find((q) => q[0] <= g8) ?? bHp[0];
+      bHp = bHp.filter((q) => q[0] < g8);
+      bHp.push([Math.round(g8), lastQ[1]], [Math.round(b.gone), 0]);
+    }
     ents.push({
       t: -1, o: b.owner, k: b.kind, b: Math.round(b.born),
       d: b.gone === null ? null : Math.round(b.gone), dk: b.goneKind ?? "", bld: 1,
