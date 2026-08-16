@@ -1367,20 +1367,39 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const PY_B = 0.2;
     const PY_T = 10.2;
     const PY_M = (PY_B + PY_T) / 2;
-    const [cx, cy] = project(0, 0, PY_M);
-    const rxo = 6.2;
-    const ryo = rxo * 0.45;
-    const rxi = 4.3;
-    const ryi = rxi * 0.45;
-    const ringBack = `M${cx - rxo} ${cy} A${rxo} ${ryo} 0 0 1 ${cx + rxo} ${cy} L${cx + rxi} ${cy} A${rxi} ${ryi} 0 0 0 ${cx - rxi} ${cy} Z`;
-    const ringFront = `M${cx - rxo} ${cy} A${rxo} ${ryo} 0 0 0 ${cx + rxo} ${cy} L${cx + rxi} ${cy} A${rxi} ${ryi} 0 0 1 ${cx - rxi} ${cy} Z`;
+    void project(0, 0, PY_M); // (고리를 세로 띠로 바꾸며 화면 좌표 중심은 안 쓴다)
+    /* 고리는 지면에 수직인 띠(요청) — 수정 기둥을 감싸고 세로로 선 원. 모델 공간
+       yz 평면(x=0)에 놓아 앞(y+)·뒤(y-) 반원이 자연히 갈리고, 그 사이에 기둥이 낀다.
+       띠 둘레에는 작은 수정 보석이 빙 둘러 박힌다. */
+    const RG_O = 5.5;
+    const RG_I = 4.5;
+    const rgPt = (r: number, u: number): [number, number, number] => {
+      const th = u * Math.PI;
+      return [0, Math.cos(th) * r, PY_M + Math.sin(th) * r];
+    };
+    const halfBand = (from: number, to: number): string => {
+      const N9 = 10;
+      const pts: [number, number, number][] = [];
+      for (let i9 = 0; i9 <= N9; i9 += 1) pts.push(rgPt(RG_O, from + ((to - from) * i9) / N9));
+      for (let i9 = N9; i9 >= 0; i9 -= 1) pts.push(rgPt(RG_I, from + ((to - from) * i9) / N9));
+      return polyPath3(pts);
+    };
+    // 위 반(u 0~1: 앞→뒤 위쪽)과 아래 반(u 1~2)으로 나눠 기둥을 사이에 낀다.
+    const ringBack = halfBand(1, 2);
+    const ringFront = halfBand(0, 1);
+    // 띠에 박힌 작은 수정 보석들.
+    const gems: ShapeFace[] = [];
+    for (let i9 = 0; i9 < 16; i9 += 1) {
+      const [gx9, gy9, gz9] = rgPt((RG_O + RG_I) / 2, (i9 / 16) * 2);
+      gems.push([groundEllipse(...project(gx9, gy9, gz9), 0.36, 0.36), 0.85, "#a9ecf2"] as ShapeFace);
+    }
     const claw = (ang: number, h: number): ShapeFace[] => {
       const a = (ang * Math.PI) / 180;
       return hornFaces(Math.sin(a) * 5.3, Math.cos(a) * 5.3, 0.9, Math.sin(a) * 4, Math.cos(a) * 4, h, 1.35);
     };
     // 뒤 발톱들 → 뒤 링 → 수정 → 앞 링 → 앞 발톱들 순으로 겹친다.
     for (const ang of [135, 180, -135]) out.push(...claw(ang, 7.2));
-    out.push(bodyFace(ringBack), sideFace(ringBack, 0.3));
+    out.push(bodyFace(ringBack), sideFace(ringBack, 0.3), ...gems.slice(8));
     /* 수정 입체화(재지적: 평면이네) — 네 모서리 양뿔(비피라미드)을 모델 좌표 삼각
        면으로 짠다: 요잉에 통째로 돌고, 보이는 면만 그려 속면이 안 비친다. */
     // 수정구는 더 길게(요청) — 아래는 지면 가까이, 위는 더 높이.
@@ -1409,7 +1428,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         out.push([d, 0.6, "#a9ecf2"] as ShapeFace, ...dn.face(d));
       }
     }
-    out.push(bodyFace(ringFront), topFace(ringFront, 0.22));
+    out.push(bodyFace(ringFront), topFace(ringFront, 0.22), ...gems.slice(0, 8));
     for (const ang of [90, -90]) out.push(...claw(ang, 7.6));
     for (const ang of [45, -45, 0]) out.push(...claw(ang, 6.9));
     return out;
@@ -1859,6 +1878,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      둥근 층층 플랫폼, 가운데 큰 갈빗살 돔(농구공 반쪽), 원통 모듈, 초록 불 띠. */
   scifac: () => {
     // 발 은색(요청: 이륙 가능 건물).
+    // 발은 몸 안쪽으로(요청: 윗부분이 안 보이게) — 자리는 아래 호출부에서 당긴다.
     const foot = (fx: number, fy: number): ShapeFace[] => paintBase([
       ...cylinderFaces3(fx, fy, 1.05, 1.3),
       bodyFace(discPath3(fx, fy, 0.25, 1.4)),
@@ -1871,8 +1891,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 몸집 1.2배(지적: 스타포트와 크기가 너무 다름 — 같은 4×3 발자국인데 모델이
        상자를 덜 채웠다) — 드럼·슬래브·발까지 비례로 키워 스타포트 링과 급을 맞춘다. */
     return [
-      // 발은 드럼(반지름 5.5) 바깥에(지적: 다리가 몸통을 뚫고 보임).
-      ...foot(-5.3, -3), ...foot(5.5, -2.8),
+      /* 발을 안쪽으로(재지적: 윗부분은 안 보이게) — 드럼(반지름 5.5) 안으로 당겨
+         발 머리가 몸에 묻히고 발판만 삐져나온다. */
+      ...foot(-4.3, -2.4), ...foot(4.5, -2.3),
       /* 밑 큰 몸통(재지적: 반원처럼 보이고 안 돎) — 드럼은 온전한 원기둥으로 두고,
          둘레에 세로 이음판 여덟을 벽 밖으로 살짝 내밀어 도는 게 보이게 한다. */
       ...cylinderFaces3(0, 0, 5.5, 2.3, 1.3),
@@ -1889,7 +1910,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...tagKey(domeFaces3(0, -0.6, 1.8, 1.45, 7.2), 24 + depthNow(0, -0.6)),
       ...tagKey(cylinderFaces3(2.5, 1.9, 1.2, 2.4, 3.6), 20 + depthNow(2.5, 1.9)),
       glow(-3.5, 3.1, 2.6), glow(-1.9, 4, 2.6), glow(4, 2.3, 3),
-      ...foot(-2, 5.6), ...foot(4.3, 4.6),
+      ...foot(-1.6, 4.5), ...foot(3.5, 3.7),
     ];
   },
   /* 포지(렌더 참고 복원) — 왼앞 아치 별채, 가운데 총알 기둥 무리, 초록 배관 다발이
@@ -1907,7 +1928,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     };
     return [
       // 낮은 기단 — 발치를 한 판으로 받친다.
-      ...frustumFaces3(-0.2, 0.4, 8.8, 6.2, 8, 5.4, 1),
+      /* 기단은 모래시계 꼴(요청) — 아래·위가 넓고 허리가 잘록하다. 절두체 둘을
+         허리에서 맞물려 세운다. */
+      ...frustumFaces3(-0.2, 0.4, 8.8, 6.2, 6.4, 4.4, 0.55),
+      ...frustumFaces3(-0.2, 0.4, 6.4, 4.4, 8.2, 5.6, 0.55, 0.55),
       /* 왼쪽 반원판(재재지적: 드럼통은 걷고 반원판만 — 옆면이 드럼 옆면이 보던 좌우를
          보게 90도 돌려서) — 판이 좌우를 보고 앞뒤로 선 얇은 반원 바퀴다. 아랫변은
          기단에 묻히고 위 반원만 솟는다: 반원 두 장을 옆으로 얇게 띄워 테 띠로 봉합. */
