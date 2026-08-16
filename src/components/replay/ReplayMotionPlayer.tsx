@@ -4620,16 +4620,23 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...OUT9.map(([x9, y9]) => [m9 * x9, y9, zAt9(y9, dz)] as [number, number, number]),
         ...IN9.map(([x9, y9]) => [m9 * x9, y9, zAt9(y9, dz)] as [number, number, number]),
       ];
-      /* 두 집게 사이를 금색 판으로 메운다(요청) — 집게 안쪽 곡선을 좌우로 이어 만든
-         바닥판. 집게보다 먼저 그려 사이를 채우고, 두께는 얇게 얹는다. */
+      /* 두 집게 사이 메움(재지적) — 전부가 아니라 뿌리 쪽(위쪽) 1/3만, 그것도 집게와
+         같은 두께의 입체로. 앞은 벌어진 채 남는다. */
       {
-        const span9: [number, number, number][] = [
-          ...IN9.map(([x9, y9]) => [-x9, y9, zAt9(y9, 0.12)] as [number, number, number]),
-          ...[...IN9].reverse().map(([x9, y9]) => [x9, y9, zAt9(y9, 0.12)] as [number, number, number]),
+        const BR9: [number, number][] = IN9.slice(-2); // 뿌리 쪽 두 점(y 1.3 → -0.2)
+        const rim9 = (dz: number): [number, number, number][] => [
+          ...BR9.map(([x9, y9]) => [-x9, y9, zAt9(y9, dz)] as [number, number, number]),
+          ...[...BR9].reverse().map(([x9, y9]) => [x9, y9, zAt9(y9, dz)] as [number, number, number]),
         ];
-        const web9 = polyPath3(span9);
-        out.push(...tagKey([[web9, 1, "#d4af37"] as ShapeFace, topFace(web9, 0.14)],
-          depthNow(0, 2.2)));
+        const lo0 = rim9(0);
+        const hi0 = rim9(0.62);
+        const wf9: ShapeFace[] = [[polyPath3(lo0), 1, "#d4af37"] as ShapeFace];
+        for (let i9 = 0; i9 < lo0.length; i9 += 1) {
+          const j9 = (i9 + 1) % lo0.length;
+          wf9.push([polyPath3([lo0[i9], lo0[j9], hi0[j9], hi0[i9]]), 1, "#d4af37"] as ShapeFace);
+        }
+        wf9.push([polyPath3(hi0), 1, "#d4af37"] as ShapeFace, topFace(polyPath3(hi0), 0.14));
+        out.push(...tagKey(wf9, depthNow(0, 0.6)));
       }
       for (const m9 of [-1, 1] as const) {
         const lo9 = ring9(m9, 0);
