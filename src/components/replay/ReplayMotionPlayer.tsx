@@ -3076,7 +3076,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...tagKey([
       [arch9(1.95, 2.15, 2.55, 0.2), 0.96, "#14171c"] as ShapeFace,
       [arch9(1.7, 1.5, 1.9, 0.45), 0.98, "#06070a"] as ShapeFace,
-    ], mouthKey + 0.4));
+    ], mouthKey + 0.2));
     /* 입구 아치 — 굴을 두르는 두툼한 살 테. 반원 길을 그리는 기둥 하나로 낸다
        (굵기가 일정하도록 hold를 끝까지 준다). */
     out.push(...tagKey(spirePillar({
@@ -3086,20 +3086,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         return [Math.cos(a9) * 2.55, 2.05 + Math.sin(a9) * 0.45, 0.2 + Math.sin(a9) * 2.75];
       },
       fill: "#c68a62",
-    }), mouthKey + 0.8));
-    /* 윗뚜껑 — 개인색(요청). 둔덕 뒤 위에서 앞으로 내밀어 굴 입구를 덮는다. */
+    }), mouthKey + 0.4));
+    /* 윗뚜껑 — 개인색(요청). 둔덕 뒤 위에서 앞으로 내밀어 굴 입구를 덮는다.
+       키는 붙박이 보정 없이 제 자리 깊이만(지적: 키값 고장 — +6을 얹었더니 뒤에서
+       봐도 둔덕을 뚫고 보였다). 앞으로 내민 몫만큼 앞점(y 1)으로 잰다. */
+    const hoodKey = depthNow(0, 1) * 1.6;
     out.push(...tagKey(spirePillar({
       x: 0, y: -1.4, z0: 2.5, h: 2.4, w: 3, tipW: 1.7,
       segs: 6, sides: 12, hold: 0.08, taper: 0.7,
       leanY: 3.3, curveY: 0.9,
-    }), depthNow(0, 0.5) * 1.6 + 6));
-    // 뚜껑 옆 잿빛 기관 한 쌍(사진) — 골이 진 짧은 기둥.
+    }), hoodKey));
+    /* 뚜껑 등의 잿빛 기관 한 쌍(사진) — 둔덕 속에 묻히지 않게 뚜껑 위에 얹고,
+       뚜껑보다 한 칸만 위 키를 준다. */
     for (const m9 of [1, -1] as const) {
       out.push(...tagKey(spirePillar({
-        x: m9 * 2.5, y: -0.5, z0: 2.9, h: 1.9, w: 1, tipW: 0.4,
+        x: m9 * 1.8, y: -0.2, z0: 3.9, h: 1.7, w: 0.9, tipW: 0.38,
         segs: 5, sides: 8, hold: 0.1, taper: 1.4,
-        leanY: 0.9, fill: IVORY_DEEP,
-      }), depthNow(m9 * 2.5, -0.5) * 1.6 + 7));
+        leanY: 0.8, fill: IVORY_DEEP,
+      }), hoodKey + 0.5));
     }
     /* 아래 테두리 엄니 — 축약(요청): 길게 늘어지던 이빨 줄과 발톱을 걷고, 입구
        아래턱에 짧은 엄니 넷만 남긴다. */
@@ -3108,7 +3112,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       [0.8, 2.35, 0.9, 3.15], [2.1, 1.9, 2.5, 2.7],
     ] as [number, number, number, number][]) {
       out.push(...tagKey(spikeHorn(fx9, fy9, 0.3, tx9, ty9, 1.15, 0.42, IVORY_DEEP, 6, 0.2,
-        tx9 - fx9, ty9 - fy9), depthNow(tx9, ty9) * 1.6 + 1));
+        tx9 - fx9, ty9 - fy9), depthNow(tx9, ty9) * 1.6 + 0.6));
     }
     return out;
   },
@@ -5360,31 +5364,60 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...gem(1.2, 2.2, 3.6, 0.7, 0.6, 1.1),
     ];
   },
-  /* 가스 간헐천(재재정정: 전체 크기는 원래대로, 두 번째 분화구만 작게) — 언덕 위
-     큰 분화구와 작은 분화구, 각자 어두운 구멍과 김. */
-  geyser: () => [
-    // 밑바닥 언덕 살짝 축소(지적) — 4.4는 두 칸 자리보다 치마가 넓었다.
-    ...domeFaces3(0, 0, 4, 1.5),
-    /* 밑바닥 회전(지적: 안 돎) — 언덕은 회전 대칭이라 티가 없어, 둘레에 바위 혹
-       셋을 심어 요잉이 보이게 한다. 자동 키로 앞뒤 가림도 자연히 맞는다. */
-    ...domeFaces3(2.9, 1.9, 1.1, 0.75),
-    ...domeFaces3(-3.2, 1.1, 0.9, 0.6),
-    ...domeFaces3(-1.2, -3.3, 1, 0.68),
-    ...frustumFaces3(-0.7, 0.4, 3.4, 2.8, 2.2, 1.8, 1.5, 1.2),
-    capFace(groundEllipse(...project(-0.7, 0.4, 2.75), 1.4, 0.68), 0.5),
-    /* 작은 분화구 접지(지적: 땅에 안 붙음) — 공중(z 1.05)에서 시작하던 것을 바닥
-       가까이(0.15)로 내리고 밑을 넓혀 언덕 비탈에 묻는다. */
-    /* 작은 분화구도 제 깊이(지적: 바닥 언덕에 가려짐) — 언덕 돔의 앞점 키가 이겨
-       덮었다. 제 자리 깊이 + 가산으로 언덕 위에 선다. */
-    ...tagKey([
-      ...frustumFaces3(2.2, -1.3, 1.9, 1.7, 0.95, 0.8, 1.75, 0.15),
-      capFace(groundEllipse(...project(2.2, -1.3, 1.9), 0.52, 0.27), 0.5),
-    ], depthNow(2.2, -1.3) + 1.5),
-    // 김 뭉치도 제 깊이(지적: 가려짐 문제) — 분화구 키에 묻어 언덕이 덮었다.
-    ...tagKey([topFace(groundEllipse(...project(-0.4, 0.7, 3.5), 0.85, 0.5), 0.22)], depthNow(-0.4, 0.7) + 2),
-    ...tagKey([topFace(groundEllipse(...project(1.9, -1, 2.8), 0.42, 0.26), 0.18)], depthNow(1.9, -1) + 2),
-    ...tagKey([topFace(groundEllipse(...project(-0.9, 0.3, 4.4), 0.55, 0.35), 0.15)], depthNow(-0.9, 0.3) + 2),
-  ],
+  /* 가스 간헐천(재모델링·사진 / 요청: 개인색 없는 고유색 전용) — 팀색을 한 점도
+     쓰지 않는다: 모든 면에 제 색을 박는다. 잿빛 바위 덩이들이 둘러선 가운데 분화구가
+     열려 초록 베스핀이 고이고, 그 위로 초록 김이 층층이 오른다. */
+  geyser: () => {
+    const ROCK = "#7a7264";
+    const ROCK_D = "#4e483f";
+    const GAS = "#7ee03a";
+    const GAS_D = "#3f7a1c";
+    const out: ShapeFace[] = [
+      // 흙바닥 — 고정 회갈색.
+      [groundEllipse(...project(0, 0, 0.02), 4.7, 2.25), 1, "#413c35"] as ShapeFace,
+    ];
+    /* 둘러선 바위 덩이 여섯 — 밖으로 조금씩 기운 각진 기둥. 크기와 각이 저마다 달라
+       요잉이 눈에 보인다. */
+    for (const [ang, r9, h9, w9, dark] of [
+      [-150, 3.1, 2.4, 1.35, 0], [-95, 2.9, 3.2, 1.5, 1], [-35, 3.2, 1.9, 1.2, 0],
+      [40, 3, 2.7, 1.4, 1], [100, 3.3, 2.1, 1.25, 0], [155, 2.8, 1.6, 1.1, 1],
+    ] as [number, number, number, number, number][]) {
+      const a9 = (ang * Math.PI) / 180;
+      const bx9 = Math.sin(a9) * r9;
+      const by9 = Math.cos(a9) * r9;
+      out.push(...tagKey(paintBase(spirePillar({
+        x: bx9, y: by9, z0: 0, h: h9, w: w9, tipW: w9 * 0.35,
+        segs: 4, sides: 5, hold: 0.15, taper: 1.5,
+        leanX: Math.sin(a9) * 0.55, leanY: Math.cos(a9) * 0.55,
+      }), dark ? ROCK_D : ROCK), depthNow(bx9, by9) * 1.6));
+    }
+    /* 가운데 분화구 — 위로 좁아지는 바위 그릇. 테 안쪽은 어둡고 바닥에 초록 가스가
+       고여 빛난다. */
+    const crater = (cx9: number, cy9: number, r9: number, h9: number, key: number): void => {
+      out.push(...tagKey(paintBase(spirePillar({
+        x: cx9, y: cy9, z0: 0, h: h9, w: r9, tipW: r9 * 0.72,
+        segs: 4, sides: 12, hold: 0.1, taper: 1.4,
+      }), ROCK), key));
+      const rim = r9 * 0.72;
+      out.push(...tagKey([
+        // 테 안쪽 그늘 — 구멍으로 읽히는 어두운 원.
+        [discPath3(cx9, cy9, h9, rim * 0.94), 1, "#241f19"] as ShapeFace,
+        // 고인 베스핀 — 깊은 초록 위에 밝은 심.
+        [discPath3(cx9, cy9, h9 - 0.12, rim * 0.72), 1, GAS_D] as ShapeFace,
+        [discPath3(cx9, cy9, h9 - 0.18, rim * 0.42), 1, GAS] as ShapeFace,
+      ], key + 0.6));
+      // 초록 김 — 위로 갈수록 넓고 옅어지는 세 켜.
+      out.push(...tagKey([
+        [groundEllipse(...project(cx9 - 0.1, cy9 + 0.15, h9 + 0.9), rim * 0.8, rim * 0.5), 0.4, GAS] as ShapeFace,
+        [groundEllipse(...project(cx9 - 0.25, cy9 + 0.3, h9 + 1.8), rim * 1.05, rim * 0.62), 0.24, GAS] as ShapeFace,
+        [groundEllipse(...project(cx9 - 0.4, cy9 + 0.45, h9 + 2.7), rim * 1.3, rim * 0.72), 0.13, GAS] as ShapeFace,
+      ], key + 1));
+    };
+    crater(-0.7, 0.4, 2.6, 2.3, depthNow(-0.7, 0.4) * 1.6 + 0.2);
+    crater(2.3, -1.4, 1.35, 1.5, depthNow(2.3, -1.4) * 1.6 + 0.2);
+    return out;
+  },
+
 };
 /* 캐리어(인터셉터) — 갤러리용 별본(요청): 캐리어 둘레에 인터셉터 넷이 떠 있다. */
 SHAPE_BUILDERS.carrierbay = () => {
