@@ -4097,27 +4097,36 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          faceLight.visible로 면을 걷어내면 볼록체의 옆면이 통째로 없어져 납작해진다.
          늘 그리되 밝기만 광원이 정하고, 뒤를 향한 면부터 그려 앞면이 위에 오게
          정렬한다(볼록체라 이 순서면 뒷면이 저절로 가려진다). */
-      const lit = (items: [string, number, number, number][]): ShapeFace[] => [...items]
-        .sort((q9, w9) => facingRatio(q9[1], q9[2]) - facingRatio(w9[1], w9[2]))
-        .flatMap(([d9, nx9, ny9, nz9]) => {
-          const fl9 = faceLight(nx9, ny9, nz9);
-          return [bodyFace(d9), ...(fl9.visible ? fl9.face(d9) : [sideFace(d9, 0.38)])];
-        });
+      /* 입체감은 좌우 대비로 못 박는다(재재지적: 아무리 해도 평면으로 보임) —
+         faceLight는 요잉에 따라 두 경사면 밝기가 비슷해지는 구간이 있어 능선이
+         사라졌다. 시청자를 향한 면은 확실히 밝게, 반대 면은 확실히 어둡게 칠하고
+         어두운 쪽을 먼저 그린다. */
+      const rRight = facingRatio(nx, ny);
+      const pair = (dR: string, dL: string): ShapeFace[] => {
+        const bright = rRight >= 0 ? dR : dL;
+        const dark = rRight >= 0 ? dL : dR;
+        return [
+          bodyFace(dark), sideFace(dark, 0.46),
+          bodyFace(bright), topFace(bright, 0.2),
+        ];
+      };
+      // 능선 하이라이트 — 모서리를 따라 가는 밝은 줄(입체를 읽는 기준선).
+      const ridgeOf = (q1: [number, number, number], q2: [number, number, number]): string => {
+        const [r1x, r1y] = project(...q1);
+        const [r2x, r2y] = project(...q2);
+        return `M${r1x - 0.09} ${r1y} L${r2x - 0.09} ${r2y} L${r2x + 0.09} ${r2y} L${r1x + 0.09} ${r1y} Z`;
+      };
       return tagKey(paintBase([
-        // 하지 — 좌우 경사면과 아래를 향한 배면, 발바닥·무릎 단면.
-        ...lit([
-          [shinBot, -dx, -dy, -0.4],
-          [shinR, nx, ny, 0.3],
-          [shinL, -nx, -ny, 0.3],
-        ]),
-        bodyFace(shinCap), capFace(shinCap, 0.38),
-        bodyFace(polyPath3([sT, sR, sL])), capFace(polyPath3([sT, sR, sL]), 0.32),
+        // 하지 — 배면 먼저, 그 위에 좌우 경사면(밝은 쪽이 나중).
+        bodyFace(shinBot), sideFace(shinBot, 0.5),
+        ...pair(shinR, shinL),
+        bodyFace(shinCap), capFace(shinCap, 0.4),
+        bodyFace(polyPath3([sT, sR, sL])), capFace(polyPath3([sT, sR, sL]), 0.34),
+        topFace(ridgeOf(sT, fT), 0.28),
         // 대퇴 — 능선 좌우 경사면과 무릎 단면.
-        ...lit([
-          [thighR, nx, ny, 0.55],
-          [thighL, -nx, -ny, 0.55],
-        ]),
-        bodyFace(thighCap), sideFace(thighCap, 0.3),
+        ...pair(thighR, thighL),
+        bodyFace(thighCap), sideFace(thighCap, 0.32),
+        topFace(ridgeOf(rH, rK), 0.3),
       ], "#d4af37"), depthNow(dx * 2.4, dy * 2.4));
     };
     const [gx2, gy2] = project(-0.5, -0.5, 5.8);
@@ -4542,28 +4551,43 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        면이라 painter로는 못 가린다. */
     /* 추진체 넷(요청) — 본체 둘과 포드마다 하나씩, 크기를 키웠다. 꽁무니가 돌아앉으면
        아예 안 그린다(몸판이 무깊이 면이라 painter로는 못 가린다). */
-    if (facingRatio(0, -1) > -0.15) {
-      const jets: [number, number][] = [[-0.85, 5.5], [0.85, 5.5], [-2.6, 4.2], [2.6, 4.2]];
-      // 꽁무니가 보일 때는 몸판 위로(재지적: 추진체 가려짐) — 붙박이 키 30.
-      // 길이 축소·지름 확대(요청) — 1.3 → 0.75 길이, 반지름 0.55 → 0.82.
+    if (facingRatio(0, -1) > -0.55) {
+      /* 몸 뒤로 확실히 빼고 붙박이 키로 얹는다(재지적: 추진기 안 보임) — 포드
+         꽁무니(y -2.9)보다 뒤에 세운다. */
+      const jets: [number, number][] = [[-0.85, 5.6], [0.85, 5.6], [-2.6, 4.15], [2.6, 4.15]];
       for (const [tx, tz] of jets) {
-        out.push(...tagKey(paintBase(tubeFaces(tx, -2.6, tx, -3.35, 0.82, tz), "#9ba3ad"), 30));
+        out.push(...tagKey(paintBase(tubeFaces(tx, -2.95, tx, -3.85, 0.82, tz), "#9ba3ad"), 30));
       }
       for (const [tx, tz] of jets) {
-        out.push(...tagKey([topFace(groundEllipse(...project(tx, -3.45, tz + 0.1), 0.62, 0.5), 0.45)], 32));
+        out.push(...tagKey([topFace(groundEllipse(...project(tx, -3.95, tz + 0.1), 0.62, 0.5), 0.45)], 32));
       }
     }
     /* 꼬리(재지적: 축을 몸통에 붙이고 비행기 꼬리 스타일로) — 등판 뒤끝에서 곧장
        솟는 수직 안정판과, 그 위에서 좌우로 뻗는 수평 안정판 한 쌍. */
-    out.push(...tagKey(paintBase([
-      // 수직 안정판 — 앞모서리가 비스듬히 오르는 사다리꼴.
-      // 축을 더 길게(재지적) — 뒤로 더 빼고 높이도 올린다.
-      bodyFace(polyPath3([[0, -1.9, 6.1], [0, -4.6, 8.3], [0, -5.3, 8.3], [0, -5.3, 5.6]])),
-      sideFace(polyPath3([[0, -1.9, 6.1], [0, -4.6, 8.3], [0, -5.3, 8.3], [0, -5.3, 5.6]]), 0.18),
-      // 수평 안정판 — 꼭대기에서 좌우로.
-      bodyFace(polyPath3([[-1.6, -5.1, 8.1], [1.6, -5.1, 8.1], [1.2, -4.25, 8.15], [-1.2, -4.25, 8.15]])),
-      topFace(polyPath3([[-1.6, -5.1, 8.1], [1.6, -5.1, 8.1], [1.2, -4.25, 8.15], [-1.2, -4.25, 8.15]]), 0.16),
-    ], "#c9ced6"), depthNow(0, -3.6)));
+    /* 꼬리 입체화(요청) — 수직 안정판은 좌우 두께, 수평 안정판은 위아래 두께를 갖는
+       판. 각 판의 둘레를 띠로 둘러 부피를 만든다. */
+    out.push(...tagKey(paintBase(((): ShapeFace[] => {
+      const finAt = (x9: number): [number, number, number][] => [
+        [x9, -1.9, 6.1], [x9, -4.6, 8.3], [x9, -5.3, 8.3], [x9, -5.3, 5.6],
+      ];
+      const wingAt = (z9: number): [number, number, number][] => [
+        [-1.6, -5.1, z9], [1.6, -5.1, z9], [1.2, -4.25, z9], [-1.2, -4.25, z9],
+      ];
+      const slab = (lo9: [number, number, number][], hi9: [number, number, number][],
+        topOp: number): ShapeFace[] => {
+        const f9: ShapeFace[] = [bodyFace(polyPath3(lo9)), sideFace(polyPath3(lo9), 0.26)];
+        for (let i9 = 0; i9 < lo9.length; i9 += 1) {
+          const j9 = (i9 + 1) % lo9.length;
+          f9.push(bodyFace(polyPath3([lo9[i9], lo9[j9], hi9[j9], hi9[i9]])));
+        }
+        f9.push(bodyFace(polyPath3(hi9)), topFace(polyPath3(hi9), topOp));
+        return f9;
+      };
+      return [
+        ...slab(finAt(-0.2), finAt(0.2), 0.14),
+        ...slab(wingAt(7.95), wingAt(8.25), 0.16),
+      ];
+    })(), "#c9ced6"), depthNow(0, -3.6)));
     return out;
   },
   /* 셔틀(다시 둘, 실물 참고) — 둥근 게딱지 몸통 앞(+y)으로 굵은 집게 두 개가 안쪽으로
@@ -4965,8 +4989,8 @@ const MODEL_YAW_TWEAK: Record<string, number> = {
   // 반시계 90도(지적) — 어시밀레이터·히드라 덴·서플·포지·테란 공사장.
   // 어시밀레이터: 180도(재재지적)→-45도→다시 180도(재재재재지적) — 합계 135.
   assim: 135, hydraden: -90, trapezoid: -90, forge: -90, scaffold: -90,
-  // 시계 90도(지적) — 템플러 아카이브. 로보틱스는 한 번 더 돌려 180(재지적).
-  dome: 180, archives: 90,
+  // 시계 90도(지적) — 템플러 아카이브. 로보틱스는 두 번 더 돌려 270(재재지적).
+  dome: 270, archives: 90,
 };
 const buildingYawOf = (kind: string): number =>
   BUILDING_BASE_YAW + (MODEL_YAW_TWEAK[kind] ?? 0);
