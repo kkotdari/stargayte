@@ -206,7 +206,7 @@ export default function GameResultStory({
         shareNode={(
           <KakaoShareButton
             variant="full"
-            label="현재 장면 공유"
+            label="현재 공유"
             content={() => gameResultShareContent(gameResult, memberOf)}
           />
         )}
