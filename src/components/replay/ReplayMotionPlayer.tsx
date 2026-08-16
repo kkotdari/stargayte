@@ -3975,13 +3975,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...tagKey(protossFace(P_GOLD), 20),
     /* 뒤통수 묶음머리(재지적: 한 마디 더·더 두껍게·더 곧게) — 끝은 금색 마감과
        플라즈마 불꽃. 다발은 개인색. */
-    ...rodFaces(0, -0.7, 6.9, 0, -1.95, 6.2, 0.62),
-    ...paintBase(rodFaces(0, -1.9, 6.23, 0, -2.2, 6.06, 0.72), P_GOLD),
-    ...rodFaces(0, -2.15, 6.09, 0, -3.4, 5.35, 0.58),
-    ...rodFaces(0, -3.35, 5.38, 0, -4.6, 4.6, 0.52),
-    ...paintBase(rodFaces(0, -4.5, 4.66, 0, -4.85, 4.44, 0.6), P_GOLD),
-    ...paintBase(domeFaces3(0, -5.1, 0.4, 0.38, 4.2), P_PLASMA),
-    [groundEllipse(...project(0, -5.3, 4.4), 0.5, 0.5), 0.45, P_PLASMA] as ShapeFace,
+    // 각도 더 낮춘다(재재지적) — 뒤로 갈수록 더 처진다.
+    ...rodFaces(0, -0.7, 6.75, 0, -1.9, 5.75, 0.62),
+    ...paintBase(rodFaces(0, -1.85, 5.79, 0, -2.15, 5.55, 0.72), P_GOLD),
+    ...rodFaces(0, -2.1, 5.59, 0, -3.3, 4.5, 0.58),
+    ...rodFaces(0, -3.25, 4.54, 0, -4.45, 3.4, 0.52),
+    ...paintBase(rodFaces(0, -4.35, 3.49, 0, -4.7, 3.16, 0.6), P_GOLD),
+    ...paintBase(domeFaces3(0, -4.95, 0.4, 0.38, 2.9), P_PLASMA),
+    [groundEllipse(...project(0, -5.15, 3.1), 0.5, 0.5), 0.45, P_PLASMA] as ShapeFace,
     // 어깨 갑주 한 쌍 — 개인색.
     ...domeFaces3(-1.3, -0.25, 0.6, 0.48, 5.8),
     ...domeFaces3(1.3, -0.25, 0.6, 0.48, 5.8),
@@ -4134,11 +4135,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const a = (ang * Math.PI) / 180;
       const dx = Math.sin(a);
       const dy = Math.cos(a);
+      /* 굵기 감소 + 관절 겹침 제거(재지적: 각도에 따라 이상해 보임) — 무릎에서 두
+         마디가 같은 자리를 물고 있어 모서리가 엇갈렸다. 대퇴는 무릎 못 미쳐 끝내고
+         하지는 무릎 조금 아래서 시작해, 사이를 작은 관절 덩이가 잇는다. */
       return tagKey(paintBase([
-        // 대퇴 — 엉덩이에서 무릎으로, 굵기 거의 일정한 사각기둥.
-        ...prism(dx * 0.9, dy * 0.9, 4.5, dx * 3.4, dy * 3.4, 5.5, 0.78, 0.86),
-        // 하지 — 무릎에서 발끝으로 좁아지는 사각뿔.
-        ...prism(dx * 3.4, dy * 3.4, 5.5, dx * 4.05, dy * 4.05, 0.25, 0.86, 0.32),
+        // 대퇴 — 엉덩이에서 무릎 앞까지, 가늘어진 사각기둥.
+        ...prism(dx * 0.9, dy * 0.9, 4.5, dx * 3.15, dy * 3.15, 5.4, 0.56, 0.6),
+        // 관절 — 두 마디를 잇는 작은 덩이.
+        ...domeFaces3(dx * 3.3, dy * 3.3, 0.62, 0.5, 5.15),
+        // 하지 — 무릎 아래에서 발끝으로 좁아지는 사각뿔.
+        ...prism(dx * 3.45, dy * 3.45, 5.15, dx * 4.05, dy * 4.05, 0.25, 0.6, 0.26),
       ], "#d4af37"), depthNow(dx * 2.4, dy * 2.4));
     };
     const [gx2, gy2] = project(-0.5, -0.5, 5.8);
