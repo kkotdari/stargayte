@@ -4556,11 +4556,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     if (facingRatio(0, -1) > -0.15) {
       const jets: [number, number][] = [[-0.85, 5.5], [0.85, 5.5], [-2.6, 4.2], [2.6, 4.2]];
       // 꽁무니가 보일 때는 몸판 위로(재지적: 추진체 가려짐) — 붙박이 키 30.
+      // 길이 축소·지름 확대(요청) — 1.3 → 0.75 길이, 반지름 0.55 → 0.82.
       for (const [tx, tz] of jets) {
-        out.push(...tagKey(paintBase(tubeFaces(tx, -2.4, tx, -3.7, 0.55, tz), "#9ba3ad"), 30));
+        out.push(...tagKey(paintBase(tubeFaces(tx, -2.6, tx, -3.35, 0.82, tz), "#9ba3ad"), 30));
       }
       for (const [tx, tz] of jets) {
-        out.push(...tagKey([topFace(groundEllipse(...project(tx, -3.8, tz + 0.1), 0.42, 0.34), 0.45)], 32));
+        out.push(...tagKey([topFace(groundEllipse(...project(tx, -3.45, tz + 0.1), 0.62, 0.5), 0.45)], 32));
       }
     }
     /* 꼬리(재지적: 축을 몸통에 붙이고 비행기 꼬리 스타일로) — 등판 뒤끝에서 곧장
