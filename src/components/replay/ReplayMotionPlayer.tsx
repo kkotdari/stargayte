@@ -3071,24 +3071,26 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...paintBase([
       /* 기계식 꺾인 다리(재지적: 뿔이 아니라 사각 기둥) — 공용 도형으로 넓적다리와
          정강이를 각각 사각 단면 기둥으로 세운다. 굵기는 거의 일정하다. */
+      /* 관절 방향 반전(재지적: 반대로 꺾임) — 넓적다리는 뒤·아래로, 정강이는 앞으로
+         내려서는 디지티그레이드. 발판은 앞쪽에 놓인다. */
       ...spirePillar({
-        x: -1.2, y: -0.2, z0: 2.9, h: 1.9, w: 0.42, tipW: 0.4,
-        segs: 1, sides: 4, leanX: -0.5, leanY: -1, hold: 0.9,
+        x: -1.2, y: 0.7, z0: 2.9, h: 1.9, w: 0.42, tipW: 0.4,
+        segs: 1, sides: 4, leanX: -0.5, leanY: -1.6, hold: 0.9,
       }),
       ...spirePillar({
-        x: -1.7, y: -1.2, z0: 0.9, h: 2, w: 0.4, tipW: 0.34,
-        segs: 1, sides: 4, leanX: -0.2, leanY: 1.9, hold: 0.9,
+        x: -1.7, y: -0.9, z0: 0.9, h: 2, w: 0.4, tipW: 0.34,
+        segs: 1, sides: 4, leanX: -0.2, leanY: 1.6, hold: 0.9,
       }),
-      ...boxFaces3(-1.9, 0.8, 1.1, 1.6, 0.5),
+      ...boxFaces3(-1.9, -1.05, 1.1, 1.6, 0.5),
       ...spirePillar({
-        x: 1.2, y: -0.2, z0: 2.9, h: 1.9, w: 0.42, tipW: 0.4,
-        segs: 1, sides: 4, leanX: 0.5, leanY: -1, hold: 0.9,
+        x: 1.2, y: 0.7, z0: 2.9, h: 1.9, w: 0.42, tipW: 0.4,
+        segs: 1, sides: 4, leanX: 0.5, leanY: -1.6, hold: 0.9,
       }),
       ...spirePillar({
-        x: 1.7, y: -1.2, z0: 0.9, h: 2, w: 0.4, tipW: 0.34,
-        segs: 1, sides: 4, leanX: 0.2, leanY: 1.9, hold: 0.9,
+        x: 1.7, y: -0.9, z0: 0.9, h: 2, w: 0.4, tipW: 0.34,
+        segs: 1, sides: 4, leanX: 0.2, leanY: 1.6, hold: 0.9,
       }),
-      ...boxFaces3(1.9, 0.8, 1.1, 1.6, 0.5),
+      ...boxFaces3(1.9, -1.05, 1.1, 1.6, 0.5),
       ...boxFaces3(0, -0.2, 2.6, 2.2, 2, 4.8),
       // 콕핏 머리 + 안테나.
       ...domeFaces3(0, 0.2, 0.9, 0.7, 6.8),
