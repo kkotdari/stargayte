@@ -709,19 +709,21 @@ function protossFace(fill?: string, lift = 0, s = 1): ShapeFace[] {
   /* 물방울 머리(요청) — 아래는 둥근 구, 위는 가늘어지는 스파이어 기둥. 둘을 이어
      붙이면 턱이 둥글고 정수리가 뾰족한 물방울이 된다. 앞(+y)으로 살짝 숙인다.
      fill 없이 부르면 색 없는 몸판이라 아콘의 dark() 실루엣이 그대로 집어 간다. */
+  /* 뒤통수가 위 반구, 턱이 아래 뾰족(재지적) — 기둥은 아래에서 위로 자라므로
+     '턱 끝(앞·아래) → 뒤통수(뒤·위)' 순으로 세우고, 그 위에 둥근 뒤통수를 얹는다. */
   const r9 = 0.62 * s;
-  const zB = 5.75 + lift;
-  const [bx9, by9] = project(0, 0.1 * s, zB);
+  const zT = 7.55 + lift;
+  const [bx9, by9] = project(0, -0.2 * s, zT);
   return [
-    // 턱 — 중심만 투영한 진짜 원이라 어느 시점에서도 안 눌린다.
-    [groundEllipse(bx9, by9, r9, r9), 1, fill] as ShapeFace,
-    // 머리통 — 위로 갈수록 가늘어지며 앞으로 살짝 숙는 기둥.
+    // 머리통 — 턱에서 뒤통수로 굵어지며 뒤로 젖혀지는 기둥.
     ...spirePillar({
-      x: 0, y: 0.1 * s, z0: zB, h: 2 * s, w: r9 * 0.92, tipW: 0.05,
-      segs: 4, sides: 8, hold: 0.2,
-      leanY: 0.3 * s, curveY: 0.22 * s,
+      x: 0, y: 1.05 * s, z0: 5.35 + lift, h: 2.2 * s, w: 0.05, tipW: r9 * 0.94,
+      segs: 4, sides: 8, hold: 0,
+      leanY: -0.9 * s, curveY: -0.35 * s,
       fill,
     }),
+    // 뒤통수 — 중심만 투영한 진짜 원이라 어느 시점에서도 안 눌린다.
+    [groundEllipse(bx9, by9, r9, r9), 1, fill] as ShapeFace,
     topFace(groundEllipse(bx9 - r9 * 0.3, by9 - r9 * 0.32, r9 * 0.42, r9 * 0.34), 0.2),
   ];
 }
@@ -3404,7 +3406,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        시작해 아래로 내려가며 앞으로 급히 휘고, 끝은 뭉뚝하다. 짙은 갈색.
        기둥은 아래에서 위로 자라니 '꼬리 끝 → 반구 밑' 순으로 정의한다. */
     ...tagKey(spirePillar({
-      x: 0, y: 1.9, z0: 0.9, h: 3.4, w: 0.62, tipW: 1.45,
+      // 굵기 크게 증가(요청) — 0.62/1.45 → 1.25/2.05.
+      x: 0, y: 1.9, z0: 0.9, h: 3.4, w: 1.25, tipW: 2.05,
       segs: 6, sides: 8, hold: 0,
       leanY: -3.4, curveY: 1.7,
       fill: "#6b4732",
