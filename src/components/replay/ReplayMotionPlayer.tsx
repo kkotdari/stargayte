@@ -5553,10 +5553,14 @@ const ATTACK_FX: Record<string, string> = {
   Guardian: "acidball", Queen: "acid", Valkyrie: "missile",
   Dragoon: "photon", Scout: "bolt", Corsair: "flare", Arbiter: "bolt", Carrier: "burst",
   Archon: "zap", Reaver: "cannon",
-  /* 근접 베기(기획서 1-G) — 붙어서 때리는 게 보이게. 무명 개체는 fxUnit 폴백
-     (Zealot·Zergling·Marine)을 타므로 여기 항목으로 함께 해결된다. */
-  Zealot: "slash", Zergling: "slash", Ultralisk: "slash", "Dark Templar": "slash",
-  Broodling: "slash", "Infested Terran": "slash",
+  /* 근접은 효과를 안 그린다(요청: 휘두름 호 제거) — 대신 몸이 표적 쪽으로 툭 나갔다
+     빠지는 잽으로 때리는 것을 보인다(MELEE_JAB_SEC). 그림 없는 동작이 호보다 읽기
+     쉽고, 무엇보다 옆에 뜬 부메랑처럼 보이지 않는다. */
+};
+/** 근접 잽 주기(초) — 원작 공격 주기 어림. 표에 없는 근접은 0.7초. */
+const MELEE_JAB_SEC: Record<string, number> = {
+  Zergling: 0.36, Ultralisk: 0.63, Zealot: 0.92, Firebat: 0.92, "Dark Templar": 1.26,
+  Broodling: 0.63, "Infested Terran": 0.63,
 };
 /* 발사 지점(요청: 탱크는 포신, 히드라는 입, 마린·파뱃은 총구, 매딕은 주사기 — 효과가
    몸 중심이 아니라 제 무기 끝에서) — 트레이서를 몸 방향 축으로 이만큼(px) 앞으로 민다.
@@ -8329,21 +8333,9 @@ export default function ReplayMotionPlayer({
      도형들. 아래 마커 계산부가 push하고, 렌즈 안의 <UnitLayer>가 커밋 뒤 한 번에 그린다.
      계산(자리·회피·방향·깊이·순서)은 전부 그대로라 그림은 SVG 시절과 같다. */
   const unitOps: UnitDrawOp[] = [];
-  /* 이번 프레임의 피격 표적 집합(지적: 공격받는 쪽 피격효과) — 최근 8초 안에 어느
-     공격 명령이든 찍은 표적 태그들. 표적이 된 개체는 싸움 못 하는 유닛(오버로드 등)
-     이어도 맞는 불꽃이 튄다. */
-  const hitTagsNow = entOn ? (() => {
-    const m = new Set<number>();
-    for (const e of entWalks) {
-      for (let ai = e.atkAt.length - 1; ai >= 0; ai -= 1) {
-        const [as2, atg] = e.atkAt[ai];
-        if (as2 > t) continue;
-        if (t - as2 <= 8 && atg > 0) m.add(atg);
-        break;
-      }
-    }
-    return m;
-  })() : null;
+  /* (제거) 어택 명령 표적 집합으로 피격을 그리던 자 — 명령이 찍힌 곳과 실제로 맞는
+     곳이 다르고 8초 내내 켜져, 싸움과 무관한 자리에서 불티가 텄다(지적). 이제 각
+     개체의 체력 자취가 내려간 순간을 피격으로 삼는다(hurtAt). */
   // 글자 크기 CSS(모바일/PC 미디어)와 같은 값 — 캔버스는 CSS를 못 읽으니 여기서 정한다.
   // 이제 크기는 캔버스가 정한다 — 이 값은 그리기 주기(아래 DRAW_GAP_MS)에만 쓰인다.
   const pcView = typeof window !== "undefined" && !!window.matchMedia?.("(min-width: 1160px)").matches;
@@ -9244,6 +9236,44 @@ export default function ReplayMotionPlayer({
                 </span>
               );
             }
+            /* 건물 체력과 '맞은 순간'(요청: 피격 표현 재검토) — 자취가 내려간 마지막
+               변곡점이 곧 이 건물이 맞은 때다. 체력바와 피격 불티가 같은 자를 쓴다. */
+            const bldHp = ((): { frac: number | undefined; hurt: number } => {
+              if (!entOn) return { frac: undefined, hurt: -99 };
+              const arr = entBldHp.get(`${raw}|${Math.round(x)}|${Math.round(y)}`);
+              if (!arr) return { frac: 1, hurt: -99 }; // 기록 없는 성한 건물도 만피 바(요청).
+              const rec = [...arr].filter((r2) => r2.born <= sec + 5)
+                .sort((a2, b2) => b2.born - a2.born)[0] ?? arr[0];
+              let pct = 100;
+              let hurt = -99;
+              for (const [hs3, hv3] of rec.hp) {
+                if (hs3 > t) break;
+                if (hv3 < pct) hurt = hs3;
+                pct = hv3;
+              }
+              return { frac: Math.max(0.04, pct / 100), hurt };
+            })();
+            /* 맞는 건물에도 불티(요청: 유닛·건물 피격 표현 재검토) — 여태 건물은 피격
+               연출이 아예 없어, 해처리가 깎이는 동안 화면에서 터지는 것은 때리는 쪽
+               유닛의 연기뿐이었다. 그래서 "피해 객체와 멀리 떨어진 곳에서 나온다"로
+               보였다. 크기는 발자국에 매어(폭의 0.3배) 작은 건물에서 과하지 않게. */
+            const bldHitFx = bldHp.hurt > -99 && t - bldHp.hurt <= 0.8 ? (
+              <span
+                key={`bhit-${i}`}
+                className="scr-motion-army scr-motion-dot scr-v2fx"
+                style={{ ...posStyle(centerX, centerY), zIndex: z + 3 }}
+              >
+                <span
+                  key={`bh-${Math.round(bldHp.hurt * 10)}`}
+                  className="scr-motion-puff scr-puff-hit"
+                  style={{
+                    width: `${(fp2[0] * 0.3 * ((mapRef.current?.clientWidth ?? 320) / grid.width)).toFixed(1)}px`,
+                    height: `${(fp2[0] * 0.3 * ((mapRef.current?.clientWidth ?? 320) / grid.width)).toFixed(1)}px`,
+                    transform: "translate(-50%, -50%)",
+                  }}
+                />
+              </span>
+            ) : null;
             if (shapeKind) {
               unitOps.push({
                 fx: fxF, fy: fyF, z, kind: shapeKind,
@@ -9254,19 +9284,7 @@ export default function ReplayMotionPlayer({
                   const bs2 = BLD_STATS[unit];
                   return bs2 ? bs2[0] + bs2[1] : undefined;
                 })(),
-                hpFrac: (() => {
-                  if (!entOn) return undefined;
-                  const arr = entBldHp.get(`${raw}|${Math.round(x)}|${Math.round(y)}`);
-                  if (!arr) return 1; // 기록 없는 성한 건물도 만피 바(요청).
-                  const rec = [...arr].filter((r2) => r2.born <= sec + 5)
-                    .sort((a2, b2) => b2.born - a2.born)[0] ?? arr[0];
-                  let pct = 100;
-                  for (const [hs3, hv3] of rec.hp) {
-                    if (hs3 <= t) pct = hv3;
-                    else break;
-                  }
-                  return Math.max(0.04, pct / 100);
-                })(),
+                hpFrac: bldHp.frac,
                 groundShadow: true,
                 // 접지 그림자의 발자국 비(지적: 그림자는 바닥 발자국만) — 세로/가로.
                 footRatio: (FOOTPRINT[unit] ?? [3, 2])[1] / (FOOTPRINT[unit] ?? [3, 2])[0],
@@ -9337,11 +9355,12 @@ export default function ReplayMotionPlayer({
                       style={{ ...posStyle(centerX, centerY), zIndex: z + 2 }}
                     >
                       {fire}
+                      {bldHitFx}
                     </span>
                   );
                 }
               }
-              return null;
+              return bldHitFx;
             }
             // 전용 도형이 없는 건물 — 발자국 80% 네모(.scr-motion-sq와 같은 채움·0.82).
             unitOps.push({
@@ -9349,7 +9368,7 @@ export default function ReplayMotionPlayer({
               sizePx: 0, wFrac: wFrac * pulse, hFrac: hFrac * pulse, boxFit: "fill",
               color, alpha: alpha * 0.82, noShadow: true,
             });
-            return null;
+            return bldHitFx;
           });
         })()}
 
@@ -9918,7 +9937,18 @@ export default function ReplayMotionPlayer({
             } else {
               base.adv = 2.5;
             }
-            const pull = Math.min(base.adv, maxAdv);
+            /* 근접 잽(요청: 휘두름 호 대신, 권투처럼 표적 쪽으로 툭 나갔다 빠지게 —
+               공속에 비례) — 붙은 뒤(당김이 다 찼을 때)부터 제 공격 주기로 앞뒤로
+               민다. 한 주기의 앞 1/4에 튀어나가고 그 다음 1/3 동안 물러난 뒤 쉰다.
+               개체마다 위상을 어긋내(ei) 무리가 한 몸처럼 들썩이지 않게 한다. */
+            const pullBase = Math.min(base.adv, maxAdv);
+            let jab9 = 0;
+            if (melee9 && pullBase >= maxAdv - 0.05) {
+              const per9 = MELEE_JAB_SEC[drawUnit] ?? 0.7;
+              const ph9 = (((t + ei * 0.11) % per9) + per9) % per9 / per9;
+              jab9 = ph9 < 0.25 ? ph9 / 0.25 : ph9 < 0.58 ? 1 - (ph9 - 0.25) / 0.33 : 0;
+            }
+            const pull = pullBase + jab9 * 0.42;
             pos = gap > 0.01
               ? { ...rawPos, x: base.x + ((foe.bx - base.x) / gap) * pull, y: base.y + ((foe.by - base.y) / gap) * pull }
               : { ...rawPos, x: base.x, y: base.y };
@@ -10113,11 +10143,15 @@ export default function ReplayMotionPlayer({
           const bodyHdg = fighting && foeDeg !== null
             ? foeDeg
             : headingOfDisplay(holdKey, pos.x, pos.y, headingOf(rp, rawPos));
-          // 지금 체력(요청: 체력을 지니고 다닌다) — 변곡점 목록에서 t 시점 값.
+          /* 지금 체력(요청: 체력을 지니고 다닌다) — 변곡점 목록에서 t 시점 값.
+             내려간 변곡점의 시각은 곧 '이 개체가 실제로 맞은 순간'이라, 피격 불티를
+             그 자리·그 때에 띄우는 자로 함께 쓴다(요청: 피격 표현 재검토). */
           let hpPct = 100;
+          let hurtAt = -99;
           for (const [hs2, hv2] of e.hp) {
-            if (hs2 <= t) hpPct = hv2;
-            else break;
+            if (hs2 > t) break;
+            if (hv2 < hpPct) hurtAt = hs2;
+            hpPct = hv2;
           }
           /* 선택 표시(지적: 드래그 선택 구분) — 방금 명령을 받았다는 것은 그 직전에
              (드래그든 부대지정이든) 잡혔다는 뜻이다. 클릭 토글이 켜져 있으면 명령
@@ -10231,25 +10265,41 @@ export default function ReplayMotionPlayer({
               );
             }
           }
-          const hitNow = hitTagsNow !== null && e.tag > 0 && hitTagsNow.has(e.tag);
+          /* 피격(요청: 지금은 피해 객체와 멀리 떨어진 곳에서 나오고 크기도 크다) —
+             예전엔 '최근 8초 안에 어택 명령이 찍은 태그'를 맞은 것으로 쳤다. 명령이
+             찍힌 곳과 실제로 맞는 곳은 다르고(표적은 그 사이 걸어가 있다), 8초 내내
+             켜져 있어 싸움과 무관한 자리에서도 불티가 텄다. 이제 제 체력 자취가
+             내려간 순간(hurtAt)에만, 제 몸 위에서 짧게 튄다. */
+          const hitNow = t - hurtAt <= 0.7;
           /* 효과는 가슴 높이(지적: 공격 효과가 너무 낮다 — 발밑에서 튀었다) — 마커
              기준점은 발 자리라, 유닛 키의 1/3만큼 띄워 몸통에 맞춘다. */
           const fxPx = drawUnit === "" || isWorker ? unitGlyphPx(0, ay3) : unitPxOf(drawUnit, ay3);
           const fxLift = { marginTop: `${(-fxPx * 0.34).toFixed(1)}px` };
-          if (qCombat && hitNow && !fighting) {
-            const cycH = Math.floor(t / 0.8);
-            if ((ei + cycH) % 2 === 0) {
-              return (
-                <span
-                  key={`v2hit-${ei}`}
-                  className="scr-motion-army scr-motion-dot scr-v2fx"
-                  style={{ ...posStyle(ax3, ay3), zIndex: 1310, ...fxLift }}
-                >
-                  <span key={`hp-${cycH}`} className="scr-motion-puff scr-puff-hit" />
-                </span>
-              );
-            }
-            return null;
+          /* 맞는 쪽 불티(요청: 크기도 몸에 맞게) — 고정 크기(9px에 scale 0.25)라
+             유닛 크기를 캔버스 비례로 바로잡은 뒤엔 작은 유닛 위에서 유독 컸다.
+             몸 상자의 0.55배로 잡고 가슴 높이에 띄운다. 싸우는 중이어도 맞으면
+             띄운다 — 맞는 것과 때리는 것은 따로다. */
+          const hitSpark = qCombat && hitNow ? (
+            <span
+              key={`hit-${Math.round(hurtAt * 10)}`}
+              className="scr-motion-puff scr-puff-hit"
+              style={{
+                width: `${(fxPx * 0.55).toFixed(1)}px`,
+                height: `${(fxPx * 0.55).toFixed(1)}px`,
+                transform: "translate(-50%, -60%)",
+              }}
+            />
+          ) : null;
+          if (hitSpark && !fighting) {
+            return (
+              <span
+                key={`v2hit-${ei}`}
+                className="scr-motion-army scr-motion-dot scr-v2fx"
+                style={{ ...posStyle(ax3, ay3), zIndex: 1310, ...fxLift }}
+              >
+                {hitSpark}
+              </span>
+            );
           }
           /* 수리·힐 연출(지적: 일꾼 수리 + 매딕 힐) — 명령 뒤 8초 동안 그 자리에서
              일한다: SCV는 용접 불티, 매딕은 흰 십자가 떠오른다. */
@@ -10277,12 +10327,16 @@ export default function ReplayMotionPlayer({
              버로우한 채 적이 사거리(6타일, 여유 7) 안이면 명령 없이도 가시를 쏜다.
              럴커는 수가 적으니 1/3 솎기도 안 태운다. */
           const lurkStrike = burrowed && !frzSt && Number.isFinite(foe.bd) && foe.bd <= 7;
-          // 근접은 덜 솎는다(기획서 1-G) — 베기가 안 보이면 '싸우는 척'이 된다.
-          if (fighting && !lurkStrike && ei % (MELEE_UNITS.has(drawUnit) || drawUnit === "" ? 2 : 3) !== 0) return null;
-          if ((!fighting && !lurkStrike) || !qCombat) return null;
+          /* 솎기(기획서 1-G) — 근접은 이제 그릴 효과가 없으므로(잽 동작이 대신한다) 덜
+             솎을 이유도 없다. 다만 맞은 불티는 솎으면 안 된다 — 맞는 순간은 개체마다
+             한 번뿐이라 솎이면 통째로 사라진다. */
+          if (fighting && !lurkStrike && !hitSpark && ei % 3 !== 0) return null;
+          if (((!fighting && !lurkStrike) || !qCombat) && !hitSpark) return null;
+          /* 근접은 효과 스팬 자체가 없다 — 잽으로 때리는 것이 보이고, 맞는 쪽 불티는
+             맞는 개체가 제 몸에 띄운다. */
+          if (!lurkStrike && !hitSpark && (MELEE_UNITS.has(drawUnit) || drawUnit === "")) return null;
           const fxUnit = drawUnit === "" ? (race === "저그" ? "Zergling" : race === "테란" ? "Marine" : "Zealot") : drawUnit;
           const atkDeg = foeDeg;
-          const cyc2 = Math.floor(t / 1.5);
           /* 조준각은 화면 기준(지적 둘: 공중 표적 각도가 안 맞음 + 지상 사격은 지면과
              평행해야) — 타일 각을 그대로 돌리면 3D의 바닥 눌림(0.74)과 떠 있는 몸
              (lift)이 무시된다. 화면 픽셀 델타로 재고, 공중 표적·공중 사수는 비행
@@ -10341,7 +10395,10 @@ export default function ReplayMotionPlayer({
                   }}
                 />
               )}
-              {(ei + cyc2) % 5 === 0 && <span key={`pf-${cyc2}`} className="scr-motion-puff" />}
+              {/* (제거) 공격자 발밑 퍼프 — 때리는 쪽에서 터지던 연기라, 맞는 쪽 불티와
+                  헷갈려 "피해 객체와 멀리 떨어진 곳에서 나온다"로 읽혔다(지적). 발사는
+                  트레이서가, 피격은 맞는 쪽 불티가 말한다. */}
+              {hitSpark}
             </span>
           );
         })}
