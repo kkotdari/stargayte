@@ -225,7 +225,8 @@ export default function GameResultStory({
            실려, 받은 쪽은 이 장면부터 본다. */
         shareNode={(
           <KakaoShareButton
-            variant="icon"
+            variant="full"
+            label="현재 장면 공유"
             content={() => gameResultShareContent(gameResult, memberOf)}
           />
         )}

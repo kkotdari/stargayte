@@ -9344,7 +9344,7 @@ export default function ReplayMotionPlayer({
             작게, 위에 라벨, PC·모바일 공통). 필터창과 같은 PillTabs를 쓴다. */}
         {/* 사양(요청: PC는 로스터와 버튼 사이, 모바일은 버튼그룹 위) — 렌더 요소 단계. */}
         <span className="scr-motion-radio scr-motion-qrow">
-          <span className="scr-motion-radio-label">사양</span>
+          <span className="scr-motion-radio-label">성능</span>
           <PillTabs
             options={[
               { value: "0", label: "최저" }, { value: "1", label: "저" },
@@ -9352,7 +9352,7 @@ export default function ReplayMotionPlayer({
             ]}
             value={String(quality)}
             onChange={(v) => setQuality(Number(v))}
-            aria-label="사양"
+            aria-label="성능"
           />
         </span>
         <span className="scr-motion-radio">

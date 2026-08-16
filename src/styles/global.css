@@ -11166,7 +11166,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 두 단계 더 작게(요청: 뎁스가 깊은 버튼들) — 24px → 20px, 글자도 한 단 아래. */
 .scr-motion-radio .scr-pill-tabs { height: 20px; background: rgba(255, 255, 255, 0.08); }
 .scr-light-theme .scr-motion-radio .scr-pill-tabs { background: rgba(0, 0, 0, 0.06); }
-.scr-motion-radio .scr-pill-tab-btn { font-size: var(--fs-micro); padding: 0 7px; }
+/* 탭 너비 축소(요청) — 알약 속 여백을 줄여 각 탭이 좁아지고 줄 사이 갭이 넉넉해진다. */
+.scr-motion-radio .scr-pill-tab-btn { font-size: var(--fs-micro); padding: 0 4px; }
 .scr-motion-radio .scr-pill-tab-btn:not(.scr-pill-tab-btn-active) { color: var(--muted); }
 @media (hover: hover) {
   .scr-motion-radio .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }
@@ -11247,6 +11248,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   grid-column: 3; justify-self: end; display: inline-flex; align-items: center; gap: 10px;
 }
 .scr-motion-clockwrap .scr-kakao-icon-btn { color: var(--muted); }
+/* 라벨 단 공유(요청: "현재 장면 공유") — 노란 카카오 버튼을 조종간 키에 맞게 줄인다. */
+.scr-motion-clockwrap .scr-kakao-share-btn {
+  height: 26px; padding: 0 9px; font-size: var(--fs-9); gap: 5px; white-space: nowrap;
+}
+.scr-motion-clockwrap .scr-kakao-share-btn svg { width: 13px; height: 13px; }
 .scr-motion-btn {
   min-width: 28px; height: 22px; padding: 0 6px; border-radius: var(--radius-sm);
   border: 1px solid var(--line-hair); background: transparent; color: var(--muted);
