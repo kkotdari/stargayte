@@ -759,15 +759,6 @@ function protossLegs(thighFill?: string, shinFill?: string, lift = 0): ShapeFace
 function ivory(faces: ShapeFace[]): ShapeFace[] {
   return faces.map(([d, o, f, k]) => [d, o, f ?? IVORY, k] as ShapeFace);
 }
-function claw3(m: 1 | -1, s: number, z0: number): ShapeFace[] {
-  const [a1x, a1y] = project(m * 0.7 * s, 0.6 * s, z0);
-  const [a2x, a2y] = project(m * 1.5 * s, 0.2 * s, z0);
-  const [ox, oy] = project(m * 2.9 * s, 2.4 * s, z0 + 0.6);
-  const [tx, ty] = project(m * 1 * s, 4.4 * s, z0 - 0.6);
-  const [ix, iy] = project(m * 1.9 * s, 1.9 * s, z0 + 0.2);
-  const d = `M${a1x} ${a1y} Q${ox} ${oy} ${tx} ${ty} Q${ix} ${iy} ${a2x} ${a2y} Z`;
-  return [bodyFace(d), sideFace(d, 0.16)];
-}
 
 /** 크립 갈퀴 바닥(지적: 콜로니 바닥은 동그라미가 아니라 갈퀴) — 사방으로 뻗는 납작한
  *  덩굴 조각들. */
@@ -4080,9 +4071,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 뒷몸 짙은 갈색(요청).
       ...paintBase(domeFaces3(0, -2.1, 1.5, 1.2, 3.5), "#6b4732"),
       ...domeFaces3(0, -0.7, 2, 1.7, 3.5),
-      // 팔도 다른 갈고리와 같은 휘어진 낫 날(지적) — 낫 상아색(요청).
-      ...ivory(claw3(1, 0.7, 4)),
-      ...ivory(claw3(-1, 0.7, 4)),
+      /* 갈고리를 스파이어 기둥으로 재해석(요청) — 밑동은 굵은 다각 기둥, 끝으로
+         갈수록 가늘어지며 앞·안으로 휜다. 상아색. */
+      ...([-1, 1] as const).flatMap((m9): ShapeFace[] => spirePillar({
+        x: m9 * 1.05, y: -0.2, z0: 2.6, h: 2.4, w: 0.42, tipW: 0.05,
+        segs: 4, sides: 6, hold: 0.25,
+        leanX: -m9 * 0.5, leanY: 2.1, curveX: -m9 * 0.7, curveY: 1.1,
+        fill: IVORY,
+      })),
     ];
   },
 
@@ -4534,12 +4530,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 몸통 아래~꼬리 끝을 한 기둥으로(요청) — 납작한 꼬리 판을 걷고, 공용 도형
          spirePillar를 뒤·아래로 크게 휘어 세운다. 위(허리)에서 굵고 꼬리 끝으로
          갈수록 가늘어져 한 몸으로 이어진다. 짙은 살색. */
-      /* 기둥은 아래에서 위로 자란다(수리: 꼬리가 위로 솟아 하반신이 사라졌다) —
-         꼬리 끝(뒤·바닥)에서 허리로 올라오게 정의한다. 끝이 가늘고 허리가 굵다. */
+      /* 꼬리는 거의 L자(재지적) — 바닥에 눕는 꼬리와 곧게 선 하반신이 직각으로 꺾여
+         만난다. 눕는 마디는 낮은 기둥을 뒤로 길게 눕혀 만들고, 선 마디는 그 꺾임점
+         에서 허리(z 3.6, 굵기 1.05)까지 올려 상반신과 굵기가 딱 맞게 잇는다. */
       ...spirePillar({
-        x: 0, y: -5, z0: 0.06, h: 3.5, w: 0.12, tipW: 1.05,
-        segs: 6, sides: 8, hold: 0,
-        leanY: 5, curveY: -1.6,
+        x: 0, y: -0.35, z0: 0.06, h: 0.62, w: 0.62, tipW: 0.12,
+        segs: 5, sides: 8, hold: 0.15, leanY: -4.4, curveY: -0.5,
+        fill: "#c68a62",
+      }),
+      ...spirePillar({
+        x: 0, y: -0.35, z0: 0.06, h: 3.54, w: 0.92, tipW: 1.05,
+        segs: 3, sides: 8, hold: 0.25, leanY: 0.35,
         fill: "#c68a62",
       }),
       // 꼬리 등의 자잘한 짙은 상아색 가시들(요청).
@@ -4586,8 +4587,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...paintBase(domeFaces3(0, 1.6, 2, 1.6, 3.9), "#6b4732"),
     ...paintBase(cylinderFaces3(-2.2, 1.1, 0.8, 3, 0.3), "#6b4732"),
     ...paintBase(cylinderFaces3(2.2, 1.1, 0.8, 3, 0.3), "#6b4732"),
-    ...ivory(claw3(1, 2.1, 5.4)),
-    ...ivory(claw3(-1, 2.1, 5.4)),
+    /* 갈고리를 스파이어 기둥으로 재해석(요청) — 어깨에서 크게 휘어 나가는 카이저 낫. */
+    ...([-1, 1] as const).flatMap((m9): ShapeFace[] => spirePillar({
+      x: m9 * 2.1, y: 0.4, z0: 4.4, h: 4.2, w: 0.95, tipW: 0.08,
+      segs: 5, sides: 6, hold: 0.2,
+      leanX: m9 * 1.2, leanY: 2.4, curveX: -m9 * 1.6, curveY: 2.2,
+      fill: IVORY,
+    })),
   ],
   /* 러커(실물 참고) — 넓은 가시 등딱지, 사방으로 벌린 낫 칼다리 두 쌍(끝이 안으로
      말림), 앞 입. */
