@@ -633,21 +633,25 @@ const P_PLASMA = "#e4f6ff";
    아래로 내밀어 '턱주가리'가 된다. 정수리는 둥근 캡, 양볼이 앞아래 턱 끝 한 점으로
    모인다. fill 없이 부르면 색 없는 몸판이라 아콘의 dark() 실루엣이 그대로 집어 간다. */
 function protossFace(fill?: string, lift = 0, s = 1): ShapeFace[] {
-  const [hx, hy] = project(0, 0.05, 7.7 + lift);
-  const [jx, jy] = project(0, 1.8 * s, 5.2 + lift);
-  const w = 0.8 * s;
-  const my = (hy + jy) / 2;
-  const outline = `M${hx - w} ${hy} A${w} ${w * 0.72} 0 0 1 ${hx + w} ${hy}`
-    + ` Q${hx + w * 1.05} ${my} ${jx} ${jy}`
-    + ` Q${hx - w * 1.05} ${my} ${hx - w} ${hy} Z`;
-  const cap = `M${hx - w} ${hy} A${w} ${w * 0.72} 0 0 1 ${hx + w} ${hy}`
+  // 뒤통수 축소·턱 끝은 뭉뚝하게(재지적) — 폭 0.8 → 0.6, 턱은 한 점이 아니라 짧은 변.
+  const [hx, hy] = project(0, 0.05, 7.55 + lift);
+  const [jlx, jly] = project(-0.24 * s, 1.75 * s, 5.15 + lift);
+  const [jrx, jry] = project(0.24 * s, 1.75 * s, 5.15 + lift);
+  const w = 0.6 * s;
+  const my = (hy + (jly + jry) / 2) / 2;
+  const outline = `M${hx - w} ${hy} A${w} ${w * 0.74} 0 0 1 ${hx + w} ${hy}`
+    + ` Q${hx + w * 1.1} ${my} ${jrx} ${jry}`
+    + ` L${jlx} ${jly}`
+    + ` Q${hx - w * 1.1} ${my} ${hx - w} ${hy} Z`;
+  const cap = `M${hx - w} ${hy} A${w} ${w * 0.74} 0 0 1 ${hx + w} ${hy}`
     + ` A${w} ${w * 0.4} 0 0 0 ${hx - w} ${hy} Z`;
   return [[outline, 1, fill] as ShapeFace, topFace(cap, 0.2)];
 }
 /* 프로토스 인간형 공통 몸통(요청: 하템도 질럿·다크와 같은 굽은 몸통) — 앞으로 숙는
    캡슐 막대 하나. 두께·길이 축소(재지적). */
 function protossTorso(fill: string, lift = 0): ShapeFace[] {
-  return paintBase(rodFaces(0, -0.5, 3.9 + lift, 0, 0.3, 6.1 + lift, 1.25), fill);
+  // 허리 살짝 더 숙인다(재지적) — 어깨를 앞으로, 엉덩이를 뒤로 더 벌린다.
+  return paintBase(rodFaces(0, -0.75, 3.9 + lift, 0, 0.6, 6 + lift, 1.25), fill);
 }
 /* 프로토스 인간형 공통 다리(요청: 하템도 같은 2관절) — 넓적다리 앞, 정강이 뒤, 긴 발이
    앞아래 대각선. 대퇴·하지 색을 따로 받는다(하템은 하지가 개인색). */
@@ -660,6 +664,23 @@ function protossLegs(thighFill?: string, shinFill?: string, lift = 0): ShapeFace
       ...rodFaces(m * 0.62, 0.5, 2.3 + lift, m * 0.6, -0.5, 1.2 + lift, 0.56),
       ...rodFaces(m * 0.6, -0.5, 1.2 + lift, m * 0.68, 0.8, 0.15 + lift, 0.47),
     ], shinFill));
+    /* 발끝 팁(요청) — 지면에 수평으로 눕는 삼각 말굽. 윗판·밑판과 옆면 띠로 두께를
+       줘 납작한 판이 아니라 굽으로 보인다. */
+    const fx = m * 0.72;
+    const fy = 0.95;
+    const fz = 0.06 + lift;
+    const tri = (z: number): [number, number, number][] => [
+      [fx - 0.34, fy - 0.42, z], [fx + 0.34, fy - 0.42, z], [fx + m * 0.06, fy + 0.6, z],
+    ];
+    const loT = tri(fz);
+    const hiT = tri(fz + 0.26);
+    const footFaces: ShapeFace[] = [bodyFace(polyPath3(loT))];
+    for (let i9 = 0; i9 < 3; i9 += 1) {
+      const j9 = (i9 + 1) % 3;
+      footFaces.push(bodyFace(polyPath3([loT[i9], loT[j9], hiT[j9], hiT[i9]])));
+    }
+    footFaces.push(bodyFace(polyPath3(hiT)), topFace(polyPath3(hiT), 0.2));
+    out.push(...paint(footFaces, shinFill));
   }
   return out;
 }
@@ -3914,13 +3935,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...tagKey(protossFace(P_GOLD), 20),
     /* 뒤통수 묶음머리(재지적: 한 마디 더·더 두껍게·더 곧게) — 끝은 금색 마감과
        플라즈마 불꽃. 다발은 개인색. */
-    ...rodFaces(0, -0.75, 7, 0, -2, 6.55, 0.62),
-    ...paintBase(rodFaces(0, -1.95, 6.57, 0, -2.25, 6.45, 0.72), P_GOLD),
-    ...rodFaces(0, -2.2, 6.47, 0, -3.5, 5.95, 0.58),
-    ...rodFaces(0, -3.45, 5.97, 0, -4.75, 5.45, 0.52),
-    ...paintBase(rodFaces(0, -4.65, 5.49, 0, -5, 5.35, 0.6), P_GOLD),
-    ...paintBase(domeFaces3(0, -5.25, 0.4, 0.38, 5.15), P_PLASMA),
-    [groundEllipse(...project(0, -5.45, 5.35), 0.5, 0.5), 0.45, P_PLASMA] as ShapeFace,
+    ...rodFaces(0, -0.7, 6.9, 0, -1.95, 6.2, 0.62),
+    ...paintBase(rodFaces(0, -1.9, 6.23, 0, -2.2, 6.06, 0.72), P_GOLD),
+    ...rodFaces(0, -2.15, 6.09, 0, -3.4, 5.35, 0.58),
+    ...rodFaces(0, -3.35, 5.38, 0, -4.6, 4.6, 0.52),
+    ...paintBase(rodFaces(0, -4.5, 4.66, 0, -4.85, 4.44, 0.6), P_GOLD),
+    ...paintBase(domeFaces3(0, -5.1, 0.4, 0.38, 4.2), P_PLASMA),
+    [groundEllipse(...project(0, -5.3, 4.4), 0.5, 0.5), 0.45, P_PLASMA] as ShapeFace,
     // 어깨 갑주 한 쌍 — 개인색.
     ...domeFaces3(-1.3, -0.25, 0.6, 0.48, 5.8),
     ...domeFaces3(1.3, -0.25, 0.6, 0.48, 5.8),
@@ -3940,12 +3961,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 망토(재지적: 더 들리고 끝단은 완만한 물결) — 어깨에서 시작해 뒤로 들린 자락,
        밑단은 지그재그가 아니라 사인 물결이다. 제 깊이를 달아 뒤에서 보면 몸 위로 온다. */
     ...tagKey(((): ShapeFace[] => {
-      const pts: [number, number, number][] = [[-0.62, -0.75, 6], [0.62, -0.75, 6], [2.5, -2.5, 3.6]];
+      /* 어깨에 딱 붙이고(재지적) 길이 1.5배(요청) — 어깨 폭(±1.3)에서 시작해 자락이
+         무릎 아래까지 내려온다. */
+      const pts: [number, number, number][] = [[-1.28, -0.5, 5.85], [1.28, -0.5, 5.85], [2.6, -2.5, 1.7]];
       for (let i = 0; i <= 10; i += 1) {
         const u = i / 10;
-        pts.push([2.5 - u * 5, -2.6, 3.15 + Math.sin(u * Math.PI * 2.5) * 0.5]);
+        pts.push([2.6 - u * 5.2, -2.65, 1.15 + Math.sin(u * Math.PI * 2.5) * 0.6]);
       }
-      pts.push([-2.5, -2.5, 3.6]);
+      pts.push([-2.6, -2.5, 1.7]);
       const d = polyPath3(pts);
       return [[d, 1] as ShapeFace, sideFace(d, 0.18)];
     })(), depthNow(0, -1.5) + 0.6),
@@ -3977,8 +4000,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const L = 0.8;
     return [
       topFace(groundEllipse(gx, gy, 1.6, 0.8), 0.3),
-      // 하지는 개인색, 대퇴는 금색(요청).
-      ...protossLegs(P_GOLD, undefined, L),
+      // 다리는 금색(재지적) — 하완만 개인색.
+      ...protossLegs(P_GOLD, P_GOLD, L),
       ...protossTorso(P_GOLD, L),
       /* 앞가리개(요청) — 허리부터 발목까지. 몸에 딱 붙인다(재지적: 떠 보였다) —
          몸통 앞면(y 0.55)에 얹고 아래로 살짝만 벌어진다. */
@@ -4034,7 +4057,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const kneY = dy * 3.5;
       /* 두께 증가 + 정삼각(재지적) — 단면이 정삼각형이 되게 능선 높이를 폭×√3으로
          잡는다(폭 1.05 → 높이 1.82). */
-      const w9 = 1.05;
+      // 대퇴는 얇게(재지적) — 1.05 → 0.78. 하지는 조금 굵게 남긴다.
+      const w9 = 0.78;
+      const ws9 = 0.9;
       const h9 = w9 * 1.732;
       const rH: [number, number, number] = [hipX, hipY, 4 + h9];
       const rK: [number, number, number] = [kneX, kneY, 5 + h9];
@@ -4042,9 +4067,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const brH: [number, number, number] = [hipX + nx * w9, hipY + ny * w9, 4];
       const blK: [number, number, number] = [kneX - nx * w9, kneY - ny * w9, 5];
       const brK: [number, number, number] = [kneX + nx * w9, kneY + ny * w9, 5];
-      const sT: [number, number, number] = [kneX, kneY, 4.9 + w9 * 1.732];
-      const sL: [number, number, number] = [kneX - nx * w9, kneY - ny * w9, 4.9];
-      const sR: [number, number, number] = [kneX + nx * w9, kneY + ny * w9, 4.9];
+      const sT: [number, number, number] = [kneX, kneY, 4.9 + ws9 * 1.732];
+      const sL: [number, number, number] = [kneX - nx * ws9, kneY - ny * ws9, 4.9];
+      const sR: [number, number, number] = [kneX + nx * ws9, kneY + ny * ws9, 4.9];
       const foot: [number, number, number] = [dx * 4.05, dy * 4.05, 0];
       const thighR = polyPath3([rH, rK, brK, brH]);
       const thighL = polyPath3([rH, rK, blK, blH]);
@@ -4052,10 +4077,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const shinBot = polyPath3([sL, sR, foot]);
       const shinR = polyPath3([sT, sR, foot]);
       const shinL = polyPath3([sT, sL, foot]);
+      /* 하지 입체감(재지적: 아직 평평) — 세 면의 음영을 크게 벌리고 무릎 단면을
+         덮개로 얹어 삼각뿔의 모서리가 읽히게 한다. */
       return tagKey(paintBase([
-        bodyFace(shinBot),
-        bodyFace(shinR), sideFace(shinR, 0.22),
-        bodyFace(shinL), topFace(shinL, 0.14),
+        bodyFace(shinBot), sideFace(shinBot, 0.42),
+        bodyFace(shinR), sideFace(shinR, 0.3),
+        bodyFace(shinL), topFace(shinL, 0.24),
+        bodyFace(polyPath3([sT, sR, sL])), capFace(polyPath3([sT, sR, sL]), 0.32),
         bodyFace(thighR), sideFace(thighR, 0.2),
         bodyFace(thighL), topFace(thighL, 0.15),
         bodyFace(thighCap), sideFace(thighCap, 0.3),
@@ -4471,62 +4499,79 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const [px, py] = project(x, y, z);
       return `${px} ${py}`;
     };
-    const [cx, cy] = project(0, -0.6, 3.8);
     const out: ShapeFace[] = [];
-    /* 뒷다리(정정 셋: 꺾인 관절이 아니라 곡선 변의 삼각형) — 두 뿔을 잇던 팔꿈치를
-       걷고, 몸 옆구리에 뿌리를 둔 채 바깥·앞으로 쓸리는 지느러미꼴 삼각형 하나로
-       그린다. 세 변이 다 완만한 곡선이다. */
-    const leg = (m: 1 | -1): string =>
-      `M${pt(m * 2.1, -2.2, 3.75)} Q${pt(m * 4.8, -1.8, 3.5)} ${pt(m * 5.2, 1.2, 3.3)}`
-      + ` Q${pt(m * 3.7, 0.6, 3.65)} ${pt(m * 2.4, 0.1, 3.8)}`
-      + ` Q${pt(m * 2.1, -1, 3.78)} ${pt(m * 2.1, -2.2, 3.75)} Z`;
-    // 집게·다리 네 장 금색(요청).
-    out.push([leg(-1), 1, "#d4af37"] as ShapeFace, sideFace(leg(-1), 0.18));
-    out.push([leg(1), 1, "#d4af37"] as ShapeFace, sideFace(leg(1), 0.18));
-    /* 몸통은 뒤쪽 반만(요청) — 앞은 곧은 변, 뒤는 반원인 납작 반구. 모델 공간이라
-       요잉을 함께 탄다. */
-    {
-      const halfPts: [number, number, number][] = [];
-      for (let i9 = 0; i9 <= 12; i9 += 1) {
-        const a9 = (i9 / 12) * Math.PI;
-        halfPts.push([Math.cos(a9) * 2.8, -0.5 - Math.sin(a9) * 2.2, 3.8]);
-      }
-      const half = polyPath3(halfPts);
-      out.push(bodyFace(half), topFace(half, 0.12));
+    /* 뒷다리 — 몸 옆구리에서 바깥으로 쓸리는 지느러미. 아랫판·윗판과 바깥 테두리
+       띠로 두께를 준다(재지적: 평면). */
+    const legAt = (m: 1 | -1, z: number): string =>
+      `M${pt(m * 2.1, -2.2, z)} Q${pt(m * 4.8, -1.8, z)} ${pt(m * 5.2, 1.2, z)}`
+      + ` Q${pt(m * 3.7, 0.6, z + 0.05)} ${pt(m * 2.4, 0.1, z + 0.05)}`
+      + ` Q${pt(m * 2.1, -1, z + 0.03)} ${pt(m * 2.1, -2.2, z)} Z`;
+    for (const m of [-1, 1] as const) {
+      const lo9 = legAt(m, 3.35);
+      const hi9 = legAt(m, 3.9);
+      out.push(...tagKey([
+        [lo9, 1, "#d4af37"] as ShapeFace, sideFace(lo9, 0.32),
+        [`M${pt(m * 2.1, -2.2, 3.35)} Q${pt(m * 4.8, -1.8, 3.35)} ${pt(m * 5.2, 1.2, 3.35)}`
+          + ` L${pt(m * 5.2, 1.2, 3.9)} Q${pt(m * 4.8, -1.8, 3.9)} ${pt(m * 2.1, -2.2, 3.9)} Z`,
+          1, "#d4af37"] as ShapeFace,
+        [hi9, 1, "#d4af37"] as ShapeFace, topFace(hi9, 0.16),
+      ], depthNow(m * 3.6, -0.5)));
     }
-    // (삭제·지적) 앞부분 검은 반투명 홈 — 정체불명 얼룩으로 보여 걷었다.
-    out.push(topFace(groundEllipse(cx - 0.9, cy - 1, 1.25, 0.8), 0.25));
-    /* 말굽(재지적: 끊김 없이) — 두 앞집게 뿌리를 몸 위로 실제로 잇는 납작한 반원
-       띠. 모델 공간 반고리라 요잉을 함께 탄다. 금색. */
+    /* 몸통은 뒤쪽 반만(요청) + 두껍게(재지적: 평면) — 앞은 곧은 변, 뒤는 반원인
+       납작 반구. 아래 테두리에서 위 덮개까지 옆면을 둘러 부피를 만든다. */
     {
-      const ringPts: [number, number, number][] = [];
-      for (let i9 = 0; i9 <= 8; i9 += 1) {
-        const t9 = (i9 / 8) * Math.PI;
-        ringPts.push([3.25 * Math.cos(t9), 0.45 - 2.1 * Math.sin(t9), 3.9]);
+      const arc9 = (r: number, z: number): [number, number, number][] =>
+        Array.from({ length: 13 }, (_, i9) => {
+          const a9 = (i9 / 12) * Math.PI;
+          return [Math.cos(a9) * r, -0.5 - Math.sin(a9) * r * 0.8, z] as [number, number, number];
+        });
+      const bot9 = arc9(2.85, 3.35);
+      const top9 = arc9(2.35, 4.55);
+      out.push(bodyFace(polyPath3(bot9)));
+      for (let i9 = 0; i9 < 12; i9 += 1) {
+        const side9 = polyPath3([bot9[i9], bot9[i9 + 1], top9[i9 + 1], top9[i9]]);
+        out.push(bodyFace(side9), sideFace(side9, 0.18));
       }
-      for (let i9 = 8; i9 >= 0; i9 -= 1) {
-        const t9 = (i9 / 8) * Math.PI;
-        ringPts.push([2.25 * Math.cos(t9), 0.45 - 1.25 * Math.sin(t9), 3.9]);
-      }
-      const shoe = polyPath3(ringPts);
-      out.push([shoe, 1, "#d4af37"] as ShapeFace, topFace(shoe, 0.16));
+      const front9 = polyPath3([bot9[0], top9[0], top9[12], bot9[12]]);
+      out.push(bodyFace(front9), sideFace(front9, 0.24));
+      out.push(bodyFace(polyPath3(top9)), topFace(polyPath3(top9), 0.14));
     }
     // 옆구리 밝은 홈 한 쌍.
-    out.push(topFace(groundEllipse(...project(-2.3, -0.3, 3.9), 0.4, 0.55), 0.4));
-    out.push(topFace(groundEllipse(...project(2.3, -0.3, 3.9), 0.4, 0.55), 0.4));
-    // 등 뒤 엔진 짐 — 하나만 남기고 밝은 사이언색(요청).
-    out.push(...paintBase(domeFaces3(0, -2.3, 0.95, 0.8, 4.2), "#a9ecf2"));
-    // 아가리 어두운 속은 제거(지적: 앞 검정 반투명 부품) — 빛 줄만 남긴다.
-    out.push(topFace(`M${pt(-1.6, 1.1, 3.9)} Q${pt(0, 2, 3.9)} ${pt(1.6, 1.1, 3.9)} L${pt(1.4, 1.5, 3.9)} Q${pt(0, 2.4, 3.9)} ${pt(-1.4, 1.5, 3.9)} Z`, 0.5));
-    /* 집게(정정 셋: 더 두껍게 + 약간 아래로 기울이기 + 뾰족·사이 벌림 유지) — 바깥
-       변을 더 바깥으로 부풀려 살을 찌우고, 앞으로 갈수록 z를 낮춰 끝이 아래를 향해
-       내려간다. */
-    const claw = (m: 1 | -1): string =>
-      `M${pt(m * 3.3, 0.5, 3.85)} Q${pt(m * 4.5, 3, 3.65)} ${pt(m * 2.1, 5.8, 3.25)}`
-      + ` Q${pt(m * 2.4, 3.4, 3.6)} ${pt(m * 2.5, 1.4, 3.8)}`
-      + ` Q${pt(m * 2.6, 0.4, 3.85)} ${pt(m * 3.3, 0.5, 3.85)} Z`;
-    out.push([claw(1), 1, "#d4af37"] as ShapeFace, sideFace(claw(1), 0.16));
-    out.push([claw(-1), 1, "#d4af37"] as ShapeFace, topFace(claw(-1), 0.14));
+    out.push(topFace(groundEllipse(...project(-2.3, -0.3, 4.4), 0.4, 0.55), 0.4));
+    out.push(topFace(groundEllipse(...project(2.3, -0.3, 4.4), 0.4, 0.55), 0.4));
+    // 등 뒤 엔진 짐 — 하나만, 밝은 사이언색(요청).
+    out.push(...paintBase(domeFaces3(0, -2.3, 0.95, 0.8, 4.4), "#a9ecf2"));
+    /* 앞 고리(요청: 양팔과 말굽을 합친 한 덩이) — U자 고리가 통째로 앞아래 30도쯤
+       숙는다. 아랫판·윗판과 바깥 테두리 띠로 두께를 줘 굽처럼 읽힌다. 금색. */
+    {
+      const N9 = 12;
+      const P9 = (r: number, u: number, dz: number): [number, number, number] => {
+        const th9 = Math.PI * u;
+        return [
+          -Math.cos(th9) * r,
+          0.9 + Math.sin(th9) * r * 0.95,
+          4.35 - Math.sin(th9) * 2.6 + dz,
+        ];
+      };
+      const ring9 = (dz: number): string => {
+        const pts9: [number, number, number][] = [];
+        for (let i9 = 0; i9 <= N9; i9 += 1) pts9.push(P9(3.5, i9 / N9, dz));
+        for (let i9 = N9; i9 >= 0; i9 -= 1) pts9.push(P9(2.35, i9 / N9, dz));
+        return polyPath3(pts9);
+      };
+      const loR = ring9(0);
+      const hiR = ring9(0.55);
+      out.push(...tagKey([
+        [loR, 1, "#d4af37"] as ShapeFace, sideFace(loR, 0.3),
+        ...Array.from({ length: N9 }, (_, i9) => ([
+          polyPath3([
+            P9(3.5, i9 / N9, 0), P9(3.5, (i9 + 1) / N9, 0),
+            P9(3.5, (i9 + 1) / N9, 0.55), P9(3.5, i9 / N9, 0.55),
+          ]), 1, "#d4af37",
+        ] as ShapeFace)),
+        [hiR, 1, "#d4af37"] as ShapeFace, topFace(hiR, 0.18),
+      ], depthNow(0, 2.6)));
+    }
     return out;
   },
   /* 미네랄(재정정: 삼각뿔 말고 보석 기둥) — 세운 기둥 결정 + 뾰족 갓 셋, 키가 다
