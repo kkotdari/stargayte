@@ -1412,97 +1412,76 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 로보틱스(실물 참고, 곡선의 미) — 둥근 대야와 도톰한 링 테두리, 어두운 격자 구덩이,
      테두리의 매끈한 흰 가시, 그리고 테두리에서 구덩이 위로 부드럽게 굽어 드리우는 팔. */
   dome: () => {
-    const pt = (x: number, y: number, z: number): string => {
-      const [px, py] = project(x, y, z);
-      return `${px} ${py}`;
-    };
-    /* 크게 축소 + 바닥은 원판형(재재요청) — 후지산 밑둥 대신 낮은 원통 받침. 전체
-       비례도 0.72배로 눌러 왜소하지 않은 선에서 작게. */
-    const out: ShapeFace[] = [...tagKey([
-      ...cylinderFaces3(0, 0, 4.7, 1.6),
-      topFace(discPath3(0, 0, 1.62, 4.55), 0.08),
-    ], depthNow(0, 0) + 1.6)];
-    // 구덩이 격자 — 까만 바닥판 없이(지적: 같은 톤) 밝은 줄만 얹는다.
+    const out: ShapeFace[] = [];
+    /* 밑동은 높이감 있는 사다리꼴 대야(요청·사진) — 아래가 넓고 위가 좁은 원뿔대.
+       옆면은 보이는 조각만 그리고, 위 테두리에 도톰한 링을 두른다. */
+    {
+      const N9 = 16;
+      const rim9 = (r9: number, z9: number): [number, number, number][] =>
+        Array.from({ length: N9 + 1 }, (_, i9) => {
+          const a9 = (i9 / N9) * Math.PI * 2;
+          return [Math.cos(a9) * r9, Math.sin(a9) * r9, z9] as [number, number, number];
+        });
+      const lo9 = rim9(5.1, 0);
+      const hi9 = rim9(4.1, 2.7);
+      const wall: ShapeFace[] = [];
+      for (let i9 = 0; i9 < N9; i9 += 1) {
+        const mid9 = ((i9 + 0.5) / N9) * Math.PI * 2;
+        const nx9 = Math.cos(mid9);
+        const ny9 = Math.sin(mid9);
+        const fl9 = faceLight(nx9, ny9, 0.35);
+        if (!fl9.visible) continue;
+        const d9 = polyPath3([lo9[i9], lo9[i9 + 1], hi9[i9 + 1], hi9[i9]]);
+        wall.push(bodyFace(d9), ...fl9.face(d9));
+      }
+      out.push(...tagKey([
+        bodyFace(polyPath3(lo9)),
+        ...wall,
+        bodyFace(polyPath3(hi9)), topFace(polyPath3(hi9), 0.1),
+      ], depthNow(0, 0) + 2.7));
+    }
+    // 구덩이 격자 — 대야 안쪽 우물을 가로지르는 밝은 줄.
     const bars: string[] = [];
-    for (const o of [-1.6, -0.6, 0.6, 1.6]) {
-      bars.push(polyPath3([[-2.6, o + 0.1, 1.72], [2.6, o + 0.1, 1.72], [2.6, o - 0.1, 1.72], [-2.6, o - 0.1, 1.72]]));
-      bars.push(polyPath3([[o + 0.1, -2.6, 1.72], [o + 0.1, 2.6, 1.72], [o - 0.1, 2.6, 1.72], [o - 0.1, -2.6, 1.72]]));
+    for (const o of [-2.1, -0.7, 0.7, 2.1]) {
+      bars.push(polyPath3([[-3.2, o + 0.12, 2.75], [3.2, o + 0.12, 2.75], [3.2, o - 0.12, 2.75], [-3.2, o - 0.12, 2.75]]));
+      bars.push(polyPath3([[o + 0.12, -3.2, 2.75], [o + 0.12, 3.2, 2.75], [o - 0.12, 3.2, 2.75], [o - 0.12, -3.2, 2.75]]));
     }
     out.push(topFace(bars.join(" "), 0.22));
     // 도톰한 링 테두리 — 위 테를 둥근 띠로 두른다.
-    const [rcx, rcy] = project(0, 0, 1.7);
-    out.push(bodyFace(`M${rcx - 4} ${rcy} a4 1.94 0 1 0 8 0a4 1.94 0 1 0 -8 0`
-      + ` M${rcx - 3.2} ${rcy} a3.2 1.55 0 1 1 6.4 0a3.2 1.55 0 1 1 -6.4 0`));
+    const [rcx, rcy] = project(0, 0, 2.8);
+    out.push(bodyFace(`M${rcx - 4.15} ${rcy} a4.15 2.01 0 1 0 8.3 0a4.15 2.01 0 1 0 -8.3 0`
+      + ` M${rcx - 3.35} ${rcy} a3.35 1.62 0 1 1 6.7 0a3.35 1.62 0 1 1 -6.7 0`));
     // 테두리 빛 눈금 — 앞쪽 띠의 밝은 조각들.
     for (const ang of [115, 80, 45, 245]) {
       const a2 = (ang * Math.PI) / 180;
-      out.push(topFace(groundEllipse(rcx + Math.cos(a2) * 3.6, rcy + Math.sin(a2) * 1.75, 0.4, 0.22), 0.45));
+      out.push([groundEllipse(rcx + Math.cos(a2) * 3.75, rcy + Math.sin(a2) * 1.82, 0.4, 0.22), 0.6, "#3bd8c2"] as ShapeFace);
     }
-    // 매끈한 흰 가시 — 바깥으로 살짝 기운 원뿔 셋.
-    for (const [hx, hy, tx2, ty2] of [[-1.9, 3, -2.4, 3.8], [2, 2.9, 2.4, 3.6], [-3.7, -0.6, -4.5, -0.7]] as [number, number, number, number][]) {
-      out.push(...hornFaces(hx, hy, 1.4, tx2, ty2, 3.1, 0.8));
-      /* 끝 발광은 가시가 뒤로 돌아가면 숨긴다(지적: 시점 따라 위치가 따로 놈) — 가시
-         몸은 테두리에 가려지는데 발광 점만 남아 허공에 떠 보였다. */
-      const hl = Math.hypot(tx2, ty2) || 1;
-      if (facingRatio(tx2 / hl, ty2 / hl) > -0.15) {
-        out.push(topFace(groundEllipse(...project(tx2 * 0.94, ty2 * 0.94, 2.4), 0.24, 0.36), 0.4));
-      }
+    // 매끈한 흰 가시 — 테두리에서 바깥으로 살짝 기운 원뿔들.
+    for (const [hx, hy, tx2, ty2] of [
+      [-2.1, 3.3, -2.7, 4.2], [2.2, 3.2, 2.7, 4], [-4.1, -0.7, -5, -0.8], [3.9, -1.5, 4.7, -1.8],
+    ] as [number, number, number, number][]) {
+      out.push(...paintBase(hornFaces(hx, hy, 2.5, tx2, ty2, 4.6, 0.85), IVORY));
     }
-    /* 위 구조물은 왕고치 하나(재재지적: 고치 넷 무더기 걷고 딱 하나 높게) — 테두리
-       뒤편에 우뚝 선 큰 번데기. 껍질에도 격자무늬: 그 높이의 껍질 반지름으로 도는
-       가로 테 고리 + 앞면을 타는 세로 이음선을 두른다. */
-    // 두 배쯤 크게(재요청) — 반지름 2→2.9, 키 6→9.5. 자리는 살짝 안쪽으로.
-    const KX = -2.2;
-    const KY = -1.4;
-    /* 왕고치는 판 위 얹힘(재재지적: 판 격자·테가 위에 씻겨 투명해 보임) — 지붕 띠
-       키로 늘 판을 이긴다. 격자무늬는 판의 격자와 같은 흰 줄(요청)로, 가로 테를 더
-       촘촘히 두른다. */
-    const sq = groundSquashNow();
-    /* 고치 실루엣 밑판(지적: 위 고치 뒤가 비침) — 격자 고리의 도넛 구멍과 돔 면 틈으로
-       뒤 배경이 비쳐서, 몸색 꽉 찬 실루엣 한 장을 껍질 맨 뒤에 깐다. */
-    const [kbx, kby] = project(KX, KY, 1.5);
-    const [ktx, kty] = project(KX, KY, 8.4);
-    const shell: ShapeFace[] = [
-      bodyFace(
-        `M${kbx - 2.1} ${kby}`
-        + ` Q${ktx - 2.1} ${(kby + kty) / 2} ${ktx} ${kty}`
-        + ` Q${ktx + 2.1} ${(kby + kty) / 2} ${kbx + 2.1} ${kby}`
-        + `a2.1 ${(2.1 * sq).toFixed(2)} 0 1 1 ${-4.2} 0Z`,
-      ),
-      ...domeFaces3(KX, KY, 2.1, 6.9, 1.5),
-    ];
-    // 가로 테(촘촘히) — 도넛 고리(바깥 정방향 + 안 역방향 감김이 구멍을 낸다).
-    for (const [gz, gr] of [
-      [2.15, 2.03], [3, 1.93], [3.9, 1.8], [4.8, 1.6], [5.6, 1.33], [6.5, 1.01],
-    ] as const) {
-      const [ex, ey] = project(KX, KY, gz);
-      const ri = gr - 0.14;
-      shell.push(topFace(
-        `M${ex - gr} ${ey}a${gr} ${gr * sq} 0 1 0 ${gr * 2} 0a${gr} ${gr * sq} 0 1 0 ${-gr * 2} 0Z`
-        + `M${ex - ri} ${ey}a${ri} ${ri * sq} 0 1 1 ${ri * 2} 0a${ri} ${ri * sq} 0 1 1 ${-ri * 2} 0Z`,
-        0.22,
-      ));
+    /* 위는 집게 크레인(요청·사진: 고치 제거) — 뒤쪽에서 솟은 기둥이 앞으로 크게 굽어
+       우물 위로 드리우고, 끝에 두 갈래 집게와 청록 발광이 달린다. 판 위 얹힘이라
+       지붕 키로 늘 대야를 이긴다. */
+    {
+      const arm: ShapeFace[] = [
+        // 뒤 기둥 — 대야 테두리에서 위로.
+        ...rodFaces(-2.5, -2.4, 2.6, -2.1, -1.9, 8.2, 1.15),
+        // 아치 — 꼭대기에서 앞으로 굽어 내려온다.
+        ...rodFaces(-2.1, -1.9, 8.2, -0.7, -0.4, 9.5, 1),
+        ...rodFaces(-0.7, -0.4, 9.5, 1, 1.3, 8.7, 0.9),
+        ...rodFaces(1, 1.3, 8.7, 1.7, 2.1, 6.9, 0.8),
+      ];
+      // 끝 집게 — 두 갈래로 벌어져 아래를 문다.
+      arm.push(...hornFaces(1.7, 2.1, 6.9, 2.5, 2.9, 5.6, 0.5));
+      arm.push(...hornFaces(1.7, 2.1, 6.9, 1, 2.9, 5.6, 0.5));
+      // 청록 발광 — 꼭대기 구슬과 집게 사이 심.
+      arm.push(...paintBase(domeFaces3(-2.1, -1.9, 0.72, 0.62, 8.3), "#3bd8c2"));
+      arm.push([groundEllipse(...project(1.75, 2.55, 6.3), 0.42, 0.42), 0.6, "#a9ecf2"] as ShapeFace);
+      out.push(...tagKey(arm, 30));
     }
-    // 세로 이음선 — 앞을 보는 각도의 이음만, 껍질 반지름을 따라 휘어 오른다.
-    for (const a of [-0.7, 0.5, 1.6, 2.8]) {
-      const dxs = Math.sin(a);
-      const dys = Math.cos(a);
-      if (facingRatio(dxs, dys) < 0.15) continue;
-      const seam: [number, number, number][] = [];
-      for (const [zf, rf] of [[1.7, 0.97], [3.2, 0.92], [4.8, 0.76], [6.4, 0.5], [7.6, 0.22]] as const) {
-        seam.push([KX + dxs * 2.1 * rf, KY + dys * 2.1 * rf, zf]);
-      }
-      for (let i = 0; i < seam.length - 1; i += 1) {
-        const [p1x, p1y] = project(...seam[i]);
-        const [p2x, p2y] = project(...seam[i + 1]);
-        shell.push(topFace(
-          `M${p1x - 0.07} ${p1y} L${p2x - 0.07} ${p2y} L${p2x + 0.07} ${p2y} L${p1x + 0.07} ${p1y} Z`,
-          0.22,
-        ));
-      }
-    }
-    out.push(...tagKey(shell, 20 + depthNow(KX, KY)));
-    void pt;
     return out;
   },
   /* 터렛(실물 참고) — 원통 받침 + 상자 머리 + 세로 미사일 랙 둘 + 옆으로 빠지는 배관. */
