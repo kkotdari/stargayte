@@ -4795,19 +4795,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const A4 = quad(ax9, ay9, az9, wA9);
       const B4 = quad(bx9, by9, bz9, wB9);
       const side = (k9: number): string => polyPath3([A4[k9], A4[(k9 + 1) % 4], B4[(k9 + 1) % 4], B4[k9]]);
-      /* 네 면의 음영은 고정 — 위 0.16(밝음), 오른 0.3, 왼 0.42, 아래 0.5(어두움).
-         시청자를 향한 좌우가 바뀌면 두 값을 맞바꿔 늘 한쪽이 밝다. */
-      const rightNear = facingRatio(nX, nY) >= 0;
-      const opRight = rightNear ? 0.26 : 0.46;
-      const opLeft = rightNear ? 0.46 : 0.26;
+      /* 손수 칠한 네 면 음영은 걷었다(요청: "드라군 다리 음영을 제거하고 기본 음영
+         렌더링만으로 입체감이 느껴질테니") — 위 0.18·오른 0.26·왼 0.46·아래 0.5에
+         시청자 쪽 좌우까지 맞바꾸던 표다. 사각 단면이라 어느 각도에서도 두 면 이상이
+         보이므로, 다른 모델과 같은 기본값(topFace·sideFace·capFace)만으로 두께가 읽힌다.
+         면끼리 다른 값을 박을수록 각도가 돌 때 얼룩덜룩해지기도 했다. */
       const faces9: ShapeFace[] = [];
       // 아래 → 좌우 → 위 순서로 그려 밝은 면이 위에 온다.
-      faces9.push(bodyFace(side(2)), sideFace(side(2), 0.5));
-      faces9.push(bodyFace(side(1)), sideFace(side(1), opLeft));
-      faces9.push(bodyFace(side(3)), sideFace(side(3), opRight));
-      faces9.push(bodyFace(side(0)), topFace(side(0), 0.18));
+      faces9.push(bodyFace(side(2)), sideFace(side(2)));
+      faces9.push(bodyFace(side(1)), sideFace(side(1)));
+      faces9.push(bodyFace(side(3)), sideFace(side(3)));
+      faces9.push(bodyFace(side(0)), topFace(side(0)));
       // 끝 단면 — 무릎·발끝 마감.
-      faces9.push(bodyFace(polyPath3(B4)), capFace(polyPath3(B4), 0.34));
+      faces9.push(bodyFace(polyPath3(B4)), capFace(polyPath3(B4)));
       return faces9;
     };
     const leg = (ang: number): ShapeFace[] => {
