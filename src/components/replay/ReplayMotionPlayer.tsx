@@ -661,12 +661,36 @@ function spirePillar(o: {
     const k = (t - hold) / (1 - hold);
     return o.w + (tipW - o.w) * k;
   };
+  /* 단면은 축에 수직으로(지적: 기울인 기둥이 눌려 보임) — 수평 단면을 쓰면 축이
+     기울수록 원이 늘어나 찌그러진다. 축의 접선을 구해 그에 수직인 두 벡터로 단면을
+     세우면 어느 기울기에서도 정원(정뿔)이 된다. */
+  const tangentAt = (t: number): [number, number, number] => {
+    const e9 = 0.012;
+    const p1 = axis(Math.max(0, t - e9));
+    const p2 = axis(Math.min(1, t + e9));
+    const d9: [number, number, number] = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]];
+    const l9 = Math.hypot(d9[0], d9[1], d9[2]) || 1;
+    return [d9[0] / l9, d9[1] / l9, d9[2] / l9];
+  };
   const ring = (t: number): [number, number, number][] => {
     const [ax, ay, az] = axis(t);
     const r = widthAt(t);
+    const T = tangentAt(t);
+    // u = T × 위(0,0,1) — 축이 수직이면 0이 되므로 x축으로 폴백.
+    let ux = T[1];
+    let uy = -T[0];
+    let uz = 0;
+    const ul9 = Math.hypot(ux, uy, uz);
+    if (ul9 < 1e-4) { ux = 1; uy = 0; uz = 0; } else { ux /= ul9; uy /= ul9; uz /= ul9; }
+    // v = T × u — u·T 모두에 수직.
+    const vx = T[1] * uz - T[2] * uy;
+    const vy = T[2] * ux - T[0] * uz;
+    const vz = T[0] * uy - T[1] * ux;
     return Array.from({ length: sides }, (_, i) => {
       const a = (i / sides) * Math.PI * 2 + Math.PI / sides;
-      return [ax + Math.cos(a) * r, ay + Math.sin(a) * r, az] as [number, number, number];
+      const cs = Math.cos(a) * r;
+      const sn = Math.sin(a) * r;
+      return [ax + ux * cs + vx * sn, ay + uy * cs + vy * sn, az + uz * cs + vz * sn] as [number, number, number];
     });
   };
   const out: ShapeFace[] = [bodyFace(polyPath3(ring(0)))];
