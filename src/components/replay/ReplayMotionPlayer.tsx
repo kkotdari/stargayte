@@ -1266,10 +1266,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 사방 발판 너비 축소(요청) — 3.2 → 2.4.
     const run = 2.4;
     const plateau = polyPath3([[-a, b, h], [a, b, h], [a, -b, h], [-a, -b, h]]);
-    const front = polyPath3([[-a, b, h], [a, b, h], [a, b + run, 0], [-a, b + run, 0]]);
-    const back = polyPath3([[-a, -b, h], [a, -b, h], [a, -b - run, 0], [-a, -b - run, 0]]);
-    const right = polyPath3([[a, -b, h], [a, b, h], [a + run, b, 0], [a + run, -b, 0]]);
-    const left = polyPath3([[-a, -b, h], [-a, b, h], [-a - run, b, 0], [-a - run, -b, 0]]);
+    /* 경사로 폭 25% 축소(요청) — 대(臺)의 변 전체를 쓰던 것을 가운데 75%만 쓴다.
+       바깥으로 갈수록 조금 더 좁아져 사다리꼴로 빠진다. */
+    const aw = a * 0.75;
+    const bw = b * 0.75;
+    const front = polyPath3([[-aw, b, h], [aw, b, h], [aw * 0.88, b + run, 0], [-aw * 0.88, b + run, 0]]);
+    const back = polyPath3([[-aw, -b, h], [aw, -b, h], [aw * 0.88, -b - run, 0], [-aw * 0.88, -b - run, 0]]);
+    const right = polyPath3([[a, -bw, h], [a, bw, h], [a + run, bw * 0.88, 0], [a + run, -bw * 0.88, 0]]);
+    const left = polyPath3([[-a, -bw, h], [-a, bw, h], [-a - run, bw * 0.88, 0], [-a - run, -bw * 0.88, 0]]);
     const out: ShapeFace[] = [
       bodyFace(`${back} ${left} ${right} ${plateau} ${front}`),
       sideFace(back, 0.2),
