@@ -382,6 +382,23 @@ export function buildUnitTracks(
    *  내리면 하차(f=13). 탑승 중 제 명령을 받으면 그때 이미 내린 것이다. */
   const ridersOf = new Map<number, number[]>();
   const riderIn = new Map<number, number>();
+  /* ── 수송선 태그를 놓치지 않는 자(요청: 근본 원리) ──────────────────────────────
+     탑승 판정은 '우클릭이 찍은 태그가 내 수송선인가'인데, 그 태그의 생애는 그 태그가
+     한 번이라도 '선택'된 적이 있어야 생긴다. 셔틀을 뽑아 랠리만 걸고 템플러로 우클릭해
+     태우면 셔틀은 선택된 적이 없어 생애가 없고, 탑승이 통째로 없던 일이 된다(실측:
+     이 리플레이의 유닛 표적 우클릭 443건 중 278건이 '선택된 적 없는 태그').
+     그래서 두 갈래로 고친다.
+     ⓐ 수송선 정체를 확정하는 증거를 모은다 — MoveUnload·Unload·Unload All은 수송선
+        에게만 내릴 수 있는 명령이라, 그때 선택돼 있던 태그는 수송선이 확실하다.
+     ⓑ 판정을 뒤로 미룬다 — 태울 때는 아직 정체를 모를 수 있으니(하차는 수백 초 뒤에
+        온다) 후보를 적어 두고, 스트림을 다 읽은 뒤 확정된 수송선 태그로 걸러 승하차를
+        만든다. 지형·거리 같은 간접 추측은 쓰지 않는다(지적: 짧은 거리 드랍도 흔하다). */
+  /** 확정된 수송선 태그 → 임자. */
+  const transTagOwner = new Map<number, number>();
+  /** 보류 승선 — [시각, 태우는 유닛 태그, 수송선 후보 태그, x, y, 임자]. */
+  const pendBoard: [number, number, number, number, number, number][] = [];
+  /** 보류 하차 — [시각, 수송선 태그, x, y]. */
+  const pendUnload: [number, number, number, number][] = [];
   const unloadRiders = (transTag: number, sec2: number, ux: number, uy: number): void => {
     const list = ridersOf.get(transTag);
     if (!list) return;
@@ -762,9 +779,14 @@ export function buildUnitTracks(
         if (isBld) life.bld = true;
         if (cmdName === "Unload All" || cmdName === "Unload") {
           // 하차(요청 ③) — 좌표가 없으면 수송선의 마지막 알려진 자리에서.
+          // 이 명령도 수송선에게만 내려진다 — 태그를 명부에 못 박는다(위 주석).
+          transTagOwner.set(tag, pid);
           const lp = [...life.ev].reverse().find((v) => v[1] >= 0);
           const up = posOf(c) ?? (lp ? { x: lp[1], y: lp[2] } : null);
-          if (up) unloadRiders(tag, sec + 1, up.x, up.y);
+          if (up) {
+            pendUnload.push([sec + 1, tag, up.x, up.y]);
+            unloadRiders(tag, sec + 1, up.x, up.y);
+          }
         }
         if (cmdName === "Cancel Train") {
           // 원장 취소(사용자 말대로 '취소가 없다면' — 있으면 무른다) — 그 건물의 막내부터.
@@ -833,6 +855,15 @@ export function buildUnitTracks(
       && tgtLife.owner === pid && !tgtLife.bld && isTransportLife(tgtLife)
       // 오버로드는 수송 업그레이드 전엔 못 태운다 — 초반 '따라가기' 클릭 오인 방지.
       && (!overlordOnly || (ventralAt.get(pid) ?? Infinity) <= sec)) || isBunkerIn;
+    /* 정체 미상 표적을 찍은 우클릭은 '탑승 후보'로 적어 둔다(위 주석 ⓑ) — 그 태그가
+       뒤에 수송선으로 확정되면 그때 승선으로 승격한다. 지금 아는 것이 없어도 기록은
+       남으므로, 태그를 놓치는 일이 없다. */
+    if (cmdName === "Right Click" && pos && !isBoarding && tgtTag0 > 0 && tgtTag0 !== 65535
+      && (tgtLife === undefined || (tgtLife.owner === pid && !tgtLife.bld))) {
+      for (const tag of tags) {
+        if (tag !== tgtTag0) pendBoard.push([sec, tag, tgtTag0, pos.x, pos.y, pid]);
+      }
+    }
     // 자원 클릭 → 일꾼(시작 직후의 통째 선택은 빼고 — 오버로드 오염 방지).
     const resourceClick = cmdName === "Right Click" && RESOURCE_TARGETS.has(unitName)
       && !((c.Frame ?? 0) < EARLY_ALL_SELECT_FRAMES && tags.length >= 4);
@@ -924,9 +955,19 @@ export function buildUnitTracks(
       && ["CastIrradiate", "FireYamatoGun", "CastSpawnBroodlings", "CastDefensiveMatrix", "CastLockdown"].includes(orderName)) {
       targCast.push({ tag: tgtTag0, sec, tech: CAST_ORDER_TO_TECH[orderName] ?? orderName });
     }
-    /* MoveUnload(요청 ③) — 수송선이 그 자리로 가서 쏟는다: 도착 어림 4초 뒤 하차. */
+    /* MoveUnload(요청 ③) — 수송선이 그 자리로 가서 쏟는다: 도착 어림 4초 뒤 하차.
+       이 명령은 수송선에게만 내릴 수 있으므로, 그때 선택돼 있던 태그는 수송선이
+       확실하다(요청: 태그를 놓치지 않는 근본 원리) — 명부에 못 박는다. */
     if (orderName === "MoveUnload" && pos) {
-      for (const tag of tags) unloadRiders(tag, sec + 4, pos.x, pos.y);
+      for (const tag of tags) {
+        /* 섞인 선택 방어 — 셔틀과 질럿을 함께 잡은 채 MoveUnload를 내리면 질럿까지
+           수송선으로 못 박힌다. 이미 정체를 아는데 수송선이 아닌 태그는 뺀다. */
+        const l9 = alive.get(tag);
+        if (l9 && majorityKindOf2(l9) !== "" && !isTransportLife(l9)) continue;
+        transTagOwner.set(tag, pid);
+        pendUnload.push([sec + 4, tag, pos.x, pos.y]);
+        unloadRiders(tag, sec + 4, pos.x, pos.y);
+      }
     }
     // ── 마법 — 좌표가 남는 것만(스톰·스웜·리콜·마인…). 이름은 v1과 같은 기술명이다. ──
     const castTech = CAST_ORDER_TO_TECH[orderName]
@@ -1207,6 +1248,40 @@ export function buildUnitTracks(
     prodStats.total = ledger.length;
     prodStats.bound = items.filter((r) => r.it.bound).length;
     prodStats.syn = synN;
+  }
+
+  /* ── 뒤늦게 밝혀진 수송선으로 승하차 세우기(요청: 태그를 놓치지 않는 근본 원리) ──
+        태울 때는 셔틀의 정체를 모를 수 있다 — 뽑아서 랠리만 걸어 둔 셔틀은 '선택'된 적이
+        없어 생애도 정체도 없다. 그 사이 템플러가 셔틀을 우클릭하면 예전엔 그냥 이동이
+        됐고, 드랍은 통째로 사라져 유닛이 제 발로 걸어가는 그림이 됐다(지적).
+        이제 스트림을 다 읽어 수송선 태그가 확정된 뒤(MoveUnload·Unload가 못 박아 준다)
+        보류해 둔 우클릭을 승선으로 승격한다. 하차는 그 수송선의 하차 기록에서 가장 가까운
+        뒤 시각에 붙는다 — 태운 자리가 아니라 내린 자리에서 다시 나타난다.
+        거리·지형 같은 간접 추측은 일절 쓰지 않는다(지적: 짧은 거리 드랍도 흔하다). */
+  {
+    const unloadsBy = new Map<number, [number, number, number][]>();
+    for (const [usec, ttag, ux, uy] of pendUnload) {
+      const arr = unloadsBy.get(ttag) ?? [];
+      arr.push([usec, ux, uy]);
+      unloadsBy.set(ttag, arr);
+    }
+    for (const arr of unloadsBy.values()) arr.sort((a, b) => a[0] - b[0]);
+    let promoted = 0;
+    for (const [bsec, rtag, ttag, bx, by, bpid] of pendBoard) {
+      if (transTagOwner.get(ttag) !== bpid) continue;
+      const rl = alive.get(rtag) ?? [...done].reverse().find((l) => l.tag === rtag && l.born <= bsec);
+      if (!rl || rl.bld) continue;
+      // 이미 같은 시각에 승선 증거가 있으면 겹쳐 넣지 않는다.
+      if (rl.ev.some((v) => v[3] === 12 && Math.abs(v[0] - bsec) < 1)) continue;
+      const drop = (unloadsBy.get(ttag) ?? []).find(([usec]) => usec > bsec && usec - bsec < 600);
+      if (!drop) continue; // 내린 기록이 없으면 태운 것도 아니다(따라가기 클릭일 뿐).
+      rl.ev.push([Math.round(bsec), r1(bx), r1(by), 12, ttag]);
+      rl.ev.push([Math.round(drop[0]), r1(drop[1]), r1(drop[2]), 13]);
+      rl.ev.sort((a, b) => a[0] - b[0]);
+      rl.last = Math.max(rl.last, drop[0]);
+      promoted += 1;
+    }
+    void promoted;
   }
 
   /* ── 스타트 일꾼 넷(요청: 경기 시작부터 4기 + 명령·태그 번호 매핑 유지) — 시작 일꾼은
