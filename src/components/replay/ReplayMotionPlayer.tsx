@@ -2689,10 +2689,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...paintBase(trackFaces(-2, -3.2, 0.4, 1.5, 1.7), TRACK_STEEL),
     ...paintBase(trackFaces(2, -3.2, 0.4, 1.5, 1.7), TRACK_STEEL),
     ...paintBase(boxFaces3(0, -0.2, 3.9, 5.6, 1.3, 1.2), "#c9ced6"), // 차체 은색(요청: 포탑만 개인색)
-    // 포탑은 차체보다 위(지적: 일반 모드 포탑 가려짐) — 붙박이 키 40.
-    ...tagKey(boxFaces3(0, -0.4, 2.6, 2.6, 1.3, 2.5), 40),
-    ...paintBase(tubeFaces(-0.55, 1.2, -0.55, 4.4, 0.24, 3.3), GUNMETAL),
-    ...paintBase(tubeFaces(0.55, 1.2, 0.55, 4.4, 0.24, 3.3), GUNMETAL),
+    /* 포탑은 사다리꼴면체(요청) — 아래가 넓고 위가 좁다. 렌더 순서 정리(지적:
+       가려짐이 잦다): 궤도·차체는 제 깊이, 포탑 40, 포신 45로 층을 못 박는다. */
+    ...tagKey(frustumFaces3(0, -0.4, 3, 3, 1.9, 1.9, 1.5, 2.4), 40),
+    ...tagKey(paintBase([
+      ...tubeFaces(-0.55, 1.2, -0.55, 4.4, 0.24, 3.3),
+      ...tubeFaces(0.55, 1.2, 0.55, 4.4, 0.24, 3.3),
+    ], GUNMETAL), 45),
   ],
   /* 발포 반동용 분해(요청: 발포 시 포탑·포신만 움직이게) — 차체와 포탑을 딴 판으로
      구워, 쏘는 순간 포탑 판만 살짝 밀렸다 돌아온다. 갤러리·v1은 합본(tank)을 그대로
@@ -2705,10 +2708,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...paintBase(boxFaces3(0, -0.2, 3.9, 5.6, 1.3, 1.2), "#c9ced6"), // 차체 은색(요청: 포탑만 개인색)
   ],
   tankgun: () => [
-    // 포탑은 차체보다 위(지적: 일반 모드 포탑 가려짐) — 붙박이 키 40.
-    ...tagKey(boxFaces3(0, -0.4, 2.6, 2.6, 1.3, 2.5), 40),
-    ...paintBase(tubeFaces(-0.55, 1.2, -0.55, 4.4, 0.24, 3.3), GUNMETAL),
-    ...paintBase(tubeFaces(0.55, 1.2, 0.55, 4.4, 0.24, 3.3), GUNMETAL),
+    // 포탑 사다리꼴면체 + 층 못 박기(요청·지적) — 포탑 40, 포신 45.
+    ...tagKey(frustumFaces3(0, -0.4, 3, 3, 1.9, 1.9, 1.5, 2.4), 40),
+    ...tagKey(paintBase([
+      ...tubeFaces(-0.55, 1.2, -0.55, 4.4, 0.24, 3.3),
+      ...tubeFaces(0.55, 1.2, 0.55, 4.4, 0.24, 3.3),
+    ], GUNMETAL), 45),
   ],
   /* 시즈 모드(실물 참고) — 사방으로 벌린 궤도 발 넷 + 올라선 포탑 + 위-앞으로 겨눈
      큰 포신. */
@@ -4107,14 +4112,23 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const shinCap = polyPath3([fT, fR, fL]);
       /* 하지 입체감(재지적: 아직 평평) — 세 면의 음영을 크게 벌리고 무릎 단면을
          덮개로 얹어 삼각뿔의 모서리가 읽히게 한다. */
+      /* 면 음영은 세계 광원에 맡긴다(재지적: 각도에 따라 평면으로 보임) — 고정
+         농도를 쓰면 다리를 돌렸을 때 좌우 면 밝기가 그대로라 납작해 보였다.
+         faceLight는 요잉을 반영해 왼쪽 면은 밝고 오른쪽 면은 어둡게 만든다. */
+      const lit = (d9: string, nx9: number, ny9: number, nz9 = 0): ShapeFace[] => {
+        const fl9 = faceLight(nx9, ny9, nz9);
+        return fl9.visible ? [bodyFace(d9), ...fl9.face(d9)] : [];
+      };
       return tagKey(paintBase([
-        bodyFace(shinBot), sideFace(shinBot, 0.42),
-        bodyFace(shinR), sideFace(shinR, 0.3),
-        bodyFace(shinL), topFace(shinL, 0.24),
+        // 하지 — 아래를 향한 배면과 좌우 경사면, 발바닥·무릎 단면.
+        ...lit(shinBot, -dx, -dy, -0.4),
+        ...lit(shinR, nx, ny, 0.3),
+        ...lit(shinL, -nx, -ny, 0.3),
         bodyFace(shinCap), capFace(shinCap, 0.38),
         bodyFace(polyPath3([sT, sR, sL])), capFace(polyPath3([sT, sR, sL]), 0.32),
-        bodyFace(thighR), sideFace(thighR, 0.2),
-        bodyFace(thighL), topFace(thighL, 0.15),
+        // 대퇴 — 능선 좌우 경사면과 무릎 단면.
+        ...lit(thighR, nx, ny, 0.55),
+        ...lit(thighL, -nx, -ny, 0.55),
         bodyFace(thighCap), sideFace(thighCap, 0.3),
       ], "#d4af37"), depthNow(dx * 2.4, dy * 2.4));
     };
