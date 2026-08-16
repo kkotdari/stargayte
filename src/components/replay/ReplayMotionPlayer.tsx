@@ -4078,10 +4078,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...domeFaces3(0, -0.7, 2, 1.7, 3.5),
       /* 갈고리를 스파이어 기둥으로 재해석(요청) — 밑동은 굵은 다각 기둥, 끝으로
          갈수록 가늘어지며 앞·안으로 휜다. 상아색. */
+      /* 갈고리는 앞으로 뻗고 안쪽으로 살짝만 휜다(재지적) — 기둥은 아래에서 위로
+         자라므로 '앞 끝(낮고 안쪽)에서 어깨(높고 바깥)로' 정의한다. */
       ...([-1, 1] as const).flatMap((m9): ShapeFace[] => spirePillar({
-        x: m9 * 1.05, y: -0.2, z0: 2.6, h: 2.4, w: 0.42, tipW: 0.05,
-        segs: 4, sides: 6, hold: 0.25,
-        leanX: -m9 * 0.5, leanY: 2.1, curveX: -m9 * 0.7, curveY: 1.1,
+        x: m9 * 0.75, y: 3.1, z0: 2.5, h: 1.5, w: 0.05, tipW: 0.42,
+        segs: 4, sides: 6, hold: 0,
+        leanX: m9 * 0.45, leanY: -3.3, curveX: -m9 * 0.15, curveY: -0.4,
         fill: IVORY,
       })),
     ];
@@ -4594,11 +4596,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...paintBase(domeFaces3(0, 1.6, 2, 1.6, 3.9), "#6b4732"),
     ...paintBase(cylinderFaces3(-2.2, 1.1, 0.8, 3, 0.3), "#6b4732"),
     ...paintBase(cylinderFaces3(2.2, 1.1, 0.8, 3, 0.3), "#6b4732"),
-    /* 갈고리를 스파이어 기둥으로 재해석(요청) — 어깨에서 크게 휘어 나가는 카이저 낫. */
+    /* 카이저 낫(재지적: 위가 아니라 아래를 향하고 아래에서 안쪽으로 휜다) — 기둥은
+       아래에서 위로 자라므로 '낫 끝(아래·안쪽)에서 어깨(위·바깥)로' 정의한다.
+       끝이 가늘고 어깨가 굵다. */
     ...([-1, 1] as const).flatMap((m9): ShapeFace[] => spirePillar({
-      x: m9 * 2.1, y: 0.4, z0: 4.4, h: 4.2, w: 0.95, tipW: 0.08,
-      segs: 5, sides: 6, hold: 0.2,
-      leanX: m9 * 1.2, leanY: 2.4, curveX: -m9 * 1.6, curveY: 2.2,
+      x: m9 * 1.5, y: 2.9, z0: 0.5, h: 4, w: 0.08, tipW: 0.95,
+      segs: 5, sides: 6, hold: 0,
+      leanX: m9 * 0.9, leanY: -1.4, curveX: -m9 * 0.3, curveY: -1.1,
       fill: IVORY,
     })),
   ],
