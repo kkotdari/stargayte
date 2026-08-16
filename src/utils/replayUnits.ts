@@ -1656,6 +1656,9 @@ export function buildUnitTracks(
     }
     return { trace, death: null };
   };
+  /* (이행기) hpSimOf는 세계 시뮬레이션이 대신한다 — 검증 비교용으로 남겨 둔 참조.
+     다음 정리 때 battleDmgOf 배분과 함께 통째로 걷는다. */
+  void hpSimOf;
   /* 편 가르기(팀 정보) — 같은 팀의 공격 명령·방어건물은 위협이 아니다(위 sameSide). */
   const isFoeOf = (a: number, b: number): boolean => !sameSide(a, b);
   /* 방어건물 자리 — 수비측이 명령 한 번 없이 성큰·캐논·벙커로 막아낸 싸움에서도
@@ -1794,6 +1797,297 @@ export function buildUnitTracks(
     }
     return trace;
   };
+  /* ── 세계 시뮬레이션(요청: 정속 이동·사거리 내 전투·번복 없는 죽음을 한 세계에서
+        동시에) — 지금까지는 이동(증거 보간)·전투 참가(증거 창 어림)·죽음(체력 0 + 뒤
+        증거)이 제각기 딴 세상을 어림해 서로 모순됐다. 이제 시간을 한 방향으로만 흘리며
+        모든 유닛을 한 세계에서 굴린다:
+        ① 명령 좌표는 위치가 아니라 '목표'다 — 유닛은 제 최고 속도로 목표를 향해
+           틱(1초)마다 전진한다. 정속이고, 순간이동이 원천적으로 없다(수송 하차만 예외).
+        ② 전투 피해는 시뮬 위치가 실제로 교전 반경(8타일) 안에 있는 틱에만 주고받는다 —
+           지나간 유닛이 소급으로 얻어맞는 일이 구조적으로 사라진다.
+        ③ 체력이 0에 닿으면: 다음 위치 증거가 제 속도로 닿을 수 있는 곳이면 피해 과대
+           추정으로 보고 살리되 남은 피해를 눅이고(기존 원칙), 닿을 수 없는 곳이면 진짜
+           죽음이다 — 그 뒤의 증거는 태그를 물려받은 새 유닛으로 갈라 그 자리에서 새로
+           산다. 죽음은 번복되지 않는다. */
+  const SIM_SPEED: Record<string, number> = {
+    Zergling: 4.1, Hydralisk: 2.7, Lurker: 4.3, Ultralisk: 3.8, Defiler: 3.0, Drone: 3.0,
+    Mutalisk: 5.0, Scourge: 5.0, Overlord: 1.8, Queen: 4.0, Guardian: 1.9, Devourer: 3.8,
+    Marine: 3.0, Firebat: 3.0, Ghost: 3.0, Medic: 3.0, SCV: 3.0, Vulture: 4.8,
+    Goliath: 3.5, "Siege Tank": 3.0, "Siege Tank (Tank Mode)": 3.0, "Siege Tank (Siege Mode)": 0.5,
+    Wraith: 5.0, Dropship: 4.1, "Science Vessel": 3.8, Battlecruiser: 1.9, Valkyrie: 5.0,
+    Probe: 3.7, Zealot: 3.0, Dragoon: 3.8, "High Templar": 2.4, "Dark Templar": 3.7,
+    Archon: 3.7, "Dark Archon": 3.7, Shuttle: 3.4, Reaver: 1.8, Observer: 2.5,
+    Scout: 5.0, Carrier: 2.5, Arbiter: 3.8, Corsair: 5.0,
+  };
+  const simHpOf = new Map<Life, [number, number][]>();
+  const simDeathOf = new Map<Life, number>();
+  {
+    interface Agent {
+      life: Life; kind: string; speed: number; air: boolean; healable: boolean;
+      x: number; y: number; startAt: number; alive: boolean;
+      hp: number; sh: number; maxHp: number; maxSh: number;
+      evIdx: number; tgt: [number, number] | null; hidden: boolean;
+      heals: number[]; healIdx: number;
+      dmgScale: number; revives: number; lastPct: number;
+      stasisUntil: number; matrixLeft: number; matrixUntil: number;
+      trace: [number, number][];
+    }
+    const mkAgent = (life: Life): Agent | null => {
+      if (life.bld) return null;
+      const first = life.ev.find((v) => v[1] >= 0);
+      if (!first) return null;
+      const mk = majorityKindOf(life);
+      const st = UNIT_STATS[mk] ?? DEFAULT_UNIT_STATS;
+      return {
+        life, kind: mk, speed: SIM_SPEED[mk] ?? 2.8, air: AIR_UNITS.has(mk),
+        healable: !MECH_UNITS.has(mk) && mediLives.length > 0,
+        x: first[1], y: first[2], startAt: Math.max(0, Math.min(first[0], life.born)),
+        alive: true, hp: st.hp, sh: st.sh ?? 0, maxHp: st.hp, maxSh: st.sh ?? 0,
+        evIdx: 0, tgt: null, hidden: false,
+        heals: healsAt.get(life.tag) ?? [], healIdx: 0,
+        dmgScale: 1, revives: 0, lastPct: 100,
+        stasisUntil: -1, matrixLeft: 0, matrixUntil: -1,
+        trace: [],
+      };
+    };
+    const agents: Agent[] = [];
+    for (const l of done) { const a = mkAgent(l); if (a) agents.push(a); }
+    let simEnd = 0;
+    for (const a of agents) simEnd = Math.max(simEnd, a.life.last + 8);
+    for (const b of battles) simEnd = Math.max(simEnd, b.end + 4);
+    simEnd = Math.min(simEnd, 3600 * 3);
+    const pctOf = (a: Agent): number =>
+      Math.max(0, Math.round(((a.hp + a.sh) / (a.maxHp + a.maxSh)) * 20) * 5);
+    const mark = (a: Agent, sec: number): void => {
+      const p = pctOf(a);
+      if (p !== a.lastPct) { a.trace.push([Math.round(sec), p]); a.lastPct = p; }
+    };
+    /* 예약 피해(핵 낙하·이라디에잇 틱·야마토 착탄) — 초 버킷. */
+    const pend = new Map<number, { a?: Agent; area?: [number, number, number, number]; amt: number; owner?: number }[]>();
+    const schedule = (sec: number, item: { a?: Agent; area?: [number, number, number, number]; amt: number; owner?: number }): void => {
+      const arr = pend.get(Math.round(sec)) ?? [];
+      arr.push(item);
+      pend.set(Math.round(sec), arr);
+    };
+    const swarms: [number, number, number][] = [];
+    let deadTailN = 0;
+    const hurt = (a: Agent, sec: number, amt: number, spell: boolean): void => {
+      if (!a.alive || amt <= 0) return;
+      if (sec < a.stasisUntil) return; // 얼음 속은 무적
+      let d2 = amt;
+      if (!spell) {
+        d2 *= (1 - 0.08 * lvOf(aUpsBy, a.life.owner, sec)) * a.dmgScale;
+        // 다크스웜 아래선 크게 준다(근접·원거리 뭉뚱그려 0.35).
+        if (swarms.some(([ws, wx, wy]) => sec - ws >= 0 && sec - ws <= 25
+          && Math.hypot(wx - a.x, wy - a.y) <= 2.5)) d2 *= 0.35;
+      }
+      if (a.matrixLeft > 0 && sec <= a.matrixUntil) {
+        const ab = Math.min(a.matrixLeft, d2);
+        a.matrixLeft -= ab;
+        d2 -= ab;
+      }
+      const fromSh = Math.min(a.sh, d2);
+      a.sh -= fromSh;
+      d2 -= fromSh;
+      // 메딕 곁 경감은 체력 몫만(실드는 못 채워 주니 못 막는다).
+      if (d2 > 0 && !spell && a.healable && medicNearSim(a, sec)) d2 *= 0.65;
+      a.hp -= d2;
+      mark(a, sec);
+      if (a.hp <= 0) onZero(a, sec);
+    };
+    const medicAgents: Agent[] = [];
+    const medicNearSim = (a: Agent, sec: number): boolean => {
+      for (const m of medicAgents) {
+        if (!m.alive || m.hidden || sec < m.startAt) continue;
+        if (!sameSide(m.life.owner, a.life.owner)) continue;
+        if (Math.hypot(m.x - a.x, m.y - a.y) <= 4) return true;
+      }
+      return false;
+    };
+    const onZero = (a: Agent, sec: number): void => {
+      const nv = a.life.ev.find((v) => v[1] >= 0 && v[0] > sec + 2);
+      const reachable = nv
+        ? Math.hypot(nv[1] - a.x, nv[2] - a.y) <= a.speed * 1.4 * Math.max(1, nv[0] - sec) + 2
+        : false;
+      if (nv && reachable && a.revives < 4) {
+        // 산 유닛을 죽였다 = 배분 과대 — 살리되 남은 피해를 눅인다(기존 원칙 그대로).
+        a.revives += 1;
+        a.dmgScale *= 0.55;
+        a.hp = a.maxHp * (0.2 + ((Math.abs(a.life.tag) * 37) % 24) / 100);
+        a.sh = 0;
+        mark(a, sec);
+        return;
+      }
+      a.alive = false;
+      a.trace.push([Math.round(sec), 0]);
+      simDeathOf.set(a.life, Math.round(sec + 1 + (Math.abs(a.life.tag) % 4)));
+      // 꼬리 분리 — 죽음 '뒤'의 증거는 태그를 물려받은 새 유닛이다(번복 없는 죽음).
+      if (nv) {
+        const vi = a.life.ev.indexOf(nv);
+        if (vi >= 1) {
+          const rest = a.life.ev.splice(vi);
+          deadTailN += 1;
+          const tail: Life = {
+            tag: a.life.tag + 1000000 * deadTailN,
+            owner: a.life.owner,
+            kinds: new Map(a.life.kinds),
+            groupKinds: new Set(a.life.groupKinds),
+            bld: false,
+            born: rest[0][0],
+            last: rest[rest.length - 1][0],
+            lastAtk: null,
+            evAfterAtk: false,
+            morphTo: a.life.morphTo,
+            cxl: null,
+            solo: false,
+            spawned: true,
+            ev: rest,
+          };
+          a.life.morphTo = null;
+          a.life.last = a.life.ev.length > 0 ? a.life.ev[a.life.ev.length - 1][0] : a.life.born;
+          done.push(tail);
+          const bucket = byTag.get(tail.tag) ?? [];
+          bucket.push(tail);
+          byTag.set(tail.tag, bucket);
+          const ta = mkAgent(tail);
+          if (ta) { agents.push(ta); if (ta.kind === "Medic") medicAgents.push(ta); }
+        }
+      }
+    };
+    for (const a of agents) if (a.kind === "Medic") medicAgents.push(a);
+    const castsSorted = [...casts].sort((c1, c2) => c1[0] - c2[0]);
+    let ci = 0;
+    const tCasts = [...targCast].sort((c1, c2) => c1.sec - c2.sec);
+    let ti = 0;
+    const agentsOfTag = new Map<number, Agent[]>();
+    for (const a of agents) {
+      const arr = agentsOfTag.get(a.life.tag) ?? [];
+      arr.push(a);
+      agentsOfTag.set(a.life.tag, arr);
+    }
+    for (let sec = 0; sec <= simEnd; sec += 1) {
+      // 좌표 마법 — 그 순간 그 자리의 시뮬 위치가 맞는다.
+      while (ci < castsSorted.length && castsSorted[ci][0] <= sec) {
+        const [csec, cx, cy, tech, cpid] = castsSorted[ci];
+        ci += 1;
+        if (tech === "Dark Swarm") swarms.push([csec, cx, cy]);
+        else if (tech === "Nuclear Strike") schedule(csec + 8, { area: [cx, cy, 8, 466], amt: 466, owner: cpid });
+        else {
+          for (const a of agents) {
+            if (!a.alive || a.hidden || sec < a.startAt) continue;
+            const dd = Math.hypot(cx - a.x, cy - a.y);
+            if (tech === "Psionic Storm" && dd <= 2 && isFoeOf(cpid, a.life.owner)) hurt(a, csec, 90, true);
+            else if (tech === "EMP Shockwave" && dd <= 2.5) { a.sh = 0; mark(a, csec); }
+            else if (tech === "Plague" && dd <= 2.5 && isFoeOf(cpid, a.life.owner)) {
+              a.hp = Math.max(3, a.hp * 0.25);
+              mark(a, csec);
+            } else if (tech === "Stasis Field" && dd <= 2) a.stasisUntil = csec + 30;
+          }
+        }
+      }
+      while (ti < tCasts.length && tCasts[ti].sec <= sec) {
+        const tc = tCasts[ti];
+        ti += 1;
+        const targets = agentsOfTag.get(tc.tag) ?? [];
+        const tgt = targets.find((a) => a.alive && sec >= a.startAt) ?? targets[0];
+        if (tgt) {
+          if (tc.tech === "Irradiate") { schedule(tc.sec + 6, { a: tgt, amt: 130 }); schedule(tc.sec + 14, { a: tgt, amt: 90 }); }
+          else if (tc.tech === "Yamato Gun") schedule(tc.sec + 2, { a: tgt, amt: 260 });
+          else if (tc.tech === "Spawn Broodlings") schedule(tc.sec + 1, { a: tgt, amt: 9999 });
+          else if (tc.tech === "Defensive Matrix") { tgt.matrixLeft = 250; tgt.matrixUntil = tc.sec + 60; }
+        }
+      }
+      const due = pend.get(sec);
+      if (due) {
+        for (const it of due) {
+          if (it.a) hurt(it.a, sec, it.amt, true);
+          else if (it.area) {
+            const [ax, ay, ar, amt] = it.area;
+            for (const a of agents) {
+              if (!a.alive || a.hidden || sec < a.startAt) continue;
+              if (it.owner !== undefined && !isFoeOf(it.owner, a.life.owner)) continue;
+              if (Math.hypot(ax - a.x, ay - a.y) <= ar) hurt(a, sec, amt, true);
+            }
+          }
+        }
+        pend.delete(sec);
+      }
+      // 이동·명령 소화 — 정속, 순간이동 없음(수송 하차만 예외).
+      for (const a of agents) {
+        if (!a.alive || sec < a.startAt) continue;
+        while (a.evIdx < a.life.ev.length && a.life.ev[a.evIdx][0] <= sec) {
+          const v = a.life.ev[a.evIdx];
+          a.evIdx += 1;
+          if (v[3] === 12) { a.hidden = true; a.tgt = null; }
+          else if (v[3] === 13) { a.hidden = false; if (v[1] >= 0) { a.x = v[1]; a.y = v[2]; a.tgt = null; } }
+          else if (v[1] >= 0 && !a.hidden) a.tgt = [v[1], v[2]];
+        }
+        while (a.healIdx < a.heals.length && a.heals[a.healIdx] <= sec) {
+          a.healIdx += 1;
+          if (a.hp < a.maxHp) { a.hp = Math.min(a.maxHp, a.hp + a.maxHp * 0.4); mark(a, sec); }
+        }
+        if (a.hidden || sec < a.stasisUntil) continue;
+        if (a.tgt) {
+          const dx = a.tgt[0] - a.x;
+          const dy = a.tgt[1] - a.y;
+          const dd = Math.hypot(dx, dy);
+          if (dd <= a.speed) { a.x = a.tgt[0]; a.y = a.tgt[1]; a.tgt = null; }
+          else { a.x += (dx / dd) * a.speed; a.y += (dy / dd) * a.speed; }
+        }
+      }
+      // 재생·메딕·방어건물 — 3초 묶음(가벼움 유지).
+      if (sec % 3 === 0) {
+        for (const a of agents) {
+          if (!a.alive || sec < a.startAt) continue;
+          const race9 = raceOf.get(a.life.owner) ?? "";
+          if (a.maxSh > 0 && a.sh < a.maxSh) { a.sh = Math.min(a.maxSh, a.sh + a.maxSh * 0.02 * 3); mark(a, sec); }
+          if (race9 === "저그" && a.hp < a.maxHp) { a.hp = Math.min(a.maxHp, a.hp + 0.6 * 3); mark(a, sec); }
+          if (a.healable && a.hp < a.maxHp && !a.hidden && medicNearSim(a, sec)) {
+            a.hp = Math.min(a.maxHp, a.hp + 2.2 * 3);
+            mark(a, sec);
+          }
+          if (!a.hidden) {
+            for (const sp of defSpots) {
+              if (sec < sp.from || sec > sp.to) continue;
+              if (!isFoeOf(sp.owner, a.life.owner)) continue;
+              if (sp.air !== undefined && sp.air !== a.air) continue;
+              if (Math.hypot(sp.x - a.x, sp.y - a.y) <= 7.5) hurt(a, sec, sp.dps * 3, false);
+            }
+          }
+        }
+      }
+      // 교전 — 시뮬 위치가 반경(8타일) 안에 있는 틱에만 주고받는다.
+      for (const b of battles) {
+        if (sec < b.start || sec > b.end + 2) continue;
+        const present = new Map<string, Agent[]>();
+        for (const a of agents) {
+          if (!a.alive || a.hidden || sec < a.startAt) continue;
+          if (Math.hypot(b.x - a.x, b.y - a.y) > 8) continue;
+          const key = sideKeyOf(a.life.owner);
+          const arr = present.get(key) ?? [];
+          arr.push(a);
+          present.set(key, arr);
+        }
+        if (present.size < 2) continue;
+        for (const [key, mine] of present) {
+          let foeDps = 0;
+          for (const [k2, list2] of present) {
+            if (k2 === key) continue;
+            for (const e2 of list2) {
+              const st2 = UNIT_STATS[e2.kind] ?? DEFAULT_UNIT_STATS;
+              foeDps += Math.max(2, st2.dps) * (1 + 0.1 * lvOf(wUpsBy, e2.life.owner, sec));
+            }
+          }
+          if (foeDps <= 0) continue;
+          const per = (foeDps * 0.7) / mine.length;
+          for (const a of mine) hurt(a, sec, per, false);
+        }
+      }
+    }
+    for (const a of agents) {
+      if (a.trace.length > 0) simHpOf.set(a.life, a.trace);
+    }
+  }
   const ents: UnitEnt[] = [];
   let lives = 0;
   for (const [, list] of byTag) {
@@ -1821,37 +2115,12 @@ export function buildUnitTracks(
          힐·수리에 차오르며, 0에 닿고 뒤 증거가 없으면 그 자리에서 죽는다. */
       let hpTrace: [number, number][] | undefined;
       if (!life.bld) {
-        const sim = hpSimOf(life);
-        if (sim.trace.length > 0) hpTrace = sim.trace;
-        if (d === null && sim.death !== null) { d = sim.death; dk = "atk"; }
-        /* 재사용 꼬리 분리(재질문) — 죽음 '뒤'의 증거가 물리적으로 같은 유닛일 수
-           없으면(위 splitVi), 이 생애는 여기서 죽고 꼬리는 새 개체로 바로 다음
-           순번에 선다. 전투 피해 배분(battleDmgOf)은 생애 단위라 꼬리엔 없지만,
-           주문·방어건물 피해는 제 hpSim이 다시 계산한다. */
-        if (sim.splitVi !== undefined && sim.splitVi >= 1 && d !== null && dk === "atk" && sim.splitVi < life.ev.length) {
-          const tailEv = life.ev.splice(sim.splitVi);
-          if (tailEv.length > 0) {
-            const tail: Life = {
-              tag: life.tag + 1000000,
-              owner: life.owner,
-              kinds: new Map(life.kinds),
-              groupKinds: new Set(life.groupKinds),
-              bld: false,
-              born: tailEv[0][0],
-              last: tailEv[tailEv.length - 1][0],
-              lastAtk: null,
-              evAfterAtk: false,
-              morphTo: life.morphTo,
-              cxl: null,
-              solo: false,
-              spawned: true,
-              ev: tailEv,
-            };
-            life.morphTo = null;
-            life.last = life.ev.length > 0 ? life.ev[life.ev.length - 1][0] : life.born;
-            list.splice(i + 1, 0, tail);
-          }
-        }
+        /* 세계 시뮬레이션 결과(요청: 정속·사거리 전투·번복 없는 죽음) — 체력 자취와
+           죽음을 시뮬이 정하고, 재사용 꼬리는 시뮬이 이미 새 생애로 갈라 두었다. */
+        const tr9 = simHpOf.get(life);
+        if (tr9 && tr9.length > 0) hpTrace = tr9;
+        const sd9 = simDeathOf.get(life);
+        if (d === null && sd9 !== undefined) { d = sd9; dk = "atk"; }
       } else {
         // 건물 체력 원장(요청) — 자리를 아는 건물만.
         const site2 = [...life.ev].reverse().find((v) => v[3] === 2 || v[3] === 5);
