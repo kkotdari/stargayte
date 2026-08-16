@@ -5428,7 +5428,8 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
     /* 16 → 8px(요청: 모바일 모든 화면 좌우 여백 8px) — 좁은 화면에서 이 여백은 모든
        화면의 모든 줄에서 같은 만큼을 먹는데, 정작 읽어야 하는 건 그 안쪽 내용이다.
        이 값 하나가 --card-bleed·--card-pad-bx 등으로 퍼져 카드·목록·필터가 함께 따라온다. */
-    --main-pad-x: 8px; padding: 30px var(--main-pad-x) 48px;
+    /* 헤더 아래 세로 갭 크게 축소(요청: 모바일 모든 페이지) — 30 → 8px. */
+    --main-pad-x: 8px; padding: 8px var(--main-pad-x) 48px;
     --card-pad-bx: 0px; --card-head-pad-l: 0px;
   }
   /* 너나와 카드 좌우 내부 패딩 축소(요청: "모바일 좌우 패딩은 메인이 아니라 너나와 카드
@@ -5440,7 +5441,8 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
      느껴진다는 피드백 — 툴바 자체 여백(padding-bottom)과 .scr-screen의 형제간 gap을
      모바일에서만 줄인다. */
   /* 모바일도 타이틀 아래 갭 두 배로(요청) — 8→16px. min-height도 짝을 맞춰 키운다. */
-  .scr-v2-toolbar { padding-bottom: 16px; min-height: calc(var(--field-h-sm) + 16px); }
+  /* 타이틀 줄 아래 갭도 축소(요청) — 16 → 6px. */
+  .scr-v2-toolbar { padding-bottom: 6px; min-height: calc(var(--field-h-sm) + 6px); }
   .scr-screen { gap: 6px; }
   .scr-brand-text { display: none; }
   /* 모바일 헤더에서 내 정보(프로필 칩)를 키운다. Avatar는 크기를 JS(size prop)의
