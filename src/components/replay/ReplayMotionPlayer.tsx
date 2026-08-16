@@ -1466,23 +1466,25 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        우물 위로 드리우고, 끝에 두 갈래 집게와 청록 발광이 달린다. 판 위 얹힘이라
        지붕 키로 늘 대야를 이긴다. */
     {
+      /* 크레인은 가장 먼 쪽(뒤 한가운데)에서 앞으로 나온다(재지적) — 대각선으로
+         비스듬히 서던 것을 y축 위에 곧게 세운다. */
       const arm: ShapeFace[] = [
-        // 뒤 기둥 — 대야 테두리에서 위로.
-        ...rodFaces(-2.5, -2.4, 2.6, -2.1, -1.9, 8.2, 1.15),
+        // 뒤 기둥 — 대야 뒤 테두리에서 위로.
+        ...rodFaces(0, -3.5, 2.6, 0, -2.9, 8.2, 1.15),
         // 아치 — 꼭대기에서 앞으로 굽어 내려온다.
-        ...rodFaces(-2.1, -1.9, 8.2, -0.7, -0.4, 9.5, 1),
-        ...rodFaces(-0.7, -0.4, 9.5, 1, 1.3, 8.7, 0.9),
-        ...rodFaces(1, 1.3, 8.7, 1.7, 2.1, 6.9, 0.8),
+        ...rodFaces(0, -2.9, 8.2, 0, -1.1, 9.5, 1),
+        ...rodFaces(0, -1.1, 9.5, 0, 1, 8.7, 0.9),
+        ...rodFaces(0, 1, 8.7, 0, 2.3, 6.9, 0.8),
       ];
       /* 끝 집게 — 크게, 손가락 셋으로(요청). 손목 덩이에서 세 갈래가 벌어져 아래를
          문다: 바깥 둘과 안쪽 하나. */
-      arm.push(...domeFaces3(1.75, 2.2, 0.62, 0.5, 6.5));
-      arm.push(...hornFaces(1.75, 2.2, 6.7, 3.05, 3.15, 5.05, 0.72));
-      arm.push(...hornFaces(1.75, 2.2, 6.7, 0.5, 3.15, 5.05, 0.72));
-      arm.push(...hornFaces(1.75, 2.2, 6.7, 1.75, 1.35, 5.1, 0.66));
+      arm.push(...domeFaces3(0, 2.35, 0.62, 0.5, 6.5));
+      arm.push(...hornFaces(0, 2.35, 6.7, 1.35, 3.2, 5.05, 0.72));
+      arm.push(...hornFaces(0, 2.35, 6.7, -1.35, 3.2, 5.05, 0.72));
+      arm.push(...hornFaces(0, 2.35, 6.7, 0, 1.45, 5.1, 0.66));
       // 청록 발광 — 꼭대기 구슬과 집게 사이 심.
-      arm.push(...paintBase(domeFaces3(-2.1, -1.9, 0.72, 0.62, 8.3), "#3bd8c2"));
-      arm.push([groundEllipse(...project(1.75, 2.35, 6.55), 0.5, 0.5), 0.6, "#a9ecf2"] as ShapeFace);
+      arm.push(...paintBase(domeFaces3(0, -2.9, 0.72, 0.62, 8.3), "#3bd8c2"));
+      arm.push([groundEllipse(...project(0, 2.5, 6.55), 0.5, 0.5), 0.6, "#a9ecf2"] as ShapeFace);
       out.push(...tagKey(arm, 30));
     }
     return out;
@@ -4966,8 +4968,8 @@ const MODEL_YAW_TWEAK: Record<string, number> = {
   // 반시계 90도(지적) — 어시밀레이터·히드라 덴·서플·포지·테란 공사장.
   // 어시밀레이터: 180도(재재지적)→-45도→다시 180도(재재재재지적) — 합계 135.
   assim: 135, hydraden: -90, trapezoid: -90, forge: -90, scaffold: -90,
-  // 시계 90도(지적) — 템플러 아카이브. 로보틱스는 처음(90)에서 시계 90도 더해 180.
-  dome: 180, archives: 90,
+  // 시계 90도(지적) — 템플러 아카이브. 로보틱스는 모델 자체가 앞을 보게 고쳐 보정 0.
+  dome: 0, archives: 90,
 };
 const buildingYawOf = (kind: string): number =>
   BUILDING_BASE_YAW + (MODEL_YAW_TWEAK[kind] ?? 0);
