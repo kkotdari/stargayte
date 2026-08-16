@@ -4500,11 +4500,23 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 판 두께감(지적) — 앞 가장자리 아래로 내려앉는 옆면 띠.
     const edge = `M${pt(-2.6, 2.6, 6.1)} Q${pt(0, 3.4, 6.95)} ${pt(2.6, 2.6, 6.1)}`
       + ` L${pt(2.6, 2.6, 5.4)} Q${pt(0, 3.4, 6.25)} ${pt(-2.6, 2.6, 5.4)} Z`;
-    out.push([edge, 1, "#c9ced6"] as ShapeFace, sideFace(edge, 0.22));
-    out.push([plate, 1, "#c9ced6"] as ShapeFace, topFace(plate, 0.18));
-    // 등판 개인색 띠 — 판의 굽은 결을 그대로 따르는 가로 줄.
-    out.push(bodyFace(`M${pt(-2.55, 1.9, 6.11)} Q${pt(0, 2.6, 6.9)} ${pt(2.55, 1.9, 6.11)}`
-      + ` L${pt(2.55, 0.6, 6.06)} Q${pt(0, 1.3, 6.83)} ${pt(-2.55, 0.6, 6.06)} Z`));
+    /* 좌우 옆면(재지적: 등판 옆면이 안 보임) — 판 좌우 변에서 아래로 내려앉는 두께
+       띠. 보이는 쪽만 그린다. */
+    const flank = (m9: 1 | -1): string =>
+      `M${pt(m9 * 2.6, 2.6, 6.1)} L${pt(m9 * 2.6, -1.8, 5.9)}`
+      + ` L${pt(m9 * 2.6, -1.8, 5.2)} L${pt(m9 * 2.6, 2.6, 5.4)} Z`;
+    out.push(...tagKey([
+      [edge, 1, "#c9ced6"] as ShapeFace, sideFace(edge, 0.22),
+      ...([1, -1] as const).flatMap((m9): ShapeFace[] => {
+        const fl9 = faceLight(m9, 0);
+        if (!fl9.visible) return [];
+        return [[flank(m9), 1, "#c9ced6"] as ShapeFace, ...fl9.face(flank(m9))];
+      }),
+      [plate, 1, "#c9ced6"] as ShapeFace, topFace(plate, 0.18),
+      // 등판 개인색 띠 — 판의 굽은 결을 그대로 따르는 가로 줄.
+      bodyFace(`M${pt(-2.55, 1.9, 6.11)} Q${pt(0, 2.6, 6.9)} ${pt(2.55, 1.9, 6.11)}`
+        + ` L${pt(2.55, 0.6, 6.06)} Q${pt(0, 1.3, 6.83)} ${pt(-2.55, 0.6, 6.06)} Z`),
+    ], depthNow(0, 0.4)));
     /* 뒤 추진체 셋 — 짙은 은색(재지적). 앞에서 볼 때도 몸을 뚫고 보이던 문제(지적:
        안 가려짐)는 꽁무니가 돌아앉으면 아예 그리지 않는 것으로 해결 — 몸판이 무깊이
        면이라 painter로는 못 가린다. */
@@ -4512,11 +4524,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        아예 안 그린다(몸판이 무깊이 면이라 painter로는 못 가린다). */
     if (facingRatio(0, -1) > -0.15) {
       const jets: [number, number][] = [[-0.85, 5.5], [0.85, 5.5], [-2.6, 4.2], [2.6, 4.2]];
+      // 꽁무니가 보일 때는 몸판 위로(재지적: 추진체 가려짐) — 붙박이 키 30.
       for (const [tx, tz] of jets) {
-        out.push(...paintBase(tubeFaces(tx, -2.4, tx, -3.7, 0.55, tz), "#9ba3ad"));
+        out.push(...tagKey(paintBase(tubeFaces(tx, -2.4, tx, -3.7, 0.55, tz), "#9ba3ad"), 30));
       }
       for (const [tx, tz] of jets) {
-        out.push(topFace(groundEllipse(...project(tx, -3.8, tz + 0.1), 0.42, 0.34), 0.45));
+        out.push(...tagKey([topFace(groundEllipse(...project(tx, -3.8, tz + 0.1), 0.42, 0.34), 0.45)], 32));
       }
     }
     /* 꼬리(재지적: 축을 몸통에 붙이고 비행기 꼬리 스타일로) — 등판 뒤끝에서 곧장
