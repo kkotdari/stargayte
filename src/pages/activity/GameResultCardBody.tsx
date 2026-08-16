@@ -58,7 +58,7 @@ async function downloadReplay(gameResult: GameResult) {
 
 // 카드 오른쪽 세로점세개(⋮) — 누르면 메모/리플레이 저장/삭제를 드롭다운 메뉴로 연다(요청).
 // 위치/뒤집기는 다른 드롭다운과 같은 attachPopover, 바깥 클릭/포커스 이동으로 닫는다.
-function GameResultActionsMenu({
+export function GameResultActionsMenu({
   gameResult, canDelete, memberOf, onDelete,
 }: {
   gameResult: GameResult; canDelete: boolean; memberOf: (id: string) => Member | undefined;

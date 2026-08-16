@@ -11747,30 +11747,28 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    그대로 말하므로 두 번 나오지 않게 기본은 숨김. absolute라 맵 이름의 가운데 정렬을
    안 민다. */
 .scr-story-when { display: none; }
-/* PC에서만(재확인: 모바일은 맵 폭이 좁아 왼쪽 끝 시각이 가운데 맵 이름과 겹쳤다 —
-   모바일은 기존 머리 시각을 그대로 둔다). */
-@media (min-width: 1160px) {
-  /* 줄 상자를 맵 폭까지 편다 — 조상 둘(.scr-story-map, .scr-story-map-head)이 다
-     align-items: center라 머리가 내용 폭(223px 실측)으로 줄어, 왼쪽 끝(absolute left:0)이
-     맵 이름 바로 옆이 돼 겹쳤다. 머리와 줄을 둘 다 stretch로 편다. */
-  .scr-activity-group-page .scr-story-map-head { align-self: stretch; }
-  .scr-activity-group-page .scr-story-map-head-line { align-self: stretch; }
-  .scr-activity-group-page .scr-story-when {
-    display: flex; align-items: center; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
-    font-size: var(--fs-caption); color: var(--muted); font-variant-numeric: tabular-nums;
-    font-weight: 400;
-  }
-  /* 등록자(요청: 타임스탬프 우측에) — 기둥 맨 아래에서 시각 옆으로 옮겨 왔다. */
-  .scr-story-when .scr-story-when-by {
-    display: inline-flex; align-items: center; gap: 5px; margin-left: 10px;
-  }
-  /* 게임 페이지의 카드 머리(시각 한 줄)는 통째로 걷는다 — 시각은 맵 줄로 갔고, 제목
-     ("게임결과" 라벨)은 이 자리(.scr-activity-row-body)에서 원래 안 보이던 것이라 빈 띠만
-     남기 때문. 케밥은 머리의 형제(절대배치)라 그대로 산다. */
-  .scr-activity-group-page .scr-activity-card-head { display: none; }
-  /* 등록자는 시각 옆(.scr-story-when-by)이 말한다 — 우하단 등록 줄은 걷는다(요청). */
-  .scr-activity-group-page .scr-story-by { display: none; }
+.scr-story-when-by { display: none; }
+/* 게임 타이틀 로우(재요청: 타임스탬프 왼쪽·작성자 오른쪽·맵/시간/승리 가운데) —
+   게임 페이지에서만. 케밥은 페이지 타이틀 줄(툴바 actions)로 갔다. */
+.scr-story-map-mid { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.scr-activity-group-page .scr-story-map-head { align-self: stretch; }
+.scr-activity-group-page .scr-story-map-head-line {
+  align-self: stretch; justify-content: space-between; flex-wrap: nowrap;
 }
+.scr-activity-group-page .scr-story-when {
+  display: inline-flex; align-items: center;
+  font-size: var(--fs-caption); color: var(--muted); font-variant-numeric: tabular-nums;
+  font-weight: 400; white-space: nowrap;
+}
+.scr-activity-group-page .scr-story-when-by {
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  font-size: var(--fs-caption); color: var(--dim); font-weight: 600;
+}
+/* 게임 페이지의 카드 머리(시각 한 줄)와 우하단 등록 줄은 걷는다 — 이 줄이 다 말한다. */
+.scr-activity-group-page .scr-activity-card-head { display: none; }
+.scr-activity-group-page .scr-story-by { display: none; }
+/* 카드 속 케밥은 걷는다(요청: 케밥은 타이틀 줄 오른쪽 끝) — 툴바 케밥이 대신한다. */
+body.scr-gamepage-open .scr-activity-game-result-body .scr-game-result-trow-topmeta { display: none; }
 /* 모바일 한 줄 머리(요청: 타임스탬프·맵이름·승패까지 한 줄에, 폰트 한 단씩 축소) —
    게임 페이지·전체화면 상세에서만: 시각을 줄 안으로 들이고(카드 머리의 시각 줄은 걷는다)
    전부 한 단씩 줄여 좁은 폭에 한 줄로 선다. 등록자는 모바일에선 아래 등록 줄이 말한다. */
@@ -11781,8 +11779,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
     font-size: var(--fs-micro); color: var(--muted); font-variant-numeric: tabular-nums;
     font-weight: 400;
   }
-  .scr-activity-group-page .scr-story-when .scr-story-when-by,
-  .scr-activity-detail-full .scr-story-when .scr-story-when-by { display: none; }
+  .scr-activity-group-page .scr-story-when-by { font-size: 10px; }
+  .scr-activity-group-page .scr-story-when-by .scr-avatar { width: 14px; height: 14px; }
   .scr-activity-group-page .scr-story-map-head-line,
   .scr-activity-detail-full .scr-story-map-head-line { flex-wrap: nowrap; }
   .scr-activity-group-page .scr-story-map-name,

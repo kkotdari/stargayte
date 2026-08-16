@@ -8,7 +8,7 @@ import SearchFilterBar from "../../components/common/SearchFilterBar";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
 import { challengePhoto, shareThumb } from "../../utils/kakaoShare";
-import GameResultCardBody, { type SearchListRow } from "./GameResultCardBody";
+import GameResultCardBody, { GameResultActionsMenu, type SearchListRow } from "./GameResultCardBody";
 import { GameDetailCloseContext } from "./gameDetailClose";
 import ModalHash from "../../utils/modalHash";
 import { ActivityCard } from "./ActivityCard";
@@ -1006,6 +1006,12 @@ export default function ActivityScreen() {
   const user = useAppStore((s) => s.user);
   const isAdmin = !!user && isAdminRole(user.roles);
   const memberOf = useAppStore((s) => s.memberOf);
+  /* 게임 페이지 툴바 케밥(요청: 케밥을 타이틀 줄 오른쪽 끝으로) — 카드 속 케밥을 걷고
+     여기서 그린다. 삭제 확인창도 이 층이 맡는다. */
+  const deleteGameResultAction = useAppStore((s) => s.deleteGameResult);
+  const [gamePageDelete, setGamePageDelete] = useState<GameResult | null>(null);
+  const [gamePageDeleting, setGamePageDeleting] = useState(false);
+  const [gamePageDeleteErr, setGamePageDeleteErr] = useState<string | null>(null);
   const members = useAppStore((s) => s.members);
 
   // + 등록 메뉴(리플레이/너 나와!/일정) — 버튼 아래 작은 팝오버로 연다.
@@ -1955,10 +1961,45 @@ export default function ActivityScreen() {
                 </span>
               </h1>
             </div>
+            {/* 케밥을 타이틀 줄 오른쪽 끝으로(요청) — 카드 속 케밥은 CSS로 걷는다. */}
+            {gameItem.kind === "gameResult" && (
+              <div className="scr-v2-toolbar-actions">
+                <GameResultActionsMenu
+                  gameResult={gameItem.gameResult}
+                  canDelete={!!user && isAdminRole(user.roles)}
+                  memberOf={memberOf}
+                  onDelete={setGamePageDelete}
+                />
+              </div>
+            )}
           </div>
           <div className="scr-activity-list">
             <div className="scr-activity-row-body">{renderCard(gameItem)}</div>
           </div>
+          {gamePageDelete && (
+            <ConfirmDialog
+              title="게임결과를 삭제할까요?"
+              message="삭제하면 되돌릴 수 없어요."
+              confirmLabel={gamePageDeleting ? "삭제 중..." : "삭제"}
+              cancelLabel="취소"
+              error={gamePageDeleteErr}
+              onConfirm={async () => {
+                if (!gamePageDelete) return;
+                setGamePageDeleting(true);
+                setGamePageDeleteErr(null);
+                try {
+                  await deleteGameResultAction(gamePageDelete.id);
+                  setGamePageDelete(null);
+                  closeGamePage();
+                } catch (e) {
+                  setGamePageDeleteErr(e instanceof Error ? e.message : "삭제하지 못했어요. 잠시 뒤 다시 시도해 주세요.");
+                } finally {
+                  setGamePageDeleting(false);
+                }
+              }}
+              onCancel={() => { setGamePageDelete(null); setGamePageDeleteErr(null); }}
+            />
+          )}
         </div>
       )}
       {!gameItem && groupPage && openGroupKey && (

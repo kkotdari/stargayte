@@ -166,31 +166,29 @@ export default function GameResultStory({
           ) : null;
           return (
             <div className="scr-story-map-head-line">
-              {/* 경기 시각(요청: 머리 타임스탬프가 자리를 차지 — 맵 이름 줄 왼쪽 끝으로
-                  합치자) — 게임 페이지에서만 CSS로 보이고, 목록·묶음 카드는 머리의 시각이
-                  그대로라 여기선 숨겨 둔다. absolute라 가운데 정렬(맵 이름)은 안 민다. */}
-              <span className="scr-story-when">
-                {stampText}
-                {/* 등록자(요청: 타임스탬프 우측에) — 기둥 맨 아래에서 여기로 옮겨 왔다. */}
-                {gameResult.createdBy && (
-                  <span className="scr-story-when-by">
-                    <Avatar
-                      member={{
-                        id: gameResult.createdBy.id,
-                        nickname: gameResult.createdBy.nickname,
-                        avatar: memberOf(gameResult.createdBy.id)?.avatar ?? null,
-                      }}
-                      size={16}
-                    />
-                    <span>{gameResult.createdBy.nickname} 등록</span>
-                  </span>
-                )}
+              {/* 게임 타이틀 로우(재요청) — [타임스탬프 왼쪽 | 맵·시간·승리 가운데 |
+                  작성자 오른쪽]. 게임 페이지에서만 CSS로 보이고, 목록·묶음 카드는 머리의
+                  시각이 그대로라 시각·작성자는 기본 숨김이다. */}
+              <span className="scr-story-when">{stampText}</span>
+              <span className="scr-story-map-mid">
+                {result !== "draw" && o1 === "win" && winSpan}
+                {mapName && <span className="scr-story-map-name">{mapName}</span>}
+                {minutes !== null && <span className="scr-story-map-dur">{minutes}분</span>}
+                {(result === "draw" || o1 !== "win") && winSpan}
               </span>
-              {result !== "draw" && o1 === "win" && winSpan}
-              {mapName && <span className="scr-story-map-name">{mapName}</span>}
-              {minutes !== null && <span className="scr-story-map-dur">{minutes}분</span>}
-              {(result === "draw" || o1 !== "win") && winSpan}
-              {/* (제거·요청) 좌우 동시 보기(비교) — v1이 사라져 비교 대상이 없다. */}
+              {gameResult.createdBy && (
+                <span className="scr-story-when-by">
+                  <Avatar
+                    member={{
+                      id: gameResult.createdBy.id,
+                      nickname: gameResult.createdBy.nickname,
+                      avatar: memberOf(gameResult.createdBy.id)?.avatar ?? null,
+                    }}
+                    size={16}
+                  />
+                  <span>{gameResult.createdBy.nickname} 등록</span>
+                </span>
+              )}
             </div>
           );
         })()}
