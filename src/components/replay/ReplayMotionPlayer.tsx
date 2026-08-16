@@ -3362,7 +3362,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          쪽은 완만하다: y' = leanY + 2·curveY·t 이므로 leanY를 크게, curveY를 그
          절반만큼 반대로 준다. 기둥은 아래에서 위로 자라니 '꼬리 끝 → 머리' 순이다. */
       ...tagKey(spirePillar({
-        x: 0, y: 1.35, z0: 3.3, h: 3.6, w: 0.34, tipW: 1.05,
+        // 굵기는 급히 줄지 않고 살짝만(재지적) — 꼬리 0.72 → 머리 1.05.
+        x: 0, y: 1.35, z0: 3.3, h: 3.6, w: 0.72, tipW: 1.05,
         segs: 6, sides: 8, hold: 0,
         leanY: -2.6, curveY: 1.3,
         fill: "#6b4732",
