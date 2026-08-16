@@ -5982,13 +5982,13 @@ html.scr-light-theme .scr-mobile-tabbar {
 .scr-mobile-tabbar-hidden {
   visibility: hidden; pointer-events: none; transition: none;
 }
-/* 게임 상세(재재지적: 숨기는 대신 축소 상태) — 탭바를 미니(축소) 상태로 강제한다.
-   들어오기 전에 이미 축소돼 있었으면 같은 변환값이라 그 자리 그대로고, 전폭이었으면
-   기본 트랜지션(transform .28s)을 타고 자연스럽게 줄어들며 내려앉는다. 왼쪽 빈자리는
-   뒤로 버튼(FAB)이 쓴다 — 목록의 등록 버튼과 같은 배치다. */
+/* 모바일 게임 상세(요청: 탭바 숨기기 + 페이드) — 탭바는 페이드아웃하며 빠지고,
+   뒤로 버튼(FAB)은 아래 미니 상태 규칙을 함께 타서 '탭바 축소 시의 버튼 자리'로
+   들어간다(재재지적: 탭바를 남기라는 게 아니라 버튼이 그 상태로 가라는 것). */
 body.scr-gamepage-open .scr-mobile-tabbar {
-  transform: scale(0.72);
-  transform-origin: 50% 100%;
+  opacity: 0; transform: translateY(16px) scale(0.94);
+  visibility: hidden; pointer-events: none;
+  transition: opacity 0.22s ease-in-out, transform 0.28s ease-in-out, visibility 0s linear 0.28s;
 }
 /* 아래로 스크롤 중에는 완전히 숨기는 대신 80%로 축소한다(요청: 60%→80%) — 바닥 중앙을
    기준으로 줄어들어 자리(하단)는 유지하고, 계속 누를 수 있게 pointer-events는 살려둔다.
@@ -10251,7 +10251,11 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
    미디어쿼리 없이 걸면 PC에서도 스크롤만으로 버튼 크기·위치가 바뀌었다(지적: "PC에서
    스크롤 다운하면... 이건 모바일용 로직이라 PC에선 빼야돼"). */
 @media (max-width: 1159px) {
-  html.scr-tabbar-mini .scr-activity-add-fab-wrap {
+  /* 게임 상세(재재지적) — 탭바는 숨지만 뒤로 버튼은 '탭바 축소 시의 버튼 상태'로
+     들어간다. 이미 축소 상태에서 들어왔으면 같은 값이라 자리 유지, 전폭에서 들어왔으면
+     아래 곡선을 타고 축소하며 이동한다. */
+  html.scr-tabbar-mini .scr-activity-add-fab-wrap,
+  body.scr-gamepage-open .scr-activity-add-fab-wrap {
     bottom: calc(var(--scr-float-bottom) + (var(--mobile-footer-h) * 0.72 - 44px) / 2);
     left: 8px;
     /* 작아질 때는 반대로 탭바가 먼저 물러나야 한다 — 버튼이 먼저 내려가면 아직 넓은
@@ -10264,7 +10268,8 @@ html.scr-light-theme .scr-activity-card-comment .scr-comment-mention { color: #1
   /* 원이 44px로 줄면 글자도 같이 줄어야 한다(요청) — 크기만 줄이면 "등록"이 원 안을
      꽉 채워, 줄어든 게 아니라 글자가 커진 것처럼 보였다. 52:44와 같은 비율의 한 단계
      아래 토큰을 쓴다. */
-  html.scr-tabbar-mini .scr-activity-add-fab {
+  html.scr-tabbar-mini .scr-activity-add-fab,
+  body.scr-gamepage-open .scr-activity-add-fab {
     width: 44px; height: 44px; font-size: var(--fs-11);
   }
 }
