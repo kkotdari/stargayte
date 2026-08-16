@@ -631,16 +631,20 @@ const TRACK_STEEL = "#5c636d";
 function spikeHorn(
   bx: number, by: number, bz: number, tx: number, ty: number, tz: number,
   w: number, fill?: string, sides = 6, bow = 0,
+  /** 휨 방향(요청: 본진 안쪽으로) — 주면 그 방향으로 배가 부풀고, 없으면 옛 규칙(+y). */
+  bowX?: number, bowY?: number,
 ): ShapeFace[] {
+  const bxDir = bowX ?? 0;
+  const byDir = bowY ?? 1;
   return spirePillar({
     x: 0, y: 0, h: 1, w: w * 0.62, tipW: 0.02,
-    segs: 5, sides, hold: 0.12, fill,
+    segs: 6, sides, hold: 0.12, fill,
     path: (t9: number): [number, number, number] => {
       const s9 = Math.sin(Math.PI * t9) * bow;
       return [
-        bx + (tx - bx) * t9,
-        by + (ty - by) * t9 + s9,
-        bz + (tz - bz) * t9 + s9 * 0.35,
+        bx + (tx - bx) * t9 + s9 * bxDir,
+        by + (ty - by) * t9 + s9 * byDir,
+        bz + (tz - bz) * t9 + s9 * 0.2,
       ];
     },
   });
@@ -2849,30 +2853,34 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 뒤 입구(-170) 뿔은 둔덕이 가리도록 먼저(지적: 비쳐 보였다). 뿔은 검회색(요청).
     /* 뿔에 제 자리 깊이(지적: 가려짐) — 둔덕이 큰 반지름 키를 써서 앞쪽 뿔까지
        덮었다. 뒤 뿔은 둔덕보다 낮은 키, 앞 뿔은 높은 키로 갈라 준다. */
-    ...tagKey(spikeHorn(-1.15, -6.5, 0.9, -1.4, -7.7, 9, 1.5, "#1b1e23", 6, -0.7), -2),
+    /* 뿔은 더 굵고 길게, 밑동은 둔덕 옆구리에 딱 붙이고(반경 4.6), 휨은 본진 안쪽
+       (중심 방향)으로(요청). 안쪽 방향은 밑동 자리의 반대 부호다. */
+    ...tagKey(spikeHorn(-0.8, -4.55, 1.4, -1.1, -6.6, 10.2, 2.4, "#1b1e23", 6, 1.5, 0.17, 0.98), -2),
     ...SHAPE_BUILDERS.hatchery(),
-    ...tagKey(spikeHorn(-4.25, 5.05, 0.9, -5, 6, 10.4, 1.7, "#1b1e23", 6, -0.8),
-      12 + depthNow(-4.25, 5.05)),
-    ...tagKey(spikeHorn(6.5, 1.15, 1, 7.7, 1.4, 11, 1.9, "#1b1e23", 6, -0.8),
-      12 + depthNow(6.5, 1.15)),
+    ...tagKey(spikeHorn(-2.95, 3.5, 1.4, -3.9, 5.1, 11.6, 2.6, "#1b1e23", 6, 1.6, 0.64, -0.77),
+      12 + depthNow(-2.95, 3.5)),
+    ...tagKey(spikeHorn(4.5, 0.8, 1.5, 5.9, 1.1, 12.2, 2.8, "#1b1e23", 6, 1.6, -0.98, -0.17),
+      12 + depthNow(4.5, 0.8)),
   ],
   /* 하이브 — 더 길고 굵은 뿔 셋(뿔 등에 가시들, 요청) + 앞 컬. */
   hive: () => {
     const out: ShapeFace[] = [];
     // 뿔은 동굴 입구 하나 건너 하나(지적) — 레어와 같은 세 입구, 더 길게.
     // 첫째(뒤 입구) 뿔은 둔덕보다 먼저 그린다(지적: 비쳐 보였다).
-    const horns: [number, number, number, number, number, number, number][] = [
-      [-1.15, -6.5, 0.9, -1.5, -8.2, 11.6, 1.9],
-      [-4.25, 5.05, 0.9, -5.3, 6.4, 13, 2.1],
-      [6.5, 1.15, 1, 8.2, 1.6, 14, 2.3],
+    /* 뿔은 더 굵고 길게, 밑동은 둔덕 옆구리에 딱 붙이고, 휨은 본진 안쪽으로(요청).
+       [밑x, 밑y, 밑z, 끝x, 끝y, 끝z, 굵기, 안쪽x, 안쪽y] */
+    const horns: [number, number, number, number, number, number, number, number, number][] = [
+      [-0.8, -4.55, 1.4, -1.2, -7, 13, 2.9, 0.17, 0.98],
+      [-2.95, 3.5, 1.4, -4.1, 5.4, 14.4, 3.1, 0.64, -0.77],
+      [4.5, 0.8, 1.5, 6.3, 1.2, 15.4, 3.3, -0.98, -0.17],
     ];
     let hi = 0;
-    for (const [bx, by, bz, tx, ty, tz, w] of horns) {
+    for (const [bx, by, bz, tx, ty, tz, w, inX, inY] of horns) {
       if (hi === 1) out.push(...hatcheryMoundFaces(IVORY_DEEP, IVORY_DEEP)); // 옆띠·위·옆 가시 진한 상아(재지적)
       hi += 1;
       // 뿔은 황토색, 가시는 상아색(요청).
       // 뿔에 제 자리 깊이(지적: 가려짐) — 첫 뿔(뒤)은 둔덕 뒤, 나머지는 둔덕 앞.
-      out.push(...tagKey(spikeHorn(bx, by, bz, tx, ty, tz, w, "#b3854a", 6, -0.9),
+      out.push(...tagKey(spikeHorn(bx, by, bz, tx, ty, tz, w, "#b3854a", 6, 1.8, inX, inY),
         hi === 1 ? -2 : 12 + depthNow(bx, by)));
       /* 뿔 등의 가시(요청, 정정: 안쪽을 향한다) — 뿔 길이를 따라 서너 개가 본 건물
          쪽으로 돋는다. */
