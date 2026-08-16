@@ -4614,8 +4614,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 앞(+y)으로 갈수록 z가 내려간다 — tan30 ≈ 0.577. 굽 전체를 앞으로 크게
          내민다(재지적: 말굽과 앞다리 같이 앞으로). */
       const FWD9 = 1.9;
-      // 위아래 뒤집기(재지적) — 앞으로 갈수록 오르던 것을 내려가게(부호 반전).
-      const zOf = (y9: number): number => 3.35 + (y9 - 0.5 - FWD9) * 0.577;
+      /* 뒤를 45도 든다(재지적) — 앞 양 끝은 낮게 두고 뒤 볼록부가 tan45(=1)만큼
+         솟는다. 앞이 들리던 기울기를 반대로 세운 셈이다. */
+      const zOf = (y9: number): number => 3.05 - (y9 - 0.5 - FWD9);
       const P9 = (r: number, u: number, dz: number): [number, number, number] => {
         const th9 = Math.PI * u;
         const y9 = 0.5 + FWD9 - Math.sin(th9) * r * 0.85;
