@@ -8667,24 +8667,26 @@ export default function ReplayMotionPlayer({
              찍은 태그가 아직 살아 움직이면 그쪽이 상대다. 없으면 가장 가까운 적. */
           let foe: { bx: number; by: number; bd: number; air: boolean; bld?: boolean } =
             nearestFoe(team, rawPos.x, rawPos.y);
+          /* 표적 우선(재수리·기획서 1-B): 최신 1건만 보던 규칙은 어택땅 연타 한 번에
+             건물 표적을 지웠다 — nearestFoe에는 일반 건물이 없어 폴백도 없다. 창
+             (건물 45초/유닛 12초) 안에서 역순으로 훑되, 태그 없는 명령(어택땅)은
+             건너뛰고 태그 있는 가장 최근 명령을 채택한다. */
           for (let ai = e.atkAt.length - 1; ai >= 0; ai -= 1) {
             const [as2, atg] = e.atkAt[ai];
             if (as2 > t) continue;
-            if (atg > 0) {
-              const tp = entPosByTag.get(atg);
-              // 팀 미상(0)은 표적으로도 안 삼는다(위 nearestFoe 주석과 같은 오인 방지).
-              /* 건물 표적은 창을 길게(45초) — 건물 철거는 어택 한 번 찍고 오래 두들기는
-                 일이라, 12초 만에 표적을 놓으면 두들기다 말고 딴 데를 보는 그림이 된다. */
-              if (tp && tp.team > 0 && (team ?? 0) > 0 && tp.team !== team
-                && t - as2 <= (tp.bld ? 45 : 12)) {
-                const td = Math.hypot(tp.x - rawPos.x, tp.y - rawPos.y);
-                // 너무 먼 표적은 안 겨눈다(지적: 타겟팅 오인) — 이미 딴 데 간 옛 표적이다.
-                if (td <= ENGAGE_SIGHT_TILES * 1.6) {
-                  foe = { bx: tp.x, by: tp.y, bd: td, air: tp.air, ...(tp.bld ? { bld: true } : {}) };
-                }
+            if (t - as2 > 45) break;
+            if (atg <= 0) continue;
+            const tp = entPosByTag.get(atg);
+            // 팀 미상(0)은 표적으로도 안 삼는다(위 nearestFoe 주석과 같은 오인 방지).
+            if (tp && tp.team > 0 && (team ?? 0) > 0 && tp.team !== team
+              && t - as2 <= (tp.bld ? 45 : 12)) {
+              const td = Math.hypot(tp.x - rawPos.x, tp.y - rawPos.y);
+              // 너무 먼 표적은 안 겨눈다(지적: 타겟팅 오인) — 이미 딴 데 간 옛 표적이다.
+              if (td <= ENGAGE_SIGHT_TILES * 1.6) {
+                foe = { bx: tp.x, by: tp.y, bd: td, air: tp.air, ...(tp.bld ? { bld: true } : {}) };
+                break;
               }
             }
-            break;
           }
           /* 히스테리시스(지적: 이동 중 위치가 앞뒤로 잘게 플리커) — 시야 경계에 선
              적 때문에 교전이 프레임마다 켜졌다 꺼지면, '멈춘 자리'와 '지연 걸음' 사이를
