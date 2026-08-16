@@ -4512,8 +4512,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const flank = (m9: 1 | -1): string =>
       `M${pt(m9 * 2.6, 2.6, 6.1)} L${pt(m9 * 2.6, -1.8, 5.9)}`
       + ` L${pt(m9 * 2.6, -1.8, 5.2)} L${pt(m9 * 2.6, 2.6, 5.4)} Z`;
+    /* 뒤 가장자리 두께(재지적: 등판 뒷면도 안 보임) — 앞 edge와 짝이 되는 뒤쪽 띠.
+       뒤가 보일 때만 그린다. */
+    const rearEdge = `M${pt(-2.6, -1.8, 5.9)} Q${pt(0, -2.8, 6.55)} ${pt(2.6, -1.8, 5.9)}`
+      + ` L${pt(2.6, -1.8, 5.2)} Q${pt(0, -2.8, 5.85)} ${pt(-2.6, -1.8, 5.2)} Z`;
     out.push(...tagKey([
       [edge, 1, "#c9ced6"] as ShapeFace, sideFace(edge, 0.22),
+      ...(faceLight(0, -1).visible
+        ? [[rearEdge, 1, "#c9ced6"] as ShapeFace, ...faceLight(0, -1).face(rearEdge)]
+        : []),
       ...([1, -1] as const).flatMap((m9): ShapeFace[] => {
         const fl9 = faceLight(m9, 0);
         if (!fl9.visible) return [];
