@@ -1023,8 +1023,9 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
            밑동까지 흐르는 가는 기둥이고, 캐노피는 그 발치에서 바깥으로 뻗는 굵은
            기둥이다. 둘 다 둔덕 표면을 타고 앉는다. */
         const seamPillar = spirePillar({
-          x: 0, y: 0, h: 1, w: 0.66, tipW: 0.42,
-          segs: 8, sides: 6, hold: 0,
+          // 밑동은 굵게 열고 위로 갈수록 가늘게 — 아래 단면이 곧 입구다.
+          x: 0, y: 0, h: 1, w: 0.92, tipW: 0.4,
+          segs: 8, sides: 6, hold: 0.08, taper: 1.6,
           // 둔덕 옆선을 그대로 타는 축 — 표면에 반쯤 묻혀 한 몸으로 이어진다.
           path: (t9: number): [number, number, number] => {
             const r9 = moundR(t9) * 0.99;
@@ -1032,19 +1033,13 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
           },
           fill: seamColor,
         });
-        // 캐노피 — 밑동에서 바깥으로 뻗는 짧고 굵은 터널.
-        const canopy = spirePillar({
-          x: dxr * 4.5, y: dyr * 4.5, z0: 0.05, h: 0.5,
-          w: 1.2, tipW: 1.02, segs: 2, sides: 8, hold: 0.5,
-          leanX: dxr * 2, leanY: dyr * 2,
-          fill: seamColor,
-        });
-        // 굴 입구 — 캐노피 바깥 끝의 어두운 구멍.
-        const [hx9, hy9] = project(dxr * 6.4, dyr * 6.4, 0.6);
+        /* 캐노피는 제거(요청) — 대신 옆면 기둥의 아래 단면 자체가 입구가 된다:
+           밑동에서 기둥을 조금 더 굵게 열고, 그 단면 안쪽에 어두운 굴을 앉혀 자연스러운
+           들머리로 보이게 한다. */
+        const [ex9, ey9] = project(dxr * (moundR(0) * 0.99), dyr * (moundR(0) * 0.99), 0.42);
         out.push(...tagKey([
           ...seamPillar,
-          ...canopy,
-          [groundEllipse(hx9, hy9, 0.72, 0.62), 0.9, "#101216"] as ShapeFace,
+          [groundEllipse(ex9, ey9, 0.5, 0.42), 0.92, "#101216"] as ShapeFace,
         ], dep + 0.3));
       }
     }
