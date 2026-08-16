@@ -3053,45 +3053,64 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...hornFaces(-4.2, 1.2, 0.5, -5.4, 1.7, 0.1, 0.38),
     ];
   },
-  /* 나이더스 커널(재작도) — 좌우로 감싸 늘어진 큰 엽(잿빛 꼭대기 캡) 사이로 세로로
-     발광하는 균열 속이 드러나고, 앞 아래엔 이빨 줄과 발톱. */
+  /* 나이더스 커널(재모델링·사진) — 무엇보다 '동굴 입구'로 읽혀야 한다: 살덩이 둔덕
+     앞면에 두툼한 아치가 서고 그 안이 검게 뚫려 굴이 된다. 위에는 앞으로 내민
+     개인색 뚜껑이 굴을 덮고, 아래 테두리에는 짧은 엄니 몇 개만 남긴다. 키는 저그
+     건물 공통 자(둔덕 0, 나머지는 제 자리 깊이 × 1.6). */
   nydus: () => {
-    const [px2, py2] = project(0, 1.5, 2.3);
-    const cap = (cx2: number, cy2: number, cz2: number, r2: number, op: number): ShapeFace => {
-      const [qx, qy] = project(cx2, cy2, cz2);
-      return topFace(groundEllipse(qx, qy, r2, r2 * 0.6), op);
-    };
-    return [
-      // 뒤 몸통 덩어리.
-      ...domeFaces3(0, -1, 3.2, 3.4),
-      // 세로 발광 균열 — 폭이 시점을 탄다(재지적: 요잉 반영).
-      ...((): ShapeFace[] => {
-        const fCk = facingRatio(0, 1);
-        if (fCk <= 0.05) return [];
-        const kk = Math.min(1, 0.35 + fCk);
-        return [
-          capFace(groundEllipse(px2, py2, 1.5 * kk, 2.05), 0.45),
-          topFace(groundEllipse(px2, py2, 1.02 * kk, 1.55), 0.42),
-        ];
-      })(),
-      // 좌우로 늘어지는 큰 엽 + 잿빛 꼭대기 캡.
-      ...domeFaces3(-2.1, 0.4, 1.9, 2.9),
-      cap(-2.2, -0.1, 2.55, 0.95, 0.3),
-      ...domeFaces3(2.2, 0.3, 1.9, 2.9),
-      cap(2.3, -0.2, 2.55, 0.9, 0.24),
-      // 위 덮개 엽.
-      ...domeFaces3(0, -0.7, 2, 2.1, 2.3),
-      cap(0, -1.1, 4.1, 1, 0.28),
-      // 앞 아래 이빨 줄.
-      ...hornFaces(-1.7, 2.4, 0.4, -1.9, 2.7, 1.7, 0.4),
-      ...hornFaces(-0.85, 2.7, 0.4, -0.95, 3, 1.9, 0.4),
-      ...hornFaces(0, 2.8, 0.4, 0, 3.1, 2, 0.4),
-      ...hornFaces(0.85, 2.7, 0.4, 0.95, 3, 1.9, 0.4),
-      ...hornFaces(1.7, 2.4, 0.4, 1.9, 2.7, 1.7, 0.4),
-      // 발톱 둘.
-      ...hornFaces(-2.2, 2.7, 0.5, -2.8, 3.5, 0.1, 0.5),
-      ...hornFaces(2.2, 2.7, 0.5, 2.8, 3.5, 0.1, 0.5),
-    ];
+    const out: ShapeFace[] = [...paintBase(creepSplat(6.4), "#4a3428")];
+    // 둔덕 — 볼록한 종 모양 살덩이. 입구를 낼 자리라 뒤로 조금 물려 앉힌다.
+    out.push(...tagKey(paintBase(spirePillar({
+      x: 0, y: -0.6, z0: 0, h: 4.2, w: 4.4, tipW: 1.5,
+      segs: 7, sides: 14, hold: 0, taper: 0.6,
+    }), "#6b4732"), 0));
+    /* 굴 속 — 아치 안의 검은 구멍. 제 자리 깊이를 그대로 쓰므로 앞을 보면 둔덕 위로
+       올라오고 뒤로 돌면 둔덕에 묻힌다(따로 문턱을 두지 않는다). */
+    const mouthKey = depthNow(0, 1.9) * 1.6;
+    const arch9 = (yy: number, rx: number, rz: number, z0: number): string => polyPath3(
+      Array.from({ length: 13 }, (_, i9) => {
+        const th = (i9 / 12) * Math.PI;
+        return [Math.cos(th) * rx, yy, z0 + Math.sin(th) * rz] as [number, number, number];
+      }),
+    );
+    out.push(...tagKey([
+      [arch9(1.95, 2.15, 2.55, 0.2), 0.96, "#14171c"] as ShapeFace,
+      [arch9(1.7, 1.5, 1.9, 0.45), 0.98, "#06070a"] as ShapeFace,
+    ], mouthKey + 0.4));
+    /* 입구 아치 — 굴을 두르는 두툼한 살 테. 반원 길을 그리는 기둥 하나로 낸다
+       (굵기가 일정하도록 hold를 끝까지 준다). */
+    out.push(...tagKey(spirePillar({
+      x: 0, y: 0, h: 1, w: 0.85, tipW: 0.85, segs: 14, sides: 6, hold: 1,
+      path: (t9: number): [number, number, number] => {
+        const a9 = Math.PI * (1 - t9);
+        return [Math.cos(a9) * 2.55, 2.05 + Math.sin(a9) * 0.45, 0.2 + Math.sin(a9) * 2.75];
+      },
+      fill: "#c68a62",
+    }), mouthKey + 0.8));
+    /* 윗뚜껑 — 개인색(요청). 둔덕 뒤 위에서 앞으로 내밀어 굴 입구를 덮는다. */
+    out.push(...tagKey(spirePillar({
+      x: 0, y: -1.4, z0: 2.5, h: 2.4, w: 3, tipW: 1.7,
+      segs: 6, sides: 12, hold: 0.08, taper: 0.7,
+      leanY: 3.3, curveY: 0.9,
+    }), depthNow(0, 0.5) * 1.6 + 6));
+    // 뚜껑 옆 잿빛 기관 한 쌍(사진) — 골이 진 짧은 기둥.
+    for (const m9 of [1, -1] as const) {
+      out.push(...tagKey(spirePillar({
+        x: m9 * 2.5, y: -0.5, z0: 2.9, h: 1.9, w: 1, tipW: 0.4,
+        segs: 5, sides: 8, hold: 0.1, taper: 1.4,
+        leanY: 0.9, fill: IVORY_DEEP,
+      }), depthNow(m9 * 2.5, -0.5) * 1.6 + 7));
+    }
+    /* 아래 테두리 엄니 — 축약(요청): 길게 늘어지던 이빨 줄과 발톱을 걷고, 입구
+       아래턱에 짧은 엄니 넷만 남긴다. */
+    for (const [fx9, fy9, tx9, ty9] of [
+      [-2.1, 1.9, -2.5, 2.7], [-0.8, 2.35, -0.9, 3.15],
+      [0.8, 2.35, 0.9, 3.15], [2.1, 1.9, 2.5, 2.7],
+    ] as [number, number, number, number][]) {
+      out.push(...tagKey(spikeHorn(fx9, fy9, 0.3, tx9, ty9, 1.15, 0.42, IVORY_DEEP, 6, 0.2,
+        tx9 - fx9, ty9 - fy9), depthNow(tx9, ty9) * 1.6 + 1));
+    }
+    return out;
   },
 
   /* 해처리 — 둔덕 + 방사 다리 여섯(요잉을 따라 도는 것이 핵심) + 윗면 입·목띠. */
