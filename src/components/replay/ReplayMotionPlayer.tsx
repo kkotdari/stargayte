@@ -3086,11 +3086,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           segs: 1, sides: 4, leanX: -m9 * 0.35, leanY: 1.4, hold: 0.9,
         }),
         // 정강이 — 발에서 무릎으로(앞으로 기운다).
+        // 정강이는 발판 위에 바로 얹힌다(지적: 아래다리와 발이 떨어짐) — z0 0.9 → 0.45.
         ...spirePillar({
-          x: m9 * 1.7, y: 0.5, z0: 0.9, h: 2, w: 0.36, tipW: 0.42,
+          x: m9 * 1.7, y: 0.5, z0: 0.45, h: 2.45, w: 0.36, tipW: 0.42,
           segs: 1, sides: 4, leanX: -m9 * 0.15, leanY: -1.9, hold: 0.9,
         }),
-        ...boxFaces3(m9 * 1.7, 0.5, 1.1, 1.6, 0.5),
+        ...boxFaces3(m9 * 1.7, 0.5, 1.2, 1.7, 0.55),
       ]),
       ...boxFaces3(0, -0.2, 2.6, 2.2, 2, 4.8),
       // 콕핏 머리 + 안테나.
@@ -4533,10 +4534,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 몸통 아래~꼬리 끝을 한 기둥으로(요청) — 납작한 꼬리 판을 걷고, 공용 도형
          spirePillar를 뒤·아래로 크게 휘어 세운다. 위(허리)에서 굵고 꼬리 끝으로
          갈수록 가늘어져 한 몸으로 이어진다. 짙은 살색. */
+      /* 기둥은 아래에서 위로 자란다(수리: 꼬리가 위로 솟아 하반신이 사라졌다) —
+         꼬리 끝(뒤·바닥)에서 허리로 올라오게 정의한다. 끝이 가늘고 허리가 굵다. */
       ...spirePillar({
-        x: 0, y: 0, z0: 3.6, h: 3.4, w: 1.05, tipW: 0.12,
-        segs: 6, sides: 8, hold: 0.1,
-        leanY: -2.4, curveY: -2.9, curveX: 0,
+        x: 0, y: -5, z0: 0.06, h: 3.5, w: 0.12, tipW: 1.05,
+        segs: 6, sides: 8, hold: 0,
+        leanY: 5, curveY: -1.6,
         fill: "#c68a62",
       }),
       // 꼬리 등의 자잘한 짙은 상아색 가시들(요청).
