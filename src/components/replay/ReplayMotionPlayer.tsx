@@ -634,18 +634,21 @@ const P_PLASMA = "#e4f6ff";
    모인다. fill 없이 부르면 색 없는 몸판이라 아콘의 dark() 실루엣이 그대로 집어 간다. */
 function protossFace(fill?: string, lift = 0, s = 1): ShapeFace[] {
   // 뒤통수 축소·턱 끝은 뭉뚝하게(재지적) — 폭 0.8 → 0.6, 턱은 한 점이 아니라 짧은 변.
-  const [hx, hy] = project(0, 0.05, 7.55 + lift);
-  const [jlx, jly] = project(-0.24 * s, 1.75 * s, 5.15 + lift);
-  const [jrx, jry] = project(0.24 * s, 1.75 * s, 5.15 + lift);
-  const w = 0.6 * s;
+  /* 얼굴 길이 살짝 축소 + 뒤통수(정수리 캡) 축소해 반구형에 가깝게, 정수리는 볼록
+     하이라이트로(재지적: 오목해 보임). */
+  const [hx, hy] = project(0, 0.05, 7.45 + lift);
+  const [jlx, jly] = project(-0.24 * s, 1.7 * s, 5.55 + lift);
+  const [jrx, jry] = project(0.24 * s, 1.7 * s, 5.55 + lift);
+  const w = 0.54 * s;
   const my = (hy + (jly + jry) / 2) / 2;
-  const outline = `M${hx - w} ${hy} A${w} ${w * 0.74} 0 0 1 ${hx + w} ${hy}`
+  const outline = `M${hx - w} ${hy} A${w} ${w * 0.62} 0 0 1 ${hx + w} ${hy}`
     + ` Q${hx + w * 1.1} ${my} ${jrx} ${jry}`
     + ` L${jlx} ${jly}`
     + ` Q${hx - w * 1.1} ${my} ${hx - w} ${hy} Z`;
-  const cap = `M${hx - w} ${hy} A${w} ${w * 0.74} 0 0 1 ${hx + w} ${hy}`
-    + ` A${w} ${w * 0.4} 0 0 0 ${hx - w} ${hy} Z`;
-  return [[outline, 1, fill] as ShapeFace, topFace(cap, 0.2)];
+  return [
+    [outline, 1, fill] as ShapeFace,
+    topFace(groundEllipse(hx, hy - w * 0.16, w * 0.66, w * 0.32), 0.22),
+  ];
 }
 /* 프로토스 인간형 공통 몸통(요청: 하템도 질럿·다크와 같은 굽은 몸통) — 앞으로 숙는
    캡슐 막대 하나. 두께·길이 축소(재지적). */
@@ -4524,78 +4527,64 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const [px, py] = project(x, y, z);
       return `${px} ${py}`;
     };
+    const [cx, cy] = project(0, -0.6, 3.8);
     const out: ShapeFace[] = [];
-    /* 뒷다리 — 몸 옆구리에서 바깥으로 쓸리는 지느러미. 아랫판·윗판과 바깥 테두리
-       띠로 두께를 준다(재지적: 평면). */
-    const legAt = (m: 1 | -1, z: number): string =>
-      `M${pt(m * 2.1, -2.2, z)} Q${pt(m * 4.8, -1.8, z)} ${pt(m * 5.2, 1.2, z)}`
-      + ` Q${pt(m * 3.7, 0.6, z + 0.05)} ${pt(m * 2.4, 0.1, z + 0.05)}`
-      + ` Q${pt(m * 2.1, -1, z + 0.03)} ${pt(m * 2.1, -2.2, z)} Z`;
-    for (const m of [-1, 1] as const) {
-      const lo9 = legAt(m, 3.35);
-      const hi9 = legAt(m, 3.9);
-      out.push(...tagKey([
-        [lo9, 1, "#d4af37"] as ShapeFace, sideFace(lo9, 0.32),
-        [`M${pt(m * 2.1, -2.2, 3.35)} Q${pt(m * 4.8, -1.8, 3.35)} ${pt(m * 5.2, 1.2, 3.35)}`
-          + ` L${pt(m * 5.2, 1.2, 3.9)} Q${pt(m * 4.8, -1.8, 3.9)} ${pt(m * 2.1, -2.2, 3.9)} Z`,
-          1, "#d4af37"] as ShapeFace,
-        [hi9, 1, "#d4af37"] as ShapeFace, topFace(hi9, 0.16),
-      ], depthNow(m * 3.6, -0.5)));
-    }
-    /* 몸통은 뒤쪽 반만(요청) + 두껍게(재지적: 평면) — 앞은 곧은 변, 뒤는 반원인
-       납작 반구. 아래 테두리에서 위 덮개까지 옆면을 둘러 부피를 만든다. */
-    {
-      const arc9 = (r: number, z: number): [number, number, number][] =>
-        Array.from({ length: 13 }, (_, i9) => {
-          const a9 = (i9 / 12) * Math.PI;
-          return [Math.cos(a9) * r, -0.5 - Math.sin(a9) * r * 0.8, z] as [number, number, number];
-        });
-      const bot9 = arc9(2.85, 3.35);
-      const top9 = arc9(2.35, 4.55);
-      out.push(bodyFace(polyPath3(bot9)));
-      for (let i9 = 0; i9 < 12; i9 += 1) {
-        const side9 = polyPath3([bot9[i9], bot9[i9 + 1], top9[i9 + 1], top9[i9]]);
-        out.push(bodyFace(side9), sideFace(side9, 0.18));
-      }
-      const front9 = polyPath3([bot9[0], top9[0], top9[12], bot9[12]]);
-      out.push(bodyFace(front9), sideFace(front9, 0.24));
-      out.push(bodyFace(polyPath3(top9)), topFace(polyPath3(top9), 0.14));
-    }
+    /* 뒷다리(정정 셋: 꺾인 관절이 아니라 곡선 변의 삼각형) — 두 뿔을 잇던 팔꿈치를
+       걷고, 몸 옆구리에 뿌리를 둔 채 바깥·앞으로 쓸리는 지느러미꼴 삼각형 하나로
+       그린다. 세 변이 다 완만한 곡선이다. */
+    const leg = (m: 1 | -1): string =>
+      `M${pt(m * 2.1, -2.2, 3.75)} Q${pt(m * 4.8, -1.8, 3.5)} ${pt(m * 5.2, 1.2, 3.3)}`
+      + ` Q${pt(m * 3.7, 0.6, 3.65)} ${pt(m * 2.4, 0.1, 3.8)}`
+      + ` Q${pt(m * 2.1, -1, 3.78)} ${pt(m * 2.1, -2.2, 3.75)} Z`;
+    // 집게·다리 네 장 금색(요청).
+    out.push([leg(-1), 1, "#d4af37"] as ShapeFace, sideFace(leg(-1), 0.18));
+    out.push([leg(1), 1, "#d4af37"] as ShapeFace, sideFace(leg(1), 0.18));
+    // 몸통 — 둥근 게딱지. 많이 줄였다(지적: 본체 크기 많이 축소 — 3.8×3 → 2.8×2.2).
+    out.push(bodyFace(groundEllipse(cx, cy, 2.8, 2.2)));
+    // (삭제·지적) 앞부분 검은 반투명 홈 — 정체불명 얼룩으로 보여 걷었다.
+    out.push(topFace(groundEllipse(cx - 0.9, cy - 1, 1.25, 0.8), 0.25));
     // 옆구리 밝은 홈 한 쌍.
-    out.push(topFace(groundEllipse(...project(-2.3, -0.3, 4.4), 0.4, 0.55), 0.4));
-    out.push(topFace(groundEllipse(...project(2.3, -0.3, 4.4), 0.4, 0.55), 0.4));
-    // 등 뒤 엔진 짐 — 하나만, 밝은 사이언색(요청).
-    out.push(...paintBase(domeFaces3(0, -2.3, 0.95, 0.8, 4.4), "#a9ecf2"));
-    /* 앞 고리(요청: 양팔과 말굽을 합친 한 덩이) — U자 고리가 통째로 앞아래 30도쯤
-       숙는다. 아랫판·윗판과 바깥 테두리 띠로 두께를 줘 굽처럼 읽힌다. 금색. */
+    out.push(topFace(groundEllipse(...project(-2.3, -0.3, 3.9), 0.4, 0.55), 0.4));
+    out.push(topFace(groundEllipse(...project(2.3, -0.3, 3.9), 0.4, 0.55), 0.4));
+    // 등 뒤 엔진 짐 — 하나만 남기고 밝은 사이언색(요청).
+    out.push(...paintBase(domeFaces3(0, -2.3, 0.95, 0.8, 4.2), "#a9ecf2"));
+    // 아가리 어두운 속은 제거(지적: 앞 검정 반투명 부품) — 빛 줄만 남긴다.
+    out.push(topFace(`M${pt(-1.6, 1.1, 3.9)} Q${pt(0, 2, 3.9)} ${pt(1.6, 1.1, 3.9)} L${pt(1.4, 1.5, 3.9)} Q${pt(0, 2.4, 3.9)} ${pt(-1.4, 1.5, 3.9)} Z`, 0.5));
+    /* 집게(정정 셋: 더 두껍게 + 약간 아래로 기울이기 + 뾰족·사이 벌림 유지) — 바깥
+       변을 더 바깥으로 부풀려 살을 찌우고, 앞으로 갈수록 z를 낮춰 끝이 아래를 향해
+       내려간다. */
+    const claw = (m: 1 | -1): string =>
+      `M${pt(m * 3.3, 0.5, 3.85)} Q${pt(m * 4.5, 3, 3.65)} ${pt(m * 2.1, 5.8, 3.25)}`
+      + ` Q${pt(m * 2.4, 3.4, 3.6)} ${pt(m * 2.5, 1.4, 3.8)}`
+      + ` Q${pt(m * 2.6, 0.4, 3.85)} ${pt(m * 3.3, 0.5, 3.85)} Z`;
+    out.push([claw(1), 1, "#d4af37"] as ShapeFace, sideFace(claw(1), 0.16));
+    out.push([claw(-1), 1, "#d4af37"] as ShapeFace, topFace(claw(-1), 0.14));
+    /* 말굽(재지적: 오늘 손댄 것 원복하고 이것만) — 두 집게 뿌리를 뒤로 감아 잇는
+       U자 굽. 아랫판·윗판과 바깥 테두리 띠로 두껍게 얹는다. 금색. */
     {
       const N9 = 12;
-      const P9 = (r: number, u: number, dz: number): [number, number, number] => {
+      const P9 = (r: number, u: number, z: number): [number, number, number] => {
         const th9 = Math.PI * u;
-        return [
-          -Math.cos(th9) * r,
-          0.9 + Math.sin(th9) * r * 0.95,
-          4.35 - Math.sin(th9) * 2.6 + dz,
-        ];
+        return [Math.cos(th9) * r, 0.45 - Math.sin(th9) * r * 0.85, z];
       };
-      const ring9 = (dz: number): string => {
+      const ring9 = (z: number): string => {
         const pts9: [number, number, number][] = [];
-        for (let i9 = 0; i9 <= N9; i9 += 1) pts9.push(P9(3.5, i9 / N9, dz));
-        for (let i9 = N9; i9 >= 0; i9 -= 1) pts9.push(P9(2.35, i9 / N9, dz));
+        for (let i9 = 0; i9 <= N9; i9 += 1) pts9.push(P9(3.15, i9 / N9, z));
+        for (let i9 = N9; i9 >= 0; i9 -= 1) pts9.push(P9(1.95, i9 / N9, z));
         return polyPath3(pts9);
       };
-      const loR = ring9(0);
-      const hiR = ring9(0.55);
+      const lo9 = ring9(3.9);
+      const hi9 = ring9(4.62);
       out.push(...tagKey([
-        [loR, 1, "#d4af37"] as ShapeFace, sideFace(loR, 0.3),
+        [lo9, 1, "#d4af37"] as ShapeFace, sideFace(lo9, 0.28),
         ...Array.from({ length: N9 }, (_, i9) => ([
           polyPath3([
-            P9(3.5, i9 / N9, 0), P9(3.5, (i9 + 1) / N9, 0),
-            P9(3.5, (i9 + 1) / N9, 0.55), P9(3.5, i9 / N9, 0.55),
+            P9(3.15, i9 / N9, 3.9), P9(3.15, (i9 + 1) / N9, 3.9),
+            P9(3.15, (i9 + 1) / N9, 4.62), P9(3.15, i9 / N9, 4.62),
           ]), 1, "#d4af37",
         ] as ShapeFace)),
-        [hiR, 1, "#d4af37"] as ShapeFace, topFace(hiR, 0.18),
-      ], depthNow(0, 2.6)));
+        [hi9, 1, "#d4af37"] as ShapeFace, topFace(hi9, 0.18),
+      ], depthNow(0, -1.4) + 0.4));
     }
     return out;
   },
