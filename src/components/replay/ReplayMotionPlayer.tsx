@@ -4577,8 +4577,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 얼굴·머리장식 갈색(요청) — 무깊이 두건이 직전 깊이를 물려받아 얼굴을 덮었다
          (재지적: zsorted 상속) — 제 깊이를 달아 앞에선 얼굴이, 뒤에선 두건이 이긴다. */
       // 머리장식 개인색(재지적).
-      ...tagKey([[hood, 1] as ShapeFace, topFace(hood, 0.14)], depthNow(0, -1.6)),
-      ...tagKey(paintBase(domeFaces3(0, 0.2, 0.75, 0.6, 6.8), "#8a5f43"), depthNow(0, 0.5) + 1),
+      /* 얼굴은 몸통 기둥(키 10)보다 위(재지적: 얼굴이 몸통에 가려짐) — 상반신을
+         스파이어 기둥으로 바꾸며 기둥이 큰 층 키를 갖게 돼 얼굴이 묻혔다.
+         두건은 그보다 한 단 아래에 둬 앞에선 얼굴이, 뒤에선 두건이 이긴다. */
+      ...tagKey([[hood, 1] as ShapeFace, topFace(hood, 0.14)], 12),
+      ...tagKey(paintBase(domeFaces3(0, 0.2, 0.75, 0.6, 6.8), "#8a5f43"), 14),
     ];
   },
   /* 울트라리스크(실물 참고) — 코끼리 다리 넷의 거체, 어깨에서 크게 휘는 거대 카이저
