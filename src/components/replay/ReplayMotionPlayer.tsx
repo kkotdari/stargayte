@@ -5938,10 +5938,16 @@ function unitSprite(
 }
 /* 건물 스프라이트(요청: 건물도 병목 감축) — meet(비율 유지) 상자 건물을 같은 방식으로
    굽는다. 뷰박스 밖으로 살짝 삐치는 모델(높은 첨탑 등)을 위해 15% 머리방을 둔다. */
-const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number }>();
+/* 건물 채움 보정에서 빼는 것들 — 크립 판(clipWalk)은 지형이고, 애드온 통로는 본체와
+   부속 사이를 잇는 폭이 곧 제 길이라 늘리면 어긋난다. 미네랄은 발자국이 아니라 덩이
+   넷을 흩어 놓은 무리라 요청대로 손대지 않는다. */
+const BLD_FILL_SKIP = new Set(["addonlink", "mineral"]);
+/** 건물 모델이 제 발자국 상자를 채우는 몫 — 종류마다 한 번만 잰다. */
+const BLD_FILL_CACHE = new Map<string, number>();
+const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number; w: number }>();
 function buildingSprite(
   op: UnitDrawOp, sideQ: number, B: number,
-): { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number } | null {
+): { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number; w: number } | null {
   const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
   const key = `${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}|${op.color}|${sideQ}|${B.toFixed(2)}`;
   const hit = BLD_SPRITE_CACHE.get(key);
@@ -5966,7 +5972,7 @@ function buildingSprite(
   }
   if (BLD_SPRITE_CACHE.size > 500) BLD_SPRITE_CACHE.clear();
   const box9 = contentBox(cv);
-  const entry = { cv, pad, l, side: sideQ, bot: box9.bot, top: box9.top };
+  const entry = { cv, pad, l, side: sideQ, bot: box9.bot, top: box9.top, w: box9.w };
   BLD_SPRITE_CACHE.set(key, entry);
   return entry;
 }
@@ -6232,7 +6238,20 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
           ctx.restore();
         }
         if (bspr) {
-          const k = sidePx / sideQ;
+          /* 발자국을 꽉 채운다(지적: "건물크기가 제각각이야", "캔버스를 왜 꽉 안 채우게
+             해놨어") — 상자는 발자국(타일)에 맞춰 뒀지만 모델이 그 상자를 채우는 몫이
+             0.40~1.15로 제각각이라(실측: 옵저버토리 0.40 · 컴샛/머신샵 0.50 · 게이트
+             0.67 · 해처리 0.91 · 커맨드/넥서스 1.15) 같은 4×3 건물끼리도 세 배 가까이
+             벌어졌다. 구운 판의 실제 잉크 폭을 재서 발자국의 95%가 되게 맞춘다 —
+             작은 놈은 키우고, 발자국을 넘던 놈(커맨드·넥서스)은 줄인다. */
+          let bFill = BLD_FILL_CACHE.get(op.kind);
+          if (bFill === undefined && bspr.w > 0) {
+            bFill = (bspr.w / B) / sideQ;
+            BLD_FILL_CACHE.set(op.kind, bFill);
+          }
+          const kFit = op.clipWalk || BLD_FILL_SKIP.has(op.kind) || !bFill
+            ? 1 : Math.min(2.5, Math.max(0.7, 0.95 / bFill));
+          const k = (sidePx * kFit) / sideQ;
           // 겹친 것만 살짝 그림자(확대 적용: 유닛·건물 공통).
           if (airOverlap.has(op)) {
             ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
@@ -6240,9 +6259,13 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
             ctx.shadowOffsetY = Math.max(1, sidePx * 0.04);
           } else ctx.shadowColor = "transparent";
           ctx.globalAlpha = op.alpha;
+          /* 발은 땅에(보정과 짝) — 상자 바닥에 맞추면 모델의 잉크 바닥이 상자보다
+             위에 있는 만큼의 틈이 배율만큼 함께 커져 건물이 떠 보인다. 그린 픽셀의
+             실제 바닥(bot)을 발자국 바닥선에 앉힌다. */
+          const bTop9 = sy + hPx / 2 - (bspr.bot / B) * k;
           ctx.drawImage(
             bspr.cv,
-            sx - (bspr.pad + sideQ / 2) * k, sy + hPx / 2 - (bspr.pad + sideQ) * k,
+            sx - (bspr.pad + sideQ / 2) * k, bTop9,
             bspr.l * k, bspr.l * k,
           );
           /* 건물 체력바(요청) — 다친 건물 위에만. 유닛 바와 같은 3색. */
@@ -6256,7 +6279,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
             const bh3 = Math.max(1.6, wPx * 0.05);
             const bx3 = sx - bw3 / 2;
             /* 머리 바로 위(재재지적: 너무 위) — 그려진 픽셀 꼭대기에 살짝만 띄운다. */
-            const byTop = sy + hPx / 2 - (bspr.pad + sideQ) * k + (bspr.top / B) * k - bh3 - 2;
+            const byTop = bTop9 + (bspr.top / B) * k - bh3 - 2;
             ctx.globalAlpha = op.alpha * 0.9;
             ctx.fillStyle = "rgba(10, 14, 10, 0.75)";
             ctx.fillRect(bx3 - 0.5, byTop - 0.5, bw3 + 1, bh3 + 1);
@@ -9085,9 +9108,11 @@ export default function ReplayMotionPlayer({
             /* 바닥은 실제 발자국 그대로(요청: 건물 바닥크기를 캔버스에 맞추기) — 기지를
                1.3배 부풀리던 보정을 걷었다: 바닥 폭이 타일 발자국과 같아야 하고, 높이는
                모델 제 비율이 바닥 폭을 따라 정한다(아래 fitWidth). */
-            /* 애드온은 한 단 크게(지적: 너무 작아 연결 통로만 도드라짐) — 작은 부속
-               모델들이 상자를 덜 채워 왜소했다. */
-            const wTiles = fp2[0] * (shapeKind ? (ADDONS.has(unit) ? 1.35 : 1) : 0.8);
+            /* 애드온의 1.35배 뻥튀기는 걷었다 — "작은 부속 모델이 상자를 덜 채워
+               왜소하다"는 지적을 상자째 키워 때우던 보정인데, 이제 그리기 단계가 잉크
+               폭을 재서 발자국을 채우므로(BLD_FILL_CACHE) 상자는 제 발자국(2×2) 그대로
+               두면 된다. 그대로 두면 부속만 발자국보다 28% 넓게 그려진다. */
+            const wTiles = fp2[0] * (shapeKind ? 1 : 0.8);
             const hTiles = wTiles * ((fp2[1] + (shapeKind ? riseOf(unit) : 0)) / fp2[0]);
             const wFrac = (wTiles / grid.width) * mkK;
             const hFrac = (hTiles / grid.width) * mkK;
