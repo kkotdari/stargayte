@@ -4952,11 +4952,12 @@ type UnitDrawOp = {
 /* 내용물 상자(재지적: 유닛·그림자·선택 고리가 다 안 맞음) — 바닥(y)만이 아니라 실제
    그려진 픽셀의 가로 중심(cx)까지 잰다. 내용물이 16-상자 안에서 치우친 모델은 상자
    중심에 붙인 그림자·링이 몸과 어긋났다. 전 픽셀 스캔, 캐시당 한 번. */
-function contentBox(cv: HTMLCanvasElement): { bot: number; cx: number } {
+function contentBox(cv: HTMLCanvasElement): { bot: number; cx: number; top: number } {
   const c2 = cv.getContext("2d", { willReadFrequently: true });
-  if (!c2 || cv.width === 0 || cv.height === 0) return { bot: cv.height, cx: cv.width / 2 };
+  if (!c2 || cv.width === 0 || cv.height === 0) return { bot: cv.height, cx: cv.width / 2, top: 0 };
   const { data, width, height } = c2.getImageData(0, 0, cv.width, cv.height);
   let bot = 0;
+  let top = height;
   let minX = width;
   let maxX = 0;
   for (let y = height - 1; y >= 0; y -= 1) {
@@ -4964,16 +4965,14 @@ function contentBox(cv: HTMLCanvasElement): { bot: number; cx: number } {
     for (let x = 0; x < width; x += 1) {
       if (data[row + x * 4 + 3] > 10) {
         if (bot === 0) bot = y + 1;
+        if (y < top) top = y;
         if (x < minX) minX = x;
         if (x > maxX) maxX = x;
       }
     }
   }
-  if (bot === 0) return { bot: cv.height, cx: cv.width / 2 };
-  return { bot, cx: (minX + maxX + 1) / 2 };
-}
-function contentBottom(cv: HTMLCanvasElement): number {
-  return contentBox(cv).bot;
+  if (bot === 0) return { bot: cv.height, cx: cv.width / 2, top: 0 };
+  return { bot, cx: (minX + maxX + 1) / 2, top };
 }
 const PATH2D_CACHE = new Map<string, Path2D>();
 const pathOf = (d: string): Path2D => {
@@ -4986,10 +4985,10 @@ const pathOf = (d: string): Path2D => {
    수천 번의 가우시안 블러 합성이라 PC에서도 버벅였다. 같은 (종류·방향·시각·색·크기)
    조합은 한 번만 오프스크린 캔버스에 굽고, 프레임에선 drawImage 한 번으로 찍는다.
    줌 중엔 크기 양자화 칸이 바뀌며 다시 굽지만 멈추면 전부 캐시 적중이다. */
-const SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; bot: number; cx: number }>();
+const SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; bot: number; cx: number; top: number }>();
 function unitSprite(
   op: UnitDrawOp, pxq: number, B: number,
-): { cv: HTMLCanvasElement; pad: number; l: number; bot: number; cx: number } | null {
+): { cv: HTMLCanvasElement; pad: number; l: number; bot: number; cx: number; top: number } | null {
   const rotB = op.rotDeg !== undefined
     ? ((Math.round(op.rotDeg / 22.5) * 22.5) % 360 + 360) % 360 : -1;
   const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
@@ -5024,10 +5023,10 @@ function unitSprite(
 }
 /* 건물 스프라이트(요청: 건물도 병목 감축) — meet(비율 유지) 상자 건물을 같은 방식으로
    굽는다. 뷰박스 밖으로 살짝 삐치는 모델(높은 첨탑 등)을 위해 15% 머리방을 둔다. */
-const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number }>();
+const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number }>();
 function buildingSprite(
   op: UnitDrawOp, sideQ: number, B: number,
-): { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number } | null {
+): { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number } | null {
   const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
   const key = `${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}|${op.color}|${sideQ}|${B.toFixed(2)}`;
   const hit = BLD_SPRITE_CACHE.get(key);
@@ -5051,7 +5050,8 @@ function buildingSprite(
     c2.fill(pathOf(d));
   }
   if (BLD_SPRITE_CACHE.size > 500) BLD_SPRITE_CACHE.clear();
-  const entry = { cv, pad, l, side: sideQ, bot: contentBottom(cv) };
+  const box9 = contentBox(cv);
+  const entry = { cv, pad, l, side: sideQ, bot: box9.bot, top: box9.top };
   BLD_SPRITE_CACHE.set(key, entry);
   return entry;
 }
@@ -5333,9 +5333,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
             const bw3 = Math.max(6, wPx * 0.7 * bScale);
             const bh3 = Math.max(1.8, wPx * 0.05);
             const bx3 = sx - bw3 / 2;
-            // 상자 위 3px — 높은 첨탑 모델과 살짝 겹칠 수 있지만 자리로는 이게 안정적이다.
-            // 표시 위치 낮추기(요청) — 상자 위 3px 띄움을 걷고 상자 머리에 붙인다.
-            const byTop = sy - hPx / 2 - bh3 + 3;
+            /* 머리 바로 위(재재지적: 너무 위) — 그려진 픽셀 꼭대기에 살짝만 띄운다. */
+            const byTop = sy + hPx / 2 - (bspr.pad + sideQ) * k + (bspr.top / B) * k - bh3 - 2;
             ctx.globalAlpha = op.alpha * 0.9;
             ctx.fillStyle = "rgba(10, 14, 10, 0.75)";
             ctx.fillRect(bx3 - 0.5, byTop - 0.5, bw3 + 1, bh3 + 1);
@@ -5465,8 +5464,12 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         const bw2 = Math.max(4, px * 0.95 * hpScale);
         const bh2 = Math.max(1.6, px * 0.09);
         const bx2 = sx - bw2 / 2;
-        // 표시 위치 낮추기(요청) — 0.66 → 0.45.
-        const by2 = sy - px * 0.24 - lift - px * 0.45;
+        /* 머리 바로 위(재재지적: 너무 위) — 실제 그려진 픽셀 꼭대기(contentBox.top)에
+           살짝만 띄운다. */
+        const headY = spr
+          ? sy - px * 0.24 - (spr.pad + pxq / 2) * kU + (spr.top / B) * kU
+          : sy - px * 0.55;
+        const by2 = headY - lift - bh2 - Math.max(1.5, px * 0.04);
         ctx.save();
         ctx.shadowColor = "transparent";
         ctx.globalAlpha = op.alpha * 0.9;
