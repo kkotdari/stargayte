@@ -6241,7 +6241,9 @@ html.scr-light-theme .scr-drawer { border-left-color: rgba(0,0,0,0.12); border-t
       width .26s cubic-bezier(0.16, 1, 0.3, 1),
       height .26s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  html.scr-tabbar-mini .scr-scrolltop {
+  /* 게임 상세(재지적: 탑버튼도 마찬가지 — 탭바가 없으니)도 축소 시 자리로 내려간다. */
+  html.scr-tabbar-mini .scr-scrolltop,
+  body.scr-gamepage-open .scr-scrolltop {
     bottom: calc(var(--scr-float-bottom) + (var(--mobile-footer-h) * 0.72 - 44px) / 2);
     right: 8px;
     width: 44px; height: 44px;
