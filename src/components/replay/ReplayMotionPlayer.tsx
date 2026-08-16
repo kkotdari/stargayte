@@ -4620,6 +4620,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...OUT9.map(([x9, y9]) => [m9 * x9, y9, zAt9(y9, dz)] as [number, number, number]),
         ...IN9.map(([x9, y9]) => [m9 * x9, y9, zAt9(y9, dz)] as [number, number, number]),
       ];
+      /* 두 집게 사이를 금색 판으로 메운다(요청) — 집게 안쪽 곡선을 좌우로 이어 만든
+         바닥판. 집게보다 먼저 그려 사이를 채우고, 두께는 얇게 얹는다. */
+      {
+        const span9: [number, number, number][] = [
+          ...IN9.map(([x9, y9]) => [-x9, y9, zAt9(y9, 0.12)] as [number, number, number]),
+          ...[...IN9].reverse().map(([x9, y9]) => [x9, y9, zAt9(y9, 0.12)] as [number, number, number]),
+        ];
+        const web9 = polyPath3(span9);
+        out.push(...tagKey([[web9, 1, "#d4af37"] as ShapeFace, topFace(web9, 0.14)],
+          depthNow(0, 2.2)));
+      }
       for (const m9 of [-1, 1] as const) {
         const lo9 = ring9(m9, 0);
         const hi9 = ring9(m9, 0.62);
