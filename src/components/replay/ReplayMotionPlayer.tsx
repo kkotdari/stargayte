@@ -5634,17 +5634,13 @@ const shortName = (name: string): string => {
   return out || name;
 };
 
-/* 좌우 동시 보기(요청: PC에서 v1·v2를 좌우로 동시에) — 두 재생기를 한 시계로 묶는
-   신호줄. 주인(master)이 t를 흘리면 따르는(slave) 쪽이 제 시계를 세운 채 받아 적는다. */
-const dualSyncBus = new Map<string, Set<(t: number) => void>>();
-
 /** 경기별 현재 재생 시각(요청: 특정 시간으로 카톡 공유) — 재생기가 제 clockKey로 지금
  *  t를 계속 적어 두면, 공유 버튼이 링크에 &t=로 실어 보낸다. */
 export const playbackClockOf = new Map<string, number>();
 
 export default function ReplayMotionPlayer({
   grid, motion, endSec, bases, teamOfRaw, active = true, winnerTeam, side,
-  onDetailClose, loadUnitTracks, forceEnt, syncKey, syncRole, initialSec, clockKey, shareNode,
+  onDetailClose, loadUnitTracks, initialSec, clockKey, shareNode,
 }: {
   grid: ReplayMapGrid;
   motion: SummaryMotion;
@@ -5675,11 +5671,6 @@ export default function ReplayMotionPlayer({
    *  줄에 '부대/개체' 토글이 선다. 개체 모드는 유닛 층만 태그 단위 트랙으로 바꿔 그리고,
    *  건물·자원·크립은 기존 그대로 둔다. null이 오면(옛 경기·분석 실패) 토글이 알린다. */
   loadUnitTracks?: () => Promise<string | null>;
-  /** 좌우 동시 보기(요청) — true면 뜨자마자 v2를 켜고 토글을 잠근다. */
-  forceEnt?: boolean;
-  /** 동시 보기의 시계 묶음 이름 — 같은 이름의 master가 흘리는 t를 slave가 받아 적는다. */
-  syncKey?: string;
-  syncRole?: "master" | "slave";
   /** 이 시각(초)부터 재생 시작(요청: 카톡 공유 링크의 &t=) — 경기 길이를 넘으면 무시. */
   initialSec?: number;
   /** 현재 재생 시각을 적어 둘 열쇠(경기번호) — 공유 링크가 &t=로 실어 보낸다. */
@@ -5738,27 +5729,13 @@ export default function ReplayMotionPlayer({
   const qCreep = quality >= 2;
   const qOverlap = quality >= 3;
   const qPing = quality >= 4;
-  /* 좌우 동시 보기(요청) — forceEnt면 뜨자마자 v2를 켠다. 시계 묶음(syncKey)의 주인은
-     제 t를 신호줄에 흘리고, 따르는 쪽은 제 시계 없이(active=false로 온다) 받아 적는다. */
+  /* (제거·요청) 좌우 동시 보기(비교) — forceEnt·syncKey·syncRole·신호줄까지 걷었다. */
   useEffect(() => {
     /* v2가 기본(요청: v1 완전 제거의 1단계) — 트랙이 있으면 뜨자마자 v2로 연다.
        트랙이 없는 옛 경기(재분석 전)만 v1로 남는다. 소스 걷어내기는 다음 단계다. */
     if (loadUnitTracks && !entData && entLoad === "idle") void toggleEnt();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [forceEnt, loadUnitTracks]);
-  useEffect(() => {
-    if (!syncKey || syncRole !== "master") return;
-    const subs = dualSyncBus.get(syncKey);
-    if (subs) for (const fn of subs) fn(t);
-  }, [t, syncKey, syncRole]);
-  useEffect(() => {
-    if (!syncKey || syncRole !== "slave") return undefined;
-    let set = dualSyncBus.get(syncKey);
-    if (!set) { set = new Set(); dualSyncBus.set(syncKey, set); }
-    const fn = (nt: number): void => setT(nt);
-    set.add(fn);
-    return () => { set.delete(fn); };
-  }, [syncKey, syncRole]);
+  }, [loadUnitTracks]);
   /* (v1 제거) 토글이 아니라 로더다 — 트랙을 내려받아 켠다. 끄는 길은 없다. */
   const toggleEnt = async (): Promise<void> => {
     if (entData) { setEntMode(true); return; }

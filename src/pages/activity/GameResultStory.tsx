@@ -1,7 +1,4 @@
-import { useContext, useMemo, useState, type MouseEvent, type PointerEvent } from "react";
-import { createPortal } from "react-dom";
-import { useAppStore } from "../../store/appStore";
-import { isAdminRole } from "../../constants/roles";
+import { useContext, useMemo, type MouseEvent, type PointerEvent } from "react";
 import { formatWhen } from "../../utils/date";
 import ReplayMotionPlayer, { type MotionBase, type SummaryMotion } from "../../components/replay/ReplayMotionPlayer";
 import { api } from "../../api/client";
@@ -50,13 +47,6 @@ export default function GameResultStory({
   /* 상세 팝업의 닫기 통로(요청: PC는 게임 결과만 확대창 기본, 기존 상세 미사용) — 상세
      팝업 안에서만 값이 있고, 목록·전체 보기에서는 null이라 예전 그대로다. */
   const detailClose = useContext(GameDetailCloseContext);
-  /* 좌우 동시 보기(요청: PC에서, pk — 1번 회원 — 한 명만 쓰는 검수용) — 1번 회원이거나
-     닉네임 pk면 열고, 운영자도 검수용으로 함께 열어 둔다. 모바일에서는 안 선다. */
-  const me = useAppStore((s) => s.user);
-  const canDual = !!me
-    && (me.id === "1" || me.nickname === "pk" || isAdminRole(me.roles))
-    && typeof window !== "undefined" && window.innerWidth >= 900;
-  const [dualOpen, setDualOpen] = useState(false);
   /* 특정 시간 공유(요청: 카톡 링크로 열면 그 시각부터 재생) — 주소의 &t=<초>는 이
      경기(game 파라미터가 일치할 때)에만 적용한다. 피드의 다른 카드가 같이 점프하면
      안 되니 경기번호·id 둘 다로 맞춰 본다. 첫 마운트에 한 번만 읽는다. */
@@ -200,15 +190,7 @@ export default function GameResultStory({
               {mapName && <span className="scr-story-map-name">{mapName}</span>}
               {minutes !== null && <span className="scr-story-map-dur">{minutes}분</span>}
               {(result === "draw" || o1 !== "win") && winSpan}
-              {/* 좌우 동시 보기 입구(요청) — 운영자·PC에서만 보인다. */}
-              {canDual && (
-                <button
-                  type="button" className="scr-story-dualbtn"
-                  onClick={() => setDualOpen(true)}
-                >
-                  비교
-                </button>
-              )}
+              {/* (제거·요청) 좌우 동시 보기(비교) — v1이 사라져 비교 대상이 없다. */}
             </div>
           );
         })()}
@@ -240,33 +222,6 @@ export default function GameResultStory({
         side={<ActivityComments targetType="gameResult" targetId={gameResult.id} overModal />}
         menu={menu}
       />
-      {/* 좌우 동시 보기(요청) — 왼쪽 v1이 시계의 주인이고, 오른쪽 v2는 제 시계 없이
-          같은 t를 받아 적는다(조종은 왼쪽에서만). 검수용 전체 화면 겹판. */}
-      {dualOpen && storyMap && createPortal(
-        <div className="scr-dualview">
-          <button type="button" className="scr-btn scr-dualview-close" onClick={() => setDualOpen(false)}>
-            닫기
-          </button>
-          <div className="scr-dualview-col">
-            <div className="scr-dualview-cap">v1 — 부대 어림</div>
-            <ReplayMotionPlayer
-              grid={storyMap} motion={EMPTY_MOTION} endSec={endSecVal}
-              bases={bases} teamOfRaw={teamOfRaw} active
-              syncKey={`dual-${gameResult.id}`} syncRole="master"
-            />
-          </div>
-          <div className="scr-dualview-col scr-dualview-slave">
-            <div className="scr-dualview-cap">v2 — 개체 트랙</div>
-            <ReplayMotionPlayer
-              grid={storyMap} motion={EMPTY_MOTION} endSec={endSecVal}
-              bases={bases} teamOfRaw={teamOfRaw} active={false}
-              forceEnt syncKey={`dual-${gameResult.id}`} syncRole="slave"
-              loadUnitTracks={() => api.getGameUnitTracks(gameResult.id).catch(() => null)}
-            />
-          </div>
-        </div>,
-        document.body,
-      )}
     </div>
   );
 
