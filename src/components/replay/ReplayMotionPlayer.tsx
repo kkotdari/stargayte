@@ -9461,8 +9461,23 @@ export default function ReplayMotionPlayer({
         </div>,
         document.body,
       )}
-      {/* 조종간(요청: 두 줄) — 윗줄은 스크러버 하나, 아랫줄에 재생·배속·시간이 선다. */}
-      <div className="scr-motion-bar">
+      {/* 조종간 한 줄(요청: PC·모바일 공통 — [재생 | 탐색바 | 시각], 시각 아래 작은
+          공유 버튼) — 컴팩트하게 여백을 죈다. */}
+      <div className="scr-motion-bar scr-motion-bar-controls">
+        <button
+          type="button" className="scr-motion-play"
+          onClick={() => {
+            if (done) { setT(0); setDone(false); setPlaying(true); return; }
+            setPlaying((v) => !v);
+          }}
+          aria-label={playing ? "일시정지" : "재생"}
+        >
+          {playing
+            ? <Pause size={20} fill="currentColor" />
+            : done
+              ? <RotateCcw size={20} />
+              : <Play size={20} fill="currentColor" />}
+        </button>
         {/* 비제어 탐색바(지적: 드래그가 안 먹고 느림 — 위 rangeRef 주석). step이 없어야
             ×4에서도 손잡이가 툭툭 안 뛴다. --p는 지나온 자리를 채우는 그라데이션 경계다. */}
         <input
@@ -9490,30 +9505,10 @@ export default function ReplayMotionPlayer({
           }}
           aria-label="재생 위치"
         />
-      </div>
-      <div className="scr-motion-bar scr-motion-bar-controls">
-        {/* 차례가 곧 그리드 칸이다(지적: 재생이 줄 가운데, 배속은 왼쪽에 필터처럼) —
-            [배속 | 재생 | 시간]. 재생 버튼을 먼저 적으면 왼쪽 칸에 앉아 버린다. */}
-        {/* 옛 스냅 타임라인의 재생 버튼과 같은 꼴(요청) — 46px 완전 원, 속 채운 삼각형. */}
-        <button
-          type="button" className="scr-motion-play"
-          onClick={() => {
-            if (done) { setT(0); setDone(false); setPlaying(true); return; }
-            setPlaying((v) => !v);
-          }}
-          aria-label={playing ? "일시정지" : "재생"}
-        >
-          {playing
-            ? <Pause size={26} fill="currentColor" />
-            : done
-              ? <RotateCcw size={26} />
-              : <Play size={26} fill="currentColor" />}
-        </button>
-        {/* 진행바 아래 별도 공유(요청: 케밥은 그대로) — 시계 옆 카카오 아이콘. 지금
-            재생 시각이 링크에 &t=로 실려, 받은 쪽은 이 장면부터 본다. */}
+        {/* 시각 위, 공유 아래(요청) — 오른끝 세로 스택. */}
         <span className="scr-motion-clockwrap">
-          {shareNode}
           <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
+          {shareNode}
         </span>
       </div>
       {/* (삭제·지적: PC 타임스탬프 중복) — 기둥의 타임스탬프·등록자는 걷었다. 시각은

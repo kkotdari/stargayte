@@ -11227,17 +11227,17 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-btngroup { display: inline-flex; gap: 4px; align-items: center; }
 /* 아랫줄(요청: 버튼 전부 정원, 재생은 예전처럼 크고 가운데) — [배속 | 재생 | 시간] 세 칸
    그리드로, 재생이 줄의 정중앙에 선다. */
+/* 한 줄 조종간(요청: PC·모바일 공통 — 재생·탐색바·시각을 한 줄로). */
 .scr-motion-bar-controls {
-  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  display: flex; align-items: center; gap: 8px;
 }
-.scr-motion-bar-controls .scr-motion-speeds { justify-self: start; }
-/* 재생은 줄의 정중앙, 시계는 우측 끝(요청) — 배속이 보기 줄로 이사해 첫 칸이 비면
-   자동 배치가 재생을 1열(왼쪽)로 밀어 버린다. 열을 못박는다. */
-.scr-motion-bar-controls .scr-motion-play { grid-column: 2; }
+.scr-motion-bar-controls .scr-motion-range { flex: 1 1 auto; min-width: 0; }
+
 /* 옛 재생 버튼(.scr-story-play)과 같은 꼴(요청) — 46px 완전 원. */
+/* 컴팩트(요청: 버튼 상하좌우 패딩 다 줄이기) — 46px 원 → 30px. */
 .scr-motion-play {
-  justify-self: center; flex-shrink: 0;
-  width: 46px; height: 46px; min-width: 46px; border-radius: 50%;
+  flex-shrink: 0;
+  width: 30px; height: 30px; min-width: 30px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
   border: none; background: transparent; color: var(--text); cursor: pointer; padding: 0;
   -webkit-tap-highlight-color: transparent;
@@ -11245,22 +11245,17 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 @media (hover: hover) {
   .scr-motion-play:hover { color: var(--text); background: var(--lit-hover-bg); box-shadow: var(--lit-hover-glow); }
 }
-.scr-motion-bar-controls .scr-motion-clock { justify-self: end; }
-/* 시계 옆 공유(요청: 진행바 아래 별도 버튼) — 오른쪽 칸에 [공유 | 시계]로 나란히. */
-/* 절대배치(재지적: 라벨 버튼이 커지자 3열 최소폭이 1열보다 넓어져 재생이 왼쪽으로
-   밀림) — 시계 묶음을 흐름에서 빼 오른쪽 끝에 붙이면 재생은 늘 정중앙이다. */
-.scr-motion-bar-controls { position: relative; }
+/* 시각 위·공유 아래(요청) — 오른끝 세로 스택. */
 .scr-motion-clockwrap {
-  position: absolute; right: 0; top: 50%; transform: translateY(-50%);
-  display: inline-flex; align-items: center; gap: 10px;
+  flex-shrink: 0; display: inline-flex; flex-direction: column;
+  align-items: flex-end; gap: 2px;
 }
 .scr-motion-clockwrap .scr-kakao-icon-btn { color: var(--muted); }
-/* 라벨 단 공유(요청: "현재 장면 공유") — 노란 카카오 버튼을 조종간 키에 맞게 줄인다. */
-/* 글자 확대·버튼 축소(요청) — 높이·여백은 줄이고 글꼴은 키운다. */
+/* 시각 아래 작게(요청) — 컴팩트: 높이 18px, 여백 최소, 글꼴 10px. */
 .scr-motion-clockwrap .scr-kakao-share-btn {
-  height: 22px; padding: 0 7px; font-size: 12px; gap: 4px; white-space: nowrap;
+  height: 18px; padding: 0 5px; font-size: 10px; gap: 3px; white-space: nowrap;
 }
-.scr-motion-clockwrap .scr-kakao-share-btn svg { width: 13px; height: 13px; }
+.scr-motion-clockwrap .scr-kakao-share-btn svg { width: 11px; height: 11px; }
 .scr-motion-btn {
   min-width: 28px; height: 22px; padding: 0 6px; border-radius: var(--radius-sm);
   border: 1px solid var(--line-hair); background: transparent; color: var(--muted);
@@ -11585,20 +11580,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 }
 /* 조종부 두 줄(배속은 보기 줄로 — 재요청: 다른 라디오와 동등하게) — 재생(1.5배) / 시간,
    각각 가운데 정렬. */
+/* PC도 같은 한 줄(요청: PC·모바일 공통) — 자리는 옛 탐색바처럼 맵 아래(3열)라
+   탐색바가 맵 폭을 그대로 쓴다. 속 배치는 기본(플렉스 한 줄) 그대로다. */
 .scr-motion-wide .scr-motion-bar-controls {
-  grid-column: 1 / 3; grid-row: 5; align-self: end;
-  grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto;
-  grid-template-areas: "play" "clock";
-  row-gap: 6px;
-}
-/* 재생 버튼 1.5배(요청) — 46px 원 → 69px, 아이콘도 같은 비율. */
-.scr-motion-wide .scr-motion-play {
-  grid-area: play; justify-self: center;
-  width: 69px; height: 69px; min-width: 69px;
-}
-.scr-motion-wide .scr-motion-play svg { width: 39px; height: 39px; }
-.scr-motion-wide .scr-motion-clockwrap {
-  position: static; transform: none; grid-area: clock; justify-self: center; align-self: center;
+  grid-column: 3; grid-row: 6;
 }
 .scr-motion-wide .scr-motion-toolrow { display: contents; }
 .scr-motion-wide .scr-motion-toolrow-mid { display: none; }
