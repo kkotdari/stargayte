@@ -640,6 +640,8 @@ function spirePillar(o: {
   segs?: number; sides?: number;
   leanX?: number; leanY?: number; curveX?: number; curveY?: number;
   hold?: number; fill?: string;
+  /** 앞(+y)·뒤(-y)를 향한 옆면의 색을 따로 줄 때(요청: 배는 상아색, 등은 갈색). */
+  fillFront?: string; fillBack?: string;
 }): ShapeFace[] {
   const z0 = o.z0 ?? 0;
   const segs = Math.max(1, o.segs ?? 3);
@@ -682,7 +684,10 @@ function spirePillar(o: {
     }).sort((q, w) => q.f - w.f);
     for (const wl of walls) {
       const fl = faceLight(wl.nx, wl.ny, 0.3);
-      out.push(bodyFace(wl.d), ...(fl.visible ? fl.face(wl.d) : [sideFace(wl.d, 0.42)]));
+      // 앞·뒤 색을 따로 받으면 면 법선의 y 부호로 갈라 칠한다(요청).
+      const side = wl.ny >= 0 ? o.fillFront : o.fillBack;
+      out.push(side ? [wl.d, 1, side] as ShapeFace : bodyFace(wl.d),
+        ...(fl.visible ? fl.face(wl.d) : [sideFace(wl.d, 0.42)]));
     }
   }
   if (tipW > 0.01) {
@@ -4536,12 +4541,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...spirePillar({
         x: 0, y: -0.35, z0: 0.06, h: 0.62, w: 0.62, tipW: 0.12,
         segs: 5, sides: 8, hold: 0.15, leanY: -4.4, curveY: -0.5,
-        fill: "#c68a62",
+        fill: "#c68a62", fillFront: IVORY, fillBack: "#6b4732",
       }),
+      // 꺾임점 덩이 — 두 마디 이음매의 틈을 막는다(지적: 하반신이 비쳐 보임).
+      ...paintBase(domeFaces3(0, -0.35, 0.95, 0.9, 0.06), "#6b4732"),
       ...spirePillar({
         x: 0, y: -0.35, z0: 0.06, h: 3.54, w: 0.92, tipW: 1.05,
         segs: 3, sides: 8, hold: 0.25, leanY: 0.35,
-        fill: "#c68a62",
+        fill: "#c68a62", fillFront: IVORY, fillBack: "#6b4732",
       }),
       // 꼬리 등의 자잘한 짙은 상아색 가시들(요청).
       ...paintBase(hornFaces(0.25, -1.5, 1.15, 0.5, -1.85, 2, 0.28), IVORY_DEEP),
