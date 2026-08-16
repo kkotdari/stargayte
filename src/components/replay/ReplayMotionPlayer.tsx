@@ -4614,13 +4614,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 앞(+y)으로 갈수록 z가 내려간다 — tan30 ≈ 0.577. 굽 전체를 앞으로 크게
          내민다(재지적: 말굽과 앞다리 같이 앞으로). */
       const FWD9 = 1.9;
-      /* 뒤를 45도 든다(재지적) — 앞 양 끝은 낮게 두고 뒤 볼록부가 tan45(=1)만큼
-         솟는다. 앞이 들리던 기울기를 반대로 세운 셈이다. */
-      const zOf = (y9: number): number => 3.05 - (y9 - 0.5 - FWD9);
+      // 평평하게(재지적) — 기울기를 걷고 한 높이에 눕힌다.
+      const zOf = (): number => 3.7;
       const P9 = (r: number, u: number, dz: number): [number, number, number] => {
         const th9 = Math.PI * u;
         const y9 = 0.5 + FWD9 - Math.sin(th9) * r * 0.85;
-        return [Math.cos(th9) * r, y9, zOf(y9) + dz];
+        return [Math.cos(th9) * r, y9, zOf() + dz];
       };
       const ring9 = (dz: number): string => {
         const pts9: [number, number, number][] = [];
@@ -4645,7 +4644,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 앞다리 — 말굽 양 끝에서 그대로 이어지고, 굵기도 굽 너비(3.15-1.95=1.2)에
          맞춘다(재지적: 두 팔도 말굽 너비만큼 두껍게). */
       for (const m9 of [-1, 1] as const) {
-        const rz9 = zOf(0.5 + FWD9) + 0.72;
+        const rz9 = zOf() + 0.72;
         out.push(...tagKey(paintBase([
           ...rodFaces(m9 * 2.55, 0.5 + FWD9, rz9, m9 * 2.9, 2.9 + FWD9, rz9 - 1.35, 1.2),
           ...hornFaces(m9 * 2.9, 2.9 + FWD9, rz9 - 1.35, m9 * 1.9, 5.3 + FWD9, rz9 - 2.7, 1.05),
