@@ -1263,7 +1263,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const h = 1.1;
     const a = 4;
     const b = 3.1;
-    const run = 3.2;
+    // 사방 발판 너비 축소(요청) — 3.2 → 2.4.
+    const run = 2.4;
     const plateau = polyPath3([[-a, b, h], [a, b, h], [a, -b, h], [-a, -b, h]]);
     const front = polyPath3([[-a, b, h], [a, b, h], [a, b + run, 0], [-a, b + run, 0]]);
     const back = polyPath3([[-a, -b, h], [a, -b, h], [a, -b - run, 0], [-a, -b - run, 0]]);
@@ -1283,17 +1284,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push([groundEllipse(wx, wy, 1.9, 2.4), 0.55, "#a9ecf2"] as ShapeFace);
     out.push(...hornFaces(-3.5, 0, 0.8, -1.3, -0.3, 9.6, 3));
     out.push(...hornFaces(3.5, 0, 0.8, 1.3, -0.3, 9.6, 3));
-    /* 앞뒤 발판에 뿔(요청·사진) — 경사로 끝에서 바깥·위로 솟는 갈고리 한 쌍씩.
-       제 깊이를 달아 앞 뿔은 몸 앞, 뒤 뿔은 몸 뒤로 간다. */
+    /* 발판 뿔(재지적) — 앞뒤 발판 한가운데에서 곧게 솟아 끝이 살짝 안쪽(건물 쪽)으로
+       휜다. 길이는 건물 높이(9.6)의 반쯤. 두 마디로 굽혀 휨을 낸다. */
     for (const sy9 of [1, -1] as const) {
-      for (const sx9 of [-1, 1] as const) {
-        const rx9 = sx9 * 2.5;
-        const ry9 = sy9 * (b + run * 0.55);
-        out.push(...tagKey(
-          hornFaces(rx9, ry9, 0.1, sx9 * 3.5, sy9 * (b + run * 0.95), 3.4, 0.95),
-          depthNow(rx9, ry9),
-        ));
-      }
+      const ry9 = sy9 * (b + run * 0.5);
+      out.push(...tagKey([
+        ...hornFaces(0, ry9, 0.1, 0, ry9 - sy9 * 0.25, 3.3, 0.85),
+        ...hornFaces(0, ry9 - sy9 * 0.25, 3.3, 0, ry9 - sy9 * 1.5, 5.1, 0.6),
+      ], depthNow(0, ry9)));
     }
     return out;
   },
