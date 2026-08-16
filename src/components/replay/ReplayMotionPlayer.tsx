@@ -2749,19 +2749,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       [barrelTop, 1, GUNMETAL, 45] as ShapeFace,
       topFace(barrelTop, 0.18),
       [polyPath3([[-0.7, 0.7, 3.6], [0.7, 0.7, 3.6], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]), 1, GUNMETAL] as ShapeFace,
-      ...([1, -1] as const).flatMap((m2): ShapeFace[] => {
-        const sl = faceLight(m2, 0);
-        if (!sl.visible) return [];
-        const d = polyPath3([
-          [m2 * 0.7, 0.7, 4], [m2 * 0.7, 2.9, 6.9], [m2 * 0.7, 2.9, 6.5], [m2 * 0.7, 0.7, 3.6],
-        ]);
-        return [[d, 1, GUNMETAL] as ShapeFace, ...sl.face(d)];
-      }),
+      /* 좌우 벽은 둘 다 그리되 뒤 향한 쪽부터(재지적: 면이 비치고 서로 가림) —
+         하나를 걸러내면 그 자리로 뒤가 비친다. */
+      ...([1, -1] as [1, -1])
+        .sort((q2: number, w2: number) => facingRatio(q2, 0) - facingRatio(w2, 0))
+        .flatMap((m2: 1 | -1): ShapeFace[] => {
+          const sl = faceLight(m2, 0);
+          const d = polyPath3([
+            [m2 * 0.7, 0.7, 4], [m2 * 0.7, 2.9, 6.9], [m2 * 0.7, 2.9, 6.5], [m2 * 0.7, 0.7, 3.6],
+          ]);
+          return [[d, 1, GUNMETAL] as ShapeFace, ...(sl.visible ? sl.face(d) : [sideFace(d, 0.42)])];
+        }),
       ...((): ShapeFace[] => {
         const mz = faceLight(0, 0.71, 0.71);
-        if (!mz.visible) return [];
         const d = polyPath3([[-0.7, 2.9, 6.9], [0.7, 2.9, 6.9], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]);
-        return [[d, 1, GUNMETAL] as ShapeFace, capFace(d, 0.4)];
+        // 포구 단면도 늘 그린다(재지적: 걸러내면 그 틈으로 비친다).
+        return [[d, 1, GUNMETAL] as ShapeFace, ...(mz.visible ? [capFace(d, 0.4)] : [capFace(d, 0.5)])];
       })(),
       /* 포탑 받침은 맨 나중에(재수리: 앞에 두면 무깊이 포신 면들이 깊이 40을 물려받아
          결국 위에 그려졌다 — zsorted는 무깊이 면에 직전 깊이를 준다). */
@@ -2798,19 +2801,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       [barrelTop, 1, GUNMETAL, 45] as ShapeFace,
       topFace(barrelTop, 0.18),
       [polyPath3([[-0.7, 0.7, 3.6], [0.7, 0.7, 3.6], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]), 1, GUNMETAL] as ShapeFace,
-      ...([1, -1] as const).flatMap((m2): ShapeFace[] => {
-        const sl = faceLight(m2, 0);
-        if (!sl.visible) return [];
-        const d = polyPath3([
-          [m2 * 0.7, 0.7, 4], [m2 * 0.7, 2.9, 6.9], [m2 * 0.7, 2.9, 6.5], [m2 * 0.7, 0.7, 3.6],
-        ]);
-        return [[d, 1, GUNMETAL] as ShapeFace, ...sl.face(d)];
-      }),
+      /* 좌우 벽은 둘 다 그리되 뒤 향한 쪽부터(재지적: 면이 비치고 서로 가림) —
+         하나를 걸러내면 그 자리로 뒤가 비친다. */
+      ...([1, -1] as [1, -1])
+        .sort((q2: number, w2: number) => facingRatio(q2, 0) - facingRatio(w2, 0))
+        .flatMap((m2: 1 | -1): ShapeFace[] => {
+          const sl = faceLight(m2, 0);
+          const d = polyPath3([
+            [m2 * 0.7, 0.7, 4], [m2 * 0.7, 2.9, 6.9], [m2 * 0.7, 2.9, 6.5], [m2 * 0.7, 0.7, 3.6],
+          ]);
+          return [[d, 1, GUNMETAL] as ShapeFace, ...(sl.visible ? sl.face(d) : [sideFace(d, 0.42)])];
+        }),
       ...((): ShapeFace[] => {
         const mz = faceLight(0, 0.71, 0.71);
-        if (!mz.visible) return [];
         const d = polyPath3([[-0.7, 2.9, 6.9], [0.7, 2.9, 6.9], [0.7, 2.9, 6.5], [-0.7, 2.9, 6.5]]);
-        return [[d, 1, GUNMETAL] as ShapeFace, capFace(d, 0.4)];
+        // 포구 단면도 늘 그린다(재지적: 걸러내면 그 틈으로 비친다).
+        return [[d, 1, GUNMETAL] as ShapeFace, ...(mz.visible ? [capFace(d, 0.4)] : [capFace(d, 0.5)])];
       })(),
       // 포탑 받침은 맨 나중에(재수리: zsorted 무깊이 상속 탓 — 위 합본과 같은 이유).
       ...tagKey(frustumFaces3(0, -0.7, 2.3, 3.2, 1.7, 2.4, 1.6, 2.5), 40),
@@ -4555,13 +4561,25 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const wingAt = (z9: number): [number, number, number][] => [
         [-1.6, -5.1, z9], [1.6, -5.1, z9], [1.2, -4.25, z9], [-1.2, -4.25, z9],
       ];
+      /* 옆면은 뒤를 향한 것부터(재지적: 면들이 서로 가리고 비친다) — 무깊이 면이라
+         배열 순서가 곧 그리는 순서다. 각 옆면의 바깥 법선을 재 뒤→앞으로 정렬하면
+         앞면이 늘 위에 온다. */
       const slab = (lo9: [number, number, number][], hi9: [number, number, number][],
         topOp: number): ShapeFace[] => {
         const f9: ShapeFace[] = [bodyFace(polyPath3(lo9)), sideFace(polyPath3(lo9), 0.26)];
-        for (let i9 = 0; i9 < lo9.length; i9 += 1) {
+        const cX9 = lo9.reduce((q9, w9) => q9 + w9[0], 0) / lo9.length;
+        const cY9 = lo9.reduce((q9, w9) => q9 + w9[1], 0) / lo9.length;
+        const walls9 = lo9.map((_, i9) => {
           const j9 = (i9 + 1) % lo9.length;
-          f9.push(bodyFace(polyPath3([lo9[i9], lo9[j9], hi9[j9], hi9[i9]])));
-        }
+          const mx9 = (lo9[i9][0] + lo9[j9][0]) / 2 - cX9;
+          const my9 = (lo9[i9][1] + lo9[j9][1]) / 2 - cY9;
+          const ml9 = Math.hypot(mx9, my9) || 1;
+          return {
+            d: polyPath3([lo9[i9], lo9[j9], hi9[j9], hi9[i9]]),
+            f: facingRatio(mx9 / ml9, my9 / ml9),
+          };
+        }).sort((q9, w9) => q9.f - w9.f);
+        for (const w9 of walls9) f9.push(bodyFace(w9.d), sideFace(w9.d, w9.f >= 0 ? 0.2 : 0.4));
         f9.push(bodyFace(polyPath3(hi9)), topFace(polyPath3(hi9), topOp));
         return f9;
       };
