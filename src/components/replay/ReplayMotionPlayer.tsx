@@ -1742,7 +1742,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 동그란 렌즈(재지적: 럭비공 꼴) — 좌우로 뾰족하던 두 점 곡선 대신 벽 평면에
          그린 원. 가로·세로 반지름을 같게 두고 열두 점으로 매끈하게 잇는다. */
       const lensPath = (r9: number): string => {
-        const { pt } = wallFrame(0, 3.55, 2.9, r9, r9);
+        const { pt } = wallFrame(0, 3.55, 1.9, r9, r9); // 렌즈 자리 더 아래로(재지적)
         const pts9 = Array.from({ length: 12 }, (_, i9) => pt((i9 / 12) * Math.PI * 2));
         return `M${pts9[0][0]} ${pts9[0][1]}`
           + pts9.slice(1).map((q9) => ` L${q9[0]} ${q9[1]}`).join("") + " Z";
