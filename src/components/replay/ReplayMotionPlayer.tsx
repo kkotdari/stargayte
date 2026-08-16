@@ -5930,7 +5930,7 @@ export default function ReplayMotionPlayer({
   /* v2 교전 멈춤(지적: 어택땅 중 만나면 멈추고 싸워야 하는데 그냥 감) — 싸움이 시작된
      자리를 기억해, 적이 곁에 있는 동안 거기 세운다. 적이 사라지면(죽거나 멀어지면)
      기억을 걷고 다시 걷는다. 시간을 되감으면(t가 기억보다 앞) 기억을 버린다. */
-  const engageHoldRef = useRef(new Map<string, { x: number; y: number; t0: number; tLast: number }>());
+  const engageHoldRef = useRef(new Map<string, { x: number; y: number; t0: number; tLast: number; adv: number }>());
   /* 교전으로 멈춘 시간의 합(지적: 어택한 경우 교전이 끝나고 살아 있으면 어택 지점까지
      이동해야 — 다른 명령으로 덮이지 않는 한) — 멈춘 만큼 걸음 시계를 미뤄, 교전이
      끝나면 순간이동 없이 멈춘 자리에서 이어 걷는다. */
@@ -8700,32 +8700,61 @@ export default function ReplayMotionPlayer({
           let pos = rawPos;
           if (fighting && !uAir) {
             const mem = engageHoldRef.current.get(holdKey);
-            const base = mem && t >= mem.t0 && t - mem.tLast < 2.5
-              ? mem : { x: rawPos.x, y: rawPos.y, t0: t, tLast: t };
-            if (base === mem) mem.tLast = t;
-            else engageHoldRef.current.set(holdKey, base);
-            /* 반격 접근(지적: 공격받으면 가서 때리고) — 멈춘 자리에서 상대 쪽으로
-               사정거리(어림 2.2타일)까지 다가붙는다. 상대가 움직이면 따라 겨눈다. */
-            /* 근접 유닛은 몸이 닿을 때까지(지적: 질럿이 가까이 가지 않고 멀리서 싸움) —
-               당김 상한 2.5타일이 근접까지 6~7타일 밖에 세워 뒀다. 근접은 교전 시작
-               순간부터 걸음 속도(2.6타일/초)로 계속 파고들어 유닛엔 1.1타일, 건물엔
-               중심 기준 2타일(가장자리 접촉)에서 선다. 원거리는 종전대로 2.5 상한 —
-               멀리서 쏘는 게 제 모습이다. */
+            /* 되감기만 리셋(기획서 1-C — 수리: 2.5초 유실 조건이 파고든 진행(adv)을
+               통째로 날려 접촉→후퇴 요요를 만들었다. 깜빡임·컬링 공백은 아래 시계
+               (dt9, 프레임당 1.5초 상한)로 흡수한다). */
+            let base = mem && t >= mem.t0 ? mem : null;
+            if (!base) {
+              base = { x: rawPos.x, y: rawPos.y, t0: t, tLast: t, adv: 0 };
+              engageHoldRef.current.set(holdKey, base);
+            }
+            const dt9 = Math.max(0, Math.min(1.5, t - base.tLast));
+            base.tLast = t;
+            /* 홀드는 후퇴만 막는다(수리: 교전 시작 자리에 박제돼 원자취가 표적으로
+               전진해도 화면은 제자리였다) — 원자취가 표적에 더 가깝게 와 있으면
+               기준점을 따라 옮기고, 그만큼 파고든 몫(adv)에서 뺀다. */
+            const gNow = Math.hypot(foe.bx - rawPos.x, foe.by - rawPos.y);
+            const gBase0 = Math.hypot(foe.bx - base.x, foe.by - base.y);
+            if (gNow < gBase0) {
+              base.adv = Math.max(0, base.adv - (gBase0 - gNow));
+              base.x = rawPos.x;
+              base.y = rawPos.y;
+            }
             const gap = Math.hypot(foe.bx - base.x, foe.by - base.y);
-            const melee9 = MELEE_UNITS.has(drawUnit);
-            const stopR9 = melee9 ? (foe.bld ? 2.0 : 1.1) : 2.2;
-            const pull = melee9
-              ? Math.min(Math.max(0, gap - stopR9), 2.5 + Math.max(0, t - base.t0) * 2.6)
-              : Math.min(2.5, Math.max(0, gap - stopR9));
+            // 무명 개체(k="")는 보병 모형으로 그려지므로 근접으로 취급(기획서 1-A).
+            const melee9 = drawUnit === "" || MELEE_UNITS.has(drawUnit);
+            /* 정지 거리(기획서 1-C) — 건물은 발자국 사각형 가장자리 + 0.3타일(수리:
+               중심 고정 2.0은 4×3 세로변을 파고들고 모서리에 못 닿았고, 성큰을
+               nearestFoe로 잡으면 1.1로 발자국 안까지 들어갔다). */
+            const maxAdv = ((): number => {
+              if (foe.bld) {
+                const fp = FOOTPRINT[foe.k ?? ""] ?? [3, 2];
+                const ddx = Math.max(0, Math.abs(foe.bx - base.x) - fp[0] / 2);
+                const ddy = Math.max(0, Math.abs(foe.by - base.y) - fp[1] / 2);
+                return Math.max(0, Math.hypot(ddx, ddy) - 0.3);
+              }
+              return Math.max(0, gap - (melee9 ? 1.1 : 2.2));
+            })();
+            if (melee9) {
+              /* 걸음 속도로 적분(수리: 2.6 고정 리터럴 → 유닛 속도표. 진입 즉시
+                 2.5타일 당김 체감은 유지). 속업 반영은 원자취(walkTrack) 몫이라
+                 여기선 기본 속도표만 쓴다. */
+              const spd9 = Math.max(0.5, UNIT_SPEED[drawUnit] ?? 3.2);
+              base.adv = Math.min(Math.max(base.adv, 2.5), base.adv + dt9 * spd9);
+            } else {
+              base.adv = 2.5;
+            }
+            const pull = Math.min(base.adv, maxAdv);
             pos = gap > 0.01
               ? { ...rawPos, x: base.x + ((foe.bx - base.x) / gap) * pull, y: base.y + ((foe.by - base.y) / gap) * pull }
               : { ...rawPos, x: base.x, y: base.y };
           } else {
             const mem = engageHoldRef.current.get(holdKey);
-            if (mem && t >= mem.t0) {
-              /* 교전이 막 끝났다 — 멈춘 시간을 걸음 지연에 넘겨 이어 걷게 한다.
-                 찰나(0.4초 미만)의 스침은 지연으로 안 쌓는다(지적: 플리커) — 잘게
-                 쌓인 지연이 걸음 시계를 앞뒤로 흔들었다. */
+            /* 깜빡임 유예(기획서 1-C): 1.2초 안에 다시 붙으면 진행(adv)을 보존한다 —
+               즉시 삭제가 재교전마다 t0·진행을 리셋해 요요를 만들었다. */
+            if (mem && t >= mem.t0 && t - mem.tLast >= 1.2) {
+              /* 교전이 끝났다 — 멈춘 시간을 걸음 지연에 넘겨 이어 걷게 한다.
+                 찰나(0.4초 미만)의 스침은 지연으로 안 쌓는다(지적: 플리커). */
               if (mem.tLast - mem.t0 > 0.4) {
                 engageDelayRef.current.set(holdKey, { delay: walkDelay + (mem.tLast - mem.t0), since: t });
               }
