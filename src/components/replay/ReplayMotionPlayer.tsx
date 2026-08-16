@@ -4484,39 +4484,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const out: ShapeFace[] = []; // 꼬리 제거(재재지적)
     /* 포드는 캡슐 한 덩이(정정: 앞 뭉치가 본체와 떨어져 보였고 검정이 끼었다) —
        양 끝이 둥근 외곽선 하나로 그려 이음매도 어두운 단면도 없다. */
+    /* 포드는 모델 공간 관으로(재지적: 사선에서 실린더가 안 보임 + 추진체와 높이가
+       어긋남) — 화면 좌표 캡슐은 깊이 키가 없어 등판에 가려졌고, 화면에서 위로 민
+       만큼 모델 높이도 알 수 없었다. tubeFaces는 제 깊이를 달고 추진체와 같은
+       좌표계를 쓴다. 위 회색 광택 원은 제거(요청). */
+    const POD_Z = 4.2;
     const pod = (tx: number): void => {
-      /* 얇고 짧게, 판 기준 뒤 절반에(재지적) — 앞 끝을 판 가운데(y 0.4)까지만 오게
-         물리고 뒤로 뺀다. */
-      const [ax2, ay2] = project(tx, -2.9, 3.4);
-      const [bx2, by2] = project(tx, 0.4, 3.4);
-      const r = 0.82;
-      const zr = r * 0.9;
-      const dx2 = bx2 - ax2;
-      const dy2 = by2 - ay2;
-      const L = Math.hypot(dx2, dy2) || 1;
-      const nx2 = (-dy2 / L) * r;
-      const ny2 = (dx2 / L) * r;
-      /* 끝 마감은 A 호가 아니라 축 방향으로 내민 Q 곡선(수리: 이 대각 방향에서 호의
-         굽는 쪽이 뒤집혀 몸 안으로 파고들며 별처럼 뚫려 보였다 — 지적). */
-      const ux = (dx2 / L) * r * 1.25;
-      const uy = (dy2 / L) * r * 1.25;
-      // 실린더 은색(요청).
-      out.push([`M${ax2 + nx2} ${ay2 + ny2 - zr} L${bx2 + nx2} ${by2 + ny2 - zr}`
-        + ` Q${bx2 + ux} ${by2 + uy - zr} ${bx2 - nx2} ${by2 - ny2 - zr}`
-        + ` L${ax2 - nx2} ${ay2 - ny2 - zr}`
-        + ` Q${ax2 - ux} ${ay2 - uy - zr} ${ax2 + nx2} ${ay2 + ny2 - zr} Z`, 1, "#c9ced6"] as ShapeFace);
-      /* 광택은 축 따라 긴 띠(지적: 실린더 위 동그라미가 자리 이상) — 화면 고정 타원은
-         요잉과 무관하게 떠 보였다. 포드 등마루를 따라 도는 가늘고 긴 줄로 바꾼다. */
-      const s1x = ax2 + dx2 * 0.15;
-      const s1y = ay2 + dy2 * 0.15 - zr;
-      const s2x = ax2 + dx2 * 0.85;
-      const s2y = ay2 + dy2 * 0.85 - zr;
-      const hpx = (-dy2 / L) * 0.3;
-      const hpy = (dx2 / L) * 0.3;
-      out.push(topFace(
-        `M${s1x + hpx} ${s1y + hpy} L${s2x + hpx} ${s2y + hpy}`
-        + ` L${s2x - hpx} ${s2y - hpy} L${s1x - hpx} ${s1y - hpy} Z`, 0.2,
-      ));
+      out.push(...tagKey(paintBase(tubeFaces(tx, -2.9, tx, 0.4, 0.82, POD_Z), "#c9ced6"),
+        depthNow(tx, -1.25) + 1.6));
     };
     // 폭 축소(지적: 몸체 폭 줄이기) — 포드 자리 ±3.1 → ±2.6.
     pod(-2.6);
@@ -4560,7 +4535,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     if (facingRatio(0, -1) > -0.55) {
       /* 몸 뒤로 확실히 빼고 붙박이 키로 얹는다(재지적: 추진기 안 보임) — 포드
          꽁무니(y -2.9)보다 뒤에 세운다. */
-      const jets: [number, number][] = [[-0.85, 5.6], [0.85, 5.6], [-2.6, 4.15], [2.6, 4.15]];
+      // 포드 추진체는 실린더 중심 높이에 맞춘다(재지적).
+      const jets: [number, number][] = [[-0.85, 5.6], [0.85, 5.6], [-2.6, POD_Z], [2.6, POD_Z]];
       for (const [tx, tz] of jets) {
         out.push(...tagKey(paintBase(tubeFaces(tx, -2.95, tx, -3.85, 0.82, tz), "#9ba3ad"), 30));
       }
