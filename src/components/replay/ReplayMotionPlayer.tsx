@@ -1474,12 +1474,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...rodFaces(-0.7, -0.4, 9.5, 1, 1.3, 8.7, 0.9),
         ...rodFaces(1, 1.3, 8.7, 1.7, 2.1, 6.9, 0.8),
       ];
-      // 끝 집게 — 두 갈래로 벌어져 아래를 문다.
-      arm.push(...hornFaces(1.7, 2.1, 6.9, 2.5, 2.9, 5.6, 0.5));
-      arm.push(...hornFaces(1.7, 2.1, 6.9, 1, 2.9, 5.6, 0.5));
+      /* 끝 집게 — 크게, 손가락 셋으로(요청). 손목 덩이에서 세 갈래가 벌어져 아래를
+         문다: 바깥 둘과 안쪽 하나. */
+      arm.push(...domeFaces3(1.75, 2.2, 0.62, 0.5, 6.5));
+      arm.push(...hornFaces(1.75, 2.2, 6.7, 3.05, 3.15, 5.05, 0.72));
+      arm.push(...hornFaces(1.75, 2.2, 6.7, 0.5, 3.15, 5.05, 0.72));
+      arm.push(...hornFaces(1.75, 2.2, 6.7, 1.75, 1.35, 5.1, 0.66));
       // 청록 발광 — 꼭대기 구슬과 집게 사이 심.
       arm.push(...paintBase(domeFaces3(-2.1, -1.9, 0.72, 0.62, 8.3), "#3bd8c2"));
-      arm.push([groundEllipse(...project(1.75, 2.55, 6.3), 0.42, 0.42), 0.6, "#a9ecf2"] as ShapeFace);
+      arm.push([groundEllipse(...project(1.75, 2.35, 6.55), 0.5, 0.5), 0.6, "#a9ecf2"] as ShapeFace);
       out.push(...tagKey(arm, 30));
     }
     return out;
