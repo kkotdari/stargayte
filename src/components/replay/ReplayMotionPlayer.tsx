@@ -1362,9 +1362,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        청록 띠가 점점이 박힌다. 자체 그림자는 없다(공용 groundShadow가 맡는다). */
     const out: ShapeFace[] = [];
     // 수정 기둥이 기준 — 허리는 길이의 딱 절반이고 링이 거기 걸린다.
-    // 지상에서 띄운 높이 반으로(요청) — 아래 끝 0.4 → 0.2.
-    const PY_B = 0.2;
-    const PY_T = 11.4;
+    /* 지면에 앉힌다(재재지적: 아직도 높이 떠 있음) — 아래 끝을 0으로 붙이고 기둥
+       자체를 짧게 줄여 링·갈고리까지 통째로 내린다. */
+    const PY_B = 0;
+    const PY_T = 9;
     const PY_M = (PY_B + PY_T) / 2;
     const [cx, cy] = project(0, 0, PY_M);
     const rxo = 5.5;
@@ -1383,8 +1384,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const bx = Math.sin(a) * 4.95;
       const by = Math.cos(a) * 4.95;
       return tagKey([
-        ...hornFaces(bx, by, PY_M - 0.5, bx * 0.72, by * 0.72, PY_M + 3.6, 1.05),
-        ...hornFaces(bx, by, PY_M + 0.5, bx * 0.72, by * 0.72, PY_M - 3.6, 1.05),
+        ...hornFaces(bx, by, PY_M - 0.4, bx * 0.72, by * 0.72, PY_M + 3, 1.05),
+        ...hornFaces(bx, by, PY_M + 0.4, bx * 0.72, by * 0.72, PY_M - 3.4, 1.05),
       ], depthNow(bx, by) + 1);
     };
     // 링에 박힌 청록 띠 — 갈고리 사이사이.
@@ -1732,12 +1733,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        납작한 볼록 렌즈: 좌우 끝이 뾰족한 렌즈꼴 판. 자리만 몸을 따라 돌고 옆으로
        돌수록 폭이 줄며 뒤에선 사라지는 규칙은 그대로. */
     const lensFace = facingRatio(0, 1);
-    if (lensFace > 0.15) {
-      const k = 0.45 + 0.55 * Math.min(1, (lensFace - 0.15) / 0.35);
-      const [ex, ey] = project(0, 2.4, 2.1);
-      const w = 2.6 * k;
-      out.push([`M${ex - w} ${ey} Q${ex} ${ey - 1.7} ${ex + w} ${ey} Q${ex} ${ey + 1.7} ${ex - w} ${ey} Z`, 0.6, "#a9ecf2"] as ShapeFace);
-      out.push([`M${ex - w * 0.55} ${ey - 0.2} Q${ex} ${ey - 1} ${ex + w * 0.55} ${ey - 0.2} Q${ex} ${ey + 0.3} ${ex - w * 0.55} ${ey - 0.2} Z`, 0.5, "#e6fbff"] as ShapeFace);
+    if (lensFace > 0.12) {
+      /* 정면 입구 렌즈(재지적) — 몸 앞면(반지름 5.6)에 바짝 붙이고 더 크게. 라이트
+         사이언 반투명, 안에 밝은 속심. 앞이 보일 때만 그린다. */
+      const k = 0.5 + 0.5 * Math.min(1, (lensFace - 0.12) / 0.35);
+      const [ex, ey] = project(0, 3.6, 2.5);
+      const w = 3.3 * k;
+      out.push(...tagKey([
+        [`M${ex - w} ${ey} Q${ex} ${ey - 2.1} ${ex + w} ${ey} Q${ex} ${ey + 2.1} ${ex - w} ${ey} Z`,
+          0.62, "#a9ecf2"] as ShapeFace,
+        [`M${ex - w * 0.58} ${ey - 0.15} Q${ex} ${ey - 1.25} ${ex + w * 0.58} ${ey - 0.15}`
+          + ` Q${ex} ${ey + 0.5} ${ex - w * 0.58} ${ey - 0.15} Z`, 0.55, "#e6fbff"] as ShapeFace,
+      ], depthNow(0, 3.6) + 1));
     }
     return out;
   },
