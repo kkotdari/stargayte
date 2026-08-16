@@ -626,6 +626,25 @@ const IVORY_DEEP = "#cdc0a0";
 const GUNMETAL = "#4b5058";
 /* 탱크 캐터필러 금속색(요청: 짙은 회은색). */
 const TRACK_STEEL = "#5c636d";
+/** 두 점을 잇는 뿔(요청: 가시·뿔도 공용 기둥으로) — spirePillar를 '뿌리 → 끝'
+ *  방향으로 세워, 밑동이 굵고 끝이 뾰족한 뿔을 만든다. 살짝 휘게 하려면 bow를 준다. */
+function spikeHorn(
+  bx: number, by: number, bz: number, tx: number, ty: number, tz: number,
+  w: number, fill?: string, sides = 6, bow = 0,
+): ShapeFace[] {
+  return spirePillar({
+    x: 0, y: 0, h: 1, w: w * 0.62, tipW: 0.02,
+    segs: 5, sides, hold: 0.12, fill,
+    path: (t9: number): [number, number, number] => {
+      const s9 = Math.sin(Math.PI * t9) * bow;
+      return [
+        bx + (tx - bx) * t9,
+        by + (ty - by) * t9 + s9,
+        bz + (tz - bz) * t9 + s9 * 0.35,
+      ];
+    },
+  });
+}
 /** 꺾임 있는 뿔기둥(요청: 여러 곳에 쓰는 형태라 이름을 붙여 공용화) — 다각 단면의
  *  마디를 이어 세우고, 마디마다 축을 조금씩 꺾으며 굵기를 줄여 끝을 뾰족하게 한다.
  *  게이트 발판 뿔·미네랄 결정·건물 첨탑처럼 "밑은 기둥, 위는 뿔"인 것들이 같은 자를
@@ -698,7 +717,7 @@ function spirePillar(o: {
       return [ax + ux * cs + vx * sn, ay + uy * cs + vy * sn, az + uz * cs + vz * sn] as [number, number, number];
     });
   };
-  const out: ShapeFace[] = [bodyFace(polyPath3(ring(0)))];
+  const out: ShapeFace[] = [];
   for (let s2 = 0; s2 < segs; s2 += 1) {
     const lo = ring(s2 / segs);
     const hi = ring((s2 + 1) / segs);
@@ -722,6 +741,10 @@ function spirePillar(o: {
         ...(fl.visible ? fl.face(wl.d) : [sideFace(wl.d, 0.42)]));
     }
   }
+  /* 끝 단면은 옆면 뒤에(지적: 속 단면이 비쳐 보임) — 먼저 그리면 기운 기둥에서
+     안쪽 면이 앞으로 나와 뚫린 것처럼 보였다. 위·아래 뚜껑을 맨 나중에 덮는다. */
+  const bot = polyPath3(ring(0));
+  out.push(bodyFace(bot), sideFace(bot, 0.3));
   if (tipW > 0.01) {
     const cap = polyPath3(ring(1));
     out.push(bodyFace(cap), topFace(cap, 0.18));
@@ -959,8 +982,8 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
     /* 꼭대기 볏(실물) — 뒤로 벌어져 굽는 볏 뿔 한 쌍. 둔덕보다 먼저 그려 밑동이
        가려진다(지적: 뿔이 비쳐 보였다). */
     // 위 볏 뿔 — 해처리·레어 검정, 하이브 진한 상아(spikeColor).
-    out.push(...paintBase(hornFaces(-1.1, -0.7, 5.7, -3.2, -1.6, 9.4, 1.3), spikeColor));
-    out.push(...paintBase(hornFaces(1.1, -0.6, 5.7, 3.3, -1.4, 9.6, 1.4), spikeColor));
+    out.push(...spikeHorn(-1.1, -0.7, 5.7, -3.2, -1.6, 9.4, 1.3, spikeColor, 6, -0.5));
+    out.push(...spikeHorn(1.1, -0.6, 5.7, 3.3, -1.4, 9.6, 1.4, spikeColor, 6, -0.5));
     /* 본 기둥 — 뒤집힌 밥그릇(돔)이 아니라 후지산 둔덕(지적): 위는 좁게 잘리고 옆구리는
        가파르다가 바닥에서 완만하게 벌어진다. 회전 대칭이라 요잉 불변. */
     /* 둔덕을 스파이어 기둥으로(요청) — 후지산 꼴: 넓은 밑동에서 위로 갈수록 좁아지되
@@ -972,11 +995,12 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
     const MND_H = 6.6;
     const MND_RB = 5.9;
     const MND_RT = 1.4;
-    const MND_P = 0.55;
+    // 경사 반전(재지적) — 위는 수직에 가깝고 아래로 갈수록 눕는다: taper > 1.
+    const MND_P = 2.2;
     const moundR = (t9: number): number => MND_RT + (MND_RB - MND_RT) * (1 - t9) ** MND_P;
     out.push(...tagKey(spirePillar({
       x: 0, y: 0, z0: 0, h: MND_H, w: MND_RB, tipW: MND_RT,
-      segs: 8, sides: 16, hold: 0, taper: MND_P,
+      segs: 9, sides: 16, hold: 0, taper: MND_P,
     }), 0.2));
     const [mx, my] = project(0, 0, 6.35);
     out.push(sideFace(`M${mx - 1.5} ${my} L${mx + 1.5} ${my} Q${mx + 1.4} ${my + 1} ${mx} ${my + 1.15} Q${mx - 1.4} ${my + 1} ${mx - 1.5} ${my} Z`, 0.35));
@@ -1026,10 +1050,10 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
     }
     // 바닥 갈고리 덩굴(실물) — 다리 사이로 기다가 끝이 말려 올라간다.
     // 옆 갈고리 가시 — spikeColor(하이브는 진한 상아, 재지적).
-    out.push(...paintBase(hornFaces(4.2, 4.2, 0.5, 6.6, 6, 0.9, 0.7), spikeColor));
-    out.push(...paintBase(hornFaces(6.6, 6, 0.9, 7.4, 6.6, 2.4, 0.5), spikeColor));
-    out.push(...paintBase(hornFaces(-5.6, 2, 0.5, -7.8, 2.8, 0.9, 0.7), spikeColor));
-    out.push(...paintBase(hornFaces(-7.8, 2.8, 0.9, -8.6, 3, 2.2, 0.5), spikeColor));
+    out.push(...spikeHorn(4.2, 4.2, 0.5, 6.6, 6, 0.9, 0.7, spikeColor));
+    out.push(...spikeHorn(6.6, 6, 0.9, 7.4, 6.6, 2.4, 0.5, spikeColor));
+    out.push(...spikeHorn(-5.6, 2, 0.5, -7.8, 2.8, 0.9, 0.7, spikeColor));
+    out.push(...spikeHorn(-7.8, 2.8, 0.9, -8.6, 3, 2.2, 0.5, spikeColor));
     return out;
 }
 
@@ -1437,8 +1461,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...tagKey([
       // 가운데 소환 구체도 연시안 반투명(요청) — 코어 구슬과 한 벌.
       [groundEllipse(wx, wy, 1.9, 2.4), 0.55, "#a9ecf2"] as ShapeFace,
-      ...hornFaces(-3.5, 0, 0.8, -1.3, -0.3, 9.6, 3),
-      ...hornFaces(3.5, 0, 0.8, 1.3, -0.3, 9.6, 3),
+      /* 어금니 탑을 4각 기반 기둥뿔로(요청) — 밑동이 굵고 안쪽으로 기울며 끝이
+         뾰족해진다. 단면이 축에 수직이라 기울어도 안 눌린다. */
+      ...spirePillar({
+        x: -3.5, y: 0, z0: 0.8, h: 8.8, w: 1.5, tipW: 0.12,
+        segs: 5, sides: 4, hold: 0.12, leanX: 2.2, leanY: -0.3, taper: 1.5,
+      }),
+      ...spirePillar({
+        x: 3.5, y: 0, z0: 0.8, h: 8.8, w: 1.5, tipW: 0.12,
+        segs: 5, sides: 4, hold: 0.12, leanX: -2.2, leanY: -0.3, taper: 1.5,
+      }),
     ], 30));
     /* 발판 뿔(요청) — 앞뒤 경사로 한가운데에서 솟아 끝이 안쪽으로 휜다. 아래는 기둥,
        위는 뿔인 공용 도형(spirePillar). */
@@ -2809,10 +2841,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   lair: () => [
     // 뿔은 동굴 입구 하나 건너 하나(지적) — 다리 각 -170·-40·80의 입구에서 솟는다.
     // 뒤 입구(-170) 뿔은 둔덕이 가리도록 먼저(지적: 비쳐 보였다). 뿔은 검회색(요청).
-    ...paintBase(hornFaces(-1.15, -6.5, 0.9, -1.4, -7.7, 9, 1.5), "#1b1e23"),
+    ...spikeHorn(-1.15, -6.5, 0.9, -1.4, -7.7, 9, 1.5, "#1b1e23", 6, -0.7),
     ...SHAPE_BUILDERS.hatchery(),
-    ...paintBase(hornFaces(-4.25, 5.05, 0.9, -5, 6, 10.4, 1.7), "#1b1e23"),
-    ...paintBase(hornFaces(6.5, 1.15, 1, 7.7, 1.4, 11, 1.9), "#1b1e23"),
+    ...spikeHorn(-4.25, 5.05, 0.9, -5, 6, 10.4, 1.7, "#1b1e23", 6, -0.8),
+    ...spikeHorn(6.5, 1.15, 1, 7.7, 1.4, 11, 1.9, "#1b1e23", 6, -0.8),
   ],
   /* 하이브 — 더 길고 굵은 뿔 셋(뿔 등에 가시들, 요청) + 앞 컬. */
   hive: () => {
@@ -2829,7 +2861,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       if (hi === 1) out.push(...hatcheryMoundFaces(IVORY_DEEP, IVORY_DEEP)); // 옆띠·위·옆 가시 진한 상아(재지적)
       hi += 1;
       // 뿔은 황토색, 가시는 상아색(요청).
-      out.push(...paintBase(hornFaces(bx, by, bz, tx, ty, tz, w), "#b3854a"));
+      out.push(...spikeHorn(bx, by, bz, tx, ty, tz, w, "#b3854a", 6, -0.9));
       /* 뿔 등의 가시(요청, 정정: 안쪽을 향한다) — 뿔 길이를 따라 서너 개가 본 건물
          쪽으로 돋는다. */
       for (const t of [0.35, 0.55, 0.75]) {
