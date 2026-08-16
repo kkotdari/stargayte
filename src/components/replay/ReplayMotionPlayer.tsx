@@ -3351,13 +3351,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     };
     const [mx2, my2] = project(0, 2.5, 3.9);
     return [
-      // 굽는 몸통 — 날개 밑에서 앞-아래로 마디지며 내려간다. 몸체 갈색(요청).
-      ...paintBase([
-        ...domeFaces3(0, 0, 1, 0.85, 6.4),
-        ...domeFaces3(0, 0.8, 0.9, 0.75, 5.6),
-        ...domeFaces3(0, 1.6, 0.8, 0.65, 4.8),
-        ...hornFaces(0, 2, 4.6, 0, 2.6, 3.7, 0.7),
-      ], "#6b4732"),
+      /* 몸통을 디바우러식 겹비늘로(요청) — 머리 반구 뒤 바닥에서 마디들이 아래로
+         이어지고, 아래로 갈수록 앞으로 심하게 말린다. 앞 마디가 뒤를 덮는 고정 키. */
+      ...((): ShapeFace[] => {
+        const segs9: [number, number, number, number][] = [ // [y, 반지름, 높이, 바닥 z]
+          [1.85, 0.34, 0.34, 3.5], [1.25, 0.5, 0.46, 4.05],
+          [0.72, 0.66, 0.6, 4.6], [0.3, 0.85, 0.75, 5.15],
+        ];
+        const out9: ShapeFace[] = [];
+        segs9.forEach(([sy9, r9, h9, z9], i9) => {
+          out9.push(...tagKey(paintBase(domeFaces3(0, sy9, r9, h9, z9), "#6b4732"), 10 + i9 * 2));
+        });
+        // 머리 반구 — 마디보다 앞·위.
+        out9.push(...tagKey(paintBase(domeFaces3(0, -0.35, 1.05, 0.95, 5.9), "#6b4732"), 18));
+        return out9;
+      })(),
       capFace(groundEllipse(mx2, my2, 0.42, 0.3), 0.45),
       // 꼬리 — 뒤로 처진다. 더 진한 갈색(재지적).
       ...paintBase(hornFaces(0, -0.6, 6.6, 0, -2.2, 5.8, 0.5), "#6b4732"),
