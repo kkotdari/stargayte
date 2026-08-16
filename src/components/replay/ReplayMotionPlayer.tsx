@@ -4089,19 +4089,26 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const sT: [number, number, number] = [kneX, kneY, 4.9 + ws9 * 1.732];
       const sL: [number, number, number] = [kneX - nx * ws9, kneY - ny * ws9, 4.9];
       const sR: [number, number, number] = [kneX + nx * ws9, kneY + ny * ws9, 4.9];
-      const foot: [number, number, number] = [dx * 4.05, dy * 4.05, 0];
+      /* 하지는 절두 삼각뿔(재재지적: 아직 평평) — 발끝을 한 점이 아니라 작은 삼각
+         단면으로 끊어, 세 옆면이 사다리꼴이 되고 발바닥 면까지 생겨 부피가 선다. */
+      const fw9 = 0.34;
+      const fT: [number, number, number] = [dx * 4.05, dy * 4.05, fw9 * 1.732];
+      const fL: [number, number, number] = [dx * 4.05 - nx * fw9, dy * 4.05 - ny * fw9, 0];
+      const fR: [number, number, number] = [dx * 4.05 + nx * fw9, dy * 4.05 + ny * fw9, 0];
       const thighR = polyPath3([rH, rK, brK, brH]);
       const thighL = polyPath3([rH, rK, blK, blH]);
       const thighCap = polyPath3([rK, brK, blK]);
-      const shinBot = polyPath3([sL, sR, foot]);
-      const shinR = polyPath3([sT, sR, foot]);
-      const shinL = polyPath3([sT, sL, foot]);
+      const shinBot = polyPath3([sL, sR, fR, fL]);
+      const shinR = polyPath3([sT, sR, fR, fT]);
+      const shinL = polyPath3([sT, sL, fL, fT]);
+      const shinCap = polyPath3([fT, fR, fL]);
       /* 하지 입체감(재지적: 아직 평평) — 세 면의 음영을 크게 벌리고 무릎 단면을
          덮개로 얹어 삼각뿔의 모서리가 읽히게 한다. */
       return tagKey(paintBase([
         bodyFace(shinBot), sideFace(shinBot, 0.42),
         bodyFace(shinR), sideFace(shinR, 0.3),
         bodyFace(shinL), topFace(shinL, 0.24),
+        bodyFace(shinCap), capFace(shinCap, 0.38),
         bodyFace(polyPath3([sT, sR, sL])), capFace(polyPath3([sT, sR, sL]), 0.32),
         bodyFace(thighR), sideFace(thighR, 0.2),
         bodyFace(thighL), topFace(thighL, 0.15),
