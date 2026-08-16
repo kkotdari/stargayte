@@ -1739,18 +1739,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 벽에 수직으로 붙은 렌즈(재지적: 지금은 지면과 평행) — 벽 평면(wallFrame)에
          그려 몸이 돌면 렌즈도 벽과 함께 눕고 기울어진다. 좌우 끝이 뾰족한 렌즈꼴. */
       const k = 0.5 + 0.5 * Math.min(1, (lensFace - 0.12) / 0.35);
-      const lensPath = (rx9: number, rz9: number, bulge: number): string => {
-        const { pt } = wallFrame(0, 3.55, 2.9, rx9, rz9);
-        const p0 = pt(0);
-        const p2 = pt(Math.PI);
-        const up = pt(Math.PI / 2, 1, bulge);
-        const dn = pt(-Math.PI / 2, 1, bulge);
-        return `M${p0[0]} ${p0[1]} Q${up[0]} ${up[1]} ${p2[0]} ${p2[1]}`
-          + ` Q${dn[0]} ${dn[1]} ${p0[0]} ${p0[1]} Z`;
+      /* 동그란 렌즈(재지적: 럭비공 꼴) — 좌우로 뾰족하던 두 점 곡선 대신 벽 평면에
+         그린 원. 가로·세로 반지름을 같게 두고 열두 점으로 매끈하게 잇는다. */
+      const lensPath = (r9: number): string => {
+        const { pt } = wallFrame(0, 3.55, 2.9, r9, r9);
+        const pts9 = Array.from({ length: 12 }, (_, i9) => pt((i9 / 12) * Math.PI * 2));
+        return `M${pts9[0][0]} ${pts9[0][1]}`
+          + pts9.slice(1).map((q9) => ` L${q9[0]} ${q9[1]}`).join("") + " Z";
       };
       out.push(...tagKey([
-        [lensPath(3.2 * k, 1.9, 1.35), 0.62, "#a9ecf2"] as ShapeFace,
-        [lensPath(1.85 * k, 1.05, 1.3), 0.55, "#e6fbff"] as ShapeFace,
+        [lensPath(2.35 * k), 0.62, "#a9ecf2"] as ShapeFace,
+        [lensPath(1.35 * k), 0.55, "#e6fbff"] as ShapeFace,
       ], depthNow(0, 3.55) + 1));
     }
     return out;
