@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import { cx } from "../../utils/format";
 
 interface PillTabsProps<T extends string> {
@@ -5,6 +6,9 @@ interface PillTabsProps<T extends string> {
   value: T;
   onChange: (value: T) => void;
   "aria-label": string;
+  /** 내용 폭 칸(요청: 재생기 라디오의 옵션 간 갭 축소) — 균등폭 대신 라벨만큼만
+   *  차지한다. 인디케이터는 균등폭 가정이 깨지므로 실제 DOM 위치를 잰다. */
+  fit?: boolean;
 }
 
 // 라디오 선택을 슬라이딩 알약 인디케이터로 보여주는 공용 세그먼트 컨트롤 — 필터창(새
@@ -17,18 +21,34 @@ interface PillTabsProps<T extends string> {
 // 항상 "균등폭"이라고 가정하고 계산하므로 그 칸에서만 알약이 버튼 가운데에 안 맞아
 // 보였다(실제로 지적받은 문제 — "활성/정지가 가운데가 안맞음"). minmax(0, 1fr)로
 // content 기반 최소폭을 없애 라벨 길이와 무관하게 모든 칸이 진짜 균등폭이 되게 한다.
-export default function PillTabs<T extends string>({ options, value, onChange, ...rest }: PillTabsProps<T>) {
+export default function PillTabs<T extends string>({ options, value, onChange, fit = false, ...rest }: PillTabsProps<T>) {
   const index = Math.max(0, options.findIndex((o) => o.value === value));
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [ind, setInd] = useState<{ left: number; width: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!fit) return;
+    const el = wrapRef.current?.querySelector<HTMLButtonElement>(".scr-pill-tab-btn-active");
+    if (el) setInd({ left: el.offsetLeft, width: el.offsetWidth });
+  }, [fit, value, options.length]);
   return (
     <div
+      ref={wrapRef}
       className="scr-pill-tabs"
       role="tablist"
       aria-label={rest["aria-label"]}
-      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+      style={{
+        gridTemplateColumns: fit
+          ? `repeat(${options.length}, max-content)`
+          : `repeat(${options.length}, minmax(0, 1fr))`,
+      }}
     >
       <span
         className="scr-pill-tabs-indicator"
-        style={{ width: `calc((100% - 2px) / ${options.length})`, transform: `translateX(${index * 100}%)` }}
+        style={fit
+          ? ind
+            ? { width: ind.width, left: ind.left, transform: "none" }
+            : { opacity: 0 }
+          : { width: `calc((100% - 2px) / ${options.length})`, transform: `translateX(${index * 100}%)` }}
       />
       {options.map((o) => (
         <button

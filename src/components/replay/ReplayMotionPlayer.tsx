@@ -9352,6 +9352,7 @@ export default function ReplayMotionPlayer({
             value={String(quality)}
             onChange={(v) => setQuality(Number(v))}
             aria-label="성능"
+            fit
           />
         </span>
         <span className="scr-motion-radio">
@@ -9408,6 +9409,7 @@ export default function ReplayMotionPlayer({
               value={clickFx ? "on" : "off"}
               onChange={(v) => setClickFx(v === "on")}
               aria-label="마우스 조작 표시"
+              fit
             />
           </span>
         )}
@@ -9419,6 +9421,7 @@ export default function ReplayMotionPlayer({
             value={String(speed)}
             onChange={(v) => setSpeed(SPEEDS.find((s) => String(s) === v) ?? SPEEDS[0])}
             aria-label="배속"
+            fit
           />
         </span>
 

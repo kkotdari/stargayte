@@ -11202,6 +11202,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-light-theme .scr-motion-radio .scr-pill-tabs { background: rgba(0, 0, 0, 0.06); }
 /* 탭 너비 축소(요청) — 알약 속 여백을 줄여 각 탭이 좁아지고 줄 사이 갭이 넉넉해진다. */
 .scr-motion-radio .scr-pill-tab-btn { font-size: var(--fs-micro); padding: 0 4px; }
+/* 옵션 간 갭 축소(재지적: 성능·마우스 조작·배속) — 진범은 stretch: 라벨("마우스 조작
+   표시")이 알약보다 넓으면 알약이 라벨 폭까지 늘어나고, 균등 칸이 그 폭을 나눠 가져
+   옵션이 벌어졌다. 알약을 내용 폭으로 두면 균등 칸(가장 넓은 라벨 × N)은 유지돼
+   인디케이터 계산도 그대로다. */
+.scr-motion-radio { align-items: flex-start; }
 .scr-motion-radio .scr-pill-tab-btn:not(.scr-pill-tab-btn-active) { color: var(--muted); }
 @media (hover: hover) {
   .scr-motion-radio .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }
@@ -11286,13 +11291,24 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-sharerow { display: flex; justify-content: flex-end; margin-top: 2px; }
 .scr-motion-wide .scr-motion-sharerow { grid-column: 3; }
 /* 시각 아래 작게(요청) — 컴팩트: 높이 18px, 여백 최소, 글꼴 10px. */
-/* 위아래 패딩 더 축소(재재지적) — 공용 .scr-btn의 min-height가 height를 이겨 통통했다.
-   min-height를 풀고 17px로 납작하게. */
+/* 라이팅 테마 버튼으로(재지적: 노란 카카오 버튼이 이상해 보임) — 라디오 알약과 같은
+   유리 채움 + 옅은 테두리의 둥근 네모. 호버엔 라이팅 글로우. min-height는 공용
+   .scr-btn이 이겨 통통해지므로 푼다. */
 .scr-motion-sharerow .scr-kakao-share-btn {
-  height: 17px; min-height: 0; padding: 0 7px; font-size: 11px; gap: 3px;
+  height: 22px; min-height: 0; padding: 0 9px; font-size: 11px; gap: 4px;
   white-space: nowrap; line-height: 1;
+  background: rgba(255, 255, 255, 0.08); color: var(--text);
+  border: 1px solid var(--line-hair); border-radius: 8px;
 }
-.scr-motion-sharerow .scr-kakao-share-btn svg { width: 11px; height: 11px; }
+.scr-light-theme .scr-motion-sharerow .scr-kakao-share-btn {
+  background: rgba(0, 0, 0, 0.06); color: var(--text);
+}
+.scr-motion-sharerow .scr-kakao-share-btn svg { width: 11px; height: 11px; color: currentColor; }
+@media (hover: hover) {
+  .scr-motion-sharerow .scr-kakao-share-btn:hover {
+    background: var(--lit-hover-bg); box-shadow: var(--lit-hover-glow); filter: none;
+  }
+}
 .scr-motion-btn {
   min-width: 28px; height: 22px; padding: 0 6px; border-radius: var(--radius-sm);
   border: 1px solid var(--line-hair); background: transparent; color: var(--muted);
