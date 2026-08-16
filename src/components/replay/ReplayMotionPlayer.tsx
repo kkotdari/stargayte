@@ -1395,18 +1395,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 실물 점검(스프라이트 시트) — 게이트는 돛 하나가 아니라 마주 기운 어금니 탑
        한 쌍이 사이를 띄우고 문을 이룬다. 사이엔 소환 빛. */
     const [wx, wy] = project(0, 0.1, 3.6);
-    // 가운데 소환 구체도 연시안 반투명(요청) — 코어 구슬과 한 벌.
-    out.push([groundEllipse(wx, wy, 1.9, 2.4), 0.55, "#a9ecf2"] as ShapeFace);
-    out.push(...hornFaces(-3.5, 0, 0.8, -1.3, -0.3, 9.6, 3));
-    out.push(...hornFaces(3.5, 0, 0.8, 1.3, -0.3, 9.6, 3));
+    /* 탑·구체는 경사로 위 얹힘(지적: 발판에 기둥이 가려짐) — 경사로가 제 깊이를
+       달면서 앞 경사로가 탑을 덮었다. 지붕 규칙으로 붙박이 큰 키를 준다. */
+    out.push(...tagKey([
+      // 가운데 소환 구체도 연시안 반투명(요청) — 코어 구슬과 한 벌.
+      [groundEllipse(wx, wy, 1.9, 2.4), 0.55, "#a9ecf2"] as ShapeFace,
+      ...hornFaces(-3.5, 0, 0.8, -1.3, -0.3, 9.6, 3),
+      ...hornFaces(3.5, 0, 0.8, 1.3, -0.3, 9.6, 3),
+    ], 30));
     /* 발판 뿔(요청) — 앞뒤 경사로 한가운데에서 솟아 끝이 안쪽으로 휜다. 아래는 기둥,
        위는 뿔인 공용 도형(spirePillar). */
     for (const sy9 of [1, -1] as const) {
       const ry9 = sy9 * (b + run * 0.5);
-      out.push(...spirePillar({
+      out.push(...tagKey(spirePillar({
         x: 0, y: ry9, z0: 0.1, h: 5.1, w: 0.72, tipW: 0,
         segs: 4, sides: 6, curveY: -sy9 * 1.4, hold: 0.5,
-      }));
+      }), 28 + depthNow(0, ry9)));
     }
     return out;
   },
