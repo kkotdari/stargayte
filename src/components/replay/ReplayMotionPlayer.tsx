@@ -1946,16 +1946,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          두께를 준다. */
       ...((): ShapeFace[] => {
         const N9 = 12;
-        const halfAt = (y9: number): number => 1.9 + 2.6 * (Math.abs(y9) / 4.6) ** 1.5;
+        /* 양 끝의 뾰족한 모서리를 깎는다(요청) — 폭이 끝까지 계속 벌어지면 뿔처럼
+           튀어나와 위 부품(반원판·돔) 밖으로 삐친다. 끝 15% 구간에서 도로 좁혀
+           모따기한 것처럼 마감한다. */
+        const XE9 = 4.3;
+        const halfAt = (v9: number): number => {
+          const t9 = Math.min(1, Math.abs(v9) / XE9);
+          const base9 = 1.85 + 2.35 * t9 ** 1.3;
+          return base9 * (t9 > 0.85 ? 1 - ((t9 - 0.85) / 0.15) * 0.42 : 1);
+        };
         // 허리 축 교환(재지적) — 90도 요잉 뒤에도 같은 방향으로 잘록하게.
         const rim9 = (z9: number): [number, number, number][] => {
           const pts9: [number, number, number][] = [];
           for (let i9 = 0; i9 <= N9; i9 += 1) {
-            const x9 = -4.6 + (9.2 * i9) / N9;
+            const x9 = -XE9 + (XE9 * 2 * i9) / N9;
             pts9.push([-0.2 + x9, 0.4 + halfAt(x9), z9]);
           }
           for (let i9 = N9; i9 >= 0; i9 -= 1) {
-            const x9 = -4.6 + (9.2 * i9) / N9;
+            const x9 = -XE9 + (XE9 * 2 * i9) / N9;
             pts9.push([-0.2 + x9, 0.4 - halfAt(x9), z9]);
           }
           return pts9;
