@@ -5432,8 +5432,11 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
   .scr-light-theme .scr-v2-toolbar-title::before {
     background-image: url("/images/logo/logo_black.png");
   }
-  /* 경기번호 폰트 축소(재지적) — 기본 규칙(두 클래스, 소스 뒤쪽)을 세 겹으로 이긴다. */
-  .scr-v2-toolbar-title .scr-activity-crumb-leaf.scr-activity-crumb-no { font-size: var(--fs-9); }
+  /* 경기번호 — 글자 크기는 원래(fs-caption)대로 두고 폭만 줄인다(재재지적: 너무
+     작다): 넓은 고정폭 숫자의 자간을 좁혀 14자리가 덜 벌어지게. */
+  .scr-v2-toolbar-title .scr-activity-crumb-leaf.scr-activity-crumb-no {
+    letter-spacing: -0.07em;
+  }
   .scr-header-inner { padding: 10px 12px; gap: 12px; justify-content: center; }
   /* 우측 버튼 묶음(.scr-user)은 모바일에서 자식이 전부 숨김인데 margin-left:auto가 남아
      justify-content:center를 무력화했다(지적: 가로 가운데가 안 됨) — 묶음째 숨긴다. */
