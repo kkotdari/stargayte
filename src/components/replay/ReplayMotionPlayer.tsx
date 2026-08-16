@@ -1970,16 +1970,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         };
         const lo9 = rim9(0);
         const hi9 = rim9(1.1);
+        /* 옆면은 걸러내지 않는다(지적: 각도에 따라 안 보임) — visible로 빼면 그 자리로
+           뒤가 비친다. 전부 그리되 뒤 향한 면부터 깔아 앞면이 위에 오게 정렬한다. */
         const f9: ShapeFace[] = [bodyFace(polyPath3(lo9))];
-        for (let i9 = 0; i9 < lo9.length; i9 += 1) {
+        const walls9 = lo9.map((_, i9) => {
           const j9 = (i9 + 1) % lo9.length;
           const mx9 = (lo9[i9][0] + lo9[j9][0]) / 2 + 0.2;
           const my9 = (lo9[i9][1] + lo9[j9][1]) / 2 - 0.4;
           const ml9 = Math.hypot(mx9, my9) || 1;
-          const fl9 = faceLight(mx9 / ml9, my9 / ml9, 0.3);
-          if (!fl9.visible) continue;
-          const d9 = polyPath3([lo9[i9], lo9[j9], hi9[j9], hi9[i9]]);
-          f9.push(bodyFace(d9), ...fl9.face(d9));
+          return {
+            d: polyPath3([lo9[i9], lo9[j9], hi9[j9], hi9[i9]]),
+            nx: mx9 / ml9,
+            ny: my9 / ml9,
+            f: facingRatio(mx9 / ml9, my9 / ml9),
+          };
+        }).sort((q9, w9) => q9.f - w9.f);
+        for (const w9 of walls9) {
+          const fl9 = faceLight(w9.nx, w9.ny, 0.3);
+          f9.push(bodyFace(w9.d), ...(fl9.visible ? fl9.face(w9.d) : [sideFace(w9.d, 0.4)]));
         }
         f9.push(bodyFace(polyPath3(hi9)), topFace(polyPath3(hi9), 0.1));
         return tagKey(f9, depthNow(-0.2, 0.4) + 1.1);
