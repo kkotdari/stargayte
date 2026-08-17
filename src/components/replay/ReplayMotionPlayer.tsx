@@ -1527,78 +1527,71 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 게이트웨이(실물 점검) — 낮은 사방 경사로 마당 위에 마주 기운 어금니 탑 한 쌍이
      사이를 띄워 문을 이루고, 그 사이에 소환 빛이 선다. */
   gate: () => {
-    /* 대(臺)는 제거하고 사방 경사로만 입체로(요청) — 가운데 평평한 판 없이, 네
-       경사로가 각자 두께를 가진 쐐기로 서서 안쪽 높은 변끼리 맞물린다. */
+    /* 발판은 사다리꼴 경사로 넷이 아니라 8각 판 하나(요청) — 위아래 두 팔각형을
+       둘레 벽으로 봉합한 두툼한 판이다. 벽은 뒤에서 앞으로 정렬해 그린다. */
     const h = 1.4;
-    const a = 3;
-    const b = 2.33;
-    const run = 2.4;
-    const th = 0.95; // 경사로 두께(지적: 옆면이 잘 안 보임 — 두껍게)
     const out: ShapeFace[] = [];
-    /* 경사로 하나 — 안쪽 높은 변(w 반폭, z h)에서 바깥 낮은 변(w*0.88, z 0)으로.
-       윗면·아랫면과 둘레 옆면으로 두께를 준다. dir는 바깥으로 뻗는 방향. */
-    const ramp = (dx9: number, dy9: number, inner: number, w9: number): ShapeFace[] => {
-      const nx9 = -dy9;
-      const ny9 = dx9;
-      const top9: [number, number, number][] = [
-        [dx9 * inner + nx9 * w9, dy9 * inner + ny9 * w9, h],
-        [dx9 * inner - nx9 * w9, dy9 * inner - ny9 * w9, h],
-        [dx9 * (inner + run) - nx9 * w9 * 0.88, dy9 * (inner + run) - ny9 * w9 * 0.88, 0.1],
-        [dx9 * (inner + run) + nx9 * w9 * 0.88, dy9 * (inner + run) + ny9 * w9 * 0.88, 0.1],
-      ];
-      const bot9 = top9.map(([x9, y9, z9]) => [x9, y9, Math.max(0, z9 - th)] as [number, number, number]);
-      const f9: ShapeFace[] = [bodyFace(polyPath3(bot9))];
-      const walls9 = top9.map((_, i9) => {
-        const j9 = (i9 + 1) % 4;
-        const mx9 = (top9[i9][0] + top9[j9][0]) / 2;
-        const my9 = (top9[i9][1] + top9[j9][1]) / 2;
+    {
+      const RX9 = 4.6;
+      const RY9 = 3.8;
+      const oct9 = (z9: number): [number, number, number][] => Array.from(
+        { length: 8 },
+        (_, i9) => {
+          const a9 = (i9 / 8) * Math.PI * 2 + Math.PI / 8;
+          return [Math.cos(a9) * RX9, Math.sin(a9) * RY9, z9] as [number, number, number];
+        },
+      );
+      const lo9 = oct9(0);
+      const hi9 = oct9(h);
+      const f9: ShapeFace[] = [bodyFace(polyPath3(lo9))];
+      const walls9 = lo9.map((_, i9) => {
+        const j9 = (i9 + 1) % 8;
+        const mx9 = (lo9[i9][0] + lo9[j9][0]) / 2;
+        const my9 = (lo9[i9][1] + lo9[j9][1]) / 2;
         const ml9 = Math.hypot(mx9, my9) || 1;
         return {
-          d: polyPath3([bot9[i9], bot9[j9], top9[j9], top9[i9]]),
+          d: polyPath3([lo9[i9], lo9[j9], hi9[j9], hi9[i9]]),
           nx: mx9 / ml9, ny: my9 / ml9, f: facingRatio(mx9 / ml9, my9 / ml9),
         };
-      }).sort((q9, w2) => q9.f - w2.f);
-      /* 옆면 두께가 얇아 잘 안 보인다(지적) — 음영 대비를 키워(밝은 0.16 / 어두운
-         0.46) 경사로 옆구리가 또렷하게 드러나게 한다. */
+      }).sort((q9, w9) => q9.f - w9.f);
       for (const wl9 of walls9) {
         const fl9 = faceLight(wl9.nx, wl9.ny, 0.3);
-        f9.push(bodyFace(wl9.d),
-          ...(fl9.visible ? fl9.face(wl9.d) : [sideFace(wl9.d, 0.46)]));
+        f9.push(bodyFace(wl9.d), ...(fl9.visible ? fl9.face(wl9.d) : [sideFace(wl9.d, 0.46)]));
       }
-      f9.push(bodyFace(polyPath3(top9)), topFace(polyPath3(top9), 0.2));
-      return tagKey(f9, depthNow(dx9 * (inner + run * 0.5), dy9 * (inner + run * 0.5)));
-    };
-    out.push(...ramp(0, 1, b, a * 0.75));
-    out.push(...ramp(0, -1, b, a * 0.75));
-    out.push(...ramp(1, 0, a, b * 0.75));
-    out.push(...ramp(-1, 0, a, b * 0.75));
+      f9.push(bodyFace(polyPath3(hi9)), topFace(polyPath3(hi9), 0.2));
+      out.push(...tagKey(f9, depthNow(0, 0)));
+    }
     /* 실물 점검(스프라이트 시트) — 게이트는 돛 하나가 아니라 마주 기운 어금니 탑
        한 쌍이 사이를 띄우고 문을 이룬다. 사이엔 소환 빛. */
-    const [wx, wy] = project(0, 0.1, 3.6);
+    const [wx, wy] = project(0, 0.1, 4.2);
     /* 탑·구체는 경사로 위 얹힘(지적: 발판에 기둥이 가려짐) — 경사로가 제 깊이를
        달면서 앞 경사로가 탑을 덮었다. 지붕 규칙으로 붙박이 큰 키를 준다. */
+    /* 어금니 탑을 4각 기반 기둥뿔로(요청) — 밑동이 굵고 안쪽으로 기울며 끝이
+       뾰족해진다. 8각판 위에 얹히므로 지붕 규칙 키를 준다. */
     out.push(...tagKey([
-      // 가운데 소환 구체도 연시안 반투명(요청) — 코어 구슬과 한 벌.
-      [groundEllipse(wx, wy, 1.9, 2.4), 0.55, "#a9ecf2"] as ShapeFace,
-      /* 어금니 탑을 4각 기반 기둥뿔로(요청) — 밑동이 굵고 안쪽으로 기울며 끝이
-         뾰족해진다. 단면이 축에 수직이라 기울어도 안 눌린다. */
       ...spirePillar({
-        x: -3.5, y: 0, z0: 0.8, h: 8.8, w: 1.5, tipW: 0.12,
-        segs: 5, sides: 4, hold: 0.12, leanX: 2.2, leanY: -0.3, taper: 1.5,
+        x: -3.2, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.12,
+        segs: 5, sides: 4, hold: 0.12, leanX: 2, leanY: -0.3, taper: 1.5,
       }),
       ...spirePillar({
-        x: 3.5, y: 0, z0: 0.8, h: 8.8, w: 1.5, tipW: 0.12,
-        segs: 5, sides: 4, hold: 0.12, leanX: -2.2, leanY: -0.3, taper: 1.5,
+        x: 3.2, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.12,
+        segs: 5, sides: 4, hold: 0.12, leanX: -2, leanY: -0.3, taper: 1.5,
       }),
     ], 30));
+    /* 가운데 소환 구체 — 축소하고 탑보다 뒤에 그리지 않는다(요청: 소환구 축소 및
+       기둥에 가려짐 해결). 같은 묶음 안 첫 면이라 탑에 덮이던 것을 키 32로 뺀다. */
+    out.push(...tagKey([
+      [groundEllipse(wx, wy, 1.1, 1.4), 0.5, "#a9ecf2"] as ShapeFace,
+      topFace(groundEllipse(wx, wy, 0.6, 0.8), 0.4),
+    ], 32));
     /* 발판 뿔(요청) — 앞뒤 경사로 한가운데에서 솟아 끝이 안쪽으로 휜다. 아래는 기둥,
        위는 뿔인 공용 도형(spirePillar). */
     for (const sy9 of [1, -1] as const) {
-      const ry9 = sy9 * (b + run * 0.5);
+      const ry9 = sy9 * 2.9;
       /* 작은 뿔이 어금니 탑(키 30)에 안 묻히게(지적) — 앞쪽 뿔은 탑보다 큰 키,
          뒤쪽 뿔은 탑보다 작은 키를 줘 앞뒤가 제대로 갈린다. */
       out.push(...tagKey(spirePillar({
-        x: 0, y: ry9, z0: 0.1, h: 5.1, w: 0.72, tipW: 0,
+        x: 0, y: ry9, z0: h, h: 5.1, w: 0.72, tipW: 0,
         segs: 4, sides: 6, curveY: -sy9 * 1.4, hold: 0.5,
       }), facingRatio(0, sy9) >= 0 ? 34 : 26));
     }
@@ -4852,8 +4845,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        청백 워시와 번개 호를 얹어 다크 아콘(어두운 보라+핏빛)과 확실히 갈린다. */
     return [
       // 에너지구는 플라즈마색, 개인색은 가운데 띠만(요청).
-      [groundEllipse(cx, cy, 5.1, 4.8), 0.72, "#dff0ff"] as ShapeFace,
-      topFace(groundEllipse(cx, cy, 5.1, 4.8), 0.22),
+      // 에너지구 반투명화(요청) — 속 형체가 비쳐 보이게 0.72 → 0.4.
+      [groundEllipse(cx, cy, 5.1, 4.8), 0.4, "#dff0ff"] as ShapeFace,
+      topFace(groundEllipse(cx, cy, 5.1, 4.8), 0.14),
       [`M${cx - 5.02} ${cy} A5.02 2 0 0 0 ${cx + 5.02} ${cy} A5.02 1.1 0 0 1 ${cx - 5.02} ${cy} Z`, 0.85] as ShapeFace,
       // 몸통 — 낮은 타원 돔. 머리 불꽃 — 위로 솟는 뿔. 팔 — 어깨에서 밖·아래로.
       ...dark(domeFaces3(0, 0, 1.35, 2.7, 3.2), 0.35),
@@ -4883,9 +4877,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        한눈에 갈린다. 수염 호는 그대로 비례 확대. */
     return [
       // 에너지구는 붉은색, 개인색은 가운데 띠만(요청).
-      [groundEllipse(cx, cy, 5.1, 4.8), 0.7, "#8a2833"] as ShapeFace,
-      [groundEllipse(cx, cy, 5.1, 4.8), 0.28, "#c03a3a"] as ShapeFace,
-      capFace(groundEllipse(cx, cy, 5.1, 4.8), 0.25),
+      // 에너지구 반투명화(요청) — 0.7 → 0.38.
+      [groundEllipse(cx, cy, 5.1, 4.8), 0.38, "#8a2833"] as ShapeFace,
+      [groundEllipse(cx, cy, 5.1, 4.8), 0.16, "#c03a3a"] as ShapeFace,
+      capFace(groundEllipse(cx, cy, 5.1, 4.8), 0.16),
       [`M${cx - 5.02} ${cy} A5.02 2 0 0 0 ${cx + 5.02} ${cy} A5.02 1.1 0 0 1 ${cx - 5.02} ${cy} Z`, 0.85] as ShapeFace,
       // 속 형체 — 낮은 돔 몸통, 벌어진 뿔귀 둘, 아래로 늘어지는 갈퀴 팔.
       ...dark(domeFaces3(-0.15, 0.15, 1.25, 2.4, 3.4), 0.45),
@@ -5515,14 +5510,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         [discPath3(cx9, cy9, h9, rim * 0.94), 1, "#241f19"] as ShapeFace,
         /* 고인 베스핀 — 깊은 초록 위에 밝은 심. 색이 너무 진했다(지적) — 불투명도를
            낮춰 아래 바위 그늘이 비치는 맑은 가스로 만든다. */
-        [discPath3(cx9, cy9, h9 - 0.12, rim * 0.72), 0.5, GAS_D] as ShapeFace,
-        [discPath3(cx9, cy9, h9 - 0.18, rim * 0.42), 0.45, GAS] as ShapeFace,
+        [discPath3(cx9, cy9, h9 - 0.12, rim * 0.72), 0.3, GAS_D] as ShapeFace,
+        [discPath3(cx9, cy9, h9 - 0.18, rim * 0.42), 0.26, GAS] as ShapeFace,
       ], key + 0.6));
       // 초록 김 — 위로 갈수록 넓고 옅어지는 세 켜.
       out.push(...tagKey([
-        [groundEllipse(...project(cx9 - 0.1, cy9 + 0.15, h9 + 0.9), rim * 0.8, rim * 0.5), 0.24, GAS] as ShapeFace,
-        [groundEllipse(...project(cx9 - 0.25, cy9 + 0.3, h9 + 1.8), rim * 1.05, rim * 0.62), 0.15, GAS] as ShapeFace,
-        [groundEllipse(...project(cx9 - 0.4, cy9 + 0.45, h9 + 2.7), rim * 1.3, rim * 0.72), 0.08, GAS] as ShapeFace,
+        [groundEllipse(...project(cx9 - 0.1, cy9 + 0.15, h9 + 0.9), rim * 0.8, rim * 0.5), 0.15, GAS] as ShapeFace,
+        [groundEllipse(...project(cx9 - 0.25, cy9 + 0.3, h9 + 1.8), rim * 1.05, rim * 0.62), 0.09, GAS] as ShapeFace,
+        [groundEllipse(...project(cx9 - 0.4, cy9 + 0.45, h9 + 2.7), rim * 1.3, rim * 0.72), 0.05, GAS] as ShapeFace,
       ], key + 1));
     };
     crater(-0.7, 0.4, 2.6, 2.3, depthNow(-0.7, 0.4) * 1.6 + 0.2);
@@ -5833,7 +5828,8 @@ const MODEL_YAW_TWEAK: Record<string, number> = {
   // 어시밀레이터: 180도(재재지적)→-45도→다시 180도(재재재재지적) — 합계 135.
   assim: 135, hydraden: -90, trapezoid: -90, forge: -90, scaffold: -90,
   // 시계 90도(지적) — 템플러 아카이브. 로보틱스는 모델 자체가 앞을 보게 고쳐 보정 0.
-  dome: 0, archives: -90,
+  // 아카이브 시계 90도(요청) — -90 → 0.
+  dome: 0, archives: 0,
 };
 const buildingYawOf = (kind: string): number =>
   BUILDING_BASE_YAW + (MODEL_YAW_TWEAK[kind] ?? 0);
