@@ -10063,6 +10063,9 @@ export default function ReplayMotionPlayer({
             : e.b < (entCombatStart.get(e.raw) ?? Infinity)
               ? (race === "저그" ? "Drone" : race === "테란" ? "SCV" : "Probe") : "";
           const isWorker = drawUnit === "SCV" || drawUnit === "Probe" || drawUnit === "Drone";
+          /* 밭이 홀에 붙은 무한 맵인가 — 왕복 폭이 발자국보다 좁아, 아래 '홀에 들어간
+             순간 숨김' 창이 왕복을 통째로 삼키는 경우를 가른다(지적). */
+          let nearMine9 = false;
           const uAir = drawUnit !== "" && isAirUnit(drawUnit);
           /* 교전(지적: 상호작용 없음 + 어택땅 중 만나면 멈추고 싸워야) — 적 개체·방어
              건물이 시야 안이면 싸움이다: 그 자리에 멈춰 서고(engageHoldRef), 트레이서·
@@ -10265,12 +10268,18 @@ export default function ReplayMotionPlayer({
                   const d5 = Math.hypot(h.x - mpx, h.y - mpy);
                   if (d5 < hd2) { hd2 = d5; h2 = h; }
                 }
-                if (h2 && hd2 > 1.5 && hd2 < 12) {
+                /* 문턱을 1.5 → 0.6으로(지적: 일꾼들이 처음부터 일을 안 한다 — 왕복이
+                   없다) — 실측(추가mineral10): 무한 맵은 미네랄 덩이가 홀에서 1.9타일
+                   앞에 붙어 있어, 1.5타일 문턱을 겨우 넘거나 못 넘었다. 못 넘으면 왕복
+                   자체가 안 걸리고, 넘어도 폭이 1.4타일이라 홀 발자국 안에서 다 끝났다.
+                   가까운 밭에서는 폭을 넓게 잡아(0.72 → 0.9) 눈에 보이게 오간다. */
+                if (h2 && hd2 > 0.6 && hd2 < 12) {
                   const cyc4 = (t * 1.6 + ei * 2.7) % (2 * hd2);
                   const k4 = (cyc4 < hd2 ? cyc4 : 2 * hd2 - cyc4) / hd2;
-                  // 반납은 홀 문턱까지만(위 숨김 창과 짝) — 0.86 → 0.72.
-                  const kk2 = 0.06 + k4 * 0.72;
+                  const span4 = hd2 < 3 ? 0.9 : 0.72;
+                  const kk2 = 0.06 + k4 * span4;
                   pos = { ...pos, x: mpx + (h2.x - mpx) * kk2, y: mpy + (h2.y - mpy) * kk2 };
+                  nearMine9 = hd2 < 3;
                 }
               }
             }
@@ -10295,7 +10304,10 @@ export default function ReplayMotionPlayer({
           /* 자원 반납 순간은 숨는다(요청: 기지 겹침은 허용하되 들어간 순간 렌더링에선
              숨기기) — 왕복 자리가 제 홀 발자국 안이면 그 프레임은 안 그린다. 원작도
              반납하는 일꾼은 건물 속으로 잠깐 사라진다. */
-          if (isWorker) {
+          if (isWorker && !nearMine9) {
+            /* 밭이 홀에 붙은 무한 맵에서는 아예 안 숨긴다(지적: 일꾼이 일을 안 하는
+               것처럼 보임) — 왕복 폭이 발자국보다 좁아 숨김 창이 왕복을 통째로
+               삼켰다. 아래 창은 밭이 3타일 넘게 떨어진 보통 맵에서만 건다. */
             /* 숨김 창을 좁힌다(지적: 첫 4기가 채취하는 게 안 보인다) — ±1.8×1.3타일은
                4×3 발자국의 거의 전부라, 반납 왕복의 절반을 건물 속으로 삼켰다(실측:
                경기 20초에 일꾼 41기가 이 규칙으로 사라졌다). 정말 안으로 들어간

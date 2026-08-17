@@ -1415,6 +1415,23 @@ export function buildUnitTracks(
       arr.push(life);
       byOwner.set(life.owner, arr);
     }
+    /* 초반 30초의 '엄청 먼' 자취는 제 것이 아니다(지적: 시작하자마자 1시 기지에 5시
+       저그의 드론이 있다) — 실측: 3초에 태그 11020(임자=5시 저그, 정체 미상)에 (126,3)
+       — 즉 1시 남의 본진 — 자리 증거가 달렸다. 개막 정찰 오버로드에게 미니맵으로 준
+       우클릭이 그때 잡혀 있던 선택 묶음 전체에 퍼진 것이라, 정체 미상 개체가 종족
+       기본 일꾼(드론) 모습으로 적 본진에 솟았다. 30초 안에 제 시작 홀에서 25타일 넘게
+       떨어진 자리 증거는 통째로 버린다 — 어떤 유닛도 그 시간에 거기 있을 수 없다. */
+    for (const life of done) {
+      if (life.bld) continue;
+      const hall = hallOf.get(life.owner);
+      if (!hall) continue;
+      const kept = life.ev.filter((v) => !(v[0] < 30 && v[1] >= 0
+        && Math.hypot(v[1] - hall[0], v[2] - hall[1]) > 25));
+      if (kept.length === life.ev.length) continue;
+      life.ev = kept;
+      if (kept.length > 0) life.born = Math.min(life.born, kept[0][0]);
+    }
+
     let synTag2 = -20000;
     for (const [pid, hall] of hallOf) {
       const arr = (byOwner.get(pid) ?? []).sort((x, y) => x.born - y.born).slice(0, 4);
