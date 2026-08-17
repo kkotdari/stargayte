@@ -5414,7 +5414,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const ly = Math.cos(th) * 2.44;
       // 위쪽을 살짝 안으로 눕힌다(요청) — 좌우가 서로 마주 보는 느낌.
       return lensFaces({
-        x: lx, y: ly, z: 5.65, nx: lx, ny: ly, r: 0.98, bulge: 0.26, tiltDeg: 20,
+        x: lx, y: ly, z: 5.65, nx: lx, ny: ly, r: 0.98, bulge: 0.26, tiltDeg: 9,
       });
     };
     /* 얼굴(재지적: 얼굴은 앞쪽 아래쪽에 작은 반구형으로) — 몸 앞아래 표면에 붙는
