@@ -449,10 +449,16 @@ export function buildUnitTracks(
   for (const p of players) {
     if (typeof p.startX !== "number" || typeof p.startY !== "number" || !p.race) continue;
     const hall = p.race === "저그" ? "Hatchery" : p.race === "테란" ? "Command Center" : "Nexus";
+    /* 자리 증거를 함께 심는다(지적: 첫 홀 넥서스가 짓는 걸로 나온다) — 화면의 건물
+       층은 자리 증거(f=2|5)가 있는 것만 그린다. 여태 시작 홀은 ev가 비어 아예 안
+       그려졌고, 그 자리에 보이던 '첫 홀'은 시작 일꾼 태그에서 자란 확장 건물이 일꾼의
+       출생(1초)으로 잘못 날짜 매겨진 것이었다 — 그래서 경기 시작부터 공사 중이었다.
+       0초 앵커를 심으면 시작 홀이 제 모습으로, 완공 상태로 선다(공사 표시는 sec>0). */
     built.push({
       owner: p.id, kind: hall, born: 0,
       x: Math.round(p.startX - 2), y: Math.round(p.startY - 1.5),
-      builder: null, gone: null, goneKind: null, ev: [],
+      builder: null, gone: null, goneKind: null,
+      ev: [[0, Math.round(p.startX - 2), Math.round(p.startY - 1.5), 2]],
     });
   }
 

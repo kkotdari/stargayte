@@ -6921,11 +6921,15 @@ export default function ReplayMotionPlayer({
       const hpZero = (e.hp ?? []).find(([, hv0]) => hv0 <= 0)?.[0];
       const gone = hpZero !== undefined && (e.d === null || hpZero < e.d) ? hpZero : (e.d ?? 0);
       for (let i = 0; i < spots.length; i += 1) {
-        const [sSec, x, y, f] = spots[i];
+        const [sSec, x, y] = spots[i];
         const nextS = i + 1 < spots.length ? spots[i + 1][0] : null;
         const lift = e.ev.find((v) => v[3] === 6 && v[0] >= sSec && (nextS === null || v[0] <= nextS));
         const row: Row = {
-          born: f === 5 ? sSec : e.b, x, y, k: e.k, raw,
+          /* 공사 시작은 '자리를 찍은 순간'이다(지적: 첫 홀이 짓는 걸로 나온다) — 예전엔
+             건설 앵커(f=2)일 때 개체의 출생(e.b)을 썼는데, 프로토스·테란은 일꾼 태그가
+             그대로 건물 생애가 되므로 그 값은 일꾼이 태어난 때(경기 1초)다. 그래서
+             90초에 지은 확장 넥서스가 1초부터 공사 중으로 서 있었다. 앵커 시각을 쓴다. */
+          born: sSec, x, y, k: e.k, raw,
           gone: nextS !== null ? nextS : gone,
           ...(lift ? { lift: lift[0] } : {}),
         };
