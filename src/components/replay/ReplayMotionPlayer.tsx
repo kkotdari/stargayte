@@ -3957,14 +3957,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        (앞으로 4.6 → 3.1). 키는 붙박이 24를 걷고 제 자리 깊이(×1.6)를 쓴다 —
        앞으로 돈 촉수는 몸 위, 뒤로 돈 것은 몸 뒤다(지적: 키값 확인). */
     for (const m9 of [-1, 1] as const) {
-      const HW = 0.62;
+      // 폭 축소(요청) — 가로 반폭 0.62 → 0.42.
+      const HW = 0.42;
       const HT = 0.16;
       const NS = 10;
       const axis9 = (t9: number): [number, number, number] => [
         m9 * (1.05 + 0.45 * t9),
-        // 더 뒤로(-2.2 → -3.2), 더 높이(5.4 → 6.2), 앞쪽을 더 세워(기울기 3.6 → 5).
+        /* 앞쪽을 더 들고 굽힘률은 축소(요청) — 출발 기울기를 5 → 6.4로 키우되 되꺾는
+           이차항을 5 → 3.4로 줄여, 끝까지 완만하게 계속 올라간다: z(0)=6.2, z(1)=9.2. */
         -3.2 + 3.1 * t9,
-        6.2 + 5 * t9 - 5 * t9 * t9,
+        6.2 + 6.4 * t9 - 3.4 * t9 * t9,
       ];
       const sect9 = (t9: number): [number, number, number][] => {
         const [px9, py9, pz9] = axis9(t9);
