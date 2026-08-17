@@ -1553,6 +1553,42 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(discPath3(0, 0, 4.13, 5.2), 0.25),
       capFace(discPath3(0, 0, 4.16, 3.9), 0.35),
     ], 50));
+    /* 사진 디테일 보강(요청) — 원판 테를 구릿빛으로 두르고, 네 대각 팔에 붉은
+       모듈과 살빛 포드를 붙인다. 앞면 아래엔 노랑·검정 빗금과 노란 격자문. 형태는
+       지금 것을 그대로 두고 색과 부속만 얹는다. */
+    out.push(...tagKey([
+      ...paintBase(cylinderFaces3(0, 0, 6.55, 0.4, 3.75), "#8a6a44"),
+    ], 49));
+    for (const ang of [40, 140, 220, 320]) {
+      const a2 = (ang * Math.PI) / 180;
+      const mx2 = Math.sin(a2) * 5.4;
+      const my2 = Math.cos(a2) * 5.4;
+      out.push(...tagKey([
+        ...paintBase(boxFaces3(mx2, my2, 2.2, 1.3, 0.7, 3.3), "#a8322a"),
+        ...paintBase(domeFaces3(Math.sin(a2) * 6.9, Math.cos(a2) * 6.9, 0.6, 0.55, 3.4),
+          "#c9a98a"),
+      ], 46 + depthNow(mx2, my2) * 1.6));
+    }
+    if (facingRatio(0, 1) > 0.12) {
+      const warn: ShapeFace[] = [];
+      for (let k = 0; k < 7; k += 1) {
+        const u0 = -3.9 + k * 0.5;
+        warn.push([polyPath3([
+          [u0, 3.62, 1], [u0 + 0.24, 3.62, 1], [u0 + 0.5, 3.62, 2.6], [u0 + 0.26, 3.62, 2.6],
+        ]), 1, k % 2 === 0 ? "#e8c33a" : "#22262b"] as ShapeFace);
+      }
+      // 노란 격자문 — 마당 앞 셔터.
+      warn.push([polyPath3([
+        [-1.5, 6.82, 1], [1.5, 6.82, 1], [1.5, 6.82, 2.5], [-1.5, 6.82, 2.5],
+      ]), 1, "#c9a227"] as ShapeFace);
+      for (let k = 0; k < 4; k += 1) {
+        warn.push(sideFace(polyPath3([
+          [-1.5, 6.84, 1.2 + k * 0.34], [1.5, 6.84, 1.2 + k * 0.34],
+          [1.5, 6.84, 1.32 + k * 0.34], [-1.5, 6.84, 1.32 + k * 0.34],
+        ]), 0.4));
+      }
+      out.push(...tagKey(warn, 44 + depthNow(0, 5) * 1.6));
+    }
     for (const ang of [45, 135, 225, 315]) {
       const a = (ang * Math.PI) / 180;
       const bx2 = Math.sin(a) * 4.6;
@@ -2616,7 +2652,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(discPath3(fx, fy, 0.38, 1), 0.25),
       ...cylinderFaces3(fx, fy, 0.32, 1, 0.35),
     ], "#c9ced6"); // 발 은색(요청: 이륙 가능 건물)
-    return [
+    /* 사진 디테일 보강(요청) — 오른앞에 붉은 큰 드럼, 왼뒤 지붕에 붉은 돔, 옆구리에
+       초록 발광 띠, 발 테에 붉은 링. 형태(상자 더미 + 발 넷)는 그대로 둔다. */
+    const out: ShapeFace[] = [
       ...foot(-5, -3), ...foot(5, -3),
       ...boxFaces3(0, -0.4, 6.6, 4, 3),
       ...boxFaces3(-0.8, -1, 3, 2.4, 1.5, 3),
@@ -2626,6 +2664,32 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...hornFaces(-2.3, -1.7, 4.5, -2.3, -1.7, 6.5, 0.32),
       ...foot(-5.2, 3.2), ...foot(5.2, 3.2),
     ];
+    // 오른앞 붉은 드럼 — 옆으로 누운 큰 통.
+    out.push(...tagKey(paintBase(tubeFaces(1.4, 1.9, 3.4, 1.9, 1.15, 1.6), "#a8322a"),
+      14 + depthNow(2.4, 1.9) * 1.6));
+    // 왼뒤 지붕 붉은 돔 + 은빛 판.
+    out.push(...tagKey([
+      ...paintBase(domeFaces3(-2.2, -0.4, 1.05, 0.85, 4.5), "#a8322a"),
+      ...paintBase(boxFaces3(-2.4, 1, 2.2, 1.4, 0.4, 4.5), "#dfe3e6"),
+    ], 16 + depthNow(-2.3, 0.3) * 1.6));
+    // 옆구리 초록 발광 띠 — 앞이 보일 때만.
+    if (facingRatio(0, 1) > 0.12) {
+      const led: ShapeFace[] = [];
+      for (const lx of [-2.6, -1.7, -0.8]) {
+        led.push([polyPath3([
+          [lx - 0.24, 1.62, 3.3], [lx + 0.24, 1.62, 3.3],
+          [lx + 0.24, 1.62, 4.1], [lx - 0.24, 1.62, 4.1],
+        ]), 1, "#4cd86a"] as ShapeFace);
+      }
+      out.push(...tagKey(led, 12 + depthNow(-1.7, 1.6) * 1.6));
+    }
+    // 발 테 붉은 링.
+    for (const [fx9, fy9] of [[-5, -3], [5, -3], [-5.2, 3.2], [5.2, 3.2]] as
+      [number, number][]) {
+      out.push(...tagKey(paintBase(cylinderFaces3(fx9, fy9, 1.55, 0.2, 0.3), "#a8322a"),
+        depthNow(fx9, fy9) * 1.6 - 1));
+    }
+    return out;
   },
   /* 아머리(실물 참고) — 가운데 우물 드럼(어두운 속·테두리 빛 눈금·비스듬한 뚜껑 판),
      둘레의 각진 첨탑 둘과 빛나는 기둥 포스트 둘, 방사 팔 모듈. */
@@ -2647,14 +2711,31 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 기둥은 셋(지적) — 뒤 첨탑 둘 + 앞 첨탑 하나.
       ...boxFaces3(-3.2, -2.2, 1.4, 1.4, 5.4),
       ...boxFaces3(-3.2, -2.2, 0.7, 0.7, 1.8, 5.4),
+      // 뒤 첨탑 꼭대기 안테나와 깃대(사진).
+      ...paintBase(cylinderFaces3(-3.2, -2.2, 0.09, 2.4, 7.2), "#c9ced6"),
+      ...paintBase(boxFaces3(-2.7, -2.2, 0.9, 0.1, 0.6, 8.6), "#4cd86a"),
       ...boxFaces3(3.4, -1.8, 1.5, 1.5, 6.2),
       ...boxFaces3(3.4, -1.8, 0.8, 0.8, 2, 6.2),
       // 방사 팔 모듈.
       ...boxFaces3(2.4, 0.9, 2, 1.3, 1.5),
       ...boxFaces3(-2.5, 0.7, 1.9, 1.3, 1.4),
-      // 가운데 우물 드럼.
-      ...cylinderFaces3(0, 0, 2.6, 3),
+      // 앞 팔 모듈의 초록 발광 창(사진).
+      ...(facingRatio(0, 1) > 0.12 ? [
+        [polyPath3([[1.7, 1.56, 0.5], [3.1, 1.56, 0.5], [3.1, 1.56, 1.1], [1.7, 1.56, 1.1]]),
+          1, "#4cd86a"] as ShapeFace,
+        [polyPath3([[-3.2, 1.36, 0.5], [-1.8, 1.36, 0.5], [-1.8, 1.36, 1.1], [-3.2, 1.36, 1.1]]),
+          1, "#4cd86a"] as ShapeFace,
+      ] : []),
+      // 가운데 우물 드럼 — 테는 구릿빛, 둘레엔 초록 발광 칸이 빙 둘러 박힌다(사진).
+      ...paintBase(cylinderFaces3(0, 0, 2.6, 3), "#8a6a44"),
       capFace(discPath3(0, 0, 3.05, 1.85), 0.45),
+      ...Array.from({ length: 14 }, (_, k9) => {
+        const a9 = (k9 / 14) * Math.PI * 2;
+        return facingRatio(Math.sin(a9), Math.cos(a9)) > 0.05
+          ? paintBase(boxFaces3(Math.sin(a9) * 2.65, Math.cos(a9) * 2.65, 0.5, 0.5, 0.9, 1.9),
+            "#4cd86a")
+          : [];
+      }).flat(),
       rim(50), rim(90), rim(130),
       // 비스듬한 뚜껑 판 — 우물 위로 걸친 원판.
       bodyFace(discPath3(0.4, -0.9, 4.3, 1.6)),
