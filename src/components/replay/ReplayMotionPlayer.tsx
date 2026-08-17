@@ -4617,7 +4617,6 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      가로로 든 가우스 소총. */
   gunner: () => {
     const [vx2, vy2] = project(0, 0.55, 4.7);
-    const [mx2, my2] = project(0.55, 2.8, 3.35);
     return [
       // 다리를 또렷하게(지적: 다리가 없어 헷갈림) — 벌린 두 기둥 + 둥근 발.
       ...cylinderFaces3(-0.62, 0, 0.4, 2.3, 0.1),
@@ -4637,16 +4636,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...hornFaces(-1.05, 0.8, 2.75, 0.3, 1.85, 3.25, 0.42),
       ...hornFaces(1.5, 0.1, 3.7, 1.25, 0.7, 2.8, 0.5),
       ...hornFaces(1.25, 0.7, 2.8, 0.75, 1, 3.25, 0.42),
-      // 소총은 앞을 향한다(지적: 가로로 들었었다) — 두 손 위 긴 총열 + 총구. 건메탈(요청).
-      ...paintBase(boxFaces3(0.55, 1.5, 0.55, 2.4, 0.5, 3.1), GUNMETAL),
-      capFace(groundEllipse(mx2, my2, 0.2, 0.16), 0.45),
+      /* 소총(지적: 총구가 요잉을 안 먹는다) — 총구를 화면 고정 원반으로 얹던 것을
+         걷고, 총열을 관 프리미티브로 세운다: 축을 실제로 투영한 끝 단면이 나오고
+         마주볼 때만 포구가 어둡게 뚫린다. 노리쇠 뭉치만 상자로 남긴다. 건메탈. */
+      ...paintBase(boxFaces3(0.55, 0.95, 0.55, 1.3, 0.5, 3.1), GUNMETAL),
+      ...paintBase(tubeFaces(0.55, 1.5, 0.55, 2.9, 0.24, 3.35, true), GUNMETAL),
     ];
   },
   /* 고스트(지적: 여태 마린 모델을 빌려 입고 있었다) — 마린과 비슷하되 어깨장갑이
      없고 헬멧이 작으며 몸통·팔다리가 훨씬 가늘다. 긴 C-10 저격소총을 받쳐 든다. */
   ghost: () => {
     const [vx2, vy2] = project(0, 0.5, 4.55);
-    const [mx2, my2] = project(0.5, 3.4, 3.5);
     return [
       // 가는 다리 + 작은 발 — 회흰색(요청).
       ...paintBase([
@@ -4670,9 +4670,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...hornFaces(0.85, 0.1, 3.9, 0.7, 0.8, 2.95, 0.3),
         ...hornFaces(0.7, 0.8, 2.95, 0.45, 1.2, 3.3, 0.26),
       ], "#d3d7db"),
-      // C-10 저격소총 — 마린 소총보다 길고 가는 총열 + 총구. 건메탈(요청).
-      ...paintBase(boxFaces3(0.4, 1.6, 0.3, 3.4, 0.34, 3.25), GUNMETAL),
-      capFace(groundEllipse(mx2, my2, 0.14, 0.11), 0.45),
+      /* C-10 저격소총 — 마린과 같은 규칙(지적): 노리쇠는 상자, 총열은 관 프리미티브라
+         총구가 요잉을 탄다. 마린보다 길고 가늘다. 건메탈. */
+      ...paintBase(boxFaces3(0.4, 0.85, 0.3, 1.4, 0.34, 3.25), GUNMETAL),
+      ...paintBase(tubeFaces(0.4, 1.5, 0.4, 3.6, 0.16, 3.42, true), GUNMETAL),
     ];
   },
   /* 파이어뱃(실물 참고) — 같은 파워드 아머에 어깨 위로 보이는 등 연료통 둘, 어두운
