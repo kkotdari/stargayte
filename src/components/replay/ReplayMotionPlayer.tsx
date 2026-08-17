@@ -1527,22 +1527,33 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 게이트웨이(실물 점검) — 낮은 사방 경사로 마당 위에 마주 기운 어금니 탑 한 쌍이
      사이를 띄워 문을 이루고, 그 사이에 소환 빛이 선다. */
   gate: () => {
-    /* 사방 발판 넷을 저마다 정육각형 판으로(정정 요청: 한 장짜리 8각판이 아니라,
-       사방에 놓인 발판 하나하나의 각을 육각으로) — 위아래 두 육각형을 둘레 벽으로
-       봉합해 두께를 준다. 벽은 뒤에서 앞으로 정렬해 그려 입체감을 지킨다.
-       더 얇게(요청) — 두께 1.4 → 0.7. 옆벽이 얇아진 만큼 음영 대비로 버틴다. */
-    const h = 0.7;
+    /* 사방 발판 넷을 저마다 정육각형 판으로(정정 요청) — 한 모서리가 건물 중심을
+       보게 돌리고(꼭지점이 아니라), 안쪽 변이 높고 바깥쪽 변이 낮은 쐐기로 눕힌다.
+       위아래 두 육각형을 둘레 벽으로 봉합해 얇은 두께를 주고, 벽은 뒤에서 앞으로
+       정렬해 그려 입체감을 지킨다. */
+    const h = 1.15; // 발판 안쪽(높은 쪽) 윗면 높이 — 기둥·뿔이 여기서 선다.
     const out: ShapeFace[] = [];
     const pad = (cx9: number, cy9: number, r9: number): ShapeFace[] => {
-      const hex9 = (z9: number): [number, number, number][] => Array.from(
+      const inAng9 = Math.atan2(-cy9, -cx9); // 중심을 향하는 방향
+      // 모서리 중점이 중심을 보게 — 정육각형 꼭지점은 중점보다 30도 앞선다.
+      const base9 = inAng9 - Math.PI / 6;
+      const LO9 = 0.32; // 바깥 변 윗면 높이
+      const TH9 = 0.32; // 판 두께(요청: 얇게)
+      const ox9 = -Math.cos(inAng9);
+      const oy9 = -Math.sin(inAng9);
+      const hex9 = (dz9: number): [number, number, number][] => Array.from(
         { length: 6 },
         (_, i9) => {
-          const a9 = (i9 / 6) * Math.PI * 2 + Math.PI / 6;
-          return [cx9 + Math.cos(a9) * r9, cy9 + Math.sin(a9) * r9, z9] as [number, number, number];
+          const a9 = base9 + (i9 / 6) * Math.PI * 2;
+          const px9 = cx9 + Math.cos(a9) * r9;
+          const py9 = cy9 + Math.sin(a9) * r9;
+          // 바깥 방향으로 얼마나 나갔나(-1 안 ~ +1 바깥) → 그만큼 낮아진다.
+          const u9 = ((px9 - cx9) * ox9 + (py9 - cy9) * oy9) / r9;
+          return [px9, py9, (h + LO9) / 2 - u9 * ((h - LO9) / 2) + dz9];
         },
       );
-      const lo9 = hex9(0);
-      const hi9 = hex9(h);
+      const lo9 = hex9(-TH9);
+      const hi9 = hex9(0);
       const f9: ShapeFace[] = [bodyFace(polyPath3(lo9))];
       const walls9 = lo9.map((_, i9) => {
         const j9 = (i9 + 1) % 6;
@@ -1561,7 +1572,6 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       f9.push(bodyFace(polyPath3(hi9)), topFace(polyPath3(hi9), 0.2));
       return tagKey(f9, depthNow(cx9, cy9));
     };
-    // 사방으로 더 벌린다(요청) — 3.5/3.7 → 4.6/4.9.
     out.push(...pad(0, 4.6, 2.3));
     out.push(...pad(0, -4.6, 2.3));
     out.push(...pad(4.9, 0, 2.3));
@@ -1575,11 +1585,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        뾰족해진다. 8각판 위에 얹히므로 지붕 규칙 키를 준다. */
     out.push(...tagKey([
       ...spirePillar({
-        x: -4.9, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.12,
+        x: -3.5, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.12,
         segs: 5, sides: 4, hold: 0.12, leanX: 2, leanY: -0.3, taper: 1.5,
       }),
       ...spirePillar({
-        x: 4.9, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.12,
+        x: 3.5, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.12,
         segs: 5, sides: 4, hold: 0.12, leanX: -2, leanY: -0.3, taper: 1.5,
       }),
     ], 30));
@@ -1592,7 +1602,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 발판 뿔(요청) — 앞뒤 경사로 한가운데에서 솟아 끝이 안쪽으로 휜다. 아래는 기둥,
        위는 뿔인 공용 도형(spirePillar). */
     for (const sy9 of [1, -1] as const) {
-      const ry9 = sy9 * 4.6;
+      // 뿔은 원위치(요청) — 발판을 벌린 것과 무관하게 제자리에 선다.
+      const ry9 = sy9 * 3.5;
       /* 작은 뿔이 어금니 탑(키 30)에 안 묻히게(지적) — 앞쪽 뿔은 탑보다 큰 키,
          뒤쪽 뿔은 탑보다 작은 키를 줘 앞뒤가 제대로 갈린다. */
       out.push(...tagKey(spirePillar({
