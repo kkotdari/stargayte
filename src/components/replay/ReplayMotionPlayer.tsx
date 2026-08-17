@@ -2340,33 +2340,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ];
     };
     return [
-      /* 밑판은 제거(요청) — 대신 왼쪽 톱니 바퀴와 오른쪽 돔 장식 사이를 잇는 좁은
-         연결 판만 남긴다. 낮고 짧아 바닥에 깔린다. */
-      ...((): ShapeFace[] => {
-        const lo9: [number, number, number][] = [
-          [-4.3, 1.5, 0], [3.2, 1.5, 0], [3.2, -0.7, 0], [-4.3, -0.7, 0],
-        ];
-        const hi9 = lo9.map(([x9, y9]) => [x9, y9, 0.75] as [number, number, number]);
-        const f9: ShapeFace[] = [bodyFace(polyPath3(lo9))];
-        const walls9 = lo9.map((_, i9) => {
-          const j9 = (i9 + 1) % lo9.length;
-          const mx9 = (lo9[i9][0] + lo9[j9][0]) / 2 + 0.55;
-          const my9 = (lo9[i9][1] + lo9[j9][1]) / 2 - 0.4;
-          const ml9 = Math.hypot(mx9, my9) || 1;
-          return {
-            d: polyPath3([lo9[i9], lo9[j9], hi9[j9], hi9[i9]]),
-            nx: mx9 / ml9,
-            ny: my9 / ml9,
-            f: facingRatio(mx9 / ml9, my9 / ml9),
-          };
-        }).sort((q9, w9) => q9.f - w9.f);
-        for (const w9 of walls9) {
-          const fl9 = faceLight(w9.nx, w9.ny, 0.25);
-          f9.push(bodyFace(w9.d), ...(fl9.visible ? fl9.face(w9.d) : [sideFace(w9.d, 0.4)]));
-        }
-        f9.push(bodyFace(polyPath3(hi9)), topFace(polyPath3(hi9), 0.12));
-        return tagKey(f9, depthNow(-0.55, 0.4) + 0.75);
-      })(),
+      /* 바닥 판은 완전히 제거(요청) — 태엽·뿔기둥·반구가 서로 밀착해 한 덩이로
+         읽히므로 잇는 판이 필요 없다. */
       /* 왼쪽 반원판(재재지적: 드럼통은 걷고 반원판만 — 옆면이 드럼 옆면이 보던 좌우를
          보게 90도 돌려서) — 판이 좌우를 보고 앞뒤로 선 얇은 반원 바퀴다. 아랫변은
          기단에 묻히고 위 반원만 솟는다: 반원 두 장을 옆으로 얇게 띄워 테 띠로 봉합. */
@@ -2377,12 +2352,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
             const a = Math.PI * (i / 10);
             // 왼쪽으로(정정: 앞이 아니라 좌) — x를 밖으로 빼 전체가 보인다.
             // 반원 바퀴는 바닥에 닿게(요청) — 밑변 z 1 → 0.
-            pts.push([x, 0.4 - Math.cos(a) * 2.2, Math.sin(a) * 2.2]);
+            pts.push([x, 0.4 - Math.cos(a) * 2.9, Math.sin(a) * 2.9]);
           }
           return pts;
         };
-        const leftP = half(-4.7);
-        const rightP = half(-4.15);
+        // 크게·밀착(요청) — 반지름 2.2 → 2.9, 자리 -4.7/-4.15 → -3.5/-2.6(두께도 증가).
+        const leftP = half(-3.5);
+        const rightP = half(-2.6);
         const g: ShapeFace[] = [bodyFace(polyPath3(leftP)), sideFace(polyPath3(leftP), 0.2)];
         for (let i = 0; i < leftP.length - 1; i += 1) {
           g.push(bodyFace(polyPath3([leftP[i], leftP[i + 1], rightP[i + 1], rightP[i]])));
@@ -2395,44 +2371,55 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           const a3 = (deg * Math.PI) / 180;
           const c3 = Math.cos(a3);
           const s3 = Math.sin(a3);
-          const yi = 0.4 - c3 * 2.1;
-          const zi = s3 * 2.1;
-          const yo = 0.4 - c3 * 2.8;
-          const zo = s3 * 2.8;
+          const yi = 0.4 - c3 * 2.75;
+          const zi = s3 * 2.75;
+          const yo = 0.4 - c3 * 3.6;
+          const zo = s3 * 3.6;
           const tooth = (xx: number): [number, number, number][] => [
             [xx, yi + s3 * 0.22, zi + c3 * 0.22],
             [xx, yi - s3 * 0.22, zi - c3 * 0.22],
             [xx, yo - s3 * 0.15, zo - c3 * 0.15],
             [xx, yo + s3 * 0.15, zo + c3 * 0.15],
           ];
-          const backT = polyPath3(tooth(-4.68));
+          const backT = polyPath3(tooth(-3.48));
           g.push(bodyFace(backT), sideFace(backT, 0.22));
           g.push(bodyFace(polyPath3([
-            tooth(-4.68)[3], tooth(-4.17)[3], tooth(-4.17)[2], tooth(-4.68)[2],
+            tooth(-3.48)[3], tooth(-2.62)[3], tooth(-2.62)[2], tooth(-3.48)[2],
           ])));
           // 이빨 옆면 두 짝도 봉합(재지적: 옆이 뚫려 보였다).
-          const flankA = polyPath3([tooth(-4.68)[1], tooth(-4.17)[1], tooth(-4.17)[2], tooth(-4.68)[2]]);
-          const flankB = polyPath3([tooth(-4.68)[0], tooth(-4.17)[0], tooth(-4.17)[3], tooth(-4.68)[3]]);
+          const flankA = polyPath3([tooth(-3.48)[1], tooth(-2.62)[1], tooth(-2.62)[2], tooth(-3.48)[2]]);
+          const flankB = polyPath3([tooth(-3.48)[0], tooth(-2.62)[0], tooth(-2.62)[3], tooth(-3.48)[3]]);
           g.push(bodyFace(flankA), sideFace(flankA, 0.18));
           g.push(bodyFace(flankB), topFace(flankB, 0.1));
-          const frontT = polyPath3(tooth(-4.17));
+          const frontT = polyPath3(tooth(-2.62));
           g.push(bodyFace(frontT), topFace(frontT, 0.12));
         }
-        return tagKey(g, depthNow(-4.4, 0.4) + 0.5);
+        return tagKey(g, depthNow(-3, 0.4) + 0.5);
       })(),
 // (이동·재지적) 앞 톱니 원판 — 왼쪽 반원판의 이빨로 옮겼다.
       /* 가운데 결정 기둥 무리 — 높이 다른 네 자루. 오른 돔의 붙박이 키(8)에 밀려
          가려졌다(지적) — 9를 더해 돔 위로 올리되 자기들끼리는 제 깊이 순서를 지킨다. */
-      ...tagKey(hornFaces(-1.2, 0.1, 1, -1.3, 0, 6.4, 1.05), depthNow(-1.2, 0.1) + 9),
-      ...tagKey(hornFaces(-0.2, -1, 1, -0.2, -1.1, 7.6, 1.15), depthNow(-0.2, -1) + 9),
-      ...tagKey(hornFaces(0.8, 0.5, 1, 0.9, 0.5, 5.8, 0.95), depthNow(0.8, 0.5) + 9),
-      ...tagKey(hornFaces(0.1, 1.3, 1, 0.1, 1.4, 4.9, 0.85), depthNow(0.1, 1.3) + 9),
+      /* 가운데 뿔기둥 무리(요청: 더 키우고 밀착) — 공용 도형으로 굵게 세운 넷이
+         서로 몸을 맞대고 선다. 밑동은 바닥에서 바로 시작한다(밑판 제거). */
+      ...([
+        [-0.85, 0.15, 7.6, 1.35],
+        [-0.05, -0.75, 9, 1.5],
+        [0.75, 0.35, 6.9, 1.25],
+        [0.05, 1.05, 5.9, 1.15],
+      ] as [number, number, number, number][]).flatMap(([fx9, fy9, fh9, fw9]) => tagKey(spirePillar({
+        x: fx9, y: fy9, z0: 0, h: fh9, w: fw9, tipW: 0.1,
+        segs: 5, sides: 6, hold: 0.14, taper: 1.5,
+        leanX: -fx9 * 0.18, leanY: -fy9 * 0.18,
+      }), depthNow(fx9, fy9) + 9)),
       // 오른쪽 큰 돔 — 렌즈 창 둘과 꼭대기 혹. 지붕 키(재지적: 기단 발판에 자꾸 가려짐).
+      /* 뒤쪽 반구체들(요청: 더 키우고 밀착) — 큰 돔을 가운데 기둥 쪽으로 당기고
+         지름·높이를 키운다. 뒤로 작은 돔 하나를 더 붙여 두 덩이가 맞물리게. */
       ...tagKey([
-        ...domeFaces3(3.1, 0.5, 2.5, 2.2, 0.9),
-        ...lens(2.5, 1.9, 3, 0.8),
-        ...lens(4, 1, 2.9, 0.6),
-        ...domeFaces3(3.1, 0.3, 0.95, 0.7, 3.05),
+        ...domeFaces3(2.5, 0.4, 3.2, 2.9, 0),
+        ...lens(2, 2.1, 3.6, 1),
+        ...lens(3.6, 1.1, 3.4, 0.75),
+        ...domeFaces3(2.5, 0.2, 1.3, 0.95, 3.6),
+        ...domeFaces3(3.4, -1.9, 1.9, 1.7, 0),
       ], 8),
     ];
   },
@@ -6309,7 +6296,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         // 스프라이트로 찍는다(요청: 건물도 병목 감축) — 실패 시 직접 그리기 폴백.
         const sidePx = op.fitWidth ? wPx : Math.min(wPx, hPx);
         const sideQ = Math.max(4, Math.round(sidePx / 2) * 2);
-        const bspr = buildingSprite(op, sideQ, B);
+        let bspr = buildingSprite(op, sideQ, B);
+        let sideQEff = sideQ;
         /* 발자국을 꽉 채운다(지적: "건물크기가 제각각이야", "캔버스를 왜 꽉 안 채우게
            해놨어") — 상자는 발자국(타일)에 맞춰 뒀지만 모델이 그 상자를 채우는 몫이
            0.40~1.15로 제각각이라(실측: 옵저버토리 0.40 · 컴샛/머신샵 0.50 · 게이트
@@ -6330,6 +6318,15 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         }
         const kFit = op.clipWalk || BLD_FILL_SKIP.has(op.kind) || !bFill
           ? 1 : Math.min(2.5, Math.max(0.7, (BLD_FILL_TARGET[op.kind] ?? 0.95) / bFill));
+        /* 채움 보정만큼 더 크게 굽는다(지적: 실제 모델링 크기가 작은 건물이 화면에서
+           해상도가 떨어져 보인다) — 발자국 크기로 구운 판을 최대 2.5배까지 늘려
+           그리고 있었으니 그만큼 뿌옜다. 늘릴 배율을 알고 나면 그 크기로 다시 구워
+           확대 없이 1:1로 찍는다. */
+        if (bspr && kFit > 1.08) {
+          const sideQ2 = Math.max(4, Math.round((sideQ * kFit) / 2) * 2);
+          const b2 = buildingSprite(op, sideQ2, B);
+          if (b2) { bspr = b2; sideQEff = sideQ2; }
+        }
         /* 접지 그림자(재재지적: 해처리가 떠 있다) — 상자 바닥 어림이 아니라 구운
            판의 실제 바닥 픽셀(contentBottom)에 붙인다. 모델이 상자를 다 안 채워도
            발이 그림자에 닿는다. */
@@ -6353,8 +6350,13 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
              보이는지(groundSquash)를 자리마다 실제로 재어 넘겨받는다. 그 값이 곧
              바닥면의 눌림이라, 그림자가 지면 격자와 같은 각도로 깔린다. */
           const squish = 0.55;
-          const inkW9 = bspr && bspr.w > 0 ? (bspr.w / B) * ((sidePx * kFit) / sideQ) : wPx;
-          const footW = Math.max(wPx * 0.7, inkW9 * 0.88);
+          const inkW9 = bspr && bspr.w > 0 ? (bspr.w / B) * ((sidePx * kFit) / sideQEff) : wPx;
+          /* 2D는 그린 몸에만 맞춘다(지적: 평면에선 건물이 높이까지 바닥 상자 안으로
+             눌려 들어가, 발자국 폭(wPx) 바닥은 그린 몸보다 늘 크다) — 발자국 하한을
+             걷고 잉크 폭의 0.72만 덮는다. 입체는 종전대로 발자국 하한을 지킨다. */
+          const footW = op.pitch
+            ? Math.max(wPx * 0.7, inkW9 * 0.88)
+            : inkW9 * 0.72;
           const fdPx = footW * (op.footRatio ?? 0.6) * squish;
           ctx.save();
           ctx.shadowColor = "transparent";
@@ -6382,7 +6384,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
           ctx.restore();
         }
         if (bspr) {
-          const k = (sidePx * kFit) / sideQ;
+          const k = (sidePx * kFit) / sideQEff;
           // 겹친 것만 살짝 그림자(확대 적용: 유닛·건물 공통).
           if (airOverlap.has(op)) {
             ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
@@ -9631,7 +9633,10 @@ export default function ReplayMotionPlayer({
                보다 크게 그리기 시작하면서, 앞줄 미네랄이 뒷줄 본진 그림에 덮였다. 자원의
                z를 반 타일(+40)만큼 올려 같은 줄이면 자원이 이긴다. 정말 앞에 선 건물
                (한 타일 이상 아래)은 여전히 자원을 가린다. */
-            z: pitched ? 1000 + Math.round((res[1] + 1.2) * 80) + 40 : 900 + ri,
+            /* 화가 순서 기준을 그린 상자 아랫변으로(지적: 미네랄이 다른 요소에
+               가려짐) — 고정 +1.2는 밭을 키우고 나서 실제 그림보다 위였다. 건물이
+               발자국 아랫변을 쓰는 것과 같은 자로 맞춘다. */
+            z: pitched ? 1000 + Math.round((res[1] + (wTiles * 0.75) / 2) * 80) + 40 : 900 + ri,
             kind: gasSpot ? "geyser" : "mineral",
             viewYaw: viewYawOf(res[0], res[1]), flat: !pitched, pitch: pitched,
             sizePx: 0,
