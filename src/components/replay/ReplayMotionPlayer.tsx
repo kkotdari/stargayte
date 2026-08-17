@@ -7566,7 +7566,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
           ctx.save();
           ctx.shadowColor = "transparent";
           // 개인색 그림자(요청) — 어둡게 누른 임자 색. 짙기는 살짝 올려 형태를 지킨다.
-          ctx.globalAlpha = op.alpha * 0.2;
+          // 짙기 상향(지적) — 0.2 → 0.36.
+          ctx.globalAlpha = op.alpha * 0.36;
           ctx.fillStyle = shadowTint(op.color);
           ctx.beginPath();
           if (op.shadowPts && op.shadowPts.length >= 3) {
@@ -7696,7 +7697,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         /* 하이템플러 부양 로브(지적: 그림자가 몸에서 떨어져 분신 같다) — 그림자를
            위로 당겨 몸에 겹친다. */
         const shUp = op.kind === "htemp" ? px * 0.16 : 0;
-        ctx.globalAlpha = op.alpha * (op.air ? 0.26 : 0.16);
+        // 짙기 상향(지적: 그림자가 너무 흐려 안 보인다) — 0.26/0.16 → 0.5/0.34.
+        ctx.globalAlpha = op.alpha * (op.air ? 0.5 : 0.34);
         ctx.fillStyle = shadowTint(op.color);
         /* beginPath 필수(조사: 전 모드 거대 검은 쐐기의 진범) — 경로를 안 비우면
            ellipse가 직전 점에서 타원까지 선분을 이어 붙이며 프레임 내내 누적되고,
@@ -7724,7 +7726,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
            훨씬 작아야) — 발끝 자리에 딱 붙는 아주 작은 타원. */
         ctx.save();
         ctx.shadowColor = "transparent";
-        ctx.globalAlpha = op.alpha * 0.15;
+        // 짙기 상향(지적) — 0.15 → 0.32.
+        ctx.globalAlpha = op.alpha * 0.32;
         ctx.fillStyle = shadowTint(op.color);
         ctx.beginPath();
         // 바닥면 전체(재지적: 앞쪽만 납작) — 타원을 키우고 중심을 위로 당긴다.
