@@ -1298,6 +1298,9 @@ export function buildUnitTracks(
         없는 첫 하나는 시작 오버로드다 — 그 시각에 홀로 움직일 다른 것이 없다(라바는
         선택돼도 명령을 못 받고, 드론은 자원 클릭이 남는다). 이른(45초 안) 일꾼도 본진
         에서 출발시킨다 — 어림 합성이 아니라 태어난 자리로 거슬러 얹는 보정이다. */
+  /* 어림으로 고른 시작 오버로드 — 뒤에서 진짜 정찰 증거(개막에 남의 본진을 찍음)가
+     나오면 그 어림은 물린다. */
+  const guessedOverlord = new Map<number, { life: Life; born: number; evLen: number }>();
   {
     const startOf = new Map(
       players
@@ -1312,17 +1315,15 @@ export function buildUnitTracks(
       const isUnknown = life.kinds.size === 0 && life.groupKinds.size === 0 && !life.bld;
       if (race === "저그" && life.born <= 90 && isUnknown && life.solo && !overlordSeen.has(life.owner)) {
         overlordSeen.add(life.owner);
+        guessedOverlord.set(life.owner, { life, born: life.born, evLen: life.ev.length });
         life.kinds.set("Overlord", 1);
         if (life.ev.length === 0 || life.ev[0][0] > 0) life.ev.unshift([0, r1(home[0]), r1(home[1]), 3]);
         life.born = 0;
-      } else if (life.born <= 45 && !life.bld) {
-        const worker = RACE_WORKER[race] ?? "";
-        if (worker && life.kinds.has(worker)
-          && (life.ev.length === 0 || life.ev[0][0] > 0)) {
-          life.ev.unshift([0, r1(home[0]), r1(home[1]), 3]);
-          life.born = 0;
-        }
       }
+      /* 45초 안 일꾼을 전부 0초로 당기던 갈래는 걷었다(지적: 스타팅 일꾼이 화면에 안
+         나옴의 이면) — 30초에 나온 드론까지 0초 출생으로 당겨져, 저그 본진에 0초부터
+         일꾼 아홉이 겹쳐 서 있었다. 어느 넷이 시작 일꾼인지는 아래 '스타트 일꾼 넷'이
+         태어난 순서로 가려 정하고, 나머지는 제 출생 시각을 지킨다. */
     }
   }
 
@@ -1545,6 +1546,53 @@ export function buildUnitTracks(
         hallOf.set(b.owner, [b.x + 2, b.y + 1.5]);
       }
     }
+    /* 초반 30초의 '엄청 먼' 자취(지적: 시작하자마자 1시 기지에 5시 저그의 드론이 있다)
+       — 실측: 3초에 태그 11020(임자=5시 저그, 정체 미상)에 (126,3) — 즉 1시 남의 본진 —
+       자리 증거가 달렸다. 그 자리가 곧 개체의 첫 증거라, 정체 미상 개체가 종족 기본
+       일꾼(드론) 모습으로 적 본진에 솟았다.
+       다만 그 명령 자체는 진짜다(재지적: 스타팅 오버로드에게 내린 이동 명령이 안
+       나타남) — 개막에 남의 본진을 찍을 수 있는 건 정찰 오버로드뿐이다. 통째로 버리던
+       것을 갈라 본다:
+       ① 저그의 정체 미상 개체가 그런 먼 곳을 찍었다면 그게 시작 오버로드다 — 정체를
+          오버로드로 못 박고 집(홀)에서 태어나게 해 실제로 날아가는 자취를 살린다.
+       ② 그 밖(이미 정체가 잡혔거나 저그가 아닌 경우)은 남의 명령이 묻은 것이라 여태처럼
+          자리 증거만 버린다. */
+    const scoutSeen = new Set<number>();
+    for (const life of [...done].sort((a, b) => a.born - b.born)) {
+      if (life.bld) continue;
+      const hall = hallOf.get(life.owner);
+      if (!hall) continue;
+      const farAway = (v: [number, number, number, number, number?]): boolean => v[0] < 30
+        && v[1] >= 0 && Math.hypot(v[1] - hall[0], v[2] - hall[1]) > 25;
+      if (!life.ev.some(farAway)) continue;
+      const unknown = life.kinds.size === 0 && life.groupKinds.size === 0;
+      if (raceOf.get(life.owner) === "저그" && unknown && !scoutSeen.has(life.owner)) {
+        scoutSeen.add(life.owner);
+        /* 어림으로 오버로드라 했던 개체는 물린다 — 오버로드는 하나뿐이라 어림과 증거가
+           맞서면 증거가 이긴다. 정체를 비워 두면 아래에서 시작 일꾼으로 다시 잡힌다. */
+        const g = guessedOverlord.get(life.owner);
+        if (g && g.life !== life) {
+          g.life.kinds.delete("Overlord");
+          // 집 앞 출생도 함께 물린다 — 안 그러면 0초에 정체 없는 개체가 하나 더 선다.
+          if (g.life.ev.length > g.evLen) g.life.ev.shift();
+          g.life.born = g.born;
+          guessedOverlord.delete(life.owner);
+        }
+        life.kinds.set("Overlord", 1);
+        if (life.ev.length === 0 || life.ev[0][0] > 0 || life.ev[0][3] !== 3) {
+          life.ev.unshift([0, r1(hall[0]), r1(hall[1]), 3]);
+        }
+        life.born = 0;
+        continue;
+      }
+      const kept = life.ev.filter((v) => !farAway(v));
+      if (kept.length === life.ev.length) continue;
+      life.ev = kept;
+      if (kept.length > 0) life.born = Math.min(life.born, kept[0][0]);
+    }
+
+    /* 일꾼 후보 모으기는 위 정찰 오버로드 판정 '뒤'에 한다(수리) — 앞에서 모으면 어림으로
+       오버로드라 붙었다가 물린 개체가 후보에서 빠져, 시작 일꾼이 셋만 잡혔다. */
     const byOwner = new Map<number, Life[]>();
     for (const life of done) {
       if (life.bld || life.spawned || life.born > 150) continue;
@@ -1555,28 +1603,22 @@ export function buildUnitTracks(
       arr.push(life);
       byOwner.set(life.owner, arr);
     }
-    /* 초반 30초의 '엄청 먼' 자취는 제 것이 아니다(지적: 시작하자마자 1시 기지에 5시
-       저그의 드론이 있다) — 실측: 3초에 태그 11020(임자=5시 저그, 정체 미상)에 (126,3)
-       — 즉 1시 남의 본진 — 자리 증거가 달렸다. 개막 정찰 오버로드에게 미니맵으로 준
-       우클릭이 그때 잡혀 있던 선택 묶음 전체에 퍼진 것이라, 정체 미상 개체가 종족
-       기본 일꾼(드론) 모습으로 적 본진에 솟았다. 30초 안에 제 시작 홀에서 25타일 넘게
-       떨어진 자리 증거는 통째로 버린다 — 어떤 유닛도 그 시간에 거기 있을 수 없다. */
-    for (const life of done) {
-      if (life.bld) continue;
-      const hall = hallOf.get(life.owner);
-      if (!hall) continue;
-      const kept = life.ev.filter((v) => !(v[0] < 30 && v[1] >= 0
-        && Math.hypot(v[1] - hall[0], v[2] - hall[1]) > 25));
-      if (kept.length === life.ev.length) continue;
-      life.ev = kept;
-      if (kept.length > 0) life.born = Math.min(life.born, kept[0][0]);
-    }
 
     let synTag2 = -20000;
     for (const [pid, hall] of hallOf) {
-      const arr = (byOwner.get(pid) ?? []).sort((x, y) => x.born - y.born).slice(0, 4);
+      /* 정체를 일꾼으로 못 박는다(지적: 스타팅 일꾼 4마리가 화면에 안 나오고 채취도
+         안 함) — 시작 일꾼은 생산된 적이 없어 Train 증거가 없고, 자원 우클릭에도
+         유닛 이름이 안 붙어 정체가 끝까지 빈칸이었다. 그리는 쪽은 정체 없는 개체를
+         못 그리고 채취 왕복도 일꾼에게만 붙으니, 넷이 통째로 사라져 있었다. 시작 홀
+         발치의 이 넷은 정의상 그 종족의 일꾼이다. */
+      const worker = RACE_WORKER[raceOf.get(pid) ?? ""] ?? "";
+      const arr = (byOwner.get(pid) ?? [])
+        // 위에서 시작 오버로드로 잡힌 개체는 일꾼 후보가 아니다.
+        .filter((life) => !life.kinds.has("Overlord"))
+        .sort((x, y) => x.born - y.born).slice(0, 4);
       for (let i = 0; i < arr.length; i += 1) {
         const life = arr[i];
+        if (worker && life.kinds.size === 0) life.kinds.set(worker, 1);
         if (life.born > 0) {
           life.born = 0;
           life.ev.unshift([0, r1(hall[0] - 1.5 + i), r1(hall[1] + 2), 3]);
@@ -1584,7 +1626,8 @@ export function buildUnitTracks(
       }
       for (let i = arr.length; i < 4; i += 1) {
         done.push({
-          tag: synTag2, owner: pid, kinds: new Map(), groupKinds: new Set(),
+          tag: synTag2, owner: pid, kinds: worker ? new Map([[worker, 1]]) : new Map(),
+          groupKinds: new Set(),
           bld: false, born: 0, last: 0, lastAtk: null, evAfterAtk: false,
           morphTo: null, cxl: null, solo: false, spawned: true,
           ev: [[0, r1(hall[0] - 1.5 + i), r1(hall[1] + 2), 3]],
