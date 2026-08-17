@@ -9628,6 +9628,11 @@ export default function ReplayMotionPlayer({
             wFrac: (wTiles / grid.width) * mkK,
             hFrac: ((wTiles * 0.75) / grid.width) * mkK,
             boxFit: "meet", fitWidth: true,
+            /* 자원도 지면선에 앉힌다(지적: 간헐천·미네랄 위치도 그렇다) — 건물과 같은
+               갈래의 어긋남이다. 상자 바닥을 화면에서 어림하지 않고, 같은 자리를 타일
+               공간(칸 아랫변)에서 잡아 자리 사상으로 옮긴다. 평면에서는 값이 같아
+               보이던 그대로고, 입체에서만 원근이 실려 제자리로 온다. */
+            baseFy: posFrac(res[0], res[1] + (wTiles * 0.75) / 2)[1],
             color: gasSpot ? (depleted ? "#5d564c" : "#8f8274") : "#8fb9e8",
             // 미네랄 반투명(요청) — 뒤가 어렴풋이 비치는 수정 결정.
             alpha: gasSpot ? 1 : 0.55, noShadow: true,
