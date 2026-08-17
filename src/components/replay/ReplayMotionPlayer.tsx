@@ -1257,7 +1257,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const out: ShapeFace[] = [...pod(-5.4, -4.4), ...pod(5.4, -4.4)];
     /* 선체 3단(사진) — 밑단은 그늘진 강철, 허리는 개인색 띠, 윗단은 은빛. 세 단을
        나눠 쌓아야 원반이 '판때기 하나'가 아니라 층이 있는 선체로 읽힌다. */
-    out.push(...paintBase(cylinderFaces3(0, 0, 6.4, 1.2), STEEL));
+    // 밑단도 개인색(요청) — 허리 띠와 이어져 아래 몸통이 통째로 임자 색이 된다.
+    out.push(...cylinderFaces3(0, 0, 6.4, 1.2));
     out.push(...cylinderFaces3(0, 0, 6.05, 0.42, 1.2)); // 허리 개인색 띠(칠하지 않는다)
     out.push(...paintBase(cylinderFaces3(0, 0, 6.2, 0.85, 1.62), SILVER));
     out.push(capFace(discPath3(0, 0, 2.48, 5.5), 0.2));
@@ -1347,12 +1348,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 사이를 잇는 입체 상자 — 판보다 낮고 짧아 판 셋이 도드라진다.
     /* 사이 상자는 판보다 앞뒤로 조금 더 내민다(지적: 판에 가려 안 보임) — 판이
        더 길면 정면에서 통째로 덮인다. 키도 판과 같은 층에 둬 요잉으로 앞뒤가 갈린다. */
-    pc.push(...tagKey(boxFaces3(-2.1, 0, 2.9, 8.2, 4.6, 2.9), 14 + depthNow(-2.1, 0)));
-    pc.push(...tagKey(boxFaces3(2.1, 0, 2.9, 8.2, 4.6, 2.9), 14 + depthNow(2.1, 0)));
+    /* 키는 제 자리 깊이 하나로(지적: 배럭 키값) — 14·16·18·20 같은 붙박이 상수가
+       깊이 항(±5)보다 커서 요잉과 무관하게 상수가 순서를 지배했다. 판 셋과 사이
+       상자는 나란히 선 것들이라 제 자리 깊이만으로 앞뒤가 옳고, 위에 얹힌 환풍구·
+       어깨 띠만 제 판의 깊이에 +0.3을 더해 따라다닌다. */
+    pc.push(...tagKey(boxFaces3(-2.1, 0, 2.9, 8.2, 4.6, 2.9), depthNow(-2.1, 0) * 1.6));
+    pc.push(...tagKey(boxFaces3(2.1, 0, 2.9, 8.2, 4.6, 2.9), depthNow(2.1, 0) * 1.6));
     // 얇은 판 셋(재지적) — 양쪽 판이 더 크고 가운데가 오히려 작다.
-    out.push(...tagKey(boxFaces3(-4.1, 0, 1.9, 7.6, 7.2, 2.4), 14 + depthNow(-4.1, 0)));
-    out.push(...tagKey(boxFaces3(4.1, 0, 1.9, 7.6, 7.2, 2.4), 14 + depthNow(4.1, 0)));
-    out.push(...tagKey(boxFaces3(0, 0, 1.6, 6.4, 5.8, 2.4), 16 + depthNow(0, 0)));
+    out.push(...tagKey(boxFaces3(-4.1, 0, 1.9, 7.6, 7.2, 2.4), depthNow(-4.1, 0) * 1.6));
+    out.push(...tagKey(boxFaces3(4.1, 0, 1.9, 7.6, 7.2, 2.4), depthNow(4.1, 0) * 1.6));
+    out.push(...tagKey(boxFaces3(0, 0, 1.6, 6.4, 5.8, 2.4), depthNow(0, 0) * 1.6));
     /* 뒤쪽 환풍구(사진) — 좌우 판 뒤끝에 비스듬히 앉은 격자 상자. 살짝 기울여 뒤로
        빠지고, 앞면에 밝은 살 세 줄. */
     /* 환풍구는 양쪽 판 위에(재지적) — 판 꼭대기(z 9.6)에 앞뒤로 긴 상자를 얹고
@@ -1365,7 +1370,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           [vx9 - 0.7, -3 + i9 * 1.15, 10.85], [vx9 + 0.7, -3 + i9 * 1.15, 10.85],
           [vx9 + 0.7, -2.62 + i9 * 1.15, 10.85], [vx9 - 0.7, -2.62 + i9 * 1.15, 10.85],
         ]), 0.3)),
-      ], 18 + depthNow(vx9, -1)));
+      ], depthNow(vx9, 0) * 1.6 + 0.3));
     }
     /* 가운데 판 위 환풍구 — 양쪽보다 작고 짧다. */
     out.push(...tagKey([
@@ -1374,10 +1379,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         [-0.52, -1.9 + i9 * 0.95, 9.15], [0.52, -1.9 + i9 * 0.95, 9.15],
         [0.52, -1.58 + i9 * 0.95, 9.15], [-0.52, -1.58 + i9 * 0.95, 9.15],
       ]), 0.3)),
-    ], 20 + depthNow(0, -0.8)));
-    // 좌우 판 어깨의 밝은 띠(기존 포인트 유지).
-    out.push(topFace(polyPath3([[-5, 2.6, 9.65], [-3.2, 2.6, 9.65], [-3.2, 1.7, 9.65], [-5, 1.7, 9.65]]), 0.3));
-    out.push(topFace(polyPath3([[3.2, 2.6, 9.65], [5, 2.6, 9.65], [5, 1.7, 9.65], [3.2, 1.7, 9.65]]), 0.3));
+    ], depthNow(0, 0) * 1.6 + 0.3));
+    // 좌우 판 어깨의 밝은 띠(기존 포인트 유지) — 제 판을 따라다닌다.
+    out.push(...tagKey([topFace(polyPath3([[-5, 2.6, 9.65], [-3.2, 2.6, 9.65],
+      [-3.2, 1.7, 9.65], [-5, 1.7, 9.65]]), 0.3)], depthNow(-4.1, 0) * 1.6 + 0.3));
+    out.push(...tagKey([topFace(polyPath3([[3.2, 2.6, 9.65], [5, 2.6, 9.65],
+      [5, 1.7, 9.65], [3.2, 1.7, 9.65]]), 0.3)], depthNow(4.1, 0) * 1.6 + 0.3));
     return raceBase(out, "terran", pc);
   },
   /* 서플라이(단순화, 지적) — 본체 상자 + 지붕 큰 회전 통풍구 + 앞면의 더 큰 둥근 팬
@@ -1984,9 +1991,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         segs: 4, sides: 6, curveY: -sy9 * 1.2, hold: 0.5,
       }), facingRatio(0, sy9) >= 0 ? 34 : 26));
     }
-    /* 사진 디테일(요청) — 탑 밑동에 금 무늬 골. 발판마다 두르던 청록 띠는 걷었다
-       (지적: 프로토스 짙은 녹색판 제거) — 납작한 원통이라 발판 위에 초록 판때기
-       넷이 얹힌 꼴이었다. */
+    /* 사진 디테일(요청) — 탑 밑동에 금 무늬 골. 발판 위 원판은 청록을 걷고 개인색
+       자리로 삼는다(요청) — 네 발판에 하나씩이라 사방 어디서 봐도 임자 색이 깔린다.
+       칠하지 않아야 임자 색이 드니 아래 gated.push로 따로 얹는다. */
     for (const mx9 of [-2.1, 2.1]) {
       out.push(...tagKey(paintBase(cylinderFaces3(mx9, 0, 1.35, 0.3, h + 1.2), "#8a6f2a"),
         depthNow(mx9, 0) * 1.6 + 30.2));
@@ -1994,7 +2001,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 몸은 금빛 바탕(재작도) — 여태 발판·마당·어금니 탑이 통째로 개인색이라 종족이
        안 읽혔다. 남은 밑칠을 금으로 덮고, 개인색은 아래 두 곳만 남긴다. */
     const gated: ShapeFace[] = paintBase(out, "#c9a227");
-    // ① 문틈의 소환 빛 테 ② 탑 어깨의 띠 — 둘 다 칠하지 않아 임자 색이 든다.
+    /* ① 문틈의 소환 빛 테 ② 탑 어깨의 띠 ③ 발판 위 원판 넷 — 모두 칠하지 않아
+       임자 색이 든다. */
+    for (const [px9, py9] of [[0, 3.6], [0, -3.6], [3.8, 0], [-3.8, 0]] as [number, number][]) {
+      gated.push(...tagKey(cylinderFaces3(px9, py9, 1.55, 0.16, h),
+        depthNow(px9, py9) * 1.6 + 0.3));
+    }
     gated.push(...tagKey([bodyFace(groundEllipse(wx, wy, 0.85, 1.05))], 30.1));
     for (const mx9 of [-2.1, 2.1]) {
       gated.push(...tagKey(cylinderFaces3(mx9, 0, 1.18, 0.26, h + 2.6),
@@ -2274,9 +2286,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       return faces;
     })(),
     // (제거·지적: 기둥 옆 막대기 제거) — 옆으로 삐친 관이 정체불명 막대로 보였다.
-    /* 머리 상자도 얹힘(지적: 넓은 밑둥 판과 순서가 요잉 따라 어긋남) — 지붕 규칙로
-       밑둥(반지름 키 3.1)보다 큰 붙박이 키. 포드(40)·다리(41)보단 작게. */
-    ...tagKey(paintBase(boxFaces3(0, 0, 3.6, 2.8, 3.6, 3.6), "#c9ced6"), 20 + depthNow(0, 0)), // 윗부분 은색(요청)
+    /* 머리 상자는 밑둥 위 얹힘 — 밑둥(키 없음)보다 큰 붙박이 키 2를 갖는다. 둘레
+       포드는 이 20을 기준으로 제 자리 깊이만큼 앞뒤로 갈린다(지적: 터렛 키값 — 포드가
+       24+깊이라 뒤로 돌아간 포드까지 늘 머리 위에 그려졌다). 20은 밑둥이 제 몫으로
+       다는 키(깊이 + 반지름 3.1)를 늘 이기는 값이다. */
+    ...tagKey(paintBase(boxFaces3(0, 0, 3.6, 2.8, 3.6, 3.6), "#c9ced6"), 20), // 윗부분 은색(요청)
     /* 미사일 포드 — 약간 하늘을 향해 기운다(지적): 위가 뒤로 1.4 물러난 기운 판. */
     /* 미사일 포드(지적) — 옆모습이 마름모가 아니라 직사각형: 위만 미는 전단이 아니라
        상자를 통째로 뒤로 기울인다. 하늘을 향한 기울기는 그대로. */
@@ -2326,9 +2340,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         faces.push(bodyFace(d), ...sl.face(d));
       }
       faces.push(bodyFace(top), topFace(top, 0.2));
-      return tagKey(paintBase(faces, "#c9ced6"), 24 + depthNow(rx, 0.2)); // 포드 은색(요청)
+      // 포드 은색(요청) — 머리(키 2)를 기준으로 제 자리 깊이만큼 앞뒤가 갈린다.
+      return tagKey(paintBase(faces, "#c9ced6"), 20 + depthNow(rx, 0.2) * 1.6);
     }),
-    ...tagKey(paintBase(boxFaces3(0, -0.2, 2.2, 1.8, 1.6, 7.2), "#c9ced6"), 24 + depthNow(0, -0.2)),
+    // 꼭대기 작은 상자 — 머리·포드보다 위라 붙박이 키 26.
+    ...tagKey(paintBase(boxFaces3(0, -0.2, 2.2, 1.8, 1.6, 7.2), "#c9ced6"), 26),
     /* 사진 디테일 보강(요청) — 머리 둘레에 붉은 미사일 슬롯 여덟이 방사로 박힌다.
        요잉을 따라 돌고 뒤로 간 것은 안 그린다. 형태는 지금 것 그대로. */
     ...Array.from({ length: 8 }, (_, k9) => {
@@ -2336,6 +2352,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const sx9 = Math.sin(a9);
       const sy9 = Math.cos(a9);
       if (facingRatio(sx9, sy9) <= 0.05) return [];
+      // 슬롯은 꼭대기 상자(키 26)를 둘러 박히므로 그 26을 기준으로 앞뒤가 갈린다.
       return tagKey(paintBase(
         boxFaces3(sx9 * 1.7, sy9 * 1.7 - 0.2, 0.55, 0.55, 0.9, 7.4), "#a8322a",
       ), 26 + depthNow(sx9 * 1.7, sy9 * 1.7) * 1.6);
@@ -2753,7 +2770,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   academy: () => {
     const STEEL = "#6b7078";
     const DARK = "#3f444b";
-    const RED = "#a8322a";
+    // 붉던 세 자리(드럼 띠·굴뚝 갓·대야 속)는 개인색이 됐다(요청) — 붉은색 상수는 뺀다.
     const out: ShapeFace[] = [];
     /* 발치 슬래브 — 사방으로 흩어진 돌빛 판들. 낮게 깔려 받침 노릇을 한다. */
     for (const [bx, by, bw, bh, br] of [
@@ -2765,27 +2782,32 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     }
     // 본체 받침 — 낮고 넓은 어두운 단.
     out.push(...tagKey(paintBase(boxFaces3(0, 0.2, 8.4, 5.4, 2, 0), DARK), 4));
-    /* 왼쪽 리벳 드럼 돔(사진) — 통 몸에 붉은 띠를 두르고 위는 돔 뚜껑. */
+    /* 왼쪽 리벳 드럼 돔(사진) — 통 몸에 붉은 띠를 두르고 위는 잿빛 돔 뚜껑. */
     out.push(...tagKey([
       // 전체 높이 상향(요청) — 드럼 몸 2.2 → 3.4, 돔 1.5 → 2.1.
       ...paintBase(cylinderFaces3(-2.6, 0.6, 2.15, 3.4, 1.2), STEEL),
-      ...paintBase(cylinderFaces3(-2.6, 0.6, 2.24, 0.6, 3.4), RED),
     ], 12 + depthNow(-2.6, 0.6) * 1.6));
-    /* 개인색은 그 드럼의 돔 뚜껑(요청: 덧붙인 원판 말고 실제 부품에) — 가장 높고
-       넓은 뚜껑이라 위에서도 옆에서도 임자 색이 한눈에 든다. */
-    const pc: ShapeFace[] = [...tagKey([
-      ...domeFaces3(-2.6, 0.6, 2.15, 2.1, 4.6),
+    out.push(...tagKey([
+      ...paintBase(domeFaces3(-2.6, 0.6, 2.15, 2.1, 4.6), "#7b8088"),
       capFace(discPath3(-2.6, 0.6, 6.75, 0.8), 0.3),
-    ], 13 + depthNow(-2.6, 0.6) * 1.6)];
+    ], 13 + depthNow(-2.6, 0.6) * 1.6));
+    /* 개인색은 여태 붉던 자리들(요청) — 드럼 허리 띠, 굴뚝 두 갓, 오른쪽 대야 속.
+       셋이 몸통 좌우와 뒤에 흩어져 어느 요잉에서도 하나는 보인다. */
+    const pc: ShapeFace[] = [...tagKey(
+      cylinderFaces3(-2.6, 0.6, 2.24, 0.6, 3.4), 12.5 + depthNow(-2.6, 0.6) * 1.6,
+    )];
     /* 뒤 굴뚝 탑 둘 — 붉은 갓을 쓴 가는 기둥. 하나는 더 높다. */
     for (const [cx9, cy9, ch9, cr9] of [
       [-1.2, -2.1, 7.2, 0.55], [1.5, -2.4, 5.8, 0.62],
     ] as [number, number, number, number][]) {
-      out.push(...tagKey([
-        ...paintBase(cylinderFaces3(cx9, cy9, cr9, ch9, 1.2), DARK),
-        ...paintBase(cylinderFaces3(cx9, cy9, cr9 * 1.35, 0.7, 1.2 + ch9 - 0.7), RED),
+      out.push(...tagKey(
+        paintBase(cylinderFaces3(cx9, cy9, cr9, ch9, 1.2), DARK),
+        16 + depthNow(cx9, cy9) * 1.6,
+      ));
+      pc.push(...tagKey([
+        ...cylinderFaces3(cx9, cy9, cr9 * 1.35, 0.7, 1.2 + ch9 - 0.7),
         capFace(discPath3(cx9, cy9, 1.2 + ch9, cr9 * 0.9), 0.45),
-      ], 16 + depthNow(cx9, cy9) * 1.6));
+      ], 16.5 + depthNow(cx9, cy9) * 1.6));
     }
     // 가운데 잿빛 원통 — 돔 뚜껑을 쓴 짧은 통.
     out.push(...tagKey([
@@ -2796,9 +2818,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...tagKey([
       ...paintBase(cylinderFaces3(3, -0.8, 2.5, 2.6, 1.2), STEEL),
       [discPath3(3, -0.8, 3.82, 2.5), 1, STEEL] as ShapeFace,
-      [discPath3(3, -0.8, 3.72, 1.75), 1, RED] as ShapeFace,
-      capFace(discPath3(3, -0.8, 3.65, 1.35), 0.4),
     ], 12 + depthNow(3, -0.8) * 1.6));
+    pc.push(...tagKey([
+      bodyFace(discPath3(3, -0.8, 3.72, 1.75)),
+      capFace(discPath3(3, -0.8, 3.65, 1.35), 0.4),
+    ], 12.5 + depthNow(3, -0.8) * 1.6));
     /* 앞 기운 작업 단(사진) — 다리 넷 위에 비스듬히 얹힌 판과 잔 부속들. */
     {
       const tab: ShapeFace[] = [];
@@ -2827,12 +2851,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 엔지니어링 베이(복원) — 사방 대각 팔 끝의 원반 발 넷, 각진 몸체 더미, 끝이
      빛나는 앞 통, 지붕 안테나. */
   ebay: () => {
+    // 발 은색(요청: 이륙 가능 건물) — 윗면 원판은 개인색이라 아래 pc가 맡는다.
     const foot = (fx: number, fy: number): ShapeFace[] => paintBase([
       ...hornFaces(fx * 0.45, fy * 0.45, 1.0, fx * 0.85, fy * 0.85, 0.7, 0.9), // 몸통 부착점 더 아래(지적)
+      ...cylinderFaces3(fx, fy, 0.32, 1, 0.35),
+    ], "#c9ced6");
+    const FEET: [number, number][] = [[-5, -3], [5, -3], [-5.2, 3.2], [5.2, 3.2]];
+    /* 개인색은 발 넷의 윗면 원판(요청) — 네 귀에 벌어져 있어 어느 요잉에서도 임자
+       색이 읽힌다. 발 기둥·팔·붉은 테는 제 색으로 둔다. */
+    const pc: ShapeFace[] = FEET.flatMap(([fx, fy]) => tagKey([
       bodyFace(discPath3(fx, fy, 0.35, 1.5)),
       topFace(discPath3(fx, fy, 0.38, 1), 0.25),
-      ...cylinderFaces3(fx, fy, 0.32, 1, 0.35),
-    ], "#c9ced6"); // 발 은색(요청: 이륙 가능 건물)
+    ], 8 + depthNow(fx, fy) * 1.6))
     /* 사진 디테일 보강(요청) — 오른앞에 붉은 큰 드럼, 왼뒤 지붕에 붉은 돔, 옆구리에
        초록 발광 띠, 발 테에 붉은 링. 형태(상자 더미 + 발 넷)는 그대로 둔다. */
     const out: ShapeFace[] = [
@@ -2863,17 +2893,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...tagKey(led, 12 + depthNow(-1.7, 1.6) * 1.6));
     }
     // 발 테 붉은 링.
-    for (const [fx9, fy9] of [[-5, -3], [5, -3], [-5.2, 3.2], [5.2, 3.2]] as
-      [number, number][]) {
+    for (const [fx9, fy9] of FEET) {
       out.push(...tagKey(paintBase(cylinderFaces3(fx9, fy9, 1.55, 0.2, 0.3), "#a8322a"),
         depthNow(fx9, fy9) * 1.6 - 1));
     }
-    /* 개인색은 몸통 위에 쌓인 상자 둘(요청: 덧붙인 원판 말고 실제 부품에) — 지붕
-       한가운데라 붉은 드럼·돔과 겹치지 않고 위에서 바로 읽힌다. */
-    return raceBase(out, "terran", [
-      ...tagKey(boxFaces3(-0.8, -1, 3, 2.4, 1.5, 3), 10 + depthNow(-0.8, -1) * 1.6),
-      ...tagKey(boxFaces3(1.8, -1.4, 1.5, 1.5, 2.3, 3), 10 + depthNow(1.8, -1.4) * 1.6),
-    ]);
+    // 몸통 위에 쌓인 상자 둘 — 개인색은 발 윗면이 맡는다(요청).
+    out.push(...tagKey(boxFaces3(-0.8, -1, 3, 2.4, 1.5, 3), 10 + depthNow(-0.8, -1) * 1.6));
+    out.push(...tagKey(boxFaces3(1.8, -1.4, 1.5, 1.5, 2.3, 3), 10 + depthNow(1.8, -1.4) * 1.6));
+    return raceBase(out, "terran", pc);
   },
   /* 아머리(실물 참고) — 가운데 우물 드럼(어두운 속·테두리 빛 눈금·비스듬한 뚜껑 판),
      둘레의 각진 첨탑 둘과 빛나는 기둥 포스트 둘, 방사 팔 모듈. */
@@ -3017,7 +3044,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     for (const [fx, fy] of [[-3.4, 2.6], [3.4, 2.4], [-3.6, -1.6], [3.6, -2]] as [number, number][]) {
       // 발은 바닥에 깔리므로 한 칸 아래.
       out.push(...tagKey(paintBase(boxFaces3(fx, fy, 1.5, 1.1, 0.35, 0), "#c9ced6"),
-        depthNow(fx, fy) * 1.6 - 2));
+        depthNow(fx, fy) - 2));
     }
     /* 큰 황금 돔(오른뒤) — 위에 청록 눈. 옆구리에 붉은 띠. */
     out.push(...tagKey([
@@ -3028,18 +3055,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        깊이 항(±5)보다 커서 요잉과 무관하게 상수가 순서를 지배했다. 부품들은 서로
        옆에 선 것들이라 제 자리 깊이만으로 앞뒤가 옳다. 같은 부품 안에서 '위에 얹힌'
        것(돔의 눈, 관 팔)만 소수점 한 자리를 더한다. */
-    ], depthNow(2.2, -0.6) * 1.6));
+    ], depthNow(2.2, -0.6) + 3));
     // 큰 돔 꼭대기 청록 눈 — 테 두른 발광 원반.
     out.push(...tagKey([
       [discPath3(2.2, -0.6, 5.05, 1.15), 1, GOLD_D] as ShapeFace,
       [discPath3(2.2, -0.6, 5.12, 0.86), 0.95, CYAN] as ShapeFace,
       topFace(discPath3(2.2, -0.6, 5.18, 0.45), 0.5),
-    ], depthNow(2.2, -0.6) * 1.6 + 0.5));
+    ], depthNow(2.2, -0.6) + 3.5));
     /* 앞오른쪽 작은 돔 — 같은 눈을 인다. */
     out.push(...tagKey([
       ...paintBase(domeFaces3(2.6, 2.4, 1.6, 1.7, 0.35), GOLD),
       [discPath3(2.6, 2.4, 2.08, 0.62), 0.95, CYAN] as ShapeFace,
-    ], depthNow(2.6, 2.4) * 1.6));
+    ], depthNow(2.6, 2.4) + 1.6));
     /* 왼쪽 황금 뿔탑 셋(사진) — 밑동이 굵고 끝이 뾰족한 첨탑. 세로 골이 있다. */
     for (const [tx, ty, th, tw] of [
       [-3, -1.2, 5.4, 0.95], [-1.9, -1.9, 6.4, 1.05], [-0.8, -1.2, 4.6, 0.85],
@@ -3047,7 +3074,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...tagKey(paintBase(spirePillar({
         x: tx, y: ty, z0: 0.3, h: th, w: tw, tipW: 0.1,
         segs: 5, sides: 8, hold: 0.18, taper: 1.4,
-      }), GOLD), depthNow(tx, ty) * 1.6));
+      }), GOLD), depthNow(tx, ty) + tw));
     }
     /* 뿔탑에서 큰 돔으로 건너가는 관 팔 넷 — 마디진 황금 관. */
     // 장식 축소(요청: 과도한 장식 제거) — 관 팔 넷 → 둘.
@@ -3058,7 +3085,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...paintBase(tubeFaces(ax, sy9, 1.4, sy9 + 0.9, 0.26, 3.2 - k * 0.35), GOLD_D),
         ...paintBase(tubeFaces(ax + 0.9, sy9 + 0.3, ax + 1.1, sy9 + 0.36, 0.34, 3.2 - k * 0.35), GOLD),
       // 관 팔은 뿔탑과 돔 사이를 건너므로 제 가운데 깊이 + 반 칸만 얹는다.
-      ], depthNow((ax + 1.4) / 2, sy9 + 0.45) * 1.6 + 0.5));
+      ], depthNow((ax + 1.4) / 2, sy9 + 0.45) + 0.5));
     }
     /* 앞왼쪽 골진 황금 단(사진) — 층층이 골이 팬 낮은 상자. 개인색은 이 단만(재지적:
        몸통 전체 말고 일부만) — 큰 돔을 통째로 칠하니 건물이 임자 색 덩어리가 됐다.
@@ -3070,13 +3097,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         const gx = -3.5 + k * 1.1;
         blk.push(...paintBase(boxFaces3(gx, 2.3, 0.3, 2.7, 0.34, 2), GOLD_D));
       }
-      pc.push(...tagKey(blk, depthNow(-2.4, 2.3) * 1.6));
+      pc.push(...tagKey(blk, depthNow(-2.4, 2.3) + 1.3));
     }
     /* 앞쪽 톱니 바퀴(복원·지적: 포지의 킥인데 빠졌다) — 좌우를 보고 선 2/3 원 판에
        이빨이 둘러 박힌다. 안팎 두 판을 이빨 슬래브로 봉합해 두께를 준다. */
     {
-      const WX0 = -4.4;
-      const WX1 = -3.1;
+      /* 바퀴를 왼쪽으로 물린다(지적: 포지 키값) — 여태 바퀴(x −4.4~−3.1, y ±3.3)와
+         앞왼쪽 골진 단(x −4.2~−0.6, y 1.0~3.6)이 서로의 속을 파고들어, 어떤 키를 줘도
+         한쪽이 다른 쪽을 잘라 먹었다. 겹치는 건 키가 아니라 자리 문제다. */
+      const WX0 = -5.7;
+      const WX1 = -4.4;
       const CZ = 1.8;
       const RIM = 2.5;
       const half = (x9: number): [number, number, number][] => Array.from(
@@ -3113,7 +3143,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         g.push(bodyFace(fb), topFace(fb, 0.1));
         g.push(bodyFace(polyPath3(tooth(WX1))), topFace(polyPath3(tooth(WX1)), 0.12));
       }
-      out.push(...tagKey(paintBase(g, GOLD_D), depthNow(-3.8, 1.6) * 1.6));
+      /* 톱니 바퀴는 y로 깊은 부품(반지름 2.5) — 가운데 깊이만 쓰면 제 앞쪽이 실제보다
+         뒤로 잡힌다. 프리미티브와 같은 규약으로 앞점을 더한다. */
+      out.push(...tagKey(paintBase(g, GOLD_D), depthNow(-3.8, 1.6)
+        + Math.min(5, 0.65 * Math.abs(depthNow(1, 0)) + RIM * Math.abs(depthNow(0, 1)))));
     }
     return raceBase(out, "toss", pc);
   },
