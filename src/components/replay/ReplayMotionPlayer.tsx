@@ -1616,14 +1616,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        한 키로 묶고 구체를 그 위에 얹었더니, 앞으로 돈 탑까지 구체 뒤로 갔다.
        탑은 30±제 깊이, 구체는 그 한가운데(30)에 두면 앞 탑은 구체를 덮고 뒤 탑은
        구체 뒤로 간다 — 문 사이에 빛이 든 그림이다. */
-    for (const mx9 of [-2.7, 2.7]) {
+    // 뿌리만 안쪽으로(지적) — ±2.7 → ±2.1. 끝 자리는 그대로라 눕는 몫이 줄어든다.
+    for (const mx9 of [-2.1, 2.1]) {
       out.push(...tagKey(spirePillar({
         // 끝은 뾰족이 아니라 뭉뚝하게 잘린 면(지적) — tipW 0.12 → 0.55.
         // 높이 축소(지적) — 8.4 → 6.4.
         x: mx9, y: 0, z0: h, h: 6.4, w: 1.5, tipW: 0.55,
         /* 끝끼리 모으되 붙지는 않게(재지적: 너무 붙었다) — 안쪽으로 눕는 몫 2.25 →
            1.85. 두 끝 사이에 문틈이 남는다. */
-        segs: 5, sides: 4, hold: 0.12, leanX: -Math.sign(mx9) * 1.85, leanY: -0.3, taper: 1.5,
+        segs: 5, sides: 4, hold: 0.12, leanX: -Math.sign(mx9) * 1.25, leanY: -0.3, taper: 1.5,
       }), 30 + depthNow(mx9, 0) * 1.6));
     }
     // 가운데 소환 구체 — 두 탑 깊이의 한가운데.
