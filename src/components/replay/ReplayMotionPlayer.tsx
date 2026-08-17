@@ -9906,8 +9906,52 @@ export default function ReplayMotionPlayer({
         y: Math.min(maxY, Math.max(-maxY, ny)),
       });
     };
+    /* PC 휠 줌 복구(요청) — 없앴던 이유는 버벅임이었다. 원인은 배율 자체가 아니라
+       '휠 한 틱마다 setState'였다: 휠은 초당 수십 번 오는데 그때마다 리액트가 마커
+       수천 개를 통째로 다시 그렸다. 이제 손짓이 도는 동안은 리액트를 아예 안 건드린다 —
+       렌즈 상자의 transform을 직접 써서 합성기(compositor)만 일하게 하고, 휠이 멎은
+       뒤(140ms)에 딱 한 번 상태로 굳힌다. 그 사이 zoomRef·panRef는 지금 값을 들고
+       있어 더블클릭·드래그 같은 다른 손짓도 어긋나지 않는다. */
+    let wheelTimer = 0;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && Math.abs(e.deltaY) < 0.5) return;
+      e.preventDefault();
+      const lens = lensRef.current;
+      if (!lens) return;
+      const rect = el.getBoundingClientRect();
+      const z0 = zoomRef.current;
+      /* 한 틱에 배율을 곱으로 바꾼다 — 더할 때보다 확대·축소가 대칭이고, 트랙패드의
+         잔 델타에도 결이 고르다. 상한은 더블클릭과 같은 게임 화면 배율. */
+      const step = Math.exp(-e.deltaY * 0.0016);
+      const z1 = Math.min(ZOOM_GAME, Math.max(1, z0 * step));
+      const ox = rect.left + rect.width / 2;
+      const oy = rect.top + rect.height / 2;
+      // 커서 아래의 지도 지점이 그 자리에 남도록 팬을 함께 푼다(더블클릭과 같은 자).
+      const ux = (e.clientX - ox - panRef.current.x) / z0;
+      const uy = (e.clientY - oy - panRef.current.y) / z0;
+      const maxX = ((z1 - 1) * rect.width) / 2;
+      const maxY = ((z1 - 1) * rect.height) / 2;
+      const px = Math.min(maxX, Math.max(-maxX, e.clientX - ox - z1 * ux));
+      const py = Math.min(maxY, Math.max(-maxY, e.clientY - oy - z1 * uy));
+      zoomRef.current = z1;
+      panRef.current = { x: px, y: py };
+      lens.style.setProperty("--mz", `${z1}`);
+      lens.style.transformOrigin = "center";
+      lens.style.transform = z1 > 1 ? `translate(${px}px, ${py}px) scale(${z1})` : "";
+      window.clearTimeout(wheelTimer);
+      wheelTimer = window.setTimeout(() => {
+        setZoom(zoomRef.current);
+        setPan({ ...panRef.current });
+      }, 140);
+    };
     el.addEventListener("dblclick", onDbl);
-    return () => el.removeEventListener("dblclick", onDbl);
+    // passive:false 라야 브라우저의 페이지 스크롤을 막을 수 있다.
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      el.removeEventListener("dblclick", onDbl);
+      el.removeEventListener("wheel", onWheel);
+      window.clearTimeout(wheelTimer);
+    };
     // 확대창(포털 재부착)이 사라져 맵 엘리먼트는 안 바뀐다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -9934,6 +9978,8 @@ export default function ReplayMotionPlayer({
   /* 지도 위에서만 핀치 줌·팬(요청) — 페이지 줌은 도로 막고, 지도(mapRef)에 붙인
      네이티브 두 손가락 처리로 확대·이동한다. 손가락 가운데 점이 고정되도록 pan을
      함께 푼다. 한 손가락 끌기는 기존 pointer 드래그(zoom>1)가 맡는다. */
+  /** 렌즈 상자 — 휠 줌이 리액트를 거치지 않고 직접 변환을 쓰는 자리(위 onWheel 주석). */
+  const lensRef = useRef<HTMLDivElement | null>(null);
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
   const panRef = useRef(pan);
@@ -10893,6 +10939,7 @@ export default function ReplayMotionPlayer({
         )}
         {/* 렌즈 상자 — PC 휠 줌(요청)이 이 층을 통째로 키운다(마커·자취까지 같이). */}
         <div
+          ref={lensRef}
           className={cx("scr-motion-lens", unitX2 && "scr-motion-unit2x")}
           style={{
             /* 줌 역배율 변수(지적: 클릭 마커·링은 UI라 확대에 굵어지면 안 됨) —

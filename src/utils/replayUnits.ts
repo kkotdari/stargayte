@@ -196,14 +196,6 @@ const BUILDING_MORPH_FROM: Record<string, string> = {
   Lair: "Hatchery", Hive: "Lair", "Greater Spire": "Spire",
   "Sunken Colony": "Creep Colony", "Spore Colony": "Creep Colony",
 };
-/** 편을 안 가리는 무기(요청: 럴커·시즈모드·리버 스캐럽은 아군도 맞는다) — 사거리(타일),
- *  터지는 반지름(타일), 한 틱(1초)에 주는 피해. 럴커는 버로우해야 쏘지만 시뮬은 버로우
- *  상태를 따로 안 세므로 사거리로만 가린다(6타일은 버로우 럴커의 사거리다). */
-const SPLASH_ARMS: Record<string, { range: number; r: number; dmg: number }> = {
-  Lurker: { range: 6, r: 1.2, dmg: 10 },
-  "Siege Tank (Siege Mode)": { range: 12, r: 1.5, dmg: 18 },
-  Reaver: { range: 8, r: 1.5, dmg: 22 },
-};
 /** 홀 계보의 변태 — 시작 홀(건설 커맨드가 없어 자리 증거도 없는 것)을 이어 주는 자. */
 const HALL_MORPHS = new Set(["Lair", "Hive"]);
 /** 두루뭉술한 정체(그룹) → 구체 증거가 없을 때의 대표. */
@@ -2555,36 +2547,12 @@ export function buildUnitTracks(
           const per = (foeDps * 0.7) / mine.length;
           for (const a of mine) hurt(a, sec, per, false);
         }
-        /* 아군 피해(요청: 럴커·시즈모드·리버 스캐럽은 아군도 맞는다) — 이 셋은 원작에서
-           편을 안 가리는 무기라, 표적 곁에 낀 제 편도 함께 갈린다. 위의 편 대 편 배분은
-           아군을 원천적으로 안 때려, 아군 사이에 낀 적이 무적이 되고 큰 전투의 손실이
-           늘 적게 잡혔다. 표적(가장 가까운 적)을 정하고 그 자리 둘레에 터뜨린다 —
-           맞는 쪽은 편을 안 가리되 쏜 자신은 뺀다(제 발밑에는 안 떨어진다). */
-        const splashers = [...present.values()].flat();
-        for (const s9 of splashers) {
-          /* 탱크는 시즈모드일 때만 편을 안 가린다 — 정체 이름이 이미 시즈모드면 그대로,
-             아니면 시즈 커맨드(f=8/9)로 켜져 있어야 한다. */
-          const armKey9 = s9.kind.startsWith("Siege Tank")
-            ? (s9.sieged || s9.kind === "Siege Tank (Siege Mode)" ? "Siege Tank (Siege Mode)" : "")
-            : s9.kind;
-          const sp9 = SPLASH_ARMS[armKey9];
-          if (!sp9) continue;
-          let tx9 = 0;
-          let ty9 = 0;
-          let td9 = Infinity;
-          for (const o9 of splashers) {
-            if (o9 === s9 || sameSide(o9.life.owner, s9.life.owner)) continue;
-            const dd9 = Math.hypot(o9.x - s9.x, o9.y - s9.y);
-            if (dd9 < td9) { td9 = dd9; tx9 = o9.x; ty9 = o9.y; }
-          }
-          if (td9 > sp9.range) continue;
-          for (const v9 of splashers) {
-            if (v9 === s9 || !v9.alive || v9.hidden) continue;
-            // 공중은 이 셋 모두 못 때린다(가시·포탄·스캐럽 다 지상 전용이다).
-            if (v9.air) continue;
-            if (Math.hypot(v9.x - tx9, v9.y - ty9) <= sp9.r) hurt(v9, sec, sp9.dmg, false);
-          }
-        }
+        /* 아군 피해(럴커·시즈모드·리버)는 물렸다(지적: 전투의 내용과 결과가 완전히
+           달라짐 + 공격하는 유닛이 없는데 에너지가 달거나 죽는다) — 표적 둘레에
+           편 안 가리고 터뜨리는 갈래를 넣었더니, 전투마다 아군 피해가 겹쳐 쌓여
+           승패까지 뒤집혔고 '때린 놈이 안 보이는 죽음'이 늘었다. 되돌린다.
+           다시 넣을 때는 ① 실제 사격 박자(초당 한 발)에 묶고 ② 피해를 전체 배분에서
+           덜어 오는 식이라야 총량이 안 늘어난다. */
       }
     }
     for (const a of agents) {
