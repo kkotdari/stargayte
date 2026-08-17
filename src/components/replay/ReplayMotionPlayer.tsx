@@ -5054,8 +5054,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       0.95] as ShapeFace;
     };
     return [
-      // 먼 반쪽 고리 — 구보다 먼저 그려 구 뒤로 돌아간다.
-      bandHalf(26, 0), bandHalf(-26, 0),
+      // 먼 반쪽 고리 — 구보다 먼저 그려 구 뒤로 돌아간다. 둘은 거의 직각으로 엇갈린다(요청).
+      bandHalf(46, 0), bandHalf(-46, 0),
       // 에너지구는 플라즈마색, 개인색은 가운데 띠만(요청).
       // 에너지구 반투명화(요청) — 속 형체가 비쳐 보이게 0.72 → 0.4.
       [groundEllipse(cx, cy, 5.1, 4.8), 0.4, "#dff0ff"] as ShapeFace,
@@ -5076,7 +5076,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         + ` L${cx - 2} ${cy + 2.9} Q${cx + 1.6} ${cy + 3.2} ${cx + 4.1} ${cy + 0.4} Z`, 0.6, "#cfe6ff"] as ShapeFace,
       topFace(groundEllipse(cx - 1.7, cy - 1.7, 1.9, 1.5), 0.4),
       // 가까운 반쪽 고리 — 맨 나중에 그려 구 앞을 지난다.
-      bandHalf(26, 1), bandHalf(-26, 1),
+      bandHalf(46, 1), bandHalf(-46, 1),
     ];
   },
   /* 다크 아콘(실물 참고) — 어두운 반투명 구 속에 뿔귀 머리와 갈퀴 팔의 형체가 비치고,
@@ -5114,8 +5114,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       0.95] as ShapeFace;
     };
     return [
-      // 먼 반쪽 고리 — 구보다 먼저 그려 구 뒤로 돌아간다.
-      bandHalf(26, 0), bandHalf(-26, 0),
+      // 먼 반쪽 고리 — 구보다 먼저 그려 구 뒤로 돌아간다. 둘은 거의 직각으로 엇갈린다(요청).
+      bandHalf(46, 0), bandHalf(-46, 0),
       // 에너지구는 붉은색, 개인색은 가운데 띠만(요청).
       // 에너지구 반투명화(요청) — 0.7 → 0.38.
       [groundEllipse(cx, cy, 5.1, 4.8), 0.38, "#8a2833"] as ShapeFace,
@@ -5138,7 +5138,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         + ` L${cx + 6.2} ${cy + 0.35} Q${cx + 5.9} ${cy - 1.7} ${cx + 3.9} ${cy - 2.8} Z`, 0.35),
       topFace(groundEllipse(cx - 1.7, cy - 1.7, 1.7, 1.3), 0.3),
       // 가까운 반쪽 고리 — 맨 나중에 그려 구 앞을 지난다.
-      bandHalf(26, 1), bandHalf(-26, 1),
+      bandHalf(46, 1), bandHalf(-46, 1),
     ];
   },
   /* 저글링·히드라·울트라(요청: 전용 모델) — 갈고리는 직선이 아니라 3단으로 휘어진다:
