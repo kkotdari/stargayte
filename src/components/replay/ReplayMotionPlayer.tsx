@@ -4016,11 +4016,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const HT = 0.16;
       const NS = 10;
       const axis9 = (t9: number): [number, number, number] => [
-        m9 * (0.7 + 0.8 * t9),
-        /* 뿌리를 몸에 붙이고 높이를 내린다(요청) — 등딱지 뒤 표면(y -1.8, z 4.6)에서
-           시작해 뒤로 물러나며 완만하게 오른다: z(0)=4.6, z(1)=7.6. */
-        -1.8 - 1.4 * t9,
-        4.6 + 4.4 * t9 - 1.4 * t9 * t9,
+        m9 * (1.05 + 0.45 * t9),
+        /* 모양은 그대로 두고 높이만 아주 살짝 내린다(정정 요청: 직전 수정 롤백) —
+           6.2 → 5.8. 기울기·굽힘률은 손대지 않는다. */
+        -3.2 + 3.1 * t9,
+        5.8 + 6.4 * t9 - 3.4 * t9 * t9,
       ];
       const sect9 = (t9: number): [number, number, number][] => {
         const [px9, py9, pz9] = axis9(t9);
@@ -4073,7 +4073,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       }
       faces9.push([polyPath3(sect9(1)), 1, "#3a3f46"] as ShapeFace,
         topFace(polyPath3(sect9(1)), 0.14));
-      out.push(...tagKey(faces9, depthNow(m9 * 1.1, -2.5) * 1.6 + 3));
+      out.push(...tagKey(faces9, depthNow(m9 * 1.3, -0.6) * 1.6 + 3));
     }
     // 큰 집게 한 쌍 — 앞팔 짙은 갈색(요청).
     out.push(...paintBase(hornFaces(1.3, 1, 5.8, 2.6, 2.2, 5.6, 0.95), "#6b4732"));
@@ -5575,8 +5575,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 집게·다리 네 장 금색(요청).
     out.push([leg(-1), 1, "#d4af37"] as ShapeFace, sideFace(leg(-1), 0.18));
     out.push([leg(1), 1, "#d4af37"] as ShapeFace, sideFace(leg(1), 0.18));
-    // 몸통 — 둥근 게딱지. 많이 줄였다(지적: 본체 크기 많이 축소 — 3.8×3 → 2.8×2.2).
-    out.push(bodyFace(groundEllipse(cx, cy, 2.8, 2.2)));
+    /* 몸통 — 둥근 게딱지. 제 자리 깊이를 못 박는다(지적: 앞 집게가 몸통에 안 가려짐)
+       — 손 면이라 깊이가 없어 앞 부품 값을 물려받았고, 집게(제 자리 깊이 ×1.6)가
+       어느 각도에서도 몸통을 이겼다. 같은 자로 재면 뒤로 돈 집게는 몸에 묻힌다. */
+    out.push(...tagKey([bodyFace(groundEllipse(cx, cy, 2.8, 2.2))], depthNow(0, -0.6) * 1.6));
     // (삭제·지적) 앞부분 검은 반투명 홈 — 정체불명 얼룩으로 보여 걷었다.
     out.push(topFace(groundEllipse(cx - 0.9, cy - 1, 1.25, 0.8), 0.25));
     // 옆구리 밝은 홈 한 쌍.
