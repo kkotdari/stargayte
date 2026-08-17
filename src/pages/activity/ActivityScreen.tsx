@@ -1138,7 +1138,11 @@ export default function ActivityScreen() {
       if (hit) {
         return prev.map((it) => (it.challenge?.id === updated.id ? { ...it, challenge: updated } : it));
       }
-      // 새로 부른 호출은 맨 위에 세운다.
+      /* 새로 부른 호출은 맨 위에 세우고, 목록도 다시 받는다(요청: 등록·삭제 뒤에는
+         반드시 재조회) — 새 항목은 서버가 정한 자리·묶음·랭크 줄까지 함께 바뀌므로
+         화면에 끼워 넣는 것만으로는 참값과 어긋난다. 고침(이미 있는 항목)은 스크롤
+         자리를 지키려고 종전대로 화면만 갈아 끼운다. */
+      reload();
       return [{
         key: `c-${updated.id}`, kind: "challenge" as const,
         challenge: updated, gameResults: [], comments: [],
@@ -1154,6 +1158,8 @@ export default function ActivityScreen() {
       if (hit) {
         return prev.map((it) => (it.schedule?.id === updated.id ? { ...it, schedule: updated } : it));
       }
+      // 새 일정도 같은 규칙(요청) — 끼워 넣고 곧바로 목록을 다시 받는다.
+      reload();
       return [{
         key: `sc-${updated.id}`, kind: "schedule" as const,
         schedule: updated, gameResults: [], comments: [],
@@ -1489,7 +1495,11 @@ export default function ActivityScreen() {
         ? { ...it, gameResults: it.gameResults.filter((g) => g.id !== id) }
         : it))
       .filter((it) => !!it.challenge || !!it.notice || it.gameResults.length > 0));
-  }, [patchFeed, displayFeed]);
+    /* 지운 뒤에는 반드시 다시 받는다(요청) — 화면에서 빼는 것만으로는 서버가 함께
+       바꾼 것(랭크 변동 줄, 묶음 재구성, 다음 쪽 경계)이 어긋난 채 남는다. 눈에 보이는
+       반영은 위 patchFeed가 즉시 하고, 목록의 참값은 재조회가 맞춘다. */
+    reload();
+  }, [patchFeed, displayFeed, reload]);
 
   const dateLabelOf = (item: { time: number }) => {
     const d = new Date(item.time);
@@ -1751,7 +1761,10 @@ export default function ActivityScreen() {
           canEdit={!!user && (item.schedule.createdBy.id === user.id || isAdmin)}
           onEdit={() => setScheduleEditing(item.schedule)}
           onChanged={upsertSchedule}
-          onDeleted={(id) => patchFeed((prev) => prev.filter((it) => it.schedule?.id !== id))}
+          onDeleted={(id) => {
+            patchFeed((prev) => prev.filter((it) => it.schedule?.id !== id));
+            reload(); // 등록·삭제 뒤 목록 재조회(요청).
+          }}
           footer={<ActivityCardComments targetType="schedule" targetId={item.schedule.id} />}
         />
       </div>
@@ -1816,7 +1829,10 @@ export default function ActivityScreen() {
               challenge={item.challenge}
               isAdmin={isAdmin}
               myId={user?.id ?? ""}
-              onDeleted={(id) => patchFeed((prev) => prev.filter((it) => it.challenge?.id !== id))}
+              onDeleted={(id) => {
+                patchFeed((prev) => prev.filter((it) => it.challenge?.id !== id));
+                reload(); // 등록·삭제 뒤 목록 재조회(요청).
+              }}
               onChanged={upsertChallenge}
             />
           }
