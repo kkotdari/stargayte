@@ -778,6 +778,26 @@ export function buildUnitTracks(
          살아남은 쪽으로 본다(tagLastSeen). */
       if (cmdName === "Merge Archon" || cmdName === "Merge Dark Archon") {
         const kindName9 = cmdName === "Merge Archon" ? "Archon" : "Dark Archon";
+        /* 합체에 들어간 태그는 그 순간 템플러다(수리: 드랍 명단의 질럿 한 기 —
+           태그 27174는 549초에 질럿이던 태그를 템플러가 물려받은 것이었다). 지금 정체가
+           템플러가 아니면 태그를 물려받은 것이므로, 옛 생애를 여기서 끝내고 템플러
+           생애를 새로 연다 — 명령 자체가 증거라 어림이 아니다. */
+        const srcKind0 = USE_CMD_TO_UNIT[cmdName] ?? "";
+        for (const tg9 of tags) {
+          const cur9 = alive.get(tg9);
+          if (!cur9 || cur9.bld) continue;
+          const mk9 = majorityKindOf2(cur9);
+          if (mk9 === "" || mk9 === srcKind0) continue;
+          /* 수송선이 선택에 섞여 있을 수 있다(실측: 674초 합체 선택에 셔틀 27174가
+             끼어 있었다) — 합체는 템플러에게만 걸리므로 수송선은 건드리지 않는다. */
+          if (isTransportLife(cur9)) continue;
+          done.push(cur9);
+          alive.delete(tg9);
+          const fresh9 = lifeOf(tg9, pid, sec);
+          if (srcKind0) fresh9.kinds.set(srcKind0, 5);
+          const lp9 = [...cur9.ev].reverse().find((v) => v[1] >= 0);
+          if (lp9) pushEv(fresh9, sec, lp9[1], lp9[2], 3);
+        }
         const ordered9 = [...tags].sort(
           (a, b) => (tagLastSeen.get(b) ?? -1) - (tagLastSeen.get(a) ?? -1),
         );
@@ -799,6 +819,16 @@ export function buildUnitTracks(
           if (lastPt9) pushEv(arch9, sec + 4, lastPt9[1], lastPt9[2], 3);
           keepLife.morphTo = arch9;
           eatLife.morphTo = arch9;
+        }
+        /* 짝을 못 지은 홀수 잔여(수리: 드랍 명단에 질럿 한 기가 섞였다) — 합체를 누른
+           선택에 있었으니 템플러가 맞다. 정체를 못 박아 두지 않으면 그 태그의 옛
+           생애(질럿 등)가 그대로 읽혀 엉뚱한 이름으로 실려 간다. */
+        const srcKind9 = USE_CMD_TO_UNIT[cmdName] ?? "";
+        if (ordered9.length % 2 === 1 && srcKind9) {
+          const leftTag9 = ordered9[pairs9];
+          if (leftTag9 !== undefined && alive.has(leftTag9)) {
+            markKind(lifeOf(leftTag9, pid, sec), srcKind9, sec);
+          }
         }
         continue;
       }
@@ -1338,6 +1368,9 @@ export function buildUnitTracks(
       if (transTagOwner.has(rtag)) continue;
       const rl = lifeAt(rtag, bsec);
       if (!rl || rl.bld || rl.owner !== bpid) continue;
+      /* 정체가 수송선인 개체도 승객이 아니다(수리: 아콘과 함께 고른 셔틀이 명단에
+         올랐다) — 수송선을 같이 고른 채 다른 수송선을 우클릭하면 따라갈 뿐이다. */
+      if (isTransportLife(rl)) continue;
       // 이미 같은 시각에 승선 증거가 있으면 겹쳐 넣지 않는다.
       if (rl.ev.some((v) => v[3] === 12 && Math.abs(v[0] - bsec) < 1)) continue;
       const drop = (unloadsBy.get(ttag) ?? []).find(([usec]) => usec > bsec && usec - bsec < 600);

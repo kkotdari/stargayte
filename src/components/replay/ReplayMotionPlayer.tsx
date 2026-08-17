@@ -7092,6 +7092,10 @@ export default function ReplayMotionPlayer({
      변경·교전 멈춤 해제·채굴 위상 전환 같은 잔점프를 지수 이동평균이 흡수한다. 큰 이동
      (6타일 초과 — 드랍·리콜 등 진짜 순간이동)과 시간 되감기는 그대로 점프한다. */
   const drawPosRef = useRef(new Map<string, { x: number; y: number; at: number }>());
+  /* 죽는 순간의 '그려지던' 자리(지적: 피격·죽음 효과가 엉뚱한 데서 난다) — 죽음 연출은
+     여태 원자취(명령 좌표)에서 터졌는데, 화면의 몸은 교전 당김·잽·채굴 왕복·겹침
+     이완까지 실린 자리에 있다. 그 둘이 몇 타일씩 벌어져 폭발만 딴 데서 났다. */
+  const diePosRef = useRef(new Map<string, { x: number; y: number }>());
   /* 초반 무명 개체의 폴백(지적: 일꾼밖에 없는데 저글링이 정찰 감) — 정체를 모르는
      개체는 그 사람의 '첫 전투 유닛이 태어난 시각' 전이면 일꾼으로, 뒤면 종족 보병으로
      그린다. 그 시각 전에는 저글링이 존재할 수 없다(뒤 스토리 제약). */
@@ -9995,13 +9999,15 @@ export default function ReplayMotionPlayer({
               return Math.max(0, gap - (melee9 ? 1.1 : 2.2));
             })();
             if (melee9) {
-              /* 걸음 속도로 적분(수리: 2.6 고정 리터럴 → 유닛 속도표. 진입 즉시
-                 2.5타일 당김 체감은 유지). 속업 반영은 원자취(walkTrack) 몫이라
-                 여기선 기본 속도표만 쓴다. */
+              /* 걸음 속도로만 다가간다(지적: 당겨지듯 빠르게 이동하는 것) — 예전엔
+                 교전에 드는 첫 프레임에 base.adv를 2.5타일로 끌어올려, 몸이 한 박자에
+                 쭉 빨려 들어갔다. 그 즉시 당김을 걷고 0에서 제 걸음으로 적분한다.
+                 속업 반영은 원자취(walkTrack) 몫이라 여기선 기본 속도표만 쓴다. */
               const spd9 = Math.max(0.5, UNIT_SPEED[drawUnit] ?? 3.2);
-              base.adv = Math.min(Math.max(base.adv, 2.5), base.adv + dt9 * spd9);
+              base.adv = base.adv + dt9 * spd9;
             } else {
-              base.adv = 2.5;
+              // 원거리도 같다 — 사거리까지 걸어서 좁힌다(즉시 2.5 → 걸음 적분).
+              base.adv = base.adv + dt9 * Math.max(0.5, UNIT_SPEED[drawUnit] ?? 3.2);
             }
             /* 근접 잽(요청: 휘두름 호 대신, 권투처럼 표적 쪽으로 툭 나갔다 빠지게 —
                공속에 비례) — 붙은 뒤(당김이 다 찼을 때)부터 제 공격 주기로 앞뒤로
@@ -10162,6 +10168,7 @@ export default function ReplayMotionPlayer({
             }
             drawPosRef.current.set(holdKey, { x: pos.x, y: pos.y, at: t });
           }
+          if (dieAt === null || t < dieAt) diePosRef.current.set(holdKey, { x: pos.x, y: pos.y });
           const [ax3, ay3] = [pos.x, pos.y];
           const [fx, fy] = posFrac(ax3, ay3);
           /* 건설 일꾼 뒷그물(재지적: 좌하단의 '진짜' 일꾼이 남는다 — 앵커 판정
@@ -10191,7 +10198,8 @@ export default function ReplayMotionPlayer({
             /* 죽은 자리에 못박기(지적: 체력 0으로 소멸한 유닛이 폭발하며 움직임) —
                지금 표시 위치(스무딩·걸음이 계속 간다)가 아니라 죽은 '순간'의 자취
                좌표에서 터진다. */
-            const dp0 = posAt(rp, Math.max(rp[0][0], dieAt), null);
+            const dmem0 = diePosRef.current.get(holdKey);
+            const dp0 = dmem0 ?? posAt(rp, Math.max(rp[0][0], dieAt), null);
             const dpx = dp0 ? dp0.x : ax3;
             const dpy = dp0 ? dp0.y : ay3;
             /* 공중은 떠 있던 몸 자리에서 터진다(지적) — 비행 높이만큼 위로. */
