@@ -10638,7 +10638,8 @@ export default function ReplayMotionPlayer({
             const [fx, fy] = posFrac(x, y);
             unitOps.push({
               fx, fy,
-              z: pitched ? 1000 + Math.round(y * 80) : 900,
+              // 채굴 일꾼 점도 같은 규칙(위 주석) — 같은 줄에서는 건물보다 위.
+              z: pitched ? 1000 + Math.round(y * 80) + 40 : 900,
               kind: workerKindOf(ownerRace), rotDeg: hdg, viewYaw: viewYawOf(x, y),
               flat: !pitched, pitch: pitched,
               sizePx: unitGlyphPx(0, y),
@@ -11209,7 +11210,12 @@ export default function ReplayMotionPlayer({
             fx, fy,
             /* 공중은 2D에서도 y순(지적: 공중 유닛 간 앞뒤 섞임) — ei 나머지는 무작위
                순서라 뒤 풍선이 앞을 덮었다. */
-            z: pitched || uAir ? 1000 + Math.round(ay3 * 80) : 1000 + (ei % 137),
+            /* 같은 줄이면 유닛이 건물보다 위(지적: 유닛이 건물에 가려짐) — 건물의
+               화가 기준은 발자국 아랫변이라 같은 y면 깊이가 같은데, 건물에만 나이
+               가산(최대 +30)이 붙어 앞에 선 유닛까지 덮었다. 유닛에 그보다 큰 붙박이
+               +40을 줘 같은 깊이에서는 늘 유닛이 이기게 한다(뒤에 선 유닛은 y가 작아
+               여전히 건물 뒤로 간다). */
+            z: pitched || uAir ? 1000 + Math.round(ay3 * 80) + 40 : 1000 + (ei % 137),
             kind: kindMain,
             selRing: selNow || undefined,
             // 보임 토글이면 만피여도 표시(요청: 모든 유닛·건물 다 표시).
