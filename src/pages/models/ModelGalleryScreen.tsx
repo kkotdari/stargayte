@@ -1,3 +1,4 @@
+import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, ZoomIn } from "lucide-react";
@@ -67,6 +68,30 @@ export default function ModelGalleryScreen() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+  /* 좌우 드래그로 돌리기(요청) — 무대(와 돋보기 팝업)를 손가락·마우스로 끌면 끈
+     거리만큼 요잉이 돈다. 끄는 순간 자동 회전은 멈춘다. 1픽셀당 0.5도라 무대 폭
+     한 번이면 대략 한 바퀴다. */
+  const dragRef = useRef<{ id: number; x: number } | null>(null);
+  const dragProps = {
+    style: { touchAction: "none" as const, cursor: "ew-resize" as const },
+    onPointerDown: (e: React.PointerEvent<HTMLDivElement>): void => {
+      dragRef.current = { id: e.pointerId, x: e.clientX };
+      setAuto(false);
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    onPointerMove: (e: React.PointerEvent<HTMLDivElement>): void => {
+      const d = dragRef.current;
+      if (!d || d.id !== e.pointerId) return;
+      const dx = e.clientX - d.x;
+      if (dx === 0) return;
+      d.x = e.clientX;
+      setYaw((y) => y + dx * 0.5);
+    },
+    onPointerUp: (e: React.PointerEvent<HTMLDivElement>): void => {
+      if (dragRef.current?.id === e.pointerId) dragRef.current = null;
+    },
+    onPointerCancel: (): void => { dragRef.current = null; },
+  };
   const builder: (() => ReturnType<(typeof SHAPE_BUILDERS)[string]>) | undefined =
     Object.prototype.hasOwnProperty.call(SHAPE_BUILDERS, kind) ? SHAPE_BUILDERS[kind] : undefined;
   const faces = useMemo(
@@ -87,7 +112,8 @@ export default function ModelGalleryScreen() {
               밝은 판에 묻히지 않게 한다(다크 테마에선 어차피 어두워 표시 없음). */}
           <div
             className={color === WHITE ? "scr-model-stage scr-model-stage-dark" : "scr-model-stage"}
-            style={{ color }}
+            {...dragProps}
+            style={{ color, ...dragProps.style }}
           >
             <ShapeIcon kind={kind} faces={faces} />
             {builder && (
@@ -153,7 +179,9 @@ export default function ModelGalleryScreen() {
       {zoomed && builder && createPortal(
         <div className="scr-model-zoom-pop" onClick={() => setZoomed(false)}>
           <div
-            ref={zoomBoxRef} className="scr-model-zoom-box" style={{ color }}
+            ref={zoomBoxRef} className="scr-model-zoom-box"
+            {...dragProps}
+            style={{ color, ...dragProps.style }}
             onClick={(e) => e.stopPropagation()}
           >
             <ShapeIcon kind={kind} faces={faces} />
