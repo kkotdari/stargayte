@@ -5462,8 +5462,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      가시다리 여섯이 바깥으로 벌어져 감싼다. 히드라가 럴커가 되는 동안 이 모습이다. */
   lurkeregg: () => {
     const out: ShapeFace[] = [];
-    // 바닥 둔덕 — 어두운 진흙.
-    out.push(...paintBase(domeFaces3(0, 0, 3.2, 2.5, 0), "#463628"));
+    /* 바닥 둔덕 — 어두운 진흙. 붙박이 맨 아래 키(지적: 알과 가시가 밑판에 가려짐) —
+       돔 프리미티브가 제 반지름(2.5)을 키로 달아, 알(0)과 앞 가시까지 덮었다. */
+    out.push(...tagKey(paintBase(domeFaces3(0, 0, 3.2, 2.5, 0), "#463628"), -8));
     /* 둘레 가시다리 — 뿌리에서 바깥·위로 휘어 오르며 알을 감싼다(spirePillar의 lean·
        curve로 관절 없이 한 번에 굽힌다). */
     for (let i = 0; i < 6; i += 1) {
