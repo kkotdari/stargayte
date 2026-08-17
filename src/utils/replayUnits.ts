@@ -1448,7 +1448,16 @@ export function buildUnitTracks(
         if (r.it.bound) continue;
         for (const life of candLives) {
           if (life.spawned || life.owner !== r.it.pid) continue;
-          if (life.born < r.it.done - 8 || life.born - r.it.done > 300) continue;
+          /* 창의 앞끝은 '주문 시각'까지 연다(수리: 안 뽑은 오버로드가 갑자기 생산됨) —
+             저그 라바 변태는 고른 라바의 태그가 그대로 그 유닛이 된다. 그 생애는 변태를
+             '누른 순간'에 열리는데(태그 매핑 유지), 완성은 25초 뒤라 '완성 8초 전'
+             창에 못 들어왔다. 그래서 원장이 결합에 실패하고 합성 개체를 하나 더 세워,
+             한 번 누른 오버로드가 화면에 둘이 됐다(실측 5시 저그: 변태 9번에 오버로드
+             개체 14기). 앞끝을 주문 시각으로 열면 그 생애가 제 출생 이야기를 받는다.
+             건물이 뽑는 유닛(테란·프로토스)은 고른 태그가 '건물'이라 정체가 안 맞아
+             1차 통과에 안 걸린다 — 이 완화가 닿지 않는다. */
+          if (life.born < Math.min(r.it.done - 8, r.it.sec - 2)
+            || life.born - r.it.done > 300) continue;
           const mk = majorityOf(life);
           if (pass === 0 ? mk !== r.it.unit : mk !== "") continue;
           if (pass === 1) life.kinds.set(r.it.unit, 1);
