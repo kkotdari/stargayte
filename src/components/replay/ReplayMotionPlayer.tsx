@@ -2523,17 +2523,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...((): ShapeFace[] => {
         const half = (x: number): [number, number, number][] => {
           const pts: [number, number, number][] = [];
-          for (let i = 0; i <= 10; i += 1) {
-            const a = Math.PI * (i / 10);
+          /* 반원이 아니라 2/3 원(요청) — -30도에서 210도까지 240도를 돈다. 바닥을
+             뚫지 않게 바퀴 중심을 반지름의 절반만큼 띄운다. */
+          for (let i = 0; i <= 14; i += 1) {
+            const a = -Math.PI / 6 + ((Math.PI * 4) / 3) * (i / 14);
             // 왼쪽으로(정정: 앞이 아니라 좌) — x를 밖으로 빼 전체가 보인다.
             // 반원 바퀴는 바닥에 닿게(요청) — 밑변 z 1 → 0.
-            pts.push([x, 0.4 - Math.cos(a) * 2.9, Math.sin(a) * 2.9]);
+            pts.push([x, 0.4 - Math.cos(a) * 2.9, 1.45 + Math.sin(a) * 2.9]);
           }
           return pts;
         };
-        // 크게·밀착(요청) — 반지름 2.2 → 2.9, 자리 -4.7/-4.15 → -3.5/-2.6(두께도 증가).
-        const leftP = half(-3.5);
-        const rightP = half(-2.6);
+        // 크게·밀착(요청) + 판 두께 증가(재요청) — 폭 0.9 → 1.7.
+        const leftP = half(-3.9);
+        const rightP = half(-2.2);
         const g: ShapeFace[] = [bodyFace(polyPath3(leftP)), sideFace(polyPath3(leftP), 0.2)];
         for (let i = 0; i < leftP.length - 1; i += 1) {
           g.push(bodyFace(polyPath3([leftP[i], leftP[i + 1], rightP[i + 1], rightP[i]])));
@@ -2542,31 +2544,32 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         g.push(bodyFace(fd), topFace(fd, 0.14));
         /* 이빨(재지적: 이 반원판에) + 입체감(재재지적) — 안팎 두 판 사이를 이빨
            슬래브가 잇는다: 바깥판 이빨(음영) + 안판 이빨 + 끝면 띠. */
-        for (const deg of [15, 45, 75, 105, 135, 165]) {
+        // 이빨도 2/3 원 둘레에 고르게(요청).
+        for (const deg of [-18, 12, 42, 72, 102, 132, 162, 192]) {
           const a3 = (deg * Math.PI) / 180;
           const c3 = Math.cos(a3);
           const s3 = Math.sin(a3);
           const yi = 0.4 - c3 * 2.75;
-          const zi = s3 * 2.75;
+          const zi = 1.45 + s3 * 2.75;
           const yo = 0.4 - c3 * 3.6;
-          const zo = s3 * 3.6;
+          const zo = 1.45 + s3 * 3.6;
           const tooth = (xx: number): [number, number, number][] => [
             [xx, yi + s3 * 0.22, zi + c3 * 0.22],
             [xx, yi - s3 * 0.22, zi - c3 * 0.22],
             [xx, yo - s3 * 0.15, zo - c3 * 0.15],
             [xx, yo + s3 * 0.15, zo + c3 * 0.15],
           ];
-          const backT = polyPath3(tooth(-3.48));
+          const backT = polyPath3(tooth(-3.88));
           g.push(bodyFace(backT), sideFace(backT, 0.22));
           g.push(bodyFace(polyPath3([
-            tooth(-3.48)[3], tooth(-2.62)[3], tooth(-2.62)[2], tooth(-3.48)[2],
+            tooth(-3.88)[3], tooth(-2.22)[3], tooth(-2.22)[2], tooth(-3.88)[2],
           ])));
           // 이빨 옆면 두 짝도 봉합(재지적: 옆이 뚫려 보였다).
-          const flankA = polyPath3([tooth(-3.48)[1], tooth(-2.62)[1], tooth(-2.62)[2], tooth(-3.48)[2]]);
-          const flankB = polyPath3([tooth(-3.48)[0], tooth(-2.62)[0], tooth(-2.62)[3], tooth(-3.48)[3]]);
+          const flankA = polyPath3([tooth(-3.88)[1], tooth(-2.22)[1], tooth(-2.22)[2], tooth(-3.88)[2]]);
+          const flankB = polyPath3([tooth(-3.88)[0], tooth(-2.22)[0], tooth(-2.22)[3], tooth(-3.88)[3]]);
           g.push(bodyFace(flankA), sideFace(flankA, 0.18));
           g.push(bodyFace(flankB), topFace(flankB, 0.1));
-          const frontT = polyPath3(tooth(-2.62));
+          const frontT = polyPath3(tooth(-2.22));
           g.push(bodyFace(frontT), topFace(frontT, 0.12));
         }
         return tagKey(g, depthNow(-3, 0.4) + 0.5);
@@ -4426,33 +4429,133 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     }
     return out;
   },
-  /* 머신 샵(애드온, 요청: 부속건물 모델링) — 낮은 작업동 + 왼뒤 굴뚝 + 오른앞 부속함,
-     앞면 셔터 문 씸. */
-  mshop: () => [
-    // 받침 슬래브는 중심 깊이만(지적: 애드온 바닥이 위 부품을 덮음).
-    ...tagKey(boxFaces3(0, 0.2, 5.6, 4.4, 3), depthNow(0, 0.2)),
-    // 셔터 문은 받침 앞면 데칼 — 받침 바로 뒤에 두어 같은 키를 물려받는다.
-    capFace(polyPath3([[-0.9, 2.41, 0.3], [2.1, 2.41, 0.3], [2.1, 2.41, 2.2], [-0.9, 2.41, 2.2]]), 0.3),
-    // 지붕 규칙(지적: 판·굴뚝 순서) — 굴뚝·부속함은 붙박이 큰 키.
-    ...tagKey([
-      ...cylinderFaces3(-1.6, -1.2, 0.6, 2, 3),
-      capFace(discPath3(-1.6, -1.2, 5.05, 0.6), 0.4),
-    ], 24 + depthNow(-1.6, -1.2)),
-    ...tagKey(boxFaces3(1.6, 1.2, 2.2, 1.6, 1, 3), 24 + depthNow(1.6, 1.2)),
-  ],
-  /* 컨트롤 타워(애드온, 요청) — 받침 위 높은 관제탑 + 꼭대기 유리 띠 + 안테나. */
-  ctower: () => [
-    // 받침 슬래브는 중심 깊이만(지적: 받침 판과 탑 순서가 요잉 따라 어긋남).
-    ...tagKey(boxFaces3(0, 0.4, 4.6, 3.8, 2), depthNow(0, 0.4)),
-    ...boxFaces3(0, 0, 3.4, 3, 4.6, 2),
-    // 관제실 유리 띠 — 앞면 위쪽에 밝은 가로 띠.
-    capFace(polyPath3([[-1.5, 1.51, 5.4], [1.5, 1.51, 5.4], [1.5, 1.51, 6.2], [-1.5, 1.51, 6.2]]), 0.45),
-    // 안테나는 탑 꼭대기 얹힘 — 지붕 규칙 붙박이 키.
-    ...tagKey([
-      ...cylinderFaces3(0.9, -0.6, 0.18, 2.2, 6.6),
-      topFace(discPath3(0.9, -0.6, 8.8, 0.4), 0.4),
-    ], 24 + depthNow(0.9, -0.6)),
-  ],
+  /* 머신 샵(재모델링·사진) — 톱니처럼 각진 강철 덩치다: 앞면에 주황 테를 두른
+     세로살 방열 격자, 왼쪽에 초록 발광 띠와 노랑·검정 빗금 블록, 지붕 왼쪽에 배기관
+     둘, 오른쪽에 옆으로 누운 밝은 드럼 하나. */
+  mshop: () => {
+    const out: ShapeFace[] = [
+      // 받침 슬래브는 중심 깊이만(지적: 애드온 바닥이 위 부품을 덮음).
+      ...tagKey(paintBase(boxFaces3(0, 0.2, 5.6, 4.4, 1), "#3a3f46"), depthNow(0, 0.2)),
+      // 본체 — 위로 살짝 좁아지는 각진 덩치.
+      ...tagKey(paintBase(frustumFaces3(0, 0.2, 5.4, 4.2, 4.8, 3.6, 2.4, 1), "#4b5058"),
+        22 + depthNow(0, 0.2)),
+    ];
+    /* 앞면 방열 격자(사진) — 주황 테 안에 세로살이 촘촘하다. 앞이 보일 때만. */
+    if (facingRatio(0, 1) > 0.12) {
+      const g: ShapeFace[] = [[polyPath3([
+        [-1.9, 2.31, 1.3], [1.5, 2.31, 1.3], [1.5, 2.31, 3.1], [-1.9, 2.31, 3.1],
+      ]), 1, "#d2762a"] as ShapeFace];
+      for (let k = 0; k < 11; k += 1) {
+        const gx = -1.72 + k * 0.3;
+        g.push([polyPath3([
+          [gx, 2.33, 1.45], [gx + 0.16, 2.33, 1.45], [gx + 0.16, 2.33, 2.95], [gx, 2.33, 2.95],
+        ]), 1, "#8b8f96"] as ShapeFace);
+      }
+      out.push(...tagKey(g, 24 + depthNow(0, 2.35)));
+      // 왼쪽 초록 발광 띠 + 노랑·검정 빗금 블록.
+      const side: ShapeFace[] = [[polyPath3([
+        [-2.5, 2.05, 2.6], [-2.05, 2.05, 2.6], [-2.05, 2.05, 3], [-2.5, 2.05, 3],
+      ]), 1, "#4cd86a"] as ShapeFace];
+      for (let k = 0; k < 4; k += 1) {
+        const u0 = -2.55 + k * 0.32;
+        side.push([polyPath3([
+          [u0, 2.05, 1.5], [u0 + 0.16, 2.05, 1.5],
+          [u0 + 0.38, 2.05, 2.35], [u0 + 0.22, 2.05, 2.35],
+        ]), 1, k % 2 === 0 ? "#e8c33a" : "#22262b"] as ShapeFace);
+      }
+      out.push(...tagKey(side, 24 + depthNow(-2.3, 2.05)));
+    }
+    // 지붕 배기관 둘(사진) — 왼뒤에서 곧게 솟는다.
+    for (const [ex, ey, eh] of [[-1.5, -1.2, 2.4], [-0.6, -1.7, 1.9]] as [number, number, number][]) {
+      out.push(...tagKey([
+        ...paintBase(cylinderFaces3(ex, ey, 0.28, eh, 3.4), "#5c636d"),
+        ...paintBase(cylinderFaces3(ex, ey, 0.42, 0.3, 3.4 + eh - 0.3), "#22262b"),
+        capFace(discPath3(ex, ey, 3.4 + eh, 0.28), 0.45),
+      ], 26 + depthNow(ex, ey)));
+    }
+    /* 오른쪽 누운 드럼(사진) — 밝은 회색 통에 어두운 테 둘. 관 프리미티브라 끝
+       단면이 요잉을 탄다. */
+    out.push(...tagKey([
+      ...paintBase(tubeFaces(1.3, -1, 3.2, -1, 1.15, 3.2), "#b9bec6"),
+      ...paintBase(tubeFaces(1.6, -1, 1.8, -1, 1.22, 3.2), "#5c636d"),
+      ...paintBase(tubeFaces(2.7, -1, 2.9, -1, 1.22, 3.2), "#5c636d"),
+    ], 26 + depthNow(2.2, -1)));
+    return out;
+  },
+  /* 컨트롤 타워(재모델링·사진) — 붉은 치마를 두른 원뿔 관제탑에 노랑·검정 빗금 띠가
+     감기고, 꼭대기 드럼 위에 접시 안테나가 앉는다. 오른쪽에는 초록 등을 인 격자
+     철탑이 따로 서고, 발치에 작은 붉은 드럼이 놓인다. */
+  ctower: () => {
+    const out: ShapeFace[] = [
+      // 받침 슬래브는 중심 깊이만(지적: 받침 판과 탑 순서가 요잉 따라 어긋남).
+      ...tagKey(paintBase(boxFaces3(0, 0.4, 4.6, 3.8, 0.7), "#3a3f46"), depthNow(0, 0.4)),
+      // 붉은 치마 — 아래가 넓은 원뿔대.
+      ...tagKey(paintBase(frustumFaces3(-0.6, 0.2, 3.6, 3.6, 2.9, 2.9, 1.5, 0.7), "#a8322a"),
+        22 + depthNow(-0.6, 0.2)),
+      // 잿빛 몸통 — 창이 줄지어 난 드럼.
+      ...tagKey(paintBase(cylinderFaces3(-0.6, 0.2, 1.45, 1.9, 2.2), "#6b7078"),
+        24 + depthNow(-0.6, 0.2)),
+    ];
+    // 몸통 창 띠 — 앞이 보일 때만.
+    if (facingRatio(0, 1) > 0.12) {
+      const win: ShapeFace[] = [];
+      for (const wx of [-1.4, -0.8, -0.2, 0.4]) {
+        win.push([polyPath3([
+          [wx, 1.55, 2.6], [wx + 0.3, 1.55, 2.6], [wx + 0.3, 1.55, 3.5], [wx, 1.55, 3.5],
+        ]), 1, "#20242a"] as ShapeFace);
+      }
+      out.push(...tagKey(win, 25 + depthNow(-0.6, 1.6)));
+    }
+    /* 꼭대기 드럼 + 빗금 띠 — 관제층. */
+    out.push(...tagKey([
+      ...paintBase(cylinderFaces3(-0.6, 0.2, 1.15, 0.9, 4.1), "#8b8f96"),
+      ...paintBase(cylinderFaces3(-0.6, 0.2, 1.2, 0.36, 4.55), "#e8c33a"),
+    ], 26 + depthNow(-0.6, 0.2)));
+    /* 접시 안테나 — 기둥 위에 기울어 앉은 접시. 접평면 원판이라 요잉을 탄다. */
+    out.push(...tagKey(paintBase(cylinderFaces3(-0.6, 0.2, 0.22, 0.9, 5), "#5c636d"),
+      27 + depthNow(-0.6, 0.2)));
+    {
+      const DR = 1.35;
+      const disc = (k: number, dy: number, dz: number): string => polyPath3(
+        Array.from({ length: 17 }, (_, q) => {
+          const a = (q / 16) * Math.PI * 2;
+          return [
+            -0.6 + Math.cos(a) * DR * k,
+            0.2 + dy + Math.sin(a) * DR * k * 0.4,
+            5.9 + dz + Math.sin(a) * DR * k * 0.7,
+          ] as [number, number, number];
+        }),
+      );
+      out.push(...tagKey([
+        [disc(1, 0, 0), 1, "#8b8f96"] as ShapeFace,
+        topFace(disc(0.76, 0.06, 0.08), 0.22),
+        capFace(disc(0.28, 0.12, 0.16), 0.3),
+      ], 28 + depthNow(-0.6, 0.2)));
+    }
+    /* 오른쪽 격자 철탑(사진) — 네 기둥과 가로 띠, 꼭대기에 초록 등. */
+    {
+      const TX = 2.5;
+      const TY = -0.6;
+      const TH = 6.2;
+      const tw: ShapeFace[] = [];
+      for (const [ox, oy] of [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]] as [number, number][]) {
+        tw.push(...paintBase(cylinderFaces3(TX + ox, TY + oy, 0.13, TH, 0.7), "#3a3f46"));
+      }
+      for (let k = 0; k < 4; k += 1) {
+        tw.push(...paintBase(
+          boxFaces3(TX, TY, 1.26, 1.26, 0.16, 1.6 + k * 1.4), "#3a3f46",
+        ));
+      }
+      tw.push(...paintBase(domeFaces3(TX, TY, 0.36, 0.32, 0.7 + TH), "#4cd86a"));
+      out.push(...tagKey(tw, 24 + depthNow(TX, TY)));
+    }
+    // 발치 작은 붉은 드럼(사진).
+    out.push(...tagKey([
+      ...paintBase(cylinderFaces3(1.9, 1.8, 0.62, 0.9, 0.7), "#a8322a"),
+      ...paintBase(domeFaces3(1.9, 1.8, 0.62, 0.4, 1.6), "#8b8f96"),
+    ], 24 + depthNow(1.9, 1.8)));
+    return out;
+  },
   /* 코버트 옵스(재모델링·사진) — 어두운 각진 선체 위에 길쭉한 장갑 슬래브 셋이
      비스듬히 얹히고(모서리에 밝은 띠), 뒤 왼쪽에 노랑·검정 빗금 쐐기, 오른쪽 앞에
      검은 포구 원통이 튀어나온다. 아래는 골이 진 띠 받침. */
