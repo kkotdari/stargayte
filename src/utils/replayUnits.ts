@@ -196,6 +196,8 @@ const BUILDING_MORPH_FROM: Record<string, string> = {
   Lair: "Hatchery", Hive: "Lair", "Greater Spire": "Spire",
   "Sunken Colony": "Creep Colony", "Spore Colony": "Creep Colony",
 };
+/** 홀 계보의 변태 — 시작 홀(건설 커맨드가 없어 자리 증거도 없는 것)을 이어 주는 자. */
+const HALL_MORPHS = new Set(["Lair", "Hive"]);
 /** 두루뭉술한 정체(그룹) → 구체 증거가 없을 때의 대표. */
 const GROUP_FALLBACK: Record<string, string> = { Bionic: "Marine", Transport: "Dropship" };
 /** 그룹이 품는 구체 정체 — 그룹 증거와 구체 증거가 만나면 구체 쪽을 쓴다. */
@@ -366,7 +368,9 @@ export function buildUnitTracks(
    *  builder는 지은 일꾼의 태그 — 그 일꾼이 도착 전에 딴 데로 불려가면 건설 무르기다. */
   const built: {
     owner: number; kind: string; born: number; x: number; y: number;
-    builder: number | null; gone: number | null; goneKind: "cxl" | "atk" | null; ev: UnitEv[];
+    builder: number | null; gone: number | null;
+    /** 끝난 사유 — 취소·철거에 변태를 더한다(지적: 레어가 돼도 앞 단계 홀이 안 닫힌다). */
+    goneKind: "cxl" | "atk" | "morph" | null; ev: UnitEv[];
   }[] = [];
   /** 생산 원장(요청: 주먹구구 덧대기 말고 근본 수집 — 모든 큐된 유닛의 전 생애) —
    *  Train·라바 변태 하나가 유닛 하나다: 시작 시각, 만드는 건물 태그, 완성 예정.
@@ -460,12 +464,13 @@ export function buildUnitTracks(
        층은 자리 증거(f=2|5)가 있는 것만 그린다. 여태 시작 홀은 ev가 비어 아예 안
        그려졌고, 그 자리에 보이던 '첫 홀'은 시작 일꾼 태그에서 자란 확장 건물이 일꾼의
        출생(1초)으로 잘못 날짜 매겨진 것이었다 — 그래서 경기 시작부터 공사 중이었다.
-       0초 앵커를 심으면 시작 홀이 제 모습으로, 완공 상태로 선다(공사 표시는 sec>0). */
+       0초 앵커를 심으면 시작 홀이 제 모습으로, 완공 상태로 선다(공사 표시는 sec>0).
+       앵커는 따로 안 넣는다(수리: 0초 자리 증거가 두 번 나왔다) — 물리 건물은 출력에서
+       제 출생 자리(f=2)를 늘 앞에 붙인다. */
     built.push({
       owner: p.id, kind: hall, born: 0,
       x: Math.round(p.startX - 2), y: Math.round(p.startY - 1.5),
-      builder: null, gone: null, goneKind: null,
-      ev: [[0, Math.round(p.startX - 2), Math.round(p.startY - 1.5), 2]],
+      builder: null, gone: null, goneKind: null, ev: [],
     });
   }
 
@@ -754,13 +759,51 @@ export function buildUnitTracks(
              콜로니 생애를 여기서 닫고 같은 태그·같은 자리로 새 정체의 생애를 연다 —
              해처리→레어→하이브·스파이어→그레이터도 같은 길이다. */
           const site = [...life.ev].reverse().find((v) => v[3] === 2 || v[3] === 5);
+          /* 자리를 모르면 실제 위치 앵커로(지적: 레어로 변태해도 앞 단계 홀이 안 닫힌다) —
+             시작 해처리는 건설 커맨드가 없어 자리 증거(f=2)가 없다. 자리를 못 물려주면
+             변태한 레어 생애가 증거 0점이 돼 화면의 건물 층에서 통째로 빠지고, 앞 단계
+             해처리만 끝까지 서 있는 그림이 된다. 남이 찍은 자리(f=1)는 그 순간 실제로
+             거기 있었다는 뜻이라 자리 대용으로 쓸 수 있다. */
+          const anchor = site ?? [...life.ev].reverse().find((v) => v[3] === 1 && v[1] >= 0);
+          /* 물리 건물 줄도 함께 가른다(지적: 태그가 -1이라 태그 매칭이 안 된다) — 임자와
+             자리(발자국 +1.5타일)와 변태 시각으로 잇는다. 앞 단계 줄은 여기서 닫고
+             (dk=morph) 같은 자리에 새 정체의 줄을 이어 세운다: 발치 공격의 철거 판정이
+             변태 뒤에도 끊기지 않고, 화면에서는 홀이 하나로 이어진다. */
+          let px9 = anchor ? anchor[1] : NaN;
+          let py9 = anchor ? anchor[2] : NaN;
+          const kin9 = new Set([from || "", unitName].filter(Boolean));
+          let bi9 = -1;
+          if (Number.isFinite(px9)) {
+            bi9 = built.findIndex((b) => b.owner === pid && b.gone === null
+              && b.born <= sec && kin9.has(b.kind)
+              && px9 >= b.x - 1.5 && px9 <= b.x + (FOOT_WH[b.kind] ?? [3, 2])[0] + 1.5
+              && py9 >= b.y - 1.5 && py9 <= b.y + (FOOT_WH[b.kind] ?? [3, 2])[1] + 1.5);
+          }
+          /* 시작 홀만은 자리 증거가 아예 없어도 잇는다(지적: 시작 해처리가 끝까지 남는다) —
+             건설 커맨드가 없어 f=2가 없고, 남이 한 번도 안 찍었으면 f=1도 없다. 대신
+             '경기 0초에 심은 홀'이라는 다른 데 없는 자리가 있다: 이른(45초 안) 홀 생애의
+             변태는 그 줄로 잇는다. */
+          if (bi9 < 0 && life.born <= 45 && HALL_MORPHS.has(unitName)) {
+            bi9 = built.findIndex((b) => b.owner === pid && b.born === 0
+              && b.gone === null && kin9.has(b.kind));
+          }
+          if (bi9 >= 0) {
+            const b9 = built[bi9];
+            b9.gone = sec;
+            b9.goneKind = "morph";
+            built.push({
+              owner: b9.owner, kind: unitName, born: sec, x: b9.x, y: b9.y,
+              builder: null, gone: null, goneKind: null, ev: [],
+            });
+            if (!Number.isFinite(px9)) { px9 = b9.x; py9 = b9.y; }
+          }
           done.push(life);
           alive.delete(tag);
           const next = lifeOf(tag, pid, sec);
           next.kinds.set(unitName, 1);
           next.bld = true;
           life.morphTo = next;
-          if (site) next.ev.push([Math.round(sec), site[1], site[2], 2]);
+          if (Number.isFinite(px9)) next.ev.push([Math.round(sec), r1(px9), r1(py9), 2]);
         } else {
           life.last = sec;
         }
@@ -2518,8 +2561,12 @@ export function buildUnitTracks(
      자리를 지킨 것이다(v1의 격퇴 규칙과 같은 잣대 — 별도 테이블이니 결과를 비교한다).
      취소(무르기)로 이미 끝난 건물은 그대로 둔다. */
   for (const b of built) {
-    if (b.gone === null && b.ev.length > 0) {
-      const lastAtk = b.ev[b.ev.length - 1][0];
+    /* 철거의 근거는 '발치 공격'(f=1)뿐이다(수리: 시작 홀·변태로 이어 세운 홀이 태어나자
+       마자 무너졌다) — 자리 증거(f=2)까지 섞어 마지막 항목만 보고 있었더니, 공격을 한
+       번도 안 받은 건물이 제 자리 증거 시각 +8초에 철거된 것으로 잡혔다. */
+    const atkEv = [...b.ev].reverse().find((v) => v[3] === 1);
+    if (b.gone === null && atkEv) {
+      const lastAtk = atkEv[0];
       const defended = built.some((o) =>
         o !== b && o.owner === b.owner && o.born > lastAtk && o.born < lastAtk + 180
         && Math.hypot(o.x - b.x, o.y - b.y) <= 12);
