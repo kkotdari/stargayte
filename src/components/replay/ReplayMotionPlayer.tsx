@@ -8004,6 +8004,10 @@ const MELEE_UNITS = new Set([
 function posAt(
   pts: TrackPt[], t: number,
   bendCenter: { x: number; y: number } | null,
+  /** 이 자취가 낼 수 있는 최고 걸음(타일/초) — 주면 그 위로는 절대 안 미끄러진다(요청:
+   *  걸음 속도 상한). 넘치는 구간은 앞 점에 머물다 이 속도로 걸어 제때(다음 점 시각)
+   *  닿는다 — 도착 시각과 자리는 그대로라 앵커가 안 어긋난다. 안 주면 종전대로. */
+  maxSpeed?: number,
 ): TrackPos | null {
   if (pts.length === 0) return null;
   if (t <= pts[0][0]) return { x: pts[0][1], y: pts[0][2], stale: false, moving: false, sinceLast: Infinity };
@@ -8022,6 +8026,18 @@ function posAt(
           return { x: x0 + (x1 - x0) * k, y: y0 + (y1 - y0) * k, stale: false, moving: true, sinceLast: 0 };
         }
         return { x: x0, y: y0, stale: t - s0 > LERP_MAX_GAP_SEC, moving: false, sinceLast: t - s0 };
+      }
+      /* 제 걸음보다 빨리 못 간다(요청: 걸음 속도 상한 — 순간적으로 기본 속도보다
+         빨라진다) — 증거 점 사이를 그냥 선형으로 이으면 두 점이 멀수록 광속이 된다.
+         유닛 속도표가 주어지면 그 위로는 안 미끄러지고, 앞 점에 머물다 제 걸음으로
+         걸어 다음 점 시각에 닿는다. */
+      if (maxSpeed !== undefined && dist / Math.max(0.001, gap) > maxSpeed) {
+        const walkSec9 = Math.min(gap, dist / maxSpeed);
+        if (t >= s1 - walkSec9) {
+          const k9 = (t - (s1 - walkSec9)) / Math.max(0.001, walkSec9);
+          return { x: x0 + (x1 - x0) * k9, y: y0 + (y1 - y0) * k9, stale: false, moving: true, sinceLast: 0 };
+        }
+        return { x: x0, y: y0, stale: false, moving: false, sinceLast: t - s0 };
       }
       /* 말이 안 되는 속도의 미끄러짐은 잇지 않는다(지적) — 다만 행군으로 봐줄 수 있는
          빠르기(BRIDGE_MAX_SPEED)까지는 걸어 잇는다(재지적: 순간이동 금지). 그보다
@@ -8956,6 +8972,8 @@ export default function ReplayMotionPlayer({
       cloaks: [number, number][];
       /** 명령(이동·공격·정지) 시각들 — 선택 링(지적: 드래그 선택 구분)의 재료. */
       orders: number[];
+      /** 그 사람의 연구 기록 — 걸음 속도 상한(요청)이 속업을 반영하는 재료. */
+      ups: [number, string][] | undefined;
       walk: [number, number, number][];
     }[] = [];
     for (const e of entData.ents) {
@@ -9065,7 +9083,7 @@ export default function ReplayMotionPlayer({
         }
       }
       out.push({
-        raw, unit: e.k, b: e.b, d: e.d, tag: e.t, buildHideAt, buildHides,
+        raw, unit: e.k, b: e.b, d: e.d, tag: e.t, buildHideAt, buildHides, ups: p.ups,
         /* 건설 앵커 자리(요청: 드론 변태도 고치 중앙에) — 흡수되기 직전 이 자리로
            걸어 들어가야 고치가 솟는 자리와 겹친다. */
         buildSites: e.ev.filter((v) => v[3] === 2 && v[1] >= 0)
@@ -11301,7 +11319,16 @@ export default function ReplayMotionPlayer({
             engageDelayRef.current.delete(holdKey0);
             walkDelay = 0;
           }
-          const rawPos = posAt(rp, Math.max(rp[0][0], t - walkDelay), null);
+          /* 걸음 속도 상한(요청) — 제 속도표로 죈다. 15%만 여유를 둔다: 교전 지연을
+             따라잡는 몫이라, 이보다 크면 다시 '순간적으로 빨라짐'이 된다.
+             드랍·리콜은 예외 — 원작에서도 순간이동이다. 수송 구간 앞뒤 여유를 두어
+             하차 자리로 제때 나타나게 하고, 리콜은 같은 임자의 시전 전후 창으로 뺀다. */
+          const ridingNow9 = e.rides.some(([ra9, rb9]) => t >= ra9 - 1 && t < rb9 + 2);
+          const recallNow9 = castsSrc.some(([cs9, , , tech9, craw9]) =>
+            tech9 === "Recall" && craw9 === e.raw && t >= cs9 - 1 && t <= cs9 + 4);
+          const vCap9 = ridingNow9 || recallNow9
+            ? undefined : speedOf(e.unit || "Marine", t, e.ups) * 1.15;
+          const rawPos = posAt(rp, Math.max(rp[0][0], t - walkDelay), null, vCap9);
           if (!rawPos) return null;
           /* 탑승 중(요청: 수송선 승하차) — 배 안에 있으니 마커를 걷는다. 하차 지점
              (f=13)이나 다음 제 명령에서 다시 나타나 걷는다.
@@ -11616,10 +11643,13 @@ export default function ReplayMotionPlayer({
               let nx5 = mem2.x + (pos.x - mem2.x) * k5;
               let ny5 = mem2.y + (pos.y - mem2.y) * k5;
               /* 활강 속도 상한(지적: 갓 태어난 유닛이 랠리로 확 미끄러짐) — 지수 추종은
-                 먼 어긋남일수록 초반이 광속이라, 표시 이동을 초당 9타일로 죈다. 큰
-                 점프도 '빠른 걸음'으로만 따라간다. */
+                 먼 어긋남일수록 초반이 광속이라 표시 이동을 죈다. 상한은 제 속도표의
+                 1.5배(요청: 걸음 속도 상한) — 한 자로 9타일을 쓰면 걸음 3타일짜리
+                 질럿도 초당 9타일까지 미끄러졌다. 추종의 따라잡기 몫이라 걸음보다는
+                 넉넉히 준다. 드랍·리콜은 걸음 상한에서 빠지지만 화면 추종은 종전대로
+                 9타일로 죈다 — 순간이동 무조건 금지가 화면의 원칙이다. */
               const md5 = Math.hypot(nx5 - mem2.x, ny5 - mem2.y);
-              const cap5 = 9 * dt5;
+              const cap5 = (vCap9 === undefined ? 9 : (vCap9 / 1.15) * 1.5) * dt5;
               if (md5 > cap5 && md5 > 0) {
                 nx5 = mem2.x + ((nx5 - mem2.x) / md5) * cap5;
                 ny5 = mem2.y + ((ny5 - mem2.y) / md5) * cap5;
