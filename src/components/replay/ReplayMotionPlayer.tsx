@@ -8241,6 +8241,10 @@ const STATUS_TINT: Record<string, string> = {
 };
 /** 디텍터(전수조사: 투명화 카운터) — 이들이 곁에 있으면 은신이 벗겨진다. */
 const DETECTOR_UNITS = new Set(["Overlord", "Observer", "Science Vessel"]);
+/** 디텍터가 은신을 벗기는 거리(타일) — 표시 투명도와 표적 판정이 같은 자를 쓴다. */
+const DETECT_TILES = 9;
+/** 스캐너 스윕이 그 자리를 디텍터로 만드는 시간(초) — 화면 효과도 같은 길이로 남는다. */
+const SCAN_DETECT_SEC = 12;
 const ADDONS = new Set([
   "Comsat Station", "Nuclear Silo", "Machine Shop", "Control Tower", "Covert Ops", "Physics Lab",
   // v2 트랙의 변형 이름(지적: 커맨드 애드온에 통로가 안 붙음) — screp는 ComSat으로 준다.
@@ -9474,13 +9478,20 @@ export default function ReplayMotionPlayer({
      가까운 적 유닛 마커를 향해 '남은 거리의 반'만 끌어당긴다. 반씩인 이유: 상대도 같은
      조정으로 다가오므로 양쪽이 반씩 오면 꼭 목표 거리(근접 0.8타일, 원거리 사정거리)
      에서 만나고, 서로 원좌표 기준이라 지나쳐 겹치지 않는다. 시야(9타일) 밖은 안 끈다. */
-  const engageFoes: { team: number; x: number; y: number; air: boolean; bld?: boolean; k?: string }[] = [];
+  type FoeRow = {
+    team: number; x: number; y: number; air: boolean; bld?: boolean; k?: string;
+    /** 은신·버로우로 '안 보이는' 표적(요청) — 디텍터가 있는 편에게만 표적이 된다. */
+    hidden?: boolean;
+  };
+  const engageFoes: FoeRow[] = [];
   /** 아비터 은신장(전수조사) — 같은 사람 유닛이 곁(4.5타일)에 있으면 흐려진다. */
   const arbiterSpots: { raw: string; x: number; y: number }[] = [];
   /** 디텍터 명단 — 적 디텍터가 곁(9타일)이면 은신이 벗겨진다. */
   const detectorSpots: { team: number; x: number; y: number }[] = [];
   /* v2 개체의 지금 위치(태그별) — 어택이 찍은 '그 대상'을 겨누는 지도(지적). */
-  const entPosByTag = new Map<number, { x: number; y: number; team: number; air: boolean; bld?: boolean; k?: string }>();
+  const entPosByTag = new Map<number, FoeRow>();
+  /** 은신 판정을 뒤로 미루려고 잡아 두는 짝 — 아비터·디텍터 명단이 다 찬 뒤에 매긴다. */
+  const foeEnts: { row: FoeRow; e: (typeof entWalks)[number]; q: TrackPos }[] = [];
   if (entOn) {
     /* v2 모드(지적: 유닛-건물 상호작용·어택땅 교전) — 교전 상대 목록을 v1 부대 어림이
        아니라 v2 개체 위치로 채운다. 적의 방어 건물(성큰·캐논·터렛·벙커)도 상대다:
@@ -9498,11 +9509,12 @@ export default function ReplayMotionPlayer({
       if (e.buildHides.some(([ba0, bb0]) => t >= ba0 && t < bb0)) continue;
       const q = posAt(e.walk, t, null);
       if (!q) continue;
-      const row = {
+      const row: FoeRow = {
         team: teamOfRaw(e.raw) ?? 0, x: q.x, y: q.y,
         air: e.unit !== "" && isAirUnit(e.unit),
       };
       engageFoes.push(row);
+      foeEnts.push({ row, e, q });
       if (e.tag > 0) entPosByTag.set(e.tag, row);
       // 아비터 은신장·디텍터(전수조사) — 이번 프레임 위치를 명단에 올린다.
       if (e.unit === "Arbiter") arbiterSpots.push({ raw: e.raw, x: q.x, y: q.y });
@@ -9532,8 +9544,22 @@ export default function ReplayMotionPlayer({
     }
     // 스캐너 스윕(전수조사) — 12초 동안 그 자리가 디텍터다.
     for (const [cs6, cx10, cy10, tech6, craw6] of castsSrc) {
-      if (tech6 !== "Scanner Sweep" || t < cs6 || t - cs6 > 12) continue;
+      if (tech6 !== "Scanner Sweep" || t < cs6 || t - cs6 > SCAN_DETECT_SEC) continue;
       detectorSpots.push({ team: teamOfRaw(craw6) ?? 0, x: cx10, y: cy10 });
+    }
+    /* 안 보이는 것은 표적이 아니다(요청: 클로킹·아비터 은신장·버로우한 러커를 그냥
+       공격하는 일이 없게) — 개인 클록(f=14/15)·상시 은신(다크·옵저버)·아비터 은신장
+       ·버로우한 러커에 '은신' 딱지를 붙인다. 아래 nearestFoe와 어택 표적 고르기가
+       디텍터 없는 편에게서 이들을 감춘다. 아비터·디텍터 명단이 다 찬 뒤라야 옳게
+       매겨지므로 목록을 다 채우고 여기서 한 번에 훑는다(표시 투명도와 같은 잣대). */
+    for (const { row, e, q } of foeEnts) {
+      const cloaked9 = e.cloaks.some(([ca9, cb9]) => t >= ca9 && t < cb9)
+        || e.unit === "Dark Templar" || e.unit === "Observer"
+        || (e.unit !== "Arbiter" && arbiterSpots.some((asp) =>
+          asp.raw === e.raw && Math.hypot(asp.x - q.x, asp.y - q.y) <= 4.5));
+      // 버로우한 러커(요청) — 화면의 버로우 판정과 같다: 안 움직이면 땅속이다.
+      const burrowed9 = e.unit === "Lurker" && !q.moving;
+      if (cloaked9 || burrowed9) row.hidden = true;
     }
   } else {
     motion.players.forEach((p2, pi2) => {
@@ -9555,6 +9581,11 @@ export default function ReplayMotionPlayer({
       }
     });
   }
+  /** 그 편이 이 자리를 탐지하고 있나 — 디텍터(오버로드·옵저버·베슬·터렛·스포어·캐논
+   *  ·스캔)가 9타일 안이면 참. 은신·버로우 표적은 이것이 참이어야 겨눌 수 있다. */
+  const detectedBy = (team: number | undefined, x: number, y: number): boolean =>
+    !!team && detectorSpots.some((dsp) => dsp.team === team
+      && Math.hypot(dsp.x - x, dsp.y - y) <= DETECT_TILES);
   /* ── 지형 시야 가림(요청) — 언덕 위·벽 너머는 안 보인다. 두 자리 사이를 곧은 줄로
      이어 지형 격자를 훑고, 못 걷는 칸이 걸리면 시야가 없다: 그 적은 없는 셈 친다.
      단 '그 지역에 아군 공중유닛이나 건물이 있으면' 가림을 무시한다 — 원작에서 시야는
@@ -9622,6 +9653,8 @@ export default function ReplayMotionPlayer({
       if (!team || f.team === 0 || f.team === team) continue;
       if (only === "air" && !f.air) continue;
       if (only === "ground" && f.air) continue;
+      // 안 보이는 것은 못 친다(요청) — 은신·버로우는 디텍터가 있어야 표적이 된다.
+      if (f.hidden && !detectedBy(team, f.x, f.y)) continue;
       const d = Math.hypot(f.x - x, f.y - y);
       if (d >= bd) continue;
       // 벽 너머는 못 본다(요청) — 가까워도 시야가 막혔으면 상대가 아니다.
@@ -10639,11 +10672,15 @@ export default function ReplayMotionPlayer({
       }
       return { sec, x, y, raw, boom };
     }), [castsSrc, entWalks, teamOfRaw]);
+  /* 스캔은 탐지 시간만큼 남는다(요청: 스캔 뿌린 게 효과가 있어야 할 듯) — 여태 6초
+     (CAST_HOLD_SEC)만 그려 놓고 탐지는 12초를 먹였다. 눈에 보이는 동안이 곧 그 자리가
+     디텍터인 동안이라야, 안 보이던 것이 왜 갑자기 표적이 되는지가 화면에서 읽힌다. */
   const castsNow = castsSrc.filter((c) => c[0] <= t
     && t - c[0] <= (c[3] === "Nuclear Strike" ? NUKE_FALL_SEC + 4
       : c[3] === "Dark Swarm" ? 30
         : c[3] === "Disruption Web" ? 25
-          : c[3] === "Stasis Field" ? 20 : CAST_HOLD_SEC));
+          : c[3] === "Stasis Field" ? 20
+            : c[3] === "Scanner Sweep" ? SCAN_DETECT_SEC : CAST_HOLD_SEC));
   /* 핵 착탄들 + 성공 판정(지적: 실패가 더 많다) — 발사가 다 착탄이 아니다(고스트가
      끊기면 불발). 착탄 시각 언저리(−2초~+90초)에 반경 안 건물이 실제로 무너진 발사만
      '터진 핵'으로 본다. 불발은 표적 점만 보이다 만다. 유닛 몰살도 터진 핵만이다. */
@@ -11935,6 +11972,8 @@ export default function ReplayMotionPlayer({
                아군은 표적이 될 수 있다(요청: 명시적 어택은 아군도 지정) — 여기 오는
                태그는 A를 누르고 직접 찍은 명령뿐이라(우클릭 격상은 적에게만 붙는다)
                같은 편 태그가 실렸다면 사람이 정말 제 유닛을 찍은 것이다. */
+            // 은신·버로우는 콕 찍은 어택이라도 디텍터 없이는 못 겨눈다(요청).
+            if (tp && tp.hidden && !detectedBy(team, tp.x, tp.y)) continue;
             if (tp && tp.team > 0 && (team ?? 0) > 0
               && t - as2 <= (tp.bld ? 45 : 12)) {
               const td = Math.hypot(tp.x - rawPos.x, tp.y - rawPos.y);
@@ -12675,7 +12714,9 @@ export default function ReplayMotionPlayer({
               Plague: ["plague", 5], Ensnare: ["ensnare", 5], Irradiate: ["irrad", 2.5],
               "EMP Shockwave": ["emp", 6], "Stasis Field": ["stasis", 4],
               Lockdown: ["lock", 2.2], Maelstrom: ["mael", 5], Recall: ["recall", 4],
-              "Scanner Sweep": ["scan", 8], "Disruption Web": ["dweb", 5.5],
+              /* 스캔 지름은 실제 탐지 반경 그대로(요청) — 8타일짜리 장식 고리가 아니라,
+                 그 안의 은신이 벗겨지는 바로 그 원이다. */
+              "Scanner Sweep": ["scan", DETECT_TILES * 2], "Disruption Web": ["dweb", 5.5],
               /* 야마토(정정: 리플레이에 FireYamatoGun 명령이 좌표까지 남는다 — "안
                  남는다"던 앞선 말은 틀렸다) — 표적에 청백 에너지 구체가 작렬한다. */
               "Yamato Gun": ["yamato", 2.6],
