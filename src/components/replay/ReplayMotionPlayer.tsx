@@ -12214,26 +12214,51 @@ export default function ReplayMotionPlayer({
                    자체가 안 걸리고, 넘어도 폭이 1.4타일이라 홀 발자국 안에서 다 끝났다.
                    가까운 밭에서는 폭을 넓게 잡아(0.72 → 0.9) 눈에 보이게 오간다. */
                 if (h2 && hd2 > 0.6 && hd2 < 12) {
-                  /* 박자도 개체마다 어긋낸다(수리: 넷이 한 줄로 붙어 다닌다) — 예전
+                  /* 왕복의 두 끝을 자리로 잡는다(지적: 시작 일꾼이 건물 위에서 잔움직임
+                     만 한다) — 빠른무한 계열은 미네랄 덩이가 홀 중심에서 2타일 앞,
+                     곧 발자국(4×3) '안'에 붙어 있다. 예전처럼 밭↔홀중심을 비율로
+                     오가면 왕복이 통째로 건물 안에서 끝나, 캐러 나가는 모습이 아예
+                     안 보였다. 이제 홀 중심에서의 '거리'로 두 끝을 잡는다:
+                     ① 캐는 자리 — 밭보다 조금 더 바깥(밭이 붙은 맵은 +0.9타일),
+                        발자국 가장자리에서 최소 1.6타일은 떨어뜨린다.
+                     ② 반납 자리 — 밭이 가까운 맵은 발자국 가장자리까지만(건물 위로
+                        올라타지 않는다). 보통 맵은 종전대로 홀 안으로 들어간다. */
+                  const ux4 = (mpx - h2.x) / hd2; // 홀 → 밭 방향
+                  const uy4 = (mpy - h2.y) / hd2;
+                  // 발자국(4×3)을 타원으로 본 그 방향의 반지름.
+                  const edge4 = 1 / Math.max(0.001, Math.hypot(ux4 / 2.2, uy4 / 1.7));
+                  const tight4 = hd2 < 3.6;
+                  const outR4 = tight4 ? Math.max(hd2 + 0.9, edge4 + 1.6) : hd2;
+                  const inR4 = tight4 ? Math.min(edge4, outR4 - 1) : 0.2;
+                  const legLen4 = Math.max(0.6, outR4 - inR4);
+                  /* 걸음과 멈춤(요청의 결) — 일꾼 걸음보다 살짝 느리게 걷고 양 끝에서
+                     캐고 내리는 동안 멈춘다. 거리가 멀수록 왕복이 오래 걸린다. */
+                  const MINE_WALK9 = 2.6;
+                  const MINE_DWELL9 = 1.4;
+                  const leg4 = legLen4 / MINE_WALK9;
+                  const period4 = 2 * (leg4 + MINE_DWELL9);
+                  /* 박자는 개체마다 어긋낸다(수리: 넷이 한 줄로 붙어 다닌다) — 예전
                      ei×2.7은 왕복 주기(무한 맵에서 4초)와 맞아떨어져 서로 겹쳤다.
                      황금비로 0~1을 고르게 흩어 주기 어디에도 몰리지 않는다. */
                   const seed4 = Math.abs(e.tag > 0 ? e.tag : ei);
-                  const off4 = ((seed4 * 0.6180339887) % 1) * 2 * hd2;
-                  const cyc4 = (t * 1.6 + off4) % (2 * hd2);
-                  const k4 = (cyc4 < hd2 ? cyc4 : 2 * hd2 - cyc4) / hd2;
-                  const span4 = hd2 < 3 ? 0.9 : 0.72;
-                  const kk2 = 0.06 + k4 * span4;
+                  const off4 = ((seed4 * 0.6180339887) % 1) * period4;
+                  const u4 = ((t + off4) % period4 + period4) % period4;
+                  // k4 — 0=캐는 자리(바깥), 1=반납 자리(홀 쪽).
+                  const k4 = u4 < leg4 ? u4 / leg4
+                    : u4 < leg4 + MINE_DWELL9 ? 1
+                      : u4 < 2 * leg4 + MINE_DWELL9
+                        ? 1 - (u4 - leg4 - MINE_DWELL9) / leg4 : 0;
+                  const r4 = outR4 + (inR4 - outR4) * k4;
                   /* 줄(lane)로 나란히 — 한 밭에 여럿이 붙어도 오가는 길을 옆으로
                      조금씩 비켜, 몸이 정확히 포개지지 않는다. 원작의 밭 앞 줄서기다. */
-                  const ux4 = (h2.x - mpx) / hd2;
-                  const uy4 = (h2.y - mpy) / hd2;
                   const lane4 = (mineLane9 - 2) * 0.45;
                   pos = {
                     ...pos,
-                    x: mpx + (h2.x - mpx) * kk2 - uy4 * lane4,
-                    y: mpy + (h2.y - mpy) * kk2 + ux4 * lane4,
+                    x: h2.x + ux4 * r4 - uy4 * lane4,
+                    y: h2.y + uy4 * r4 + ux4 * lane4,
                   };
-                  nearMine9 = hd2 < 3;
+                  // 밭이 붙은 맵은 반납 끝이 발자국 가장자리라, 숨김 규칙을 아예 뺀다.
+                  nearMine9 = tight4;
                 }
               }
             }
