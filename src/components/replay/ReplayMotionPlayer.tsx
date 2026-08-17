@@ -1620,7 +1620,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...tagKey(spirePillar({
         // 끝은 뾰족이 아니라 뭉뚝하게 잘린 면(지적) — tipW 0.12 → 0.55.
         x: mx9, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.55,
-        segs: 5, sides: 4, hold: 0.12, leanX: -Math.sign(mx9) * 1.5, leanY: -0.3, taper: 1.5,
+        /* 끝끼리 더 모인다(지적) — 안쪽으로 눕는 몫을 1.5 → 2.25로 키워, 두 끝이
+           문 위에서 거의 맞닿는다. */
+        segs: 5, sides: 4, hold: 0.12, leanX: -Math.sign(mx9) * 2.25, leanY: -0.3, taper: 1.5,
       }), 30 + depthNow(mx9, 0) * 1.6));
     }
     // 가운데 소환 구체 — 두 탑 깊이의 한가운데.
