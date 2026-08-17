@@ -1668,6 +1668,31 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...domeFaces3(0, 0, 3.6, 2.4, 1.6));
     out.push(topFace(discPath3(0, 0, 4.05, 1.7), 0.3));
     out.push(capFace(discPath3(0, 0, 4.08, 0.7), 0.35));
+    /* 사진 디테일 보강(요청) — 앞면에 초록 총안 셋, 네 모서리에 은빛 기둥, 발치에
+       노랑·검정 빗금 띠, 왼쪽에 배관 하나. 형태는 지금 것 그대로. */
+    if (facingRatio(0, 1) > 0.12) {
+      const det: ShapeFace[] = [];
+      for (const lx9 of [-1.5, 0, 1.5]) {
+        det.push([polyPath3([
+          [lx9 - 0.5, 2.62, 0.9], [lx9 + 0.5, 2.62, 0.9],
+          [lx9 + 0.5, 2.62, 1.5], [lx9 - 0.5, 2.62, 1.5],
+        ]), 1, "#4cd86a"] as ShapeFace);
+      }
+      for (let k9 = 0; k9 < 7; k9 += 1) {
+        const u0 = -3 + k9 * 0.5;
+        det.push([polyPath3([
+          [u0, 2.64, 0], [u0 + 0.24, 2.64, 0], [u0 + 0.48, 2.64, 0.6], [u0 + 0.24, 2.64, 0.6],
+        ]), 1, k9 % 2 === 0 ? "#e8c33a" : "#22262b"] as ShapeFace);
+      }
+      out.push(...tagKey(det, 12 + depthNow(0, 2.6) * 1.6));
+    }
+    for (const [cx9, cy9] of [[-2.5, 2.2], [2.5, 2.2], [-2.5, -2.2], [2.5, -2.2]] as
+      [number, number][]) {
+      out.push(...tagKey(paintBase(boxFaces3(cx9, cy9, 0.5, 0.5, 2.2, 0), "#c9ced6"),
+        depthNow(cx9, cy9) * 1.6 + 2));
+    }
+    out.push(...tagKey(paintBase(tubeFaces(-3.6, 0.6, -3.6, -1.4, 0.32, 0.8), "#8b8f96"),
+      depthNow(-3.6, -0.4) * 1.6 + 1));
     return out;
   },
   /* 넥서스(실물 참고) — 절두 황금 피라미드(높이 한 단 낮춤) + 면의 능선 띠 + 꼭대기
@@ -2182,6 +2207,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       return tagKey(paintBase(faces, "#c9ced6"), 24 + depthNow(rx, 0.2)); // 포드 은색(요청)
     }),
     ...tagKey(paintBase(boxFaces3(0, -0.2, 2.2, 1.8, 1.6, 7.2), "#c9ced6"), 24 + depthNow(0, -0.2)),
+    /* 사진 디테일 보강(요청) — 머리 둘레에 붉은 미사일 슬롯 여덟이 방사로 박힌다.
+       요잉을 따라 돌고 뒤로 간 것은 안 그린다. 형태는 지금 것 그대로. */
+    ...Array.from({ length: 8 }, (_, k9) => {
+      const a9 = (k9 / 8) * Math.PI * 2;
+      const sx9 = Math.sin(a9);
+      const sy9 = Math.cos(a9);
+      if (facingRatio(sx9, sy9) <= 0.05) return [];
+      return tagKey(paintBase(
+        boxFaces3(sx9 * 1.7, sy9 * 1.7 - 0.2, 0.55, 0.55, 0.9, 7.4), "#a8322a",
+      ), 26 + depthNow(sx9 * 1.7, sy9 * 1.7) * 1.6);
+    }).flat(),
   ],
   /* 포톤 캐논(실물 참고) — 납작한 원형 판(고리 무늬) + 테두리 포드 여덟 + 가운데 가는
      수정 기둥(빛나는 끝). */
