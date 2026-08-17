@@ -5358,19 +5358,41 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 구 표면에 칠한 원(재정의: 사용자 설명) — 풍선 옆구리의 데칼: 옆으로 갈수록
          원이 모로 보이니 바깥 방향으로만 눌린 세로 타원으로 그린다. 튀어나오지도
          파이지도 않는다. */
-      const lx = Math.sin(th) * 2.46 * sxSign;
-      const ly = Math.cos(th) * 2.46;
-      const [px, py] = project(lx, ly, 5.65);
-      /* 콘택트 렌즈(요청) — 납작한 데칼이 아니라 바깥으로 살짝 볼록한 동그란 렌즈다:
-         어두운 테 → 렌즈 몸 → 바깥 위쪽으로 치우친 밝은 하이라이트 순으로 겹쳐,
-         가운데가 도톰하게 부푼 것으로 읽힌다. 자리도 구 반지름(2.4)보다 살짝 밖으로
-         빼(2.46) 표면에서 도드라진다. */
+      const lx = Math.sin(th) * 2.44 * sxSign;
+      const ly = Math.cos(th) * 2.44;
+      /* 진짜 납작한 원판(지적: 지금은 구로 보인다 — 어느 각도에서든 납작한 게 맞나) —
+         아니었다. groundEllipse에 가로·세로 반지름을 같게 주면 요잉과 무관하게 늘 정원
+         이라, 돌려도 안 눌리는 '구'로 읽힌다. 렌즈는 구 옆구리의 접평면 위에 선 원판
+         이므로, 그 평면의 두 축(수평 접선 u, 수직 v)으로 3D 점을 찍어 투영해야 한다.
+         그러면 정면에선 동그랗고 옆으로 돌수록 실제로 납작해지며, 뒤로 돌면 사라진다. */
+      const nl9 = Math.hypot(lx, ly) || 1;
+      const nx9 = lx / nl9;
+      const ny9 = ly / nl9;
+      // 뒤로 돈 기관은 몸에 가려 안 보인다 — 접평면이 등을 돌리면 그리지 않는다.
+      const fr9 = facingRatio(nx9, ny9);
+      if (fr9 <= 0.02) return [];
+      const ux9 = -ny9;
+      const uy9 = nx9;
+      /* 원판 — 접평면 위의 원. bulge만큼 바깥(법선)으로 배를 내밀어 볼록한
+         콘택트 렌즈가 된다(가운데가 가장 두껍다). */
+      const disc9 = (r9: number, bulge: number, zc: number): string => polyPath3(
+        Array.from({ length: 17 }, (_, i9) => {
+          const a9 = (i9 / 16) * Math.PI * 2;
+          const co9 = Math.cos(a9) * r9;
+          const si9 = Math.sin(a9) * r9;
+          return [
+            lx + ux9 * co9 + nx9 * bulge,
+            ly + uy9 * co9 + ny9 * bulge,
+            zc + si9,
+          ] as [number, number, number];
+        }),
+      );
       return tagKey([
-        [groundEllipse(px, py, 0.98, 0.98), 0.95, "#5d3c8c"] as ShapeFace,
-        [groundEllipse(px, py, 0.86, 0.86), 0.95, "#7d55b4"] as ShapeFace,
-        [groundEllipse(px - 0.16 * sxSign, py - 0.16, 0.5, 0.5), 0.55, "#a97fe0"] as ShapeFace,
-        [groundEllipse(px - 0.3 * sxSign, py - 0.3, 0.2, 0.2), 0.6, "#e2d4f6"] as ShapeFace,
-      ], depthNow(lx, ly));
+        [disc9(0.98, 0, 5.65), 0.95, "#5d3c8c"] as ShapeFace,
+        [disc9(0.86, 0.1, 5.65), 0.95, "#7d55b4"] as ShapeFace,
+        [disc9(0.5, 0.2, 5.85), 0.55, "#a97fe0"] as ShapeFace,
+        [disc9(0.2, 0.24, 5.98), 0.6, "#e2d4f6"] as ShapeFace,
+      ], depthNow(lx, ly) + 3);
     };
     /* 얼굴(재지적: 얼굴은 앞쪽 아래쪽에 작은 반구형으로) — 몸 앞아래 표면에 붙는
        작은 돔 하나. */
