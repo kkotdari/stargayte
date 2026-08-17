@@ -9190,6 +9190,56 @@ export default function ReplayMotionPlayer({
       }
     });
   }
+  /* ── 지형 시야 가림(요청) — 언덕 위·벽 너머는 안 보인다. 두 자리 사이를 곧은 줄로
+     이어 지형 격자를 훑고, 못 걷는 칸이 걸리면 시야가 없다: 그 적은 없는 셈 친다.
+     단 '그 지역에 아군 공중유닛이나 건물이 있으면' 가림을 무시한다 — 원작에서 시야는
+     편끼리 나누므로, 언덕 위에 아군 오버로드가 떠 있거나 곁에 아군 건물이 서 있으면
+     그들이 대신 보고 있는 것이다.
+     격자는 실틈을 조이기 전의 원본(terrainRaw)을 쓴다 — 조인 판은 길목까지 막아, 시야
+     로는 없는 벽을 세운다. 칸 하나짜리 잡음에 안 넘어가게 못 걷는 칸이 잇달아 둘일
+     때만 벽으로 친다. */
+  const losSeers: { team: number; x: number; y: number }[] = [];
+  if (terrainRaw) {
+    for (const f of engageFoes) if (f.air && f.team > 0) losSeers.push({ team: f.team, x: f.x, y: f.y });
+    for (const [bs9, bx9, by9, bu9, br9, bg9] of buildsSrc) {
+      if (bs9 > t || ((bg9 ?? 0) > 0 && t >= (bg9 ?? 0))) continue;
+      const bteam9 = teamOfRaw(br9) ?? 0;
+      if (bteam9 > 0) losSeers.push({ team: bteam9, x: bx9 + footDx(bu9), y: by9 + footDy(bu9) });
+    }
+  }
+  const losCache = new Map<string, boolean>();
+  const sightBlocked = (
+    team: number | undefined, ax: number, ay: number, bx: number, by: number,
+  ): boolean => {
+    const g9 = terrainRaw;
+    if (!g9 || !team) return false;
+    const key = `${team}|${Math.round(ax)},${Math.round(ay)}|${Math.round(bx)},${Math.round(by)}`;
+    const had = losCache.get(key);
+    if (had !== undefined) return had;
+    const x0 = (ax / grid.width) * g9.w;
+    const y0 = (ay / grid.height) * g9.h;
+    const x1 = (bx / grid.width) * g9.w;
+    const y1 = (by / grid.height) * g9.h;
+    const steps = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2));
+    let blocked = false;
+    let run = 0;
+    // 끝 칸은 뺀다 — 유닛이 선 칸 자체가 격자 해상도 탓에 벽으로 찍혀 있을 수 있다.
+    for (let i = 1; i < steps; i += 1) {
+      const cx = Math.floor(x0 + ((x1 - x0) * i) / steps);
+      const cy = Math.floor(y0 + ((y1 - y0) * i) / steps);
+      if (cx < 0 || cy < 0 || cx >= g9.w || cy >= g9.h) continue;
+      if (g9.walk[cy * g9.w + cx]) { run = 0; continue; }
+      run += 1;
+      if (run >= 2) { blocked = true; break; }
+    }
+    // 아군의 눈(공중유닛·건물)이 그 지역에 있으면 가림을 무시한다(요청).
+    if (blocked) {
+      blocked = !losSeers.some((s9) => s9.team === team
+        && Math.hypot(s9.x - bx, s9.y - by) <= ENGAGE_SIGHT_TILES);
+    }
+    losCache.set(key, blocked);
+    return blocked;
+  };
   const nearestFoe = (team: number | undefined, x: number, y: number) => {
     let bx = 0;
     let by = 0;
@@ -9202,7 +9252,10 @@ export default function ReplayMotionPlayer({
          이름이 안 맞아 팀을 못 찾은 마커를 적으로 치면 제 편끼리 쏘는 그림이 된다. */
       if (!team || f.team === 0 || f.team === team) continue;
       const d = Math.hypot(f.x - x, f.y - y);
-      if (d < bd) { bd = d; bx = f.x; by = f.y; bAir = f.air; bBld = f.bld; bK = f.k; }
+      if (d >= bd) continue;
+      // 벽 너머는 못 본다(요청) — 가까워도 시야가 막혔으면 상대가 아니다.
+      if (sightBlocked(team, x, y, f.x, f.y)) continue;
+      bd = d; bx = f.x; by = f.y; bAir = f.air; bBld = f.bld; bK = f.k;
     }
     return { bx, by, bd, air: bAir, bld: bBld, k: bK };
   };
