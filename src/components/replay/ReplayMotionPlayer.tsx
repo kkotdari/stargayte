@@ -6957,7 +6957,7 @@ export const SHAPE_GALLERY: { kind: string; label: string; group: "유닛" | "�
   { kind: "observatory", label: "옵저버토리", group: "건물" },
   { kind: "arch", label: "스타게이트", group: "건물" },
   { kind: "fleetbeacon", label: "플릿 비컨", group: "건물" },
-  { kind: "tribunal", label: "아칸 트리뷰널", group: "건물" },
+  { kind: "tribunal", label: "아비터 트리뷰널", group: "건물" },
   { kind: "warpin", label: "소환구(프로토스)", group: "건물" },
   // ── 건물 · 저그 ──
   { kind: "hatchery", label: "해처리", group: "건물" },
