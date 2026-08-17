@@ -2007,12 +2007,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 몸은 금빛 바탕(재작도) — 여태 발판·마당·어금니 탑이 통째로 개인색이라 종족이
        안 읽혔다. 남은 밑칠을 금으로 덮고, 개인색은 아래 두 곳만 남긴다. */
     const gated: ShapeFace[] = paintBase(out, "#c9a227");
-    /* ① 문틈의 소환 빛 테 ② 발판 위 원판 넷 — 둘 다 칠하지 않아 임자 색이 든다. */
+    // 개인색은 발판 위 원판 넷 — 칠하지 않아 임자 색이 든다(문틈 빛은 고정색으로 뺐다).
+    // 발판 위 원판은 폭을 줄인다(요청) — 반지름 1.55 → 1.05.
     for (const [px9, py9] of [[0, 3.6], [0, -3.6], [3.8, 0], [-3.8, 0]] as [number, number][]) {
-      gated.push(...tagKey(cylinderFaces3(px9, py9, 1.55, 0.16, h),
+      gated.push(...tagKey(cylinderFaces3(px9, py9, 1.05, 0.16, h),
         depthNow(px9, py9) * 1.6 + 0.3));
     }
-    gated.push(...tagKey([bodyFace(groundEllipse(wx, wy, 0.85, 1.05))], 30.1));
+    /* 문틈 소환 빛은 고정 플라즈마색(요청) — 임자 색이면 어두운 색을 만났을 때 빛이
+       아니라 구멍으로 보인다. 반투명 사이언으로 못 박고 흰 심을 얹는다. */
+    gated.push(...tagKey([
+      [groundEllipse(wx, wy, 0.85, 1.05), 0.62, "#6fe4ff"] as ShapeFace,
+      [groundEllipse(wx, wy, 0.46, 0.62), 0.5, "#e8fbff"] as ShapeFace,
+    ], 30.1));
     // 탑 어깨의 개인색 띠도 같은 이유로 걷었다 — 개인색은 문틈 빛과 발판 원판이 맡는다.
     return gated;
   },
@@ -2654,31 +2660,53 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ], depthNow(m9 * 3.4, -0.2) * 1.6));
     }
     // 껍데기 — 앞뒤로 길쭉한 낮은 황금 덩치.
-    out.push(...tagKey(paintBase(domeFaces3(0, -0.2, 3.2, 2.4, 0), GOLD), 2));
+    const DR9 = 3.2;
+    const DH9 = 2.4;
+    out.push(...tagKey(paintBase(domeFaces3(0, -0.2, DR9, DH9, 0), GOLD), 2));
     /* 몸을 타넘는 활 띠 넷 — 앞에서 뒤로 나란히 걸린다. 하나(가운데 앞)는 개인색. */
     // 개인색 몫 확대(요청) — 가운데 두 줄을 개인색으로, 굵기도 키운다.
-    ([[1.1, 2.9, 1], [0.2, 3.15, 1], [-0.7, 3.05, 1], [-1.6, 2.7, 0]] as [number, number, number][])
-      .forEach(([by9, br9, own9]) => {
-        const band = spirePillar({
-          x: 0, y: 0, h: 1, w: own9 ? 0.46 : 0.3, tipW: own9 ? 0.46 : 0.3,
-          segs: 12, sides: 5, hold: 1,
-          path: (t9: number): [number, number, number] => {
-            const th = Math.PI * t9;
-            return [Math.cos(th) * br9, by9, 0.15 + Math.sin(th) * 2.05];
-          },
-          ...(own9 ? {} : { fill: GOLD_D }),
-        });
-        (own9 ? pc : out).push(...tagKey(band, 6 + depthNow(0, by9) * 1.6));
-        // 띠 위 청록 눈금 — 마루에 박힌 짧은 조각 셋.
+    ([[1.1, 1], [0.2, 1], [-0.7, 1], [-1.6, 0]] as [number, number][])
+      .forEach(([by9, own9]) => {
+        /* 활은 껍데기 겉면을 정확히 탄다(지적: 지도에서 정·후면이 같이 보인다) —
+           예전엔 반지름을 손으로 줘 다리가 껍데기 밖으로 삐져나왔고, 뒤에서 보면 그
+           삐죽한 다리 때문에 앞쪽 띠까지 실루엣 밖에 드러났다. 이제 그 y에서의 돔
+           단면(반지름 rho, 높이 DH·rho/DR)을 그대로 따라 3%만 띄운다. */
+        const dy9 = by9 + 0.2;
+        const rho9 = Math.sqrt(Math.max(0.04, DR9 * DR9 - dy9 * dy9));
+        const arcPt = (u9: number): [number, number, number] => {
+          const th = Math.PI * u9;
+          return [
+            Math.cos(th) * rho9 * 1.03, by9,
+            Math.sin(th) * DH9 * (rho9 / DR9) * 1.03,
+          ];
+        };
+        /* 활을 토막 내 토막마다 제 깊이로 키를 준다(지적: 지도에서 정·후면이 같이
+           보인다) — 띠 하나에 키 하나뿐이라, 옆에서 보면 껍데기 뒤로 넘어간 다리까지
+           통째로 껍데기 위에 그려져 넓적한 판때기가 됐다. 토막마다 제 자리 깊이를
+           매기면 뒤로 돌아간 쪽은 황금 껍데기가 가린다. 정면에서는 띠 안의 깊이가
+           일정해(활은 y가 고정) 종전 그림 그대로다. */
+        const SEG9 = 8;
+        for (let s9 = 0; s9 < SEG9; s9 += 1) {
+          const band = spirePillar({
+            x: 0, y: 0, h: 1, w: own9 ? 0.46 : 0.3, tipW: own9 ? 0.46 : 0.3,
+            segs: 2, sides: 5, hold: 1,
+            path: (t9: number): [number, number, number] => arcPt((s9 + t9) / SEG9),
+            ...(own9 ? {} : { fill: GOLD_D }),
+          });
+          /* 키는 깊이와 높이를 함께 본다 — 껍데기(키 2) 위로 넘어간 마루는 높이가
+             띄워 주고, 뒤로 돌아 내려간 다리는 깊이가 껍데기 밑으로 내린다. */
+          const [mx9, my9, mz9] = arcPt((s9 + 0.5) / SEG9);
+          (own9 ? pc : out).push(...tagKey(band, depthNow(mx9, my9) * 1.6 + mz9 * 2.2));
+        }
+        // 띠 위 청록 눈금 — 마루에 박힌 짧은 조각 셋. 눈금도 저마다 제 깊이다.
         if (!own9) {
-          const tick: ShapeFace[] = [];
           for (const u9 of [0.34, 0.5, 0.66]) {
-            const th = Math.PI * u9;
-            tick.push(...paintBase(domeFaces3(
-              Math.cos(th) * br9, by9, 0.24, 0.16, 0.15 + Math.sin(th) * 2.05,
-            ), TEAL));
+            const [tx9, ty9, tz9] = arcPt(u9);
+            out.push(...tagKey(
+              paintBase(domeFaces3(tx9, ty9, 0.24, 0.16, tz9), TEAL),
+              depthNow(tx9, ty9) * 1.6 + tz9 * 2.2 + 0.6,
+            ));
           }
-          out.push(...tagKey(tick, 7 + depthNow(0, by9) * 1.6));
         }
       });
     /* 앞면 큰 청록 렌즈 — 벽에 수직으로 붙은 볼록 원판(공용 렌즈 도형). */
@@ -7078,7 +7106,12 @@ const MUZZLE_PX: Record<string, number> = {
   Dragoon: 6, Zealot: 3, Archon: 6, Reaver: 7, Scout: 6, Corsair: 5, Carrier: 9, Arbiter: 6,
   Zergling: 3, Lurker: 6, Mutalisk: 5, Guardian: 6, Devourer: 6, Queen: 5, Ultralisk: 5,
   "Photon Cannon": 6, "Sunken Colony": 5, "Missile Turret": 7, Bunker: 6,
+  "Spore Colony": 5,
 };
+/** 제 힘으로 쏘는 방어 건물 — 사거리·표적 갈래는 저마다 아래 방어 사격에서 갈린다. */
+const DEF_FIRE = new Set([
+  "Missile Turret", "Bunker", "Photon Cannon", "Sunken Colony", "Spore Colony",
+]);
 /* 총구 모델 앵커(요청: 오프셋 표 말고 모델별로 — 승인) — 모델 공간 [x(우), y(앞), z(위)].
    트레이서가 몸 중심이 아니라 이 점의 '투영 자리'에서 시작한다: 요잉 버킷·시각 밀림·
    피칭까지 스프라이트 굽기와 같은 변환(project)을 태우므로 어느 방향을 보든 정확히 그
@@ -8003,7 +8036,6 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
       }
       /* 선택 링(지적: 드래그 선택 구분) — 잡힌 유닛 발밑의 가는 타원 테.
          색은 임자 색이다(요청: 흰색 말고 개인색) — 누가 잡은 유닛인지 링만 보고 안다.
-         어두운 임자 색도 지형에 묻히지 않게 검은 테를 한 겹 깔고 그 위에 얹는다.
          공중 유닛은 링도 공중이다(지적: 유닛 바닥에) — 들린 몸의 바닥선에 붙인다. */
       if (op.selRing) {
         ctx.save();
@@ -8018,11 +8050,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
           ctx.beginPath();
           ctx.ellipse(footX, ringY, px * 0.25, px * 0.14 * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
         };
-        ctx.globalAlpha = op.alpha * 0.5;
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
-        ctx.lineWidth = ringW + Math.max(0.5, ringW * 0.7);
-        ringPath();
-        ctx.stroke();
+        /* 검은 테는 걷었다(지적: 깔려면 마우스 마커에도 깔아야 한다) — 링만 두 겹이라
+           둘이 따로 놀았다. 임자 색 실선 한 겹으로 통일한다. */
         ctx.globalAlpha = op.alpha * 0.95;
         ctx.strokeStyle = op.color;
         ctx.lineWidth = ringW;
@@ -8352,6 +8381,31 @@ function posAt(
   }
   const last = pts[pts.length - 1];
   return { x: last[1], y: last[2], stale: t - last[0] > LERP_MAX_GAP_SEC, moving: false, sinceLast: t - last[0] };
+}
+
+/* 걸음 시계가 빚을 갚는 속도(요청: 교전 뒤 이동이 부자연스럽다) — 뒤처진 시계는
+   1.4배로 달려 따라잡는다. 화면 스무딩 상한(제 걸음 ×1.5)보다 낮아, 따라잡는 동안에도
+   몸이 자취를 벗어나 가로지르지 않는다. 빚 상한은 그 위의 안전판이다. */
+const TRACK_CATCHUP = 1.4;
+const TRACK_DEBT_MAX = 18;
+
+/** 자취 위에서 (x,y)에 가장 가까운 '앞쪽' 시각 — 교전이 끝난 자리에서 뒤로 돌아가지
+ *  않고 이어 걷게 하는 자다(요청: 다음 명령이 오면 막 되돌아간다). 파고든 몫만큼은
+ *  이미 걸은 것으로 쳐 주고, 옆·뒤로 밀린 싸움이었다면 제자리(from)가 그대로 뽑힌다. */
+function nearestTrackSec(
+  pts: TrackPt[], from: number, to: number, x: number, y: number,
+): number {
+  if (!(to > from)) return from;
+  const step = Math.max(0.15, (to - from) / 48);
+  let best = from;
+  let bd = Infinity;
+  for (let s = from; s <= to + 1e-6; s += step) {
+    const q = posAt(pts, s, null);
+    if (!q) continue;
+    const d = Math.hypot(q.x - x, q.y - y);
+    if (d < bd) { bd = d; best = s; }
+  }
+  return best;
 }
 
 /** t 시각의 우세 유닛 이름 — 없으면 빈 문자열. */
@@ -8705,11 +8759,20 @@ export default function ReplayMotionPlayer({
   /* v2 교전 멈춤(지적: 어택땅 중 만나면 멈추고 싸워야 하는데 그냥 감) — 싸움이 시작된
      자리를 기억해, 적이 곁에 있는 동안 거기 세운다. 적이 사라지면(죽거나 멀어지면)
      기억을 걷고 다시 걷는다. 시간을 되감으면(t가 기억보다 앞) 기억을 버린다. */
-  const engageHoldRef = useRef(new Map<string, { x: number; y: number; t0: number; tLast: number; adv: number }>());
-  /* 교전으로 멈춘 시간의 합(지적: 어택한 경우 교전이 끝나고 살아 있으면 어택 지점까지
-     이동해야 — 다른 명령으로 덮이지 않는 한) — 멈춘 만큼 걸음 시계를 미뤄, 교전이
-     끝나면 순간이동 없이 멈춘 자리에서 이어 걷는다. */
-  const engageDelayRef = useRef(new Map<string, { delay: number; since: number }>());
+  const engageHoldRef = useRef(new Map<string, {
+    x: number; y: number; t0: number; tLast: number; adv: number;
+    /** 마지막으로 화면에 그린 교전 자리 — 유예·해제 때 여기서 이어 간다. */
+    px: number; py: number;
+    /** 그때 겨누던 표적 자리 — 표적이 바뀌면 기준점을 다시 잡는 자다. */
+    fx: number; fy: number;
+  }>());
+  /* 걸음 시계(요청: 교전 시뮬로 움직이다 다음 명령이 오면 막 되돌아가서 부자연스럽다) —
+     예전엔 교전으로 멈춘 시간만큼 시계를 '되감아' 이어 걸었는데, 그 되감기가 곧 화면의
+     후진이었다: 표적으로 파고든 몸이 싸움이 끝나는 순간 싸우기 전 자리로 물러났다.
+     이제 시계는 절대 뒤로 안 간다 — 싸우는 동안 멈춰 있다가(held), 풀리면 지금 서 있는
+     자리에 가장 가까운 '앞쪽' 시각으로 건너뛰어(파고든 몫을 걸음으로 인정) 거기서 이어
+     걷고, 뒤처진 빚은 TRACK_CATCHUP 걸음으로 천천히 갚는다. */
+  const trackClockRef = useRef(new Map<string, { eff: number; at: number; held: boolean }>());
   /* 화면 위치 스무딩(지적: 유닛이 뚝뚝 끊기고 조금씩 순간이동처럼 움직임) — 대형 오프셋
      변경·교전 멈춤 해제·채굴 위상 전환 같은 잔점프를 지수 이동평균이 흡수한다. 큰 이동
      (6타일 초과 — 드랍·리콜 등 진짜 순간이동)과 시간 되감기는 그대로 점프한다. */
@@ -9349,7 +9412,13 @@ export default function ReplayMotionPlayer({
         for (let i = e.ev.length - 1; i >= 0; i -= 1) {
           if (e.ev[i][1] >= 0) { lastPosF = e.ev[i][3]; break; }
         }
-        if (lastPosF === 2 && wk.length > 0) buildHideAt = wk[wk.length - 1][0];
+        /* 프로토스는 소환하고 곧장 자유다(지적: 프로브가 건물 소환하고 사라졌다가 다음
+           명령을 받으면 다시 나타남) — 공사 내내 붙어 있는 건 테란 SCV뿐이고, 그동안의
+           모습도 합성 건설 일꾼이 대신 그린다. 프로브를 같은 자로 숨기면 다음 명령이
+           올 때까지(수십 초) 통째로 사라진다. 소환 순간(1.6초)만 숨기고 그 뒤로는 현장
+           곁에 선 채로 그린다. */
+        const warpOnly = e.k === "Probe";
+        if (lastPosF === 2 && wk.length > 0 && !warpOnly) buildHideAt = wk[wk.length - 1][0];
         for (let i = 0; i < e.ev.length; i += 1) {
           const v2 = e.ev[i];
           if (v2[3] !== 2) continue;
@@ -9357,7 +9426,7 @@ export default function ReplayMotionPlayer({
           for (let j = i + 1; j < e.ev.length; j += 1) {
             if (e.ev[j][1] >= 0 && e.ev[j][0] > v2[0] + 1) { end = e.ev[j][0]; break; }
           }
-          buildHides.push([v2[0], end]);
+          buildHides.push([v2[0], warpOnly ? Math.min(end, v2[0] + 1.6) : end]);
         }
       }
       out.push({
@@ -9536,7 +9605,11 @@ export default function ReplayMotionPlayer({
     losCache.set(key, blocked);
     return blocked;
   };
-  const nearestFoe = (team: number | undefined, x: number, y: number) => {
+  /* only(요청: 포톤·성큰·스포어가 사거리 안 대상을 안 친다) — 대공 전용(스포어)·대지
+     전용(성큰)은 못 치는 갈래를 아예 안 본다. 안 주면 종전대로 아무나 가장 가까운 적. */
+  const nearestFoe = (
+    team: number | undefined, x: number, y: number, only?: "air" | "ground",
+  ) => {
     let bx = 0;
     let by = 0;
     let bd = Infinity;
@@ -9547,6 +9620,8 @@ export default function ReplayMotionPlayer({
       /* 팀 미상(0)은 상대가 아니다(지적: 자기 유닛을 왜 공격해) — 로스터와 리플레이
          이름이 안 맞아 팀을 못 찾은 마커를 적으로 치면 제 편끼리 쏘는 그림이 된다. */
       if (!team || f.team === 0 || f.team === team) continue;
+      if (only === "air" && !f.air) continue;
+      if (only === "ground" && f.air) continue;
       const d = Math.hypot(f.x - x, f.y - y);
       if (d >= bd) continue;
       // 벽 너머는 못 본다(요청) — 가까워도 시야가 막혔으면 상대가 아니다.
@@ -11253,16 +11328,41 @@ export default function ReplayMotionPlayer({
                  상대만 미사일(8타일), 벙커는 총알(6타일)에 임자가 파벳을 뽑아 뒀고 적이
                  코앞(3.5타일)이면 화염을 섞는다 — 안에 누가 들었는지는 리플레이에 안
                  남아, 그 시점 보유 병종으로 어림한다. */
-              if (qCombat && (unit === "Missile Turret" || unit === "Bunker")
+              /* 포톤·성큰·스포어도 쏜다(지적: 사거리 안에 대상이 있는데 공격을 안 한다)
+                 — 여태 터렛·벙커만 이 갈래에 들어 있어, 프로토스·저그 방어 건물은
+                 화력이 체력에만 접혀 있고 화면에는 아무 일도 안 일어났다. 성큰은 대지
+                 (7타일)·스포어는 대공(7타일)·포톤은 둘 다(7타일)라, 못 치는 갈래는
+                 nearestFoe의 only로 아예 안 본다. */
+              if (qCombat && DEF_FIRE.has(unit)
                 && !raising && (goneEff === 0 || t < goneEff)) {
                 const teamB = teamOfRaw(raw);
-                const foeB = nearestFoe(teamB, centerX, centerY);
+                const onlyB = unit === "Sunken Colony" ? "ground"
+                  : unit === "Spore Colony" || unit === "Missile Turret" ? "air" : undefined;
+                const foeB = nearestFoe(teamB, centerX, centerY, onlyB);
                 // 화면 기준 조준(지적: 공중 각도·지면 평행) — 유닛 트레이서와 같은 셈.
                 const tPxB = (mapRef.current?.clientWidth ?? 320) / grid.width;
                 let dgy = (foeB.by - centerY) * tPxB * (pitched ? 0.74 : 1);
                 if (foeB.air) dgy -= unitGlyphPx(0, foeB.by) * 1.6;
                 const degB = Math.atan2(-((foeB.bx - centerX) * tPxB), dgy) * (180 / Math.PI);
                 const fire: React.ReactNode[] = [];
+                /* 포톤은 대공·대지 한 자루(7타일), 성큰은 촉수(7타일, 표적까지 실거리로
+                   뻗는다 — 럴커 가시와 같은 셈), 스포어는 포자(7타일). */
+                if (unit === "Photon Cannon" && foeB.bd <= 7) {
+                  fire.push(<span key="p" className="scr-motion-tracer scr-tracer-photon" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)` }} />);
+                }
+                if (unit === "Sunken Colony" && foeB.bd <= 7) {
+                  fire.push(<span
+                    key="s"
+                    className="scr-motion-tracer scr-tracer-spike"
+                    style={{
+                      transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)`,
+                      height: `${(foeB.bd * tPxB).toFixed(1)}px`,
+                    }}
+                  />);
+                }
+                if (unit === "Spore Colony" && foeB.bd <= 7) {
+                  fire.push(<span key="o" className="scr-motion-tracer scr-tracer-acid" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)` }} />);
+                }
                 if (unit === "Missile Turret" && foeB.air && foeB.bd <= 8) {
                   fire.push(<span key="t" className="scr-motion-tracer scr-tracer-missile" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)` }} />);
                 }
@@ -11736,17 +11836,6 @@ export default function ReplayMotionPlayer({
           if (dieAt !== null && t >= dieAt + 1.2) return null;
           const team = teamOfRaw(e.raw);
           const holdKey0 = `${e.raw}-v2e${ei}`;
-          // 교전으로 멈췄던 시간만큼 걸음 시계를 미룬다(위 engageDelayRef 주석).
-          const dmem = engageDelayRef.current.get(holdKey0);
-          let walkDelay = dmem && t >= dmem.since ? dmem.delay : 0;
-          if (dmem && t < dmem.since) { engageDelayRef.current.delete(holdKey0); walkDelay = 0; }
-          /* 새 명령 재동기화(기획서 1-F — 수리: 지연이 무한 누적돼 걸음 시계가 영구히
-             뒤처졌다) — 적립 이후 실제 명령이 나오면 그 명령 좌표가 현실이므로 지연을
-             걷는다. */
-          if (dmem && walkDelay > 0 && e.orders.some((os0) => os0 > dmem.since && os0 <= t)) {
-            engageDelayRef.current.delete(holdKey0);
-            walkDelay = 0;
-          }
           /* 걸음 속도 상한(요청) — 제 속도표로 죈다. 15%만 여유를 둔다: 교전 지연을
              따라잡는 몫이라, 이보다 크면 다시 '순간적으로 빨라짐'이 된다.
              드랍·리콜은 예외 — 원작에서도 순간이동이다. 수송 구간 앞뒤 여유를 두어
@@ -11756,7 +11845,26 @@ export default function ReplayMotionPlayer({
             tech9 === "Recall" && craw9 === e.raw && t >= cs9 - 1 && t <= cs9 + 4);
           const vCap9 = ridingNow9 || recallNow9
             ? undefined : speedOf(e.unit || "Marine", t, e.ups) * 1.15;
-          const rawPos = posAt(rp, Math.max(rp[0][0], t - walkDelay), null, vCap9);
+          /* 걸음 시계(위 trackClockRef 주석) — 되감기가 없는 단조 시계다. 처음·되감기·
+             탐색(1.5초 넘는 건너뜀)은 지금 시각으로 맞추고, 싸우는 동안은 멈추며,
+             그 밖에는 빚이 있으면 TRACK_CATCHUP으로 달려 따라잡는다. */
+          const cm9 = trackClockRef.current.get(holdKey0);
+          let eff9: number;
+          if (!cm9 || t < cm9.at || t - cm9.at > 1.5) eff9 = t;
+          else if (cm9.held) eff9 = cm9.eff;
+          else {
+            eff9 = Math.min(t, cm9.eff
+              + (t - cm9.at) * (cm9.eff < t - 0.05 ? TRACK_CATCHUP : 1));
+          }
+          /* 새 명령이 오면 그 좌표가 현실이다(기획서 1-F — 수리: 빚이 무한 누적돼 걸음
+             시계가 영구히 뒤처졌다) — 밀린 시계 뒤에 실제 명령이 났으면 앞으로 당긴다.
+             싸우는 중(held)에는 안 당긴다: 그 동안의 자취는 싸우느라 못 간 길이다. */
+          if (cm9 && !cm9.held && eff9 < t && e.orders.some((os0) => os0 > eff9 && os0 <= t)) {
+            eff9 = t;
+          }
+          // 빚 상한(안전판) — 끝나지 않는 싸움에 걸려도 시계가 영영 멈추지는 않는다.
+          eff9 = Math.max(rp[0][0], Math.min(t, Math.max(eff9, t - TRACK_DEBT_MAX)));
+          const rawPos = posAt(rp, eff9, null, vCap9);
           if (!rawPos) return null;
           /* 탑승 중(요청: 수송선 승하차) — 배 안에 있으니 마커를 걷는다. 하차 지점
              (f=13)이나 다음 제 명령에서 다시 나타나 걷는다.
@@ -11853,10 +11961,23 @@ export default function ReplayMotionPlayer({
                통째로 날려 접촉→후퇴 요요를 만들었다. 깜빡임·컬링 공백은 아래 시계
                (dt9, 프레임당 1.5초 상한)로 흡수한다). */
             let base = mem && t >= mem.t0 ? mem : null;
-            if (!base) {
-              base = { x: rawPos.x, y: rawPos.y, t0: t, tLast: t, adv: 0 };
+            /* 표적이 바뀌면 지금 선 자리에서 다시 잰다(요청: 막 되돌아간다) — 기준점
+               (base)은 그대로 둔 채 방향만 홱 돌리면, 파고든 몫(adv)이 통째로 반대편에
+               그어져 몸이 기준점을 축으로 크게 돌아 나갔다. 표적이 5타일 넘게 튀면
+               (죽어서 다음 적으로 넘어간 경우) 지금 몸 자리를 새 기준점으로 삼는다. */
+            if (base && Math.hypot(foe.bx - base.fx, foe.by - base.fy) > 5) {
+              base = { ...base, x: base.px, y: base.py, adv: 0 };
               engageHoldRef.current.set(holdKey, base);
             }
+            if (!base) {
+              base = {
+                x: rawPos.x, y: rawPos.y, t0: t, tLast: t, adv: 0,
+                px: rawPos.x, py: rawPos.y, fx: foe.bx, fy: foe.by,
+              };
+              engageHoldRef.current.set(holdKey, base);
+            }
+            base.fx = foe.bx;
+            base.fy = foe.by;
             const dt9 = Math.max(0, Math.min(1.5, t - base.tLast));
             base.tLast = t;
             /* 홀드는 후퇴만 막는다(수리: 교전 시작 자리에 박제돼 원자취가 표적으로
@@ -11910,19 +12031,37 @@ export default function ReplayMotionPlayer({
             pos = gap > 0.01
               ? { ...rawPos, x: base.x + ((foe.bx - base.x) / gap) * pull, y: base.y + ((foe.by - base.y) / gap) * pull }
               : { ...rawPos, x: base.x, y: base.y };
+            base.px = pos.x;
+            base.py = pos.y;
           } else {
             const mem = engageHoldRef.current.get(holdKey);
+            // 시간을 되감았으면 기억을 버린다 — 안 그러면 시계가 멈춘 채로 남는다.
+            if (mem && t < mem.t0) engageHoldRef.current.delete(holdKey);
             /* 깜빡임 유예(기획서 1-C): 1.2초 안에 다시 붙으면 진행(adv)을 보존한다 —
                즉시 삭제가 재교전마다 t0·진행을 리셋해 요요를 만들었다. */
-            if (mem && t >= mem.t0 && t - mem.tLast >= 1.2) {
-              /* 교전이 끝났다 — 멈춘 시간을 걸음 지연에 넘겨 이어 걷게 한다.
-                 찰나(0.4초 미만)의 스침은 지연으로 안 쌓는다(지적: 플리커). */
+            if (mem && t >= mem.t0 && t - mem.tLast < 1.2) {
+              /* 유예 동안은 싸우던 자리를 지킨다(요청: 되돌아감) — 예전엔 이 1.2초에
+                 원자취로 돌아가 몸이 뒤로 밀렸다가 다시 나갔다. */
+              pos = { ...rawPos, x: mem.px, y: mem.py };
+            } else if (mem && t >= mem.t0) {
+              /* 교전이 끝났다 — 되돌아가지 않는다(요청). 파고든 몫을 걸음으로 인정해,
+                 남은 자취에서 지금 선 자리와 가장 가까운 '앞쪽' 시각으로 시계를 옮기고
+                 거기서 이어 걷는다. 찰나(0.4초 미만)의 스침은 건너뛴다(지적: 플리커). */
               if (mem.tLast - mem.t0 > 0.4) {
-                engageDelayRef.current.set(holdKey, { delay: walkDelay + (mem.tLast - mem.t0), since: t });
+                const rs9 = nearestTrackSec(rp, eff9, Math.min(t, eff9 + 12), mem.px, mem.py);
+                if (rs9 > eff9) {
+                  eff9 = rs9;
+                  const rp9 = posAt(rp, eff9, null, vCap9);
+                  if (rp9) pos = rp9;
+                }
               }
               engageHoldRef.current.delete(holdKey);
             }
           }
+          // 다음 프레임을 위한 걸음 시계 기록 — 싸우는(유예 포함) 동안은 멈춰 둔다.
+          trackClockRef.current.set(holdKey0, {
+            eff: eff9, at: t, held: engageHoldRef.current.has(holdKey),
+          });
           /* 가스 왕복(지적: 가스 캐는 일꾼이 하나도 없다) — 배정 클릭은 한 번만 남고
              그 뒤는 게임이 자동 순환이라, 개체가 정제소 위에 서서 건물에 가려져 있었다.
              제 정제소 곁(2타일)에 선 일꾼은 가장 가까운 홀과 그 사이를 결정적으로
