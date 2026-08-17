@@ -6296,6 +6296,20 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         const sidePx = op.fitWidth ? wPx : Math.min(wPx, hPx);
         const sideQ = Math.max(4, Math.round(sidePx / 2) * 2);
         const bspr = buildingSprite(op, sideQ, B);
+        /* 발자국을 꽉 채운다(지적: "건물크기가 제각각이야", "캔버스를 왜 꽉 안 채우게
+           해놨어") — 상자는 발자국(타일)에 맞춰 뒀지만 모델이 그 상자를 채우는 몫이
+           0.40~1.15로 제각각이라(실측: 옵저버토리 0.40 · 컴샛/머신샵 0.50 · 게이트
+           0.67 · 해처리 0.91 · 커맨드/넥서스 1.15) 같은 4×3 건물끼리도 세 배 가까이
+           벌어졌다. 구운 판의 실제 잉크 폭을 재서 발자국의 95%가 되게 맞춘다 —
+           작은 놈은 키우고, 발자국을 넘던 놈(커맨드·넥서스)은 줄인다.
+           그림자도 이 값을 써야 해서(아래) 스프라이트 바로 뒤에서 구한다. */
+        let bFill = BLD_FILL_CACHE.get(op.kind);
+        if (bFill === undefined && bspr && bspr.w > 0) {
+          bFill = (bspr.w / B) / sideQ;
+          BLD_FILL_CACHE.set(op.kind, bFill);
+        }
+        const kFit = op.clipWalk || BLD_FILL_SKIP.has(op.kind) || !bFill
+          ? 1 : Math.min(2.5, Math.max(0.7, (BLD_FILL_TARGET[op.kind] ?? 0.95) / bFill));
         /* 접지 그림자(재재지적: 해처리가 떠 있다) — 상자 바닥 어림이 아니라 구운
            판의 실제 바닥 픽셀(contentBottom)에 붙인다. 모델이 상자를 다 안 채워도
            발이 그림자에 닿는다. */
@@ -6310,8 +6324,15 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
              건물은 45도로 요잉해 세워서, 상자 폭을 그대로 쓰면 실제 닿는 바닥보다
              한참 넓은 타원이 깔린다. 발자국 폭의 0.72만 덮는다. 3D도 지면 사영을
              한 번 더 눌러(0.68) 납작하게 붙인다. */
-          const squish = op.pitch ? 0.68 : 0.55;
-          const footW = wPx * 0.72;
+          /* 그림자를 그린 몸에 맞춘다(지적: 건물 크기를 고치면서 그림자는 그대로라
+             너무 작고, 3D에선 바닥에 안 붙고 서 있다) — 폭을 발자국의 0.72배로 못
+             박아 두었더니, 채움 보정으로 몸이 커진 뒤엔 발치에 작은 점만 남았다.
+             실제로 그려지는 잉크 폭(kFit 반영)의 0.88배로 잡는다.
+             3D에선 더 눕힌다(0.68 → 0.46) — 지면 사영이 이미 칸을 눌러 놓았는데 세로
+             반지름까지 크면 타원이 비스듬히 선 판처럼 읽혔다. */
+          const squish = op.pitch ? 0.46 : 0.55;
+          const inkW9 = bspr && bspr.w > 0 ? (bspr.w / B) * ((sidePx * kFit) / sideQ) : wPx;
+          const footW = Math.max(wPx * 0.7, inkW9 * 0.88);
           const fdPx = footW * (op.footRatio ?? 0.6) * squish;
           ctx.save();
           ctx.shadowColor = "transparent";
@@ -6326,19 +6347,6 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
           ctx.restore();
         }
         if (bspr) {
-          /* 발자국을 꽉 채운다(지적: "건물크기가 제각각이야", "캔버스를 왜 꽉 안 채우게
-             해놨어") — 상자는 발자국(타일)에 맞춰 뒀지만 모델이 그 상자를 채우는 몫이
-             0.40~1.15로 제각각이라(실측: 옵저버토리 0.40 · 컴샛/머신샵 0.50 · 게이트
-             0.67 · 해처리 0.91 · 커맨드/넥서스 1.15) 같은 4×3 건물끼리도 세 배 가까이
-             벌어졌다. 구운 판의 실제 잉크 폭을 재서 발자국의 95%가 되게 맞춘다 —
-             작은 놈은 키우고, 발자국을 넘던 놈(커맨드·넥서스)은 줄인다. */
-          let bFill = BLD_FILL_CACHE.get(op.kind);
-          if (bFill === undefined && bspr.w > 0) {
-            bFill = (bspr.w / B) / sideQ;
-            BLD_FILL_CACHE.set(op.kind, bFill);
-          }
-          const kFit = op.clipWalk || BLD_FILL_SKIP.has(op.kind) || !bFill
-            ? 1 : Math.min(2.5, Math.max(0.7, (BLD_FILL_TARGET[op.kind] ?? 0.95) / bFill));
           const k = (sidePx * kFit) / sideQ;
           // 겹친 것만 살짝 그림자(확대 적용: 유닛·건물 공통).
           if (airOverlap.has(op)) {
