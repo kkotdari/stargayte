@@ -9702,6 +9702,18 @@ export default function ReplayMotionPlayer({
      1배 사이만 오간다(중간 단계 없음). */
   const ZOOM_GAME = 6;
   const [zoom, setZoom] = useState(1);
+  /* 확대·축소 빗장(지적: 실기 진단 — 판정은 매번 '확대'로 떨어지는데 화면이 그대로다)
+     — iOS 사파리는 더블탭에서 touchend와 함께 dblclick도 쏜다. 우리 더블탭이 확대해
+     놓으면 곧이어 온 dblclick이 zoomRef가 이미 6인 걸 보고 도로 1로 되돌려, 두 번
+     누를 때마다 확대→축소가 한 프레임 안에 겹쳐 아무 일도 없는 것처럼 보였다.
+     갈래가 셋(더블클릭·터치·포인터)이라 400ms 안의 두 번째 발동은 무조건 무시한다. */
+  const zoomAtRef = useRef(0);
+  const zoomGate = (): boolean => {
+    const t0 = performance.now();
+    if (t0 - zoomAtRef.current < 450) return false;
+    zoomAtRef.current = t0;
+    return true;
+  };
   /* 피칭 보기(요청) — 수직 부감 대신 약간 비스듬한 정면. 바닥(지형 그림과 마커 자리)만
      세로로 눌리고, 건물·유닛 도형은 제 크기로 서 있어 3D로 바닥에 붙는다. 눌림은
      컨테이너 세로비가 맡아서 %자리가 저절로 따라온다. 휠 확대·드래그 이동은 기존
@@ -9728,6 +9740,7 @@ export default function ReplayMotionPlayer({
        남도록 팬을 함께 푼다. */
     const onDbl = (e: MouseEvent) => {
       e.preventDefault();
+      if (!zoomGate()) return;
       const rect = el.getBoundingClientRect();
       if (zoomRef.current > 1.05) {
         setZoom(1);
@@ -9903,14 +9916,9 @@ export default function ReplayMotionPlayer({
       const t0 = e.touches[0];
       if (Math.hypot(t0.clientX - tapStart.x, t0.clientY - tapStart.y) > TAP_MOVE) tapStart.moved = true;
     };
-    /* 확대·복귀 한 번 — 손짓 갈래(터치/포인터)가 둘이라 400ms 안에 두 번 불리면
-       한 번만 듣는다. 갈래마다 이벤트 시각의 기준 시계가 다를 수 있어, 이 빗장만은
-       performance.now()로 잰다. */
-    let zoomAt = 0;
+    // 확대·복귀 한 번 — 위 zoomGate가 갈래 셋(더블클릭·터치·포인터)을 한 번으로 묶는다.
     const fireDouble = (cx0: number, cy0: number): boolean => {
-      const t0 = performance.now();
-      if (t0 - zoomAt < 400) return false;
-      zoomAt = t0;
+      if (!zoomGate()) return false;
       dbg(zoomRef.current > 1.05 ? "→ 축소" : "→ 확대");
       if (zoomRef.current > 1.05) {
         setZoom(1);
