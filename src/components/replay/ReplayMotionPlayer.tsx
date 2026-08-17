@@ -4849,15 +4849,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       body9.push(bodyFace(polyPath3(topR)), topFace(polyPath3(topR), 0.16));
       out.push(...tagKey(body9, 0));
     }
-    /* 머리 — 몸통과 같은 기울기로 앞에 이어 붙는 짧은 기둥. 짙은 갈색. */
-    out.push(...tagKey(paintBase(spirePillar({
-      x: 0, y: 0, h: 1, w: 1.35, tipW: 0.38, segs: 4, sides: 12, hold: 0.1, taper: 1.4,
-      path: (t9: number): [number, number, number] => {
-        // 원반 앞끝(y 2.4)에서 이어 붙는다 — 예전 0.4는 접시 속에 묻힌다.
-        const y9 = 1.9 + 1.5 * t9;
-        return [0, y9, 5.3 + PT(y9)];
-      },
-    }), "#6b4732"), depthNow(0, 2.6) * 1.6 + 2));
+    /* 머리 — 원반 앞끝에 얹힌 작은 구(지적: 퀸 머리 작은 구형으로). 긴 뿔 기둥은
+       정면에서 몸 전체를 덮어 접시가 안 보였다. 위아래 반구를 맞붙여 공으로 만들고
+       살짝 앞으로 내민다. 짙은 갈색. */
+    {
+      const HY9 = 2.55;
+      const HR9 = 0.78;
+      const HZ9 = 5.3 + PT(HY9) - 0.05;
+      out.push(...tagKey(paintBase([
+        ...domeFaces3(0, HY9, HR9, HR9 * 0.62, HZ9),
+        ...domeFaces3(0, HY9, HR9 * 0.99, -HR9 * 0.42, HZ9),
+      ], "#6b4732"), depthNow(0, HY9) * 1.6 + 2));
+    }
     // 큰 집게 한 쌍 — 앞팔 짙은 갈색(요청). 몸 앞에 얹히므로 한 단 더 위.
     for (const m9 of [1, -1] as const) {
       out.push(...tagKey(paintBase([
