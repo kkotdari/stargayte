@@ -2977,45 +2977,69 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 히드라리스크 덴(실물 참고) — 둔덕 위로 갈퀴막이 걸린 큰 돛가시들이 둘러서고,
      앞에는 마디진 꼬리가 똬리를 튼다. */
   hydraden: () => {
-    const [mx3, my3] = project(1.9, 3.2, 1);
-    return [
-      ...domeFaces3(0, 0, 4.6, 2.6),
-      // 돛가시 + 갈퀴막 — 뒤 왼·뒤 오른·뒤 가운데.
-      ...hornFaces(-2.6, -1.4, 2.2, -4.4, -2.6, 7.4, 1.3),
-      bodyFace(polyPath3([[-2.6, -1.4, 2.4], [-4.2, -2.5, 6.8], [-3.2, -0.8, 4.4], [-2.2, -0.6, 2.8]])),
-      sideFace(polyPath3([[-2.6, -1.4, 2.4], [-4.2, -2.5, 6.8], [-3.2, -0.8, 4.4], [-2.2, -0.6, 2.8]]), 0.15),
-      ...hornFaces(2.4, -1.6, 2.2, 4.2, -3, 6.8, 1.2),
-      bodyFace(polyPath3([[2.4, -1.6, 2.4], [4, -2.9, 6.2], [3, -0.9, 4.2], [2, -0.7, 2.8]])),
-      sideFace(polyPath3([[2.4, -1.6, 2.4], [4, -2.9, 6.2], [3, -0.9, 4.2], [2, -0.7, 2.8]]), 0.2),
-      ...hornFaces(0, -2.8, 2.4, 0, -4.4, 6.2, 1.1),
-      /* 가지 사이 물갈퀴 천막(요청: 드론·뮤탈 날개 같은 디테일) — 손으로 찍던
-         너덜너덜 다각형을 걷고, 공용 막 도형으로 낸다: 이웃 돛가시 끝을 잇는 위 변에서
-         바닥으로 늘어지고, 아랫단은 갈퀴 골로 우묵하게 파인다. 힘줄도 함께 붙는다. */
-      ...([
-        [[-4.2, -2.5, 7], [-3.2, -0.9, 2.6]] as [number, number, number][],
-        [[-4.2, -2.5, 7], [0, -4.2, 5.9]] as [number, number, number][],
-        [[0, -4.2, 5.9], [4, -2.9, 6.5]] as [number, number, number][],
-        [[4, -2.9, 6.5], [3, -1.1, 2.6]] as [number, number, number][],
-      ]).flatMap((rt9, k9) => {
-        const [a9, b9] = rt9;
-        // 아랫단 — 두 뿌리 사이를 넷으로 나눠 바닥까지 늘어뜨린다.
-        const hem9: [number, number, number][] = Array.from({ length: 4 }, (_, i9) => {
-          const u9 = i9 / 3;
-          const hx9 = a9[0] + (b9[0] - a9[0]) * u9;
-          const hy9 = a9[1] + (b9[1] - a9[1]) * u9;
-          return [hx9 * 1.18, hy9 * 1.18, 0.3 + Math.sin(Math.PI * u9) * 1.6];
-        });
-        return membraneFaces(rt9, hem9, "#c68a62", {
-          shade: 0.14 + k9 * 0.02, notch: 0.34,
-          key: depthNow((a9[0] + b9[0]) / 2, (a9[1] + b9[1]) / 2) * 1.6,
-        });
-      }),
-      // 앞 똬리 꼬리 — 마디 돔 줄 + 끝 입.
-      ...domeFaces3(-1.2, 2.6, 1, 0.85),
-      ...domeFaces3(0, 3, 0.9, 0.75),
-      ...domeFaces3(1.1, 2.7, 0.85, 0.7),
-      capFace(groundEllipse(mx3, my3, 0.8, 0.45), 0.4),
+    /* 히드라리스크 덴(전면 재작도·사진) — 뒤에 붉은 막 날개가 크게 펴진다: 굽은 뿔이
+       살을 받치고 막에는 둥근 구멍이 뚫린다. 앞 가운데엔 창백한 마디 등뼈와 살빛
+       주둥이, 그 옆으로 검은 엄니가 앞으로 말린다. 막이 개인색이다. */
+    const RED = "#a5342a";
+    const BONE = "#c8ccd0";
+    const HORN = "#241f1c";
+    const out: ShapeFace[] = [...tagKey(paintBase(creepSplat(6.8), "#3a3f46"), -20)];
+    /* 뒤 막 날개 — 뿔 넷이 위로 벌어져 막을 받친다. 막은 개인색(요청). */
+    const SP: [number, number, number][] = [
+      [-4.4, -2.2, 7.4], [-1.6, -3.4, 8.4], [1.6, -3.4, 8.2], [4.2, -2, 7],
     ];
+    // 막 — 뿔 끝들을 잇는 위 변에서 바닥까지 늘어진다.
+    out.push(...membraneFaces(
+      SP,
+      SP.map(([sx, sy]) => [sx * 1.1, sy * 0.72 + 1.1, 1.4] as [number, number, number]),
+      "#0000",
+      { shade: 0.16, notch: 0.3, key: 6 },
+    ).map(([d9, o9, f9, k9]) => (f9 === "#0000"
+      ? [d9, o9, undefined, k9] as ShapeFace : [d9, o9, f9, k9] as ShapeFace)));
+    // 막의 둥근 구멍 넷 — 어두운 원.
+    for (let k = 0; k < 4; k += 1) {
+      const sx = -3.2 + k * 2.1;
+      out.push(...tagKey([[polyPath3(Array.from({ length: 13 }, (_, q) => {
+        const a9 = (q / 12) * Math.PI * 2;
+        return [sx + Math.cos(a9) * 0.85, -2.2, 4.6 + Math.sin(a9) * 0.85] as [number, number, number];
+      })), 0.92, "#2a1512"] as ShapeFace], 7));
+    }
+    // 막을 받치는 굽은 뿔 넷 — 붉은 살에서 솟아 위로 벌어진다.
+    for (const [sx, sy, sz] of SP) {
+      out.push(...tagKey(paintBase(spirePillar({
+        x: sx * 0.42, y: sy * 0.42 + 0.6, z0: 1.2, h: sz - 1.2, w: 0.75, tipW: 0.14,
+        segs: 6, sides: 6, hold: 0.12, taper: 1.4,
+        leanX: sx * 0.55, leanY: sy * 0.5 - 0.4, curveX: -sx * 0.14,
+      }), RED), 10 + depthNow(sx, sy) * 1.6));
+    }
+    // 몸 — 붉은 살덩이 둔덕.
+    out.push(...tagKey(paintBase(spirePillar({
+      x: 0, y: 0.4, z0: 0, h: 3.4, w: 3.6, tipW: 1.3,
+      segs: 6, sides: 12, hold: 0, taper: 0.55,
+    }), RED), 12));
+    /* 앞 창백한 마디 등뼈 — 몸 앞으로 내려오는 마디 다섯. */
+    for (let k = 0; k < 5; k += 1) {
+      const u9 = k / 4;
+      out.push(...tagKey(paintBase(domeFaces3(
+        0, 0.9 + u9 * 2.2, 1.15 - u9 * 0.28, 0.85 - u9 * 0.2, 2.6 - u9 * 1.9,
+      ), BONE), 14 + k * 0.2 + depthNow(0, 0.9 + u9 * 2.2) * 1.6));
+    }
+    // 살빛 주둥이 — 등뼈 끝에 붙은 통통한 코.
+    out.push(...tagKey(paintBase([
+      ...domeFaces3(0, 3.5, 1.05, 0.85, 0.3),
+      ...domeFaces3(0, 4.2, 0.7, 0.6, 0.3),
+    ], "#c9613a"), 18 + depthNow(0, 3.9) * 1.6));
+    /* 검은 엄니 한 쌍 — 주둥이 옆에서 앞으로 크게 말린다. */
+    for (const m9 of [-1, 1] as const) {
+      out.push(...tagKey(paintBase(spirePillar({
+        x: 0, y: 0, h: 1, w: 0.52, tipW: 0.1, segs: 10, sides: 6, hold: 0.1, taper: 1.4,
+        path: (t9: number): [number, number, number] => {
+          const a9 = Math.PI * (0.75 * t9);
+          return [m9 * (1.5 + Math.sin(a9) * 2.6), 2.2 + (1 - Math.cos(a9)) * 2.4, 1.6 - t9 * 1.1];
+        },
+      }), HORN), 20 + depthNow(m9 * 3, 4) * 1.6));
+    }
+    return out;
   },
   /* 스파이어(실물 참고) — 초록 밑동에서 촉수 여러 가닥이 모여 오르는 기둥, 그 위
      잿빛 머리와 골진 도넛 왕관(가운데 구멍). */
@@ -3500,33 +3524,60 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 스포닝 풀(입체감, 지적) — 살 테두리를 땅에서 도톰하게 올리고 앞으로 흘러내리는
      치마 벽을 달았다. 웅덩이 안쪽 뒤편엔 테두리 그늘, 위로는 마주 굽는 뼈 아치. */
   pool: () => {
-    const [cx, cy] = project(0, 0, 1.5);
-    const [, gy] = project(0, 0, 0);
-    const ring = `M${cx - 6.4} ${cy} a6.4 3.1 0 1 0 12.8 0a6.4 3.1 0 1 0 -12.8 0`
-      + ` M${cx - 4.7} ${cy} a4.7 2.15 0 1 1 9.4 0a4.7 2.15 0 1 1 -9.4 0`;
-    return [
-      sideFace(discPath3(0, 0.4, 0, 7), 0.2),
-      // 앞 치마 벽 — 올라간 테두리에서 땅까지 흘러내린다.
-      bodyFace(`M${cx - 6.4} ${cy} A6.4 3.1 0 0 0 ${cx + 6.4} ${cy} L${cx + 6.4} ${gy} A6.4 3.1 0 0 1 ${cx - 6.4} ${gy} Z`),
-      sideFace(`M${cx - 6.4} ${cy} A6.4 3.1 0 0 0 ${cx + 6.4} ${cy} L${cx + 6.4} ${gy} A6.4 3.1 0 0 1 ${cx - 6.4} ${gy} Z`, 0.18),
-      bodyFace(ring),
-      sideFace(`M${cx - 6.4} ${cy} a6.4 3.1 0 0 0 12.8 0a6.4 2.5 0 0 1 -12.8 0`, 0.2),
-      topFace(`M${cx - 6.4} ${cy} a6.4 3.1 0 0 1 12.8 0a6.4 2.6 0 0 0 -12.8 0`, 0.14),
-      // 풀 물색(요청: 약간 형광톤의 연두녹색) — 어둡게 누르던 캡 대신 제 색을 채운다.
-      [groundEllipse(cx, cy, 4.7, 2.15), 0.9, "#8ef23e"] as ShapeFace,
-      // 안쪽 뒤편 그늘 — 테두리가 물에 드리우는 그림자.
-      capFace(`M${cx - 4.7} ${cy} A4.7 2.15 0 0 1 ${cx + 4.7} ${cy} A4.7 1.55 0 0 0 ${cx - 4.7} ${cy} Z`, 0.25),
-      topFace(groundEllipse(cx - 1.3, cy + 0.4, 2.4, 0.9), 0.18),
-      topFace(groundEllipse(cx + 1.8, cy + 1.1, 1.2, 0.45), 0.14),
-      // 뼈 아치 — 양쪽 테두리에서 웅덩이 위로 마주 굽는 뿔 둘.
-      ...hornFaces(-5.2, -1.4, 1.9, -1, -0.4, 5.4, 1.3),
-      ...hornFaces(4.9, 1, 1.9, 0.9, 0.2, 5, 1.2),
-      // 테두리 잔가시.
-      ...hornFaces(-3.2, 4.2, 1.4, -4, 5.6, 2.4, 0.8),
-      ...hornFaces(5.6, -1.8, 1.4, 7, -2.4, 2.3, 0.8),
-      ...hornFaces(-6, 0.8, 1.4, -7.4, 1, 2.2, 0.8),
-      ...hornFaces(1.8, -5, 1.3, 2.4, -6.4, 2.1, 0.7),
-    ];
+    /* 스포닝 풀(전면 재작도·사진) — 바닥에 얕게 파인 두 웅덩이에 초록 점액이 고이고,
+       그 둘레를 굵은 구릿빛 살덩이 두렁이 감싼다. 두 웅덩이 사이를 가로지르는 두렁과
+       가장자리로 뻗는 뿌리 가시들. 가운데 가로지르는 두렁이 개인색이다. */
+    const FLESH = "#8a4a2a";
+    const FLESH_D = "#5f3320";
+    const GOO = "#4cd63a";
+    const out: ShapeFace[] = [...tagKey(paintBase(creepSplat(6.8), "#3a3f46"), -20)];
+    /* 두 웅덩이 — 얕게 파인 초록 못. 테는 어둡고 속은 밝다. */
+    const pond = (px: number, py: number, rx: number, ry: number, key: number): void => {
+      const [sx, sy] = project(px, py, 0.12);
+      out.push(...tagKey([
+        [groundEllipse(sx, sy, rx, ry), 1, FLESH_D] as ShapeFace,
+        [groundEllipse(sx, sy, rx * 0.86, ry * 0.86), 1, "#2f7a24"] as ShapeFace,
+        [groundEllipse(sx, sy, rx * 0.7, ry * 0.7), 1, GOO] as ShapeFace,
+        topFace(groundEllipse(sx - rx * 0.2, sy - ry * 0.2, rx * 0.32, ry * 0.32), 0.35),
+      ], key));
+    };
+    pond(-1.6, -0.9, 2.5, 1.7, 0);
+    pond(1.7, 1, 2.3, 1.6, 0.2);
+    /* 웅덩이를 감싸는 두렁 — 굵은 살덩이 관이 둘레를 돈다. */
+    const ridge = (
+      cx9: number, cy9: number, rx9: number, ry9: number, w9: number, fill?: string, key = 4,
+    ): void => {
+      out.push(...tagKey(spirePillar({
+        x: 0, y: 0, h: 1, w: w9, tipW: w9, segs: 16, sides: 6, hold: 1,
+        path: (t9: number): [number, number, number] => {
+          const a9 = Math.PI * 2 * t9;
+          return [cx9 + Math.cos(a9) * rx9, cy9 + Math.sin(a9) * ry9, 0.45];
+        },
+        ...(fill ? { fill } : {}),
+      }), key));
+    };
+    ridge(-1.6, -0.9, 2.75, 1.95, 0.5, FLESH);
+    ridge(1.7, 1, 2.55, 1.85, 0.48, FLESH, 4.2);
+    /* 가운데 가로지르는 두렁 — 개인색(요청: 건물마다 개인색 포인트). */
+    out.push(...tagKey(spirePillar({
+      x: 0, y: 0, h: 1, w: 0.58, tipW: 0.58, segs: 10, sides: 6, hold: 1,
+      path: (t9: number): [number, number, number] => [
+        -3.4 + 6.8 * t9, 1.6 - 3.4 * t9 + Math.sin(Math.PI * t9) * 0.9, 0.6,
+      ],
+    }), 8));
+    /* 가장자리 뿌리 가시 — 바깥으로 뻗는 굵은 뿌리 여섯. */
+    for (const [ang, len] of [
+      [-165, 2.6], [-115, 2.2], [-55, 2.4], [15, 2.8], [75, 2.2], [130, 2.5],
+    ] as [number, number][]) {
+      const a9 = (ang * Math.PI) / 180;
+      const bx = Math.sin(a9) * 3;
+      const by = Math.cos(a9) * 2.2;
+      out.push(...tagKey(spikeHorn(
+        bx, by, 0.5, bx + Math.sin(a9) * len, by + Math.cos(a9) * len, 0.9, 0.72,
+        FLESH_D, 6, 0.5, Math.sin(a9), Math.cos(a9),
+      ), depthNow(bx, by) * 1.6 + 1));
+    }
+    return out;
   },
   /* 핵탄두(요청·테스트) — 몸통 원통 + 둥근 탄두 + 꼬리 날개 넷. */
   nuke: () => [
