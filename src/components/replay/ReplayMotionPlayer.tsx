@@ -5886,10 +5886,10 @@ type UnitDrawOp = {
   z: number;
   /** 발밑 접지 그림자(지적: 건물·지상 유닛에도 옅게) — 아주 작은 타원만. */
   groundShadow?: boolean;
-  /** 바닥면의 사영 비(분수 좌표) — 세로 한 타일이 가로 한 타일의 몇 배로 보이는가.
-   *  입체 보기에서 그림자가 '바닥 팔레트'와 같은 눌림을 갖게 하는 자(지적: 임의 축소
-   *  말고 바닥에 맞춰야 한다). 없으면 평면 관례(2:1)를 쓴다. */
-  groundSquash?: number;
+  /** 바닥에 실제로 깔리는 그림자 테두리(분수 좌표) — 발자국 타원을 타일 공간에서
+   *  띄엄띄엄 찍어 자리 사상으로 옮긴 점들이다(요청: 화면 타원 어림 말고 실제로 바닥에
+   *  그려야 한다). 원근이 실린 채 지면에 눕는다. */
+  shadowPts?: [number, number][];
   /** 발자국 세로/가로 비(건물) — 접지 그림자가 '바닥 발자국'만 덮게 하는 자(지적:
    *  칸(hPx)은 모델 높이까지 포함해, 칸 기준 타원은 건물을 통째로 덮는 큰 원이 됐다). */
   footRatio?: number;
@@ -6336,9 +6336,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
              팔레트에 맞아야 한다) — 세로 한 타일이 화면에서 가로 한 타일의 몇 배로
              보이는지(groundSquash)를 자리마다 실제로 재어 넘겨받는다. 그 값이 곧
              바닥면의 눌림이라, 그림자가 지면 격자와 같은 각도로 깔린다. */
-          const squish = op.pitch
-            ? (op.groundSquash !== undefined ? op.groundSquash * (ch / cw) : 0.5)
-            : 0.55;
+          const squish = 0.55;
           const inkW9 = bspr && bspr.w > 0 ? (bspr.w / B) * ((sidePx * kFit) / sideQ) : wPx;
           const footW = Math.max(wPx * 0.7, inkW9 * 0.88);
           const fdPx = footW * (op.footRatio ?? 0.6) * squish;
@@ -6347,10 +6345,23 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
           ctx.globalAlpha = op.alpha * 0.16;
           ctx.fillStyle = "#000";
           ctx.beginPath();
-          ctx.ellipse(
-            sx, sy + hPx / 2 - fdPx / 2, footW * 0.5,
-            Math.max(2, fdPx * 0.5), 0, 0, Math.PI * 2,
-          );
+          if (op.shadowPts && op.shadowPts.length >= 3) {
+            /* 바닥에 실제로 그린다(요청) — 발자국 타원을 타일 공간에서 찍어 둔 점들을
+               그대로 화면으로 옮겨 잇는다. 원근이 실려 있어 멀수록 눌리고 가까울수록
+               펴지며, 지면 격자와 같은 평면에 눕는다. */
+            const p0 = op.shadowPts[0];
+            ctx.moveTo(zx(p0[0]), zy(p0[1]));
+            for (let q = 1; q < op.shadowPts.length; q += 1) {
+              const pq = op.shadowPts[q];
+              ctx.lineTo(zx(pq[0]), zy(pq[1]));
+            }
+            ctx.closePath();
+          } else {
+            ctx.ellipse(
+              sx, sy + hPx / 2 - fdPx / 2, footW * 0.5,
+              Math.max(2, fdPx * 0.5), 0, 0, Math.PI * 2,
+            );
+          }
           ctx.fill();
           ctx.restore();
         }
@@ -9451,14 +9462,22 @@ export default function ReplayMotionPlayer({
                 groundShadow: true,
                 // 접지 그림자의 발자국 비(지적: 그림자는 바닥 발자국만) — 세로/가로.
                 footRatio: (FOOTPRINT[unit] ?? [3, 2])[1] / (FOOTPRINT[unit] ?? [3, 2])[0],
-                /* 이 자리 바닥면의 눌림(요청: 3D 그림자는 바닥 팔레트에 맞게) — 같은
-                   한 타일을 가로·세로로 옮겨 보고 화면에서 얼마나 줄어드는지 잰다. */
-                groundSquash: (() => {
-                  const [g0x, g0y] = posFrac(centerX, centerY);
-                  const [g1x] = posFrac(centerX + 1, centerY);
-                  const [, g2y] = posFrac(centerX, centerY + 1);
-                  const dxf = Math.abs(g1x - g0x);
-                  return dxf > 1e-6 ? Math.abs(g2y - g0y) / dxf : 0.5;
+                /* 바닥에 실제로 깔리는 그림자(요청) — 발자국 크기의 타원을 타일 공간
+                   에서 열두 점으로 찍고, 그 점들을 자리 사상(posFrac)으로 옮긴다.
+                   화면에서 타원을 눌러 흉내 내는 것이 아니라 지면 위에 그린 도형이라,
+                   원근·기울기가 지면 격자와 정확히 같다. */
+                shadowPts: ((): [number, number][] => {
+                  const rx9 = (FOOTPRINT[unit] ?? [3, 2])[0] / 2;
+                  const ry9 = (FOOTPRINT[unit] ?? [3, 2])[1] / 2;
+                  const pts9: [number, number][] = [];
+                  for (let q9 = 0; q9 < 12; q9 += 1) {
+                    const a9 = (q9 / 12) * Math.PI * 2;
+                    pts9.push(posFrac(
+                      centerX + Math.cos(a9) * rx9 * 0.98,
+                      centerY + Math.sin(a9) * ry9 * 0.98,
+                    ));
+                  }
+                  return pts9;
                 })(),
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
                 sizePx: 0, wFrac: wFrac * pulse, hFrac: hFrac * pulse, boxFit: "meet",
