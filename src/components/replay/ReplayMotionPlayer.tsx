@@ -3958,13 +3958,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...paintBase(domeFaces3(0, 0.7, 1.2, 0.9, 5.5), "#6b4732"));
     /* 꼬리 대신 뿔기둥 둘(요청) — 등 뒤에서 솟아 앞으로 휙 휘어 넘어오는 한 쌍.
        마디 없이 공용 도형 하나로 굽히고, 색은 옛 독침꼬리와 같은 검회색이다. */
+    /* 정정(지적) — 끝이 뾰족하지 않고 뭉뚝·넙적하며, 휨은 반대 방향(뒤로 젖혀졌다
+       앞이 아니라 뒤·아래로 감긴다). 자리도 더 뒤쪽 꼬리께 양옆으로 벌린다. */
     for (const m9 of [-1, 1] as const) {
       out.push(...tagKey(spirePillar({
-        x: m9 * 0.75, y: -2, z0: 5.4, h: 4.2, w: 0.72, tipW: 0.06,
-        segs: 9, sides: 6, hold: 0.05, taper: 1.4,
-        leanY: 3.4, curveY: -2.2, leanX: m9 * 0.5, curveX: m9 * 0.35,
+        x: m9 * 1.35, y: -2.9, z0: 5.2, h: 4, w: 0.85, tipW: 0.6,
+        segs: 9, sides: 6, hold: 0.15, taper: 0.8,
+        leanY: -3.2, curveY: 2.1, leanX: m9 * 0.9, curveX: -m9 * 0.5,
         fill: "#3a3f46",
-      }), 24 + depthNow(m9 * 0.75, -2)));
+      }), 24 + depthNow(m9 * 1.35, -2.9)));
     }
     // 큰 집게 한 쌍 — 앞팔 짙은 갈색(요청).
     out.push(...paintBase(hornFaces(1.3, 1, 5.8, 2.6, 2.2, 5.6, 0.95), "#6b4732"));
@@ -5509,7 +5511,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const bx = Math.sin(a) * 1.95;
       const by = Math.cos(a) * 1.55;
       out.push(...tagKey(paintBase(spirePillar({
-        x: bx, y: by, z0: 0.25, h: 2.7, w: 0.6, tipW: 0.14,
+        // 가시 축소(요청) — 높이 2.7 → 1.9, 굵기 0.6 → 0.4.
+        x: bx, y: by, z0: 0.25, h: 1.9, w: 0.4, tipW: 0.1,
         segs: 3, sides: 5, hold: 0.28, taper: 0.75,
         leanX: bx * 0.5, leanY: by * 0.5, curveX: bx * 0.45, curveY: by * 0.45,
       }), "#6d4a33"), depthNow(bx, by) * 1.6));
@@ -5554,18 +5557,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       x: 0, y: axY(7.3), z0: 7.3, h: 1.5, w: 0.22, tipW: 0.08,
       segs: 2, sides: 6, hold: 0.2, leanY: axY(8.8) - axY(7.3),
     }), "#8a5f43"), 2));
-    /* 마디 결 — 껍질 옆선을 타는 얇은 테 넷. 허리 위아래로 굵기가 갈리므로 자리마다
-       제 반지름을 셈해 딱 맞춘다. */
-    const shellR = (z9: number): number => (z9 <= WAIST
-      ? 0.3 + 1.75 * (1 - (WAIST - z9) / (WAIST - 1.1)) ** 0.75
-      : 0.32 + 1.73 * (1 - (z9 - WAIST) / 3.4) ** 0.85);
-    for (const z9 of [2.2, 3.2, 4.6, 5.6, 6.5]) {
-      const r9 = shellR(z9) * 1.04;
-      out.push(...tagKey(paintBase(spirePillar({
-        x: 0, y: axY(z9), z0: z9 - 0.14, h: 0.28, w: r9, tipW: r9,
-        segs: 1, sides: 10, hold: 1,
-      }), "#8a5f43"), 3));
-    }
+    /* (삭제·요청) 갈색 마디 테 장식 — 껍질만 남긴다. */
     return out;
   },
   /* 미네랄(재정정: 삼각뿔 말고 보석 기둥) — 세운 기둥 결정 + 뾰족 갓 셋, 키가 다
@@ -10404,8 +10396,14 @@ export default function ReplayMotionPlayer({
                  탔다(실측: 경기 20초에 일꾼 41기가 홀 발자국 안에 겹쳐 있었다). 최근
                  3초 안에 제 명령이 없으면 — 즉 지금 무엇을 하러 가는 길이 아니면 —
                  집 앞 일꾼은 캐는 것이 참이다. */
-              const idleHome9 = !e.orders.some((os9) => os9 <= t && t - os9 <= 3);
-              if (mpx < 0 && hallM && (!rawPos.moving || idleHome9)) {
+              /* 집 앞이면 그냥 캔다(재지적: 1분대가 넘어가야 채굴 모션이 나온다) —
+                 '멈춰 있거나 최근 3초 명령이 없을 때'라는 문턱은 초반에 못 넘는다:
+                 개막에는 임자가 일꾼을 계속 집어 명령을 주고, 증거 점이 띄엄띄엄해
+                 그 사이 내내 '이동 중'으로 잡히기 때문이다. 제 홀 5.5타일 안에 있으면
+                 무엇을 하러 가는 길이 아닌 한 캐는 것이 참이다 — 건물을 지으러 가는
+                 길(앞뒤 몇 초)만 빼 준다. */
+              const goingToBuild9 = e.buildSites.some((v9) => t >= v9[0] - 6 && t <= v9[0] + 1);
+              if (mpx < 0 && hallM && !goingToBuild9) {
                 const near = resList.filter((r) => r[2] !== 1
                   && Math.hypot(r[0] - hallM!.x, r[1] - hallM!.y) <= 9);
                 if (near.length > 0) {
