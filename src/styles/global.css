@@ -13511,14 +13511,39 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 프로토스 실드 피격(요청: 실드가 남은 유닛·건물은 반투명 실드가 깜빡이는 표현으로)
    — 불티 대신 몸을 감싼 푸른 막이 한 번 번쩍인다. 지름은 인라인 width가 정한다(몸
    상자의 1.05배 / 건물 발자국의 0.95배). 두 번 밝아지는 곡선이 '깜빡'을 만든다. */
+/* 더 얇고 연하게 + 스파크(요청) — 막이 두껍고 진해 몸을 덮어 버렸다. 테두리는
+   실오라기(0.3px)로 줄이고 속 채움도 거의 비워, '막이 있다'는 것만 알린다. 대신
+   피격의 인상은 막 위에서 튀는 작은 불티가 맡는다. */
 .scr-motion-shieldfx {
   position: absolute; left: 50%; top: 50%; border-radius: 50%;
   transform: translate(-50%, -55%); pointer-events: none;
   background: radial-gradient(circle,
-    rgba(150, 220, 255, 0.26) 0%, rgba(110, 190, 255, 0.18) 58%, rgba(90, 170, 255, 0) 74%);
-  border: 0.6px solid rgba(195, 238, 255, 0.8);
-  box-shadow: 0 0 3px rgba(140, 210, 255, 0.55);
+    rgba(150, 220, 255, 0.1) 0%, rgba(110, 190, 255, 0.07) 58%, rgba(90, 170, 255, 0) 74%);
+  border: 0.3px solid rgba(195, 238, 255, 0.42);
+  box-shadow: 0 0 2px rgba(140, 210, 255, 0.25);
   animation: scr-shieldfx 0.55s ease-out forwards;
+}
+/* 실드 스파크(요청) — 막 둘레 여덟 점에서 튀는 흰푸른 불티. 막보다 짧게(0.34초)
+   터졌다 꺼져, 얇아진 테두리 위에서 '맞았다'가 읽힌다. */
+.scr-motion-shieldfx::after {
+  content: ""; position: absolute; inset: -6%; border-radius: 50%;
+  background:
+    radial-gradient(circle at 97% 67%, rgba(240, 252, 255, 0.95) 0, rgba(170, 225, 255, 0.5) 0.8px, transparent 1.8px),
+    radial-gradient(circle at 71% 95%, rgba(240, 252, 255, 0.95) 0, rgba(170, 225, 255, 0.5) 0.8px, transparent 1.8px),
+    radial-gradient(circle at 33% 97%, rgba(240, 252, 255, 0.95) 0, rgba(170, 225, 255, 0.5) 0.8px, transparent 1.8px),
+    radial-gradient(circle at 5% 71%, rgba(240, 252, 255, 0.95) 0, rgba(170, 225, 255, 0.5) 0.8px, transparent 1.8px),
+    radial-gradient(circle at 3% 33%, rgba(240, 252, 255, 0.95) 0, rgba(170, 225, 255, 0.5) 0.8px, transparent 1.8px),
+    radial-gradient(circle at 33% 3%, rgba(240, 252, 255, 0.95) 0, rgba(170, 225, 255, 0.5) 0.8px, transparent 1.8px),
+    radial-gradient(circle at 71% 5%, rgba(240, 252, 255, 0.95) 0, rgba(170, 225, 255, 0.5) 0.8px, transparent 1.8px),
+    radial-gradient(circle at 97% 33%, rgba(240, 252, 255, 0.95) 0, rgba(170, 225, 255, 0.5) 0.8px, transparent 1.8px);
+  mix-blend-mode: screen;
+  animation: scr-shieldspark 0.34s ease-out forwards;
+}
+@keyframes scr-shieldspark {
+  0% { opacity: 0; scale: 0.86; }
+  22% { opacity: 1; }
+  55% { opacity: 0.55; }
+  100% { opacity: 0; scale: 1.2; }
 }
 @keyframes scr-shieldfx {
   0% { opacity: 0; scale: 0.78; }

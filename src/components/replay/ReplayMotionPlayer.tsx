@@ -7566,8 +7566,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
           ctx.save();
           ctx.shadowColor = "transparent";
           // 개인색 그림자(요청) — 어둡게 누른 임자 색. 짙기는 살짝 올려 형태를 지킨다.
-          // 짙기 상향(지적) — 0.2 → 0.36.
-          ctx.globalAlpha = op.alpha * 0.36;
+          // 짙기 상향(지적) — 0.2 → 0.36. 이제 뜬 건물만 지므로 공중 유닛과 같은 0.5.
+          ctx.globalAlpha = op.alpha * 0.5;
           ctx.fillStyle = shadowTint(op.color);
           ctx.beginPath();
           if (op.shadowPts && op.shadowPts.length >= 3) {
@@ -10361,6 +10361,8 @@ export default function ReplayMotionPlayer({
             const flownFrom = sec > 0 && buildsSrc.find(([, x2, y2, u2, r2, g2]) =>
               r2 === raw && u2 === unit && (g2 ?? 0) > 0 && (g2 ?? 0) === sec
               && (x2 !== x || y2 !== y)) || undefined;
+            /* 이사 비행 중인가 — 떠 있는 건물만 그림자를 지니는 데 쓴다(요청). */
+            let landing = false;
             if (flownFrom) {
               const flyDist = Math.hypot(flownFrom[1] - x, flownFrom[2] - y);
               const flyDur = Math.min(40, flyDist / BUILDING_FLY_SPEED);
@@ -10368,6 +10370,7 @@ export default function ReplayMotionPlayer({
                 const k = Math.max(0, (t - sec) / flyDur);
                 bx = flownFrom[1] + (x - flownFrom[1]) * k;
                 by = flownFrom[2] + (y - flownFrom[2]) * k;
+                landing = true;
               }
             }
             /* 띄운 채 나는 정찰(요청: 엔베 띄워 정찰이 안 나온다) — 뜬 마커는 옛 자리에
@@ -10682,16 +10685,24 @@ export default function ReplayMotionPlayer({
                   return bs2 ? bs2[0] + bs2[1] : undefined;
                 })(),
                 hpFrac: bldHp.frac,
-                groundShadow: true,
+                /* 땅에 앉은 건물은 그림자를 안 진다(요청: 건물 바닥 그림자는 제거) —
+                   건물은 발자국이 곧 제 자리라 바닥 타원이 정보를 더하지 않고, 모델
+                   발치에 검은 테를 둘러 도형을 흐리기만 했다. 떠 있는 건물만 제 것으로
+                   따로 만든다(요청: 떠 있는 건물만 자체적으로 제작) — 이륙해 둥실대거나
+                   이사 비행 중일 때, 발자국보다 작은 타원을 땅에 깔아 높이를 말한다. */
+                groundShadow: afloat || landing,
                 // 접지 그림자의 발자국 비(지적: 그림자는 바닥 발자국만) — 세로/가로.
                 footRatio: (FOOTPRINT[unit] ?? [3, 2])[1] / (FOOTPRINT[unit] ?? [3, 2])[0],
                 /* 바닥에 실제로 깔리는 그림자(요청) — 발자국 크기의 타원을 타일 공간
                    에서 열두 점으로 찍고, 그 점들을 자리 사상(posFrac)으로 옮긴다.
                    화면에서 타원을 눌러 흉내 내는 것이 아니라 지면 위에 그린 도형이라,
-                   원근·기울기가 지면 격자와 정확히 같다. */
+                   원근·기울기가 지면 격자와 정확히 같다.
+                   뜬 건물은 발자국의 0.6배로 줄여 깐다 — 몸과 그림자의 크기 차가 곧
+                   비행 높이로 읽힌다(공중 유닛 그림자와 같은 결). */
                 shadowPts: ((): [number, number][] => {
-                  const rx9 = (FOOTPRINT[unit] ?? [3, 2])[0] / 2;
-                  const ry9 = (FOOTPRINT[unit] ?? [3, 2])[1] / 2;
+                  const sk9 = 0.6;
+                  const rx9 = ((FOOTPRINT[unit] ?? [3, 2])[0] / 2) * sk9;
+                  const ry9 = ((FOOTPRINT[unit] ?? [3, 2])[1] / 2) * sk9;
                   const pts9: [number, number][] = [];
                   for (let q9 = 0; q9 < 12; q9 += 1) {
                     const a9 = (q9 / 12) * Math.PI * 2;
