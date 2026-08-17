@@ -1901,6 +1901,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         segs: 4, sides: 6, curveY: -sy9 * 1.2, hold: 0.5,
       }), facingRatio(0, sy9) >= 0 ? 34 : 26));
     }
+    /* 사진 디테일(요청) — 발판 테에 청록 띠, 탑 밑동에 금 무늬 골. 형태는 그대로. */
+    for (const [px9, py9] of [[0, 3.6], [0, -3.6], [3.8, 0], [-3.8, 0]] as [number, number][]) {
+      out.push(...tagKey(paintBase(cylinderFaces3(px9, py9, 1.55, 0.16, h), "#2f8f86"),
+        depthNow(px9, py9) * 1.6 + 0.3));
+    }
+    for (const mx9 of [-2.1, 2.1]) {
+      out.push(...tagKey(paintBase(cylinderFaces3(mx9, 0, 1.35, 0.3, h + 1.2), "#8a6f2a"),
+        depthNow(mx9, 0) * 1.6 + 30.2));
+    }
     return out;
   },
   /* 스타게이트(확정, 요청: 보여준 육각형판으로 — 길이만 조금 짧게) — 긴 육각형
@@ -2126,6 +2135,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       arm.push([groundEllipse(...project(0, 2.5, 6.55), 0.5, 0.5), 0.6, "#a9ecf2"] as ShapeFace);
       out.push(...tagKey(arm, 30));
     }
+    /* 사진 디테일(요청) — 대야 테에 청록 띠를 두르고 밑동에 금 무늬 골을 판다. */
+    out.push(...tagKey(paintBase(cylinderFaces3(0, 0, 4.2, 0.22, 2.72), "#2f8f86"),
+      depthNow(0, 0) * 1.6 + 3));
+    out.push(...tagKey(paintBase(cylinderFaces3(0, 0, 5.2, 0.28, 0.3), "#8a6f2a"),
+      depthNow(0, 0) * 1.6 - 1));
     return out;
   },
   /* 터렛(실물 참고) — 원통 받침 + 상자 머리 + 세로 미사일 랙 둘 + 옆으로 빠지는 배관. */
@@ -3123,6 +3137,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...hornFaces(-4, 0.2, 3.5, -2.9, -0.9, 4.6, 0.55));
     out.push(...hornFaces(3.6, 1.3, 0.8, 4, 0.6, 3.2, 0.7));
     out.push(...hornFaces(4, 0.6, 3.1, 3, -0.3, 4.2, 0.55));
+    /* 사진 디테일(요청) — 받침 테에 청록 띠, 밑동에 금 테. */
+    out.push(...tagKey(paintBase(cylinderFaces3(0, 0, 4.75, 0.24, 1.1), "#2f8f86"),
+      depthNow(0, 0) * 1.6 + 2));
+    out.push(...tagKey(paintBase(cylinderFaces3(0, 0, 5.1, 0.3, 0), "#8a6f2a"),
+      depthNow(0, 0) * 1.6 - 1));
     return out;
   },
   /* 옵저버토리(전면 재작도·사진) — 바닥에 누운 황금 초승달 받침이 앞을 감싸고, 그
