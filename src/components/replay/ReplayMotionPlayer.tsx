@@ -3962,8 +3962,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const NS = 10;
       const axis9 = (t9: number): [number, number, number] => [
         m9 * (1.05 + 0.45 * t9),
-        -2.2 + 3.1 * t9,
-        5.4 + 3.6 * t9 - 3.7 * t9 * t9,
+        // 더 뒤로(-2.2 → -3.2), 더 높이(5.4 → 6.2), 앞쪽을 더 세워(기울기 3.6 → 5).
+        -3.2 + 3.1 * t9,
+        6.2 + 5 * t9 - 5 * t9 * t9,
       ];
       const sect9 = (t9: number): [number, number, number][] => {
         const [px9, py9, pz9] = axis9(t9);
@@ -4975,25 +4976,30 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        가락지라 가운데가 뚫려야 한다: 바깥 타원과 안쪽 타원의 감는 방향을 반대로 둬
        (호 sweep 0/1) 도넛으로 채운다. 서로 반대로 기운 둘이 옆에서 X자로 엇갈린다.
        속 형체를 다 그린 뒤 맨 위에 얹어 구 '겉'을 감싼다. */
-    const bandRing = (deg9: number): ShapeFace => {
+    /* 반쪽씩 나눠 감는다(재지적: 각도는 더 눕히고, 굵기는 확 줄이고, 키값 수정) —
+       한 장짜리 가락지를 통째로 맨 위에 얹으면 늘 구 앞에 떠 있어 '감싼' 것으로 안
+       읽힌다. 먼 반쪽(호 sweep 0 = 화면 위쪽)은 구보다 먼저, 가까운 반쪽(sweep 1)은
+       속 형체까지 다 그린 뒤 맨 나중에 그린다 — 배열 차례가 곧 앞뒤다. */
+    const bandHalf = (deg9: number, sw9: 0 | 1): ShapeFace => {
       const t9 = (deg9 * Math.PI) / 180;
       const R9 = 5.05;
-      const r9 = 1.7;
-      const W9 = 0.62;
+      const r9 = 1.05; // 더 눕힌다(1.7 → 1.05)
+      const W9 = 0.2; // 굵기 대폭 감소(0.62 → 0.2)
       const px9 = (d9: number): [number, number] =>
         [cx + d9 * Math.cos(t9), cy + d9 * Math.sin(t9)];
       const [oax, oay] = px9(-R9);
       const [obx, oby] = px9(R9);
       const Ri9 = R9 - W9;
-      const ri9 = Math.max(0.25, r9 - W9);
+      const ri9 = Math.max(0.12, r9 - W9);
       const [iax, iay] = px9(-Ri9);
       const [ibx, iby] = px9(Ri9);
-      return [`M${oax} ${oay} A${R9} ${r9} ${deg9} 1 0 ${obx} ${oby}`
-        + ` A${R9} ${r9} ${deg9} 1 0 ${oax} ${oay}`
-        + ` M${iax} ${iay} A${Ri9} ${ri9} ${deg9} 1 1 ${ibx} ${iby}`
-        + ` A${Ri9} ${ri9} ${deg9} 1 1 ${iax} ${iay} Z`, 0.95] as ShapeFace;
+      return [`M${oax} ${oay} A${R9} ${r9} ${deg9} 0 ${sw9} ${obx} ${oby}`
+        + ` L${ibx} ${iby} A${Ri9} ${ri9} ${deg9} 0 ${sw9 === 0 ? 1 : 0} ${iax} ${iay} Z`,
+      0.95] as ShapeFace;
     };
     return [
+      // 먼 반쪽 고리 — 구보다 먼저 그려 구 뒤로 돌아간다.
+      bandHalf(26, 0), bandHalf(-26, 0),
       // 에너지구는 플라즈마색, 개인색은 가운데 띠만(요청).
       // 에너지구 반투명화(요청) — 속 형체가 비쳐 보이게 0.72 → 0.4.
       [groundEllipse(cx, cy, 5.1, 4.8), 0.4, "#dff0ff"] as ShapeFace,
@@ -5013,7 +5019,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       [`M${cx + 4.4} ${cy + 0.6} Q${cx + 1.8} ${cy + 3.6} ${cx - 2.2} ${cy + 3.2}`
         + ` L${cx - 2} ${cy + 2.9} Q${cx + 1.6} ${cy + 3.2} ${cx + 4.1} ${cy + 0.4} Z`, 0.6, "#cfe6ff"] as ShapeFace,
       topFace(groundEllipse(cx - 1.7, cy - 1.7, 1.9, 1.5), 0.4),
-      bandRing(58), bandRing(-58),
+      // 가까운 반쪽 고리 — 맨 나중에 그려 구 앞을 지난다.
+      bandHalf(26, 1), bandHalf(-26, 1),
     ];
   },
   /* 다크 아콘(실물 참고) — 어두운 반투명 구 속에 뿔귀 머리와 갈퀴 팔의 형체가 비치고,
@@ -5029,25 +5036,30 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        가락지라 가운데가 뚫려야 한다: 바깥 타원과 안쪽 타원의 감는 방향을 반대로 둬
        (호 sweep 0/1) 도넛으로 채운다. 서로 반대로 기운 둘이 옆에서 X자로 엇갈린다.
        속 형체를 다 그린 뒤 맨 위에 얹어 구 '겉'을 감싼다. */
-    const bandRing = (deg9: number): ShapeFace => {
+    /* 반쪽씩 나눠 감는다(재지적: 각도는 더 눕히고, 굵기는 확 줄이고, 키값 수정) —
+       한 장짜리 가락지를 통째로 맨 위에 얹으면 늘 구 앞에 떠 있어 '감싼' 것으로 안
+       읽힌다. 먼 반쪽(호 sweep 0 = 화면 위쪽)은 구보다 먼저, 가까운 반쪽(sweep 1)은
+       속 형체까지 다 그린 뒤 맨 나중에 그린다 — 배열 차례가 곧 앞뒤다. */
+    const bandHalf = (deg9: number, sw9: 0 | 1): ShapeFace => {
       const t9 = (deg9 * Math.PI) / 180;
       const R9 = 5.05;
-      const r9 = 1.7;
-      const W9 = 0.62;
+      const r9 = 1.05; // 더 눕힌다(1.7 → 1.05)
+      const W9 = 0.2; // 굵기 대폭 감소(0.62 → 0.2)
       const px9 = (d9: number): [number, number] =>
         [cx + d9 * Math.cos(t9), cy + d9 * Math.sin(t9)];
       const [oax, oay] = px9(-R9);
       const [obx, oby] = px9(R9);
       const Ri9 = R9 - W9;
-      const ri9 = Math.max(0.25, r9 - W9);
+      const ri9 = Math.max(0.12, r9 - W9);
       const [iax, iay] = px9(-Ri9);
       const [ibx, iby] = px9(Ri9);
-      return [`M${oax} ${oay} A${R9} ${r9} ${deg9} 1 0 ${obx} ${oby}`
-        + ` A${R9} ${r9} ${deg9} 1 0 ${oax} ${oay}`
-        + ` M${iax} ${iay} A${Ri9} ${ri9} ${deg9} 1 1 ${ibx} ${iby}`
-        + ` A${Ri9} ${ri9} ${deg9} 1 1 ${iax} ${iay} Z`, 0.95] as ShapeFace;
+      return [`M${oax} ${oay} A${R9} ${r9} ${deg9} 0 ${sw9} ${obx} ${oby}`
+        + ` L${ibx} ${iby} A${Ri9} ${ri9} ${deg9} 0 ${sw9 === 0 ? 1 : 0} ${iax} ${iay} Z`,
+      0.95] as ShapeFace;
     };
     return [
+      // 먼 반쪽 고리 — 구보다 먼저 그려 구 뒤로 돌아간다.
+      bandHalf(26, 0), bandHalf(-26, 0),
       // 에너지구는 붉은색, 개인색은 가운데 띠만(요청).
       // 에너지구 반투명화(요청) — 0.7 → 0.38.
       [groundEllipse(cx, cy, 5.1, 4.8), 0.38, "#8a2833"] as ShapeFace,
@@ -5069,7 +5081,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(`M${cx + 4.1} ${cy - 3.1} Q${cx + 6.4} ${cy - 2} ${cx + 6.5} ${cy + 0.3}`
         + ` L${cx + 6.2} ${cy + 0.35} Q${cx + 5.9} ${cy - 1.7} ${cx + 3.9} ${cy - 2.8} Z`, 0.35),
       topFace(groundEllipse(cx - 1.7, cy - 1.7, 1.7, 1.3), 0.3),
-      bandRing(58), bandRing(-58),
+      // 가까운 반쪽 고리 — 맨 나중에 그려 구 앞을 지난다.
+      bandHalf(26, 1), bandHalf(-26, 1),
     ];
   },
   /* 저글링·히드라·울트라(요청: 전용 모델) — 갈고리는 직선이 아니라 3단으로 휘어진다:
@@ -5343,13 +5356,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 구 표면에 칠한 원(재정의: 사용자 설명) — 풍선 옆구리의 데칼: 옆으로 갈수록
          원이 모로 보이니 바깥 방향으로만 눌린 세로 타원으로 그린다. 튀어나오지도
          파이지도 않는다. */
-      const lx = Math.sin(th) * 2.18 * sxSign;
-      const ly = Math.cos(th) * 2.18;
+      const lx = Math.sin(th) * 2.46 * sxSign;
+      const ly = Math.cos(th) * 2.46;
       const [px, py] = project(lx, ly, 5.65);
-      // 동그란 기관(재지적: 럭비공 꼴) — 가로·세로 반지름을 같게 둔 진짜 원.
+      /* 콘택트 렌즈(요청) — 납작한 데칼이 아니라 바깥으로 살짝 볼록한 동그란 렌즈다:
+         어두운 테 → 렌즈 몸 → 바깥 위쪽으로 치우친 밝은 하이라이트 순으로 겹쳐,
+         가운데가 도톰하게 부푼 것으로 읽힌다. 자리도 구 반지름(2.4)보다 살짝 밖으로
+         빼(2.46) 표면에서 도드라진다. */
       return tagKey([
-        [groundEllipse(px, py, 0.92, 0.92), 0.95, "#7d55b4"] as ShapeFace,
-        [groundEllipse(px - 0.12 * sxSign, py - 0.1, 0.55, 0.55), 0.6, "#a97fe0"] as ShapeFace,
+        [groundEllipse(px, py, 0.98, 0.98), 0.95, "#5d3c8c"] as ShapeFace,
+        [groundEllipse(px, py, 0.86, 0.86), 0.95, "#7d55b4"] as ShapeFace,
+        [groundEllipse(px - 0.16 * sxSign, py - 0.16, 0.5, 0.5), 0.55, "#a97fe0"] as ShapeFace,
+        [groundEllipse(px - 0.3 * sxSign, py - 0.3, 0.2, 0.2), 0.6, "#e2d4f6"] as ShapeFace,
       ], depthNow(lx, ly));
     };
     /* 얼굴(재지적: 얼굴은 앞쪽 아래쪽에 작은 반구형으로) — 몸 앞아래 표면에 붙는
