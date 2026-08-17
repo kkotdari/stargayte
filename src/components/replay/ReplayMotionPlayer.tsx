@@ -9770,8 +9770,10 @@ export default function ReplayMotionPlayer({
   const panRef = useRef(pan);
   panRef.current = pan;
   useEffect(() => {
+    /* el이 없어도 문서 리스너는 단다(재지적) — 맵은 데이터가 온 뒤에 그려지기도 해서,
+       마운트 순간 ref가 비어 있으면 여기서 돌아가 버렸다. 그러면 더블탭이 영영 안 걸린다.
+       맵 상자는 이벤트마다 mapRef로 다시 읽으므로 나중에 생겨도 그대로 동작한다. */
     const el = mapRef.current;
-    if (!el) return;
     let pinch: { d: number; z: number; cx: number; cy: number; px: number; py: number } | null = null;
     let pinchPend: { z: number; p: { x: number; y: number } } | null = null;
     let pinchRaf = 0;
@@ -9785,13 +9787,33 @@ export default function ReplayMotionPlayer({
     /* 520 → 650ms(재지적: 아직도 안 됨) — 손을 뗀 순간부터 재므로 첫 탭을 오래 누르면
        그만큼 간격이 는다. 지도엔 한 번 탭으로 하는 일이 없어 넓혀도 잃을 게 없다. */
     const TAP_MS = 650;
-    const TAP_GAP = 56;
-    /* 18 → 26px(재지적) — 확대된 상태에서는 손가락이 굴러도 지도가 딸려 움직여서
-       사람이 더 크게 흔든다. 끌기 문턱(10px)보다 넉넉히 커야 탭이 끌기로 새지 않는다. */
-    const TAP_MOVE = 26;
+    /* 두 탭 거리 56 → 110px, 한 탭 안 끌림 26 → 60px(재지적: 두 탭 위치가 달라서
+       그런 것 같다) — 엄지로 작은 지도를 두 번 두드리면 두 자리가 쉽게 반 뼘씩
+       어긋나고, 손가락도 그만큼 구른다. 지도엔 한 번 탭으로 하는 일이 없으니 넓게
+       잡아도 잃을 게 없다. 진짜 끌기는 아래 '오래 눌렀나'로 갈라낸다. */
+    const TAP_GAP = 110;
+    const TAP_MOVE = 60;
+    // 오래 누르면 탭이 아니라 끌기다 — 눌린 시간으로 한 번 더 거른다.
+    const TAP_HOLD_MS = 600;
     const evTime = (e: TouchEvent): number => (e.timeStamp > 0 ? e.timeStamp : performance.now());
+    /* 실기 진단(요청 대응) — 주소에 ?dbg=tap을 붙이면 왼쪽 아래에 마지막 탭들의 숫자가
+       뜬다. 에뮬레이터에서는 다 되는데 실기에서만 안 되는 상황이라, 실제 기기에서 어떤
+       값이 나오는지 봐야 다음 수를 둘 수 있다. 평소에는 만들지도 않는다. */
+    const dbgOn = typeof location !== "undefined" && /[?&]dbg=tap/.test(location.search);
+    let dbgEl: HTMLDivElement | null = null;
+    if (dbgOn) {
+      dbgEl = document.createElement("div");
+      dbgEl.style.cssText = "position:fixed;left:6px;bottom:6px;z-index:99999;background:rgba(0,0,0,.78);"
+        + "color:#fff;font:11px/1.35 monospace;padding:6px 8px;border-radius:6px;white-space:pre;pointer-events:none";
+      dbgEl.textContent = "탭 진단 대기";
+      document.body.appendChild(dbgEl);
+    }
+    const dbg = (m: string): void => {
+      if (!dbgEl) return;
+      dbgEl.textContent = [m, ...(dbgEl.textContent ?? "").split("\n")].slice(0, 7).join("\n");
+    };
     let tap: { t: number; x: number; y: number } | null = null;
-    let tapStart: { x: number; y: number; moved: boolean } | null = null;
+    let tapStart: { x: number; y: number; moved: boolean; t: number } | null = null;
     const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
     const onTS = (e: TouchEvent) => {
       /* 핀치 줌 제거(요청) — 두 손가락은 더 이상 확대하지 않는다. 브라우저 페이지
@@ -9809,7 +9831,7 @@ export default function ReplayMotionPlayer({
       if (e.touches.length >= 2 || zoomRef.current > 1) {
         if (e.cancelable) e.preventDefault();
       }
-      if (!pinch || e.touches.length !== 2) return;
+      if (!pinch || e.touches.length !== 2 || !el) return;
       const r = el.getBoundingClientRect();
       const ox = r.left + r.width / 2;
       const oy = r.top + r.height / 2;
@@ -9844,20 +9866,28 @@ export default function ReplayMotionPlayer({
     /* 더블탭 판정은 문서에서 자리로 한다(재지적: 모바일 더블탭 안 됨) — 맵에 건 리스너는
        손가락이 닿은 그 노드가 사라지면 touchend를 못 받는다. 재생 중엔 마커·오버레이가
        프레임마다 다시 그려져, 첫 탭과 둘째 탭 사이에 노드가 바뀌면 이벤트가 통째로
-       빠졌다(터진 자리에서만 되고 유닛 위에서는 안 되는 이유). 문서에서 받아 맵 상자
-       안인지 좌표로 따지면 어느 자식을 눌렀든 똑같이 센다. */
+       빠졌다. 문서에서 받아 맵 상자 안인지 좌표로 따지면 어느 자식을 눌렀든 똑같이 센다.
+       맵 상자는 그때그때 mapRef로 다시 읽는다(재지적) — 마운트 때 잡아 둔 el을 쓰면
+       레이아웃이 바뀌며 맵 엘리먼트가 갈릴 때 낡은 상자로 재게 되고, 그러면 모든 탭이
+       "맵 밖"으로 떨어져 더블탭이 통째로 죽는다. */
+    const mapBox = (): DOMRect | null => {
+      const m = mapRef.current;
+      if (!m) return null;
+      const r = m.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 ? r : null;
+    };
     const inMap = (x: number, y: number): boolean => {
-      const r = el.getBoundingClientRect();
-      return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+      const r = mapBox();
+      return !!r && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
     };
     const onDocTS = (e: TouchEvent) => {
       if (e.touches.length !== 1) { tapStart = null; tap = null; return; }
       const t0 = e.touches[0];
       tapStart = inMap(t0.clientX, t0.clientY)
-        ? { x: t0.clientX, y: t0.clientY, moved: false } : null;
+        ? { x: t0.clientX, y: t0.clientY, moved: false, t: evTime(e) } : null;
     };
     const onDocTM = (e: TouchEvent) => {
-      // 18px 넘게 끌리면 탭이 아니다 — 그 아래는 손가락 굴림으로 본다.
+      // 크게 끌렸으면 탭이 아니다 — 그 아래는 손가락 굴림으로 본다.
       if (!tapStart || e.touches.length !== 1) return;
       const t0 = e.touches[0];
       if (Math.hypot(t0.clientX - tapStart.x, t0.clientY - tapStart.y) > TAP_MOVE) tapStart.moved = true;
@@ -9870,12 +9900,14 @@ export default function ReplayMotionPlayer({
       const t0 = performance.now();
       if (t0 - zoomAt < 400) return false;
       zoomAt = t0;
+      dbg(zoomRef.current > 1.05 ? "→ 축소" : "→ 확대");
       if (zoomRef.current > 1.05) {
         setZoom(1);
         setPan({ x: 0, y: 0 });
         return true;
       }
-      const r2 = el.getBoundingClientRect();
+      const r2 = mapBox();
+      if (!r2) return true;
       const ox2 = r2.left + r2.width / 2;
       const oy2 = r2.top + r2.height / 2;
       const z2 = ZOOM_GAME;
@@ -9893,8 +9925,13 @@ export default function ReplayMotionPlayer({
       }
       const ct = e.changedTouches[0];
       const now = evTime(e);
-      const ok = !tapStart.moved && inMap(ct.clientX, ct.clientY);
+      const held = Math.round(now - tapStart.t);
+      const ok = !tapStart.moved && now - tapStart.t < TAP_HOLD_MS
+        && inMap(ct.clientX, ct.clientY);
       tapStart = null;
+      const gap = tap ? Math.round(Math.hypot(ct.clientX - tap.x, ct.clientY - tap.y)) : -1;
+      const wait = tap ? Math.round(now - tap.t) : -1;
+      dbg(`T 누름${held}ms 끌림${ok ? "N" : "Y/밖"} 간격${wait}ms 거리${gap}px`);
       if (!ok) { tap = null; return; }
       if (tap && now - tap.t < TAP_MS && Math.hypot(ct.clientX - tap.x, ct.clientY - tap.y) < TAP_GAP) {
         // 두 번째 탭 — 브라우저 더블탭 페이지 확대를 끊고 지도만 확대·복귀한다.
@@ -9908,12 +9945,12 @@ export default function ReplayMotionPlayer({
     /* 포인터로도 같은 판정을 한다(재지적: 모바일 더블탭 안 됨) — 인앱 웹뷰나 기기에
        따라 touch 갈래가 통째로 안 오는 경우가 있다. 포인터 이벤트는 어디서나 오므로
        같은 자를 하나 더 대 둔다. 둘 다 맞으면 위 빗장이 한 번만 듣게 막는다. */
-    let pStart: { x: number; y: number; moved: boolean } | null = null;
+    let pStart: { x: number; y: number; moved: boolean; t: number } | null = null;
     let pTap: { t: number; x: number; y: number } | null = null;
     const onPD = (e: PointerEvent) => {
       if (e.pointerType !== "touch") return;
       pStart = inMap(e.clientX, e.clientY)
-        ? { x: e.clientX, y: e.clientY, moved: false } : null;
+        ? { x: e.clientX, y: e.clientY, moved: false, t: e.timeStamp } : null;
     };
     const onPM = (e: PointerEvent) => {
       if (!pStart || e.pointerType !== "touch") return;
@@ -9923,20 +9960,25 @@ export default function ReplayMotionPlayer({
       if (e.pointerType !== "touch") return;
       const st = pStart;
       pStart = null;
-      if (!st || st.moved || !inMap(e.clientX, e.clientY)) { pTap = null; return; }
       const now = e.timeStamp > 0 ? e.timeStamp : performance.now();
+      if (!st || st.moved || now - st.t > TAP_HOLD_MS || !inMap(e.clientX, e.clientY)) {
+        pTap = null;
+        return;
+      }
+      const pg = pTap ? Math.round(Math.hypot(e.clientX - pTap.x, e.clientY - pTap.y)) : -1;
+      dbg(`P 간격${pTap ? Math.round(now - pTap.t) : -1}ms 거리${pg}px`);
       if (pTap && now - pTap.t < TAP_MS
         && Math.hypot(e.clientX - pTap.x, e.clientY - pTap.y) < TAP_GAP) {
         pTap = null;
-        fireDouble(e.clientX, e.clientY);
+        dbg(fireDouble(e.clientX, e.clientY) ? "P 더블탭 발동" : "P 빗장에 막힘");
         return;
       }
       pTap = { t: now, x: e.clientX, y: e.clientY };
     };
-    el.addEventListener("touchstart", onTS, { passive: false });
-    el.addEventListener("touchmove", onTM, { passive: false });
-    el.addEventListener("touchend", onTE);
-    el.addEventListener("touchcancel", onTE);
+    el?.addEventListener("touchstart", onTS, { passive: false });
+    el?.addEventListener("touchmove", onTM, { passive: false });
+    el?.addEventListener("touchend", onTE);
+    el?.addEventListener("touchcancel", onTE);
     document.addEventListener("touchstart", onDocTS, { passive: true });
     document.addEventListener("touchmove", onDocTM, { passive: true });
     /* 문서 touchend는 수동 등록 아님(passive: false) — 두 번째 탭에서 브라우저 제
@@ -9949,10 +9991,10 @@ export default function ReplayMotionPlayer({
     document.addEventListener("pointercancel", onPU, { passive: true });
     return () => {
       if (pinchRaf) cancelAnimationFrame(pinchRaf);
-      el.removeEventListener("touchstart", onTS);
-      el.removeEventListener("touchmove", onTM);
-      el.removeEventListener("touchend", onTE);
-      el.removeEventListener("touchcancel", onTE);
+      el?.removeEventListener("touchstart", onTS);
+      el?.removeEventListener("touchmove", onTM);
+      el?.removeEventListener("touchend", onTE);
+      el?.removeEventListener("touchcancel", onTE);
       document.removeEventListener("touchstart", onDocTS);
       document.removeEventListener("touchmove", onDocTM);
       document.removeEventListener("touchend", onDocTE);
@@ -9961,6 +10003,7 @@ export default function ReplayMotionPlayer({
       document.removeEventListener("pointermove", onPM);
       document.removeEventListener("pointerup", onPU);
       document.removeEventListener("pointercancel", onPU);
+      dbgEl?.remove();
     };
     // 확대창(포털 재부착)이 사라져 맵 엘리먼트는 안 바뀐다 — 마운트에 한 번이면 된다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
