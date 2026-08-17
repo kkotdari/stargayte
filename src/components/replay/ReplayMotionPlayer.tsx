@@ -1612,22 +1612,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        달면서 앞 경사로가 탑을 덮었다. 지붕 규칙으로 붙박이 큰 키를 준다. */
     /* 어금니 탑을 4각 기반 기둥뿔로(요청) — 밑동이 굵고 안쪽으로 기울며 끝이
        뾰족해진다. 8각판 위에 얹히므로 지붕 규칙 키를 준다. */
-    out.push(...tagKey([
-      ...spirePillar({
-        x: -2.7, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.12,
-        segs: 5, sides: 4, hold: 0.12, leanX: 1.5, leanY: -0.3, taper: 1.5,
-      }),
-      ...spirePillar({
-        x: 2.7, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.12,
-        segs: 5, sides: 4, hold: 0.12, leanX: -1.5, leanY: -0.3, taper: 1.5,
-      }),
-    ], 30));
-    /* 가운데 소환 구체 — 축소하고 탑보다 뒤에 그리지 않는다(요청: 소환구 축소 및
-       기둥에 가려짐 해결). 같은 묶음 안 첫 면이라 탑에 덮이던 것을 키 32로 뺀다. */
+    /* 탑 둘은 저마다 제 자리 깊이(재지적: 소환구가 탑에 아예 안 가려진다) — 둘을
+       한 키로 묶고 구체를 그 위에 얹었더니, 앞으로 돈 탑까지 구체 뒤로 갔다.
+       탑은 30±제 깊이, 구체는 그 한가운데(30)에 두면 앞 탑은 구체를 덮고 뒤 탑은
+       구체 뒤로 간다 — 문 사이에 빛이 든 그림이다. */
+    for (const mx9 of [-2.7, 2.7]) {
+      out.push(...tagKey(spirePillar({
+        x: mx9, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.12,
+        segs: 5, sides: 4, hold: 0.12, leanX: -Math.sign(mx9) * 1.5, leanY: -0.3, taper: 1.5,
+      }), 30 + depthNow(mx9, 0) * 1.6));
+    }
+    // 가운데 소환 구체 — 두 탑 깊이의 한가운데.
     out.push(...tagKey([
       [groundEllipse(wx, wy, 1.1, 1.4), 0.5, "#a9ecf2"] as ShapeFace,
       topFace(groundEllipse(wx, wy, 0.6, 0.8), 0.4),
-    ], 32));
+    ], 30));
     /* 발판 뿔(요청) — 앞뒤 경사로 한가운데에서 솟아 끝이 안쪽으로 휜다. 아래는 기둥,
        위는 뿔인 공용 도형(spirePillar). */
     for (const sy9 of [1, -1] as const) {
