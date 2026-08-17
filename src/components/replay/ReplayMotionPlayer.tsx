@@ -5513,15 +5513,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...tagKey([
         // 테 안쪽 그늘 — 구멍으로 읽히는 어두운 원.
         [discPath3(cx9, cy9, h9, rim * 0.94), 1, "#241f19"] as ShapeFace,
-        // 고인 베스핀 — 깊은 초록 위에 밝은 심.
-        [discPath3(cx9, cy9, h9 - 0.12, rim * 0.72), 1, GAS_D] as ShapeFace,
-        [discPath3(cx9, cy9, h9 - 0.18, rim * 0.42), 1, GAS] as ShapeFace,
+        /* 고인 베스핀 — 깊은 초록 위에 밝은 심. 색이 너무 진했다(지적) — 불투명도를
+           낮춰 아래 바위 그늘이 비치는 맑은 가스로 만든다. */
+        [discPath3(cx9, cy9, h9 - 0.12, rim * 0.72), 0.5, GAS_D] as ShapeFace,
+        [discPath3(cx9, cy9, h9 - 0.18, rim * 0.42), 0.45, GAS] as ShapeFace,
       ], key + 0.6));
       // 초록 김 — 위로 갈수록 넓고 옅어지는 세 켜.
       out.push(...tagKey([
-        [groundEllipse(...project(cx9 - 0.1, cy9 + 0.15, h9 + 0.9), rim * 0.8, rim * 0.5), 0.4, GAS] as ShapeFace,
-        [groundEllipse(...project(cx9 - 0.25, cy9 + 0.3, h9 + 1.8), rim * 1.05, rim * 0.62), 0.24, GAS] as ShapeFace,
-        [groundEllipse(...project(cx9 - 0.4, cy9 + 0.45, h9 + 2.7), rim * 1.3, rim * 0.72), 0.13, GAS] as ShapeFace,
+        [groundEllipse(...project(cx9 - 0.1, cy9 + 0.15, h9 + 0.9), rim * 0.8, rim * 0.5), 0.24, GAS] as ShapeFace,
+        [groundEllipse(...project(cx9 - 0.25, cy9 + 0.3, h9 + 1.8), rim * 1.05, rim * 0.62), 0.15, GAS] as ShapeFace,
+        [groundEllipse(...project(cx9 - 0.4, cy9 + 0.45, h9 + 2.7), rim * 1.3, rim * 0.72), 0.08, GAS] as ShapeFace,
       ], key + 1));
     };
     crater(-0.7, 0.4, 2.6, 2.3, depthNow(-0.7, 0.4) * 1.6 + 0.2);
