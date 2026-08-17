@@ -2563,20 +2563,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...paintBase(cylinderFaces3(2.2, -0.6, 3, 1.4, 0.3), GOLD_D),
       ...paintBase(domeFaces3(2.2, -0.6, 3, 3.4, 1.7), GOLD),
       ...paintBase(cylinderFaces3(2.2, -0.6, 3.04, 0.4, 1.9), RED),
-    ], 20 + depthNow(2.2, -0.6)));
+    ], 6 + depthNow(2.2, -0.6) * 1.6));
     // 큰 돔 꼭대기 청록 눈 — 테 두른 발광 원반.
     out.push(...tagKey([
       [discPath3(2.2, -0.6, 5.05, 1.15), 1, GOLD_D] as ShapeFace,
       [discPath3(2.2, -0.6, 5.12, 0.86), 0.95, CYAN] as ShapeFace,
       topFace(discPath3(2.2, -0.6, 5.18, 0.45), 0.5),
-    ], 24 + depthNow(2.2, -0.6)));
+    ], 8 + depthNow(2.2, -0.6) * 1.6));
     /* 앞오른쪽 작은 돔 — 같은 눈을 인다. */
     out.push(...tagKey([
       ...paintBase(domeFaces3(2.6, 2.4, 1.6, 1.7, 0.35), GOLD),
       [discPath3(2.6, 2.4, 2.08, 0.7), 1, GOLD_D] as ShapeFace,
       [discPath3(2.6, 2.4, 2.14, 0.52), 0.95, CYAN] as ShapeFace,
       topFace(discPath3(2.6, 2.4, 2.2, 0.28), 0.5),
-    ], 22 + depthNow(2.6, 2.4)));
+    ], 10 + depthNow(2.6, 2.4) * 1.6));
     /* 왼쪽 황금 뿔탑 셋(사진) — 밑동이 굵고 끝이 뾰족한 첨탑. 세로 골이 있다. */
     for (const [tx, ty, th, tw] of [
       [-3, -1.2, 5.4, 0.95], [-1.9, -1.9, 6.4, 1.05], [-0.8, -1.2, 4.6, 0.85],
@@ -2584,7 +2584,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...tagKey(paintBase(spirePillar({
         x: tx, y: ty, z0: 0.3, h: th, w: tw, tipW: 0.1,
         segs: 5, sides: 8, hold: 0.18, taper: 1.4,
-      }), GOLD), 22 + depthNow(tx, ty)));
+      }), GOLD), 10 + depthNow(tx, ty) * 1.6));
     }
     /* 뿔탑에서 큰 돔으로 건너가는 관 팔 넷 — 마디진 황금 관. */
     for (let k = 0; k < 4; k += 1) {
@@ -2593,7 +2593,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...tagKey([
         ...paintBase(tubeFaces(ax, sy9, 1.4, sy9 + 0.9, 0.26, 3.2 - k * 0.35), GOLD_D),
         ...paintBase(tubeFaces(ax + 0.9, sy9 + 0.3, ax + 1.1, sy9 + 0.36, 0.34, 3.2 - k * 0.35), GOLD),
-      ], 26 + depthNow(0, sy9 + 0.5)));
+      ], 16 + depthNow(0, sy9 + 0.5) * 1.6));
     }
     /* 앞왼쪽 골진 황금 단(사진) — 층층이 골이 팬 낮은 상자. */
     {
@@ -2603,7 +2603,50 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         blk.push(...paintBase(boxFaces3(gx, 2.3, 0.3, 2.7, 0.34, 2), GOLD_D));
       }
       blk.push(...paintBase(domeFaces3(-0.6, 3.1, 0.55, 0.5, 0.3), GOLD_D));
-      out.push(...tagKey(blk, 20 + depthNow(-2.4, 2.3)));
+      out.push(...tagKey(blk, 12 + depthNow(-2.4, 2.3) * 1.6));
+    }
+    /* 앞쪽 톱니 바퀴(복원·지적: 포지의 킥인데 빠졌다) — 좌우를 보고 선 2/3 원 판에
+       이빨이 둘러 박힌다. 안팎 두 판을 이빨 슬래브로 봉합해 두께를 준다. */
+    {
+      const WX0 = -4.4;
+      const WX1 = -3.1;
+      const CZ = 1.8;
+      const RIM = 2.5;
+      const half = (x9: number): [number, number, number][] => Array.from(
+        { length: 15 },
+        (_, i9) => {
+          const a9 = -Math.PI / 6 + ((Math.PI * 4) / 3) * (i9 / 14);
+          return [x9, 1.6 - Math.cos(a9) * RIM, CZ + Math.sin(a9) * RIM] as [number, number, number];
+        },
+      );
+      const lp = half(WX0);
+      const rp = half(WX1);
+      const g: ShapeFace[] = [bodyFace(polyPath3(lp)), sideFace(polyPath3(lp), 0.2)];
+      for (let i9 = 0; i9 < lp.length - 1; i9 += 1) {
+        g.push(bodyFace(polyPath3([lp[i9], lp[i9 + 1], rp[i9 + 1], rp[i9]])));
+      }
+      g.push(bodyFace(polyPath3(rp)), topFace(polyPath3(rp), 0.14));
+      // 이빨 — 테 둘레에 고르게 박힌 사다리 슬래브.
+      for (const deg of [-18, 12, 42, 72, 102, 132, 162, 192]) {
+        const a3 = (deg * Math.PI) / 180;
+        const c3 = Math.cos(a3);
+        const s3 = Math.sin(a3);
+        const tooth = (xx: number): [number, number, number][] => [
+          [xx, 1.6 - c3 * RIM + s3 * 0.2, CZ + s3 * RIM + c3 * 0.2],
+          [xx, 1.6 - c3 * RIM - s3 * 0.2, CZ + s3 * RIM - c3 * 0.2],
+          [xx, 1.6 - c3 * (RIM + 0.85) - s3 * 0.14, CZ + s3 * (RIM + 0.85) - c3 * 0.14],
+          [xx, 1.6 - c3 * (RIM + 0.85) + s3 * 0.14, CZ + s3 * (RIM + 0.85) + c3 * 0.14],
+        ];
+        const bt = polyPath3(tooth(WX0));
+        g.push(bodyFace(bt), sideFace(bt, 0.22));
+        g.push(bodyFace(polyPath3([tooth(WX0)[3], tooth(WX1)[3], tooth(WX1)[2], tooth(WX0)[2]])));
+        const fa = polyPath3([tooth(WX0)[1], tooth(WX1)[1], tooth(WX1)[2], tooth(WX0)[2]]);
+        const fb = polyPath3([tooth(WX0)[0], tooth(WX1)[0], tooth(WX1)[3], tooth(WX0)[3]]);
+        g.push(bodyFace(fa), sideFace(fa, 0.18));
+        g.push(bodyFace(fb), topFace(fb, 0.1));
+        g.push(bodyFace(polyPath3(tooth(WX1))), topFace(polyPath3(tooth(WX1)), 0.12));
+      }
+      out.push(...tagKey(paintBase(g, GOLD_D), 14 + depthNow(-3.8, 1.6) * 1.6));
     }
     return out;
   },
