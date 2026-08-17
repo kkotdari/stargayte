@@ -1728,9 +1728,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 넥서스(실물 참고) — 절두 황금 피라미드(높이 한 단 낮춤) + 면의 능선 띠 + 꼭대기
      파란 수정 + 사방 삼각 진입받침 + 네 귀 오벨리스크. 뒤 기둥은 피라미드가 가리도록
      먼저 그린다(지적: 기둥이 비쳐 보였다). */
-  /* 넥서스(정정 요청: 기존 제작도를 살려 다시) — 예전 형태를 그대로 두고, 사진에서
-     본 것 가운데 색과 부속만 얹는다: 옆면 청록 빗살 지느러미, 네 귀 오벨리스크의
-     개인색 보석, 은빛 원반 발. */
+  /* 넥서스(재작도 — 사진 기준, 기존 비율·자세는 그대로) ─────────────────────────
+     프로토스의 바탕은 골드다. 여태 절두 피라미드 몸통이 통째로 개인색이라 종족이
+     안 읽혔다: 몸을 금빛으로 깔고, 능선 띠에 짙은 금 그림자를 넣어 층을 세운 뒤,
+     사이언 수정과 유리 창을 포인트로 얹는다. 개인색은 두 곳 — 꼭대기 수정 받침의
+     띠와 네 귀 오벨리스크의 보석이다(가장 눈에 띄는 자리, 그러나 몸은 안 덮는다).
+     키값은 한 자로: 부품은 제 자리 depthNow(×1.6), 꼭대기 얹힘만 상수. */
   pyramidWide: () => {
     const pillar = (px: number, py: number): ShapeFace[] => {
       const [kx, ky] = project(px, py, 5.8);
@@ -1741,8 +1744,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           sideFace(discPath3(px, py, 0.42, 1.6), 0.25),
         ], depthNow(px, py)),
         /* 끝을 도려내고 팁을 꽂는다(재재재지적: 화살촉처럼 튀지 않게) — 팁 원뿔이
-           그 높이의 기둥 굵기보다 늘 살짝 굵어 기둥 끝을 완전히 감싼다. */
-        ...hornFaces(px, py, 0.4, px, py, 8.8, 1.7),
+           그 높이의 기둥 굵기보다 늘 살짝 굵어 기둥 끝을 완전히 감싼다.
+           기둥 몸도 금빛(재작도) — 넷이 통째로 개인색이면 종족이 안 읽힌다. */
+        ...paintBase(hornFaces(px, py, 0.4, px, py, 8.8, 1.7), "#c9a227"),
         ...paintBase(hornFaces(px, py, 6.8, px, py, 8.9, 0.5), "#3bd8c2"),
         topFace(groundEllipse(kx, ky, 0.45, 0.65), 0.5),
       ];
@@ -1752,21 +1756,43 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 6.0 → 5.6(재지적: 왼뒤 기둥이 너무 바깥) — 받침 원반이 피라미드 모서리에 걸치게 붙인다.
     /* 상자 정규화(지적: 넥서스가 발자국을 초과) — 기둥·받침이 요잉 투영에서 ±9까지
        나가 16칸 상자를 넘쳤다. 전체를 0.85배로 눌러 안에 들인다. */
+    const GOLD9 = "#c9a227";
+    const GOLDD = "#8e6f1a";
+    const CYAN9 = "#3bd8c2";
+    const GLASS9 = "#7fd4e8";
     const out: ShapeFace[] = [...pillar(-4.7, -4.7), ...pillar(4.7, -4.7)];
-    out.push(...frustumFaces3(0, 0, 9, 9, 2.8, 2.8, 6.4));
-    // 앞면 능선 띠 — 경사면을 따라 층층이 가로 띠.
+    // 몸통은 금빛 바탕(재작도) — 프로토스의 바탕색은 골드다.
+    out.push(...paintBase(frustumFaces3(0, 0, 9, 9, 2.8, 2.8, 6.4), GOLD9));
+    /* 밑동 한 단(사진) — 몸보다 조금 넓은 짙은 금 받침이 깔려, 피라미드가 땅에서
+       솟은 것이 아니라 단 위에 앉은 것으로 읽힌다. */
+    out.push(...paintBase(frustumFaces3(0, 0, 9.8, 9.8, 9.2, 9.2, 0.55), GOLDD));
+    // 앞면 능선 띠 — 경사면을 따라 층층이 가로 띠. 짙은 금으로 그늘을 넣어 층이 산다.
     const half = (z: number): number => 4.5 - (4.5 - 1.4) * (z / 6.4);
     for (const bz of [1.4, 3, 4.6]) {
       const w0 = half(bz) - 0.35;
       const w1 = half(bz + 0.6) - 0.35;
-      out.push(topFace(polyPath3([
+      const band = polyPath3([
         [-w0, half(bz), bz], [w0, half(bz), bz],
         [w1, half(bz + 0.6), bz + 0.6], [-w1, half(bz + 0.6), bz + 0.6],
-      ]), 0.2));
+      ]);
+      out.push([band, 1, GOLDD] as ShapeFace);
+      out.push(topFace(band, 0.2));
+    }
+    /* 앞면 유리 창(사진) — 능선 사이에 세로로 긴 사이언 유리 셋. 앞이 보일 때만
+       그린다(뒤로 돌면 몸 위로 떠오른다). */
+    if (faceLight(0, 1).visible) {
+      for (const wx9 of [-1.55, 0, 1.55] as const) {
+        out.push(...tagKey([[polyPath3([
+          [wx9 - 0.45, half(2.1), 2.1], [wx9 + 0.45, half(2.1), 2.1],
+          [wx9 + 0.36, half(4.4), 4.4], [wx9 - 0.36, half(4.4), 4.4],
+        ]), 1, GLASS9] as ShapeFace], depthNow(wx9, 3.6) * 1.6 + 1));
+      }
     }
     // 꼭대기 받침 + 수정 — 지붕 키로 가림 해결(지적) + 옥색~시안 고정색(지적).
+    // 받침 띠는 개인색(칠하지 않는다) — 가장 높고 사방에서 보이는 첫째 포인트.
     out.push(...tagKey([
-      ...boxFaces3(0, 0, 2.9, 2.9, 0.8, 6.4),
+      ...paintBase(boxFaces3(0, 0, 3.1, 3.1, 0.45, 6.4), GOLDD),
+      ...boxFaces3(0, 0, 2.9, 2.9, 0.42, 6.85),
       [`M${project(0, 0, 7.2)[0]} ${project(0, 0, 7.2)[1] - 2.7} L${project(0, 0, 7.2)[0] + 1.25} ${project(0, 0, 7.2)[1] - 0.9} L${project(0, 0, 7.2)[0]} ${project(0, 0, 7.2)[1] + 0.55} L${project(0, 0, 7.2)[0] - 1.25} ${project(0, 0, 7.2)[1] - 0.9} Z`, 1, "#3bd8c2"] as ShapeFace,
       topFace(`M${project(0, 0, 7.2)[0]} ${project(0, 0, 7.2)[1] - 2.7} L${project(0, 0, 7.2)[0] - 1.25} ${project(0, 0, 7.2)[1] - 0.9} L${project(0, 0, 7.2)[0]} ${project(0, 0, 7.2)[1] + 0.55} L${project(0, 0, 7.2)[0] - 0.4} ${project(0, 0, 7.2)[1] - 0.95} Z`, 0.45),
     ], 45));
@@ -1786,26 +1812,27 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         [sx * 4.2 - cxa * 2.2, sy * 4.2 - sya * 2.2, 1.5],
         [sx * 8.4, sy * 8.4, 0],
       ]);
-      // 발판도 제 깊이(지적: 기둥과 가려짐 순서) — 앞 발판만 기둥 위로.
-      out.push(...tagKey([bodyFace(d), ...face(d)], depthNow(sx * 5.5, sy * 5.5)));
+      // 발판도 제 깊이(지적: 기둥과 가려짐 순서) — 앞 발판만 기둥 위로. 몸과 같은 금빛.
+      out.push(...tagKey([[d, 1, GOLD9] as ShapeFace, ...face(d)], depthNow(sx * 5.5, sy * 5.5)));
     }
     out.push(...pillar(-5.6, 5.6), ...pillar(5.6, 5.6));
-    /* 사진 디테일 보강(요청) — 옆면 청록 빗살, 네 귀 은빛 원반 발과 그 위 개인색
-       보석. 몸은 손대지 않는다. */
+    /* 옆면 사이언 빗살(사진) — 몸이 금빛이 된 만큼 빗살은 종족 팔레트의 사이언으로
+       또렷하게 세운다(전엔 탁한 청록이라 금빛 위에서 묻혔다). */
     for (const m9 of [-1, 1] as const) {
       const fin: ShapeFace[] = [];
       for (let k9 = 0; k9 < 5; k9 += 1) {
-        fin.push(...paintBase(boxFaces3(m9 * 3.4, -1.6 + k9 * 0.85, 0.8, 0.24, 1.2, 1.2),
-          "#3f8f74"));
+        fin.push(...paintBase(boxFaces3(m9 * 3.4, -1.6 + k9 * 0.85, 0.8, 0.24, 1.2, 1.2), CYAN9));
       }
       out.push(...tagKey(fin, depthNow(m9 * 3.4, 0) * 1.6 + 1));
     }
+    /* 네 귀 오벨리스크 받침 — 짙은 금 원반 둘. 그 위 보석만 개인색(둘째 포인트).
+       은색은 테란의 바탕색이라 여기서 걷었다. */
     for (const [ox9, oy9] of [[-4.3, 3], [4.3, 2.8], [-4.5, -2.4], [4.5, -2.6]] as
       [number, number][]) {
       out.push(...tagKey(paintBase([
         ...cylinderFaces3(ox9, oy9, 1.05, 0.35, 0),
         ...cylinderFaces3(ox9, oy9, 0.62, 0.45, 0.35),
-      ], "#c9ced6"), depthNow(ox9, oy9) * 1.6 - 2));
+      ], GOLDD), depthNow(ox9, oy9) * 1.6 - 2));
       out.push(...tagKey(domeFaces3(ox9, oy9, 0.42, 0.5, 0.8), depthNow(ox9, oy9) * 1.6));
     }
     return out;
