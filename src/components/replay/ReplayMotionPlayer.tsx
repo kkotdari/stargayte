@@ -2268,56 +2268,75 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     }
     return out;
   },
-  /* 어시밀레이터(실물 참고) — 둥근 황금 몸체 + 몸을 타넘는 골진 활 띠(청록 눈금) +
-     가운데 큰 청록 알 + 네 귀 비스듬한 통풍 포드 + 바깥으로 처지는 지느러미. */
+  /* 어시밀레이터(전면 재작도·사진) — 황금 껍데기 위로 청록 눈금이 박힌 활 띠 넷이
+     타넘고, 앞면 한가운데에 큰 청록 렌즈가 빛난다. 네 귀에는 청록 띠를 두른 황금
+     기둥(뒤 둘은 높고 앞 둘은 낮게 기운다), 옆으로는 무늬 새긴 납작한 지느러미가
+     처진다. 오른뒤 기둥에서는 초록 가스가 오른다. 위 활 띠 하나만 개인색이다. */
   assim: () => {
-    const out: ShapeFace[] = [sideFace(discPath3(0, 0.4, 0, 7), 0.2)];
-    // 귀퉁이 지느러미 — 바깥-아래로 처지는 넓은 갈퀴.
-    for (const [px, py] of [[-4.6, 3.2], [4.6, 3.2], [-5, -2.8], [5, -2.8]] as [number, number][]) {
-      out.push(...hornFaces(px * 0.6, py * 0.6, 1.2, px * 1.4, py * 1.4, 0.3, 2.2));
-    }
-    out.push(...domeFaces3(0, -0.2, 5.6, 3.2));
-    /* 골진 활 띠(재지적: 무지개 고리가 안 돎) — 가로 반지름을 모델 x축 투영(u)에
-       실어, 요잉하면 아치가 함께 돌아 눕고 옆에선 좁아진다. 눈금도 같은 자로. */
-    const [bx2, by2] = project(0, -0.6, 0);
-    const uxA = project(1, -0.6, 0)[0] - bx2;
-    const aw = Math.max(0.12, Math.abs(uxA));
-    const sw = uxA >= 0 ? 1 : 0;
-    out.push(bodyFace(`M${bx2 - 5.9 * uxA} ${by2} A${5.9 * aw} 4.6 0 0 ${sw} ${bx2 + 5.9 * uxA} ${by2}`
-      + ` L${bx2 + 4.4 * uxA} ${by2} A${4.4 * aw} 3.4 0 0 ${1 - sw} ${bx2 - 4.4 * uxA} ${by2} Z`));
-    for (const ang of [140, 108, 76, 44]) {
-      const a2 = (ang * Math.PI) / 180;
-      out.push(topFace(groundEllipse(bx2 + Math.cos(a2) * 5.15 * uxA, by2 - Math.sin(a2) * 4, 0.35 * (0.5 + aw * 0.5), 0.55), 0.5));
-    }
-    // 네 귀 통풍 포드 — 흰 띠 두른 포드와 위 타원 구멍.
-    for (const [px, py] of [[-3.5, 2.6], [3.6, 2.4], [-3.9, -2.5], [3.9, -2.6]] as [number, number][]) {
-      out.push(...boxFaces3(px, py, 1.9, 1.7, 2.9, 0.6));
-      const [vx, vy] = project(px, py, 3.6);
-      out.push(topFace(groundEllipse(vx, vy, 0.8, 0.55), 0.3));
-      out.push(capFace(groundEllipse(vx, vy, 0.55, 0.35), 0.45));
-    }
-    /* 입구 동그란 거울(알)은 제거(요청) — 대신 파일런 수정구 색(반투명 연사이언)의
-       납작한 볼록 렌즈: 좌우 끝이 뾰족한 렌즈꼴 판. 자리만 몸을 따라 돌고 옆으로
-       돌수록 폭이 줄며 뒤에선 사라지는 규칙은 그대로. */
-    const lensFace = facingRatio(0, 1);
-    if (lensFace > 0.12) {
-      /* 정면 입구 렌즈(재지적) — 몸 앞면(반지름 5.6)에 바짝 붙이고 더 크게. 라이트
-         사이언 반투명, 안에 밝은 속심. 앞이 보일 때만 그린다. */
-      /* 벽에 수직으로 붙은 렌즈(재지적: 지금은 지면과 평행) — 벽 평면(wallFrame)에
-         그려 몸이 돌면 렌즈도 벽과 함께 눕고 기울어진다. 좌우 끝이 뾰족한 렌즈꼴. */
-      const k = 0.5 + 0.5 * Math.min(1, (lensFace - 0.12) / 0.35);
-      /* 동그란 렌즈(재지적: 럭비공 꼴) — 좌우로 뾰족하던 두 점 곡선 대신 벽 평면에
-         그린 원. 가로·세로 반지름을 같게 두고 열두 점으로 매끈하게 잇는다. */
-      const lensPath = (r9: number): string => {
-        const { pt } = wallFrame(0, 3.55, 1.9, r9, r9); // 렌즈 자리 더 아래로(재지적)
-        const pts9 = Array.from({ length: 12 }, (_, i9) => pt((i9 / 12) * Math.PI * 2));
-        return `M${pts9[0][0]} ${pts9[0][1]}`
-          + pts9.slice(1).map((q9) => ` L${q9[0]} ${q9[1]}`).join("") + " Z";
-      };
+    const GOLD = "#c9a227";
+    const GOLD_D = "#8a6f2a";
+    const TEAL = "#2f8f86";
+    const CYAN = "#4fd8ee";
+    const out: ShapeFace[] = [];
+    // 옆 지느러미 둘 — 무늬 새긴 납작한 판이 바깥으로 처진다.
+    for (const m9 of [-1, 1] as const) {
+      const fin = polyPath3([
+        [m9 * 2.2, 1.4, 1.5], [m9 * 4.6, 0.9, 0.35], [m9 * 4.4, -1.6, 0.3], [m9 * 2.1, -1.4, 1.4],
+      ]);
       out.push(...tagKey([
-        [lensPath(2.35 * k), 0.62, "#a9ecf2"] as ShapeFace,
-        [lensPath(1.35 * k), 0.55, "#e6fbff"] as ShapeFace,
-      ], depthNow(0, 3.55) + 1));
+        [fin, 1, "#b9a883"] as ShapeFace,
+        m9 > 0 ? sideFace(fin, 0.2) : topFace(fin, 0.14),
+      ], depthNow(m9 * 3.4, -0.2) * 1.6));
+    }
+    // 껍데기 — 앞뒤로 길쭉한 낮은 황금 덩치.
+    out.push(...tagKey(paintBase(domeFaces3(0, -0.2, 3.2, 2.4, 0), GOLD), 2));
+    /* 몸을 타넘는 활 띠 넷 — 앞에서 뒤로 나란히 걸린다. 하나(가운데 앞)는 개인색. */
+    ([[1.1, 2.9, 0], [0.2, 3.15, 1], [-0.7, 3.05, 0], [-1.6, 2.7, 0]] as [number, number, number][])
+      .forEach(([by9, br9, own9]) => {
+        const band = spirePillar({
+          x: 0, y: 0, h: 1, w: 0.3, tipW: 0.3, segs: 12, sides: 5, hold: 1,
+          path: (t9: number): [number, number, number] => {
+            const th = Math.PI * t9;
+            return [Math.cos(th) * br9, by9, 0.15 + Math.sin(th) * 2.05];
+          },
+          ...(own9 ? {} : { fill: GOLD_D }),
+        });
+        out.push(...tagKey(band, 6 + depthNow(0, by9) * 1.6));
+        // 띠 위 청록 눈금 — 마루에 박힌 짧은 조각 셋.
+        if (!own9) {
+          const tick: ShapeFace[] = [];
+          for (const u9 of [0.34, 0.5, 0.66]) {
+            const th = Math.PI * u9;
+            tick.push(...paintBase(domeFaces3(
+              Math.cos(th) * br9, by9, 0.24, 0.16, 0.15 + Math.sin(th) * 2.05,
+            ), TEAL));
+          }
+          out.push(...tagKey(tick, 7 + depthNow(0, by9) * 1.6));
+        }
+      });
+    /* 앞면 큰 청록 렌즈 — 벽에 수직으로 붙은 볼록 원판(공용 렌즈 도형). */
+    out.push(...lensFaces({
+      x: 0, y: 2.15, z: 1.35, nx: 0, ny: 1, r: 1.25, bulge: 0.3, lift: 12,
+      rim: GOLD_D, fill: "#1f7f97", core: CYAN, glint: "#d8f7ff",
+    }));
+    /* 네 귀 기둥 — 뒤 둘은 높고 곧게, 앞 둘은 낮고 바깥으로 기운다. 청록 띠와 황금 갓. */
+    ([[-2.3, -1.9, 3.4, 0], [2.3, -1.9, 3.4, 0], [-2.7, 1.5, 2.2, -1], [2.7, 1.5, 2.2, 1]] as
+      [number, number, number, number][]).forEach(([px, py, ph, lean]) => {
+      out.push(...tagKey([
+        ...paintBase(spirePillar({
+          x: px, y: py, z0: 0.3, h: ph, w: 0.55, tipW: 0.42,
+          segs: 3, sides: 6, hold: 0.3, leanX: lean * 0.9, leanY: lean === 0 ? 0 : 0.4,
+        }), GOLD),
+        ...paintBase(cylinderFaces3(px + lean * 0.45, py + (lean === 0 ? 0 : 0.2),
+          0.6, 0.45, 0.3 + ph * 0.55), TEAL),
+      ], 10 + depthNow(px, py) * 1.6));
+    });
+    /* 오른뒤 기둥에서 오르는 초록 가스(사진) — 위로 갈수록 넓고 옅어지는 세 켜. */
+    for (const [gz, gr, ga] of [[4, 0.6, 0.3], [5.1, 0.9, 0.18], [6.2, 1.2, 0.1]] as
+      [number, number, number][]) {
+      out.push(...tagKey([[groundEllipse(
+        ...project(2.3 + (gz - 4) * 0.1, -1.9 + (gz - 4) * 0.15, gz), gr, gr * 0.6,
+      ), ga, "#7ee03a"] as ShapeFace], 20 + depthNow(2.3, -1.9)));
     }
     return out;
   },
