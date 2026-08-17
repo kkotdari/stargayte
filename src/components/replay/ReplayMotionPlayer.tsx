@@ -4012,14 +4012,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 퀸(정정 셋) — 더듬이 없이, 전갈처럼 위로 솟아 앞으로 휘는 꼬리. 다리 여섯은
      60도 간격으로 골고루 퍼지되 너무 처지지 않고, 다리 끝까지 갈퀴막이 이어진다. */
   queen: () => {
-    // (삭제·요청) 등 점 헬퍼 — 점 세 개를 걷으면서 함께 걷었다.
     const P = (ang: number, r: number): [number, number] => {
       const a = (ang * Math.PI) / 180;
       return [Math.sin(a) * r, Math.cos(a) * r];
     };
-    /* 앞부분을 45도쯤 든다(요청: 핀칭) — 앞(+y)으로 갈수록 z를 같은 비율로 올려
-       몸 전체가 앞을 들고 뜬 자세가 된다. 모든 부품의 높이에 같은 자를 댄다. */
+    /* 앞부분을 45도쯤 든다(요청: 핀칭) — 앞(+y)으로 갈수록 z를 같은 비율로 올린다.
+       몸통·머리는 위치만 올리면 기운 것으로 안 보이므로(지적), 회전 대칭 돔을 걷고
+       기운 축을 따라 자라는 기둥으로 세운다. 축이 45도면 몸 자체가 기운다. */
     const PT = (y9: number): number => y9;
+    /* 키는 한 자로 잰다(지적: 키값 재수정) — 몸통을 0으로 두고 나머지는 제 자리
+       깊이 × 1.6. 앞으로 돈 부품은 몸 위로, 뒤로 돈 부품은 몸 뒤로 저절로 갈린다.
+       머리·집게는 몸 앞에 얹히므로 한 단씩 더 올린다. */
     const out: ShapeFace[] = [];
     // 갈퀴막 — 이웃 다리 끝까지 잇는 여섯 폭 치마.
     for (let i = 0; i < 6; i += 1) {
@@ -4028,12 +4031,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const [t1x, t1y] = P(a1, 2.4);
       const [x2, y2] = P(a1 + 60, 1.2);
       const [t2x, t2y] = P(a1 + 60, 2.4);
-      /* 갈퀴막 짙은 살색(요청) — 공용 막 도형으로 갈퀴 골과 힘줄을 준다(요청:
-         드론·뮤탈 날개 같은 디테일). 뿌리는 몸통 쪽 두 점, 바깥은 다리 끝 두 점이다. */
       out.push(...membraneFaces(
         [[x1, y1, 5.1 + PT(y1)], [x2, y2, 5.1 + PT(y2)]],
         [[t1x, t1y, 4.05 + PT(t1y)], [t2x, t2y, 4.05 + PT(t2y)]],
-        "#c68a62", { shade: 0.15, notch: 0.26 },
+        "#c68a62",
+        { shade: 0.15, notch: 0.26, key: depthNow((t1x + t2x) / 2, (t1y + t2y) / 2) * 1.6 },
       ));
     }
     // 다리 여섯 — 막의 뼈대.
@@ -4041,27 +4043,37 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const [x1, y1] = P(i * 60 + 30, 1.2);
       const [t1x, t1y] = P(i * 60 + 30, 2.45);
       // 다리 짙은 갈색(재지적).
-      out.push(...paintBase(
+      out.push(...tagKey(paintBase(
         hornFaces(x1, y1, 5.2 + PT(y1), t1x, t1y, 4 + PT(t1y), 0.65), "#6b4732",
-      ));
+      ), depthNow(t1x, t1y) * 1.6));
     }
-    out.push(...domeFaces3(0, -1.1, 1.95, 1.75, 5.3 + PT(-1.1)));
-    // (삭제·요청) 등 점 세 개.
-    // 머리 짙은 갈색(요청).
-    out.push(...paintBase(domeFaces3(0, 0.7, 1.2, 0.9, 5.5 + PT(0.7)), "#6b4732"));
-    /* 꼬리 대신 뿔기둥 둘(요청) — 등 뒤에서 솟아 앞으로 휙 휘어 넘어오는 한 쌍.
-       마디 없이 공용 도형 하나로 굽히고, 색은 옛 독침꼬리와 같은 검회색이다. */
-    /* 꼬리 촉수(정정 요청: 뿔이 아니라 그냥 입체 직사각 막대) — 굵기가 처음부터 끝까지
-       같은 네모 기둥 한 쌍이다. 꼬리 뒤에서 비스듬히 앞·위로 나오다가 뒤로 갈수록
-       아래로 휜다: 축의 z를 한 번 올렸다 내리는 이차식으로 그린다. */
-    // (삭제·요청) 꼬리 촉수 한 쌍.
-    // 큰 집게 한 쌍 — 앞팔 짙은 갈색(요청).
-    out.push(...paintBase(hornFaces(1.3, 1, 5.8 + PT(1), 2.6, 2.2, 5.6 + PT(2.2), 0.95), "#6b4732"));
-    out.push(...paintBase(hornFaces(2.6, 2.2, 5.6 + PT(2.2), 1.9, 3.5, 5.2 + PT(3.5), 0.7), "#6b4732"));
-    out.push(...paintBase(hornFaces(-1.3, 1, 5.8 + PT(1), -2.6, 2.2, 5.6 + PT(2.2), 0.95), "#6b4732"));
-    out.push(...paintBase(hornFaces(-2.6, 2.2, 5.6 + PT(2.2), -1.9, 3.5, 5.2 + PT(3.5), 0.7), "#6b4732"));
+    /* 몸통 — 45도로 기운 축을 따라 자라는 기둥. 뒤가 가늘고 앞으로 갈수록 굵어져
+       기운 알 모양이 된다(지적: 몸통·머리가 피칭이 안 됨). 개인색. */
+    out.push(...tagKey(spirePillar({
+      x: 0, y: 0, h: 1, w: 1.15, tipW: 1.95, segs: 6, sides: 12, hold: 0, taper: 0.8,
+      path: (t9: number): [number, number, number] => {
+        const y9 = -2.6 + 3 * t9;
+        return [0, y9, 5.3 + PT(y9)];
+      },
+    }), 0));
+    /* 머리 — 몸통과 같은 기울기로 앞에 이어 붙는 짧은 기둥. 짙은 갈색. */
+    out.push(...tagKey(paintBase(spirePillar({
+      x: 0, y: 0, h: 1, w: 1.75, tipW: 0.5, segs: 4, sides: 12, hold: 0.1, taper: 1.4,
+      path: (t9: number): [number, number, number] => {
+        const y9 = 0.4 + 1.5 * t9;
+        return [0, y9, 5.3 + PT(y9)];
+      },
+    }), "#6b4732"), depthNow(0, 1.2) * 1.6 + 2));
+    // 큰 집게 한 쌍 — 앞팔 짙은 갈색(요청). 몸 앞에 얹히므로 한 단 더 위.
+    for (const m9 of [1, -1] as const) {
+      out.push(...tagKey(paintBase([
+        ...hornFaces(m9 * 1.3, 1, 5.8 + PT(1), m9 * 2.6, 2.2, 5.6 + PT(2.2), 0.95),
+        ...hornFaces(m9 * 2.6, 2.2, 5.6 + PT(2.2), m9 * 1.9, 3.5, 5.2 + PT(3.5), 0.7),
+      ], "#6b4732"), depthNow(m9 * 2.2, 2.2) * 1.6 + 3));
+    }
     return out;
   },
+
   /* 커세어(정정) — 몸통을 줄이고, 양팔과 아래 꼬리 포드가 모두 앞을 향해 뻗는 느낌. */
   corsair: () => {
     const [e1x, e1y] = project(-0.85, -1.5, 5.6);
