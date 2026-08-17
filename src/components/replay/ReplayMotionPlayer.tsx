@@ -7370,7 +7370,7 @@ type UnitDrawOp = {
   hpMax?: number;
   /** 상태 오라 색(전수조사: 인스네어·플레이그·빙결…) — 몸 밑에 색빛이 밴다. */
   tint?: string;
-  /** 방금 명령을 받아 잡혀 있음 — 발밑에 흰 선택 링(지적: 드래그 선택 구분). */
+  /** 방금 명령을 받아 잡혀 있음 — 발밑에 임자 색 선택 링(지적: 드래그 선택 구분). */
   selRing?: boolean;
 };
 /* 구운 판의 실제 바닥(재재지적: 드론·해처리가 떠 있고 그림자가 이상하다) — 상자
@@ -8001,20 +8001,31 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         ctx.fill();
         ctx.restore();
       }
-      /* 선택 링(지적: 드래그 선택 구분) — 잡힌 유닛 발밑의 가는 흰 타원 테.
+      /* 선택 링(지적: 드래그 선택 구분) — 잡힌 유닛 발밑의 가는 타원 테.
+         색은 임자 색이다(요청: 흰색 말고 개인색) — 누가 잡은 유닛인지 링만 보고 안다.
+         어두운 임자 색도 지형에 묻히지 않게 검은 테를 한 겹 깔고 그 위에 얹는다.
          공중 유닛은 링도 공중이다(지적: 유닛 바닥에) — 들린 몸의 바닥선에 붙인다. */
       if (op.selRing) {
         ctx.save();
         ctx.shadowColor = "transparent";
-        ctx.globalAlpha = op.alpha * 0.85;
-        ctx.strokeStyle = "rgba(240, 255, 240, 0.95)";
         /* 선 굵기는 화면 고정(지적: 링은 UI 요소 — 확대에 굵어지면 안 됨) — 반지름은
            유닛(px)을 따라가되 굵기에서 zoom을 뺀다. */
-        ctx.lineWidth = Math.max(0.7, op.sizePx * 0.025);
-        ctx.beginPath();
+        const ringW = Math.max(0.7, op.sizePx * 0.025);
         // 링도 내용물 발끝에(재지적) — 상자 고정 오프셋은 작은 모델에서 몸 아래로 떨어졌다.
         const ringY = op.air ? footY - lift : footY - px * 0.03;
-        ctx.ellipse(footX, ringY, px * 0.25, px * 0.14 * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
+        const ringPath = (): void => {
+          ctx.beginPath();
+          ctx.ellipse(footX, ringY, px * 0.25, px * 0.14 * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
+        };
+        ctx.globalAlpha = op.alpha * 0.5;
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
+        ctx.lineWidth = ringW + Math.max(0.8, ringW * 0.9);
+        ringPath();
+        ctx.stroke();
+        ctx.globalAlpha = op.alpha * 0.95;
+        ctx.strokeStyle = op.color;
+        ctx.lineWidth = ringW;
+        ringPath();
         ctx.stroke();
         ctx.restore();
       }
