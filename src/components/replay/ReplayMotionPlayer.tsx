@@ -2178,24 +2178,28 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         });
       const lo9 = rim9(5.1, 0);
       const hi9 = rim9(4.1, 2.7);
+      /* 벽을 위아래로 가른다 — 위 띠(mid→hi)만 개인색이다(재지적: 몸통 전체 말고
+         테두리만). 대야를 통째로 칠하면 건물이 임자 색 덩어리가 되고, 위 링 테두리는
+         청록 띠에, 밑동 테는 대야 그림자에 묻혀 안 보였다. */
+      const md9 = rim9(4.42, 1.95);
       const wall: ShapeFace[] = [];
+      const band: ShapeFace[] = [];
       for (let i9 = 0; i9 < N9; i9 += 1) {
         const mid9 = ((i9 + 0.5) / N9) * Math.PI * 2;
         const nx9 = Math.cos(mid9);
         const ny9 = Math.sin(mid9);
         const fl9 = faceLight(nx9, ny9, 0.35);
         if (!fl9.visible) continue;
-        const d9 = polyPath3([lo9[i9], lo9[i9 + 1], hi9[i9 + 1], hi9[i9]]);
+        const d9 = polyPath3([lo9[i9], lo9[i9 + 1], md9[i9 + 1], md9[i9]]);
         wall.push(bodyFace(d9), ...fl9.face(d9));
+        const b9 = polyPath3([md9[i9], md9[i9 + 1], hi9[i9 + 1], hi9[i9]]);
+        band.push(bodyFace(b9), ...fl9.face(b9));
       }
-      /* 개인색은 이 밑동 대야(재지적: 크레인 같은 특이 포인트 말고 넓은 면에 페인트
-         칠하듯) — 로보틱스에서 가장 넓고 장식 없는 벽이다. 크레인·청록 띠·발광 눈금·
-         금 테는 제 색으로 둔다. */
+      out.push(...tagKey([bodyFace(polyPath3(lo9)), ...wall], depthNow(0, 0) + 2.7));
       pc.push(...tagKey([
-        bodyFace(polyPath3(lo9)),
-        ...wall,
+        ...band,
         bodyFace(polyPath3(hi9)), topFace(polyPath3(hi9), 0.1),
-      ], depthNow(0, 0) + 2.7));
+      ], depthNow(0, 0) + 2.72));
     }
     // 구덩이 격자 — 대야 안쪽 우물을 가로지르는 밝은 줄.
     const bars: string[] = [];
@@ -2340,12 +2344,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 포톤 캐논(실물 참고) — 납작한 원형 판(고리 무늬) + 테두리 포드 여덟 + 가운데 가는
      수정 기둥(빛나는 끝). */
   coil: () => {
-    /* 개인색은 이 받침 원반(재지적: 포탑 같은 무기 포인트 말고 넓은 면에 페인트
-       칠하듯) — 포토에서 가장 넓고 장식 없는 면이다. 포탑·주사바늘·초록 판·금 포드는
-       제 색으로 둔다. */
-    const pc: ShapeFace[] = [...tagKey(cylinderFaces3(0, 0, 5.6, 1.3), -6)];
-    /* 받침 위 홈·톱니는 개인색 원반(키 −6)보다 뒤에 오도록 제 키를 단다. */
-    const out: ShapeFace[] = [...tagKey([
+    /* 개인색은 받침 테두리의 톱니 여덟(재지적: 몸통 전체 말고 테두리·뚜껑만) —
+       받침 원반을 통째로 칠하니 건물이 임자 색 덩어리가 됐다. 포탑·주사바늘·초록 판·
+       금 포드는 제 색으로 둔다. */
+    const pc: ShapeFace[] = [];
+    /* 받침 위 홈·톱니는 받침 원반(키 −6)보다 뒤에 오도록 제 키를 단다. */
+    const out: ShapeFace[] = [...tagKey(cylinderFaces3(0, 0, 5.6, 1.3), -6), ...tagKey([
       capFace(discPath3(0, 0, 1.35, 4.4), 0.3),
       topFace(discPath3(0, 0, 1.38, 3.2), 0.2),
       capFace(discPath3(0, 0, 1.41, 2.1), 0.3),
@@ -2354,7 +2358,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        반지름을 밖으로 빼면, 앞 톱니는 벽 앞·뒤 톱니는 벽 뒤로 자연히 갈린다. */
     for (let i = 0; i < 8; i += 1) {
       const a = (i * 45 * Math.PI) / 180;
-      out.push(...tagKey(boxFaces3(Math.sin(a) * 6.15, Math.cos(a) * 6.15, 1.5, 1.5, 1.7), -5));
+      pc.push(...tagKey(boxFaces3(Math.sin(a) * 6.15, Math.cos(a) * 6.15, 1.5, 1.5, 1.7), -5));
     }
     /* 가운데 포탑은 받침 위 얹힘(재지적: 바닥이 포탑을 가림) — 지붕 띠 키로 받침
        (반지름 키)·이음 원반들을 늘 이긴다. */
@@ -3017,13 +3021,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...tagKey(paintBase(boxFaces3(fx, fy, 1.5, 1.1, 0.35, 0), "#c9ced6"),
         depthNow(fx, fy) * 1.6 - 2));
     }
-    /* 큰 황금 돔(오른뒤) — 위에 청록 눈. 옆구리에 붉은 띠.
-       개인색은 이 돔의 몸(재지적: 톱니 바퀴 같은 특이 포인트 말고 넓은 면에 페인트
-       칠하듯) — 포지에서 가장 넓고 장식 없는 면이다. 청록 눈·붉은 띠·밑동 테는 제
-       색으로 둔다. */
-    pc.push(...tagKey([
+    /* 큰 황금 돔(오른뒤) — 위에 청록 눈. 옆구리에 붉은 띠. */
+    out.push(...tagKey([
       ...paintBase(cylinderFaces3(2.2, -0.6, 3, 1.4, 0.3), GOLD_D),
-      ...domeFaces3(2.2, -0.6, 3, 3.4, 1.7),
+      ...paintBase(domeFaces3(2.2, -0.6, 3, 3.4, 1.7), GOLD),
       ...paintBase(cylinderFaces3(2.2, -0.6, 3.04, 0.4, 1.9), RED),
     /* 키는 한 자로(재지적: 포지 키값이 아직 문제) — 붙박이 상수(6·8·10·12·14·16)가
        깊이 항(±5)보다 커서 요잉과 무관하게 상수가 순서를 지배했다. 부품들은 서로
@@ -3061,15 +3062,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 관 팔은 뿔탑과 돔 사이를 건너므로 제 가운데 깊이 + 반 칸만 얹는다.
       ], depthNow((ax + 1.4) / 2, sy9 + 0.45) * 1.6 + 0.5));
     }
-    /* 앞왼쪽 골진 황금 단(사진) — 층층이 골이 팬 낮은 상자. */
+    /* 앞왼쪽 골진 황금 단(사진) — 층층이 골이 팬 낮은 상자. 개인색은 이 단만(재지적:
+       몸통 전체 말고 일부만) — 큰 돔을 통째로 칠하니 건물이 임자 색 덩어리가 됐다.
+       앞자리 낮은 상자라 색은 눈에 들되 황금 몸은 그대로 남는다. 골 줄은 제 색. */
     {
-      const blk: ShapeFace[] = [...paintBase(boxFaces3(-2.4, 2.3, 3.6, 2.6, 1.7, 0.3), GOLD)];
+      const blk: ShapeFace[] = [...boxFaces3(-2.4, 2.3, 3.6, 2.6, 1.7, 0.3)];
       // 골은 셋만(요청: 장식 축소). 곁 혹도 걷는다.
       for (let k = 0; k < 3; k += 1) {
         const gx = -3.5 + k * 1.1;
         blk.push(...paintBase(boxFaces3(gx, 2.3, 0.3, 2.7, 0.34, 2), GOLD_D));
       }
-      out.push(...tagKey(blk, depthNow(-2.4, 2.3) * 1.6));
+      pc.push(...tagKey(blk, depthNow(-2.4, 2.3) * 1.6));
     }
     /* 앞쪽 톱니 바퀴(복원·지적: 포지의 킥인데 빠졌다) — 좌우를 보고 선 2/3 원 판에
        이빨이 둘러 박힌다. 안팎 두 판을 이빨 슬래브로 봉합해 두께를 준다. */
@@ -3141,14 +3144,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...tagKey(hornFaces(-0.9, -1.5, 3.8, -1.3, -2.1, 8, 1), depthNow(-1.1, -1.8) + 1.2),
       ...tagKey(hornFaces(0, -1.8, 3.8, 0, -2.5, 8.6, 1.1), depthNow(0, -2.1) + 1.2),
       ...tagKey(hornFaces(0.9, -1.5, 3.8, 1.3, -2.1, 8, 1), depthNow(1.1, -1.8) + 1.2),
-      // 포드 몸 넷 — 개인색 드럼(키 −6) 뒤에 온다.
-      ...POD.flatMap(([px2, py2]) => podBody(px2, py2)),
-      // 위 파란 발광 고리 — 반투명 판 위에 금 뚜껑.
+      // 가운데 드럼.
+      ...tagKey(cylinderFaces3(0, -0.2, 2.5, 3.3), -6),
+      // 위 파란 발광 고리의 금 뚜껑.
       ...tagKey([
-        [groundEllipse(cx2, cy2, 2.3, 1.15), 0.55] as ShapeFace,
         bodyFace(groundEllipse(cx2, cy2, 1.45, 0.72)),
         topFace(groundEllipse(cx2, cy2, 1.05, 0.5), 0.25),
-      ], -5),
+      ], -4.8),
+      // 위 파란 발광 고리 — 반투명 판. 그 위 뚜껑은 개인색이라 accent로 뺐다.
+      ...tagKey([[groundEllipse(cx2, cy2, 2.3, 1.15), 0.55] as ShapeFace], -5),
       // 포드 넷의 구슬·갈고리 — 몸(개인색, 키 −4) 위에 얹힌다.
       ...POD.flatMap(([px2, py2]) => podTop(px2, py2)),
       /* 사진 디테일(요청) — 허리에 청록 띠, 발치에 금 테. 형태는 기존
@@ -3156,10 +3160,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...tagKey(paintBase(cylinderFaces3(0, 0, 2.85, 0.28, 1.3), "#2f8f86"), 30),
       ...tagKey(paintBase(cylinderFaces3(0, 0, 3.3, 0.3, 0.15), "#8a6f2a"), -2),
     ], "toss", [
-      /* 개인색은 가운데 드럼(재지적: 발톱·구슬 같은 특이 포인트 말고 넓은 면에 페인트
-         칠하듯) — 사이버에서 가장 넓고 장식 없는 벽이다. 발톱·구슬·갈고리·발광 고리·
-         허리 청록 띠는 제 색으로 둔다. */
-      ...tagKey(cylinderFaces3(0, -0.2, 2.5, 3.3), -6),
+      /* 개인색은 둘레 포드 넷의 몸(재지적: 몸통 전체 말고 일부만) — 드럼을 통째로
+         칠하니 건물이 임자 색 덩어리가 됐고, 꼭대기 뚜껑만 칠했더니 뒤에서 볼 때
+         완전히 가려졌다. 사방에 하나씩 놓인 민민한 반구라 어느 요잉에서도 하나는
+         보인다. 구슬·갈고리·발톱·발광 고리·허리 띠는 제 색으로 둔다. */
+      ...POD.flatMap(([px2, py2]) => podBody(px2, py2)),
     ]);
   },
   /* 시타델 오브 아둔 — 좁아지는 탑 + 꼭대기 뾰족. */
@@ -3213,11 +3218,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       return [rx2, ry2, pz2];
     };
     return raceBase([
-      // 왼뒤 뿔 한 쌍 — 개인색 몸(키 0)보다 앞서 그린다.
+      // 왼뒤 뿔 한 쌍 — 개인색 받침 테(키 −1)보다 앞서 그린다.
       ...tagKey([
         ...hornFaces(-1.6, -1.4, 2.6, -3.2, -2.4, 6.6, 1.1),
         ...hornFaces(-0.2, -2, 2.8, -0.8, -3.2, 7, 1.2),
       ], -3),
+      // 큰 황금 몸 — 위는 분화구처럼 깎는다. 개인색은 아래 받침 테만.
+      ...tagKey(domeFaces3(0, 0, 2.9, 1.6, 0.7), 0),
       // 분화구 — 꼭대기를 깎은 어두운 접시 + 안쪽 더 깊은 그늘.
       [groundEllipse(...project(0, 0, 2.15), 1.75, 1.05), 0.3, "#000"] as ShapeFace,
       [groundEllipse(...project(0, 0, 2.05), 1.15, 0.7), 0.42, "#000"] as ShapeFace,
@@ -3255,13 +3262,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...tagKey(paintBase(cylinderFaces3(0, 0, 2.75, 0.28, 2.6), "#2f8f86"), 30),
       ...tagKey(paintBase(cylinderFaces3(0, 0, 3.4, 0.3, 0.2), "#8a6f2a"), -2),
     ], "toss", [
-      /* 개인색은 큰 몸과 받침(재지적: 뿔·꼬리 같은 특이 포인트 말고 넓은 면에 페인트
-         칠하듯) — 아카이브에서 가장 넓고 장식 없는 면이다. 뿔·껍데기 꼬리·옥색 렌즈·
-         세로줄·분화구 그늘은 제 색으로 둔다. */
-      ...tagKey([
-        ...cylinderFaces3(0, 0, 2.9, 0.7),
-        ...domeFaces3(0, 0, 2.9, 1.6, 0.7),
-      ], 0),
+      /* 개인색은 아래 받침 테만(재지적: 몸통 전체 말고 테두리·뚜껑만) — 큰 몸까지
+         칠하니 건물이 임자 색 덩어리가 됐다. 몸을 두르는 낮은 테라 사방에서 보인다.
+         뿔·껍데기 꼬리·옥색 렌즈·세로줄·분화구 그늘은 제 색으로 둔다. */
+      ...tagKey(cylinderFaces3(0, 0, 2.9, 0.7), -1),
     ]);
   },
   /* 로보틱스 서포트 베이(실물 참고) — 톱니 테 받침판 가운데 오목한 대접(심 발광),
@@ -3398,16 +3402,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...hornFaces(-2, -1.4, 1.5, -3.2, -2.6, 0.2, 0.85),
         ...hornFaces(2, -1.4, 1.5, 3.2, -2.6, 0.2, 0.85),
       ], -3),
-      // 왼팔 드럼 포드 + 오른 원반.
-      ...tagKey([
-        ...tubeFaces(-3, -0.6, -4.4, -0.6, 0.5, 2.5),
-        ...cylinderFaces3(-4.7, -0.6, 0.75, 0.9, 2.1),
-        capFace(discPath3(-4.7, -0.6, 3.05, 0.5), 0.35),
-      ], 10 + depthNow(-4, -0.6)),
-      ...tagKey([
-        ...cylinderFaces3(3.3, -0.9, 0.9, 0.6, 2.5),
-        topFace(groundEllipse(rx2, ry2, 0.6, 0.4), 0.3),
-      ], 10 + depthNow(3.3, -0.9)),
+      // 낮고 둥근 몸 — 개인색 다리(키 −3)보다 뒤에 온다.
+      ...tagKey(domeFaces3(0, 0, 3.1, 2.3), 0),
       // 큰 파란 구슬 — 몸 위 얹힘이라 지붕 키(지적: 구슬 가려짐 오류).
       ...tagKey([
         // 수정구를 감싸던 겉 구는 제거(요청) — 연한 시안 반투명 구슬만.
@@ -3419,10 +3415,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...tagKey(paintBase(cylinderFaces3(0, 0, 2.9, 0.28, 1.6), "#2f8f86"), 30),
       ...tagKey(paintBase(cylinderFaces3(0, 0, 3.4, 0.3, 0.15), "#8a6f2a"), -2),
     ], "toss", [
-      /* 개인색은 낮고 둥근 몸(재지적: 다리·구슬 같은 특이 포인트 말고 넓은 면에
-         페인트 칠하듯) — 플릿 비컨에서 유일하게 넓고 장식 없는 면이다. 게발 다리·
-         파란 구슬·양팔 부속·청록 띠·금 테는 제 색으로 둔다. */
-      ...tagKey(domeFaces3(0, 0, 3.1, 2.3), 0),
+      /* 개인색은 양팔 부속만(재지적: 몸통 전체 말고 일부만) — 둥근 몸까지 칠하니
+         건물이 임자 색 덩어리가 됐다. 왼팔 드럼 포드와 오른 원반은 몸 밖으로 나와
+         있어 작아도 좌우에서 또렷하다. 다리·구슬·청록 띠·금 테는 제 색으로 둔다. */
+      ...tagKey([
+        ...tubeFaces(-3, -0.6, -4.4, -0.6, 0.5, 2.5),
+        ...cylinderFaces3(-4.7, -0.6, 0.75, 0.9, 2.1),
+        capFace(discPath3(-4.7, -0.6, 3.05, 0.5), 0.35),
+      ], 10 + depthNow(-4, -0.6)),
+      ...tagKey([
+        ...cylinderFaces3(3.3, -0.9, 0.9, 0.6, 2.5),
+        topFace(groundEllipse(rx2, ry2, 0.6, 0.4), 0.3),
+      ], 10 + depthNow(3.3, -0.9)),
     ]);
   },
   /* 아비터 트리뷰널(정정 둘) — 불가사리 팔 네 개의 바닥은 유지하되, 위 구슬 대신
@@ -3445,19 +3449,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       );
     };
     return raceBase([
-      // 불가사리 팔 넷 — 개인색 돔(키 0)보다 앞서 그린다.
+      // 불가사리 팔 넷.
       ...tagKey([...arm(135), ...arm(225), ...arm(45), ...arm(-45)], -3),
-      // 기둥 다섯 — 돔 위에 곧게 선다. 개인색 돔(키 0) 뒤에 온다.
-      ...post(180), ...post(108), ...post(252), ...post(36), ...post(-36),
+      // 가운데 돔 — 개인색은 그 위 기둥 다섯이 맡는다.
+      ...tagKey(domeFaces3(0, 0, 2.6, 2.2, 0.8), 0),
       /* 사진 디테일(요청) — 허리에 청록 띠, 발치에 금 테. 형태는 기존
          제작도 그대로 두고 색 띠만 얹는다. */
       ...tagKey(paintBase(cylinderFaces3(0, 0, 2.65, 0.28, 2.4), "#2f8f86"), 30),
       ...tagKey(paintBase(cylinderFaces3(0, 0, 3.2, 0.3, 0.2), "#8a6f2a"), -2),
     ], "toss", [
-      /* 개인색은 가운데 돔(재지적: 기둥 같은 특이 포인트 말고 넓은 면에 페인트
-         칠하듯) — 트리뷰널에서 가장 넓고 장식 없는 벽이다. 바닥 팔은 돔·띠에 거의
-         가려 색이 안 보였다. 기둥 다섯·불가사리 팔·청록 띠·금 테는 제 색으로 둔다. */
-      ...tagKey(domeFaces3(0, 0, 2.6, 2.2, 0.8), 0),
+      /* 개인색은 돔 위 기둥 다섯만(재지적: 몸통 전체 말고 일부만) — 돔까지 칠하니
+         건물이 임자 색 덩어리가 됐다. 기둥은 꼭대기에 곧게 서서 어느 요잉에서도
+         보인다. 불가사리 팔·돔·청록 띠·금 테는 제 색으로 둔다. */
+      ...post(180), ...post(108), ...post(252), ...post(36), ...post(-36),
     ]);
   },
   /* 실드 배터리(정정 둘) — 몸은 얇게, 다리는 빨대: 가늘게 수평으로 뻗다가 끝이
