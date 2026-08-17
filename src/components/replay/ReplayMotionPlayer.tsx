@@ -9610,7 +9610,8 @@ export default function ReplayMotionPlayer({
           /* 간헐천은 제 발자국 그대로 4타일(전수조사: 6.4타일로 그려져 제 발자국(4×2)
              보다 60% 넓었다 — 그 위에 앉는 정제소(4타일)가 못 덮어 가스 건물 주위로
              간헐천이 삐져나오던 원인이기도 하다). */
-          const wTiles = gasSpot ? 4 : 2.9;
+          // 미네랄 확대(재지적: 크기도 너무 작아) — 2.9 → 4.2타일 폭.
+          const wTiles = gasSpot ? 4 : 4.2;
           unitOps.push({
             fx, fy,
             /* 자원도 높이를 가진다(지적: 뒤 사물을 가려야) — 990 바닥층이 아니라 건물과
