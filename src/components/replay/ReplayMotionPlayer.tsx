@@ -850,22 +850,25 @@ function protossTorso(fill: string, lift = 0): ShapeFace[] {
 }
 /* 프로토스 인간형 공통 다리(요청: 하템도 같은 2관절) — 넓적다리 앞, 정강이 뒤, 긴 발이
    앞아래 대각선. 대퇴·하지 색을 따로 받는다(하템은 하지가 개인색). */
-function protossLegs(thighFill?: string, shinFill?: string, lift = 0): ShapeFace[] {
+function protossLegs(thighFill?: string, shinFill?: string, lift = 0, shrink = 1): ShapeFace[] {
   const paint = (f: ShapeFace[], c?: string): ShapeFace[] => (c ? paintBase(f, c) : f);
+  /* 다리 길이 줄이기(요청: 하이템플러는 짧게) — 엉덩이(3.95)를 축으로 z를 눌러
+     비율만 줄인다. 굽힘 각도와 팔자 벌림은 그대로 남는다. */
+  const Z = (z: number): number => 3.95 + (z - 3.95) * shrink + lift;
   const out: ShapeFace[] = [];
   for (const m of [-1, 1] as const) {
     /* 대퇴는 길고 곧게 세우고, 정강이는 더 굽히며, 무릎·발끝이 바깥으로 벌어지는
        팔자다리(재지적) — 발 관절은 지면(z 0)에 맞춰 마지막 마디가 눕는다. */
-    out.push(...paint(rodFaces(m * 0.5, -0.3, 3.95 + lift, m * 0.82, 0.3, 2.2 + lift, 0.66), thighFill));
+    out.push(...paint(rodFaces(m * 0.5, -0.3, Z(3.95), m * 0.82, 0.3, Z(2.2), 0.66), thighFill));
     out.push(...paint([
-      ...rodFaces(m * 0.82, 0.3, 2.2 + lift, m * 0.95, -0.75, 1 + lift, 0.56),
-      ...rodFaces(m * 0.95, -0.75, 1 + lift, m * 1.04, 0.5, 0.15 + lift, 0.47),
+      ...rodFaces(m * 0.82, 0.3, Z(2.2), m * 0.95, -0.75, Z(1), 0.56),
+      ...rodFaces(m * 0.95, -0.75, Z(1), m * 1.04, 0.5, Z(0.15), 0.47),
     ], shinFill));
     /* 발끝 팁(요청) — 지면에 수평으로 눕는 삼각 말굽. 윗판·밑판과 옆면 띠로 두께를
        줘 납작한 판이 아니라 굽으로 보인다. */
     const fx = m * 1.08;
     const fy = 0.65;
-    const fz = 0.06 + lift;
+    const fz = Z(0.06);
     const tri = (z: number): [number, number, number][] => [
       [fx - 0.34, fy - 0.42, z], [fx + 0.34, fy - 0.42, z], [fx + m * 0.06, fy + 0.6, z],
     ];
@@ -4014,6 +4017,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const a = (ang * Math.PI) / 180;
       return [Math.sin(a) * r, Math.cos(a) * r];
     };
+    /* 앞부분을 45도쯤 든다(요청: 핀칭) — 앞(+y)으로 갈수록 z를 같은 비율로 올려
+       몸 전체가 앞을 들고 뜬 자세가 된다. 모든 부품의 높이에 같은 자를 댄다. */
+    const PT = (y9: number): number => y9;
     const out: ShapeFace[] = [];
     // 갈퀴막 — 이웃 다리 끝까지 잇는 여섯 폭 치마.
     for (let i = 0; i < 6; i += 1) {
@@ -4025,8 +4031,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 갈퀴막 짙은 살색(요청) — 공용 막 도형으로 갈퀴 골과 힘줄을 준다(요청:
          드론·뮤탈 날개 같은 디테일). 뿌리는 몸통 쪽 두 점, 바깥은 다리 끝 두 점이다. */
       out.push(...membraneFaces(
-        [[x1, y1, 5.1], [x2, y2, 5.1]],
-        [[t1x, t1y, 4.05], [t2x, t2y, 4.05]],
+        [[x1, y1, 5.1 + PT(y1)], [x2, y2, 5.1 + PT(y2)]],
+        [[t1x, t1y, 4.05 + PT(t1y)], [t2x, t2y, 4.05 + PT(t2y)]],
         "#c68a62", { shade: 0.15, notch: 0.26 },
       ));
     }
@@ -4035,12 +4041,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const [x1, y1] = P(i * 60 + 30, 1.2);
       const [t1x, t1y] = P(i * 60 + 30, 2.45);
       // 다리 짙은 갈색(재지적).
-      out.push(...paintBase(hornFaces(x1, y1, 5.2, t1x, t1y, 4, 0.65), "#6b4732"));
+      out.push(...paintBase(
+        hornFaces(x1, y1, 5.2 + PT(y1), t1x, t1y, 4 + PT(t1y), 0.65), "#6b4732",
+      ));
     }
-    out.push(...domeFaces3(0, -1.1, 1.95, 1.75, 5.3));
+    out.push(...domeFaces3(0, -1.1, 1.95, 1.75, 5.3 + PT(-1.1)));
     // (삭제·요청) 등 점 세 개.
     // 머리 짙은 갈색(요청).
-    out.push(...paintBase(domeFaces3(0, 0.7, 1.2, 0.9, 5.5), "#6b4732"));
+    out.push(...paintBase(domeFaces3(0, 0.7, 1.2, 0.9, 5.5 + PT(0.7)), "#6b4732"));
     /* 꼬리 대신 뿔기둥 둘(요청) — 등 뒤에서 솟아 앞으로 휙 휘어 넘어오는 한 쌍.
        마디 없이 공용 도형 하나로 굽히고, 색은 옛 독침꼬리와 같은 검회색이다. */
     /* 꼬리 촉수(정정 요청: 뿔이 아니라 그냥 입체 직사각 막대) — 굵기가 처음부터 끝까지
@@ -4048,10 +4056,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        아래로 휜다: 축의 z를 한 번 올렸다 내리는 이차식으로 그린다. */
     // (삭제·요청) 꼬리 촉수 한 쌍.
     // 큰 집게 한 쌍 — 앞팔 짙은 갈색(요청).
-    out.push(...paintBase(hornFaces(1.3, 1, 5.8, 2.6, 2.2, 5.6, 0.95), "#6b4732"));
-    out.push(...paintBase(hornFaces(2.6, 2.2, 5.6, 1.9, 3.5, 5.2, 0.7), "#6b4732"));
-    out.push(...paintBase(hornFaces(-1.3, 1, 5.8, -2.6, 2.2, 5.6, 0.95), "#6b4732"));
-    out.push(...paintBase(hornFaces(-2.6, 2.2, 5.6, -1.9, 3.5, 5.2, 0.7), "#6b4732"));
+    out.push(...paintBase(hornFaces(1.3, 1, 5.8 + PT(1), 2.6, 2.2, 5.6 + PT(2.2), 0.95), "#6b4732"));
+    out.push(...paintBase(hornFaces(2.6, 2.2, 5.6 + PT(2.2), 1.9, 3.5, 5.2 + PT(3.5), 0.7), "#6b4732"));
+    out.push(...paintBase(hornFaces(-1.3, 1, 5.8 + PT(1), -2.6, 2.2, 5.6 + PT(2.2), 0.95), "#6b4732"));
+    out.push(...paintBase(hornFaces(-2.6, 2.2, 5.6 + PT(2.2), -1.9, 3.5, 5.2 + PT(3.5), 0.7), "#6b4732"));
     return out;
   },
   /* 커세어(정정) — 몸통을 줄이고, 양팔과 아래 꼬리 포드가 모두 앞을 향해 뻗는 느낌. */
@@ -4637,11 +4645,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 갈퀴치마 재작도(요청) — 갈고리를 아래로 내리고, 치마가 '몸통 옆면 ↔ 갈고리'를
        잇는 막이 되게 한다. 뮤탈 날개처럼 디테일을 준다: 바깥 가장자리를 세 번 우묵하게
        파고, 뿌리에서 갈고리로 뻗는 힘줄을 얹어 얇은 막처럼 읽힌다. */
-    /* 앞부분을 들어 올린다(요청: 45도쯤 핀칭) — 앞(+y)으로 갈수록 z를 같은 비율로
-       올려 몸 앞머리가 45도로 들린 자세가 된다. 갈고리·치마가 함께 따라 올라간다. */
-    const PITCH = 1; // tan 45도
+    // (되돌림·정정 요청: 핀칭은 드론이 아니라 퀸이었다) — 드론은 수평 자세 그대로.
     const up = (x9: number, y9: number, z9: number): [number, number, number] =>
-      [x9, y9, z9 + y9 * PITCH];
+      [x9, y9, z9];
     const CLAW_Z = 3;
     const CLAW_S = 0.7;
     const web = (m: 1 | -1): ShapeFace[] => {
@@ -4662,12 +4668,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...web(1),
       ...web(-1),
       // 뒷몸 짙은 갈색(요청).
-      ...tagKey(paintBase(domeFaces3(0, -2.1, 1.5, 1.2, 3.5 - 2.1 * PITCH), "#6b4732"),
+      ...tagKey(paintBase(domeFaces3(0, -2.1, 1.5, 1.2, 3.5), "#6b4732"),
         depthNow(0, -2.1) * 1.6 + 1),
-      ...tagKey(domeFaces3(0, -0.7, 2, 1.7, 3.5 - 0.7 * PITCH), depthNow(0, -0.7) * 1.6 + 1),
+      ...tagKey(domeFaces3(0, -0.7, 2, 1.7, 3.5), depthNow(0, -0.7) * 1.6 + 1),
       /* 갈고리 — 아래로 내린다(요청: z 4 → 3). 치마가 그 안쪽 변에 물린다. */
-      ...tagKey(ivory(claw3(1, CLAW_S, CLAW_Z + 1.5 * PITCH)), depthNow(2, 1.5) * 1.6 + 2),
-      ...tagKey(ivory(claw3(-1, CLAW_S, CLAW_Z + 1.5 * PITCH)), depthNow(-2, 1.5) * 1.6 + 2),
+      ...tagKey(ivory(claw3(1, CLAW_S, CLAW_Z)), depthNow(2, 1.5) * 1.6 + 2),
+      ...tagKey(ivory(claw3(-1, CLAW_S, CLAW_Z)), depthNow(-2, 1.5) * 1.6 + 2),
     ];
   },
 
@@ -4814,10 +4820,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 치마를 첨탑기둥으로(요청: 둥글게) — 각진 프러스텀 대신 12각 기둥으로 세워
        아랫단이 넓고 허리로 갈수록 좁아지는 둥근 종 모양이 된다. 기둥은 아래에서 위로
        자라니 '치맛단 → 허리' 순으로 정의한다. 여전히 맨 뒤 고정 키(몸통에 안 튀게). */
+    /* 더 작고 짧게(요청) — 치맛단 반지름 1.6 → 1.2, 길이 1.75 → 1.15로 줄이고 허리를
+       올린다. 키도 고친다(요청): 맨 뒤 붙박이(-100)는 늘 다리 뒤로 밀려 안 보였다.
+       회전 대칭이라 제 자리 깊이만으로 앞뒤가 옳게 갈린다. */
     ...tagKey(spirePillar({
-      x: 0, y: -0.1, z0: 2.3, h: 1.75, w: 1.6, tipW: 0.92,
-      segs: 4, sides: 12, hold: 0.12, taper: 0.7,
-    }), -100),
+      x: 0, y: -0.1, z0: 2.7, h: 1.15, w: 1.2, tipW: 0.82,
+      segs: 3, sides: 12, hold: 0.12, taper: 0.7,
+    }), depthNow(0, -0.1) * 1.6),
     // 얼굴 — 공통 턱주가리(요청). 뒤로 솟던 머리 뿔은 제거.
     /* 머리 깊이는 제 자리로(지적: 몸통에 안 가려짐) — 붙박이 키 20은 뒤에서 볼 때도
        머리가 몸통을 뚫고 나왔다. 앞으로 숙인 머리의 중심(y 0.4) 깊이를 쓰면 앞에선
@@ -4897,11 +4906,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   htemp: () => {
     const [gx, gy] = project(0, 0.2, 3.2);
     // 떠 있을 뿐 다리는 있다(요청) — 공통 다리·몸통을 통째로 띄운다.
-    const L = 0.8;
+    // 더 높이 띄운다(요청) — 0.8 → 1.6.
+    const L = 1.6;
     return [
       topFace(groundEllipse(gx, gy, 1.6, 0.8), 0.3),
-      // 다리는 금색(재지적) — 하완만 개인색.
-      ...protossLegs(P_GOLD, P_GOLD, L),
+      // 다리는 금색(재지적) — 다리 길이 축소(요청): 엉덩이 축으로 0.68배.
+      ...protossLegs(P_GOLD, P_GOLD, L, 0.68),
       ...protossTorso(P_GOLD, L),
       /* 앞가리개(요청) — 허리부터 발목까지. 몸에 딱 붙인다(재지적: 떠 보였다) —
          몸통 앞면(y 0.55)에 얹고 아래로 살짝만 벌어진다. */
@@ -4918,18 +4928,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...domeFaces3(-1.15, -0.25, 0.55, 0.45, 5.8 + L),
       ...domeFaces3(1.15, -0.25, 0.55, 0.45, 5.8 + L),
       /* 팔 두 마디 — 상완 금색, 하완 개인색(요청). 살짝만 앞으로 든다. */
-      ...paintBase(rodFaces(1.05, -0.2, 5.7 + L, 1.35, 0.25, 4.7 + L, 0.45), P_GOLD),
-      ...rodFaces(1.35, 0.25, 4.7 + L, 1.2, 1, 4.45 + L, 0.38),
-      ...paintBase(rodFaces(-1.05, -0.2, 5.7 + L, -1.35, 0.25, 4.7 + L, 0.45), P_GOLD),
-      ...rodFaces(-1.35, 0.25, 4.7 + L, -1.2, 1, 4.45 + L, 0.38),
+      /* 팔은 더 길고 더 높이 든다(요청: 마법 주문 자세) — 상완이 어깨에서 위·앞으로
+         올라가고, 하완이 다시 위로 뻗어 손이 머리 높이를 넘는다. */
+      ...paintBase(rodFaces(1.05, -0.2, 5.7 + L, 1.75, 0.5, 6.5 + L, 0.45), P_GOLD),
+      ...rodFaces(1.75, 0.5, 6.5 + L, 1.5, 1.15, 7.9 + L, 0.38),
+      ...paintBase(rodFaces(-1.05, -0.2, 5.7 + L, -1.75, 0.5, 6.5 + L, 0.45), P_GOLD),
+      ...rodFaces(-1.75, 0.5, 6.5 + L, -1.5, 1.15, 7.9 + L, 0.38),
       /* 손(요청) — 흰색, 손가락 긴 형태. */
       ...paintBase([
-        ...domeFaces3(1.2, 1.05, 0.26, 0.22, 4.35 + L),
-        ...hornFaces(1.14, 1.1, 4.4 + L, 1.1, 1.62, 3.95 + L, 0.13),
-        ...hornFaces(1.3, 1.05, 4.4 + L, 1.38, 1.52, 3.95 + L, 0.13),
-        ...domeFaces3(-1.2, 1.05, 0.26, 0.22, 4.35 + L),
-        ...hornFaces(-1.14, 1.1, 4.4 + L, -1.1, 1.62, 3.95 + L, 0.13),
-        ...hornFaces(-1.3, 1.05, 4.4 + L, -1.38, 1.52, 3.95 + L, 0.13),
+        ...domeFaces3(1.48, 1.2, 0.26, 0.22, 7.95 + L),
+        ...hornFaces(1.42, 1.25, 8 + L, 1.34, 1.7, 8.7 + L, 0.13),
+        ...hornFaces(1.58, 1.2, 8 + L, 1.66, 1.62, 8.7 + L, 0.13),
+        ...domeFaces3(-1.48, 1.2, 0.26, 0.22, 7.95 + L),
+        ...hornFaces(-1.42, 1.25, 8 + L, -1.34, 1.7, 8.7 + L, 0.13),
+        ...hornFaces(-1.58, 1.2, 8 + L, -1.66, 1.62, 8.7 + L, 0.13),
       ], "#e9edf0"),
     ];
   },
