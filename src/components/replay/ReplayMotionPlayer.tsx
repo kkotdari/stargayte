@@ -4662,26 +4662,61 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 드론(정정) — 갈퀴치마는 집게 사이가 아니라 집게팔과 꼬리 사이, 양옆에 부채처럼
      펼쳐진다. 몸통(꼬리 겹돔) + 칼날팔 한 쌍 + 양옆 톱니 부채막. */
   drone: () => {
-    // 치마는 지면과 수평(지적) — 높이를 한 값(3.4)으로 편다.
-    const fan = (m: 1 | -1): string => polyPath3([
-      [m * 1.5, 0.6, 3.4],
-      [m * 2.6, 2.2, 3.4], [m * 2.3, 1.2, 3.4],
-      [m * 3.2, 0.4, 3.4], [m * 2.6, -0.4, 3.4],
-      [m * 3.3, -1.4, 3.4], [m * 2.2, -2.2, 3.4],
-      [m * 0.9, -3, 3.4],
-    ]);
+    /* 갈퀴치마 재작도(요청) — 갈고리를 아래로 내리고, 치마가 '몸통 옆면 ↔ 갈고리'를
+       잇는 막이 되게 한다. 뮤탈 날개처럼 디테일을 준다: 바깥 가장자리를 세 번 우묵하게
+       파고, 뿌리에서 갈고리로 뻗는 힘줄을 얹어 얇은 막처럼 읽힌다. */
+    const CLAW_Z = 3;
+    const CLAW_S = 0.7;
+    const web = (m: 1 | -1): ShapeFace[] => {
+      // 몸통 옆면 부착점 셋(뒤 → 앞)과 갈고리 쪽 바깥점 넷.
+      const A: [number, number, number][] = [
+        [m * 1.3, -1.7, 3.25], [m * 1.75, -0.4, 3.35], [m * 1.5, 0.95, 3.45],
+      ];
+      const C: [number, number, number][] = [
+        [m * 1.95, -2.5, 2.95], [m * 2.95, -1.1, 3], [m * 3.25, 0.5, 3.05], [m * 2.5, 2, 3.1],
+      ];
+      // 바깥 가장자리 — 이웃한 두 끝점 사이를 안쪽으로 우묵하게 판다.
+      const edge: [number, number, number][] = [];
+      for (let k = 0; k < C.length; k += 1) {
+        edge.push(C[k]);
+        if (k + 1 < C.length) {
+          const n: [number, number, number] = [
+            (C[k][0] + C[k + 1][0]) / 2 * 0.72,
+            (C[k][1] + C[k + 1][1]) / 2 * 0.72,
+            (C[k][2] + C[k + 1][2]) / 2,
+          ];
+          edge.push(n);
+        }
+      }
+      const outline = polyPath3([...A, ...[...edge].reverse()]);
+      const out9: ShapeFace[] = [
+        [outline, 1, "#c68a62"] as ShapeFace,
+        m > 0 ? sideFace(outline, 0.16) : sideFace(outline, 0.13),
+      ];
+      // 힘줄 — 뿌리에서 바깥 끝점으로 뻗는 가는 띠. 막의 결을 말한다.
+      for (let k = 0; k < C.length; k += 1) {
+        const a9 = A[Math.min(A.length - 1, Math.round((k / (C.length - 1)) * (A.length - 1)))];
+        const [rx, ry] = project(a9[0], a9[1], a9[2]);
+        const [tx, ty] = project(C[k][0], C[k][1], C[k][2]);
+        const dx = tx - rx;
+        const dy = ty - ry;
+        const dl = Math.hypot(dx, dy) || 1;
+        const nx = (-dy / dl) * 0.09;
+        const ny = (dx / dl) * 0.09;
+        out9.push(sideFace(`M${rx + nx} ${ry + ny} L${tx + nx} ${ty + ny}`
+          + ` L${tx - nx} ${ty - ny} L${rx - nx} ${ry - ny} Z`, 0.22));
+      }
+      return tagKey(out9, depthNow(m * 2.2, -0.2) * 1.6);
+    };
     return [
-      // 양옆 갈퀴 짙은 살색(요청: 주황끼).
-      [fan(1), 1, "#c68a62"] as ShapeFace, sideFace(fan(1), 0.16),
-      [fan(-1), 1, "#c68a62"] as ShapeFace, sideFace(fan(-1), 0.13),
+      ...web(1),
+      ...web(-1),
       // 뒷몸 짙은 갈색(요청).
-      ...paintBase(domeFaces3(0, -2.1, 1.5, 1.2, 3.5), "#6b4732"),
-      ...domeFaces3(0, -0.7, 2, 1.7, 3.5),
-      /* 갈고리를 스파이어 기둥으로 재해석(요청) — 밑동은 굵은 다각 기둥, 끝으로
-         갈수록 가늘어지며 앞·안으로 휜다. 상아색. */
-      // 팔도 다른 갈고리와 같은 휘어진 낫 날(원복).
-      ...ivory(claw3(1, 0.7, 4)),
-      ...ivory(claw3(-1, 0.7, 4)),
+      ...tagKey(paintBase(domeFaces3(0, -2.1, 1.5, 1.2, 3.5), "#6b4732"), depthNow(0, -2.1) * 1.6 + 1),
+      ...tagKey(domeFaces3(0, -0.7, 2, 1.7, 3.5), depthNow(0, -0.7) * 1.6 + 1),
+      /* 갈고리 — 아래로 내린다(요청: z 4 → 3). 치마가 그 안쪽 변에 물린다. */
+      ...tagKey(ivory(claw3(1, CLAW_S, CLAW_Z)), depthNow(2, 1.5) * 1.6 + 2),
+      ...tagKey(ivory(claw3(-1, CLAW_S, CLAW_Z)), depthNow(-2, 1.5) * 1.6 + 2),
     ];
   },
 
