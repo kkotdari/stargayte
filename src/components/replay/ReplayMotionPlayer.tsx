@@ -3952,20 +3952,71 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 꼬리 촉수(정정 요청: 뿔이 아니라 그냥 입체 직사각 막대) — 굵기가 처음부터 끝까지
        같은 네모 기둥 한 쌍이다. 꼬리 뒤에서 비스듬히 앞·위로 나오다가 뒤로 갈수록
        아래로 휜다: 축의 z를 한 번 올렸다 내리는 이차식으로 그린다. */
+    /* 납작한 판(재지적: 더 납작하게) — 정사각 단면 기둥으로는 두께가 안 죽는다.
+       가로 반폭 HW·두께 반 HT의 네모 단면을 축을 따라 쓸어 만든다. 길이도 줄였다
+       (앞으로 4.6 → 3.1). 키는 붙박이 24를 걷고 제 자리 깊이(×1.6)를 쓴다 —
+       앞으로 돈 촉수는 몸 위, 뒤로 돈 것은 몸 뒤다(지적: 키값 확인). */
     for (const m9 of [-1, 1] as const) {
-      out.push(...tagKey(spirePillar({
-        x: 0, y: 0, h: 1, w: 0.46, tipW: 0.46,
-        segs: 10, sides: 4, hold: 1,
-        /* 처음 각도를 더 세우고(요청) 끝이 몸통 아래로는 안 내려가게(재요청) —
-           출발 기울기를 5.2로 키워 위로 솟았다가, 끝 높이가 몸통 윗면(z 5.1) 언저리에
-           머물도록 이차항을 맞춘다: z(0)=5.4, 꼭대기 ~7.6, z(1)=5.2. */
-        path: (t9: number): [number, number, number] => [
-          m9 * (1.15 + 0.55 * t9),
-          -2.4 + 4.6 * t9,
-          5.4 + 5.2 * t9 - 5.4 * t9 * t9,
-        ],
-        fill: "#3a3f46",
-      }), 24 + depthNow(m9 * 1.4, 0)));
+      const HW = 0.62;
+      const HT = 0.16;
+      const NS = 10;
+      const axis9 = (t9: number): [number, number, number] => [
+        m9 * (1.05 + 0.45 * t9),
+        -2.2 + 3.1 * t9,
+        5.4 + 3.6 * t9 - 3.7 * t9 * t9,
+      ];
+      const sect9 = (t9: number): [number, number, number][] => {
+        const [px9, py9, pz9] = axis9(t9);
+        const a9 = axis9(Math.max(0, t9 - 0.02));
+        const b9 = axis9(Math.min(1, t9 + 0.02));
+        let tx9 = b9[0] - a9[0];
+        let ty9 = b9[1] - a9[1];
+        let tz9 = b9[2] - a9[2];
+        const tl9 = Math.hypot(tx9, ty9, tz9) || 1;
+        tx9 /= tl9; ty9 /= tl9; tz9 /= tl9;
+        // 가로 축 — 모델 x축을 접선에 수직화(판이 옆으로 눕는다).
+        let ux9 = 1 - tx9 * tx9;
+        let uy9 = -ty9 * tx9;
+        let uz9 = -tz9 * tx9;
+        const ul9 = Math.hypot(ux9, uy9, uz9) || 1;
+        ux9 /= ul9; uy9 /= ul9; uz9 /= ul9;
+        // 두께 축 = 접선 × 가로.
+        const vx9 = ty9 * uz9 - tz9 * uy9;
+        const vy9 = tz9 * ux9 - tx9 * uz9;
+        const vz9 = tx9 * uy9 - ty9 * ux9;
+        return ([[1, 1], [-1, 1], [-1, -1], [1, -1]] as [number, number][]).map(([sw, st]) => [
+          px9 + ux9 * HW * sw + vx9 * HT * st,
+          py9 + uy9 * HW * sw + vy9 * HT * st,
+          pz9 + uz9 * HW * sw + vz9 * HT * st,
+        ] as [number, number, number]);
+      };
+      const blade: { d: string; nx: number; ny: number; dep: number }[] = [];
+      for (let k9 = 0; k9 < NS; k9 += 1) {
+        const lo9 = sect9(k9 / NS);
+        const hi9 = sect9((k9 + 1) / NS);
+        for (let i9 = 0; i9 < 4; i9 += 1) {
+          const j9 = (i9 + 1) % 4;
+          const fx9 = (lo9[i9][0] + lo9[j9][0] + hi9[i9][0] + hi9[j9][0]) / 4;
+          const fy9 = (lo9[i9][1] + lo9[j9][1] + hi9[i9][1] + hi9[j9][1]) / 4;
+          const c9 = axis9((k9 + 0.5) / NS);
+          const mx9 = fx9 - c9[0];
+          const my9 = fy9 - c9[1];
+          const ml9 = Math.hypot(mx9, my9) || 1;
+          blade.push({
+            d: polyPath3([lo9[i9], lo9[j9], hi9[j9], hi9[i9]]),
+            nx: mx9 / ml9, ny: my9 / ml9, dep: depthNow(fx9, fy9),
+          });
+        }
+      }
+      const faces9: ShapeFace[] = [polyPath3(sect9(0))].map((d9) => [d9, 1, "#3a3f46"] as ShapeFace);
+      for (const w9 of blade.sort((q9, e9) => q9.dep - e9.dep)) {
+        const fl9 = faceLight(w9.nx, w9.ny, 0.3);
+        faces9.push([w9.d, 1, "#3a3f46"] as ShapeFace,
+          ...(fl9.visible ? fl9.face(w9.d) : [sideFace(w9.d, 0.42)]));
+      }
+      faces9.push([polyPath3(sect9(1)), 1, "#3a3f46"] as ShapeFace,
+        topFace(polyPath3(sect9(1)), 0.14));
+      out.push(...tagKey(faces9, depthNow(m9 * 1.3, -0.6) * 1.6 + 3));
     }
     // 큰 집게 한 쌍 — 앞팔 짙은 갈색(요청).
     out.push(...paintBase(hornFaces(1.3, 1, 5.8, 2.6, 2.2, 5.6, 0.95), "#6b4732"));
@@ -4920,12 +4971,33 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       faces.filter(([, fo, fill]) => fo === 1 && !fill).map(([d]) => [d, o, "#000"] as ShapeFace);
     /* 1.4배 + 모양 개선(요청) — 밝은 청백 에너지 소용돌이 구로: 사람 색 구 위에 옅은
        청백 워시와 번개 호를 얹어 다크 아콘(어두운 보라+핏빛)과 확실히 갈린다. */
+    /* 개인색은 구를 감싸는 고리 둘(재지적: 띠 하나가 아니라 링 두 개가 X자로 교차) —
+       가락지라 가운데가 뚫려야 한다: 바깥 타원과 안쪽 타원의 감는 방향을 반대로 둬
+       (호 sweep 0/1) 도넛으로 채운다. 서로 반대로 기운 둘이 옆에서 X자로 엇갈린다.
+       속 형체를 다 그린 뒤 맨 위에 얹어 구 '겉'을 감싼다. */
+    const bandRing = (deg9: number): ShapeFace => {
+      const t9 = (deg9 * Math.PI) / 180;
+      const R9 = 5.05;
+      const r9 = 1.7;
+      const W9 = 0.62;
+      const px9 = (d9: number): [number, number] =>
+        [cx + d9 * Math.cos(t9), cy + d9 * Math.sin(t9)];
+      const [oax, oay] = px9(-R9);
+      const [obx, oby] = px9(R9);
+      const Ri9 = R9 - W9;
+      const ri9 = Math.max(0.25, r9 - W9);
+      const [iax, iay] = px9(-Ri9);
+      const [ibx, iby] = px9(Ri9);
+      return [`M${oax} ${oay} A${R9} ${r9} ${deg9} 1 0 ${obx} ${oby}`
+        + ` A${R9} ${r9} ${deg9} 1 0 ${oax} ${oay}`
+        + ` M${iax} ${iay} A${Ri9} ${ri9} ${deg9} 1 1 ${ibx} ${iby}`
+        + ` A${Ri9} ${ri9} ${deg9} 1 1 ${iax} ${iay} Z`, 0.95] as ShapeFace;
+    };
     return [
       // 에너지구는 플라즈마색, 개인색은 가운데 띠만(요청).
       // 에너지구 반투명화(요청) — 속 형체가 비쳐 보이게 0.72 → 0.4.
       [groundEllipse(cx, cy, 5.1, 4.8), 0.4, "#dff0ff"] as ShapeFace,
       topFace(groundEllipse(cx, cy, 5.1, 4.8), 0.14),
-      [`M${cx - 5.02} ${cy} A5.02 2 0 0 0 ${cx + 5.02} ${cy} A5.02 1.1 0 0 1 ${cx - 5.02} ${cy} Z`, 0.85] as ShapeFace,
       // 몸통 — 낮은 타원 돔. 머리 불꽃 — 위로 솟는 뿔. 팔 — 어깨에서 밖·아래로.
       ...dark(domeFaces3(0, 0, 1.35, 2.7, 3.2), 0.35),
       // 머리는 공통 얼굴 실루엣(요청: 뒤로 솟은 뿔 제거).
@@ -4941,6 +5013,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       [`M${cx + 4.4} ${cy + 0.6} Q${cx + 1.8} ${cy + 3.6} ${cx - 2.2} ${cy + 3.2}`
         + ` L${cx - 2} ${cy + 2.9} Q${cx + 1.6} ${cy + 3.2} ${cx + 4.1} ${cy + 0.4} Z`, 0.6, "#cfe6ff"] as ShapeFace,
       topFace(groundEllipse(cx - 1.7, cy - 1.7, 1.9, 1.5), 0.4),
+      bandRing(58), bandRing(-58),
     ];
   },
   /* 다크 아콘(실물 참고) — 어두운 반투명 구 속에 뿔귀 머리와 갈퀴 팔의 형체가 비치고,
@@ -4952,13 +5025,34 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       faces.filter(([, fo, fill]) => fo === 1 && !fill).map(([d]) => [d, o, "#000"] as ShapeFace);
     /* 1.4배 + 구분 강화(요청) — 어두운 보랏빛 워시와 핏빛 글린트로 아콘(청백)과
        한눈에 갈린다. 수염 호는 그대로 비례 확대. */
+    /* 개인색은 구를 감싸는 고리 둘(재지적: 띠 하나가 아니라 링 두 개가 X자로 교차) —
+       가락지라 가운데가 뚫려야 한다: 바깥 타원과 안쪽 타원의 감는 방향을 반대로 둬
+       (호 sweep 0/1) 도넛으로 채운다. 서로 반대로 기운 둘이 옆에서 X자로 엇갈린다.
+       속 형체를 다 그린 뒤 맨 위에 얹어 구 '겉'을 감싼다. */
+    const bandRing = (deg9: number): ShapeFace => {
+      const t9 = (deg9 * Math.PI) / 180;
+      const R9 = 5.05;
+      const r9 = 1.7;
+      const W9 = 0.62;
+      const px9 = (d9: number): [number, number] =>
+        [cx + d9 * Math.cos(t9), cy + d9 * Math.sin(t9)];
+      const [oax, oay] = px9(-R9);
+      const [obx, oby] = px9(R9);
+      const Ri9 = R9 - W9;
+      const ri9 = Math.max(0.25, r9 - W9);
+      const [iax, iay] = px9(-Ri9);
+      const [ibx, iby] = px9(Ri9);
+      return [`M${oax} ${oay} A${R9} ${r9} ${deg9} 1 0 ${obx} ${oby}`
+        + ` A${R9} ${r9} ${deg9} 1 0 ${oax} ${oay}`
+        + ` M${iax} ${iay} A${Ri9} ${ri9} ${deg9} 1 1 ${ibx} ${iby}`
+        + ` A${Ri9} ${ri9} ${deg9} 1 1 ${iax} ${iay} Z`, 0.95] as ShapeFace;
+    };
     return [
       // 에너지구는 붉은색, 개인색은 가운데 띠만(요청).
       // 에너지구 반투명화(요청) — 0.7 → 0.38.
       [groundEllipse(cx, cy, 5.1, 4.8), 0.38, "#8a2833"] as ShapeFace,
       [groundEllipse(cx, cy, 5.1, 4.8), 0.16, "#c03a3a"] as ShapeFace,
       capFace(groundEllipse(cx, cy, 5.1, 4.8), 0.16),
-      [`M${cx - 5.02} ${cy} A5.02 2 0 0 0 ${cx + 5.02} ${cy} A5.02 1.1 0 0 1 ${cx - 5.02} ${cy} Z`, 0.85] as ShapeFace,
       // 속 형체 — 낮은 돔 몸통, 벌어진 뿔귀 둘, 아래로 늘어지는 갈퀴 팔.
       ...dark(domeFaces3(-0.15, 0.15, 1.25, 2.4, 3.4), 0.45),
       // 머리는 공통 얼굴 실루엣(요청: 뿔귀 제거).
@@ -4975,6 +5069,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(`M${cx + 4.1} ${cy - 3.1} Q${cx + 6.4} ${cy - 2} ${cx + 6.5} ${cy + 0.3}`
         + ` L${cx + 6.2} ${cy + 0.35} Q${cx + 5.9} ${cy - 1.7} ${cx + 3.9} ${cy - 2.8} Z`, 0.35),
       topFace(groundEllipse(cx - 1.7, cy - 1.7, 1.7, 1.3), 0.3),
+      bandRing(58), bandRing(-58),
     ];
   },
   /* 저글링·히드라·울트라(요청: 전용 모델) — 갈고리는 직선이 아니라 3단으로 휘어진다:
