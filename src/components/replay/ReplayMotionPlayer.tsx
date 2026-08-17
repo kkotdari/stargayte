@@ -12142,10 +12142,6 @@ export default function ReplayMotionPlayer({
               const resList = grid.resources ?? [];
               let mpx = -1;
               let mpy = -1;
-              for (const r of resList) {
-                if (r[2] === 1) continue;
-                if (Math.hypot(r[0] - pos.x, r[1] - pos.y) <= 2.2) { mpx = r[0]; mpy = r[1]; break; }
-              }
               let hallM: { x: number; y: number } | null = null;
               let hdM = 5.5;
               for (const h of halls) {
@@ -12166,13 +12162,39 @@ export default function ReplayMotionPlayer({
                  무엇을 하러 가는 길이 아닌 한 캐는 것이 참이다 — 건물을 지으러 가는
                  길(앞뒤 몇 초)만 빼 준다. */
               const goingToBuild9 = e.buildSites.some((v9) => t >= v9[0] - 6 && t <= v9[0] + 1);
-              if (mpx < 0 && hallM && !goingToBuild9) {
+              /* 밭 배분이 '곁밭 집기'보다 먼저다(수리: 시작 일꾼 넷이 미네랄 하나에
+                 몰려 같은 두 타일을 겹쳐 오간다) — 예전엔 제 발밑 2.2타일 안의 밭을
+                 먼저 집었는데, 넷이 홀 발치 같은 자리에 서 있으니 넷 다 똑같은 밭
+                 하나를 골랐다(실측 SG_26081613330800: 네 기지 모두 네 일꾼이 같은 밭,
+                 왕복 폭 2.0타일). 원작의 첫 4기는 밭 넷에 하나씩 붙는다.
+                 제 홀 곁(5.5타일)이면 홀 둘레 밭을 '가까운 차례'로 세우고 개체마다
+                 다른 차례를 준다 — 결정적이라 프레임마다 안 튄다. */
+              let mineSlot9 = 0;
+              let mineLane9 = 1;
+              if (hallM && !goingToBuild9) {
                 const near = resList.filter((r) => r[2] !== 1
-                  && Math.hypot(r[0] - hallM!.x, r[1] - hallM!.y) <= 9);
+                  && Math.hypot(r[0] - hallM!.x, r[1] - hallM!.y) <= 9)
+                  .sort((a9, b9) =>
+                    Math.hypot(a9[0] - hallM!.x, a9[1] - hallM!.y)
+                    - Math.hypot(b9[0] - hallM!.x, b9[1] - hallM!.y));
                 if (near.length > 0) {
-                  const pick = near[ei % near.length];
+                  /* 차례는 개체 태그로 — 같은 판을 다시 열어도 같은 배분이 나오고,
+                     태그가 이웃한 시작 일꾼 넷은 서로 다른 밭으로 갈린다. */
+                  const seed9 = Math.abs(e.tag > 0 ? e.tag : ei);
+                  mineSlot9 = seed9 % near.length;
+                  mineLane9 = 1 + Math.floor(seed9 / near.length) % 3;
+                  const pick = near[mineSlot9];
                   mpx = pick[0];
                   mpy = pick[1];
+                }
+              }
+              // 홀에서 먼 일꾼(먼 확장·잘못 클릭)은 종전대로 제 발밑에서 가장 가까운 밭.
+              if (mpx < 0) {
+                let md9 = 2.2;
+                for (const r of resList) {
+                  if (r[2] === 1) continue;
+                  const d9 = Math.hypot(r[0] - pos.x, r[1] - pos.y);
+                  if (d9 <= md9) { md9 = d9; mpx = r[0]; mpy = r[1]; }
                 }
               }
               if (mpx >= 0) {
@@ -12192,11 +12214,25 @@ export default function ReplayMotionPlayer({
                    자체가 안 걸리고, 넘어도 폭이 1.4타일이라 홀 발자국 안에서 다 끝났다.
                    가까운 밭에서는 폭을 넓게 잡아(0.72 → 0.9) 눈에 보이게 오간다. */
                 if (h2 && hd2 > 0.6 && hd2 < 12) {
-                  const cyc4 = (t * 1.6 + ei * 2.7) % (2 * hd2);
+                  /* 박자도 개체마다 어긋낸다(수리: 넷이 한 줄로 붙어 다닌다) — 예전
+                     ei×2.7은 왕복 주기(무한 맵에서 4초)와 맞아떨어져 서로 겹쳤다.
+                     황금비로 0~1을 고르게 흩어 주기 어디에도 몰리지 않는다. */
+                  const seed4 = Math.abs(e.tag > 0 ? e.tag : ei);
+                  const off4 = ((seed4 * 0.6180339887) % 1) * 2 * hd2;
+                  const cyc4 = (t * 1.6 + off4) % (2 * hd2);
                   const k4 = (cyc4 < hd2 ? cyc4 : 2 * hd2 - cyc4) / hd2;
                   const span4 = hd2 < 3 ? 0.9 : 0.72;
                   const kk2 = 0.06 + k4 * span4;
-                  pos = { ...pos, x: mpx + (h2.x - mpx) * kk2, y: mpy + (h2.y - mpy) * kk2 };
+                  /* 줄(lane)로 나란히 — 한 밭에 여럿이 붙어도 오가는 길을 옆으로
+                     조금씩 비켜, 몸이 정확히 포개지지 않는다. 원작의 밭 앞 줄서기다. */
+                  const ux4 = (h2.x - mpx) / hd2;
+                  const uy4 = (h2.y - mpy) / hd2;
+                  const lane4 = (mineLane9 - 2) * 0.45;
+                  pos = {
+                    ...pos,
+                    x: mpx + (h2.x - mpx) * kk2 - uy4 * lane4,
+                    y: mpy + (h2.y - mpy) * kk2 + ux4 * lane4,
+                  };
                   nearMine9 = hd2 < 3;
                 }
               }
