@@ -1225,63 +1225,93 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
 }
 
 export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
-  /* 커맨드 센터(실물 참고) — 넓은 원반 선체 3단 + 위 관제 모듈(빛 띠·돔) + 앞으로
-     내려오는 전개 램프 + 네 귀 돔 발. */
+  /* 커맨드 센터(재작도 — 사진 기준, 기존 비율·자세는 그대로) ─────────────────────
+     여태 선체 전체가 개인색이라 종족이 안 읽히고 팀마다 딴 건물처럼 보였다. 테란의
+     바탕은 실버다: 3단 원반 선체를 은빛~강철빛으로 깔고, 그 위에 검회색 장갑 패널과
+     유리창, 호박색 항행등, 노랑·검정 안전 빗금을 얹는다. 개인색은 딱 두 곳 —
+     선체 허리띠와 관제 돔이다(과하지 않게, 그러나 확실히 보이게).
+     키값은 한 자로: 몸통 부품은 제 자리의 depthNow×1.6, 지붕에 얹힌 것만 상수. */
   tomb: () => {
+    const SILVER = "#c9ced6";
+    const STEEL = "#8b9099";
+    const DARK = "#3a3f46";
+    const GLASS = "#7fd4e8";
+    const LAMP = "#ffb347";
+    const HAZ = "#e8b429";
     // 이륙 가능 건물의 발은 은색(요청) — 커맨드 네 귀 돔 발.
     const pod = (px: number, py: number): ShapeFace[] => paintBase([
       ...cylinderFaces3(px, py, 1.1, 1.1),
       ...domeFaces3(px, py, 1.6, 1.4, 1.05),
-    ], "#c9ced6");
+    ], SILVER);
     const out: ShapeFace[] = [...pod(-5.4, -4.4), ...pod(5.4, -4.4)];
-    out.push(...cylinderFaces3(0, 0, 6.4, 2.4));
-    out.push(capFace(discPath3(0, 0, 2.42, 5.6), 0.2));
-    // 위뚜껑은 큰 돔(지적: 돔 형태를 살린다). 반구 높이 증가(재지적: 구 높이 더).
-    out.push(...domeFaces3(0, 0, 5.4, 4.4, 2.4));
-    /* 그릇 굴뚝·관제 모듈은 돔 위 얹힘(지적: 가려짐이 이상) — 돔의 큰 키(반지름
-       몫)에 밀리지 않게 지붕 규칙 키를 준다. */
+    /* 선체 3단(사진) — 밑단은 그늘진 강철, 허리는 개인색 띠, 윗단은 은빛. 세 단을
+       나눠 쌓아야 원반이 '판때기 하나'가 아니라 층이 있는 선체로 읽힌다. */
+    out.push(...paintBase(cylinderFaces3(0, 0, 6.4, 1.2), STEEL));
+    out.push(...cylinderFaces3(0, 0, 6.05, 0.42, 1.2)); // 허리 개인색 띠(칠하지 않는다)
+    out.push(...paintBase(cylinderFaces3(0, 0, 6.2, 0.85, 1.62), SILVER));
+    out.push(capFace(discPath3(0, 0, 2.48, 5.5), 0.2));
+    // 위뚜껑은 큰 돔(지적: 돔 형태를 살린다) — 은빛 바탕.
+    out.push(...paintBase(domeFaces3(0, 0, 5.4, 4.4, 2.47), SILVER));
+    /* 통신 접시(사진) — 돔 어깨에 선 기둥 위의 그릇. 돔의 큰 키에 밀리지 않게 지붕
+       규칙 키를 준다(지적: 가려짐이 이상). */
     out.push(...tagKey([
-      ...cylinderFaces3(3.4, -2.2, 1.15, 1.3, 4.1),
-      bodyFace(discPath3(3.4, -2.2, 5.45, 1.7)),
+      ...paintBase(cylinderFaces3(3.4, -2.2, 1.15, 1.3, 4.1), DARK),
+      [discPath3(3.4, -2.2, 5.45, 1.7), 1, STEEL] as ShapeFace,
       capFace(discPath3(3.4, -2.2, 5.5, 1.25), 0.5),
     ], 30));
-    // 관제 모듈 — 돔 꼭대기의 상자 + 앞면 빛 띠 + 지붕 돔.
-    // 관제 모듈 상자는 구리색(요청).
-    out.push(...tagKey(paintBase(boxFaces3(0, 0.2, 3, 2.6, 1.8, 5.5), "#b87748"), 31));
-    /* 앞면 장식(빛 띠·전개 램프)은 앞이 보일 때만(지적: 시점에 따라 기대와 다른 위치) —
+    /* 관제 모듈 — 돔 꼭대기의 검회색 장갑 상자. 앞은 통유리 창이고 지붕은 개인색
+       돔이다(둘째 개인색 자리 — 가장 높아 어느 각에서도 보인다). */
+    out.push(...tagKey(paintBase(boxFaces3(0, 0.2, 3, 2.6, 1.8, 5.5), DARK), 31));
+    /* 앞면 장식(창·전개 램프)은 앞이 보일 때만(지적: 시점에 따라 기대와 다른 위치) —
        뒤로 돌린 각도에서도 그리면 몸 위로 떠올라 팔처럼 삐져나와 보였다. */
     const frontVisible = faceLight(0, 1).visible;
     if (frontVisible) {
-      out.push(capFace(polyPath3([[-1.2, 1.51, 5.9], [1.2, 1.51, 5.9], [1.2, 1.51, 6.3], [-1.2, 1.51, 6.3]]), 0.5));
-      out.push(topFace(polyPath3([[-1, 1.52, 5.95], [1, 1.52, 5.95], [1, 1.52, 6.25], [-1, 1.52, 6.25]]), 0.35));
+      out.push(...tagKey([
+        [polyPath3([[-1.25, 1.51, 5.85], [1.25, 1.51, 5.85], [1.25, 1.51, 6.55], [-1.25, 1.51, 6.55]]), 1, GLASS] as ShapeFace,
+        topFace(polyPath3([[-1.25, 1.52, 6.32], [1.25, 1.52, 6.32], [1.25, 1.52, 6.55], [-1.25, 1.52, 6.55]]), 0.4),
+      ], 32));
     }
-    out.push(...tagKey(domeFaces3(0, 0.2, 1.15, 0.85, 7.3), 32));
-    /* 사진 디테일 보강(정정 요청: 기존 제작도를 살려서) — 선체 둘레에 붉은 패널이
-       띄엄띄엄 박히고, 앞왼쪽에 은빛 통로 경사로가 내려간다. 몸은 손대지 않는다. */
+    out.push(...tagKey(domeFaces3(0, 0.2, 1.15, 0.85, 7.3), 33));
+    /* 선체 둘레 장갑 패널(사진) — 검회색 패널이 띄엄띄엄 박히고 그 사이에 호박색
+       항행등이 하나씩 켜진다. 붉은 패널·구리색 잔장식은 걷었다(종족 팔레트 밖). */
     for (let k9 = 0; k9 < 10; k9 += 1) {
       const a9 = (k9 / 10) * Math.PI * 2;
-      const px9 = Math.sin(a9) * 6.35;
-      const py9 = Math.cos(a9) * 6.35;
-      if (facingRatio(Math.sin(a9), Math.cos(a9)) <= 0.05) continue;
+      const sx9 = Math.sin(a9);
+      const sy9 = Math.cos(a9);
+      if (facingRatio(sx9, sy9) <= 0.05) continue;
+      const px9 = sx9 * 6.3;
+      const py9 = sy9 * 6.3;
       out.push(...tagKey(paintBase(
-        boxFaces3(px9, py9, 1.3, 1.3, k9 % 2 === 0 ? 1 : 1.4, 0.6),
-        k9 % 2 === 0 ? "#a8322a" : "#8a6a44",
+        boxFaces3(px9, py9, 1.25, 1.25, k9 % 2 === 0 ? 1.05 : 1.5, 0.5),
+        k9 % 2 === 0 ? DARK : STEEL,
       ), depthNow(px9, py9) * 1.6 + 1));
+      if (k9 % 2 === 0) {
+        out.push(...tagKey(paintBase(
+          cylinderFaces3(sx9 * 6.05, sy9 * 6.05, 0.24, 0.16, 1.6), LAMP,
+        ), depthNow(px9, py9) * 1.6 + 2));
+      }
     }
+    // 왼앞 갑판(사진) — 은빛 통로 판과 그 끝 난간.
     out.push(...tagKey(paintBase([
       ...boxFaces3(-3.4, 6.4, 2.4, 2.6, 0.5, 0.4),
       ...boxFaces3(-3.4, 7.8, 2.1, 1.2, 0.25, 0),
-    ], "#c9ced6"), depthNow(-3.4, 7) * 1.6 + 2));
+    ], SILVER), depthNow(-3.4, 7) * 1.6 + 2));
     if (frontVisible) {
-      // 전개 램프(실물) — 선체 중턱 해치에서 앞 바닥으로. 제 깊이(지적: 가려짐 이상).
+      /* 전개 램프(사진) — 선체 중턱 해치에서 앞 바닥으로. 은빛 판 위에 노랑·검정
+         안전 빗금을 눕혀 '여기로 나온다'가 한눈에 읽힌다. */
       const ramp = polyPath3([[-1.3, 6, 2.4], [1.3, 6, 2.4], [2.1, 9.6, 0], [-2.1, 9.6, 0]]);
-      // 진출입 경사로는 은색(요청).
-      const rampFaces: ShapeFace[] = [[ramp, 1, "#c9ced6"] as ShapeFace, topFace(ramp, 0.16)];
-      for (const t of [0.25, 0.5, 0.75]) {
-        const yy = 6 + 3.6 * t;
-        const zz = 2.4 * (1 - t);
-        const ww = 1.3 + 0.8 * t;
-        rampFaces.push(capFace(polyPath3([[-ww, yy, zz + 0.02], [ww, yy, zz + 0.02], [ww, yy + 0.3, zz - 0.18], [-ww, yy + 0.3, zz - 0.18]]), 0.3));
+      const rampFaces: ShapeFace[] = [[ramp, 1, SILVER] as ShapeFace, topFace(ramp, 0.16)];
+      for (let s9 = 0; s9 < 6; s9 += 1) {
+        const t0 = 0.08 + s9 * 0.15;
+        const t1 = t0 + 0.075;
+        const yA = 6 + 3.6 * t0;
+        const yB = 6 + 3.6 * t1;
+        rampFaces.push([polyPath3([
+          [-(1.3 + 0.8 * t0), yA, 2.4 * (1 - t0) + 0.03],
+          [1.3 + 0.8 * t0, yA, 2.4 * (1 - t0) + 0.03],
+          [1.3 + 0.8 * t1, yB, 2.4 * (1 - t1) + 0.03],
+          [-(1.3 + 0.8 * t1), yB, 2.4 * (1 - t1) + 0.03],
+        ]), 1, s9 % 2 === 0 ? HAZ : DARK] as ShapeFace);
       }
       out.push(...tagKey(rampFaces, depthNow(0, 7.8) + 0.5));
     }
