@@ -9672,9 +9672,17 @@ export default function ReplayMotionPlayer({
     let pinch: { d: number; z: number; cx: number; cy: number; px: number; py: number } | null = null;
     let pinchPend: { z: number; p: { x: number; y: number } } | null = null;
     let pinchRaf = 0;
-    /* 더블탭 확대·축소(요청: 모바일에서 더블클릭류) — 한 손가락 탭 두 번(320ms·36px
-       안)이면 탭 지점 중심으로 4배 확대, 이미 확대 중이면 원래대로. 끌었으면(10px
-       초과) 탭이 아니다. */
+    /* 더블탭 확대·축소(요청: 모바일에서 더블클릭류) — 한 손가락 탭 두 번이면 탭 지점
+       중심으로 확대, 이미 확대 중이면 원래대로.
+       판정 폭(지적: 모바일에서 더블탭이 안 됨) — 실기로 재보니 320ms·36px·끌림 10px은
+       손가락에 너무 빡빡했다. 두 번째 탭이 조금만 늦거나(브라우저 더블클릭 기준도
+       500ms다) 손가락이 10px만 굴러도 탭이 아니라고 버렸다. 520ms·56px·끌림 18px로
+       넓힌다. 시각은 이벤트의 timeStamp를 쓴다 — 재생 렌더가 프레임을 오래 잡으면
+       핸들러가 늦게 돌아, 손은 빨랐는데 performance.now() 간격만 길어졌다. */
+    const TAP_MS = 520;
+    const TAP_GAP = 56;
+    const TAP_MOVE = 18;
+    const evTime = (e: TouchEvent): number => (e.timeStamp > 0 ? e.timeStamp : performance.now());
     let tap: { t: number; x: number; y: number } | null = null;
     let tapStart: { x: number; y: number; moved: boolean } | null = null;
     const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
@@ -9685,15 +9693,17 @@ export default function ReplayMotionPlayer({
       /* 핀치 줌 제거(요청) — 두 손가락은 더 이상 확대하지 않는다. 브라우저 페이지
          확대만 끊고 아무 일도 하지 않는다. 확대는 더블탭 하나뿐이다. */
       if (e.touches.length !== 2) return;
+      // 두 손가락이 닿으면 탭 셈은 처음부터 — 핀치 뒤 한 번 탭이 더블탭이 되면 안 된다.
       tapStart = null;
+      tap = null;
       e.preventDefault();
       pinch = null;
     };
     const onTM = (e: TouchEvent) => {
       gestureRef.current = e.touches.length >= 2;
-      // 10px 넘게 끌리면 탭이 아니다(더블탭 판정용).
+      // 18px 넘게 끌리면 탭이 아니다(더블탭 판정용) — 그 아래는 손가락 굴림으로 본다.
       if (tapStart && e.touches.length === 1
-        && Math.hypot(e.touches[0].clientX - tapStart.x, e.touches[0].clientY - tapStart.y) > 10) {
+        && Math.hypot(e.touches[0].clientX - tapStart.x, e.touches[0].clientY - tapStart.y) > TAP_MOVE) {
         tapStart.moved = true;
       }
       /* 삼키는 건 지도 조작일 때만(재재지적: 모바일에서 아래로 스와이프가 안 됨) —
@@ -9737,8 +9747,8 @@ export default function ReplayMotionPlayer({
       // 더블탭 판정 — 손가락이 다 떨어진 순간, 안 끌린 탭만 센다.
       if (e.touches.length === 0 && tapStart && !tapStart.moved && e.changedTouches.length === 1) {
         const ct = e.changedTouches[0];
-        const now = performance.now();
-        if (tap && now - tap.t < 320 && Math.hypot(ct.clientX - tap.x, ct.clientY - tap.y) < 36) {
+        const now = evTime(e);
+        if (tap && now - tap.t < TAP_MS && Math.hypot(ct.clientX - tap.x, ct.clientY - tap.y) < TAP_GAP) {
           // 두 번째 탭 — 브라우저 더블탭 페이지 확대를 끊고 지도만 확대·복귀한다.
           if (e.cancelable) e.preventDefault();
           if (zoomRef.current > 1.05) {
@@ -9764,8 +9774,10 @@ export default function ReplayMotionPlayer({
     };
     el.addEventListener("touchstart", onTS, { passive: false });
     el.addEventListener("touchmove", onTM, { passive: false });
-    el.addEventListener("touchend", onTE);
-    el.addEventListener("touchcancel", onTE);
+    /* touchend도 수동 등록 아님(passive: false) — 두 번째 탭에서 브라우저 제 더블탭
+       확대를 끊어야 하는데, 수동 등록이면 preventDefault가 무시된다. */
+    el.addEventListener("touchend", onTE, { passive: false });
+    el.addEventListener("touchcancel", onTE, { passive: false });
     return () => {
       if (pinchRaf) cancelAnimationFrame(pinchRaf);
       el.removeEventListener("touchstart", onTS);
