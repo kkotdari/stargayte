@@ -13619,7 +13619,7 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-fx-scan {
   border: 1.5px solid rgba(255, 255, 255, 0.5); border-radius: 50%; mix-blend-mode: screen;
   background: radial-gradient(circle, rgba(210, 235, 255, 0.16) 0 55%, rgba(180, 220, 255, 0.08) 70%, transparent 82%);
-  animation: scr-fx-fade 12s linear forwards;
+  animation: scr-fx-fade 9s linear forwards;
 }
 .scr-fx-scan::before,
 .scr-fx-scan::after {
@@ -13628,6 +13628,23 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   animation: scr-fx-ring 2s ease-out infinite;
 }
 .scr-fx-scan::after { animation-delay: 1s; }
+/* 스캔 별가루(요청: 뿌리면 그 자리에 별가루) — 네 갈래 별이 어긋난 박자로 반짝인다. */
+.scr-fx-dust {
+  position: absolute; width: 7%; aspect-ratio: 1; pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: scr-fx-twinkle 1.7s ease-in-out infinite;
+}
+.scr-fx-dust::before,
+.scr-fx-dust::after {
+  content: ""; position: absolute; inset: 0; background: rgba(238, 248, 255, 0.92);
+  clip-path: polygon(50% 0%, 57% 43%, 100% 50%, 57% 57%, 50% 100%, 43% 57%, 0% 50%, 43% 43%);
+}
+.scr-fx-dust::after { transform: rotate(45deg) scale(0.55); opacity: 0.65; }
+@keyframes scr-fx-twinkle {
+  0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.35); }
+  45% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  70% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.8); }
+}
 /* 디스럽션 웹 — 어두운 거미줄 판. */
 .scr-fx-dweb {
   border-radius: 50%; opacity: 0.8;

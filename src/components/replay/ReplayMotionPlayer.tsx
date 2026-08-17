@@ -8243,8 +8243,16 @@ const STATUS_TINT: Record<string, string> = {
 const DETECTOR_UNITS = new Set(["Overlord", "Observer", "Science Vessel"]);
 /** 디텍터가 은신을 벗기는 거리(타일) — 표시 투명도와 표적 판정이 같은 자를 쓴다. */
 const DETECT_TILES = 9;
-/** 스캐너 스윕이 그 자리를 디텍터로 만드는 시간(초) — 화면 효과도 같은 길이로 남는다. */
-const SCAN_DETECT_SEC = 12;
+/** 스캐너 스윕이 그 자리를 디텍터로 만드는 시간(초) — 화면 효과도 같은 길이로 남는다.
+ *  원작의 스캔 수명은 220프레임(빠른 속도에서 약 9초)이라 12초는 길었다(지적). */
+const SCAN_DETECT_SEC = 9;
+/* 스캔 별가루의 자리(%) — 황금각 나선으로 원 안에 고르게 흩고, 반짝임 박자만 어긋낸다.
+   한 번 셈해 두는 상수라 프레임마다 자리가 안 바뀐다. */
+const SCAN_DUST: [number, number, number][] = Array.from({ length: 16 }, (_, i) => {
+  const a9 = i * 2.399963;
+  const r9 = Math.sqrt((i + 0.4) / 16) * 42;
+  return [50 + Math.cos(a9) * r9, 50 + Math.sin(a9) * r9, ((i * 5) % 16) * 0.11];
+});
 const ADDONS = new Set([
   "Comsat Station", "Nuclear Silo", "Machine Shop", "Control Tower", "Covert Ops", "Physics Lab",
   // v2 트랙의 변형 이름(지적: 커맨드 애드온에 통로가 안 붙음) — screp는 ComSat으로 준다.
@@ -12733,7 +12741,18 @@ export default function ReplayMotionPlayer({
                     ...posStyle(x, y),
                     width: pct(fx[1], grid.width),
                   }}
-                />
+                >
+                  {/* 스캔 별가루(요청: 뿌리면 그 자리에 별가루) — 원 안에 황금각으로
+                      고르게 흩뿌린 작은 네 갈래 별들이 저마다 어긋난 박자로 반짝인다.
+                      자리는 결정적이라 프레임마다 안 떨린다. */}
+                  {tech === "Scanner Sweep" && SCAN_DUST.map(([dx9, dy9, dl9], di9) => (
+                    <span
+                      key={`d${di9}`}
+                      className="scr-fx-dust"
+                      style={{ left: `${dx9}%`, top: `${dy9}%`, animationDelay: `${dl9}s` }}
+                    />
+                  ))}
+                </span>
               );
             }
           }
