@@ -196,6 +196,14 @@ const BUILDING_MORPH_FROM: Record<string, string> = {
   Lair: "Hatchery", Hive: "Lair", "Greater Spire": "Spire",
   "Sunken Colony": "Creep Colony", "Spore Colony": "Creep Colony",
 };
+/** 편을 안 가리는 무기(요청: 럴커·시즈모드·리버 스캐럽은 아군도 맞는다) — 사거리(타일),
+ *  터지는 반지름(타일), 한 틱(1초)에 주는 피해. 럴커는 버로우해야 쏘지만 시뮬은 버로우
+ *  상태를 따로 안 세므로 사거리로만 가린다(6타일은 버로우 럴커의 사거리다). */
+const SPLASH_ARMS: Record<string, { range: number; r: number; dmg: number }> = {
+  Lurker: { range: 6, r: 1.2, dmg: 10 },
+  "Siege Tank (Siege Mode)": { range: 12, r: 1.5, dmg: 18 },
+  Reaver: { range: 8, r: 1.5, dmg: 22 },
+};
 /** 홀 계보의 변태 — 시작 홀(건설 커맨드가 없어 자리 증거도 없는 것)을 이어 주는 자. */
 const HALL_MORPHS = new Set(["Lair", "Hive"]);
 /** 두루뭉술한 정체(그룹) → 구체 증거가 없을 때의 대표. */
@@ -1115,8 +1123,15 @@ export function buildUnitTracks(
       if (target) {
         anchors += 1;
         pushEv(target, sec, pos.x, pos.y, 1);
-        const hostile = !sameSide(target.owner, pid)
-          && (ATTACK_ORDERS.has(orderName) || cmdName === "Right Click" || orderName === "");
+        /* 명시적 어택은 아군도 표적이다(요청) — 사람이 A를 누르고 제 유닛을 직접 찍는
+           것은 원작에서 실제로 때리는 조작이다(감염된 테란 처리, 아군 벙커 부수기,
+           흡혈 등). 자동 교전(우클릭·주문 없는 명령)은 종전대로 적만 친다 — 아군을
+           찍은 우클릭은 따라가기·수리·힐이라 공격이 아니다. */
+        const explicitAtk = orderName === "Attack1" || orderName === "Attack2"
+          || orderName === "AttackUnit" || orderName === "AttackFixedRange";
+        const hostile = explicitAtk
+          || (!sameSide(target.owner, pid)
+            && (ATTACK_ORDERS.has(orderName) || cmdName === "Right Click" || orderName === ""));
         if (hostile) { target.lastAtk = sec; target.evAfterAtk = false; }
       }
     }
@@ -1125,9 +1140,12 @@ export function buildUnitTracks(
     // 어택무브뿐이라 태그 표적만 보면 0건으로 잡혔다). 자리로 잇는다.
     if (pos && (ATTACK_ORDERS.has(orderName)
       || (targetTag > 0 && targetTag !== 65535 && cmdName === "Right Click"))) {
+      /* 아군 건물은 명시적 어택으로 찍었을 때만 표적이다(요청) — 어택무브·우클릭이
+         아군 건물 발치를 지나기만 해도 때린 것으로 치면 제 건물을 스스로 허문다. */
+      const explicitAtk9 = orderName === "Attack1" || orderName === "Attack2"
+        || orderName === "AttackUnit" || orderName === "AttackFixedRange";
       for (const b of built) {
-        // 아군 건물도 공격 대상이 아니다(같은 팀 오인 방지 — 위 sameSide 주석).
-        if (sameSide(b.owner, pid) || sec < b.born) continue;
+        if ((sameSide(b.owner, pid) && !explicitAtk9) || sec < b.born) continue;
         /* 발자국 기준 판정(기획서 2-F) — 왼쪽 위 앵커 ±2.5 고정 박스는 4×3 건물의
            먼쪽(오른·아래 가장자리) 클릭을 흘렸다. 발자국 전체 +0.5 여유로 잡는다. */
         const [fw, fh] = FOOT_WH[b.kind] ?? [3, 2];
@@ -2216,6 +2234,8 @@ export function buildUnitTracks(
       x: number; y: number; startAt: number; alive: boolean;
       hp: number; sh: number; maxHp: number; maxSh: number;
       evIdx: number; tgt: [number, number] | null; hidden: boolean;
+      /** 시즈모드인가(f=8 켬 / f=9 해제) — 시즈 포탄의 아군 피해(요청)를 가르는 자. */
+      sieged: boolean;
       heals: number[]; healIdx: number;
       dmgScale: number; revives: number; lastPct: number;
       stasisUntil: number; matrixLeft: number; matrixUntil: number;
@@ -2232,7 +2252,7 @@ export function buildUnitTracks(
         healable: !MECH_UNITS.has(mk) && mediLives.length > 0,
         x: first[1], y: first[2], startAt: Math.max(0, Math.min(first[0], life.born)),
         alive: true, hp: st.hp, sh: st.sh ?? 0, maxHp: st.hp, maxSh: st.sh ?? 0,
-        evIdx: 0, tgt: null, hidden: false,
+        evIdx: 0, tgt: null, hidden: false, sieged: false,
         heals: healsAt.get(life.tag) ?? [], healIdx: 0,
         dmgScale: 1, revives: 0, lastPct: 100,
         stasisUntil: -1, matrixLeft: 0, matrixUntil: -1,
@@ -2409,6 +2429,8 @@ export function buildUnitTracks(
           a.evIdx += 1;
           if (v[3] === 12) { a.hidden = true; a.tgt = null; }
           else if (v[3] === 13) { a.hidden = false; if (v[1] >= 0) { a.x = v[1]; a.y = v[2]; a.tgt = null; } }
+          else if (v[3] === 8) a.sieged = true;
+          else if (v[3] === 9) a.sieged = false;
           else if (v[1] >= 0 && !a.hidden) a.tgt = [v[1], v[2]];
         }
         while (a.healIdx < a.heals.length && a.heals[a.healIdx] <= sec) {
@@ -2470,6 +2492,36 @@ export function buildUnitTracks(
           if (foeDps <= 0) continue;
           const per = (foeDps * 0.7) / mine.length;
           for (const a of mine) hurt(a, sec, per, false);
+        }
+        /* 아군 피해(요청: 럴커·시즈모드·리버 스캐럽은 아군도 맞는다) — 이 셋은 원작에서
+           편을 안 가리는 무기라, 표적 곁에 낀 제 편도 함께 갈린다. 위의 편 대 편 배분은
+           아군을 원천적으로 안 때려, 아군 사이에 낀 적이 무적이 되고 큰 전투의 손실이
+           늘 적게 잡혔다. 표적(가장 가까운 적)을 정하고 그 자리 둘레에 터뜨린다 —
+           맞는 쪽은 편을 안 가리되 쏜 자신은 뺀다(제 발밑에는 안 떨어진다). */
+        const splashers = [...present.values()].flat();
+        for (const s9 of splashers) {
+          /* 탱크는 시즈모드일 때만 편을 안 가린다 — 정체 이름이 이미 시즈모드면 그대로,
+             아니면 시즈 커맨드(f=8/9)로 켜져 있어야 한다. */
+          const armKey9 = s9.kind.startsWith("Siege Tank")
+            ? (s9.sieged || s9.kind === "Siege Tank (Siege Mode)" ? "Siege Tank (Siege Mode)" : "")
+            : s9.kind;
+          const sp9 = SPLASH_ARMS[armKey9];
+          if (!sp9) continue;
+          let tx9 = 0;
+          let ty9 = 0;
+          let td9 = Infinity;
+          for (const o9 of splashers) {
+            if (o9 === s9 || sameSide(o9.life.owner, s9.life.owner)) continue;
+            const dd9 = Math.hypot(o9.x - s9.x, o9.y - s9.y);
+            if (dd9 < td9) { td9 = dd9; tx9 = o9.x; ty9 = o9.y; }
+          }
+          if (td9 > sp9.range) continue;
+          for (const v9 of splashers) {
+            if (v9 === s9 || !v9.alive || v9.hidden) continue;
+            // 공중은 이 셋 모두 못 때린다(가시·포탄·스캐럽 다 지상 전용이다).
+            if (v9.air) continue;
+            if (Math.hypot(v9.x - tx9, v9.y - ty9) <= sp9.r) hurt(v9, sec, sp9.dmg, false);
+          }
         }
       }
     }

@@ -11395,8 +11395,11 @@ export default function ReplayMotionPlayer({
                 tp = { x: st9.x, y: st9.y, team: teamOfRaw(st9.raw) ?? 0, air: false, bld: true, k: st9.k };
               }
             }
-            // 팀 미상(0)은 표적으로도 안 삼는다(위 nearestFoe 주석과 같은 오인 방지).
-            if (tp && tp.team > 0 && (team ?? 0) > 0 && tp.team !== team
+            /* 팀 미상(0)은 표적으로도 안 삼는다(위 nearestFoe 주석과 같은 오인 방지).
+               아군은 표적이 될 수 있다(요청: 명시적 어택은 아군도 지정) — 여기 오는
+               태그는 A를 누르고 직접 찍은 명령뿐이라(우클릭 격상은 적에게만 붙는다)
+               같은 편 태그가 실렸다면 사람이 정말 제 유닛을 찍은 것이다. */
+            if (tp && tp.team > 0 && (team ?? 0) > 0
               && t - as2 <= (tp.bld ? 45 : 12)) {
               const td = Math.hypot(tp.x - rawPos.x, tp.y - rawPos.y);
               // 너무 먼 표적은 안 겨눈다(지적: 타겟팅 오인) — 이미 딴 데 간 옛 표적이다.
