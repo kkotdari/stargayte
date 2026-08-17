@@ -13384,24 +13384,35 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 럴커 가시(재지적: 안 나옴 + 허접) — 뼈가시 토막 줄이 땅에서 상대 쪽으로 차례로
    솟아 나간다. 위(럴커 자리) 고정 원점에서 길이가 드러나며 물결이 달려 나가고,
    끝까지 닿으면 사그라든다. */
+/* 럴커 가시(재작도·지적: 가시 같지 않다 — 색도 모양도) — 실오라기 점선이던 것을
+   걷고, 땅에서 줄지어 솟는 뼛빛 삼각 가시 줄로 만든다. 두 개의 45도 그러데이션을
+   좌우 반쪽에 깔아 톱니(삼각) 무늬를 내고, 뿌리 쪽에 짙은 갈색 심을 세워 가시가
+   흙을 뚫고 나온 것으로 읽히게 한다. */
 .scr-tracer-spike {
-  width: 2.2px; height: 12px;
+  width: 9px; height: 12px;
   border-radius: 0;
-  background: repeating-linear-gradient(
-    to bottom, rgba(228, 220, 188, 0.95) 0 2.5px, rgba(150, 140, 105, 0.45) 2.5px 3.5px,
-    transparent 3.5px 6.5px);
+  background:
+    linear-gradient(45deg, rgba(232, 224, 198, 0.98) 50%, transparent 50%)
+      left top / 50% 9px repeat-y,
+    linear-gradient(-45deg, rgba(232, 224, 198, 0.98) 50%, transparent 50%)
+      right top / 50% 9px repeat-y,
+    linear-gradient(to bottom, rgba(90, 74, 48, 0.9) 0 100%)
+      center top / 2.4px 100% repeat-y;
+  filter: drop-shadow(0 0 1px rgba(40, 30, 16, 0.8));
   animation-name: scr-spike-run; animation-duration: 0.6s;
 }
+/* 솟았다 잠기는 리듬(요청) — 뿌리에서 끝까지 차례로 돋고, 잠깐 서 있다가 흙으로
+   도로 잠긴다. 예전엔 끝까지 돋은 채 투명해져 '사라지는 선'으로 보였다. */
 @keyframes scr-spike-run {
-  0% { clip-path: inset(0 0 100% 0); opacity: 1; }
-  55% { clip-path: inset(0 0 0 0); opacity: 1; }
-  80% { clip-path: inset(0 0 0 0); opacity: 0.85; }
-  100% { clip-path: inset(0 0 0 0); opacity: 0; }
+  0% { clip-path: inset(100% 0 0 0); opacity: 1; }
+  40% { clip-path: inset(0 0 0 0); opacity: 1; }
+  70% { clip-path: inset(0 0 0 0); opacity: 1; }
+  100% { clip-path: inset(100% 0 0 0); opacity: 0.9; }
 }
 /* v2 축소 규칙(.scr-v2fx .scr-motion-tracer 1×6px)이 특이도로 이겨 가시가 실오라기가
    됐다(조사: 가시 표현이 안 나옴의 두 번째 범인) — 가시만 제 크기로 돌려놓는다. */
 /* 길이(height)는 렌더가 표적까지 실거리로 인라인 지정한다 — 여긴 두께·폴백만. */
-.scr-v2fx .scr-tracer-spike { width: 2.2px; height: 12px; }
+.scr-v2fx .scr-tracer-spike { width: 9px; height: 12px; }
 .scr-tracer-acidball {
   width: 2.5px; height: 2.5px; border-radius: 50%;
   background: radial-gradient(circle, rgba(235, 220, 90, 0.95) 0 45%, rgba(180, 170, 40, 0.5) 75%, transparent 80%);
