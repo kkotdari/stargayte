@@ -2906,9 +2906,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 앞오른쪽 작은 돔 — 같은 눈을 인다. */
     out.push(...tagKey([
       ...paintBase(domeFaces3(2.6, 2.4, 1.6, 1.7, 0.35), GOLD),
-      [discPath3(2.6, 2.4, 2.08, 0.7), 1, GOLD_D] as ShapeFace,
-      [discPath3(2.6, 2.4, 2.14, 0.52), 0.95, CYAN] as ShapeFace,
-      topFace(discPath3(2.6, 2.4, 2.2, 0.28), 0.5),
+      [discPath3(2.6, 2.4, 2.08, 0.62), 0.95, CYAN] as ShapeFace,
     ], depthNow(2.6, 2.4) * 1.6));
     /* 왼쪽 황금 뿔탑 셋(사진) — 밑동이 굵고 끝이 뾰족한 첨탑. 세로 골이 있다. */
     for (const [tx, ty, th, tw] of [
@@ -2920,9 +2918,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       }), GOLD), depthNow(tx, ty) * 1.6));
     }
     /* 뿔탑에서 큰 돔으로 건너가는 관 팔 넷 — 마디진 황금 관. */
-    for (let k = 0; k < 4; k += 1) {
-      const sy9 = -1.9 + k * 0.5;
-      const ax = -2.2 + k * 0.35;
+    // 장식 축소(요청: 과도한 장식 제거) — 관 팔 넷 → 둘.
+    for (let k = 0; k < 2; k += 1) {
+      const sy9 = -1.6 + k * 0.9;
+      const ax = -2.1 + k * 0.5;
       out.push(...tagKey([
         ...paintBase(tubeFaces(ax, sy9, 1.4, sy9 + 0.9, 0.26, 3.2 - k * 0.35), GOLD_D),
         ...paintBase(tubeFaces(ax + 0.9, sy9 + 0.3, ax + 1.1, sy9 + 0.36, 0.34, 3.2 - k * 0.35), GOLD),
@@ -2932,11 +2931,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 앞왼쪽 골진 황금 단(사진) — 층층이 골이 팬 낮은 상자. */
     {
       const blk: ShapeFace[] = [...paintBase(boxFaces3(-2.4, 2.3, 3.6, 2.6, 1.7, 0.3), GOLD)];
-      for (let k = 0; k < 5; k += 1) {
-        const gx = -3.9 + k * 0.75;
+      // 골은 셋만(요청: 장식 축소). 곁 혹도 걷는다.
+      for (let k = 0; k < 3; k += 1) {
+        const gx = -3.5 + k * 1.1;
         blk.push(...paintBase(boxFaces3(gx, 2.3, 0.3, 2.7, 0.34, 2), GOLD_D));
       }
-      blk.push(...paintBase(domeFaces3(-0.6, 3.1, 0.55, 0.5, 0.3), GOLD_D));
       out.push(...tagKey(blk, depthNow(-2.4, 2.3) * 1.6));
     }
     /* 앞쪽 톱니 바퀴(복원·지적: 포지의 킥인데 빠졌다) — 좌우를 보고 선 2/3 원 판에
@@ -3016,6 +3015,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(groundEllipse(cx2, cy2, 1.05, 0.5), 0.25),
       ...orbPod(-2.4, 2.1),
       ...orbPod(2.4, 2.1),
+      /* 사진 디테일(요청) — 허리에 청록 띠, 발치에 금 테. 형태는 기존
+         제작도 그대로 두고 색 띠만 얹는다. */
+      ...tagKey(paintBase(cylinderFaces3(0, 0, 2.85, 0.28, 1.3), "#2f8f86"), 30),
+      ...tagKey(paintBase(cylinderFaces3(0, 0, 3.3, 0.3, 0.15), "#8a6f2a"), -2),
     ];
   },
   /* 시타델 오브 아둔 — 좁아지는 탑 + 꼭대기 뾰족. */
@@ -3042,6 +3045,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...frustumFaces3(0, -0.3, 2.4, 2, 1.5, 1.3, 2.2, 3.4),
       ...hornFaces(0, -0.7, 5.5, 0, -1.5, 7.4, 1),
       lens(0, 0.9, 4.6),
+      /* 사진 디테일(요청) — 허리에 청록 띠, 발치에 금 테. 형태는 기존
+         제작도 그대로 두고 색 띠만 얹는다. */
+      ...tagKey(paintBase(cylinderFaces3(0, 0, 2.55, 0.28, 3.2), "#2f8f86"), 30),
+      ...tagKey(paintBase(cylinderFaces3(0, 0, 3.1, 0.3, 0.2), "#8a6f2a"), -2),
     ];
   },
   /* 템플러 아카이브(리디자인, 실물 참고) — 큰 황금 공 몸에 테 물린 파란 렌즈가
@@ -3098,6 +3105,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       sideFace(polyPath3([seam(2.7, 1.6, 0.9), seam(3, 2, 1.6), seam(3.4, 2.5, 0.9), seam(3.3, 2.4, 0.5)]), 0.18),
       // 꼬리 끝 동그란 구도 옥색(요청).
       [groundEllipse(tx3, ty3, 0.5, 0.4), 0.55, "#3bd8c2"] as ShapeFace,
+      /* 사진 디테일(요청) — 허리에 청록 띠, 발치에 금 테. 형태는 기존
+         제작도 그대로 두고 색 띠만 얹는다. */
+      ...tagKey(paintBase(cylinderFaces3(0, 0, 2.75, 0.28, 2.6), "#2f8f86"), 30),
+      ...tagKey(paintBase(cylinderFaces3(0, 0, 3.4, 0.3, 0.2), "#8a6f2a"), -2),
     ];
   },
   /* 로보틱스 서포트 베이(실물 참고) — 톱니 테 받침판 가운데 오목한 대접(심 발광),
@@ -3241,6 +3252,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         [groundEllipse(gx2, gy2, 1.55, 1.45), 0.55, "#a9ecf2"] as ShapeFace,
         topFace(groundEllipse(gx2 - 0.5, gy2 - 0.5, 0.6, 0.5), 0.5),
       ], 30),
+      /* 사진 디테일(요청) — 허리에 청록 띠, 발치에 금 테. 형태는 기존
+         제작도 그대로 두고 색 띠만 얹는다. */
+      ...tagKey(paintBase(cylinderFaces3(0, 0, 2.9, 0.28, 1.6), "#2f8f86"), 30),
+      ...tagKey(paintBase(cylinderFaces3(0, 0, 3.4, 0.3, 0.15), "#8a6f2a"), -2),
     ];
   },
   /* 아비터 트리뷰널(정정 둘) — 불가사리 팔 네 개의 바닥은 유지하되, 위 구슬 대신
@@ -3268,6 +3283,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...arm(45), ...arm(-45),
       ...domeFaces3(0, 0, 2.6, 2.2, 0.8),
       ...post(36), ...post(-36),
+      /* 사진 디테일(요청) — 허리에 청록 띠, 발치에 금 테. 형태는 기존
+         제작도 그대로 두고 색 띠만 얹는다. */
+      ...tagKey(paintBase(cylinderFaces3(0, 0, 2.65, 0.28, 2.4), "#2f8f86"), 30),
+      ...tagKey(paintBase(cylinderFaces3(0, 0, 3.2, 0.3, 0.2), "#8a6f2a"), -2),
     ];
   },
   /* 실드 배터리(정정 둘) — 몸은 얇게, 다리는 빨대: 가늘게 수평으로 뻗다가 끝이
@@ -3289,6 +3308,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...domeFaces3(0, 0, 1.5, 0.95, 1),
       topFace(groundEllipse(gx2, gy2, 0.55, 0.4), 0.4),
       ...leg(67), ...leg(-67), ...leg(22), ...leg(-22),
+      /* 사진 디테일(요청) — 허리에 청록 띠, 발치에 금 테. 형태는 기존
+         제작도 그대로 두고 색 띠만 얹는다. */
+      ...tagKey(paintBase(cylinderFaces3(0, 0, 2.2, 0.28, 1.2), "#2f8f86"), 30),
+      ...tagKey(paintBase(cylinderFaces3(0, 0, 2.7, 0.3, 0.12), "#8a6f2a"), -2),
     ];
   },
   /* 에볼루션 챔버(재모델링·사진) — 결절이 박힌 큰 살덩이 엽 둘(개인색)이 앞을
@@ -5179,35 +5202,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...tagKey(paintBase(
       frustumFaces3(-0.8, -0.2, 3.4, 2.8, 2.5, 2, 1.1, 0.8), "#5c636d",
     ), 22 + depthNow(-0.8, -0.2)));
-    /* 뒤 노랑·검정 빗금 날개(정정 지적: 패턴이 잘못 붙었다) — 낱장을 번갈아 노랑·검정
-       으로 칠하면 '빗금'이 아니라 색 조각으로 읽힌다. 날개는 모두 검정으로 두고, 그
-       위에 노란 빗금을 비스듬히 얹는다. 구 뒤 표면에서 부챗살로 펴진다. */
-    for (let k = 0; k < 5; k += 1) {
-      const a9 = (-56 + k * 28) * (Math.PI / 180);
-      const bx = -1.5 + Math.sin(a9) * 1.5;
-      const by = 0.1 - Math.cos(a9) * 1.5;
-      const tx = -1.5 + Math.sin(a9) * 3.2;
-      const ty = 0.1 - Math.cos(a9) * 3.2;
-      const vane: ShapeFace[] = [];
-      const quad = (u0: number, u1: number, z0: number, z1: number): string => polyPath3([
-        [bx + (tx - bx) * u0, by + (ty - by) * u0, z0],
-        [bx + (tx - bx) * u1, by + (ty - by) * u1, z0],
-        [bx + (tx - bx) * u1, by + (ty - by) * u1, z1],
-        [bx + (tx - bx) * u0, by + (ty - by) * u0, z1],
-      ]);
-      vane.push([quad(0, 1, 2, 3.6), 1, "#22262b"] as ShapeFace);
-      // 빗금 — 아래에서 위로 비스듬히 오르는 노란 띠 셋.
-      for (let q = 0; q < 3; q += 1) {
-        const u0 = q * 0.3;
-        vane.push([polyPath3([
-          [bx + (tx - bx) * u0, by + (ty - by) * u0, 2.05],
-          [bx + (tx - bx) * (u0 + 0.16), by + (ty - by) * (u0 + 0.16), 2.05],
-          [bx + (tx - bx) * (u0 + 0.32), by + (ty - by) * (u0 + 0.32), 3.55],
-          [bx + (tx - bx) * (u0 + 0.16), by + (ty - by) * (u0 + 0.16), 3.55],
-        ]), 1, "#e8c33a"] as ShapeFace);
-      }
-      vane.push(sideFace(quad(0, 1, 2, 3.6), 0.18));
-      out.push(...tagKey(vane, 23 + depthNow(tx, ty)));
+    /* 해저드 패턴은 건물 둘레에 두른다(재지적: 잘못 입힌 듯 — 주위로 두르는 것
+       아니냐) — 부챗살 날개에 칠하던 것을 걷고, 받침 옆면을 빙 둘러 노랑·검정 빗금
+       띠를 두른다. 보이는 쪽 면에만 그린다. */
+    for (let k9 = 0; k9 < 20; k9 += 1) {
+      const a9 = (k9 / 20) * Math.PI * 2;
+      const sx9 = Math.sin(a9);
+      const sy9 = Math.cos(a9);
+      if (facingRatio(sx9, sy9) <= 0.05) continue;
+      out.push(...tagKey(paintBase(
+        boxFaces3(sx9 * 3.55, sy9 * 2.75, 0.62, 0.62, 0.7, 0.1),
+        k9 % 2 === 0 ? "#e8c33a" : "#22262b",
+      ), depthNow(sx9 * 3.55, sy9 * 2.75) * 1.6 - 1));
     }
     /* 큰 구형 포드(사진) — 위·아래 돔을 맞붙여 진짜 구로. 허리에 리벳 테. */
     out.push(...tagKey([
