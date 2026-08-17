@@ -75,6 +75,10 @@ export default function ModelGalleryScreen() {
   const dragProps = {
     style: { touchAction: "none" as const, cursor: "ew-resize" as const },
     onPointerDown: (e: React.PointerEvent<HTMLDivElement>): void => {
+      /* 무대 안 버튼은 건드리지 않는다(지적: 돋보기 버튼이 안 먹힘) — 무대가
+         setPointerCapture로 포인터를 가져가면 그 뒤 click이 버튼에 안 닿는다.
+         버튼 위에서 시작한 누름은 끌기로 안 잡는다. */
+      if ((e.target as HTMLElement).closest("button")) return;
       dragRef.current = { id: e.pointerId, x: e.clientX };
       setAuto(false);
       e.currentTarget.setPointerCapture(e.pointerId);
