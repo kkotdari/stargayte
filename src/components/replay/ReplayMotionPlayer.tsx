@@ -4597,15 +4597,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 갈퀴치마 재작도(요청) — 갈고리를 아래로 내리고, 치마가 '몸통 옆면 ↔ 갈고리'를
        잇는 막이 되게 한다. 뮤탈 날개처럼 디테일을 준다: 바깥 가장자리를 세 번 우묵하게
        파고, 뿌리에서 갈고리로 뻗는 힘줄을 얹어 얇은 막처럼 읽힌다. */
+    /* 앞부분을 들어 올린다(요청: 45도쯤 핀칭) — 앞(+y)으로 갈수록 z를 같은 비율로
+       올려 몸 앞머리가 45도로 들린 자세가 된다. 갈고리·치마가 함께 따라 올라간다. */
+    const PITCH = 1; // tan 45도
+    const up = (x9: number, y9: number, z9: number): [number, number, number] =>
+      [x9, y9, z9 + y9 * PITCH];
     const CLAW_Z = 3;
     const CLAW_S = 0.7;
     const web = (m: 1 | -1): ShapeFace[] => {
       // 몸통 옆면 부착점 셋(뒤 → 앞)과 갈고리 쪽 바깥점 넷.
       const A: [number, number, number][] = [
-        [m * 1.3, -1.7, 3.25], [m * 1.75, -0.4, 3.35], [m * 1.5, 0.95, 3.45],
+        up(m * 1.3, -1.7, 3.25), up(m * 1.75, -0.4, 3.35), up(m * 1.5, 0.95, 3.45),
       ];
       const C: [number, number, number][] = [
-        [m * 1.95, -2.5, 2.95], [m * 2.95, -1.1, 3], [m * 3.25, 0.5, 3.05], [m * 2.5, 2, 3.1],
+        up(m * 1.95, -2.5, 2.95), up(m * 2.95, -1.1, 3),
+        up(m * 3.25, 0.5, 3.05), up(m * 2.5, 2, 3.1),
       ];
       // 바깥 가장자리 — 이웃한 두 끝점 사이를 안쪽으로 우묵하게 판다.
       const edge: [number, number, number][] = [];
@@ -4644,11 +4650,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...web(1),
       ...web(-1),
       // 뒷몸 짙은 갈색(요청).
-      ...tagKey(paintBase(domeFaces3(0, -2.1, 1.5, 1.2, 3.5), "#6b4732"), depthNow(0, -2.1) * 1.6 + 1),
-      ...tagKey(domeFaces3(0, -0.7, 2, 1.7, 3.5), depthNow(0, -0.7) * 1.6 + 1),
+      ...tagKey(paintBase(domeFaces3(0, -2.1, 1.5, 1.2, 3.5 - 2.1 * PITCH), "#6b4732"),
+        depthNow(0, -2.1) * 1.6 + 1),
+      ...tagKey(domeFaces3(0, -0.7, 2, 1.7, 3.5 - 0.7 * PITCH), depthNow(0, -0.7) * 1.6 + 1),
       /* 갈고리 — 아래로 내린다(요청: z 4 → 3). 치마가 그 안쪽 변에 물린다. */
-      ...tagKey(ivory(claw3(1, CLAW_S, CLAW_Z)), depthNow(2, 1.5) * 1.6 + 2),
-      ...tagKey(ivory(claw3(-1, CLAW_S, CLAW_Z)), depthNow(-2, 1.5) * 1.6 + 2),
+      ...tagKey(ivory(claw3(1, CLAW_S, CLAW_Z + 1.5 * PITCH)), depthNow(2, 1.5) * 1.6 + 2),
+      ...tagKey(ivory(claw3(-1, CLAW_S, CLAW_Z + 1.5 * PITCH)), depthNow(-2, 1.5) * 1.6 + 2),
     ];
   },
 
