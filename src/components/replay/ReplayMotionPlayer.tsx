@@ -2103,30 +2103,64 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   },
   /* 성큰(실물 참고) — 납작한 크립 더미 + 잔가시들 + 웅크린 큰 낫 발톱(끝 밝은 날). */
   sunken: () => {
-    /* 성큰(정정) — 가시 없이: 불가사리처럼 여섯 갈래로 뻗는 다리 바닥 + 납작한 몸,
-       뒤쪽으로 혓바닥처럼 늘어진 촉수 판. */
-    const out: ShapeFace[] = [];
-    for (const ang of [0, 60, 120, 180, 240, 300]) {
-      const a = (ang * Math.PI) / 180;
-      // 다리는 몸색으로 되돌림(재지적: 검게 칠할 건 다리가 아니라 베이스).
-      out.push(...hornFaces(
-        Math.sin(a) * 1.4, Math.cos(a) * 1.4, 0.8,
-        Math.sin(a) * 5.5, Math.cos(a) * 5.5, 0.15, 1.7,
-      ));
+    /* 성큰 콜로니(전면 재작도·사진) — 낮게 퍼진 짙은 갈색 살덩이 위로 구릿빛 촉수
+       그루터기들이 솟고, 그 사이사이에 상아빛 낫 날이 사방으로 눕는다. 등에는 검은
+       가시가 돋고, 가운데 큰 촉수만 개인색이라 임자가 한눈에 읽힌다. */
+    const FLESH = "#6b4732";
+    const COPPER = "#a35a33";
+    const out: ShapeFace[] = [...paintBase(creepSplat(6.6), "#3a3f46")];
+    // 몸 — 볼록한 살덩이 둔덕.
+    out.push(...tagKey(paintBase(spirePillar({
+      x: 0, y: 0, z0: 0, h: 2.4, w: 4.3, tipW: 1.8,
+      segs: 6, sides: 14, hold: 0, taper: 0.55,
+    }), FLESH), 0));
+    /* 상아빛 낫 날 여섯 — 바닥에 눕듯 사방으로 뻗는 납작한 칼. 뿌리는 몸에 묻힌다. */
+    for (const [ang, len, w9] of [
+      [-160, 3.6, 0.62], [-105, 4.2, 0.7], [-45, 3.9, 0.66],
+      [25, 4.3, 0.72], [85, 3.7, 0.64], [145, 3.3, 0.6],
+    ] as [number, number, number][]) {
+      const a9 = (ang * Math.PI) / 180;
+      const dx = Math.sin(a9);
+      const dy = Math.cos(a9);
+      out.push(...tagKey(ivory(hornFaces(
+        dx * 1.6, dy * 1.6, 1.5, dx * (1.6 + len), dy * (1.6 + len), 0.35, w9,
+      )), depthNow(dx * 3.4, dy * 3.4) * 1.6 + 1));
     }
-    // 베이스 검회색(재지적: 검정 말고 검회색).
-    out.push(...paintBase(domeFaces3(0, 0, 3.3, 1.2), "#3a3f46"));
-    // 혓바닥 — 몸 뒤로 넓게 늘어져 끝이 둥글다. 가운데 골.
-    const tongue = polyPath3([
-      [0.9, -1.2, 1.5], [1.15, -3.3, 0.7], [0.65, -4.6, 0.35], [0, -5, 0.3],
-      [-0.65, -4.6, 0.35], [-1.15, -3.3, 0.7], [-0.9, -1.2, 1.5],
-    ]);
-    out.push(bodyFace(tongue), topFace(tongue, 0.16));
-    out.push(capFace(polyPath3([
-      [0.18, -1.6, 1.35], [0.2, -3.4, 0.68], [0, -4.4, 0.4], [-0.2, -3.4, 0.68], [-0.18, -1.6, 1.35],
-    ]), 0.2));
+    /* 구릿빛 촉수 그루터기 넷 — 몸 위에서 굽어 오르는 굵은 기둥. */
+    for (const [ang, th, tw] of [
+      [-140, 2.6, 0.72], [-40, 3, 0.8], [60, 2.4, 0.68], [150, 2.2, 0.62],
+    ] as [number, number, number][]) {
+      const a9 = (ang * Math.PI) / 180;
+      const dx = Math.sin(a9) * 1.9;
+      const dy = Math.cos(a9) * 1.9;
+      out.push(...tagKey(paintBase(spirePillar({
+        x: dx, y: dy, z0: 1.5, h: th, w: tw, tipW: tw * 0.35,
+        segs: 4, sides: 8, hold: 0.15, taper: 1.3,
+        leanX: -dx * 0.22, leanY: -dy * 0.22, curveX: dx * 0.2, curveY: dy * 0.2,
+      }), COPPER), depthNow(dx, dy) * 1.6 + 2));
+    }
+    /* 가운데 큰 촉수 — 개인색(요청: 건물마다 개인색 포인트). 끝이 아가리처럼 벌어진다. */
+    out.push(...tagKey([
+      ...spirePillar({
+        x: 0.2, y: -0.3, z0: 2.1, h: 3.2, w: 1.05, tipW: 0.45,
+        segs: 5, sides: 10, hold: 0.1, taper: 1.3, leanY: 0.6, curveY: -0.4,
+      }),
+      capFace(discPath3(0.4, 0.3, 5.3, 0.42), 0.5),
+    ], 12));
+    // 등 검은 가시들 — 몸 옆선 위에 돋는다.
+    for (const [ang, sz] of [
+      [-170, 1.5], [-120, 1.9], [-70, 1.6], [10, 1.8], [70, 1.5], [130, 1.7],
+    ] as [number, number][]) {
+      const a9 = (ang * Math.PI) / 180;
+      const dx = Math.sin(a9) * 2.9;
+      const dy = Math.cos(a9) * 2.9;
+      out.push(...tagKey(paintBase(hornFaces(
+        dx, dy, 1.1, dx * 1.2, dy * 1.2, 1.1 + sz, 0.34,
+      ), "#22262b"), depthNow(dx, dy) * 1.6 + 3));
+    }
     return out;
   },
+
   /* 스포어(정정: 가시가 아니라 굴뚝이 포인트) — 크립 밑동과 몸통 덩어리 위에, 왼뒤에서
      굵게 서는 아가리 뚫린 굴뚝 관. */
   spore: () => {
@@ -3183,74 +3217,66 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 디파일러 마운드(실물 참고) — 낮게 퍼진 살덩이 위에 검은 수정 조각 무더기가 솟고,
      왼쪽엔 말려 올라간 촉수, 가운데엔 흰 애벌레 마디, 앞엔 구덩이 입. */
   dmound: () => {
-    const shard = (bx2: number, by2: number, tx2: number, ty2: number, tz2: number, w2: number): ShapeFace[] => {
-      const d = polyPath3([[bx2 - w2, by2, 0.4], [bx2 + w2, by2 - 0.3, 0.4], [tx2, ty2, tz2]]);
-      return [[d, 1, "#1b1e23"] as ShapeFace, sideFace(d, 0.42)]; // 뿔 검회색(요청)
-    };
-    const grub = (gx2: number, gy2: number, r2: number): ShapeFace[] => {
-      const [px2, py2] = project(gx2, gy2, r2 * 0.9);
-      return [
-        ...domeFaces3(gx2, gy2, r2, r2 * 0.85),
-        topFace(groundEllipse(px2, py2, r2 * 0.6, r2 * 0.4), 0.4),
-      ];
-    };
-    const [mx3, my3] = project(0.9, 2.6, 0.8);
-    return [
-      ...domeFaces3(-1.4, 0.4, 3.6, 1.6),
-      ...domeFaces3(1.8, -0.4, 3.4, 1.7),
-      // 검은 수정 무더기 — 오른쪽 크게, 왼앞 작게.
-      ...shard(2.6, -1.4, 2.4, -2, 4.8, 0.8),
-      ...shard(3.6, -0.6, 3.9, -1.1, 3.7, 0.7),
-      ...shard(4.2, -1.8, 4.6, -2.2, 2.9, 0.6),
-      ...shard(1.9, -0.4, 1.6, -0.9, 3.4, 0.6),
-      ...shard(-4, 0.6, -4.4, 0.2, 2.5, 0.6),
-      ...shard(-3.3, 1.4, -3.6, 1, 2, 0.5),
-      // 말린 촉수 — 왼쪽에서 세 마디로 감아 올라간다.
-      ...hornFaces(-2.6, 0.9, 1, -4.5, -0.2, 3.3, 0.9),
-      ...hornFaces(-4.5, -0.2, 3.3, -3.5, -1.5, 4.6, 0.7),
-      ...hornFaces(-3.5, -1.5, 4.6, -2.6, -0.9, 3.7, 0.5),
-      // 흰 애벌레 마디 — 가운데 대각선 줄.
-      ...grub(0.3, 0.6, 0.85),
-      ...grub(-0.5, -0.1, 0.8),
-      ...grub(-1.3, -0.7, 0.72),
-      // 앞 구덩이 입 + 작은 엄니.
-      capFace(groundEllipse(mx3, my3, 1.35, 0.6), 0.5),
-      ...hornFaces(-0.2, 2.2, 0.6, -0.4, 2.9, 1.7, 0.4),
-      ...hornFaces(0.6, 1.9, 0.6, 0.9, 2.6, 1.6, 0.4),
-    ];
+    /* 디파일러 마운드(전면 재작도·사진) — 구릿빛 살덩이 두덩이 낮게 엉키고, 그 위로
+       검은 수정 조각이 무리 지어 솟는다. 오른쪽에 말려 오른 굵은 촉수, 앞에는 상아빛
+       엄니 줄과 흰 애벌레 마디들, 가운데엔 개인색 아가리. */
+    const FLESH = "#a35a33";
+    const SHARD = "#22262b";
+    const out: ShapeFace[] = [...paintBase(creepSplat(6.8), "#3a3f46")];
+    // 살덩이 두덩 — 앞뒤로 겹친 낮은 언덕 둘.
+    out.push(...tagKey(paintBase(spirePillar({
+      x: -1, y: -0.4, z0: 0, h: 2.6, w: 3.9, tipW: 1.5,
+      segs: 6, sides: 14, hold: 0, taper: 0.55,
+    }), FLESH), 0));
+    out.push(...tagKey(paintBase(spirePillar({
+      x: 2.2, y: 0.4, z0: 0, h: 2, w: 3, tipW: 1.2,
+      segs: 5, sides: 12, hold: 0, taper: 0.55,
+    }), "#8a4a2a"), depthNow(2.2, 0.4) * 1.6));
+    /* 검은 수정 무리 — 뒤쪽에서 제각기 다른 각도로 솟는 각진 조각들. */
+    for (const [cx9, cy9, ch9, cw9, lx9, ly9] of [
+      [-2.6, -2, 3.4, 0.72, -0.5, -0.3], [-1, -2.6, 4.6, 0.85, -0.2, -0.5],
+      [0.6, -2.2, 3.8, 0.7, 0.2, -0.4], [2.2, -2.4, 4.2, 0.8, 0.4, -0.3],
+      [3.6, -1.2, 3, 0.62, 0.5, -0.1], [-3.6, -0.6, 2.6, 0.58, -0.6, 0],
+    ] as [number, number, number, number, number, number][]) {
+      out.push(...tagKey(paintBase(spirePillar({
+        x: cx9, y: cy9, z0: 1, h: ch9, w: cw9, tipW: 0.12,
+        segs: 3, sides: 5, hold: 0.3, taper: 1.5,
+        leanX: lx9, leanY: ly9,
+      }), SHARD), depthNow(cx9, cy9) * 1.6 + 2));
+    }
+    /* 오른뒤 말려 오른 굵은 촉수 — 뿌리에서 크게 감아 도는 구릿빛 관. */
+    out.push(...tagKey(paintBase(spirePillar({
+      x: 0, y: 0, h: 1, w: 0.85, tipW: 0.55, segs: 10, sides: 8, hold: 0.2,
+      path: (t9: number): [number, number, number] => {
+        const a9 = Math.PI * (0.15 + t9 * 1.25);
+        return [-2.4 + Math.cos(a9) * 1.9, -1.6 - Math.sin(a9) * 0.5, 3 + Math.sin(a9) * 2.2];
+      },
+    }), FLESH), 22 + depthNow(-2.4, -1.6)));
+    /* 앞 상아빛 엄니 줄 — 아가리를 두르는 뾰족니 넷. */
+    for (const [tx9, ty9, tz9] of [
+      [-1.9, 1.9, 2], [-0.9, 2.4, 2.2], [0.2, 2.5, 2.2], [1.2, 2.2, 2],
+    ] as [number, number, number][]) {
+      out.push(...tagKey(ivory(hornFaces(tx9, ty9 - 0.7, 1.5, tx9, ty9, tz9, 0.42)),
+        depthNow(tx9, ty9) * 1.6 + 4));
+    }
+    // 흰 애벌레 마디 둘 — 앞오른쪽 바닥에 눕는다.
+    for (const [gx9, gy9] of [[2.6, 2], [3.6, 0.9]] as [number, number][]) {
+      out.push(...tagKey(paintBase([
+        ...domeFaces3(gx9, gy9, 0.75, 0.6, 0.2),
+        ...domeFaces3(gx9 + 0.5, gy9 - 0.5, 0.6, 0.5, 0.2),
+      ], "#d3d7db"), depthNow(gx9, gy9) * 1.6 + 3));
+    }
+    /* 가운데 아가리 — 개인색 포인트(요청). 어두운 속을 두른 살 테. */
+    out.push(...tagKey([
+      ...spirePillar({
+        x: -0.7, y: 1.2, z0: 1.6, h: 1.5, w: 1.5, tipW: 1.05,
+        segs: 3, sides: 12, hold: 0.2,
+      }),
+      capFace(discPath3(-0.7, 1.2, 3.15, 0.95), 0.55),
+    ], 14));
+    return out;
   },
-  /* 울트라리스크 캐번(실물 참고) — 울퉁불퉁한 큰 덩치 앞에 거대한 아가리가 벌어지고,
-     그 양옆을 큰 금빛 엄니 둘이 감싼다. 옆엔 흰 베개 덩이, 바닥엔 촉수 술. */
-  cavern: () => {
-    const [mx3, my3] = project(0, 2.9, 1.5);
-    return [
-      // 옆 흰 베개 덩이.
-      ...domeFaces3(-3.7, 0.4, 1.5, 1.1),
-      topFace(groundEllipse(...project(-3.7, 0.4, 0.9), 0.9, 0.5), 0.35),
-      ...domeFaces3(3.7, 0, 1.4, 1),
-      topFace(groundEllipse(...project(3.7, 0, 0.8), 0.85, 0.45), 0.3),
-      // 울퉁불퉁 몸 — 겹돔.
-      ...domeFaces3(0, -1, 4.2, 3.7),
-      ...domeFaces3(-1.7, 0.1, 2.6, 2.2, 1.3),
-      ...domeFaces3(1.9, 0.3, 2.4, 2, 1.1),
-      /* 거대한 아가리 — 어두운 속. 폭이 시점을 탄다(재지적: 요잉 돌 때 반영 안 됨) —
-         마주볼수록 넓고 돌아설수록 좁아지다 뒤에선 사라진다. */
-      ...((): ShapeFace[] => {
-        const fMouth = facingRatio(0, 1);
-        if (fMouth <= 0.1) return [];
-        return [capFace(groundEllipse(mx3, my3, 2.5 * Math.min(1, 0.35 + fMouth), 1.6), 0.5)];
-      })(),
-      // 큰 금 엄니 — 아가리 양옆에서 아래로 굽는다(끝 밝게).
-      ...hornFaces(-2, 2.4, 3.6, -1.2, 3.9, 0.4, 1.05),
-      topFace(polyPath3([[-1.7, 2.9, 2.6], [-1.25, 3.7, 0.6], [-1.5, 3.5, 0.5], [-1.95, 2.8, 2.4]]), 0.4),
-      ...hornFaces(2, 2.4, 3.6, 1.2, 3.9, 0.4, 1.05),
-      topFace(polyPath3([[1.7, 2.9, 2.6], [1.25, 3.7, 0.6], [1.5, 3.5, 0.5], [1.95, 2.8, 2.4]]), 0.35),
-      // 바닥 촉수 술.
-      ...hornFaces(-3.3, 2.4, 0.5, -4.5, 3.2, 0.1, 0.4),
-      ...hornFaces(3.4, 2.2, 0.5, 4.6, 3, 0.1, 0.4),
-      ...hornFaces(-4.2, 1.2, 0.5, -5.4, 1.7, 0.1, 0.38),
-    ];
-  },
+
   /* 나이더스 커널(재모델링·사진) — 무엇보다 '동굴 입구'로 읽혀야 한다: 살덩이 둔덕
      앞면에 두툼한 아치가 서고 그 안이 검게 뚫려 굴이 된다. 위에는 앞으로 내민
      개인색 뚜껑이 굴을 덮고, 아래 테두리에는 짧은 엄니 몇 개만 남긴다. 키는 저그
