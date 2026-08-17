@@ -1228,50 +1228,71 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 커맨드 센터(실물 참고) — 넓은 원반 선체 3단 + 위 관제 모듈(빛 띠·돔) + 앞으로
      내려오는 전개 램프 + 네 귀 돔 발. */
   tomb: () => {
-    // 이륙 가능 건물의 발은 은색(요청) — 커맨드 네 귀 돔 발.
-    const pod = (px: number, py: number): ShapeFace[] => paintBase([
-      ...cylinderFaces3(px, py, 1.1, 1.1),
-      ...domeFaces3(px, py, 1.6, 1.4, 1.05),
-    ], "#c9ced6");
-    const out: ShapeFace[] = [...pod(-5.4, -4.4), ...pod(5.4, -4.4)];
-    out.push(...cylinderFaces3(0, 0, 6.4, 2.4));
-    out.push(capFace(discPath3(0, 0, 2.42, 5.6), 0.2));
-    // 위뚜껑은 큰 돔(지적: 돔 형태를 살린다). 반구 높이 증가(재지적: 구 높이 더).
-    out.push(...domeFaces3(0, 0, 5.4, 4.4, 2.4));
-    /* 그릇 굴뚝·관제 모듈은 돔 위 얹힘(지적: 가려짐이 이상) — 돔의 큰 키(반지름
-       몫)에 밀리지 않게 지붕 규칙 키를 준다. */
-    out.push(...tagKey([
-      ...cylinderFaces3(3.4, -2.2, 1.15, 1.3, 4.1),
-      bodyFace(discPath3(3.4, -2.2, 5.45, 1.7)),
-      capFace(discPath3(3.4, -2.2, 5.5, 1.25), 0.5),
-    ], 30));
-    // 관제 모듈 — 돔 꼭대기의 상자 + 앞면 빛 띠 + 지붕 돔.
-    // 관제 모듈 상자는 구리색(요청).
-    out.push(...tagKey(paintBase(boxFaces3(0, 0.2, 3, 2.6, 1.8, 5.5), "#b87748"), 31));
-    /* 앞면 장식(빛 띠·전개 램프)은 앞이 보일 때만(지적: 시점에 따라 기대와 다른 위치) —
-       뒤로 돌린 각도에서도 그리면 몸 위로 떠올라 팔처럼 삐져나와 보였다. */
-    const frontVisible = faceLight(0, 1).visible;
-    if (frontVisible) {
-      out.push(capFace(polyPath3([[-1.2, 1.51, 5.9], [1.2, 1.51, 5.9], [1.2, 1.51, 6.3], [-1.2, 1.51, 6.3]]), 0.5));
-      out.push(topFace(polyPath3([[-1, 1.52, 5.95], [1, 1.52, 5.95], [1, 1.52, 6.25], [-1, 1.52, 6.25]]), 0.35));
+    /* 커맨드 센터(전면 재작도·사진) — 넓은 원반 선체 둘레에 붉은 패널이 박히고 구릿빛
+       장갑 조각이 번갈아 낀다. 가운데엔 관제 모듈이 솟아 푸른 창과 어두운 지붕 상자를
+       인다. 앞왼쪽엔 은빛 통로 경사로, 발치엔 돔 발 넷, 오른쪽엔 착륙 다리 틀.
+       관제 모듈 창 띠가 개인색이다. */
+    const STEEL = "#8b8f96";
+    const DARK = "#3a3f46";
+    const BRONZE = "#8a6a44";
+    const RED = "#a8322a";
+    const out: ShapeFace[] = [];
+    // 이륙 가능 건물의 돔 발 넷 — 은색.
+    for (const [gx, gy] of [[-4.4, 3], [4.4, 2.8], [-4.6, -2.4], [4.6, -2.6]] as
+      [number, number][]) {
+      out.push(...tagKey(paintBase([
+        ...cylinderFaces3(gx, gy, 0.85, 0.9, 0),
+        ...domeFaces3(gx, gy, 1.25, 0.9, 0.9),
+      ], "#c9ced6"), depthNow(gx, gy) * 1.6 - 2));
     }
-    out.push(...tagKey(domeFaces3(0, 0.2, 1.15, 0.85, 7.3), 32));
-    if (frontVisible) {
-      // 전개 램프(실물) — 선체 중턱 해치에서 앞 바닥으로. 제 깊이(지적: 가려짐 이상).
-      const ramp = polyPath3([[-1.3, 6, 2.4], [1.3, 6, 2.4], [2.1, 9.6, 0], [-2.1, 9.6, 0]]);
-      // 진출입 경사로는 은색(요청).
-      const rampFaces: ShapeFace[] = [[ramp, 1, "#c9ced6"] as ShapeFace, topFace(ramp, 0.16)];
-      for (const t of [0.25, 0.5, 0.75]) {
-        const yy = 6 + 3.6 * t;
-        const zz = 2.4 * (1 - t);
-        const ww = 1.3 + 0.8 * t;
-        rampFaces.push(capFace(polyPath3([[-ww, yy, zz + 0.02], [ww, yy, zz + 0.02], [ww, yy + 0.3, zz - 0.18], [-ww, yy + 0.3, zz - 0.18]]), 0.3));
-      }
-      out.push(...tagKey(rampFaces, depthNow(0, 7.8) + 0.5));
+    // 원반 선체 — 낮고 넓은 잿빛 통.
+    out.push(...tagKey(paintBase(cylinderFaces3(0, 0, 6.2, 2.2, 0.9), STEEL), 4));
+    /* 둘레 패널 — 붉은 창과 구릿빛 장갑이 번갈아 박힌다. 요잉을 따라 도는 자리다. */
+    for (let k = 0; k < 12; k += 1) {
+      const a9 = (k / 12) * Math.PI * 2;
+      const px = Math.sin(a9) * 6.25;
+      const py = Math.cos(a9) * 6.25;
+      if (facingRatio(Math.sin(a9), Math.cos(a9)) <= 0.05) continue;
+      out.push(...tagKey(paintBase(
+        boxFaces3(px, py, 1.5, 1.5, k % 2 === 0 ? 1.2 : 1.6, 1.2),
+        k % 2 === 0 ? RED : BRONZE,
+      ), 6 + depthNow(px, py) * 1.6));
     }
-    out.push(...pod(-5.6, 3.9), ...pod(5.6, 3.9));
+    // 윗판 — 선체 위 뚜껑.
+    out.push(...tagKey(paintBase(domeFaces3(0, 0, 5.4, 1.5, 3.1), STEEL), 10));
+    /* 가운데 관제 모듈 — 잿빛 상자 위에 어두운 지붕 상자, 앞면에 개인색 창 띠. */
+    out.push(...tagKey(paintBase(boxFaces3(0, 0.2, 3.4, 2.8, 1.9, 4.4), STEEL), 14));
+    out.push(...tagKey(paintBase(boxFaces3(0, 0.2, 2.6, 2.2, 1.1, 6.3), DARK), 16));
+    if (facingRatio(0, 1) > 0.1) {
+      out.push(...tagKey([polyPath3([
+        [-1.4, 1.62, 5], [1.4, 1.62, 5], [1.4, 1.62, 5.9], [-1.4, 1.62, 5.9],
+      ])].map((d9) => bodyFace(d9)), 15 + depthNow(0, 1.6) * 1.6));
+      out.push(...tagKey([[polyPath3([
+        [-1.1, 1.64, 5.2], [1.1, 1.64, 5.2], [1.1, 1.64, 5.7], [-1.1, 1.64, 5.7],
+      ]), 1, "#4aa8e0"] as ShapeFace], 15.2 + depthNow(0, 1.6) * 1.6));
+    }
+    // 지붕 잔 드럼 둘.
+    for (const [dx9, dy9] of [[-2.2, -1.4], [2.3, -1.2]] as [number, number][]) {
+      out.push(...tagKey(paintBase([
+        ...cylinderFaces3(dx9, dy9, 0.72, 1.1, 4.4),
+        ...domeFaces3(dx9, dy9, 0.72, 0.4, 5.5),
+      ], BRONZE), 14 + depthNow(dx9, dy9) * 1.6));
+    }
+    /* 앞왼쪽 은빛 통로 경사로 — 바닥으로 내려가는 층진 판. */
+    out.push(...tagKey(paintBase([
+      ...boxFaces3(-3.4, 5.2, 2.4, 2.6, 0.5, 0.4),
+      ...boxFaces3(-3.4, 6.6, 2.1, 1.2, 0.25, 0),
+    ], "#c9ced6"), depthNow(-3.4, 5.8) * 1.6 + 2));
+    /* 오른쪽 착륙 다리 틀 — 구릿빛 각재로 짠 낮은 틀. */
+    out.push(...tagKey(paintBase([
+      ...boxFaces3(6.4, 3.4, 0.35, 2.8, 0.3, 0.2),
+      ...boxFaces3(7.4, 3.4, 0.35, 2.8, 0.3, 0.2),
+      ...boxFaces3(6.9, 2.2, 1.6, 0.35, 0.3, 0.2),
+      ...boxFaces3(6.9, 4.6, 1.6, 0.35, 0.3, 0.2),
+    ], BRONZE), depthNow(6.9, 3.4) * 1.6 + 2));
     return out;
   },
+
   /* 배럭(실물 참고) — 중앙 몸통 + 좌우로 더 높은 쌍탑 + 벌어진 네 다리와 원반 발. */
   cube: () => {
     /* 배럭(사진 참고·요청) — 크게 보면 얇은 직육면체 판 셋(가운데·좌·우)이 나란히
@@ -1476,66 +1497,83 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      파란 수정 + 사방 삼각 진입받침 + 네 귀 오벨리스크. 뒤 기둥은 피라미드가 가리도록
      먼저 그린다(지적: 기둥이 비쳐 보였다). */
   pyramidWide: () => {
-    const pillar = (px: number, py: number): ShapeFace[] => {
-      const [kx, ky] = project(px, py, 5.8);
-      return [
-        // 받침 원반도 제 깊이(지적: 기둥 바닥의 원들이 안 가려짐).
-        ...tagKey([
-          bodyFace(discPath3(px, py, 0.45, 1.6)),
-          sideFace(discPath3(px, py, 0.42, 1.6), 0.25),
-        ], depthNow(px, py)),
-        /* 끝을 도려내고 팁을 꽂는다(재재재지적: 화살촉처럼 튀지 않게) — 팁 원뿔이
-           그 높이의 기둥 굵기보다 늘 살짝 굵어 기둥 끝을 완전히 감싼다. */
-        ...hornFaces(px, py, 0.4, px, py, 8.8, 1.7),
-        ...paintBase(hornFaces(px, py, 6.8, px, py, 8.9, 0.5), "#3bd8c2"),
-        topFace(groundEllipse(kx, ky, 0.45, 0.65), 0.5),
+    /* 넥서스(전면 재작도·사진) — 무늬 새긴 황금 계단 피라미드 꼭대기에 청록 수정이
+       박히고, 네 대각으로 큰 황금 날개판이 뻗는다. 두 옆면에는 청록 빗살 지느러미가
+       줄지어 서고, 네 귀에는 청록 보석을 인 황금 오벨리스크가 은빛 원반 발 위에
+       선다. 뒤 가운데엔 높은 첨탑. 꼭대기 수정과 오벨리스크 보석이 개인색이다. */
+    const GOLD = "#c9a227";
+    const GOLD_D = "#8a6f2a";
+    const TEAL = "#3f8f74";
+    const out: ShapeFace[] = [];
+    /* 네 귀 은빛 원반 발 — 대각으로 벌어져 몸을 받친다. */
+    for (const [gx, gy] of [[-4.6, 3.4], [4.6, 3.2], [-4.8, -2.6], [4.8, -2.8]] as
+      [number, number][]) {
+      out.push(...tagKey(paintBase([
+        ...cylinderFaces3(gx, gy, 1.15, 0.4, 0),
+        ...cylinderFaces3(gx, gy, 0.7, 0.5, 0.4),
+      ], "#c9ced6"), depthNow(gx, gy) * 1.6 - 2));
+    }
+    /* 네 대각 황금 날개판 — 무늬가 새겨진 넓적한 판. 바깥으로 갈수록 얇아진다. */
+    for (const [wx, wy] of [[-3.9, 2.9], [3.9, 2.7], [-4.1, -2.1], [4.1, -2.3]] as
+      [number, number][]) {
+      const lo: [number, number, number][] = [
+        [wx * 0.35, wy * 0.35, 2.4], [wx * 1.35, wy * 1.35, 1.1],
+        [wx * 1.35 + wy * 0.28, wy * 1.35 - wx * 0.28, 1.05],
+        [wx * 0.35 + wy * 0.34, wy * 0.35 - wx * 0.34, 2.35],
       ];
-    };
-    /* 기둥 자리 6.6 → 6.0(수리: 대각 모서리 기둥이 요잉 투영에서 뷰박스 가로(±8)를
-       넘어 잘려 떨어져 나간 듯 보였다 — rx = 6.6cos20 + 6.6sin20 ≈ 8.46). */
-    // 6.0 → 5.6(재지적: 왼뒤 기둥이 너무 바깥) — 받침 원반이 피라미드 모서리에 걸치게 붙인다.
-    /* 상자 정규화(지적: 넥서스가 발자국을 초과) — 기둥·받침이 요잉 투영에서 ±9까지
-       나가 16칸 상자를 넘쳤다. 전체를 0.85배로 눌러 안에 들인다. */
-    const out: ShapeFace[] = [...pillar(-4.7, -4.7), ...pillar(4.7, -4.7)];
-    out.push(...frustumFaces3(0, 0, 9, 9, 2.8, 2.8, 6.4));
-    // 앞면 능선 띠 — 경사면을 따라 층층이 가로 띠.
-    const half = (z: number): number => 4.5 - (4.5 - 1.4) * (z / 6.4);
-    for (const bz of [1.4, 3, 4.6]) {
-      const w0 = half(bz) - 0.35;
-      const w1 = half(bz + 0.6) - 0.35;
-      out.push(topFace(polyPath3([
-        [-w0, half(bz), bz], [w0, half(bz), bz],
-        [w1, half(bz + 0.6), bz + 0.6], [-w1, half(bz + 0.6), bz + 0.6],
-      ]), 0.2));
+      const hi = lo.map(([x9, y9, z9]) => [x9, y9, z9 + 0.42] as [number, number, number]);
+      const f: ShapeFace[] = [bodyFace(polyPath3(lo))];
+      for (let k = 0; k < 4; k += 1) {
+        const q = (k + 1) % 4;
+        f.push(bodyFace(polyPath3([lo[k], lo[q], hi[q], hi[k]])));
+      }
+      f.push(bodyFace(polyPath3(hi)), topFace(polyPath3(hi), 0.2));
+      out.push(...tagKey(paintBase(f, GOLD), 6 + depthNow(wx, wy) * 1.6));
     }
-    // 꼭대기 받침 + 수정 — 지붕 키로 가림 해결(지적) + 옥색~시안 고정색(지적).
+    /* 계단 피라미드 — 위로 좁아지는 황금 단 셋. 옆면에 무늬 골. */
+    ([[4.4, 3.4, 0, 1.5], [3.3, 2.5, 1.5, 1.3], [2.2, 1.7, 2.8, 1.2]] as
+      [number, number, number, number][]).forEach(([rw, rh, rz, hh], si) => {
+      out.push(...tagKey(paintBase(
+        frustumFaces3(0, 0.2, rw * 2, rh * 2, rw * 1.7, rh * 1.7, hh, rz),
+        si % 2 === 0 ? GOLD : GOLD_D,
+      ), 10 + si * 0.4));
+    });
+    /* 옆면 청록 빗살 지느러미 — 좌우로 줄지어 선 얇은 판. */
+    for (const m9 of [-1, 1] as const) {
+      const fin: ShapeFace[] = [];
+      for (let k = 0; k < 6; k += 1) {
+        const fy = -1.9 + k * 0.8;
+        fin.push(...paintBase(boxFaces3(m9 * 3.5, fy, 0.9, 0.28, 1.5, 1.5), TEAL));
+      }
+      out.push(...tagKey(fin, 12 + depthNow(m9 * 3.5, 0) * 1.6));
+    }
+    /* 네 귀 오벨리스크 — 은빛 발 위에 선 황금 기둥. 꼭대기에 개인색 보석. */
+    for (const [ox, oy] of [[-4.6, 3.4], [4.6, 3.2], [-4.8, -2.6], [4.8, -2.8]] as
+      [number, number][]) {
+      const key = 16 + depthNow(ox, oy) * 1.6;
+      out.push(...tagKey(paintBase(spirePillar({
+        x: ox, y: oy, z0: 0.9, h: 3.4, w: 0.72, tipW: 0.34,
+        segs: 3, sides: 5, hold: 0.3, taper: 1.3,
+        leanX: -ox * 0.06, leanY: -oy * 0.06,
+      }), GOLD), key));
+      out.push(...tagKey(domeFaces3(ox - ox * 0.06, oy - oy * 0.06, 0.4, 0.5, 3.9), key + 0.3));
+    }
+    /* 꼭대기 청록 수정 — 개인색(요청). 계단 위에 박힌 뾰족한 결정. */
     out.push(...tagKey([
-      ...boxFaces3(0, 0, 2.9, 2.9, 0.8, 6.4),
-      [`M${project(0, 0, 7.2)[0]} ${project(0, 0, 7.2)[1] - 2.7} L${project(0, 0, 7.2)[0] + 1.25} ${project(0, 0, 7.2)[1] - 0.9} L${project(0, 0, 7.2)[0]} ${project(0, 0, 7.2)[1] + 0.55} L${project(0, 0, 7.2)[0] - 1.25} ${project(0, 0, 7.2)[1] - 0.9} Z`, 1, "#3bd8c2"] as ShapeFace,
-      topFace(`M${project(0, 0, 7.2)[0]} ${project(0, 0, 7.2)[1] - 2.7} L${project(0, 0, 7.2)[0] - 1.25} ${project(0, 0, 7.2)[1] - 0.9} L${project(0, 0, 7.2)[0]} ${project(0, 0, 7.2)[1] + 0.55} L${project(0, 0, 7.2)[0] - 0.4} ${project(0, 0, 7.2)[1] - 0.95} Z`, 0.45),
-    ], 45));
-    /* 사방 삼각형 출구 발판(정정: 바깥쪽이 뾰족한 삼각형) — 넓은 변이 피라미드
-       밑동에 기대고, 꼭짓점이 바깥 바닥을 향해 뾰족하게 뻗는다. 전엔 반대(안쪽
-       꼭짓점·바깥 넓은 변)였다. */
-    for (const ang of [0, 90, 180, 270]) {
-      const a = (ang * Math.PI) / 180;
-      const sx = Math.sin(a);
-      const sy = Math.cos(a);
-      const cxa = Math.cos(a);
-      const sya = -Math.sin(a);
-      const { visible, face } = faceLight(sx, sy);
-      if (!visible) continue;
-      const d = polyPath3([
-        [sx * 4.2 + cxa * 2.2, sy * 4.2 + sya * 2.2, 1.5],
-        [sx * 4.2 - cxa * 2.2, sy * 4.2 - sya * 2.2, 1.5],
-        [sx * 8.4, sy * 8.4, 0],
-      ]);
-      // 발판도 제 깊이(지적: 기둥과 가려짐 순서) — 앞 발판만 기둥 위로.
-      out.push(...tagKey([bodyFace(d), ...face(d)], depthNow(sx * 5.5, sy * 5.5)));
-    }
-    out.push(...pillar(-5.6, 5.6), ...pillar(5.6, 5.6));
+      ...paintBase(frustumFaces3(0, 0.2, 2.2, 1.7, 1.5, 1.2, 0.5, 4), GOLD_D),
+      ...spirePillar({
+        x: 0, y: 0.2, z0: 4.4, h: 2.2, w: 1.05, tipW: 0.08,
+        segs: 3, sides: 4, hold: 0.15, taper: 1.4,
+      }),
+    ], 20));
+    /* 뒤 가운데 첨탑 — 높이 솟은 황금 대. */
+    out.push(...tagKey(paintBase(spirePillar({
+      x: 0, y: -2.6, z0: 1.5, h: 6.4, w: 0.8, tipW: 0.28,
+      segs: 4, sides: 6, hold: 0.25, taper: 1.3,
+    }), GOLD), 14 + depthNow(0, -2.6) * 1.6));
     return out;
   },
+
   /* 게이트웨이(실물 점검) — 낮은 사방 경사로 마당 위에 마주 기운 어금니 탑 한 쌍이
      사이를 띄워 문을 이루고, 그 사이에 소환 빛이 선다. */
   gate: () => {
