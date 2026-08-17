@@ -895,6 +895,55 @@ function ivory(faces: ShapeFace[]): ShapeFace[] {
   return faces.map(([d, o, f, k]) => [d, o, f ?? IVORY, k] as ShapeFace);
 }
 
+/** 막(공용 도형·요청: 드론·뮤탈 날개 같은 디테일) — 뿌리 변(roots)과 바깥 변(tips)을
+ *  잇는 얇은 막. 바깥 변은 이웃 끝점 사이를 안쪽으로 우묵하게 파 갈퀴처럼 만들고,
+ *  뿌리에서 각 끝점으로 가는 힘줄을 얹어 결을 낸다. */
+function membraneFaces(
+  roots: [number, number, number][],
+  tips: [number, number, number][],
+  fill: string,
+  o?: { shade?: number; notch?: number; rib?: number; key?: number },
+): ShapeFace[] {
+  if (roots.length === 0 || tips.length < 2) return [];
+  const notch = o?.notch ?? 0.3;
+  const cx = roots.reduce((a, r) => a + r[0], 0) / roots.length;
+  const cy = roots.reduce((a, r) => a + r[1], 0) / roots.length;
+  const cz = roots.reduce((a, r) => a + r[2], 0) / roots.length;
+  // 바깥 변 — 끝점 사이마다 뿌리 쪽으로 당긴 골을 하나씩 끼운다.
+  const edge: [number, number, number][] = [];
+  for (let i = 0; i < tips.length; i += 1) {
+    edge.push(tips[i]);
+    if (i + 1 >= tips.length) break;
+    const mx = (tips[i][0] + tips[i + 1][0]) / 2;
+    const my = (tips[i][1] + tips[i + 1][1]) / 2;
+    const mz = (tips[i][2] + tips[i + 1][2]) / 2;
+    edge.push([
+      mx + (cx - mx) * notch, my + (cy - my) * notch, mz + (cz - mz) * notch,
+    ]);
+  }
+  const outline = polyPath3([...roots, ...[...edge].reverse()]);
+  const out: ShapeFace[] = [[outline, 1, fill] as ShapeFace, sideFace(outline, o?.shade ?? 0.16)];
+  // 힘줄 — 가장 가까운 뿌리에서 끝점까지 가는 띠.
+  const rw = o?.rib ?? 0.09;
+  for (const tp of tips) {
+    let best = roots[0];
+    let bd = Infinity;
+    for (const r of roots) {
+      const d = Math.hypot(r[0] - tp[0], r[1] - tp[1], r[2] - tp[2]);
+      if (d < bd) { bd = d; best = r; }
+    }
+    const [rx, ry] = project(best[0], best[1], best[2]);
+    const [tx, ty] = project(tp[0], tp[1], tp[2]);
+    const dx = tx - rx;
+    const dy = ty - ry;
+    const dl = Math.hypot(dx, dy) || 1;
+    const nx = (-dy / dl) * rw;
+    const ny = (dx / dl) * rw;
+    out.push(sideFace(`M${rx + nx} ${ry + ny} L${tx + nx} ${ty + ny}`
+      + ` L${tx - nx} ${ty - ny} L${rx - nx} ${ry - ny} Z`, 0.22));
+  }
+  return o?.key === undefined ? out : tagKey(out, o.key);
+}
 /** 렌즈(공용 도형·요청) — 몸 표면의 접평면 위에 선 볼록한 원판. 화면 고정 정원으로
  *  칠하면 요잉과 무관하게 늘 동그래 '구'로 읽히므로(지적), 접평면의 두 축(수평 접선
  *  u, 수직 z)으로 3D 점을 찍어 투영한다: 정면에선 동그랗고 옆으로 돌수록 실제로
@@ -2897,41 +2946,28 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       bodyFace(polyPath3([[2.4, -1.6, 2.4], [4, -2.9, 6.2], [3, -0.9, 4.2], [2, -0.7, 2.8]])),
       sideFace(polyPath3([[2.4, -1.6, 2.4], [4, -2.9, 6.2], [3, -0.9, 4.2], [2, -0.7, 2.8]]), 0.2),
       ...hornFaces(0, -2.8, 2.4, 0, -4.4, 6.2, 1.1),
-      // 가지 사이 물갈퀴 천막(지적) — 이웃 돛가시 끝을 잇는 처진 막.
-      /* 엉겨붙은 찢어진 막(재지적) — 매끈한 갈퀴가 아니라 가장자리가 들쭉날쭉 뜯긴
-         네 폭. 뜯긴 골이 위로 파고들고 바닥선도 너덜거린다. */
-      bodyFace(polyPath3([
-        [-4.2, -2.5, 7], [-5.5, -1.6, 0.3], [-4.8, -1.4, 2.1], [-4.2, -1.2, 0.3],
-        [-3.6, -1, 1.5], [-3.2, -0.9, 0.3],
-      ])),
-      sideFace(polyPath3([
-        [-4.2, -2.5, 7], [-5.5, -1.6, 0.3], [-4.8, -1.4, 2.1], [-4.2, -1.2, 0.3],
-        [-3.6, -1, 1.5], [-3.2, -0.9, 0.3],
-      ]), 0.14),
-      bodyFace(polyPath3([
-        [-4.2, -2.5, 7], [-2.4, -3.3, 3.4], [-1.3, -3.8, 5], [0, -4.2, 5.9],
-        [-0.6, -3.6, 0.3], [-1.4, -3.1, 2], [-2.2, -2.7, 0.3], [-3.4, -2.2, 0.3],
-      ])),
-      sideFace(polyPath3([
-        [-4.2, -2.5, 7], [-2.4, -3.3, 3.4], [-1.3, -3.8, 5], [0, -4.2, 5.9],
-        [-0.6, -3.6, 0.3], [-1.4, -3.1, 2], [-2.2, -2.7, 0.3], [-3.4, -2.2, 0.3],
-      ]), 0.16),
-      bodyFace(polyPath3([
-        [4, -2.9, 6.5], [2.2, -3.5, 3.2], [1.2, -3.9, 4.8], [0, -4.2, 5.9],
-        [0.6, -3.6, 0.3], [1.5, -3.1, 1.9], [2.3, -2.7, 0.3], [3.2, -2.4, 0.3],
-      ])),
-      sideFace(polyPath3([
-        [4, -2.9, 6.5], [2.2, -3.5, 3.2], [1.2, -3.9, 4.8], [0, -4.2, 5.9],
-        [0.6, -3.6, 0.3], [1.5, -3.1, 1.9], [2.3, -2.7, 0.3], [3.2, -2.4, 0.3],
-      ]), 0.2),
-      bodyFace(polyPath3([
-        [4, -2.9, 6.5], [5.3, -1.8, 0.3], [4.6, -1.6, 1.9], [4, -1.4, 0.3],
-        [3.5, -1.2, 1.3], [3, -1.1, 0.3],
-      ])),
-      sideFace(polyPath3([
-        [4, -2.9, 6.5], [5.3, -1.8, 0.3], [4.6, -1.6, 1.9], [4, -1.4, 0.3],
-        [3.5, -1.2, 1.3], [3, -1.1, 0.3],
-      ]), 0.22),
+      /* 가지 사이 물갈퀴 천막(요청: 드론·뮤탈 날개 같은 디테일) — 손으로 찍던
+         너덜너덜 다각형을 걷고, 공용 막 도형으로 낸다: 이웃 돛가시 끝을 잇는 위 변에서
+         바닥으로 늘어지고, 아랫단은 갈퀴 골로 우묵하게 파인다. 힘줄도 함께 붙는다. */
+      ...([
+        [[-4.2, -2.5, 7], [-3.2, -0.9, 2.6]] as [number, number, number][],
+        [[-4.2, -2.5, 7], [0, -4.2, 5.9]] as [number, number, number][],
+        [[0, -4.2, 5.9], [4, -2.9, 6.5]] as [number, number, number][],
+        [[4, -2.9, 6.5], [3, -1.1, 2.6]] as [number, number, number][],
+      ]).flatMap((rt9, k9) => {
+        const [a9, b9] = rt9;
+        // 아랫단 — 두 뿌리 사이를 넷으로 나눠 바닥까지 늘어뜨린다.
+        const hem9: [number, number, number][] = Array.from({ length: 4 }, (_, i9) => {
+          const u9 = i9 / 3;
+          const hx9 = a9[0] + (b9[0] - a9[0]) * u9;
+          const hy9 = a9[1] + (b9[1] - a9[1]) * u9;
+          return [hx9 * 1.18, hy9 * 1.18, 0.3 + Math.sin(Math.PI * u9) * 1.6];
+        });
+        return membraneFaces(rt9, hem9, "#c68a62", {
+          shade: 0.14 + k9 * 0.02, notch: 0.34,
+          key: depthNow((a9[0] + b9[0]) / 2, (a9[1] + b9[1]) / 2) * 1.6,
+        });
+      }),
       // 앞 똬리 꼬리 — 마디 돔 줄 + 끝 입.
       ...domeFaces3(-1.2, 2.6, 1, 0.85),
       ...domeFaces3(0, 3, 0.9, 0.75),
@@ -3986,9 +4022,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const [t1x, t1y] = P(a1, 2.4);
       const [x2, y2] = P(a1 + 60, 1.2);
       const [t2x, t2y] = P(a1 + 60, 2.4);
-      const web = polyPath3([[x1, y1, 5.1], [t1x, t1y, 4.05], [t2x, t2y, 4.05], [x2, y2, 5.1]]);
-      // 갈퀴막 짙은 살색(요청).
-      out.push([web, 1, "#c68a62"] as ShapeFace, sideFace(web, 0.15));
+      /* 갈퀴막 짙은 살색(요청) — 공용 막 도형으로 갈퀴 골과 힘줄을 준다(요청:
+         드론·뮤탈 날개 같은 디테일). 뿌리는 몸통 쪽 두 점, 바깥은 다리 끝 두 점이다. */
+      out.push(...membraneFaces(
+        [[x1, y1, 5.1], [x2, y2, 5.1]],
+        [[t1x, t1y, 4.05], [t2x, t2y, 4.05]],
+        "#c68a62", { shade: 0.15, notch: 0.26 },
+      ));
     }
     // 다리 여섯 — 막의 뼈대.
     for (let i = 0; i < 6; i += 1) {
@@ -4613,38 +4653,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         up(m * 1.95, -2.5, 2.95), up(m * 2.95, -1.1, 3),
         up(m * 3.25, 0.5, 3.05), up(m * 2.5, 2, 3.1),
       ];
-      // 바깥 가장자리 — 이웃한 두 끝점 사이를 안쪽으로 우묵하게 판다.
-      const edge: [number, number, number][] = [];
-      for (let k = 0; k < C.length; k += 1) {
-        edge.push(C[k]);
-        if (k + 1 < C.length) {
-          const n: [number, number, number] = [
-            (C[k][0] + C[k + 1][0]) / 2 * 0.72,
-            (C[k][1] + C[k + 1][1]) / 2 * 0.72,
-            (C[k][2] + C[k + 1][2]) / 2,
-          ];
-          edge.push(n);
-        }
-      }
-      const outline = polyPath3([...A, ...[...edge].reverse()]);
-      const out9: ShapeFace[] = [
-        [outline, 1, "#c68a62"] as ShapeFace,
-        m > 0 ? sideFace(outline, 0.16) : sideFace(outline, 0.13),
-      ];
-      // 힘줄 — 뿌리에서 바깥 끝점으로 뻗는 가는 띠. 막의 결을 말한다.
-      for (let k = 0; k < C.length; k += 1) {
-        const a9 = A[Math.min(A.length - 1, Math.round((k / (C.length - 1)) * (A.length - 1)))];
-        const [rx, ry] = project(a9[0], a9[1], a9[2]);
-        const [tx, ty] = project(C[k][0], C[k][1], C[k][2]);
-        const dx = tx - rx;
-        const dy = ty - ry;
-        const dl = Math.hypot(dx, dy) || 1;
-        const nx = (-dy / dl) * 0.09;
-        const ny = (dx / dl) * 0.09;
-        out9.push(sideFace(`M${rx + nx} ${ry + ny} L${tx + nx} ${ty + ny}`
-          + ` L${tx - nx} ${ty - ny} L${rx - nx} ${ry - ny} Z`, 0.22));
-      }
-      return tagKey(out9, depthNow(m * 2.2, -0.2) * 1.6);
+      // 공용 막 도형(요청) — 갈퀴 골과 힘줄을 한 자리에서 낸다.
+      return membraneFaces(A, C, "#c68a62", {
+        shade: m > 0 ? 0.16 : 0.13, notch: 0.28, key: depthNow(m * 2.2, -0.2) * 1.6,
+      });
     };
     return [
       ...web(1),
@@ -4799,7 +4811,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...protossTorso(P_GOLD),
     /* 치마는 언제나 몸통 뒤(재재재지적: 아직도 가려짐) — 프러스텀의 반지름 깊이가
        요잉에 따라 몸통 막대를 이겨 앞으로 튀었다. 맨 뒤 고정 키로 못 박는다. */
-    ...tagKey(frustumFaces3(0, -0.1, 1.75, 1.5, 1.15, 1, 0.85, 3.15), -100),
+    /* 치마를 첨탑기둥으로(요청: 둥글게) — 각진 프러스텀 대신 12각 기둥으로 세워
+       아랫단이 넓고 허리로 갈수록 좁아지는 둥근 종 모양이 된다. 기둥은 아래에서 위로
+       자라니 '치맛단 → 허리' 순으로 정의한다. 여전히 맨 뒤 고정 키(몸통에 안 튀게). */
+    ...tagKey(spirePillar({
+      x: 0, y: -0.1, z0: 2.3, h: 1.75, w: 1.6, tipW: 0.92,
+      segs: 4, sides: 12, hold: 0.12, taper: 0.7,
+    }), -100),
     // 얼굴 — 공통 턱주가리(요청). 뒤로 솟던 머리 뿔은 제거.
     /* 머리 깊이는 제 자리로(지적: 몸통에 안 가려짐) — 붙박이 키 20은 뒤에서 볼 때도
        머리가 몸통을 뚫고 나왔다. 앞으로 숙인 머리의 중심(y 0.4) 깊이를 쓰면 앞에선
