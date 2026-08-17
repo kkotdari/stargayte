@@ -3863,8 +3863,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          바닥 중심(0, 0.2, 4.3)이다. */
       x: 0, y: 0, h: 1, w: 0.62, tipW: 2.05,
       segs: 9, sides: 8, hold: 0, taper: 0.68,
+      /* 180도 요잉(요청) — 머리 밑 물림점(y 0.2)을 축으로 뒤집는다: 꼬리 끝이 뒤가
+         아니라 앞(1.8)으로 나오고 휨도 함께 돌아간다. 끝 기울기가 0인 성질은 그대로라
+         위 단면은 여전히 수평이다. */
       path: (t9: number): [number, number, number] => [
-        0, -1.4 + 1.6 * (1 - (1 - t9) ** 2), 0.3 + 4 * t9,
+        0, 1.8 - 1.6 * (1 - (1 - t9) ** 2), 0.3 + 4 * t9,
       ],
       fill: "#6b4732",
     }), 12),
@@ -3887,8 +3890,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 얼굴 밑에 있던 작은 가시 한 쌍은 몸통 끝으로(요청) — 꼬리 끝(0, 2.7, 0.3)에서
        앞·아래로 짧게 뻗는다. */
     ...tagKey(paintBase([
-      ...hornFaces(0.3, -1.25, 0.85, 0.62, -2.15, 0.35, 0.32),
-      ...hornFaces(-0.3, -1.25, 0.85, -0.62, -2.15, 0.35, 0.32),
+      ...hornFaces(0.3, 1.65, 0.85, 0.62, 2.55, 0.35, 0.32),
+      ...hornFaces(-0.3, 1.65, 0.85, -0.62, 2.55, 0.35, 0.32),
     ], IVORY_DEEP), 13),
   ],
   /* 스커지 — 작은 몸 + 날개 한 쌍. */
@@ -5500,25 +5503,28 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const TILT = 1.1; // 꼭대기가 뒤(-y)로 밀리는 총량
     const axY = (z9: number): number => -TILT * (z9 / 7.3);
     // 아래 반 — 아래 끝(뾰족)에서 허리로 벌어진다. 색은 짙은 살색(요청).
-    out.push(...paintBase(spirePillar({
+    /* 키는 아래에서 위로 명시로 쌓는다(지적: 키가 이상하다) — 조각마다 프리미티브가
+       매기는 제 깊이를 쓰면, 같은 축에 선 반쪽·테들이 반지름 몫으로 서로를 덮었다.
+       아래 반 0 → 위 반 1 → 실자락 2 → 마디 테 3 순서면 늘 옳다. */
+    out.push(...tagKey(paintBase(spirePillar({
       x: 0, y: axY(1.1), z0: 1.1, h: WAIST - 1.1, w: 0.3, tipW: 2.05,
       segs: 5, sides: 10, hold: 0, taper: 0.75,
       leanY: axY(WAIST) - axY(1.1),
-    }), "#c68a62"));
+    }), "#c68a62"), 0));
     // 위 반 — 허리에서 위 끝으로 다시 좁아진다.
-    out.push(...paintBase(spirePillar({
+    out.push(...tagKey(paintBase(spirePillar({
       /* 허리에서 살짝 겹쳐 시작한다(지적: 중간 허리 안쪽 단면이 비쳐 보인다) —
          두 반쪽이 딱 맞닿기만 하면 아래 반의 윗 뚜껑이 그대로 드러난다. 0.25 아래에서
          시작해 굵기를 조금 키워 그 뚜껑을 덮는다. */
       x: 0, y: axY(WAIST - 0.25), z0: WAIST - 0.25, h: 3.65, w: 2.12, tipW: 0.32,
       segs: 5, sides: 10, hold: 0.12, taper: 0.85,
       leanY: axY(WAIST + 3.4) - axY(WAIST - 0.25),
-    }), "#c68a62"));
+    }), "#c68a62"), 1));
     // 매달린 실자락 — 꼭대기에서 위로 가늘게 뻗는다.
-    out.push(...paintBase(spirePillar({
+    out.push(...tagKey(paintBase(spirePillar({
       x: 0, y: axY(7.3), z0: 7.3, h: 1.5, w: 0.22, tipW: 0.08,
       segs: 2, sides: 6, hold: 0.2, leanY: axY(8.8) - axY(7.3),
-    }), "#8a5f43"));
+    }), "#8a5f43"), 2));
     /* 마디 결 — 껍질 옆선을 타는 얇은 테 넷. 허리 위아래로 굵기가 갈리므로 자리마다
        제 반지름을 셈해 딱 맞춘다. */
     const shellR = (z9: number): number => (z9 <= WAIST
@@ -5526,10 +5532,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       : 0.32 + 1.73 * (1 - (z9 - WAIST) / 3.4) ** 0.85);
     for (const z9 of [2.2, 3.2, 4.6, 5.6, 6.5]) {
       const r9 = shellR(z9) * 1.04;
-      out.push(...paintBase(spirePillar({
+      out.push(...tagKey(paintBase(spirePillar({
         x: 0, y: axY(z9), z0: z9 - 0.14, h: 0.28, w: r9, tipW: r9,
         segs: 1, sides: 10, hold: 1,
-      }), "#8a5f43"));
+      }), "#8a5f43"), 3));
     }
     return out;
   },
