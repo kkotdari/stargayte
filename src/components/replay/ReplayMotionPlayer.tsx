@@ -5403,8 +5403,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          전체적으로 둥글게) — 앞다리 둘과 그 사이 패널을 한 장의 아치로 본다. 높이가
          |x|의 2차식으로 떨어지므로 가운데는 평평하고 바깥으로 갈수록 기울기가 커진다:
          계수 0.14면 바깥 끝(x≈3.55)의 기울기가 2×0.14×3.55 ≈ 1, 곧 45도다. */
+      // 집게 전체를 위로(요청) — 기준 높이 4.15 → 4.85.
       const zAt9 = (x9: number, y9: number, dz: number): number =>
-        4.15 - (y9 + 0.2) * 0.1 - (y9 + 0.2) ** 2 * 0.028
+        4.85 - (y9 + 0.2) * 0.1 - (y9 + 0.2) ** 2 * 0.028
         - Math.abs(x9) ** 2 * 0.14 + dz;
       const ring9 = (m9: 1 | -1, dz: number): [number, number, number][] => [
         ...OUT9.map(([x9, y9]) => [m9 * x9, y9, zAt9(x9, y9, dz)] as [number, number, number]),
@@ -5478,21 +5479,27 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   mutacocoon: () => {
     const WAIST = 3.9; // 가장 굵은 허리 높이
     const out: ShapeFace[] = [];
-    // 아래 반 — 아래 끝(뾰족)에서 허리로 벌어진다.
+    /* 살짝 기운다(요청) — 껍질 축을 뒤로 조금 눕혀 매달린 느낌을 낸다. 자리마다
+       중심이 어긋나면 마디 테가 안 맞으므로, 축의 기울기를 한 곳에서 정의해 쓴다. */
+    const TILT = 1.1; // 꼭대기가 뒤(-y)로 밀리는 총량
+    const axY = (z9: number): number => -TILT * (z9 / 7.3);
+    // 아래 반 — 아래 끝(뾰족)에서 허리로 벌어진다. 색은 짙은 살색(요청).
     out.push(...paintBase(spirePillar({
-      x: 0, y: 0, z0: 1.1, h: WAIST - 1.1, w: 0.3, tipW: 2.05,
+      x: 0, y: axY(1.1), z0: 1.1, h: WAIST - 1.1, w: 0.3, tipW: 2.05,
       segs: 5, sides: 10, hold: 0, taper: 0.75,
-    }), "#8a5a44"));
+      leanY: axY(WAIST) - axY(1.1),
+    }), "#c68a62"));
     // 위 반 — 허리에서 위 끝으로 다시 좁아진다.
     out.push(...paintBase(spirePillar({
-      x: 0, y: 0, z0: WAIST, h: 3.4, w: 2.05, tipW: 0.32,
+      x: 0, y: axY(WAIST), z0: WAIST, h: 3.4, w: 2.05, tipW: 0.32,
       segs: 5, sides: 10, hold: 0.1, taper: 0.85,
-    }), "#8a5a44"));
+      leanY: axY(WAIST + 3.4) - axY(WAIST),
+    }), "#c68a62"));
     // 매달린 실자락 — 꼭대기에서 위로 가늘게 뻗는다.
     out.push(...paintBase(spirePillar({
-      x: 0, y: 0, z0: 7.3, h: 1.5, w: 0.22, tipW: 0.08,
-      segs: 2, sides: 6, hold: 0.2,
-    }), "#6d4433"));
+      x: 0, y: axY(7.3), z0: 7.3, h: 1.5, w: 0.22, tipW: 0.08,
+      segs: 2, sides: 6, hold: 0.2, leanY: axY(8.8) - axY(7.3),
+    }), "#8a5f43"));
     /* 마디 결 — 껍질 옆선을 타는 얇은 테 넷. 허리 위아래로 굵기가 갈리므로 자리마다
        제 반지름을 셈해 딱 맞춘다. */
     const shellR = (z9: number): number => (z9 <= WAIST
@@ -5501,9 +5508,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     for (const z9 of [2.2, 3.2, 4.6, 5.6, 6.5]) {
       const r9 = shellR(z9) * 1.04;
       out.push(...paintBase(spirePillar({
-        x: 0, y: 0, z0: z9 - 0.14, h: 0.28, w: r9, tipW: r9,
+        x: 0, y: axY(z9), z0: z9 - 0.14, h: 0.28, w: r9, tipW: r9,
         segs: 1, sides: 10, hold: 1,
-      }), "#6d4433"));
+      }), "#8a5f43"));
     }
     return out;
   },
