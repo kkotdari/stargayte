@@ -4276,37 +4276,156 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(groundEllipse(lx2 - 0.1, ly2 - 0.1, 0.15, 0.12), 0.4),
     ];
   },
-  /* 컴샛 스테이션(스캔 애드온, 요청) — 낮은 몸체 위 기울어진 접시 안테나와 침. */
+  /* 컴샛 스테이션(재모델링·사진) — 낮고 각진 선체 위에 큰 접시 안테나가 기둥으로
+     서고, 옆구리에 초록 발광 띠가 줄지어 박힌다. 뒤 왼쪽엔 노랑·검정 경고 블록,
+     앞·오른쪽 바닥엔 녹슨 주황 테를 두른 넓은 원반 패드 둘. */
   comsat: () => {
-    const [dx3, dy3] = project(0.3, -0.4, 5.2);
-    return [
+    const out: ShapeFace[] = [
       // 받침 슬래브는 중심 깊이만(지적: 애드온 바닥이 위 부품을 덮음).
-    ...tagKey(boxFaces3(0, 0.2, 5.6, 4.4, 2.6), depthNow(0, 0.2)),
-      /* 지붕 부품은 붙박이 큰 키(지적: 받침 판·기둥·접시 앞뒤가 요잉 따라 어긋남) —
-         지붕 규칙: 받침 위 얹힘은 어떤 각에서도 받침 뒤로 못 가게 30대 키를 못 박는다. */
-      // 안테나(기둥·접시·침) 은색(요청).
-      ...tagKey(paintBase(cylinderFaces3(0.3, -0.4, 0.5, 1.6, 2.6), "#c9ced6"), 24 + depthNow(0.3, -0.4)),
-      ...tagKey([
-        [groundEllipse(dx3, dy3, 2, 1), 1, "#c9ced6"] as ShapeFace,
-        topFace(groundEllipse(dx3, dy3, 1.5, 0.7), 0.2),
-        capFace(groundEllipse(dx3, dy3, 0.4, 0.22), 0.35),
-      ], 26 + depthNow(0.3, -0.4)),
-      ...tagKey(paintBase(hornFaces(0.3, -0.4, 5.2, 0.7, 0.3, 6.8, 0.2), "#c9ced6"), 28 + depthNow(0.5, 0)),
+      ...tagKey(boxFaces3(0, 0.2, 5.6, 4.4, 0.9), depthNow(0, 0.2)),
     ];
+    /* 바닥 원반 패드 둘(사진) — 녹슨 주황 테를 두른 낮은 원반. 받침 바로 위. */
+    for (const [px, py, pr] of [[-1.5, 1.5, 1.9], [1.9, 0.4, 1.5]] as [number, number, number][]) {
+      out.push(...tagKey([
+        ...paintBase(cylinderFaces3(px, py, pr, 0.55, 0.9), "#b5652c"),
+        ...paintBase(cylinderFaces3(px, py, pr * 0.78, 0.2, 1.45), "#8b8f96"),
+        capFace(discPath3(px, py, 1.66, pr * 0.62), 0.25),
+      ], 22 + depthNow(px, py)));
+    }
+    /* 각진 선체 — 위로 갈수록 좁아지는 사다리꼴 통. 옆구리에 초록 발광 띠. */
+    out.push(...tagKey(paintBase(
+      frustumFaces3(-0.4, -0.5, 3.6, 2.8, 2.6, 1.9, 1.5, 1.45), "#7b8088",
+    ), 24 + depthNow(-0.4, -0.5)));
+    if (facingRatio(0, 1) > 0.12) {
+      const led: ShapeFace[] = [];
+      for (const lx of [-1.2, -0.4, 0.4]) {
+        led.push([polyPath3([
+          [lx - 0.26, 0.82, 1.9], [lx + 0.26, 0.82, 1.9],
+          [lx + 0.26, 0.82, 2.5], [lx - 0.26, 0.82, 2.5],
+        ]), 1, "#4cd86a"] as ShapeFace);
+      }
+      out.push(...tagKey(led, 25 + depthNow(-0.4, 0.9)));
+    }
+    /* 뒤 왼쪽 노랑·검정 경고 블록(사진) — 선체 뒤에 붙은 빗금 상자. */
+    out.push(...tagKey(paintBase(boxFaces3(-1.9, -1.9, 1.9, 1.3, 1.5, 0.9), "#22262b"),
+      24 + depthNow(-1.9, -1.9)));
+    if (facingRatio(0, 1) > 0.1) {
+      const warn: ShapeFace[] = [];
+      for (let k = 0; k < 5; k += 1) {
+        const u0 = -2.85 + k * 0.42;
+        warn.push([polyPath3([
+          [u0, -1.24, 0.95], [u0 + 0.22, -1.24, 0.95],
+          [u0 + 0.5, -1.24, 2.4], [u0 + 0.28, -1.24, 2.4],
+        ]), 1, k % 2 === 0 ? "#e8c33a" : "#22262b"] as ShapeFace);
+      }
+      out.push(...tagKey(warn, 25 + depthNow(-1.9, -1.2)));
+    }
+    /* 접시 안테나 — 기둥 위에 기울어 앉은 큰 접시. 은색. 접시는 접평면 원판이라
+       요잉을 타고 실제로 납작해진다(공용 렌즈 도형과 같은 결). */
+    out.push(...tagKey(paintBase(cylinderFaces3(0.2, -0.6, 0.34, 2.4, 2.9), "#c9ced6"),
+      26 + depthNow(0.2, -0.6)));
+    const dish: ShapeFace[] = [];
+    {
+      const DR = 2.05;
+      const disc = (k: number, dy: number, dz: number): string => polyPath3(
+        Array.from({ length: 17 }, (_, q) => {
+          const a = (q / 16) * Math.PI * 2;
+          return [
+            0.2 + Math.cos(a) * DR * k,
+            -0.6 + dy + Math.sin(a) * DR * k * 0.42,
+            5.3 + dz + Math.sin(a) * DR * k * 0.72,
+          ] as [number, number, number];
+        }),
+      );
+      dish.push([disc(1, 0, 0), 1, "#c9ced6"] as ShapeFace);
+      dish.push(topFace(disc(0.78, 0.08, 0.1), 0.22));
+      dish.push(capFace(disc(0.3, 0.16, 0.2), 0.3));
+      // 급전기 — 접시 한가운데에서 앞으로 뻗는 가는 침.
+      dish.push(...paintBase(hornFaces(0.2, -0.5, 5.4, 0.55, 0.5, 6.4, 0.2), "#c9ced6"));
+    }
+    out.push(...tagKey(dish, 28 + depthNow(0.2, -0.6)));
+    /* 오른뒤 마디진 작은 탑(사진) — 테가 층층이 끼워진 가는 기둥. */
+    {
+      const tw: ShapeFace[] = [...paintBase(cylinderFaces3(2.3, -1.6, 0.3, 3.2, 0.9), "#7b8088")];
+      for (let k = 0; k < 3; k += 1) {
+        tw.push(...paintBase(cylinderFaces3(2.3, -1.6, 0.52, 0.26, 1.6 + k * 0.9), "#5c636d"));
+      }
+      tw.push(capFace(discPath3(2.3, -1.6, 4.1, 0.26), 0.35));
+      out.push(...tagKey(tw, 24 + depthNow(2.3, -1.6)));
+    }
+    return out;
   },
-  /* 핵 사일로(요청) — 받침 위 둥근 사일로 통과 돔 뚜껑, 해치 씸. */
-  nsilo: () => [
-    // 받침 슬래브는 중심 깊이만(지적: 애드온 바닥이 위 부품을 덮음).
-    ...tagKey(boxFaces3(0, 0.2, 5.6, 4.4, 1.6), depthNow(0, 0.2)),
-    // 지붕 규칙(지적: 받침 판과 통·돔 순서) — 얹힘 부품은 붙박이 큰 키.
-    ...tagKey(cylinderFaces3(0, 0, 2.3, 2.4, 1.6), 24 + depthNow(0, 0)),
-    ...tagKey([
-      ...domeFaces3(0, 0, 2.3, 1.5, 4),
-      capFace(discPath3(0, 0, 4.05, 1.6), 0.22),
-      topFace(discPath3(0, 0, 5.1, 0.75), 0.3),
-      capFace(discPath3(0, 0, 5.13, 0.4), 0.35),
-    ], 26 + depthNow(0, 0)),
-  ],
+  /* 핵 사일로(재모델링·사진) — 리벳 박힌 강철 드럼 무리다: 오른뒤에 주황 창 띠를
+     두른 큰 돔통, 가운데 앞에 띠 감긴 중간 돔통, 왼쪽에 작은 돔통, 왼뒤에 마디진
+     가는 탑 둘, 앞 왼쪽 바닥에 노랑·검정 경고 판. 키는 '받침 = 제 자리 깊이,
+     얹힘 = 24 + 제 자리 깊이' 규칙을 그대로 따른다. */
+  nsilo: () => {
+    const out: ShapeFace[] = [
+      // 받침 슬래브는 중심 깊이만(지적: 애드온 바닥이 위 부품을 덮음).
+      ...tagKey(boxFaces3(0, 0.2, 5.6, 4.4, 1), depthNow(0, 0.2)),
+    ];
+    /* 드럼 하나 — 리벳 띠를 두른 원통 + 돔 뚜껑. 몸에 가로 띠 둘, 꼭대기에 볼트 캡. */
+    const drum = (
+      dx: number, dy: number, r: number, hBody: number, hDome: number, key: number,
+    ): void => {
+      const parts: ShapeFace[] = [
+        ...paintBase(cylinderFaces3(dx, dy, r, hBody, 1), "#8b8f96"),
+        // 리벳 띠 둘 — 통 몸에 두른 얇은 테.
+        ...paintBase(cylinderFaces3(dx, dy, r * 1.06, 0.22, 1 + hBody * 0.3), "#5c636d"),
+        ...paintBase(cylinderFaces3(dx, dy, r * 1.06, 0.22, 1 + hBody * 0.72), "#5c636d"),
+        ...paintBase(domeFaces3(dx, dy, r, hDome, 1 + hBody), "#9ba3ad"),
+        capFace(discPath3(dx, dy, 1 + hBody + hDome * 0.05, r * 0.7), 0.2),
+        topFace(discPath3(dx, dy, 1 + hBody + hDome, r * 0.3), 0.3),
+      ];
+      out.push(...tagKey(parts, key));
+    };
+    drum(1.5, -1, 2, 2.4, 1.7, 24 + depthNow(1.5, -1));
+    drum(-0.2, 1.2, 1.5, 1.8, 1.2, 26 + depthNow(-0.2, 1.2));
+    drum(-2.1, -0.6, 1.15, 1.5, 0.95, 24 + depthNow(-2.1, -0.6));
+    /* 큰 드럼 옆구리의 주황 창 띠(사진) — 앞이 보일 때만 그린다. 세로 살 셋. */
+    if (facingRatio(0.6, 0.8) > 0.15) {
+      const win: ShapeFace[] = [];
+      for (const wx of [-0.55, 0, 0.55]) {
+        win.push([polyPath3([
+          [1.5 + wx - 0.18, 0.98, 1.9], [1.5 + wx + 0.18, 0.98, 1.9],
+          [1.5 + wx + 0.18, 0.98, 3], [1.5 + wx - 0.18, 0.98, 3],
+        ]), 1, "#e0812b"] as ShapeFace);
+      }
+      out.push(...tagKey(win, 25 + depthNow(1.5, 1)));
+    }
+    // 큰 드럼에 붙은 보라 배관 — 옆구리를 타고 오르는 굵은 관.
+    out.push(...tagKey(paintBase(
+      tubeFaces(3.3, -0.4, 3.3, -0.4, 0.3, 1.4), "#6b5a8a",
+    ), 25 + depthNow(3.3, -0.4)));
+    out.push(...tagKey(paintBase(
+      cylinderFaces3(3.3, -0.4, 0.3, 3.6, 1), "#6b5a8a",
+    ), 25 + depthNow(3.3, -0.4)));
+    /* 왼뒤 마디진 탑 둘(사진) — 가는 기둥에 굵은 마디 테가 층층이 끼워진다. */
+    for (const [tx, ty, th, tr] of [
+      [-2.4, -2, 5.4, 0.42], [-3.4, -1, 3.6, 0.34],
+    ] as [number, number, number, number][]) {
+      const tower: ShapeFace[] = [...paintBase(cylinderFaces3(tx, ty, tr, th, 1), "#7b8088")];
+      for (let k = 0; k < 4; k += 1) {
+        tower.push(...paintBase(
+          cylinderFaces3(tx, ty, tr * 1.55, 0.3, 1.4 + (th - 0.9) * (k / 3.4)), "#5c636d",
+        ));
+      }
+      tower.push(capFace(discPath3(tx, ty, 1 + th, tr * 0.9), 0.35));
+      out.push(...tagKey(tower, 24 + depthNow(tx, ty)));
+    }
+    /* 앞 왼쪽 노랑·검정 경고 판(사진) — 바닥에 낮게 선 빗금 판. 앞이 보일 때만. */
+    if (facingRatio(0, 1) > 0.1) {
+      const warn: ShapeFace[] = [];
+      for (let k = 0; k < 7; k += 1) {
+        const u0 = -2.6 + k * 0.5;
+        warn.push([polyPath3([
+          [u0, 2.25, 1], [u0 + 0.26, 2.25, 1], [u0 + 0.58, 2.25, 1.9], [u0 + 0.32, 2.25, 1.9],
+        ]), 1, k % 2 === 0 ? "#e8c33a" : "#22262b"] as ShapeFace);
+      }
+      out.push(...tagKey(warn, 24 + depthNow(-1.3, 2.3)));
+    }
+    return out;
+  },
   /* 머신 샵(애드온, 요청: 부속건물 모델링) — 낮은 작업동 + 왼뒤 굴뚝 + 오른앞 부속함,
      앞면 셔터 문 씸. */
   mshop: () => [
