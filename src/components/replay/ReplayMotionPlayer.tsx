@@ -3852,10 +3852,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 더 길고 끝이 더 좁게(요청) — 꼬리 끝 굵기를 1.25 → 0.62로 줄이고, taper를 1
        아래로 내려 가는 굵기가 오래 이어지다 머리 쪽에서 확 벌어지게 한다. */
     ...tagKey(spirePillar({
-      // 더 뒤로 물린다(재지적: 윗몸통에 가려져야 한다) — 꼬리 끝 y 1.9 → 1.0.
-      x: 0, y: 1, z0: 0.3, h: 4, w: 0.62, tipW: 2.05,
+      /* 방향을 뒤집는다(재재지적: 뒤로 보내라는데 자꾸 서기만 한다) — 여태 꼬리 끝이
+         머리보다 앞(+y)에 있어서, 아무리 눕히는 몫을 줄여도 '앞에 선 기둥'이었다.
+         꼬리 끝을 머리 뒤(-y 3.2)로 옮기고 위로 갈수록 앞으로 나와 머리 뒤꽁무니에
+         물리게 한다 — 이제 몸통 전체가 머리 뒤에 눕는다. */
+      x: 0, y: -3.2, z0: 0.3, h: 4, w: 0.62, tipW: 2.05,
       segs: 9, sides: 8, hold: 0, taper: 0.68,
-      leanY: -2.1, curveY: 2.2,
+      leanY: 2, curveY: -1.4,
       fill: "#6b4732",
     }), 12),
     // 머리통 — 큰 반구. 개인색(요청), 기둥보다 앞·위.
@@ -3879,8 +3882,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 얼굴 밑에 있던 작은 가시 한 쌍은 몸통 끝으로(요청) — 꼬리 끝(0, 2.7, 0.3)에서
        앞·아래로 짧게 뻗는다. */
     ...tagKey(paintBase([
-      ...hornFaces(0.3, 0.85, 0.85, 0.62, 1.75, 0.35, 0.32),
-      ...hornFaces(-0.3, 0.85, 0.85, -0.62, 1.75, 0.35, 0.32),
+      ...hornFaces(0.3, -3.05, 0.85, 0.62, -3.95, 0.35, 0.32),
+      ...hornFaces(-0.3, -3.05, 0.85, -0.62, -3.95, 0.35, 0.32),
     ], IVORY_DEEP), 13),
   ],
   /* 스커지 — 작은 몸 + 날개 한 쌍. */
@@ -3898,10 +3901,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 퀸(정정 셋) — 더듬이 없이, 전갈처럼 위로 솟아 앞으로 휘는 꼬리. 다리 여섯은
      60도 간격으로 골고루 퍼지되 너무 처지지 않고, 다리 끝까지 갈퀴막이 이어진다. */
   queen: () => {
-    const spot = (sx2: number, sy2: number): ShapeFace => {
-      const [px2, py2] = project(sx2, sy2, 7);
-      return capFace(groundEllipse(px2, py2, 0.28, 0.22), 0.35);
-    };
+    // (삭제·요청) 등 점 헬퍼 — 점 세 개를 걷으면서 함께 걷었다.
     const P = (ang: number, r: number): [number, number] => {
       const a = (ang * Math.PI) / 180;
       return [Math.sin(a) * r, Math.cos(a) * r];
@@ -3926,13 +3926,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...paintBase(hornFaces(x1, y1, 5.2, t1x, t1y, 4, 0.65), "#6b4732"));
     }
     out.push(...domeFaces3(0, -1.1, 1.95, 1.75, 5.3));
-    out.push(spot(-0.6, -1.5), spot(0.4, -1.9), spot(0.1, -0.9));
+    // (삭제·요청) 등 점 세 개.
     // 머리 짙은 갈색(요청).
     out.push(...paintBase(domeFaces3(0, 0.7, 1.2, 0.9, 5.5), "#6b4732"));
-    // 전갈 독침꼬리 — 검회색(요청).
-    out.push(...paintBase(hornFaces(0, -2.2, 5.9, 0, -3, 7.8, 0.7), "#3a3f46"));
-    out.push(...paintBase(hornFaces(0, -3, 7.7, 0, -1.6, 9.2, 0.55), "#3a3f46"));
-    out.push(...paintBase(hornFaces(0, -1.6, 9.1, 0, -0.4, 8.8, 0.45), "#3a3f46"));
+    /* 꼬리 대신 뿔기둥 둘(요청) — 등 뒤에서 솟아 앞으로 휙 휘어 넘어오는 한 쌍.
+       마디 없이 공용 도형 하나로 굽히고, 색은 옛 독침꼬리와 같은 검회색이다. */
+    for (const m9 of [-1, 1] as const) {
+      out.push(...tagKey(spirePillar({
+        x: m9 * 0.75, y: -2, z0: 5.4, h: 4.2, w: 0.72, tipW: 0.06,
+        segs: 9, sides: 6, hold: 0.05, taper: 1.4,
+        leanY: 3.4, curveY: -2.2, leanX: m9 * 0.5, curveX: m9 * 0.35,
+        fill: "#3a3f46",
+      }), 24 + depthNow(m9 * 0.75, -2)));
+    }
     // 큰 집게 한 쌍 — 앞팔 짙은 갈색(요청).
     out.push(...paintBase(hornFaces(1.3, 1, 5.8, 2.6, 2.2, 5.6, 0.95), "#6b4732"));
     out.push(...paintBase(hornFaces(2.6, 2.2, 5.6, 1.9, 3.5, 5.2, 0.7), "#6b4732"));
@@ -5433,7 +5439,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           wf9.push([polyPath3([lo0[i9], lo0[j9], hi0[j9], hi0[i9]]), 1, "#d4af37"] as ShapeFace);
         }
         wf9.push([polyPath3(hi0), 1, "#d4af37"] as ShapeFace, topFace(polyPath3(hi0), 0.14));
-        out.push(...tagKey(wf9, depthNow(0, 0.6)));
+        out.push(...tagKey(wf9, depthNow(0, 0.6) * 1.6));
       }
       for (const m9 of [-1, 1] as const) {
         const lo9 = ring9(m9, 0);
@@ -5445,7 +5451,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           faces9.push([polyPath3([lo9[i9], lo9[j9], hi9[j9], hi9[i9]]), 1, "#d4af37"] as ShapeFace);
         }
         faces9.push([polyPath3(hi9), 1, "#d4af37"] as ShapeFace, topFace(polyPath3(hi9), 0.18));
-        out.push(...tagKey(faces9, depthNow(m9 * 2.5, 2.6)));
+        // 몸통과 같은 자로(지적: 뒤에서 봐도 집게가 안 가려짐) — 깊이를 키워 앞뒤가
+        // 확실히 갈리게 한다.
+        out.push(...tagKey(faces9, depthNow(m9 * 2.5, 2.6) * 1.6));
       }
     }
     return out;
@@ -5466,11 +5474,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         x: bx, y: by, z0: 0.25, h: 2.7, w: 0.6, tipW: 0.14,
         segs: 3, sides: 5, hold: 0.28, taper: 0.75,
         leanX: bx * 0.5, leanY: by * 0.5, curveX: bx * 0.45, curveY: by * 0.45,
-      }), "#6d4a33"), depthNow(bx, by)));
+      }), "#6d4a33"), depthNow(bx, by) * 1.6));
     }
     /* 알은 구 하나로 단순하게(요청) — 혹 다섯을 뭉치던 것을 걷고, 색은 건물 고치와
        같은 살구빛 껍질색을 쓴다. */
-    out.push(...tagKey(paintBase(domeFaces3(0, 0, 2.3, 2.7, 1.2), "#d9b8a2"), 12));
+    /* 알과 가시를 같은 자로 잰다(지적: 가시가 알에 가려짐) — 붙박이 키 12는 앞으로
+       돈 가시까지 덮었다. 알은 0, 가시는 제 자리 깊이다. */
+    out.push(...tagKey(paintBase(domeFaces3(0, 0, 2.3, 2.7, 1.2), "#d9b8a2"), 0));
     return out;
   },
   /* 변태 고치(정정 요청: 공중 유닛용이라 땅에 붙은 밑동 제거 — 나비 번데기 꼴) —
@@ -5491,9 +5501,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     }), "#c68a62"));
     // 위 반 — 허리에서 위 끝으로 다시 좁아진다.
     out.push(...paintBase(spirePillar({
-      x: 0, y: axY(WAIST), z0: WAIST, h: 3.4, w: 2.05, tipW: 0.32,
-      segs: 5, sides: 10, hold: 0.1, taper: 0.85,
-      leanY: axY(WAIST + 3.4) - axY(WAIST),
+      /* 허리에서 살짝 겹쳐 시작한다(지적: 중간 허리 안쪽 단면이 비쳐 보인다) —
+         두 반쪽이 딱 맞닿기만 하면 아래 반의 윗 뚜껑이 그대로 드러난다. 0.25 아래에서
+         시작해 굵기를 조금 키워 그 뚜껑을 덮는다. */
+      x: 0, y: axY(WAIST - 0.25), z0: WAIST - 0.25, h: 3.65, w: 2.12, tipW: 0.32,
+      segs: 5, sides: 10, hold: 0.12, taper: 0.85,
+      leanY: axY(WAIST + 3.4) - axY(WAIST - 0.25),
     }), "#c68a62"));
     // 매달린 실자락 — 꼭대기에서 위로 가늘게 뻗는다.
     out.push(...paintBase(spirePillar({
