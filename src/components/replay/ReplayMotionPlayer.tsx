@@ -1618,7 +1618,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        구체 뒤로 간다 — 문 사이에 빛이 든 그림이다. */
     for (const mx9 of [-2.7, 2.7]) {
       out.push(...tagKey(spirePillar({
-        x: mx9, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.12,
+        // 끝은 뾰족이 아니라 뭉뚝하게 잘린 면(지적) — tipW 0.12 → 0.55.
+        x: mx9, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.55,
         segs: 5, sides: 4, hold: 0.12, leanX: -Math.sign(mx9) * 1.5, leanY: -0.3, taper: 1.5,
       }), 30 + depthNow(mx9, 0) * 1.6));
     }
