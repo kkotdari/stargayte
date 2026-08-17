@@ -8010,7 +8010,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         ctx.shadowColor = "transparent";
         /* 선 굵기는 화면 고정(지적: 링은 UI 요소 — 확대에 굵어지면 안 됨) — 반지름은
            유닛(px)을 따라가되 굵기에서 zoom을 뺀다. */
-        const ringW = Math.max(0.7, op.sizePx * 0.025);
+        // 굵기 한 단 감소(요청) — 0.7~sizePx×0.025 → 0.45~sizePx×0.016.
+        const ringW = Math.max(0.45, op.sizePx * 0.016);
         // 링도 내용물 발끝에(재지적) — 상자 고정 오프셋은 작은 모델에서 몸 아래로 떨어졌다.
         const ringY = op.air ? footY - lift : footY - px * 0.03;
         const ringPath = (): void => {
@@ -8019,7 +8020,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         };
         ctx.globalAlpha = op.alpha * 0.5;
         ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
-        ctx.lineWidth = ringW + Math.max(0.8, ringW * 0.9);
+        ctx.lineWidth = ringW + Math.max(0.5, ringW * 0.7);
         ringPath();
         ctx.stroke();
         ctx.globalAlpha = op.alpha * 0.95;

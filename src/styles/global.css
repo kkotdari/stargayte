@@ -13105,9 +13105,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   box-sizing: border-box;
   width: var(--ckw, 9px); height: calc(var(--ckw, 9px) / 2);
   margin: calc(var(--ckw, 9px) / -4) 0 0 calc(var(--ckw, 9px) / -2);
-  /* 실처럼 가늘게(재지적: 색으로 구분되니 선은 실 굵기) — 0.5~0.7px 고정 헤어라인. */
-  /* 선택 링과 같은 화면 고정 실선(재지적). */
-  border: 0.6px solid currentColor; border-radius: 50%;
+  /* 실처럼 가늘게(재지적: 색으로 구분되니 선은 실 굵기) — 0.5~0.7px 고정 헤어라인.
+     0.6 → 0.4px(요청: 굵기 감소) — 선택 링과 같은 결로 한 단 더 얇게. */
+  border: 0.4px solid currentColor; border-radius: 50%;
   background: transparent;
   animation: scr-clickfx 0.9s ease-out forwards;
 }
@@ -13115,8 +13115,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   content: ""; position: absolute; left: 50%; top: 50%;
   /* 점 축소 + 납작(재재지적: 점이 너무 커 고리가 면으로 보였다) — 테두리 타원과 같은
      2:1 비율로 눌린 작은 점. */
-  width: calc(var(--ckw, 9px) * 0.24); height: calc(var(--ckw, 9px) * 0.12);
-  margin: calc(var(--ckw, 9px) * -0.06) 0 0 calc(var(--ckw, 9px) * -0.12);
+  /* 점도 한 단 작게(요청: 굵기 감소) — 0.24 → 0.18. */
+  width: calc(var(--ckw, 9px) * 0.18); height: calc(var(--ckw, 9px) * 0.09);
+  margin: calc(var(--ckw, 9px) * -0.045) 0 0 calc(var(--ckw, 9px) * -0.09);
   border-radius: 50%; background: currentColor;
   animation: scr-clickdot 0.9s ease-out forwards;
 }
