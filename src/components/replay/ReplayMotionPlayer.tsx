@@ -9346,6 +9346,10 @@ export default function ReplayMotionPlayer({
 
   /* PC 휠 줌(요청) — 맵 위에서 휠로 확대/축소, 커서 자리를 붙든 채 늘어난다. 팬은 줌
      계산에 함께 실려 경계 밖이 안 보이게 죈다. */
+  /* 확대 배율(요청) — 실제 게임에서 한 화면에 들어오는 몫. 128타일 맵에서 게임 화면이
+     가로 20타일 남짓을 보여 주므로 128/20 ≈ 6이 그 자리다. 더블클릭·더블탭이 이 값과
+     1배 사이만 오간다(중간 단계 없음). */
+  const ZOOM_GAME = 6;
   const [zoom, setZoom] = useState(1);
   /* 피칭 보기(요청) — 수직 부감 대신 약간 비스듬한 정면. 바닥(지형 그림과 마커 자리)만
      세로로 눌리고, 건물·유닛 도형은 제 크기로 서 있어 3D로 바닥에 붙는다. 눌림은
@@ -9367,42 +9371,34 @@ export default function ReplayMotionPlayer({
     /* 프레임당 한 번만 상태를 놓는다(지적: 줌·드래그 버벅임) — 휠은 초당 수십 번
        튀는데 틱마다 setState면 그때마다 전체 마커 렌더가 돌았다. 목표값을 모아 rAF
        한 번에 반영한다(연타는 pend 기준으로 이어 계산해 커서 고정이 안 깨진다). */
-    let wheelPend: { z: number; x: number; y: number } | null = null;
-    let wheelRaf = 0;
-    const onWheel = (e: WheelEvent) => {
+    /* 휠 줌은 걷고 더블클릭 토글로(요청) — PC·모바일 모두 '두 번 눌러 확대/축소'
+       한 가지 방법만 남긴다. 배율은 실제 게임에서 한 화면에 들어오는 몫(ZOOM_GAME)
+       하나뿐이라, 중간 단계 없이 켜고 끈다. 누른 지점 아래의 지도 지점이 그 자리에
+       남도록 팬을 함께 푼다. */
+    const onDbl = (e: MouseEvent) => {
       e.preventDefault();
       const rect = el.getBoundingClientRect();
-      const ox = e.clientX - (rect.left + rect.width / 2);
-      const oy = e.clientY - (rect.top + rect.height / 2);
-      const z = wheelPend ? wheelPend.z : zoomRef.current;
-      // 상한 10 → 20(재요청: 2배 더 — 세부 렌더링 확인용) — 휠 줌이 더 깊이 들어간다.
-      const nz = Math.min(20, Math.max(1, z * (e.deltaY < 0 ? 1.2 : 1 / 1.2)));
-      if (nz === z) return;
-      let nx = 0;
-      let ny = 0;
-      if (nz > 1) {
-        const p = wheelPend ? { x: wheelPend.x, y: wheelPend.y } : panRef.current;
-        const k = nz / z;
-        nx = ox + (p.x - ox) * k;
-        ny = oy + (p.y - oy) * k;
-        const maxX = ((nz - 1) * rect.width) / 2;
-        const maxY = ((nz - 1) * rect.height) / 2;
-        nx = Math.min(maxX, Math.max(-maxX, nx));
-        ny = Math.min(maxY, Math.max(-maxY, ny));
+      if (zoomRef.current > 1.05) {
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+        return;
       }
-      wheelPend = { z: nz, x: nx, y: ny };
-      if (!wheelRaf) {
-        wheelRaf = requestAnimationFrame(() => {
-          wheelRaf = 0;
-          if (!wheelPend) return;
-          setZoom(wheelPend.z);
-          setPan({ x: wheelPend.x, y: wheelPend.y });
-          wheelPend = null;
-        });
-      }
+      const ox = rect.left + rect.width / 2;
+      const oy = rect.top + rect.height / 2;
+      const ux = (e.clientX - ox - panRef.current.x) / zoomRef.current;
+      const uy = (e.clientY - oy - panRef.current.y) / zoomRef.current;
+      const nx = e.clientX - ox - ZOOM_GAME * ux;
+      const ny = e.clientY - oy - ZOOM_GAME * uy;
+      const maxX = ((ZOOM_GAME - 1) * rect.width) / 2;
+      const maxY = ((ZOOM_GAME - 1) * rect.height) / 2;
+      setZoom(ZOOM_GAME);
+      setPan({
+        x: Math.min(maxX, Math.max(-maxX, nx)),
+        y: Math.min(maxY, Math.max(-maxY, ny)),
+      });
     };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
+    el.addEventListener("dblclick", onDbl);
+    return () => el.removeEventListener("dblclick", onDbl);
     // 확대창(포털 재부착)이 사라져 맵 엘리먼트는 안 바뀐다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -9449,15 +9445,12 @@ export default function ReplayMotionPlayer({
       if (e.touches.length === 1) {
         tapStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, moved: false };
       }
+      /* 핀치 줌 제거(요청) — 두 손가락은 더 이상 확대하지 않는다. 브라우저 페이지
+         확대만 끊고 아무 일도 하지 않는다. 확대는 더블탭 하나뿐이다. */
       if (e.touches.length !== 2) return;
       tapStart = null;
       e.preventDefault();
-      pinch = {
-        d: dist(e.touches), z: zoomRef.current,
-        cx: (e.touches[0].clientX + e.touches[1].clientX) / 2,
-        cy: (e.touches[0].clientY + e.touches[1].clientY) / 2,
-        px: panRef.current.x, py: panRef.current.y,
-      };
+      pinch = null;
     };
     const onTM = (e: TouchEvent) => {
       gestureRef.current = e.touches.length >= 2;
@@ -9518,7 +9511,7 @@ export default function ReplayMotionPlayer({
             const r2 = el.getBoundingClientRect();
             const ox2 = r2.left + r2.width / 2;
             const oy2 = r2.top + r2.height / 2;
-            const z2 = 4;
+            const z2 = ZOOM_GAME;
             // 핀치와 같은 수식 — 탭한 지점 아래의 지도 지점이 그 자리에 남는다.
             const ux2 = (ct.clientX - ox2 - panRef.current.x) / zoomRef.current;
             const uy2 = (ct.clientY - oy2 - panRef.current.y) / zoomRef.current;
