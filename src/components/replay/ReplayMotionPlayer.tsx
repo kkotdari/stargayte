@@ -3277,6 +3277,82 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     return out;
   },
 
+  /* 울트라리스크 동굴(신설·사진) — 여태 모델이 없던 건물이다. 초록빛 도는 살덩이
+     덩치에 굵은 핏줄이 도드라지고, 앞 아래가 크게 벌어져 누런 이빨 능선을 두른 굴
+     아가리가 된다. 왼쪽에는 창백한 혹, 양옆 발치에는 갈색 촉수 다발. 꼭대기 혹
+     하나가 개인색이다. */
+  cavern: () => {
+    const HIDE = "#5d7a4a";
+    const HIDE_D = "#3f5733";
+    const TOOTH = "#c9b46a";
+    const out: ShapeFace[] = [...paintBase(creepSplat(7), "#3a3f46")];
+    // 덩치 — 뒤가 높고 앞으로 숙은 볼록한 살덩이.
+    out.push(...tagKey(paintBase(spirePillar({
+      x: 0, y: 0, h: 1, w: 4.4, tipW: 1.4, segs: 8, sides: 14, hold: 0, taper: 0.5,
+      path: (t9: number): [number, number, number] => [0, -1.2 - t9 * 1.1, t9 * 6.4],
+    }), HIDE), 0));
+    /* 굵은 핏줄 — 덩치 옆선을 타고 오르는 가는 기둥 여섯. */
+    for (const ang of [-150, -95, -40, 30, 95, 150]) {
+      const a9 = (ang * Math.PI) / 180;
+      const dxr = Math.sin(a9);
+      const dyr = Math.cos(a9);
+      out.push(...tagKey(spirePillar({
+        x: 0, y: 0, h: 1, w: 0.42, tipW: 0.16, segs: 7, sides: 5, hold: 0.1, taper: 1.4,
+        path: (t9: number): [number, number, number] => {
+          const r9 = (1.4 + 3 * (1 - t9) ** 0.5) * 0.99;
+          return [dxr * r9, -1.2 - t9 * 1.1 + dyr * r9, t9 * 6.4];
+        },
+        fill: HIDE_D,
+      }), depthNow(dxr * 3, dyr * 3) * 1.6 + 1));
+    }
+    /* 앞 굴 아가리 — 어두운 속을 누런 이빨 능선이 위아래로 두른다. */
+    const mouthKey = depthNow(0, 2.6) * 1.6 + 4;
+    const arc9 = (yy: number, rx: number, rz: number, z0: number, up: boolean): string =>
+      polyPath3(Array.from({ length: 13 }, (_, i9) => {
+        const th = (i9 / 12) * Math.PI;
+        return [Math.cos(th) * rx, yy, z0 + (up ? 1 : -1) * Math.sin(th) * rz] as [number, number, number];
+      }));
+    out.push(...tagKey([
+      [arc9(2.35, 2.5, 2.9, 0.2, true), 0.97, "#0d1013"] as ShapeFace,
+    ], mouthKey));
+    // 위턱 이빨 능선 — 아가리 위를 덮는 누런 테.
+    out.push(...tagKey(paintBase([
+      ...spirePillar({
+        x: 0, y: 0, h: 1, w: 0.46, tipW: 0.46, segs: 12, sides: 5, hold: 1,
+        path: (t9: number): [number, number, number] => {
+          const th = Math.PI * t9;
+          return [Math.cos(th) * 2.62, 2.45 + Math.sin(th) * 0.35, 0.2 + Math.sin(th) * 3.05];
+        },
+      }),
+    ], TOOTH), mouthKey + 0.4));
+    // 아래턱 — 앞으로 내민 누런 턱받이.
+    out.push(...tagKey(paintBase([
+      ...spirePillar({
+        x: 0, y: 0, h: 1, w: 0.52, tipW: 0.52, segs: 10, sides: 5, hold: 1,
+        path: (t9: number): [number, number, number] => {
+          const th = Math.PI * t9;
+          return [Math.cos(th) * 2.3, 2.75 + Math.sin(th) * 0.5, 0.25];
+        },
+      }),
+    ], TOOTH), mouthKey + 0.6));
+    // 왼쪽 창백한 혹 — 덩치 옆에 붙은 매끈한 알.
+    out.push(...tagKey(paintBase(domeFaces3(-3.6, 1.2, 1.35, 1.15, 0.2), "#d3d7db"),
+      depthNow(-3.6, 1.2) * 1.6 + 2));
+    /* 양옆 발치 갈색 촉수 다발 — 바닥을 기다 끝이 말려 오른다. */
+    for (const [tx9, ty9, ex9, ey9] of [
+      [-3.4, -0.6, -5.2, -1.4], [-3, 2.2, -4.4, 3.2], [3.4, -0.4, 5.2, -1],
+      [3.1, 2, 4.5, 3.1], [3.8, 1, 5.6, 1.2],
+    ] as [number, number, number, number][]) {
+      out.push(...tagKey(spikeHorn(tx9, ty9, 0.6, ex9, ey9, 1.5, 0.5, "#6b4732", 6, 0.5,
+        ex9 - tx9, ey9 - ty9), depthNow(ex9, ey9) * 1.6 + 1));
+    }
+    /* 꼭대기 혹 — 개인색 포인트(요청). */
+    out.push(...tagKey(spirePillar({
+      x: 0, y: -2.3, z0: 5.9, h: 1.9, w: 1.4, tipW: 0.5,
+      segs: 4, sides: 10, hold: 0.12, taper: 1.5,
+    }), 12));
+    return out;
+  },
   /* 나이더스 커널(재모델링·사진) — 무엇보다 '동굴 입구'로 읽혀야 한다: 살덩이 둔덕
      앞면에 두툼한 아치가 서고 그 안이 검게 뚫려 굴이 된다. 위에는 앞으로 내민
      개인색 뚜껑이 굴을 덮고, 아래 테두리에는 짧은 엄니 몇 개만 남긴다. 키는 저그
