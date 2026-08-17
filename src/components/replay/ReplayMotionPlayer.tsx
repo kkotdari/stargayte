@@ -1572,10 +1572,39 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       f9.push(bodyFace(polyPath3(hi9)), topFace(polyPath3(hi9), 0.2));
       return tagKey(f9, depthNow(cx9, cy9));
     };
-    out.push(...pad(0, 4.6, 2.3));
-    out.push(...pad(0, -4.6, 2.3));
-    out.push(...pad(4.9, 0, 2.3));
-    out.push(...pad(-4.9, 0, 2.3));
+    /* 안쪽으로 당긴다(지적: 이웃 게이트의 발판과 겹친다) — 발자국 밖으로 나가면
+       옆 건물과 포갠다: 바깥 끝이 5.4를 넘지 않게 자리 3.6·반지름 1.8로 조인다. */
+    out.push(...pad(0, 3.6, 1.8));
+    out.push(...pad(0, -3.6, 1.8));
+    out.push(...pad(3.8, 0, 1.8));
+    out.push(...pad(-3.8, 0, 1.8));
+    /* 한가운데 작은 사각 판(요청) — 네 발판 사이 바닥을 메운다. */
+    {
+      const S9 = 1.15;
+      const TZ9 = 0.34;
+      const sq9 = (z9: number): [number, number, number][] => [
+        [-S9, -S9, z9], [S9, -S9, z9], [S9, S9, z9], [-S9, S9, z9],
+      ];
+      const lo9 = sq9(0);
+      const hi9 = sq9(TZ9);
+      const f9: ShapeFace[] = [bodyFace(polyPath3(lo9))];
+      const walls9 = lo9.map((_, i9) => {
+        const j9 = (i9 + 1) % 4;
+        const mx9 = (lo9[i9][0] + lo9[j9][0]) / 2;
+        const my9 = (lo9[i9][1] + lo9[j9][1]) / 2;
+        const ml9 = Math.hypot(mx9, my9) || 1;
+        return {
+          d: polyPath3([lo9[i9], lo9[j9], hi9[j9], hi9[i9]]),
+          nx: mx9 / ml9, ny: my9 / ml9, f: facingRatio(mx9 / ml9, my9 / ml9),
+        };
+      }).sort((q9, w9) => q9.f - w9.f);
+      for (const wl9 of walls9) {
+        const fl9 = faceLight(wl9.nx, wl9.ny, 0.3);
+        f9.push(bodyFace(wl9.d), ...(fl9.visible ? fl9.face(wl9.d) : [sideFace(wl9.d, 0.46)]));
+      }
+      f9.push(bodyFace(polyPath3(hi9)), topFace(polyPath3(hi9), 0.2));
+      out.push(...tagKey(f9, depthNow(0, 0)));
+    }
     /* 실물 점검(스프라이트 시트) — 게이트는 돛 하나가 아니라 마주 기운 어금니 탑
        한 쌍이 사이를 띄우고 문을 이룬다. 사이엔 소환 빛. */
     const [wx, wy] = project(0, 0.1, 4.2);
@@ -1585,12 +1614,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        뾰족해진다. 8각판 위에 얹히므로 지붕 규칙 키를 준다. */
     out.push(...tagKey([
       ...spirePillar({
-        x: -3.5, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.12,
-        segs: 5, sides: 4, hold: 0.12, leanX: 2, leanY: -0.3, taper: 1.5,
+        x: -2.7, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.12,
+        segs: 5, sides: 4, hold: 0.12, leanX: 1.5, leanY: -0.3, taper: 1.5,
       }),
       ...spirePillar({
-        x: 3.5, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.12,
-        segs: 5, sides: 4, hold: 0.12, leanX: -2, leanY: -0.3, taper: 1.5,
+        x: 2.7, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.12,
+        segs: 5, sides: 4, hold: 0.12, leanX: -1.5, leanY: -0.3, taper: 1.5,
       }),
     ], 30));
     /* 가운데 소환 구체 — 축소하고 탑보다 뒤에 그리지 않는다(요청: 소환구 축소 및
@@ -1602,8 +1631,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 발판 뿔(요청) — 앞뒤 경사로 한가운데에서 솟아 끝이 안쪽으로 휜다. 아래는 기둥,
        위는 뿔인 공용 도형(spirePillar). */
     for (const sy9 of [1, -1] as const) {
-      // 뿔은 원위치(요청) — 발판을 벌린 것과 무관하게 제자리에 선다.
-      const ry9 = sy9 * 3.5;
+      // 발판과 함께 안쪽으로(지적: 이웃 건물과 겹침).
+      const ry9 = sy9 * 2.7;
       /* 작은 뿔이 어금니 탑(키 30)에 안 묻히게(지적) — 앞쪽 뿔은 탑보다 큰 키,
          뒤쪽 뿔은 탑보다 작은 키를 줘 앞뒤가 제대로 갈린다. */
       out.push(...tagKey(spirePillar({
