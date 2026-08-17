@@ -9786,7 +9786,9 @@ export default function ReplayMotionPlayer({
        그만큼 간격이 는다. 지도엔 한 번 탭으로 하는 일이 없어 넓혀도 잃을 게 없다. */
     const TAP_MS = 650;
     const TAP_GAP = 56;
-    const TAP_MOVE = 18;
+    /* 18 → 26px(재지적) — 확대된 상태에서는 손가락이 굴러도 지도가 딸려 움직여서
+       사람이 더 크게 흔든다. 끌기 문턱(10px)보다 넉넉히 커야 탭이 끌기로 새지 않는다. */
+    const TAP_MOVE = 26;
     const evTime = (e: TouchEvent): number => (e.timeStamp > 0 ? e.timeStamp : performance.now());
     let tap: { t: number; x: number; y: number } | null = null;
     let tapStart: { x: number; y: number; moved: boolean } | null = null;
@@ -10147,11 +10149,20 @@ export default function ReplayMotionPlayer({
    *  않는다(전수조사: dot 눈금 1.7배가 오버로드를 본진보다 크게 그렸다). */
   const unitPxOf = (u: string, depthY: number): number =>
     unitGlyphPx(u === "?" ? 0 : (UNIT_BULK[u] ?? 1), depthY);
-  const dragRef = useRef<{ id: number; sx: number; sy: number; px: number; py: number } | null>(null);
+  /* 끌기 문턱(지적: 확대된 상태에서 더블탭이 축소가 아니라 조금씩 이동으로 읽힘) —
+     여태 문턱이 없어 손가락이 1px만 굴러도 곧장 팬이었다. 탭할 때마다 지도가 밀리고,
+     그 흔들림이 더블탭 판정의 '안 끌린 탭' 기준도 함께 넘겨 확대·축소가 안 걸렸다.
+     10px을 넘어서야 끌기로 보고, 그 전까지는 아무 일도 하지 않는다. */
+  const DRAG_SLOP = 10;
+  const dragRef = useRef<
+    { id: number; sx: number; sy: number; px: number; py: number; live: boolean } | null
+  >(null);
   const onMapPointerDown = (e: React.PointerEvent) => {
     if (zoom <= 1 || e.button !== 0) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    dragRef.current = { id: e.pointerId, sx: e.clientX, sy: e.clientY, px: pan.x, py: pan.y };
+    dragRef.current = {
+      id: e.pointerId, sx: e.clientX, sy: e.clientY, px: pan.x, py: pan.y, live: false,
+    };
   };
   const dragRafRef = useRef(0);
   const dragPendRef = useRef<{ x: number; y: number } | null>(null);
@@ -10162,6 +10173,10 @@ export default function ReplayMotionPlayer({
     if (gestureRef.current) { dragRef.current = null; return; }
     const d = dragRef.current;
     if (!d || d.id !== e.pointerId) return;
+    if (!d.live) {
+      if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) <= DRAG_SLOP) return;
+      d.live = true;
+    }
     const el = mapRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
