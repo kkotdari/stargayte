@@ -9385,7 +9385,31 @@ export default function ReplayMotionPlayer({
         if (hx >= 0 && hd > 8) pts.unshift([e.b, hx, hy]);
       }
       if (pts.length === 0) continue;
-      const wk = walkTrack(pts, p, false, e.k || undefined, undefined, e.k === "");
+      /* 수송 하차는 걸어서 가는 것이 아니다(지적: 셔틀만 가고 아콘은 안 내리는데 공격은
+         일어난다) — 승선(f=12)과 하차(f=13) 사이는 배가 옮겨 준 구간이다. 그 둘을 이어
+         걸으면 아콘이 제 발로 맵을 가로지르고, 하차 시각에는 아직 중간 어디쯤이라
+         드랍 자리에 아무도 안 내린다(공격 명령만 적진에서 터진다). 하차 점에서 자취를
+         끊어 거기서 새로 시작한다 — 그 순간만 순간이동이고 그 밖은 종전대로 정속이다. */
+      const dropSecs = [...new Set(e.ev.filter((v) => v[3] === 13 && v[1] >= 0).map((v) => v[0]))]
+        .sort((a, b) => a - b);
+      const walkOf = (src: TrackPt[]): [number, number, number][] =>
+        walkTrack(src, p, false, e.k || undefined, undefined, e.k === "");
+      let wk: [number, number, number][];
+      if (dropSecs.length === 0) wk = walkOf(pts);
+      else {
+        const runs: TrackPt[][] = [];
+        let cur: TrackPt[] = [];
+        let di = 0;
+        for (const pt of pts) {
+          while (di < dropSecs.length && pt[0] >= dropSecs[di]) {
+            if (cur.length > 0) { runs.push(cur); cur = []; }
+            di += 1;
+          }
+          cur.push(pt);
+        }
+        if (cur.length > 0) runs.push(cur);
+        wk = runs.flatMap(walkOf);
+      }
       /* 상태(전수조사) — 시전 순간 그 자리에 있었으면 걸린다. 적이 건 것만(스태시스는
          아군 오폭도 언다). */
       const statuses: [number, number, string][] = [];

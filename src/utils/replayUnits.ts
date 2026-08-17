@@ -779,21 +779,31 @@ export function buildUnitTracks(
              변태 뒤에도 끊기지 않고, 화면에서는 홀이 하나로 이어진다. */
           let px9 = anchor ? anchor[1] : NaN;
           let py9 = anchor ? anchor[2] : NaN;
-          const kin9 = new Set([from || "", unitName].filter(Boolean));
+          /* 후보는 '변태 전' 종류뿐이다(수리: 크립 콜로니가 성큰이 되면서 엉뚱한 건물이
+             사라지고 성큰은 안 나타난다) — 변태 대상까지 후보에 넣었더니, 이미 성큰인
+             줄이 다음 크립→성큰 변태에 닫혔다. 또 ±1.5타일 여유로 '첫 일치'를 집었더니
+             콜로니가 한두 타일 간격으로 붙어 선 저그 본진에서 늘 엉뚱한(가장 먼저 지은)
+             줄이 걸렸다 — 이제 발자국 안(여유 0.6)에 들면서 '가장 가까운' 줄을 집는다. */
           let bi9 = -1;
-          if (Number.isFinite(px9)) {
-            bi9 = built.findIndex((b) => b.owner === pid && b.gone === null
-              && b.born <= sec && kin9.has(b.kind)
-              && px9 >= b.x - 1.5 && px9 <= b.x + (FOOT_WH[b.kind] ?? [3, 2])[0] + 1.5
-              && py9 >= b.y - 1.5 && py9 <= b.y + (FOOT_WH[b.kind] ?? [3, 2])[1] + 1.5);
+          if (Number.isFinite(px9) && from) {
+            let bd9 = Infinity;
+            for (let q9 = 0; q9 < built.length; q9 += 1) {
+              const b = built[q9];
+              if (b.owner !== pid || b.gone !== null || b.born > sec || b.kind !== from) continue;
+              const [fw9, fh9] = FOOT_WH[b.kind] ?? [3, 2];
+              if (px9 < b.x - 0.6 || px9 > b.x + fw9 + 0.6) continue;
+              if (py9 < b.y - 0.6 || py9 > b.y + fh9 + 0.6) continue;
+              const d9 = Math.hypot(px9 - b.x, py9 - b.y);
+              if (d9 < bd9) { bd9 = d9; bi9 = q9; }
+            }
           }
           /* 시작 홀만은 자리 증거가 아예 없어도 잇는다(지적: 시작 해처리가 끝까지 남는다) —
              건설 커맨드가 없어 f=2가 없고, 남이 한 번도 안 찍었으면 f=1도 없다. 대신
              '경기 0초에 심은 홀'이라는 다른 데 없는 자리가 있다: 이른(45초 안) 홀 생애의
              변태는 그 줄로 잇는다. */
-          if (bi9 < 0 && life.born <= 45 && HALL_MORPHS.has(unitName)) {
+          if (bi9 < 0 && from && life.born <= 45 && HALL_MORPHS.has(unitName)) {
             bi9 = built.findIndex((b) => b.owner === pid && b.born === 0
-              && b.gone === null && kin9.has(b.kind));
+              && b.gone === null && b.kind === from);
           }
           if (bi9 >= 0) {
             const b9 = built[bi9];
