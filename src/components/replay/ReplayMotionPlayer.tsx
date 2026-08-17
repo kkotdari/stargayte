@@ -4453,32 +4453,123 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(discPath3(0.9, -0.6, 8.8, 0.4), 0.4),
     ], 24 + depthNow(0.9, -0.6)),
   ],
-  /* 코버트 옵스(애드온, 요청) — 어두운 지붕의 첩보동 + 감시 안테나 둘. */
-  covert: () => [
-    // 받침 슬래브는 중심 깊이만(지적: 애드온 바닥이 위 부품을 덮음).
-    ...tagKey(boxFaces3(0, 0.2, 5.6, 4.4, 3), depthNow(0, 0.2)),
-    topFace(polyPath3([[-2.4, 1.9, 3.05], [2.4, 1.9, 3.05], [2.4, -1.6, 3.05], [-2.4, -1.6, 3.05]]), 0.16),
-    // 지붕 규칙(지적) — 안테나 둘은 붙박이 큰 키, 제 끄트머리 원반을 달고.
-    ...tagKey([
-      ...cylinderFaces3(-1.5, -0.8, 0.24, 2.2, 3),
-      capFace(discPath3(-1.5, -0.8, 5.25, 0.5), 0.4),
-    ], 24 + depthNow(-1.5, -0.8)),
-    ...tagKey([
-      ...cylinderFaces3(1.7, 0.6, 0.24, 1.5, 3),
-      capFace(discPath3(1.7, 0.6, 4.55, 0.4), 0.4),
-    ], 24 + depthNow(1.7, 0.6)),
-  ],
-  /* 피직스 랩(애드온, 요청) — 연구동 위 관측 돔 + 오른앞 배기 원통. */
-  physlab: () => [
-    // 받침 슬래브는 중심 깊이만(지적: 애드온 바닥이 위 부품을 덮음).
-    ...tagKey(boxFaces3(0, 0.2, 5.6, 4.4, 2.4), depthNow(0, 0.2)),
-    // 지붕 규칙(지적) — 관측 돔·배기 원통은 붙박이 큰 키.
-    ...tagKey([
-      ...domeFaces3(0, -0.2, 1.9, 1.6, 2.4),
-      capFace(discPath3(0, -0.2, 2.45, 1.9), 0.2),
-    ], 24 + depthNow(0, -0.2)),
-    ...tagKey(cylinderFaces3(2, 1.4, 0.35, 1.2, 2.4), 24 + depthNow(2, 1.4)),
-  ],
+  /* 코버트 옵스(재모델링·사진) — 어두운 각진 선체 위에 길쭉한 장갑 슬래브 셋이
+     비스듬히 얹히고(모서리에 밝은 띠), 뒤 왼쪽에 노랑·검정 빗금 쐐기, 오른쪽 앞에
+     검은 포구 원통이 튀어나온다. 아래는 골이 진 띠 받침. */
+  covert: () => {
+    const out: ShapeFace[] = [
+      // 받침 슬래브는 중심 깊이만(지적: 애드온 바닥이 위 부품을 덮음).
+      ...tagKey(paintBase(boxFaces3(0, 0.2, 5.6, 4.4, 1.1), "#3a3f46"), depthNow(0, 0.2)),
+    ];
+    // 골 진 띠 받침 — 앞면을 가로지르는 가는 홈 넷.
+    if (facingRatio(0, 1) > 0.1) {
+      const rib: ShapeFace[] = [];
+      for (let k = 0; k < 4; k += 1) {
+        rib.push(sideFace(polyPath3([
+          [-2.6, 2.41, 0.2 + k * 0.24], [2.6, 2.41, 0.2 + k * 0.24],
+          [2.6, 2.41, 0.32 + k * 0.24], [-2.6, 2.41, 0.32 + k * 0.24],
+        ]), 0.35));
+      }
+      out.push(...tagKey(rib, depthNow(0, 2.4) + 0.2));
+    }
+    /* 장갑 슬래브 셋 — 앞으로 낮아지게 비스듬히 얹힌 긴 판. 위 모서리에 밝은 띠. */
+    for (const [sx, sy] of [[-1.5, 0.1], [0, 0.1], [1.5, 0.1]] as [number, number][]) {
+      const lo: [number, number, number][] = [
+        [sx - 0.62, sy - 1.9, 2.5], [sx + 0.62, sy - 1.9, 2.5],
+        [sx + 0.62, sy + 1.9, 1.35], [sx - 0.62, sy + 1.9, 1.35],
+      ];
+      const hi = lo.map(([x9, y9, z9]) => [x9, y9, z9 + 0.62] as [number, number, number]);
+      const f: ShapeFace[] = [bodyFace(polyPath3(lo))];
+      for (let k = 0; k < 4; k += 1) {
+        const q = (k + 1) % 4;
+        f.push(bodyFace(polyPath3([lo[k], lo[q], hi[q], hi[k]])));
+      }
+      f.push(bodyFace(polyPath3(hi)), topFace(polyPath3(hi), 0.18));
+      // 위 모서리 밝은 띠(사진) — 슬래브 꼭대기를 따라 흐르는 옅은 초록빛 선.
+      f.push([polyPath3([
+        [sx - 0.5, sy - 1.7, 3.14], [sx + 0.5, sy - 1.7, 3.14],
+        [sx + 0.5, sy + 1.6, 2.15], [sx - 0.5, sy + 1.6, 2.15],
+      ]), 0.8, "#cfe0cf"] as ShapeFace);
+      out.push(...tagKey(paintBase(f, "#4b5058"), 24 + depthNow(sx, sy)));
+    }
+    /* 뒤 왼쪽 노랑·검정 빗금 쐐기(사진) — 선체 뒤 위로 솟은 경사 블록. */
+    out.push(...tagKey(paintBase(
+      frustumFaces3(-2.1, -1.9, 2.4, 1.6, 1.6, 1.2, 1.6, 1.1), "#22262b",
+    ), 24 + depthNow(-2.1, -1.9)));
+    if (facingRatio(0, 1) > 0.1) {
+      const warn: ShapeFace[] = [];
+      for (let k = 0; k < 5; k += 1) {
+        const u0 = -3.15 + k * 0.44;
+        warn.push([polyPath3([
+          [u0, -1.12, 1.15], [u0 + 0.22, -1.12, 1.15],
+          [u0 + 0.52, -1.12, 2.6], [u0 + 0.3, -1.12, 2.6],
+        ]), 1, k % 2 === 0 ? "#e8c33a" : "#22262b"] as ShapeFace);
+      }
+      out.push(...tagKey(warn, 25 + depthNow(-2.1, -1.1)));
+    }
+    /* 오른쪽 앞 검은 포구 원통(사진) — 옆으로 누운 관, 끝이 뚫린다. */
+    out.push(...tagKey(paintBase(
+      tubeFaces(2.1, -0.4, 3.5, -0.4, 0.62, 2.1, true), "#22262b",
+    ), 26 + depthNow(3, -0.4)));
+    return out;
+  },
+  /* 피직스 랩(재모델링·사진) — 왼쪽에 큰 강철 구형 포드가 앉고 그 뒤로 노랑·검정
+     빗금 날개가 부챗살로 펴진다. 오른쪽으로는 초록 발광 띠가 박힌 기계 팔이 뻗어
+     끝에 테 고리가 물리고, 발치에는 층진 받침과 앞 오른쪽 판이 깔린다. */
+  physlab: () => {
+    const out: ShapeFace[] = [
+      // 받침 슬래브는 중심 깊이만(지적: 애드온 바닥이 위 부품을 덮음).
+      ...tagKey(paintBase(boxFaces3(0, 0.2, 5.6, 4.4, 0.8), "#4b5058"), depthNow(0, 0.2)),
+    ];
+    // 층진 받침 — 위로 좁아지는 단.
+    out.push(...tagKey(paintBase(
+      frustumFaces3(-0.8, -0.2, 3.4, 2.8, 2.5, 2, 1.1, 0.8), "#5c636d",
+    ), 22 + depthNow(-0.8, -0.2)));
+    /* 뒤 노랑·검정 빗금 날개(사진) — 구 뒤에서 부챗살로 펴진 판 다섯. */
+    for (let k = 0; k < 5; k += 1) {
+      const a9 = (-52 + k * 26) * (Math.PI / 180);
+      const bx = -1.6;
+      const by = -0.9;
+      const tx = bx + Math.sin(a9) * 2.2;
+      const ty = by - Math.cos(a9) * 2.2;
+      const d9 = polyPath3([
+        [bx, by, 2.1], [tx, ty, 3.4], [tx, ty, 4.5], [bx, by, 3.2],
+      ]);
+      out.push(...tagKey([
+        [d9, 1, k % 2 === 0 ? "#e8c33a" : "#22262b"] as ShapeFace,
+        sideFace(d9, 0.18),
+      ], 23 + depthNow(tx, ty)));
+    }
+    /* 큰 구형 포드(사진) — 위·아래 돔을 맞붙여 진짜 구로. 허리에 리벳 테. */
+    out.push(...tagKey([
+      ...paintBase(domeFaces3(-1.5, 0.1, 1.75, 1.6, 2.2), "#9ba3ad"),
+      ...paintBase(cylinderFaces3(-1.5, 0.1, 1.75, 1.1, 1.1), "#8b8f96"),
+      ...paintBase(cylinderFaces3(-1.5, 0.1, 1.82, 0.24, 2), "#5c636d"),
+      capFace(discPath3(-1.5, 0.1, 3.4, 0.9), 0.2),
+    ], 26 + depthNow(-1.5, 0.1)));
+    /* 오른쪽 기계 팔(사진) — 구에서 오른앞으로 뻗는 각진 통. 옆구리에 초록 발광 띠. */
+    out.push(...tagKey(paintBase(boxFaces3(1.1, 0.1, 3.4, 1.3, 1.2, 2.3), "#7b8088"),
+      26 + depthNow(1.1, 0.1)));
+    if (facingRatio(0, 1) > 0.12) {
+      const led: ShapeFace[] = [];
+      for (const lx of [0.1, 0.8, 1.5]) {
+        led.push([polyPath3([
+          [lx - 0.22, 0.76, 2.7], [lx + 0.22, 0.76, 2.7],
+          [lx + 0.22, 0.76, 3.1], [lx - 0.22, 0.76, 3.1],
+        ]), 1, "#4cd86a"] as ShapeFace);
+      }
+      out.push(...tagKey(led, 27 + depthNow(0.8, 0.8)));
+    }
+    // 팔 끝 테 고리 — 관 끝에 물린 굵은 테.
+    out.push(...tagKey([
+      ...paintBase(tubeFaces(2.6, 0.1, 3.4, 0.1, 0.72, 2.9, true), "#9ba3ad"),
+      ...paintBase(tubeFaces(3.3, 0.1, 3.5, 0.1, 0.92, 2.9), "#5c636d"),
+    ], 28 + depthNow(3.2, 0.1)));
+    // 앞 오른쪽 바닥 판(사진) — 낮게 깔린 넓은 철판.
+    out.push(...tagKey(paintBase(boxFaces3(1.6, 2.1, 2.6, 1.6, 0.32, 0.8), "#5c636d"),
+      22 + depthNow(1.6, 2.1)));
+    return out;
+  },
   /* ── 공사 표현 공용 셋(요청: 아이콘 대신 모델) ───────────────────────────── */
   /* 저그 고치 — 크립 위 통통한 번데기(재생 쪽 CSS가 바운스시킨다). */
   /* 저그 변태 고치 — 고정색(요청: 팀색 말고): 장기 느낌의 연한 살색 몸 + 붉은·갈·보라
