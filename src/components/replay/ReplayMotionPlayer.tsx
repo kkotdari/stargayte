@@ -715,30 +715,49 @@ function spirePillar(o: {
   const TA = tangentAt(0.5);
   const REF: [number, number, number] = Math.abs(TA[2]) < 0.9 ? [0, 0, 1]
     : (Math.abs(TA[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0]);
-  const ring = (t: number): [number, number, number][] => {
-    const [ax, ay, az] = axis(t);
-    const r = widthAt(t);
-    const T = tangentAt(t);
-    /* 기준 벡터는 마디마다 새로 뽑지 않는다(지적: 뿔이 중간에 뒤틀린다) — T가 수직에
-       가까울수록 T×위가 요동쳐 단면이 홱 돌아간다. 축 전체 방향으로 한 번 고른 기준을
-       각 지점에서 T에 수직화(그람-슈미트)해 연속적으로 잇는다. */
-    const dot9 = REF[0] * T[0] + REF[1] * T[1] + REF[2] * T[2];
-    let ux = REF[0] - T[0] * dot9;
-    let uy = REF[1] - T[1] * dot9;
-    let uz = REF[2] - T[2] * dot9;
-    const ul9 = Math.hypot(ux, uy, uz);
-    if (ul9 < 1e-4) { ux = 1; uy = 0; uz = 0; } else { ux /= ul9; uy /= ul9; uz /= ul9; }
-    // v = T × u — u·T 모두에 수직.
-    const vx = T[1] * uz - T[2] * uy;
-    const vy = T[2] * ux - T[0] * uz;
-    const vz = T[0] * uy - T[1] * ux;
-    return Array.from({ length: sides }, (_, i) => {
-      const a = (i / sides) * Math.PI * 2 + Math.PI / sides;
-      const cs = Math.cos(a) * r;
-      const sn = Math.sin(a) * r;
-      return [ax + ux * cs + vx * sn, ay + uy * cs + vy * sn, az + uz * cs + vz * sn] as [number, number, number];
-    });
-  };
+  /* 단면 방향은 앞 단면에서 이어받는다(평행 이송) — 기준 벡터 하나를 매번 수직화하면,
+     축이 도중에 되짚는 S자에서 T의 부호가 뒤집힐 때 u까지 180도 홱 돌아 마디 사이가
+     꼬여 끊긴 것처럼 보였다(지적: 히드라 꼬리 중간에 끊김). 앞 단면의 u를 새 접선에
+     수직화해 굴리면 비틀림 없이 이어진다. 마디 경계마다 한 번씩만 계산해 둔다. */
+  const frames: [number, number, number][][] = [];
+  {
+    let pu: [number, number, number] | null = null;
+    for (let s3 = 0; s3 <= segs; s3 += 1) {
+      const t = s3 / segs;
+      const [ax, ay, az] = axis(t);
+      const r = widthAt(t);
+      const T = tangentAt(t);
+      const src: [number, number, number] = pu ?? REF;
+      const sd9 = src[0] * T[0] + src[1] * T[1] + src[2] * T[2];
+      let ux = src[0] - T[0] * sd9;
+      let uy = src[1] - T[1] * sd9;
+      let uz = src[2] - T[2] * sd9;
+      let ul9 = Math.hypot(ux, uy, uz);
+      if (ul9 < 1e-4) {
+        // 앞 단면이 접선과 나란해진 드문 자리 — 전체 기준으로 되돌아간다.
+        const d2 = REF[0] * T[0] + REF[1] * T[1] + REF[2] * T[2];
+        ux = REF[0] - T[0] * d2;
+        uy = REF[1] - T[1] * d2;
+        uz = REF[2] - T[2] * d2;
+        ul9 = Math.hypot(ux, uy, uz) || 1;
+        if (ul9 < 1e-4) { ux = 1; uy = 0; uz = 0; ul9 = 1; }
+      }
+      ux /= ul9; uy /= ul9; uz /= ul9;
+      pu = [ux, uy, uz];
+      // v = T × u — u·T 모두에 수직.
+      const vx = T[1] * uz - T[2] * uy;
+      const vy = T[2] * ux - T[0] * uz;
+      const vz = T[0] * uy - T[1] * ux;
+      frames.push(Array.from({ length: sides }, (_, i) => {
+        const a = (i / sides) * Math.PI * 2 + Math.PI / sides;
+        const cs = Math.cos(a) * r;
+        const sn = Math.sin(a) * r;
+        return [ax + ux * cs + vx * sn, ay + uy * cs + vy * sn, az + uz * cs + vz * sn] as [number, number, number];
+      }));
+    }
+  }
+  const ring = (t: number): [number, number, number][] =>
+    frames[Math.max(0, Math.min(segs, Math.round(t * segs)))];
   const out: ShapeFace[] = [];
   /* 옆면은 마디별로 따로 정렬하면 안 된다(재지적: 마디 단면이 비쳐 보임) — 마디마다
      제 안에서만 순서를 잡으면 기울거나 휜 기둥에서 뒤 마디가 앞 마디를 덮어 속이
@@ -5055,16 +5074,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          팔보다 조금 굵게 시작해 '도려내고 꽂은' 소켓처럼 잇는다. 오르는 마디는 굵기
          일정한 막대, 꼭대기에서 꺾여 내려오는 마디만 끝이 점으로 가늘어진다. */
       /* 상완부 근육질(요청) — 굵은 막대 + 이두 불룩. */
-      ...rodFaces(-0.8, 0.25, 5.3, -1.9, 0.7, 4.2, 0.85),
-      ...domeFaces3(-1.3, 0.45, 0.55, 0.45, 4.75),
-      ...rodFaces(-1.9, 0.7, 4.2, -2.5, 1.15, 5.4, 0.45),
-      ...ivory(rodFaces(-2.44, 1.1, 5.28, -2.9, 1.5, 6.9, 0.55)),
-      ...ivory(hornFaces(-2.9, 1.5, 6.9, -3.15, 2.1, 4.3, 0.55)),
-      ...rodFaces(0.8, 0.25, 5.3, 1.9, 0.7, 4.2, 0.85),
-      ...domeFaces3(1.3, 0.45, 0.55, 0.45, 4.75),
-      ...rodFaces(1.9, 0.7, 4.2, 2.5, 1.15, 5.4, 0.45),
-      ...ivory(rodFaces(2.44, 1.1, 5.28, 2.9, 1.5, 6.9, 0.55)),
-      ...ivory(hornFaces(2.9, 1.5, 6.9, 3.15, 2.1, 4.3, 0.55)),
+      /* 팔은 몸통 기둥(키 10) 앞에(지적: 팔이 몸통에 가려짐) — 프리미티브 제 깊이는
+         기둥의 층 키에 눌렸다. 어깨 앞 자리로 재 한 단 위에 얹는다. */
+      ...tagKey([
+        ...rodFaces(-0.8, 0.25, 5.3, -1.9, 0.7, 4.2, 0.85),
+        ...domeFaces3(-1.3, 0.45, 0.55, 0.45, 4.75),
+        ...rodFaces(-1.9, 0.7, 4.2, -2.5, 1.15, 5.4, 0.45),
+        ...ivory(rodFaces(-2.44, 1.1, 5.28, -2.9, 1.5, 6.9, 0.55)),
+        ...ivory(hornFaces(-2.9, 1.5, 6.9, -3.15, 2.1, 4.3, 0.55)),
+      ], 11 + depthNow(-1.7, 0.7) * 1.6),
+      ...tagKey([
+        ...rodFaces(0.8, 0.25, 5.3, 1.9, 0.7, 4.2, 0.85),
+        ...domeFaces3(1.3, 0.45, 0.55, 0.45, 4.75),
+        ...rodFaces(1.9, 0.7, 4.2, 2.5, 1.15, 5.4, 0.45),
+        ...ivory(rodFaces(2.44, 1.1, 5.28, 2.9, 1.5, 6.9, 0.55)),
+        ...ivory(hornFaces(2.9, 1.5, 6.9, 3.15, 2.1, 4.3, 0.55)),
+      ], 11 + depthNow(1.7, 0.7) * 1.6),
       /* 얼굴·머리장식 갈색(요청) — 무깊이 두건이 직전 깊이를 물려받아 얼굴을 덮었다
          (재지적: zsorted 상속) — 제 깊이를 달아 앞에선 얼굴이, 뒤에선 두건이 이긴다. */
       // 머리장식 개인색(재지적).
@@ -6127,6 +6152,24 @@ const WARP_TILES = 1.8;
 const WARP_LIFT = 0.75;
 /** 공사 모델(소환구·고치·공사장)을 발자국 한가운데보다 이만큼 아래(앞)에 앉힌다(요청). */
 const CONSTRUCT_DROP = 0.55;
+/** 그림자 색(요청: 검정 통일 대신 개인색) — 임자 색을 어둡게 눌러 쓴다. 너무 튀지
+ *  않게 짙기를 0.34까지 낮추고(나머지는 검정과 섞음), 색을 못 읽으면 검정으로 둔다. */
+const SHADOW_TINT_CACHE = new Map<string, string>();
+function shadowTint(color: string | undefined): string {
+  if (!color || color[0] !== "#") return "#000";
+  const hit = SHADOW_TINT_CACHE.get(color);
+  if (hit) return hit;
+  const hex = color.length === 4
+    ? `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`
+    : color;
+  const n = Number.parseInt(hex.slice(1, 7), 16);
+  if (!Number.isFinite(n)) return "#000";
+  const k = 0.34;
+  const out = `#${[16, 8, 0].map((sh) => Math.round(((n >> sh) & 255) * k)
+    .toString(16).padStart(2, "0")).join("")}`;
+  SHADOW_TINT_CACHE.set(color, out);
+  return out;
+}
 /** 건물 모델이 제 발자국 상자를 채우는 몫 — 종류마다 한 번만 잰다. */
 const BLD_FILL_CACHE = new Map<string, number>();
 /** 건물 모델의 발·가로중심 자리 [cx몫, bot몫] — 구운 판 크기에 대한 비로 잰다.
@@ -6472,8 +6515,9 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
           const fdPx = footW * (op.footRatio ?? 0.6) * squish;
           ctx.save();
           ctx.shadowColor = "transparent";
-          ctx.globalAlpha = op.alpha * 0.16;
-          ctx.fillStyle = "#000";
+          // 개인색 그림자(요청) — 어둡게 누른 임자 색. 짙기는 살짝 올려 형태를 지킨다.
+          ctx.globalAlpha = op.alpha * 0.2;
+          ctx.fillStyle = shadowTint(op.color);
           ctx.beginPath();
           if (op.shadowPts && op.shadowPts.length >= 3) {
             /* 바닥에 실제로 그린다(요청) — 발자국 타원을 타일 공간에서 찍어 둔 점들을
@@ -6602,8 +6646,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         /* 하이템플러 부양 로브(지적: 그림자가 몸에서 떨어져 분신 같다) — 그림자를
            위로 당겨 몸에 겹친다. */
         const shUp = op.kind === "htemp" ? px * 0.16 : 0;
-        ctx.globalAlpha = op.alpha * (op.air ? 0.22 : 0.13);
-        ctx.fillStyle = "#000";
+        ctx.globalAlpha = op.alpha * (op.air ? 0.26 : 0.16);
+        ctx.fillStyle = shadowTint(op.color);
         /* beginPath 필수(조사: 전 모드 거대 검은 쐐기의 진범) — 경로를 안 비우면
            ellipse가 직전 점에서 타원까지 선분을 이어 붙이며 프레임 내내 누적되고,
            fill이 맵을 가로지르는 검은 다각형들을 채웠다. 요잉과 무관했다. */
@@ -6630,8 +6674,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
            훨씬 작아야) — 발끝 자리에 딱 붙는 아주 작은 타원. */
         ctx.save();
         ctx.shadowColor = "transparent";
-        ctx.globalAlpha = op.alpha * 0.12;
-        ctx.fillStyle = "#000";
+        ctx.globalAlpha = op.alpha * 0.15;
+        ctx.fillStyle = shadowTint(op.color);
         ctx.beginPath();
         // 바닥면 전체(재지적: 앞쪽만 납작) — 타원을 키우고 중심을 위로 당긴다.
         ctx.ellipse(footX, footY - px * 0.09 - (op.kind === "htemp" ? px * 0.16 : 0), px * 0.19, px * 0.11 * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
