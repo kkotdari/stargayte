@@ -2741,28 +2741,33 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const out: ShapeFace[] = [];
     // 은빛 발 넷 — 바닥에 낮게 깔린 판.
     for (const [fx, fy] of [[-3.4, 2.6], [3.4, 2.4], [-3.6, -1.6], [3.6, -2]] as [number, number][]) {
+      // 발은 바닥에 깔리므로 한 칸 아래.
       out.push(...tagKey(paintBase(boxFaces3(fx, fy, 1.5, 1.1, 0.35, 0), "#c9ced6"),
-        depthNow(fx, fy) * 1.6));
+        depthNow(fx, fy) * 1.6 - 2));
     }
     /* 큰 황금 돔(오른뒤) — 위에 청록 눈. 옆구리에 붉은 띠. */
     out.push(...tagKey([
       ...paintBase(cylinderFaces3(2.2, -0.6, 3, 1.4, 0.3), GOLD_D),
       ...paintBase(domeFaces3(2.2, -0.6, 3, 3.4, 1.7), GOLD),
       ...paintBase(cylinderFaces3(2.2, -0.6, 3.04, 0.4, 1.9), RED),
-    ], 6 + depthNow(2.2, -0.6) * 1.6));
+    /* 키는 한 자로(재지적: 포지 키값이 아직 문제) — 붙박이 상수(6·8·10·12·14·16)가
+       깊이 항(±5)보다 커서 요잉과 무관하게 상수가 순서를 지배했다. 부품들은 서로
+       옆에 선 것들이라 제 자리 깊이만으로 앞뒤가 옳다. 같은 부품 안에서 '위에 얹힌'
+       것(돔의 눈, 관 팔)만 소수점 한 자리를 더한다. */
+    ], depthNow(2.2, -0.6) * 1.6));
     // 큰 돔 꼭대기 청록 눈 — 테 두른 발광 원반.
     out.push(...tagKey([
       [discPath3(2.2, -0.6, 5.05, 1.15), 1, GOLD_D] as ShapeFace,
       [discPath3(2.2, -0.6, 5.12, 0.86), 0.95, CYAN] as ShapeFace,
       topFace(discPath3(2.2, -0.6, 5.18, 0.45), 0.5),
-    ], 8 + depthNow(2.2, -0.6) * 1.6));
+    ], depthNow(2.2, -0.6) * 1.6 + 0.5));
     /* 앞오른쪽 작은 돔 — 같은 눈을 인다. */
     out.push(...tagKey([
       ...paintBase(domeFaces3(2.6, 2.4, 1.6, 1.7, 0.35), GOLD),
       [discPath3(2.6, 2.4, 2.08, 0.7), 1, GOLD_D] as ShapeFace,
       [discPath3(2.6, 2.4, 2.14, 0.52), 0.95, CYAN] as ShapeFace,
       topFace(discPath3(2.6, 2.4, 2.2, 0.28), 0.5),
-    ], 10 + depthNow(2.6, 2.4) * 1.6));
+    ], depthNow(2.6, 2.4) * 1.6));
     /* 왼쪽 황금 뿔탑 셋(사진) — 밑동이 굵고 끝이 뾰족한 첨탑. 세로 골이 있다. */
     for (const [tx, ty, th, tw] of [
       [-3, -1.2, 5.4, 0.95], [-1.9, -1.9, 6.4, 1.05], [-0.8, -1.2, 4.6, 0.85],
@@ -2770,7 +2775,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...tagKey(paintBase(spirePillar({
         x: tx, y: ty, z0: 0.3, h: th, w: tw, tipW: 0.1,
         segs: 5, sides: 8, hold: 0.18, taper: 1.4,
-      }), GOLD), 10 + depthNow(tx, ty) * 1.6));
+      }), GOLD), depthNow(tx, ty) * 1.6));
     }
     /* 뿔탑에서 큰 돔으로 건너가는 관 팔 넷 — 마디진 황금 관. */
     for (let k = 0; k < 4; k += 1) {
@@ -2779,7 +2784,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...tagKey([
         ...paintBase(tubeFaces(ax, sy9, 1.4, sy9 + 0.9, 0.26, 3.2 - k * 0.35), GOLD_D),
         ...paintBase(tubeFaces(ax + 0.9, sy9 + 0.3, ax + 1.1, sy9 + 0.36, 0.34, 3.2 - k * 0.35), GOLD),
-      ], 16 + depthNow(0, sy9 + 0.5) * 1.6));
+      // 관 팔은 뿔탑과 돔 사이를 건너므로 제 가운데 깊이 + 반 칸만 얹는다.
+      ], depthNow((ax + 1.4) / 2, sy9 + 0.45) * 1.6 + 0.5));
     }
     /* 앞왼쪽 골진 황금 단(사진) — 층층이 골이 팬 낮은 상자. */
     {
@@ -2789,7 +2795,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         blk.push(...paintBase(boxFaces3(gx, 2.3, 0.3, 2.7, 0.34, 2), GOLD_D));
       }
       blk.push(...paintBase(domeFaces3(-0.6, 3.1, 0.55, 0.5, 0.3), GOLD_D));
-      out.push(...tagKey(blk, 12 + depthNow(-2.4, 2.3) * 1.6));
+      out.push(...tagKey(blk, depthNow(-2.4, 2.3) * 1.6));
     }
     /* 앞쪽 톱니 바퀴(복원·지적: 포지의 킥인데 빠졌다) — 좌우를 보고 선 2/3 원 판에
        이빨이 둘러 박힌다. 안팎 두 판을 이빨 슬래브로 봉합해 두께를 준다. */
@@ -2832,7 +2838,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         g.push(bodyFace(fb), topFace(fb, 0.1));
         g.push(bodyFace(polyPath3(tooth(WX1))), topFace(polyPath3(tooth(WX1)), 0.12));
       }
-      out.push(...tagKey(paintBase(g, GOLD_D), 14 + depthNow(-3.8, 1.6) * 1.6));
+      out.push(...tagKey(paintBase(g, GOLD_D), depthNow(-3.8, 1.6) * 1.6));
     }
     return out;
   },
