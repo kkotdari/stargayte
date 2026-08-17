@@ -3958,15 +3958,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...paintBase(domeFaces3(0, 0.7, 1.2, 0.9, 5.5), "#6b4732"));
     /* 꼬리 대신 뿔기둥 둘(요청) — 등 뒤에서 솟아 앞으로 휙 휘어 넘어오는 한 쌍.
        마디 없이 공용 도형 하나로 굽히고, 색은 옛 독침꼬리와 같은 검회색이다. */
-    /* 정정(지적) — 끝이 뾰족하지 않고 뭉뚝·넙적하며, 휨은 반대 방향(뒤로 젖혀졌다
-       앞이 아니라 뒤·아래로 감긴다). 자리도 더 뒤쪽 꼬리께 양옆으로 벌린다. */
+    /* 꼬리 촉수(정정 요청: 뿔이 아니라 그냥 입체 직사각 막대) — 굵기가 처음부터 끝까지
+       같은 네모 기둥 한 쌍이다. 꼬리 뒤에서 비스듬히 앞·위로 나오다가 뒤로 갈수록
+       아래로 휜다: 축의 z를 한 번 올렸다 내리는 이차식으로 그린다. */
     for (const m9 of [-1, 1] as const) {
       out.push(...tagKey(spirePillar({
-        x: m9 * 1.35, y: -2.9, z0: 5.2, h: 4, w: 0.85, tipW: 0.6,
-        segs: 9, sides: 6, hold: 0.15, taper: 0.8,
-        leanY: -3.2, curveY: 2.1, leanX: m9 * 0.9, curveX: -m9 * 0.5,
+        x: 0, y: 0, h: 1, w: 0.46, tipW: 0.46,
+        segs: 10, sides: 4, hold: 1,
+        path: (t9: number): [number, number, number] => [
+          m9 * (1.15 + 0.55 * t9),
+          -2.4 + 4.6 * t9,
+          5.4 + 3.2 * t9 - 5.6 * t9 * t9,
+        ],
         fill: "#3a3f46",
-      }), 24 + depthNow(m9 * 1.35, -2.9)));
+      }), 24 + depthNow(m9 * 1.4, 0)));
     }
     // 큰 집게 한 쌍 — 앞팔 짙은 갈색(요청).
     out.push(...paintBase(hornFaces(1.3, 1, 5.8, 2.6, 2.2, 5.6, 0.95), "#6b4732"));
