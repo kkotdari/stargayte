@@ -5348,8 +5348,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        끝이 뾰족하며, 두 끝이 서로 오므라들어 마주 본다. 앞으로 갈수록 살짝 내려앉고
        윗판·아랫판과 테두리 띠로 두께를 준다. 금색. */
     {
-      const OUT9: [number, number][] = [[2.15, -0.2], [3.45, 1.5], [3.55, 3.1], [2.8, 4.6], [1.05, 5.8]];
-      const IN9: [number, number][] = [[1.6, 4.5], [1.95, 2.9], [1.85, 1.3], [1.5, -0.2]];
+      /* 집게를 앞으로 한 걸음(요청) — 몸통에 파묻히지 않게 축 방향으로 +0.8타일. */
+      const FWD9 = 0.8;
+      const OUT9: [number, number][] = ([[2.15, -0.2], [3.45, 1.5], [3.55, 3.1], [2.8, 4.6], [1.05, 5.8]] as [number, number][])
+        .map(([x9, y9]) => [x9, y9 + FWD9] as [number, number]);
+      const IN9: [number, number][] = ([[1.6, 4.5], [1.95, 2.9], [1.85, 1.3], [1.5, -0.2]] as [number, number][])
+        .map(([x9, y9]) => [x9, y9 + FWD9] as [number, number]);
       /* 앞으로 갈수록 더 가파르게 내려앉는다(요청: 양쪽 끝이 살짝 아래로 휘게) —
          선형 기울기만 있으면 곧은 판이라, 2차항을 더해 끝에서 휨이 커진다. */
       /* 좌우로도 둥글게 구부린다(요청: 앞에서 봤을 때 양쪽 옆이 아래로 45도쯤 휘게,
@@ -5399,6 +5403,49 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         faces9.push([polyPath3(hi9), 1, "#d4af37"] as ShapeFace, topFace(polyPath3(hi9), 0.18));
         out.push(...tagKey(faces9, depthNow(m9 * 2.5, 2.6)));
       }
+    }
+    return out;
+  },
+  /* 럴커 알(요청·사진) — 진흙 둔덕에 박힌 채 부푼 혹들이 뭉친 누런 알. 둘레를 갈색
+     가시다리 여섯이 바깥으로 벌어져 감싼다. 히드라가 럴커가 되는 동안 이 모습이다. */
+  lurkeregg: () => {
+    const out: ShapeFace[] = [];
+    // 바닥 둔덕 — 어두운 진흙.
+    out.push(...paintBase(domeFaces3(0, 0, 3.2, 2.5, 0), "#463628"));
+    /* 둘레 가시다리 — 뿌리에서 바깥·위로 휘어 오르며 알을 감싼다(spirePillar의 lean·
+       curve로 관절 없이 한 번에 굽힌다). */
+    for (let i = 0; i < 6; i += 1) {
+      const a = (i / 6) * Math.PI * 2 + 0.35;
+      const bx = Math.sin(a) * 1.95;
+      const by = Math.cos(a) * 1.55;
+      out.push(...tagKey(paintBase(spirePillar({
+        x: bx, y: by, z0: 0.25, h: 2.7, w: 0.6, tipW: 0.14,
+        segs: 3, sides: 5, hold: 0.28, taper: 0.75,
+        leanX: bx * 0.5, leanY: by * 0.5, curveX: bx * 0.45, curveY: by * 0.45,
+      }), "#6d4a33"), depthNow(bx, by)));
+    }
+    // 알 — 부푼 혹 다섯이 뭉쳐 하나가 된다(사진의 울퉁불퉁한 껍질).
+    const lobe9 = (x9: number, y9: number, r9: number, z9: number): ShapeFace[] =>
+      paintBase(domeFaces3(x9, y9, r9, r9 * 0.9, z9), "#d8a326");
+    out.push(...lobe9(0, 0, 2.1, 1.4));
+    out.push(...lobe9(-1.05, 0.45, 1.25, 2.4));
+    out.push(...lobe9(1.05, 0.3, 1.2, 2.5));
+    out.push(...lobe9(0, -0.75, 1.15, 2.6));
+    out.push(...lobe9(0.1, 0.15, 1.4, 3.2));
+    return out;
+  },
+  /* 변태 고치(요청·사진) — 뮤탈이 가디언·디바우러가 되는 번데기. 아래는 좁고 가운데가
+     불룩한 방추형 껍질에 마디 결이 층층이 감긴다. */
+  mutacocoon: () => {
+    const out: ShapeFace[] = [];
+    out.push(...paintBase(domeFaces3(0, 0, 2.4, 1.9, 0), "#463628"));
+    out.push(...paintBase(spirePillar({
+      x: 0, y: 0, z0: 0.45, h: 5.4, w: 2, tipW: 0.55,
+      segs: 5, sides: 8, hold: 0.55, taper: 0.62,
+    }), "#8a5a44"));
+    // 마디 결 — 감아 두른 띠 셋(위로 갈수록 가늘어진다).
+    for (const [z9, r9] of [[1.5, 2.05], [2.7, 1.85], [3.8, 1.45]] as [number, number][]) {
+      out.push(...paintBase(domeFaces3(0, 0, r9, r9 * 0.78, z9), "#6d4433"));
     }
     return out;
   },
@@ -5572,6 +5619,13 @@ const ATTACK_FX: Record<string, string> = {
      빠지는 잽으로 때리는 것을 보인다(MELEE_JAB_SEC). 그림 없는 동작이 호보다 읽기
      쉽고, 무엇보다 옆에 뜬 부메랑처럼 보이지 않는다. */
 };
+/* 변태 중 모습(요청·사진) — 히드라는 럴커 알로, 뮤탈은 가디언·디바우러가 되는 번데기
+   고치로 웅크린다. 태어난 뒤 이 시간 동안은 알·고치를 그리고 공격도 안 한다. */
+const MORPH_SHELL: Record<string, string> = {
+  Lurker: "lurkeregg", Guardian: "mutacocoon", Devourer: "mutacocoon",
+};
+/** 변태에 걸리는 시간(초) — 원작 값 어림(럴커·가디언·디바우러 모두 40초대). */
+const MORPH_SHELL_SEC = 40;
 /** 근접 잽 주기(초) — 원작 공격 주기 어림. 표에 없는 근접은 0.7초. */
 const MELEE_JAB_SEC: Record<string, number> = {
   Zergling: 0.36, Ultralisk: 0.63, Zealot: 0.92, Firebat: 0.92, "Dark Templar": 1.26,
@@ -5753,6 +5807,8 @@ export const SHAPE_GALLERY: { kind: string; label: string; group: "유닛" | "�
   { kind: "cavern", label: "울트라 동굴", group: "건물" },
   { kind: "dmound", label: "디파일러 마운드", group: "건물" },
   { kind: "cocoon", label: "공사 고치(저그)", group: "건물" },
+  { kind: "lurkeregg", label: "럴커 알", group: "유닛" },
+  { kind: "mutacocoon", label: "변태 고치", group: "유닛" },
   // ── 자원 ──
   { kind: "mineral", label: "미네랄", group: "건물" },
   { kind: "geyser", label: "가스 간헐천", group: "건물" },
@@ -5964,6 +6020,8 @@ const BLD_FILL_SKIP = new Set(["addonlink", "mineral"]);
 /** 프로토스 소환구 상자(타일)와 지면에서 띄우는 높이(타일) — 요청: 축소 + 더 띄우기. */
 const WARP_TILES = 1.8;
 const WARP_LIFT = 0.75;
+/** 공사 모델(소환구·고치·공사장)을 발자국 한가운데보다 이만큼 아래(앞)에 앉힌다(요청). */
+const CONSTRUCT_DROP = 0.55;
 /** 건물 모델이 제 발자국 상자를 채우는 몫 — 종류마다 한 번만 잰다. */
 const BLD_FILL_CACHE = new Map<string, number>();
 /* 발자국 대비 그릴 몫 — 기본은 0.95(발자국을 꽉 채운다). 본진 셋만 예외로 넘겨 그린다
@@ -7622,6 +7680,8 @@ export default function ReplayMotionPlayer({
       /** 공사 중 숨김 구간들(재재지적: 도는 SCV와 원래 SCV 이중 표시) — 앵커마다
        *  [앵커 시각, 다음 위치 증거). 그동안은 합성 건설 일꾼이 그 SCV다. */
       buildHides: [number, number][];
+      /** 건설 앵커 자리들 — [시각, 발자국 왼쪽 위 x, y]. */
+      buildSites: [number, number, number][];
       /** 공격 명령 목록 [초, 표적 태그, 클릭x, 클릭y] — 어택 표적 겨눔 + 태그
        *  미해석 시 자리 폴백(기획서 2-D)의 재료. */
       atkAt: [number, number, number, number][];
@@ -7751,6 +7811,10 @@ export default function ReplayMotionPlayer({
       }
       out.push({
         raw, unit: e.k, b: e.b, d: e.d, tag: e.t, buildHideAt, buildHides,
+        /* 건설 앵커 자리(요청: 드론 변태도 고치 중앙에) — 흡수되기 직전 이 자리로
+           걸어 들어가야 고치가 솟는 자리와 겹친다. */
+        buildSites: e.ev.filter((v) => v[3] === 2 && v[1] >= 0)
+          .map((v) => [v[0], v[1], v[2]] as [number, number, number]),
         atkAt: e.ev.filter((v) => v[3] === 7).map((v) => [v[0], v[4] ?? 0, v[1], v[2]] as [number, number, number, number]),
         sieges: e.ev.filter((v) => v[3] === 8 || v[3] === 9)
           .map((v) => [v[0], v[3] === 8 ? 1 : 0] as [number, number]),
@@ -9229,10 +9293,12 @@ export default function ReplayMotionPlayer({
                 : ((hFrac * grid.width) / mkK) * beat;
               /* 고치 치우침(재지적) — +0.25타일 보정 대신 모델 자체 무게중심을 상자
                  가운데로 옮겨 보정 없이 맞는다. */
-              const [bfxF, bfyF] = posFrac(
-                centerX,
-                centerY + fp2[1] / 2 - modelHT / 2 - (race2 === "프로토스" ? WARP_LIFT : 0),
-              );
+              /* 발자국 한가운데가 아니라 조금 아래(앞)로(요청) — 그림자를 줄여 발치에
+                 맞춘 것과 같은 결이다. 사선 시점에서 상자 중앙에 놓으면 모델이 제
+                 발자국보다 뒤로 물러나 떠 보인다. */
+              const bAnchorY = centerY + fp2[1] / 2 - modelHT / 2 + CONSTRUCT_DROP
+                - (race2 === "프로토스" ? WARP_LIFT : 0);
+              const [bfxF, bfyF] = posFrac(centerX, bAnchorY);
               unitOps.push({
                 fx: bfxF, fy: bfyF, z,
                 kind: race2 === "저그" ? "cocoon" : race2 === "프로토스" ? "warpin" : "scaffold",
@@ -9928,6 +9994,7 @@ export default function ReplayMotionPlayer({
              불꽃이 인다. 일꾼·수송·옵저버는 안 싸운다(도망 대상일 뿐). */
           const holdKey = `${e.raw}-v2e${ei}`;
           const canFight = !isWorker && !uAir
+            && MORPH_SHELL[drawUnit] === undefined
             && !(drawUnit !== "" && ENGAGE_SKIP.has(drawUnit));
           /* 표적 우선(지적: 어택 찍으면 그 대상을 공격해야) — 최근(30초 안) 공격 명령이
              찍은 태그가 아직 살아 움직이면 그쪽이 상대다. 없으면 가장 가까운 적. */
@@ -10133,6 +10200,23 @@ export default function ReplayMotionPlayer({
               }
             }
           }
+          /* 변태·건설로 흡수되기 직전엔 그 자리로 들어간다(요청: 드론 변태도 고치
+             중앙에 놔야 자연스럽다) — 예전엔 제자리에서 그냥 사라져, 고치는 발자국
+             한가운데에 솟는데 드론은 옆에서 없어졌다. 앵커 1.2초 전부터 발자국 중앙
+             (고치와 같은 자리 보정 포함)으로 미끄러져 들어간다. */
+          if (isWorker) {
+            const site9 = e.buildSites.find((v) => t >= v[0] - 1.2 && t <= v[0] + 0.2);
+            if (site9) {
+              const bRow9 = buildsSrc.find(([bs9, bx9, by9, , br9]) =>
+                br9 === e.raw && Math.abs(bs9 - site9[0]) <= 3
+                && Math.abs(bx9 - site9[1]) <= 1.5 && Math.abs(by9 - site9[2]) <= 1.5);
+              const fp9 = FOOTPRINT[bRow9 ? bRow9[3] : ""] ?? [3, 2];
+              const tx9 = site9[1] + fp9[0] / 2;
+              const ty9 = site9[2] + fp9[1] / 2 + CONSTRUCT_DROP;
+              const k9 = Math.min(1, Math.max(0, (t - (site9[0] - 1.2)) / 1.2));
+              pos = { ...pos, x: pos.x + (tx9 - pos.x) * k9, y: pos.y + (ty9 - pos.y) * k9 };
+            }
+          }
           /* 자원 반납 순간은 숨는다(요청: 기지 겹침은 허용하되 들어간 순간 렌더링에선
              숨기기) — 왕복 자리가 제 홀 발자국 안이면 그 프레임은 안 그린다. 원작도
              반납하는 일꾼은 건물 속으로 잠깐 사라진다. */
@@ -10265,8 +10349,12 @@ export default function ReplayMotionPlayer({
           const selNow = clickFx && e.orders.some((os2) => t >= os2 && t - os2 <= 0.35);
           /* 시즈탱크 반동(요청: 발포 시 포탑·포신만) — 차체/포탑을 딴 판으로 밀어,
              쏘는 박자에 포탑 판만 뒤로 살짝 밀렸다 돌아온다. */
-          const kind0 = burrowed ? "burrowhole"
-            : isWorker ? workerKindOf(race) : unitMarkerKind(drawUnit2, race);
+          /* 변태 중이면 알·고치다(요청) — 태어난 직후 MORPH_SHELL_SEC 동안은 제 모습이
+             아니라 껍질 안이다. 이 동안은 싸우지도 않는다(아래 canFight). */
+          const morphShell = MORPH_SHELL[drawUnit] !== undefined
+            && t - e.b < MORPH_SHELL_SEC ? MORPH_SHELL[drawUnit] : null;
+          const kind0 = morphShell ?? (burrowed ? "burrowhole"
+            : isWorker ? workerKindOf(race) : unitMarkerKind(drawUnit2, race));
           const gunKind = kind0 === "tank" ? "tankgun" : kind0 === "tanksiege" ? "tanksiegegun" : null;
           const kindMain = kind0 === "tank" ? "tankbody" : kind0 === "tanksiege" ? "tanksiegebody" : kind0;
           unitOps.push({
