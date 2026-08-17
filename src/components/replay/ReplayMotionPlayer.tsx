@@ -4417,6 +4417,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       if (f <= 0.05) return [];
       return tagKey([[wallDiscPath(0, 0.82, 4.9, 0.8, 0.62), 0.65, "#bfe0ef"] as ShapeFace], 30);
     })(),
+    /* 뒤 추진체 둘(요청) — 몸통 꽁무니에 짙은 은색 원통 한 쌍, 끝에 어두운 노즐.
+       뒤가 보일 때만 그려 앞에서 몸을 뚫고 나오지 않게 한다. */
+    ...((): ShapeFace[] => {
+      if (facingRatio(0, -1) <= -0.35) return [];
+      const jet = (jx: number): ShapeFace[] => [
+        ...paintBase(tubeFaces(jx, -1.5, jx, -2.55, 0.52, 3.6), "#9ba3ad"),
+        capFace(groundEllipse(...project(jx, -2.62, 3.6), 0.4, 0.34), 0.5),
+      ];
+      return tagKey([...jet(-1.05), ...jet(1.05)], 26 + depthNow(0, -2.2));
+    })(),
     // 양팔 끝 연장(요청) — 왼팔 작은 드릴 원뿔, 오른팔 두 갈래 집게.
     ...paintBase(hornFaces(-2.5, 2.1, 4.6, -2.5, 3.1, 4.6, 0.42), GUNMETAL),
     ...paintBase([
