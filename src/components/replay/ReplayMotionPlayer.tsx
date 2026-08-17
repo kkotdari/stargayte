@@ -2254,6 +2254,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          뿔로: 축에서 −x 쪽으로 기운 높은 끝이라, 요잉하면 기운 방향이 함께 돈다. */
       ...hornFaces(0, 0, 5.7, -0.45, 0, 7.6, 1.05),
     ], 24 + depthNow(0, 0)));
+    /* 사진 디테일(요청) — 초록 원반 받침에 금 포드가 둘레로 박히고 테는 청록이다.
+       형태는 기존 제작도 그대로. */
+    out.push(...tagKey(paintBase(cylinderFaces3(0, 0, 3.1, 0.3, 0.05), "#2f6f4a"),
+      depthNow(0, 0) * 1.6 - 2));
+    for (let k9 = 0; k9 < 8; k9 += 1) {
+      const a9 = (k9 / 8) * Math.PI * 2;
+      const px9 = Math.sin(a9) * 2.7;
+      const py9 = Math.cos(a9) * 2.7;
+      if (facingRatio(Math.sin(a9), Math.cos(a9)) <= 0.05) continue;
+      out.push(...tagKey(paintBase(boxFaces3(px9, py9, 0.75, 0.75, 0.7, 0.3), "#c9a227"),
+        depthNow(px9, py9) * 1.6));
+    }
     return out;
   },
   /* 성큰(실물 참고) — 납작한 크립 더미 + 잔가시들 + 웅크린 큰 낫 발톱(끝 밝은 날). */
