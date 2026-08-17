@@ -395,6 +395,13 @@ export function buildUnitTracks(
         만든다. 지형·거리 같은 간접 추측은 쓰지 않는다(지적: 짧은 거리 드랍도 흔하다). */
   /** 확정된 수송선 태그 → 임자. */
   const transTagOwner = new Map<number, number>();
+  /** 수송선으로 못 박힌 초(가장 이른 것) — 그 태그의 '수송선 시절'이 언제부터인지 재는 자. */
+  const transSince = new Map<number, number>();
+  const markTransport = (tag: number, pid2: number, at: number): void => {
+    transTagOwner.set(tag, pid2);
+    const cur = transSince.get(tag);
+    if (cur === undefined || at < cur) transSince.set(tag, at);
+  };
   /** 보류 승선 — [시각, 태우는 유닛 태그, 수송선 후보 태그, x, y, 임자]. */
   const pendBoard: [number, number, number, number, number, number][] = [];
   /** 보류 하차 — [시각, 수송선 태그, x, y]. */
@@ -862,7 +869,7 @@ export function buildUnitTracks(
         if (cmdName === "Unload All" || cmdName === "Unload") {
           // 하차(요청 ③) — 좌표가 없으면 수송선의 마지막 알려진 자리에서.
           // 이 명령도 수송선에게만 내려진다 — 태그를 명부에 못 박는다(위 주석).
-          transTagOwner.set(tag, pid);
+          markTransport(tag, pid, sec);
           const lp = [...life.ev].reverse().find((v) => v[1] >= 0);
           const up = posOf(c) ?? (lp ? { x: lp[1], y: lp[2] } : null);
           if (up) {
@@ -1046,7 +1053,7 @@ export function buildUnitTracks(
            수송선으로 못 박힌다. 이미 정체를 아는데 수송선이 아닌 태그는 뺀다. */
         const l9 = alive.get(tag);
         if (l9 && majorityKindOf2(l9) !== "" && !isTransportLife(l9)) continue;
-        transTagOwner.set(tag, pid);
+        markTransport(tag, pid, sec);
         pendUnload.push([sec + 4, tag, pos.x, pos.y]);
         unloadRiders(tag, sec + 4, pos.x, pos.y);
       }
@@ -1149,6 +1156,78 @@ export function buildUnitTracks(
       }
       queue.length = 0;
       queue.push(...next);
+    }
+  }
+
+  /* ── 못 박힌 수송선에 이름을 주고 옛 생애를 갈라 준다(지적: 아콘이 걸어가고 셔틀이
+        안 나온다) ────────────────────────────────────────────────────────────────
+        MoveUnload·Unload는 수송선에게만 내릴 수 있어 태그를 '수송선'으로 못 박아 주지만,
+        못 박기만 하고 이름은 안 줬다. 실측 표본(SG_26081613330800)에서 진짜 드랍을 한
+        셔틀 여덟이 모두 이름 없는 생애였고, 뒤이어 생산 원장이 그 무명 생애에 옛 프로브를
+        붙여 버려(같은 태그를 프로브가 먼저 쓰다 죽고 셔틀이 물려받은 자리다) 아콘 넷의
+        드랍이 통째로 '프로브 여덟의 행군'이 됐다. 승하차 자체는 맞게 잡혔는데 타고 간
+        것의 정체만 틀린 것이라, 화면에서는 셔틀이 사라지고 아콘이 걸어가는 그림이 된다.
+        ① 못 박힌 태그가 무명이면 종족의 수송선으로 이름 짓는다 — 명령 자체가 증거라
+           어림이 아니다. 이미 다른 구체 정체가 있으면 건드리지 않는다(섞인 선택 방어가
+           거른 뒤이므로, 여기까지 온 구체 정체는 존중한다).
+        ② 그 사람의 첫 수송선이 완성되기도 전의 앞쪽 증거는 이 태그를 먼저 쓰던 옛
+           주인의 것이다 — 거기서 생애를 갈라 앞쪽은 무명으로 남긴다. 그러면 원장이
+           앞 생애에 제 이름(프로브 등)을 도로 붙이고, 뒤 생애가 셔틀로 산다. */
+  {
+    /** 임자별 첫 수송선 완성 시각 — 원장(취소 안 된 것)에서 곧장 읽는다. */
+    const firstTransDone = new Map<number, number>();
+    for (const it of ledger) {
+      if (it.cancelled) continue;
+      if (it.unit !== (RACE_TRANSPORT[raceOf.get(it.pid) ?? ""] ?? "")) continue;
+      const cur = firstTransDone.get(it.pid);
+      if (cur === undefined || it.done < cur) firstTransDone.set(it.pid, it.done);
+    }
+    /** 태그별 생애 목록 — 재사용 분리로 한 태그에 여럿일 수 있다. */
+    const byTag = new Map<number, Life[]>();
+    for (const l of done) {
+      if (l.bld || l.tag <= 0) continue;
+      const arr = byTag.get(l.tag) ?? [];
+      arr.push(l);
+      byTag.set(l.tag, arr);
+    }
+    for (const arr of byTag.values()) arr.sort((a, b) => a.born - b.born);
+    for (const [tag, pid2] of transTagOwner) {
+      const tKind = RACE_TRANSPORT[raceOf.get(pid2) ?? ""] ?? "";
+      if (!tKind) continue;
+      const at = transSince.get(tag) ?? 0;
+      const arr = byTag.get(tag);
+      if (!arr) continue;
+      // 못 박힌 그 시각에 살아 있던 생애 — 없으면 그 앞의 마지막 것.
+      let life: Life | null = null;
+      for (const l of arr) { if (l.born <= at + 1) life = l; else break; }
+      if (!life || life.owner !== pid2) continue;
+      /* 일꾼 표는 '어림'이라 못 박은 증거에 진다(수리: 셔틀 여덟이 전부 프로브로 나왔다) —
+         일꾼 정체는 자원 우클릭 하나로 붙는데, 셔틀은 미네랄 밭 쪽으로 이동 우클릭만 해도
+         그 표를 받는다. 반면 MoveUnload·Unload는 수송선만 받는 명령이라 어림이 아니다.
+         그래서 표가 일꾼뿐인 생애는 수송선으로 고쳐 쓴다. 다른 구체 정체(질럿·드라군…)는
+         자원 클릭으로 붙을 일이 없으니 그대로 존중한다(섞인 선택 방어). */
+      const worker9 = RACE_WORKER[raceOf.get(pid2) ?? ""] ?? "";
+      const onlyWorker = worker9 !== "" && life.kinds.size === 1 && life.kinds.has(worker9);
+      if (life.kinds.size === 0 || onlyWorker) {
+        life.kinds.clear();
+        life.kinds.set(tKind, 3);
+      } else if (!isTransportLife(life)) continue; // 구체 정체가 다르면 손대지 않는다.
+      /* ② 앞 생애 가르기 — 첫 수송선 완성보다 이른 증거는 옛 주인 것이다. 완성 어림에
+         8초 여유를 둔다(원장 시계는 방해를 모른다). */
+      const cut = firstTransDone.get(pid2);
+      if (cut === undefined || life.born >= cut - 8) continue;
+      const vi = life.ev.findIndex((v) => v[0] >= cut - 8);
+      if (vi <= 0) continue;
+      const head = life.ev.splice(0, vi);
+      const old: Life = {
+        tag: life.tag, owner: life.owner, kinds: new Map(), groupKinds: new Set(),
+        bld: false, born: life.born, last: head[head.length - 1][0],
+        lastAtk: null, evAfterAtk: false, morphTo: null, cxl: null, solo: false,
+        spawned: false, ev: head,
+      };
+      life.born = life.ev[0][0];
+      life.spawned = false;
+      done.push(old);
     }
   }
 
