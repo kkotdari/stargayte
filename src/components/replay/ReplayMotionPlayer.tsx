@@ -5352,20 +5352,31 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const IN9: [number, number][] = [[1.6, 4.5], [1.95, 2.9], [1.85, 1.3], [1.5, -0.2]];
       /* 앞으로 갈수록 더 가파르게 내려앉는다(요청: 양쪽 끝이 살짝 아래로 휘게) —
          선형 기울기만 있으면 곧은 판이라, 2차항을 더해 끝에서 휨이 커진다. */
-      const zAt9 = (y9: number, dz: number): number =>
-        4.15 - (y9 + 0.2) * 0.1 - (y9 + 0.2) ** 2 * 0.028 + dz;
+      /* 좌우로도 둥글게 구부린다(요청: 앞에서 봤을 때 양쪽 옆이 아래로 45도쯤 휘게,
+         전체적으로 둥글게) — 앞다리 둘과 그 사이 패널을 한 장의 아치로 본다. 높이가
+         |x|의 2차식으로 떨어지므로 가운데는 평평하고 바깥으로 갈수록 기울기가 커진다:
+         계수 0.14면 바깥 끝(x≈3.55)의 기울기가 2×0.14×3.55 ≈ 1, 곧 45도다. */
+      const zAt9 = (x9: number, y9: number, dz: number): number =>
+        4.15 - (y9 + 0.2) * 0.1 - (y9 + 0.2) ** 2 * 0.028
+        - Math.abs(x9) ** 2 * 0.14 + dz;
       const ring9 = (m9: 1 | -1, dz: number): [number, number, number][] => [
-        ...OUT9.map(([x9, y9]) => [m9 * x9, y9, zAt9(y9, dz)] as [number, number, number]),
-        ...IN9.map(([x9, y9]) => [m9 * x9, y9, zAt9(y9, dz)] as [number, number, number]),
+        ...OUT9.map(([x9, y9]) => [m9 * x9, y9, zAt9(x9, y9, dz)] as [number, number, number]),
+        ...IN9.map(([x9, y9]) => [m9 * x9, y9, zAt9(x9, y9, dz)] as [number, number, number]),
       ];
       /* 두 집게 사이 메움(재지적) — 전부가 아니라 뿌리 쪽(위쪽) 1/3만, 그것도 집게와
          같은 두께의 입체로. 앞은 벌어진 채 남는다. */
       {
         const BR9: [number, number][] = IN9.slice(-2); // 뿌리 쪽 두 점(y 1.3 → -0.2)
-        const rim9 = (dz: number): [number, number, number][] => [
-          ...BR9.map(([x9, y9]) => [-x9, y9, zAt9(y9, dz)] as [number, number, number]),
-          ...[...BR9].reverse().map(([x9, y9]) => [x9, y9, zAt9(y9, dz)] as [number, number, number]),
-        ];
+        /* 패널도 같은 아치를 탄다 — 가운데(x=0)가 가장 높고 양옆에서 내려앉는다.
+           두 점만으로는 각져 보이므로 가운데 마루점을 끼워 곡선으로 잇는다. */
+        const rim9 = (dz: number): [number, number, number][] => {
+          const yIn = BR9[BR9.length - 1][1];
+          return [
+            ...BR9.map(([x9, y9]) => [-x9, y9, zAt9(x9, y9, dz)] as [number, number, number]),
+            [0, yIn, zAt9(0, yIn, dz)] as [number, number, number],
+            ...[...BR9].reverse().map(([x9, y9]) => [x9, y9, zAt9(x9, y9, dz)] as [number, number, number]),
+          ];
+        };
         const lo0 = rim9(0);
         const hi0 = rim9(0.62);
         const wf9: ShapeFace[] = [[polyPath3(lo0), 1, "#d4af37"] as ShapeFace];
