@@ -4422,8 +4422,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...((): ShapeFace[] => {
       if (facingRatio(0, -1) <= -0.35) return [];
       const jet = (jx: number): ShapeFace[] => [
-        ...paintBase(tubeFaces(jx, -1.5, jx, -2.55, 0.52, 3.6), "#9ba3ad"),
-        capFace(groundEllipse(...project(jx, -2.62, 3.6), 0.4, 0.34), 0.5),
+        // 더 높게(지적) — z 3.6 → 4.5.
+        ...paintBase(tubeFaces(jx, -1.5, jx, -2.55, 0.52, 4.5), "#9ba3ad"),
+        capFace(groundEllipse(...project(jx, -2.62, 4.5), 0.4, 0.34), 0.5),
       ];
       return tagKey([...jet(-1.05), ...jet(1.05)], 26 + depthNow(0, -2.2));
     })(),
@@ -5476,18 +5477,38 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...lobe9(0.1, 0.15, 1.4, 3.2));
     return out;
   },
-  /* 변태 고치(요청·사진) — 뮤탈이 가디언·디바우러가 되는 번데기. 아래는 좁고 가운데가
-     불룩한 방추형 껍질에 마디 결이 층층이 감긴다. */
+  /* 변태 고치(정정 요청: 공중 유닛용이라 땅에 붙은 밑동 제거 — 나비 번데기 꼴) —
+     뮤탈이 가디언·디바우러가 되는 번데기. 위 실자락에 매달려 아래위가 다 뾰족한
+     방추형 껍질이고, 마디 결이 층층이 감긴다. 어디도 지면에 닿지 않는다. */
   mutacocoon: () => {
+    const WAIST = 3.9; // 가장 굵은 허리 높이
     const out: ShapeFace[] = [];
-    out.push(...paintBase(domeFaces3(0, 0, 2.4, 1.9, 0), "#463628"));
+    // 아래 반 — 아래 끝(뾰족)에서 허리로 벌어진다.
     out.push(...paintBase(spirePillar({
-      x: 0, y: 0, z0: 0.45, h: 5.4, w: 2, tipW: 0.55,
-      segs: 5, sides: 8, hold: 0.55, taper: 0.62,
+      x: 0, y: 0, z0: 1.1, h: WAIST - 1.1, w: 0.3, tipW: 2.05,
+      segs: 5, sides: 10, hold: 0, taper: 0.75,
     }), "#8a5a44"));
-    // 마디 결 — 감아 두른 띠 셋(위로 갈수록 가늘어진다).
-    for (const [z9, r9] of [[1.5, 2.05], [2.7, 1.85], [3.8, 1.45]] as [number, number][]) {
-      out.push(...paintBase(domeFaces3(0, 0, r9, r9 * 0.78, z9), "#6d4433"));
+    // 위 반 — 허리에서 위 끝으로 다시 좁아진다.
+    out.push(...paintBase(spirePillar({
+      x: 0, y: 0, z0: WAIST, h: 3.4, w: 2.05, tipW: 0.32,
+      segs: 5, sides: 10, hold: 0.1, taper: 0.85,
+    }), "#8a5a44"));
+    // 매달린 실자락 — 꼭대기에서 위로 가늘게 뻗는다.
+    out.push(...paintBase(spirePillar({
+      x: 0, y: 0, z0: 7.3, h: 1.5, w: 0.22, tipW: 0.08,
+      segs: 2, sides: 6, hold: 0.2,
+    }), "#6d4433"));
+    /* 마디 결 — 껍질 옆선을 타는 얇은 테 넷. 허리 위아래로 굵기가 갈리므로 자리마다
+       제 반지름을 셈해 딱 맞춘다. */
+    const shellR = (z9: number): number => (z9 <= WAIST
+      ? 0.3 + 1.75 * (1 - (WAIST - z9) / (WAIST - 1.1)) ** 0.75
+      : 0.32 + 1.73 * (1 - (z9 - WAIST) / 3.4) ** 0.85);
+    for (const z9 of [2.2, 3.2, 4.6, 5.6, 6.5]) {
+      const r9 = shellR(z9) * 1.04;
+      out.push(...paintBase(spirePillar({
+        x: 0, y: 0, z0: z9 - 0.14, h: 0.28, w: r9, tipW: r9,
+        segs: 1, sides: 10, hold: 1,
+      }), "#6d4433"));
     }
     return out;
   },
