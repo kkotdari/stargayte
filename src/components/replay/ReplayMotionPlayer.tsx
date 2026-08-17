@@ -3852,10 +3852,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 더 길고 끝이 더 좁게(요청) — 꼬리 끝 굵기를 1.25 → 0.62로 줄이고, taper를 1
        아래로 내려 가는 굵기가 오래 이어지다 머리 쪽에서 확 벌어지게 한다. */
     ...tagKey(spirePillar({
-      // 아래 몸통을 뒤로 물린다(지적) — 꼬리 끝 y 2.7 → 1.9.
-      x: 0, y: 1.9, z0: 0.3, h: 4, w: 0.62, tipW: 2.05,
+      // 더 뒤로 물린다(재지적: 윗몸통에 가려져야 한다) — 꼬리 끝 y 1.9 → 1.0.
+      x: 0, y: 1, z0: 0.3, h: 4, w: 0.62, tipW: 2.05,
       segs: 9, sides: 8, hold: 0, taper: 0.68,
-      leanY: -3, curveY: 2.5,
+      leanY: -2.1, curveY: 2.2,
       fill: "#6b4732",
     }), 12),
     // 머리통 — 큰 반구. 개인색(요청), 기둥보다 앞·위.
@@ -3879,8 +3879,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 얼굴 밑에 있던 작은 가시 한 쌍은 몸통 끝으로(요청) — 꼬리 끝(0, 2.7, 0.3)에서
        앞·아래로 짧게 뻗는다. */
     ...tagKey(paintBase([
-      ...hornFaces(0.3, 1.75, 0.85, 0.62, 2.65, 0.35, 0.32),
-      ...hornFaces(-0.3, 1.75, 0.85, -0.62, 2.65, 0.35, 0.32),
+      ...hornFaces(0.3, 0.85, 0.85, 0.62, 1.75, 0.35, 0.32),
+      ...hornFaces(-0.3, 0.85, 0.85, -0.62, 1.75, 0.35, 0.32),
     ], IVORY_DEEP), 13),
   ],
   /* 스커지 — 작은 몸 + 날개 한 쌍. */
@@ -5467,14 +5467,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         leanX: bx * 0.5, leanY: by * 0.5, curveX: bx * 0.45, curveY: by * 0.45,
       }), "#6d4a33"), depthNow(bx, by)));
     }
-    // 알 — 부푼 혹 다섯이 뭉쳐 하나가 된다(사진의 울퉁불퉁한 껍질).
-    const lobe9 = (x9: number, y9: number, r9: number, z9: number): ShapeFace[] =>
-      paintBase(domeFaces3(x9, y9, r9, r9 * 0.9, z9), "#d8a326");
-    out.push(...lobe9(0, 0, 2.1, 1.4));
-    out.push(...lobe9(-1.05, 0.45, 1.25, 2.4));
-    out.push(...lobe9(1.05, 0.3, 1.2, 2.5));
-    out.push(...lobe9(0, -0.75, 1.15, 2.6));
-    out.push(...lobe9(0.1, 0.15, 1.4, 3.2));
+    /* 알은 구 하나로 단순하게(요청) — 혹 다섯을 뭉치던 것을 걷고, 색은 건물 고치와
+       같은 살구빛 껍질색을 쓴다. */
+    out.push(...tagKey(paintBase(domeFaces3(0, 0, 2.3, 2.7, 1.2), "#d9b8a2"), 12));
     return out;
   },
   /* 변태 고치(정정 요청: 공중 유닛용이라 땅에 붙은 밑동 제거 — 나비 번데기 꼴) —
