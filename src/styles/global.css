@@ -10948,7 +10948,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   transition: width 0.3s ease, margin-left 0.3s ease;
 }
 .scr-motion-lens {
-  position: absolute; inset: 0; transform-origin: 0 0;
+  /* 확대 기준점은 상자 가운데 — 휠·더블클릭·핀치가 모두 가운데 기준으로 팬을 푼다
+     (예전엔 0 0이었는데 JS가 매번 inline으로 center를 덮어썼다). */
+  position: absolute; inset: 0; transform-origin: center;
   /* 확대 중 배경이 살짝살짝 미끄러지는 문제(지적) — 변환된 지도 그림을 브라우저가
      수시로 다시 래스터화하며 반 픽셀씩 어긋나 보였다. 제 합성 레이어로 승격해 두면
      변환만 바뀌고 래스터는 고정된다. */

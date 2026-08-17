@@ -8245,6 +8245,21 @@ const STATUS_TINT: Record<string, string> = {
 };
 /** 디텍터(전수조사: 투명화 카운터) — 이들이 곁에 있으면 은신이 벗겨진다. */
 const DETECTOR_UNITS = new Set(["Overlord", "Observer", "Science Vessel"]);
+/* 같은 자리 변태·재건의 계보(지적: 성큰 변태에서 고치가 페이드아웃되고 성큰이 안 남음)
+   — 예전엔 'Colony끼리'·'해처리 계열끼리'를 서로 후계로 쳤다. 방향이 없으니 옆에 새로
+   심은 크립 콜로니가 방금 변태를 마친 성큰을 제 후계로 잡아 지웠다(저그 본진의 콜로니는
+   한 타일 간격으로 붙어 선다). 변태는 한 방향이다 — 크립은 성큰·스포어가 되지만 그
+   반대는 없고, 성큰은 종착지다. */
+const MORPH_NEXT: Record<string, string[]> = {
+  "Creep Colony": ["Sunken Colony", "Spore Colony"],
+  Hatchery: ["Lair", "Hive"],
+  Lair: ["Hive"],
+};
+/** 뒤 건물(to)이 앞 건물(from)의 후계인가 — 같은 종류의 재건이거나 변태의 다음 단계. */
+const succeedsBld = (from: string, to: string): boolean =>
+  to === from || (MORPH_NEXT[from] ?? []).includes(to);
+/** 같은 자리인가 — ±1.5타일은 한 칸 간격으로 붙어 선 콜로니를 서로 삼켰다(지적). */
+const SAME_SITE_TILES = 0.6;
 /** 디텍터가 은신을 벗기는 거리(타일) — 표시 투명도와 표적 판정이 같은 자를 쓴다. */
 const DETECT_TILES = 9;
 /** 스캐너 스윕이 그 자리를 디텍터로 만드는 시간(초) — 화면 효과도 같은 길이로 남는다.
@@ -9912,6 +9927,15 @@ export default function ReplayMotionPlayer({
        렌즈 상자의 transform을 직접 써서 합성기(compositor)만 일하게 하고, 휠이 멎은
        뒤(140ms)에 딱 한 번 상태로 굳힌다. 그 사이 zoomRef·panRef는 지금 값을 들고
        있어 더블클릭·드래그 같은 다른 손짓도 어긋나지 않는다. */
+    /* 수리(지적: 휠로 조금 한 번 확대되고 마는데다 지도 그림만 커져 맵을 벗어난다) —
+       위 방식에 구멍이 둘 있었다.
+       ① 재생 중에는 매 프레임 리렌더가 나는데, 렌더마다 하는 zoomRef.current = zoom
+          대입이 휠이 방금 올린 배율을 곧바로 옛 상태로 되돌렸다(그래서 한 틱만 먹었다).
+          손짓이 도는 동안에는 그 대입을 멈춘다(wheelingRef).
+       ② 유닛 캔버스는 렌즈 밖이라 zoom·pan을 '그리기 좌표'로 받는다. 리액트가 굳기
+          전까지 캔버스는 옛 배율 그대로여서, 지도 그림만 커지고 유닛은 제자리였다.
+          손짓 동안에는 이미 그려진 캔버스를 같은 비율로 옮겨 두고(흐릿하지만 따라온다),
+          굳은 뒤 아래 effect가 또렷하게 다시 그리며 그 변환을 걷는다. */
     let wheelTimer = 0;
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey && Math.abs(e.deltaY) < 0.5) return;
@@ -9919,10 +9943,18 @@ export default function ReplayMotionPlayer({
       const lens = lensRef.current;
       if (!lens) return;
       const rect = el.getBoundingClientRect();
+      if (!wheelingRef.current) {
+        wheelingRef.current = true;
+        wheelBaseRef.current = { z: zoomRef.current, x: panRef.current.x, y: panRef.current.y };
+      }
       const z0 = zoomRef.current;
       /* 한 틱에 배율을 곱으로 바꾼다 — 더할 때보다 확대·축소가 대칭이고, 트랙패드의
-         잔 델타에도 결이 고르다. 상한은 더블클릭과 같은 게임 화면 배율. */
-      const step = Math.exp(-e.deltaY * 0.0016);
+         잔 델타에도 결이 고르다. 상한은 더블클릭과 같은 게임 화면 배율.
+         델타 단위를 먼저 픽셀로 맞춘다(수리) — 브라우저·기기에 따라 휠은 줄(deltaMode 1,
+         한 틱에 3쯤)이나 쪽(2)으로도 오는데, 그걸 픽셀로 알고 곱하면 한 틱이 0.5%라
+         아무리 굴려도 배율이 안 움직인다. */
+      const dy9 = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? rect.height : 1);
+      const step = Math.exp(-dy9 * 0.0016);
       const z1 = Math.min(ZOOM_GAME, Math.max(1, z0 * step));
       const ox = rect.left + rect.width / 2;
       const oy = rect.top + rect.height / 2;
@@ -9936,10 +9968,20 @@ export default function ReplayMotionPlayer({
       zoomRef.current = z1;
       panRef.current = { x: px, y: py };
       lens.style.setProperty("--mz", `${z1}`);
-      lens.style.transformOrigin = "center";
       lens.style.transform = z1 > 1 ? `translate(${px}px, ${py}px) scale(${z1})` : "";
+      /* 유닛 캔버스도 같이 따라온다(위 ②) — 이미 그려진 그림(손짓 시작 배율)을 지금
+         배율로 옮기는 변환이다. 굳으면 아래 effect가 다시 그리며 이 변환을 지운다. */
+      const cv9 = el.querySelector<HTMLCanvasElement>(".scr-motion-unitlayer");
+      if (cv9) {
+        const b9 = wheelBaseRef.current;
+        const s9 = z1 / b9.z;
+        cv9.style.transformOrigin = "center";
+        cv9.style.transform =
+          `translate(${(px - s9 * b9.x).toFixed(2)}px, ${(py - s9 * b9.y).toFixed(2)}px) scale(${s9.toFixed(4)})`;
+      }
       window.clearTimeout(wheelTimer);
       wheelTimer = window.setTimeout(() => {
+        wheelingRef.current = false;
         setZoom(zoomRef.current);
         setPan({ ...panRef.current });
       }, 140);
@@ -9981,9 +10023,27 @@ export default function ReplayMotionPlayer({
   /** 렌즈 상자 — 휠 줌이 리액트를 거치지 않고 직접 변환을 쓰는 자리(위 onWheel 주석). */
   const lensRef = useRef<HTMLDivElement | null>(null);
   const zoomRef = useRef(zoom);
-  zoomRef.current = zoom;
   const panRef = useRef(pan);
-  panRef.current = pan;
+  /** 휠 손짓이 도는 중인가 — 도는 동안은 상태로 덮지 않는다(위 onWheel ① 주석). */
+  const wheelingRef = useRef(false);
+  /** 손짓 시작 시점의 배율·팬 — 캔버스는 그때 그려진 그림이라 그 기준으로 옮긴다. */
+  const wheelBaseRef = useRef({ z: 1, x: 0, y: 0 });
+  if (!wheelingRef.current) {
+    zoomRef.current = zoom;
+    panRef.current = pan;
+  }
+  /* 렌즈 변환은 리액트 스타일이 아니라 이 effect가 쓴다(위 렌즈 상자 주석) — 손짓
+     동안의 직접 변환과 싸우지 않게. 캔버스에 걸어 뒀던 임시 변환도 여기서 걷는다:
+     자식(UnitLayer)의 그리기 effect가 먼저 돌아, 이 시점엔 이미 새 배율로 또렷하다. */
+  useEffect(() => {
+    const lens = lensRef.current;
+    if (lens) {
+      lens.style.transform = zoom > 1
+        ? `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` : "";
+    }
+    const cv = mapRef.current?.querySelector<HTMLCanvasElement>(".scr-motion-unitlayer");
+    if (cv) cv.style.transform = "";
+  }, [zoom, pan]);
   useEffect(() => {
     /* el이 없어도 문서 리스너는 단다(재지적) — 맵은 데이터가 온 뒤에 그려지기도 해서,
        마운트 순간 ref가 비어 있으면 여기서 돌아가 버렸다. 그러면 더블탭이 영영 안 걸린다.
@@ -10945,10 +11005,9 @@ export default function ReplayMotionPlayer({
             /* 줌 역배율 변수(지적: 클릭 마커·링은 UI라 확대에 굵어지면 안 됨) —
                UI성 마커가 scale(1/--mz)로 제 화면 크기를 지킨다. */
             "--mz": zoom,
-            ...(zoom > 1 ? {
-              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-              transformOrigin: "center",
-            } : {}),
+            /* transform은 여기서 안 쓴다(수리: 휠 확대가 한 번만 먹는다) — 재생 중엔
+               매 프레임 리렌더가 나서, 상태에서 나온 변환이 휠이 방금 쓴 변환을 계속
+               되돌렸다. 아래 lensZoom effect가 상태가 바뀔 때만 써 준다. */
           } as React.CSSProperties}
         >
         {grid.image
@@ -11031,14 +11090,13 @@ export default function ReplayMotionPlayer({
             // 까지 옛 자리에서 둥실거린다.
             const afloat = !!liftAt && t >= liftAt;
             const razed = false;
-            /* 같은 자리에 같은 계보의 새 건물이 서면(레어 진화·재건·콜로니 변태) 옛 것은
-               걷는다(지적: 비활성 건물이 글자와 도형으로 동시 표시). 계보만 본다(지적:
-               레어 되면서 없어짐 — 아무 새 건물이나 곁에 서면 옛 것을 지워 버렸다). */
+            /* 같은 자리에 제 후계가 서면(레어 진화·재건·콜로니 변태) 옛 것은 걷는다
+               (지적: 비활성 건물이 글자와 도형으로 동시 표시). 계보는 한 방향이고
+               자리는 발자국 안이라야 한다(위 succeedsBld 주석 — 성큰이 옆 크립 콜로니에
+               지워지던 자리). */
             if (!razed && buildsSrc.some(([s2, x2, y2, u2, r2], j) =>
-              j !== i && r2 === raw && s2 > sec && s2 <= t && Math.hypot(x2 - x, y2 - y) <= 1.5
-              && (u2 === unit
-                || (["Hatchery", "Lair", "Hive"].includes(unit) && ["Hatchery", "Lair", "Hive"].includes(u2))
-                || (unit.includes("Colony") && u2.includes("Colony"))))) {
+              j !== i && r2 === raw && s2 > sec && s2 <= t
+              && Math.hypot(x2 - x, y2 - y) <= SAME_SITE_TILES && succeedsBld(unit, u2))) {
               return null;
             }
             /* 착륙 이사(요청: 건물 움직임도 추적) — 같은 임자의 같은 건물이 내 시작
@@ -11630,9 +11688,10 @@ export default function ReplayMotionPlayer({
           if (hallKind || colonyKind) {
             let startSec = sec;
             for (const [s2, x2, y2, u2, r2] of buildsSrc) {
-              if (r2 !== raw || s2 >= startSec || Math.hypot(x2 - x, y2 - y) > 1.5) continue;
-              if ((hallKind && ["Hatchery", "Lair", "Hive"].includes(u2))
-                || (colonyKind && u2.includes("Colony"))) startSec = s2;
+              // 자리·계보는 위 succeedsBld와 같은 자를 쓴다 — 곁 콜로니의 시계를 안 물어온다.
+              if (r2 !== raw || s2 >= startSec
+                || Math.hypot(x2 - x, y2 - y) > SAME_SITE_TILES) continue;
+              if (succeedsBld(u2, unit)) startSec = s2;
             }
             const maxW = hallKind ? 15 : 11;
             const minW = hallKind ? 8 : 5.5;
@@ -11663,11 +11722,10 @@ export default function ReplayMotionPlayer({
         {buildsSrc.map(([sec, x, y, unit, raw, gone, liftAt], i) => {
           const goneAt = gone ?? 0;
           if (!goneAt || liftAt || t < goneAt || t > goneAt + 2) return null;
+          // 후계가 선 자리는 무너진 것이 아니라 변태·재건이다(위 succeedsBld와 같은 자).
           if (buildsSrc.some(([s2, x2, y2, u2, r2], j) => j !== i && r2 === raw
-            && s2 > sec && Math.hypot(x2 - x, y2 - y) <= 1.5
-            && (u2 === unit
-              || (["Hatchery", "Lair", "Hive"].includes(unit) && ["Hatchery", "Lair", "Hive"].includes(u2))
-              || (unit.includes("Colony") && u2.includes("Colony"))))) return null;
+            && s2 > sec && Math.hypot(x2 - x, y2 - y) <= SAME_SITE_TILES
+            && succeedsBld(unit, u2))) return null;
           const race = bases.find((b2) => b2.key === raw)?.race;
           const rk = race === "저그" ? "zerg" : race === "프로토스" ? "toss" : "terran";
           if (!qDeath) return null;
@@ -12466,9 +12524,17 @@ export default function ReplayMotionPlayer({
           for (const [ss2, on2] of e.sieges) { if (ss2 <= t) siegeOn = on2; else break; }
           const drawUnit2 = siegeOn === 1 && drawUnit.startsWith("Siege Tank")
             ? "Siege Tank (Siege Mode)" : drawUnit;
+          /* 표적 거리는 '그려지는 몸'에서 다시 잰다(지적: 맞는 대상이 없는데 공격한다 /
+             둘이 너무 멀어 따로 놀아 보인다) — foe.bd는 원자취(명령 좌표) 기준인데,
+             화면의 몸은 교전 당김·잽·채굴 왕복·겹침까지 실린 딴 자리에 있다. 그 둘이
+             몇 타일씩 벌어진 채로 사격 판정과 조준각을 원자취 거리로 내리다 보니, 몸
+             옆에 아무도 없는데 트레이서가 나가고 각도도 엉뚱한 데를 겨눴다. 아래 사격
+             ·조준·가시 길이는 전부 이 값을 쓴다. */
+          const foeDist = Number.isFinite(foe.bd)
+            ? Math.hypot(foe.bx - pos.x, foe.by - pos.y) : Infinity;
           /* 몸 방향(지적: 트레이서와 불일치 + 뒤로 걷기) — 싸울 땐 표적을 바라보고,
              걸을 땐 실제 화면 이동 방향을 본다(headingOfDisplay). */
-          const foeDeg = Number.isFinite(foe.bd) && foe.bd <= ENGAGE_SIGHT_TILES
+          const foeDeg = foeDist <= ENGAGE_SIGHT_TILES
             ? Math.atan2(-(foe.bx - pos.x), foe.by - pos.y) * (180 / Math.PI) : null;
           /* 싸울 때도 '움직이면 이동 방향'이 먼저다(요청) — 표적 고정 요잉은 잽으로
              파고들거나 진형이 밀릴 때 몸이 옆·뒤로 미끄러지게 만들었다. 제자리에 선
@@ -12687,7 +12753,7 @@ export default function ReplayMotionPlayer({
              밖이라 fighting이 영영 거짓이었고 가시 트레이서도 안 나왔다. 원작대로
              버로우한 채 적이 사거리(6타일, 여유 7) 안이면 명령 없이도 가시를 쏜다.
              럴커는 수가 적으니 1/3 솎기도 안 태운다. */
-          const lurkStrike = burrowed && !frzSt && Number.isFinite(foe.bd) && foe.bd <= 7;
+          const lurkStrike = burrowed && !frzSt && foeDist <= 7;
           /* 솎기(기획서 1-G) — 근접은 이제 그릴 효과가 없으므로(잽 동작이 대신한다) 덜
              솎을 이유도 없다. 다만 맞은 불티는 솎으면 안 된다 — 맞는 순간은 개체마다
              한 번뿐이라 솎이면 통째로 사라진다. */
@@ -12741,7 +12807,7 @@ export default function ReplayMotionPlayer({
                   style={{
                     transform: mzTf, animationDelay: `${((ei * 7) % 5) / 10}s`,
                     ...(lurkStrike ? {
-                      height: `${(Math.min(7, foe.bd) * ((mapRef.current?.clientWidth ?? 320) / grid.width)).toFixed(1)}px`,
+                      height: `${(Math.min(7, foeDist) * ((mapRef.current?.clientWidth ?? 320) / grid.width)).toFixed(1)}px`,
                     } : {}),
                     /* 근접 휘두름 호는 제 몸에 맞춘다(지적: "부메랑 모양이 계속 나온다")
                        — 6px 고정이라 유닛 크기를 캔버스 비례로 바로잡고 나니 호가 몸통
