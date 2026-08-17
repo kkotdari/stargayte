@@ -895,6 +895,60 @@ function ivory(faces: ShapeFace[]): ShapeFace[] {
   return faces.map(([d, o, f, k]) => [d, o, f ?? IVORY, k] as ShapeFace);
 }
 
+/** 렌즈(공용 도형·요청) — 몸 표면의 접평면 위에 선 볼록한 원판. 화면 고정 정원으로
+ *  칠하면 요잉과 무관하게 늘 동그래 '구'로 읽히므로(지적), 접평면의 두 축(수평 접선
+ *  u, 수직 z)으로 3D 점을 찍어 투영한다: 정면에선 동그랗고 옆으로 돌수록 실제로
+ *  납작해지며, 등을 돌리면 아예 안 그린다. 겹쳐 얹는 네 켜(테 → 몸 → 속살 → 반짝임)가
+ *  법선 쪽으로 조금씩 배를 내밀어 볼록한 콘택트 렌즈가 된다. */
+function lensFaces(o: {
+  /** 렌즈 한가운데(모델 좌표). */
+  x: number; y: number; z: number;
+  /** 바깥 법선의 수평 성분 — 몸 중심에서 렌즈로 향하는 방향이면 된다. */
+  nx: number; ny: number;
+  r: number;
+  /** 배부름 — 가운데 켜가 법선 쪽으로 나오는 몫(반지름 대비). */
+  bulge?: number;
+  rim?: string; fill?: string; core?: string; glint?: string;
+  /** 굴림(도) — 렌즈 판을 수평 접선 축으로 기울인다(요청). 양수면 위쪽이 몸 안쪽으로
+   *  눕는다: 원판의 세로 축을 그만큼 법선 반대쪽으로 젖힌 것이다. */
+  tiltDeg?: number;
+  /** 깊이 키 보정 — 몸통 위에 얹히는 만큼 더한다. */
+  lift?: number;
+}): ShapeFace[] {
+  const nl = Math.hypot(o.nx, o.ny) || 1;
+  const nx = o.nx / nl;
+  const ny = o.ny / nl;
+  if (facingRatio(nx, ny) <= 0.02) return [];
+  const ux = -ny;
+  const uy = nx;
+  const bul = (o.bulge ?? 0.25) * o.r;
+  /* 세로 축 — 굴림만큼 젖힌다. 위쪽(+v)이 법선 반대쪽(몸 안)으로 눕는다. */
+  const tr = ((o.tiltDeg ?? 0) * Math.PI) / 180;
+  const vxy = -Math.sin(tr);
+  const vz = Math.cos(tr);
+  const disc = (k: number, out: number, dz: number): string => polyPath3(
+    Array.from({ length: 17 }, (_, i) => {
+      const a = (i / 16) * Math.PI * 2;
+      const co = Math.cos(a) * o.r * k;
+      const si = Math.sin(a) * o.r * k;
+      return [
+        o.x + ux * co + nx * (out + vxy * si),
+        o.y + uy * co + ny * (out + vxy * si),
+        o.z + dz + vz * si,
+      ] as [number, number, number];
+    }),
+  );
+  const rim = o.rim ?? "#5d3c8c";
+  const fill = o.fill ?? "#7d55b4";
+  const core = o.core ?? "#a97fe0";
+  const glint = o.glint ?? "#e2d4f6";
+  return tagKey([
+    [disc(1, 0, 0), 0.95, rim] as ShapeFace,
+    [disc(0.88, bul * 0.4, 0), 0.95, fill] as ShapeFace,
+    [disc(0.5, bul * 0.8, o.r * 0.2), 0.55, core] as ShapeFace,
+    [disc(0.2, bul, o.r * 0.34), 0.6, glint] as ShapeFace,
+  ], depthNow(o.x, o.y) + (o.lift ?? 3));
+}
 /** 크립 갈퀴 바닥(지적: 콜로니 바닥은 동그라미가 아니라 갈퀴) — 사방으로 뻗는 납작한
  *  덩굴 조각들. */
 function creepSplat(r: number): ShapeFace[] {
@@ -3962,11 +4016,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const HT = 0.16;
       const NS = 10;
       const axis9 = (t9: number): [number, number, number] => [
-        m9 * (1.05 + 0.45 * t9),
-        /* 앞쪽을 더 들고 굽힘률은 축소(요청) — 출발 기울기를 5 → 6.4로 키우되 되꺾는
-           이차항을 5 → 3.4로 줄여, 끝까지 완만하게 계속 올라간다: z(0)=6.2, z(1)=9.2. */
-        -3.2 + 3.1 * t9,
-        6.2 + 6.4 * t9 - 3.4 * t9 * t9,
+        m9 * (0.7 + 0.8 * t9),
+        /* 뿌리를 몸에 붙이고 높이를 내린다(요청) — 등딱지 뒤 표면(y -1.8, z 4.6)에서
+           시작해 뒤로 물러나며 완만하게 오른다: z(0)=4.6, z(1)=7.6. */
+        -1.8 - 1.4 * t9,
+        4.6 + 4.4 * t9 - 1.4 * t9 * t9,
       ];
       const sect9 = (t9: number): [number, number, number][] => {
         const [px9, py9, pz9] = axis9(t9);
@@ -4019,7 +4073,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       }
       faces9.push([polyPath3(sect9(1)), 1, "#3a3f46"] as ShapeFace,
         topFace(polyPath3(sect9(1)), 0.14));
-      out.push(...tagKey(faces9, depthNow(m9 * 1.3, -0.6) * 1.6 + 3));
+      out.push(...tagKey(faces9, depthNow(m9 * 1.1, -2.5) * 1.6 + 3));
     }
     // 큰 집게 한 쌍 — 앞팔 짙은 갈색(요청).
     out.push(...paintBase(hornFaces(1.3, 1, 5.8, 2.6, 2.2, 5.6, 0.95), "#6b4732"));
@@ -5353,46 +5407,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 허파(재지적: 양옆 렌즈는 눈이 아니라 허파 같은 기관 — 흰색 말고 보라색으로,
        두껍게가 아니라 '넓게') — 접평면 부착은 그대로 두고, 접선 방향으로 길쭉한
        보라 타원 기관으로 바꾼다. 속에 밝은 보라 속살을 한 겹 얹는다. */
+    // 양옆 기관 — 공용 렌즈 도형(요청: 렌즈 형태 메이커) 하나로 낸다.
     const lens = (sxSign: number): ShapeFace[] => {
       const th = Math.PI * (82 / 180);
-      /* 구 표면에 칠한 원(재정의: 사용자 설명) — 풍선 옆구리의 데칼: 옆으로 갈수록
-         원이 모로 보이니 바깥 방향으로만 눌린 세로 타원으로 그린다. 튀어나오지도
-         파이지도 않는다. */
       const lx = Math.sin(th) * 2.44 * sxSign;
       const ly = Math.cos(th) * 2.44;
-      /* 진짜 납작한 원판(지적: 지금은 구로 보인다 — 어느 각도에서든 납작한 게 맞나) —
-         아니었다. groundEllipse에 가로·세로 반지름을 같게 주면 요잉과 무관하게 늘 정원
-         이라, 돌려도 안 눌리는 '구'로 읽힌다. 렌즈는 구 옆구리의 접평면 위에 선 원판
-         이므로, 그 평면의 두 축(수평 접선 u, 수직 v)으로 3D 점을 찍어 투영해야 한다.
-         그러면 정면에선 동그랗고 옆으로 돌수록 실제로 납작해지며, 뒤로 돌면 사라진다. */
-      const nl9 = Math.hypot(lx, ly) || 1;
-      const nx9 = lx / nl9;
-      const ny9 = ly / nl9;
-      // 뒤로 돈 기관은 몸에 가려 안 보인다 — 접평면이 등을 돌리면 그리지 않는다.
-      const fr9 = facingRatio(nx9, ny9);
-      if (fr9 <= 0.02) return [];
-      const ux9 = -ny9;
-      const uy9 = nx9;
-      /* 원판 — 접평면 위의 원. bulge만큼 바깥(법선)으로 배를 내밀어 볼록한
-         콘택트 렌즈가 된다(가운데가 가장 두껍다). */
-      const disc9 = (r9: number, bulge: number, zc: number): string => polyPath3(
-        Array.from({ length: 17 }, (_, i9) => {
-          const a9 = (i9 / 16) * Math.PI * 2;
-          const co9 = Math.cos(a9) * r9;
-          const si9 = Math.sin(a9) * r9;
-          return [
-            lx + ux9 * co9 + nx9 * bulge,
-            ly + uy9 * co9 + ny9 * bulge,
-            zc + si9,
-          ] as [number, number, number];
-        }),
-      );
-      return tagKey([
-        [disc9(0.98, 0, 5.65), 0.95, "#5d3c8c"] as ShapeFace,
-        [disc9(0.86, 0.1, 5.65), 0.95, "#7d55b4"] as ShapeFace,
-        [disc9(0.5, 0.2, 5.85), 0.55, "#a97fe0"] as ShapeFace,
-        [disc9(0.2, 0.24, 5.98), 0.6, "#e2d4f6"] as ShapeFace,
-      ], depthNow(lx, ly) + 3);
+      // 위쪽을 살짝 안으로 눕힌다(요청) — 좌우가 서로 마주 보는 느낌.
+      return lensFaces({
+        x: lx, y: ly, z: 5.65, nx: lx, ny: ly, r: 0.98, bulge: 0.26, tiltDeg: 20,
+      });
     };
     /* 얼굴(재지적: 얼굴은 앞쪽 아래쪽에 작은 반구형으로) — 몸 앞아래 표면에 붙는
        작은 돔 하나. */
