@@ -9782,7 +9782,9 @@ export default function ReplayMotionPlayer({
        500ms다) 손가락이 10px만 굴러도 탭이 아니라고 버렸다. 520ms·56px·끌림 18px로
        넓힌다. 시각은 이벤트의 timeStamp를 쓴다 — 재생 렌더가 프레임을 오래 잡으면
        핸들러가 늦게 돌아, 손은 빨랐는데 performance.now() 간격만 길어졌다. */
-    const TAP_MS = 520;
+    /* 520 → 650ms(재지적: 아직도 안 됨) — 손을 뗀 순간부터 재므로 첫 탭을 오래 누르면
+       그만큼 간격이 는다. 지도엔 한 번 탭으로 하는 일이 없어 넓혀도 잃을 게 없다. */
+    const TAP_MS = 650;
     const TAP_GAP = 56;
     const TAP_MOVE = 18;
     const evTime = (e: TouchEvent): number => (e.timeStamp > 0 ? e.timeStamp : performance.now());
@@ -9790,25 +9792,14 @@ export default function ReplayMotionPlayer({
     let tapStart: { x: number; y: number; moved: boolean } | null = null;
     const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
     const onTS = (e: TouchEvent) => {
-      if (e.touches.length === 1) {
-        tapStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, moved: false };
-      }
       /* 핀치 줌 제거(요청) — 두 손가락은 더 이상 확대하지 않는다. 브라우저 페이지
          확대만 끊고 아무 일도 하지 않는다. 확대는 더블탭 하나뿐이다. */
       if (e.touches.length !== 2) return;
-      // 두 손가락이 닿으면 탭 셈은 처음부터 — 핀치 뒤 한 번 탭이 더블탭이 되면 안 된다.
-      tapStart = null;
-      tap = null;
       e.preventDefault();
       pinch = null;
     };
     const onTM = (e: TouchEvent) => {
       gestureRef.current = e.touches.length >= 2;
-      // 18px 넘게 끌리면 탭이 아니다(더블탭 판정용) — 그 아래는 손가락 굴림으로 본다.
-      if (tapStart && e.touches.length === 1
-        && Math.hypot(e.touches[0].clientX - tapStart.x, e.touches[0].clientY - tapStart.y) > TAP_MOVE) {
-        tapStart.moved = true;
-      }
       /* 삼키는 건 지도 조작일 때만(재재지적: 모바일에서 아래로 스와이프가 안 됨) —
          무조건 preventDefault가 확대 안 한 한 손가락 스와이프(페이지 스크롤)까지
          막았다. 두 손가락(핀치)이거나 확대 중(드래그 팬)일 때만 기본 동작을 끊고,
@@ -9847,46 +9838,127 @@ export default function ReplayMotionPlayer({
     };
     const onTE = (e: TouchEvent) => {
       if (e.touches.length < 2) { pinch = null; gestureRef.current = false; }
-      // 더블탭 판정 — 손가락이 다 떨어진 순간, 안 끌린 탭만 센다.
-      if (e.touches.length === 0 && tapStart && !tapStart.moved && e.changedTouches.length === 1) {
-        const ct = e.changedTouches[0];
-        const now = evTime(e);
-        if (tap && now - tap.t < TAP_MS && Math.hypot(ct.clientX - tap.x, ct.clientY - tap.y) < TAP_GAP) {
-          // 두 번째 탭 — 브라우저 더블탭 페이지 확대를 끊고 지도만 확대·복귀한다.
-          if (e.cancelable) e.preventDefault();
-          if (zoomRef.current > 1.05) {
-            setZoom(1);
-            setPan({ x: 0, y: 0 });
-          } else {
-            const r2 = el.getBoundingClientRect();
-            const ox2 = r2.left + r2.width / 2;
-            const oy2 = r2.top + r2.height / 2;
-            const z2 = ZOOM_GAME;
-            // 핀치와 같은 수식 — 탭한 지점 아래의 지도 지점이 그 자리에 남는다.
-            const ux2 = (ct.clientX - ox2 - panRef.current.x) / zoomRef.current;
-            const uy2 = (ct.clientY - oy2 - panRef.current.y) / zoomRef.current;
-            setZoom(z2);
-            setPan({ x: ct.clientX - ox2 - z2 * ux2, y: ct.clientY - oy2 - z2 * uy2 });
-          }
-          tap = null;
-        } else {
-          tap = { t: now, x: ct.clientX, y: ct.clientY };
-        }
+    };
+    /* 더블탭 판정은 문서에서 자리로 한다(재지적: 모바일 더블탭 안 됨) — 맵에 건 리스너는
+       손가락이 닿은 그 노드가 사라지면 touchend를 못 받는다. 재생 중엔 마커·오버레이가
+       프레임마다 다시 그려져, 첫 탭과 둘째 탭 사이에 노드가 바뀌면 이벤트가 통째로
+       빠졌다(터진 자리에서만 되고 유닛 위에서는 안 되는 이유). 문서에서 받아 맵 상자
+       안인지 좌표로 따지면 어느 자식을 눌렀든 똑같이 센다. */
+    const inMap = (x: number, y: number): boolean => {
+      const r = el.getBoundingClientRect();
+      return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    };
+    const onDocTS = (e: TouchEvent) => {
+      if (e.touches.length !== 1) { tapStart = null; tap = null; return; }
+      const t0 = e.touches[0];
+      tapStart = inMap(t0.clientX, t0.clientY)
+        ? { x: t0.clientX, y: t0.clientY, moved: false } : null;
+    };
+    const onDocTM = (e: TouchEvent) => {
+      // 18px 넘게 끌리면 탭이 아니다 — 그 아래는 손가락 굴림으로 본다.
+      if (!tapStart || e.touches.length !== 1) return;
+      const t0 = e.touches[0];
+      if (Math.hypot(t0.clientX - tapStart.x, t0.clientY - tapStart.y) > TAP_MOVE) tapStart.moved = true;
+    };
+    /* 확대·복귀 한 번 — 손짓 갈래(터치/포인터)가 둘이라 400ms 안에 두 번 불리면
+       한 번만 듣는다. 갈래마다 이벤트 시각의 기준 시계가 다를 수 있어, 이 빗장만은
+       performance.now()로 잰다. */
+    let zoomAt = 0;
+    const fireDouble = (cx0: number, cy0: number): boolean => {
+      const t0 = performance.now();
+      if (t0 - zoomAt < 400) return false;
+      zoomAt = t0;
+      if (zoomRef.current > 1.05) {
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+        return true;
       }
-      if (e.touches.length === 0) tapStart = null;
+      const r2 = el.getBoundingClientRect();
+      const ox2 = r2.left + r2.width / 2;
+      const oy2 = r2.top + r2.height / 2;
+      const z2 = ZOOM_GAME;
+      // 핀치와 같은 수식 — 탭한 지점 아래의 지도 지점이 그 자리에 남는다.
+      const ux2 = (cx0 - ox2 - panRef.current.x) / zoomRef.current;
+      const uy2 = (cy0 - oy2 - panRef.current.y) / zoomRef.current;
+      setZoom(z2);
+      setPan({ x: cx0 - ox2 - z2 * ux2, y: cy0 - oy2 - z2 * uy2 });
+      return true;
+    };
+    const onDocTE = (e: TouchEvent) => {
+      if (e.touches.length !== 0 || !tapStart || e.changedTouches.length !== 1) {
+        if (e.touches.length === 0) tapStart = null;
+        return;
+      }
+      const ct = e.changedTouches[0];
+      const now = evTime(e);
+      const ok = !tapStart.moved && inMap(ct.clientX, ct.clientY);
+      tapStart = null;
+      if (!ok) { tap = null; return; }
+      if (tap && now - tap.t < TAP_MS && Math.hypot(ct.clientX - tap.x, ct.clientY - tap.y) < TAP_GAP) {
+        // 두 번째 탭 — 브라우저 더블탭 페이지 확대를 끊고 지도만 확대·복귀한다.
+        if (e.cancelable) e.preventDefault();
+        tap = null;
+        fireDouble(ct.clientX, ct.clientY);
+        return;
+      }
+      tap = { t: now, x: ct.clientX, y: ct.clientY };
+    };
+    /* 포인터로도 같은 판정을 한다(재지적: 모바일 더블탭 안 됨) — 인앱 웹뷰나 기기에
+       따라 touch 갈래가 통째로 안 오는 경우가 있다. 포인터 이벤트는 어디서나 오므로
+       같은 자를 하나 더 대 둔다. 둘 다 맞으면 위 빗장이 한 번만 듣게 막는다. */
+    let pStart: { x: number; y: number; moved: boolean } | null = null;
+    let pTap: { t: number; x: number; y: number } | null = null;
+    const onPD = (e: PointerEvent) => {
+      if (e.pointerType !== "touch") return;
+      pStart = inMap(e.clientX, e.clientY)
+        ? { x: e.clientX, y: e.clientY, moved: false } : null;
+    };
+    const onPM = (e: PointerEvent) => {
+      if (!pStart || e.pointerType !== "touch") return;
+      if (Math.hypot(e.clientX - pStart.x, e.clientY - pStart.y) > TAP_MOVE) pStart.moved = true;
+    };
+    const onPU = (e: PointerEvent) => {
+      if (e.pointerType !== "touch") return;
+      const st = pStart;
+      pStart = null;
+      if (!st || st.moved || !inMap(e.clientX, e.clientY)) { pTap = null; return; }
+      const now = e.timeStamp > 0 ? e.timeStamp : performance.now();
+      if (pTap && now - pTap.t < TAP_MS
+        && Math.hypot(e.clientX - pTap.x, e.clientY - pTap.y) < TAP_GAP) {
+        pTap = null;
+        fireDouble(e.clientX, e.clientY);
+        return;
+      }
+      pTap = { t: now, x: e.clientX, y: e.clientY };
     };
     el.addEventListener("touchstart", onTS, { passive: false });
     el.addEventListener("touchmove", onTM, { passive: false });
-    /* touchend도 수동 등록 아님(passive: false) — 두 번째 탭에서 브라우저 제 더블탭
-       확대를 끊어야 하는데, 수동 등록이면 preventDefault가 무시된다. */
-    el.addEventListener("touchend", onTE, { passive: false });
-    el.addEventListener("touchcancel", onTE, { passive: false });
+    el.addEventListener("touchend", onTE);
+    el.addEventListener("touchcancel", onTE);
+    document.addEventListener("touchstart", onDocTS, { passive: true });
+    document.addEventListener("touchmove", onDocTM, { passive: true });
+    /* 문서 touchend는 수동 등록 아님(passive: false) — 두 번째 탭에서 브라우저 제
+       더블탭 확대를 끊어야 하는데, 수동 등록이면 preventDefault가 무시된다. */
+    document.addEventListener("touchend", onDocTE, { passive: false });
+    document.addEventListener("touchcancel", onDocTE, { passive: true });
+    document.addEventListener("pointerdown", onPD, { passive: true });
+    document.addEventListener("pointermove", onPM, { passive: true });
+    document.addEventListener("pointerup", onPU, { passive: true });
+    document.addEventListener("pointercancel", onPU, { passive: true });
     return () => {
       if (pinchRaf) cancelAnimationFrame(pinchRaf);
       el.removeEventListener("touchstart", onTS);
       el.removeEventListener("touchmove", onTM);
       el.removeEventListener("touchend", onTE);
       el.removeEventListener("touchcancel", onTE);
+      document.removeEventListener("touchstart", onDocTS);
+      document.removeEventListener("touchmove", onDocTM);
+      document.removeEventListener("touchend", onDocTE);
+      document.removeEventListener("touchcancel", onDocTE);
+      document.removeEventListener("pointerdown", onPD);
+      document.removeEventListener("pointermove", onPM);
+      document.removeEventListener("pointerup", onPU);
+      document.removeEventListener("pointercancel", onPU);
     };
     // 확대창(포털 재부착)이 사라져 맵 엘리먼트는 안 바뀐다 — 마운트에 한 번이면 된다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
