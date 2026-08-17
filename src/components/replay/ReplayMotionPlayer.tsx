@@ -4454,15 +4454,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     })(),
     /* 뒤 추진체 둘(요청) — 몸통 꽁무니에 짙은 은색 원통 한 쌍, 끝에 어두운 노즐.
        뒤가 보일 때만 그려 앞에서 몸을 뚫고 나오지 않게 한다. */
-    ...((): ShapeFace[] => {
-      if (facingRatio(0, -1) <= -0.35) return [];
-      const jet = (jx: number): ShapeFace[] => [
-        // 더 높게(지적) — z 3.6 → 4.5.
-        ...paintBase(tubeFaces(jx, -1.5, jx, -2.55, 0.52, 4.5), "#9ba3ad"),
-        capFace(groundEllipse(...project(jx, -2.62, 4.5), 0.4, 0.34), 0.5),
-      ];
-      return tagKey([...jet(-1.05), ...jet(1.05)], 26 + depthNow(0, -2.2));
-    })(),
+    /* 노즐은 관 프리미티브에 맡긴다(지적: 단면의 원이 회전각을 안 먹고 가려지지도
+       않는다) — groundEllipse는 '바닥에 눕힌 원'이라 요잉을 안 타는 화면 고정 타원이고,
+       거기에 붙박이 큰 키(26)까지 얹어 어느 각도에서도 몸 위에 떠 있었다. tubeFaces는
+       축 방향을 실제로 투영한 끝 단면을 그리고, 마주볼 때만 포구를 어둡게 찍으며,
+       제 자리 깊이 키를 스스로 단다 — 붙박이 키도, 앞뒤 문턱도 필요 없다. */
+    ...([-1.05, 1.05]).flatMap((jx) =>
+      paintBase(tubeFaces(jx, -1.5, jx, -2.55, 0.52, 4.5, true), "#9ba3ad")),
     // 양팔 끝 연장(요청) — 왼팔 작은 드릴 원뿔, 오른팔 두 갈래 집게.
     ...paintBase(hornFaces(-2.5, 2.1, 4.6, -2.5, 3.1, 4.6, 0.42), GUNMETAL),
     ...paintBase([
