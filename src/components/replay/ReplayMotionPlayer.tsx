@@ -5886,6 +5886,10 @@ type UnitDrawOp = {
   z: number;
   /** 발밑 접지 그림자(지적: 건물·지상 유닛에도 옅게) — 아주 작은 타원만. */
   groundShadow?: boolean;
+  /** 바닥면의 사영 비(분수 좌표) — 세로 한 타일이 가로 한 타일의 몇 배로 보이는가.
+   *  입체 보기에서 그림자가 '바닥 팔레트'와 같은 눌림을 갖게 하는 자(지적: 임의 축소
+   *  말고 바닥에 맞춰야 한다). 없으면 평면 관례(2:1)를 쓴다. */
+  groundSquash?: number;
   /** 발자국 세로/가로 비(건물) — 접지 그림자가 '바닥 발자국'만 덮게 하는 자(지적:
    *  칸(hPx)은 모델 높이까지 포함해, 칸 기준 타원은 건물을 통째로 덮는 큰 원이 됐다). */
   footRatio?: number;
@@ -6328,9 +6332,13 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
              너무 작고, 3D에선 바닥에 안 붙고 서 있다) — 폭을 발자국의 0.72배로 못
              박아 두었더니, 채움 보정으로 몸이 커진 뒤엔 발치에 작은 점만 남았다.
              실제로 그려지는 잉크 폭(kFit 반영)의 0.88배로 잡는다.
-             3D에선 더 눕힌다(0.68 → 0.46) — 지면 사영이 이미 칸을 눌러 놓았는데 세로
-             반지름까지 크면 타원이 비스듬히 선 판처럼 읽혔다. */
-          const squish = op.pitch ? 0.46 : 0.55;
+             입체에서는 임의 축소를 걷고 바닥면 그대로 눕힌다(지적: 3D 그림자는 바닥
+             팔레트에 맞아야 한다) — 세로 한 타일이 화면에서 가로 한 타일의 몇 배로
+             보이는지(groundSquash)를 자리마다 실제로 재어 넘겨받는다. 그 값이 곧
+             바닥면의 눌림이라, 그림자가 지면 격자와 같은 각도로 깔린다. */
+          const squish = op.pitch
+            ? (op.groundSquash !== undefined ? op.groundSquash * (ch / cw) : 0.5)
+            : 0.55;
           const inkW9 = bspr && bspr.w > 0 ? (bspr.w / B) * ((sidePx * kFit) / sideQ) : wPx;
           const footW = Math.max(wPx * 0.7, inkW9 * 0.88);
           const fdPx = footW * (op.footRatio ?? 0.6) * squish;
@@ -9443,6 +9451,15 @@ export default function ReplayMotionPlayer({
                 groundShadow: true,
                 // 접지 그림자의 발자국 비(지적: 그림자는 바닥 발자국만) — 세로/가로.
                 footRatio: (FOOTPRINT[unit] ?? [3, 2])[1] / (FOOTPRINT[unit] ?? [3, 2])[0],
+                /* 이 자리 바닥면의 눌림(요청: 3D 그림자는 바닥 팔레트에 맞게) — 같은
+                   한 타일을 가로·세로로 옮겨 보고 화면에서 얼마나 줄어드는지 잰다. */
+                groundSquash: (() => {
+                  const [g0x, g0y] = posFrac(centerX, centerY);
+                  const [g1x] = posFrac(centerX + 1, centerY);
+                  const [, g2y] = posFrac(centerX, centerY + 1);
+                  const dxf = Math.abs(g1x - g0x);
+                  return dxf > 1e-6 ? Math.abs(g2y - g0y) / dxf : 0.5;
+                })(),
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
                 sizePx: 0, wFrac: wFrac * pulse, hFrac: hFrac * pulse, boxFit: "meet",
                 /* 전 건물 폭 기준(요청: 바닥을 발자국에, 높이는 제 비율로) — meet
