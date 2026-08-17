@@ -3694,15 +3694,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const plate = (m2: 1 | -1): string => polyPath3([
       [m2 * 1.6, 0.8, 5.6], [m2 * 3.6, 0.2, 5.4], [m2 * 3.4, -1.8, 5.5], [m2 * 1.6, -1.2, 5.7],
     ]);
-    /* 튜브 코는 앞이 보일 때만(지적: 뒤에서도 동그라미가 떠 보임) — 앞(+y) facing으로
-       게이트하고, 마주볼수록 도톰해진다. */
-    const tubeNose = (tx: number): ShapeFace[] => {
-      const f = facingRatio(0, 1);
-      if (f <= 0.05) return [];
-      const k = Math.min(1, (f - 0.05) / 0.4);
-      const [px2, py2] = project(tx, 0.9, 7.2);
-      return [bodyFace(groundEllipse(px2, py2 - 0.45 * 0.45, 0.48, 0.4 * (0.35 + 0.65 * k)))];
-    };
+    /* (삭제·지적: 튜브 코가 요잉을 안 먹는다) — groundEllipse는 바닥에 눕힌 원이라
+       화면 고정 타원이었다. 관 자체가 capOpen으로 제 끝 단면을 그린다(아래). */
     return [
       // 날개만 빼고 전체 은색(요청).
       ...paintBase(boxFaces3(0, -2.3, 2.2, 1, 1.5, 5.3), "#c9ced6"),
@@ -3735,12 +3728,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 지붕 미사일 튜브 다발 — 지붕 띠 키(재지적: 콕핏·코 데칼이 위에 씻겨 투명해
          보임): 몸 위 얹힘이라 어느 각에서도 몸·데칼 뒤로 안 간다. */
       ...tagKey([
-        ...paintBase(tubeFaces(-0.7, -1.7, -0.7, 0.9, 0.5, 7.2), "#c9ced6"),
-        ...paintBase(tubeNose(-0.7), GUNMETAL),
+        ...paintBase(tubeFaces(-0.7, -1.7, -0.7, 0.9, 0.5, 7.2, true), "#c9ced6"),
       ], 20 + depthNow(-0.7, -0.4)),
       ...tagKey([
-        ...paintBase(tubeFaces(0.7, -1.7, 0.7, 0.9, 0.5, 7.2), "#c9ced6"),
-        ...paintBase(tubeNose(0.7), GUNMETAL),
+        ...paintBase(tubeFaces(0.7, -1.7, 0.7, 0.9, 0.5, 7.2, true), "#c9ced6"),
       ], 20 + depthNow(0.7, -0.4)),
     ];
   },
@@ -4685,10 +4676,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      바이저 슬릿, 앞으로 내민 굵은 화염 건틀릿 두 팔. */
   fbat: () => {
     const [vx2, vy2] = project(0, 0.55, 4.7);
-    const noz = (tx: number): ShapeFace => {
-      const [px2, py2] = project(tx, 2.2, 2.95);
-      return capFace(groundEllipse(px2, py2 - 0.19, 0.3, 0.24), 0.4);
-    };
+    /* (삭제·지적: 총구가 요잉을 안 먹는다) — 화염 건틀릿 관에 capOpen을 줘 관이
+       스스로 제 끝 단면(포구)을 그린다. */
     return [
       // 등 연료통 둘 — 먼저 그려 어깨가 뿌리를 덮는다. 붉은색(요청).
       ...paintBase([
@@ -4713,10 +4702,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...hornFaces(1.45, -0.2, 4.9, 1.4, 0.6, 3.2, 0.5),
       // 화염 건틀릿 두 팔.
       // 앞으로 더 내민 화염 건틀릿(지적: 총구가 앞을 향하게).
-      ...paintBase(tubeFaces(-1.4, 0.4, -1.4, 2.2, 0.42, 2.9), GUNMETAL),
-      noz(-1.4),
-      ...paintBase(tubeFaces(1.4, 0.4, 1.4, 2.2, 0.42, 2.9), GUNMETAL),
-      noz(1.4),
+      ...paintBase(tubeFaces(-1.4, 0.4, -1.4, 2.2, 0.42, 2.9, true), GUNMETAL),
+      ...paintBase(tubeFaces(1.4, 0.4, 1.4, 2.2, 0.42, 2.9, true), GUNMETAL),
     ];
   },
   /* 질럿 — 검 두 자루(요청). */
