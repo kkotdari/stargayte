@@ -9366,11 +9366,31 @@ export default function ReplayMotionPlayer({
          개체들에 차례를 매겨, (a) 출발을 0.22초씩 늦춰 자연스럽게 한 줄 행렬이 되고,
          (b) 도착 자리는 클릭 지점 둘레 해바라기 나선으로 벌려 서로 안 포개진다 —
          프레임마다 밀치는 이완 대신 목적지 대형으로 푸는 방식이라 떨림이 없다. */
+      /* 승선 구간(수리: 태운 아콘이 지도에 남고, 셔틀을 따라 벽을 뚫고 가고, 일부는
+         제 발로 걸어가 공격한다) — 예전엔 승선(f=12) 다음에 오는 '아무' 증거를 구간의
+         끝으로 삼았다. 그런데 셔틀과 승객을 함께 잡아 둔 채 이동을 찍는 것이 보통이라,
+         비행 중에 찍힌 그 명령이 곧바로 구간을 닫았다 — 승객이 배 안에서 도로 튀어나와
+         제 발로 100타일을 가로질렀다(실측: 게임 1의 승선 21건 중 5건).
+         구간의 끝은 짝이 되는 하차(f=13)다. 하차 기록이 없으면, 배 안에서 낼 수 없는
+         제 명령(8초 뒤의 이동·공격)이 나오기 전까지 배 안이다. */
+      const rideSpans: [number, number][] = [];
+      for (let i = 0; i < e.ev.length; i += 1) {
+        if (e.ev[i][3] !== 12) continue;
+        const bs2 = e.ev[i][0];
+        const off = e.ev.find((v, j) => j > i && v[3] === 13);
+        const own = e.ev.find((v, j) => j > i && (v[3] === 0 || v[3] === 7) && v[0] >= bs2 + 8);
+        rideSpans.push([bs2, off ? off[0] : (own ? own[0] : Infinity)]);
+      }
+      /* 배 안에서 받은 명령은 걷기 재료가 아니다 — 배가 실어 나르는 동안의 클릭이라,
+         자취에 넣으면 승객이 그 좌표로 제 발로 간다. 승하차 점(12·13)만 남긴다. */
+      const aboardAt = (s: number): boolean =>
+        rideSpans.some(([ra, rb]) => s > ra + 0.01 && s < rb - 0.01);
       const pts: TrackPt[] = [];
       // 일꾼은 대형 없이 그대로(지적: 일꾼끼리는 자원 캐는 동안 겹침이 원작 동작).
       const isWk = e.k === "SCV" || e.k === "Probe" || e.k === "Drone";
       for (const v of e.ev) {
         if (v[1] < 0 || v[3] === 4) continue;
+        if (v[3] !== 12 && v[3] !== 13 && aboardAt(v[0])) continue;
         if (!isWk && (v[3] === 0 || v[3] === 7)) {
           const key = `${e.o}:${v[0]}:${v[1]}:${v[2]}`;
           const idx = clickRank.get(key) ?? 0;
@@ -9497,18 +9517,8 @@ export default function ReplayMotionPlayer({
         hp: e.hp ?? [],
         ic: e.ic ?? [],
         orders: e.ev.filter((v) => v[3] === 0 || v[3] === 7 || v[3] === 3).map((v) => v[0]),
-        rides: (() => {
-          const spans: [number, number][] = [];
-          for (let i = 0; i < e.ev.length; i += 1) {
-            if (e.ev[i][3] !== 12) continue;
-            let end = Infinity;
-            for (let j = i + 1; j < e.ev.length; j += 1) {
-              if (e.ev[j][0] > e.ev[i][0] + 0.5) { end = e.ev[j][0]; break; }
-            }
-            spans.push([e.ev[i][0], end]);
-          }
-          return spans;
-        })(),
+        // 승선 구간 — 위 rideSpans(짝이 되는 하차까지)를 그대로 쓴다.
+        rides: rideSpans,
         // 정체를 알면 그 속도로, 모르면 부대 어림과 같은 규칙(그때의 우세 유닛·지상 길)로.
         walk: wk,
         statuses,
