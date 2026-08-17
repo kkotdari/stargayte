@@ -1984,11 +1984,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         segs: 4, sides: 6, curveY: -sy9 * 1.2, hold: 0.5,
       }), facingRatio(0, sy9) >= 0 ? 34 : 26));
     }
-    /* 사진 디테일(요청) — 발판 테에 청록 띠, 탑 밑동에 금 무늬 골. 형태는 그대로. */
-    for (const [px9, py9] of [[0, 3.6], [0, -3.6], [3.8, 0], [-3.8, 0]] as [number, number][]) {
-      out.push(...tagKey(paintBase(cylinderFaces3(px9, py9, 1.55, 0.16, h), "#2f8f86"),
-        depthNow(px9, py9) * 1.6 + 0.3));
-    }
+    /* 사진 디테일(요청) — 탑 밑동에 금 무늬 골. 발판마다 두르던 청록 띠는 걷었다
+       (지적: 프로토스 짙은 녹색판 제거) — 납작한 원통이라 발판 위에 초록 판때기
+       넷이 얹힌 꼴이었다. */
     for (const mx9 of [-2.1, 2.1]) {
       out.push(...tagKey(paintBase(cylinderFaces3(mx9, 0, 1.35, 0.3, h + 1.2), "#8a6f2a"),
         depthNow(mx9, 0) * 1.6 + 30.2));
@@ -2196,10 +2194,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         band.push(bodyFace(b9), ...fl9.face(b9));
       }
       out.push(...tagKey([bodyFace(polyPath3(lo9)), ...wall], depthNow(0, 0) + 2.7));
-      pc.push(...tagKey([
-        ...band,
+      pc.push(...tagKey(band, depthNow(0, 0) + 2.72));
+      /* 대야 윗면은 개인색이 아니다(지적: 청록 판을 걷으니 통째로 임자 색이 드러났다)
+         — 띠 뒤에 그려 테만 남긴다. */
+      out.push(...tagKey([
         bodyFace(polyPath3(hi9)), topFace(polyPath3(hi9), 0.1),
-      ], depthNow(0, 0) + 2.72));
+      ], depthNow(0, 0) + 2.74));
     }
     // 구덩이 격자 — 대야 안쪽 우물을 가로지르는 밝은 줄.
     const bars: string[] = [];
@@ -2243,9 +2243,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       arm.push([groundEllipse(...project(0, 2.5, 6.55), 0.5, 0.5), 0.6, "#a9ecf2"] as ShapeFace);
       out.push(...tagKey(arm, 30));
     }
-    /* 사진 디테일(요청) — 대야 테에 청록 띠를 두르고 밑동에 금 무늬 골을 판다. */
-    out.push(...tagKey(paintBase(cylinderFaces3(0, 0, 4.2, 0.22, 2.72), "#2f8f86"),
-      depthNow(0, 0) * 1.6 + 3));
+    /* 사진 디테일(요청) — 밑동에 금 무늬 골을 판다. 대야 테를 두르던 청록 띠는
+       걷었다(지적: 프로토스 짙은 녹색판 제거) — 넓고 납작한 원통이라 위에서 보면
+       건물 위에 초록 판때기가 얹힌 꼴이었다. */
     out.push(...tagKey(paintBase(cylinderFaces3(0, 0, 5.2, 0.28, 0.3), "#8a6f2a"),
       depthNow(0, 0) * 1.6 - 1));
     return raceBase(out, "toss", pc);
@@ -2368,10 +2368,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          뿔로: 축에서 −x 쪽으로 기운 높은 끝이라, 요잉하면 기운 방향이 함께 돈다. */
       ...hornFaces(0, 0, 5.7, -0.45, 0, 7.6, 1.05),
     ], 24 + depthNow(0, 0)));
-    /* 사진 디테일(요청) — 초록 원반 받침에 금 포드가 둘레로 박히고 테는 청록이다.
-       형태는 기존 제작도 그대로. */
-    out.push(...tagKey(paintBase(cylinderFaces3(0, 0, 3.1, 0.3, 0.05), "#2f6f4a"),
-      depthNow(0, 0) * 1.6 - 2));
+    /* 사진 디테일(요청) — 금 포드가 둘레로 박힌다. 받침의 초록 원반은 걷었다
+       (지적: 프로토스 짙은 녹색판 제거). */
     for (let k9 = 0; k9 < 8; k9 += 1) {
       const a9 = (k9 / 8) * Math.PI * 2;
       const px9 = Math.sin(a9) * 2.7;
@@ -3155,9 +3153,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...tagKey([[groundEllipse(cx2, cy2, 2.3, 1.15), 0.55] as ShapeFace], -5),
       // 포드 넷의 구슬·갈고리 — 몸(개인색, 키 −4) 위에 얹힌다.
       ...POD.flatMap(([px2, py2]) => podTop(px2, py2)),
-      /* 사진 디테일(요청) — 허리에 청록 띠, 발치에 금 테. 형태는 기존
-         제작도 그대로 두고 색 띠만 얹는다. */
-      ...tagKey(paintBase(cylinderFaces3(0, 0, 2.85, 0.28, 1.3), "#2f8f86"), 30),
+      // 사진 디테일(요청) — 발치에 금 테. 허리 청록 띠는 걷었다(지적: 짙은 녹색판 제거).
       ...tagKey(paintBase(cylinderFaces3(0, 0, 3.3, 0.3, 0.15), "#8a6f2a"), -2),
     ], "toss", [
       /* 개인색은 둘레 포드 넷의 몸(재지적: 몸통 전체 말고 일부만) — 드럼을 통째로
@@ -3189,9 +3185,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       lens(-1.1, 2.4, 2), lens(0.3, 2.6, 1.7), lens(1.5, 2.3, 2.1),
       // 두건 뒤로 솟는 뿔과 그 앞 렌즈 — 개인색 두건(키 40) 위에 얹힌다.
       ...tagKey([...hornFaces(0, -0.7, 5.5, 0, -1.5, 7.4, 1), lens(0, 0.9, 4.6)], 41),
-      /* 사진 디테일(요청) — 허리에 청록 띠, 발치에 금 테. 형태는 기존
-         제작도 그대로 두고 색 띠만 얹는다. */
-      ...tagKey(paintBase(cylinderFaces3(0, 0, 2.55, 0.28, 3.2), "#2f8f86"), 30),
+      // 사진 디테일(요청) — 발치에 금 테. 허리 청록 띠는 걷었다(지적: 짙은 녹색판 제거).
       ...tagKey(paintBase(cylinderFaces3(0, 0, 3.1, 0.3, 0.2), "#8a6f2a"), -2),
     ], "toss", [
       /* 개인색은 앞으로 숙인 각진 두건(재지적: 뿔·렌즈 같은 특이 포인트 말고 넓은
@@ -3257,9 +3251,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         // 꼬리 끝 동그란 구도 옥색(요청).
         [groundEllipse(tx3, ty3, 0.5, 0.4), 0.55, "#3bd8c2"] as ShapeFace,
       ], 20),
-      /* 사진 디테일(요청) — 허리에 청록 띠, 발치에 금 테. 형태는 기존
-         제작도 그대로 두고 색 띠만 얹는다. */
-      ...tagKey(paintBase(cylinderFaces3(0, 0, 2.75, 0.28, 2.6), "#2f8f86"), 30),
+      // 사진 디테일(요청) — 발치에 금 테. 허리 청록 띠는 걷었다(지적: 짙은 녹색판 제거).
       ...tagKey(paintBase(cylinderFaces3(0, 0, 3.4, 0.3, 0.2), "#8a6f2a"), -2),
     ], "toss", [
       /* 개인색은 아래 받침 테만(재지적: 몸통 전체 말고 테두리·뚜껑만) — 큰 몸까지
@@ -3321,9 +3313,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...hornFaces(-4, 0.2, 3.5, -2.9, -0.9, 4.6, 0.55));
     out.push(...hornFaces(3.6, 1.3, 0.8, 4, 0.6, 3.2, 0.7));
     out.push(...hornFaces(4, 0.6, 3.1, 3, -0.3, 4.2, 0.55));
-    /* 사진 디테일(요청) — 받침 테에 청록 띠, 밑동에 금 테. */
-    out.push(...tagKey(paintBase(cylinderFaces3(0, 0, 4.75, 0.24, 1.1), "#2f8f86"),
-      depthNow(0, 0) * 1.6 + 2));
+    /* 사진 디테일(요청) — 밑동에 금 테. 받침 테를 두르던 청록 띠는 걷었다
+       (지적: 프로토스 짙은 녹색판 제거). */
     out.push(...tagKey(paintBase(cylinderFaces3(0, 0, 5.1, 0.3, 0), "#8a6f2a"),
       depthNow(0, 0) * 1.6 - 1));
     return raceBase(out, "toss", pc);
@@ -3350,13 +3341,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         return [Math.cos(a9) * R9, -0.6 + Math.sin(a9) * R9 * 0.62, 0.8];
       },
     }), 0));
-    for (const u9 of [0.16, 0.38, 0.62, 0.84]) {
-      const a9 = Math.PI * (-0.12 + 1.24 * u9);
-      const bx = Math.cos(a9) * R9;
-      const by = -0.6 + Math.sin(a9) * R9 * 0.62;
-      out.push(...tagKey(paintBase(cylinderFaces3(bx, by, 1, 0.34, 0.45), TEAL),
-        1 + depthNow(bx, by) * 1.6));
-    }
+    /* 받침에 물리던 마디 테 넷은 걷었다(지적: 프로토스 짙은 녹색판 제거) — 납작한
+       원통이라 초승달 위에 초록 판때기 넷이 누운 꼴이었다. 마디는 관 자체의 각으로
+       읽힌다. */
     /* 기둥 셋 — 청록 띠를 두른 황금 대. 가운데가 가장 높다. */
     ([[-2.5, 0.4, 3.2, 0], [0, -1.6, 4.4, 1], [2.5, 0.4, 3.2, 0]] as
       [number, number, number, number][]).forEach(([px, py, ph, own9]) => {
@@ -3410,9 +3397,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         [groundEllipse(gx2, gy2, 1.55, 1.45), 0.55, "#a9ecf2"] as ShapeFace,
         topFace(groundEllipse(gx2 - 0.5, gy2 - 0.5, 0.6, 0.5), 0.5),
       ], 30),
-      /* 사진 디테일(요청) — 허리에 청록 띠, 발치에 금 테. 형태는 기존
-         제작도 그대로 두고 색 띠만 얹는다. */
-      ...tagKey(paintBase(cylinderFaces3(0, 0, 2.9, 0.28, 1.6), "#2f8f86"), 30),
+      // 사진 디테일(요청) — 발치에 금 테. 허리 청록 띠는 걷었다(지적: 짙은 녹색판 제거).
       ...tagKey(paintBase(cylinderFaces3(0, 0, 3.4, 0.3, 0.15), "#8a6f2a"), -2),
     ], "toss", [
       /* 개인색은 양팔 부속만(재지적: 몸통 전체 말고 일부만) — 둥근 몸까지 칠하니
@@ -3453,9 +3438,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...tagKey([...arm(135), ...arm(225), ...arm(45), ...arm(-45)], -3),
       // 가운데 돔 — 개인색은 그 위 기둥 다섯이 맡는다.
       ...tagKey(domeFaces3(0, 0, 2.6, 2.2, 0.8), 0),
-      /* 사진 디테일(요청) — 허리에 청록 띠, 발치에 금 테. 형태는 기존
-         제작도 그대로 두고 색 띠만 얹는다. */
-      ...tagKey(paintBase(cylinderFaces3(0, 0, 2.65, 0.28, 2.4), "#2f8f86"), 30),
+      // 사진 디테일(요청) — 발치에 금 테. 허리 청록 띠는 걷었다(지적: 짙은 녹색판 제거).
       ...tagKey(paintBase(cylinderFaces3(0, 0, 3.2, 0.3, 0.2), "#8a6f2a"), -2),
     ], "toss", [
       /* 개인색은 돔 위 기둥 다섯만(재지적: 몸통 전체 말고 일부만) — 돔까지 칠하니
@@ -3481,9 +3464,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...leg(157), ...leg(203), ...leg(112), ...leg(248),
       ...cylinderFaces3(0, 0, 1.5, 1),
       ...leg(67), ...leg(-67), ...leg(22), ...leg(-22),
-      /* 사진 디테일(요청) — 허리에 청록 띠, 발치에 금 테. 형태는 기존
-         제작도 그대로 두고 색 띠만 얹는다. */
-      ...tagKey(paintBase(cylinderFaces3(0, 0, 2.2, 0.28, 1.2), "#2f8f86"), 30),
+      // 사진 디테일(요청) — 발치에 금 테. 허리 청록 띠는 걷었다(지적: 짙은 녹색판 제거).
       ...tagKey(paintBase(cylinderFaces3(0, 0, 2.7, 0.3, 0.12), "#8a6f2a"), -2),
     ], "toss", [
       /* 개인색은 머리 돔(요청: 덧붙인 원판 말고 실제 부품에) — 얇은 몸 위 유일하게
