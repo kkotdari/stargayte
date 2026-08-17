@@ -6034,6 +6034,12 @@ const WARP_LIFT = 0.75;
 const CONSTRUCT_DROP = 0.55;
 /** 건물 모델이 제 발자국 상자를 채우는 몫 — 종류마다 한 번만 잰다. */
 const BLD_FILL_CACHE = new Map<string, number>();
+/** 건물 모델의 발·가로중심 자리 [cx몫, bot몫] — 구운 판 크기에 대한 비로 잰다.
+ *  종류마다 한 번만 재는 것이 핵심이다(지적: 같은 넥서스인데 하나만 살짝 오른쪽으로
+ *  나온다): 판은 요잉 6도 칸마다 따로 굽는데, 잉크 테두리 상자의 가로중심은 칸마다
+ *  조금씩 달라 같은 건물이 자리마다 다르게 밀렸다. 채움 몫(BLD_FILL_CACHE)과 같은
+ *  결로 한 번 재서 모두에게 같은 보정을 준다. */
+const BLD_ANCHOR_CACHE = new Map<string, [number, number]>();
 /* 발자국 대비 그릴 몫 — 기본은 0.95(발자국을 꽉 채운다). 본진 셋만 예외로 넘겨 그린다
    (요청: "넥서스 해처리 커맨드는 예외로 더 크게, 실제 게임처럼") — 원작에서도 이 셋의
    그림은 4×3 발자국을 넘어 앉는다. 레어·하이브는 해처리의 다음 단계라 같은 몫이다. */
@@ -6320,6 +6326,12 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
           bFill = (bspr.w / B) / sideQ;
           BLD_FILL_CACHE.set(op.kind, bFill);
         }
+        // 발·가로중심 보정도 종류마다 한 번만(요잉 칸마다 달라지면 자리가 흔들린다).
+        let bAnc = BLD_ANCHOR_CACHE.get(op.kind);
+        if (bAnc === undefined && bspr && bspr.w > 0) {
+          bAnc = [(bspr.cx / B) / bspr.l, (bspr.bot / B) / bspr.l];
+          BLD_ANCHOR_CACHE.set(op.kind, bAnc);
+        }
         const kFit = op.clipWalk || BLD_FILL_SKIP.has(op.kind) || !bFill
           ? 1 : Math.min(2.5, Math.max(0.7, (BLD_FILL_TARGET[op.kind] ?? 0.95) / bFill));
         /* 접지 그림자(재재지적: 해처리가 떠 있다) — 상자 바닥 어림이 아니라 구운
@@ -6385,12 +6397,13 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
           /* 발은 땅에(보정과 짝) — 상자 바닥에 맞추면 모델의 잉크 바닥이 상자보다
              위에 있는 만큼의 틈이 배율만큼 함께 커져 건물이 떠 보인다. 그린 픽셀의
              실제 바닥(bot)을 발자국 바닥선에 앉힌다. */
-          const bTop9 = (groundY ?? sy + hPx / 2) - (bspr.bot / B) * k;
+          const bTop9 = (groundY ?? sy + hPx / 2)
+            - (bAnc ? bAnc[1] * bspr.l : bspr.bot / B) * k;
           /* 좌우 어긋남 수리(지적: 건물이 살짝 왼쪽·오른쪽으로 어긋난다) — 상자 중심에
              맞춰 찍었는데 모델이 제 16-상자 안에서 치우쳐 그려진 것들이 있다. 발자국을
              채우려 배율을 키우면 그 치우침도 함께 커져 눈에 띈다. 그린 픽셀의 가로
              중심(cx)을 발자국 중심에 앉힌다 — 바닥(bot)을 땅에 앉힌 것과 같은 결. */
-          const bLeft9 = sx - (bspr.cx / B) * k;
+          const bLeft9 = sx - (bAnc ? bAnc[0] * bspr.l : bspr.cx / B) * k;
           ctx.drawImage(
             bspr.cv,
             bLeft9, bTop9,
