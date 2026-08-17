@@ -3956,10 +3956,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...tagKey(spirePillar({
         x: 0, y: 0, h: 1, w: 0.46, tipW: 0.46,
         segs: 10, sides: 4, hold: 1,
+        /* 처음 각도를 더 세우고(요청) 끝이 몸통 아래로는 안 내려가게(재요청) —
+           출발 기울기를 5.2로 키워 위로 솟았다가, 끝 높이가 몸통 윗면(z 5.1) 언저리에
+           머물도록 이차항을 맞춘다: z(0)=5.4, 꼭대기 ~7.6, z(1)=5.2. */
         path: (t9: number): [number, number, number] => [
           m9 * (1.15 + 0.55 * t9),
           -2.4 + 4.6 * t9,
-          5.4 + 3.2 * t9 - 5.6 * t9 * t9,
+          5.4 + 5.2 * t9 - 5.4 * t9 * t9,
         ],
         fill: "#3a3f46",
       }), 24 + depthNow(m9 * 1.4, 0)));
