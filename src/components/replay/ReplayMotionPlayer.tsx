@@ -5890,6 +5890,11 @@ type UnitDrawOp = {
    *  띄엄띄엄 찍어 자리 사상으로 옮긴 점들이다(요청: 화면 타원 어림 말고 실제로 바닥에
    *  그려야 한다). 원근이 실린 채 지면에 눕는다. */
   shadowPts?: [number, number][];
+  /** 지면선(입체) — 발자국 아랫변을 자리 사상으로 옮긴 세로 자리. 상자 바닥
+   *  어림(sy + hPx/2) 대신 이 값에 그린 몸의 발을 앉힌다(지적: 3D에서 건물이
+   *  그림자보다 한 칸쯤 아래에 그려짐 — 그림자는 지면에 직접 그린 도형이라 옳고,
+   *  몸만 화면 어림을 써서 원근이 실린 만큼 어긋났다). */
+  baseFy?: number;
   /** 발자국 세로/가로 비(건물) — 접지 그림자가 '바닥 발자국'만 덮게 하는 자(지적:
    *  칸(hPx)은 모델 높이까지 포함해, 칸 기준 타원은 건물을 통째로 덮는 큰 원이 됐다). */
   footRatio?: number;
@@ -6259,6 +6264,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
     for (const op of list) {
       const sx = zx(op.fx);
       const sy = zy(op.fy);
+      /* 발이 닿는 세로 자리 — 지면선이 있으면 그것을 쓴다(그림자와 같은 지면 사상). */
+      const groundY = op.baseFy !== undefined ? zy(op.baseFy) : undefined;
       // 화면 밖은 걸러낸다 — 깊은 줌에서 그리기가 오히려 줄어드는 이유.
       const ext = (op.wFrac !== undefined
         ? Math.max(op.wFrac, op.hFrac ?? 0) * cw : op.sizePx) * zoom + 24;
@@ -6358,7 +6365,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
             ctx.closePath();
           } else {
             ctx.ellipse(
-              sx, sy + hPx / 2 - fdPx / 2, footW * 0.5,
+              sx, (groundY ?? sy + hPx / 2) - fdPx / 2, footW * 0.5,
               Math.max(2, fdPx * 0.5), 0, 0, Math.PI * 2,
             );
           }
@@ -6377,7 +6384,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
           /* 발은 땅에(보정과 짝) — 상자 바닥에 맞추면 모델의 잉크 바닥이 상자보다
              위에 있는 만큼의 틈이 배율만큼 함께 커져 건물이 떠 보인다. 그린 픽셀의
              실제 바닥(bot)을 발자국 바닥선에 앉힌다. */
-          const bTop9 = sy + hPx / 2 - (bspr.bot / B) * k;
+          const bTop9 = (groundY ?? sy + hPx / 2) - (bspr.bot / B) * k;
           /* 좌우 어긋남 수리(지적: 건물이 살짝 왼쪽·오른쪽으로 어긋난다) — 상자 중심에
              맞춰 찍었는데 모델이 제 16-상자 안에서 치우쳐 그려진 것들이 있다. 발자국을
              채우려 배율을 키우면 그 치우침도 함께 커져 눈에 띈다. 그린 픽셀의 가로
@@ -6414,7 +6421,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         const { faces } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
         if (faces) {
           const s = (op.fitWidth ? wPx : Math.min(wPx, hPx)) / 16;
-          ctx.translate(sx, sy + hPx / 2);
+          ctx.translate(sx, groundY ?? sy + hPx / 2);
           ctx.scale(s, s);
           ctx.translate(-8, -16);
           for (const [d, o, fill] of faces) {
@@ -9332,6 +9339,8 @@ export default function ReplayMotionPlayer({
                 // 공사 모델도 45도 요잉(지적) + 종류별 보정(지적: 테란 공사장 반시계 90).
                 rotDeg: buildingYawOf(race2 === "저그" ? "cocoon" : race2 === "프로토스" ? "warpin" : "scaffold"),
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
+                // 공사 모델도 완성 건물과 같은 지면선에 선다.
+                baseFy: posFrac(centerX, centerY + fp2[1] / 2)[1],
                 // 공사 모델도 완성 모델과 같은 폭 기준 — 바닥 폭이 발자국과 같아야 한다.
                 /* 소환구는 크기 통일(재지적: 게임에서도 모든 건물이 같다) — 발자국과
                    무관하게 소형 기준 고정. */
@@ -9479,6 +9488,8 @@ export default function ReplayMotionPlayer({
                   }
                   return pts9;
                 })(),
+                // 지면선 — 발자국 아랫변(그림자 타원의 아래 끝과 같은 지면).
+                baseFy: posFrac(centerX, centerY + (FOOTPRINT[unit] ?? [3, 2])[1] / 2)[1],
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
                 sizePx: 0, wFrac: wFrac * pulse, hFrac: hFrac * pulse, boxFit: "meet",
                 /* 전 건물 폭 기준(요청: 바닥을 발자국에, 높이는 제 비율로) — meet
