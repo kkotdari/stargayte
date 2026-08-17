@@ -1529,8 +1529,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   gate: () => {
     /* 사방 발판 넷을 저마다 정육각형 판으로(정정 요청: 한 장짜리 8각판이 아니라,
        사방에 놓인 발판 하나하나의 각을 육각으로) — 위아래 두 육각형을 둘레 벽으로
-       봉합해 두께를 준다. 벽은 뒤에서 앞으로 정렬해 그려 입체감을 지킨다. */
-    const h = 1.4;
+       봉합해 두께를 준다. 벽은 뒤에서 앞으로 정렬해 그려 입체감을 지킨다.
+       더 얇게(요청) — 두께 1.4 → 0.7. 옆벽이 얇아진 만큼 음영 대비로 버틴다. */
+    const h = 0.7;
     const out: ShapeFace[] = [];
     const pad = (cx9: number, cy9: number, r9: number): ShapeFace[] => {
       const hex9 = (z9: number): [number, number, number][] => Array.from(
@@ -1560,10 +1561,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       f9.push(bodyFace(polyPath3(hi9)), topFace(polyPath3(hi9), 0.2));
       return tagKey(f9, depthNow(cx9, cy9));
     };
-    out.push(...pad(0, 3.5, 2.3));
-    out.push(...pad(0, -3.5, 2.3));
-    out.push(...pad(3.7, 0, 2.3));
-    out.push(...pad(-3.7, 0, 2.3));
+    // 사방으로 더 벌린다(요청) — 3.5/3.7 → 4.6/4.9.
+    out.push(...pad(0, 4.6, 2.3));
+    out.push(...pad(0, -4.6, 2.3));
+    out.push(...pad(4.9, 0, 2.3));
+    out.push(...pad(-4.9, 0, 2.3));
     /* 실물 점검(스프라이트 시트) — 게이트는 돛 하나가 아니라 마주 기운 어금니 탑
        한 쌍이 사이를 띄우고 문을 이룬다. 사이엔 소환 빛. */
     const [wx, wy] = project(0, 0.1, 4.2);
@@ -1573,11 +1575,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        뾰족해진다. 8각판 위에 얹히므로 지붕 규칙 키를 준다. */
     out.push(...tagKey([
       ...spirePillar({
-        x: -3.7, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.12,
+        x: -4.9, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.12,
         segs: 5, sides: 4, hold: 0.12, leanX: 2, leanY: -0.3, taper: 1.5,
       }),
       ...spirePillar({
-        x: 3.7, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.12,
+        x: 4.9, y: 0, z0: h, h: 8.4, w: 1.5, tipW: 0.12,
         segs: 5, sides: 4, hold: 0.12, leanX: -2, leanY: -0.3, taper: 1.5,
       }),
     ], 30));
@@ -1590,7 +1592,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 발판 뿔(요청) — 앞뒤 경사로 한가운데에서 솟아 끝이 안쪽으로 휜다. 아래는 기둥,
        위는 뿔인 공용 도형(spirePillar). */
     for (const sy9 of [1, -1] as const) {
-      const ry9 = sy9 * 3.5;
+      const ry9 = sy9 * 4.6;
       /* 작은 뿔이 어금니 탑(키 30)에 안 묻히게(지적) — 앞쪽 뿔은 탑보다 큰 키,
          뒤쪽 뿔은 탑보다 작은 키를 줘 앞뒤가 제대로 갈린다. */
       out.push(...tagKey(spirePillar({
