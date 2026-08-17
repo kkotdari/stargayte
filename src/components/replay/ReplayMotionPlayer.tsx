@@ -3446,16 +3446,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        봐도 둔덕을 뚫고 보였다. 뚜껑은 둔덕 꼭대기 위 얹힘이라 지붕 몫(6)만 얹고,
        앞뒤는 제 자리 깊이가 정하게 한다. */
     const hoodKey = 6 + depthNow(0, 1) * 1.6;
+    // 크기 대폭 축소(요청) — 폭 3/1.7 → 1.35/0.75, 길이 2.4 → 1.4, 내민 몫 2.5 → 1.4.
     out.push(...tagKey(spirePillar({
-      x: 0, y: -1.4, z0: 2.5, h: 2.4, w: 3, tipW: 1.7,
-      segs: 6, sides: 12, hold: 0.08, taper: 0.7,
-      leanY: 2.5, curveY: 0.9,
+      x: 0, y: -0.9, z0: 3.1, h: 1.4, w: 1.35, tipW: 0.75,
+      segs: 5, sides: 12, hold: 0.08, taper: 0.7,
+      leanY: 1.4, curveY: 0.5,
     }), hoodKey));
     /* 뚜껑 등의 잿빛 기관 한 쌍(사진) — 둔덕 속에 묻히지 않게 뚜껑 위에 얹고,
        뚜껑보다 한 칸만 위 키를 준다. */
     for (const m9 of [1, -1] as const) {
       out.push(...tagKey(spirePillar({
-        x: m9 * 1.8, y: -0.2, z0: 3.9, h: 1.7, w: 0.9, tipW: 0.38,
+        x: m9 * 1.05, y: -0.5, z0: 3.5, h: 1, w: 0.5, tipW: 0.2,
         segs: 5, sides: 8, hold: 0.1, taper: 1.4,
         leanY: 0.8, fill: IVORY_DEEP,
       }), hoodKey + 0.5));
