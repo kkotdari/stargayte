@@ -1779,72 +1779,73 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      카메라에서 구멍이 보이도록 관 앞을 35도쯤 들고 앞을 살짝 나팔로 벌렸다.
      각 잎의 안쪽 면엔 밝은 발광 잎. 판·받침은 없다. */
   arch: () => {
-    /* 스타게이트(전면 재작도·사진) — 앞으로 길쭉한 황금 선체다. 옆구리에 청록 창이
-       줄지어 박히고, 등에는 뒤에서 앞으로 크게 휘어 넘는 황금 칼날이 걸린다. 앞쪽
-       좌우로는 갈고리처럼 말린 뿔이 뻗고, 꼬리에는 지느러미 한 쌍. 창 띠가 개인색이다. */
-    const GOLD = "#c9a227";
-    const GOLD_D = "#8a6f2a";
-    const PLATE = "#b9b6a8";
-    const CYAN = "#4fd8ee";
-    const out: ShapeFace[] = [];
-    /* 선체 — 뒤가 굵고 앞으로 갈수록 가늘어지는 기둥. 살짝 앞으로 숙는다. */
-    out.push(...tagKey(paintBase(spirePillar({
-      x: 0, y: 0, h: 1, w: 2.5, tipW: 0.9, segs: 8, sides: 8, hold: 0.1, taper: 1.2,
-      path: (t9: number): [number, number, number] => [0, -3.2 + 6.4 * t9, 2.6 - t9 * 0.8],
-    }), GOLD), 0));
-    // 등 장갑 판 — 선체 위를 덮는 잿빛 얼룩 판.
-    out.push(...tagKey(paintBase(spirePillar({
-      x: 0, y: 0, h: 1, w: 1.9, tipW: 0.7, segs: 6, sides: 8, hold: 0.1, taper: 1.2,
-      path: (t9: number): [number, number, number] => [0, -2.6 + 5 * t9, 3.5 - t9 * 0.7],
-    }), PLATE), 2));
-    /* 옆구리 청록 창 — 앞아래 비스듬한 면에 네 칸. 개인색 테를 두른다. */
-    for (const m9 of [-1, 1] as const) {
-      if (facingRatio(m9 * 0.8, 0.6) <= 0.1) continue;
-      const win: ShapeFace[] = [];
-      for (let k = 0; k < 4; k += 1) {
-        const y9 = 0.5 + k * 0.85;
-        win.push([polyPath3([
-          [m9 * 1.35, y9, 1.1], [m9 * 1.35, y9 + 0.6, 1.1],
-          [m9 * 1.35, y9 + 0.6, 2.2], [m9 * 1.35, y9, 2.2],
-        ]), 1, CYAN] as ShapeFace);
+    // 그림자는 옅고 아담하게 — 관문이 떠 있는 자리만 알리면 된다.
+    const out: ShapeFace[] = [sideFace(discPath3(0, 0.2, 0, 3.4), 0.16)];
+    const C = 5; // 관문 축 높이
+    // 판만 키운다(요청: 원복 후 현재 형태에서 판 크기만 확대) — 2.7 → 3.1.
+    const R = 3.1; // 축에서 잎 배까지 반지름
+    /* 잎 하나 — 축 둘레 각 phi(0=위) 자리, 길이는 앞뒤(y·축 방향), 폭은 접선 방향,
+       배 면은 축을 본다. 윤곽은 긴 육각형: 양 끝 꼭지 + 나란한 중간 변. */
+    const leaf = (phi: number, rr: number, ll: number, ww: number): [number, number, number][] => {
+      const rx = Math.sin(phi); // 축에서 바깥 방향(x·z 평면)
+      const rz = Math.cos(phi);
+      const tx = Math.cos(phi); // 접선 방향
+      const tz = -Math.sin(phi);
+      // 긴 육각형 여섯 꼭짓점 — (앞뒤 위치, 접선 반폭). 0.5부터 변이 나란하다.
+      const HEX: [number, number][] = [
+        [-1, 0], [-0.5, 1], [0.5, 1], [1, 0], [0.5, -1], [-0.5, -1],
+      ];
+      /* 곧은 관(정정: 자꾸 뒤쪽을 벌리지 말 것) — 나팔 벌림을 걷었다. 잎 넷이
+         나란히 서서 반지름이 앞뒤 내내 같다. */
+      /* 수평으로 눕는다(정정: 대각선으로 눕는 게 아니라) — 앞들림(35도)도 걷었다.
+         관 축이 지면과 나란하고, 구멍은 앞뒤를 본다. 떠 있는 건 그림자가 말한다. */
+      return HEX.map(([a, w]) => [
+        rx * rr + tx * (w * ww), a * ll, C + rz * rr + tz * (w * ww),
+      ] as [number, number, number]);
+    };
+    const PHIS = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
+    for (const phi of PHIS) {
+      // 판 크기 확대(요청) — 길이 2.2 → 3.1, 접선 반폭 1.05 → 1.5.
+      const inPts = leaf(phi, R, 3.1, 1.5);
+      const d = polyPath3(inPts);
+      /* 판 두께(지적) — 바깥쪽(축 반대 방향)으로 한 겹 더 깔면 가장자리로 두께 테가
+         비친다. */
+      const outPts = leaf(phi, R + 0.42, 3.1, 1.5);
+      const back = polyPath3(outPts);
+      /* 명암·순서는 현재 시점 기준(재재지적: 겉판·속판 순서 — 시청자 쪽 잎은 겉판이
+         가깝다) — 위 잎과 카메라를 마주 보는 옆 잎은 겉판을 나중에, 아래 잎과 등 돌린
+         옆 잎은 속판을 나중에 그린다. */
+      const fSide = facingRatio(Math.sin(phi), 0);
+      const outerNear = Math.cos(phi) > 0.5 ? true
+        : Math.cos(phi) < -0.5 ? false : fSide > 0;
+      const faces: ShapeFace[] = [bodyFace(outerNear ? d : back)];
+      if (!outerNear) faces.push(sideFace(back, 0.28)); // 두께 테 그늘 — 속판 뒤 테두리.
+      /* 옆면 봉합(지적: 판 사이가 떠 보임) — 안판·바깥판의 대응 변 사이를 네모 띠로
+         이어 두께의 옆구리를 채운다. 여섯 변 전부라 어느 각에서도 틈이 없다. */
+      for (let i = 0; i < 6; i += 1) {
+        const j = (i + 1) % 6;
+        faces.push(bodyFace(polyPath3([inPts[i], inPts[j], outPts[j], outPts[i]])));
       }
-      // 창틀 — 개인색(요청: 건물마다 개인색 포인트).
-      win.push(bodyFace(polyPath3([
-        [m9 * 1.3, 0.35, 0.95], [m9 * 1.3, 3.9, 0.95],
-        [m9 * 1.3, 3.9, 1.05], [m9 * 1.3, 0.35, 1.05],
-      ])));
-      out.push(...tagKey(win, 6 + depthNow(m9 * 1.35, 2) * 1.6));
-    }
-    /* 등의 큰 칼날 — 꼬리에서 솟아 앞으로 크게 휘어 넘는다. */
-    out.push(...tagKey(paintBase(spirePillar({
-      x: 0, y: 0, h: 1, w: 0.75, tipW: 0.2, segs: 12, sides: 5, hold: 0.1, taper: 1.3,
-      path: (t9: number): [number, number, number] => {
-        const a9 = Math.PI * (0.92 * t9);
-        return [0, -3 + Math.sin(a9) * 6.4, 3.2 + (1 - Math.cos(a9)) * 1.9];
-      },
-    }), GOLD), 14));
-    /* 앞 좌우 갈고리 뿔 — 바깥으로 벌었다 안으로 말린다. */
-    for (const m9 of [-1, 1] as const) {
-      out.push(...tagKey(paintBase(spirePillar({
-        x: 0, y: 0, h: 1, w: 0.55, tipW: 0.12, segs: 10, sides: 5, hold: 0.1, taper: 1.4,
-        path: (t9: number): [number, number, number] => {
-          const a9 = Math.PI * (0.85 * t9);
-          return [m9 * (0.9 + Math.sin(a9) * 2.4), 1.4 + (1 - Math.cos(a9)) * 1.9, 2.2 + t9 * 0.9];
-        },
-      }), GOLD_D), 12 + depthNow(m9 * 2.4, 3) * 1.6));
-    }
-    /* 꼬리 지느러미 한 쌍 — 뒤로 처지는 납작한 판. */
-    for (const m9 of [-1, 1] as const) {
-      const fin = polyPath3([
-        [m9 * 0.9, -2.6, 3], [m9 * 3, -4.2, 2.2], [m9 * 2.6, -4.6, 1.6], [m9 * 0.8, -2.9, 2.3],
-      ]);
-      out.push(...tagKey([
-        [fin, 1, GOLD] as ShapeFace,
-        m9 > 0 ? sideFace(fin, 0.2) : topFace(fin, 0.14),
-      ], depthNow(m9 * 2, -3.8) * 1.6));
+      const top2 = outerNear ? back : d;
+      faces.push(bodyFace(top2));
+      if (Math.cos(phi) > 0.5) faces.push(topFace(top2, 0.18));
+      else if (Math.cos(phi) < -0.5) faces.push(sideFace(top2, 0.24));
+      else if (fSide < -0.3) faces.push(sideFace(top2, 0.26));
+      else if (fSide < 0.3) faces.push(sideFace(top2, 0.12));
+      /* 잎 안쪽(배) 발광 — 배가 시점을 향할 때만(지적: 바깥판 위에 밝은 점이 얹혀
+         보였다). 위 잎은 늘 바깥이 보이니 빼고, 아래 잎은 배가 위라 늘 켜고, 옆
+         잎은 바깥이 등을 돌린 쪽만 켠다. */
+      const bellyOn = Math.cos(phi) > 0.5 ? false
+        : Math.cos(phi) < -0.5 ? true : fSide < -0.1;
+      if (bellyOn) faces.push(topFace(polyPath3(leaf(phi, R - 0.18, 1.35, 0.58)), 0.5));
+      /* 잎마다 제 깊이(지적: 뒤에 있는 판이 안 가려짐) — 손 면이라 깊이가 없어 원래
+         순서대로 그려졌다. 요잉에 따라 왼·오른 잎이 앞뒤로 갈리므로 중심 깊이를 단다. */
+      out.push(...tagKey(faces, depthNow(Math.sin(phi) * R, 0)));
     }
     return out;
   },
+  /* 파일런(정정 둘) — 고리를 수정 허리께로 더 올리고(지적), 수정은 매끈한 육각
+     보석으로 다듬었다: 위 뾰족·어깨·허리·아래 뾰족이 좌우대칭. */
   diamond: () => {
     /* 파일런(사진 참고) — 위아래로 뾰족한 큰 파란 수정을 가운데 두고, 그 허리를
        수평 금 링이 감싼다. 링 둘레에는 세로 갈고리 여섯이 위아래로 뻗고, 링 자체엔
@@ -3441,7 +3442,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        자리 깊이만 쓰면 뒤로 돌 때마다 통째로 둔덕에 묻혀 사라진다. 지붕 규칙대로
        붙박이 큰 키에 제 자리 깊이를 얹어, 둔덕은 늘 이기되 뚜껑끼리·기관끼리의
        앞뒤는 요잉이 정하게 한다. 아치와 겹치지 않게 내민 길이도 줄인다. */
-    const hoodKey = 12 + depthNow(0, 1) * 1.6;
+    /* 키를 저그 공통 자로 되돌린다(재지적: 커널 키값 수정) — 붙박이 12는 뒤에서
+       봐도 둔덕을 뚫고 보였다. 뚜껑은 둔덕 꼭대기 위 얹힘이라 지붕 몫(6)만 얹고,
+       앞뒤는 제 자리 깊이가 정하게 한다. */
+    const hoodKey = 6 + depthNow(0, 1) * 1.6;
     out.push(...tagKey(spirePillar({
       x: 0, y: -1.4, z0: 2.5, h: 2.4, w: 3, tipW: 1.7,
       segs: 6, sides: 12, hold: 0.08, taper: 0.7,
