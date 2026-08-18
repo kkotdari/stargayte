@@ -20,6 +20,7 @@ import {
   normalizeUpgradeName,
 } from "./replayTechNames";
 import { speedOfUnit, upgradeMaxLevel } from "./bwUnits";
+import { SUPPLY_CAP, SUPPLY_COST, SUPPLY_GIVES } from "./bwCombat";
 /* 전투 값은 표(bwUnits)를 직접 읽지 않고 어댑터(bwCombat)를 거친다(과제 #54).
    ─ 왜 이렇게 됐는가: 이 파일의 체력 원장은 유닛마다 dps 스칼라 하나(UNIT_STATS.dps)만
      보고 공격 종류(normal/concussive/explosive)·표적 크기 배수·방어력 뺄셈·쿨다운·
@@ -134,6 +135,10 @@ export interface UnitTracksV2 {
     prodNoSite?: number;
     /** 프로토스 전력 끊김으로 생산이 밀린 초의 합(지적). */
     prodPowerDelay?: number;
+    /** 인구 상한을 넘겨 물린 합성 개체 수(지적: 생산·죽음 반영 인구 모형). */
+    synRetired?: number;
+    /** 인구가 짚어 준 '놓친 죽음' — 오래 소식 없던 관측 개체를 물린 수. */
+    staleRetired?: number;
   };
 }
 
@@ -509,6 +514,10 @@ export function buildUnitTracks(
   let quotaAssigned = 0;
   /** 몫을 넘겨서라도 동반으로 이름을 준 수 — 크면 원장이 덜 세고 있다는 신호. */
   let coSelOverFilled = 0;
+  /** 인구 상한을 넘겨 물린 합성 개체 수 — 우리가 지어냈던 허수의 크기다. */
+  let synRetired = 0;
+  /** 인구가 짚어 준 '놓친 죽음' — 오래 소식 없던 관측 개체를 물린 수. */
+  let staleRetiredN = 0;
   /** 무른 건설 계측 — voided: 아예 안 지어진 것, closed: 놓쳤던 철거를 겹침으로 닫은 것. */
   const buildStats = { voided: 0, closed: 0 };
   /** 폐기된 이동 목적지 계측 — dropped: 잘라 낸 것, kept: 실제로 닿은 것. */
@@ -3677,6 +3686,85 @@ const BLD_DIE_SLACK_SEC = 8;
     });
   }
 
+  /* ── 인구는 우리가 지어낸 개체의 상한이다 (지적: "생산·죽음 반영한 인구 모델은 어때") ──
+     합성 개체(원장에는 있는데 태그가 한 번도 안 잡힌 유닛)는 **죽음 판정이 없다** —
+     실측으로 한 프로토스의 합성 76기 중 죽은 것으로 잡힌 것이 0기였고(진짜 개체는 41%가
+     죽는다), 그래서 경기 끝에 245/124처럼 인구 상한의 두 배가 살아 있었다.
+     생산과 죽음을 다 넣은 인구 모형이 그 허수를 정확히 짚는다: 실제로 본 개체만 세면
+     인구가 상한 안에서 움직이는데(경기3 테란 초과 0초), 합성을 얹으면 넘친다.
+     그래서 넘치는 만큼 **합성 개체만** 물린다 — 오래 전에 나왔는데 한 번도 안 보인 것부터
+     그 자리에서 죽은 것으로 본다. 증거가 있는 개체는 손대지 않는다(증거가 이긴다).
+     ⚠ 이것을 '인구 막힘 → 생산 취소'로 쓰지는 않는다. 그건 유닛 생사를 알아야 하는데
+       그게 바로 우리가 추정 중인 값이라 순환이다. 여기서는 이미 다 셈한 뒤, 우리가
+       **지어낸** 것만 줄인다 — 방향이 한쪽이라 순환이 안 된다. */
+  {
+    const SYN = (t: number): boolean => t <= -1000 && t > -20000;
+    const STEP = 10;
+    /** 이만큼 소식이 없어야 '놓친 죽음' 후보다(초). 짧게 잡으면 잠깐 쉬는 유닛까지 죽인다. */
+    const STALE_SEC = 60;
+    let staleRetired = 0;
+    let endSec = 0;
+    for (const e of ents) endSec = Math.max(endSec, e.d ?? e.b);
+    const byOwner = new Map<number, typeof ents>();
+    for (const e of ents) {
+      const arr = byOwner.get(e.o) ?? [];
+      arr.push(e);
+      byOwner.set(e.o, arr);
+    }
+    let retired = 0;
+    for (const [, mine] of byOwner) {
+      const units = mine.filter((e) => !e.bld);
+      const blds = mine.filter((e) => e.bld);
+      /* 오래된 합성부터 물린다 — 늦게 나온 것일수록 아직 살아 있을 법하다. */
+      const syn = units.filter((e) => SYN(e.t)).sort((a, b) => a.b - b.b);
+      /* 소식이 끊긴 지 오래인 관측 개체 — 가장 오래 잠잠한 것부터. */
+      const lastOf = (e: (typeof units)[number]): number =>
+        (e.ev.length > 0 ? e.ev[e.ev.length - 1][0] : e.b);
+      const stale = units.filter((e) => !SYN(e.t)).sort((a, b) => lastOf(a) - lastOf(b));
+      for (let t = 60; t <= endSec; t += STEP) {
+        let give = 0;
+        for (const b of blds) {
+          if (t < b.b + 25 || (b.d !== null && t >= b.d)) continue;
+          give += SUPPLY_GIVES[b.k] ?? 0;
+        }
+        let used = 0;
+        for (const u of units) {
+          if (t < u.b || (u.d !== null && t >= u.d)) continue;
+          give += u.k === "Overlord" ? (SUPPLY_GIVES.Overlord ?? 0) : 0;
+          used += SUPPLY_COST[u.k] ?? 2;
+        }
+        const cap = Math.min(SUPPLY_CAP, give);
+        if (used <= cap) continue;
+        for (const u of syn) {
+          if (used <= cap) break;
+          if (u.d !== null || t < u.b) continue;
+          u.d = Math.round(t);
+          u.dk = "atk";
+          used -= SUPPLY_COST[u.k] ?? 2;
+          retired += 1;
+        }
+        /* 합성을 다 물려도 넘치면, 넘치는 몫은 **관측된 유닛의 놓친 죽음**이다.
+           실측: 합성을 다 물린 뒤에도 한 프로토스가 183/100으로 남았다. 인구가
+           "이만큼은 살아 있을 수 없다"고 말하는 것이다.
+           그래도 증거는 이긴다 — 오래(STALE_SEC) 아무 소식이 없는 것만, 가장 오래
+           잠잠한 것부터 물린다. 방금까지 명령을 받던 유닛은 건드리지 않는다. */
+        if (used <= cap) continue;
+        for (const u of stale) {
+          if (used <= cap) break;
+          if (u.d !== null || t < u.b) continue;
+          const lastSeen = u.ev.length > 0 ? u.ev[u.ev.length - 1][0] : u.b;
+          if (t - lastSeen < STALE_SEC) continue;
+          u.d = Math.round(t);
+          u.dk = "atk";
+          used -= SUPPLY_COST[u.k] ?? 2;
+          staleRetired += 1;
+        }
+      }
+    }
+    synRetired = retired;
+    staleRetiredN = staleRetired;
+  }
+
   return {
     v: 2,
     players: players.map((p) => ({ id: p.id, name: p.name, race: p.race, color: p.color ?? null })),
@@ -3697,6 +3785,8 @@ const BLD_DIE_SLACK_SEC = 8;
       prodRazed: prodStats.razed,
       prodNoSite: prodStats.noSite,
       prodPowerDelay: prodStats.powerDelay,
+      synRetired,
+      staleRetired: staleRetiredN,
     },
   };
 }

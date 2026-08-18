@@ -58,6 +58,8 @@ export {
   /* 연구가 실제로 끝나는 시각(과제 #71) — 표는 진작 있었는데 부르는 곳이 없어,
      분석은 일률 70초를, 시뮬은 '명령한 순간'을 쓰고 있었다. */
   upgradeSeconds, UPGRADE_TIME,
+  /* 인구 — 우리가 지어낸 개체의 상한을 재는 데만 쓴다(replayUnits). */
+  SUPPLY_CAP, SUPPLY_COST, SUPPLY_GIVES,
 } from "./bwUnits";
 
 /* ★ 이 파일이 돌려주는 값의 **타입**도 함께 내보낸다.

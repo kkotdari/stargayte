@@ -627,6 +627,33 @@ export const ARMOR_UPGRADES: readonly string[] = [
 ];
 /** 실드에만 걸리는 업그레이드 — 레벨당 −1. */
 export const PLASMA_SHIELD_UPGRADE = "Protoss Plasma Shields";
+/* ── 인구 ── [DAT] UnitType.cpp supplyRequired / supplyProvided
+   값은 **내부 단위**다(화면 표시값 × 2) — 저글링·스커지가 0.5라 정수로 다루려면 이래야
+   한다. 상한도 마찬가지로 400(표시 200)이다.
+   ⚠ 이 표는 덤프가 아니라 손으로 적었다. 원작 값이 오래 고정돼 있어 안전하지만,
+     쓰는 쪽은 '유닛을 지우는' 판정에 쓰지 마라 — 이 프로젝트는 우리가 **지어낸** 개체의
+     상한으로만 쓴다(replayUnits의 합성 개체 정리). */
+export const SUPPLY_CAP = 400;
+export const SUPPLY_COST: Record<string, number> = {
+  SCV: 2, Marine: 2, Firebat: 2, Medic: 2, Ghost: 2,
+  Vulture: 4, "Siege Tank": 4, "Siege Tank (Tank Mode)": 4, "Siege Tank (Siege Mode)": 4,
+  Goliath: 4, Wraith: 4, Dropship: 4, "Science Vessel": 4, Battlecruiser: 12, Valkyrie: 6,
+  Probe: 2, Zealot: 4, Dragoon: 4, "High Templar": 4, "Dark Templar": 4,
+  Archon: 8, "Dark Archon": 8, Shuttle: 4, Reaver: 8, Observer: 2,
+  Scout: 6, Carrier: 12, Arbiter: 8, Corsair: 4,
+  Drone: 2, Zergling: 1, Hydralisk: 2, Lurker: 4, Mutalisk: 4, Scourge: 1,
+  Queen: 4, Defiler: 4, Ultralisk: 8, Guardian: 4, Devourer: 4,
+  "Infested Terran": 2,
+  // 인구를 안 먹는 것들 — 오버로드는 오히려 준다(아래).
+  Overlord: 0, Larva: 0, Egg: 0, Cocoon: 0, Broodling: 0, Interceptor: 0, Scarab: 0,
+  "Spider Mine": 0, "Nuclear Missile": 0,
+};
+export const SUPPLY_GIVES: Record<string, number> = {
+  "Command Center": 20, "Supply Depot": 16,
+  Nexus: 18, Pylon: 16,
+  Hatchery: 2, Lair: 2, Hive: 2, Overlord: 16,
+};
+
 /** 울트라리스크 갑피 — 카라파스와 별개로 방어력 +2 고정. */
 export const CHITINOUS_PLATING = "Chitinous Plating";
 

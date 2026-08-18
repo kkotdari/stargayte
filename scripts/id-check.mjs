@@ -189,6 +189,8 @@ for (const path of files) {
     + `  · 합성 개체 ${String(st.prodSyn ?? 0).padStart(4)} 기`
     + `  · 몫 넘겨 준 이름 ${String(st.coSelOverFilled ?? 0).padStart(4)} 기`
     + `  · 자리 못 정해 버린 원장 ${String(st.prodNoSite ?? 0).padStart(4)} 건`
-    + `  · 전력 끊김으로 밀린 생산 ${String(st.prodPowerDelay ?? 0).padStart(4)} 초`);
+    + `  · 전력 끊김으로 밀린 생산 ${String(st.prodPowerDelay ?? 0).padStart(4)} 초`
+    + `  · 인구 상한으로 물린 합성 ${String(st.synRetired ?? 0).padStart(4)} 기`
+    + `  · 인구가 짚은 놓친 죽음 ${String(st.staleRetired ?? 0).padStart(4)} 기`);
 }
 console.log("");
