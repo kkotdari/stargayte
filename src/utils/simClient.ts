@@ -6,8 +6,17 @@
 import type { SimEventArr, SimOpts, SimResult, SimTrack } from "./simCore";
 import type { SimInput } from "./simCore";
 
-/** 코어를 고칠 때마다 올린다 — 캐시가 옛 결과를 주지 않게 하는 유일한 자물쇠다. */
-export const SIM_VERSION = 2;
+/* 코어를 고칠 때마다 올린다 — 캐시가 옛 결과를 주지 않게 하는 유일한 자물쇠다.
+ *
+ * v3 (2026-08-18): 전투·이동 코어를 원전(OpenBW/BWAPI) 값으로 다시 세운 병합에서 올렸다.
+ * 사거리를 모서리-모서리(bwCombat.reachTiles)로 재고, 지상 주력의 가속을 없애고
+ * (flingy.dat movement_type==2는 첫 틱부터 최고속), 하차 간격을 15가 아닌 18프레임으로
+ * 고친 판이다. 자취 좌표·사망 시각이 전부 달라졌으므로 v2 캐시를 그대로 쓰면 화면에는
+ * 이번 작업이 하나도 안 보인다 — IndexedDB 열쇠가 `${cacheKey}:v${SIM_VERSION}`라
+ * 이 숫자 하나가 옛 결과와 새 결과를 가르는 전부다.
+ * 올리는 것은 병합마다 정확히 한 번이어야 한다. 갈래마다 올리면 서로 덮어써
+ * 결국 안 올린 것과 같아진다(지난 병합이 그렇게 무너졌다). */
+export const SIM_VERSION = 3;
 
 const DB = "stargayte-sim";
 const STORE = "tracks";

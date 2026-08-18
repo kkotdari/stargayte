@@ -5,16 +5,31 @@ import Avatar from "../common/Avatar";
 import ReplayMapCanvas from "./ReplayMapCanvas";
 import PillTabs from "../common/PillTabs";
 import { cx } from "../../utils/format";
-import { UNIT_KO, TECH_KO } from "../../utils/replayNames";
+import { TECH_KO } from "../../utils/replayNames";
 import type { ReplayMapGrid } from "../../utils/replayParser";
 import { api } from "../../api/client";
 import { applyReplayMap, promoteReplayMap } from "../../hooks/useReplayMap";
 import { AIR_UNITS } from "../../utils/replayBuildMix";
 import { BLD_STATS, UNIT_STATS, type UnitTracksV2 } from "../../utils/replayUnits";
+/* 사거리는 이 파일이 들고 있던 상수(ENGAGE_SIGHT_TILES 9, 방어 건물 7/7/7/8/6, 벙커 안
+   화염 3.5)가 아니라 표에서 온다(과제 #48) — 마린도 시즈 탱크도 한 값 9로 쏘고 9에서
+   멈추던 자리다. 표를 읽는 문은 **bwCombat 하나**로 정한다: bwUnits에도 같은 이름의
+   reachTiles가 있지만 그쪽은 업그레이드·벙커 보너스를 못 받는 짧은 판이라, 두 문을 같이
+   열면 같은 이름이 두 뜻을 갖는다.
+   fireRangeTilesOf는 '몸 반지름을 뺀 순수 사거리'다. 이 파일의 거리 판정은 전부 중심-중심
+   이라 실제보다 두 몸 반지름만큼 짧게 잡히는 어림인데, 그리기용 게이트라 그대로 둔다 —
+   반지름까지 더하는 정확한 셈은 코어(bwCombat.reachTiles)의 몫이다. */
+import {
+  BUNKER_SEATS, acquireTilesOf, fireRangeTilesOf, isKnownKind, profileOf, weaponVs,
+} from "../../utils/bwCombat";
+/* 러커 가시가 나아가는 거리·속도는 무기표가 아니라 iscript 행동(behaviour 9 "go to max
+   range")에서 온 값이라 bwCombat이 안 물고 있다. 숫자를 여기 또 적는 대신 표에서 읽는다. */
+import { FRAME_SEC, LURKER_SPINE_SPEED_PX, LURKER_SPINE_TRAVEL_PX } from "../../utils/bwUnits";
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } from "../../utils/minimapTerrain";
 import { loadSimTracks, logSim, SIM_FLAG } from "../../utils/simClient";
 import { posAtSim, shotsAt, ST_INSIDE, type SimEventArr, type SimTrack } from "../../utils/simCore";
+import { FLYING_BUILDING_TPS } from "../../utils/bwTransport";
 import {
   bodyFace, capFace, depthNow, groundEllipse, lodFilter, sideFace, tagKey, topFace,
   type ShapeFace,
@@ -429,13 +444,14 @@ function speedOf(
  *  이름으로, 건물은 타이트하게(지적)의 '오래' 쪽. */
 /* 12 → 25초(요청: 액티브 상태 더 오래) — 이름이 너무 빨리 점으로 꺼져, 훑어보는 눈이
    따라가기 전에 정보가 사라졌다. */
-/** 띄운 건물의 비행 속도(타일/초) — 착륙 이사를 잇는 자다. */
-const BUILDING_FLY_SPEED = 1.2;
-/** 재생 전용 이름 보강 — UNIT_KO에 없는 정찰 유닛(일꾼·오버로드). UNIT_KO에 넣으면 통계
- *  도넛·Top5까지 일꾼이 섞이므로(replayBuildMix가 그 표로 거른다) 여기서만 얹는다. */
-const SCOUT_KO: Record<string, string> = {
-  SCV: "SCV", Probe: "프로브", Drone: "드론", Overlord: "오버로드",
-};
+/** 띄운 건물의 비행 속도(타일/초) — 착륙 이사와 정찰 비행을 잇는 자다.
+ *  원작은 건물 종류를 안 가리고 늘 1픽셀/프레임이라 0.744타일/초다: 이·착륙 오더가 최고
+ *  속도를 1로 박고(bwgame.h order_BuildingLiftOff), 오더가 끝날 때의 속도 복원이 건물을
+ *  빼놓아 원래 값으로 못 돌아온다. 여태 쓰던 1.2는 근거 없는 어림이라 이사·정찰 비행이
+ *  1.6배 빨랐다. */
+const BUILDING_FLY_SPEED = FLYING_BUILDING_TPS;
+/* (제거) 재생 전용 이름 보강 SCOUT_KO — 유닛별 완성 시각표(unitDoneByRaw)에서 일꾼을
+   걸러내는 데만 쓰던 이름표였다. 그 표를 걷으면서 마지막 쓰임이 없어졌다. */
 /** 생산 뒤 이 안이면 그 건물이 '일하는 중'이다(요청: 생산할 때 이름 표시) — 건물의 이름
  *  시간은 유닛(8초)보다 타이트하게(지적). */
 const PROD_FLASH_SEC = 4;
@@ -10288,10 +10304,16 @@ export default function ReplayMotionPlayer({
      건물만 있어 그 건물을 겨누지도, 다가붙지도 못했다. 건물은 안 움직이니 생애와 중심
      자리만 한 번 색인해 두고, 프레임마다 살아 있는 것만 지도에 올린다. */
   const bldTagSpots = useMemo(() => {
-    const rows: { tag: number; x: number; y: number; raw: string; born: number; gone: number; k: string }[] = [];
+    const rows: {
+      tag: number; x: number; y: number; raw: string; born: number; gone: number; k: string;
+      /** 이륙 시각 — 뜬 뒤로는 표적 자리가 앉았던 자리가 아니라 나는 자리다. */
+      lift?: number;
+    }[] = [];
     /* 태그 없는 물리 건물 자리(기획서 2-D) — 시작 홀 등 태그 생애가 없는 건물의
        자리 색인. 태그 미해석 어택의 폴백 표적이 된다. */
-    const sites: { x: number; y: number; raw: string; born: number; gone: number; k: string }[] = [];
+    const sites: {
+      x: number; y: number; raw: string; born: number; gone: number; k: string; lift?: number;
+    }[] = [];
     if (!entData) return { rows, sites };
     const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
     for (const e of entData.ents) {
@@ -10300,9 +10322,14 @@ export default function ReplayMotionPlayer({
       if (!site) continue;
       const hpZero = (e.hp ?? []).find(([, hv]) => hv <= 0)?.[0];
       const gone = hpZero !== undefined && (e.d === null || hpZero < e.d) ? hpZero : (e.d ?? 0);
+      /* 이륙 증거(f=6)를 같이 싣는다 — 여태 이 색인은 건설·착륙(f=2/5/17)만 봐서, 떠서
+         날아가는 건물의 표적 자리가 마지막 착륙 지점에 못박혀 있었다(몸은 날아가는데
+         어택으로 찍은 총알은 빈 땅으로 갔다). */
+      const lifted = [...e.ev].reverse().find((v) => v[3] === 6 && v[0] >= site[0]);
       const row = {
         tag: e.t, x: site[1] + footDx(e.k), y: site[2] + footDy(e.k),
         raw: nameOfId.get(e.o) ?? "", born: e.b, gone, k: e.k,
+        ...(lifted ? { lift: lifted[0] } : {}),
       };
       if (e.t > 0) rows.push(row);
       else sites.push(row);
@@ -10316,6 +10343,32 @@ export default function ReplayMotionPlayer({
       if (m) r.gone = m.gone;
     }
     return { rows, sites };
+  }, [entData]);
+  /* 벙커에 누가 들었나(원전: 벙커 **자신은** 표적 획득도 발사도 안 한다 — UNITS.Bunker의
+     ground/air가 둘 다 null이다. 쏘는 것은 안에 든 마린·파이어뱃·고스트이고 메딕·SCV는
+     타기만 한다). 리플레이에는 '누가 안에 있는지'가 따로 안 남고 남는 것은 제 벙커를 찍은
+     우클릭뿐인데, 분석이 그것을 승선 증거(f=12)로 옮겨 두었고 다섯째 칸이 태운 쪽 태그다.
+     짝이 되는 하차(f=13)까지가 탑승 구간이고, 하차 명령이 없으면 그 개체가 사라질 때까지다.
+     자리는 넷뿐이라(BUNKER_SEATS) 먼저 들어간 넷만 센다. */
+  const bunkerCrew = useMemo(() => {
+    const m = new Map<number, { kind: string; from: number; to: number }[]>();
+    if (!entData) return m;
+    const bunkers = new Set(entData.ents.filter((e) => e.bld && e.k === "Bunker").map((e) => e.t));
+    for (const e of entData.ents) {
+      if (e.bld || !e.k) continue;
+      for (let i = 0; i < e.ev.length; i += 1) {
+        const v = e.ev[i];
+        if (v[3] !== 12) continue;
+        const host = v[4] ?? 0;
+        if (!bunkers.has(host)) continue;
+        const off = e.ev.find((v2, j) => j > i && v2[3] === 13);
+        const arr = m.get(host) ?? [];
+        arr.push({ kind: e.k, from: v[0], to: off ? off[0] : (e.d ?? Infinity) });
+        m.set(host, arr);
+      }
+    }
+    for (const arr of m.values()) arr.sort((a, b) => a.from - b.from);
+    return m;
   }, [entData]);
   const entOn = entMode && entData !== null;
   /* 건설 SCV 떠남 시각(지적: SCV들이 건설현장에 남는다) — 일꾼 개체의 건설 앵커(f=2)
@@ -10512,6 +10565,15 @@ export default function ReplayMotionPlayer({
      지형이 갈리면(검수 저장 등) 비운다. */
   const rallyRoutes = useRef(new Map<string, [number, number][]>());
   useEffect(() => { rallyRoutes.current.clear(); }, [terrain, terrainRaw]);
+  /* 시뮬이 실제로 본 지형의 지문 — 위 캐시 열쇠가 쓴다. 코어가 받는 것과 같은 격자
+     (terrainRaw가 있으면 그것, 없으면 terrain)를 봐야 지문이 거짓말을 안 한다. */
+  const simTerrainKey = useMemo(() => {
+    const tg = terrainRaw ?? terrain;
+    if (!tg) return "0";
+    let walkable = 0;
+    for (let i = 0; i < tg.walk.length; i += 1) if (tg.walk[i]) walkable += 1;
+    return `${tg.w}x${tg.h}.${walkable}`;
+  }, [terrain, terrainRaw]);
   /* 시뮬 자취 적재(위 simFlag 주석) — 개체 트랙과 지형이 다 오면 워커에 맡긴다. 결과가
      오기 전까지는 기존 길로 그린다(깜빡임 없이 갈아 끼운다). */
   useEffect(() => {
@@ -10528,8 +10590,17 @@ export default function ReplayMotionPlayer({
       + `지형 ${(terrainRaw ?? terrain) ? "있음" : "없음"}, 자원 ${(grid.resources ?? []).length}`);
     void loadSimTracks(
       /* 캐시 열쇠 — 경기를 가르는 값(clockKey)에 개체 수·증거 수를 지문으로 붙인다.
-         clockKey가 없는 자리에서도 다른 경기끼리 섞이지 않게. */
-      `${clockKey ?? "g"}:${entData.ents.length}:${entData.ents.reduce((n, x) => n + x.ev.length, 0)}:${grid.width}x${grid.height}`,
+         clockKey가 없는 자리에서도 다른 경기끼리 섞이지 않게.
+         ★ 지형·자원 지문을 뒤에 붙인다(병합 검증이 잡은 구멍). 여태 열쇠에는 지도가
+           아예 없었다 — terrain·resources는 opts로 워커에 넘어가고 effect의 deps에도
+           있어 effect는 다시 돌지만, 열쇠가 같으니 캐시가 **옛 자취를 되돌려 줬다**.
+           맵연결·지형검수로 지도를 고쳐도 시뮬은 영영 옛 지형 판이었다는 뜻이다. 걸음이
+           지형을 보는 이번 병합에서는 곧장 눈에 띄는 결함이 된다.
+           격자 전체를 해싱하지 않고 '걸을 수 있는 칸 수'로 줄인 것은 값싸게 갈리는
+           지문이면 충분해서다 — 칸 하나만 칠해도 이 수가 움직인다. 자원은 개수만
+           센다(자리가 바뀌는 일이 없다). [어림] */
+      `${clockKey ?? "g"}:${entData.ents.length}:${entData.ents.reduce((n, x) => n + x.ev.length, 0)}:${grid.width}x${grid.height}`
+      + `:t${simTerrainKey}:r${(grid.resources ?? []).length}`,
       entData as unknown as Parameters<typeof loadSimTracks>[1],
       {
         width: grid.width, height: grid.height, terrain: terrainRaw ?? terrain,
@@ -10543,7 +10614,8 @@ export default function ReplayMotionPlayer({
       setSimEvents(got.events);
     });
     return () => { cancelled = true; };
-  }, [simFlag, entData, terrain, terrainRaw, grid.width, grid.height, grid.resources, clockKey]);
+  }, [simFlag, entData, terrain, terrainRaw, grid.width, grid.height, grid.resources, clockKey,
+    simTerrainKey]);
   /* 지형 수정(요청: 모든 경기 리플레이 화면에서, 아무나) — 산 버튼이 검수 모달을 연다.
      저장하면 이 자리에서 바로 새 지형으로 갈아 끼운다(맵 캐시는 다음 로드에 새 값을 받는다). */
   /* (제거·요청: 지형 편집) — 재생 화면의 검수 모달·산 버튼을 걷었다. 검수 저장분은
@@ -11179,6 +11251,24 @@ export default function ReplayMotionPlayer({
     uk?: string;
     /** 은신·버로우로 '안 보이는' 표적(요청) — 디텍터가 있는 편에게만 표적이 된다. */
     hidden?: boolean;
+    /** 떠 있는 건물(요청: 띄운 건물은 공중 유닛이다) — 대공 무기를 지닌 쪽만 친다. */
+    lifted?: boolean;
+  };
+  /* 띄운 건물의 지금 자리(요청: 띄운 건물은 공중 유닛이다) — 이륙 뒤의 비행 클릭(fpts)을
+     비행 속도로 훑어 이 프레임의 좌표를 낸다. 표적 지도와 아래 건물 그리기가 **같은
+     함수**를 써야 '보이는 몸'과 '겨눠지는 자리'가 안 갈린다 — 갈라져 있던 것이 지도가
+     지적한 결함(총알이 마지막 착륙 지점으로 갔다)이다. 좌표는 발자국 좌상단 기준이라
+     그리기 쪽과 눈금이 같다. */
+  const afloatPosAt = (
+    raw: string, liftAt: number, goneAt: number, x0: number, y0: number,
+  ): { x: number; y: number } => {
+    const p9 = motion.players.find((p) => p.raw === raw);
+    if (!p9) return { x: x0, y: y0 };
+    const flight = (p9.fpts ?? []).filter(([fs]) => fs >= liftAt && (goneAt === 0 || fs < goneAt));
+    if (flight.length === 0) return { x: x0, y: y0 };
+    const fw = walkTrack([[liftAt, x0, y0], ...flight], p9, true, undefined, BUILDING_FLY_SPEED);
+    const fp = posAt(fw, t, null);
+    return fp ? { x: fp.x, y: fp.y } : { x: x0, y: y0 };
   };
   const engageFoes: FoeRow[] = [];
   /** 아비터 은신장(전수조사) — 같은 사람 유닛이 곁(4.5타일)에 있으면 흐려진다. */
@@ -11232,13 +11322,35 @@ export default function ReplayMotionPlayer({
         detectorSpots.push({ team: teamOfRaw(br) ?? 0, x: bx2 + footDx(bu), y: by2 + footDy(bu) });
       }
     }
+    /* 띄운 건물은 공중 유닛이다(요청) — 이륙한 순간부터 지상 무기가 못 닿고 대공이 친다.
+       여태 건물은 예외 없이 air:false라, 떠 있는 커맨드 센터를 질럿이 겨누고 정작
+       스포어·미사일 터렛은 못 겨눴다. 자리도 마지막 착륙 지점이 아니라 지금 나는 자리다. */
+    for (const brow of buildsSrc) {
+      const [, bx3, by3, bu2, br2, bg2, bl2] = brow;
+      if (bl2 === undefined || t < bl2) continue;
+      if ((bg2 ?? 0) > 0 && t >= (bg2 ?? 0)) continue;
+      const fp2 = afloatPosAt(br2, bl2, bg2 ?? 0, bx3, by3);
+      engageFoes.push({
+        team: teamOfRaw(br2) ?? 0,
+        x: fp2.x + footDx(bu2), y: fp2.y + footDy(bu2),
+        air: true, bld: true, k: bu2, lifted: true,
+      });
+    }
     /* 일반 건물도 표적 지도에(지적: 질럿이 해처리에 안 붙음) — engageFoes(교전 유발)엔
        안 넣는다: 건물이 보인다고 싸움이 시작되면 안 되고, 어택이 그 태그를 찍었을 때만
        겨눔·접근의 표적이 된다. 유닛 태그와 겹치면 유닛이 우선(위에서 이미 set). */
     for (const bt of bldTagSpots.rows) {
       if (t < bt.born + 2 || (bt.gone > 0 && t >= bt.gone)) continue;
       if (entPosByTag.has(bt.tag)) continue;
-      entPosByTag.set(bt.tag, { x: bt.x, y: bt.y, team: teamOfRaw(bt.raw) ?? 0, air: false, bld: true, k: bt.k });
+      // 뜬 건물은 나는 자리를 겨눈다 — 어택으로 콕 찍은 표적도 몸을 따라가야 한다.
+      const af = bt.lift !== undefined && t >= bt.lift
+        ? afloatPosAt(bt.raw, bt.lift, bt.gone, bt.x - footDx(bt.k), bt.y - footDy(bt.k))
+        : null;
+      entPosByTag.set(bt.tag, {
+        x: af ? af.x + footDx(bt.k) : bt.x, y: af ? af.y + footDy(bt.k) : bt.y,
+        team: teamOfRaw(bt.raw) ?? 0, air: af !== null, bld: true, k: bt.k,
+        ...(af ? { lifted: true } : {}),
+      });
     }
     // 스캐너 스윕(전수조사) — 12초 동안 그 자리가 디텍터다.
     for (const [cs6, cx10, cy10, tech6, craw6] of castsSrc) {
@@ -11339,6 +11451,8 @@ export default function ReplayMotionPlayer({
      전용(성큰)은 못 치는 갈래를 아예 안 본다. 안 주면 종전대로 아무나 가장 가까운 적. */
   const nearestFoe = (
     team: number | undefined, x: number, y: number, only?: "air" | "ground",
+    /** 대공 무기가 없는 유닛인가 — 그렇다면 떠 있는 건물은 아예 표적이 아니다(요청). */
+    groundOnly?: boolean,
   ) => {
     let bx = 0;
     let by = 0;
@@ -11354,6 +11468,8 @@ export default function ReplayMotionPlayer({
       if (!team || f.team === 0 || f.team === team) continue;
       if (only === "air" && !f.air) continue;
       if (only === "ground" && f.air) continue;
+      // 뜬 건물은 공중이라 대공만 친다 — 지상 무기밖에 없는 유닛에게는 없는 것과 같다.
+      if (groundOnly && f.lifted) continue;
       // 안 보이는 것은 못 친다(요청) — 은신·버로우는 디텍터가 있어야 표적이 된다.
       if (f.hidden && !detectedBy(team, f.x, f.y)) continue;
       const d = Math.hypot(f.x - x, f.y - y);
@@ -12448,25 +12564,10 @@ export default function ReplayMotionPlayer({
   }, [buildsSrc]);
 
 
-  /* 유닛별 완성 시각(요청: 제일 많이 뽑은 것 하나가 아니라 모든 유닛을 따로) — 위 합계와
-     같은 큐 시뮬레이션을 유닛별로 가른 것. 어느 유닛이 죽었는지는 모르니, 전투 감모는
-     합계의 감모 비율(살아남은 몫)을 유닛마다 같은 비율로 나눠 얹는다 — 전투에서 질럿만
-     죽고 리버는 멀쩡했는지까지는 리플레이가 말해 주지 않는다. */
-  const unitDoneByRaw = useMemo(() => {
-    const m = new Map<string, [string, number[]][]>();
-    for (const p of motion.players) {
-      const byUnit: [string, number[]][] = [];
-      for (const [unit, secs] of Object.entries(p.prod ?? {})) {
-        if (SCOUT_KO[unit] || !UNIT_KO[unit]) continue;
-        const dur = UNIT_SEC[unit] ?? 20;
-        // 합계 쪽은 생산 큐를 시뮬레이션하지만, 유닛별 몫은 순서 비교라 완성 어림(명령+
-        // 건조 시간)으로 충분하다 — 큐 밀림은 모든 유닛에 비슷하게 얹힌다.
-        byUnit.push([unit, secs.map((sec) => sec + dur).sort((a, b) => a - b)]);
-      }
-      m.set(p.raw, byUnit);
-    }
-    return m;
-  }, [motion]);
+  /* (제거) 유닛별 완성 시각 unitDoneByRaw — 쓰던 곳이 벙커 화염 판정 하나뿐이었다.
+     "이 임자가 그때까지 파이어뱃을 뽑은 적이 있나"로 벙커 안을 어림하던 자리인데, 지도가
+     지적한 그대로 안에 몇이 무엇을 타고 있는지와 아무 상관이 없는 값이었다. 이제 승선
+     증거(아래 bunkerCrew)로 실제 탑승자를 보므로 근거 자체가 필요 없어졌다. */
 
 
   /* 본진 건물(확장 포함)의 자리 — 채굴 일꾼이 오갈 목적지다(지적: 자원 지대가 기준이고,
@@ -12930,16 +13031,12 @@ export default function ReplayMotionPlayer({
                둥실대는 대신, 이륙 뒤의 비행 클릭(fpts)을 비행 속도로 따라 난다. 동시에
                두 채가 떠 있으면 자취를 나눠 갖지 못하고 같이 따라간다(어림). */
             const flyTrack = motion.players.find((p) => p.raw === raw);
-            if (afloat && liftAt && flyTrack) {
-              const flight = (flyTrack.fpts ?? []).filter(([fs]) =>
-                fs >= liftAt && (goneAt === 0 || fs < goneAt));
-              if (flight.length > 0) {
-                const fw = walkTrack(
-                  [[liftAt, x, y], ...flight], flyTrack, true, undefined, BUILDING_FLY_SPEED,
-                );
-                const fp = posAt(fw, t, null);
-                if (fp) { bx = fp.x; by = fp.y; }
-              }
+            /* 표적 지도(engageFoes·entPosByTag)와 **같은 함수**를 쓴다 — 여태 몸만 여기서
+               옮기고 표적 자리는 마지막 착륙 지점에 못박혀 있어, 날아가는 건물을 쏘면
+               총알이 빈 땅으로 갔다. */
+            if (afloat && liftAt) {
+              const fp = afloatPosAt(raw, liftAt, goneAt, x, y);
+              bx = fp.x; by = fp.y;
             }
             // 짓는 동안은 공사중 아이콘(요청: 반투명 말고) — 반투명은 "저기 뭐가 있긴 한데"
             // 로만 읽히고, 도형의 반투명(뒤 비침)과도 헷갈렸다. 날아온 건물은 이미 다 선
@@ -13343,9 +13440,51 @@ export default function ReplayMotionPlayer({
               if (qCombat && DEF_FIRE.has(unit)
                 && !raising && (goneEff === 0 || t < goneEff)) {
                 const teamB = teamOfRaw(raw);
-                const onlyB = unit === "Sunken Colony" ? "ground"
-                  : unit === "Spore Colony" || unit === "Missile Turret" ? "air" : undefined;
+                /* 벙커 승무원 — 이 벙커 태그의 탑승 구간 중 지금 살아 있는 것들. 자리 넷을
+                   넘겨 잡히면 먼저 들어간 넷만 센다. 이 목록이 비면 벙커는 아무것도 안
+                   한다(빈 벙커가 쏘던 것이 예전 거짓말이다). */
+                const bunkTag = unit !== "Bunker" ? 0
+                  : (bldTagSpots.rows.find((r9) => r9.k === "Bunker" && r9.raw === raw
+                    && Math.abs(r9.x - centerX) <= 1.5 && Math.abs(r9.y - centerY) <= 1.5)?.tag ?? 0);
+                const crew = bunkTag === 0 ? [] : (bunkerCrew.get(bunkTag) ?? [])
+                  .filter((c9) => t >= c9.from && t < c9.to).slice(0, BUNKER_SEATS);
+                /* 승선 증거가 하나도 없는 벙커는 마린 한 기가 든 것으로 친다 [어림] —
+                   벙커를 골라 누르는 Load 버튼으로 태우면 우클릭 증거가 안 남기 때문이다.
+                   빈 벙커로 두면 지어 놓고 지켜 낸 방어선이 화면에서 통째로 사라지고, 넷을
+                   채운 것으로 치면 아무도 못 본 화력을 지어낸다. 인원을 모를 때 가장 작은
+                   참값이 1이고, 그 임자가 마린을 뽑은 뒤부터만 그렇게 본다. */
+                const presumed = unit === "Bunker" && crew.length === 0
+                  && (flyTrack?.prod?.Marine ?? []).some((ms9) => ms9 <= t);
+                const crewGun = presumed
+                  || crew.some((c9) => c9.kind === "Marine" || c9.kind === "Ghost");
+                const crewBat = crew.some((c9) => c9.kind === "Firebat");
+                /* 사거리는 표에서 온다(과제 #48) — 여기 박혀 있던 캐논 7·성큰 7·스포어 7·
+                   터렛 8·벙커 6·화염 3.5는 서로 다른 자리에 흩어진 채 표와 어긋나 있었다
+                   (터렛은 원작 7이다). 벙커는 표에서 무기가 아예 없으므로 승무원의 무기를
+                   벙커 보너스(+64px=2타일)와 함께 받아 온다 — profileOf(정체, 업글, 벙커=참)
+                   가 그 덧셈과 U-238 같은 사거리 업글을 이미 물고 나온다. */
+                const bunkUps = unit === "Bunker"
+                  ? (flyTrack?.ups ?? []).filter(([us9]) => us9 <= t).map(([, nm9]) => nm9) : [];
+                // 사거리가 가장 긴 사수가 갈래를 정한다 — 고스트(C-10)가 있으면 그쪽.
+                const gunProf = unit === "Bunker"
+                  ? profileOf(crew.some((c9) => c9.kind === "Ghost") ? "Ghost" : "Marine",
+                    bunkUps, true) : null;
+                const batProf = unit === "Bunker" && crewBat
+                  ? profileOf("Firebat", bunkUps, true) : null;
+                const batRG = batProf ? (weaponVs(batProf, false)?.rangeTiles ?? -1) : -1;
+                const rgG = unit === "Bunker"
+                  ? (crewGun && gunProf ? (weaponVs(gunProf, false)?.rangeTiles ?? -1) : -1)
+                  : fireRangeTilesOf(unit, false);
+                const rgA = unit === "Bunker"
+                  ? (crewGun && gunProf ? (weaponVs(gunProf, true)?.rangeTiles ?? -1) : -1)
+                  : fireRangeTilesOf(unit, true);
+                /* 못 치는 갈래는 표적으로도 안 삼는다 — 벙커는 승무원이 정한다: 마린·
+                   고스트는 공중도 치므로(그래서 공중 표적이라고 사격이 통째로 사라지던 것이
+                   지도가 잡은 버그다) 갈래를 안 나누고, 화염뿐이면 지상 전용이다. */
+                const onlyB = unit === "Bunker" ? (crewGun ? undefined : "ground")
+                  : rgA < 0 ? "ground" : rgG < 0 ? "air" : undefined;
                 const foeB = nearestFoe(teamB, centerX, centerY, onlyB);
+                const rgB = foeB.air ? rgA : rgG;
                 // 화면 기준 조준(지적: 공중 각도·지면 평행) — 유닛 트레이서와 같은 셈.
                 const tPxB = (mapRef.current?.clientWidth ?? 320) / grid.width;
                 let dgy = (foeB.by - centerY) * tPxB * (pitched ? PITCH_FLAT : 1);
@@ -13354,12 +13493,12 @@ export default function ReplayMotionPlayer({
                 if (foeB.air) dgy -= unitPxOf(foeB.uk ?? "?", foeB.by) * 1.6;
                 const degB = Math.atan2(-((foeB.bx - centerX) * tPxB), dgy) * (180 / Math.PI);
                 const fire: React.ReactNode[] = [];
-                /* 포톤은 대공·대지 한 자루(7타일), 성큰은 촉수(7타일, 표적까지 실거리로
-                   뻗는다 — 럴커 가시와 같은 셈), 스포어는 포자(7타일). */
-                if (unit === "Photon Cannon" && foeB.bd <= 7) {
+                /* 포톤은 대공·대지 한 자루, 성큰은 촉수(표적까지 실거리로 뻗는다 — 럴커
+                   가시와 같은 셈), 스포어는 포자. 사거리 숫자는 위 rgB가 표에서 받아 왔다. */
+                if (unit === "Photon Cannon" && foeB.bd <= rgB) {
                   fire.push(<span key="p" className="scr-motion-tracer scr-tracer-photon" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)` }} />);
                 }
-                if (unit === "Sunken Colony" && foeB.bd <= 7) {
+                if (unit === "Sunken Colony" && foeB.bd <= rgB) {
                   fire.push(<span
                     key="s"
                     className="scr-motion-tracer scr-tracer-spike"
@@ -13369,17 +13508,18 @@ export default function ReplayMotionPlayer({
                     }}
                   />);
                 }
-                if (unit === "Spore Colony" && foeB.bd <= 7) {
+                if (unit === "Spore Colony" && foeB.bd <= rgB) {
                   fire.push(<span key="o" className="scr-motion-tracer scr-tracer-acid" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)` }} />);
                 }
-                if (unit === "Missile Turret" && foeB.air && foeB.bd <= 8) {
+                if (unit === "Missile Turret" && foeB.air && foeB.bd <= rgB) {
                   fire.push(<span key="t" className="scr-motion-tracer scr-tracer-missile" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)` }} />);
                 }
-                if (unit === "Bunker" && !foeB.air && foeB.bd <= 6) {
-                  fire.push(<span key="g" className="scr-motion-tracer" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)` }} />);
-                  const hasBat = (unitDoneByRaw.get(raw) ?? []).some(([u2, ds]) =>
-                    u2 === "Firebat" && ds.length > 0 && ds[0] <= t);
-                  if (hasBat && foeB.bd <= 3.5) {
+                if (unit === "Bunker" && (crew.length > 0 || presumed)) {
+                  if (crewGun && rgB >= 0 && foeB.bd <= rgB) {
+                    fire.push(<span key="g" className="scr-motion-tracer" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)` }} />);
+                  }
+                  // 화염은 지상 전용이고 사거리도 제 것(가우스 6에 견줘 3)이다.
+                  if (crewBat && !foeB.air && batRG >= 0 && foeB.bd <= batRG) {
                     fire.push(<span key="f" className="scr-motion-tracer scr-tracer-flame" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)`, animationDelay: "0.2s" }} />);
                   }
                 }
@@ -13951,8 +14091,14 @@ export default function ReplayMotionPlayer({
             && !(drawUnit !== "" && ENGAGE_SKIP.has(drawUnit));
           /* 표적 우선(지적: 어택 찍으면 그 대상을 공격해야) — 최근(30초 안) 공격 명령이
              찍은 태그가 아직 살아 움직이면 그쪽이 상대다. 없으면 가장 가까운 적. */
+          /* 대공 무기가 없으면 떠 있는 건물은 표적이 아니다(요청: 띄운 건물은 공중
+             유닛이다). 명단을 또 적지 않고 표에 묻는다 — 대공 사거리가 −1이면 그 유닛은
+             하늘을 못 친다. 이름을 모르는 개체(k="")는 표가 기본값으로 떨어져 조용히
+             틀리므로 아는 이름일 때만 가른다. */
+          const noAir9 = drawUnit !== "" && isKnownKind(drawUnit)
+            && fireRangeTilesOf(drawUnit, true) < 0;
           let foe: { bx: number; by: number; bd: number; air: boolean; bld?: boolean; k?: string } =
-            nearestFoe(team, rawPos.x, rawPos.y);
+            nearestFoe(team, rawPos.x, rawPos.y, undefined, noAir9);
           /* 표적 우선(재수리·기획서 1-B): 최신 1건만 보던 규칙은 어택땅 연타 한 번에
              건물 표적을 지웠다 — nearestFoe에는 일반 건물이 없어 폴백도 없다. 창
              (건물 45초/유닛 12초) 안에서 역순으로 훑되, 태그 없는 명령(어택땅)은
@@ -13995,8 +14141,17 @@ export default function ReplayMotionPlayer({
              적 때문에 교전이 프레임마다 켜졌다 꺼지면, '멈춘 자리'와 '지연 걸음' 사이를
              오가며 흔들렸다. 들어올 땐 시야, 나갈 땐 시야×1.3이라 경계에서 안 떨린다. */
           const engagedBefore = engageHoldRef.current.has(holdKey);
+          /* 붙는 거리는 시야가 아니라 **자동 획득 사거리**다(과제 #48) — 여태 이 파일의
+             교전은 전부 ENGAGE_SIGHT_TILES 9 하나로 갈렸다. 그래서 저글링(획득 3)이
+             화면 반대편의 적을 보고 달려들고, 시즈 모드(12)는 오히려 사거리 안에 든
+             적을 보고도 더 걸어 들어갔다. 원작은 시야·자동 획득·무기 사거리가 셋 다
+             다른 값이고, 여기 필요한 것은 가운데 것이다. 표에 없는 이름과 획득값 0
+             (드랍십·베슬·오버로드처럼 스스로 표적을 안 잡는 것들)만 옛 9로 물러난다 —
+             지어낸 값을 쓰느니 알던 어림이 낫고, 그것들은 어차피 canFight에서 걸린다. */
+          const acq9 = drawUnit !== "" && isKnownKind(drawUnit)
+            ? (acquireTilesOf(drawUnit) || ENGAGE_SIGHT_TILES) : ENGAGE_SIGHT_TILES;
           let fighting = canFight && !frzSt && !burrowed && Number.isFinite(foe.bd)
-            && (foe.bd <= ENGAGE_SIGHT_TILES * (engagedBefore ? 1.3 : 1)
+            && (foe.bd <= acq9 * (engagedBefore ? 1.3 : 1)
               /* 어택이 찍은 건물은 14.4타일부터 접근 시작(기획서 1-E — 수리: 시야
                  게이트가 철거 행군을 9타일 밖에서 세워 뒀다). */
               || (foe.bld === true && foe.bd <= ENGAGE_SIGHT_TILES * 1.6));
@@ -14049,7 +14204,23 @@ export default function ReplayMotionPlayer({
                 const ddy = Math.max(0, Math.abs(foe.by - base.y) - fp[1] / 2);
                 return Math.max(0, Math.hypot(ddx, ddy) - 0.3);
               }
-              return Math.max(0, gap - (melee9 ? 1.1 : 2.2));
+              /* 멈춰 서는 거리도 사거리다(과제 #48) — 근거 없는 1.1/2.2 고정 탓에
+                 드라군(4)·히드라(4)·골리앗(6)·가디언(8)이 전부 2.2타일까지 걸어 들어
+                 갔다. 표의 사거리는 몸 반지름을 뺀 순수 값이고 여기 gap은 중심-중심이라
+                 그만큼 짧게 잡히는 어림이다. 근접은 사거리가 0.5타일도 안 되니 몸이
+                 겹치지 않게 1.1을 하한으로 남긴다. */
+              const known9 = drawUnit !== "" && isKnownKind(drawUnit);
+              let rg9 = known9 ? fireRangeTilesOf(drawUnit, foe.air) : -1;
+              /* 무기가 아예 없는 유닛(리버·캐리어) — 표에는 무기 칸이 비어 있다. 피해를
+                 내는 것이 스캐럽·인터셉터라는 딴 개체이기 때문인데, 그렇다고 2.2타일까지
+                 걸어 들어가면 사거리 8짜리가 몸을 들이미는 그림이 된다. 이럴 때만 자동
+                 획득 사거리(리버·캐리어 둘 다 8)를 대신 쓴다. 못 치는 갈래(질럿이 뮤탈을
+                 겨눈 경우)까지 이 갈래로 새면 근접이 3타일 밖에 서 버리므로, 지상·대공이
+                 **둘 다** 없을 때로 좁힌다. */
+              if (rg9 < 0 && known9 && fireRangeTilesOf(drawUnit, !foe.air) < 0) {
+                rg9 = acquireTilesOf(drawUnit);
+              }
+              return Math.max(0, gap - Math.max(1.1, rg9 <= 0 ? 2.2 : rg9));
             })();
             if (melee9) {
               /* 걸음 속도로만 다가간다(지적: 당겨지듯 빠르게 이동하는 것) — 예전엔
@@ -14675,9 +14846,17 @@ export default function ReplayMotionPlayer({
           }
           /* 럴커 가시(지적: 가시 표현이 안 나옴) — 럴커는 교전 돌입 목록(ENGAGE_SKIP)
              밖이라 fighting이 영영 거짓이었고 가시 트레이서도 안 나왔다. 원작대로
-             버로우한 채 적이 사거리(6타일, 여유 7) 안이면 명령 없이도 가시를 쏜다.
-             럴커는 수가 적으니 1/3 솎기도 안 태운다. */
-          const lurkStrike = burrowed && !frzSt && foeDist <= 7;
+             버로우한 채 적이 사거리 안이면 명령 없이도 가시를 쏜다. 럴커는 수가 적으니
+             1/3 솎기도 안 태운다.
+             값은 표에서 온다: 무기 사거리 6타일(Subterranean_Spines 192px). 주석은 6이라
+             적어 놓고 코드는 '여유 7'을 사거리로 쓰고 있었다. 그리고 가시는 지상 전용
+             무기라 공중 표적에는 안 나간다. */
+          const lurkRange = fireRangeTilesOf("Lurker", false);
+          const lurkStrike = burrowed && !frzSt && !foe.air && foeDist <= lurkRange
+            /* 시뮬이 돌면 쿨다운(36~39프레임)도 시뮬 것이다 — 이번 틱에 그 태그의 발사가
+               없으면 가시도 없다. 안 그러면 사거리 안에 적이 있는 내내 가시가 끊기지 않고
+               솟는다. */
+            && (!simShots || simShot !== null);
           /* 솎기(기획서 1-G) — 근접은 이제 그릴 효과가 없으므로(잽 동작이 대신한다) 덜
              솎을 이유도 없다. 다만 맞은 불티는 솎으면 안 된다 — 맞는 순간은 개체마다
              한 번뿐이라 솎이면 통째로 사라진다. */
@@ -14738,12 +14917,17 @@ export default function ReplayMotionPlayer({
                 <span
                   className={`scr-motion-tracer scr-tracer-${
                     (fxUnit === "Wraith" || fxUnit === "Goliath") && foe.air ? "missile" : ATTACK_FX[fxUnit]}`}
-                  /* 럴커 가시는 표적까지 실거리(요청) — 고정 길이 대신 상대와의 거리를
-                     타일 픽셀로 풀어 그만큼 솟는다(사거리 7타일 상한). */
+                  /* 럴커 가시는 표적에서 멈추지 않는다 — 원작의 가시는 표적 자리가 아니라
+                     늘 '제 자리 + 방향 × 최대 사거리'로 나아가(iscript behaviour 9), 그
+                     직선 위의 적 지상 유닛을 모두 훑고 지나간다. 그래서 길이는 표적까지
+                     거리가 아니라 212px 고정이고, 훑는 시간도 가시 속도(18.75px/프레임)가
+                     정한 0.475초다. 예전의 '표적까지 실거리'는 지나쳐 맞는 그림을 지웠다.
+                     px→타일은 원작의 한 타일 = 32px. */
                   style={{
                     transform: mzTf, animationDelay: `${((ei * 7) % 5) / 10}s`,
                     ...(lurkStrike ? {
-                      height: `${(Math.min(7, foeDist) * ((mapRef.current?.clientWidth ?? 320) / grid.width)).toFixed(1)}px`,
+                      height: `${((LURKER_SPINE_TRAVEL_PX / 32) * ((mapRef.current?.clientWidth ?? 320) / grid.width)).toFixed(1)}px`,
+                      animationDuration: `${(LURKER_SPINE_TRAVEL_PX / LURKER_SPINE_SPEED_PX * FRAME_SEC).toFixed(3)}s`,
                     } : {}),
                     /* 근접 휘두름 호는 제 몸에 맞춘다(지적: "부메랑 모양이 계속 나온다")
                        — 6px 고정이라 유닛 크기를 캔버스 비례로 바로잡고 나니 호가 몸통

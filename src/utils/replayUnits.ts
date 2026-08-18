@@ -20,6 +20,18 @@ import {
   normalizeUpgradeName,
 } from "./replayTechNames";
 import { speedOfUnit } from "./bwUnits";
+/* 전투 값은 표(bwUnits)를 직접 읽지 않고 어댑터(bwCombat)를 거친다(과제 #54).
+   ─ 왜 이렇게 됐는가: 이 파일의 체력 원장은 유닛마다 dps 스칼라 하나(UNIT_STATS.dps)만
+     보고 공격 종류(normal/concussive/explosive)·표적 크기 배수·방어력 뺄셈·쿨다운·
+     대공/대지 구분을 통째로 무시했다(map-replayunits A-1·A-2·A-3). 그 탓에 무기가
+     아예 없는 오버로드·메딕·드랍십까지 하한 max(2, dps)로 초당 2씩 때렸다.
+   ─ bwUnits를 직접 읽지 않는 것은 규약이다: 몸 반지름을 더해 중심-중심 거리로 옮기는
+     일이 bwCombat.reachTiles 한 곳에서만 일어나야 이중 가산이 안 난다.
+   ─ bwUnits에서 계속 가져오는 것은 speedOfUnit 하나뿐이다(걸음은 전투가 아니다). */
+import {
+  attackOf, bunkerFallbackProfile, profileOf, targetFor, weaponVs,
+  type CombatProfile, type ProfWeapon,
+} from "./bwCombat";
 import type { Race } from "../types";
 
 /* ── 입력 — screp 커맨드에서 쓰는 필드만 구조 타입으로 받는다(replayParser의 ScrepCmd와
@@ -2472,12 +2484,30 @@ export function buildUnitTracks(
     Bunker: { dps: 14 },
     "Missile Turret": { dps: 9, air: true },
   };
-  const defSpots: { owner: number; x: number; y: number; from: number; to: number; dps: number; air?: boolean }[] = [];
+  /** 방어 건물 한 채의 전투 값 — 자리를 세울 때 한 번만 본다.
+   *  벙커만 예외다: 원전에서 벙커 **자신**은 무기가 없어(UNITS.Bunker의 ground/air가
+   *  둘 다 null) 표대로 두면 한 발도 못 쏜다. 실제로 쏘는 것은 안에 탄 보병인데 이
+   *  원장은 탑승 목록을 안 들고 있으므로, 어댑터가 내주는 '벙커 보너스를 받은 마린
+   *  한 기'로 어림한다(bwCombat.bunkerFallbackProfile — 스스로 [추정]이라 밝힌 값). */
+  const defProfOf = (kind: string): CombatProfile =>
+    (kind === "Bunker" ? bunkerFallbackProfile() : profileOf(kind));
+  const defSpots: {
+    owner: number; x: number; y: number; from: number; to: number;
+    /** 아래 dps·air는 사장된 hpSimOf 경로가 아직 읽는다. 세계 시뮬은 prof만 본다. */
+    dps: number; air?: boolean;
+    kind: string;
+    /** 사격 값 한 벌 — 벙커만 '안에 탄 마린'의 것이다. */
+    prof: CombatProfile;
+    /** 건물 자신의 몸 반지름(타일) — 사거리를 중심-중심으로 옮길 때 더한다. 벙커는
+     *  prof가 마린이라 prof.radius를 쓰면 3×2 건물이 마린 몸집으로 줄어든다. */
+    rad: number;
+  }[] = [];
   for (const b of built) {
     if (DEF_KINDS.has(b.kind)) {
       const f = DEF_FIRE[b.kind] ?? { dps: 10 };
       defSpots.push({
         owner: b.owner, x: b.x + 1, y: b.y + 1, from: b.born + 40, to: b.gone ?? Infinity,
+        kind: b.kind, prof: defProfOf(b.kind), rad: profileOf(b.kind).radius,
         dps: f.dps, ...(f.air !== undefined ? { air: f.air } : {}),
       });
     }
@@ -2493,6 +2523,7 @@ export function buildUnitTracks(
     const f2 = DEF_FIRE[best] ?? { dps: 10 };
     defSpots.push({
       owner: life.owner, x: site[1] + 1, y: site[2] + 1, from: life.born + 40, to: life.last + 300,
+      kind: best, prof: defProfOf(best), rad: profileOf(best).radius,
       dps: f2.dps, ...(f2.air !== undefined ? { air: f2.air } : {}),
     });
   }
@@ -2624,6 +2655,9 @@ export function buildUnitTracks(
   {
     interface Agent {
       life: Life; kind: string; speed: number; air: boolean; healable: boolean;
+      /** 전투 값 한 벌 — 표는 개체를 세울 때 한 번만 본다. 교전 루프는 초마다 개체
+       *  수의 제곱을 도는 자리라 거기서 이름으로 표를 뒤지면 그 자체가 병목이다. */
+      prof: CombatProfile;
       x: number; y: number; startAt: number; alive: boolean;
       hp: number; sh: number; maxHp: number; maxSh: number;
       evIdx: number; tgt: [number, number] | null; hidden: boolean;
@@ -2642,6 +2676,7 @@ export function buildUnitTracks(
       const st = UNIT_STATS[mk] ?? DEFAULT_UNIT_STATS;
       return {
         life, kind: mk, speed: SIM_SPEED[mk] ?? 2.8, air: AIR_UNITS.has(mk),
+        prof: profileOf(mk),
         healable: !MECH_UNITS.has(mk) && mediLives.length > 0,
         x: first[1], y: first[2], startAt: Math.max(0, Math.min(first[0], life.born)),
         alive: true, hp: st.hp, sh: st.sh ?? 0, maxHp: st.hp, maxSh: st.sh ?? 0,
@@ -2672,29 +2707,97 @@ export function buildUnitTracks(
       pend.set(Math.round(sec), arr);
     };
     const swarms: [number, number, number][] = [];
-    const hurt = (a: Agent, sec: number, amt: number, spell: boolean): void => {
-      if (!a.alive || amt <= 0) return;
+    /* ── 초당 피해(사람이 읽는 수) — 실드에 쓸 수치와 체력에 쓸 수치를 **따로** 낸다.
+       ─ 왜 둘인가: 원전에서 실드는 유닛 방어력도 크기 배수도 안 받는다
+         (bwgame.h weapon_deal_damage — 실드 차감이 방어력 뺄셈보다 **먼저**다).
+         그래서 같은 무기라도 실드에 박히는 값과 체력에 박히는 값이 다르다. 예전 원장은
+         한 값으로 뭉쳐 놓고 실드부터 깎아, 실드가 남은 유닛에게는 방어력이 이미 빠진
+         값을 실드 피해로 냈다.
+       ─ 왜 bwCombat.dpsOf를 안 쓰는가: 그쪽은 공격자 값 한 벌에 박힌 공업 레벨만 쓴다.
+         이 원장은 업그레이드가 경기 도중 오르는 것을 초 단위로 따라가야 해서
+         (lvOf(wUpsBy, …, sec)) 레벨을 밖에서 넣어야 한다. 그래서 같은 셈을 표의
+         attackOf·targetFor로 여기서 다시 편다 — 피해 공식 자체는 여전히 표의 것이다.
+       ─ 캐시: 교전 루프는 초마다 개체 수의 제곱을 도는 자리다. 같은
+         (무기, 공업, 표적, 방업) 조합마다 객체 둘을 새로 만들면 그 자체가 병목이라
+         결과를 열쇠로 붙들어 둔다. 열쇠 구분자는 NUL — 유닛 이름에 공백·괄호가 있다.
+       ─ [어림] 이 원장의 업그레이드 집계(aUpsBy)는 정규식 하나로 방어구·카라파스·
+         키틴질 갑피·플라즈마 실드를 한 숫자로 뭉친다(map-replayunits D-23). 그래서
+         여기서는 그 숫자를 전부 '유닛 방어력 +n'으로만 넣는다 — 플라즈마 실드의
+         실드 −1/렙과 키틴질 갑피의 +2는 따로 세지 못한다. 부류를 제대로 가르려면
+         업그레이드 이름을 그대로 실어 bwCombat.profileOf(kind, ups)에 넘기는 길이
+         이미 나 있다(UpgradeState). 그 배관은 이 단계 밖이다. */
+    const DPS_BIG = 1 << 30;
+    const dpsCache = new Map<string, { hp: number; shield: number }>();
+    const dpsVs = (
+      w: ProfWeapon, atk: CombatProfile, wLv: number, tgtKind: string, armorLv: number,
+    ): { hp: number; shield: number } => {
+      const ck = `${w.key}\u0000${wLv}\u0000${tgtKind}\u0000${armorLv}`;
+      const hitc = dpsCache.get(ck);
+      if (hitc) return hitc;
+      // 쿨 0인 무기는 표에 없다 — 0으로 나누는 것만 막는 자리다.
+      const cd = w.cd > 0 ? w.cd : 1;
+      const bare = targetFor(tgtKind, undefined, {
+        hp: DPS_BIG, shield: 0, hasShield: false, armorLv,
+      });
+      const hp = attackOf(w, atk, bare, { weaponLv: wLv }).hp / 256 / cd;
+      let shield = 0;
+      if (profileOf(tgtKind).hasShield) {
+        const shd = targetFor(tgtKind, undefined, {
+          hp: DPS_BIG, shield: DPS_BIG, hasShield: true, armorLv,
+        });
+        shield = attackOf(w, atk, shd, { weaponLv: wLv }).shield / 256 / cd;
+      }
+      const r = { hp, shield };
+      dpsCache.set(ck, r);
+      return r;
+    };
+    /* ── 피해 한 번. shAmt는 '실드에 박힐 때의 값', hpAmt는 '체력에 박힐 때의 값'이다.
+       둘을 한꺼번에 더하면 실드를 가진 유닛이 두 배로 맞는다 — 실드가 남아 있으면
+       실드용 수치로만 깎고, 이 틱에 실드가 바닥나면 못 쓴 몫의 비율만큼을 체력용
+       수치로 환산해 이어 깎는다. 원전처럼 히트 하나하나에서 넘침을 세는 것이 아니라
+       초당 값을 비율로 가르는 [어림]이다 — 이 원장의 시간 눈금이 1초라 그 아래는 못 본다.
+       방어구 업그레이드는 여기서 곱셈(-8%/렙)으로 걷어내지 않는다. 이제 dpsVs가
+       방어력에 정액으로 얹어(원전은 렙당 +1) 피해 쪽에서 뺀다 — 그래야 저글링 5와
+       울트라 20에 같은 뜻이 된다(map-replayunits D-23). */
+    const hurtSplit = (
+      a: Agent, sec: number, shAmt: number, hpAmt: number, spell: boolean,
+    ): void => {
+      if (!a.alive || (shAmt <= 0 && hpAmt <= 0)) return;
       if (sec < a.stasisUntil) return; // 얼음 속은 무적
-      let d2 = amt;
+      let sd = shAmt;
+      let hd = hpAmt;
       if (!spell) {
-        d2 *= (1 - 0.08 * lvOf(aUpsBy, a.life.owner, sec)) * a.dmgScale;
+        sd *= a.dmgScale;
+        hd *= a.dmgScale;
         // 다크스웜 아래선 크게 준다(근접·원거리 뭉뚱그려 0.35).
         if (swarms.some(([ws, wx, wy]) => sec - ws >= 0 && sec - ws <= 25
-          && Math.hypot(wx - a.x, wy - a.y) <= 2.5)) d2 *= 0.35;
+          && Math.hypot(wx - a.x, wy - a.y) <= 2.5)) { sd *= 0.35; hd *= 0.35; }
       }
       if (a.matrixLeft > 0 && sec <= a.matrixUntil) {
-        const ab = Math.min(a.matrixLeft, d2);
+        // 매트릭스는 실드보다 먼저 흡수한다 — 두 몫을 같은 비율로 눅인다.
+        const tot = Math.max(sd, hd);
+        const ab = Math.min(a.matrixLeft, tot);
         a.matrixLeft -= ab;
-        d2 -= ab;
+        const keep = tot > 0 ? (tot - ab) / tot : 0;
+        sd *= keep;
+        hd *= keep;
       }
-      const fromSh = Math.min(a.sh, d2);
-      a.sh -= fromSh;
-      d2 -= fromSh;
+      let toHp = hd;
+      if (a.sh > 0 && sd > 0) {
+        const toSh = Math.min(a.sh, sd);
+        a.sh -= toSh;
+        toHp = hd * Math.max(0, 1 - toSh / sd);
+      }
       // 메딕 곁 경감은 체력 몫만(실드는 못 채워 주니 못 막는다).
-      if (d2 > 0 && !spell && a.healable && medicNearSim(a, sec)) d2 *= 0.65;
-      a.hp -= d2;
+      if (toHp > 0 && !spell && a.healable && medicNearSim(a, sec)) toHp *= 0.65;
+      a.hp -= toHp;
       mark(a, sec);
       if (a.hp <= 0) onZero(a, sec);
+    };
+    /* 주문 피해 — 방어력도 크기 배수도 실드 면제도 안 탄다. 실드용·체력용 수치가 같아
+       위 비율 셈이 곧 '실드 먼저, 넘친 만큼 체력'이 된다. */
+    const hurt = (a: Agent, sec: number, amt: number, spell: boolean): void => {
+      hurtSplit(a, sec, amt, amt, spell);
     };
     const medicAgents: Agent[] = [];
     const medicNearSim = (a: Agent, sec: number): boolean => {
@@ -2830,8 +2933,23 @@ export function buildUnitTracks(
             for (const sp of defSpots) {
               if (sec < sp.from || sec > sp.to) continue;
               if (!isFoeOf(sp.owner, a.life.owner)) continue;
-              if (sp.air !== undefined && sp.air !== a.air) continue;
-              if (Math.hypot(sp.x - a.x, sp.y - a.y) <= 7.5) hurt(a, sec, sp.dps * 3, false);
+              /* 방어 건물의 사거리와 화력도 표에서 온다(과제 #48·#54).
+                 여태 성큰·캐논·스포어·터렛·벙커가 모두 **7.5타일 한 값**이었고, 화력은
+                 표적 크기·방어력과 무관한 dps 스칼라였다. 이제 무기가 없으면(성큰이
+                 공중을, 터렛이 지상을) 아예 못 쏘므로 위 sp.air 검사가 여기 녹아 있다.
+                 사거리는 무기 사거리에 양쪽 몸 반지름을 더해 중심-중심으로 옮긴다 —
+                 원전은 스프라이트 상자의 모서리 사이를 재기 때문이다(bwgame.h
+                 unit_distance 계열). 그 덧셈의 근거와 값은 bwCombat.reachTiles 주석에
+                 있고, 여기서는 자리 좌표가 이미 발자국 중심이라 같은 식을 손으로 편다. */
+              const w = weaponVs(sp.prof, a.air);
+              if (!w) continue;
+              const reach = w.rangeTiles + sp.rad + a.prof.radius;
+              if (Math.hypot(sp.x - a.x, sp.y - a.y) > reach) continue;
+              const bite = dpsVs(
+                w, sp.prof, lvOf(wUpsBy, sp.owner, sec),
+                a.kind, lvOf(aUpsBy, a.life.owner, sec),
+              );
+              hurtSplit(a, sec, bite.shield * 3, bite.hp * 3, false);
             }
           }
         }
@@ -2849,18 +2967,64 @@ export function buildUnitTracks(
           present.set(key, arr);
         }
         if (present.size < 2) continue;
-        for (const [key, mine] of present) {
-          let foeDps = 0;
-          for (const [k2, list2] of present) {
-            if (k2 === key) continue;
-            for (const e2 of list2) {
-              const st2 = UNIT_STATS[e2.kind] ?? DEFAULT_UNIT_STATS;
-              foeDps += Math.max(2, st2.dps) * (1 + 0.1 * lvOf(wUpsBy, e2.life.owner, sec));
-            }
+        /* 화력 배분 — 예전 셈은 상대 편 dps를 통째로 합쳐 우리 편 인원수로 나눴다.
+           거기엔 구멍이 셋 있었다(map-replayunits A-2·A-3·B-5):
+             (ㄱ) 하한 max(2, dps) 탓에 무기가 아예 없는 오버로드·메딕·드랍십·과학선·
+                  퀸·디파일러까지 초당 2씩 때렸다 — 오버로드 20기 뭉치가 초당 40의
+                  화력이었다.
+             (ㄴ) 대공·대지 구분이 없어 질럿이 뮤탈을 때리고 스커지가 지상을 때렸다.
+             (ㄷ) 표적 크기·방어력·공격 종류가 전혀 안 들어갔다 — 익스플로시브가 스몰에
+                  절반만 들어가는 원전의 뼈대가 통째로 없었다.
+           이제 사수마다 '이 표적에게 쓸 무기'를 표에서 찾고(weaponVs — 없으면 그 사수는
+           이 표적에게 한 톨도 못 낸다), 그 무기가 이 표적에게 내는 초당 피해를 그 사수가
+           겨눌 수 있는 표적 수로 나눠 준다. 가동률 0.7은 그대로 둔다 — 배분 방식만
+           바뀌는 것이지 총 화력의 눈금을 여기서 다시 고르지 않는다.
+           ⚠ 원전의 집중사격·오버킬은 여전히 없다(B-5). 이것은 '한 편이 낸 화력을 상대
+           편에 고르게 흩는' 모형이고, 다만 흩는 단위가 유닛 하나에서 무기 하나로
+           내려온 것이다. */
+        let totAir = 0;
+        let totGnd = 0;
+        const nAir = new Map<string, number>();
+        const nGnd = new Map<string, number>();
+        for (const [k2, list2] of present) {
+          let ca = 0;
+          let cg = 0;
+          for (const x of list2) { if (x.air) ca += 1; else cg += 1; }
+          nAir.set(k2, ca);
+          nGnd.set(k2, cg);
+          totAir += ca;
+          totGnd += cg;
+        }
+        /* 사수마다 겨눌 수 있는 표적 수를 미리 센다 — 안쪽 루프에서 다시 세면 개체 수의
+           세제곱이 되어 큰 교전에서 분석이 멈춘다. */
+        const canHit = new Map<Agent, number>();
+        for (const [k2, list2] of present) {
+          const oa = totAir - (nAir.get(k2) ?? 0);
+          const og = totGnd - (nGnd.get(k2) ?? 0);
+          for (const e2 of list2) {
+            canHit.set(e2, (e2.prof.air ? oa : 0) + (e2.prof.ground ? og : 0));
           }
-          if (foeDps <= 0) continue;
-          const per = (foeDps * 0.7) / mine.length;
-          for (const a of mine) hurt(a, sec, per, false);
+        }
+        for (const [key, mine] of present) {
+          for (const a of mine) {
+            const aLv = lvOf(aUpsBy, a.life.owner, sec);
+            let sh = 0;
+            let hp = 0;
+            for (const [k2, list2] of present) {
+              if (k2 === key) continue;
+              for (const e2 of list2) {
+                const w = weaponVs(e2.prof, a.air);
+                if (!w) continue;
+                const n = canHit.get(e2) ?? 0;
+                if (n <= 0) continue;
+                const bite = dpsVs(w, e2.prof, lvOf(wUpsBy, e2.life.owner, sec), a.kind, aLv);
+                sh += bite.shield / n;
+                hp += bite.hp / n;
+              }
+            }
+            if (sh <= 0 && hp <= 0) continue;
+            hurtSplit(a, sec, sh * 0.7, hp * 0.7, false);
+          }
         }
         /* 아군 피해(럴커·시즈모드·리버)는 물렸다(지적: 전투의 내용과 결과가 완전히
            달라짐 + 공격하는 유닛이 없는데 에너지가 달거나 죽는다) — 표적 둘레에
