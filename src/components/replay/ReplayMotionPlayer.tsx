@@ -8875,7 +8875,7 @@ const MODEL_YAW_TWEAK: Record<string, number> = {
      누웠다. 이 표는 시계방향이 +다(위 히드라 덴·포지의 반시계 −90과 짝). */
   evo: 90, observatory: 90,
 };
-const buildingYawOf = (kind: string): number =>
+export const buildingYawOf = (kind: string): number =>
   BUILDING_BASE_YAW + (MODEL_YAW_TWEAK[kind] ?? 0);
 
 /* 음영 증폭(지적: 모델들 그림자가 너무 없어 — 갤러리보다 더 진하게) — 흑·백 덮개 면의
@@ -9173,7 +9173,6 @@ function unitSprite(
 /* 건물 채움 보정에서 빼는 것들 — 크립 판(clipWalk)은 지형이고, 애드온 통로는 본체와
    부속 사이를 잇는 폭이 곧 제 길이라 늘리면 어긋난다. 미네랄은 발자국이 아니라 덩이
    넷을 흩어 놓은 무리라 요청대로 손대지 않는다. */
-const BLD_FILL_SKIP = new Set(["addonlink", "mineral"]);
 /** 프로토스 소환구 상자(타일)와 지면에서 띄우는 높이(타일) — 요청: 축소 + 더 띄우기. */
 const WARP_TILES = 1.8;
 const WARP_LIFT = 0.75;
@@ -9184,8 +9183,6 @@ const CONSTRUCT_DROP = 0.55;
    noUnusedLocals가 막는 죽은 코드라 정의째 지운다. 짙기(건물 0.5 · 부양 0.5/0.34 ·
    지상 0.32)는 색과 무관한 다른 지적("그림자가 너무 흐려 안 보인다")으로 올려 둔 값이라
    롤백 대상이 아니다 — 색만 되돌린다. */
-/** 건물 모델이 제 발자국 상자를 채우는 몫 — 종류마다 한 번만 잰다. */
-const BLD_FILL_CACHE = new Map<string, number>();
 /** 건물 모델의 발·가로중심 자리 [cx몫, bot몫] — 구운 판 크기에 대한 비로 잰다.
  *  종류마다 한 번만 재는 것이 핵심이다(지적: 같은 넥서스인데 하나만 살짝 오른쪽으로
  *  나온다): 판은 요잉 6도 칸마다 따로 굽는데, 잉크 테두리 상자의 가로중심은 칸마다
@@ -9195,7 +9192,7 @@ const BLD_ANCHOR_CACHE = new Map<string, [number, number]>();
 /* 발자국 대비 그릴 몫 — 기본은 0.95(발자국을 꽉 채운다). 본진 셋만 예외로 넘겨 그린다
    (요청: "넥서스 해처리 커맨드는 예외로 더 크게, 실제 게임처럼") — 원작에서도 이 셋의
    그림은 4×3 발자국을 넘어 앉는다. 레어·하이브는 해처리의 다음 단계라 같은 몫이다. */
-const BLD_FILL_TARGET: Record<string, number> = {
+export const BLD_FILL_TARGET: Record<string, number> = {
   tomb: 1.2, pyramidWide: 1.2, hatchery: 1.2, lair: 1.2, hive: 1.2,
   /* 스포닝 풀이 너무 작게 나온다(지적) — 이 모델은 바닥 크립 얼룩(반지름 6.8)이
      16-상자를 거의 가득 채워, 채움 보정이 '이미 큰 건물'로 재고 몸을 도로 줄였다.
@@ -9206,6 +9203,86 @@ const BLD_FILL_TARGET: Record<string, number> = {
      파일런은 모델을 건드리는 대신 기본값 0.95의 1.5배인 1.425를 못 박아, 다른 건물보다
      반쯤 더 크게 선다. */
   diamond: 1.425,
+};
+/** 건물 모델 공간 정규화 배수 — 발 가운데(8,16)를 축으로 곱한다. **화면 크기가 아니다.**
+ *
+ *  이 표는 **`npm run bld-norm -- --emit`이 낸 값이다. 손으로 고치지 마라.**
+ *  건물 모델 면을 한 줄이라도 고쳤으면 그 명령을 다시 돌려 갈아라.
+ *
+ *  왜 필요했나(요청: "건물들 크기가 제각각이 되지않도록 모델링은 정규화해놓고 그걸
+ *  캔버스에 맞게 사용해야할거 같거든? 건물 모델링 정규화는 아까 안했지?") — 안 했다.
+ *  유닛 정규화는 SHAPE_GALLERY의 group === "유닛"만 돌았고, 건물은 배수 1로 떨어졌다.
+ *  실측하니 55종의 잉크 폭이 6.79 ~ 18.15로 **2.67배** 벌어져 있었고, 같은 발자국끼리도
+ *  갈렸다(4×3: 사이언스 퍼실리티 11.07 대 팩토리 14.30).
+ *
+ *  화면에서 안 그렇게 보이던 것은 렌더러가 런타임에 가리고 있었기 때문이다 — 구운 판의
+ *  잉크 폭을 재서 발자국의 95%가 되게 다시 굽던 BLD_FILL_CACHE다. 유닛에서 걷어낸 바로
+ *  그 방식이고 같은 값을 치렀다: 모델을 고치면 화면 크기가 따라 흔들리고, 보정을 kind마다
+ *  한 번만 재 캐시하며, 16-상자를 넘는 종류는 **잘린 잉크**를 재느라 오차가 겹쳤다.
+ *  이제 그 일을 모델 좌표로 옮겼고 런타임 보정은 지웠다.
+ *
+ *  자: 건물은 발자국 상자에 fitWidth로 맞추므로(UnitLayer의 `sidePx = op.fitWidth ? wPx`)
+ *  덩치를 정하는 것은 **잉크 '폭'** 하나다(유닛은 √(폭×높이)였다). 목표는
+ *  BLD_FILL_TARGET(기본 0.95) × 16이고, 상한은 굽는 캔버스(16 + 여백 5.6×2)를
+ *  안 넘는 선이다. 상한이 1보다 작은 종류는 이미 넘치고 있다는 뜻이라 "더 키우지만
+ *  않는다"로 그친다 — 상한을 이유로 줄이면 멀쩡히 보이던 건물이 갑자기 작아진다.
+ *  표에 없는 종류는 1(모델 그대로)이다. */
+const BLD_NORM: Record<string, number> = {
+  academy: 1.408,
+  arch: 1.556,
+  archives: 1.896,  // 상자 상한에 걸림
+  armory: 1.452,
+  assim: 1.709,
+  cavern: 1.082,
+  citadel: 1.724,  // 상자 상한에 걸림
+  cocoon: 1.756,
+  coil: 1.058,
+  comsat: 1.968,
+  covert: 2.065,
+  creep: 1.219,
+  ctower: 2.111,  // 상자 상한에 걸림
+  cube: 1.137,
+  cyber: 1.768,  // 상자 상한에 걸림
+  diamond: 1.564,  // 상자 상한에 걸림
+  dmound: 1.115,
+  dome: 1.418,
+  ebay: 0.982,
+  evo: 1.214,
+  extract: 0.991,
+  factory: 1.063,
+  fleetbeacon: 1.711,
+  forge: 1.398,
+  gate: 1.504,
+  geyser: 1.513,
+  gspire: 1.109,  // 상자 상한에 걸림
+  hatchery: 1.367,
+  hive: 1.023,  // 상자 상한에 걸림
+  hydraden: 1.036,
+  lair: 1.157,  // 상자 상한에 걸림
+  mineral: 1.963,
+  mshop: 1.958,
+  nsilo: 1.949,  // 상자 상한에 걸림
+  nydus: 1.184,
+  observatory: 1.955,
+  physlab: 2.008,
+  plane: 1.022,
+  pool: 1.525,
+  pyramidWide: 1.058,
+  queensnest: 1.184,
+  refinery: 1.266,
+  robobay: 1.423,
+  sbattery: 2.032,
+  scaffold: 1.733,
+  scifac: 1.373,
+  spire: 1.232,  // 상자 상한에 걸림
+  spore: 1.422,
+  sunken: 1.072,
+  tomb: 1.534,
+  tombFlat: 1.140,
+  trapezoid: 1.514,
+  tribunal: 1.615,
+  turret: 1.608,
+  warpin: 2.038,
 };
 const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number; w: number; cx: number }>();
 /** 경로의 세로 범위 [위, 아래] — 공사에서 부품을 높이 순으로 세우는 데 쓴다.
@@ -9304,7 +9381,14 @@ function buildingSprite(
   const { faces: all } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
   if (!all) return null;
   const faces = stageFaces(lodFilter(all, lod), stg);
-  const pad = Math.ceil(sideQ * 0.15) + 2;
+  /* 여백을 15% → 35%로 넓혔다(과제 #67) — 이 여백이 곧 모델이 쓸 수 있는 자리다.
+     15%면 모델 단위로 양옆 2.4뿐이라, 정규화 배수를 재 보니 55종 중 30종이 목표에
+     못 가고 여기서 잘렸다(그리고 지금도 7종은 이미 넘쳐 잘리고 있다: 하이브·레어·
+     피라미드·스타포트·익스트랙터·히드라덴·그레이터 스파이어).
+     35%면 양옆 5.6이라 캡이 거의 안 걸린다. 값은 캔버스 넓이로 치른다(1.3² → 1.7²,
+     1.7배) — 건물 판은 종류·요잉당 한 번만 굽고 캐시하므로 감당할 만하다.
+     자리 계산은 전부 이 pad와 l에서 파생되므로(bAnc는 l에 대한 비) 함께 따라온다. */
+  const pad = Math.ceil(sideQ * 0.35) + 2;
   const l = sideQ + pad * 2;
   const cv = document.createElement("canvas");
   cv.width = Math.max(1, Math.ceil(l * B));
@@ -9315,6 +9399,14 @@ function buildingSprite(
   c2.translate(pad + sideQ / 2, pad + sideQ);
   c2.scale(sideQ / 16, sideQ / 16);
   c2.translate(-8, -16);
+  /* 정규화(과제 #67) — 발 가운데(8,16)를 축으로 모델을 키우거나 줄인다. 축이 발이라
+     밑동이 발자국 바닥에 그대로 앉고, 모델이 커져도 자리가 안 흔들린다. */
+  const bn = BLD_NORM[op.kind];
+  if (bn !== undefined && bn !== 1) {
+    c2.translate(8, 16);
+    c2.scale(bn, bn);
+    c2.translate(-8, -16);
+  }
   for (const [d, o, fill] of faces) {
     c2.globalAlpha = shadeBoost(o, fill);
     c2.fillStyle = fill ?? op.color;
@@ -9571,36 +9663,16 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         // 스프라이트로 찍는다(요청: 건물도 병목 감축) — 실패 시 직접 그리기 폴백.
         const sidePx = op.fitWidth ? wPx : Math.min(wPx, hPx);
         const sideQ = Math.max(4, Math.round(sidePx / 2) * 2);
-        let bspr = buildingSprite(op, sideQ, B);
-        let sideQEff = sideQ;
-        /* 발자국을 꽉 채운다(지적: "건물크기가 제각각이야", "캔버스를 왜 꽉 안 채우게
-           해놨어") — 상자는 발자국(타일)에 맞춰 뒀지만 모델이 그 상자를 채우는 몫이
-           0.40~1.15로 제각각이라(실측: 옵저버토리 0.40 · 컴샛/머신샵 0.50 · 게이트
-           0.67 · 해처리 0.91 · 커맨드/넥서스 1.15) 같은 4×3 건물끼리도 세 배 가까이
-           벌어졌다. 구운 판의 실제 잉크 폭을 재서 발자국의 95%가 되게 맞춘다 —
-           작은 놈은 키우고, 발자국을 넘던 놈(커맨드·넥서스)은 줄인다.
-           그림자도 이 값을 써야 해서(아래) 스프라이트 바로 뒤에서 구한다. */
-        let bFill = BLD_FILL_CACHE.get(op.kind);
-        if (bFill === undefined && bspr && bspr.w > 0) {
-          bFill = (bspr.w / B) / sideQ;
-          BLD_FILL_CACHE.set(op.kind, bFill);
-        }
-        // 발·가로중심 보정도 종류마다 한 번만(요잉 칸마다 달라지면 자리가 흔들린다).
+        const bspr = buildingSprite(op, sideQ, B);
+        /* 런타임 채움 보정은 없앴다(과제 #67) — 구운 판의 잉크 폭을 재서 발자국의
+           95%가 되게 다시 굽던 자리다. 그 일을 이제 BLD_NORM이 모델 좌표에서 한다.
+           보정이 있으면 모델을 고칠 때마다 화면 크기가 조용히 흔들리고, 16-상자를
+           넘는 종류는 잘린 잉크를 재느라 오차가 겹쳤다. 판도 한 번만 굽는다. */
+        // 발·가로중심 보정은 종류마다 한 번만(요잉 칸마다 달라지면 자리가 흔들린다).
         let bAnc = BLD_ANCHOR_CACHE.get(op.kind);
         if (bAnc === undefined && bspr && bspr.w > 0) {
           bAnc = [(bspr.cx / B) / bspr.l, (bspr.bot / B) / bspr.l];
           BLD_ANCHOR_CACHE.set(op.kind, bAnc);
-        }
-        const kFit = op.clipWalk || BLD_FILL_SKIP.has(op.kind) || !bFill
-          ? 1 : Math.min(2.5, Math.max(0.7, (BLD_FILL_TARGET[op.kind] ?? 0.95) / bFill));
-        /* 채움 보정만큼 더 크게 굽는다(지적: 실제 모델링 크기가 작은 건물이 화면에서
-           해상도가 떨어져 보인다) — 발자국 크기로 구운 판을 최대 2.5배까지 늘려
-           그리고 있었으니 그만큼 뿌옜다. 늘릴 배율을 알고 나면 그 크기로 다시 구워
-           확대 없이 1:1로 찍는다. */
-        if (bspr && kFit > 1.08) {
-          const sideQ2 = Math.max(4, Math.round((sideQ * kFit) / 2) * 2);
-          const b2 = buildingSprite(op, sideQ2, B);
-          if (b2) { bspr = b2; sideQEff = sideQ2; }
         }
         /* 접지 그림자(재재지적: 해처리가 떠 있다) — 상자 바닥 어림이 아니라 구운
            판의 실제 바닥 픽셀(contentBottom)에 붙인다. 모델이 상자를 다 안 채워도
@@ -9619,13 +9691,13 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
           /* 그림자를 그린 몸에 맞춘다(지적: 건물 크기를 고치면서 그림자는 그대로라
              너무 작고, 3D에선 바닥에 안 붙고 서 있다) — 폭을 발자국의 0.72배로 못
              박아 두었더니, 채움 보정으로 몸이 커진 뒤엔 발치에 작은 점만 남았다.
-             실제로 그려지는 잉크 폭(kFit 반영)의 0.88배로 잡는다.
+             실제로 그려지는 잉크 폭의 0.88배로 잡는다.
              입체에서는 임의 축소를 걷고 바닥면 그대로 눕힌다(지적: 3D 그림자는 바닥
              팔레트에 맞아야 한다) — 세로 한 타일이 화면에서 가로 한 타일의 몇 배로
              보이는지(groundSquash)를 자리마다 실제로 재어 넘겨받는다. 그 값이 곧
              바닥면의 눌림이라, 그림자가 지면 격자와 같은 각도로 깔린다. */
           const squish = 0.55;
-          const inkW9 = bspr && bspr.w > 0 ? (bspr.w / B) * ((sidePx * kFit) / sideQEff) : wPx;
+          const inkW9 = bspr && bspr.w > 0 ? (bspr.w / B) * (sidePx / sideQ) : wPx;
           /* 2D는 그린 몸에만 맞춘다(지적: 평면에선 건물이 높이까지 바닥 상자 안으로
              눌려 들어가, 발자국 폭(wPx) 바닥은 그린 몸보다 늘 크다) — 발자국 하한을
              걷고 잉크 폭의 0.72만 덮는다. 입체는 종전대로 발자국 하한을 지킨다. */
@@ -9662,7 +9734,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
           ctx.restore();
         }
         if (bspr) {
-          const k = (sidePx * kFit) / sideQEff;
+          const k = sidePx / sideQ;
           // 겹친 것만 살짝 그림자(확대 적용: 유닛·건물 공통).
           if (airOverlap.has(op)) {
             ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
@@ -13361,7 +13433,7 @@ export default function ReplayMotionPlayer({
                모델 제 비율이 바닥 폭을 따라 정한다(아래 fitWidth). */
             /* 애드온의 1.35배 뻥튀기는 걷었다 — "작은 부속 모델이 상자를 덜 채워
                왜소하다"는 지적을 상자째 키워 때우던 보정인데, 이제 그리기 단계가 잉크
-               폭을 재서 발자국을 채우므로(BLD_FILL_CACHE) 상자는 제 발자국(2×2) 그대로
+               폭을 재서 발자국을 채우므로(지금은 BLD_NORM) 상자는 제 발자국(2×2) 그대로
                두면 된다. 그대로 두면 부속만 발자국보다 28% 넓게 그려진다. */
             const wTiles = fp2[0] * (shapeKind ? 1 : 0.8) * bldMul;
             const hTiles = wTiles * ((fp2[1] + (shapeKind ? riseOf(unit) : 0)) / fp2[0]);
