@@ -11774,9 +11774,18 @@ export default function ReplayMotionPlayer({
       style={{ margin: "0 auto" }}
     >
       <div className="scr-motion-maprow">
-      {teamCol(1)}
-      {/* 로스터 가운데 vs(요청: 구분선 말고 vs — 모바일·PC 공통). */}
-      <span className="scr-motion-teamvs" aria-hidden>vs</span>
+      {/* 로스터를 한 덩어리로 묶는다(지적: "조작부쪽을 댓글쪽처럼 1열짜리 그리드로") —
+          예전에는 팀 기둥 둘이 페이지 그리드의 1열·2열을 **직접** 차지했다. 그래서 왼쪽이
+          110px 두 칸으로 쪼개져 있었고, 그 위아래의 색상·보기·조작 줄은 매번 두 칸을
+          걸쳐야 했다(안 걸치면 절반만 쓴다 — 실제로 색상 줄이 그랬다).
+          로스터가 둘로 나뉜 것은 로스터 안의 사정이지 페이지 그리드가 알 일이 아니다.
+          한 덩어리로 묶어 페이지에서는 한 칸만 차지하게 한다 — 댓글 기둥과 같은 꼴이다. */}
+      <div className="scr-motion-rosterwrap">
+        {teamCol(1)}
+        {/* 로스터 가운데 vs(요청: 구분선 말고 vs — 모바일·PC 공통). */}
+        <span className="scr-motion-teamvs" aria-hidden>vs</span>
+        {teamCol(2)}
+      </div>
       <div
         className={cx("scr-motion-map", pitched && "scr-motion-pitched")} ref={mapRef}
         onPointerDown={onMapPointerDown}
@@ -11788,7 +11797,7 @@ export default function ReplayMotionPlayer({
              보기(2D·3D)와 무관하다: 3D일 때만 상자를 넓히면 보기를 바꿀 때마다 세로가
              달라져 탐색바 아래가 통째로 밀린다(실측 285px). 3D의 눕힘은 상자가 아니라
              회전 전 판(pitchGeom의 hPre)이 맡는다. */
-          /* 1024는 상한이다(요청: min(1024px, 100%)) — 고정만 두면 왼쪽 기둥(110+110)과
+          /* 1024는 상한이다(요청: min(1024px, 100%)) — 고정만 두면 왼쪽 기둥(232)과
              댓글 기둥(232)에 간격까지 476px을 더한 값이 화면을 넘어, 대략 1560px보다
              좁은 화면에서 페이지에 가로 스크롤이 생겼다(실측: 1440에서 28px, 1280에서
              188px). 100%는 그리드 칸(minmax(0,1fr)) 폭이라 순환하지 않는다. */
@@ -14008,7 +14017,6 @@ export default function ReplayMotionPlayer({
         {/* (삭제) PC 확대 조절바 — PC에서는 확대 기능을 통째로 걷었다(요청). 확대·이동은
             이제 모바일 손짓(더블탭·두 손가락)만의 것이다. */}
       </div>
-      {teamCol(2)}
       </div>
 
       {/* 색상 전환은 지도 바로 아래 왼쪽에 제 줄로 둔다(요청) — 보기 설정 줄에 성능·보기·
@@ -14023,10 +14031,7 @@ export default function ReplayMotionPlayer({
           value={colorMode}
           onChange={(v) => setColorMode(v)}
           aria-label="색상"
-          /* 넓은 배치는 균등폭(지적: 반절만 쓴다) — 좁은 배치에서는 이 줄에 이것 하나뿐이라
-             라벨 폭 칸(fit)으로 오밀조밀한 편이 낫고, 넓은 배치에서는 왼쪽 기둥 폭이
-             정해져 있어 그 폭을 반씩 나눠 갖는 편이 낫다. */
-          fit={!wide}
+          fit
           toggle
         />
       </div>

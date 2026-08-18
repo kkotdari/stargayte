@@ -11021,8 +11021,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    왼쪽 기둥 그리드가 따로 배치하므로 :not으로 비켜 준다. */
 .scr-motion:not(.scr-motion-wide) .scr-motion-teamcol:last-of-type .scr-motion-teamcol-name { align-self: flex-end; }
 /* 세 칸(1fr auto 1fr) — 가운데 auto 칸이 vs 자리다(요청: 구분선 말고 vs). */
-.scr-motion:not(.scr-motion-wide) .scr-motion-maprow { display: grid; grid-template-columns: 1fr auto 1fr; row-gap: 6px; column-gap: 0; }
-.scr-motion:not(.scr-motion-wide) .scr-motion-maprow .scr-motion-map { grid-column: 1 / -1; grid-row: 2; }
+.scr-motion:not(.scr-motion-wide) .scr-motion-maprow { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 6px; }
+/* 세 칸(1팀·vs·2팀)은 이제 로스터 덩어리 안의 일이다 — 맵줄은 로스터와 맵 둘뿐이다. */
+.scr-motion:not(.scr-motion-wide) .scr-motion-rosterwrap { display: grid; grid-template-columns: 1fr auto 1fr; column-gap: 0; }
+.scr-motion:not(.scr-motion-wide) .scr-motion-maprow .scr-motion-map { grid-column: 1; grid-row: 2; }
 /* 두 줄 허용 + 팀별 가운데 정렬 + 온이름(재요청: 공간 아낀 만큼) — 헤드 줄의 BEST
    칩을 걷어 여유가 생겼다. 이름은 다시 풀로 흐르고, 못 다 서면 둘째 줄로 넘어간다. */
 .scr-motion:not(.scr-motion-wide) .scr-motion-teamcol {
@@ -11038,7 +11040,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* PC(wide) — 1열(1팀) 오른끝에 세로 가운데로: 2팀 로스터와는 열 간격(12px)만큼
    떨어진다(재지적: 2팀에 붙지 않게 왼쪽으로). */
 .scr-motion-wide .scr-motion-teamvs {
-  grid-column: 1; grid-row: 2; z-index: 1;
+  grid-column: 1; grid-row: 1; z-index: 1;
   align-self: center; justify-self: end; margin-right: -2px;
 }
 .scr-motion:not(.scr-motion-wide) .scr-motion-teamcol-item .scr-motion-base-ring { display: none; }
@@ -11422,7 +11424,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-speeds .scr-pill-tabs { height: 18px; }
 .scr-motion-speeds .scr-pill-tab-btn { padding: 0 5px; font-size: 10px; }
 /* PC: 진행바 아랫줄(7행)에 오른끝 정렬(지적: 겹침). */
-.scr-motion-wide .scr-motion-sharerow { grid-column: 3; grid-row: 7; }
+.scr-motion-wide .scr-motion-sharerow { grid-column: 2; grid-row: 7; }
 /* 시각 아래 작게(요청) — 컴팩트: 높이 18px, 여백 최소, 글꼴 10px. */
 /* 프라이머리 테마(재재지적) — 앱의 주요 버튼(.scr-btn-primary)과 같은 흰 알약 +
    글로우. 둥근 네모 유지, 컴팩트 높이. */
@@ -11729,7 +11731,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   /* 왼쪽 기둥 축소(지적: 너무 넓어짐 — 줄을 나눠 폭 줄이기) — 150×2에서 110×2로.
      보기 버튼 일곱(맵연결 포함)·배속 무리는 flex-wrap이 두 줄로 자연히 접는다. */
   /* 댓글 기둥 폭 = 왼쪽 기둥 폭(요청) — 110 + 12(간격) + 110 = 232px. */
-  display: grid; grid-template-columns: 110px 110px minmax(0, 1fr) 232px;
+  /* 왼쪽을 한 칸으로(지적: "조작부쪽을 댓글쪽처럼 1열짜리 그리드로") — 110px 두 칸이던
+     것을 232px 한 칸으로 합쳤다. 폭의 합은 그대로다(110+12+110 = 232). 로스터의 좌우
+     나눔은 로스터 덩어리(.scr-motion-rosterwrap) 안으로 들어갔다. */
+  display: grid; grid-template-columns: 232px minmax(0, 1fr) 232px;
   grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
   column-gap: 12px; row-gap: 8px; align-items: start;
 }
@@ -11737,16 +11742,16 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 맵은 조종부 줄(5행)까지 내려온다(지적: 재생 버튼이 너무 아래 — 미니맵 하단과 맞아야) —
    1/5로 두면 조종부·탐색바가 맵 '아래' 줄에 서서 재생 버튼이 맵 바닥보다 낮았다.
    1/6이면 조종부(5행, 바닥 정렬)의 밑변이 곧 맵 밑변이다. */
-.scr-motion-wide .scr-motion-map { grid-column: 3; grid-row: 1 / 6; }
+.scr-motion-wide .scr-motion-map { grid-column: 2; grid-row: 1 / 6; }
 /* 탐색바는 맵 바로 아래(재재지적) — 맵이 5행까지 차지하므로 6행이 곧 '맵 바로 아래'다.
    보기 버튼 여섯은 왼쪽 기둥의 배속/재생 줄 '위'로: 4행(늘어나는 줄) 바닥에 버튼,
    5행에 조종부, 6행엔 등록자와 탐색바가 나란히 선다. */
 /* 공유 줄은 제외(지적: PC에서 진행바와 장면공유 버튼 겹침) — 6행을 나눠 쓰지 않는다. */
-.scr-motion-wide .scr-motion-bar:not(.scr-motion-bar-controls):not(.scr-motion-viewrow):not(.scr-motion-sharerow) { grid-column: 3; grid-row: 6; }
+.scr-motion-wide .scr-motion-bar:not(.scr-motion-bar-controls):not(.scr-motion-viewrow):not(.scr-motion-sharerow) { grid-column: 2; grid-row: 6; }
 /* 보기 버튼은 왼쪽 기둥에서 종류별로 한 줄씩(요청) — 짝 버튼(2D/3D·팀색/개인색·작게/
    크게)과 홑 버튼이 각자 제 줄에 선다. */
 .scr-motion-wide .scr-motion-viewrow {
-  grid-column: 1 / 3; grid-row: 4; align-self: end;
+  grid-column: 1; grid-row: 4; align-self: end;
   /* 세로 갭 여유(요청) — 6px → 14px. */
   /* 묶음들을 기둥 가운데로(요청) — 세로 flex라 가로축은 align-items다. */
   display: flex; flex-direction: column; align-items: center; gap: 14px;
@@ -11759,11 +11764,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    자동 배치가 1행 1열(110px) 한 칸에 떨어뜨렸다. 왼쪽 기둥은 110+12+110=232px인데 그
    절반만 쓰고 있었다(실측: 줄 110px·알약 100px). 로스터 위 범례(.scr-motion-legend-side)
    ·보기 줄과 같이 1/3으로 걸치고, 행도 못 박아 이웃이 늘고 줄어도 안 떠돈다. */
-.scr-motion-wide .scr-motion-colorrow { grid-column: 1 / 3; grid-row: 1; justify-content: center; }
-/* 알약이 남은 폭을 다 먹는다(요청: 전체 폭) — 라벨(색상)은 제 글자폭 그대로고 나머지가
-   알약 몫이다. 넓은 배치에서는 fit(라벨 폭 칸)을 끄고 균등폭으로 주므로(JSX의 fit={!wide})
-   두 옵션이 줄을 반씩 나눠 갖는다. */
-.scr-motion-wide .scr-motion-colorrow .scr-pill-tabs { flex: 1 1 auto; min-width: 0; }
+.scr-motion-wide .scr-motion-colorrow { grid-column: 1; grid-row: 1; justify-content: center; }
 /* 왼쪽 — 같은 팀은 세로로(지적), 두 팀 기둥이 나란히 서고 줄(행)이 서로 맞는다.
    조작부는 로스터 바로 밑이 아니라 기둥의 아래쪽에 붙는다(요청) — 늘어나는 줄(1fr)을
    차지하고 스스로 바닥 정렬한다. */
@@ -11771,10 +11772,17 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 왼쪽 기둥 차례 — 2행 로스터, 3행 범례(2열), 5행 조작부. 기둥 타임스탬프는 걷었다
    (지적: PC에서 타임스탬프가 두 번 — 맵 이름 줄의 시각이 그대로 말하고, 등록자는 그
    시각 오른쪽에 붙는다 .scr-story-when-by). */
-.scr-motion-wide .scr-motion-teamcol:first-of-type { grid-column: 1; grid-row: 2; }
-.scr-motion-wide .scr-motion-teamcol:last-of-type { grid-column: 2; grid-row: 2; }
+/* 로스터 덩어리 — 페이지 그리드에서는 한 칸(1열 2행)이고, 그 안에서 팀 둘이 나뉜다.
+   칸 폭 232px을 두 칸 110px + 간격 12px로 쪼개므로 로스터의 겉모습은 예전과 똑같다. */
+.scr-motion-wide .scr-motion-rosterwrap {
+  grid-column: 1; grid-row: 2;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px;
+  align-items: start;
+}
+.scr-motion-wide .scr-motion-teamcol:first-of-type { grid-column: 1; grid-row: 1; }
+.scr-motion-wide .scr-motion-teamcol:last-of-type { grid-column: 2; grid-row: 1; }
 .scr-motion-legend-side {
-  grid-column: 1 / 3; grid-row: 3;
+  grid-column: 1; grid-row: 3;
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 5px 10px; justify-items: start; text-align: left;
   /* 로스터↔범례, 범례↔아래를 가르는 구분선(요청) — 흰 계열 옅은 선. */
@@ -11788,7 +11796,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* PC도 같은 한 줄(요청: PC·모바일 공통) — 자리는 옛 탐색바처럼 맵 아래(3열)라
    탐색바가 맵 폭을 그대로 쓴다. 속 배치는 기본(플렉스 한 줄) 그대로다. */
 .scr-motion-wide .scr-motion-bar-controls {
-  grid-column: 3; grid-row: 6;
+  grid-column: 2; grid-row: 6;
 }
 .scr-motion-wide .scr-motion-toolrow { display: contents; }
 .scr-motion-wide .scr-motion-toolrow-mid { display: none; }
@@ -11805,7 +11813,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    인라인) — 경기 결과의 댓글 컴포넌트(.scr-comment-*)가 통째로 앉는다. 맵 높이를 넘으면
    제 스크롤이다(그리드 한 칸을 stretch로 받아 overflow). */
 .scr-motion-sidewrap {
-  grid-column: 4; grid-row: 1 / 6; align-self: stretch; min-height: 0;
+  grid-column: 3; grid-row: 1 / 6; align-self: stretch; min-height: 0;
   overflow-y: auto; padding: 2px 4px 2px 2px;
 }
 /* 확대 기둥의 댓글은 위 구분선이 필요 없다(요청) — 카드 인라인용 경계선(.scr-activity-notes
