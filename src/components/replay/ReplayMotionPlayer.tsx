@@ -1113,7 +1113,13 @@ function paintBase(faces: ShapeFace[], base: string): ShapeFace[] {
                      확실히 갈린다.
    밝기는 셋을 나란히 놓고 맞췄다(대략 0.67 / 0.55 / 0.55) — 한 종족만 튀지 않게.
    여기 한 줄만 고치면 그 종족 건물·유닛 전체가 바뀐다. */
-const RACE_BASE_TONE = { terran: "#aab1b9", toss: "#b08e33", zerg: "#c9835c" } as const;
+/* 테란과 저그만 한 단 더 낮췄다(요청: "더더 어둡게 — 특히 테란이 밝아 / 프로토스는
+   괜찮"). 앞서 한 번 낮춘 값도 화면에서는 여전히 흰끼가 돌아, 위에 얹는 개인색이
+   바탕에 묻혔다 — 은색이 제일 심했다. 토스 금색은 이미 알맞다고 해 그대로 둔다.
+     테란 #aab1b9 → #6c737b  (가장 크게 낮춘다)
+     저그 #c9835c → #935c3e
+     토스 #b08e33 그대로 */
+const RACE_BASE_TONE = { terran: "#6c737b", toss: "#b08e33", zerg: "#935c3e" } as const;
 /** 몸에는 종족 바탕색을 입히고, 뒤에 붙이는 accent 면만 개인색으로 남긴다(규칙 1·4).
  *  accent는 칠하지 않은 채로 두어야 그리는 쪽이 임자 색을 넣는다 — 건물마다 눈에 띄는
  *  한두 곳만. */
@@ -1328,8 +1334,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      선체 허리띠와 관제 돔이다(과하지 않게, 그러나 확실히 보이게).
      키값은 한 자로: 몸통 부품은 제 자리의 depthNow×1.6, 지붕에 얹힌 것만 상수. */
   tomb: () => {
-    const SILVER = "#c9ced6";
-    const STEEL = "#8b9099";
+    /* 지역 은·강철도 새 테란 바탕(#7d848c)에 맞춰 낮췄다 — 커맨드만 예전 흰 은색으로
+       두면 이 건물 하나가 화면에서 튄다. */
+    const SILVER = "#8b929a";
+    const STEEL = "#626871";
+    /** 굴뚝용 어두운 은색(요청) — 구리였던 것을 어두운 금속으로 바꾼다. */
+    const DARKSIL = "#4e545c";
     const GLASS = "#7fd4e8";
     const LAMP = "#ffb347";
     /* 구리는 '가장자리'가 아니라 '큰 면'으로 간다(지적: "구리색 테두리는 돔 양쪽 옆에
@@ -1374,22 +1384,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        0.82다. 사진의 선체도 두툼한 통이 아니라 얇은 원반이고, 통이 높으면 그 위의
        층진 돔이 눌려 보인다. 발(pod)도 같은 비로 낮춰야 발이 몸보다 높아지지 않는다. */
     out.push(...tagKey(paintBase(spirePillar({
-      x: 0, y: 0, z0: 0, h: 0.4, w: 5.15, tipW: 5.4,
+      x: 0, y: 0, z0: 0, h: 0.8, w: 5.15, tipW: 5.4,
       segs: 1, sides: 16, hold: 0, taper: 1, caps: "bottom",
     }), SILVER), 0.4));
     out.push(...tagKey(paintBase(spirePillar({
-      x: 0, y: 0, z0: 0.4, h: 0.14, w: 5.16, tipW: 5.16,
+      x: 0, y: 0, z0: 0.8, h: 0.14, w: 5.16, tipW: 5.16,
       segs: 1, sides: 16, hold: 0.5, caps: "none",
     }), STEEL), 0.5));
     out.push(...tagKey(paintBase(spirePillar({
-      x: 0, y: 0, z0: 0.54, h: 0.28, w: 5.4, tipW: 5.34,
+      x: 0, y: 0, z0: 0.94, h: 0.28, w: 5.4, tipW: 5.34,
       segs: 1, sides: 16, hold: 0.5, caps: "top",
     }), SILVER), 0.6));
     /* 받침 윗면 테두리는 은색이다. 여태 여기 구리 링을 5.62로 둘렀는데, 돔 밑을
        4.9로 좁히자 그 링이 통째로 드러나 '청동 챙을 두른 접시'가 됐다. 구리는 요청대로
        돔 옆 세로띠와 꼭대기 상자 둘로 몰고, 이 자리는 강철 테두리만 남긴다. */
     out.push(...tagKey(paintBase(spirePillar({
-      x: 0, y: 0, z0: 0.7, h: 0.12, w: 5.46, tipW: 5.46,
+      x: 0, y: 0, z0: 1.1, h: 0.12, w: 5.46, tipW: 5.46,
       segs: 1, sides: 16, hold: 0.5, caps: "none",
     }), STEEL), 1.6));
 
@@ -1400,12 +1410,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        위는 급한 옆선을 준다. 잘린 윗면(caps "top")이 그대로 둘째 단의 갑판이다.
        돔 밑을 받침(5.4)보다 좁은 4.9로 잡은 것은 사진처럼 둘레에 테두리 갑판을
        남기기 위해서다 — 아래 입구 구조물과 그릇들이 그 갑판 위에 앉는다. */
-    const DOME_Z = 0.82;      // 받침 윗면 = 돔 밑
-    const T1_H = 1.85;        // 아랫단 높이 — 살짝 키웠다(요청)
+    const DOME_Z = 1.22;      // 받침 윗면 = 돔 밑 (밑판을 두 배로 키운 만큼 올라갔다)
+    const T1_H = 2.78;        // 2층 기둥 높이 — 1.5배로(요청)
     const T1_RB = 4.9;        // 아랫단 밑 반지름
     const T1_RT = 3.55;       // 아랫단 잘린 윗 반지름
-    const T1_HOLD = 0.1;
-    const T1_TAPER = 0.65;
+    /* 아래쪽을 더 수직에 가깝게(요청) — 폭을 그대로 쥐는 구간(hold)을 늘리고 taper를
+       낮춘다. taper가 작을수록 밑에서는 완만히, 위로 갈수록 급히 좁아진다. */
+    const T1_HOLD = 0.2;
+    const T1_TAPER = 0.42;
     const T2_Z = DOME_Z + T1_H;   // 4.07 — 갑판
     /** 아랫단 겉면의 반지름 — 데칼·구리띠를 돔 살에 딱 붙이려면 같은 식을 써야 한다. */
     const t1R = (z: number): number => {
@@ -1458,7 +1470,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...tagKey([
         [arcBand(aMid, 0.46, t1R(zB) + 0.03, t1R(zT) + 0.03, zB, zT), 1, COPPER] as ShapeFace,
         topFace(arcBand(aMid, 0.44, t1R(zT - 0.34) + 0.05, t1R(zT) + 0.05, zT - 0.34, zT), 0.22),
-      ], depthNow(sx9 * T1_RB, sy9 * T1_RB) * 1.6 + 5));
+      ], 2.2));
     }
 
     /* 개인색 데칼(요청: "사진처럼 좀 긴 직사각형 형태고 사이사이는 멀리 떨어뜨려야해
@@ -1467,13 +1479,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        넓게 비어 있다. 열둘 → 여덟, 가로 1.9 → 0.84, 세로 1.24 → 1.35로 바꿔 세로가
        긴 직사각형이 되게 하고 구리 테두리는 걷었다. 색을 안 주면 임자 색이 칠해진다. */
     for (let w9 = 0; w9 < 8; w9 += 1) {
-      const a9 = (w9 / 8) * Math.PI * 2;
+      const a9 = ((w9 + 0.5) / 8) * Math.PI * 2;
       const sx9 = Math.sin(a9);
       const sy9 = Math.cos(a9);
       if (facingRatio(sx9, sy9) <= 0.08) continue;
       const tx9 = Math.cos(a9);
       const ty9 = -Math.sin(a9);
-      const zB = DOME_Z + 0.26;
+      /* 데칼을 위로 올린다(요청) — 맨 밑까지 이어지는 띠가 아니라 기둥 중턱에서
+         끊기는 판이다. 아래를 1.05만큼 띄워 밑판·테두리에 안 닿게 한다. */
+      const zB = DOME_Z + 1.05;
       const zT = T2_Z - 0.12;
       const seal = (rB: number, rT: number, hw: number): string =>
         polyPath3([
@@ -1485,38 +1499,44 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...tagKey([
         bodyFace(seal(t1R(zB) + 0.02, t1R(zT) + 0.02, 0.42)),
         topFace(seal(t1R(zT - 0.3) + 0.04, t1R(zT) + 0.04, 0.42), 0.2),
-      ], depthNow(sx9 * T1_RB, sy9 * T1_RB) * 1.6 + 6));
+      /* 키는 2층 기둥(2) 바로 위 고정값이다(요청: "데칼은 2층 기둥에 완전 부착") —
+         자리별 depthNow를 태우면 뒤쪽 데칼이 3층 기둥(8)보다 앞서거나 뒤서며 떠 보였다.
+         앞을 향한 것만 그리므로 한 값이면 충분하다. */
+      ], 2.4));
     }
 
     /* 통신 접시 — 잘린 갑판(T2_Z) 위에 선다. 여태 (3.2,−2.1)이었는데 돔이 좁아지며
        갑판 밖으로 밀려나 허공에 뜬다 — 갑판 반지름(3.55) 안쪽으로 당겼다. */
     out.push(...tagKey([
-      ...paintBase(cylinderFaces3(2.5, -1.65, 1.1, 1.25, T2_Z), COPPER),
-      [discPath3(2.5, -1.65, T2_Z + 1.35, 1.65), 1, STEEL] as ShapeFace,
-      capFace(discPath3(2.5, -1.65, T2_Z + 1.4, 1.2), 0.5),
+      ...paintBase(spirePillar({
+        x: 2.5, y: -1.65, z0: T2_Z, h: 1.05, w: 0.85, tipW: 0.85,
+        segs: 1, sides: 10, hold: 0.5, caps: "none",
+      }), DARKSIL),
+      [discPath3(2.5, -1.65, T2_Z + 1.05, 0.84), 1, STEEL] as ShapeFace,
+      capFace(discPath3(2.5, -1.65, T2_Z + 1.09, 0.6), 0.5),
     ], 30));
 
     /* 관제 모듈 — 꼭대기의 사각형 물체. 요청대로 통째로 구리다. 밑동 스커트는 강철로
        남겨 둬야 구리 상자가 어디서 시작하는지 눈에 잡힌다(둘 다 구리면 한 덩어리로
        뭉개진다). */
-    const MOD_Z = T2_Z + 1.5;   // 5.57 — 둘째 돔 꼭대기
-    out.push(...tagKey(paintBase(boxFaces3(0, 0.2, 3.7, 3.3, 0.3, MOD_Z - 0.27), STEEL), 30.6));
-    out.push(...tagKey(paintBase(boxFaces3(0, 0.2, 3, 2.6, 1.7, MOD_Z), COPPER), 31));
+    const MOD_Z = T2_Z + 1.62;   // 3층 기둥 꼭대기
+    out.push(...tagKey(paintBase(boxFaces3(0, 0.2, 3.2, 2.85, 0.26, MOD_Z - 0.24), STEEL), 30.6));
+    out.push(...tagKey(paintBase(boxFaces3(0, 0.2, 2.6, 2.25, 1.48, MOD_Z), COPPER), 31));
     /* 앞면 장식(창)은 앞이 보일 때만 — 뒤로 돌린 각도에서도 그리면 몸 위로 떠올라
        팔처럼 삐져나와 보였다. */
     const frontVisible = faceLight(0, 1).visible;
     if (frontVisible) {
       out.push(...tagKey([
-        [polyPath3([[-1.25, 1.51, MOD_Z + 0.38], [1.25, 1.51, MOD_Z + 0.38],
-          [1.25, 1.51, MOD_Z + 1.15], [-1.25, 1.51, MOD_Z + 1.15]]), 1, GLASS] as ShapeFace,
-        topFace(polyPath3([[-1.25, 1.52, MOD_Z + 0.94], [1.25, 1.52, MOD_Z + 0.94],
-          [1.25, 1.52, MOD_Z + 1.15], [-1.25, 1.52, MOD_Z + 1.15]]), 0.4),
+        [polyPath3([[-1.08, 1.33, MOD_Z + 0.34], [1.08, 1.33, MOD_Z + 0.34],
+          [1.08, 1.33, MOD_Z + 1.0], [-1.08, 1.33, MOD_Z + 1.0]]), 1, GLASS] as ShapeFace,
+        topFace(polyPath3([[-1.08, 1.34, MOD_Z + 0.82], [1.08, 1.34, MOD_Z + 0.82],
+          [1.08, 1.34, MOD_Z + 1.0], [-1.08, 1.34, MOD_Z + 1.0]]), 0.4),
       ], 32));
     }
     // 꼭대기 — 구리 링 위의 작은 은색 돔.
-    const TOP_Z = MOD_Z + 1.7;
-    out.push(...tagKey(paintBase(cylinderFaces3(0, 0.2, 1.42, 0.18, TOP_Z), COPPER), 32.6));
-    out.push(...tagKey(paintBase(domeFaces3(0, 0.2, 1.15, 0.85, TOP_Z), SILVER), 33));
+    const TOP_Z = MOD_Z + 1.48;
+    out.push(...tagKey(paintBase(cylinderFaces3(0, 0.2, 1.22, 0.16, TOP_Z), COPPER), 32.6));
+    out.push(...tagKey(paintBase(domeFaces3(0, 0.2, 0.98, 0.72, TOP_Z), SILVER), 33));
 
     /* 선체 둘레 장갑 패널 상자 열 개는 걷었다(요청: "아래쪽에 달린 상자모양들은 다
        제거해도 될듯") — 돔이 층으로 갈리며 실루엣이 이미 복잡해져, 밑동의 상자들이
@@ -1539,19 +1559,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 캐노피는 판때기가 아니라 두께 있는 지붕이다 — 평면 사각 하나로 내면 어느 각도에서
        보나 종잇장이 앞으로 뻗은 꼴이라 '차양'으로 안 읽혔다. 얇은 상자로 두께를 주고
        앞 두 귀에 기둥을 세워, 진입로 위에 걸친 현관 지붕이 되게 한다. */
-    out.push(...tagKey(paintBase(boxFaces3(0, 5.85, 3.4, 2.2, 0.26, DOME_Z + 0.12), SILVER),
-      depthNow(0, 5.85) * 1.6 + 7));
-    for (const cx9 of [-1.4, 1.4]) {
-      out.push(...tagKey(paintBase(cylinderFaces3(cx9, 6.7, 0.15, DOME_Z + 0.12, 0), STEEL),
-        depthNow(cx9, 6.7) * 1.6 + 6));
+    /* 현관을 위로 팍 올린다(요청) — 받침 바로 위에 얹혀 있어 진입로에 눌려 있었다.
+       2층 기둥 중턱 높이로 올리고, 지붕과 그 위 짐(상자·드럼통) 사이에 눈에 보이는
+       갭을 둔다(요청) — 붙여 놓으면 한 덩어리로 뭉개진다. */
+    const CANOPY_Z = DOME_Z + 1.15;
+    const CANOPY_GAP = 0.34;
+    out.push(...tagKey(paintBase(boxFaces3(0, 5.5, 3.4, 2.2, 0.26, CANOPY_Z), SILVER),
+      depthNow(0, 5.5) * 1.6 + 7));
+    for (const cx9 of [-1.35, 1.35]) {
+      out.push(...tagKey(paintBase(cylinderFaces3(cx9, 4.95, 0.15, CANOPY_Z - DOME_Z, DOME_Z), STEEL),
+        depthNow(cx9, 4.95) * 1.6 + 6));
     }
-    // 캐노피 위의 은색 상자와 그 옆 작은 드럼통.
-    out.push(...tagKey(paintBase(boxFaces3(-0.68, 5.6, 1.45, 1.15, 0.86, DOME_Z + 0.38), SILVER),
-      depthNow(-0.68, 5.6) * 1.6 + 9));
+    // 지붕 위의 은색 상자와 그 옆 작은 드럼통 — 갭만큼 띄운다.
+    out.push(...tagKey(paintBase(boxFaces3(-0.68, 5.3, 1.45, 1.15, 0.86, CANOPY_Z + 0.26 + CANOPY_GAP), SILVER),
+      depthNow(-0.68, 5.3) * 1.6 + 9));
     out.push(...tagKey(paintBase([
-      ...cylinderFaces3(1.55, 5.7, 0.47, 0.8, DOME_Z + 0.38),
-      ...cylinderFaces3(1.55, 5.7, 0.51, 0.09, DOME_Z + 1.09),
-    ], SILVER), depthNow(1.55, 5.7) * 1.6 + 9));
+      ...cylinderFaces3(1.55, 5.4, 0.47, 0.8, CANOPY_Z + 0.26 + CANOPY_GAP),
+      ...cylinderFaces3(1.55, 5.4, 0.51, 0.09, CANOPY_Z + 0.97 + CANOPY_GAP),
+    ], SILVER), depthNow(1.55, 5.4) * 1.6 + 9));
     // 입구 양옆 — 엎어 놓은 그릇. 돔 밑(4.9)과 받침 테(5.4) 사이 갑판에 박힌다.
     for (const bx9 of [-3.95, 3.95]) {
       out.push(...tagKey(paintBase([
@@ -1564,8 +1589,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        들어오면서 앞이 붐볐고 두 판이 몸에서 떨어져 나온 조각처럼 보였다. */
     if (frontVisible) {
       // 진입로 — 데칼 없는 작은 은판 하나.
-      const ramp = polyPath3([[-0.65, 5.3, DOME_Z * 0.62], [0.65, 5.3, DOME_Z * 0.62],
-        [1.05, 7.1, 0], [-1.05, 7.1, 0]]);
+      // 경사로를 본체 속으로 더 넣는다(요청) — 5.3~7.1이던 것이 4.3~6.15다.
+      const ramp = polyPath3([[-0.65, 4.3, DOME_Z * 0.66], [0.65, 4.3, DOME_Z * 0.66],
+        [1.05, 6.15, 0], [-1.05, 6.15, 0]]);
       out.push(...tagKey([[ramp, 1, SILVER] as ShapeFace, topFace(ramp, 0.16)],
         depthNow(0, 6.2) + 0.5));
     }
