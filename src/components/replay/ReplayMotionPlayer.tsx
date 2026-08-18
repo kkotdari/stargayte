@@ -10611,7 +10611,7 @@ export default function ReplayMotionPlayer({
      렌즈(zoom·pan) 그대로다. */
   const [pitched, setPitched] = useState(false);
   // 유닛 크기 토글(요청) — 기본은 실제 크기, 누르면 2배.
-  const [unitX2, setUnitX2] = useState(false);
+  const [unitBig, setUnitBig] = useState(false);
   // (삭제·요청: 모바일에도 입체 보기 개방) — 터치 기기 판별이 있던 자리.
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   useEffect(() => {
@@ -11202,11 +11202,12 @@ export default function ReplayMotionPlayer({
   // 글자 크기 CSS(모바일/PC 미디어)와 같은 값 — 캔버스는 CSS를 못 읽으니 여기서 정한다.
   // 이제 크기는 캔버스가 정한다 — 이 값은 그리기 주기(아래 DRAW_GAP_MS)에만 쓰인다.
   const pcView = typeof window !== "undefined" && !!window.matchMedia?.("(min-width: 1160px)").matches;
-  /* 모델 크기 '크게'(재지적: "유닛은 4배 건물은 2배 확대") — 유닛과 건물의 배수가
-     다르다. 유닛은 발자국보다 훨씬 작게 그려 놔서(UNIT_TILES 1.15~2.0) 두 배로는
-     생김새가 여전히 안 읽혔고, 건물은 이미 발자국을 꽉 채우고 있어 두 배면 충분하다. */
-  const x2Mul = unitX2 ? 4 : 1;
-  const bldMul = unitX2 ? 2 : 1;
+  /* 모델 크기(재정의·요청: "표준은 실제 게임 크기로 보여주고 확대는 유닛만 1.5배") —
+     예전에는 '크게'가 유닛 4배·건물 2배였다. 유닛이 제 상자를 20%밖에 안 쓰는 탓에
+     두 배로도 안 읽혀서 계속 배수를 올렸던 것인데, 그건 크기 문제가 아니라 모델이
+     상자를 안 채우는 문제였다(정규화로 따로 잡는다). 이제 표준은 원작 크기 그대로고,
+     확대는 유닛만 1.5배다 — 건물은 어느 쪽에서도 안 건드린다. */
+  const unitMul = unitBig ? 1.5 : 1;
   /* ── 유닛 크기의 자(전수조사·요청: "실제 캔버스 × 소·중·대로 균일하게") ─────────
      예전엔 등급마다 고정 픽셀(모바일 6·8·11 / PC 8·11·15)이었다. 화면 폭이나 맵
      격자와 무관한 값이라, 같은 마린이 맵마다 제멋대로 커 보였다: 64×64 맵의 한 타일은
@@ -11220,17 +11221,17 @@ export default function ReplayMotionPlayer({
      보병이 점 하나가 된다. 대신 등급 간 비율(1 : 1.3 : 1.75)은 원작에 맞추고, 본진
      발자국(4타일)보다는 확실히 작게 둔다 — 고정 픽셀 시절 대형은 4.3타일이라 커맨드
      센터보다 넓었고(전수조사), 수송선은 1.7배가 더 붙어 5~7타일까지 갔다. */
-  /* 유닛 도형 크기(타일) — 소·중·대 등급별(요청: "유닛 크기가 실제 게임에 비해 너무
-     크게 그려짐. 나는 오히려 실제 게임보다 더 작게 그려지면 좋겠어(사실적 표현). 물론
-     차지하는 공간은 원래 게임대로 유지하되 재생 화면에서만").
-     1.9/2.5/3.3 → 1.15/1.5/2.0 (약 60%). 원작의 실제 몸집은 대략 소 0.8·중 1.1·대
-     1.5타일이라, 이 값은 그보다도 한 단 작다 — 요청한 '사실적 표현' 쪽이다.
+  /* 유닛 도형 크기(타일) — 소·중·대 등급별(재정의·요청: "표준은 실제 게임 크기").
+     1.15/1.5/2.0 → 0.8/1.1/1.5. 원작의 실제 몸집이 대략 그 값이다.
      **차지하는 공간은 안 건드린다** — 겹침·충돌은 simCore의 BODY_R이 따로 정하고
-     그 값은 원작 그대로다. 여기는 화면에 그리는 크기만이다. */
-  const UNIT_TILES = [1.15, 1.5, 2.0] as const;
-  /** 낱개 유닛 도형 크기(px) — 타일 × 등급비(소·중·대) × 2배 토글 × 깊이. */
+     그 값은 원작 그대로다. 여기는 화면에 그리는 크기만이다.
+     주의: 실제 크기는 모델이 제 상자를 채울 때라야 읽힌다. 지금 저글링은 상자의
+     20%(프로브 19%)만 써서, 표준 크기에서는 잉크가 2px도 안 된다. 모델 공간 정규화가
+     들어와야 이 값이 제 뜻대로 보인다 — 이 표도 그때 유닛별 원작 치수표로 갈린다. */
+  const UNIT_TILES = [0.8, 1.1, 1.5] as const;
+  /** 낱개 유닛 도형 크기(px) — 타일 × 등급비(소·중·대) × 모델 크기 배수 × 깊이. */
   const unitGlyphPx = (bulk: 0 | 1 | 2, depthY: number): number =>
-    tilePx * UNIT_TILES[bulk] * x2Mul * pitchK(depthY);
+    tilePx * UNIT_TILES[bulk] * unitMul * pitchK(depthY);
   /** 유닛 이름 → 낱개 도형 크기 — 수송선도 이제 제 등급(대형)일 뿐, 따로 부풀리지
    *  않는다(전수조사: dot 눈금 1.7배가 오버로드를 본진보다 크게 그렸다). */
   const unitPxOf = (u: string, depthY: number): number =>
@@ -11734,7 +11735,7 @@ export default function ReplayMotionPlayer({
       {/* 로스터 가운데 vs(요청: 구분선 말고 vs — 모바일·PC 공통). */}
       <span className="scr-motion-teamvs" aria-hidden>vs</span>
       <div
-        className={cx("scr-motion-map", pitched && "scr-motion-pitched", unitX2 && "scr-motion-unit2x")} ref={mapRef}
+        className={cx("scr-motion-map", pitched && "scr-motion-pitched")} ref={mapRef}
         onPointerDown={onMapPointerDown}
         onPointerMove={onMapPointerMove}
         onPointerUp={onMapPointerUp}
@@ -11785,7 +11786,7 @@ export default function ReplayMotionPlayer({
         {/* 렌즈 상자 — PC 휠 줌(요청)이 이 층을 통째로 키운다(마커·자취까지 같이). */}
         <div
           ref={lensRef}
-          className={cx("scr-motion-lens", unitX2 && "scr-motion-unit2x")}
+          className="scr-motion-lens"
           style={{
             /* 줌 역배율 변수(지적: 클릭 마커·링은 UI라 확대에 굵어지면 안 됨) —
                UI성 마커가 scale(1/--mz)로 제 화면 크기를 지킨다. */
@@ -12009,7 +12010,7 @@ export default function ReplayMotionPlayer({
                왜소하다"는 지적을 상자째 키워 때우던 보정인데, 이제 그리기 단계가 잉크
                폭을 재서 발자국을 채우므로(BLD_FILL_CACHE) 상자는 제 발자국(2×2) 그대로
                두면 된다. 그대로 두면 부속만 발자국보다 28% 넓게 그려진다. */
-            const wTiles = fp2[0] * (shapeKind ? 1 : 0.8) * bldMul;
+            const wTiles = fp2[0] * (shapeKind ? 1 : 0.8);
             const hTiles = wTiles * ((fp2[1] + (shapeKind ? riseOf(unit) : 0)) / fp2[0]);
             const wFrac = (wTiles / grid.width) * mkK;
             const hFrac = (hTiles / grid.width) * mkK;
@@ -14022,9 +14023,9 @@ export default function ReplayMotionPlayer({
         <span className="scr-motion-radio">
           <span className="scr-motion-radio-label">모델 크기</span>
           <PillTabs
-            options={[{ value: "s", label: "작게" }, { value: "l", label: "크게" }]}
-            value={unitX2 ? "l" : "s"}
-            onChange={(v) => setUnitX2(v === "l")}
+            options={[{ value: "s", label: "표준" }, { value: "l", label: "확대" }]}
+            value={unitBig ? "l" : "s"}
+            onChange={(v) => setUnitBig(v === "l")}
             aria-label="모델 크기"
           />
         </span>
