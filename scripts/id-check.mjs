@@ -56,13 +56,17 @@ const FROM = {
   Lurker: "Hydralisk", Guardian: "Mutalisk", Devourer: "Mutalisk",
   "Lurker Egg": "Hydralisk", Archon: "High Templar", "Dark Archon": "Dark Templar",
 };
+/** 같은 유닛의 다른 표기 — 분석(replayUnits.KIND_ALIAS)과 같은 잣대여야 한다. */
+const ALIAS = { "Siege Tank": "Siege Tank (Tank Mode)" };
+const canon = (u) => ALIAS[u] ?? u;
 const RACE_WORKER = { 테란: "SCV", 프로토스: "Probe", 저그: "Drone" };
 
 /** 커맨드에서 '뽑은 개수'를 센다 — 위 규칙 그대로. */
 function producedOf(cmds, players) {
   const sel = new Map();
   const prod = new Map();      // pid → Map<unit, n>
-  const add = (pid, unit, n) => {
+  const add = (pid, unit0, n) => {
+    const unit = canon(unit0);
     const m = prod.get(pid) ?? new Map();
     m.set(unit, (m.get(unit) ?? 0) + n);
     prod.set(pid, m);
@@ -78,13 +82,23 @@ function producedOf(cmds, players) {
       continue;
     }
     const unit = nm(c.Unit);
-    if (!unit) continue;
+    if (!unit && t !== "Merge Archon" && t !== "Merge Dark Archon") continue;
     /* 헛친 커맨드는 유닛이 안 된다(지적: 인구 막힘·전력 끊김·건물 파괴 취소) —
        분석과 같은 잣대를 써야 앞뒤가 맞는다. */
     const ik = c.IneffKind;
     const ikv = typeof ik === "number" ? ik : String(ik ?? "");
     if (ik !== undefined && ik !== null && ikv !== 0 && ikv !== "0" && ikv !== "" && ikv !== "Effective") continue;
     if (t === "Train") { add(pid, unit, TWINS.has(unit) ? 2 : 1); continue; }
+    /* 합체(아콘·다크아콘)는 Train도 Unit Morph도 아니라 여태 '뽑은 적 없음'으로 셌다 —
+       고른 템플러 둘이 하나가 되므로 원본이 그만큼 준다. */
+    if (t === "Merge Archon" || t === "Merge Dark Archon") {
+      const made = t === "Merge Archon" ? "Archon" : "Dark Archon";
+      const src = t === "Merge Archon" ? "High Templar" : "Dark Templar";
+      const n = Math.max(2, (sel.get(pid) ?? []).length);
+      add(pid, made, Math.floor(n / 2));
+      add(pid, src, -Math.floor(n / 2) * 2);
+      continue;
+    }
     if (t === "Unit Morph") {
       // 라바 변태는 고른 라바 전부에 걸린다. 유닛 변태(러커 등)도 고른 전부다.
       const n = Math.max(1, (sel.get(pid) ?? []).length);
@@ -108,12 +122,21 @@ for (const path of files) {
   const buf = new Uint8Array(readFileSync(path));
   const res = await Screp.parseBuffer(buf, { cmds: true, mapData: true, mapTiles: true, mapResLoc: true });
   const cmds = res.Commands?.Cmds ?? [];
+  /* 시작 지점을 꼭 함께 넘겨야 한다 — 이게 없으면 분석이 시작 홀을 못 세우고,
+     그러면 초반 생산이 '자리를 모르는 원장'이 되어 통째로 버려진다. 실측으로 여기를
+     빠뜨렸더니 경기2의 원장 77건 중 45건이 사라져, 없는 결함을 쫓을 뻔했다. */
+  const spots = new Map((res.MapData?.StartLocations ?? []).map((sp) => [sp.SlotID, sp]));
   const players = (res.Header.Players ?? [])
     .filter((p) => !p.Observer && nm(p.Type) !== "Observer")
-    .map((p) => ({
-      id: p.ID, name: p.Name, race: RACE[nm(p.Race)] ?? "",
-      team: typeof p.Team === "number" ? p.Team : null,
-    }));
+    .map((p) => {
+      const sp = spots.get(p.SlotID);
+      return {
+        id: p.ID, name: p.Name, race: RACE[nm(p.Race)] ?? "",
+        team: typeof p.Team === "number" ? p.Team : null,
+        startX: sp ? sp.X / 32 : null,
+        startY: sp ? sp.Y / 32 : null,
+      };
+    });
   const d = buildUnitTracks(cmds, players);
   const prod = producedOf(cmds, players);
 
@@ -163,6 +186,8 @@ for (const path of files) {
     + `  · 건물 파괴로 취소한 생산 ${String(st.prodRazed ?? 0).padStart(4)} 건`
     + `  · 원장 몫이 없어 물러남 ${String(st.coSelOverQuota ?? 0).padStart(4)} 회`
     + `  · 잔여 원장이 채움 ${String(st.quotaAssigned ?? 0).padStart(4)} 기`
-    + `  · 합성 개체 ${String(st.prodSyn ?? 0).padStart(4)} 기`);
+    + `  · 합성 개체 ${String(st.prodSyn ?? 0).padStart(4)} 기`
+    + `  · 몫 넘겨 준 이름 ${String(st.coSelOverFilled ?? 0).padStart(4)} 기`
+    + `  · 자리 못 정해 버린 원장 ${String(st.prodNoSite ?? 0).padStart(4)} 건`);
 }
 console.log("");

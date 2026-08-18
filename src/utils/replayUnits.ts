@@ -122,8 +122,12 @@ export interface UnitTracksV2 {
     coSelOverQuota?: number;
     /** 남은 원장 몫으로 이름을 받은 무명 개체 수(과제 #71). */
     quotaAssigned?: number;
+    /** 몫을 넘겨서라도 동반으로 이름을 준 수(과제 #71 — 마지막 그물). */
+    coSelOverFilled?: number;
     /** 건물이 무너져 취소된 생산 수(과제 #71). */
     prodRazed?: number;
+    /** 출생 자리를 못 정해 버려진 원장 수(과제 #71). */
+    prodNoSite?: number;
   };
 }
 
@@ -304,6 +308,17 @@ interface Life {
   ev: UnitEv[];
 }
 
+/** 같은 유닛의 다른 표기를 하나로 모은다(과제 #71).
+ *  screp은 자리마다 이름을 달리 준다 — Train 커맨드는 "Siege Tank (Tank Mode)"인데
+ *  다른 자리에서는 맨 "Siege Tank"로 온다. 그대로 두면 한 유닛이 두 이름으로 갈려,
+ *  원장 몫은 한쪽에 쌓이고 개체는 다른 쪽에 붙는다 — 실측으로 "뽑은 적 없는 이름"
+ *  11기(경기3)·12기(경기1)가 전부 이것이었다.
+ *  ★ 시즈 모드는 안 합친다 — 그건 표기가 아니라 진짜 다른 상태다(못 움직이고
+ *    무기가 다르다). 렌더러도 시뮬도 둘을 갈라 쓴다. */
+const KIND_ALIAS: Record<string, string> = {
+  "Siege Tank": "Siege Tank (Tank Mode)",
+};
+
 /** screp이 '헛쳤다'고 표시한 커맨드인가 — 생산 원장에 적으면 안 되는 것들이다.
  *  지적: "인구 막힘·전력 끊김·건물 파괴 등 생산 취소도 넣어야 할 듯."
  *  screp의 표시는 그중 큐 넘침(연타로 큐가 다 찬 뒤의 클릭)을 잡아 준다 — 실측으로
@@ -472,13 +487,15 @@ export function buildUnitTracks(
   }[] = [];
   /** 건물 태그별 생산 꼬리 시각 — 같은 건물의 큐는 한 줄로 이어진다(라바는 병렬). */
   const prodTail = new Map<number, number>();
-  const prodStats = { total: 0, bound: 0, syn: 0, razed: 0 };
+  const prodStats = { total: 0, bound: 0, syn: 0, razed: 0, noSite: 0 };
   /** 선택 동반으로 이름을 받은 무명 생애 수 — 성적표(id-check)가 읽는다. */
   let coSelFilled = 0;
   /** 원장에 남은 몫이 없어 동반이 물러난 횟수 — 원장이 위라는 규칙이 실제로 무는 자리. */
   let coSelOverQuota = 0;
   /** 남은 원장 몫으로 이름을 받은 무명 개체 수(과제 #71). */
   let quotaAssigned = 0;
+  /** 몫을 넘겨서라도 동반으로 이름을 준 수 — 크면 원장이 덜 세고 있다는 신호. */
+  let coSelOverFilled = 0;
   /** 무른 건설 계측 — voided: 아예 안 지어진 것, closed: 놓쳤던 철거를 겹침으로 닫은 것. */
   const buildStats = { voided: 0, closed: 0 };
   /** 폐기된 이동 목적지 계측 — dropped: 잘라 낸 것, kept: 실제로 닿은 것. */
@@ -597,7 +614,8 @@ export function buildUnitTracks(
     }
     return life;
   };
-  const markKind = (life: Life, kind: string, sec: number): Life => {
+  const markKind = (life: Life, kind0: string, sec: number): Life => {
+    const kind = KIND_ALIAS[kind0] ?? kind0;
     if (GROUP_MEMBERS[kind]) { life.groupKinds.add(kind); return life; }
     if (kindConflicts(life, kind)) {
       // 정체 충돌 — 태그 재사용. 앞 생애를 닫고 이 증거로 새 생애를 시작한다.
@@ -654,7 +672,12 @@ export function buildUnitTracks(
       noteCoSel(sec, c.UnitTags ?? []);
       continue;
     }
-    if (cmdName === "Select Add") { sel.set(pid, [...(sel.get(pid) ?? []), ...(c.UnitTags ?? [])]); continue; }
+    if (cmdName === "Select Add") {
+      const merged = [...(sel.get(pid) ?? []), ...(c.UnitTags ?? [])];
+      sel.set(pid, merged);
+      noteCoSel(sec, merged);
+      continue;
+    }
     if (cmdName === "Select Remove") {
       const drop = new Set(c.UnitTags ?? []);
       sel.set(pid, (sel.get(pid) ?? []).filter((t) => !drop.has(t)));
@@ -664,7 +687,13 @@ export function buildUnitTracks(
       const key = `${pid}:${typeof c.Group === "number" ? c.Group : nameOf(c.Group)}`;
       const how = nameOf(c.HotkeyType);
       if (how === "Assign") groups.set(key, [...(sel.get(pid) ?? [])]);
-      else if (how === "Select") sel.set(pid, [...(groups.get(key) ?? [])]);
+      else if (how === "Select") {
+        const g = groups.get(key) ?? [];
+        sel.set(pid, [...g]);
+        /* 부대 지정 소환이 가장 센 동반 신호다 — 사람이 손수 한 묶음으로 묶어 둔
+           것이라 드래그 선택보다 종류가 고르다. 여태 이 자리를 안 보고 있었다. */
+        noteCoSel(sec, g);
+      }
       continue;
     }
     if (!playing.has(pid)) continue;
@@ -1817,17 +1846,26 @@ export function buildUnitTracks(
       if (sx < 0) {
         // 자리를 모르는 건물(라바 포함) — 그 종류의 실물 건물 중에서 고른다.
         const prodKind = TRAIN_AT[it.unit] ?? "";
+        /* 시작 건물은 처음부터 완공돼 있다(과제 #71) — born + 40(완공 어림)을 그대로
+           걸었더니 40초 안에 나오는 초반 생산이 전부 '자리를 모르는 원장'이 되어 아래
+           filter(sx >= 0)에서 통째로 버려졌다. 실측: 경기2의 원장 77건 중 45건이 여기서
+           사라졌고, 그래서 프로브를 38기 뽑았는데 개체는 13기뿐이었다. */
+        const ready = (b: { born: number }): number => (b.born === 0 ? 0 : b.born + 40);
         const pool = prodKind
           ? built.filter((b) => b.owner === it.pid && b.kind === prodKind
-            && b.born + 40 <= it.done && (b.gone === null || b.gone > it.done))
+            && ready(b) <= it.done && (b.gone === null || b.gone > it.done))
             // 아래쪽 출구(요청) — 발자국 바닥 밑 0.6타일.
             .map((b) => ({
               x: b.x + (PROD_FOOT[prodKind]?.[0] ?? 3) / 2,
               y: b.y + (PROD_FOOT[prodKind]?.[1] ?? 2.5) + 0.6,
             }))
           : hallsOf(it.pid, it.done);
-        if (pool.length > 0) {
-          const pick = pool[idx % pool.length];
+        /* 그래도 비면 그 사람의 본진 발치로 떨어뜨린다 — 자리를 모른다고 원장을 통째로
+           버리면 그 유닛은 세상에 아예 없던 것이 된다. 자리가 조금 틀린 것이 없는 것보다
+           낫다(아래 filter(sx >= 0)가 그 마지막 그물이다). */
+        const pool2 = pool.length > 0 ? pool : hallsOf(it.pid, it.done);
+        if (pool2.length > 0) {
+          const pick = pool2[idx % pool2.length];
           sx = pick.x; sy = pick.y;
         }
       }
@@ -1835,7 +1873,11 @@ export function buildUnitTracks(
       // 오버로드·일꾼은 랠리를 안 탄다(오버로드는 제자리, 일꾼은 자원 배정).
       if (it.unit === "Overlord" || it.unit === RACE_WORKER[raceOf.get(it.pid) ?? ""]) rally = null;
       return { it, sx, sy, rally };
-    }).filter((r) => r.sx >= 0);
+    }).filter((r) => {
+      if (r.sx >= 0) return true;
+      prodStats.noSite += 1;
+      return false;
+    });
     // ② 실제 생애와 결합 — 같은 사람·같은 정체(1차), 무명(2차). 완성 뒤 300초 안 첫 증거.
     const majorityOf = (life: Life): string => {
       let best = "";
@@ -2275,6 +2317,21 @@ export function buildUnitTracks(
       life.kinds.set(best, 1);
       quotaFilled += 1;
     }
+    /* ④ 마지막 그물 — 그래도 이름이 없는데 동반이 할 말이 있으면, 몫을 넘더라도 준다.
+       ①②③이 다 지나간 뒤이므로 여기 오는 것은 '원장이 아는 생산보다 관측된 생애가
+       많은' 자리다. 원장이 완벽하지 않다는 뜻이고(지적: 인구 막힘·전력 끊김·건물
+       파괴로 어차가 있다 — 그 반대 방향의 누락도 있다), 그럴 때 이름 없이 두면 그
+       개체는 화면에서 반투명한 무명으로, 시뮬에서는 기본 유닛으로 산다. 동반이라는
+       실제 증거가 있는데 그것보다 나쁜 쪽을 고를 이유가 없다.
+       넘긴 횟수는 남겨 둔다 — 이 수가 크면 원장이 덜 세고 있다는 신호다. */
+    let overFilled = 0;
+    for (const [life, m] of votes) {
+      if (majorityKindOf2(life) !== "" || m.size !== 1) continue;
+      const [[kind]] = [...m];
+      life.kinds.set(kind, 1);
+      overFilled += 1;
+    }
+    coSelOverFilled = overFilled;
     quotaAssigned = quotaFilled;
   }
 
@@ -3481,7 +3538,9 @@ const BLD_DIE_SLACK_SEC = 8;
       coSelFilled,
       coSelOverQuota,
       quotaAssigned,
+      coSelOverFilled,
       prodRazed: prodStats.razed,
+      prodNoSite: prodStats.noSite,
     },
   };
 }
