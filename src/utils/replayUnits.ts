@@ -31,6 +31,7 @@ import { speedOfUnit } from "./bwUnits";
 import {
   attackOf, bunkerFallbackProfile, profileOf, targetFor, weaponVs,
   type CombatProfile, type ProfWeapon,
+  upgradeSeconds,
 } from "./bwCombat";
 import type { Race } from "../types";
 
@@ -2412,17 +2413,26 @@ export function buildUnitTracks(
   }
   atkEvts.sort((a, b) => a.sec - b.sec);
   /* 업그레이드 반영(요청 ②) — 공업은 화력 +10%/렙, 방업은 받는 피해 -8%/렙(3렙 상한).
-     이름의 부류(보병·차량·근접…)까지 가르는 건 이 근사 모델엔 과하다 — 연구 명령 뒤
-     70초(연구 시간 어림)부터 그 사람 전체에 적용한다. */
+     이름의 부류(보병·차량·근접…)까지 가르는 건 이 근사 모델엔 과하다 — 연구가 끝나는
+     시각부터 그 사람 전체에 적용한다.
+     ★ 그 '끝나는 시각'이 여태 **일률 70초**였다(과제 #71). 표(bwUnits.UPGRADE_TIME)는
+       진작 있었고 제 주석에 "옛 분석 코드가 쓰던 일률 70초는 2.4배 빠른 값"이라고까지
+       적혀 있었는데, 부르는 곳이 없었다. 공·방업 1렙은 4000프레임(168초)이고 2·3렙은
+       480프레임씩 더 걸린다 — 즉 화면과 시뮬은 업그레이드를 1분 40초 넘게 일찍 주고
+       있었다. 같은 이름이 두 번째로 나오면 그것이 2레벨이라 시간도 그만큼 는다. */
   const wUpsBy = new Map<number, number[]>();
   const aUpsBy = new Map<number, number[]>();
+  const upLvSeen = new Map<string, number>();
   for (const [usec, uname, upid] of ups) {
     const isW = /Weapons|Attacks/.test(uname);
     const isA = /Armor|Plating|Carapace|Plasma Shields/.test(uname);
     if (!isW && !isA) continue;
+    const lvKey = `${upid}|${uname}`;
+    const lv = (upLvSeen.get(lvKey) ?? 0) + 1;
+    upLvSeen.set(lvKey, lv);
     const m = isW ? wUpsBy : aUpsBy;
     const arr = m.get(upid) ?? [];
-    arr.push(usec + 70);
+    arr.push(usec + upgradeSeconds(uname, lv));
     m.set(upid, arr);
   }
   const lvOf = (m: Map<number, number[]>, pid2: number, sec2: number): number =>

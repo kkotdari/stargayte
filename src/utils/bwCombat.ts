@@ -55,6 +55,9 @@ export {
      썼다. 쿨다운 보정(스팀·아드레날·인스네어·산성포자), 다크스웜을 무시하는 무기,
      상태 지속 시간, 매트릭스 흡수량이 전부 여기 있다. */
   cooldownSec, ignoresDarkSwarm, MATRIX_HP, STATUS_TICKS, STIM_SELF_DAMAGE, STIM_UNITS, timerSec,
+  /* 연구가 실제로 끝나는 시각(과제 #71) — 표는 진작 있었는데 부르는 곳이 없어,
+     분석은 일률 70초를, 시뮬은 '명령한 순간'을 쓰고 있었다. */
+  upgradeSeconds, UPGRADE_TIME,
 } from "./bwUnits";
 
 /* ★ 이 파일이 돌려주는 값의 **타입**도 함께 내보낸다.

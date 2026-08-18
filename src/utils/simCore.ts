@@ -26,7 +26,7 @@ import {
       거기 하나뿐이다 — 여기서 Body.rad를 또 더하면 이중 가산이 난다. */
 import {
   MATRIX_HP, ORDER_PERIOD_SEC, RETARGET_SEC, STATUS_TICKS, acqPhaseOf, acquireReachTiles, attackOf,
-  cooldownSec, ignoresDarkSwarm, timerSec, STIM_SELF_DAMAGE, STIM_UNITS,
+  cooldownSec, ignoresDarkSwarm, timerSec, upgradeSeconds, STIM_SELF_DAMAGE, STIM_UNITS,
   STORM_PULSES, STORM_PULSE_SEC, STORM_TILES, stormPulse,
   bunkerShooterProfileOf, minReachTiles, profileOf, reachTiles, splashDivisorAt,
   targetFor, weaponVs,
@@ -348,13 +348,24 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
      둘 중 **출생 시각**을 고른다. 실제 경기에서 한 개체의 수명은 대개 업글 한 단계보다
      짧고, 앞의 잘못(없던 업글을 소급해 주는 것)은 초반 교전을 통째로 뒤집지만 뒤의
      잘못(막 끝난 업글을 늦게 받는 것)은 그 개체 하나가 조금 약할 뿐이다. [어림] */
+  /* ups의 시각은 '연구를 **누른** 때'다(과제 #71). 여태 그대로 써서 시뮬은 업그레이드를
+     연구가 끝나기 한참 전부터 주고 있었다 — 공·방업 1렙이 4000프레임(168초)이니 거의
+     3분 이르다. 끝나는 시각으로 옮긴다. 같은 이름이 두 번째로 나오면 그것이 2레벨이라
+     시간도 그만큼 는다(표의 레벨당 480프레임). */
   const upsLog = (data.ups ?? []).slice().sort((a, b) => a[0] - b[0]);
   const upsByOwner = new Map<number, [number, string][]>();
+  const upLv = new Map<string, number>();
   for (const [sec, name, pid] of upsLog) {
+    const key = `${pid} ${name}`;
+    const lv = (upLv.get(key) ?? 0) + 1;
+    upLv.set(key, lv);
     const arr = upsByOwner.get(pid);
-    if (arr) arr.push([sec, name]);
-    else upsByOwner.set(pid, [[sec, name]]);
+    const doneSec = sec + upgradeSeconds(name, lv);
+    if (arr) arr.push([doneSec, name]);
+    else upsByOwner.set(pid, [[doneSec, name]]);
   }
+  // 끝나는 시각 순으로 다시 세운다 — 아래 upsAt이 시간순을 전제로 끊어 읽는다.
+  for (const arr of upsByOwner.values()) arr.sort((a, b) => a[0] - b[0]);
   /** 그 임자가 sec까지 끝낸 업그레이드 이름들 — 같은 이름이 두 번 나오면 2레벨이라는
    *  뜻이므로 **중복을 지우지 않는다**(bwCombat.upgradeLevel이 출현 횟수를 센다). */
   const upsAt = (owner: number, sec: number): string[] | undefined => {
