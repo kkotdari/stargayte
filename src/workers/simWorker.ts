@@ -10,14 +10,14 @@ import { simulate, type SimInput, type SimOpts } from "../utils/simCore";
 
 export type SimReq = { id: number; data: SimInput; opts: SimOpts };
 export type SimRes =
-  | { id: number; ok: true; tracks: ReturnType<typeof simulate>["tracks"]; stats: ReturnType<typeof simulate>["stats"] }
+  | { id: number; ok: true; tracks: ReturnType<typeof simulate>["tracks"]; events: ReturnType<typeof simulate>["events"]; stats: ReturnType<typeof simulate>["stats"] }
   | { id: number; ok: false; err: string };
 
 self.onmessage = (ev: MessageEvent<SimReq>) => {
   const { id, data, opts } = ev.data;
   try {
     const r = simulate(data, opts);
-    const msg: SimRes = { id, ok: true, tracks: r.tracks, stats: r.stats };
+    const msg: SimRes = { id, ok: true, tracks: r.tracks, events: r.events, stats: r.stats };
     (self as unknown as Worker).postMessage(msg);
   } catch (e) {
     const msg: SimRes = { id, ok: false, err: e instanceof Error ? e.message : String(e) };

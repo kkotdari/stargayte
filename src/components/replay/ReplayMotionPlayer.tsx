@@ -14,7 +14,7 @@ import { BLD_STATS, UNIT_STATS, type UnitTracksV2 } from "../../utils/replayUnit
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } from "../../utils/minimapTerrain";
 import { loadSimTracks } from "../../utils/simClient";
-import { posAtSim, ST_INSIDE, type SimTrack } from "../../utils/simCore";
+import { posAtSim, shotsAt, ST_INSIDE, type SimEventArr, type SimTrack } from "../../utils/simCore";
 import {
   bodyFace, capFace, depthNow, groundEllipse, sideFace, tagKey, topFace, type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
@@ -8625,6 +8625,7 @@ export default function ReplayMotionPlayer({
      통째로 걷힌다. 시뮬은 워커가 돌고 결과는 IndexedDB에 캐시된다(열 때마다 안 돈다). */
   const simFlag = typeof location !== "undefined" && /[?&]sim=1/.test(location.search);
   const [simTracks, setSimTracks] = useState<Map<number, SimTrack> | null>(null);
+  const [simEvents, setSimEvents] = useState<SimEventArr | null>(null);
   /* 클릭 자국 토글(요청) — 기본은 끔: 클릭이 많은 경기에서는 자국이 화면을 덮는다. */
   const [clickFx, setClickFx] = useState(true); // 기본 켬(요청)
   /* 사양 라디오(요청: 최저·저·중·고·최고 — 렌더 요소 단계별 온오프, 기본 중).
@@ -8982,7 +8983,7 @@ export default function ReplayMotionPlayer({
   /* 시뮬 자취 적재(위 simFlag 주석) — 개체 트랙과 지형이 다 오면 워커에 맡긴다. 결과가
      오기 전까지는 기존 길로 그린다(깜빡임 없이 갈아 끼운다). */
   useEffect(() => {
-    if (!simFlag || !entData) { setSimTracks(null); return undefined; }
+    if (!simFlag || !entData) { setSimTracks(null); setSimEvents(null); return undefined; }
     let cancelled = false;
     void loadSimTracks(
       /* 캐시 열쇠 — 경기를 가르는 값(clockKey)에 개체 수·증거 수를 지문으로 붙인다.
@@ -8990,9 +8991,10 @@ export default function ReplayMotionPlayer({
       `${clockKey ?? "g"}:${entData.ents.length}:${entData.ents.reduce((n, x) => n + x.ev.length, 0)}:${grid.width}x${grid.height}`,
       entData as unknown as Parameters<typeof loadSimTracks>[1],
       { width: grid.width, height: grid.height, terrain: terrainRaw ?? terrain },
-    ).then((tracks) => {
-      if (cancelled || !tracks) return;
-      setSimTracks(new Map(tracks.map((tr) => [tr.tag, tr])));
+    ).then((got) => {
+      if (cancelled || !got) return;
+      setSimTracks(new Map(got.tracks.map((tr) => [tr.tag, tr])));
+      setSimEvents(got.events);
     });
     return () => { cancelled = true; };
   }, [simFlag, entData, terrain, terrainRaw, grid.width, grid.height, clockKey]);
@@ -10523,6 +10525,10 @@ export default function ReplayMotionPlayer({
   /* 캔버스 유닛 층의 재료(요청: 캔버스 전환 — 성능) — 이번 렌더에서 그릴 낱개 유닛
      도형들. 아래 마커 계산부가 push하고, 렌즈 안의 <UnitLayer>가 커밋 뒤 한 번에 그린다.
      계산(자리·회피·방향·깊이·순서)은 전부 그대로라 그림은 SVG 시절과 같다. */
+  /* 이번 프레임의 시뮬 발사(P2) — 태그마다 마지막 한 발의 표적 자리. 0.35초 창은
+     트레이서 애니가 살아 있는 길이 어림이다. 시뮬이 꺼져 있으면 null이고, 그때는
+     렌더가 종전대로 제 교전 판정으로 그린다. */
+  const simShots = simEvents ? shotsAt(simEvents, t, 0.35) : null;
   const unitOps: UnitDrawOp[] = [];
   /* (제거) 어택 명령 표적 집합으로 피격을 그리던 자 — 명령이 찍힌 곳과 실제로 맞는
      곳이 다르고 8초 내내 켜져, 싸움과 무관한 자리에서 불티가 텄다(지적). 이제 각
@@ -12100,7 +12106,11 @@ export default function ReplayMotionPlayer({
           /* 체력 0 = 즉사(요청: 체력바가 0이 되면 바로 폭발·소멸) — 사망 기록(d)이
              늦게 오거나 없어도, 체력 자취가 0에 닿은 순간을 죽음으로 앞당긴다. */
           const hpZero = e.hp.find(([, hv0]) => hv0 <= 0)?.[0];
-          const dieAt = hpZero !== undefined && (e.d === null || hpZero < e.d) ? hpZero : e.d;
+          /* 시뮬이 켜져 있으면 죽음도 시뮬 결과다(P2) — 체력이 0이 된 그 시각이지
+             클릭 좌표 어림이 아니다. */
+          const simDie = simTracks?.get(e.tag)?.died ?? null;
+          const dieAt = simDie !== null ? simDie
+            : hpZero !== undefined && (e.d === null || hpZero < e.d) ? hpZero : e.d;
           if (dieAt !== null && t >= dieAt + 1.2) return null;
           const team = teamOfRaw(e.raw);
           const holdKey0 = `${e.raw}-v2e${ei}`;
@@ -12219,7 +12229,7 @@ export default function ReplayMotionPlayer({
              적 때문에 교전이 프레임마다 켜졌다 꺼지면, '멈춘 자리'와 '지연 걸음' 사이를
              오가며 흔들렸다. 들어올 땐 시야, 나갈 땐 시야×1.3이라 경계에서 안 떨린다. */
           const engagedBefore = engageHoldRef.current.has(holdKey);
-          const fighting = canFight && !frzSt && Number.isFinite(foe.bd)
+          let fighting = canFight && !frzSt && Number.isFinite(foe.bd)
             && (foe.bd <= ENGAGE_SIGHT_TILES * (engagedBefore ? 1.3 : 1)
               /* 어택이 찍은 건물은 14.4타일부터 접근 시작(기획서 1-E — 수리: 시야
                  게이트가 철거 행군을 9타일 밖에서 세워 뒀다). */
@@ -12634,6 +12644,18 @@ export default function ReplayMotionPlayer({
              몇 타일씩 벌어진 채로 사격 판정과 조준각을 원자취 거리로 내리다 보니, 몸
              옆에 아무도 없는데 트레이서가 나가고 각도도 엉뚱한 데를 겨눴다. 아래 사격
              ·조준·가시 길이는 전부 이 값을 쓴다. */
+          /* 시뮬이 켜져 있으면 사격도 시뮬 것이다(P2) — 렌더가 제 나름의 교전 판정으로
+             그리면 시뮬과 따로 논다(몸은 싸우는데 트레이서는 딴 데를 겨눈다). 이번 틱에
+             그 태그가 쏜 발이 있으면 그 표적이 곧 조준점이고, 없으면 안 쏜다. */
+          const simShot = simShots?.get(e.tag) ?? null;
+          if (simShots) {
+            if (simShot) {
+              foe = { bx: simShot[0], by: simShot[1], bd: Math.hypot(simShot[0] - pos.x, simShot[1] - pos.y), air: false };
+              fighting = true;
+            } else {
+              fighting = false;
+            }
+          }
           const foeDist = Number.isFinite(foe.bd)
             ? Math.hypot(foe.bx - pos.x, foe.by - pos.y) : Infinity;
           /* 몸 방향(지적: 트레이서와 불일치 + 뒤로 걷기) — 싸울 땐 표적을 바라보고,

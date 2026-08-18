@@ -566,13 +566,23 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
     });
   }
 
+  /* 사건을 시각순으로 정렬 — 미뤄 둔 죽음(dieAt)이 나중 시각으로 끼어들 수 있어서,
+     렌더가 이분 탐색으로 훑으려면 순서가 맞아야 한다. */
+  const EVW = 8;
+  const order = Array.from({ length: events.length / EVW }, (_, i) => i)
+    .sort((a, b2) => events[a * EVW] - events[b2 * EVW]);
+  const sortedEvents: SimEventArr = new Array(events.length);
+  order.forEach((src, dst) => {
+    for (let q = 0; q < EVW; q += 1) sortedEvents[dst * EVW + q] = events[src * EVW + q];
+  });
+
   const sorted = [...drift].sort((a, b2) => a - b2);
   const at = (p: number): number =>
     sorted.length === 0 ? 0 : Math.round(sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))] * 100) / 100;
 
   return {
     tracks,
-    events,
+    events: sortedEvents,
     stats: {
       ticks, ents: bodies.length, keys, ms: Date.now() - t0,
       driftMedian: at(0.5), driftP90: at(0.9), anchors: drift.length,
@@ -609,4 +619,34 @@ export function posAtSim(
     hdg: norm360(tr.keys[i + 3] + dh * u),
     state: st,
   };
+}
+
+/** 사건 배열의 한 칸 폭 — [t, 갈래, 주체, 표적, x, y, tx, ty]. */
+export const EVENT_STRIDE = 8;
+
+/** events에서 시각 t 이하의 첫 자리(이분 탐색) — 렌더가 창을 훑는 시작점. */
+function lowerBound(events: SimEventArr, t: number): number {
+  let lo = 0;
+  let hi = events.length / EVENT_STRIDE;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (events[mid * EVENT_STRIDE] < t) lo = mid + 1; else hi = mid;
+  }
+  return lo;
+}
+
+/** [t-win, t] 창의 발사 — 태그마다 마지막 한 발(표적 자리)만. 트레이서를 그리는 재료다. */
+export function shotsAt(
+  events: SimEventArr, t: number, win: number,
+): Map<number, [number, number]> {
+  const out = new Map<number, [number, number]>();
+  let i = lowerBound(events, t - win);
+  const n = events.length / EVENT_STRIDE;
+  for (; i < n; i += 1) {
+    const o = i * EVENT_STRIDE;
+    if (events[o] > t) break;
+    if (events[o + 1] !== EV_FIRE) continue;
+    out.set(events[o + 2], [events[o + 6], events[o + 7]]);
+  }
+  return out;
 }
