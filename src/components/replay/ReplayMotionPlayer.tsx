@@ -11036,6 +11036,12 @@ export default function ReplayMotionPlayer({
      있었다. 판을 늘리면 실제 눌림이 정확히 0.74가 되어 셋이 같은 바닥을 본다. */
   /** 원근 거리 = 상자 세로 × 이 값. 클수록 원근이 약하고 바닥이 상자를 더 채운다. */
   const PITCH_DIST = 1.6;
+  /** 바닥 눌림 — 세로가 가로의 몇 할로 보이는가(지적: "3D에서 맵이 세로로 길어지는데?").
+   *  예전에는 이 값이 **상자 비율**에 숨어 있었다(aspectRatio의 1/0.74). 상자를 1024
+   *  고정으로 바꾸면서 그 몫이 사라져 눌림이 1.0이 되었고, 바닥이 안 눕고 서 버렸다.
+   *  눌림은 상자가 아니라 회전 전 판이 맡는 것이 맞다 — 그래야 상자 크기를 어떻게
+   *  바꾸든 눕는 정도가 안 흔들린다. 값 0.74는 그림자·트레이서가 이미 쓰는 그 값이다. */
+  const PITCH_FLAT = 0.74;
   /* 맞춤 축소(지적: 또 예전 끝 잘림) — 원근 확대로 가까운 변이 상자를 넘쳤다. 가까운
      변이 상자에 딱 맞는 배율 q로 전체를 줄이고, 세로는 cy만큼 올려 가운데 정렬한다.
      지형 그림(transform)과 마커 공식이 같은 q·cy를 쓴다. */
@@ -11045,8 +11051,9 @@ export default function ReplayMotionPlayer({
     const h = el?.clientHeight ?? 220;
     const S = Math.sin(PITCH_TH);
     const C = Math.cos(PITCH_TH);
-    /** 회전 전 판의 세로 — 회전이 C배로 누르므로 미리 1/C배 늘려 회전 뒤 상자 세로가 된다. */
-    const hPre = h / C;
+    /* 회전 전 판의 세로 — 회전이 C배로 누르므로 1/C배 늘려 두면 회전 뒤 상자 세로가
+       되고, 거기에 눌림(PITCH_FLAT)을 곱해 그만큼만 눕는다. */
+    const hPre = (h * PITCH_FLAT) / C;
     const P = Math.max(240, h * PITCH_DIST);
     const H = hPre / 2;
     const q = Math.max(0.2, (P - H * S) / P);
@@ -11737,7 +11744,11 @@ export default function ReplayMotionPlayer({
              보기(2D·3D)와 무관하다: 3D일 때만 상자를 넓히면 보기를 바꿀 때마다 세로가
              달라져 탐색바 아래가 통째로 밀린다(실측 285px). 3D의 눕힘은 상자가 아니라
              회전 전 판(pitchGeom의 hPre)이 맡는다. */
-          ...(wide ? { width: `${mapViewW}px`, flex: "0 0 auto" } : {}),
+          /* 1024는 상한이다(요청: min(1024px, 100%)) — 고정만 두면 왼쪽 기둥(110+110)과
+             댓글 기둥(232)에 간격까지 476px을 더한 값이 화면을 넘어, 대략 1560px보다
+             좁은 화면에서 페이지에 가로 스크롤이 생겼다(실측: 1440에서 28px, 1280에서
+             188px). 100%는 그리드 칸(minmax(0,1fr)) 폭이라 순환하지 않는다. */
+          ...(wide ? { width: `min(${mapViewW}px, 100%)`, flex: "0 0 auto" } : {}),
           aspectRatio: `${grid.width} / ${grid.height}`,
           ...(zoom > 1 || pitched ? { overflow: "hidden" } : {}),
           ...(zoom > 1 ? { cursor: dragRef.current ? "grabbing" : "grab" } : {}),
@@ -11791,7 +11802,7 @@ export default function ReplayMotionPlayer({
               draggable={false}
               style={pitched ? (() => {
                 const { q, cy, P, C } = pitchGeom();
-                return { transform: `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${P.toFixed(0)}px) rotateX(45deg) scaleY(${(1 / C).toFixed(4)})` };
+                return { transform: `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${P.toFixed(0)}px) rotateX(45deg) scaleY(${(PITCH_FLAT / C).toFixed(4)})` };
               })() : undefined}
             />
           )
@@ -11804,7 +11815,7 @@ export default function ReplayMotionPlayer({
               className="scr-motion-canvas scr-motion-canvas-blank"
               style={pitched ? (() => {
                 const { q, cy, P, C } = pitchGeom();
-                return { transform: `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${P.toFixed(0)}px) rotateX(45deg) scaleY(${(1 / C).toFixed(4)})` };
+                return { transform: `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${P.toFixed(0)}px) rotateX(45deg) scaleY(${(PITCH_FLAT / C).toFixed(4)})` };
               })() : undefined}
             >
               <ReplayMapCanvas grid={grid} className="scr-motion-canvas-tiles" />
