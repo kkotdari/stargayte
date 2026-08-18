@@ -162,6 +162,9 @@ type Body = {
   aliveUntil: number;
   /** 분석이 말한 죽음 — 시뮬이 그때까지 못 죽였으면 여기서 죽는다(상한). */
   dieBy: number | null;
+  /* ── 채취(P3) ── 명령이 없는 일꾼은 제 밭과 홀 사이를 오간다. 리플레이에 안 남는
+     자동 순환이라 시뮬이 모델해야 한다 — 렌더의 왕복 어림을 여기로 옮긴 것이다. */
+  job: { px: number; py: number; hx: number; hy: number; toHall: boolean; wait: number } | null;
 };
 
 /** 일꾼 — 스스로 표적을 잡지 않고, 할 일이 없으면 캔다. */

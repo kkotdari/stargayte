@@ -51,9 +51,26 @@ async function cachePut(key: string, val: SimCached): Promise<void> {
 /* 진행 상황을 콘솔에 남긴다(요청: 로딩이 도는지 안 도는지 알 수 없다) — 워커에서 도니
    화면이 안 멈춰서, 제대로 돌았는지 눈으로는 가릴 수가 없다. */
 export function logSim(msg: string): void {
+  // console.info는 개발자도구 기본 필터에서 감춰지는 자리가 있다 — log로 남긴다.
   // eslint-disable-next-line no-console
-  console.info(`[sim] ${msg}`);
+  console.log(`[sim] ${msg}`);
 }
+
+/* 깃발은 모듈이 올라오는 순간 한 번 읽어 둔다(지적: 주소에 ?sim=1을 붙였는데 아무것도
+   안 뜬다) — 활동 화면 라우터가 주소를 여러 번 갈아 끼우므로, 렌더마다 location을
+   다시 읽으면 그 사이에 놓칠 수 있다. 한 번 켜지면 그 탭에서는 계속 켜져 있게
+   sessionStorage에도 적어 둔다(새로고침·화면 이동에도 유지). */
+export const SIM_FLAG = ((): boolean => {
+  if (typeof location === "undefined") return false;
+  const inUrl = /[?&#]sim=1\b/.test(location.href);
+  try {
+    if (inUrl) sessionStorage.setItem("scr-sim", "1");
+    if (sessionStorage.getItem("scr-sim") === "1") return true;
+  } catch { /* 사생활 모드 등 — 주소만 본다. */ }
+  return inUrl;
+})();
+
+if (SIM_FLAG) logSim(`깃발 켜짐 — 빌드 SIM_VERSION ${SIM_VERSION}, 주소 ${typeof location !== "undefined" ? location.search : ""}`);
 
 let worker: Worker | null = null;
 let seq = 0;

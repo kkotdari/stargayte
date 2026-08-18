@@ -13,7 +13,7 @@ import { AIR_UNITS } from "../../utils/replayBuildMix";
 import { BLD_STATS, UNIT_STATS, type UnitTracksV2 } from "../../utils/replayUnits";
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } from "../../utils/minimapTerrain";
-import { loadSimTracks, logSim } from "../../utils/simClient";
+import { loadSimTracks, logSim, SIM_FLAG } from "../../utils/simClient";
 import { posAtSim, shotsAt, ST_INSIDE, type SimEventArr, type SimTrack } from "../../utils/simCore";
 import {
   bodyFace, capFace, depthNow, groundEllipse, sideFace, tagKey, topFace, type ShapeFace,
@@ -8623,7 +8623,7 @@ export default function ReplayMotionPlayer({
      유닛의 자리·방향을 명령 자취가 아니라 시뮬 결과에서 읽는다. 기존 길과 나란히 두고
      눈으로 견줄 수 있게 깃발로 켠다 — 확인이 끝나면 이쪽이 기본이 되고 보정 코드가
      통째로 걷힌다. 시뮬은 워커가 돌고 결과는 IndexedDB에 캐시된다(열 때마다 안 돈다). */
-  const simFlag = typeof location !== "undefined" && /[?&]sim=1/.test(location.search);
+  const simFlag = SIM_FLAG;
   const [simTracks, setSimTracks] = useState<Map<number, SimTrack> | null>(null);
   const [simEvents, setSimEvents] = useState<SimEventArr | null>(null);
   /* 진행 알림(지적: 로딩 시간이 전혀 없는데 되는 건가) — 워커에서 도니 화면이 안 멈춰
@@ -8987,7 +8987,13 @@ export default function ReplayMotionPlayer({
      오기 전까지는 기존 길로 그린다(깜빡임 없이 갈아 끼운다). */
   useEffect(() => {
     if (!simFlag) return undefined;
-    if (!entData) { logSim("개체 트랙(v2)이 아직 없다 — 시뮬은 그것이 온 뒤에 돈다"); return undefined; }
+    if (!entData) {
+      /* 알약도 함께 띄운다 — 아무것도 안 뜨면 깃발이 안 먹은 건지 자료가 없는 건지
+         구분할 수가 없다(지적). */
+      setSimNote("시뮬 대기 — 개체 트랙 기다리는 중");
+      logSim("개체 트랙(v2)이 아직 없다 — 시뮬은 그것이 온 뒤에 돈다");
+      return undefined;
+    }
     let cancelled = false;
     logSim(`시작 — 개체 ${entData.ents.length}, 맵 ${grid.width}x${grid.height}, `
       + `지형 ${(terrainRaw ?? terrain) ? "있음" : "없음"}, 자원 ${(grid.resources ?? []).length}`);
