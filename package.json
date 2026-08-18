@@ -13,7 +13,8 @@
     "model-norm": "node scripts/model-norm.mjs",
     "bld-norm": "node scripts/bld-norm.mjs",
     "dmg-check": "node scripts/dmg-check.mjs",
-    "id-check": "node scripts/id-check.mjs"
+    "id-check": "node scripts/id-check.mjs",
+    "pos-check": "node scripts/pos-check.mjs"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.6.13",
