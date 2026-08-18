@@ -42,3 +42,21 @@ export function speedOfUnit(unit: string, ups?: Set<string> | string[]): number 
   const has = Array.isArray(ups) ? ups.includes(up) : ups.has(up);
   return has ? base * SPEED_UP_MULT : base;
 }
+
+/** 공중 유닛 — 지형을 무시하고 곧게 난다. 오버로드는 통계 집합에 없어 따로 더한다. */
+export const AIR_UNIT_SET = new Set([
+  "Wraith", "Dropship", "Science Vessel", "Valkyrie", "Battlecruiser",
+  "Shuttle", "Observer", "Scout", "Corsair", "Carrier", "Arbiter",
+  "Mutalisk", "Guardian", "Devourer", "Scourge", "Queen", "Overlord",
+]);
+
+export const isAir = (unit: string): boolean => AIR_UNIT_SET.has(unit);
+
+/** 회전 속도(도/초) — 원작 유닛은 몸을 돌리고 나서 간다. 이 값 하나가 "스프라이트가
+ *  미끄러진다"는 인상을 없앤다. 표에 없으면 기본값. 정밀한 값은 P2에서 대조한다. */
+export const TURN_RATE: Record<string, number> = {
+  "Siege Tank": 200, "Siege Tank (Tank Mode)": 200, Goliath: 240, Dragoon: 240,
+  Reaver: 160, Carrier: 130, Battlecruiser: 130, Guardian: 160, Ultralisk: 240,
+  Lurker: 240, Arbiter: 200, "Science Vessel": 200, Overlord: 130,
+};
+export const DEFAULT_TURN_RATE = 380;
