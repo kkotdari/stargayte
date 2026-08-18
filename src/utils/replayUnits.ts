@@ -118,6 +118,10 @@ export interface UnitTracksV2 {
     moveDropped?: number; moveKept?: number;
     /** 선택 동반으로 이름을 받은 무명 개체 수(과제 #71). */
     coSelFilled?: number;
+    /** 원장 몫이 없어 동반이 물러난 횟수(과제 #71 — 원장이 위다). */
+    coSelOverQuota?: number;
+    /** 남은 원장 몫으로 이름을 받은 무명 개체 수(과제 #71). */
+    quotaAssigned?: number;
     /** 건물이 무너져 취소된 생산 수(과제 #71). */
     prodRazed?: number;
   };
@@ -471,6 +475,10 @@ export function buildUnitTracks(
   const prodStats = { total: 0, bound: 0, syn: 0, razed: 0 };
   /** 선택 동반으로 이름을 받은 무명 생애 수 — 성적표(id-check)가 읽는다. */
   let coSelFilled = 0;
+  /** 원장에 남은 몫이 없어 동반이 물러난 횟수 — 원장이 위라는 규칙이 실제로 무는 자리. */
+  let coSelOverQuota = 0;
+  /** 남은 원장 몫으로 이름을 받은 무명 개체 수(과제 #71). */
+  let quotaAssigned = 0;
   /** 무른 건설 계측 — voided: 아예 안 지어진 것, closed: 놓쳤던 철거를 겹침으로 닫은 것. */
   const buildStats = { voided: 0, closed: 0 };
   /** 폐기된 이동 목적지 계측 — dropped: 잘라 낸 것, kept: 실제로 닿은 것. */
@@ -2191,17 +2199,83 @@ export function buildUnitTracks(
         votes.set(l, m);
       }
     }
+    /* ★ 원장이 위다(지적: "공동선택보다는 원장이 우선, 아니면 둘이 동급").
+       동반은 '누구와 함께 골라졌나'라는 정황이고 원장은 '무엇을 몇 기 뽑았나'라는
+       기록이다. 정황이 기록을 넘어설 수는 없다 — 질럿을 42기 뽑았는데 동반이 43번째
+       질럿을 만들면 그건 새로 지어낸 유닛이다.
+       그래서 남은 몫(뽑은 수 − 이미 붙은 수)이 있을 때만 이름을 준다. 몫은 원장
+       (취소된 것 뺀 것) + 시작 유닛(일꾼 4, 저그 오버로드 1)이다 — 시작 유닛에는
+       커맨드가 없어 원장에 없다. */
+    const quota = new Map<number, Map<string, number>>();
+    const bump = (pid: number, kind: string, n: number): void => {
+      const m = quota.get(pid) ?? new Map<string, number>();
+      m.set(kind, (m.get(kind) ?? 0) + n);
+      quota.set(pid, m);
+    };
+    for (const it of ledger) if (!it.cancelled) bump(it.pid, it.unit, 1);
+    for (const p of players) {
+      const w = RACE_WORKER[p.race] ?? "";
+      if (w) bump(p.id, w, 4);
+      if (p.race === "저그") bump(p.id, "Overlord", 1);
+    }
+    for (const life of done) {
+      if (life.bld) continue;
+      const k = majorityKindOf2(life);
+      if (k) bump(life.owner, k, -1);
+    }
     let filled = 0;
+    let overQuota = 0;
     for (const [life, m] of votes) {
       if (majorityKindOf2(life) !== "") continue;   // 그 사이에 이름이 붙었으면 건드리지 않는다
       /* 여러 종류가 나뉘어 나왔다면(어떤 선택에서는 질럿뿐, 다른 선택에서는 드라군뿐)
          그 태그는 둘 사이를 오간 것이 아니라 우리가 잘못 짝지은 것이다 — 안 준다. */
       if (m.size !== 1) continue;
       const [[kind]] = [...m];
+      if ((quota.get(life.owner)?.get(kind) ?? 0) <= 0) { overQuota += 1; continue; }
+      bump(life.owner, kind, -1);
       life.kinds.set(kind, 1);
       filled += 1;
     }
     coSelFilled = filled;
+    coSelOverQuota = overQuota;
+
+    /* ── 남은 몫을 무명에게 배정한다(과제 #71) ────────────────────────────────
+       여기까지 와도 이름이 없는 생애가 남고, 반대로 뽑았는데 아무 태그에도 안 붙은
+       원장 몫이 남는다. 둘은 같은 구멍의 양쪽이다 — 짝지어 준다.
+
+       지적: "공동선택보다는 원장이 우선, 아니면 둘이 동급." 그래서 순서가 이렇다.
+         ① 원장이 태그를 직접 묶는다(위 결합 패스). 가장 센 증거다.
+         ② 동반이 제안하되 원장 몫 안에서만(위).
+         ③ 남은 몫을 남은 무명에게 준다(여기).
+       ①②③ 모두 원장 총량을 넘지 않으므로, 이름을 붙일수록 수급이 오히려 맞아 간다.
+
+       고르는 자는 행동이다 — 공격 명령(f=7)을 낸 개체는 일꾼일 수 없고, 건물을
+       앉힌(f=2) 개체는 일꾼일 수밖에 없다. 그 다음은 남은 몫이 가장 많은 종류다
+       (많이 뽑은 것일수록 눈앞의 무명이 그것일 확률이 높다). */
+    let quotaFilled = 0;
+    const workerOf = new Map(players.map((p) => [p.id, RACE_WORKER[p.race] ?? ""] as const));
+    const unnamed = done.filter((l) => !l.bld && majorityKindOf2(l) === "")
+      .sort((a, b) => a.born - b.born);
+    for (const life of unnamed) {
+      const m = quota.get(life.owner);
+      if (!m) continue;
+      const worker = workerOf.get(life.owner) ?? "";
+      const attacked = life.ev.some((v) => v[3] === 7);
+      const builtSomething = life.ev.some((v) => v[3] === 2);
+      let best = "";
+      let bn = 0;
+      for (const [k, n] of m) {
+        if (n <= 0) continue;
+        if (attacked && k === worker) continue;          // 일꾼은 공격 명령을 안 받는다
+        if (builtSomething && k !== worker) continue;    // 건물을 앉힌 것은 일꾼뿐이다
+        if (n > bn) { best = k; bn = n; }
+      }
+      if (!best) continue;
+      m.set(best, bn - 1);
+      life.kinds.set(best, 1);
+      quotaFilled += 1;
+    }
+    quotaAssigned = quotaFilled;
   }
 
   /* ── 후방 보정 — 뒷결과로 앞을 고친다(지적). 태그별로 생애를 시간순으로 놓고,
@@ -3405,6 +3479,8 @@ const BLD_DIE_SLACK_SEC = 8;
       bldVoided: buildStats.voided, bldClosed: buildStats.closed,
       moveDropped: moveStats.dropped, moveKept: moveStats.kept,
       coSelFilled,
+      coSelOverQuota,
+      quotaAssigned,
       prodRazed: prodStats.razed,
     },
   };

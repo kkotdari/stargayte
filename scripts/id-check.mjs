@@ -161,6 +161,8 @@ for (const path of files) {
     + `  = ${(tvdNum / Math.max(1, tvdDen) * 100).toFixed(1).padStart(5)}%  (0이 완벽)`);
   console.log(`     └ 선택 동반이 채운 이름 ${String(st.coSelFilled ?? 0).padStart(5)} 기`
     + `  · 건물 파괴로 취소한 생산 ${String(st.prodRazed ?? 0).padStart(4)} 건`
+    + `  · 원장 몫이 없어 물러남 ${String(st.coSelOverQuota ?? 0).padStart(4)} 회`
+    + `  · 잔여 원장이 채움 ${String(st.quotaAssigned ?? 0).padStart(4)} 기`
     + `  · 합성 개체 ${String(st.prodSyn ?? 0).padStart(4)} 기`);
 }
 console.log("");
