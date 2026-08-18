@@ -630,27 +630,31 @@ const AVATAR_ZERG_DECO: Record<string, string | undefined> = {
    표준 시점 결과는 아래 SHAPE_FACES에 한 번 구워 쓴다. */
 /** 벌어진 다리 + 원반 발(테란 실물 공통) — 몸통 밑에서 바깥-아래로 뻗고 발판이 받친다. */
 function legAndFoot(px: number, py: number, zTop: number): ShapeFace[] {
-  /* 테란 건물은 바닥이 떠 있다(지적: "커맨드 센터는 바닥이 약간 띄워져있는 구조야
-     엔지니어링 베이, 배럭, 스타포트 등등 모두 마찬가지인데 너는 바닥을 진짜 바닥에
-     대려고 하고 있어서 그래").
-     몸통이 지면에 앉는 것이 아니라 다리 위에 얹혀 있고, 다리는 **거의 수직으로**
-     내려가 그 밑에 발판이 달린다. 여태 다리를 바깥·아래로 눕혀 뻗었더니 몸이 주저앉은
-     꼴이 됐다. 다리와 발판 둘 다 각진 기둥(spirePillar)이라 모서리가 산다. */
-  const dep9 = depthNow(px, py) * 1.6;
+  /* 테란 건물은 바닥이 떠 있다 — 몸통이 지면에 앉는 것이 아니라 다리 위에 얹혀 있고,
+     다리는 **거의 수직으로** 내려가 그 밑에 발판이 달린다.
+
+     두 가지를 고쳤다(지적: "테란 건물들 다리가 본체에서 떨어지는 것들이 있어서 조사
+     필요. 그리고 대체로 다리랑 발판 키값이 안맞는 중 / 커맨드 다리는 거의 수직이여야해").
+     ① 다리가 몸에서 떨어지는 문제 — 여태 붙는 자리에서 **바깥으로 16% 벌어지며**
+        내려갔다. 내려가는 높이가 0.5쯤인데 가로로 0.7을 나가니 수직이 아니라 팔에
+        가까웠고, 붙는 자리가 몸 가장자리인 건물에서는 그 팔이 몸 밖에서 시작해 허공에
+        떴다. 이제 **위를 안쪽(0.9배)에서 시작해 아래에서 제자리(1.0배)**로 온다 —
+        top이 몸 안으로 들어가니 어떤 몸에도 물리고, 가로 이동이 10%뿐이라 거의 수직이다.
+     ② 다리와 발판의 키가 안 맞던 문제 — 발판은 다리보다 바깥에 있는데 키를 **다리의
+        자리**로 매기고 있었다. 제 자리의 깊이로 매겨야 이웃 부품과 앞뒤가 맞는다. */
+  const legDep = depthNow(px * 0.95, py * 0.95) * 1.6;
+  const padDep = depthNow(px, py) * 1.6;
   return [
     ...tagKey(paintBase(spirePillar({
-      /* 다리를 몸통 밖으로 조금 더 뺀다(수리: 다리가 실루엣 안에 묻혀 발판만 허공에
-         뜬 것처럼 보였다) — 붙는 자리는 몸 안이라도 내려오면서 밖으로 나와야 눈에
-         잡힌다. 1.06 → 1.16. */
-      x: 0, y: 0, h: 1, w: 0.5, tipW: 0.42, segs: 1, sides: 6, hold: 0.35, caps: "none",
+      x: 0, y: 0, h: 1, w: 0.5, tipW: 0.44, segs: 1, sides: 6, hold: 0.35, caps: "none",
       path: (t9: number): [number, number, number] => [
-        px * (1 + 0.16 * t9), py * (1 + 0.16 * t9), zTop - (zTop - 0.4) * t9,
+        px * (0.9 + 0.1 * t9), py * (0.9 + 0.1 * t9), zTop - (zTop - 0.38) * t9,
       ],
-    }), "#8b929a"), dep9 + 0.3),
+    }), "#8b929a"), legDep + 0.3),
     ...tagKey(paintBase(spirePillar({
-      x: px * 1.16, y: py * 1.16, z0: 0, h: 0.42, w: 0.98, tipW: 0.8,
+      x: px, y: py, z0: 0, h: 0.4, w: 0.98, tipW: 0.8,
       segs: 1, sides: 8, hold: 0.45, caps: "both",
-    }), "#5d636b"), dep9 + 0.5),
+    }), "#5d636b"), padDep + 0.45),
   ];
 }
 
@@ -1723,8 +1727,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const pc: ShapeFace[] = [];
     // 다리 여섯(지적) — 앞뒤 세 쌍.
     out.push(
-      ...legAndFoot(-3.9, 3.4, 2.8), ...legAndFoot(0, 4.3, 2.8), ...legAndFoot(3.9, 3.4, 2.8),
-      ...legAndFoot(-3.9, -3.4, 2.8), ...legAndFoot(0, -4.3, 2.8), ...legAndFoot(3.9, -3.4, 2.8),
+      // 가운데 다리는 몸통 안쪽으로(수리: y 4.3은 가운데 상자 밖이라 허공에 떴다).
+      ...legAndFoot(-3.9, 3.4, 2.8), ...legAndFoot(0, 3.7, 2.8), ...legAndFoot(3.9, 3.4, 2.8),
+      ...legAndFoot(-3.9, -3.4, 2.8), ...legAndFoot(0, -3.7, 2.8), ...legAndFoot(3.9, -3.4, 2.8),
     );
     // 사이를 잇는 입체 상자 — 판보다 낮고 짧아 판 셋이 도드라진다.
     /* 사이 상자는 판보다 앞뒤로 조금 더 내민다(지적: 판에 가려 안 보임) — 판이
@@ -2054,31 +2059,23 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        개인색은 스프라이트의 **파랑**(= 임자 색) — 착륙판 둘레에 눕힌 슬래브들이다. */
     const out: ShapeFace[] = [];
     const pc: ShapeFace[] = [];
-    const DARK = "#3b4048";
     const GREY = "#8b929a";
     const PADTOP = "#b7ac97";
     const AMBER = "#e8c33a";
 
-    const BODY_Z0 = 0.85;   // 몸통 밑 — 발 위로 살짝 떠 있다.
-    const BODY_H = 1.5;
+    /* 몸통을 1.5배로, 다리도 그만큼 길게(요청). 납작하기만 하면 이 건물이 접시
+       하나로 보인다 — 몸이 서야 착륙판이 '지붕'으로 읽힌다. */
+    const BODY_Z0 = 1.35;   // 몸통 밑 — 발 위로 떠 있다(다리 길이가 이 값이다).
+    const BODY_H = 2.25;
     const PAD_Z = BODY_Z0 + BODY_H;   // 2.35 — 착륙판 테
 
     // 짧고 어두운 발 여섯 — 둘레에 박힌다. 스프라이트의 발은 기둥이 아니라 굽이다.
     for (const deg9 of [30, 90, 150, 210, 270, 330]) {
       const a9 = (deg9 * Math.PI) / 180;
-      const fx9 = Math.sin(a9) * 5.35;
-      const fy9 = Math.cos(a9) * 5.35;
-      const dep9 = depthNow(fx9, fy9) * 1.6;
-      out.push(...tagKey(paintBase(spirePillar({
-        x: 0, y: 0, h: 1, w: 0.46, tipW: 0.4, segs: 1, sides: 6, hold: 0.4, caps: "none",
-        path: (t9: number): [number, number, number] => [
-          fx9 * (1 + 0.07 * t9), fy9 * (1 + 0.07 * t9), BODY_Z0 + 0.15 - (BODY_Z0 - 0.2) * t9,
-        ],
-      }), GREY), dep9 + 0.2),
-      ...tagKey(paintBase(spirePillar({
-        x: fx9 * 1.07, y: fy9 * 1.07, z0: -0.05, h: 0.4, w: 1.0, tipW: 0.82,
-        segs: 1, sides: 8, hold: 0.45, caps: "both",
-      }), DARK), dep9 + 0.4));
+      // 몸통 반지름(4.75~5.15) 안에서 시작해야 다리가 안 뜬다(수리: 5.35는 밖이었다).
+      const fx9 = Math.sin(a9) * 4.55;
+      const fy9 = Math.cos(a9) * 4.55;
+      out.push(...legAndFoot(fx9, fy9, BODY_Z0 + 0.25));
     }
 
     // 낮은 팔각 몸통.
@@ -2173,8 +2170,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const sy9 = Math.cos(a9);
       const bx9 = sx9 * 4.0;
       const by9 = sy9 * 4.0;
-      const tx9 = sx9 * 7.15;
-      const ty9 = sy9 * 7.15;
+      /* 안테나를 길게(요청) — 7.15에서 7.55로. 8.3까지 뽑았더니 16칸 모델 상자(±8)를
+         넘겨 끝 마디가 잘렸다. 마디 반지름(0.5)까지 세면 7.55가 상한이다. */
+      const tx9 = sx9 * 7.55;
+      const ty9 = sy9 * 7.55;
       const dep9 = depthNow(tx9, ty9);
       out.push(...tagKey(paintBase(spirePillar({
         x: 0, y: 0, h: 1, w: 0.34, tipW: 0.28, segs: 1, sides: 6, hold: 0.25, caps: "none",
@@ -2196,7 +2195,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       boxFaces3(0, 5.5, 0.95, 3.3, 0.2, BODY_Z0 + 1.3),
       48 + depthNow(0, 5.5) * 1.6,
     ));
-    for (const deg9 of [0, 90, 180, 270]) {
+    /* 정면(0도) 슬래브는 왼쪽으로 옮겼다(지적: "원통 정면의 개인색 구조물은 오른쪽
+       개인색 구조물과 대칭으로 왼쪽 옆으로 이동해야해") — 정면에는 이미 길다란
+       구조물과 그 위의 세로 데칼이 있어 색이 겹쳤고 좌우 짝도 안 맞아 보였다.
+       이제 90도(오른쪽)·270도(왼쪽)가 짝을 이루고 180도(뒤)가 하나 더 있다. */
+    for (const deg9 of [90, 180, 270]) {
       const a9 = (deg9 * Math.PI) / 180;
       const sx9 = Math.sin(a9);
       const sy9 = Math.cos(a9);
@@ -3591,12 +3594,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        있고 앞·뒤로 갈려 있어 어느 요잉에서도 한쪽은 보인다. */
     const pc: ShapeFace[] = [];
     const out: ShapeFace[] = [
-      ...foot(-5, -3), ...foot(5, -3),
+      // 몸통 상자(6.6×4) 안에서 시작해야 다리가 안 뜬다(수리: ±5·±3은 밖이었다).
+      ...foot(-2.9, -1.6), ...foot(2.9, -1.6),
       ...paintBase(boxFaces3(0, -0.4, 6.6, 4, 3, BODY_Z), SILVER),
       ...tubeFaces(1.7, 0.6, 1.7, 2.5, 0.65, BODY_Z + 1.9),
       topFace(groundEllipse(...project(1.7, 2.5, BODY_Z + 2.4), 0.5, 0.4), 0.35),
       ...hornFaces(-2.3, -1.7, BODY_Z + 4.5, -2.3, -1.7, BODY_Z + 6.5, 0.32),
-      ...foot(-5.2, 3.2), ...foot(5.2, 3.2),
+      ...foot(-2.9, 1.6), ...foot(2.9, 1.6),
       ...pads,
     ];
     // 오른앞 드럼 — 개인색(위 지적). 눕힌 큰 통이라 옆에서도 임자 색이 넓게 읽힌다.
