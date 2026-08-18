@@ -1481,11 +1481,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 서플라이(단순화, 지적) — 본체 상자 + 지붕 큰 회전 통풍구 + 앞면의 더 큰 둥근 팬
      둘 + 왼앞 줄무늬 차단바. 잔장식(등판·캐니스터·탱크)은 걷어냈다. */
   trapezoid: () => {
-    /* 서플라이 디포(전면 재작도·사진) — 검회색 장갑 상자 위에 살대 박힌 큰 환기
-       바퀴가 눕고, 앞면에는 작은 팬 둘, 왼쪽 옆면에는 초록 창과 노랑·검정 해저드 띠,
-       왼쪽 지붕에는 보급 상자 줄. 보급 상자 줄만 개인색이다. */
+    /* 서플라이 디포(재작도·사진) — 검회색 장갑 상자다. 지붕 뒤에 드럼통 하나가 서고,
+       지붕 가운데와 앞면 두 곳에는 환풍구가 뚫린다. 왼쪽 지붕에는 은빛 보급 상자 줄과
+       그 아래 초록 발광, 왼쪽 옆면에는 초록 창과 해저드 띠, 앞에는 경사로와 드럼 둘.
+       개인색은 보급 상자 줄과 드럼통 뚜껑 데칼이다. */
     const STEEL = "#5c636d";
     const DARK = "#3a3f46";
+    const HOLE = "#15181c";
+    const BLADE = "#98a1ab";
+    const FRAME = "#6b727c";
     const out: ShapeFace[] = [];
     // 몸통 — 위로 살짝 좁아지는 장갑 덩치.
     out.push(...tagKey(paintBase(frustumFaces3(0, 0, 7.2, 5.6, 6.4, 4.8, 2.2, 0), DARK), 0));
@@ -1500,56 +1504,128 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       }
       out.push(...tagKey(rib, 1 + depthNow(0, 2.7) * 1.6));
     }
-    /* 지붕 큰 환기 바퀴 — 테와 살대 여덟, 가운데 축 돌기. 요잉을 타고 돈다. */
-    const wheel = (wx: number, wy: number, wz: number, wr: number, key: number): void => {
-      const yaw = Math.atan2(-depthNow(1, 0), depthNow(0, 1));
+    /* 환풍구 셋(재지적: "세개는 디스크가 아니고 환풍구들이네", "동그라미 모양에 날개
+       3개씩 있음") — 지붕 하나와 앞면 둘. 둥근 테 안에 검은 구멍이 파이고 그 위로 날개
+       셋이 허브에서 뻗어 나가며 바깥으로 갈수록 넓어진다.
+       평면 위의 원이라 화면 타원을 직접 그리지 않는다: 중심 C와 그 평면을 이루는 두
+       방향 u·v를 받아 P(r,t) = C + r·cos t·u + r·sin t·v 로 모형 좌표를 만들고, 투영은
+       polyPath3에 맡긴다. 앞면처럼 기운 벽에서도 원이 벽에 제대로 눕는 이유다. */
+    const fanVent = (
+      c: [number, number, number], u: [number, number, number], v: [number, number, number],
+      r: number, key: number,
+    ): void => {
+      const P = (rr: number, t: number): [number, number, number] => {
+        const ct = Math.cos(t) * rr; const st = Math.sin(t) * rr;
+        return [c[0] + ct * u[0] + st * v[0], c[1] + ct * u[1] + st * v[1],
+          c[2] + ct * u[2] + st * v[2]];
+      };
+      const ring = (rr: number, n = 24): [number, number, number][] =>
+        Array.from({ length: n }, (_, k) => P(rr, (k / n) * Math.PI * 2));
       const parts: ShapeFace[] = [
-        ...paintBase(cylinderFaces3(wx, wy, wr, 0.36, wz), STEEL),
-        [discPath3(wx, wy, wz + 0.38, wr), 1, DARK] as ShapeFace,
+        [polyPath3(ring(r * 1.18)), 1, FRAME] as ShapeFace,
+        [polyPath3(ring(r * 1.03)), 1, "#4a505a"] as ShapeFace,
+        [polyPath3(ring(r)), 1, HOLE] as ShapeFace,
       ];
-      const [cx9, cy9] = project(wx, wy, wz + 0.4);
-      for (let k = 0; k < 8; k += 1) {
-        const a9 = (k / 8) * Math.PI * 2 + yaw;
-        parts.push([`M${cx9 + Math.cos(a9) * wr * 0.24} ${cy9 + Math.sin(a9) * wr * 0.24 * groundSquashNow()}`
-          + ` L${cx9 + Math.cos(a9) * wr * 0.94} ${cy9 + Math.sin(a9) * wr * 0.94 * groundSquashNow()}`
-          + ` L${cx9 + Math.cos(a9 + 0.22) * wr * 0.94} ${cy9 + Math.sin(a9 + 0.22) * wr * 0.94 * groundSquashNow()}`
-          + ` L${cx9 + Math.cos(a9 + 0.22) * wr * 0.24} ${cy9 + Math.sin(a9 + 0.22) * wr * 0.24 * groundSquashNow()} Z`,
-        1, STEEL] as ShapeFace);
+      // 날개 셋 — 허브에서 나와 살짝 휘며 넓어진다. 사이는 검은 구멍이 그대로 비친다.
+      const SEG = 6;
+      for (let k = 0; k < 3; k += 1) {
+        const a0 = (k / 3) * Math.PI * 2;
+        const pts: [number, number, number][] = [];
+        const rAt = (t: number): number => r * (0.2 + 0.78 * t);
+        const half = (t: number): number => 0.16 + 0.52 * t;
+        for (let j = 0; j <= SEG; j += 1) {
+          const t = j / SEG;
+          pts.push(P(rAt(t), a0 + t * 0.62 - half(t)));
+        }
+        for (let j = SEG; j >= 0; j -= 1) {
+          const t = j / SEG;
+          pts.push(P(rAt(t), a0 + t * 0.62 + half(t)));
+        }
+        parts.push([polyPath3(pts), 1, BLADE] as ShapeFace);
       }
-      parts.push(...paintBase(domeFaces3(wx, wy, wr * 0.28, wr * 0.24, wz + 0.4), "#8b8f96"));
+      // 가운데 허브.
+      parts.push([polyPath3(ring(r * 0.24, 14)), 1, "#8b8f96"] as ShapeFace);
       out.push(...tagKey(parts, key));
     };
-    wheel(0.4, -0.4, 2.2, 2.5, 20 + depthNow(0.4, -0.4));
-    /* 지적: "서플라이 두개의 작은 디스크는 앞면으로 이동" — 여태 오른쪽 옆면에 축을
-       x로 눕혀 놓아, 정면에서는 원판이 아니라 테두리만 보였다. 축을 y(시청자 쪽)로
-       돌려 앞면에 붙이면 원판이 정면으로 열려 비로소 '디스크'로 읽힌다. 앞면은 위로
-       좁아지는 사면(2.8→2.4)이라, 팬을 놓는 높이(z 1.05)의 면 자리를 따로 재서 얹었다 —
-       바닥 기준 y 2.8에 그대로 두면 팬만 벽에서 앞으로 떠 나온다. */
-    for (const fx of [-1.65, 1.65]) {
-      const fy = 2.8 - (0.4 / 2.2) * 1.05;
+    // 지붕 환풍구 — 바닥면(위를 보는 면)에 눕는다.
+    fanVent([0.3, -0.5, 2.24], [1, 0, 0], [0, 1, 0], 1.75, 20 + depthNow(0.3, -0.5));
+    /* 앞면 환풍구 둘 — 앞벽은 위로 좁아지는 사면이라 높이마다 벽의 y가 다르다.
+       벽을 따라 올라가는 방향(0, dy/dz, 1)을 단위로 만들어 v로 주면 원이 사면에 눕는다.
+       벽에서 살짝(0.06) 앞으로 띄워 몸통 면과 겹쳐 깜빡이지 않게 했다. */
+    const wallY = (z9: number): number => 2.8 - (0.4 / 2.2) * z9;
+    if (facingRatio(0, 1) > 0.12) {
+      const sl = -0.4 / 2.2;
+      const vn = Math.hypot(sl, 1);
+      for (const fx of [-1.75, 1.75]) {
+        fanVent([fx, wallY(1.2) + 0.06, 1.2], [1, 0, 0], [0, sl / vn, 1 / vn], 0.92,
+          22 + depthNow(fx, 2.7));
+      }
+    }
+    /* 드럼통(재지적: "아까 없앴던 떨어진 디스크도 실제로 존재함. 크기 줄여서 복구하되
+       디스크 아래에 본체기둥도 있게해서 드럼통 느낌") — 예전에는 원판만 지붕 위 허공에
+       떠 있어 어느 방향에서 봐도 본체와 안 닿는 낱개로 보였고, 그래서 걷었던 것이다.
+       원판 아래에 기둥을 세우면 밑동이 지붕에 닿아 통 하나로 읽힌다. 크기는 줄였다
+       (반지름 1.6 → 0.92). 뚜껑 안쪽 원이 개인색 데칼이다(요청). */
+    {
+      // 키는 낮추고(재지적: "드럼통 높이 낮추기") 배는 그대로 — 1.5 → 0.85.
+      const dx = -1.95; const dy = -1.5; const dr = 0.92; const dz = 2.2; const dh = 0.85;
       out.push(...tagKey([
-        ...paintBase(tubeFaces(fx, fy - 0.16, fx, fy + 0.16, 0.72, 1.05), DARK),
-        ...paintBase(domeFaces3(fx, fy + 0.32, 0.26, 0.22, 1.05), "#8b8f96"),
-      ], 22 + depthNow(fx, fy)));
+        ...paintBase(cylinderFaces3(dx, dy, dr, dh, dz), STEEL),
+        // 허리 테 둘 — 드럼통으로 읽히게 하는 표식.
+        ...paintBase(cylinderFaces3(dx, dy, dr * 1.07, 0.13, dz + dh * 0.3), "#828a94"),
+        ...paintBase(cylinderFaces3(dx, dy, dr * 1.07, 0.13, dz + dh * 0.62), "#828a94"),
+        // 뚜껑 — 어두운 강철 원판, 그 안쪽 원은 칠하지 않아 임자 색이 든다(개인색 데칼).
+        [discPath3(dx, dy, dz + dh + 0.02, dr), 1, DARK] as ShapeFace,
+        [discPath3(dx, dy, dz + dh + 0.04, dr * 0.62), 1] as ShapeFace,
+        topFace(discPath3(dx, dy, dz + dh + 0.06, dr * 0.26), 0.3),
+      ], 26 + depthNow(dx, dy)));
     }
-    /* 왼쪽 지붕 보급 상자 줄 — 개인색(요청: 건물마다 개인색 포인트). */
-    for (let k = 0; k < 4; k += 1) {
-      out.push(...tagKey(boxFaces3(-2.4, 1.6 - k * 1.15, 1.5, 1, 0.9, 2.2),
-        20 + depthNow(-2.4, 1.6 - k * 1.15)));
+    /* 환풍팬 둘 사이의 배기 파이프(요청: "옆면에 환풍팬 사이에 지상으로 이어지는
+       파이프 구조물") — 벽 앞으로 살짝 나와 선 굵은 관이 지붕 밑에서 땅까지 내려온다.
+       위쪽은 팔꿈치로 꺾여 벽 안으로 들어가고, 중간에 이음매 테 둘, 밑동에는 바닥판이
+       깔린다. 벽에 그린 데칼이 아니라 제 부피를 가진 구조물이라 깊이 키로 정렬한다. */
+    {
+      const py = 3.06;
+      const pipe: ShapeFace[] = [
+        // 밑동 바닥판.
+        ...paintBase(cylinderFaces3(0, py, 0.62, 0.16, 0), FRAME),
+        // 세운 관.
+        ...paintBase(cylinderFaces3(0, py, 0.36, 2.05, 0.1), STEEL),
+        // 이음매 테 둘.
+        ...paintBase(cylinderFaces3(0, py, 0.44, 0.14, 0.66), FRAME),
+        ...paintBase(cylinderFaces3(0, py, 0.44, 0.14, 1.46), FRAME),
+        // 벽으로 꺾여 들어가는 팔꿈치.
+        ...paintBase(tubeFaces(0, py, 0, wallY(2.05) - 0.1, 0.33, 2.05), STEEL),
+      ];
+      out.push(...tagKey(pipe, depthNow(0, py) * 1.6 + 6));
     }
-    /* 지적: "앞면에 있는 녹색네모와 해저드 표시는 옆면(왼쪽)으로 이동" — 둘 다 화면
-       왼쪽 옆면(모형 -x 쪽)으로 옮겼다. 그 면은 아래가 넓고 위가 좁은 사면이라
-       (3.6→3.2) 높이마다 벽의 x가 다르다 — wallX가 그 기울기를 재 주므로 데칼 네 귀가
-       벽 평면에 정확히 눕는다. 앞면에 쓰던 y=2.76 평면 좌표를 그대로 옮기면 옆면에서
-       벽을 뚫거나 떠 보인다. 켜는 조건은 몸통 옆벽과 똑같이 faceLight로 잡았다 —
-       벽이 사라진 각도(시각 밀림이 왼쪽으로 갈 때)에 데칼만 남아 허공에 뜨지 않게. */
+    /* 왼쪽 지붕 보급 상자 줄 — 개인색(요청: 건물마다 개인색 포인트). 드럼통이 뒤
+       귀퉁이를 차지해 세 칸으로 줄이고 앞으로 물렸다. */
+    for (let k = 0; k < 3; k += 1) {
+      out.push(...tagKey(boxFaces3(-2.4, 1.7 - k * 1.15, 1.5, 1, 0.9, 2.2),
+        20 + depthNow(-2.4, 1.7 - k * 1.15)));
+    }
+    /* 왼쪽 옆면 초록 창과 해저드 띠 — 그 면은 아래가 넓고 위가 좁은 사면이라
+       (3.6→3.2) 높이마다 벽의 x가 다르다. wallX가 그 기울기를 재 주므로 데칼 네 귀가
+       벽 평면에 정확히 눕는다. 켜는 조건은 몸통 옆벽과 똑같이 faceLight로 잡았다 —
+       벽이 사라진 각도에 데칼만 남아 허공에 뜨지 않게. */
     const wallX = (z9: number): number => -(3.6 - (0.4 / 2.2) * z9) - 0.06;
     if (faceLight(-1, 0, 0.18).visible) {
-      // 초록 창.
-      out.push(...tagKey([[polyPath3([
-        [wallX(1.15), -0.9, 1.15], [wallX(1.15), 0.9, 1.15],
-        [wallX(1.95), 0.9, 1.95], [wallX(1.95), -0.9, 1.95],
-      ]), 1, "#4cd86a"] as ShapeFace], depthNow(-3.4, 0) * 1.6 + 3));
+      /* 초록 창(재지적: "앞쪽 초록창은 반투명 처리하고 더 크게 확대") — 꽉 찬 초록
+         네모가 아니라 안쪽이 비쳐 보이는 유리다. 벽 자리에 어두운 창틀을 먼저 깔고
+         그 위에 반투명 초록을 덮어, 뒤가 비치면서도 벽 색에 묻히지 않게 했다.
+         크기는 세로 0.8 → 1.55, 가로 1.8 → 3.2로 키웠다. */
+      const gz0 = 0.72; const gz1 = 2.05; const gy = 1.6;
+      const pane = (inset: number, z0: number, z1: number): string => polyPath3([
+        [wallX(z0) - inset, -gy - inset * 0.4, z0], [wallX(z0) - inset, gy + inset * 0.4, z0],
+        [wallX(z1) - inset, gy + inset * 0.4, z1], [wallX(z1) - inset, -gy - inset * 0.4, z1],
+      ]);
+      out.push(...tagKey([
+        [pane(0, gz0 - 0.16, gz1 + 0.16), 1, "#22262b"] as ShapeFace,
+        [pane(0.04, gz0, gz1), 0.55, "#4cd86a"] as ShapeFace,
+        // 유리에 비친 하늘 — 위쪽 모서리를 따라 흐르는 옅은 띠.
+        [pane(0.06, gz1 - 0.34, gz1 - 0.06), 0.3, "#eafff0"] as ShapeFace,
+      ], depthNow(-3.4, 0) * 1.6 + 3));
       // 해저드 빗금 띠 — 위로 갈수록 앞(+y)으로 밀어 비스듬한 경고 무늬가 된다.
       const haz: ShapeFace[] = [];
       for (let k = 0; k < 7; k += 1) {
@@ -1561,7 +1637,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       }
       out.push(...tagKey(haz, depthNow(-3.4, 0) * 1.6 + 4));
     }
-    // 앞 드럼 둘 — 앞면 가운데를 팬 둘이 차지해 오른쪽 귀로 물렸다.
+    // 앞 드럼 둘 — 앞면 가운데를 환풍구가 차지해 오른쪽 귀로 물렸다.
     for (const [dx9, dy9] of [[2.9, 3.5], [3.9, 2.9]] as [number, number][]) {
       out.push(...tagKey(paintBase([
         ...cylinderFaces3(dx9, dy9, 0.55, 1.1, 0),
