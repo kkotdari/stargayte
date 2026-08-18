@@ -11104,6 +11104,11 @@ export default function ReplayMotionPlayer({
      덤으로 자리가 좋다: 맵 뷰어 1024px에 128타일 맵이면 한 타일이 8px이라, 4배에서
      한 타일이 정확히 32px — 원작의 타일 크기 그대로다. */
   const ZOOM_GAME = 4;
+  /* 이어서 늘릴 때의 상한(요청: "재생 확대 최대 8배로 수정") — 휠·핀치처럼 배율이
+     연속으로 움직이는 길이 여기까지 간다. 더블클릭·더블탭이 한 번에 뛰는 자리는
+     ZOOM_GAME 그대로다(그건 앞서 6 → 4로 낮춰 달라던 값이라 건드리지 않는다).
+     핀치 상한이 20이라 다른 길과 안 맞던 것도 여기로 모은다. */
+  const ZOOM_MAX = 8;
   const [zoom, setZoom] = useState(1);
   /* 확대·축소 빗장(지적: 실기 진단 — 판정은 매번 '확대'로 떨어지는데 화면이 그대로다)
      — iOS 사파리는 더블탭에서 touchend와 함께 dblclick도 쏜다. 우리 더블탭이 확대해
@@ -11198,7 +11203,7 @@ export default function ReplayMotionPlayer({
          아무리 굴려도 배율이 안 움직인다. */
       const dy9 = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? rect.height : 1);
       const step = Math.exp(-dy9 * 0.0016);
-      const z1 = Math.min(ZOOM_GAME, Math.max(1, z0 * step));
+      const z1 = Math.min(ZOOM_MAX, Math.max(1, z0 * step));
       const ox = rect.left + rect.width / 2;
       const oy = rect.top + rect.height / 2;
       // 커서 아래의 지도 지점이 그 자리에 남도록 팬을 함께 푼다(더블클릭과 같은 자).
@@ -11377,7 +11382,7 @@ export default function ReplayMotionPlayer({
       const ox = r.left + r.width / 2;
       const oy = r.top + r.height / 2;
       // 상한 12 → 20(재요청: 더 높게) — 그 위는 선명도가 배킹 한계(4096px)에 막혀 무의미하다.
-      const z = Math.min(20, Math.max(1, (pinch.z * dist(e.touches)) / pinch.d));
+      const z = Math.min(ZOOM_MAX, Math.max(1, (pinch.z * dist(e.touches)) / pinch.d));
       const mx2 = (e.touches[0].clientX + e.touches[1].clientX) / 2;
       const my2 = (e.touches[0].clientY + e.touches[1].clientY) / 2;
       // 핀치 시작점 아래의 지도 지점이 손가락을 따라오도록 pan을 푼다.
