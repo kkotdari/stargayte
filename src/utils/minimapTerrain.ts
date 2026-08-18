@@ -492,10 +492,155 @@ export function decodeWalk(json: string | null | undefined): TerrainGrid | null 
   }
 }
 
+
 /* ── 길찾기 — 좌표는 0~1 분수다(마커와 같은 자). ─────────────────────────────── */
 
-/** 두 자리 사이의 지상 경로(분수 좌표 꼭짓점들) — 격자 BFS(8방향). 시작·끝이 못 걷는
- *  칸이면 가까운 걷는 칸으로 옮겨 잡고, 길이 아예 없으면 null(부르는 쪽이 직선 폴백). */
+/* 여기는 시뮬에서 가장 비싼 자리다(과제 #70). 실측(게임 1, 개체 3073):
+ *
+ *     길찾기 9845번 2.68초 + 차선 418번 2.61초 = 5.29초 / 전체 11.6초
+ *
+ * 세 가지가 겹쳐 있었다.
+ *  ① **훑는 넓이** — 너비우선(BFS)·다익스트라는 목적지 방향을 모른다. 한 번에 평균
+ *     2253칸(판의 14%)을, 차선은 6653칸(41%)을 훑었다. 목적지까지 남은 거리를
+ *     가늠자로 얹으면(A*) 같은 최단 답을 훨씬 좁게 찾는다.
+ *  ② **길이 없다는 증명** — 418번은 길이 아예 없어 닿는 땅 전부를 훑고 나서야
+ *     null을 냈고, 그 뒤에 차선이 또 판을 훑었다. 판마다 '이어진 땅 덩어리'를 한 번
+ *     칠해 두면 그 판정이 배열 두 번 읽기로 끝난다.
+ *  ③ **긁개 할당** — 길 하나마다 격자 크기의 배열을 새로 잡아 채웠다(차선은 한 번에
+ *     208KB). 한 벌만 두고 '세대 도장'으로 방문 여부를 가리면 채울 일도 없다.
+ *
+ * 셋 다 답을 바꾸지 않는 최적화다. 다만 하나는 값을 바꾼다: 옛 BFS는 대각을 1로 세어
+ * (체비쇼프) 계단꼴 답을 냈는데, 여기서는 대각을 √2로 센다(옥타일). 원작이 벽 모서리로
+ * 꺾는 것에 더 가깝고, 뒤이은 smoothPath가 어차피 곧게 펴므로 화면에서는 더 자연스럽다. */
+
+/** 판 하나를 오가는 긁개 — 배열은 한 벌만 두고 세대 도장으로 방문을 가린다. */
+let scN = 0;
+let scG = new Float64Array(0);
+let scPrev = new Int32Array(0);
+let scSeen = new Int32Array(0);
+let scDone = new Int32Array(0);
+let scGen = 0;
+const scratch = (n: number): void => {
+  if (scN !== n) {
+    scN = n;
+    scG = new Float64Array(n);
+    scPrev = new Int32Array(n);
+    scSeen = new Int32Array(n);
+    scDone = new Int32Array(n);
+    scGen = 0;
+  }
+  scGen += 1;
+  // 도장이 넘치기 전에 한 번만 씻는다(2^31번 부르면 — 사실상 오지 않는다).
+  if (scGen >= 0x7fffffff) { scSeen.fill(0); scDone.fill(0); scGen = 1; }
+};
+
+/* 최소 힙 — 칸 번호와 f값을 나란히 담는다. 값이 줄면 다시 밀어 넣고(게으른 삭제),
+   꺼낼 때 이미 확정된 칸이면 버린다. 배열 둘은 길이만 0으로 되돌려 다시 쓴다. */
+const hpId: number[] = [];
+const hpF: number[] = [];
+const hpPush = (id: number, f: number): void => {
+  hpId.push(id);
+  hpF.push(f);
+  let c = hpId.length - 1;
+  while (c > 0) {
+    const p = (c - 1) >> 1;
+    if (hpF[p] <= hpF[c]) break;
+    const ti = hpId[p]; hpId[p] = hpId[c]; hpId[c] = ti;
+    const tf = hpF[p]; hpF[p] = hpF[c]; hpF[c] = tf;
+    c = p;
+  }
+};
+const hpPop = (): number => {
+  const top = hpId[0];
+  const li = hpId.pop()!;
+  const lf = hpF.pop()!;
+  const n = hpId.length;
+  if (n > 0) {
+    hpId[0] = li;
+    hpF[0] = lf;
+    let c = 0;
+    for (;;) {
+      const l = c * 2 + 1;
+      const r = l + 1;
+      let m = c;
+      if (l < n && hpF[l] < hpF[m]) m = l;
+      if (r < n && hpF[r] < hpF[m]) m = r;
+      if (m === c) break;
+      const ti = hpId[m]; hpId[m] = hpId[c]; hpId[c] = ti;
+      const tf = hpF[m]; hpF[m] = hpF[c]; hpF[c] = tf;
+      c = m;
+    }
+  }
+  return top;
+};
+
+/** 남은 거리 가늠자(옥타일) — 대각을 √2로 세는 셈이다. 실제 최소 비용을 넘지 않으므로
+ *  (허용 가늠자) A*가 처음 꺼낸 목적지가 곧 최단이다. */
+const OCT_D = Math.SQRT2 - 2;
+const octile = (dx: number, dy: number): number => {
+  const ax = dx < 0 ? -dx : dx;
+  const ay = dy < 0 ? -dy : dy;
+  return ax + ay + OCT_D * (ax < ay ? ax : ay);
+};
+/** 팔방 이웃 — [dx, dy, 대각인가]. */
+const STEPS: [number, number, number][] = [
+  [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0],
+  [1, 1, 1], [1, -1, 1], [-1, 1, 1], [-1, -1, 1],
+];
+
+/** 이어진 땅 덩어리 번호 — 못 걷는 칸은 −1. 판마다 한 번만 칠하고 판과 함께 버린다
+ *  (판은 건물이 서고 무너질 때마다 새 객체로 다시 굽는다). */
+const COMPS = new WeakMap<TerrainGrid, Int32Array>();
+function compsOf(t: TerrainGrid): Int32Array {
+  const hit = COMPS.get(t);
+  if (hit) return hit;
+  const n = t.w * t.h;
+  const lab = new Int32Array(n).fill(-1);
+  const stack: number[] = [];
+  let cur = 0;
+  for (let s = 0; s < n; s += 1) {
+    if (lab[s] !== -1 || !t.walk[s]) continue;
+    lab[s] = cur;
+    stack.length = 0;
+    stack.push(s);
+    while (stack.length > 0) {
+      const i = stack.pop()!;
+      const x = i % t.w;
+      const y = (i - x) / t.w;
+      for (let k = 0; k < 8; k += 1) {
+        const nx = x + STEPS[k][0];
+        const ny = y + STEPS[k][1];
+        if (nx < 0 || ny < 0 || nx >= t.w || ny >= t.h) continue;
+        const ni = ny * t.w + nx;
+        if (lab[ni] !== -1 || !t.walk[ni]) continue;
+        lab[ni] = cur;
+        stack.push(ni);
+      }
+    }
+    cur += 1;
+  }
+  COMPS.set(t, lab);
+  return lab;
+}
+
+/** 칸 번호들을 분수 좌표 꼭짓점으로 — 끝점만 실제 목적지를 쓴다(칸 가운데로 끌리면
+ *  어긋난다). 시작 칸은 담지 않는다(이미 그 자리에 서 있다). */
+function traceBack(
+  t: TerrainGrid, startIdx: number, goalIdx: number, fx1: number, fy1: number,
+): [number, number][] {
+  const cells: number[] = [];
+  for (let cur = goalIdx; cur !== startIdx; cur = scPrev[cur]) cells.push(cur);
+  cells.reverse();
+  const out: [number, number][] = cells.map((i) => [
+    ((i % t.w) + 0.5) / t.w,
+    (Math.floor(i / t.w) + 0.5) / t.h,
+  ]);
+  out[out.length - 1] = [fx1, fy1];
+  return out;
+}
+
+/** 두 자리 사이의 지상 경로(분수 좌표 꼭짓점들) — 격자 A*(8방향). 시작·끝이 못 걷는
+ *  칸이면 가까운 걷는 칸으로 옮겨 잡고, 길이 아예 없으면 null(부르는 쪽이 차선으로). */
 export function groundPath(
   t: TerrainGrid, fx0: number, fy0: number, fx1: number, fy1: number,
 ): [number, number][] | null {
@@ -521,41 +666,53 @@ export function groundPath(
   if (!start || !goal) return null;
   if (start[0] === goal[0] && start[1] === goal[1]) return [[fx1, fy1]];
 
-  const prev = new Int32Array(t.w * t.h).fill(-1);
   const startIdx = start[1] * t.w + start[0];
   const goalIdx = goal[1] * t.w + goal[0];
-  prev[startIdx] = startIdx;
-  const queue = [startIdx];
-  // 8방향 — 대각을 허락해야 계단꼴 경로가 안 나온다.
-  const dirs = [-1, 1, -t.w, t.w, -t.w - 1, -t.w + 1, t.w - 1, t.w + 1];
+  /* 다른 땅 덩어리면 길은 없다 — 훑어 보지 않고 바로 접는다. */
+  const lab = compsOf(t);
+  if (lab[startIdx] !== lab[goalIdx]) return null;
+
+  scratch(t.w * t.h);
+  hpId.length = 0;
+  hpF.length = 0;
+  scG[startIdx] = 0;
+  scPrev[startIdx] = startIdx;
+  scSeen[startIdx] = scGen;
+  hpPush(startIdx, octile(goal[0] - start[0], goal[1] - start[1]));
   let found = false;
-  for (let qi = 0; qi < queue.length && !found; qi += 1) {
-    const cur = queue[qi];
-    for (const d of dirs) {
-      const next = cur + d;
-      if (next < 0 || next >= prev.length || prev[next] !== -1) continue;
-      // 줄 끝에서 반대편으로 감기는 이웃은 버린다.
-      if (Math.abs((cur % t.w) - (next % t.w)) > 1) continue;
-      if (!t.walk[next]) continue;
-      prev[next] = cur;
-      if (next === goalIdx) { found = true; break; }
-      queue.push(next);
+  while (hpId.length > 0) {
+    const cur = hpPop();
+    if (scDone[cur] === scGen) continue;
+    scDone[cur] = scGen;
+    if (cur === goalIdx) { found = true; break; }
+    const cx = cur % t.w;
+    const cy = (cur - cx) / t.w;
+    const gc = scG[cur];
+    for (let k = 0; k < 8; k += 1) {
+      const st = STEPS[k];
+      const nx = cx + st[0];
+      const ny = cy + st[1];
+      if (nx < 0 || ny < 0 || nx >= t.w || ny >= t.h) continue;
+      const ni = ny * t.w + nx;
+      if (!t.walk[ni] || scDone[ni] === scGen) continue;
+      /* 모서리 자르기 금지 — 대각으로 가려면 옆의 두 칸도 트여 있어야 한다. 벽 두 장이
+         맞닿은 틈으로 비스듬히 빠져나가는 것은 원작에서 안 되는 일이고, 우리 판에서는
+         "몸은 멀쩡한 땅에 있는데 지나온 자리가 벽"인 자취로 남았다. */
+      if (st[2] && !(t.walk[cy * t.w + nx] && t.walk[ny * t.w + cx])) continue;
+      const ng = gc + (st[2] ? Math.SQRT2 : 1);
+      if (scSeen[ni] === scGen && scG[ni] <= ng) continue;
+      scSeen[ni] = scGen;
+      scG[ni] = ng;
+      scPrev[ni] = cur;
+      hpPush(ni, ng + octile(goal[0] - nx, goal[1] - ny));
     }
   }
+  // 같은 덩어리라고 했으니 여기 걸릴 일은 없다 — 안전망이다.
   if (!found) return null;
-  const cellsPath: number[] = [];
-  for (let cur = goalIdx; cur !== startIdx; cur = prev[cur]) cellsPath.push(cur);
-  cellsPath.reverse();
-  // 칸 가운데의 분수 좌표로 — 끝점만 실제 목적지를 쓴다(칸 가운데로 끌리면 어긋난다).
-  const out: [number, number][] = cellsPath.map((i) => [
-    ((i % t.w) + 0.5) / t.w,
-    (Math.floor(i / t.w) + 0.5) / t.h,
-  ]);
-  out[out.length - 1] = [fx1, fy1];
-  return out;
+  return traceBack(t, startIdx, goalIdx, fx1, fy1);
 }
 
-/** BFS가 길을 못 찾을 때의 차선 — 못 걷는 칸도 '비싸게는' 지나가는 다익스트라(지적: 지상
+/** BFS가 길을 못 찾을 때의 차선 — 못 걷는 칸도 '비싸게는' 지나가는 A*(지적: 지상
  *  유닛이 벽을 막 통과해 직진). 격자가 검수·분석 오류로 조각나면 groundPath는 null이고,
  *  부르는 쪽의 직선 폴백이 벽을 그대로 그었다. 이 차선은 걷는 칸 위주로 돌아가되 정말
  *  막힌 자리만 최단으로 가로질러, 최악의 경우에도 "대체로 땅을 따라가는" 경로를 준다.
@@ -571,71 +728,39 @@ export function groundPathSoft(
   const startIdx = cy0 * t.w + cx0;
   const goalIdx = cy1 * t.w + cx1;
   if (startIdx === goalIdx) return [[fx1, fy1]];
-  const dist = new Float64Array(t.w * t.h).fill(Infinity);
-  const prev = new Int32Array(t.w * t.h).fill(-1);
-  dist[startIdx] = 0;
-  // 이진 힙 — 96×96(9천여 칸)이면 몇 ms 안이다.
-  const heap: number[] = [startIdx];
-  const key = (i: number) => dist[i];
-  const push = (i: number) => {
-    heap.push(i);
-    let c = heap.length - 1;
-    while (c > 0) {
-      const p = (c - 1) >> 1;
-      if (key(heap[p]) <= key(heap[c])) break;
-      [heap[p], heap[c]] = [heap[c], heap[p]];
-      c = p;
-    }
-  };
-  const pop = (): number => {
-    const top = heap[0];
-    const last = heap.pop()!;
-    if (heap.length > 0) {
-      heap[0] = last;
-      let c = 0;
-      for (;;) {
-        const l = c * 2 + 1;
-        const r = l + 1;
-        let m = c;
-        if (l < heap.length && key(heap[l]) < key(heap[m])) m = l;
-        if (r < heap.length && key(heap[r]) < key(heap[m])) m = r;
-        if (m === c) break;
-        [heap[m], heap[c]] = [heap[c], heap[m]];
-        c = m;
-      }
-    }
-    return top;
-  };
-  const dirs: [number, number][] = [
-    [-1, 1], [1, 1], [-t.w, 1], [t.w, 1],
-    [-t.w - 1, Math.SQRT2], [-t.w + 1, Math.SQRT2], [t.w - 1, Math.SQRT2], [t.w + 1, Math.SQRT2],
-  ];
-  const settled = new Uint8Array(t.w * t.h);
-  while (heap.length > 0) {
-    const cur = pop();
-    if (settled[cur]) continue;
-    settled[cur] = 1;
-    if (cur === goalIdx) break;
-    for (const [d, step] of dirs) {
-      const next = cur + d;
-      if (next < 0 || next >= dist.length) continue;
-      if (Math.abs((cur % t.w) - (next % t.w)) > 1) continue;
-      const cost = dist[cur] + step * (t.walk[next] ? 1 : SOFT_WALL_COST);
-      if (cost < dist[next]) {
-        dist[next] = cost;
-        prev[next] = cur;
-        push(next);
-      }
+
+  scratch(t.w * t.h);
+  hpId.length = 0;
+  hpF.length = 0;
+  scG[startIdx] = 0;
+  scPrev[startIdx] = startIdx;
+  scSeen[startIdx] = scGen;
+  hpPush(startIdx, octile(cx1 - cx0, cy1 - cy0));
+  let found = false;
+  while (hpId.length > 0) {
+    const cur = hpPop();
+    if (scDone[cur] === scGen) continue;
+    scDone[cur] = scGen;
+    if (cur === goalIdx) { found = true; break; }
+    const cx = cur % t.w;
+    const cy = (cur - cx) / t.w;
+    const gc = scG[cur];
+    for (let k = 0; k < 8; k += 1) {
+      const st = STEPS[k];
+      const nx = cx + st[0];
+      const ny = cy + st[1];
+      if (nx < 0 || ny < 0 || nx >= t.w || ny >= t.h) continue;
+      const ni = ny * t.w + nx;
+      if (scDone[ni] === scGen) continue;
+      // 못 걷는 칸도 지나가되 값을 치른다 — 걸음 값에 벽 삯을 곱한다.
+      const ng = gc + (st[2] ? Math.SQRT2 : 1) * (t.walk[ni] ? 1 : SOFT_WALL_COST);
+      if (scSeen[ni] === scGen && scG[ni] <= ng) continue;
+      scSeen[ni] = scGen;
+      scG[ni] = ng;
+      scPrev[ni] = cur;
+      hpPush(ni, ng + octile(cx1 - nx, cy1 - ny));
     }
   }
-  if (prev[goalIdx] === -1) return [[fx1, fy1]]; // 있을 수 없지만 — 안전망은 직선.
-  const cells: number[] = [];
-  for (let cur = goalIdx; cur !== startIdx; cur = prev[cur]) cells.push(cur);
-  cells.reverse();
-  const out: [number, number][] = cells.map((i) => [
-    ((i % t.w) + 0.5) / t.w,
-    (Math.floor(i / t.w) + 0.5) / t.h,
-  ]);
-  out[out.length - 1] = [fx1, fy1];
-  return out;
+  if (!found) return [[fx1, fy1]]; // 있을 수 없지만 — 안전망은 직선.
+  return traceBack(t, startIdx, goalIdx, fx1, fy1);
 }

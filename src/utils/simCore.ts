@@ -783,7 +783,8 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
          '어디서 돌아섰나'지 '어느 쪽을 봤나'가 아니라, 방향 문턱을 크게 두고 자리
          문턱도 조금 넉넉히 준다. */
       const gath = b.state === ST_GATHER;
-      if (Math.hypot(pdx, pdy) < (gath ? eps * 2 : eps)
+      const tol = gath ? eps * 2 : eps;
+      if (pdx * pdx + pdy * pdy < tol * tol
         && turned < (gath ? 150 : 30) && b.state === b.ks) return;
     }
     const vdt = Number.isFinite(b.px) ? dt : 0;
@@ -800,7 +801,12 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   /* 균일 격자 — 밀어내기 이웃 질의. 셀 2타일이면 반경 0.75는 이웃 아홉 칸 안이다. */
   const CELL = 2;
   const gw = Math.ceil(W / CELL) + 1;
-  const cells = new Map<number, Body[]>();
+  const gh = Math.ceil(H / CELL) + 1;
+  /* 판판한 배열이다 — Map이 아니다(과제 #70). 격자는 틱마다 다시 채우고 개체마다
+     읽는 자리라 해시 값이 그대로 시간이 된다. 칸은 길이만 0으로 되돌려 다시 쓰고,
+     이번 틱에 손댄 칸만 적어 두어 비우기도 격자 전체를 안 훑는다. */
+  const cells: Body[][] = Array.from({ length: gw * gh }, () => []);
+  const cTouch: number[] = [];
 
   /* ── 전투(P2) ────────────────────────────────────────────────────────────────
      표적 찾기는 균일 격자로 이웃만 훑는다. 사거리(reachOf)는 공중·지상에 따라 무기가
@@ -868,7 +874,11 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   /** 표적 격자 — 이번 틱의 산 개체를 셀에 담는다. 셀 4타일이면 사거리 8까지 이웃 5칸. */
   const TCELL = 4;
   const tgw = Math.ceil(W / TCELL) + 1;
-  const tcells = new Map<number, Body[]>();
+  const tgh = Math.ceil(H / TCELL) + 1;
+  /* 위 밀어내기 격자와 같은 이유로 판판한 배열이다 — 표적 훑기는 개체마다 이웃 셀
+     수십 칸을 읽으므로 여기가 Map의 해시 값을 가장 많이 치르던 자리였다. */
+  const tcells: Body[][] = Array.from({ length: tgw * tgh }, () => []);
+  const tTouch: number[] = [];
 
   /* 채취 배정(P3) — 제 홀 12타일 안에 선 일꾼에게 밭 하나를 준다. 밭은 홀 둘레 9타일
      안의 미네랄 중 태그로 갈라(개체마다 다른 밭) 줄이 서게 한다. 가스는 곁(2.5타일)에
@@ -963,10 +973,13 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
     const cx = Math.floor(a.x / TCELL);
     const cy = Math.floor(a.y / TCELL);
     const rad = Math.ceil((reach + 1) / TCELL);
-    for (let dy2 = -rad; dy2 <= rad; dy2 += 1) {
-      for (let dx2 = -rad; dx2 <= rad; dx2 += 1) {
-        const arr = tcells.get((cy + dy2) * tgw + (cx + dx2));
-        if (!arr) continue;
+    const yA = cy - rad < 0 ? 0 : cy - rad;
+    const yB = cy + rad >= tgh ? tgh - 1 : cy + rad;
+    const xA = cx - rad < 0 ? 0 : cx - rad;
+    const xB = cx + rad >= tgw ? tgw - 1 : cx + rad;
+    for (let yy = yA; yy <= yB; yy += 1) {
+      for (let xx = xA; xx <= xB; xx += 1) {
+        const arr = tcells[yy * tgw + xx];
         for (const c of arr) {
           if (c.owner === a.owner || c.air || c.state === ST_GONE || c.dieAt !== null) continue;
           if (c.state === ST_INSIDE) continue;
@@ -1003,24 +1016,33 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
        원전의 오더 처리 주기(9프레임=0.378초)이고 개체마다 위상이 다르다. */
     if (!f && t >= a.reacq && a.cp.acquire > 0) {
       a.reacq = t + ORDER_PERIOD_SEC;
-      let bd = Infinity;
+      let bq = Infinity;
       const cx = Math.floor(a.x / TCELL);
       const cy = Math.floor(a.y / TCELL);
       const rad = Math.ceil((a.cp.acquire + 2) / TCELL);
-      for (let dy2 = -rad; dy2 <= rad; dy2 += 1) {
-        for (let dx2 = -rad; dx2 <= rad; dx2 += 1) {
-          const arr = tcells.get((cy + dy2) * tgw + (cx + dx2));
-          if (!arr) continue;
+      const yA = cy - rad < 0 ? 0 : cy - rad;
+      const yB = cy + rad >= tgh ? tgh - 1 : cy + rad;
+      const xA = cx - rad < 0 ? 0 : cx - rad;
+      const xB = cx + rad >= tgw ? tgw - 1 : cx + rad;
+      for (let yy = yA; yy <= yB; yy += 1) {
+        for (let xx = xA; xx <= xB; xx += 1) {
+          const arr = tcells[yy * tgw + xx];
           for (const c of arr) {
             if (c.owner === a.owner || c.state === ST_GONE || c.dieAt !== null) continue;
             // 태운 유닛은 못 때린다 — 원작에서 벙커·수송선 안은 표적이 아니다.
             if (c.state === ST_INSIDE) continue;
+            /* 거리를 먼저 본다 — 이미 더 가까운 표적이 있으면 나머지는 볼 것도 없다.
+               제곱으로 견주어 뿌리 셈도 그때만 친다(과제 #70). */
+            const qx = c.x - a.x;
+            const qy = c.y - a.y;
+            const q = qx * qx + qy * qy;
+            if (q >= bq) continue;
             // 못 치는 갈래(지상 전용이 공중을, 대공 전용이 지상을)는 표적이 아니다.
             if (reachOf(a, c) < 0) continue;
             if (!visible(a, c)) continue;
-            const d = dist(a.x, a.y, c.x, c.y);
-            if (d > seekTo(a, c) || d >= bd) continue;
-            bd = d; f = c;
+            const st = seekTo(a, c);
+            if (q > st * st) continue;
+            bq = q; f = c;
           }
         }
       }
@@ -1058,10 +1080,13 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       const cx = Math.floor(f.x / TCELL);
       const cy = Math.floor(f.y / TCELL);
       const rad = Math.ceil((sr + 1) / TCELL);
-      for (let dy2 = -rad; dy2 <= rad; dy2 += 1) {
-        for (let dx2 = -rad; dx2 <= rad; dx2 += 1) {
-          const arr = tcells.get((cy + dy2) * tgw + (cx + dx2));
-          if (!arr) continue;
+      const yA = cy - rad < 0 ? 0 : cy - rad;
+      const yB = cy + rad >= tgh ? tgh - 1 : cy + rad;
+      const xA = cx - rad < 0 ? 0 : cx - rad;
+      const xB = cx + rad >= tgw ? tgw - 1 : cx + rad;
+      for (let yy = yA; yy <= yB; yy += 1) {
+        for (let xx = xA; xx <= xB; xx += 1) {
+          const arr = tcells[yy * tgw + xx];
           for (const c of arr) {
             if (c === f || c.owner === a.owner || c.state === ST_GONE
               || c.state === ST_INSIDE) continue;
@@ -1076,12 +1101,17 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   };
 
   const fireAll = (t: number): void => {
-    tcells.clear();
+    for (let i = 0; i < tTouch.length; i += 1) tcells[tTouch[i]].length = 0;
+    tTouch.length = 0;
     dets.length = 0;
     for (const b of live) {
-      const k = Math.floor(b.y / TCELL) * tgw + Math.floor(b.x / TCELL);
-      const arr = tcells.get(k);
-      if (arr) arr.push(b); else tcells.set(k, [b]);
+      const bx = Math.floor(b.x / TCELL);
+      const by = Math.floor(b.y / TCELL);
+      const k = (by < 0 ? 0 : by >= tgh ? tgh - 1 : by) * tgw
+        + (bx < 0 ? 0 : bx >= tgw ? tgw - 1 : bx);
+      const arr = tcells[k];
+      if (arr.length === 0) tTouch.push(k);
+      arr.push(b);
       if (b.cp.detector) dets.push(b);
     }
     for (const a of live) fireOne(a, t);
@@ -1146,7 +1176,8 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
 
   for (let k = 0; k <= ticks; k += 1) {
     const t = k * dt;
-    cells.clear();
+    for (let i = 0; i < cTouch.length; i += 1) cells[cTouch[i]].length = 0;
+    cTouch.length = 0;
     live.length = 0;
     garrison.length = 0;
     anyBurrow = false;
@@ -1229,7 +1260,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
           if (goal) {
             const dxL = goal[0] - b.x;
             const dyL = goal[1] - b.y;
-            const dL = Math.hypot(dxL, dyL);
+            const dL = Math.sqrt(dxL * dxL + dyL * dyL);
             const goL = Math.min(b.speed * dt, dL);
             if (dL > 1e-4) { b.x += (dxL / dL) * goL; b.y += (dyL / dL) * goL; }
             if (dL - goL <= ARRIVE) {
@@ -1282,7 +1313,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
            붙은 비건물 개체는 예전대로 '그때 거기 있었다'는 하드 앵커로 읽는다. */
         if (o.kind === "liftoff") continue;
         if (o.kind === "anchor" || o.kind === "land") {
-          const d = Math.hypot(o.x - b.x, o.y - b.y);
+          const d = dist(b.x, b.y, o.x, o.y);
           if (b.keys.length === 0) {
             // 출생 자리는 그냥 거기서 시작한다 — 통계에 넣으면 늘 0이라 뜻이 없다.
             b.x = o.x; b.y = o.y;
@@ -1359,7 +1390,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
           if (b.foe && b.foe.state !== ST_GONE) {
             const bfx = b.foe.x - b.x;
             const bfy = b.foe.y - b.y;
-            if (Math.hypot(bfx, bfy) > 0.01) {
+            if (bfx * bfx + bfy * bfy > 0.0001) {
               b.hdg = norm360((Math.atan2(-bfx, bfy) * 180) / Math.PI);
             }
           }
@@ -1442,7 +1473,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         if (nx && nx.kind === "anchor") {
           const adx = nx.x - b.x;
           const ady = nx.y - b.y;
-          const add = Math.hypot(adx, ady);
+          const add = Math.sqrt(adx * adx + ady * ady);
           if (add > ANCHOR_SNAP && nx.t - t <= add / b.speed) {
             setDest(b, nx.x, nx.y);
             b.job = null;
@@ -1471,7 +1502,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         b.vel = 0;
         const fx0 = b.foe!.x - b.x;
         const fy0 = b.foe!.y - b.y;
-        if (Math.hypot(fx0, fy0) > 0.01) {
+        if (fx0 * fx0 + fy0 * fy0 > 0.0001) {
           const want = norm360((Math.atan2(-fx0, fy0) * 180) / Math.PI);
           const diff = angDiff(b.hdg, want);
           const maxTurn = b.turn * dt;
@@ -1579,7 +1610,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
           const wy = lastLeg ? b.dest[1] : b.path[b.pi][1];
           const dx = wx - b.x;
           const dy = wy - b.y;
-          const d = Math.hypot(dx, dy);
+          const d = Math.sqrt(dx * dx + dy * dy);
           if (d <= ARRIVE) { b.pi += 1; continue; }
           // 방향은 회전 속도 안에서만 돈다 — 상한은 원전 표(MOVE_DYN.turnBody)에서 온다.
           const want = norm360((Math.atan2(-dx, dy) * 180) / Math.PI);
@@ -1611,9 +1642,11 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       if (!b.air) {
         const cx = Math.floor(b.x / CELL);
         const cy = Math.floor(b.y / CELL);
-        const key = cy * gw + cx;
-        const arr = cells.get(key);
-        if (arr) arr.push(b); else cells.set(key, [b]);
+        const key = (cy < 0 ? 0 : cy >= gh ? gh - 1 : cy) * gw
+          + (cx < 0 ? 0 : cx >= gw ? gw - 1 : cx);
+        const arr = cells[key];
+        if (arr.length === 0) cTouch.push(key);
+        arr.push(b);
       }
       live.push(b);
       pushKey(b, t, b.keys.length === 0);
@@ -1651,7 +1684,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       let bd = MATRIX_SNAP_TILES;
       for (const o of live) {
         if (o.owner !== cpid || o.bld) continue;
-        const dd = Math.hypot(o.x - cx, o.y - cy);
+        const dd = dist(cx, cy, o.x, o.y);
         if (dd <= bd) { bd = dd; best = o; }
       }
       if (best) { best.dmg.matrixHp = MATRIX_HP * 256; best.matrixUntil = csec + MATRIX_SEC; }
@@ -1663,7 +1696,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       stormI += 1;
       for (const o of live) {
         if (o.bld) continue;                 // 건물은 스톰을 안 맞는다
-        if (Math.hypot(o.x - sx, o.y - sy) > STORM_TILES) continue;
+        if (dist(sx, sy, o.x, o.y) > STORM_TILES) continue;
         stormPulse(o.dmg);
         if (o.dmg.hp <= 0 && o.dieAt === null) {
           o.dmg.hp = 0;
@@ -1684,7 +1717,8 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
     if (dropped) active = active.filter((b) => b.state !== ST_GONE);
 
     // 밀어내기는 이번 틱 자리가 다 정해진 뒤에 한 번(순서에 안 흔들리게).
-    for (const arr of cells.values()) {
+    for (let ci = 0; ci < cTouch.length; ci += 1) {
+      const arr = cells[cTouch[ci]];
       for (let i = 0; i < arr.length; i += 1) {
         for (let j = i + 1; j < arr.length; j += 1) {
           const a = arr[i];
@@ -1695,8 +1729,9 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
           const rr = a.rad + c.rad;
           const dx = c.x - a.x;
           const dy = c.y - a.y;
-          const d = Math.hypot(dx, dy);
-          if (d >= rr || d < 1e-4) continue;
+          const q = dx * dx + dy * dy;
+          if (q >= rr * rr || q < 1e-8) continue;
+          const d = Math.sqrt(q);
           /* 밀리는 몫은 '가는 쪽'이 더 진다 — 원작 지상 유닛은 서로를 밀지 못하고, 선
              유닛은 그냥 장애물이다. 선 쪽을 거의 안 밀어야 교전선·대기 대형이 안 흐르고,
              미는 쪽만 옆으로 흘러 저절로 돌아간다(그 흘러남이 곧 jam을 세워 비켜 돌기로
