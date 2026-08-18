@@ -1780,9 +1780,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        서고 그 사이를 입체 상자가 잇는 꼴이다. 뒤쪽에는 좌우 판 끝에 비스듬한 환풍구가
        붙고, 가운데 판 위에도 길게 환풍구가 얹힌다. */
     const out: ShapeFace[] = [];
-    /* 개인색은 판 사이를 잇는 상자 둘(재지적: 환풍구 같은 특이 포인트 말고 넓은 면에
-       페인트 칠하듯) — 장식 없는 넓은 벽이라 임자 색을 통째로 입히기 좋다. 환풍구·
-       살·어깨 띠는 제 색으로 둔다. */
+    /* 개인색을 큰 상자에서 **작은 데칼로** 옮긴다(요청: "개인색 파트를 현재 파트말고
+       더 디테일하고 작은 단위로 넣기 옆면 데칼로", "배럭 데칼은 앞뒤옆면 모두").
+       사이 상자 둘을 통째로 칠하던 방식은 두 가지가 나빴다.
+        ① 넓은 면이라 윗면의 흰 음영(0.42)이 크게 깔려, 색이 씻긴 유리판처럼 보였다 —
+           "옆면 파트가 반투명한거 불투명하게"라는 지적이 이것이다. 이제 그 상자는
+           다른 벽과 같은 테란 기본색이라 씻길 색이 없다.
+        ② 임자 색이 건물의 절반을 덮어 배럭인지 알아보기 전에 색부터 보였다.
+       대신 네 벽(앞·뒤·좌·우)에 작은 판을 짝지어 붙인다. 벽이 보일 때만 그리고,
+       벽보다 아주 조금 밖에 눕혀 z-싸움을 피한다. */
     const pc: ShapeFace[] = [];
     /* 다리 여섯(지적) — 앞뒤 세 쌍. 다리가 너무 길다는 지적에 몸통 전체를 1.35만큼
        내려앉혔다(바닥판 z 2.4 → 1.05). 다리만 줄이면 몸과 다리 사이가 뜨므로 몸이
@@ -1801,8 +1807,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        깊이 항(±5)보다 커서 요잉과 무관하게 상수가 순서를 지배했다. 판 셋과 사이
        상자는 나란히 선 것들이라 제 자리 깊이만으로 앞뒤가 옳고, 위에 얹힌 환풍구·
        어깨 띠만 제 판의 깊이에 +0.3을 더해 따라다닌다. */
-    pc.push(...tagKey(boxFaces3(-2.1, 0, 2.9, 8.2, 4.6, 1.55), depthNow(-2.1, 0) * 1.6));
-    pc.push(...tagKey(boxFaces3(2.1, 0, 2.9, 8.2, 4.6, 1.55), depthNow(2.1, 0) * 1.6));
+    out.push(...tagKey(boxFaces3(-2.1, 0, 2.9, 8.2, 4.6, 1.55), depthNow(-2.1, 0) * 1.6));
+    out.push(...tagKey(boxFaces3(2.1, 0, 2.9, 8.2, 4.6, 1.55), depthNow(2.1, 0) * 1.6));
     // 얇은 판 셋(재지적) — 양쪽 판이 더 크고 가운데가 오히려 작다.
     out.push(...tagKey(boxFaces3(-4.1, 0, 1.9, 7.6, 7.2, 1.05), depthNow(-4.1, 0) * 1.6));
     out.push(...tagKey(boxFaces3(4.1, 0, 1.9, 7.6, 7.2, 1.05), depthNow(4.1, 0) * 1.6));
@@ -1834,6 +1840,30 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       [-3.2, 1.7, 8.3], [-5, 1.7, 8.3]]), 0.3)], depthNow(-4.1, 0) * 1.6 + 0.3));
     out.push(...tagKey([topFace(polyPath3([[3.2, 2.6, 8.3], [5, 2.6, 8.3],
       [5, 1.7, 8.3], [3.2, 1.7, 8.3]]), 0.3)], depthNow(4.1, 0) * 1.6 + 0.3));
+    /* 개인색 데칼 — 앞·뒤 벽에는 사이 상자 둘 위에 두 짝씩, 좌·우 벽에는 바깥 판에
+       세 짝씩. 작고 촘촘해 색이 '표식'으로 읽히고 건물 모양을 안 가린다. */
+    for (const sy9 of [1, -1] as const) {
+      if (facingRatio(0, sy9) <= 0.12) continue;
+      const yw9 = sy9 * 4.13;
+      for (const bx9 of [-2.1, 2.1]) {
+        for (const dx9 of [-0.72, 0.72]) {
+          pc.push(...tagKey([bodyFace(polyPath3([
+            [bx9 + dx9 - 0.5, yw9, 2.5], [bx9 + dx9 + 0.5, yw9, 2.5],
+            [bx9 + dx9 + 0.5, yw9, 4.5], [bx9 + dx9 - 0.5, yw9, 4.5],
+          ]))], depthNow(bx9, sy9 * 4.1) * 1.6 + 0.3));
+        }
+      }
+    }
+    for (const sx9 of [1, -1] as const) {
+      if (facingRatio(sx9, 0) <= 0.12) continue;
+      const xw9 = sx9 * 5.08;
+      for (const dy9 of [-2.1, 0, 2.1]) {
+        pc.push(...tagKey([bodyFace(polyPath3([
+          [xw9, dy9 - 0.62, 3.2], [xw9, dy9 + 0.62, 3.2],
+          [xw9, dy9 + 0.62, 5.6], [xw9, dy9 - 0.62, 5.6],
+        ]))], depthNow(sx9 * 4.1, 0) * 1.6 + 0.3));
+      }
+    }
     return raceBase(out, "terran", pc);
   },
   /* 서플라이(단순화, 지적) — 본체 상자 + 지붕 큰 회전 통풍구 + 앞면의 더 큰 둥근 팬
@@ -3083,25 +3113,32 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   },
   /* 터렛(실물 참고) — 원통 받침 + 상자 머리 + 세로 미사일 랙 둘 + 옆으로 빠지는 배관. */
   turret: () => [
-    ...cylinderFaces3(0, 0.4, 3.1, 3.4),
-    /* 아래 기둥 공사장 노랑·검정 대각선 띠(재지적: 화면 고정 말고 원통에 삥 두르고,
-       위쪽 말고 바닥쪽) — 원통 벽에 모델 공간 조각 24개를 감고, 위 모서리를 10도
-       비틀어 사선을 만든다. 보이는 쪽 조각만 그린다. */
+    /* 받침은 사각기둥이다(요청: "터렛 받침은 사각기둥") — 원기둥이었는데, 위에 얹힌
+       머리 상자·포드가 전부 각진 것이라 밑동만 둥글어 따로 놀았다.
+       그리고 **개인색을 뺀다**(요청: "본체 개인색 제거") — 색을 안 준 맨 원기둥이라
+       임자 색이 통째로 칠해져, 터렛이 색 막대 위에 머리를 얹은 꼴이었다. 다른 테란
+       건물과 같은 기본색으로 굳히고, 임자 색은 아래 포드 앞면 데칼 하나만 갖는다. */
+    ...paintBase(boxFaces3(0, 0.4, 6.2, 6.2, 3.4), "#868d94"),
+    /* 밑동 공사장 노랑·검정 대각선 띠 — 사각기둥이 되었으니 네 벽에 하나씩 두른다.
+       보이는 벽만 그리고, 위 모서리를 앞으로 밀어 사선을 만든다. */
     ...((): ShapeFace[] => {
       const faces: ShapeFace[] = [];
-      const P = (aDeg: number, z: number): [number, number, number] => {
-        const a = (aDeg * Math.PI) / 180;
-        return [Math.sin(a) * 3.16, 0.4 + Math.cos(a) * 3.16, z];
+      const HW = 3.13;
+      const side = (
+        nx9: number, ny9: number, pt: (t: number, z: number) => [number, number, number],
+      ): void => {
+        if (facingRatio(nx9, ny9) < 0.05) return;
+        faces.push([polyPath3([pt(0, 0.2), pt(6.2, 0.2), pt(6.2, 1.4), pt(0, 1.4)]),
+          1, "#d9ae35"] as ShapeFace);
+        for (let t = 0.3; t < 5.3; t += 1.25) {
+          faces.push([polyPath3([pt(t, 0.2), pt(t + 0.5, 0.2), pt(t + 0.9, 1.4), pt(t + 0.4, 1.4)]),
+            1, "#1b1e23"] as ShapeFace);
+        }
       };
-      for (let i = 0; i < 24; i += 1) {
-        const a0 = i * 15;
-        const mid = ((a0 + 7.5) * Math.PI) / 180;
-        if (facingRatio(Math.sin(mid), Math.cos(mid)) < 0.05) continue;
-        faces.push([
-          polyPath3([P(a0, 0.2), P(a0 + 15, 0.2), P(a0 + 25, 1.3), P(a0 + 10, 1.3)]),
-          1, i % 2 === 0 ? "#d9ae35" : "#1b1e23",
-        ] as ShapeFace);
-      }
+      side(0, 1, (t, z) => [-HW + t, 0.4 + HW, z]);
+      side(0, -1, (t, z) => [HW - t, 0.4 - HW, z]);
+      side(1, 0, (t, z) => [HW, 0.4 + HW - t, z]);
+      side(-1, 0, (t, z) => [-HW, 0.4 - HW + t, z]);
       return faces;
     })(),
     // (제거·지적: 기둥 옆 막대기 제거) — 옆으로 삐친 관이 정체불명 막대로 보였다.
@@ -3149,7 +3186,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          법선(0,±0.96,0.27), 옆은 (±1,0)로 보이는 면만 제 음영과 함께. */
       const faces: ShapeFace[] = [];
       const fr = faceLight(0, 0.96, 0.27);
-      if (fr.visible) faces.push(bodyFace(front), ...fr.face(front), topFace(stripe, 0.35));
+      if (fr.visible) faces.push(bodyFace(front), ...fr.face(front));
       const bk = faceLight(0, -0.96, 0.27);
       if (bk.visible) faces.push(bodyFace(backQ), ...bk.face(backQ));
       for (const m2 of [1, -1] as const) {
@@ -3159,8 +3196,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         faces.push(bodyFace(d), ...sl.face(d));
       }
       faces.push(bodyFace(top), topFace(top, 0.2));
-      // 포드 은색(요청) — 머리(키 2)를 기준으로 제 자리 깊이만큼 앞뒤가 갈린다.
-      return tagKey(paintBase(faces, "#c9ced6"), 20 + depthNow(rx, 0.2) * 1.6);
+      /* 포드 은색(요청) — 머리(키 2)를 기준으로 제 자리 깊이만큼 앞뒤가 갈린다.
+         앞면 띠만 색을 안 줘 임자 색이 든다(요청: "포드 앞쪽에 개인색 데칼 넣기") —
+         paintBase는 색 없는 면만 칠하므로, 칠한 뒤에 얹어야 데칼이 살아남는다. */
+      return tagKey([
+        ...paintBase(faces, "#c9ced6"),
+        ...(fr.visible ? [bodyFace(stripe)] : []),
+      ], 20 + depthNow(rx, 0.2) * 1.6);
     }),
     // 꼭대기 작은 상자 — 머리·포드보다 위라 붙박이 키 26.
     ...tagKey(paintBase(boxFaces3(0, -0.2, 2.2, 1.8, 1.6, 7.2), "#c9ced6"), 26),
@@ -3753,9 +3795,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        낮은 느낌의 옆면이 사다리꼴 4면으로 되어있는 형태야 앞뒤가 폭이 넓고 옆면 폭은
        비교적 좁은"). 여태는 그냥 직육면체 상자라 옆선이 수직이었고 키도 3이나 돼
        '낮고 넓적한 정비고'가 아니라 창고 같았다. frustumFaces3로 밑 8.4×5.28 → 위
-       6.0×3.12, 높이 2.04로 깎으면 네 옆면이 모두 사다리꼴이 되고, 앞뒤 면(폭 8.4)이
+       7.2×3.74, 높이 2.04로 깎으면 네 옆면이 모두 사다리꼴이 되고, 앞뒤 면(폭 8.4)이
        옆면(폭 5.28)보다 훨씬 넓다. 처음 잡은 7×4.4 → 5×2.6, 높이 1.7을 1.2배로
-       키운 값이다(요청: "엔베 본체 크기 확대 1.2배정도").
+       키우고, 다시 가로세로만 1.2배 한 값이다(요청: "엔지니어링 베이 본체 크기 1.2배
+       확대, 높이는 그대로 유지 다리위치는 옮기지 않기") — 높이 2.04와 다리 자리
+       (±5.85, ±3.65)는 손대지 않았다.
 
        배치는 90도 시계방향으로 돌린 그대로다(지적: "엔베 90도 시계방향 요잉") — 드럼은
        왼 옆구리를 따라 눕고, 개인색 큰 드럼이 오른앞으로 튀어나오며, 지붕 더미는 좌우로
@@ -3792,17 +3836,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...foot(-5.85, -3.65), ...foot(5.85, -3.65),
       /* 몸통·드럼은 반드시 제 키를 달아야 한다 — 태그 없는 면은 앞 면의 키를
          물려받는데, 바로 앞이 다리(−40대)라 몸통이 통째로 다리 뒤로 가라앉는다. */
-      ...tagKey(paintBase(frustumFaces3(0, 0, 8.4, 5.28, 6, 3.12, 2.04, BODY_Z), SILVER), 0),
+      ...tagKey(paintBase(frustumFaces3(0, 0, 10.08, 6.34, 7.2, 3.74, 2.04, BODY_Z), SILVER), 0),
       // 왼 옆구리를 따라 눕는 작은 드럼 — 끝면이 빛난다.
       ...tagKey([
-        ...tubeFaces(-4.4, 1.1, -2.4, 1.1, 0.68, BODY_Z + 1),
-        topFace(groundEllipse(...project(-4.4, 1.1, BODY_Z + 1.34), 0.5, 0.4), 0.35),
+        ...tubeFaces(-5.3, 1.3, -3.2, 1.3, 0.68, BODY_Z + 1),
+        topFace(groundEllipse(...project(-5.3, 1.3, BODY_Z + 1.34), 0.5, 0.4), 0.35),
       ], 6),
       ...foot(-5.85, 3.65), ...foot(5.85, 3.65),
     ];
     // 오른앞 개인색 드럼 — 앞으로 튀어나온 큰 통이라 옆에서도 임자 색이 넓게 읽힌다.
-    pc.push(...tagKey(tubeFaces(2.2, 0.5, 2.2, 3.5, 1.1, BODY_Z + 1.05),
-      14 + depthNow(2.2, 2) * 1.6));
+    pc.push(...tagKey(tubeFaces(2.6, 0.6, 2.6, 4.2, 1.1, BODY_Z + 1.05),
+      14 + depthNow(2.6, 2.4) * 1.6));
     // 지붕 더미 둘 — 윗면·옆면 은색.
     out.push(...tagKey(paintBase(boxFaces3(-1, 0, 2.8, 2.4, 1.4, TOP), SILVER),
       10 + depthNow(-1, 0) * 1.6));
