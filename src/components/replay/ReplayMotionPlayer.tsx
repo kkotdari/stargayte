@@ -1302,17 +1302,69 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
            지적이 뒤집힌다. 등급도 매기지 않는다(형체 1) — 작게 구운 판에서도 남는다.
            해처리·레어·하이브가 이 함수를 함께 쓰므로 띠 자리는 셋 다 같고, 옆선 색이
            검회색(해처리·레어)이든 진한 상아(하이브)든 임자 색과 갈린다. */
+        /* 마디는 통이 아니라 **앞을 향한 면만** 그린다(지적: "개인색 포인트 부분
+           단면이 밖으로 비쳐보여").
+           원인은 캡이 아니었다. 여태 마디를 기둥보다 굵은 spirePillar 토막으로 끼워
+           넣었는데, 그 함수는 **뒷면을 안 걷어낸다** — 여섯 옆벽을 깊이순으로 다 그린다.
+           마디가 기둥보다 굵으니 뒤쪽 옆벽이 기둥 실루엣 안에 들어오고, 마디가 기둥보다
+           **나중에** 그려지므로(같은 키, 뒤 차례) 그 뒷벽이 기둥 겉면 위에 얹혔다.
+           보는 사람에게는 속이 비쳐 보이는 단면이다. caps를 꺼도 안 없어지는 이유가 이것이다.
+           이제 마디를 손수 짠다: 축을 따라 여섯 조각으로 나누고, 바깥 법선이 카메라를
+           향한 조각만 그린다. 뒷면이 애초에 없으니 비칠 것도 없다. 가운데를 1.16배로
+           부풀리고 두 끝은 기둥 굵기 그대로라 이음매도 안 보인다.
+           색을 안 주는 것이 곧 개인색이다(fill을 주면 고정색이 되어 지적이 뒤집힌다). */
         for (const [t0, t1] of [[0.2, 0.35], [0.45, 0.6], [0.7, 0.85]] as [number, number][]) {
-          const bw = seamW((t0 + t1) / 2) * 1.16;
-          out.push(...tagKey(spirePillar({
-            x: 0, y: 0, h: 1, w: bw, tipW: bw,
-            segs: 2, sides: 6, hold: 0,
-            /* 두 끝이 모두 옆선 기둥 속에 묻힌 토막이라 단면을 안 그린다(지적) —
-               묻힌 단면은 위를 향해 '보임'으로 판정되지만 실제로는 옆선의 몸이 가린다.
-               남의 도형이 가리는 것이라 페인터 순서로는 못 지운다. */
-            caps: "none",
-            path: (t9: number): [number, number, number] => seamAxis(t0 + (t1 - t0) * t9),
-          }), dep * 1.6));
+          const tm = (t0 + t1) / 2;
+          const A9 = seamAxis(t0);
+          const M9 = seamAxis(tm);
+          const B9 = seamAxis(t1);
+          const axv = B9[0] - A9[0];
+          const ayv = B9[1] - A9[1];
+          const azv = B9[2] - A9[2];
+          const L9 = Math.hypot(axv, ayv, azv) || 1;
+          const tX = axv / L9;
+          const tY = ayv / L9;
+          const tZ = azv / L9;
+          /* 단면을 세울 두 벡터 — 축이 거의 수직이라 수평면에서 잡으면 충분하다. */
+          let uX = -tY;
+          let uY = tX;
+          let uZ = 0;
+          const uL = Math.hypot(uX, uY, uZ);
+          if (uL < 1e-3) { uX = 1; uY = 0; uZ = 0; } else { uX /= uL; uY /= uL; uZ /= uL; }
+          const vX = tY * uZ - tZ * uY;
+          const vY = tZ * uX - tX * uZ;
+          const vZ = tX * uY - tY * uX;
+          const N9 = 6;
+          const ring = (
+            P9: [number, number, number], r9: number, i9: number,
+          ): [number, number, number] => {
+            const a9 = (i9 / N9) * Math.PI * 2;
+            const c9 = Math.cos(a9);
+            const s9 = Math.sin(a9);
+            return [
+              P9[0] + (uX * c9 + vX * s9) * r9,
+              P9[1] + (uY * c9 + vY * s9) * r9,
+              P9[2] + (uZ * c9 + vZ * s9) * r9,
+            ];
+          };
+          const rA = seamW(t0);
+          const rM = seamW(tm) * 1.16;
+          const rB = seamW(t1);
+          for (let i9 = 0; i9 < N9; i9 += 1) {
+            const am = ((i9 + 0.5) / N9) * Math.PI * 2;
+            const cm = Math.cos(am);
+            const sm = Math.sin(am);
+            if (facingRatio(uX * cm + vX * sm, uY * cm + vY * sm) <= 0.06) continue;
+            const lo = polyPath3([
+              ring(A9, rA, i9), ring(A9, rA, i9 + 1), ring(M9, rM, i9 + 1), ring(M9, rM, i9),
+            ]);
+            const hi9 = polyPath3([
+              ring(M9, rM, i9), ring(M9, rM, i9 + 1), ring(B9, rB, i9 + 1), ring(B9, rB, i9),
+            ]);
+            out.push(...tagKey([
+              bodyFace(lo), bodyFace(hi9), topFace(hi9, 0.16),
+            ], dep * 1.6));
+          }
         }
       }
     }
@@ -1370,7 +1422,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
              구리는 여기 안 쓴다(요청) — 발은 은·강철뿐이고, 구리는 돔 옆 세로띠와
              꼭대기 상자 둘로만 간다. */
           path: (t9: number): [number, number, number] => [
-            sx9 * (3.4 + 2.95 * t9), sy9 * (3.4 + 2.95 * t9), 0.2 - 0.14 * t9,
+            sx9 * (3.4 + 2.95 * t9), sy9 * (3.4 + 2.95 * t9), 0.56 - 0.44 * t9,
           ],
         }), SILVER), dep9 + 0.6),
         ...tagKey(paintBase(spirePillar({
@@ -1411,7 +1463,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        돔 밑을 받침(5.4)보다 좁은 4.9로 잡은 것은 사진처럼 둘레에 테두리 갑판을
        남기기 위해서다 — 아래 입구 구조물과 그릇들이 그 갑판 위에 앉는다. */
     const DOME_Z = 1.22;      // 받침 윗면 = 돔 밑 (밑판을 두 배로 키운 만큼 올라갔다)
-    const T1_H = 2.78;        // 2층 기둥 높이 — 1.5배로(요청)
+    const T1_H = 2.22;        // 2층 기둥 높이 — 2.78에서 20% 낮췄다(요청)
     const T1_RB = 4.9;        // 아랫단 밑 반지름
     const T1_RT = 3.55;       // 아랫단 잘린 윗 반지름
     /* 아래쪽을 더 수직에 가깝게(요청) — 폭을 그대로 쥐는 구간(hold)을 늘리고 taper를
@@ -1438,8 +1490,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 3층 돔의 바닥은 2층 돔의 옥상보다 좁아야 한다(요청) — 그래야 잘린 옥상면이
        고리처럼 아주 살짝 드러나 '층'이 눈에 잡힌다. 0.45만 좁힌다. */
     out.push(...tagKey(paintBase(spirePillar({
-      x: 0, y: 0, z0: T2_Z, h: 1.62, w: T1_RT - 0.45, tipW: 0.85,
-      segs: 5, sides: 14, hold: 0.06, taper: 0.55, caps: "top",
+      /* 3층은 절반쯤에서 싹 잘린 토막이다(요청) — 뾰족하게 모으지 않고 넓은 윗면을
+         그대로 남겨, 그 위에 앉는 관제 모듈의 받침이 되게 한다. */
+      x: 0, y: 0, z0: T2_Z, h: 0.85, w: T1_RT - 0.45, tipW: 2.28,
+      segs: 3, sides: 14, hold: 0.08, taper: 0.62, caps: "top",
     }), SILVER), 8));
 
     /* 돔 양옆 큰 구리 세로띠(요청) — 평평한 네모로 붙이면 모서리가 돔 밖으로
@@ -1465,11 +1519,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const sx9 = Math.sin(aMid);
       const sy9 = Math.cos(aMid);
       if (facingRatio(sx9, sy9) <= 0.02) continue;
-      const zB = DOME_Z + 0.14;
+      /* 폭을 줄이고 더 위에서 시작한다(요청) — 밑동까지 내려오는 넓은 판이라
+         기둥을 반쯤 덮고 있었다. 반각 0.46 → 0.3, 시작 높이 +0.14 → +0.95. */
+      const zB = DOME_Z + 0.95;
       const zT = T2_Z - 0.1;
       out.push(...tagKey([
-        [arcBand(aMid, 0.46, t1R(zB) + 0.03, t1R(zT) + 0.03, zB, zT), 1, COPPER] as ShapeFace,
-        topFace(arcBand(aMid, 0.44, t1R(zT - 0.34) + 0.05, t1R(zT) + 0.05, zT - 0.34, zT), 0.22),
+        [arcBand(aMid, 0.3, t1R(zB) + 0.03, t1R(zT) + 0.03, zB, zT), 1, COPPER] as ShapeFace,
+        topFace(arcBand(aMid, 0.285, t1R(zT - 0.3) + 0.05, t1R(zT) + 0.05, zT - 0.3, zT), 0.22),
       ], 2.2));
     }
 
@@ -1519,8 +1575,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 관제 모듈 — 꼭대기의 사각형 물체. 요청대로 통째로 구리다. 밑동 스커트는 강철로
        남겨 둬야 구리 상자가 어디서 시작하는지 눈에 잡힌다(둘 다 구리면 한 덩어리로
        뭉개진다). */
-    const MOD_Z = T2_Z + 1.62;   // 3층 기둥 꼭대기
-    out.push(...tagKey(paintBase(boxFaces3(0, 0.2, 3.2, 2.85, 0.26, MOD_Z - 0.24), STEEL), 30.6));
+    const MOD_Z = T2_Z + 0.85;   // 3층 기둥 꼭대기(잘린 면)
+    /* 구리 상자 아래 회색 받침판을 키운다(요청: "그 회색 상자도 더 확대해야함 너비와
+       높이 모두") — 캐노피 위의 짐과 이 판이 맞닿는 자리라 판이 작으면 짐이 허공에
+       걸린 것처럼 보인다. 3.2×2.85×0.26 → 4.6×4.0×0.62. */
+    out.push(...tagKey(paintBase(boxFaces3(0, 0.2, 4.6, 4, 0.62, MOD_Z - 0.58), STEEL), 30.6));
     out.push(...tagKey(paintBase(boxFaces3(0, 0.2, 2.6, 2.25, 1.48, MOD_Z), COPPER), 31));
     /* 앞면 장식(창)은 앞이 보일 때만 — 뒤로 돌린 각도에서도 그리면 몸 위로 떠올라
        팔처럼 삐져나와 보였다. */
@@ -1562,21 +1621,26 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 현관을 위로 팍 올린다(요청) — 받침 바로 위에 얹혀 있어 진입로에 눌려 있었다.
        2층 기둥 중턱 높이로 올리고, 지붕과 그 위 짐(상자·드럼통) 사이에 눈에 보이는
        갭을 둔다(요청) — 붙여 놓으면 한 덩어리로 뭉개진다. */
-    const CANOPY_Z = DOME_Z + 1.15;
-    const CANOPY_GAP = 0.34;
-    out.push(...tagKey(paintBase(boxFaces3(0, 5.5, 3.4, 2.2, 0.26, CANOPY_Z), SILVER),
-      depthNow(0, 5.5) * 1.6 + 7));
-    for (const cx9 of [-1.35, 1.35]) {
-      out.push(...tagKey(paintBase(cylinderFaces3(cx9, 4.95, 0.15, CANOPY_Z - DOME_Z, DOME_Z), STEEL),
-        depthNow(cx9, 4.95) * 1.6 + 6));
+    /* 현관 지붕을 2층 옥상 높이에 맞춘다(요청) — 잘린 갑판과 같은 켜라야 지붕이
+       기둥에서 뻗어 나온 것으로 읽힌다. 폭도 줄였다(3.4 → 2.5). */
+    const CANOPY_Z = T2_Z;
+    out.push(...tagKey(paintBase(boxFaces3(0, 4.75, 2.5, 2.1, 0.24, CANOPY_Z), SILVER),
+      depthNow(0, 4.75) * 1.6 + 7));
+    for (const cx9 of [-0.95, 0.95]) {
+      out.push(...tagKey(paintBase(cylinderFaces3(cx9, 4.6, 0.14, CANOPY_Z - DOME_Z, DOME_Z), STEEL),
+        depthNow(cx9, 4.6) * 1.6 + 6));
     }
-    // 지붕 위의 은색 상자와 그 옆 작은 드럼통 — 갭만큼 띄운다.
-    out.push(...tagKey(paintBase(boxFaces3(-0.68, 5.3, 1.45, 1.15, 0.86, CANOPY_Z + 0.26 + CANOPY_GAP), SILVER),
-      depthNow(-0.68, 5.3) * 1.6 + 9));
+    /* 지붕 위의 은색 상자와 드럼통 — 지붕 폭에 맞춰 줄이고, 둘이 서로 딱 붙는다(요청).
+       상자 오른변(x −0.02)에 드럼통 왼끝이 닿는다. 둘의 윗면은 위 회색 받침판 밑면에
+       맞닿는 높이다. */
+    const LOAD_Z = CANOPY_Z + 0.24;
+    const LOAD_H = MOD_Z - 0.58 - LOAD_Z;
+    out.push(...tagKey(paintBase(boxFaces3(-0.62, 4.6, 1.2, 1.0, LOAD_H, LOAD_Z), SILVER),
+      depthNow(-0.62, 4.6) * 1.6 + 9));
     out.push(...tagKey(paintBase([
-      ...cylinderFaces3(1.55, 5.4, 0.47, 0.8, CANOPY_Z + 0.26 + CANOPY_GAP),
-      ...cylinderFaces3(1.55, 5.4, 0.51, 0.09, CANOPY_Z + 0.97 + CANOPY_GAP),
-    ], SILVER), depthNow(1.55, 5.4) * 1.6 + 9));
+      ...cylinderFaces3(0.38, 4.6, 0.4, LOAD_H, LOAD_Z),
+      ...cylinderFaces3(0.38, 4.6, 0.44, 0.08, LOAD_Z + LOAD_H - 0.08),
+    ], SILVER), depthNow(0.38, 4.6) * 1.6 + 9));
     // 입구 양옆 — 엎어 놓은 그릇. 돔 밑(4.9)과 받침 테(5.4) 사이 갑판에 박힌다.
     for (const bx9 of [-3.95, 3.95]) {
       out.push(...tagKey(paintBase([
@@ -4746,6 +4810,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 첫째(뒤 입구) 뿔은 둔덕보다 먼저 그린다(지적: 비쳐 보였다).
     /* 뿔은 더 굵고 길게, 밑동은 둔덕 옆구리에 딱 붙이고, 휨은 본진 안쪽으로(요청).
        [밑x, 밑y, 밑z, 끝x, 끝y, 끝z, 굵기, 안쪽x, 안쪽y] */
+    /** 하이브 전용 어두운 상아·황토(요청) — 옆선 기둥·가시와 뿔 셋에만 쓴다. */
+    const HIVE_IVORY = "#8f8467";
+    const HIVE_HORN = "#7d5c31";
     const horns: [number, number, number, number, number, number, number, number, number][] = [
       // 휨 방향 반전(재지적) — 배가 바깥으로 부풀며 끝이 안으로 감긴다.
       // 뿌리를 조금 더 바깥으로(요청).
@@ -4755,13 +4822,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ];
     let hi = 0;
     for (const [bx, by, bz, tx, ty, tz, w, inX, inY] of horns) {
-      if (hi === 1) out.push(...hatcheryMoundFaces(IVORY_DEEP, IVORY_DEEP)); // 옆띠·위·옆 가시 진한 상아(재지적)
+      /* 하이브 옆선·가시는 진한 상아였는데 화면에서 밝게 떠 보였다(요청: "하이브
+         옆선 기둥색과 뿔 세개 색 다 좀더 어둡게") — 이 건물에서만 한 단 낮춘 상아를
+         쓴다. IVORY_DEEP 자체는 다른 열 곳이 함께 쓰므로 안 건드린다. */
+      if (hi === 1) out.push(...hatcheryMoundFaces(HIVE_IVORY, HIVE_IVORY));
       hi += 1;
       // 뿔은 황토색, 가시는 상아색(요청).
       // 뿔에 제 자리 깊이(지적: 가려짐) — 첫 뿔(뒤)은 둔덕 뒤, 나머지는 둔덕 앞.
       /* 앞뒤는 요잉이 정한다(재지적: 뒤로 돈 뿔이 안 가려짐) — 고정 키를 쓰면 뒤로
          돌아도 늘 앞에 그려진다. 제 자리 깊이를 키워 쓰면 앞은 둔덕 위, 뒤는 아래다. */
-      out.push(...tagKey(spikeHorn(bx, by, bz, tx, ty, tz, w, "#b3854a", 6, 1.8, inX, inY),
+      out.push(...tagKey(spikeHorn(bx, by, bz, tx, ty, tz, w, HIVE_HORN, 6, 1.8, inX, inY),
         depthNow(bx, by) * 1.6));
       /* 뿔 등의 가시(요청, 정정: 안쪽을 향한다) — 뿔 길이를 따라 서너 개가 본 건물
          쪽으로 돋는다. */
