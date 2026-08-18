@@ -30,8 +30,15 @@ async function fromDb(path) {
   const db = new DatabaseSync(path, { readOnly: true });
   const rows = db.prepare(
     "select game_result_id as id, data from game_result_unit_tracks order by game_result_id").all();
+  /* 자원표는 맵에 붙어 있다(replay_maps.resources) — 일꾼 채취를 재려면 함께 실어야 한다. */
+  const res = db.prepare(`select o.match_id as id, m.resources as res
+     from game_outcomes o join replay_maps m on m.map_hash = o.map_hash`).all();
+  const byId = new Map(res.map((r) => [r.id, r.res]));
   db.close();
-  return rows.map((r) => ({ label: `game ${r.id}`, json: r.data }));
+  return rows.map((r) => ({
+    label: `game ${r.id}`, json: r.data,
+    resources: byId.get(r.id) ? JSON.parse(byId.get(r.id)) : [],
+  }));
 }
 
 const args = process.argv.slice(2);
@@ -41,11 +48,11 @@ if (args.length === 0) {
 }
 const inputs = args[0] === "--db"
   ? await fromDb(args[1])
-  : args.map((p) => ({ label: p.split("/").pop(), json: readFileSync(p, "utf8") }));
+  : args.map((p) => ({ label: p.split("/").pop(), json: readFileSync(p, "utf8"), resources: [] }));
 
 const { simulate } = await bundle("src/utils/simCore.ts");
 
-for (const { label, json } of inputs) {
+for (const { label, json, resources } of inputs) {
   const data = JSON.parse(json);
   if (!data || !Array.isArray(data.ents)) { console.error(`${label}: 개체 트랙이 아니다`); continue; }
   /* 맵 크기는 트랙에 없다 — 증거 좌표의 최대치로 어림한다(대개 128×128). */
@@ -54,12 +61,13 @@ for (const { label, json } of inputs) {
   for (const e of data.ents) for (const v of e.ev) { if (v[1] > mx) mx = v[1]; if (v[2] > my) my = v[2]; }
   const W = mx > 96 ? 128 : mx > 64 ? 96 : 64;
   const H = my > 96 ? 128 : my > 64 ? 96 : 64;
-  const r = simulate(data, { width: W, height: H, terrain: null });
+  const r = simulate(data, { width: W, height: H, terrain: null, resources });
   const s = r.stats;
   const bytes = r.tracks.reduce((n, t) => n + t.keys.length, 0) * 4;
   console.log([
     label.padEnd(14),
     `${W}x${H}`,
+    `자원 ${String((resources ?? []).length).padStart(3)}`,
     `개체 ${String(s.ents).padStart(5)}`,
     `틱 ${String(s.ticks).padStart(6)}`,
     `키 ${String(Math.round(s.keys)).padStart(7)}`,

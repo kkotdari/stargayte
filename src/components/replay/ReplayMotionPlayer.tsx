@@ -8990,14 +8990,18 @@ export default function ReplayMotionPlayer({
          clockKey가 없는 자리에서도 다른 경기끼리 섞이지 않게. */
       `${clockKey ?? "g"}:${entData.ents.length}:${entData.ents.reduce((n, x) => n + x.ev.length, 0)}:${grid.width}x${grid.height}`,
       entData as unknown as Parameters<typeof loadSimTracks>[1],
-      { width: grid.width, height: grid.height, terrain: terrainRaw ?? terrain },
+      {
+        width: grid.width, height: grid.height, terrain: terrainRaw ?? terrain,
+        // 자원표 — 일꾼 채취 왕복의 재료(P3). 없으면 시뮬이 채취를 안 만든다.
+        resources: (grid.resources ?? []) as [number, number, number][],
+      },
     ).then((got) => {
       if (cancelled || !got) return;
       setSimTracks(new Map(got.tracks.map((tr) => [tr.tag, tr])));
       setSimEvents(got.events);
     });
     return () => { cancelled = true; };
-  }, [simFlag, entData, terrain, terrainRaw, grid.width, grid.height, clockKey]);
+  }, [simFlag, entData, terrain, terrainRaw, grid.width, grid.height, grid.resources, clockKey]);
   /* 지형 수정(요청: 모든 경기 리플레이 화면에서, 아무나) — 산 버튼이 검수 모달을 연다.
      저장하면 이 자리에서 바로 새 지형으로 갈아 끼운다(맵 캐시는 다음 로드에 새 값을 받는다). */
   /* (제거·요청: 지형 편집) — 재생 화면의 검수 모달·산 버튼을 걷었다. 검수 저장분은

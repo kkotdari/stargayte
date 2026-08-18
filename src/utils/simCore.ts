@@ -41,12 +41,13 @@ export type SimInput = {
 /* ── 출력 ─────────────────────────────────────────────────────────────────────── */
 
 /** 상태 — 렌더가 무엇을 그릴지 가르는 값. P2에서 fight/attack이 는다. */
-export type SimState = 0 | 1 | 2 | 3 | 4;
+export type SimState = 0 | 1 | 2 | 3 | 4 | 5;
 export const ST_IDLE: SimState = 0;
 export const ST_MOVE: SimState = 1;
 export const ST_INSIDE: SimState = 2;   // 수송선 안 — 안 그린다
 export const ST_GONE: SimState = 3;
 export const ST_FIGHT: SimState = 4;    // 멈춰 서서 쏘는 중(P2)
+export const ST_GATHER: SimState = 5;   // 채취 왕복 중(P3)
 
 /** 전투 사건 — [초, 갈래, 주체 태그, 표적 태그, x, y, tx, ty]. 갈래 0 발사 1 죽음. */
 export type SimEventArr = number[];
@@ -79,6 +80,8 @@ export type SimOpts = {
   terrain?: TerrainGrid | null;
   /** 키프레임 단순화 문턱(타일). 클수록 결과가 작아진다. */
   epsilon?: number;
+  /** 자원 지대 — [타일x, 타일y, 가스인가]. 일꾼 채취 왕복의 재료다(P3). */
+  resources?: [number, number, number][];
 };
 
 /* ── 상수 ─────────────────────────────────────────────────────────────────────── */
@@ -161,8 +164,12 @@ type Body = {
   dieBy: number | null;
 };
 
-/** 일꾼 — 스스로 표적을 잡지 않는다. */
+/** 일꾼 — 스스로 표적을 잡지 않고, 할 일이 없으면 캔다. */
 const WORKERS = new Set(["SCV", "Probe", "Drone"]);
+/** 자원을 받는 본진 건물. */
+const HALLS = new Set(["Command Center", "Nexus", "Hatchery", "Lair", "Hive"]);
+/** 가스 건물. */
+const GAS_BLD = new Set(["Refinery", "Assimilator", "Extractor"]);
 
 const norm360 = (d: number): number => ((d % 360) + 360) % 360;
 /** a에서 b로 도는 최단 각(도, -180~180). */
@@ -204,7 +211,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         hp: bs[0] + bs[1], sh: bs[1], maxHp: bs[0] + bs[1],
         armor: 1, size: "large",
         wg: WEAPON_GROUND[e.k ?? ""] ?? null, wa: WEAPON_AIR[e.k ?? ""] ?? null,
-        cd: 0, foe: null, aggro: true, reacq: 0, dieAt: null,
+        cd: 0, foe: null, aggro: true, reacq: 0, dieAt: null, job: null,
         aliveUntil: e.ev.length > 0 ? e.ev[e.ev.length - 1][0] : spot[0],
         dieBy: e.d ?? null,
       };
@@ -238,7 +245,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       maxHp: (UNIT_STATS[kind]?.hp ?? 70) + (UNIT_STATS[kind]?.sh ?? 0),
       armor: UNIT_ARMOR[kind] ?? 0, size: UNIT_SIZE[kind] ?? "medium",
       wg: WEAPON_GROUND[kind] ?? null, wa: WEAPON_AIR[kind] ?? null,
-      cd: 0, foe: null, aggro: false, reacq: 0, dieAt: null,
+      cd: 0, foe: null, aggro: false, reacq: 0, dieAt: null, job: null,
       /* 증거가 보장하는 생존 하한 — 명령을 받은 태그는 그 순간 확실히 살아 있다.
          시뮬이 그 전에 죽이려 들면 시뮬이 틀린 것이므로 체력 1로 버틴다. */
       aliveUntil: e.ev.length > 0 ? e.ev[e.ev.length - 1][0] : e.b,
@@ -286,7 +293,13 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       const pdx = b.x - (b.kx + b.kvx * el);
       const pdy = b.y - (b.ky + b.kvy * el);
       const turned = Math.abs(angDiff(b.kh, b.hdg));
-      if (Math.hypot(pdx, pdy) < eps && turned < 30 && b.state === b.ks) return;
+      /* 채취 왕복은 결이 다르다 — 밭과 홀 사이를 하루 종일 오가므로, 도는 각도마다
+         키를 찍으면 결과가 몇 배로 분다(실측: 게임 1이 80k → 467k키). 왕복의 뜻은
+         '어디서 돌아섰나'지 '어느 쪽을 봤나'가 아니라, 방향 문턱을 크게 두고 자리
+         문턱도 조금 넉넉히 준다. */
+      const gath = b.state === ST_GATHER;
+      if (Math.hypot(pdx, pdy) < (gath ? eps * 2 : eps)
+        && turned < (gath ? 150 : 30) && b.state === b.ks) return;
     }
     const vdt = Number.isFinite(b.px) ? dt : 0;
     b.keys.push(Math.round(t * 100) / 100, Math.round(b.x * 100) / 100,
@@ -324,6 +337,38 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   const TCELL = 4;
   const tgw = Math.ceil(W / TCELL) + 1;
   const tcells = new Map<number, Body[]>();
+
+  /* 채취 배정(P3) — 제 홀 12타일 안에 선 일꾼에게 밭 하나를 준다. 밭은 홀 둘레 9타일
+     안의 미네랄 중 태그로 갈라(개체마다 다른 밭) 줄이 서게 한다. 가스는 곁(2.5타일)에
+     제 정제소가 있으면 그쪽이다. 자원표가 없으면 채취를 안 만든다(거짓 왕복 금지). */
+  const RES = opts.resources ?? [];
+  const assignJob = (b: Body, t: number): Body["job"] => {
+    if (RES.length === 0) return null;
+    let hx = 0;
+    let hy = 0;
+    let hd = 12;
+    for (const h of bodies) {
+      if (!h.bld || h.owner !== b.owner || h.state === ST_GONE) continue;
+      if (t < h.born || (h.died !== null && t >= h.died)) continue;
+      if (!HALLS.has(h.kind)) continue;
+      const d = dist(b.x, b.y, h.x, h.y);
+      if (d < hd) { hd = d; hx = h.x; hy = h.y; }
+    }
+    if (hd >= 12) return null;
+    // 가스 — 곁에 제 정제소가 서 있으면 그 자리가 밭이다.
+    for (const g of bodies) {
+      if (!g.bld || g.owner !== b.owner || g.state === ST_GONE) continue;
+      if (t < g.born || (g.died !== null && t >= g.died)) continue;
+      if (!GAS_BLD.has(g.kind)) continue;
+      if (dist(b.x, b.y, g.x, g.y) <= 2.5) {
+        return { px: g.x, py: g.y, hx, hy, toHall: false, wait: 0 };
+      }
+    }
+    const near = RES.filter((r) => r[2] !== 1 && dist(hx, hy, r[0], r[1]) <= 9);
+    if (near.length === 0) return null;
+    const pick = near[Math.abs(b.tag) % near.length];
+    return { px: pick[0], py: pick[1], hx, hy, toHall: false, wait: 0 };
+  };
 
   const hurt = (a: Body, tgt: Body, w: Weapon, t: number): void => {
     const dmg = damageOf(w, tgt.size, tgt.armor, tgt.sh > 0);
@@ -459,6 +504,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         }
         if (b.inside !== null) continue;   // 배 안에서 받은 명령은 내린 뒤에 쓴다(P4)
         setDest(b, o.x, o.y);
+        b.job = null;
         b.aggro = o.kind === "attack";
         b.state = ST_MOVE;
       }
@@ -489,6 +535,42 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         pushKey(b, t, b.keys.length === 0);
         b.px = b.x; b.py = b.y;
         continue;
+      }
+      /* ③-b 채취(P3) — 명령이 없는 일꾼은 제 밭과 홀 사이를 오간다. 원작에서 이 순환은
+         자동이라 리플레이에 명령으로 안 남는다: 시뮬이 모델하지 않으면 일꾼이 마지막
+         명령 자리에 얼어붙는다(렌더의 왕복 어림이 하던 일을 여기로 옮겼다). */
+      if (!b.dest && b.inside === null && WORKERS.has(b.kind)) {
+        if (!b.job) b.job = assignJob(b, t);
+        if (b.job) {
+          b.state = ST_GATHER;
+          const j = b.job;
+          if (j.wait > 0) {
+            j.wait -= dt;
+          } else {
+            const tx2 = j.toHall ? j.hx : j.px;
+            const ty2 = j.toHall ? j.hy : j.py;
+            const dx2 = tx2 - b.x;
+            const dy2 = ty2 - b.y;
+            const d2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+            if (d2 <= 0.45) {
+              // 밭에서는 캐고(2.8초), 홀에서는 반납만 하고(0.3초) 곧장 돌아선다.
+              j.wait = j.toHall ? 0.3 : 2.8;
+              j.toHall = !j.toHall;
+            } else {
+              const go = Math.min(b.speed * dt, d2);
+              b.x += (dx2 / d2) * go;
+              b.y += (dy2 / d2) * go;
+              const want2 = norm360((Math.atan2(-dx2, dy2) * 180) / Math.PI);
+              const diff2 = angDiff(b.hdg, want2);
+              const mt2 = b.turn * dt;
+              b.hdg = norm360(b.hdg + Math.max(-mt2, Math.min(mt2, diff2)));
+            }
+          }
+          live.push(b);
+          pushKey(b, t, b.keys.length === 0);
+          b.px = b.x; b.py = b.y;
+          continue;
+        }
       }
       // ④ 걸음 — 길 꼭짓점을 따라 제 속도로. 남은 거리보다 더 못 간다.
       let step = b.speed * dt;
