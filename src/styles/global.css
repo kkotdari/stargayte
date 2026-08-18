@@ -13219,8 +13219,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   width: var(--ckw, 9px); height: calc(var(--ckw, 9px) / 2);
   margin: calc(var(--ckw, 9px) / -4) 0 0 calc(var(--ckw, 9px) / -2);
   /* 실처럼 가늘게(재지적: 색으로 구분되니 선은 실 굵기) — 0.5~0.7px 고정 헤어라인.
-     0.6 → 0.4px(요청: 굵기 감소) — 선택 링과 같은 결로 한 단 더 얇게. */
-  border: 0.4px solid currentColor; border-radius: 50%;
+     0.6 → 0.4 → 0.28px(요청: 마우스 마커·선택 링 모두 더 가늘게) — 선택 링과 늘 같은 결.
+     이보다 얇으면 기기에 따라 선이 통째로 사라진다(서브픽셀 반올림). */
+  border: 0.28px solid currentColor; border-radius: 50%;
   background: transparent;
   animation: scr-clickfx 0.9s ease-out forwards;
 }

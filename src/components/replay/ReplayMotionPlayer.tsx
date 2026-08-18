@@ -8197,8 +8197,17 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         ctx.globalAlpha = op.alpha * 0.32;
         ctx.fillStyle = shadowTint(op.color);
         ctx.beginPath();
-        // 바닥면 전체(재지적: 앞쪽만 납작) — 타원을 키우고 중심을 위로 당긴다.
-        ctx.ellipse(footX, footY - px * 0.09 - (op.kind === "htemp" ? px * 0.16 : 0), px * 0.19, px * 0.11 * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
+        /* 그림자 크기는 **보정 전** 크기(px0)로 잰다(지적: "그림자 크기가 유닛 크기
+           반영 못한 듯 — 프로브 질럿 드라군이 다 비슷").
+           원인: 판을 구울 때 '상자 채움 보정'이 잉크가 적은 모델을 최대 1.55배까지
+           키운다. 프로브처럼 오목한 모델은 그 상한까지 부풀고 드라군처럼 넓은 모델은
+           1배로 묶여, 보정 뒤 크기(px)가 서로 가까워진다. 그 px로 그림자를 그리니
+           등급이 달라도 그림자가 비슷해졌다.
+           px0는 등급(UNIT_TILES 소·중·대)이 그대로 살아 있는 값이라 프로브(소)와
+           드라군(대)이 제 비로 갈린다. 발자국은 모델의 잉크 폭이 아니라 유닛의 몸집이
+           정하는 것이라, 이쪽이 뜻에도 맞다. */
+        const shR = px0 * 0.19;
+        ctx.ellipse(footX, footY - px * 0.09 - (op.kind === "htemp" ? px * 0.16 : 0), shR, shR * 0.58 * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -8210,8 +8219,9 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         ctx.shadowColor = "transparent";
         /* 선 굵기는 화면 고정(지적: 링은 UI 요소 — 확대에 굵어지면 안 됨) — 반지름은
            유닛(px)을 따라가되 굵기에서 zoom을 뺀다. */
-        // 굵기 한 단 감소(요청) — 0.7~sizePx×0.025 → 0.45~sizePx×0.016.
-        const ringW = Math.max(0.45, op.sizePx * 0.016);
+        // 굵기 한 단 더 감소(요청: 마우스 마커·선택 링 모두 더 가늘게)
+        // — 0.7~×0.025 → 0.45~×0.016 → 0.32~×0.011. 마우스 마커(0.28px)와 같은 결.
+        const ringW = Math.max(0.32, op.sizePx * 0.011);
         // 링도 내용물 발끝에(재지적) — 상자 고정 오프셋은 작은 모델에서 몸 아래로 떨어졌다.
         const ringY = op.air ? footY - lift : footY - px * 0.03;
         const ringPath = (): void => {
@@ -10737,7 +10747,14 @@ export default function ReplayMotionPlayer({
      보병이 점 하나가 된다. 대신 등급 간 비율(1 : 1.3 : 1.75)은 원작에 맞추고, 본진
      발자국(4타일)보다는 확실히 작게 둔다 — 고정 픽셀 시절 대형은 4.3타일이라 커맨드
      센터보다 넓었고(전수조사), 수송선은 1.7배가 더 붙어 5~7타일까지 갔다. */
-  const UNIT_TILES = [1.9, 2.5, 3.3] as const;
+  /* 유닛 도형 크기(타일) — 소·중·대 등급별(요청: "유닛 크기가 실제 게임에 비해 너무
+     크게 그려짐. 나는 오히려 실제 게임보다 더 작게 그려지면 좋겠어(사실적 표현). 물론
+     차지하는 공간은 원래 게임대로 유지하되 재생 화면에서만").
+     1.9/2.5/3.3 → 1.15/1.5/2.0 (약 60%). 원작의 실제 몸집은 대략 소 0.8·중 1.1·대
+     1.5타일이라, 이 값은 그보다도 한 단 작다 — 요청한 '사실적 표현' 쪽이다.
+     **차지하는 공간은 안 건드린다** — 겹침·충돌은 simCore의 BODY_R이 따로 정하고
+     그 값은 원작 그대로다. 여기는 화면에 그리는 크기만이다. */
+  const UNIT_TILES = [1.15, 1.5, 2.0] as const;
   /** 낱개 유닛 도형 크기(px) — 타일 × 등급비(소·중·대) × 2배 토글 × 깊이. */
   const unitGlyphPx = (bulk: 0 | 1 | 2, depthY: number): number =>
     tilePx * UNIT_TILES[bulk] * x2Mul * pitchK(depthY);
