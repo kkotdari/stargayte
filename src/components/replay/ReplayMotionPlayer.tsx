@@ -16,7 +16,8 @@ import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } f
 import { loadSimTracks, logSim, SIM_FLAG } from "../../utils/simClient";
 import { posAtSim, shotsAt, ST_INSIDE, type SimEventArr, type SimTrack } from "../../utils/simCore";
 import {
-  bodyFace, capFace, depthNow, groundEllipse, sideFace, tagKey, topFace, type ShapeFace,
+  bodyFace, capFace, depthNow, groundEllipse, lodFilter, sideFace, tagKey, topFace,
+  type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
   domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces, tubeFaces,
   wallDiscPath, withPitchView, withTopView, withViewShear, withYaw, zsorted,
@@ -897,7 +898,7 @@ function claw3(m: 1 | -1, s: number, z0: number): ShapeFace[] {
   return [bodyFace(d), sideFace(d, 0.16)];
 }
 function ivory(faces: ShapeFace[]): ShapeFace[] {
-  return faces.map(([d, o, f, k]) => [d, o, f ?? IVORY, k] as ShapeFace);
+  return faces.map(([d, o, f, k, l]) => [d, o, f ?? IVORY, k, l] as ShapeFace);
 }
 
 /** 막(공용 도형·요청: 드론·뮤탈 날개 같은 디테일) — 뿌리 변(roots)과 바깥 변(tips)을
@@ -1062,7 +1063,7 @@ function creepBlobFaces(seed: number): ShapeFace[] {
 /* 공사 셋 고정색(요청: 팀색 대신 재질색) — 색 없는 밑칠(bodyFace)에만 바탕색을 입히고,
    흰/검 음영과 명시색 면은 그대로 둔다. */
 function paintBase(faces: ShapeFace[], base: string): ShapeFace[] {
-  return faces.map(([d, o, f, k]) => [d, o, f ?? base, k] as ShapeFace);
+  return faces.map(([d, o, f, k, l]) => [d, o, f ?? base, k, l] as ShapeFace);
 }
 
 /* 종족 바탕색(재작도 규칙) — 테란은 실버, 프로토스는 골드, 저그는 연한 주황이
@@ -3711,8 +3712,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       SP.map(([sx, sy]) => [sx * 1.1, sy * 0.72 + 1.1, 1.4] as [number, number, number]),
       "#0000",
       { shade: 0.16, notch: 0.3, key: 6 },
-    ).map(([d9, o9, f9, k9]) => (f9 === "#0000"
-      ? [d9, o9, undefined, k9] as ShapeFace : [d9, o9, f9, k9] as ShapeFace)));
+    ).map(([d9, o9, f9, k9, l9]) => (f9 === "#0000"
+      ? [d9, o9, undefined, k9, l9] as ShapeFace : [d9, o9, f9, k9, l9] as ShapeFace)));
     // 막의 둥근 구멍 넷 — 어두운 원.
     for (let k = 0; k < 4; k += 1) {
       const sx = -3.2 + k * 2.1;
@@ -5754,7 +5755,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     capFace(discPath3(0, 0, 0.1, 3), 0.6),
     /* 숨은 유닛 비침(재지적: 납작한 렌즈 반구의 윗부분만 살짝) — 낮은 돔을 유닛색
        반투명으로 구멍 위에 살짝 내민다. */
-    ...domeFaces3(0, 0, 1.9, 0.55, 0.05).map(([d, o, f, k]) => [d, o * 0.45, f, k] as ShapeFace),
+    ...domeFaces3(0, 0, 1.9, 0.55, 0.05).map(([d, o, f, k, l]) => [d, o * 0.45, f, k, l] as ShapeFace),
   ],
   /* SCV(실물 참고) — 각진 몸통 + 양옆 포드 + 위 머리 + 앞으로 굽는 집게 드릴 한 쌍. */
   scv: () => [
@@ -7508,6 +7509,36 @@ const pathOf = (d: string): Path2D => {
    수천 번의 가우시안 블러 합성이라 PC에서도 버벅였다. 같은 (종류·방향·시각·색·크기)
    조합은 한 번만 오프스크린 캔버스에 굽고, 프레임에선 drawImage 한 번으로 찍는다.
    줌 중엔 크기 양자화 칸이 바뀌며 다시 굽지만 멈추면 전부 캐시 적중이다. */
+/* ── 부품 등급(LOD, 요청: "모델들의 부품 중요도도 3단계 정도로 나눠서 사양에 따라
+      부분 렌더링") ────────────────────────────────────────────────────────────────
+   판을 굽는 순간 딱 한 번 거른다. 등급이 캐시 열쇠에 들어가므로 프레임마다 재는 비용이
+   없고, 같은 크기·같은 등급이면 판을 그대로 재활용한다.
+
+   등급을 정하는 자는 둘을 곱한 것이다.
+     ① 화면에 실제로 몇 픽셀로 그려지는가 — 건물이 14px로 보일 때 리벳을 그리는 것은
+        순수한 낭비다. 설정이 필요 없고 효과가 가장 크다(축소해서 볼 때 유닛 수백이
+        한꺼번에 작아진다).
+     ② 기기 여력 — 느린 기기에서는 한 단 낮춘다. 모바일에서 특히.
+   지금은 아무 면에도 등급이 안 달려 있어(전부 기본 1) 이 필터는 아무것도 안 걸러낸다.
+   모델을 다시 쓸 때마다 장식에 deco(), 포인트에 accent()를 씌워 나가면 그때부터 는다. */
+const LOD_PX_POINT = 22;
+const LOD_PX_DECO = 44;
+/** 기기 여력 벌점(0 또는 1) — 프레임이 계속 밀리면 1로 올라 등급이 한 단 내려간다. */
+let lodPenalty = 0;
+let lodSlowFrames = 0;
+/** 재생 루프가 프레임마다 부른다 — 느린 프레임이 이어지면 등급을 한 단 내린다. */
+function lodNoteFrame(ms: number): void {
+  if (ms > 34) {
+    lodSlowFrames += 1;
+    if (lodSlowFrames > 45 && lodPenalty === 0) { lodPenalty = 1; lodSlowFrames = 0; }
+  } else if (lodSlowFrames > 0) lodSlowFrames -= 1;
+}
+/** 이 크기로 그릴 때의 등급 — 1 형체 / 2 포인트 / 3 장식. */
+function lodOf(px: number): number {
+  const base = px < LOD_PX_POINT ? 1 : px < LOD_PX_DECO ? 2 : 3;
+  return Math.max(1, base - lodPenalty);
+}
+
 /** 상자 채움 보정에서 빼는 조각 — 본체와 짝을 이뤄 그려지는 부품들. */
 const FILL_SKIP = new Set(["burrowhole"]);
 /* 짝을 이루는 조각은 '본체의' 채움 몫을 그대로 쓴다(수리·지적: 포탑이 한쪽으로 쏠려
@@ -7529,12 +7560,14 @@ function unitSprite(
   const rotB = op.rotDeg !== undefined
     ? ((Math.round(op.rotDeg / 22.5) * 22.5) % 360 + 360) % 360 : -1;
   const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
+  const lod = lodOf(pxq);
   const key = `${op.kind}|${rotB}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}`
-    + `|${op.color}|${pxq}|${B.toFixed(2)}`;
+    + `|${op.color}|${pxq}|${B.toFixed(2)}|${lod}`;
   const hit = SPRITE_CACHE.get(key);
   if (hit) return hit;
-  const { faces } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
-  if (!faces) return null;
+  const { faces: all } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
+  if (!all) return null;
+  const faces = lodFilter(all, lod);
   /* (제거·요청) 드롭섀도 굽기 — 건물·유닛 그림자를 다 걷어 굽는 판도 그림자 없이 민다.
      pad는 안티에일리어싱 여유만. */
   const pad = 2;
@@ -7610,11 +7643,13 @@ function buildingSprite(
   op: UnitDrawOp, sideQ: number, B: number,
 ): { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number; w: number; cx: number } | null {
   const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
-  const key = `${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}|${op.color}|${sideQ}|${B.toFixed(2)}`;
+  const lod = lodOf(sideQ);
+  const key = `${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}|${op.color}|${sideQ}|${B.toFixed(2)}|${lod}`;
   const hit = BLD_SPRITE_CACHE.get(key);
   if (hit) return hit;
-  const { faces } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
-  if (!faces) return null;
+  const { faces: all } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
+  if (!all) return null;
+  const faces = lodFilter(all, lod);
   const pad = Math.ceil(sideQ * 0.15) + 2;
   const l = sideQ + pad * 2;
   const cv = document.createElement("canvas");
@@ -10743,6 +10778,7 @@ export default function ReplayMotionPlayer({
          시간 전체가 돼, 돌아온 순간 그만큼을 한 번에 건너뛴다. 위의 정지가 대부분 막지만
          blur가 안 오는 경우(다른 모니터로 시선만 이동)를 위한 이중 잠금이다. */
       const dt = c ? Math.min((now - c.last) / 1000, 0.5) : 0;
+      if (c) lodNoteFrame((now - c.last));
       const acc = gestureRef.current ? 0 : (c?.acc ?? 0) + dt;
       const drawnAt = c?.drawn ?? 0;
       const draw = acc > 0 && now - drawnAt >= DRAW_GAP_MS;

@@ -25,10 +25,46 @@
    아니면 모든 조각을 같은 방향(시계)으로 감아야 한다. */
 
 /** 겹쳐 그리는 면 하나 — [패스, 불투명도, 색?]. 색을 안 주면 currentColor. */
-/** [패스, 불투명도, 색?, 깊이?] — 넷째 값은 부품 중심의 화면 깊이(요잉 반영, +가
- *  시청자 쪽)로, zsorted가 painter 순서를 다시 세우는 열쇠다. 없으면 '직전 부품에
- *  붙은 장식'으로 본다. */
-export type ShapeFace = [string, number, string?, number?];
+/** [패스, 불투명도, 색?, 깊이?, 등급?] — 넷째 값은 부품 중심의 화면 깊이(요잉 반영,
+ *  +가 시청자 쪽)로, zsorted가 painter 순서를 다시 세우는 열쇠다. 없으면 '직전 부품에
+ *  붙은 장식'으로 본다.
+ *
+ *  다섯째는 부품 등급(LOD, 요청: "모델들의 부품 중요도도 3단계 정도로 나눠서 사양에
+ *  따라 부분 렌더링") — 없으면 1이다. **숫자가 작을수록 끝까지 남는다**:
+ *    1 형체   작아져도 끝까지 그린다. 없으면 무엇인지 못 알아본다 —
+ *             몸통·머리·다리·포신·날개, 그리고 **개인색**(누구 것인지).
+ *    2 포인트 정체를 굳히는 것. 렌즈, 톱니, 종족 표식, 관절.
+ *    3 장식   있으면 좋은 것. 리벳, 데칼, 잔가시, 배관, 자잘한 그늘. 가장 먼저 빠진다.
+ *  걸러 내는 일은 스프라이트를 굽는 순간 딱 한 번 일어난다(unitSprite/buildingSprite) —
+ *  프레임마다 재는 것이 아니라, 등급이 캐시 열쇠에 들어가 판이 등급별로 따로 구워진다. */
+export type ShapeFace = [string, number, string?, number?, number?];
+
+/** 부품 등급 — 1(형체)은 기본값이라 아무 데도 안 적는다. */
+export const LOD_POINT = 2;
+export const LOD_DECO = 3;
+/** 이 면들을 '포인트'로 매긴다 — 작게 그려질 땐 빠진다. */
+export function accent(faces: ShapeFace[]): ShapeFace[] {
+  return faces.map(([p, o, f, k]) => [p, o, f, k, LOD_POINT] as ShapeFace);
+}
+/** 이 면들을 '장식'으로 매긴다 — 가장 먼저 빠진다. */
+export function deco(faces: ShapeFace[]): ShapeFace[] {
+  return faces.map(([p, o, f, k]) => [p, o, f, k, LOD_DECO] as ShapeFace);
+}
+/** 등급 q까지만 남긴다(q=3이면 전부). 등급이 없는 면은 형체(1)로 본다.
+ *
+ *  단 하나 예외 — **개인색 면은 절대 전멸하지 않는다**(지적: "LOD는 낮은 티어에 필수로
+ *  개인색 포인트를 넣어야겠네"). 작게 그려질수록 '이게 무엇인가'보다 '누구 것인가'가
+ *  더 급한데, 개인색을 포인트(2)로 매겨 두면 하필 그때 사라진다. 그래서 색을 안 준 면
+ *  (fill이 없는 = 임자 색이 칠해질 면)들에 한해, 그중 가장 낮은 등급까지는 q를 무시하고
+ *  통과시킨다. 모델러가 개인색 띠를 3등급 장식으로 매겨 두어도 형체만 그리는 판에서
+ *  그 띠 하나는 살아남는다. */
+export function lodFilter(faces: ShapeFace[], q: number): ShapeFace[] {
+  if (q >= LOD_DECO) return faces;
+  let pcMin = Number.POSITIVE_INFINITY;
+  for (const f of faces) if (f[2] === undefined) pcMin = Math.min(pcMin, f[4] ?? 1);
+  const pcQ = Number.isFinite(pcMin) ? Math.max(q, pcMin) : q;
+  return faces.filter((f) => (f[4] ?? 1) <= (f[2] === undefined ? pcQ : q));
+}
 
 /** 표준 농도 눈금 — 면 헬퍼의 기본값. 은은하게/깊게도 이 눈금 안에서 고른다. */
 export const OP = {
@@ -210,12 +246,12 @@ export function depthNow(x: number, y: number): number {
 /** 부품 면들에 중심 깊이를 매긴다 — 손 면 묶음이 제 자리를 밝힐 때 쓴다. */
 export function tagDepth(faces: ShapeFace[], x: number, y: number): ShapeFace[] {
   const d = depthNow(x, y);
-  return faces.map(([p, o, f]) => [p, o, f, d] as ShapeFace);
+  return faces.map(([p, o, f, , l]) => [p, o, f, d, l] as ShapeFace);
 }
 /** 깊이 키를 그대로 매긴다 — 프리미티브가 '부품 전체에서 가장 앞점'을 셈해 단다
  *  (지적: 중앙값 기준은 길쭉한 부품에서 틀린다 — 같은 부품도 깊이가 많이 다르다). */
 export function tagKey(faces: ShapeFace[], key: number): ShapeFace[] {
-  return faces.map(([p, o, f]) => [p, o, f, key] as ShapeFace);
+  return faces.map(([p, o, f, , l]) => [p, o, f, key, l] as ShapeFace);
 }
 /** 부품 깊이 정렬(지적: 요잉으로 뒤로 간 부품이 앞 부품 위에 그려져 '비쳐 보임') —
  *  깊이 있는 면은 뒤→앞으로, 깊이 없는 면은 직전 깊이를 물려받아(장식은 제 부품에
