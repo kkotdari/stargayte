@@ -8143,7 +8143,11 @@ const unitMarkerKind = (u: string, race?: string): string =>
    대형 폴백은 "큰 쪽이 덜 틀린다"는 어림이었지만, 실제로는 커세어·퀸 같은 중형과
    드라군·탱크 같은 대형이 한 칸에 뭉쳐 크기로는 아무것도 구분되지 않았다. 이제 전
    유닛을 원작 분류(Small/Medium/Large) 그대로 적는다 — 폴백도 대형이 아니라 중형
-   (가운데로 틀린다). 이 등급이 곧 화면 크기의 유일한 손잡이다(UNIT_TILES). */
+   (가운데로 틀린다).
+   이제 이 등급은 **화면 크기의 손잡이가 아니다** — 크기는 아래 UNIT_BW_TILES(원작
+   치수)가 유닛마다 정하고, 이 표는 그 표에 이름이 없는 유닛의 폴백으로만 쓰인다.
+   럴커를 대형으로 고쳐 놨던 것은 되돌렸다: 원전 `UnitType.cpp` unitSize[103]은
+   Zerg_Lurker = Medium이다(원래가 맞았다). */
 const UNIT_BULK: Record<string, 0 | 1 | 2> = {
   // ── 테란 ──
   SCV: 0, Marine: 0, Firebat: 0, Ghost: 0, Medic: 0, "Spider Mine": 0,
@@ -8159,10 +8163,317 @@ const UNIT_BULK: Record<string, 0 | 1 | 2> = {
   Larva: 0, Drone: 0, Zergling: 0, Mutalisk: 0, Scourge: 0, Broodling: 0,
   "Infested Terran": 0,
   Hydralisk: 1, Queen: 1, Defiler: 1,
-  // 럴커는 원작에서 대형이다(조사: 중형으로 잘못 적혀 있었다).
-  Lurker: 2, Ultralisk: 2, Overlord: 2, Guardian: 2, Devourer: 2,
+  /* 럴커는 원전이 중형이다 — `UnitType.cpp` unitSize[103](Zerg_Lurker) = Medium.
+     여기 있던 "원작에서 대형이다(조사)"라는 주석은 원전과 반대라 지웠다. */
+  Lurker: 1, Ultralisk: 2, Overlord: 2, Guardian: 2, Devourer: 2,
 };
-/** 도형째 돌려 그리는 각도(시계방향) — 옛 스타게이트(반쪽 원통)용 45도는 봉오리
+
+/* ── 유닛 크기의 세 층(요청: "모델 좌표를 키우는 쪽이 낫겠다. 모든 모델을 같은 크기로
+   디자인해놓고 쓸 때만 크기를 달리 적용하는 것", "나중에 커스텀으로 유닛크기를 조절하기도
+   쉽게", "표준은 실제 게임 크기") ────────────────────────────────────────────────
+   섞으면 안 되는 두 자를 여기서 못박는다.
+
+   ① 모델 공간(MODEL_NORM) — "모델이 제 16-상자를 얼마나 채우나". **설계 공간**의 자다.
+      화면에서 몇 픽셀인지와 아무 상관이 없고, 굽기(unitSprite)와 도록(ShapeIcon)에서
+      상자 한가운데를 축으로 한 번 걸린다.
+   ② 화면 크기(unitTilesOf) — "화면에서 몇 타일인가". **쓰는 자리**의 자다.
+      모델이 어떻게 생겼는지와 아무 상관이 없다.
+
+   두 자가 만나는 지점이 곧 이 설계의 핵심이다:
+       화면에 보이는 몸(타일) = 상자(타일) × (잉크 상자 / 16)
+   그래서 상자를 `원작 치수 × 16 / 잉크 상자`로 잡으면 **보이는 몸이 정확히 원작 치수**가
+   된다. 옛 설계처럼 계수 K 하나로 어림하면 모델마다 가로세로비가 달라 2.4배가 어긋난다
+   (실측: 마린은 맞고 오버로드 0.67배·스카웃 1.71배). 여기서는 K를 종류마다 잰 값
+   (16 / MODEL_INK)으로 나눠 그 어긋남을 0으로 만든다 — 전형값은 16/5.2 = 3.08이다.
+
+   예전엔 이 둘이 한 몸이었다(옛 FILL_CACHE 채움 보정): 화면 크기를 정한 뒤 구운 판의
+   잉크 폭을 재서 되키우는 방식이라 ⓐ 모델을 고치면 화면 크기가 따라 흔들리고 ⓑ 상한
+   (1.55)에 걸린 모델은 아무리 작아도 더 못 커졌다. 다시 섞지 마라.
+
+   화면 크기는 아래 곱셈 사슬이고, 손잡이가 층으로 갈려 있다:
+     최종 타일 = 원작 치수(UNIT_BW_TILES, 자료에서 유도)
+               × 16 / MODEL_INK[그리는 kind]   // 모델이 상자를 채운 몫 되돌리기
+               × SPRITE_OVERHANG               // 충돌 상자 → 스프라이트 (지금 1)
+               × (UNIT_SIZE_TUNE[유닛] ?? 1)   // 종류별 손보기 — 여기만 고치면 그 유닛만
+               × UNIT_SIZE_GLOBAL              // 전체 배수
+               × unitMul                       // 화면의 '모델 크기' 라디오(unitGlyphPx에서)
+   그리고 SIZE_CONTRAST(시네마틱 비율)가 원작 치수 자리에 지수로 걸린다(1~1.35로 잘린다). */
+
+/** ① 모델 공간 정규화 배수 — 상자 한가운데(8,8)를 축으로 곱한다. **화면 크기가 아니다.**
+ *
+ *  이 표는 **`npm run model-norm -- --emit`이 낸 값이다. 손으로 고치지 마라.**
+ *  모델 면을 한 줄이라도 고쳤으면 그 명령을 다시 돌려 이 표와 MODEL_INK를 함께 갈아라
+ *  (안 갈면 그 종류만 조용히 크기가 어긋난다 — 여태 그것을 알아차릴 방법이 없었다).
+ *
+ *  근거(scripts/model-norm.mjs 실측): 유닛 kind 49종을 **실제로 굽는 사슬 그대로**
+ *  (resolveShapeFaces → lodFilter → shadeBoost) 16방향에서 구워 잉크 상자
+ *  √(폭×높이)를 쟀다. 기준은 top 모드다 — `pitched`가 useState(false)라 기본 화면이
+ *  그것이고, top은 시각 밀림이 구조적으로 0이라(viewYawOf가 `if (!pitched) return 0`)
+ *  표가 화면 폭·맵 격자에 안 흔들린다. 입체(pitch) 보기는 높이 배율이 0.66 → 1로 서면서
+ *  잉크 상자가 커지는데, 그 몫은 **평균이 아니라 밴드로 적어야 맞다**: 기하평균 1.035배,
+ *  종류별로는 0.973배(버로우 구멍) ~ 1.111배(변태고치)로 1.14배가 벌어진다.
+ *  즉 입체에서는 어떤 모델이 다른 모델보다 제 크기의 12%쯤 더 커 보인다.
+ *  모드마다 표를 따로 두면 표가 세 벌이 되므로 하나로 간다 — 없애려면 MODEL_INK에
+ *  pitch 열을 더하는 것이 해법이고, 그 전까지 이 12%는 알고 남기는 오차다.
+ *
+ *  목표 잉크 상자 = NORM_TARGET_INK(5.2). 넓이(√잉크면적)가 아니라 **상자**를 맞춘다:
+ *  화면 크기표가 원작 치수 √(폭×높이)로 유도되므로 같은 자라야 두 층이 같은 말을 한다.
+ *  값 5.2는 취향이 아니라 상자가 정한다 — 목표를 올릴수록 16-상자를 넘어 잘리는 종류가
+ *  는다(5.20에서 2종, 5.25에서 3종, 5.40에서 7종, 5.6에서 8종). 5.2가 클램프 수가
+ *  바닥(2종)을 유지하는 마지막 자리다.
+ *
+ *  상한: 배수를 곱한 뒤에도 잉크가 16-상자 안에 있어야 한다(굽는 판의 여백은 pad 2px
+ *  뿐이라 넘치면 잘리고, 잘린 자리로 발·가로중심·머리(contentBox)까지 밀린다). 상한은
+ *  **16방위 × 시각 밀림 ±36도 전 범위(6도 눈금 13칸) × top·pitch·base 세 모드**에서
+ *  가장 빡빡한 것을 쓰고 훑기 해상도만큼(0.97) 물러선다. 걸린 것은 둘뿐이다:
+ *    scourge 2.057→1.634 (잉크 상자 4.13 = 목표의 79%) · mine 1.465→1.293 (4.59 = 88%).
+ *  덤: 지금 코드는 **입체 보기에서 배수 없이도 이미 7종이 잘리고 있다**(ultra가 2.50
+ *  모델 단위, dship 1.13, shuttle 0.88, muta 0.75, darchon 0.38, bc 0.25, archon 0.13).
+ *  이 표가 그 일곱을 상한 안으로 끌어들여 함께 고친다 — 적용 뒤 넘침 0종을 실측했다.
+ *
+ *  짝(옛 FILL_PAIR): **이 표에 포신(tankgun·tanksiegegun)은 없다.** 앞선 설계는 포신도
+ *  제 배수를 받게 두고 "축이 둘 다 상자 중심이니 상대 위치가 안 어긋난다"고 적었는데,
+ *  그 진단이 틀렸다 — 축은 원래부터 같았고 어긋나는 것은 **배율**이다. 포신 op은 차체
+ *  op을 `...last`로 복사해 sizePx가 같으므로, 배수가 갈리면 그 몫이 그대로 상대 크기
+ *  차가 된다(재측정: 포신/차체 잉크 상자 비가 탱크 1.377배·시즈탱크 1.561배로 8방위
+ *  전부에서 일정하고, 시즈탱크 90·135도에서는 포신 상자가 차체보다 커졌다).
+ *  그래서 짝은 아래 NORM_PAIR로 **차체 배수를 그대로 물려받는다** — 옛 FILL_PAIR가
+ *  하던 일을 채움 보정이 아니라 이 층으로 옮긴 것이다. 스크립트도 짝은 안 찍는다.
+ *  표에 없는 종류는 1(모델 그대로)이다 — 건물이 여기로 떨어진다. */
+const MODEL_NORM: Record<string, number> = {
+  arbiter: 1.192, archon: 0.525, bc: 0.677, burrowhole: 0.832, carrier: 0.911, carrierbay: 0.810,
+  corsair: 1.128, darchon: 0.475, defiler: 0.861, devourer: 0.945, drone: 1.056, dship: 0.716,
+  dtemp: 0.896, fbat: 1.070, ghost: 1.402, goliath: 0.829, goon: 0.667, guardian: 0.949,
+  gunner: 1.171, htemp: 1.077, hydra: 0.758, inf: 1.226, lurker: 0.627, lurkeregg: 0.886,
+  mine: 1.293,  // 상자 상한 1.293에 걸림(원한 배수 1.465)
+  muta: 0.741, mutacocoon: 1.100, observer: 1.896, ovie: 0.843, probe: 1.582, queen: 1.091,
+  reaver: 1.234,
+  scourge: 1.634,  // 상자 상한 1.634에 걸림(원한 배수 2.057)
+  scout: 0.951, scv: 0.936, shuttle: 0.673, tank: 0.766, tankbody: 0.846,
+  tanksiege: 0.660, tanksiegebody: 0.756, ultra: 0.618, valk: 0.949,
+  vessel: 0.810, vulture: 1.058, wraith: 0.774, zealot: 0.797, zling: 1.113,
+};
+/** ①-a-짝 부품 → 본체(옛 FILL_PAIR와 같은 뜻, 옮긴 자리만 다르다).
+ *  포신 판은 차체 판과 **같은 sizePx·같은 상자 중심**에 그려지므로 배수도 같아야 한다.
+ *  다른 배수를 주면 그 비가 그대로 '포탑만 부푼' 그림이 된다 — 옛 채움 보정이 이 표를
+ *  두고 있던 이유이고, 재측정에서 포신/차체 1.377배(시즈 1.561배)로 되살아났다.
+ *  차체 쪽 상한(head 1.208·1.123)이 포신 쪽보다 빡빡해, 차체 배수를 포신에 씌워도
+ *  16-상자를 안 넘는다(넘침 훑기 0종 실측). */
+const NORM_PAIR: Record<string, string> = {
+  tankgun: "tankbody", tanksiegegun: "tanksiegebody",
+};
+/** 모델 공간 배수의 유일한 입구 — 굽기·도록·총구 앵커가 전부 이것을 쓴다.
+ *  짝은 본체 배수로 접힌다. */
+const modelNormOf = (kind: string): number => MODEL_NORM[NORM_PAIR[kind] ?? kind] ?? 1;
+/** ①-a-총구 마커 이름 → 총구 앵커가 실제로 붙어 있는 판.
+ *  MUZZLE_ANCHOR의 tank·tanksiege 좌표는 **포신 빌더**에서 따온 것인데, 마커 이름은
+ *  합본(tank·tanksiege)이라 그대로 배수를 찾으면 엉뚱한 판의 값이 나온다
+ *  (tank 0.766 vs tankgun→tankbody 0.846 = 1.10배, tanksiege 0.660 vs 0.756 = 1.15배;
+ *  짝을 안 접었던 앞선 설계에서는 1.52·1.79배까지 벌어졌다).
+ *  여기 없는 종류는 마커 이름과 그리는 판이 같다. */
+const MUZZLE_PLATE: Record<string, string> = {
+  tank: "tankgun", tanksiege: "tanksiegegun",
+};
+/** ①-b 정규화가 맞추는 목표 잉크 상자(모델 단위, 16이 상자 한 변). 크기표가 이 값으로
+ *  나눈다 — scripts/model-norm.mjs의 TARGET_GM과 **같은 값이어야 한다**. */
+const NORM_TARGET_INK = 5.2;
+/** ①-c 목표(NORM_TARGET_INK)에 못 미치는 종류만 적는다. 둘로 갈린다:
+ *   · mine·scourge — 상자 상한에 걸려 목표까지 못 큰 것.
+ *   · tankgun·tanksiegegun — **일부러** 목표를 안 맞춘 것. 짝이라 차체 배수를 쓰므로
+ *     제 잉크 상자는 5.2가 아니다(포신은 완결 유닛이 아니라 부품이다).
+ *  이 표도 --emit이 낸 값이다. */
+const MODEL_INK: Record<string, number> = {
+  mine: 4.591, scourge: 4.129, tankgun: 3.779, tanksiegegun: 3.330,
+};
+/** 그리는 kind가 정규화 뒤 실제로 차지하는 잉크 상자(모델 단위). */
+const modelInkOf = (kind: string): number => MODEL_INK[kind] ?? NORM_TARGET_INK;
+
+/** ②-a 원작 자료 — **BWAPI 원전 그대로다. 한 칸도 손보지 마라**(손볼 곳은 UNIT_SIZE_TUNE).
+ *  [폭px, 높이px, 등급(0 소·1 중·2 대), 공중(1)]
+ *   · 폭·높이: `BWAPILIB/Source/UnitType.cpp` unitDimensions의 L/U/R/D에서
+ *     폭 = L+1+R, 높이 = U+1+D (BWAPI 자신의 width()/height() 정의). JBWAPI의 같은 표와
+ *     234/234 일치했고 Liquipedia와도 마린 17×20 · 저글링 16×16 · 울트라 38×32로 맞았다.
+ *   · 등급: 같은 파일 unitSize[]. 지금 UNIT_BULK가 쓰는 바로 그 자료다.
+ *   · 공중: 같은 파일 unitFlags[]의 Flyer 비트.
+ *  세 자료가 한 줄에 나란히 있어야 아래 보정 규칙을 자료에서 유도할 수 있다.
+ *  **손본 값과 원작값이 한 표에 섞이지 않게** 여기에는 원자료만 두고, 보정은 전부
+ *  아래 코드로 유도한다(옛 표는 퀸 48×48을 1.000으로 적어 두어 되찾을 수 없었다). */
+const UNIT_BW_RAW = {
+  // ── 테란 ──
+  scv: [23, 23, 0, 0], gunner: [17, 20, 0, 0], ghost: [15, 22, 0, 0], fbat: [23, 22, 0, 0],
+  inf: [17, 20, 0, 0], vulture: [32, 32, 1, 0], mine: [15, 15, 0, 0], tank: [32, 32, 2, 0],
+  tanksiege: [32, 32, 2, 0], goliath: [32, 32, 2, 0], wraith: [38, 30, 2, 1],
+  dship: [49, 37, 2, 1], vessel: [65, 50, 2, 1], valk: [49, 37, 2, 1], bc: [75, 59, 2, 1],
+  // ── 프로토스 ──
+  probe: [23, 23, 0, 0], zealot: [23, 19, 0, 0], dtemp: [24, 26, 0, 0], htemp: [24, 24, 0, 0],
+  goon: [32, 32, 2, 0], archon: [32, 32, 2, 0], darchon: [32, 32, 2, 0], reaver: [32, 32, 2, 0],
+  shuttle: [40, 32, 2, 1], observer: [32, 32, 0, 1], scout: [36, 32, 2, 1],
+  corsair: [36, 32, 1, 1], carrier: [64, 64, 2, 1], arbiter: [44, 44, 2, 1],
+  // ── 저그 ──
+  drone: [23, 23, 0, 0], zling: [16, 16, 0, 0], hydra: [21, 23, 1, 0], lurker: [32, 32, 1, 0],
+  ultra: [38, 32, 2, 0], defiler: [27, 25, 1, 0], queen: [48, 48, 1, 1], ovie: [50, 50, 2, 1],
+  muta: [44, 44, 0, 1], scourge: [24, 24, 0, 1], guardian: [44, 44, 2, 1],
+  devourer: [44, 44, 2, 1],
+} as const;
+/** 기하평균 — '전체 크기감을 안 바꾸는' 평균이다. 곱셈으로 크기를 만지는 이 파일에서
+ *  산술평균은 큰 쪽에 끌려간다. */
+const gmOf = (v: number[]): number => Math.exp(v.reduce((t, x) => t + Math.log(x), 0) / v.length);
+const BW_ROWS: readonly (readonly [number, number, number, number])[] = Object.values(UNIT_BW_RAW);
+/** 충돌 상자의 대각(타일) = √(폭×높이)/32. 1타일 = 32px. */
+const bwBoxTiles = (r: readonly [number, number, number, number]): number => Math.sqrt(r[0] * r[1]) / 32;
+/** 등급 대표 크기(타일) — **지상 유닛만의 기하평균**이다. 손으로 고른 수가 아니라
+ *  자료에서 유도한다(지상 = 충돌 상자가 몸에 딱 붙는 쪽이라 등급의 기준으로 쓸 수 있다).
+ *  실측: 소 0.636 · 중 0.864 · 대 1.011. */
+const CLASS_TILES = ([0, 1, 2] as const).map(
+  (c) => gmOf(BW_ROWS.filter((r) => r[3] === 0 && r[2] === c).map(bwBoxTiles)),
+);
+const AIR_ROWS = BW_ROWS.filter((r) => r[3] === 1);
+/** 공중 상자 여유 — 공중 유닛은 충돌이 없어 dimensions가 표적 획득·클릭용으로 넉넉하다
+ *  (원값 그대로면 스커지 0.75 > 저글링 0.50, 옵저버 1.00 = 탱크, 오버로드 1.56 > 울트라).
+ *  얼마나 넉넉한지도 **자료가 말한다**: 공중 무리의 상자 기하평균(1.318)이 그들의 등급이
+ *  말하는 크기(0.915)보다 1.441배 크다. 그 몫을 그대로 나눈다 — 지어낸 수가 없다.
+ *  **다만 상수 하나로는 안 맞는 자리가 있다(정직하게 적는다)**: 종류별 잔차
+ *  (상자 ÷ 등급 기대)가 레이스 1.044 · 스카웃 1.049 · 셔틀 1.106에서 뮤탈 2.161까지
+ *  2.07배로 흩어진다. 잔차가 1에 가까운 셋은 상자에 여유가 애초에 없는데도 1.441로
+ *  나뉘어 제 등급의 0.72배까지 내려앉고, 그 바람에 지상 중형(벌처·럴커) 아래로 떨어졌다.
+ *  그 셋만 아래 UNIT_SIZE_TUNE에서 되올린다 — 상수를 종류별 표로 바꾸는 것은 자료
+ *  한 층을 더 만드는 일이라, 손잡이 층에서 세 칸으로 끝낸다.
+ *  (진짜 그림 크기는 GRP 헤더인데 MPQ 없이는 못 캔다. 캐게 되면 이 줄이 아니라
+ *   SPRITE_OVERHANG 하나만 갈아 끼우면 된다.) */
+const AIR_BOX_SLACK = gmOf(AIR_ROWS.map(bwBoxTiles)) / gmOf(AIR_ROWS.map((r) => CLASS_TILES[r[2]]));
+/** 등급을 섞는 무게 — 0.5는 "두 자료(충돌 상자·등급)를 같은 무게로" 곧 기하평균이다.
+ *  왜 섞나: units.dat의 기본값 32×32에 벌처·탱크·골리앗·드라군·아콘·다크아콘·리버·러커가
+ *  통째로 뭉쳐(41종 중 14종이 세 값에 몰린다) 상자만으로는 벌처(중)와 시즈탱크(대)를
+ *  구분하지 못한다 — 있던 자료(unitSize[])를 버리는 셈이다. 섞으면 벌처 0.930 <
+ *  탱크 1.005로 제 순서(등급 사이)가 선다. 등급 하나만 쓰면(무게 1) 같은 등급이 전부 한
+ *  값이 되어 이번엔 배틀크루저와 레이스가 같아진다. 등급 역전쌍은 무게 0에서 57쌍,
+ *  0.5에서 10쌍, 1에서 0쌍이다.
+ *  **섞기가 고치는 것은 등급 사이 순서뿐이고, 같은 등급 안 뭉개짐은 못 고친다** —
+ *  등급이 같으면 √(상자×등급)이 상자의 단조함수라 상자까지 같은 종은 원리적으로 못
+ *  가른다(32×32 대형 지상 일곱, 44×44 대형 공중 셋 …). 그 몫은 UNIT_SIZE_TUNE이 진다.
+ *  남는 10쌍도 전부 자료발은 **아니다**: 4쌍(퀸·뮤탈 쪽)만 원상자에서도 역전이고,
+ *  6쌍(벌처·럴커 vs 레이스·셔틀·스카웃)은 원상자에서는 정상 순서였는데 AIR_BOX_SLACK
+ *  나눗셈이 뒤집은 것이다 — 그래서 그 셋을 손잡이로 되올린다. */
+const SIZE_BLEND = 0.5;
+/** ②-b 원작 치수(타일) — 위 원자료에서 **유도한다. 손으로 옮겨 적지 않는다.**
+ *  결과 검산(손잡이 전, 41종 전수를 실제로 세어 적는다 — 어림수를 쓰지 않는다):
+ *   · 지상 24종이 원상자에서 벗어나는 폭은 −9.7% ~ +16.5%다(전에 "±5% 안"이라고
+ *     적었던 것은 **거짓**이었다 — 24종 중 13종이 5%를 넘고, 예시로 들었던 마린조차
+ *     +5.09%다). 가장 큰 것부터: 마인 +16.5 · 저글링 +12.8 · 히드라 +12.2 ·
+ *     다크템플러 −9.7 · 하이템플러 −7.9 · 벌처/럴커 −7.0 · 일꾼 셋 −5.9 · 고스트 +5.9.
+ *     등급을 반 몫 섞으니 당연한 결과이고(그것이 섞는 이유다), 여기 적는 이유는
+ *     "원작 그대로"라는 말이 ±5%가 아니라 이 밴드라는 뜻임을 못박기 위해서다.
+ *   · 공중은 등급이 말하는 크기 언저리로 앉는다. 1차·2차가 지목한 역전은 전부 풀렸다
+ *     (손잡이까지 태운 최종값: 셔틀 0.946 > SCV 0.676, 스카웃 0.934 > 마린 0.606,
+ *     뮤탈 0.779 < 아비터 1.041, 벌처 0.874 < 시즈탱크 1.026, 스커지 0.506 < 저글링
+ *     0.564). 같은 등급 안에서 원상자 순서가 뒤집힌 쌍은 0이다. */
+const UNIT_BW_TILES: Record<string, number> = Object.fromEntries(
+  Object.entries(UNIT_BW_RAW).map(([k, r]) => {
+    const box = r[3] === 1 ? bwBoxTiles(r) / AIR_BOX_SLACK : bwBoxTiles(r);
+    return [k, box ** (1 - SIZE_BLEND) * CLASS_TILES[r[2]] ** SIZE_BLEND];
+  }),
+);
+/** ②-c 원작 몸 지름(타일) — **밀어내기 전용**이다. 등급 섞기도 공중 보정도 안 탄
+ *  순수 충돌 상자라, 그리기 크기를 아무리 만져도 진형 간격이 안 흔들린다(지적: 크기표가
+ *  진형 간격까지 바꾼다). 겹침의 진실은 simCore의 BODY_R이고 이것은 그 화면판이다. */
+const UNIT_BODY_TILES: Record<string, number> = Object.fromEntries(
+  Object.entries(UNIT_BW_RAW).map(([k, r]) => [k, bwBoxTiles(r)]),
+);
+/** ②-d 충돌 상자 → 화면 그림. 원작 스프라이트는 어깨·총·날개가 충돌 상자 밖으로
+ *  나가지만 그 크기(GRP 헤더)는 MPQ 없이 못 캔다 — **추측으로 계수를 얹지 않는다.**
+ *  1은 "충돌 상자 그대로"라는 뜻이고, GRP를 캐면 여기 한 줄만 갈면 된다. */
+const SPRITE_OVERHANG: number = 1;
+/** ③-a-상한 시네마틱 비율의 허용 범위. **상한이 없는 상수는 손잡이가 아니라 함정이다.**
+ *  아래 SIZE_CONTRAST는 이 범위로 잘려서 쓰인다(clamp).
+ *  근거(64타일 맵 · 줌 4 · 확대 3.1 · 보이는 폭 16타일에서 가장 큰 배틀크루저 기준,
+ *  작은 맵이 먼저 터지므로 64타일로 잰다):
+ *      C=1.00  몸 3.74타일 · 그리는 상자 11.5타일 = 화면 폭의 72%
+ *      C=1.20  몸 4.03 · 상자 12.4 = 78%
+ *      C=1.35  몸 4.26 · 상자 13.1 = 82%
+ *      C=2.00  몸 5.42 · 상자 16.7 = 104%  ← 판 하나가 화면을 넘는다
+ *  상자가 화면을 넘으면 스프라이트 한 장이 pxq 470을 넘어(DPR 2에서 950² ≈ 3.6MB)
+ *  SPRITE_CACHE가 장수(700)로만 잘리는 지금 구조에서 메모리도 같이 터진다.
+ *  1.35는 '가장 큰 유닛의 그리는 상자가 작은 맵에서도 화면 안'인 마지막 자리다. */
+const SIZE_CONTRAST_MAX = 1.35;
+/** ③-a 시네마틱 비율(요청: "유닛간 크기 대비가 커지면서 좀더 역동적인 장면") —
+ *  균일 배수로는 '대비'가 안 커지므로 기준 크기에 대한 **지수**로 건다:
+ *      크기' = SIZE_REF × (크기 / SIZE_REF) ^ SIZE_CONTRAST
+ *  1이면 그대로, 1보다 크면 큰 유닛은 더 크고 작은 유닛은 더 작아진다. **지금은 UI가
+ *  없다** — 손잡이 자리만 만들어 둔 것이고, 붙일 때 손댈 곳은 이 상수 하나다.
+ *  기준값 SIZE_REF를 기하평균으로 잡는 것은 취향이 아니라 항등식이다: 이 변환의
+ *  기하평균은 REF × (기하평균/REF)^C 이므로, 모든 C에서 전체 크기감이 안 변하는 REF는
+ *  기하평균뿐이다(중앙값은 중앙값만, 마린 기준은 마린만 고정하고 전체가 부푼다).
+ *  실측(41종): C=1.35에서 큰/작은 비 2.21 → 2.92, 기하평균 0.834 불변(산술평균만 +1.9%).
+ *  가장 큰 배틀크루저의 몸이 1.207 → 1.374타일(확대에서 4.26타일)로 커맨드센터 발자국
+ *  (4타일)만 하다 — 전장을 가리지 않는다. */
+const SIZE_CONTRAST: number = 1;
+/** 실제로 쓰이는 값 — 1 미만(작은 유닛이 더 커지는 방향)과 상한 밖을 막는다. */
+const SIZE_CONTRAST_C = Math.min(SIZE_CONTRAST_MAX, Math.max(1, SIZE_CONTRAST));
+const SIZE_REF = gmOf(Object.values(UNIT_BW_TILES));
+/** ③-b 종류별 손보기(기본 1) — **여기가 사람이 만지는 자리다.** 열쇠는 원작 자료표의
+ *  것이라 오타가 컴파일에서 잡힌다(예전 표는 `zergling: 1.2`가 조용히 무시됐다).
+ *
+ *  왜 채워야 하나: 위 크기표는 원작 자료가 말하는 데까지만 간다. 그런데 units.dat의
+ *  치수 열에는 **기본값이 그대로 남은 칸**이 많다 — 32×32에 여덟 종, 44×44에 넷이
+ *  몰려 있고, 등급까지 같으면 √(상자×등급)이 상자의 단조함수라 원리적으로 못 가른다.
+ *  손보기 전에는 41종 중 19종이 여섯 무리로 뭉쳤고 서로 다른 값이 28개뿐이었다.
+ *  아래 15칸을 채워 **동률 19종 → 7종, 서로 다른 값 28 → 37**이 됐다.
+ *  남는 7종(SCV·프로브·드론 / 마린·메딕 / 드랍십·발키리)은 **원전 상자가 글자
+ *  그대로 같은 값**이라(23×23 · 17×20 · 49×37) 자료에 더 없는 자리다 — 뭉갠 것이
+ *  아니라 자료가 같다고 말하는 것이라 손대지 않았다.
+ *
+ *  값의 출처를 칸마다 밝힌다. 세 갈래다:
+ *   (자료-공중) 레이스·스카웃·셔틀 — AIR_BOX_SLACK 상수가 만든 역전을 되돌린다.
+ *      상수 1.4413 대신 제 잔차 r을 절반 몫만 쓰는 것과 같게 (1.4413/r)^(1/4)로 잡았다
+ *      (상자가 지수 0.5로 들어가므로 슬랙 보정의 반이 네제곱근이다).
+ *      레이스 r=1.044 → 1.084 · 스카웃 1.049 → 1.083 · 셔틀 1.106 → 1.068.
+ *      덤으로 "UNIT_FILL_TARGET으로 키웠던 레이스가 도리어 0.947배로 작아진다"는
+ *      회귀도 이 칸이 닫는다(0.947 × 1.084 = 1.027배 — 지금보다 조금 커진다).
+ *   (자료-무리) 32×32·44×44 뭉치 — 순서만 원전의 다른 열에서 끌어온다.
+ *      수송칸(unitSpaceRequired) · 인구(unitSupplyRequired) · 내구(HP+실드)를 이 순서로
+ *      본다. 세 열 모두 같은 UnitType.cpp에 있고, 수송칸은 "이 유닛이 배에서 몇 칸을
+ *      차지하나"라 부피에 가장 가까운 원전 진술이다.
+ *      골리앗 수송2·HP125 → 가장 작게 / 드라군 수송4·인구4·내구180 /
+ *      탱크 수송4·인구4·내구150(기준, 손 안 댐) / 다크아콘 인구8·내구225 /
+ *      시즈탱크(같은 유닛의 편 자세라 탱크보다 조금 크게) / 아콘 인구8·내구360 /
+ *      리버 인구8·수송4(가장 둔한 공성 기계) 순.
+ *      벌처 수송2 < 럴커 수송4로 32×32 중형 둘도 갈린다.
+ *      **폭은 임의다**: 세 열이 순서만 주고 배수는 안 주므로, 울트라(원전 38×32로
+ *      실측치가 있는 유일한 대형 지상)의 1.0495를 넘지 않는 선에서 2~4%씩 벌렸다.
+ *   (눈대중) 스커지·오버로드·가디언 쪽 — 자료가 아니라 화면을 보고 정한 값이다.
+ *      스커지 0.88: 원전 24×24는 공중 표적 획득용 상자이고(잔차 1.179) 실제 몸은
+ *      저글링(16×16)보다 작다. 저글링 아래로 내리는 데 필요한 최소치는 0.980인데,
+ *      눈에 확실히 작게 보이도록 0.88까지 내렸다 — 이 폭은 **임의다**.
+ *      오버로드 1.05: 원전 상자 50×50이 41종 중 넷째로 크지만 울트라와 0.26% 차라
+ *      사실상 동률이었다. 4.7%로 벌렸다 — 방향은 자료, **폭은 임의다**.
+ *      디바우러 1.02 · 아비터 1.06: 44×44 셋 중 가디언을 기준으로 두고
+ *      내구(250 / 350+150)와 인구(4 / 8) 순으로 벌렸다. **폭은 임의다.** */
+const UNIT_SIZE_TUNE: Partial<Record<keyof typeof UNIT_BW_RAW, number>> = {
+  // (자료-공중) 잔차가 1에 붙어 있어 상수 슬랙에 과하게 깎이던 셋.
+  wraith: 1.084, scout: 1.083, shuttle: 1.068,
+  // (자료-무리) 32×32 대형 지상 일곱 — 수송칸·인구·내구 순. 탱크(1.0)가 기준이다.
+  goliath: 0.93, goon: 0.99, darchon: 1.01, tanksiege: 1.02, archon: 1.03, reaver: 1.04,
+  // (자료-무리) 32×32 중형 지상 둘 — 벌처 수송2 · 럴커 수송4.
+  vulture: 0.94, lurker: 0.97,
+  // (자료-무리 + 눈대중) 44×44 대형 공중 셋 — 가디언 기준, 내구·인구 순.
+  devourer: 1.02, arbiter: 1.06,
+  // (눈대중) 아래 둘은 자료가 아니라 화면을 보고 정했다 — 위 주석 참고.
+  ovie: 1.05, scourge: 0.88,
+};
+/** ③-c 전체 배수 — "다 조금 크게/작게"를 한 값으로. */
+const UNIT_SIZE_GLOBAL: number = 1;
+/** 화면 크기의 유일한 입구(타일).
+ *  열쇠가 둘인 것이 핵심이다(지적: 손잡이가 못 닿는 종류가 7개) —
+ *   · sizeKind(원작 치수)는 **유닛의 성질**이다. 버로우한 히드라의 구멍은 히드라 크기다.
+ *   · drawKind(잉크 몫)는 **모델의 성질**이다. 시즈탱크는 tankbody로 그려진다.
+ *  이 둘을 갈라 놓으면 tankbody·tankgun·tanksiegebody·tanksiegegun·lurkeregg·
+ *  mutacocoon·burrowhole까지 전부 손잡이가 닿는다. */
+const unitTilesOf = (drawKind: string, sizeKind: string, bulk: 0 | 1 | 2): number => {
+  const bw0 = UNIT_BW_TILES[sizeKind] ?? CLASS_TILES[bulk];
+  const bw = SIZE_CONTRAST_C === 1 ? bw0 : SIZE_REF * (bw0 / SIZE_REF) ** SIZE_CONTRAST_C;
+  return bw * SPRITE_OVERHANG * (16 / modelInkOf(drawKind))
+    * (UNIT_SIZE_TUNE[sizeKind as keyof typeof UNIT_BW_RAW] ?? 1) * UNIT_SIZE_GLOBAL;
+};/** 도형째 돌려 그리는 각도(시계방향) — 옛 스타게이트(반쪽 원통)용 45도는 봉오리
  *  재설계로 걷었다: 잎이 정확히 위아래·좌우에 서야 하고(요청), 화면 회전은 바닥
  *  그림자까지 대각선으로 돌려 검은 얼룩처럼 보였다. */
 const SHAPE_ROT: Record<string, number> = {};
@@ -8372,8 +8683,14 @@ type UnitDrawOp = {
    *  칸(hPx)은 모델 높이까지 포함해, 칸 기준 타원은 건물을 통째로 덮는 큰 원이 됐다). */
   footRatio?: number;
   kind: string; rotDeg?: number; viewYaw?: number; flat?: boolean; pitch?: boolean;
-  /** 도형 한 변(px) — 글자 크기 × 도형 배수(1.15/1.7) × 2배 토글 × 깊이 배율까지 포함. */
+  /** 도형 한 변(px) — 크기표 × 모델 크기 라디오 × 깊이 배율까지 포함한 **그리는 상자**다.
+   *  화면에 보이는 몸은 이것의 약 1/3(NORM_TARGET_INK/16)이고, 몸을 자로 삼는 장식은
+   *  이 값이 아니라 구운 판의 잉크 폭(inkW)을 쓴다. */
   sizePx: number;
+  /** 진형 간격용 몸 지름(px, 줌 전) — 원작 충돌 상자다. **그리기 크기와 따로 간다**:
+   *  크기표·'모델 크기' 라디오·시네마틱 대비를 아무리 만져도 유닛끼리 벌어지는 간격은
+   *  안 바뀐다. 없으면 sizePx 어림으로 물러난다(공사 SCV·마인처럼 안 밀어내는 op). */
+  sepPx?: number;
   color: string;
   alpha: number;
   /* ── 건물용(캔버스 전환 둘째 판) — 발자국 비례 상자에 그린다. ───────────────── */
@@ -8469,6 +8786,22 @@ const pathOf = (d: string): Path2D => {
    모델을 다시 쓸 때마다 장식에 deco(), 포인트에 accent()를 씌워 나가면 그때부터 는다. */
 const LOD_PX_POINT = 22;
 const LOD_PX_DECO = 44;
+/* 유닛 전용 문턱(지적: 상자로 등급을 정하면 상자가 줄어든 종류가 한 단 떨어져 장식이
+   사라진다) — 건물은 제 발자국 상자를 거의 꽉 채워 그려지므로 상자 px이 곧 몸 px이지만,
+   유닛은 정규화 뒤에도 상자의 32%(NORM_TARGET_INK/16)만 잉크다. 같은 22/44를 쓰면
+   유닛만 세 배 후하게 판정된다. 유닛은 잉크 px으로 재고 문턱도 그 자로 옮긴다.
+   문턱 값은 **전수로 다시 잡았다**. 앞선 설계의 6.5/13은 12칸짜리 화면 표본
+   (타일 8·2.8 × 줌 1·2·4 × 표준·확대)에서만 '하락 0종'이었고, 그 표본이 문턱을
+   비껴갔다 — 타일 4·확대·줌1처럼 흔한 화면(128타일 맵을 512px로 보는 자리)에서
+   대형 일곱이 3→2로 떨어져 실루엣 광원(lod>=3 게이트)을 잃었다.
+   지금 값은 41종 × 타일 1.0~20.9(0.1 눈금) × 줌 1·2·4 × 표준·확대 = 49,200칸을
+   **전수로** 돌려 잡았다. 지금 코드 대비 등급이 떨어지는 칸이 0이 되는 상한은
+   5.20/11.05(둘 다 골리앗이 정한다)이고, 여기서 조금 물러선 자리가 5.0/11이다.
+   이 값에서 하락 0칸 · 상승 13,676칸(더 선명해지는 쪽)이다. 옛 채움 보정의 몫
+   (FILL_CACHE)이 방향 버킷에 따라 흔들리므로, 그 몫을 버킷0·최소·최대·평균 넷으로
+   바꿔 가며 네 번 다 돌려도 하락은 0칸이었다. */
+const LOD_INK_POINT = 5.0;
+const LOD_INK_DECO = 11;
 /** 기기 여력 벌점(0 또는 1) — 프레임이 계속 밀리면 1로 올라 등급이 한 단 내려간다. */
 let lodPenalty = 0;
 let lodSlowFrames = 0;
@@ -8480,8 +8813,8 @@ function lodNoteFrame(ms: number): void {
   } else if (lodSlowFrames > 0) lodSlowFrames -= 1;
 }
 /** 이 크기로 그릴 때의 등급 — 1 형체 / 2 포인트 / 3 장식. */
-function lodOf(px: number): number {
-  const base = px < LOD_PX_POINT ? 1 : px < LOD_PX_DECO ? 2 : 3;
+function lodOf(px: number, ptPx = LOD_PX_POINT, dcPx = LOD_PX_DECO): number {
+  const base = px < ptPx ? 1 : px < dcPx ? 2 : 3;
   return Math.max(1, base - lodPenalty);
 }
 
@@ -8519,27 +8852,16 @@ function silhouetteLight(c2: CanvasRenderingContext2D, cv: HTMLCanvasElement): v
   c2.setTransform(prev);
 }
 
-/** 상자 채움 보정에서 빼는 조각 — 본체와 짝을 이뤄 그려지는 부품들. */
-const FILL_SKIP = new Set(["burrowhole"]);
-/* 짝을 이루는 조각은 '본체의' 채움 몫을 그대로 쓴다(수리·지적: 포탑이 한쪽으로 쏠려
-   있다) — 보정에서 아예 빼면(옛 FILL_SKIP) 포탑 판만 배율 1로 남고, 차체 판은 제 잉크
-   폭대로 1.0~1.55배 부풀어 둘의 배율이 어긋났다. 배율은 판의 한가운데(16-상자 중심)를
-   축으로 걸리므로, 그 어긋난 몫만큼 포탑이 차체 위에서 미끄러진다 — 정면에선 위아래로,
-   비스듬한 방향에선 옆으로 쏠려 보였다(시즈는 배율 차가 1.5배까지 벌어졌다). 짝의
-   본체 종류를 적어 두 판이 언제나 같은 배율·같은 기준점을 쓰게 한다. */
-const FILL_PAIR: Record<string, string> = {
-  tankgun: "tankbody", tanksiegegun: "tanksiegebody",
-};
-/** 모델별 상자 채움 몫(잉크 폭 / 상자 폭) — 종류마다 한 번만 재고 계속 쓴다. 방향마다
- *  다시 재면 몸이 도는 동안 크기가 출렁이고, 판도 두 배로 굽게 된다. */
-const FILL_CACHE = new Map<string, number>();
-/* 유닛별 목표 채움 몫(기본 0.58) — 건물의 BLD_FILL_TARGET과 같은 자다. 넓게 펼친
-   얇은 부품(날개막·촉수)이 잉크 폭을 부풀려 '이미 큰 모델'로 재지는 것들만 올린다:
-   폭은 찼는데 몸이 작아 보이는 증상이다(지적: 뮤탈). 값을 올리면 그만큼 더 키운다. */
-const UNIT_FILL_TARGET: Record<string, number> = {
-  muta: 0.78, guardian: 0.74, devourer: 0.74, scourge: 0.72,
-  corsair: 0.7, valk: 0.7, wraith: 0.68,
-};
+/* (삭제) 유닛 상자 채움 보정 — 옛 FILL_SKIP·FILL_PAIR·FILL_CACHE·UNIT_FILL_TARGET.
+   구운 판의 잉크 폭을 재서 되키우던 자다. 모델 공간을 종류마다 같은 몫으로 맞추는
+   MODEL_NORM이 그 일을 설계 단계에서 끝내므로 통째로 걷었다(상한 1.55에 걸려 저글링·
+   프로브·스커지가 아무리 작아도 못 커지던 문제도 함께 사라진다). 뮤탈처럼 '날개는
+   넓은데 몸은 작은' 모델을 위한 목표표도 필요 없다 — 잉크 폭이 아니라 잉크 **상자**
+   (√(폭×높이))로 맞추므로 옆으로만 퍼진 모델이 '이미 큰 모델'로 재지지 않는다.
+   **짝(포신·차체)을 묶던 몫만은 없애지 않고 옮겼다** — MODEL_NORM 옆의 NORM_PAIR가
+   그 자리다. 축이 같은 상자 중심이라는 것만으로는 부족하고, 배율까지 같아야 포탑이
+   차체 위에서 안 미끄러진다(이 주석의 옛 판이 적어 둔 실패 모드가 바로 그것이다).
+   **건물 쪽(BLD_FILL_*)은 발자국이 크기를 정하는 다른 체계라 그대로 둔다.** */
 const SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; bot: number; cx: number; top: number; w: number }>();
 function unitSprite(
   op: UnitDrawOp, pxq: number, B: number,
@@ -8547,7 +8869,8 @@ function unitSprite(
   const rotB = op.rotDeg !== undefined
     ? ((Math.round(op.rotDeg / 22.5) * 22.5) % 360 + 360) % 360 : -1;
   const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
-  const lod = lodOf(pxq);
+  // 등급은 상자가 아니라 이 모델이 실제로 칠하는 잉크 폭으로 정한다(위 LOD_INK_* 참고).
+  const lod = lodOf((pxq * modelInkOf(op.kind)) / 16, LOD_INK_POINT, LOD_INK_DECO);
   const key = `${op.kind}|${rotB}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}`
     + `|${op.color}|${pxq}|${B.toFixed(2)}|${lod}`;
   const hit = SPRITE_CACHE.get(key);
@@ -8567,6 +8890,15 @@ function unitSprite(
   c2.setTransform(B, 0, 0, B, 0, 0);
   c2.translate(pad, pad);
   c2.scale(pxq / 16, pxq / 16);
+  /* 모델 공간 정규화(요청: "모델 좌표를 키우는 쪽이 낫겠다") — 면을 채우기 **전에**,
+     상자 한가운데를 축으로 종류별 배수를 건다. 이것이 곧 '모델 좌표를 키우는 것'이고,
+     배수는 종류마다 상수이며 캐시 열쇠에 종류가 이미 들어 있으므로 추가 비용은 0이다.
+     짝(차체·포신)은 modelNormOf가 **같은 배수**로 접어 준다 — 축이 같은 것만으로는
+     안 되고 배율까지 같아야 포탑이 차체 위에서 안 미끄러진다(옛 FILL_PAIR의 뜻).
+     도록(ShapeIcon)·총구 앵커도 같은 입구를 탄다 — 셋이 갈리면 트레이서가 포신을
+     벗어나고 자료실 크기와 지도 크기가 어긋난다. */
+  const nrm = modelNormOf(op.kind);
+  if (nrm !== 1) { c2.translate(8, 8); c2.scale(nrm, nrm); c2.translate(-8, -8); }
   for (const [d, o, fill] of faces) {
     c2.globalAlpha = shadeBoost(o, fill);
     c2.fillStyle = fill ?? op.color;
@@ -8748,7 +9080,16 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
       if (mov.length > 0) {
         const px = mov.map((i) => zx(sorted[i].fx));
         const py = mov.map((i) => zy(sorted[i].fy));
-        const pr = mov.map((i) => Math.max(2, sorted[i].sizePx * zoom * 0.32));
+        /* 진형 간격은 **그리기 크기와 무관**해야 한다(지적: 크기표가 진형 간격까지
+           바꾼다) — sizePx에는 크기표·모델 크기 라디오·시네마틱 대비가 다 실려 있어,
+           '크게' 한 번에 유닛들이 4.8배로 벌어졌다. 차지하는 공간은 원작 몸 지름
+           (UNIT_BODY_TILES, 순수 충돌 상자)이 정한다 — 라디오를 돌려도 진형은 그대로다.
+           **지금 이 고리에 실제로 드는 유닛 op은 스파이더 마인 하나뿐이다** — v2 유닛
+           op·공사 SCV·채굴 일꾼은 전부 noSep이라 이완에서 빠지고, 포탑 op은 `...last`로
+           그것을 물려받는다. 그래서 마인 op에 sepPx를 실어(아래 마인 자리) 이 주장이
+           코드로 성립하게 했다. 폴백(sizePx*0.64)은 sepPx 없는 낯선 op이 생겼을 때만
+           쓰이는 종전 어림이고, 지금은 아무도 안 탄다. */
+        const pr = mov.map((i) => Math.max(2, (sorted[i].sepPx ?? sorted[i].sizePx * 0.64) * zoom * 0.5));
         for (let it = 0; it < 2; it += 1) {
           // ① 건물 밖으로 — 침투가 얕은 축으로 밀어낸다.
           for (let m = 0; m < mov.length; m += 1) {
@@ -9057,31 +9398,14 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
       }
       const { faces, rot } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
       if (!faces) { ctx.restore(); continue; }
-      /* 상자를 덜 채운 몫을 되돌린다(전수조사: "너무 크게/작게 그려지는 것 체크") —
-         등급으로 상자는 같게 맞췄어도, 모델이 그 상자를 채우는 몫이 24~69%로 제각각
-         이라 눈에 보이는 몸은 여전히 세 배 가까이 벌어져 있었다(실측: 프로브·저글링
-         0.24, 질럿·SCV 0.42, 셔틀 0.69 — 같은 소형끼리도 1.8배). 구운 판의 실제 잉크
-         폭을 재서 목표 몫까지 키운다. 키우기만 하고(≥1) 상한을 두어(1.55), 잘 채운
-         모델은 건드리지 않는다. 시즈 포신·버로우 구멍처럼 본체와 짝을 이루는 조각은
-         제 크기를 지켜야 하므로 뺀다 — 혼자 부풀면 본체와 어긋난다. */
-      const px0 = op.sizePx * zoom;
-      // 포탑 판은 제 잉크가 아니라 짝인 차체 판의 몫으로 잰다(위 FILL_PAIR 참고).
-      const fillKind = FILL_PAIR[op.kind] ?? op.kind;
-      let fillW = FILL_CACHE.get(fillKind);
-      if (fillW === undefined && !FILL_SKIP.has(fillKind)) {
-        const pq0 = Math.max(4, Math.round(px0 / 2) * 2);
-        const sp0 = unitSprite(fillKind === op.kind ? op : { ...op, kind: fillKind }, pq0, B);
-        fillW = sp0 && sp0.w > 0 ? (sp0.w / B) / pq0 : 1;
-        FILL_CACHE.set(fillKind, fillW);
-      }
-      /* 목표 채움 몫은 모델마다 다르다(지적: "뮤탈 크기 너무 작은데 근본 원인 찾기") —
-         채움 보정은 구운 판의 **잉크 폭**을 재서 '이미 큰 모델'이면 안 키운다. 그런데
-         폭은 몸이 아니라 가장 멀리 뻗은 부품이 정한다. 뮤탈은 날개가 모델 공간 x=±4.3
-         까지 펼쳐져 폭으로는 이미 꽉 찬 모델로 재지는데, 정작 그 폭의 대부분은 얇은
-         날개막이고 몸통은 가운데 조금이다. 그래서 보정이 1배로 묶여 몸이 작게 남았다.
-         건물 쪽에는 이 문제를 위한 목표표(BLD_FILL_TARGET — 스포닝풀이 같은 증상으로
-         들어가 있다)가 이미 있는데 유닛 쪽에만 없었다. 같은 자를 유닛에도 준다. */
-      const px = px0 * Math.min(1.55, Math.max(1, (UNIT_FILL_TARGET[op.kind] ?? 0.58) / (fillW ?? 1)));
+      /* 화면 크기는 크기표가 정한다(요청: 모델 정규화 + 원작 치수 크기표) — 옛 '상자
+         채움 보정'은 걷었다. 모델이 상자를 채우는 몫은 이제 굽는 쪽(MODEL_NORM)에서
+         종류마다 같게 맞춰지고, 남은 몫(MODEL_INK)은 크기표가 미리 나눠 놓았다.
+         여기서 잉크 폭을 되재서 되키울 까닭이 없다 — 판을 두 번 굽던 것도 사라진다. */
+      const px = op.sizePx * zoom;
+      /* 이 종류가 상자에서 잉크로 쓰는 몫(0~1) — 그림자·링·체력바·LOD가 상자가 아니라
+         몸을 자로 삼게 하는 열쇠다. 판이 없을 때의 폴백에만 쓴다. */
+      const inkK = modelInkOf(op.kind) / 16;
       /* 공중 유닛(요청: 높이 더 높이 + 바닥 그림자) — 발밑 자리에 그림자 타원을 깔고
          몸은 반 키만큼 위로 띄운다. 떠 있음이 땅 유닛과 한눈에 갈린다. */
       // 높이 반으로(재재지적) — 1.6 → 0.8.
@@ -9091,6 +9415,13 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
       const pxq = Math.max(4, Math.round(px / 2) * 2);
       const spr = unitSprite(op, pxq, B);
       const kU = px / pxq;
+      /* 몸의 실제 폭(화면 px) — contentBox가 이미 재 둔 값이라 공짜다(지적: 체력바가
+         몸을 덮는다 / 그림자가 몸만큼 크다 / 링이 몸보다 크다). 정규화가 맞추는 것은
+         잉크 **상자**이고 폭 몫은 가로세로비 때문에 종류마다 1.7배까지 남는다 —
+         모델들의 세로/가로 비가 실제로 그만큼 다르기 때문이라 정규화로는 못 없앤다.
+         그러니 장식이 상자(px)가 아니라 이 몸 폭(inkW)을 봐야 한다. 그러면 "바는 제
+         유닛보다 넓지 않다" 같은 조건이 종류를 안 가리고 식만으로 보장된다. */
+      const inkW = spr && spr.w > 0 ? (spr.w / B) * kU : px * inkK;
       const footY = spr
         ? sy - px * 0.24 - (spr.pad + pxq / 2) * kU + (spr.bot / B) * kU - 1
         : sy + px * 0.28;
@@ -9105,7 +9436,10 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         /* 떠다니는 지상 유닛(일꾼·벌처·아콘류)은 겨우 발밑만 떠 있다(지적: 그림자가
            너무 크고 진해) — 높이 나는 공중 유닛보다 작고 옅은 타원. */
         // 그림자 살짝 축소(지적) — 높이 나는 만큼 발밑 그림자는 작고 옅게.
-        const shw = px * (op.air ? 0.26 : 0.17);
+        /* 몸 폭 기준(지적: 그림자가 유닛 크기를 반영 못 한다 / 옵저버·스커지 그림자가
+           몸의 세 배다) — 지름이 몸 폭의 0.97배(공중)·0.70배(부양)로 종류를 안 가린다.
+           예전 상자 기준으로는 같은 식이 옵저버 1.99배 ~ 다크아콘 0.49배로 4배 벌어졌다. */
+        const shw = inkW * (op.air ? 0.44 : 0.32);
         /* 하이템플러 부양 로브(지적: 그림자가 몸에서 떨어져 분신 같다) — 그림자를
            위로 당겨 몸에 겹친다. */
         const shUp = op.kind === "htemp" ? px * 0.16 : 0;
@@ -9146,16 +9480,13 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         ctx.globalAlpha = op.alpha * 0.32;
         ctx.fillStyle = "#000";
         ctx.beginPath();
-        /* 그림자 크기는 **보정 전** 크기(px0)로 잰다(지적: "그림자 크기가 유닛 크기
-           반영 못한 듯 — 프로브 질럿 드라군이 다 비슷").
-           원인: 판을 구울 때 '상자 채움 보정'이 잉크가 적은 모델을 최대 1.55배까지
-           키운다. 프로브처럼 오목한 모델은 그 상한까지 부풀고 드라군처럼 넓은 모델은
-           1배로 묶여, 보정 뒤 크기(px)가 서로 가까워진다. 그 px로 그림자를 그리니
-           등급이 달라도 그림자가 비슷해졌다.
-           px0는 등급(UNIT_TILES 소·중·대)이 그대로 살아 있는 값이라 프로브(소)와
-           드라군(대)이 제 비로 갈린다. 발자국은 모델의 잉크 폭이 아니라 유닛의 몸집이
-           정하는 것이라, 이쪽이 뜻에도 맞다. */
-        const shR = px0 * 0.19;
+        /* 그림자는 몸 폭(inkW)으로 잰다(지적: "그림자 크기가 유닛 크기 반영 못한 듯 —
+           프로브 질럿 드라군이 다 비슷"). 예전엔 채움 보정이 잉크가 적은 모델만 1.55배
+           까지 부풀려 보정 뒤 크기가 서로 가까워졌고, 그래서 보정 전 크기(px0)를 따로
+           들고 있어야 했다. 보정이 없어진 지금 상자(px)는 종류마다 몸을 담는 여유가
+           달라(잉크 몫 0.26~0.33) 다시 같은 흠이 난다 — 몸 폭이 유일하게 옳은 자다.
+           지름은 몸 폭의 0.84배로 모든 종류에서 몸 안에 들어온다. */
+        const shR = inkW * 0.42;
         ctx.ellipse(footX, footY - px * 0.09 - (op.kind === "htemp" ? px * 0.16 : 0), shR, shR * 0.58 * (op.pitch ? PITCH_FLAT : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
@@ -9170,12 +9501,16 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
            유닛(px)을 따라가되 굵기에서 zoom을 뺀다. */
         // 굵기 한 단 더 감소(요청: 마우스 마커·선택 링 모두 더 가늘게)
         // — 0.7~×0.025 → 0.45~×0.016 → 0.32~×0.011. 마우스 마커(0.28px)와 같은 결.
-        const ringW = Math.max(0.32, op.sizePx * 0.011);
+        // 굵기도 몸을 따른다 — 상자를 따르면 잉크가 적은 모델만 굵어진다(0.011 → 상자
+        // 대신 몸이므로 잉크 몫 0.325로 나눈 0.034가 지금과 같은 굵기다).
+        const ringW = Math.max(0.32, op.sizePx * inkK * 0.034);
         // 링도 내용물 발끝에(재지적) — 상자 고정 오프셋은 작은 모델에서 몸 아래로 떨어졌다.
         const ringY = op.air ? footY - lift : footY - px * 0.03;
         const ringPath = (): void => {
           ctx.beginPath();
-          ctx.ellipse(footX, ringY, px * 0.25, px * 0.14 * (op.pitch ? PITCH_FLAT : 1), 0, 0, Math.PI * 2);
+          /* 링은 몸 폭의 1.1배 — 발 언저리에 살짝 걸친다(지적: 링이 몸보다 크다).
+             상자 기준이던 예전엔 종류에 따라 0.64~2.61배로 벌어졌다. */
+          ctx.ellipse(footX, ringY, inkW * 0.55, inkW * 0.31 * (op.pitch ? PITCH_FLAT : 1), 0, 0, Math.PI * 2);
         };
         /* 검은 테는 걷었다(지적: 깔려면 마우스 마커에도 깔아야 한다) — 링만 두 겹이라
            둘이 따로 놀았다. 임자 색 실선 한 겹으로 통일한다. */
@@ -9211,9 +9546,15 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         /* 전체적으로 상당히 얇고 짧게(요청) — 길이 0.85 → 0.58배, 두께 0.085 → 0.05배.
            바닥값도 함께 내려(3 → 2px, 1.4 → 0.9px) 작은 유닛에서 굵어 보이지 않게. */
         const hpScale = Math.min(1.25, Math.max(0.75, Math.sqrt((op.hpMax ?? 100) / 150)));
-        // 다시 길이 2/3 · 두께 1/2(요청) — 0.58 → 0.387, 0.05 → 0.025.
-        const bw2 = Math.max(1.5, px * 0.387 * hpScale);
-        const bh2 = Math.max(0.5, px * 0.025);
+        /* 자를 상자(px)에서 **몸 폭(inkW)**으로 옮긴다(회귀: 아콘 바가 몸의 1.49배).
+           HP_BAR_W 0.78 × hpScale 상한 1.25 = 0.975 — 어떤 종류에서도 바는 몸보다
+           넓지 않다. 이것이 표가 아니라 **식으로** 보장되는 것이 핵심이다: 예전 상자
+           기준으로는 잉크 몫이 0.19~0.78로 벌어져 같은 식이 옵저버 2.53배·다크아콘
+           0.62배가 됐고, 모델을 고칠 때마다 다시 깨졌다.
+           길이가 최대 체력을 따르는 것(요청)은 그대로다 — 저글링 0.585배 ↔ 울트라
+           0.975배에 몸 크기 차이가 곱해져 바 길이는 여전히 네 배쯤 벌어진다. */
+        const bw2 = Math.max(1.5, inkW * 0.78 * hpScale);
+        const bh2 = Math.max(0.5, inkW * 0.08);
         const bx2 = sx - bw2 / 2;
         /* 머리 바로 위(재재지적: 너무 위) — 실제 그려진 픽셀 꼭대기(contentBox.top)에
            살짝만 띄운다. */
@@ -9339,7 +9680,18 @@ export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg, flat,
       className={cx("scr-motion-shape-svg", className)}
       viewBox="0 0 16 16" preserveAspectRatio={keepRatio ? "xMidYMax meet" : "none"} aria-hidden
     >
-      <g transform={rot ? `rotate(${rot} 8 8)` : undefined}>
+      {/* 도록도 모델 공간 정규화를 탄다(지적: 정작 모델을 보는 화면에 정규화가 없어
+          "같은 크기로 디자인"을 확인할 수단이 없다) — 굽기(unitSprite)와 **같은 배수·
+          같은 축(상자 중심)**이다. 여기서 확인되는 것은 "모든 모델이 제 상자를 같은
+          몫으로 채우는가"이지 **지도에서 보이는 크기가 아니다**: ① 도록은 유닛마다
+          크기표를 안 태우므로 전 유닛이 같은 크기로 보이는 반면 지도에서는 배틀크루저
+          몸 3.74타일 : 저글링 1.75타일로 2.1배 다르고, ② 도록은 base 모드(사선), 지도
+          기본은 top 모드라 같은 모델도 −9.1%(스카웃) ~ +15.1%(변태고치)로 어긋난다.
+          표에 없는 종류(건물·핵 등)는 1이라 아무 일도 안 일어난다. */}
+      <g transform={[
+        rot ? `rotate(${rot} 8 8)` : "",
+        modelNormOf(kind) !== 1 ? `translate(8 8) scale(${modelNormOf(kind)}) translate(-8 -8)` : "",
+      ].filter(Boolean).join(" ") || undefined}>
         {faces
           ? faces.map(([d, op, fill], i) => <path key={i} d={d} fill={fill ?? "currentColor"} opacity={op} />)
           : <path d={SHAPE_PATHS[kind]} fill="currentColor" />}
@@ -10751,6 +11103,10 @@ export default function ReplayMotionPlayer({
      에서 만나고, 서로 원좌표 기준이라 지나쳐 겹치지 않는다. 시야(9타일) 밖은 안 끈다. */
   type FoeRow = {
     team: number; x: number; y: number; air: boolean; bld?: boolean; k?: string;
+    /** 유닛 행일 때의 원작 유닛 이름 — 방어 건물이 공중 표적을 겨눌 때 그 표적의 제
+     *  크기를 알아야 조준 높이가 맞는다. `k`는 **건물 행에만** 실리므로(방어 건물
+     *  갈래) 공중 갈래에서는 언제나 undefined였다 — 그 자리를 이 필드가 채운다. */
+    uk?: string;
     /** 은신·버로우로 '안 보이는' 표적(요청) — 디텍터가 있는 편에게만 표적이 된다. */
     hidden?: boolean;
   };
@@ -10783,6 +11139,7 @@ export default function ReplayMotionPlayer({
       const row: FoeRow = {
         team: teamOfRaw(e.raw) ?? 0, x: q.x, y: q.y,
         air: e.unit !== "" && isAirUnit(e.unit),
+        uk: e.unit !== "" ? e.unit : undefined,
       };
       engageFoes.push(row);
       foeEnts.push({ row, e, q });
@@ -10848,6 +11205,7 @@ export default function ReplayMotionPlayer({
         if (q) engageFoes.push({
           team: team2, x: q.x, y: q.y,
           air: (BY_UNITS[g2.unit] ?? [g2.unit]).every((u3) => isAirUnit(u3)),
+          uk: g2.unit,
         });
       }
     });
@@ -10918,6 +11276,8 @@ export default function ReplayMotionPlayer({
     let bAir = false;
     let bBld: boolean | undefined;
     let bK: string | undefined;
+    /** 고른 표적이 유닛이면 그 원작 이름 — 방어 건물의 공중 조준 높이가 이것을 쓴다. */
+    let bUk: string | undefined;
     for (const f of engageFoes) {
       /* 팀 미상(0)은 상대가 아니다(지적: 자기 유닛을 왜 공격해) — 로스터와 리플레이
          이름이 안 맞아 팀을 못 찾은 마커를 적으로 치면 제 편끼리 쏘는 그림이 된다. */
@@ -10930,9 +11290,9 @@ export default function ReplayMotionPlayer({
       if (d >= bd) continue;
       // 벽 너머는 못 본다(요청) — 가까워도 시야가 막혔으면 상대가 아니다.
       if (sightBlocked(team, x, y, f.x, f.y)) continue;
-      bd = d; bx = f.x; by = f.y; bAir = f.air; bBld = f.bld; bK = f.k;
+      bd = d; bx = f.x; by = f.y; bAir = f.air; bBld = f.bld; bK = f.k; bUk = f.uk;
     }
-    return { bx, by, bd, air: bAir, bld: bBld, k: bK };
+    return { bx, by, bd, air: bAir, bld: bBld, k: bK, uk: bUk };
   };
   /* 정찰 자취도 걸어서 가고(지적: 갑자기 이동 — 직선이되 일꾼 걸음), 갈래·부대로 갈라
      각자의 점이 된다(지적: 드랍십 순간이동 — 일꾼 정찰과 셔틀 원정이 한 점을 놓고
@@ -11766,16 +12126,18 @@ export default function ReplayMotionPlayer({
   // 글자 크기 CSS(모바일/PC 미디어)와 같은 값 — 캔버스는 CSS를 못 읽으니 여기서 정한다.
   // 이제 크기는 캔버스가 정한다 — 이 값은 그리기 주기(아래 DRAW_GAP_MS)에만 쓰인다.
   const pcView = typeof window !== "undefined" && !!window.matchMedia?.("(min-width: 1160px)").matches;
-  /* 모델 크기 — 표준은 원작 크기 그대로, 확대는 유닛 4배·건물 1.5배(재지적).
-     유닛 배수가 건물보다 훨씬 큰 이유는 둘이 다른 자를 쓰기 때문이다: 건물은 이미
-     제 발자국(4×3·3×2타일)을 꽉 채워 그려지는데, 유닛은 원작 몸집이 한 타일 안팎
-     (마린 0.53×0.63)이라 같은 배수로는 여전히 점이다. 게다가 지금 모델은 제 16-상자를
-     20%밖에 안 쓴다 — 그 몫은 배수가 아니라 모델 공간 정규화가 따로 잡는다.
-     배수를 여러 번 다시 잡은 것도 그 탓이다(4 → 8 → 4.8). 상자가 아니라
-     상자 안의 잉크가 눈에 보이는 크기인데, 지금은 그 잉크가 상자의 5분의 1뿐이라
-     배수를 두 배로 올려야 겨우 두 배로 보인다. 정규화가 들어오면 같은 8배가 지금의
-     두 배쯤으로 보일 것이므로 그때 이 값을 다시 잡아야 한다. */
-  const unitMul = unitBig ? 4.8 : 1;
+  /* 모델 크기 — 표준은 원작 크기 그대로, 확대는 그보다 더 크게.
+     배수를 여러 번 다시 잡아야 했던(4 → 8 → 4.8) 까닭이 이번에 없어졌다: 눈에 보이는
+     크기는 상자가 아니라 상자 안의 잉크인데 그 잉크가 상자의 5분의 1뿐이라, 배수를 두
+     배로 올려야 겨우 두 배로 보였다. 이제 모델 공간 정규화가 그 몫을 잡고 크기표가
+     원작 치수를 그대로 준다 — **표준이 곧 실제 게임 크기다**(실측: 표준 몸 크기가
+     41종 중앙값 1.56배로 커졌다. 마린 잉크 폭 0.359 → 0.632타일 = 원작 0.531타일 위,
+     저글링 0.370 → 0.577, 프로브 0.279 → 0.742).
+     그래서 4.8은 이제 과하다. 3.1은 **확대에서 보이는 몸을 지금과 같게 두는** 값이다
+     (4.8 ÷ 1.56 = 3.07). 사용자의 처음 말(“확대는 유닛만 1.5배”)대로 하고 싶으면
+     이 한 줄만 1.5로 내리면 된다 — 그러면 확대가 지금 화면의 절반으로 작아진다.
+     건물(bldMul)은 이번 변경 밖이라 그대로 둔다. */
+  const unitMul = unitBig ? 3.1 : 1;
   const bldMul = unitBig ? 1.2 : 1;
   /* ── 유닛 크기의 자(전수조사·요청: "실제 캔버스 × 소·중·대로 균일하게") ─────────
      예전엔 등급마다 고정 픽셀(모바일 6·8·11 / PC 8·11·15)이었다. 화면 폭이나 맵
@@ -11785,26 +12147,31 @@ export default function ReplayMotionPlayer({
      이제 둘이 한 자를 쓴다 — 한 타일의 화면 픽셀 × 등급비(소·중·대). 줌은 그리기
      단계에서 곱해지므로 어느 배율에서도 타일 대비 크기는 그대로다. */
   const tilePx = Math.max(1.2, (mapRef.current?.clientWidth ?? 320) / Math.max(1, grid.width));
-  /* 등급별 크기(타일) — 소·중·대. 원작 스프라이트(마린 0.6·탱크 1.25·배틀 2.8타일)
-     보다는 크게 잡는다: 128×128 맵에서 한 타일은 3px 안팎이라 실물 비례로 그리면
-     보병이 점 하나가 된다. 대신 등급 간 비율(1 : 1.3 : 1.75)은 원작에 맞추고, 본진
-     발자국(4타일)보다는 확실히 작게 둔다 — 고정 픽셀 시절 대형은 4.3타일이라 커맨드
-     센터보다 넓었고(전수조사), 수송선은 1.7배가 더 붙어 5~7타일까지 갔다. */
-  /* 유닛 도형 크기(타일) — 소·중·대 등급별(재정의·요청: "표준은 실제 게임 크기").
-     1.15/1.5/2.0 → 0.8/1.1/1.5. 원작의 실제 몸집이 대략 그 값이다.
-     **차지하는 공간은 안 건드린다** — 겹침·충돌은 simCore의 BODY_R이 따로 정하고
-     그 값은 원작 그대로다. 여기는 화면에 그리는 크기만이다.
-     주의: 실제 크기는 모델이 제 상자를 채울 때라야 읽힌다. 지금 저글링은 상자의
-     20%(프로브 19%)만 써서, 표준 크기에서는 잉크가 2px도 안 된다. 모델 공간 정규화가
-     들어와야 이 값이 제 뜻대로 보인다 — 이 표도 그때 유닛별 원작 치수표로 갈린다. */
-  const UNIT_TILES = [0.8, 1.1, 1.5] as const;
-  /** 낱개 유닛 도형 크기(px) — 타일 × 등급비(소·중·대) × 모델 크기 배수 × 깊이. */
-  const unitGlyphPx = (bulk: 0 | 1 | 2, depthY: number): number =>
-    tilePx * UNIT_TILES[bulk] * unitMul * pitchK(depthY);
-  /** 유닛 이름 → 낱개 도형 크기 — 수송선도 이제 제 등급(대형)일 뿐, 따로 부풀리지
-   *  않는다(전수조사: dot 눈금 1.7배가 오버로드를 본진보다 크게 그렸다). */
-  const unitPxOf = (u: string, depthY: number): number =>
-    unitGlyphPx(u === "?" ? 0 : (UNIT_BULK[u] ?? 1), depthY);
+  /* (폐기) 등급 3칸 표(UNIT_TILES 0.8/1.1/1.5) — 소·중·대 셋으로는 벌처와 탱크,
+     저글링과 드론을 가르지 못했고, 무엇보다 '상자 크기'라 화면에 보이는 몸이 되지
+     못했다. 이제 크기는 원작 치수표(UNIT_BW_TILES)가 유닛마다 정하고, 상자에서 몸으로
+     가는 환산(16/MODEL_INK)은 정규화가 잰 값이 맡는다 — 위 unitTilesOf 무리 참고.
+     등급은 표에 이름이 없는 유닛의 폴백(CLASS_TILES)으로만 남는다.
+     **차지하는 공간은 안 건드린다** — 겹침·충돌은 simCore의 BODY_R이 따로 정하고 그
+     값은 원작 그대로다. 화면 진형 간격도 이제 그리기 크기가 아니라 원작 몸 지름
+     (UNIT_BODY_TILES → op.sepPx)에서 온다. */
+  /** 낱개 유닛 도형 상자(px) — 크기표 × 모델 크기 배수 × 깊이.
+   *  열쇠가 둘이다: drawKind는 **그려지는 모델**(tankbody·burrowhole…), sizeKind는
+   *  **원작 치수를 가진 유닛**(tank·hydra…). 둘이 갈리는 자리가 곧 여태 손잡이가
+   *  못 닿던 일곱 종류다. */
+  const unitGlyphPx = (drawKind: string, sizeKind: string, bulk: 0 | 1 | 2, depthY: number): number =>
+    tilePx * unitTilesOf(drawKind, sizeKind, bulk) * unitMul * pitchK(depthY);
+  /** 유닛 이름 → 낱개 도형 상자(px). 그리는 모델이 유닛과 다르면 drawKind로 알려 준다. */
+  const unitPxOf = (u: string, depthY: number, drawKind?: string): number => {
+    const sk = UNIT_3D[u] ?? "";
+    return unitGlyphPx(drawKind ?? sk, sk, u === "?" ? 0 : (UNIT_BULK[u] ?? 1), depthY);
+  };
+  /** 유닛 이름(또는 kind) → 진형 간격용 몸 지름(px, 줌 전) — 원작 충돌 상자 그대로.
+   *  UNIT_3D에 없는 이름은 kind로도 한 번 찾는다: 스파이더 마인은 유닛 이름표에 없고
+   *  op이 kind("mine")만 아는데, 그 op이 **지금 이완에 드는 유일한 유닛 op**이다. */
+  const unitSepPxOf = (u: string): number =>
+    tilePx * (UNIT_BODY_TILES[UNIT_3D[u] ?? u]
+      ?? CLASS_TILES[u === "?" ? 0 : (UNIT_BULK[u] ?? 1)]);
   /* 끌기 문턱(지적: 확대된 상태에서 더블탭이 축소가 아니라 조금씩 이동으로 읽힘) —
      여태 문턱이 없어 손가락이 1px만 굴러도 곧장 팬이었다. 탭할 때마다 지도가 밀리고,
      그 흔들림이 더블탭 판정의 '안 끌린 탭' 기준도 함께 넘겨 확대·축소가 안 걸렸다.
@@ -12630,7 +12997,7 @@ export default function ReplayMotionPlayer({
                   fx: sfx2, fy: sfy2, z: z + 1, kind: "scv",
                   rotDeg: Math.atan2(-(centerX - scvX), centerY - scvY) * (180 / Math.PI),
                   viewYaw: viewYawOf(scvX, scvY), flat: !pitched, pitch: pitched,
-                  sizePx: unitGlyphPx(0, scvY),
+                  sizePx: unitGlyphPx("scv", "scv", 0, scvY),
                   color: modeColor(raw, teamOfRaw(raw)),
                   alpha: 1,
                   noSep: true,
@@ -12912,7 +13279,9 @@ export default function ReplayMotionPlayer({
                 // 화면 기준 조준(지적: 공중 각도·지면 평행) — 유닛 트레이서와 같은 셈.
                 const tPxB = (mapRef.current?.clientWidth ?? 320) / grid.width;
                 let dgy = (foeB.by - centerY) * tPxB * (pitched ? PITCH_FLAT : 1);
-                if (foeB.air) dgy -= unitGlyphPx(0, foeB.by) * 1.6;
+                // 표적의 제 크기로 조준 높이를 뺀다 — 표적 유닛 이름은 FoeRow.uk에 있다
+                // (예전 코드는 건물 행에만 실리는 k를 공중 갈래에서 읽어 늘 폴백이었다).
+                if (foeB.air) dgy -= unitPxOf(foeB.uk ?? "?", foeB.by) * 1.6;
                 const degB = Math.atan2(-((foeB.bx - centerX) * tPxB), dgy) * (180 / Math.PI);
                 const fire: React.ReactNode[] = [];
                 /* 포톤은 대공·대지 한 자루(7타일), 성큰은 촉수(7타일, 표적까지 실거리로
@@ -13057,7 +13426,18 @@ export default function ReplayMotionPlayer({
               fx: mfx, fy: mfy, z: 960 + mi, kind: "mine",
               viewYaw: viewYawOf(m.x, m.y), flat: !pitched, pitch: pitched,
               // 스파이더 마인은 원작 분류대로 소형(전수조사: dot 눈금 0.8배였다).
-              sizePx: unitGlyphPx(0, m.y),
+              sizePx: unitGlyphPx("mine", "mine", 0, m.y),
+              /* 진형 간격 — 마인은 noSep이 아니라서 이완(밀어내기)에 드는 **유일한**
+                 유닛 op이다.
+                 3차 설계는 여기에 원작 몸 지름(15×15 = 0.469타일)을 **고정값**으로 실어
+                 '모델 크기' 라디오가 간격을 못 흔들게 했는데, 검증이 그것이 회귀임을
+                 실측으로 잡았다: 라디오와 크기표는 그림만 키우고 간격은 그대로라, 확대
+                 화면에서 그려지는 몸폭이 중심거리의 457%가 된다(지금은 68%라 절대 안
+                 겹친다). 마인은 한 자리에 여럿이 깔리는 물건이라 이게 바로 눈에 띈다.
+                 그래서 반지름을 **그려지는 몸**에 매단다 — 그려지는 몸폭이
+                 sizePx × (잉크상자/16)이므로, 그 폭이 중심거리(2×반지름)의 68%가 되는
+                 값을 쓴다. 라디오를 어디에 두든 비율이 지금 그대로다. */
+              sepPx: (unitGlyphPx("mine", "mine", 0, m.y) * modelInkOf("mine")) / 16 / 1.36,
               color: modeColor(m.raw, teamOfRaw(m.raw) ?? 1),
               alpha: 0.95, noShadow: true,
             });
@@ -13282,7 +13662,7 @@ export default function ReplayMotionPlayer({
               z: pitched ? 1000 + Math.round(y * 80) + 40 : 900,
               kind: workerKindOf(ownerRace), rotDeg: hdg, viewYaw: viewYawOf(x, y),
               flat: !pitched, pitch: pitched,
-              sizePx: unitGlyphPx(0, y),
+              sizePx: unitGlyphPx(workerKindOf(ownerRace), workerKindOf(ownerRace), 0, y),
               color: modeColor(owner!.raw, team),
               alpha: 1,
               noSep: true,
@@ -13957,7 +14337,8 @@ export default function ReplayMotionPlayer({
             const dpy = dp0 ? dp0.y : ay3;
             /* 공중은 떠 있던 몸 자리에서 터진다(지적) — 비행 높이만큼 위로. */
             const dieLift = uAir
-              ? (drawUnit === "" ? unitGlyphPx(0, dpy) : unitPxOf(drawUnit, dpy)) * 1.6 : 0;
+              ? (drawUnit === "" ? unitGlyphPx(unitMarkerKind("", race), unitMarkerKind("", race), 0, dpy)
+                : unitPxOf(drawUnit, dpy)) * 1.6 : 0;
             return (
               <span
                 key={`v2die-${ei}`}
@@ -14052,8 +14433,19 @@ export default function ReplayMotionPlayer({
             })(),
             rotDeg: burrowed ? undefined : bodyHdg,
             viewYaw: viewYawOf(ax3, ay3), flat: !pitched, pitch: pitched,
-            sizePx: (drawUnit === "" || isWorker ? unitGlyphPx(0, ay3) : unitPxOf(drawUnit, ay3))
+            /* 크기 열쇠 셋을 바로잡는다(지적 셋을 한 줄에서 고친다):
+               ① drawUnit이 아니라 drawUnit2 — 시즈모드 탱크가 "tank" 줄에서 크기를 받아
+                  tanksiege 손잡이가 죽은 값이었다.
+               ② 그리는 모델은 kindMain(tankbody·burrowhole·lurkeregg…)이므로 잉크 몫은
+                  그쪽에서 찾는다. 원작 치수는 여전히 유닛 것이다(버로우한 히드라 구멍은
+                  히드라 크기).
+               ③ 이름 없는 유닛은 제가 그려지는 모델(kindMain = 종족 기본 보병)의 크기다.
+                  예전엔 그림은 마린인데 상자는 SCV라 25% 어긋났다. */
+            sizePx: (drawUnit === ""
+              ? unitGlyphPx(kindMain, kindMain, 0, ay3) : unitPxOf(drawUnit2, ay3, kindMain))
               * (1 - rideK * 0.75), // 승하차 축소(요청)
+            // 진형 간격은 원작 몸 지름 — 그리기 크기를 만져도 안 흔들린다.
+            sepPx: drawUnit === "" ? unitSepPxOf("?") : unitSepPxOf(drawUnit2),
             rise: rideK * 1.5, // 빔을 타고 둥둥 오른다(요청)
             color: modeColor(e.raw, team),
             alpha: (() => {
@@ -14143,7 +14535,8 @@ export default function ReplayMotionPlayer({
           const hitNow = t - hurtAt <= 0.7;
           /* 효과는 가슴 높이(지적: 공격 효과가 너무 낮다 — 발밑에서 튀었다) — 마커
              기준점은 발 자리라, 유닛 키의 1/3만큼 띄워 몸통에 맞춘다. */
-          const fxPx = drawUnit === "" || isWorker ? unitGlyphPx(0, ay3) : unitPxOf(drawUnit, ay3);
+          const fxPx = drawUnit === ""
+            ? unitGlyphPx(kindMain, kindMain, 0, ay3) : unitPxOf(drawUnit2, ay3, kindMain);
           const fxLift = { marginTop: `${(-fxPx * 0.34).toFixed(1)}px` };
           /* 맞는 쪽 불티(요청: 크기도 몸에 맞게) — 고정 크기(9px에 scale 0.25)라
              유닛 크기를 캔버스 비례로 바로잡은 뒤엔 작은 유닛 위에서 유독 컸다.
@@ -14249,8 +14642,20 @@ export default function ReplayMotionPlayer({
           );
           const mzP = atkDeg !== null
             ? muzzlePoint(fxKind, atkDeg, viewYawOf(ax3, ay3), pitched) : null;
+          /* 앵커도 몸과 같은 배수를 탄다(정규화) — 모델 공간을 상자 중심으로 키웠으니
+             앵커의 '중심 대비 좌표'도 같은 배수로 늘어난다. 안 태우면 트레이서가 포신
+             끝을 벗어난다.
+             단 **배수는 앵커가 붙은 판의 것**이어야 한다. 탱크·시즈탱크의 총구는 차체가
+             아니라 포신 판(tankgun·tanksiegegun)에 있는데 fxKind는 합본 이름(tank·
+             tanksiege)이라, 그대로 쓰면 1.52배·1.79배 어긋난다. 짝은 modelNormOf가
+             차체 배수로 접으므로 결국 차체·포신·앵커 셋이 한 배수를 쓴다. */
+          /* 버로우 상태에서는 몸이 제 모델이 아니라 **구멍 판**으로 그려진다(kind0가
+             "burrowhole"이다). 앵커 배수도 그 판을 따라야 한다 — 럴커 0.627 대 구멍
+             0.832라 그대로 두면 1.327배 어긋나 가시가 구멍의 32% 자리에서 솟는다
+             (지금은 53%다). 히드라가 버로우한 채 맞을 때도 같은 갈래다. */
+          const mzS = modelNormOf(burrowed ? "burrowhole" : (MUZZLE_PLATE[fxKind] ?? fxKind));
           const mzTf = mzP
-            ? `translate(${(((mzP[0] - 8) * fxPx) / 16).toFixed(1)}px, ${((((mzP[1] - 8) * fxPx) / 16) + 0.1 * fxPx).toFixed(1)}px) rotate(${beamDeg!.toFixed(1)}deg)`
+            ? `translate(${(((mzP[0] - 8) * mzS * fxPx) / 16).toFixed(1)}px, ${((((mzP[1] - 8) * mzS * fxPx) / 16) + 0.1 * fxPx).toFixed(1)}px) rotate(${beamDeg!.toFixed(1)}deg)`
             : `rotate(${beamDeg?.toFixed(1)}deg) translateY(${MUZZLE_PX[fxUnit] ?? 4}px)`;
           return (
             <span
