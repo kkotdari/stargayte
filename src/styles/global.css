@@ -5836,6 +5836,23 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   font-size: var(--fs-sm); font-weight: 700; color: var(--muted);
   line-height: 1; padding-left: 2px;
 }
+/* 어두운 카드 위라 글자를 테마색으로 뒤집는다(지적: "비활성 글자가 검정이라 안 보이는
+   듯") — 알약탭의 기본 글자색은 rgba(16,21,26,0.55), 거의 검정이다. 밝은 유리 필터
+   패널 안을 전제로 만든 값이라, 어두운 배경에 놓이는 컨텍스트는 저마다 뒤집어 쓴다
+   (.scr-filter-panel·.scr-motion-radio가 그렇게 하고 있다). 이 줄에만 그 뒤집기가
+   없어서 미선택 글자가 배경에 묻혔다. */
+.scr-motion-colorrow .scr-pill-tabs {
+  /* 크기 살짝만 줄이기(요청) — 기본 36px은 이 자리에서 너무 크고, 보기 설정 줄의
+     20px은 너무 작다. 그 사이. */
+  height: 26px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.scr-light-theme .scr-motion-colorrow .scr-pill-tabs { background: rgba(0, 0, 0, 0.06); }
+.scr-motion-colorrow .scr-pill-tab-btn { font-size: var(--fs-sm); padding: 0 12px; }
+.scr-motion-colorrow .scr-pill-tab-btn:not(.scr-pill-tab-btn-active) { color: var(--muted); }
+@media (hover: hover) {
+  .scr-motion-colorrow .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }
+}
 
 /* 게임 상세의 뒤로 버튼은 PC에서 감춘다(요청) — 상세 안 오른쪽 위에 닫기(X)가 이미
    있어 같은 일을 하는 버튼이 둘이 됐다. 모바일에는 그 X가 없어 여기 뒤로가 유일한
