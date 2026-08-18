@@ -18,7 +18,12 @@ self.onmessage = (ev: MessageEvent<SimReq>) => {
   try {
     const r = simulate(data, opts);
     const msg: SimRes = { id, ok: true, tracks: r.tracks, events: r.events, stats: r.stats };
-    (self as unknown as Worker).postMessage(msg);
+    /* 자취와 사건은 **옮긴다**(복사가 아니다, 과제 #70). 게임 하나가 키 12만 개
+       2.4MB라 복사하면 워커가 다 끝내고도 그 짐을 한 번 더 싼다. 옮기고 나면 워커
+       쪽 배열은 빈 껍데기가 되는데, 여기서는 보낸 뒤에 쓸 일이 없다. */
+    const move: ArrayBuffer[] = r.tracks.map((tr) => tr.keys.buffer as ArrayBuffer);
+    move.push(r.events.buffer as ArrayBuffer);
+    (self as unknown as Worker).postMessage(msg, move);
   } catch (e) {
     const msg: SimRes = { id, ok: false, err: e instanceof Error ? e.message : String(e) };
     (self as unknown as Worker).postMessage(msg);

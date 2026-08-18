@@ -15,8 +15,12 @@ import type { SimInput } from "./simCore";
  * 이번 작업이 하나도 안 보인다 — IndexedDB 열쇠가 `${cacheKey}:v${SIM_VERSION}`라
  * 이 숫자 하나가 옛 결과와 새 결과를 가르는 전부다.
  * 올리는 것은 병합마다 정확히 한 번이어야 한다. 갈래마다 올리면 서로 덮어써
- * 결국 안 올린 것과 같아진다(지난 병합이 그렇게 무너졌다). */
-export const SIM_VERSION = 3;
+ * 결국 안 올린 것과 같아진다(지난 병합이 그렇게 무너졌다).
+ *
+ * v4 (과제 #70): 길찾기를 A*로 바꾸면서 대각 모서리 자르기를 막아 자취가 달라졌고,
+ * 자취·사건을 숫자 배열이 아니라 32비트 실수 배열로 내보낸다. 옛 캐시는 모양도 값도
+ * 다른 판이라 그대로 두면 화면에 이번 작업이 하나도 안 보인다. */
+export const SIM_VERSION = 4;
 
 const DB = "stargayte-sim";
 const STORE = "tracks";
@@ -98,7 +102,10 @@ function ensureWorker(): Worker | null {
       if (!done) return;
       waiting.delete(m.id);
       if (m.ok && m.tracks) {
-        done({ tracks: m.tracks, events: m.events ?? [], stats: m.stats as SimResult["stats"] });
+        done({
+          tracks: m.tracks, events: m.events ?? new Float32Array(0),
+          stats: m.stats as SimResult["stats"],
+        });
       }
       else done(null);
     };

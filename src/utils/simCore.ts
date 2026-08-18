@@ -85,16 +85,22 @@ export const ST_GATHER: SimState = 5;   // 채취 왕복 중(P3)
 /** 땅속 — 자리가 아예 안 바뀐다. 렌더가 구멍을 그릴 근거도 이 값이다. */
 export const ST_BURROW: SimState = 6;
 
-/** 전투 사건 — [초, 갈래, 주체 태그, 표적 태그, x, y, tx, ty]. 갈래 0 발사 1 죽음. */
-export type SimEventArr = number[];
+/** 전투 사건 — [초, 갈래, 주체 태그, 표적 태그, x, y, tx, ty]. 갈래 0 발사 1 죽음.
+ *
+ *  ★ 32비트 실수 배열이다(과제 #70). 숫자 배열(number[])로 내보내면 워커→화면 전달과
+ *  IndexedDB 저장이 값 하나하나에 꼬리표를 달아 옮긴다 — 같은 내용이 배는 무겁고 몇 배
+ *  느리다. 담는 값은 시각(소수 둘)·태그(정수)·좌표(소수 하나)뿐이라 32비트로 남는
+ *  오차가 1e-4 아래다. 읽는 쪽은 번호로만 훑으므로 바뀔 것이 없다. */
+export type SimEventArr = Float32Array;
 export const EV_FIRE = 0;
 export const EV_DIE = 1;
 
 export type SimTrack = {
   tag: number; owner: number; kind: string;
   born: number; died: number | null;
-  /** 키프레임 평탄 배열 — 5개씩 [t, x, y, heading(도), state]. */
-  keys: number[];
+  /** 키프레임 평탄 배열 — 5개씩 [t, x, y, heading(도), state]. 사건 배열과 같은 이유로
+   *  32비트 실수다(과제 #70) — 게임 하나에 키가 12만 개라 여기가 가장 무거운 짐이다. */
+  keys: Float32Array;
 };
 
 export type SimStats = {
@@ -811,7 +817,9 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   /* ── 전투(P2) ────────────────────────────────────────────────────────────────
      표적 찾기는 균일 격자로 이웃만 훑는다. 사거리(reachOf)는 공중·지상에 따라 무기가
      갈리고, 못 치는 갈래는 아예 표적이 아니다. */
-  const events: SimEventArr = [];
+  /* 모으는 동안은 늘어나는 숫자 배열이다 — 다 모은 뒤 한 번에 32비트 배열로 굳힌다
+     (내보내는 모양은 Float32Array다, 위 SimEventArr 참고). */
+  const events: number[] = [];
   const live: Body[] = [];
   /** 벙커 탑승자 — 쏘기는 하되 표적으로는 안 잡히는 개체들(이번 틱). */
   const garrison: Body[] = [];
@@ -1758,7 +1766,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
     keys += b.keys.length / 5;
     tracks.push({
       tag: b.tag, owner: b.owner, kind: b.kind,
-      born: b.born, died: b.died, keys: b.keys,
+      born: b.born, died: b.died, keys: Float32Array.from(b.keys),
     });
   }
 
@@ -1767,7 +1775,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   const EVW = 8;
   const order = Array.from({ length: events.length / EVW }, (_, i) => i)
     .sort((a, b2) => events[a * EVW] - events[b2 * EVW]);
-  const sortedEvents: SimEventArr = new Array(events.length);
+  const sortedEvents: SimEventArr = new Float32Array(events.length);
   order.forEach((src, dst) => {
     for (let q = 0; q < EVW; q += 1) sortedEvents[dst * EVW + q] = events[src * EVW + q];
   });
