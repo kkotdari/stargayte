@@ -11024,7 +11024,11 @@ export default function ReplayMotionPlayer({
   // 글자 크기 CSS(모바일/PC 미디어)와 같은 값 — 캔버스는 CSS를 못 읽으니 여기서 정한다.
   // 이제 크기는 캔버스가 정한다 — 이 값은 그리기 주기(아래 DRAW_GAP_MS)에만 쓰인다.
   const pcView = typeof window !== "undefined" && !!window.matchMedia?.("(min-width: 1160px)").matches;
-  const x2Mul = unitX2 ? 2 : 1;
+  /* 모델 크기 '크게'(재지적: "유닛은 4배 건물은 2배 확대") — 유닛과 건물의 배수가
+     다르다. 유닛은 발자국보다 훨씬 작게 그려 놔서(UNIT_TILES 1.15~2.0) 두 배로는
+     생김새가 여전히 안 읽혔고, 건물은 이미 발자국을 꽉 채우고 있어 두 배면 충분하다. */
+  const x2Mul = unitX2 ? 4 : 1;
+  const bldMul = unitX2 ? 2 : 1;
   /* ── 유닛 크기의 자(전수조사·요청: "실제 캔버스 × 소·중·대로 균일하게") ─────────
      예전엔 등급마다 고정 픽셀(모바일 6·8·11 / PC 8·11·15)이었다. 화면 폭이나 맵
      격자와 무관한 값이라, 같은 마린이 맵마다 제멋대로 커 보였다: 64×64 맵의 한 타일은
@@ -11827,7 +11831,7 @@ export default function ReplayMotionPlayer({
                왜소하다"는 지적을 상자째 키워 때우던 보정인데, 이제 그리기 단계가 잉크
                폭을 재서 발자국을 채우므로(BLD_FILL_CACHE) 상자는 제 발자국(2×2) 그대로
                두면 된다. 그대로 두면 부속만 발자국보다 28% 넓게 그려진다. */
-            const wTiles = fp2[0] * (shapeKind ? 1 : 0.8);
+            const wTiles = fp2[0] * (shapeKind ? 1 : 0.8) * bldMul;
             const hTiles = wTiles * ((fp2[1] + (shapeKind ? riseOf(unit) : 0)) / fp2[0]);
             const wFrac = (wTiles / grid.width) * mkK;
             const hFrac = (hTiles / grid.width) * mkK;

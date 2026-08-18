@@ -25,10 +25,36 @@ export default function PillTabs<T extends string>({ options, value, onChange, f
   const index = Math.max(0, options.findIndex((o) => o.value === value));
   const wrapRef = useRef<HTMLDivElement>(null);
   const [ind, setInd] = useState<{ left: number; width: number } | null>(null);
+  /* 인디케이터가 딴 칸에 가 있던 문제(지적: 배속 알약 — 알약이 ×2가 아니라 ×1·×2
+     사이에 걸쳐 있었다). 원인은 '한 번 재고 끝'이었다: 마운트 직후 useLayoutEffect가
+     재는 시점엔 아직 웹폰트가 안 붙어 대체 글꼴 폭으로 칸이 잡힌다. 폰트가 바뀌면
+     max-content 칸 폭이 전부 달라지는데, 고른 값이 처음 그대로면(기본값을 한 번도
+     안 누른 라디오가 그렇다) 인디케이터만 옛 자리에 남는다.
+     이제 폭이 변할 수 있는 모든 계기에 다시 잰다 — 트랙·버튼의 크기 변화(ResizeObserver)
+     와 폰트 적재 완료(document.fonts.ready). 자리는 offsetLeft 대신 화면 사각형 차로
+     잡는다: offsetLeft는 offsetParent의 '테두리 상자' 기준이고 인디케이터의 left는
+     '패딩 상자' 기준이라, 트랙의 padding 1px만큼 어긋나 있었다(clientLeft로 뺀다). */
   useLayoutEffect(() => {
-    if (!fit) return;
-    const el = wrapRef.current?.querySelector<HTMLButtonElement>(".scr-pill-tab-btn-active");
-    if (el) setInd({ left: el.offsetLeft, width: el.offsetWidth });
+    if (!fit) return undefined;
+    const wrap = wrapRef.current;
+    if (!wrap) return undefined;
+    const measure = (): void => {
+      const el = wrap.querySelector<HTMLButtonElement>(".scr-pill-tab-btn-active");
+      if (!el) return;
+      const wr = wrap.getBoundingClientRect();
+      const br = el.getBoundingClientRect();
+      if (br.width <= 0) return;
+      const left = br.left - wr.left - wrap.clientLeft;
+      setInd((prev) => (prev && Math.abs(prev.left - left) < 0.5
+        && Math.abs(prev.width - br.width) < 0.5 ? prev : { left, width: br.width }));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(wrap);
+    wrap.querySelectorAll(".scr-pill-tab-btn").forEach((b) => ro.observe(b));
+    let live = true;
+    void document.fonts?.ready.then(() => { if (live) measure(); }).catch(() => {});
+    return () => { live = false; ro.disconnect(); };
   }, [fit, value, options.length]);
   return (
     <div
