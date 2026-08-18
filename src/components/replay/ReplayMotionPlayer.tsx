@@ -11033,9 +11033,26 @@ export default function ReplayMotionPlayer({
      perspective+rotateX를 걸고, 마커 자리는 같은 사영 공식으로 매핑해 그림 위 제자리에
      얹는다. 깊이 배율(--mk)도 같은 k를 쓴다. */
   const PITCH_TH = Math.PI / 4;
-  /* 650 → 520(지적: 확대폭이 작다) — 원근을 더 세게. 맞춤 축소(q)가 끝 잘림을 막아
-     주므로 세게 걸어도 안 잘린다. */
-  const PITCH_P = 520;
+  /* 바닥이 상자의 절반밖에 안 찼다(지적: "3D에서 왜 아래쪽 공간을 남기는거야 굳이").
+     **상자는 한 픽셀도 안 건드린다**(재지적: "여백은 있어도 되는데 틀 자체가 좁아지면
+     안 돼") — 앞서 상자 비율을 바꿨다가 폭이 그리드 칸에 고정된 탓에 세로만 285px
+     늘어나 탐색바 아래가 통째로 밀렸다. 이번엔 상자 밖은 손대지 않고 바닥만 키운다.
+
+     원인은 둘이었다.
+     ① 회전 전 판이 상자와 같은 세로였다. 45도 회전이 세로를 cos45(0.707)배로 줄이므로
+        바닥은 애초에 상자를 못 채운다. 판을 미리 1/cos45배 늘려 두면 회전 뒤에 상자
+        세로가 된다.
+     ② 원근 거리가 520px 고정이었다. 상자가 커질수록 원근이 상대적으로 세지고, 세질수록
+        맞춤 축소(q)가 더 깎는다 — 실측: 상자 폭 360에서 바닥이 60%를 채우는데 1097에서는
+        46%뿐이고, 원근 세기도 1.44배에서 3.46배로 제멋대로였다. 같은 경기가 기기마다
+        다른 각도로 보였다는 뜻이다. 거리를 상자 세로에 비례시키면 둘 다 고정된다.
+     고친 뒤 실측: 어느 크기에서든 바닥 채움 76% · 원근 1.91배.
+
+     덤으로 이미 있던 불일치도 사라진다 — 그림자·트레이서는 바닥 눌림을 0.74로 알고
+     그리는데(상자 비율 1/0.74가 그 값을 노린 것이다) 실제 바닥은 0.523으로 눌려
+     있었다. 판을 늘리면 실제 눌림이 정확히 0.74가 되어 셋이 같은 바닥을 본다. */
+  /** 원근 거리 = 상자 세로 × 이 값. 클수록 원근이 약하고 바닥이 상자를 더 채운다. */
+  const PITCH_DIST = 1.6;
   /* 맞춤 축소(지적: 또 예전 끝 잘림) — 원근 확대로 가까운 변이 상자를 넘쳤다. 가까운
      변이 상자에 딱 맞는 배율 q로 전체를 줄이고, 세로는 cy만큼 올려 가운데 정렬한다.
      지형 그림(transform)과 마커 공식이 같은 q·cy를 쓴다. */
@@ -11045,25 +11062,28 @@ export default function ReplayMotionPlayer({
     const h = el?.clientHeight ?? 220;
     const S = Math.sin(PITCH_TH);
     const C = Math.cos(PITCH_TH);
-    const H = h / 2;
-    const q = Math.max(0.2, (PITCH_P - H * S) / PITCH_P);
-    const kFar = PITCH_P / (PITCH_P + H * S);
+    /** 회전 전 판의 세로 — 회전이 C배로 누르므로 미리 1/C배 늘려 회전 뒤 상자 세로가 된다. */
+    const hPre = h / C;
+    const P = Math.max(240, h * PITCH_DIST);
+    const H = hPre / 2;
+    const q = Math.max(0.2, (P - H * S) / P);
+    const kFar = P / (P + H * S);
     const cy = (C * H * (1 - q * kFar)) / 2;
-    return { w, h, S, C, q, cy };
+    return { w, h, hPre, P, S, C, q, cy };
   };
   const pitchK = (y: number): number => {
     if (!pitched) return 1;
-    const { h, S, q } = pitchGeom();
-    const v = (y / grid.height - 0.5) * h;
-    return (q * PITCH_P) / (PITCH_P - v * S);
+    const { hPre, P, S, q } = pitchGeom();
+    const v = (y / grid.height - 0.5) * hPre;
+    return (q * P) / (P - v * S);
   };
   /** 자리의 0~1 분수 — posStyle(%)과 캔버스 유닛 층이 같은 값을 쓴다. */
   const posFrac = (x: number, y: number): [number, number] => {
     if (!pitched) return [x / grid.width, y / grid.height];
-    const { w, h, S, C, q, cy } = pitchGeom();
+    const { w, h, hPre, P, S, C, q, cy } = pitchGeom();
     const u = (x / grid.width - 0.5) * w;
-    const v = (y / grid.height - 0.5) * h;
-    const k = (q * PITCH_P) / (PITCH_P - v * S);
+    const v = (y / grid.height - 0.5) * hPre;
+    const k = (q * P) / (P - v * S);
     return [0.5 + (u * k) / w, 0.5 + (v * C * k - cy) / h];
   };
   const posStyle = (x: number, y: number): { left: string; top: string } => {
@@ -11095,13 +11115,13 @@ export default function ReplayMotionPlayer({
      오른쪽 마커는 왼옆이 보인다. */
   const viewYawOf = (x: number, y: number): number => {
     if (!pitched) return 0;
-    const { w } = pitchGeom();
+    const { w, P } = pitchGeom();
     const u = (x / grid.width - 0.5) * w;
     void y; // 자리 호환 — 기울기는 u/P라 세로 좌표가 안 든다.
     /* 요잉이 아니라 시각 밀림의 각(지적: 소실점이 시각을 반영해야 — 돌리면 찌그러짐).
        ShapeIcon이 tan을 취하면 u/P — 지도 남북 선의 소실 기울기 그 값이다(지적:
        노란선-빨간선 정합). 부호는 실화면 확인으로 이쪽이 정답 — 다시 뒤집지 말 것. */
-    return (Math.atan2(u, PITCH_P) * 180) / Math.PI;
+    return (Math.atan2(u, P) * 180) / Math.PI;
   };
   /* 유닛 방향(지적: 멈추면 정면으로 돌아가 어색) — 조금 전이 아니라 '마지막으로 움직인'
      방향을 문다: 가까운 창부터 점점 멀리(최대 15초) 되짚어 처음 잡히는 변위의 방향이다.
@@ -11791,8 +11811,8 @@ export default function ReplayMotionPlayer({
               className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`}
               draggable={false}
               style={pitched ? (() => {
-                const { q, cy } = pitchGeom();
-                return { transform: `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${PITCH_P}px) rotateX(45deg)` };
+                const { q, cy, P, C } = pitchGeom();
+                return { transform: `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${P.toFixed(0)}px) rotateX(45deg) scaleY(${(1 / C).toFixed(4)})` };
               })() : undefined}
             />
           )
@@ -11804,8 +11824,8 @@ export default function ReplayMotionPlayer({
             <div
               className="scr-motion-canvas scr-motion-canvas-blank"
               style={pitched ? (() => {
-                const { q, cy } = pitchGeom();
-                return { transform: `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${PITCH_P}px) rotateX(45deg)` };
+                const { q, cy, P, C } = pitchGeom();
+                return { transform: `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${P.toFixed(0)}px) rotateX(45deg) scaleY(${(1 / C).toFixed(4)})` };
               })() : undefined}
             >
               <ReplayMapCanvas grid={grid} className="scr-motion-canvas-tiles" />
