@@ -630,12 +630,25 @@ const AVATAR_ZERG_DECO: Record<string, string | undefined> = {
    표준 시점 결과는 아래 SHAPE_FACES에 한 번 구워 쓴다. */
 /** 벌어진 다리 + 원반 발(테란 실물 공통) — 몸통 밑에서 바깥-아래로 뻗고 발판이 받친다. */
 function legAndFoot(px: number, py: number, zTop: number): ShapeFace[] {
-  // 테란 이착륙 패드 다리발은 은색(요청).
-  return paintBase([
-    ...hornFaces(px * 0.72, py * 0.72, zTop, px * 1.12, py * 1.12, 0.7, 1.1),
-    bodyFace(discPath3(px * 1.16, py * 1.16, 0.35, 1.15)),
-    sideFace(discPath3(px * 1.16, py * 1.16, 0.32, 1.15), 0.25),
-  ], "#c9ced6");
+  /* 테란 건물은 바닥이 떠 있다(지적: "커맨드 센터는 바닥이 약간 띄워져있는 구조야
+     엔지니어링 베이, 배럭, 스타포트 등등 모두 마찬가지인데 너는 바닥을 진짜 바닥에
+     대려고 하고 있어서 그래").
+     몸통이 지면에 앉는 것이 아니라 다리 위에 얹혀 있고, 다리는 **거의 수직으로**
+     내려가 그 밑에 발판이 달린다. 여태 다리를 바깥·아래로 눕혀 뻗었더니 몸이 주저앉은
+     꼴이 됐다. 다리와 발판 둘 다 각진 기둥(spirePillar)이라 모서리가 산다. */
+  const dep9 = depthNow(px, py) * 1.6;
+  return [
+    ...tagKey(paintBase(spirePillar({
+      x: 0, y: 0, h: 1, w: 0.5, tipW: 0.42, segs: 1, sides: 6, hold: 0.4, caps: "none",
+      path: (t9: number): [number, number, number] => [
+        px * (1 + 0.06 * t9), py * (1 + 0.06 * t9), zTop - (zTop - 0.4) * t9,
+      ],
+    }), "#8b929a"), dep9 + 0.3),
+    ...tagKey(paintBase(spirePillar({
+      x: px * 1.06, y: py * 1.06, z0: 0, h: 0.42, w: 0.98, tipW: 0.8,
+      segs: 1, sides: 8, hold: 0.45, caps: "both",
+    }), "#5d636b"), dep9 + 0.5),
+  ];
 }
 
 /** 저그 갈고리(정정: 마디가 아니라 쭉 이어진 휘어진 칼) — 밖-앞으로 나갔다 안으로
@@ -2034,85 +2047,134 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 스타포트(실물 참고 + 지적) — 다리 여섯, 앞으로 뾰족 튀어나온 코, 옆 날개. 드럼 위
      큰 원형 패드와 대각 팔 넷은 그대로. */
   plane: () => {
+    /* 스타포트(재작도 — 게임 스프라이트 기준) ──────────────────────────────────────
+       앞선 판은 몸통·칼라·패드를 층층이 쌓아 너무 높았다(지적: "너가 만든거랑 너무
+       달라"). 실제 스프라이트는 **납작하다**: 낮은 팔각 몸통 위에 큼직한 원형 착륙판이
+       거의 곧바로 얹히고, 그 둘레에 길쭉한 슬래브 모듈이 눕고, 네 귀에서 가는 팔이
+       뻗어 끝에 어두운 마디가 달린다. 앞에는 노란 불이 이글거리는 격납고 상자와
+       옆으로 긴 구조물이 붙고, 발은 짧고 어둡게 둘레에 박힌다.
+       개인색은 스프라이트의 **파랑**(= 임자 색) — 착륙판 둘레에 눕힌 슬래브들이다. */
     const out: ShapeFace[] = [];
-    for (const [px, py] of [
-      [-4.6, 3.4], [4.6, 3.4], [-5.2, 0], [5.2, 0], [-4.6, -3.4], [4.6, -3.4],
-    ] as [number, number][]) {
-      out.push(...legAndFoot(px, py, 2.4));
+    const pc: ShapeFace[] = [];
+    const DARK = "#3b4048";
+    const GREY = "#8b929a";
+    const PADTOP = "#b7ac97";
+    const AMBER = "#e8c33a";
+
+    const BODY_Z0 = 0.85;   // 몸통 밑 — 발 위로 살짝 떠 있다.
+    const BODY_H = 1.5;
+    const PAD_Z = BODY_Z0 + BODY_H;   // 2.35 — 착륙판 테
+
+    // 짧고 어두운 발 여섯 — 둘레에 박힌다. 스프라이트의 발은 기둥이 아니라 굽이다.
+    for (const deg9 of [30, 90, 150, 210, 270, 330]) {
+      const a9 = (deg9 * Math.PI) / 180;
+      const fx9 = Math.sin(a9) * 5.35;
+      const fy9 = Math.cos(a9) * 5.35;
+      const dep9 = depthNow(fx9, fy9) * 1.6;
+      out.push(...tagKey(paintBase(spirePillar({
+        x: 0, y: 0, h: 1, w: 0.46, tipW: 0.4, segs: 1, sides: 6, hold: 0.4, caps: "none",
+        path: (t9: number): [number, number, number] => [
+          fx9 * (1 + 0.07 * t9), fy9 * (1 + 0.07 * t9), BODY_Z0 + 0.15 - (BODY_Z0 - 0.2) * t9,
+        ],
+      }), GREY), dep9 + 0.2),
+      ...tagKey(paintBase(spirePillar({
+        x: fx9 * 1.07, y: fy9 * 1.07, z0: -0.05, h: 0.4, w: 1.0, tipW: 0.82,
+        segs: 1, sides: 8, hold: 0.45, caps: "both",
+      }), DARK), dep9 + 0.4));
     }
-    out.push(...cylinderFaces3(0, 0, 5, 3.2, 0.8));
-    /* 앞부분은 선착장 마당(정정: 뾰족 코가 아니라) — 드럼에서 앞으로 내민 평평한
-       착륙 진입로. 끝은 살짝 좁아지는 각진 마당이다. */
-    out.push(...boxFaces3(0, 5.2, 4.2, 3.2, 1.9, 0.9));
-    out.push(topFace(polyPath3([[-2.1, 3.6, 2.8], [2.1, 3.6, 2.8], [1.7, 6.8, 2.8], [-1.7, 6.8, 2.8]]), 0.2));
-    out.push(capFace(polyPath3([[-1.3, 4.2, 2.83], [1.3, 4.2, 2.83], [1.1, 6.2, 2.83], [-1.1, 6.2, 2.83]]), 0.25));
-    // 옆 날개(지적) — 좌우로 짧게 뻗는 판. 제 자리 깊이를 단다(앞 착륙장 키에 안 묻게).
-    out.push(...tagKey([bodyFace(polyPath3([[-5, 1, 3.4], [-8, 0.2, 2.6], [-7.6, -1, 2.6], [-4.8, -0.6, 3.4]]))], depthNow(-6.4, 0)));
-    out.push(...tagKey([
-      bodyFace(polyPath3([[5, 1, 3.4], [8, 0.2, 2.6], [7.6, -1, 2.6], [4.8, -0.6, 3.4]])),
-      sideFace(polyPath3([[5, 1, 3.4], [8, 0.2, 2.6], [7.6, -1, 2.6], [4.8, -0.6, 3.4]]), 0.2),
-    ], depthNow(6.4, 0)));
-    /* 윗 원판은 지붕이라 어느 각에서도 맨 위(지적: 정면 말고는 앞 다리·착륙장에 살짝
-       가려짐) — 아주 큰 키로 못 박는다. 그 위 네 기둥·등은 뒤이어 그려져 그대로 위다. */
-    /* 개인색은 이 지붕 원판(재지적: 팔·원반 같은 특이 포인트 말고 넓은 면에 페인트
-       칠하듯) — 스타포트에서 가장 넓고 장식 없는 면이라 위에서 임자 색이 통째로
-       읽힌다. 구릿빛 테·붉은 모듈·노란 셔터는 제 색으로 둔다. */
-    const pc: ShapeFace[] = [...tagKey([
-      bodyFace(discPath3(0, 0, 4.1, 6.4)),
-      topFace(discPath3(0, 0, 4.13, 5.2), 0.25),
-      capFace(discPath3(0, 0, 4.16, 3.9), 0.35),
-    ], 50)];
-    /* 사진 디테일 보강(요청) — 원판 테를 구릿빛으로 두르고, 네 대각 팔에 붉은
-       모듈과 살빛 포드를 붙인다. 앞면 아래엔 노랑·검정 빗금과 노란 격자문. 형태는
-       지금 것을 그대로 두고 색과 부속만 얹는다. */
-    out.push(...tagKey([
-      ...paintBase(cylinderFaces3(0, 0, 6.55, 0.4, 3.75), "#8a6a44"),
-    ], 49));
-    for (const ang of [40, 140, 220, 320]) {
-      const a2 = (ang * Math.PI) / 180;
-      const mx2 = Math.sin(a2) * 5.4;
-      const my2 = Math.cos(a2) * 5.4;
-      out.push(...tagKey([
-        ...paintBase(boxFaces3(mx2, my2, 2.2, 1.3, 0.7, 3.3), "#a8322a"),
-        ...paintBase(domeFaces3(Math.sin(a2) * 6.9, Math.cos(a2) * 6.9, 0.6, 0.55, 3.4),
-          "#c9a98a"),
-      ], 46 + depthNow(mx2, my2) * 1.6));
-    }
-    if (facingRatio(0, 1) > 0.12) {
+
+    // 낮은 팔각 몸통.
+    out.push(...tagKey(spirePillar({
+      x: 0, y: 0, z0: BODY_Z0, h: BODY_H, w: 4.75, tipW: 5.15,
+      segs: 2, sides: 8, hold: 0.4, caps: "bottom",
+    }), 4));
+
+    /* 앞 격납고 상자 — 어두운 회색 상자에 노란 불이 이글거리는 아가리. 스프라이트에서
+       이 아가리는 정면이 아니라 앞왼쪽으로 비스듬히 열려 있다(지적). */
+    out.push(...tagKey(paintBase(boxFaces3(0.55, 5.25, 3.3, 2.5, 2.0, BODY_Z0 - 0.05), "#585f68"),
+      46 + depthNow(0.55, 5.25) * 1.6));
+    // 옆으로 긴 구조물 — 앞왼쪽에 붙어 좌우로 뻗는다. 아래 모서리에 안전 빗금.
+    out.push(...tagKey(paintBase(boxFaces3(-3.0, 5.55, 4.7, 1.6, 1.15, BODY_Z0 - 0.1), GREY),
+      46.4 + depthNow(-3.0, 5.55) * 1.6));
+    if (facingRatio(0, 1) > 0.1) {
       const warn: ShapeFace[] = [];
-      for (let k = 0; k < 7; k += 1) {
-        const u0 = -3.9 + k * 0.5;
+      for (let k9 = 0; k9 < 7; k9 += 1) {
+        const u9 = -5.1 + k9 * 0.62;
         warn.push([polyPath3([
-          [u0, 3.62, 1], [u0 + 0.24, 3.62, 1], [u0 + 0.5, 3.62, 2.6], [u0 + 0.26, 3.62, 2.6],
-        ]), 1, k % 2 === 0 ? "#e8c33a" : "#22262b"] as ShapeFace);
+          [u9, 6.37, BODY_Z0 - 0.06], [u9 + 0.3, 6.37, BODY_Z0 - 0.06],
+          [u9 + 0.6, 6.37, BODY_Z0 + 0.5], [u9 + 0.3, 6.37, BODY_Z0 + 0.5],
+        ]), 1, k9 % 2 === 0 ? AMBER : "#22262b"] as ShapeFace);
       }
-      // 노란 격자문 — 마당 앞 셔터.
-      warn.push([polyPath3([
-        [-1.5, 6.82, 1], [1.5, 6.82, 1], [1.5, 6.82, 2.5], [-1.5, 6.82, 2.5],
-      ]), 1, "#c9a227"] as ShapeFace);
-      for (let k = 0; k < 4; k += 1) {
-        warn.push(sideFace(polyPath3([
-          [-1.5, 6.84, 1.2 + k * 0.34], [1.5, 6.84, 1.2 + k * 0.34],
-          [1.5, 6.84, 1.32 + k * 0.34], [-1.5, 6.84, 1.32 + k * 0.34],
-        ]), 0.4));
+      out.push(...tagKey(warn, 60));
+      /* 반투명 노란 불빛(요청) — 어두운 안쪽 위에 노란 막을 덮고 살 네 줄을 더 밝게
+         얹는다. 세 겹이라 가운데가 환하고 가장자리로 갈수록 옅다. */
+      const gy = 6.52;
+      const bay: ShapeFace[] = [
+        [polyPath3([[-0.8, gy, BODY_Z0 + 0.2], [1.9, gy, BODY_Z0 + 0.2],
+          [1.9, gy, BODY_Z0 + 1.72], [-0.8, gy, BODY_Z0 + 1.72]]), 1, "#23262b"] as ShapeFace,
+        [polyPath3([[-0.66, gy + 0.02, BODY_Z0 + 0.3], [1.76, gy + 0.02, BODY_Z0 + 0.3],
+          [1.76, gy + 0.02, BODY_Z0 + 1.62], [-0.66, gy + 0.02, BODY_Z0 + 1.62]]),
+          0.55, "#ffd84a"] as ShapeFace,
+      ];
+      for (let k9 = 0; k9 < 4; k9 += 1) {
+        const z9 = BODY_Z0 + 0.42 + k9 * 0.32;
+        bay.push([polyPath3([[-0.52, gy + 0.04, z9], [1.62, gy + 0.04, z9],
+          [1.62, gy + 0.04, z9 + 0.18], [-0.52, gy + 0.04, z9 + 0.18]]),
+          0.82, "#fff2b0"] as ShapeFace);
       }
-      out.push(...tagKey(warn, 44 + depthNow(0, 5) * 1.6));
+      out.push(...tagKey(bay, 61));
     }
-    for (const ang of [45, 135, 225, 315]) {
-      const a = (ang * Math.PI) / 180;
-      const bx2 = Math.sin(a) * 4.6;
-      const by2 = Math.cos(a) * 4.6;
-      const tx2 = Math.sin(a) * 7.2;
-      const ty2 = Math.cos(a) * 7.2;
-      out.push(...tagKey([
-        bodyFace(polyPath3([[bx2, by2, 4], [tx2, ty2, 6],
-          [tx2 * 1.04, ty2 * 1.04, 5.5], [bx2 * 1.06, by2 * 1.06, 3.5]])),
-      ], 51 + depthNow(bx2, by2)));
-      const [kx, ky] = project(tx2, ty2, 6.1);
-      out.push(...tagKey([
-        bodyFace(groundEllipse(kx, ky, 0.75, 0.6)),
-        topFace(groundEllipse(kx - 0.2, ky - 0.2, 0.35, 0.25), 0.4),
-      ], 52 + depthNow(tx2, ty2)));
+
+    /* 착륙판 — 테를 두른 큰 원판이고 안쪽이 파여 있다. 스프라이트에서 가장 큰 면이라
+       지붕 규칙 키로 못 박아 어느 각에서도 맨 위다. */
+    /* 판을 몸통보다 작게(수리: 판이 몸통과 같은 크기라 앞 격납고와 개인색 슬래브를
+       통째로 덮었다) — 스프라이트에서도 판은 지붕 한가운데에 얹힌 원이고 그 둘레로
+       슬래브와 앞 구조물이 드러난다. 5.05 → 4.15. */
+    out.push(...tagKey(paintBase(cylinderFaces3(0, 0, 4.15, 0.32, PAD_Z), GREY), 40));
+    out.push(...tagKey([
+      [discPath3(0, 0, PAD_Z + 0.3, 3.75), 1, PADTOP] as ShapeFace,
+      capFace(discPath3(0, 0, PAD_Z + 0.31, 3.25), 0.26),
+      topFace(discPath3(0, 0, PAD_Z + 0.32, 2.25), 0.15),
+    ], 42));
+
+    /* 네 귀의 팔 — 가늘게 뻗어 끝에 어두운 마디가 달린다. */
+    for (const deg9 of [45, 135, 225, 315]) {
+      const a9 = (deg9 * Math.PI) / 180;
+      const sx9 = Math.sin(a9);
+      const sy9 = Math.cos(a9);
+      const bx9 = sx9 * 4.0;
+      const by9 = sy9 * 4.0;
+      const tx9 = sx9 * 7.15;
+      const ty9 = sy9 * 7.15;
+      const dep9 = depthNow(tx9, ty9);
+      out.push(...tagKey(paintBase(spirePillar({
+        x: 0, y: 0, h: 1, w: 0.34, tipW: 0.28, segs: 1, sides: 6, hold: 0.25, caps: "none",
+        path: (t9: number): [number, number, number] => [
+          bx9 + (tx9 - bx9) * t9, by9 + (ty9 - by9) * t9, PAD_Z + 0.42 + 0.22 * t9,
+        ],
+      }), "#6a707a"), 44 + dep9));
+      out.push(...tagKey(paintBase([
+        ...cylinderFaces3(tx9, ty9, 0.5, 0.22, PAD_Z + 0.58),
+        ...domeFaces3(tx9, ty9, 0.5, 0.52, PAD_Z + 0.8),
+      ], "#4a505a"), 45 + dep9));
+    }
+
+    /* 개인색 — 착륙판 둘레에 눕힌 길쭉한 슬래브 넷(스프라이트의 파랑). 팔과 어긋난
+       자리에 놓아 서로 안 가린다. 색을 안 주므로 임자 색이 칠해진다. */
+    for (const deg9 of [0, 90, 180, 270]) {
+      const a9 = (deg9 * Math.PI) / 180;
+      const sx9 = Math.sin(a9);
+      const sy9 = Math.cos(a9);
+      const mx9 = sx9 * 4.6;
+      const my9 = sy9 * 4.6;
+      if (facingRatio(sx9, sy9) <= 0.04) continue;
+      /* 길쭉한 쪽이 둘레를 따라 눕는다 — 앞뒤(0·180)는 가로로 길고 좌우(90·270)는
+         세로로 길다. 상자는 못 돌리므로 두 폭을 바꿔 끼운다. */
+      const along = Math.abs(sy9) > 0.5;
+      pc.push(...tagKey(
+        boxFaces3(mx9, my9, along ? 3.6 : 1.25, along ? 1.25 : 3.6, 0.6, PAD_Z),
+        44 + depthNow(mx9, my9) * 1.6,
+      ));
     }
     return raceBase(out, "terran", pc);
   },
