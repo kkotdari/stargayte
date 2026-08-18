@@ -8951,16 +8951,94 @@ const BLD_FILL_TARGET: Record<string, number> = {
   diamond: 1.425,
 };
 const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number; w: number; cx: number }>();
+/** 경로의 세로 범위 [위, 아래] — 공사에서 부품을 높이 순으로 세우는 데 쓴다.
+ *  우리 도형 문법은 M·L·Q·C·A(a)·Z뿐이다. 호는 끝점 ± ry로 어림한다(순서를 정하는
+ *  데는 충분하다). 상대 좌표는 호(`a`)에서만 쓰이고 그 앞은 늘 절대 M이다. */
+function pathYRange(d: string): [number, number] {
+  let lo = Infinity;
+  let hi = -Infinity;
+  let cx = 0;
+  let cy = 0;
+  const re = /([MmLlQqCcSsTtAaHhVvZz])([^A-Za-z]*)/g;
+  let m: RegExpExecArray | null = re.exec(d);
+  while (m) {
+    const up = m[1].toUpperCase();
+    const rel = m[1] !== up;
+    const nums = (m[2].match(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi) ?? []).map(Number);
+    const put = (x: number, y: number): void => {
+      cx = x;
+      cy = y;
+      if (y < lo) lo = y;
+      if (y > hi) hi = y;
+    };
+    if (up === "H") { for (const n of nums) put(rel ? cx + n : n, cy); }
+    else if (up === "V") { for (const n of nums) put(cx, rel ? cy + n : n); }
+    else if (up === "A") {
+      for (let i = 0; i + 6 < nums.length; i += 7) {
+        const ry = Math.abs(nums[i + 1]);
+        const x = rel ? cx + nums[i + 5] : nums[i + 5];
+        const y = rel ? cy + nums[i + 6] : nums[i + 6];
+        if (y - ry < lo) lo = y - ry;
+        if (y + ry > hi) hi = y + ry;
+        put(x, y);
+      }
+    } else if (up !== "Z") {
+      for (let i = 0; i + 1 < nums.length; i += 2) {
+        const x = rel ? cx + nums[i] : nums[i];
+        const y = rel ? cy + nums[i + 1] : nums[i + 1];
+        if (y < lo) lo = y;
+        if (y > hi) hi = y;
+        if (i + 3 >= nums.length) put(x, y);
+      }
+    }
+    m = re.exec(d);
+  }
+  return [lo, hi];
+}
+
+/** 공사 단계 — 모델을 **부품 단위로** 아래에서부터 드러낸다.
+ *
+ *  여태는 구운 판을 화면 사각형으로 잘라 보여 줬다(지적: "그냥 구운 이미지를 잘라서
+ *  보여줬어. 그게 아니라 실제 부품을 아래에서부터 몇개씩 보여주자는 얘기였어").
+ *  그러면 기둥이 반 토막 난 채 서고 지붕이 가로로 잘려 '짓는 중'이 아니라 '가려진'
+ *  것으로 보인다.
+ *
+ *  부품 경계는 이미 자료에 있다 — 빌더가 부품마다 tagKey로 깊이 키를 매기고, 키를
+ *  안 단 면은 바로 앞 면의 키를 물려받는다(zsorted 규약). 그 묶음이 곧 부품이다.
+ *  묶음마다 꼭대기(경로 최소 y — 이 좌표계는 y가 아래로 커진다)를 재고, 꼭대기가
+ *  낮은 것부터 세운다: 발판·다리·바닥 슬래브가 먼저 서고 지붕·굴뚝·안테나가 마지막에
+ *  얹힌다. 고른 부품은 **통째로** 그리므로 잘린 단면이 안 생긴다.
+ *  그리는 차례는 원래 순서 그대로 둔다(칠하는 순서가 곧 앞뒤라 재정렬하면 안 된다). */
+export function stageFaces(faces: ShapeFace[], stg: number): ShapeFace[] {
+  if (stg <= 0 || stg >= 3) return faces;
+  const gid: number[] = [];
+  const tops: number[] = [];
+  let g = -1;
+  let lastKey: number | undefined;
+  for (const f of faces) {
+    const k = f[3];
+    if (g < 0 || (k !== undefined && k !== lastKey)) { g += 1; tops.push(Infinity); }
+    if (k !== undefined) lastKey = k;
+    gid.push(g);
+    const lo = pathYRange(f[0])[0];
+    if (lo < tops[g]) tops[g] = lo;
+  }
+  const n = tops.length;
+  if (n <= 1) return faces;
+  const order = tops.map((_, i) => i).sort((a, b) => tops[b] - tops[a]);
+  const keep = new Set(order.slice(0, Math.max(1, Math.round((n * stg) / 3))));
+  return faces.filter((_, i) => keep.has(gid[i]));
+}
+
 function buildingSprite(
   op: UnitDrawOp, sideQ: number, B: number,
 ): { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number; w: number; cx: number } | null {
   const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
   const lod = lodOf(sideQ);
   /* 공사 단계(요청: "3단계로 하고 실제 모델의 부품을 일부만 표현하다가 완성되는 형태로
-     수정. 아래쪽 부품부터 표현 → 점점 위로") — 판을 구울 때 모델 상자의 아래쪽 몫만
-     남기고 잘라 낸다. 부품마다 높이를 알 수 없어(면은 이미 화면으로 투영돼 z가 없다)
-     기하로 고를 수는 없지만, 굽는 좌표계에서 아래쪽을 오려 내면 결과는 같다 —
-     아래에 있는 부품부터 드러나고 위 부품은 아직 없다.
+     수정. 아래쪽 부품부터 표현 → 점점 위로") — stageFaces가 **부품을 골라** 준다.
+     예전에는 굽는 좌표계의 아래쪽만 오려 냈는데, 그건 결과가 같지 않았다(지적):
+     기둥이 반 토막 나고 지붕이 가로로 잘려 '짓는 중'이 아니라 '가려진' 것으로 보였다.
      단계가 캐시 열쇠에 들어가므로 판은 단계별로 따로 구워져 프레임 비용이 없다. */
   const stg = op.buildStage ?? 0;
   const key = `${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}|${op.color}|${sideQ}|${B.toFixed(2)}|${lod}|${stg}`;
@@ -8968,7 +9046,7 @@ function buildingSprite(
   if (hit) return hit;
   const { faces: all } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
   if (!all) return null;
-  const faces = lodFilter(all, lod);
+  const faces = stageFaces(lodFilter(all, lod), stg);
   const pad = Math.ceil(sideQ * 0.15) + 2;
   const l = sideQ + pad * 2;
   const cv = document.createElement("canvas");
@@ -8980,14 +9058,6 @@ function buildingSprite(
   c2.translate(pad + sideQ / 2, pad + sideQ);
   c2.scale(sideQ / 16, sideQ / 16);
   c2.translate(-8, -16);
-  if (stg > 0 && stg < 3) {
-    /* 모델 상자는 y 0(꼭대기)~16(발) — 아래에서 stg/3만큼만 남긴다. 위로는 넉넉히
-       열어 두어 발보다 아래로 삐치는 그림자·받침이 안 잘리게 한다. */
-    const keep = (16 * stg) / 3;
-    c2.beginPath();
-    c2.rect(-8, 16 - keep, 32, keep + 8);
-    c2.clip();
-  }
   for (const [d, o, fill] of faces) {
     c2.globalAlpha = shadeBoost(o, fill);
     c2.fillStyle = fill ?? op.color;
