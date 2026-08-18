@@ -1055,8 +1055,16 @@ export function buildUnitTracks(
           if (lastPt && lastPt[1] >= 0) pushEv(life, sec, lastPt[1], lastPt[2], 3);
           // 시즈 판정은 커맨드 그대로(지적) — 켠 시각을 증거로 남긴다.
           if (cmdName === "Siege") life.ev.push([Math.round(sec), -1, -1, 8]);
+          /* 버로우도 커맨드 그대로다(지적: 러커와 버로우 러커가 같이 움직인다 / 변태
+             알에서 나오자마자 버로우 상태로 나온다) — 여태 재생기가 '러커가 안 움직이면
+             땅속'이라는 어림으로 판정했다. 그 어림은 두 가지를 동시에 틀리게 만든다:
+             땅속인데 자취가 흐르면 구멍이 미끄러지고, 갓 태어나 아직 명령을 못 받은
+             러커는 서 있다는 이유로 곧장 땅속이 된다. 켠 시각(f=18)·끈 시각(f=19)을
+             증거로 남겨 시즈와 같은 잣대로 읽게 한다. */
+          if (cmdName === "Burrow") life.ev.push([Math.round(sec), -1, -1, 18]);
         } else {
           if (cmdName === "Unsiege") life.ev.push([Math.round(sec), -1, -1, 9]);
+          if (cmdName === "Unburrow") life.ev.push([Math.round(sec), -1, -1, 19]);
           life.last = sec;
         }
       }

@@ -8872,6 +8872,21 @@ const STATUS_CASTS: Record<string, { dur: number; r: number; kind: string; any?:
   Irradiate: { dur: 30, r: 1, kind: "irr" },
 };
 const FREEZE_STATUS = new Set(["stasis", "mael", "lock"]);
+/** 땅에 숨을 수 있는 것들(공식) — 저글링·히드라·드론·러커·디파일러·인페스티드
+ *  테란. 울트라·퀸·스커지는 못 숨는다. 버로우 커맨드는 고른 무리 전체에 실려
+ *  오므로(못 숨는 것이 섞여 있어도 같은 증거가 붙는다) 이 명단으로 거른다. */
+const BURROWABLE = new Set(["Drone", "Zergling", "Hydralisk", "Lurker", "Defiler", "Infested Terran"]);
+/** 지금 땅속인가 — 땅속이면 '판 시각', 아니면 -1. 시즈와 같은 잣대(켬/끔 증거를
+ *  시간순으로 접는다)다. 판 시각을 돌려주는 이유는 그 자리에 못 박기 위해서다
+ *  (지적: 러커와 버로우 러커가 같이 움직인다 — 구멍이 자취를 따라 미끄러졌다). */
+const burrowStartOf = (spans: [number, number][], t: number): number => {
+  let at = -1;
+  for (const [bs, on] of spans) {
+    if (bs > t) break;
+    at = on === 1 ? bs : -1;
+  }
+  return at;
+};
 const STATUS_TINT: Record<string, string> = {
   ensnare: "#79c74c", plague: "#b4452e", stasis: "#69b7e8",
   mael: "#a86ae0", lock: "#c8c8d2", irr: "#e8c84a",
@@ -10031,6 +10046,8 @@ export default function ReplayMotionPlayer({
       atkAt: [number, number, number, number][];
       /** 시즈 켬·해제 [초, 켬1/해제0] — 커맨드 그대로(지적). */
       sieges: [number, number][];
+      /** 버로우 켬·해제 [초, 켬1/해제0] — 시즈와 같이 커맨드 그대로. */
+      burrows: [number, number][];
       /** 수리·힐 명령 초(지적: 일꾼 수리·매딕 힐) — 곁에서 일하는 효과의 창. */
       fixes: number[];
       /** 체력 변곡점 [초, 퍼센트](요청: 스탯 생애주기) — 체력바의 재료. */
@@ -10214,6 +10231,8 @@ export default function ReplayMotionPlayer({
         atkAt: e.ev.filter((v) => v[3] === 7).map((v) => [v[0], v[4] ?? 0, v[1], v[2]] as [number, number, number, number]),
         sieges: e.ev.filter((v) => v[3] === 8 || v[3] === 9)
           .map((v) => [v[0], v[3] === 8 ? 1 : 0] as [number, number]),
+        burrows: e.ev.filter((v) => v[3] === 18 || v[3] === 19)
+          .map((v) => [v[0], v[3] === 18 ? 1 : 0] as [number, number]),
         fixes: e.ev.filter((v) => v[3] === 10).map((v) => v[0]),
         hp: e.hp ?? [],
         ic: e.ic ?? [],
@@ -10319,8 +10338,8 @@ export default function ReplayMotionPlayer({
         || e.unit === "Dark Templar" || e.unit === "Observer"
         || (e.unit !== "Arbiter" && arbiterSpots.some((asp) =>
           asp.raw === e.raw && Math.hypot(asp.x - q.x, asp.y - q.y) <= 4.5));
-      // 버로우한 러커(요청) — 화면의 버로우 판정과 같다: 안 움직이면 땅속이다.
-      const burrowed9 = e.unit === "Lurker" && !q.moving;
+      // 버로우(요청) — 화면의 버로우 판정과 같은 자, 곧 커맨드 증거다.
+      const burrowed9 = BURROWABLE.has(e.unit) && burrowStartOf(e.burrows, t) >= 0;
       if (cloaked9 || burrowed9) row.hidden = true;
     }
   } else {
@@ -12910,6 +12929,14 @@ export default function ReplayMotionPlayer({
             : e.b < (entCombatStart.get(e.raw) ?? Infinity)
               ? (race === "저그" ? "Drone" : race === "테란" ? "SCV" : "Probe") : "";
           const isWorker = drawUnit === "SCV" || drawUnit === "Probe" || drawUnit === "Drone";
+          /* 버로우(지적: 러커와 버로우 러커가 같이 움직인다 / 변태 알에서 나오자마자
+             버로우 상태로 나온다) — 여태 '러커가 안 움직이면 땅속'이라는 어림이었다.
+             그 한 줄이 두 가지를 동시에 틀리게 했다: 걸음이 멎기만 하면(랠리 도착·
+             교전 홀드·갓 태어난 순간) 땅속으로 보이고, 반대로 땅속인데 자취가 흐르면
+             구멍이 따라 미끄러졌다. 이제 커맨드 증거(f=18/19)를 시즈와 같은 잣대로
+             읽는다. 판 시각(burrowAt)은 아래에서 그 자리에 못 박는 데 쓴다. */
+          const burrowAt = BURROWABLE.has(drawUnit) ? burrowStartOf(e.burrows, t) : -1;
+          const burrowed = burrowAt >= 0;
           /* 밭이 홀에 붙은 무한 맵인가 — 왕복 폭이 발자국보다 좁아, 아래 '홀에 들어간
              순간 숨김' 창이 왕복을 통째로 삼키는 경우를 가른다(지적). */
           let nearMine9 = false;
@@ -12967,7 +12994,7 @@ export default function ReplayMotionPlayer({
              적 때문에 교전이 프레임마다 켜졌다 꺼지면, '멈춘 자리'와 '지연 걸음' 사이를
              오가며 흔들렸다. 들어올 땐 시야, 나갈 땐 시야×1.3이라 경계에서 안 떨린다. */
           const engagedBefore = engageHoldRef.current.has(holdKey);
-          let fighting = canFight && !frzSt && Number.isFinite(foe.bd)
+          let fighting = canFight && !frzSt && !burrowed && Number.isFinite(foe.bd)
             && (foe.bd <= ENGAGE_SIGHT_TILES * (engagedBefore ? 1.3 : 1)
               /* 어택이 찍은 건물은 14.4타일부터 접근 시작(기획서 1-E — 수리: 시야
                  게이트가 철거 행군을 9타일 밖에서 세워 뒀다). */
@@ -13309,6 +13336,13 @@ export default function ReplayMotionPlayer({
               simHdg = sp.hdg;
             }
           }
+          /* 땅에 박혀 있다(지적: 러커와 버로우 러커가 같이 움직인다) — 땅속인 동안은
+             자취·교전 당김·시뮬이 무슨 자리를 내놓든 판 그 자리다. 아래 스무딩보다
+             앞에 둬, 파고드는 순간에는 미끄러져 들어가고 그 뒤로는 못 박힌다. */
+          if (burrowed) {
+            const bp2 = posAt(rp, Math.max(rp[0][0], burrowAt), null);
+            if (bp2) pos = { ...pos, x: bp2.x, y: bp2.y };
+          }
           /* 화면 스무딩(지적: 뚝뚝 끊김 → 재요청: 순간이동 무조건 제거, 아무리 짧아도
              스무스) — 지난 프레임 표시 자리에서 목표로 지수 추종. 거리 상한(6타일 스냅)
              을 걷어 드랍·리콜 급 큰 이동도 빠른 미끄럼으로 잇는다. 시간 되감기·큰 시간
@@ -13383,9 +13417,6 @@ export default function ReplayMotionPlayer({
               </span>
             );
           }
-          /* 러커 버로우(지적: 판정이 안 됨) — v1과 같은 규칙: 러커가 제자리(이동
-             없음)면 버로우로 보고 땅 구멍만 그린다. */
-          const burrowed = drawUnit === "Lurker" && !rawPos.moving;
           /* 시즈모드(지적: 판정을 리플레이에서) — Siege/Unsiege 커맨드 증거 그대로. */
           let siegeOn = 0;
           for (const [ss2, on2] of e.sieges) { if (ss2 <= t) siegeOn = on2; else break; }
