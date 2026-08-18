@@ -13,7 +13,7 @@ import { AIR_UNITS } from "../../utils/replayBuildMix";
 import { BLD_STATS, UNIT_STATS, type UnitTracksV2 } from "../../utils/replayUnits";
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } from "../../utils/minimapTerrain";
-import { loadSimTracks } from "../../utils/simClient";
+import { loadSimTracks, logSim } from "../../utils/simClient";
 import { posAtSim, shotsAt, ST_INSIDE, type SimEventArr, type SimTrack } from "../../utils/simCore";
 import {
   bodyFace, capFace, depthNow, groundEllipse, sideFace, tagKey, topFace, type ShapeFace,
@@ -8626,6 +8626,9 @@ export default function ReplayMotionPlayer({
   const simFlag = typeof location !== "undefined" && /[?&]sim=1/.test(location.search);
   const [simTracks, setSimTracks] = useState<Map<number, SimTrack> | null>(null);
   const [simEvents, setSimEvents] = useState<SimEventArr | null>(null);
+  /* 진행 알림(지적: 로딩 시간이 전혀 없는데 되는 건가) — 워커에서 도니 화면이 안 멈춰
+     제대로 돌았는지 눈으로 가릴 수가 없다. 지도 귀퉁이에 상태를 적어 둔다. */
+  const [simNote, setSimNote] = useState<string | null>(null);
   /* 클릭 자국 토글(요청) — 기본은 끔: 클릭이 많은 경기에서는 자국이 화면을 덮는다. */
   const [clickFx, setClickFx] = useState(true); // 기본 켬(요청)
   /* 사양 라디오(요청: 최저·저·중·고·최고 — 렌더 요소 단계별 온오프, 기본 중).
@@ -8983,8 +8986,11 @@ export default function ReplayMotionPlayer({
   /* 시뮬 자취 적재(위 simFlag 주석) — 개체 트랙과 지형이 다 오면 워커에 맡긴다. 결과가
      오기 전까지는 기존 길로 그린다(깜빡임 없이 갈아 끼운다). */
   useEffect(() => {
-    if (!simFlag || !entData) { setSimTracks(null); setSimEvents(null); return undefined; }
+    if (!simFlag) return undefined;
+    if (!entData) { logSim("개체 트랙(v2)이 아직 없다 — 시뮬은 그것이 온 뒤에 돈다"); return undefined; }
     let cancelled = false;
+    logSim(`시작 — 개체 ${entData.ents.length}, 맵 ${grid.width}x${grid.height}, `
+      + `지형 ${(terrainRaw ?? terrain) ? "있음" : "없음"}, 자원 ${(grid.resources ?? []).length}`);
     void loadSimTracks(
       /* 캐시 열쇠 — 경기를 가르는 값(clockKey)에 개체 수·증거 수를 지문으로 붙인다.
          clockKey가 없는 자리에서도 다른 경기끼리 섞이지 않게. */
@@ -8995,6 +9001,7 @@ export default function ReplayMotionPlayer({
         // 자원표 — 일꾼 채취 왕복의 재료(P3). 없으면 시뮬이 채취를 안 만든다.
         resources: (grid.resources ?? []) as [number, number, number][],
       },
+      setSimNote,
     ).then((got) => {
       if (cancelled || !got) return;
       setSimTracks(new Map(got.tracks.map((tr) => [tr.tag, tr])));
@@ -11080,6 +11087,12 @@ export default function ReplayMotionPlayer({
           touchAction: "none",
         }}
       >
+        {/* 시뮬 상태(지적: 로딩 시간이 전혀 없는데 되는 건가) — 워커에서 도니 화면이
+            안 멈춘다. 계산 중인지, 몇 기가 실렸는지, 얼마나 걸렸는지를 여기 적는다.
+            ?sim=1일 때만 뜬다. */}
+        {simFlag && simNote && (
+          <span className="scr-motion-simnote">{simNote}</span>
+        )}
         {/* 맵연결(요청: 별도로 맵 좌상단에, 연결 안 된 경우만, 알약 형태) — 렌즈 밖이라
             휠 줌에도 제자리다. 맵의 팬·줌 손짓에 안 딸리게 눌림을 끊는다. */}
         {!grid.image && (

@@ -342,24 +342,25 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
      안의 미네랄 중 태그로 갈라(개체마다 다른 밭) 줄이 서게 한다. 가스는 곁(2.5타일)에
      제 정제소가 있으면 그쪽이다. 자원표가 없으면 채취를 안 만든다(거짓 왕복 금지). */
   const RES = opts.resources ?? [];
+  /* 홀·가스는 몇 채뿐이라 미리 갈라 둔다 — 일꾼마다 전체 개체를 훑을 이유가 없다. */
+  const hallList = bodies.filter((h) => h.bld && HALLS.has(h.kind));
+  const gasList = bodies.filter((g) => g.bld && GAS_BLD.has(g.kind));
   const assignJob = (b: Body, t: number): Body["job"] => {
     if (RES.length === 0) return null;
     let hx = 0;
     let hy = 0;
     let hd = 12;
-    for (const h of bodies) {
-      if (!h.bld || h.owner !== b.owner || h.state === ST_GONE) continue;
+    for (const h of hallList) {
+      if (h.owner !== b.owner || h.state === ST_GONE) continue;
       if (t < h.born || (h.died !== null && t >= h.died)) continue;
-      if (!HALLS.has(h.kind)) continue;
       const d = dist(b.x, b.y, h.x, h.y);
       if (d < hd) { hd = d; hx = h.x; hy = h.y; }
     }
     if (hd >= 12) return null;
     // 가스 — 곁에 제 정제소가 서 있으면 그 자리가 밭이다.
-    for (const g of bodies) {
-      if (!g.bld || g.owner !== b.owner || g.state === ST_GONE) continue;
+    for (const g of gasList) {
+      if (g.owner !== b.owner || g.state === ST_GONE) continue;
       if (t < g.born || (g.died !== null && t >= g.died)) continue;
-      if (!GAS_BLD.has(g.kind)) continue;
       if (dist(b.x, b.y, g.x, g.y) <= 2.5) {
         return { px: g.x, py: g.y, hx, hy, toHall: false, wait: 0 };
       }
@@ -454,19 +455,33 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
     }
   };
 
+  /* 활성 목록(성능) — 예전엔 매 틱 전체 개체를 훑었다. 20분 4:4는 개체 3천 × 1만 틱이라
+     3천만 번인데, 그 대부분이 "아직 안 태어남" 또는 "이미 죽음"이었다. 출생순으로 줄을
+     세워 때가 되면 넣고, 걷히면 빼면 실제로 도는 것은 그 순간 살아 있는 몇백 기다. */
+  const byBorn = [...bodies].sort((a, b2) => a.born - b2.born);
+  let bornIdx = 0;
+  let active: Body[] = [];
+
   for (let k = 0; k <= ticks; k += 1) {
     const t = k * dt;
     cells.clear();
     live.length = 0;
+    while (bornIdx < byBorn.length && byBorn[bornIdx].born <= t) {
+      active.push(byBorn[bornIdx]);
+      bornIdx += 1;
+    }
+    let dropped = false;
 
-    for (const b of bodies) {
+    for (const b of active) {
       if (t < b.born) continue;
       if (b.died !== null && t >= b.died) {
         if (b.state !== ST_GONE) { b.state = ST_GONE; pushKey(b, b.died, true); }
+        dropped = true;
         continue;
       }
       if (b.dieAt !== null && t >= b.dieAt) {
         b.died = b.dieAt; b.state = ST_GONE; pushKey(b, b.dieAt, true);
+        dropped = true;
         continue;
       }
       /* 분석이 말한 죽음은 상한이다 — 시뮬이 그때까지 못 죽였으면 여기서 죽는다.
@@ -474,9 +489,10 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       if (b.dieBy !== null && t >= b.dieBy && b.died === null) {
         b.died = b.dieBy; b.state = ST_GONE; pushKey(b, b.dieBy, true);
         events.push(b.dieBy, EV_DIE, b.tag, 0, Math.round(b.x * 10) / 10, Math.round(b.y * 10) / 10, 0, 0);
+        dropped = true;
         continue;
       }
-      if (b.state === ST_GONE) continue;
+      if (b.state === ST_GONE) { dropped = true; continue; }
 
       if (b.bld) { live.push(b); pushKey(b, t, b.keys.length === 0); continue; }
       // ① 이번 틱에 온 주문 — 여럿이면 마지막 것이 지금의 명령이다.
@@ -617,6 +633,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       b.px = b.x; b.py = b.y;
     }
     fireAll(t);
+    if (dropped) active = active.filter((b) => b.state !== ST_GONE);
 
     // 밀어내기는 이번 틱 자리가 다 정해진 뒤에 한 번(순서에 안 흔들리게).
     for (const arr of cells.values()) {

@@ -48,6 +48,13 @@ async function cachePut(key: string, val: SimCached): Promise<void> {
   });
 }
 
+/* 진행 상황을 콘솔에 남긴다(요청: 로딩이 도는지 안 도는지 알 수 없다) — 워커에서 도니
+   화면이 안 멈춰서, 제대로 돌았는지 눈으로는 가릴 수가 없다. */
+export function logSim(msg: string): void {
+  // eslint-disable-next-line no-console
+  console.info(`[sim] ${msg}`);
+}
+
 let worker: Worker | null = null;
 let seq = 0;
 const waiting = new Map<number, (r: SimResult | null) => void>();
@@ -69,8 +76,13 @@ function ensureWorker(): Worker | null {
       }
       else done(null);
     };
-    worker.onerror = () => { for (const [, d] of waiting) d(null); waiting.clear(); };
-  } catch {
+    worker.onerror = (e) => {
+      logSim(`워커 오류: ${(e as ErrorEvent).message ?? e}`);
+      for (const [, d] of waiting) d(null);
+      waiting.clear();
+    };
+  } catch (e) {
+    logSim(`워커를 못 만들었다: ${e instanceof Error ? e.message : String(e)}`);
     worker = null;
   }
   return worker;
@@ -79,18 +91,31 @@ function ensureWorker(): Worker | null {
 /** 그 경기의 시뮬 자취 — 캐시에 있으면 바로, 없으면 워커가 돌려 캐시에 넣는다. */
 export async function loadSimTracks(
   cacheKey: string, data: SimInput, opts: SimOpts,
+  /** 진행을 화면에 보일 자리 — 워커에서 도니 알려 주지 않으면 됐는지 알 수가 없다. */
+  onNote?: (msg: string) => void,
 ): Promise<SimCached | null> {
   const key = `${cacheKey}:v${SIM_VERSION}`;
+  const t0 = Date.now();
   const hit = await cacheGet(key);
-  if (hit) return hit;
+  if (hit) {
+    logSim(`캐시 적중 ${key} — 자취 ${hit.tracks.length}, 사건 ${hit.events.length / 8}`);
+    onNote?.(`시뮬 ${hit.tracks.length}기 (캐시)`);
+    return hit;
+  }
   const w = ensureWorker();
-  if (!w) return null;
+  if (!w) { onNote?.("시뮬 워커를 못 띄웠다"); return null; }
+  onNote?.("시뮬 계산 중…");
   const id = (seq += 1);
   const res = await new Promise<SimResult | null>((resolve) => {
     waiting.set(id, resolve);
     w.postMessage({ id, data, opts });
   });
-  if (!res) return null;
+  if (!res) { logSim("시뮬 실패 — 워커가 결과를 못 냈다"); onNote?.("시뮬 실패"); return null; }
+  const st = res.stats;
+  logSim(`시뮬 완료 ${Math.round(Date.now() - t0)}ms — 개체 ${st.ents}, 자취 ${res.tracks.length}, `
+    + `키 ${Math.round(st.keys)}, 사건 ${res.events.length / 8}, 죽임 ${st.kills}, `
+    + `드리프트 중앙 ${st.driftMedian}타일`);
+  onNote?.(`시뮬 ${res.tracks.length}기 · ${((Date.now() - t0) / 1000).toFixed(1)}초`);
   const out: SimCached = { tracks: res.tracks, events: res.events };
   void cachePut(key, out);
   return out;
