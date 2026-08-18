@@ -613,6 +613,25 @@ export function buildUnitTracks(
     if (isOrder) totalOrders += 1;
     if (isOrder && tags.length > 0) attributed += 1;
 
+    /* 착륙은 건설이 아니다(지적: "건물 띄우기 및 이동이 재현 안 되는 중") — screp은
+       착륙을 **Build 커맨드에 Order=BuildingLand**로 준다. 우리는 "Land"라는 커맨드
+       종류를 기다리고 있었는데 그런 종류는 오지 않는다(실측: 이 리플레이의 Build
+       272건 중 BuildingLand 4건, Land 커맨드는 0건). 그래서 착륙이 새 건물 건설로
+       읽혀 유령 건물이 서고, 정작 띄운 건물은 영영 안 내려앉았다.
+       고른 것은 일꾼이 아니라 **떠 있는 그 건물 자신**이므로, 아래 건설 처리를 통째로
+       건너뛰고 착륙 증거(f=5)만 남긴다. */
+    if (cmdName === "Build" && (c.Order && typeof c.Order === "object"
+      ? c.Order.Name : c.Order) === "BuildingLand") {
+      const lpos = posTileOf(c);
+      for (const tag of tags) {
+        const life = lifeOf(tag, pid, sec);
+        life.bld = true;
+        if (unitName) markKind(life, unitName, sec);
+        if (lpos) pushEv(life, sec, lpos.x, lpos.y, 5);
+        liftedTags.delete(tag);
+      }
+      continue;
+    }
     if (cmdName === "Build" || cmdName === "Build Addon" || cmdName === "Hatch") {
       // 건설 — 고른 것은 일꾼이고, 자리로 걸어가 짓는다. 건물은 물리 개체로 태어난다.
       // 좌표는 타일 단위 그대로다(posTileOf 주석).
@@ -1018,7 +1037,14 @@ export function buildUnitTracks(
           if (lpos) pushEv(life, sec, lpos.x, lpos.y, 5);
           liftedTags.delete(tag);
         } else if (cmdName === "Lift Off") {
-          pushEv(life, sec, -1, -1, 6);
+          /* 이륙 — 커맨드에 **픽셀** 좌표가 실려 온다(실측: {"Type":"Lift Off",
+             "Pos":{"X":640,"Y":336}} = 타일 20,10.5). 건설·착륙이 타일인 것과 다르다.
+             그 자리는 '건물이 그때 서 있던 곳'이라 강한 앵커만큼 확실하다 — 띄운 건물의
+             출발점으로 남긴다(여태 자리 없는 증거였다). */
+          const lp = c.Pos;
+          if (lp && typeof lp.X === "number" && typeof lp.Y === "number") {
+            pushEv(life, sec, lp.X / 32, lp.Y / 32, 6);
+          } else pushEv(life, sec, -1, -1, 6);
           liftedTags.add(tag);
         } else if (cmdName === "Stim") {
           // 스팀(전수조사) — 제 피 10을 태워 잠깐 빨라진다: 증거 f=16.
