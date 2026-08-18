@@ -398,7 +398,7 @@ export function buildUnitTracks(
   const prodStats = { total: 0, bound: 0, syn: 0 };
   /** 무른 건설 계측 — voided: 아예 안 지어진 것, closed: 놓쳤던 철거를 겹침으로 닫은 것. */
   const buildStats = { voided: 0, closed: 0 };
-  /** 폐기된 이동 목적지 계측 — dropped: 끝내 못 닿아 뺀 것, kept: 실제로 닿은 것. */
+  /** 폐기된 이동 목적지 계측 — dropped: 잘라 낸 것, kept: 실제로 닿은 것. */
   const moveStats = { dropped: 0, kept: 0 };
   /** 선 적 없는 건설의 자리 — 일꾼 생애에 남은 그 건설 증거(f=2)도 함께 지운다. */
   const voidedSites: { owner: number; x: number; y: number; sec: number }[] = [];
@@ -1250,34 +1250,39 @@ export function buildUnitTracks(
 
   for (const life of alive.values()) done.push(life);
 
-  /* ── 폐기된 목적지 지우기(지적: 5시로 간 정찰 프로브가 7시에 갔다 온다) ──────────
-     명령 파싱에 구멍이 있었다. 브루드워의 이동 명령에는 '예약(Queued)' 여부가 붙는데,
-     **예약 없는 명령은 대기 중인 명령을 전부 지우고** 예약 명령은 뒤에 붙는다. 우리는
-     그 구별을 안 보고 모든 우클릭을 '유닛이 지나간 점'으로 삼았다. 그래서 지워진 목적지
-     까지 다녀오는 그림이 나왔다.
+  /* ── 폐기된 목적지 자르기(지적: 5시로 간 정찰 프로브가 7시에 갔다 온다) ──────────
+     브루드워의 이동 명령에는 예약(Queued) 여부가 붙는다. 예약 없는 명령은 대기 중인
+     명령을 전부 지우고, 예약 명령은 뒤에 붙는다. 우리는 그 구별을 안 보고 모든 우클릭을
+     '유닛이 지나간 점'으로 삼아, 이미 지워진 목적지까지 다녀오는 그림을 그렸다.
+     실측(3시 정찰 프로브 10996): 63.04초 예약 없는 명령이 7시 목적지 둘을 지웠는데도
+     우리는 거기까지 다녀왔다. 진짜 목적지는 (110,118) = 5시이고, 5시 저그가 92~97초에
+     이 프로브를 (117,120)에서 세 번 어택으로 찍은 것이 그 증거다.
 
-     실측(3시 정찰 프로브 태그 10996):
-       59.93 (115,115) 예약X   61.95 (47,119) 예약O   62.54 (6,116) 예약O
-       63.04 (101,112) 예약X  ← 여기서 7시 둘이 통째로 지워진다
-       63.25 (110,118) 예약X   64.13 (8,116) 예약O
-     진짜 목적지는 (110,118) = 5시다. 실제로 5시 저그가 92~97초에 이 프로브를
-     (117,120)에서 세 번 어택으로 찍었다 — 그 자리에 있었다는 남의 증거다.
+     **지우지 않고 자른다**(수리). 처음엔 못 닿은 목적지를 통째로 뺐는데, 계측이 그것이
+     손해임을 보여 줬다: 이동 목적지의 65%가 사라져 증거점이 37% 줄고, 앵커로 확인되는
+     인과 오차의 '8타일 안' 비율이 95% → 89%로 되레 나빠졌다. 목적지는 유닛이 그쪽으로
+     '움직였다'는 사실까지 함께 지운 것이다. 이제는 명령이 폐기된 순간 유닛이 실제로
+     가 있던 지점으로 좌표를 바꿔 남긴다 — 방향은 지키고 허구만 걷어낸다.
 
-     여기서는 명령 큐를 그대로 굴린다: 예약 없는 명령은 큐를 비우고, 예약 명령은 뒤에
-     붙이고, 시간이 흐르는 만큼 유닛을 걷게 한다. 끝내 닿지 못한 목적지는 유닛이 가 본
-     적 없는 곳이므로 증거에서 뺀다. 남이 찍은 자리(f=1)와 건설·출생·착륙 자리는 진짜
-     위치라 지우지 않고, 오히려 걸음의 출발점을 그리로 되돌린다.
-     속력을 모르는 개체는 가장 빠른 지상 유닛으로 쳐서 되도록 안 지우는 쪽으로 기운다. */
+     굴리는 방식은 그대로다: 예약 없는 명령은 큐를 비우고, 예약 명령은 뒤에 붙이고,
+     시간이 흐르는 만큼 제 속력으로 걷는다. 남이 찍은 자리(f=1)·건설·출생·착륙은 진짜
+     위치라 걸음의 출발점을 그리로 되돌린다. 어택·수리 목적지는 표적 태그가 전투의
+     뼈대라 걸음에만 넣고 좌표는 안 건드린다.
+     속력을 모르는 개체는 가장 빠른 지상 유닛으로 치고 여유 35%를 준다. */
   {
-    let dropped = 0;
+    let clipped = 0;
     let kept = 0;
     for (const life of done) {
       if (life.bld || life.ev.length < 3) continue;
       let mk = "";
       let bn = 0;
       for (const [k, n] of life.kinds) if (n > bn) { bn = n; mk = k; }
-      // 여유 35% — 업그레이드·경사·모르는 속력에 관대하게. 확실히 못 닿는 것만 지운다.
-      const spd = (mk ? speedOfUnit(mk) : 7) * 1.35;
+      /* 자를 자리는 제 걸음으로, 닿았는지 판정은 너그럽게(여유 35%) — 둘을 가른다.
+         한 값으로 하면 둘 중 하나가 틀린다: 여유를 걸음에 주면 자른 자리가 실제보다
+         멀리 찍혀 그 자체가 허구가 되고, 여유를 빼면 업그레이드·경사·비스듬한 길
+         때문에 진짜로 닿은 목적지까지 '못 닿았다'가 된다. */
+      const spd = mk ? speedOfUnit(mk) : 7;
+      const REACH_SLACK = 1.35;
       const idx = life.ev
         .map((v, i) => ({ v, i }))
         .filter((e) => e.v[1] >= 0)
@@ -1289,13 +1294,15 @@ export function buildUnitTracks(
       /** 아직 못 간 목적지 줄 — [x, y, 증거 인덱스]. */
       const queue: [number, number, number][] = [];
       const arrived = new Set<number>();
+      /** 폐기된 목적지 → 그 순간 유닛이 있던 자리. */
+      const clip = new Map<number, [number, number, number]>();
       const walk = (until: number): void => {
         while (t0 < until && queue.length > 0) {
           const [qx, qy] = queue[0];
           const d = Math.hypot(qx - px, qy - py);
           const need = d / spd;
-          if (t0 + need <= until) {
-            px = qx; py = qy; t0 += need;
+          if (need <= (until - t0) * REACH_SLACK) {
+            px = qx; py = qy; t0 = Math.min(until, t0 + need);
             if (queue[0][2] >= 0) arrived.add(queue[0][2]);
             queue.shift();
           } else {
@@ -1305,38 +1312,79 @@ export function buildUnitTracks(
         }
         if (t0 < until) t0 = until;
       };
+      /** 큐를 비운다 — 남아 있던 목적지는 '여기까지 갔다'로 잘린다. */
+      const clearQueue = (): void => {
+        for (const [, , i] of queue) if (i >= 0) clip.set(i, [t0, px, py]);
+        queue.length = 0;
+      };
       for (let n = 1; n < idx.length; n += 1) {
         const { v, i } = idx[n];
         walk(v[0]);
         if (v[3] === 0) {
-          if (v[4] !== 1) queue.length = 0;   // 예약 없는 명령 = 큐를 비운다
+          if (v[4] !== 1) clearQueue();   // 예약 없는 명령 = 큐를 비운다
           queue.push([v[1], v[2], i]);
         } else if (v[3] === 7 || v[3] === 10) {
-          /* 어택·수리도 '거기까지 간다'는 명령이라 걸음에 넣는다. 다만 지우지는 않는다 —
-             다섯째 값에 표적 태그가 실려 있어 전투의 뼈대이기 때문이다(못 닿았어도
-             '누구를 치라고 시켰다'는 사실은 남는다). */
-          queue.length = 0;
+          clearQueue();
           queue.push([v[1], v[2], -1]);
         } else if (v[3] === 12) {
-          queue.length = 0;                   // 탔다 — 제 걸음이 아니다
+          clearQueue();                   // 탔다 — 제 걸음이 아니다
           px = v[1]; py = v[2];
         } else {
-          // 남이 찍은 자리·건설·출생·착륙·하차 = 진짜 위치. 걸음의 출발점을 여기로.
-          queue.length = 0;
-          px = v[1]; py = v[2];
+          clearQueue();
+          px = v[1]; py = v[2];           // 진짜 자리 — 걸음의 출발점을 여기로
         }
       }
-      walk(Infinity);                          // 마지막 명령은 끝까지 걸어간다
+      walk(Number.POSITIVE_INFINITY);     // 마지막 명령은 끝까지 걸어간다
       for (const [, , i] of queue) if (i >= 0) arrived.add(i);
+      /* 앵커가 걸음을 이긴다(수리) — 자른 자리는 어디까지나 우리 걸음 모형이 말하는
+         것이고, 남이 찍은 자리(f=1)는 그 순간 유닛이 정말로 있던 곳이다. 둘이 어긋나면
+         앵커가 옳다. 실측(정찰 프로브 10996): 64초에 예약된 7시 목적지 때문에 모형은
+         프로브를 서쪽으로 걷게 해 85초에 (43,117)이라는 자리를 지어냈는데, 92초 앵커는
+         5시 (117,120)이었다 — 7초에 74타일은 어떤 유닛도 못 간다. 그런 자리는 자르지
+         말고 아예 뺀다. 실제 게임에서는 예약이 중간에 끊긴 것이다(막히거나 얻어맞거나). */
+      const anch = idx.filter((e) => e.v[3] === 1);
+      const contradicted = (t: number, x: number, y: number): boolean => {
+        for (const a of anch) {
+          if (a.v[0] < t) continue;
+          return Math.hypot(a.v[1] - x, a.v[2] - y)
+            > spd * REACH_SLACK * Math.max(0.5, a.v[0] - t) + 1;
+        }
+        return false;
+      };
+      /* 잘린 점끼리 같은 자리가 잇달으면(연타 한 뭉치는 한 자리에서 끝난다) 하나만
+         남긴다 — 안 그러면 제자리 점이 줄줄이 쌓여 저장만 커진다. */
+      let lastX = Number.NaN;
+      let lastY = Number.NaN;
       for (let n = idx.length - 1; n >= 1; n -= 1) {
         const { v, i } = idx[n];
-        if (v[3] !== 0) continue;
-        if (arrived.has(i)) { kept += 1; continue; }
+        if (v[3] !== 0) { lastX = Number.NaN; continue; }
+        if (arrived.has(i)) { kept += 1; lastX = Number.NaN; continue; }
+        const c = clip.get(i);
         const at = life.ev.indexOf(v);
-        if (at >= 0) { life.ev.splice(at, 1); dropped += 1; }
+        if (at < 0) continue;
+        const dup = c !== undefined
+          && Math.abs(c[1] - lastX) < 0.3 && Math.abs(c[2] - lastY) < 0.3;
+        if (c === undefined || dup || contradicted(c[0], c[1], c[2])) {
+          life.ev.splice(at, 1);
+          clipped += 1;
+          continue;
+        }
+        lastX = c[1]; lastY = c[2];
+        v[0] = Math.round(c[0]);
+        v[1] = r1(c[1]);
+        v[2] = r1(c[2]);
+        clipped += 1;
+      }
+      life.ev.sort((a, b) => a[0] - b[0]);
+      // 같은 초·같은 자리 중복은 한 점으로(자르기가 만든 것).
+      for (let n = life.ev.length - 1; n >= 1; n -= 1) {
+        const a = life.ev[n];
+        const b = life.ev[n - 1];
+        if (a[3] === b[3] && a[0] === b[0]
+          && Math.abs(a[1] - b[1]) < 0.3 && Math.abs(a[2] - b[2]) < 0.3) life.ev.splice(n, 1);
       }
     }
-    moveStats.dropped = dropped;
+    moveStats.dropped = clipped;
     moveStats.kept = kept;
   }
 
