@@ -2221,8 +2221,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const BAR_Z9 = (h + 0.32) / 2;
       const BAR_H9 = 0.4;
       for (const [px9, py9] of [[0, 3.6], [0, -3.6], [3.8, 0], [-3.8, 0]] as [number, number][]) {
-        const lx9 = py9 === 0 ? 0.34 : 1.45;
-        const ly9 = py9 === 0 ? 1.45 : 0.34;
+        /* 띠를 90도 돌린다(재지적: "게이트 발판위 장식 90도씩 회전") — 여태는 중심에서
+           발판으로 가는 축과 직각(접선 방향)으로 누워 있었다. 이제 그 축과 나란한
+           방사 방향으로 길게 눕혀, 네 띠가 중심에서 밖으로 뻗는 살처럼 보인다. */
+        const lx9 = py9 === 0 ? 1.45 : 0.34;
+        const ly9 = py9 === 0 ? 0.34 : 1.45;
         const box9 = (z9: number): [number, number, number][] => [
           [px9 - lx9, py9 - ly9, z9], [px9 + lx9, py9 - ly9, z9],
           [px9 + lx9, py9 + ly9, z9], [px9 - lx9, py9 + ly9, z9],
@@ -2666,22 +2669,47 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ], 1.4));
     /* 톱니는 몸통 밖에(지적: 반쯤 파묻힌 톱니가 통째로 비쳐 어색) — 벽에 살짝만 닿게
        반지름을 밖으로 빼면, 앞 톱니는 벽 앞·뒤 톱니는 벽 뒤로 자연히 갈린다. */
+    /* 톱니를 방사 방향으로 돌려 세운다(지적: "포토 이빨 회전시 안 도는 느낌") —
+       여태는 여덟 개가 모두 모형 축에 나란한 네모 상자였다. 자리는 45도씩 돌아
+       있어도 면의 법선은 여덟 개가 전부 같은 네 방향이라, 명암이 톱니마다 똑같이
+       들고 요잉을 돌려도 무늬가 그대로였다. 이제 톱니마다 제 방사 방향(u)과 접선
+       방향(v)으로 상자를 세운다 — 바깥 면이 저마다 다른 쪽을 보므로 밝은 톱니가
+       요잉을 따라 둘레를 돌아간다. 바깥으로 갈수록 좁아지는 쐐기라 방향도 읽힌다. */
     for (let i = 0; i < 8; i += 1) {
       const a = (i * 45 * Math.PI) / 180;
-      const tx9 = Math.sin(a) * 6.15;
-      const ty9 = Math.cos(a) * 6.15;
-      out.push(...boxFaces3(tx9, ty9, 1.5, 1.5, 1.7));
-      /* 윗면만 색을 갈아입히려면 같은 네모를 한 장 더 얹는 수밖에 없다 — boxFaces3의
-         윗면은 몸판(bodyFace) 문자열에 함께 묻어 있어 거기서만 색을 뺄 수 없다.
-         깊이 키는 frustumFaces3가 제 톱니에 매기는 식을 그대로 베껴, 어느 요잉에서도
-         제 톱니 바로 위에 앉는다. */
-      const capD = polyPath3([
-        [tx9 - 0.75, ty9 + 0.75, 1.7], [tx9 + 0.75, ty9 + 0.75, 1.7],
-        [tx9 + 0.75, ty9 - 0.75, 1.7], [tx9 - 0.75, ty9 - 0.75, 1.7],
+      const ux9 = Math.sin(a); const uy9 = Math.cos(a);   // 방사(바깥)
+      const vx9 = Math.cos(a); const vy9 = -Math.sin(a);  // 접선
+      const tx9 = ux9 * 6.15;
+      const ty9 = uy9 * 6.15;
+      // 안쪽 반폭 0.86, 바깥 반폭 0.5 — 밖으로 좁아지는 쐐기.
+      const quad9 = (z9: number): [number, number, number][] => ([
+        [tx9 - ux9 * 0.75 - vx9 * 0.86, ty9 - uy9 * 0.75 - vy9 * 0.86, z9],
+        [tx9 - ux9 * 0.75 + vx9 * 0.86, ty9 - uy9 * 0.75 + vy9 * 0.86, z9],
+        [tx9 + ux9 * 0.75 + vx9 * 0.5, ty9 + uy9 * 0.75 + vy9 * 0.5, z9],
+        [tx9 + ux9 * 0.75 - vx9 * 0.5, ty9 + uy9 * 0.75 - vy9 * 0.5, z9],
       ]);
-      pc.push(...tagKey([bodyFace(capD), topFace(capD, 0.2)],
-        depthNow(tx9, ty9) + Math.min(1.7,
-          0.75 * Math.abs(depthNow(1, 0)) + 0.75 * Math.abs(depthNow(0, 1)))));
+      const lo9 = quad9(0);
+      const hi9 = quad9(1.7);
+      const tooth9: ShapeFace[] = [bodyFace(polyPath3(lo9))];
+      const walls9 = lo9.map((_, k9) => {
+        const j9 = (k9 + 1) % 4;
+        const mx9 = (lo9[k9][0] + lo9[j9][0]) / 2 - tx9;
+        const my9 = (lo9[k9][1] + lo9[j9][1]) / 2 - ty9;
+        const ml9 = Math.hypot(mx9, my9) || 1;
+        return {
+          d: polyPath3([lo9[k9], lo9[j9], hi9[j9], hi9[k9]]),
+          nx: mx9 / ml9, ny: my9 / ml9, f: facingRatio(mx9 / ml9, my9 / ml9),
+        };
+      }).sort((q9, w9) => q9.f - w9.f);
+      for (const wl9 of walls9) {
+        const fl9 = faceLight(wl9.nx, wl9.ny, 0.3);
+        tooth9.push(bodyFace(wl9.d), ...(fl9.visible ? fl9.face(wl9.d) : [sideFace(wl9.d, 0.46)]));
+      }
+      out.push(...tagKey(tooth9, depthNow(tx9, ty9) * 1.6));
+      /* 윗면만 개인색이다 — 몸판 위에 같은 네모를 한 장 더 얹는다. 깊이 키는 제 톱니
+         바로 위(+0.4)라 어느 요잉에서도 제 톱니에 붙어 다닌다. */
+      const capD = polyPath3(hi9);
+      pc.push(...tagKey([bodyFace(capD), topFace(capD, 0.2)], depthNow(tx9, ty9) * 1.6 + 0.4));
     }
     /* 가운데 포탑은 받침 위 얹힘(재지적: 바닥이 포탑을 가림) — 지붕 띠 키로 받침
        (반지름 키)·이음 원반들을 늘 이긴다. */
@@ -3554,28 +3582,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        개인색은 본체 허리를 두르는 띠 하나로만 남긴다(지적) — raceBase의 accent에
        그 띠만 넣고 나머지(구슬·받침·링·발광 고리)는 모두 고정색으로 못 박았다. */
     const PLASMA_RING = "#6fe4ff";
-    /* 링(도넛) — 원 경로를 따라 굵기가 일정한 관을 돌린 것. tilt(도)만큼 x축으로
-       눕혀, 같은 자리에 반대로 기운 둘을 겹치면 자이로가 도는 꼴이 된다. */
-    const ring9 = (r9: number, w9: number, z9: number, tilt9: number): ShapeFace[] => {
-      const tr9 = (tilt9 * Math.PI) / 180;
-      return paintBase(spirePillar({
-        x: 0, y: 0, h: 1, w: w9, tipW: w9, segs: 24, sides: 5, hold: 1,
-        path: (t9: number): [number, number, number] => {
-          const a9 = Math.PI * 2 * t9;
-          const ex9 = Math.cos(a9) * r9;
-          const ey9 = Math.sin(a9) * r9;
-          return [ex9, -0.2 + ey9 * Math.cos(tr9), z9 + ey9 * Math.sin(tr9)];
-        },
-      }), PLASMA_RING);
+    /* 구슬 넷을 둥근 몸에 맞춰 두른다(재지적: "코어는 일자가 아니라 둥근 몸체에 맞게
+       붙어야 하고 발판도 각각") — 여태는 앞으로 내민 긴 선반 하나 위에 넷이 일자로
+       서 있었다. 이제 드럼 둘레를 따라 앞쪽 ±54도 안에 넷을 벌려 놓고, 저마다 제
+       금색 발판을 딛는다. 발판도 방사 방향으로 세워 드럼 벽에 붙는다.
+       앞으로 돌아온 구슬은 드럼 위로(키 16+), 뒤로 넘어간 구슬은 드럼 뒤로(키 -7+)
+       간다 — 늘 맨 앞에 두면 뒤에 있어야 할 구슬이 드럼 위에 떠 보인다. */
+    const ORB_R = 3.15;
+    const ORB_ANG = [-54, -18, 18, 54];
+    const orbAt = (deg9: number): { x: number; y: number } => {
+      const a9 = (deg9 * Math.PI) / 180;
+      return { x: Math.sin(a9) * ORB_R, y: -0.2 + Math.cos(a9) * ORB_R };
     };
-    /* 앞줄 구슬 — 금 선반 위에 넷이 서로 닿게 늘어선다. 반지름 0.92에 사이 간격
-       1.7이라 옆구리가 살짝 물려 "주르륵 이어붙"은 꼴이 된다. */
-    const orb9 = (ox9: number): ShapeFace[] => {
-      const [gx9, gy9] = project(ox9, 2.7, 2.35);
+    const orb9 = (ox9: number, oy9: number): ShapeFace[] => {
+      const [gx9, gy9] = project(ox9, oy9, 2.55);
       return [
-        [groundEllipse(gx9, gy9, 0.92, 0.88), 0.62, "#a9ecf2"] as ShapeFace,
-        [groundEllipse(gx9, gy9, 0.56, 0.53), 0.5, "#e8fbff"] as ShapeFace,
-        topFace(groundEllipse(gx9 - 0.28, gy9 - 0.26, 0.3, 0.28), 0.5),
+        [groundEllipse(gx9, gy9, 0.88, 0.84), 0.62, "#a9ecf2"] as ShapeFace,
+        [groundEllipse(gx9, gy9, 0.54, 0.51), 0.5, "#e8fbff"] as ShapeFace,
+        topFace(groundEllipse(gx9 - 0.26, gy9 - 0.25, 0.29, 0.27), 0.5),
       ];
     };
     const [cx2, cy2] = project(0, -0.2, 3.6);
@@ -3599,16 +3623,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ], -4.8),
       // 위 파란 발광 고리 — 반투명 판(색을 안 줘 raceBase의 금 바탕이 든다).
       ...tagKey([[groundEllipse(cx2, cy2, 2.3, 1.15), 0.55] as ShapeFace], -5),
-      /* 플라즈마 디스크(요청) — 뚜껑에서 솟은 가는 금 축에 수평 링 하나와 ±42도로
-         엇갈린 링 둘. 본체 위에 뜬 것이라 늘 위로 그리는 큰 키를 준다. */
+      /* 플라즈마 디스크(재지적: "코어 위쪽 디스크는 디스크 한장짜리 판") — 겹쳐
+         기울인 링 셋을 걷고, 금 축 위에 두께 있는 원판 한 장만 얹는다. */
       ...tagKey(paintBase(cylinderFaces3(0, -0.2, 0.24, 1.9, 3.5), P_GOLD), 12),
-      ...tagKey(ring9(2.35, 0.2, 5.3, 0), 13),
-      ...tagKey(ring9(2.05, 0.17, 5.3, 42), 13.2),
-      ...tagKey(ring9(2.05, 0.17, 5.3, -42), 13.4),
-      // 구슬 받침 — 금색 못 박음(지적). 앞으로 내민 낮은 선반 하나에 넷이 앉는다.
-      ...tagKey(paintBase(boxFaces3(0, 2.7, 6.8, 1.5, 1.5), P_GOLD), 15),
-      // 구슬 넷 — "안가려짐"(지적)이라 이 건물에서 가장 큰 키를 준다.
-      ...[-2.55, -0.85, 0.85, 2.55].flatMap((ox9) => tagKey(orb9(ox9), 16)),
+      ...tagKey(paintBase(cylinderFaces3(0, -0.2, 2.55, 0.22, 5.3), PLASMA_RING), 13),
+      ...tagKey([topFace(discPath3(0, -0.2, 5.53, 1.5), 0.28)], 13.4),
+      // 구슬 넷과 저마다의 금색 발판 — 드럼 둘레를 따라 앞쪽에 벌려 선다.
+      ...ORB_ANG.flatMap((deg9) => {
+        const o9 = orbAt(deg9);
+        const front9 = facingRatio(o9.x, o9.y - (-0.2)) > 0.02;
+        const base9 = (front9 ? 16 : -7) + depthNow(o9.x, o9.y) * 0.4;
+        return [
+          ...tagKey(paintBase(cylinderFaces3(o9.x, o9.y, 1.05, 0.5, 1.6), P_GOLD), base9),
+          ...tagKey(orb9(o9.x, o9.y), base9 + 0.2),
+        ];
+      }),
     ], "toss", [
       /* 개인색은 본체 옆을 두르는 띠 하나(지적) — 드럼보다 조금 굵은 납작 원통을
          드럼 위(키 -6 다음)에 덧그리면, 어느 요잉에서도 앞 반쪽이 허리띠로 보인다. */
