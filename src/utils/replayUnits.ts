@@ -323,7 +323,36 @@ const r1 = (n: number): number => Math.round(n * 10) / 10;
 
 /** 정체 증거들을 하나의 이름으로 굳힌다 — 구체 증거가 있으면 다수결, 그룹 증거뿐이면
  *  대표(마린·수송선은 종족 것)로. */
+/** 스팀 명령(f=16)을 받은 개체의 정체를 바로잡는다.
+ *
+ *  지적: "스팀팩은 선택이 마린·파이어뱃으로 이루어져 있을 때만 쓸 수 있어."
+ *  그러니 스팀 증거를 가진 개체는 정의상 마린 아니면 파이어뱃이다.
+ *
+ *  실측이 그 지적을 뒷받침한다. 스팀 증거를 가졌는데 그 둘이 아닌 이름이 붙은 개체를
+ *  전수로 뜯어 보니, **제 정체를 말해 주는 증거가 하나도 없었다**:
+ *    · 옛 저장본의 'SCV' 38기 — 건설(f=2)·수리(f=10) 0건. 이동·공격·스팀뿐.
+ *    · 지금 분석의 '시즈 탱크' 8기 — 시즈(f=8) 0건.
+ *    · '메딕' 3기 — 힐(f=10) 0건.
+ *  이름은 생산 원장 결합에서 잘못 물려받은 것이고, 행동은 전부 마린이다.
+ *
+ *  그래서 스팀이 이긴다 — 다만 **제 증거를 가진 것은 지킨다**: 시즈를 켠 적이 있으면
+ *  탱크고, 힐을 한 적이 있으면 메딕이다. 행동 증거끼리는 더 구체적인 쪽이 이기고,
+ *  아무 증거도 없으면 스팀이 정한다. #62(버로우를 커맨드 증거로 판정)와 같은 이치다. */
+const STIM_KINDS = new Set(["Marine", "Firebat"]);
+function stimSettles(life: Life, kind: string): string {
+  if (STIM_KINDS.has(kind)) return kind;
+  if (!life.ev.some((v) => v[3] === 16)) return kind;
+  // 제 증거가 있는 정체는 지킨다 — 시즈(8·9)는 탱크, 힐·수리(10)는 메딕·SCV.
+  if (life.ev.some((v) => v[3] === 8 || v[3] === 9 || v[3] === 10 || v[3] === 2)) return kind;
+  return life.kinds.has("Firebat") ? "Firebat" : "Marine";
+}
+
 function settleKind(life: Life, race: Race | ""): string {
+  if (life.bld) return settleKindRaw(life, race);
+  return stimSettles(life, settleKindRaw(life, race));
+}
+
+function settleKindRaw(life: Life, race: Race | ""): string {
   if (life.kinds.size > 0) {
     // 건물 생애는 건물 이름 표만 센다(지적: 드론 표가 이겨 건물 자리에 드론이 섰다).
     const pool = life.bld
@@ -2067,7 +2096,8 @@ export function buildUnitTracks(
     let best = "";
     let bn = 0;
     for (const [k, n] of life.kinds) { if (n > bn) { best = k; bn = n; } }
-    return best;
+    // 스팀 증거는 여기서도 이긴다 — 체력·무기·속도를 이 이름으로 고르기 때문이다.
+    return life.bld ? best : stimSettles(life, best);
   };
   const MELEE_UNITS = new Set(["Zergling", "Zealot", "Dark Templar", "Ultralisk", "Firebat", "SCV", "Probe", "Drone"]);
   const atkEvts: { sec: number; x: number; y: number; owner: number; dps: number; melee: boolean }[] = [];
