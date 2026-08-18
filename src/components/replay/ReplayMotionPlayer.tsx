@@ -13,6 +13,8 @@ import { AIR_UNITS } from "../../utils/replayBuildMix";
 import { BLD_STATS, UNIT_STATS, type UnitTracksV2 } from "../../utils/replayUnits";
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } from "../../utils/minimapTerrain";
+import { loadSimTracks } from "../../utils/simClient";
+import { posAtSim, ST_INSIDE, type SimTrack } from "../../utils/simCore";
 import {
   bodyFace, capFace, depthNow, groundEllipse, sideFace, tagKey, topFace, type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
@@ -8617,6 +8619,12 @@ export default function ReplayMotionPlayer({
   const [entMode, setEntMode] = useState(false);
   const [entData, setEntData] = useState<UnitTracksV2 | null>(null);
   const [entLoad, setEntLoad] = useState<"idle" | "loading" | "none">("idle");
+  /* 시뮬 코어 미리보기(기획서 docs/plan-sim-core-v4.md P1) — 주소에 ?sim=1을 붙이면
+     유닛의 자리·방향을 명령 자취가 아니라 시뮬 결과에서 읽는다. 기존 길과 나란히 두고
+     눈으로 견줄 수 있게 깃발로 켠다 — 확인이 끝나면 이쪽이 기본이 되고 보정 코드가
+     통째로 걷힌다. 시뮬은 워커가 돌고 결과는 IndexedDB에 캐시된다(열 때마다 안 돈다). */
+  const simFlag = typeof location !== "undefined" && /[?&]sim=1/.test(location.search);
+  const [simTracks, setSimTracks] = useState<Map<number, SimTrack> | null>(null);
   /* 클릭 자국 토글(요청) — 기본은 끔: 클릭이 많은 경기에서는 자국이 화면을 덮는다. */
   const [clickFx, setClickFx] = useState(true); // 기본 켬(요청)
   /* 사양 라디오(요청: 최저·저·중·고·최고 — 렌더 요소 단계별 온오프, 기본 중).
@@ -8971,6 +8979,23 @@ export default function ReplayMotionPlayer({
      지형이 갈리면(검수 저장 등) 비운다. */
   const rallyRoutes = useRef(new Map<string, [number, number][]>());
   useEffect(() => { rallyRoutes.current.clear(); }, [terrain, terrainRaw]);
+  /* 시뮬 자취 적재(위 simFlag 주석) — 개체 트랙과 지형이 다 오면 워커에 맡긴다. 결과가
+     오기 전까지는 기존 길로 그린다(깜빡임 없이 갈아 끼운다). */
+  useEffect(() => {
+    if (!simFlag || !entData) { setSimTracks(null); return undefined; }
+    let cancelled = false;
+    void loadSimTracks(
+      /* 캐시 열쇠 — 경기를 가르는 값(clockKey)에 개체 수·증거 수를 지문으로 붙인다.
+         clockKey가 없는 자리에서도 다른 경기끼리 섞이지 않게. */
+      `${clockKey ?? "g"}:${entData.ents.length}:${entData.ents.reduce((n, x) => n + x.ev.length, 0)}:${grid.width}x${grid.height}`,
+      entData as unknown as Parameters<typeof loadSimTracks>[1],
+      { width: grid.width, height: grid.height, terrain: terrainRaw ?? terrain },
+    ).then((tracks) => {
+      if (cancelled || !tracks) return;
+      setSimTracks(new Map(tracks.map((tr) => [tr.tag, tr])));
+    });
+    return () => { cancelled = true; };
+  }, [simFlag, entData, terrain, terrainRaw, grid.width, grid.height, clockKey]);
   /* 지형 수정(요청: 모든 경기 리플레이 화면에서, 아무나) — 산 버튼이 검수 모달을 연다.
      저장하면 이 자리에서 바로 새 지형으로 갈아 끼운다(맵 캐시는 다음 로드에 새 값을 받는다). */
   /* (제거·요청: 지형 편집) — 재생 화면의 검수 모달·산 버튼을 걷었다. 검수 저장분은
@@ -12507,11 +12532,25 @@ export default function ReplayMotionPlayer({
             const fp2 = posAt(rp, Math.max(rp[0][0], frzSt[0]), null);
             if (fp2) pos = { ...pos, x: fp2.x, y: fp2.y };
           }
+          /* 시뮬 자리로 갈아 끼운다(기획서 P1, ?sim=1) — 이 한 줄이 켜지면 위에서 잰
+             교전 홀드·당김·걸음 시계·채취 왕복은 화면에 안 쓰인다. 시뮬 자리는 이미
+             제 속도로 적분된 값이라 아래 스무딩도 필요 없다(그래서 sim이면 건너뛴다).
+             배 안(ST_INSIDE)이면 아예 안 그린다. 결과가 아직 없으면 기존 길 그대로다. */
+          let simHdg: number | null = null;
+          const simTr = simTracks?.get(e.tag);
+          if (simTr) {
+            const sp = posAtSim(simTr, t);
+            if (sp) {
+              if (sp.state === ST_INSIDE) return null;
+              pos = { ...pos, x: sp.x, y: sp.y };
+              simHdg = sp.hdg;
+            }
+          }
           /* 화면 스무딩(지적: 뚝뚝 끊김 → 재요청: 순간이동 무조건 제거, 아무리 짧아도
              스무스) — 지난 프레임 표시 자리에서 목표로 지수 추종. 거리 상한(6타일 스냅)
              을 걷어 드랍·리콜 급 큰 이동도 빠른 미끄럼으로 잇는다. 시간 되감기·큰 시간
              건너뜀(탐색)만 그 자리 리셋이다. */
-          {
+          if (!simTr) {
             const mem2 = drawPosRef.current.get(holdKey);
             if (mem2 && t >= mem2.at && t - mem2.at < 1.5) {
               const dt5 = t - mem2.at;
@@ -12604,7 +12643,7 @@ export default function ReplayMotionPlayer({
           /* 싸울 때도 '움직이면 이동 방향'이 먼저다(요청) — 표적 고정 요잉은 잽으로
              파고들거나 진형이 밀릴 때 몸이 옆·뒤로 미끄러지게 만들었다. 제자리에 선
              순간에만 표적을 본다. */
-          const bodyHdg = headingOfDisplay(
+          const bodyHdg = simHdg !== null ? simHdg : headingOfDisplay(
             holdKey, pos.x, pos.y, headingOf(rp, rawPos),
             fighting && foeDeg !== null ? foeDeg : null,
           );
