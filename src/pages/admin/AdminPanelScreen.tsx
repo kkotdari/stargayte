@@ -110,7 +110,7 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
   //
   // 배치 등록과 견주면 이쪽은 '내려받기'가 한 번 더 있다 — 배치는 이미 손에 든 파일을 읽지만
   // 재분석은 서버에서 리플레이(한 개 128KB)를 받아 와야 한다. 그 몫만큼은 구조적으로 더 든다.
-  const reanalyzeGames = async () => {
+  const reanalyzeGames = async (only?: number[]) => {
     setErr("");
     setRedo({ done: 0, total: 0, failed: 0 });
     let done = 0;
@@ -120,14 +120,19 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
     let trackFailed = 0;
     const pool = createSummaryPool();
     try {
-      // 한 번에 다 받으면 응답이 수십 MB가 되므로 커서로 나눠 받는다.
-      let cursor: string | undefined;
-      const ids: number[] = [];
-      do {
-        const page = await api.getGameResultsPage({ cursor, limit: 100 });
-        page.items.forEach((m) => { if (m.replay) ids.push(m.id); });
-        cursor = page.nextCursor ?? undefined;
-      } while (cursor);
+      /* 고른 경기만 돌린다(요청: 재분석 누르면 팝업으로 경기 목록이 뜨고 선택해서
+         재분석) — 목록은 팝업이 이미 받아 뒀으므로 여기서 다시 받지 않는다. 안 넘어오면
+         (옛 경로) 예전처럼 전부 받는다. 한 번에 다 받으면 응답이 수십 MB라 커서로 나눈다. */
+      let ids: number[] = only ?? [];
+      if (!only) {
+        let cursor: string | undefined;
+        do {
+          const page = await api.getGameResultsPage({ cursor, limit: 100 });
+          page.items.forEach((m) => { if (m.replay) ids.push(m.id); });
+          cursor = page.nextCursor ?? undefined;
+        } while (cursor);
+      }
+      ids = [...new Set(ids)];
       setRedo({ done: 0, total: ids.length, failed: 0 });
 
       const one = async (id: number) => {
@@ -187,6 +192,77 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
       pool?.close();
       setRedo(null);
     }
+  };
+
+  /* ── 재분석 경기 고르기(요청) ─────────────────────────────────────────────────
+     예전엔 버튼을 누르면 "등록된 경기를 모두" 다시 분석했다. 파서를 고칠 때마다 전부를
+     다시 도는 것은 몇 분씩 걸리고, 방금 손본 규칙이 어느 경기에 어떻게 먹혔는지 보려면
+     한두 건만 돌리고 싶을 때가 많다. 목록에서 골라 돌린다. */
+  type PickRow = { id: number; matchNo: string; date: string; map: string; who: string };
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickRows, setPickRows] = useState<PickRow[] | null>(null);
+  const [pickErr, setPickErr] = useState("");
+  const [picked, setPicked] = useState<Set<number>>(new Set());
+  const [pickQuery, setPickQuery] = useState("");
+  useLockBodyScroll(pickerOpen, () => setPickerOpen(false));
+
+  const openPicker = async () => {
+    setPickerOpen(true);
+    setPickErr("");
+    if (pickRows) return;            // 한 번 받아 두면 다시 안 받는다.
+    try {
+      const rows: PickRow[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await api.getGameResultsPage({ cursor, limit: 100 });
+        for (const m of page.items) {
+          if (!m.replay) continue;   // 리플레이가 없으면 다시 읽을 것이 없다.
+          /* 이름은 리플레이 원본 아이디(rawName)를 쓴다 — 회원 연결과 무관하게
+             리플레이로 등록된 모든 슬롯에 있고, 어느 경기인지 알아보는 데 그게 제일 낫다. */
+          const names = [...m.team1, ...m.team2]
+            .map((sl) => sl.rawName || "")
+            .filter(Boolean);
+          rows.push({
+            id: m.id,
+            matchNo: m.matchNo,
+            date: m.gameStartedAt ? m.gameStartedAt.slice(0, 10) : m.date,
+            map: m.mapName || "(맵 미상)",
+            who: names.join(" · "),
+          });
+        }
+        cursor = page.nextCursor ?? undefined;
+      } while (cursor);
+      setPickRows(rows);
+    } catch (e) {
+      setPickErr(e instanceof Error ? e.message : "경기 목록을 받지 못했어요.");
+      setPickRows([]);
+    }
+  };
+
+  /* 검색은 화면에서만 거른다 — 목록을 이미 통째로 들고 있어서 서버를 다시 부를 이유가 없다.
+     전체 선택 체크박스는 '지금 보이는 것'을 기준으로 켠다(요청: 전체 선택 체크박스도 넣고) —
+     검색으로 좁힌 뒤 전체 선택하면 그 좁힌 것만 골라진다. */
+  const pickFiltered = (pickRows ?? []).filter((r) => {
+    const q = pickQuery.trim().toLowerCase();
+    if (!q) return true;
+    return `${r.matchNo} ${r.date} ${r.map} ${r.who}`.toLowerCase().includes(q);
+  });
+  const allShownPicked = pickFiltered.length > 0 && pickFiltered.every((r) => picked.has(r.id));
+  const toggleAllShown = () => {
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (allShownPicked) pickFiltered.forEach((r) => next.delete(r.id));
+      else pickFiltered.forEach((r) => next.add(r.id));
+      return next;
+    });
+  };
+  const togglePick = (id: number) => {
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   const currentNumber = versionNumber(appVersion);
@@ -333,7 +409,7 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
                       손대는 일이라 배치등록·배치삭제와 같은 성격이다. */}
                   <button
                     type="button" className="scr-btn scr-btn-primary"
-                    onClick={() => setConfirmRedo(true)} disabled={redo !== null}
+                    onClick={() => { void openPicker(); }} disabled={redo !== null}
                   >
                     {/* 진행 숫자는 버튼 안에 넣는다(요청) — 밖에 따로 두면 그 줄이 통째로
                         생겼다 사라지며 아래 버튼들이 위아래로 밀린다(스크린샷). */}
@@ -375,16 +451,87 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
         />
       )}
 
+      {/* 재분석 경기 고르기(요청) — 목록에서 골라 돌린다. */}
+      {pickerOpen && (
+        <div className="scr-modal-overlay" onClick={() => setPickerOpen(false)}>
+          <div
+            className="scr-modal scr-modal-md scr-redo-pick"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="scr-modal-head">
+              <span>다시 분석할 경기 고르기</span>
+              <button className="scr-icon-btn" onClick={() => setPickerOpen(false)} aria-label="닫기"><X size={14} /></button>
+            </div>
+            <div className="scr-modal-body scr-redo-pick-body">
+              {pickErr && <div className="scr-redo-pick-err">{pickErr}</div>}
+              {pickRows === null ? (
+                <div className="scr-redo-pick-empty"><Spinner /> 경기 목록을 받는 중…</div>
+              ) : pickRows.length === 0 ? (
+                <div className="scr-redo-pick-empty">리플레이가 붙은 경기가 없어요.</div>
+              ) : (
+                <>
+                  <input
+                    type="search"
+                    className="scr-input scr-redo-pick-search"
+                    placeholder="경기번호·날짜·맵·선수로 찾기"
+                    value={pickQuery}
+                    onChange={(e) => setPickQuery(e.target.value)}
+                  />
+                  {/* 전체 선택 — 검색으로 좁혔으면 그 좁힌 것만 대상이다(위 주석). */}
+                  <label className="scr-redo-pick-all">
+                    <input type="checkbox" checked={allShownPicked} onChange={toggleAllShown} />
+                    <span>
+                      전체 선택
+                      {pickQuery.trim() ? ` (검색된 ${pickFiltered.length}건)` : ` (${pickFiltered.length}건)`}
+                    </span>
+                  </label>
+                  <div className="scr-redo-pick-list">
+                    {pickFiltered.map((r) => (
+                      <label key={r.id} className={cx("scr-redo-pick-row", picked.has(r.id) && "is-on")}>
+                        <input
+                          type="checkbox"
+                          checked={picked.has(r.id)}
+                          onChange={() => togglePick(r.id)}
+                        />
+                        <span className="scr-redo-pick-main">
+                          <span className="scr-redo-pick-no">{r.matchNo}</span>
+                          <span className="scr-redo-pick-who">{r.who}</span>
+                        </span>
+                        <span className="scr-redo-pick-sub">{r.date} · {r.map}</span>
+                      </label>
+                    ))}
+                    {pickFiltered.length === 0 && (
+                      <div className="scr-redo-pick-empty">찾는 경기가 없어요.</div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="scr-modal-foot scr-redo-pick-foot">
+              <span className="scr-redo-pick-count">{picked.size}건 선택</span>
+              <button
+                type="button"
+                className="scr-btn scr-btn-primary"
+                disabled={picked.size === 0}
+                onClick={() => { setPickerOpen(false); setConfirmRedo(true); }}
+              >
+                다시 분석
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {confirmRedo && (
         <ConfirmDialog
-          title="등록된 경기를 모두 다시 분석할까요?"
+          title={`고른 경기 ${picked.size}건을 다시 분석할까요?`}
           /* 안내는 두 줄이면 된다(요청: 설명이 너무 길다) — 무엇이 바뀌고 무엇이 안 바뀌는지,
              그리고 오래 걸린다는 것. 어느 값이 어떻게 다시 써지는지는 여기서 읽을 일이
              아니다(그건 reanalyzeGames 주석에 있다) — 누르기 전에 알아야 하는 건
              "내가 손으로 넣은 것은 안 건드린다"뿐이다. */
           message="리플레이가 붙은 경기를 다시 읽어 분석 결과를 새로 씁니다. 직접 입력한 값(날짜·승패·회원 연결 등)은 그대로예요. 건수가 많으면 몇 분 걸립니다."
           confirmLabel="다시 분석"
-          onConfirm={() => { setConfirmRedo(false); void reanalyzeGames(); }}
+          onConfirm={() => { setConfirmRedo(false); void reanalyzeGames([...picked]); }}
           onCancel={() => setConfirmRedo(false)}
         />
       )}

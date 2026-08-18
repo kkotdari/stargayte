@@ -5763,6 +5763,42 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 /* ===== confirm dialog ===== */
 .scr-modal-sm { max-width: 360px; }
 
+/* 다시 분석할 경기 고르기(요청: 재분석 누르면 팝업으로 경기 목록이 뜨고 선택해서 재분석)
+   — 목록이 길어 본문만 스크롤하고 머리·발은 붙박이로 둔다. 발에는 고른 건수와 실행
+   버튼이 나란히 선다. */
+.scr-modal-md { max-width: 560px; }
+.scr-redo-pick { display: flex; flex-direction: column; max-height: min(78vh, 720px); }
+.scr-redo-pick-body { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow: hidden; }
+.scr-redo-pick-search { width: 100%; }
+.scr-redo-pick-all {
+  display: flex; align-items: center; gap: 8px;
+  font-size: var(--fs-body); font-weight: 600;
+  padding: 6px 8px; border-radius: 8px; background: var(--surface-2); cursor: pointer;
+}
+.scr-redo-pick-list {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 2px;
+  border: 1px solid var(--line); border-radius: 8px; padding: 4px;
+}
+.scr-redo-pick-row {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 6px; cursor: pointer;
+  font-size: var(--fs-sm); line-height: 1.35;
+}
+.scr-redo-pick-row:hover { background: var(--surface-2); }
+.scr-redo-pick-row.is-on { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.scr-redo-pick-main { display: flex; flex-direction: column; min-width: 0; }
+.scr-redo-pick-no { font-variant-numeric: tabular-nums; color: var(--muted); font-size: var(--fs-xs); }
+.scr-redo-pick-who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scr-redo-pick-sub { color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; }
+.scr-redo-pick-empty { color: var(--muted); font-size: var(--fs-body); text-align: center; padding: 16px 0; }
+.scr-redo-pick-err { color: var(--danger, #d9534f); font-size: var(--fs-sm); }
+.scr-modal-foot, .scr-redo-pick-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 10px 14px; border-top: 1px solid var(--line);
+}
+.scr-redo-pick-count { color: var(--muted); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+
 /* ===== 프로필 사진 크롭(AvatarCropModal) =====
    아바타는 이 앱 어디서나 원형으로만 쓰이므로(.scr-avatar-pick .scr-avatar) 자유 비율
    대신 정사각(원) 크롭 하나만 지원한다. */
