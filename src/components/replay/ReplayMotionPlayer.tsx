@@ -13614,14 +13614,17 @@ export default function ReplayMotionPlayer({
               if (!arr) return { frac: 1, hurt: -99 }; // 기록 없는 성한 건물도 만피 바(요청).
               const rec = [...arr].filter((r2) => r2.born <= sec + 5)
                 .sort((a2, b2) => b2.born - a2.born)[0] ?? arr[0];
-              let pct = 100;
+              /* 체력은 실제 수치다(지적) — 만피는 건물 표에서 가져와 나눈다. */
+              const bs0 = BLD_STATS[unit];
+              const full0 = bs0 ? bs0[0] + bs0[1] : 850;
+              let now0 = full0;
               let hurt = -99;
               for (const [hs3, hv3] of rec.hp) {
                 if (hs3 > t) break;
-                if (hv3 < pct) hurt = hs3;
-                pct = hv3;
+                if (hv3 < now0) hurt = hs3;
+                now0 = hv3;
               }
-              return { frac: Math.max(0.04, pct / 100), hurt };
+              return { frac: Math.max(0.04, Math.min(1, now0 / Math.max(1, full0))), hurt };
             })();
             /* 맞는 건물에도 불티(요청: 유닛·건물 피격 표현 재검토) — 여태 건물은 피격
                연출이 아예 없어, 해처리가 깎이는 동안 화면에서 터지는 것은 때리는 쪽
@@ -14942,12 +14945,18 @@ export default function ReplayMotionPlayer({
           /* 지금 체력(요청: 체력을 지니고 다닌다) — 변곡점 목록에서 t 시점 값.
              내려간 변곡점의 시각은 곧 '이 개체가 실제로 맞은 순간'이라, 피격 불티를
              그 자리·그 때에 띄우는 자로 함께 쓴다(요청: 피격 표현 재검토). */
-          let hpPct = 100;
+          /* 체력은 실제 수치다(지적: "체력은 반올림 없이 실제 수치로") — 자취의 값이
+             곧 남은 체력(실드 포함)이라, 만피는 표에서 가져와 나눈다. */
+          const hpFull = (() => {
+            const st0 = UNIT_STATS[drawUnit2] ?? UNIT_STATS[drawUnit];
+            return st0 ? st0.hp + (st0.sh ?? 0) : 40;
+          })();
+          let hpNow = hpFull;
           let hurtAt = -99;
           for (const [hs2, hv2] of e.hp) {
             if (hs2 > t) break;
-            if (hv2 < hpPct) hurtAt = hs2;
-            hpPct = hv2;
+            if (hv2 < hpNow) hurtAt = hs2;
+            hpNow = hv2;
           }
           /* 선택 표시(지적: 드래그 선택 구분) — 방금 명령을 받았다는 것은 그 직전에
              (드래그든 부대지정이든) 잡혔다는 뜻이다. 클릭 토글이 켜져 있으면 명령
@@ -14976,11 +14985,8 @@ export default function ReplayMotionPlayer({
             kind: kindMain,
             selRing: selNow || undefined,
             // 보임 토글이면 만피여도 표시(요청: 모든 유닛·건물 다 표시).
-            hpFrac: Math.max(0.04, hpPct / 100),
-            hpMax: (() => {
-              const st2 = UNIT_STATS[drawUnit2] ?? UNIT_STATS[drawUnit];
-              return st2 ? st2.hp + (st2.sh ?? 0) : undefined;
-            })(),
+            hpFrac: Math.max(0.04, Math.min(1, hpNow / Math.max(1, hpFull))),
+            hpMax: hpFull,
             tint: (() => {
               const actSt = e.statuses.find(([sa3, sb3]) => t >= sa3 && t < sb3);
               return actSt ? STATUS_TINT[actSt[2]] : undefined;
@@ -15102,7 +15108,8 @@ export default function ReplayMotionPlayer({
              막이 한 번 번쩍인다. */
           const st9 = UNIT_STATS[drawUnit2] ?? UNIT_STATS[drawUnit];
           const shShare9 = st9 && st9.sh ? st9.sh / (st9.hp + st9.sh) : 0;
-          const shieldUp9 = shShare9 > 0 && hpPct / 100 > 1 - shShare9 + 0.001;
+          const shieldUp9 = shShare9 > 0
+            && hpNow / Math.max(1, hpFull) > 1 - shShare9 + 0.001;
           const hitSpark = qCombat && hitNow ? (
             shieldUp9 ? (
               <span

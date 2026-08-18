@@ -87,7 +87,11 @@ export interface UnitEnt {
   dk: "tag" | "atk" | "morph" | "cxl" | "";
   /** 건물이면 1. */
   bld: 0 | 1;
-  /** 체력 변곡점 [초, 퍼센트 0~100](요청: 스탯을 지닌 생애주기) — 피격·회복·죽음. */
+  /** 체력 변곡점 [초, 남은 체력](요청: 스탯을 지닌 생애주기) — 피격·회복·죽음.
+   *  ★ 값은 **실제 수치**다(지적: "체력은 반올림 없이 실제 수치로"). 실드를 더한 값이고,
+   *    최대치는 UNIT_STATS·BLD_STATS에서 같은 이름으로 찾는다. 옛 판은 5칸 단위로
+   *    반올림한 퍼센트였다 — 그 반올림이 체력 남은 개체를 0으로 찍어 죽이곤 했다.
+   *    0은 오직 죽음의 표시다(살아 있으면 최소 1). */
   hp?: [number, number][];
   /** 캐리어 인터셉터 개수 변곡점 [초, 개수](요청: 실시간 적용). */
   ic?: [number, number][];
@@ -3033,7 +3037,6 @@ const BLD_DIE_SLACK_SEC = 8;
     const race2 = raceOf.get(owner) ?? "";
     const [maxHp, maxSh] = BLD_STATS[kind]
       ?? (race2 === "프로토스" ? [500, 500] : [850, 0]) as [number, number];
-    const total = maxHp + maxSh;
     let hp2 = maxHp;
     let sh2 = maxSh;
     const heals = tag2 !== null ? healsAt.get(tag2) ?? [] : [];
@@ -3053,12 +3056,10 @@ const BLD_DIE_SLACK_SEC = 8;
     const trace: [number, number][] = [];
     let lastPct = 100;
     const push2 = (sec3: number): void => {
-      /* 살아 있으면 0으로 안 내려간다(지적 #53) — 퍼센트를 5칸 단위로 반올림하다 보니
-         체력이 남아 있는데도 0%로 찍히는 자리가 있었다(850짜리 건물이 1 남으면 0.02%
-         → 0). 화면은 0을 죽음으로 읽으므로(hpZero), 그 반올림 하나가 멀쩡한 건물을
-         무너뜨렸다. 진짜 0은 아래 죽음 처리에서만 나온다. */
-      const alive4 = hp2 + sh2 > 0;
-      const p4 = Math.max(alive4 ? 5 : 0, Math.round(((hp2 + sh2) / total) * 20) * 5);
+      /* 남은 체력을 실제 수치로(지적) — 유닛과 같은 잣대다. 실드를 더한 값이고,
+         살아 있으면 최소 1이다(0은 죽음의 표시로만). 반올림 퍼센트가 멀쩡한 건물을
+         무너뜨리던 자리가 이걸로 근본에서 없어진다. */
+      const p4 = hp2 + sh2 > 0 ? Math.max(1, Math.round(hp2 + sh2)) : 0;
       if (p4 !== lastPct) { trace.push([Math.round(sec3), p4]); lastPct = p4; }
     };
     const flow = (from: number, to: number): void => {
@@ -3174,11 +3175,13 @@ const BLD_DIE_SLACK_SEC = 8;
     for (const a of agents) simEnd = Math.max(simEnd, a.life.last + 8);
     for (const b of battles) simEnd = Math.max(simEnd, b.end + 4);
     simEnd = Math.min(simEnd, 3600 * 3);
-    /* 살아 있으면 0으로 안 내려간다(과제 #69) — 5칸 단위 반올림이 체력 남은 유닛을
-       0%로 찍으면 화면은 그걸 죽음으로 읽는다(hpZero). 진짜 0은 죽을 때만 나온다.
-       건물 원장에 먼저 넣은 잣대를 유닛에도 똑같이 준다. */
+    /* 남은 체력을 **실제 수치로** 싣는다(지적: "체력은 반올림 없이 실제 수치로").
+       여태는 퍼센트를 5칸 단위로 반올림해 담았다 — 그 반올림 때문에 체력이 남은 유닛이
+       0%로 찍혀 화면이 죽음으로 읽는 일까지 있었다(과제 #69에서 바닥을 깔아 막았던 것).
+       실드를 함께 더한 값이다(바가 둘을 합쳐 그린다). 살아 있으면 최소 1이다 — 0은
+       죽음의 표시로만 쓴다. */
     const pctOf = (a: Agent): number =>
-      Math.max(a.hp + a.sh > 0 ? 5 : 0, Math.round(((a.hp + a.sh) / (a.maxHp + a.maxSh)) * 20) * 5);
+      (a.hp + a.sh > 0 ? Math.max(1, Math.round(a.hp + a.sh)) : 0);
     const mark = (a: Agent, sec: number): void => {
       const p = pctOf(a);
       if (p !== a.lastPct) { a.trace.push([Math.round(sec), p]); a.lastPct = p; }
@@ -3642,8 +3645,16 @@ const BLD_DIE_SLACK_SEC = 8;
            한 번도 안 맞은 채 죽는 것도 사라지는 시간을 갖는다 — 원장이 비었다고
            건너뛰면 만피에서 곧장 사라져 뚝 끊긴다. 건물은 8초, 유닛은 짧게 2초다. */
         const fade = life.bld ? 8 : 2;
+        /* 자취가 비면 만피에서 시작한다 — 이제 퍼센트가 아니라 실제 수치이므로 그
+           개체의 최대 체력(실드 포함)을 쓴다. */
+        const mk9 = majorityKindOf(life);
+        const st9 = life.bld ? BLD_STATS[mk9] : undefined;
+        const us9 = UNIT_STATS[mk9];
+        const full9 = life.bld
+          ? (st9 ? st9[0] + st9[1] : 850)
+          : (us9 ? us9.hp + (us9.sh ?? 0) : 40);
         const base9: [number, number][] = hpTrace && hpTrace.length > 0
-          ? hpTrace : [[Math.round(life.born), 100]];
+          ? hpTrace : [[Math.round(life.born), full9]];
         const g9 = Math.max(life.born, d - fade);
         const last9 = [...base9].reverse().find((q) => q[0] <= g9) ?? base9[0];
         hpTrace = [...base9.filter((q) => q[0] < g9),
@@ -3657,7 +3668,7 @@ const BLD_DIE_SLACK_SEC = 8;
       if (hpTrace && hpTrace.length > 0) {
         const lastI = hpTrace.length - 1;
         hpTrace = hpTrace.map((q, i) => (q[1] <= 0 && !(d !== null && i === lastI)
-          ? [q[0], 5] as [number, number] : q));
+          ? [q[0], 1] as [number, number] : q));
       }
       const race = raceOf.get(life.owner) ?? "";
       const icArr = icptOf.get(life.tag);
@@ -3693,7 +3704,10 @@ const BLD_DIE_SLACK_SEC = 8;
        돌연 무너졌다. 붕괴가 확정된 건물은 8초 전부터 0으로 선형 수렴시킨다. */
     if (b.gone !== null) {
       // 원장이 비어도 무너지는 8초는 준다(위 태그 건물과 같은 잣대).
-      if (bHp.length === 0) bHp = [[Math.round(b.born), 100]];
+      if (bHp.length === 0) {
+        const bs0 = BLD_STATS[b.kind];
+        bHp = [[Math.round(b.born), bs0 ? bs0[0] + bs0[1] : 850]];
+      }
       const g8 = Math.max(b.born, b.gone - 8);
       const lastQ = [...bHp].reverse().find((q) => q[0] <= g8) ?? bHp[0];
       bHp = bHp.filter((q) => q[0] < g8);
@@ -3704,7 +3718,7 @@ const BLD_DIE_SLACK_SEC = 8;
     if (bHp.length > 0) {
       const lastI = bHp.length - 1;
       bHp = bHp.map((q, i) => (q[1] <= 0 && !(b.gone !== null && i === lastI)
-        ? [q[0], 5] as [number, number] : q));
+        ? [q[0], 1] as [number, number] : q));
     }
     ents.push({
       t: b.tag ?? -1, o: b.owner, k: b.kind, b: Math.round(b.born),
