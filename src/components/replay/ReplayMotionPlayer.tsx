@@ -7448,6 +7448,9 @@ type UnitDrawOp = {
   wFrac?: number; hFrac?: number;
   /** 상자 채우기 방식 — "meet"는 비율 유지·바닥 정렬(keepRatio), "fill"은 맨 네모 채움. */
   boxFit?: "meet" | "fill";
+  /** 공사 단계 1~3 — 모델의 아래쪽 stg/3만 그린다(요청: 아래 부품부터 점점 위로).
+   *  0이나 3이면 통째로. */
+  buildStage?: number;
   /** meet에서 높이 대신 폭을 기준으로 — 납작 건물(벙커류)은 상자가 낮아 min 규칙이
    *  전체를 줄여 버린다(조사: 벙커가 유난히 작던 이유). */
   fitWidth?: boolean;
@@ -7695,7 +7698,14 @@ function buildingSprite(
 ): { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number; w: number; cx: number } | null {
   const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
   const lod = lodOf(sideQ);
-  const key = `${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}|${op.color}|${sideQ}|${B.toFixed(2)}|${lod}`;
+  /* 공사 단계(요청: "3단계로 하고 실제 모델의 부품을 일부만 표현하다가 완성되는 형태로
+     수정. 아래쪽 부품부터 표현 → 점점 위로") — 판을 구울 때 모델 상자의 아래쪽 몫만
+     남기고 잘라 낸다. 부품마다 높이를 알 수 없어(면은 이미 화면으로 투영돼 z가 없다)
+     기하로 고를 수는 없지만, 굽는 좌표계에서 아래쪽을 오려 내면 결과는 같다 —
+     아래에 있는 부품부터 드러나고 위 부품은 아직 없다.
+     단계가 캐시 열쇠에 들어가므로 판은 단계별로 따로 구워져 프레임 비용이 없다. */
+  const stg = op.buildStage ?? 0;
+  const key = `${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}|${op.color}|${sideQ}|${B.toFixed(2)}|${lod}|${stg}`;
   const hit = BLD_SPRITE_CACHE.get(key);
   if (hit) return hit;
   const { faces: all } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
@@ -7712,6 +7722,14 @@ function buildingSprite(
   c2.translate(pad + sideQ / 2, pad + sideQ);
   c2.scale(sideQ / 16, sideQ / 16);
   c2.translate(-8, -16);
+  if (stg > 0 && stg < 3) {
+    /* 모델 상자는 y 0(꼭대기)~16(발) — 아래에서 stg/3만큼만 남긴다. 위로는 넉넉히
+       열어 두어 발보다 아래로 삐치는 그림자·받침이 안 잘리게 한다. */
+    const keep = (16 * stg) / 3;
+    c2.beginPath();
+    c2.rect(-8, 16 - keep, 32, keep + 8);
+    c2.clip();
+  }
   for (const [d, o, fill] of faces) {
     c2.globalAlpha = shadeBoost(o, fill);
     c2.fillStyle = fill ?? op.color;
@@ -11616,9 +11634,21 @@ export default function ReplayMotionPlayer({
               const [bfxF, bfyF] = posFrac(centerX, bAnchorY);
               unitOps.push({
                 fx: bfxF, fy: bfyF, z,
-                kind: race2 === "저그" ? "cocoon" : race2 === "프로토스" ? "warpin" : "scaffold",
+                /* 테란 공사는 제 건물 모델을 아래부터 드러낸다(요청: "3단계로 하고 실제
+                   모델의 부품을 일부만 표현하다가 완성되는 형태로. 아래쪽 부품부터 →
+                   점점 위로"). 뼈대·크레인 한 벌(scaffold)을 모든 건물에 똑같이 쓰던
+                   것을 걷는다 — 무엇을 짓는지 완성될 때까지 알 수 없었다.
+                   모델이 없는 건물(부속 등 폴백)만 예전 공사장으로 떨어진다. */
+                kind: race2 === "저그" ? "cocoon"
+                  : race2 === "프로토스" ? "warpin"
+                    : (shapeKind || "scaffold"),
+                ...(race2 === "테란" && shapeKind
+                  ? { buildStage: prog < 0.34 ? 1 : prog < 0.67 ? 2 : 3 }
+                  : {}),
                 // 공사 모델도 45도 요잉(지적) + 종류별 보정(지적: 테란 공사장 반시계 90).
-                rotDeg: buildingYawOf(race2 === "저그" ? "cocoon" : race2 === "프로토스" ? "warpin" : "scaffold"),
+                rotDeg: buildingYawOf(race2 === "저그" ? "cocoon"
+                  : race2 === "프로토스" ? "warpin"
+                    : (race2 === "테란" && shapeKind ? unit : "scaffold")),
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
                 // 공사 모델도 완성 건물과 같은 지면선에 선다.
                 baseFy: posFrac(centerX, centerY + fp2[1] / 2)[1],
@@ -11646,8 +11676,18 @@ export default function ReplayMotionPlayer({
               /* 저그 고치도 모델 앵커에(재지적: 고치와 안의 박동 빛 중앙이 안 맞음) —
                  고치 모델은 무게중심 보정(+0.25타일)과 바닥 맞춤을 받는데 글로우만
                  발자국 가운데였다. 소환구와 같은 식으로 셋 다 제 모델에 묶는다. */
-              const bfxX = race2 === "테란" ? centerX - fp2[0] / 2 + 0.9 : centerX;
-              const bfxY = race2 === "테란" ? centerY + fp2[1] / 2 - 0.6
+              /* 테란 일꾼은 네 귀퉁이를 돈다(요청: "프로브가 4귀퉁이를 돌면서 공사") —
+                 여태 왼쪽 아래 한 자리에 붙박이로 서서 용접했다. 건물 번호로 시작
+                 귀퉁이를 흩어 두고(같은 기지의 공사가 나란히 같은 자리에서 시작하면
+                 눈에 띄게 어색하다) 6초마다 시계 방향으로 옮긴다.
+                 ⚠ 원작의 실제 순회 패턴은 아직 대조 전이다(지적: "이 패턴은 공식문서
+                 조사 필요") — 조사가 오면 이 자리만 바꾸면 된다. */
+              const CORNER_SEC = 6;
+              const cIdx = (Math.floor(t / CORNER_SEC) + i) % 4;
+              const cDx = (cIdx === 0 || cIdx === 3 ? -1 : 1) * (fp2[0] / 2 - 0.7);
+              const cDy = (cIdx === 0 || cIdx === 1 ? 1 : -1) * (fp2[1] / 2 - 0.5);
+              const bfxX = race2 === "테란" ? centerX + cDx : centerX;
+              const bfxY = race2 === "테란" ? centerY + cDy
                 : centerY + fp2[1] / 2 - modelHT / 2;
               if (!qBuildFx) return null;
               return (
@@ -11672,7 +11712,7 @@ export default function ReplayMotionPlayer({
                         key={k}
                         className="scr-bfx-weld"
                         style={{
-                          width: "0.3px",
+                          width: "0.2px",
                           height: `${((0.4 + ((i * 7 + k * 5) % 5) * 0.28) * ws).toFixed(1)}px`,
                           transform: `rotate(${-90 + (k - 2) * 34 + ((i * 13 + k * 29) % 22) - 11}deg) translateY(${(0.2 * ws).toFixed(1)}px)`,
                           animationDelay: `${(i % 5) / 10}s`,

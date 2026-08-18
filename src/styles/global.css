@@ -13047,8 +13047,12 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-bfx-weld {
   /* 앵커는 상자 가운데(재지적: 위치가 안 맞음) — left/top 0은 18px 상자의 왼쪽 위
      모서리라, 불티가 건물에서 9px(모바일선 3타일) 비껴 떠 있었다. */
-  position: absolute; left: 50%; top: 50%; width: 0.3px; border-radius: 0.5px;
-  background: #fff; box-shadow: 0 0 2px rgba(255, 255, 255, 0.9);
+  /* 실선 플라즈마 스파크(요청: "불꽃은 실선처럼 얇은 플라즈마 스파크로 변경") —
+     흰 막대를 걷고, 아래는 사이언 위는 흰 심으로 타는 실 한 올. 굵기는 더 얇게
+     (0.3 → 0.2px), 빛무리는 사이언으로. */
+  position: absolute; left: 50%; top: 50%; width: 0.2px; border-radius: 0.4px;
+  background: linear-gradient(to top, rgba(90, 230, 255, 0), #6fe4ff 35%, #eafcff);
+  box-shadow: 0 0 2px rgba(111, 228, 255, 0.95), 0 0 5px rgba(111, 228, 255, 0.5);
   transform-origin: 50% 0; opacity: 0;
   animation: scr-weld 1.7s linear infinite;
 }
