@@ -99,6 +99,8 @@ export interface UnitTracksV2 {
     cmds: number; attributed: number; anchors: number; lives: number; tags: number;
     /** 생산 원장(요청: 큐된 유닛 전 생애) — 기입·결합·합성 개체 수. */
     prod?: number; prodBound?: number; prodSyn?: number;
+    /** 무른 건설 — bldVoided: 선 적 없어 뺀 것, bldClosed: 겹침으로 철거를 닫은 것. */
+    bldVoided?: number; bldClosed?: number;
   };
 }
 
@@ -219,6 +221,8 @@ const EARLY_ALL_SELECT_FRAMES = 720;
 /** 표적 명령 중 '공격'으로 칠 것들 — 죽음(공격받고 소식 없음)의 근거가 된다. 남의 유닛을
  *  찍은 우클릭도 공격이다(주인 판정 뒤의 2차 패스에서 가른다). */
 /* 건물 발자국(기획서 2-F) — 렌더러 FOOTPRINT와 같은 표(발치 공격 증거 판정용). */
+/** 본진 건물 — 일꾼의 출발점을 모를 때 여기서 걸어온 것으로 친다. */
+const HALL_KINDS = new Set<string>(["Hatchery", "Lair", "Hive", "Command Center", "Nexus"]);
 const FOOT_WH: Record<string, [number, number]> = {
   "Command Center": [4, 3], Nexus: [4, 3], Hatchery: [4, 3], Lair: [4, 3], Hive: [4, 3],
   Barracks: [4, 3], Factory: [4, 3], Starport: [4, 3], "Science Facility": [4, 3],
@@ -372,6 +376,10 @@ export function buildUnitTracks(
     builder: number | null; gone: number | null;
     /** 이 건물의 태그(있으면) — 자리 없는 건물 생애를 여기에 스냅해 붙인다(아래 앵커 승격). */
     tag?: number;
+    /** 아예 선 적이 없다(일꾼이 닿기 전에 무른 건설) — 출력에서 통째로 뺀다. */
+    never?: boolean;
+    /** 일꾼이 자리에 닿아 건물이 실제로 서는 예상 시각 — 이 전에 딴 명령이 오면 무른 것이다. */
+    arrive?: number;
     /** 끝난 사유 — 취소·철거에 변태를 더한다(지적: 레어가 돼도 앞 단계 홀이 안 닫힌다). */
     goneKind: "cxl" | "atk" | "morph" | null; ev: UnitEv[];
   }[] = [];
@@ -385,6 +393,10 @@ export function buildUnitTracks(
   /** 건물 태그별 생산 꼬리 시각 — 같은 건물의 큐는 한 줄로 이어진다(라바는 병렬). */
   const prodTail = new Map<number, number>();
   const prodStats = { total: 0, bound: 0, syn: 0 };
+  /** 무른 건설 계측 — voided: 아예 안 지어진 것, closed: 놓쳤던 철거를 겹침으로 닫은 것. */
+  const buildStats = { voided: 0, closed: 0 };
+  /** 선 적 없는 건설의 자리 — 일꾼 생애에 남은 그 건설 증거(f=2)도 함께 지운다. */
+  const voidedSites: { owner: number; x: number; y: number; sec: number }[] = [];
   /** 수송선 승하차(요청 ③) — 제 수송선을 우클릭하면 탑승(f=12), Unload·MoveUnload로
    *  내리면 하차(f=13). 탑승 중 제 명령을 받으면 그때 이미 내린 것이다. */
   const ridersOf = new Map<number, number[]>();
@@ -627,29 +639,66 @@ export function buildUnitTracks(
         // 같은 일꾼이 도착 전에 다른 건설을 또 냈으면 앞의 것은 무른 것이다(드론 건물
         // 바꿔 앉히기 — v1 파서의 lastDroneBuild 무르기와 같은 현상).
         const prevPending = tags.length === 1 ? pendingBuild.get(tags[0]) : undefined;
-        /* 프로토스는 '또 건설했다'가 취소가 아니다(수리: 3시 첫 포톤캐논이 곧바로 사라져
-           옆 자리로 미끄러져 보인다) — 프로브는 소환만 하고 곧 자유라, 1초 간격으로 둘을
-           연달아 앉히는 것이 정상 조작이고 둘 다 지어진다. 실측: 121초 (115,62)와 122초
-           (113,62) 두 캐논이 다 실제 명령인데, 앞의 것이 122초에 무른 것으로 찍혔다.
-           드론은 제 몸이 건물이 되므로 하나만 될 수 있고(변태), 테란 SCV는 앞 공사를
-           버리고 가므로 그대로 둔다. */
-        const cxlRace = raceOf.get(pid) ?? "";
-        if (prevPending && !c.Queued && sec < prevPending.arrive && cxlRace !== "프로토스") {
+        /* 종족을 안 가린다(수리: 안 지은 건물이 화면에 선다) — 한때 "프로토스는 소환만
+           하고 프로브가 곧 자유라 연달아 둘을 앉힐 수 있다"고 보고 프로토스를 뺐는데,
+           그게 틀렸다. 프로토스도 프로브가 자리까지 '걸어가야' 소환이 시작되고, 도착
+           전에 다른 건설을 내면 앞의 것은 없던 일이 된다. 실측(3시): 501.1초 파일런
+           (111,70)과 502.8초 옵저버토리 (111,70)가 같은 프로브·같은 타일이었다 —
+           두 건물이 한 자리에 설 수 없으니 앞의 것은 안 지어진 것이다(사용자 확인:
+           "실제로는 옵저버토리가 지어졌고 파일런은 지어지지 않았다"). 코어 둘,
+           엉뚱한 자리 게이트웨이도 전부 같은 형태였다.
+           무른 건설은 '잠깐 섰다 사라지는' 것이 아니라 아예 선 적이 없다 — never로
+           표시해 출력에서 뺀다. 그것이 '완공되며 미끄러지는' 것처럼 보이던 정체다. */
+        if (prevPending && !c.Queued && sec < prevPending.arrive) {
           const pb = built[prevPending.idx];
-          if (pb.gone === null) { pb.gone = sec; pb.goneKind = "cxl"; }
+          if (pb.gone === null) {
+            pb.gone = sec; pb.goneKind = "cxl"; pb.never = true;
+            voidedSites.push({ owner: pb.owner, x: pb.x, y: pb.y, sec: pb.born });
+          }
         }
         built.push({
           owner: pid, kind: unitName, born: sec, x: bpos.x, y: bpos.y,
           builder: tags.length === 1 ? tags[0] : null, gone: null, goneKind: null, ev: [],
         });
-        // 일꾼 하나가 낸 건설이면 무르기 판정 창을 연다(요청: SCV·프로브는 도착 전에
-        // 다른 명령이 오면 그 건설은 취소). 도착 예상은 직전 위치에서 일꾼 걸음(3.5)로
-        // 잰다 — 직전 위치를 모르거나 낡았으면(45초↑) 아예 안 무른다: 어림 창을 두면
-        // "건설 내리고 곧장 자원 복귀"라는 정상 조작이 죄다 취소로 오판된다(실측 4:4
-        // 에서 476채 중 196채). 모르면 지은 것으로 두는 쪽이 덜 틀린다.
-        if (tags.length === 1 && prevPt && sec - prevPt[0] < 45) {
-          const travel = Math.min(20, Math.max(1, Math.hypot(prevPt[1] - bpos.x, prevPt[2] - bpos.y) / 3.5));
-          pendingBuild.set(tags[0], { sec, x: bpos.x, y: bpos.y, idx: built.length - 1, arrive: sec + travel });
+        /* 일꾼 하나가 낸 건설이면 무르기 판정 창을 연다 — 일꾼이 자리에 '닿아야' 건물이
+           서고, 닿기 전에 다른 건설을 내면 앞의 것은 없던 일이 된다(세 종족 모두).
+           이 창은 그 일꾼이 위치 있는 명령을 하나라도 받으면 곧바로 닫힌다(1093줄) —
+           그래서 "건설 내리고 곧장 자원 복귀" 같은 정상 조작은 오판되지 않는다. 예전에
+           476채 중 196채가 취소로 잘못 찍힌 것은 그 문지기가 없던 시절 이야기다.
+
+           도착 예상은 직전 위치에서 일꾼 걸음(3.5타일/초)으로 잰다. 직전 위치를 모르거나
+           낡았으면 예전엔 아예 안 물렀는데, 그래서 안 지은 건물이 화면에 남았다(지적:
+           없는 코어·엉뚱한 게이트웨이). 모를 때는 '최소 이만큼은 걸어야 한다'는 바닥값
+           WARP_MIN을 쓴다. 2.5초로 잡은 근거는 이 리플레이의 실측 분포다 — 같은 일꾼의
+           연속 건설 간격이 1.14 / 1.31 / 1.34 / 1.47 / 1.64 / 1.72 / 2.1 / 2.27초에
+           몰려 있고(사용자가 확인해 준 무르기들이 여기 들어 있다), 그 다음이 3.23초부터라
+           둘 사이가 뚜렷이 갈린다. */
+        if (tags.length === 1) {
+          /* 출발점을 아는 대로 고른다 — 어림 상수를 쓰기 전에 실제 거리를 먼저 쓴다.
+             ① 그 일꾼의 최근(45초 안) 위치 증거, ② 없으면 그 임자의 가장 가까운 홀
+             (일꾼은 거의 늘 홀·미네랄 곁에 있다). 목적지는 발자국 **중심**이다 —
+             일꾼은 앵커가 아니라 건물 한가운데로 걸어간다. */
+          const [fw0, fh0] = FOOT_WH[unitName] ?? [3, 2];
+          const cx0 = bpos.x + fw0 / 2;
+          const cy0 = bpos.y + fh0 / 2;
+          let from: [number, number] | null =
+            prevPt && sec - prevPt[0] < 45 ? [prevPt[1], prevPt[2]] : null;
+          if (!from) {
+            let bd0 = Infinity;
+            for (const h0 of built) {
+              if (h0.owner !== pid || h0.never) continue;
+              if (!HALL_KINDS.has(h0.kind)) continue;
+              if (h0.born > sec || (h0.gone !== null && h0.gone <= sec)) continue;
+              const d0 = Math.hypot(h0.x + 2 - cx0, h0.y + 1.5 - cy0);
+              if (d0 < bd0) { bd0 = d0; from = [h0.x + 2, h0.y + 1.5]; }
+            }
+          }
+          const travel = from
+            ? Math.min(25, Math.max(0.8, Math.hypot(from[0] - cx0, from[1] - cy0) / 3.5))
+            : 2.5;
+          const arrive = sec + travel;
+          built[built.length - 1].arrive = arrive;
+          pendingBuild.set(tags[0], { sec, x: bpos.x, y: bpos.y, idx: built.length - 1, arrive });
         }
       }
       continue;
@@ -679,14 +728,15 @@ export function buildUnitTracks(
          먼저 맞춰 보고, 안 맞으면(테란·프로토스 — 건물 제 태그라 builder와 다르다)
          '가장 최근에 시작한 살아 있는 건설'로 물러난다. */
       const byTagIdx = built.findIndex((b) =>
-        b.owner === pid && b.gone === null && b.builder !== null && tags.includes(b.builder));
+        b.owner === pid && b.gone === null && !b.never
+        && b.builder !== null && tags.includes(b.builder));
       if (byTagIdx >= 0) {
         built[byTagIdx].gone = sec;
         built[byTagIdx].goneKind = "cxl";
       } else {
         for (let i = built.length - 1; i >= 0; i -= 1) {
           const b = built[i];
-          if (b.owner === pid && b.gone === null && sec - b.born < 180) {
+          if (b.owner === pid && b.gone === null && !b.never && sec - b.born < 180) {
             b.gone = sec;
             b.goneKind = "cxl";
             break;
@@ -792,6 +842,7 @@ export function buildUnitTracks(
             for (let q9 = 0; q9 < built.length; q9 += 1) {
               const b = built[q9];
               if (b.owner !== pid || b.gone !== null || b.born > sec || b.kind !== from) continue;
+              if (b.never) continue;
               const [fw9, fh9] = FOOT_WH[b.kind] ?? [3, 2];
               if (px9 < b.x - 0.6 || px9 > b.x + fw9 + 0.6) continue;
               if (py9 < b.y - 0.6 || py9 > b.y + fh9 + 0.6) continue;
@@ -1079,7 +1130,26 @@ export function buildUnitTracks(
          무르기는 확실한 근거 둘만 남긴다: 명시적 취소 커맨드(Cancel Build)와 같은
          일꾼의 도착 전 재건설(아래 Build 분기). 이동 무르기의 진짜 판정은 나중 증거
          (그 건물의 생산·피격 기록)로 뒤집는 후방 보정 쪽이 맞는 길이다. */
-      if (pos) pendingBuild.delete(tag);
+      /* 같은 일꾼에게 도착 전 다른 명령이 오면 그 건설은 없던 일이 된다(요청: "일꾼이
+         죽었다든가, 지으러 가는 동안 다른 게 먼저 짓기 시작한다든가, 같은 일꾼에게 다른
+         명령을 덮어씌운다 — 그 사유를 잡아낼 수 없나"). 예전엔 정반대로, 위치 있는 명령이
+         오면 판정 창을 '닫아' 취소를 포기했다. 그래서 안 지은 건물이 화면에 남았다.
+         실측(3시): 299.5초 코어(111,58) → 300.0초 우클릭(115.4,56.6) → 301.6초 코어
+         (113,60). 0.5초 만에 프로브가 자리에 닿았을 리 없으니 앞 코어는 선 적이 없다.
+         옵저버토리도 같다: 501.1초 파일런(111,70) → 501.4초 우클릭 → 502.8초 옵저버토리
+         (111,70). 사용자 확인 — "실제로는 옵저버토리가 지어졌고 파일런은 안 지어졌다".
+         도착 뒤의 명령은(프로토스는 소환만 하면 프로브가 자유다) 그냥 창을 닫는다. */
+      if (pos) {
+        const pend = pendingBuild.get(tag);
+        if (pend && sec < pend.arrive) {
+          const pb2 = built[pend.idx];
+          if (pb2 && pb2.gone === null) {
+            pb2.gone = sec; pb2.goneKind = "cxl"; pb2.never = true;
+            voidedSites.push({ owner: pb2.owner, x: pb2.x, y: pb2.y, sec: pb2.born });
+          }
+        }
+        pendingBuild.delete(tag);
+      }
       if (pos && life.bld && liftedTags.has(tag)) {
         // 비행 클릭(요청) — 뜬 건물이 나는 길. 착륙 전까지의 이동 자취다.
         pushEv(life, sec, pos.x, pos.y, 0);
@@ -1170,6 +1240,59 @@ export function buildUnitTracks(
   }
 
   for (const life of alive.values()) done.push(life);
+
+  /* ── 발자국 겹침으로 무른 건설 가려내기(지적: 없는 건물이 나온다) ──────────────
+     위의 '도착 전 재건설' 판정은 일꾼 걸음을 어림해 도착 시각을 재므로 빗나갈 수 있다.
+     여기 규칙은 어림이 아니라 물리다: **두 건물은 같은 타일을 함께 쓸 수 없다.** 서 있는
+     건물 위에는 애초에 자리를 찍을 수 없으니, 뒤 건설의 발자국이 앞 건설과 겹친다면
+     앞의 것은 그때 서 있지 않았다는 뜻이다. 둘 중 하나다:
+       ① 짧은 사이(90초 안)에 겹쳤다 — 앞의 것은 아예 안 지어졌다(무른 건설). 통째로 뺀다.
+       ② 오랜 뒤에 겹쳤다 — 앞의 것은 지어졌다가 부서졌고 우리가 그 철거를 놓쳤다.
+          뒤 건설이 시작된 때까지 서 있던 것으로 닫는다.
+     변태 승계(크립 콜로니→성큰, 해처리→레어)는 원래 같은 자리라 건드리지 않는다. */
+  {
+    const foot = (k: string): [number, number] => FOOT_WH[k] ?? [3, 2];
+    let voided = 0;
+    let closed = 0;
+    for (let j = 0; j < built.length; j += 1) {
+      const bj = built[j];
+      if (bj.never) continue;
+      const [jw, jh] = foot(bj.kind);
+      for (let i = 0; i < j; i += 1) {
+        const bi = built[i];
+        if (bi.never || bi.owner !== bj.owner) continue;
+        if (bi.goneKind === "morph" && bi.x === bj.x && bi.y === bj.y) continue;
+        if (bi.gone !== null && bi.gone <= bj.born) continue;   // 이미 닫혔다 — 겹칠 일 없다
+        const [iw, ih] = foot(bi.kind);
+        if (bi.x + iw <= bj.x || bj.x + jw <= bi.x) continue;
+        if (bi.y + ih <= bj.y || bj.y + jh <= bi.y) continue;
+        if (bj.born - bi.born < 90) {
+          bi.never = true; voided += 1;
+          voidedSites.push({ owner: bi.owner, x: bi.x, y: bi.y, sec: bi.born });
+        }
+        else { bi.gone = bj.born; bi.goneKind = "atk"; closed += 1; }
+        break;
+      }
+    }
+    buildStats.voided = voided;
+    buildStats.closed = closed;
+    // 선 적 없는 건설은 여기서 통째로 뺀다 — 아래 어느 소비자도 보면 안 된다.
+    for (let i = built.length - 1; i >= 0; i -= 1) if (built[i].never) built.splice(i, 1);
+    /* 생애에 남은 건설 증거(f=2)도 함께 지운다 — 물리 줄만 빼면 저그가 안 지워진다.
+       드론은 제 태그가 곧 건물이라 그 건물은 '태그 줄'로 그려지기 때문이다(실측:
+       5시 해처리 (112,113)이 3초 살다 (113,113)으로 옮겨 앉는 것으로 남아 있었다). */
+    if (voidedSites.length > 0) {
+      for (const life of done) {
+        if (life.ev.length === 0) continue;
+        for (let i = life.ev.length - 1; i >= 0; i -= 1) {
+          const v = life.ev[i];
+          if (v[3] !== 2) continue;
+          if (voidedSites.some((q) => q.owner === life.owner && Math.abs(q.sec - v[0]) <= 1
+            && Math.abs(q.x - v[1]) < 0.6 && Math.abs(q.y - v[2]) < 0.6)) life.ev.splice(i, 1);
+        }
+      }
+    }
+  }
 
   /* ── 태그 재사용 분리(요청: 체력 로직을 위한 태그 관리 개선) — 브루드워는 죽은
         유닛의 태그를 새로 태어난 유닛이 물려받는다. 한 태그를 한 생애로 묶으면
@@ -2721,6 +2844,7 @@ export function buildUnitTracks(
     stats: {
       cmds: totalOrders, attributed, anchors, lives, tags: byTag.size,
       prod: prodStats.total, prodBound: prodStats.bound, prodSyn: prodStats.syn,
+      bldVoided: buildStats.voided, bldClosed: buildStats.closed,
     },
   };
 }
