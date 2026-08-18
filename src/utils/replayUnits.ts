@@ -116,6 +116,10 @@ export interface UnitTracksV2 {
     bldVoided?: number; bldClosed?: number;
     /** 폐기된 이동 목적지 — moveDropped: 못 닿아 뺀 것, moveKept: 닿은 것. */
     moveDropped?: number; moveKept?: number;
+    /** 선택 동반으로 이름을 받은 무명 개체 수(과제 #71). */
+    coSelFilled?: number;
+    /** 건물이 무너져 취소된 생산 수(과제 #71). */
+    prodRazed?: number;
   };
 }
 
@@ -296,6 +300,19 @@ interface Life {
   ev: UnitEv[];
 }
 
+/** screp이 '헛쳤다'고 표시한 커맨드인가 — 생산 원장에 적으면 안 되는 것들이다.
+ *  지적: "인구 막힘·전력 끊김·건물 파괴 등 생산 취소도 넣어야 할 듯."
+ *  screp의 표시는 그중 큐 넘침(연타로 큐가 다 찬 뒤의 클릭)을 잡아 준다 — 실측으로
+ *  Train/Morph의 7%(경기1)·3%(경기3)가 여기 걸린다. 이걸 원장에 적으면 그만큼
+ *  **없던 유닛이 합성돼** 화면에 선다. 표시가 완벽하진 않다는 것은 이 파일이 이미
+ *  아는 사실이라(연구 중복 주석), 이건 걸러 낼 수 있는 것만 거르는 자리다. */
+function ineffective(c: UnitCmd): boolean {
+  const k = c.IneffKind;
+  if (k === undefined || k === null) return false;
+  const v = typeof k === "number" ? k : String(k);
+  return v !== 0 && v !== "0" && v !== "" && v !== "Effective";
+}
+
 function nameOf(v: { Name?: string } | string | undefined): string {
   if (typeof v === "string") return v;
   return v?.Name ?? "";
@@ -409,6 +426,21 @@ export function buildUnitTracks(
   };
 
   const sel = new Map<number, number[]>();
+  /* ── 선택 동반(과제 #71) — 같이 고른 태그는 대개 같은 종류다 ──────────────────
+     지적: "가장 큰 문제는 분석에서 유닛 유추다. 자리 + 마우스 커맨드 기반이라 특정이
+     아니다 보니 — 질럿·드라군처럼 기술 없는 애들이 프로브로 잡힌다."
+     맞는 말이고, 실제로 무명 개체는 프로토스에 몰린다(실측: 경기 1의 무명 160기 중
+     139기가 프로토스). 저그는 라바 변태가, 테란은 스팀·시즈·수리가 정체를 말해 주는데
+     질럿·드라군에는 그런 것이 하나도 없다.
+     남은 신호가 이것이다 — 부대 지정과 드래그로 함께 골라진 태그들. 실측으로 둘 이상
+     고른 Select의 65%/60%가 한 종류만 담고 있었다(섞인 것 29%/40%). 3분의 1이 섞이므로
+     단순 전파는 안 되고, '함께 골라진 것들이 만장일치일 때만' 그 이름을 준다.
+     [시각도 함께 담는다 — 태그는 재사용되므로 그때 살아 있던 생애만 봐야 한다.] */
+  const coSels: { sec: number; tags: number[] }[] = [];
+  const noteCoSel = (sec: number, tags: number[]): void => {
+    if (tags.length < 2 || tags.length > 12) return;   // 12는 원작의 한 부대 상한
+    coSels.push({ sec, tags: [...tags] });
+  };
   const groups = new Map<string, number[]>();
   /** 태그 → 지금 살아 있는 생애. 끝난 생애는 done으로 옮긴다. */
   const alive = new Map<number, Life>();
@@ -436,7 +468,9 @@ export function buildUnitTracks(
   }[] = [];
   /** 건물 태그별 생산 꼬리 시각 — 같은 건물의 큐는 한 줄로 이어진다(라바는 병렬). */
   const prodTail = new Map<number, number>();
-  const prodStats = { total: 0, bound: 0, syn: 0 };
+  const prodStats = { total: 0, bound: 0, syn: 0, razed: 0 };
+  /** 선택 동반으로 이름을 받은 무명 생애 수 — 성적표(id-check)가 읽는다. */
+  let coSelFilled = 0;
   /** 무른 건설 계측 — voided: 아예 안 지어진 것, closed: 놓쳤던 철거를 겹침으로 닫은 것. */
   const buildStats = { voided: 0, closed: 0 };
   /** 폐기된 이동 목적지 계측 — dropped: 잘라 낸 것, kept: 실제로 닿은 것. */
@@ -607,7 +641,11 @@ export function buildUnitTracks(
 
     // ── 선택·핫키 — 귀속의 뼈대. 관전자 것도 그대로 굴린다(관전자는 명령을 못 내려
     //    생애를 만들지 않는다). ──
-    if (cmdName === "Select") { sel.set(pid, [...(c.UnitTags ?? [])]); continue; }
+    if (cmdName === "Select") {
+      sel.set(pid, [...(c.UnitTags ?? [])]);
+      noteCoSel(sec, c.UnitTags ?? []);
+      continue;
+    }
     if (cmdName === "Select Add") { sel.set(pid, [...(sel.get(pid) ?? []), ...(c.UnitTags ?? [])]); continue; }
     if (cmdName === "Select Remove") {
       const drop = new Set(c.UnitTags ?? []);
@@ -833,7 +871,7 @@ export function buildUnitTracks(
       }
       /* 원장 기입(요청: 모든 큐된 유닛) — Train 하나가 유닛 하나다. 같은 건물의
          큐는 꼬리를 물고 이어진다(다중 선택 Train은 첫 태그로 어림). */
-      if (cmdName === "Train" && unitName && UNIT_FRAMES[unitName]) {
+      if (cmdName === "Train" && unitName && UNIT_FRAMES[unitName] && !ineffective(c)) {
         const bldTag = tags.length > 0 ? tags[0] : null;
         const dur = UNIT_FRAMES[unitName] * 0.042;
         const tail = bldTag !== null ? prodTail.get(bldTag) ?? 0 : 0;
@@ -868,9 +906,17 @@ export function buildUnitTracks(
       /* 라바 변태도 원장(요청) — 라바는 병렬이라 큐 직렬화 없이 제 시간에 나온다.
          저글링·스커지는 한 알에 두 마리. 히드라→러커류(MORPH_FROM)는 기존 유닛의
          변태라 새 출생이 아니다. */
-      if (unitName && !MORPH_FROM[unitName] && UNIT_FRAMES[unitName]) {
+      if (unitName && !MORPH_FROM[unitName] && UNIT_FRAMES[unitName] && !ineffective(c)) {
         const dur = UNIT_FRAMES[unitName] * 0.042;
-        const n = unitName === "Zergling" || unitName === "Scourge" ? 2 : 1;
+        /* 고른 라바 전부가 변한다(지적: "게이트 셋을 고를 수가 없어" — 건물은 여럿을
+           골라도 하나에서만 뽑히지만, 라바는 건물이 아니라 **유닛**이라 변태가 고른
+           전부에 걸린다). 여태 명령 하나를 한 마리로 적어, 라바를 여럿 골라 누른 만큼
+           원장이 통째로 비었다. 실측: 그런 명령이 경기1에 114건, 경기3에 31건이고,
+           바로 그 때문에 저그만 '뽑은 수보다 개체가 훨씬 많은' 판이 났다.
+           위 for 루프가 이미 고른 태그 전부에 정체를 찍고 있으니, 원장도 같은 수를
+           적어야 앞뒤가 맞는다. */
+        const larvae = Math.max(1, tags.length);
+        const n = larvae * (unitName === "Zergling" || unitName === "Scourge" ? 2 : 1);
         for (let zi = 0; zi < n; zi += 1) {
           ledger.push({ unit: unitName, pid, sec, done: sec + dur, bldTag: null, cancelled: false, bound: false });
         }
@@ -1731,6 +1777,23 @@ export function buildUnitTracks(
       }
       return best;
     };
+    /* 건물이 무너지면 그 안의 큐도 함께 사라진다(지적: "건물 파괴 시 생산 취소").
+       건물 생애의 마지막이 '공격받고 소식 없음'이면 그때 무너진 것이다 — 이 파일이
+       유닛에 이미 쓰는 잣대(lastAtk & !evAfterAtk)를 건물에도 그대로 쓴다. 완성 시각이
+       그 뒤라면 그 유닛은 세상에 나온 적이 없다.
+       라바 변태(bldTag가 없다)와 아직 서 있는 건물은 걸리지 않는다. */
+    {
+      const bldLifeOf = new Map<number, Life>();
+      for (const l of done) if (l.bld) bldLifeOf.set(l.tag, l);
+      let razed = 0;
+      for (const it of ledger) {
+        if (it.cancelled || it.bldTag === null) continue;
+        const bl = bldLifeOf.get(it.bldTag);
+        if (!bl || bl.lastAtk === null || bl.evAfterAtk) continue;
+        if (bl.lastAtk + 8 < it.done) { it.cancelled = true; razed += 1; }
+      }
+      prodStats.razed = razed;
+    }
     // ① 출생지·랠리 결정.
     const items = ledger.filter((it) => !it.cancelled).map((it, idx) => {
       let sx = -1;
@@ -2075,6 +2138,70 @@ export function buildUnitTracks(
         life.kinds.set(RACE_INFANTRY[race] ?? "", 1);
       }
     }
+  }
+
+  /* ── 선택 동반으로 무명 채우기(과제 #71) ────────────────────────────────────
+     여기까지 와도 이름이 없는 생애가 남는다 — 원장이 못 묶었고, 능력도 안 썼고,
+     건물 발치도 아니었던 것들이다. 프로토스가 대부분이다(질럿·드라군에는 정체를
+     말해 주는 행동이 없다).
+     마지막 신호는 '누구와 함께 골라졌나'다. 부대 지정과 드래그는 대개 같은 종류를
+     묶으므로, 그 순간 함께 골라진 생애들의 이름이 **하나로 모일 때만** 그 이름을 준다.
+     섞인 선택(질럿 + 드라군)에서는 아무 이름도 안 준다 — 3분의 1이 그런 선택이라
+     다수결로 밀면 그만큼 틀린 이름을 새로 만든다.
+     [태그 재사용] 같은 태그의 여러 생애 중 그 선택 시각에 살아 있던 것만 본다. */
+  {
+    const livesByTag = new Map<number, Life[]>();
+    for (const life of done) {
+      if (life.bld) continue;
+      const arr = livesByTag.get(life.tag) ?? [];
+      arr.push(life);
+      livesByTag.set(life.tag, arr);
+    }
+    const aliveAt = (tag: number, sec: number): Life | null => {
+      const arr = livesByTag.get(tag);
+      if (!arr) return null;
+      let best: Life | null = null;
+      for (const l of arr) {
+        if (sec < l.born - 2 || sec > l.last + 2) continue;
+        if (!best || l.born > best.born) best = l;
+      }
+      return best;
+    };
+    /** 무명 생애 → 그 생애가 낀 선택들에서 모은 이름들. */
+    const votes = new Map<Life, Map<string, number>>();
+    for (const cs of coSels) {
+      const mates: Life[] = [];
+      for (const tg of cs.tags) {
+        const l = aliveAt(tg, cs.sec);
+        if (l) mates.push(l);
+      }
+      if (mates.length < 2) continue;
+      const known = new Set<string>();
+      const blanks: Life[] = [];
+      for (const l of mates) {
+        const k = majorityKindOf2(l);
+        if (k) known.add(k); else blanks.push(l);
+      }
+      // 만장일치일 때만 — 섞인 선택은 아무 말도 안 한 것으로 친다.
+      if (known.size !== 1 || blanks.length === 0) continue;
+      const [only] = [...known];
+      for (const l of blanks) {
+        const m = votes.get(l) ?? new Map<string, number>();
+        m.set(only, (m.get(only) ?? 0) + 1);
+        votes.set(l, m);
+      }
+    }
+    let filled = 0;
+    for (const [life, m] of votes) {
+      if (majorityKindOf2(life) !== "") continue;   // 그 사이에 이름이 붙었으면 건드리지 않는다
+      /* 여러 종류가 나뉘어 나왔다면(어떤 선택에서는 질럿뿐, 다른 선택에서는 드라군뿐)
+         그 태그는 둘 사이를 오간 것이 아니라 우리가 잘못 짝지은 것이다 — 안 준다. */
+      if (m.size !== 1) continue;
+      const [[kind]] = [...m];
+      life.kinds.set(kind, 1);
+      filled += 1;
+    }
+    coSelFilled = filled;
   }
 
   /* ── 후방 보정 — 뒷결과로 앞을 고친다(지적). 태그별로 생애를 시간순으로 놓고,
@@ -3277,6 +3404,8 @@ const BLD_DIE_SLACK_SEC = 8;
       prod: prodStats.total, prodBound: prodStats.bound, prodSyn: prodStats.syn,
       bldVoided: buildStats.voided, bldClosed: buildStats.closed,
       moveDropped: moveStats.dropped, moveKept: moveStats.kept,
+      coSelFilled,
+      prodRazed: prodStats.razed,
     },
   };
 }

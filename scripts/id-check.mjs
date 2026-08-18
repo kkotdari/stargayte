@@ -79,6 +79,11 @@ function producedOf(cmds, players) {
     }
     const unit = nm(c.Unit);
     if (!unit) continue;
+    /* 헛친 커맨드는 유닛이 안 된다(지적: 인구 막힘·전력 끊김·건물 파괴 취소) —
+       분석과 같은 잣대를 써야 앞뒤가 맞는다. */
+    const ik = c.IneffKind;
+    const ikv = typeof ik === "number" ? ik : String(ik ?? "");
+    if (ik !== undefined && ik !== null && ikv !== 0 && ikv !== "0" && ikv !== "" && ikv !== "Effective") continue;
     if (t === "Train") { add(pid, unit, TWINS.has(unit) ? 2 : 1); continue; }
     if (t === "Unit Morph") {
       // 라바 변태는 고른 라바 전부에 걸린다. 유닛 변태(러커 등)도 고른 전부다.
@@ -154,5 +159,8 @@ for (const path of files) {
     + `  = ${(ghost / Math.max(1, ents) * 100).toFixed(1).padStart(5)}%`);
   console.log(`  ④ 수급 어긋남   ${String(Math.round(tvdNum)).padStart(5)} / ${String(tvdDen).padStart(5)}`
     + `  = ${(tvdNum / Math.max(1, tvdDen) * 100).toFixed(1).padStart(5)}%  (0이 완벽)`);
+  console.log(`     └ 선택 동반이 채운 이름 ${String(st.coSelFilled ?? 0).padStart(5)} 기`
+    + `  · 건물 파괴로 취소한 생산 ${String(st.prodRazed ?? 0).padStart(4)} 건`
+    + `  · 합성 개체 ${String(st.prodSyn ?? 0).padStart(4)} 기`);
 }
 console.log("");
