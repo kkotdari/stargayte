@@ -2024,11 +2024,49 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 몸은 금빛 바탕(재작도) — 여태 발판·마당·어금니 탑이 통째로 개인색이라 종족이
        안 읽혔다. 남은 밑칠을 금으로 덮고, 개인색은 아래 두 곳만 남긴다. */
     const gated: ShapeFace[] = paintBase(out, "#c9a227");
-    // 개인색은 발판 위 원판 넷 — 칠하지 않아 임자 색이 든다(문틈 빛은 고정색으로 뺐다).
-    // 발판 위 원판은 폭을 줄인다(요청) — 반지름 1.55 → 1.05.
-    for (const [px9, py9] of [[0, 3.6], [0, -3.6], [3.8, 0], [-3.8, 0]] as [number, number][]) {
-      gated.push(...tagKey(cylinderFaces3(px9, py9, 1.05, 0.16, h),
-        depthNow(px9, py9) * 1.6 + 0.3));
+    /* 발판 위 장식(지적: "게이트 발판위 장식을 긴 직육면체 띠모양으로하고 색이 연하게
+       들어가고 있어서 원래색으로 변경") — 여태는 반지름 1.05·높이 0.16짜리 납작한
+       원통이었다. 그렇게 납작하면 실루엣이 곧 윗면이라, cylinderFaces3가 마지막에
+       얹는 흰 윗면(topFace, 농도 0.3)이 원판을 통째로 덮었다. 임자 색 위에 흰색이
+       3할 깔린 셈이라 "색이 연하게" 보인 것 — 알파도 밝기 보정도 아니고 이 흰 덮개가
+       원인이다. 그래서 원통을 걷고, 흰 덮개 없이 몸판과 옆 그늘만 쓰는 직육면체 띠를
+       손으로 짠다. 윗면이 밑칠 그대로라 임자 색이 제 색으로 든다.
+       띠는 중심에서 발판으로 가는 축과 직각으로 길게 눕혀, 발판을 가로지르는 긴
+       직육면체가 된다. */
+    {
+      /* 발판은 안쪽 변 h에서 바깥 변 0.32로 기운 쐐기다(pad의 LO9) — 그 한복판
+         높이에 띠를 앉혀야 한쪽 끝이 뜨거나 파묻히지 않는다. */
+      const BAR_Z9 = (h + 0.32) / 2;
+      const BAR_H9 = 0.4;
+      for (const [px9, py9] of [[0, 3.6], [0, -3.6], [3.8, 0], [-3.8, 0]] as [number, number][]) {
+        const lx9 = py9 === 0 ? 0.34 : 1.45;
+        const ly9 = py9 === 0 ? 1.45 : 0.34;
+        const box9 = (z9: number): [number, number, number][] => [
+          [px9 - lx9, py9 - ly9, z9], [px9 + lx9, py9 - ly9, z9],
+          [px9 + lx9, py9 + ly9, z9], [px9 - lx9, py9 + ly9, z9],
+        ];
+        const lo9 = box9(BAR_Z9);
+        const hi9 = box9(BAR_Z9 + BAR_H9);
+        // 옆벽은 뒤에서 앞으로 — 발판 판때기와 같은 정렬 규칙이다.
+        const walls9 = lo9.map((_, i9) => {
+          const j9 = (i9 + 1) % 4;
+          const mx9 = (lo9[i9][0] + lo9[j9][0]) / 2 - px9;
+          const my9 = (lo9[i9][1] + lo9[j9][1]) / 2 - py9;
+          const ml9 = Math.hypot(mx9, my9) || 1;
+          return {
+            d: polyPath3([lo9[i9], lo9[j9], hi9[j9], hi9[i9]]),
+            nx: mx9 / ml9, ny: my9 / ml9, f: facingRatio(mx9 / ml9, my9 / ml9),
+          };
+        }).sort((q9, w9) => q9.f - w9.f);
+        const bar9: ShapeFace[] = [bodyFace(polyPath3(lo9))];
+        for (const wl9 of walls9) {
+          const fl9 = faceLight(wl9.nx, wl9.ny, 0.3);
+          bar9.push(bodyFace(wl9.d), ...(fl9.visible ? fl9.face(wl9.d) : [sideFace(wl9.d, 0.46)]));
+        }
+        // 윗면엔 흰 덮개를 얹지 않는다 — 여기가 임자 색이 제 색으로 드러나는 자리다.
+        bar9.push(bodyFace(polyPath3(hi9)));
+        gated.push(...tagKey(bar9, depthNow(px9, py9) * 1.6 + 0.3));
+      }
     }
     /* 문틈 소환 빛은 고정 플라즈마색(요청) — 임자 색이면 어두운 색을 만났을 때 빛이
        아니라 구멍으로 보인다. 반투명 사이언으로 못 박고 흰 심을 얹는다. */
@@ -3254,20 +3292,42 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 사이버네틱스 코어(실물 참고) — 가운데 드럼 위 파란 발광 고리, 그 뒤로 솟는 발톱
      손가락 셋, 둘레 네 포드마다 파란 구슬이 얹힌다. */
   cyber: () => {
-    /* 포드는 몸(민민한 반구)과 얹힘(구슬·갈고리)을 나눈다 — 몸이 개인색 자리다. */
-    const podBody = (px2: number, py2: number): ShapeFace[] =>
-      tagKey(domeFaces3(px2, py2, 1.15, 0.9), -4);
-    const podTop = (px2: number, py2: number): ShapeFace[] => {
-      const [gx2, gy2] = project(px2, py2, 1.45);
-      return tagKey([
-        // 연한 시안 반투명 구슬(요청).
-        [groundEllipse(gx2, gy2, 0.85, 0.8), 0.55, "#a9ecf2"] as ShapeFace,
-        topFace(groundEllipse(gx2 - 0.25, gy2 - 0.25, 0.32, 0.28), 0.5),
-        ...hornFaces(px2 - 0.55, py2 + 0.75, 0.4, px2 - 0.75, py2 + 1.15, 1.5, 0.32),
-        ...hornFaces(px2 + 0.55, py2 + 0.75, 0.4, px2 + 0.75, py2 + 1.15, 1.5, 0.32),
-      ], -3.5);
+    /* 사이버네틱스 코어(재작도) — 지적: "코어 구슬 안가려짐 및 코어 구슬 4개를 앞쪽에
+       주르륵 이어붙여 놓기 및 본체 위쪽에 쌩쌩 돌아가는 플라즈마 디스크 모양 추가(링
+       모양). 구슬받침은 금색으로 하고 개인색은 본체 옆을 두르는띠로 표현".
+       사방에 흩어 두었던 포드 넷을 통째로 걷었다 — 포드 몸이 개인색이었고 구슬이 그
+       위에 얹혀 뒤로 돈 것은 드럼에 가렸다. 대신 구슬 넷을 건물 앞(+y)에 서로 닿게
+       한 줄로 늘어놓고, 무엇에도 안 가리도록 그리는 순서 키를 가장 크게 못 박았다.
+       "쌩쌩 돌아가는"은 줄 수 없다 — SHAPE_FACES가 빌더를 한 번 구워 쓰는 정지 화면
+       이라 이 렌더러엔 시간 축이 없다. 그래서 수평 링 하나에 서로 반대로 42도 기운
+       링 둘을 엇갈려 얹어, 도는 고리의 잔상처럼 읽히게 했다.
+       개인색은 본체 허리를 두르는 띠 하나로만 남긴다(지적) — raceBase의 accent에
+       그 띠만 넣고 나머지(구슬·받침·링·발광 고리)는 모두 고정색으로 못 박았다. */
+    const PLASMA_RING = "#6fe4ff";
+    /* 링(도넛) — 원 경로를 따라 굵기가 일정한 관을 돌린 것. tilt(도)만큼 x축으로
+       눕혀, 같은 자리에 반대로 기운 둘을 겹치면 자이로가 도는 꼴이 된다. */
+    const ring9 = (r9: number, w9: number, z9: number, tilt9: number): ShapeFace[] => {
+      const tr9 = (tilt9 * Math.PI) / 180;
+      return paintBase(spirePillar({
+        x: 0, y: 0, h: 1, w: w9, tipW: w9, segs: 24, sides: 5, hold: 1,
+        path: (t9: number): [number, number, number] => {
+          const a9 = Math.PI * 2 * t9;
+          const ex9 = Math.cos(a9) * r9;
+          const ey9 = Math.sin(a9) * r9;
+          return [ex9, -0.2 + ey9 * Math.cos(tr9), z9 + ey9 * Math.sin(tr9)];
+        },
+      }), PLASMA_RING);
     };
-    const POD: [number, number][] = [[-2.9, -1.5], [2.9, -1.5], [-2.4, 2.1], [2.4, 2.1]];
+    /* 앞줄 구슬 — 금 선반 위에 넷이 서로 닿게 늘어선다. 반지름 0.92에 사이 간격
+       1.7이라 옆구리가 살짝 물려 "주르륵 이어붙"은 꼴이 된다. */
+    const orb9 = (ox9: number): ShapeFace[] => {
+      const [gx9, gy9] = project(ox9, 2.7, 2.35);
+      return [
+        [groundEllipse(gx9, gy9, 0.92, 0.88), 0.62, "#a9ecf2"] as ShapeFace,
+        [groundEllipse(gx9, gy9, 0.56, 0.53), 0.5, "#e8fbff"] as ShapeFace,
+        topFace(groundEllipse(gx9 - 0.28, gy9 - 0.26, 0.3, 0.28), 0.5),
+      ];
+    };
     const [cx2, cy2] = project(0, -0.2, 3.6);
     return raceBase([
       /* 발치 금 테는 맨 앞에 그린다(지적: 코어 키 검토) — 납작한 원통이라 나중에
@@ -3287,16 +3347,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         bodyFace(groundEllipse(cx2, cy2, 1.45, 0.72)),
         topFace(groundEllipse(cx2, cy2, 1.05, 0.5), 0.25),
       ], -4.8),
-      // 위 파란 발광 고리 — 반투명 판. 그 위 뚜껑은 개인색이라 accent로 뺐다.
+      // 위 파란 발광 고리 — 반투명 판(색을 안 줘 raceBase의 금 바탕이 든다).
       ...tagKey([[groundEllipse(cx2, cy2, 2.3, 1.15), 0.55] as ShapeFace], -5),
-      // 포드 넷의 구슬·갈고리 — 몸(개인색, 키 −4) 위에 얹힌다.
-      ...POD.flatMap(([px2, py2]) => podTop(px2, py2)),
+      /* 플라즈마 디스크(요청) — 뚜껑에서 솟은 가는 금 축에 수평 링 하나와 ±42도로
+         엇갈린 링 둘. 본체 위에 뜬 것이라 늘 위로 그리는 큰 키를 준다. */
+      ...tagKey(paintBase(cylinderFaces3(0, -0.2, 0.24, 1.9, 3.5), P_GOLD), 12),
+      ...tagKey(ring9(2.35, 0.2, 5.3, 0), 13),
+      ...tagKey(ring9(2.05, 0.17, 5.3, 42), 13.2),
+      ...tagKey(ring9(2.05, 0.17, 5.3, -42), 13.4),
+      // 구슬 받침 — 금색 못 박음(지적). 앞으로 내민 낮은 선반 하나에 넷이 앉는다.
+      ...tagKey(paintBase(boxFaces3(0, 2.7, 6.8, 1.5, 1.5), P_GOLD), 15),
+      // 구슬 넷 — "안가려짐"(지적)이라 이 건물에서 가장 큰 키를 준다.
+      ...[-2.55, -0.85, 0.85, 2.55].flatMap((ox9) => tagKey(orb9(ox9), 16)),
     ], "toss", [
-      /* 개인색은 둘레 포드 넷의 몸(재지적: 몸통 전체 말고 일부만) — 드럼을 통째로
-         칠하니 건물이 임자 색 덩어리가 됐고, 꼭대기 뚜껑만 칠했더니 뒤에서 볼 때
-         완전히 가려졌다. 사방에 하나씩 놓인 민민한 반구라 어느 요잉에서도 하나는
-         보인다. 구슬·갈고리·발톱·발광 고리·허리 띠는 제 색으로 둔다. */
-      ...POD.flatMap(([px2, py2]) => podBody(px2, py2)),
+      /* 개인색은 본체 옆을 두르는 띠 하나(지적) — 드럼보다 조금 굵은 납작 원통을
+         드럼 위(키 -6 다음)에 덧그리면, 어느 요잉에서도 앞 반쪽이 허리띠로 보인다. */
+      ...tagKey(cylinderFaces3(0, -0.2, 2.62, 0.62, 1.25), -5.4),
     ]);
   },
   /* 시타델 오브 아둔 — 좁아지는 탑 + 꼭대기 뾰족. */
@@ -4241,25 +4307,39 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 스포닝 풀(입체감, 지적) — 살 테두리를 땅에서 도톰하게 올리고 앞으로 흘러내리는
      치마 벽을 달았다. 웅덩이 안쪽 뒤편엔 테두리 그늘, 위로는 마주 굽는 뼈 아치. */
   pool: () => {
-    /* 스포닝 풀(전면 재작도·사진) — 바닥에 얕게 파인 두 웅덩이에 초록 점액이 고이고,
-       그 둘레를 굵은 구릿빛 살덩이 두렁이 감싼다. 두 웅덩이 사이를 가로지르는 두렁과
-       가장자리로 뻗는 뿌리 가시들. 가운데 가로지르는 두렁이 개인색이다. */
+    /* 스포닝 풀(재작도) — 지적: "스포닝풀 동그란 풀 3개임. 왼쪽에 큰거 하나, 밑에
+       작은거 하나, 오른쪽에 긴거 하나. 가운데 띠같은건 제거". 여태 웅덩이가 둘이고
+       그 사이를 개인색 두렁이 가로질렀는데, 웅덩이를 셋(화면 왼쪽 큰 원 · 그 아래
+       작은 원 · 오른쪽 가로로 긴 타원)으로 늘리고 가운데 두렁은 지적대로 걷었다.
+       웅덩이 반지름을 화면값이 아니라 모형값으로 받는다 — 옛 코드는 세로 반지름에
+       화면 눌림이 이미 든 값을 직접 줘서, 모형 좌표로 도는 두렁과 세로 크기가 어긋나
+       두렁이 웅덩이 안으로 파고들었다. 눌림비(groundSquashNow)를 곱해 두렁·웅덩이가
+       어느 시점(표준·부감)에서나 같은 타원을 그리게 맞췄다.
+       가운데 두렁이 없어져 개인색 자리가 비므로, 큰 웅덩이를 감싸는 두렁을 칠하지 않은
+       채로 둬 그 자리에 임자 색이 들게 했다(건물마다 개인색 포인트 하나 규칙). */
     const FLESH = "#8a4a2a";
     const FLESH_D = "#5f3320";
     const GOO = "#4cd63a";
     const out: ShapeFace[] = [...tagKey(paintBase(creepSplat(6.8), "#3a3f46"), -20)];
-    /* 두 웅덩이 — 얕게 파인 초록 못. 테는 어둡고 속은 밝다. */
+    const sq9 = groundSquashNow();
+    /* 웅덩이 — 얕게 파인 초록 못. 테는 어둡고 속은 밝다. rx·ry는 모형 반지름이다. */
     const pond = (px: number, py: number, rx: number, ry: number, key: number): void => {
       const [sx, sy] = project(px, py, 0.12);
       out.push(...tagKey([
-        [groundEllipse(sx, sy, rx, ry), 1, FLESH_D] as ShapeFace,
-        [groundEllipse(sx, sy, rx * 0.86, ry * 0.86), 1, "#2f7a24"] as ShapeFace,
-        [groundEllipse(sx, sy, rx * 0.7, ry * 0.7), 1, GOO] as ShapeFace,
-        topFace(groundEllipse(sx - rx * 0.2, sy - ry * 0.2, rx * 0.32, ry * 0.32), 0.35),
+        [groundEllipse(sx, sy, rx, ry * sq9), 1, FLESH_D] as ShapeFace,
+        [groundEllipse(sx, sy, rx * 0.86, ry * 0.86 * sq9), 1, "#2f7a24"] as ShapeFace,
+        [groundEllipse(sx, sy, rx * 0.7, ry * 0.7 * sq9), 1, GOO] as ShapeFace,
+        topFace(groundEllipse(
+          sx - rx * 0.2, sy - ry * 0.2 * sq9, rx * 0.32, ry * 0.32 * sq9,
+        ), 0.35),
       ], key));
     };
-    pond(-1.6, -0.9, 2.5, 1.7, 0);
-    pond(1.7, 1, 2.3, 1.6, 0.2);
+    /* 화면 왼쪽이 -x다(project에서 +x가 오른쪽으로 간다) — 지적의 "왼쪽에 큰거"는
+       -x 쪽 큰 원, "밑에 작은거"는 화면 아래(=+y) 쪽 작은 원, "오른쪽에 긴거"는
+       +x 쪽 가로로 긴 타원이다. 앞(큰 y)일수록 나중에 그린다. */
+    pond(-2.7, -1.4, 2.5, 2.5, 0);
+    pond(2.9, 0.6, 2.8, 1.3, 0.4);
+    pond(-2.4, 3.3, 1.3, 1.3, 0.8);
     /* 웅덩이를 감싸는 두렁 — 굵은 살덩이 관이 둘레를 돈다. */
     const ridge = (
       cx9: number, cy9: number, rx9: number, ry9: number, w9: number, fill?: string, key = 4,
@@ -4273,22 +4353,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...(fill ? { fill } : {}),
       }), key));
     };
-    ridge(-1.6, -0.9, 2.75, 1.95, 0.5, FLESH);
-    ridge(1.7, 1, 2.55, 1.85, 0.48, FLESH, 4.2);
-    /* 가운데 가로지르는 두렁 — 개인색(요청: 건물마다 개인색 포인트). */
-    out.push(...tagKey(spirePillar({
-      x: 0, y: 0, h: 1, w: 0.58, tipW: 0.58, segs: 10, sides: 6, hold: 1,
-      path: (t9: number): [number, number, number] => [
-        -3.4 + 6.8 * t9, 1.6 - 3.4 * t9 + Math.sin(Math.PI * t9) * 0.9, 0.6,
-      ],
-    }), 8));
-    /* 가장자리 뿌리 가시 — 바깥으로 뻗는 굵은 뿌리 여섯. */
+    // 큰 웅덩이 두렁만 색을 안 준다 — 걷어낸 가운데 띠를 대신하는 개인색 자리다.
+    ridge(-2.7, -1.4, 2.78, 2.78, 0.5);
+    ridge(2.9, 0.6, 3.08, 1.58, 0.46, FLESH, 4.2);
+    ridge(-2.4, 3.3, 1.56, 1.56, 0.4, FLESH, 4.4);
+    /* 가장자리 뿌리 가시 — 바깥으로 뻗는 굵은 뿌리 여섯. 웅덩이가 넓어진 만큼 뿌리
+       밑동도 밖으로 물려, 가시가 못 안에서 솟아오르지 않게 했다. */
     for (const [ang, len] of [
-      [-165, 2.6], [-115, 2.2], [-55, 2.4], [15, 2.8], [75, 2.2], [130, 2.5],
+      [-165, 2], [-115, 1.8], [-55, 2], [15, 2.2], [75, 1.8], [130, 2],
     ] as [number, number][]) {
       const a9 = (ang * Math.PI) / 180;
-      const bx = Math.sin(a9) * 3;
-      const by = Math.cos(a9) * 2.2;
+      const bx = Math.sin(a9) * 3.6;
+      const by = Math.cos(a9) * 2.8;
       out.push(...tagKey(spikeHorn(
         bx, by, 0.5, bx + Math.sin(a9) * len, by + Math.cos(a9) * len, 0.9, 0.72,
         FLESH_D, 6, 0.5, Math.sin(a9), Math.cos(a9),
