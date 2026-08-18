@@ -3108,7 +3108,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...tagKey([
       ...paintBase(cylinderFaces3(2.2, -0.6, 3, 1.4, 0.3), GOLD_D),
       ...paintBase(domeFaces3(2.2, -0.6, 3, 3.4, 1.7), GOLD),
-      ...paintBase(cylinderFaces3(2.2, -0.6, 3.04, 0.4, 1.9), RED),
+      /* 붉은 띠는 겉면만 두른다(수리: 위 태엽과 같은 결의 비침) — 원통 도형은 실루엣을
+         통째로 채우는 몸판 + 밝은 윗면 원반이라, 돔 허리에 끼워 넣은 이 띠가 돔 속에
+         숨기는커녕 돔 앞면을 큼직한 원반으로 덮어 버렸다(흰 윗면까지 겹쳐 분홍 얼룩으로
+         보였다). 띠에 필요한 것은 돔을 두르는 겉벽뿐이므로, 위·아래 타원의 '앞 반호'
+         둘을 이어 초승달 띠로 직접 그린다 — 뒤로 돌아간 반쪽은 돔이 가리는 게 맞다. */
+      ...((): ShapeFace[] => {
+        const BR = 3.04;
+        const [btx, bty] = project(2.2, -0.6, 2.3);
+        const [bbx, bby] = project(2.2, -0.6, 1.9);
+        const bry = BR * groundSquashNow();
+        // 앞 반호는 sweep 0(왼→아래→오른), 되돌아오는 아래 반호는 sweep 1이다.
+        const strip = `M${btx - BR} ${bty} A${BR} ${bry} 0 0 0 ${btx + BR} ${bty}`
+          + ` L${bbx + BR} ${bby} A${BR} ${bry} 0 0 1 ${bbx - BR} ${bby} Z`;
+        return [[strip, 1, RED] as ShapeFace, sideFace(strip, 0.16)];
+      })(),
     /* 키는 한 자로(재지적: 포지 키값이 아직 문제) — 붙박이 상수(6·8·10·12·14·16)가
        깊이 항(±5)보다 커서 요잉과 무관하게 상수가 순서를 지배했다. 부품들은 서로
        옆에 선 것들이라 제 자리 깊이만으로 앞뒤가 옳다. 같은 부품 안에서 '위에 얹힌'
@@ -3174,13 +3188,25 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           return [x9, 1.6 - Math.cos(a9) * RIM, CZ + Math.sin(a9) * RIM] as [number, number, number];
         },
       );
-      const lp = half(WX0);
-      const rp = half(WX1);
-      const g: ShapeFace[] = [bodyFace(polyPath3(lp)), sideFace(polyPath3(lp), 0.2)];
+      /* 옆판 둘은 깊이 순으로 쌓는다(수리·지적: 태엽 속이 비친다) — 여태 바깥판(WX0)을
+         먼저, 안판(WX1)을 맨 나중에 그렸는데 이 건물이 서는 요잉에서는 WX0 쪽이 오히려
+         시청자에게 가깝다. 가까운 판을 먼저 깔고 먼 판으로 덮은 셈이라, 바퀴 겉이 아니라
+         속(뒤판과 그 위에 얹힌 흰 윗면 음영)이 앞으로 나와 판이 비쳐 보였다. 이 묶음은
+         키(tagKey)를 하나만 쓰므로 zsorted가 안을 다시 세워 주지 않는다 — 여기서 직접
+         먼 판 → 둘레 띠 → 가까운 판 차례로 못 박는다. */
+      const nearX = depthNow(WX0, 0) >= depthNow(WX1, 0) ? WX0 : WX1;
+      const farX = nearX === WX0 ? WX1 : WX0;
+      const lp = half(farX);
+      const rp = half(nearX);
+      const g: ShapeFace[] = [bodyFace(polyPath3(lp))];
       for (let i9 = 0; i9 < lp.length - 1; i9 += 1) {
         g.push(bodyFace(polyPath3([lp[i9], lp[i9 + 1], rp[i9 + 1], rp[i9]])));
       }
-      g.push(bodyFace(polyPath3(rp)), topFace(polyPath3(rp), 0.14));
+      /* 드러난 판의 명암은 세계 광원이 정한다(요청: 돌려도 광원 고정) — 왼쪽을 보는
+         판이면 밝고 오른쪽을 보는 판이면 어둡다. 붙박이 밝기(0.2·0.14)는 어느 판이
+         앞에 서느냐에 따라 뒤집혀 보였다. */
+      const nearLit = faceLight(nearX === WX0 ? -1 : 1, 0);
+      g.push(bodyFace(polyPath3(rp)), ...nearLit.face(polyPath3(rp)));
       // 이빨 — 테 둘레에 고르게 박힌 사다리 슬래브.
       for (const deg of [-18, 12, 42, 72, 102, 132, 162, 192]) {
         const a3 = (deg * Math.PI) / 180;
@@ -3192,14 +3218,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           [xx, 1.6 - c3 * (RIM + 0.85) - s3 * 0.14, CZ + s3 * (RIM + 0.85) - c3 * 0.14],
           [xx, 1.6 - c3 * (RIM + 0.85) + s3 * 0.14, CZ + s3 * (RIM + 0.85) + c3 * 0.14],
         ];
-        const bt = polyPath3(tooth(WX0));
-        g.push(bodyFace(bt), sideFace(bt, 0.22));
-        g.push(bodyFace(polyPath3([tooth(WX0)[3], tooth(WX1)[3], tooth(WX1)[2], tooth(WX0)[2]])));
-        const fa = polyPath3([tooth(WX0)[1], tooth(WX1)[1], tooth(WX1)[2], tooth(WX0)[2]]);
-        const fb = polyPath3([tooth(WX0)[0], tooth(WX1)[0], tooth(WX1)[3], tooth(WX0)[3]]);
+        // 이빨도 옆판과 같은 차례다 — 먼 쪽 뚜껑 → 옆벽 → 가까운 쪽 뚜껑.
+        const tf = tooth(farX);
+        const tn = tooth(nearX);
+        g.push(bodyFace(polyPath3(tf)));
+        g.push(bodyFace(polyPath3([tf[3], tn[3], tn[2], tf[2]])));
+        const fa = polyPath3([tf[1], tn[1], tn[2], tf[2]]);
+        const fb = polyPath3([tf[0], tn[0], tn[3], tf[3]]);
         g.push(bodyFace(fa), sideFace(fa, 0.18));
         g.push(bodyFace(fb), topFace(fb, 0.1));
-        g.push(bodyFace(polyPath3(tooth(WX1))), topFace(polyPath3(tooth(WX1)), 0.12));
+        g.push(bodyFace(polyPath3(tn)), ...nearLit.face(polyPath3(tn)));
       }
       /* 톱니 바퀴는 y로 깊은 부품(반지름 2.5) — 가운데 깊이만 쓰면 제 앞쪽이 실제보다
          뒤로 잡힌다. 프리미티브와 같은 규약으로 앞점을 더한다. */
@@ -6591,16 +6619,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         // 가늘게(재지적) — 매달린 실다리 느낌.
         // 몸 80%·다리 120%(요청) — 뿌리는 줄어든 몸에, 끝은 더 길게 아래로.
         // 길이 80%(요청) — 끝을 위로 당긴다.
-        /* 무릎을 아예 없앤다(요청: 다리를 좀더 1자에 가깝게) — 예전엔 바깥(x 1.78)으로
-           뻗었다가 발끝에서 도로 안(1.45)으로 들어와, 마디마다 꺾인 곤충 다리로
-           읽혔다. 이제 뿌리에서 발끝까지 한 직선이고, 내려가는 만큼만 아주 조금
-           벌어진다(SPREAD). 마디 경계는 굵기만 갈릴 뿐 방향은 안 꺾인다. */
+        /* 관절 둘 + 수직으로 떨어졌다가 안쪽으로 아주 살짝(요청) — 예전엔 바깥
+           (x 1.78)으로 뻗었다가 발끝에서 도로 안(1.45)으로 들어와 마디마다 꺾인 곤충
+           다리로 읽혔고, 그걸 고친 '한 직선' 판은 이번엔 내려갈수록 바깥으로 벌어졌다.
+           이제 위 마디는 뿌리에서 곧장 수직으로 떨어지고(x 그대로 — 풍선 밑으로
+           빠져나오는 구간이 여기라 실루엣에서 곧게 보인다), 무릎 둘을 지나며 몸
+           안쪽으로 0.22만큼만 오므린다. 굵기는 발끝으로 갈수록 가늘어진다. */
         const ry9 = lyy * 0.8;
-        const rz9 = rootZ(0.96, ry9);
-        const SPREAD = 0.12; // z 한 칸 내려갈 때 바깥으로 벌어지는 몫.
-        const legX = (z9: number): number => 0.96 + (rz9 - z9) * SPREAD;
-        legs.push(seg(sx * 0.96, ry9, rz9, sx * legX(0.45), ry9, 0.45, 0.34, 0.28));
-        tips.push(seg(sx * legX(0.45), ry9, 0.45, sx * legX(-1.2), ry9, -1.2, 0.28, 0.2));
+        const KX = [0.96, 0.96, 0.88, 0.74]; // 뿌리·무릎1·무릎2·발끝의 x.
+        const KZ = [rootZ(0.96, ry9), 1.1, -0.2, -1.35]; // 같은 차례의 z.
+        const KW = [0.34, 0.3, 0.26, 0.2]; // 같은 차례의 굵기.
+        for (let j9 = 0; j9 < 3; j9 += 1) {
+          // 끝마디만 발톱 판(tips)으로 — 몸색과 갈라 칠하는 자리다.
+          (j9 === 2 ? tips : legs).push(seg(
+            sx * KX[j9], ry9, KZ[j9], sx * KX[j9 + 1], ry9, KZ[j9 + 1], KW[j9], KW[j9 + 1],
+          ));
+        }
       }
       // 앞 집게팔(재재지적: 뒷다리보다 살짝 짧게, 뿌리는 얇고 집게 쪽에서 확 굵게) —
       // 사다리꼴 마디로 아래로 갈수록 부풀고, 발끝은 옆다리(-0.9)보다 조금 위에서 끝난다.
