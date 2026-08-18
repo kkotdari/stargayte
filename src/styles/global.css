@@ -5828,7 +5828,8 @@ body *::-webkit-scrollbar-corner { background: transparent; }
         덮어, 미선택 글자가 그 아래로 숨었다.
    크기가 필요하면 PillTabs 공통 규칙에서 손대야지 여기서 덧칠할 곳이 아니다. */
 .scr-motion-colorrow {
-  display: flex; align-items: center; justify-content: flex-start; gap: 8px;
+  /* 갭 축소(요청: "색상 옵션 텍스트와 갭 조금 축소해줘"). */
+  display: flex; align-items: center; justify-content: flex-start; gap: 5px;
   margin: 6px 0 2px;
 }
 /* 모바일은 가운데(요청: "모바일에선 색상버튼 가운데에 있어야지 한 줄에 한 요소니까") —
@@ -5854,7 +5855,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   background: rgba(255, 255, 255, 0.08);
 }
 .scr-light-theme .scr-motion-colorrow .scr-pill-tabs { background: rgba(0, 0, 0, 0.06); }
-.scr-motion-colorrow .scr-pill-tab-btn { font-size: var(--fs-sm); padding: 0 12px; }
+.scr-motion-colorrow .scr-pill-tab-btn { font-size: var(--fs-micro); padding: 0 9px; }
 .scr-motion-colorrow .scr-pill-tab-btn:not(.scr-pill-tab-btn-active) { color: var(--muted); }
 @media (hover: hover) {
   .scr-motion-colorrow .scr-pill-tab-btn:hover:not(.scr-pill-tab-btn-active) { color: var(--text); }

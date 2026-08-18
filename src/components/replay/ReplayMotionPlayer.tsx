@@ -10094,6 +10094,8 @@ export default function ReplayMotionPlayer({
       // 지도줄 아래에 남은 것들(색상·보기 설정·탐색바·도구줄)의 높이.
       const below = Math.max(0, rr.bottom - wr.bottom);
       const avail = window.innerHeight - wr.top - below - 10;
+      // 지도줄 위쪽이 화면 밖으로 밀려 올라갔으면(스크롤) 그만큼은 더 쓸 수 있다.
+      if (avail <= 0) return;
       setMapCapH((prev) => (Math.abs(prev - avail) > 4 && avail > 140 ? avail : prev));
     };
     calc();
@@ -11232,12 +11234,10 @@ export default function ReplayMotionPlayer({
       // 유일한 클래스다(혼동을 없애려 -big에서 개명). ref는 자리 폭 재기(wide 판정)용.
       ref={rootRef}
       className={cx("scr-motion", wide && "scr-motion-wide")}
-      /* 지도는 남는 세로를 꽉 채운다 — 넘지도, 필요 이상으로 작지도 않게(위 mapCapH
-         주석). 잰 세로를 지도 비율로 되돌려 폭으로 준다. 아직 못 쟀으면(첫 그림) 상한
-         없이 그린다 — 한 프레임 뒤 제자리를 찾는다. */
-      style={mapCapH > 0
-        ? { width: `${Math.round(mapCapH * (grid.width / grid.height))}px`, maxWidth: "100%", margin: "0 auto" }
-        : { margin: "0 auto" }}
+      /* 폭 제한은 여기 걸지 않는다(수리) — 뿌리 상자에는 지도만이 아니라 양옆 로스터와
+         아래 조작 줄들이 함께 들어 있어서, 여기를 좁히면 화면 전체가 왼쪽 한 기둥으로
+         쪼그라들었다(실측: 지도가 140px). 세로 맞춤은 지도 자신에게 건다(아래 참조). */
+      style={{ margin: "0 auto" }}
     >
       <div className="scr-motion-maprow" ref={maprowRef}>
       {teamCol(1)}
@@ -11250,6 +11250,13 @@ export default function ReplayMotionPlayer({
         onPointerUp={onMapPointerUp}
         onPointerCancel={onMapPointerUp}
         style={{
+          /* 남는 세로를 꽉 채운다(요청: "세로 높이에 맞추라는 얘기"·"scr-motion-wide 높이를
+             페이지 높이랑 맞게, 대신 가로 스크롤은 생길 수도") — 잰 세로(mapCapH)를 지도
+             비율로 되돌려 폭으로 준다. 폭이 정해지면 아래 aspectRatio가 세로를 만든다.
+             아직 못 쟀으면(첫 그림) 그냥 흐르는 대로 두고 한 프레임 뒤 제자리를 찾는다. */
+          ...(mapCapH > 0
+            ? { width: `${Math.round(mapCapH * (grid.width / (grid.height * (pitched ? 0.74 : 1))))}px`, flex: "0 0 auto" }
+            : {}),
           /* 입체 보기(재구성: CSS 3D 빌보드가 브라우저 따라 누워 보임) — 바닥(자리·그림)만
              세로로 누르고, 마커는 눌리지 않은 채 서 있는 2.5D. */
           aspectRatio: `${grid.width} / ${grid.height * (pitched ? 0.74 : 1)}`,
