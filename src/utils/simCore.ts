@@ -270,6 +270,8 @@ type Body = {
   px: number; py: number;
   /* ── 전투(P2) ── */
   bld: boolean;
+  /** 일꾼인가 — 이름으로 Set을 뒤지는 값을 뜨거운 자리에서 안 치르려고 미리 잡아 둔다. */
+  wk: boolean;
   /** 몸 반지름(타일) — 밀어내기 평형에만 쓴다.
    *  ⚠ 사거리 판정에는 쓰지 마라. 중심 기준으로 옮기는 덧셈은 bwCombat.reachTiles가
    *    이미 제 안에서 한다 — 여기서 또 더하면 이중 가산이다(verdict-충돌 지적). */
@@ -427,7 +429,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         inside: null, actUntil: 0, lifted: false, landTo: null, flyWins: [],
         fixX: 0, fixY: 0, fixT: 0, keys: [],
         kx: NaN, ky: NaN, kh: NaN, ks: ST_GONE, kt: 0, kvx: 0, kvy: 0, px: NaN, py: NaN,
-        bld: true,
+        bld: true, wk: false,
         /* 건물의 체력·실드·방어력·크기는 이제 표(UNITS)에서 온다 — 옛 판이 하던
            "건물은 large·방어력 최소 1" 같은 손보정은 지어낸 값이었다. 표에 없는 이름
            (애드온 ComSat 등)만 DEFAULT_UNIT으로 떨어진다. [추정] */
@@ -482,7 +484,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       keys: [],
       kx: NaN, ky: NaN, kh: NaN, ks: ST_GONE, kt: 0, kvx: 0, kvy: 0,
       px: NaN, py: NaN,
-      bld: false,
+      bld: false, wk: WORKERS.has(kind),
       rad: cp.radius,
       cp, cpBase: cp, cpBunker: bunkerShooterProfileOf(kind),
       dmg: targetFor(kind, ups),
@@ -1008,7 +1010,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
     if (a.cd > 0) a.cd -= dt;
     if (!a.cp.ground && !a.cp.air) return;
     // 일꾼은 스스로 싸우러 가지 않는다 — 어택 명령을 콕 받았을 때만.
-    if (!a.bld && !a.aggro && WORKERS.has(a.kind)) return;
+    if (a.wk && !a.aggro) return;
     /* ── 판정 ② 표적 유지 — 무기 사거리(중심 기준) + 여유 안이면 그대로 둔다. */
     let f = a.foe;
     if (f && (f.state === ST_GONE || f.dieAt !== null || !visible(a, f)
@@ -1542,7 +1544,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       /* ③-b 채취(P3) — 명령이 없는 일꾼은 제 밭과 홀 사이를 오간다. 원작에서 이 순환은
          자동이라 리플레이에 명령으로 안 남는다: 시뮬이 모델하지 않으면 일꾼이 마지막
          명령 자리에 얼어붙는다(렌더의 왕복 어림이 하던 일을 여기로 옮겼다). */
-      if (!b.dest && b.inside === null && WORKERS.has(b.kind)) {
+      if (!b.dest && b.inside === null && b.wk) {
         if (!b.job) b.job = assignJob(b, t);
         if (b.job) {
           b.state = ST_GATHER;
@@ -1722,7 +1724,15 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
     // 다 꺼진 스웜은 걷는다 — 훑는 목록을 짧게 유지한다.
     for (let si = swarms.length - 1; si >= 0; si -= 1) if (swarms[si][0] < t) swarms.splice(si, 1);
     fireAll(t);
-    if (dropped) active = active.filter((b) => b.state !== ST_GONE);
+    /* 죽은 몸은 제자리에서 걷어낸다(과제 #70) — filter는 죽음이 난 틱마다 개체 수만 한
+       배열을 새로 잡았고, 중반 이후엔 그게 거의 매 틱이라 쓰레기가 산더미였다. */
+    if (dropped) {
+      let wq = 0;
+      for (let i = 0; i < active.length; i += 1) {
+        if (active[i].state !== ST_GONE) { active[wq] = active[i]; wq += 1; }
+      }
+      active.length = wq;
+    }
 
     // 밀어내기는 이번 틱 자리가 다 정해진 뒤에 한 번(순서에 안 흔들리게).
     for (let ci = 0; ci < cTouch.length; ci += 1) {
