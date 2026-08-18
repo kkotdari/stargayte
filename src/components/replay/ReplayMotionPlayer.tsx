@@ -12122,10 +12122,10 @@ export default function ReplayMotionPlayer({
     if (cv) cv.style.transform = "";
   }, [zoom, pan]);
   useEffect(() => {
-    /* el이 없어도 문서 리스너는 단다(재지적) — 맵은 데이터가 온 뒤에 그려지기도 해서,
-       마운트 순간 ref가 비어 있으면 여기서 돌아가 버렸다. 그러면 더블탭이 영영 안 걸린다.
-       맵 상자는 이벤트마다 mapRef로 다시 읽으므로 나중에 생겨도 그대로 동작한다. */
-    const el = mapRef.current;
+    /* 리스너는 전부 문서에 단다(재지적) — 맵은 데이터가 온 뒤에 그려지기도 해서, 마운트
+       순간 mapRef가 비어 있으면 맵에 걸려던 리스너가 영영 안 달린다. 그러면 더블탭도
+       핀치도 이벤트 자체를 못 받는다. 맵 상자는 이벤트마다 mapRef로 다시 읽으므로
+       나중에 생겨도 그대로 동작한다. */
     let pinch: { d: number; z: number; cx: number; cy: number; px: number; py: number } | null = null;
     let pinchPend: { z: number; p: { x: number; y: number } } | null = null;
     let pinchRaf = 0;
@@ -12167,24 +12167,45 @@ export default function ReplayMotionPlayer({
     let tap: { t: number; x: number; y: number } | null = null;
     let tapStart: { x: number; y: number; moved: boolean; t: number } | null = null;
     const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    /** 두 손가락의 가운데가 지도 안인가 — 지도 밖에서 시작한 손짓은 페이지 몫이다. */
+    const twoInMap = (e: TouchEvent): boolean => e.touches.length === 2
+      && inMap((e.touches[0].clientX + e.touches[1].clientX) / 2,
+        (e.touches[0].clientY + e.touches[1].clientY) / 2);
     const onTS = (e: TouchEvent) => {
-      /* 핀치 줌 제거(요청) — 두 손가락은 더 이상 확대하지 않는다. 브라우저 페이지
-         확대만 끊고 아무 일도 하지 않는다. 확대는 더블탭 하나뿐이다. */
-      if (e.touches.length !== 2) return;
-      e.preventDefault();
-      pinch = null;
+      /* 두 손가락이면 핀치 줌이다(지적: 모바일 핀치줌이 안 된다).
+         한동안 "확대는 더블탭 하나"로 두면서 이 자리가 pinch를 **세우지 않고 지우기만**
+         했다. 아래 onTM의 셈(배율 잡기·손가락 가운데 고정)은 그대로 살아 있었는데 시작
+         점이 없어 통째로 죽은 코드였다 — 그래서 두 손가락을 벌려도 아무 일도 안 났다. */
+      if (!twoInMap(e)) return;
+      const el2 = mapRef.current;
+      if (!el2) return;
+      if (e.cancelable) e.preventDefault();
+      pinch = {
+        d: Math.max(1, dist(e.touches)),
+        z: zoomRef.current,
+        cx: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+        cy: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+        px: panRef.current.x,
+        py: panRef.current.y,
+      };
+      gestureRef.current = true;
     };
     const onTM = (e: TouchEvent) => {
-      gestureRef.current = e.touches.length >= 2;
+      const el2 = mapRef.current;
+      const t1 = e.touches[0];
+      /* 지도 안에서 난 손짓만 우리 몫이다 — 문서에서 받으므로(아래 등록 주석) 좌표로
+         가른다. 지도 밖의 스크롤·확대는 브라우저에 그대로 넘긴다. */
+      const inside = !!t1 && inMap(t1.clientX, t1.clientY);
+      gestureRef.current = e.touches.length >= 2 && inside;
       /* 삼키는 건 지도 조작일 때만(재재지적: 모바일에서 아래로 스와이프가 안 됨) —
          무조건 preventDefault가 확대 안 한 한 손가락 스와이프(페이지 스크롤)까지
          막았다. 두 손가락(핀치)이거나 확대 중(드래그 팬)일 때만 기본 동작을 끊고,
          평상시 한 손가락은 페이지 스크롤로 흘려보낸다. */
-      if (e.touches.length >= 2 || zoomRef.current > 1) {
+      if (inside && (e.touches.length >= 2 || zoomRef.current > 1)) {
         if (e.cancelable) e.preventDefault();
       }
-      if (!pinch || e.touches.length !== 2 || !el) return;
-      const r = el.getBoundingClientRect();
+      if (!pinch || e.touches.length !== 2 || !el2) return;
+      const r = el2.getBoundingClientRect();
       const ox = r.left + r.width / 2;
       const oy = r.top + r.height / 2;
       // 상한 12 → 20(재요청: 더 높게) — 그 위는 선명도가 배킹 한계(4096px)에 막혀 무의미하다.
@@ -12322,10 +12343,24 @@ export default function ReplayMotionPlayer({
       }
       pTap = { t: now, x: e.clientX, y: e.clientY };
     };
-    el?.addEventListener("touchstart", onTS, { passive: false });
-    el?.addEventListener("touchmove", onTM, { passive: false });
-    el?.addEventListener("touchend", onTE);
-    el?.addEventListener("touchcancel", onTE);
+    /* 핀치도 문서에서 받는다(지적: 모바일 핀치줌이 안 된다) — 더블탭이 이미 같은 이유로
+       문서로 옮겨 와 있다: 맵은 자료가 온 뒤에 그려지기도 해서 마운트 순간 mapRef가
+       비어 있으면 el에 건 리스너가 **영영 안 달렸다**. 그러면 핀치는 코드가 멀쩡해도
+       이벤트 자체를 못 받는다. 지도 안인지는 좌표(inMap)로 가린다. */
+    /* 사파리의 손짓 이벤트도 막는다 — 아이폰은 touch-action과 별개로 gesturestart로
+       페이지 확대를 시작한다. 지도 위에서만 끊고 그 밖은 그대로 둔다. */
+    const onGesture = (e: Event) => {
+      const g = e as Event & { clientX?: number; clientY?: number };
+      if (g.clientX === undefined || g.clientY === undefined) return;
+      if (!inMap(g.clientX, g.clientY)) return;
+      if (e.cancelable) e.preventDefault();
+    };
+    document.addEventListener("gesturestart", onGesture, { passive: false });
+    document.addEventListener("gesturechange", onGesture, { passive: false });
+    document.addEventListener("touchstart", onTS, { passive: false });
+    document.addEventListener("touchmove", onTM, { passive: false });
+    document.addEventListener("touchend", onTE);
+    document.addEventListener("touchcancel", onTE);
     document.addEventListener("touchstart", onDocTS, { passive: true });
     document.addEventListener("touchmove", onDocTM, { passive: true });
     /* 문서 touchend는 수동 등록 아님(passive: false) — 두 번째 탭에서 브라우저 제
@@ -12338,10 +12373,12 @@ export default function ReplayMotionPlayer({
     document.addEventListener("pointercancel", onPU, { passive: true });
     return () => {
       if (pinchRaf) cancelAnimationFrame(pinchRaf);
-      el?.removeEventListener("touchstart", onTS);
-      el?.removeEventListener("touchmove", onTM);
-      el?.removeEventListener("touchend", onTE);
-      el?.removeEventListener("touchcancel", onTE);
+      document.removeEventListener("gesturestart", onGesture);
+      document.removeEventListener("gesturechange", onGesture);
+      document.removeEventListener("touchstart", onTS);
+      document.removeEventListener("touchmove", onTM);
+      document.removeEventListener("touchend", onTE);
+      document.removeEventListener("touchcancel", onTE);
       document.removeEventListener("touchstart", onDocTS);
       document.removeEventListener("touchmove", onDocTM);
       document.removeEventListener("touchend", onDocTE);

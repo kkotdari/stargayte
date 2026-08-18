@@ -11086,6 +11086,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   -webkit-user-drag: none; user-select: none;
 }
 .scr-motion-map { user-select: none; }
+/* 두 손가락은 지도 확대다(지적: 모바일 핀치줌이 안 된다) — touch-action에 pinch-zoom을
+   안 실으면 브라우저가 두 손가락 손짓을 페이지 확대로 채가지 않는다(아이폰 사파리는
+   viewport의 user-scalable=no를 접근성 이유로 무시하므로 여기서 막아야 한다).
+   pan-y는 남긴다: 확대 안 한 상태에서 지도 위를 한 손가락으로 훑으면 페이지가 그대로
+   위아래로 굴러야 한다(지난 지적). 더블탭 확대도 pan-y면 브라우저 몫에서 빠져,
+   재생기가 제 더블탭으로 쓴다. */
+.scr-motion-map { touch-action: pan-y; }
 /* 매핑 안 된 맵(정정: 샘플 녹색이 아니라 맵에서 실제 추출한 지형) — 리플레이 타일
    격자 개략도(ReplayMapCanvas)가 바탕을 채운다. */
 .scr-motion-canvas-blank { background: rgba(30, 42, 24, 0.6); overflow: hidden; }
