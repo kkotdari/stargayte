@@ -2368,7 +2368,6 @@ export function buildUnitTracks(
       pend.set(Math.round(sec), arr);
     };
     const swarms: [number, number, number][] = [];
-    let deadTailN = 0;
     const hurt = (a: Agent, sec: number, amt: number, spell: boolean): void => {
       if (!a.alive || amt <= 0) return;
       if (sec < a.stasisUntil) return; // 얼음 속은 무적
@@ -2402,15 +2401,24 @@ export function buildUnitTracks(
       }
       return false;
     };
+    /* 증거가 죽음을 이긴다(기획서 docs/plan-sim-core-v4.md — 개체 트랙의 첫째 원칙)
+       리플레이에서 뒤에 명령을 받은 태그는 그 순간 확실히 살아 있다. 배분한 피해가
+       먼저 0에 닿았다면 그건 '배분이 과했다'는 뜻이지 그 유닛이 죽었다는 뜻이 아니다.
+       예전엔 네 번까지만 살려 주고 그 뒤로는 죽인 다음 남은 증거를 새 생애(꼬리)로
+       갈랐는데, 그 탓에
+         ① 한 유닛이 여럿으로 늘고(실측 이 경기 꼬리 50개 — 3시 질럿만 19개,
+            질럿 개체 97기 대 실제 생산 80기),
+         ② 갓 갈린 꼬리가 전투 한복판에서 태어나 2~4초 만에 또 죽어, 화면에서
+            깜빡였다(지적: 질럿들이 자꾸 페이드아웃된다).
+       이제 뒤 증거가 있으면 무조건 산다. 태그 재사용(진짜로 죽고 번호를 물려준 경우)은
+       위쪽 '태그 재사용 분리'가 따로 가른다 — 거기 잣대는 유닛의 실제 자리인 강한
+       앵커(f=1) 사이의 물리적으로 불가능한 도약이라 명령 좌표에 안 속는다. */
     const onZero = (a: Agent, sec: number): void => {
       const nv = a.life.ev.find((v) => v[1] >= 0 && v[0] > sec + 2);
-      const reachable = nv
-        ? Math.hypot(nv[1] - a.x, nv[2] - a.y) <= a.speed * 1.4 * Math.max(1, nv[0] - sec) + 2
-        : false;
-      if (nv && reachable && a.revives < 4) {
+      if (nv) {
         // 산 유닛을 죽였다 = 배분 과대 — 살리되 남은 피해를 눅인다(기존 원칙 그대로).
         a.revives += 1;
-        a.dmgScale *= 0.55;
+        a.dmgScale = Math.max(0.05, a.dmgScale * 0.55);
         a.hp = a.maxHp * (0.2 + ((Math.abs(a.life.tag) * 37) % 24) / 100);
         a.sh = 0;
         mark(a, sec);
@@ -2419,38 +2427,6 @@ export function buildUnitTracks(
       a.alive = false;
       a.trace.push([Math.round(sec), 0]);
       simDeathOf.set(a.life, Math.round(sec + 1 + (Math.abs(a.life.tag) % 4)));
-      // 꼬리 분리 — 죽음 '뒤'의 증거는 태그를 물려받은 새 유닛이다(번복 없는 죽음).
-      if (nv) {
-        const vi = a.life.ev.indexOf(nv);
-        if (vi >= 1) {
-          const rest = a.life.ev.splice(vi);
-          deadTailN += 1;
-          const tail: Life = {
-            tag: a.life.tag + 1000000 * deadTailN,
-            owner: a.life.owner,
-            kinds: new Map(a.life.kinds),
-            groupKinds: new Set(a.life.groupKinds),
-            bld: false,
-            born: rest[0][0],
-            last: rest[rest.length - 1][0],
-            lastAtk: null,
-            evAfterAtk: false,
-            morphTo: a.life.morphTo,
-            cxl: null,
-            solo: false,
-            spawned: true,
-            ev: rest,
-          };
-          a.life.morphTo = null;
-          a.life.last = a.life.ev.length > 0 ? a.life.ev[a.life.ev.length - 1][0] : a.life.born;
-          done.push(tail);
-          const bucket = byTag.get(tail.tag) ?? [];
-          bucket.push(tail);
-          byTag.set(tail.tag, bucket);
-          const ta = mkAgent(tail);
-          if (ta) { agents.push(ta); if (ta.kind === "Medic") medicAgents.push(ta); }
-        }
-      }
     };
     for (const a of agents) if (a.kind === "Medic") medicAgents.push(a);
     const castsSorted = [...casts].sort((c1, c2) => c1[0] - c2[0]);

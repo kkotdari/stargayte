@@ -82,7 +82,12 @@ if (all.length > 1) {
     fictionRate: wavg((m) => m.fictionRate),
     backtrackPer100: wavg((m) => m.backtrackPer100),
     lonelyDeathRate: wavg((m) => m.lonelyDeathRate),
+    flickerRate: wavg((m) => m.flickerRate),
     deaths: all.reduce((s, m) => s + m.deaths, 0),
     legs: all.reduce((s, m) => s + m.legs, 0),
+    revives: all.reduce((s, m) => s + m.revives, 0),
+    backtracks: all.reduce((s, m) => s + m.backtracks, 0),
+    lonely: all.reduce((s, m) => s + m.lonely, 0),
+    flickers: all.reduce((s, m) => s + m.flickers, 0),
   }));
 }

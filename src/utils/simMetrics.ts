@@ -13,6 +13,12 @@
  *      (= 순간이동·따라잡기·다리 잇기가 메우고 있는 몫)
  *   ③ 후진 — 증거가 왔던 길을 되짚는 횟수("막 되돌아간다")
  *   ④ 근거 없는 죽음 — 죽은 자리 곁에 적의 증거가 없던 죽음
+ *   ⑤ 깜빡임 — 태어난 지 6초 안에 죽는 개체("유닛들이 자꾸 페이드아웃된다")
+ *
+ * 비율만 보면 속는다 — 허수 개체를 없애는 변경은 분모(개체·사망 수)를 줄이므로 절대
+ * 수가 그대로여도 비율이 오른다(실측: 꼬리 분리를 없애자 개체 828→778, 사망 355→306,
+ * 생존위반은 13건→14건으로 사실상 그대로인데 비율은 3.7%→4.6%로 '나빠져' 보였다).
+ * 그래서 비율 옆에 늘 절대 수를 함께 낸다.
  *
  * 이 파일은 리액트를 안 쓴다 — 노드 CLI(scripts/sim-metrics.mjs)가 그대로 번들해 돌린다. */
 
@@ -43,9 +49,16 @@ export type Metrics = {
   backtrackPer100: number;
   /** ④ 적의 증거가 곁에 없던 죽음의 비율(%). */
   lonelyDeathRate: number;
+  /** ⑤ 태어난 지 6초 안에 죽는 개체 수와 그 비율(%). */
+  flickers: number;
+  flickerRate: number;
   /** 잰 개체·구간 수 — 표본이 너무 작을 때 알아보라고 함께 낸다. */
   deaths: number;
   legs: number;
+  /** 비율에 속지 않으려고 함께 내는 절대 수 — 위 ①③④의 분자. */
+  revives: number;
+  backtracks: number;
+  lonely: number;
 };
 
 const median = (xs: number[]): number => {
@@ -146,6 +159,15 @@ export function computeMetrics(data: Tracks): Metrics {
     if (!seen) lonely += 1;
   }
 
+  /* ⑤ 깜빡임 — 태어난 지 6초 안에 죽는 개체. 화면에서는 유닛이 나타났다 곧 사라지는
+     것으로 보인다(지적: 질럿들이 자꾸 페이드아웃된다). 진짜로 6초 만에 죽는 일도 있지만
+     (수송선에서 내리자마자 죽는 등) 그 비율이 높다면 그건 우리가 만든 허수다. */
+  let flickers = 0;
+  for (const e of units) {
+    if (e.d === null || e.d === undefined) continue;
+    if (e.d - e.b <= 6) flickers += 1;
+  }
+
   return {
     units: units.length,
     reviveRate: pct(lateness.length, withDeath),
@@ -153,8 +175,13 @@ export function computeMetrics(data: Tracks): Metrics {
     fictionRate: pct(fiction, span),
     backtrackPer100: units.length === 0 ? 0 : Math.round((backtracks / units.length) * 1000) / 10,
     lonelyDeathRate: pct(lonely, deaths),
+    flickers,
+    flickerRate: pct(flickers, units.length),
     deaths,
     legs,
+    revives: lateness.length,
+    backtracks,
+    lonely,
   };
 }
 
@@ -163,9 +190,11 @@ export function formatMetrics(label: string, m: Metrics): string {
   return [
     label.padEnd(18),
     `유닛 ${String(m.units).padStart(5)}`,
-    `생존위반 ${String(m.reviveRate).padStart(5)}%(중앙 ${m.reviveMedianSec}s)`,
+    `사망 ${String(m.deaths).padStart(4)}`,
+    `생존위반 ${String(m.reviveRate).padStart(5)}%(${m.revives}건, 중앙 ${m.reviveMedianSec}s)`,
     `걸음허구 ${String(m.fictionRate).padStart(5)}%`,
-    `후진 ${String(m.backtrackPer100).padStart(5)}/100기`,
-    `외로운죽음 ${String(m.lonelyDeathRate).padStart(5)}%`,
+    `후진 ${String(m.backtrackPer100).padStart(5)}/100기(${m.backtracks}회)`,
+    `외로운죽음 ${String(m.lonelyDeathRate).padStart(5)}%(${m.lonely}건)`,
+    `깜빡임 ${String(m.flickerRate).padStart(5)}%(${m.flickers}기)`,
   ].join("  ");
 }
