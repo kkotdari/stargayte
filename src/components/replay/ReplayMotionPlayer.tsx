@@ -23,7 +23,7 @@ import {
   screenCircle, sphereFaces3, tubeFaces,
   wallDiscPath, withPitchView, withTopView, withViewShear, withYaw, zsorted,
 } from "../../utils/shapeOblique";
-import type { MinimapMarker } from "./ReplayMinimap";
+import { TEAM_COLOR, type MinimapMarker } from "./ReplayMinimap";
 
 /* ── 모션 트랙 타입(옛 utils/replayMotion.ts에서 이사) ─────────────────────────────
    요약(summaryData) 생성이 걷히면서 트랙을 만드는 쪽(motionOf)은 사라졌고, 저장돼 있던
@@ -9052,9 +9052,10 @@ export default function ReplayMotionPlayer({
     }
     return out.sort((a, b) => a[0] - b[0]);
   }, [entData]);
-  /* 밝은 톤(지적: 음영에 비해 팀색이 어두워 안 보인다)이되 너무 파스텔은 말고(지적) —
-     쨍한 하늘·장미색의 중간 지점. */
-  const TEAM_EDGE: Record<1 | 2, string> = { 1: "#5ea2ff", 2: "#ff7d95" };
+  /* 팀색은 미니맵과 한 벌이다(요청: 덜 파스텔·진하게·원작 색) — 값은 ReplayMinimap의
+     TEAM_COLOR 한 곳에서만 정한다. 여태 두 파일이 각자 다른 색을 들고 있어(재생 #5ea2ff·
+     #ff7d95, 미니맵 #2b9bff·#ff4d68) 같은 팀이 화면마다 다른 파랑이었다. */
+  const TEAM_EDGE: Record<1 | 2, string> = { 1: TEAM_COLOR[1], 2: TEAM_COLOR[2] };
   const modeColor = (raw: string, team: 1 | 2 | undefined): string => {
     const teamColor = team === 2 ? TEAM_EDGE[2] : TEAM_EDGE[1];
     // 요약 폐지 뒤 개인색의 원천은 개체 트랙이다(수리: 색이 팀 2색으로 퇴행).
@@ -13379,6 +13380,22 @@ export default function ReplayMotionPlayer({
       {teamCol(2)}
       </div>
 
+      {/* 색상 전환은 지도 바로 아래 제 줄에 둔다(요청: "색상 전환은 자주 쓰는 거라 미니맵
+          바로 아래에 따로 배치하고 디자인도 좀 크고 라벨도 왼쪽에") — 보기 설정 줄에
+          성능·보기·모델 크기와 나란히 있던 것을 뺐다. 저것들은 한 번 맞춰 두고 마는
+          것이지만 색은 재생 도중에도 계속 오간다. 라벨은 위가 아니라 왼쪽이고, 알약도
+          한 눈금 크다(scr-motion-colorrow). */}
+      <div className="scr-motion-bar scr-motion-colorrow">
+        <span className="scr-motion-colorrow-label">색상</span>
+        <PillTabs
+          options={[{ value: "personal", label: "개인색" }, { value: "team", label: "팀색" }]}
+          value={colorMode}
+          onChange={(v) => setColorMode(v)}
+          aria-label="색상"
+          fit
+        />
+      </div>
+
       {/* 지도 아래 도구줄 — 오른쪽 칸에 확대 토글만 남았다. 범례는 모델이 대신하고,
           지형 편집(산 버튼)도 걷었다(요청: 버튼 정리). */}
       <div className="scr-motion-toolrow">
@@ -13425,15 +13442,6 @@ export default function ReplayMotionPlayer({
             value={pitched ? "3d" : "2d"}
             onChange={(v) => setPitched(v === "3d")}
             aria-label="보기"
-          />
-        </span>
-        <span className="scr-motion-radio">
-          <span className="scr-motion-radio-label">컬러</span>
-          <PillTabs
-            options={[{ value: "personal", label: "개인색" }, { value: "team", label: "팀색" }]}
-            value={colorMode}
-            onChange={(v) => setColorMode(v)}
-            aria-label="컬러"
           />
         </span>
         <span className="scr-motion-radio">

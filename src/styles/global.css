@@ -5817,6 +5817,25 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   color: var(--text);
 }
 
+/* 색상 전환 줄(요청: 미니맵 바로 아래·크게·라벨 왼쪽) — 자주 쓰는 조작이라 보기 설정
+   줄에서 떼어내 지도 바로 밑에 제 줄로 뒀다. 라벨이 왼쪽에 서고 알약이 남은 폭을 채운다. */
+.scr-motion-colorrow {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 10px; margin-top: 6px;
+}
+.scr-motion-colorrow-label {
+  flex: 0 0 auto;
+  font-size: var(--fs-body); font-weight: 700; color: var(--text);
+  letter-spacing: .01em;
+}
+.scr-motion-colorrow .scr-pill-tabs { flex: 1 1 auto; }
+/* 한 눈금 크게 — 보기 설정 줄의 알약보다 손가락이 편하게. */
+.scr-motion-colorrow .scr-pill-tab-btn {
+  padding: 9px 14px;
+  font-size: var(--fs-body);
+  font-weight: 700;
+}
+
 /* ===== 프로필 사진 크롭(AvatarCropModal) =====
    아바타는 이 앱 어디서나 원형으로만 쓰이므로(.scr-avatar-pick .scr-avatar) 자유 비율
    대신 정사각(원) 크롭 하나만 지원한다. */
