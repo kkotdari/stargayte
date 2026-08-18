@@ -19,6 +19,7 @@ import {
   CAST_ORDER_TO_UNIT, USE_CMD_TO_UNIT, CAST_ORDER_TO_TECH, PLACE_MINE_ORDER,
   normalizeUpgradeName,
 } from "./replayTechNames";
+import { speedOfUnit } from "./bwUnits";
 import type { Race } from "../types";
 
 /* ── 입력 — screp 커맨드에서 쓰는 필드만 구조 타입으로 받는다(replayParser의 ScrepCmd와
@@ -101,6 +102,8 @@ export interface UnitTracksV2 {
     prod?: number; prodBound?: number; prodSyn?: number;
     /** 무른 건설 — bldVoided: 선 적 없어 뺀 것, bldClosed: 겹침으로 철거를 닫은 것. */
     bldVoided?: number; bldClosed?: number;
+    /** 폐기된 이동 목적지 — moveDropped: 못 닿아 뺀 것, moveKept: 닿은 것. */
+    moveDropped?: number; moveKept?: number;
   };
 }
 
@@ -395,6 +398,8 @@ export function buildUnitTracks(
   const prodStats = { total: 0, bound: 0, syn: 0 };
   /** 무른 건설 계측 — voided: 아예 안 지어진 것, closed: 놓쳤던 철거를 겹침으로 닫은 것. */
   const buildStats = { voided: 0, closed: 0 };
+  /** 폐기된 이동 목적지 계측 — dropped: 끝내 못 닿아 뺀 것, kept: 실제로 닿은 것. */
+  const moveStats = { dropped: 0, kept: 0 };
   /** 선 적 없는 건설의 자리 — 일꾼 생애에 남은 그 건설 증거(f=2)도 함께 지운다. */
   const voidedSites: { owner: number; x: number; y: number; sec: number }[] = [];
   /** 수송선 승하차(요청 ③) — 제 수송선을 우클릭하면 탑승(f=12), Unload·MoveUnload로
@@ -524,7 +529,11 @@ export function buildUnitTracks(
     if (BUILDING_NAMES.has(kind)) life.bld = true;
     return life;
   };
-  const pushEv = (life: Life, sec: number, x: number, y: number, f: number): void => {
+  /** 시프트 예약 이동(Queued) 표시 — 이동 증거의 다섯째 값에 1로 싣는다. 브루드워에서
+   *  예약 없는 명령은 대기 중인 명령을 전부 지우고, 예약 명령은 뒤에 붙는다. 이 구별이
+   *  없으면 '지워진 목적지'까지 유닛이 다녀온 것으로 그려진다(지적: 5시로 간 정찰
+   *  프로브가 7시에 갔다 온다). */
+  const pushEv = (life: Life, sec: number, x: number, y: number, f: number, q = false): void => {
     life.last = sec;
     if (life.lastAtk !== null) life.evAfterAtk = true;
     const prev = life.ev[life.ev.length - 1];
@@ -533,7 +542,7 @@ export function buildUnitTracks(
       prev[0] = Math.round(sec);
       return;
     }
-    life.ev.push([Math.round(sec), r1(x), r1(y), f]);
+    life.ev.push(q ? [Math.round(sec), r1(x), r1(y), f, 1] : [Math.round(sec), r1(x), r1(y), f]);
   };
 
   /* 태그별 '마지막 등장' 시각(요청 수리: 아콘만 많이 탔는데 프로브로 나온다) — 합체는
@@ -1152,7 +1161,7 @@ export function buildUnitTracks(
       }
       if (pos && life.bld && liftedTags.has(tag)) {
         // 비행 클릭(요청) — 뜬 건물이 나는 길. 착륙 전까지의 이동 자취다.
-        pushEv(life, sec, pos.x, pos.y, 0);
+        pushEv(life, sec, pos.x, pos.y, 0, c.Queued === true);
         continue;
       }
       if (pos && !life.bld) {
@@ -1168,7 +1177,7 @@ export function buildUnitTracks(
           life.ev.push([Math.round(sec), r1(pos.x), r1(pos.y), 7,
             ATTACK_ORDERS.has(orderName) || orderName.startsWith("Attack") || hostileClick ? tgtTag0 : 0]);
         } else {
-          pushEv(life, sec, pos.x, pos.y, 0);
+          pushEv(life, sec, pos.x, pos.y, 0, c.Queued === true);
         }
       } else life.last = sec;
     }
@@ -1240,6 +1249,96 @@ export function buildUnitTracks(
   }
 
   for (const life of alive.values()) done.push(life);
+
+  /* ── 폐기된 목적지 지우기(지적: 5시로 간 정찰 프로브가 7시에 갔다 온다) ──────────
+     명령 파싱에 구멍이 있었다. 브루드워의 이동 명령에는 '예약(Queued)' 여부가 붙는데,
+     **예약 없는 명령은 대기 중인 명령을 전부 지우고** 예약 명령은 뒤에 붙는다. 우리는
+     그 구별을 안 보고 모든 우클릭을 '유닛이 지나간 점'으로 삼았다. 그래서 지워진 목적지
+     까지 다녀오는 그림이 나왔다.
+
+     실측(3시 정찰 프로브 태그 10996):
+       59.93 (115,115) 예약X   61.95 (47,119) 예약O   62.54 (6,116) 예약O
+       63.04 (101,112) 예약X  ← 여기서 7시 둘이 통째로 지워진다
+       63.25 (110,118) 예약X   64.13 (8,116) 예약O
+     진짜 목적지는 (110,118) = 5시다. 실제로 5시 저그가 92~97초에 이 프로브를
+     (117,120)에서 세 번 어택으로 찍었다 — 그 자리에 있었다는 남의 증거다.
+
+     여기서는 명령 큐를 그대로 굴린다: 예약 없는 명령은 큐를 비우고, 예약 명령은 뒤에
+     붙이고, 시간이 흐르는 만큼 유닛을 걷게 한다. 끝내 닿지 못한 목적지는 유닛이 가 본
+     적 없는 곳이므로 증거에서 뺀다. 남이 찍은 자리(f=1)와 건설·출생·착륙 자리는 진짜
+     위치라 지우지 않고, 오히려 걸음의 출발점을 그리로 되돌린다.
+     속력을 모르는 개체는 가장 빠른 지상 유닛으로 쳐서 되도록 안 지우는 쪽으로 기운다. */
+  {
+    let dropped = 0;
+    let kept = 0;
+    for (const life of done) {
+      if (life.bld || life.ev.length < 3) continue;
+      let mk = "";
+      let bn = 0;
+      for (const [k, n] of life.kinds) if (n > bn) { bn = n; mk = k; }
+      // 여유 35% — 업그레이드·경사·모르는 속력에 관대하게. 확실히 못 닿는 것만 지운다.
+      const spd = (mk ? speedOfUnit(mk) : 7) * 1.35;
+      const idx = life.ev
+        .map((v, i) => ({ v, i }))
+        .filter((e) => e.v[1] >= 0)
+        .sort((a, b) => a.v[0] - b.v[0] || a.i - b.i);
+      if (idx.length < 3) continue;
+      let px = idx[0].v[1];
+      let py = idx[0].v[2];
+      let t0 = idx[0].v[0];
+      /** 아직 못 간 목적지 줄 — [x, y, 증거 인덱스]. */
+      const queue: [number, number, number][] = [];
+      const arrived = new Set<number>();
+      const walk = (until: number): void => {
+        while (t0 < until && queue.length > 0) {
+          const [qx, qy] = queue[0];
+          const d = Math.hypot(qx - px, qy - py);
+          const need = d / spd;
+          if (t0 + need <= until) {
+            px = qx; py = qy; t0 += need;
+            if (queue[0][2] >= 0) arrived.add(queue[0][2]);
+            queue.shift();
+          } else {
+            const k = (until - t0) / Math.max(1e-6, need);
+            px += (qx - px) * k; py += (qy - py) * k; t0 = until;
+          }
+        }
+        if (t0 < until) t0 = until;
+      };
+      for (let n = 1; n < idx.length; n += 1) {
+        const { v, i } = idx[n];
+        walk(v[0]);
+        if (v[3] === 0) {
+          if (v[4] !== 1) queue.length = 0;   // 예약 없는 명령 = 큐를 비운다
+          queue.push([v[1], v[2], i]);
+        } else if (v[3] === 7 || v[3] === 10) {
+          /* 어택·수리도 '거기까지 간다'는 명령이라 걸음에 넣는다. 다만 지우지는 않는다 —
+             다섯째 값에 표적 태그가 실려 있어 전투의 뼈대이기 때문이다(못 닿았어도
+             '누구를 치라고 시켰다'는 사실은 남는다). */
+          queue.length = 0;
+          queue.push([v[1], v[2], -1]);
+        } else if (v[3] === 12) {
+          queue.length = 0;                   // 탔다 — 제 걸음이 아니다
+          px = v[1]; py = v[2];
+        } else {
+          // 남이 찍은 자리·건설·출생·착륙·하차 = 진짜 위치. 걸음의 출발점을 여기로.
+          queue.length = 0;
+          px = v[1]; py = v[2];
+        }
+      }
+      walk(Infinity);                          // 마지막 명령은 끝까지 걸어간다
+      for (const [, , i] of queue) if (i >= 0) arrived.add(i);
+      for (let n = idx.length - 1; n >= 1; n -= 1) {
+        const { v, i } = idx[n];
+        if (v[3] !== 0) continue;
+        if (arrived.has(i)) { kept += 1; continue; }
+        const at = life.ev.indexOf(v);
+        if (at >= 0) { life.ev.splice(at, 1); dropped += 1; }
+      }
+    }
+    moveStats.dropped = dropped;
+    moveStats.kept = kept;
+  }
 
   /* ── 발자국 겹침으로 무른 건설 가려내기(지적: 없는 건물이 나온다) ──────────────
      위의 '도착 전 재건설' 판정은 일꾼 걸음을 어림해 도착 시각을 재므로 빗나갈 수 있다.
@@ -2845,6 +2944,7 @@ export function buildUnitTracks(
       cmds: totalOrders, attributed, anchors, lives, tags: byTag.size,
       prod: prodStats.total, prodBound: prodStats.bound, prodSyn: prodStats.syn,
       bldVoided: buildStats.voided, bldClosed: buildStats.closed,
+      moveDropped: moveStats.dropped, moveKept: moveStats.kept,
     },
   };
 }
