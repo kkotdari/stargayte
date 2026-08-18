@@ -65,6 +65,7 @@ for (const { label, json } of inputs) {
     `키 ${String(Math.round(s.keys)).padStart(7)}`,
     `앵커 ${String(s.anchors).padStart(6)}`,
     `드리프트 중앙 ${String(s.driftMedian).padStart(5)} / 90분위 ${String(s.driftP90).padStart(6)} / 1.5타일초과 ${String(s.driftBadRate).padStart(5)}%`,
+    `죽임 ${String(s.kills).padStart(5)} / 증거구조 ${String(s.saved).padStart(5)} / 발사 ${String(s.shots).padStart(7)}`,
     `${String(s.ms).padStart(6)}ms`,
     `${(bytes / 1024 / 1024).toFixed(2)}MB`,
   ].join("  "));

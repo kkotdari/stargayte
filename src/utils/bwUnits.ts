@@ -60,3 +60,116 @@ export const TURN_RATE: Record<string, number> = {
   Lurker: 240, Arbiter: 200, "Science Vessel": 200, Overlord: 130,
 };
 export const DEFAULT_TURN_RATE = 380;
+
+/* ── 전투 자료표(기획서 P2) ───────────────────────────────────────────────────
+ *
+ * ⚠ 이 표의 숫자는 아직 **대조 전**이다. 구조를 먼저 세우려고 기억으로 채웠으므로,
+ *   P2를 끝냈다고 말하기 전에 반드시 원 자료(BWAPI의 UnitType/WeaponType 덤프 등)로
+ *   한 줄씩 대조해야 한다. 기획서 7절에 적어 둔 그 항목이다.
+ *
+ * 피해 셈: 실피해 = max(0.5, 피해량 × 종류배수(공격종류, 표적크기) − 방어력).
+ * 실드가 남아 있으면 실드부터 깎는다(실드는 종류배수를 안 받는다 — 이것도 대조 대상). */
+
+export type DmgType = "normal" | "concussive" | "explosive";
+export type UnitSize = "small" | "medium" | "large";
+
+/** 무기 하나 — cd는 초(원작 프레임 ÷ 23.81), range·splash는 타일. */
+export type Weapon = {
+  dmg: number; type: DmgType; range: number; cd: number; splash?: number;
+};
+
+/** 종류배수 — 공격 종류 × 표적 크기. 건물은 large로 친다. */
+export const DMG_MULT: Record<DmgType, Record<UnitSize, number>> = {
+  normal: { small: 1, medium: 1, large: 1 },
+  concussive: { small: 1, medium: 0.5, large: 0.25 },
+  explosive: { small: 0.5, medium: 0.75, large: 1 },
+};
+
+export const UNIT_SIZE: Record<string, UnitSize> = {
+  Marine: "small", Firebat: "small", Medic: "small", Ghost: "small", SCV: "small",
+  Vulture: "medium", Goliath: "large", "Siege Tank": "large",
+  "Siege Tank (Tank Mode)": "large", "Siege Tank (Siege Mode)": "large",
+  Wraith: "large", Dropship: "large", "Science Vessel": "large",
+  Battlecruiser: "large", Valkyrie: "large",
+  Probe: "small", Zealot: "small", Dragoon: "large", "High Templar": "small",
+  "Dark Templar": "small", Archon: "large", "Dark Archon": "large", Reaver: "large",
+  Shuttle: "large", Observer: "small", Scout: "large", Corsair: "medium",
+  Carrier: "large", Arbiter: "large",
+  Drone: "small", Zergling: "small", Hydralisk: "medium", Lurker: "large",
+  Ultralisk: "large", Defiler: "medium", Overlord: "large", Mutalisk: "small",
+  Scourge: "small", Queen: "medium", Guardian: "large", Devourer: "large",
+  "Infested Terran": "small", Broodling: "small",
+};
+
+export const UNIT_ARMOR: Record<string, number> = {
+  Firebat: 1, Medic: 1, Goliath: 1, "Siege Tank": 1, "Siege Tank (Tank Mode)": 1,
+  "Siege Tank (Siege Mode)": 1, Dropship: 1, "Science Vessel": 1,
+  Battlecruiser: 3, Valkyrie: 2,
+  Zealot: 1, Dragoon: 1, "Dark Templar": 1, Shuttle: 1, Corsair: 1, Carrier: 4, Arbiter: 1,
+  Lurker: 1, Ultralisk: 1, Defiler: 1, Guardian: 2, Devourer: 2,
+};
+
+/** 지상 무기 — 없으면 지상을 못 친다. */
+export const WEAPON_GROUND: Record<string, Weapon> = {
+  Marine: { dmg: 6, type: "normal", range: 4, cd: 0.63 },
+  Firebat: { dmg: 16, type: "concussive", range: 2, cd: 0.92, splash: 0.7 },
+  Ghost: { dmg: 10, type: "normal", range: 7, cd: 0.92 },
+  SCV: { dmg: 5, type: "normal", range: 1, cd: 0.63 },
+  Vulture: { dmg: 20, type: "concussive", range: 5, cd: 1.26 },
+  Goliath: { dmg: 12, type: "normal", range: 6, cd: 0.92 },
+  "Siege Tank": { dmg: 30, type: "explosive", range: 7, cd: 1.55 },
+  "Siege Tank (Tank Mode)": { dmg: 30, type: "explosive", range: 7, cd: 1.55 },
+  "Siege Tank (Siege Mode)": { dmg: 70, type: "explosive", range: 12, cd: 3.15, splash: 1.5 },
+  Wraith: { dmg: 8, type: "normal", range: 5, cd: 1.26 },
+  Battlecruiser: { dmg: 25, type: "normal", range: 6, cd: 1.26 },
+  Probe: { dmg: 5, type: "normal", range: 1, cd: 0.92 },
+  Zealot: { dmg: 16, type: "normal", range: 1, cd: 0.92 },
+  Dragoon: { dmg: 20, type: "explosive", range: 4, cd: 1.26 },
+  "Dark Templar": { dmg: 40, type: "normal", range: 1, cd: 1.26 },
+  Archon: { dmg: 30, type: "normal", range: 2, cd: 0.84, splash: 0.8 },
+  Reaver: { dmg: 100, type: "normal", range: 8, cd: 2.5, splash: 1.2 },
+  Scout: { dmg: 8, type: "normal", range: 4, cd: 1.26 },
+  Carrier: { dmg: 18, type: "normal", range: 8, cd: 1.5 },
+  Arbiter: { dmg: 10, type: "explosive", range: 5, cd: 1.89 },
+  Drone: { dmg: 5, type: "normal", range: 1, cd: 0.92 },
+  Zergling: { dmg: 5, type: "normal", range: 1, cd: 0.34 },
+  Hydralisk: { dmg: 10, type: "explosive", range: 4, cd: 0.63 },
+  Lurker: { dmg: 20, type: "normal", range: 6, cd: 1.55, splash: 1.2 },
+  Ultralisk: { dmg: 20, type: "normal", range: 1, cd: 0.63 },
+  Mutalisk: { dmg: 9, type: "normal", range: 3, cd: 1.26 },
+  Guardian: { dmg: 20, type: "normal", range: 8, cd: 1.26 },
+  "Infested Terran": { dmg: 500, type: "explosive", range: 1, cd: 1, splash: 2 },
+  Broodling: { dmg: 4, type: "normal", range: 1, cd: 0.63 },
+  // 방어 건물
+  "Sunken Colony": { dmg: 40, type: "explosive", range: 7, cd: 1.34 },
+  "Photon Cannon": { dmg: 20, type: "normal", range: 7, cd: 0.92 },
+  Bunker: { dmg: 6, type: "normal", range: 6, cd: 0.63 },
+};
+
+/** 대공 무기 — 없으면 공중을 못 친다. */
+export const WEAPON_AIR: Record<string, Weapon> = {
+  Marine: { dmg: 6, type: "normal", range: 4, cd: 0.63 },
+  Ghost: { dmg: 10, type: "normal", range: 7, cd: 0.92 },
+  Goliath: { dmg: 20, type: "explosive", range: 5, cd: 0.92 },
+  Wraith: { dmg: 20, type: "explosive", range: 5, cd: 0.92 },
+  Battlecruiser: { dmg: 25, type: "normal", range: 6, cd: 1.26 },
+  Valkyrie: { dmg: 48, type: "explosive", range: 6, cd: 2.52, splash: 0.6 },
+  Dragoon: { dmg: 20, type: "explosive", range: 4, cd: 1.26 },
+  Archon: { dmg: 30, type: "normal", range: 2, cd: 0.84, splash: 0.8 },
+  Scout: { dmg: 28, type: "explosive", range: 4, cd: 0.92 },
+  Corsair: { dmg: 5, type: "explosive", range: 5, cd: 0.34, splash: 0.6 },
+  Carrier: { dmg: 18, type: "normal", range: 8, cd: 1.5 },
+  Hydralisk: { dmg: 10, type: "explosive", range: 4, cd: 0.63 },
+  Mutalisk: { dmg: 9, type: "normal", range: 3, cd: 1.26 },
+  Scourge: { dmg: 110, type: "normal", range: 1, cd: 1 },
+  Devourer: { dmg: 25, type: "explosive", range: 6, cd: 4.2 },
+  "Missile Turret": { dmg: 20, type: "explosive", range: 7, cd: 0.63 },
+  "Spore Colony": { dmg: 15, type: "normal", range: 7, cd: 0.63 },
+  "Photon Cannon": { dmg: 20, type: "normal", range: 7, cd: 0.92 },
+};
+
+/** 실피해 — 실드가 남아 있으면 종류배수·방어력 없이 실드부터 깎는다(대조 대상). */
+export function damageOf(w: Weapon, size: UnitSize, armor: number, onShield: boolean): number {
+  if (onShield) return Math.max(0.5, w.dmg);
+  return Math.max(0.5, w.dmg * DMG_MULT[w.type][size] - armor);
+}

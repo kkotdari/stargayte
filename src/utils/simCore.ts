@@ -14,7 +14,11 @@
  * 리액트를 안 쓴다 — 웹 워커와 노드 CLI가 그대로 번들해 돌린다. */
 
 import { groundPath, type TerrainGrid } from "./minimapTerrain";
-import { DEFAULT_TURN_RATE, TURN_RATE, isAir, speedOfUnit } from "./bwUnits";
+import {
+  DEFAULT_TURN_RATE, TURN_RATE, UNIT_ARMOR, UNIT_SIZE, WEAPON_AIR, WEAPON_GROUND,
+  damageOf, isAir, speedOfUnit, type UnitSize, type Weapon,
+} from "./bwUnits";
+import { BLD_STATS, UNIT_STATS } from "./replayUnits";
 
 /* ── 입력 모양(개체 트랙 v2) ─────────────────────────────────────────────────── */
 
@@ -37,11 +41,17 @@ export type SimInput = {
 /* ── 출력 ─────────────────────────────────────────────────────────────────────── */
 
 /** 상태 — 렌더가 무엇을 그릴지 가르는 값. P2에서 fight/attack이 는다. */
-export type SimState = 0 | 1 | 2 | 3;
+export type SimState = 0 | 1 | 2 | 3 | 4;
 export const ST_IDLE: SimState = 0;
 export const ST_MOVE: SimState = 1;
 export const ST_INSIDE: SimState = 2;   // 수송선 안 — 안 그린다
 export const ST_GONE: SimState = 3;
+export const ST_FIGHT: SimState = 4;    // 멈춰 서서 쏘는 중(P2)
+
+/** 전투 사건 — [초, 갈래, 주체 태그, 표적 태그, x, y, tx, ty]. 갈래 0 발사 1 죽음. */
+export type SimEventArr = number[];
+export const EV_FIRE = 0;
+export const EV_DIE = 1;
 
 export type SimTrack = {
   tag: number; owner: number; kind: string;
@@ -56,9 +66,11 @@ export type SimStats = {
   driftMedian: number; driftP90: number; anchors: number;
   /** 앵커에서 1.5타일 넘게 벌어진 비율(%). */
   driftBadRate: number;
+  /** 전투(P2) — 시뮬이 죽인 수, 증거가 살려 낸 수(제약이 시뮬을 이긴 횟수), 발사 수. */
+  kills: number; saved: number; shots: number;
 };
 
-export type SimResult = { tracks: SimTrack[]; stats: SimStats };
+export type SimResult = { tracks: SimTrack[]; events: SimEventArr; stats: SimStats };
 
 export type SimOpts = {
   /** 맵 타일 크기 — 증거 좌표의 단위다. */
@@ -84,7 +96,7 @@ const ANCHOR_FIX_SEC = 2.5;
 
 /* ── 주문 ─────────────────────────────────────────────────────────────────────── */
 
-type OrdKind = "move" | "anchor" | "board" | "unload" | "gone";
+type OrdKind = "move" | "attack" | "anchor" | "board" | "unload" | "gone";
 type Ord = { t: number; kind: OrdKind; x: number; y: number; tag: number };
 
 /** 증거를 주문으로 옮긴다 — 자리 없는 증거(생산·랠리·클로킹)는 이동과 무관하니 뺀다. */
@@ -100,8 +112,10 @@ function ordersOf(e: SimEnt): Ord[] {
       out.push({ t: s, kind: "anchor", x, y, tag: 0 });
       continue;
     }
-    // 0 이동 · 7 공격 · 10 수리 — 전부 "그리로 가라"는 목적지다(공격 표적은 P2에서 쓴다).
-    if (f === 0 || f === 7 || f === 10) out.push({ t: s, kind: "move", x, y, tag: extra ?? 0 });
+    /* 0 이동 · 7 공격 · 10 수리 — 전부 목적지다. 다만 어택(7)만 '가다가 만나면 싸운다'
+       이고, 그냥 이동(0)은 원작에서도 멈춰 서지 않는다 — 이 구분이 P2의 핵심 규칙이다. */
+    if (f === 7) out.push({ t: s, kind: "attack", x, y, tag: extra ?? 0 });
+    else if (f === 0 || f === 10) out.push({ t: s, kind: "move", x, y, tag: extra ?? 0 });
   }
   out.sort((a, b) => a.t - b.t);
   return out;
@@ -128,7 +142,27 @@ type Body = {
   kx: number; ky: number; kh: number; ks: SimState; kt: number; kvx: number; kvy: number;
   /** 지난 틱의 자리 — 이번 틱 속도를 재는 자. */
   px: number; py: number;
+  /* ── 전투(P2) ── */
+  bld: boolean;
+  hp: number; sh: number; maxHp: number; armor: number; size: UnitSize;
+  wg: Weapon | null; wa: Weapon | null;
+  cd: number;                 // 남은 쿨다운(초)
+  foe: Body | null;
+  /* 지금 명령이 어택인가 — 원작에서 '그냥 이동'은 적을 만나도 안 멈춘다. 이 한 칸이
+     "행군하다 아무 건물에나 붙어 서는" 문제를 막는다. */
+  aggro: boolean;
+  /** 표적을 다시 고를 시각 — 매 틱 훑지 않게(비용). */
+  reacq: number;
+  /** 죽을 시각이 정해졌는가 — 증거가 보장한 생존 하한까지 미뤄 둔 죽음. */
+  dieAt: number | null;
+  /** 증거가 보장하는 생존 하한 — 이 시각까지는 절대 안 죽는다(제약이 시뮬을 이긴다). */
+  aliveUntil: number;
+  /** 분석이 말한 죽음 — 시뮬이 그때까지 못 죽였으면 여기서 죽는다(상한). */
+  dieBy: number | null;
 };
+
+/** 일꾼 — 스스로 표적을 잡지 않는다. */
+const WORKERS = new Set(["SCV", "Probe", "Drone"]);
 
 const norm360 = (d: number): number => ((d % 360) + 360) % 360;
 /** a에서 b로 도는 최단 각(도, -180~180). */
@@ -151,7 +185,36 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   let endSec = 0;
 
   for (const e of data.ents) {
-    if (e.bld || e.t === -1) continue;
+    if (e.t === -1 && !e.bld) continue;
+    /* 건물도 개체다(P2) — 맞아서 무너지고, 방어 건물은 제 사거리 안을 친다. 자리는
+       마지막 자리 증거(f=2|5), 없으면 안 세운다. */
+    const isB = !!e.bld;
+    if (isB) {
+      const spot = [...e.ev].reverse().find((v) => (v[3] === 2 || v[3] === 5) && v[1] >= 0);
+      if (!spot) continue;
+      const bs = BLD_STATS[e.k ?? ""] ?? [800, 0];
+      const bb: Body = {
+        src: e, tag: e.t, owner: e.o, kind: e.k ?? "", air: false,
+        speed: 0, turn: 0, born: spot[0], died: e.d ?? null,
+        x: spot[1], y: spot[2], hdg: 180, state: ST_IDLE,
+        ords: [], oi: 0, dest: null, path: [], pi: 0, inside: null,
+        fixX: 0, fixY: 0, fixT: 0, keys: [],
+        kx: NaN, ky: NaN, kh: NaN, ks: ST_GONE, kt: 0, kvx: 0, kvy: 0, px: NaN, py: NaN,
+        bld: true,
+        hp: bs[0] + bs[1], sh: bs[1], maxHp: bs[0] + bs[1],
+        armor: 1, size: "large",
+        wg: WEAPON_GROUND[e.k ?? ""] ?? null, wa: WEAPON_AIR[e.k ?? ""] ?? null,
+        cd: 0, foe: null, aggro: true, reacq: 0, dieAt: null,
+        aliveUntil: e.ev.length > 0 ? e.ev[e.ev.length - 1][0] : spot[0],
+        dieBy: e.d ?? null,
+      };
+      bodies.push(bb);
+      const arrB = byTag.get(bb.tag) ?? [];
+      arrB.push(bb);
+      byTag.set(bb.tag, arrB);
+      endSec = Math.max(endSec, bb.died ?? bb.born);
+      continue;
+    }
     const ords = ordersOf(e);
     const kind = e.k ?? "";
     const first = ords.find((o) => o.kind !== "board");
@@ -169,6 +232,17 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       keys: [],
       kx: NaN, ky: NaN, kh: NaN, ks: ST_GONE, kt: 0, kvx: 0, kvy: 0,
       px: NaN, py: NaN,
+      bld: false,
+      hp: (UNIT_STATS[kind]?.hp ?? 70) + (UNIT_STATS[kind]?.sh ?? 0),
+      sh: UNIT_STATS[kind]?.sh ?? 0,
+      maxHp: (UNIT_STATS[kind]?.hp ?? 70) + (UNIT_STATS[kind]?.sh ?? 0),
+      armor: UNIT_ARMOR[kind] ?? 0, size: UNIT_SIZE[kind] ?? "medium",
+      wg: WEAPON_GROUND[kind] ?? null, wa: WEAPON_AIR[kind] ?? null,
+      cd: 0, foe: null, aggro: false, reacq: 0, dieAt: null,
+      /* 증거가 보장하는 생존 하한 — 명령을 받은 태그는 그 순간 확실히 살아 있다.
+         시뮬이 그 전에 죽이려 들면 시뮬이 틀린 것이므로 체력 1로 버틴다. */
+      aliveUntil: e.ev.length > 0 ? e.ev[e.ev.length - 1][0] : e.b,
+      dieBy: e.d ?? null,
     };
     bodies.push(b);
     const arr = byTag.get(b.tag) ?? [];
@@ -230,9 +304,115 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   const gw = Math.ceil(W / CELL) + 1;
   const cells = new Map<number, Body[]>();
 
+  /* ── 전투(P2) ────────────────────────────────────────────────────────────────
+     표적 찾기는 균일 격자로 이웃만 훑는다. 사거리(reachOf)는 공중·지상에 따라 무기가
+     갈리고, 못 치는 갈래는 아예 표적이 아니다. */
+  const events: SimEventArr = [];
+  const live: Body[] = [];
+  let kills = 0;
+  let saved = 0;
+  let shots = 0;
+  /** 두 점 사이 거리 — 뜨거운 자리에서 Math.hypot은 V8에서 몇 배 느리다. */
+  const dist = (ax: number, ay: number, bx: number, by: number): number => {
+    const dx = bx - ax;
+    const dy = by - ay;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+  const weaponFor = (a: Body, tgt: Body): Weapon | null => (tgt.air ? a.wa : a.wg);
+  const reachOf = (a: Body, tgt: Body): number => weaponFor(a, tgt)?.range ?? -1;
+  /** 표적 격자 — 이번 틱의 산 개체를 셀에 담는다. 셀 4타일이면 사거리 8까지 이웃 5칸. */
+  const TCELL = 4;
+  const tgw = Math.ceil(W / TCELL) + 1;
+  const tcells = new Map<number, Body[]>();
+
+  const hurt = (a: Body, tgt: Body, w: Weapon, t: number): void => {
+    const dmg = damageOf(w, tgt.size, tgt.armor, tgt.sh > 0);
+    if (tgt.sh > 0) tgt.sh = Math.max(0, tgt.sh - dmg);
+    tgt.hp -= dmg;
+    if (tgt.hp > 0 || tgt.state === ST_GONE || tgt.dieAt !== null) return;
+    /* 증거가 시뮬을 이긴다 — 명령을 받은 태그는 그때 확실히 살아 있었다. 그렇다고 체력
+       1로 영영 버티게 두면 그 유닛이 총알을 다 빨아들이는 스펀지가 된다. 죽을 시각만
+       증거의 하한까지 미뤄 두고, 표적으로도 더는 안 잡히게 한다. */
+    tgt.hp = 0;
+    tgt.dieAt = Math.max(t, tgt.aliveUntil);
+    if (tgt.dieAt > t) saved += 1;
+    kills += 1;
+    events.push(tgt.dieAt, EV_DIE, tgt.tag, a.tag,
+      Math.round(tgt.x * 10) / 10, Math.round(tgt.y * 10) / 10, 0, 0);
+  };
+
+  const fireAll = (t: number): void => {
+    tcells.clear();
+    for (const b of live) {
+      const k = Math.floor(b.y / TCELL) * tgw + Math.floor(b.x / TCELL);
+      const arr = tcells.get(k);
+      if (arr) arr.push(b); else tcells.set(k, [b]);
+    }
+    for (const a of live) {
+      if (a.cd > 0) a.cd -= dt;
+      if (!a.wg && !a.wa) continue;
+      // 일꾼은 스스로 싸우러 가지 않는다 — 어택 명령을 콕 받았을 때만.
+      if (!a.bld && !a.aggro && WORKERS.has(a.kind)) continue;
+      const maxR = Math.max(a.wg?.range ?? -1, a.wa?.range ?? -1);
+      /* 표적 다시 고르기 — 지금 표적이 살아 있고 사거리 안이면 그대로, 아니면 가장 가까운
+         적. 매 틱 다시 고르지 않는 이유는 표적이 프레임마다 튀면 몸이 흔들리기 때문이다. */
+      let f = a.foe;
+      if (f && (f.state === ST_GONE || f.dieAt !== null
+        || dist(a.x, a.y, f.x, f.y) > reachOf(a, f) + 1.5)) f = null;
+      if (!f && t >= a.reacq) {
+        a.reacq = t + 0.5;
+        let bd = Infinity;
+        const cx = Math.floor(a.x / TCELL);
+        const cy = Math.floor(a.y / TCELL);
+        const rad = Math.ceil((maxR + 1) / TCELL);
+        for (let dy2 = -rad; dy2 <= rad; dy2 += 1) {
+          for (let dx2 = -rad; dx2 <= rad; dx2 += 1) {
+            const arr = tcells.get((cy + dy2) * tgw + (cx + dx2));
+            if (!arr) continue;
+            for (const c of arr) {
+              if (c.owner === a.owner || c.state === ST_GONE || c.dieAt !== null) continue;
+              const r = reachOf(a, c);
+              if (r < 0) continue;
+              const d = dist(a.x, a.y, c.x, c.y);
+              if (d > r + 0.5 || d >= bd) continue;
+              bd = d; f = c;
+            }
+          }
+        }
+      }
+      a.foe = f;
+      if (!f || a.cd > 0) continue;
+      const w = weaponFor(a, f);
+      if (!w) continue;
+      if (dist(a.x, a.y, f.x, f.y) > w.range + 0.5) continue;
+      a.cd = w.cd;
+      shots += 1;
+      events.push(t, EV_FIRE, a.tag, f.tag, Math.round(a.x * 10) / 10, Math.round(a.y * 10) / 10,
+        Math.round(f.x * 10) / 10, Math.round(f.y * 10) / 10);
+      hurt(a, f, w, t);
+      // 스플래시 — 표적 둘레의 적도 함께(아군 오폭은 P2 뒤 검토, 지금은 안 넣는다).
+      if (w.splash) {
+        const cx = Math.floor(f.x / TCELL);
+        const cy = Math.floor(f.y / TCELL);
+        for (let dy2 = -1; dy2 <= 1; dy2 += 1) {
+          for (let dx2 = -1; dx2 <= 1; dx2 += 1) {
+            const arr = tcells.get((cy + dy2) * tgw + (cx + dx2));
+            if (!arr) continue;
+            for (const c of arr) {
+              if (c === f || c.owner === a.owner || c.state === ST_GONE) continue;
+              if (dist(f.x, f.y, c.x, c.y) > w.splash) continue;
+              hurt(a, c, w, t);
+            }
+          }
+        }
+      }
+    }
+  };
+
   for (let k = 0; k <= ticks; k += 1) {
     const t = k * dt;
     cells.clear();
+    live.length = 0;
 
     for (const b of bodies) {
       if (t < b.born) continue;
@@ -240,8 +420,20 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         if (b.state !== ST_GONE) { b.state = ST_GONE; pushKey(b, b.died, true); }
         continue;
       }
+      if (b.dieAt !== null && t >= b.dieAt) {
+        b.died = b.dieAt; b.state = ST_GONE; pushKey(b, b.dieAt, true);
+        continue;
+      }
+      /* 분석이 말한 죽음은 상한이다 — 시뮬이 그때까지 못 죽였으면 여기서 죽는다.
+         (아래 전투가 그보다 먼저 죽이면 그쪽이 이긴다.) */
+      if (b.dieBy !== null && t >= b.dieBy && b.died === null) {
+        b.died = b.dieBy; b.state = ST_GONE; pushKey(b, b.dieBy, true);
+        events.push(b.dieBy, EV_DIE, b.tag, 0, Math.round(b.x * 10) / 10, Math.round(b.y * 10) / 10, 0, 0);
+        continue;
+      }
       if (b.state === ST_GONE) continue;
 
+      if (b.bld) { live.push(b); pushKey(b, t, b.keys.length === 0); continue; }
       // ① 이번 틱에 온 주문 — 여럿이면 마지막 것이 지금의 명령이다.
       while (b.oi < b.ords.length && b.ords[b.oi].t <= t) {
         const o = b.ords[b.oi];
@@ -267,6 +459,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         }
         if (b.inside !== null) continue;   // 배 안에서 받은 명령은 내린 뒤에 쓴다(P4)
         setDest(b, o.x, o.y);
+        b.aggro = o.kind === "attack";
         b.state = ST_MOVE;
       }
 
@@ -278,7 +471,26 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         continue;
       }
 
-      // ③ 걸음 — 길 꼭짓점을 따라 제 속도로. 남은 거리보다 더 못 간다.
+      /* ③ 교전(P2) — 사거리 안에 적이 있으면 멈춰 서서 쏜다. 이 한 규칙이 "만나면
+         싸운다"를 만든다. 표적은 아래 fireAll이 이번 틱 자리로 다시 고른다. */
+      const fightingNow = (b.aggro || !b.dest) && b.foe !== null && b.foe.state !== ST_GONE
+        && dist(b.x, b.y, b.foe.x, b.foe.y) <= reachOf(b, b.foe) + 0.5;
+      if (fightingNow) {
+        b.state = ST_FIGHT;
+        const fx0 = b.foe!.x - b.x;
+        const fy0 = b.foe!.y - b.y;
+        if (Math.hypot(fx0, fy0) > 0.01) {
+          const want = norm360((Math.atan2(-fx0, fy0) * 180) / Math.PI);
+          const diff = angDiff(b.hdg, want);
+          const maxTurn = b.turn * dt;
+          b.hdg = norm360(b.hdg + Math.max(-maxTurn, Math.min(maxTurn, diff)));
+        }
+        live.push(b);
+        pushKey(b, t, b.keys.length === 0);
+        b.px = b.x; b.py = b.y;
+        continue;
+      }
+      // ④ 걸음 — 길 꼭짓점을 따라 제 속도로. 남은 거리보다 더 못 간다.
       let step = b.speed * dt;
       if (b.dest) {
         while (step > 0 && b.pi < b.path.length) {
@@ -318,9 +530,11 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         const arr = cells.get(key);
         if (arr) arr.push(b); else cells.set(key, [b]);
       }
+      live.push(b);
       pushKey(b, t, b.keys.length === 0);
       b.px = b.x; b.py = b.y;
     }
+    fireAll(t);
 
     // 밀어내기는 이번 틱 자리가 다 정해진 뒤에 한 번(순서에 안 흔들리게).
     for (const arr of cells.values()) {
@@ -358,11 +572,13 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
 
   return {
     tracks,
+    events,
     stats: {
       ticks, ents: bodies.length, keys, ms: Date.now() - t0,
       driftMedian: at(0.5), driftP90: at(0.9), anchors: drift.length,
       driftBadRate: sorted.length === 0 ? 0
         : Math.round((sorted.filter((d) => d > 1.5).length / sorted.length) * 1000) / 10,
+      kills, saved, shots,
     },
   };
 }
