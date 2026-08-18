@@ -7992,6 +7992,20 @@ function lodNoteFrame(ms: number): void {
     if (lodSlowFrames > 45 && lodPenalty === 0) { lodPenalty = 1; lodSlowFrames = 0; }
   } else if (lodSlowFrames > 0) lodSlowFrames -= 1;
 }
+/* ── 입체 보기(3D)의 바닥 기하 ─────────────────────────────────────────────────
+   한자리에 모아 둔다 — 지형 그림의 CSS 변환, 마커 자리 공식, 그림자·트레이서의 눕힘이
+   전부 같은 값을 봐야 바닥과 그 위의 것들이 어긋나지 않는다. */
+/** 바닥을 눕히는 각(45도). */
+const PITCH_TH = Math.PI / 4;
+/** 회전 뒤 바닥이 상자 세로의 몇 할을 쓰는가 — 그대로 '바닥 눌림 비'이기도 하다.
+ *  1이면 상자를 꽉 채우고 눌림이 없다. 낮추면 더 누운 대신 위아래가 빈다. */
+const PITCH_FILL = 0.86;
+/** 원근 거리 = 상자 세로 × 이 값. 클수록 원근이 약하고 바닥이 상자를 더 채운다.
+ *  1.6은 실측으로 골랐다 — 옛 방식(넓힌 상자 + 520px 고정)의 원근 세기가 가까운 변이
+ *  먼 변의 1.75배였는데, 정사각 상자에서 그 세기를 그대로 내면서(1.74배) 바닥 높이는
+ *  상자의 56% → 68%로 올라간다. 더 키우면(×2.6, 74%) 기울기가 눈에 띄게 약해진다. */
+const PITCH_DIST = 1.6;
+
 /** 이 크기로 그릴 때의 등급 — 1 형체 / 2 포인트 / 3 장식. */
 function lodOf(px: number): number {
   const base = px < LOD_PX_POINT ? 1 : px < LOD_PX_DECO ? 2 : 3;
@@ -8642,9 +8656,12 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         /* 그림자는 땅에(지적: 오버로드 위치는 해처리 위인데 그림자가 훨씬 아래) — 몸은
            lift만큼 '위로' 들리고 땅은 제자리(footY)인데, 여기에 lift를 '더해' 그림자가
            비행 높이만큼 남쪽으로 밀려 있었다. 발밑 땅 자리 그대로 둔다. */
-        /* 3D에선 더 눕는다(지적: 그림자가 안 눕는 문제) — 0.6은 바닥 눌림(0.74×부감)에
-           비해 서 보였다. 0.38로 바짝 눕힌다. */
-        ctx.ellipse(footX, footY - shw * 0.22 - shUp, shw * 1.1, shw * (op.air ? 0.5 : 0.42) * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
+        /* 3D에선 눕는다(지적: 그림자가 안 눕는 문제) — 눕히는 몫은 바닥이 실제로 눌린
+           만큼이어야 한다. 예전에는 바닥 눌림이 0.53쯤이라 0.38로 바짝 눕혀 뒀는데,
+           이제 상자를 정사각으로 되돌리면서 바닥이 PITCH_FILL만큼만 눌린다. 옛 값을
+           그대로 두면 그림자만 혼자 납작해 몸에서 떨어져 보인다. */
+        ctx.ellipse(footX, footY - shw * 0.22 - shUp, shw * 1.1,
+          shw * (op.air ? 0.5 : 0.42) * (op.pitch ? PITCH_FILL * 0.72 : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       } else if (showShadows !== false && !op.air && UNIT_KIND_SET.has(op.kind)) {
@@ -11032,10 +11049,19 @@ export default function ReplayMotionPlayer({
   /* 입체 보기 원근(지적: 유닛만 원근이고 맵이 그대로) — 지형 그림에 CSS
      perspective+rotateX를 걸고, 마커 자리는 같은 사영 공식으로 매핑해 그림 위 제자리에
      얹는다. 깊이 배율(--mk)도 같은 k를 쓴다. */
-  const PITCH_TH = Math.PI / 4;
-  /* 650 → 520(지적: 확대폭이 작다) — 원근을 더 세게. 맞춤 축소(q)가 끝 잘림을 막아
-     주므로 세게 걸어도 안 잘린다. */
-  const PITCH_P = 520;
+  /* 입체 보기 상자(재지적: "3D에서도 미니맵 크기는 2D일 때랑 똑같이 정사각형 최대
+     사이즈면 좋겠는데 이거 너무 답답하고 레이아웃도 깨지잖아") — 예전에는 상자를
+     통째로 1/0.74배 넓혀 3D를 담았다. 그 한 줄이 두 가지를 한꺼번에 망가뜨렸다:
+       ① 2D는 정사각, 3D는 1.35:1이라 보기를 바꿀 때마다 옆 요소가 밀렸다(레이아웃 깨짐).
+       ② 그렇게 넓힌 상자 안에서도 바닥은 세로의 절반쯤(0.53)만 쓰고 위아래가 비었다.
+          원근 맞춤 축소(q)가 '가까운 변 폭'만 보고 전체를 줄이는데, 회전 전 판이 상자와
+          같은 세로였던 탓에 회전(45도, cos 0.707)에서 한 번 더 눌렸기 때문이다.
+     이제 상자는 2D와 똑같이 둔다(맵 비율 그대로). 대신 **회전 전 판을 세로로 늘려**
+     (scaleY 1/cos45 × PITCH_FILL) 회전 뒤에 상자 세로를 채우게 한다. 마커 공식도 같은
+     늘린 세로(hPre)를 쓰므로 그림 위 제자리에 그대로 얹힌다. */
+  /* 원근 거리를 상자 세로에 비례시킨 것도 이 수리의 일부다 — 520px 고정이면 큰 화면
+     에서는 원근이 약해지고 작은 화면에서는 과해져, 같은 경기가 기기마다 다른 각도로
+     보였다(PITCH_DIST). */
   /* 맞춤 축소(지적: 또 예전 끝 잘림) — 원근 확대로 가까운 변이 상자를 넘쳤다. 가까운
      변이 상자에 딱 맞는 배율 q로 전체를 줄이고, 세로는 cy만큼 올려 가운데 정렬한다.
      지형 그림(transform)과 마커 공식이 같은 q·cy를 쓴다. */
@@ -11045,25 +11071,29 @@ export default function ReplayMotionPlayer({
     const h = el?.clientHeight ?? 220;
     const S = Math.sin(PITCH_TH);
     const C = Math.cos(PITCH_TH);
-    const H = h / 2;
-    const q = Math.max(0.2, (PITCH_P - H * S) / PITCH_P);
-    const kFar = PITCH_P / (PITCH_P + H * S);
+    /* 회전 전 판의 세로 — 회전이 C배로 누르므로 미리 1/C배 늘려 두면 회전 뒤에
+       상자 세로(× PITCH_FILL)가 된다. 이 값이 바닥의 '세계 세로'다. */
+    const hPre = (h * PITCH_FILL) / C;
+    const P = Math.max(240, h * PITCH_DIST);
+    const H = hPre / 2;
+    const q = Math.max(0.2, (P - H * S) / P);
+    const kFar = P / (P + H * S);
     const cy = (C * H * (1 - q * kFar)) / 2;
-    return { w, h, S, C, q, cy };
+    return { w, h, hPre, P, S, C, q, cy };
   };
   const pitchK = (y: number): number => {
     if (!pitched) return 1;
-    const { h, S, q } = pitchGeom();
-    const v = (y / grid.height - 0.5) * h;
-    return (q * PITCH_P) / (PITCH_P - v * S);
+    const { hPre, P, S, q } = pitchGeom();
+    const v = (y / grid.height - 0.5) * hPre;
+    return (q * P) / (P - v * S);
   };
   /** 자리의 0~1 분수 — posStyle(%)과 캔버스 유닛 층이 같은 값을 쓴다. */
   const posFrac = (x: number, y: number): [number, number] => {
     if (!pitched) return [x / grid.width, y / grid.height];
-    const { w, h, S, C, q, cy } = pitchGeom();
+    const { w, h, hPre, P, S, C, q, cy } = pitchGeom();
     const u = (x / grid.width - 0.5) * w;
-    const v = (y / grid.height - 0.5) * h;
-    const k = (q * PITCH_P) / (PITCH_P - v * S);
+    const v = (y / grid.height - 0.5) * hPre;
+    const k = (q * P) / (P - v * S);
     return [0.5 + (u * k) / w, 0.5 + (v * C * k - cy) / h];
   };
   const posStyle = (x: number, y: number): { left: string; top: string } => {
@@ -11095,13 +11125,13 @@ export default function ReplayMotionPlayer({
      오른쪽 마커는 왼옆이 보인다. */
   const viewYawOf = (x: number, y: number): number => {
     if (!pitched) return 0;
-    const { w } = pitchGeom();
+    const { w, P } = pitchGeom();
     const u = (x / grid.width - 0.5) * w;
     void y; // 자리 호환 — 기울기는 u/P라 세로 좌표가 안 든다.
     /* 요잉이 아니라 시각 밀림의 각(지적: 소실점이 시각을 반영해야 — 돌리면 찌그러짐).
        ShapeIcon이 tan을 취하면 u/P — 지도 남북 선의 소실 기울기 그 값이다(지적:
        노란선-빨간선 정합). 부호는 실화면 확인으로 이쪽이 정답 — 다시 뒤집지 말 것. */
-    return (Math.atan2(u, PITCH_P) * 180) / Math.PI;
+    return (Math.atan2(u, P) * 180) / Math.PI;
   };
   /* 유닛 방향(지적: 멈추면 정면으로 돌아가 어색) — 조금 전이 아니라 '마지막으로 움직인'
      방향을 문다: 가까운 창부터 점점 멀리(최대 15초) 되짚어 처음 잡히는 변위의 방향이다.
@@ -11734,12 +11764,15 @@ export default function ReplayMotionPlayer({
              페이지 높이랑 맞게, 대신 가로 스크롤은 생길 수도") — 잰 세로(mapCapH)를 지도
              비율로 되돌려 폭으로 준다. 폭이 정해지면 아래 aspectRatio가 세로를 만든다.
              아직 못 쟀으면(첫 그림) 그냥 흐르는 대로 두고 한 프레임 뒤 제자리를 찾는다. */
+          /* 상자 크기는 보기(2D·3D)와 무관하다(재지적) — 3D일 때만 1/0.74배 넓히던 것을
+             걷었다. 넓히면 옆 요소가 밀리고, 넓어진 만큼 바닥이 채워 주지도 않는다.
+             3D의 눕힘은 이제 상자가 아니라 회전 전 판(hPre)이 맡는다. */
           ...(mapCapH > 0
-            ? { width: `${Math.round(mapCapH * (grid.width / (grid.height * (pitched ? 0.74 : 1))))}px`, flex: "0 0 auto" }
+            ? { width: `${Math.round((mapCapH * grid.width) / grid.height)}px`, flex: "0 0 auto" }
             : {}),
           /* 입체 보기(재구성: CSS 3D 빌보드가 브라우저 따라 누워 보임) — 바닥(자리·그림)만
              세로로 누르고, 마커는 눌리지 않은 채 서 있는 2.5D. */
-          aspectRatio: `${grid.width} / ${grid.height * (pitched ? 0.74 : 1)}`,
+          aspectRatio: `${grid.width} / ${grid.height}`,
           ...(zoom > 1 || pitched ? { overflow: "hidden" } : {}),
           ...(zoom > 1 ? { cursor: dragRef.current ? "grabbing" : "grab" } : {}),
           /* 손짓 격리(지적 둘: 맵 조정 시 모달이 딸려 움직임 + 2D 모드에서 드래그가
@@ -11791,8 +11824,8 @@ export default function ReplayMotionPlayer({
               className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`}
               draggable={false}
               style={pitched ? (() => {
-                const { q, cy } = pitchGeom();
-                return { transform: `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${PITCH_P}px) rotateX(45deg)` };
+                const { q, cy, P, C } = pitchGeom();
+                return { transform: `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${P.toFixed(0)}px) rotateX(45deg) scaleY(${(PITCH_FILL / C).toFixed(4)})` };
               })() : undefined}
             />
           )
@@ -11804,8 +11837,8 @@ export default function ReplayMotionPlayer({
             <div
               className="scr-motion-canvas scr-motion-canvas-blank"
               style={pitched ? (() => {
-                const { q, cy } = pitchGeom();
-                return { transform: `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${PITCH_P}px) rotateX(45deg)` };
+                const { q, cy, P, C } = pitchGeom();
+                return { transform: `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${P.toFixed(0)}px) rotateX(45deg) scaleY(${(PITCH_FILL / C).toFixed(4)})` };
               })() : undefined}
             >
               <ReplayMapCanvas grid={grid} className="scr-motion-canvas-tiles" />
@@ -12322,7 +12355,7 @@ export default function ReplayMotionPlayer({
                 const foeB = nearestFoe(teamB, centerX, centerY, onlyB);
                 // 화면 기준 조준(지적: 공중 각도·지면 평행) — 유닛 트레이서와 같은 셈.
                 const tPxB = (mapRef.current?.clientWidth ?? 320) / grid.width;
-                let dgy = (foeB.by - centerY) * tPxB * (pitched ? 0.74 : 1);
+                let dgy = (foeB.by - centerY) * tPxB * (pitched ? PITCH_FILL : 1);
                 if (foeB.air) dgy -= unitGlyphPx(0, foeB.by) * 1.6;
                 const degB = Math.atan2(-((foeB.bx - centerX) * tPxB), dgy) * (180 / Math.PI);
                 const fire: React.ReactNode[] = [];
@@ -13616,7 +13649,7 @@ export default function ReplayMotionPlayer({
           const aimDeg = (fx9: number, fy9: number, fAir: boolean): number => {
             const tPx9 = (mapRef.current?.clientWidth ?? 320) / grid.width;
             const ddx = (fx9 - pos.x) * tPx9;
-            let ddy = (fy9 - pos.y) * tPx9 * (pitched ? 0.74 : 1);
+            let ddy = (fy9 - pos.y) * tPx9 * (pitched ? PITCH_FILL : 1);
             // 비행 높이 반감(재재지적)과 함께 0.8로.
             if (fAir) ddy -= fxPx * 0.8;
             if (uAir) ddy += fxPx * 0.8;
