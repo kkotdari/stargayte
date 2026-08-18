@@ -14,10 +14,13 @@ import { useLockBodyScroll } from "../../utils/bodyScrollLock";
    모델 요잉 보정값이 정확히 칸에 떨어져 검수할 때 각도를 맞추기 쉽다. */
 const YAW_STEP = 15;
 const snapYaw = (deg: number): number => Math.round(deg / YAW_STEP) * YAW_STEP;
-/* 확대 배율 한계(요청: "휠이나 두손가락으로 줌") — 1배 아래로는 안 내려간다(무대가
-   이미 모델 하나에 딱 맞는 크기다). 위로는 8배까지. */
-const SCALE_MIN = 1;
+/* 확대 배율 한계(요청: "휠이나 두손가락으로 줌") — 위로 8배까지 키운다.
+   아래로도 같은 폭만큼 연다(요청: "갤러리에서 기본보다 줌아웃도 되게해줘 확대
+   배율만큼") — 여태 1배가 바닥이라 기본보다 작게는 못 봤는데, 애드온을 단 건물이나
+   울트라처럼 큰 모델은 무대를 꽉 채워 실루엣 전체를 한눈에 보기 어려웠다.
+   1/8배까지 열어 두면 확대·축소가 기본배율을 가운데 두고 대칭이 된다. */
 const SCALE_MAX = 8;
+const SCALE_MIN = 1 / SCALE_MAX;
 const clampScale = (k: number): number => Math.min(SCALE_MAX, Math.max(SCALE_MIN, k));
 /* 무대 색 고르기(요청) — 연두를 맨 위로 올려 두 테마 공통 기본색으로 쓴다(재재요청:
    스타 게임 컨셉과 맞음). 도록(시트)도 이 기본 연두로 찍는다. */
@@ -159,6 +162,8 @@ export default function ModelGalleryScreen() {
   /* 배율을 입히는 겉옷 — svg에 직접 걸지 않는다. 팝업의 세로 가운데 맞춤이 svg의
      transform을 이미 쓰고 있어 서로 덮어쓴다. */
   const scaleStyle = scale === 1 ? undefined : { transform: `scale(${scale.toFixed(3)})` };
+  /* 배율 표시 — 1배 미만은 소수 한 자리로는 0.1로 뭉개져 1/8과 1/4이 구분되지 않는다. */
+  const scaleLabel = scale === 1 ? "" : ` · ×${scale < 1 ? scale.toFixed(2) : scale.toFixed(1)}`;
   const builder: (() => ReturnType<(typeof SHAPE_BUILDERS)[string]>) | undefined =
     Object.prototype.hasOwnProperty.call(SHAPE_BUILDERS, kind) ? SHAPE_BUILDERS[kind] : undefined;
   const faces = useMemo(
@@ -182,7 +187,7 @@ export default function ModelGalleryScreen() {
             className={color === WHITE ? "scr-model-stage scr-model-stage-dark" : "scr-model-stage"}
             {...dragProps}
             /* 확대했을 때만 무대가 자른다 — 평소엔 키 큰 모델이 위로 삐져도 보여야 한다. */
-            style={{ color, ...dragProps.style, ...(scale === 1 ? null : { overflow: "hidden" }) }}
+            style={{ color, ...dragProps.style, ...(scale > 1 ? { overflow: "hidden" } : null) }}
           >
             <span className="scr-model-scaler" style={scaleStyle}>
               <ShapeIcon kind={kind} faces={faces} />
@@ -190,7 +195,7 @@ export default function ModelGalleryScreen() {
             {builder && (
               <>
                 <span className="scr-model-yaw">
-                  {Math.round(((yaw % 360) + 360) % 360)}°{scale === 1 ? "" : ` · ×${scale.toFixed(1)}`}
+                  {Math.round(((yaw % 360) + 360) % 360)}°{scaleLabel}
                 </span>
                 {/* 돋보기(요청) — 무대 좌상단, 누르면 최대 크기 팝업. */}
                 <button
@@ -264,7 +269,7 @@ export default function ModelGalleryScreen() {
               <ShapeIcon kind={kind} faces={faces} />
             </span>
             <span className="scr-model-yaw">
-              {Math.round(((yaw % 360) + 360) % 360)}°{scale === 1 ? "" : ` · ×${scale.toFixed(1)}`}
+              {Math.round(((yaw % 360) + 360) % 360)}°{scaleLabel}
             </span>
             <button
               type="button" className="scr-model-zoom-close" aria-label="닫기"
