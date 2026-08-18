@@ -94,6 +94,212 @@ const inputs = (args[0] === "--db"
   }))
 ).map((x) => ({ ...x, walk: walkOverride ?? x.walk }));
 
+/* ── 시작·끝 성적표 (과제 #68) ────────────────────────────────────────────────
+ *
+ * 드리프트는 **모든** 앵커와의 거리다. 그건 "시뮬이 진실이 된다"를 목표로 삼던 때의
+ * 자다. 목표가 "시작과 끝이 진실"로 바뀐 뒤로는 그 자로 합격을 가릴 수 없다 — 중간
+ * 과정은 애초에 재현 대상이 아니다.
+ *
+ * 그래서 목표에 맞는 자를 따로 둔다. 셋 다 증거에 있는 것만 쓰고 하나도 지어내지 않는다.
+ *
+ *  출생 — 코어가 첫 증거 자리에서 그냥 시작하므로 구조적으로 0이다. 확인만 하고 끝.
+ *
+ *  사망 — ★ 여기서 순환을 조심해야 한다. simCore의 dieBy는 증거의 d를 **상한**으로
+ *    쓴다: 시뮬이 그때까지 못 죽였으면 증거 시각에 그냥 죽인다(:1082). 그래서 죽음을
+ *    통째로 세면 '놓친 죽음 0%, 시각 오차 0초'가 구조적으로 나온다 — 아무것도 안
+ *    재는 숫자다. 처음 짤 때 실제로 그 숫자가 나왔다(놓친죽음 0%, 시각 중앙 1.00초).
+ *
+ *    갈라야 한다. 죽음 사건(EV_DIE)의 넷째 칸이 죽인 자의 태그인데, 시뮬이 스스로
+ *    죽였으면 그 자리에 진짜 태그가 들어가고 증거가 시켜 죽였으면 0이 들어간다.
+ *      · 자력 사망률 — 증거가 말한 죽음 중 시뮬이 **스스로** 죽인 몫. 이게 전투
+ *        모형의 성적이다. 나머지는 시뮬이 못 죽여 증거가 떠먹여 준 것이다.
+ *      · 시각 오차 — 자력으로 죽인 것만 잰다. 떠먹은 것은 늘 0이라 섞으면 안 된다.
+ *      · 지어낸 죽음 — 증거는 끝까지 살았다는데 시뮬이 죽인 것.
+ *      · 자리 오차 — 이건 둘 다 잰다. 시각을 떠먹었어도 그때 **어디** 있었는지는
+ *        시뮬이 스스로 낸 답이다. d 직전의 마지막 자리 증거와 견주되, 그 증거가
+ *        얼마나 오래된 것인지로 거른다(30초 전 자리와 견주면 그 사이 걸어간 거리를
+ *        오차로 세는 셈이다). 신선도 5초/15초 두 칸.
+ *
+ *  교전 참여 — "전투 단위"를 새로 지어내지 않는다(그 나누기가 애매하다는 지적이
+ *    있었다). 대신 증거가 이미 갖고 있는 **맞은 순간**을 쓴다: 체력 자취(hp)가
+ *    내려간 시각이 곧 "그때 그 유닛은 전투 안에 있었다"는 증거다. 시뮬에서도 그
+ *    무렵 그 태그가 표적이 됐는지를 본다. 반대쪽(시뮬은 때렸는데 증거엔 체력이 안 준
+ *    것)도 센다 — 일치율만 보면 '아무도 안 때린다'와 '엉뚱한 놈을 때린다'가 구분이
+ *    안 된다.
+ *
+ * [한계] 태그는 재사용된다. 같은 태그의 여러 생애는 출생 시각이 가장 가까운 것끼리
+ *   짝짓는다. 자리 없는 물리 건물(t=-1)은 태그가 없어 통째로 뺀다. */
+
+/** 죽음으로 셀 것 — 변태(morph)는 다음 생애로 이어지는 것이고, 건설 취소(cxl)는
+ *  애초에 선 적이 없다. 둘 다 죽음이 아니다. */
+const DEATH_KINDS = new Set(["tag", "atk", ""]);
+/** 사망 시각이 맞았다고 볼 창(초). */
+const DIE_OK_SEC = 2;
+/** 맞은 순간을 견줄 창(초) — 시뮬의 발사가 이만큼 안이면 같은 교전으로 본다. */
+const HIT_WIN_SEC = 3;
+
+const median = (a) => {
+  if (a.length === 0) return null;
+  const v = [...a].sort((x, y) => x - y);
+  return v[Math.floor(v.length / 2)];
+};
+const pct = (n, d) => (d > 0 ? (n / d) * 100 : 0);
+
+/** 키프레임 배열에서 t 시각의 자리 — posAtSim과 같은 셈(여기선 자리만 쓴다). */
+function posOfKeys(keys, t) {
+  const n = keys.length / 5;
+  if (n === 0 || t < keys[0]) return null;
+  let lo = 0;
+  let hi = n - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (keys[mid * 5] <= t) lo = mid; else hi = mid - 1;
+  }
+  const i = lo * 5;
+  if (lo === n - 1) return [keys[i + 1], keys[i + 2]];
+  const j = i + 5;
+  const span = keys[j] - keys[i];
+  const u = span > 0 ? Math.min(1, Math.max(0, (t - keys[i]) / span)) : 0;
+  return [keys[i + 1] + (keys[j + 1] - keys[i + 1]) * u,
+    keys[i + 2] + (keys[j + 2] - keys[i + 2]) * u];
+}
+
+function goalReport(data, r) {
+  /* 태그마다 생애가 여럿일 수 있다 — 출생 시각이 가장 가까운 자취와 짝짓는다. */
+  const byTag = new Map();
+  for (const tr of r.tracks) {
+    const arr = byTag.get(tr.tag);
+    if (arr) arr.push(tr); else byTag.set(tr.tag, [tr]);
+  }
+  const mate = (e) => {
+    const arr = byTag.get(e.t);
+    if (!arr || arr.length === 0) return null;
+    let best = arr[0];
+    for (const tr of arr) if (Math.abs(tr.born - e.b) < Math.abs(best.born - e.b)) best = tr;
+    return best;
+  };
+
+  /* 사건은 8칸씩 [초, 갈래, 주체, 표적, x, y, tx, ty].
+     · 발사(0) — 표적 태그별로 시각을 모은다.
+     · 죽음(1) — 태그별로 [시각, 죽인 자]를 모은다. 죽인 자가 0이면 증거가 시킨 것이다. */
+  const hitAt = new Map();
+  const dieEv = new Map();
+  for (let i = 0; i < r.events.length; i += 8) {
+    const sec = r.events[i];
+    if (r.events[i + 1] === 1) {
+      const tag = r.events[i + 2];
+      const arr = dieEv.get(tag);
+      if (arr) arr.push([sec, r.events[i + 3]]); else dieEv.set(tag, [[sec, r.events[i + 3]]]);
+      continue;
+    }
+    const tgt = r.events[i + 3];
+    const arr = hitAt.get(tgt);
+    if (arr) arr.push(sec); else hitAt.set(tgt, [sec]);
+  }
+  for (const arr of hitAt.values()) arr.sort((a, b) => a - b);
+  const nearIn = (arr, sec, win) => {
+    if (!arr) return false;
+    for (const s2 of arr) {
+      if (s2 > sec + win) return false;
+      if (s2 >= sec - win) return true;
+    }
+    return false;
+  };
+  /** 이 자취의 죽음을 낸 사건 — 시각이 맞는 것. 없으면 null. */
+  const dieOf = (tr) => {
+    if (!tr || tr.died === null || tr.died === undefined) return null;
+    const arr = dieEv.get(tr.tag);
+    if (!arr) return null;
+    return arr.find(([sec]) => Math.abs(sec - tr.died) < 0.05) ?? null;
+  };
+
+  const dieDt = [];
+  /* 부호까지 남긴다 — 늦게 죽이는 것과 일찍 죽이는 것은 고칠 곳이 다르다.
+     (simCore는 자력 사망 시각을 aliveUntil 아래로 못 내리므로 늦는 쪽으로 쏠린다.) */
+  const dieSign = [];
+  const dieD5 = [];
+  const dieD15 = [];
+  let evDeaths = 0;
+  let selfKill = 0;
+  let fab = 0;
+  let survived = 0;
+  let bornN = 0;
+  let hits = 0;
+  let hitsOk = 0;
+  let simHits = 0;
+  let simHitsOk = 0;
+  for (const e of data.ents) {
+    if (e.t === -1) continue;
+    const tr = mate(e);
+    if (tr) bornN += 1;
+    const dead = e.d !== null && e.d !== undefined && DEATH_KINDS.has(e.dk ?? "");
+
+    if (dead) {
+      evDeaths += 1;
+      const dv = dieOf(tr);
+      /* 죽인 자가 0이 아니면 시뮬이 스스로 죽인 것 — 시각 오차는 그것만 잰다. */
+      if (dv && dv[1] !== 0) { selfKill += 1; dieDt.push(Math.abs(tr.died - e.d)); dieSign.push(tr.died - e.d); }
+      /* 자리는 떠먹은 죽음에서도 시뮬이 스스로 낸 답이라 둘 다 잰다. */
+      if (tr && tr.died !== null && tr.died !== undefined) {
+        let last = null;
+        for (const v of e.ev) {
+          if (v[1] < 0 || v[0] > e.d) continue;
+          if (!last || v[0] >= last[0]) last = v;
+        }
+        const sp = last ? posOfKeys(tr.keys, e.d) : null;
+        if (last && sp) {
+          const d2 = Math.hypot(sp[0] - last[1], sp[1] - last[2]);
+          const age = e.d - last[0];
+          if (age <= 5) dieD5.push(d2);
+          if (age <= 15) dieD15.push(d2);
+        }
+      }
+    } else if (!e.bld) {
+      /* 증거는 끝까지 살았다는데 시뮬이 스스로 죽인 것 — 지어낸 죽음. 건물은 뺀다
+         (분석이 파괴를 못 잡은 건물이 많아 이 칸이 건물로 채워진다). */
+      survived += 1;
+      const dv = dieOf(tr);
+      if (dv && dv[1] !== 0) fab += 1;
+    }
+
+    /* 맞은 순간 — 체력이 내려간 변곡점. 첫 점은 기준선이라 건너뛴다. */
+    const hp = e.hp;
+    if (tr && Array.isArray(hp)) {
+      const drops = [];
+      for (let i = 1; i < hp.length; i += 1) {
+        if (hp[i][1] >= hp[i - 1][1]) continue;
+        drops.push(hp[i][0]);
+        hits += 1;
+        if (nearIn(hitAt.get(e.t), hp[i][0], HIT_WIN_SEC)) hitsOk += 1;
+      }
+      /* 반대쪽 — 시뮬이 이 태그를 때린 순간마다 증거에 체력 하락이 곁에 있나. */
+      const sh = hitAt.get(e.t);
+      if (sh) {
+        drops.sort((a, b) => a - b);
+        for (const sec of sh) {
+          simHits += 1;
+          if (nearIn(drops, sec, HIT_WIN_SEC)) simHitsOk += 1;
+        }
+      }
+    }
+  }
+  return {
+    bornN,
+    evDeaths,
+    selfPct: pct(selfKill, evDeaths),
+    selfN: selfKill,
+    fabPct: pct(fab, survived),
+    fab,
+    dieMed: median(dieDt),
+    dieSigned: median(dieSign),
+    dieOk: pct(dieDt.filter((v) => v <= DIE_OK_SEC).length, dieDt.length),
+    d5: median(dieD5), d5n: dieD5.length,
+    d15: median(dieD15), d15n: dieD15.length,
+    hits, hitOk: pct(hitsOk, hits),
+    simHits, simHitOk: pct(simHitsOk, simHits),
+  };
+}
+
 const { simulate } = await bundle("src/utils/simCore.ts");
 const { decodeWalk } = await bundle("src/utils/minimapTerrain.ts");
 const { isAir } = await bundle("src/utils/bwUnits.ts");
@@ -204,5 +410,16 @@ for (const { label, json, resources, walk } of inputs) {
       : "벽뚫기 —                          ",
     `${String(s.ms).padStart(6)}ms`,
     `${(bytes / 1024 / 1024).toFixed(2)}MB`,
+  ].join("  "));
+  const g = goalReport(data, r);
+  const f2 = (v, u) => (v === null ? "  —  " : `${v.toFixed(2)}${u}`);
+  console.log([
+    "".padEnd(14),
+    `└ 시작·끝  자력사망 ${g.selfPct.toFixed(0).padStart(3)}%(${g.selfN}/${g.evDeaths})`,
+    `지어낸죽음 ${g.fabPct.toFixed(0).padStart(3)}%(${g.fab})`,
+    `사망시각 중앙 ${f2(g.dieMed, "초")}(부호 ${g.dieSigned === null ? "—" : (g.dieSigned >= 0 ? "+" : "") + g.dieSigned.toFixed(1)})/${DIE_OK_SEC}초이내 ${g.dieOk.toFixed(0).padStart(3)}%`,
+    `사망자리 ≤5초 ${f2(g.d5, "타일")}(n=${g.d5n}) ≤15초 ${f2(g.d15, "타일")}(n=${g.d15n})`,
+    `맞은순간 증거→시뮬 ${g.hitOk.toFixed(0).padStart(3)}%(n=${g.hits})`,
+    `시뮬→증거 ${g.simHitOk.toFixed(0).padStart(3)}%(n=${g.simHits})`,
   ].join("  "));
 }
