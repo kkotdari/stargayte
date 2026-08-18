@@ -4049,6 +4049,10 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
    "버튼" 자체(움직이는 인디케이터+활성 글자)만 원래 다크 테마 색으로 되돌린다(요청:
    "다크테마 필터 지금 상태에서 버튼색만 반전시키기(원래 색으로)") — 다크는 흰 인디케이터
    +어두운 활성 글자, 라이트는 반대(어두운 인디케이터+흰 활성 글자)로 다시 나뉜다. */
+/* 스위치 모드(요청: 값이 둘이면 아무 데나 눌러도 전환) — 트랙 전체가 손잡이라
+   빈 곳·고른 쪽 어디를 눌러도 넘어간다. 그래서 커서도 트랙 전체가 손가락이다. */
+.scr-pill-tabs-toggle { cursor: pointer; }
+.scr-pill-tabs-toggle .scr-pill-tab-btn { cursor: pointer; }
 .scr-pill-tabs-indicator {
   position: absolute; left: 1px; top: 1px; height: calc(100% - 2px);
   border-radius: 999px; transition: transform .12s ease-out;
@@ -11731,9 +11735,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-wide .scr-motion-viewrow {
   grid-column: 1 / 3; grid-row: 4; align-self: end;
   /* 세로 갭 여유(요청) — 6px → 14px. */
-  display: flex; flex-direction: column; align-items: flex-start; gap: 14px;
+  /* 묶음들을 기둥 가운데로(요청) — 세로 flex라 가로축은 align-items다. */
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
   justify-content: flex-start;
 }
+/* 색상 줄도 같이 가운데로(요청: "scr-motion-colorrow 여기랑") — 이쪽은 가로 flex라
+   가로축이 justify-content다. 위 줄과 같은 뜻이 되는 속성이 서로 다르다. */
+.scr-motion-wide .scr-motion-colorrow { justify-content: center; }
 /* 왼쪽 — 같은 팀은 세로로(지적), 두 팀 기둥이 나란히 서고 줄(행)이 서로 맞는다.
    조작부는 로스터 바로 밑이 아니라 기둥의 아래쪽에 붙는다(요청) — 늘어나는 줄(1fr)을
    차지하고 스스로 바닥 정렬한다. */

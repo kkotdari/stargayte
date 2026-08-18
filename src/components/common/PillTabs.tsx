@@ -9,6 +9,11 @@ interface PillTabsProps<T extends string> {
   /** 내용 폭 칸(요청: 재생기 라디오의 옵션 간 갭 축소) — 균등폭 대신 라벨만큼만
    *  차지한다. 인디케이터는 균등폭 가정이 깨지므로 실제 DOM 위치를 잰다. */
   fit?: boolean;
+  /** 스위치로 쓰기(요청: "값이 2개인 것들은 라디오보다 토글을 적용해서 아무데나
+   *  클릭해도 전환되게") — 옵션이 둘일 때만 켜진다. 트랙 어디를 눌러도 반대쪽으로
+   *  넘어가므로, 고른 쪽을 다시 눌러도 전환된다. 셋 이상이면 무시한다(어느 쪽으로
+   *  넘길지 정할 수 없다). */
+  toggle?: boolean;
 }
 
 // 라디오 선택을 슬라이딩 알약 인디케이터로 보여주는 공용 세그먼트 컨트롤 — 필터창(새
@@ -21,8 +26,14 @@ interface PillTabsProps<T extends string> {
 // 항상 "균등폭"이라고 가정하고 계산하므로 그 칸에서만 알약이 버튼 가운데에 안 맞아
 // 보였다(실제로 지적받은 문제 — "활성/정지가 가운데가 안맞음"). minmax(0, 1fr)로
 // content 기반 최소폭을 없애 라벨 길이와 무관하게 모든 칸이 진짜 균등폭이 되게 한다.
-export default function PillTabs<T extends string>({ options, value, onChange, fit = false, ...rest }: PillTabsProps<T>) {
+export default function PillTabs<T extends string>({ options, value, onChange, fit = false, toggle = false, ...rest }: PillTabsProps<T>) {
   const index = Math.max(0, options.findIndex((o) => o.value === value));
+  /* 스위치 모드 — 손잡이는 트랙 하나뿐이다(요청). 버튼에는 onClick을 안 달고 트랙에만
+     다는 이유는 두 번 도는 것을 막기 위해서다: 버튼에도 달면 버튼 클릭이 트랙까지
+     거품처럼 올라와 두 번 넘어가고 결국 제자리로 돌아온다. 버튼은 그대로 <button>이라
+     키보드(Enter·Space)도 click 이벤트를 내고, 그 이벤트가 트랙에 닿아 똑같이 넘어간다. */
+  const isToggle = toggle && options.length === 2;
+  const flip = (): void => { onChange(options[index === 0 ? 1 : 0].value); };
   const wrapRef = useRef<HTMLDivElement>(null);
   const [ind, setInd] = useState<{ left: number; width: number } | null>(null);
   /* 인디케이터가 딴 칸에 가 있던 문제(지적: 배속 알약 — 알약이 ×2가 아니라 ×1·×2
@@ -59,9 +70,10 @@ export default function PillTabs<T extends string>({ options, value, onChange, f
   return (
     <div
       ref={wrapRef}
-      className="scr-pill-tabs"
+      className={cx("scr-pill-tabs", isToggle && "scr-pill-tabs-toggle")}
       role="tablist"
       aria-label={rest["aria-label"]}
+      onClick={isToggle ? flip : undefined}
       style={{
         gridTemplateColumns: fit
           ? `repeat(${options.length}, max-content)`
@@ -83,7 +95,7 @@ export default function PillTabs<T extends string>({ options, value, onChange, f
           role="tab"
           aria-selected={o.value === value}
           className={cx("scr-pill-tab-btn", o.value === value && "scr-pill-tab-btn-active")}
-          onClick={() => onChange(o.value)}
+          onClick={isToggle ? undefined : () => onChange(o.value)}
         >
           {o.label}
         </button>

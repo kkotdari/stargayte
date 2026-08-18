@@ -11202,12 +11202,13 @@ export default function ReplayMotionPlayer({
   // 글자 크기 CSS(모바일/PC 미디어)와 같은 값 — 캔버스는 CSS를 못 읽으니 여기서 정한다.
   // 이제 크기는 캔버스가 정한다 — 이 값은 그리기 주기(아래 DRAW_GAP_MS)에만 쓰인다.
   const pcView = typeof window !== "undefined" && !!window.matchMedia?.("(min-width: 1160px)").matches;
-  /* 모델 크기(재정의·요청: "표준은 실제 게임 크기로 보여주고 확대는 유닛만 1.5배") —
-     예전에는 '크게'가 유닛 4배·건물 2배였다. 유닛이 제 상자를 20%밖에 안 쓰는 탓에
-     두 배로도 안 읽혀서 계속 배수를 올렸던 것인데, 그건 크기 문제가 아니라 모델이
-     상자를 안 채우는 문제였다(정규화로 따로 잡는다). 이제 표준은 원작 크기 그대로고,
-     확대는 유닛만 1.5배다 — 건물은 어느 쪽에서도 안 건드린다. */
-  const unitMul = unitBig ? 1.5 : 1;
+  /* 모델 크기 — 표준은 원작 크기 그대로, 확대는 유닛 4배·건물 1.5배(재지적).
+     유닛 배수가 건물보다 훨씬 큰 이유는 둘이 다른 자를 쓰기 때문이다: 건물은 이미
+     제 발자국(4×3·3×2타일)을 꽉 채워 그려지는데, 유닛은 원작 몸집이 한 타일 안팎
+     (마린 0.53×0.63)이라 같은 배수로는 여전히 점이다. 게다가 지금 모델은 제 16-상자를
+     20%밖에 안 쓴다 — 그 몫은 배수가 아니라 모델 공간 정규화가 따로 잡는다. */
+  const unitMul = unitBig ? 4 : 1;
+  const bldMul = unitBig ? 1.5 : 1;
   /* ── 유닛 크기의 자(전수조사·요청: "실제 캔버스 × 소·중·대로 균일하게") ─────────
      예전엔 등급마다 고정 픽셀(모바일 6·8·11 / PC 8·11·15)이었다. 화면 폭이나 맵
      격자와 무관한 값이라, 같은 마린이 맵마다 제멋대로 커 보였다: 64×64 맵의 한 타일은
@@ -12010,7 +12011,7 @@ export default function ReplayMotionPlayer({
                왜소하다"는 지적을 상자째 키워 때우던 보정인데, 이제 그리기 단계가 잉크
                폭을 재서 발자국을 채우므로(BLD_FILL_CACHE) 상자는 제 발자국(2×2) 그대로
                두면 된다. 그대로 두면 부속만 발자국보다 28% 넓게 그려진다. */
-            const wTiles = fp2[0] * (shapeKind ? 1 : 0.8);
+            const wTiles = fp2[0] * (shapeKind ? 1 : 0.8) * bldMul;
             const hTiles = wTiles * ((fp2[1] + (shapeKind ? riseOf(unit) : 0)) / fp2[0]);
             const wFrac = (wTiles / grid.width) * mkK;
             const hFrac = (hTiles / grid.width) * mkK;
@@ -13969,6 +13970,7 @@ export default function ReplayMotionPlayer({
           onChange={(v) => setColorMode(v)}
           aria-label="색상"
           fit
+          toggle
         />
       </div>
 
@@ -14015,6 +14017,7 @@ export default function ReplayMotionPlayer({
           <span className="scr-motion-radio-label">보기</span>
           <PillTabs
             options={[{ value: "2d", label: "2D" }, { value: "3d", label: "3D" }]}
+            toggle
             value={pitched ? "3d" : "2d"}
             onChange={(v) => setPitched(v === "3d")}
             aria-label="보기"
@@ -14024,6 +14027,7 @@ export default function ReplayMotionPlayer({
           <span className="scr-motion-radio-label">모델 크기</span>
           <PillTabs
             options={[{ value: "s", label: "표준" }, { value: "l", label: "확대" }]}
+            toggle
             value={unitBig ? "l" : "s"}
             onChange={(v) => setUnitBig(v === "l")}
             aria-label="모델 크기"
@@ -14045,6 +14049,7 @@ export default function ReplayMotionPlayer({
             value={hpShow ? "on" : "off"}
             onChange={(v) => setHpShow(v === "on")}
             aria-label="체력바"
+            toggle
           />
         </span>
         {/* 마우스 조작 표시(요청: 라벨 달고 라디오는 on/off) — 다른 라디오와 같은 꼴. */}
@@ -14057,6 +14062,7 @@ export default function ReplayMotionPlayer({
               onChange={(v) => setClickFx(v === "on")}
               aria-label="마우스 조작"
               fit
+              toggle
             />
           </span>
         )}
