@@ -1448,10 +1448,35 @@ export function buildUnitTracks(
              개체 14기). 앞끝을 주문 시각으로 열면 그 생애가 제 출생 이야기를 받는다.
              건물이 뽑는 유닛(테란·프로토스)은 고른 태그가 '건물'이라 정체가 안 맞아
              1차 통과에 안 걸린다 — 이 완화가 닿지 않는다. */
-          if (life.born < Math.min(r.it.done - 8, r.it.sec - 2)
-            || life.born - r.it.done > 300) continue;
+          /* 앞끝 완화는 '그 태그가 주문 순간에 골라져 있던' 생애에만 준다(수리: 3시
+             질럿이 프로브로 잡힌다) — 위 완화를 모두에게 열어 두었더니, 건물이 뽑는
+             유닛(테란·프로토스)에서도 아무 무명 태그나 걸렸다. 156초에 첫 명령을 받은
+             질럿이 316초에 완성될 프로브 원장에 붙어 정체가 Probe가 되고 출생이 넥서스
+             발치로 밀려, 그 사이 화면에서 사라졌다(실측: 3시 프로브 117기 중 58기가
+             공격 명령을 가진 가짜였다).
+             가르는 자는 증거다 — 라바 변태는 고른 태그가 곧 그 유닛이라 그 생애에
+             주문 시각의 자리 없는 증거(f=4)가 남는다. 건물이 뽑은 유닛에는 그것이
+             없다(그때 골라진 것은 건물이다). */
+          const orderedSelf = life.ev.some(
+            (v) => v[3] === 4 && Math.abs(v[0] - r.it.sec) <= 2,
+          );
+          const front = orderedSelf
+            ? Math.min(r.it.done - 8, r.it.sec - 2) : r.it.done - 8;
+          if (life.born < front || life.born - r.it.done > 300) continue;
           const mk = majorityOf(life);
           if (pass === 0 ? mk !== r.it.unit : mk !== "") continue;
+          /* 행동이 정체를 가른다(수리: 질럿이 프로브로) — 무명 생애를 원장에 붙일 때,
+             그 생애가 한 일과 원장이 말하는 정체가 어긋나면 붙이지 않는다. 공격 명령
+             (f=7)을 낸 개체는 일꾼일 수 없고, 건물을 앉힌(f=2) 개체는 일꾼일 수밖에
+             없다. 시간 창만으로는 못 가른다 — 창이 뒤로 300초라 앞서 완성된 프로브
+             원장이 뒤늦게 첫 명령을 받은 질럿을 삼켰다. */
+          if (pass === 1) {
+            const isWorkerItem = r.it.unit === (RACE_WORKER[raceOf.get(r.it.pid) ?? ""] ?? "");
+            const attacked = life.ev.some((v) => v[3] === 7);
+            const builtSomething = life.ev.some((v) => v[3] === 2);
+            if (isWorkerItem && attacked) continue;
+            if (!isWorkerItem && builtSomething) continue;
+          }
           if (pass === 1) life.kinds.set(r.it.unit, 1);
           attach(life, r);
           break;
