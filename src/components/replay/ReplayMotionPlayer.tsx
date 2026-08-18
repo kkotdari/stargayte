@@ -10066,6 +10066,17 @@ export default function ReplayMotionPlayer({
      여전히 상세에서만이다. */
   const rootRef = useRef<HTMLDivElement>(null);
   const [wide, setWide] = useState(false);
+  /* 지도를 '남는 세로에 꽉 맞춘다'(지적: "세로 스크롤 안 만드는 건 좋은데 그건 세로
+     높이에 맞추라는 얘기지 저렇게 작게 고정하라는 게 아녀" / "scr-motion-wide 높이를
+     페이지 높이랑 맞게! 대신 가로 스크롤은 생길 수도 있겠지").
+     앞서 100dvh에서 상수(278/320px)를 빼 봤는데, 그 상수는 페이지 머리와 지도 아래 줄들의
+     높이를 어림한 값이라 화면·배치마다 틀렸고 대개 너무 크게 잡혀 지도가 작아졌다.
+     이제는 잰다: 지도줄의 화면 위 여백과, 뿌리 상자 안에서 지도줄 아래에 있는 것들의
+     높이를 그때그때 재고 남는 세로를 지도 비율로 되돌려 폭으로 준다. 가로가 넘치면
+     가로 스크롤이 나는데, 그건 사용자가 받아들인 쪽이다.
+     지도가 커지면 뿌리도 커지므로 되먹임이 생길 수 있어 4px보다 작은 변화는 무시한다. */
+  const maprowRef = useRef<HTMLDivElement>(null);
+  const [mapCapH, setMapCapH] = useState(0);
   useEffect(() => {
     const host = rootRef.current?.parentElement;
     if (!host || typeof ResizeObserver === "undefined") return undefined;
@@ -10073,6 +10084,30 @@ export default function ReplayMotionPlayer({
     ro.observe(host);
     return () => ro.disconnect();
   }, []);
+  useEffect(() => {
+    const calc = (): void => {
+      const root = rootRef.current;
+      const row = maprowRef.current;
+      if (!root || !row) return;
+      const rr = root.getBoundingClientRect();
+      const wr = row.getBoundingClientRect();
+      // 지도줄 아래에 남은 것들(색상·보기 설정·탐색바·도구줄)의 높이.
+      const below = Math.max(0, rr.bottom - wr.bottom);
+      const avail = window.innerHeight - wr.top - below - 10;
+      setMapCapH((prev) => (Math.abs(prev - avail) > 4 && avail > 140 ? avail : prev));
+    };
+    calc();
+    const ro = new ResizeObserver(calc);
+    // 뿌리가 아니라 그 부모를 본다 — 뿌리를 보면 우리가 키운 것이 다시 계산을 부른다.
+    if (rootRef.current?.parentElement) ro.observe(rootRef.current.parentElement);
+    window.addEventListener("resize", calc);
+    const tid = window.setTimeout(calc, 120);   // 글꼴·이미지가 앉은 뒤 한 번 더.
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", calc);
+      window.clearTimeout(tid);
+    };
+  }, [wide]);
   useEffect(() => {
     if (!wide || !onDetailClose) return undefined;
     // Esc = 닫기 버튼과 같은 길 — 상세를 닫는다.
@@ -11197,21 +11232,14 @@ export default function ReplayMotionPlayer({
       // 유일한 클래스다(혼동을 없애려 -big에서 개명). ref는 자리 폭 재기(wide 판정)용.
       ref={rootRef}
       className={cx("scr-motion", wide && "scr-motion-wide")}
-      /* 지도가 화면 세로를 넘지 않게 폭 상한을 건다(지적: "맵 파트에서 세로 스크롤 안
-         생기게 길이 조절 필요"). 지도는 가로가 정해지면 세로가 비율로 따라오므로, 남는
-         세로를 비율로 되돌려 폭 상한으로 준다.
-         빼는 값은 '지도 말고 세로를 먹는 것들'의 합이다 — 페이지 머리(크럼·카드 헤드
-         ≈200px)와 지도 아래 줄들(색상·보기 설정·탐색바·도구줄).
-         넓은 배치(PC)에는 여태 상한이 아예 없었다("모달 폭이 이미 정해져 있으니"라는
-         옛 확대창 시절의 이유인데, 확대창은 걷혔고 지금은 그냥 페이지다) — 그래서 PC에서
-         지도가 화면을 넘겨 세로 스크롤이 났다. PC는 줄들이 한꺼번에 펴져 좁은 배치보다
-         조금 더 든다. */
-      style={{
-        maxWidth: `calc((100dvh - ${wide ? 320 : 278}px) * ${(grid.width / grid.height).toFixed(4)})`,
-        margin: "0 auto",
-      }}
+      /* 지도는 남는 세로를 꽉 채운다 — 넘지도, 필요 이상으로 작지도 않게(위 mapCapH
+         주석). 잰 세로를 지도 비율로 되돌려 폭으로 준다. 아직 못 쟀으면(첫 그림) 상한
+         없이 그린다 — 한 프레임 뒤 제자리를 찾는다. */
+      style={mapCapH > 0
+        ? { width: `${Math.round(mapCapH * (grid.width / grid.height))}px`, maxWidth: "100%", margin: "0 auto" }
+        : { margin: "0 auto" }}
     >
-      <div className="scr-motion-maprow">
+      <div className="scr-motion-maprow" ref={maprowRef}>
       {teamCol(1)}
       {/* 로스터 가운데 vs(요청: 구분선 말고 vs — 모바일·PC 공통). */}
       <span className="scr-motion-teamvs" aria-hidden>vs</span>

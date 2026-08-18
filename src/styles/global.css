@@ -5839,7 +5839,7 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 }
 .scr-motion-colorrow-label {
   flex: 0 0 auto;
-  font-size: var(--fs-sm); font-weight: 700; color: var(--muted);
+  font-size: 10px; font-weight: 700; color: var(--muted);
   line-height: 1; padding-left: 2px;
 }
 /* 어두운 카드 위라 글자를 테마색으로 뒤집는다(지적: "비활성 글자가 검정이라 안 보이는
@@ -11287,6 +11287,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 보기 설정 줄(정리·요청) — 보기·컬러·모델크기 짝 버튼 3그룹, 종류 사이 갭. */
 /* 각 줄 스페이스 비트윈(요청) — flex-wrap의 줄마다 양끝까지 고르게 벌린다. */
 .scr-motion-viewrow { flex-wrap: wrap; justify-content: space-between; margin-bottom: 2px; gap: 12px; align-items: flex-end; }
+/* PC는 라디오 묶음들을 줄 가운데로 모은다(요청: "피시 라디오 버튼들 모두 줄에서 가운데
+   정렬") — 양끝 정렬(space-between)은 좁은 화면에서 줄이 꽉 차 보기 좋았지만, 넓은
+   화면에서는 성능과 모델 크기가 양쪽 끝으로 멀어져 한 묶음으로 안 읽혔다. */
+@media (min-width: 900px) {
+  .scr-motion-viewrow { justify-content: center; gap: 22px; }
+}
 /* 게임 상세 라디오(요청: 라디오식 버튼을 라이팅 알약 라디오로 — 작게, 위에 라벨,
    PC·모바일 공통). 어두운 카드 위라 컴팩트 알약탭 컨텍스트처럼 테마 글자를 쓴다. */
 .scr-motion-radio { display: inline-flex; flex-direction: column; align-items: stretch; gap: 3px; }
