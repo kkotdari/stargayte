@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import { cx } from "../../utils/format";
 import { Spinner } from "./Feedback";
 import ConfirmDialog from "./ConfirmDialog";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
@@ -103,45 +102,9 @@ export default function ReplayBatchButton() {
     el.click();
   };
 
-  /* 끌어다 놓은 것 훑기 — 항목이 폴더면 하위를 재귀로 편다(webkitGetAsEntry).
-     이 API만이 파일과 폴더가 섞인 드롭을 다룰 수 있다. 못 쓰는 브라우저면 평평한
-     파일 목록으로 떨어지므로 그대로 받는다. */
-  const readEntry = async (entry: FileSystemEntry, out: File[]): Promise<void> => {
-    if (entry.isFile) {
-      const f = await new Promise<File | null>((res) => {
-        (entry as FileSystemFileEntry).file((x) => res(x), () => res(null));
-      });
-      if (f) out.push(f);
-      return;
-    }
-    if (!entry.isDirectory) return;
-    const reader = (entry as FileSystemDirectoryEntry).createReader();
-    // readEntries는 한 번에 100개쯤만 준다 — 빈 배열이 올 때까지 되풀이해야 한다.
-    for (;;) {
-      const batch = await new Promise<FileSystemEntry[]>((res) => {
-        reader.readEntries((e) => res(e), () => res([]));
-      });
-      if (batch.length === 0) break;
-      for (const e of batch) await readEntry(e, out);
-    }
-  };
-
-  const [dragOver, setDragOver] = useState(false);
-  const onDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const items = [...e.dataTransfer.items];
-    const out: File[] = [];
-    const entries = items
-      .map((it) => (it.kind === "file" && it.webkitGetAsEntry ? it.webkitGetAsEntry() : null))
-      .filter((x): x is FileSystemEntry => x !== null);
-    if (entries.length > 0) {
-      for (const en of entries) await readEntry(en, out);
-    } else {
-      out.push(...e.dataTransfer.files);
-    }
-    addFiles(out);
-  };
+  /* 끌어다 놓기는 걷었다(요청: "끌어다 놓기는 제거") — 파일·폴더를 섞어 넣는
+     유일한 길이었지만, 화면에서 큰 자리를 차지하면서 실제로는 버튼 두 개(파일 고르기·
+     폴더 고르기)로 다 되는 일이었다. 재귀 훑기(readEntry)와 드롭 처리도 함께 지운다. */
 
   // 폴더를 고르면 바로 시작한다 — 브라우저가 폴더 업로드를 물어보는 창이 이미 앞에 있어서
   // 우리 확인창까지 세우면 확인이 두 번이 된다(지적). 다만 그 창은 폴더 업로드에만 뜨는
@@ -299,19 +262,6 @@ export default function ReplayBatchButton() {
           </>
         )}
       </div>
-
-      {/* 파일과 폴더를 **섞어서** 한 번에 넣는 유일한 길(요청) — 브라우저의 선택창은 둘을
-          같이 못 고르지만, 끌어다 놓기는 webkitGetAsEntry로 섞인 것을 그대로 받는다. */}
-      {!running && (
-        <div
-          className={cx("scr-batch-drop", dragOver && "is-over")}
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={(e) => { void onDrop(e); }}
-        >
-          여기에 리플레이 파일이나 폴더를 끌어다 놓으세요 — 섞어서 놓아도 됩니다(하위 폴더 포함)
-        </div>
-      )}
 
       {/* 진행이 아예 시작되지 않은 경우(리플레이를 하나도 못 찾음)에만 브라우저가 뭘 넘겨줬는지
           보여준다 — 돌기 시작하면 버튼 안의 숫자가 그 자리를 대신한다. */}
