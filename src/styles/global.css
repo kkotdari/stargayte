@@ -5817,23 +5817,31 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   color: var(--text);
 }
 
-/* 색상 전환 줄(요청: 미니맵 바로 아래·크게·라벨 왼쪽) — 자주 쓰는 조작이라 보기 설정
-   줄에서 떼어내 지도 바로 밑에 제 줄로 뒀다. 라벨이 왼쪽에 서고 알약이 남은 폭을 채운다. */
+/* 색상 전환 줄(요청: 미니맵 왼쪽 아래·라벨 왼쪽) — 자주 쓰는 조작이라 보기 설정 줄에서
+   떼어내 지도 바로 밑에 제 줄로 뒀다. 라벨이 왼쪽에 서고 알약은 제 크기 그대로 왼쪽 정렬.
+
+   알약에는 아무 덧칠도 하지 않는다(지적: "버튼이 너무 안 이쁘고 크고 위치도 겹치잖아.
+   미선택 옵션은 글자도 안 보여"). 한 번 키워 봤다가 깨졌던 이유가 둘 있다:
+     ① .scr-pill-tabs는 높이 36px 고정에 그리드다 — 버튼 패딩·글꼴을 키우면 칸이 넘친다.
+     ② fit 모드의 인디케이터는 활성 버튼의 offsetLeft/offsetWidth를 **실측**해 붙인다.
+        폭을 늘리거나(flex:1) 글꼴을 바꾸면 실측 시점과 어긋나 인디케이터가 옆 칸까지
+        덮어, 미선택 글자가 그 아래로 숨었다.
+   크기가 필요하면 PillTabs 공통 규칙에서 손대야지 여기서 덧칠할 곳이 아니다. */
 .scr-motion-colorrow {
-  display: flex; align-items: center; gap: 12px;
-  padding: 8px 10px; margin-top: 6px;
+  display: flex; align-items: center; justify-content: flex-start; gap: 8px;
+  margin: 6px 0 2px;
 }
 .scr-motion-colorrow-label {
   flex: 0 0 auto;
-  font-size: var(--fs-body); font-weight: 700; color: var(--text);
-  letter-spacing: .01em;
+  font-size: var(--fs-sm); font-weight: 700; color: var(--muted);
+  line-height: 1; padding-left: 2px;
 }
-.scr-motion-colorrow .scr-pill-tabs { flex: 1 1 auto; }
-/* 한 눈금 크게 — 보기 설정 줄의 알약보다 손가락이 편하게. */
-.scr-motion-colorrow .scr-pill-tab-btn {
-  padding: 9px 14px;
-  font-size: var(--fs-body);
-  font-weight: 700;
+
+/* 게임 상세의 뒤로 버튼은 PC에서 감춘다(요청) — 상세 안 오른쪽 위에 닫기(X)가 이미
+   있어 같은 일을 하는 버튼이 둘이 됐다. 모바일에는 그 X가 없어 여기 뒤로가 유일한
+   길이므로 그대로 둔다(그래서 미디어 쿼리로만 건다). */
+@media (min-width: 900px) {
+  .scr-activity-add-fab-wrap-gamedetail { display: none; }
 }
 
 /* ===== 프로필 사진 크롭(AvatarCropModal) =====

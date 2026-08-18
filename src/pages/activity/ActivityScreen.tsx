@@ -2043,9 +2043,14 @@ export default function ActivityScreen() {
       {/* 숨김 클래스는 항상 붙이되 실제 적용은 CSS가 모바일 폭에서만 한다 — 이 버튼은
           PC에서도 뜨는데, 거기선 키보드가 화면을 가리지 않으므로 검색창에 포커스했다고
           사라지면 안 된다. */}
+      {/* 게임 상세에서는 PC에서 이 뒤로 버튼을 감춘다(요청) — 상세 안 오른쪽 위에 이미
+          닫기(X)가 있어 같은 일을 하는 버튼이 둘이 된다. 모바일에는 그 X가 없으므로
+          (좁은 배치에선 안 그린다) 여기 뒤로가 유일한 길이라 그대로 둔다. 숨김은 CSS가
+          데스크톱 폭에서만 건다. */}
       <div className={cx(
         "scr-activity-add-fab-wrap scr-activity-add-wrap",
         fabHidden && "scr-activity-add-fab-wrap-hidden",
+        gameItem && "scr-activity-add-fab-wrap-gamedetail",
       )}>
         {gameItem || groupPage ? (
           <button

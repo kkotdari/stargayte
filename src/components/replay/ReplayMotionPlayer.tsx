@@ -11197,12 +11197,19 @@ export default function ReplayMotionPlayer({
       // 유일한 클래스다(혼동을 없애려 -big에서 개명). ref는 자리 폭 재기(wide 판정)용.
       ref={rootRef}
       className={cx("scr-motion", wide && "scr-motion-wide")}
-      // 확대 모드에선 폭 상한을 안 건다 — 모달 폭(아래 포털)이 이미 맵+양옆 세로 조작부
-      // 기준으로 확정돼 있고, 여기까지 조이면 이중 제약으로 맵이 더 작아진다.
-      // 230 → 150 → 230px(요청: 페이지라 더 크게 → 재지적: 노트북에서 맵이 다 안 들어옴)
-      // — 150은 페이지 머리(크럼·카드 헤드 ≈200px)를 잊은 값이라 맵 자체가 화면을 넘쳤다.
-      // 230이면 맵이 통째로 들어오고, 페이지 폭 상한(760px)은 그대로라 여전히 예전보다 크다.
-      style={wide ? undefined : { maxWidth: `calc((100dvh - 230px) * ${(grid.width / grid.height).toFixed(4)})`, margin: "0 auto" }}
+      /* 지도가 화면 세로를 넘지 않게 폭 상한을 건다(지적: "맵 파트에서 세로 스크롤 안
+         생기게 길이 조절 필요"). 지도는 가로가 정해지면 세로가 비율로 따라오므로, 남는
+         세로를 비율로 되돌려 폭 상한으로 준다.
+         빼는 값은 '지도 말고 세로를 먹는 것들'의 합이다 — 페이지 머리(크럼·카드 헤드
+         ≈200px)와 지도 아래 줄들(색상·보기 설정·탐색바·도구줄).
+         넓은 배치(PC)에는 여태 상한이 아예 없었다("모달 폭이 이미 정해져 있으니"라는
+         옛 확대창 시절의 이유인데, 확대창은 걷혔고 지금은 그냥 페이지다) — 그래서 PC에서
+         지도가 화면을 넘겨 세로 스크롤이 났다. PC는 줄들이 한꺼번에 펴져 좁은 배치보다
+         조금 더 든다. */
+      style={{
+        maxWidth: `calc((100dvh - ${wide ? 320 : 278}px) * ${(grid.width / grid.height).toFixed(4)})`,
+        margin: "0 auto",
+      }}
     >
       <div className="scr-motion-maprow">
       {teamCol(1)}
@@ -13380,12 +13387,12 @@ export default function ReplayMotionPlayer({
       {teamCol(2)}
       </div>
 
-      {/* 색상 전환은 지도 바로 아래 제 줄에 둔다(요청: "색상 전환은 자주 쓰는 거라 미니맵
-          바로 아래에 따로 배치하고 디자인도 좀 크고 라벨도 왼쪽에") — 보기 설정 줄에
-          성능·보기·모델 크기와 나란히 있던 것을 뺐다. 저것들은 한 번 맞춰 두고 마는
-          것이지만 색은 재생 도중에도 계속 오간다. 라벨은 위가 아니라 왼쪽이고, 알약도
-          한 눈금 크다(scr-motion-colorrow). */}
-      <div className="scr-motion-bar scr-motion-colorrow">
+      {/* 색상 전환은 지도 바로 아래 왼쪽에 제 줄로 둔다(요청) — 보기 설정 줄에 성능·보기·
+          모델 크기와 나란히 있던 것을 뺐다. 저것들은 한 번 맞춰 두고 마는 것이지만 색은
+          재생 도중에도 계속 오간다. 라벨은 위가 아니라 왼쪽. 알약 자체는 다른 줄과 같은
+          크기 그대로다(지적: 키웠더니 깨졌다 — scr-motion-colorrow 주석 참고).
+          진행바는 이 줄 다음에 온다(지적: 진행바는 이 버튼 아래로). */}
+      <div className="scr-motion-colorrow">
         <span className="scr-motion-colorrow-label">색상</span>
         <PillTabs
           options={[{ value: "personal", label: "개인색" }, { value: "team", label: "팀색" }]}
