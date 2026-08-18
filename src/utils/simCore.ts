@@ -25,7 +25,9 @@ import {
       이 파일이 쓰는 것은 bwCombat.reachTiles 하나뿐이고, 몸 반지름을 더하는 자리도
       거기 하나뿐이다 — 여기서 Body.rad를 또 더하면 이중 가산이 난다. */
 import {
-  ORDER_PERIOD_SEC, RETARGET_SEC, acqPhaseOf, acquireReachTiles, attackOf,
+  MATRIX_HP, ORDER_PERIOD_SEC, RETARGET_SEC, STATUS_TICKS, acqPhaseOf, acquireReachTiles, attackOf,
+  cooldownSec, ignoresDarkSwarm, timerSec, STIM_SELF_DAMAGE, STIM_UNITS,
+  STORM_PULSES, STORM_PULSE_SEC, STORM_TILES, stormPulse,
   bunkerShooterProfileOf, minReachTiles, profileOf, reachTiles, splashDivisorAt,
   targetFor, weaponVs,
   type CombatProfile, type DmgTarget, type ProfWeapon,
@@ -58,6 +60,13 @@ export type SimInput = {
    *    `as unknown as SimInput`으로 넘기므로, 이 칸을 **여기서 선언하기만 하면** 이미
    *    실려 오던 자료가 그대로 읽힌다. 어댑터를 고칠 것도 없었다. */
   ups?: [number, string, number][];
+  /** 좌표가 남는 마법 [초, x, y, 기술, 플레이어] — 개체 트랙(UnitTracksV2.casts)이 이미
+   *  싣고 오던 값이다.
+   *  ★ ups가 그랬듯 이 칸도 여태 **선언이 없어** 코어가 마법을 아예 못 봤다(과제 #54).
+   *    다크스웜 아래에서도 원거리 지상 공격이 다 맞았고, 인스네어에 젖어도 손이 안
+   *    무뎠으며, 디펜시브 매트릭스는 한 번도 흡수한 적이 없다. 렌더러는 UnitTracksV2를
+   *    `as unknown as SimInput`으로 넘기므로 여기서 선언하기만 하면 그대로 읽힌다. */
+  casts?: [number, number, number, string, number][];
 };
 
 /* ── 출력 ─────────────────────────────────────────────────────────────────────── */
@@ -290,6 +299,18 @@ type Body = {
   dieAt: number | null;
   /** 증거가 보장하는 생존 하한 — 이 시각까지는 절대 안 죽는다(제약이 시뮬을 이긴다). */
   aliveUntil: number;
+  /* ── 주변 효과(과제 #54) — 표가 이미 셈해 주는 값을 받아 둘 자리. ── */
+  /** 스팀 종료 시각(초). 증거 f=16이 켠다. 쿨다운이 절반이 된다. */
+  stimUntil: number;
+  /** 인스네어 종료 시각(초) — 젖으면 쿨다운이 1.25배로 는다. */
+  ensnaredUntil: number;
+  /** 아드레날(저글링 공속업) — 태어날 때 한 번 정해진다. */
+  adrenal: boolean;
+  /** 스팀을 누른 시각들(증거 f=16, 오름차순)과 다음에 볼 자리. */
+  stims: number[];
+  stimI: number;
+  /** 디펜시브 매트릭스 만료 시각(초) — 지나면 남은 흡수량을 지운다. */
+  matrixUntil: number;
   /** 분석이 말한 죽음 — 시뮬이 그때까지 못 죽였으면 여기서 죽는다(상한). */
   dieBy: number | null;
   /* ── 채취(P3) ── 명령이 없는 일꾼은 제 밭과 홀 사이를 오간다. 리플레이에 안 남는
@@ -394,6 +415,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         chase: 0, chX: 0, chY: 0, homeX: 0, homeY: 0, hasHome: false,
         burrowed: false, burrowLock: 0, burrowIn: -1, lurkHit: null,
         aliveUntil: e.ev.length > 0 ? e.ev[e.ev.length - 1][0] : spot[0],
+        stimUntil: -1, ensnaredUntil: -1, adrenal: false, stims: [], stimI: 0, matrixUntil: -1,
         dieBy: e.d ?? null,
       };
       bodies.push(bb);
@@ -446,6 +468,18 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       /* 증거가 보장하는 생존 하한 — 명령을 받은 태그는 그 순간 확실히 살아 있다.
          시뮬이 그 전에 죽이려 들면 시뮬이 틀린 것이므로 체력 1로 버틴다. */
       aliveUntil: e.ev.length > 0 ? e.ev[e.ev.length - 1][0] : e.b,
+      /* 아드레날은 저글링에게만 있고 한 번 끝나면 안 풀린다 — 태어날 때 굳힌다.
+         스팀·인스네어는 시간이 흐르며 켜지고 꺼지므로 아래 루프가 채운다. */
+      stimUntil: -1,
+      ensnaredUntil: -1,
+      adrenal: kind === "Zergling" && (ups ?? []).includes("Adrenal Glands"),
+      /* 스팀 증거는 명령 순간 함께 골라져 있던 **모두**에게 남는다 — 실제로 스팀을 쓰는
+         둘(마린·파이어뱃)만 받는다. 안 가리면 SCV가 두 배로 빨리 때린다(실측: 한 경기
+         에 SCV 54기가 스팀 증거를 갖고 있었다). */
+      stims: STIM_UNITS.has(kind)
+        ? e.ev.filter((v) => v[3] === 16).map((v) => v[0]).sort((p1, p2) => p1 - p2) : [],
+      stimI: 0,
+      matrixUntil: -1,
       dieBy: e.d ?? null,
     };
     bodies.push(b);
@@ -868,6 +902,11 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
      divisor는 스플래시 링(1/2/4)이다 — 방어력보다 **먼저** 나눈다. */
   const hurt = (a: Body, tgt: Body, w: ProfWeapon, t: number, divisor = 1): void => {
     if (tgt.state === ST_GONE || tgt.dieAt !== null) return;
+    /* 다크스웜(과제 #54) — 그 안의 지상 비건물 표적은 원거리 공격을 **전부** 빗맞는다.
+       표의 missChanceRaw가 그 자리에 255/256을 주는데, 우리는 주사위를 굴리는 대신
+       확정 회피로 갈음한다: 255/256은 사실상 전부이고, 굴림을 넣으면 결정론이 깨진다.
+       스플래시·야마토·근접은 뚫는다(ignoresDarkSwarm). */
+    if (!ignoresDarkSwarm(w.wp) && underSwarm(tgt, t)) return;
     attackOf(w, a.cp, tgt.dmg, { divisor });
     /* 러커 말고는 맞는 순간 저절로 튀어나온다(on_hit_change_target). 이래디에이트가 걸린
        개체만 그대로 있는데 우리는 그 상태를 안 다뤄 조건에서 뺐다. 러커는 무슨 일이
@@ -979,7 +1018,15 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
     const fd = dist(a.x, a.y, f.x, f.y);
     if (fd > reachOf(a, f)) return;
     if (fd < minReachTiles(a.cp, f.cp, f.air)) return;
-    a.cd = w.cd;
+    /* 쿨다운은 표가 셈한다(과제 #54) — 여태 무보정 원값(w.cd)을 그대로 썼다. 그래서
+       스팀 먹은 마린이 평소 속도로 쐈고, 아드레날 저글링도 그랬으며, 인스네어에 젖어도
+       손이 안 무뎠다. cooldownFrames가 원전의 순서(산성포자 가산 → 배수 → 5~250 죔)를
+       그대로 옮겨 놓았으니 그것을 부른다. 산성포자는 디바우러 중첩을 아직 안 세어 뺐다. */
+    a.cd = cooldownSec(w.wp, {
+      stim: t < a.stimUntil,
+      adrenal: a.adrenal,
+      ensnared: t < a.ensnaredUntil,
+    });
     shots += 1;
     events.push(t, EV_FIRE, a.tag, f.tag, Math.round(a.x * 10) / 10, Math.round(a.y * 10) / 10,
       Math.round(f.x * 10) / 10, Math.round(f.y * 10) / 10);
@@ -1040,6 +1087,41 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   let lastGrid = -99;
   rebuildGrid(0);
 
+  /* ── 좌표 마법(과제 #54) ─────────────────────────────────────────────────────
+     표는 이 효과들을 진작 셈할 줄 알았는데(dealOneHit의 매트릭스 단계, missChanceRaw의
+     다크스웜 갈래, cooldownFrames의 스팀·인스네어) 코어가 재료를 못 받아 한 번도 안
+     탔다. 이제 casts를 읽어 세 가지를 건다.
+       · 다크스웜 — 그 안의 지상 비건물 표적은 원거리 공격을 **전부** 빗맞는다
+         (missChanceRaw가 255/256을 주는 자리다). 스플래시·야마토·근접은 뚫는다.
+       · 인스네어 — 젖은 적의 쿨다운이 1.25배가 된다.
+       · 디펜시브 매트릭스 — 250을 대신 맞아 준다(dealOneHit의 (5)단계).
+     반경과 다크스웜 지속은 표에 없어 어림이다 — 스웜 스프라이트가 6타일 폭이라 반경 3,
+     인스네어는 4×4칸이라 반경 2로 잡았다. 지속은 상태 타이머 표(STATUS_TICKS)에서
+     온다(인스네어 25.2초·매트릭스 56.4초·스팀 12.4초). 스웜만 유닛 타이머가 아니라
+     스프라이트라 표에 없어 30초로 둔다. [추정] */
+  const DARK_SWARM_TILES = 3;
+  const DARK_SWARM_SEC = 30;
+  const ENSNARE_TILES = 2;
+  const MATRIX_SNAP_TILES = 1.5;
+  const STIM_SEC = timerSec(STATUS_TICKS.stim);
+  const ENSNARE_SEC = timerSec(STATUS_TICKS.ensnare);
+  const MATRIX_SEC = timerSec(STATUS_TICKS.defensiveMatrix);
+  const castsSorted = [...(data.casts ?? [])].sort((a, b2) => a[0] - b2[0]);
+  /** 살아 있는 다크스웜 [끝나는 초, x, y]. 몇 개 안 되어 훑어도 싸다. */
+  const swarms: [number, number, number][] = [];
+  /** 아직 안 터진 스톰 박자 [초, x, y] — 오름차순. 시전 하나가 여덟을 낳는다. */
+  const stormPulsesDue: [number, number, number][] = [];
+  let stormI = 0;
+  let castI = 0;
+  const underSwarm = (b: Body, t: number): boolean => {
+    if (b.air || b.bld) return false;          // 공중·건물은 스웜이 안 가린다
+    for (const [end, sx, sy] of swarms) {
+      if (t > end) continue;
+      if (Math.abs(b.x - sx) <= DARK_SWARM_TILES && Math.abs(b.y - sy) <= DARK_SWARM_TILES) return true;
+    }
+    return false;
+  };
+
   const byBorn = [...bodies].sort((a, b2) => a.born - b2.born);
   let bornIdx = 0;
   let active: Body[] = [];
@@ -1067,6 +1149,16 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
 
     for (const b of active) {
       if (t < b.born) continue;
+      /* 스팀은 증거가 켠다(f=16) — 누른 순간부터 12.4초. 만료된 매트릭스는 남은 흡수량을
+         지운다(안 지우면 한 번 감싼 유닛이 경기 내내 250을 대신 맞는다). */
+      while (b.stimI < b.stims.length && b.stims[b.stimI] <= t) {
+        b.stimUntil = b.stims[b.stimI] + STIM_SEC;
+        b.stimI += 1;
+        /* 스팀은 값을 치른다 — 방어력·실드를 무시한 생피해 10. 체력이 10 이하면 안 든다
+           (원작이 그 자리에서 거른다). 공짜로 두면 스팀이 순이득이라 남발한 판이 유리해진다. */
+        if (b.dmg.hp > STIM_SELF_DAMAGE * 256) b.dmg.hp -= STIM_SELF_DAMAGE * 256;
+      }
+      if (b.matrixUntil >= 0 && t > b.matrixUntil) { b.dmg.matrixHp = 0; b.matrixUntil = -1; }
       if (b.died !== null && t >= b.died) {
         if (b.state !== ST_GONE) { b.state = ST_GONE; pushKey(b, b.died, true); }
         dropped = true;
@@ -1509,6 +1601,67 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       pushKey(b, t, b.keys.length === 0);
       b.px = b.x; b.py = b.y;
     }
+    /* 마법은 몸들이 이번 틱 자리를 다 잡은 **뒤에** 건다(fireAll 바로 앞) — 틱 머리에
+       두었더니 그 자리에서 live가 방금 비워진 참이라, 스톰이 아무도 못 때리고 인스네어가
+       아무도 안 적셨다(실측: 스톰 30발이 사망 수를 1도 안 바꿨다). */
+    /* 이번 틱까지 떨어진 마법을 건다 — 스웜은 판에 얹고, 인스네어는 적을 적시고,
+       매트릭스는 제 편 하나를 감싼다. 나머지 기술(스톰·플레이그·이래디에이트 등)은
+       피해를 직접 주는 것이라 이 자리가 아니다. */
+    while (castI < castsSorted.length && castsSorted[castI][0] <= t) {
+      const [csec, cx, cy, tech, cpid] = castsSorted[castI];
+      castI += 1;
+      if (tech === "Dark Swarm") { swarms.push([csec + DARK_SWARM_SEC, cx, cy]); continue; }
+      if (tech === "Psionic Storm") {
+        for (let pi = 0; pi < STORM_PULSES; pi += 1) {
+          stormPulsesDue.push([csec + pi * STORM_PULSE_SEC, cx, cy]);
+        }
+        stormPulsesDue.sort((p1, p2) => p1[0] - p2[0]);
+        continue;
+      }
+      if (tech !== "Ensnare" && tech !== "Defensive Matrix") continue;
+      if (tech === "Ensnare") {
+        for (const o of live) {
+          if (o.owner === cpid) continue;
+          if (Math.abs(o.x - cx) <= ENSNARE_TILES && Math.abs(o.y - cy) <= ENSNARE_TILES) {
+            o.ensnaredUntil = Math.max(o.ensnaredUntil, csec + ENSNARE_SEC);
+          }
+        }
+        continue;
+      }
+      // 매트릭스는 표적 하나 — 시전 자리에 가장 가까운 제 편을 감싼다.
+      let best: Body | null = null;
+      let bd = MATRIX_SNAP_TILES;
+      for (const o of live) {
+        if (o.owner !== cpid || o.bld) continue;
+        const dd = Math.hypot(o.x - cx, o.y - cy);
+        if (dd <= bd) { bd = dd; best = o; }
+      }
+      if (best) { best.dmg.matrixHp = MATRIX_HP * 256; best.matrixUntil = csec + MATRIX_SEC; }
+    }
+    /* 스톰 박자 — 반경 안의 **모두**를 때린다(radial, 시전자 본인 포함). 편을 안 가리는
+       것이 원작이고, 그래서 스톰 위에 선 아군도 녹는다. */
+    while (stormI < stormPulsesDue.length && stormPulsesDue[stormI][0] <= t) {
+      const [, sx, sy] = stormPulsesDue[stormI];
+      stormI += 1;
+      for (const o of live) {
+        if (o.bld) continue;                 // 건물은 스톰을 안 맞는다
+        if (Math.hypot(o.x - sx, o.y - sy) > STORM_TILES) continue;
+        stormPulse(o.dmg);
+        if (o.dmg.hp <= 0 && o.dieAt === null) {
+          o.dmg.hp = 0;
+          o.dieAt = Math.max(t, o.aliveUntil);
+          if (o.dieAt > t) saved += 1;
+          kills += 1;
+          /* 죽인 자를 -1로 남긴다 — 0은 '증거가 시켜 죽었다'는 뜻으로 이미 쓰이고 있어
+             (아래 dieBy 갈래) 자리 마법의 죽음을 거기 섞으면, 시뮬이 제 힘으로 낸 죽음이
+             떠먹은 죽음으로 집계된다(#68의 자력 사망률이 그것을 가른다). */
+          events.push(o.dieAt, EV_DIE, o.tag, -1,
+            Math.round(o.x * 10) / 10, Math.round(o.y * 10) / 10, 0, 0);
+        }
+      }
+    }
+    // 다 꺼진 스웜은 걷는다 — 훑는 목록을 짧게 유지한다.
+    for (let si = swarms.length - 1; si >= 0; si -= 1) if (swarms[si][0] < t) swarms.splice(si, 1);
     fireAll(t);
     if (dropped) active = active.filter((b) => b.state !== ST_GONE);
 

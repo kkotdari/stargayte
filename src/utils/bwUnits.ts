@@ -975,6 +975,11 @@ export const STATUS_TICKS = {
 export const MATRIX_HP = 250;
 /** 스팀팩 자해 — 방어력·실드 무시 생피해. hp > 10일 때만 발동한다. */
 export const STIM_SELF_DAMAGE = 10;
+/** 스팀을 쓸 수 있는 정체 — 이 둘뿐이다.
+ *  ★ 이걸 안 가리면 안 된다: 스팀은 부대 전체에 내리는 명령이라, 그때 함께 골라져 있던
+ *    SCV·메딕·탱크에도 증거(f=16)가 남는다. 실측으로 한 경기에서 SCV 54기·메딕 3기·
+ *    탱크 2기가 스팀 증거를 갖고 있었다. 그대로 믿으면 SCV가 두 배로 빨리 때린다. */
+export const STIM_UNITS = new Set(["Marine", "Firebat"]);
 /** 플레이그 — 피해 공식을 안 탄다(직접 차감). 75틱에 걸쳐 300, 절대 못 죽인다. */
 export const PLAGUE_TOTAL = 300;
 /** 이레디에이트 — ignoreArmor로 75틱에 250. 표적 32px 안 유기물 비건물 전원에게 번진다. */

@@ -51,6 +51,10 @@ export {
   BUNKER_ACQUIRE_TILES, BUNKER_LOADABLE, BUNKER_RANGE_PX, BUNKER_SEATS, BUNKER_SHOOTERS,
   DETECTOR_KINDS, MEDIC_HEAL_PER_SEC, MEDIC_HEAL_RANGE_PX,
   splashHitsCaster, splashHitsOwnUnits,
+  /* 주변 효과(과제 #54) — 표에는 진작 있었는데 문이 안 열려 있어 코어가 한 번도 못
+     썼다. 쿨다운 보정(스팀·아드레날·인스네어·산성포자), 다크스웜을 무시하는 무기,
+     상태 지속 시간, 매트릭스 흡수량이 전부 여기 있다. */
+  cooldownSec, ignoresDarkSwarm, MATRIX_HP, STATUS_TICKS, STIM_SELF_DAMAGE, STIM_UNITS, timerSec,
 } from "./bwUnits";
 
 /* ★ 이 파일이 돌려주는 값의 **타입**도 함께 내보낸다.
@@ -60,6 +64,23 @@ export {
    bwCombat 하나"라는 규약이 타입 쪽으로만 새 버린다 — 값은 이 문으로, 타입은 저 문으로
    들어오는 코드는 나중에 어느 쪽이 진실인지 아무도 모르게 된다. 문을 하나로 닫는다. */
 export type { DmgTarget, DmgType, HitCtx, HitResult, UnitSize, Weapon, WeaponKey } from "./bwUnits";
+
+/* ── 사이오닉 스톰(과제 #54) ────────────────────────────────────────────────────
+   무기는 표에 진작 있었다(Psionic_Storm: 14 · ignoreArmor · 48px · radial). 코어가
+   못 쓴 것은 문이 없어서였다. 스톰만 여기 문을 따로 내는 까닭은, 이것이 **표적이 아니라
+   자리를 때리는** 유일한 상시 무기라 attackOf(공격자·표적) 꼴에 안 들어맞기 때문이다.
+
+   합계 112를 8박자로 나눠 준다(14×8). 반경과 피해·방어력 무시는 표에서 오고, 박자 수와
+   간격만 어림이다 — 원작은 프레임 단위로 쪼개지만 우리 틱(0.126초)에는 그만 한 해상도가
+   없다. [추정]
+   radial이라 아군도, splashHitsCaster라 시전자 본인도 맞는다 — 편을 가리지 않는다. */
+export const STORM_PULSES = 8;
+export const STORM_PULSE_SEC = 0.5;
+export const STORM_TILES = WEAPONS.Psionic_Storm.splashPx[0] / 32;
+/** 스톰 한 박자를 표적에게 먹인다 — 방어력·크기배수를 안 탄다(ignoreArmor). */
+export function stormPulse(t: DmgTarget): HitResult {
+  return dealOneHit(WEAPONS.Psionic_Storm, t);
+}
 
 /* ════════════════════════════════════════════════════════════════════════════
    1. 원전의 시계 — 유닛이 '무엇을 할지' 다시 생각하는 눈금

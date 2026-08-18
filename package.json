@@ -11,7 +11,8 @@
     "share-thumbs": "node scripts/make-share-thumbs.cjs",
     "sim-metrics": "node scripts/sim-metrics.mjs",
     "model-norm": "node scripts/model-norm.mjs",
-    "bld-norm": "node scripts/bld-norm.mjs"
+    "bld-norm": "node scripts/bld-norm.mjs",
+    "dmg-check": "node scripts/dmg-check.mjs"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.6.13",
