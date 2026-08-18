@@ -7539,6 +7539,40 @@ function lodOf(px: number): number {
   return Math.max(1, base - lodPenalty);
 }
 
+/* 실루엣 광원(요청: "사양 최고에서는 유닛과 건물 모두 밝음 어두움 표현 필요") —
+   판을 다 그린 뒤, **이미 그려진 픽셀 위에만**(source-atop) 세계 광원 방향의 밝기
+   기울기를 얹는다.
+
+   왜 이게 필요한가: 이 렌더러의 명암은 두 갈래로 들어온다. 프리미티브(돔·기둥·상자·뿔)는
+   제 면의 법선을 광원과 내적해 스스로 밝기를 매기지만(faceLight), 손으로 그린 몸판
+   (bodyFace)은 그냥 단색이다 — bodyFace(d)는 말 그대로 [d, 1]이다. 그래서 프리미티브로
+   지은 모델(시즈탱크·골리앗)은 입체로 보이고, 손으로 그린 모델은 납작하다.
+   지적한 오버로드가 정확히 뒤쪽이다: 몸통이 bodyFace(타원) 한 장이라 어느 각도에서도
+   같은 색이었다("오버로드 몸도 입체인데 빛 효과가 안 들어감").
+
+   면마다 고치려면 모델 아흔 개를 다 손봐야 하고, 손 그림 면에는 법선이라는 것이 아예
+   없다. 대신 실루엣 전체에 한 장을 얹으면 손 그림이든 프리미티브든 똑같이 형태가 산다.
+   판은 어차피 한 번만 굽고 캐시되므로 프레임당 비용은 0이고, 이미 명암이 있는 모델에도
+   해가 없도록 기울기는 얕게 잡았다(밝은 쪽 +14%, 어두운 쪽 -20%).
+
+   광원은 세계 왼쪽 앞(faceLight와 같은 방향)이라 화면에서는 좌상 → 우하다.
+   최고 등급(장식까지 그리는 판)에서만 얹는다 — 작게 그릴 땐 어차피 안 보인다. */
+function silhouetteLight(c2: CanvasRenderingContext2D, cv: HTMLCanvasElement): void {
+  const prev = c2.getTransform();
+  c2.setTransform(1, 0, 0, 1, 0, 0);
+  c2.globalCompositeOperation = "source-atop";
+  c2.globalAlpha = 1;
+  const g = c2.createLinearGradient(0, 0, cv.width, cv.height);
+  g.addColorStop(0, "rgba(255,255,255,0.14)");
+  g.addColorStop(0.42, "rgba(255,255,255,0)");
+  g.addColorStop(0.58, "rgba(0,0,0,0)");
+  g.addColorStop(1, "rgba(0,0,0,0.20)");
+  c2.fillStyle = g;
+  c2.fillRect(0, 0, cv.width, cv.height);
+  c2.globalCompositeOperation = "source-over";
+  c2.setTransform(prev);
+}
+
 /** 상자 채움 보정에서 빼는 조각 — 본체와 짝을 이뤄 그려지는 부품들. */
 const FILL_SKIP = new Set(["burrowhole"]);
 /* 짝을 이루는 조각은 '본체의' 채움 몫을 그대로 쓴다(수리·지적: 포탑이 한쪽으로 쏠려
@@ -7553,6 +7587,13 @@ const FILL_PAIR: Record<string, string> = {
 /** 모델별 상자 채움 몫(잉크 폭 / 상자 폭) — 종류마다 한 번만 재고 계속 쓴다. 방향마다
  *  다시 재면 몸이 도는 동안 크기가 출렁이고, 판도 두 배로 굽게 된다. */
 const FILL_CACHE = new Map<string, number>();
+/* 유닛별 목표 채움 몫(기본 0.58) — 건물의 BLD_FILL_TARGET과 같은 자다. 넓게 펼친
+   얇은 부품(날개막·촉수)이 잉크 폭을 부풀려 '이미 큰 모델'로 재지는 것들만 올린다:
+   폭은 찼는데 몸이 작아 보이는 증상이다(지적: 뮤탈). 값을 올리면 그만큼 더 키운다. */
+const UNIT_FILL_TARGET: Record<string, number> = {
+  muta: 0.78, guardian: 0.74, devourer: 0.74, scourge: 0.72,
+  corsair: 0.7, valk: 0.7, wraith: 0.68,
+};
 const SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; bot: number; cx: number; top: number; w: number }>();
 function unitSprite(
   op: UnitDrawOp, pxq: number, B: number,
@@ -7585,6 +7626,7 @@ function unitSprite(
     c2.fillStyle = fill ?? op.color;
     c2.fill(pathOf(d));
   }
+  if (lod >= 3) silhouetteLight(c2, cv);
   // 무한히 크지 않게 — 색·크기 조합이 쌓이면 통째로 비운다(다음 프레임에 필요분만 재적재).
   if (SPRITE_CACHE.size > 700) SPRITE_CACHE.clear();
   const entry = { cv, pad, l, ...contentBox(cv) };
@@ -7666,6 +7708,7 @@ function buildingSprite(
     c2.fillStyle = fill ?? op.color;
     c2.fill(pathOf(d));
   }
+  if (lod >= 3) silhouetteLight(c2, cv);
   if (BLD_SPRITE_CACHE.size > 500) BLD_SPRITE_CACHE.clear();
   const box9 = contentBox(cv);
   const entry = {
@@ -8077,7 +8120,14 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         fillW = sp0 && sp0.w > 0 ? (sp0.w / B) / pq0 : 1;
         FILL_CACHE.set(fillKind, fillW);
       }
-      const px = px0 * Math.min(1.55, Math.max(1, 0.58 / (fillW ?? 1)));
+      /* 목표 채움 몫은 모델마다 다르다(지적: "뮤탈 크기 너무 작은데 근본 원인 찾기") —
+         채움 보정은 구운 판의 **잉크 폭**을 재서 '이미 큰 모델'이면 안 키운다. 그런데
+         폭은 몸이 아니라 가장 멀리 뻗은 부품이 정한다. 뮤탈은 날개가 모델 공간 x=±4.3
+         까지 펼쳐져 폭으로는 이미 꽉 찬 모델로 재지는데, 정작 그 폭의 대부분은 얇은
+         날개막이고 몸통은 가운데 조금이다. 그래서 보정이 1배로 묶여 몸이 작게 남았다.
+         건물 쪽에는 이 문제를 위한 목표표(BLD_FILL_TARGET — 스포닝풀이 같은 증상으로
+         들어가 있다)가 이미 있는데 유닛 쪽에만 없었다. 같은 자를 유닛에도 준다. */
+      const px = px0 * Math.min(1.55, Math.max(1, (UNIT_FILL_TARGET[op.kind] ?? 0.58) / (fillW ?? 1)));
       /* 공중 유닛(요청: 높이 더 높이 + 바닥 그림자) — 발밑 자리에 그림자 타원을 깔고
          몸은 반 키만큼 위로 띄운다. 떠 있음이 땅 유닛과 한눈에 갈린다. */
       // 높이 반으로(재재지적) — 1.6 → 0.8.
