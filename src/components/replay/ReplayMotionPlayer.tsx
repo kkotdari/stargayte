@@ -14023,7 +14023,10 @@ export default function ReplayMotionPlayer({
           value={colorMode}
           onChange={(v) => setColorMode(v)}
           aria-label="색상"
-          fit
+          /* 넓은 배치는 균등폭(지적: 반절만 쓴다) — 좁은 배치에서는 이 줄에 이것 하나뿐이라
+             라벨 폭 칸(fit)으로 오밀조밀한 편이 낫고, 넓은 배치에서는 왼쪽 기둥 폭이
+             정해져 있어 그 폭을 반씩 나눠 갖는 편이 낫다. */
+          fit={!wide}
           toggle
         />
       </div>

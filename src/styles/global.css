@@ -11754,7 +11754,16 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 }
 /* 색상 줄도 같이 가운데로(요청: "scr-motion-colorrow 여기랑") — 이쪽은 가로 flex라
    가로축이 justify-content다. 위 줄과 같은 뜻이 되는 속성이 서로 다르다. */
-.scr-motion-wide .scr-motion-colorrow { justify-content: center; }
+/* 왼쪽 기둥 '둘'을 다 쓴다(지적: "컬러 토글이 전체 폭을 쓰게 해줘 반절만 쓰고 있어서..
+   그리드를 너무 잘게 나눈거같아") — 진단이 정확했다. 이 줄만 그리드 자리를 안 정해 둬서
+   자동 배치가 1행 1열(110px) 한 칸에 떨어뜨렸다. 왼쪽 기둥은 110+12+110=232px인데 그
+   절반만 쓰고 있었다(실측: 줄 110px·알약 100px). 로스터 위 범례(.scr-motion-legend-side)
+   ·보기 줄과 같이 1/3으로 걸치고, 행도 못 박아 이웃이 늘고 줄어도 안 떠돈다. */
+.scr-motion-wide .scr-motion-colorrow { grid-column: 1 / 3; grid-row: 1; justify-content: center; }
+/* 알약이 남은 폭을 다 먹는다(요청: 전체 폭) — 라벨(색상)은 제 글자폭 그대로고 나머지가
+   알약 몫이다. 넓은 배치에서는 fit(라벨 폭 칸)을 끄고 균등폭으로 주므로(JSX의 fit={!wide})
+   두 옵션이 줄을 반씩 나눠 갖는다. */
+.scr-motion-wide .scr-motion-colorrow .scr-pill-tabs { flex: 1 1 auto; min-width: 0; }
 /* 왼쪽 — 같은 팀은 세로로(지적), 두 팀 기둥이 나란히 서고 줄(행)이 서로 맞는다.
    조작부는 로스터 바로 밑이 아니라 기둥의 아래쪽에 붙는다(요청) — 늘어나는 줄(1fr)을
    차지하고 스스로 바닥 정렬한다. */
