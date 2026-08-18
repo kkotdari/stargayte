@@ -146,6 +146,17 @@ const BRIDGE_MAX_SPEED = 10;
 /** 크립이 만개까지 퍼지는 시간(초) — 원작은 해처리·콜로니에서 몇 분에 걸쳐 타일이
  *  번져 나간다(정확한 표는 공개돼 있지 않아 체감치). 시작 본진 해처리는 처음부터 만개. */
 const CREEP_SPREAD_SEC = 180;
+/* 입체 보기의 바닥 기하 — 모듈 스코프에 둔다(수리: 그림자가 바닥보다 두 배 납작한
+   문제). 지형 그림·마커 사영은 컴포넌트 안에서 이 값들을 쓰고, 캔버스의 그림자·
+   선택 링은 컴포넌트 밖(UnitLayer)에서 쓴다. 같은 바닥을 두 곳이 따로 알고 있으면
+   한쪽만 고쳐지고 다른 쪽은 옛 숫자로 남는다 — 실제로 그렇게 벌어졌다. */
+/** 부감 각 — 바닥을 45도로 눕힌다. */
+const PITCH_TH = Math.PI / 4;
+/** 원근 거리 = 상자 세로 × 이 값. 클수록 원근이 약하고 바닥이 상자를 더 채운다. */
+const PITCH_DIST = 1.6;
+/** 바닥 눌림 — 세로가 가로의 몇 할로 보이는가. 바닥에 눕는 것(그림자·선택 링·
+ *  트레이서 조준각)은 전부 이 값을 곱해야 지면 격자와 같은 평면에 깔린다. */
+const PITCH_FLAT = 0.74;
 
 const pct = (v: number, span: number) => `${(v / span) * 100}%`;
 
@@ -6009,7 +6020,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   cocoon: () => [
     // 가시는 걷었다(지적: 성큰류와 헷갈린다) — 민둥한 겹돔 고치만.
     // 가시 돋친 크립 대신 부드러운 원반(재지적: 고치 옆 가시 제거).
-    sideFace(discPath3(0, 0, 0.04, 4.2), 0.3),
+    /* 그 원반은 크립이지 그림자가 아니다(지적: "고치나 소환구 등의 건물에 미리
+       렌더링된 그림자는 공중에 떠 있는 것만 적용해야 하지 않나") — 검정 30%로 깔려
+       있어 땅에 앉은 고치가 그림자를 지는 것처럼 읽혔다. 화면의 규칙은 뜬 것만
+       그림자를 진다는 것이고(소환구는 WARP_LIFT만큼 떠 있어 바닥 타원을 받는다),
+       고치는 땅에 앉는다. 다른 저그 건물의 크립과 같은 잿빛으로 칠해, 같은 원반이
+       크립으로 읽히게 한다. */
+    ...paintBase([bodyFace(discPath3(0, 0, 0.04, 4.2))], "#3a3f46"),
     // 덩어리 무게중심을 상자 가운데로(지적: 고치 중심이 어긋난다) — 전체 y -0.55.
     ...paintBase([
       ...domeFaces3(0, -0.25, 2.6, 3.2),
@@ -8642,9 +8659,12 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         /* 그림자는 땅에(지적: 오버로드 위치는 해처리 위인데 그림자가 훨씬 아래) — 몸은
            lift만큼 '위로' 들리고 땅은 제자리(footY)인데, 여기에 lift를 '더해' 그림자가
            비행 높이만큼 남쪽으로 밀려 있었다. 발밑 땅 자리 그대로 둔다. */
-        /* 3D에선 더 눕는다(지적: 그림자가 안 눕는 문제) — 0.6은 바닥 눌림(0.74×부감)에
-           비해 서 보였다. 0.38로 바짝 눕힌다. */
-        ctx.ellipse(footX, footY - shw * 0.22 - shUp, shw * 1.1, shw * (op.air ? 0.5 : 0.42) * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
+        /* 바닥과 같은 평면에(지적: 그림자가 안 눕는다 → 재지적: "3D에서 그림자 눌림
+           현상") — 0.38은 실제 바닥이 0.523으로 눌려 있던 시절에 거기서 한 번 더
+           눌러 맞춘 손값이었다. 바닥을 PITCH_FLAT(0.74)으로 바로잡은 뒤에는 그림자만
+           바닥의 절반 두께로 남아, 이번엔 반대로 짓눌려 보였다. 바닥 눌림 그대로
+           쓴다 — 손값이 아니라 지면과 같은 수다. */
+        ctx.ellipse(footX, footY - shw * 0.22 - shUp, shw * 1.1, shw * (op.air ? 0.5 : 0.42) * (op.pitch ? PITCH_FLAT : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       } else if (showShadows !== false && !op.air && UNIT_KIND_SET.has(op.kind)) {
@@ -8666,7 +8686,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
            드라군(대)이 제 비로 갈린다. 발자국은 모델의 잉크 폭이 아니라 유닛의 몸집이
            정하는 것이라, 이쪽이 뜻에도 맞다. */
         const shR = px0 * 0.19;
-        ctx.ellipse(footX, footY - px * 0.09 - (op.kind === "htemp" ? px * 0.16 : 0), shR, shR * 0.58 * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
+        ctx.ellipse(footX, footY - px * 0.09 - (op.kind === "htemp" ? px * 0.16 : 0), shR, shR * 0.58 * (op.pitch ? PITCH_FLAT : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -8685,7 +8705,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         const ringY = op.air ? footY - lift : footY - px * 0.03;
         const ringPath = (): void => {
           ctx.beginPath();
-          ctx.ellipse(footX, ringY, px * 0.25, px * 0.14 * (op.pitch ? 0.38 : 1), 0, 0, Math.PI * 2);
+          ctx.ellipse(footX, ringY, px * 0.25, px * 0.14 * (op.pitch ? PITCH_FLAT : 1), 0, 0, Math.PI * 2);
         };
         /* 검은 테는 걷었다(지적: 깔려면 마우스 마커에도 깔아야 한다) — 링만 두 겹이라
            둘이 따로 놀았다. 임자 색 실선 한 겹으로 통일한다. */
@@ -11037,7 +11057,6 @@ export default function ReplayMotionPlayer({
   /* 입체 보기 원근(지적: 유닛만 원근이고 맵이 그대로) — 지형 그림에 CSS
      perspective+rotateX를 걸고, 마커 자리는 같은 사영 공식으로 매핑해 그림 위 제자리에
      얹는다. 깊이 배율(--mk)도 같은 k를 쓴다. */
-  const PITCH_TH = Math.PI / 4;
   /* 바닥이 상자의 절반밖에 안 찼다(지적: "3D에서 왜 아래쪽 공간을 남기는거야 굳이").
      **상자는 한 픽셀도 안 건드린다**(재지적: "여백은 있어도 되는데 틀 자체가 좁아지면
      안 돼") — 앞서 상자 비율을 바꿨다가 폭이 그리드 칸에 고정된 탓에 세로만 285px
@@ -11056,14 +11075,11 @@ export default function ReplayMotionPlayer({
      덤으로 이미 있던 불일치도 사라진다 — 그림자·트레이서는 바닥 눌림을 0.74로 알고
      그리는데(상자 비율 1/0.74가 그 값을 노린 것이다) 실제 바닥은 0.523으로 눌려
      있었다. 판을 늘리면 실제 눌림이 정확히 0.74가 되어 셋이 같은 바닥을 본다. */
-  /** 원근 거리 = 상자 세로 × 이 값. 클수록 원근이 약하고 바닥이 상자를 더 채운다. */
-  const PITCH_DIST = 1.6;
-  /** 바닥 눌림 — 세로가 가로의 몇 할로 보이는가(지적: "3D에서 맵이 세로로 길어지는데?").
-   *  예전에는 이 값이 **상자 비율**에 숨어 있었다(aspectRatio의 1/0.74). 상자를 1024
-   *  고정으로 바꾸면서 그 몫이 사라져 눌림이 1.0이 되었고, 바닥이 안 눕고 서 버렸다.
-   *  눌림은 상자가 아니라 회전 전 판이 맡는 것이 맞다 — 그래야 상자 크기를 어떻게
-   *  바꾸든 눕는 정도가 안 흔들린다. 값 0.74는 그림자·트레이서가 이미 쓰는 그 값이다. */
-  const PITCH_FLAT = 0.74;
+  /* 눌림(PITCH_FLAT)은 예전에 **상자 비율**에 숨어 있었다(지적: "3D에서 맵이 세로로
+     길어지는데?" — aspectRatio의 1/0.74). 상자를 1024 고정으로 바꾸면서 그 몫이
+     사라져 눌림이 1.0이 되었고, 바닥이 안 눕고 서 버렸다. 눌림은 상자가 아니라 회전
+     전 판이 맡는 것이 맞다 — 그래야 상자 크기를 어떻게 바꾸든 눕는 정도가 안 흔들린다.
+     원근 거리(PITCH_DIST)와 함께 모듈 스코프에 있다. */
   /* 맞춤 축소(지적: 또 예전 끝 잘림) — 원근 확대로 가까운 변이 상자를 넘쳤다. 가까운
      변이 상자에 딱 맞는 배율 q로 전체를 줄이고, 세로는 cy만큼 올려 가운데 정렬한다.
      지형 그림(transform)과 마커 공식이 같은 q·cy를 쓴다. */
@@ -12360,7 +12376,7 @@ export default function ReplayMotionPlayer({
                 const foeB = nearestFoe(teamB, centerX, centerY, onlyB);
                 // 화면 기준 조준(지적: 공중 각도·지면 평행) — 유닛 트레이서와 같은 셈.
                 const tPxB = (mapRef.current?.clientWidth ?? 320) / grid.width;
-                let dgy = (foeB.by - centerY) * tPxB * (pitched ? 0.74 : 1);
+                let dgy = (foeB.by - centerY) * tPxB * (pitched ? PITCH_FLAT : 1);
                 if (foeB.air) dgy -= unitGlyphPx(0, foeB.by) * 1.6;
                 const degB = Math.atan2(-((foeB.bx - centerX) * tPxB), dgy) * (180 / Math.PI);
                 const fire: React.ReactNode[] = [];
@@ -13681,7 +13697,7 @@ export default function ReplayMotionPlayer({
           const aimDeg = (fx9: number, fy9: number, fAir: boolean): number => {
             const tPx9 = (mapRef.current?.clientWidth ?? 320) / grid.width;
             const ddx = (fx9 - pos.x) * tPx9;
-            let ddy = (fy9 - pos.y) * tPx9 * (pitched ? 0.74 : 1);
+            let ddy = (fy9 - pos.y) * tPx9 * (pitched ? PITCH_FLAT : 1);
             // 비행 높이 반감(재재지적)과 함께 0.8로.
             if (fAir) ddy -= fxPx * 0.8;
             if (uAir) ddy += fxPx * 0.8;
