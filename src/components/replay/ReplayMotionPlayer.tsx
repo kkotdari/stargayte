@@ -2017,27 +2017,40 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   factory: () => {
     /* 팩토리(요청·사진) — 직육면체가 아니라, 위아래 모서리를 크게 깎은 넓적한 8각
        단면을 길이 방향으로 뽑은 장갑 몸통이다. 옆면에는 패널 홈이 줄지어 파이고,
-       앞끝에 붉은 장갑판과 주황 화살표가, 지붕에는 굴뚝 셋과 붉은 테를 두른 관제
-       모듈이 얹힌다. */
-    const X0 = -5.5;
-    const X1 = 4.3;
-    const ZT = 6.9;
+       지붕에는 굴뚝 셋과 관제 모듈이 얹힌다.
+
+       이번 손질(요청 한 묶음):
+        · 본체를 1.2배로 키웠다 — 아래 K 하나로 x·y·z를 함께 곱한다.
+        · 앞 오른쪽에 붙어 있던 개인색 상자를 걷었다. 그 노릇은 새로 낸 옆면 출입구
+          위의 데칼이 물려받는다(넓은 면에 칠하는 개인색 규약은 그대로).
+        · 화살표 지시등을 옆면 출입구 옆으로 옮겼다 — 진출 방향을 가리키는 표시라
+          나가는 문 곁에 있어야 뜻이 통한다.
+        · 옆면에 출입 경사로를 냈다. **바깥에 덧댄 판이 아니라 안에서 시작한다** —
+          옆벽에 어두운 문간을 파고, 바닥(z FLOOR)에서 시작한 경사면이 그 문을 지나
+          밖으로 나와 땅에 닿는다.
+        · 앞쪽 경사로 셋은 절반으로 줄였고, 지붕의 굴뚝·관제 상자는 1/3로 줄였다.
+        · 지붕 한가운데에 두께 있는 직각삼각형 벤트를 얹었다. */
+    const K = 1.2;
+    /** 앞면(정면에서 보이는 넓은 벽)의 폭 = 길이축(x)이다. 1.2배로 키우니 너무 길어
+     *  보여 이 축만 덜 키운다(요청: "앞면에서 봤을때 폭은 살짝 축소"). */
+    const KX = 1.05;
+    const X0 = -5.5 * KX;
+    const X1 = 4.3 * KX;
+    const ZT = 6.9 * K;
+    /** 8각 단면의 밑면 높이 — 옆면 경사로가 여기서 시작한다. */
+    const FLOOR = 1.2 * K;
+    const YW = 3 * K;      // 옆벽의 y(단면 최대 폭)
     // 8각 단면 — (y, z). 바닥·천장은 넓고 네 모서리는 45도로 깎였다.
-    const SEC: [number, number][] = [
-      [-3, 2.2], [-2, 1.2], [2, 1.2], [3, 2.2], [3, 5.9], [2, ZT], [-2, ZT], [-3, 5.9],
-    ];
+    const SEC: [number, number][] = ([
+      [-3, 2.2], [-2, 1.2], [2, 1.2], [3, 2.2], [3, 5.9], [2, 6.9], [-2, 6.9], [-3, 5.9],
+    ] as [number, number][]).map(([y9, z9]) => [y9 * K, z9 * K] as [number, number]);
     const out: ShapeFace[] = [
-      /* 본체 바닥 패드 넷(지적: 가려져 있어도 이륙 발이 있어야 한다) — 은색.
-         짧게·안쪽으로·몸에 딱 붙게 고쳤다(지적: "팩토리 다리길이 축소및 더 안쪽으로
-         넣고 본체에 딱 접하게"). 8각 단면의 **밑면**은 z 1.2에서 y −2~2 구간뿐인데
-         뒤 두 다리가 y −2.8이라 그 밖이었다 — 몸 밑판에 닿지 않고 옆구리 허공에서
-         시작했다. 네 자리를 (−4, ±1.4)·(2.8, ±1.4)로 당겨 모두 밑면 안에 넣고,
-         zTop을 1.25로 낮춰(밑면 1.2를 0.05만 파고든다) 길이를 0.92 → 0.87로 줄였다.
-         lean도 0.1 → 0.05로 낮춰 거의 수직으로 선다. */
-      ...legAndFoot(-4, 1.4, 1.25, 0.05),
-      ...legAndFoot(2.8, 1.4, 1.25, 0.05),
-      ...legAndFoot(-4, -1.4, 1.25, 0.05),
-      ...legAndFoot(2.8, -1.4, 1.25, 0.05),
+      /* 본체 바닥 패드 넷 — 8각 단면의 밑면(y −2.4~2.4, z 1.44) 안에서 시작해 몸에
+         딱 붙는다. 몸이 1.2배가 되었으므로 자리도 함께 1.2배다. */
+      ...legAndFoot(-4 * KX, 1.68, FLOOR + 0.06, 0.05),
+      ...legAndFoot(2.8 * KX, 1.68, FLOOR + 0.06, 0.05),
+      ...legAndFoot(-4 * KX, -1.68, FLOOR + 0.06, 0.05),
+      ...legAndFoot(2.8 * KX, -1.68, FLOOR + 0.06, 0.05),
     ];
     // 몸통 — 뒤에서 앞으로 정렬해 그린다(같은 키 묶음이라 순서가 곧 앞뒤다).
     {
@@ -2070,64 +2083,141 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       }
       out.push(...tagKey(body, depthNow(-0.6, -0.6) * 1.6));
     }
-    /* 옆면 디테일 — 보이는 쪽 벽에만 얹는다. 패널 홈 넷과 그 아래 붉은 장갑 띠. */
+    const pc: ShapeFace[] = [];
+    /* 긴 벽(±y)에는 패널 홈만 얹는다 — 보이는 쪽 벽에만. */
     for (const sy of [1, -1] as const) {
       if (!faceLight(0, sy, 0).visible) continue;
       /* 옆면 데칼은 그 벽이 보일 때만 그리므로 벽보다 한 단만 위면 된다(지적: 팩토리
          키값 수정) — +10은 지붕 얹힘(24대)과 뒤섞여 앞뒤가 뒤집혔다. */
-      const key = depthNow(0, sy * 3) * 1.6 + 0.4;
+      const key = depthNow(0, sy * YW) * 1.6 + 0.4;
       const det: ShapeFace[] = [];
-      const yw = sy * 3.02;
-      for (const px of [-4.2, -1.9, 0.4, 2.7]) {
+      const yw = sy * (YW + 0.02);
+      for (const px of [-4.2 * KX, -1.9 * KX, 0.4 * KX, 2.7 * KX]) {
         det.push(sideFace(polyPath3([
-          [px - 0.85, yw, 3.1], [px + 0.85, yw, 3.1], [px + 0.85, yw, 5.3], [px - 0.85, yw, 5.3],
+          [px - 0.9, yw, 3.72], [px + 0.9, yw, 3.72], [px + 0.9, yw, 6.36], [px - 0.9, yw, 6.36],
         ]), 0.34));
         det.push(topFace(polyPath3([
-          [px - 0.7, yw, 4.5], [px + 0.7, yw, 4.5], [px + 0.7, yw, 5.15], [px - 0.7, yw, 5.15],
+          [px - 0.74, yw, 5.4], [px + 0.74, yw, 5.4], [px + 0.74, yw, 6.18], [px - 0.74, yw, 6.18],
         ]), 0.2));
-      }
-      // 앞끝 붉은 장갑판 — 깎인 모서리 아래.
-      det.push([polyPath3([[2.9, yw, 2.4], [4.2, yw, 2.4], [4.2, yw, 4.2], [2.9, yw, 4.2]]),
-        1, "#a8322a"] as ShapeFace);
-      // 주황 화살표 셋 — 진출 방향 표시.
-      for (const az of [2.8, 3.5, 4.2]) {
-        det.push([polyPath3([[-5, yw, az], [-4.3, yw, az + 0.45], [-3.6, yw, az]]),
-          1, "#e08a2b"] as ShapeFace);
       }
       out.push(...tagKey(det, key));
     }
+    /* 출입 경사로는 **오른쪽 옆면(+x 짧은 벽) 하나뿐**이다(요청: "팩토리 출입경사로는
+       오른쪽 옆면에만 놓여야하고"). 여태 좌우 긴 벽 양쪽에 냈는데, 그러면 문이 둘인
+       건물이 되고 어느 각도에서 봐도 하나는 어색하게 걸린다.
+       그리고 화살표는 벽이 아니라 **경사로 바닥에 칠한다**(요청) — 노면 표시라 그게
+       실제 모습이고, 벽에 붙어 있을 때는 문 옆에 뜬금없이 떠 있었다. */
+    {
+      const GHW = 1.45;                 // 문·경사로 반폭(y)
+      const SILL = 2.95;                // 문턱 — 벽이 가장 넓은 구간(z 2.64~7.08) 안
+      const xw = X1 + 0.02;
+      if (faceLight(1, 0, 0).visible) {
+        const det: ShapeFace[] = [
+          // 문간 — 벽에 판 어두운 구멍.
+          [polyPath3([
+            [xw, -GHW, SILL], [xw, GHW, SILL], [xw, GHW, SILL + 2.3], [xw, -GHW, SILL + 2.3],
+          ]), 1, "#1b1e23"] as ShapeFace,
+          topFace(polyPath3([
+            [xw, -GHW, SILL + 2], [xw, GHW, SILL + 2],
+            [xw, GHW, SILL + 2.3], [xw, -GHW, SILL + 2.3],
+          ]), 0.3),
+        ];
+        out.push(...tagKey(det, depthNow(X1, 0) * 1.6 + 0.4));
+        /* 문 위 개인색 데칼 — 앞 오른쪽 상자를 걷은 자리를 이것이 물려받는다. */
+        pc.push(...tagKey([bodyFace(polyPath3([
+          [xw + 0.02, -GHW - 0.2, SILL + 2.55], [xw + 0.02, GHW + 0.2, SILL + 2.55],
+          [xw + 0.02, GHW + 0.2, SILL + 3.85], [xw + 0.02, -GHW - 0.2, SILL + 3.85],
+        ]))], depthNow(X1, 0) * 1.6 + 0.45));
+      }
+      /* 경사로 — 안(문턱 안쪽 0.6)에서 시작해 문을 지나 밖으로 나오며 땅에 닿는다.
+         화살표는 이 판 위에 그대로 얹는다 — 같은 평면이라 요잉을 함께 탄다. */
+      const rx0 = X1 - 0.6;
+      const rx1 = X1 + 3.4;
+      const P = (t: number, hw: number): [number, number, number][] => {
+        const x9 = rx0 + (rx1 - rx0) * t;
+        const y9 = GHW + (0.35 * t);
+        const z9 = SILL * (1 - t);
+        return [[x9, -y9 * hw, z9], [x9, y9 * hw, z9]];
+      };
+      const quad = (t0: number, t1: number, hw: number): string => {
+        const A = P(t0, hw); const B = P(t1, hw);
+        return polyPath3([A[0], A[1], B[1], B[0]]);
+      };
+      const ramp: ShapeFace[] = [
+        [quad(0, 1, 1), 1, "#c9ced6"] as ShapeFace,
+        topFace(quad(0, 1, 1), 0.14),
+      ];
+      // 노면 화살표 셋(요청) — 밖을 가리키게 삼각으로.
+      for (const t9 of [0.32, 0.55, 0.78]) {
+        const A = P(t9 - 0.09, 0.5);
+        const B = P(t9 + 0.09, 0.0001);
+        ramp.push([polyPath3([A[0], A[1], B[0]]), 1, "#e08a2b"] as ShapeFace);
+      }
+      out.push(...tagKey(ramp, depthNow(X1 + 1.4, 0) * 1.6));
+    }
+
     return raceBase(out.concat(
-      // 지붕 규칙(지적: 굴뚝 가려짐) — 지붕 얹힘들은 붙박이 큰 키. 굴뚝 셋 은색(요청).
-      tagKey(paintBase(cylinderFaces3(-3.4, -1.6, 0.85, 1.7, ZT), "#c9ced6"), 24 + depthNow(-3.4, -1.6)),
-      tagKey(paintBase(cylinderFaces3(-1.5, -1.8, 0.85, 1.7, ZT), "#c9ced6"), 24 + depthNow(-1.5, -1.8)),
-      tagKey(paintBase(cylinderFaces3(0.4, -1.9, 0.85, 1.7, ZT), "#c9ced6"), 24 + depthNow(0.4, -1.9)),
-      // 관제 모듈의 붉은 테·안테나만 여기(모듈 상자는 개인색이라 아래 accent로).
-      tagKey([[polyPath3([[1.7, -0.48, ZT + 0.5], [4.3, -0.48, ZT + 0.5],
-        [4.3, -0.48, ZT + 2.2], [1.7, -0.48, ZT + 2.2]]), 1, "#a8322a"] as ShapeFace],
-      25 + depthNow(3, -0.5)),
-      tagKey(tubeFaces(2.6, -2.6, 5, -2.6, 0.45, ZT + 2.7), 26 + depthNow(3.8, -2.6)),
-      /* 다리는 없다(지적) — 대신 앞으로 나란히 내려오는 경사로 셋. 제 깊이를 달아
-         뒤로 돌면 몸통 뒤로 들어간다. */
+      /* 지붕 규칙(지적: 굴뚝 가려짐) — 지붕 얹힘들은 붙박이 큰 키. 굴뚝 셋 은색.
+         크기는 1/3로 줄였다(요청) — 반지름 0.85 → 0.28, 높이 1.7 → 0.57. */
+      ...([[-4.08, -1.92], [-1.8, -2.16], [0.48, -2.28]] as [number, number][]).map(([cx9, cy9]) =>
+        tagKey(paintBase(cylinderFaces3(cx9, cy9, 0.28, 0.57, ZT), "#c9ced6"),
+          24 + depthNow(cx9, cy9))),
+      /* 지붕 한가운데 직각삼각형 벤트(요청) — 두께가 있는 쐐기다. 옆면(x = ±hw)이
+         직각삼각형이고, 그 사이를 빗면·뒷벽·바닥이 잇는다. 빗면에 살을 세 줄 긋는다. */
+      ((): ShapeFace[] => {
+        const cx9 = (X0 + X1) / 2;
+        const hw = 1.35;
+        const y0 = -0.9;
+        const y1 = 1.5;
+        const h9 = 1.45;
+        // (y, z) 직각삼각형 — 직각은 뒤(y0) 아래 귀에 있다.
+        const tri = (x9: number): [number, number, number][] =>
+          [[x9, y0, ZT], [x9, y1, ZT], [x9, y0, ZT + h9]];
+        const L = tri(cx9 - hw);
+        const R = tri(cx9 + hw);
+        const w: ShapeFace[] = [
+          bodyFace(polyPath3(L)), bodyFace(polyPath3(R)),
+          // 빗면(앞아래로 기운 면) · 뒷벽(수직) · 바닥.
+          bodyFace(polyPath3([L[1], L[2], R[2], R[1]])),
+          bodyFace(polyPath3([L[0], L[2], R[2], R[0]])),
+          topFace(polyPath3([L[1], L[2], R[2], R[1]]), 0.26),
+          sideFace(polyPath3([L[0], L[2], R[2], R[0]]), 0.3),
+        ];
+        // 빗면 살 셋 — 벤트로 읽히게.
+        for (let k9 = 1; k9 <= 3; k9 += 1) {
+          const t9 = k9 / 4;
+          const py = y1 + (y0 - y1) * t9;
+          const pz = ZT + h9 * t9;
+          w.push(sideFace(polyPath3([
+            [cx9 - hw + 0.18, py, pz], [cx9 + hw - 0.18, py, pz],
+            [cx9 + hw - 0.18, py - 0.12, pz + 0.07], [cx9 - hw + 0.18, py - 0.12, pz + 0.07],
+          ]), 0.42));
+        }
+        return tagKey(w, 25 + depthNow(cx9, 0.3));
+      })(),
+      // 관제 모듈의 안테나(모듈 상자는 개인색이라 아래 accent로).
+      tagKey(tubeFaces(3.12, -3.12, 5.2, -3.12, 0.22, ZT + 1.5), 26 + depthNow(4.2, -3.12)),
+      /* 앞으로 나란히 내려오는 경사로 셋 — 크기를 절반으로 줄였다(요청).
+         제 깊이를 달아 뒤로 돌면 몸통 뒤로 들어간다. */
       [-3.8, -1, 1.8].flatMap((rx) => {
-        const d = polyPath3([[rx - 1.1, 2.4, 1.2], [rx + 1.1, 2.4, 1.2], [rx + 1.3, 5.2, 0], [rx - 1.3, 5.2, 0]]);
+        /* 위끝은 몸 밑판의 앞 모서리다(y 2.4 · z FLOOR) — 그보다 밖(3.2)에 두면
+           그 높이엔 벽이 없어 판이 허공에서 시작한다. */
+        const d = polyPath3([[rx - 0.55, 2.4, FLOOR], [rx + 0.55, 2.4, FLOOR],
+          [rx + 0.65, 3.9, 0], [rx - 0.65, 3.9, 0]]);
         // 진출 경사로 은색(요청).
         return tagKey([
           [d, 1, "#c9ced6"] as ShapeFace,
           topFace(d, 0.14),
-          sideFace(polyPath3([[rx + 1.1, 2.4, 1.2], [rx + 1.3, 5.2, 0], [rx + 1.05, 5.2, 0], [rx + 0.88, 2.4, 1.2]]), 0.25),
-        ], depthNow(rx, 3.8) * 1.6);
+        ], depthNow(rx, 3.2) * 1.6);
       }),
     ), "terran", [
-      /* 개인색은 장식 없는 상자 둘 — 앞오른쪽 부속 상자와 지붕 관제 모듈(재지적:
-         굴뚝·화살표·경사로 같은 특이 포인트 말고 넓은 면에 페인트 칠하듯). 붉은 테·
-         안테나·굴뚝은 제 색으로 둔다. */
-      ...tagKey(boxFaces3(3.2, 2.8, 4, 2.8, 3.6, 1.2), depthNow(3.2, 2.8) * 1.6),
-      ...tagKey(boxFaces3(3, -1.6, 2.8, 2.2, 2.4, ZT), 24 + depthNow(3, -1.6)),
+      /* 개인색 — 옆면 출입구 위 데칼(위에서 모았다)과 지붕 관제 모듈.
+         앞 오른쪽 상자는 걷었다(요청). 관제 모듈도 1/3로 줄였다. */
+      ...pc,
+      ...tagKey(boxFaces3(3.6, -1.92, 1.12, 0.88, 0.96, ZT), 24 + depthNow(3.6, -1.92)),
     ]);
   },
 
-  /* 스타포트(실물 참고 + 지적) — 다리 여섯, 앞으로 뾰족 튀어나온 코, 옆 날개. 드럼 위
-     큰 원형 패드와 대각 팔 넷은 그대로. */
   plane: () => {
     /* 스타포트(재작도 — 게임 스프라이트 기준) ──────────────────────────────────────
        앞선 판은 몸통·칼라·패드를 층층이 쌓아 너무 높았다(지적: "너가 만든거랑 너무
