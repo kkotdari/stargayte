@@ -631,6 +631,31 @@ export function domeFaces3(
   );
 }
 
+/** 화면 원 — 납작비도, 시각 밀림도 먹이지 않는 진짜 동그라미.
+ *  바닥 원(groundEllipse)과 다른 점이 요점이다: 땅에 누운 원반은 시점을 따라 눌리고
+ *  기울어야 맞지만, **떠 있는 공은 그러면 안 된다**(지적: "구 형태가 찌그러져 보인다").
+ *  구는 회전 대칭이라 어느 방향에서 봐도 투영이 원이다. */
+export const screenCircle = (cx: number, cy: number, r: number): string =>
+  `M${r2(cx - r)} ${r2(cy)}a${r2(r)} ${r2(r)} 0 1 0 ${r2(r * 2)} 0`
+  + `a${r2(r)} ${r2(r)} 0 1 0-${r2(r * 2)} 0Z`;
+
+/** 공(구) 한 덩이 — 중심만 투영하고 반지름은 화면 원이다. 몸 + 좌상 광택 + 우하 그늘.
+ *  광택·그늘은 몸 안쪽에 물려 두어(중심 오프셋 + 반지름 < 1) 어떤 크기에서도 실루엣
+ *  밖으로 삐치지 않는다. 세계 광원과 같은 방향(좌상)이라 다른 부품과 결이 맞는다. */
+export function sphereFaces3(
+  cx: number, cy: number, cz: number, r: number, fill?: string,
+): ShapeFace[] {
+  const [sx, sy] = project(cx, cy, cz);
+  const body: ShapeFace = fill
+    ? [screenCircle(sx, sy, r), 1, fill]
+    : bodyFace(screenCircle(sx, sy, r));
+  return tagKey([
+    body,
+    sideFace(screenCircle(sx + r * 0.28, sy + r * 0.24, r * 0.68), OP.sideSoft),
+    topFace(screenCircle(sx - r * 0.34, sy - r * 0.34, r * 0.3)),
+  ], depthNow(cx, cy) + r);
+}
+
 /** 눕힌 원통(관) — 평면 두 점 사이를 반지름 r로 잇는다. 몸통 + (보이는 쪽) 끝 단면.
  *  단면 보임은 진행 방향이 시청자 쪽(+y)일 때 크고, 뒤로 가면 없다(캡 규칙). */
 export function tubeFaces(

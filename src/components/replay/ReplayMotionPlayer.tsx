@@ -19,7 +19,8 @@ import {
   bodyFace, capFace, depthNow, groundEllipse, lodFilter, sideFace, tagKey, topFace,
   type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
-  domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces, tubeFaces,
+  domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces,
+  screenCircle, sphereFaces3, tubeFaces,
   wallDiscPath, withPitchView, withTopView, withViewShear, withYaw, zsorted,
 } from "../../utils/shapeOblique";
 import type { MinimapMarker } from "./ReplayMinimap";
@@ -2000,9 +2001,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       }), 30 + depthNow(mx9, 0) * 1.6));
     }
     // 가운데 소환 구체 — 두 탑 깊이의 한가운데.
+    /* 소환구도 화면 원으로(지적: "구 형태가 찌그러져 보이잖아") — 세로로 긴 타원
+       (1.1×1.4)이라 서 있는 빛기둥처럼 보였다. 구는 어느 시점에서도 원이다. */
     out.push(...tagKey([
-      [groundEllipse(wx, wy, 1.1, 1.4), 0.5, "#a9ecf2"] as ShapeFace,
-      topFace(groundEllipse(wx, wy, 0.6, 0.8), 0.4),
+      [screenCircle(wx, wy, 1.2), 0.5, "#a9ecf2"] as ShapeFace,
+      topFace(screenCircle(wx - 0.3, wy - 0.3, 0.6), 0.4),
     ], 30));
     /* 발판 뿔(요청) — 앞뒤 경사로 한가운데에서 솟아 끝이 안쪽으로 휜다. 아래는 기둥,
        위는 뿔인 공용 도형(spirePillar). */
@@ -2034,8 +2037,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 문틈 소환 빛은 고정 플라즈마색(요청) — 임자 색이면 어두운 색을 만났을 때 빛이
        아니라 구멍으로 보인다. 반투명 사이언으로 못 박고 흰 심을 얹는다. */
     gated.push(...tagKey([
-      [groundEllipse(wx, wy, 0.85, 1.05), 0.62, "#6fe4ff"] as ShapeFace,
-      [groundEllipse(wx, wy, 0.46, 0.62), 0.5, "#e8fbff"] as ShapeFace,
+      [screenCircle(wx, wy, 0.95), 0.62, "#6fe4ff"] as ShapeFace,
+      [screenCircle(wx, wy, 0.52), 0.5, "#e8fbff"] as ShapeFace,
     ], 30.1));
     // 탑 어깨의 개인색 띠도 같은 이유로 걷었다 — 개인색은 문틈 빛과 발판 원판이 맡는다.
     return gated;
@@ -5659,12 +5662,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        구 + 밝은 심 + 바닥 빛무리. */
     const [bx0, by0] = project(0, 0, 0.15);
     const [ox, oy] = project(0, 0, 3.2);
+    /* 껍질 셋은 화면 원으로 그린다(지적: "구 형태가 찌그러져 보이잖아") — 여태
+       바닥 원을 썼는데, 가로세로 반지름을 같게 줘도 그 함수가 시각 밀림을 먹여
+       비스듬한 타원이 됐다. 위 주석의 "어느 시점에서도 안 눌린다"는 밀림이 들어오기
+       전 이야기라 더는 사실이 아니었다. 바닥 빛무리만 진짜 바닥이라 그대로 둔다. */
     return [
       topFace(groundEllipse(bx0, by0, 3.6, 1.7), 0.14),
-      [groundEllipse(ox, oy, 3.05, 3.05), 0.5, "#9fd4ff"] as ShapeFace,
-      [groundEllipse(ox, oy, 2.1, 2.1), 0.55, "#c4e6ff"] as ShapeFace,
-      [groundEllipse(ox, oy, 1.05, 1.05), 0.9, "#eaf6ff"] as ShapeFace,
-      topFace(groundEllipse(ox - 0.8, oy - 0.8, 0.8, 0.65), 0.5),
+      [screenCircle(ox, oy, 3.05), 0.5, "#9fd4ff"] as ShapeFace,
+      [screenCircle(ox, oy, 2.1), 0.55, "#c4e6ff"] as ShapeFace,
+      [screenCircle(ox, oy, 1.05), 0.9, "#eaf6ff"] as ShapeFace,
+      topFace(screenCircle(ox - 0.8, oy - 0.8, 0.72), 0.5),
     ];
   },
   /* 테란 공사장 — 기초 슬래브 + 뼈대 기둥 넷 + 가로 보 + 크레인.
@@ -6597,7 +6604,6 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 오버로드 — 풍선 몸통(요잉 불변) + 곤충 다리 셋(요청: 촉수·칼이 아니라 무릎이 꺾인
      곤충 다리) — 윗마디는 바깥-아래로, 아랫마디는 무릎에서 안-아래로 꺾인다. */
   ovie: () => {
-    const [cx, cy] = project(0, 0, 5.2);
     const legs: string[] = [];
     // 끝마디는 상아 발톱(지적: 모든 다리·팔 끝마디) — 몸색과 갈라 따로 칠한다.
     const tips: string[] = [];
@@ -6694,10 +6700,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...lens(-1),
       ...lens(1),
       ...face,
-      // 풍선 축소(재요청: 3.6 → 3.0) — 몸도 제 깊이(가운데 0)로. 광택 하이라이트는
-      // 걷었다(지적: 광택 제거).
-      // 몸통 80%(요청).
-      ...tagKey([bodyFace(groundEllipse(cx, cy, 2.4, 2.28))], depthNow(0, 0)),
+      /* 풍선을 진짜 구로(지적: "구 형태가 찌그러져 보이잖아") — 여태 바닥 원
+         (groundEllipse)으로 그렸는데, 그건 땅에 누운 원반이라 시점을 따라 눌리고
+         시각 밀림까지 먹어 비스듬히 찌그러졌다. 떠 있는 공은 회전 대칭이라 어느
+         방향에서 봐도 원이다. 원시 구(sphereFaces3)는 중심만 투영하고 반지름은
+         화면 원이라 안 눌리고, 덤으로 제 명암(좌상 광택·우하 그늘)을 달고 나온다 —
+         손으로 그린 몸판이라 빛이 안 들어가던 문제도 함께 풀린다. */
+      ...tagKey(sphereFaces3(0, 0, 5.2, 2.4), depthNow(0, 0)),
     ];
   },
   /* 드랍십(실물 참고) — 양옆 굵은 엔진 포드(앞 단면이 둥글게 보인다) + 가운데 각진
