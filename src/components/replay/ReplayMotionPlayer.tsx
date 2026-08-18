@@ -630,21 +630,22 @@ const AVATAR_ZERG_DECO: Record<string, string | undefined> = {
    표준 시점 결과는 아래 SHAPE_FACES에 한 번 구워 쓴다. */
 /** 벌어진 다리 + 원반 발(테란 실물 공통) — 몸통 밑에서 바깥-아래로 뻗고 발판이 받친다. */
 function legAndFoot(
-  px: number, py: number, zTop: number, keyBase = 0, lean = 0.1,
+  px: number, py: number, zTop: number, lean = 0.1,
 ): ShapeFace[] {
-  /* 테란 건물은 바닥이 떠 있다 — 몸통이 다리 위에 얹히고, 다리는 거의 수직으로 내려가
+  /* 테란 건물은 바닥이 떠 있다 — 몸통이 다리 위에 얹히고, 다리는 아래로 내려가
      그 밑에 발판이 달린다.
 
-     ★ 키를 **몸통 키 기준 상대값**으로 바꿨다(지적: "아직도 본체와 다리 발판간 키가
-     안맞아서 보여야할게 안보이고 가려져야할게 안가려짐").
-     원인은 눈금이 서로 달랐다는 것이다. depthNow는 −x·sin+y·cos, 곧 모델 단위의 시선
-     깊이라 대략 ±8이고 여기에 1.6을 곱하면 ±13이 된다. 그런데 몸통들은 0.4·4·8·46 같은
-     **절대 상수**로 키를 매긴다. 둘을 한 자에 놓으면 앞다리는 13이라 지붕(46)만 빼고
-     전부를 덮고, 뒷다리는 −13이라 바닥 그림자보다도 뒤로 간다 — 가려야 할 것을 못 가리고
-     보여야 할 것을 덮는 이유가 이것이다.
-     크기는 필요 없다. 필요한 것은 **앞이냐 뒤냐** 하나뿐이다: 앞다리는 몸통 바로 위,
-     뒷다리는 몸통 바로 아래에 놓으면 된다. 그래서 깊이의 부호만 쓰고 몸통 키(keyBase)에
-     ±0.6을 얹는다. 건물마다 키 눈금이 달라도 이 규칙은 그대로 성립한다.
+     ★ 키는 **어느 몸통보다도 뒤**다(지적: 배럭·스타포트·퍼실리티·팩토리 모두 "본체에
+     다리가 안 가려짐"). 여태는 몸통 키에 ±0.6을 얹어 앞다리를 몸 앞으로 냈는데,
+     그러면 앞다리 기둥이 제 건물 옆구리를 가로질러 그어진다 — 다리가 몸을 뚫고 나온
+     것처럼 보이는 이유가 이것이다. 실제로 보여야 하는 것은 몸 실루엣 **아래로** 삐져
+     나온 아랫도리뿐이므로, 다리는 언제나 몸 뒤에 두면 된다. 건물마다 키 눈금이 제각각
+     (절대 상수 0.4~46, 깊이값 ±13)이라 상대값으로는 이 규칙을 세울 수 없어, 어떤
+     몸통 키보다도 낮은 절대값(−40대)에 못 박는다.
+     같은 이유로 발판은 다리보다 한 단 더 뒤다(지적: "발판이 다리에 안 가려지는") —
+     다리 기둥이 발판 위로 내려꽂히는 꼴이라야 발이 다리를 받치는 것으로 읽힌다.
+     앞뒤는 깊이의 **부호**만 쓴다: 앞다리 −40.0/발판 −40.1, 뒷다리 −40.2/발판 −40.3.
+     앞 발판(−40.1)이 뒷다리(−40.2)보다 위라 네 다리끼리의 앞뒤도 옳다.
 
      lean은 내려오면서 바깥으로 벌어지는 정도다(0이면 완전 수직). 위는 안쪽에서
      시작해 아래에서 제자리로 오므로, 붙는 자리가 몸 가장자리여도 top이 몸 안에 물린다.
@@ -652,8 +653,7 @@ function legAndFoot(
      기둥 굵기는 한 단 줄였다(지적: "테란 건물 다리들 굵기 조금씩 감소") — 반지름
      0.5→0.42, 끝 0.44→0.36이다. 발판은 그대로 둬 다리가 가늘어진 만큼 발이 더
      또렷하게 받치는 꼴이 된다. */
-  const near9 = depthNow(px, py) > 0;
-  const k9 = keyBase + (near9 ? 0.6 : -0.6);
+  const k9 = depthNow(px, py) > 0 ? -40 : -40.2;
   return [
     ...tagKey(paintBase(spirePillar({
       x: 0, y: 0, h: 1, w: 0.42, tipW: 0.36, segs: 1, sides: 6, hold: 0.35, caps: "none",
@@ -664,7 +664,7 @@ function legAndFoot(
     ...tagKey(paintBase(spirePillar({
       x: px, y: py, z0: 0, h: 0.4, w: 0.98, tipW: 0.8,
       segs: 1, sides: 8, hold: 0.45, caps: "both",
-    }), "#5d636b"), k9 + 0.05),
+    }), "#5d636b"), k9 - 0.1),
   ];
 }
 
@@ -1472,8 +1472,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        삐져나온 아랫도리와 발판만 보인다. keyBase −1이면 앞 −0.4, 뒤 −1.6이라 모든
        단 밑이다. lean은 아주 조금만(요청: "완전 수직은 아니고 살짝 바깥"). */
     const out: ShapeFace[] = [
-      ...legAndFoot(-POD_R, -POD_R, HULL_Z + 0.25, -1, 0.035),
-      ...legAndFoot(POD_R, -POD_R, HULL_Z + 0.25, -1, 0.035),
+      ...legAndFoot(-POD_R, -POD_R, HULL_Z + 0.25, 0.035),
+      ...legAndFoot(POD_R, -POD_R, HULL_Z + 0.25, 0.035),
     ];
     /* 받침 세 단 — 반지름 5.4의 은색 원반. 높이를 1/3로 낮췄다(요청) — 2.47이던 것이
        0.82다. 사진의 선체도 두툼한 통이 아니라 얇은 원반이고, 통이 높으면 그 위의
@@ -1684,17 +1684,31 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        2층 옥상(갑판) 위, 3층 기둥의 밑동 겉면에 등을 대고 선다: 그 자리의 기둥
        반지름이 T1_RT − 0.45이므로 상자 뒷변이 그 원에 닿는 y를 풀어 놓는다.
        둘은 서로 딱 붙고(상자 오른변에 드럼통 왼끝), 윗면은 4층 판 밑면에 닿는다. */
-    const LOAD_Z = T2_Z;
-    const LOAD_H = MOD_Z - 0.46 - LOAD_Z;
-    const T3_R = T1_RT - 0.45;
+    /* 둘을 3층 기둥 옆구리를 따라 **더 위로** 올린다(요청: "상자와 드럼통 둘다 좀더
+       돔의위쪽에 배치") — 여태는 2층 갑판(T2_Z)에 바로 앉아 받침판 밑에 낀 서랍처럼
+       보였다. 0.3만큼 띄우고 키를 0.6으로 늘리면 윗면이 구리 상자 받침판 켜에 올라와
+       기둥 중턱에 붙은 짐으로 읽힌다. 다만 3층 기둥은 위로 갈수록 좁아지므로 등을
+       댈 반지름도 그 높이의 값이어야 한다 — t3R이 3층 spirePillar와 같은 식이다. */
+    const T3_RB = T1_RT - 0.45;
+    const t3R = (z: number): number => {
+      const t = Math.max(0, Math.min(1, (z - T2_Z) / 0.85));
+      if (t <= 0.08) return T3_RB;
+      const k = (t - 0.08) / 0.92;
+      return 2.28 + (T3_RB - 2.28) * (1 - k) ** 0.62;
+    };
+    const LOAD_Z = T2_Z + 0.3;
+    const LOAD_H = 0.6;
+    const T3_R = t3R(LOAD_Z);
     const boxHX = 0.92;
     const boxHY = 0.78;
-    const boxCX = -1.1;
-    const boxCY = Math.sqrt(Math.max(0.01, T3_R * T3_R - boxCX * boxCX)) + boxHY - 0.12;
+    /* 상자는 정면 한가운데다(요청: "상자를 가운데 정면배치") — 왼쪽으로 1.1 밀려 있어
+       현관·경사로와 축이 어긋나 보였다. 드럼통은 그 오른쪽에 딱 붙는다. */
+    const boxCX = 0;
+    const boxCY = Math.sqrt(Math.max(0.01, T3_R * T3_R - boxCX * boxCX)) + boxHY - 0.35;
     out.push(...tagKey(paintBase(boxFaces3(boxCX, boxCY, boxHX * 2, boxHY * 2, LOAD_H, LOAD_Z), SILVER),
       depthNow(boxCX, boxCY) * 1.6 + 9));
-    const drumX = boxCX + boxHX + 0.42;
-    const drumY = Math.sqrt(Math.max(0.01, T3_R * T3_R - drumX * drumX)) + 0.42 - 0.12;
+    const drumX = boxCX + boxHX + 0.46;
+    const drumY = Math.sqrt(Math.max(0.01, T3_R * T3_R - drumX * drumX)) + 0.42 - 0.35;
     out.push(...tagKey(paintBase([
       ...cylinderFaces3(drumX, drumY, 0.42, LOAD_H, LOAD_Z),
       ...cylinderFaces3(drumX, drumY, 0.46, 0.08, LOAD_Z + LOAD_H - 0.08),
@@ -1714,9 +1728,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 진출 경사로는 **2층 바닥에서 시작해 지면으로 내려온다**(지적) — 여태 받침
          옆구리에 붙은 짧은 판이라 어디서 나오는 길인지가 안 읽혔다. 2층 기둥의
          밑동(DOME_Z)에서 출발해 앞으로 뻗으며 지면(0)에 닿는다. */
+      /* 길이·폭 모두 줄였다(요청: "진입로 길이및 폭 축소") — 7.35까지 뻗고 아래가
+         2.7이나 벌어져 건물보다 길이 먼저 눈에 들었다. 6.3까지, 폭은 1.56→2.1이다. */
       const ramp = polyPath3([
-        [-0.95, t1R(DOME_Z) - 0.15, DOME_Z], [0.95, t1R(DOME_Z) - 0.15, DOME_Z],
-        [1.35, 7.35, 0], [-1.35, 7.35, 0]]);
+        [-0.78, t1R(DOME_Z) - 0.15, DOME_Z], [0.78, t1R(DOME_Z) - 0.15, DOME_Z],
+        [1.05, 6.3, 0], [-1.05, 6.3, 0]]);
       out.push(...tagKey([[ramp, 1, SILVER] as ShapeFace, topFace(ramp, 0.16)],
         depthNow(0, 6.4) + 0.5));
       /* 입구는 **2층 바닥에서 캐노피까지**다(지적) — 경사로가 물려 들어가는 그 한 칸을
@@ -1736,8 +1752,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ], depthNow(0, T1_RB) * 1.6 + 3));
     }
     out.push(
-      ...legAndFoot(-POD_R, POD_R, HULL_Z + 0.25, -1, 0.035),
-      ...legAndFoot(POD_R, POD_R, HULL_Z + 0.25, -1, 0.035),
+      ...legAndFoot(-POD_R, POD_R, HULL_Z + 0.25, 0.035),
+      ...legAndFoot(POD_R, POD_R, HULL_Z + 0.25, 0.035),
     );
     return out;
   },
@@ -1984,11 +2000,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       [-3, 2.2], [-2, 1.2], [2, 1.2], [3, 2.2], [3, 5.9], [2, ZT], [-2, ZT], [-3, 5.9],
     ];
     const out: ShapeFace[] = [
-      // 본체 바닥 패드 넷(지적: 가려져 있어도 이륙 발이 있어야 한다) — 은색.
-      ...legAndFoot(-4.6, 1.6, 1.3),
-      ...legAndFoot(3.4, 1.6, 1.3),
-      ...legAndFoot(-4.6, -2.8, 1.3),
-      ...legAndFoot(3.4, -2.8, 1.3),
+      /* 본체 바닥 패드 넷(지적: 가려져 있어도 이륙 발이 있어야 한다) — 은색.
+         짧게·안쪽으로·몸에 딱 붙게 고쳤다(지적: "팩토리 다리길이 축소및 더 안쪽으로
+         넣고 본체에 딱 접하게"). 8각 단면의 **밑면**은 z 1.2에서 y −2~2 구간뿐인데
+         뒤 두 다리가 y −2.8이라 그 밖이었다 — 몸 밑판에 닿지 않고 옆구리 허공에서
+         시작했다. 네 자리를 (−4, ±1.4)·(2.8, ±1.4)로 당겨 모두 밑면 안에 넣고,
+         zTop을 1.25로 낮춰(밑면 1.2를 0.05만 파고든다) 길이를 0.92 → 0.87로 줄였다.
+         lean도 0.1 → 0.05로 낮춰 거의 수직으로 선다. */
+      ...legAndFoot(-4, 1.4, 1.25, 0.05),
+      ...legAndFoot(2.8, 1.4, 1.25, 0.05),
+      ...legAndFoot(-4, -1.4, 1.25, 0.05),
+      ...legAndFoot(2.8, -1.4, 1.25, 0.05),
     ];
     // 몸통 — 뒤에서 앞으로 정렬해 그린다(같은 키 묶음이라 순서가 곧 앞뒤다).
     {
@@ -2105,7 +2127,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 몸통 반지름(4.75~5.15) 안에서 시작해야 다리가 안 뜬다(수리: 5.35는 밖이었다).
       const fx9 = Math.sin(a9) * 4.55;
       const fy9 = Math.cos(a9) * 4.55;
-      out.push(...legAndFoot(fx9, fy9, BODY_Z0 + 0.25, 4, 0.04));
+      out.push(...legAndFoot(fx9, fy9, BODY_Z0 + 0.25, 0.04));
     }
 
     // 낮은 팔각 몸통.
@@ -3627,27 +3649,32 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        내려오면서 0.97만큼 바깥으로 벌어져 수직에서 31도 누운 사선이 되고, 드러나는
        길이 1.57로 스타포트(1.22)·배럭(1.07)·팩토리(0.92)보다 길다.
 
-       다시 더 눕혔다(지적: "엔베는 다리가 더 수평쪽으로 눕도록") — 발판을 (±5.6, ±3.5)
-       까지 더 내보내고 lean을 0.39로 올렸다. 위끝은 (±3.42, ±2.14)로 여전히 밑판 네
-       귀에 걸리는데, 아래로 내려오며 평면으로 2.56만큼 벌어지는 사이 높이는 1.57밖에
-       안 떨어져 수직에서 58도 누운 다리가 된다. */
-    const BODY_Z = 1.7;
+       더 눕히되 길이는 다시 조금 줄이고 안으로 당겼다(지적: "더 수평쪽으로 눕도록",
+       "다리길이 살짝 줄이고 더 안쪽으로 이동") — 발판 (±4.9, ±3.05), lean 0.3,
+       몸통 높이 1.5. 위끝은 (±3.43, ±2.14)로 여전히 밑판 네 귀에 걸리고, 아래로
+       내려오며 평면으로 1.73 벌어지는 사이 높이는 1.37만 떨어져 수직에서 52도
+       누운 다리가 된다. */
+    const BODY_Z = 1.5;
     /** 몸통 지붕 — 지붕 더미가 앉는 갑판(위 5.0×2.6). */
     const TOP = BODY_Z + 1.7;
     const foot = (fx: number, fy: number): ShapeFace[] =>
-      legAndFoot(fx, fy, BODY_Z + 0.25, 0, 0.39);
+      legAndFoot(fx, fy, BODY_Z + 0.25, 0.3);
     /* 지적: "현재 빨간색으로 된 두개의 포인트를 개인색으로 변경" — 오른앞 드럼과 왼뒤
        지붕 돔, 그 둘이 여태 붉은색(#a8322a)이던 포인트다. 색을 지정하지 않은 채 accent
        (pc)로 넘겨야 raceBase가 안 칠하고 임자 색이 들어간다(개인색 규약). 둘 다 덩치가
        있고 앞·뒤로 갈려 있어 어느 요잉에서도 한쪽은 보인다. */
     const pc: ShapeFace[] = [];
     const out: ShapeFace[] = [
-      ...foot(-5.6, -3.5), ...foot(5.6, -3.5),
-      ...paintBase(frustumFaces3(0, 0, 7, 4.4, 5, 2.6, 1.7, BODY_Z), SILVER),
+      ...foot(-4.9, -3.05), ...foot(4.9, -3.05),
+      /* 몸통·드럼은 반드시 제 키를 달아야 한다 — 태그 없는 면은 앞 면의 키를
+         물려받는데, 바로 앞이 다리(−40대)라 몸통이 통째로 다리 뒤로 가라앉는다. */
+      ...tagKey(paintBase(frustumFaces3(0, 0, 7, 4.4, 5, 2.6, 1.7, BODY_Z), SILVER), 0),
       // 왼 옆구리를 따라 눕는 작은 드럼 — 끝면이 빛난다.
-      ...tubeFaces(-3.6, 1, -1.8, 1, 0.6, BODY_Z + 0.85),
-      topFace(groundEllipse(...project(-3.6, 1, BODY_Z + 1.15), 0.5, 0.4), 0.35),
-      ...foot(-5.6, 3.5), ...foot(5.6, 3.5),
+      ...tagKey([
+        ...tubeFaces(-3.6, 1, -1.8, 1, 0.6, BODY_Z + 0.85),
+        topFace(groundEllipse(...project(-3.6, 1, BODY_Z + 1.15), 0.5, 0.4), 0.35),
+      ], 6),
+      ...foot(-4.9, 3.05), ...foot(4.9, 3.05),
     ];
     // 오른앞 개인색 드럼 — 앞으로 튀어나온 큰 통이라 옆에서도 임자 색이 넓게 읽힌다.
     pc.push(...tagKey(tubeFaces(1.9, 0.4, 1.9, 2.9, 1, BODY_Z + 0.9),
