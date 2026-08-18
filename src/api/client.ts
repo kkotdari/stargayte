@@ -463,10 +463,15 @@ export const api = {
   // 미니맵 격자 — 경기 응답에는 해시만 있고 격자는 이걸로 따로 받는다(같은 맵을 쓰는 경기가
   // 수십 건이라 목록에 끼워 보내면 22KB짜리가 되풀이된다). 서버가 모르는 해시는 그냥 빠진
   // 채로 돌아온다 — 오류가 아니라 그 경기만 미니맵 없이 그려진다.
-  async getReplayMaps(hashes: string[]): Promise<ReplayMapGrid[]> {
+  // full을 켜면 미니맵 그림을 512px 작은 판 대신 원본(2048px)으로 받는다 — 재생 화면이
+  // 실제로 크게 그릴 때만 그 한 장을 다시 묻는 자리다(기본이 작은 판인 이유: 활동 목록은
+  // 한 화면에 그 페이지의 맵 종류만큼 이걸 받는다).
+  async getReplayMaps(hashes: string[], full = false): Promise<ReplayMapGrid[]> {
     if (hashes.length === 0) return [];
     const qs = hashes.map((h) => `hash=${encodeURIComponent(h)}`).join("&");
-    const res = await request<{ maps: ReplayMapGrid[] }>(`/api/game-results/replay-maps?${qs}`);
+    const res = await request<{ maps: ReplayMapGrid[] }>(
+      `/api/game-results/replay-maps?${qs}${full ? "&full=1" : ""}`,
+    );
     return res.maps;
   },
 
@@ -477,7 +482,9 @@ export const api = {
     return request<MapCatalog>("/api/game-results/replay-maps/catalog");
   },
 
-  async createMinimapImage(body: { name: string; image: string; hashes: string[] }): Promise<MinimapImage> {
+  async createMinimapImage(
+    body: { name: string; image: string; thumb?: string; hashes: string[] },
+  ): Promise<MinimapImage> {
     return request<MinimapImage>("/api/game-results/replay-maps/images", {
       method: "POST", body: JSON.stringify(body),
     });
@@ -492,7 +499,8 @@ export const api = {
 
   /** 이름만 고칠 때는 image를 빼고 부른다 — 수백 KB짜리를 다시 올릴 이유가 없다. */
   async updateMinimapImage(
-    id: number, body: { name: string; image?: string; hashes?: string[]; walk?: string },
+    id: number,
+    body: { name: string; image?: string; thumb?: string; hashes?: string[]; walk?: string },
   ): Promise<MinimapImage> {
     return request<MinimapImage>(`/api/game-results/replay-maps/images/${id}`, {
       method: "PUT", body: JSON.stringify(body),

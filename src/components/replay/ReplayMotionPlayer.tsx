@@ -8,7 +8,7 @@ import { cx } from "../../utils/format";
 import { UNIT_KO, TECH_KO } from "../../utils/replayNames";
 import type { ReplayMapGrid } from "../../utils/replayParser";
 import { api } from "../../api/client";
-import { applyReplayMap } from "../../hooks/useReplayMap";
+import { applyReplayMap, promoteReplayMap } from "../../hooks/useReplayMap";
 import { AIR_UNITS } from "../../utils/replayBuildMix";
 import { BLD_STATS, UNIT_STATS, type UnitTracksV2 } from "../../utils/replayUnits";
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
@@ -1452,7 +1452,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        큰 세로띠로 넣어주고 돔 꼭대기 사각형물체도 구리색으로") — 사진의 커맨드는 돔
        좌우에 넓은 청동 판이 붙고 꼭대기 관제실이 통째로 청동이다. 여태처럼 창틀·링에만
        실선으로 두르면 축소하면 사라져 포인트 노릇을 못 한다. */
-    const COPPER = "#b87333";
+    /* 살짝 더 붉고 어둡게(요청) — #b87333은 주황에 가까워 은색 선체 위에서 튀었다. */
+    const COPPER = "#9c5528";
     /* 발은 공용 규칙을 쓴다(재지적: "커맨드 센터는 바닥이 약간 띄워져있는 구조야 …
        다리는 자연스럽게 거의 수직으로 아래로 향하고 그 밑에 발판이 달리는 거야").
        여태 이 건물만 제 다리를 따로 갖고 있었고 그것이 바깥·아래로 눕혀 뻗는 팔이라
@@ -3633,9 +3634,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 엔지니어링 베이 — 몸통은 **아주 낮은 절두 사각뿔**이다(지적: "본체는 엄청 높이가
        낮은 느낌의 옆면이 사다리꼴 4면으로 되어있는 형태야 앞뒤가 폭이 넓고 옆면 폭은
        비교적 좁은"). 여태는 그냥 직육면체 상자라 옆선이 수직이었고 키도 3이나 돼
-       '낮고 넓적한 정비고'가 아니라 창고 같았다. frustumFaces3로 밑 7×4.4 → 위
-       5.0×2.6, 높이 1.7로 깎으면 네 옆면이 모두 사다리꼴이 되고, 앞뒤 면(폭 7)이
-       옆면(폭 4.4)보다 훨씬 넓다.
+       '낮고 넓적한 정비고'가 아니라 창고 같았다. frustumFaces3로 밑 8.4×5.28 → 위
+       6.0×3.12, 높이 2.04로 깎으면 네 옆면이 모두 사다리꼴이 되고, 앞뒤 면(폭 8.4)이
+       옆면(폭 5.28)보다 훨씬 넓다. 처음 잡은 7×4.4 → 5×2.6, 높이 1.7을 1.2배로
+       키운 값이다(요청: "엔베 본체 크기 확대 1.2배정도").
 
        배치는 90도 시계방향으로 돌린 그대로다(지적: "엔베 90도 시계방향 요잉") — 드럼은
        왼 옆구리를 따라 눕고, 개인색 큰 드럼이 오른앞으로 튀어나오며, 지붕 더미는 좌우로
@@ -3650,13 +3652,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        길이 1.57로 스타포트(1.22)·배럭(1.07)·팩토리(0.92)보다 길다.
 
        더 눕히되 길이는 다시 조금 줄이고 안으로 당겼다(지적: "더 수평쪽으로 눕도록",
-       "다리길이 살짝 줄이고 더 안쪽으로 이동") — 발판 (±4.9, ±3.05), lean 0.3,
-       몸통 높이 1.5. 위끝은 (±3.43, ±2.14)로 여전히 밑판 네 귀에 걸리고, 아래로
-       내려오며 평면으로 1.73 벌어지는 사이 높이는 1.37만 떨어져 수직에서 52도
-       누운 다리가 된다. */
+       "다리길이 살짝 줄이고 더 안쪽으로 이동"). 몸통을 1.2배로 키우면서 붙는 자리도
+       같이 커진 밑판(±4.2, ±2.64)의 네 귀로 다시 맞췄다 — 발판 (±5.85, ±3.65),
+       lean 0.3이면 위끝이 (±4.1, ±2.56)으로 모서리에 걸린다. 아래로 내려오며 평면으로
+       2.06 벌어지는 사이 높이는 1.37만 떨어져 수직에서 56도 누운 다리가 된다. */
     const BODY_Z = 1.5;
     /** 몸통 지붕 — 지붕 더미가 앉는 갑판(위 5.0×2.6). */
-    const TOP = BODY_Z + 1.7;
+    const TOP = BODY_Z + 2.04;
     const foot = (fx: number, fy: number): ShapeFace[] =>
       legAndFoot(fx, fy, BODY_Z + 0.25, 0.3);
     /* 지적: "현재 빨간색으로 된 두개의 포인트를 개인색으로 변경" — 오른앞 드럼과 왼뒤
@@ -3665,20 +3667,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        있고 앞·뒤로 갈려 있어 어느 요잉에서도 한쪽은 보인다. */
     const pc: ShapeFace[] = [];
     const out: ShapeFace[] = [
-      ...foot(-4.9, -3.05), ...foot(4.9, -3.05),
+      ...foot(-5.85, -3.65), ...foot(5.85, -3.65),
       /* 몸통·드럼은 반드시 제 키를 달아야 한다 — 태그 없는 면은 앞 면의 키를
          물려받는데, 바로 앞이 다리(−40대)라 몸통이 통째로 다리 뒤로 가라앉는다. */
-      ...tagKey(paintBase(frustumFaces3(0, 0, 7, 4.4, 5, 2.6, 1.7, BODY_Z), SILVER), 0),
+      ...tagKey(paintBase(frustumFaces3(0, 0, 8.4, 5.28, 6, 3.12, 2.04, BODY_Z), SILVER), 0),
       // 왼 옆구리를 따라 눕는 작은 드럼 — 끝면이 빛난다.
       ...tagKey([
-        ...tubeFaces(-3.6, 1, -1.8, 1, 0.6, BODY_Z + 0.85),
-        topFace(groundEllipse(...project(-3.6, 1, BODY_Z + 1.15), 0.5, 0.4), 0.35),
+        ...tubeFaces(-4.4, 1.1, -2.4, 1.1, 0.68, BODY_Z + 1),
+        topFace(groundEllipse(...project(-4.4, 1.1, BODY_Z + 1.34), 0.5, 0.4), 0.35),
       ], 6),
-      ...foot(-4.9, 3.05), ...foot(4.9, 3.05),
+      ...foot(-5.85, 3.65), ...foot(5.85, 3.65),
     ];
     // 오른앞 개인색 드럼 — 앞으로 튀어나온 큰 통이라 옆에서도 임자 색이 넓게 읽힌다.
-    pc.push(...tagKey(tubeFaces(1.9, 0.4, 1.9, 2.9, 1, BODY_Z + 0.9),
-      14 + depthNow(1.9, 1.65) * 1.6));
+    pc.push(...tagKey(tubeFaces(2.2, 0.5, 2.2, 3.5, 1.1, BODY_Z + 1.05),
+      14 + depthNow(2.2, 2) * 1.6));
     // 지붕 더미 둘 — 윗면·옆면 은색.
     out.push(...tagKey(paintBase(boxFaces3(-1, 0, 2.8, 2.4, 1.4, TOP), SILVER),
       10 + depthNow(-1, 0) * 1.6));
@@ -11238,6 +11240,29 @@ export default function ReplayMotionPlayer({
      계산되는데, 줌 단계·보기 전환(3D 피칭은 세로가 0.74로 눌린다)으로 상자가 변하면
      이미 서 있던 팬이 새 한계를 넘어 맵 가장자리 밖(빈 바탕)이 드러나고 마커가 맵을
      벗어나 그려졌다. 상자가 변할 때마다 팬을 새 한계 안으로 되죈다. */
+  /* 맵 상자의 실제 CSS 폭 — 3D 과표본 배수와 원본 그림 승급 판단이 이 값을 쓴다.
+     MAP_VIEW_PX(1024)는 넓은 배치의 상한일 뿐이고, 좁은 화면에서는 칸이 정한다. */
+  const [mapPx, setMapPx] = useState(0);
+  /** 지금 깔린 그림의 원본 한 변(px) — <img>의 naturalWidth다. 격자 개략도면 0. */
+  const [imgSide, setImgSide] = useState(0);
+  useEffect(() => {
+    const el = mapRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return undefined;
+    const ro = new ResizeObserver(() => setMapPx(Math.round(el.getBoundingClientRect().width)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  /* 원본 그림 승급(지적: "미니맵 배경이 화질이 너무 안좋아") — 목록으로 내려오는 그림은
+     512px 작은 판이다. 이 화면이 실제로 크게 그릴 때, 곧 확대했거나 재생 중이면서 상자가
+     화면 픽셀로 560을 넘을 때만 원본(2048px)을 그 한 장 다시 받는다.
+     해시마다 한 번만 조르는 것은 훅 안에서 막는다 — 승급이 캐시에 새 객체를 심고 그것이
+     이 컴포넌트를 리렌더하므로, 여기서 막으려 들면 무한 루프가 된다. */
+  useEffect(() => {
+    if (!grid.image) return;
+    const dpr = typeof window === "undefined" ? 1 : (window.devicePixelRatio || 1);
+    if (zoom <= 1 && !(playing && mapPx * dpr >= 560)) return;
+    void promoteReplayMap(grid.hash);
+  }, [grid.image, grid.hash, zoom, playing, mapPx]);
   useEffect(() => {
     const el = mapRef.current;
     if (!el) return;
@@ -11562,6 +11587,34 @@ export default function ReplayMotionPlayer({
     const kFar = P / (P + H * S);
     const cy = (C * H * (1 - q * kFar)) / 2;
     return { w, h, hPre, P, S, C, q, cy };
+  };
+  /* 3D 변환 레이어의 과표본(지적: 3D가 2D보다 흐리다) ───────────────────────────
+     perspective가 낀 변환에는 단일 배율이 없어, 크로뮴은 그 요소를 제 합성 레이어로
+     떼어 내고 **래스터 배율을 1로 못 박는다**. 그래서 3D 지형만 화면 픽셀비를 통째로
+     버린다 — 레티나에서 2D의 절반 해상도로 그려진다(DPR 2·3에서 값이 한 톨도 안 움직인다).
+     will-change·preserve-3d·backface-visibility·부모 perspective 어느 것도 안 통한다.
+
+     통하는 것은 하나뿐이다: 그림을 R배 크게 깔고 변환 맨 끝(=가장 먼저 먹는 자리)에
+     scale(1/R)을 끼운다. 레이어가 R배 크기로 래스터되고 화면 기하는 그대로다.
+     R은 화면 픽셀비가 아니라 **저장 그림 한 변 ÷ 상자 CSS 폭**이다 — 픽셀비를 보면
+     휴대폰(상자 390)에서 R=2가 아무 일도 안 하고, 비레티나 PC(픽셀비 1)에서는 R=1이
+     되어 통째로 무효가 된다. 있는 화소를 다 쓰는 것이 기준이고, 그 위는 없는 것을
+     늘리는 것뿐이라 1~4로 자른다. */
+  const pitchStyle = (): React.CSSProperties | undefined => {
+    if (!pitched) return undefined;
+    const { q, cy, P, C } = pitchGeom();
+    const base = `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${P.toFixed(0)}px) rotateX(45deg) scaleY(${(PITCH_FLAT / C).toFixed(4)})`;
+    const box = mapPx || mapViewW;
+    const R = imgSide && box
+      ? Math.min(4, Math.max(1, Math.round(imgSide / box)))
+      : 1;
+    if (R <= 1) return { transform: base };
+    // 커진 만큼 왼쪽·위로 물려 상자 가운데에 그대로 앉힌다(변환 원점이 제 가운데다).
+    const off = `${(-(R - 1) * 50).toFixed(2)}%`;
+    return {
+      transform: `${base} scale(${(1 / R).toFixed(4)})`,
+      left: off, top: off, width: `${R * 100}%`, height: `${R * 100}%`,
+    };
   };
   const pitchK = (y: number): number => {
     if (!pitched) return 1;
@@ -12317,10 +12370,8 @@ export default function ReplayMotionPlayer({
             <img
               className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`}
               draggable={false}
-              style={pitched ? (() => {
-                const { q, cy, P, C } = pitchGeom();
-                return { transform: `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${P.toFixed(0)}px) rotateX(45deg) scaleY(${(PITCH_FLAT / C).toFixed(4)})` };
-              })() : undefined}
+              onLoad={(e) => setImgSide(e.currentTarget.naturalWidth || 0)}
+              style={pitchStyle()}
             />
           )
           : (
@@ -12329,6 +12380,8 @@ export default function ReplayMotionPlayer({
                곧 기본색이다. 3D에선 실제 그림과 똑같은 기울임을 입는다(지적: 기본 파싱
                맵은 입체 효과가 안 됨). */
             <div
+              /* 격자 개략도는 과표본을 안 건다 — 캔버스 배킹이 512로 고정이라 상자만
+                 키워 봐야 화소가 안 는다(메모리만 든다). */
               className="scr-motion-canvas scr-motion-canvas-blank"
               style={pitched ? (() => {
                 const { q, cy, P, C } = pitchGeom();

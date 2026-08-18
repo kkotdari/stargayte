@@ -30,26 +30,82 @@ import type { MapCatalog, MapCatalogEntry, MinimapImage } from "../../types";
 // 맵의 썸네일은 리플레이 격자를 그대로 그린 개략도 한 장이다(요청) — 이름이 "New Super
 // 빠른무한"처럼 비슷비슷해서 이름만으로는 어느 맵인지 못 가른다.
 
-/** 올릴 그림을 이 한 변 크기로 줄인다 — 미니맵은 화면에서 240~360px로 보이므로 이 정도면
- *  충분하고, 원본(1000px PNG 700KB)을 그대로 올리면 카드 하나 볼 때마다 그만큼 받는다. */
-const MAX_SIDE = 512;
-/** JPEG 품질 — 지형 그림이라 이 정도에서 눈에 띄는 손실이 없다(대략 60~90KB). */
-const JPEG_QUALITY = 0.86;
+/* ── 올릴 그림 만들기 ────────────────────────────────────────────────────────────
+   여태 4K 원본을 512px JPEG 한 장으로 줄여 올렸다. 그런데 재생 화면의 맵 상자는
+   1024 CSS px(레티나면 2048 device px)이고 더블클릭 확대(ZOOM_GAME)는 4배까지 간다 —
+   512px은 그 자리에서 이미 네 배 늘어난 그림이라 "4K 이미지인데도 화질이 너무 안좋아"가
+   나왔다. 두 판을 만들어 올린다:
+     · 원본(image) — 2048px. 맵 상자가 1024 CSS px이라 레티나에서 딱 1:1이고, 4096 원본의
+       정확히 1/2이라 줄일 때 오차도 없다. 재생 화면만 ?full=1로 이걸 받는다.
+     · 작은 판(thumb) — 512px. 활동 목록·맵연결(44px 칸)·제어판(56px 칸)이 받는 쪽이다.
+       같은 512px이라도 WebP + 제대로 된 축소라 옛 JPEG보다 오히려 작다.
 
-/** 고른 파일을 정사각 512px JPEG data URL로 줄인다. */
-async function toDataUrl(file: File): Promise<string> {
-  const bitmap = await createImageBitmap(file);
-  const side = Math.min(MAX_SIDE, Math.max(bitmap.width, bitmap.height));
+   축소 품질: ctx.imageSmoothingQuality = "high"를 켠다. 기본 스무딩은 크게 줄일 때 화소를
+   제대로 못 걸러 계단(앨리어싱)을 남기는데, 그 계단이 곧 고주파라 압축기가 그걸 저장하느라
+   파일까지 커진다 — 켜면 더 선명하고 더 작다. */
+const FULL_SIDE = 2048;
+const THUMB_SIDE = 512;
+/** 원본 판의 문자수 예산 — 서버 상한 1,200,000자에서 이름·격자 몫을 뺀 값. */
+const FULL_BUDGET = 1_100_000;
+/** 예산 안에 드는 첫 단을 고른다 — 그림마다 압축률이 열 배 넘게 갈려 고정값으로는
+ *  대부분 예산을 남기고 흐리게 저장하거나 어떤 그림에서 422를 맞는다. */
+const LADDER_WEBP: [number, number][] = [
+  [FULL_SIDE, 0.92], [FULL_SIDE, 0.86], [FULL_SIDE, 0.8],
+  [1024, 0.94], [1024, 0.86], [1024, 0.8], [THUMB_SIDE, 0.85],
+];
+const LADDER_JPEG: [number, number][] = [
+  [FULL_SIDE, 0.9], [FULL_SIDE, 0.85], [FULL_SIDE, 0.8],
+  [1024, 0.94], [1024, 0.86], [1024, 0.8], [THUMB_SIDE, 0.85],
+];
+
+/** WebP로 저장해도 되는지 — 인코더가 없으면 브라우저가 말없이 PNG를 돌려주므로, 기능
+ *  목록을 뒤지는 대신 2×2 캔버스로 한 번 뽑아 보고 접두사를 본다. 한 번만 잰다. */
+let webpOk: boolean | null = null;
+function canEncodeWebp(): boolean {
+  if (webpOk === null) {
+    const probe = document.createElement("canvas");
+    probe.width = 2;
+    probe.height = 2;
+    webpOk = probe.toDataURL("image/webp", 0.9).startsWith("data:image/webp");
+  }
+  return webpOk;
+}
+
+/** 정사각 side px로 줄여 data URL 하나를 뽑는다. */
+function encodeSquare(bitmap: ImageBitmap, side: number, mime: string, q: number): string {
   const canvas = document.createElement("canvas");
   canvas.width = side;
   canvas.height = side;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("이미지를 줄일 수 없어요.");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
   // 미니맵은 정사각형이다 — 원본이 조금 어긋나 있어도 정사각으로 늘려 맞춘다(마커 좌표가
   // 맵 크기 비율로 찍히므로 그림도 같은 비율이어야 자리가 맞는다).
   ctx.drawImage(bitmap, 0, 0, side, side);
-  bitmap.close();
-  return canvas.toDataURL("image/jpeg", JPEG_QUALITY);
+  return canvas.toDataURL(mime, q);
+}
+
+/** 고른 파일에서 원본 판과 작은 판을 함께 만든다. */
+async function toDataUrls(file: File): Promise<{ image: string; thumb: string }> {
+  const bitmap = await createImageBitmap(file);
+  try {
+    const webp = canEncodeWebp();
+    const mime = webp ? "image/webp" : "image/jpeg";
+    const cap = Math.max(bitmap.width, bitmap.height);
+    let image = "";
+    for (const [side, q] of webp ? LADDER_WEBP : LADDER_JPEG) {
+      image = encodeSquare(bitmap, Math.min(side, cap), mime, q);
+      if (image.length <= FULL_BUDGET) break;
+    }
+    if (!image || image.length > FULL_BUDGET) {
+      throw new Error("이 그림은 너무 복잡해서 줄여도 담기지 않아요.");
+    }
+    const thumb = encodeSquare(bitmap, Math.min(THUMB_SIDE, cap), mime, webp ? 0.85 : 0.86);
+    return { image, thumb };
+  } finally {
+    bitmap.close();
+  }
 }
 
 const mapLabel = (m: MapCatalogEntry): string => cleanMapName(m.name ?? "") || "(이름 없음)";
@@ -194,9 +250,9 @@ export default function MinimapScreen() {
     setErr("");
     setBusy(true);
     try {
-      const image = await toDataUrl(file);
+      const { image, thumb } = await toDataUrls(file);
       const label = name.trim() || "미니맵";
-      const made = await api.createMinimapImage({ name: label, image, hashes: [] });
+      const made = await api.createMinimapImage({ name: label, image, thumb, hashes: [] });
       setName("");
       setInto(String(made.id));
       await load();
@@ -262,8 +318,10 @@ export default function MinimapScreen() {
     setErr("");
     setBusy(true);
     try {
-      const next = await toDataUrl(file);
-      await api.updateMinimapImage(image.id, { name: image.name, image: next });
+      const next = await toDataUrls(file);
+      await api.updateMinimapImage(image.id, {
+        name: image.name, image: next.image, thumb: next.thumb,
+      });
       await load();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "그림을 바꾸지 못했어요.");

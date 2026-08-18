@@ -72,6 +72,35 @@ export function applyReplayMap(grid: ReplayMapGrid): void {
   for (const l of listeners) l();
 }
 
+/* ── 원본 그림 승급 ──────────────────────────────────────────────────────────────
+   서버가 목록에 싣는 미니맵 그림은 512px 작은 판이다(활동 목록은 한 화면에 그 페이지의
+   맵 종류만큼 이 응답을 받으므로 2048px을 전부 나를 수 없다). 재생 화면이 실제로 크게
+   그릴 때만 그 한 장을 ?full=1로 다시 받아 캐시를 갈아 끼운다.
+
+   해시마다 딱 한 번만 조른다. 이게 없으면 무한 루프가 된다 — 승급이 캐시에 새 객체를
+   심고, 그걸 보는 컴포넌트가 리렌더되고, 승급을 부르는 effect의 deps가 그 객체를 물고
+   있으면 다시 돌기 때문이다. 서버가 옛 판이라 full을 몰라도(같은 그림이 돌아와도)
+   promoted에 남으므로 두 번은 안 묻는다. */
+const promoted = new Set<string>();
+
+/** 그 해시의 그림을 원본으로 갈아 끼운다 — 이미 졸랐거나 그림이 없는 맵이면 아무것도 안 한다. */
+export async function promoteReplayMap(hash: string | null | undefined): Promise<void> {
+  if (!hash || promoted.has(hash)) return;
+  const cur = cache.get(hash);
+  // 그림이 안 붙은 맵(격자로 그리는 맵)은 승급할 것이 없다.
+  if (!cur || !cur.image) return;
+  promoted.add(hash);
+  try {
+    const maps = await api.getReplayMaps([hash], true);
+    const got = maps.find((m) => m.hash === hash);
+    if (!got || !got.image || got.image === cur.image) return;
+    cache.set(hash, got);
+    for (const l of listeners) l();
+  } catch {
+    // 실패하면 작은 판 그대로 둔다 — 화질만 아쉬울 뿐 화면은 멀쩡하다.
+  }
+}
+
 /** 그 해시의 맵 격자 — 서버에 없으면 null, '아직 조회 중'이면 undefined.
  *  (구분 이유·지적: 조회 중을 null로 뭉개면 카드가 첫 그림에 옛 로스터 폼을 그렸다가
  *  격자가 도착하면 재생 화면으로 갈아타며 로스터가 깜빡하고 사라져 보였다.) */
