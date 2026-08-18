@@ -3174,8 +3174,11 @@ const BLD_DIE_SLACK_SEC = 8;
     for (const a of agents) simEnd = Math.max(simEnd, a.life.last + 8);
     for (const b of battles) simEnd = Math.max(simEnd, b.end + 4);
     simEnd = Math.min(simEnd, 3600 * 3);
+    /* 살아 있으면 0으로 안 내려간다(과제 #69) — 5칸 단위 반올림이 체력 남은 유닛을
+       0%로 찍으면 화면은 그걸 죽음으로 읽는다(hpZero). 진짜 0은 죽을 때만 나온다.
+       건물 원장에 먼저 넣은 잣대를 유닛에도 똑같이 준다. */
     const pctOf = (a: Agent): number =>
-      Math.max(0, Math.round(((a.hp + a.sh) / (a.maxHp + a.maxSh)) * 20) * 5);
+      Math.max(a.hp + a.sh > 0 ? 5 : 0, Math.round(((a.hp + a.sh) / (a.maxHp + a.maxSh)) * 20) * 5);
     const mark = (a: Agent, sec: number): void => {
       const p = pctOf(a);
       if (p !== a.lastPct) { a.trace.push([Math.round(sec), p]); a.lastPct = p; }
@@ -3314,7 +3317,10 @@ const BLD_DIE_SLACK_SEC = 8;
       }
       a.alive = false;
       a.trace.push([Math.round(sec), 0]);
-      simDeathOf.set(a.life, Math.round(sec + 1 + (Math.abs(a.life.tag) % 4)));
+      /* 죽음 시각에 얹던 1~4초 흔들기를 걷었다(과제 #69) — 체력이 0에 닿은 순간과
+         죽는 순간이 달라지면 죽음의 주인이 둘이 된다. 우수수 쓰러지는 모습은 전투
+         시각 자체가 갈려 저절로 생긴다. */
+      simDeathOf.set(a.life, Math.round(sec));
     };
     for (const a of agents) if (a.kind === "Medic") medicAgents.push(a);
     const castsSorted = [...casts].sort((c1, c2) => c1[0] - c2[0]);
@@ -3627,16 +3633,31 @@ const BLD_DIE_SLACK_SEC = 8;
          두면 체력이 8%쯤 남은 채로 죽음 시각을 맞아 바가 뚝 끊긴다. 죽는 건물은 마지막
          8초에 걸쳐 0으로 내려간다. 이 자리에서 하는 것은 d가 여기까지 와서야 확정되기
          때문이다(바로 위 next 보정). */
-      if (life.bld && d !== null) {
-        /* 한 번도 안 맞은 채 무너지는 건물도 무너지는 8초를 갖는다 — 원장이 비었다고
-           건너뛰면 만피에서 곧장 사라져 뚝 끊긴다. */
+      if (d !== null) {
+        /* 죽음의 주인은 하나다(과제 #69) — 체력 자취는 **분석이 말한 죽음 시각(d)에**
+           0이 된다. 여태 유닛은 체력이 0에 닿는 시각과 d가 따로 놀아, 화면이 둘 중
+           이른 쪽(hpZero)을 죽음으로 읽었다. 실측(경기1): 체력 0에 닿은 1042기 중 d와
+           같은 것은 **6기**뿐이고 934기가 평균 6초 일찍, 62기는 증거상 살았는데도
+           바가 0이었다.
+           한 번도 안 맞은 채 죽는 것도 사라지는 시간을 갖는다 — 원장이 비었다고
+           건너뛰면 만피에서 곧장 사라져 뚝 끊긴다. 건물은 8초, 유닛은 짧게 2초다. */
+        const fade = life.bld ? 8 : 2;
         const base9: [number, number][] = hpTrace && hpTrace.length > 0
           ? hpTrace : [[Math.round(life.born), 100]];
-        const g9 = Math.max(life.born, d - 8);
+        const g9 = Math.max(life.born, d - fade);
         const last9 = [...base9].reverse().find((q) => q[0] <= g9) ?? base9[0];
         hpTrace = [...base9.filter((q) => q[0] < g9),
           [Math.round(g9), last9[1]] as [number, number],
           [Math.round(d), 0] as [number, number]];
+      }
+      /* 0은 자취에 **하나만**, 그것도 맨 끝에만 있어야 한다(과제 #69).
+         화면은 체력 0을 죽음으로 읽으므로(hpZero), 자취 중간에 0이 하나라도 남으면
+         그 유닛은 거기서 죽은 것이 된다 — 죽음의 주인이 다시 둘이 된다.
+         죽지 않은 개체(d 없음)의 자취에는 0이 아예 없어야 한다. */
+      if (hpTrace && hpTrace.length > 0) {
+        const lastI = hpTrace.length - 1;
+        hpTrace = hpTrace.map((q, i) => (q[1] <= 0 && !(d !== null && i === lastI)
+          ? [q[0], 5] as [number, number] : q));
       }
       const race = raceOf.get(life.owner) ?? "";
       const icArr = icptOf.get(life.tag);
@@ -3677,6 +3698,13 @@ const BLD_DIE_SLACK_SEC = 8;
       const lastQ = [...bHp].reverse().find((q) => q[0] <= g8) ?? bHp[0];
       bHp = bHp.filter((q) => q[0] < g8);
       bHp.push([Math.round(g8), lastQ[1]], [Math.round(b.gone), 0]);
+    }
+    /* 0은 맨 끝에만(과제 #69) — 태그 건물·유닛과 같은 잣대를 물리 건물에도 준다.
+       자취 중간에 0이 남으면 화면이 거기서 죽은 것으로 읽는다. */
+    if (bHp.length > 0) {
+      const lastI = bHp.length - 1;
+      bHp = bHp.map((q, i) => (q[1] <= 0 && !(b.gone !== null && i === lastI)
+        ? [q[0], 5] as [number, number] : q));
     }
     ents.push({
       t: b.tag ?? -1, o: b.owner, k: b.kind, b: Math.round(b.born),

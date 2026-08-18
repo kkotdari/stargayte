@@ -10543,10 +10543,12 @@ export default function ReplayMotionPlayer({
       if (!raw) continue;
       const spots = e.ev.filter((v) => v[3] === 2 || v[3] === 5);
       if (spots.length === 0) continue;
-      /* 체력 0 = 즉시 소멸(요청) — 건물도 체력 자취가 0에 닿으면 사망 기록(d)보다
-         앞당겨 걷는다. */
-      const hpZero = (e.hp ?? []).find(([, hv0]) => hv0 <= 0)?.[0];
-      const gone = hpZero !== undefined && (e.d === null || hpZero < e.d) ? hpZero : (e.d ?? 0);
+      /* 죽음의 주인은 하나다(과제 #69) — 분석이 체력 자취를 **d에서** 0으로 맞춰
+         내보내므로, 여기서 체력 0을 따로 볼 이유가 없어졌다. 옛 코드는 hpZero가 d보다
+         이르면 그쪽을 골랐는데, 실측으로 그 둘이 거의 늘 달랐다(경기1: 체력 0에 닿은
+         1042기 중 d와 같은 것이 6기, 934기가 평균 6초 일렀고 62기는 증거상 살았는데도
+         바가 0이었다). 이제 분석 쪽에서 하나로 모았다. */
+      const gone = e.d ?? 0;
       for (let i = 0; i < spots.length; i += 1) {
         const [sSec, x, y] = spots[i];
         const nextS = i + 1 < spots.length ? spots[i + 1][0] : null;
@@ -10633,8 +10635,8 @@ export default function ReplayMotionPlayer({
       if (!e.bld) continue;
       const site = [...e.ev].reverse().find((v) => v[3] === 2 || v[3] === 5 || v[3] === 17);
       if (!site) continue;
-      const hpZero = (e.hp ?? []).find(([, hv]) => hv <= 0)?.[0];
-      const gone = hpZero !== undefined && (e.d === null || hpZero < e.d) ? hpZero : (e.d ?? 0);
+      // 죽음의 주인은 하나다(과제 #69) — 위 주석 참조.
+      const gone = e.d ?? 0;
       /* 이륙 증거(f=6)를 같이 싣는다 — 여태 이 색인은 건설·착륙(f=2/5/17)만 봐서, 떠서
          날아가는 건물의 표적 자리가 마지막 착륙 지점에 못박혀 있었다(몸은 날아가는데
          어택으로 찍은 총알은 빈 땅으로 갔다). */
@@ -11602,8 +11604,8 @@ export default function ReplayMotionPlayer({
       /* 유령 상대 제거(지적: 주변에 공격할 게 없는데 공격 모션) — 화면 규칙으로 이미
          죽었거나(체력 0 조기 사망) 숨은(수송 탑승·건설 흡수) 개체가 목록에 남아, 곁
          유닛이 빈 땅에 대고 계속 쐈다. 표시와 같은 잣대로 거른다. */
-      const hpZero0 = e.hp.find(([, hv0]) => hv0 <= 0)?.[0];
-      const dieAt0 = hpZero0 !== undefined && (e.d === null || hpZero0 < e.d) ? hpZero0 : e.d;
+      // 죽음의 주인은 하나다(과제 #69) — 체력 0은 이제 d에서만 나온다.
+      const dieAt0 = e.d;
       if (dieAt0 !== null && t >= dieAt0) continue;
       if (e.rides.some(([ra0, rb0]) => t >= ra0 + 1 && t < rb0)) continue;
       if (e.buildHides.some(([ba0, bb0]) => t >= ba0 && t < bb0)) continue;
@@ -14314,14 +14316,12 @@ export default function ReplayMotionPlayer({
         {entMode && entWalks.map((e, ei) => {
           const rp = e.walk;
           if (rp.length === 0 || t < rp[0][0]) return null;
-          /* 체력 0 = 즉사(요청: 체력바가 0이 되면 바로 폭발·소멸) — 사망 기록(d)이
-             늦게 오거나 없어도, 체력 자취가 0에 닿은 순간을 죽음으로 앞당긴다. */
-          const hpZero = e.hp.find(([, hv0]) => hv0 <= 0)?.[0];
-          /* 시뮬이 켜져 있으면 죽음도 시뮬 결과다(P2) — 체력이 0이 된 그 시각이지
-             클릭 좌표 어림이 아니다. */
+          /* 죽음의 주인은 하나다(과제 #69) — 시뮬이 돌면 시뮬, 아니면 분석의 d다.
+             분석이 체력 자취를 d에서 0으로 맞춰 주므로 '체력바가 0이면 즉사'는 저절로
+             성립한다(체력 0 = d). 셋을 견주던 옛 사슬은 걷었다 — 그 셋이 서로 달라서
+             화면·시뮬·체력바가 제각각 다른 순간에 유닛을 죽이고 있었다. */
           const simDie = simTracks?.get(e.tag)?.died ?? null;
-          const dieAt = simDie !== null ? simDie
-            : hpZero !== undefined && (e.d === null || hpZero < e.d) ? hpZero : e.d;
+          const dieAt = simDie !== null ? simDie : e.d;
           if (dieAt !== null && t >= dieAt + 1.2) return null;
           const team = teamOfRaw(e.raw);
           const holdKey0 = `${e.raw}-v2e${ei}`;
