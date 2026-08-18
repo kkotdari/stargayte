@@ -52,10 +52,11 @@ export interface UnitCmd {
  *  위치 정보 없음, x·y는 랠리 좌표거나 -1), 5 착륙 자리(띄운 건물의 이사 목적지),
  *  6 이륙(위치 없음, x·y는 -1), 7 공격 명령의 목적지(지적: 어택 찍으면 그 대상을
  *  공격해야 — 다섯째 값이 찍힌 대상의 태그, 땅 어택이면 0), 8 시즈모드 켬, 9 해제
- *  (지적: 시즈 판정은 리플레이 커맨드 그대로 — 둘 다 위치 없음). */
+ *  (지적: 시즈 판정은 리플레이 커맨드 그대로 — 둘 다 위치 없음), 17 추정 자리(클릭
+ *  중앙값으로 어림한 건물 자리 — 표적 지도·체력 원장만 쓰고 화면에는 안 그린다). */
 export type UnitEv = [number, number, number, number, number?];
 export interface UnitEnt {
-  /** 유닛 번호. 물리 건물(선택된 적 없이 건설 좌표로만 아는 것)은 -1. */
+  /** 유닛 번호. 물리 건물(끝내 선택된 적 없어 건설 좌표로만 아는 것)은 -1. */
   t: number;
   /** 주인(screp PlayerID) — players 배열의 id와 짝. */
   o: number;
@@ -369,6 +370,8 @@ export function buildUnitTracks(
   const built: {
     owner: number; kind: string; born: number; x: number; y: number;
     builder: number | null; gone: number | null;
+    /** 이 건물의 태그(있으면) — 자리 없는 건물 생애를 여기에 스냅해 붙인다(아래 앵커 승격). */
+    tag?: number;
     /** 끝난 사유 — 취소·철거에 변태를 더한다(지적: 레어가 돼도 앞 단계 홀이 안 닫힌다). */
     goneKind: "cxl" | "atk" | "morph" | null; ev: UnitEv[];
   }[] = [];
@@ -624,7 +627,14 @@ export function buildUnitTracks(
         // 같은 일꾼이 도착 전에 다른 건설을 또 냈으면 앞의 것은 무른 것이다(드론 건물
         // 바꿔 앉히기 — v1 파서의 lastDroneBuild 무르기와 같은 현상).
         const prevPending = tags.length === 1 ? pendingBuild.get(tags[0]) : undefined;
-        if (prevPending && !c.Queued && sec < prevPending.arrive) {
+        /* 프로토스는 '또 건설했다'가 취소가 아니다(수리: 3시 첫 포톤캐논이 곧바로 사라져
+           옆 자리로 미끄러져 보인다) — 프로브는 소환만 하고 곧 자유라, 1초 간격으로 둘을
+           연달아 앉히는 것이 정상 조작이고 둘 다 지어진다. 실측: 121초 (115,62)와 122초
+           (113,62) 두 캐논이 다 실제 명령인데, 앞의 것이 122초에 무른 것으로 찍혔다.
+           드론은 제 몸이 건물이 되므로 하나만 될 수 있고(변태), 테란 SCV는 앞 공사를
+           버리고 가므로 그대로 둔다. */
+        const cxlRace = raceOf.get(pid) ?? "";
+        if (prevPending && !c.Queued && sec < prevPending.arrive && cxlRace !== "프로토스") {
           const pb = built[prevPending.idx];
           if (pb.gone === null) { pb.gone = sec; pb.goneKind = "cxl"; }
         }
@@ -2632,9 +2642,35 @@ export function buildUnitTracks(
           if (anchors3.length >= 2) {
             const xs3 = anchors3.map((v) => v[1]).sort((q, w) => q - w);
             const ys3 = anchors3.map((v) => v[2]).sort((q, w) => q - w);
-            site2 = [anchors3[0][0], r1(xs3[Math.floor(xs3.length / 2)] - 1.5),
-              r1(ys3[Math.floor(ys3.length / 2)] - 1.5), 2];
-            life.ev.unshift(site2);
+            const gx3 = r1(xs3[Math.floor(xs3.length / 2)] - 1.5);
+            const gy3 = r1(ys3[Math.floor(ys3.length / 2)] - 1.5);
+            /* 클릭 중앙값은 ±1타일쯤 어긋난다 — 그대로 자리로 삼으면 이미 그려지고 있는
+               물리 건물 옆에 유령이 하나 더 선다(수리: 안 지은 넥서스가 시작 넥서스와
+               겹치는 자리에 생긴다. 실측 이 경기에서 넥서스 2·게이트웨이 5·성큰 1이
+               그렇게 늘었다). 같은 임자의 실제 건설 기록 중 그때 서 있던 가장 가까운
+               것에 붙여, 유령 대신 '그 건물의 태그가 이것'이라는 사실만 남긴다. */
+            const mk3 = majorityKindOf(life);
+            let snap: (typeof built)[number] | null = null;
+            let sd3 = 3.2;
+            for (const pass3 of [0, 1]) {
+              for (const b3 of built) {
+                if (b3.tag !== undefined || b3.owner !== life.owner) continue;
+                if (pass3 === 0 && mk3 && b3.kind !== mk3) continue;
+                if (b3.born > life.last + 2) continue;
+                if (b3.gone !== null && b3.gone < life.born - 2) continue;
+                const dd3 = Math.hypot(b3.x - gx3, b3.y - gy3);
+                if (dd3 < sd3) { snap = b3; sd3 = dd3; }
+              }
+              if (snap) break;
+            }
+            if (snap) {
+              snap.tag = life.tag;
+            } else {
+              /* 붙일 데가 없으면 어림 자리를 그대로 쓰되 갈래를 17(추정 자리)로 둔다 —
+                 표적 지도와 체력 원장만 쓰고 화면에는 그리지 않는다. */
+              site2 = [life.born, gx3, gy3, 17];
+              life.ev.unshift(site2);
+            }
           }
         }
         if (site2) {
@@ -2692,7 +2728,7 @@ export function buildUnitTracks(
       bHp.push([Math.round(g8), lastQ[1]], [Math.round(b.gone), 0]);
     }
     ents.push({
-      t: -1, o: b.owner, k: b.kind, b: Math.round(b.born),
+      t: b.tag ?? -1, o: b.owner, k: b.kind, b: Math.round(b.born),
       d: b.gone === null ? null : Math.round(b.gone), dk: b.goneKind ?? "", bld: 1,
       ev: [[Math.round(b.born), r1(b.x), r1(b.y), 2], ...b.ev],
       ...(bHp.length > 0 ? { hp: bHp } : {}),

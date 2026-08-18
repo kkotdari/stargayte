@@ -8356,10 +8356,35 @@ function closeNarrowGaps(t: TerrainGrid): TerrainGrid {
 }
 
 /** 건물 짓는 시간(초, 어림) — 짓는 동안 반투명 표시(요청)의 창이다. */
+/* 건물 짓는 시간(초) — 원작의 프레임 수를 23.81로 나눈 값이다(지적: 3시 첫 포톤캐논이
+   너무 빨리 지어진다). 예전엔 열두 개만 적어 두고 나머지는 30초로 뭉갰는데, 게이트웨이
+   (37.8)·연결체(75.6)·사이버네틱스(37.8)가 죄다 그 30초로 떨어져 있었다.
+   이 리플레이로 상한을 대조했다 — 건설 명령과 '그 건물이 있어야 낼 수 있는 첫 명령'의
+   간격은 (짓는 시간 + 일꾼 걸음 + 사람 반응)이라 늘 표값보다 커야 한다:
+     게이트웨이 58.3→질럿 100.7 (걸음 2.7 빼고 39.7) ≥ 37.8 ✓
+     포지     111.4→캐논 146.5 (걸음 8.5 빼고 26.5) ≥ 25.2 ✓
+     사이버   203.1→드라군 246.6 (2 빼고 41.5) ≥ 37.8 ✓
+     스포닝풀  50.9→저글링 117.8 ≥ 50.4 ✓   시타델 295.3→발업 353.9 ≥ 37.8 ✓
+   앞의 둘은 여유가 2초도 안 되게 딱 맞는다 — 표가 맞다는 가장 센 증거다. */
 const BUILD_SEC: Record<string, number> = {
-  "Command Center": 55, Nexus: 55, Hatchery: 55, Lair: 45, Hive: 55,
-  Refinery: 18, Assimilator: 18, Extractor: 18,
-  "Supply Depot": 18, Pylon: 14, "Creep Colony": 10, "Spawning Pool": 35,
+  // 테란
+  "Command Center": 75.6, "Comsat Station": 25.2, "Supply Depot": 25.2, Refinery: 25.2,
+  Barracks: 50.4, Academy: 50.4, Factory: 50.4, Starport: 44.1, "Control Tower": 25.2,
+  "Science Facility": 37.8, "Covert Ops": 25.2, "Physics Lab": 25.2, "Machine Shop": 25.2,
+  "Engineering Bay": 37.8, Armory: 50.4, "Missile Turret": 18.9, Bunker: 18.9,
+  "Nuclear Silo": 37.8,
+  // 프로토스
+  Nexus: 75.6, Pylon: 18.9, Assimilator: 25.2, Gateway: 37.8, Forge: 25.2,
+  "Photon Cannon": 31.5, "Shield Battery": 18.9, "Cybernetics Core": 37.8,
+  "Citadel of Adun": 37.8, "Templar Archives": 37.8, "Robotics Facility": 50.4,
+  "Robotics Support Bay": 18.9, Observatory: 18.9, Stargate: 44.1,
+  "Fleet Beacon": 37.8, "Arbiter Tribunal": 37.8,
+  // 저그
+  Hatchery: 75.6, Lair: 63, Hive: 75.6, Extractor: 25.2, "Spawning Pool": 50.4,
+  "Creep Colony": 12.6, "Sunken Colony": 12.6, "Spore Colony": 12.6,
+  "Evolution Chamber": 25.2, "Hydralisk Den": 25.2, "Queens Nest": 37.8,
+  Spire: 75.6, "Greater Spire": 75.6, "Nydus Canal": 25.2, "Defiler Mound": 37.8,
+  "Ultralisk Cavern": 50.4,
 };
 /** 유닛 뽑는 시간(초, 어림) — 이 시간이 지나면 만든 건물 앞에 잠깐 놓인다(요청). */
 const UNIT_SEC: Record<string, number> = {
@@ -8745,7 +8770,7 @@ export default function ReplayMotionPlayer({
     const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
     for (const e of entData.ents) {
       if (!e.bld || !e.hp || e.hp.length === 0) continue;
-      const site = [...e.ev].reverse().find((v) => v[3] === 2 || v[3] === 5);
+      const site = [...e.ev].reverse().find((v) => v[3] === 2 || v[3] === 5 || v[3] === 17);
       if (!site) continue;
       const raw = nameOfId.get(e.o) ?? "";
       const key = `${raw}|${Math.round(site[1])}|${Math.round(site[2])}`;
@@ -8768,7 +8793,7 @@ export default function ReplayMotionPlayer({
     const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
     for (const e of entData.ents) {
       if (!e.bld) continue;
-      const site = [...e.ev].reverse().find((v) => v[3] === 2 || v[3] === 5);
+      const site = [...e.ev].reverse().find((v) => v[3] === 2 || v[3] === 5 || v[3] === 17);
       if (!site) continue;
       const hpZero = (e.hp ?? []).find(([, hv]) => hv <= 0)?.[0];
       const gone = hpZero !== undefined && (e.d === null || hpZero < e.d) ? hpZero : (e.d ?? 0);
