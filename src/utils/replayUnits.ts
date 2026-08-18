@@ -2559,6 +2559,16 @@ export function buildUnitTracks(
     }
     return null;
   };
+/** 건물을 때리는 첫 명령이 주는 시간(초) — 기준 삼을 직전 명령이 없을 때의 한 모금. */
+const BLD_FIRST_SEC = 2;
+/** 같은 임자의 두 명령 사이를 '계속 때린 시간'으로 볼 상한(초) — 이보다 벌어지면
+ *  그 사이엔 딴 데를 보고 있었다고 본다. */
+const BLD_MAX_GAP_SEC = 6;
+/** 원장이 분석보다 먼저 건물을 무너뜨려도 좋은 폭(초) — 붕괴 결합이 마지막 8초에 걸쳐
+ *  0으로 내리므로 그와 같은 값이다. 여기가 넓으면(옛 30초) 분석이 말한 죽음보다 한참
+ *  앞서 무너져, 화면에서 건물이 이르게 사라진다. */
+const BLD_DIE_SLACK_SEC = 8;
+
   /* 건물 체력 원장(요청: 실드 차오름·저그 회복·테란 불·수리까지) — 곁에 떨어진 적
      공격 명령(+방어건물끼리는 없음)이 깎고, 이벤트 사이 시간엔 종족 역학이 흐른다:
      프로토스는 실드 풀만 초당 2%씩 차고, 저그는 체력이 초당 1.5씩 아물며, 테란은
@@ -2578,10 +2588,26 @@ export function buildUnitTracks(
     const heals = tag2 !== null ? healsAt.get(tag2) ?? [] : [];
     let hi2 = 0;
     let prevSec = born2;
+    /* 화력은 '명령 수'가 아니라 '시간'이 정한다(지적 #53: 건물이 너무 이르고 너무 많이
+       부서짐). 여태는 곁에 떨어진 적 공격 명령 하나마다 최대 120을 통째로 깎았다 —
+       클릭이 잦은 사람일수록 상대 건물이 빨리 무너지는 역설이고, 850짜리 건물이 여덟
+       번의 클릭으로 재가 됐다. 유닛 쪽은 이 병을 진작 고쳤는데(교전 원장의 피해 보존)
+       건물은 그 원장에서 통째로 빠져 있어(`if (life.bld) continue`) 옛 모형이 그대로
+       남아 있었다.
+       이제 한 명령은 '언제부터 언제까지 때렸나'만 말한다: 같은 임자의 직전 명령부터
+       흐른 시간만큼 제 DPS로 깎는다. 연타는 시간이 거의 안 흘러 거의 안 깎이고,
+       띄엄띄엄 이어지는 공격은 그 사이만큼 깎인다. 첫 명령은 기준이 없으므로 짧은
+       한 모금(BLD_FIRST_SEC)만 준다. */
+    const lastByOwner = new Map<number, number>();
     const trace: [number, number][] = [];
     let lastPct = 100;
     const push2 = (sec3: number): void => {
-      const p4 = Math.max(0, Math.round(((hp2 + sh2) / total) * 20) * 5);
+      /* 살아 있으면 0으로 안 내려간다(지적 #53) — 퍼센트를 5칸 단위로 반올림하다 보니
+         체력이 남아 있는데도 0%로 찍히는 자리가 있었다(850짜리 건물이 1 남으면 0.02%
+         → 0). 화면은 0을 죽음으로 읽으므로(hpZero), 그 반올림 하나가 멀쩡한 건물을
+         무너뜨렸다. 진짜 0은 아래 죽음 처리에서만 나온다. */
+      const alive4 = hp2 + sh2 > 0;
+      const p4 = Math.max(alive4 ? 5 : 0, Math.round(((hp2 + sh2) / total) * 20) * 5);
       if (p4 !== lastPct) { trace.push([Math.round(sec3), p4]); lastPct = p4; }
     };
     const flow = (from: number, to: number): void => {
@@ -2603,7 +2629,11 @@ export function buildUnitTracks(
         push2(heals[hi2]);
         hi2 += 1;
       }
-      let dmg2 = Math.min(120, a.dps * 1.6) * (1 + 0.1 * lvOf(wUpsBy, a.owner, a.sec));
+      const prevOwn = lastByOwner.get(a.owner);
+      lastByOwner.set(a.owner, a.sec);
+      const shotSec = prevOwn === undefined
+        ? BLD_FIRST_SEC : Math.min(BLD_MAX_GAP_SEC, a.sec - prevOwn);
+      let dmg2 = a.dps * shotSec * (1 + 0.1 * lvOf(wUpsBy, a.owner, a.sec));
       // 실드 먼저 깎인다.
       const fromSh = Math.min(sh2, dmg2);
       sh2 -= fromSh;
@@ -3119,10 +3149,19 @@ export function buildUnitTracks(
         }
         if (site2) {
           const mk2 = majorityKindOf(life);
+          /* 살아남음의 근거에 '분석이 내린 죽음'을 넣는다(지적 #53) — 여태 태그 건물은
+             '그 뒤에 제 증거가 또 있나'만 봤다. 건물은 한 번 지어 놓고 다시 안 고르는
+             일이 흔해 증거가 거의 없고, 그래서 곁에 적 공격이 두어 번만 떨어져도 그 자리
+             에서 무너졌다. 실측(경기 1): 건물 704 중 체력 원장이 135를 0으로 보냈는데
+             그중 125가 분석이 말한 죽음보다 일렀고(중앙 81초), 38은 분석이 '끝까지
+             살았다'고 한 건물이었다.
+             물리 건물 경로(아래 built 순회)에는 이 보호막이 진작 있었다 — 태그 건물에만
+             없던 비대칭이다. 같은 잣대로 맞춘다: 분석이 죽음을 안 내렸으면(d === null)
+             안 죽고, 내렸어도 아직 한참 뒤면(+30초) 지금 죽지 않는다. */
           const tr2 = bldHpSimOf(
             mk2, life.owner, site2[1] + 1.5, site2[2] + 1.5,
             life.born, d ?? life.last, life.tag,
-            (sec3) => life.ev.some((v) => v[0] > sec3),
+            (sec3) => life.ev.some((v) => v[0] > sec3) || d === null || d > sec3 + BLD_DIE_SLACK_SEC,
           );
           if (tr2.length > 0) hpTrace = tr2;
         }
@@ -3133,6 +3172,21 @@ export function buildUnitTracks(
         if (bd2 !== null) { d = bd2; dk = "atk"; }
       }
       if (next && d !== null && d > next.born) d = next.born;
+      /* 붕괴 결합 — 물리 건물이 하던 것(아래 built 순회)을 태그 건물에도 준다. 원장만
+         두면 체력이 8%쯤 남은 채로 죽음 시각을 맞아 바가 뚝 끊긴다. 죽는 건물은 마지막
+         8초에 걸쳐 0으로 내려간다. 이 자리에서 하는 것은 d가 여기까지 와서야 확정되기
+         때문이다(바로 위 next 보정). */
+      if (life.bld && d !== null) {
+        /* 한 번도 안 맞은 채 무너지는 건물도 무너지는 8초를 갖는다 — 원장이 비었다고
+           건너뛰면 만피에서 곧장 사라져 뚝 끊긴다. */
+        const base9: [number, number][] = hpTrace && hpTrace.length > 0
+          ? hpTrace : [[Math.round(life.born), 100]];
+        const g9 = Math.max(life.born, d - 8);
+        const last9 = [...base9].reverse().find((q) => q[0] <= g9) ?? base9[0];
+        hpTrace = [...base9.filter((q) => q[0] < g9),
+          [Math.round(g9), last9[1]] as [number, number],
+          [Math.round(d), 0] as [number, number]];
+      }
       const race = raceOf.get(life.owner) ?? "";
       const icArr = icptOf.get(life.tag);
       ents.push({
@@ -3161,11 +3215,13 @@ export function buildUnitTracks(
     }
     let bHp = bldHpSimOf(
       b.kind, b.owner, b.x + 1.5, b.y + 1.5, b.born, b.gone ?? b.born + 3600, null,
-      (sec3) => b.ev.some((v) => v[0] > sec3) || b.gone === null || b.gone > sec3 + 30,
+      (sec3) => b.ev.some((v) => v[0] > sec3) || b.gone === null || b.gone > sec3 + BLD_DIE_SLACK_SEC,
     );
     /* 붕괴 결합(기획서 2-E) — 명령 원장만으로는 체력 80~100%가 남은 채 철거 시각에
        돌연 무너졌다. 붕괴가 확정된 건물은 8초 전부터 0으로 선형 수렴시킨다. */
-    if (b.gone !== null && bHp.length > 0) {
+    if (b.gone !== null) {
+      // 원장이 비어도 무너지는 8초는 준다(위 태그 건물과 같은 잣대).
+      if (bHp.length === 0) bHp = [[Math.round(b.born), 100]];
       const g8 = Math.max(b.born, b.gone - 8);
       const lastQ = [...bHp].reverse().find((q) => q[0] <= g8) ?? bHp[0];
       bHp = bHp.filter((q) => q[0] < g8);
