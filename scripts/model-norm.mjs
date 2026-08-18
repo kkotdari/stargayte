@@ -82,6 +82,23 @@ export const FOOT_Y = { top: 12, pitch: 12.6, base: 12.6 };
 const RES_MAIN = 320;  // 모델 1단위당 20px — 잉크 면적을 0.05단위로 읽는다.
 const RES_SWEEP = 128; // 클램프 훑기용(빠르게) — 0.125단위.
 const MARGIN = 2;      // 상자 밖으로 나간 잉크도 보이게 캔버스를 2배로.
+/** 가늘게 매달린 것을 크기에서 빼는 문턱 — 그 줄(행·열)의 잉크가 가장 굵은 줄의
+ *  이 비율에 못 미치면 크기로 안 센다. **0 = 끔(전체 bbox)이고, 지금은 꺼져 있다.**
+ *
+ *  왜 껐나(지적: "오버로드가 너무 작아졌는데 아마 다리까지 크기재는데 넣은게
+ *  아닐지.. 몸통만 크기로 봐야할듯") — 진단은 맞았지만 이 문턱으로는 안 풀린다.
+ *  두 가지를 실측으로 확인했다.
+ *   ① 질량 백분위(양끝 3%씩 버리기): 촉수뿐 아니라 **모든 모델의 실루엣 끝단**까지
+ *      깎여 전체가 30%씩 커졌다(마린 잉크상자 5.03 → 3.85).
+ *   ② 굵기 문턱(이 상수): 0.04·0.06·0.08을 훑었는데 오버로드는 6.55 → 6.13까지밖에
+ *      안 내려가고(다리가 여섯 쌍이라 그 행에도 잉크가 꽤 있다) 마린·저글링은
+ *      5.03 → 4.58, 4.93 → 4.48로 함께 줄었다. 고치려는 놈은 안 움직이고 멀쩡한
+ *      놈들만 움직인다.
+ *  진짜 원인은 '가늘다'가 아니라 **다리가 몸통보다 길다**는 것이다: 오버로드 몸통 구는
+ *  z 2.8~7.6(지름 4.8)인데 다리가 z −1.35까지 내려가 모델 전체가 8.95다. 이런 것은
+ *  자동 지표로 가릴 수 없고, 그래서 손잡이 표(UNIT_SIZE_TUNE)가 있는 것이다.
+ *  wFull·hFull 열은 진단용으로 남겨 둔다 — 다시 켜 보고 싶으면 이 값만 올리면 된다. */
+const TRIM_FLOOR = 0;
 
 /* ── 인자 ─────────────────────────────────────────────────────────────────── */
 const argv = process.argv.slice(2);
@@ -136,7 +153,7 @@ function bundle() {
 
 /* ── 페이지 안에서 도는 계측기 — 이 함수 몸은 브라우저에서 직렬화돼 돈다.
    바깥 스코프를 하나도 못 보므로 필요한 값은 전부 인자로 넘긴다. ─────────────── */
-function inBrowser({ KINDS, MODES, BUCKETS, VQ_PROBE, SCALES, FOOT_Y, NORM_ANCHOR,
+function inBrowser({ KINDS, MODES, BUCKETS, VQ_PROBE, SCALES, FOOT_Y, NORM_ANCHOR, TRIM_FLOOR,
   NO_ROT, GALLERY_ONLY, RES_MAIN, RES_SWEEP, MARGIN, LOD, CLAMP_DETAIL }) {
   /** unitSprite가 그리기 직전에 거는 음영 증폭(:7828 shadeBoost) — 잉크 문턱에 영향을 준다. */
   const shadeBoost = (o, fill) => (fill ? Math.min(0.85, o * 1.45) : o);
@@ -171,12 +188,16 @@ function inBrowser({ KINDS, MODES, BUCKETS, VQ_PROBE, SCALES, FOOT_Y, NORM_ANCHO
     }
     const buf = new Uint32Array(c.getImageData(0, 0, W, W).data.buffer);
     let x0 = W, x1 = -1, y0 = W, y1 = -1, ink = 0;
+    // 축마다 잉크 질량 분포 — 아래 백분위 폭이 이걸 읽는다.
+    const colInk = new Float64Array(W);
+    const rowInk = new Float64Array(W);
     for (let y = 0; y < W; y += 1) {
       const row = y * W;
       let any = false;
       for (let x = 0; x < W; x += 1) {
         if ((buf[row + x] >>> 24) > 8) {
           ink += 1; any = true;
+          colInk[x] += 1; rowInk[y] += 1;
           if (x < x0) x0 = x;
           if (x > x1) x1 = x;
         }
@@ -185,9 +206,32 @@ function inBrowser({ KINDS, MODES, BUCKETS, VQ_PROBE, SCALES, FOOT_Y, NORM_ANCHO
     }
     if (x1 < 0) return null;
     const u = (v) => (v - off) / k;          // 픽셀 → 모델 단위
+    /* 백분위 폭(요청: "오버로드가 너무 작아졌는데 아마 다리까지 크기재는데 넣은게
+       아닐지.. 몸통만 크기로 봐야할듯") ─────────────────────────────────────────
+       맨 바깥 테두리(전체 bbox)로 재면 **가늘게 매달린 것**이 크기를 지배한다.
+       실측: 오버로드는 잉크폭 5.05인데 잉크높이 8.48(1.68배) — 몸통은 5×5인데
+       늘어뜨린 촉수가 높이를 혼자 3.4 늘린다. 그 8.48을 목표 5.2에 맞추느라
+       몸통이 21% 줄어들었다. 울트라 뿔·히드라 가시·드랍십 날개도 같은 부류다.
+       그래서 축마다 **그 줄의 잉크 굵기**를 보고, 가장 굵은 줄의 TRIM_FLOOR에도
+       못 미치는 줄은 크기에서 뺀다. 촉수가 걸린 행은 가는 두 가닥뿐이라 빠지고,
+       몸통 행은 꽉 차 있어 남는다. 몸이 꽉 찬 모델(마린·뮤탈)은 거의 안 변한다.
+       상자 밖 넘침(overflow)은 여전히 **전체 bbox**로 잰다 — 그건 잘림 이야기라
+       진짜 끝점을 봐야 한다. */
+    const span = (hist, lo, hi) => {
+      let peak = 0;
+      for (let i = lo; i <= hi; i += 1) if (hist[i] > peak) peak = hist[i];
+      if (peak <= 0) return hi - lo + 1;
+      const th = peak * TRIM_FLOOR;
+      let a = lo; let b = hi;
+      while (a < hi && hist[a] < th) a += 1;
+      while (b > a && hist[b] < th) b -= 1;
+      return b - a + 1;
+    };
     return {
       x0: u(x0), x1: u(x1 + 1), y0: u(y0), y1: u(y1 + 1),
-      w: (x1 - x0 + 1) / k, h: (y1 - y0 + 1) / k,
+      w: span(colInk, x0, x1) / k, h: span(rowInk, y0, y1) / k,
+      // 전체 bbox 폭·높이 — 표에 함께 내 백분위가 얼마나 깎았는지 보이게.
+      wFull: (x1 - x0 + 1) / k, hFull: (y1 - y0 + 1) / k,
       area: ink / (k * k), faces: faces.length,
       soft: faces.filter((f) => f[1] < 1).length,
     };
@@ -247,10 +291,12 @@ function inBrowser({ KINDS, MODES, BUCKETS, VQ_PROBE, SCALES, FOOT_Y, NORM_ANCHO
       }
       const w = avg((m) => m.w);
       const h = avg((m) => m.h);
+      const wFull = avg((m) => m.wFull);
+      const hFull = avg((m) => m.hFull);
       rows.push({
         kind, mode, use: GALLERY_ONLY.includes(kind) ? "도록" : "지도",
         scale: s, faces: ms[0].faces, soft: ms[0].soft,
-        w, h, gm: Math.sqrt(w * h),
+        w, h, gm: Math.sqrt(w * h), wFull, hFull, gmFull: Math.sqrt(wFull * hFull),
         wMax: mx((m) => m.w), hMax: mx((m) => m.h),
         area: avg((m) => m.area),
         rad: Math.sqrt(avg((m) => m.area)),
@@ -283,7 +329,7 @@ const KINDS = flag("--kinds")
   : await page.evaluate("window.__unitKinds()");
 
 const rows = await page.evaluate(inBrowser, {
-  KINDS, MODES, BUCKETS, VQ_PROBE, SCALES, FOOT_Y, NORM_ANCHOR,
+  KINDS, MODES, BUCKETS, VQ_PROBE, SCALES, FOOT_Y, NORM_ANCHOR, TRIM_FLOOR,
   NO_ROT: [...NO_ROT], GALLERY_ONLY: [...GALLERY_ONLY],
   RES_MAIN, RES_SWEEP, MARGIN, LOD, CLAMP_DETAIL: has("--clamp"),
 });
