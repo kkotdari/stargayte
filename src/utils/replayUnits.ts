@@ -19,7 +19,7 @@ import {
   CAST_ORDER_TO_UNIT, USE_CMD_TO_UNIT, CAST_ORDER_TO_TECH, PLACE_MINE_ORDER,
   normalizeUpgradeName,
 } from "./replayTechNames";
-import { speedOfUnit } from "./bwUnits";
+import { speedOfUnit, upgradeMaxLevel } from "./bwUnits";
 /* 전투 값은 표(bwUnits)를 직접 읽지 않고 어댑터(bwCombat)를 거친다(과제 #54).
    ─ 왜 이렇게 됐는가: 이 파일의 체력 원장은 유닛마다 dps 스칼라 하나(UNIT_STATS.dps)만
      보고 공격 종류(normal/concussive/explosive)·표적 크기 배수·방어력 뺄셈·쿨다운·
@@ -101,6 +101,9 @@ export interface UnitTracksV2 {
   /** 연구 기록 [초, 이름, 플레이어] — 속업(이동 속도)·클로킹 판정의 재료. 이름은 v1과
    *  같은 자(normalizeUpgradeName)로 통일한다. */
   ups: [number, string, number][];
+  /** 연구가 실제로 **끝나는** 시각 [초, 이름, 플레이어] — ups는 누른 때다(과제 #71).
+   *  프로토스는 전력이 끊긴 만큼 더 밀린다(파일런이 깨지면 연구도 멈춘다). */
+  upsDone?: [number, string, number][];
   /** 좌표가 남는 마법 [초, x, y, 기술 이름, 플레이어] — 스톰·스웜·리콜·마인…. */
   casts: [number, number, number, string, number][];
   /** 미니맵 핑 [초, x, y, 플레이어](요청: 클릭도 기록 — 좌표가 온전히 남는다. 실측 4:4
@@ -129,6 +132,8 @@ export interface UnitTracksV2 {
     prodRazed?: number;
     /** 출생 자리를 못 정해 버려진 원장 수(과제 #71). */
     prodNoSite?: number;
+    /** 프로토스 전력 끊김으로 생산이 밀린 초의 합(지적). */
+    prodPowerDelay?: number;
   };
 }
 
@@ -495,7 +500,7 @@ export function buildUnitTracks(
   }[] = [];
   /** 건물 태그별 생산 꼬리 시각 — 같은 건물의 큐는 한 줄로 이어진다(라바는 병렬). */
   const prodTail = new Map<number, number>();
-  const prodStats = { total: 0, bound: 0, syn: 0, razed: 0, noSite: 0 };
+  const prodStats = { total: 0, bound: 0, syn: 0, razed: 0, noSite: 0, powerDelay: 0 };
   /** 선택 동반으로 이름을 받은 무명 생애 수 — 성적표(id-check)가 읽는다. */
   let coSelFilled = 0;
   /** 원장에 남은 몫이 없어 동반이 물러난 횟수 — 원장이 위라는 규칙이 실제로 무는 자리. */
@@ -575,7 +580,9 @@ export function buildUnitTracks(
   const pendingBuild = new Map<number, { sec: number; x: number; y: number; idx: number; arrive: number }>();
   /** 연구 기록 — 같은 사람이 같은 이름을 연타(취소 후 재시작 포함)하면 첫 번만 남긴다. */
   const ups: [number, string, number][] = [];
-  const upSeen = new Set<string>();
+  const upSeen = new Map<string, { lv: number; until: number }>();
+  /** 연구 기록 — 어느 건물이 돌렸는지(태그)와 레벨까지. 전력 끊김을 셈하는 재료다. */
+  const upResearch: { sec: number; name: string; pid: number; lv: number; tag: number | null }[] = [];
   const casts: [number, number, number, string, number][] = [];
   const pings: [number, number, number, number][] = [];
   let attributed = 0;
@@ -723,12 +730,23 @@ export function buildUnitTracks(
     const upgradeName = nameOf(c.Upgrade);
     const research = techName || (upgradeName ? normalizeUpgradeName(upgradeName) : "");
     if (research) {
+      /* ★ 여태 `${pid}:${research}`를 **영구히** 한 번만 받았다(과제 #71). 그래서 공·방업
+         2·3렙이 아예 기록되지 않았다 — 3업을 찍어도 시뮬과 화면은 영원히 1렙이었다.
+         같은 연구를 두 번 시작할 수 없는 것은 **앞 단계가 끝나기 전**까지다. 그래서
+         연타(같은 클릭 여러 번)만 걸러야 하고, 앞 단계가 끝난 뒤의 명령은 다음 레벨이다.
+         창을 그 레벨의 실제 연구 시간으로 잡으면 둘이 정확히 갈린다. */
       const seenKey = `${pid}:${research}`;
-      if (!upSeen.has(seenKey)) {
-        upSeen.add(seenKey);
-        ups.push([Math.round(sec), research, pid]);
-        // 오버로드 수송은 이 연구 뒤에만(요청 ③의 오인 방지) — 연구 시간 어림 100초.
-        if (research === "Ventral Sacs") ventralAt.set(pid, sec + 100);
+      const prev = upSeen.get(seenKey);
+      const lv = prev ? prev.lv : 0;
+      if (!prev || sec >= prev.until) {
+        const nextLv = lv + 1;
+        if (nextLv <= upgradeMaxLevel(research)) {
+          upSeen.set(seenKey, { lv: nextLv, until: sec + upgradeSeconds(research, nextLv) });
+          ups.push([Math.round(sec), research, pid]);
+          upResearch.push({ sec, name: research, pid, lv: nextLv, tag: tags.length > 0 ? tags[0] : null });
+          // 오버로드 수송은 이 연구 뒤에만(요청 ③의 오인 방지) — 연구 시간 어림 100초.
+          if (research === "Ventral Sacs") ventralAt.set(pid, sec + 100);
+        }
       }
     }
 
@@ -1787,6 +1805,68 @@ export function buildUnitTracks(
     }
   }
 
+  /* ── 프로토스 전력(지적: "프로 전력 끊김은 업그레이드도 중단시켜") ──────────────
+     파일런이 깨지면 그 전력 안의 건물은 **멈춘다**. 취소가 아니라 중단이다 — 파일런이
+     다시 서면 하던 것을 이어서 한다. 그래서 이 모형은 시각을 **미룰 뿐 아무것도
+     지우지 않는다.** 반경을 좀 틀려도 유닛이 사라지지 않는다는 뜻이라, 취소 모형이었다면
+     못 넣었을 것을 넣을 수 있다.
+     [추정] 원작의 파일런 전력 범위는 우리가 가진 표에 없다. 스프라이트가 가로로 넓은
+     둥근 네모라, 가로 ±4타일·세로 ±2.5타일로 잡는다. 넉넉히 잡는 쪽이 안전하다 —
+     넓으면 '전력 있음'으로 봐서 아무 일도 안 일어나고, 좁으면 없던 지연을 만든다. */
+  const PYLON_HALF_W = 4;
+  const PYLON_HALF_H = 2.5;
+  /** 파일런이 서는 데 걸리는 시간(초) — 300프레임. 다 서야 전력을 준다. */
+  const PYLON_BUILD_SEC = 300 * SECONDS_PER_FRAME;
+  /* 파일런이 무너진 시각 — built.gone은 아직 안 채워져 있으므로(공격 철거 판정이 뒤에
+     있다), 이 파일이 유닛·건물에 이미 쓰는 잣대를 그대로 쓴다: 발치에 적 공격 증거
+     (f=1)가 마지막이고 그 뒤로 소식이 없으면 그때 무너진 것이다. */
+  const pylonOff = (b: { ev: UnitEv[]; gone: number | null }): number => {
+    if (b.gone !== null) return b.gone;
+    let lastAtk = -1;
+    let lastAny = -1;
+    for (const v of b.ev) {
+      if (v[0] > lastAny) lastAny = v[0];
+      if (v[3] === 1 && v[0] > lastAtk) lastAtk = v[0];
+    }
+    return lastAtk >= 0 && lastAny <= lastAtk ? lastAtk + 8 : Infinity;
+  };
+  const pylons = built
+    .filter((b) => b.kind === "Pylon" && !b.never)
+    .map((b) => ({ owner: b.owner, x: b.x + 1, y: b.y + 1, on: b.born + PYLON_BUILD_SEC, off: pylonOff(b) }));
+  const poweredAt = (owner: number, x: number, y: number, sec: number): boolean => {
+    for (const p of pylons) {
+      if (p.owner !== owner || sec < p.on || sec >= p.off) continue;
+      if (Math.abs(p.x - x) <= PYLON_HALF_W && Math.abs(p.y - y) <= PYLON_HALF_H) return true;
+    }
+    return false;
+  };
+  /** 파일런이 하나도 없던 때는 전력을 안 따진다 — 첫 파일런 전에는 게이트도 없다.
+   *  (그 시절에 무엇이 돌고 있었다면 그건 우리 자료의 결함이지 정전이 아니다.) */
+  const anyPylonEver = (owner: number): boolean => pylons.some((p) => p.owner === owner);
+  /** 그 태그의 건물이 서 있는 자리 — 연구를 돌린 건물을 찾는 데 쓴다. */
+  const bldSiteOf = (tag: number | null): [number, number] | null => {
+    if (tag === null) return null;
+    for (const l of done) {
+      if (!l.bld || l.tag !== tag) continue;
+      const v = l.ev.find((q) => q[3] === 2 || q[3] === 5 || q[3] === 17);
+      if (v && v[1] >= 0) return [v[1] + 1.5, v[2] + 1];
+    }
+    return null;
+  };
+  /** sec0에 시작해 need초가 걸리는 일이, 전력이 끊긴 만큼 밀려 실제로 끝나는 시각. */
+  const finishWithPower = (owner: number, x: number, y: number, sec0: number, need: number): number => {
+    if (!anyPylonEver(owner)) return sec0 + need;
+    const STEP = 2;
+    let t = sec0;
+    let left = need;
+    let guard = 0;
+    while (left > 0 && guard < 3000) {
+      guard += 1;
+      if (poweredAt(owner, x, y, t)) left -= STEP;
+      t += STEP;
+    }
+    return t;
+  };
   /* ── 생산 원장 해소(요청: 큰 그림 먼저 — 생산·이동·전투·죽음까지 모든 큐된 유닛의
         전 생애) — 원장의 각 항목에 출생지(만든 건물 발치)와 첫 행선지(랠리)를 정하고,
         실제 태그 증거와 결합한다: 결합되면 그 생애의 출생 이야기가 되고(무명이면
@@ -1850,6 +1930,19 @@ export function buildUnitTracks(
         if (bl.lastAtk + 8 < it.done) { it.cancelled = true; razed += 1; }
       }
       prodStats.razed = razed;
+    }
+    /* 전력이 끊긴 동안은 생산도 멈춘다(지적) — 연구와 같은 잣대다. 취소가 아니라
+       중단이라 완성 시각만 밀린다. 프로토스만, 그리고 그 건물의 자리를 알 때만.
+       라바 변태(bldTag 없음)와 다른 종족은 그대로다. */
+    for (const it of ledger) {
+      if (it.cancelled || it.bldTag === null) continue;
+      if (raceOf.get(it.pid) !== "프로토스") continue;
+      const site = bldSiteOf(it.bldTag);
+      if (!site) continue;
+      const need = it.done - it.sec;
+      if (need <= 0) continue;
+      const withPower = finishWithPower(it.pid, site[0], site[1], it.sec, need);
+      if (withPower > it.done) { prodStats.powerDelay += Math.round(withPower - it.done); it.done = withPower; }
     }
     // ① 출생지·랠리 결정.
     const items = ledger.filter((it) => !it.cancelled).map((it, idx) => {
@@ -2462,21 +2555,30 @@ export function buildUnitTracks(
        적혀 있었는데, 부르는 곳이 없었다. 공·방업 1렙은 4000프레임(168초)이고 2·3렙은
        480프레임씩 더 걸린다 — 즉 화면과 시뮬은 업그레이드를 1분 40초 넘게 일찍 주고
        있었다. 같은 이름이 두 번째로 나오면 그것이 2레벨이라 시간도 그만큼 는다. */
+  /** 연구가 실제로 끝나는 시각 — 전력이 끊긴 만큼 밀린다. */
+  const upDoneAt = new Map<number, number>();   // upResearch 첨자 → 끝나는 초
+  for (let ui = 0; ui < upResearch.length; ui += 1) {
+    const r = upResearch[ui];
+    const need = upgradeSeconds(r.name, r.lv);
+    const site = raceOf.get(r.pid) === "프로토스" ? bldSiteOf(r.tag) : null;
+    upDoneAt.set(ui, site ? finishWithPower(r.pid, site[0], site[1], r.sec, need) : r.sec + need);
+  }
+  /** 연구 완성 시각 — 시뮬(simCore)이 이걸 있으면 쓴다. */
+  const upsDone: [number, string, number][] = upResearch.map((r, ui) =>
+    [Math.round(upDoneAt.get(ui) ?? (r.sec + upgradeSeconds(r.name, r.lv))), r.name, r.pid]);
+
   const wUpsBy = new Map<number, number[]>();
   const aUpsBy = new Map<number, number[]>();
-  const upLvSeen = new Map<string, number>();
-  for (const [usec, uname, upid] of ups) {
+  for (const [udone, uname, upid] of upsDone) {
     const isW = /Weapons|Attacks/.test(uname);
     const isA = /Armor|Plating|Carapace|Plasma Shields/.test(uname);
     if (!isW && !isA) continue;
-    const lvKey = `${upid}|${uname}`;
-    const lv = (upLvSeen.get(lvKey) ?? 0) + 1;
-    upLvSeen.set(lvKey, lv);
     const m = isW ? wUpsBy : aUpsBy;
     const arr = m.get(upid) ?? [];
-    arr.push(usec + upgradeSeconds(uname, lv));
+    arr.push(udone);
     m.set(upid, arr);
   }
+  for (const arr of [...wUpsBy.values(), ...aUpsBy.values()]) arr.sort((a, b) => a - b);
   const lvOf = (m: Map<number, number[]>, pid2: number, sec2: number): number =>
     Math.min(3, (m.get(pid2) ?? []).filter((u2) => u2 <= sec2).length);
   /* ── 체력 원장(요청: 체력·공격력을 지니고 이벤트를 겪는 생애주기) — 유닛이 제
@@ -3580,6 +3682,7 @@ const BLD_DIE_SLACK_SEC = 8;
     players: players.map((p) => ({ id: p.id, name: p.name, race: p.race, color: p.color ?? null })),
     ents,
     ups,
+    upsDone,
     casts,
     pings,
     stats: {
@@ -3593,6 +3696,7 @@ const BLD_DIE_SLACK_SEC = 8;
       coSelOverFilled,
       prodRazed: prodStats.razed,
       prodNoSite: prodStats.noSite,
+      prodPowerDelay: prodStats.powerDelay,
     },
   };
 }

@@ -67,6 +67,9 @@ export type SimInput = {
    *    무뎠으며, 디펜시브 매트릭스는 한 번도 흡수한 적이 없다. 렌더러는 UnitTracksV2를
    *    `as unknown as SimInput`으로 넘기므로 여기서 선언하기만 하면 그대로 읽힌다. */
   casts?: [number, number, number, string, number][];
+  /** 연구가 **끝나는** 시각 — 분석(replayUnits)이 전력 끊김까지 셈해 실어 준다.
+   *  없으면 ups(누른 때)에 연구 시간을 더해 쓴다(옛 트랙 호환). */
+  upsDone?: [number, string, number][];
 };
 
 /* ── 출력 ─────────────────────────────────────────────────────────────────────── */
@@ -352,7 +355,11 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
      연구가 끝나기 한참 전부터 주고 있었다 — 공·방업 1렙이 4000프레임(168초)이니 거의
      3분 이르다. 끝나는 시각으로 옮긴다. 같은 이름이 두 번째로 나오면 그것이 2레벨이라
      시간도 그만큼 는다(표의 레벨당 480프레임). */
-  const upsLog = (data.ups ?? []).slice().sort((a, b) => a[0] - b[0]);
+  /* 분석이 완성 시각을 함께 실어 오면 그것이 진실이다(upsDone) — 거기에는 프로토스
+     전력 끊김으로 밀린 몫까지 들어 있다. 옛 트랙에는 그 칸이 없으므로, 없으면 여기서
+     연구 시간만큼 밀어 쓴다. */
+  const upsLog = (data.upsDone ?? data.ups ?? []).slice().sort((a, b) => a[0] - b[0]);
+  const hasDone = !!data.upsDone;
   const upsByOwner = new Map<number, [number, string][]>();
   const upLv = new Map<string, number>();
   for (const [sec, name, pid] of upsLog) {
@@ -360,7 +367,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
     const lv = (upLv.get(key) ?? 0) + 1;
     upLv.set(key, lv);
     const arr = upsByOwner.get(pid);
-    const doneSec = sec + upgradeSeconds(name, lv);
+    const doneSec = hasDone ? sec : sec + upgradeSeconds(name, lv);
     if (arr) arr.push([doneSec, name]);
     else upsByOwner.set(pid, [[doneSec, name]]);
   }

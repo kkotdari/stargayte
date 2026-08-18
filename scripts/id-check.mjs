@@ -188,6 +188,7 @@ for (const path of files) {
     + `  · 잔여 원장이 채움 ${String(st.quotaAssigned ?? 0).padStart(4)} 기`
     + `  · 합성 개체 ${String(st.prodSyn ?? 0).padStart(4)} 기`
     + `  · 몫 넘겨 준 이름 ${String(st.coSelOverFilled ?? 0).padStart(4)} 기`
-    + `  · 자리 못 정해 버린 원장 ${String(st.prodNoSite ?? 0).padStart(4)} 건`);
+    + `  · 자리 못 정해 버린 원장 ${String(st.prodNoSite ?? 0).padStart(4)} 건`
+    + `  · 전력 끊김으로 밀린 생산 ${String(st.prodPowerDelay ?? 0).padStart(4)} 초`);
 }
 console.log("");
