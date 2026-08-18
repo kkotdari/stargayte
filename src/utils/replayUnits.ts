@@ -485,6 +485,13 @@ export function buildUnitTracks(
   const ledger: {
     unit: string; pid: number; sec: number; done: number;
     bldTag: number | null; cancelled: boolean; bound: boolean;
+    /** 이 유닛이 될 태그 — **라바 변태만 알 수 있다**(과제 #71).
+     *  건물이 뽑는 유닛은 그때 골라진 것이 건물이라 태그를 모르지만, 라바는 유닛이라
+     *  고른 그 태그가 그대로 유닛이 된다. 여태 이 사실을 안 적어 두고 결합 때 시간·자리로
+     *  다시 찾고 있었고, 못 찾으면 합성 개체를 하나 더 세웠다 — 같은 유닛이 둘이 된다.
+     *  실측(경기1): 저그 오버로드 합성 17기(뽑은 20기 대비 개체 32기), 경기3 저글링
+     *  합성 105기. 아는 것을 안 쓰고 있었다. */
+    unitTag: number | null;
   }[] = [];
   /** 건물 태그별 생산 꼬리 시각 — 같은 건물의 큐는 한 줄로 이어진다(라바는 병렬). */
   const prodTail = new Map<number, number>();
@@ -916,7 +923,7 @@ export function buildUnitTracks(
         const start = Math.max(sec, tail);
         const doneAt = start + dur;
         if (bldTag !== null) prodTail.set(bldTag, doneAt);
-        ledger.push({ unit: unitName, pid, sec, done: doneAt, bldTag, cancelled: false, bound: false });
+        ledger.push({ unit: unitName, pid, sec, done: doneAt, bldTag, cancelled: false, bound: false, unitTag: null });
       }
       continue;
     }
@@ -953,10 +960,22 @@ export function buildUnitTracks(
            바로 그 때문에 저그만 '뽑은 수보다 개체가 훨씬 많은' 판이 났다.
            위 for 루프가 이미 고른 태그 전부에 정체를 찍고 있으니, 원장도 같은 수를
            적어야 앞뒤가 맞는다. */
-        const larvae = Math.max(1, tags.length);
-        const n = larvae * (unitName === "Zergling" || unitName === "Scourge" ? 2 : 1);
-        for (let zi = 0; zi < n; zi += 1) {
-          ledger.push({ unit: unitName, pid, sec, done: sec + dur, bldTag: null, cancelled: false, bound: false });
+        /* 고른 라바마다 한 마리 — 그 태그를 원장에 함께 적는다(위 unitTag 주석).
+           저글링·스커지는 알 하나에 둘인데, 태그를 물려받는 것은 하나뿐이라
+           나머지 한 마리는 태그 없이 적는다(그건 종전대로 시간·자리로 찾는다). */
+        const larvae = tags.length > 0 ? tags : [null];
+        const twin = unitName === "Zergling" || unitName === "Scourge";
+        for (const lt of larvae) {
+          ledger.push({
+            unit: unitName, pid, sec, done: sec + dur, bldTag: null,
+            cancelled: false, bound: false, unitTag: lt,
+          });
+          if (twin) {
+            ledger.push({
+              unit: unitName, pid, sec, done: sec + dur, bldTag: null,
+              cancelled: false, bound: false, unitTag: null,
+            });
+          }
         }
       }
       continue;
@@ -1904,6 +1923,29 @@ export function buildUnitTracks(
       life.spawned = true;
       r.it.bound = true;
     };
+    /* ⓪ 태그를 아는 것부터 — 라바 변태는 고른 태그가 그대로 그 유닛이다(위 unitTag).
+       시간·자리로 더듬을 것 없이 그 생애에 곧장 붙인다. 이 한 걸음이 없으면 결합에
+       실패한 만큼 합성 개체가 생겨 같은 유닛이 화면에 둘이 된다. */
+    {
+      const byTagLives = new Map<number, Life[]>();
+      for (const l of candLives) {
+        const arr = byTagLives.get(l.tag) ?? [];
+        arr.push(l);
+        byTagLives.set(l.tag, arr);
+      }
+      for (const r of items) {
+        if (r.it.bound || r.it.unitTag === null) continue;
+        const arr = byTagLives.get(r.it.unitTag);
+        if (!arr) continue;
+        /* 그 태그의 여러 생애 중 변태를 누른 시각을 품은 것 — 태그는 재사용되므로
+           아무거나 붙이면 딴 유닛의 생애를 덮어쓴다. */
+        const life = arr.find((l) => !l.spawned
+          && l.born <= r.it.sec + 2 && r.it.sec <= l.last + 2);
+        if (!life) continue;
+        life.kinds.set(r.it.unit, (life.kinds.get(r.it.unit) ?? 0) + 1);
+        attach(life, r);
+      }
+    }
     for (const pass of [0, 1] as const) {
       for (const r of items) {
         if (r.it.bound) continue;
