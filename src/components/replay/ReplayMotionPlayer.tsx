@@ -1845,19 +1845,26 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        개인색은 보급 상자 줄과 드럼통 뚜껑 데칼이다. */
     const STEEL = "#5c636d";
     const DARK = "#3a3f46";
-    const HOLE = "#15181c";
+    /** 몸통 — 테란 기본색(요청: "서플라이 본체 색 테란 기본색"). 여태 DARK(#3a3f46)라
+     *  커맨드·배럭 옆에 서면 혼자 새까맸다. 어두운 색은 드럼 뚜껑에만 남긴다. */
+    const BODY = "#868d94";
+    /** 환풍팬 뒤판 — 검정이 아니라 짙은 회색이다(요청). #15181c는 구멍이 뚫린 것처럼
+     *  보여, 날개 셋이 허공에 떠 있는 꼴이었다. 뒤에 판이 있어야 팬으로 읽힌다. */
+    const HOLE = "#3c424a";
     const BLADE = "#98a1ab";
     const FRAME = "#6b727c";
     const out: ShapeFace[] = [];
     // 몸통 — 위로 살짝 좁아지는 장갑 덩치.
-    out.push(...tagKey(paintBase(frustumFaces3(0, 0, 7.2, 5.6, 6.4, 4.8, 2.2, 0), DARK), 0));
+    /* 높이를 살짝 올렸다(요청) — 2.2 → 2.6. 지붕 위에 앉는 것들(환풍구·드럼·상자
+       줄)과 사면을 재는 wallX·wallY도 같은 값으로 함께 옮긴다. */
+    out.push(...tagKey(paintBase(frustumFaces3(0, 0, 7.2, 5.6, 6.4, 4.8, 2.6, 0), BODY), 0));
     // 몸통 옆구리 골 — 앞이 보일 때만.
     if (facingRatio(0, 1) > 0.12) {
       const rib: ShapeFace[] = [];
       for (let k = 0; k < 6; k += 1) {
         rib.push(sideFace(polyPath3([
           [-3 + k * 1.05, 2.75, 0.3], [-2.5 + k * 1.05, 2.75, 0.3],
-          [-2.5 + k * 1.05, 2.75, 2], [-3 + k * 1.05, 2.75, 2],
+          [-2.5 + k * 1.05, 2.75, 2.4], [-3 + k * 1.05, 2.75, 2.4],
         ]), 0.32));
       }
       out.push(...tagKey(rib, 1 + depthNow(0, 2.7) * 1.6));
@@ -1906,11 +1913,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...tagKey(parts, key));
     };
     // 지붕 환풍구 — 바닥면(위를 보는 면)에 눕는다.
-    fanVent([0.3, -0.5, 2.24], [1, 0, 0], [0, 1, 0], 1.75, 20 + depthNow(0.3, -0.5));
+    fanVent([0.9, 0.4, 2.64], [1, 0, 0], [0, 1, 0], 1.75, 20 + depthNow(0.9, 0.4));
     /* 앞면 환풍구 둘 — 앞벽은 위로 좁아지는 사면이라 높이마다 벽의 y가 다르다.
        벽을 따라 올라가는 방향(0, dy/dz, 1)을 단위로 만들어 v로 주면 원이 사면에 눕는다.
        벽에서 살짝(0.06) 앞으로 띄워 몸통 면과 겹쳐 깜빡이지 않게 했다. */
-    const wallY = (z9: number): number => 2.8 - (0.4 / 2.2) * z9;
+    const wallY = (z9: number): number => 2.8 - (0.4 / 2.6) * z9;
     if (facingRatio(0, 1) > 0.12) {
       const sl = -0.4 / 2.2;
       const vn = Math.hypot(sl, 1);
@@ -1926,7 +1933,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        (반지름 1.6 → 0.92). 뚜껑 안쪽 원이 개인색 데칼이다(요청). */
     {
       // 키는 낮추고(재지적: "드럼통 높이 낮추기") 배는 그대로 — 1.5 → 0.85.
-      const dx = -1.95; const dy = -1.5; const dr = 0.92; const dz = 2.2; const dh = 0.85;
+      /* 드럼은 윗면의 **뒤쪽 왼쪽 귀**다(요청) — (−1.95, −1.5)는 지붕 한가운데에
+         가까워 지붕 환풍구와 자리를 다퉜다. 윗면은 6.4×4.8(x ±3.2 · y ±2.4)이라
+         (−2.5, −1.85)면 귀에 붙되 테두리 밖으로 안 나간다. */
+      const dx = -2.5; const dy = -1.85; const dr = 0.92; const dz = 2.6; const dh = 0.85;
       out.push(...tagKey([
         ...paintBase(cylinderFaces3(dx, dy, dr, dh, dz), STEEL),
         // 허리 테 둘 — 드럼통으로 읽히게 하는 표식.
@@ -1948,26 +1958,26 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         // 밑동 바닥판.
         ...paintBase(cylinderFaces3(0, py, 0.62, 0.16, 0), FRAME),
         // 세운 관.
-        ...paintBase(cylinderFaces3(0, py, 0.36, 2.05, 0.1), STEEL),
+        ...paintBase(cylinderFaces3(0, py, 0.36, 2.45, 0.1), STEEL),
         // 이음매 테 둘.
         ...paintBase(cylinderFaces3(0, py, 0.44, 0.14, 0.66), FRAME),
         ...paintBase(cylinderFaces3(0, py, 0.44, 0.14, 1.46), FRAME),
         // 벽으로 꺾여 들어가는 팔꿈치.
-        ...paintBase(tubeFaces(0, py, 0, wallY(2.05) - 0.1, 0.33, 2.05), STEEL),
+        ...paintBase(tubeFaces(0, py, 0, wallY(2.45) - 0.1, 0.33, 2.45), STEEL),
       ];
       out.push(...tagKey(pipe, depthNow(0, py) * 1.6 + 6));
     }
     /* 왼쪽 지붕 보급 상자 줄 — 개인색(요청: 건물마다 개인색 포인트). 드럼통이 뒤
        귀퉁이를 차지해 세 칸으로 줄이고 앞으로 물렸다. */
     for (let k = 0; k < 3; k += 1) {
-      out.push(...tagKey(boxFaces3(-2.4, 1.7 - k * 1.15, 1.5, 1, 0.9, 2.2),
+      out.push(...tagKey(boxFaces3(-2.4, 1.7 - k * 1.15, 1.5, 1, 0.9, 2.6),
         20 + depthNow(-2.4, 1.7 - k * 1.15)));
     }
     /* 왼쪽 옆면 초록 창과 해저드 띠 — 그 면은 아래가 넓고 위가 좁은 사면이라
        (3.6→3.2) 높이마다 벽의 x가 다르다. wallX가 그 기울기를 재 주므로 데칼 네 귀가
        벽 평면에 정확히 눕는다. 켜는 조건은 몸통 옆벽과 똑같이 faceLight로 잡았다 —
        벽이 사라진 각도에 데칼만 남아 허공에 뜨지 않게. */
-    const wallX = (z9: number): number => -(3.6 - (0.4 / 2.2) * z9) - 0.06;
+    const wallX = (z9: number): number => -(3.6 - (0.4 / 2.6) * z9) - 0.06;
     if (faceLight(-1, 0, 0.18).visible) {
       /* 초록 창(재지적: "앞쪽 초록창은 반투명 처리하고 더 크게 확대") — 꽉 찬 초록
          네모가 아니라 안쪽이 비쳐 보이는 유리다. 벽 자리에 어두운 창틀을 먼저 깔고
@@ -3313,6 +3323,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        쓴 탱크 둘, 발치와 드럼에는 노랑·검정 빗금, 왼앞에는 층진 경사로. 탱크 갓
        하나가 개인색이다. */
     const DARK = "#3a3f46";
+    /** 주 덩이 — 테란 기본색(요청). 받침만 DARK로 남긴다. */
+    const BODY = "#868d94";
     const STEEL = "#8b8f96";
     const SILVER = "#c2c7cf";
     const out: ShapeFace[] = [];
@@ -3323,7 +3335,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       [-2.4, -1.6, 2.6, 2.2, 3.4], [1.4, -2, 2.4, 2, 4.2],
       [3.2, 0.6, 2.2, 2.6, 3], [-3, 1.8, 2.2, 2, 2.4],
     ] as [number, number, number, number, number][]) {
-      out.push(...tagKey(paintBase(boxFaces3(bx, by, bw, bh, bz, 0.8), DARK),
+      out.push(...tagKey(paintBase(boxFaces3(bx, by, bw, bh, bz, 0.8), BODY),
         10 + depthNow(bx, by) * 1.6));
     }
     /* 뒤 검은 나팔 흡입구 — 위로 벌어지는 통. */
@@ -3563,7 +3575,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      드럼 돔, 뒤에 붉은 갓을 쓴 굴뚝 탑 둘과 잿빛 원통 하나, 오른쪽에 속이 붉은 큰
      고리 대야, 그 앞에 기운 작업 단, 발치를 두르는 돌빛 슬래브들. */
   academy: () => {
-    const STEEL = "#6b7078";
+    const STEEL = "#868d94";   // 테란 기본색(요청)
     const DARK = "#3f444b";
     // 붉던 세 자리(드럼 띠·굴뚝 갓·대야 속)는 개인색이 됐다(요청) — 붉은색 상수는 뺀다.
     const out: ShapeFace[] = [];
@@ -6125,7 +6137,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     }
     /* 각진 선체 — 위로 갈수록 좁아지는 사다리꼴 통. 옆구리에 초록 발광 띠. */
     out.push(...tagKey(paintBase(
-      frustumFaces3(-0.4, -0.5, 3.6, 2.8, 2.6, 1.9, 1.5, 1.45), "#7b8088",
+      frustumFaces3(-0.4, -0.5, 3.6, 2.8, 2.6, 1.9, 1.5, 1.45), "#868d94",
     ), 24 + depthNow(-0.4, -0.5)));
     if (facingRatio(0, 1) > 0.12) {
       const led: ShapeFace[] = [];
@@ -6177,14 +6189,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...tagKey(dish, 28 + depthNow(0.2, -0.6)));
     /* 오른뒤 마디진 작은 탑(사진) — 테가 층층이 끼워진 가는 기둥. */
     {
-      const tw: ShapeFace[] = [...paintBase(cylinderFaces3(2.3, -1.6, 0.3, 3.2, 0.9), "#7b8088")];
+      const tw: ShapeFace[] = [...paintBase(cylinderFaces3(2.3, -1.6, 0.3, 3.2, 0.9), "#868d94")];
       for (let k = 0; k < 3; k += 1) {
         tw.push(...paintBase(cylinderFaces3(2.3, -1.6, 0.52, 0.26, 1.6 + k * 0.9), "#5c636d"));
       }
       tw.push(capFace(discPath3(2.3, -1.6, 4.1, 0.26), 0.35));
       out.push(...tagKey(tw, 24 + depthNow(2.3, -1.6)));
     }
-    return out;
+    /* 본체 색은 테란 기본색이다(요청: "서플라이 본체 색 테란 기본색", "리파이너리
+       아카데미도", "애드온들도") — 이 건물들만 제 회색을 손으로 박아 두고 있어서,
+       커맨드·배럭·팩토리 옆에 서면 혼자 어둡고 칙칙했다. 주 덩이를 raceBase가 칠하는
+       톤(#868d94)으로 맞추고, 어두운 받침·구멍·밝은 은빛 디테일은 그대로 둔다.
+       raceBase로 감싸는 것은 색뿐 아니라 종족별 광택(테란 1.32/1.1)까지 받기 위해서다. */
+    return raceBase(out, "terran");
   },
   /* 핵 사일로(재모델링·사진) — 리벳 박힌 강철 드럼 무리다: 오른뒤에 주황 창 띠를
      두른 큰 돔통, 가운데 앞에 띠 감긴 중간 돔통, 왼쪽에 작은 돔통, 왼뒤에 마디진
@@ -6200,7 +6217,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       dx: number, dy: number, r: number, hBody: number, hDome: number, key: number,
     ): void => {
       const parts: ShapeFace[] = [
-        ...paintBase(cylinderFaces3(dx, dy, r, hBody, 1), "#8b8f96"),
+        ...paintBase(cylinderFaces3(dx, dy, r, hBody, 1), "#868d94"),
         // 리벳 띠 둘 — 통 몸에 두른 얇은 테.
         ...paintBase(cylinderFaces3(dx, dy, r * 1.06, 0.22, 1 + hBody * 0.3), "#5c636d"),
         ...paintBase(cylinderFaces3(dx, dy, r * 1.06, 0.22, 1 + hBody * 0.72), "#5c636d"),
@@ -6235,7 +6252,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     for (const [tx, ty, th, tr] of [
       [-2.4, -2, 5.4, 0.42], [-3.4, -1, 3.6, 0.34],
     ] as [number, number, number, number][]) {
-      const tower: ShapeFace[] = [...paintBase(cylinderFaces3(tx, ty, tr, th, 1), "#7b8088")];
+      const tower: ShapeFace[] = [...paintBase(cylinderFaces3(tx, ty, tr, th, 1), "#868d94")];
       for (let k = 0; k < 4; k += 1) {
         tower.push(...paintBase(
           cylinderFaces3(tx, ty, tr * 1.55, 0.3, 1.4 + (th - 0.9) * (k / 3.4)), "#5c636d",
@@ -6255,7 +6272,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       }
       out.push(...tagKey(warn, 24 + depthNow(-1.3, 2.3)));
     }
-    return out;
+    /* 본체 색은 테란 기본색이다(요청: "서플라이 본체 색 테란 기본색", "리파이너리
+       아카데미도", "애드온들도") — 이 건물들만 제 회색을 손으로 박아 두고 있어서,
+       커맨드·배럭·팩토리 옆에 서면 혼자 어둡고 칙칙했다. 주 덩이를 raceBase가 칠하는
+       톤(#868d94)으로 맞추고, 어두운 받침·구멍·밝은 은빛 디테일은 그대로 둔다.
+       raceBase로 감싸는 것은 색뿐 아니라 종족별 광택(테란 1.32/1.1)까지 받기 위해서다. */
+    return raceBase(out, "terran");
   },
   /* 머신 샵(재모델링·사진) — 톱니처럼 각진 강철 덩치다: 앞면에 주황 테를 두른
      세로살 방열 격자, 왼쪽에 초록 발광 띠와 노랑·검정 빗금 블록, 지붕 왼쪽에 배기관
@@ -6265,7 +6287,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 받침 슬래브는 중심 깊이만(지적: 애드온 바닥이 위 부품을 덮음).
       ...tagKey(paintBase(boxFaces3(0, 0.2, 5.6, 4.4, 1), "#3a3f46"), depthNow(0, 0.2)),
       // 본체 — 위로 살짝 좁아지는 각진 덩치.
-      ...tagKey(paintBase(frustumFaces3(0, 0.2, 5.4, 4.2, 4.8, 3.6, 2.4, 1), "#4b5058"),
+      ...tagKey(paintBase(frustumFaces3(0, 0.2, 5.4, 4.2, 4.8, 3.6, 2.4, 1), "#868d94"),
         22 + depthNow(0, 0.2)),
     ];
     /* 앞면 방열 격자(사진) — 주황 테 안에 세로살이 촘촘하다. 앞이 보일 때만. */
@@ -6308,7 +6330,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...paintBase(tubeFaces(1.6, -1, 1.8, -1, 1.22, 3.2), "#5c636d"),
       ...paintBase(tubeFaces(2.7, -1, 2.9, -1, 1.22, 3.2), "#5c636d"),
     ], 26 + depthNow(2.2, -1)));
-    return out;
+    /* 본체 색은 테란 기본색이다(요청: "서플라이 본체 색 테란 기본색", "리파이너리
+       아카데미도", "애드온들도") — 이 건물들만 제 회색을 손으로 박아 두고 있어서,
+       커맨드·배럭·팩토리 옆에 서면 혼자 어둡고 칙칙했다. 주 덩이를 raceBase가 칠하는
+       톤(#868d94)으로 맞추고, 어두운 받침·구멍·밝은 은빛 디테일은 그대로 둔다.
+       raceBase로 감싸는 것은 색뿐 아니라 종족별 광택(테란 1.32/1.1)까지 받기 위해서다. */
+    return raceBase(out, "terran");
   },
   /* 컨트롤 타워(재모델링·사진) — 붉은 치마를 두른 원뿔 관제탑에 노랑·검정 빗금 띠가
      감기고, 꼭대기 드럼 위에 접시 안테나가 앉는다. 오른쪽에는 초록 등을 인 격자
@@ -6321,7 +6348,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...tagKey(paintBase(frustumFaces3(-0.6, 0.2, 3.6, 3.6, 2.9, 2.9, 1.5, 0.7), "#a8322a"),
         22 + depthNow(-0.6, 0.2)),
       // 잿빛 몸통 — 창이 줄지어 난 드럼.
-      ...tagKey(paintBase(cylinderFaces3(-0.6, 0.2, 1.45, 1.9, 2.2), "#6b7078"),
+      ...tagKey(paintBase(cylinderFaces3(-0.6, 0.2, 1.45, 1.9, 2.2), "#868d94"),
         24 + depthNow(-0.6, 0.2)),
     ];
     // 몸통 창 띠 — 앞이 보일 때만.
@@ -6382,7 +6409,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...paintBase(cylinderFaces3(1.9, 1.8, 0.62, 0.9, 0.7), "#a8322a"),
       ...paintBase(domeFaces3(1.9, 1.8, 0.62, 0.4, 1.6), "#8b8f96"),
     ], 24 + depthNow(1.9, 1.8)));
-    return out;
+    /* 본체 색은 테란 기본색이다(요청: "서플라이 본체 색 테란 기본색", "리파이너리
+       아카데미도", "애드온들도") — 이 건물들만 제 회색을 손으로 박아 두고 있어서,
+       커맨드·배럭·팩토리 옆에 서면 혼자 어둡고 칙칙했다. 주 덩이를 raceBase가 칠하는
+       톤(#868d94)으로 맞추고, 어두운 받침·구멍·밝은 은빛 디테일은 그대로 둔다.
+       raceBase로 감싸는 것은 색뿐 아니라 종족별 광택(테란 1.32/1.1)까지 받기 위해서다. */
+    return raceBase(out, "terran");
   },
   /* 코버트 옵스(재모델링·사진) — 어두운 각진 선체 위에 길쭉한 장갑 슬래브 셋이
      비스듬히 얹히고(모서리에 밝은 띠), 뒤 왼쪽에 노랑·검정 빗금 쐐기, 오른쪽 앞에
@@ -6421,7 +6453,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         [sx - 0.5, sy - 1.7, 3.14], [sx + 0.5, sy - 1.7, 3.14],
         [sx + 0.5, sy + 1.6, 2.15], [sx - 0.5, sy + 1.6, 2.15],
       ]), 0.8, "#cfe0cf"] as ShapeFace);
-      out.push(...tagKey(paintBase(f, "#4b5058"), 24 + depthNow(sx, sy)));
+      out.push(...tagKey(paintBase(f, "#868d94"), 24 + depthNow(sx, sy)));
     }
     /* 뒤 왼쪽 노랑·검정 빗금 쐐기(사진) — 선체 뒤 위로 솟은 경사 블록. */
     out.push(...tagKey(paintBase(
@@ -6442,7 +6474,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...tagKey(paintBase(
       tubeFaces(2.1, -0.4, 3.5, -0.4, 0.62, 2.1, true), "#22262b",
     ), 26 + depthNow(3, -0.4)));
-    return out;
+    /* 본체 색은 테란 기본색이다(요청: "서플라이 본체 색 테란 기본색", "리파이너리
+       아카데미도", "애드온들도") — 이 건물들만 제 회색을 손으로 박아 두고 있어서,
+       커맨드·배럭·팩토리 옆에 서면 혼자 어둡고 칙칙했다. 주 덩이를 raceBase가 칠하는
+       톤(#868d94)으로 맞추고, 어두운 받침·구멍·밝은 은빛 디테일은 그대로 둔다.
+       raceBase로 감싸는 것은 색뿐 아니라 종족별 광택(테란 1.32/1.1)까지 받기 위해서다. */
+    return raceBase(out, "terran");
   },
   /* 피직스 랩(재모델링·사진) — 왼쪽에 큰 강철 구형 포드가 앉고 그 뒤로 노랑·검정
      빗금 날개가 부챗살로 펴진다. 오른쪽으로는 초록 발광 띠가 박힌 기계 팔이 뻗어
@@ -6450,7 +6487,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   physlab: () => {
     const out: ShapeFace[] = [
       // 받침 슬래브는 중심 깊이만(지적: 애드온 바닥이 위 부품을 덮음).
-      ...tagKey(paintBase(boxFaces3(0, 0.2, 5.6, 4.4, 0.8), "#4b5058"), depthNow(0, 0.2)),
+      ...tagKey(paintBase(boxFaces3(0, 0.2, 5.6, 4.4, 0.8), "#868d94"), depthNow(0, 0.2)),
     ];
     // 층진 받침 — 위로 좁아지는 단.
     out.push(...tagKey(paintBase(
@@ -6477,7 +6514,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       capFace(discPath3(-1.5, 0.1, 3.4, 0.9), 0.2),
     ], 26 + depthNow(-1.5, 0.1)));
     /* 오른쪽 기계 팔(사진) — 구에서 오른앞으로 뻗는 각진 통. 옆구리에 초록 발광 띠. */
-    out.push(...tagKey(paintBase(boxFaces3(1.1, 0.1, 3.4, 1.3, 1.2, 2.3), "#7b8088"),
+    out.push(...tagKey(paintBase(boxFaces3(1.1, 0.1, 3.4, 1.3, 1.2, 2.3), "#868d94"),
       26 + depthNow(1.1, 0.1)));
     if (facingRatio(0, 1) > 0.12) {
       const led: ShapeFace[] = [];
@@ -6497,7 +6534,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 앞 오른쪽 바닥 판(사진) — 낮게 깔린 넓은 철판.
     out.push(...tagKey(paintBase(boxFaces3(1.6, 2.1, 2.6, 1.6, 0.32, 0.8), "#5c636d"),
       22 + depthNow(1.6, 2.1)));
-    return out;
+    /* 본체 색은 테란 기본색이다(요청: "서플라이 본체 색 테란 기본색", "리파이너리
+       아카데미도", "애드온들도") — 이 건물들만 제 회색을 손으로 박아 두고 있어서,
+       커맨드·배럭·팩토리 옆에 서면 혼자 어둡고 칙칙했다. 주 덩이를 raceBase가 칠하는
+       톤(#868d94)으로 맞추고, 어두운 받침·구멍·밝은 은빛 디테일은 그대로 둔다.
+       raceBase로 감싸는 것은 색뿐 아니라 종족별 광택(테란 1.32/1.1)까지 받기 위해서다. */
+    return raceBase(out, "terran");
   },
   /* ── 공사 표현 공용 셋(요청: 아이콘 대신 모델) ───────────────────────────── */
   /* 저그 고치 — 크립 위 통통한 번데기(재생 쪽 CSS가 바운스시킨다). */
@@ -6663,7 +6705,37 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      (넘으면 굽는 판에서 끝이 잘린다). z0을 3으로 띄운 것도 같은 이유로 아래쪽 잘림을
      피하려는 것뿐이다 — 자리는 그린 잉크의 바닥을 기준으로 다시 앉히므로, 띄운 높이가
      화면에서 통로를 위로 올리지는 않는다. */
-  addonlink: () => boxFaces3(0, 0, 13, 3, 3, 3),
+  addonlink: () => {
+    /* 통로 색과 무늬(요청: "애드온 연결부 테란 기본 은색 적용 및 해저드 데칼 넣기") —
+       여태 색을 안 준 맨 상자라 임자 색이 통째로 칠해졌다. 본체와 애드온은 테란 기본색인데
+       그 사이를 잇는 통로만 형광 임자 색 막대로 서 있어, 건물 둘을 잇는 구조물이 아니라
+       그어 놓은 선처럼 보였다. raceBase로 다른 테란 건물과 같은 톤·광택을 받는다.
+       그 위에 해저드 빗금을 두른다 — 공사장 슬래브·서플라이 옆구리에 쓴 그 무늬다.
+       사람이 지나다니는 통로라는 것을 한눈에 말해 주고, 은색 막대 하나로는 밋밋하다. */
+    const L = 6.5;      // 막대 반길이(x)
+    const W = 1.5;      // 막대 반폭(y)
+    const zB = 4;       // 띠 아래
+    const zT = 4.9;     // 띠 위
+    const band = (ny: 1 | -1): ShapeFace[] => {
+      if (facingRatio(0, ny) < 0.05) return [];
+      // 보이는 쪽 벽을 살짝(0.02) 밖으로 띄워 벽과 z-싸움을 안 하게 한다.
+      const y9 = ny * (W + 0.02);
+      const pt = (t: number, z: number): [number, number, number] => [ny > 0 ? -L + t : L - t, y9, z];
+      const out: ShapeFace[] = [
+        [polyPath3([pt(0, zB), pt(L * 2, zB), pt(L * 2, zT), pt(0, zT)]), 1, "#d9ae35"] as ShapeFace,
+      ];
+      for (let t = 0.3; t < L * 2 - 0.9; t += 1.25) {
+        out.push([polyPath3([pt(t, zB), pt(t + 0.5, zB), pt(t + 0.85, zT), pt(t + 0.35, zT)]),
+          1, "#1b1e23"] as ShapeFace);
+      }
+      return out;
+    };
+    return [
+      ...raceBase(boxFaces3(0, 0, L * 2, W * 2, 3, 3), "terran"),
+      ...band(1),
+      ...band(-1),
+    ];
+  },
   /* 버로우 구멍(요청) — 버로우 중엔 유닛 대신 이 구멍만: 흙 둔덕 테 + 어두운 구멍.
      크기는 마커 크기(소·중·대형)를 그대로 탄다. */
   burrowhole: () => [
@@ -6872,26 +6944,29 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     return [
       // 앞 가림치마만 개인색, 나머지 흰회색(요청).
       ...paintBase([
-        ...cylinderFaces3(-0.62, 0, 0.4, 2.3, 0.1),
-        ...cylinderFaces3(0.62, 0, 0.4, 2.3, 0.1),
-        ...domeFaces3(-0.62, 0.25, 0.5, 0.35, 0.05),
-        ...domeFaces3(0.62, 0.25, 0.5, 0.35, 0.05),
-        ...cylinderFaces3(0, -0.2, 1.25, 1.9, 2.3),
+        ...cylinderFaces3(-0.64, 0, 0.52, 2.3, 0.1),
+        ...cylinderFaces3(0.64, 0, 0.52, 2.3, 0.1),
+        ...domeFaces3(-0.64, 0.25, 0.6, 0.4, 0.05),
+        ...domeFaces3(0.64, 0.25, 0.6, 0.4, 0.05),
+        ...cylinderFaces3(0, -0.2, 1.06, 1.9, 2.3),
         ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
         ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
       ], "#dfe3e6"),
-      // 헬멧 유리색(요청) — 지붕 키(재지적: 몸통·어깨에 가려짐).
-      ...tagKey(paintBase(domeFaces3(0, -0.2, 0.85, 0.8, 4.2), "#bfe0ef"), 20),
+      /* 헬멧은 원시 구다(요청: "헬멧은 구형 원시 도형 사용으로 변경") — 반구(domeFaces3)는
+         밑이 잘려 어깨 위에 얹힌 '그릇'으로 읽혔다. sphereFaces3는 중심만 투영하고
+         반지름은 화면 원이라 어느 요잉에서도 동그랗고, 광택·그늘이 세계 광원과 같은
+         좌상 방향으로 붙는다. 키 20은 그대로 — 몸통·어깨보다 위다. */
+      ...tagKey(sphereFaces3(0, -0.2, 4.72, 0.84, "#bfe0ef"), 20),
       [groundEllipse(fx2, fy2, 0.42, 0.36), 0.55, "#ffffff"] as ShapeFace,
       bodyFace(apron),
       topFace(apron, 0.3),
       /* 두 팔(재지적: 위치·굽힘) — 위팔은 어깨뽕 아래(z 3.7)에서 나와 내려가고,
          팔꿈치에서 굽는다. 왼팔은 앞으로, 오른팔은 주사기 뿌리로. */
       ...paintBase([
-        ...hornFaces(-1.45, 0.1, 3.7, -1.2, 0.75, 2.8, 0.45),
-        ...hornFaces(-1.2, 0.75, 2.8, -0.85, 1.4, 3.1, 0.4),
-        ...hornFaces(1.5, 0.1, 3.7, 1.3, 0.55, 2.85, 0.45),
-        ...hornFaces(1.3, 0.55, 2.85, 1.35, 1.05, 3.1, 0.4),
+        ...hornFaces(-1.45, 0.1, 3.7, -1.2, 0.75, 2.8, 0.58),
+        ...hornFaces(-1.2, 0.75, 2.8, -0.85, 1.4, 3.1, 0.52),
+        ...hornFaces(1.5, 0.1, 3.7, 1.3, 0.55, 2.85, 0.58),
+        ...hornFaces(1.3, 0.55, 2.85, 1.35, 1.05, 3.1, 0.52),
       ], "#dfe3e6"),
       // 오른팔 주사기 — 녹색(요청).
       ...paintBase(tubeFaces(1.35, 0.3, 1.35, 1.4, 0.3, 3), "#4db964"),
@@ -6904,23 +6979,26 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [vx2, vy2] = project(0, 0.55, 4.7);
     return [
       // 다리를 또렷하게(지적: 다리가 없어 헷갈림) — 벌린 두 기둥 + 둥근 발.
-      ...cylinderFaces3(-0.62, 0, 0.4, 2.3, 0.1),
-      ...cylinderFaces3(0.62, 0, 0.4, 2.3, 0.1),
-      ...domeFaces3(-0.62, 0.25, 0.5, 0.35, 0.05),
-      ...domeFaces3(0.62, 0.25, 0.5, 0.35, 0.05),
-      ...cylinderFaces3(0, -0.2, 1.25, 1.9, 2.3),
+      ...cylinderFaces3(-0.64, 0, 0.52, 2.3, 0.1),
+      ...cylinderFaces3(0.64, 0, 0.52, 2.3, 0.1),
+      ...domeFaces3(-0.64, 0.25, 0.6, 0.4, 0.05),
+      ...domeFaces3(0.64, 0.25, 0.6, 0.4, 0.05),
+      ...cylinderFaces3(0, -0.2, 1.06, 1.9, 2.3),
       ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
       ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
-      // 헬멧 유리색(요청) — 지붕 키(재지적: 몸통·어깨에 가려짐).
-      ...tagKey(paintBase(domeFaces3(0, -0.2, 0.85, 0.8, 4.2), "#bfe0ef"), 20),
+      /* 헬멧은 원시 구다(요청: "헬멧은 구형 원시 도형 사용으로 변경") — 반구(domeFaces3)는
+         밑이 잘려 어깨 위에 얹힌 '그릇'으로 읽혔다. sphereFaces3는 중심만 투영하고
+         반지름은 화면 원이라 어느 요잉에서도 동그랗고, 광택·그늘이 세계 광원과 같은
+         좌상 방향으로 붙는다. 키 20은 그대로 — 몸통·어깨보다 위다. */
+      ...tagKey(sphereFaces3(0, -0.2, 4.72, 0.84, "#bfe0ef"), 20),
       [groundEllipse(vx2, vy2, 0.45, 0.32), 0.55, "#ffffff"] as ShapeFace,
       /* 두 팔(재지적: 위치·굽힘) — 위팔은 어깨뽕 '아래'(z 3.7)에서 나와 앞-아래로
          내려가고, 팔꿈치에서 굽어 아래팔이 총몸으로 올라가 쥔다. 왼손은 앞손잡이,
          오른손은 방아쇠 쪽. */
-      ...hornFaces(-1.45, 0.1, 3.7, -1.05, 0.8, 2.75, 0.5),
-      ...hornFaces(-1.05, 0.8, 2.75, 0.3, 1.85, 3.25, 0.42),
-      ...hornFaces(1.5, 0.1, 3.7, 1.25, 0.7, 2.8, 0.5),
-      ...hornFaces(1.25, 0.7, 2.8, 0.75, 1, 3.25, 0.42),
+      ...hornFaces(-1.45, 0.1, 3.7, -1.05, 0.8, 2.75, 0.64),
+      ...hornFaces(-1.05, 0.8, 2.75, 0.3, 1.85, 3.25, 0.54),
+      ...hornFaces(1.5, 0.1, 3.7, 1.25, 0.7, 2.8, 0.64),
+      ...hornFaces(1.25, 0.7, 2.8, 0.75, 1, 3.25, 0.54),
       /* 소총(지적: 총구가 요잉을 안 먹는다) — 총구를 화면 고정 원반으로 얹던 것을
          걷고, 총열을 관 프리미티브로 세운다: 축을 실제로 투영한 끝 단면이 나오고
          마주볼 때만 포구가 어둡게 뚫린다. 노리쇠 뭉치만 상자로 남긴다. 건메탈. */
@@ -6935,25 +7013,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     return [
       // 가는 다리 + 작은 발 — 회흰색(요청).
       ...paintBase([
-        ...cylinderFaces3(-0.45, 0, 0.24, 2.3, 0.1),
-        ...cylinderFaces3(0.45, 0, 0.24, 2.3, 0.1),
-        ...domeFaces3(-0.45, 0.22, 0.32, 0.24, 0.05),
-        ...domeFaces3(0.45, 0.22, 0.32, 0.24, 0.05),
+        ...cylinderFaces3(-0.47, 0, 0.33, 2.3, 0.1),
+        ...cylinderFaces3(0.47, 0, 0.33, 2.3, 0.1),
+        ...domeFaces3(-0.47, 0.22, 0.4, 0.28, 0.05),
+        ...domeFaces3(0.47, 0.22, 0.4, 0.28, 0.05),
       ], "#d3d7db"),
       // 가는 몸통(마린 1.25 → 0.7) — 어깨장갑 없이 작은 어깨 라운드만.
-      ...cylinderFaces3(0, -0.1, 0.7, 2, 2.3),
+      ...cylinderFaces3(0, -0.1, 0.6, 2, 2.3),
       ...domeFaces3(-0.75, -0.15, 0.34, 0.3, 4.1),
       ...domeFaces3(0.75, -0.15, 0.34, 0.3, 4.1),
-      // 작은 헬멧(마린 0.8 → 0.55) + 바이저.
-      // 헬멧 유리색(요청) — 지붕 키(재지적: 가려짐).
-      ...tagKey(paintBase(domeFaces3(0, -0.1, 0.58, 0.55, 4.35), "#bfe0ef"), 20),
+      // 작은 헬멧 — 마린과 같은 원시 구, 반지름만 작다(요청).
+      ...tagKey(sphereFaces3(0, -0.1, 4.72, 0.56, "#bfe0ef"), 20),
       [groundEllipse(vx2, vy2, 0.3, 0.21), 0.55, "#ffffff"] as ShapeFace,
       // 가는 두 팔 — 앞-아래로 내려가 총몸을 받쳐 쥔다. 회흰색(요청).
       ...paintBase([
-        ...hornFaces(-0.8, 0.1, 3.9, -0.6, 0.9, 2.9, 0.3),
-        ...hornFaces(-0.6, 0.9, 2.9, 0.25, 1.7, 3.3, 0.26),
-        ...hornFaces(0.85, 0.1, 3.9, 0.7, 0.8, 2.95, 0.3),
-        ...hornFaces(0.7, 0.8, 2.95, 0.45, 1.2, 3.3, 0.26),
+        ...hornFaces(-0.8, 0.1, 3.9, -0.6, 0.9, 2.9, 0.4),
+        ...hornFaces(-0.6, 0.9, 2.9, 0.25, 1.7, 3.3, 0.35),
+        ...hornFaces(0.85, 0.1, 3.9, 0.7, 0.8, 2.95, 0.4),
+        ...hornFaces(0.7, 0.8, 2.95, 0.45, 1.2, 3.3, 0.35),
       ], "#d3d7db"),
       /* C-10 저격소총 — 마린과 같은 규칙(지적): 노리쇠는 상자, 총열은 관 프리미티브라
          총구가 요잉을 탄다. 마린보다 길고 가늘다. 건메탈. */
@@ -6976,19 +7053,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...domeFaces3(0.7, -1.3, 0.5, 0.4, 5.6),
       ], "#b83a2c"),
       // 다리를 또렷하게(지적: 다리가 없어 헷갈림) — 벌린 두 기둥 + 둥근 발.
-      ...cylinderFaces3(-0.62, 0, 0.4, 2.3, 0.1),
-      ...cylinderFaces3(0.62, 0, 0.4, 2.3, 0.1),
-      ...domeFaces3(-0.62, 0.25, 0.5, 0.35, 0.05),
-      ...domeFaces3(0.62, 0.25, 0.5, 0.35, 0.05),
-      ...cylinderFaces3(0, -0.2, 1.25, 1.9, 2.3),
+      ...cylinderFaces3(-0.64, 0, 0.52, 2.3, 0.1),
+      ...cylinderFaces3(0.64, 0, 0.52, 2.3, 0.1),
+      ...domeFaces3(-0.64, 0.25, 0.6, 0.4, 0.05),
+      ...domeFaces3(0.64, 0.25, 0.6, 0.4, 0.05),
+      ...cylinderFaces3(0, -0.2, 1.06, 1.9, 2.3),
       ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
       ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
-      // 헬멧 유리색(요청) — 지붕 키(재지적: 몸통·어깨에 가려짐).
-      ...tagKey(paintBase(domeFaces3(0, -0.2, 0.85, 0.8, 4.2), "#bfe0ef"), 20),
+      /* 헬멧은 원시 구다(요청: "헬멧은 구형 원시 도형 사용으로 변경") — 반구(domeFaces3)는
+         밑이 잘려 어깨 위에 얹힌 '그릇'으로 읽혔다. sphereFaces3는 중심만 투영하고
+         반지름은 화면 원이라 어느 요잉에서도 동그랗고, 광택·그늘이 세계 광원과 같은
+         좌상 방향으로 붙는다. 키 20은 그대로 — 몸통·어깨보다 위다. */
+      ...tagKey(sphereFaces3(0, -0.2, 4.72, 0.84, "#bfe0ef"), 20),
       [groundEllipse(vx2, vy2, 0.42, 0.24), 0.55, "#ffffff"] as ShapeFace,
       // 두 팔(요청) — 어깨에서 건틀릿 뿌리로.
-      ...hornFaces(-1.45, -0.2, 4.9, -1.4, 0.6, 3.2, 0.5),
-      ...hornFaces(1.45, -0.2, 4.9, 1.4, 0.6, 3.2, 0.5),
+      ...hornFaces(-1.45, -0.2, 4.9, -1.4, 0.6, 3.2, 0.64),
+      ...hornFaces(1.45, -0.2, 4.9, 1.4, 0.6, 3.2, 0.64),
       // 화염 건틀릿 두 팔.
       // 앞으로 더 내민 화염 건틀릿(지적: 총구가 앞을 향하게).
       ...paintBase(tubeFaces(-1.4, 0.4, -1.4, 2.2, 0.42, 2.9, true), GUNMETAL),
