@@ -11407,9 +11407,22 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 }
 .scr-motion-clockwrap .scr-kakao-icon-btn { color: var(--muted); }
 /* 공유 줄(재재지적: 가운데 정렬). */
-.scr-motion-sharerow { display: flex; justify-content: center; margin-top: 2px; }
+/* 진행바 아랫줄 — 왼쪽 배속, 오른쪽 현재 장면 공유(요청). 공유가 없는 경기에서는
+   배속만 왼쪽에 선다. */
+.scr-motion-sharerow {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin-top: 2px;
+}
+/* 배속은 한 단 더 작게(요청: "크기를 줄이고") — 라벨을 위가 아니라 옆에 두어 줄
+   높이를 아낀다. .scr-motion-radio의 세로 배치를 여기서 가로로 되돌린다. */
+.scr-motion-speeds {
+  flex-direction: row; align-items: center; gap: 5px;
+}
+.scr-motion-speeds .scr-motion-radio-label { padding-left: 0; }
+.scr-motion-speeds .scr-pill-tabs { height: 18px; }
+.scr-motion-speeds .scr-pill-tab-btn { padding: 0 5px; font-size: 10px; }
 /* PC: 진행바 아랫줄(7행)에 오른끝 정렬(지적: 겹침). */
-.scr-motion-wide .scr-motion-sharerow { grid-column: 3; grid-row: 7; justify-content: flex-end; }
+.scr-motion-wide .scr-motion-sharerow { grid-column: 3; grid-row: 7; }
 /* 시각 아래 작게(요청) — 컴팩트: 높이 18px, 여백 최소, 글꼴 10px. */
 /* 프라이머리 테마(재재지적) — 앱의 주요 버튼(.scr-btn-primary)과 같은 흰 알약 +
    글로우. 둥근 네모 유지, 컴팩트 높이. */

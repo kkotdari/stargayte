@@ -14052,32 +14052,21 @@ export default function ReplayMotionPlayer({
             toggle
           />
         </span>
-        {/* 마우스 조작 표시(요청: 라벨 달고 라디오는 on/off) — 다른 라디오와 같은 꼴. */}
-        {entOn && (
-          <span className="scr-motion-radio">
-            <span className="scr-motion-radio-label">마우스 조작</span>
-            <PillTabs
-              options={[{ value: "on", label: "보임" }, { value: "off", label: "숨김" }]}
-              value={clickFx ? "on" : "off"}
-              onChange={(v) => setClickFx(v === "on")}
-              aria-label="마우스 조작"
-              fit
-              toggle
-            />
-          </span>
-        )}
-        {/* 배속(재재요청: 제일 마지막) — 보기 줄 맨 끝. */}
-        <span className="scr-motion-radio scr-motion-speeds">
-          <span className="scr-motion-radio-label">배속</span>
+        {/* 마우스 조작 표시 — 개체 트랙이 오기 전에도 자리를 지킨다(지적: "마우스 조작이
+            늦게 뜨는데 같이 처음부터 뜨게"). 예전에는 entOn 문턱에 걸려 자료가 도착한
+            뒤에야 나타나 버튼 줄이 한 번 출렁였다. 켜 놔도 해가 없다 — 실제로 자국을
+            그리는 층(아래 entOn && clickFx)이 자료를 따로 확인한다. */}
+        <span className="scr-motion-radio">
+          <span className="scr-motion-radio-label">마우스 조작</span>
           <PillTabs
-            options={SPEEDS.map((v) => ({ value: String(v), label: `×${v}` }))}
-            value={String(speed)}
-            onChange={(v) => setSpeed(SPEEDS.find((s) => String(s) === v) ?? SPEEDS[0])}
-            aria-label="배속"
+            options={[{ value: "on", label: "보임" }, { value: "off", label: "숨김" }]}
+            value={clickFx ? "on" : "off"}
+            onChange={(v) => setClickFx(v === "on")}
+            aria-label="마우스 조작"
             fit
+            toggle
           />
         </span>
-
       </div>
       {linkOpen && createPortal(
         <div className="scr-modal-overlay scr-terrain-overlay" onClick={() => setLinkOpen(false)}>
@@ -14167,8 +14156,22 @@ export default function ReplayMotionPlayer({
           <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
         </span>
       </div>
-      {/* 현재 장면 공유는 조종간 아랫줄에 따로(재지적) — 오른끝 정렬 한 줄. */}
-      {shareNode && <div className="scr-motion-bar scr-motion-sharerow">{shareNode}</div>}
+      {/* 진행바 아랫줄 — 왼쪽 배속, 오른쪽 현재 장면 공유(요청: "배속은 크기를 줄이고
+          진행바 쪽으로 이동, 현재 장면 공유랑 같은 라인으로"). 공유 버튼이 없는 경기도
+          있으므로 줄 자체는 배속만으로도 선다. */}
+      <div className="scr-motion-bar scr-motion-sharerow">
+        <span className="scr-motion-radio scr-motion-speeds">
+          <span className="scr-motion-radio-label">배속</span>
+          <PillTabs
+            options={SPEEDS.map((v) => ({ value: String(v), label: `×${v}` }))}
+            value={String(speed)}
+            onChange={(v) => setSpeed(SPEEDS.find((s) => String(s) === v) ?? SPEEDS[0])}
+            aria-label="배속"
+            fit
+          />
+        </span>
+        {shareNode}
+      </div>
       {/* (삭제·지적: PC 타임스탬프 중복) — 기둥의 타임스탬프·등록자는 걷었다. 시각은
           맵 이름 줄(.scr-story-when)이 말하고 등록자는 그 오른쪽에 붙는다(GameResultStory). */}
       {/* 오른쪽 댓글 영역(요청: PC에서 댓글부를 미니맵 우측으로 — 기존 확대창 방식 그대로,
