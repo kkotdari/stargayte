@@ -691,6 +691,11 @@ function spirePillar(o: {
   /** 굵기가 줄어드는 곡률(요청: 후지산) — 1이면 선형, 1보다 작으면 아래는 완만하고
    *  위로 갈수록 급해진다(0.5쯤이 후지산 옆선). */
   taper?: number;
+  /** 끝 단면을 그릴지(지적: "겉면에 안쪽 수평 단면이 가려져야 되는데 안 가려짐") —
+   *  다른 기둥 위에 끼우는 토막(띠·이음매)은 두 끝이 모두 남의 몸속에 묻혀 있다.
+   *  묻힌 단면은 카메라를 마주 보므로 보임 판정은 참인데, 그 앞을 가리는 것이 '다른
+   *  도형'이라 페인터 순서로는 절대 못 가린다. 그런 토막은 "none"으로 아예 끄자. */
+  caps?: "both" | "top" | "bottom" | "none";
 }): ShapeFace[] {
   const z0 = o.z0 ?? 0;
   const segs = Math.max(1, o.segs ?? 3);
@@ -772,7 +777,11 @@ function spirePillar(o: {
      제 안에서만 순서를 잡으면 기울거나 휜 기둥에서 뒤 마디가 앞 마디를 덮어 속이
      들여다보인다. 모든 마디의 모든 옆면을 한 번에 모아 각 면 중심의 화면 깊이로
      정렬해야 painter 순서가 기둥 전체에서 옳다. */
-  const walls: { d: string; nx: number; ny: number; dep: number }[] = [];
+  const walls: {
+    d: string; nx: number; ny: number; dep: number;
+    /** 끝 단면 표시 — 참이면 아래 faces를 그대로 쓴다(옆면 명암 규칙을 안 탄다). */
+    cap?: boolean; faces?: ShapeFace[];
+  }[] = [];
   for (let s2 = 0; s2 < segs; s2 += 1) {
     const t0 = s2 / segs;
     const t1 = (s2 + 1) / segs;
@@ -794,30 +803,37 @@ function spirePillar(o: {
       });
     }
   }
+  /* 끝 단면도 옆면과 같은 줄에 세워 깊이로 정렬한다(지적: "안쪽 수평 단면이 안 가려짐")
+     — 여태는 옆면을 다 그린 뒤에 단면을 덧칠했다. 그러면 카메라를 향한 단면이든
+     기둥 속을 향한 단면이든 언제나 맨 앞이라, 뒤쪽 끝의 단면이 앞 옆면 위로 떠올라
+     기둥이 잘린 것처럼 보였다. 단면의 깊이는 '고리 중심 + 반지름 × 마주보는 정도'다:
+     정면으로 열린 단면은 그 끝 옆면들보다 앞이고, 비스듬한 단면은 옆면 사이에 낀다.
+     아래 뚜껑의 법선은 -T, 위 뚜껑은 +T다 — 안쪽을 향한 뚜껑은 애초에 안 그린다. */
+  const T0 = tangentAt(0);
+  const T1 = tangentAt(1);
+  const capMode = o.caps ?? "both";
+  const addCap = (t: number, n: [number, number, number]): void => {
+    const lit = faceLight(n[0], n[1], n[2]);
+    if (!lit.visible) return;
+    const c9 = axis(t);
+    const face = polyPath3(ring(t));
+    walls.push({
+      d: face, nx: 0, ny: 0, cap: true,
+      dep: depthNow(c9[0], c9[1])
+        + widthAt(t) * Math.max(0, Math.min(1, facingRatio(n[0], n[1]))) + 0.001,
+      faces: [bodyFace(face), ...lit.face(face)],
+    });
+  };
+  if (capMode === "both" || capMode === "bottom") addCap(0, [-T0[0], -T0[1], -T0[2]]);
+  if (tipW > 0.01 && (capMode === "both" || capMode === "top")) addCap(1, T1);
   walls.sort((q, w) => q.dep - w.dep);
   for (const wl of walls) {
+    if (wl.cap) { out.push(...(wl.faces ?? [])); continue; }
     const fl = faceLight(wl.nx, wl.ny, 0.3);
     // 앞·뒤 색을 따로 받으면 면 법선의 y 부호로 갈라 칠한다(요청).
     const side = wl.ny >= 0 ? o.fillFront : o.fillBack;
     out.push(side ? [wl.d, 1, side] as ShapeFace : bodyFace(wl.d),
       ...(fl.visible ? fl.face(wl.d) : [sideFace(wl.d, 0.42)]));
-  }
-  /* 끝 단면은 옆면 뒤에 덮되, 바깥을 향할 때만 그린다(재지적: 각도에 따라 내부
-     단면이 비쳐 보임) — 아래 뚜껑의 법선은 -T, 위 뚜껑은 +T다. 안쪽을 향한 뚜껑을
-     그리면 기둥 속을 들여다보는 그림이 된다. */
-  const T0 = tangentAt(0);
-  const T1 = tangentAt(1);
-  const botLit = faceLight(-T0[0], -T0[1], -T0[2]);
-  if (botLit.visible) {
-    const bot = polyPath3(ring(0));
-    out.push(bodyFace(bot), ...botLit.face(bot));
-  }
-  if (tipW > 0.01) {
-    const capLit = faceLight(T1[0], T1[1], T1[2]);
-    if (capLit.visible) {
-      const cap = polyPath3(ring(1));
-      out.push(bodyFace(cap), ...capLit.face(cap));
-    }
   }
   return tagKey(o.fill ? paintBase(out, o.fill) : out, depthNow(o.x, o.y));
 }
@@ -1274,6 +1290,10 @@ function hatcheryMoundFaces(seamColor: string, spikeColor = "#1b1e23"): ShapeFac
           out.push(...tagKey(spirePillar({
             x: 0, y: 0, h: 1, w: bw, tipW: bw,
             segs: 2, sides: 6, hold: 0,
+            /* 두 끝이 모두 옆선 기둥 속에 묻힌 토막이라 단면을 안 그린다(지적) —
+               묻힌 단면은 위를 향해 '보임'으로 판정되지만 실제로는 옆선의 몸이 가린다.
+               남의 도형이 가리는 것이라 페인터 순서로는 못 지운다. */
+            caps: "none",
             path: (t9: number): [number, number, number] => seamAxis(t0 + (t1 - t0) * t9),
           }), dep * 1.6));
         }
@@ -4018,31 +4038,34 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 히드라리스크 덴(실물 참고) — 둔덕 위로 갈퀴막이 걸린 큰 돛가시들이 둘러서고,
      앞에는 마디진 꼬리가 똬리를 튼다. */
   hydraden: () => {
-    /* 히드라리스크 덴(전면 재작도·사진) — 뒤에 붉은 막 날개가 크게 펴진다: 굽은 뿔이
-       살을 받치고 막에는 둥근 구멍이 뚫린다. 앞 가운데엔 창백한 마디 등뼈와 살빛
-       주둥이, 그 옆으로 검은 엄니가 앞으로 말린다. 막이 개인색이다. */
+    /* 히드라리스크 덴(재작도·사진) — 뒤에 막 날개가 크게 펴진다: 굽은 뿔이 살을
+       받치고 막에는 둥근 구멍이 뚫린다. 앞 가운데엔 창백한 마디 등뼈와 살빛 주둥이,
+       그 옆으로 검은 엄니가 앞으로 말린다.
+       색 자리를 맞바꿨다(지적: "막은 저그 고유색이고 본체에 개인색 부여") — 여태
+       개인색이던 막을 저그 기본색으로 못 박고, 붉은 살덩이 몸통을 칠하지 않아
+       그 자리에 임자 색이 들게 했다. */
     const RED = "#a5342a";
     const BONE = "#c8ccd0";
     const HORN = "#241f1c";
     const out: ShapeFace[] = [...tagKey(paintBase(creepSplat(6.8), "#3a3f46"), -20)];
-    /* 뒤 막 날개 — 뿔 넷이 위로 벌어져 막을 받친다. 막은 개인색(요청). */
+    /* 뒤 막 날개 — 뿔 넷이 위로 벌어져 막을 받친다. 뿔을 더 넓게 벌리고(지적) 막의
+       아랫변을 바닥(z 0)까지 내려 땅에 닿게 이었다(지적). */
     const SP: [number, number, number][] = [
-      [-4.4, -2.2, 7.4], [-1.6, -3.4, 8.4], [1.6, -3.4, 8.2], [4.2, -2, 7],
+      [-6.4, -2.2, 7.2], [-2.3, -3.6, 8.6], [2.3, -3.6, 8.4], [6.1, -2, 6.8],
     ];
-    // 막 — 뿔 끝들을 잇는 위 변에서 바닥까지 늘어진다.
+    // 막 — 뿔 끝들을 잇는 위 변에서 바닥까지 늘어진다. 저그 기본색(지적).
     out.push(...membraneFaces(
       SP,
-      SP.map(([sx, sy]) => [sx * 1.1, sy * 0.72 + 1.1, 1.4] as [number, number, number]),
-      "#0000",
+      SP.map(([sx, sy]) => [sx * 1.12, sy * 0.72 + 1.2, 0] as [number, number, number]),
+      RACE_BASE_TONE.zerg,
       { shade: 0.16, notch: 0.3, key: 6 },
-    ).map(([d9, o9, f9, k9, l9]) => (f9 === "#0000"
-      ? [d9, o9, undefined, k9, l9] as ShapeFace : [d9, o9, f9, k9, l9] as ShapeFace)));
-    // 막의 둥근 구멍 넷 — 어두운 원.
+    ));
+    // 막의 둥근 구멍 넷 — 어두운 원. 막이 넓어진 만큼 사이도 벌린다.
     for (let k = 0; k < 4; k += 1) {
-      const sx = -3.2 + k * 2.1;
+      const sx = -4.7 + k * 3.13;
       out.push(...tagKey([[polyPath3(Array.from({ length: 13 }, (_, q) => {
         const a9 = (q / 12) * Math.PI * 2;
-        return [sx + Math.cos(a9) * 0.85, -2.2, 4.6 + Math.sin(a9) * 0.85] as [number, number, number];
+        return [sx + Math.cos(a9) * 0.95, -2.2, 4.4 + Math.sin(a9) * 0.95] as [number, number, number];
       })), 0.92, "#2a1512"] as ShapeFace], 7));
     }
     // 막을 받치는 굽은 뿔 넷 — 붉은 살에서 솟아 위로 벌어진다.
@@ -4053,11 +4076,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         leanX: sx * 0.55, leanY: sy * 0.5 - 0.4, curveX: -sx * 0.14,
       }), RED), 10 + depthNow(sx, sy) * 1.6));
     }
-    // 몸 — 붉은 살덩이 둔덕.
-    out.push(...tagKey(paintBase(spirePillar({
+    // 몸 — 살덩이 둔덕. 칠하지 않는다 = 개인색(지적: "본체에 개인색 부여").
+    out.push(...tagKey(spirePillar({
       x: 0, y: 0.4, z0: 0, h: 3.4, w: 3.6, tipW: 1.3,
       segs: 6, sides: 12, hold: 0, taper: 0.55,
-    }), RED), 12));
+    }), 12));
     /* 앞 창백한 마디 등뼈 — 몸 앞으로 내려오는 마디 다섯. */
     for (let k = 0; k < 5; k += 1) {
       const u9 = k / 4;
@@ -4087,10 +4110,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   spire: () => {
     /* 스파이어(요청·사진: 뿔기둥 전면 활용) — 초록 연못 위 후지산 밑동에서 촉수
        기둥 여섯이 위로 모여 오르고, 그 위에 잿빛 머리와 골진 도넛 왕관이 얹힌다. */
+    const PURPLE = "#7a4fa8";
     const out: ShapeFace[] = [];
+    // 바닥 연못은 한 뼘 줄인다(지적: "스파이어 바닥 풀 크기 축소") — 6.1 → 4.7.
     const [plx, ply] = project(0, 0.6, 0.02);
-    out.push(sideFace(groundEllipse(plx, ply, 6.1, 2.95), 0.22));
-    out.push([groundEllipse(plx, ply, 5.5, 2.6), 0.8, "#8ef23e"] as ShapeFace);
+    out.push(sideFace(groundEllipse(plx, ply, 4.7, 2.25), 0.22));
+    out.push([groundEllipse(plx, ply, 4.2, 1.98), 0.8, "#8ef23e"] as ShapeFace);
     // 밑동 — 후지산 꼴 기둥 하나.
     const MB_H = 2.6;
     const MB_RB = 4.5;
@@ -4113,7 +4138,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         segs: 9, sides: 6, hold: 0.05, taper: 1.35,
         leanX: -dxr * (rr9 - 1.15), leanY: -dyr * (rr9 - 1.15),
         curveX: dxr * 0.85, curveY: dyr * 0.85,
-        fill: "#8a5f43",
+        /* 칠하지 않는다 = 개인색(지적: "본건물 옆면에 개인색 부여") — 이 촉수 기둥
+           여섯이 곧 스파이어의 옆면이다. 여섯이 60도로 둘러서 있어 어느 요잉에서도
+           앞으로 돌아온 두어 개가 임자 색을 보여 준다. */
       }), depthNow(bx9, by9) * 1.6));
     }
     // 잿빛 머리 — 위로 살짝 벌어지는 짧은 기둥.
@@ -4121,20 +4148,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 중심은 촉수가 모이는 자리(0, 0.6)와 같아야 한다(지적: 다리·뚜껑 중심 어긋남).
       x: 0, y: 0.6, z0: 11.1, h: 1.9, w: 2.6, tipW: 3.3,
       segs: 3, sides: 14, hold: 0.15,
-    }), "#7d7a72"), 20));
-    // 골진 도넛 왕관 — 방사 골 + 가운데 구멍.
+    }), RACE_BASE_TONE.zerg), 20));
+    // 골진 도넛 왕관 — 방사 골 + 가운데 구멍. 뚜껑은 저그 기본색(지적).
     const [cx2, cy2] = project(0, 0.6, 13.1);
-    out.push(...tagKey([bodyFace(groundEllipse(cx2, cy2, 3.55, 2.05))], 22));
+    out.push(...tagKey([[groundEllipse(cx2, cy2, 3.55, 2.05), 1, RACE_BASE_TONE.zerg] as ShapeFace], 22));
     /* 골도 요잉을 탄다(지적: 뚜껑이 안 돎) — 화면 고정 각이던 골 위치에 현재 요잉을
        더해, 뚜껑이 함께 도는 것으로 보인다. */
     const yawRad = Math.atan2(-depthNow(1, 0), depthNow(0, 1));
     const crown: ShapeFace[] = [];
     for (const ang of [200, 240, 280, 320, 20, 60, 100, 140]) {
       const a = (ang * Math.PI) / 180 + yawRad;
-      crown.push(sideFace(`M${cx2 + Math.cos(a) * 1.55} ${cy2 + Math.sin(a) * 0.9}`
+      // 줄무늬는 보라(지적) — 뚜껑의 저그 기본색 위에 방사 골이 보라로 갈린다.
+      crown.push([`M${cx2 + Math.cos(a) * 1.55} ${cy2 + Math.sin(a) * 0.9}`
         + ` L${cx2 + Math.cos(a) * 3.35} ${cy2 + Math.sin(a) * 1.94}`
         + ` L${cx2 + Math.cos(a + 0.16) * 3.35} ${cy2 + Math.sin(a + 0.16) * 1.94}`
-        + ` L${cx2 + Math.cos(a + 0.16) * 1.55} ${cy2 + Math.sin(a + 0.16) * 0.9} Z`, 0.16));
+        + ` L${cx2 + Math.cos(a + 0.16) * 1.55} ${cy2 + Math.sin(a + 0.16) * 0.9} Z`,
+      1, PURPLE] as ShapeFace);
     }
     crown.push(capFace(groundEllipse(cx2, cy2 - 0.2, 1.15, 0.68), 0.5));
     out.push(...tagKey(crown, 23));
