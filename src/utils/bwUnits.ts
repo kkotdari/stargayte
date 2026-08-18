@@ -173,3 +173,32 @@ export function damageOf(w: Weapon, size: UnitSize, armor: number, onShield: boo
   if (onShield) return Math.max(0.5, w.dmg);
   return Math.max(0.5, w.dmg * DMG_MULT[w.type][size] - armor);
 }
+
+/* ── 발자국·충돌(P3) ──────────────────────────────────────────────────────────
+   건물·자원·유닛은 모두 서로를 막는다(요청). 자원 채취 중인 일꾼끼리만 겹칠 수 있다 —
+   원작에서도 캐는 일꾼은 서로를 통과한다. */
+
+/** 건물 발자국(타일) — 표에 없으면 3×2로 친다. */
+export const BUILDING_FOOT: Record<string, [number, number]> = {
+  "Command Center": [4, 3], Nexus: [4, 3], Hatchery: [4, 3], Lair: [4, 3], Hive: [4, 3],
+  Barracks: [4, 3], Factory: [4, 3], Starport: [4, 3], "Science Facility": [4, 3],
+  Gateway: [4, 3], Stargate: [4, 3], "Engineering Bay": [4, 3], Armory: [3, 2],
+  Academy: [3, 2], Forge: [3, 2], "Cybernetics Core": [3, 2], "Citadel of Adun": [3, 2],
+  "Templar Archives": [3, 2], "Robotics Facility": [3, 2], Observatory: [3, 2],
+  "Fleet Beacon": [3, 2], Arbiter: [3, 2], "Robotics Support Bay": [3, 2],
+  "Shield Battery": [3, 2], Bunker: [3, 2], "Supply Depot": [3, 2],
+  "Spawning Pool": [3, 2], "Evolution Chamber": [3, 2], "Hydralisk Den": [3, 2],
+  "Queens Nest": [3, 2], "Defiler Mound": [3, 2], "Ultralisk Cavern": [3, 2],
+  Refinery: [4, 2], Assimilator: [4, 2], Extractor: [4, 2],
+  Pylon: [2, 2], "Missile Turret": [2, 2], "Photon Cannon": [2, 2],
+  "Creep Colony": [2, 2], "Sunken Colony": [2, 2], "Spore Colony": [2, 2],
+  Spire: [2, 2], "Greater Spire": [2, 2], "Nydus Canal": [2, 2],
+};
+export const DEFAULT_FOOT: [number, number] = [3, 2];
+
+/** 자원 발자국(타일) — 미네랄 덩이 2×1, 간헐천 4×2. */
+export const MINERAL_FOOT: [number, number] = [2, 1];
+export const GEYSER_FOOT: [number, number] = [4, 2];
+
+/** 유닛 몸 반지름(타일) — 크기별 어림. 서로 이만큼은 못 파고든다. */
+export const BODY_R: Record<UnitSize, number> = { small: 0.32, medium: 0.42, large: 0.55 };

@@ -15,7 +15,8 @@
 
 import { groundPath, type TerrainGrid } from "./minimapTerrain";
 import {
-  DEFAULT_TURN_RATE, TURN_RATE, UNIT_ARMOR, UNIT_SIZE, WEAPON_AIR, WEAPON_GROUND,
+  BODY_R, BUILDING_FOOT, DEFAULT_FOOT, DEFAULT_TURN_RATE, GEYSER_FOOT, MINERAL_FOOT,
+  TURN_RATE, UNIT_ARMOR, UNIT_SIZE, WEAPON_AIR, WEAPON_GROUND,
   damageOf, isAir, speedOfUnit, type UnitSize, type Weapon,
 } from "./bwUnits";
 import { BLD_STATS, UNIT_STATS } from "./replayUnits";
@@ -90,8 +91,7 @@ export type SimOpts = {
 export const TICK_SEC = 3 / 23.81;
 /** 도착 판정(타일). */
 const ARRIVE = 0.35;
-/** 같은 편끼리 밀어내는 반경(타일) — 원작의 뭉치고 흐르는 모양을 이것이 만든다. */
-const SEP_R = 0.75;
+/** (걷음) 편별 밀어내기 반경 — 이제 크기별 몸 반지름(BODY_R)이 그 자리를 대신한다. */
 /** 하드 앵커에서 이만큼 넘게 어긋나면 보정한다(타일). */
 const ANCHOR_SNAP = 1.2;
 /** 보정을 녹여 넣는 시간(초) — 순간이동으로 고치지 않는다. */
@@ -262,14 +262,79 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
     endSec = Math.max(endSec, b.died ?? last);
   }
 
+  /* ── 막힘 판(요청: 건물·자원·유닛 모두 통과 불가) ────────────────────────────
+     지형 격자에 건물 발자국과 자원 지대를 덧칠한 판을 만들어 길찾기와 걸음을 함께
+     태운다. 건물은 서고 무너지므로 그때마다 판을 다시 굽고(경기당 수백 번뿐이다)
+     길 갈무리도 함께 비운다. */
+  const BW = terrain ? terrain.w : W;
+  const BH = terrain ? terrain.h : H;
+  const staticBlock = new Uint8Array(BW * BH);      // 자원 — 경기 내내 그대로
+  const markRect = (arr: Uint8Array, tx: number, ty: number, tw: number, th: number): void => {
+    const x0 = Math.max(0, Math.floor((tx / W) * BW));
+    const y0 = Math.max(0, Math.floor((ty / H) * BH));
+    const x1 = Math.min(BW - 1, Math.floor((((tx + tw) / W) * BW) - 0.001));
+    const y1 = Math.min(BH - 1, Math.floor((((ty + th) / H) * BH) - 0.001));
+    for (let yy = y0; yy <= y1; yy += 1) for (let xx = x0; xx <= x1; xx += 1) arr[yy * BW + xx] = 1;
+  };
+  for (const [rx, ry, gas] of opts.resources ?? []) {
+    const f = gas === 1 ? GEYSER_FOOT : MINERAL_FOOT;
+    markRect(staticBlock, rx - f[0] / 2, ry - f[1] / 2, f[0], f[1]);
+  }
+  /** 지금 판 — 지형 walk에서 건물·자원 칸을 뺀 것. */
+  let liveGrid: TerrainGrid | null = null;
+  let gridVer = 0;
+  const rebuildGrid = (t: number): void => {
+    gridVer += 1;
+    const walk = new Uint8Array(BW * BH);
+    for (let i = 0; i < walk.length; i += 1) {
+      walk[i] = terrain ? (terrain.walk[i] && !staticBlock[i] ? 1 : 0) : (staticBlock[i] ? 0 : 1);
+    }
+    for (const b of bodies) {
+      if (!b.bld || t < b.born || (b.died !== null && t >= b.died)) continue;
+      const f = BUILDING_FOOT[b.kind] ?? DEFAULT_FOOT;
+      markRect(walk, b.x - f[0] / 2, b.y - f[1] / 2, f[0], f[1]);
+      // markRect는 1을 칠하므로 건물 칸은 0으로 되돌린다.
+      const x0 = Math.max(0, Math.floor(((b.x - f[0] / 2) / W) * BW));
+      const y0 = Math.max(0, Math.floor(((b.y - f[1] / 2) / H) * BH));
+      const x1 = Math.min(BW - 1, Math.floor((((b.x + f[0] / 2) / W) * BW) - 0.001));
+      const y1 = Math.min(BH - 1, Math.floor((((b.y + f[1] / 2) / H) * BH) - 0.001));
+      for (let yy = y0; yy <= y1; yy += 1) for (let xx = x0; xx <= x1; xx += 1) walk[yy * BW + xx] = 0;
+    }
+    liveGrid = { w: BW, h: BH, walk } as TerrainGrid;
+    /* 길 갈무리는 비우지 않는다 — 열쇠에 판 번호(gridVer)가 들어 있어 옛 것은 저절로
+       안 쓰인다. 비우면 건물이 설 때마다 부대 전체의 길을 다시 셈해 몇 배로 느려진다
+       (실측: 게임 1이 6.1초 → 11.6초). 무한히 자라지 않게 상한만 둔다. */
+    if (pathCache.size > 40000) pathCache.clear();
+  };
+  /** 그 타일이 막혔나 — 걸음 한 발마다 본다. */
+  const blockedAt = (x: number, y: number): boolean => {
+    if (!liveGrid) return false;
+    const gx = Math.floor((x / W) * BW);
+    const gy = Math.floor((y / H) * BH);
+    if (gx < 0 || gy < 0 || gx >= BW || gy >= BH) return true;
+    return liveGrid.walk[gy * BW + gx] === 0;
+  };
+
   /* 길찾기 캐시 — 같은 두 점을 여러 유닛이 함께 쓴다(부대 이동). */
   const pathCache = new Map<string, [number, number][]>();
+  /** 곧은 줄이 트여 있나 — 0.5타일마다 훑는다. 트였으면 길찾기를 아예 안 부른다. */
+  const clearLine = (x0: number, y0: number, x1: number, y1: number): boolean => {
+    const d = dist(x0, y0, x1, y1);
+    const n = Math.ceil(d / 0.5);
+    for (let i = 1; i <= n; i += 1) {
+      if (blockedAt(x0 + ((x1 - x0) * i) / n, y0 + ((y1 - y0) * i) / n)) return false;
+    }
+    return true;
+  };
   const findPath = (x0: number, y0: number, x1: number, y1: number): [number, number][] => {
-    if (!terrain) return [[x1, y1]];
-    const key = `${Math.round(x0)},${Math.round(y0)},${Math.round(x1)},${Math.round(y1)}`;
+    if (!liveGrid) return [[x1, y1]];
+    /* 대부분의 이동은 빈 땅을 가로지른다 — 그때는 길찾기(격자 BFS)가 통째로 낭비다.
+       곧은 줄이 트여 있으면 그대로 간다(실측: 게임 1이 11.0초 → 아래 값). */
+    if (clearLine(x0, y0, x1, y1)) return [[x1, y1]];
+    const key = `${gridVer}:${Math.round(x0)},${Math.round(y0)},${Math.round(x1)},${Math.round(y1)}`;
     const hit = pathCache.get(key);
     if (hit) return hit;
-    const got = groundPath(terrain, x0 / W, y0 / H, x1 / W, y1 / H);
+    const got = groundPath(liveGrid, x0 / W, y0 / H, x1 / W, y1 / H);
     const pts: [number, number][] = got
       ? got.map(([fx, fy]) => [fx * W, fy * H] as [number, number])
       : [[x1, y1]];
@@ -461,6 +526,13 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   /* 활성 목록(성능) — 예전엔 매 틱 전체 개체를 훑었다. 20분 4:4는 개체 3천 × 1만 틱이라
      3천만 번인데, 그 대부분이 "아직 안 태어남" 또는 "이미 죽음"이었다. 출생순으로 줄을
      세워 때가 되면 넣고, 걷히면 빼면 실제로 도는 것은 그 순간 살아 있는 몇백 기다. */
+  /* 판을 다시 구울 시각 — 건물이 서거나 무너지는 순간뿐이다(경기당 수백 번). */
+  const gridTimes = [...new Set(bodies.flatMap((b) => (b.bld
+    ? [b.born, ...(b.died !== null ? [b.died] : [])] : [])))].sort((a, b2) => a - b2);
+  let gridIdx = 0;
+  let lastGrid = -99;
+  rebuildGrid(0);
+
   const byBorn = [...bodies].sort((a, b2) => a.born - b2.born);
   let bornIdx = 0;
   let active: Body[] = [];
@@ -469,6 +541,15 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
     const t = k * dt;
     cells.clear();
     live.length = 0;
+    /* 판 다시 굽기는 15초에 한 번으로 묶는다 — 굽는 비용 자체보다, 판 번호가 바뀌면
+       길 갈무리가 통째로 쓸모없어져 부대 전체가 길을 다시 셈하는 것이 훨씬 비싸다
+       (실측: 2초 간격이면 게임 1이 11.8초, 15초 간격이면 아래 값). 건물이 서는 순간과
+       길이 막히는 순간이 15초쯤 어긋나도 화면에서는 안 보인다. */
+    if (gridIdx < gridTimes.length && gridTimes[gridIdx] <= t && t - lastGrid >= 15) {
+      while (gridIdx < gridTimes.length && gridTimes[gridIdx] <= t) gridIdx += 1;
+      lastGrid = t;
+      rebuildGrid(t);
+    }
     while (bornIdx < byBorn.length && byBorn[bornIdx].born <= t) {
       active.push(byBorn[bornIdx]);
       bornIdx += 1;
@@ -571,14 +652,19 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
             const dx2 = tx2 - b.x;
             const dy2 = ty2 - b.y;
             const d2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
-            if (d2 <= 0.45) {
+            /* 밭도 홀도 이제 '막힌 칸'이다(요청: 자원·건물 통과 불가) — 그 한가운데를
+               목표로 두면 영영 못 닿아 일꾼이 벽에 부딪혀 떨기만 한다. 발자국 가장자리에
+               닿으면 도착으로 친다: 가까이 왔거나(1.2타일), 다음 한 발이 막혔거나. */
+            const go = Math.min(b.speed * dt, d2);
+            const nx2 = b.x + (dx2 / d2) * go;
+            const ny2 = b.y + (dy2 / d2) * go;
+            if (d2 <= 1.2 || blockedAt(nx2, ny2)) {
               // 밭에서는 캐고(2.8초), 홀에서는 반납만 하고(0.3초) 곧장 돌아선다.
               j.wait = j.toHall ? 0.3 : 2.8;
               j.toHall = !j.toHall;
             } else {
-              const go = Math.min(b.speed * dt, d2);
-              b.x += (dx2 / d2) * go;
-              b.y += (dy2 / d2) * go;
+              b.x = nx2;
+              b.y = ny2;
               const want2 = norm360((Math.atan2(-dx2, dy2) * 180) / Math.PI);
               const diff2 = angDiff(b.hdg, want2);
               const mt2 = b.turn * dt;
@@ -644,14 +730,21 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         for (let j = i + 1; j < arr.length; j += 1) {
           const a = arr[i];
           const c = arr[j];
-          if (a.owner !== c.owner) continue;
+          /* 유닛끼리도 통과 불가(요청) — 편을 안 가린다. 다만 자원을 캐는 일꾼끼리는
+             겹칠 수 있다(원작에서도 캐는 일꾼은 서로를 통과한다). */
+          if (a.state === ST_GATHER && c.state === ST_GATHER) continue;
+          const rr = BODY_R[a.size] + BODY_R[c.size];
           const dx = c.x - a.x;
           const dy = c.y - a.y;
           const d = Math.hypot(dx, dy);
-          if (d >= SEP_R || d < 1e-4) continue;
-          const push = (SEP_R - d) / 2;
-          a.x -= (dx / d) * push; a.y -= (dy / d) * push;
-          c.x += (dx / d) * push; c.y += (dy / d) * push;
+          if (d >= rr || d < 1e-4) continue;
+          const push = (rr - d) / 2;
+          const ax2 = a.x - (dx / d) * push;
+          const ay2 = a.y - (dy / d) * push;
+          const cx2 = c.x + (dx / d) * push;
+          const cy2 = c.y + (dy / d) * push;
+          if (a.air || !blockedAt(ax2, ay2)) { a.x = ax2; a.y = ay2; }
+          if (c.air || !blockedAt(cx2, cy2)) { c.x = cx2; c.y = cy2; }
         }
       }
     }
