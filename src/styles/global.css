@@ -5831,6 +5831,12 @@ body *::-webkit-scrollbar-corner { background: transparent; }
   display: flex; align-items: center; justify-content: flex-start; gap: 8px;
   margin: 6px 0 2px;
 }
+/* 모바일은 가운데(요청: "모바일에선 색상버튼 가운데에 있어야지 한 줄에 한 요소니까") —
+   좁은 배치에서는 이 줄에 이것 하나뿐이라 왼쪽에 붙이면 한쪽으로 쏠려 보인다. 넓은
+   배치는 지도 왼쪽 아래에 맞춰 왼쪽 정렬 그대로다(요청). */
+@media (max-width: 899px) {
+  .scr-motion-colorrow { justify-content: center; }
+}
 .scr-motion-colorrow-label {
   flex: 0 0 auto;
   font-size: var(--fs-sm); font-weight: 700; color: var(--muted);
