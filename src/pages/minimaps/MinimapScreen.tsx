@@ -225,6 +225,23 @@ export default function MinimapScreen() {
   };
 
   /** ③ 매핑 해제 — 그 맵은 다시 위 목록으로 돌아가고 격자 개략도로 그려진다. */
+  /* 이 미니맵에 붙은 맵을 전부 한 번에 해제(요청: 버튼 순서 이미지-지형-연결해제-삭제) —
+     여태 해제는 접힌 목록 안에서 맵 하나씩만 됐다. 그림을 다시 쓰려고 연결만 끊고 싶을 때
+     맵이 수십 개면 수십 번을 눌러야 했다. 미니맵 자체는 남는다(그게 삭제와 다른 점이다). */
+  const [confirmRelease, setConfirmRelease] = useState<{ img: MinimapImage; hashes: string[] } | null>(null);
+  const releaseAll = async (hashes: string[]) => {
+    setErr("");
+    setBusy(true);
+    try {
+      await api.assignMinimapImage(null, hashes);
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "해제하지 못했어요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const release = async (hash: string) => {
     setErr("");
     setBusy(true);
@@ -385,8 +402,17 @@ export default function MinimapScreen() {
                     매핑된 맵 {mapped.length}개 {open ? "▲" : "▼"}
                   </span>
                 </button>
-                {/* 그림 변경 — 지우기 왼쪽에 둔다(요청). 매핑을 지키면서 그림만 바꾸는
-                    일이라, 되돌릴 수 없는 지우기와 나란히 있되 확인창은 없다. */}
+                {/* 버튼 차례는 이미지 → 지형 → 연결해제 → 삭제다(요청). 왼쪽일수록
+                    되돌리기 쉬운 일이고, 오른쪽 끝이 되돌릴 수 없는 삭제다. */}
+                <button
+                  type="button" className="scr-icon-btn"
+                  onClick={() => { setSwapId(i.id); swapRef.current?.click(); }}
+                  disabled={busy}
+                  aria-label={`${i.name} 그림 변경`}
+                  title="그림 변경"
+                >
+                  <ImageUp size={14} />
+                </button>
                 {/* 지형 검수(요청) — 자동 분석 결과를 크게 보고 칸 단위로 고친다. */}
                 <button
                   type="button" className="scr-icon-btn"
@@ -397,19 +423,21 @@ export default function MinimapScreen() {
                 >
                   <Mountain size={14} />
                 </button>
+                {/* 연결해제 — 붙은 맵을 한 번에 다 뗀다. 미니맵 그림은 남는다. */}
                 <button
                   type="button" className="scr-icon-btn"
-                  onClick={() => { setSwapId(i.id); swapRef.current?.click(); }}
-                  disabled={busy}
-                  aria-label={`${i.name} 그림 변경`}
-                  title="그림 변경"
+                  onClick={() => setConfirmRelease({ img: i, hashes: mapped.map((m) => m.hash) })}
+                  disabled={busy || mapped.length === 0}
+                  aria-label={`${i.name} 연결 전부 해제`}
+                  title={mapped.length === 0 ? "연결된 맵이 없어요" : `연결 ${mapped.length}개 전부 해제`}
                 >
-                  <ImageUp size={14} />
+                  <Link2Off size={14} />
                 </button>
                 <button
                   type="button" className="scr-icon-btn"
                   onClick={() => setConfirmDelete(i)} disabled={busy}
                   aria-label={`${i.name} 지우기`}
+                  title="지우기"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -454,6 +482,20 @@ export default function MinimapScreen() {
           } : prev))}
         />
       )}
+      {confirmRelease && (
+        <ConfirmDialog
+          title={`"${confirmRelease.img.name}"에 붙은 맵 ${confirmRelease.hashes.length}개를 전부 해제할까요?`}
+          message="미니맵 그림은 그대로 남고 맵 연결만 끊어져요. 지형 분석값도 그림에 남아 다시 연결하면 그대로 쓰입니다."
+          confirmLabel="전부 해제"
+          onConfirm={() => {
+            const hashes = confirmRelease.hashes;
+            setConfirmRelease(null);
+            void releaseAll(hashes);
+          }}
+          onCancel={() => setConfirmRelease(null)}
+        />
+      )}
+
       {confirmDelete && (
         <ConfirmDialog
           title={`"${confirmDelete.name}" 미니맵을 지울까요?`}

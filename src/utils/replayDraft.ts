@@ -5,7 +5,7 @@ import type { ReplayMapGrid } from "./replayParser";
 import { matchReplayPlayerToMember } from "./replayMemberMatch";
 import { api } from "../api/client";
 import { isComputerSlot, newComputerSlotId } from "../constants/computerSlot";
-import { newUnregisteredSlotId } from "../constants/unregisteredSlot";
+import { isUnregisteredSlot, newUnregisteredSlotId } from "../constants/unregisteredSlot";
 import type { ReplayUpload, GameOutcome, GameResultSlot, GameType, Race, Member } from "../types";
 
 export interface UnmatchedPlayer {
@@ -56,7 +56,7 @@ export interface ReplayDraft {
   excluded: boolean;
   // "제외" 버튼 옆에 왜 제외됐는지 짧게 보여줄 안내 — 자동 제외일 때만 값이 있다.
   // "duplicate"는 되돌릴 수 없고(같은 경기가 두 번 저장된다), "computer"는 체크박스로 되돌린다.
-  excludeReason: "duplicate" | "computer" | null;
+  excludeReason: "duplicate" | "computer" | "nonmember" | null;
   // 중복건은 그냥 제외하지 않고 리플레이 내부 정보(지표/맵/시간/승패)를 기존 경기에 조용히
   // 머지한다(요청) — 성공하면 true라, 검토 화면이 "제외"가 아니라 "기존 경기에 업데이트됨"으로
   // 보여준다. 머지 호출이 실패하면 false로 남아 예전처럼 중복(건너뜀)으로 표시된다.
@@ -194,6 +194,16 @@ export function resolveUnmatchedAsUnregistered(d: ReplayDraft): ReplayDraft {
 // 있다(리플레이 검토 화면의 "컴퓨터 낀 경기 제외" 체크박스).
 export function hasComputerSlot(d: ReplayDraft): boolean {
   return [...d.team1, ...d.team2].some((s) => isComputerSlot(s.memberId));
+}
+
+/* 비회원(가입 전 사람)이 한 자리라도 낀 경기인지 — 클럽 전적으로 치기 애매해서 통째로
+   빼고 싶을 때가 있다(리플레이 검토 화면의 "비회원 낀 경기 제외" 체크박스).
+   아직 아무에게도 연결 안 된 참가자도 함께 센다: 등록을 누르는 순간 그들은 비회원으로
+   채워지기 때문이다(resolveUnmatchedAsUnregistered). 그 둘을 갈라 두면 "제외했는데도
+   비회원이 들어갔다"가 된다. */
+export function hasUnregisteredSlot(d: ReplayDraft): boolean {
+  if (d.unmatchedTeam1.length > 0 || d.unmatchedTeam2.length > 0) return true;
+  return [...d.team1, ...d.team2].some((s) => isUnregisteredSlot(s.memberId));
 }
 
 // 이보다 짧은 경기는 제대로 붙은 판이 아닐 가능성이 크다(요청) — 시작하자마자 나갔거나

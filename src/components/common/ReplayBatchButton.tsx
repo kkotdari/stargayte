@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { cx } from "../../utils/format";
 import { Spinner } from "./Feedback";
 import ConfirmDialog from "./ConfirmDialog";
 import ReplayReviewModal from "../../modals/ReplayReviewModal";
@@ -61,9 +62,9 @@ export default function ReplayBatchButton() {
   // 중단 요청은 렌더와 무관하게 실행 중인 루프가 즉시 읽어야 해서 ref로 둔다.
   const abortRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  // 방금 연 선택창이 '폴더' 모드였나 — 폴더 업로드는 브라우저가 "N개 파일을 업로드합니다,
-  // 이 사이트를 신뢰하는 경우에만…"을 스스로 물어본다. 파일 여러 개를 고르는 모바일에는
-  // 그 확인이 없어서 고르는 즉시 등록이 시작됐다(지적) — 그때만 우리 확인창을 세운다.
+  /* 방금 연 선택창이 '폴더' 모드였나 — input의 webkitdirectory 속성을 갈아 끼우므로
+     어느 모드로 열었는지 기억해 둔다. 이제 고른 즉시 등록이 시작되지 않고 담기기만
+     하므로(아래 addFiles), 확인창은 '등록 시작'을 누를 때 한 번만 선다. */
   const dirModeRef = useRef(true);
   // 확인을 기다리는 파일들(모바일 전용). null이면 확인창이 닫혀 있다.
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
@@ -76,51 +77,111 @@ export default function ReplayBatchButton() {
     inputRef.current = el;
   };
   // 폴더 선택창을 열기 직전, 지금이 모바일인지(폴더 선택 불가)에 따라 input 속성을 맞춘다.
-  const openPicker = () => {
+  /* 파일이든 폴더든 고를 수 있게 한다(요청: "배치등록은 파일/폴더 선택 가능하게 해주고
+     폴더 선택시 하위폴더 모두 포함은 그대로. 파일과 폴더 동시 선택도 가능").
+
+     브라우저의 파일 선택창은 둘을 한 번에 못 고른다 — <input webkitdirectory>는 폴더만,
+     그냥 <input multiple>은 파일만이다. 표준이 그렇게 갈라져 있다. 그래서 셋을 함께 둔다.
+       ① 파일 고르기 — .rep 여러 개
+       ② 폴더 고르기 — 하위 폴더까지 재귀(webkitdirectory가 원래 그렇게 준다)
+       ③ 끌어다 놓기 — **파일과 폴더를 섞어서** 한 번에. 이것만이 동시 선택을 할 수 있다.
+     그리고 고른 것을 바로 돌리지 않고 쌓아 둔다 — 파일을 고르고 폴더를 또 고르면 합쳐진다.
+     그래야 창을 여러 번 열어서라도 섞을 수 있다. */
+  const openPicker = (mode: "file" | "dir") => {
     const el = inputRef.current;
     if (!el) return;
-    const mobile = window.matchMedia("(max-width: 480px)").matches;
-    dirModeRef.current = !mobile;
-    if (mobile) {
-      el.removeAttribute("webkitdirectory");
-      el.removeAttribute("directory");
-      el.setAttribute("accept", ".rep,application/octet-stream");
-    } else {
+    dirModeRef.current = mode === "dir";
+    if (mode === "dir") {
       el.setAttribute("webkitdirectory", "");
       el.setAttribute("directory", "");
       el.removeAttribute("accept");
+    } else {
+      el.removeAttribute("webkitdirectory");
+      el.removeAttribute("directory");
+      el.setAttribute("accept", ".rep,application/octet-stream");
     }
     el.click();
   };
 
-  const start = () => {
-    openPicker();
+  /* 끌어다 놓은 것 훑기 — 항목이 폴더면 하위를 재귀로 편다(webkitGetAsEntry).
+     이 API만이 파일과 폴더가 섞인 드롭을 다룰 수 있다. 못 쓰는 브라우저면 평평한
+     파일 목록으로 떨어지므로 그대로 받는다. */
+  const readEntry = async (entry: FileSystemEntry, out: File[]): Promise<void> => {
+    if (entry.isFile) {
+      const f = await new Promise<File | null>((res) => {
+        (entry as FileSystemFileEntry).file((x) => res(x), () => res(null));
+      });
+      if (f) out.push(f);
+      return;
+    }
+    if (!entry.isDirectory) return;
+    const reader = (entry as FileSystemDirectoryEntry).createReader();
+    // readEntries는 한 번에 100개쯤만 준다 — 빈 배열이 올 때까지 되풀이해야 한다.
+    for (;;) {
+      const batch = await new Promise<FileSystemEntry[]>((res) => {
+        reader.readEntries((e) => res(e), () => res([]));
+      });
+      if (batch.length === 0) break;
+      for (const e of batch) await readEntry(e, out);
+    }
+  };
+
+  const [dragOver, setDragOver] = useState(false);
+  const onDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const items = [...e.dataTransfer.items];
+    const out: File[] = [];
+    const entries = items
+      .map((it) => (it.kind === "file" && it.webkitGetAsEntry ? it.webkitGetAsEntry() : null))
+      .filter((x): x is FileSystemEntry => x !== null);
+    if (entries.length > 0) {
+      for (const en of entries) await readEntry(en, out);
+    } else {
+      out.push(...e.dataTransfer.files);
+    }
+    addFiles(out);
   };
 
   // 폴더를 고르면 바로 시작한다 — 브라우저가 폴더 업로드를 물어보는 창이 이미 앞에 있어서
   // 우리 확인창까지 세우면 확인이 두 번이 된다(지적). 다만 그 창은 폴더 업로드에만 뜨는
   // 것이라, 파일을 직접 고르는 모바일에서는 아무 확인 없이 등록이 시작됐다(지적) —
   // 그쪽에서만 우리 확인창을 한 번 세운다.
+  /* 고른 것을 바로 돌리지 않고 담아 둔다 — 파일을 고르고 폴더를 또 고르면 합쳐진다.
+     같은 파일을 두 번 고르면 한 번만 센다(이름+크기+수정시각으로 가른다). */
+  const [staged, setStaged] = useState<File[]>([]);
+  const addFiles = (incoming: File[]) => {
+    const reps = incoming.filter((f) => f.name.toLowerCase().endsWith(".rep"));
+    setErr("");
+    if (reps.length === 0) {
+      setPickedNote(`파일 ${incoming.length}개를 봤지만 리플레이(.rep)가 없어요.`);
+      return;
+    }
+    setStaged((prev) => {
+      const seen = new Set(prev.map((f) => `${f.name}|${f.size}|${f.lastModified}`));
+      const merged = [...prev];
+      for (const f of reps) {
+        const k = `${f.name}|${f.size}|${f.lastModified}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        merged.push(f);
+      }
+      setPickedNote(`리플레이(.rep) ${merged.length}개 담김 — 더 고르거나 '등록 시작'을 누르세요.`);
+      return merged;
+    });
+  };
+
   const runBatch = (fileList: FileList | null) => {
     // input.files는 살아있는(live) FileList라, 값을 비우면 이미 잡아둔 이 참조의 내용까지
     // 같이 비워질 수 있다 — 반드시 배열로 먼저 복사해두고 그다음에 input을 비운다(같은
     // 폴더를 다시 골랐을 때도 change가 뜨게 하려면 비워둬야 한다).
     const picked = fileList ? [...fileList] : [];
     if (inputRef.current) inputRef.current.value = "";
-
-    const files = picked.filter((f) => f.name.toLowerCase().endsWith(".rep"));
-    // 폴더를 골랐는데 아무 일도 안 일어나면 어디서 막혔는지 알 수가 없다 — 브라우저가 넘겨준
-    // 파일 수와 그중 리플레이 수를 항상 먼저 남긴다.
-    setPickedNote(`파일 ${picked.length}개 · 리플레이(.rep) ${files.length}개를 찾았어요.`);
-    if (files.length === 0) {
-      setErr(picked.length === 0
-        ? "브라우저가 폴더 안의 파일을 넘겨주지 않았어요 (선택을 취소했거나 빈 폴더예요)."
-        : "고른 폴더 안에 리플레이(.rep) 파일이 없어요.");
-      setTally(EMPTY_TALLY);
+    if (picked.length === 0) {
+      setPickedNote("고른 것이 없어요 (선택을 취소했거나 빈 폴더예요).");
       return;
     }
-    if (!dirModeRef.current) { setPendingFiles(files); return; }
-    void executeBatch(files);
+    addFiles(picked);
   };
 
   const executeBatch = async (files: File[]) => {
@@ -212,11 +273,45 @@ export default function ReplayBatchButton() {
             <Spinner /> {tally.done}/{tally.total} · 중단
           </button>
         ) : (
-          <button type="button" className="scr-btn scr-btn-primary" onClick={start}>
-            배치등록
-          </button>
+          <>
+            <button type="button" className="scr-btn scr-btn-primary" onClick={() => openPicker("file")}>
+              파일 고르기
+            </button>
+            <button type="button" className="scr-btn scr-btn-primary" onClick={() => openPicker("dir")}>
+              폴더 고르기
+            </button>
+            {staged.length > 0 && (
+              <>
+                <button
+                  type="button" className="scr-btn scr-btn-primary"
+                  onClick={() => { setPendingFiles(staged); }}
+                >
+                  등록 시작 ({staged.length})
+                </button>
+                <button
+                  type="button" className="scr-btn"
+                  onClick={() => { setStaged([]); setPickedNote(""); }}
+                >
+                  비우기
+                </button>
+              </>
+            )}
+          </>
         )}
       </div>
+
+      {/* 파일과 폴더를 **섞어서** 한 번에 넣는 유일한 길(요청) — 브라우저의 선택창은 둘을
+          같이 못 고르지만, 끌어다 놓기는 webkitGetAsEntry로 섞인 것을 그대로 받는다. */}
+      {!running && (
+        <div
+          className={cx("scr-batch-drop", dragOver && "is-over")}
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => { void onDrop(e); }}
+        >
+          여기에 리플레이 파일이나 폴더를 끌어다 놓으세요 — 섞어서 놓아도 됩니다(하위 폴더 포함)
+        </div>
+      )}
 
       {/* 진행이 아예 시작되지 않은 경우(리플레이를 하나도 못 찾음)에만 브라우저가 뭘 넘겨줬는지
           보여준다 — 돌기 시작하면 버튼 안의 숫자가 그 자리를 대신한다. */}

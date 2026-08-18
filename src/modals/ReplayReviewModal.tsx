@@ -6,7 +6,7 @@ import MemberMultiSelect from "../components/select/MemberMultiSelect";
 import { Spinner } from "../components/common/Feedback";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import { cx } from "../utils/format";
-import { hasComputerSlot, shortMatchHint, validateReplayDraft, resolveUnmatchedAsUnregistered, type ReplayDraft, type UnmatchedPlayer } from "../utils/replayDraft";
+import { hasComputerSlot, hasUnregisteredSlot, shortMatchHint, validateReplayDraft, resolveUnmatchedAsUnregistered, type ReplayDraft, type UnmatchedPlayer } from "../utils/replayDraft";
 import { useAppStore } from "../store/appStore";
 import { useLockBodyScroll } from "../utils/bodyScrollLock";
 import { api } from "../api/client";
@@ -119,6 +119,7 @@ export default function ReplayReviewModal({
   const [err, setErr] = useState("");
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
   const [excludeComputer, setExcludeComputer] = useState(false);
+  const [excludeNonMember, setExcludeNonMember] = useState(false);
   /* 목록은 접힌 채로 시작한다(요청: 누르면 아래로 펼쳐지며 게임정보) — 판정과 파일명만
      쭉 훑고, 손댈 것이 있는 건만 열어 보는 흐름이다. */
   const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -260,6 +261,23 @@ export default function ReplayReviewModal({
     }));
   };
 
+  /* "비회원 낀 경기 제외"(요청) — 컴퓨터 제외와 같은 규칙이다. 체크를 풀면 이 체크박스가
+     뺐던 것만 되돌린다(excludeReason으로 누가 뺐는지 구분) — 사용자가 직접 제외한 것과
+     중복·컴퓨터 제외는 안 건드린다.
+     아직 연결 안 된 참가자가 있는 건도 함께 뺀다 — 등록을 누르는 순간 그들이 비회원으로
+     채워지기 때문이다(hasUnregisteredSlot 주석). 그래서 이 체크를 켜면 '검토필요'로
+     막혀 있던 건들도 함께 빠져 등록이 곧바로 열리는 일이 많다. */
+  const toggleExcludeNonMember = (next: boolean) => {
+    setExcludeNonMember(next);
+    setDrafts((prev) => prev.map((d, i) => {
+      if (submittedIndices.has(i) || d.excludeReason === "duplicate"
+        || d.excludeReason === "computer" || !hasUnregisteredSlot(d)) return d;
+      if (next) return { ...d, excluded: true, excludeReason: "nonmember" as const };
+      if (d.excludeReason !== "nonmember") return d;
+      return { ...d, excluded: false, excludeReason: null };
+    }));
+  };
+
   // 중복(이미 등록된 경기)만 빼고 나머지는 매핑이 끝났든 아니든 전부 보여준다 — 등록 전에
   // 한 번은 항상 내용을 훑어보게 하기 위해서다. 제외를 누르면 그 자리에서 바로 사라지는
   // 대신(되돌릴 방법이 없어 보임) 계속 목록에 남아 딤 처리만 되고, 제외를 다시 풀 수도
@@ -339,14 +357,24 @@ export default function ReplayReviewModal({
           )}
 
           {visibleIndices.length > 0 && (
-            <label className="scr-checkbox-field">
-              <input
-                type="checkbox"
-                checked={excludeComputer}
-                onChange={(e) => toggleExcludeComputer(e.target.checked)}
-              />
-              컴퓨터 낀 경기 제외
-            </label>
+            <div className="scr-replay-review-filters">
+              <label className="scr-checkbox-field">
+                <input
+                  type="checkbox"
+                  checked={excludeComputer}
+                  onChange={(e) => toggleExcludeComputer(e.target.checked)}
+                />
+                컴퓨터 낀 경기 제외
+              </label>
+              <label className="scr-checkbox-field">
+                <input
+                  type="checkbox"
+                  checked={excludeNonMember}
+                  onChange={(e) => toggleExcludeNonMember(e.target.checked)}
+                />
+                비회원 낀 경기 제외
+              </label>
+            </div>
           )}
 
           {visibleIndices.length === 0 ? (

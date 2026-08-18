@@ -5799,6 +5799,24 @@ body *::-webkit-scrollbar-corner { background: transparent; }
 }
 .scr-redo-pick-count { color: var(--muted); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
 
+/* 검토 화면의 제외 체크박스 줄 — 둘이 나란히(요청: 비회원 포함 경기 제외도 추가). */
+.scr-replay-review-filters { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+
+/* 배치등록 끌어놓기 자리(요청: 파일과 폴더 동시 선택도 가능) — 선택창은 둘을 같이 못
+   고르므로, 섞어 넣는 유일한 길이 여기다. grid 안에서 한 줄을 통째로 차지한다. */
+.scr-batch-drop {
+  grid-column: 1 / -1; order: 90;
+  border: 1px dashed var(--line); border-radius: 10px;
+  padding: 14px 12px; text-align: center;
+  color: var(--muted); font-size: var(--fs-sm); line-height: 1.4;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.scr-batch-drop.is-over {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--text);
+}
+
 /* ===== 프로필 사진 크롭(AvatarCropModal) =====
    아바타는 이 앱 어디서나 원형으로만 쓰이므로(.scr-avatar-pick .scr-avatar) 자유 비율
    대신 정사각(원) 크롭 하나만 지원한다. */
