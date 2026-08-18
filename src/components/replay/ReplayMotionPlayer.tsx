@@ -3623,16 +3623,23 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ], -4.8),
       // 위 파란 발광 고리 — 반투명 판(색을 안 줘 raceBase의 금 바탕이 든다).
       ...tagKey([[groundEllipse(cx2, cy2, 2.3, 1.15), 0.55] as ShapeFace], -5),
-      /* 플라즈마 디스크(재지적: "코어 위쪽 디스크는 디스크 한장짜리 판") — 겹쳐
-         기울인 링 셋을 걷고, 금 축 위에 두께 있는 원판 한 장만 얹는다. */
-      ...tagKey(paintBase(cylinderFaces3(0, -0.2, 0.24, 1.9, 3.5), P_GOLD), 12),
-      ...tagKey(paintBase(cylinderFaces3(0, -0.2, 2.55, 0.22, 5.3), PLASMA_RING), 13),
-      ...tagKey([topFace(discPath3(0, -0.2, 5.53, 1.5), 0.28)], 13.4),
+      /* 플라즈마 디스크(재지적: "디스크 크기 줄이고 본체 위에 딱 붙여 올리기") —
+         겹쳐 기울인 링 셋을 걷고 원판 한 장만 남긴 데 이어, 받치던 금 축도 걷었다.
+         축이 있으면 원판이 본체에서 1.7만큼 떠서 따로 노는 부품으로 보인다. 반지름도
+         2.55 → 1.75로 줄여 드럼(2.5)보다 좁게 두어, 몸 위에 얹힌 뚜껑으로 읽힌다. */
+      ...tagKey(paintBase(cylinderFaces3(0, -0.2, 1.75, 0.3, 3.66), PLASMA_RING), 13),
+      ...tagKey([topFace(discPath3(0, -0.2, 3.99, 1.05), 0.28)], 13.4),
       // 구슬 넷과 저마다의 금색 발판 — 드럼 둘레를 따라 앞쪽에 벌려 선다.
       ...ORB_ANG.flatMap((deg9) => {
         const o9 = orbAt(deg9);
         const front9 = facingRatio(o9.x, o9.y - (-0.2)) > 0.02;
-        const base9 = (front9 ? 16 : -7) + depthNow(o9.x, o9.y) * 0.4;
+        /* 뒤로 넘어간 구슬은 드럼(키 -6)보다 확실히 아래여야 한다(지적: "내부 개인색
+           부품 비쳐보이는 거 수정") — 예전엔 -7에 제 깊이의 0.4배를 더했더니, 그
+           흔들림이 1을 넘어 어떤 각에서는 키가 -6을 웃돌았다. 그러면 반투명한 구슬이
+           드럼 위로 떠올라 몸 속이 비쳐 보인다. 흔들림 폭을 0.02로 조여 못 넘게 했다. */
+        const base9 = front9
+          ? 16 + depthNow(o9.x, o9.y) * 0.4
+          : -6.5 + depthNow(o9.x, o9.y) * 0.02;
         return [
           ...tagKey(paintBase(cylinderFaces3(o9.x, o9.y, 1.05, 0.5, 1.6), P_GOLD), base9),
           ...tagKey(orb9(o9.x, o9.y), base9 + 0.2),
