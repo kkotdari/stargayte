@@ -203,10 +203,13 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       const spot = [...e.ev].reverse().find((v) => (v[3] === 2 || v[3] === 5) && v[1] >= 0);
       if (!spot) continue;
       const bs = BLD_STATS[e.k ?? ""] ?? [800, 0];
+      /* 건물 자리 증거는 타일 앵커(좌상단)다 — 중심으로 옮겨 담는다(수리: 막힘 판이
+         반 발자국씩 어긋나 있었고, 건물 사거리·홀 거리도 그만큼 틀렸다). */
+      const bf = BUILDING_FOOT[e.k ?? ""] ?? DEFAULT_FOOT;
       const bb: Body = {
         src: e, tag: e.t, owner: e.o, kind: e.k ?? "", air: false,
         speed: 0, turn: 0, born: spot[0], died: e.d ?? null,
-        x: spot[1], y: spot[2], hdg: 180, state: ST_IDLE,
+        x: spot[1] + bf[0] / 2, y: spot[2] + bf[1] / 2, hdg: 180, state: ST_IDLE,
         ords: [], oi: 0, dest: null, path: [], pi: 0, inside: null,
         fixX: 0, fixY: 0, fixT: 0, keys: [],
         kx: NaN, ky: NaN, kh: NaN, ks: ST_GONE, kt: 0, kvx: 0, kvy: 0, px: NaN, py: NaN,
@@ -306,6 +309,21 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
        (실측: 게임 1이 6.1초 → 11.6초). 무한히 자라지 않게 상한만 둔다. */
     if (pathCache.size > 40000) pathCache.clear();
   };
+  /* 발자국 테두리의 가장 가까운 점(요청: 미네랄 안쪽이 아니라 바깥에서 캐고, 반납도
+     기지의 가장 가까운 외곽점에) — 가운데를 목표로 두면 몸이 자원·건물 속으로 들어간다.
+     상대 쪽 방향으로 테두리까지 나간 뒤 pad만큼 더 밀어 몸이 밖에 서게 한다. */
+  const edgePoint = (
+    cx: number, cy: number, hw: number, hh: number,
+    tx: number, ty: number, pad: number,
+  ): [number, number] => {
+    const dx = tx - cx;
+    const dy = ty - cy;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 1e-4) return [cx + hw + pad, cy];
+    const k = 1 / Math.max(Math.abs(dx) / hw, Math.abs(dy) / hh);
+    return [cx + (dx * k) + (dx / len) * pad, cy + (dy * k) + (dy / len) * pad];
+  };
+
   /** 그 타일이 막혔나 — 걸음 한 발마다 본다. */
   const blockedAt = (x: number, y: number): boolean => {
     if (!liveGrid) return false;
@@ -418,25 +436,34 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
     let hx = 0;
     let hy = 0;
     let hd = 12;
+    let hallKind = "";
     for (const h of hallList) {
       if (h.owner !== b.owner || h.state === ST_GONE) continue;
       if (t < h.born || (h.died !== null && t >= h.died)) continue;
       const d = dist(b.x, b.y, h.x, h.y);
-      if (d < hd) { hd = d; hx = h.x; hy = h.y; }
+      if (d < hd) { hd = d; hx = h.x; hy = h.y; hallKind = h.kind; }
     }
     if (hd >= 12) return null;
+    const hf = BUILDING_FOOT[hallKind] ?? DEFAULT_FOOT;
     // 가스 — 곁에 제 정제소가 서 있으면 그 자리가 밭이다.
     for (const g of gasList) {
       if (g.owner !== b.owner || g.state === ST_GONE) continue;
       if (t < g.born || (g.died !== null && t >= g.died)) continue;
-      if (dist(b.x, b.y, g.x, g.y) <= 2.5) {
-        return { px: g.x, py: g.y, hx, hy, toHall: false, wait: 0 };
+      if (dist(b.x, b.y, g.x, g.y) <= 3.5) {
+        const gf = BUILDING_FOOT[g.kind] ?? DEFAULT_FOOT;
+        const gp = edgePoint(g.x, g.y, gf[0] / 2, gf[1] / 2, hx, hy, 0.35);
+        const hp2 = edgePoint(hx, hy, hf[0] / 2, hf[1] / 2, g.x, g.y, 0.35);
+        return { px: gp[0], py: gp[1], hx: hp2[0], hy: hp2[1], toHall: false, wait: 0 };
       }
     }
     const near = RES.filter((r) => r[2] !== 1 && dist(hx, hy, r[0], r[1]) <= 9);
     if (near.length === 0) return null;
     const pick = near[Math.abs(b.tag) % near.length];
-    return { px: pick[0], py: pick[1], hx, hy, toHall: false, wait: 0 };
+    /* 밭은 바깥 테두리에서 캔다(요청) — 홀을 바라보는 쪽 모서리다. 반납도 홀 발자국의
+       그 밭에 가장 가까운 외곽점이다. 둘 다 몸이 그림 밖에 서는 자리다. */
+    const mp = edgePoint(pick[0], pick[1], MINERAL_FOOT[0] / 2, MINERAL_FOOT[1] / 2, hx, hy, 0.35);
+    const hp = edgePoint(hx, hy, hf[0] / 2, hf[1] / 2, pick[0], pick[1], 0.35);
+    return { px: mp[0], py: mp[1], hx: hp[0], hy: hp[1], toHall: false, wait: 0 };
   };
 
   const hurt = (a: Body, tgt: Body, w: Weapon, t: number): void => {
@@ -658,7 +685,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
             const go = Math.min(b.speed * dt, d2);
             const nx2 = b.x + (dx2 / d2) * go;
             const ny2 = b.y + (dy2 / d2) * go;
-            if (d2 <= 1.2 || blockedAt(nx2, ny2)) {
+            if (d2 <= 0.4 || blockedAt(nx2, ny2)) {
               // 밭에서는 캐고(2.8초), 홀에서는 반납만 하고(0.3초) 곧장 돌아선다.
               j.wait = j.toHall ? 0.3 : 2.8;
               j.toHall = !j.toHall;
