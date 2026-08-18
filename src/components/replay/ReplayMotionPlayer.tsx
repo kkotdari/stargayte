@@ -10544,8 +10544,6 @@ export default function ReplayMotionPlayer({
      높이를 그때그때 재고 남는 세로를 지도 비율로 되돌려 폭으로 준다. 가로가 넘치면
      가로 스크롤이 나는데, 그건 사용자가 받아들인 쪽이다.
      지도가 커지면 뿌리도 커지므로 되먹임이 생길 수 있어 4px보다 작은 변화는 무시한다. */
-  const maprowRef = useRef<HTMLDivElement>(null);
-  const [mapCapH, setMapCapH] = useState(0);
   useEffect(() => {
     const host = rootRef.current?.parentElement;
     if (!host || typeof ResizeObserver === "undefined") return undefined;
@@ -10553,32 +10551,17 @@ export default function ReplayMotionPlayer({
     ro.observe(host);
     return () => ro.disconnect();
   }, []);
-  useEffect(() => {
-    const calc = (): void => {
-      const root = rootRef.current;
-      const row = maprowRef.current;
-      if (!root || !row) return;
-      const rr = root.getBoundingClientRect();
-      const wr = row.getBoundingClientRect();
-      // 지도줄 아래에 남은 것들(색상·보기 설정·탐색바·도구줄)의 높이.
-      const below = Math.max(0, rr.bottom - wr.bottom);
-      const avail = window.innerHeight - wr.top - below - 10;
-      // 지도줄 위쪽이 화면 밖으로 밀려 올라갔으면(스크롤) 그만큼은 더 쓸 수 있다.
-      if (avail <= 0) return;
-      setMapCapH((prev) => (Math.abs(prev - avail) > 4 && avail > 140 ? avail : prev));
-    };
-    calc();
-    const ro = new ResizeObserver(calc);
-    // 뿌리가 아니라 그 부모를 본다 — 뿌리를 보면 우리가 키운 것이 다시 계산을 부른다.
-    if (rootRef.current?.parentElement) ro.observe(rootRef.current.parentElement);
-    window.addEventListener("resize", calc);
-    const tid = window.setTimeout(calc, 120);   // 글꼴·이미지가 앉은 뒤 한 번 더.
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", calc);
-      window.clearTimeout(tid);
-    };
-  }, [wide]);
+  /* 맵 뷰어 크기는 고정이다(요청: "맵뷰어 크기는 1024*1024로 고정, 가로 세로 중 더 긴
+     쪽을 맞추면 돼") — 화면 높이에 맞춰 폭을 되돌리던 자동 계산을 통째로 걷었다.
+     그 계산은 넓은 배치에서 **한 번도 작동한 적이 없다**: 맵줄(.scr-motion-maprow)이
+     display:contents라 상자를 안 만들고, 그런 요소의 getBoundingClientRect()는 전부 0을
+     돌려준다. 그래서 남은 세로가 늘 음수로 나와 조기 반환됐고, PC의 맵 크기는 사실
+     그리드의 minmax(0,1fr) 칸이 정하고 있었다.
+     이제 긴 쪽을 1024에 맞춘다 — 정사각 맵이면 1024×1024, 가로가 긴 맵이면 폭이 1024다.
+     좁은 화면(넓은 배치 아님)은 종전대로 폭 100%로 흐른다. */
+  const MAP_VIEW_PX = 1024;
+  const mapViewW = grid.width >= grid.height
+    ? MAP_VIEW_PX : Math.round((MAP_VIEW_PX * grid.width) / grid.height);
   useEffect(() => {
     if (!wide || !onDetailClose) return undefined;
     // Esc = 닫기 버튼과 같은 길 — 상세를 닫는다.
@@ -11739,7 +11722,7 @@ export default function ReplayMotionPlayer({
          쪼그라들었다(실측: 지도가 140px). 세로 맞춤은 지도 자신에게 건다(아래 참조). */
       style={{ margin: "0 auto" }}
     >
-      <div className="scr-motion-maprow" ref={maprowRef}>
+      <div className="scr-motion-maprow">
       {teamCol(1)}
       {/* 로스터 가운데 vs(요청: 구분선 말고 vs — 모바일·PC 공통). */}
       <span className="scr-motion-teamvs" aria-hidden>vs</span>
@@ -11750,16 +11733,12 @@ export default function ReplayMotionPlayer({
         onPointerUp={onMapPointerUp}
         onPointerCancel={onMapPointerUp}
         style={{
-          /* 남는 세로를 꽉 채운다(요청: "세로 높이에 맞추라는 얘기"·"scr-motion-wide 높이를
-             페이지 높이랑 맞게, 대신 가로 스크롤은 생길 수도") — 잰 세로(mapCapH)를 지도
-             비율로 되돌려 폭으로 준다. 폭이 정해지면 아래 aspectRatio가 세로를 만든다.
-             아직 못 쟀으면(첫 그림) 그냥 흐르는 대로 두고 한 프레임 뒤 제자리를 찾는다. */
-          ...(mapCapH > 0
-            ? { width: `${Math.round(mapCapH * (grid.width / (grid.height * (pitched ? 0.74 : 1))))}px`, flex: "0 0 auto" }
-            : {}),
-          /* 입체 보기(재구성: CSS 3D 빌보드가 브라우저 따라 누워 보임) — 바닥(자리·그림)만
-             세로로 누르고, 마커는 눌리지 않은 채 서 있는 2.5D. */
-          aspectRatio: `${grid.width} / ${grid.height * (pitched ? 0.74 : 1)}`,
+          /* 넓은 배치에서만 고정 크기다(요청: 1024 고정) — 좁은 화면은 폭 100%로 흐른다.
+             보기(2D·3D)와 무관하다: 3D일 때만 상자를 넓히면 보기를 바꿀 때마다 세로가
+             달라져 탐색바 아래가 통째로 밀린다(실측 285px). 3D의 눕힘은 상자가 아니라
+             회전 전 판(pitchGeom의 hPre)이 맡는다. */
+          ...(wide ? { width: `${mapViewW}px`, flex: "0 0 auto" } : {}),
+          aspectRatio: `${grid.width} / ${grid.height}`,
           ...(zoom > 1 || pitched ? { overflow: "hidden" } : {}),
           ...(zoom > 1 ? { cursor: dragRef.current ? "grabbing" : "grab" } : {}),
           /* 손짓 격리(지적 둘: 맵 조정 시 모달이 딸려 움직임 + 2D 모드에서 드래그가
