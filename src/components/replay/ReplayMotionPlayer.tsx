@@ -1119,14 +1119,26 @@ function paintBase(faces: ShapeFace[], base: string): ShapeFace[] {
      테란 #aab1b9 → #6c737b  (가장 크게 낮춘다)
      저그 #c9835c → #935c3e
      토스 #b08e33 그대로 */
-const RACE_BASE_TONE = { terran: "#6c737b", toss: "#b08e33", zerg: "#935c3e" } as const;
+const RACE_BASE_TONE = { terran: "#6c737b", toss: "#c9a63f", zerg: "#935c3e" } as const;
 /** 몸에는 종족 바탕색을 입히고, 뒤에 붙이는 accent 면만 개인색으로 남긴다(규칙 1·4).
  *  accent는 칠하지 않은 채로 두어야 그리는 쪽이 임자 색을 넣는다 — 건물마다 눈에 띄는
  *  한두 곳만. */
 function raceBase(
   faces: ShapeFace[], tone: keyof typeof RACE_BASE_TONE, accent: ShapeFace[] = [],
 ): ShapeFace[] {
-  return [...paintBase(faces, RACE_BASE_TONE[tone]), ...accent];
+  const painted = paintBase(faces, RACE_BASE_TONE[tone]);
+  /* 프로토스만 금속 광을 세게 준다(요청: "프로토스 기본색 좀더 밝게하고 메탈 느낌나게
+     표현할수 없나"). 바탕색만 밝히면 노란 물감이 될 뿐 금속이 안 된다 — 이 렌더러에서
+     금속은 색이 아니라 **명암 차**로 읽힌다. 면마다 얹히는 흰 광(#fff)을 1.7배로 올려
+     하이라이트를 날카롭게 하고 검은 그늘(#000)은 1.25배만 깊게 해, 밝은 쪽이 확 튀고
+     어두운 쪽은 완전히 죽지 않는 금속 대비를 만든다. 테란·저그는 그대로다 — 셋이 같은
+     광을 받으면 종족이 안 갈린다. */
+  const lit = tone === "toss"
+    ? painted.map(([d, o, f, k, l]) => (f === "#fff" || f === "#000"
+      ? [d, Math.min(0.9, o * (f === "#fff" ? 1.7 : 1.25)), f, k, l] as ShapeFace
+      : [d, o, f, k, l] as ShapeFace))
+    : painted;
+  return [...lit, ...accent];
 }
 
 /* 일정 폭 막대 사지(지적: 드라군 다리 '통' 느낌) — 뿔과 달리 두께가 끝까지 같고 양 끝이
@@ -1422,11 +1434,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
              구리는 여기 안 쓴다(요청) — 발은 은·강철뿐이고, 구리는 돔 옆 세로띠와
              꼭대기 상자 둘로만 간다. */
           path: (t9: number): [number, number, number] => [
-            sx9 * (3.4 + 2.95 * t9), sy9 * (3.4 + 2.95 * t9), 0.56 - 0.44 * t9,
+            /* 붙는 자리는 **맨 밑판**이다(재지적: "4개 다리 맨 밑 본체에 붙이라니깐")
+               — 0.56은 밑판 세 켜의 한가운데라 다리가 옆구리에서 나오는 꼴이었다.
+               맨 아래 켜(0~0.8) 안쪽인 0.26에서 시작해 바깥으로 갈수록 지면까지 내려간다. */
+            sx9 * (3.4 + 2.95 * t9), sy9 * (3.4 + 2.95 * t9), 0.26 - 0.26 * t9,
           ],
         }), SILVER), dep9 + 0.6),
         ...tagKey(paintBase(spirePillar({
-          x: x1, y: y1, z0: -0.06, h: 0.3, w: 1.22, tipW: 1.05,
+          x: x1, y: y1, z0: -0.1, h: 0.3, w: 1.22, tipW: 1.05,
           segs: 1, sides: 8, hold: 0.5, caps: "both",
         }), STEEL), dep9 + 0.8),
       ];
@@ -1519,13 +1534,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const sx9 = Math.sin(aMid);
       const sy9 = Math.cos(aMid);
       if (facingRatio(sx9, sy9) <= 0.02) continue;
-      /* 폭을 줄이고 더 위에서 시작한다(요청) — 밑동까지 내려오는 넓은 판이라
-         기둥을 반쯤 덮고 있었다. 반각 0.46 → 0.3, 시작 높이 +0.14 → +0.95. */
-      const zB = DOME_Z + 0.95;
-      const zT = T2_Z - 0.1;
+      /* 좁고 긴 세로줄이다(요청: "세로로 길게 2층 위에서 아래로 칠한다는 느낌") —
+         2층 기둥 꼭대기에서 밑동까지 한 번에 내리긋는다. 앞서 위쪽만 짧게 칠했더니
+         띠가 아니라 얼룩으로 보였다. 폭은 좁은 채로 두고(반각 0.26) 길이만 늘린다. */
+      const zB = DOME_Z + 0.04;
+      const zT = T2_Z - 0.04;
       out.push(...tagKey([
-        [arcBand(aMid, 0.3, t1R(zB) + 0.03, t1R(zT) + 0.03, zB, zT), 1, COPPER] as ShapeFace,
-        topFace(arcBand(aMid, 0.285, t1R(zT - 0.3) + 0.05, t1R(zT) + 0.05, zT - 0.3, zT), 0.22),
+        [arcBand(aMid, 0.26, t1R(zB) + 0.03, t1R(zT) + 0.03, zB, zT), 1, COPPER] as ShapeFace,
+        topFace(arcBand(aMid, 0.245, t1R(zT - 0.3) + 0.05, t1R(zT) + 0.05, zT - 0.3, zT), 0.22),
       ], 2.2));
     }
 
@@ -1578,8 +1594,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const MOD_Z = T2_Z + 0.85;   // 3층 기둥 꼭대기(잘린 면)
     /* 구리 상자 아래 회색 받침판을 키운다(요청: "그 회색 상자도 더 확대해야함 너비와
        높이 모두") — 캐노피 위의 짐과 이 판이 맞닿는 자리라 판이 작으면 짐이 허공에
-       걸린 것처럼 보인다. 3.2×2.85×0.26 → 4.6×4.0×0.62. */
-    out.push(...tagKey(paintBase(boxFaces3(0, 0.2, 4.6, 4, 0.62, MOD_Z - 0.58), STEEL), 30.6));
+       걸린 것처럼 보인다. 3.2×2.85×0.26 → 4.05×3.5×0.5(한 번 키웠다가 조금 줄인 값). */
+    out.push(...tagKey(paintBase(boxFaces3(0, 0.2, 4.05, 3.5, 0.5, MOD_Z - 0.46), STEEL), 30.6));
     out.push(...tagKey(paintBase(boxFaces3(0, 0.2, 2.6, 2.25, 1.48, MOD_Z), COPPER), 31));
     /* 앞면 장식(창)은 앞이 보일 때만 — 뒤로 돌린 각도에서도 그리면 몸 위로 떠올라
        팔처럼 삐져나와 보였다. */
@@ -1630,17 +1646,26 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...tagKey(paintBase(cylinderFaces3(cx9, 4.6, 0.14, CANOPY_Z - DOME_Z, DOME_Z), STEEL),
         depthNow(cx9, 4.6) * 1.6 + 6));
     }
-    /* 지붕 위의 은색 상자와 드럼통 — 지붕 폭에 맞춰 줄이고, 둘이 서로 딱 붙는다(요청).
-       상자 오른변(x −0.02)에 드럼통 왼끝이 닿는다. 둘의 윗면은 위 회색 받침판 밑면에
-       맞닿는 높이다. */
-    const LOAD_Z = CANOPY_Z + 0.24;
-    const LOAD_H = MOD_Z - 0.58 - LOAD_Z;
-    out.push(...tagKey(paintBase(boxFaces3(-0.62, 4.6, 1.2, 1.0, LOAD_H, LOAD_Z), SILVER),
-      depthNow(-0.62, 4.6) * 1.6 + 9));
+    /* 상자와 드럼통은 3층 기둥 옆구리에 붙인다(요청: "캐노피 위 상자랑 드럼통 파묻힘
+       3층 돔에 붙이기") — 지붕 위에 얹어 두니 지붕과 받침판 사이에 끼어 파묻혔다.
+       2층 옥상(갑판) 위, 3층 기둥의 밑동 겉면에 등을 대고 선다: 그 자리의 기둥
+       반지름이 T1_RT − 0.45이므로 상자 뒷변이 그 원에 닿는 y를 풀어 놓는다.
+       둘은 서로 딱 붙고(상자 오른변에 드럼통 왼끝), 윗면은 4층 판 밑면에 닿는다. */
+    const LOAD_Z = T2_Z;
+    const LOAD_H = MOD_Z - 0.46 - LOAD_Z;
+    const T3_R = T1_RT - 0.45;
+    const boxHX = 0.92;
+    const boxHY = 0.78;
+    const boxCX = -1.1;
+    const boxCY = Math.sqrt(Math.max(0.01, T3_R * T3_R - boxCX * boxCX)) + boxHY - 0.12;
+    out.push(...tagKey(paintBase(boxFaces3(boxCX, boxCY, boxHX * 2, boxHY * 2, LOAD_H, LOAD_Z), SILVER),
+      depthNow(boxCX, boxCY) * 1.6 + 9));
+    const drumX = boxCX + boxHX + 0.42;
+    const drumY = Math.sqrt(Math.max(0.01, T3_R * T3_R - drumX * drumX)) + 0.42 - 0.12;
     out.push(...tagKey(paintBase([
-      ...cylinderFaces3(0.38, 4.6, 0.4, LOAD_H, LOAD_Z),
-      ...cylinderFaces3(0.38, 4.6, 0.44, 0.08, LOAD_Z + LOAD_H - 0.08),
-    ], SILVER), depthNow(0.38, 4.6) * 1.6 + 9));
+      ...cylinderFaces3(drumX, drumY, 0.42, LOAD_H, LOAD_Z),
+      ...cylinderFaces3(drumX, drumY, 0.46, 0.08, LOAD_Z + LOAD_H - 0.08),
+    ], SILVER), depthNow(drumX, drumY) * 1.6 + 9));
     // 입구 양옆 — 엎어 놓은 그릇. 돔 밑(4.9)과 받침 테(5.4) 사이 갑판에 박힌다.
     for (const bx9 of [-3.95, 3.95]) {
       out.push(...tagKey(paintBase([
@@ -1658,6 +1683,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         [1.05, 6.15, 0], [-1.05, 6.15, 0]]);
       out.push(...tagKey([[ramp, 1, SILVER] as ShapeFace, topFace(ramp, 0.16)],
         depthNow(0, 6.2) + 0.5));
+      /* 경사로가 물려 들어가는 입구에 형광 반투명 막(요청) — 안에서 새어 나오는 빛이다.
+         받침 옆면(반지름 5.4)보다 한 뼘 앞(5.44)에 세워 몸에 안 묻히게 하고, 반투명이라
+         뒤의 은색 몸이 비친다. 안쪽에 밝은 심을 한 겹 더 얹어 가운데가 더 환하다. */
+      const gateOuter = polyPath3([
+        [-1.15, 5.44, 0.14], [1.15, 5.44, 0.14], [1.15, 5.44, 1.06], [-1.15, 5.44, 1.06],
+      ]);
+      const gateCore = polyPath3([
+        [-0.72, 5.46, 0.26], [0.72, 5.46, 0.26], [0.72, 5.46, 0.9], [-0.72, 5.46, 0.9],
+      ]);
+      out.push(...tagKey([
+        [gateOuter, 0.52, "#5cffc2"] as ShapeFace,
+        [gateCore, 0.72, "#c6fff0"] as ShapeFace,
+      ], depthNow(0, 5.44) * 1.6 + 3));
     }
     out.push(...strut(315), ...strut(45));
     return out;
