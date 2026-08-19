@@ -34,7 +34,7 @@ import { posAtSim, shotsAt, ST_INSIDE, type SimEventArr, type SimTrack } from ".
 import { posAt, LERP_MAX_GAP_SEC, type TrackPos, type TrackPt } from "../../utils/replayTrack";
 import { FLYING_BUILDING_TPS } from "../../utils/bwTransport";
 import {
-  bodyFace, capFace, depthNow, groundEllipse, LOD_DECO, LOD_POINT, lodFilter,
+  bodyFace, capFace, depthNow, groundEllipse, LOD_FINE, LOD_TRIM, lodFilter,
   sideFace, tagKey, topFace,
   type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
@@ -9044,9 +9044,9 @@ const LOD_INK_DECO = 11;
 /** 사양 라디오가 정하는 등급 상한(요청: "LOD 적용 및 성능 3단계로 — 딱 LOD랑 맞고
  *  편하지") — 저 1(형체만) · 중 2(+포인트) · 고 3(+장식). 크기로 정한 등급과 이 상한
  *  중 낮은 쪽이 실제 등급이라, 사양을 내리면 큰 모델도 부품을 덜 그린다. */
-let lodCap = LOD_DECO;
+let lodCap = LOD_FINE;
 function lodSetCap(q: number): void {
-  lodCap = q <= 1 ? 1 : q === 2 ? LOD_POINT : LOD_DECO;
+  lodCap = q <= 1 ? 1 : q === 2 ? LOD_TRIM : LOD_FINE;
 }
 /** 기기 여력 벌점(0 또는 1) — 프레임이 계속 밀리면 1로 올라 등급이 한 단 내려간다. */
 let lodPenalty = 0;
@@ -9124,7 +9124,7 @@ function unitSprite(
   if (hit) return hit;
   const { faces: all } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
   if (!all) return null;
-  const faces = lodFilter(all, lod);
+  const faces = lodFilter(autoTier(`u|${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}`, all), lod);
   /* (제거·요청) 드롭섀도 굽기 — 건물·유닛 그림자를 다 걷어 굽는 판도 그림자 없이 민다.
      pad는 안티에일리어싱 여유만. */
   const pad = 2;
@@ -9320,6 +9320,89 @@ function pathYRange(d: string): [number, number] {
   return [lo, hi];
 }
 
+/** 그 패스가 차지하는 상자의 가로×세로(뷰박스 칸²) — 부품 크기 재기용. */
+function pathArea(d: string): number {
+  const nums: number[] = [];
+  const re = /([MmLlQqCcSsTtAaHhVvZz])([^A-Za-z]*)/g;
+  let m: RegExpExecArray | null = re.exec(d);
+  let cx = 0;
+  let cy = 0;
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let y0 = Infinity;
+  let y1 = -Infinity;
+  const put = (x: number, y: number): void => {
+    cx = x; cy = y;
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
+  };
+  while (m) {
+    const up = m[1].toUpperCase();
+    const rel = m[1] !== up;
+    nums.length = 0;
+    for (const t of m[2].match(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi) ?? []) nums.push(Number(t));
+    if (up === "H") { for (const n of nums) put(rel ? cx + n : n, cy); }
+    else if (up === "V") { for (const n of nums) put(cx, rel ? cy + n : n); }
+    else if (up === "A") {
+      // 호는 반지름만큼 사방으로 부푼다 — 끝점만 보면 타원 고리를 통째로 놓친다.
+      for (let i = 0; i + 6 < nums.length; i += 7) {
+        const rx = Math.abs(nums[i]);
+        const ry = Math.abs(nums[i + 1]);
+        const x = rel ? cx + nums[i + 5] : nums[i + 5];
+        const y = rel ? cy + nums[i + 6] : nums[i + 6];
+        put(x - rx, y - ry);
+        put(x + rx, y + ry);
+        put(x, y);
+      }
+    } else if (up !== "Z") {
+      for (let i = 0; i + 1 < nums.length; i += 2) {
+        put(rel ? cx + nums[i] : nums[i], rel ? cy + nums[i + 1] : nums[i + 1]);
+      }
+    }
+    m = re.exec(d);
+  }
+  if (!Number.isFinite(x0) || !Number.isFinite(y0)) return 0;
+  return (x1 - x0) * (y1 - y0);
+}
+
+/* 부품 크기로 등급 매기기(지적: "건물 LOD 잘 안먹히는거 같기두하고") — 면 헬퍼가
+   다는 등급은 명암·단면까지다. 부품 **몸통**은 전부 형체(1)라, 사양을 내려도 잔기둥·
+   뿔·배관이 그대로 남아 실루엣이 거의 안 준다. 그런데 요청의 티어 정의가 곧 크기다:
+   형체를 정하는 큰 덩이가 1, 그 위에 얹힌 것이 2, 자잘한 것이 3.
+   그래서 부품(깊이 열쇠로 묶인 면 무리)의 상자 넓이를 모델 전체 상자와 견줘 자동으로
+   매긴다 — 106개 모델을 손으로 안 건드려도 전부 걸리고, 모델러가 명시로 매긴 등급은
+   그대로 존중한다(내려가기만 하고 올라가지 않는다). */
+const AUTO_TIER_CACHE = new Map<string, ShapeFace[]>();
+function autoTier(key: string, faces: ShapeFace[]): ShapeFace[] {
+  const hit = AUTO_TIER_CACHE.get(key);
+  if (hit) return hit;
+  // 부품 묶기 — stageFaces와 같은 자(깊이 열쇠가 바뀌면 새 부품).
+  const gid: number[] = [];
+  const areas: number[] = [];
+  let g = -1;
+  let lastKey: number | undefined;
+  for (const f of faces) {
+    const k = f[3];
+    if (g < 0 || (k !== undefined && k !== lastKey)) { g += 1; areas.push(0); }
+    if (k !== undefined) lastKey = k;
+    gid.push(g);
+    const a = pathArea(f[0]);
+    if (a > areas[g]) areas[g] = a;
+  }
+  const big = Math.max(...areas, 0.0001);
+  const out = faces.map((f, i) => {
+    const r = areas[gid[i]] / big;
+    // 넓이 비 — 12% 미만이면 세부(3), 30% 미만이면 장식(2), 그 위는 형체(1).
+    const auto = r < 0.12 ? LOD_FINE : r < 0.3 ? LOD_TRIM : 1;
+    const cur = f[4] ?? 1;
+    return (auto > cur ? [f[0], f[1], f[2], f[3], auto] : f) as ShapeFace;
+  });
+  AUTO_TIER_CACHE.set(key, out);
+  return out;
+}
+
 /** 공사 단계 — 모델을 **부품 단위로** 아래에서부터 드러낸다.
  *
  *  여태는 구운 판을 화면 사각형으로 잘라 보여 줬다(지적: "그냥 구운 이미지를 잘라서
@@ -9370,7 +9453,8 @@ function buildingSprite(
   if (hit) return hit;
   const { faces: all } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
   if (!all) return null;
-  const faces = stageFaces(lodFilter(all, lod), stg);
+  const faces = stageFaces(
+    lodFilter(autoTier(`b|${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}`, all), lod), stg);
   /* 여백을 15% → 35%로 넓혔다(과제 #67) — 이 여백이 곧 모델이 쓸 수 있는 자리다.
      15%면 모델 단위로 양옆 2.4뿐이라, 정규화 배수를 재 보니 55종 중 30종이 목표에
      못 가고 여기서 잘렸다(그리고 지금도 7종은 이미 넘쳐 잘리고 있다: 하이브·레어·

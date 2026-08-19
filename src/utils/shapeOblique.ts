@@ -29,26 +29,26 @@
  *  +가 시청자 쪽)로, zsorted가 painter 순서를 다시 세우는 열쇠다. 없으면 '직전 부품에
  *  붙은 장식'으로 본다.
  *
- *  다섯째는 부품 등급(LOD, 요청: "모델들의 부품 중요도도 3단계 정도로 나눠서 사양에
- *  따라 부분 렌더링") — 없으면 1이다. **숫자가 작을수록 끝까지 남는다**:
+ *  다섯째는 부품 등급(LOD, 요청: "형체를 결정하는것(개인색 포함)이 1티어 장식이 2티어
+ *  세부포인트 3티어") — 없으면 1이다. **숫자가 작을수록 끝까지 남는다**:
  *    1 형체   작아져도 끝까지 그린다. 없으면 무엇인지 못 알아본다 —
  *             몸통·머리·다리·포신·날개, 그리고 **개인색**(누구 것인지).
- *    2 포인트 정체를 굳히는 것. 렌즈, 톱니, 종족 표식, 관절.
- *    3 장식   있으면 좋은 것. 리벳, 데칼, 잔가시, 배관, 자잘한 그늘. 가장 먼저 빠진다.
+ *    2 장식   형체 위에 얹히는 것. 명암(윗면 밝기·옆면 그늘), 덧댄 판, 큰 무늬.
+ *    3 세부   가장 작은 것. 원통 단면, 광택 점, 리벳, 데칼, 잔가시. 가장 먼저 빠진다.
  *  걸러 내는 일은 스프라이트를 굽는 순간 딱 한 번 일어난다(unitSprite/buildingSprite) —
  *  프레임마다 재는 것이 아니라, 등급이 캐시 열쇠에 들어가 판이 등급별로 따로 구워진다. */
 export type ShapeFace = [string, number, string?, number?, number?];
 
 /** 부품 등급 — 1(형체)은 기본값이라 아무 데도 안 적는다. */
-export const LOD_POINT = 2;
-export const LOD_DECO = 3;
-/** 이 면들을 '포인트'로 매긴다 — 작게 그려질 땐 빠진다. */
-export function accent(faces: ShapeFace[]): ShapeFace[] {
-  return faces.map(([p, o, f, k]) => [p, o, f, k, LOD_POINT] as ShapeFace);
+export const LOD_TRIM = 2;
+export const LOD_FINE = 3;
+/** 이 면들을 '장식(2티어)'으로 매긴다 — 중간 크기부터 빠진다. */
+export function trim(faces: ShapeFace[]): ShapeFace[] {
+  return faces.map(([p, o, f, k]) => [p, o, f, k, LOD_TRIM] as ShapeFace);
 }
-/** 이 면들을 '장식'으로 매긴다 — 가장 먼저 빠진다. */
-export function deco(faces: ShapeFace[]): ShapeFace[] {
-  return faces.map(([p, o, f, k]) => [p, o, f, k, LOD_DECO] as ShapeFace);
+/** 이 면들을 '세부(3티어)'로 매긴다 — 가장 먼저 빠진다. */
+export function fine(faces: ShapeFace[]): ShapeFace[] {
+  return faces.map(([p, o, f, k]) => [p, o, f, k, LOD_FINE] as ShapeFace);
 }
 /** 등급 q까지만 남긴다(q=3이면 전부). 등급이 없는 면은 형체(1)로 본다.
  *
@@ -59,7 +59,7 @@ export function deco(faces: ShapeFace[]): ShapeFace[] {
  *  통과시킨다. 모델러가 개인색 띠를 3등급 장식으로 매겨 두어도 형체만 그리는 판에서
  *  그 띠 하나는 살아남는다. */
 export function lodFilter(faces: ShapeFace[], q: number): ShapeFace[] {
-  if (q >= LOD_DECO) return faces;
+  if (q >= LOD_FINE) return faces;
   let pcMin = Number.POSITIVE_INFINITY;
   for (const f of faces) if (f[2] === undefined) pcMin = Math.min(pcMin, f[4] ?? 1);
   const pcQ = Number.isFinite(pcMin) ? Math.max(q, pcMin) : q;
@@ -117,14 +117,24 @@ function originYNow(): number {
   return pitchView ? 12.6 : topView ? 12 : 12.6;
 }
 
-/** 몸통 — 본색 그대로. */
+/* 등급은 면 헬퍼가 스스로 단다(요청: LOD 적용) — 모델 106개를 손으로 매기지 않아도
+   프리미티브를 지나는 모든 면이 제 등급을 갖는다. 갈래가 곧 등급이기 때문이다:
+     · 몸통(bodyFace) = 형체 1 — 개인색이 칠해지는 면이라 어느 등급에서도 안 빠진다.
+     · 명암(topFace·sideFace) = 장식 2 — 형체 위에 얹는 흑백 반투명이다.
+     · 단면·광택(capFace) = 세부 3 — 가장 작고 가장 먼저 빠진다.
+   모델이 '이 흰 면은 형체다'라고 우기고 싶으면 lod 인자로 1을 준다(예: 빛나는 창처럼
+   그 면이 없으면 실루엣이 안 읽히는 자리). */
+/** 몸통 — 본색 그대로(형체 1티어). */
 export const bodyFace = (d: string): ShapeFace => [d, 1];
-/** 밝은 윗면 — 흰 반투명(기본 OP.top). */
-export const topFace = (d: string, opacity: number = OP.top): ShapeFace => [d, opacity, "#fff"];
-/** 어두운 옆·밑면 — 검 반투명(기본 OP.side). */
-export const sideFace = (d: string, opacity: number = OP.side): ShapeFace => [d, opacity, "#000"];
-/** 원통·구멍의 단면 — 동굴 입구처럼 깊은 어둠(기본 OP.cap). */
-export const capFace = (d: string, opacity: number = OP.cap): ShapeFace => [d, opacity, "#000"];
+/** 밝은 윗면 — 흰 반투명(기본 OP.top). 기본 등급은 장식 2. */
+export const topFace = (d: string, opacity: number = OP.top, lod: number = LOD_TRIM): ShapeFace =>
+  [d, opacity, "#fff", undefined, lod];
+/** 어두운 옆·밑면 — 검 반투명(기본 OP.side). 기본 등급은 장식 2. */
+export const sideFace = (d: string, opacity: number = OP.side, lod: number = LOD_TRIM): ShapeFace =>
+  [d, opacity, "#000", undefined, lod];
+/** 원통·구멍의 단면 — 동굴 입구처럼 깊은 어둠(기본 OP.cap). 기본 등급은 세부 3. */
+export const capFace = (d: string, opacity: number = OP.cap, lod: number = LOD_FINE): ShapeFace =>
+  [d, opacity, "#000", undefined, lod];
 
 /** 바닥에 놓인 원(납작 타원) 패스 — 밝은 윗면·발판·고리에 두루 쓴다.
  *  시각 밀림 중이면 타원도 같이 기울인다(지적: 파일런·포토·소환구 원반만 안 기울어
