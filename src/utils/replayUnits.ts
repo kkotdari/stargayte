@@ -150,6 +150,8 @@ export interface UnitTracksV2 {
     anchorsLate?: number;
     /** 속력으로 가른 태그 재사용 수(제안: 태그 재할당을 정확히). */
     tagSplits?: number;
+    /** 건물은 홀로만 골라진다는 규칙이 가른 태그 재사용 수. */
+    bldSplits?: number;
     anchorsLateUsed?: number;
     /** 프로토스 전력 끊김으로 생산이 밀린 초의 합(지적). */
     prodPowerDelay?: number;
@@ -531,6 +533,8 @@ export function buildUnitTracks(
   let anchorsLate = 0;
   /** 속력으로 가른 태그 재사용 수. */
   let tagSplits = 0;
+  /** '둘 이상 선택'이 건물일 수 없다고 가른 재사용 수. */
+  let bldSplits = 0;
   /** 정체를 붙인 순간들 [태그, 초, 정체] — 절단 뒤 꼬리에 되돌리는 재료. */
   const kindLog: { tag: number; sec: number; kind: string; group: boolean }[] = [];
   let anchorsLateUsed = 0;
@@ -697,6 +701,24 @@ export function buildUnitTracks(
     }
     return life;
   };
+  /* ★ 건물은 한 번에 하나만 골라진다(원작 규칙 — 사람이 알려 준 불변) — 유닛과도,
+     다른 건물과도 못 섞는다. 그러니 **둘 이상이 함께 골라진 번호는 건물이 아니다**.
+     실측: 명시 선택 중 둘 이상인데 우리가 건물이라 부른 것이 섞인 것이 20건·32건
+     있었다(원작에서 불가능하다). 보기 — "32초에 6개 골랐는데 Command Center+SCV×5",
+     "170초에 3개 골랐는데 Barracks+Marine+Marine".
+     그런 자리는 태그가 재사용된 것이다(건물이 부서지고 그 번호를 유닛이 물려받았다).
+     건물 생애를 여기서 닫는다 — 임자 바뀜·정체 충돌·속력 위반에 이어 네 번째 재사용
+     판정이고, 이것도 어림이 아니라 원작 규칙이다. */
+  const notBuildingTogether = (tags: number[]): void => {
+    if (tags.length < 2) return;
+    for (const tg of tags) {
+      const l = alive.get(tg);
+      if (!l || !l.bld) continue;
+      done.push(l);
+      alive.delete(tg);
+      bldSplits += 1;
+    }
+  };
   const markKind = (life: Life, kind0: string, sec: number): Life => {
     const kind = KIND_ALIAS[kind0] ?? kind0;
     /* 붙인 정체를 시각과 함께 적어 둔다 — 아래 태그 절단이 꼬리에 되돌려 준다.
@@ -758,11 +780,13 @@ export function buildUnitTracks(
     //    생애를 만들지 않는다). ──
     if (cmdName === "Select") {
       sel.set(pid, [...(c.UnitTags ?? [])]);
+      notBuildingTogether(c.UnitTags ?? []);
       noteCoSel(sec, c.UnitTags ?? []);
       continue;
     }
     if (cmdName === "Select Add") {
       const merged = [...(sel.get(pid) ?? []), ...(c.UnitTags ?? [])];
+      notBuildingTogether(merged);
       sel.set(pid, merged);
       noteCoSel(sec, merged);
       continue;
@@ -4609,6 +4633,7 @@ const BLD_DIE_SLACK_SEC = 8;
       prodRode: prodStats.rode,
       anchorsLate,
       tagSplits,
+      bldSplits,
       anchorsLateUsed,
       prodPowerDelay: prodStats.powerDelay,
       synRetired,
