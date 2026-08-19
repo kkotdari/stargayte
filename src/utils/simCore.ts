@@ -19,7 +19,7 @@ import {
   FRAME_SEC, GEYSER_FOOT, LURKER_REHIT_FRAMES, MINE_ATTACH_FRAMES, MINE_DETACH_FRAMES,
   MINE_GAS_FRAMES, MINE_MINERAL_FRAMES, MINE_RETURN_FRAMES, MINERAL_FOOT, TURN_RATE,
   UNBURROW_MIN_FRAMES,
-  buildSecOf, buildingBox, fp, isAir, moveDynOf, speedOfUnit, unitBoxTiles,
+  buildSecOf, buildingBox, fp, isAir, moveDynOf, speedOfUnit, unfp, unitBoxTiles,
 } from "./bwUnits";
 /* 전투 값은 표(bwUnits)를 직접 읽지 않고 어댑터(bwCombat)를 거친다 — 표가 통째로 갈리는
    중이라 읽는 자리를 한 곳으로 모아 두면 이름이 어긋나도 고칠 파일이 하나다.
@@ -28,7 +28,7 @@ import {
       거기 하나뿐이다 — 여기서 Body.rad를 또 더하면 이중 가산이 난다. */
 import {
   MATRIX_HP, ORDER_PERIOD_SEC, RETARGET_SEC, STATUS_TICKS, acqPhaseOf, acquireReachTiles, attackOf,
-  cooldownSec, ignoresDarkSwarm, timerSec, upgradeSeconds, STIM_SELF_DAMAGE, STIM_UNITS,
+  cooldownSec, hasUpgrade, ignoresDarkSwarm, timerSec, upgradeSeconds, STIM_SELF_DAMAGE, STIM_UNITS,
   STORM_PULSES, STORM_PULSE_SEC, STORM_TILES, stormPulse,
   bunkerShooterProfileOf, minReachTiles, profileOf, reachTiles, splashDivisorAt,
   targetFor, weaponVs,
@@ -284,8 +284,10 @@ type Body = {
   /** 몸 상자 반폭·반높이(타일) — 건물 틈을 지날 수 있나가 이 둘로 갈린다(원작의
    *  상자 대 상자). 저글링 0.25/0.25 · 드라군 0.5/0.5 · 마린 0.27/0.31. */
   hw: number; hh: number;
-  /** 지금 고치는 표적 태그(SCV 수리) — 0이면 아무것도 안 고친다. */
+  /** 지금 고치는 표적 태그(SCV 수리·메딕 힐) — 0이면 아무것도 안 고친다. */
   fixTag: number;
+  /** 남은 기력(사람이 읽는 수) · 최대 기력. 메딕만 쓴다(다른 주문은 아직 이 층에 없다). */
+  energy: number; energyMax: number;
   /** 지금 쓰는 전투 값 한 벌. 벙커에 타면 cpBunker로 갈아 끼운다(무기 +64px·획득 +2타일). */
   cp: CombatProfile;
   cpBase: CombatProfile; cpBunker: CombatProfile | null;
@@ -357,6 +359,26 @@ type Body = {
 const WORKERS = new Set(["SCV", "Probe", "Drone"]);
 /** 수리 사거리(타일, 몸 테두리 사이) — 원전은 사거리 5(픽셀)에서 고친다. */
 const REPAIR_REACH = 5 / 32;
+/* ── 메딕 힐 — [OBW] medic_try_heal(bwgame.h:3790) · update_unit_energy(:1183) ────
+   원전은 프레임마다 '모자란 체력'을 최대 200_fp8(= 200/256 = 0.781)만큼 채우고 그
+   절반을 기력으로 낸다 — 곧 **기력 1당 체력 2**이고, 붙어 있는 동안 초당 18.6까지
+   차오른다. 기력은 프레임마다 8_fp8(= 0.03125)씩 돌아온다(초당 0.744, 같은 함수가
+   저그 재생 4_fp8 = 초당 0.37을 주는 그 자리다 — 잘 알려진 값과 맞다).
+   태울 수 있는 표적은 유기물·비건물·지상·제 편·다친 것이다(medic_can_heal_target). */
+/** 한 프레임에 채우는 체력 상한. */
+const HEAL_HP_PER_FRAME = 200 / 256;
+/** 그 체력의 절반이 기력 값이다. */
+const HEAL_ENERGY_PER_HP = 0.5;
+/** 기력 회복(초당). */
+const ENERGY_PER_SEC = (8 / 256) / FRAME_SEC;
+/** 태어날 때의 기력 — 원전은 최대치의 1/4에서 시작한다(bwgame.h:15881). */
+const ENERGY_START_FRAC = 0.25;
+/** 기력 최대치 — 카듀세우스 리액터를 마치면 +50. */
+const ENERGY_MAX = 200;
+/** 힐 사거리(타일, 중심 사이) — 원전은 30픽셀이다. */
+const HEAL_REACH = 30 / 32;
+/** 명령 없이 스스로 태울 상대를 찾는 거리(타일) — 원전 find_medic_target의 160픽셀. */
+const HEAL_SEEK = 160 / 32;
 /** 자원을 받는 본진 건물. */
 const HALLS = new Set(["Command Center", "Nexus", "Hatchery", "Lair", "Hive"]);
 /** 가스 건물. */
@@ -465,7 +487,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         /* 건물의 체력·실드·방어력·크기는 이제 표(UNITS)에서 온다 — 옛 판이 하던
            "건물은 large·방어력 최소 1" 같은 손보정은 지어낸 값이었다. 표에 없는 이름
            (애드온 ComSat 등)만 DEFAULT_UNIT으로 떨어진다. [추정] */
-        rad: bcp.radius, hw: 0, hh: 0, fixTag: 0,
+        rad: bcp.radius, hw: 0, hh: 0, fixTag: 0, energy: 0, energyMax: 0,
         cp: bcp, cpBase: bcp, cpBunker: null,
         dmg: targetFor(e.k ?? "", bUps),
         cd: 0, foe: null, aggro: true, reacq: spot[0] + acqPhaseOf(e.t),
@@ -518,6 +540,13 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       px: NaN, py: NaN,
       bld: false, wk: WORKERS.has(kind),
       rad: cp.radius, hw: unitBoxTiles(kind)[0] / 2, hh: unitBoxTiles(kind)[1] / 2, fixTag: 0,
+      /* 기력은 메딕만 든다 — 다른 주문은 아직 이 층에 없다(스톰·인스네어 등은 증거로
+         떨어지는 좌표 마법이라 시전자의 기력을 안 본다). 최대치는 카듀세우스 리액터를
+         마쳤으면 +50이고, 태어날 때는 그 1/4이다. */
+      energy: kind === "Medic"
+        ? (ENERGY_MAX + (hasUpgrade(ups, "Caduceus Reactor") ? 50 : 0)) * ENERGY_START_FRAC : 0,
+      energyMax: kind === "Medic"
+        ? ENERGY_MAX + (hasUpgrade(ups, "Caduceus Reactor") ? 50 : 0) : 0,
       cp, cpBase: cp, cpBunker: bunkerShooterProfileOf(kind),
       dmg: targetFor(kind, ups),
       cd: 0, foe: null, aggro: false, reacq: e.b + acqPhaseOf(e.t), dieAt: null, job: null,
@@ -1899,6 +1928,51 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
             b.dest = null; b.path = []; b.pi = 0; b.state = ST_IDLE;
             const sec = buildSecOf(tgt.kind);
             if (sec > 0) tgt.dmg.hp = Math.min(maxHp, tgt.dmg.hp + (maxHp / sec) * dt);
+          } else if (!b.dest) setDest(b, tgt.x, tgt.y);
+        }
+      }
+
+      /* ③-e 메딕 힐(요청) — 기력을 태워 제 편 유기물 지상 유닛의 체력을 채운다.
+         원전은 명령이 없어도 **스스로** 다친 아군을 찾아간다(find_medic_target, 160px).
+         그 자동 갈래까지 넣어야 화면에서 메딕이 메딕처럼 보인다 — 안 그러면 우클릭
+         한 번마다 한 번씩만 고친다. 기력이 바닥나면 표적을 놓고 다시 찬다. */
+      if (b.kind === "Medic" && b.inside === null && b.state !== ST_GONE) {
+        b.energy = Math.min(b.energyMax, b.energy + ENERGY_PER_SEC * dt);
+        const healable = (q: Body): boolean => q !== b && q.state !== ST_GONE
+          && q.state !== ST_INSIDE && !q.air && !q.bld && q.cpBase.organic
+          /* 같은 임자만 본다 — 이 층은 동맹을 따로 안 든다(다른 자리도 다 owner로 잰다).
+             원작 메딕은 아군도 태워 주므로 팀전에서 남의 마린은 못 고치는 셈이다. */
+          && q.owner === b.owner && q.dmg.hp < fp(q.cpBase.hp)
+          && t >= q.born && (q.died === null || t < q.died);
+        let tgt = b.fixTag !== 0
+          ? (byTag.get(b.fixTag) ?? []).find((q) => healable(q)) : undefined;
+        /* 스스로 찾기는 네 틱에 한 번만(성능) — 메딕마다 매 틱 살아 있는 몸을 다 훑으면
+           그 한 줄이 시뮬을 20% 늦춘다(실측 6.1 → 7.4초). 태그로 위상을 흩어 같은 틱에
+           몰리지 않게 하고, 이미 표적을 든 메딕은 이 갈래에 아예 안 들어온다.
+           0.5초에 한 번이면 원전의 재표적 주기(15프레임)와 같은 눈금이다. */
+        if (!tgt && b.energy >= 1 && (k + b.tag) % 4 === 0) {
+          // 스스로 찾기 — 가장 가까운 다친 아군 하나.
+          let best = Infinity;
+          for (const q of active) {
+            if (!healable(q)) continue;
+            const d9 = dist(b.x, b.y, q.x, q.y);
+            if (d9 < best && d9 <= HEAL_SEEK) { best = d9; tgt = q; }
+          }
+        }
+        if (!tgt) b.fixTag = 0;
+        else {
+          b.fixTag = tgt.tag;
+          if (dist(b.x, b.y, tgt.x, tgt.y) <= HEAL_REACH) {
+            if (!b.dest) { b.path = []; b.pi = 0; b.state = ST_IDLE; }
+            const want = Math.min(
+              HEAL_HP_PER_FRAME * (dt / FRAME_SEC),                 // 프레임당 상한
+              unfp(fp(tgt.cpBase.hp) - tgt.dmg.hp),                  // 모자란 몫
+              b.energy / HEAL_ENERGY_PER_HP,                        // 기력이 허락하는 몫
+            );
+            if (want > 0) {
+              tgt.dmg.hp += fp(want);
+              b.energy -= want * HEAL_ENERGY_PER_HP;
+            }
           } else if (!b.dest) setDest(b, tgt.x, tgt.y);
         }
       }
