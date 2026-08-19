@@ -3401,10 +3401,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        살빛 대롱에 상아빛 테를 둘러 끝이 또렷하고, 밑동에는 개인색 띠를 둘러 임자를
        여기서도 읽게 한다 — 눈이 가장 먼저 닿는 자리이기 때문이다. */
     {
-      const CHX = EGG_X + 0.1;
-      const CHY = EGG_Y - 0.3;
+      /* 굴뚝을 화면 왼쪽으로 조금 옮기고 키를 살짝 낮춘다(요청). 이 건물은 요잉 45도로
+         서므로 화면 가로는 모델의 (x+y) 방향이다 — 왼쪽으로 0.9만큼 = x·y를 각각
+         0.64씩 뺀다. 높이는 4.8 → 4.2. */
+      const CHX = EGG_X + 0.1 - 0.64;
+      const CHY = EGG_Y - 0.3 - 0.64;
       const CHZ = 4.2;
-      const CHH = 4.8;
+      const CHH = 4.2;
       const ck9 = depthNow(CHX, CHY) * 1.6 + 12;
       out.push(...tagKey([
         ...paintBase(spirePillar({
@@ -4884,8 +4887,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 가지는 **방사형으로 펼쳐진다**(요청) — 뿌리는 한 자리에 모으고 끝만 앞뒤로
        벌린다. 나란히 선 다섯이 아니라 한 밑동에서 부챗살처럼 갈라져 나가는 꼴이라야
        사진의 그 느낌이 난다. 뿌리 0.3배 · 끝 1.35배로 벌린다. */
-    const ROOT_K = 0.3;
-    const TIP_K = 1.35;
+    /* 뿌리 간격을 벌린다(요청) — 0.3배로 모아 두니 다섯이 한 점에서 나오는 꼴이라
+       밑동이 뭉쳤다. 0.78배면 뿌리끼리도 제 자리를 갖는다. 그만큼 벌어지는 각이
+       줄어드니 끝도 1.35 → 1.12로 낮춰, 부챗살이 과하게 벌어지지 않게 맞춘다
+       (요청: "자연히 방사형 퍼지는 정도는 낮아짐"). */
+    const ROOT_K = 0.78;
+    const TIP_K = 1.12;
     const tips: [number, number, number][] = BR.map(([py9, bh9]) => {
       const [mx9, my9] = P(BPX + BEND * (bh9 / 7.3), py9 * TIP_K);
       return [mx9, my9, 0.3 + bh9] as [number, number, number];
@@ -4943,7 +4950,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         segs: 8, sides: 6, hold: 0.1, taper: 1.4,
         leanX: (tx9 - bx9) * 0.4, leanY: (ty9 - by9) * 0.4,
         curveX: (tx9 - bx9) * 0.6, curveY: (ty9 - by9) * 0.6,
-      }), RED), 10 + depthNow(bx9, by9) * 1.6));
+      /* 가지는 **막보다 늘 앞**이다(지적: "가시가 막에 가리면 안되는데") — 제 자리
+         깊이(±8)만 쓰면 뒤로 돌아간 가지의 키가 막(6)보다 작아져 막 뒤로 숨었다.
+         가지는 막을 걸어 두는 뼈대라 어느 요잉에서도 드러나야 한다. 20을 깔고 그
+         위에서 저희끼리만 앞뒤를 가린다(막 6·구멍 7보다 위). */
+      }), RED), 20 + depthNow(bx9, by9)));
     }
     /* 몸 덩이(몸통·마디 꼬리·주둥이·엄니)만 **통째로 시계 90도 더 돌린다**(요청:
        "주둥이랑 엄니 있는 부분이 전체적으로 시계방향으로 90도 요잉") — 가지·막은 그대로
@@ -4953,11 +4964,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /** 시계 90도 한 번 — 사진 좌표에서 (dx,dy) → (dy,−dx). */
     const rotCW = (dx9: number, dy9: number): [number, number] => [dy9, -dx9];
     const PB = (px: number, py: number): [number, number] => {
-      /* 두 번 돌린다 = 시계 180도(요청: "아까 말한 부분 시계방향 90도 회전해봐" — 앞서
-         한 번 돌린 위에 한 번 더). 한 줄로 (−dx,−dy)라고 적어도 같지만, 요청이 쌓인
-         결을 그대로 두어야 다음에 또 한 번 돌릴 때 이 줄만 늘리면 된다. */
+      /* 요청이 쌓인 만큼 90도씩 돈다: 90 → 180 → 다시 180(요청: "몸덩이 다시 180도
+         회전") = 합 **360도**. 네 번이면 한 바퀴라 결국 처음 자세로 돌아온다 — 접어서
+         지우지 않고 세는 꼴로 남긴다. 다음에 또 돌리라 하면 이 횟수만 고치면 된다. */
       let [dx9, dy9] = rotCW(px - BC[0], py - BC[1]);
-      [dx9, dy9] = rotCW(dx9, dy9);
+      for (let q9 = 0; q9 < 3; q9 += 1) [dx9, dy9] = rotCW(dx9, dy9);
       return P(BC[0] + dx9, BC[1] + dy9);
     };
     // 몸 — 붉은 살덩이 둔덕(사진).
@@ -10025,7 +10036,7 @@ export const BLD_NORM: Record<string, number> = {
   gspire: 0.917,
   hatchery: 1.367,
   hive: 1.165,
-  hydraden: 1.070,
+  hydraden: 1.093,
   lair: 1.223,
   mineral: 1.963,
   mshop: 1.958,
