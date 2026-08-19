@@ -872,6 +872,8 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   const pathCache = new Map<string, [number, number][]>();
   /** 수송선마다 몇 번째로 내렸나 — 선 배에서 내리는 자리를 돌려 가며 흩는다. */
   const unloadTurn = new Map<number, number>();
+  /** 이번 틱에 힐을 받은 몸(태그) — 원전 is_being_healed. 한 몸에 한 메딕만 붙는다. */
+  const healedTick = new Set<number>();
   /** 곧은 줄이 트여 있나 — 0.5타일마다 훑는다. 트였으면 길찾기를 아예 안 부른다. */
   const clearLine = (
     x0: number, y0: number, x1: number, y1: number, hw: number, hh: number,
@@ -1417,6 +1419,8 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
     for (let i = 0; i < cTouch.length; i += 1) cells[cTouch[i]].length = 0;
     cTouch.length = 0;
     live.length = 0;
+    // 이번 틱에 이미 누가 태운 몸 — 원전의 is_being_healed(틱마다 비운다).
+    healedTick.clear();
     garrison.length = 0;
     anyBurrow = false;
     /* 판 다시 굽기는 15초에 한 번으로 묶는다 — 굽는 비용 자체보다, 판 번호가 바뀌면
@@ -1938,7 +1942,13 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
          한 번마다 한 번씩만 고친다. 기력이 바닥나면 표적을 놓고 다시 찬다. */
       if (b.kind === "Medic" && b.inside === null && b.state !== ST_GONE) {
         b.energy = Math.min(b.energyMax, b.energy + ENERGY_PER_SEC * dt);
+        /* 한 몸에 한 메딕만(지적: "수리, 힐 모두 한번에 하나만 적용") — 원전이 태운
+           표적에 is_being_healed를 세우고(bwgame.h:3809) 다음 프레임 머리에서 지운다
+           (:1224). 그 깃발이 선 표적은 medic_can_heal_target이 거절하므로(:3786), 이미
+           누가 태우는 몸에는 둘째 메딕이 안 붙고 다른 다친 아군을 찾아간다. 여기서는
+           틱마다 비우는 명부가 그 깃발이다 — 겹쳐 태워 두 배로 차오르는 일이 없다. */
         const healable = (q: Body): boolean => q !== b && q.state !== ST_GONE
+          && !healedTick.has(q.tag)
           && q.state !== ST_INSIDE && !q.air && !q.bld && q.cpBase.organic
           /* 같은 임자만 본다 — 이 층은 동맹을 따로 안 든다(다른 자리도 다 owner로 잰다).
              원작 메딕은 아군도 태워 주므로 팀전에서 남의 마린은 못 고치는 셈이다. */
@@ -1972,6 +1982,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
             if (want > 0) {
               tgt.dmg.hp += fp(want);
               b.energy -= want * HEAL_ENERGY_PER_HP;
+              healedTick.add(tgt.tag);
             }
           } else if (!b.dest) setDest(b, tgt.x, tgt.y);
         }
