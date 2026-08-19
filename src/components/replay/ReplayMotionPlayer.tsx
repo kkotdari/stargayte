@@ -7867,23 +7867,56 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   },
   /* 울트라리스크(실물 참고) — 코끼리 다리 넷의 거체, 어깨에서 크게 휘는 거대 카이저
      낫 두 자루. */
-  ultra: () => [
-    /* 다리를 스파이어 기둥으로(요청) — 코끼리 다리 넷이 위로 갈수록 살짝 얇아지며
-       부드럽게 안으로 굽는다. 짙은 갈색. */
-    ...([[-2, -2], [2, -2], [-2.2, 1.1], [2.2, 1.1]] as [number, number][])
-      .flatMap(([lx9, ly9]): ShapeFace[] => spirePillar({
-        x: lx9, y: ly9, z0: 0.25, h: 3.15, w: 0.86, tipW: 0.66,
+  ultra: () => {
+    /* 울트라리스크(재작도·사진) — 등이 높이 솟은 갑각 덩치가 앞으로 웅크리고, 그 앞
+       머리에서 **큰 낫 어금니 넷**이 밖-앞으로 휘어 나온다. 등에는 짧은 가시가 줄지어
+       돋고, 코끼리 다리 넷이 몸을 받친다.
+       ★ 임자 색은 **사진의 흰 부분**, 곧 어금니 넷이다(요청: "울트라리스크 재작도
+       마찬가지로 흰색이 개인색"). 여태 어금니는 ivory로 못 박혀 있었고 대신 몸통이
+       칠해지지 않아 몸 전체가 임자 색이었다 — 사진과 정반대다. 이제 몸은 짙은 갑각
+       색으로 못 박고, 어금니를 안 칠한 채 둬 그 자리에 임자 색이 들게 한다. */
+    const HIDE = "#6b4732";     // 갑각 짙은 갈색
+    const PLATE = "#7d5238";    // 등판 — 한 톤 밝다
+    const SPIKE = "#3a2c22";    // 등가시
+    const out: ShapeFace[] = [];
+    /* 다리 넷 — 코끼리 다리처럼 위로 갈수록 살짝 얇아지며 안으로 굽는다. */
+    for (const [lx9, ly9] of [[-2.1, -2], [2.1, -2], [-2.3, 1.2], [2.3, 1.2]] as [number, number][]) {
+      out.push(...tagKey(spirePillar({
+        x: lx9, y: ly9, z0: 0.25, h: 3.15, w: 0.94, tipW: 0.7,
         segs: 4, sides: 8, hold: 0.15,
         leanX: -lx9 * 0.12, leanY: -ly9 * 0.1,
         curveX: -lx9 * 0.16, curveY: -ly9 * 0.12,
-        fill: "#6b4732",
-      })),
-    ...domeFaces3(0, -0.9, 3.2, 3, 3.4),
-    // 머리 축소(요청) — 2×1.6 → 1.5×1.2. 갈고리도 그만큼 안·아래로 당긴다.
-    ...paintBase(domeFaces3(0, 1.75, 1.5, 1.2, 3.9), "#6b4732"),
-    ...ivory(claw3(1, 1.7, 4.95)),
-    ...ivory(claw3(-1, 1.7, 4.95)),
-  ],
+        fill: HIDE,
+      }), depthNow(lx9, ly9) * 1.6 - 2));
+    }
+    /* 몸 — 뒤가 높고 앞이 낮은 갑각 덩이 둘. 뒤 덩이가 등, 앞 덩이가 어깨다. */
+    out.push(...tagKey(paintBase(domeFaces3(0, -1.5, 3.35, 3.3, 3.1), HIDE),
+      depthNow(0, -1.5) * 1.6));
+    out.push(...tagKey(paintBase(domeFaces3(0, 0.35, 2.85, 2.5, 3.3), PLATE),
+      depthNow(0, 0.35) * 1.6 + 1));
+    /* 등가시 — 어깨 능선을 따라 좌우로 갈라져 뒤로 눕는다. */
+    for (const [sx9, sy9, sz9, tw9] of [
+      [-1.85, -0.5, 5.4, 0.72], [1.85, -0.5, 5.4, 0.72],
+      [-1.5, -2.5, 5.8, 0.62], [1.5, -2.5, 5.8, 0.62],
+      [-0.85, -3.5, 5, 0.5], [0.85, -3.5, 5, 0.5],
+    ] as [number, number, number, number][]) {
+      out.push(...tagKey(paintBase(spikeHorn(
+        sx9 * 0.75, sy9 + 0.6, sz9 - 1.1, sx9 * 1.5, sy9 - 1.5, sz9, tw9,
+        undefined, 6, 0.5, sx9 * 0.4, -0.8,
+      ), SPIKE), depthNow(sx9, sy9) * 1.6 + 2));
+    }
+    /* 머리 — 어깨 앞으로 낮게 내민 갑각. 그 위에 창백한 이마판 하나. */
+    out.push(...tagKey(paintBase(domeFaces3(0, 2.2, 1.75, 1.4, 3.4), HIDE), 12));
+    out.push(...tagKey(paintBase(domeFaces3(0, 2.1, 0.95, 0.42, 4.7), IVORY_DEEP), 12.5));
+    /* 어금니 넷 = **임자 색**(요청: 사진의 흰 부분) — 칠하지 않으므로 그리는 쪽이
+       팀색을 넣는다. 위 한 쌍이 크게 밖-앞으로 감기고, 아래 한 쌍은 작고 낮게 앞으로
+       뻗는다. 사진의 울트라도 큰 낫 둘 아래 작은 낫 둘이다. */
+    out.push(...tagKey(claw3(1, 2, 4.5), 15));
+    out.push(...tagKey(claw3(-1, 2, 4.5), 15));
+    out.push(...tagKey(claw3(1, 1.25, 3.15), 14));
+    out.push(...tagKey(claw3(-1, 1.25, 3.15), 14));
+    return out;
+  },
   /* 러커(실물 참고) — 넓은 가시 등딱지, 사방으로 벌린 낫 칼다리 두 쌍(끝이 안으로
      말림), 앞 입. */
   lurker: () => {
@@ -8782,6 +8815,8 @@ const MODEL_NORM: Record<string, number> = {
   defiler: 0.861,
   devourer: 0.945,
   drone: 1.056,
+  droneGas: 1.032,
+  droneMin: 1.048,
   dship: 0.716,
   dtemp: 0.896,
   fbat: 1.061,
@@ -8801,17 +8836,21 @@ const MODEL_NORM: Record<string, number> = {
   observer: 1.896,
   ovie: 0.841,
   probe: 1.582,
+  probeGas: 1.501,
+  probeMin: 1.532,
   queen: 1.091,
   reaver: 1.234,
   scourge: 1.634,  // 상자 상한(원한 배수 2.057)
   scout: 0.951,
   scv: 0.936,
+  scvGas: 0.929,
+  scvMin: 0.934,
   shuttle: 0.673,
   tank: 0.766,
   tankbody: 0.846,
   tanksiege: 0.660,
   tanksiegebody: 0.756,
-  ultra: 0.618,
+  ultra: 0.529,
   valk: 0.949,
   vessel: 0.810,
   vulture: 1.058,
