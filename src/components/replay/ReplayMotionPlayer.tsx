@@ -12790,10 +12790,14 @@ export default function ReplayMotionPlayer({
     })), [buildsSrc]);
   /** 가스 건물들 — 가스 지대에 일꾼을 보낼 자격이다(지적: 가스도 안 지었는데 왔다 갔다). */
   const gasBuildings = useMemo(() => buildsSrc
-    .filter(([, , , unit]) => ["Refinery", "Assimilator", "Extractor"].includes(unit))
-    .map(([sec, x, y, unit, raw, gone]) => ({
+    .map((row, i) => [row, i] as const)
+    .filter(([[, , , unit]]) => ["Refinery", "Assimilator", "Extractor"].includes(unit))
+    .map(([[sec, x, y, unit, raw, gone], i]) => ({
       sec, x: x + footDx(unit), y: y + footDy(unit), raw, gone: gone ?? 0,
-    })), [buildsSrc]);
+      /* 완공 시각(요청: "간헐천은 건물을 짓는 동안만 보이고 완공되면 안보임") — 테란은
+         건설 중단이 있어 표의 건설 시간이 아니라 실제로 자란 시각(bldWork)이 답이다. */
+      done: bldWork.get(i)?.doneAt ?? sec + (BUILD_SEC[unit] ?? 30),
+    })), [buildsSrc, bldWork]);
   /* 가스 깃발이 정확한 판인가(지적: 미네랄과 가스를 헷갈림) — 간헐천 낱개화 이후의
      격자는 깃발(res[2])이 정확해서, '가스 건물 곁 6타일' 폴백을 쓰면 정제소 곁 미네랄
      밭까지 간헐천으로 그려 버린다. 폴백은 깃발이 하나도 없는 옛 격자에서만 쓴다. */
@@ -13732,10 +13736,14 @@ export default function ReplayMotionPlayer({
              않고 그 위에 얹힌다: 건물 몸(정제소 3.5타일)이 간헐천(4타일)보다 좁아 테두리가
              삐져나오고, 그 겹침이 '가스 위에 지었다'를 말한다.
              그래서 감추는 대신 **건물 뒤로 보낸다** — 아래 z에서 자원의 앞섬 몫(+1200)을
-             빼고 두 타일치를 더 물려, 같은 자리에 선 건물이 무슨 일이 있어도 앞에 온다. */
-          const underGas = !!gasSpot && gasHideOf.some((g) =>
+             빼고 두 타일치를 더 물려, 같은 자리에 선 건물이 무슨 일이 있어도 앞에 온다.
+             ★ 다만 **짓는 동안만**이다(재요청: "완공되면 안보임") — 공사 중에는 간헐천이
+               건물 뒤로 비치고, 완공되는 순간 감춘다. 정제소가 뚜껑을 덮는 그림이다. */
+          const gasOn = gasSpot ? gasHideOf.find((g) =>
             g.sec <= t && (g.gone === 0 || t < g.gone) && g.gd <= 4
-            && Math.abs(g.gx - res[0]) < 0.5 && Math.abs(g.gy - res[1]) < 0.5);
+            && Math.abs(g.gx - res[0]) < 0.5 && Math.abs(g.gy - res[1]) < 0.5) : undefined;
+          if (gasOn && t >= gasOn.done) return null;
+          const underGas = !!gasOn;
           // 고갈된 미네랄(요청)은 밭이 사라진다. 가스는 아래에서 색만 죽인다.
           /* 고갈 어림은 끈다(지적: 미네랄·간헐천에 모델 적용해야지 — 후반에 자원이
              통째로 사라져 있었다). 일꾼 수로 짐작하던 v1 어림이라 인과 증거가 없었다:
