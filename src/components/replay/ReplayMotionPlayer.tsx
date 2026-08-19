@@ -9229,20 +9229,25 @@ function mineralLoad(cx: number, cy: number, cz: number, s = 1): ShapeFace[] {
     ...shard(0, 0, 0.92, 1.28),
   ], "#6cc3e8"), depthNow(cx, cy) * 1.6 + 30);
 }
-/** 가스통(테란·프로토스) — 정육면체 상자다. 앞·윗면에 베스핀 초록 창이 난다. */
-function gasBoxLoad(cx: number, cy: number, cz: number, s = 1): ShapeFace[] {
+/** 가스통(테란·프로토스) — 정육면체 상자다. 앞·윗면에 베스핀 초록 창이 난다.
+ *  틀 색은 종족이 정한다(요청: "프로는 금색으로 변경") — 테란은 검회색, 프로토스는
+ *  종족 바탕색인 금색이다. */
+function gasBoxLoad(cx: number, cy: number, cz: number, s = 1, frame = "#59626d"): ShapeFace[] {
   const w = 1.35 * s;
-  const f: ShapeFace[] = [...paintBase(boxFaces3(cx, cy, w, w, w, cz), "#59626d")];
+  const f: ShapeFace[] = [...paintBase(boxFaces3(cx, cy, w, w, w, cz), frame)];
+  /* 창을 키워 틀을 가는 테로(요청: "가스상자 테두리 얇게") — 창이 상자의 64%(윗면)·
+     60×48%(앞면)뿐이라 틀이 창만큼 두꺼웠다. 84%·84×80%로 넓히면 남는 틀이 한 변의
+     8~10%짜리 가는 테가 된다. 통이 곧 베스핀 창이고 금속은 그 테두리라는 그림이다. */
   // 윗면 초록 창 — 위에서 내려다보므로 늘 보인다.
   f.push([polyPath3([
-    [cx - w * 0.32, cy - w * 0.32, cz + w + 0.02], [cx + w * 0.32, cy - w * 0.32, cz + w + 0.02],
-    [cx + w * 0.32, cy + w * 0.32, cz + w + 0.02], [cx - w * 0.32, cy + w * 0.32, cz + w + 0.02],
+    [cx - w * 0.42, cy - w * 0.42, cz + w + 0.02], [cx + w * 0.42, cy - w * 0.42, cz + w + 0.02],
+    [cx + w * 0.42, cy + w * 0.42, cz + w + 0.02], [cx - w * 0.42, cy + w * 0.42, cz + w + 0.02],
   ]), 0.9, "#4fd06a"] as ShapeFace);
   // 앞면 창 — 앞이 보일 때만.
   if (facingRatio(0, 1) > 0.12) {
     f.push([polyPath3([
-      [cx - w * 0.3, cy + w / 2 + 0.02, cz + w * 0.24], [cx + w * 0.3, cy + w / 2 + 0.02, cz + w * 0.24],
-      [cx + w * 0.3, cy + w / 2 + 0.02, cz + w * 0.72], [cx - w * 0.3, cy + w / 2 + 0.02, cz + w * 0.72],
+      [cx - w * 0.42, cy + w / 2 + 0.02, cz + w * 0.1], [cx + w * 0.42, cy + w / 2 + 0.02, cz + w * 0.1],
+      [cx + w * 0.42, cy + w / 2 + 0.02, cz + w * 0.9], [cx - w * 0.42, cy + w / 2 + 0.02, cz + w * 0.9],
     ]), 0.9, "#4fd06a"] as ShapeFace);
   }
   return tagKey(f, depthNow(cx, cy) * 1.6 + 30);
@@ -9270,12 +9275,15 @@ function gasSacLoad(cx: number, cy: number, cz: number, s = 1): ShapeFace[] {
 /* 일꾼 셋 × 짐 둘 = 여섯 별본. 짐 자리는 일꾼마다 다르다 —
    SCV는 두 팔 사이(y 2.1~3.1 · z 4.6)에 안고, 프로브는 몸(z 5.7~6.8) 앞 아래에 띄우고,
    드론은 집게(z 3) 사이에 문다. */
-SHAPE_BUILDERS.scvMin = () => [...SHAPE_BUILDERS.scv(), ...mineralLoad(0, 2.6, 3.95)];
-SHAPE_BUILDERS.scvGas = () => [...SHAPE_BUILDERS.scv(), ...gasBoxLoad(0, 2.6, 3.95)];
-SHAPE_BUILDERS.probeMin = () => [...SHAPE_BUILDERS.probe(), ...mineralLoad(0, 1.35, 4.35, 0.9)];
-SHAPE_BUILDERS.probeGas = () => [...SHAPE_BUILDERS.probe(), ...gasBoxLoad(0, 1.35, 4.35, 0.9)];
-SHAPE_BUILDERS.droneMin = () => [...SHAPE_BUILDERS.drone(), ...mineralLoad(0, 2.15, 2.7, 0.95)];
-SHAPE_BUILDERS.droneGas = () => [...SHAPE_BUILDERS.drone(), ...gasSacLoad(0, 2.15, 2.7, 0.95)];
+/* 짐은 1.5배다(요청: "일꾼이 든 미네랄 가스 크기 1.5배 키우기") — 배수 s만 곱한다.
+   드는 자리(cx·cy·cz)는 그대로라 짐이 그 자리에서 위·바깥으로 자란다. 프로토스 가스통은
+   금색 틀(요청) — 종족 바탕색과 같은 값이다. */
+SHAPE_BUILDERS.scvMin = () => [...SHAPE_BUILDERS.scv(), ...mineralLoad(0, 2.6, 3.95, 1.5)];
+SHAPE_BUILDERS.scvGas = () => [...SHAPE_BUILDERS.scv(), ...gasBoxLoad(0, 2.6, 3.95, 1.5)];
+SHAPE_BUILDERS.probeMin = () => [...SHAPE_BUILDERS.probe(), ...mineralLoad(0, 1.35, 4.35, 1.35)];
+SHAPE_BUILDERS.probeGas = () => [...SHAPE_BUILDERS.probe(), ...gasBoxLoad(0, 1.35, 4.35, 1.35, "#c9a227")];
+SHAPE_BUILDERS.droneMin = () => [...SHAPE_BUILDERS.drone(), ...mineralLoad(0, 2.15, 2.7, 1.425)];
+SHAPE_BUILDERS.droneGas = () => [...SHAPE_BUILDERS.drone(), ...gasSacLoad(0, 2.15, 2.7, 1.425)];
 /* 부품 깊이 정렬(지적: 일부만 가려지는 파트에서 뒤 요소가 비쳐 보임 — 가장 큰 문제) —
    빌더의 그리기 순서는 표준 시점 기준 고정이라, 요잉으로 뒤로 돌아간 부품이 앞 부품
    위에 그려졌다. 프리미티브(상자·절두·기둥·돔·뿔·관·다리)가 제 중심 깊이를 면에 달아
@@ -9562,8 +9570,8 @@ const MODEL_NORM: Record<string, number> = {
   defiler: 0.861,
   devourer: 0.945,
   drone: 1.056,
-  droneGas: 1.032,
-  droneMin: 1.048,
+  droneGas: 0.982,
+  droneMin: 1.034,
   dship: 0.716,
   dtemp: 0.917,
   egg: 1.218,
@@ -9585,15 +9593,15 @@ const MODEL_NORM: Record<string, number> = {
   observer: 1.896,
   ovie: 0.841,
   probe: 1.582,
-  probeGas: 1.501,
-  probeMin: 1.532,
+  probeGas: 1.392,
+  probeMin: 1.473,
   queen: 1.185,
   reaver: 1.234,
   scourge: 1.634,  // 상자 상한(원한 배수 2.057)
   scout: 0.951,
   scv: 0.936,
-  scvGas: 0.929,
-  scvMin: 0.934,
+  scvGas: 0.909,
+  scvMin: 0.928,
   shuttle: 0.673,
   tank: 0.766,
   tankbody: 0.846,
