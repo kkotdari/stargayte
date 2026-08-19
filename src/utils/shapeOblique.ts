@@ -115,6 +115,13 @@ export function withTopView<T>(fn: () => T): T {
     topView = false;
   }
 }
+/* 시점 각 바(요청: PC 세로 바로 각도 5단계) — 입체 판의 바닥 눌림이 이제 고정값이
+   아니다. 그리는 쪽(재생기)이 고른 각의 눌림을 여기 내려 주고, 이 판에서 굽는 모델이
+   그 값을 쓴다. 기본값 0.52는 여태 붙박이로 있던 수 그대로다(=48도). */
+let pitchSquash = 0.52;
+export function setPitchSquash(v: number): void {
+  pitchSquash = Math.min(0.95, Math.max(0.2, v));
+}
 /** 지금 유효한 바닥 납작비. */
 export function groundSquashNow(): number {
   /* 0.66 → 0.55(수리: 넥서스 앞 바닥·기둥이 뷰박스 밖으로 잘렸다) — 앞쪽 깊이가
@@ -122,7 +129,7 @@ export function groundSquashNow(): number {
   /* 입체 판 피칭(지적: 납작비가 아니라 피치가 안 맞음) — 지형의 화면 기하에 수치로
      맞춘다: 깊이 = 컨테이너 눌림 0.74 × cos45 ≈ 0.52, 높이 = cos45 ≈ 0.71. 여태
      높이를 0.84~0.94로 거의 안 줄여 모델만 껑충했던 게 피치 불일치의 정체다. */
-  return pitchView ? 0.52 : topView ? 0.55 : GROUND_SQUASH;
+  return pitchView ? pitchSquash : topView ? 0.55 : GROUND_SQUASH;
 }
 function zScaleNow(): number {
   // 0.71 → … → 0.94 → 1(지적: 1까지 늘려봐) — 높이 원본 그대로.

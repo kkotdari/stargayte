@@ -11045,7 +11045,71 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 아바타 로스터 기둥(요청: 아바타를 맵 밖으로 — 1팀 왼쪽·2팀 오른쪽 세로 한 줄,
    로스터식 아바타+닉네임에 그 사람 색) — 맵을 가운데 두고 양옆에 선다. */
 .scr-motion-maprow { display: flex; align-items: center; gap: 8px; }
-.scr-motion-maprow .scr-motion-map { flex: 1 1 auto; min-width: 0; }
+.scr-motion-maprow .scr-motion-mapwrap { flex: 1 1 auto; min-width: 0; }
+
+/* 세로 슬라이드 바(요청: PC 각도·배속 — 자리는 맵 바깥 좌우) — 지도를 사이에 두고
+   왼쪽이 배속, 오른쪽이 각도다. 상자 안에 레일(가는 세로줄)·눈금·아주 작은 라벨·손잡이가
+   함께 들어간다: 라벨이 상자 밖으로 삐져나가면 옆의 로스터를 덮으므로, 레일을 한쪽으로
+   붙이고 남는 폭을 라벨 자리로 준다. */
+/* 지도 + 좌우 기둥 한 줄 — 기둥은 지도와 같은 높이로 늘어난다(요청: 로스터는 최상단,
+   버튼단은 하단). */
+.scr-motion-mapwrap { display: flex; align-items: stretch; gap: 6px; min-width: 0; }
+/* 지도 좌우 기둥 — 위에서부터 로스터 · 슬라이드 바 · (오른쪽만) 버튼 줄이 세로로 선다
+   (요청: "로스터 슬라이드바 버튼류가 한 div에 세로로 배치되는거야"). */
+.scr-motion-side {
+  position: relative;
+  flex: 0 0 auto; width: 120px; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+/* 두 바는 좌우 대칭이어야 한다(지적: "배속과 각도바가 대칭위치에 있어야지") — 남는
+   자리에 auto 여백으로 띄우면 오른쪽만 아래에 버튼 줄이 있어 자리가 서로 어긋난다.
+   기둥(=지도) 세로 한가운데에 못 박아 둘이 같은 높이에 선다. */
+.scr-motion-side .scr-slidebar {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+}
+/* 버튼 줄은 기둥 맨 아래(요청: "버튼단은 하단으로 이동"). */
+.scr-motion-side .scr-motion-viewrow { margin-top: auto; }
+/* 기둥 안의 버튼 줄은 갭을 줄인다(요청: "자리가 좁을거 같으면") — 한 기둥에 로스터·
+   바·버튼 셋이 함께 서므로 14px 갭은 넘친다. */
+.scr-motion-side .scr-motion-viewrow { gap: 8px; }
+.scr-slidebar {
+  flex: 0 0 auto;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 8px 4px; border-radius: 14px;
+  background: rgba(10, 14, 18, 0.42); backdrop-filter: blur(3px);
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.12);
+  user-select: none; touch-action: none;
+}
+.scr-slidebar-title {
+  font-size: 10px; font-weight: 700; color: rgba(255, 255, 255, 0.8); white-space: nowrap;
+}
+.scr-slidebar-track { position: relative; width: 40px; height: 156px; cursor: pointer; outline: none; }
+.scr-slidebar-track:focus-visible { box-shadow: 0 0 0 2px rgba(var(--lit-rgb), 0.6); border-radius: 8px; }
+/* 레일 — 눈금이 꿰이는 가는 세로줄. 라벨이 붙는 반대쪽 가장자리에 붙는다. */
+.scr-slidebar-rail { position: absolute; top: 0; bottom: 0; width: 2px; border-radius: 999px; background: rgba(255, 255, 255, 0.3); }
+.scr-slidebar-right .scr-slidebar-rail { left: 7px; }
+.scr-slidebar-left .scr-slidebar-rail { right: 7px; }
+/* 눈금 한 칸 — 짧은 가로 획과 아주 작은 라벨(요청: "눈금있고 아주 작게 라벨링"). */
+.scr-slidebar-tickwrap { position: absolute; left: 0; right: 0; height: 0; }
+.scr-slidebar-tick { position: absolute; width: 8px; height: 2px; margin-top: -1px; border-radius: 1px; background: rgba(255, 255, 255, 0.5); }
+.scr-slidebar-right .scr-slidebar-tick { left: 4px; }
+.scr-slidebar-left .scr-slidebar-tick { right: 4px; }
+.scr-slidebar-tick-on { background: var(--lit-pill-bg); }
+.scr-slidebar-mark {
+  position: absolute; font-style: normal; font-size: 9px; line-height: 1;
+  color: rgba(255, 255, 255, 0.62); white-space: nowrap; transform: translateY(-50%);
+}
+.scr-slidebar-mark-on { color: #fff; font-weight: 700; }
+.scr-slidebar-right .scr-slidebar-mark { left: 15px; }
+.scr-slidebar-left .scr-slidebar-mark { right: 15px; }
+/* 손잡이 — 눈금 사이에 머물지 않고 늘 눈금 위에 달라붙는다. */
+.scr-slidebar-thumb {
+  position: absolute; width: 12px; height: 12px; margin-top: -6px;
+  border-radius: 999px; background: var(--lit-pill-bg); box-shadow: var(--lit-pill-glow);
+  transition: top .12s ease-out; pointer-events: none;
+}
+.scr-slidebar-right .scr-slidebar-thumb { left: 2px; }
+.scr-slidebar-left .scr-slidebar-thumb { right: 2px; }
 /* 모바일 화면 폭 확대(요청: 산 아이콘 옆 확대 버튼 — 모달을 벗어나 화면 폭 최대) —
    맵 줄이 제 상자 가운데에서 뷰포트 폭으로 넓어진다(50% − 50vw 트릭: 상세 모달 본문의
    가로 클리핑 상자가 모달 폭 전체를 덮어서, 모달을 100vw로 넓히면 잘리지 않는다).
@@ -11076,7 +11140,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion:not(.scr-motion-wide) .scr-motion-maprow { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 6px; }
 /* 세 칸(1팀·vs·2팀)은 이제 로스터 덩어리 안의 일이다 — 맵줄은 로스터와 맵 둘뿐이다. */
 .scr-motion:not(.scr-motion-wide) .scr-motion-rosterwrap { display: grid; grid-template-columns: 1fr auto 1fr; column-gap: 0; }
-.scr-motion:not(.scr-motion-wide) .scr-motion-maprow .scr-motion-map { grid-column: 1; grid-row: 2; }
+.scr-motion:not(.scr-motion-wide) .scr-motion-maprow .scr-motion-mapwrap { grid-column: 1; grid-row: 2; }
 /* 두 줄 허용 + 팀별 가운데 정렬 + 온이름(재요청: 공간 아낀 만큼) — 헤드 줄의 BEST
    칩을 걷어 여유가 생겼다. 이름은 다시 풀로 흐르고, 못 다 서면 둘째 줄로 넘어간다. */
 .scr-motion:not(.scr-motion-wide) .scr-motion-teamcol {
@@ -11482,8 +11546,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion-speeds .scr-motion-radio-label { padding-left: 0; }
 .scr-motion-speeds .scr-pill-tabs { height: 18px; }
 .scr-motion-speeds .scr-pill-tab-btn { padding: 0 5px; font-size: 10px; }
-/* PC: 진행바 아랫줄(7행)에 오른끝 정렬(지적: 겹침). */
-.scr-motion-wide .scr-motion-sharerow { grid-column: 2; grid-row: 7; }
+/* PC: 진행바 아랫줄(7행). 배속 알약이 지도 왼쪽 슬라이드 바로 옮겨 가면서 이 줄에는
+   장면 공유 버튼 하나만 남았다 — 양끝 정렬(space-between)은 홀로 남은 버튼을 왼쪽에
+   붙여 놓는다. 가운데로 모은다(지적: "장면공유버튼은 가운데 정렬이고"). */
+.scr-motion-wide .scr-motion-sharerow { grid-column: 2; grid-row: 7; justify-content: center; }
 /* 시각 아래 작게(요청) — 컴팩트: 높이 18px, 여백 최소, 글꼴 10px. */
 /* 프라이머리 테마(재재지적) — 앱의 주요 버튼(.scr-btn-primary)과 같은 흰 알약 +
    글로우. 둥근 네모 유지, 컴팩트 높이. */
@@ -11793,7 +11859,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   /* 왼쪽을 한 칸으로(지적: "조작부쪽을 댓글쪽처럼 1열짜리 그리드로") — 110px 두 칸이던
      것을 232px 한 칸으로 합쳤다. 폭의 합은 그대로다(110+12+110 = 232). 로스터의 좌우
      나눔은 로스터 덩어리(.scr-motion-rosterwrap) 안으로 들어갔다. */
-  display: grid; grid-template-columns: 232px minmax(0, 1fr) 232px;
+  /* 왼쪽 기둥은 비었다(요청: 로스터는 지도 좌우로, 버튼류는 오른쪽으로) — 232px
+     붙박이로 두면 그 폭이 통째로 빈칸이 되므로 내용만큼만 차지하게 auto로 둔다. */
+  display: grid; grid-template-columns: auto minmax(0, 1fr) 232px;
   grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
   column-gap: 12px; row-gap: 8px; align-items: start;
 }
@@ -11801,7 +11869,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 맵은 조종부 줄(5행)까지 내려온다(지적: 재생 버튼이 너무 아래 — 미니맵 하단과 맞아야) —
    1/5로 두면 조종부·탐색바가 맵 '아래' 줄에 서서 재생 버튼이 맵 바닥보다 낮았다.
    1/6이면 조종부(5행, 바닥 정렬)의 밑변이 곧 맵 밑변이다. */
-.scr-motion-wide .scr-motion-map { grid-column: 2; grid-row: 1 / 6; }
+.scr-motion-wide .scr-motion-mapwrap { grid-column: 2; grid-row: 1 / 6; }
 /* 탐색바는 맵 바로 아래(재재지적) — 맵이 5행까지 차지하므로 6행이 곧 '맵 바로 아래'다.
    보기 버튼 여섯은 왼쪽 기둥의 배속/재생 줄 '위'로: 4행(늘어나는 줄) 바닥에 버튼,
    5행에 조종부, 6행엔 등록자와 탐색바가 나란히 선다. */
@@ -11810,7 +11878,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* 보기 버튼은 왼쪽 기둥에서 종류별로 한 줄씩(요청) — 짝 버튼(2D/3D·팀색/개인색·작게/
    크게)과 홑 버튼이 각자 제 줄에 선다. */
 .scr-motion-wide .scr-motion-viewrow {
-  grid-column: 1; grid-row: 4; align-self: end;
+  /* 넓은 배치에서는 그리드가 아니라 지도 오른쪽 기둥(.scr-motion-side) 안에 산다 —
+     자리는 그 기둥이 정하고, 여기서는 세로 한 줄 배치만 물려준다. */
   /* 세로 갭 여유(요청) — 6px → 14px. */
   /* 묶음들을 기둥 가운데로(요청) — 세로 flex라 가로축은 align-items다. */
   display: flex; flex-direction: column; align-items: center; gap: 14px;
@@ -11823,7 +11892,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    자동 배치가 1행 1열(110px) 한 칸에 떨어뜨렸다. 왼쪽 기둥은 110+12+110=232px인데 그
    절반만 쓰고 있었다(실측: 줄 110px·알약 100px). 로스터 위 범례(.scr-motion-legend-side)
    ·보기 줄과 같이 1/3으로 걸치고, 행도 못 박아 이웃이 늘고 줄어도 안 떠돈다. */
-.scr-motion-wide .scr-motion-colorrow { grid-column: 1; grid-row: 1; justify-content: center; }
+/* (삭제·요청: 색상도 일반 토글로 합치기) — 색상 줄이 왼쪽 기둥에 따로 앉던 자리. */
+/* (지도 좌우에 갈라 세운 로스터는 위 .scr-motion-side 기둥 안에 들어갔다.) */
+.scr-motion-side .scr-motion-teamcol { width: 100%; }
+
 /* 왼쪽 — 같은 팀은 세로로(지적), 두 팀 기둥이 나란히 서고 줄(행)이 서로 맞는다.
    조작부는 로스터 바로 밑이 아니라 기둥의 아래쪽에 붙는다(요청) — 늘어나는 줄(1fr)을
    차지하고 스스로 바닥 정렬한다. */
@@ -11999,6 +12071,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    게임 페이지에서만. 케밥은 페이지 타이틀 줄(툴바 actions)로 갔다. */
 .scr-story-map-mid { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .scr-activity-group-page .scr-story-map-head { align-self: stretch; }
+/* 타이틀 줄은 지도 폭까지만이다(지적: "위에 타이틀 라인(타임스탬프 맵이름 작성자)은
+   댓글영역은 미포함이야") — 이 줄은 재생기 밖 형제라 여태 댓글 기둥까지 걸쳐 있었다.
+   그래서 맵 이름은 지도가 아니라 '지도+댓글'의 가운데에 섰고, 등록자는 댓글 기둥 위에
+   떠 있었다. 오른쪽에서 댓글 기둥 폭(232) + 칸 사이(12)만큼 물러서면 줄의 왼끝·가운데·
+   오른끝이 정확히 지도의 그것이 된다. 넓은 배치일 때만이다 — 그 판을 아는 것은 재생기
+   안의 .scr-motion-wide뿐이라 :has로 묻는다(같은 수법이 아래 댓글 숨김에도 쓰인다). */
+.scr-story-map:has(.scr-motion-wide) .scr-story-map-head { padding-right: 244px; }
 .scr-activity-group-page .scr-story-map-head-line {
   align-self: stretch; justify-content: space-between; flex-wrap: nowrap;
 }

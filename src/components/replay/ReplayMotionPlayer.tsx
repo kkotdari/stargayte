@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Pause, Play, RotateCcw, X } from "lucide-react";
 import Avatar from "../common/Avatar";
 import ReplayMapCanvas from "./ReplayMapCanvas";
 import PillTabs from "../common/PillTabs";
+import SlideBar from "../common/SlideBar";
 import { cx } from "../../utils/format";
 import { BUILDING_KO, TECH_KO, UNIT_KO } from "../../utils/replayNames";
 import { ARMOR_WEAPON_PAIRS, UPGRADE_LINE_KO } from "../../utils/replayTechNames";
@@ -49,7 +50,7 @@ import {
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
   domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces,
   prismYFaces, prismZFaces, pyramidFaces3,
-  screenCircle, sphereFaces3, tubeFaces,
+  screenCircle, setPitchSquash, sphereFaces3, tubeFaces,
   wallDiscPath, withPitchView, withSpin, withTopView, withViewShear, withYaw, zsorted,
 } from "../../utils/shapeOblique";
 import { TEAM_COLOR, type MinimapMarker } from "./ReplayMinimap";
@@ -118,8 +119,23 @@ const CREEP_SPREAD_SEC = 180;
    문제). 지형 그림·마커 사영은 컴포넌트 안에서 이 값들을 쓰고, 캔버스의 그림자·
    선택 링은 컴포넌트 밖(UnitLayer)에서 쓴다. 같은 바닥을 두 곳이 따로 알고 있으면
    한쪽만 고쳐지고 다른 쪽은 옛 숫자로 남는다 — 실제로 그렇게 벌어졌다. */
-/** 부감 각 — 바닥을 45도로 눕힌다. */
-const PITCH_TH = Math.PI / 4;
+/* 시점 각 갈래(요청: "각도도 5단계로 조절 기본값은 90도(2디)고 이때는 실제 각도가
+   아닌 2D로 적용해주면 돼. 아래로 내릴수록 시점각도 내려가서 30도 정도까지") —
+   90도는 바로 위에서 내려다보는 것이라 곧 평면(2D)이다: 그 칸에서는 눕히기를 아예
+   안 걸고 예전 2D 보기 그대로 그린다. 아래 칸으로 갈수록 카메라가 내려와 땅이 눕는다.
+   ★ 48도가 들어 있는 것은 눈대중이 아니다 — 여태 붙박이였던 3D 보기의 바닥 눌림이
+     0.74였고, asin(0.74) = 47.7도다. 즉 예전 3D는 사실 48도짜리 한 칸이었다. 그
+     칸을 그대로 남겨 두어야 옛 화면이 한 톨도 안 바뀐다. */
+const PITCH_DEGS = [90, 75, 60, 48, 30] as const;
+/** 그 각에서 땅이 눌리는 정도(세로/가로) — sin(시점각)이다. 90도면 1(안 눌림=평면),
+ *  30도면 0.5. 화면에 눕는 것(그림자·선택 링·트레이서)은 전부 이 값을 곱한다. */
+const flatOf = (deg: number): number => Math.sin((deg * Math.PI) / 180);
+/** 지금 화면의 바닥 눌림 — 각도 바가 정한다. 캔버스 층(UnitLayer)은 컴포넌트 밖이라
+ *  props가 안 닿아 이 모듈 값을 읽는다(재생기가 각이 바뀔 때마다 여기 내려 준다). */
+let pitchFlatNow = flatOf(PITCH_DEGS[3]);
+/** 굽기·스프라이트 캐시 열쇠에 박는 각도 표식 — 각이 바뀌면 옛 판을 못 쓴다(예전에는
+ *  입체가 한 각뿐이라 켬/끔 한 비트로 족했다). 평면은 각과 무관하므로 "0"이다. */
+const pitchTag = (pitch?: boolean): string => (pitch ? pitchFlatNow.toFixed(3) : "0");
 /** 원근 거리 = 상자 세로 × 이 값. 클수록 원근이 약하고 바닥이 상자를 더 채운다.
  *
  *  1.6 → 4(지적: "3D모드에서 좌우의 땅이 내려가게 기울어진 느낌의 착시") — 진단은
@@ -140,9 +156,7 @@ const PITCH_TH = Math.PI / 4;
  *    클수록 원작에 가깝고, 깊이감은 눕힘(PITCH_FLAT)·건물 높이·그림자·그리는 차례가
  *    그대로 낸다. 원근을 다시 넣고 싶으면 이 상수 하나만 낮추면 된다(4면 1.20배). */
 const PITCH_DIST = 12;
-/** 바닥 눌림 — 세로가 가로의 몇 할로 보이는가. 바닥에 눕는 것(그림자·선택 링·
- *  트레이서 조준각)은 전부 이 값을 곱해야 지면 격자와 같은 평면에 깔린다. */
-const PITCH_FLAT = 0.74;
+
 
 const pct = (v: number, span: number) => `${(v / span) * 100}%`;
 
@@ -10271,7 +10285,7 @@ function resolveShapeFaces(
        건물은 rotDeg가 없어 좌우 시점(vq)만 받는다. */
     // 16방향(요청: 원작 스프라이트처럼 22.5도 스텝) — 자연스러운 회전 단위.
     const bucket = rotDeg !== undefined ? ((Math.round(rotDeg / 22.5) * 22.5) % 360 + 360) % 360 : 0;
-    const key = `${kind}:${bucket}:${flat ? 1 : 0}:${vq}:${pitchView ? 1 : 0}`;
+    const key = `${kind}:${bucket}:${flat ? 1 : 0}:${vq}:${pitchTag(pitchView)}`;
     let f = HEAD_FACES.get(key);
     if (!f) {
       /* vq는 요잉이 아니라 시각 밀림(지적: 돌리면 모양이 찌그러짐) — 모델은 제 방향
@@ -10562,14 +10576,14 @@ function unitSprite(
   const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
   // 등급은 상자가 아니라 이 모델이 실제로 칠하는 잉크 폭으로 정한다(위 LOD_INK_* 참고).
   const lod = lodOf((pxq * modelInkOf(op.kind)) / 16, LOD_INK_POINT, LOD_INK_DECO);
-  const key = `${op.kind}|${rotB}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}`
+  const key = `${op.kind}|${rotB}|${op.flat ? 1 : 0}|${vq}|${pitchTag(op.pitch)}`
     + `|${op.color}|${pxq}|${B.toFixed(2)}|${lod}`;
   const hit = SPRITE_CACHE.get(key);
   // 찾은 것은 맨 뒤로 — 그래야 맨 앞이 '가장 오래 안 쓴 것'이 된다(LRU).
   if (hit) { SPRITE_CACHE.delete(key); SPRITE_CACHE.set(key, hit); return hit; }
   const { faces: all } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
   if (!all) return null;
-  const faces = lodFilter(autoTier(op.kind, `u|${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}`, all), lod);
+  const faces = lodFilter(autoTier(op.kind, `u|${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${pitchTag(op.pitch)}`, all), lod);
   /* (제거·요청) 드롭섀도 굽기 — 건물·유닛 그림자를 다 걷어 굽는 판도 그림자 없이 민다.
      pad는 안티에일리어싱 여유만. */
   const pad = 2;
@@ -11179,13 +11193,13 @@ function buildingSprite(
      기둥이 반 토막 나고 지붕이 가로로 잘려 '짓는 중'이 아니라 '가려진' 것으로 보였다.
      단계가 캐시 열쇠에 들어가므로 판은 단계별로 따로 구워져 프레임 비용이 없다. */
   const stg = op.buildStage ?? 0;
-  const key = `${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}|${op.color}|${sideQ}|${B.toFixed(2)}|${lod}|${stg}`;
+  const key = `${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${pitchTag(op.pitch)}|${op.color}|${sideQ}|${B.toFixed(2)}|${lod}|${stg}`;
   const hit = BLD_SPRITE_CACHE.get(key);
   if (hit) { BLD_SPRITE_CACHE.delete(key); BLD_SPRITE_CACHE.set(key, hit); return hit; }
   const { faces: all } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
   if (!all) return null;
   const faces = stageFaces(
-    lodFilter(autoTier(op.kind, `b|${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}`, all), lod), stg);
+    lodFilter(autoTier(op.kind, `b|${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${pitchTag(op.pitch)}`, all), lod), stg);
   /* 여백을 15% → 35%로 넓혔다(과제 #67) — 이 여백이 곧 모델이 쓸 수 있는 자리다.
      15%면 모델 단위로 양옆 2.4뿐이라, 정규화 배수를 재 보니 55종 중 30종이 목표에
      못 가고 여기서 잘렸다(그리고 지금도 7종은 이미 넘쳐 잘리고 있다: 하이브·레어·
@@ -11689,7 +11703,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
            눌러 맞춘 손값이었다. 바닥을 PITCH_FLAT(0.74)으로 바로잡은 뒤에는 그림자만
            바닥의 절반 두께로 남아, 이번엔 반대로 짓눌려 보였다. 바닥 눌림 그대로
            쓴다 — 손값이 아니라 지면과 같은 수다. */
-        ctx.ellipse(footX, footY - shw * 0.22 - shUp, shw * 1.1, shw * (op.air ? 0.5 : 0.42) * (op.pitch ? PITCH_FLAT : 1), 0, 0, Math.PI * 2);
+        ctx.ellipse(footX, footY - shw * 0.22 - shUp, shw * 1.1, shw * (op.air ? 0.5 : 0.42) * (op.pitch ? pitchFlatNow : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       } else if (showShadows !== false && !op.air && UNIT_KIND_SET.has(op.kind)) {
@@ -11708,7 +11722,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
            달라(잉크 몫 0.26~0.33) 다시 같은 흠이 난다 — 몸 폭이 유일하게 옳은 자다.
            지름은 몸 폭의 0.84배로 모든 종류에서 몸 안에 들어온다. */
         const shR = inkW * 0.42;
-        ctx.ellipse(footX, footY - px * 0.09 - (op.kind === "htemp" ? px * 0.16 : 0), shR, shR * 0.58 * (op.pitch ? PITCH_FLAT : 1), 0, 0, Math.PI * 2);
+        ctx.ellipse(footX, footY - px * 0.09 - (op.kind === "htemp" ? px * 0.16 : 0), shR, shR * 0.58 * (op.pitch ? pitchFlatNow : 1), 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -11731,7 +11745,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
           ctx.beginPath();
           /* 링은 몸 폭의 1.1배 — 발 언저리에 살짝 걸친다(지적: 링이 몸보다 크다).
              상자 기준이던 예전엔 종류에 따라 0.64~2.61배로 벌어졌다. */
-          ctx.ellipse(footX, ringY, inkW * 0.55, inkW * 0.31 * (op.pitch ? PITCH_FLAT : 1), 0, 0, Math.PI * 2);
+          ctx.ellipse(footX, ringY, inkW * 0.55, inkW * 0.31 * (op.pitch ? pitchFlatNow : 1), 0, 0, Math.PI * 2);
         };
         /* 검은 테는 걷었다(지적: 깔려면 마우스 마커에도 깔아야 한다) — 링만 두 겹이라
            둘이 따로 놀았다. 임자 색 실선 한 겹으로 통일한다. */
@@ -13651,7 +13665,23 @@ export default function ReplayMotionPlayer({
      세로로 눌리고, 건물·유닛 도형은 제 크기로 서 있어 3D로 바닥에 붙는다. 눌림은
      컨테이너 세로비가 맡아서 %자리가 저절로 따라온다. 휠 확대·드래그 이동은 기존
      렌즈(zoom·pan) 그대로다. */
-  const [pitched, setPitched] = useState(false);
+  /* 각도는 이제 켜고 끄는 것이 아니라 칸이다(요청: 각도 5단계, 기본 90도=2D) —
+     90도 칸이 예전의 '2D', 48도 칸이 예전의 '3D'다. pitched는 그 값에서 나온다. */
+  const [pitchDeg, setPitchDeg] = useState<number>(PITCH_DEGS[0]);
+  const pitched = pitchDeg < 90;
+  const pitchFlat = flatOf(pitchDeg);
+  /** 땅을 눕히는 각(=90도 − 시점각) — CSS rotateX에 그대로 들어간다. */
+  const pitchTiltDeg = 90 - pitchDeg;
+  /* 컴포넌트 밖에서 그리는 둘에게 각을 내려 준다 — 캔버스 층(UnitLayer)의 그림자·링과
+     모델 굽기(shapeOblique의 입체 판). 굽기 캐시 열쇠에도 이 값이 들어가야 각을 바꿨을
+     때 옛 면이 재활용되지 않는다(아래 resolveShapeFaces 열쇠 참조).
+     레이아웃 이펙트에 두는 이유는 그리기가 rAF라 그보다 먼저 서기 때문이다. */
+  useLayoutEffect(() => {
+    pitchFlatNow = pitchFlat;
+    /* 모델 안쪽 바닥 눌림 — 화면 바닥 눌림의 0.7배다. 48도에서 0.743×0.7 = 0.52가
+       나와, 여태 붙박이였던 그 수를 그대로 잇는다. */
+    setPitchSquash(pitchFlat * 0.7);
+  }, [pitchFlat]);
   /** 정보 팝업으로 집어 둔 몸의 열쇠(요청) — null이면 닫힘. */
   const [picked, setPicked] = useState<string | null>(null);
   /** 이번 프레임에 그린 op — 클릭 판정과 팝업 내용이 여기서 지금 값을 읽는다. */
@@ -14151,11 +14181,16 @@ export default function ReplayMotionPlayer({
     const el = mapRef.current;
     const w = el?.clientWidth ?? 320;
     const h = el?.clientHeight ?? 220;
-    const S = Math.sin(PITCH_TH);
-    const C = Math.cos(PITCH_TH);
-    /* 회전 전 판의 세로 — 회전이 C배로 누르므로 1/C배 늘려 두면 회전 뒤 상자 세로가
-       되고, 거기에 눌림(PITCH_FLAT)을 곱해 그만큼만 눕는다. */
-    const hPre = (h * PITCH_FLAT) / C;
+    /* 각도 바가 오면서 기울기와 눌림이 한 값이 됐다(요청: 각도 5단계) — 눕히는 각이
+       곧 (90도 − 시점각)이고, 그 회전이 세로를 cos(기울기) = sin(시점각) = 눌림만큼
+       누른다. 예전에는 회전을 45도로 못 박고 scaleY로 눌림을 0.74에 맞춰 넣었는데,
+       그 둘이 이제 같은 수라 보정이 1이 되어 사라진다. 48도 칸에서 나오는 화면은
+       예전과 같다(눌림 0.743 대 0.74). */
+    const C = pitchFlat;
+    const S = Math.sqrt(Math.max(0, 1 - C * C));
+    /* 회전 전 판의 세로 — 회전이 C배로 누르므로 회전 뒤 세로가 상자의 C배가 된다.
+       (옛 식 (h × 눌림)/C에서 눌림 = C가 되어 h만 남았다.) */
+    const hPre = h;
     const P = Math.max(240, h * PITCH_DIST);
     const H = hPre / 2;
     const q = Math.max(0.2, (P - H * S) / P);
@@ -14177,8 +14212,8 @@ export default function ReplayMotionPlayer({
      늘리는 것뿐이라 1~4로 자른다. */
   const pitchStyle = (): React.CSSProperties | undefined => {
     if (!pitched) return undefined;
-    const { q, cy, P, C } = pitchGeom();
-    const base = `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${P.toFixed(0)}px) rotateX(45deg) scaleY(${(PITCH_FLAT / C).toFixed(4)})`;
+    const { q, cy, P } = pitchGeom();
+    const base = `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${P.toFixed(0)}px) rotateX(${pitchTiltDeg.toFixed(2)}deg)`;
     const box = mapPx || mapViewW;
     const R = imgSide && box
       ? Math.min(4, Math.max(1, Math.round(imgSide / box)))
@@ -14784,6 +14819,86 @@ export default function ReplayMotionPlayer({
   /* (삭제·요청: 안 쓰는 범례 정리) — 건물·유닛·일꾼이 전부 제 모델로 그려져 기호
      범례(■·●)가 더는 화면과 안 맞았다. 범례 한 벌을 통째로 걷는다. */
 
+  /* 버튼 줄(요청: "오른쪽에 색상부터 나머지 버튼류 모두 배치" → "버튼단은 하단으로
+     이동") — 넓은 배치에서는 지도 오른쪽 기둥의 맨 아래, 좁은 화면에서는 지도 아래 제
+     자리에 선다. 한 벌을 두 자리에 쓰므로 변수로 뽑아 둔다. */
+  /* 차례는 색상 → 성능 → 모델 크기 → 체력바 → 마우스 조작이다. 2D/3D 알약은 없다
+     (요청: "기존 2d3d 토글은 피시 모바일 다 제거") — 각도는 지도 오른쪽 슬라이드 바가
+     쥔다. */
+  const viewRowNode = (
+    <div className="scr-motion-bar scr-motion-viewrow">
+      {/* 색상도 다른 것들과 같은 꼴로 합쳤다(요청: "색상도 일반 토글로 합치기") —
+          제 줄(.scr-motion-colorrow)에 라벨 없이 혼자 서 있던 것을, 위에 라벨을 얹은
+          보통 토글로 만들어 이 줄 맨 앞에 세운다. */}
+      <span className="scr-motion-radio">
+        <span className="scr-motion-radio-label">색상</span>
+        {/* PC는 옵션 글자를 줄인다(요청: "색상의 라벨을 피시에선 개인/팀 으로" →
+            "라벨이 아니라 옵션") — 지도 옆 기둥이 120px이라 '개인색·팀색' 두 알약이
+            한 줄에 안 든다. 위 라벨이 이미 '색상'이라 뜻은 안 줄어든다. */}
+        <PillTabs
+          options={wide
+            ? [{ value: "personal", label: "개인" }, { value: "team", label: "팀" }]
+            : [{ value: "personal", label: "개인색" }, { value: "team", label: "팀색" }]}
+          value={colorMode}
+          onChange={(v) => setColorMode(v)}
+          aria-label="색상"
+          toggle
+        />
+      </span>
+      {/* 사양(요청) — 값이 곧 모델 부품 등급(LOD)이다. */}
+      <span className="scr-motion-radio scr-motion-qrow">
+        <span className="scr-motion-radio-label">성능</span>
+        <PillTabs
+          options={[
+            { value: "1", label: "저" }, { value: "2", label: "중" }, { value: "3", label: "고" },
+          ]}
+          value={String(quality)}
+          onChange={(v) => setQuality(Number(v))}
+          aria-label="성능"
+          fit
+        />
+      </span>
+      <span className="scr-motion-radio">
+        <span className="scr-motion-radio-label">모델 크기</span>
+        <PillTabs
+          options={[{ value: "s", label: "표준" }, { value: "l", label: "확대" }]}
+          toggle
+          value={unitBig ? "l" : "s"}
+          onChange={(v) => setUnitBig(v === "l")}
+          aria-label="모델 크기"
+        />
+      </span>
+      {/* (v1 제거·요청) — 개체 트랙이 없는 옛 경기만 재분석 안내를 띄운다. */}
+      {loadUnitTracks && entLoad === "none" && (
+        <span className="scr-motion-btn scr-motion-rbtn" style={{ opacity: 0.7, pointerEvents: "none" }}>
+          개체 트랙 없음 — 재분석 필요
+        </span>
+      )}
+      <span className="scr-motion-radio">
+        <span className="scr-motion-radio-label">체력바</span>
+        <PillTabs
+          options={[{ value: "on", label: "보임" }, { value: "off", label: "숨김" }]}
+          value={hpShow ? "on" : "off"}
+          onChange={(v) => setHpShow(v === "on")}
+          aria-label="체력바"
+          toggle
+        />
+      </span>
+      {/* 마우스 조작 표시 — 자료가 오기 전에도 자리를 지킨다(지적). */}
+      <span className="scr-motion-radio">
+        <span className="scr-motion-radio-label">마우스 조작</span>
+        <PillTabs
+          options={[{ value: "on", label: "보임" }, { value: "off", label: "숨김" }]}
+          value={clickFx ? "on" : "off"}
+          onChange={(v) => setClickFx(v === "on")}
+          aria-label="마우스 조작"
+          fit
+          toggle
+        />
+      </span>
+    </div>
+  );
+
   const body = (
     <div
       // 넓은 배치 클래스(확인·요청: 옛 확대창 클래스가 아닌지) — 옛 확대창(.scr-motion-big
@@ -14803,12 +14918,40 @@ export default function ReplayMotionPlayer({
           걸쳐야 했다(안 걸치면 절반만 쓴다 — 실제로 색상 줄이 그랬다).
           로스터가 둘로 나뉜 것은 로스터 안의 사정이지 페이지 그리드가 알 일이 아니다.
           한 덩어리로 묶어 페이지에서는 한 칸만 차지하게 한다 — 댓글 기둥과 같은 꼴이다. */}
-      <div className="scr-motion-rosterwrap">
-        {teamCol(1)}
-        {/* 로스터 가운데 vs(요청: 구분선 말고 vs — 모바일·PC 공통). */}
-        <span className="scr-motion-teamvs" aria-hidden>vs</span>
-        {teamCol(2)}
-      </div>
+      {/* 좁은 화면의 로스터는 종전대로 지도 위 한 줄이다 — 넓은 배치에서는 아래 맵줄이
+          팀 하나씩 지도 좌우로 갈라 세운다(요청: "양팀로스터를 양쪽으로 나눠서 표시"). */}
+      {!wide && (
+        <div className="scr-motion-rosterwrap">
+          {teamCol(1)}
+          {/* 로스터 가운데 vs(요청: 구분선 말고 vs). */}
+          <span className="scr-motion-teamvs" aria-hidden>vs</span>
+          {teamCol(2)}
+        </div>
+      )}
+      {/* 각도·배속 슬라이드 바(요청: "슬라이드 바를 말한건데 위치도 맵 좌우여야하고"
+          → 재지적: "맵 안 좌우가 아니라 맵 바깥 좌우") — 지도를 사이에 두고 바깥 왼쪽·
+          오른쪽에 선다. 그래서 지도와 바 둘을 한 줄(.scr-motion-mapwrap)로 묶었다:
+          넓은 배치에서 지도가 차지하던 그리드 자리를 이제 그 줄이 받고, 지도는 그 안에서
+          남는 폭을 쓴다(1024는 어차피 상한이라 바 폭만큼 줄어도 비율은 그대로다).
+          왼쪽이 각도(맨 위 90도가 곧 평면), 오른쪽이 배속(맨 위가 ×20)이다 — 위가 큰
+          값인 것은 창의 ↑↓ 키 방향과 같다. 라벨은 지도 반대쪽(바깥)으로 뺀다.
+          좁은 화면에는 안 단다(요청: PC). */}
+      <div className="scr-motion-mapwrap">
+      {/* 지도 왼쪽 기둥 — 위에서부터 1팀 로스터 · 배속 슬라이드 바(요청: "로스터
+          슬라이드바 버튼류가 한 div에 세로로 배치되는거야 / 로스터는 좌우 최상단에"). */}
+      {wide && (
+        <div className="scr-motion-side">
+          {teamCol(1)}
+          <SlideBar
+            title="배속"
+            options={[...SPEEDS].reverse().map((v) => ({ value: String(v), label: `×${v}` }))}
+            value={String(speed)}
+            onChange={(v) => setSpeed(SPEEDS.find((s2) => String(s2) === v) ?? SPEEDS[0])}
+            labelSide="left"
+            aria-label="배속"
+          />
+        </div>
+      )}
       <div
         className={cx("scr-motion-map", pitched && "scr-motion-pitched")} ref={mapRef}
         onPointerDown={onMapPointerDown}
@@ -14824,7 +14967,11 @@ export default function ReplayMotionPlayer({
              댓글 기둥(232)에 간격까지 476px을 더한 값이 화면을 넘어, 대략 1560px보다
              좁은 화면에서 페이지에 가로 스크롤이 생겼다(실측: 1440에서 28px, 1280에서
              188px). 100%는 그리드 칸(minmax(0,1fr)) 폭이라 순환하지 않는다. */
-          ...(wide ? { width: `min(${mapViewW}px, 100%)`, flex: "0 0 auto" } : {}),
+          /* 오른쪽에 세로 바 기둥이 생기면서 줄이지는 몫이 필요해졌다(요청: PC 세로 바)
+             — flex 0 0 auto는 한 톨도 안 줄어들어, 좁은 PC에서 바 폭(약 104px)만큼
+             페이지에 가로 스크롤이 생긴다. 1024는 어차피 상한이므로 줄어드는 것은
+             허용하고(0 1 auto) 가로세로비가 세로를 따라오게 둔다. */
+          ...(wide ? { width: `min(${mapViewW}px, 100%)`, flex: "0 1 auto", minWidth: 0 } : {}),
           aspectRatio: `${grid.width} / ${grid.height}`,
           ...(zoom > 1 || pitched ? { overflow: "hidden" } : {}),
           ...(zoom > 1 ? { cursor: dragRef.current ? "grabbing" : "grab" } : {}),
@@ -14890,8 +15037,8 @@ export default function ReplayMotionPlayer({
                  키워 봐야 화소가 안 는다(메모리만 든다). */
               className="scr-motion-canvas scr-motion-canvas-blank"
               style={pitched ? (() => {
-                const { q, cy, P, C } = pitchGeom();
-                return { transform: `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${P.toFixed(0)}px) rotateX(45deg) scaleY(${(PITCH_FLAT / C).toFixed(4)})` };
+                const { q, cy, P } = pitchGeom();
+                return { transform: `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${P.toFixed(0)}px) rotateX(${pitchTiltDeg.toFixed(2)}deg)` };
               })() : undefined}
             >
               <ReplayMapCanvas grid={grid} className="scr-motion-canvas-tiles" />
@@ -15600,7 +15747,7 @@ export default function ReplayMotionPlayer({
                 const rgB = foeB.air ? rgA : rgG;
                 // 화면 기준 조준(지적: 공중 각도·지면 평행) — 유닛 트레이서와 같은 셈.
                 const tPxB = (mapRef.current?.clientWidth ?? 320) / grid.width;
-                let dgy = (foeB.by - centerY) * tPxB * (pitched ? PITCH_FLAT : 1);
+                let dgy = (foeB.by - centerY) * tPxB * (pitched ? pitchFlat : 1);
                 // 표적의 제 크기로 조준 높이를 뺀다 — 표적 유닛 이름은 FoeRow.uk에 있다
                 // (예전 코드는 건물 행에만 실리는 k를 공중 갈래에서 읽어 늘 폴백이었다).
                 if (foeB.air) dgy -= unitPxOf(foeB.uk ?? "?", foeB.by) * 1.6;
@@ -16508,7 +16655,7 @@ export default function ReplayMotionPlayer({
                     const from9 = simHits?.get(e.tag);
                     if (!from9) return "translate(-50%, -60%)";
                     const dx9 = from9[0] - pos.x;
-                    const dy9 = (from9[1] - pos.y) * (pitched ? PITCH_FLAT : 1);
+                    const dy9 = (from9[1] - pos.y) * (pitched ? pitchFlat : 1);
                     const len9 = Math.hypot(dx9, dy9) || 1;
                     const r9 = fxPx * 0.34;      // 몸 반지름 언저리
                     return `translate(calc(-50% + ${((dx9 / len9) * r9).toFixed(1)}px), `
@@ -16580,7 +16727,7 @@ export default function ReplayMotionPlayer({
           const aimDeg = (fx9: number, fy9: number, fAir: boolean): number => {
             const tPx9 = (mapRef.current?.clientWidth ?? 320) / grid.width;
             const ddx = (fx9 - pos.x) * tPx9;
-            let ddy = (fy9 - pos.y) * tPx9 * (pitched ? PITCH_FLAT : 1);
+            let ddy = (fy9 - pos.y) * tPx9 * (pitched ? pitchFlat : 1);
             // 비행 높이 반감(재재지적)과 함께 0.8로.
             if (fAir) ddy -= fxPx * 0.8;
             if (uAir) ddy += fxPx * 0.8;
@@ -17058,25 +17205,28 @@ export default function ReplayMotionPlayer({
         {/* (삭제) PC 확대 조절바 — PC에서는 확대 기능을 통째로 걷었다(요청). 확대·이동은
             이제 모바일 손짓(더블탭·두 손가락)만의 것이다. */}
       </div>
+      {/* 지도 오른쪽 기둥 — 위에서부터 2팀 로스터 · 각도 슬라이드 바 · 버튼 줄(요청:
+          "버튼단은 하단으로 이동"). 가운데 바는 위아래 auto 여백으로 남는 자리에 뜬다. */}
+      {wide && (
+        <div className="scr-motion-side">
+          {teamCol(2)}
+          <SlideBar
+            title="각도"
+            options={PITCH_DEGS.map((d) => ({ value: String(d), label: `${d}°` }))}
+            value={String(pitchDeg)}
+            onChange={(v) => setPitchDeg(Number(v))}
+            labelSide="right"
+            aria-label="시점 각도"
+          />
+          {viewRowNode}
+        </div>
+      )}
+      </div>
       </div>
 
-      {/* 색상 전환은 지도 바로 아래 왼쪽에 제 줄로 둔다(요청) — 보기 설정 줄에 성능·보기·
-          모델 크기와 나란히 있던 것을 뺐다. 저것들은 한 번 맞춰 두고 마는 것이지만 색은
-          재생 도중에도 계속 오간다. 라벨은 위가 아니라 왼쪽. 알약 자체는 다른 줄과 같은
-          크기 그대로다(지적: 키웠더니 깨졌다 — scr-motion-colorrow 주석 참고).
-          진행바는 이 줄 다음에 온다(지적: 진행바는 이 버튼 아래로). */}
-      <div className="scr-motion-colorrow">
-        {/* 라벨은 걷었다(요청) — 개인색/팀색이라 적혀 있어 '색상'은 같은 말의 되풀이다.
-            알약도 보기·모델 크기와 완전히 같은 크기다(요청: 다른 토글들과 동일하게). */}
-        <PillTabs
-          options={[{ value: "personal", label: "개인색" }, { value: "team", label: "팀색" }]}
-          value={colorMode}
-          onChange={(v) => setColorMode(v)}
-          aria-label="색상"
-          toggle
-        />
-      </div>
-
+      {/* (합침·요청: "색상도 일반 토글로 합치기") — 지도 아래 제 줄로 서 있던 색상
+          알약(.scr-motion-colorrow)이 있던 자리다. 이제 위 버튼 줄 맨 앞이다. */
+      }
       {/* 지도 아래 도구줄 — 오른쪽 칸에 확대 토글만 남았다. 범례는 모델이 대신하고,
           지형 편집(산 버튼)도 걷었다(요청: 버튼 정리). */}
       <div className="scr-motion-toolrow">
@@ -17096,80 +17246,9 @@ export default function ReplayMotionPlayer({
         ) : null}
       </div>
 
-      {/* 보기 설정 줄(정리·요청) — 원형 버튼 11개 중 윗줄 여섯: 보기(2D/3D)·컬러(팀색/
-          개인색)·모델크기(×1/×2)를 짝 버튼으로, 종류 사이엔 갭. 지형 편집은 걷었다.
-          자리는 조종부 위(재지적: 탐색바와 겹침) — 스크러버보다 먼저 선다. */}
-      <div className="scr-motion-bar scr-motion-viewrow">
-        {/* 라디오식 짝 버튼 → 라이팅 알약 라디오(요청: 게임 상세의 라디오 버튼 전부 —
-            작게, 위에 라벨, PC·모바일 공통). 필터창과 같은 PillTabs를 쓴다. */}
-        {/* 사양(요청: PC는 로스터와 버튼 사이, 모바일은 버튼그룹 위) — 렌더 요소 단계. */}
-        <span className="scr-motion-radio scr-motion-qrow">
-          <span className="scr-motion-radio-label">성능</span>
-          <PillTabs
-            options={[
-              { value: "1", label: "저" }, { value: "2", label: "중" }, { value: "3", label: "고" },
-            ]}
-            value={String(quality)}
-            onChange={(v) => setQuality(Number(v))}
-            aria-label="성능"
-            fit
-          />
-        </span>
-        <span className="scr-motion-radio">
-          <span className="scr-motion-radio-label">보기</span>
-          <PillTabs
-            options={[{ value: "2d", label: "2D" }, { value: "3d", label: "3D" }]}
-            toggle
-            value={pitched ? "3d" : "2d"}
-            onChange={(v) => setPitched(v === "3d")}
-            aria-label="보기"
-          />
-        </span>
-        <span className="scr-motion-radio">
-          <span className="scr-motion-radio-label">모델 크기</span>
-          <PillTabs
-            options={[{ value: "s", label: "표준" }, { value: "l", label: "확대" }]}
-            toggle
-            value={unitBig ? "l" : "s"}
-            onChange={(v) => setUnitBig(v === "l")}
-            aria-label="모델 크기"
-          />
-        </span>
-        {/* (v1 제거·요청: 두 개가 섞여 헷갈린다) — v1/v2 토글이 있던 자리. 개체 트랙이
-            없는 옛 경기만 재분석 안내를 띄운다. */}
-        {loadUnitTracks && entLoad === "none" && (
-          <span className="scr-motion-btn scr-motion-rbtn" style={{ opacity: 0.7, pointerEvents: "none" }}>
-            개체 트랙 없음 — 재분석 필요
-          </span>
-        )}
-        {/* 클릭 자국 토글(요청) — v2 데이터로 그리므로 v2가 켜져 있을 때만 선다. */}
-        {/* 체력바(요청: 라디오화, 마우스 조작 앞 순서). */}
-        <span className="scr-motion-radio">
-          <span className="scr-motion-radio-label">체력바</span>
-          <PillTabs
-            options={[{ value: "on", label: "보임" }, { value: "off", label: "숨김" }]}
-            value={hpShow ? "on" : "off"}
-            onChange={(v) => setHpShow(v === "on")}
-            aria-label="체력바"
-            toggle
-          />
-        </span>
-        {/* 마우스 조작 표시 — 개체 트랙이 오기 전에도 자리를 지킨다(지적: "마우스 조작이
-            늦게 뜨는데 같이 처음부터 뜨게"). 예전에는 entOn 문턱에 걸려 자료가 도착한
-            뒤에야 나타나 버튼 줄이 한 번 출렁였다. 켜 놔도 해가 없다 — 실제로 자국을
-            그리는 층(아래 entOn && clickFx)이 자료를 따로 확인한다. */}
-        <span className="scr-motion-radio">
-          <span className="scr-motion-radio-label">마우스 조작</span>
-          <PillTabs
-            options={[{ value: "on", label: "보임" }, { value: "off", label: "숨김" }]}
-            value={clickFx ? "on" : "off"}
-            onChange={(v) => setClickFx(v === "on")}
-            aria-label="마우스 조작"
-            fit
-            toggle
-          />
-        </span>
-      </div>
+      {/* 넓은 배치의 버튼 줄은 오른쪽 기둥 맨 아래에 있다(위 맵줄 참조) — 여기 남는
+          것은 좁은 화면 몫이다. */}
+      {!wide && viewRowNode}
       {linkOpen && createPortal(
         <div className="scr-modal-overlay scr-terrain-overlay" onClick={() => setLinkOpen(false)}>
           <div className="scr-modal scr-maplink-modal" onClick={(e) => e.stopPropagation()}>
@@ -17262,6 +17341,8 @@ export default function ReplayMotionPlayer({
           진행바 쪽으로 이동, 현재 장면 공유랑 같은 라인으로"). 공유 버튼이 없는 경기도
           있으므로 줄 자체는 배속만으로도 선다. */}
       <div className="scr-motion-bar scr-motion-sharerow">
+        {/* 배속도 마찬가지로 좁은 화면 몫이다 — PC는 지도 오른쪽 세로 바가 맡는다. */}
+        {!wide && (
         <span className="scr-motion-radio scr-motion-speeds">
           <span className="scr-motion-radio-label">배속</span>
           <PillTabs
@@ -17272,6 +17353,7 @@ export default function ReplayMotionPlayer({
             fit
           />
         </span>
+        )}
         {shareNode}
       </div>
       {/* (삭제·지적: PC 타임스탬프 중복) — 기둥의 타임스탬프·등록자는 걷었다. 시각은
