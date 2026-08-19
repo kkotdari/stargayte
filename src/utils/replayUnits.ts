@@ -148,6 +148,8 @@ export interface UnitTracksV2 {
     prodRode?: number;
     /** 뒤늦게 붙인 앵커(찍혔지만 그때 생애가 없던 번호) 수와, 실제로 붙은 생애 수. */
     anchorsLate?: number;
+    /** 속력으로 가른 태그 재사용 수(제안: 태그 재할당을 정확히). */
+    tagSplits?: number;
     anchorsLateUsed?: number;
     /** 프로토스 전력 끊김으로 생산이 밀린 초의 합(지적). */
     prodPowerDelay?: number;
@@ -521,6 +523,8 @@ export function buildUnitTracks(
   const done: Life[] = [];
   /** 뒤늦게 붙인 앵커 — 계측용(자리 증거가 얼마나 늘었나). */
   let anchorsLate = 0;
+  /** 속력으로 가른 태그 재사용 수. */
+  let tagSplits = 0;
   let anchorsLateUsed = 0;
   /** 물리 건물(건설 좌표로 아는 것) — 태그가 없어도 개체다(요청: 건물 파괴 파악).
    *  builder는 지은 일꾼의 태그 — 그 일꾼이 도착 전에 딴 데로 불려가면 건설 무르기다. */
@@ -1601,6 +1605,92 @@ export function buildUnitTracks(
     }
     anchorsLate = pendAnchor.length;
     anchorsLateUsed = [...touched].length;
+  }
+
+  /* ── 태그 재사용을 속력으로 가른다 (제안: "태그를 중심으로 하되 태그 재할당을
+        정확히 가려내자") ─────────────────────────────────────────────────────────
+     태그는 유닛이 아니라 슬롯 번호다. 유닛이 죽으면 다음 유닛이 그 번호를 물려받는다.
+     여태 재사용을 가르는 자는 둘뿐이었다 — 임자가 바뀌거나(확실), 정체가 부딪히거나
+     (시즈를 켰던 번호가 버로우를 하면 딴 유닛이다, 확실). 둘 다 어쩌다 드러나는 자라,
+     같은 사람의 같은 종류가 번호를 물려받으면 안 걸렸다.
+
+     셋째 자는 **속력**이다. 원작 속력표는 불변이니, 개체가 실제로 있던 두 자리를 그
+     유닛이 낼 수 있는 속력으로 못 가면 그 둘은 같은 유닛이 아니다. 어림이 아니라
+     커맨드와 표만 쓰는 판정이다.
+
+     문제는 재료였다. 잰 것(npm run tag-check): 증거의 84%가 '가려던 곳'(이동·공격
+     목적지)이고 실제 '있던 곳'은 11.5%뿐이라, 견줄 자리쌍이 개체당 0.36개였다.
+     그래서 이 자를 그냥 대면 1497기 중 20기(1.3%)밖에 못 걸렀다.
+
+     재료를 늘리는 길이 있다 — **도착이 확실한 목적지는 자리다**. A로 가라고 한 뒤
+     다음 명령까지 걸린 시간이 거기까지 걷는 시간보다 넉넉하면 그 유닛은 A에 도착해
+     있었다. 길이 굽고 교전에 멈추기도 하니 여유(TAG_SLACK)를 곱해 넉넉할 때만 승격한다.
+     그러면 자리쌍이 개체당 2.55개로 일곱 배가 되고, 걸리는 재사용이 6.4%가 된다.
+
+     가른 뒤 새 생애는 **이름을 안 물려받는다** — 번호만 같지 다른 유닛이므로 앞 유닛의
+     정체를 쓰면 안 된다. 이름 없는 생애가 늘면 원장이 짝지을 자리도 그만큼 는다.
+     ⚠ 리콜·니더스는 진짜 순간이동이라 여기서 잘못 갈릴 수 있다(드물다). 승선(f=12)은
+       자취가 끊기는 것이 정상이라 사슬을 거기서 끊는다. */
+  {
+    /* 여유를 둘로 나눈다 — 뜻이 다르다.
+       ARRIVE: 목적지를 '도착한 자리'로 승격하는 문턱. 길이 굽고 교전에 멈추니 넉넉히
+               지났을 때만 승격한다. 크게 잡을수록 자리 증거가 줄지만 확실해진다.
+       CUT   : 그 자리들 사이가 '못 갈 거리'인지 가르는 문턱. 크게 잡을수록 덜 자른다.
+       실측(90300/30800) — 둘을 한 값으로 묶어 쓸어 보니:
+         없음 결합 69.1/70.2 · 합성 385/196 · 무명 0.7/1.2 · 수급 4.3/3.9
+         1.6  결합 69.8/71.0 · 합성 376/190 · 무명 1.1/4.0 · 수급 4.7/4.4
+         3.0  결합 69.2/70.3 · 합성 384/195 · 무명 0.9/1.4 · 수급 4.5/3.9
+       1.6은 합성을 가장 많이 줄이지만 무명이 튄다(30800 4.0%). 도착 승격만 깐깐히
+       하고 자르는 문턱은 보통으로 두면 좋은 절단만 남는다. */
+    const TAG_ARRIVE = 2.0;
+    const TAG_CUT = 1.5;
+    const REAL_SPOT2 = new Set([1, 2, 3, 5, 6]);
+    const extra: Life[] = [];
+    for (const life of done) {
+      if (life.bld || life.ev.length < 3) continue;
+      let bk = "";
+      let bn = 0;
+      for (const [k, n] of life.kinds) if (n > bn) { bk = k; bn = n; }
+      const sp = bk ? speedOfUnit(bk) : 4;
+      const cap = (bk ? speedOfUnit(bk) : 6.4) * 1.5 * TAG_CUT;
+      let prev: [number, number, number] | null = null;   // 확실한 자리
+      let pend: [number, number, number] | null = null;   // 아직 도착 안 굳은 목적지
+      let cut = -1;
+      for (let i = 0; i < life.ev.length; i += 1) {
+        const v = life.ev[i];
+        let here: [number, number, number] | null = null;
+        if (v[3] === 12) { prev = null; pend = null; continue; }
+        if (REAL_SPOT2.has(v[3]) && v[1] >= 0) { here = [v[0], v[1], v[2]]; pend = null; }
+        else if (v[3] === 0 && v[1] >= 0) {
+          if (pend) {
+            const dt = v[0] - pend[0];
+            const need = Math.hypot(v[1] - pend[1], v[2] - pend[2]) / Math.max(0.5, sp);
+            if (dt >= need * TAG_ARRIVE) here = [pend[0] + need, pend[1], pend[2]];
+          }
+          pend = [v[0], v[1], v[2]];
+        }
+        if (!here) continue;
+        if (prev) {
+          const dt = here[0] - prev[0];
+          const dd = Math.hypot(here[1] - prev[1], here[2] - prev[2]);
+          if (dd > 1 && dd / Math.max(0.5, dt) > cap) { cut = i; break; }
+        }
+        prev = here;
+      }
+      if (cut < 1) continue;
+      const tail = life.ev.slice(cut);
+      life.ev = life.ev.slice(0, cut);
+      life.last = life.ev[life.ev.length - 1][0];
+      if (life.lastAtk !== null) life.evAfterAtk = life.ev.some((v) => v[0] > (life.lastAtk as number));
+      extra.push({
+        tag: life.tag, owner: life.owner, kinds: new Map(), groupKinds: new Set(),
+        bld: false, born: tail[0][0], last: tail[tail.length - 1][0],
+        lastAtk: null, evAfterAtk: false, morphTo: null, cxl: null, solo: false,
+        ev: tail,
+      });
+    }
+    for (const l of extra) done.push(l);
+    tagSplits = extra.length;
   }
 
   /* ── 폐기된 목적지 자르기(지적: 5시로 간 정찰 프로브가 7시에 갔다 온다) ──────────
@@ -4444,6 +4534,7 @@ const BLD_DIE_SLACK_SEC = 8;
       prodNoSite: prodStats.noSite,
       prodRode: prodStats.rode,
       anchorsLate,
+      tagSplits,
       anchorsLateUsed,
       prodPowerDelay: prodStats.powerDelay,
       synRetired,

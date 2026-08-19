@@ -92,6 +92,52 @@ for (const path of files) {
   };
   const evTot = [...evKind.values()].reduce((a, b) => a + b, 0) || 1;
 
+  /* ── 도착이 확실한 목적지를 자리로 승격해 다시 잰다 ─────────────────────────
+     f=0(이동 목적지)은 '가려던 곳'이지만, 다음 명령까지 걸린 시간이 거기까지 걷는
+     시간보다 넉넉하면 그 유닛은 **도착해 있었다**. 그때 그 점은 자리다.
+     길이 굽어 있고 교전에 멈추기도 하니 여유(SLACK)를 곱해 넉넉할 때만 승격한다. */
+  const SLACK = 1.6;
+  let lives2 = 0;
+  let bad2 = 0;
+  let pairs2 = 0;
+  for (const e of d.ents) {
+    if (e.bld) continue;
+    lives2 += 1;
+    const sp = e.k ? speedOfUnit(e.k) : 4;
+    const cap = e.k ? speedOfUnit(e.k) * 1.5 : CAP_UNKNOWN;
+    // 자리 목록 만들기 — 진짜 자리 + 도착이 확실한 목적지.
+    const track = [];
+    let pendMove = null;
+    for (const v of e.ev) {
+      if (v[3] === 12) { pendMove = null; track.push(null); continue; }  // 승선 — 끊는다
+      if (REAL_SPOT.has(v[3]) && v[1] >= 0) { track.push([v[0], v[1], v[2]]); pendMove = null; continue; }
+      if (v[3] !== 0 || v[1] < 0) continue;
+      if (pendMove) {
+        const dt = v[0] - pendMove[0];
+        const need = Math.hypot(v[1] - pendMove[1], v[2] - pendMove[2]) / Math.max(0.5, sp);
+        if (dt >= need * SLACK) track.push([pendMove[0] + need, pendMove[1], pendMove[2]]);
+      }
+      pendMove = [v[0], v[1], v[2]];
+    }
+    let prev = null;
+    let hit = false;
+    for (const t of track) {
+      if (!t) { prev = null; continue; }
+      if (prev) {
+        const dt = t[0] - prev[0];
+        const dd = Math.hypot(t[1] - prev[1], t[2] - prev[2]);
+        if (dt >= 0 && dd > 1) {
+          pairs2 += 1;
+          if (dd / Math.max(0.5, dt) > cap * SLACK) hit = true;
+        }
+      }
+      prev = t;
+    }
+    if (hit) bad2 += 1;
+  }
+  console.log(`  ★ 도착 승격까지 넣으면 — 견준 자리쌍 ${pairs2}쌍 (개체당 ${(pairs2 / Math.max(1, lives2)).toFixed(2)})`
+    + ` · 못 갈 거리를 건넌 개체 ${bad2}기 (${((bad2 / Math.max(1, lives2)) * 100).toFixed(1)}%)`);
+
   let lives = 0;
   let bad = 0;
   let jumps = 0;
@@ -141,6 +187,35 @@ for (const path of files) {
     console.log(`     f=${String(k).padStart(2)} ${String(EVNAME[k] ?? "?").padEnd(22)}`
       + ` ${String(n).padStart(6)}건 ${((n / evTot) * 100).toFixed(1).padStart(5)}%${real}`);
   }
+  /* ── f=7(공격 목적지)에 대상 태그가 붙어 있나 — 붙어 있으면 그 자리에 **뭔가 있었다**.
+     그리고 f=0(이동 목적지)은 시간이 충분히 지나면 '도착한 자리'가 된다. 자리 증거를
+     늘릴 두 갈래가 얼마나 되는지 센다. */
+  let atkTagged = 0;
+  let atkGround = 0;
+  let moveArrived = 0;
+  let moveTotal = 0;
+  for (const e of d.ents) {
+    if (e.bld) continue;
+    const sp = e.k ? speedOfUnit(e.k) : 4;
+    let prevMove = null;
+    for (const v of e.ev) {
+      if (v[3] === 7) { if ((v[4] ?? 0) > 0) atkTagged += 1; else atkGround += 1; }
+      if (v[3] !== 0 || v[1] < 0) continue;
+      moveTotal += 1;
+      /* 앞 목적지에서 이 명령까지 걸린 시간이 '거기까지 걷는 시간'보다 길면, 그 유닛은
+         앞 목적지에 **도착해 있었다**. 그때 그 점은 목적지가 아니라 자리다. */
+      if (prevMove) {
+        const dt = v[0] - prevMove[0];
+        const need = Math.hypot(v[1] - prevMove[1], v[2] - prevMove[2]) / Math.max(0.5, sp);
+        if (dt >= need) moveArrived += 1;
+      }
+      prevMove = v;
+    }
+  }
+  console.log(`  ── 자리 증거를 늘릴 두 갈래`);
+  console.log(`     f=7 중 대상 태그가 붙은 것 ${atkTagged}건 · 땅 어택 ${atkGround}건`);
+  console.log(`     f=0 중 '다음 명령까지 걸을 시간이 넉넉해 도착이 확실한 것'`
+    + ` ${moveArrived} / ${moveTotal}건 (${((moveArrived / Math.max(1, moveTotal)) * 100).toFixed(1)}%)`);
   console.log("  정체별 앞 8종: "
     + [...badBy.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, n]) => `${k}×${n}`).join(" "));
   for (const w of worst) console.log(`    ${w}`);
