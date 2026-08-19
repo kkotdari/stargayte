@@ -14,7 +14,8 @@
     "bld-norm": "node scripts/bld-norm.mjs",
     "dmg-check": "node scripts/dmg-check.mjs",
     "id-check": "node scripts/id-check.mjs",
-    "pos-check": "node scripts/pos-check.mjs"
+    "pos-check": "node scripts/pos-check.mjs",
+    "bld-check": "node scripts/bld-check.mjs"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.6.13",

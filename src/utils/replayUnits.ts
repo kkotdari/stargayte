@@ -1357,17 +1357,17 @@ export function buildUnitTracks(
          옵저버토리도 같다: 501.1초 파일런(111,70) → 501.4초 우클릭 → 502.8초 옵저버토리
          (111,70). 사용자 확인 — "실제로는 옵저버토리가 지어졌고 파일런은 안 지어졌다".
          도착 뒤의 명령은(프로토스는 소환만 하면 프로브가 자유다) 그냥 창을 닫는다. */
-      if (pos) {
-        const pend = pendingBuild.get(tag);
-        if (pend && sec < pend.arrive) {
-          const pb2 = built[pend.idx];
-          if (pb2 && pb2.gone === null) {
-            pb2.gone = sec; pb2.goneKind = "cxl"; pb2.never = true;
-            voidedSites.push({ owner: pb2.owner, x: pb2.x, y: pb2.y, sec: pb2.born });
-          }
-        }
-        pendingBuild.delete(tag);
-      }
+      /* ★ 우클릭 하나로는 안 무른다(지적: "3시 포지 지었는데 안 나온다").
+         여기서 '도착 전에 위치 있는 명령이 오면 그 건설은 없던 일'로 보고 있었다.
+         그 판정의 근거가 된 두 실측(299.5초 코어 → 301.6초 코어, 501.1초 파일런 →
+         502.8초 옵저버토리)은 둘 다 **다시 지은 것**이 증거였지, 그 사이의 우클릭이
+         증거였던 게 아니다. 우클릭 자체는 "짓고 곧장 캐러 보낸다"는 가장 흔한 조작과
+         구분이 안 된다 — 실측(SG_26081613330800 임자 3): 89.2초 포지의 도착 예상이
+         90.0초였는데 90.0초의 우클릭 하나로 지워졌고, 그 뒤 121초에 포톤이 서 있다.
+         포지 없이는 포톤을 못 짓는다. 같은 식으로 여섯 채가 사라졌다.
+         그래서 무르는 증거는 **같은 일꾼의 재건설** 하나로 좁힌다(Build 갈래).
+         창도 여기서 닫지 않는다 — 닫으면 그 뒤의 재건설이 무를 것을 못 찾는다.
+         (도착 뒤라면 어차피 `sec < arrive`가 거짓이라 저절로 안 걸린다.) */
       if (pos && life.bld && liftedTags.has(tag)) {
         // 비행 클릭(요청) — 뜬 건물이 나는 길. 착륙 전까지의 이동 자취다.
         pushEv(life, sec, pos.x, pos.y, 0, c.Queued === true);
@@ -3688,18 +3688,31 @@ const BLD_DIE_SLACK_SEC = 8;
     /* 철거의 근거는 '발치 공격'(f=1)뿐이다(수리: 시작 홀·변태로 이어 세운 홀이 태어나자
        마자 무너졌다) — 자리 증거(f=2)까지 섞어 마지막 항목만 보고 있었더니, 공격을 한
        번도 안 받은 건물이 제 자리 증거 시각 +8초에 철거된 것으로 잡혔다. */
-    const atkEv = [...b.ev].reverse().find((v) => v[3] === 1);
-    if (b.gone === null && atkEv) {
-      const lastAtk = atkEv[0];
-      const defended = built.some((o) =>
-        o !== b && o.owner === b.owner && o.born > lastAtk && o.born < lastAtk + 180
-        && Math.hypot(o.x - b.x, o.y - b.y) <= 12);
-      if (!defended) { b.gone = lastAtk + 8; b.goneKind = "atk"; }
-    }
+    /* ★ 철거는 피해 원장이 정한다(지적: "지어진 건물은 안 부서지는 듯").
+       여태는 두 어림이 겹쳐 있었다. ① 발치에 마지막 공격이 있으면 그 +8초에 무너뜨리고,
+       ② 그 뒤 '곁 12타일에 180초 안에 새로 지었으면 격퇴한 것'으로 되살렸다. ②는 방어의
+       증거가 아니라 그냥 본진 확장이다 — 실측(SG_26081613330800): 발치 공격을 받은 33채
+       중 22채가 이걸로 살아났고, 3시는 14채 중 13채였다(공격 클릭 7회·352초를 받은 넥서스
+       까지 살아남았다). 사용자가 짚은 "5시 해처리·성큰", "3시 포톤"이 전부 그 안에 있다.
+       ①도 어림이긴 마찬가지다 — 클릭 한 번이 건물 하나를 부순다.
+       원장(bldHpSimOf)은 이미 클릭 수가 아니라 '얼마나 오래 맞았나'로 체력을 깎고 실드·
+       재생·수리까지 든다(#53·#47). 그 원장이 0에 닿는 순간이 곧 철거다. 되살리는 증거는
+       하나만 남긴다: 그 자리를 **한참 뒤에도** 때리고 있었다면 그때는 아직 서 있었다. */
     let bHp = bldHpSimOf(
-      b.kind, b.owner, b.x + 1.5, b.y + 1.5, b.born, b.gone ?? b.born + 3600, null,
-      (sec3) => b.ev.some((v) => v[0] > sec3) || b.gone === null || b.gone > sec3 + BLD_DIE_SLACK_SEC,
+      b.kind, b.owner, b.x + 1.5, b.y + 1.5, b.born, b.gone ?? b.born + 3600, b.tag ?? null,
+      (sec3) => b.ev.some((v) => v[0] > sec3 + BLD_DIE_SLACK_SEC),
     );
+    if (b.gone === null) {
+      const zero = bHp.find((q) => q[1] <= 0);
+      const atkEv = [...b.ev].reverse().find((v) => v[3] === 1);
+      /* 원장이 0에 닿으면 그때가 철거다. 원장이 못 죽였는데 발치 공격이 있었으면 그
+         마지막 시각 +8초로 닫는다 — 원장은 '명령이 말한 공격'만 세므로(어택무브 한 번에
+         부대 전체가 붙는 것을 한 사람 몫으로 본다) 큰 건물은 실제보다 오래 버틴다.
+         실측: 5시 해처리(109,116)는 772초까지 얻어맞고도 원장 체력이 남았는데, 경기가
+         780초에 끝났다. 되살리는 쪽(격퇴)을 뺀 자리를 이 바닥값이 메운다. */
+      if (zero) { b.gone = zero[0]; b.goneKind = "atk"; }
+      else if (atkEv) { b.gone = atkEv[0] + 8; b.goneKind = "atk"; }
+    }
     /* 붕괴 결합(기획서 2-E) — 명령 원장만으로는 체력 80~100%가 남은 채 철거 시각에
        돌연 무너졌다. 붕괴가 확정된 건물은 8초 전부터 0으로 선형 수렴시킨다. */
     if (b.gone !== null) {
