@@ -506,6 +506,15 @@ export const USE_CMD_TO_UNIT: Record<string, string> = {
   "Merge Dark Archon": "Dark Templar",
   "Unload All": "Transport",
   Unload: "Transport",
+  /* 안 쓰던 증거 둘(요청: 안 쓰는 정보는 다 활용) — 그 유닛만 낼 수 있는 명령이다.
+     · 버로우는 저그 지상 여섯만 한다(저글링·히드라·드론·디파일러·러커·인페스티드
+       테란). 실측: 무명 생애가 받은 명령에 버로우 26 · 언버로우 18이 있었다.
+     · 클로킹 명령은 레이스와 고스트만 낸다(다크템플러·옵저버는 늘 숨어 있어 명령이
+       없고, 아비터는 남을 숨긴다). */
+  Burrow: "Burrower",
+  Unburrow: "Burrower",
+  Cloak: "Cloaker",
+  Decloak: "Cloaker",
 };
 /* MoveUnload는 커맨드가 아니라 오더로 온다 — 수송선에 "가서 내려라"를 시킨 우클릭이다.
    CAST_ORDER_TO_UNIT에 넣으면 그 순간 골라져 있던 번호가 수송선으로 드러난다. */

@@ -291,6 +291,12 @@ const GROUP_FALLBACK: Record<string, string> = { Bionic: "Marine", Transport: "D
 const GROUP_MEMBERS: Record<string, Set<string>> = {
   Bionic: new Set(["Marine", "Firebat"]),
   Transport: new Set(["Dropship", "Shuttle", "Overlord"]),
+  /* 버로우·클로킹은 낼 수 있는 유닛이 정해져 있다(요청: 안 쓰는 정보는 다 활용).
+     대표 이름(GROUP_FALLBACK)은 안 준다 — 여섯 중 어느 것인지는 모르니 지어내지
+     않는다. 이 무리는 두 곳에서 일한다: 태그 재사용 판정(시즈를 켰던 번호가 버로우를
+     하면 딴 유닛이다)과, 남은 몫을 무명에게 줄 때 후보를 이 안으로 좁히는 데다. */
+  Burrower: new Set(["Zergling", "Hydralisk", "Drone", "Defiler", "Lurker", "Infested Terran"]),
+  Cloaker: new Set(["Wraith", "Ghost"]),
 };
 const RACE_WORKER: Record<string, string> = { 테란: "SCV", 프로토스: "Probe", 저그: "Drone" };
 const RACE_TRANSPORT: Record<string, string> = { 테란: "Dropship", 프로토스: "Shuttle", 저그: "Overlord" };
@@ -2970,12 +2976,22 @@ export function buildUnitTracks(
       const worker = workerOf.get(life.owner) ?? "";
       const attacked = life.ev.some((v) => v[3] === 7);
       const builtSomething = life.ev.some((v) => v[3] === 2);
+      /* 무리 증거가 있으면 그 안에서만 고른다(요청: 안 쓰는 정보는 다 활용) — 버로우를
+         한 개체는 저그 지상 여섯 중 하나이고, 클로킹을 켠 개체는 레이스나 고스트다.
+         어느 것인지는 모르니 이름을 지어내지 않고 **후보만 좁힌다** — 그 안에서 남은
+         몫이 가장 많은 것을 고르므로, 원장이 아는 만큼만 이름이 붙는다. */
+      const groupOk = (k: string): boolean => {
+        if (life.groupKinds.size === 0) return true;
+        for (const g of life.groupKinds) if (GROUP_MEMBERS[g]?.has(k)) return true;
+        return false;
+      };
       let best = "";
       let bn = 0;
       for (const [k, n] of m) {
         if (n <= 0) continue;
         if (attacked && k === worker) continue;          // 일꾼은 공격 명령을 안 받는다
         if (builtSomething && k !== worker) continue;    // 건물을 앉힌 것은 일꾼뿐이다
+        if (!groupOk(k)) continue;
         if (n > bn) { best = k; bn = n; }
       }
       if (!best) continue;
