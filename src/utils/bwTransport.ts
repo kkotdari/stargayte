@@ -46,6 +46,40 @@ export const LIFTOFF_POLL_FRAMES = ORDER_POLL_FRAMES;
 export const toPollGridSec = (t: number, phase = 0): number =>
   phase + Math.ceil((t - phase) / ORDER_POLL_SEC - 1e-9) * ORDER_POLL_SEC;
 
+/* ── 정원 ─────────────────────────────────────────────────────────────────── */
+
+/** 수송칸(units.dat spaceProvided) — 셔틀·드랍십·오버로드가 8, 벙커가 4.
+ *  오버로드는 벤트럴 색을 캔 뒤에만 태울 수 있지만, 칸 수 자체는 8이다. */
+export const TRANSPORT_SLOTS: Record<string, number> = {
+  Shuttle: 8, Dropship: 8, Overlord: 8, Bunker: 4,
+};
+
+/** 유닛이 차지하는 자리(units.dat spaceRequired). 표에 없는 이름은 **못 탄다** —
+ *  공중 유닛과 거미지뢰·인터셉터처럼 실릴 수 없는 것들이 거기 든다.
+ *  잘 알려진 짝들이 이 표의 검산이다: 셔틀 하나에 질럿 넷(2×4)·드라군 둘(4×2)·리버
+ *  둘(4×2), 드랍십 하나에 마린 여덟(1×8)·탱크 둘(4×2)·벌처 넷(2×4), 오버로드 하나에
+ *  저글링 여덟(1×8)·히드라 넷(2×4)·럴커 둘(4×2)·울트라 하나(8×1). */
+export const SPACE_REQUIRED: Record<string, number> = {
+  // ── 테란 ──
+  Marine: 1, Firebat: 1, Ghost: 1, Medic: 1, SCV: 1,
+  Vulture: 2,
+  Goliath: 4, "Siege Tank": 4, "Siege Tank (Tank Mode)": 4, "Siege Tank (Siege Mode)": 4,
+  // ── 프로토스 ──
+  Probe: 1,
+  Zealot: 2, "High Templar": 2, "Dark Templar": 2,
+  Dragoon: 4, Archon: 4, "Dark Archon": 4, Reaver: 4,
+  // ── 저그 ──
+  Drone: 1, Zergling: 1, Broodling: 1, "Infested Terran": 1,
+  Hydralisk: 2, Defiler: 2,
+  Lurker: 4,
+  Ultralisk: 8,
+};
+
+/** 그 수송선이 가진 칸 수 — 표에 없으면 0(수송선이 아니다). */
+export const slotsOf = (transportKind: string): number => TRANSPORT_SLOTS[transportKind] ?? 0;
+/** 그 유닛이 차지하는 자리 — null이면 애초에 실릴 수 없는 유닛이다. */
+export const spaceOf = (kind: string): number | null => SPACE_REQUIRED[kind] ?? null;
+
 /* ── 탑승 ─────────────────────────────────────────────────────────────────── */
 
 /** 탑승 자체에 걸리는 프레임은 0이다 — 경계상자가 1픽셀만 닿으면 그 프레임에 실린다. */

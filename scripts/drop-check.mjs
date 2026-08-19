@@ -16,7 +16,11 @@
  *     땅에 서 있는 수. 합성은 생산 원장이 '뽑혔는데 관측 못 한 유닛'을 메우려고 지어
  *     내는 개체라, 태운 유닛을 관측에서 놓치면 바로 여기서 쌍둥이가 된다.
  *  ④ 혼자 죽는 합성 — 죽는 자리 8타일 안에 적의 공격 클릭이 하나도 없는 죽음.
- *     화면에서는 '아무도 안 때렸는데 혼자 죽는' 유닛으로 보인다. */
+ *     화면에서는 '아무도 안 때렸는데 혼자 죽는' 유닛으로 보인다.
+ *  ⑤ 트립의 적재 자리 — 한 배가 한 번에 실은 자리 합(원작의 수송칸은 8, 벙커는 4).
+ *     정원을 넘긴 트립이 있으면 태울 수 없는 것을 태운 것이고, 못 탄 유닛까지 사라졌다가
+ *     하차 자리에 나타난다.
+ *  ⑥ 하차 줄서기 — 같은 배에서 잇달아 내린 간격. 원작은 18프레임(0.756초)에 한 기씩이다. */
 
 import { readFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
@@ -31,9 +35,37 @@ if (files.length === 0) {
   process.exit(2);
 }
 const dir = mkdtempSync(join(tmpdir(), "dropchk-"));
+/* 계측판 — 승선 후보가 **어느 문턱에서 걸러지나**를 세는 계수기만 끼운 replayUnits
+   복사본을 만든다(앱에는 계측 코드가 한 줄도 안 들어간다). 후보를 만드는 곳과 거르는
+   곳이 한 함수 안에 있어 바깥에서는 못 재는 값이다. */
+const RU = join(ROOT, "src/utils/replayUnits.ts");
+const ruSrc = readFileSync(RU, "utf8");
+const NEEDLE = "    void promoted;";
+const PROBE = `    {
+      const g9 = globalThis as unknown as { __board?: Record<string, number> };
+      const st9 = {
+        cand: pendBoard.length, promoted,
+        noTrans: 0, riderTrans: 0, noLife: 0, isTrans: 0, noDrop: 0, pass: 0,
+      };
+      for (const [bsec9, rtag9, ttag9, , , bpid9] of pendBoard) {
+        if (transTagOwner.get(ttag9) !== bpid9) { st9.noTrans += 1; continue; }
+        if (transTagOwner.has(rtag9)) { st9.riderTrans += 1; continue; }
+        const rl9 = lifeAt(rtag9, bsec9);
+        if (!rl9 || rl9.bld || rl9.owner !== bpid9) { st9.noLife += 1; continue; }
+        if (isTransportLife(rl9)) { st9.isTrans += 1; continue; }
+        const dr9 = (unloadsBy.get(ttag9) ?? []).find(([u9]) => u9 > bsec9 && u9 - bsec9 < 600);
+        if (!dr9) { st9.noDrop += 1; continue; }
+        st9.pass += 1;
+      }
+      g9.__board = st9;
+    }
+${NEEDLE}`;
+const probed = ruSrc.includes(NEEDLE);
+const absImports = (t) => t.replace(/from "\.\//g, `from "${join(ROOT, "src/utils")}/`);
+writeFileSync(join(dir, "replayUnits.ts"), absImports(probed ? ruSrc.replace(NEEDLE, PROBE) : ruSrc));
 const src = join(dir, "e.ts");
 const out = join(dir, "e.mjs");
-writeFileSync(src, `export { buildUnitTracks } from ${JSON.stringify(join(ROOT, "src/utils/replayUnits"))};`);
+writeFileSync(src, `export { buildUnitTracks } from ${JSON.stringify(probed ? join(dir, "replayUnits") : join(ROOT, "src/utils/replayUnits"))};`);
 execFileSync("npx", ["esbuild", src, "--bundle", "--platform=node", "--format=esm",
   "--log-level=error", `--outfile=${out}`], { cwd: ROOT, stdio: ["ignore", "ignore", "inherit"] });
 const { buildUnitTracks } = await import(pathToFileURL(out).href);
@@ -62,7 +94,9 @@ for (const path of files) {
         startX: sp ? sp.X / 32 : null, startY: sp ? sp.Y / 32 : null,
       };
     });
+  globalThis.__board = undefined;
   const d = buildUnitTracks(res.Commands?.Cmds ?? [], players);
+  const board = globalThis.__board;
   const endSec = (res.Header.Frames ?? 0) * SEC;
 
   /* 탑승 구간 — 재생기(ReplayMotionPlayer의 rideSpans)와 **같은 규칙**으로 짓는다.
@@ -78,6 +112,7 @@ for (const path of files) {
       spans.push({
         e, from: bs, to: off ? off[0] : (own ? own[0] : Infinity),
         how: off ? "하차" : (own ? "제명령" : "안닫힘"),
+        host: e.ev[i][4] ?? 0,
       });
     }
   }
@@ -136,6 +171,11 @@ for (const path of files) {
     return o2 === "MoveUnload";
   }).length;
   console.log(`  수송선 ${ships.length}기 · 하차 명령 ${unloadCmds}번 · 탑승 증거 ${spans.length}건`);
+  if (board) {
+    console.log(`  승선 후보 ${board.cand}건이 걸러지는 자리 — 표적이 수송선이 아님 ${board.noTrans}`
+      + ` · 승객 자리가 수송선 ${board.riderTrans} · 생애 못 찾음 ${board.noLife}`
+      + ` · 승객 정체가 수송선 ${board.isTrans} · **하차 기록 없음 ${board.noDrop}** → 통과 ${board.pass}`);
+  }
   console.log(`  탑승 구간이 닫힌 방식 — 하차 ${byOff.length}건 · 제 명령 ${byOwn.length}건 · 끝내 안 닫힘 ${open.length}건`);
   console.log(`  태우고 내릴 때까지(하차로 닫힌 것) 중앙값 ${med(byOff.map((s) => Math.round(s.to - s.from)))}초`
     + ` · 제 명령으로 닫힌 것 중앙값 ${med(byOwn.map((s) => Math.round(s.to - s.from)))}초`);
@@ -150,6 +190,40 @@ for (const path of files) {
       b2[cut.findIndex((c) => dt <= c)] += 1;
     }
     console.log(`  배 안에 있던 시간(초): ${b2.map((n, i) => `${lab[i]} ${n}`).join(" · ")}`);
+  }
+  {
+    /* 트립 — 한 배가 한 번 실어 나른 무리. 원작의 수송칸은 8이고(벙커 4) 유닛마다
+       차지하는 자리가 다르다. 넘치는 트립이 있으면 태우지 못할 것을 태운 것이다. */
+    const SPACE = {
+      Marine: 1, Firebat: 1, Ghost: 1, Medic: 1, SCV: 1, Vulture: 2,
+      Goliath: 4, "Siege Tank": 4, "Siege Tank (Tank Mode)": 4, "Siege Tank (Siege Mode)": 4,
+      Probe: 1, Zealot: 2, "High Templar": 2, "Dark Templar": 2,
+      Dragoon: 4, Archon: 4, "Dark Archon": 4, Reaver: 4,
+      Drone: 1, Zergling: 1, Broodling: 1, "Infested Terran": 1,
+      Hydralisk: 2, Defiler: 2, Lurker: 4, Ultralisk: 8,
+    };
+    const kindOfTag = new Map(d.ents.map((e) => [e.t, e.k]));
+    const trips = new Map();
+    for (const s2 of spans) {
+      const key = `${s2.host}|${Math.round(s2.from)}`;
+      const g = trips.get(key) ?? [];
+      g.push(s2);
+      trips.set(key, g);
+    }
+    let over = 0;
+    const loads = [];
+    const gaps = [];
+    for (const g of trips.values()) {
+      const slots = kindOfTag.get(g[0].host) === "Bunker" ? 4 : 8;
+      const load = g.reduce((n, s2) => n + (SPACE[s2.e.k] ?? 2), 0);
+      loads.push(load);
+      if (load > slots) over += 1;
+      const outs = g.filter((s2) => s2.how === "하차").map((s2) => s2.to).sort((a, b) => a - b);
+      for (let i = 1; i < outs.length; i += 1) gaps.push(Math.round((outs[i] - outs[i - 1]) * 100) / 100);
+    }
+    console.log(`  트립 ${trips.size}개 · 적재 자리 중앙값 ${med(loads)}/8 · 최대 ${loads.length ? Math.max(...loads) : 0}`
+      + ` · **정원 넘긴 트립 ${over}개**`);
+    console.log(`  하차 줄서기 — 같은 배에서 잇달아 내린 간격 중앙값 ${med(gaps)}초 (원작 0.756초)`);
   }
   console.log(`  유닛 ${units.length}기 중 합성 ${syn.length}기 (${Math.round((syn.length / Math.max(1, units.length)) * 100)}%)`);
   console.log(`  복제품 후보(배 안인데 땅에 같은 종류 합성) ${twins}건 / 탑승 ${spans.length}건`);

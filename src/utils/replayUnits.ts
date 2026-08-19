@@ -21,6 +21,7 @@ import {
 } from "./replayTechNames";
 import { speedOfUnit, upgradeMaxLevel } from "./bwUnits";
 import { SUPPLY_CAP, SUPPLY_COST, SUPPLY_GIVES } from "./bwCombat";
+import { UNLOAD_GAP_SEC, UNLOAD_PENALTY_EXEMPT, slotsOf, spaceOf } from "./bwTransport";
 /* 전투 값은 표(bwUnits)를 직접 읽지 않고 어댑터(bwCombat)를 거친다(과제 #54).
    ─ 왜 이렇게 됐는가: 이 파일의 체력 원장은 유닛마다 dps 스칼라 하나(UNIT_STATS.dps)만
      보고 공격 종류(normal/concussive/explosive)·표적 크기 배수·방어력 뺄셈·쿨다운·
@@ -2204,6 +2205,125 @@ export function buildUnitTracks(
       promoted += 1;
     }
     void promoted;
+
+    /* ── 정원과 하차 줄서기(요청: "수송선 타고 내림 완벽히 고치기") ────────────────
+       ① 원작의 수송칸은 8이고(벙커는 4) 유닛마다 차지하는 자리가 다르다 — 아콘·드라군·
+          탱크·리버가 4, 질럿·히드라·벌처가 2, 마린·저글링·일꾼이 1이다(bwTransport의
+          SPACE_REQUIRED). 여태 이 규칙이 아예 없어 '태우라는 클릭' 하나에 고른 것이 전부
+          실렸다: 실측(SG_26081613330800)의 유일한 드랍이 아콘 넷 + 프로브 하나(자리 17)를
+          셔틀 하나(자리 8)에 통째로 실은 것이다. 화면에서는 못 탄 셋까지 사라졌다가 하차
+          자리에 나타난다 — 지적한 "복제품"의 한 갈래가 이것이다.
+          증거는 '태우라는 명령'이지 '탔다'가 아니다. 그래서 정원을 넘는 뒤쪽 유닛은 승선
+          증거를 지운다 — 그러면 제 발로 걷는다(원작에서도 자리가 없으면 안 실린다).
+          실릴 수 없는 유닛(공중·수송선 자신)도 여기서 걸린다.
+       ② 하차는 한꺼번에가 아니라 18프레임(0.756초)에 한 기씩이다(bwTransport의
+          UNLOAD_GAP_SEC). 여태 한 배의 승객이 같은 초에 통째로 튀어나왔다. 벙커만
+          예외로 한 프레임에 전원이다.
+       한 자리에서 다 하는 까닭은 승선 증거가 세 길(직행·역방향·보류 승격)로 들어오기
+       때문이다 — 길마다 세면 같은 배를 세 번 채우게 된다. */
+    {
+      const allByTag = new Map<number, Life[]>();
+      /* 같은 생애가 done과 alive에 함께 들어 있을 수 있다 — 신원으로 한 번만 담는다.
+         두 번 담으면 승선 증거를 두 번 세어 배가 반만 차고도 정원이 찬 것으로 본다
+         (실측: 아콘 넷이 8칸을 열 칸으로 세어 하나만 태웠다). */
+      const seen9 = new Set<Life>();
+      for (const l of [...done, ...alive.values()]) {
+        if (seen9.has(l)) continue;
+        seen9.add(l);
+        const a = allByTag.get(l.tag) ?? [];
+        a.push(l);
+        allByTag.set(l.tag, a);
+      }
+      for (const a of allByTag.values()) a.sort((x, y) => x.born - y.born);
+      const hostKindAt = (tag: number, at: number): string => {
+        const arr = allByTag.get(tag);
+        if (!arr) return "";
+        let f: Life | null = null;
+        for (const l of arr) { if (l.born <= at + 1) f = l; else break; }
+        return f ? majorityKindOf2(f) : "";
+      };
+      type Ride = {
+        life: Life; bev: UnitEv; oev: UnitEv | null;
+        sec: number; drop: number; space: number;
+      };
+      const trips = new Map<number, Ride[]>();
+      for (const arr of allByTag.values()) {
+        for (const life of arr) {
+          if (life.bld) continue;
+          const k9 = majorityKindOf2(life);
+          for (let i = 0; i < life.ev.length; i += 1) {
+            if (life.ev[i][3] !== 12) continue;
+            const ttag = (life.ev[i][4] as number | undefined) ?? 0;
+            if (!ttag) continue;
+            const oev = life.ev.find((v, j) => j > i && v[3] === 13) ?? null;
+            // 이름을 모르는 개체는 가운데 값(2)으로 본다 — 몰라서 통째로 지우지 않는다.
+            const sp = k9 === "" ? 2 : spaceOf(k9);
+            const list = trips.get(ttag) ?? [];
+            list.push({
+              life, bev: life.ev[i], oev,
+              sec: life.ev[i][0], drop: oev ? oev[0] : Infinity,
+              space: sp ?? -1,
+            });
+            trips.set(ttag, list);
+          }
+        }
+      }
+      const cut = new Set<UnitEv>();
+      const keepOev = new Set<UnitEv>();
+      for (const [ttag, list] of trips) {
+        list.sort((a, b) => a.sec - b.sec);
+        const hk = hostKindAt(ttag, list[0].sec);
+        // 이름을 모르면 수송선(8칸)으로 본다 — 명령이 '수송선'이라고 못 박은 태그다.
+        const slots = slotsOf(hk) || 8;
+        const bunker = hk === "Bunker";
+        const aboard: Ride[] = [];
+        let used = 0;
+        /** 같은 하차로 함께 내리는 무리 — 줄서기 차례를 여기서 매긴다. */
+        const byDrop = new Map<number, Ride[]>();
+        for (const r of list) {
+          for (let q = aboard.length - 1; q >= 0; q -= 1) {
+            if (aboard[q].drop <= r.sec) { used -= aboard[q].space; aboard.splice(q, 1); }
+          }
+          if (r.space < 0 || used + r.space > slots) {
+            /* 못 탄 유닛은 **그 자리로 걸어간다** — 증거를 통째로 지우면 배를 향해
+               가던 걸음까지 없어진다(승선 증거의 좌표가 곧 수송선이 있던 자리다).
+               원작에서도 자리가 없는 유닛은 배 곁으로 가서 기다린다. 그래서 승선을
+               평범한 이동(f=0)으로 낮추고, 짝이던 하차만 지운다 — 안 탄 것이 지도
+               반대편 하차 자리에 나타나면 그것이 곧 '복제품'이다. */
+            r.bev[3] = 0;
+            r.bev[4] = undefined;
+            if (r.oev) cut.add(r.oev);
+            continue;
+          }
+          used += r.space;
+          aboard.push(r);
+          if (r.oev) {
+            keepOev.add(r.oev);
+            const g = byDrop.get(r.drop) ?? [];
+            g.push(r);
+            byDrop.set(r.drop, g);
+          }
+        }
+        if (!bunker && !UNLOAD_PENALTY_EXEMPT.has(hk)) {
+          for (const g of byDrop.values()) {
+            g.sort((a, b) => a.sec - b.sec);
+            for (let i = 0; i < g.length; i += 1) {
+              const oe = g[i].oev;
+              if (!oe) continue;
+              oe[0] = Math.round((g[i].drop + i * UNLOAD_GAP_SEC) * 10) / 10;
+            }
+          }
+        }
+      }
+      for (const v of keepOev) cut.delete(v);
+      if (cut.size > 0) {
+        for (const arr of allByTag.values()) {
+          for (const life of arr) {
+            if (life.ev.some((v) => cut.has(v))) life.ev = life.ev.filter((v) => !cut.has(v));
+          }
+        }
+      }
+    }
   }
 
   /* ── 스타트 일꾼 넷(요청: 경기 시작부터 4기 + 명령·태그 번호 매핑 유지) — 시작 일꾼은
