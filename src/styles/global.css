@@ -5790,6 +5790,14 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    버튼이 나란히 선다. */
 .scr-modal-md { max-width: 560px; }
 .scr-redo-pick { display: flex; flex-direction: column; max-height: min(78vh, 720px); }
+/* 모달이 뜬 동안 탭바는 물러난다(지적: 다시 분석 버튼이 탭바에 가려 눌리지 않는다) —
+   자리를 맞추는 것만으로는 부족했다: 탭바는 바닥에 떠 있는 별개 레이어라 겹칠 여지가
+   남고, 겹치면 클릭을 가로챈다. 창이 떠 있는 동안 탭은 어차피 못 쓴다. */
+body.scr-modal-hides-tabbar .scr-mobile-tabbar { display: none; }
+/* 창은 탭바보다 위 층에 둔다 — 위 규칙이 못 걸리는 경우(다른 창이 겹쳐 열림)의 안전망. */
+.scr-redo-pick { z-index: 300; }
+/* 바닥 버튼 줄은 절대 눌리지 않는다 — 목록이 길어도 제 높이를 지킨다. */
+.scr-redo-pick-foot { flex: none; }
 /* 모바일에서는 떠 있는 탭바 **위**에 앉힌다(지적: 재분석 모달의 '다시 분석' 버튼이
    탭바에 가려짐). 겹침 순서 문제가 아니라 자리 문제다 — 이 창은 가운데 정렬인데다
    높이를 vh(주소창을 포함한 큰 뷰포트)로 재서, 바닥의 버튼 줄이 실제로 보이는 화면
