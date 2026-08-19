@@ -8255,7 +8255,11 @@ const AIR_ROWS = BW_ROWS.filter((r) => r[3] === 1);
  *  한 층을 더 만드는 일이라, 손잡이 층에서 세 칸으로 끝낸다.
  *  (진짜 그림 크기는 GRP 헤더인데 MPQ 없이는 못 캔다. 캐게 되면 이 줄이 아니라
  *   SPRITE_OVERHANG 하나만 갈아 끼우면 된다.) */
-const AIR_BOX_SLACK = gmOf(AIR_ROWS.map(bwBoxTiles)) / gmOf(AIR_ROWS.map((r) => CLASS_TILES[r[2]]));
+/** (지금은 안 쓴다 — 요청: 원작 비율 그대로) 값 자체는 자료가 말하는 사실이라 남긴다:
+ *  공중 무리의 상자 기하평균이 그들 등급이 말하는 크기보다 이만큼(1.441배) 크다.
+ *  화면 크기를 다시 등급 쪽으로 당기고 싶으면 UNIT_BW_TILES에서 이 값을 나누면 된다. */
+export const AIR_BOX_SLACK = gmOf(AIR_ROWS.map(bwBoxTiles))
+  / gmOf(AIR_ROWS.map((r) => CLASS_TILES[r[2]]));
 /** 등급을 섞는 무게 — 0.5는 "두 자료(충돌 상자·등급)를 같은 무게로" 곧 기하평균이다.
  *  왜 섞나: units.dat의 기본값 32×32에 벌처·탱크·골리앗·드라군·아콘·다크아콘·리버·러커가
  *  통째로 뭉쳐(41종 중 14종이 세 값에 몰린다) 상자만으로는 벌처(중)와 시즈탱크(대)를
@@ -8269,7 +8273,12 @@ const AIR_BOX_SLACK = gmOf(AIR_ROWS.map(bwBoxTiles)) / gmOf(AIR_ROWS.map((r) => 
  *  남는 10쌍도 전부 자료발은 **아니다**: 4쌍(퀸·뮤탈 쪽)만 원상자에서도 역전이고,
  *  6쌍(벌처·럴커 vs 레이스·셔틀·스카웃)은 원상자에서는 정상 순서였는데 AIR_BOX_SLACK
  *  나눗셈이 뒤집은 것이다 — 그래서 그 셋을 손잡이로 되올린다. */
-const SIZE_BLEND = 0.5;
+/* 0.5 → 0(요청: "유닛 크기 비율 원작과 똑같이") — 섞기는 units.dat의 기본값 뭉침
+   (32×32에 일곱 종)을 등급으로 갈라 주는 대신, 크기 비율을 원작에서 밀어낸다. 이제
+   화면 크기는 **원작 상자 그대로**다: 같은 상자·같은 등급인 종류는 화면에서도 같은
+   크기가 된다(벌처 = 탱크 = 골리앗 = 드라군 = 아콘 = 리버 = 러커, 다 32×32다).
+   섞기로 세워 두던 순서는 그 대가로 사라진다 — 되살리려면 이 값만 0.5로 돌리면 된다. */
+const SIZE_BLEND = 0;
 /** ②-b 원작 치수(타일) — 위 원자료에서 **유도한다. 손으로 옮겨 적지 않는다.**
  *  결과 검산(손잡이 전, 41종 전수를 실제로 세어 적는다 — 어림수를 쓰지 않는다):
  *   · 지상 24종이 원상자에서 벗어나는 폭은 −9.7% ~ +16.5%다(전에 "±5% 안"이라고
@@ -8284,8 +8293,12 @@ const SIZE_BLEND = 0.5;
  *     0.564). 같은 등급 안에서 원상자 순서가 뒤집힌 쌍은 0이다. */
 const UNIT_BW_TILES: Record<string, number> = Object.fromEntries(
   Object.entries(UNIT_BW_RAW).map(([k, r]) => {
-    const box = r[3] === 1 ? bwBoxTiles(r) / AIR_BOX_SLACK : bwBoxTiles(r);
-    return [k, box ** (1 - SIZE_BLEND) * CLASS_TILES[r[2]] ** SIZE_BLEND];
+    /* 공중 슬랙도 안 나눈다(요청: 원작 비율 그대로) — 원작 상자가 곧 화면 크기다.
+       그 대신 원작 상자가 표적 획득용으로 넉넉한 공중 종류(스커지 24×24·옵저버 32×32·
+       오버로드 50×50)는 화면에서도 그만큼 크게 나온다. 되돌리려면 아래 한 줄에서
+       AIR_BOX_SLACK을 다시 나누면 된다. */
+    const box = bwBoxTiles(r);
+    return [k, SIZE_BLEND === 0 ? box : box ** (1 - SIZE_BLEND) * CLASS_TILES[r[2]] ** SIZE_BLEND];
   }),
 );
 /** ②-c 원작 몸 지름(타일) — **밀어내기 전용**이다. 등급 섞기도 공중 보정도 안 탄
@@ -8332,7 +8345,10 @@ const SIZE_CONTRAST_MAX = 3;
    1.35는 옛 상한이 묶어 두던 자리다. 상한은 이제 풀렸으므로(위 SIZE_CONTRAST_MAX)
    시네마틱 모드가 붙을 때 이 값만 올리면 된다 — 원작 충돌 상자의 대비를 다 살리는
    값이 1.7 언저리다. */
-const SIZE_CONTRAST: number = 1.35;
+/* 1.35 → 1(요청: "유닛 크기 비율 원작과 똑같이") — 이 지수는 원작 비율을 **일부러
+   과장하는** 손잡이다(큰 유닛은 더 크게·작은 유닛은 더 작게). 원작 그대로를 원하면
+   1이 그 값이다. 시네마틱 모드가 붙을 때 이 상수만 올리면 과장이 돌아온다. */
+const SIZE_CONTRAST: number = 1;
 /** 실제로 쓰이는 값 — 1 미만(작은 유닛이 더 커지는 방향)과 상한 밖을 막는다. */
 const SIZE_CONTRAST_C = Math.min(SIZE_CONTRAST_MAX, Math.max(1, SIZE_CONTRAST));
 const SIZE_REF = gmOf(Object.values(UNIT_BW_TILES));
@@ -8375,28 +8391,12 @@ const SIZE_REF = gmOf(Object.values(UNIT_BW_TILES));
  *      디바우러 1.02 · 아비터 1.06: 44×44 셋 중 가디언을 기준으로 두고
  *      내구(250 / 350+150)와 인구(4 / 8) 순으로 벌렸다. **폭은 임의다.** */
 const UNIT_SIZE_TUNE: Partial<Record<keyof typeof UNIT_BW_RAW, number>> = {
-  // (자료-공중) 잔차가 1에 붙어 있어 상수 슬랙에 과하게 깎이던 셋.
-  wraith: 1.084, scout: 1.083, shuttle: 1.068,
-  // (자료-무리) 32×32 대형 지상 일곱 — 수송칸·인구·내구 순. 탱크(1.0)가 기준이다.
-  goliath: 0.93, goon: 0.99, darchon: 1.01, tanksiege: 1.02, archon: 1.03, reaver: 1.04,
-  // (자료-무리) 32×32 중형 지상 둘 — 벌처 수송2 · 럴커 수송4.
-  vulture: 0.94, lurker: 0.97,
-  // (자료-무리 + 눈대중) 44×44 대형 공중 셋 — 가디언 기준, 내구·인구 순.
-  devourer: 1.02, arbiter: 1.06,
-  /* (모양 보정) 오버로드 — 지적: "오버로드가 너무 작아졌는데 아마 다리까지 크기재는데
-     넣은게 아닐지.. 몸통만 크기로 봐야할듯". 진단이 맞다. 정규화는 구운 판의 **잉크
-     상자 전체**를 재는데, 오버로드는 몸통 구가 z 2.8~7.6(지름 4.8)인 반면 다리가
-     z −1.35까지 내려가 모델 전체가 8.95다 — 다리가 몸통보다 길다. 실측 잉크상자
-     5.04×7.54(비 1.50)의 세로 절반이 다리라, 그걸 목표 5.2에 맞추느라 몸통이 눌렸다.
-     이 왜곡을 자동 지표로 걷으려고 두 가지를 실측으로 시도했다가 둘 다 물렸다
-     (scripts/model-norm.mjs의 TRIM_FLOOR 주석에 수치를 남겼다): 질량 백분위는 멀쩡한
-     모델까지 30% 키웠고, 굵기 문턱은 정작 오버로드를 거의 안 움직였다(다리가 여섯
-     쌍이라 그 행에도 잉크가 있다). 41종 중 세로로 튀는 것은 오버로드(1.50)와
-     하이템플러(1.65) 둘뿐이라 — 나머지는 넓적한 공중·차량이라 정상이다 — 표 전체를
-     흔드는 대신 여기서 그 둘만 손본다. 몸통 기준 잉크상자를 5.0으로 보면 측정값
-     6.16과의 비가 1.23이므로 1.05 × 1.23 ≈ 1.29다. */
-  ovie: 1.29,
-  scourge: 0.88,
+  /* (비움 — 요청: "유닛 크기 비율 원작과 똑같이") 여기 있던 15칸은 전부 **섞기와 공중
+     슬랙이 만든 왜곡을 되돌리는 값**이었다(레이스·스카웃·셔틀은 슬랙에 과하게 깎여서,
+     32×32·44×44 뭉치는 섞어도 안 갈라져서, 스커지·오버로드는 눈대중으로). 그 둘을 다
+     껐으므로 되돌릴 왜곡도 없다 — 남겨 두면 그만큼 원작 비율에서 다시 벗어난다.
+     값과 근거는 git 이력(이 줄의 직전 판)에 그대로 있다. 화면을 보고 특정 종류만
+     손봐야 하면 여기에 한 줄씩 다시 적는 것이 그 자리다. */
 };
 /** ③-c 전체 배수 — "다 조금 크게/작게"를 한 값으로. */
 const UNIT_SIZE_GLOBAL: number = 1;
@@ -8406,7 +8406,8 @@ const UNIT_SIZE_GLOBAL: number = 1;
  *   · drawKind(잉크 몫)는 **모델의 성질**이다. 시즈탱크는 tankbody로 그려진다.
  *  이 둘을 갈라 놓으면 tankbody·tankgun·tanksiegebody·tanksiegegun·lurkeregg·
  *  mutacocoon·burrowhole까지 전부 손잡이가 닿는다. */
-const unitTilesOf = (drawKind: string, sizeKind: string, bulk: 0 | 1 | 2): number => {
+// 계측 스크립트가 화면과 같은 값을 읽을 수 있게 내보낸다(scripts/… 실측용).
+export const unitTilesOf = (drawKind: string, sizeKind: string, bulk: 0 | 1 | 2): number => {
   const bw0 = UNIT_BW_TILES[sizeKind] ?? CLASS_TILES[bulk];
   const bw = SIZE_CONTRAST_C === 1 ? bw0 : SIZE_REF * (bw0 / SIZE_REF) ** SIZE_CONTRAST_C;
   return bw * SPRITE_OVERHANG * (16 / modelInkOf(drawKind))
