@@ -35,7 +35,9 @@ import { posAtSim, shotsAt, ST_INSIDE, type SimEventArr, type SimTrack } from ".
 /* 자취 읽기는 유틸로 나갔다(과제 #61) — 코어가 걸음의 진실이 된 뒤로 이 파일의
    몫이 아니고, 밖에 있어야 자로 잴 수 있다(scripts/pos-check.mjs). */
 import { posAt, type TrackPos, type TrackPt } from "../../utils/replayTrack";
-import { FLYING_BUILDING_TPS } from "../../utils/bwTransport";
+/* 승하차 딜레이도 표에서 읽는다(요청: "탑승 딜레이시간에 딱 맞추기") — 태우기는 오더
+   게이트 9프레임, 내리기는 한 기당 18프레임이다. */
+import { FLYING_BUILDING_TPS, PICKUP_POLL_SEC, UNLOAD_GAP_SEC } from "../../utils/bwTransport";
 import {
   annulusPath, bandPath, bodyFace, capFace, curvePath3, depthNow, fine, groundEllipse,
   LOD_FINE, LOD_TRIM, lodFilter, shape, sideFace, tagKey, topFace, trim, bake,
@@ -13955,13 +13957,25 @@ export default function ReplayMotionPlayer({
              (f=13)이나 다음 제 명령에서 다시 나타나 걷는다.
              승하차 연출(요청) — 태울 땐 빛기둥이 내리고 그 안에서 몸이 작아지며 떠올라
              사라지고, 내릴 땐 거꾸로다. rideK 0=제 모습, 1=완전히 빨려듦. */
-          const RIDE_FX = 0.9;
-          if (e.rides.some(([ra, rb]) => t >= ra + RIDE_FX && t < rb)) return null;
+          /* 승하차 길이는 **원작의 딜레이 그대로**다(요청: "탑승 딜레이시간에 딱 맞추기")
+             — 태우기는 게이트 주기 9프레임(0.378초), 내리기는 한 기당 18프레임(0.756초)
+             이고 그 값은 표(bwTransport)가 든다. 0.9초 고정이던 옛 값은 태우기가 실제
+             딜레이의 2.4배라, 배가 벌써 떠난 뒤에도 몸이 남아 빨려 들어가고 있었다. */
+          const rideInSec = PICKUP_POLL_SEC;
+          const rideOutSec = UNLOAD_GAP_SEC;
+          if (e.rides.some(([ra, rb]) => t >= ra + rideInSec && t < rb)) return null;
           let rideK = 0;
-          const rideIn9 = e.rides.find(([ra]) => t >= ra && t < ra + RIDE_FX);
-          const rideOut9 = e.rides.find(([, rb]) => t >= rb && t < rb + RIDE_FX);
-          if (rideIn9) rideK = Math.min(1, (t - rideIn9[0]) / RIDE_FX);
-          else if (rideOut9) rideK = Math.max(0, 1 - (t - rideOut9[1]) / RIDE_FX);
+          /** 승하차 회전(도) — 한 바퀴 뱅글(요청). 태울 땐 0→360, 내릴 땐 그 반대다. */
+          let rideSpin = 0;
+          const rideIn9 = e.rides.find(([ra]) => t >= ra && t < ra + rideInSec);
+          const rideOut9 = e.rides.find(([, rb]) => t >= rb && t < rb + rideOutSec);
+          if (rideIn9) {
+            rideK = Math.min(1, (t - rideIn9[0]) / rideInSec);
+            rideSpin = rideK * 360;
+          } else if (rideOut9) {
+            rideK = Math.max(0, 1 - (t - rideOut9[1]) / rideOutSec);
+            rideSpin = -rideK * 360;
+          }
           /* 건설에 흡수(지적: 건설 끝난 일꾼이 복제된 자리에 계속 서 있음) — 현장에
              도착한 순간부터 숨는다. 공사 중 모습은 합성 건설 일꾼 연출의 몫이고,
              죽음이 아니라 소멸 효과도 없다. */
@@ -14328,7 +14342,9 @@ export default function ReplayMotionPlayer({
               const actSt = e.statuses.find(([sa3, sb3]) => t >= sa3 && t < sb3);
               return actSt ? STATUS_TINT[actSt[2]] : undefined;
             })(),
-            rotDeg: burrowed ? undefined : bodyHdg,
+            // 승하차 뱅글(요청) — 몸 방향에 한 바퀴를 얹는다. 요잉 버킷이 16방이라
+            // 스프라이트는 이미 구워 둔 판을 돌아가며 쓸 뿐, 새로 굽지 않는다.
+            rotDeg: burrowed ? undefined : bodyHdg + rideSpin,
             viewYaw: viewYawOf(ax3, ay3), flat: !pitched, pitch: pitched,
             /* 크기 열쇠 셋을 바로잡는다(지적 셋을 한 줄에서 고친다):
                ① drawUnit이 아니라 drawUnit2 — 시즈모드 탱크가 "tank" 줄에서 크기를 받아
@@ -14343,7 +14359,9 @@ export default function ReplayMotionPlayer({
               * (1 - rideK * 0.75), // 승하차 축소(요청)
             // 진형 간격은 원작 몸 지름 — 그리기 크기를 만져도 안 흔들린다.
             sepPx: drawUnit === "" ? unitSepPxOf("?") : unitSepPxOf(drawUnit2),
-            rise: rideK * 1.5, // 빔을 타고 둥둥 오른다(요청)
+            /* 태울 땐 떠오르며 사라지고, 내릴 땐 그 반대로 내려오며 드러난다(요청)
+               — rideK가 태우기에서 0→1, 내리기에서 1→0이라 한 식이 둘을 다 낸다. */
+            rise: rideK * 1.6,
             color: modeColor(e.raw, team),
             alpha: (() => {
               /* 클로킹(전수조사) — 개인 클록(f=14/15)·상시 은신(다크·옵저버)·아비터
