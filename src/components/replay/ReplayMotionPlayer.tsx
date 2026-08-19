@@ -26,7 +26,7 @@ import {
 /* 러커 가시가 나아가는 거리·속도는 무기표가 아니라 iscript 행동(behaviour 9 "go to max
    range")에서 온 값이라 bwCombat이 안 물고 있다. 숫자를 여기 또 적는 대신 표에서 읽는다. */
 import {
-  BUILDING_FOOT, FRAME_SEC, LARVA_MAX, LARVA_SPAWN_SEC, LURKER_SPINE_SPEED_PX,
+  BUILDING_FOOT, FRAME_SEC, hatchState, LURKER_SPINE_SPEED_PX,
   LURKER_SPINE_TRAVEL_PX, buildingBox,
 } from "../../utils/bwUnits";
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
@@ -658,14 +658,23 @@ function protossFace(fill?: string, lift = 0, s = 1): ShapeFace[] {
   /* 크기는 두 단 줄였다(요청: "머리크기는 지금보다 작게") — 길이 2.6 → 1.95, 반폭
      0.56 → 0.36. 가늘고 긴 비(1.95 : 0.72 ≈ 2.7:1)는 그대로라 "긴~ 형태"는 살아 있고,
      몸통을 통째로 덮던 덩치만 걷힌다. */
-  const H9 = 1.95 * s;
-  const M9 = 0.68; // 가장 굵은 자리(뿌리에서부터의 비율).
+  /* 아래 1/3을 자르고 위아래를 뒤집는다(요청) — 여태는 뾰족한 턱이 앞아래로 길게
+     내려오고 둥근 정수리가 뒤위에 있었다. 그 뾰족한 아래 1/3을 걷어 내고 남은 옆선을
+     축을 따라 되짚으면, **둥근 쪽이 앞아래**로 오고 잘린 단면이 뒤위에 남는다.
+     옆선 함수 하나만 되짚으면 되는 일이라 축·물리는 자리는 예전 규칙 그대로다.
+     길이는 자른 만큼 짧아진다(1.95 → 1.3). */
+  const CUT9 = 1 / 3;
+  const H9 = 1.95 * (1 - CUT9) * s;
+  const M9 = 0.68; // 옛 옆선에서 가장 굵던 자리(뿌리에서부터의 비율).
   const R9 = 0.36 * s; // 그 자리의 반폭.
   const Y9 = 0.6 + (H9 * 2) / 3;
   const Z9 = 6 - (H9 * 2) / 3 + 0.55 + lift;
-  const widthOf = (t9: number): number => (t9 <= M9
+  /** 옛 옆선 — 뿌리(턱)에서 M9까지 볼록하게 뻗고, 거기서 사분타원으로 둥글게 닫힌다. */
+  const side9 = (t9: number): number => (t9 <= M9
     ? R9 * (t9 / M9) ** 0.75
     : R9 * Math.sqrt(Math.max(0, 1 - ((t9 - M9) / (1 - M9)) ** 2)));
+  /** 자른 뒤 뒤집은 옆선 — u=0이 옛 정수리(둥근 쪽), u=1이 잘린 단면이다. */
+  const widthOf = (u9: number): number => side9(1 - u9 * (1 - CUT9));
   const head = spirePillar({
     x: 0, y: Y9, z0: Z9, h: H9,
     w: 0, tipW: 0,
@@ -684,7 +693,7 @@ function protossFace(fill?: string, lift = 0, s = 1): ShapeFace[] {
        안쪽 끝이 뾰족하고 낮게, 바깥 끝이 넓고 높게 잡으면 치켜 올라간 눈이 된다.
      뒤통수를 보일 때는 눈이 사라져야 하므로 눈마다 제 바깥 방향으로 보임을 따진다
      (faceLight은 내려다보는 몫까지 셈하므로 위를 향한 면도 옳게 걸러진다). */
-  const T9 = 0.75;
+  const T9 = 0.5; // 눈은 얼굴 한가운데(요청) — 3/4 높이에 있던 것을 가운데로 내린다.
   const r9 = widthOf(T9);
   const AX9: [number, number, number] = [0, Y9 - H9 * T9, Z9 + H9 * T9];
   const RT = Math.SQRT1_2;
@@ -1870,8 +1879,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const PZ = 1.05 + LIFT; // 판 밑면
     /** 사이 상자 — 판보다 얇고·낮고·얕다. 판에 물려 이음매 노릇만 한다. */
     const GX = 1.95;
-    const GW = 1.9;
-    const GD = 7;
+    /* 사이 상자는 더 얇고 더 짧다(재지적: "판 두 개 두께 더 줄이고 앞뒤 길이도 줄이기")
+       — 두께 1.9 → 1.15, 깊이 7 → 5.2. 판 셋(2.4~2.7 두께, 6.4~7.6 깊이)보다 확실히
+       물러나야 어느 각도에서도 판이 덩치를 쥐고 이 상자는 이음매로만 읽힌다. */
+    const GW = 1.15;
+    const GD = 5.2;
     const GH = 4.6;
     const GZ = 1.55 + LIFT;
     const PTOP = PZ + PH;   // 바깥 판 지붕
@@ -15436,42 +15448,30 @@ export default function ReplayMotionPlayer({
                 const doneEff3 = sec > 0 ? doneAt : 0;
                 const mine3 = (prodDoneAt.get(raw) ?? []).filter((r3) =>
                   r3.x >= bx - 1.5 && r3.x <= bx + fp3[0] + 1.5
-                  && r3.y >= by - 1.5 && r3.y <= by + fp3[1] + 2
-                  && r3.s - (UNIT_BUILD_SEC[r3.u] ?? 30) >= doneEff3 - 0.5);
-                const eggs3: { u: string; s: number }[] = [];
-                let larva3 = 1;
-                let last3 = sec;
-                for (const r3 of mine3) {
-                  const need3 = UNIT_BUILD_SEC[r3.u] ?? 30;
-                  const m3 = r3.s - need3;
-                  if (t >= m3 && t < r3.s) eggs3.push({ u: r3.u, s: r3.s });
-                  if (m3 > t) continue;
-                  larva3 = Math.min(LARVA_MAX,
-                    larva3 + Math.floor(Math.max(0, m3 - last3) / LARVA_SPAWN_SEC));
-                  last3 = m3;
-                  larva3 = Math.max(0, larva3 - 1);
-                }
-                larva3 = Math.min(LARVA_MAX,
-                  larva3 + Math.floor(Math.max(0, t - last3) / LARVA_SPAWN_SEC));
-                /* 알과 라바가 앉는 자리 — 해처리 발치를 두르는 여섯 칸. 알이 앞자리를
-                   먼저 차지하고 남은 자리에 라바가 눕는다(원작에서도 알이 해처리에 더
-                   바짝 붙어 있다). */
-                /* **알과 라바가 자리를 나눠 쓴다**(지적: "시작하자마자 해처리 주변의
-                   라바가 알로 변했다가 다시 라바로 변한다") — 여태는 여섯 칸을 한 줄로
-                   놓고 알부터 채웠다. 알 하나가 생기면 그 앞자리를 알이 가져가고 라바가
-                   뒤로 한 칸씩 밀리는데, 알이 부화하면 다시 앞으로 당겨진다. 같은 자리에서
-                   라바 → 알 → 라바로 바뀐 것처럼 보인 것이 그것이다. 알은 앞 세 칸,
-                   라바는 뒤 세 칸으로 못 박아 서로의 자리를 안 건드린다. 자리도 발자국
-                   쪽으로 당겼다(지적: 해처리에 안 붙어 있다). */
-                const EGG_SPOT3: [number, number][] = [[-1.7, 1.35], [0.1, 1.75], [1.8, 1.35]];
-                const LARVA_SPOT3: [number, number][] = [[-2.1, 0.1], [2.1, 0.1], [0.1, -1.5]];
-                let si3 = 0;
-                let sl3 = 0;
-                const put3 = (kind3: string, sz3: number): void => {
+                  && r3.y >= by - 1.5 && r3.y <= by + fp3[1] + 2);
+                /* 되짚기는 규칙 층이 한다(bwUnits.hatchState) — 렌더러는 그리기만.
+                   ▸ **알은 라바가 있던 자리에서 난다**(지적: "라바 자리가 아닌 다른
+                     곳에서 알로 변태") — 알 칸과 라바 칸을 따로 두었더니 변태가 자리를
+                     옮기는 것처럼 보였다. 이제 여섯 칸을 둘이 나눠 쓰고, 변태는 가장
+                     오래된 라바가 있던 칸을 알로 바꾼다.
+                   ▸ **시작 해처리는 라바 셋을 데리고 시작한다**(하나가 아니다) — 그래서
+                     0초부터 셋을 뽑을 수 있는 것이고, 여태 0초에 라바가 하나뿐이라
+                     초반 내내 라바 0이 이어졌다.
+                   ▸ **0초에 낼 수 있는 변태는 50 미네랄어치뿐이다**(요청: "게임 시작 시
+                     미네랄 50원") — 증거가 같은 시각을 여럿 가리켜도 그 돈으로 못 산
+                     알은 그때 없었다. 이것이 "시작부터 알 두 개"의 자다.
+                   ▸ 저글링·스커지는 알 하나에서 둘이 나온다 — 개체 기록 둘이 알 하나다. */
+                const spots3 = hatchState(mine3, doneEff3, sec <= 0, t,
+                  (u3) => UNIT_BUILD_SEC[u3] ?? 30);
+                /* 알과 라바가 앉는 여섯 칸 — 해처리 발치를 두른다. 칸 번호가 곧 자리라,
+                   라바가 알이 돼도 그 자리에 그대로 있는다. */
+                const SPOT6: [number, number][] = [
+                  [-1.7, 1.35], [0.1, 1.75], [1.8, 1.35],
+                  [-2.1, 0.1], [2.1, 0.1], [0.1, -1.5],
+                ];
+                const put3 = (kind3: string, sz3: number, ix3: number): void => {
                   const live3 = kind3 !== "egg";
-                  const ix3 = live3 ? sl3++ : si3++;
-                  const sp3 = live3
-                    ? LARVA_SPOT3[ix3 % LARVA_SPOT3.length] : EGG_SPOT3[ix3 % EGG_SPOT3.length];
+                  const sp3 = SPOT6[ix3 % SPOT6.length];
                   /* 라바는 가만히 안 있는다(지적: "좀 이리저리 꿈틀대고 방향 바꿔야") —
                      제자리에서 아주 조금 기어다니고 몸이 도는 정도다. 무작위가 아니라
                      시각과 자리 번호의 순수 함수라 되감아도 같은 자리에서 같이 꿈틀댄다
@@ -15500,8 +15500,9 @@ export default function ReplayMotionPlayer({
                   });
                 };
                 // 둘 다 한 단 작게(지적: 라바·알이 너무 크다) — 알 1.15 → 0.68, 라바 1 → 0.6.
-                for (let q3 = 0; q3 < Math.min(3, eggs3.length); q3 += 1) put3("egg", 0.68);
-                for (let q3 = 0; q3 < larva3; q3 += 1) put3("larva", 0.6);
+                for (const sp of spots3) {
+                  put3(sp.kind === "egg" ? "egg" : "larva", sp.kind === "egg" ? 0.68 : 0.6, sp.slot);
+                }
               }
               /* 애드온 연결 통로(지적: 본체와 잇는 방식 고민 — 원작 배치 참고) — 원작
                  에서 부속건물은 본체 오른쪽 아래에 붙는다: 애드온 왼쪽 모서리에서 본체
