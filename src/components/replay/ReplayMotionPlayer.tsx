@@ -4917,9 +4917,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
            앞으로 말린 검은 엄니 한 쌍.
        임자 색은 사진의 **흰 부분** = 마디 꼬리다(요청). 막·가지는 저그 기본색. */
     const R9 = Math.SQRT1_2;
-    /** 사진 좌표 → 모델 좌표(시계 45도 요잉의 역). */
-    const P = (px: number, py: number): [number, number] =>
-      [(px - py) * R9, (px + py) * R9];
+    /** 사진 좌표 → 모델 좌표(시계 45도 요잉의 역 + 지면 눌림 되돌리기).
+     *
+     *  ★ 눌림 보정이 빠져 있었다(지적: "히드라덴 왜케 눌려 나오지") — project는 화면
+     *  세로를 `깊이 × groundSquash`로 그린다(기본 0.45). 그런데 이 함수는 px·py를
+     *  둘 다 1:1로 모델에 넘겨, 사진에서 잰 앞뒤 거리가 화면에서는 **45%로 줄어든**
+     *  채 나왔다. 그래서 몸을 감아 도는 호도, 앞으로 흘러내리는 꼬리도 납작하게
+     *  눌렸다. py를 눌림으로 나눠 넘기면 화면에서 정확히 py만큼 내려온다:
+     *    깊이 = py/s → 화면 세로 = (py/s) × s = py.
+     *  이제 px·py가 둘 다 **화면 눈금**이라, 사진에서 자로 잰 값을 그대로 적을 수 있다. */
+    const SQ9 = groundSquashNow() || 0.45;
+    const P = (px: number, py: number): [number, number] => {
+      const d9 = py / SQ9;
+      return [(px - d9) * R9, (px + d9) * R9];
+    };
     const RED = "#a5342a";
     const BONE = "#c8ccd0";
     const HORN = "#241f1c";
@@ -10223,7 +10234,7 @@ export const BLD_NORM: Record<string, number> = {
   gspire: 0.917,
   hatchery: 1.367,
   hive: 1.165,
-  hydraden: 1.112,
+  hydraden: 0.798,
   lair: 1.223,
   mineral: 1.963,
   mshop: 1.958,
