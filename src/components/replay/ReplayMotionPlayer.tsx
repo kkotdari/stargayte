@@ -397,6 +397,11 @@ const IVORY_DEEP = "#cdc0a0";
 const GUNMETAL = "#4b5058";
 /* 탱크 캐터필러 금속색(요청: 짙은 회은색). */
 const TRACK_STEEL = "#5c636d";
+/** 성큰이 지금 촉수를 내밀고 있는가(요청: "성큰은 혓바닥 내민 상태 모델링 추가 —
+ *  가시가 나오는 타이밍에 이 모양이") — 굽는 동안만 켜지는 깃발이다. 성큰 빌더는 이
+ *  값 하나로 촉수 길이를 바꾸고, 아래 sunkenfire가 켠 채로 같은 빌더를 부른다.
+ *  currentYaw와 같은 결의 굽기 상태라, 굽기가 끝나면 반드시 도로 끈다. */
+let sunkenFire = false;
 /* 콜로니류 바닥판 색(지적: "콜로니류 바닥판은 검회색으로") — 성큰·스포어·크립 셋이
    같은 발치를 갖게 한 곳에서 정한다. 여태 스포어만 검회색 받침을 갖고 있었고 성큰·
    크립은 바닥판 자체가 없었다. 크립 얼룩(creepSplat)은 이것과 다른 것이다 — 얼룩은
@@ -2140,7 +2145,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 몸통을 1.5배로, 다리도 그만큼 길게(요청). 납작하기만 하면 이 건물이 접시
        하나로 보인다 — 몸이 서야 착륙판이 '지붕'으로 읽힌다. */
     const BODY_Z0 = 1.35;   // 몸통 밑 — 발 위로 떠 있다(다리 길이가 이 값이다).
-    const BODY_H = 2.25;
+    /* 몸통 높이 1.2배(요청) — 2.25 → 2.7. 착륙판(PAD_Z)과 그 위의 모든 것이 이 값을
+       따라 함께 올라간다. 앞 구조물 둘도 같은 배수로 키운다(아래 FRONT_H1·FRONT_H2). */
+    const BODY_H = 2.25 * 1.2;
+    const FRONT_H1 = 1.35 * 1.2;
+    const FRONT_H2 = 1.55 * 1.2;
     const PAD_Z = BODY_Z0 + BODY_H;   // 2.35 — 착륙판 테
 
     // 짧고 어두운 발 여섯 — 둘레에 박힌다. 스프라이트의 발은 기둥이 아니라 굽이다.
@@ -2162,10 +2171,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        붙는다(지적). 끝 구조물의 앞면에는 노란 창이 길게 난다. 격납고 아가리는 여기가
        아니라 45도 자리다(아래). */
     // ① 앞으로 뻗는 길다란 구조물 — 세로(앞뒤)로 길고 좁다.
-    out.push(...tagKey(paintBase(boxFaces3(0, 5.5, 2.0, 3.8, 1.35, BODY_Z0 - 0.05), "#767d86"),
+    out.push(...tagKey(paintBase(boxFaces3(0, 5.5, 2.0, 3.8, FRONT_H1, BODY_Z0 - 0.05), "#767d86"),
       46 + depthNow(0, 5.5) * 1.6));
     // ② 그 끝의 옆으로 긴 구조물 — 가로로 넓고 얕다.
-    out.push(...tagKey(paintBase(boxFaces3(0, 7.65, 5.8, 1.4, 1.55, BODY_Z0 - 0.12), GREY),
+    out.push(...tagKey(paintBase(boxFaces3(0, 7.65, 5.8, 1.4, FRONT_H2, BODY_Z0 - 0.12), GREY),
       47 + depthNow(0, 7.65) * 1.6));
     if (facingRatio(0, 1) > 0.1) {
       /* ③ 끝 구조물 앞면의 긴 노란 창 — 반투명 노란 불빛(요청). 어두운 안쪽 위에 노란
@@ -2268,7 +2277,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 앞 길다란 구조물 위에는 세로로 길게 개인색 데칼이 들어간다(지적) — 앞뒤로
        길쭉한 띠라, 정면에서 이 건물의 임자 색이 가장 먼저 읽힌다. */
     pc.push(...tagKey(
-      boxFaces3(0, 5.5, 0.95, 3.3, 0.2, BODY_Z0 + 1.3),
+      boxFaces3(0, 5.5, 0.95, 3.3, 0.2, BODY_Z0 - 0.05 + FRONT_H1),
       48 + depthNow(0, 5.5) * 1.6,
     ));
     /* 정면(0도) 슬래브는 왼쪽으로 옮겼다(지적: "원통 정면의 개인색 구조물은 오른쪽
@@ -3253,6 +3262,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       }),
       capFace(discPath3(0.35, 0.15, 3.7, 0.46), 0.5),
     ], 12));
+    /* 쏘는 순간의 혓바닥(요청: "현재 모델에 구릿빛 혓바닥만 추가") — 몸은 한 톨도
+       안 건드리고, 가운데 촉수의 아가리에서 구릿빛 가시가 앞위로 감겨 나온다.
+       가시가 나가는 타이밍에만 이 판을 쓰므로(SHAPE_BUILDERS.sunkenfire), 평소 모습과
+       실루엣이 어긋나 건물이 들썩이는 일이 없다. */
+    if (sunkenFire) {
+      out.push(...tagKey(paintBase(spirePillar({
+        x: 0.25, y: -0.15, z0: 3.4, h: 4.4, w: 0.6, tipW: 0.14,
+        segs: 9, sides: 8, hold: 0.04, taper: 1.25, leanY: 1.5, curveY: 1.8,
+      }), "#b5713a"), 13));
+    }
     // 등 검은 가시들 — 몸 옆선 위에 돋는다.
     for (const [ang, sz] of [
       // 더 크고 굵게(요청) — 길이 1.5배, 굵기 0.34 → 0.72.
@@ -4845,16 +4864,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const GS_T = 14;
     /** 윗건물을 세 배로 키운 뒤의 꼭대기 높이 — 아가리·깃 뿔이 이 값을 따라 올라간다. */
     const GS_TOP = GS_W + (GS_T - GS_W) * 3;
-    const gsLoR = (z9: number): number => 1.7 + 1.7 * (1 - z9 / GS_W) ** 1.6;
+    /* 기둥을 두껍게(요청: "그레이트 스파이어 기둥 두껍게") — 위아래 줄기의 지름을
+       한 단씩 올린다(밑동 3.4 → 4.2 · 허리 1.7 → 2.3 · 꼭대기 3.1 → 4.0). 높이는
+       그대로라 같은 키에 몸만 굵어진다. gsLoR는 아래 줄기의 옆선을 되짚는 자라
+       같은 값으로 함께 옮겨야 붉은 살 띠와 동굴 입구가 줄기에 붙어 있는다. */
+    const gsLoR = (z9: number): number => 2.3 + 1.9 * (1 - z9 / GS_W) ** 1.6;
     // 아래 줄기 — 넓은 밑동에서 허리로.
     out.push(...tagKey(paintBase(spirePillar({
-      x: 0, y: 0.4, z0: 0, h: GS_W, w: 3.4, tipW: 1.7,
+      x: 0, y: 0.4, z0: 0, h: GS_W, w: 4.2, tipW: 2.3,
       segs: 8, sides: 14, hold: 0, taper: 1.6,
     }), "#8a5f43"), 0));
     /* 위 줄기 = **윗건물**이다 — 높이를 세 배로 키우고(5 → 15) 옆면을 개인색으로 둔다
        (요청: "그레이터 스파이어도 마찬가지"). 아래 줄기는 저그 기본색 그대로다. */
     out.push(...tagKey(spirePillar({
-      x: 0, y: 0.4, z0: GS_W, h: (GS_T - GS_W) * 3, w: 1.7, tipW: 3.1,
+      x: 0, y: 0.4, z0: GS_W, h: (GS_T - GS_W) * 3, w: 2.3, tipW: 4,
       segs: 9, sides: 14, hold: 0,
     }), 1));
     // 앞 붉은 살 띠 — 아래 줄기 옆선을 그대로 타고 오른다.
@@ -6707,12 +6730,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        재게 되므로, 정규화(MODEL_NORM)가 저절로 고치를 그만큼 크게 키운다.
        덩어리도 상자 한가운데로 옮긴다 — 원반이 있던 시절의 y 치우침(-0.25/0.55)은
        그 원반까지 함께 재던 무게중심이었다. */
+    /* 축에 딱 맞춘다(지적: "공사 고치 오른쪽으로 치우침") — 겹돔이 y로 0.1·0.9만큼
+       앞에 나가 있었다. 고치는 건물 요잉(buildingYawOf)을 타므로 그 **앞쪽 치우침이
+       돌아가면서 옆쪽 치우침이 된다**: 45도면 0.9의 0.7배가 그대로 x로 간다. 게다가
+       정규화가 발 가운데를 축으로 2.835배를 걸어, 모델의 작은 어긋남이 화면에서는
+       세 배로 커진다. 두 돔과 두 이음 틈을 모두 x=0·y=0 축에 세운다. */
     ...paintBase([
-      ...domeFaces3(0, 0.1, 2.6, 3.2),
-      ...domeFaces3(0, 0.9, 1.9, 1.5),
+      ...domeFaces3(0, 0, 2.6, 3.2),
+      ...domeFaces3(0, 0, 1.9, 1.5),
     ], "#d9b8a2"),
-    capFace(polyPath3([[-1.9, 0.3, 2.1], [1.9, 0.3, 2.1], [1.7, 0.1, 2.5], [-1.7, 0.1, 2.5]]), 0.18),
-    capFace(polyPath3([[-1.5, 1.1, 1.2], [1.5, 1.1, 1.2], [1.35, 0.9, 1.6], [-1.35, 0.9, 1.6]]), 0.18),
+    capFace(polyPath3([[-1.9, 0.2, 2.1], [1.9, 0.2, 2.1], [1.7, 0, 2.5], [-1.7, 0, 2.5]]), 0.18),
+    capFace(polyPath3([[-1.5, 0.2, 1.2], [1.5, 0.2, 1.2], [1.35, 0, 1.6], [-1.35, 0, 1.6]]), 0.18),
     /* 힘줄은 껍질 표면을 따라(재지적: 떠 있고 안 보임 — 더 많이, 보라·갈색) — 로보틱스
        고치의 이음선처럼 돔 반지름 프로필을 타고 세로로 흘러, 요잉해도 표면에 붙어 있다. */
     ...((): ShapeFace[] => {
@@ -6725,7 +6753,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 구불구불 + 가지(재지적: 직선이라 어색) — 마디마다 각도를 해시로 비틀며 오르고,
          중간 마디에서 짧은 곁가지가 갈라진다. 전부 각도의 순수 함수라 결정적이다. */
       const ptAt = (aa: number, z: number, rf: number): [number, number] =>
-        project(Math.sin(aa) * 2.6 * rf, 0.1 + Math.cos(aa) * 2.6 * rf, z);
+        project(Math.sin(aa) * 2.6 * rf, Math.cos(aa) * 2.6 * rf, z);
       const seg = (
         p1: [number, number], p2: [number, number], w: number, col: string,
       ): ShapeFace => [bandPath(p1[0], p1[1], p2[0], p2[1], w), 0.8, col] as ShapeFace;
@@ -8291,6 +8319,15 @@ SHAPE_BUILDERS.carrierbay = () => {
 SHAPE_BUILDERS.creeppatch = () => creepBlobFaces(0.7);
 SHAPE_BUILDERS.creeppatch2 = () => creepBlobFaces(2.3);
 SHAPE_BUILDERS.creeppatch3 = () => creepBlobFaces(4.1);
+/* 성큰의 두 자세(요청) — 몸은 한 벌이고 촉수만 자란다. 굽기 깃발을 켠 채로 같은
+   빌더를 불러, 낫날·가시·둔덕을 두 번 적지 않는다. */
+{
+  const sunkenBase = SHAPE_BUILDERS.sunken;
+  SHAPE_BUILDERS.sunkenfire = () => {
+    sunkenFire = true;
+    try { return sunkenBase(); } finally { sunkenFire = false; }
+  };
+}
 /* ── 일꾼이 나르는 짐(요청: "각 일꾼들별로 미네랄 가스 들고 있는 모델링 필요 —
    유닛별로 모양이 다름") ─────────────────────────────────────────────────────────
    짐은 두 가지고, 드는 자리는 일꾼마다 다르다. 미네랄은 셋 다 같은 푸른 결정 덩이지만
@@ -8674,6 +8711,10 @@ const NORM_PAIR: Record<string, string> = {
 /** 모델 공간 배수의 유일한 입구 — 굽기·도록·총구 앵커가 전부 이것을 쓴다.
  *  짝은 본체 배수로 접힌다. */
 const modelNormOf = (kind: string): number => MODEL_NORM[NORM_PAIR[kind] ?? kind] ?? 1;
+/** 건물 배수의 유일한 입구 — 별본(자세만 다른 판)은 본판 배수를 그대로 물려받는다.
+ *  성큰의 혓바닥 판이 제 배수를 따로 가지면, 쏘는 순간 건물이 통째로 커졌다 작아진다. */
+const BLD_NORM_PAIR: Record<string, string> = { sunkenfire: "sunken" };
+const bldNormOf = (kind: string): number => BLD_NORM[BLD_NORM_PAIR[kind] ?? kind] ?? 1;
 /** ①-a-총구 마커 이름 → 총구 앵커가 실제로 붙어 있는 판.
  *  MUZZLE_ANCHOR의 tank·tanksiege 좌표는 **포신 빌더**에서 따온 것인데, 마커 이름은
  *  합본(tank·tanksiege)이라 그대로 배수를 찾으면 엉뚱한 판의 값이 나온다
@@ -9021,6 +9062,7 @@ export const SHAPE_GALLERY: { kind: string; label: string; group: "유닛" | "�
   { kind: "hive", label: "하이브", group: "건물" },
   { kind: "creep", label: "크립 콜로니", group: "건물" },
   { kind: "sunken", label: "성큰", group: "건물" },
+  { kind: "sunkenfire", label: "성큰(발사)", group: "건물" },
   { kind: "spore", label: "스포어", group: "건물" },
   { kind: "extract", label: "익스트랙터", group: "건물" },
   { kind: "pool", label: "스포닝풀", group: "건물" },
@@ -9571,7 +9613,7 @@ export const BLD_NORM: Record<string, number> = {
   assim: 2.069,
   cavern: 1.082,
   citadel: 1.749,
-  cocoon: 2.835,
+  cocoon: 2.856,
   coil: 1.058,
   comsat: 1.968,
   covert: 2.065,
@@ -9601,7 +9643,7 @@ export const BLD_NORM: Record<string, number> = {
   nydus: 1.184,
   observatory: 1.959,
   physlab: 2.008,
-  plane: 1.213,
+  plane: 1.209,
   pool: 1.525,
   pyramidWide: 1.058,
   queensnest: 1.184,
@@ -9982,7 +10024,7 @@ function buildingSprite(
   c2.translate(-8, -16);
   /* 정규화(과제 #67) — 발 가운데(8,16)를 축으로 모델을 키우거나 줄인다. 축이 발이라
      밑동이 발자국 바닥에 그대로 앉고, 모델이 커져도 자리가 안 흔들린다. */
-  const bn = BLD_NORM[op.kind];
+  const bn = bldNormOf(op.kind);
   if (bn !== undefined && bn !== 1) {
     c2.translate(8, 16);
     c2.scale(bn, bn);
@@ -10714,8 +10756,8 @@ export function ShapeIcon({
       <g transform={fitBox ? (rot ? `rotate(${rot} 8 8)` : undefined) : ([
         rot ? `rotate(${rot} 8 8)` : "",
         modelNormOf(kind) !== 1 ? `translate(8 8) scale(${modelNormOf(kind)}) translate(-8 -8)` : "",
-        modelNormOf(kind) === 1 && (BLD_NORM[kind] ?? 1) !== 1
-          ? `translate(8 16) scale(${BLD_NORM[kind]}) translate(-8 -16)` : "",
+        modelNormOf(kind) === 1 && bldNormOf(kind) !== 1
+          ? `translate(8 16) scale(${bldNormOf(kind)}) translate(-8 -16)` : "",
       ].filter(Boolean).join(" ") || undefined)}>
         {faces
           ? faces.map(([d, op, fill], i) => <path key={i} d={d} fill={fill ?? "currentColor"} opacity={op} />)
@@ -14071,9 +14113,19 @@ export default function ReplayMotionPlayer({
                 )}
               </span>
             ) : null;
+            /* 성큰은 쏘는 동안 혓바닥을 내민 판으로 바꾼다(요청: "가시가 나오는 타이밍에
+               이 모양이") — 아래 방어 사격이 트레이서를 그리는 조건과 **같은 자**를 쓴다:
+               사거리 안에 지상 표적이 있고, 다 지어졌고, 아직 안 걷혔을 때. 조건을 따로
+               두면 혓바닥과 가시가 서로 다른 순간에 나가 둘 다 거짓말이 된다. */
+            const sunkenOut = unit === "Sunken Colony" && qCombat && !raising
+              && (goneEff === 0 || t < goneEff)
+              && (() => {
+                const f9 = nearestFoe(teamOfRaw(raw), centerX, centerY, "ground");
+                return f9.bd <= fireRangeTilesOf(unit, false);
+              })();
             if (shapeKind) {
               unitOps.push({
-                fx: fxF, fy: fyF, z, kind: shapeKind,
+                fx: fxF, fy: fyF, z, kind: sunkenOut ? "sunkenfire" : shapeKind,
                 /* 원작처럼 45도 요잉(지적) — 2D에도 적용(재지적: 2D도 45도 요잉해야지).
                    쐐기의 진범은 요잉이 아니라 hover 그림자의 beginPath 누락이었다. */
                 rotDeg: buildingYawOf(shapeKind),
