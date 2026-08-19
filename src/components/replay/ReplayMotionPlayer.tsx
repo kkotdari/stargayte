@@ -8030,6 +8030,11 @@ const MORPH_SHELL: Record<string, string> = {
 };
 /** 변태에 걸리는 시간(초) — 원작 값 어림(럴커·가디언·디바우러 모두 40초대). */
 const MORPH_SHELL_SEC = 40;
+/** 사주경계를 하는 정체([어림] — 위 bodyHdg 주석) — 커뮤니티 문서가 확인해 주는 보병만.
+ *  차량·기계·일꾼·공중은 원작에서도 제자리에서 두리번거리지 않는다. */
+const IDLE_SCAN = new Set(["Marine", "Firebat", "Ghost", "Medic", "Zergling", "Hydralisk", "Zealot"]);
+/** 두리번 주기(초) — [어림]. iscript의 wait 값을 못 읽어 눈대중으로 잡은 박자다. */
+const IDLE_SCAN_SEC = 3.2;
 /* (걷어냄) MELEE_JAB_SEC — 근접 유닛이 앞으로 파고들었다 빠지는 '잽' 동작의 길이표.
    그 동작을 만들던 렌더러 교전 당김이 사라지면서(코어가 제 이동 모형으로 붙는다)
    표만 남아 있었다. */
@@ -14139,6 +14144,8 @@ export default function ReplayMotionPlayer({
              안 그리는 판정. 코어 결과가 아직 없으면(계산 중·실패) 렌더러 길 그대로다.
              아래 스무딩도 코어면 건너뛴다 — 이미 제 속도로 적분된 자리다. */
           let simHdg: number | null = null;
+          /** 코어가 말하는 지금 상태 — 사주경계는 '정말 서 있을 때'만이라 이 값이 필요하다. */
+          let simState: number | null = null;
           const simTr = simTracks?.get(e.tag);
           if (simTr) {
             const sp = posAtSim(simTr, t);
@@ -14146,6 +14153,7 @@ export default function ReplayMotionPlayer({
               if (sp.state === ST_INSIDE) return null;
               pos = { ...pos, x: sp.x, y: sp.y };
               simHdg = sp.hdg;
+              simState = sp.state;
             }
           }
           /* 얼어붙은 것은 코어보다 위다(전수조사: 스태시스·마엘스톰·락다운) — 코어는
@@ -14270,10 +14278,31 @@ export default function ReplayMotionPlayer({
           /* 싸울 때도 '움직이면 이동 방향'이 먼저다(요청) — 표적 고정 요잉은 잽으로
              파고들거나 진형이 밀릴 때 몸이 옆·뒤로 미끄러지게 만들었다. 제자리에 선
              순간에만 표적을 본다. */
-          const bodyHdg = simHdg !== null ? simHdg : headingOfDisplay(
+          const bodyHdg0 = simHdg !== null ? simHdg : headingOfDisplay(
             holdKey, pos.x, pos.y, headingOf(rp, rawPos),
             fighting && foeDeg !== null ? foeDeg : null,
           );
+          /* 사주경계(요청: "제자리 서있는 유닛들이 주기적으로 사주경계를 함 … 하는 유닛이
+             있고 안 하는 유닛이 있고 패턴도 다르다") — 원전의 정체는 iscript 옵코드
+             turnrand다([OBW] bwgame.h:14921): 몸을 8_dir×a(11.25도의 배수)만큼 돌리되
+             네 번에 한 번만 반시계, 나머지는 시계다(시계 쪽으로 치우친 무작위).
+             ⚠ **누가 어떤 박자로 도는가는 iscript.bin에 있고 우리 자료에는 없다** —
+               BWAPI·units.dat·flingy.dat 어느 덤프에도 스크립트는 안 들어 있다(게임 MPQ를
+               IceCC로 풀어야 나온다). 그래서 여기 [어림]은 둘이다:
+                 ① 도는 유닛 — 커뮤니티 문서가 확인해 주는 보병(마린이 총을 들었다 내리며
+                    두리번거린다)만 켠다. 차량·기계·일꾼·공중은 안 켠다.
+                 ② 박자 — 3.2초마다 한 번, 태그로 위상을 흩어 부대가 한꺼번에 안 돈다.
+               도는 **양과 방향**만은 원전 그대로다(11.25도 배수·시계 3:1).
+             iscript 덤프를 구하면 이 블록의 표만 갈면 정확해진다. */
+          const bodyHdg = (() => {
+            if (!IDLE_SCAN.has(drawUnit2) || fighting || burrowed) return bodyHdg0;
+            if (simState !== null && simState !== 0) return bodyHdg0;   // 0 = ST_IDLE
+            const step = Math.floor(t / IDLE_SCAN_SEC + (e.tag % 7) / 7);
+            const r = (step * 2654435761 + e.tag * 40503) >>> 0;   // 결정론 난수(같은 입력=같은 그림)
+            const amt = 1 + (r % 2);                                // 11.25 또는 22.5도
+            const ccw = (r >>> 8) % 4 === 1;                        // 네 번에 한 번만 반시계
+            return bodyHdg0 + (ccw ? -1 : 1) * amt * 11.25;
+          })();
           /* 지금 체력(요청: 체력을 지니고 다닌다) — 변곡점 목록에서 t 시점 값.
              내려간 변곡점의 시각은 곧 '이 개체가 실제로 맞은 순간'이라, 피격 불티를
              그 자리·그 때에 띄우는 자로 함께 쓴다(요청: 피격 표현 재검토). */
