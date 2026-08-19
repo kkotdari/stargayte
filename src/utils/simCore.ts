@@ -16,7 +16,9 @@
 import { groundPath, groundPathSoft, type TerrainGrid } from "./minimapTerrain";
 import {
   BUILDING_FOOT, BURROW_MIN_FRAMES, BURROW_UNITS, DEFAULT_FOOT, DEFAULT_TURN_RATE,
-  FRAME_SEC, GEYSER_FOOT, LURKER_REHIT_FRAMES, MINERAL_FOOT, TURN_RATE, UNBURROW_MIN_FRAMES,
+  FRAME_SEC, GEYSER_FOOT, LURKER_REHIT_FRAMES, MINE_ATTACH_FRAMES, MINE_DETACH_FRAMES,
+  MINE_GAS_FRAMES, MINE_MINERAL_FRAMES, MINE_RETURN_FRAMES, MINERAL_FOOT, TURN_RATE,
+  UNBURROW_MIN_FRAMES,
   isAir, moveDynOf, speedOfUnit,
 } from "./bwUnits";
 /* 전투 값은 표(bwUnits)를 직접 읽지 않고 어댑터(bwCombat)를 거친다 — 표가 통째로 갈리는
@@ -326,7 +328,21 @@ type Body = {
   dieBy: number | null;
   /* ── 채취(P3) ── 명령이 없는 일꾼은 제 밭과 홀 사이를 오간다. 리플레이에 안 남는
      자동 순환이라 시뮬이 모델해야 한다 — 렌더의 왕복 어림을 여기로 옮긴 것이다. */
-  job: { px: number; py: number; hx: number; hy: number; toHall: boolean; wait: number } | null;
+  job: {
+    /** 자원 식별 — 미네랄은 자원표 인덱스, 가스는 정제소 태그의 음수. 밭 임자 잠금의 열쇠다. */
+    res: number;
+    gas: boolean;
+    /** 캐는 자리 — 자원 발자국 테두리 앞(가스는 정제소 문 앞). */
+    px: number; py: number;
+    /** 가스 정제소 한가운데 — 캐는 동안 몸이 들어가 있는(안 보이는) 자리. */
+    cx: number; cy: number;
+    /** 반납 자리 — 홀 발자국 테두리 앞. */
+    hx: number; hy: number;
+    /** 0 밭으로 · 1 붙는 중 · 2 캐는 중 · 3 떨어지는 중 · 4 홀로 · 5 반납 중. */
+    phase: number;
+    /** 남은 정지 시간(초) — 위 딜레이·채취 시간이 여기로 들어온다. */
+    wait: number;
+  } | null;
 };
 
 /** 일꾼 — 스스로 표적을 잡지 않고, 할 일이 없으면 캔다. */
@@ -622,16 +638,37 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   /* 발자국 테두리의 가장 가까운 점(요청: 미네랄 안쪽이 아니라 바깥에서 캐고, 반납도
      기지의 가장 가까운 외곽점에) — 가운데를 목표로 두면 몸이 자원·건물 속으로 들어간다.
      상대 쪽 방향으로 테두리까지 나간 뒤 pad만큼 더 밀어 몸이 밖에 서게 한다. */
-  const edgePoint = (
-    cx: number, cy: number, hw: number, hh: number,
-    tx: number, ty: number, pad: number,
-  ): [number, number] => {
-    const dx = tx - cx;
-    const dy = ty - cy;
+  /** 축 정렬 두 사각형 사이 **최단 선분**의 양 끝점(요청: "건물 테두리와 미네랄
+   *  테두리에서 최단거리만 골라서 왔다갔다") — 위 edgePoint는 중심끼리 이은 직선이
+   *  닿는 테두리 점이라, 홀처럼 옆으로 긴 4×3에서는 실제로 가장 가까운 자리보다 한참
+   *  옆에 섰다(그래서 일꾼이 건물 한복판까지 파고드는 것처럼 보였다).
+   *  축마다 따로 본다 — 두 구간이 겹치는 축은 수직으로 마주 보고(겹침 한가운데),
+   *  안 겹치는 축은 마주 보는 변끼리다. 이것이 두 사각형의 최단 선분이다.
+   *  pad는 몸이 발자국 밖에 서도록 안쪽으로 물리는 몫(일꾼 반지름). */
+  const nearPair = (
+    ax: number, ay: number, ahw: number, ahh: number,
+    bx: number, by: number, bhw: number, bhh: number, pad: number,
+  ): [number, number, number, number] => {
+    const axis = (ac: number, ah: number, bc: number, bh: number): [number, number] => {
+      const a1 = ac - ah;
+      const a2 = ac + ah;
+      const b1 = bc - bh;
+      const b2 = bc + bh;
+      if (a2 < b1) return [a2, b1];
+      if (b2 < a1) return [a1, b2];
+      const m = (Math.max(a1, b1) + Math.min(a2, b2)) / 2;
+      return [m, m];
+    };
+    const [px, py] = axis(ax, ahw, bx, bhw);
+    const [ay2, by2] = axis(ay, ahh, by, bhh);
+    const dx = py - px;
+    const dy = by2 - ay2;
     const len = Math.sqrt(dx * dx + dy * dy);
-    if (len < 1e-4) return [cx + hw + pad, cy];
-    const k = 1 / Math.max(Math.abs(dx) / hw, Math.abs(dy) / hh);
-    return [cx + (dx * k) + (dx / len) * pad, cy + (dy * k) + (dy / len) * pad];
+    if (len < 1e-4) return [px, ay2, py, by2];
+    // 두 발자국이 붙어 있으면 물리는 몫이 서로를 지나치지 않게 반씩만.
+    const pd = Math.min(pad, len / 2);
+    return [px + (dx / len) * pd, ay2 + (dy / len) * pd,
+      py - (dx / len) * pd, by2 - (dy / len) * pd];
   };
 
   /** 지도가 말하는 진짜 벽인가 — 건물·자원 발자국은 안 본다. */
@@ -897,6 +934,11 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   /* 홀·가스는 몇 채뿐이라 미리 갈라 둔다 — 일꾼마다 전체 개체를 훑을 이유가 없다. */
   const hallList = bodies.filter((h) => h.bld && HALLS.has(h.kind));
   const gasList = bodies.filter((g) => g.bld && GAS_BLD.has(g.kind));
+  /* 밭 임자 잠금(요청: "가스 미네랄 누가 캐고 있으면 못붙음 기다려야함") — 자원마다
+     지금 붙어 있는 일꾼 하나. 만료(until)를 함께 들고 있어, 임자가 죽거나 명령을 받아
+     떠나도 저절로 풀린다(붙어 있는 동안 매 틱 갱신된다). 원작의 밭 앞 줄서기이자,
+     '밭당 3기까지가 쓸모 있다'는 포화의 뿌리다. */
+  const claim = new Map<number, { tag: number; until: number }>();
   const assignJob = (b: Body, t: number): Body["job"] => {
     if (RES.length === 0) return null;
     let hx = 0;
@@ -911,25 +953,45 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
     }
     if (hd >= 12) return null;
     const hf = BUILDING_FOOT[hallKind] ?? DEFAULT_FOOT;
+    const rad = Math.max(0.3, b.rad);
+    /* 줄(lane) — 한 밭에 여럿이 배정돼도 기다리는 자리가 정확히 포개지지 않게, 왕복
+       길을 개체마다 옆으로 조금 비켜 놓는다. 태그로 갈라 결정적이다. */
+    const lane = ((Math.abs(b.tag) % 3) - 1) * 0.42;
+    const laid = (
+      res: number, gas: boolean, cx: number, cy: number,
+      q: [number, number, number, number],
+    ): Body["job"] => {
+      const dx = q[0] - q[2];
+      const dy = q[1] - q[3];
+      const L = Math.sqrt(dx * dx + dy * dy) || 1;
+      const ox = (-dy / L) * lane;
+      const oy = (dx / L) * lane;
+      return {
+        res, gas, cx, cy,
+        px: q[0] + ox, py: q[1] + oy, hx: q[2] + ox, hy: q[3] + oy,
+        phase: 0, wait: 0,
+      };
+    };
     // 가스 — 곁에 제 정제소가 서 있으면 그 자리가 밭이다.
     for (const g of gasList) {
       if (g.owner !== b.owner || g.state === ST_GONE) continue;
       if (t < g.born || (g.died !== null && t >= g.died)) continue;
       if (dist(b.x, b.y, g.x, g.y) <= 3.5) {
         const gf = BUILDING_FOOT[g.kind] ?? DEFAULT_FOOT;
-        const gp = edgePoint(g.x, g.y, gf[0] / 2, gf[1] / 2, hx, hy, 0.35);
-        const hp2 = edgePoint(hx, hy, hf[0] / 2, hf[1] / 2, g.x, g.y, 0.35);
-        return { px: gp[0], py: gp[1], hx: hp2[0], hy: hp2[1], toHall: false, wait: 0 };
+        return laid(-g.tag, true, g.x, g.y,
+          nearPair(g.x, g.y, gf[0] / 2, gf[1] / 2, hx, hy, hf[0] / 2, hf[1] / 2, rad));
       }
     }
-    const near = RES.filter((r) => r[2] !== 1 && dist(hx, hy, r[0], r[1]) <= 9);
+    const near: number[] = [];
+    RES.forEach((r, i) => { if (r[2] !== 1 && dist(hx, hy, r[0], r[1]) <= 9) near.push(i); });
     if (near.length === 0) return null;
-    const pick = near[Math.abs(b.tag) % near.length];
-    /* 밭은 바깥 테두리에서 캔다(요청) — 홀을 바라보는 쪽 모서리다. 반납도 홀 발자국의
-       그 밭에 가장 가까운 외곽점이다. 둘 다 몸이 그림 밖에 서는 자리다. */
-    const mp = edgePoint(pick[0], pick[1], MINERAL_FOOT[0] / 2, MINERAL_FOOT[1] / 2, hx, hy, 0.35);
-    const hp = edgePoint(hx, hy, hf[0] / 2, hf[1] / 2, pick[0], pick[1], 0.35);
-    return { px: mp[0], py: mp[1], hx: hp[0], hy: hp[1], toHall: false, wait: 0 };
+    const ri = near[Math.abs(b.tag) % near.length];
+    const pick = RES[ri];
+    /* 밭과 홀 **발자국 사이 최단 선분**의 두 끝이 왕복의 양 끝이다(요청) — 밭 테두리
+       앞에서 캐고, 홀 테두리 앞에서 반납한다. 어느 쪽 한가운데로도 안 들어간다. */
+    return laid(ri, false, pick[0], pick[1],
+      nearPair(pick[0], pick[1], MINERAL_FOOT[0] / 2, MINERAL_FOOT[1] / 2,
+        hx, hy, hf[0] / 2, hf[1] / 2, rad));
   };
 
   /* 피해 셈은 여기서 다시 하지 않는다 — 표의 dealOneHit이 bwgame.h weapon_deal_damage를
@@ -1360,6 +1422,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         if (b.burrowed) { b.burrowed = false; b.burrowLock = BURROW_OUT_SEC; }
         b.burrowIn = -1;
         setDest(b, o.x, o.y);
+        if (b.job) claim.delete(b.job.res);
         b.job = null;
         b.aggro = o.kind === "attack";
         b.state = ST_MOVE;
@@ -1486,6 +1549,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
           const add = Math.sqrt(adx * adx + ady * ady);
           if (add > ANCHOR_SNAP && nx.t - t <= add / b.speed) {
             setDest(b, nx.x, nx.y);
+            if (b.job) claim.delete(b.job.res);
             b.job = null;
             b.aggro = false;
             b.state = ST_MOVE;
@@ -1549,24 +1613,40 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         if (b.job) {
           b.state = ST_GATHER;
           const j = b.job;
-          if (j.wait > 0) {
-            j.wait -= dt;
-          } else {
-            const tx2 = j.toHall ? j.hx : j.px;
-            const ty2 = j.toHall ? j.hy : j.py;
+          /* 한 번 왕복의 차례(요청: 캐는 시간이 시작·종료 딜레이까지 정확해야) —
+             ⓪ 밭으로 → ① 붙고 → ② 캐고 → ③ 떨어지고 → ④ 홀로 → ⑤ 반납.
+             시간은 전부 bwUnits의 채취 상수 블록에서만 읽는다. */
+          if (j.phase === 0 || j.phase === 4) {
+            const toHall = j.phase === 4;
+            const tx2 = toHall ? j.hx : j.px;
+            const ty2 = toHall ? j.hy : j.py;
             const dx2 = tx2 - b.x;
             const dy2 = ty2 - b.y;
-            const d2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
-            /* 밭도 홀도 이제 '막힌 칸'이다(요청: 자원·건물 통과 불가) — 그 한가운데를
-               목표로 두면 영영 못 닿아 일꾼이 벽에 부딪혀 떨기만 한다. 발자국 가장자리에
-               닿으면 도착으로 친다: 가까이 왔거나(1.2타일), 다음 한 발이 막혔거나. */
+            const d2 = Math.sqrt(dx2 * dx2 + dy2 * dy2) || 1e-6;
+            /* 밭도 홀도 '막힌 칸'이다(요청: 자원·건물 통과 불가) — 그 한가운데를 목표로
+               두면 영영 못 닿는다. 이제 목표 자체가 두 발자국 사이 최단 선분의 끝이라
+               건물 밖이지만, 남이 막고 섰을 때를 위해 막힘 도착은 그대로 둔다. */
             const go = Math.min(b.speed * dt, d2);
             const nx2 = b.x + (dx2 / d2) * go;
             const ny2 = b.y + (dy2 / d2) * go;
             if (d2 <= 0.4 || blockedAt(nx2, ny2)) {
-              // 밭에서는 캐고(2.8초), 홀에서는 반납만 하고(0.3초) 곧장 돌아선다.
-              j.wait = j.toHall ? 0.3 : 2.8;
-              j.toHall = !j.toHall;
+              if (toHall) {
+                j.phase = 5;
+                j.wait = MINE_RETURN_FRAMES * FRAME_SEC;
+              } else {
+                /* 밭에 다다랐다 — **빈 자리일 때만** 붙는다(요청: 누가 캐고 있으면 못
+                   붙고 기다린다). 임자면 이 자리에 선 채로 차례를 기다린다. */
+                const held = claim.get(j.res);
+                if (held === undefined || held.until <= t || held.tag === b.tag) {
+                  j.phase = 1;
+                  j.wait = MINE_ATTACH_FRAMES * FRAME_SEC;
+                  /* 붙는 **그 순간** 잠근다 — 같은 틱에 둘이 도착해도 몸 훑기는 차례
+                     대로라, 먼저 온 쪽이 여기서 잠그면 뒤엣것은 위 검사에서 걸린다.
+                     아래에서 매 틱 갱신하지만 첫 잠금이 여기 없으면 한 틱 동안 둘 다
+                     붙어 버린다. */
+                  claim.set(j.res, { tag: b.tag, until: t + j.wait + 0.5 });
+                }
+              }
             } else {
               b.x = nx2;
               b.y = ny2;
@@ -1574,6 +1654,36 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
               const diff2 = angDiff(b.hdg, want2);
               const mt2 = b.turn * dt;
               b.hdg = norm360(b.hdg + Math.max(-mt2, Math.min(mt2, diff2)));
+            }
+          } else {
+            j.wait -= dt;
+            /* 붙어 있는 세 동안(①②③)은 그 자원이 내 것이다 — 만료를 늘 '지금부터
+               남은 시간'으로 새로 써, 도중에 죽거나 명령을 받아 떠나면 저절로 풀린다. */
+            if (j.phase <= 3) claim.set(j.res, { tag: b.tag, until: t + Math.max(0, j.wait) + 0.5 });
+            /* 가스는 정제소 **안에서** 캔다(요청: 가스 일꾼은 들어가서 안 보였다가
+               나와야) — 뽑는 동안만 안이고, 붙고 떨어지는 딜레이에는 문 앞에 서 있다.
+               ST_INSIDE는 렌더가 안 그리는 상태다(수송선 안과 같은 뜻). */
+            if (j.gas && j.phase === 2) {
+              b.x = j.cx;
+              b.y = j.cy;
+              b.state = ST_INSIDE;
+            }
+            if (j.wait <= 0) {
+              if (j.phase === 1) {
+                j.phase = 2;
+                j.wait = (j.gas ? MINE_GAS_FRAMES : MINE_MINERAL_FRAMES) * FRAME_SEC;
+              } else if (j.phase === 2) {
+                j.phase = 3;
+                j.wait = MINE_DETACH_FRAMES * FRAME_SEC;
+                // 가스는 문 앞으로 도로 나온다 — 여기서부터 다시 보인다.
+                if (j.gas) { b.x = j.px; b.y = j.py; b.state = ST_GATHER; }
+              } else if (j.phase === 3) {
+                // 다 캤다 — 밭을 놓아 주고(기다리던 일꾼이 붙는다) 홀로 향한다.
+                j.phase = 4;
+                claim.delete(j.res);
+              } else {
+                j.phase = 0;
+              }
             }
           }
           live.push(b);

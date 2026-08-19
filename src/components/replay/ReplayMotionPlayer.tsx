@@ -15531,13 +15531,13 @@ export default function ReplayMotionPlayer({
           크기 그대로다(지적: 키웠더니 깨졌다 — scr-motion-colorrow 주석 참고).
           진행바는 이 줄 다음에 온다(지적: 진행바는 이 버튼 아래로). */}
       <div className="scr-motion-colorrow">
-        <span className="scr-motion-colorrow-label">색상</span>
+        {/* 라벨은 걷었다(요청) — 개인색/팀색이라 적혀 있어 '색상'은 같은 말의 되풀이다.
+            알약도 보기·모델 크기와 완전히 같은 크기다(요청: 다른 토글들과 동일하게). */}
         <PillTabs
           options={[{ value: "personal", label: "개인색" }, { value: "team", label: "팀색" }]}
           value={colorMode}
           onChange={(v) => setColorMode(v)}
           aria-label="색상"
-          fit
           toggle
         />
       </div>
