@@ -863,11 +863,15 @@ function lensFaces(o: {
     [disc(0.2, bul, o.r * 0.34), 0.6, glint] as ShapeFace,
   ], depthNow(o.x, o.y) + (o.lift ?? 3));
 }
-/* 테란 보병 얼굴가리개는 반투명 유리다(요청: "글래스는 반투명(투명에 가깝게)으로
-   처리") — 반구 판의 불투명도만 낮춘다. 그리는 쪽이 색 있는 면에 1.45배를 걸므로
-   (shadeBoost) 0.3은 화면에서 0.44쯤이 된다. */
+/* 테란 보병 얼굴가리개는 어두운 반사 유리다(사진 기준·요청: "잘 이해 못하니 사진을
+   줘볼게" — 우주복 헬멧 실물) — 사진의 바이저는 **거의 검은 거울**이고, 흰 껍데기가
+   그 위·옆을 두꺼운 테로 감싼다. 앞선 "반투명(투명에 가깝게)" 요청을 곧이곧대로 0.3까지
+   내렸더니 가리개가 몸빛에 묻혀 머리가 통짜 공 하나로 읽혔다 — 그것이 사진을 받은
+   까닭이다. 유리다운 정도(0.55 → 화면에서 0.8)만 남기고, 색은 밝은 하늘빛 대신 어두운
+   유리로 못 박는다. 반구가 얹어 주는 정수리 광택이 그 위에서 반사로 읽힌다. */
+const GLASS_DARK = "#2c3644";
 const glassy = (f: ShapeFace[]): ShapeFace[] =>
-  f.map(([d, o, fill, k]) => [d, o * 0.3, fill, k] as ShapeFace);
+  f.map(([d, o, fill, k]) => [d, o * 0.55, fill, k] as ShapeFace);
 /* 저그 지상 유닛의 눈 한 쌍(요청: "얼굴에 형광노란 동그란 얇은 렌즈형 눈 두개씩,
    너무 크지 않게") — 공용 렌즈 도형을 작게·얇게(bulge 0.12) 쓴 것이다. 자리는 얼굴
    한가운데(y·z)와 좌우로 벌린 몫(sp)으로 주고, 법선은 앞(+y)에서 바깥으로 살짝 벌어진
@@ -7277,9 +7281,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const at9 = (i: number): [number, number, number] => {
       const u = i / (N - 1);
       return [
-        -3.7 + u * 7.4,
-        0.7 + u * 0.45 + Math.sin(u * Math.PI) * 0.22,
-        0.3 + Math.sin(u * Math.PI) * 0.46 + u * 0.12,
+        // 짧고 통통하게(지적) — 길이 7.4 → 4.8, 가운데 반지름 0.76 → 1.02.
+        -2.4 + u * 4.8,
+        0.75 + u * 0.4 + Math.sin(u * Math.PI) * 0.2,
+        0.42 + Math.sin(u * Math.PI) * 0.6 + u * 0.14,
       ];
     };
     /** 고른 마디들의 원을 한 경로로 — dx·dy는 반지름 몫만큼 민다(광택용). */
@@ -7830,7 +7835,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          ★ 크기는 2/3다(요청: "헬멧(글래스포함) 크기 2/3로 줄이기") — 0.98 → 0.65.
          고스트는 머리가 작아 같은 결로 0.68 → 0.45(가리개 0.4). */
       ...tagKey(halfSphereFaces3(0, -0.14, 4.26, 0.65, "#c9ced6"), depthNow(0, -0.14) + 1.6),
-      ...tagKey(glassy(halfSphereFaces3(0, 0.14, 4.22, 0.57, "#bfe0ef")), depthNow(0, 0.14) + 1.6),   // 마린 — 은색 껍데기 · 하늘빛 얼굴가리개
+      ...tagKey(glassy(halfSphereFaces3(0, 0.14, 4.22, 0.57, GLASS_DARK)), depthNow(0, 0.14) + 1.6),   // 마린 — 은색 껍데기 · 어두운 유리 바이저
       /* 두 팔(재지적: 위치·굽힘) — 위팔은 어깨뽕 '아래'(z 3.7)에서 나와 앞-아래로
          내려가고, 팔꿈치에서 굽어 아래팔이 총몸으로 올라가 쥔다. 왼손은 앞손잡이,
          오른손은 방아쇠 쪽. */
@@ -7864,7 +7869,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...cylinderFaces3(0, -0.1, 0.6, 2, 2.3),
       // 작은 헬멧 — 마린과 같은 규칙(겉껍데기 + 앞에 박은 얼굴가리개), 반지름만 작다.
       ...tagKey(halfSphereFaces3(0, -0.1, 4.3, 0.45, "#eef1f3"), depthNow(0, -0.1) + 1.6),
-      ...tagKey(glassy(halfSphereFaces3(0, 0.1, 4.27, 0.4, "#bfe0ef")), depthNow(0, 0.1) + 1.6),   // 고스트 — 흰 껍데기
+      ...tagKey(glassy(halfSphereFaces3(0, 0.1, 4.27, 0.4, GLASS_DARK)), depthNow(0, 0.1) + 1.6),   // 고스트 — 흰 껍데기 · 어두운 유리 바이저
       /* 팔은 **어깨 자리에서** 나오고 더 길다(요청: "팔자체를 어깨위치로 올리고 길이
          늘리기") — 어깨 라운드를 걷으면서 팔 뿌리를 몸통 꼭대기(z 4.3) 바로 아래인
          4.15로 올리고, 아래팔이 앞으로 0.25 더 뻗는다. 가늘고 긴 팔이 고스트의 실루엣이다. */
@@ -7968,7 +7973,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          ★ 크기는 2/3다(요청: "헬멧(글래스포함) 크기 2/3로 줄이기") — 0.98 → 0.65.
          고스트는 머리가 작아 같은 결로 0.68 → 0.45(가리개 0.4). */
       ...tagKey(halfSphereFaces3(0, -0.14, 4.26, 0.65, "#a5342a"), depthNow(0, -0.14) + 1.6),
-      ...tagKey(glassy(halfSphereFaces3(0, 0.14, 4.22, 0.57, "#bfe0ef")), depthNow(0, 0.14) + 1.6),   // 파이어뱃 — 붉은 껍데기
+      ...tagKey(glassy(halfSphereFaces3(0, 0.14, 4.22, 0.57, GLASS_DARK)), depthNow(0, 0.14) + 1.6),   // 파이어뱃 — 붉은 껍데기 · 어두운 유리 바이저
       /* 두 팔(요청: "일반적인 팔로 바꾸고 하완이 상완보다 두껍게 붉은색 고정",
          "마린보다 두꺼운 원통형 포신을 오른팔로 두 손으로 받쳐 들고") —
          마린과 같은 갈래의 팔이되 하완이 더 굵고(0.58 → 0.80), 색은 붉은색 고정이다.
@@ -9584,7 +9589,7 @@ const MODEL_NORM: Record<string, number> = {
   htemp: 1.079,
   hydra: 0.757,
   inf: 1.301,
-  larva: 1.188,
+  larva: 1.350,  // 상자 상한(원한 배수 1.466)
   lurker: 0.603,
   lurkeregg: 0.886,
   mine: 1.293,  // 상자 상한(원한 배수 1.465)
@@ -9656,7 +9661,7 @@ const NORM_TARGET_INK = 5.2;
  *   · tankgun·tanksiegegun — **일부러** 목표를 안 맞춘 것. 짝이라 차체 배수를 쓰므로
  *     제 잉크 상자는 5.2가 아니다(포신은 완결 유닛이 아니라 부품이다).
  *  이 표도 --emit이 낸 값이다. */
-const MODEL_INK: Record<string, number> = { mine: 4.591, scourge: 4.129, tankgun: 3.779, tanksiegegun: 3.330 };
+const MODEL_INK: Record<string, number> = { larva: 4.787, mine: 4.591, scourge: 4.129, tankgun: 3.779, tanksiegegun: 3.330 };
 /** 그리는 kind가 정규화 뒤 실제로 차지하는 잉크 상자(모델 단위). */
 const modelInkOf = (kind: string): number => MODEL_INK[kind] ?? NORM_TARGET_INK;
 
@@ -10076,7 +10081,9 @@ const MODEL_YAW_TWEAK: Record<string, number> = {
      이 요청 뒤로 덴의 앞뒤·좌우는 **요잉을 마친 화면 기준**으로 적는다. */
   hydraden: 0, trapezoid: -90, forge: -90, scaffold: -90,
   // 시계 90도(요청) — 스포닝 풀.
-  pool: 90,
+  pool: 180, // (요청) 시계 90도 → 180도.
+  /* 해처리 갈래 시계 45도(요청) — 레어·하이브도 같은 몸이라 함께 돈다. */
+  hatchery: 45, lair: 45, hive: 45,
   // 시계 90도(지적) — 템플러 아카이브. 로보틱스는 모델 자체가 앞을 보게 고쳐 보정 0.
   // 아카이브 시계 90도(요청) — -90 → 0.
   dome: 0, archives: 0,
@@ -10084,7 +10091,7 @@ const MODEL_YAW_TWEAK: Record<string, number> = {
      요잉") — 둘 다 앞뒤가 뒤바뀌어 서 있었다: 에볼루션 챔버는 살덩이 엽 둘이 옆을
      보고 검은 등걸이 앞을 가렸고, 옵저버토리는 앞을 감싸야 할 초승달 받침이 옆으로
      누웠다. 이 표는 시계방향이 +다(위 히드라 덴·포지의 반시계 −90과 짝). */
-  evo: 90,
+  evo: 180, // (요청) 시계 90도 → 180도.
   /* 옵저버토리 시계 180도(요청) — 90에서 한 번 더 돌린다: 초승달 받침이 앞을 감싸야
      하는데 90에서는 뒤를 감싸고 있었다. */
   observatory: 270,
@@ -15324,14 +15331,29 @@ export default function ReplayMotionPlayer({
                 let si3 = 0;
                 let sl3 = 0;
                 const put3 = (kind3: string, sz3: number): void => {
-                  const sp3 = kind3 === "egg"
-                    ? EGG_SPOT3[si3++ % EGG_SPOT3.length] : LARVA_SPOT3[sl3++ % LARVA_SPOT3.length];
-                  const px3 = centerX + sp3[0];
-                  const py3 = centerY + sp3[1];
+                  const live3 = kind3 !== "egg";
+                  const ix3 = live3 ? sl3++ : si3++;
+                  const sp3 = live3
+                    ? LARVA_SPOT3[ix3 % LARVA_SPOT3.length] : EGG_SPOT3[ix3 % EGG_SPOT3.length];
+                  /* 라바는 가만히 안 있는다(지적: "좀 이리저리 꿈틀대고 방향 바꿔야") —
+                     제자리에서 아주 조금 기어다니고 몸이 도는 정도다. 무작위가 아니라
+                     시각과 자리 번호의 순수 함수라 되감아도 같은 자리에서 같이 꿈틀댄다
+                     (재생이 t를 앞뒤로 옮겨도 그림이 안 튄다). 주기를 서로 어긋나게 둬
+                     셋이 한 몸처럼 움직이지 않는다. */
+                  const wob3 = live3 ? Math.sin(t * 0.55 + ix3 * 2.3) : 0;
+                  const wob4 = live3 ? Math.sin(t * 0.41 + ix3 * 1.7) : 0;
+                  const px3 = centerX + sp3[0] + wob3 * 0.3;
+                  const py3 = centerY + sp3[1] + wob4 * 0.24;
                   const [pfx3, pfy3] = posFrac(px3, py3);
                   unitOps.push({
-                    fx: pfx3, fy: pfy3, z: z + 1, kind: kind3,
-                    rotDeg: buildingYawOf(unit),
+                    fx: pfx3, fy: pfy3,
+                    /* 해처리 뒤에 누운 것은 해처리에 가려야 한다(지적: "라바 해처리에
+                       안 가려지는 키 문제") — z를 건물보다 한 칸 위로 못 박아 두어
+                       뒷자리(y가 음수인 칸)까지 늘 건물 앞에 그려졌다. 제 자리가 건물
+                       앵커보다 앞이면 위로, 뒤면 아래로 간다. */
+                    z: z + (sp3[1] >= 0 ? 1 : -1), kind: kind3,
+                    // 라바는 저마다 다른 쪽을 보고 천천히 돌아눕는다(지적: 방향 바꿔야).
+                    rotDeg: buildingYawOf(unit) + (live3 ? ix3 * 115 + wob3 * 38 : 0),
                     viewYaw: viewYawOf(px3, py3), flat: !pitched, pitch: pitched,
                     /* 크기는 유닛과 **같은 자**를 탄다(unitGlyphPx) — 타일 폭을 직접
                        곱하면 그 값이 16-상자 한 변이라 실제 잉크는 3분의 1로 줄어,
