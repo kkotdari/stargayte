@@ -15711,12 +15711,16 @@ export default function ReplayMotionPlayer({
           const lines: React.ReactNode[] = [];
           /* 진행 바(요청: 스타 원작처럼 칸 수를 따라) — 원작 진행 바는 통짜가 아니라
              칸이 하나씩 차오른다. 열 칸으로 나눠 채운 만큼만 밝힌다. */
-          const bar = (label: string, p9: number): React.ReactNode => (
+          const bar = (label: string, p9: number, col = "#6fe36f"): React.ReactNode => (
             <div className="scr-motion-info-prog" key={`${label}${p9.toFixed(2)}`}>
               <span className="scr-motion-info-line">{label}</span>
               <span className="scr-motion-info-bar">
                 {Array.from({ length: 10 }, (_, k) => (
-                  <i key={k} className={k < Math.round(p9 * 10) ? "is-on" : undefined} />
+                  <i
+                    key={k}
+                    className={k < Math.round(p9 * 10) ? "is-on" : undefined}
+                    style={k < Math.round(p9 * 10) ? { background: col } : undefined}
+                  />
                 ))}
               </span>
             </div>
@@ -15729,9 +15733,18 @@ export default function ReplayMotionPlayer({
           }
           /* 실드는 따로 한 줄(요청) — 원작은 실드부터 깎이므로, 남은 값이 체력 몫을
              넘으면 그 초과분이 곧 남은 실드다. */
+          /* 체력·실드도 원작 색을 따른다(요청: 실드 흰색·체력 연녹색 등 게임 테마를
+             충실히) — 원작 체력 바는 가득하면 연녹, 절반 아래로 노랑, 3분의 1 아래로
+             빨강이다. 실드는 그 위에 흰(옅은 하늘) 칸으로 얹힌다. */
           const hpOnly = Math.max(1, max - sh);
-          lines.push(`체력 ${Math.min(cur, hpOnly)} / ${hpOnly}`);
-          if (sh > 0) lines.push(`실드 ${Math.max(0, cur - hpOnly)} / ${sh}`);
+          const hpCur = Math.min(cur, hpOnly);
+          const hpR = hpCur / hpOnly;
+          lines.push(bar(`체력 ${hpCur} / ${hpOnly}`, hpR,
+            hpR > 0.5 ? "#7ee07e" : hpR > 0.33 ? "#e8d94a" : "#e05a4a"));
+          if (sh > 0) {
+            const shCur = Math.max(0, cur - hpOnly);
+            lines.push(bar(`실드 ${shCur} / ${sh}`, shCur / sh, "#f2f6ff"));
+          }
           if (op.pickBld) {
             /* 생산·연구·큐(요청) — 생산 기록은 '완성 시각'이라, 지금 창 안이면 방금
                나온 것, 앞엣것은 큐로 읽는다(무엇이 언제 나오는지가 그대로 큐다). */
