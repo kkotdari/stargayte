@@ -8275,6 +8275,10 @@ const UNIT_3D: Record<string, string> = {
 /** 종족 → 일꾼 상징물 — 유닛 이름이 없는 일꾼 점(정찰·채굴)용. */
 const workerKindOf = (race?: string): string =>
   race === "테란" ? "scv" : race === "저그" ? "drone" : "probe";
+/** 일꾼 정체 — 살아 있는 일꾼을 셀 때 개체 트랙에서 고르는 이름들. */
+const WORKER_KINDS = new Set(["SCV", "Probe", "Drone"]);
+/** 커맨드 없이 시작하는 일꾼 수 — 세 종족 모두 4기다(개체 트랙에는 첫 클릭에야 나타난다). */
+const WORKER_START = 4;
 /* 기본 쐐기도 폐기(요청) — 표에 없는 낯선 유닛은 그 종족의 기본 보병 꼴로 그린다. */
 /* 유닛별 전투 효과(요청: 불 말고 무기 특성) — 근접은 없음. */
 /* 무기 세분화(재지적: 이왕 한 거 세분화) — 드라군은 포톤캐논과 같은 광자포(photon),
@@ -10754,6 +10758,63 @@ export default function ReplayMotionPlayer({
     }
     return m;
   }, [entData]);
+  /* 살아 있는 일꾼 수(요청: 일꾼 수도 사망 일꾼 반영해 실시간으로) ────────────────
+     옛 값은 생산 **누계**였다 — 한 번 는 뒤로 절대 줄지 않아서, 실측 1855초 팀전에서
+     한 테란이 133기로 표시되는 동안 실제로 살아 있는 것은 13기였다(저그는 더 심했다:
+     121기 대 0기 — 드론이 건물로 변태한 몫까지 그대로 남아 있었다).
+     개체 트랙은 개체마다 태어난 초(b)와 끝난 초(d)를 지닌다. 그 둘을 +1/−1 사건으로
+     늘어놓으면 시각별 생존 수가 그대로 나온다. 변태(드론→익스트랙터)도 d가 찍히므로
+     저그 가스만 따로 빼 주던 손보정이 필요 없어진다 — 해처리·성큰이 된 드론도 함께
+     빠진다(옛 보정은 익스트랙터만 알았다).
+     ★ 시작 4기는 커맨드가 없어 트랙에 늦게 나타난다(첫 클릭에야 잡힌다 — 실측으로
+       0초에 0기, 10초에 3~4기). 그 공백만 바닥값으로 메운다: max(생존 수, 4 − 여태
+       죽은 수). 후반에는 죽은 수가 4를 넘어 바닥이 저절로 0이 되므로 개입하지 않는다. */
+  const workerLive = useMemo(() => {
+    /** raw → [초, 그때의 생존 일꾼 수] (계단 자취) */
+    const m = new Map<string, [number, number][]>();
+    if (!entData) return m;
+    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    const evs = new Map<string, [number, number][]>();
+    for (const e of entData.ents) {
+      if (e.bld || !WORKER_KINDS.has(e.k)) continue;
+      const raw = nameOfId.get(e.o);
+      if (raw === undefined) continue;
+      const a = evs.get(raw) ?? [];
+      a.push([e.b, 1]);
+      if (e.d !== null) a.push([e.d, -1]);
+      evs.set(raw, a);
+    }
+    for (const [raw, a] of evs) {
+      a.sort((p, q) => p[0] - q[0]);
+      const series: [number, number][] = [];
+      let live = 0;
+      let dead = 0;
+      for (const [sec, dz] of a) {
+        live += dz;
+        if (dz < 0) dead += 1;
+        const n = Math.max(live, WORKER_START - dead);
+        // 같은 초의 사건 여럿은 마지막 값 하나로 — 계단이 한 초에 두 번 서지 않게.
+        if (series.length > 0 && series[series.length - 1][0] === sec) series[series.length - 1][1] = n;
+        else series.push([sec, n]);
+      }
+      m.set(raw, series);
+    }
+    return m;
+  }, [entData]);
+  /** 지금(t) 살아 있는 일꾼 수 — raw별. 개체 트랙이 없는 옛 경기는 비어 있고, 부르는
+   *  쪽이 옛 누계 모형으로 떨어진다. */
+  const workerNow = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const [raw, series] of workerLive) {
+      let n = WORKER_START;   // 첫 증거 전에도 시작 4기는 서 있다
+      for (const [sec, v] of series) {
+        if (sec > t) break;
+        n = v;
+      }
+      m.set(raw, n);
+    }
+    return m;
+  }, [workerLive, t]);
   const buildsSrc = entOn ? buildsV2 : motion.builds;
   const castsSrc = entOn ? castsV2 : motion.casts;
   /* 건물 겹침 해소(요청: 캔버스에서 건물끼리 겹침 불가) — 같은 시기에 함께 서 있는 두
@@ -13280,6 +13341,15 @@ export default function ReplayMotionPlayer({
               <span className="scr-motion-teamcol-name" style={chipStyle(m.key, m.team)}>
                 {shortName(m.name)}
               </span>
+              {/* 일꾼 수(요청: 사망 일꾼까지 반영해 실시간으로) — 지금 살아 있는 수다.
+                  줄은 늘 자리를 잡아 둔다: 값이 생겼다 사라졌다 하면 아바타가 위아래로
+                  들썩인다(옛 지적). 개체 트랙이 없는 옛 경기는 아예 빈 줄로 남는다. */}
+              <span
+                className="scr-motion-workers"
+                style={workerNow.has(m.key) ? undefined : { visibility: "hidden" }}
+              >
+                일꾼 {workerNow.get(m.key) ?? 0}
+              </span>
             </span>
             {winnerTeam && (m.team === 2 ? 2 : 1) === winnerTeam && t >= total - 0.5 && !fallen && (
               <span className="scr-motion-trophy">🏆</span>
@@ -14298,18 +14368,23 @@ export default function ReplayMotionPlayer({
           const track = motion.players.find((p) => p.raw === owner!.raw);
           /* 시작 일꾼 4기(요청: 초반 4기 표현) — workers 집계는 생산 '누계'라 0에서
              시작해, 경기 첫 화면에 채굴 일꾼이 하나도 없었다. 기본 4기를 밑절미로 더한다. */
-          let workerN = 4;
-          for (const [sec, n] of track?.workers ?? []) {
-            if (sec > t) break;
-            workerN = 4 + n;
-          }
-          /* 저그 가스는 변태(지적) — 익스트랙터 하나마다 드론 하나가 사라져 그 자리에
-             가스가 된다. 채굴 일꾼 수에서 그만큼 뺀다. */
           const ownerRace = bases.find((b) => b.key === owner!.raw)?.race;
-          if (ownerRace === "저그") {
-            const morphed = buildsSrc.filter(([bs, , , bu, br]) =>
-              br === owner!.raw && bu === "Extractor" && bs <= t).length;
-            workerN = Math.max(0, workerN - morphed);
+          /* 채굴 일꾼 수는 '지금 살아 있는 수'다(요청) — 개체 트랙의 생사(workerNow)를
+             먼저 본다. 옛 누계는 죽음을 몰라, 일꾼이 전멸한 뒤에도 밭마다 점이 그대로
+             돌아다녔다. 저그 변태(익스트랙터)도 트랙이 이미 빼 주므로 손보정을 걷었다. */
+          let workerN = workerNow.get(owner!.raw) ?? -1;
+          if (workerN < 0) {
+            // 개체 트랙이 없는 옛 경기 — 예전 누계 모형 그대로(시작 4기 + 생산 누계).
+            workerN = 4;
+            for (const [sec, n] of track?.workers ?? []) {
+              if (sec > t) break;
+              workerN = 4 + n;
+            }
+            if (ownerRace === "저그") {
+              const morphed = buildsSrc.filter(([bs, , , bu, br]) =>
+                br === owner!.raw && bu === "Extractor" && bs <= t).length;
+              workerN = Math.max(0, workerN - morphed);
+            }
           }
           if (workerN === 0) return [];
           /* 시작 4기는 가장 가까운 미네랄 4군데로(요청) — 일꾼 수보다 먼 차례의 미네랄
