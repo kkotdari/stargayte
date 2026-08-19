@@ -20,7 +20,11 @@
  *  ⑤ 트립의 적재 자리 — 한 배가 한 번에 실은 자리 합(원작의 수송칸은 8, 벙커는 4).
  *     정원을 넘긴 트립이 있으면 태울 수 없는 것을 태운 것이고, 못 탄 유닛까지 사라졌다가
  *     하차 자리에 나타난다.
- *  ⑥ 하차 줄서기 — 같은 배에서 잇달아 내린 간격. 원작은 18프레임(0.756초)에 한 기씩이다. */
+ *  ⑥ 하차 줄서기 — 같은 배에서 잇달아 내린 간격. 원작은 18프레임(0.756초)에 한 기씩이다.
+ *  ⑦ 내리는 자리와 배 사이 — 하차 시각에 **배가 실제로 있던 자리**와 승객이 나타나는
+ *     자리의 거리. 이것이 벌어지면 화면에서는 '배가 내려 준 것'으로 안 보인다.
+ *  ⑧ 타러 가는 걸음 — 승선 직전 증거에서 배까지의 거리를 그 사이 시간으로 나눈 속도.
+ *     제 최고 속도를 넘으면 걸어간 것이 아니라 순간이동해서 탄 것이다. */
 
 import { readFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
@@ -192,6 +196,55 @@ for (const path of files) {
     console.log(`  배 안에 있던 시간(초): ${b2.map((n, i) => `${lab[i]} ${n}`).join(" · ")}`);
   }
   {
+    /* 배의 자리 — 증거 사이를 잇는 선형 보간. 재생기의 posAt과 같은 규칙이라,
+       "그때 화면에서 배가 어디 있었나"를 그대로 되짚는다. */
+    const trackOf = new Map();
+    for (const e of d.ents) {
+      const pts = e.ev.filter((v) => v[1] >= 0).map((v) => [v[0], v[1], v[2]]).sort((a, b) => a[0] - b[0]);
+      if (pts.length > 0) trackOf.set(e.t, pts);
+    }
+    const posAt9 = (tag, t) => {
+      const pts = trackOf.get(tag);
+      if (!pts || pts.length === 0) return null;
+      if (t <= pts[0][0]) return [pts[0][1], pts[0][2]];
+      if (t >= pts[pts.length - 1][0]) return [pts[pts.length - 1][1], pts[pts.length - 1][2]];
+      let i = 0;
+      while (i + 1 < pts.length && pts[i + 1][0] < t) i += 1;
+      const [t0, x0, y0] = pts[i];
+      const [t1, x1, y1] = pts[i + 1];
+      const k = t1 === t0 ? 0 : (t - t0) / (t1 - t0);
+      return [x0 + (x1 - x0) * k, y0 + (y1 - y0) * k];
+    };
+    /** 유닛 최고 속도(타일/초) — 어림이라도 '순간이동'을 가르기엔 넉넉하다. */
+    const TOP = {
+      Marine: 4.0, Firebat: 4.0, Ghost: 4.0, Medic: 4.0, SCV: 4.9, Vulture: 6.4,
+      Goliath: 4.6, "Siege Tank": 4.3, "Siege Tank (Tank Mode)": 4.3,
+      Probe: 4.9, Zealot: 3.4, "High Templar": 3.3, "Dark Templar": 5.0,
+      Dragoon: 5.0, Archon: 5.0, "Dark Archon": 5.0, Reaver: 1.8,
+      Drone: 5.0, Zergling: 5.5, Hydralisk: 3.7, Defiler: 4.0, Lurker: 5.5, Ultralisk: 5.9,
+    };
+    const gapPos = [];
+    const walkSpd = [];
+    for (const s2 of spans) {
+      if (s2.how === "하차" && s2.host) {
+        const sp = posAt9(s2.host, s2.to);
+        const off = s2.e.ev.find((v) => v[3] === 13 && Math.abs(v[0] - s2.to) < 0.01);
+        if (sp && off) gapPos.push(Math.round(Math.hypot(sp[0] - off[1], sp[1] - off[2]) * 10) / 10);
+      }
+      const bev = s2.e.ev.find((v) => v[3] === 12 && Math.abs(v[0] - s2.from) < 0.01);
+      const prev = [...s2.e.ev].filter((v) => v[1] >= 0 && v[0] < s2.from).pop();
+      if (bev && prev) {
+        const dt = s2.from - prev[0];
+        const dd = Math.hypot(bev[1] - prev[1], bev[2] - prev[2]);
+        const top = TOP[s2.e.k] ?? 4.5;
+        walkSpd.push(dt <= 0.01 ? (dd > 0.5 ? 99 : 0) : Math.round((dd / dt / top) * 100) / 100);
+      }
+    }
+    const over9 = walkSpd.filter((v) => v > 1.15).length;
+    console.log(`  내리는 자리와 배 사이(타일) 중앙값 ${med(gapPos)} · 최대 ${gapPos.length ? Math.max(...gapPos) : 0}`);
+    console.log(`  타러 가는 걸음 — 제 최고 속도 대비 중앙값 ${med(walkSpd)}배 · 넘긴 것 ${over9}/${walkSpd.length}건`);
+  }
+  {
     /* 트립 — 한 배가 한 번 실어 나른 무리. 원작의 수송칸은 8이고(벙커 4) 유닛마다
        차지하는 자리가 다르다. 넘치는 트립이 있으면 태우지 못할 것을 태운 것이다. */
     const SPACE = {
@@ -203,12 +256,30 @@ for (const path of files) {
       Hydralisk: 2, Defiler: 2, Lurker: 4, Ultralisk: 8,
     };
     const kindOfTag = new Map(d.ents.map((e) => [e.t, e.k]));
+    /* 트립은 '한 배가 한 번 쏟은 무리'다. 타는 시각으로 묶으면 배까지 걸어간 시간이
+       저마다 달라 쪼개지고, 내리는 시각으로 묶어도 줄서기(0.756초 간격) 때문에 쪼개진다.
+       그래서 배마다 하차 시각을 늘어놓고 **1.5초보다 벌어지는 곳에서 끊는다**. */
     const trips = new Map();
-    for (const s2 of spans) {
-      const key = `${s2.host}|${Math.round(s2.from)}`;
-      const g = trips.get(key) ?? [];
-      g.push(s2);
-      trips.set(key, g);
+    {
+      const byHost = new Map();
+      for (const s2 of spans) {
+        const g = byHost.get(s2.host) ?? [];
+        g.push(s2);
+        byHost.set(s2.host, g);
+      }
+      for (const [h, g] of byHost) {
+        g.sort((a, b) => a.to - b.to);
+        let n = 0;
+        let prev = null;
+        for (const s2 of g) {
+          if (prev !== null && s2.to - prev > 1.5) n += 1;
+          prev = s2.to;
+          const key = `${h}|${n}`;
+          const t9 = trips.get(key) ?? [];
+          t9.push(s2);
+          trips.set(key, t9);
+        }
+      }
     }
     let over = 0;
     const loads = [];

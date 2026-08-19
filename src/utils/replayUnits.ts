@@ -2295,6 +2295,30 @@ export function buildUnitTracks(
             if (r.oev) cut.add(r.oev);
             continue;
           }
+          /* ④ 타는 순간은 '우클릭한 순간'이 아니라 **배에 닿는 순간**이다.
+             우클릭은 "저 배를 타라"는 명령이고, 승객은 제 발로 배까지 걸어가서 실린다.
+             여태는 명령 시각을 그대로 승선으로 삼아, 배에서 멀리 있던 유닛이 한순간에
+             빨려 들어갔다 — 실측(경기 2)에서 승선 36건 중 12건이 제 최고 속도를 넘는
+             '순간이동 승선'이었다. 직전 증거에서 배까지의 거리를 제 속도로 걸어간
+             시간만큼 뒤로 민다. 하차보다 늦어질 수는 없으니 그 앞에서 멈춘다. */
+          {
+            const prev9 = [...r.life.ev].filter((v) => v[1] >= 0 && v[0] < r.bev[0]).pop();
+            if (prev9) {
+              const k0 = majorityKindOf2(r.life);
+              // 속업은 안 본다(윗줄 1516의 걸음 셈과 같은 잣대) — 여기 쓰임은 "걸어서
+              // 갈 만한 시간인가"라 한 뼘 차이가 결과를 안 바꾼다.
+              const sp9 = speedOfUnit(k0 || "Marine");
+              const dd9 = Math.hypot(r.bev[1] - prev9[1], r.bev[2] - prev9[2]);
+              const walk9 = dd9 / Math.max(0.5, sp9);
+              const cap9 = Number.isFinite(r.drop) ? r.drop - 0.5 : Infinity;
+              const at9 = Math.min(Math.max(r.bev[0], prev9[0] + walk9), cap9);
+              if (at9 > r.bev[0] + 0.05) {
+                r.bev[0] = Math.round(at9 * 10) / 10;
+                r.sec = r.bev[0];
+                r.life.ev.sort((a, b) => a[0] - b[0]);
+              }
+            }
+          }
           used += r.space;
           aboard.push(r);
           if (r.oev) {
@@ -2304,14 +2328,48 @@ export function buildUnitTracks(
             byDrop.set(r.drop, g);
           }
         }
-        if (!bunker && !UNLOAD_PENALTY_EXEMPT.has(hk)) {
-          for (const g of byDrop.values()) {
-            g.sort((a, b) => a.sec - b.sec);
-            for (let i = 0; i < g.length; i += 1) {
-              const oe = g[i].oev;
-              if (!oe) continue;
-              oe[0] = Math.round((g[i].drop + i * UNLOAD_GAP_SEC) * 10) / 10;
-            }
+        /* ③ 내리는 자리는 **그때 배가 있던 자리**다(지적: "수송선에서 내리는 일 없음").
+           여태 하차 좌표는 명령의 클릭 점이었다 — MoveUnload는 배가 가려던 곳이고,
+           Unload All은 배의 마지막 증거다. 둘 다 배가 그 순간 화면에서 서 있는 자리와
+           다르다: 실측(SG_26081613330800)에서 아콘들이 배에서 5.9타일 떨어진 곳에
+           나타났고, 다른 경기에서는 최대 12.2타일이었다. 그만큼 벌어지면 화면에서는
+           '배가 내려 준 것'으로 안 보인다.
+           배의 자취를 증거 사이 선형 보간으로 되짚어(재생기 posAt과 같은 규칙) 그 자리에
+           내려놓는다. 줄서기로 시각이 밀린 뒤쪽 승객은 그만큼 더 간 자리에서 나온다 —
+           배가 지나가며 하나씩 떨어뜨리는 그림이 된다. */
+        const hostPts = ((): [number, number, number][] => {
+          const arr = allByTag.get(ttag);
+          if (!arr) return [];
+          const out: [number, number, number][] = [];
+          for (const l of arr) {
+            for (const v of l.ev) if (v[1] >= 0) out.push([v[0], v[1], v[2]]);
+          }
+          out.sort((a, b) => a[0] - b[0]);
+          return out;
+        })();
+        const hostAt = (t: number): [number, number] | null => {
+          if (hostPts.length === 0) return null;
+          if (t <= hostPts[0][0]) return [hostPts[0][1], hostPts[0][2]];
+          const last = hostPts[hostPts.length - 1];
+          if (t >= last[0]) return [last[1], last[2]];
+          let i = 0;
+          while (i + 1 < hostPts.length && hostPts[i + 1][0] < t) i += 1;
+          const [t0, x0, y0] = hostPts[i];
+          const [t1, x1, y1] = hostPts[i + 1];
+          const k = t1 === t0 ? 0 : (t - t0) / (t1 - t0);
+          return [x0 + (x1 - x0) * k, y0 + (y1 - y0) * k];
+        };
+        for (const g of byDrop.values()) {
+          g.sort((a, b) => a.sec - b.sec);
+          for (let i = 0; i < g.length; i += 1) {
+            const oe = g[i].oev;
+            if (!oe) continue;
+            // 벙커는 한 프레임에 전원이라 줄을 안 선다(bwTransport).
+            const at = bunker || UNLOAD_PENALTY_EXEMPT.has(hk)
+              ? g[i].drop : g[i].drop + i * UNLOAD_GAP_SEC;
+            oe[0] = Math.round(at * 10) / 10;
+            const hp = hostAt(at);
+            if (hp) { oe[1] = r1(hp[0]); oe[2] = r1(hp[1]); }
           }
         }
       }
