@@ -19,7 +19,7 @@ import {
   FRAME_SEC, GEYSER_FOOT, LURKER_REHIT_FRAMES, MINE_ATTACH_FRAMES, MINE_DETACH_FRAMES,
   MINE_GAS_FRAMES, MINE_MINERAL_FRAMES, MINE_RETURN_FRAMES, MINERAL_FOOT, TURN_RATE,
   UNBURROW_MIN_FRAMES,
-  buildingBox, isAir, moveDynOf, speedOfUnit, unitBoxTiles,
+  buildSecOf, buildingBox, fp, isAir, moveDynOf, speedOfUnit, unitBoxTiles,
 } from "./bwUnits";
 /* 전투 값은 표(bwUnits)를 직접 읽지 않고 어댑터(bwCombat)를 거친다 — 표가 통째로 갈리는
    중이라 읽는 자리를 한 곳으로 모아 두면 이름이 어긋나도 고칠 파일이 하나다.
@@ -184,7 +184,7 @@ const LURKER_REHIT_SEC = LURKER_REHIT_FRAMES * FRAME_SEC;
 /* ── 주문 ─────────────────────────────────────────────────────────────────────── */
 
 type OrdKind =
-  | "move" | "attack" | "anchor" | "board" | "unload" | "liftoff" | "land" | "gone";
+  | "move" | "attack" | "anchor" | "board" | "unload" | "liftoff" | "land" | "gone" | "repair";
 type Ord = { t: number; kind: OrdKind; x: number; y: number; tag: number };
 
 /** 증거를 주문으로 옮긴다 — 자리 없는 증거(생산·랠리·클로킹)는 이동과 무관하니 뺀다. */
@@ -214,7 +214,10 @@ function ordersOf(e: SimEnt): Ord[] {
     /* 0 이동 · 7 공격 · 10 수리 — 전부 목적지다. 다만 어택(7)만 '가다가 만나면 싸운다'
        이고, 그냥 이동(0)은 원작에서도 멈춰 서지 않는다 — 이 구분이 P2의 핵심 규칙이다. */
     if (f === 7) out.push({ t: s, kind: "attack", x, y, tag: extra ?? 0 });
-    else if (f === 0 || f === 10) out.push({ t: s, kind: "move", x, y, tag: extra ?? 0 });
+    /* 수리·힐(f=10)은 목적지이자 **표적**이다(요청: SCV 수리) — 그 자리로 걸어가서
+       거기 있는 제 편 기계를 고친다. 다섯째 칸이 찍힌 대상의 태그다. */
+    else if (f === 10) out.push({ t: s, kind: "repair", x, y, tag: extra ?? 0 });
+    else if (f === 0) out.push({ t: s, kind: "move", x, y, tag: extra ?? 0 });
   }
   out.sort((a, b) => a.t - b.t);
   return out;
@@ -281,6 +284,8 @@ type Body = {
   /** 몸 상자 반폭·반높이(타일) — 건물 틈을 지날 수 있나가 이 둘로 갈린다(원작의
    *  상자 대 상자). 저글링 0.25/0.25 · 드라군 0.5/0.5 · 마린 0.27/0.31. */
   hw: number; hh: number;
+  /** 지금 고치는 표적 태그(SCV 수리) — 0이면 아무것도 안 고친다. */
+  fixTag: number;
   /** 지금 쓰는 전투 값 한 벌. 벙커에 타면 cpBunker로 갈아 끼운다(무기 +64px·획득 +2타일). */
   cp: CombatProfile;
   cpBase: CombatProfile; cpBunker: CombatProfile | null;
@@ -350,6 +355,8 @@ type Body = {
 
 /** 일꾼 — 스스로 표적을 잡지 않고, 할 일이 없으면 캔다. */
 const WORKERS = new Set(["SCV", "Probe", "Drone"]);
+/** 수리 사거리(타일, 몸 테두리 사이) — 원전은 사거리 5(픽셀)에서 고친다. */
+const REPAIR_REACH = 5 / 32;
 /** 자원을 받는 본진 건물. */
 const HALLS = new Set(["Command Center", "Nexus", "Hatchery", "Lair", "Hive"]);
 /** 가스 건물. */
@@ -368,6 +375,8 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   const eps = opts.epsilon ?? 0.3;
   const W = opts.width;
   const H = opts.height;
+  /** 임자 → 종족 — SCV 수리가 '테란 것만' 고치는 원작 규칙에 쓴다. */
+  const raceOfOwner = new Map((data.players ?? []).map((p) => [p.id, p.race ?? ""]));
   const terrain = opts.terrain ?? null;
   /** 막힘 판의 눈금 — 한 타일을 몇 칸으로 쪼개나(아래 '막힘 판' 절 주석 참고).
    *  4칸이면 8px로, 원작 걸음 격자와 같다. 칸이 너무 많아지는 큰 맵만 2칸으로 떨어진다. */
@@ -456,7 +465,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         /* 건물의 체력·실드·방어력·크기는 이제 표(UNITS)에서 온다 — 옛 판이 하던
            "건물은 large·방어력 최소 1" 같은 손보정은 지어낸 값이었다. 표에 없는 이름
            (애드온 ComSat 등)만 DEFAULT_UNIT으로 떨어진다. [추정] */
-        rad: bcp.radius, hw: 0, hh: 0,
+        rad: bcp.radius, hw: 0, hh: 0, fixTag: 0,
         cp: bcp, cpBase: bcp, cpBunker: null,
         dmg: targetFor(e.k ?? "", bUps),
         cd: 0, foe: null, aggro: true, reacq: spot[0] + acqPhaseOf(e.t),
@@ -508,7 +517,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       kx: NaN, ky: NaN, kh: NaN, ks: ST_GONE, kt: 0, kvx: 0, kvy: 0,
       px: NaN, py: NaN,
       bld: false, wk: WORKERS.has(kind),
-      rad: cp.radius, hw: unitBoxTiles(kind)[0] / 2, hh: unitBoxTiles(kind)[1] / 2,
+      rad: cp.radius, hw: unitBoxTiles(kind)[0] / 2, hh: unitBoxTiles(kind)[1] / 2, fixTag: 0,
       cp, cpBase: cp, cpBunker: bunkerShooterProfileOf(kind),
       dmg: targetFor(kind, ups),
       cd: 0, foe: null, aggro: false, reacq: e.b + acqPhaseOf(e.t), dieAt: null, job: null,
@@ -1578,6 +1587,27 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         if (b.job) claim.delete(b.job.res);
         b.job = null;
         b.aggro = o.kind === "attack";
+        /* 수리 표적을 손에 든다(요청: SCV 수리) — 다른 명령이 오면 그 자리에서 놓는다.
+           힐(메딕)도 같은 f=10으로 오지만 고치는 것은 기계뿐이라 아래에서 갈린다. */
+        b.fixTag = o.kind === "repair" ? o.tag : 0;
+        /* 우클릭 수리는 증거에 표적이 안 실린다(실측: 8인전에서 f=10이 210건인데 그중
+           205건이 메딕 힐이고 SCV는 4건뿐이다 — 사람들은 수리 버튼 대신 다친 것을 그냥
+           우클릭한다). 파서는 그 클릭을 평범한 이동(f=0)으로 담고 다섯째 칸은 예약
+           깃발이라 표적 태그가 없다. 그래서 **찍은 자리**로 되짚는다: 일꾼의 이동
+           목적지가 제 편 테란 기계·건물의 몸 안이고 그것이 다쳐 있으면 수리다.
+           (자리를 잘못 짚어도 값이 크지 않다 — 원작에서도 그 클릭은 수리가 된다.) */
+        if (b.fixTag === 0 && b.wk && o.kind === "move" && b.kind === "SCV") {
+          for (const c9 of active) {
+            if (c9 === b || c9.state === ST_GONE || c9.owner !== b.owner) continue;
+            if (!(c9.cpBase.mech || c9.bld)) continue;
+            if (raceOfOwner.get(c9.owner) !== "테란") break;   // 임자가 테란이 아니면 볼 것도 없다
+            if (t < c9.born || (c9.died !== null && t >= c9.died)) continue;
+            if (c9.dmg.hp >= fp(c9.cpBase.hp)) continue;
+            const hw9 = c9.bld ? buildingBox(c9.kind)[0] / 2 : c9.rad;
+            const hh9 = c9.bld ? buildingBox(c9.kind)[1] / 2 : c9.rad;
+            if (Math.abs(o.x - c9.x) <= hw9 && Math.abs(o.y - c9.y) <= hh9) { b.fixTag = c9.tag; break; }
+          }
+        }
         b.state = ST_MOVE;
         /* 명령이 준 목적지를 따로 기억한다 — 적을 쫓다 놓쳤을 때 돌아갈 자리다. */
         b.homeX = o.x; b.homeY = o.y; b.hasHome = true;
@@ -1845,6 +1875,34 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
           continue;
         }
       }
+      /* ③-d SCV 수리(요청: "scv의 수리기능 구현됐는지(건물, 기계유닛(scv도 포함))") —
+         원작 order_Repair([OBW] bwgame.h:4925)의 조건을 그대로 옮긴다:
+           · 고칠 수 있는 것은 **테란 + 기계 + 완성된 것**뿐이다(프로토스 기계는 못 고친다 —
+             원전이 unit_race(target) != terran이면 그 자리에서 오더를 끝낸다).
+           · 이미 만피면 안 고친다.
+           · 속도는 **짓는 속도 그대로**다 — 원전이 target->hp_construction_rate를 매 프레임
+             더한다. 곧 초당 최대체력/짓는시간(bwUnits.buildSecOf, units.dat BuildTime)이다.
+           · 붙어야 고친다 — 원전은 사거리 5에서 고치고 벗어나면 다시 따라간다.
+         자원은 안 본다(우리는 광물·가스를 셈하지 않는다) — 그 몫은 [어림]이다. */
+      if (b.fixTag !== 0 && b.wk && b.inside === null) {
+        const tgt = (byTag.get(b.fixTag) ?? [])
+          .find((q) => t >= q.born && (q.died === null || t < q.died));
+        const maxHp = tgt ? fp(tgt.cpBase.hp) : 0;
+        const fixable = !!tgt && tgt.state !== ST_GONE && tgt !== b
+          && (tgt.cpBase.mech || tgt.bld) && raceOfOwner.get(tgt.owner) === "테란"
+          && tgt.dmg.hp < maxHp;
+        if (!fixable) b.fixTag = 0;
+        else if (tgt) {
+          const gap = dist(b.x, b.y, tgt.x, tgt.y) - b.rad - tgt.rad;
+          if (gap <= REPAIR_REACH) {
+            // 붙었다 — 걸음을 멈추고 고친다.
+            b.dest = null; b.path = []; b.pi = 0; b.state = ST_IDLE;
+            const sec = buildSecOf(tgt.kind);
+            if (sec > 0) tgt.dmg.hp = Math.min(maxHp, tgt.dmg.hp + (maxHp / sec) * dt);
+          } else if (!b.dest) setDest(b, tgt.x, tgt.y);
+        }
+      }
+
       /* ④ 걸음 — 길 꼭짓점을 따라 제 속도로. 남은 거리보다 더 못 간다.
          옛 코드는 `b.speed * dt`를 목표 직선에 그대로 실어, 첫 틱부터 최고속으로 튀어
          나가고 즉시 섰다.

@@ -1195,6 +1195,132 @@ export const MINE_DETACH_FRAMES = 8;
 /** 홀에 반납하는 딜레이(프레임, 어림) — 닿아서 되돌아서기까지. */
 export const MINE_RETURN_FRAMES = 12;
 
+
+/* ════════════════════════════════════════════════════════════════════════════
+   12. 짓는 시간 — [DAT] units.dat BuildTime 실덤프
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/** 짓는 데 걸리는 **프레임** 수. [DAT] units.dat BuildTime.
+ *
+ *  값은 heinermann/factorio-starcraft의 units.dat 전수 덤프에서 기계로 옮겼다 —
+ *  덤프 항목과 이 파일의 이름은 (최대 체력, 실드, 치수) 짝으로 이었고, 97종이 유일하게
+ *  맞았다(못 이은 다섯은 아래에 통설 값으로 따로 적었다).
+ *
+ *  ⚠ 초로 바꿀 때 눈금을 조심하라. 이 수는 프레임이고, 빠른 속도의 한 프레임은
+ *    FRAME_SEC(1/23.81)다: 배럭 1200프레임 = 50.4초(빠름) = 80초(보통).
+ *    커뮤니티 표에 흔히 적히는 '초'는 대개 **보통 속도**(프레임/15)라 1.6배 길다.
+ *
+ *  쓰는 곳: SCV 수리 속도(원작은 짓는 속도와 같은 속도로 고친다 — [OBW] order_Repair가
+ *  target->hp_construction_rate를 그대로 더한다). */
+export const BUILD_FRAMES: Record<string, number> = {
+  /* (동률 해소) 아래 다섯은 (체력·치수) 열쇠가 덤프의 두 항목과 같아 기계로 못 갈랐다 —
+     널리 아는 값으로 못 박는다(전부 '보통 속도 초 × 15'와 맞는다):
+     마린 24초·메딕 30·인페스티드 테란 40·나이더스 커널 40·성큰 20. */
+  Marine: 360, Medic: 450, "Infested Terran": 600, "Nydus Canal": 600, "Sunken Colony": 300,
+  Ghost: 750,
+  Vulture: 450,
+  Goliath: 600,
+  "Siege Tank (Tank Mode)": 750,
+  "Siege Tank": 750,
+  SCV: 300,
+  Wraith: 900,
+  "Science Vessel": 1200,
+  Dropship: 750,
+  Battlecruiser: 2000,
+  "Spider Mine": 1,
+  "Siege Tank (Siege Mode)": 750,
+  Firebat: 360,
+  Valkyrie: 750,
+  Larva: 1,
+  Egg: 1,
+  Zergling: 420,
+  Hydralisk: 420,
+  Ultralisk: 900,
+  Broodling: 1,
+  Drone: 300,
+  Overlord: 600,
+  Mutalisk: 600,
+  Guardian: 600,
+  Queen: 750,
+  Defiler: 750,
+  Scourge: 450,
+  Cocoon: 1,
+  Devourer: 600,
+  "Lurker Egg": 1,
+  Lurker: 600,
+  Corsair: 600,
+  "Dark Templar": 750,
+  "Dark Archon": 300,
+  Probe: 300,
+  Zealot: 600,
+  Dragoon: 750,
+  "High Templar": 750,
+  Archon: 300,
+  Shuttle: 900,
+  Scout: 1200,
+  Arbiter: 2400,
+  Carrier: 2100,
+  Interceptor: 300,
+  Reaver: 1050,
+  Observer: 600,
+  Scarab: 105,
+  "Command Center": 1800,
+  "Comsat Station": 600,
+  "Nuclear Silo": 1200,
+  "Supply Depot": 600,
+  Refinery: 600,
+  Barracks: 1200,
+  Academy: 1200,
+  Factory: 1200,
+  Starport: 1050,
+  "Control Tower": 600,
+  "Science Facility": 900,
+  "Covert Ops": 600,
+  "Physics Lab": 600,
+  "Machine Shop": 600,
+  "Engineering Bay": 900,
+  Armory: 1200,
+  "Missile Turret": 450,
+  Bunker: 450,
+  "Infested Command Center": 1800,
+  Hatchery: 1800,
+  Lair: 1500,
+  Hive: 1800,
+  "Hydralisk Den": 600,
+  "Defiler Mound": 900,
+  "Greater Spire": 1800,
+  "Queen's Nest": 900,
+  "Queens Nest": 900,
+  "Evolution Chamber": 600,
+  "Ultralisk Cavern": 1200,
+  Spire: 1800,
+  "Spawning Pool": 1200,
+  "Creep Colony": 300,
+  "Spore Colony": 300,
+  Extractor: 600,
+  Nexus: 1800,
+  "Robotics Facility": 1200,
+  Pylon: 450,
+  Assimilator: 600,
+  Observatory: 450,
+  Gateway: 900,
+  "Photon Cannon": 750,
+  "Citadel of Adun": 900,
+  "Cybernetics Core": 900,
+  "Templar Archives": 900,
+  Forge: 600,
+  Stargate: 1050,
+  "Fleet Beacon": 900,
+  "Arbiter Tribunal": 900,
+  "Robotics Support Bay": 450,
+  "Shield Battery": 450,
+};
+/** 그 종류를 짓는 데 걸리는 초(빠른 속도) — 표에 없으면 0. */
+export function buildSecOf(kind: string): number {
+  const f = BUILD_FRAMES[kind];
+  return f === undefined ? 0 : f * FRAME_SEC;
+}
+
 /** 유닛 몸 반지름(타일) — 크기 등급별 대표값이다. 지상 유닛 스프라이트 상자의
  *  가로 반폭 (left+1+right)/2 와 세로 반폭 (up+1+down)/2 를 평균해 32로 나눈 값의
  *  중앙값. 개체별 정확한 상자는 UNITS[].box에 픽셀로 있으니 정밀히 재려면
