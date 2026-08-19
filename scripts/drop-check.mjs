@@ -198,13 +198,23 @@ for (const path of files) {
   {
     /* 배의 자리 — 증거 사이를 잇는 선형 보간. 재생기의 posAt과 같은 규칙이라,
        "그때 화면에서 배가 어디 있었나"를 그대로 되짚는다. */
+    /* 태그는 재사용된다 — 한 태그에 여러 생애가 있으면 **그 시각에 살아 있던 생애**의
+       자취를 봐야 한다(마지막 것만 남기면 옛 주인 자리를 재게 된다). */
     const trackOf = new Map();
     for (const e of d.ents) {
       const pts = e.ev.filter((v) => v[1] >= 0).map((v) => [v[0], v[1], v[2]]).sort((a, b) => a[0] - b[0]);
-      if (pts.length > 0) trackOf.set(e.t, pts);
+      if (pts.length === 0) continue;
+      const a = trackOf.get(e.t) ?? [];
+      a.push({ b: e.b, d: e.d ?? Infinity, pts });
+      trackOf.set(e.t, a);
     }
+    for (const a of trackOf.values()) a.sort((x, y) => x.b - y.b);
     const posAt9 = (tag, t) => {
-      const pts = trackOf.get(tag);
+      const lives = trackOf.get(tag);
+      if (!lives || lives.length === 0) return null;
+      let pick = lives[0];
+      for (const l of lives) { if (l.b <= t + 1) pick = l; else break; }
+      const pts = pick.pts;
       if (!pts || pts.length === 0) return null;
       if (t <= pts[0][0]) return [pts[0][1], pts[0][2]];
       if (t >= pts[pts.length - 1][0]) return [pts[pts.length - 1][1], pts[pts.length - 1][2]];
@@ -229,7 +239,14 @@ for (const path of files) {
       if (s2.how === "하차" && s2.host) {
         const sp = posAt9(s2.host, s2.to);
         const off = s2.e.ev.find((v) => v[3] === 13 && Math.abs(v[0] - s2.to) < 0.01);
-        if (sp && off) gapPos.push(Math.round(Math.hypot(sp[0] - off[1], sp[1] - off[2]) * 10) / 10);
+        if (sp && off) {
+          const g9 = Math.round(Math.hypot(sp[0] - off[1], sp[1] - off[2]) * 10) / 10;
+          gapPos.push(g9);
+          if (process.env.DROP_DEBUG && g9 > 2) {
+            console.log(`     [먼 하차] ${s2.e.k}#${s2.e.t} 배#${s2.host} 승선 ${Math.round(s2.from)} 하차 ${s2.to}`
+              + ` 승객(${off[1]},${off[2]}) 배(${sp[0].toFixed(1)},${sp[1].toFixed(1)}) = ${g9}타일`);
+          }
+        }
       }
       const bev = s2.e.ev.find((v) => v[3] === 12 && Math.abs(v[0] - s2.from) < 0.01);
       const prev = [...s2.e.ev].filter((v) => v[1] >= 0 && v[0] < s2.from).pop();

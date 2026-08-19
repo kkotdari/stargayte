@@ -2183,25 +2183,51 @@ export function buildUnitTracks(
       for (const l of arr) { if (l.born <= at + 1) found = l; else break; }
       return found;
     };
+    /* 그 태그가 그 시각에 '수송선'인가 — 두 갈래로 안다(지적: "실제로 30800경기에서
+       셔틀 4~6기가 드랍을 갔는데" 우리는 한 척만 잡았다).
+         ⓐ 명령이 못 박은 것 — MoveUnload·Unload는 수송선에게만 내릴 수 있다.
+         ⓑ 정체가 밝혀진 것 — 생산 원장이 그 생애에 '셔틀'이라는 이름을 붙였다.
+       여태 ⓐ뿐이었다. 그런데 이름은 **스트림을 다 읽은 뒤** 원장이 붙이므로, 태울 때는
+       아직 무명이고 여기서야 알 수 있다. 실측(SG_26081613330800): 임자2의 셔틀 여덟 중
+       제 임자 우클릭을 받은 것이 셋인데(18995·10634·10633), MoveUnload를 받은 18995만
+       승선으로 살아남고 나머지 넷의 클릭은 통째로 버려졌다. 그 리플레이에는 Unload·
+       Unload All 커맨드가 **한 번도 없고** MoveUnload가 셋뿐이다 — ⓐ만으로는 드랍의
+       대부분을 못 본다. */
+    const isTransTag = (tag: number, at: number, pid2: number): boolean => {
+      if (transTagOwner.get(tag) === pid2) return true;
+      const l = lifeAt(tag, at);
+      return l !== null && !l.bld && l.owner === pid2 && isTransportLife(l);
+    };
     let promoted = 0;
     for (const [bsec, rtag, ttag, bx, by, bpid] of pendBoard) {
-      if (transTagOwner.get(ttag) !== bpid) continue;
-      /* 수송선은 승객이 될 수 없다(수리: 셔틀 여덟이 서로 탄 것으로 나왔다) — 수송선
-         여럿을 함께 잡은 채 무언가를 우클릭하면 그 선택 전부가 승객 후보로 적혔다. */
-      if (transTagOwner.has(rtag)) continue;
-      const rl = lifeAt(rtag, bsec);
+      /* 어느 쪽이 배인가 — 찍힌 쪽이면 정방향(유닛이 배로 간다), 고른 쪽이면 역방향
+         (배가 태우러 간다). 역방향도 같은 후보 목록에 이미 들어 있다: 한 우클릭이
+         '고른 태그 × 찍힌 태그'로 적히므로 역할만 바꿔 읽으면 된다. 여태는 고른 쪽이
+         수송선이면 그냥 버렸는데, 셔틀 여럿을 잡고 아콘 무리를 우클릭하는 것이 드랍의
+         흔한 손놀림이다. */
+      const fwd = isTransTag(ttag, bsec, bpid);
+      const rev = !fwd && isTransTag(rtag, bsec, bpid);
+      if (!fwd && !rev) continue;
+      const hostTag = fwd ? ttag : rtag;
+      const rideTag = fwd ? rtag : ttag;
+      // 수송선은 승객이 될 수 없다(수리: 셔틀 여덟이 서로 탄 것으로 나왔다).
+      if (isTransTag(rideTag, bsec, bpid)) continue;
+      const rl = lifeAt(rideTag, bsec);
       if (!rl || rl.bld || rl.owner !== bpid) continue;
-      /* 정체가 수송선인 개체도 승객이 아니다(수리: 아콘과 함께 고른 셔틀이 명단에
-         올랐다) — 수송선을 같이 고른 채 다른 수송선을 우클릭하면 따라갈 뿐이다. */
-      if (isTransportLife(rl)) continue;
       // 이미 같은 시각에 승선 증거가 있으면 겹쳐 넣지 않는다.
       if (rl.ev.some((v) => v[3] === 12 && Math.abs(v[0] - bsec) < 1)) continue;
-      const drop = (unloadsBy.get(ttag) ?? []).find(([usec]) => usec > bsec && usec - bsec < 600);
-      if (!drop) continue; // 내린 기록이 없으면 태운 것도 아니다(따라가기 클릭일 뿐).
-      rl.ev.push([Math.round(bsec), r1(bx), r1(by), 12, ttag]);
-      rl.ev.push([Math.round(drop[0]), r1(drop[1]), r1(drop[2]), 13]);
+      const drop = (unloadsBy.get(hostTag) ?? []).find(([usec]) => usec > bsec && usec - bsec < 600);
+      /* 하차 기록이 없어도 태운 것이다 — 옛 규칙("내린 기록이 없으면 태운 것도 아니다")은
+         **정체 모를 태그**를 찍은 따라가기 클릭을 거르려던 그물인데, 이제 배의 정체를
+         알고 찍으므로 그 그물이 필요 없다. 원작에서 제 수송선을 우클릭한 지상 유닛은
+         언제나 타며 '따라가기'라는 것이 없다. 배가 격추당하거나 경기가 끝나 못 내린
+         승객은 배 안에 있는 채로 남는다(재생기가 제 다음 명령에서 다시 꺼낸다). */
+      rl.ev.push([Math.round(bsec), r1(bx), r1(by), 12, hostTag]);
+      if (drop) {
+        rl.ev.push([Math.round(drop[0]), r1(drop[1]), r1(drop[2]), 13]);
+        rl.last = Math.max(rl.last, drop[0]);
+      }
       rl.ev.sort((a, b) => a[0] - b[0]);
-      rl.last = Math.max(rl.last, drop[0]);
       promoted += 1;
     }
     void promoted;
@@ -2242,6 +2268,25 @@ export function buildUnitTracks(
         for (const l of arr) { if (l.born <= at + 1) f = l; else break; }
         return f ? majorityKindOf2(f) : "";
       };
+      /* ⓪ 한 유닛은 한 번에 한 배에만 탄다 — 뒤 명령이 앞 명령을 지운다.
+         부대를 잡은 채 셔틀 A를 찍고 이어 셔틀 B를 찍는 것이 드랍의 흔한 손놀림인데,
+         여태는 둘 다 승선으로 남아 한 유닛이 배 둘에 동시에 탔다. 그러면 짝이 되는
+         하차 하나를 둘이 나눠 갖고, 뒤에 쓰는 쪽이 앞엣것의 자리를 덮어써 하차 자리가
+         엉뚱한 배로 간다(실측: 질럿 하나가 배에서 11.3타일 떨어진 곳에 내렸다).
+         아직 안 탄 채 새 명령을 받았으면 앞 명령은 그냥 '그쪽으로 가던 걸음'이므로,
+         지우지 않고 평범한 이동(f=0)으로 낮춘다. */
+      for (const arr of allByTag.values()) {
+        for (const life of arr) {
+          if (life.bld) continue;
+          let pend: UnitEv | null = null;
+          for (const v of life.ev) {
+            if (v[3] === 12) {
+              if (pend) { pend[3] = 0; pend[4] = undefined; }
+              pend = v;
+            } else if (v[3] === 13) pend = null;
+          }
+        }
+      }
       type Ride = {
         life: Life; bev: UnitEv; oev: UnitEv | null;
         sec: number; drop: number; space: number;
@@ -2337,25 +2382,33 @@ export function buildUnitTracks(
            배의 자취를 증거 사이 선형 보간으로 되짚어(재생기 posAt과 같은 규칙) 그 자리에
            내려놓는다. 줄서기로 시각이 밀린 뒤쪽 승객은 그만큼 더 간 자리에서 나온다 —
            배가 지나가며 하나씩 떨어뜨리는 그림이 된다. */
-        const hostPts = ((): [number, number, number][] => {
-          const arr = allByTag.get(ttag);
-          if (!arr) return [];
-          const out: [number, number, number][] = [];
-          for (const l of arr) {
-            for (const v of l.ev) if (v[1] >= 0) out.push([v[0], v[1], v[2]]);
-          }
-          out.sort((a, b) => a[0] - b[0]);
-          return out;
-        })();
+        /* 배의 자취는 **그 순간의 생애**만 쓴다 — 태그는 재사용된다(먼저 쓰던 프로브가
+           죽고 셔틀이 물려받는 자리가 흔하다). 한 태그의 모든 생애를 섞으면 옛 주인이
+           서 있던 자리가 보간에 끼어들어, 하차 자리가 배에서 십수 타일 벗어난다.
+           트립의 첫 승선 시각으로 한 번만 고르는 것도 모자란다 — 한 배가 오래 사는
+           동안 태그가 갈릴 수 있어, 내리는 그 시각으로 골라야 한다(실측: 질럿 하나가
+           11.3타일 벗어났다). */
+        const ptsCache = new Map<Life, [number, number, number][]>();
         const hostAt = (t: number): [number, number] | null => {
-          if (hostPts.length === 0) return null;
-          if (t <= hostPts[0][0]) return [hostPts[0][1], hostPts[0][2]];
-          const last = hostPts[hostPts.length - 1];
+          const arr = allByTag.get(ttag);
+          if (!arr || arr.length === 0) return null;
+          let hl: Life = arr[0];
+          for (const l of arr) { if (l.born <= t + 1) hl = l; else break; }
+          let pts = ptsCache.get(hl);
+          if (!pts) {
+            pts = [];
+            for (const v of hl.ev) if (v[1] >= 0) pts.push([v[0], v[1], v[2]]);
+            pts.sort((a, b) => a[0] - b[0]);
+            ptsCache.set(hl, pts);
+          }
+          if (pts.length === 0) return null;
+          if (t <= pts[0][0]) return [pts[0][1], pts[0][2]];
+          const last = pts[pts.length - 1];
           if (t >= last[0]) return [last[1], last[2]];
           let i = 0;
-          while (i + 1 < hostPts.length && hostPts[i + 1][0] < t) i += 1;
-          const [t0, x0, y0] = hostPts[i];
-          const [t1, x1, y1] = hostPts[i + 1];
+          while (i + 1 < pts.length && pts[i + 1][0] < t) i += 1;
+          const [t0, x0, y0] = pts[i];
+          const [t1, x1, y1] = pts[i + 1];
           const k = t1 === t0 ? 0 : (t - t0) / (t1 - t0);
           return [x0 + (x1 - x0) * k, y0 + (y1 - y0) * k];
         };
