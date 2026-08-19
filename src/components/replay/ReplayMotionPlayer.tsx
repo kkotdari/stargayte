@@ -8308,18 +8308,19 @@ const UNIT_BODY_TILES: Record<string, number> = Object.fromEntries(
  *  나가지만 그 크기(GRP 헤더)는 MPQ 없이 못 캔다 — **추측으로 계수를 얹지 않는다.**
  *  1은 "충돌 상자 그대로"라는 뜻이고, GRP를 캐면 여기 한 줄만 갈면 된다. */
 const SPRITE_OVERHANG: number = 1;
-/** ③-a-상한 시네마틱 비율의 허용 범위. **상한이 없는 상수는 손잡이가 아니라 함정이다.**
- *  아래 SIZE_CONTRAST는 이 범위로 잘려서 쓰인다(clamp).
- *  근거(64타일 맵 · 줌 4 · 확대 3.1 · 보이는 폭 16타일에서 가장 큰 배틀크루저 기준,
- *  작은 맵이 먼저 터지므로 64타일로 잰다):
- *      C=1.00  몸 3.74타일 · 그리는 상자 11.5타일 = 화면 폭의 72%
- *      C=1.20  몸 4.03 · 상자 12.4 = 78%
- *      C=1.35  몸 4.26 · 상자 13.1 = 82%
- *      C=2.00  몸 5.42 · 상자 16.7 = 104%  ← 판 하나가 화면을 넘는다
- *  상자가 화면을 넘으면 스프라이트 한 장이 pxq 470을 넘어(DPR 2에서 950² ≈ 3.6MB)
- *  SPRITE_CACHE가 장수(700)로만 잘리는 지금 구조에서 메모리도 같이 터진다.
- *  1.35는 '가장 큰 유닛의 그리는 상자가 작은 맵에서도 화면 안'인 마지막 자리다. */
-const SIZE_CONTRAST_MAX = 1.35;
+/** ③-a-상한 시네마틱 비율의 허용 범위 — 이제 사실상 열려 있다(요청: 나중에 시네마틱
+ *  모드로 강한 대비도 설정할 것이라 상한을 없애야 한다).
+ *
+ *  왜 있었나: 상한의 근거는 크기 자체가 아니라 **스프라이트 보관함의 구멍**이었다.
+ *  보관함이 '장수'로만 잘려(700장), 대비를 키우면 한 장이 950×950(DPR 2) ≈ 3.6MB까지
+ *  커져 이론상 2.5GB가 됐다. 그래서 "가장 큰 유닛의 그리는 상자가 작은 맵에서도 화면 안"
+ *  인 마지막 자리(1.35)에 묶어 두었다.
+ *  왜 없앴나: 보관함을 **바이트 예산 + LRU**로 바꾸고(SPRITE_BYTES_MAX), 한 장이 너무
+ *  커지면 굽지 않고 직접 그리기로 떨어지는 문(SPRITE_SIDE_MAX)을 냈다. 이제 대비를
+ *  키워도 메모리가 그 값에 딸려 오르지 않는다 — 큰 판은 캐시를 안 타고 그때그때
+ *  그려질 뿐이다(그만큼 느려지는 것은 화면에 그렇게 큰 유닛이 있을 때뿐이다).
+ *  남겨 둔 3은 오타 방지용 안전판이다(원작 대비를 다 살려도 1.7 언저리다). */
+const SIZE_CONTRAST_MAX = 3;
 /** ③-a 시네마틱 비율(요청: "유닛간 크기 대비가 커지면서 좀더 역동적인 장면") —
  *  균일 배수로는 '대비'가 안 커지므로 기준 크기에 대한 **지수**로 건다:
  *      크기' = SIZE_REF × (크기 / SIZE_REF) ^ SIZE_CONTRAST
@@ -8338,8 +8339,9 @@ const SIZE_CONTRAST_MAX = 1.35;
    ★ 충돌·간격은 한 톨도 안 움직인다 — 겹침의 진실은 simCore의 BODY_R이고, 화면
      진형 간격은 UNIT_BODY_TILES(등급 섞기도 이 지수도 안 타는 순수 충돌 상자)가
      정한다. 이 상수는 UNIT_BW_TILES(그리기 전용)에만 걸린다.
-   상한을 넘지 않는 이유는 위 SIZE_CONTRAST_MAX 주석의 실측 그대로다 — 1.35가
-   '가장 큰 유닛의 그리는 상자가 작은 맵에서도 화면 안'인 마지막 자리다. */
+   1.35는 옛 상한이 묶어 두던 자리다. 상한은 이제 풀렸으므로(위 SIZE_CONTRAST_MAX)
+   시네마틱 모드가 붙을 때 이 값만 올리면 된다 — 원작 충돌 상자의 대비를 다 살리는
+   값이 1.7 언저리다. */
 const SIZE_CONTRAST: number = 1.35;
 /** 실제로 쓰이는 값 — 1 미만(작은 유닛이 더 커지는 방향)과 상한 밖을 막는다. */
 const SIZE_CONTRAST_C = Math.min(SIZE_CONTRAST_MAX, Math.max(1, SIZE_CONTRAST));
@@ -8868,7 +8870,41 @@ function silhouetteLight(c2: CanvasRenderingContext2D, cv: HTMLCanvasElement): v
    그 자리다. 축이 같은 상자 중심이라는 것만으로는 부족하고, 배율까지 같아야 포탑이
    차체 위에서 안 미끄러진다(이 주석의 옛 판이 적어 둔 실패 모드가 바로 그것이다).
    **건물 쪽(BLD_FILL_*)은 발자국이 크기를 정하는 다른 체계라 그대로 둔다.** */
+/* 스프라이트 보관함의 잘라내기(수리: 장수로만 자르면 큰 판이 쌓일 때 메모리가 터진다)
+   — 여태 기준이 '장수'뿐이라, 한 장이 얼마나 큰지는 보지 않고 700장까지 쌓았다. 판
+   크기는 유닛의 그리는 상자에 비례하므로, 대비를 키우거나 깊게 확대하면 한 장이
+   950×950(DPR 2) ≈ 3.6MB까지 간다 — 700장이면 이론상 2.5GB다. 그 구멍 때문에 크기
+   대비 상수(SIZE_CONTRAST)에 상한을 걸어 두어야 했다.
+   이제 **바이트로 재고 오래된 것부터 덜어낸다**(LRU). Map은 넣은 차례를 지키므로,
+   찾을 때마다 지웠다 다시 넣어 맨 뒤로 보내면 맨 앞이 늘 '가장 오래 안 쓴 것'이다.
+   통째로 비우던 옛 방식은 다음 프레임에 화면 전체를 다시 굽게 만들어 그 순간 끊겼다. */
+const SPRITE_BYTES_MAX = 96 * 1024 * 1024;
+/** 판 한 장의 한 변 상한(장치 픽셀) — 이보다 커야 하는 요청은 굽지 않고 **직접 그리기**로
+ *  떨어진다(호출부가 판이 없을 때의 길을 이미 갖고 있다). 예산(LRU)은 '여러 장이 쌓여'
+ *  터지는 것을 막지만, 한 장이 통째로 거대한 경우는 못 막는다 — 이 문이 그것을 막고,
+ *  그래서 크기 대비 상수의 상한이 필요 없어졌다.
+ *  값 1536은 실측으로 잡았다(DPR 2): 흔히 가장 큰 그림인 '깊게 확대한 배틀크루저'가
+ *  요청 271px → 장치 940px이라 1024로 두면 문턱에 바로 닿아, 제일 눈에 띄는 유닛이
+ *  늘 캐시를 못 타고 매 프레임 다시 그려진다. 1536이면 그 판(9MB)까지 캐시에 들어오고,
+ *  예산 96MB 안이라 그런 판이 열 장 쌓여도 LRU가 감당한다. */
+const SPRITE_SIDE_MAX = 1536;
+const BLD_SPRITE_BYTES_MAX = 64 * 1024 * 1024;
+/** 캔버스 한 장이 먹는 바이트 — 픽셀당 RGBA 4바이트. */
+const canvasBytes = (cv: HTMLCanvasElement): number => cv.width * cv.height * 4;
+/** 예산을 넘는 동안 가장 오래 안 쓴 것부터 덜어낸다. */
+function trimSpriteCache<T extends { cv: HTMLCanvasElement }>(
+  cache: Map<string, T>, bytes: { n: number }, budget: number,
+): void {
+  while (bytes.n > budget && cache.size > 1) {
+    const oldest = cache.keys().next();
+    if (oldest.done) break;
+    const got = cache.get(oldest.value);
+    if (got) bytes.n -= canvasBytes(got.cv);
+    cache.delete(oldest.value);
+  }
+}
 const SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; bot: number; cx: number; top: number; w: number }>();
+const spriteBytes = { n: 0 };
 function unitSprite(
   op: UnitDrawOp, pxq: number, B: number,
 ): { cv: HTMLCanvasElement; pad: number; l: number; bot: number; cx: number; top: number; w: number } | null {
@@ -8880,7 +8916,8 @@ function unitSprite(
   const key = `${op.kind}|${rotB}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}`
     + `|${op.color}|${pxq}|${B.toFixed(2)}|${lod}`;
   const hit = SPRITE_CACHE.get(key);
-  if (hit) return hit;
+  // 찾은 것은 맨 뒤로 — 그래야 맨 앞이 '가장 오래 안 쓴 것'이 된다(LRU).
+  if (hit) { SPRITE_CACHE.delete(key); SPRITE_CACHE.set(key, hit); return hit; }
   const { faces: all } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
   if (!all) return null;
   const faces = lodFilter(autoTier(op.kind, `u|${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}`, all), lod);
@@ -8891,6 +8928,8 @@ function unitSprite(
   const cv = document.createElement("canvas");
   cv.width = Math.max(1, Math.ceil(l * B));
   cv.height = cv.width;
+  // 너무 큰 판은 굽지 않는다(위 SPRITE_SIDE_MAX) — 직접 그리기로 떨어진다.
+  if (cv.width > SPRITE_SIDE_MAX) return null;
   const c2 = cv.getContext("2d");
   if (!c2) return null;
   c2.setTransform(B, 0, 0, B, 0, 0);
@@ -8911,10 +8950,10 @@ function unitSprite(
     c2.fill(pathOf(d));
   }
   if (lod >= 3) silhouetteLight(c2, cv);
-  // 무한히 크지 않게 — 색·크기 조합이 쌓이면 통째로 비운다(다음 프레임에 필요분만 재적재).
-  if (SPRITE_CACHE.size > 700) SPRITE_CACHE.clear();
   const entry = { cv, pad, l, ...contentBox(cv) };
   SPRITE_CACHE.set(key, entry);
+  spriteBytes.n += canvasBytes(cv);
+  trimSpriteCache(SPRITE_CACHE, spriteBytes, SPRITE_BYTES_MAX);
   return entry;
 }
 /* 건물 스프라이트(요청: 건물도 병목 감축) — meet(비율 유지) 상자 건물을 같은 방식으로
@@ -9044,6 +9083,7 @@ const BLD_NORM: Record<string, number> = {
   warpin: 2.038,
 };
 const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number; w: number; cx: number }>();
+const bldSpriteBytes = { n: 0 };
 /** 경로의 세로 범위 [위, 아래] — 공사에서 부품을 높이 순으로 세우는 데 쓴다.
  *  우리 도형 문법은 M·L·Q·C·A(a)·Z뿐이다. 호는 끝점 ± ry로 어림한다(순서를 정하는
  *  데는 충분하다). 상대 좌표는 호(`a`)에서만 쓰이고 그 앞은 늘 절대 M이다. */
@@ -9344,7 +9384,7 @@ function buildingSprite(
   const stg = op.buildStage ?? 0;
   const key = `${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}|${op.color}|${sideQ}|${B.toFixed(2)}|${lod}|${stg}`;
   const hit = BLD_SPRITE_CACHE.get(key);
-  if (hit) return hit;
+  if (hit) { BLD_SPRITE_CACHE.delete(key); BLD_SPRITE_CACHE.set(key, hit); return hit; }
   const { faces: all } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
   if (!all) return null;
   const faces = stageFaces(
@@ -9361,6 +9401,8 @@ function buildingSprite(
   const cv = document.createElement("canvas");
   cv.width = Math.max(1, Math.ceil(l * B));
   cv.height = cv.width;
+  // 너무 큰 판은 굽지 않는다(위 SPRITE_SIDE_MAX) — 직접 그리기로 떨어진다.
+  if (cv.width > SPRITE_SIDE_MAX) return null;
   const c2 = cv.getContext("2d");
   if (!c2) return null;
   c2.setTransform(B, 0, 0, B, 0, 0);
@@ -9381,12 +9423,13 @@ function buildingSprite(
     c2.fill(pathOf(d));
   }
   if (lod >= 3) silhouetteLight(c2, cv);
-  if (BLD_SPRITE_CACHE.size > 500) BLD_SPRITE_CACHE.clear();
   const box9 = contentBox(cv);
   const entry = {
     cv, pad, l, side: sideQ, bot: box9.bot, top: box9.top, w: box9.w, cx: box9.cx,
   };
   BLD_SPRITE_CACHE.set(key, entry);
+  bldSpriteBytes.n += canvasBytes(cv);
+  trimSpriteCache(BLD_SPRITE_CACHE, bldSpriteBytes, BLD_SPRITE_BYTES_MAX);
   return entry;
 }
 function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows, showOverlap, showHp, showCreep }: {
