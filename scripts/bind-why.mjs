@@ -1,0 +1,156 @@
+/* 원장이 왜 짝을 못 찾는지 사유별로 재는 자 (물음: "합성 개체 수와 나머지 수치도
+ * 좋아지려면 뭘 더 고쳐야 하나")
+ *
+ *   node scripts/bind-why.mjs <리플레이.rep…>
+ *
+ * 결합률이 안 오르면 남는 만큼이 합성 개체가 되고, 합성 개체는 증거 없이 서 있다가
+ * 인구 상한에 물려 사라진다. 그러니 "어디서 막히나"를 알아야 다음에 손댈 자리가
+ * 정해진다. 짝을 못 찾은 원장마다 **모든 후보 생애를 훑어 탈락 사유를 세고**, 가장
+ * 아까운 사유가 무엇인지 본다.
+ *
+ * ★ 먼저 볼 것은 사유가 아니라 **천장**이다: 생애 후보 수 ÷ 원장 수. 리플레이에 한 번도
+ * 안 골라진 유닛은 태그 자취를 하나도 안 남기므로 짝지을 대상이 아예 없다 — 그런 몫은
+ * 합성으로 세우는 것이 옳고, 아무리 좋은 짝짓기도 그 천장을 못 넘는다.
+ *   실측 — 90300: 생애 1080 / 원장 1367 = 천장 79.0% (지금 69.1%)
+ *          30800: 생애  552 / 원장  704 = 천장 78.4% (지금 70.0%)
+ *          경기1: 생애 1538 / 원장 1813 = 천장 84.8% (지금 72.1%)
+ *
+ * 천장까지 남은 몫은 '끝까지 짝 없이 남은 자유 생애' 수와 같다. 그 생애들이 왜 안 쓰였나를
+ * 루프 안 계수기로 센다 — 창 앞끝·뒤끝·정체·행동 넷이다. 뒤늦게 다시 따지면 kinds와 born이
+ * 이미 바뀌어 있어 사유가 틀리게 나오므로(실측으로 밟은 함정), 탈락하는 그 자리에서 센다.
+ *
+ * 계측은 원본을 안 건드린다 — 사본을 떠서 진단 블록만 끼운다.
+ */
+
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const files = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+if (files.length === 0) {
+  console.error("쓰기: node scripts/bind-why.mjs <리플레이.rep…>");
+  process.exit(2);
+}
+
+/** 진짜 루프 안에 계수기를 심는다 — 뒤늦게 다시 따지면 kinds·born이 이미 바뀌어 있어
+ *  사유가 틀리게 나온다(실측으로 그 함정을 밟았다). 탈락하는 그 자리에서 센다. */
+const PATCHES = [
+  [
+    "        for (const life of candLives) {\n          if (life.spawned || life.owner !== r.it.pid) continue;",
+    "        for (const life of candLives) {\n"
+    + "          if (life.owner !== r.it.pid) continue;\n"
+    + "          if (life.spawned) { __W.taken += 1; continue; }\n"
+    + "          __W.saw += 1;",
+  ],
+  [
+    "          if (life.born < front || life.born - r.it.done > 300) continue;",
+    "          if (life.born < front) { __W.front += 1; continue; }\n"
+    + "          if (life.born - r.it.done > 300) { __W.back += 1; continue; }",
+  ],
+  [
+    "          if (pass === 0 ? mk !== r.it.unit : mk !== \"\") continue;",
+    "          if (pass === 0 ? mk !== r.it.unit : mk !== \"\") {\n"
+    + "            if (pass === 0) __W.kind0 += 1; else __W.kind1 += 1;\n"
+    + "            continue;\n"
+    + "          }",
+  ],
+  [
+    "            if (isWorkerItem && attacked) continue;\n            if (!isWorkerItem && builtSomething) continue;",
+    "            if (isWorkerItem && attacked) { __W.act += 1; continue; }\n"
+    + "            if (!isWorkerItem && builtSomething) { __W.act += 1; continue; }",
+  ],
+  [
+    "    // ③ 잔여는 합성 개체 — 한 번도 안 집힌 유닛도 태어나 랠리까지는 산다(요청).",
+    "    {\n"
+    + "      const lostBy = new Map();\n"
+    + "      let noCand = 0;\n"
+    + "      for (const r of items) {\n"
+    + "        if (r.it.bound) continue;\n"
+    + "        lostBy.set(r.it.unit, (lostBy.get(r.it.unit) ?? 0) + 1);\n"
+    + "        if (!candLives.some((l) => l.owner === r.it.pid && !l.spawned)) noCand += 1;\n"
+    + "      }\n"
+    + "      __W.noCand = noCand;\n"
+    + "      __W.freeLives = candLives.filter((l) => !l.spawned).length;\n"
+    + "      __W.candLives = candLives.length;\n"
+    + "      globalThis.__BIND_WHY = { why: __W, lostBy: [...lostBy.entries()].sort((a, b) => b[1] - a[1]) };\n"
+    + "    }\n"
+    + "    // ③ 잔여는 합성 개체 — 한 번도 안 집힌 유닛도 태어나 랠리까지는 산다(요청).",
+  ],
+];
+const HEAD = "const __W = { taken: 0, saw: 0, front: 0, back: 0, kind0: 0, kind1: 0, act: 0 };\n";
+
+async function bundleProbe() {
+  const src = readFileSync(join(ROOT, "src/utils/replayUnits.ts"), "utf8");
+  let text = src;
+  for (const [a, b] of PATCHES) {
+    if (!text.includes(a)) throw new Error(`계수기 자리를 못 찾았다: ${a.slice(0, 50)}`);
+    text = text.replace(a, b);
+  }
+  text = HEAD + text.replaceAll('from "./', `from "${join(ROOT, "src/utils")}/`);
+  const dir = mkdtempSync(join(tmpdir(), "bindwhy-"));
+  const ts = join(dir, "probe.ts");
+  const out = join(dir, "probe.mjs");
+  writeFileSync(ts, text);
+  const ebin = join(ROOT, "node_modules", "esbuild", "bin", "esbuild");
+  const head = readFileSync(ebin).subarray(0, 4);
+  const native = (head[0] === 0x7f && head[1] === 0x45 && head[2] === 0x4c && head[3] === 0x46)
+    || (head[0] === 0x4d && head[1] === 0x5a);
+  const a = [ts, "--bundle", "--platform=node", "--format=esm", "--log-level=error", `--outfile=${out}`];
+  execFileSync(native ? ebin : process.execPath, native ? a : [ebin, ...a],
+    { cwd: ROOT, stdio: ["ignore", "ignore", "inherit"] });
+  const mod = await import(pathToFileURL(out).href);
+  rmSync(dir, { recursive: true, force: true });
+  return mod;
+}
+
+const { buildUnitTracks } = await bundleProbe();
+const { default: Screp } = await import("screp-js");
+const nm = (v) => (typeof v === "string" ? v : v?.Name ?? "");
+const RACE = { Terran: "테란", Protoss: "프로토스", Zerg: "저그" };
+
+const LABEL = {
+  taken: "이미 다른 원장이 집어 간 생애를 다시 본 횟수",
+  saw: "짝을 따져 본 (원장, 자유 생애) 쌍",
+  front: "└ 창 앞끝에서 탈락 (born < 완성−8초)",
+  back: "└ 창 뒤끝에서 탈락 (born − 완성 > 300초)",
+  kind0: "└ 1차(같은 이름만)에서 정체 어긋남",
+  kind1: "└ 2차(무명만)에서 이미 이름이 있음",
+  act: "└ 행동 어긋남 (공격한 일꾼·건물 지은 비일꾼)",
+};
+
+console.log("\n── 원장이 짝을 못 찾은 사유 ────────────────────────────────────────");
+for (const path of files) {
+  const buf = new Uint8Array(readFileSync(path));
+  const res = await Screp.parseBuffer(buf, { cmds: true, mapData: true, mapTiles: true, mapResLoc: true });
+  const cmds = res.Commands?.Cmds ?? [];
+  const spots = new Map((res.MapData?.StartLocations ?? []).map((sp) => [sp.SlotID, sp]));
+  const players = (res.Header.Players ?? [])
+    .filter((p) => !p.Observer && nm(p.Type) !== "Observer")
+    .map((p) => {
+      const sp = spots.get(p.SlotID);
+      return {
+        id: p.ID, name: p.Name, race: RACE[nm(p.Race)] ?? "",
+        team: typeof p.Team === "number" ? p.Team : null,
+        startX: sp ? sp.X / 32 : null,
+        startY: sp ? sp.Y / 32 : null,
+      };
+    });
+  const d = buildUnitTracks(cmds, players);
+  const st = d.stats ?? {};
+  const { why, lostBy } = globalThis.__BIND_WHY ?? { why: {}, lostBy: [] };
+  const unbound = (st.prod ?? 0) - (st.prodBound ?? 0);
+  console.log(`\n${path.split("/").pop().slice(0, 46)}`);
+  console.log(`  원장 ${st.prod} · 짝지음 ${st.prodBound} (${(((st.prodBound ?? 0) / (st.prod || 1)) * 100).toFixed(1)}%)`
+    + ` · 못 지음 ${unbound} · 합성 개체 ${st.prodSyn}`);
+  console.log(`  생애 후보 ${why.candLives} · 끝까지 짝 없이 남은 자유 생애 ${why.freeLives}`
+    + ` · 자유 생애가 아예 없던 원장 ${why.noCand}건`);
+  for (const k of ["taken", "saw", "front", "back", "kind0", "kind1", "act"]) {
+    const v = why[k] ?? 0;
+    console.log(`    ${String(v).padStart(7)}회  ${LABEL[k]}`);
+  }
+  console.log("  못 지은 원장이 많은 정체 앞 8종: "
+    + lostBy.slice(0, 8).map(([k, n]) => `${k}×${n}`).join(" "));
+}

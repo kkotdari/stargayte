@@ -32,23 +32,29 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const argv = process.argv.slice(2);
 const si = argv.indexOf("--slack");
-const SLACKS = (si >= 0 ? argv[si + 1] : "0,4,8,12,16,24,32,48").split(",").map(Number);
-const files = argv.filter((a, i) => !a.startsWith("--") && i !== si + 1);
+const bi = argv.indexOf("--back");
+const SLACKS = (si >= 0 ? argv[si + 1] : "8").split(",").map(Number);
+const BACKS = (bi >= 0 ? argv[bi + 1] : "300").split(",").map(Number);
+const files = argv.filter((a, i) => !a.startsWith("--") && i !== si + 1 && i !== bi + 1);
 if (files.length === 0) {
   console.error("쓰기: node scripts/bind-check.mjs <리플레이.rep…> [--slack 0,4,8,…]");
   process.exit(2);
 }
 
-/** 원본을 사본으로 떠서 붙박이 8을 바깥 값으로 바꾼다. */
+/** 원본을 사본으로 떠서 창의 앞끝(8초)과 뒤끝(300초)을 바깥 값으로 바꾼다. */
 function probeSource() {
   const src = readFileSync(join(ROOT, "src/utils/replayUnits.ts"), "utf8");
   const before = "r.it.done - 8";
+  const back = "life.born - r.it.done > 300";
   const n = src.split(before).length - 1;
-  if (n === 0) throw new Error("앞끝 상수를 못 찾았다 — 원본이 바뀌었다");
+  const nb = src.split(back).length - 1;
+  if (n === 0 || nb === 0) throw new Error("창 상수를 못 찾았다 — 원본이 바뀌었다");
   return {
-    n,
-    text: `const __SLACK = Number(globalThis.__BIND_SLACK ?? 8);\n`
+    n: n + nb,
+    text: "const __SLACK = Number(globalThis.__BIND_SLACK ?? 8);\n"
+      + "const __BACK = Number(globalThis.__BIND_BACK ?? 300);\n"
       + src.replaceAll(before, "r.it.done - __SLACK")
+        .replaceAll(back, "life.born - r.it.done > __BACK")
         .replaceAll('from "./', `from "${join(ROOT, "src/utils")}/`),
   };
 }
@@ -195,16 +201,20 @@ for (const path of files) {
     });
   const prod = producedOf(cmds, players);
   console.log(`\n${path.split("/").pop().slice(0, 46)}`);
-  console.log("  앞끝     결합률          합성개체   무명   못뽑은이름   수급어긋남");
+  console.log("  앞끝  뒤끝     결합률          합성개체   무명   못뽑은이름   수급어긋남");
   for (const s of SLACKS) {
-    globalThis.__BIND_SLACK = s;
-    const d = buildUnitTracks(cmds, players);
-    const q = scoreOf(d, prod, players);
-    const pct = q.prod > 0 ? (q.bound / q.prod) * 100 : 0;
-    console.log(`  ${String(s).padStart(3)}초  ${String(q.bound).padStart(5)}/${String(q.prod).padStart(5)}`
-      + ` = ${pct.toFixed(1).padStart(5)}%   ${String(q.syn).padStart(5)}기`
-      + `  ${String(q.unnamed).padStart(4)}기  ${String(q.ghost).padStart(6)}기`
-      + `  ${q.tvd.toFixed(1).padStart(8)}%`);
+    for (const b of BACKS) {
+      globalThis.__BIND_SLACK = s;
+      globalThis.__BIND_BACK = b;
+      const d = buildUnitTracks(cmds, players);
+      const q = scoreOf(d, prod, players);
+      const pct = q.prod > 0 ? (q.bound / q.prod) * 100 : 0;
+      console.log(`  ${String(s).padStart(3)}초 ${String(b).padStart(5)}초`
+        + `  ${String(q.bound).padStart(5)}/${String(q.prod).padStart(5)}`
+        + ` = ${pct.toFixed(1).padStart(5)}%   ${String(q.syn).padStart(5)}기`
+        + `  ${String(q.unnamed).padStart(4)}기  ${String(q.ghost).padStart(6)}기`
+        + `  ${q.tvd.toFixed(1).padStart(8)}%`);
+    }
   }
 }
 console.log("\n결합률만 보고 창을 넓히면 안 된다 — 못 뽑은 이름과 수급 어긋남이 함께 안 나빠지는"
