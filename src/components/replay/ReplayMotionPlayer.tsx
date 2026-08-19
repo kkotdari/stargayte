@@ -26,7 +26,8 @@ import {
 /* 러커 가시가 나아가는 거리·속도는 무기표가 아니라 iscript 행동(behaviour 9 "go to max
    range")에서 온 값이라 bwCombat이 안 물고 있다. 숫자를 여기 또 적는 대신 표에서 읽는다. */
 import {
-  BUILDING_FOOT, FRAME_SEC, LURKER_SPINE_SPEED_PX, LURKER_SPINE_TRAVEL_PX, buildingBox,
+  BUILDING_FOOT, FRAME_SEC, LARVA_MAX, LARVA_SPAWN_SEC, LURKER_SPINE_SPEED_PX,
+  LURKER_SPINE_TRAVEL_PX, buildingBox,
 } from "../../utils/bwUnits";
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, type TerrainGrid } from "../../utils/minimapTerrain";
@@ -7176,6 +7177,67 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 저그 고치 — 크립 위 통통한 번데기(재생 쪽 CSS가 바운스시킨다). */
   /* 저그 변태 고치 — 고정색(요청: 팀색 말고): 장기 느낌의 연한 살색 몸 + 붉은·갈·보라
      힘줄 선. 크립은 탁한 보라. */
+  /* 라바(요청: "이왕 해처리에 매핑할 거면 라바도 모델링하소") — 해처리 발치에 누워
+     꿈틀대는 창백한 애벌레. 마디 다섯을 구슬로 꿰고, 가운데가 통통하며 머리 쪽이
+     조금 든다. 눈 둘은 머리 앞위에 박힌 검은 점이다.
+     쓰는 자리가 지도의 해처리 곁뿐이라 요잉은 건물과 같은 각을 탄다. */
+  larva: () => {
+    /* 몸은 **한 덩이**로 그린다 — 구슬을 낱개 프리미티브로 꿰면 구슬마다 제 광택·그늘
+       원반이 따라붙어, 작게 그릴수록 얼룩덜룩한 뭉치가 된다(첫 판이 그랬다).
+       마디가 읽히게 하는 것은 테두리가 아니라 **띠**다: 원들을 겹쳐 놓으면 경계선이
+       안 생기므로, 한 칸 건너 한 마디를 한 톤 짙게 칠해 줄무늬 애벌레로 만든다. */
+    const SKIN = "#cdbb95";
+    const BAND = "#b09d78";
+    const N = 9;
+    /** 마디 i의 [앞뒤 y, 높이 z, 반지름] — 꼬리가 가늘고 가운데가 통통하며 머리가 든다. */
+    const at9 = (i: number): [number, number, number] => {
+      const u = i / (N - 1);
+      return [
+        -3.7 + u * 7.4,
+        0.7 + u * 0.45 + Math.sin(u * Math.PI) * 0.22,
+        0.3 + Math.sin(u * Math.PI) * 0.46 + u * 0.12,
+      ];
+    };
+    /** 고른 마디들의 원을 한 경로로 — dx·dy는 반지름 몫만큼 민다(광택용). */
+    const chain = (pick: (i: number) => boolean, k = 1, dx = 0, dy = 0): string => {
+      const ps: string[] = [];
+      for (let i = 0; i < N; i += 1) {
+        if (!pick(i)) continue;
+        const [y9, z9, r9] = at9(i);
+        const [sx, sy] = project(0, y9, z9);
+        ps.push(screenCircle(sx + dx * r9, sy + dy * r9, r9 * k));
+      }
+      return ps.join(" ");
+    };
+    const out: ShapeFace[] = [
+      [chain(() => true), 1, SKIN] as ShapeFace,
+      [chain((i) => i % 2 === 1, 0.9), 1, BAND] as ShapeFace,
+      topFace(chain(() => true, 0.3, -0.45, -0.45), 0.2),
+    ];
+    // 눈 둘 — 머리를 마주볼 때만(뒤통수에 눈이 붙으면 안 된다).
+    if (facingRatio(0, 1) > 0.05) {
+      const [hy, hz] = at9(N - 1);
+      const eyes: string[] = [];
+      for (const ex of [-0.3, 0.3]) {
+        const [sx, sy] = project(ex, hy - 0.3, hz + 0.3);
+        eyes.push(screenCircle(sx, sy, 0.17));
+      }
+      out.push(...tagKey([[eyes.join(" "), 1, "#241c14"] as ShapeFace],
+        depthNow(0, 3.7) * 1.6 + 9));
+    }
+    return out;
+  },
+  /* 변태알(요청: "변태알도 하면 좋을 듯") — 라바가 유닛이 되는 동안의 알. 건물 고치
+     (cocoon)와 실루엣은 닮았지만 더 작고 매끈하며 껍질이 짙은 갈보라라 한눈에 갈린다.
+     이음선 둘이 알을 가로지르고, 꼭대기에 숨구멍이 옅게 팬다. */
+  egg: () => [
+    ...paintBase([
+      ...domeFaces3(0, 0, 2.35, 3.7),
+      ...domeFaces3(0, 0, 1.45, 0.8, 3.55),
+    ], "#6e4c46"),
+    capFace(polyPath3([[-1.75, 0.2, 2.35], [1.75, 0.2, 2.35], [1.55, 0, 2.7], [-1.55, 0, 2.7]]), 0.2),
+    capFace(polyPath3([[-1.3, 0.2, 1.25], [1.3, 0.2, 1.25], [1.15, 0, 1.6], [-1.15, 0, 1.6]]), 0.2),
+  ],
   cocoon: () => [
     // 가시는 걷었다(지적: 성큰류와 헷갈린다) — 민둥한 겹돔 고치만.
     // 가시 돋친 크립 대신 부드러운 원반(재지적: 고치 옆 가시 제거).
@@ -9354,15 +9416,17 @@ const MODEL_NORM: Record<string, number> = {
   droneMin: 1.048,
   dship: 0.716,
   dtemp: 0.896,
-  fbat: 1.061,
-  ghost: 1.362,
+  egg: 1.157,
+  fbat: 1.051,
+  ghost: 1.363,
   goliath: 0.829,
   goon: 0.667,
   guardian: 0.637,
-  gunner: 1.149,
+  gunner: 1.144,
   htemp: 1.077,
   hydra: 0.757,
-  inf: 1.266,
+  inf: 1.257,
+  larva: 1.188,
   lurker: 0.603,
   lurkeregg: 0.886,
   mine: 1.293,  // 상자 상한(원한 배수 1.465)
@@ -9706,6 +9770,10 @@ export const SHAPE_GALLERY: { kind: string; label: string; group: "유닛" | "�
   { kind: "carrierbay", label: "캐리어(인터셉터)", group: "유닛" },
   { kind: "arbiter", label: "아비터", group: "유닛" },
   // ── 유닛 · 저그 ──
+  /* 라바·변태알은 개체 트랙에 안 실리는 모델이다(리플레이에 라바는 안 남는다) —
+     해처리 발치의 장식으로만 나온다. 도록에 올려 두면 크기 정규화도 같은 자를 탄다. */
+  { kind: "larva", label: "라바", group: "유닛" },
+  { kind: "egg", label: "변태알", group: "유닛" },
   { kind: "drone", label: "드론", group: "유닛" },
   { kind: "droneMin", label: "드론(미네랄)", group: "유닛" },
   { kind: "droneGas", label: "드론(가스)", group: "유닛" },
@@ -11675,6 +11743,8 @@ const SCAN_DUST: [number, number, number][] = Array.from({ length: 16 }, (_, i) 
   const r9 = Math.sqrt((i + 0.4) / 16) * 42;
   return [50 + Math.cos(a9) * r9, 50 + Math.sin(a9) * r9, ((i * 5) % 16) * 0.11];
 });
+/** 라바를 데리고 있는 저그 본진 — 라바·변태알을 발치에 그리는 대상이다. */
+const ZERG_HALLS = new Set<string>(["Hatchery", "Lair", "Hive"]);
 const ADDONS = new Set([
   "Comsat Station", "Nuclear Silo", "Machine Shop", "Control Tower", "Covert Ops", "Physics Lab",
   // v2 트랙의 변형 이름(지적: 커맨드 애드온에 통로가 안 붙음) — screp는 ComSat으로 준다.
@@ -15043,6 +15113,64 @@ export default function ReplayMotionPlayer({
                 fitWidth: true,
                 color, alpha, noShadow: true,
               });
+              /* 라바와 변태알(요청: "이왕 해처리에 매핑할 거면 라바도 모델링하소
+                 변태알도 하면 좋을 듯") — 생산 자리가 건물마다 갈리고 나니, 이 해처리가
+                 지금 무엇을 품고 있고 라바가 몇 마리 남았는지를 그릴 수 있다.
+                 ▸ 변태알 — 그 해처리에서 난 유닛의 '완성 시각 − 변태 시간' 구간이 곧
+                   알이다. 자리는 분석이 정한 출생 자리(발자국 아래 출구) 곁이다.
+                 ▸ 라바 — 리플레이에 라바 자체는 안 남는다(라바는 명령을 안 받고, 변태를
+                   누른 순간에만 태그가 스친다). 다만 원작의 규칙이 뚜렷하다: 해처리
+                   하나가 342프레임(14.4초)마다 한 마리를 뱉고 최대 셋까지 모이며,
+                   변태를 누르면 하나가 준다(bwUnits의 LARVA_*). 그 규칙에 **이 해처리의
+                   변태 시각들**을 먹이면 지금 남은 수가 나온다 — 지어내는 것이 아니라
+                   아는 규칙과 아는 증거로 되짚는 것이다. */
+              if (ZERG_HALLS.has(unit) && !raising && (goneEff === 0 || t < goneEff)) {
+                const fp3 = FOOTPRINT[unit] ?? [4, 3];
+                const mine3 = (prodDoneAt.get(raw) ?? []).filter((r3) =>
+                  r3.x >= bx - 1.5 && r3.x <= bx + fp3[0] + 1.5
+                  && r3.y >= by - 1.5 && r3.y <= by + fp3[1] + 2);
+                const eggs3: { u: string; s: number }[] = [];
+                let larva3 = 1;
+                let last3 = sec;
+                for (const r3 of mine3) {
+                  const need3 = UNIT_BUILD_SEC[r3.u] ?? 30;
+                  const m3 = r3.s - need3;
+                  if (t >= m3 && t < r3.s) eggs3.push({ u: r3.u, s: r3.s });
+                  if (m3 > t) continue;
+                  larva3 = Math.min(LARVA_MAX,
+                    larva3 + Math.floor(Math.max(0, m3 - last3) / LARVA_SPAWN_SEC));
+                  last3 = m3;
+                  larva3 = Math.max(0, larva3 - 1);
+                }
+                larva3 = Math.min(LARVA_MAX,
+                  larva3 + Math.floor(Math.max(0, t - last3) / LARVA_SPAWN_SEC));
+                /* 알과 라바가 앉는 자리 — 해처리 발치를 두르는 여섯 칸. 알이 앞자리를
+                   먼저 차지하고 남은 자리에 라바가 눕는다(원작에서도 알이 해처리에 더
+                   바짝 붙어 있다). */
+                const SPOT3: [number, number][] = [
+                  [-2.3, 1.8], [0.1, 2.4], [2.4, 1.8], [-2.7, 0.1], [2.7, 0.1], [0.1, -2.1],
+                ];
+                let si3 = 0;
+                const put3 = (kind3: string, sz3: number): void => {
+                  const sp3 = SPOT3[si3 % SPOT3.length];
+                  si3 += 1;
+                  const px3 = centerX + sp3[0];
+                  const py3 = centerY + sp3[1];
+                  const [pfx3, pfy3] = posFrac(px3, py3);
+                  unitOps.push({
+                    fx: pfx3, fy: pfy3, z: z + 1, kind: kind3,
+                    rotDeg: buildingYawOf(unit),
+                    viewYaw: viewYawOf(px3, py3), flat: !pitched, pitch: pitched,
+                    /* 크기는 유닛과 **같은 자**를 탄다(unitGlyphPx) — 타일 폭을 직접
+                       곱하면 그 값이 16-상자 한 변이라 실제 잉크는 3분의 1로 줄어,
+                       화면에서는 점 하나가 된다. 라바는 소형, 알은 그보다 한 단 크다. */
+                    sizePx: unitGlyphPx(kind3, kind3, kind3 === "egg" ? 1 : 0, py3) * sz3,
+                    color, alpha, noSep: true, noShadow: true,
+                  });
+                };
+                for (let q3 = 0; q3 < Math.min(3, eggs3.length); q3 += 1) put3("egg", 1.15);
+                for (let q3 = 0; q3 < larva3; q3 += 1) put3("larva", 1);
+              }
               /* 애드온 연결 통로(지적: 본체와 잇는 방식 고민 — 원작 배치 참고) — 원작
                  에서 부속건물은 본체 오른쪽 아래에 붙는다: 애드온 왼쪽 모서리에서 본체
                  쪽으로 낮은 복도 판을 깐다. */

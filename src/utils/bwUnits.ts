@@ -488,6 +488,20 @@ export function speedOfUnit(unit: string, ups?: Set<string> | string[]): number 
   return upsHasUpgrade(ups, up) ? base * SPEED_UP_MULT : base;
 }
 
+/* ── 라바 ─────────────────────────────────────────────────────────────────────
+   해처리 계열은 라바를 뱉는다. 리플레이에 라바 자체는 안 남지만(라바는 명령을 안 받고,
+   변태를 누른 순간에만 태그가 스친다) 규칙은 뚜렷하다 — 그래서 변태 시각들만 있으면
+   '지금 몇 마리 남았나'를 되짚을 수 있다. */
+
+/** 라바 하나가 새로 도는 데 걸리는 프레임 — 342(빠른 속도 23.81fps에서 14.36초).
+ *  ⚠ [어림] 원전 코드를 못 읽었다. 널리 쓰이는 값이고 화면에서도 맞지만, 확인되면
+ *  출처와 함께 고쳐라. */
+export const LARVA_SPAWN_FRAMES = 342;
+/** 14.36초. */
+export const LARVA_SPAWN_SEC = LARVA_SPAWN_FRAMES / 23.81;
+/** 해처리 하나가 데리고 있을 수 있는 라바 수 — 셋. */
+export const LARVA_MAX = 3;
+
 /** 회전 속도(도/초) — [추정] flingy.dat turn_radius를 못 구했다. 화면에서 맞춘 값. */
 export const TURN_RATE: Record<string, number> = {
   "Siege Tank": 200, "Siege Tank (Tank Mode)": 200, Goliath: 240, Dragoon: 240,
