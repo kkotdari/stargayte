@@ -13148,16 +13148,13 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   margin: 10px 2px 6px;
 }
 .scr-model-list > div:first-child .scr-model-group-title { margin-top: 0; }
-/* 목록은 PC 4열·모바일 2열 고정(요청: "최대한 그림을 크게 보고싶어서야") — auto-fill
-   84px는 넓은 화면에서 열이 열두 개까지 늘어 썸네일이 44px에 머물렀다. 열 수를 못박으면
-   칸 폭이 화면을 나눠 가지므로 그림이 화면 폭을 따라 커진다. 폭 조건은 이 파일의 두
-   자(1159/1160) 그대로다. */
+/* 목록은 어디서나 2열 고정(요청: "피시에서도 두줄로") — auto-fill 84px는 넓은 화면에서
+   열이 열두 개까지 늘어 썸네일이 44px에 머물렀고, PC 4열도 칸이 좁아 끌어 돌릴 자리가
+   없었다("공간이 좁은데"). 열 수를 못박으면 칸 폭이 화면을 나눠 가지므로 그림이 화면
+   폭을 따라 커진다. */
 .scr-model-gallery {
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
   align-content: start;
-}
-@media (max-width: 1159px) {
-  .scr-model-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 /* 무대 색 견본(요청) — 좌하단 작은 원 점들. 기본 흰색. */
 /* 색 견본은 왼쪽 세로줄(요청: 아래는 이미 좁아) — 뷰어 왼 끝 가운데에 세로로 늘어선다. */

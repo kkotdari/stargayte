@@ -49,7 +49,7 @@ const THUMB_FACES: Record<string, ShapeFace[]> = Object.fromEntries(
 /** 도록의 칸 하나(요청: 칸마다 끌어 돌리고 돋보기로 크게) — 면·선택·색·배수가 그대로면
  *  다시 안 그린다. 손잡이는 부모가 안정된 참조로 넘긴다. */
 const GalleryCell = memo(function GalleryCell({
-  kind, label, faces, on, color, mapK, onSelect, onZoom, onDown, onMove, onUp,
+  kind, label, faces, on, color, mapK, onSelect, onZoom, onDown, onMove, onUp, onHover,
 }: {
   kind: string; label: string; faces: ShapeFace[] | undefined; on: boolean;
   color: string; mapK: number;
@@ -58,6 +58,7 @@ const GalleryCell = memo(function GalleryCell({
   onDown: (k: string, e: React.PointerEvent<HTMLDivElement>) => void;
   onMove: (k: string, e: React.PointerEvent<HTMLDivElement>) => void;
   onUp: () => void;
+  onHover: (k: string) => void;
 }) {
   return (
     <div
@@ -67,6 +68,7 @@ const GalleryCell = memo(function GalleryCell({
       onPointerMove={(e) => onMove(kind, e)}
       onPointerUp={onUp}
       onPointerCancel={onUp}
+      onPointerEnter={() => onHover(kind)}
       onClick={() => onSelect(kind)}
       role="presentation"
     >
@@ -163,7 +165,7 @@ export default function ModelGalleryScreen() {
         rawYawRef.current = snapYaw(rawYawRef.current) + d9;
         return;
       }
-      const k9 = kindRef.current;
+      const k9 = hoverRef.current || kindRef.current;
       if (!k9) return;
       setThumbYaw((m) => ({ ...m, [k9]: snapYaw((m[k9] ?? VIEW.yawDeg) + d9) }));
     };
@@ -278,13 +280,16 @@ export default function ModelGalleryScreen() {
   const optsNode = (
     <>
           <span className="scr-model-opt">
-            <span className="scr-model-opt-label">지도상 크기</span>
+            {/* 라벨 "크기" · 값 최대/인게임(요청) — "지도상 크기 끔"은 무엇이 켜지는지를
+                안 말한다. 두 값에 각자 이름을 주면 토글이 곧 물음의 두 답이 된다:
+                최대=제 상자를 꽉 채운 그림 · 인게임=지도에서 서로 얼마나 큰지. */}
+            <span className="scr-model-opt-label">크기</span>
             <PillTabs
-              options={[{ value: "off", label: "끔" }, { value: "on", label: "켬" }]}
+              options={[{ value: "max", label: "최대" }, { value: "map", label: "인게임" }]}
               toggle
-              value={mapSize ? "on" : "off"}
-              onChange={(v) => setMapSize(v === "on")}
-              aria-label="지도상 크기"
+              value={mapSize ? "map" : "max"}
+              onChange={(v) => setMapSize(v === "map")}
+              aria-label="크기"
             />
           </span>
           <span className="scr-model-opt">
@@ -316,6 +321,11 @@ export default function ModelGalleryScreen() {
   kindRef.current = kind;
   const zoomedRef = useRef(zoomed);
   zoomedRef.current = zoomed;
+  /* ←/→ 는 **마우스가 얹힌 칸**을 먼저 돌린다(요청: "목록에서도 좌우 커서") — 안 그러면
+     칸마다 한 번씩 눌러 고른 뒤에야 돌릴 수 있어, 끌기보다 손이 더 간다. 얹힌 칸이
+     없으면 고른 칸으로 떨어진다. 다시 그릴 일이 없으니 상태가 아니라 ref다. */
+  const hoverRef = useRef("");
+  const onCellHover = useCallback((k: string) => { hoverRef.current = k; }, []);
   const onCellDown = useCallback((k: string, e: React.PointerEvent<HTMLDivElement>) => {
     /* 칸 안의 버튼 위에서는 끌기를 아예 안 잡는다(지적: "확대창 안뜸") — 여기서
        setPointerCapture를 걸면 그 뒤의 pointerup·click이 칸으로 가로채여 돋보기
@@ -374,7 +384,7 @@ export default function ModelGalleryScreen() {
             {(["유닛", "건물"] as const).map((grp) => (
               <div key={grp}>
                 <div className="scr-model-group-title">{grp}</div>
-                <div className="scr-model-gallery">
+                <div className="scr-model-gallery" onPointerLeave={() => { hoverRef.current = ""; }}>
                   {SHAPE_GALLERY.filter((g) => g.group === grp).map(({ kind: k, label }) => (
                     <GalleryCell
                       key={k} kind={k} label={label}
@@ -387,6 +397,7 @@ export default function ModelGalleryScreen() {
                       onDown={onCellDown}
                       onMove={onCellMove}
                       onUp={onCellUp}
+                      onHover={onCellHover}
                     />
                   ))}
                 </div>
