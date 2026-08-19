@@ -146,6 +146,9 @@ export interface UnitTracksV2 {
     prodNoSite?: number;
     /** 부대에 태운 합성 개체 수 — 그만큼이 제자리에 서 있지 않게 됐다. */
     prodRode?: number;
+    /** 뒤늦게 붙인 앵커(찍혔지만 그때 생애가 없던 번호) 수와, 실제로 붙은 생애 수. */
+    anchorsLate?: number;
+    anchorsLateUsed?: number;
     /** 프로토스 전력 끊김으로 생산이 밀린 초의 합(지적). */
     prodPowerDelay?: number;
     /** 인구 상한을 넘겨 물린 합성 개체 수(지적: 생산·죽음 반영 인구 모형). */
@@ -516,6 +519,9 @@ export function buildUnitTracks(
   /** 태그 → 지금 살아 있는 생애. 끝난 생애는 done으로 옮긴다. */
   const alive = new Map<number, Life>();
   const done: Life[] = [];
+  /** 뒤늦게 붙인 앵커 — 계측용(자리 증거가 얼마나 늘었나). */
+  let anchorsLate = 0;
+  let anchorsLateUsed = 0;
   /** 물리 건물(건설 좌표로 아는 것) — 태그가 없어도 개체다(요청: 건물 파괴 파악).
    *  builder는 지은 일꾼의 태그 — 그 일꾼이 도착 전에 딴 데로 불려가면 건설 무르기다. */
   const built: {
@@ -699,6 +705,8 @@ export function buildUnitTracks(
    *  예약 없는 명령은 대기 중인 명령을 전부 지우고, 예약 명령은 뒤에 붙는다. 이 구별이
    *  없으면 '지워진 목적지'까지 유닛이 다녀온 것으로 그려진다(지적: 5시로 간 정찰
    *  프로브가 7시에 갔다 온다). */
+  /** 아직 생애가 없던 번호를 찍은 앵커 — 생애가 열리면 뒤에 붙인다(위 주석). */
+  const pendAnchor: { tag: number; sec: number; x: number; y: number; by: number; ord: string }[] = [];
   const pushEv = (life: Life, sec: number, x: number, y: number, f: number, q = false): void => {
     life.last = sec;
     if (life.lastAtk !== null) life.evAfterAtk = true;
@@ -1491,6 +1499,17 @@ export function buildUnitTracks(
     const targetTag = c.UnitTag ?? 0;
     if (targetTag > 0 && targetTag !== 65535 && pos) {
       const target = alive.get(targetTag);
+      /* ★ 못 찾은 앵커를 버리지 않는다(계측: 찍힌 대상 841회 중 594회 70.6%를 버리고
+         있었다) — '남이 찍은 자리'는 그 순간 거기 **있었다**는 가장 센 증거다. 그런데
+         찍힌 번호가 아직 아무 생애도 안 열었으면(제 임자가 한 번도 안 골라 봤으면)
+         alive에 없어 그대로 흘렸다. 적 유닛은 대개 그렇다 — 우리는 적을 안 고르니까.
+         번호와 시각·자리만 적어 두었다가, 나중에 그 번호의 생애가 열리면 붙인다.
+         이 한 걸음이 자리 증거를 몇 배로 늘린다: 지금 우리 증거의 84%가 '가려던 곳'
+         (이동·공격 목적지)이고 실제 '있던 곳'은 11.5%뿐이라, 태그 재사용을 속력으로
+         가릴 재료 자체가 모자랐다. */
+      if (!target) {
+        pendAnchor.push({ tag: targetTag, sec, x: pos.x, y: pos.y, by: pid, ord: orderName });
+      }
       if (target) {
         anchors += 1;
         pushEv(target, sec, pos.x, pos.y, 1);
@@ -1529,6 +1548,60 @@ export function buildUnitTracks(
   }
 
   for (const life of alive.values()) done.push(life);
+
+  /* ── 미뤄 둔 앵커를 제 생애에 붙인다 ─────────────────────────────────────────
+     위에서 모아 둔 '찍혔지만 그때 생애가 없던 번호'들이다. 이제 모든 생애가 모였으니
+     번호로 찾아 그 시각을 품은 생애에 붙인다. 태그는 재사용되므로 **시각이 생애 안에
+     들어야** 한다 — 아무 생애에나 붙이면 딴 유닛의 자취를 오염시킨다. 품는 생애가
+     없으면 버린다(그 번호의 유닛을 우리는 끝내 못 본 것이다).
+     붙인 뒤 증거를 시각순으로 다시 세운다 — 앵커는 뒤늦게 오므로 순서가 깨진다. */
+  {
+    const byTag = new Map<number, Life[]>();
+    for (const l of done) {
+      if (l.bld) continue;
+      const arr = byTag.get(l.tag) ?? [];
+      arr.push(l);
+      byTag.set(l.tag, arr);
+    }
+    const touched = new Set<Life>();
+    for (const a of pendAnchor) {
+      const arr = byTag.get(a.tag);
+      if (!arr) continue;
+      /* 그 시각에 가장 가까운 생애 — 품고 있으면 거리 0이다. 품는 것이 없으면 앞뒤로
+         가장 가까운 것에 붙이되 ANCHOR_REACH초 안이어야 한다.
+         품는 것만 받으면 하나도 안 붙는다(실측: 594건 중 0건) — 남이 내 유닛을 찍는
+         것은 대개 내가 그 유닛에 명령을 내리기 **전**이다. 내가 300초에 네 마린을
+         찍었고 너는 320초에 그 마린에게 처음 명령했다면, 그 마린은 300초에 거기
+         있었던 것이 맞다. 그 앵커가 곧 생애를 앞으로 늘린다.
+         재사용 경계를 넘지 않게 '가장 가까운 하나'만 받고 시간 상한을 둔다 — 같은
+         번호의 두 생애 사이에 뜬 앵커는 더 가까운 쪽에만 붙는다. */
+      const ANCHOR_REACH = 60;
+      let life: Life | null = null;
+      let gap = ANCHOR_REACH;
+      for (const l of arr) {
+        const g = a.sec < l.born ? l.born - a.sec : (a.sec > l.last ? a.sec - l.last : 0);
+        if (g < gap) { gap = g; life = l; }
+      }
+      if (!life) continue;
+      if (a.sec < life.born) life.born = Math.round(a.sec);
+      if (a.sec > life.last) life.last = a.sec;
+      life.ev.push([Math.round(a.sec), r1(a.x), r1(a.y), 1]);
+      touched.add(life);
+      /* 적대적으로 찍혔으면 '맞았다'도 함께 — 죽음 판정의 재료다(위 hostile과 같은 자). */
+      const explicit9 = a.ord === "Attack1" || a.ord === "Attack2"
+        || a.ord === "AttackUnit" || a.ord === "AttackFixedRange";
+      if (explicit9 || !sameSide(life.owner, a.by)) {
+        if (life.lastAtk === null || a.sec > life.lastAtk) { life.lastAtk = a.sec; }
+      }
+    }
+    for (const l of touched) {
+      l.ev.sort((x, y) => x[0] - y[0]);
+      /* 맞은 뒤에도 증거가 있었나 — 앵커가 끼면서 바뀔 수 있다. */
+      if (l.lastAtk !== null) l.evAfterAtk = l.ev.some((v) => v[0] > (l.lastAtk as number));
+    }
+    anchorsLate = pendAnchor.length;
+    anchorsLateUsed = [...touched].length;
+  }
 
   /* ── 폐기된 목적지 자르기(지적: 5시로 간 정찰 프로브가 7시에 갔다 온다) ──────────
      브루드워의 이동 명령에는 예약(Queued) 여부가 붙는다. 예약 없는 명령은 대기 중인
@@ -4370,6 +4443,8 @@ const BLD_DIE_SLACK_SEC = 8;
       prodRazed: prodStats.razed,
       prodNoSite: prodStats.noSite,
       prodRode: prodStats.rode,
+      anchorsLate,
+      anchorsLateUsed,
       prodPowerDelay: prodStats.powerDelay,
       synRetired,
       staleRetired: staleRetiredN,
