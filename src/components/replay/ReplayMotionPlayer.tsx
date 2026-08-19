@@ -10296,7 +10296,9 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
   return <canvas ref={ref} className="scr-motion-unitlayer" aria-hidden />;
 }
 
-export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg, flat, keepRatio, viewYaw, pitchView }: {
+export function ShapeIcon({
+  kind, className, faces: facesOverride, rotDeg, flat, keepRatio, viewYaw, pitchView, wide,
+}: {
   kind: string; className?: string;
   /** 뷰어의 요잉 회전(요청) — withYaw로 다시 투영한 면 목록을 그대로 그린다. */
   faces?: ShapeFace[];
@@ -10310,6 +10312,11 @@ export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg, flat,
   viewYaw?: number;
   /** 입체 보기 판(지적: 모델이 맵하고 안 맞음) — 맵과 같은 45도 각으로 굽는다. */
   pitchView?: boolean;
+  /** 넓은 창(도록 전용) — 16-상자 밖까지 보여 준다(지적: "스파이어, 파일런 등이 안나옴").
+   *  건물 정규화는 잉크를 상자의 1.2~2.8배까지 채우고(파일런 1.88·고치 2.84) 스파이어는
+   *  키가 상자를 훌쩍 넘는다. 지도는 그 넘침이 제 모습이지만 도록은 **모델 전체**를
+   *  봐야 하므로, 창을 사방으로 한 상자씩 넓혀 32-상자로 본다. */
+  wide?: boolean;
 }) {
   /* 방향은 요잉으로(지적: 화면 회전은 2D 시점에서 모델을 뒤집는다) — 3D 빌더가 있는
      도형은 rotDeg를 화면 회전 대신 모델 요잉 재투영으로 처리한다. 15도 버킷으로 한 번
@@ -10324,7 +10331,8 @@ export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg, flat,
     // 비율을 정확하게). 정사각 상자(유닛 마커 등)에서는 아무 일도 안 일어난다.
     <svg
       className={cx("scr-motion-shape-svg", className)}
-      viewBox="0 0 16 16" preserveAspectRatio={keepRatio ? "xMidYMax meet" : "none"} aria-hidden
+      viewBox={wide ? "-8 -12 32 32" : "0 0 16 16"}
+      preserveAspectRatio={keepRatio ? "xMidYMax meet" : "none"} aria-hidden
     >
       {/* 도록도 모델 공간 정규화를 탄다(지적: 정작 모델을 보는 화면에 정규화가 없어
           "같은 크기로 디자인"을 확인할 수단이 없다) — 굽기(unitSprite)와 **같은 배수·

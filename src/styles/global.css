@@ -13379,7 +13379,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-model-thumb {
   width: 100%; aspect-ratio: 1 / 1; color: #5ea2ff;
   display: flex; align-items: center; justify-content: center;
-  padding: 12%; box-sizing: border-box; overflow: hidden;
+  /* 창을 32-상자로 넓혔으므로(ShapeIcon의 wide) 여백은 숨 쉴 몫만 남긴다 — 잘림은
+     창이 맡고 이 여백은 이웃 칸과의 간격이다. */
+  padding: 5%; box-sizing: border-box; overflow: hidden;
 }
 .scr-model-thumb .scr-motion-shape-svg { width: 100%; height: 100%; }
 /* 지도상 크기를 켰을 때 썸네일에 걸리는 배수(요청: 목록에도 적용 — 일일이 안 눌러보게).

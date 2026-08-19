@@ -264,9 +264,9 @@ export default function ModelGalleryScreen() {
                             className="scr-model-thumb-scaler"
                             style={{ transform: `scale(${(shapeMapTiles(k) / MAP_REF_TILES).toFixed(4)})` }}
                           >
-                            <ShapeIcon kind={k} faces={THUMB_FACES[k]} />
+                            <ShapeIcon kind={k} faces={THUMB_FACES[k]} wide />
                           </span>
-                        ) : <ShapeIcon kind={k} faces={THUMB_FACES[k]} />}
+                        ) : <ShapeIcon kind={k} faces={THUMB_FACES[k]} wide />}
                       </span>
                       <span className="scr-model-label">{label}</span>
                     </button>
@@ -296,7 +296,7 @@ export default function ModelGalleryScreen() {
             style={{ color, ...dragProps.style, ...(scale > 1 ? { overflow: "hidden" } : null) }}
           >
             <span className="scr-model-scaler" style={scaleStyle}>
-              <ShapeIcon kind={kind} faces={faces} />
+              <ShapeIcon kind={kind} faces={faces} wide />
             </span>
             {builder && (
               <>
@@ -358,7 +358,7 @@ export default function ModelGalleryScreen() {
             onClick={(e) => e.stopPropagation()}
           >
             <span className="scr-model-scaler" style={scaleStyle}>
-              <ShapeIcon kind={kind} faces={faces} />
+              <ShapeIcon kind={kind} faces={faces} wide />
             </span>
             <span className="scr-model-yaw">
               {Math.round(((yaw % 360) + 360) % 360)}°{scaleLabel}
