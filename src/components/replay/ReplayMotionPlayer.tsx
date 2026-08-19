@@ -47,7 +47,7 @@ import {
   type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
   domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces,
-  halfSphereFaces3, prismZFaces, pyramidFaces3, quarterSphereFaces3,
+  halfSphereFaces3, prismYFaces, prismZFaces, pyramidFaces3, quarterSphereFaces3,
   screenCircle, sphereFaces3, tubeFaces,
   wallDiscPath, withPitchView, withTopView, withViewShear, withYaw, zsorted,
 } from "../../utils/shapeOblique";
@@ -443,12 +443,14 @@ function spikeHorn(
  *  segs    마디 수(많을수록 휨이 매끈하다), sides 단면 다각형의 변 수
  *  leanX·leanY  끝이 곧게 밀리는 양(기울기), curveX·curveY  끝으로 갈수록 더해지는 휨
  *  hold    아래 이 비율까지는 굵기를 그대로 둔다(기둥 구간, 0~1) */
-/** 정팔각형 평면(중심 x,y·반지름 r) — 배틀크루저의 몸통·목이 쓰는 단면. 모 하나가
- *  정면을 보게 22.5도 돌려, 앞에서 볼 때 꼭짓점이 아니라 면이 마주 선다. */
-const OCT8 = (x: number, y: number, r: number): [number, number][] =>
+/** 눕힌 기둥(prismYFaces)의 단면 팔각형 — 모 하나가 위를 보게 22.5도 돌려, 앞에서 볼
+ *  때 꼭짓점이 아니라 면이 마주 선다. (x, z) 평면이고 가로·세로 반지름을 따로 준다:
+ *  rx > rz면 옆으로 넓고 위아래로 낮은 '넙적' 단면이다.
+ *  (세워 두던 시절의 OCT8은 걷었다 — 배틀크루저 목이 눕는 순간 부르는 곳이 없어졌다.) */
+const OCT_XZ = (x: number, z: number, rx: number, rz: number): [number, number][] =>
   Array.from({ length: 8 }, (_, i) => {
     const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
-    return [x + Math.cos(a) * r, y + Math.sin(a) * r] as [number, number];
+    return [x + Math.cos(a) * rx, z + Math.sin(a) * rz] as [number, number];
   });
 
 function spirePillar(o: {
@@ -6147,10 +6149,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       segs: 1, sides: 8, hold: 0, taper: 1, fill: "#c9ced6",
     }),
     /* ② 목은 **넓적한 팔각기둥**이고, 해처리 옆선처럼 **개인색 띠가 둘** 두른다(요청).
-       기둥은 은색이고 띠만 임자 색이다 — 띠는 뚜껑 없는 벽이라 몸을 안 덮는다. */
-    ...paintBase(prismZFaces(OCT8(0, 2.2, 1.16), 5.5, 1.05), "#c9ced6"),
-    ...tagKey(prismZFaces(OCT8(0, 2.2, 1.3), 5.62, 0.26, false), depthNow(0, 2.2) + 1.5),
-    ...tagKey(prismZFaces(OCT8(0, 2.2, 1.3), 6.02, 0.26, false), depthNow(0, 2.2) + 1.5),
+       기둥은 은색이고 띠만 임자 색이다 — 띠는 밑면 없는 벽이라 몸을 안 덮는다.
+       ★ 눕힌 기둥이다(지적: "배틀 목 잘못 그렸어. 앞뒤가 밑면인 기둥이야") — 여태는
+         prismZFaces로 **세워** 놓아 밑면이 위아래였다. 몸통과 머리를 잇는 목은 그
+         둘을 향해 뻗은 관이므로 밑면이 앞뒤여야 하고, 그래야 띠도 관을 두르는 고리가
+         된다(세워 놓으면 띠가 위아래로 쌓인 원판이 된다). prismYFaces가 그 축이다.
+       단면은 (x, z) 팔각형이라 옆으로 넓고 위아래로 낮다 — '넙적'이 여기서 나온다. */
+    ...paintBase(prismYFaces(OCT_XZ(0, 6.02, 1.35, 0.95), 0.9, 2.8), "#c9ced6"),
+    /* 띠 둘 — 관을 두르는 고리라 앞뒤 밑면을 둘 다 끈다. 깊이 키는 목의 것(제 가운데
+       + 굵기)을 어느 요잉에서도 넘도록 2.4를 얹는다: 목 가운데와 띠 자리의 깊이 차가
+       최대 0.8이고 목의 굵기 몫이 1.35라, 그 둘을 합친 것보다 커야 한다. */
+    ...tagKey(prismYFaces(OCT_XZ(0, 6.02, 1.5, 1.08), 1.35, 0.26, false, false),
+      depthNow(0, 1.48) + 2.4),
+    ...tagKey(prismYFaces(OCT_XZ(0, 6.02, 1.5, 1.08), 2.5, 0.26, false, false),
+      depthNow(0, 2.63) + 2.4),
     /* ③ 앞부분은 장도리 머리다(요청) — 윗면이 사다리꼴인데 앞 두 모서리를 뭉뚝하게
        깎아 결국 육각형이고, 높이감이 있다. 세운 다각기둥 하나로 세운다. */
     ...paintBase(prismZFaces([

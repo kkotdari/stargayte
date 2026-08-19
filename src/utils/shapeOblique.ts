@@ -583,6 +583,55 @@ export function prismZFaces(
   return tagKey(faces, depthNow(cx, cy) + Math.min(h, rad));
 }
 
+/** 눕힌 다각기둥 — **앞뒤가 밑면**이다(지적: "앞뒤가 밑면인 기둥이야"). 단면(plan)은
+ *  (x, z) 평면의 다각형이고, 그것을 y0에서 앞으로 len만큼 민다. prismZFaces가 다각형을
+ *  위로 미는 것과 짝이고, prismXFaces(옆으로 미는 것)와는 미는 축이 다르다.
+ *
+ *  옆면의 법선은 (x, 0, z)라 수평 성분이 0인 면(위·아래 뚜껑)이 생긴다 — faceLight에
+ *  z 성분을 그대로 넘겨 '내려다보는 카메라'가 위를 보는 면만 살리게 하고, 하늘을 보는
+ *  면에는 윗면 밝기를 얹는다(수평 광원 셈만으로는 밋밋하다).
+ *  앞뒤 밑면은 그쪽을 마주볼 때만 그린다 — 남의 몸에 두르는 띠는 둘 다 꺼서 벽만 남긴다. */
+export function prismYFaces(
+  plan: readonly (readonly [number, number])[], y0: number, len: number,
+  capFront = true, capBack = false,
+): ShapeFace[] {
+  const n = plan.length;
+  let cx = 0;
+  let cz = 0;
+  for (const [x, z] of plan) { cx += x; cz += z; }
+  cx /= n;
+  cz /= n;
+  let rad = 0;
+  for (const [x, z] of plan) rad = Math.max(rad, Math.hypot(x - cx, z - cz));
+  const faces: ShapeFace[] = [];
+  for (let i = 0; i < n; i += 1) {
+    const j = (i + 1) % n;
+    const mx = (plan[i][0] + plan[j][0]) / 2 - cx;
+    const mz = (plan[i][1] + plan[j][1]) / 2 - cz;
+    const l = Math.hypot(mx, mz) || 1;
+    const nx = mx / l;
+    const nz = mz / l;
+    const { visible, face } = faceLight(nx, 0, nz);
+    if (!visible) continue;
+    const d = polyPath3([
+      [plan[i][0], y0, plan[i][1]], [plan[j][0], y0, plan[j][1]],
+      [plan[j][0], y0 + len, plan[j][1]], [plan[i][0], y0 + len, plan[i][1]],
+    ]);
+    faces.push(bodyFace(d), ...face(d));
+    if (nz > 0.35) faces.push(topFace(d, OP.topSoft * nz));
+  }
+  const capAt = (y: number, sgn: 1 | -1): void => {
+    if (facingRatio(0, sgn) <= 0.02) return;
+    const pts = plan.map(([x, z]) => [x, y, z] as [number, number, number]);
+    const d = polyPath3(sgn > 0 ? pts : [...pts].reverse());
+    faces.push(bodyFace(d), ...faceLight(0, sgn).face(d));
+  };
+  if (capFront) capAt(y0 + len, 1);
+  if (capBack) capAt(y0, -1);
+  // 깊이 키는 다른 기둥과 같은 규칙 — 제 가운데이되, 이길 수 있는 폭은 제 굵기까지.
+  return tagKey(faces, depthNow(cx, y0 + len / 2) + Math.min(rad, len));
+}
+
 /** 세운 상자 — frustum의 특수형. 보이는 면·세계 광원은 frustumFaces3가 맡는다. */
 export function boxFaces3(
   cx: number, cy: number, w: number, d: number, h: number, z0 = 0,
