@@ -28,7 +28,8 @@ const clampScale = (k: number): number => Math.min(SCALE_MAX, Math.max(SCALE_MIN
 /* 무대 색 고르기(요청) — 연두를 맨 위로 올려 두 테마 공통 기본색으로 쓴다(재재요청:
    스타 게임 컨셉과 맞음). 도록(시트)도 이 기본 연두로 찍는다. */
 const STAGE_COLORS = ["#7ed491", "#f2f5f9", "#5ea2ff", "#ff6a5e", "#ffce54"];
-const WHITE = "#f2f5f9";
+/* (걷어냄) WHITE — 무대에서 흰 모델일 때만 어두운 배경을 깔던 판정의 열쇠였다.
+   무대를 걷으면서(요청) 쓸 데가 없어졌다. 확대창은 늘 어두운 라이트박스다. */
 /* 지도상 크기의 기준 자(타일, 요청: "지도상 크기 토글") — 도록에서 가장 큰 상자가 무대를
    꽉 채우도록 그 값을 1로 삼는다. 기준을 도록 전체의 최대로 잡는 것이 핵심이다: 모델마다
    제각각 기준을 두면 '상대 크기'가 안 되고, 고정 상수로 두면 나중에 큰 모델이 하나
@@ -58,9 +59,13 @@ export default function ModelGalleryScreen() {
      여기서 보는 것은 "사양을 내리면 이 모델이 무엇을 잃는가"다 — 개인색 면은 어느 등급
      에서도 하나는 남게 되어 있어(lodFilter 주석) 저에서도 임자를 알아볼 수 있어야 한다. */
   const [quality, setQuality] = useState(3);
-  /* 돋보기 팝업(요청) — 무대의 돋보기를 누르면 최대 크기로 띄워 본다. 같은 faces를
-     그대로 그려서 팝업 안에서도 자동 회전이 이어진다. */
+  /* 돋보기 팝업(요청) — 칸의 돋보기를 누르면 최대 크기로 띄워 본다. 자동 회전도
+     이 창에서만 돈다(요청: "자동재생은 확대창 열었을때만"). */
   const [zoomed, setZoomed] = useState(false);
+  /* 칸마다 제 요잉(요청: "회전과 확대 버튼을 모든 칸에 넣고") — 무대를 걷어냈으므로
+     돌려 보는 자리는 칸 자신이다. 손대지 않은 칸은 기본 각의 미리 구운 면(THUMB_FACES)을
+     그대로 쓰고, 돌린 칸만 그때그때 굽는다 — 목록 전체를 다시 굽지 않는다. */
+  const [thumbYaw, setThumbYaw] = useState<Record<string, number>>({});
   // 실드 밖 탭(사이드바 등)도 닫기로 — 팝업 밖 어디를 눌러도 닫힌다.
   useLockBodyScroll(zoomed, () => setZoomed(false));
   useEffect(() => {
@@ -89,12 +94,13 @@ export default function ModelGalleryScreen() {
      촘촘해진 만큼 머무는 시간도 줄여(650 → 460ms) 한 바퀴 도는 시간을 맞췄다. */
   const [auto, setAuto] = useState(true);
   useEffect(() => {
-    if (!auto) return undefined;
+    // 자동 회전은 확대창에서만 돈다(요청) — 목록만 있는 화면에서 460ms마다 다시 그릴 이유가 없다.
+    if (!auto || !zoomed) return undefined;
     const id = window.setInterval(() => {
       setYaw((y) => (snapYaw(y) + YAW_STEP) % 360);
     }, 460);
     return () => window.clearInterval(id);
-  }, [auto]);
+  }, [auto, zoomed]);
   /* 수동 요잉은 키보드로(개편: 요잉 버튼 줄 제거) — ←/→가 한 칸(15도)씩 돌리고
      자동을 멈춘다. 화면 검증 스크립트도 이 키를 쓴다. */
   useEffect(() => {
@@ -241,6 +247,34 @@ export default function ModelGalleryScreen() {
   /* 목록은 고른 종류가 바뀔 때만 다시 만든다(수리: 반응이 느리다) — 자동 회전이
      460ms마다 yaw를 갈아 화면 전체가 다시 그려지는데, 그때마다 썸네일 수만 개 노드를
      React가 통째로 맞추고 있었다. 목록은 요잉·배율·사양과 아무 상관이 없다. */
+  /* 칸 끌기(요청) — 칸마다 제 요잉을 끌어 돌린다. 끌던 중이면 클릭은 선택으로 안 센다. */
+  const cellDragRef = useRef<{ k: string; x: number; base: number } | null>(null);
+  const cellMovedRef = useRef(false);
+  const cellDrag = (k: string): React.HTMLAttributes<HTMLDivElement> => ({
+    onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
+      cellDragRef.current = { k, x: e.clientX, base: thumbYaw[k] ?? VIEW.yawDeg };
+      cellMovedRef.current = false;
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    },
+    onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
+      const d9 = cellDragRef.current;
+      if (!d9 || d9.k !== k) return;
+      const dx9 = e.clientX - d9.x;
+      if (Math.abs(dx9) < 3) return;
+      cellMovedRef.current = true;
+      setThumbYaw((m) => ({ ...m, [k]: snapYaw(d9.base + dx9 * 0.8) }));
+    },
+    onPointerUp: () => { cellDragRef.current = null; },
+    onPointerCancel: () => { cellDragRef.current = null; },
+  });
+  /** 그 칸의 면 — 돌린 칸만 새로 굽는다(그 밖은 미리 구운 판). */
+  const thumbFacesOf = (k: string): ShapeFace[] | undefined => {
+    const y9 = thumbYaw[k];
+    if (y9 === undefined) return THUMB_FACES[k];
+    const b9 = Object.prototype.hasOwnProperty.call(SHAPE_BUILDERS, k) ? SHAPE_BUILDERS[k] : undefined;
+    if (!b9) return THUMB_FACES[k];
+    return lodFilter(autoTier(k, `thumb|${k}|${snapYaw(y9)}`, bake(() => withYaw(y9, b9))), 1);
+  };
   const listNode = useMemo(() => (
         <div className="scr-model-list">
             {(["유닛", "건물"] as const).map((grp) => (
@@ -248,13 +282,16 @@ export default function ModelGalleryScreen() {
                 <div className="scr-model-group-title">{grp}</div>
                 <div className="scr-model-gallery">
                   {SHAPE_GALLERY.filter((g) => g.group === grp).map(({ kind: k, label }) => (
-                    <button
-                      key={k} type="button"
+                    <div
+                      key={k}
                       className={k === kind ? "scr-model-item scr-model-item-on" : "scr-model-item"}
-                      onClick={() => {
-                        setKind(k); setYaw(snapYaw(VIEW.yawDeg)); rawYawRef.current = VIEW.yawDeg;
-                        setAuto(true);
-                      }}
+                      style={{ color }}
+                      /* 칸을 끌면 그 칸이 돈다(요청: "셀마다 로테이트 버튼이 아니라
+                         드래그로 로테이션") — 무대 시절의 끌기와 같은 감도(1픽셀 0.8도,
+                         15도 칸으로 스냅)다. 끌었으면 클릭(선택)은 삼킨다. */
+                      {...cellDrag(k)}
+                      onClick={() => { if (!cellMovedRef.current) setKind(k); }}
+                      role="presentation"
                     >
                       <span className="scr-model-thumb">
                         {/* 지도상 크기를 켜면 썸네일에도 같은 배수가 걸린다(요청: 목록에도
@@ -264,18 +301,37 @@ export default function ModelGalleryScreen() {
                             className="scr-model-thumb-scaler"
                             style={{ transform: `scale(${(shapeMapTiles(k) / MAP_REF_TILES).toFixed(4)})` }}
                           >
-                            <ShapeIcon kind={k} faces={THUMB_FACES[k]} wide />
+                            <ShapeIcon kind={k} faces={thumbFacesOf(k)} wide />
                           </span>
-                        ) : <ShapeIcon kind={k} faces={THUMB_FACES[k]} wide />}
+                        ) : <ShapeIcon kind={k} faces={thumbFacesOf(k)} wide />}
+                      </span>
+                      {/* 칸마다 회전·확대(요청) — 무대를 걷어낸 자리를 이 둘이 대신한다.
+                          회전은 그 칸만 한 칸(15도) 돌리고, 돋보기는 그 종류로 확대창을
+                          연다(자동 회전은 거기서만 돈다). */}
+                      <span className="scr-model-cellbtns">
+                        <button
+                          type="button" className="scr-model-cellbtn" aria-label={`${label} 크게 보기`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setKind(k);
+                            setYaw(snapYaw(thumbYaw[k] ?? VIEW.yawDeg));
+                            rawYawRef.current = thumbYaw[k] ?? VIEW.yawDeg;
+                            setScale(1);
+                            setAuto(true);
+                            setZoomed(true);
+                          }}
+                        >
+                          <ZoomIn size={12} />
+                        </button>
                       </span>
                       <span className="scr-model-label">{label}</span>
-                    </button>
+                    </div>
                   ))}
                 </div>
               </div>
             ))}
           </div>
-  ), [kind, mapSize]);
+  ), [kind, mapSize, thumbYaw, color]);
   return (
     <div className="scr-screen scr-model-screen">
       {/* 이름은 짧게 '모델'(요청) — 제목 아래 갭도 화면 전용 CSS로 줄였다. */}
@@ -283,65 +339,20 @@ export default function ModelGalleryScreen() {
         <h1 className="scr-title scr-v2-toolbar-title">모델</h1>
       </div>
       <div className="scr-minimap-panel">
-        <div className="scr-model-viewer">
-          {/* 조작부 개편(요청: 버튼 줄 제거) — 각도는 무대 우상단, 멈춤·재생은 무대
-              우하단 오버레이. 수동 회전은 ←/→ 키. */}
-          {/* 라이트 테마 대비(요청) — 흰 모델일 땐 무대에 어두운 배경을 깔아 형태가
-              밝은 판에 묻히지 않게 한다(다크 테마에선 어차피 어두워 표시 없음). */}
-          <div
-            ref={stageRef}
-            className={color === WHITE ? "scr-model-stage scr-model-stage-dark" : "scr-model-stage"}
-            {...dragProps}
-            /* 확대했을 때만 무대가 자른다 — 평소엔 키 큰 모델이 위로 삐져도 보여야 한다. */
-            style={{ color, ...dragProps.style, ...(scale > 1 ? { overflow: "hidden" } : null) }}
-          >
-            <span className="scr-model-scaler" style={scaleStyle}>
-              <ShapeIcon kind={kind} faces={faces} wide />
-            </span>
-            {builder && (
-              <>
-                <span className="scr-model-yaw">
-                  {Math.round(((yaw % 360) + 360) % 360)}°{scaleLabel}
-                </span>
-                {/* 돋보기(요청) — 무대 좌상단, 누르면 최대 크기 팝업. */}
-                <button
-                  type="button" className="scr-model-zoom-btn" aria-label="크게 보기"
-                  onClick={() => setZoomed(true)}
-                >
-                  <ZoomIn size={15} />
-                </button>
-              </>
-            )}
-          </div>
-          {/* 버튼 좌우 정렬(요청: 공간이 넓으니) — 무대 밖 뷰어 양 끝에 앉힌다. 색
-              견본은 왼 끝 세로줄, 멈춤은 오른 끝. 무대가 좁은 화면에선 그대로 곁이다. */}
-          {builder && (
-            <>
-              <span className="scr-model-colors">
-                {STAGE_COLORS.map((c) => (
-                  <button
-                    key={c} type="button" aria-label={`색 ${c}`}
-                    className={c === color ? "scr-model-swatch scr-model-swatch-on" : "scr-model-swatch"}
-                    style={{ background: c }}
-                    onClick={() => setColor(c)}
-                  />
-                ))}
-              </span>
+        {/* 무대는 걷었다(요청: "갤러리 무대 제거하고 색이랑 옵션 탭만 윗줄에 남김") —
+            칸마다 끌어 돌리고 돋보기로 크게 보므로, 한 종류만 크게 걸어 두는 무대가
+            목록의 자리를 먹고 있었다. 윗줄에는 색 견본과 손잡이 둘만 남는다. */}
+        <div className="scr-model-opts scr-model-opts-top">
+          <span className="scr-model-colors">
+            {STAGE_COLORS.map((c) => (
               <button
-                type="button" className="scr-model-pause"
-                aria-label={auto ? "멈춤" : "자동 회전"}
-                onClick={() => setAuto((a) => !a)}
-              >
-                {auto ? "❚❚" : "▶"}
-              </button>
-            </>
-          )}
-        </div>
-        {/* 보기 손잡이 두 개(요청) — 지도상 크기 토글과 사양 라디오. 무대와 목록 사이에
-            한 줄로 앉는다: 무대 위 오버레이(각도·돋보기·색·멈춤)는 이미 네 귀퉁이가 다
-            찼고, 목록 아래로 내리면 스크롤에 딸려 사라진다. 재생기의 같은 줄과 같은
-            부품(PillTabs)이라 눈금도 같다. */}
-        <div className="scr-model-opts">
+                key={c} type="button" aria-label={`색 ${c}`}
+                className={c === color ? "scr-model-swatch scr-model-swatch-on" : "scr-model-swatch"}
+                style={{ background: c }}
+                onClick={() => setColor(c)}
+              />
+            ))}
+          </span>
           {optsNode}
         </div>
         {listNode}
@@ -368,6 +379,15 @@ export default function ModelGalleryScreen() {
               onClick={() => setZoomed(false)}
             >
               <X size={18} />
+            </button>
+            {/* 자동 회전은 이 창의 것이다(요청) — 멈춤·재생도 여기 둔다. */}
+            <button
+              type="button" className="scr-model-pause"
+              aria-label={auto ? "멈춤" : "자동 회전"}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); setAuto((a) => !a); }}
+            >
+              {auto ? "❚❚" : "▶"}
             </button>
             {/* 같은 손잡이 두 개(요청) — 확대창 우하단. 팝업 안에서도 지도 크기와 사양을
                 바꿔 가며 볼 수 있어야 한다. 손짓(끌기·줌)이 무대에 잡혀 있으므로 눌림은

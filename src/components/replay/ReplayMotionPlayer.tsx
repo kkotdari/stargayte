@@ -4527,9 +4527,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const PURPLE = "#7a4fa8";
     const out: ShapeFace[] = [];
     // 바닥 연못은 한 뼘 줄인다(지적: "스파이어 바닥 풀 크기 축소") — 6.1 → 4.7.
+    /* 연못은 평평한 형광 연두다(지적: "연못이 볼록 솟았어. 연못은 평평해야하고 … 연못색
+       형광 연두색으로") — 판 자체는 원래 바닥에 누운 타원이라 평평한데, **밑동**이
+       짙은 초록(#4f7a2e)이라 그 후지산 꼴 기둥이 연못의 일부로 읽혀 '볼록 솟은 연못'이
+       됐다. 밑동을 저그 살색으로 돌리고(아래) 연못만 형광 연두로 밝힌다. */
+    const POND = "#a8ff3d";
     const [plx, ply] = project(0, 0.6, 0.02);
     out.push(sideFace(groundEllipse(plx, ply, 4.7, 2.25), 0.22));
-    out.push([groundEllipse(plx, ply, 4.2, 1.98), 0.8, "#8ef23e"] as ShapeFace);
+    out.push([groundEllipse(plx, ply, 4.2, 1.98), 0.85, POND] as ShapeFace);
     // 밑동 — 후지산 꼴 기둥 하나.
     const MB_H = 2.6;
     const MB_RB = 4.5;
@@ -4538,7 +4543,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...tagKey(paintBase(spirePillar({
       x: 0, y: 0.6, z0: 0, h: MB_H, w: MB_RB, tipW: MB_RT,
       segs: 5, sides: 14, hold: 0, taper: 2,
-    }), "#4f7a2e"), 0));
+    }), RACE_BASE_TONE.zerg), 0));
     // 촉수 기둥 여섯 — 밑동 옆구리에 뿌리를 두고 위로 모이며 가늘어진다.
     for (const ang of [150, 210, 90, 270, 30, -30]) {
       const a2 = (ang * Math.PI) / 180;
@@ -4564,13 +4569,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         x: 0, y: 0, h: 1, w: 0.34, tipW: 0.24, segs: 12, sides: 6, hold: 0.04,
         path: (t9: number): [number, number, number] => {
           if (t9 < 0.2) {
+            /* 갈고리 끝은 **바깥으로** 휜다(지적: "다리 끝은 바깥으로 휨") — 앞 판은
+               끝이 안쪽을 향해 말려 있었다. 자유로운 끝을 접점보다 0.9 더 바깥에 두고
+               위로 들어 올리면, 바닥에서 바깥·위로 휘어 오르는 지팡이 손잡이가 된다. */
             const u9 = t9 / 0.2;
-            const rr = R_OUT + 0.5 * Math.sin(u9 * Math.PI * 0.5);
+            const rr = R_OUT + 0.9 * Math.cos(u9 * Math.PI * 0.5);
             const zz = 1.25 - 1.2 * u9;
             return [dxr * rr, 0.6 + dyr * rr, Math.max(0.05, zz)];
           }
           const u9 = (t9 - 0.2) / 0.8;
-          const rr = (R_OUT + 0.5) + (1.15 - (R_OUT + 0.5)) * u9 ** 0.85;
+          const rr = R_OUT + (1.15 - R_OUT) * u9 ** 0.85;
           return [dxr * rr, 0.6 + dyr * rr, 0.05 + LEG_TOP * u9 ** 1.05];
         },
       }), RACE_BASE_TONE.zerg), depthNow(bx9, by9) * 1.6));
@@ -4636,9 +4644,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const out: ShapeFace[] = [];
     /* 연못도 스파이어 식으로(요청) — 5.9/5.3이라 그레이터만 발자국을 넘게 퍼져 있었다.
        스파이어와 같은 4.7/4.2로 맞춘다. */
+    // 연못색은 스파이어와 같은 형광 연두다(요청: 둘 다).
     const [plx, ply] = project(0, 0.4, 0.02);
     out.push(sideFace(groundEllipse(plx, ply, 4.7, 2.25), 0.22));
-    out.push([groundEllipse(plx, ply, 4.2, 1.98), 0.8, "#8ef23e"] as ShapeFace);
+    out.push([groundEllipse(plx, ply, 4.2, 1.98), 0.85, "#a8ff3d"] as ShapeFace);
     const GS_W = 9;
     const GS_T = 14;
     /** 윗건물을 세 배로 키운 뒤의 꼭대기 높이 — 아가리·깃 뿔이 이 값을 따라 올라간다. */
