@@ -875,7 +875,10 @@ function paintBase(faces: ShapeFace[], base: string): ShapeFace[] {
    그 뒤 테란만 다시 한 번 조정했다(요청: "좀더 실버에 가까운 iron 컬러") — #6c737b은
    푸른끼가 도는 회색이라 강철보다 콘크리트에 가까웠다. #868d94는 한 단 밝으면서
    중립에 가까워, 은빛 쇠붙이로 읽힌다. */
-const RACE_BASE_TONE = { terran: "#868d94", toss: "#c9a63f", zerg: "#935c3e" } as const;
+/* 저그만 한 톤 밝게(요청: "저그 기본색 살짝 밝게") — #935c3e는 화면에서 거의 흑갈색이라
+   그 위의 상아색·개인색 포인트가 어둠에 잠겼다. #a56a48이면 같은 흙빛인데 살덩이가
+   살덩이로 보인다. */
+const RACE_BASE_TONE = { terran: "#868d94", toss: "#c9a63f", zerg: "#a56a48" } as const;
 /** 몸에는 종족 바탕색을 입히고, 뒤에 붙이는 accent 면만 개인색으로 남긴다(규칙 1·4).
  *  accent는 칠하지 않은 채로 두어야 그리는 쪽이 임자 색을 넣는다 — 건물마다 눈에 띄는
  *  한두 곳만. */
@@ -3275,10 +3278,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const TUP = 11;     // 솟는 몫
       const TDN = 10;     // 내려앉는 몫(t²) — TUP보다 작아 끝이 처음보다는 높다
       out.push(...tagKey(paintBase(spirePillar({
-        /* 굵기는 끝에서만 준다(사진) — taper 1.25는 밑동부터 곧장 가늘어져 활이 아니라
-           채찍이 됐다. 0.7이면 몸통 대부분이 통통하게 남고 마지막 한 뼘에서만 뾰족해진다. */
-        x: 0.25, y: -0.15, h: 1, w: 1.15, tipW: 0.26,
-        segs: 12, sides: 8, hold: 0.15, taper: 0.7,
+        /* 구두주걱 모양(요청) — 뿌리가 가늘고 앞으로 갈수록 두꺼워진다. spirePillar의
+           굵기는 밑동 w에서 끝 tipW로 가므로, 둘을 **뒤집어** 준다(0.38 → 1.25).
+           taper 0.9면 중턱까지는 천천히 벌어지다 끝머리에서 확 넓어져, 퍼 올리는
+           주걱의 앞날이 된다. */
+        x: 0.25, y: -0.15, h: 1, w: 0.38, tipW: 1.25,
+        segs: 12, sides: 8, hold: 0.05, taper: 0.9,
         path: (t9: number): [number, number, number] => [
           0.25, -0.15 + TL * t9, 3.4 + TUP * t9 - TDN * t9 * t9,
         ],
@@ -3309,34 +3314,50 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 밑동 — 검회색 받침(지적: "콜로니류 바닥판은 검회색으로"). 색값을 여기 박아
        두면 성큰·크립과 따로 놀게 되므로 공용 상수로 돌렸다. 셋 중 이것만 키가 높은
        것은 몸통이 그만큼 가늘게 시작하기 때문이라 지름·높이는 그대로 둔다. */
+    const pc: ShapeFace[] = [];
     out.push(...tagKey(paintBase(spirePillar({
       x: 0, y: 0, z0: 0, h: 1.5, w: 5.2, tipW: 3.2,
       segs: 3, sides: 14, hold: 0.15, taper: 1.8,
     }), COLONY_BASE), 0));
-    // 몸통 — 밑동 윗지름(3.2)에서 시작해 1.15로 좁아진다.
+    /* 색 규약(요청: "스포어 개인색은 포인트고 본체는 저그 기본색 + 상아색이 섞인 구조")
+       — 여태 이 빌더는 raceBase를 안 거치고 그냥 out을 돌려줬다. 칠하지 않은 면은 곧
+       임자 색이므로, 몸통·뚜껑·굴뚝·덩이가 **통째로** 개인색이었다. 이제 몸은 raceBase가
+       저그 기본색으로 깔고, 뚜껑·덩이·굴뚝 테는 상아색으로 박고, 개인색은 뚜껑 밑동을
+       두르는 짧은 띠 하나만 맡는다. */
+    // 몸통 — 밑동 윗지름(3.2)에서 시작해 1.15로 좁아진다. 저그 기본색(아래 raceBase).
     out.push(...tagKey(spirePillar({
       x: 0, y: 0, z0: 1.35, h: 4.2, w: 3.2, tipW: 1.15,
       segs: 6, sides: 12, hold: 0.08, taper: 1.7,
     }), 6));
-    // 뚜껑 — 몸통 윗지름(1.15)을 그대로 받아 얹는다.
-    out.push(...tagKey(spirePillar({
+    // 개인색 포인트 — 뚜껑이 앉는 목을 한 바퀴 두르는 띠.
+    pc.push(...tagKey(spirePillar({
+      x: 0, y: 0, z0: 5.15, h: 0.5, w: 1.42, tipW: 1.36,
+      segs: 1, sides: 12, hold: 0.5, caps: "none",
+    }), 8.5));
+    // 뚜껑 — 몸통 윗지름(1.15)을 그대로 받아 얹는다. 상아색.
+    out.push(...tagKey(paintBase(spirePillar({
       x: 0, y: 0, z0: 5.4, h: 1.9, w: 1.15, tipW: 0.4,
       segs: 4, sides: 10, hold: 0.12, taper: 1.6,
-    }), 9));
-    // 굴뚝 — 왼뒤에 따로 선다. 벌어진 테와 어두운 속.
+    }), IVORY), 9));
+    /* 굴뚝 — 왼뒤에 따로 선다. 대롱은 저그 기본색, 벌어진 테만 상아색이라 아가리가
+       또렷하다(요청: 기본색 + 상아색이 섞인 구조). */
     out.push(...tagKey([
       ...spirePillar({
-        x: -2.7, y: -1.5, z0: 0.9, h: 5.4, w: 1.05, tipW: 1.45,
+        x: -2.7, y: -1.5, z0: 0.9, h: 4.6, w: 1.05, tipW: 1.32,
         segs: 5, sides: 10, hold: 0.2,
       }),
+      ...paintBase(spirePillar({
+        x: -2.7, y: -1.5, z0: 5.5, h: 0.8, w: 1.32, tipW: 1.45,
+        segs: 1, sides: 10, hold: 0.2, caps: "none",
+      }), IVORY),
       capFace(discPath3(-2.7, -1.5, 6.95, 1.05), 0.5),
     ], depthNow(-2.7, -1.5) * 1.6));
-    // 앞오른쪽 작은 덩이 — 밑동 옆구리에 붙는다.
-    out.push(...tagKey(spirePillar({
+    // 앞오른쪽 작은 덩이 — 밑동 옆구리에 붙는다. 상아색.
+    out.push(...tagKey(paintBase(spirePillar({
       x: 3.1, y: 2.4, z0: 0.7, h: 1.7, w: 1.5, tipW: 0.45,
       segs: 4, sides: 10, hold: 0.1, taper: 1.6,
-    }), depthNow(3.1, 2.4) * 1.6));
-    return out;
+    }), IVORY), depthNow(3.1, 2.4) * 1.6));
+    return raceBase(out, "zerg", pc);
   },
   /* 크립 콜로니(실물 참고) — 처진 붉은 둔덕 + 꼭대기 주름 혹(입) + 옆 가시 + 바닥에
      번진 점액 자락. */
@@ -3357,15 +3378,25 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       x: 0, y: 0, z0: 0, h: 0.9, w: 5.8, tipW: 4.8,
       segs: 3, sides: 14, hold: 0.15, taper: 1.8,
     }), COLONY_BASE), -1));
+    /* 색 규약(요청: "크립콜로니도 마찬가지고 가시는 상아색 몸체는 저그 기본색에
+       개인색 포인트만") — 스포어와 같은 사연이다. 칠하지 않은 면이 곧 임자 색이라
+       둔덕·뚜껑·가시가 통째로 개인색이었다. 몸은 raceBase의 저그 기본색, 가시는 상아색,
+       개인색은 뚜껑 밑동 띠 하나만. */
+    const pc: ShapeFace[] = [];
     out.push(...tagKey(spirePillar({
       x: 0, y: 0, z0: 0, h: CR_H, w: CR_RB, tipW: CR_RT,
       segs: 7, sides: 14, hold: 0, taper: CR_P,
     }), 0));
-    // 뚜껑 — 둔덕 꼭대기 원(반지름 CR_RT) 위에 그대로 얹는 주름 혹.
-    out.push(...tagKey(spirePillar({
+    // 개인색 포인트 — 뚜껑이 앉는 목을 두르는 띠.
+    pc.push(...tagKey(spirePillar({
+      x: 0, y: 0, z0: CR_H - 0.3, h: 0.5, w: CR_RT + 0.3, tipW: CR_RT + 0.24,
+      segs: 1, sides: 12, hold: 0.5, caps: "none",
+    }), 8.5));
+    // 뚜껑 — 둔덕 꼭대기 원(반지름 CR_RT) 위에 그대로 얹는 주름 혹. 상아색.
+    out.push(...tagKey(paintBase(spirePillar({
       x: 0, y: 0, z0: CR_H - 0.15, h: 2, w: CR_RT, tipW: 0.45,
       segs: 5, sides: 12, hold: 0.12, taper: 1.7,
-    }), 9));
+    }), IVORY), 9));
     // 옆 가시 셋 — 뿌리를 둔덕 옆면 위에 정확히 두고 바깥·위로 뻗는다.
     for (const [ang, tz9] of [[-150, 3.3], [-90, 3.1], [-30, 3.2]] as [number, number][]) {
       const a9 = (ang * Math.PI) / 180;
@@ -3375,11 +3406,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const rr9 = crR(zr9 / CR_H) * 0.95;
       const bx9 = dxr * rr9;
       const by9 = dyr * rr9;
-      out.push(...tagKey(spikeHorn(
+      out.push(...tagKey(ivory(spikeHorn(
         bx9, by9, zr9, dxr * (rr9 + 1.5), dyr * (rr9 + 1.5), tz9, 0.9, undefined, 6, 0.4, dxr, dyr,
-      ), depthNow(bx9, by9) * 1.6));
+      )), depthNow(bx9, by9) * 1.6));
     }
-    return out;
+    return raceBase(out, "zerg", pc);
   },
 
   /* 리파이너리(실물 참고) — 낮은 받침 + 좌우 어두운 탑 + 가운데 나팔 굴뚝 + 은빛
@@ -3611,6 +3642,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       out.push(...tagKey(spikeHorn(px, py + 0.7, 4.3, px + m * 0.5, py + 2, 7, 0.95,
         IVORY, 6, 0.8, 0, 1), key + 11));
     };
+    /* 두 통 사이를 잇는 살덩이 안장(지적: "양쪽 건물 사이에 원래 빈공간임?" — 사진에는
+       비어 있지 않다) — 여태 두 통이 따로 선 두 덩이라 그 사이로 배경이 그대로 비쳤다.
+       사진의 익스트랙터는 아랫도리가 한 몸이고 위에서만 갈라져 뿔이 둘로 선다. 통보다
+       낮고 뒤에 앉는 둔덕 하나를 깔아 밑을 메우면, 뿔·덮개는 그대로 갈라진 채 남는다.
+       키는 두 통보다 뒤라, 안장이 통을 덮지 않고 통 사이에서만 드러난다. */
+    out.push(...tagKey(paintBase(spirePillar({
+      x: 0.05, y: -0.9, z0: 0, h: 2.9, w: 6.2, tipW: 3.2,
+      segs: 5, sides: 12, hold: 0, taper: 1.5,
+    }), "#8a5f43"), depthNow(0.05, -0.9) * 1.6 - 2));
+    // 안장 위의 검은 덮개 — 통의 덮개와 같은 색이라 셋이 한 껍질로 읽힌다.
+    out.push(...tagKey(paintBase(spirePillar({
+      x: 0.05, y: -0.9, z0: 2.75, h: 1.15, w: 3.2, tipW: 1.5,
+      segs: 3, sides: 12, hold: 0.05, taper: 1.7,
+    }), "#3a3f46"), depthNow(0.05, -0.9) * 1.6 - 1.5));
     vat(-3.9, -0.6, 2.4, -1);
     vat(4, -0.4, 2.2, 1);
     /* 가운데 붉은 애벌레 — 뒤 바닥에서 나와 앞으로 기어 오르는 굵은 기둥 하나.
@@ -4872,10 +4917,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const [plx, ply] = project(0, 0.4, 0.02);
     out.push(sideFace(groundEllipse(plx, ply, 4.7, 2.25), 0.22));
     out.push([groundEllipse(plx, ply, 4.2, 1.98), 0.85, "#a8ff3d"] as ShapeFace);
-    const GS_W = 9;
-    const GS_T = 14;
-    /** 윗건물을 세 배로 키운 뒤의 꼭대기 높이 — 아가리·깃 뿔이 이 값을 따라 올라간다. */
-    const GS_TOP = GS_W + (GS_T - GS_W) * 3;
+    /* 아래를 높게·위를 짧게(요청: "기둥 아래쪽을 더 높게잡고 위쪽을 짧게 잡아서 균형
+       맞추기") — 아래 9 : 위 15였다. 굵은 밑동이 짧고 가는 허리 위 건물이 길어 위태로워
+       보였다. 14 : 10으로 뒤집는다. 꼭대기 높이(24)는 그대로라 아가리·깃 뿔은 안 움직인다. */
+    const GS_W = 14;
+    const GS_HI = 10;
+    /** 꼭대기 높이 — 아가리·깃 뿔이 이 값을 따라 올라간다. */
+    const GS_TOP = GS_W + GS_HI;
     /* 기둥을 두껍게(요청: "그레이트 스파이어 기둥 두껍게") — 위아래 줄기의 지름을
        한 단씩 올린다(밑동 3.4 → 4.2 · 허리 1.7 → 2.3 · 꼭대기 3.1 → 4.0). 높이는
        그대로라 같은 키에 몸만 굵어진다. gsLoR는 아래 줄기의 옆선을 되짚는 자라
@@ -4886,10 +4934,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       x: 0, y: 0.4, z0: 0, h: GS_W, w: 4.2, tipW: 2.3,
       segs: 8, sides: 14, hold: 0, taper: 1.6,
     }), "#8a5f43"), 0));
+    /* 뿌리 — 바닥에서 갑자기 확 펼쳐지는 유리잔 받침(요청). 줄기의 완만한 테이퍼로는
+       이 '툭 벌어짐'이 안 난다: 밑동만 아주 넓게(7.4) 잡고 taper를 크게 줘(2.6) 위로
+       조금만 올라가도 줄기 굵기(4.2)로 급히 오므라들게 한다. */
+    out.push(...tagKey(paintBase(spirePillar({
+      x: 0, y: 0.4, z0: 0, h: 1.5, w: 7.4, tipW: 4.2,
+      segs: 5, sides: 14, hold: 0, taper: 2.6,
+    }), "#8a5f43"), -0.5));
     /* 위 줄기 = **윗건물**이다 — 높이를 세 배로 키우고(5 → 15) 옆면을 개인색으로 둔다
        (요청: "그레이터 스파이어도 마찬가지"). 아래 줄기는 저그 기본색 그대로다. */
     out.push(...tagKey(spirePillar({
-      x: 0, y: 0.4, z0: GS_W, h: (GS_T - GS_W) * 3, w: 2.3, tipW: 4,
+      x: 0, y: 0.4, z0: GS_W, h: GS_HI, w: 2.3, tipW: 4,
       segs: 9, sides: 14, hold: 0,
     }), 1));
     // 앞 붉은 살 띠 — 아래 줄기 옆선을 그대로 타고 오른다.
@@ -9638,13 +9693,13 @@ export const BLD_NORM: Record<string, number> = {
   dome: 1.418,
   ebay: 0.982,
   evo: 1.214,
-  extract: 1.023,
+  extract: 1.005,
   factory: 1.117,
   fleetbeacon: 2.071,
   forge: 1.398,
   gate: 1.979,
   geyser: 1.513,
-  gspire: 1.048,  // 상자 상한에 걸림
+  gspire: 0.912,
   hatchery: 1.367,
   hive: 1.165,
   hydraden: 1.036,
@@ -9667,6 +9722,7 @@ export const BLD_NORM: Record<string, number> = {
   spire: 1.409,  // 상자 상한에 걸림
   spore: 1.422,
   sunken: 1.072,
+  sunkenfire: 1.050,
   tomb: 1.534,
   tombFlat: 1.140,
   trapezoid: 1.514,
@@ -13955,9 +14011,16 @@ export default function ReplayMotionPlayer({
               /* 발자국 한가운데가 아니라 조금 아래(앞)로(요청) — 그림자를 줄여 발치에
                  맞춘 것과 같은 결이다. 사선 시점에서 상자 중앙에 놓으면 모델이 제
                  발자국보다 뒤로 물러나 떠 보인다. */
-              const bAnchorY = bodyY + boxH / 2 - modelHT / 2 + CONSTRUCT_DROP
+                      const bAnchorY = bodyY + boxH / 2 - modelHT / 2 + CONSTRUCT_DROP
                 - (race2 === "프로토스" ? WARP_LIFT : 0);
-              const [bfxF, bfyF] = posFrac(bodyX, bAnchorY);
+              /* 가로 자리는 **지면선에서** 잰다(지적: "공사 고치 아직도 액자의 오른쪽에
+                 그려져있어") — posFrac은 입체에서 사다리꼴 수렴을 먹이므로 같은 x라도
+                 y가 다르면 화면 x가 달라진다. 공사 모델의 y 기준(bAnchorY)은 모델 높이의
+                 절반만큼 위라, 고치처럼 키가 큰(정규화 2.86배) 것일수록 그 수렴이 크게
+                 실려 발자국 액자에서 옆으로 밀려났다. 액자가 놓인 곳은 지면선이므로
+                 가로는 거기서 재고, 세로만 모델 앵커에서 잰다. */
+              const [bfxF] = posFrac(bodyX, bodyY + boxH / 2);
+              const [, bfyF] = posFrac(bodyX, bAnchorY);
               unitOps.push({
                 fx: bfxF, fy: bfyF, z,
                 /* 짓는 중에도 집힌다(요청: 건설 중 상태에서도 클릭 가능) — 열쇠는 완성
