@@ -10244,6 +10244,19 @@ const BUILD_SEC: Record<string, number> = {
   Spire: 75.6, "Greater Spire": 75.6, "Nydus Canal": 25.2, "Defiler Mound": 37.8,
   "Ultralisk Cavern": 50.4,
 };
+/** 공사가 실제로 자란 시간(초) — 붙어 있던 구간들을 t까지 더한다(테란 건설 중단). */
+const workedBy = (wins: [number, number][], t: number): number => {
+  let s = 0;
+  for (const [a, b] of wins) {
+    if (t <= a) break;
+    s += Math.min(t, b) - a;
+  }
+  return s;
+};
+/** 지금 일꾼이 붙어 있나 — 구간 안이면 자라는 중, 아니면 중단이다. */
+const workingAt = (wins: [number, number][], t: number): boolean =>
+  wins.some(([a, b]) => t >= a && t < b);
+
 /* (걷어냄) UNIT_SEC — '유닛 뽑는 시간' 어림표. 완성 시각을 되짚는 데 쓰던 자리는
    전부 원작 표(UNIT_BUILD_SEC)와 개체 트랙의 출생 시각으로 옮겨 갔다. */
 /* (걷어냄) 자원 고갈 상수(MINERAL_DEPLETE_SEC·GAS_DEPLETE_SEC) — 고갈 어림을
@@ -10618,6 +10631,116 @@ export default function ReplayMotionPlayer({
     }
     return m;
   }, [entData]);
+  /* 테란 건설 중단(요청) — 원작에서 테란 건물은 **SCV가 붙어 있는 동안만** 자란다:
+     짓던 SCV가 딴 명령을 받아 걸어 나가거나 죽으면 공사는 그 진행률에서 멈춰 서고
+     (건설 중단), 아무 SCV나 그 건물을 다시 찍으면 그 자리에서 이어 짓는다. 여태 화면은
+     '착공 시각 + 표의 건설 시간'이면 무조건 완성이라, 러시에 일꾼이 죽어 영영 안 지어진
+     건물이 멀쩡히 서 있었다(저그 변태·프로토스 소환은 일꾼이 없어도 자라므로 그대로다).
+
+     증거는 개체 트랙에 이미 다 있다 — 일꾼의 위치 증거 하나가 '그 자리로 간다'는 뜻이고
+     다음 위치 증거(또는 죽음 e.d)가 그 구간을 닫는다. 착공 앵커(f=2)로 열린 구간이 곧
+     처음 붙어 있던 동안이고, 그 뒤 **발자국 안을 찍은 일꾼 클릭**이 이어 짓기다(아직 다
+     안 지어진 건물 자리는 걸어 들어갈 수 있는 땅이 아니라, 그 안을 찍는 클릭은 이어
+     짓기·수리뿐이다). 시프트 예약 명령(다섯째 칸 1)은 지금 움직이지 않으니 구간을 안
+     닫는다 — 짓고 나서 캐러 갈 예약은 중단이 아니다.
+
+     ★ 안전망: 그 건물이 나중에 실제로 일한 증거(생산·랠리 f=4, 이륙 f=6, 남이 찍은
+       자리 f=1, 부속건물 건설 f=2)가 있으면 그때는 이미 완성이다 — 증거가 어림을 이긴다. */
+  const bldWork = useMemo(() => {
+    const m = new Map<number, { wins: [number, number][]; doneAt: number }>();
+    if (!entData) return m;
+    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    const raceOfRaw = new Map(entData.players.map((pl) => [pl.name, pl.race]));
+    /* 일꾼이 어디에 있었나 — 타일 바구니에 담아 건물마다 훑을 값을 줄인다(건물 수백 ×
+       일꾼 증거 수천이면 그냥 훑기엔 무겁다). */
+    type Win = { raw: string; x: number; y: number; f: number; a: number; b: number };
+    const bucket = new Map<string, Win[]>();
+    for (const e of entData.ents) {
+      if (e.bld || e.t === -1) continue;
+      if (e.k !== "SCV" && e.k !== "") continue;
+      const raw = nameOfId.get(e.o) ?? "";
+      if (!raw) continue;
+      for (let i = 0; i < e.ev.length; i += 1) {
+        const v = e.ev[i];
+        if (v[1] < 0 || (v[3] !== 0 && v[3] !== 2 && v[3] !== 10)) continue;
+        let end = e.d ?? Infinity;
+        for (let j = i + 1; j < e.ev.length; j += 1) {
+          const w = e.ev[j];
+          if (w[1] < 0 || w[0] <= v[0] + 1) continue;
+          if (w[3] === 0 && w[4] === 1) continue;      // 예약 명령은 아직 안 움직인다
+          end = Math.min(end, w[0]);
+          break;
+        }
+        if (!(end > v[0])) continue;
+        const key = `${Math.floor(v[1])}|${Math.floor(v[2])}`;
+        const arr = bucket.get(key);
+        const win: Win = { raw, x: v[1], y: v[2], f: v[3], a: v[0], b: end };
+        if (arr) arr.push(win);
+        else bucket.set(key, [win]);
+      }
+    }
+    /* 그 건물이 실제로 일한 첫 시각 — 생산·랠리(f=4)·이륙(f=6)·부속건물 건설(f=2)·
+       착륙(f=5)은 다 지어진 건물만 할 수 있는 일이다. '남이 찍은 자리'(f=1)는 뺐다 —
+       적이 짓다 만 건물을 때리는 클릭이 그것이라, 완성의 증거가 아니다.
+       자리 열쇠는 건물 렌더가 쓰는 것과 같다. */
+    const actAt = new Map<string, number>();
+    for (const e of entData.ents) {
+      if (!e.bld) continue;
+      const anchor0 = e.ev.find((v) => v[3] === 2 || v[3] === 5);
+      if (!anchor0) continue;
+      const act = e.ev.find((v) => v[0] > anchor0[0] + 1
+        && (v[3] === 4 || v[3] === 6 || v[3] === 2 || v[3] === 5));
+      if (!act) continue;
+      const key = `${nameOfId.get(e.o) ?? ""}|${Math.round(anchor0[1])}|${Math.round(anchor0[2])}`;
+      const prev = actAt.get(key);
+      if (prev === undefined || act[0] < prev) actAt.set(key, act[0]);
+    }
+    buildsV2.forEach((row, i) => {
+      const [sec, x, y, unit, raw] = row;
+      if (sec <= 0 || raceOfRaw.get(raw) !== "테란" || ADDONS.has(unit)) return;
+      const need = BUILD_SEC[unit] ?? 30;
+      const [fw, fh] = FOOTPRINT[unit] ?? [3, 2];
+      const cand: Win[] = [];
+      for (let ty = Math.floor(y) - 1; ty <= Math.floor(y + fh) + 1; ty += 1) {
+        for (let tx = Math.floor(x) - 1; tx <= Math.floor(x + fw) + 1; tx += 1) {
+          const arr = bucket.get(`${tx}|${ty}`);
+          if (arr) for (const w of arr) cand.push(w);
+        }
+      }
+      /* 착공을 낸 일꾼의 앵커 — 이것이 있어야 '일꾼이 지은 건물'이다. 시작 커맨드나
+         착륙으로 앉은 줄은 여기서 걸러진다(공사 자체가 없었다). */
+      const anchor = cand.find((w) => w.raw === raw && w.f === 2
+        && Math.abs(w.a - sec) <= 2 && Math.hypot(w.x - x, w.y - y) <= 1.5);
+      if (!anchor) return;
+      const spans: [number, number][] = [[sec, Math.max(sec, anchor.b)]];
+      for (const w of cand) {
+        if (w === anchor || w.raw !== raw || w.b <= sec) continue;
+        if (w.x < x - 0.5 || w.x > x + fw + 0.5 || w.y < y - 0.5 || w.y > y + fh + 0.5) continue;
+        spans.push([Math.max(sec, w.a), w.b]);
+      }
+      spans.sort((p2, q2) => p2[0] - q2[0]);
+      const wins: [number, number][] = [];
+      for (const sp of spans) {
+        const last = wins[wins.length - 1];
+        if (last && sp[0] <= last[1]) last[1] = Math.max(last[1], sp[1]);
+        else wins.push([sp[0], sp[1]]);
+      }
+      let acc = 0;
+      let doneAt = Infinity;
+      for (const [a, b] of wins) {
+        if (b - a >= need - acc) { doneAt = a + (need - acc); break; }
+        acc += b - a;
+      }
+      /* 증거가 어림을 이긴다 — 다만 표의 건설 시간보다 빨리 세울 수는 없으니 하한을
+         함께 건다(실측: 8초 만에 끊긴 벙커가 클릭 증거로 155초에 완성이 될 뻔했다). */
+      const act = actAt.get(`${raw}|${Math.round(x)}|${Math.round(y)}`);
+      if (act !== undefined && act < doneAt) doneAt = Math.max(sec + need, act);
+      // 한 번도 안 멈춘 공사는 표에 안 담는다 — 렌더가 종전 셈(착공 + 건설 시간)으로 간다.
+      if (doneAt <= sec + need + 0.01) return;
+      m.set(i, { wins, doneAt });
+    });
+    return m;
+  }, [entData, buildsV2]);
   /* 살아 있는 일꾼 수(요청: 일꾼 수도 사망 일꾼 반영해 실시간으로) ────────────────
      옛 값은 생산 **누계**였다 — 한 번 는 뒤로 절대 줄지 않아서, 실측 1855초 팀전에서
      한 테란이 133기로 표시되는 동안 실제로 살아 있는 것은 13기였다(저그는 더 심했다:
@@ -11339,9 +11462,12 @@ export default function ReplayMotionPlayer({
       if (e.unit === "Arbiter") arbiterSpots.push({ raw: e.raw, x: q.x, y: q.y });
       if (DETECTOR_UNITS.has(e.unit)) detectorSpots.push({ team: row.team, x: q.x, y: q.y });
     }
-    for (const [bs, bx2, by2, bu, br, bg] of buildsSrc) {
+    for (let bi = 0; bi < buildsSrc.length; bi += 1) {
+      const [bs, bx2, by2, bu, br, bg] = buildsSrc[bi];
       if (!["Sunken Colony", "Spore Colony", "Photon Cannon", "Missile Turret", "Bunker"].includes(bu)) continue;
-      if (bs + (BUILD_SEC[bu] ?? 30) > t) continue;
+      /* 다 지어져야 쏜다 — 테란 벙커·터렛은 공사가 멈춰 선 동안 완성이 미뤄진다
+         (bldWork, 테란 건설 중단). 나머지는 종전대로 착공 + 표의 건설 시간. */
+      if (t < (bldWork.get(bi)?.doneAt ?? bs + (BUILD_SEC[bu] ?? 30))) continue;
       if ((bg ?? 0) > 0 && t >= (bg ?? 0)) continue;
       // 방어 건물도 bld·종류를 실어 발자국 기준 정지·창 규칙을 태운다(기획서 1-D).
       engageFoes.push({
@@ -12943,7 +13069,14 @@ export default function ReplayMotionPlayer({
             // 건물이라 망치를 안 든다.
             // 시작 건물(합성된 0초 홀)도 망치를 안 든다(지적: 처음 홀에 망치 표시는 왜?) —
             // 경기 시작에 이미 다 서 있던 건물이지, 짓는 중이 아니다.
-            const raising = !razed && !flownFrom && sec > 0 && t - sec < (BUILD_SEC[unit] ?? 30);
+            /* 완성 시각 — 테란 건설 중단(bldWork)이 있으면 'SCV가 붙어 있던 만큼만
+               자란' 그 시각이고, 없으면 종전대로 착공 + 표의 건설 시간이다. */
+            const work = bldWork.get(i);
+            const bldNeed = BUILD_SEC[unit] ?? 30;
+            const doneAt = work ? work.doneAt : sec + bldNeed;
+            const raising = !razed && !flownFrom && sec > 0 && t < doneAt;
+            /** 공사가 멈춰 선 동안인가 — 일꾼이 하나도 안 붙어 있는 구간 사이다. */
+            const halted = !!work && raising && !workingAt(work.wins, t);
             const team = teamOfRaw(raw);
             const tagOrd = tagOrdinals.get(`${raw}|${unit}`);
             const typeList = buildsByType.get(`${raw}|${unit}`) ?? [];
@@ -13037,17 +13170,20 @@ export default function ReplayMotionPlayer({
                서 있고, 건물이 무너지면 함께 걷힌다. 지어낸 미네랄 왕복은 걷었다. */
             if (race2 === "테란" && !flownFrom && sec > 0 && !razed
               && (goneEff === 0 || t < goneEff)) {
-              const bs2 = BUILD_SEC[unit] ?? 30;
+              const bs2 = bldNeed;
               const scvX = centerX - fp2[0] / 2 + 0.35;
               const scvY = centerY + fp2[1] / 2 - 0.35;
               let scvShow = t - sec >= 0;
-              if (t - sec >= bs2) {
+              /* 중단 중에는 현장에 아무도 없다(요청: 테란 건설 중단) — 붙어 있던 구간
+                 안에서만 합성 SCV가 선다. 이어 짓기로 다른 SCV가 오면 다시 선다. */
+              if (work && t < doneAt) scvShow = workingAt(work.wins, t);
+              if (t >= doneAt) {
                 /* 공사가 끝난 뒤 이 SCV가 언제 자리를 뜨나 — 개체 트랙의 건설 앵커 창
                    (builderLeave)이 '앵커 시각 → 그 뒤 첫 위치 증거'를 이미 색인해 둔다.
                    옛 v1 일꾼 클릭 자취로 뒤지던 자리다. */
                 let nextCmd = Infinity;
                 for (const bl of builderLeave) {
-                  if (bl.end === Infinity || bl.end < sec + bs2 - 2) continue;
+                  if (bl.end === Infinity || bl.end < doneAt - 2) continue;
                   if (Math.hypot(bl.x - scvX, bl.y - scvY) <= 5) { nextCmd = bl.end; break; }
                 }
                 if (t >= nextCmd) scvShow = false;
@@ -13057,7 +13193,9 @@ export default function ReplayMotionPlayer({
                  앵커(f=2)를 남긴 일꾼 개체의 '앵커 뒤 첫 위치 증거' 시각이 곧 그 SCV가
                  현장을 떠난 순간이다. 그때부터는 개체 마커가 걸어 나가며 그리므로 합성
                  SCV를 걷는다. */
-              if (scvShow) {
+              /* 공사 이력을 아는 건물(bldWork)은 위에서 이미 갈랐다 — 아래 옛 잣대는
+                 첫 일꾼이 떠난 시각 하나뿐이라, 이어 짓는 SCV까지 지운다. */
+              if (scvShow && !work) {
                 const lv = builderLeave.find((b2) =>
                   Math.abs(b2.x - centerX) <= fp2[0] / 2 + 2 && Math.abs(b2.y - centerY) <= fp2[1] / 2 + 2
                   && b2.s >= sec - 15 && b2.s <= sec + bs2);
@@ -13082,7 +13220,7 @@ export default function ReplayMotionPlayer({
                  박동. 스프라이트는 2px 칸 양자화라 두어 가지 크기를 오가며 캐시된다.
                  그리고 게임처럼 단계 성장(재지적: 너무 작음): 공사 진행에 따라 0.7배에서
                  1.5배까지 세 단계로 자란다. */
-              const prog = Math.min(1, (t - sec) / (BUILD_SEC[unit] ?? 30));
+              const prog = Math.min(1, (work ? workedBy(work.wins, t) : t - sec) / bldNeed);
               // 시작을 크게(재지적: 처음에 너무 작음 — 훨씬 크게 시작) — 0.7 → 1.0.
               /* 자라되 완성 건물을 넘지 않는다(전수조사: 1.0→1.5배라 4타일 해처리의
                  고치가 6.4타일 — 다 지어진 건물보다 컸다). 발자국의 0.8 → 1.0으로. */
@@ -13111,9 +13249,11 @@ export default function ReplayMotionPlayer({
                    뒤와 같은 자로 지어, 다 지어져도 팝업이 그대로 이어진다. */
                 pickKey: `b${raw}|${unit}|${Math.round(bx * 4)}|${Math.round(by * 4)}`,
                 pickName: unit, pickRaw: raw, pickBld: true,
+                /* 상태 줄 — 테란은 '건설 중단'을 따로 말한다(요청): 일꾼이 떠나거나
+                   죽어 공사가 그 진행률에 멈춰 선 동안이다. */
                 pickState: race2 === "저그"
                   ? `변태 중 ${Math.round(prog * 100)}%`
-                  : `건설 중 ${Math.round(prog * 100)}%`,
+                  : `${halted ? "건설 중단" : "건설 중"} ${Math.round(prog * 100)}%`,
                 /* 테란 공사는 제 건물 모델을 아래부터 드러낸다(요청: "3단계로 하고 실제
                    모델의 부품을 일부만 표현하다가 완성되는 형태로. 아래쪽 부품부터 →
                    점점 위로"). 뼈대·크레인 한 벌(scaffold)을 모든 건물에 똑같이 쓰던
@@ -13175,7 +13315,8 @@ export default function ReplayMotionPlayer({
               const bfxX = race2 === "테란" ? centerX + cDx : centerX;
               const bfxY = race2 === "테란" ? centerY + cDy
                 : centerY + fp2[1] / 2 - modelHT / 2;
-              if (!qBuildFx) return null;
+              // 멈춰 선 공사에는 불티가 없다(요청: 테란 건설 중단) — 아무도 안 붙어 있다.
+              if (!qBuildFx || halted) return null;
               return (
                 <span
                   key={`bfx-${i}`}
