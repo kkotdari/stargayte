@@ -256,7 +256,18 @@ export default function ModelGalleryScreen() {
                         setAuto(true);
                       }}
                     >
-                      <span className="scr-model-thumb"><ShapeIcon kind={k} faces={THUMB_FACES[k]} /></span>
+                      <span className="scr-model-thumb">
+                        {/* 지도상 크기를 켜면 썸네일에도 같은 배수가 걸린다(요청: 목록에도
+                            적용 — 일일이 안 눌러보게). 끄면 배수 1이라 겉옷이 없다. */}
+                        {mapSize ? (
+                          <span
+                            className="scr-model-thumb-scaler"
+                            style={{ transform: `scale(${(shapeMapTiles(k) / MAP_REF_TILES).toFixed(4)})` }}
+                          >
+                            <ShapeIcon kind={k} faces={THUMB_FACES[k]} />
+                          </span>
+                        ) : <ShapeIcon kind={k} faces={THUMB_FACES[k]} />}
+                      </span>
                       <span className="scr-model-label">{label}</span>
                     </button>
                   ))}
@@ -264,7 +275,7 @@ export default function ModelGalleryScreen() {
               </div>
             ))}
           </div>
-  ), [kind]);
+  ), [kind, mapSize]);
   return (
     <div className="scr-screen scr-model-screen">
       {/* 이름은 짧게 '모델'(요청) — 제목 아래 갭도 화면 전용 CSS로 줄였다. */}
