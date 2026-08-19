@@ -15271,10 +15271,16 @@ export default function ReplayMotionPlayer({
                    해처리가 아직 공사 중인데도 옆 해처리가 뱉은 알·라바를 제 것으로
                    집어 간다(발자국 언저리 상자가 겹친다). 변태를 시작한 시각(완성 −
                    변태 시간)이 이 해처리의 완공(doneAt) 뒤라야 이 해처리의 몫이다. */
+                /* 시작 해처리는 처음부터 다 지어져 있다(수리: 초반에 알이 하나도 안
+                   뜨던 자리) — 이 건물은 착공 증거가 없어 sec이 0이고, doneAt은 그
+                   0에 건설 시간(약 120초)을 더한 값이 된다. 완공 문을 그대로 걸면 첫
+                   2분 동안 이 해처리의 변태가 전부 걸러져 알이 사라졌다. raising이
+                   시작 홀을 sec > 0으로 가려내는 것과 같은 자를 쓴다. */
+                const doneEff3 = sec > 0 ? doneAt : 0;
                 const mine3 = (prodDoneAt.get(raw) ?? []).filter((r3) =>
                   r3.x >= bx - 1.5 && r3.x <= bx + fp3[0] + 1.5
                   && r3.y >= by - 1.5 && r3.y <= by + fp3[1] + 2
-                  && r3.s - (UNIT_BUILD_SEC[r3.u] ?? 30) >= doneAt - 0.5);
+                  && r3.s - (UNIT_BUILD_SEC[r3.u] ?? 30) >= doneEff3 - 0.5);
                 const eggs3: { u: string; s: number }[] = [];
                 let larva3 = 1;
                 let last3 = sec;
