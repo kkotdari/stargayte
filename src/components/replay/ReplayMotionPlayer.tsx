@@ -2828,19 +2828,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        그리고 **개인색을 뺀다**(요청: "본체 개인색 제거") — 색을 안 준 맨 원기둥이라
        임자 색이 통째로 칠해져, 터렛이 색 막대 위에 머리를 얹은 꼴이었다. 다른 테란
        건물과 같은 기본색으로 굳히고, 임자 색은 아래 포드 앞면 데칼 하나만 갖는다. */
-    ...paintBase(boxFaces3(0, 0.4, 6.2, 6.2, 3.4), "#868d94"),
+    /* 몸통을 줄인다(요청: "터렛 몸통 크기 줄이고") — 6.2 → 5.2. 터렛의 실루엣은 위에
+       얹힌 포드 한 쌍이지 밑동이 아닌데, 밑동이 굵어 '기둥에 얹은 상자'로 읽혔다. */
+    ...paintBase(boxFaces3(0, 0.4, 5.2, 5.2, 3.4), "#868d94"),
     /* 밑동 공사장 노랑·검정 대각선 띠 — 사각기둥이 되었으니 네 벽에 하나씩 두른다.
        보이는 벽만 그리고, 위 모서리를 앞으로 밀어 사선을 만든다. */
     ...((): ShapeFace[] => {
       const faces: ShapeFace[] = [];
-      const HW = 3.13;
+      const HW = 2.63;   // 밑동 반폭(위 5.2의 절반에서 살짝 안쪽)
       const side = (
         nx9: number, ny9: number, pt: (t: number, z: number) => [number, number, number],
       ): void => {
         if (facingRatio(nx9, ny9) < 0.05) return;
-        faces.push([polyPath3([pt(0, 0.2), pt(6.2, 0.2), pt(6.2, 1.4), pt(0, 1.4)]),
+        faces.push([polyPath3([pt(0, 0.2), pt(5.2, 0.2), pt(5.2, 1.4), pt(0, 1.4)]),
           1, "#d9ae35"] as ShapeFace);
-        for (let t = 0.3; t < 5.3; t += 1.25) {
+        for (let t = 0.3; t < 4.4; t += 1.25) {
           faces.push([polyPath3([pt(t, 0.2), pt(t + 0.5, 0.2), pt(t + 0.9, 1.4), pt(t + 0.4, 1.4)]),
             1, "#1b1e23"] as ShapeFace);
         }
@@ -2885,11 +2887,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         [rx - 0.75, ft[0], ft[1]], [rx + 0.75, ft[0], ft[1]],
         [rx + 0.75, bt[0], bt[1]], [rx - 0.75, bt[0], bt[1]],
       ]);
-      const s0 = pvt(1.91, 0.8);
-      const s1 = pvt(1.91, 4.3);
-      const stripe = polyPath3([
-        [rx - 0.5, s0[0], s0[1]], [rx + 0.5, s0[0], s0[1]],
-        [rx + 0.5, s1[0], s1[1]], [rx - 0.5, s1[0], s1[1]],
+      /* 개인색은 **옆면 맨 앞쪽 띠**다(요청: "포드 데칼은 포드 앞면이 아니라 옆면 맨
+         앞쪽을 띠로 두름") — 앞면에 붙이면 정면에서만 보이고 옆에서는 사라졌다. 옆면
+         앞 끝을 세로로 두르면 어느 쪽에서 봐도 둘 중 하나는 보인다. 면보다 아주 조금
+         (0.01) 밖에 띄워 z-싸움을 피한다. */
+      const bandF0 = pvt(1.9, 0.6);
+      const bandF1 = pvt(1.9, 4.6);
+      const bandB0 = pvt(1.18, 0.6);
+      const bandB1 = pvt(1.18, 4.6);
+      const sideBand = (m2: 1 | -1): string => polyPath3([
+        [rx + m2 * 0.76, bandF0[0], bandF0[1]], [rx + m2 * 0.76, bandF1[0], bandF1[1]],
+        [rx + m2 * 0.76, bandB1[0], bandB1[1]], [rx + m2 * 0.76, bandB0[0], bandB0[1]],
       ]);
       /* 포드는 머리 위 얹힘(지적) — 지붕 규칙로 큰 키. 면들은 고정으로 그리지 않고
          faceLight 판정(재지적: 옆면이 한쪽뿐이라 가려지거나 남았다) — 앞·뒤는 기운
@@ -2911,7 +2919,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          paintBase는 색 없는 면만 칠하므로, 칠한 뒤에 얹어야 데칼이 살아남는다. */
       return tagKey([
         ...paintBase(faces, "#c9ced6"),
-        ...(fr.visible ? [bodyFace(stripe)] : []),
+        // 색을 안 준 면이라 임자 색이 든다 — 칠한 뒤에 얹어야 데칼이 살아남는다.
+        ...([1, -1] as const).filter((m2) => faceLight(m2, 0).visible)
+          .map((m2) => bodyFace(sideBand(m2))),
       ], 20 + depthNow(rx, 0.2) * 1.6);
     }),
     // 꼭대기 작은 상자 — 머리·포드보다 위라 붙박이 키 26.
@@ -6805,16 +6815,23 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          밑이 잘려 어깨 위에 얹힌 '그릇'으로 읽혔다. sphereFaces3는 중심만 투영하고
          반지름은 화면 원이라 어느 요잉에서도 동그랗고, 광택·그늘이 세계 광원과 같은
          좌상 방향으로 붙는다. 키 20은 그대로 — 몸통·어깨보다 위다. */
-      ...tagKey(sphereFaces3(0, -0.2, 4.72, 0.84, "#bfe0ef"), 20),
+      /* 헬멧은 반쯤만 드러난다(요청: "테란 보병들 헬멧 반정도만 보이게(거의 반구형)")
+         — 구를 반구로 바꾸면 어느 각도에서는 밑이 잘린 그릇으로 보이므로(앞선 지적),
+         구는 그대로 두고 **어깨선 아래로 내려앉히고 몸통보다 뒤에 그린다**: 아래 절반이
+         가슴·어깨에 가려 결과가 반구다. 키 20(맨 앞)이 그 가림을 막고 있었다. */
+      ...tagKey(sphereFaces3(0, -0.2, 4.22, 0.84, "#bfe0ef"), depthNow(0, -0.9)),
       ...tagKey([bodyFace(apron), topFace(apron, 0.3)], depthNow(0, 0.79)),
       /* 가슴 빨간 십자(요청) — 병원 표시. 몸통은 원기둥이라 벽이 굽어 있으니, 앞을 볼
          때만 그리고 몸통 앞면(반지름 0.96)보다 아주 조금 앞(0.02)에 눕힌다. 세로·가로
          두 막대가 만나 십자가 되고, 앞가리개 바로 위 가슴 높이에 앉는다. */
+      /* 몸에 딱 붙인다(지적: "매딕 적십자 몸에 딱 붙이기") — 0.98은 몸통 앞면보다 0.12
+         앞이라 십자가 가슴에서 떠 있었다(몸통은 중심 y −0.2에 반지름 1.06이므로 앞면이
+         0.86이다). 0.88이면 딱 0.02 앞 — 표면에 붙은 데칼이다. */
       ...(facingRatio(0, 1) > 0.12 ? tagKey(([
-        [[-0.16, 0.98, 3.02], [0.16, 0.98, 3.02], [0.16, 0.98, 3.86], [-0.16, 0.98, 3.86]],
-        [[-0.45, 0.98, 3.3], [0.45, 0.98, 3.3], [0.45, 0.98, 3.58], [-0.45, 0.98, 3.58]],
+        [[-0.16, 0.88, 3.02], [0.16, 0.88, 3.02], [0.16, 0.88, 3.86], [-0.16, 0.88, 3.86]],
+        [[-0.45, 0.88, 3.3], [0.45, 0.88, 3.3], [0.45, 0.88, 3.58], [-0.45, 0.88, 3.58]],
       ] as [number, number, number][][]).map((q) =>
-        [polyPath3(q), 1, "#d8362c"] as ShapeFace), depthNow(0, 0.98)) : []),
+        [polyPath3(q), 1, "#d8362c"] as ShapeFace), depthNow(0, 0.9)) : []),
       /* 두 팔(재지적: 위치·굽힘) — 위팔은 어깨뽕 아래(z 3.7)에서 나와 내려가고,
          팔꿈치에서 굽는다. 왼팔은 앞으로, 오른팔은 주사기 뿌리로. */
       ...tagKey(paintBase([
@@ -6846,7 +6863,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          밑이 잘려 어깨 위에 얹힌 '그릇'으로 읽혔다. sphereFaces3는 중심만 투영하고
          반지름은 화면 원이라 어느 요잉에서도 동그랗고, 광택·그늘이 세계 광원과 같은
          좌상 방향으로 붙는다. 키 20은 그대로 — 몸통·어깨보다 위다. */
-      ...tagKey(sphereFaces3(0, -0.2, 4.72, 0.84, "#bfe0ef"), 20),
+      /* 헬멧은 반쯤만 드러난다(요청: "테란 보병들 헬멧 반정도만 보이게(거의 반구형)")
+         — 구를 반구로 바꾸면 어느 각도에서는 밑이 잘린 그릇으로 보이므로(앞선 지적),
+         구는 그대로 두고 **어깨선 아래로 내려앉히고 몸통보다 뒤에 그린다**: 아래 절반이
+         가슴·어깨에 가려 결과가 반구다. 키 20(맨 앞)이 그 가림을 막고 있었다. */
+      ...tagKey(sphereFaces3(0, -0.2, 4.22, 0.84, "#bfe0ef"), depthNow(0, -0.9)),
       /* 두 팔(재지적: 위치·굽힘) — 위팔은 어깨뽕 '아래'(z 3.7)에서 나와 앞-아래로
          내려가고, 팔꿈치에서 굽어 아래팔이 총몸으로 올라가 쥔다. 왼손은 앞손잡이,
          오른손은 방아쇠 쪽. */
@@ -6872,18 +6893,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...domeFaces3(-0.47, 0.22, 0.4, 0.28, 0.05),
         ...domeFaces3(0.47, 0.22, 0.4, 0.28, 0.05),
       ], "#d3d7db"),
-      // 가는 몸통(마린 1.25 → 0.7) — 어깨장갑 없이 작은 어깨 라운드만.
+      /* 가는 몸통(마린 1.25 → 0.7). 어깨 라운드 둘은 걷었다(요청: "고스트 어깨갑옷 제거")
+         — 작아도 그것이 있으면 어깨가 부푼 실루엣이라 마린과 안 갈린다. */
       ...cylinderFaces3(0, -0.1, 0.6, 2, 2.3),
-      ...domeFaces3(-0.75, -0.15, 0.34, 0.3, 4.1),
-      ...domeFaces3(0.75, -0.15, 0.34, 0.3, 4.1),
       // 작은 헬멧 — 마린과 같은 원시 구, 반지름만 작다(요청).
-      ...tagKey(sphereFaces3(0, -0.1, 4.72, 0.56, "#bfe0ef"), 20),
-      // 가는 두 팔 — 앞-아래로 내려가 총몸을 받쳐 쥔다. 회흰색(요청).
+      // 고스트도 같은 규칙(요청) — 머리가 작아 내리는 몫도 조금 작다.
+      ...tagKey(sphereFaces3(0, -0.1, 4.34, 0.56, "#bfe0ef"), depthNow(0, -0.8)),
+      /* 팔은 **어깨 자리에서** 나오고 더 길다(요청: "팔자체를 어깨위치로 올리고 길이
+         늘리기") — 어깨 라운드를 걷으면서 팔 뿌리를 몸통 꼭대기(z 4.3) 바로 아래인
+         4.15로 올리고, 아래팔이 앞으로 0.25 더 뻗는다. 가늘고 긴 팔이 고스트의 실루엣이다. */
       ...paintBase([
-        ...hornFaces(-0.8, 0.1, 3.9, -0.6, 0.9, 2.9, 0.4),
-        ...hornFaces(-0.6, 0.9, 2.9, 0.25, 1.7, 3.3, 0.35),
-        ...hornFaces(0.85, 0.1, 3.9, 0.7, 0.8, 2.95, 0.4),
-        ...hornFaces(0.7, 0.8, 2.95, 0.45, 1.2, 3.3, 0.35),
+        ...hornFaces(-0.85, 0.1, 4.15, -0.62, 1, 2.8, 0.4),
+        ...hornFaces(-0.62, 1, 2.8, 0.3, 1.95, 3.35, 0.35),
+        ...hornFaces(0.9, 0.1, 4.15, 0.72, 0.9, 2.85, 0.4),
+        ...hornFaces(0.72, 0.9, 2.85, 0.5, 1.45, 3.35, 0.35),
       ], "#d3d7db"),
       /* C-10 저격소총 — 마린과 같은 규칙(지적): 노리쇠는 상자, 총열은 관 프리미티브라
          총구가 요잉을 탄다. 마린보다 길고 가늘다. 건메탈. */
@@ -6916,7 +6939,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          밑이 잘려 어깨 위에 얹힌 '그릇'으로 읽혔다. sphereFaces3는 중심만 투영하고
          반지름은 화면 원이라 어느 요잉에서도 동그랗고, 광택·그늘이 세계 광원과 같은
          좌상 방향으로 붙는다. 키 20은 그대로 — 몸통·어깨보다 위다. */
-      ...tagKey(sphereFaces3(0, -0.2, 4.72, 0.84, "#bfe0ef"), 20),
+      /* 헬멧은 반쯤만 드러난다(요청: "테란 보병들 헬멧 반정도만 보이게(거의 반구형)")
+         — 구를 반구로 바꾸면 어느 각도에서는 밑이 잘린 그릇으로 보이므로(앞선 지적),
+         구는 그대로 두고 **어깨선 아래로 내려앉히고 몸통보다 뒤에 그린다**: 아래 절반이
+         가슴·어깨에 가려 결과가 반구다. 키 20(맨 앞)이 그 가림을 막고 있었다. */
+      ...tagKey(sphereFaces3(0, -0.2, 4.22, 0.84, "#bfe0ef"), depthNow(0, -0.9)),
       // 두 팔(요청) — 어깨에서 건틀릿 뿌리로.
       ...hornFaces(-1.45, -0.2, 4.9, -1.4, 0.6, 3.2, 0.64),
       ...hornFaces(1.45, -0.2, 4.9, 1.4, 0.6, 3.2, 0.64),
@@ -8203,17 +8230,55 @@ const UNIT_BULK: Record<string, 0 | 1 | 2> = {
  *  하던 일을 채움 보정이 아니라 이 층으로 옮긴 것이다. 스크립트도 짝은 안 찍는다.
  *  표에 없는 종류는 1(모델 그대로)이다 — 건물이 여기로 떨어진다. */
 const MODEL_NORM: Record<string, number> = {
-  arbiter: 1.192, archon: 0.525, bc: 0.677, burrowhole: 0.832, carrier: 0.911, carrierbay: 0.810,
-  corsair: 1.128, darchon: 0.475, defiler: 0.861, devourer: 0.945, drone: 1.056, dship: 0.716,
-  dtemp: 0.896, fbat: 1.070, ghost: 1.402, goliath: 0.829, goon: 0.667, guardian: 0.949,
-  gunner: 1.171, htemp: 1.077, hydra: 0.758, inf: 1.226, lurker: 0.627, lurkeregg: 0.886,
-  mine: 1.293,  // 상자 상한 1.293에 걸림(원한 배수 1.465)
-  muta: 0.741, mutacocoon: 1.100, observer: 1.896, ovie: 0.843, probe: 1.582, queen: 1.091,
+  arbiter: 1.192,
+  archon: 0.525,
+  bc: 0.677,
+  burrowhole: 0.832,
+  carrier: 0.911,
+  carrierbay: 0.810,
+  corsair: 1.128,
+  darchon: 0.475,
+  defiler: 0.861,
+  devourer: 0.945,
+  drone: 1.056,
+  dship: 0.716,
+  dtemp: 0.896,
+  fbat: 1.061,
+  ghost: 1.409,
+  goliath: 0.829,
+  goon: 0.667,
+  guardian: 0.949,
+  gunner: 1.160,
+  htemp: 1.077,
+  hydra: 0.758,
+  inf: 1.286,
+  lurker: 0.627,
+  lurkeregg: 0.886,
+  mine: 1.293,  // 상자 상한(원한 배수 1.465)
+  muta: 0.741,
+  mutacocoon: 1.100,
+  observer: 1.896,
+  ovie: 0.843,
+  probe: 1.582,
+  queen: 1.091,
   reaver: 1.234,
-  scourge: 1.634,  // 상자 상한 1.634에 걸림(원한 배수 2.057)
-  scout: 0.951, scv: 0.936, shuttle: 0.673, tank: 0.766, tankbody: 0.846,
-  tanksiege: 0.660, tanksiegebody: 0.756, ultra: 0.618, valk: 0.949,
-  vessel: 0.810, vulture: 1.058, wraith: 0.774, zealot: 0.797, zling: 1.113,
+  scourge: 1.634,  // 상자 상한(원한 배수 2.057)
+  scout: 0.951,
+  scv: 0.936,
+  shuttle: 0.673,
+  tank: 0.766,
+  tankbody: 0.846,
+  tanksiege: 0.660,
+  tanksiegebody: 0.756,
+  ultra: 0.618,
+  valk: 0.949,
+  vessel: 0.810,
+  vulture: 1.058,
+  wraith: 0.774,
+  zealot: 0.797,
+  zling: 1.113,
+  // tankgun: 없음 — 짝이라 소스의 NORM_PAIR가 tankbody 배수로 접는다.
+  // tanksiegegun: 없음 — 짝이라 소스의 NORM_PAIR가 tanksiegebody 배수로 접는다.
 };
 /** ①-a-짝 부품 → 본체(옛 FILL_PAIR와 같은 뜻, 옮긴 자리만 다르다).
  *  포신 판은 차체 판과 **같은 sizePx·같은 상자 중심**에 그려지므로 배수도 같아야 한다.
@@ -9156,7 +9221,7 @@ export const BLD_NORM: Record<string, number> = {
   tombFlat: 1.140,
   trapezoid: 1.514,
   tribunal: 1.954,
-  turret: 1.608,
+  turret: 1.770,
   warpin: 2.483,
 };
 const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number; w: number; cx: number }>();
