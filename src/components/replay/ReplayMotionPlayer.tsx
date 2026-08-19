@@ -4964,11 +4964,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /** 시계 90도 한 번 — 사진 좌표에서 (dx,dy) → (dy,−dx). */
     const rotCW = (dx9: number, dy9: number): [number, number] => [dy9, -dx9];
     const PB = (px: number, py: number): [number, number] => {
-      /* 요청이 쌓인 만큼 90도씩 돈다: 90 → 180 → 다시 180(요청: "몸덩이 다시 180도
-         회전") = 합 **360도**. 네 번이면 한 바퀴라 결국 처음 자세로 돌아온다 — 접어서
-         지우지 않고 세는 꼴로 남긴다. 다음에 또 돌리라 하면 이 횟수만 고치면 된다. */
+      /* 요청이 쌓인 만큼 90도씩 돈다: 90 → 180 → 다시 180 → 다시 90 = 합 **450도**,
+         곧 한 바퀴 돌고 시계 90도다. 접어서 지우지 않고 세는 꼴로 남긴다 — 다음에 또
+         돌리라 하면 이 횟수만 고치면 된다. 도는 것은 **몸 덩이뿐**이고(가지·막은 이
+         변환을 안 탄다), 그 덩이에는 몸통·마디 꼬리·갈비·주둥이·엄니가 모두 든다. */
       let [dx9, dy9] = rotCW(px - BC[0], py - BC[1]);
-      for (let q9 = 0; q9 < 3; q9 += 1) [dx9, dy9] = rotCW(dx9, dy9);
+      for (let q9 = 0; q9 < 4; q9 += 1) [dx9, dy9] = rotCW(dx9, dy9);
       return P(BC[0] + dx9, BC[1] + dy9);
     };
     // 몸 — 붉은 살덩이 둔덕(사진).
@@ -10036,7 +10037,7 @@ export const BLD_NORM: Record<string, number> = {
   gspire: 0.917,
   hatchery: 1.367,
   hive: 1.165,
-  hydraden: 1.093,
+  hydraden: 1.111,
   lair: 1.223,
   mineral: 1.963,
   mshop: 1.958,
