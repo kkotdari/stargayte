@@ -2603,9 +2603,10 @@ export function buildUnitTracks(
         비어 맵 한복판에서 솟아났다. 정체(모르면 종족 기본 생산소)의 생산 건물 중 첫
         증거에 가장 가까운 자기 건물 발치에서 걸어 나온 것으로 태어남을 당긴다.
         배럭·게이트 출신으로 잡힌 무명 개체는 일꾼일 수 없으니 기본 보병으로
-        식별한다(지적: 마린 같은데 SCV로 태어나서 이동). */
+        식별한다(지적: 마린 같은데 SCV로 태어나서 이동) — 다만 그 이름은 여기서 붙이지
+        않고 아래 몫 나눔이 끝난 뒤 남은 몫 안에서 붙인다(아래 주석). */
+  const infantryGuess: Life[] = [];
   {
-    const RACE_INFANTRY: Record<string, string> = { 테란: "Marine", 프로토스: "Zealot", 저그: "Zergling" };
     const RACE_PRODUCER: Record<string, string> = { 테란: "Barracks", 프로토스: "Gateway", 저그: "Hatchery" };
     for (const life of done) {
       if (life.bld || life.ev.length === 0 || life.spawned) continue;
@@ -2641,8 +2642,16 @@ export function buildUnitTracks(
       const departSec = Math.max(1, first[0] - walkSec);
       life.ev.unshift([Math.round(departSec), r1(best.x), r1(best.y), 3]);
       life.born = Math.min(life.born, departSec);
+      /* ★ 여기서 곧장 이름을 붙이던 줄은 걷고 **후보로만 적어 둔다**(계측) —
+         "배럭·게이트 발치에서 나왔으니 기본 보병이겠지"는 뜻은 옳지만 원장 몫을
+         안 보는 어림이었다. 실측(90300): 이 줄 하나가 마린 39기를 지어냈고, 그
+         사람이 뽑은 마린은 192기인데 마린 이름이 붙은 실태그 생애가 216기였다.
+         게다가 이 이름이 아래 몫 계산에서 '이미 쓴 몫'으로 잡혀, 증거가 있는 동반
+         추정의 몫까지 깎아먹었다.
+         그렇다고 통째로 걷으면 무명이 는다(실측: 0.8% → 1.3%). 어림 자체가 나쁜
+         것이 아니라 **차례가 나빴다** — 몫을 다 나눈 뒤, 남은 몫 안에서만 준다. */
       if (kind === "" && (prodKind === "Barracks" || prodKind === "Gateway")) {
-        life.kinds.set(RACE_INFANTRY[race] ?? "", 1);
+        infantryGuess.push(life);
       }
     }
   }
@@ -2774,6 +2783,28 @@ export function buildUnitTracks(
       life.kinds.set(best, 1);
       quotaFilled += 1;
     }
+    /* ③-b 배럭·게이트 출신 무명에게 기본 보병(위 '생산 출고 뒤 스토리'가 적어 둔 후보)
+       — 동반이라는 실제 증거가 먼저 몫을 가져간 뒤, 남은 몫 안에서만 준다. 그래서
+       "발치에서 나왔으니 보병이겠지"라는 어림이 증거를 밀어내지 못한다. */
+    const RACE_INF2: Record<string, string> = { 테란: "Marine", 프로토스: "Zealot", 저그: "Zergling" };
+    let infFilled = 0;
+    let infOver = 0;
+    for (const life of infantryGuess) {
+      if (majorityKindOf2(life) !== "") continue;
+      const kind9 = RACE_INF2[raceOf.get(life.owner) ?? ""] ?? "";
+      if (!kind9) continue;
+      /* 몫이 남았으면 몫에서 깎고, 없으면 넘겨서라도 준다 — ④와 같은 판단이다.
+         이 생애는 배럭·게이트 발치에서 걸어 나온 것이 자취로 남아 있고 일꾼일 수
+         없다. 그것도 증거다. 원장이 완벽하지 않다는 것은 이미 안다(인구 막힘·취소·
+         건물 파괴로 커맨드가 유닛이 안 되기도 하고, 그 반대 누락도 있다).
+         달라진 것은 **차례**다 — 동반이라는 더 센 증거가 몫을 먼저 가져간 뒤에 온다. */
+      if ((quota.get(life.owner)?.get(kind9) ?? 0) > 0) bump(life.owner, kind9, -1);
+      else infOver += 1;
+      life.kinds.set(kind9, 1);
+      infFilled += 1;
+    }
+    void infFilled;
+    void infOver;
     /* ④ 마지막 그물 — 그래도 이름이 없는데 동반이 할 말이 있으면, 몫을 넘더라도 준다.
        ①②③이 다 지나간 뒤이므로 여기 오는 것은 '원장이 아는 생산보다 관측된 생애가
        많은' 자리다. 원장이 완벽하지 않다는 뜻이고(지적: 인구 막힘·전력 끊김·건물
