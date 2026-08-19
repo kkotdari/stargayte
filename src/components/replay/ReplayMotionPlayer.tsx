@@ -15165,6 +15165,10 @@ export default function ReplayMotionPlayer({
             pickState: (() => {
               const st: string[] = [];
               if (burrowed) st.push("땅속");
+              /* 은신(요청) — 연구로 켠 창(e.cloaks)과 늘 은신인 둘. 아비터 은신장은
+                 곁 유닛 사정이라 이 자리에서 모른다. */
+              if (e.cloaks.some(([ca2, cb2]) => t >= ca2 && t < cb2)
+                || e.unit === "Dark Templar" || e.unit === "Observer") st.push("은신");
               const actSt2 = e.statuses.find(([sa4, sb4]) => t >= sa4 && t < sb4);
               if (actSt2) st.push(STATUS_KO[actSt2[2]] ?? actSt2[2]);
               return st.length > 0 ? st.join(" · ") : undefined;
@@ -15704,8 +15708,25 @@ export default function ReplayMotionPlayer({
           const cur = Math.max(0, Math.round((op.hpFrac ?? 1) * max));
           const sh = op.pickBld ? (BLD_STATS[en]?.[1] ?? 0) : (UNIT_STATS[en]?.sh ?? 0);
           const trk = motion.players.find((pp) => pp.raw === op.pickRaw);
-          const lines: string[] = [];
-          if (op.pickState) lines.push(op.pickState);
+          const lines: React.ReactNode[] = [];
+          /* 진행 바(요청: 스타 원작처럼 칸 수를 따라) — 원작 진행 바는 통짜가 아니라
+             칸이 하나씩 차오른다. 열 칸으로 나눠 채운 만큼만 밝힌다. */
+          const bar = (label: string, p9: number): React.ReactNode => (
+            <div className="scr-motion-info-prog" key={`${label}${p9.toFixed(2)}`}>
+              <span className="scr-motion-info-line">{label}</span>
+              <span className="scr-motion-info-bar">
+                {Array.from({ length: 10 }, (_, k) => (
+                  <i key={k} className={k < Math.round(p9 * 10) ? "is-on" : undefined} />
+                ))}
+              </span>
+            </div>
+          );
+          if (op.pickState) {
+            // 건설·변태도 글 대신 칸 바로(요청).
+            const m9 = /(\d+)%$/.exec(op.pickState);
+            if (m9) lines.push(bar(op.pickState.replace(/\s*\d+%$/, ""), Number(m9[1]) / 100));
+            else lines.push(op.pickState);
+          }
           /* 실드는 따로 한 줄(요청) — 원작은 실드부터 깎이므로, 남은 값이 체력 몫을
              넘으면 그 초과분이 곧 남은 실드다. */
           const hpOnly = Math.max(1, max - sh);
@@ -15726,8 +15747,9 @@ export default function ReplayMotionPlayer({
             const queue = evs.filter(([ps, , sec]) => t < ps - sec).slice(0, 4);
             const justOut = evs.filter(([ps]) => ps <= t && t - ps <= PROD_FLASH_SEC);
             if (making.length > 0) {
-              lines.push(`생산 중 ${making.map(([ps, n, sec]) =>
-                `${n} ${Math.min(99, Math.round(((t - (ps - sec)) / sec) * 100))}%`).join(" · ")}`);
+              for (const [ps, n, sec] of making) {
+                lines.push(bar(`생산 중 ${n}`, Math.min(0.99, (t - (ps - sec)) / sec)));
+              }
             } else if (justOut.length > 0) {
               lines.push(`생산 완료 ${justOut.map(([, n]) => n).join(" · ")}`);
             } else lines.push("생산 대기");
@@ -15740,8 +15762,7 @@ export default function ReplayMotionPlayer({
                 : RESEARCH_BUILDING[en === "Lair" || en === "Hive" ? "Hatchery" : en] === en
                   && us <= t && t - us <= RESEARCH_SEC);
             for (const [us, n] of doing) {
-              const pct2 = Math.round(((t - us) / RESEARCH_SEC) * 100);
-              lines.push(`연구 중 ${TECH_KO[n] ?? n} ${Math.min(99, pct2)}%`);
+              lines.push(bar(`연구 중 ${TECH_KO[n] ?? n}`, Math.min(0.99, (t - us) / RESEARCH_SEC)));
             }
           } else {
             /* 그 유닛에 실제로 걸리는 공/방 줄만 레벨로 보여 준다(요청: 인게임보다
@@ -15788,7 +15809,9 @@ export default function ReplayMotionPlayer({
               onPointerDown={(e) => e.stopPropagation()}
             >
               <div className="scr-motion-info-name">{ko}</div>
-              {lines.map((ln) => <div key={ln} className="scr-motion-info-line">{ln}</div>)}
+              {lines.map((ln, li) => (typeof ln === "string"
+                ? <div key={li} className="scr-motion-info-line">{ln}</div>
+                : <React.Fragment key={li}>{ln}</React.Fragment>))}
             </div>
           );
         })()}

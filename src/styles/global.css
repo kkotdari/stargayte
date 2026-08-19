@@ -14023,3 +14023,12 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 }
 .scr-motion-info-name { font-size: var(--fs-caption); font-weight: 800; color: #fff; margin-bottom: 2px; }
 .scr-motion-info-line { font-size: var(--fs-9); color: rgba(255, 255, 255, 0.82); line-height: 1.45; }
+/* 진행 바(요청: 스타 원작처럼 칸 수를 따라) — 통짜가 아니라 열 칸이 하나씩 차오른다. */
+.scr-motion-info-prog { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; }
+.scr-motion-info-bar { display: flex; gap: 1px; height: 6px; }
+.scr-motion-info-bar i {
+  flex: 1 1 0; border-radius: 1px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.scr-motion-info-bar i.is-on { background: #6fe36f; border-color: rgba(255, 255, 255, 0.3); }
