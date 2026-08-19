@@ -397,6 +397,8 @@ const IVORY = "#eae3d2";
 const IVORY_DEEP = "#cdc0a0";
 /* 테란 화기 금속색(요청: 총구·포신은 어두운 회색). */
 const GUNMETAL = "#4b5058";
+/** 보병 헬멧이 목에 물리는 자리의 짙은 은색 링(요청). 껍데기 은색보다 두 단 어둡다. */
+const HELMET_RING = "#5c646d";
 /* 탱크 캐터필러 금속색(요청: 짙은 회은색). */
 const TRACK_STEEL = "#5c636d";
 /** 성큰이 지금 촉수를 내밀고 있는가(요청: "성큰은 혓바닥 내민 상태 모델링 추가 —
@@ -845,32 +847,48 @@ function suitArm(
   return [
     ...suitLimb(sh, el, 0.3 * g, 0.28 * g, 0.29 * g, { key: -0.35 }),
     ...suitLimb(el, hd, fore * 0.94 * g, fore * 0.92 * g, fore * g, { key: -0.35 }),
-    /* 손(지적: "손이 없어") — 팔뚝 끝에 박은 장갑 주먹. 팔뚝보다 한 뼘 굵어야 손으로
-       읽힌다. 공이라 어느 요잉에서도 같은 크기다. */
-    ...sphereFaces3(hd[0], hd[1], hd[2], fore * 1.16 * g),
+    ...suitHand(el, hd, fore, g),
   ];
+}
+/** 보병 손(요청: "손도 너무 동그랗게 하지 말고 넙적한 벙어리장갑 형태로") — 공이던
+ *  주먹을 걷는다. 공은 어느 요잉에서도 같은 원이라 손이 아니라 구슬로 읽혔다.
+ *  팔뚝 방향을 그대로 이어받는 짧은 토막을 손목 조금 앞에서 손끝까지 세우고, 단면을
+ *  **좌우로만 부풀린다**(oval > 1) — 세로는 얇고 가로는 넓은 그 단면이 곧 벙어리장갑
+ *  이다. 기둥 단면의 u축은 축이 눕는 순간 위쪽이 되므로, sin쪽(v = 좌우)에 걸리는
+ *  oval을 키우면 손등이 넓어진다. */
+function suitHand(
+  el: [number, number, number], hd: [number, number, number], fore: number, g: number,
+): ShapeFace[] {
+  const dx = hd[0] - el[0];
+  const dy = hd[1] - el[1];
+  const dz = hd[2] - el[2];
+  const L = Math.hypot(dx, dy, dz) || 1;
+  const at = (k: number): [number, number, number] =>
+    [hd[0] + (dx / L) * k, hd[1] + (dy / L) * k, hd[2] + (dz / L) * k];
+  const w = fore * 0.72 * g;
+  return suitLimb(at(-0.24), at(0.4), w, w * 0.82, w * 1.14,
+    { sides: 6, segs: 2, oval: 2.5, key: -0.3 });
 }
 /** 보병 목 — 가슴과 헬멧 사이 짧은 마디. */
 function suitNeck(g: number): ShapeFace[] {
   return suitLimb([0, -0.06, 4.16], [0, -0.06, 4.62], 0.34 * g, 0.26 * g, 0.29 * g);
 }
-/** 보병 헬멧(요청: "1/4 구체 두개 — 하나는 겉껍데기 하나는 유리고글", 재지적:
- *  "헬멧의 뒷부분 반은 불투명이고 앞 반은 유리야") — 머리 공을 면 하나로 갈라, 뒤
- *  반쪽은 불투명한 겉껍데기로 두고 앞 반쪽에 유리 고글을 앉힌다.
+/** 보병 헬멧(요청: "사진에 표시한 선대로 잘라 윗 반구만 남기고, 붙는 자리에 짙은
+ *  은색 링을 놓고 그 위에 얹는다. 크기는 20% 축소") — 공 한 덩이였던 것을 자른 자리에서
+ *  끊는다. 그래서 `cz`는 이제 공의 중심이 아니라 **자른 면의 높이**다.
  *
- *  두 가지가 이 도형의 전부다.
- *  ① **가르는 면은 얼굴을 따라 돈다.** 화면에 가로선을 하나 긋고 위는 껍데기·아래는
- *     유리로 두면, 옆을 볼 때도 유리가 턱 밑에 깔려 헬멧이 아니라 모자로 보인다.
- *     자른 면은 모형에 붙은 큰 원이므로, 그 원의 두 축(몸의 좌우 · 그 면 위에서 좌우와
- *     직각인 방향)을 **실제로 투영해** 타원을 만든다. 그러면 정면에서는 이마를 가로지른
- *     활, 옆에서는 머리를 앞뒤로 가르는 비스듬한 선, 뒤에서는 아예 없음이 한 식에서 나온다.
- *  ② **자른 면은 얼굴에서 조금 아래를 본다(TILT).** 곧이곧대로 수직으로 자르면 '앞
- *     반쪽'에 정수리의 앞부분까지 들어가 유리가 머리 꼭대기를 덮어 버린다. 실제 헬멧의
- *     바이저는 이마 아래에서 시작하므로, 자르는 면의 법선을 30도쯤 숙여 준다.
+ *  세 조각이 전부다.
+ *  ① **링** — 자른 자리에 놓는 짙은 은색 타원. 돔보다 먼저 그려 테두리만 남으므로,
+ *     돔이 목에 그냥 얹힌 것이 아니라 목 링에 물려 있는 것으로 읽힌다.
+ *  ② **윗 반구** — 화면 반원. 자른 면이 평평하니 아래는 직선으로 닫는다(아래로 부푼
+ *     호로 닫으면 링 밑으로 삐져 나와 공이 도로 살아난다).
+ *  ③ **바이저** — 앞을 향한 쪽에만 얹는 유리. 자르는 면(TILT만큼 숙인 큰 원)과 실루엣이
+ *     만드는 앞 반쪽 그대로인데, 이제 잘린 아랫도리가 없으므로 y를 자른 선(hy)에서
+ *     끊는다. 그러면 바이저 밑변이 곧 헬멧 밑변이 되어 링 위에 딱 앉는다.
  *
- *  껍데기는 머리 **공 전체**를 몸으로 깔고 그 위에 고글을 얹는다 — 고글이 반투명이라
- *  받쳐 주는 몸이 없으면 유리 너머로 배경이 비친다. 눈에 보이는 껍데기는 가른 선 뒤쪽,
- *  곧 뒤 반쪽 그대로다. */
+ *  ①의 두 축을 실제로 투영해 타원을 만드는 대목은 그대로다 — 정면에서는 이마를
+ *  가로지른 활, 옆에서는 머리를 앞뒤로 가르는 비스듬한 선, 뒤에서는 아예 없음이
+ *  한 식에서 나온다. */
 function suitHelmet(
   cy: number, cz: number, r: number, shell: string, glass: string = GLASS_DARK,
 ): ShapeFace[] {
@@ -885,11 +903,9 @@ function suitHelmet(
     const [px, py] = project(dx, cy + dy, cz + dz);
     return [px - hx, py - hy];
   };
-  // 자른 원의 두 축 — a는 몸의 좌우(+x), b는 자른 면 위에서 a와 직각인 방향.
+  // 바이저가 도는 원의 두 축 — a는 몸의 좌우(+x), b는 그 면 위에서 a와 직각인 방향.
   const A = pv(1, 0, 0);
   const B = pv(0, -ts, -tc);
-  /* 공은 화면 원(반지름 r)으로 그려지므로 타원도 그 원에 내접시킨다 — 긴 축을 r에
-     맞추면 자른 원이 실루엣에 정확히 닿아, 닿는 두 점이 곧 앞뒤가 갈리는 자리다. */
   const sMax = Math.max(Math.hypot(A[0], A[1]), Math.hypot(B[0], B[1])) || 1;
   const M = 24;
   const ring: [number, number][] = [];
@@ -905,17 +921,28 @@ function suitHelmet(
     // 이 점이 공의 앞면(카메라 쪽)인가 — faceLight의 보임 판정과 같은 자다.
     front.push(facingRatio(ct, -st * ts) + (-st * tc) * sq);
   }
-  const ball = screenCircle(hx, hy, r);
+  /** 자른 선 위로만 산다 — 반구 아래는 이제 없다. */
+  const up = (q: [number, number]): [number, number] => [q[0], Math.min(q[1], hy)];
+  const dome = `M${hx - r} ${hy}A${r} ${r} 0 0 1 ${hx + r} ${hy}Z`;
+  /* 목 링 — 짙은 은색. 돔보다 조금 넓고 납작한 타원이라 돔 밑으로 테두리만 나온다.
+     아주 위에서 내려다볼 때도 사라지지 않게 최소 두께를 준다. */
+  const rr = r * 1.14;
+  const rz = Math.max(r * 0.2, rr * sq * 0.62);
+  const collar = `M${hx - rr} ${hy}A${rr} ${rz} 0 0 1 ${hx + rr} ${hy}`
+    + `A${rr} ${rz} 0 0 1 ${hx - rr} ${hy}Z`;
   const faces: ShapeFace[] = [
-    [ball, 1, shell],
-    // 정수리 광·아랫배 그늘 — 공 안쪽에 물려 두어 어느 크기에서도 밖으로 안 삐친다.
-    topFace(screenCircle(hx - r * 0.34, hy - r * 0.36, r * 0.3), 0.2),
-    sideFace(screenCircle(hx + r * 0.3, hy + r * 0.28, r * 0.6), 0.14),
+    [collar, 1, HELMET_RING],
+    sideFace(collar, 0.18),
+    [dome, 1, shell],
+    /* 정수리 빛은 **호를 따라 도는 초승달**이다 — 원반을 얹으면 작게 그릴수록 눈처럼
+       도드라진다(반구 프리미티브에서 이미 겪은 자리). */
+    topFace(`M${hx - r} ${hy}A${r} ${r} 0 0 1 ${hx + r} ${hy}`
+      + `A${r} ${r * 0.74} 0 0 0 ${hx - r} ${hy}Z`, 0.16),
   ];
   const nf = front.filter((v) => v > 0).length;
   let gd: string | null = null;
   if (nf >= M) {
-    gd = ball;                                   // 얼굴이 정면 — 유리가 머리를 다 덮는다
+    gd = dome;                                   // 얼굴이 정면 — 유리가 반구를 다 덮는다
   } else if (nf > 0) {
     let s0 = 0;
     for (let k = 0; k < M; k += 1) if (front[k] > 0 && front[(k + M - 1) % M] <= 0) s0 = k;
@@ -923,19 +950,19 @@ function suitHelmet(
     for (let k = 0; k < M; k += 1) {
       const i = (s0 + k) % M;
       if (front[i] <= 0) break;
-      seg.push(ring[i]);
+      seg.push(up(ring[i]));
     }
     /* 실루엣을 따라 되짚어 닫는다 — 자른 원이 실루엣에 닿은 두 점 사이를, 얼굴이
        향한 쪽으로 돌아 잇는다. 그 반원이 곧 고글의 바깥 테두리다. */
     const N = pv(0, tc, -ts);
-    const ang = (p: [number, number]): number => Math.atan2(p[1] - hy, p[0] - hx);
+    const ang = (q: [number, number]): number => Math.atan2(q[1] - hy, q[0] - hx);
     const wrap = (v: number): number => ((v % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
     const a1 = ang(seg[seg.length - 1]);
     const fwd = wrap(ang(seg[0]) - a1);
     const turn = wrap(Math.atan2(N[1], N[0]) - a1) <= fwd ? fwd : fwd - Math.PI * 2;
     for (let k = 1; k < 12; k += 1) {
       const a = a1 + turn * (k / 12);
-      seg.push([hx + Math.cos(a) * r, hy + Math.sin(a) * r]);
+      seg.push(up([hx + Math.cos(a) * r, hy + Math.sin(a) * r]));
     }
     gd = `M${seg.map((q) => `${q[0]} ${q[1]}`).join("L")}Z`;
   }
@@ -7969,7 +7996,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...suitPauldron(1, G),
       ], "#dfe3e6"),
       // 매딕 — 흰 껍데기 · 네온 초록 얼굴가리개(요청). 헬멧은 마린과 같은 자로 키운다.
-      ...suitHelmet(-0.06, 4.8, 0.91, "#eef1f3", "#7dff5c"),
+      ...suitHelmet(-0.06, 4.58, 0.73, "#eef1f3", "#7dff5c"),
       ...tagKey([bodyFace(apron), topFace(apron, 0.3)], depthNow(0, 0.5)),
       /* 가슴 빨간 십자(요청) — 병원 표시. 가슴 기둥은 벽이 굽어 있으니 앞을 볼 때만
          그리고, 그 높이의 앞면 바로 앞(0.02)에 눕힌 데칼로 둔다. */
@@ -7980,8 +8007,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         [polyPath3(q), 1, "#d8362c"] as ShapeFace), depthNow(0, 0.5) + 0.1) : []),
       /* 두 팔 — 왼팔은 앞으로, 오른팔은 주사기 뿌리로. 매딕도 하완이 상완보다 굵다. */
       ...paintBase([
-        ...suitArm([-1.12, -0.02, 3.8], [-1.02, 0.62, 2.95], [-0.78, 1.12, 3.15], G, 0.3),
-        ...suitArm([1.16, -0.02, 3.8], [1.08, 0.46, 2.98], [1.16, 0.86, 3.15], G, 0.3),
+        ...suitArm([-1.12, -0.02, 3.8], [-1.02, 0.5, 3.04], [-0.74, 1.02, 3.24], G, 0.3),
+        ...suitArm([1.16, -0.02, 3.8], [1.08, 0.4, 3.06], [1.16, 0.84, 3.22], G, 0.3),
       ], "#dfe3e6"),
       // 오른팔 주사기 — 녹색(요청).
       ...tagKey(paintBase([
@@ -8002,17 +8029,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...suitPauldron(-1, 1),
       ...suitPauldron(1, 1),
       // 헬멧 — 1.4배(요청: "마린 파뱃 헬멧 크기 1.4배"). 0.65 → 0.91.
-      ...suitHelmet(-0.06, 4.86, 0.91, "#c9ced6"),
+      ...suitHelmet(-0.06, 4.6, 0.73, "#c9ced6"),
       /* 두 팔 — 위팔은 어깨보호구 밑에서 나와 앞-아래로 내려가고, 팔꿈치에서 굽어
          아래팔이 총몸으로 올라가 쥔다. 왼손은 앞손잡이, 오른손은 방아쇠 쪽.
          하완이 상완보다 굵다(요청) — 어깨에서 가늘게 나와 팔뚝에서 부푸는 장갑 실루엣. */
-      ...suitArm([-1.22, -0.02, 3.82], [-1.05, 0.66, 2.95], [0.28, 1.42, 3.2], 1),
-      ...suitArm([1.26, -0.02, 3.82], [1.14, 0.55, 2.98], [0.74, 0.95, 3.2], 1),
+      ...suitArm([-1.22, -0.02, 3.82], [-1.02, 0.52, 3.02], [0.05, 1.2, 3.3], 1),
+      ...suitArm([1.26, -0.02, 3.82], [1.08, 0.44, 3.04], [0.35, 0.66, 3.3], 1),
       /* 소총(지적: 총구가 요잉을 안 먹는다) — 총구를 화면 고정 원반으로 얹던 것을
          걷고, 총열을 관 프리미티브로 세운다: 축을 실제로 투영한 끝 단면이 나오고
          마주볼 때만 포구가 어둡게 뚫린다. 노리쇠 뭉치만 상자로 남긴다. 건메탈. */
-      ...paintBase(boxFaces3(0.55, 0.95, 0.55, 1.3, 0.5, 3.1), GUNMETAL),
-      ...paintBase(tubeFaces(0.55, 1.5, 0.55, 2.9, 0.24, 3.35, true), GUNMETAL),
+      ...paintBase(boxFaces3(0.15, 0.85, 0.55, 1.3, 0.5, 3.1), GUNMETAL),
+      ...paintBase(tubeFaces(0.15, 1.4, 0.15, 2.7, 0.24, 3.35, true), GUNMETAL),
     ];
   },
   /* 고스트(지적: 여태 마린 모델을 빌려 입고 있었다) — 마린과 비슷하되 어깨장갑이
@@ -8026,13 +8053,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...suitTorso(0.62),
       ...suitNeck(0.62),
       // 작은 헬멧 — 1.2배(요청: "고스트 헬멧 크기 1.2배"). 0.45 → 0.54.
-      ...suitHelmet(-0.05, 4.62, 0.54, "#eef1f3"),
+      ...suitHelmet(-0.05, 4.56, 0.43, "#eef1f3"),
       /* 팔은 **어깨 자리에서** 나오고 더 길다(요청: "팔자체를 어깨위치로 올리고 길이
          늘리기") — 어깨 라운드를 걷으면서 팔 뿌리를 가슴 꼭대기 바로 아래로 올리고,
          아래팔이 앞으로 더 뻗는다. 가늘고 긴 팔이 고스트의 실루엣이다. */
       ...paintBase([
-        ...suitArm([-0.78, 0.02, 4], [-0.6, 0.82, 3], [0.26, 1.5, 3.35], 0.62, 0.3),
-        ...suitArm([0.82, 0.02, 4], [0.7, 0.74, 3.02], [0.46, 1.16, 3.35], 0.62, 0.3),
+        ...suitArm([-0.78, 0.02, 4], [-0.6, 0.78, 3.06], [0.16, 1.4, 3.34], 0.62, 0.3),
+        ...suitArm([0.82, 0.02, 4], [0.7, 0.7, 3.08], [0.44, 1.1, 3.34], 0.62, 0.3),
       ], "#d3d7db"),
       /* C-10 저격소총 — 마린과 같은 규칙(지적): 노리쇠는 상자, 총열은 관 프리미티브라
          총구가 요잉을 탄다. 마린보다 길고 가늘다. 건메탈. */
@@ -8093,7 +8120,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         }), 2.86, 0.46, false,
       ), depthNow(0, -0.08) + 0.95),
       // 파이어뱃 — 붉은 껍데기 · 어두운 유리 바이저. 헬멧 1.4배(요청).
-      ...suitHelmet(-0.06, 4.86, 0.91, "#a5342a"),
+      ...suitHelmet(-0.06, 4.6, 0.73, "#a5342a"),
       /* 두 팔(요청: "일반적인 팔로 바꾸고 하완이 상완보다 두껍게 붉은색 고정",
          "마린보다 두꺼운 원통형 포신을 오른팔로 두 손으로 받쳐 들고") —
          마린과 같은 갈래의 팔이되 하완이 더 굵고(0.36 → 0.44), 색은 붉은색 고정이다.
@@ -8102,20 +8129,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          팔이 만드는 삼각형이 만든다. */
       ...paintBase([
         // 오른팔 — 어깨 → 팔꿈치 → 뒤 손잡이.
-        ...suitArm([1.3, 0.02, 3.8], [1.34, 0.82, 2.86], [0.98, 1.2, 3.05], 1, 0.44),
+        ...suitArm([1.3, 0.02, 3.8], [1.22, 0.66, 2.96], [0.74, 1.12, 3.16], 1, 0.44),
         // 왼팔 — 어깨 → 팔꿈치 → 몸 앞을 건너가 포신 앞을 받친다.
-        ...suitArm([-1.3, 0.02, 3.8], [-1.16, 0.9, 2.8], [0.42, 1.72, 3.05], 1, 0.44),
+        ...suitArm([-1.3, 0.02, 3.8], [-1.06, 0.86, 2.94], [0.16, 1.66, 3.16], 1, 0.44),
       ], "#8f2b20"),
       /* 화염방사기 — **마린보다 두꺼운 원통 포신**(마린 반지름 0.24 → 0.46) 하나를
          오른쪽으로 치우쳐 든다. 관 프리미티브라 포구가 요잉을 타고, 마주볼 때만 끝
          단면이 어둡게 뚫린다. */
-      ...paintBase(tubeFaces(0.78, 1.05, 0.78, 3.6, 0.46, 3.15, true), GUNMETAL),
+      ...paintBase(tubeFaces(0.52, 1.05, 0.52, 3.4, 0.46, 3.15, true), GUNMETAL),
       /* 호스(요청: "호스는 포신에서 아래로 늘어져서 연료통에 이어지게") — 포신 뒤끝에서
          아래로 축 처졌다가, 발치를 지나 등 연료통 밑동으로 올라간다. */
       ...paintBase([
-        ...rodFaces(0.85, 1.15, 2.8, 1.5, 0.55, 1.25, 0.24),
-        ...rodFaces(1.5, 0.55, 1.25, 1.4, -0.75, 1.05, 0.24),
-        ...rodFaces(1.4, -0.75, 1.05, 0.72, -1.25, 3.1, 0.24),
+        ...rodFaces(0.59, 1.15, 2.8, 1.34, 0.55, 1.25, 0.24),
+        ...rodFaces(1.34, 0.55, 1.25, 1.3, -0.75, 1.05, 0.24),
+        ...rodFaces(1.3, -0.75, 1.05, 0.72, -1.25, 3.1, 0.24),
       ], "#3a3f46"),
     ];
   },
@@ -8634,8 +8661,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         (kz9 + az9) / 2 - 0.22), key9 + 0.2));
       // 발목 관절 + 땅에 닿는 발판.
       out.push(...tagKey(paintBase(domeFaces3(ax9, ay9, 0.62, 0.5, az9 - 0.32), HIDE), key9 + 0.15));
+      /* 발판 — 넓은 판이 아니라 발이다(지적: "발판이 너무 크다"). 폭을 2 → 1.1로
+         줄여 정강이 굵기(1.12)에 맞춘다. 이 자보다 넓으면 받침대로 읽힌다. */
       out.push(...tagKey(paintBase(spirePillar({
-        x: ax9, y: ay9 + 0.35, z0: 0.02, h: 0.52, w: 2, tipW: 1.25,
+        x: ax9, y: ay9 + 0.22, z0: 0.02, h: 0.44, w: 1.1, tipW: 0.72,
         segs: 2, sides: 8, hold: 0.2, taper: 1.4,
       }), DARK), key9 - 0.3));
     }
@@ -8715,23 +8744,24 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         undefined, 5, 0.5, sx9 * 0.4, -0.8,
       ), DARK), depthNow(sx9, sy9) * 1.6 + 4));
     }
-    /* ── 머리 ── 앞몸 앞으로 낮게 내민 각진 쐐기. 이마에 창백한 판(임자 색) 하나. */
-    out.push(...tagKey(paintBase(
-      frustumFaces3(0, 3.9, 3.4, 2.8, 2.2, 1.9, 1.55, 2.85 + BODY_UP), HIDE),
-    12));
-    out.push(...tagKey(frustumFaces3(0, 4.1, 1.9, 1.5, 1.35, 1.05, 0.4, 4.4 + BODY_UP), 12.6));
+    /* ── 머리 ── **얼굴만은 구체다**(요청) — 몸은 사진대로 각진 판만 쓰되, 얼굴은
+       예외로 둥글게 간다. 각진 쐐기였을 때는 얼굴이 앞몸에서 이어진 또 한 겹의
+       갑옷판으로 읽혀 어디가 머리인지 안 보였다. 지름은 옛 쐐기 밑변(3.4)에 맞춘다.
+       이마 판·눈·턱은 그대로 이 구 앞면에 물려 박힌다. */
+    out.push(...tagKey(sphereFaces3(0, 3.9, 4.9, 1.7, PLATE), 12));
+    // 이마 판 — 창백한 판(임자 색). 구 위쪽에 좁게 얹어 눈썹뼈로 읽히게 한다.
+    out.push(...tagKey(frustumFaces3(0, 4.2, 1.45, 1.15, 1, 0.8, 0.35, 5.05 + BODY_UP), 12.6));
     // 눈 한 쌍(요청) — 이마 판 아래, 머리 쐐기 앞면.
     out.push(...tagKey(zergEyes(4.9, 3.95 + BODY_UP, 0.72, 0.28), 12.8));
     // 턱 — 머리 밑으로 내민 짧고 각진 판.
     out.push(...tagKey(paintBase(
       frustumFaces3(0, 4.7, 2.4, 1.6, 1.7, 1.1, 0.75, 2.2 + BODY_UP), DARK),
     12.3));
-    /* ── 낫 넷 ── **고유색(상아빛)이다**(요청) — 임자 색이 아니다. 위 한 쌍이 크게
-       밖·앞으로 감기고, 아래 한 쌍은 작고 낮게 앞으로 뻗는다. */
+    /* ── 낫 한 쌍 ── **고유색(상아빛)이다**(요청) — 임자 색이 아니다. 밖·앞으로 크게
+       감긴다. 넷이 아니라 둘이다(지적: "갈고리는 한 쌍인데 지금 두 쌍") — 낮게
+       앞으로 뻗던 작은 한 쌍을 걷었다. 넷은 앞이 갈퀴로 뒤덮여 몸이 안 보였다. */
     out.push(...tagKey(ivory(claw3(1, 2.05, 4.2 + BODY_UP)), 15));
     out.push(...tagKey(ivory(claw3(-1, 2.05, 4.2 + BODY_UP)), 15));
-    out.push(...tagKey(ivory(claw3(1, 1.3, 2.75 + BODY_UP)), 14));
-    out.push(...tagKey(ivory(claw3(-1, 1.3, 2.75 + BODY_UP)), 14));
     return out;
   },
 
@@ -9521,8 +9551,8 @@ const DEF_FIRE = new Set([
    좌표에서 따 왔고(마린·고스트는 빌더의 총구 캡 그대로), 표에 없는 유닛만 예전 픽셀
    오프셋(MUZZLE_PX)으로 물러난다. */
 const MUZZLE_ANCHOR: Record<string, [number, number, number]> = {
-  gunner: [0.55, 2.8, 3.35], ghost: [0.5, 3.4, 3.5], fbat: [0.8, 2.6, 3],
-  inf: [0.5, 2.2, 3.2],
+  gunner: [0.15, 2.7, 3.35], ghost: [0.4, 3.6, 3.42], fbat: [0.52, 3.4, 3.15],
+  inf: [1.22, 2.05, 3],
   tank: [0.55, 4.6, 3.3], tanksiege: [0, 3.4, 6.9], goliath: [1.4, 2.2, 3.4],
   vulture: [0, 3.4, 2.6], wraith: [0, 3.6, 2.8], bc: [0, 4.6, 3.8], valk: [0.9, 3.2, 3],
   hydra: [0, 2.6, 4.2], lurker: [0, 3, 2.2], muta: [0, 3, 3], queen: [0, 3, 3],
@@ -9684,15 +9714,15 @@ const MODEL_NORM: Record<string, number> = {
   dship: 0.716,
   dtemp: 0.917,
   egg: 1.218,
-  fbat: 1.063,
-  ghost: 1.402,
+  fbat: 1.088,
+  ghost: 1.423,
   goliath: 0.829,
   goon: 0.667,
   guardian: 0.637,
-  gunner: 1.272,
+  gunner: 1.351,
   htemp: 1.079,
   hydra: 0.758,
-  inf: 1.377,
+  inf: 1.422,
   larva: 1.350,  // 상자 상한(원한 배수 1.466)
   lurker: 0.603,
   lurkeregg: 0.886,
