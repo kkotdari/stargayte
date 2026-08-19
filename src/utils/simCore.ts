@@ -53,7 +53,7 @@ export type SimEnt = {
 };
 
 export type SimInput = {
-  players: { id: number; name: string; race?: string }[];
+  players: { id: number; name: string; race?: string; team?: number | null }[];
   ents: SimEnt[];
   /** 연구 기록 [초, 이름, 플레이어] — 개체 트랙(UnitTracksV2.ups)이 이미 싣고 오던 값이다.
    *  ★ 여태 이 칸이 없어서 SimEnt.ups가 실전에서 **늘 undefined**였다(세 갈래가 모두
@@ -402,8 +402,11 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   const H = opts.height;
   /** 임자 → 종족 — SCV 수리가 '테란 것만' 고치는 원작 규칙에 쓴다. */
   const raceOfOwner = new Map((data.players ?? []).map((p) => [p.id, p.race ?? ""]));
-  /** 임자 → 팀. 팀 정보가 없으면 임자 하나가 곧 한 편이다(1:1은 아무 차이가 없다). */
-  const teamOfOwner = new Map(opts.teams ?? []);
+  /** 임자 → 팀. 옵션으로 받은 것이 먼저고(재생기 로스터), 없으면 개체 트랙이 싣고 온
+   *  팀을 쓴다. 둘 다 없으면 임자 하나가 곧 한 편이다(1:1은 아무 차이가 없다). */
+  const teamOfOwner = new Map(opts.teams
+    ?? (data.players ?? []).filter((p) => typeof p.team === "number")
+      .map((p) => [p.id, p.team as number] as [number, number]));
   /** 같은 편인가(지적: "동맹 판단도 해야지") — 여태 이 층은 '임자가 같은가'만 봐서,
    *  팀전에서 **아군이 서로를 적으로 잡았다**(표적 획득이 c.owner === a.owner만 걸렀다).
    *  같은 팀이면 겨누지 않고, 디텍터도 나눠 쓰고, 메딕·SCV가 아군을 돌본다. */

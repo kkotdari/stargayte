@@ -101,7 +101,11 @@ export interface UnitTracksV2 {
   v: 2;
   /** color는 게임 내 개인색(#rrggbb) — v1을 걷어낸 뒤에도 이 테이블만으로 칠할 수 있게
    *  함께 담는다(요청: 모든 정보를 다 모아서 한 테이블에). */
-  players: { id: number; name: string; race: Race | ""; color?: string | null }[];
+  players: {
+    id: number; name: string; race: Race | ""; color?: string | null;
+    /** 팀 번호(1·2…) — 편 가르기의 재료다. 옛 저장본에는 없다. */
+    team?: number | null;
+  }[];
   ents: UnitEnt[];
   /** 연구 기록 [초, 이름, 플레이어] — 속업(이동 속도)·클로킹 판정의 재료. 이름은 v1과
    *  같은 자(normalizeUpgradeName)로 통일한다. */
@@ -3838,7 +3842,13 @@ const BLD_DIE_SLACK_SEC = 8;
 
   return {
     v: 2,
-    players: players.map((p) => ({ id: p.id, name: p.name, race: p.race, color: p.color ?? null })),
+    /* 팀을 함께 싣는다(지적: "동맹 판단도 해야지") — 분석은 진작 팀을 알고 있었는데
+       (teamNoOf) 출력에서 떨어뜨려, 시뮬은 임자가 다르면 무조건 적으로 봤다. 옛 저장본
+       에는 이 칸이 없으므로 재생기가 로스터로 넘겨 주는 길(SimOpts.teams)도 그대로 둔다. */
+    players: players.map((p) => ({
+      id: p.id, name: p.name, race: p.race, color: p.color ?? null,
+      ...(p.team === null || p.team === undefined ? {} : { team: p.team }),
+    })),
     ents,
     ups,
     upsDone,
