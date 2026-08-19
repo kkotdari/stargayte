@@ -40,7 +40,11 @@ async function bundle(entry) {
 const argv = process.argv.slice(2);
 const at = (f, d) => (argv.indexOf(f) >= 0 ? argv[argv.indexOf(f) + 1] : d);
 const ti = argv.indexOf("--t");
-const files = argv.filter((a, i) => !a.startsWith("--") && i !== ti + 1);
+const di = argv.indexOf("--dump");
+const DUMP = di >= 0 ? argv[di + 1] : null;
+const DUMP_T = Number(at("--dumpT", "90"));
+const dti = argv.indexOf("--dumpT");
+const files = argv.filter((a, i) => !a.startsWith("--") && i !== ti + 1 && i !== di + 1 && i !== dti + 1);
 const TS = at("--t", "0,1,2,4,8,15,30,60,120").split(",").map(Number);
 if (files.length === 0) {
   console.error("쓰기: node scripts/larva-check.mjs <리플레이.rep…> [--t 0,1,2,…]");
@@ -128,7 +132,7 @@ for (const path of files) {
     const raw = nameOf.get(e.o);
     if (raw === undefined) continue;
     if (!prod.has(raw)) prod.set(raw, []);
-    prod.get(raw).push({ u: e.k, s: b0[0], x: b0[1], y: b0[2] });
+    prod.get(raw).push({ u: e.k, s: b0[0], x: b0[1], y: b0[2], tag: e.t, ev0: b0, ev1: e.ev[1] ?? null, n: e.ev.length, d: e.d, dk: e.dk });
   }
   for (const a of prod.values()) a.sort((x, y) => x.s - y.s);
 
@@ -146,7 +150,8 @@ for (const path of files) {
       const st = stateNow(recs, e.b, bx, by, t);
       line.push(`t=${t} 라바${st.larva} 알${st.eggs.length}`);
       dup += new Set(st.slots.map((v) => v.slot)).size !== st.slots.length ? 1 : 0;
-      if (t <= 2 && st.eggs.length > 0) badEarly += 1;
+      // 0~2초에 알이 하나는 옳다(50미네랄로 드론 하나) — 둘부터가 어긋난 것이다.
+      if (t <= 2 && st.eggs.length > 1) badEarly += 1;
       if (st.eggs.length > LARVA_MAX) overEgg += 1;
     }
     console.log(`  ${String(raw).padEnd(16)} (${bx},${by})  ${line.join("  ")}`);
@@ -154,8 +159,29 @@ for (const path of files) {
       && r.y >= by - 1.5 && r.y <= by + FOOT[1] + 2 && r.s <= 120);
     console.log(`      120초까지 발자국 언저리 기록 ${near.length}건: `
       + near.slice(0, 12).map((r) => `${r.u}@${r.s}`).join(" "));
+    /* --dump <이름> — 그 사람의 시작 해처리를 1초씩 찍는다. 칸 여섯을 그대로 늘어놓아
+       어느 칸이 라바에서 알로 바뀌고 언제 비는지가 한눈에 보인다. */
+    if (DUMP && String(raw).includes(DUMP)) {
+      console.log(`      ── ${DUMP} 1초씩 (·=빈칸 l=라바 대문자=알)`);
+      const kept = recs.filter((r) => r.x >= bx - 1.5 && r.x <= bx + FOOT[0] + 1.5
+        && r.y >= by - 1.5 && r.y <= by + FOOT[1] + 2);
+      console.log("        알 후보(태그<0 = 합성 개체):");
+      for (const r of kept.slice(0, 22)) {
+        const need = UNIT_BUILD_SEC[r.u] ?? 30;
+        console.log(`          ${r.u.padEnd(9)} 변태 ${String((r.s - need).toFixed(0)).padStart(5)}`
+          + ` → 부화 ${String(r.s).padStart(4)}  태그 ${String(r.tag).padStart(7)}`
+          + `  증거 ${String(r.n).padStart(3)}개  죽음 ${String(r.d ?? "-").padStart(5)}(${r.dk || "-"})`
+          + `  첫증거 ${JSON.stringify(r.ev0)}`);
+      }
+      for (let tt = 0; tt <= DUMP_T; tt += 1) {
+        const st = stateNow(recs, e.b, bx, by, tt);
+        const row = Array.from({ length: 6 }, () => "·");
+        for (const v of st.slots) row[v.slot] = v.kind === "larva" ? "l" : (v.u[0] ?? "E");
+        console.log(`        t=${String(tt).padStart(3)}  ${row.join(" ")}`);
+      }
+    }
   }
 }
 console.log(`\n요약 — 시작 해처리 ${halls}개 · 시작 자원 ${START_MINERALS}미네랄`
-  + ` · t≤2s에 알이 뜬 자리 ${badEarly}건 · 알이 라바 최대(${LARVA_MAX})를 넘은 자리 ${overEgg}건`
+  + ` · t≤2s에 알이 둘 이상 뜬 자리 ${badEarly}건 · 알이 라바 최대(${LARVA_MAX})를 넘은 자리 ${overEgg}건`
   + ` · 한 칸에 둘이 겹친 자리 ${dup}건`);

@@ -182,6 +182,14 @@ const NOT_TRAINED = new Set([
 ]);
 /** 유닛 생산 시간(게임 프레임) — 원장 시뮬레이션(요청: 큐된 유닛 전 생애)의 시계.
  *  sec = frames × 0.042. 방해(서플 막힘 등)는 리플레이로 알 수 없어 무시한다. */
+/* ★ units.dat의 빌드 시간 단위는 **리플레이 프레임이 아니다**(수리: 원장이 유닛을
+   37% 일찍 낳고 있었다). 리플레이 프레임은 0.042초(≈23.81fps)지만 units.dat의
+   빌드 시간은 1/15초 단위라, 가장 빠름에서 **프레임 ÷ 15 = 초**다. 여기에 0.042를
+   곱하면 20초짜리 드론이 12.6초, 133초짜리 배틀크루저가 84초가 된다.
+   검산: 이 표와 UNIT_BUILD_SEC 34종을 ÷15로 맞춰 보면 어긋나는 것이 하나도 없다
+   (SCV 300/15=20 · 마린 360/15=24 · 배틀 2000/15=133 …). 두 표는 같은 자료였고
+   변환만 틀려 있었다. 그래서 이제 초는 UNIT_BUILD_SEC 한 표에서만 나온다. */
+const BUILD_FRAMES_PER_SEC = 15;
 const UNIT_FRAMES: Record<string, number> = {
   SCV: 300, Probe: 300, Drone: 300,
   Marine: 360, Firebat: 360, Medic: 450, Ghost: 750,
@@ -192,6 +200,10 @@ const UNIT_FRAMES: Record<string, number> = {
   Zergling: 420, Hydralisk: 420, Overlord: 600, Mutalisk: 600, Scourge: 450,
   Queen: 750, Ultralisk: 900, Defiler: 750,
 };
+/** 그 유닛을 뽑는 데 걸리는 초 — 표는 UNIT_BUILD_SEC 하나다. 거기 없는 표기만
+ *  units.dat 프레임에서 되짚는다(÷15). 0이면 뽑을 수 없는 것이라 원장에 안 적는다. */
+const buildSecOf = (u: string): number => UNIT_BUILD_SEC[u]
+  ?? (UNIT_FRAMES[u] !== undefined ? UNIT_FRAMES[u] / BUILD_FRAMES_PER_SEC : 0);
 
 /** 유닛 기본 스탯(요청: 체력·방어력·공격력·기술을 지니고 이벤트를 겪는 생애주기) —
  *  hp는 체력+실드 합, dps는 지상 상대 어림. 원작 수치의 근사값이다. */
@@ -965,14 +977,15 @@ export function buildUnitTracks(
         const ct = tags[0];
         const arr = icptOf.get(ct) ?? [];
         const cur = arr.length > 0 ? arr[arr.length - 1][1] : 0;
-        if (cur < 8) arr.push([Math.round(sec + 12.6), Math.min(8, cur + 1)]);
+        // 인터셉터도 같은 자 — units.dat 300프레임 ÷ 15 = 20초(12.6초가 아니다).
+        if (cur < 8) arr.push([Math.round(sec + 20), Math.min(8, cur + 1)]);
         icptOf.set(ct, arr);
       }
       /* 원장 기입(요청: 모든 큐된 유닛) — Train 하나가 유닛 하나다. 같은 건물의
          큐는 꼬리를 물고 이어진다(다중 선택 Train은 첫 태그로 어림). */
-      if (cmdName === "Train" && unitName && UNIT_FRAMES[unitName] && !ineffective(c)) {
+      if (cmdName === "Train" && unitName && buildSecOf(unitName) > 0 && !ineffective(c)) {
         const bldTag = tags.length > 0 ? tags[0] : null;
-        const dur = UNIT_FRAMES[unitName] * 0.042;
+        const dur = buildSecOf(unitName);
         const tail = bldTag !== null ? prodTail.get(bldTag) ?? 0 : 0;
         const start = Math.max(sec, tail);
         const doneAt = start + dur;
@@ -1005,8 +1018,8 @@ export function buildUnitTracks(
       /* 라바 변태도 원장(요청) — 라바는 병렬이라 큐 직렬화 없이 제 시간에 나온다.
          저글링·스커지는 한 알에 두 마리. 히드라→러커류(MORPH_FROM)는 기존 유닛의
          변태라 새 출생이 아니다. */
-      if (unitName && !MORPH_FROM[unitName] && UNIT_FRAMES[unitName] && !ineffective(c)) {
-        const dur = UNIT_FRAMES[unitName] * 0.042;
+      if (unitName && !MORPH_FROM[unitName] && buildSecOf(unitName) > 0 && !ineffective(c)) {
+        const dur = buildSecOf(unitName);
         /* 고른 라바 전부가 변한다(지적: "게이트 셋을 고를 수가 없어" — 건물은 여럿을
            골라도 하나에서만 뽑히지만, 라바는 건물이 아니라 **유닛**이라 변태가 고른
            전부에 걸린다). 여태 명령 하나를 한 마리로 적어, 라바를 여럿 골라 누른 만큼

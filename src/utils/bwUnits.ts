@@ -557,18 +557,7 @@ export function hatchState(
       i += twin ? 2 : 1;
     }
   }
-  /* ② 0초에 몰린 변태는 돈이 허락하는 만큼만 — 시작 미네랄 50이 전부다. 증거가
-     같은 시각을 여럿 가리켜도 그 돈으로 못 산 알은 그때 없었다. */
-  if (isStart) {
-    let purse = START_MINERALS;
-    for (const g of eggs) {
-      if (g.m > 0.5) break;
-      const cost = MORPH_MINERAL[g.u] ?? 50;
-      if (purse >= cost) { purse -= cost; continue; }
-      g.m = Number.POSITIVE_INFINITY;               // 0초에는 없던 알
-    }
-  }
-  // ③ 사건을 시각 순으로 흘린다.
+  // ② 사건을 시각 순으로 흘린다.
   const slots: ({ kind: "larva" | "egg"; u: string } | null)[] =
     Array.from({ length: HATCH_SPOTS }, () => null);
   const bornAt: number[] = Array.from({ length: HATCH_SPOTS }, () => 0);
@@ -582,6 +571,22 @@ export function hatchState(
     slots[k] = { kind: "larva", u: "" };
     bornAt[k] = now;
   };
+  /* 돈지갑 — 시작 해처리에서만 센다(요청: "게임 시작 시 미네랄 50원").
+     한 명령에 라바를 여럿 골라 눌러도 원작은 **낼 수 있는 만큼만** 변태시킨다. 개체
+     기록은 고른 수만큼 남으므로, 돈을 안 보면 0초에 알 셋이 한꺼번에 선다(실측:
+     5시 저그가 1초에 셋).
+     돈이 확실한 자리는 시작뿐이다 — 그래서 시작 해처리에만 건다. 채취 수입은
+     ⚠[어림] 일꾼 하나가 초당 1미네랄로 넉넉하게 잡는다(실제는 0.7 안팎이다).
+     넉넉히 잡아야 이 그물이 진짜 변태를 잘못 걸러내지 않는다. 일꾼 수는 시작 넷에
+     이 해처리에서 깬 드론을 더한 값이다. */
+  const MINE_RATE = 1;
+  let purse = START_MINERALS;
+  let workers = 4;
+  let purseAt = hallDone;
+  const accrue = (now: number): void => {
+    purse += workers * MINE_RATE * Math.max(0, now - purseAt);
+    purseAt = Math.max(purseAt, now);
+  };
   const marks: { at: number; run: (now: number) => void }[] = [];
   if (isStart) {
     marks.push({ at: hallDone, run: (now) => { for (let k = 0; k < LARVA_START; k += 1) spawn(now); } });
@@ -591,7 +596,13 @@ export function hatchState(
   }
   eggs.forEach((g, gi) => {
     if (g.m <= t) {
-      marks.push({ at: g.m, run: () => {
+      marks.push({ at: g.m, run: (now) => {
+        if (isStart) {
+          accrue(now);
+          const cost = MORPH_MINERAL[g.u] ?? 50;
+          if (purse < cost) return;                 // 그 돈으로는 못 산 알이다
+          purse -= cost;
+        }
         // 가장 오래된 라바가 알이 된다 — 라바가 없으면 빈 칸에 놓는다.
         let k = -1;
         let best = Number.POSITIVE_INFINITY;
@@ -608,9 +619,12 @@ export function hatchState(
       } });
     }
     if (g.s <= t) {
-      marks.push({ at: g.s, run: () => {
+      marks.push({ at: g.s, run: (now) => {
         const k = eggSlot.get(gi);
-        if (k !== undefined && slots[k]?.kind === "egg") { slots[k] = null; eggSlot.delete(gi); }
+        if (k === undefined || slots[k]?.kind !== "egg") return;
+        if (isStart) { accrue(now); if (g.u === "Drone") workers += 1; }
+        slots[k] = null;
+        eggSlot.delete(gi);
       } });
     }
   });
