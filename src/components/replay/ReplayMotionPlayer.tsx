@@ -8537,26 +8537,30 @@ const GALLERY_SIZE_KIND: Record<string, string> = {
   lurkeregg: "lurker",     // 알은 러커의 한 시절
   mutacocoon: "muta",      // 고치도 마찬가지
 };
-/** 도록 kind → 지도에서 차지하는 **상자**(가로·세로 타일) — 모델 갤러리의 '지도상 크기'
- *  가 이 값으로 모델을 줄이고 늘인다(요청).
- *  자가 둘인데 눈금이 하나다: 유닛은 원작 치수표가 정한 정사각 상자(unitTilesOf — 지도의
- *  unitGlyphPx가 tilePx를 곱하기 **직전**의 바로 그 값)이고, 건물은 발자국(FOOTPRINT)
- *  이다. 둘 다 단위가 타일이라 유닛과 건물을 한 자로 나란히 견줄 수 있다.
+/** 도록 kind → 지도에서 차지하는 상자의 **한 변**(타일) — 모델 갤러리의 '지도상 크기'가
+ *  이 값으로 모델을 줄이고 늘인다(요청).
+ *  ★ 한 변인 것이 핵심이다(수리: 켜면 건물이 납작해 보인다) — 처음에 건물을 발자국
+ *    가로·세로(4×3)로 눌렀는데, **지도는 그렇게 그리지 않는다**: 건물 op은 fitWidth라
+ *    상자의 한 변을 발자국 **폭**으로만 잡고(UnitLayer의 `sidePx = op.fitWidth ? wPx`),
+ *    스프라이트는 정사각 판에 균일 배율로 굽는다(`c2.scale(sideQ/16, sideQ/16)`).
+ *    세로로 따로 누르면 지도에 없는 눌림을 도록이 지어내는 셈이었다.
+ *  자가 둘인데 눈금은 하나다: 유닛은 원작 치수표가 정한 상자(unitTilesOf — 지도의
+ *  unitGlyphPx가 tilePx를 곱하기 **직전**의 바로 그 값), 건물은 발자국 폭이다. 둘 다
+ *  단위가 타일이라 유닛과 건물을 한 자로 나란히 견줄 수 있다.
  *  ⚠ **크기만** 지도와 같다. 도록은 사선(base) 시점이고 지도 기본은 위에서 본(top)
  *    시점이라, 같은 모델도 −9.1%(스카웃)~+15.1%(변태고치)로 어긋난다(ShapeIcon 주석).
- *    또 지도에는 화면 크기에 따른 자동 등급 강등(autoTier)이 걸리는데 여기엔 없다 —
- *    부품이 얼마나 빠지는지는 사양 라디오가 따로 말한다. */
-export const shapeMapTiles = (kind: string): [number, number] => {
+ *    또 지도에는 화면 크기에 따른 자동 등급 강등이 걸리는데 여기엔 없다 — 부품이 얼마나
+ *    빠지는지는 사양 라디오가 따로 말한다. */
+export const shapeMapTiles = (kind: string): number => {
   const bld = BLD_NAME_OF_KIND[kind];
-  if (bld) return FOOTPRINT[bld] ?? [3, 2];
-  // 자원 둘은 건물표에 없다 — 원작 발자국 그대로(미네랄 2×1, 간헐천 4×2).
-  if (kind === "mineral") return [2, 1];
-  if (kind === "geyser") return [4, 2];
-  // 공사장·고치는 무엇이 될지에 따라 달라진다 — 흔한 3×2로 둔다(건물 폴백과 같다).
-  if (kind === "scaffold" || kind === "cocoon") return [3, 2];
+  if (bld) return (FOOTPRINT[bld] ?? [3, 2])[0];
+  // 자원 둘은 건물표에 없다 — 원작 발자국 폭 그대로(미네랄 2, 간헐천 4).
+  if (kind === "mineral") return 2;
+  if (kind === "geyser") return 4;
+  // 공사장·고치는 무엇이 될지에 따라 달라진다 — 흔한 3×2의 폭 3으로 둔다(건물 폴백).
+  if (kind === "scaffold" || kind === "cocoon") return 3;
   const sk = GALLERY_SIZE_KIND[kind] ?? kind;
-  const n = unitTilesOf(sk, sk, 1);
-  return [n, n];
+  return unitTilesOf(sk, sk, 1);
 };
 
 /** 유닛(지상 이동체) 모델 kind 집합 — 겹침 방지 이완의 대상 판별에 쓴다(도록의 유닛

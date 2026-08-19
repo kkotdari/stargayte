@@ -13095,8 +13095,22 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   font-size: 10px; font-weight: 700; color: var(--muted);
   line-height: 1; padding-left: 4px;
 }
-.scr-model-opt .scr-pill-tabs { height: 20px; background: rgba(255, 255, 255, 0.08); }
+/* 알약 축소(요청: 안의 옵션 패딩·글자 줄이기) — 도록의 손잡이는 무대 곁 장식이라
+   재생기 조작부만큼 클 이유가 없다. 트랙 높이 20 → 17px, 옵션 좌우 여백 10 → 6px,
+   글자는 본문(13px) 대신 10.5px. 알약 인디케이터는 버튼 폭을 재서 따라오므로
+   (PillTabs의 fit 계측) 여기만 줄이면 알약도 같이 준다. */
+.scr-model-opt .scr-pill-tabs { height: 17px; background: rgba(255, 255, 255, 0.08); }
 .scr-light-theme .scr-model-opt .scr-pill-tabs { background: rgba(0, 0, 0, 0.06); }
+.scr-model-opt .scr-pill-tab-btn { padding: 0 6px; font-size: 10.5px; }
+.scr-model-opt-label { font-size: 9px; }
+/* 확대창 안의 같은 손잡이(요청) — 우하단. 팝업 바탕이 늘 어두우므로 트랙도 어두운 판
+   기준 한 톤으로 고정한다(테마를 따라가면 라이트에서 검은 알약이 검은 배경에 묻힌다). */
+.scr-model-opts-zoom {
+  position: absolute; right: 12px; bottom: 10px; z-index: 2;
+  width: auto; margin: 0; justify-content: flex-end; gap: 12px;
+}
+.scr-model-opts-zoom .scr-model-opt-label { color: rgba(255, 255, 255, 0.55); }
+.scr-light-theme .scr-model-opts-zoom .scr-pill-tabs { background: rgba(255, 255, 255, 0.08); }
 /* 뷰어·목록 분리(지적: 아래 목록 보기 힘듦) — 패널을 화면 높이에 맞춰 세로로 나누고,
    스크롤은 목록에만 준다. 뷰어는 그대로 붙박이. */
 /* 모델 화면 제목 줄(요청: 제목 아래 갭 줄이기) — 공용 28px 예약 대신 바짝 8px. */

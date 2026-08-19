@@ -5,7 +5,7 @@ import { X, ZoomIn } from "lucide-react";
 import {
   SHAPE_BUILDERS, SHAPE_GALLERY, ShapeIcon, shapeMapTiles, autoTier,
 } from "../../components/replay/ReplayMotionPlayer";
-import { withYaw, VIEW, lodFilter } from "../../utils/shapeOblique";
+import { withYaw, VIEW, lodFilter, type ShapeFace } from "../../utils/shapeOblique";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import PillTabs from "../../components/common/PillTabs";
 
@@ -33,8 +33,15 @@ const WHITE = "#f2f5f9";
    꽉 채우도록 그 값을 1로 삼는다. 기준을 도록 전체의 최대로 잡는 것이 핵심이다: 모델마다
    제각각 기준을 두면 '상대 크기'가 안 되고, 고정 상수로 두면 나중에 큰 모델이 하나
    들어올 때 무대 밖으로 나간다. */
-const MAP_REF_TILES = Math.max(
-  ...SHAPE_GALLERY.map(({ kind }) => Math.max(...shapeMapTiles(kind))),
+const MAP_REF_TILES = Math.max(...SHAPE_GALLERY.map(({ kind }) => shapeMapTiles(kind)));
+/* 썸네일은 형체(저)만 그린다(수리: 모델 페이지가 느리다) — 실측으로 도록 목록의
+   <path>가 30,537개였다(99종 × 평균 309면). 44px 썸네일에 3티어 장식까지 얹는 것은
+   지도에서도 안 하는 일이다(크기가 정하는 자동 강등에 걸린다). 형체만 남기면 11,367개로
+   63% 줄고, 그림은 그 크기에서 사실상 같다. 모듈에서 한 번만 굽고 모두가 나눠 쓴다. */
+const THUMB_FACES: Record<string, ShapeFace[]> = Object.fromEntries(
+  SHAPE_GALLERY
+    .filter(({ kind }) => Object.prototype.hasOwnProperty.call(SHAPE_BUILDERS, kind))
+    .map(({ kind }) => [kind, lodFilter(autoTier(`thumb|${kind}`, SHAPE_BUILDERS[kind]()), 1)]),
 );
 
 export default function ModelGalleryScreen() {
@@ -179,18 +186,17 @@ export default function ModelGalleryScreen() {
       dragRef.current = null;
     },
   };
-  /* 지도상 크기 배수 — 상자의 가로·세로를 따로 준다(요청). 건물은 발자국이 4×3처럼
-     정사각이 아니라, 한 값으로 줄이면 지도에서 보이는 납작함이 사라진다.
-     사용자의 휠 확대(scale)와는 곱해진다: 지도 비율을 켠 채로도 들여다볼 수 있어야 한다. */
-  const [mapKx, mapKy] = useMemo(() => {
-    if (!mapSize) return [1, 1];
-    const [tw, th] = shapeMapTiles(kind);
-    return [tw / MAP_REF_TILES, th / MAP_REF_TILES];
-  }, [mapSize, kind]);
+  /* 지도상 크기 배수 — **균일**이다(수리: 켜면 납작해 보임). 지도가 유닛도 건물도
+     정사각 상자에 균일 배율로 굽기 때문이다(shapeMapTiles 주석). 사용자의 휠 확대
+     (scale)와는 곱해진다: 지도 비율을 켠 채로도 들여다볼 수 있어야 한다. */
+  const mapK = useMemo(
+    () => (mapSize ? shapeMapTiles(kind) / MAP_REF_TILES : 1),
+    [mapSize, kind],
+  );
   /* 배율을 입히는 겉옷 — svg에 직접 걸지 않는다. 팝업의 세로 가운데 맞춤이 svg의
      transform을 이미 쓰고 있어 서로 덮어쓴다. */
   const scaleStyle = scale === 1 && !mapSize ? undefined
-    : { transform: `scale(${(scale * mapKx).toFixed(4)}, ${(scale * mapKy).toFixed(4)})` };
+    : { transform: `scale(${(scale * mapK).toFixed(4)})` };
   /* 배율 표시 — 1배 미만은 소수 한 자리로는 0.1로 뭉개져 1/8과 1/4이 구분되지 않는다. */
   const scaleLabel = scale === 1 ? "" : ` · ×${scale < 1 ? scale.toFixed(2) : scale.toFixed(1)}`;
   const builder: (() => ReturnType<(typeof SHAPE_BUILDERS)[string]>) | undefined =
@@ -204,6 +210,61 @@ export default function ModelGalleryScreen() {
       : undefined),
     [builder, kind, yaw, quality],
   );
+  /* 손잡이 두 개를 한 벌로 만들어 두 자리가 나눠 쓴다(요청: 확대창에도 똑같이) —
+     무대 아래 줄과 확대창 우하단이 같은 값을 만지므로, 둘로 베껴 두면 반드시 갈라진다. */
+  const optsNode = (
+    <>
+          <span className="scr-model-opt">
+            <span className="scr-model-opt-label">지도상 크기</span>
+            <PillTabs
+              options={[{ value: "off", label: "끔" }, { value: "on", label: "켬" }]}
+              toggle
+              value={mapSize ? "on" : "off"}
+              onChange={(v) => setMapSize(v === "on")}
+              aria-label="지도상 크기"
+            />
+          </span>
+          <span className="scr-model-opt">
+            <span className="scr-model-opt-label">사양</span>
+            <PillTabs
+              options={[
+                { value: "1", label: "저" }, { value: "2", label: "중" }, { value: "3", label: "고" },
+              ]}
+              value={String(quality)}
+              onChange={(v) => setQuality(Number(v))}
+              aria-label="사양"
+              fit
+            />
+          </span>
+    </>
+  );
+  /* 목록은 고른 종류가 바뀔 때만 다시 만든다(수리: 반응이 느리다) — 자동 회전이
+     460ms마다 yaw를 갈아 화면 전체가 다시 그려지는데, 그때마다 썸네일 수만 개 노드를
+     React가 통째로 맞추고 있었다. 목록은 요잉·배율·사양과 아무 상관이 없다. */
+  const listNode = useMemo(() => (
+        <div className="scr-model-list">
+            {(["유닛", "건물"] as const).map((grp) => (
+              <div key={grp}>
+                <div className="scr-model-group-title">{grp}</div>
+                <div className="scr-model-gallery">
+                  {SHAPE_GALLERY.filter((g) => g.group === grp).map(({ kind: k, label }) => (
+                    <button
+                      key={k} type="button"
+                      className={k === kind ? "scr-model-item scr-model-item-on" : "scr-model-item"}
+                      onClick={() => {
+                        setKind(k); setYaw(snapYaw(VIEW.yawDeg)); rawYawRef.current = VIEW.yawDeg;
+                        setAuto(true);
+                      }}
+                    >
+                      <span className="scr-model-thumb"><ShapeIcon kind={k} faces={THUMB_FACES[k]} /></span>
+                      <span className="scr-model-label">{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+  ), [kind]);
   return (
     <div className="scr-screen scr-model-screen">
       {/* 이름은 짧게 '모델'(요청) — 제목 아래 갭도 화면 전용 CSS로 줄였다. */}
@@ -270,51 +331,9 @@ export default function ModelGalleryScreen() {
             찼고, 목록 아래로 내리면 스크롤에 딸려 사라진다. 재생기의 같은 줄과 같은
             부품(PillTabs)이라 눈금도 같다. */}
         <div className="scr-model-opts">
-          <span className="scr-model-opt">
-            <span className="scr-model-opt-label">지도상 크기</span>
-            <PillTabs
-              options={[{ value: "off", label: "끔" }, { value: "on", label: "켬" }]}
-              toggle
-              value={mapSize ? "on" : "off"}
-              onChange={(v) => setMapSize(v === "on")}
-              aria-label="지도상 크기"
-            />
-          </span>
-          <span className="scr-model-opt">
-            <span className="scr-model-opt-label">사양</span>
-            <PillTabs
-              options={[
-                { value: "1", label: "저" }, { value: "2", label: "중" }, { value: "3", label: "고" },
-              ]}
-              value={String(quality)}
-              onChange={(v) => setQuality(Number(v))}
-              aria-label="사양"
-              fit
-            />
-          </span>
+          {optsNode}
         </div>
-        <div className="scr-model-list">
-          {(["유닛", "건물"] as const).map((grp) => (
-            <div key={grp}>
-              <div className="scr-model-group-title">{grp}</div>
-              <div className="scr-model-gallery">
-                {SHAPE_GALLERY.filter((g) => g.group === grp).map(({ kind: k, label }) => (
-                  <button
-                    key={k} type="button"
-                    className={k === kind ? "scr-model-item scr-model-item-on" : "scr-model-item"}
-                    onClick={() => {
-                      setKind(k); setYaw(snapYaw(VIEW.yawDeg)); rawYawRef.current = VIEW.yawDeg;
-                      setAuto(true);
-                    }}
-                  >
-                    <span className="scr-model-thumb"><ShapeIcon kind={k} /></span>
-                    <span className="scr-model-label">{label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        {listNode}
       </div>
       {/* 최대 크기 팝업(요청) — 어두운 라이트박스 위에 같은 faces로 그려 회전이 이어진다.
           배경을 항상 어둡게 두어 어느 테마·어느 색이든 모델이 산다. body 포털(수리:
@@ -339,6 +358,16 @@ export default function ModelGalleryScreen() {
             >
               <X size={18} />
             </button>
+            {/* 같은 손잡이 두 개(요청) — 확대창 우하단. 팝업 안에서도 지도 크기와 사양을
+                바꿔 가며 볼 수 있어야 한다. 손짓(끌기·줌)이 무대에 잡혀 있으므로 눌림은
+                여기서 끊는다 — 안 끊으면 라디오를 누르는 순간 모델이 같이 돈다. */}
+            <div
+              className="scr-model-opts scr-model-opts-zoom"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {optsNode}
+            </div>
           </div>
         </div>,
         document.body,
