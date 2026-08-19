@@ -39,9 +39,16 @@
  *  프레임마다 재는 것이 아니라, 등급이 캐시 열쇠에 들어가 판이 등급별로 따로 구워진다. */
 export type ShapeFace = [string, number, string?, number?, number?];
 
-/** 부품 등급 — 1(형체)은 기본값이라 아무 데도 안 적는다. */
+/** 부품 등급 — 1(형체)은 기본값이라 아무 데도 안 적는다.
+ *  0은 '형체 **확정**'이다(지적: 넥서스 네 기둥처럼 작아도 형태를 만드는 부품이 크기
+ *  자동 판정에 밀려 내려갔다) — 자동 판정이 손대지 않고 어느 등급에서도 안 빠진다. */
+export const LOD_CORE = 0;
 export const LOD_TRIM = 2;
 export const LOD_FINE = 3;
+/** 이 면들을 '형체 확정(0티어)'으로 못 박는다 — 크기 자동 강등에서 빠진다. */
+export function shape(faces: ShapeFace[]): ShapeFace[] {
+  return faces.map(([p, o, f, k]) => [p, o, f, k, LOD_CORE] as ShapeFace);
+}
 /** 이 면들을 '장식(2티어)'으로 매긴다 — 중간 크기부터 빠진다. */
 export function trim(faces: ShapeFace[]): ShapeFace[] {
   return faces.map(([p, o, f, k]) => [p, o, f, k, LOD_TRIM] as ShapeFace);

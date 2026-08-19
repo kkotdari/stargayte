@@ -34,8 +34,8 @@ import { posAtSim, shotsAt, ST_INSIDE, type SimEventArr, type SimTrack } from ".
 import { posAt, LERP_MAX_GAP_SEC, type TrackPos, type TrackPt } from "../../utils/replayTrack";
 import { FLYING_BUILDING_TPS } from "../../utils/bwTransport";
 import {
-  annulusPath, bandPath, bodyFace, capFace, curvePath3, depthNow, groundEllipse, LOD_FINE,
-  LOD_TRIM, lodFilter, sideFace, tagKey, topFace,
+  annulusPath, bandPath, bodyFace, capFace, curvePath3, depthNow, fine, groundEllipse,
+  LOD_FINE, LOD_TRIM, lodFilter, shape, sideFace, tagKey, topFace, trim,
   type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
   domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces,
@@ -2518,7 +2518,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      띠와 네 귀 오벨리스크의 보석이다(가장 눈에 띄는 자리, 그러나 몸은 안 덮는다).
      키값은 한 자로: 부품은 제 자리 depthNow(×1.6), 꼭대기 얹힘만 상수. */
   pyramidWide: () => {
-    const pillar = (px: number, py: number): ShapeFace[] => {
+    // 네 모서리 기둥은 형체 확정(요청: "넥서스 4기둥도 형태쪽이라 1티어").
+    const pillar = (px: number, py: number): ShapeFace[] => shape(((): ShapeFace[] => {
       const [kx, ky] = project(px, py, 5.8);
       return [
         // 받침 원반도 제 깊이(지적: 기둥 바닥의 원들이 안 가려짐).
@@ -2533,7 +2534,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...paintBase(hornFaces(px, py, 6.8, px, py, 8.9, 0.5), "#3bd8c2"),
         topFace(groundEllipse(kx, ky, 0.45, 0.65), 0.5),
       ];
-    };
+    })());
     /* 기둥 자리 6.6 → 6.0(수리: 대각 모서리 기둥이 요잉 투영에서 뷰박스 가로(±8)를
        넘어 잘려 떨어져 나간 듯 보였다 — rx = 6.6cos20 + 6.6sin20 ≈ 8.46). */
     // 6.0 → 5.6(재지적: 왼뒤 기둥이 너무 바깥) — 받침 원반이 피라미드 모서리에 걸치게 붙인다.
@@ -8158,11 +8159,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const a9 = (ang * Math.PI) / 180;
       const bx9 = Math.sin(a9) * r9;
       const by9 = Math.cos(a9) * r9 * 0.55;
-      out.push(...tagKey(paintBase(spirePillar({
+      /* 등급(요청: 간헐천은 분화구 형태 1 · 음영 등 2 · 가스 3) — 둘러선 자갈은
+         분화구를 거드는 장식이라 2티어다. */
+      out.push(...trim(tagKey(paintBase(spirePillar({
         x: bx9, y: by9, z0: 0, h: h9, w: w9, tipW: w9 * 0.35,
         segs: 4, sides: 5, hold: 0.15, taper: 1.5,
         leanX: Math.sin(a9) * 0.3, leanY: Math.cos(a9) * 0.3,
-      }), dark ? "#4e483f" : ROCK), depthNow(bx9, by9) * 1.6));
+      }), dark ? "#4e483f" : ROCK), depthNow(bx9, by9) * 1.6)));
     }
     /* 가운데 분화구 — 위로 좁아지는 바위 그릇. 테 안쪽은 어둡고 바닥에 초록 가스가
        고여 빛난다. */
@@ -8172,20 +8175,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         segs: 4, sides: 12, hold: 0.1, taper: 1.4,
       }), ROCK), key));
       const rim = r9 * 0.72;
-      out.push(...tagKey([
-        // 테 안쪽 그늘 — 구멍으로 읽히는 어두운 원.
+      // 테 안쪽 그늘 — 구멍으로 읽히는 어두운 원. 음영이라 2티어(요청).
+      out.push(...trim(tagKey([
         [discPath3(cx9, cy9, h9, rim * 0.94), 1, "#241f19"] as ShapeFace,
-        /* 고인 베스핀 — 깊은 초록 위에 밝은 심. 색이 너무 진했다(지적) — 불투명도를
-           낮춰 아래 바위 그늘이 비치는 맑은 가스로 만든다. */
+      ], key + 0.6)));
+      /* 고인 베스핀 — 깊은 초록 위에 밝은 심. 가스는 3티어(요청)라 가장 먼저 빠진다:
+         빠져도 분화구 그릇은 그대로라 무엇인지는 읽힌다. */
+      out.push(...fine(tagKey([
         [discPath3(cx9, cy9, h9 - 0.12, rim * 0.72), 0.3, GAS_D] as ShapeFace,
         [discPath3(cx9, cy9, h9 - 0.18, rim * 0.42), 0.26, GAS] as ShapeFace,
-      ], key + 0.6));
-      // 초록 김 — 위로 갈수록 넓고 옅어지는 세 켜.
-      out.push(...tagKey([
+      ], key + 0.6)));
+      // 초록 김 — 위로 갈수록 넓고 옅어지는 세 켜. 이것도 가스라 3티어(요청).
+      out.push(...fine(tagKey([
         [groundEllipse(...project(cx9 - 0.1, cy9 + 0.15, h9 + 0.9), rim * 0.8, rim * 0.5), 0.15, GAS] as ShapeFace,
         [groundEllipse(...project(cx9 - 0.25, cy9 + 0.3, h9 + 1.8), rim * 1.05, rim * 0.62), 0.09, GAS] as ShapeFace,
         [groundEllipse(...project(cx9 - 0.4, cy9 + 0.45, h9 + 2.7), rim * 1.3, rim * 0.72), 0.05, GAS] as ShapeFace,
-      ], key + 1));
+      ], key + 1)));
     };
     // 분화구는 반대로 키운다(정정: "분화구들은 크기 증가") — 2.6/1.35/1.0 → 3.2/1.85/1.35.
     crater(-0.7, 0.4, 3.2, 2.6, depthNow(-0.7, 0.4) * 1.6 + 0.2);
@@ -9304,8 +9309,8 @@ function pathYRange(d: string): [number, number] {
   return [lo, hi];
 }
 
-/** 그 패스가 차지하는 상자의 가로×세로(뷰박스 칸²) — 부품 크기 재기용. */
-function pathArea(d: string): number {
+/** 그 패스가 차지하는 상자 [x0,y0,x1,y1](뷰박스 칸) — 부품 크기·자리 재기용. */
+function pathBox(d: string): [number, number, number, number] {
   const nums: number[] = [];
   const re = /([MmLlQqCcSsTtAaHhVvZz])([^A-Za-z]*)/g;
   let m: RegExpExecArray | null = re.exec(d);
@@ -9347,8 +9352,8 @@ function pathArea(d: string): number {
     }
     m = re.exec(d);
   }
-  if (!Number.isFinite(x0) || !Number.isFinite(y0)) return 0;
-  return (x1 - x0) * (y1 - y0);
+  if (!Number.isFinite(x0) || !Number.isFinite(y0)) return [0, 0, 0, 0];
+  return [x0, y0, x1, y1];
 }
 
 /* 부품 크기로 등급 매기기(지적: "건물 LOD 잘 안먹히는거 같기두하고") — 면 헬퍼가
@@ -9364,23 +9369,45 @@ function autoTier(key: string, faces: ShapeFace[]): ShapeFace[] {
   if (hit) return hit;
   // 부품 묶기 — stageFaces와 같은 자(깊이 열쇠가 바뀌면 새 부품).
   const gid: number[] = [];
+  const boxes: [number, number, number, number][] = [];
   const areas: number[] = [];
   let g = -1;
   let lastKey: number | undefined;
   for (const f of faces) {
     const k = f[3];
-    if (g < 0 || (k !== undefined && k !== lastKey)) { g += 1; areas.push(0); }
+    if (g < 0 || (k !== undefined && k !== lastKey)) {
+      g += 1;
+      areas.push(0);
+      boxes.push([Infinity, Infinity, -Infinity, -Infinity]);
+    }
     if (k !== undefined) lastKey = k;
     gid.push(g);
-    const a = pathArea(f[0]);
+    const b = pathBox(f[0]);
+    const a = (b[2] - b[0]) * (b[3] - b[1]);
     if (a > areas[g]) areas[g] = a;
+    const bb = boxes[g];
+    if (b[0] < bb[0]) bb[0] = b[0];
+    if (b[1] < bb[1]) bb[1] = b[1];
+    if (b[2] > bb[2]) bb[2] = b[2];
+    if (b[3] > bb[3]) bb[3] = b[3];
   }
   const big = Math.max(...areas, 0.0001);
+  const core = boxes[areas.indexOf(big)] ?? [0, 0, 0, 0];
   const out = faces.map((f, i) => {
+    const cur = f[4] ?? 1;
+    // 형체 확정(0)은 자동 판정이 손대지 않는다.
+    if (cur === 0) return f;
+    /* 실루엣을 만드는 부품은 작아도 안 내린다(지적: 넥서스 네 기둥도 형태 쪽이라
+       1티어여야 한다) — 가장 큰 부품의 상자 **밖으로 뻗은** 부품은 그 자체가 윤곽을
+       바꾼다(기둥·다리·날개·포신·뿔이 전부 그렇다). 안에 파묻힌 부품만 크기로
+       내린다 — 그건 빠져도 실루엣이 그대로다. */
+    const b = boxes[gid[i]];
+    const out9 = Math.max(core[0] - b[0], core[1] - b[1], b[2] - core[2], b[3] - core[3]);
+    const span = Math.max(core[2] - core[0], core[3] - core[1], 0.001);
+    if (out9 > span * 0.06) return f;
     const r = areas[gid[i]] / big;
     // 넓이 비 — 12% 미만이면 세부(3), 30% 미만이면 장식(2), 그 위는 형체(1).
     const auto = r < 0.12 ? LOD_FINE : r < 0.3 ? LOD_TRIM : 1;
-    const cur = f[4] ?? 1;
     return (auto > cur ? [f[0], f[1], f[2], f[3], auto] : f) as ShapeFace;
   });
   AUTO_TIER_CACHE.set(key, out);
