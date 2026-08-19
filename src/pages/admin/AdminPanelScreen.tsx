@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Spinner } from "../../components/common/Feedback";
 import Select from "../../components/common/Select";
@@ -274,15 +275,11 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
   // (오버레이는 display:contents라 더 이상 클릭을 받지 않는다, bodyScrollLock 참고).
   useLockBodyScroll(versionPickerOpen, () => setVersionPickerOpen(false));
   const [confirmSetVersion, setConfirmSetVersion] = useState<string | null>(null);
-  /* 모달이 열린 동안은 모바일 탭바를 감춘다(지적: 다시 분석 버튼이 탭바에 가려 눌리지
-     않는다) — 탭바는 화면 바닥에 떠 있는 별개 레이어라, 창 자리를 아무리 위로 올려도
-     겹칠 여지가 남고 그 위를 지나가면 클릭을 가로챈다. 창이 떠 있는 동안 탭은 어차피
-     쓸 수 없으니 아예 물러나는 것이 맞다. */
-  useEffect(() => {
-    if (!pickerOpen) return undefined;
-    document.body.classList.add("scr-modal-hides-tabbar");
-    return () => document.body.classList.remove("scr-modal-hides-tabbar");
-  }, [pickerOpen]);
+  /* 재분석 고르기 창도 다른 모달과 같은 표준 장치를 쓴다(지적: 제어판 쪽은 그게 안 돼
+     있는 것 같다 — 실제로 이 창만 빠져 있었다). 스크롤락이 실드·바깥 클릭 닫기·탭바
+     물러남을 한꺼번에 맡는다. 아래에서 document.body로 포털도 함께 — 인라인으로 두면
+     .scr-app 안이라 실드가 제 클릭을 막고, position:fixed도 조상 상자에 갇힌다. */
+  useLockBodyScroll(pickerOpen, () => setPickerOpen(false));
   const [pickValue, setPickValue] = useState("");
 
   // 현재 버전을 뺀 '고를 수 있는' 버전들 — 현재 버전으로 다시 설정하는 건 의미가 없어 제외한다.
@@ -460,9 +457,10 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
         />
       )}
 
-      {/* 재분석 경기 고르기(요청) — 목록에서 골라 돌린다. */}
-      {pickerOpen && (
-        <div className="scr-modal-overlay" onClick={() => setPickerOpen(false)}>
+      {/* 재분석 경기 고르기(요청) — 목록에서 골라 돌린다. 다른 모달과 같이 body로
+          포털한다(위 useLockBodyScroll 주석). */}
+      {pickerOpen && createPortal(
+        <div className="scr-modal-overlay">
           <div
             className="scr-modal scr-modal-md scr-redo-pick"
             onClick={(e) => e.stopPropagation()}
@@ -533,7 +531,8 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {confirmRedo && (

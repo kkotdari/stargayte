@@ -101,6 +101,11 @@ function onClick(e: Event) {
 
 function lockBodyScroll(onOutside?: () => void): () => void {
   if (lockCount === 0) {
+    /* 모달이 떠 있는 동안 모바일 탭바는 물러난다(지적: "모달창 뜰 때는 탭바 숨기지
+       않나 원래") — 탭바는 화면 바닥에 떠 있는 별개 레이어라, 창을 아무리 위로
+       올려도 겹칠 여지가 남고 겹치면 클릭까지 가로챈다. 창이 떠 있는 동안 탭은
+       어차피 못 쓴다. 실드(스크롤락)를 거는 창이 곧 모달이므로 여기가 그 자리다. */
+    document.body.classList.add("scr-modal-open");
     document.addEventListener("touchmove", onScrollIntent, { passive: false, capture: true });
     document.addEventListener("wheel", onScrollIntent, { passive: false, capture: true });
     document.addEventListener("touchstart", onTouchStart, { passive: false, capture: true });
@@ -115,6 +120,7 @@ function lockBodyScroll(onOutside?: () => void): () => void {
     if (i >= 0) outsideStack.splice(i, 1);
     lockCount = Math.max(0, lockCount - 1);
     if (lockCount === 0) {
+      document.body.classList.remove("scr-modal-open");
       document.removeEventListener("touchmove", onScrollIntent, { capture: true } as EventListenerOptions);
       document.removeEventListener("wheel", onScrollIntent, { capture: true } as EventListenerOptions);
       document.removeEventListener("touchstart", onTouchStart, { capture: true } as EventListenerOptions);

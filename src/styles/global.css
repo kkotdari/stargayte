@@ -5790,10 +5790,10 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    버튼이 나란히 선다. */
 .scr-modal-md { max-width: 560px; }
 .scr-redo-pick { display: flex; flex-direction: column; max-height: min(78vh, 720px); }
-/* 모달이 뜬 동안 탭바는 물러난다(지적: 다시 분석 버튼이 탭바에 가려 눌리지 않는다) —
-   자리를 맞추는 것만으로는 부족했다: 탭바는 바닥에 떠 있는 별개 레이어라 겹칠 여지가
-   남고, 겹치면 클릭을 가로챈다. 창이 떠 있는 동안 탭은 어차피 못 쓴다. */
-body.scr-modal-hides-tabbar .scr-mobile-tabbar { display: none; }
+/* 모달이 뜬 동안 탭바는 물러난다(지적: 원래 모달 뜰 때 탭바 숨기지 않나) — 클래스는
+   스크롤락(bodyScrollLock)이 단다. 창마다 따로 챙기지 않아도 실드를 거는 모든 창에
+   한꺼번에 걸린다. */
+body.scr-modal-open .scr-mobile-tabbar { display: none; }
 /* 창은 탭바보다 위 층에 둔다 — 위 규칙이 못 걸리는 경우(다른 창이 겹쳐 열림)의 안전망. */
 .scr-redo-pick { z-index: 300; }
 /* 바닥 버튼 줄은 절대 눌리지 않는다 — 목록이 길어도 제 높이를 지킨다. */
