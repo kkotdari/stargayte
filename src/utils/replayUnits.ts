@@ -779,8 +779,21 @@ export function buildUnitTracks(
       else if (how === "Select") {
         const g = groups.get(key) ?? [];
         sel.set(pid, [...g]);
-        /* 부대 지정 소환이 가장 센 동반 신호다 — 사람이 손수 한 묶음으로 묶어 둔
-           것이라 드래그 선택보다 종류가 고르다. 여태 이 자리를 안 보고 있었다. */
+        /* ★ 부대 지정은 '종류가 고른' 신호가 아니다(정정 — 사람의 지적을 자로 확인).
+           여기 예전 주석은 "사람이 손수 묶은 것이라 드래그 선택보다 종류가 고르다"고
+           적혀 있었는데, 실제 부대 지정의 정체를 세어 보니 반반이었다:
+
+               경기      한 종류   섞임    건물이 섞인 지정
+               90300     54%     46%     25회
+               경기1     43%     57%     44회
+               (부대칸당 다시 지정 중앙 5회 — 구성이 수시로 바뀐다)
+
+           섞임 보기: Probe+Zealot · SCV+Marine · Barracks+Marine · Gateway+Zealot.
+           사람들은 시프트 클릭으로 골라 담거나 드래그로 쓸어 담고, 일부러 섞기도 하고,
+           건물에도 부대를 건다. 그러니 이 신호에 가중치를 얹으면 안 된다.
+           다행히 아래 동반 처리는 **만장일치일 때만** 이름을 옮기므로 섞인 지정은 저절로
+           아무 말도 안 한 것이 된다 — 전제가 틀렸어도 결과가 안전했던 자리다. 값을
+           올리려고 이 문을 여는 것은 하지 마라. */
         noteCoSel(sec, g);
       }
       continue;
@@ -2907,6 +2920,11 @@ export function buildUnitTracks(
       // 만장일치일 때만 — 섞인 선택은 아무 말도 안 한 것으로 친다.
       if (known.size !== 1 || blanks.length === 0) continue;
       const [only] = [...known];
+      /* 건물 이름은 유닛에게 못 준다(막이 하나 더) — 부대는 건물에도 걸린다(실측:
+         지정 25·44회에 건물이 섞였다). '배럭 + 이름 모를 태그'가 한 부대면 만장일치가
+         되어 그 태그가 배럭이 될 뻔했다. 여태는 원장 몫에 배럭이 없어 우연히 막혔다 —
+         우연에 기대지 않는다. */
+      if (BUILDING_NAMES.has(only)) continue;
       for (const l of blanks) {
         const m = votes.get(l) ?? new Map<string, number>();
         m.set(only, (m.get(only) ?? 0) + 1);
