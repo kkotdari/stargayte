@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, ZoomIn } from "lucide-react";
 import {
@@ -44,6 +44,52 @@ const THUMB_FACES: Record<string, ShapeFace[]> = Object.fromEntries(
     .filter(({ kind }) => Object.prototype.hasOwnProperty.call(SHAPE_BUILDERS, kind))
     .map(({ kind }) => [kind, lodFilter(autoTier(kind, `thumb|${kind}`, bake(SHAPE_BUILDERS[kind])), 1)]),
 );
+
+
+/** 도록의 칸 하나(요청: 칸마다 끌어 돌리고 돋보기로 크게) — 면·선택·색·배수가 그대로면
+ *  다시 안 그린다. 손잡이는 부모가 안정된 참조로 넘긴다. */
+const GalleryCell = memo(function GalleryCell({
+  kind, label, faces, on, color, mapK, onSelect, onZoom, onDown, onMove, onUp,
+}: {
+  kind: string; label: string; faces: ShapeFace[] | undefined; on: boolean;
+  color: string; mapK: number;
+  onSelect: (k: string) => void;
+  onZoom: (k: string) => void;
+  onDown: (k: string, e: React.PointerEvent<HTMLDivElement>) => void;
+  onMove: (k: string, e: React.PointerEvent<HTMLDivElement>) => void;
+  onUp: () => void;
+}) {
+  return (
+    <div
+      className={on ? "scr-model-item scr-model-item-on" : "scr-model-item"}
+      style={{ color }}
+      onPointerDown={(e) => onDown(kind, e)}
+      onPointerMove={(e) => onMove(kind, e)}
+      onPointerUp={onUp}
+      onPointerCancel={onUp}
+      onClick={() => onSelect(kind)}
+      role="presentation"
+    >
+      <span className="scr-model-thumb">
+        {mapK !== 1 ? (
+          <span className="scr-model-thumb-scaler" style={{ transform: `scale(${mapK.toFixed(4)})` }}>
+            <ShapeIcon kind={kind} faces={faces} wide />
+          </span>
+        ) : <ShapeIcon kind={kind} faces={faces} wide />}
+      </span>
+      <span className="scr-model-cellbtns">
+        <button
+          type="button" className="scr-model-cellbtn" aria-label={`${label} 크게 보기`}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); onZoom(kind); }}
+        >
+          <ZoomIn size={12} />
+        </button>
+      </span>
+      <span className="scr-model-label">{label}</span>
+    </div>
+  );
+});
 
 export default function ModelGalleryScreen() {
   const [kind, setKind] = useState(SHAPE_GALLERY[0]?.kind ?? "");
@@ -103,12 +149,23 @@ export default function ModelGalleryScreen() {
   }, [auto, zoomed]);
   /* 수동 요잉은 키보드로(개편: 요잉 버튼 줄 제거) — ←/→가 한 칸(15도)씩 돌리고
      자동을 멈춘다. 화면 검증 스크립트도 이 키를 쓴다. */
+  /* ←/→ 키가 PC의 회전이다(지적: "피시에서는 전의 좌우 커서가 더 좋았어 손보다") —
+     무대를 걷으면서 이 키가 갈 곳이 없어졌었다. 이제 **고른 칸**을 돌리고, 확대창이
+     열려 있으면 그 창의 모델을 돌린다(끌기는 손가락용으로 그대로 둔다). */
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
       e.preventDefault();
       setAuto(false);
-      setYaw((y) => snapYaw(y) + (e.key === "ArrowRight" ? YAW_STEP : -YAW_STEP));
+      const d9 = e.key === "ArrowRight" ? YAW_STEP : -YAW_STEP;
+      if (zoomedRef.current) {
+        setYaw((y) => snapYaw(y) + d9);
+        rawYawRef.current = snapYaw(rawYawRef.current) + d9;
+        return;
+      }
+      const k9 = kindRef.current;
+      if (!k9) return;
+      setThumbYaw((m) => ({ ...m, [k9]: snapYaw((m[k9] ?? VIEW.yawDeg) + d9) }));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -247,34 +304,71 @@ export default function ModelGalleryScreen() {
   /* 목록은 고른 종류가 바뀔 때만 다시 만든다(수리: 반응이 느리다) — 자동 회전이
      460ms마다 yaw를 갈아 화면 전체가 다시 그려지는데, 그때마다 썸네일 수만 개 노드를
      React가 통째로 맞추고 있었다. 목록은 요잉·배율·사양과 아무 상관이 없다. */
-  /* 칸 끌기(요청) — 칸마다 제 요잉을 끌어 돌린다. 끌던 중이면 클릭은 선택으로 안 센다. */
+  /* 칸 끌기(요청) — 칸마다 제 요잉을 끌어 돌린다. 끌던 중이면 클릭은 선택으로 안 센다.
+     손잡이는 전부 **안정된 참조**여야 한다(위 GalleryCell의 memo가 그것으로 갈린다) —
+     그래서 지금 요잉은 상태가 아니라 ref로 읽는다. */
   const cellDragRef = useRef<{ k: string; x: number; base: number } | null>(null);
   const cellMovedRef = useRef(false);
-  const cellDrag = (k: string): React.HTMLAttributes<HTMLDivElement> => ({
-    onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
-      cellDragRef.current = { k, x: e.clientX, base: thumbYaw[k] ?? VIEW.yawDeg };
-      cellMovedRef.current = false;
-      e.currentTarget.setPointerCapture?.(e.pointerId);
-    },
-    onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
-      const d9 = cellDragRef.current;
-      if (!d9 || d9.k !== k) return;
-      const dx9 = e.clientX - d9.x;
-      if (Math.abs(dx9) < 3) return;
-      cellMovedRef.current = true;
-      setThumbYaw((m) => ({ ...m, [k]: snapYaw(d9.base + dx9 * 0.8) }));
-    },
-    onPointerUp: () => { cellDragRef.current = null; },
-    onPointerCancel: () => { cellDragRef.current = null; },
-  });
-  /** 그 칸의 면 — 돌린 칸만 새로 굽는다(그 밖은 미리 구운 판). */
+  const thumbYawRef = useRef<Record<string, number>>({});
+  thumbYawRef.current = thumbYaw;
+  // 키 손잡이가 최신 값을 읽는 창구 — 이벤트는 한 번만 달고 안 다시 단다.
+  const kindRef = useRef(kind);
+  kindRef.current = kind;
+  const zoomedRef = useRef(zoomed);
+  zoomedRef.current = zoomed;
+  const onCellDown = useCallback((k: string, e: React.PointerEvent<HTMLDivElement>) => {
+    /* 칸 안의 버튼 위에서는 끌기를 아예 안 잡는다(지적: "확대창 안뜸") — 여기서
+       setPointerCapture를 걸면 그 뒤의 pointerup·click이 칸으로 가로채여 돋보기
+       버튼의 click이 영영 안 뜬다. */
+    if ((e.target as HTMLElement).closest("button")) return;
+    cellDragRef.current = { k, x: e.clientX, base: thumbYawRef.current[k] ?? VIEW.yawDeg };
+    cellMovedRef.current = false;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  }, []);
+  const onCellMove = useCallback((k: string, e: React.PointerEvent<HTMLDivElement>) => {
+    const d9 = cellDragRef.current;
+    if (!d9 || d9.k !== k) return;
+    const dx9 = e.clientX - d9.x;
+    /* 감도 0.8 → 3도/픽셀(지적: "감도가 너무 약한거 같아 공간이 좁은데") — 칸이 100px
+       남짓이라 0.8도로는 한 칸을 다 끌어도 80도밖에 안 돌았다. 3도면 5픽셀에 한 칸
+       (15도)이 돈다. 문턱도 3 → 2픽셀. */
+    if (Math.abs(dx9) < 2) return;
+    cellMovedRef.current = true;
+    setThumbYaw((m) => ({ ...m, [k]: snapYaw(d9.base + dx9 * 3) }));
+  }, []);
+  const onCellUp = useCallback(() => { cellDragRef.current = null; }, []);
+  const onCellSelect = useCallback((k: string) => {
+    if (!cellMovedRef.current) setKind(k);
+  }, []);
+  const onCellZoom = useCallback((k: string) => {
+    setKind(k);
+    const y9 = thumbYawRef.current[k] ?? VIEW.yawDeg;
+    setYaw(snapYaw(y9));
+    rawYawRef.current = y9;
+    setScale(1);
+    setAuto(true);
+    setZoomed(true);
+  }, []);
+  /** 그 칸의 면 — 돌린 칸만 새로 굽고, 한 번 구운 각은 갈무리해 둔다(끌 때 같은 각을
+   *  오가도 다시 안 굽는다: 24방뿐이라 몇 번 끌면 그 종류는 전부 캐시에 든다). */
+  const thumbBakeRef = useRef(new Map<string, ShapeFace[]>());
   const thumbFacesOf = (k: string): ShapeFace[] | undefined => {
     const y9 = thumbYaw[k];
     if (y9 === undefined) return THUMB_FACES[k];
+    const key9 = `${k}|${snapYaw(y9)}`;
+    const hit9 = thumbBakeRef.current.get(key9);
+    if (hit9) return hit9;
     const b9 = Object.prototype.hasOwnProperty.call(SHAPE_BUILDERS, k) ? SHAPE_BUILDERS[k] : undefined;
     if (!b9) return THUMB_FACES[k];
-    return lodFilter(autoTier(k, `thumb|${k}|${snapYaw(y9)}`, bake(() => withYaw(y9, b9))), 1);
+    const f9 = lodFilter(autoTier(k, `thumb|${key9}`, bake(() => withYaw(y9, b9))), 1);
+    if (thumbBakeRef.current.size > 400) thumbBakeRef.current.clear();
+    thumbBakeRef.current.set(key9, f9);
+    return f9;
   };
+  /* 칸 하나만 다시 그린다(지적: "드래그 회전이 뭔가 반응이 느리고") — 목록이 통째로
+     memo돼 있어 요잉 하나가 바뀔 때마다 99칸(각 200~300 <path>)을 React가 전부 맞췄다.
+     칸을 memo 부품으로 떼면 면(faces)이 그대로인 칸은 건너뛴다 — 끄는 칸만 새로 그린다.
+     그래서 손잡이(콜백)들은 전부 안정된 참조여야 한다(아래 useCallback). */
   const listNode = useMemo(() => (
         <div className="scr-model-list">
             {(["유닛", "건물"] as const).map((grp) => (
@@ -282,50 +376,18 @@ export default function ModelGalleryScreen() {
                 <div className="scr-model-group-title">{grp}</div>
                 <div className="scr-model-gallery">
                   {SHAPE_GALLERY.filter((g) => g.group === grp).map(({ kind: k, label }) => (
-                    <div
-                      key={k}
-                      className={k === kind ? "scr-model-item scr-model-item-on" : "scr-model-item"}
-                      style={{ color }}
-                      /* 칸을 끌면 그 칸이 돈다(요청: "셀마다 로테이트 버튼이 아니라
-                         드래그로 로테이션") — 무대 시절의 끌기와 같은 감도(1픽셀 0.8도,
-                         15도 칸으로 스냅)다. 끌었으면 클릭(선택)은 삼킨다. */
-                      {...cellDrag(k)}
-                      onClick={() => { if (!cellMovedRef.current) setKind(k); }}
-                      role="presentation"
-                    >
-                      <span className="scr-model-thumb">
-                        {/* 지도상 크기를 켜면 썸네일에도 같은 배수가 걸린다(요청: 목록에도
-                            적용 — 일일이 안 눌러보게). 끄면 배수 1이라 겉옷이 없다. */}
-                        {mapSize ? (
-                          <span
-                            className="scr-model-thumb-scaler"
-                            style={{ transform: `scale(${(shapeMapTiles(k) / MAP_REF_TILES).toFixed(4)})` }}
-                          >
-                            <ShapeIcon kind={k} faces={thumbFacesOf(k)} wide />
-                          </span>
-                        ) : <ShapeIcon kind={k} faces={thumbFacesOf(k)} wide />}
-                      </span>
-                      {/* 칸마다 회전·확대(요청) — 무대를 걷어낸 자리를 이 둘이 대신한다.
-                          회전은 그 칸만 한 칸(15도) 돌리고, 돋보기는 그 종류로 확대창을
-                          연다(자동 회전은 거기서만 돈다). */}
-                      <span className="scr-model-cellbtns">
-                        <button
-                          type="button" className="scr-model-cellbtn" aria-label={`${label} 크게 보기`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setKind(k);
-                            setYaw(snapYaw(thumbYaw[k] ?? VIEW.yawDeg));
-                            rawYawRef.current = thumbYaw[k] ?? VIEW.yawDeg;
-                            setScale(1);
-                            setAuto(true);
-                            setZoomed(true);
-                          }}
-                        >
-                          <ZoomIn size={12} />
-                        </button>
-                      </span>
-                      <span className="scr-model-label">{label}</span>
-                    </div>
+                    <GalleryCell
+                      key={k} kind={k} label={label}
+                      faces={thumbFacesOf(k)}
+                      on={k === kind}
+                      color={color}
+                      mapK={mapSize ? shapeMapTiles(k) / MAP_REF_TILES : 1}
+                      onSelect={onCellSelect}
+                      onZoom={onCellZoom}
+                      onDown={onCellDown}
+                      onMove={onCellMove}
+                      onUp={onCellUp}
+                    />
                   ))}
                 </div>
               </div>
