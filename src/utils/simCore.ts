@@ -79,7 +79,7 @@ export type SimInput = {
 /* ── 출력 ─────────────────────────────────────────────────────────────────────── */
 
 /** 상태 — 렌더가 무엇을 그릴지 가르는 값. P2에서 fight/attack이 는다. */
-export type SimState = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+export type SimState = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 export const ST_IDLE: SimState = 0;
 export const ST_MOVE: SimState = 1;
 export const ST_INSIDE: SimState = 2;   // 수송선 안 — 안 그린다
@@ -88,6 +88,15 @@ export const ST_FIGHT: SimState = 4;    // 멈춰 서서 쏘는 중(P2)
 export const ST_GATHER: SimState = 5;   // 채취 왕복 중(P3)
 /** 땅속 — 자리가 아예 안 바뀐다. 렌더가 구멍을 그릴 근거도 이 값이다. */
 export const ST_BURROW: SimState = 6;
+/* 짐을 지고 홀로 가는 중(요청: "각 일꾼들별로 미네랄 가스 들고 있는 모델링") — 채취
+   왕복의 뒷 절반이다. 캐는 것과 지고 오는 것을 상태로 갈라야 렌더가 짐을 그릴 수 있다.
+   왕복 로직에서는 이 둘도 여전히 '채취 중'이라, 안에서 비교하는 자리는 isGathering을
+   쓴다(그냥 === ST_GATHER로 두면 지고 오는 일꾼이 서로 밀치고 키가 폭증한다). */
+export const ST_CARRY_MIN: SimState = 7;
+export const ST_CARRY_GAS: SimState = 8;
+/** 채취 왕복 중인가(캐는 중이든 지고 오는 중이든). */
+export const isGathering = (st: SimState): boolean =>
+  st === ST_GATHER || st === ST_CARRY_MIN || st === ST_CARRY_GAS;
 
 /** 전투 사건 — [초, 갈래, 주체 태그, 표적 태그, x, y, tx, ty]. 갈래 0 발사 1 죽음.
  *
@@ -1060,7 +1069,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
          키를 찍으면 결과가 몇 배로 분다(실측: 게임 1이 80k → 467k키). 왕복의 뜻은
          '어디서 돌아섰나'지 '어느 쪽을 봤나'가 아니라, 방향 문턱을 크게 두고 자리
          문턱도 조금 넉넉히 준다. */
-      const gath = b.state === ST_GATHER;
+      const gath = isGathering(b.state);
       const tol = gath ? eps * 2 : eps;
       if (pdx * pdx + pdy * pdy < tol * tol
         && turned < (gath ? 150 : 30) && b.state === b.ks) return;
@@ -2008,8 +2017,11 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       if (!b.dest && b.inside === null && b.wk) {
         if (!b.job) b.job = assignJob(b, t);
         if (b.job) {
-          b.state = ST_GATHER;
           const j = b.job;
+          /* 국면 3(떨어지는 중)부터 5(반납 중)까지가 짐을 든 동안이다 — 캔 것을 손에
+             쥔 순간부터 홀에 넣는 순간까지. 가스는 정제소 안에서 캐므로(국면 2는
+             ST_INSIDE) 나오는 순간이 곧 국면 3이다. */
+          b.state = j.phase >= 3 ? (j.gas ? ST_CARRY_GAS : ST_CARRY_MIN) : ST_GATHER;
           /* 한 번 왕복의 차례(요청: 캐는 시간이 시작·종료 딜레이까지 정확해야) —
              ⓪ 밭으로 → ① 붙고 → ② 캐고 → ③ 떨어지고 → ④ 홀로 → ⑤ 반납.
              시간은 전부 bwUnits의 채취 상수 블록에서만 읽는다. */
@@ -2073,7 +2085,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
                 j.phase = 3;
                 j.wait = MINE_DETACH_FRAMES * FRAME_SEC;
                 // 가스는 문 앞으로 도로 나온다 — 여기서부터 다시 보인다.
-                if (j.gas) { b.x = j.px; b.y = j.py; b.state = ST_GATHER; }
+                if (j.gas) { b.x = j.px; b.y = j.py; b.state = ST_CARRY_GAS; }
               } else if (j.phase === 3) {
                 // 다 캤다 — 밭을 놓아 주고(기다리던 일꾼이 붙는다) 홀로 향한다.
                 j.phase = 4;
@@ -2378,7 +2390,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
           const c = arr[j];
           /* 유닛끼리도 통과 불가(요청) — 편을 안 가린다. 다만 자원을 캐는 일꾼끼리는
              겹칠 수 있다(원작에서도 캐는 일꾼은 서로를 통과한다). */
-          if (a.state === ST_GATHER && c.state === ST_GATHER) continue;
+          if (isGathering(a.state) && isGathering(c.state)) continue;
           const rr = a.rad + c.rad;
           const dx = c.x - a.x;
           const dy = c.y - a.y;

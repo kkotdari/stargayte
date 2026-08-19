@@ -23,7 +23,7 @@ import type { SimInput } from "./simCore";
 /* 5(이번 판) — 건물 틈(몸 상자 충돌·잔 눈금 길찾기)·SCV 수리·메딕 힐·편 가르기가
    한꺼번에 들어와 자취와 사건이 통째로 달라졌다. 판 번호를 안 올리면 옛 캐시가 그대로
    나와 이번 작업이 화면에 하나도 안 보인다. */
-export const SIM_VERSION = 5;
+export const SIM_VERSION = 6;
 
 const DB = "stargayte-sim";
 const STORE = "tracks";

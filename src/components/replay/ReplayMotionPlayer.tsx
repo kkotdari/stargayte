@@ -32,7 +32,8 @@ import {
 import { terrainOf, decodeWalk, type TerrainGrid } from "../../utils/minimapTerrain";
 import { loadSimTracks, logSim } from "../../utils/simClient";
 import {
-  hitsAt, posAtSim, shotsAt, ST_INSIDE, type SimEventArr, type SimTrack,
+  hitsAt, posAtSim, shotsAt, ST_CARRY_GAS, ST_CARRY_MIN, ST_INSIDE,
+  type SimEventArr, type SimTrack,
 } from "../../utils/simCore";
 /* 자취 읽기는 유틸로 나갔다(과제 #61) — 코어가 걸음의 진실이 된 뒤로 이 파일의
    몫이 아니고, 밖에 있어야 자로 잴 수 있다(scripts/pos-check.mjs). */
@@ -8200,6 +8201,66 @@ SHAPE_BUILDERS.carrierbay = () => {
 SHAPE_BUILDERS.creeppatch = () => creepBlobFaces(0.7);
 SHAPE_BUILDERS.creeppatch2 = () => creepBlobFaces(2.3);
 SHAPE_BUILDERS.creeppatch3 = () => creepBlobFaces(4.1);
+/* ── 일꾼이 나르는 짐(요청: "각 일꾼들별로 미네랄 가스 들고 있는 모델링 필요 —
+   유닛별로 모양이 다름") ─────────────────────────────────────────────────────────
+   짐은 두 가지고, 드는 자리는 일꾼마다 다르다. 미네랄은 셋 다 같은 푸른 결정 덩이지만
+   (원작도 그렇다), 가스통은 종족마다 생김새가 다르다(요청: "가스통은 프로토스 테란은
+   정육면체 박스, 저그는 둥근 모양이고 저그는 무슨 힘줄같은걸로 감싸고 있어").
+   짐은 늘 몸보다 앞에 오도록 큰 키를 달아 둔다 — 일꾼은 짐을 몸 앞으로 안고 온다. */
+/** 미네랄 덩이 — 밑이 넓고 위가 좁은 결정 조각 셋이 모인 덩어리. */
+function mineralLoad(cx: number, cy: number, cz: number, s = 1): ShapeFace[] {
+  const shard = (dx: number, dy: number, w: number, h: number): ShapeFace[] =>
+    frustumFaces3(cx + dx * s, cy + dy * s, w * s, w * s, w * 0.32 * s, w * 0.32 * s, h * s, cz);
+  return tagKey(paintBase([
+    ...shard(-0.5, -0.16, 0.62, 0.86),
+    ...shard(0.48, 0.14, 0.56, 0.72),
+    ...shard(0, 0, 0.92, 1.28),
+  ], "#6cc3e8"), depthNow(cx, cy) * 1.6 + 30);
+}
+/** 가스통(테란·프로토스) — 정육면체 상자다. 앞·윗면에 베스핀 초록 창이 난다. */
+function gasBoxLoad(cx: number, cy: number, cz: number, s = 1): ShapeFace[] {
+  const w = 1.35 * s;
+  const f: ShapeFace[] = [...paintBase(boxFaces3(cx, cy, w, w, w, cz), "#59626d")];
+  // 윗면 초록 창 — 위에서 내려다보므로 늘 보인다.
+  f.push([polyPath3([
+    [cx - w * 0.32, cy - w * 0.32, cz + w + 0.02], [cx + w * 0.32, cy - w * 0.32, cz + w + 0.02],
+    [cx + w * 0.32, cy + w * 0.32, cz + w + 0.02], [cx - w * 0.32, cy + w * 0.32, cz + w + 0.02],
+  ]), 0.9, "#4fd06a"] as ShapeFace);
+  // 앞면 창 — 앞이 보일 때만.
+  if (facingRatio(0, 1) > 0.12) {
+    f.push([polyPath3([
+      [cx - w * 0.3, cy + w / 2 + 0.02, cz + w * 0.24], [cx + w * 0.3, cy + w / 2 + 0.02, cz + w * 0.24],
+      [cx + w * 0.3, cy + w / 2 + 0.02, cz + w * 0.72], [cx - w * 0.3, cy + w / 2 + 0.02, cz + w * 0.72],
+    ]), 0.9, "#4fd06a"] as ShapeFace);
+  }
+  return tagKey(f, depthNow(cx, cy) * 1.6 + 30);
+}
+/** 가스 주머니(저그) — 둥근 살덩이를 힘줄 넷이 세로로 감싼다(요청). 꼭지는 어두운 관. */
+function gasSacLoad(cx: number, cy: number, cz: number, s = 1): ShapeFace[] {
+  const r = 0.86 * s;
+  const f: ShapeFace[] = [...sphereFaces3(cx, cy, cz + r, r * 1.05, "#7d6b3a")];
+  /* 힘줄 — 밑에서 위로 넘어가는 띠 넷. 구는 화면 원이라 띠도 화면에서 걸치게 두면
+     되지만, 요잉을 함께 타야 하므로 모형 좌표의 두 점을 잇는 뿔로 세운다. */
+  for (const [dx9, dy9] of [[-0.72, 0], [0.72, 0], [0, -0.72], [0, 0.72]] as [number, number][]) {
+    f.push(...paintBase(hornFaces(
+      cx + dx9 * r, cy + dy9 * r, cz + r * 0.15,
+      cx + dx9 * r * 0.28, cy + dy9 * r * 0.28, cz + r * 2,
+      0.17 * s,
+    ), "#c9a86a"));
+  }
+  // 꼭지 — 위로 난 짧고 어두운 관.
+  f.push(...paintBase(cylinderFaces3(cx, cy, 0.2 * s, 0.3 * s, cz + r * 2), "#3f4046"));
+  return tagKey(f, depthNow(cx, cy) * 1.6 + 30);
+}
+/* 일꾼 셋 × 짐 둘 = 여섯 별본. 짐 자리는 일꾼마다 다르다 —
+   SCV는 두 팔 사이(y 2.1~3.1 · z 4.6)에 안고, 프로브는 몸(z 5.7~6.8) 앞 아래에 띄우고,
+   드론은 집게(z 3) 사이에 문다. */
+SHAPE_BUILDERS.scvMin = () => [...SHAPE_BUILDERS.scv(), ...mineralLoad(0, 2.6, 3.95)];
+SHAPE_BUILDERS.scvGas = () => [...SHAPE_BUILDERS.scv(), ...gasBoxLoad(0, 2.6, 3.95)];
+SHAPE_BUILDERS.probeMin = () => [...SHAPE_BUILDERS.probe(), ...mineralLoad(0, 1.35, 4.35, 0.9)];
+SHAPE_BUILDERS.probeGas = () => [...SHAPE_BUILDERS.probe(), ...gasBoxLoad(0, 1.35, 4.35, 0.9)];
+SHAPE_BUILDERS.droneMin = () => [...SHAPE_BUILDERS.drone(), ...mineralLoad(0, 2.15, 2.7, 0.95)];
+SHAPE_BUILDERS.droneGas = () => [...SHAPE_BUILDERS.drone(), ...gasSacLoad(0, 2.15, 2.7, 0.95)];
 /* 부품 깊이 정렬(지적: 일부만 가려지는 파트에서 뒤 요소가 비쳐 보임 — 가장 큰 문제) —
    빌더의 그리기 순서는 표준 시점 기준 고정이라, 요잉으로 뒤로 돌아간 부품이 앞 부품
    위에 그려졌다. 프리미티브(상자·절두·기둥·돔·뿔·관·다리)가 제 중심 깊이를 면에 달아
@@ -8249,6 +8310,11 @@ const UNIT_3D: Record<string, string> = {
 /** 종족 → 일꾼 상징물 — 유닛 이름이 없는 일꾼 점(정찰·채굴)용. */
 const workerKindOf = (race?: string): string =>
   race === "테란" ? "scv" : race === "저그" ? "drone" : "probe";
+/** 짐을 진 일꾼의 판(요청: 일꾼별로 미네랄·가스 들고 있는 모델) — 코어가 말하는 상태가
+ *  짐을 가른다. 짐이 없으면 맨몸 판 그대로다. 판 이름은 맨몸 + Min/Gas 규약이고,
+ *  NORM_PAIR가 맨몸 배수를 물려주므로 몸 크기는 안 변한다. */
+const workerLoadKind = (base: string, st: number | null): string =>
+  (st === ST_CARRY_MIN ? `${base}Min` : st === ST_CARRY_GAS ? `${base}Gas` : base);
 /** 일꾼 정체 — 살아 있는 일꾼을 셀 때 개체 트랙에서 고르는 이름들. */
 const WORKER_KINDS = new Set(["SCV", "Probe", "Drone"]);
 /** 커맨드 없이 시작하는 일꾼 수 — 세 종족 모두 4기다(개체 트랙에는 첫 클릭에야 나타난다). */
@@ -8505,6 +8571,12 @@ const MODEL_NORM: Record<string, number> = {
  *  16-상자를 안 넘는다(넘침 훑기 0종 실측). */
 const NORM_PAIR: Record<string, string> = {
   tankgun: "tankbody", tanksiegegun: "tanksiegebody",
+  /* 짐을 든 일꾼도 **맨몸 배수 그대로**다(요청: 일꾼별 자원 들기 모델) — 짐이 늘어난
+     만큼 배수를 다시 재면 그 순간 일꾼의 몸이 쪼그라든다. 짐은 몸 앞에 얹히는 것이지
+     몸이 커지는 것이 아니므로, 캐러 갈 때와 돌아올 때 몸 크기가 같아야 한다. */
+  scvMin: "scv", scvGas: "scv",
+  probeMin: "probe", probeGas: "probe",
+  droneMin: "drone", droneGas: "drone",
 };
 /** 모델 공간 배수의 유일한 입구 — 굽기·도록·총구 앵커가 전부 이것을 쓴다.
  *  짝은 본체 배수로 접힌다. */
@@ -8763,6 +8835,8 @@ const SHAPE_ROT: Record<string, number> = {};
 export const SHAPE_GALLERY: { kind: string; label: string; group: "유닛" | "건물" }[] = [
   // ── 유닛 · 테란 ──
   { kind: "scv", label: "SCV", group: "유닛" },
+  { kind: "scvMin", label: "SCV(미네랄)", group: "유닛" },
+  { kind: "scvGas", label: "SCV(가스)", group: "유닛" },
   { kind: "gunner", label: "마린", group: "유닛" },
   { kind: "ghost", label: "고스트", group: "유닛" },
   { kind: "fbat", label: "파이어뱃", group: "유닛" },
@@ -8779,6 +8853,8 @@ export const SHAPE_GALLERY: { kind: string; label: string; group: "유닛" | "�
   { kind: "bc", label: "배틀크루저", group: "유닛" },
   // ── 유닛 · 프로토스 ──
   { kind: "probe", label: "프로브", group: "유닛" },
+  { kind: "probeMin", label: "프로브(미네랄)", group: "유닛" },
+  { kind: "probeGas", label: "프로브(가스)", group: "유닛" },
   { kind: "zealot", label: "질럿", group: "유닛" },
   { kind: "goon", label: "드라군", group: "유닛" },
   { kind: "htemp", label: "하이 템플러", group: "유닛" },
@@ -8795,6 +8871,8 @@ export const SHAPE_GALLERY: { kind: string; label: string; group: "유닛" | "�
   { kind: "arbiter", label: "아비터", group: "유닛" },
   // ── 유닛 · 저그 ──
   { kind: "drone", label: "드론", group: "유닛" },
+  { kind: "droneMin", label: "드론(미네랄)", group: "유닛" },
+  { kind: "droneGas", label: "드론(가스)", group: "유닛" },
   { kind: "ovie", label: "오버로드", group: "유닛" },
   { kind: "zling", label: "저글링", group: "유닛" },
   { kind: "hydra", label: "히드라", group: "유닛" },
@@ -8879,6 +8957,10 @@ const GALLERY_SIZE_KIND: Record<string, string> = {
   carrierbay: "carrier",   // 인터셉터를 문 캐리어 — 몸은 캐리어다
   lurkeregg: "lurker",     // 알은 러커의 한 시절
   mutacocoon: "muta",      // 고치도 마찬가지
+  // 짐을 진 일꾼 — 지도에서 차지하는 상자는 맨몸 그대로다(짐은 몸을 안 키운다).
+  scvMin: "scv", scvGas: "scv",
+  probeMin: "probe", probeGas: "probe",
+  droneMin: "drone", droneGas: "drone",
 };
 /** 도록 kind → 지도에서 차지하는 상자의 **한 변**(타일) — 모델 갤러리의 '지도상 크기'가
  *  이 값으로 모델을 줄이고 늘인다(요청).
@@ -8910,7 +8992,11 @@ export const shapeMapTiles = (kind: string): number => {
  *  갈래 그대로). 건물·자원·크립은 여기 없어 안 밀린다. */
 const UNIT_KIND_SET = new Set(SHAPE_GALLERY.filter((g) => g.group === "유닛").map((g) => g.kind));
 /** 일꾼 모델 — 겹침 이완에서 제 일꾼끼리는 서로 안 밀어낸다(지적: 자원 곁 포개짐 허용). */
-const WORKER_KIND_SET = new Set(["scv", "probe", "drone"]);
+const WORKER_KIND_SET = new Set([
+  "scv", "probe", "drone",
+  // 짐을 지고 오는 일꾼도 일꾼이다 — 밭 곁 포개짐은 짐 유무를 안 가린다.
+  "scvMin", "scvGas", "probeMin", "probeGas", "droneMin", "droneGas",
+]);
 
 /** ShapeIcon의 면 목록 결정을 떼어 낸 것 — 캔버스 유닛 층(UnitLayer)이 같은 판(같은
  *  굽기 캐시)을 그대로 그리려면 SVG 밖에서도 이 결정을 불러야 한다. 결과가 같은 함수
@@ -14715,7 +14801,8 @@ export default function ReplayMotionPlayer({
           const morphShell = MORPH_SHELL[drawUnit] !== undefined
             && t - e.b < MORPH_SHELL_SEC ? MORPH_SHELL[drawUnit] : null;
           const kind0 = morphShell ?? (burrowed ? "burrowhole"
-            : isWorker ? workerKindOf(race) : unitMarkerKind(drawUnit2, race));
+            : isWorker ? workerLoadKind(workerKindOf(race), simState)
+              : unitMarkerKind(drawUnit2, race));
           const gunKind = kind0 === "tank" ? "tankgun" : kind0 === "tanksiege" ? "tanksiegegun" : null;
           const kindMain = kind0 === "tank" ? "tankbody" : kind0 === "tanksiege" ? "tanksiegebody" : kind0;
           unitOps.push({
