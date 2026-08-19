@@ -18,7 +18,7 @@ import {
   BUILDING_FOOT, BURROW_MIN_FRAMES, BURROW_UNITS, DEFAULT_FOOT, DEFAULT_TURN_RATE,
   FRAME_SEC, GEYSER_FOOT, LURKER_REHIT_FRAMES, MINE_ATTACH_FRAMES, MINE_DETACH_FRAMES,
   MINE_GAS_FRAMES, MINE_MINERAL_FRAMES, MINE_RETURN_FRAMES, MINERAL_FOOT, TURN_RATE,
-  UNBURROW_MIN_FRAMES,
+  UNBURROW_MIN_FRAMES, ACID_SPORE_MAX, ACID_SPORE_PX,
   buildSecOf, buildingBox, fp, isAir, moveDynOf, speedOfUnit, unfp, unitBoxTiles,
 } from "./bwUnits";
 /* 전투 값은 표(bwUnits)를 직접 읽지 않고 어댑터(bwCombat)를 거친다 — 표가 통째로 갈리는
@@ -31,7 +31,7 @@ import {
   cooldownSec, hasUpgrade, ignoresDarkSwarm, timerSec, upgradeSeconds, STIM_SELF_DAMAGE, STIM_UNITS,
   STORM_PULSES, STORM_PULSE_SEC, STORM_TILES, stormPulse,
   bunkerShooterProfileOf, minReachTiles, profileOf, reachTiles, splashDivisorAt,
-  targetFor, weaponVs,
+  splashHitsCaster, splashHitsOwnUnits, targetFor, weaponVs,
   type CombatProfile, type DmgTarget, type ProfWeapon,
 } from "./bwCombat";
 import {
@@ -291,6 +291,8 @@ type Body = {
   fixTag: number;
   /** 남은 기력(사람이 읽는 수) · 최대 기력. 메딕만 쓴다(다른 주문은 아직 이 층에 없다). */
   energy: number; energyMax: number;
+  /** 몸에 붙은 산성포자들의 만료 시각(초) — 아홉까지, 하나마다 제 타이머다. */
+  spores: number[];
   /** 지금 쓰는 전투 값 한 벌. 벙커에 타면 cpBunker로 갈아 끼운다(무기 +64px·획득 +2타일). */
   cp: CombatProfile;
   cpBase: CombatProfile; cpBunker: CombatProfile | null;
@@ -378,6 +380,8 @@ const ENERGY_PER_SEC = (8 / 256) / FRAME_SEC;
 const ENERGY_START_FRAC = 0.25;
 /** 기력 최대치 — 카듀세우스 리액터를 마치면 +50. */
 const ENERGY_MAX = 200;
+/** 산성포자 하나가 붙어 있는 시간(초) — 150 상태틱(8프레임)이다. */
+const ACID_SPORE_SEC = timerSec(STATUS_TICKS.acidSpore);
 /** 힐 사거리(타일, 중심 사이) — 원전은 30픽셀이다. */
 const HEAL_REACH = 30 / 32;
 /** 명령 없이 스스로 태울 상대를 찾는 거리(타일) — 원전 find_medic_target의 160픽셀. */
@@ -504,7 +508,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         /* 건물의 체력·실드·방어력·크기는 이제 표(UNITS)에서 온다 — 옛 판이 하던
            "건물은 large·방어력 최소 1" 같은 손보정은 지어낸 값이었다. 표에 없는 이름
            (애드온 ComSat 등)만 DEFAULT_UNIT으로 떨어진다. [추정] */
-        rad: bcp.radius, hw: 0, hh: 0, fixTag: 0, energy: 0, energyMax: 0,
+        rad: bcp.radius, hw: 0, hh: 0, fixTag: 0, energy: 0, energyMax: 0, spores: [],
         cp: bcp, cpBase: bcp, cpBunker: null,
         dmg: targetFor(e.k ?? "", bUps),
         cd: 0, foe: null, aggro: true, reacq: spot[0] + acqPhaseOf(e.t),
@@ -564,6 +568,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         ? (ENERGY_MAX + (hasUpgrade(ups, "Caduceus Reactor") ? 50 : 0)) * ENERGY_START_FRAC : 0,
       energyMax: kind === "Medic"
         ? ENERGY_MAX + (hasUpgrade(ups, "Caduceus Reactor") ? 50 : 0) : 0,
+      spores: [],
       cp, cpBase: cp, cpBunker: bunkerShooterProfileOf(kind),
       dmg: targetFor(kind, ups),
       cd: 0, foe: null, aggro: false, reacq: e.b + acqPhaseOf(e.t), dieAt: null, job: null,
@@ -1324,16 +1329,53 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       stim: t < a.stimUntil,
       adrenal: a.adrenal,
       ensnared: t < a.ensnaredUntil,
+      // 제 몸에 붙은 산성포자만큼 손이 무뎌진다(위 산성포자 주석 ②).
+      acidSpores: a.spores.length,
     });
     shots += 1;
     events.push(t, EV_FIRE, a.tag, f.tag, Math.round(a.x * 10) / 10, Math.round(a.y * 10) / 10,
       Math.round(f.x * 10) / 10, Math.round(f.y * 10) / 10);
     if (w.splashKind === "lurker") { lurkerSpines(a, f, w, t); return; }
     hurt(a, f, w, t);
-    /* 스플래시 — 표적 둘레의 적도 함께(아군 오폭은 P2 뒤 검토, 지금은 안 넣는다).
-       링 셋(1/2/4 나눔)은 표의 splashDivisorAt이 가른다. 그 함수가 땅속 표적 규칙도
-       함께 든다: 버로우한 것은 **안쪽 링만** 맞고 중간·바깥 링은 아예 안 닿는다. */
+    /* 산성포자(디바우러) — 지적: "겹쳐지면 폭증하는 것". [OBW] add_acid_spore(:14075):
+       착탄점 64픽셀 안의 **뜬** 비건물 유닛에게, 쏜 사람의 것만 빼고 하나씩 붙는다
+       (동맹은 안 뺀다 — 원전이 owner만 본다). 아홉까지 쌓이고 하나마다 제 타이머(150틱
+       = 50.4초)를 든다. 효과는 둘이고 둘 다 **중첩만큼 커진다**:
+         ① 받는 피해 +1/중첩 (weapon_deal_damage의 damage += acid_spore_count)
+         ② 제 무기 쿨다운 + max(쿨/8, 3)/중첩 (get_modified_weapon_cooldown)
+       그래서 디바우러 여럿이 같은 무리를 물면 그 무리가 점점 느려지고 점점 아프다. */
+    if (w.wp.id === "Corrosive_Acid") {
+      const sr9 = ACID_SPORE_PX / 32;
+      const cx9 = Math.floor(f.x / TCELL);
+      const cy9 = Math.floor(f.y / TCELL);
+      const rd9 = Math.ceil((sr9 + 1) / TCELL);
+      for (let yy = Math.max(0, cy9 - rd9); yy <= Math.min(tgh - 1, cy9 + rd9); yy += 1) {
+        for (let xx = Math.max(0, cx9 - rd9); xx <= Math.min(tgw - 1, cx9 + rd9); xx += 1) {
+          for (const c of tcells[yy * tgw + xx]) {
+            if (c.owner === a.owner || !c.air || c.bld || c.state === ST_GONE) continue;
+            if (dist(f.x, f.y, c.x, c.y) > sr9) continue;
+            if (c.spores.length < ACID_SPORE_MAX) c.spores.push(t + ACID_SPORE_SEC);
+            else c.spores[c.spores.length - 1] = t + ACID_SPORE_SEC;
+            c.dmg.acidSpores = c.spores.length;
+          }
+        }
+      }
+    }
+    /* 스플래시 — 링 셋(1/2/4 나눔)은 표의 splashDivisorAt이 가른다. 그 함수가 땅속 표적
+       규칙도 함께 든다: 버로우한 것은 **안쪽 링만** 맞고 중간·바깥 링은 아예 안 닿는다.
+       ★ 아군 오폭(지적: "효과가 중복되는 것과 안 되는 것 … 겹쳐지면 폭증하는 것") —
+         여태 "P2 뒤 검토"로 미뤄 둔 자리다. 원전의 규칙은 한 줄이다
+         ([OBW] bwgame.h:13797 bullet_hit):
+           damages_allies = !공중스플래시 && hit_type != enemy_splash   (= radial뿐)
+           · 쏜 본인은 늘 빠진다 — 스톰만 예외로 제 시전자도 맞는다(splashHitsCaster).
+           · radial(시즈탱크·아콘·리버·스커지·고스트 핵 등)은 **제 편도 태운다** — 이것이
+             원작에서 탱크가 제 마린을 죽이는 그 규칙이다.
+           · enemy_splash·air_splash(파이어뱃·발키리·커세어 등)는 **같은 임자**만 뺀다.
+             동맹(임자가 다른 아군)은 원전도 안 빼므로 여기서도 안 뺀다 — 팀 판정이
+             아니라 임자 판정인 것이 원전 그대로다. */
     if (w.splashKind !== "none") {
+      const hitsOwn = splashHitsOwnUnits(w.wp);
+      const hitsSelf = splashHitsCaster(w.wp);
       const sr = w.splashPx[2] / 32;
       const cx = Math.floor(f.x / TCELL);
       const cy = Math.floor(f.y / TCELL);
@@ -1346,8 +1388,9 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         for (let xx = xA; xx <= xB; xx += 1) {
           const arr = tcells[yy * tgw + xx];
           for (const c of arr) {
-            if (c === f || c.owner === a.owner || c.state === ST_GONE
-              || c.state === ST_INSIDE) continue;
+            if (c === f || c.state === ST_GONE || c.state === ST_INSIDE) continue;
+            if (c === a && !hitsSelf) continue;
+            if (!hitsOwn && c.owner === a.owner) continue;
             const dv = splashDivisorAt(w, dist(f.x, f.y, c.x, c.y) * 32,
               { burrowed: c.burrowed });
             if (dv === null) continue;
@@ -1468,6 +1511,14 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         if (b.dmg.hp > STIM_SELF_DAMAGE * 256) b.dmg.hp -= STIM_SELF_DAMAGE * 256;
       }
       if (b.matrixUntil >= 0 && t > b.matrixUntil) { b.dmg.matrixHp = 0; b.matrixUntil = -1; }
+      /* 산성포자는 중첩마다 제 타이머다 — 만료된 것만 하나씩 빠진다(원전도 슬롯을 따로
+         센다). 남은 수가 곧 받는 피해 가산이고 제 쿨다운 벌점이다. */
+      if (b.spores.length > 0) {
+        for (let i9 = b.spores.length - 1; i9 >= 0; i9 -= 1) {
+          if (b.spores[i9] <= t) b.spores.splice(i9, 1);
+        }
+        b.dmg.acidSpores = b.spores.length;
+      }
       if (b.died !== null && t >= b.died) {
         if (b.state !== ST_GONE) { b.state = ST_GONE; pushKey(b, b.died, true); }
         dropped = true;

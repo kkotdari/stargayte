@@ -997,7 +997,14 @@ export const timerSec = (ticks: number): number => ticks * TIMER_TICK_FRAMES * F
 export const STATUS_TICKS = {
   stasis: 131, lockdown: 131, defensiveMatrix: 168,
   plague: 75, irradiate: 75, ensnare: 75, stim: 37, maelstrom: 22,
+  /** 산성포자(디바우러) — [OBW] add_acid_spore가 슬롯에 150을 놓는다. 중첩 하나마다
+   *  제 타이머를 따로 들고, 상태 틱(8프레임)마다 하나씩 준다 → 1200프레임(빠름 50.4초). */
+  acidSpore: 150,
 } as const;
+/** 산성포자 최대 중첩 — [OBW] `if (u->acid_spore_count < 9) ++…`. */
+export const ACID_SPORE_MAX = 9;
+/** 산성포자가 번지는 반경(픽셀) — [OBW] add_acid_spore(pos, owner)의 square_at(pos, 64). */
+export const ACID_SPORE_PX = 64;
 /** 디펜시브 매트릭스 흡수량. */
 export const MATRIX_HP = 250;
 /** 스팀팩 자해 — 방어력·실드 무시 생피해. hp > 10일 때만 발동한다. */
