@@ -34,8 +34,8 @@ import { posAtSim, shotsAt, ST_INSIDE, type SimEventArr, type SimTrack } from ".
 import { posAt, LERP_MAX_GAP_SEC, type TrackPos, type TrackPt } from "../../utils/replayTrack";
 import { FLYING_BUILDING_TPS } from "../../utils/bwTransport";
 import {
-  annulusPath, bandPath, bodyFace, capFace, depthNow, groundEllipse, LOD_FINE, LOD_TRIM,
-  lodFilter, sideFace, tagKey, topFace,
+  annulusPath, bandPath, bodyFace, capFace, curvePath3, depthNow, groundEllipse, LOD_FINE,
+  LOD_TRIM, lodFilter, sideFace, tagKey, topFace,
   type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
   domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces,
@@ -7843,10 +7843,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 드랍십(다시 셋, 지적) — 완만하게 휘어진 판의 양쪽 끝에 실린더가 달린 꼴: 좌우
      굵은 통 한 쌍과 그 사이를 잇는 활처럼 젖혀진 판. 앞끝은 뭉뚝한 뚜껑, 뒤엔 꼬리. */
   dship: () => {
-    const pt = (x: number, y: number, z: number): string => {
-      const [px, py] = project(x, y, z);
-      return `${px} ${py}`;
-    };
+    // (정리) 손 좌표 문자열 헬퍼 pt — 굽은 판이 전부 curvePath3로 옮겨져 쓸 데가 없다.
     const out: ShapeFace[] = []; // 꼬리 제거(재재지적)
     /* 포드는 캡슐 한 덩이(정정: 앞 뭉치가 본체와 떨어져 보였고 검정이 끼었다) —
        양 끝이 둥근 외곽선 하나로 그려 이음매도 어두운 단면도 없다. */
@@ -7865,20 +7862,23 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     pod(2.6);
     /* 구부러진 판이 곧 윗 등(재지적: 판이 너무 아래) — 포드보다 한 단 높이 올리고
        포드 뒤에 그려 등이 위로 올라앉는다. 판은 은색, 개인색 띠는 이 판에만(재지적). */
-    const plate = `M${pt(-2.6, 2.6, 6.1)} Q${pt(0, 3.4, 6.95)} ${pt(2.6, 2.6, 6.1)}`
-      + ` L${pt(2.6, -1.8, 5.9)} Q${pt(0, -2.8, 6.55)} ${pt(-2.6, -1.8, 5.9)} Z`;
+    const plate = curvePath3([-2.6, 2.6, 6.1], [
+      [[0, 3.4, 6.95], [2.6, 2.6, 6.1]], [[2.6, -1.8, 5.9]], [[0, -2.8, 6.55], [-2.6, -1.8, 5.9]],
+    ]);
     // 판 두께감(지적) — 앞 가장자리 아래로 내려앉는 옆면 띠.
-    const edge = `M${pt(-2.6, 2.6, 6.1)} Q${pt(0, 3.4, 6.95)} ${pt(2.6, 2.6, 6.1)}`
-      + ` L${pt(2.6, 2.6, 5.4)} Q${pt(0, 3.4, 6.25)} ${pt(-2.6, 2.6, 5.4)} Z`;
+    const edge = curvePath3([-2.6, 2.6, 6.1], [
+      [[0, 3.4, 6.95], [2.6, 2.6, 6.1]], [[2.6, 2.6, 5.4]], [[0, 3.4, 6.25], [-2.6, 2.6, 5.4]],
+    ]);
     /* 좌우 옆면(재지적: 등판 옆면이 안 보임) — 판 좌우 변에서 아래로 내려앉는 두께
        띠. 보이는 쪽만 그린다. */
-    const flank = (m9: 1 | -1): string =>
-      `M${pt(m9 * 2.6, 2.6, 6.1)} L${pt(m9 * 2.6, -1.8, 5.9)}`
-      + ` L${pt(m9 * 2.6, -1.8, 5.2)} L${pt(m9 * 2.6, 2.6, 5.4)} Z`;
+    const flank = (m9: 1 | -1): string => curvePath3([m9 * 2.6, 2.6, 6.1], [
+      [[m9 * 2.6, -1.8, 5.9]], [[m9 * 2.6, -1.8, 5.2]], [[m9 * 2.6, 2.6, 5.4]],
+    ]);
     /* 뒤 가장자리 두께(재지적: 등판 뒷면도 안 보임) — 앞 edge와 짝이 되는 뒤쪽 띠.
        뒤가 보일 때만 그린다. */
-    const rearEdge = `M${pt(-2.6, -1.8, 5.9)} Q${pt(0, -2.8, 6.55)} ${pt(2.6, -1.8, 5.9)}`
-      + ` L${pt(2.6, -1.8, 5.2)} Q${pt(0, -2.8, 5.85)} ${pt(-2.6, -1.8, 5.2)} Z`;
+    const rearEdge = curvePath3([-2.6, -1.8, 5.9], [
+      [[0, -2.8, 6.55], [2.6, -1.8, 5.9]], [[2.6, -1.8, 5.2]], [[0, -2.8, 5.85], [-2.6, -1.8, 5.2]],
+    ]);
     out.push(...tagKey([
       [edge, 1, "#c9ced6"] as ShapeFace, sideFace(edge, 0.22),
       ...(faceLight(0, -1).visible
@@ -7891,8 +7891,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       }),
       [plate, 1, "#c9ced6"] as ShapeFace, topFace(plate, 0.18),
       // 등판 개인색 띠 — 판의 굽은 결을 그대로 따르는 가로 줄.
-      bodyFace(`M${pt(-2.55, 1.9, 6.11)} Q${pt(0, 2.6, 6.9)} ${pt(2.55, 1.9, 6.11)}`
-        + ` L${pt(2.55, 0.6, 6.06)} Q${pt(0, 1.3, 6.83)} ${pt(-2.55, 0.6, 6.06)} Z`),
+      bodyFace(curvePath3([-2.55, 1.9, 6.11], [
+        [[0, 2.6, 6.9], [2.55, 1.9, 6.11]], [[2.55, 0.6, 6.06]], [[0, 1.3, 6.83], [-2.55, 0.6, 6.06]],
+      ])),
     ], depthNow(0, 0.4)));
     /* 뒤 추진체 셋 — 짙은 은색(재지적). 앞에서 볼 때도 몸을 뚫고 보이던 문제(지적:
        안 가려짐)는 꽁무니가 돌아앉으면 아예 그리지 않는 것으로 해결 — 몸판이 무깊이
@@ -7978,7 +7979,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 등 뒤 엔진 짐 — 하나만 남기고 밝은 사이언색(요청).
     out.push(...paintBase(domeFaces3(0, -2.3, 0.95, 0.8, 4.2), "#a9ecf2"));
     // 아가리 어두운 속은 제거(지적: 앞 검정 반투명 부품) — 빛 줄만 남긴다.
-    out.push(topFace(`M${pt(-1.6, 1.1, 3.9)} Q${pt(0, 2, 3.9)} ${pt(1.6, 1.1, 3.9)} L${pt(1.4, 1.5, 3.9)} Q${pt(0, 2.4, 3.9)} ${pt(-1.4, 1.5, 3.9)} Z`, 0.5));
+    out.push(topFace(curvePath3([-1.6, 1.1, 3.9], [
+      [[0, 2, 3.9], [1.6, 1.1, 3.9]], [[1.4, 1.5, 3.9]], [[0, 2.4, 3.9], [-1.4, 1.5, 3.9]],
+    ]), 0.5));
     /* 앞 집게 한 쌍(요청·실물 사진) — 초승달 꼴: 바깥은 크게 부풀고 안쪽은 오목해
        끝이 뾰족하며, 두 끝이 서로 오므라들어 마주 본다. 앞으로 갈수록 살짝 내려앉고
        윗판·아랫판과 테두리 띠로 두께를 준다. 금색. */

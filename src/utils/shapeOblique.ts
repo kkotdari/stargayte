@@ -183,6 +183,53 @@ export function ringFaces3(
   return tagKey([bodyFace(d), topFace(d, OP.topSoft)], depthNow(cx, cy) + ro);
 }
 
+/** 모형 공간 점 — project에 그대로 넘긴다. */
+export type Pt3 = readonly [number, number, number];
+/** 곡면 판의 한 변 — [끝점]이면 직선, [제어점, 끝점]이면 2차 곡선. */
+export type Seg3 = readonly [Pt3] | readonly [Pt3, Pt3];
+
+/** 곡면 판 패스(요청: 곡면 판 전용 프리미티브) — 모형 공간 점들로 닫힌 조각을 그린다.
+ *
+ *  손으로 `M${pt(..)} Q${pt(..)} ${pt(..)} L${pt(..)}`를 이어 붙이던 자리를 그대로
+ *  대신한다. 제어점을 그 자리 그대로 받으므로 **그림이 안 바뀌고**(요청: 기존 모양
+ *  최대한 유지), 대신 손 문자열이 못 받던 것들을 받는다:
+ *    · project를 지나므로 요잉·시각 밀림·앞숙임·판(평면/부감/입체)이 저절로 실린다.
+ *    · 부품 깊이(tagKey)가 붙어 화가 순서에 제대로 낀다 — 손 면은 무깊이라 직전
+ *      부품의 깊이를 물려받아 앞뒤가 뒤집히곤 했다.
+ *    · 등급(LOD)이 붙어 사양에 따라 빠진다.
+ *  상자·원통으로는 못 만드는 굽은 등판·꽃잎·집게·아가리가 이 프리미티브의 몫이다. */
+export function curvePath3(start: Pt3, segs: readonly Seg3[], close = true): string {
+  const p = (q: Pt3): string => {
+    const [x, y] = project(q[0], q[1], q[2]);
+    return `${x} ${y}`;
+  };
+  let d = `M${p(start)}`;
+  for (const sg of segs) d += sg.length === 1 ? ` L${p(sg[0])}` : ` Q${p(sg[0])} ${p(sg[1])}`;
+  return close ? `${d} Z` : d;
+}
+
+/** 곡면 판 — curvePath3에 몸통·명암·부품 깊이를 한 번에 얹는다.
+ *  fill을 주면 그 색(안 주면 개인색), lit/shade는 얹을 명암의 농도다.
+ *  깊이는 판의 **가장 앞점**으로 잡는다(tagKey 주석의 규칙 — 중앙값은 길쭉한 판에서
+ *  틀린다). */
+export function plateFaces3(
+  start: Pt3, segs: readonly Seg3[],
+  opts: { fill?: string; lit?: number; shade?: number } = {},
+): ShapeFace[] {
+  const d = curvePath3(start, segs);
+  const out: ShapeFace[] = [opts.fill ? [d, 1, opts.fill] : bodyFace(d)];
+  if (opts.lit) out.push(topFace(d, opts.lit));
+  if (opts.shade) out.push(sideFace(d, opts.shade));
+  let key = depthNow(start[0], start[1]);
+  for (const sg of segs) {
+    for (const q of sg) {
+      const k = depthNow(q[0], q[1]);
+      if (k > key) key = k;
+    }
+  }
+  return tagKey(out, key);
+}
+
 /** 두 화면 점을 잇는 **띠**(폭 있는 사각 판) — 양 끝 반폭을 따로 줄 수 있어 끝이
  *  가늘어지는 칼날·팔·힘줄에도 쓴다. 손으로 네 꼭짓점을 적던 자리를 대신한다. */
 export function bandPath(
