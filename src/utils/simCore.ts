@@ -2485,6 +2485,24 @@ function lowerBound(events: SimEventArr, t: number): number {
 }
 
 /** [t-win, t] 창의 발사 — 태그마다 마지막 한 발(표적 자리)만. 트레이서를 그리는 재료다. */
+/** 맞은 쪽 → 쏜 쪽 자리 — 피격 효과를 '맞는 방향'에 놓으려면 이 방향이 필요하다
+ *  (지적: "피격효과도 타겟 몸에서 맞는 방향에 표시"). shotsAt의 거울이다. */
+export function hitsAt(
+  events: SimEventArr, t: number, win: number,
+): Map<number, [number, number]> {
+  const out = new Map<number, [number, number]>();
+  let i = lowerBound(events, t - win);
+  const n = events.length / EVENT_STRIDE;
+  for (; i < n; i += 1) {
+    const o = i * EVENT_STRIDE;
+    if (events[o] > t) break;
+    if (events[o + 1] !== EV_FIRE) continue;
+    // 표적 태그 → 쏜 쪽 자리(x, y).
+    out.set(events[o + 3], [events[o + 4], events[o + 5]]);
+  }
+  return out;
+}
+
 export function shotsAt(
   events: SimEventArr, t: number, win: number,
 ): Map<number, [number, number]> {

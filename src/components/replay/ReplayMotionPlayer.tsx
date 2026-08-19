@@ -31,7 +31,9 @@ import {
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, type TerrainGrid } from "../../utils/minimapTerrain";
 import { loadSimTracks, logSim } from "../../utils/simClient";
-import { posAtSim, shotsAt, ST_INSIDE, type SimEventArr, type SimTrack } from "../../utils/simCore";
+import {
+  hitsAt, posAtSim, shotsAt, ST_INSIDE, type SimEventArr, type SimTrack,
+} from "../../utils/simCore";
 /* 자취 읽기는 유틸로 나갔다(과제 #61) — 코어가 걸음의 진실이 된 뒤로 이 파일의
    몫이 아니고, 밖에 있어야 자로 잴 수 있다(scripts/pos-check.mjs). */
 import { posAt, type TrackPos, type TrackPt } from "../../utils/replayTrack";
@@ -8424,12 +8426,15 @@ const SIZE_REF = gmOf(Object.values(UNIT_BW_TILES));
  *      디바우러 1.02 · 아비터 1.06: 44×44 셋 중 가디언을 기준으로 두고
  *      내구(250 / 350+150)와 인구(4 / 8) 순으로 벌렸다. **폭은 임의다.** */
 const UNIT_SIZE_TUNE: Partial<Record<keyof typeof UNIT_BW_RAW, number>> = {
-  /* (비움 — 요청: "유닛 크기 비율 원작과 똑같이") 여기 있던 15칸은 전부 **섞기와 공중
-     슬랙이 만든 왜곡을 되돌리는 값**이었다(레이스·스카웃·셔틀은 슬랙에 과하게 깎여서,
-     32×32·44×44 뭉치는 섞어도 안 갈라져서, 스커지·오버로드는 눈대중으로). 그 둘을 다
-     껐으므로 되돌릴 왜곡도 없다 — 남겨 두면 그만큼 원작 비율에서 다시 벗어난다.
-     값과 근거는 git 이력(이 줄의 직전 판)에 그대로 있다. 화면을 보고 특정 종류만
-     손봐야 하면 여기에 한 줄씩 다시 적는 것이 그 자리다. */
+  /* 원작 비율로 돌린 뒤 **화면을 보고** 다시 잡은 값들이다(요청: 축소 마인·옵저버 /
+     확대 아비터·디파일러·울트라). 앞선 15칸(등급 섞기·공중 슬랙의 왜곡을 되돌리던 값)은
+     원인을 껐으므로 전부 비웠고, 여기 남는 것은 '자료가 말하는 상자'와 '눈에 보이는 몸'이
+     갈리는 종류뿐이다 — 그 갈림의 뿌리는 units.dat의 상자가 표적 획득용이라 실제 그림과
+     다른 데 있다(마인 15×15인데 모델은 납작한 원반, 옵저버 32×32인데 그림은 작은 구슬,
+     아비터·디파일러·울트라는 반대로 그림이 상자보다 크다). GRP 헤더를 캐면 이 표는
+     통째로 필요 없어진다. 폭은 ±20% 안에서 눈대중이다 — [어림]. */
+  mine: 0.8, observer: 0.8,
+  arbiter: 1.2, defiler: 1.2, ultra: 1.2,
 };
 /** ③-c 전체 배수 — "다 조금 크게/작게"를 한 값으로. */
 const UNIT_SIZE_GLOBAL: number = 1;
@@ -9015,7 +9020,9 @@ const BLD_ANCHOR_CACHE = new Map<string, [number, number]>();
    (요청: "넥서스 해처리 커맨드는 예외로 더 크게, 실제 게임처럼") — 원작에서도 이 셋의
    그림은 4×3 발자국을 넘어 앉는다. 레어·하이브는 해처리의 다음 단계라 같은 몫이다. */
 export const BLD_FILL_TARGET: Record<string, number> = {
-  tomb: 1.2, pyramidWide: 1.2, hatchery: 1.2, lair: 1.2, hive: 1.2,
+  /* 커맨드(tomb)만 한 단 더 키운다(요청: 확대 커맨드) — 넥서스(pyramidWide)·해처리
+     계열과 같은 1.2에서 1.4로. 본진 셋 중 커맨드만 유독 납작해 보이던 자리다. */
+  tomb: 1.4, pyramidWide: 1.2, hatchery: 1.2, lair: 1.2, hive: 1.2,
   /* 스타포트·게이트웨이가 제 발자국보다 좁아 보인다(지적: "일부 건물들이 실제 캔버스보다
      작게(좁게) 그려지는 느낌 … 게이트웨이 스타포트 등" · "스타포트는 안테나를 크기계산
      에서 살짝 빼줘야하고") — 진단이 맞다. 정규화가 재는 것은 **잉크 폭 전체**라, 몸통
@@ -9107,7 +9114,7 @@ export const BLD_NORM: Record<string, number> = {
   spire: 1.450,
   spore: 1.422,
   sunken: 1.072,
-  tomb: 1.534,
+  tomb: 1.790,
   tombFlat: 1.140,
   trapezoid: 1.514,
   tribunal: 1.615,
@@ -12493,6 +12500,9 @@ export default function ReplayMotionPlayer({
      트레이서 애니가 살아 있는 길이 어림이다. 시뮬이 꺼져 있으면 null이고, 그때는
      렌더가 종전대로 제 교전 판정으로 그린다. */
   const simShots = simEvents ? shotsAt(simEvents, t, 0.35) : null;
+  /* 누가 나를 쐈나 — 피격 불티를 '맞는 방향'에 놓는 자다(지적). 창은 불티가 떠 있는
+     동안(0.45초)보다 조금 넓게 잡아, 불티가 뜬 뒤에도 방향을 잃지 않게 한다. */
+  const simHits = simEvents ? hitsAt(simEvents, t, 0.6) : null;
   const unitOps: UnitDrawOp[] = [];
   /* (제거) 어택 명령 표적 집합으로 피격을 그리던 자 — 명령이 찍힌 곳과 실제로 맞는
      곳이 다르고 8초 내내 켜져, 싸움과 무관한 자리에서 불티가 텄다(지적). 이제 각
@@ -13479,7 +13489,8 @@ export default function ReplayMotionPlayer({
             const bs9 = BLD_STATS[unit];
             const bShShare9 = bs9 && bs9[1] > 0 ? bs9[1] / (bs9[0] + bs9[1]) : 0;
             const bShieldUp9 = bShShare9 > 0 && (bldHp.frac ?? 1) > 1 - bShShare9 + 0.001;
-            const bldHitFx = bldHp.hurt > -99 && t - bldHp.hurt <= 0.8 ? (
+            // 건물도 같은 잣대로 잠깐만(지적) — 0.8 → 0.35초.
+            const bldHitFx = bldHp.hurt > -99 && t - bldHp.hurt <= 0.35 ? (
               <span
                 key={`bhit-${i}`}
                 className="scr-motion-army scr-motion-dot scr-v2fx"
@@ -14476,7 +14487,8 @@ export default function ReplayMotionPlayer({
              찍힌 곳과 실제로 맞는 곳은 다르고(표적은 그 사이 걸어가 있다), 8초 내내
              켜져 있어 싸움과 무관한 자리에서도 불티가 텄다. 이제 제 체력 자취가
              내려간 순간(hurtAt)에만, 제 몸 위에서 짧게 튄다. */
-          const hitNow = t - hurtAt <= 0.7;
+          // 잠깐만 뜬다(지적: "절대 움직임 없게 잠깐 표시") — 0.7 → 0.3초.
+          const hitNow = t - hurtAt <= 0.3;
           /* 효과는 가슴 높이(지적: 공격 효과가 너무 낮다 — 발밑에서 튀었다) — 마커
              기준점은 발 자리라, 유닛 키의 1/3만큼 띄워 몸통에 맞춘다. */
           const fxPx = drawUnit === ""
@@ -14509,9 +14521,21 @@ export default function ReplayMotionPlayer({
                 key={`hit-${Math.round(hurtAt * 10)}`}
                 className="scr-motion-puff scr-puff-hit"
                 style={{
-                  width: `${(fxPx * 0.55).toFixed(1)}px`,
-                  height: `${(fxPx * 0.55).toFixed(1)}px`,
-                  transform: "translate(-50%, -60%)",
+                  /* 맞는 방향에, 움직임 없이 잠깐(지적) — 코어의 발사 사건에서 쏜 쪽
+                     자리를 찾아 몸 테두리 쪽으로 옮긴다. 방향을 모르면(사건이 없거나
+                     증거만으로 아는 피격) 예전처럼 몸 가운데다. */
+                  width: `${(fxPx * 0.42).toFixed(1)}px`,
+                  height: `${(fxPx * 0.42).toFixed(1)}px`,
+                  transform: (() => {
+                    const from9 = simHits?.get(e.tag);
+                    if (!from9) return "translate(-50%, -60%)";
+                    const dx9 = from9[0] - pos.x;
+                    const dy9 = (from9[1] - pos.y) * (pitched ? PITCH_FLAT : 1);
+                    const len9 = Math.hypot(dx9, dy9) || 1;
+                    const r9 = fxPx * 0.34;      // 몸 반지름 언저리
+                    return `translate(calc(-50% + ${((dx9 / len9) * r9).toFixed(1)}px), `
+                      + `calc(-60% + ${((dy9 / len9) * r9).toFixed(1)}px))`;
+                  })(),
                 }}
               />
             )
@@ -14606,6 +14630,14 @@ export default function ReplayMotionPlayer({
              "burrowhole"이다). 앵커 배수도 그 판을 따라야 한다 — 럴커 0.627 대 구멍
              0.832라 그대로 두면 1.327배 어긋나 가시가 구멍의 32% 자리에서 솟는다
              (지금은 53%다). 히드라가 버로우한 채 맞을 때도 같은 갈래다. */
+          /* 그 무기의 쿨다운(초) — 트레이서 번쩍임 길이의 자다(위 animationDuration 주석).
+             업그레이드·스팀은 안 본다: 눈에 보이는 것은 '이 무기가 얼마나 자주 쏘나'다. */
+          const fxCd = (() => {
+            const pf9 = isKnownKind(fxUnit) ? profileOf(fxUnit) : null;
+            const w9 = pf9 ? weaponVs(pf9, foe.air) : null;
+            const cd9 = w9 ? w9.cd : 0.6;
+            return Math.min(0.32, Math.max(0.08, cd9 * 0.35));
+          })();
           const mzS = modelNormOf(burrowed ? "burrowhole" : (MUZZLE_PLATE[fxKind] ?? fxKind));
           const mzTf = mzP
             ? `translate(${(((mzP[0] - 8) * mzS * fxPx) / 16).toFixed(1)}px, ${((((mzP[1] - 8) * mzS * fxPx) / 16) + 0.1 * fxPx).toFixed(1)}px) rotate(${beamDeg!.toFixed(1)}deg)`
@@ -14635,6 +14667,11 @@ export default function ReplayMotionPlayer({
                      px→타일은 원작의 한 타일 = 32px. */
                   style={{
                     transform: mzTf, animationDelay: `${((ei * 7) % 5) / 10}s`,
+                    /* 길이는 그 무기의 쿨다운에 매인다(지적: "타이밍을 아주 짧게 가져간다
+                       (공속에 반비례)") — 빨리 쏘는 무기일수록 번쩍임이 짧아 다음 발과 안
+                       겹치고, 느린 무기(시즈·가디언)는 조금 길게 남는다. 쿨다운의 35%를
+                       0.08~0.32초로 죈다. 표 값이라 손으로 정한 수는 상한·하한 둘뿐이다. */
+                    animationDuration: `${fxCd.toFixed(3)}s`,
                     ...(lurkStrike ? {
                       height: `${((LURKER_SPINE_TRAVEL_PX / 32) * ((mapRef.current?.clientWidth ?? 320) / grid.width)).toFixed(1)}px`,
                       animationDuration: `${(LURKER_SPINE_TRAVEL_PX / LURKER_SPINE_SPEED_PX * FRAME_SEC).toFixed(3)}s`,
