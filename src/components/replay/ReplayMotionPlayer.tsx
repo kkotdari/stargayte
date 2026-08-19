@@ -1570,17 +1570,23 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ]);
       const flS = faceLight(0, -ez / l9, ey / l9);
       f.push(bodyFace(slope), ...(flS.visible ? flS.face(slope) : [sideFace(slope, 0.34)]));
-      // 살 — 경사면을 가로지르는 밝은 줄. 면을 따라 앉게 t로 보간한다.
+      /* 살 — 경사면을 가로지르는 줄. 면을 따라 앉게 t로 보간한다.
+         밝은 줄 바로 아래에 **검은 줄**을 붙여 두 톤으로 낸다(요청: "배럭과 팩토리
+         벤트에 검은 가로 줄들 추가") — 한 톤짜리 흰 줄만으로는 판에 그은 선으로 보이고,
+         밝고 어두운 짝이 이어져야 살이 겹쳐 난 루버로 읽힌다. */
       for (let i9 = 1; i9 <= ribs; i9 += 1) {
         const t0 = i9 / (ribs + 1);
-        const t1 = t0 + 0.09;
         const at = (t9: number): [number, number] => [yBack + ey * t9, zTop - hi * t9];
-        const [ya, za] = at(t0);
-        const [yb, zb] = at(t1);
-        f.push(topFace(polyPath3([
-          [cx - hw * 0.78, ya, za], [cx + hw * 0.78, ya, za],
-          [cx + hw * 0.78, yb, zb], [cx - hw * 0.78, yb, zb],
-        ]), 0.3));
+        const bar = (ta: number, tb: number): string => {
+          const [ya, za] = at(ta);
+          const [yb, zb] = at(tb);
+          return polyPath3([
+            [cx - hw * 0.78, ya, za], [cx + hw * 0.78, ya, za],
+            [cx + hw * 0.78, yb, zb], [cx - hw * 0.78, yb, zb],
+          ]);
+        };
+        f.push(topFace(bar(t0, t0 + 0.07), 0.3));
+        f.push(sideFace(bar(t0 + 0.07, t0 + 0.15), 0.55));
       }
       return f;
     };
@@ -1868,6 +1874,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const SEC: [number, number][] = ([
       [-3, 2.2], [-2, 1.2], [2, 1.2], [3, 2.2], [3, 5.9], [2, 6.9], [-2, 6.9], [-3, 5.9],
     ] as [number, number][]).map(([y9, z9]) => [y9 * K, z9 * K] as [number, number]);
+    /** 몸통 한 덩이의 키 — 8각 기둥은 면을 안에서 정렬한 뒤 **한 키**로 묶어 올린다.
+     *  벽에 붙는 데칼은 반드시 이 값보다 커야 몸에 안 묻힌다(지적: "데칼과 창문이
+     *  사선에서 잘 안보임"). 데칼 키를 제 벽의 깊이로만 매기면, 요잉에 따라 그 깊이가
+     *  몸 키보다 작아지는 구간이 생겨 보이는 벽인데도 데칼이 몸 뒤로 들어갔다. */
+    const BODYK = depthNow(-0.6, -0.6) * 1.6;
+    /** 벽 데칼의 키 — 제 벽 깊이를 쓰되 몸통 아래로는 안 내려간다. */
+    const wallKey = (dx9: number, dy9: number): number =>
+      Math.max(depthNow(dx9, dy9) * 1.6, BODYK) + 0.4;
     const out: ShapeFace[] = [
       /* 본체 바닥 패드 넷 — 8각 단면의 밑면(y −2.4~2.4, z 1.44) 안에서 시작해 몸에
          딱 붙는다. 몸이 1.2배가 되었으므로 자리도 함께 1.2배다. */
@@ -1905,15 +1919,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         const fl9 = faceLight(f9.nx, f9.ny, f9.nz);
         body.push(bodyFace(f9.d), ...(fl9.visible ? fl9.face(f9.d) : [sideFace(f9.d, 0.44)]));
       }
-      out.push(...tagKey(body, depthNow(-0.6, -0.6) * 1.6));
+      out.push(...tagKey(body, BODYK));
     }
     const pc: ShapeFace[] = [];
     /* 긴 벽(±y)에는 패널 홈만 얹는다 — 보이는 쪽 벽에만. */
     for (const sy of [1, -1] as const) {
-      if (!faceLight(0, sy, 0).visible) continue;
-      /* 옆면 데칼은 그 벽이 보일 때만 그리므로 벽보다 한 단만 위면 된다(지적: 팩토리
-         키값 수정) — +10은 지붕 얹힘(24대)과 뒤섞여 앞뒤가 뒤집혔다. */
-      const key = depthNow(0, sy * YW) * 1.6 + 0.4;
+      /* 보임은 눈금으로 본다(지적: 사선에서 데칼·창이 잘 안 보임) — faceLight의 참·거짓
+         컷은 문턱을 넘는 순간 통째로 사라져, 비스듬한 각에서 벽은 아직 보이는데 그 위의
+         데칼만 없어지는 구간을 만든다. facingRatio는 같은 값을 눈금으로 주므로 컷을
+         낮춰(0.06) 벽이 사실상 사라질 때까지 데칼을 붙들 수 있다. */
+      if (facingRatio(0, sy) <= 0.06) continue;
+      const key = wallKey(0, sy * YW);
       const det: ShapeFace[] = [];
       const yw = sy * (YW + 0.02);
       for (const px of [-4.2 * KX, -1.9 * KX, 0.4 * KX, 2.7 * KX]) {
@@ -1950,9 +1966,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        오른쪽(+x)에는 출입문이 있어(z 2.95~5.25 · |y| ≤ 1.45) 띠가 문을 지나지 않게
        가운데 토막을 건너뛴다. */
     for (const sx of [1, -1] as const) {
-      if (!faceLight(sx, 0, 0).visible) continue;
+      if (facingRatio(sx, 0) <= 0.06) continue;
       const xw9 = sx > 0 ? X1 + 0.02 : X0 - 0.02;
-      const key9 = depthNow(sx > 0 ? X1 : X0, 0) * 1.6 + 0.4;
+      const key9 = wallKey(sx > 0 ? X1 : X0, 0);
       const win9: ShapeFace[] = [];
       const dash9: ShapeFace[] = [];
       for (const dy9 of [-2.2, 0, 2.2]) {
@@ -1980,7 +1996,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const GHW = 1.45;                 // 문·경사로 반폭(y)
       const SILL = 2.95;                // 문턱 — 벽이 가장 넓은 구간(z 2.64~7.08) 안
       const xw = X1 + 0.02;
-      if (faceLight(1, 0, 0).visible) {
+      if (facingRatio(1, 0) > 0.06) {
         const det: ShapeFace[] = [
           // 문간 — 벽에 판 어두운 구멍.
           [polyPath3([
@@ -1991,12 +2007,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
             [xw, GHW, SILL + 2.3], [xw, -GHW, SILL + 2.3],
           ]), 0.3),
         ];
-        out.push(...tagKey(det, depthNow(X1, 0) * 1.6 + 0.4));
+        out.push(...tagKey(det, wallKey(X1, 0)));
         /* 문 위 개인색 데칼 — 앞 오른쪽 상자를 걷은 자리를 이것이 물려받는다. */
         pc.push(...tagKey([bodyFace(polyPath3([
           [xw + 0.02, -GHW - 0.2, SILL + 2.55], [xw + 0.02, GHW + 0.2, SILL + 2.55],
           [xw + 0.02, GHW + 0.2, SILL + 3.85], [xw + 0.02, -GHW - 0.2, SILL + 3.85],
-        ]))], depthNow(X1, 0) * 1.6 + 0.45));
+        ]))], wallKey(X1, 0) + 0.05));
       }
       /* 경사로 — 안(문턱 안쪽 0.6)에서 시작해 문을 지나 밖으로 나오며 땅에 닿는다.
          화살표는 이 판 위에 그대로 얹는다 — 같은 평면이라 요잉을 함께 탄다. */
@@ -2059,15 +2075,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           topFace(polyPath3([L[1], L[2], R[2], R[1]]), 0.26),
           sideFace(polyPath3([L[0], L[2], R[2], R[0]]), 0.3),
         ];
-        // 빗면 살 셋 — 벤트로 읽히게.
-        for (let k9 = 1; k9 <= 3; k9 += 1) {
-          const t9 = k9 / 4;
+        // 빗면의 검은 가로 줄(요청) — 셋 → 여섯, 더 짙게. 루버(가로 살) 결이 난다.
+        for (let k9 = 1; k9 <= 6; k9 += 1) {
+          const t9 = k9 / 7;
           const py = y1 + (y0 - y1) * t9;
           const pz = ZT + h9 * t9;
           w.push(sideFace(polyPath3([
             [cx9 - hw + 0.18, py, pz], [cx9 + hw - 0.18, py, pz],
             [cx9 + hw - 0.18, py - 0.12, pz + 0.07], [cx9 - hw + 0.18, py - 0.12, pz + 0.07],
-          ]), 0.42));
+          ]), 0.55));
         }
         return tagKey(w, 25 + depthNow(cx9, 0.3));
       })(),
@@ -3109,6 +3125,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       topFace(discPath3(0, 0, 1.38, 3.2), 0.2),
       capFace(discPath3(0, 0, 1.41, 2.1), 0.3),
     ], 1.4));
+    /* 뚜껑 가운데의 링 구조물(지적: "포토 윗뚜껑은 평평하지 않고 가운데 링모양의 입체
+       구조물이 붙어있음") — 여태 뚜껑은 원반 셋을 겹친 **평면**이라, 위에서 내려다볼수록
+       접시에 무늬만 그린 꼴이었다. 두께 있는 짧은 원통을 얹고 가운데를 어둡게 파, 가운데
+       포탑이 그 구멍을 뚫고 서는 고리로 만든다. */
+    {
+      const RZ = 1.42;   // 뚜껑 윗면
+      const RH = 0.62;   // 고리 높이
+      out.push(...tagKey([
+        ...cylinderFaces3(0, 0, 3.05, RH, RZ),
+        capFace(discPath3(0, 0, RZ + RH + 0.01, 1.95), 0.42),
+        topFace(annulusPath(...((): [number, number, number, number] => {
+          const [ax9, ay9] = project(0, 0, RZ + RH + 0.02);
+          return [ax9, ay9, 3, 2];
+        })()), 0.16),
+      ], 1.45));
+    }
     /* 톱니는 몸통 밖에(지적: 반쯤 파묻힌 톱니가 통째로 비쳐 어색) — 벽에 살짝만 닿게
        반지름을 밖으로 빼면, 앞 톱니는 벽 앞·뒤 톱니는 벽 뒤로 자연히 갈린다. */
     /* 톱니를 방사 방향으로 돌려 세운다(지적: "포토 이빨 회전시 안 도는 느낌") —
@@ -4090,6 +4122,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       g.push(...walls);
       g.push(bodyFace(polyPath3(rp)), ...nearLit.face(polyPath3(rp)));
       g.push(...nearCaps);
+      /* 앞쪽 중심축(요청: "포지 톱니 앞쪽에 중심축을 납작한 원통 붙임") — 바퀴 한가운데
+         (y 1.6 · z CZ)에서 가까운 판 밖으로 짧게 튀어나온 원통이다. 축이 있어야 반원
+         톱니가 '돌아가는 바퀴'로 읽힌다. 가까운 판이 어느 쪽이냐에 따라 나가는 방향이
+         뒤집히므로 nearX의 부호를 그대로 쓴다. */
+      const axOut = nearX === WX0 ? -0.5 : 0.5;
+      g.push(...paintBase(tubeFaces(nearX, 1.6, nearX + axOut, 1.6, 0.62, CZ, true), GOLD_D));
       /* 톱니 바퀴는 y로 깊은 부품(반지름 2.5) — 가운데 깊이만 쓰면 제 앞쪽이 실제보다
          뒤로 잡힌다. 프리미티브와 같은 규약으로 앞점을 더한다. */
       out.push(...tagKey(paintBase(g, GOLD_D), depthNow(-3.8, 1.6)
