@@ -25,7 +25,9 @@ import {
 } from "../../utils/bwCombat";
 /* 러커 가시가 나아가는 거리·속도는 무기표가 아니라 iscript 행동(behaviour 9 "go to max
    range")에서 온 값이라 bwCombat이 안 물고 있다. 숫자를 여기 또 적는 대신 표에서 읽는다. */
-import { FRAME_SEC, LURKER_SPINE_SPEED_PX, LURKER_SPINE_TRAVEL_PX } from "../../utils/bwUnits";
+import {
+  BUILDING_FOOT, FRAME_SEC, LURKER_SPINE_SPEED_PX, LURKER_SPINE_TRAVEL_PX, buildingBox,
+} from "../../utils/bwUnits";
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, type TerrainGrid } from "../../utils/minimapTerrain";
 import { loadSimTracks, logSim } from "../../utils/simClient";
@@ -245,29 +247,17 @@ const PRODUCED_BY: Record<string, string[]> = {
   Hive: ZERG_LARVA,
 };
 
-/** 건물 발자국(타일 폭·높이) — 건설 커맨드의 좌표는 발자국의 왼쪽 위 타일이라(스크렙),
- *  그대로 앵커에 놓으면 건물마다 반 발자국씩 왼쪽 위로 치우친다(지적: "맵 안의 요소들은
- *  또 맵의 왼쪽으로 살짝 치우쳤어"). 반 발자국을 더해 가운데에 그린다. 표에 없는 건물은
- *  가장 흔한 3×2로 어림한다 — 반 타일 안쪽의 오차는 눈에 안 걸린다. */
+/** 건물 발자국(타일 폭·높이) — 원전 표(bwUnits.BUILDING_FOOT = units.dat tileSize)를
+ *  그대로 쓴다. 건설 커맨드의 좌표는 발자국의 왼쪽 위 타일이라(스크렙) 그대로 앵커에
+ *  놓으면 건물마다 반 발자국씩 왼쪽 위로 치우친다(지적: "맵 안의 요소들은 또 맵의
+ *  왼쪽으로 살짝 치우쳤어") — 반 발자국을 더해 가운데에 그린다.
+ *  ★ 여기 손으로 적어 두었던 표는 셋이 어긋나 있었다(건물 틈 조사에서 드러났다):
+ *    플릿비콘 4×3 → 3×2, 폴백 3×2로 떨어지던 인페스티드 커맨드 4×3·디파일러 마운드 4×2.
+ *    자리 계산이 반 타일씩 밀려 있었다는 뜻이다. 이제 표는 한 곳(bwUnits)뿐이다. */
 const FOOTPRINT: Record<string, [number, number]> = {
-  "Command Center": [4, 3], Nexus: [4, 3], Hatchery: [4, 3], Lair: [4, 3], Hive: [4, 3],
-  Barracks: [4, 3], Factory: [4, 3], Starport: [4, 3], "Science Facility": [4, 3],
-  Gateway: [4, 3], Stargate: [4, 3], "Engineering Bay": [4, 3],
-  /* 전수조사에서 빠져 있던 4×3 건물 — 폴백 3×2로 그려져 옆 건물보다 한 단 작았다.
-     나머지(아카데미·포지·풀·에보 등)는 폴백 3×2가 원작 발자국과 같아 그대로 둔다.
-     로보틱스는 여기 넣었다가 뺐다(지적: 크기가 비정상) — 원작 발자국이 3×2다. */
-  "Fleet Beacon": [4, 3],
-  Refinery: [4, 2], Assimilator: [4, 2], Extractor: [4, 2],
-  Pylon: [2, 2], "Missile Turret": [2, 2], "Photon Cannon": [2, 2],
-  "Creep Colony": [2, 2], "Sunken Colony": [2, 2], "Spore Colony": [2, 2],
-  Spire: [2, 2], "Greater Spire": [2, 2], "Nydus Canal": [2, 2],
-  // 테란 부속건물(요청: 모델링·매핑) — 실제 발자국 2×2로 본체 오른쪽에 붙는다.
-  "Comsat Station": [2, 2], "Nuclear Silo": [2, 2], "Machine Shop": [2, 2],
-  "Control Tower": [2, 2], "Covert Ops": [2, 2], "Physics Lab": [2, 2],
-  /* screp가 쓰는 변형 이름(SHAPE_KIND에는 이미 있던 별칭)도 같은 발자국으로 — 전수조사
-     에서 컴샛만 홀로 4타일(폴백 3×2 × 애드온 보정)로 그려져, 옆에 붙은 머신샵(2.7타일)
-     보다 1.5배 컸다. */
-  ComSat: [2, 2], "Queens Nest": [3, 2], "Queen's Nest": [3, 2],
+  ...BUILDING_FOOT,
+  // screp가 쓰는 변형 이름 — 원전 표의 같은 건물로 잇는다.
+  ComSat: BUILDING_FOOT["Comsat Station"],
 };
 const footDx = (unit: string): number => (FOOTPRINT[unit] ?? [3, 2])[0] / 2;
 const footDy = (unit: string): number => (FOOTPRINT[unit] ?? [3, 2])[1] / 2;
@@ -13125,9 +13115,19 @@ export default function ReplayMotionPlayer({
             const fp2 = FOOTPRINT[unit] ?? [3, 2];
             const centerX = bx + footDx(unit);
             const centerY = by + footDy(unit);
-            const anchorX = centerX - (addonPlus ? 1.6 : 0);
-            const anchorY = centerY + (addonPlus ? 0.4 : 0)
-              + (!addonPlus ? (shapeKind ? -riseOf(unit) / 2 : fp2[1] * 0.1) : 0);
+            /* 그리는 상자는 발자국이 아니라 **몸 상자**다(요청: 건물 틈) — 원작은 건물마다
+               자리 상자(발자국, 타일 배수)와 몸 상자(units.dat dimensions)를 따로 들고,
+               둘의 차이가 곧 건물 사이의 틈이다. 네 변이 저마다 달라(배럭 좌16·우8·상8·
+               하16px) 상자 중심도 발자국 중심에서 조금 밀린다. 그래서 나란히 선 건물
+               사이가 종류·배치에 따라 열리고 닫힌다(docs/note-building-gaps.md).
+               ⚠ 예전 확정("바닥 폭 = 타일 발자국")을 이 요청이 뒤집는다 — 발자국을 꽉
+                 채워 그리면 틈이 원리적으로 안 생긴다. */
+            const [boxW, boxH, boxOx, boxOy] = buildingBox(unit);
+            const bodyX = centerX + boxOx;
+            const bodyY = centerY + boxOy;
+            const anchorX = bodyX - (addonPlus ? 1.6 : 0);
+            const anchorY = bodyY + (addonPlus ? 0.4 : 0)
+              + (!addonPlus ? (shapeKind ? -riseOf(unit) / 2 : boxH * 0.1) : 0);
             const [fxF, fyF] = posFrac(anchorX, anchorY);
             const mkK = pitchK(centerY);
             /* 나이는 **진짜 동점만** 가른다(수리: 겹치는 건물의 앞뒤가 뒤바뀜 · 소환구가
@@ -13136,7 +13136,7 @@ export default function ReplayMotionPlayer({
                타일이 80인데 나이가 30까지여서, 0.375타일 안에 붙은 건물끼리 나이가
                앞뒤를 뒤집었다. */
             const z = pitched
-              ? 1000 + Math.round((by + footDy(unit) * 2) * Z_TILE)
+              ? 1000 + Math.round((bodyY + boxH / 2) * Z_TILE)
                 + Math.min(60, Math.round(sec / 45))
               : 1000 + Math.round(afloat ? t : sec);
             const alpha = fade * (afloat ? 0.75 : 1);
@@ -13158,8 +13158,8 @@ export default function ReplayMotionPlayer({
                왜소하다"는 지적을 상자째 키워 때우던 보정인데, 이제 그리기 단계가 잉크
                폭을 재서 발자국을 채우므로(지금은 BLD_NORM) 상자는 제 발자국(2×2) 그대로
                두면 된다. 그대로 두면 부속만 발자국보다 28% 넓게 그려진다. */
-            const wTiles = fp2[0] * (shapeKind ? 1 : 0.8) * bldMul;
-            const hTiles = wTiles * ((fp2[1] + (shapeKind ? riseOf(unit) : 0)) / fp2[0]);
+            const wTiles = boxW * (shapeKind ? 1 : 0.8) * bldMul;
+            const hTiles = wTiles * ((boxH + (shapeKind ? riseOf(unit) : 0)) / boxW);
             const wFrac = (wTiles / grid.width) * mkK;
             const hFrac = (hTiles / grid.width) * mkK;
             const race2 = bases.find((b) => b.key === raw)?.race;
@@ -13171,8 +13171,8 @@ export default function ReplayMotionPlayer({
             if (race2 === "테란" && !flownFrom && sec > 0 && !razed
               && (goneEff === 0 || t < goneEff)) {
               const bs2 = bldNeed;
-              const scvX = centerX - fp2[0] / 2 + 0.35;
-              const scvY = centerY + fp2[1] / 2 - 0.35;
+              const scvX = bodyX - boxW / 2 + 0.35;
+              const scvY = bodyY + boxH / 2 - 0.35;
               let scvShow = t - sec >= 0;
               /* 중단 중에는 현장에 아무도 없다(요청: 테란 건설 중단) — 붙어 있던 구간
                  안에서만 합성 SCV가 선다. 이어 짓기로 다른 SCV가 오면 다시 선다. */
@@ -13240,9 +13240,9 @@ export default function ReplayMotionPlayer({
               /* 발자국 한가운데가 아니라 조금 아래(앞)로(요청) — 그림자를 줄여 발치에
                  맞춘 것과 같은 결이다. 사선 시점에서 상자 중앙에 놓으면 모델이 제
                  발자국보다 뒤로 물러나 떠 보인다. */
-              const bAnchorY = centerY + fp2[1] / 2 - modelHT / 2 + CONSTRUCT_DROP
+              const bAnchorY = bodyY + boxH / 2 - modelHT / 2 + CONSTRUCT_DROP
                 - (race2 === "프로토스" ? WARP_LIFT : 0);
-              const [bfxF, bfyF] = posFrac(centerX, bAnchorY);
+              const [bfxF, bfyF] = posFrac(bodyX, bAnchorY);
               unitOps.push({
                 fx: bfxF, fy: bfyF, z,
                 /* 짓는 중에도 집힌다(요청: 건설 중 상태에서도 클릭 가능) — 열쇠는 완성
@@ -13277,7 +13277,7 @@ export default function ReplayMotionPlayer({
                     : (race2 === "테란" && shapeKind ? unit : "scaffold")),
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
                 // 공사 모델도 완성 건물과 같은 지면선에 선다.
-                baseFy: posFrac(centerX, centerY + fp2[1] / 2)[1],
+                baseFy: posFrac(bodyX, bodyY + boxH / 2)[1],
                 // 공사 모델도 완성 모델과 같은 폭 기준 — 바닥 폭이 발자국과 같아야 한다.
                 /* 소환구는 크기 통일(재지적: 게임에서도 모든 건물이 같다) — 발자국과
                    무관하게 소형 기준 고정. */
@@ -13310,11 +13310,11 @@ export default function ReplayMotionPlayer({
                  조사 필요") — 조사가 오면 이 자리만 바꾸면 된다. */
               const CORNER_SEC = 6;
               const cIdx = (Math.floor(t / CORNER_SEC) + i) % 4;
-              const cDx = (cIdx === 0 || cIdx === 3 ? -1 : 1) * (fp2[0] / 2 - 0.7);
-              const cDy = (cIdx === 0 || cIdx === 1 ? 1 : -1) * (fp2[1] / 2 - 0.5);
-              const bfxX = race2 === "테란" ? centerX + cDx : centerX;
-              const bfxY = race2 === "테란" ? centerY + cDy
-                : centerY + fp2[1] / 2 - modelHT / 2;
+              const cDx = (cIdx === 0 || cIdx === 3 ? -1 : 1) * (boxW / 2 - 0.7);
+              const cDy = (cIdx === 0 || cIdx === 1 ? 1 : -1) * (boxH / 2 - 0.5);
+              const bfxX = race2 === "테란" ? bodyX + cDx : bodyX;
+              const bfxY = race2 === "테란" ? bodyY + cDy
+                : bodyY + boxH / 2 - modelHT / 2;
               // 멈춰 선 공사에는 불티가 없다(요청: 테란 건설 중단) — 아무도 안 붙어 있다.
               if (!qBuildFx || halted) return null;
               return (
@@ -13429,7 +13429,7 @@ export default function ReplayMotionPlayer({
                    이사 비행 중일 때, 발자국보다 작은 타원을 땅에 깔아 높이를 말한다. */
                 groundShadow: afloat || landing,
                 // 접지 그림자의 발자국 비(지적: 그림자는 바닥 발자국만) — 세로/가로.
-                footRatio: (FOOTPRINT[unit] ?? [3, 2])[1] / (FOOTPRINT[unit] ?? [3, 2])[0],
+                footRatio: boxH / boxW,
                 /* 바닥에 실제로 깔리는 그림자(요청) — 발자국 크기의 타원을 타일 공간
                    에서 열두 점으로 찍고, 그 점들을 자리 사상(posFrac)으로 옮긴다.
                    화면에서 타원을 눌러 흉내 내는 것이 아니라 지면 위에 그린 도형이라,
@@ -13438,20 +13438,20 @@ export default function ReplayMotionPlayer({
                    비행 높이로 읽힌다(공중 유닛 그림자와 같은 결). */
                 shadowPts: ((): [number, number][] => {
                   const sk9 = 0.6;
-                  const rx9 = ((FOOTPRINT[unit] ?? [3, 2])[0] / 2) * sk9;
-                  const ry9 = ((FOOTPRINT[unit] ?? [3, 2])[1] / 2) * sk9;
+                  const rx9 = (boxW / 2) * sk9;
+                  const ry9 = (boxH / 2) * sk9;
                   const pts9: [number, number][] = [];
                   for (let q9 = 0; q9 < 12; q9 += 1) {
                     const a9 = (q9 / 12) * Math.PI * 2;
                     pts9.push(posFrac(
-                      centerX + Math.cos(a9) * rx9 * 0.98,
-                      centerY + Math.sin(a9) * ry9 * 0.98,
+                      bodyX + Math.cos(a9) * rx9 * 0.98,
+                      bodyY + Math.sin(a9) * ry9 * 0.98,
                     ));
                   }
                   return pts9;
                 })(),
-                // 지면선 — 발자국 아랫변(그림자 타원의 아래 끝과 같은 지면).
-                baseFy: posFrac(centerX, centerY + (FOOTPRINT[unit] ?? [3, 2])[1] / 2)[1],
+                // 지면선 — 몸 상자 아랫변(그림자 타원의 아래 끝과 같은 지면).
+                baseFy: posFrac(bodyX, bodyY + boxH / 2)[1],
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
                 sizePx: 0, wFrac: wFrac * pulse, hFrac: hFrac * pulse, boxFit: "meet",
                 /* 전 건물 폭 기준(요청: 바닥을 발자국에, 높이는 제 비율로) — meet
@@ -13475,10 +13475,15 @@ export default function ReplayMotionPlayer({
                   && ((pg3 ?? 0) === 0 || t < (pg3 ?? 0))
                   && Math.abs((pxT + (FOOTPRINT[pu3] ?? [4, 3])[0]) - x) <= 2
                   && Math.abs(pyT - y) <= 4);
-                const leftEdge = par ? par[1] + (FOOTPRINT[par[3]] ?? [4, 3])[0] - 0.5 : x - 1.7;
-                const rightEdge = x + 0.5;
+                /* 두 끝은 **몸 상자** 변이다(요청: 건물 틈) — 발자국 변으로 재면 이제
+                   본체·애드온이 발자국보다 작게 서므로 통로가 허공에서 시작한다. */
+                const parBox = par ? buildingBox(par[3]) : null;
+                const leftEdge = par && parBox
+                  ? par[1] + footDx(par[3]) + parBox[2] + parBox[0] / 2 - 0.5
+                  : bodyX - boxW / 2 - 1.2;
+                const rightEdge = bodyX - boxW / 2 + 0.5;
                 const linkW = Math.max(1.6, rightEdge - leftEdge);
-                const [lfx, lfy] = posFrac((leftEdge + rightEdge) / 2, centerY + fp2[1] * 0.1);
+                const [lfx, lfy] = posFrac((leftEdge + rightEdge) / 2, bodyY + boxH * 0.1);
                 unitOps.push({
                   /* 통로도 건물과 같은 45도로 굽는다(지적: "각 옆면에는 수직임") —
                      본체·애드온이 다 요잉해 서 있어 서로 마주 보는 옆면도 비스듬한데,

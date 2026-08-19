@@ -1126,6 +1126,45 @@ export const BUILDING_FOOT: Record<string, [number, number]> = {
 /** 표에 없는 건물 — 3×2로 친다. [추정] */
 export const DEFAULT_FOOT: [number, number] = [3, 2];
 
+/** 건물 몸 상자(타일) — [폭, 높이, 발자국 중심에서 밀린 몫 x, y].
+ *
+ *  원작은 건물마다 상자를 **둘** 든다: 자리 상자(placement, 타일 배수 — 위 BUILDING_FOOT)
+ *  와 몸 상자(units.dat dimensions). 몸이 자리보다 작고, 네 변이 저마다 다르게 작다
+ *  (배럭 좌16·우8·상8·하16px). 그 차이가 곧 건물 사이의 **틈**이다 — 발자국을 딱 붙여
+ *  놓아도 사이가 남고, 폭은 어느 건물의 어느 변이 마주 보느냐로 정해진다.
+ *
+ *  [OBW] 걸음·길찾기 충돌이 보는 것은 몸 상자다(unit_type_bounding_box =
+ *  {-dimensions.from, dimensions.to + 1}, bwgame.h 710행). 발자국 타일에 칠하는
+ *  flag_occupied(15843행)는 '여기 지을 수 있나'(can_place_building, 2578행)에만 쓰이고
+ *  걸음을 안 막는다 — 발자국 안의 틈은 진짜로 걸어 다닐 수 있는 땅이다.
+ *  자세한 표와 근거는 docs/note-building-gaps.md.
+ *
+ *  ⚠ 값은 UNITS[].box(= [left, up, right, down])에서 기계로 뽑는다. 손으로 적지 마라. */
+export const BUILDING_BOX: Record<string, [number, number, number, number]> =
+  Object.fromEntries(Object.entries(UNITS)
+    .filter(([, u]) => u.building)
+    .map(([k, u]) => {
+      const [bl, bu, br, bd] = u.box;
+      return [k, [(bl + br + 1) / 32, (bu + bd + 1) / 32, (br - bl) / 64, (bd - bu) / 64]];
+    }));
+
+/** 그 건물의 몸 상자 — 표에 없으면 발자국을 그대로 몸으로 친다(막는 쪽으로 안전하게). */
+export function buildingBox(kind: string): [number, number, number, number] {
+  const hit = BUILDING_BOX[kind];
+  if (hit) return hit;
+  const f = BUILDING_FOOT[kind] ?? DEFAULT_FOOT;
+  return [f[0], f[1], 0, 0];
+}
+
+/** 지상 유닛 몸 상자(타일) — [폭, 높이]. 틈을 지날 수 있나는 이 둘로 가른다:
+ *  가로 틈은 폭, 세로 틈은 높이가 들어가야 지난다(저글링 16×16px = 0.5×0.5타일). */
+export function unitBoxTiles(kind: string): [number, number] {
+  const u = UNITS[kind];
+  if (!u) return [BODY_R.medium * 2, BODY_R.medium * 2];
+  const [bl, bu, br, bd] = u.box;
+  return [(bl + br + 1) / 32, (bu + bd + 1) / 32];
+}
+
 /** 자원 발자국(타일) — Resource_Mineral_Field / Resource_Vespene_Geyser. */
 export const MINERAL_FOOT: [number, number] = [2, 1];
 export const GEYSER_FOOT: [number, number] = [4, 2];
