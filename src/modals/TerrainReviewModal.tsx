@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import ModalHash from "../utils/modalHash";
 import { createPortal } from "react-dom";
-import { Eraser, Paintbrush, RefreshCcw, RotateCcw, Save, Undo2, Wand2, Waves, X } from "lucide-react";
+import {
+  Eraser, Mountain, Paintbrush, RefreshCcw, RotateCcw, Save, Undo2, Wand2, Waves, X,
+} from "lucide-react";
 import { Spinner } from "../components/common/Feedback";
 import { api } from "../api/client";
 import {
@@ -17,10 +19,15 @@ import type { MinimapImage } from "../types";
  *
  * 크립 층(요청: 램프·다리는 크립이 못 퍼진다 — 직접 설정) — 물결 버튼으로 층을 바꾸면
  * 붓·지우개·요술봉이 '크립 못 퍼지는 칸'(주황)을 칠한다. 벽(라임)은 자동으로 크립을
- * 막으니, 걷긴 하지만 크립은 못 앉는 램프·다리만 주황으로 칠하면 된다. */
+ * 막으니, 걷긴 하지만 크립은 못 앉는 램프·다리만 주황으로 칠하면 된다.
+ *
+ * 언덕 층(요청) — 산 버튼으로 '높은 땅'(하늘색)을 칠한다. 원작은 **낮은 데서 높은 데를
+ * 쏘면 46.9%가 빗나가는데**(missChanceRaw의 119 가지), 그 고도가 리플레이에도 미니맵
+ * 그림에도 안 실려 있다. 여기 칠한 층이 곧 연속 재생의 고도이고, 안 칠하면 온 지도가
+ * 같은 높이라 아무도 안 빗나간다(예전과 같다). 세 층은 서로 독립이라 겹쳐 칠해도 된다. */
 
 /** 한 획의 스냅샷 — 두 층을 함께 되돌려야 층을 오가며 칠해도 어긋나지 않는다. */
-type Snap = { walk: Uint8Array; creep: Uint8Array | null };
+type Snap = { walk: Uint8Array; creep: Uint8Array | null; high: Uint8Array | null };
 
 export default function TerrainReviewModal({
   image, anchors, reanalyzable = false, onClose, onSaved,
@@ -41,9 +48,10 @@ export default function TerrainReviewModal({
   const [err, setErr] = useState("");
   /* 도구 셋(요청: 아이콘 배타 선택) — 붓은 끌어서 막고(이동 불가), 지우개는 끌어서 열고
      (이동 가능), 요술봉은 누른 칸과 색이 비슷한 칸 전부를 한 번에 뒤집고, 램프(물결)는
-     크립 불가 칸(주황)을 칠한다 — 이미 칠한 칸에서 시작하면 그 획은 지우기다. 층 토글로
-     두다가 도구와 중복 선택되던 것을 하나의 배타 도구로 바꿨다(지적). */
-  const [tool, setTool] = useState<"paint" | "erase" | "wand" | "creep">("paint");
+     크립 불가 칸(주황)을 칠한다 — 이미 칠한 칸에서 시작하면 그 획은 지우기다. 산은
+     언덕(하늘색)을 같은 식으로 칠한다. 층 토글로 두다가 도구와 중복 선택되던 것을 하나의
+     배타 도구로 바꿨다(지적). */
+  const [tool, setTool] = useState<"paint" | "erase" | "wand" | "creep" | "high">("paint");
   const [colors, setColors] = useState<Uint8ClampedArray | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   /** 끌기 한 번은 한 값으로만 칠한다 — 지나는 칸마다 뒤집으면 갈지자 자국이 남는다. */
@@ -56,6 +64,7 @@ export default function TerrainReviewModal({
   const snapOf = (g: TerrainGrid): Snap => ({
     walk: new Uint8Array(g.walk),
     creep: g.creep ? new Uint8Array(g.creep) : null,
+    high: g.high ? new Uint8Array(g.high) : null,
   });
   const snapshot = (g: TerrainGrid) => {
     historyRef.current.push(snapOf(g));
@@ -66,6 +75,7 @@ export default function TerrainReviewModal({
     ...g,
     walk: new Uint8Array(s.walk),
     ...(s.creep ? { creep: new Uint8Array(s.creep) } : { creep: undefined }),
+    ...(s.high ? { high: new Uint8Array(s.high) } : { high: undefined }),
   });
 
   useEffect(() => {
@@ -120,6 +130,16 @@ export default function TerrainReviewModal({
         }
       }
     }
+    /* 언덕(요청) — 하늘색. 벽(라임)·램프(주황)와 한눈에 갈리는 색이라야 세 층을 겹쳐
+       칠하고도 무엇이 칠해졌는지 읽힌다. */
+    if (grid.high) {
+      ctx.fillStyle = "rgba(90, 190, 255, 0.6)";
+      for (let y = 0; y < grid.h; y += 1) {
+        for (let x = 0; x < grid.w; x += 1) {
+          if (grid.high[y * grid.w + x]) ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    }
   }, [grid]);
 
   const cellAt = (e: React.PointerEvent): [number, number] | null => {
@@ -143,9 +163,14 @@ export default function TerrainReviewModal({
     const idx = cell[1] * grid.w + cell[0];
     /* 램프 도구(지적: 층 토글이 다른 도구와 중복 선택됨 — 배타 도구로) — 크립 불가 층을
        칠한다. 첫 칸이 이미 칠해져 있으면 그 획은 지우기가 되어 버튼 하나로 오간다. */
-    const arr = tool === "creep" ? (grid.creep ?? new Uint8Array(grid.w * grid.h)) : grid.walk;
+    /* 층 고르기 — 램프(크립 불가)·언덕은 제 층을 칠하고 나머지 도구는 걷기 층을 칠한다.
+       첫 칸이 이미 칠해져 있으면 그 획은 지우기가 되어 버튼 하나로 오간다. */
+    const layer = tool === "creep" ? grid.creep : tool === "high" ? grid.high : null;
+    const arr = tool === "creep" || tool === "high"
+      ? (layer ?? new Uint8Array(grid.w * grid.h)) : grid.walk;
     const put = (next: Uint8Array): TerrainGrid =>
-      tool === "creep" ? { ...grid, creep: next } : { ...grid, walk: next };
+      (tool === "creep" ? { ...grid, creep: next }
+        : tool === "high" ? { ...grid, high: next } : { ...grid, walk: next });
     if (tool === "wand") {
       // 요술봉(요청) — 클릭 한 번이 한 획: 누른 칸과 색이 가까운 칸 전부를 뒤집는다.
       if (!begin || !colors) return;
@@ -165,7 +190,7 @@ export default function TerrainReviewModal({
       return;
     }
     // 붓=막기(0), 지우개=열기(1), 램프=첫 칸의 반대값 — 한 획 안에서 값이 안 변한다.
-    const v: 0 | 1 = tool === "creep"
+    const v: 0 | 1 = tool === "creep" || tool === "high"
       ? (arr[idx] ? 0 : 1)
       : (tool === "paint" ? 0 : 1);
     if (begin) {
@@ -260,6 +285,17 @@ export default function TerrainReviewModal({
                 title="램프·다리 — 크립이 못 퍼지는 곳(주황)을 칠해요. 칠한 칸에서 시작하면 지워져요"
               >
                 <Waves size={14} />
+              </button>
+              {/* 언덕(요청) — 원작은 낮은 데서 높은 데를 쏘면 46.9%가 빗나간다. 그 높이가
+                  리플레이에도 미니맵에도 안 실려 있어 여기서 사람이 칠한다. */}
+              <button
+                type="button"
+                className={tool === "high" && !busy ? "scr-btn scr-btn-sm scr-btn-primary" : "scr-btn scr-btn-sm"}
+                onClick={() => setTool("high")}
+                aria-label="언덕"
+                title="언덕 — 높은 땅(하늘색)을 칠해요. 낮은 곳에서 이 위를 쏘면 46.9%가 빗나가요. 칠한 칸에서 시작하면 지워져요"
+              >
+                <Mountain size={14} />
               </button>
             </div>
             <button

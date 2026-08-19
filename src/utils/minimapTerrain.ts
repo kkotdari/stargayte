@@ -19,6 +19,11 @@ export interface TerrainGrid {
   /** 행 우선, 1이면 크립이 못 퍼지는 칸(요청: 램프·다리) — 걷긴 하지만 크립은 못 앉는
    *  땅이라 walk와 별개 층이다. 검수 모달에서 사람이 칠하고, 없으면 벽만 크립을 막는다. */
   creep?: Uint8Array;
+  /** 행 우선, 1이면 **언덕(높은 땅)**(요청) — 원작의 명중 규칙이 높이를 본다: 낮은 데서
+   *  높은 데를 쏘면 46.9%가 빗나간다([OBW] missChanceRaw의 119 가지). 리플레이에도
+   *  미니맵 그림에도 고도는 안 실려 있어, 크립 층과 같은 식으로 사람이 칠한다.
+   *  칠한 게 없으면 온 지도가 같은 높이 — 예전과 똑같이 아무도 안 빗나간다. */
+  high?: Uint8Array;
 }
 
 /** 가로 격자 수 — 세로는 그림 비율을 따른다. 96이면 128×128 맵에서 한 칸이 1.3타일쯤 —
@@ -470,22 +475,27 @@ const bitsOfHex = (hex: string, len: number): Uint8Array => {
 export function encodeWalk(t: TerrainGrid): string {
   /* 크립 층(요청: 램프·다리 표시)은 칠한 게 있을 때만 함께 싣는다 — 옛 저장분과 같은
      JSON에 선택 필드 하나라 서버(JSON 문자열 그대로 저장)는 몰라도 된다. */
-  const out: { w: number; h: number; hex: string; creep?: string } = {
+  const out: { w: number; h: number; hex: string; creep?: string; high?: string } = {
     w: t.w, h: t.h, hex: hexOfBits(t.walk),
   };
   if (t.creep && t.creep.some((v) => v)) out.creep = hexOfBits(t.creep);
+  // 언덕 층도 칠한 게 있을 때만(요청) — 같은 규칙이라 옛 저장분과 그대로 섞인다.
+  if (t.high && t.high.some((v) => v)) out.high = hexOfBits(t.high);
   return JSON.stringify(out);
 }
 
 export function decodeWalk(json: string | null | undefined): TerrainGrid | null {
   if (!json) return null;
   try {
-    const d = JSON.parse(json) as { w?: number; h?: number; hex?: string; creep?: string };
+    const d = JSON.parse(json) as {
+      w?: number; h?: number; hex?: string; creep?: string; high?: string;
+    };
     if (!d || !(d.w! > 0) || !(d.h! > 0) || typeof d.hex !== "string") return null;
     const len = d.w! * d.h!;
     return {
       w: d.w!, h: d.h!, walk: bitsOfHex(d.hex, len),
       ...(typeof d.creep === "string" ? { creep: bitsOfHex(d.creep, len) } : {}),
+      ...(typeof d.high === "string" ? { high: bitsOfHex(d.high, len) } : {}),
     };
   } catch {
     return null;

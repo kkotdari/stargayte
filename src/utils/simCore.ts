@@ -20,7 +20,7 @@ import {
   MINE_GAS_FRAMES, MINE_MINERAL_FRAMES, MINE_RETURN_FRAMES, MINERAL_FOOT, TURN_RATE,
   UNBURROW_MIN_FRAMES, ACID_SPORE_MAX, ACID_SPORE_PX,
   IRRADIATE_TOTAL, PLAGUE_TOTAL, SHIELD_REGEN_PER_SEC, TERRAN_BURN_HP_PCT, TERRAN_BURN_PER_SEC,
-  WEAPONS, ZERG_REGEN_PER_SEC, nukeDamage,
+  WEAPONS, ZERG_REGEN_PER_SEC, missProbability, nukeDamage,
   buildSecOf, buildingBox, fp, isAir, moveDynOf, speedOfUnit, unfp, unitBoxTiles,
 } from "./bwUnits";
 /* 전투 값은 표(bwUnits)를 직접 읽지 않고 어댑터(bwCombat)를 거친다 — 표가 통째로 갈리는
@@ -397,6 +397,8 @@ const PLAGUE_SEC = timerSec(STATUS_TICKS.plague);
 const PLAGUE_DPS = PLAGUE_TOTAL / PLAGUE_SEC;
 const IRRADIATE_SEC = timerSec(STATUS_TICKS.irradiate);
 const IRRADIATE_DPS = IRRADIATE_TOTAL / IRRADIATE_SEC;
+/** 고지대 빗맞음 원값 — [OBW] missChanceRaw가 주는 119(= 120/256 = 46.875%). */
+const HIGH_GROUND_MISS_RAW = 119;
 /** 핵 발사에서 착탄까지(초) — 재생기의 연출 상수와 같은 값이다. */
 const NUKE_FALL_SEC = 7;
 /** 핵 무기 한 벌 — 링(감쇠) 판정에만 쓴다. 피해량은 nukeDamage가 표적마다 따로 낸다.
@@ -866,6 +868,20 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       py - (dx / len) * pd, by2 - (dy / len) * pd];
   };
 
+  /* ── 언덕(높은 땅) — 원작의 명중 규칙이 높이를 본다(요청: 검수 격자에 층을 얹어서라도) ──
+     [OBW] missChanceRaw: 쏘는 쪽도 맞는 쪽도 지상이고 **표적이 더 높으면** 빗맞음 원값이
+     119, 곧 120/256 = 46.875%다. 높이 차가 몇 단이든 값은 하나다.
+     고도는 리플레이에도 미니맵에도 안 실려 있어, 사람이 검수 격자에 칠한 층(terrain.high)
+     이 우리의 고도다 — 칠한 게 없으면 온 지도가 같은 높이라 예전과 똑같이 아무도 안
+     빗나간다. */
+  const highAt = (x: number, y: number): boolean => {
+    const hg = terrain?.high;
+    if (!hg) return false;
+    const gx = Math.floor((x / W) * BW);
+    const gy = Math.floor((y / H) * BH);
+    if (gx < 0 || gy < 0 || gx >= BW || gy >= BH) return false;
+    return hg[gy * BW + gx] === 1;
+  };
   /** 지도가 말하는 진짜 벽인가 — 건물·자원은 안 본다(지형 격자를 그대로 읽는다). */
   const wallAt = (x: number, y: number): boolean => {
     if (!terrain) return false;
@@ -1225,7 +1241,18 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
        확정 회피로 갈음한다: 255/256은 사실상 전부이고, 굴림을 넣으면 결정론이 깨진다.
        스플래시·야마토·근접은 뚫는다(ignoresDarkSwarm). */
     if (!ignoresDarkSwarm(w.wp) && underSwarm(tgt, t)) return;
-    attackOf(w, a.cp, tgt.dmg, { divisor });
+    /* 고지대 빗맞음(요청) — 빗맞음 플래그를 보는 무기(normal·corrosive_acid = 다크스웜에
+       걸리는 그 무기들)만 해당한다. 스플래시·야마토·근접은 원전도 안 본다.
+       ★ 주사위를 굴리는 대신 **피해를 그 확률만큼 깎는다**(divisor ×1.882 = 1/0.53125).
+         이 층의 약속이 결정론이라(같은 입력이면 같은 그림) 굴림을 넣을 수 없고, 다크스웜
+         에서도 같은 자리에서 같은 갈음을 했다. 기댓값은 정확히 같고, 한 방 한 방의
+         들쭉날쭉만 없다 — [어림]인 부분은 그것 하나다. */
+    let div9 = divisor;
+    if (!ignoresDarkSwarm(w.wp) && !a.air && !tgt.air
+      && highAt(tgt.x, tgt.y) && !highAt(a.x, a.y)) {
+      div9 *= 1 / (1 - missProbability(HIGH_GROUND_MISS_RAW));
+    }
+    attackOf(w, a.cp, tgt.dmg, { divisor: div9 });
     /* 러커 말고는 맞는 순간 저절로 튀어나온다(on_hit_change_target). 이래디에이트가 걸린
        개체만 그대로 있는데 우리는 그 상태를 안 다뤄 조건에서 뺐다. 러커는 무슨 일이
        있어도 제 발로 안 나온다 — 땅속이라야 무기가 있기 때문이다. */

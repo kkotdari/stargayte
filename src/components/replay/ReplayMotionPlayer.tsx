@@ -11017,7 +11017,11 @@ export default function ReplayMotionPlayer({
     if (!tg) return "0";
     let walkable = 0;
     for (let i = 0; i < tg.walk.length; i += 1) if (tg.walk[i]) walkable += 1;
-    return `${tg.w}x${tg.h}.${walkable}`;
+    /* 언덕 층도 지문에 넣는다(요청: 검수 격자에 언덕 층) — 안 넣으면 언덕을 칠해 저장해도
+       열쇠가 그대로라 캐시가 옛 자취를 되돌려 준다(지형 지문이 없던 시절과 같은 구멍). */
+    let hi = 0;
+    if (tg.high) for (let i = 0; i < tg.high.length; i += 1) if (tg.high[i]) hi += 1;
+    return `${tg.w}x${tg.h}.${walkable}.${hi}`;
   }, [terrain, terrainRaw]);
   /* 편 지문(지적: "동맹 판단도 해야지") — 팀은 개체 트랙이 아니라 화면 쪽 로스터가 안다.
      로스터가 늦게 붙을 수 있으므로 지문을 deps에 넣어, 팀이 정해지는 순간 시뮬을 다시
