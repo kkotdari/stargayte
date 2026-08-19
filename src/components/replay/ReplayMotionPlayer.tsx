@@ -3307,81 +3307,107 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 스포어(정정: 가시가 아니라 굴뚝이 포인트) — 크립 밑동과 몸통 덩어리 위에, 왼뒤에서
      굵게 서는 아가리 뚫린 굴뚝 관. */
   spore: () => {
-    /* 스포어(요청: 뿔기둥 전격 활용 / 지적: 뚜껑 위치·키 어긋남) — 밑동·몸통·뚜껑을
-       한 축에 세워 아래 단의 윗지름과 위 단의 밑지름을 그대로 맞물린다. 굴뚝만
-       옆에 서므로 제 자리 깊이 키를 쓴다. */
+    /* 스포어 콜로니(제로베이스 재작도 — 사진이 첫째 자료) ────────────────────────
+       사진이 말하는 것:
+         · 한가운데에 **매끈하고 통통한 주황빛 알덩이**가 앉는다. 위가 둥글게 부풀고
+           앞아래로 살짝 숙였으며, 앞면에 어두운 아가리가 하나 뚫린다.
+         · 그 알을 **검게 뒤엉킨 가지 덤불**이 받친다 — 뒤로 갈수록 높이 솟아 알 뒤에서
+           삐죽삐죽 올라간다(이 건물의 '굴뚝' 노릇을 하는 것이 이 뒷가지다).
+         · 덤불 사이로 **창백한 상아 가시**가 몇 개 비스듬히 삐져나온다.
+         · 앞오른쪽 바닥에는 짧은 **주황 촉수 다발**이 뭉쳐 있다.
+       그래서 앞선 판(밑동+산+뚜껑+굴뚝 한 대)을 걷는다: 사진에는 원뿔 산도, 곧은 대롱
+       굴뚝도 없다. 색 규약은 그대로다 — 몸은 저그 기본색 계열 + 상아색, 개인색은
+       포인트뿐(요청: "산 부분부분에 개인색 포인트 데칼" → 이제 알 표면의 점들). */
+    const SKIN = "#b8543a";     // 알덩이 주황빛 살
+    const TWIG = "#332720";     // 뒤엉킨 가지
+    const TENT = "#c2603a";     // 앞 촉수
     const out: ShapeFace[] = [];
-    /* 밑동 — 검회색 받침(지적: "콜로니류 바닥판은 검회색으로"). 색값을 여기 박아
-       두면 성큰·크립과 따로 놀게 되므로 공용 상수로 돌렸다. 셋 중 이것만 키가 높은
-       것은 몸통이 그만큼 가늘게 시작하기 때문이라 지름·높이는 그대로 둔다. */
     const pc: ShapeFace[] = [];
+    /* 밑동 — 검회색 받침(콜로니 셋 공통). 사진의 알은 땅에 바로 앉지 않고 덤불에 얹혀
+       있으므로, 받침은 넓고 낮게 깔아 덤불의 뿌리 노릇만 한다. */
     out.push(...tagKey(paintBase(spirePillar({
-      x: 0, y: 0, z0: 0, h: 1.5, w: 5.2, tipW: 3.2,
+      x: 0, y: 0, z0: 0, h: 1, w: 5.6, tipW: 4.4,
       segs: 3, sides: 14, hold: 0.15, taper: 1.8,
-    }), COLONY_BASE), 0));
-    /* 색 규약(요청: "스포어 개인색은 포인트고 본체는 저그 기본색 + 상아색이 섞인 구조")
-       — 여태 이 빌더는 raceBase를 안 거치고 그냥 out을 돌려줬다. 칠하지 않은 면은 곧
-       임자 색이므로, 몸통·뚜껑·굴뚝·덩이가 **통째로** 개인색이었다. 이제 몸은 raceBase가
-       저그 기본색으로 깔고, 뚜껑·덩이·굴뚝 테는 상아색으로 박고, 개인색은 뚜껑 밑동을
-       두르는 짧은 띠 하나만 맡는다. */
-    /* 가운데 산을 납작하게 깎는다(요청) — 높이 4.2 → 2.7. 굴뚝이 주인공인 건물인데
-       산이 굴뚝만큼 높아 둘이 키를 다퉜다. 낮아진 만큼 위에 얹히는 것들(목띠·뚜껑)도
-       함께 내려온다. */
-    const MT_Z = 1.35;
-    const MT_H = 2.7;
-    const MT_TOP = MT_Z + MT_H;
-    out.push(...tagKey(spirePillar({
-      x: 0, y: 0, z0: MT_Z, h: MT_H, w: 3.2, tipW: 1.15,
-      segs: 6, sides: 12, hold: 0.08, taper: 1.7,
-    }), 6));
-    // 개인색 포인트 — 뚜껑이 앉는 목을 한 바퀴 두르는 띠.
-    pc.push(...tagKey(spirePillar({
-      x: 0, y: 0, z0: MT_TOP - 0.25, h: 0.5, w: 1.42, tipW: 1.36,
-      segs: 1, sides: 12, hold: 0.5, caps: "none",
-    }), 8.5));
-    /* 산 옆면의 개인색 포인트 데칼(요청: "산 부분부분에 개인색 포인트 데칼") — 산의
-       옆선을 되짚어 그 위에 납작한 조각을 눕힌다. 보이는 쪽만 그리고, 산보다 한 단
-       위 키를 줘 어느 요잉에서도 제 자리에 붙어 있는다. */
-    const mtR = (t9: number): number => 1.15 + (3.2 - 1.15) * (1 - t9) ** 1.7;
+    }), COLONY_BASE), -1));
+    /* 뒤엉킨 가지 덤불 — 받침에서 사방으로 솟아 서로 엇갈린다. 뒤쪽(−y)이 가장 높아
+       알 뒤로 삐죽 올라가고, 앞쪽은 낮게 깔린다. 자리는 각도의 순수 함수라 결정적이다. */
+    for (let k9 = 0; k9 < 11; k9 += 1) {
+      const a9 = (k9 / 11) * Math.PI * 2 + 0.35;
+      const dx9 = Math.sin(a9);
+      const dy9 = Math.cos(a9);
+      // 뒤(−y)일수록 높다 — 사진의 덤불은 알 뒤에서 가장 높이 솟는다.
+      const hi9 = 2.4 + (0.5 - dy9 * 0.5) * 5.4 + Math.abs(Math.sin(k9 * 7.3)) * 1.2;
+      const r09 = 1.9 + Math.abs(Math.sin(k9 * 4.1)) * 1.5;
+      out.push(...tagKey(paintBase(spikeHorn(
+        dx9 * r09 * 0.55, dy9 * r09 * 0.55, 0.6,
+        dx9 * r09, dy9 * r09, hi9, 0.62 + Math.abs(Math.sin(k9 * 2.7)) * 0.3,
+        undefined, 5, 0.7, dx9 * 0.5, dy9 * 0.5,
+      ), TWIG), depthNow(dx9 * r09, dy9 * r09) * 1.6));
+    }
+    /* 창백한 상아 가시 넷 — 덤불 사이로 비스듬히 삐져나온다(사진의 흰 뿔들). */
+    for (const [bx9, by9, bz9, tx9, ty9, tz9, w9] of [
+      [-2.4, 1.4, 0.7, -4.3, 2.6, 1.4, 0.66],
+      [2.6, 1.1, 0.8, 4.5, 1.9, 1.9, 0.6],
+      [-2.2, -1.6, 1.6, -4, -2.9, 3.4, 0.54],
+      [2.3, -1.9, 1.8, 3.9, -3.2, 3.9, 0.5],
+    ] as [number, number, number, number, number, number, number][]) {
+      out.push(...tagKey(ivory(spikeHorn(bx9, by9, bz9, tx9, ty9, tz9, w9, undefined, 6, 0.4,
+        tx9 - bx9, ty9 - by9)), depthNow(tx9, ty9) * 1.6 + 1));
+    }
+    /* 알덩이 — 이 건물의 주인공. 아래가 넓고 위가 둥근 통통한 살덩이라, 돔 둘을
+       조금 어긋나게 겹쳐 앞아래로 숙인 알을 만든다(윗돔을 앞으로 0.35 민다). */
+    const EGG_X = -0.35;
+    const EGG_Y = 0.45;
+    const EGG_R = 2.85;
+    out.push(...tagKey(paintBase([
+      ...domeFaces3(EGG_X, EGG_Y, EGG_R, 3.1, 1.15),
+      ...domeFaces3(EGG_X, EGG_Y + 0.35, EGG_R * 0.74, 1.5, 3.5),
+    ], SKIN), depthNow(EGG_X, EGG_Y) * 1.6 + 8));
+    /* 알 표면의 개인색 포인트(요청) — 살 위에 박힌 작은 점 다섯. 보이는 쪽만 그리고
+       알의 옆선(반지름 식)을 되짚어 앉힌다. */
+    const eggR = (t9: number): number => EGG_R * Math.sqrt(Math.max(0.12, 1 - t9 * t9));
     for (const [ang9, t9, r9] of [
-      [-150, 0.32, 0.5], [-80, 0.55, 0.42], [-20, 0.28, 0.46],
-      [40, 0.6, 0.38], [110, 0.38, 0.44], [170, 0.62, 0.36],
+      [-140, 0.3, 0.44], [-60, 0.52, 0.36], [10, 0.28, 0.42],
+      [80, 0.5, 0.34], [150, 0.6, 0.32],
     ] as [number, number, number][]) {
       const a9 = (ang9 * Math.PI) / 180;
       const dx9 = Math.sin(a9);
       const dy9 = Math.cos(a9);
       if (facingRatio(dx9, dy9) <= 0.1) continue;
-      const rr9 = mtR(t9) * 0.97;
-      pc.push(...tagKey(domeFaces3(dx9 * rr9, dy9 * rr9, r9, r9 * 0.5, MT_Z + MT_H * t9),
-        depthNow(dx9 * rr9, dy9 * rr9) * 1.6 + 7));
+      const rr9 = eggR(t9) * 0.96;
+      pc.push(...tagKey(domeFaces3(EGG_X + dx9 * rr9, EGG_Y + dy9 * rr9, r9, r9 * 0.5,
+        1.15 + 3.1 * t9), depthNow(EGG_X + dx9 * rr9, EGG_Y + dy9 * rr9) * 1.6 + 9));
     }
-    // 뚜껑 — 산 윗지름(1.15)을 그대로 받아 얹는다. 상아색.
+    /* 앞면 아가리 — 알 앞위에 뚫린 어두운 구멍. 앞이 보일 때만 그린다. */
+    if (facingRatio(0, 1) > 0.25) {
+      const [ax9, ay9] = project(EGG_X, EGG_Y + eggR(0.42) * 0.94, 1.15 + 3.1 * 0.42);
+      out.push(...tagKey([
+        [screenCircle(ax9, ay9, 0.78), 1, "#3a1d16"] as ShapeFace,
+        capFace(screenCircle(ax9, ay9 + 0.06, 0.52), 0.55),
+      ], depthNow(EGG_X, EGG_Y + EGG_R) * 1.6 + 10));
+    }
+    /* 알 위를 넘어가는 큰 뿔 — 뒤에서 솟아 앞으로 감긴다(사진의 굽은 뿔). */
     out.push(...tagKey(paintBase(spirePillar({
-      x: 0, y: 0, z0: MT_TOP, h: 1.9, w: 1.15, tipW: 0.4,
-      segs: 4, sides: 10, hold: 0.12, taper: 1.6,
-    }), IVORY), 9));
-    /* 굴뚝 — 왼뒤에 따로 선다. 대롱은 저그 기본색, 벌어진 테만 상아색이라 아가리가
-       또렷하다(요청: 기본색 + 상아색이 섞인 구조). */
-    /* 굴뚝은 더 높게(요청) — 대롱 4.6 → 7.2. 산이 낮아진 만큼 굴뚝이 홀로 솟아
-       이 건물의 실루엣을 쥔다. */
-    out.push(...tagKey([
-      ...spirePillar({
-        x: -2.7, y: -1.5, z0: 0.9, h: 7.2, w: 1.05, tipW: 1.32,
-        segs: 7, sides: 10, hold: 0.2,
-      }),
-      ...paintBase(spirePillar({
-        x: -2.7, y: -1.5, z0: 8.1, h: 0.8, w: 1.32, tipW: 1.45,
-        segs: 1, sides: 10, hold: 0.2, caps: "none",
-      }), IVORY),
-      capFace(discPath3(-2.7, -1.5, 9.55, 1.05), 0.5),
-    ], depthNow(-2.7, -1.5) * 1.6));
-    // 앞오른쪽 작은 덩이 — 밑동 옆구리에 붙는다. 상아색.
-    out.push(...tagKey(paintBase(spirePillar({
-      x: 3.1, y: 2.4, z0: 0.7, h: 1.7, w: 1.5, tipW: 0.45,
-      segs: 4, sides: 10, hold: 0.1, taper: 1.6,
-    }), IVORY), depthNow(3.1, 2.4) * 1.6));
+      x: 0, y: 0, h: 1, w: 0.95, tipW: 0.16, segs: 10, sides: 6, hold: 0.06, taper: 1.2,
+      path: (t9: number): [number, number, number] => [
+        EGG_X - 0.6 + t9 * 0.5,
+        EGG_Y - 2.4 + t9 * 4.2,
+        2.6 + 4.4 * t9 - 3.4 * t9 * t9,
+      ],
+    }), TWIG), depthNow(EGG_X, EGG_Y) * 1.6 + 11));
+    /* 앞오른쪽 주황 촉수 다발 — 바닥에 뭉친 짧고 통통한 관 넷(사진). */
+    for (const [tx9, ty9, tl9, tw9] of [
+      [2.5, 2.5, 1.5, 0.52], [3.3, 1.7, 1.25, 0.46], [1.9, 3.2, 1.15, 0.42], [3, 3, 0.95, 0.38],
+    ] as [number, number, number, number][]) {
+      out.push(...tagKey(paintBase(spirePillar({
+        x: tx9, y: ty9, z0: 0.35, h: tl9, w: tw9, tipW: tw9 * 0.72,
+        segs: 3, sides: 8, hold: 0.3,
+        leanX: 0.35, leanY: 0.5,
+      }), TENT), depthNow(tx9, ty9) * 1.6 + 2));
+    }
     return raceBase(out, "zerg", pc);
   },
+
   /* 크립 콜로니(실물 참고) — 처진 붉은 둔덕 + 꼭대기 주름 혹(입) + 옆 가시 + 바닥에
      번진 점액 자락. */
   creep: () => {
@@ -4828,25 +4854,30 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const BR: [number, number][] = [
       [-4.1, 3.8], [-2.05, 5.8], [0, 7.3], [2.05, 5.8], [4.1, 3.8],
     ];
+    /* 가지는 **방사형으로 펼쳐진다**(요청) — 뿌리는 한 자리에 모으고 끝만 앞뒤로
+       벌린다. 나란히 선 다섯이 아니라 한 밑동에서 부챗살처럼 갈라져 나가는 꼴이라야
+       사진의 그 느낌이 난다. 뿌리 0.3배 · 끝 1.35배로 벌린다. */
+    const ROOT_K = 0.3;
+    const TIP_K = 1.35;
     const tips: [number, number, number][] = BR.map(([py9, bh9]) => {
-      const [mx9, my9] = P(BPX + BEND * (bh9 / 7.3), py9);
+      const [mx9, my9] = P(BPX + BEND * (bh9 / 7.3), py9 * TIP_K);
       return [mx9, my9, 0.3 + bh9] as [number, number, number];
     });
     /* 막 — 가지 끝을 잇는 윗변에서 오른쪽 아래 바닥으로 늘어진다. 양 끝에 바닥에 닿는
        점을 하나씩 더 붙여, 맨 끝 가지와 지면 사이도 막으로 이어진다(요청).
        membraneFaces의 notch가 바깥 변을 우묵하게 파 '찢긴' 결을 낸다. */
-    const endF = P(BPX + 0.5, -5.6);
-    const endB = P(BPX + 0.5, 5.6);
+    const endF = P(BPX + 0.5, -6.2);
+    const endB = P(BPX + 0.5, 6.2);
     const MA: [number, number, number][] = [
       [endF[0], endF[1], 0.25], ...tips, [endB[0], endB[1], 0.25],
     ];
     /** 막의 아랫변 — 사진에서 오른쪽으로 3.0만큼 나가 바닥에 닿는다. */
     const MC: [number, number, number][] = BR.map(([py9]) => {
-      const [mx9, my9] = P(BPX + 3.4, py9 * 0.85);
+      const [mx9, my9] = P(BPX + 3.4, py9 * TIP_K * 0.9);
       return [mx9, my9, 0] as [number, number, number];
     });
-    const mcF = P(BPX + 1.2, -5.2);
-    const mcB = P(BPX + 1.2, 5.2);
+    const mcF = P(BPX + 1.2, -5.8);
+    const mcB = P(BPX + 1.2, 5.8);
     MC.unshift([mcF[0], mcF[1], 0]);
     MC.push([mcB[0], mcB[1], 0]);
     out.push(...membraneFaces(MA, MC, RACE_BASE_TONE.zerg, { shade: 0.16, notch: 0.34, key: 6 }));
@@ -4878,8 +4909,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ] as [number, number, number][]) membHole(u9, rr9, rz9);
     /* 가지 다섯 — 왼쪽 줄에서 솟아 위로 갈수록 오른쪽으로 휜다. 붉은 살빛. */
     for (const [py9, bh9] of BR) {
-      const [bx9, by9] = P(BPX, py9);
-      const [tx9, ty9] = P(BPX + BEND * (bh9 / 7.3), py9);
+      const [bx9, by9] = P(BPX, py9 * ROOT_K);
+      const [tx9, ty9] = P(BPX + BEND * (bh9 / 7.3), py9 * TIP_K);
       out.push(...tagKey(paintBase(spirePillar({
         x: bx9, y: by9, z0: 0.3, h: bh9, w: 0.84, tipW: 0.14,
         segs: 8, sides: 6, hold: 0.1, taper: 1.4,
@@ -4887,8 +4918,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         curveX: (tx9 - bx9) * 0.6, curveY: (ty9 - by9) * 0.6,
       }), RED), 10 + depthNow(bx9, by9) * 1.6));
     }
-    // 몸 — 오른쪽 앞의 붉은 살덩이 둔덕(사진).
-    const [bmx, bmy] = P(1.7, 0.3);
+    /* 몸 덩이(몸통·마디 꼬리·주둥이·엄니)만 **통째로 시계 90도 더 돌린다**(요청:
+       "주둥이랑 엄니 있는 부분이 전체적으로 시계방향으로 90도 요잉") — 가지·막은 그대로
+       두고 이 덩이만 돌려야 하므로, 모델 요잉이 아니라 사진 좌표에서 제 중심(BC)을 축으로
+       돌린다. 사진에서 px가 오른쪽·py가 뒤이므로 화면상 시계 90도는 (px,py) → (py,−px)다. */
+    const BC: [number, number] = [1.7, 0.3];
+    const PB = (px: number, py: number): [number, number] =>
+      P(BC[0] + (py - BC[1]), BC[1] - (px - BC[0]));
+    // 몸 — 붉은 살덩이 둔덕(사진).
+    const [bmx, bmy] = PB(1.7, 0.3);
     out.push(...tagKey(paintBase(spirePillar({
       x: bmx, y: bmy, z0: 0, h: 3.2, w: 3.4, tipW: 1.3,
       segs: 6, sides: 12, hold: 0, taper: 0.55,
@@ -4897,7 +4935,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        흘러내리는 마디 여덟. 칠하지 않으므로 그리는 쪽이 팀색을 넣는다. */
     for (let k = 0; k < 8; k += 1) {
       const u9 = k / 7;
-      const [tx9, ty9] = P(1.7 + u9 * u9 * 1.5, 0.3 - u9 * 3.4);
+      const [tx9, ty9] = PB(1.7 + u9 * u9 * 1.5, 0.3 - u9 * 3.4);
       const tz9 = 2.8 - u9 * u9 * 2.5;
       const seg9 = domeFaces3(tx9, ty9, 1.15 - u9 * 0.6, 0.86 - u9 * 0.4, tz9);
       out.push(...tagKey([...seg9, sideFace(seg9[0][0], 0.16)],
@@ -4905,13 +4943,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     }
     // 꼬리 곁의 창백한 뼈 마디 둘 — 흰색이되 임자 색은 아니다(사진의 옆 갈비).
     for (const m9 of [-1, 1] as const) {
-      const [rx9, ry9] = P(1.7 + m9 * 1.7, -0.7);
+      const [rx9, ry9] = PB(1.7 + m9 * 1.7, -0.7);
       out.push(...tagKey(paintBase(domeFaces3(rx9, ry9, 0.7, 0.52, 1.8), BONE),
         13 + depthNow(rx9, ry9) * 1.6));
     }
     // 살빛 주둥이 — 꼬리 끝에 붙은 통통한 코.
-    const [nx9, ny9] = P(3, -3.4);
-    const [n2x, n2y] = P(3.2, -4.2);
+    const [nx9, ny9] = PB(3, -3.4);
+    const [n2x, n2y] = PB(3.2, -4.2);
     out.push(...tagKey(paintBase([
       ...domeFaces3(nx9, ny9, 1, 0.8, 0.3),
       ...domeFaces3(n2x, n2y, 0.66, 0.56, 0.3),
@@ -4922,10 +4960,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         x: 0, y: 0, h: 1, w: 0.5, tipW: 0.1, segs: 10, sides: 6, hold: 0.1, taper: 1.4,
         path: (t9: number): [number, number, number] => {
           const a9 = Math.PI * (0.75 * t9);
-          const [ex9, ey9] = P(1.7 + m9 * (1.3 + Math.sin(a9) * 2.3), -1.6 - (1 - Math.cos(a9)) * 2.3);
+          const [ex9, ey9] = PB(1.7 + m9 * (1.3 + Math.sin(a9) * 2.3), -1.6 - (1 - Math.cos(a9)) * 2.3);
           return [ex9, ey9, 1.5 - t9];
         },
-      }), HORN), 20 + depthNow(...P(1.7 + m9 * 3, -3.6)) * 1.6));
+      }), HORN), 20 + depthNow(...PB(1.7 + m9 * 3, -3.6)) * 1.6));
     }
     return out;
   },
@@ -7974,66 +8012,87 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const DARK = "#33271f";     // 그늘진 속살·가시
     const out: ShapeFace[] = [];
     /* ── 다리 넷 ── 허벅지(밖으로 벌어진 각기둥) → 정강이(안으로 꺾인 각기둥) → 발판.
-       정강이에 창백한 정강이받이를 두르는데, 그것이 임자 색이다. */
-    for (const [lx9, ly9] of [[-2.3, -1.9], [2.3, -1.9], [-2.5, 1.5], [2.5, 1.5]] as [number, number][]) {
+       정강이에 창백한 정강이받이를 두르는데, 그것이 임자 색이다.
+       앞다리는 앞몸(가슴) 밑에, 뒷다리는 뒷몸(골반) 밑에 붙는다 — 몸이 앞뒤로 갈렸으니
+       다리도 그 두 덩이를 각각 받쳐야 한 짐승으로 읽힌다(지적). */
+    for (const [lx9, ly9] of [[-2.4, 1.9], [2.4, 1.9], [-2.5, -3.4], [2.5, -3.4]] as [number, number][]) {
       const sx9 = Math.sign(lx9);
       const key9 = depthNow(lx9, ly9) * 1.6 - 2;
       // 허벅지 — 몸에서 밖·아래로 벌어지는 네모 기둥.
       out.push(...tagKey(paintBase(spirePillar({
-        x: lx9 * 0.72, y: ly9 * 0.82, z0: 1.85, h: 1.7, w: 1.55, tipW: 1.15,
+        x: lx9 * 0.72, y: ly9 * 0.88, z0: 1.85, h: 1.7, w: 1.55, tipW: 1.15,
         segs: 2, sides: 4, hold: 0.25,
-        leanX: sx9 * 0.55, leanY: ly9 * 0.12,
+        leanX: sx9 * 0.55, leanY: ly9 * 0.08,
       }), HIDE), key9));
       // 정강이 — 거기서 안·아래로 꺾여 내려온다.
       out.push(...tagKey(paintBase(spirePillar({
-        x: lx9 + sx9 * 0.55, y: ly9 + ly9 * 0.1, z0: 0.45, h: 1.5, w: 0.95, tipW: 1.25,
+        x: lx9 + sx9 * 0.55, y: ly9, z0: 0.45, h: 1.5, w: 0.95, tipW: 1.25,
         segs: 2, sides: 4, hold: 0.25,
       }), HIDE), key9 + 0.1));
       // 정강이받이 — 창백한 판 하나. 칠하지 않는다 = 임자 색.
       out.push(...tagKey(spirePillar({
-        x: lx9 + sx9 * 0.55, y: ly9 + ly9 * 0.1 + 0.28, z0: 0.95, h: 0.72, w: 1.12, tipW: 0.98,
+        x: lx9 + sx9 * 0.55, y: ly9 + 0.28, z0: 0.95, h: 0.72, w: 1.12, tipW: 0.98,
         segs: 1, sides: 4, hold: 0.4, caps: "none",
       }), key9 + 0.2));
       // 발판 — 땅에 닿는 넓적한 상자.
-      out.push(...tagKey(paintBase(boxFaces3(lx9 + sx9 * 0.55, ly9 + ly9 * 0.1 + 0.2,
+      out.push(...tagKey(paintBase(boxFaces3(lx9 + sx9 * 0.55, ly9 + 0.2,
         1.75, 1.5, 0.42, 0.05), DARK), key9 - 0.3));
     }
-    /* ── 몸 ── 각진 판 셋을 층으로 쌓는다: 아래 몸통(넓고 낮음) → 등판(좁고 높음) →
-       등마루(피라미드). 아래에서 위로 갈수록 뒤로 물러나, 앞으로 웅크린 등이 된다. */
+    /* ── 몸 ── 앞뒤로 길고 **앞몸(가슴)과 뒷몸(골반)이 나뉜다**(지적) — 한 덩이 절두체는
+       통짜 상자로 보였다. 실제 울트라는 어깨가 크게 부푼 앞몸, 잘록한 허리, 그보다 조금
+       작은 골반 덩이가 이어진 꼴이다. 셋을 따로 세우고 허리를 낮고 좁게 눌러 그 이음이
+       눈에 보이게 한다. 각 덩이는 아래 판 + 위 판 두 층이라 각진 결이 살아 있다. */
+    // 앞몸(가슴·어깨) — 가장 넓고 높다.
     out.push(...tagKey(paintBase(
-      frustumFaces3(0, -0.5, 6.2, 5.4, 5.2, 4.6, 1.85, 2.4), HIDE),
-    depthNow(0, -0.5) * 1.6));
+      frustumFaces3(0, 1.1, 6.2, 4.4, 5.2, 3.7, 2, 2.4), HIDE),
+    depthNow(0, 1.1) * 1.6));
     out.push(...tagKey(paintBase(
-      frustumFaces3(0, -1.15, 5.4, 4.4, 3.9, 3.2, 1.6, 4.15), PLATE),
-    depthNow(0, -1.15) * 1.6 + 1));
+      frustumFaces3(0, 0.85, 5.4, 3.6, 3.9, 2.7, 1.7, 4.3), PLATE),
+    depthNow(0, 0.85) * 1.6 + 1));
     out.push(...tagKey(paintBase(
-      pyramidFaces3(0, -1.5, 3.6, 3, 1.5, 5.7), PLATE),
-    depthNow(0, -1.5) * 1.6 + 2));
-    /* 어깨 갑옷 판 둘 = **임자 색**(요청: 나머지 흰 부분) — 몸 양옆에 비스듬히 붙는
+      pyramidFaces3(0, 0.6, 3.6, 2.6, 1.5, 5.9), PLATE),
+    depthNow(0, 0.6) * 1.6 + 2));
+    // 허리 — 좁고 낮은 이음. 여기가 꺼져야 앞뒤 두 덩이가 갈려 보인다.
+    out.push(...tagKey(paintBase(
+      frustumFaces3(0, -1.5, 4, 2.4, 3.6, 2.2, 1.5, 2.5), HIDE),
+    depthNow(0, -1.5) * 1.6 - 0.5));
+    // 뒷몸(골반) — 앞몸보다 한 뼘 작고 낮다.
+    out.push(...tagKey(paintBase(
+      frustumFaces3(0, -3.5, 5.4, 4, 4.4, 3.2, 1.8, 2.3), HIDE),
+    depthNow(0, -3.5) * 1.6));
+    out.push(...tagKey(paintBase(
+      frustumFaces3(0, -3.7, 4.4, 3.2, 3, 2.3, 1.5, 4), PLATE),
+    depthNow(0, -3.7) * 1.6 + 1));
+    out.push(...tagKey(paintBase(
+      pyramidFaces3(0, -3.9, 2.9, 2.3, 1.2, 5.4), PLATE),
+    depthNow(0, -3.9) * 1.6 + 2));
+    /* 어깨 갑옷 판 둘 = **임자 색**(요청: 나머지 흰 부분) — 앞몸 양옆에 비스듬히 붙는
        각진 판. 사진에서 가장 크게 드러나는 창백한 자리라 임자를 여기서 읽는다. */
     for (const m9 of [-1, 1] as const) {
-      out.push(...tagKey(frustumFaces3(m9 * 2.85, -0.3, 1.5, 4.2, 1.05, 3.1, 1.5, 3.9),
-        depthNow(m9 * 2.85, -0.3) * 1.6 + 3));
+      out.push(...tagKey(frustumFaces3(m9 * 2.85, 1.3, 1.5, 4.2, 1.05, 3.1, 1.5, 3.9),
+        depthNow(m9 * 2.85, 1.3) * 1.6 + 3));
     }
-    /* 등가시 여섯 — 등마루 양옆에서 뒤로 눕는다. 짙은 색이라 창백한 어깨판과 갈린다. */
+    /* 등가시 — 앞몸 등마루에서 골반까지 줄지어 뒤로 눕는다. 짙은 색이라 창백한
+       어깨판과 갈린다. */
     for (const [sx9, sy9, sz9, tw9] of [
-      [-1.5, -0.8, 7.4, 0.68], [1.5, -0.8, 7.4, 0.68],
-      [-1.25, -2.4, 7, 0.58], [1.25, -2.4, 7, 0.58],
-      [-0.75, -3.5, 6.1, 0.46], [0.75, -3.5, 6.1, 0.46],
+      [-1.5, 0.9, 7.5, 0.68], [1.5, 0.9, 7.5, 0.68],
+      [-1.2, -1.4, 6.4, 0.56], [1.2, -1.4, 6.4, 0.56],
+      [-1.15, -3.6, 6.7, 0.58], [1.15, -3.6, 6.7, 0.58],
+      [-0.7, -5, 5.8, 0.44], [0.7, -5, 5.8, 0.44],
     ] as [number, number, number, number][]) {
       out.push(...tagKey(paintBase(spikeHorn(
         sx9 * 0.8, sy9 + 0.5, sz9 - 1.2, sx9 * 1.6, sy9 - 1.6, sz9, tw9,
         undefined, 5, 0.5, sx9 * 0.4, -0.8,
       ), DARK), depthNow(sx9, sy9) * 1.6 + 4));
     }
-    /* ── 머리 ── 어깨 앞으로 낮게 내민 각진 쐐기. 이마에 창백한 판(임자 색) 하나. */
+    /* ── 머리 ── 앞몸 앞으로 낮게 내민 각진 쐐기. 이마에 창백한 판(임자 색) 하나. */
     out.push(...tagKey(paintBase(
-      frustumFaces3(0, 2.35, 3.4, 2.8, 2.2, 1.9, 1.55, 2.85), HIDE),
+      frustumFaces3(0, 3.9, 3.4, 2.8, 2.2, 1.9, 1.55, 2.85), HIDE),
     12));
-    out.push(...tagKey(frustumFaces3(0, 2.55, 1.9, 1.5, 1.35, 1.05, 0.4, 4.4), 12.6));
+    out.push(...tagKey(frustumFaces3(0, 4.1, 1.9, 1.5, 1.35, 1.05, 0.4, 4.4), 12.6));
     // 턱 — 머리 밑으로 내민 짧고 각진 판.
     out.push(...tagKey(paintBase(
-      frustumFaces3(0, 3.15, 2.4, 1.6, 1.7, 1.1, 0.75, 2.2), DARK),
+      frustumFaces3(0, 4.7, 2.4, 1.6, 1.7, 1.1, 0.75, 2.2), DARK),
     12.3));
     /* ── 낫 넷 ── **고유색(상아빛)이다**(요청) — 임자 색이 아니다. 위 한 쌍이 크게
        밖·앞으로 감기고, 아래 한 쌍은 작고 낮게 앞으로 뻗는다. */
@@ -8977,7 +9036,7 @@ const MODEL_NORM: Record<string, number> = {
   tankbody: 0.846,
   tanksiege: 0.660,
   tanksiegebody: 0.756,
-  ultra: 0.490,
+  ultra: 0.461,
   valk: 0.949,
   vessel: 0.810,
   vulture: 1.058,
@@ -9931,7 +9990,7 @@ export const BLD_NORM: Record<string, number> = {
   gspire: 0.917,
   hatchery: 1.367,
   hive: 1.165,
-  hydraden: 1.096,
+  hydraden: 1.111,
   lair: 1.223,
   mineral: 1.963,
   mshop: 1.958,
@@ -9949,7 +10008,7 @@ export const BLD_NORM: Record<string, number> = {
   scaffold: 1.733,
   scifac: 1.373,
   spire: 1.409,  // 상자 상한에 걸림
-  spore: 1.422,
+  spore: 1.314,
   sunken: 1.072,
   sunkenfire: 1.050,
   tomb: 1.534,
