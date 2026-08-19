@@ -8331,7 +8331,16 @@ const SIZE_CONTRAST_MAX = 1.35;
  *  실측(41종): C=1.35에서 큰/작은 비 2.21 → 2.92, 기하평균 0.834 불변(산술평균만 +1.9%).
  *  가장 큰 배틀크루저의 몸이 1.207 → 1.374타일(확대에서 4.26타일)로 커맨드센터 발자국
  *  (4타일)만 하다 — 전장을 가리지 않는다. */
-const SIZE_CONTRAST: number = 1;
+/* 1 → 1.35(요청: 소·중·대 구분이 거의 안 된다. 충돌은 그대로 두고 보이는 것만) —
+   상한(SIZE_CONTRAST_MAX)까지 올린다. 실측으로 그리는 상자의 큰/작은 비가 원작 충돌
+   상자는 4.43배인데 우리는 2.39배였고(등급비도 원작 1:1.40:1.82 대 우리 1:1.31:1.58),
+   그 압축의 절반은 등급 섞기(SIZE_BLEND), 절반은 모델 정규화(16/modelInk)가 만든다.
+   ★ 충돌·간격은 한 톨도 안 움직인다 — 겹침의 진실은 simCore의 BODY_R이고, 화면
+     진형 간격은 UNIT_BODY_TILES(등급 섞기도 이 지수도 안 타는 순수 충돌 상자)가
+     정한다. 이 상수는 UNIT_BW_TILES(그리기 전용)에만 걸린다.
+   상한을 넘지 않는 이유는 위 SIZE_CONTRAST_MAX 주석의 실측 그대로다 — 1.35가
+   '가장 큰 유닛의 그리는 상자가 작은 맵에서도 화면 안'인 마지막 자리다. */
+const SIZE_CONTRAST: number = 1.35;
 /** 실제로 쓰이는 값 — 1 미만(작은 유닛이 더 커지는 방향)과 상한 밖을 막는다. */
 const SIZE_CONTRAST_C = Math.min(SIZE_CONTRAST_MAX, Math.max(1, SIZE_CONTRAST));
 const SIZE_REF = gmOf(Object.values(UNIT_BW_TILES));
