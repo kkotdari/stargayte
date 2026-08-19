@@ -8001,13 +8001,21 @@ const WORKER_START = 4;
    번개 줄기 지지기(zap), 뮤탈은 가시 투척(glave를 투척 다트로), 럴커는 초록 줄이 아닌
    가시(spike), 가디언은 노란 독구체(acidball). 템플러는 물리 공격이 없고(스톰은 캐스트
    가 따로 그린다) 스커지는 자폭(죽음이 곧 공격)이라 뺀다. */
+/* 갈래는 **무기의 결**로 나눈다(요청: "트레이서 세분화") — 같은 총이라도 지상·대공이
+   갈리는 종류(레이스·골리앗·스카우트)는 아래 렌더가 표적의 공중 여부로 갈아 끼운다.
+     gun 짧은 노란 빛(마린·고스트·벌처·골리앗 지상·벙커) · heal 노란 작은 동그란 빛(메딕)
+     missile 연기 낀 길고 흰 빛(레이스·발키리·골리앗 대공·스카우트 대공·터렛)
+     spine 중간 길이 형광 녹색(히드라) · spike 갈색 길고 가는 가시(럴커·성큰)
+     flame 중간 길이 붉고 두꺼운 화염(파이어뱃) · plasma 길게 늘어진 플라즈마(드라군·포톤)
+     venom 노랑-연두 독구슬(가디언·스포어) · acid 두껍고 연기 낀 보라(디바우러)
+     cannon 짧고 두꺼운 주황(탱크 모드) · siege 굵고 긴 주황(시즈 모드) */
 const ATTACK_FX: Record<string, string> = {
   Marine: "gun", Ghost: "gun", Vulture: "gun", Goliath: "gun", Wraith: "laser",
   Battlecruiser: "laser", "Siege Tank": "cannon", "Siege Tank (Tank Mode)": "cannon",
-  "Siege Tank (Siege Mode)": "cannon", Firebat: "flame", Medic: "heal",
+  "Siege Tank (Siege Mode)": "siege", Firebat: "flame", Medic: "heal",
   Hydralisk: "spine", Lurker: "spike", Mutalisk: "glave", Devourer: "acid",
-  Guardian: "acidball", Queen: "acid", Valkyrie: "missile",
-  Dragoon: "photon", Scout: "bolt", Corsair: "flare", Arbiter: "bolt", Carrier: "burst",
+  Guardian: "venom", Queen: "acid", Valkyrie: "missile",
+  Dragoon: "plasma", Scout: "plasma", Corsair: "flare", Arbiter: "bolt", Carrier: "burst",
   Archon: "zap", Reaver: "cannon",
   /* 근접은 효과를 안 그린다(요청: 휘두름 호 제거) — 대신 몸이 표적 쪽으로 툭 나갔다
      빠지는 잽으로 때리는 것을 보인다(MELEE_JAB_SEC). 그림 없는 동작이 호보다 읽기
@@ -13660,7 +13668,8 @@ export default function ReplayMotionPlayer({
                   />);
                 }
                 if (unit === "Spore Colony" && foeB.bd <= rgB) {
-                  fire.push(<span key="o" className="scr-motion-tracer scr-tracer-acid" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)` }} />);
+                  // 스포어는 가디언과 같은 독 갈래다(요청: "스포어/가디언은 독느낌 노랑 연두 길게").
+                  fire.push(<span key="o" className="scr-motion-tracer scr-tracer-venom" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)` }} />);
                 }
                 if (unit === "Missile Turret" && foeB.air && foeB.bd <= rgB) {
                   fire.push(<span key="t" className="scr-motion-tracer scr-tracer-missile" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)` }} />);
@@ -14546,10 +14555,16 @@ export default function ReplayMotionPlayer({
               /* 럴커 가시는 가슴 높이가 아니라 땅에서 솟는다 — 들어올림 없이. */
               style={{ ...posStyle(ax3, ay3), zIndex: 1310, ...glyphStyle(e.raw, team), ...(lurkStrike ? {} : fxLift) }}
             >
-              {atkDeg !== null && ATTACK_FX[fxUnit] && ATTACK_FX[fxUnit] !== "heal" && (
+              {/* 메딕도 그린다(요청: "메딕 노란 작은 동그란 빛") — 여태 heal만 갈래에서
+                  빠져 있어 매딕은 아무 표시가 없었다. 빛 하나라 조준각만 타면 된다. */}
+              {atkDeg !== null && ATTACK_FX[fxUnit] && (
                 <span
+                  /* 지상·대공이 다른 무기는 표적을 보고 갈아 끼운다(요청) — 레이스(지상
+                     레이저/대공 미사일)·골리앗(총/대공 미사일)·스카우트(플라즈마/대공
+                     미사일)가 그 셋이다. */
                   className={`scr-motion-tracer scr-tracer-${
-                    (fxUnit === "Wraith" || fxUnit === "Goliath") && foe.air ? "missile" : ATTACK_FX[fxUnit]}`}
+                    (fxUnit === "Wraith" || fxUnit === "Goliath" || fxUnit === "Scout") && foe.air
+                      ? "missile" : ATTACK_FX[fxUnit]}`}
                   /* 럴커 가시는 표적에서 멈추지 않는다 — 원작의 가시는 표적 자리가 아니라
                      늘 '제 자리 + 방향 × 최대 사거리'로 나아가(iscript behaviour 9), 그
                      직선 위의 적 지상 유닛을 모두 훑고 지나간다. 그래서 길이는 표적까지
