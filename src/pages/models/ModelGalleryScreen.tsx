@@ -49,10 +49,14 @@ const MAP_REF_TILES = Math.max(...SHAPE_GALLERY.map(({ kind }) => shapeMapTiles(
 /** 도록의 칸 하나(요청: 칸마다 끌어 돌리고 돋보기로 크게) — 면·선택·색·배수가 그대로면
  *  다시 안 그린다. 손잡이는 부모가 안정된 참조로 넘긴다. */
 const GalleryCell = memo(function GalleryCell({
-  kind, label, faces, on, color, mapK, onSelect, onZoom, onDown, onMove, onUp, onHover,
+  kind, label, faces, on, color, mapSize, mapK, onSelect, onZoom, onDown, onMove, onUp, onHover,
 }: {
   kind: string; label: string; faces: ShapeFace[] | undefined; on: boolean;
-  color: string; mapK: number;
+  color: string;
+  /** 지도상 크기 보기인가 — **배수가 1인지로 가르면 안 된다**(지적: "배클만 인게임
+   *  크기가 안 먹고 늘 최대로 보인다"). 배수는 가장 큰 모델을 1로 두는 비(MAP_REF_TILES가
+   *  최댓값이다)라, 그 최대 모델 하나만 정확히 1이 되어 '최대' 가지로 떨어졌다. */
+  mapSize: boolean; mapK: number;
   onSelect: (k: string) => void;
   onZoom: (k: string) => void;
   onDown: (k: string, e: React.PointerEvent<HTMLDivElement>) => void;
@@ -75,7 +79,7 @@ const GalleryCell = memo(function GalleryCell({
       <span className="scr-model-thumb">
         {/* 인게임이면 공통 창 + 배수(서로 얼마나 큰지), 최대면 잉크에 창을 맞춘다
             (요청: "최대는 진짜 최대야 — 패딩만 빼고 최대로 채우기"). */}
-        {mapK !== 1 ? (
+        {mapSize ? (
           <span className="scr-model-thumb-scaler" style={{ transform: `scale(${mapK.toFixed(4)})` }}>
             <ShapeIcon kind={kind} faces={faces} wide />
           </span>
@@ -396,6 +400,7 @@ export default function ModelGalleryScreen() {
                       faces={thumbFacesOf(k)}
                       on={k === kind}
                       color={color}
+                      mapSize={mapSize}
                       mapK={mapSize ? shapeMapTiles(k) / MAP_REF_TILES : 1}
                       onSelect={onCellSelect}
                       onZoom={onCellZoom}

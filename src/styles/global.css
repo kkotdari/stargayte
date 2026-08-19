@@ -13059,7 +13059,8 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   /* 무대 축소 300 → 252(지적: 위쪽 여백 줄이고 목록 길이에 할애) — 뷰박스를 위로
      자르면 키 큰 모델(파일런 첨탑)이 잘려, 판 자체를 줄여 자리를 내준다. */
   width: min(252px, 60vw); height: min(252px, 60vw);
-  color: #5ea2ff; position: relative;
+  /* 색은 안 박는다 — 위 .scr-model-thumb와 같은 까닭(상속을 끊으면 견본이 안 먹는다). */
+  position: relative;
   display: flex; align-items: center; justify-content: center;
 }
 /* 뷰어 그림자 완화(지적: 검은 부분이 너무 강함) — 큰 무대에선 마커용 그림자를 뗀다. */
@@ -13399,8 +13400,14 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    정규화가 잉크를 상자의 최대 1.25배까지 채우므로(게이트웨이 1.25 · 커맨드 1.2), 그림이
    16-상자 밖으로 나간다. 칸의 12%를 안쪽 여백으로 두면 그 1.25배가 칸의 95%에 들어와
    이웃 칸을 안 침범한다(0.76 × 1.25 = 0.95). 그래도 넘치는 것은 칸에서 자른다. */
+/* ★ 색은 여기서 못 박으면 안 된다(지적: "모델 개인색이 안 바뀐다") — 모델의 임자 색
+   자리는 fill 없는 면이고 그리는 쪽이 currentColor로 넣는다. 칸(.scr-model-item)이
+   고른 색을 인라인 style로 들고 있는데, 그 **자식**인 이 규칙이 색을 다시 못 박아
+   상속을 끊고 있었다. 견본을 눌러도 늘 이 파랑이 나오던 까닭이 이것이다(실측: 칸의
+   inline color는 초록→흰색→파랑으로 바뀌는데 path의 계산된 fill은 272개 모두
+   rgb(94,162,255) 고정). 색은 칸이 정한다. */
 .scr-model-thumb {
-  width: 100%; aspect-ratio: 1 / 1; color: #5ea2ff;
+  width: 100%; aspect-ratio: 1 / 1;
   display: flex; align-items: center; justify-content: center;
   /* 창을 32-상자로 넓혔으므로(ShapeIcon의 wide) 여백은 숨 쉴 몫만 남긴다 — 잘림은
      창이 맡고 이 여백은 이웃 칸과의 간격이다. */
