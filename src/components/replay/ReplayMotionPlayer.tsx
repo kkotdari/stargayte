@@ -9133,6 +9133,10 @@ function pathBox(d: string): [number, number, number, number] {
    그래서 부품(깊이 열쇠로 묶인 면 무리)의 상자 넓이를 모델 전체 상자와 견줘 자동으로
    매긴다 — 106개 모델을 손으로 안 건드려도 전부 걸리고, 모델러가 명시로 매긴 등급은
    그대로 존중한다(내려가기만 하고 올라가지 않는다). */
+/** 부품 크기(그 부품 상자 넓이 ÷ 가장 큰 부품 상자 넓이)로 등급을 매기는 문턱.
+ *  이 아래면 세부(3), 그 위 TIER_TRIM 아래면 장식(2), 그 위는 형체(1). */
+const TIER_FINE = 0.12;
+const TIER_TRIM = 0.3;
 const AUTO_TIER_CACHE = new Map<string, ShapeFace[]>();
 /** 도록도 같은 자를 쓴다(요청: 모델 갤러리의 사양 라디오) — 지도는 늘
  *  lodFilter(autoTier(...)) 순서로 거른다. 이 단계를 건너뛰면 '저'가 지도보다 훨씬
@@ -9157,20 +9161,77 @@ export function autoTier(key: string, faces: ShapeFace[]): ShapeFace[] {
     if (k !== undefined) lastKey = k;
     gid.push(g);
     const b = pathBox(f[0]);
-    const a = (b[2] - b[0]) * (b[3] - b[1]);
-    if (a > areas[g]) areas[g] = a;
     const bb = boxes[g];
     if (b[0] < bb[0]) bb[0] = b[0];
     if (b[1] < bb[1]) bb[1] = b[1];
     if (b[2] > bb[2]) bb[2] = b[2];
     if (b[3] > bb[3]) bb[3] = b[3];
   }
+  /* 부품의 크기는 **그 부품 상자**의 넓이다(수리: 사양 저·중에서 보여야 할 부품이
+     안 보인다) — 여태 여기 쓰던 값은 '그 부품에서 가장 큰 면 하나'의 넓이였다. 위
+     주석이 말하는 뜻("부품의 상자 넓이")과 코드가 어긋나 있었던 것이고, 어긋난 방향이
+     하필 나쁘다: 얇은 조각 수십 개로 이루어진 큰 부품(날개 슬랫·간헐천 기둥·벌처
+     차체)은 낱장이 다 작아서 통째로 3티어로 내려가 사라졌다.
+     실측(고치기 전, 실루엣이 줄어든 45/198건): 가스 간헐천이 저에서 410면 중 1면만
+     남아 세로 45%가 날아갔고, 벌처는 가로 59%, 사이언스 베슬은 세로 52%를 잃었다.
+     부품 상자로 재면 '큰 덩이'가 실제로 크게 잡혀 형체(1티어)로 남는다. */
+  for (let g2 = 0; g2 < boxes.length; g2 += 1) {
+    const bb2 = boxes[g2];
+    areas[g2] = Number.isFinite(bb2[0]) ? (bb2[2] - bb2[0]) * (bb2[3] - bb2[1]) : 0;
+  }
   const big = Math.max(...areas, 0.0001);
   const core = boxes[areas.indexOf(big)] ?? [0, 0, 0, 0];
+  /* ★ 형체(1티어)는 실루엣을 책임진다(수리: 사양 저·중에서 보여야 할 부품이 안 보임)
+     — 여태 규칙은 "모델러가 명시한 등급은 존중한다, 내려가기만 하고 올라가지 않는다"
+     였다. 그런데 실루엣을 만드는 면이 명시 2·3티어인 모델이 실제로 많다: 벌처는 전체
+     폭(4.0~12.0)을 만드는 것이 명시 2티어 흰 면이고 몸통은 6.3~9.6뿐이며, 사이언스
+     베슬은 몸 높이 전체를 만드는 면이 명시 2티어 검은 면이다. 그리기 헬퍼(topFace·
+     sideFace)의 기본 등급이 장식(2)인데 모델러가 그것으로 **몸을 그린** 것이다.
+     그래서 저에서 벌처는 가로 59%, 베슬은 세로 52%를 잃었다.
+     내려가기만 하는 규칙에는 이걸 구제할 길이 없으므로, 마지막에 한 번 **올린다**:
+     지금 1티어인 면들의 상자를 재고, 그 밖으로 뻗는 부품은 통째로 1티어로 끌어올린다.
+     부품 단위인 이유는 면 하나만 올리면 그 조각이 허공에 뜨기 때문이다. */
+  const promote = new Set<number>();
+  {
+    const lo: [number, number, number, number] = [Infinity, Infinity, -Infinity, -Infinity];
+    const grow = (b: [number, number, number, number]): void => {
+      if (b[0] < lo[0]) lo[0] = b[0];
+      if (b[1] < lo[1]) lo[1] = b[1];
+      if (b[2] > lo[2]) lo[2] = b[2];
+      if (b[3] > lo[3]) lo[3] = b[3];
+    };
+    const tierOf = (i: number): number => {
+      const cur = faces[i][4] ?? 1;
+      if (cur === 0) return 0;
+      const b = boxes[gid[i]];
+      const out9 = Math.max(core[0] - b[0], core[1] - b[1], b[2] - core[2], b[3] - core[3]);
+      const span = Math.max(core[2] - core[0], core[3] - core[1], 0.001);
+      if (out9 > span * 0.06) return cur;
+      const r = areas[gid[i]] / big;
+      return Math.max(cur, r < TIER_FINE ? LOD_FINE : r < TIER_TRIM ? LOD_TRIM : 1);
+    };
+    for (let i = 0; i < faces.length; i += 1) if (tierOf(i) <= 1) grow(pathBox(faces[i][0]));
+    if (Number.isFinite(lo[0])) {
+      const span = Math.max(lo[2] - lo[0], lo[3] - lo[1], 0.001);
+      /* 여유 2% — 반올림·안티에일리어싱 수준의 삐져나옴까지 올리면 결국 다 올라간다. */
+      const eps = span * 0.02;
+      for (let g2 = 0; g2 < boxes.length; g2 += 1) {
+        const b = boxes[g2];
+        if (!Number.isFinite(b[0])) continue;
+        const outg = Math.max(lo[0] - b[0], lo[1] - b[1], b[2] - lo[2], b[3] - lo[3]);
+        if (outg > eps) promote.add(g2);
+      }
+    }
+  }
   const out = faces.map((f, i) => {
     const cur = f[4] ?? 1;
     // 형체 확정(0)은 자동 판정이 손대지 않는다.
     if (cur === 0) return f;
+    /* 실루엣을 만드는 부품은 명시 등급이 무엇이든 형체로 끌어올린다(위 주석).
+       ★ 아래 '실루엣 밖으로 뻗으면 안 내린다' 분기보다 **먼저** 봐야 한다 — 그 분기는
+         등급을 그대로 두고 곧장 돌려주므로, 뒤에 두면 정작 구제해야 할 면(밖으로 뻗는
+         면)이 전부 그 문으로 빠져나간다. */
+    if (promote.has(gid[i]) && cur > 1) return [f[0], f[1], f[2], f[3], 1] as ShapeFace;
     /* 실루엣을 만드는 부품은 작아도 안 내린다(지적: 넥서스 네 기둥도 형태 쪽이라
        1티어여야 한다) — 가장 큰 부품의 상자 **밖으로 뻗은** 부품은 그 자체가 윤곽을
        바꾼다(기둥·다리·날개·포신·뿔이 전부 그렇다). 안에 파묻힌 부품만 크기로
@@ -9180,8 +9241,7 @@ export function autoTier(key: string, faces: ShapeFace[]): ShapeFace[] {
     const span = Math.max(core[2] - core[0], core[3] - core[1], 0.001);
     if (out9 > span * 0.06) return f;
     const r = areas[gid[i]] / big;
-    // 넓이 비 — 12% 미만이면 세부(3), 30% 미만이면 장식(2), 그 위는 형체(1).
-    const auto = r < 0.12 ? LOD_FINE : r < 0.3 ? LOD_TRIM : 1;
+    const auto = r < TIER_FINE ? LOD_FINE : r < TIER_TRIM ? LOD_TRIM : 1;
     return (auto > cur ? [f[0], f[1], f[2], f[3], auto] : f) as ShapeFace;
   });
   AUTO_TIER_CACHE.set(key, out);
