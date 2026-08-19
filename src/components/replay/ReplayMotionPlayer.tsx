@@ -10075,6 +10075,8 @@ const MODEL_YAW_TWEAK: Record<string, number> = {
   /* 히드라 덴은 거기서 시계 90도(요청: "일단 90도 시계방향 요잉하고 시작해") — −90 → 0.
      이 요청 뒤로 덴의 앞뒤·좌우는 **요잉을 마친 화면 기준**으로 적는다. */
   hydraden: 0, trapezoid: -90, forge: -90, scaffold: -90,
+  // 시계 90도(요청) — 스포닝 풀.
+  pool: 90,
   // 시계 90도(지적) — 템플러 아카이브. 로보틱스는 모델 자체가 앞을 보게 고쳐 보정 0.
   // 아카이브 시계 90도(요청) — -90 → 0.
   dome: 0, archives: 0,
@@ -10086,8 +10088,9 @@ const MODEL_YAW_TWEAK: Record<string, number> = {
   /* 옵저버토리 시계 180도(요청) — 90에서 한 번 더 돌린다: 초승달 받침이 앞을 감싸야
      하는데 90에서는 뒤를 감싸고 있었다. */
   observatory: 270,
-  /* 익스트랙터 시계 45도(요청) — 간헐천 구멍이 정면을 보게 반 칸 돌린다. */
-  extract: 45,
+  /* 익스트랙터 — 45도(요청: 간헐천 구멍이 정면을 보게)에서 시계로 90도 더(요청:
+     "익스트랙터 시계방향 90도 요잉"). 합계 135. */
+  extract: 135,
 };
 export const buildingYawOf = (kind: string): number =>
   BUILDING_BASE_YAW + (MODEL_YAW_TWEAK[kind] ?? 0);
@@ -15282,9 +15285,15 @@ export default function ReplayMotionPlayer({
                    아는 규칙과 아는 증거로 되짚는 것이다. */
               if (ZERG_HALLS.has(unit) && !raising && (goneEff === 0 || t < goneEff)) {
                 const fp3 = FOOTPRINT[unit] ?? [4, 3];
+                /* 다 안 지어진 해처리는 아무것도 못 뱉는다(지적: "아직 완성도 안 된
+                   해처리에서 유닛 생산") — 자리로만 고르면, 본진 곁에 새로 올라가는
+                   해처리가 아직 공사 중인데도 옆 해처리가 뱉은 알·라바를 제 것으로
+                   집어 간다(발자국 언저리 상자가 겹친다). 변태를 시작한 시각(완성 −
+                   변태 시간)이 이 해처리의 완공(doneAt) 뒤라야 이 해처리의 몫이다. */
                 const mine3 = (prodDoneAt.get(raw) ?? []).filter((r3) =>
                   r3.x >= bx - 1.5 && r3.x <= bx + fp3[0] + 1.5
-                  && r3.y >= by - 1.5 && r3.y <= by + fp3[1] + 2);
+                  && r3.y >= by - 1.5 && r3.y <= by + fp3[1] + 2
+                  && r3.s - (UNIT_BUILD_SEC[r3.u] ?? 30) >= doneAt - 0.5);
                 const eggs3: { u: string; s: number }[] = [];
                 let larva3 = 1;
                 let last3 = sec;
@@ -15303,13 +15312,20 @@ export default function ReplayMotionPlayer({
                 /* 알과 라바가 앉는 자리 — 해처리 발치를 두르는 여섯 칸. 알이 앞자리를
                    먼저 차지하고 남은 자리에 라바가 눕는다(원작에서도 알이 해처리에 더
                    바짝 붙어 있다). */
-                const SPOT3: [number, number][] = [
-                  [-2.3, 1.8], [0.1, 2.4], [2.4, 1.8], [-2.7, 0.1], [2.7, 0.1], [0.1, -2.1],
-                ];
+                /* **알과 라바가 자리를 나눠 쓴다**(지적: "시작하자마자 해처리 주변의
+                   라바가 알로 변했다가 다시 라바로 변한다") — 여태는 여섯 칸을 한 줄로
+                   놓고 알부터 채웠다. 알 하나가 생기면 그 앞자리를 알이 가져가고 라바가
+                   뒤로 한 칸씩 밀리는데, 알이 부화하면 다시 앞으로 당겨진다. 같은 자리에서
+                   라바 → 알 → 라바로 바뀐 것처럼 보인 것이 그것이다. 알은 앞 세 칸,
+                   라바는 뒤 세 칸으로 못 박아 서로의 자리를 안 건드린다. 자리도 발자국
+                   쪽으로 당겼다(지적: 해처리에 안 붙어 있다). */
+                const EGG_SPOT3: [number, number][] = [[-1.7, 1.35], [0.1, 1.75], [1.8, 1.35]];
+                const LARVA_SPOT3: [number, number][] = [[-2.1, 0.1], [2.1, 0.1], [0.1, -1.5]];
                 let si3 = 0;
+                let sl3 = 0;
                 const put3 = (kind3: string, sz3: number): void => {
-                  const sp3 = SPOT3[si3 % SPOT3.length];
-                  si3 += 1;
+                  const sp3 = kind3 === "egg"
+                    ? EGG_SPOT3[si3++ % EGG_SPOT3.length] : LARVA_SPOT3[sl3++ % LARVA_SPOT3.length];
                   const px3 = centerX + sp3[0];
                   const py3 = centerY + sp3[1];
                   const [pfx3, pfy3] = posFrac(px3, py3);
@@ -15324,8 +15340,9 @@ export default function ReplayMotionPlayer({
                     color, alpha, noSep: true, noShadow: true,
                   });
                 };
-                for (let q3 = 0; q3 < Math.min(3, eggs3.length); q3 += 1) put3("egg", 1.15);
-                for (let q3 = 0; q3 < larva3; q3 += 1) put3("larva", 1);
+                // 둘 다 한 단 작게(지적: 라바·알이 너무 크다) — 알 1.15 → 0.68, 라바 1 → 0.6.
+                for (let q3 = 0; q3 < Math.min(3, eggs3.length); q3 += 1) put3("egg", 0.68);
+                for (let q3 = 0; q3 < larva3; q3 += 1) put3("larva", 0.6);
               }
               /* 애드온 연결 통로(지적: 본체와 잇는 방식 고민 — 원작 배치 참고) — 원작
                  에서 부속건물은 본체 오른쪽 아래에 붙는다: 애드온 왼쪽 모서리에서 본체
