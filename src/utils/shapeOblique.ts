@@ -161,6 +161,42 @@ export const groundEllipse = (
     + `a${r2(R1)} ${r2(R2)} ${angDeg} 1 0 ${r2(-2 * ux)} ${r2(-2 * uy)}Z`;
 };
 
+/** 지면과 평행한 **고리**(도넛) 패스 — 바깥 타원 안에 안 타원을 반대로 감아 뚫는다
+ *  (감김 주의: 같은 방향으로 감으면 구멍이 안 뚫린다 — 맨 위 주석 참고).
+ *  손으로 A 호를 두 줄 적던 자리를 대신한다 — 시각 밀림도 groundEllipse가 알아서 탄다. */
+export function annulusPath(
+  cx: number, cy: number, ro: number, ri: number, squash: number = groundSquashNow(),
+): string {
+  return `${groundEllipse(cx, cy, ro, ro * squash)}${ringHole(cx, cy, ri, ri * squash)}`;
+}
+/** 고리의 구멍 — groundEllipse와 반대로 감은 타원. */
+function ringHole(cx: number, cy: number, rx: number, ry: number): string {
+  return `M${r2(cx - rx)} ${r2(cy)}a${r2(rx)} ${r2(ry)} 0 1 1 ${r2(rx * 2)} 0`
+    + `a${r2(rx)} ${r2(ry)} 0 1 1-${r2(rx * 2)} 0Z`;
+}
+/** 높이 z에 뜬 고리(3D 자리) — 몸통 + 윗면 밝기. 대야 테두리·부양 링에 쓴다. */
+export function ringFaces3(
+  cx: number, cy: number, z: number, ro: number, ri: number,
+): ShapeFace[] {
+  const [sx, sy] = project(cx, cy, z);
+  const d = annulusPath(sx, sy, ro, ri);
+  return tagKey([bodyFace(d), topFace(d, OP.topSoft)], depthNow(cx, cy) + ro);
+}
+
+/** 두 화면 점을 잇는 **띠**(폭 있는 사각 판) — 양 끝 반폭을 따로 줄 수 있어 끝이
+ *  가늘어지는 칼날·팔·힘줄에도 쓴다. 손으로 네 꼭짓점을 적던 자리를 대신한다. */
+export function bandPath(
+  ax: number, ay: number, bx: number, by: number, hwA: number, hwB: number = hwA,
+): string {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  const nx = -dy / len;
+  const ny = dx / len;
+  return `M${r2(ax + nx * hwA)} ${r2(ay + ny * hwA)} L${r2(bx + nx * hwB)} ${r2(by + ny * hwB)}`
+    + ` L${r2(bx - nx * hwB)} ${r2(by - ny * hwB)} L${r2(ax - nx * hwA)} ${r2(ay - ny * hwA)} Z`;
+}
+
 /** 세운 각기둥(상자) 3면 — 앞면(본색) + 윗면(밝게) + 오른 옆면(어둡게).
  *  (x, yBottom)이 앞면 왼쪽 아래, w×h가 앞면, depth가 뒤로 물러나는 길이다. */
 export function boxFaces(

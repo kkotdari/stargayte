@@ -34,8 +34,8 @@ import { posAtSim, shotsAt, ST_INSIDE, type SimEventArr, type SimTrack } from ".
 import { posAt, LERP_MAX_GAP_SEC, type TrackPos, type TrackPt } from "../../utils/replayTrack";
 import { FLYING_BUILDING_TPS } from "../../utils/bwTransport";
 import {
-  bodyFace, capFace, depthNow, groundEllipse, LOD_FINE, LOD_TRIM, lodFilter,
-  sideFace, tagKey, topFace,
+  annulusPath, bandPath, bodyFace, capFace, depthNow, groundEllipse, LOD_FINE, LOD_TRIM,
+  lodFilter, sideFace, tagKey, topFace,
   type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
   domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces,
@@ -3053,8 +3053,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(topFace(bars.join(" "), 0.22));
     // 도톰한 링 테두리 — 위 테를 둥근 띠로 두른다.
     const [rcx, rcy] = project(0, 0, 2.8);
-    out.push(bodyFace(`M${rcx - 4.15} ${rcy} a4.15 2.01 0 1 0 8.3 0a4.15 2.01 0 1 0 -8.3 0`
-      + ` M${rcx - 3.35} ${rcy} a3.35 1.62 0 1 1 6.7 0a3.35 1.62 0 1 1 -6.7 0`));
+    out.push(bodyFace(annulusPath(rcx, rcy, 4.15, 3.35, 0.484)));
     // 테두리 빛 눈금 — 앞쪽 띠의 밝은 조각들.
     for (const ang of [115, 80, 45, 245]) {
       const a2 = (ang * Math.PI) / 180;
@@ -5649,13 +5648,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const gun = (tx: number): ShapeFace[] => {
       const [ax2, ay2] = project(tx, -0.8, 5.75);
       const [bx2, by2] = project(tx + (tx > 0 ? 0.2 : -0.2), 3.6, 5.65);
-      const dx2 = bx2 - ax2;
-      const dy2 = by2 - ay2;
-      const L = Math.hypot(dx2, dy2) || 1;
-      const nx2 = (-dy2 / L) * 0.17;
-      const ny2 = (dx2 / L) * 0.17;
       return [
-        bodyFace(`M${ax2 + nx2} ${ay2 + ny2} L${bx2 + nx2} ${by2 + ny2} L${bx2 - nx2} ${by2 - ny2} L${ax2 - nx2} ${ay2 - ny2} Z`),
+        bodyFace(bandPath(ax2, ay2, bx2, by2, 0.17)),
         capFace(groundEllipse(bx2, by2, 0.2, 0.16), 0.4),
       ];
     };
@@ -6698,10 +6692,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         project(Math.sin(aa) * 2.6 * rf, -0.25 + Math.cos(aa) * 2.6 * rf, z);
       const seg = (
         p1: [number, number], p2: [number, number], w: number, col: string,
-      ): ShapeFace => [
-        `M${p1[0] - w} ${p1[1]} L${p2[0] - w} ${p2[1]} L${p2[0] + w} ${p2[1]} L${p1[0] + w} ${p1[1]} Z`,
-        0.8, col,
-      ] as ShapeFace;
+      ): ShapeFace => [bandPath(p1[0], p1[1], p2[0], p2[1], w), 0.8, col] as ShapeFace;
       for (const [a, col] of veins) {
         if (facingRatio(Math.sin(a), Math.cos(a)) < 0.12) continue;
         /* 뿌리 높이·길이·굵기도 해시로 제각각(재재지적) — 어떤 건 밑동부터 길게,
@@ -6867,10 +6858,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const sq = groundSquashNow();
       const ro = 4.2;
       const ri = 2.9;
-      return [bodyFace(
-        `M${ex - ro} ${ey}a${ro} ${(ro * sq).toFixed(2)} 0 1 0 ${ro * 2} 0a${ro} ${(ro * sq).toFixed(2)} 0 1 0 ${-ro * 2} 0Z`
-        + `M${ex - ri} ${ey}a${ri} ${(ri * sq).toFixed(2)} 0 1 1 ${ri * 2} 0a${ri} ${(ri * sq).toFixed(2)} 0 1 1 ${-ri * 2} 0Z`,
-      )];
+      return [bodyFace(annulusPath(ex, ey, ro, ri, sq))];
     })(), "#7a6a52"),
     // 어두운 구멍.
     capFace(discPath3(0, 0, 0.1, 3), 0.6),
@@ -7763,14 +7751,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ): string => {
       const [ax, ay] = project(x1, y1, z1);
       const [bx, by] = project(x2, y2, z2);
-      const dx = bx - ax;
-      const dy = by - ay;
-      const len = Math.hypot(dx, dy) || 1;
-      const nx = -dy / len;
-      const ny = dx / len;
-      const a1 = w / 2;
-      const a2 = w2 / 2;
-      return `M${ax + nx * a1} ${ay + ny * a1} L${bx + nx * a2} ${by + ny * a2} L${bx - nx * a2} ${by - ny * a2} L${ax - nx * a1} ${ay - ny * a1} Z`;
+      return bandPath(ax, ay, bx, by, w / 2, w2 / 2);
     };
     /* 다리 개편(재재재지적: 다리는 몸통에 완전히 붙이고, 집게팔은 많이 두껍게) —
        뿌리를 풍선 실루엣 안쪽으로 밀어 넣어 몸에서 바로 돋아난 것으로 보이게 한다.
