@@ -73,11 +73,13 @@ const GalleryCell = memo(function GalleryCell({
       role="presentation"
     >
       <span className="scr-model-thumb">
+        {/* 인게임이면 공통 창 + 배수(서로 얼마나 큰지), 최대면 잉크에 창을 맞춘다
+            (요청: "최대는 진짜 최대야 — 패딩만 빼고 최대로 채우기"). */}
         {mapK !== 1 ? (
           <span className="scr-model-thumb-scaler" style={{ transform: `scale(${mapK.toFixed(4)})` }}>
             <ShapeIcon kind={kind} faces={faces} wide />
           </span>
-        ) : <ShapeIcon kind={kind} faces={faces} wide />}
+        ) : <ShapeIcon kind={kind} faces={faces} fit />}
       </span>
       <span className="scr-model-cellbtns">
         <button
@@ -442,7 +444,7 @@ export default function ModelGalleryScreen() {
             onClick={(e) => e.stopPropagation()}
           >
             <span className="scr-model-scaler" style={scaleStyle}>
-              <ShapeIcon kind={kind} faces={faces} wide />
+              <ShapeIcon kind={kind} faces={faces} wide={mapSize} fit={!mapSize} />
             </span>
             <span className="scr-model-yaw">
               {Math.round(((yaw % 360) + 360) % 360)}°{scaleLabel}

@@ -10351,7 +10351,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
 }
 
 export function ShapeIcon({
-  kind, className, faces: facesOverride, rotDeg, flat, keepRatio, viewYaw, pitchView, wide,
+  kind, className, faces: facesOverride, rotDeg, flat, keepRatio, viewYaw, pitchView, wide, fit,
 }: {
   kind: string; className?: string;
   /** 뷰어의 요잉 회전(요청) — withYaw로 다시 투영한 면 목록을 그대로 그린다. */
@@ -10371,6 +10371,14 @@ export function ShapeIcon({
    *  키가 상자를 훌쩍 넘는다. 지도는 그 넘침이 제 모습이지만 도록은 **모델 전체**를
    *  봐야 하므로, 창을 사방으로 한 상자씩 넓혀 32-상자로 본다. */
   wide?: boolean;
+  /** 잉크에 창을 맞춘다(도록의 "크기: 최대" — 요청: "최대는 진짜 최대야, 각 유닛을
+   *  그리드에 패딩만 빼고 최대로 채우기"). 정규화(MODEL_NORM·BLD_NORM)는 **모델끼리
+   *  같은 몫으로 채우는가**를 보는 자라 창을 남기는 것이 제 일이고, 그래서 칸의 절반쯤은
+   *  늘 빈다. 여기서는 그 자를 아예 안 태우고 실제로 칠해진 상자를 재서 그 상자를 창으로
+   *  삼는다 — 어느 모델이든 칸을 꽉 채운다. 비율은 지키고(meet) 가운데 놓는다.
+   *  "인게임"은 이 문을 안 지난다: 거기서는 서로 얼마나 큰지가 물음이라 창이 공통이어야
+   *  한다. */
+  fit?: boolean;
 }) {
   /* 방향은 요잉으로(지적: 화면 회전은 2D 시점에서 모델을 뒤집는다) — 3D 빌더가 있는
      도형은 rotDeg를 화면 회전 대신 모델 요잉 재투영으로 처리한다. 15도 버킷으로 한 번
@@ -10380,13 +10388,31 @@ export function ShapeIcon({
     : resolveShapeFaces(kind, rotDeg, flat, viewYaw, pitchView);
   const faces = resolved.faces;
   const rot = resolved.rot;
+  /* 잉크 상자 — 칠해진 패스를 다 훑어 합집합을 낸다. 선 굵기·둥근 마감이 살짝 넘치므로
+     짧은 변의 3%를 사방에 여유로 둔다. 아무것도 안 칠해졌으면(빈 목록) 여느 창으로. */
+  let fitBox: string | undefined;
+  if (fit && faces && faces.length) {
+    let bx0 = Infinity; let by0 = Infinity; let bx1 = -Infinity; let by1 = -Infinity;
+    for (const [d9] of faces) {
+      const [a9, b9, c9, e9] = pathBox(d9);
+      if (a9 < bx0) bx0 = a9;
+      if (b9 < by0) by0 = b9;
+      if (c9 > bx1) bx1 = c9;
+      if (e9 > by1) by1 = e9;
+    }
+    if (bx1 > bx0 && by1 > by0) {
+      const pad9 = Math.min(bx1 - bx0, by1 - by0) * 0.03;
+      fitBox = `${(bx0 - pad9).toFixed(3)} ${(by0 - pad9).toFixed(3)} `
+        + `${(bx1 - bx0 + pad9 * 2).toFixed(3)} ${(by1 - by0 + pad9 * 2).toFixed(3)}`;
+    }
+  }
   return (
     // preserveAspectRatio="none" — 상자(발자국 비율)에 맞춰 그림째 눌린다(요청: 캔버스
     // 비율을 정확하게). 정사각 상자(유닛 마커 등)에서는 아무 일도 안 일어난다.
     <svg
       className={cx("scr-motion-shape-svg", className)}
-      viewBox={wide ? "-8 -12 32 32" : "0 0 16 16"}
-      preserveAspectRatio={keepRatio ? "xMidYMax meet" : "none"} aria-hidden
+      viewBox={fitBox ?? (wide ? "-8 -12 32 32" : "0 0 16 16")}
+      preserveAspectRatio={fitBox || keepRatio ? (fitBox ? "xMidYMid meet" : "xMidYMax meet") : "none"} aria-hidden
     >
       {/* 도록도 모델 공간 정규화를 탄다(지적: 정작 모델을 보는 화면에 정규화가 없어
           "같은 크기로 디자인"을 확인할 수단이 없다) — 굽기(unitSprite)와 **같은 배수·
@@ -10404,12 +10430,12 @@ export function ShapeIcon({
           있었다는 뜻이다. 이제 도록과 지도가 같은 배수를 본다.
           축도 지도와 같다 — 유닛은 상자 한가운데(8,8), 건물은 발 가운데(8,16)에서 키운다
           (buildingSprite가 쓰는 그 축이다). */}
-      <g transform={[
+      <g transform={fitBox ? (rot ? `rotate(${rot} 8 8)` : undefined) : ([
         rot ? `rotate(${rot} 8 8)` : "",
         modelNormOf(kind) !== 1 ? `translate(8 8) scale(${modelNormOf(kind)}) translate(-8 -8)` : "",
         modelNormOf(kind) === 1 && (BLD_NORM[kind] ?? 1) !== 1
           ? `translate(8 16) scale(${BLD_NORM[kind]}) translate(-8 -16)` : "",
-      ].filter(Boolean).join(" ") || undefined}>
+      ].filter(Boolean).join(" ") || undefined)}>
         {faces
           ? faces.map(([d, op, fill], i) => <path key={i} d={d} fill={fill ?? "currentColor"} opacity={op} />)
           : <path d={SHAPE_PATHS[kind]} fill="currentColor" />}
