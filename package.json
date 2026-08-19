@@ -16,6 +16,7 @@
     "id-check": "node scripts/id-check.mjs",
     "bld-check": "node scripts/bld-check.mjs",
     "hit-check": "node scripts/hit-check.mjs",
+    "bind-check": "node scripts/bind-check.mjs",
     "larva-check": "node scripts/larva-check.mjs",
     "drop-check": "node scripts/drop-check.mjs",
     "gap-check": "node scripts/gap-check.mjs"

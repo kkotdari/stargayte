@@ -2113,6 +2113,15 @@ export function buildUnitTracks(
           const orderedSelf = life.ev.some(
             (v) => v[3] === 4 && Math.abs(v[0] - r.it.sec) <= 2,
           );
+          /* 앞끝 8초의 정체(지적: "완성 8초 전은 왜 있는 거야") — 유닛은 존재하기
+             전에 명령을 못 받으니 이론상 born ≥ done이지만, 우리가 셈하는 완성은
+             어림(주문 시각 + 빌드 시간 + 큐)이라 늦게 잡힐 수 있다. 그 어긋남만큼
+             앞을 열어 둔 값이고, 주석 없이 들어와 있던 붙박이다.
+             ★ 재 봤다(npm run bind-check) — 앞끝을 0초에서 300초까지 쓸어도 결합률·
+             합성 개체·못 뽑은 이름·수급 어긋남이 **한 자리도 안 움직인다**. 짝을
+             가르는 것은 뒤끝(300초)과 정체·행동 조건이지 이 앞끝이 아니다. 그래서
+             이 값은 지금 아무 일도 안 한다 — 뜻이 옳으므로 남기되, 결합률이 나빠질
+             때 여기를 만지는 것은 헛일이라는 것을 적어 둔다. */
           const front = orderedSelf
             ? Math.min(r.it.done - 8, r.it.sec - 2) : r.it.done - 8;
           if (life.born < front || life.born - r.it.done > 300) continue;
