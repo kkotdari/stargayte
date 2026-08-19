@@ -213,6 +213,22 @@ export const UNIT_STATS: Record<string, { hp: number; dps: number; sh?: number }
 const DEFAULT_UNIT_STATS = { hp: 70, dps: 6 };
 /** 건물 스탯(요청: 건물 체력바 — 실드·회복·불·수리까지) — [체력, 실드]. 실드는
  *  프로토스만 있고 저절로 차오른다. */
+/* 유닛 생산 시간(초, 빠른 속도) — 정보 팝업의 생산 진행률이 이 표로 돈다. 리플레이에
+   남는 것은 '완성 시각'뿐이라, 시작 시각은 완성에서 이 값을 빼서 되짚는다.
+   ★ 값의 출처 — 널리 인용되는 커뮤니티 문서 기준이고 프레임 단위까지 대조하지는
+     않았다. 자원·생산 모델을 붙일 때 이 표만 원전과 맞추면 진행률이 정확해진다. */
+export const UNIT_BUILD_SEC: Record<string, number> = {
+  SCV: 20, Marine: 24, Firebat: 24, Medic: 30, Ghost: 50,
+  Vulture: 30, Goliath: 40, "Siege Tank (Tank Mode)": 50, "Siege Tank (Siege Mode)": 50,
+  Wraith: 60, Dropship: 50, "Science Vessel": 80, Battlecruiser: 133, Valkyrie: 50,
+  Probe: 20, Zealot: 40, Dragoon: 50, "High Templar": 50, "Dark Templar": 50,
+  Archon: 20, "Dark Archon": 20, Shuttle: 60, Reaver: 70, Observer: 40,
+  Scout: 80, Corsair: 40, Carrier: 140, Arbiter: 160,
+  Drone: 20, Zergling: 28, Hydralisk: 28, Lurker: 40, Mutalisk: 40, Scourge: 30,
+  Queen: 50, Defiler: 50, Ultralisk: 60, Guardian: 40, Devourer: 40, Overlord: 40,
+  "Infested Terran": 40,
+};
+
 export const BLD_STATS: Record<string, [number, number]> = {
   "Command Center": [1500, 0], "Supply Depot": [500, 0], Barracks: [1000, 0], Refinery: [750, 0],
   "Engineering Bay": [850, 0], Academy: [600, 0], Bunker: [350, 0], "Missile Turret": [200, 0],

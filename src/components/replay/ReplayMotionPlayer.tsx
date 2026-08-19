@@ -6,11 +6,12 @@ import ReplayMapCanvas from "./ReplayMapCanvas";
 import PillTabs from "../common/PillTabs";
 import { cx } from "../../utils/format";
 import { BUILDING_KO, TECH_KO, UNIT_KO } from "../../utils/replayNames";
+import { ARMOR_WEAPON_PAIRS, UPGRADE_LINE_KO } from "../../utils/replayTechNames";
 import type { ReplayMapGrid } from "../../utils/replayParser";
 import { api } from "../../api/client";
 import { applyReplayMap, promoteReplayMap } from "../../hooks/useReplayMap";
 import { AIR_UNITS } from "../../utils/replayBuildMix";
-import { BLD_STATS, UNIT_STATS, type UnitTracksV2 } from "../../utils/replayUnits";
+import { BLD_STATS, UNIT_BUILD_SEC, UNIT_STATS, type UnitTracksV2 } from "../../utils/replayUnits";
 /* 사거리는 이 파일이 들고 있던 상수(ENGAGE_SIGHT_TILES 9, 방어 건물 7/7/7/8/6, 벙커 안
    화염 3.5)가 아니라 표에서 온다(과제 #48) — 마린도 시즈 탱크도 한 값 9로 쏘고 9에서
    멈추던 자리다. 표를 읽는 문은 **bwCombat 하나**로 정한다: bwUnits에도 같은 이름의
@@ -8966,6 +8967,8 @@ type UnitDrawOp = {
   pickRaw?: string;
   /** 건물인가 — 툴팁이 생산·연구·큐를 보여 줄지 가른다. */
   pickBld?: boolean;
+  /** 지금 무슨 상태인가(요청: 건설·변태 등 모든 상태 노출) — 툴팁 첫 줄에 그대로 뜬다. */
+  pickState?: string;
 };
 /* 구운 판의 실제 바닥(재재지적: 드론·해처리가 떠 있고 그림자가 이상하다) — 상자
    바닥 기준 어림은 모델이 상자를 다 안 채우면(해처리 둔덕 등) 그림자가 발보다 한참
@@ -10226,6 +10229,11 @@ const burrowStartOf = (spans: [number, number][], t: number): number => {
 const STATUS_TINT: Record<string, string> = {
   ensnare: "#79c74c", plague: "#b4452e", stasis: "#69b7e8",
   mael: "#a86ae0", lock: "#c8c8d2", irr: "#e8c84a",
+};
+/** 상태의 한국어 이름(요청: 건설·변태 등 모든 상태 노출) — 정보 팝업이 쓴다. */
+const STATUS_KO: Record<string, string> = {
+  ensnare: "인스네어", plague: "플레이그", stasis: "스테이시스",
+  mael: "마엘스트롬", lock: "락다운", irr: "이레디에이트",
 };
 /** 디텍터(전수조사: 투명화 카운터) — 이들이 곁에 있으면 은신이 벗겨진다. */
 const DETECTOR_UNITS = new Set(["Overlord", "Observer", "Science Vessel"]);
@@ -13650,6 +13658,13 @@ export default function ReplayMotionPlayer({
               const [bfxF, bfyF] = posFrac(centerX, bAnchorY);
               unitOps.push({
                 fx: bfxF, fy: bfyF, z,
+                /* 짓는 중에도 집힌다(요청: 건설 중 상태에서도 클릭 가능) — 열쇠는 완성
+                   뒤와 같은 자로 지어, 다 지어져도 팝업이 그대로 이어진다. */
+                pickKey: `b${raw}|${unit}|${Math.round(bx * 4)}|${Math.round(by * 4)}`,
+                pickName: unit, pickRaw: raw, pickBld: true,
+                pickState: race2 === "저그"
+                  ? `변태 중 ${Math.round(prog * 100)}%`
+                  : `건설 중 ${Math.round(prog * 100)}%`,
                 /* 테란 공사는 제 건물 모델을 아래부터 드러낸다(요청: "3단계로 하고 실제
                    모델의 부품을 일부만 표현하다가 완성되는 형태로. 아래쪽 부품부터 →
                    점점 위로"). 뼈대·크레인 한 벌(scaffold)을 모든 건물에 똑같이 쓰던
@@ -15145,6 +15160,15 @@ export default function ReplayMotionPlayer({
             hpMax: hpFull,
             // 정보 팝업 신원(요청) — 개체 태그가 프레임을 건너 같은 몸을 가리킨다.
             pickKey: `u${e.tag}`, pickName: e.unit, pickRaw: e.raw,
+            /* 지금 무슨 상태인가(요청: 모든 상태 노출) — 땅속·은신·얼음·전투까지, 몸이
+               이미 아는 것을 글로 옮긴다. 없으면 상태 줄을 안 적는다. */
+            pickState: (() => {
+              const st: string[] = [];
+              if (burrowed) st.push("땅속");
+              const actSt2 = e.statuses.find(([sa4, sb4]) => t >= sa4 && t < sb4);
+              if (actSt2) st.push(STATUS_KO[actSt2[2]] ?? actSt2[2]);
+              return st.length > 0 ? st.join(" · ") : undefined;
+            })(),
             tint: (() => {
               const actSt = e.statuses.find(([sa3, sb3]) => t >= sa3 && t < sb3);
               return actSt ? STATUS_TINT[actSt[2]] : undefined;
@@ -15681,22 +15705,34 @@ export default function ReplayMotionPlayer({
           const sh = op.pickBld ? (BLD_STATS[en]?.[1] ?? 0) : (UNIT_STATS[en]?.sh ?? 0);
           const trk = motion.players.find((pp) => pp.raw === op.pickRaw);
           const lines: string[] = [];
-          lines.push(`체력 ${cur} / ${max}${sh > 0 ? `  (실드 ${sh} 포함)` : ""}`);
+          if (op.pickState) lines.push(op.pickState);
+          /* 실드는 따로 한 줄(요청) — 원작은 실드부터 깎이므로, 남은 값이 체력 몫을
+             넘으면 그 초과분이 곧 남은 실드다. */
+          const hpOnly = Math.max(1, max - sh);
+          lines.push(`체력 ${Math.min(cur, hpOnly)} / ${hpOnly}`);
+          if (sh > 0) lines.push(`실드 ${Math.max(0, cur - hpOnly)} / ${sh}`);
           if (op.pickBld) {
             /* 생산·연구·큐(요청) — 생산 기록은 '완성 시각'이라, 지금 창 안이면 방금
                나온 것, 앞엣것은 큐로 읽는다(무엇이 언제 나오는지가 그대로 큐다). */
-            const evs: [number, string][] = [];
+            const evs: [number, string, number][] = [];
             for (const u of PRODUCED_BY[en] ?? []) {
-              for (const ps of trk?.prod?.[u] ?? []) evs.push([ps, UNIT_KO[u] ?? u]);
+              const sec = UNIT_BUILD_SEC[u] ?? 30;
+              for (const ps of trk?.prod?.[u] ?? []) evs.push([ps, UNIT_KO[u] ?? u, sec]);
             }
             evs.sort((a, b) => a[0] - b[0]);
+            /* 진행률(요청) — 리플레이에 남는 건 완성 시각뿐이라, 거기서 생산 시간을
+               빼 시작을 되짚는다. 지금이 그 사이면 '생산 중 NN%'다. */
+            const making = evs.filter(([ps, , sec]) => t < ps && t >= ps - sec);
+            const queue = evs.filter(([ps, , sec]) => t < ps - sec).slice(0, 4);
             const justOut = evs.filter(([ps]) => ps <= t && t - ps <= PROD_FLASH_SEC);
-            const queue = evs.filter(([ps]) => ps > t).slice(0, 4);
-            lines.push(justOut.length > 0
-              ? `생산 완료 ${justOut.map(([, n]) => n).join(" · ")}`
-              : "생산 대기");
+            if (making.length > 0) {
+              lines.push(`생산 중 ${making.map(([ps, n, sec]) =>
+                `${n} ${Math.min(99, Math.round(((t - (ps - sec)) / sec) * 100))}%`).join(" · ")}`);
+            } else if (justOut.length > 0) {
+              lines.push(`생산 완료 ${justOut.map(([, n]) => n).join(" · ")}`);
+            } else lines.push("생산 대기");
             if (queue.length > 0) {
-              lines.push(`큐 ${queue.map(([ps, n]) => `${n} +${Math.max(0, Math.round(ps - t))}초`).join(" · ")}`);
+              lines.push(`큐 ${queue.map(([ps, n, sec]) => `${n} +${Math.max(0, Math.round(ps - sec - t))}초`).join(" · ")}`);
             }
             const doing = (trk?.ups ?? []).filter(([us]) =>
               RESEARCH_BUILDING[en === "Lair" || en === "Hive" ? "Hatchery" : en] === undefined
@@ -15708,10 +15744,37 @@ export default function ReplayMotionPlayer({
               lines.push(`연구 중 ${TECH_KO[n] ?? n} ${Math.min(99, pct2)}%`);
             }
           } else {
-            const done = (trk?.ups ?? []).filter(([us]) => us <= t);
-            lines.push(done.length > 0
-              ? `업그레이드 ${done.slice(-8).map(([, n]) => TECH_KO[n] ?? n).join(" · ")}`
-              : "업그레이드 없음");
+            /* 그 유닛에 실제로 걸리는 공/방 줄만 레벨로 보여 준다(요청: 인게임보다
+               풍부하게 — 해당 유닛의 업그레이드 상태). 줄 고르기는 종족과 공중 여부,
+               테란만 보병/메카닉 갈래를 더 본다. */
+            const race9 = bases.find((b) => b.key === op.pickRaw)?.race ?? "";
+            const pairs = ARMOR_WEAPON_PAIRS[race9] ?? [];
+            const air9 = isAirUnit(en);
+            const infantry9 = new Set(["Marine", "Firebat", "Medic", "Ghost", "SCV"]);
+            const melee9 = new Set(["Zergling", "Ultralisk", "Broodling", "Drone"]);
+            const pick9 = pairs.find((pr) => {
+              const w = pr.weapon;
+              if (race9 === "테란") {
+                return air9 ? w === "Terran Ship Weapons"
+                  : infantry9.has(en) ? w === "Terran Infantry Weapons" : w === "Terran Vehicle Weapons";
+              }
+              if (race9 === "저그") {
+                return air9 ? w === "Zerg Flyer Attacks"
+                  : melee9.has(en) ? w === "Zerg Melee Attacks" : w === "Zerg Missile Attacks";
+              }
+              return air9 ? w === "Protoss Air Weapons" : w === "Protoss Ground Weapons";
+            });
+            const lv = (name: string): number =>
+              (trk?.ups ?? []).filter(([us, n]) => n === name && us <= t).length;
+            if (pick9) {
+              lines.push(`${UPGRADE_LINE_KO[pick9.weapon] ?? "공/방"} ${lv(pick9.weapon)}-${lv(pick9.armor)}`);
+            }
+            /* 공/방 말고 그 유닛에 붙는 기술(속업·사업 등)은 이름으로 걸러 준다 —
+               표가 유닛을 직접 가리키지 않으므로, 임자가 마친 것 중 최근 것을 곁들인다. */
+            const other = (trk?.ups ?? []).filter(([us, n]) => us <= t && !pairs.some((pr) => pr.weapon === n || pr.armor === n));
+            if (other.length > 0) {
+              lines.push(`연구 완료 ${other.slice(-6).map(([, n]) => TECH_KO[n] ?? n).join(" · ")}`);
+            }
           }
           const el = mapRef.current;
           const w9 = el?.clientWidth ?? 1;
