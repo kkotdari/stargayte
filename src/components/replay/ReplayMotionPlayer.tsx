@@ -1924,7 +1924,52 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           [px - 0.74, yw, 5.4], [px + 0.74, yw, 5.4], [px + 0.74, yw, 6.18], [px - 0.74, yw, 6.18],
         ]), 0.2));
       }
+      /* 노란 반투명 창 줄(요청: "앞옆뒷면에 노란반투명 창 여러개") — 홈 줄 위쪽에
+         한 줄. 안에서 새어 나오는 빛이라 음영을 안 태운다. */
+      for (const px of [-4.2 * KX, -2.6 * KX, -1 * KX, 0.6 * KX, 2.2 * KX, 3.6 * KX]) {
+        det.push([polyPath3([
+          [px - 0.52, yw, 6.7], [px + 0.52, yw, 6.7],
+          [px + 0.52, yw, 7.34], [px - 0.52, yw, 7.34],
+        ]), 0.5, "#f2c94c"] as ShapeFace);
+      }
       out.push(...tagKey(det, key));
+      /* 개인색 데칼(요청: "가로 띠 느낌인데 중간중간 끊긴") — 한 장으로 두르면 벽의
+         절반이 임자 색이 되어 건물보다 색이 먼저 읽힌다. 토막으로 끊으면 띠의 결은
+         남고 칠해진 넓이는 1/3이 된다. */
+      const dash: ShapeFace[] = [];
+      for (let i9 = 0; i9 < 7; i9 += 1) {
+        const px = X0 + 0.8 + i9 * ((X1 - X0 - 1.6) / 6);
+        dash.push(bodyFace(polyPath3([
+          [px - 0.46, yw + 0.01, 3.12], [px + 0.46, yw + 0.01, 3.12],
+          [px + 0.46, yw + 0.01, 3.7], [px - 0.46, yw + 0.01, 3.7],
+        ])));
+      }
+      pc.push(...tagKey(dash, key + 0.05));
+    }
+    /* 옆면(±x 짧은 벽) — 같은 규약으로 창 줄과 끊긴 개인색 띠를 두른다(요청).
+       오른쪽(+x)에는 출입문이 있어(z 2.95~5.25 · |y| ≤ 1.45) 띠가 문을 지나지 않게
+       가운데 토막을 건너뛴다. */
+    for (const sx of [1, -1] as const) {
+      if (!faceLight(sx, 0, 0).visible) continue;
+      const xw9 = sx > 0 ? X1 + 0.02 : X0 - 0.02;
+      const key9 = depthNow(sx > 0 ? X1 : X0, 0) * 1.6 + 0.4;
+      const win9: ShapeFace[] = [];
+      const dash9: ShapeFace[] = [];
+      for (const dy9 of [-2.2, 0, 2.2]) {
+        win9.push([polyPath3([
+          [xw9, dy9 - 0.5, 7], [xw9, dy9 + 0.5, 7],
+          [xw9, dy9 + 0.5, 7.6], [xw9, dy9 - 0.5, 7.6],
+        ]), 0.5, "#f2c94c"] as ShapeFace);
+      }
+      for (const dy9 of [-2.9, -2, -1.1, -0.2, 0.7, 1.6, 2.5]) {
+        if (sx > 0 && Math.abs(dy9) < 1.75) continue;
+        dash9.push(bodyFace(polyPath3([
+          [xw9 + sx * 0.01, dy9 - 0.32, 3.12], [xw9 + sx * 0.01, dy9 + 0.32, 3.12],
+          [xw9 + sx * 0.01, dy9 + 0.32, 3.7], [xw9 + sx * 0.01, dy9 - 0.32, 3.7],
+        ])));
+      }
+      out.push(...tagKey(win9, key9));
+      pc.push(...tagKey(dash9, key9 + 0.05));
     }
     /* 출입 경사로는 **오른쪽 옆면(+x 짧은 벽) 하나뿐**이다(요청: "팩토리 출입경사로는
        오른쪽 옆면에만 놓여야하고"). 여태 좌우 긴 벽 양쪽에 냈는데, 그러면 문이 둘인
@@ -1983,16 +2028,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     return raceBase(out.concat(
       /* 지붕 규칙(지적: 굴뚝 가려짐) — 지붕 얹힘들은 붙박이 큰 키. 굴뚝 셋 은색.
          크기는 1/3로 줄였다(요청) — 반지름 0.85 → 0.28, 높이 1.7 → 0.57. */
-      ...([[-4.08, -1.92], [-1.8, -2.16], [0.48, -2.28]] as [number, number][]).map(([cx9, cy9]) =>
+      /* 굴뚝 셋은 앞뒤로 나란히 선다(요청) — 가로로 흩어 놓았더니 지붕에 점 셋을
+         찍어 놓은 꼴이었다. 한 x에 모아 y만 벌리면 한 계통의 배기구로 읽힌다. */
+      ...([[-3.9, -1.6], [-3.9, 0], [-3.9, 1.6]] as [number, number][]).map(([cx9, cy9]) =>
         tagKey(paintBase(cylinderFaces3(cx9, cy9, 0.28, 0.57, ZT), "#c9ced6"),
           24 + depthNow(cx9, cy9))),
       /* 지붕 한가운데 직각삼각형 벤트(요청) — 두께가 있는 쐐기다. 옆면(x = ±hw)이
          직각삼각형이고, 그 사이를 빗면·뒷벽·바닥이 잇는다. 빗면에 살을 세 줄 긋는다. */
       ((): ShapeFace[] => {
+        /* 벤트는 지붕 정중앙의 뒷쪽이다(요청) — 앞으로 나와 있으면 굴뚝 줄과 겹쳐 보였다.
+           직각은 뒤(y0) 아래 귀에 있으므로, 뒤로 물릴수록 쐐기가 뒷벽 쪽에 붙는다. */
         const cx9 = (X0 + X1) / 2;
         const hw = 1.35;
-        const y0 = -0.9;
-        const y1 = 1.5;
+        const y0 = -2.35;
+        const y1 = -0.15;
         const h9 = 1.45;
         // (y, z) 직각삼각형 — 직각은 뒤(y0) 아래 귀에 있다.
         const tri = (x9: number): [number, number, number][] =>
