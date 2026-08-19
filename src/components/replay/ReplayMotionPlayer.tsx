@@ -4777,10 +4777,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          둥근 모양") — 여태 taper 0.55짜리 종 모양 기둥이라 옆선이 곧게 내려와 바위
          덩어리로 보였다. 둥근 돔 둘을 겹쳐, 아래는 넓게 부풀고 위는 한 뼘 작은 봉우리가
          얹히는 실루엣을 낸다 — 곧 위가 살짝 잘록한 염통 꼴이다. */
-      out.push(...tagKey([
+      /* 장기는 붉은 살이고, 임자 색은 그 위의 포인트 데칼이다(요청: "챔버 장기 색은
+         붉은색이되 포인트데칼 개인색 넣기") — 여태 두 돔을 안 칠한 채 두어 장기 전체가
+         임자 색이었다. 이제 돔은 핏빛으로 못 박고, 표면에 작은 점 셋만 안 칠한 채 얹어
+         그 자리에 팀색이 들게 한다. */
+      out.push(...tagKey(paintBase([
         ...domeFaces3(lx9, ly9, r9, h9 * 0.74, 0),
         ...domeFaces3(lx9, ly9 - r9 * 0.12, r9 * 0.46, h9 * 0.46, h9 * 0.48),
-      ], depthNow(lx9, ly9) * 1.6));
+      ], "#9e3a2e"), depthNow(lx9, ly9) * 1.6));
       /* 결절·핏줄이 둘 다 옆선을 타므로 반지름 식을 먼저 세운다(수리: 핏줄 블록이
          lobeR 선언보다 위에 있어 TDZ에 걸렸다). 옆선이 원이므로 원의 식을 따른다. */
       const lobeR = (t9: number): number =>
@@ -4811,6 +4815,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           }
           prev9 = cur9;
         }
+      }
+      // 임자 색 포인트 데칼 셋 — 붉은 살 위에 박힌 작은 점. 보이는 쪽만 그린다.
+      for (const [ang9, t9, dr9] of [
+        [-125, 0.36, 0.3], [-20, 0.5, 0.26], [95, 0.4, 0.28],
+      ] as [number, number, number][]) {
+        const a9 = (ang9 * Math.PI) / 180;
+        const dxr = Math.sin(a9);
+        const dyr = Math.cos(a9);
+        if (facingRatio(dxr, dyr) <= 0.1) continue;
+        const rr9 = lobeR(t9) * 0.96;
+        out.push(...tagKey(domeFaces3(lx9 + dxr * rr9, ly9 + dyr * rr9,
+          dr9 * r9, dr9 * r9 * 0.55, h9 * t9),
+        depthNow(lx9 + dxr * rr9, ly9 + dyr * rr9) * 1.6 + 0.5));
       }
       // 결절 — 엽 표면에 박힌 잿빛 눈알 여섯. 위 lobeR로 옆선 위에 정확히 앉힌다.
       for (const [ang, t9, nr9] of [
@@ -5323,8 +5340,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const a2 = (ang * Math.PI) / 180;
       const dxr = Math.sin(a2);
       const dyr = Math.cos(a2);
+      // 크기를 줄인다(요청: "퀸즈네스트 옆의 장식기둥들 축소 — 크기를") — 1.35 → 0.88.
       out.push(...tagKey(spirePillar({
-        x: 0, y: 0, h: 1, w: 1.35, tipW: 0.5, segs: 8, sides: 6, hold: 0.1, taper: 1.5,
+        x: 0, y: 0, h: 1, w: 0.88, tipW: 0.32, segs: 8, sides: 6, hold: 0.1, taper: 1.5,
         path: (t9: number): [number, number, number] => {
           const r9 = qnR(t9) * 0.96;
           return [dxr * r9, dyr * r9, QN_H * t9];
@@ -6284,11 +6302,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ...paintBase(hornFaces(3, 2.2, 5.6, 2.2, 3.2, 5.4, 0.5), "#6b4732"),
     ...paintBase(hornFaces(-1.9, 0.8, 5.9, -3, 2.2, 5.6, 0.7), "#6b4732"),
     ...paintBase(hornFaces(-3, 2.2, 5.6, -2.2, 3.2, 5.4, 0.5), "#6b4732"),
-    // 옆 잔다리 — 짙은 갈색(요청).
-    ...paintBase(hornFaces(2.4, -0.6, 5.7, 3.6, -1.2, 5, 0.45), "#6b4732"),
-    ...paintBase(hornFaces(-2.4, -0.6, 5.7, -3.6, -1.2, 5, 0.45), "#6b4732"),
-    ...paintBase(hornFaces(2.2, -1.4, 5.7, 3.2, -2.2, 5, 0.45), "#6b4732"),
-    ...paintBase(hornFaces(-2.2, -1.4, 5.7, -3.2, -2.2, 5, 0.45), "#6b4732"),
+    /* 옆 잔다리 — **마디 둘씩, 훨씬 길게**(요청). 한 마디짜리 짧은 뿔은 몸에 붙은
+       돌기로만 보였다. 무릎에서 한 번 꺾여 아래로 뻗으면 다리로 읽힌다. 뻗는 거리도
+       1.3 → 3.6쯤으로 키운다. 짙은 갈색. */
+    ...([-1, 1] as const).flatMap((m9) => ([[-0.6, 5.7], [-1.5, 5.6]] as [number, number][])
+      .flatMap(([ly9, lz9], i9) => {
+        const kx9 = m9 * (3.9 + i9 * 0.2);   // 무릎
+        const ky9 = ly9 - 1.5;
+        const kz9 = lz9 - 1.5;
+        return [
+          ...paintBase(hornFaces(m9 * 2.3, ly9, lz9, kx9, ky9, kz9, 0.5), "#6b4732"),
+          ...paintBase(hornFaces(kx9, ky9, kz9, m9 * (5.2 + i9 * 0.3), ky9 - 1.4, kz9 - 2.1, 0.34),
+            "#6b4732"),
+        ];
+      })),
   ],
   /* 디바우러(실물 참고) — 판갑으로 덮인 큰 공 몸통, 그 아래로 골진 배가 앞으로 말려
      들어가고, 앞 옆에서 흰 뿔 한 쌍이 위로 젖혀진다. */
@@ -6441,12 +6468,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...domeFaces3(0, HY9, HR9 * 0.99, -HR9 * 0.42, HZ9),
       ], "#6b4732"), depthNow(0, HY9) * 1.6 + 2));
     }
-    // 큰 집게 한 쌍 — 앞팔 짙은 갈색(요청). 몸 앞에 얹히므로 한 단 더 위.
+    /* 큰 집게 한 쌍 — 뿌리를 **꼬리 쪽으로 물리고 앞을 향하게** 돌린다(요청: "등뒤에서
+       나오는 팔 두개를 꼬리쪽에서 앞으로 향해 나오게 뒤로 이동"). 여태 원반 앞머리
+       (y 0.9)에서 나와 곧장 앞으로 뻗어, 머리와 나란히 서서 어느 쪽이 앞인지 흐렸다.
+       이제 원반 뒤끝(y −1.8)에서 나와 밖으로 벌어졌다가 앞으로 감아 나온다 — 몸을
+       타고 앞으로 뻗는 긴 팔이라 방향이 한눈에 읽힌다. 짙은 갈색. */
     for (const m9 of [1, -1] as const) {
       out.push(...tagKey(paintBase([
-        ...hornFaces(m9 * 1.15, 0.9, 5.8 + PT(0.9), m9 * 2.25, 1.95, 5.6 + PT(1.95), 0.82),
-        ...hornFaces(m9 * 2.25, 1.95, 5.6 + PT(1.95), m9 * 1.65, 3.05, 5.2 + PT(3.05), 0.6),
-      ], "#6b4732"), depthNow(m9 * 2.2, 2.2) * 1.6 + 3));
+        ...hornFaces(m9 * 0.95, -1.8, 5.5 + PT(-1.8), m9 * 2.35, -0.15, 5.6 + PT(-0.15), 0.82),
+        ...hornFaces(m9 * 2.35, -0.15, 5.6 + PT(-0.15), m9 * 1.75, 2, 5.35 + PT(2), 0.6),
+      ], "#6b4732"), depthNow(m9 * 2, 0) * 1.6 + 3));
     }
     return out;
   },
@@ -7509,7 +7540,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          — 구를 반구로 바꾸면 어느 각도에서는 밑이 잘린 그릇으로 보이므로(앞선 지적),
          구는 그대로 두고 **어깨선 아래로 내려앉히고 몸통보다 뒤에 그린다**: 아래 절반이
          가슴·어깨에 가려 결과가 반구다. 키 20(맨 앞)이 그 가림을 막고 있었다. */
-      ...tagKey(sphereFaces3(0, -0.2, 4.22, 0.84, "#bfe0ef"), depthNow(0, -0.9)),
+      ...tagKey(sphereFaces3(0, -0.2, 4.22, 0.84, "#7dff5c"), depthNow(0, -0.9)),
+      /* 헬멧 뒤 반절은 다른 껍데기다(요청) — 얼굴가리개 구보다 조금 크고 **뒤에**
+         선 구를 한 겹 더 그린다. 깊이 키가 더 뒤라 앞에서는 가리개가 그 앞을 덮고
+         테두리만 초승달로 남는다 — 곧 뒤통수 절반을 감싼 껍데기다. 반구 프리미티브를
+         쓰지 않는 까닭은 앞선 지적 그대로다(밑이 잘려 '그릇'으로 보인다). */
+      ...tagKey(sphereFaces3(0, -0.44, 4.22, 0.93, "#eef1f3"), depthNow(0, -1.6)),   // 메딕 — 네온 초록 얼굴가리개(요청) · 흰 뒤껍데기
       ...tagKey([bodyFace(apron), topFace(apron, 0.3)], depthNow(0, 0.79)),
       /* 가슴 빨간 십자(요청) — 병원 표시. 몸통은 원기둥이라 벽이 굽어 있으니, 앞을 볼
          때만 그리고 몸통 앞면(반지름 0.96)보다 아주 조금 앞(0.02)에 눕힌다. 세로·가로
@@ -7558,6 +7594,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          구는 그대로 두고 **어깨선 아래로 내려앉히고 몸통보다 뒤에 그린다**: 아래 절반이
          가슴·어깨에 가려 결과가 반구다. 키 20(맨 앞)이 그 가림을 막고 있었다. */
       ...tagKey(sphereFaces3(0, -0.2, 4.22, 0.84, "#bfe0ef"), depthNow(0, -0.9)),
+      /* 헬멧 뒤 반절은 다른 껍데기다(요청) — 얼굴가리개 구보다 조금 크고 **뒤에**
+         선 구를 한 겹 더 그린다. 깊이 키가 더 뒤라 앞에서는 가리개가 그 앞을 덮고
+         테두리만 초승달로 남는다 — 곧 뒤통수 절반을 감싼 껍데기다. 반구 프리미티브를
+         쓰지 않는 까닭은 앞선 지적 그대로다(밑이 잘려 '그릇'으로 보인다). */
+      ...tagKey(sphereFaces3(0, -0.44, 4.22, 0.93, "#c9ced6"), depthNow(0, -1.6)),   // 마린 — 은색 뒤껍데기
       /* 두 팔(재지적: 위치·굽힘) — 위팔은 어깨뽕 '아래'(z 3.7)에서 나와 앞-아래로
          내려가고, 팔꿈치에서 굽어 아래팔이 총몸으로 올라가 쥔다. 왼손은 앞손잡이,
          오른손은 방아쇠 쪽. */
@@ -7589,6 +7630,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 작은 헬멧 — 마린과 같은 원시 구, 반지름만 작다(요청).
       // 고스트도 같은 규칙(요청) — 머리가 작아 내리는 몫도 조금 작다.
       ...tagKey(sphereFaces3(0, -0.1, 4.34, 0.56, "#bfe0ef"), depthNow(0, -0.8)),
+      /* 헬멧 뒤 반절은 다른 껍데기다(요청) — 얼굴가리개 구보다 조금 크고 **뒤에**
+         선 구를 한 겹 더 그린다. 깊이 키가 더 뒤라 앞에서는 가리개가 그 앞을 덮고
+         테두리만 초승달로 남는다 — 곧 뒤통수 절반을 감싼 껍데기다. 반구 프리미티브를
+         쓰지 않는 까닭은 앞선 지적 그대로다(밑이 잘려 '그릇'으로 보인다). */
+      ...tagKey(sphereFaces3(0, -0.34, 4.34, 0.65, "#eef1f3"), depthNow(0, -1.6)),   // 고스트 — 흰 뒤껍데기
       /* 팔은 **어깨 자리에서** 나오고 더 길다(요청: "팔자체를 어깨위치로 올리고 길이
          늘리기") — 어깨 라운드를 걷으면서 팔 뿌리를 몸통 꼭대기(z 4.3) 바로 아래인
          4.15로 올리고, 아래팔이 앞으로 0.25 더 뻗는다. 가늘고 긴 팔이 고스트의 실루엣이다. */
@@ -7634,6 +7680,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          구는 그대로 두고 **어깨선 아래로 내려앉히고 몸통보다 뒤에 그린다**: 아래 절반이
          가슴·어깨에 가려 결과가 반구다. 키 20(맨 앞)이 그 가림을 막고 있었다. */
       ...tagKey(sphereFaces3(0, -0.2, 4.22, 0.84, "#bfe0ef"), depthNow(0, -0.9)),
+      /* 헬멧 뒤 반절은 다른 껍데기다(요청) — 얼굴가리개 구보다 조금 크고 **뒤에**
+         선 구를 한 겹 더 그린다. 깊이 키가 더 뒤라 앞에서는 가리개가 그 앞을 덮고
+         테두리만 초승달로 남는다 — 곧 뒤통수 절반을 감싼 껍데기다. 반구 프리미티브를
+         쓰지 않는 까닭은 앞선 지적 그대로다(밑이 잘려 '그릇'으로 보인다). */
+      ...tagKey(sphereFaces3(0, -0.44, 4.22, 0.93, "#a5342a"), depthNow(0, -1.6)),   // 파이어뱃 — 붉은 뒤껍데기
       // 두 팔(요청) — 어깨에서 건틀릿 뿌리로.
       ...hornFaces(-1.45, -0.2, 4.9, -1.4, 0.6, 3.2, 0.64),
       ...hornFaces(1.45, -0.2, 4.9, 1.4, 0.6, 3.2, 0.64),
@@ -8097,8 +8148,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          12/14는 뒤에서 봐도 얼굴이 이겨, 머리 뒤에 있는 두건이 늘 묻혔다. 같은
          밑절미(12)에 제 자리 깊이를 얹으면 앞에선 얼굴이, 뒤에선 두건이 이긴다. */
       ...tagKey([[hood, 1] as ShapeFace, topFace(hood, 0.14)], 12 + depthNow(0, -1.1) * 1.6),
-      ...tagKey(paintBase(domeFaces3(0, 0.2, 0.75, 0.6, 6.8), "#8a5f43"),
-        12 + depthNow(0, 0.2) * 1.6),
+      /* 얼굴은 구가 아니라 **턱이 큰 뿔기둥**이다(요청: "히드라 얼굴 안보이고 구체아닌
+         뿔기둥(턱이 큰 모양)") — 작은 반구는 어깨에 얹힌 혹으로만 보였다. 뿌리(턱)가
+         굵고 앞아래로 나가며 가늘어지는 기둥이면 주둥이가 읽힌다. */
+      ...tagKey(paintBase(spirePillar({
+        x: 0, y: 0.2, z0: 6.3, h: 1.2, w: 1.1, tipW: 0.4,
+        segs: 5, sides: 6, hold: 0.12, taper: 1.3,
+        leanY: 1, curveY: 0.3,
+      }), "#8a5f43"), 12 + depthNow(0, 0.7) * 1.6),
+      /* 이빨 넷 — 아주 작게(요청). 주둥이 끝 입선에서 위 둘은 아래로, 아래 둘은
+         위로 물린다. 상아색이라 짙은 주둥이 위에서 또렷하다. */
+      ...([-1, 1] as const).flatMap((m9) => [
+        ...tagKey(ivory(hornFaces(m9 * 0.26, 1.02, 7.02, m9 * 0.29, 1.24, 6.66, 0.12)),
+          13 + depthNow(0, 1.1) * 1.6),
+        ...tagKey(ivory(hornFaces(m9 * 0.24, 1.02, 6.5, m9 * 0.27, 1.24, 6.86, 0.11)),
+          13 + depthNow(0, 1.1) * 1.6),
+      ]),
     ];
   },
   /* 울트라리스크(실물 참고) — 코끼리 다리 넷의 거체, 어깨에서 크게 휘는 거대 카이저
@@ -8425,8 +8490,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          방향에서 봐도 원이다. 원시 구(sphereFaces3)는 중심만 투영하고 반지름은
          화면 원이라 안 눌리고, 덤으로 제 명암(좌상 광택·우하 그늘)을 달고 나온다 —
          손으로 그린 몸판이라 빛이 안 들어가던 문제도 함께 풀린다. */
+    ], "zerg", [
+      [claws.join(" "), 1] as ShapeFace,
+      /* 풍선 몸통도 임자 색이다(요청: "오보로드 몸통 개인색") — 몸을 accent로 옮기면
+         raceBase의 밑칠을 안 받으므로 칠하지 않은 채 남고, 그 자리에 팀색이 든다.
+         (구 프리미티브가 달고 나오는 좌상 광택·우하 그늘은 흰·검이라 그대로 얹힌다.)
+         풍선을 진짜 구로 그리는 까닭은 그대로다 — 바닥 원은 시점을 따라 눌리고 시각
+         밀림까지 먹어 비스듬히 찌그러지는데, 떠 있는 공은 어느 방향에서도 원이다. */
       ...tagKey(sphereFaces3(0, 0, 5.2, 2.4), depthNow(0, 0)),
-    ], "zerg", [[claws.join(" "), 1] as ShapeFace]);
+    ]);
   },
   /* 드랍십(실물 참고) — 양옆 굵은 엔진 포드(앞 단면이 둥글게 보인다) + 가운데 각진
      몸통 + 뒤쪽 수직 꼬리날개. */
@@ -8713,7 +8785,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       segs: 3, sides: 6, hold: 0.35,
       leanX: lx9 * 0.45, leanY: ly9 * 0.45, curveX: lx9 * 0.55, curveY: ly9 * 0.55,
     });
-    return [
+    /* 색을 여기서 못 박는다(지적: 도록에서 색을 고르면 미네랄까지 통째로 그 색이 된다)
+       — 자원은 임자가 없다. 여태 이 빌더는 면을 안 칠한 채 돌려주고 "색은 그리는 쪽이
+       넣는다"고 적어 두었는데, 칠하지 않은 면은 이 렌더러에서 곧 **임자 색**이라 지도의
+       한 자리(op.color)에서만 참이고 도록에서는 거짓이 된다. */
+    return paintBase([
       // 뒤쪽 작은 것들 먼저 — 앞 결정이 위로 온다.
       ...gem(-2.9, -1.4, 3.4, 0.75, -1.1, -0.5),
       ...gem(2.6, -1.6, 3, 0.7, 1.2, -0.4),
@@ -8724,7 +8800,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 앞 발치의 작은 둘.
       ...gem(-0.9, 2, 2.9, 0.62, -0.5, 1),
       ...gem(1.2, 2.2, 3.6, 0.7, 0.6, 1.1),
-    ];
+    ], "#7fd0f2");
   },
   /* 가스 간헐천(재모델링·사진 / 요청: 개인색 없는 고유색 전용) — 팀색을 한 점도
      쓰지 않는다: 모든 면에 제 색을 박는다. 지적("분화구 외의 나머지 부품들 삭제")에
@@ -9154,14 +9230,14 @@ const MODEL_NORM: Record<string, number> = {
   dship: 0.716,
   dtemp: 0.896,
   fbat: 1.061,
-  ghost: 1.409,
+  ghost: 1.362,
   goliath: 0.829,
   goon: 0.667,
-  guardian: 0.949,
-  gunner: 1.160,
+  guardian: 0.637,
+  gunner: 1.149,
   htemp: 1.077,
-  hydra: 0.758,
-  inf: 1.286,
+  hydra: 0.757,
+  inf: 1.266,
   lurker: 0.603,
   lurkeregg: 0.886,
   mine: 1.293,  // 상자 상한(원한 배수 1.465)
@@ -9172,7 +9248,7 @@ const MODEL_NORM: Record<string, number> = {
   probe: 1.582,
   probeGas: 1.501,
   probeMin: 1.532,
-  queen: 1.091,
+  queen: 1.185,
   reaver: 1.234,
   scourge: 1.634,  // 상자 상한(원한 배수 2.057)
   scout: 0.951,
@@ -10191,13 +10267,66 @@ function pathYRange(d: string): [number, number] {
     if (up === "H") { for (const n of nums) put(rel ? cx + n : n, cy); }
     else if (up === "V") { for (const n of nums) put(cx, rel ? cy + n : n); }
     else if (up === "A") {
+      /* 호의 상자는 **타원의 참 상자**로 잰다(수리 둘) — 여태는 "끝점에서 반지름만큼
+         사방으로 부푼다"는 어림이었고(반타원 둘로 그린 원이 가로 두 배로 잡혔다),
+         그 뒤 고친 판은 x축 회전이 0이라고 못 박아 두었다. 그런데 아콘·다크 아콘의
+         에너지 고리는 **기운 타원 호**(A rx ry 46 …)라, 회전을 무시하면 중심이 엉뚱한
+         곳에 잡혀 상자가 터무니없이 커진다 — 그 상자를 창으로 쓰는 도록의 "최대"에서
+         아콘이 아주 작게 그려지던 것이 이것이다.
+         이제 SVG 끝점→중심 변환(F.6.5)을 회전항까지 그대로 옮기고, 상자는 '양 끝점 +
+         쓸린 구간 안에 든 네 극점'으로 잡는다. 기운 타원의 극점은 축 끝이 아니라
+         dx/dt=0 · dy/dt=0을 푸는 자리다. */
       for (let i = 0; i + 6 < nums.length; i += 7) {
-        const ry = Math.abs(nums[i + 1]);
-        const x = rel ? cx + nums[i + 5] : nums[i + 5];
-        const y = rel ? cy + nums[i + 6] : nums[i + 6];
-        if (y - ry < lo) lo = y - ry;
-        if (y + ry > hi) hi = y + ry;
-        put(x, y);
+        let rx = Math.abs(nums[i]);
+        let ry = Math.abs(nums[i + 1]);
+        const phi = (nums[i + 2] * Math.PI) / 180;
+        const laf = nums[i + 3];
+        const sf = nums[i + 4];
+        const px = cx;
+        const py = cy;
+        const qx = rel ? cx + nums[i + 5] : nums[i + 5];
+        const qy = rel ? cy + nums[i + 6] : nums[i + 6];
+        put(px, py);
+        put(qx, qy);
+        cx = qx;
+        cy = qy;
+        if (rx <= 0 || ry <= 0) continue;
+        const cp = Math.cos(phi);
+        const sp = Math.sin(phi);
+        const hx = (px - qx) / 2;
+        const hy = (py - qy) / 2;
+        const x1p = cp * hx + sp * hy;
+        const y1p = -sp * hx + cp * hy;
+        // 반지름이 두 점을 담기에 모자라면 규격대로 키운다.
+        const lam = (x1p * x1p) / (rx * rx) + (y1p * y1p) / (ry * ry);
+        if (lam > 1) { const k9 = Math.sqrt(lam); rx *= k9; ry *= k9; }
+        const den = rx * rx * y1p * y1p + ry * ry * x1p * x1p;
+        const co = (laf === sf ? -1 : 1)
+          * Math.sqrt(den > 0 ? Math.max(0, rx * rx * ry * ry - den) / den : 0);
+        const cxp = co * ((rx * y1p) / ry);
+        const cyp = co * ((-ry * x1p) / rx);
+        const ex = cp * cxp - sp * cyp + (px + qx) / 2;
+        const ey = sp * cxp + cp * cyp + (py + qy) / 2;
+        // 두 끝점의 매개각과 쓸리는 방향.
+        const a1 = Math.atan2((y1p - cyp) / ry, (x1p - cxp) / rx);
+        const a2 = Math.atan2((-y1p - cyp) / ry, (-x1p - cxp) / rx);
+        const TAU = Math.PI * 2;
+        const norm9 = (a9: number): number => ((a9 % TAU) + TAU) % TAU;
+        const span = sf === 1 ? norm9(a2 - a1) : norm9(a1 - a2);
+        const at9 = (t9: number): [number, number] => [
+          ex + rx * cp * Math.cos(t9) - ry * sp * Math.sin(t9),
+          ey + rx * sp * Math.cos(t9) + ry * cp * Math.sin(t9),
+        ];
+        // 기운 타원의 극점 넷 — x는 dx/dt=0, y는 dy/dt=0에서.
+        const tx9 = Math.atan2(-ry * sp, rx * cp);
+        const ty9 = Math.atan2(ry * cp, rx * sp);
+        for (const t9 of [tx9, tx9 + Math.PI, ty9, ty9 + Math.PI]) {
+          const off = sf === 1 ? norm9(t9 - a1) : norm9(a1 - t9);
+          if (off <= span + 1e-9) { const [ax9, ay9] = at9(t9); put(ax9, ay9); }
+        }
+        // 현재점은 반드시 호의 끝점으로 남겨 둔다(위 put이 극점으로 옮겨 놨다).
+        cx = qx;
+        cy = qy;
       }
     } else if (up !== "Z") {
       for (let i = 0; i + 1 < nums.length; i += 2) {
