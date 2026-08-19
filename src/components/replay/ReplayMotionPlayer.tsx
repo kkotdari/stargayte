@@ -9125,7 +9125,10 @@ const IDLE_SCAN_SEC = 3.2;
 /* 발사 지점(요청: 탱크는 포신, 히드라는 입, 마린·파뱃은 총구, 매딕은 주사기 — 효과가
    몸 중심이 아니라 제 무기 끝에서) — 트레이서를 몸 방향 축으로 이만큼(px) 앞으로 민다.
    회전 뒤 translateY라 어느 방향을 보든 정확히 총구 쪽이다. 표에 없으면 몸 가장자리
-   어림(4px). 유닛별 완전 모델링(총구 화염까지 제 모델)은 다음 단계다. */
+   어림(4px). 유닛별 완전 모델링(총구 화염까지 제 모델)은 다음 단계다.
+   ⚠ 이 붙박이 px는 이제 **폴백일 뿐이다** — 화면 크기에 매인 값이라 지도가 작을수록
+   몸에서 멀리 떨어진다(725px 지도에서 5px = 0.9타일, 폰의 340px 지도에서는 1.9타일).
+   앵커가 있는 유닛은 MUZZLE_ANCHOR, 방어 건물은 BLD_MUZZLE이 제 모델의 포구를 준다. */
 const MUZZLE_PX: Record<string, number> = {
   "Siege Tank": 8, "Siege Tank (Tank Mode)": 8, "Siege Tank (Siege Mode)": 10,
   Hydralisk: 5, Marine: 4, Firebat: 4, Ghost: 5, Vulture: 5, Goliath: 6,
@@ -9155,18 +9158,38 @@ const MUZZLE_ANCHOR: Record<string, [number, number, number]> = {
   goon: [0, 3.2, 3.6], zealot: [0.8, 2.4, 3], archon: [0, 2.2, 4.4], reaver: [0, 3.6, 2.4],
   scout: [0, 3.4, 3], corsair: [0, 3.2, 3], carrier: [0, 4.4, 3.6], arbiter: [0, 3.4, 3.4],
 };
-/** 총구 앵커의 16-상자 투영 좌표 — 스프라이트와 같은 버킷·밀림·피칭으로 투영한다. */
+/* 방어 건물의 총구 앵커 — 모델 이름(SHAPE_KIND) → 모델 공간 [x(우), y(앞), z(위)].
+   좌표는 저마다 제 빌더에서 따 왔다: 포톤은 가운데 포탑 꼭대기의 주사바늘(hornFaces
+   끝 z 7.6), 성큰은 가운데 촉수의 아가리(capFace discPath3(0.35, 0.15, 3.7)), 스포어는
+   알덩이 앞면의 아가리, 터렛은 미사일 포드 꼭대기(pvt(1.9, 5) → y 0.67·z 8.5), 벙커는
+   앞면 총안 셋(y 2.62·z 0.9~1.5)의 가운데.
+   유닛과 갈래가 다른 표를 따로 두는 까닭은 좌표계가 다르기 때문이다 — 유닛은 16-상자
+   가운데(8,8)가 앵커지만 건물은 발자국 바닥 가운데(8,16)가 앵커다. */
+const BLD_MUZZLE: Record<string, [number, number, number]> = {
+  coil: [0, 0, 7.2], sunken: [0.35, 0.15, 3.7], spore: [-0.35, 2.6, 2.5],
+  turret: [2.2, 0.6, 8.2], tombFlat: [0, 2.7, 1.2],
+};
+/** 모델 앵커의 16-상자 투영 좌표 — 스프라이트와 **같은** 버킷·밀림·피칭·부감으로
+ *  투영한다(굽기와 한 글자라도 다르면 앵커가 제 부품을 벗어난다). */
+function anchorPoint(
+  a: readonly [number, number, number], rotDeg: number | undefined,
+  viewYaw: number | undefined, pitch: boolean, flat = false,
+): [number, number] {
+  const vq = viewYaw ? Math.max(-36, Math.min(36, Math.round(viewYaw / 6) * 6)) : 0;
+  const bucket = rotDeg !== undefined ? ((Math.round(rotDeg / 22.5) * 22.5) % 360 + 360) % 360 : 0;
+  const sh = Math.tan((vq * Math.PI) / 180);
+  const run0 = (): [number, number] =>
+    withViewShear(sh, () => withYaw(-bucket, () => project(a[0], a[1], a[2])));
+  const run = pitch ? (): [number, number] => withPitchView(run0) : run0;
+  // 평면 보기는 굽기가 부감(withTopView)으로 들어간다 — 앵커도 같은 판을 타야 한다.
+  return flat ? withTopView(run) : run();
+}
+/** 총구 앵커의 16-상자 투영 좌표(유닛) — 표에 없는 종류는 픽셀 오프셋 폴백. */
 function muzzlePoint(
   kind: string, rotDeg: number | undefined, viewYaw: number | undefined, pitch: boolean,
 ): [number, number] | null {
   const a = MUZZLE_ANCHOR[kind];
-  if (!a) return null;
-  const vq = viewYaw ? Math.max(-36, Math.min(36, Math.round(viewYaw / 6) * 6)) : 0;
-  const bucket = rotDeg !== undefined ? ((Math.round(rotDeg / 22.5) * 22.5) % 360 + 360) % 360 : 0;
-  const sh = Math.tan((vq * Math.PI) / 180);
-  const run = (): [number, number] =>
-    withViewShear(sh, () => withYaw(-bucket, () => project(a[0], a[1], a[2])));
-  return pitch ? withPitchView(run) : run();
+  return a ? anchorPoint(a, rotDeg, viewYaw, pitch) : null;
 }
 const unitMarkerKind = (u: string, race?: string): string =>
   UNIT_3D[u] ?? (race === "테란" ? "gunner" : race === "저그" ? "zling" : "zealot");
@@ -10198,6 +10221,13 @@ const CONSTRUCT_DROP = 0.55;
  *  조금씩 달라 같은 건물이 자리마다 다르게 밀렸다. 채움 몫(BLD_FILL_CACHE)과 같은
  *  결로 한 번 재서 모두에게 같은 보정을 준다. */
 const BLD_ANCHOR_CACHE = new Map<string, [number, number]>();
+/** 같은 자리를 **모델 상자 좌표**(16-상자)로 적어 둔 것 [가로중심, 잉크 바닥].
+ *  DOM 효과(방어 건물 트레이서)가 모델 위 한 점을 화면에서 다시 찾으려면, 그리기가
+ *  실제로 쓴 앵커를 알아야 한다: 판은 상자 (8,16)을 발자국 바닥 가운데에 두고 굽지만,
+ *  블릿은 **잉크의 바닥·가로중심**을 그 자리에 앉힌다(위 bTop9·bLeft9). 그 차이가
+ *  모델마다 상자의 몇 분의 몇이라, 이 값 없이 (8,16)으로 재면 포구가 그만큼 뜬다.
+ *  캔버스 층이 그 건물을 한 번 그리고 나면 채워진다(첫 프레임만 옛 어림). */
+const BLD_INK_BOX = new Map<string, [number, number]>();
 /* 발자국 대비 그릴 몫 — 기본은 0.95(발자국을 꽉 채운다). 본진 셋만 예외로 넘겨 그린다
    (요청: "넥서스 해처리 커맨드는 예외로 더 크게, 실제 게임처럼") — 원작에서도 이 셋의
    그림은 4×3 발자국을 넘어 앉는다. 레어·하이브는 해처리의 다음 단계라 같은 몫이다. */
@@ -11040,6 +11070,13 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         if (bAnc === undefined && bspr && bspr.w > 0) {
           bAnc = [(bspr.cx / B) / bspr.l, (bspr.bot / B) / bspr.l];
           BLD_ANCHOR_CACHE.set(op.kind, bAnc);
+          /* 같은 잣대를 상자 좌표로도 남긴다 — 굽기가 상자 (8,16)을 놓는 판 위 자리는
+             (pad + sideQ/2, pad + sideQ)이므로, 잉크 자리와의 차를 16/sideQ로 되돌리면
+             '잉크 바닥·가로중심이 상자 좌표 어디인가'가 나온다. */
+          BLD_INK_BOX.set(op.kind, [
+            8 + ((bspr.cx / B) - (bspr.pad + bspr.side / 2)) * (16 / bspr.side),
+            16 + ((bspr.bot / B) - (bspr.pad + bspr.side)) * (16 / bspr.side),
+          ]);
         }
         /* 접지 그림자(재재지적: 해처리가 떠 있다) — 상자 바닥 어림이 아니라 구운
            판의 실제 바닥 픽셀(contentBottom)에 붙인다. 모델이 상자를 다 안 채워도
@@ -15034,36 +15071,73 @@ export default function ReplayMotionPlayer({
                 // (예전 코드는 건물 행에만 실리는 k를 공중 갈래에서 읽어 늘 폴백이었다).
                 if (foeB.air) dgy -= unitPxOf(foeB.uk ?? "?", foeB.by) * 1.6;
                 const degB = Math.atan2(-((foeB.bx - centerX) * tPxB), dgy) * (180 / Math.PI);
+                /* 트레이서가 **제 포구에서** 나간다(요청: "포톤캐논등이 트레이서가 포구가
+                   아닌 먼곳에 나오는 문제 무조건 포구에 나와야 누구건지 알아") — 여태
+                   방어 건물은 유닛과 달리 모델 앵커가 없어, 발자국 한가운데에서 붙박이
+                   픽셀(MUZZLE_PX 5~7px)만큼 앞으로 민 자리에서 쏘았다. 그 픽셀은 화면
+                   크기에 매인 값이라 지도가 작을수록(폰) 건물 몇 배 밖에서 빛이 났고,
+                   포톤 여럿이 붙어 서면 누가 쏘는지 알 수 없었다.
+                   이제 유닛과 같은 셈이다 — 모델 공간의 포구(BLD_MUZZLE)를 굽기와 같은
+                   변환으로 투영하고, 그 자리를 화면 px로 옮긴다. 좌표계만 유닛과 다르다:
+                   건물 판은 발자국 **바닥 가운데**(16-상자의 8,16)가 앵커이고 한 변이
+                   발자국 폭이라, 지면선까지 내려간 뒤 상자 안 자리를 더한다. 앵커도 몸과
+                   같은 정규화 배수(bldNormOf)를 탄다. */
+                const bTf = ((): string => {
+                  const fall = `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)`;
+                  const mz = shapeKind ? BLD_MUZZLE[shapeKind] : undefined;
+                  const el9 = mapRef.current;
+                  if (!mz || !el9) return fall;
+                  const mw9 = el9.clientWidth;
+                  const mh9 = el9.clientHeight;
+                  if (!mw9 || !mh9) return fall;
+                  const [px9, py9] = anchorPoint(
+                    mz, buildingYawOf(unit), viewYawOf(centerX, centerY), pitched, !pitched,
+                  );
+                  // 16-상자 한 변이 곧 그려지는 발자국 폭이다(UnitLayer의 fitWidth).
+                  const side9 = wTiles * mkK * (mw9 / grid.width);
+                  // 앵커도 몸과 같은 배수를 탄다 — 굽기가 상자 (8,16)을 축으로 키운다.
+                  const bn9 = bldNormOf(shapeKind);
+                  const ax9 = 8 + (px9 - 8) * bn9;
+                  const ay9 = 16 + (py9 - 16) * bn9;
+                  // 그리기가 실제로 앉히는 자리(잉크 바닥·가로중심) 기준으로 잰다.
+                  const ink9 = BLD_INK_BOX.get(shapeKind) ?? [8, 16];
+                  const [afx9] = posFrac(anchorX, anchorY);
+                  const [, gfy9] = posFrac(bodyX, bodyY + boxH / 2);
+                  const [cfx9, cfy9] = posFrac(centerX, centerY);
+                  const dx9 = (afx9 - cfx9) * mw9 + ((ax9 - ink9[0]) * side9) / 16;
+                  const dy9 = (gfy9 - cfy9) * mh9 + ((ay9 - ink9[1]) * side9) / 16;
+                  return `translate(${dx9.toFixed(1)}px, ${dy9.toFixed(1)}px) rotate(${degB.toFixed(1)}deg)`;
+                })();
                 const fire: React.ReactNode[] = [];
                 /* 포톤은 대공·대지 한 자루, 성큰은 촉수(표적까지 실거리로 뻗는다 — 럴커
                    가시와 같은 셈), 스포어는 포자. 사거리 숫자는 위 rgB가 표에서 받아 왔다. */
                 if (unit === "Photon Cannon" && foeB.bd <= rgB) {
-                  fire.push(<span key="p" className="scr-motion-tracer scr-tracer-photon" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)` }} />);
+                  fire.push(<span key="p" className="scr-motion-tracer scr-tracer-photon" style={{ transform: bTf }} />);
                 }
                 if (unit === "Sunken Colony" && foeB.bd <= rgB) {
                   fire.push(<span
                     key="s"
                     className="scr-motion-tracer scr-tracer-spike"
                     style={{
-                      transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)`,
+                      transform: bTf,
                       height: `${(foeB.bd * tPxB).toFixed(1)}px`,
                     }}
                   />);
                 }
                 if (unit === "Spore Colony" && foeB.bd <= rgB) {
                   // 스포어는 가디언과 같은 독 갈래다(요청: "스포어/가디언은 독느낌 노랑 연두 길게").
-                  fire.push(<span key="o" className="scr-motion-tracer scr-tracer-venom" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)` }} />);
+                  fire.push(<span key="o" className="scr-motion-tracer scr-tracer-venom" style={{ transform: bTf }} />);
                 }
                 if (unit === "Missile Turret" && foeB.air && foeB.bd <= rgB) {
-                  fire.push(<span key="t" className="scr-motion-tracer scr-tracer-missile" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)` }} />);
+                  fire.push(<span key="t" className="scr-motion-tracer scr-tracer-missile" style={{ transform: bTf }} />);
                 }
                 if (unit === "Bunker" && (crew.length > 0 || presumed)) {
                   if (crewGun && rgB >= 0 && foeB.bd <= rgB) {
-                    fire.push(<span key="g" className="scr-motion-tracer" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)` }} />);
+                    fire.push(<span key="g" className="scr-motion-tracer" style={{ transform: bTf }} />);
                   }
                   // 화염은 지상 전용이고 사거리도 제 것(가우스 6에 견줘 3)이다.
                   if (crewBat && !foeB.air && batRG >= 0 && foeB.bd <= batRG) {
-                    fire.push(<span key="f" className="scr-motion-tracer scr-tracer-flame" style={{ transform: `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)`, animationDelay: "0.2s" }} />);
+                    fire.push(<span key="f" className="scr-motion-tracer scr-tracer-flame" style={{ transform: bTf, animationDelay: "0.2s" }} />);
                   }
                 }
                 if (fire.length > 0) {
