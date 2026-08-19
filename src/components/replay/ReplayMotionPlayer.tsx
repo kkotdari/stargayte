@@ -27,12 +27,12 @@ import {
    range")에서 온 값이라 bwCombat이 안 물고 있다. 숫자를 여기 또 적는 대신 표에서 읽는다. */
 import { FRAME_SEC, LURKER_SPINE_SPEED_PX, LURKER_SPINE_TRAVEL_PX } from "../../utils/bwUnits";
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
-import { terrainOf, decodeWalk, groundPath, groundPathSoft, type TerrainGrid } from "../../utils/minimapTerrain";
-import { loadSimTracks, logSim, SIM_FLAG } from "../../utils/simClient";
+import { terrainOf, decodeWalk, type TerrainGrid } from "../../utils/minimapTerrain";
+import { loadSimTracks, logSim } from "../../utils/simClient";
 import { posAtSim, shotsAt, ST_INSIDE, type SimEventArr, type SimTrack } from "../../utils/simCore";
 /* 자취 읽기는 유틸로 나갔다(과제 #61) — 코어가 걸음의 진실이 된 뒤로 이 파일의
    몫이 아니고, 밖에 있어야 자로 잴 수 있다(scripts/pos-check.mjs). */
-import { posAt, LERP_MAX_GAP_SEC, type TrackPos, type TrackPt } from "../../utils/replayTrack";
+import { posAt, type TrackPos, type TrackPt } from "../../utils/replayTrack";
 import { FLYING_BUILDING_TPS } from "../../utils/bwTransport";
 import {
   annulusPath, bandPath, bodyFace, capFace, curvePath3, depthNow, fine, groundEllipse,
@@ -8012,11 +8012,9 @@ const MORPH_SHELL: Record<string, string> = {
 };
 /** 변태에 걸리는 시간(초) — 원작 값 어림(럴커·가디언·디바우러 모두 40초대). */
 const MORPH_SHELL_SEC = 40;
-/** 근접 잽 주기(초) — 원작 공격 주기 어림. 표에 없는 근접은 0.7초. */
-const MELEE_JAB_SEC: Record<string, number> = {
-  Zergling: 0.36, Ultralisk: 0.63, Zealot: 0.92, Firebat: 0.92, "Dark Templar": 1.26,
-  Broodling: 0.63, "Infested Terran": 0.63,
-};
+/* (걷어냄) MELEE_JAB_SEC — 근접 유닛이 앞으로 파고들었다 빠지는 '잽' 동작의 길이표.
+   그 동작을 만들던 렌더러 교전 당김이 사라지면서(코어가 제 이동 모형으로 붙는다)
+   표만 남아 있었다. */
 /* 발사 지점(요청: 탱크는 포신, 히드라는 입, 마린·파뱃은 총구, 매딕은 주사기 — 효과가
    몸 중심이 아니라 제 무기 끝에서) — 트레이서를 몸 방향 축으로 이만큼(px) 앞으로 민다.
    회전 뒤 translateY라 어느 방향을 보든 정확히 총구 쪽이다. 표에 없으면 몸 가장자리
@@ -10108,27 +10106,11 @@ const MELEE_UNITS = new Set([
 /* 걸음 시계가 빚을 갚는 속도(요청: 교전 뒤 이동이 부자연스럽다) — 뒤처진 시계는
    1.4배로 달려 따라잡는다. 화면 스무딩 상한(제 걸음 ×1.5)보다 낮아, 따라잡는 동안에도
    몸이 자취를 벗어나 가로지르지 않는다. 빚 상한은 그 위의 안전판이다. */
-const TRACK_CATCHUP = 1.4;
-const TRACK_DEBT_MAX = 18;
+/* (걷어냄) TRACK_CATCHUP·TRACK_DEBT_MAX — 렌더러가 명령 좌표를 '언제 지날까'로
+   어림하던 시절의 빚·따라잡기 상수. 코어 자취는 제 시각에 제자리다. */
 
-/** 자취 위에서 (x,y)에 가장 가까운 '앞쪽' 시각 — 교전이 끝난 자리에서 뒤로 돌아가지
- *  않고 이어 걷게 하는 자다(요청: 다음 명령이 오면 막 되돌아간다). 파고든 몫만큼은
- *  이미 걸은 것으로 쳐 주고, 옆·뒤로 밀린 싸움이었다면 제자리(from)가 그대로 뽑힌다. */
-function nearestTrackSec(
-  pts: TrackPt[], from: number, to: number, x: number, y: number,
-): number {
-  if (!(to > from)) return from;
-  const step = Math.max(0.15, (to - from) / 48);
-  let best = from;
-  let bd = Infinity;
-  for (let s = from; s <= to + 1e-6; s += step) {
-    const q = posAt(pts, s, null);
-    if (!q) continue;
-    const d = Math.hypot(q.x - x, q.y - y);
-    if (d < bd) { bd = d; best = s; }
-  }
-  return best;
-}
+/* (걷어냄) nearestTrackSec — 교전이 끝난 뒤 '지금 선 자리와 가장 가까운 앞쪽 시각'을
+   찾아 시계를 옮기던 자. 렌더러 교전 당김과 함께. */
 
 /* (걷어냄) unitAt — '이 부대의 우세 유닛' 어림. 개체마다 제 정체(e.k)가 있으니
    부대의 대표 이름을 고를 일이 없다. */
@@ -10242,7 +10224,6 @@ export default function ReplayMotionPlayer({
      유닛의 자리·방향을 명령 자취가 아니라 시뮬 결과에서 읽는다. 기존 길과 나란히 두고
      눈으로 견줄 수 있게 깃발로 켠다 — 확인이 끝나면 이쪽이 기본이 되고 보정 코드가
      통째로 걷힌다. 시뮬은 워커가 돌고 결과는 IndexedDB에 캐시된다(열 때마다 안 돈다). */
-  const simFlag = SIM_FLAG;
   const [simTracks, setSimTracks] = useState<Map<number, SimTrack> | null>(null);
   const [simEvents, setSimEvents] = useState<SimEventArr | null>(null);
   /* 진행 알림(지적: 로딩 시간이 전혀 없는데 되는 건가) — 워커에서 도니 화면이 안 멈춰
@@ -10591,7 +10572,6 @@ export default function ReplayMotionPlayer({
      이제 시계는 절대 뒤로 안 간다 — 싸우는 동안 멈춰 있다가(held), 풀리면 지금 서 있는
      자리에 가장 가까운 '앞쪽' 시각으로 건너뛰어(파고든 몫을 걸음으로 인정) 거기서 이어
      걷고, 뒤처진 빚은 TRACK_CATCHUP 걸음으로 천천히 갚는다. */
-  const trackClockRef = useRef(new Map<string, { eff: number; at: number; held: boolean }>());
   /* 화면 위치 스무딩(지적: 유닛이 뚝뚝 끊기고 조금씩 순간이동처럼 움직임) — 대형 오프셋
      변경·교전 멈춤 해제·채굴 위상 전환 같은 잔점프를 지수 이동평균이 흡수한다. 큰 이동
      (6타일 초과 — 드랍·리콜 등 진짜 순간이동)과 시간 되감기는 그대로 점프한다. */
@@ -10717,7 +10697,6 @@ export default function ReplayMotionPlayer({
   /* 시뮬 자취 적재(위 simFlag 주석) — 개체 트랙과 지형이 다 오면 워커에 맡긴다. 결과가
      오기 전까지는 기존 길로 그린다(깜빡임 없이 갈아 끼운다). */
   useEffect(() => {
-    if (!simFlag) return undefined;
     if (!entData) {
       /* 알약도 함께 띄운다 — 아무것도 안 뜨면 깃발이 안 먹은 건지 자료가 없는 건지
          구분할 수가 없다(지적). */
@@ -10754,7 +10733,7 @@ export default function ReplayMotionPlayer({
       setSimEvents(got.events);
     });
     return () => { cancelled = true; };
-  }, [simFlag, entData, terrain, terrainRaw, grid.width, grid.height, grid.resources, clockKey,
+  }, [entData, terrain, terrainRaw, grid.width, grid.height, grid.resources, clockKey,
     simTerrainKey]);
   /* 지형 수정(요청: 모든 경기 리플레이 화면에서, 아무나) — 산 버튼이 검수 모달을 연다.
      저장하면 이 자리에서 바로 새 지형으로 갈아 끼운다(맵 캐시는 다음 로드에 새 값을 받는다). */
@@ -10848,230 +10827,8 @@ export default function ReplayMotionPlayer({
      공중은 직선)를 그 유닛의 속도(속업 포함)로 이동한다. 도착 전에 다음 명령이 오면 가던
      길 그 지점에서 새 목적지로 방향을 튼다. 명령이 없는 동안은 서 있는다 — 순간이동은
      구조적으로 없다. */
-  /* 자취 펴기 한 벌 — 개체는 지형 경로를 제 속도로 걷는다. 옛 '정찰은 직선에 일꾼
-     걸음(3.7타일/초)으로 걷는다(지적: 일꾼·오버로드가 위치 찍으면 바로 이동하는 느낌 —
-     정찰 점도 명령 시각에 출발해 걸어서 가야 한다). */
-  /* 길찾기 캐시(개체 트랙 v2) — 부대 몇십 개가 아니라 개체 천여 개를 걷게 되면서, 같은
-     두 지점(채굴 왕복·본대 행군)의 BFS가 수천 번 반복된다. 정확히 같은 출발·도착이면
-     길도 같으므로 좌표 그대로를 열쇠로 재사용한다(양자화 없음 — 기존 결과와 비트 단위로
-     같다). 지형이 바뀌면 통째로 비운다. */
-  const pathCacheRef = useRef<{ key: string; map: Map<string, [number, number][]> }>({ key: "", map: new Map() });
-  /* 건물은 벽이다(요청: 유닛이 건물을 우회해 걷기) — 그 시각에 서 있는 건물 발자국
-     칸을 막은 지형판으로 길을 찾는다. 건물이 서고 사라질 때마다 판이 갈리므로 사건
-     시각(착공·소멸)으로 판 번호를 매기고, 판마다 한 번만 굽는다(9KB 복사 × 판 수).
-     부속건물은 본체에 붙은 작은 덩어리라 안 막는다. 채굴 왕복(결정적 미끄럼)은 이
-     길찾기를 안 타므로 자원~기지 사이 일꾼 겹침은 원작대로 남는다(요청). */
-  const bldGrid = useMemo(() => {
-    /* 지형이 없어도(매핑 안 된 맵) 건물·자원 벽은 선다(지적: 유닛이 전부 관통) —
-       전면 보행 가능한 합성 격자를 바닥으로 깔고 그 위에 도장만 찍는다. 절벽은 못
-       알지만 건물·미네랄 우회는 산다. */
-    const base: TerrainGrid = terrain ?? (() => {
-      const w = 96;
-      const h = Math.max(8, Math.round((96 * grid.height) / Math.max(1, grid.width)));
-      const walk = new Uint8Array(w * h).fill(1);
-      return { w, h, walk };
-    })();
-    const evs = new Set<number>();
-    for (const [bs, , , bu, , bg] of buildsSrc) {
-      if (ADDONS.has(bu)) continue;
-      evs.add(bs);
-      if ((bg ?? 0) > 0) evs.add(bg as number);
-    }
-    const times = [...evs].sort((a, b) => a - b);
-    const cache = new Map<number, TerrainGrid>();
-    const verOf = (sec: number): number => {
-      let lo = 0;
-      let hi = times.length;
-      while (lo < hi) {
-        const mid = (lo + hi) >> 1;
-        if (times[mid] <= sec) lo = mid + 1; else hi = mid;
-      }
-      return lo;
-    };
-    /* 미네랄·가스도 벽이다(요청: 우회하기에 넣기) — 자원은 경기 내내 그 자리라 판마다
-       같은 도장을 찍는다. 미네랄은 2×1, 간헐천은 4×2타일 어림(좌표는 가운데). */
-    const stampRes = (walk: Uint8Array): void => {
-      for (const r of grid.resources ?? []) {
-        const gas = r[2] === 1;
-        const hw = gas ? 2 : 1;
-        const hh = gas ? 1 : 0.5;
-        const x0 = Math.max(0, Math.floor(((r[0] - hw) / grid.width) * base.w));
-        const x1 = Math.min(base.w - 1, Math.ceil(((r[0] + hw) / grid.width) * base.w) - 1);
-        const y0 = Math.max(0, Math.floor(((r[1] - hh) / grid.height) * base.h));
-        const y1 = Math.min(base.h - 1, Math.ceil(((r[1] + hh) / grid.height) * base.h) - 1);
-        for (let yy = y0; yy <= y1; yy += 1) {
-          for (let xx = x0; xx <= x1; xx += 1) walk[yy * base.w + xx] = 0;
-        }
-      }
-    };
-    const gridAt = (sec: number): TerrainGrid => {
-      const ver = verOf(sec);
-      let g = cache.get(ver);
-      if (!g) {
-        const walk = new Uint8Array(base.walk);
-        stampRes(walk);
-        for (const [bs, bxT, byT, bu, , bg] of buildsSrc) {
-          if (ADDONS.has(bu)) continue;
-          if (bs > sec || ((bg ?? 0) > 0 && sec >= (bg ?? 0))) continue;
-          const [fw, fh] = FOOTPRINT[bu] ?? [3, 2];
-          const x0 = Math.max(0, Math.floor((bxT / grid.width) * base.w));
-          const x1 = Math.min(base.w - 1, Math.ceil(((bxT + fw) / grid.width) * base.w) - 1);
-          const y0 = Math.max(0, Math.floor((byT / grid.height) * base.h));
-          const y1 = Math.min(base.h - 1, Math.ceil(((byT + fh) / grid.height) * base.h) - 1);
-          for (let yy = y0; yy <= y1; yy += 1) {
-            for (let xx = x0; xx <= x1; xx += 1) walk[yy * base.w + xx] = 0;
-          }
-        }
-        g = { ...base, walk };
-        cache.set(ver, g);
-      }
-      return g;
-    };
-    return { gridAt, verOf };
-  }, [terrain, buildsSrc, grid.resources, grid.width, grid.height]);
-  /* 걷기에 필요한 것은 트랙 전체가 아니라 **속업 목록**뿐이었다 — v1 부대 트랙을
-     걷어내면서 인자도 그 알맹이로 좁힌다. */
-  const walkTrack = (
-    src: TrackPt[], ups: [number, string][] | undefined, forcedUnit?: string,
-    speedOverride?: number, forceGround?: boolean,
-  ): [number, number, number][] => {
-    if (src.length === 0) return [];
-    const out: [number, number, number][] = [[src[0][0], src[0][1], src[0][2]]];
-    let atX = src[0][1];
-    let atY = src[0][2];
-    let atSec = src[0][0];
-    for (let i = 1; i < src.length; i += 1) {
-      const [orderSec, tx, ty] = src[i];
-      const nextOrderSec = i + 1 < src.length ? src[i + 1][0] : Infinity;
-      // 명령이 올 때까지 서 있던 자리 — 같은 좌표의 점을 박아 그 구간을 정지로 만든다.
-      if (orderSec > atSec) out.push([orderSec, atX, atY]);
-      const startSec = Math.max(atSec, orderSec);
-      /* 정체는 부르는 쪽이 준다(forcedUnit) — 옛 '부대의 우세 유닛' 어림(unitAt)은
-         v1 트랙과 함께 걷었다. 이름이 없으면 아래에서 기본 보병 속도로 떨어진다. */
-      const unit = forcedUnit ?? "";
-      /* 무명 부대는 늘 지상 길찾기다(지적: 지상 유닛이 벽을 뚫고 다닌다) — 우세 유닛이
-         공중(뮤탈 등)이면 부대 전체가 직선으로 날았는데, 그 부대엔 지상 유닛이 섞여
-         있기 마련이라 벽 뚫기가 더 큰 거짓말이다. 정체를 아는 공중(typeSquads)만 곧게
-         난다. */
-      const air = !forceGround && unit !== "" && isAirUnit(unit);
-      let path: [number, number][] | null = null;
-      if (!air && (terrain || bldGrid)) {
-        /* 조인 격자 먼저, 끊겼으면 원본으로 한 번 더(위 terrainRaw 주석) — 둘 다 끊겼으면
-           직선이 아니라 차선(벽을 비싸게 취급하는 다익스트라)이다(지적: 지상 유닛이 벽을 막
-           통과해 직진). 격자가 조각났거나 출발·도착이 못 걷는 칸 깊숙이 떨어져 스냅이
-           실패하면 BFS는 null인데, 그때마다 직선을 그으면 벽 관통이 화면을 덮는다. */
-        const cache = pathCacheRef.current;
-        const tkey = `${terrain ? `${terrain.w}:${terrain.h}` : "syn"}:${terrainRaw ? terrainRaw.w : 0}:${buildsSrc.length}`;
-        if (cache.key !== tkey) { cache.key = tkey; cache.map.clear(); }
-        /* 건물판 번호가 열쇠에 든다(요청: 건물 우회) — 같은 두 지점이라도 그 사이에
-           건물이 서면 딴 길이다. */
-        const bver = bldGrid ? bldGrid.verOf(orderSec) : 0;
-        const ck = `${bver}:${atX},${atY},${tx},${ty}`;
-        const hit = cache.map.get(ck);
-        if (hit) {
-          path = hit;
-        } else {
-          /* 건물을 막은 판이 먼저다(요청: 건물 우회) — 건물 탓에 길이 끊기면(심시티
-             벽 등) 건물 없는 판으로 물러난다: 뚫고 가는 것은 막힌 채 서 있는 것보다
-             작은 거짓말이다. */
-          const found = (bldGrid ? groundPath(
-            bldGrid.gridAt(orderSec),
-            atX / grid.width, atY / grid.height,
-            tx / grid.width, ty / grid.height,
-          ) : null) ?? (terrain ? groundPath(
-            terrain,
-            atX / grid.width, atY / grid.height,
-            tx / grid.width, ty / grid.height,
-          ) : null) ?? (terrainRaw ? groundPath(
-            terrainRaw,
-            atX / grid.width, atY / grid.height,
-            tx / grid.width, ty / grid.height,
-          ) : null) ?? (terrainRaw ?? terrain ? groundPathSoft(
-            terrainRaw ?? (terrain as TerrainGrid),
-            atX / grid.width, atY / grid.height,
-            tx / grid.width, ty / grid.height,
-          ) : null);
-          path = found ? found.map(([fx, fy]) => [fx * grid.width, fy * grid.height] as [number, number]) : null;
-          // 무한히 자라지 않게만 막는다 — 넘치면 통째로 비워도 다시 채워지는 값이다.
-          if (cache.map.size > 30000) cache.map.clear();
-          if (path) cache.map.set(ck, path);
-        }
-      }
-      if (!path) path = [[tx, ty]];
-      let total = 0;
-      const lens: number[] = [];
-      let px = atX;
-      let py = atY;
-      for (const [x, y] of path) {
-        const d = Math.hypot(x - px, y - py);
-        lens.push(d);
-        total += d;
-        px = x;
-        py = y;
-      }
-      if (total === 0) { atSec = startSec; continue; }
-      /* 정체를 아는 갈래(수송선·오버로드)는 곧게 날더라도 제 속도로 걷는다(지적: 오버로드
-         이동이 뚝뚝 끊김 — 일꾼 걸음 3.7로 내달리곤 다음 명령까지 서 있어서, 실제 0.6짜리
-         걸음과 전혀 다른 돌진·정지 반복이 됐다). 띄운 건물은 제 비행 속도(오버라이드)다. */
-      const v = speedOverride ?? Math.max(0.5, speedOf(unit || "Marine", orderSec, ups));
-      const travel = total / v;
-      if (startSec + travel <= nextOrderSec) {
-        // 끝까지 간다 — 도착 뒤 다음 명령까지는 위의 대기 점이 맡는다.
-        let acc = 0;
-        for (let j = 0; j < path.length; j += 1) {
-          acc += lens[j];
-          out.push([startSec + travel * (acc / total), path[j][0], path[j][1]]);
-        }
-        atX = tx;
-        atY = ty;
-        atSec = startSec + travel;
-      } else {
-        // 다음 명령이 먼저 온다 — 그때까지 간 만큼만 걷고 거기서 방향을 튼다.
-        const cutDist = v * (nextOrderSec - startSec);
-        let acc = 0;
-        let cx = atX;
-        let cy = atY;
-        for (let j = 0; j < path.length; j += 1) {
-          if (acc + lens[j] >= cutDist) {
-            const k = lens[j] > 0 ? (cutDist - acc) / lens[j] : 0;
-            const bx = j === 0 ? atX : path[j - 1][0];
-            const by = j === 0 ? atY : path[j - 1][1];
-            cx = bx + (path[j][0] - bx) * k;
-            cy = by + (path[j][1] - by) * k;
-            out.push([nextOrderSec, cx, cy]);
-            break;
-          }
-          acc += lens[j];
-          out.push([startSec + acc / v, path[j][0], path[j][1]]);
-          cx = path[j][0];
-          cy = path[j][1];
-        }
-        atX = cx;
-        atY = cy;
-        atSec = nextOrderSec;
-      }
-    }
-    /* 긴 걸음을 잘게 썬다(지적: 이동이 뚝뚝 끊김) — posAt은 LERP_MAX_GAP_SEC(24초)보다
-       긴 구간을 침묵(시선 전환)으로 보고 잇지 않으므로, 오버로드(0.6타일/초)처럼 느린
-       걸음 하나가 24초를 넘으면 출발점에 얼어 있다 도착점으로 튀었다. 이동 구간의 점
-       사이가 그 문턱을 못 넘게 쪼갠다 — 대기(같은 좌표) 구간은 그대로 둔다. */
-    const MAX_SEG_SEC = LERP_MAX_GAP_SEC - 4;
-    const dense: [number, number, number][] = [out[0]];
-    for (let i = 1; i < out.length; i += 1) {
-      const [s0, x0, y0] = out[i - 1];
-      const [s1, x1, y1] = out[i];
-      const dur = s1 - s0;
-      if (dur > MAX_SEG_SEC && (x0 !== x1 || y0 !== y1)) {
-        const n = Math.ceil(dur / MAX_SEG_SEC);
-        for (let k = 1; k < n; k += 1) {
-          const f = k / n;
-          dense.push([s0 + dur * f, x0 + (x1 - x0) * f, y0 + (y1 - y0) * f]);
-        }
-      }
-      dense.push(out[i]);
-    }
-    return dense;
-  };
+  /* (걷어냄) walkTrack — 렌더러가 제 길찾기(A*)·속도표·대기점으로 자취를 펴던 함수.
+     코어(simCore)가 걸음의 진실이 되면서 나란한 두 세계 모형 중 이쪽을 걷는다. */
   /* 개체 걷기(v2·요청: 유닛 위치를 저마다 기억하고 브루드워 엔진처럼 분석) — 태그 하나가
      곧 마커 하나다. 저장된 증거 점(이동 명령의 목적지·남이 찍은 자리·건설 자리·정지)을
      그 유닛의 속도와 지형 길찾기(walkTrack)로 걸린다. 걷어낸 옛 부대 어림과 달리 묶고
@@ -11164,7 +10921,6 @@ export default function ReplayMotionPlayer({
       ups: [number, string][] | undefined;
       walk: [number, number, number][];
       /** 걸음이 코어(simCore)에서 왔나 — 렌더러 보정을 끄는 열쇠(과제 #61). */
-      sim: boolean;
     }[] = [];
     for (const e of entData.ents) {
       // 건물(태그·물리 모두)은 v1 층이 계속 그린다 — 여기는 유닛만.
@@ -11237,45 +10993,18 @@ export default function ReplayMotionPlayer({
         if (hx >= 0 && hd > 8) pts.unshift([e.b, hx, hy]);
       }
       if (pts.length === 0) continue;
-      /* 수송 하차는 걸어서 가는 것이 아니다(지적: 셔틀만 가고 아콘은 안 내리는데 공격은
-         일어난다) — 승선(f=12)과 하차(f=13) 사이는 배가 옮겨 준 구간이다. 그 둘을 이어
-         걸으면 아콘이 제 발로 맵을 가로지르고, 하차 시각에는 아직 중간 어디쯤이라
-         드랍 자리에 아무도 안 내린다(공격 명령만 적진에서 터진다). 하차 점에서 자취를
-         끊어 거기서 새로 시작한다 — 그 순간만 순간이동이고 그 밖은 종전대로 정속이다. */
-      const dropSecs = [...new Set(e.ev.filter((v) => v[3] === 13 && v[1] >= 0).map((v) => v[0]))]
-        .sort((a, b) => a - b);
-      const walkOf = (src: TrackPt[]): [number, number, number][] =>
-        walkTrack(src, pUps, e.k || undefined, undefined, e.k === "");
-      let wk: [number, number, number][];
-      /* ★ 코어가 진실이다(과제 #61) — 코어 자취가 있으면 걸음은 통째로 코어 것이다.
-         여태는 렌더러가 제 길찾기·속도표·대기점으로 자취를 하나 더 만들어 놓고,
-         그리기 직전에 코어 자리로 덮어썼다. 그래서 둘이 나란히 돌았고 — 무엇보다
-         **표적 지도는 덮어쓰기 전 자리를 봤다**: 몸은 코어가 낸 데 서 있는데
-         겨눠지는 자리는 렌더러 어림이라, 예전에 고쳤던 "총알이 딴 데로 간다"가
-         코어를 켜면 그대로 돌아와 있었다. 여기 한 자리를 코어로 바꾸면 표적 지도·
-         상태 판정·정지·버로우·그리기가 전부 같은 하나를 읽는다. */
+      /* ★ 걸음은 코어 하나뿐이다(과제 #61 → 정식 배포) — 여태는 렌더러가 제 길찾기·
+         속도표·대기점으로 자취를 하나 더 만들어 두고 그리기 직전에 코어 자리로
+         덮어썼다. 둘이 나란히 돌면 **표적 지도가 덮어쓰기 전 자리를 본다**: 몸은
+         코어가 낸 데 서 있는데 겨눠지는 자리는 렌더러 어림이라, 총알이 딴 데로 갔다.
+         이제 코어 자취가 없으면 그 개체는 **안 그린다** — 대역으로 비슷한 것을
+         지어내면 코어가 못 낸 개체가 있다는 사실이 화면에서 사라진다. */
       const simTr0 = simTracks?.get(e.t);
-      const fromSim = !!simTr0 && simTr0.keys.length >= 10;
-      if (simTr0 && fromSim) {
-        const ks = simTr0.keys;
-        wk = new Array(ks.length / 5);
-        for (let q = 0, w2 = 0; q + 4 < ks.length; q += 5, w2 += 1) {
-          wk[w2] = [ks[q], ks[q + 1], ks[q + 2]];
-        }
-      } else if (dropSecs.length === 0) wk = walkOf(pts);
-      else {
-        const runs: TrackPt[][] = [];
-        let cur: TrackPt[] = [];
-        let di = 0;
-        for (const pt of pts) {
-          while (di < dropSecs.length && pt[0] >= dropSecs[di]) {
-            if (cur.length > 0) { runs.push(cur); cur = []; }
-            di += 1;
-          }
-          cur.push(pt);
-        }
-        if (cur.length > 0) runs.push(cur);
-        wk = runs.flatMap(walkOf);
+      if (!simTr0 || simTr0.keys.length < 5) continue;
+      const ks = simTr0.keys;
+      const wk: [number, number, number][] = new Array(Math.floor(ks.length / 5));
+      for (let q = 0, w2 = 0; q + 4 < ks.length; q += 5, w2 += 1) {
+        wk[w2] = [ks[q], ks[q + 1], ks[q + 2]];
       }
       /* 상태(전수조사) — 시전 순간 그 자리에 있었으면 걸린다. 적이 건 것만(스태시스는
          아군 오폭도 언다). */
@@ -11284,7 +11013,7 @@ export default function ReplayMotionPlayer({
         const cfg = STATUS_CASTS[tech5];
         if (!cfg) continue;
         if (!cfg.any && craw5 === raw) continue;
-        const pp5 = posAt(wk, cs5, null, undefined, fromSim);
+        const pp5 = posAt(wk, cs5);
         if (!pp5 || Math.hypot(cx9 - pp5.x, cy9 - pp5.y) > cfg.r) continue;
         statuses.push([cs5, cs5 + cfg.dur, cfg.kind]);
       }
@@ -11327,7 +11056,7 @@ export default function ReplayMotionPlayer({
              계속 산다). 그래서 코어일 때는 마지막 건설 앵커 자리에 몸이 처음 닿은
              순간을 찾는다 — 못 닿으면 옛 규칙 그대로 마지막 점이다. */
           buildHideAt = wk[wk.length - 1][0];
-          if (fromSim) {
+          {
             let anc: [number, number, number] | null = null;
             for (let i = e.ev.length - 1; i >= 0; i -= 1) {
               const v3 = e.ev[i];
@@ -11368,17 +11097,15 @@ export default function ReplayMotionPlayer({
         orders: e.ev.filter((v) => v[3] === 0 || v[3] === 7 || v[3] === 3).map((v) => v[0]),
         // 승선 구간 — 위 rideSpans(짝이 되는 하차까지)를 그대로 쓴다.
         rides: rideSpans,
-        // 정체를 알면 그 속도로, 모르면 부대 어림과 같은 규칙(그때의 우세 유닛·지상 길)로.
+        // 걸음은 늘 코어가 낸 자취다 — 렌더러가 따로 어림하는 갈래는 없앴다.
         walk: wk,
-        /** 이 걸음이 코어에서 왔나 — 읽는 쪽이 렌더러 보정을 끄는 열쇠다(과제 #61). */
-        sim: fromSim,
         statuses,
         cloaks,
       });
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entData, terrain, terrainRaw, bldGrid, grid.width, grid.height, upsByRaw, simTracks]);
+  }, [entData, terrain, terrainRaw, grid.width, grid.height, upsByRaw, simTracks]);
   /* 유령 부대 흡수(지적: 1시에 쳐들어간 테란 병력이 아무것도 안 하고 계속 서 있음 —
      같은 부대를 다시 드래그하면 선택 묶음(g)이 갈려 새 부대가 되고, 옛 마커가 마지막
      명령 자리에 영영 남았다. 실측: 한 공격 방면에 묶음 여덟이 줄줄이). 부대 A의 마지막
@@ -11430,7 +11157,7 @@ export default function ReplayMotionPlayer({
       if (dieAt0 !== null && t >= dieAt0) continue;
       if (e.rides.some(([ra0, rb0]) => t >= ra0 + 1 && t < rb0)) continue;
       if (e.buildHides.some(([ba0, bb0]) => t >= ba0 && t < bb0)) continue;
-      const q = posAt(e.walk, t, null, undefined, e.sim);
+      const q = posAt(e.walk, t);
       if (!q) continue;
       const row: FoeRow = {
         team: teamOfRaw(e.raw) ?? 0, x: q.x, y: q.y,
@@ -12314,7 +12041,7 @@ export default function ReplayMotionPlayer({
   const headingOf = (walk: TrackPt[], pos: { x: number; y: number }, smoothKey?: string): number => {
     let target = 0;
     for (const back of [0.3, 0.8, 2, 4, 8, 15]) {
-      const hp = posAt(walk, Math.max(0, t - back), null);
+      const hp = posAt(walk, Math.max(0, t - back));
       if (!hp) break;
       const dx = pos.x - hp.x;
       const dy = pos.y - hp.y;
@@ -12889,10 +12616,10 @@ export default function ReplayMotionPlayer({
           touchAction: "none",
         }}
       >
-        {/* 시뮬 상태(지적: 로딩 시간이 전혀 없는데 되는 건가) — 워커에서 도니 화면이
-            안 멈춘다. 계산 중인지, 몇 기가 실렸는지, 얼마나 걸렸는지를 여기 적는다.
-            ?sim=1일 때만 뜬다. */}
-        {simFlag && simNote && (
+        {/* 시뮬 상태 — 코어가 정식 경로가 된 뒤로는 **자취가 아직 없을 때만** 뜬다.
+            다 실린 뒤의 telemetry(몇 기·몇 초)는 콘솔(logSim) 몫이다: 잘 된 것을 화면에
+            계속 알릴 이유는 없고, 안 된 것은 반드시 보여야 한다(요청). */}
+        {!simTracks && simNote && (
           <span className="scr-motion-simnote">{simNote}</span>
         )}
         {/* 맵연결(요청: 별도로 맵 좌상단에, 연결 안 된 경우만, 알약 형태) — 렌즈 밖이라
@@ -13777,7 +13504,6 @@ export default function ReplayMotionPlayer({
           const dieAt = simDie !== null ? simDie : e.d;
           if (dieAt !== null && t >= dieAt + 1.2) return null;
           const team = teamOfRaw(e.raw);
-          const holdKey0 = `${e.raw}-v2e${ei}`;
           /* 걸음 속도 상한(요청) — 제 속도표로 죈다. 15%만 여유를 둔다: 교전 지연을
              따라잡는 몫이라, 이보다 크면 다시 '순간적으로 빨라짐'이 된다.
              드랍·리콜은 예외 — 원작에서도 순간이동이다. 수송 구간 앞뒤 여유를 두어
@@ -13787,31 +13513,15 @@ export default function ReplayMotionPlayer({
             tech9 === "Recall" && craw9 === e.raw && t >= cs9 - 1 && t <= cs9 + 4);
           const vCap9 = ridingNow9 || recallNow9
             ? undefined : speedOf(e.unit || "Marine", t, e.ups) * 1.15;
-          /* 걸음 시계(위 trackClockRef 주석) — 되감기가 없는 단조 시계다. 처음·되감기·
+          /* 걸음 시계 — 코어 자취가 제 시각에 제자리라 지금 시각 그대로다.
              탐색(1.5초 넘는 건너뜀)은 지금 시각으로 맞추고, 싸우는 동안은 멈추며,
              그 밖에는 빚이 있으면 TRACK_CATCHUP으로 달려 따라잡는다. */
-          const cm9 = trackClockRef.current.get(holdKey0);
-          let eff9: number;
-          /* 코어가 걸음을 냈으면 시계도 코어 것이다(과제 #61) — 빚·따라잡기는 "명령
-             좌표를 언제 지날까"를 렌더러가 어림하던 시절의 장치다. 코어 자취는 이미
-             제 시각에 제자리라, 여기서 시각을 미루면 코어가 낸 값을 렌더러가 도로
-             흔드는 꼴이 된다. */
-          if (e.sim) eff9 = t;
-          else if (!cm9 || t < cm9.at || t - cm9.at > 1.5) eff9 = t;
-          else if (cm9.held) eff9 = cm9.eff;
-          else {
-            eff9 = Math.min(t, cm9.eff
-              + (t - cm9.at) * (cm9.eff < t - 0.05 ? TRACK_CATCHUP : 1));
-          }
-          /* 새 명령이 오면 그 좌표가 현실이다(기획서 1-F — 수리: 빚이 무한 누적돼 걸음
-             시계가 영구히 뒤처졌다) — 밀린 시계 뒤에 실제 명령이 났으면 앞으로 당긴다.
-             싸우는 중(held)에는 안 당긴다: 그 동안의 자취는 싸우느라 못 간 길이다. */
-          if (cm9 && !cm9.held && eff9 < t && e.orders.some((os0) => os0 > eff9 && os0 <= t)) {
-            eff9 = t;
-          }
-          // 빚 상한(안전판) — 끝나지 않는 싸움에 걸려도 시계가 영영 멈추지는 않는다.
-          eff9 = Math.max(rp[0][0], Math.min(t, Math.max(eff9, t - TRACK_DEBT_MAX)));
-          const rawPos = posAt(rp, eff9, null, e.sim ? undefined : vCap9, e.sim);
+          /* 걸음 시계는 코어 것이다(과제 #61 → 정식 배포) — 빚·따라잡기·상한은
+             "명령 좌표를 언제 지날까"를 렌더러가 어림하던 시절의 장치다. 코어
+             자취는 이미 제 시각에 제자리라, 여기서 시각을 미루면 코어가 낸 값을
+             렌더러가 도로 흔드는 꼴이 된다. */
+          const eff9 = t;
+          const rawPos = posAt(rp, eff9);
           if (!rawPos) return null;
           /* 탑승 중(요청: 수송선 승하차) — 배 안에 있으니 마커를 걷는다. 하차 지점
              (f=13)이나 다음 제 명령에서 다시 나타나 걷는다.
@@ -13931,131 +13641,7 @@ export default function ReplayMotionPlayer({
              걸어가 사거리에서 멈추는 일을 제 이동 모형으로 이미 했다. 여기서 한 번 더
              끌면 두 모형이 같은 몸을 밀고, 어차피 아래에서 코어 자리로 덮여 버려질
              값을 프레임마다 셈하는 것이기도 하다. */
-          if (!e.sim && fighting && !uAir) {
-            const mem = engageHoldRef.current.get(holdKey);
-            /* 되감기만 리셋(기획서 1-C — 수리: 2.5초 유실 조건이 파고든 진행(adv)을
-               통째로 날려 접촉→후퇴 요요를 만들었다. 깜빡임·컬링 공백은 아래 시계
-               (dt9, 프레임당 1.5초 상한)로 흡수한다). */
-            let base = mem && t >= mem.t0 ? mem : null;
-            /* 표적이 바뀌면 지금 선 자리에서 다시 잰다(요청: 막 되돌아간다) — 기준점
-               (base)은 그대로 둔 채 방향만 홱 돌리면, 파고든 몫(adv)이 통째로 반대편에
-               그어져 몸이 기준점을 축으로 크게 돌아 나갔다. 표적이 5타일 넘게 튀면
-               (죽어서 다음 적으로 넘어간 경우) 지금 몸 자리를 새 기준점으로 삼는다. */
-            if (base && Math.hypot(foe.bx - base.fx, foe.by - base.fy) > 5) {
-              base = { ...base, x: base.px, y: base.py, adv: 0 };
-              engageHoldRef.current.set(holdKey, base);
-            }
-            if (!base) {
-              base = {
-                x: rawPos.x, y: rawPos.y, t0: t, tLast: t, adv: 0,
-                px: rawPos.x, py: rawPos.y, fx: foe.bx, fy: foe.by,
-              };
-              engageHoldRef.current.set(holdKey, base);
-            }
-            base.fx = foe.bx;
-            base.fy = foe.by;
-            const dt9 = Math.max(0, Math.min(1.5, t - base.tLast));
-            base.tLast = t;
-            /* 홀드는 후퇴만 막는다(수리: 교전 시작 자리에 박제돼 원자취가 표적으로
-               전진해도 화면은 제자리였다) — 원자취가 표적에 더 가깝게 와 있으면
-               기준점을 따라 옮기고, 그만큼 파고든 몫(adv)에서 뺀다. */
-            const gNow = Math.hypot(foe.bx - rawPos.x, foe.by - rawPos.y);
-            const gBase0 = Math.hypot(foe.bx - base.x, foe.by - base.y);
-            if (gNow < gBase0) {
-              base.adv = Math.max(0, base.adv - (gBase0 - gNow));
-              base.x = rawPos.x;
-              base.y = rawPos.y;
-            }
-            const gap = Math.hypot(foe.bx - base.x, foe.by - base.y);
-            // 무명 개체(k="")는 보병 모형으로 그려지므로 근접으로 취급(기획서 1-A).
-            const melee9 = drawUnit === "" || MELEE_UNITS.has(drawUnit);
-            /* 정지 거리(기획서 1-C) — 건물은 발자국 사각형 가장자리 + 0.3타일(수리:
-               중심 고정 2.0은 4×3 세로변을 파고들고 모서리에 못 닿았고, 성큰을
-               nearestFoe로 잡으면 1.1로 발자국 안까지 들어갔다). */
-            const maxAdv = ((): number => {
-              if (foe.bld) {
-                const fp = FOOTPRINT[foe.k ?? ""] ?? [3, 2];
-                const ddx = Math.max(0, Math.abs(foe.bx - base.x) - fp[0] / 2);
-                const ddy = Math.max(0, Math.abs(foe.by - base.y) - fp[1] / 2);
-                return Math.max(0, Math.hypot(ddx, ddy) - 0.3);
-              }
-              /* 멈춰 서는 거리도 사거리다(과제 #48) — 근거 없는 1.1/2.2 고정 탓에
-                 드라군(4)·히드라(4)·골리앗(6)·가디언(8)이 전부 2.2타일까지 걸어 들어
-                 갔다. 표의 사거리는 몸 반지름을 뺀 순수 값이고 여기 gap은 중심-중심이라
-                 그만큼 짧게 잡히는 어림이다. 근접은 사거리가 0.5타일도 안 되니 몸이
-                 겹치지 않게 1.1을 하한으로 남긴다. */
-              const known9 = drawUnit !== "" && isKnownKind(drawUnit);
-              let rg9 = known9 ? fireRangeTilesOf(drawUnit, foe.air) : -1;
-              /* 무기가 아예 없는 유닛(리버·캐리어) — 표에는 무기 칸이 비어 있다. 피해를
-                 내는 것이 스캐럽·인터셉터라는 딴 개체이기 때문인데, 그렇다고 2.2타일까지
-                 걸어 들어가면 사거리 8짜리가 몸을 들이미는 그림이 된다. 이럴 때만 자동
-                 획득 사거리(리버·캐리어 둘 다 8)를 대신 쓴다. 못 치는 갈래(질럿이 뮤탈을
-                 겨눈 경우)까지 이 갈래로 새면 근접이 3타일 밖에 서 버리므로, 지상·대공이
-                 **둘 다** 없을 때로 좁힌다. */
-              if (rg9 < 0 && known9 && fireRangeTilesOf(drawUnit, !foe.air) < 0) {
-                rg9 = acquireTilesOf(drawUnit);
-              }
-              return Math.max(0, gap - Math.max(1.1, rg9 <= 0 ? 2.2 : rg9));
-            })();
-            if (melee9) {
-              /* 걸음 속도로만 다가간다(지적: 당겨지듯 빠르게 이동하는 것) — 예전엔
-                 교전에 드는 첫 프레임에 base.adv를 2.5타일로 끌어올려, 몸이 한 박자에
-                 쭉 빨려 들어갔다. 그 즉시 당김을 걷고 0에서 제 걸음으로 적분한다.
-                 속업 반영은 원자취(walkTrack) 몫이라 여기선 기본 속도표만 쓴다. */
-              const spd9 = Math.max(0.5, UNIT_SPEED[drawUnit] ?? 3.2);
-              base.adv = base.adv + dt9 * spd9;
-            } else {
-              // 원거리도 같다 — 사거리까지 걸어서 좁힌다(즉시 2.5 → 걸음 적분).
-              base.adv = base.adv + dt9 * Math.max(0.5, UNIT_SPEED[drawUnit] ?? 3.2);
-            }
-            /* 근접 잽(요청: 휘두름 호 대신, 권투처럼 표적 쪽으로 툭 나갔다 빠지게 —
-               공속에 비례) — 붙은 뒤(당김이 다 찼을 때)부터 제 공격 주기로 앞뒤로
-               민다. 한 주기의 앞 1/4에 튀어나가고 그 다음 1/3 동안 물러난 뒤 쉰다.
-               개체마다 위상을 어긋내(ei) 무리가 한 몸처럼 들썩이지 않게 한다. */
-            const pullBase = Math.min(base.adv, maxAdv);
-            let jab9 = 0;
-            if (melee9 && pullBase >= maxAdv - 0.05) {
-              const per9 = MELEE_JAB_SEC[drawUnit] ?? 0.7;
-              const ph9 = (((t + ei * 0.11) % per9) + per9) % per9 / per9;
-              jab9 = ph9 < 0.25 ? ph9 / 0.25 : ph9 < 0.58 ? 1 - (ph9 - 0.25) / 0.33 : 0;
-            }
-            const pull = pullBase + jab9 * 0.42;
-            pos = gap > 0.01
-              ? { ...rawPos, x: base.x + ((foe.bx - base.x) / gap) * pull, y: base.y + ((foe.by - base.y) / gap) * pull }
-              : { ...rawPos, x: base.x, y: base.y };
-            base.px = pos.x;
-            base.py = pos.y;
-          } else {
-            const mem = engageHoldRef.current.get(holdKey);
-            // 시간을 되감았으면 기억을 버린다 — 안 그러면 시계가 멈춘 채로 남는다.
-            if (mem && t < mem.t0) engageHoldRef.current.delete(holdKey);
-            /* 깜빡임 유예(기획서 1-C): 1.2초 안에 다시 붙으면 진행(adv)을 보존한다 —
-               즉시 삭제가 재교전마다 t0·진행을 리셋해 요요를 만들었다. */
-            if (mem && t >= mem.t0 && t - mem.tLast < 1.2) {
-              /* 유예 동안은 싸우던 자리를 지킨다(요청: 되돌아감) — 예전엔 이 1.2초에
-                 원자취로 돌아가 몸이 뒤로 밀렸다가 다시 나갔다. */
-              pos = { ...rawPos, x: mem.px, y: mem.py };
-            } else if (mem && t >= mem.t0) {
-              /* 교전이 끝났다 — 되돌아가지 않는다(요청). 파고든 몫을 걸음으로 인정해,
-                 남은 자취에서 지금 선 자리와 가장 가까운 '앞쪽' 시각으로 시계를 옮기고
-                 거기서 이어 걷는다. 찰나(0.4초 미만)의 스침은 건너뛴다(지적: 플리커). */
-              if (mem.tLast - mem.t0 > 0.4) {
-                const rs9 = nearestTrackSec(rp, eff9, Math.min(t, eff9 + 12), mem.px, mem.py);
-                if (rs9 > eff9) {
-                  eff9 = rs9;
-                  const rp9 = posAt(rp, eff9, null, vCap9, e.sim);
-                  if (rp9) pos = rp9;
-                }
-              }
-              engageHoldRef.current.delete(holdKey);
-            }
-          }
           // 다음 프레임을 위한 걸음 시계 기록 — 싸우는(유예 포함) 동안은 멈춰 둔다.
-          if (!e.sim) {
-            trackClockRef.current.set(holdKey0, {
-              eff: eff9, at: t, held: engageHoldRef.current.has(holdKey),
-            });
-          }
           /* 가스 왕복(지적: 가스 캐는 일꾼이 하나도 없다) — 배정 클릭은 한 번만 남고
              그 뒤는 게임이 자동 순환이라, 개체가 정제소 위에 서서 건물에 가려져 있었다.
              제 정제소 곁(2타일)에 선 일꾼은 가장 가까운 홀과 그 사이를 결정적으로
@@ -14063,171 +13649,6 @@ export default function ReplayMotionPlayer({
           /* 채취 왕복도 코어 몫이다(과제 #61) — 코어에는 밭 배정과 왕복이 들어 있다
              (simCore.assignJob). 렌더러의 결정적 왕복은 코어가 없던 때의 대역이라,
              켜져 있으면 같은 일꾼을 두 박자로 흔들 뿐이다. */
-          if (!e.sim && isWorker && !fighting) {
-            const gasB = buildsSrc.find(([bs2, bx2, by2, bu2, br2, bg2]) =>
-              br2 === e.raw && (bu2 === "Refinery" || bu2 === "Assimilator" || bu2 === "Extractor")
-              && bs2 <= t && ((bg2 ?? 0) === 0 || t < (bg2 ?? 0))
-              && Math.hypot(bx2 + footDx(bu2) - pos.x, by2 + footDy(bu2) - pos.y) <= 2);
-            if (gasB) {
-              const gx3 = gasB[1] + footDx(gasB[3]);
-              const gy3 = gasB[2] + footDy(gasB[3]);
-              let hall: { x: number; y: number } | null = null;
-              let hd = 12;
-              for (const h of halls) {
-                if (h.raw !== e.raw || h.sec > t || (h.gone > 0 && t >= h.gone)) continue;
-                const d2 = Math.hypot(h.x - gx3, h.y - gy3);
-                if (d2 < hd) { hd = d2; hall = h; }
-              }
-              if (hall && hd > 1.5) {
-                const cyc3 = (t * 1.5 + ei * 2.3) % (2 * hd);
-                const k3 = (cyc3 < hd ? cyc3 : 2 * hd - cyc3) / hd;
-                // 가스 왕복도 같은 결 — 0.84 → 0.72.
-                const kk = 0.08 + k3 * 0.72;
-                pos = { ...pos, x: gx3 + (hall.x - gx3) * kk, y: gy3 + (hall.y - gy3) * kk };
-              }
-            } else {
-              /* 미네랄 줄서기(요청 ②: 일꾼 원장의 자원 배분) — 패치 곁에 선 일꾼은
-                 그 패치와 홀을, 홀 곁에 유휴한 일꾼(합성 포함)은 배분받은 패치와 홀을
-                 결정적 박자로 왕복한다. 배분은 개체 번호로 갈라 패치마다 줄이 선다. */
-              const resList = grid.resources ?? [];
-              let mpx = -1;
-              let mpy = -1;
-              let hallM: { x: number; y: number } | null = null;
-              let hdM = 5.5;
-              for (const h of halls) {
-                if (h.raw !== e.raw || h.sec > t || (h.gone > 0 && t >= h.gone)) continue;
-                const d4 = Math.hypot(h.x - pos.x, h.y - pos.y);
-                if (d4 < hdM) { hdM = d4; hallM = h; }
-              }
-              /* 집에 있는 일꾼은 캔다(지적: 첫 4기가 바로 채취해야 하는데 안 됨) —
-                 예전 조건은 '멈춰 있을 때'뿐이라, 시작 일꾼처럼 증거 점이 띄엄띄엄한
-                 개체는 두 점 사이를 하염없이 미끄러지는 '이동 중'으로 잡혀 왕복을 못
-                 탔다(실측: 경기 20초에 일꾼 41기가 홀 발자국 안에 겹쳐 있었다). 최근
-                 3초 안에 제 명령이 없으면 — 즉 지금 무엇을 하러 가는 길이 아니면 —
-                 집 앞 일꾼은 캐는 것이 참이다. */
-              /* 집 앞이면 그냥 캔다(재지적: 1분대가 넘어가야 채굴 모션이 나온다) —
-                 '멈춰 있거나 최근 3초 명령이 없을 때'라는 문턱은 초반에 못 넘는다:
-                 개막에는 임자가 일꾼을 계속 집어 명령을 주고, 증거 점이 띄엄띄엄해
-                 그 사이 내내 '이동 중'으로 잡히기 때문이다. 제 홀 5.5타일 안에 있으면
-                 무엇을 하러 가는 길이 아닌 한 캐는 것이 참이다 — 건물을 지으러 가는
-                 길(앞뒤 몇 초)만 빼 준다. */
-              const goingToBuild9 = e.buildSites.some((v9) => t >= v9[0] - 6 && t <= v9[0] + 1);
-              /* 밭 배분이 '곁밭 집기'보다 먼저다(수리: 시작 일꾼 넷이 미네랄 하나에
-                 몰려 같은 두 타일을 겹쳐 오간다) — 예전엔 제 발밑 2.2타일 안의 밭을
-                 먼저 집었는데, 넷이 홀 발치 같은 자리에 서 있으니 넷 다 똑같은 밭
-                 하나를 골랐다(실측 SG_26081613330800: 네 기지 모두 네 일꾼이 같은 밭,
-                 왕복 폭 2.0타일). 원작의 첫 4기는 밭 넷에 하나씩 붙는다.
-                 제 홀 곁(5.5타일)이면 홀 둘레 밭을 '가까운 차례'로 세우고 개체마다
-                 다른 차례를 준다 — 결정적이라 프레임마다 안 튄다. */
-              let mineSlot9 = 0;
-              let mineLane9 = 1;
-              if (hallM && !goingToBuild9) {
-                const near = resList.filter((r) => r[2] !== 1
-                  && Math.hypot(r[0] - hallM!.x, r[1] - hallM!.y) <= 9)
-                  .sort((a9, b9) =>
-                    Math.hypot(a9[0] - hallM!.x, a9[1] - hallM!.y)
-                    - Math.hypot(b9[0] - hallM!.x, b9[1] - hallM!.y));
-                if (near.length > 0) {
-                  /* 차례는 개체 태그로 — 같은 판을 다시 열어도 같은 배분이 나오고,
-                     태그가 이웃한 시작 일꾼 넷은 서로 다른 밭으로 갈린다. */
-                  const seed9 = Math.abs(e.tag > 0 ? e.tag : ei);
-                  mineSlot9 = seed9 % near.length;
-                  mineLane9 = 1 + Math.floor(seed9 / near.length) % 3;
-                  const pick = near[mineSlot9];
-                  mpx = pick[0];
-                  mpy = pick[1];
-                }
-              }
-              // 홀에서 먼 일꾼(먼 확장·잘못 클릭)은 종전대로 제 발밑에서 가장 가까운 밭.
-              if (mpx < 0) {
-                let md9 = 2.2;
-                for (const r of resList) {
-                  if (r[2] === 1) continue;
-                  const d9 = Math.hypot(r[0] - pos.x, r[1] - pos.y);
-                  if (d9 <= md9) { md9 = d9; mpx = r[0]; mpy = r[1]; }
-                }
-              }
-              if (mpx >= 0) {
-                /* 반납은 늘 '패치에서 가장 가까운' 제 홀로(지적: 더 가까운 기지를 놔두고
-                   먼 데 반납) — 예전엔 일꾼 몸 곁 홀(hallM)을 우선해, 두 기지 사이에 선
-                   일꾼이 패치 반대편 먼 홀로 왕복했다. */
-                let h2: { x: number; y: number } | null = null;
-                let hd2 = 12;
-                for (const h of halls) {
-                  if (h.raw !== e.raw || h.sec > t || (h.gone > 0 && t >= h.gone)) continue;
-                  const d5 = Math.hypot(h.x - mpx, h.y - mpy);
-                  if (d5 < hd2) { hd2 = d5; h2 = h; }
-                }
-                /* 문턱을 1.5 → 0.6으로(지적: 일꾼들이 처음부터 일을 안 한다 — 왕복이
-                   없다) — 실측(추가mineral10): 무한 맵은 미네랄 덩이가 홀에서 1.9타일
-                   앞에 붙어 있어, 1.5타일 문턱을 겨우 넘거나 못 넘었다. 못 넘으면 왕복
-                   자체가 안 걸리고, 넘어도 폭이 1.4타일이라 홀 발자국 안에서 다 끝났다.
-                   가까운 밭에서는 폭을 넓게 잡아(0.72 → 0.9) 눈에 보이게 오간다. */
-                if (h2 && hd2 > 0.6 && hd2 < 12) {
-                  /* 왕복의 두 끝을 자리로 잡는다(지적: 시작 일꾼이 건물 위에서 잔움직임
-                     만 한다) — 빠른무한 계열은 미네랄 덩이가 홀 중심에서 2타일 앞,
-                     곧 발자국(4×3) '안'에 붙어 있다. 예전처럼 밭↔홀중심을 비율로
-                     오가면 왕복이 통째로 건물 안에서 끝나, 캐러 나가는 모습이 아예
-                     안 보였다. 이제 홀 중심에서의 '거리'로 두 끝을 잡는다:
-                     ① 캐는 자리 — 밭보다 조금 더 바깥(밭이 붙은 맵은 +0.9타일),
-                        발자국 가장자리에서 최소 1.6타일은 떨어뜨린다.
-                     ② 반납 자리 — 밭이 가까운 맵은 발자국 가장자리까지만(건물 위로
-                        올라타지 않는다). 보통 맵은 종전대로 홀 안으로 들어간다. */
-                  const ux4 = (mpx - h2.x) / hd2; // 홀 → 밭 방향
-                  const uy4 = (mpy - h2.y) / hd2;
-                  const tight4 = hd2 < 3.6;
-                  /* 캐는 자리는 '밭의 홀 쪽 테두리 앞'이다(지적: "일꾼들이 미네랄 덩어리의
-                     기지와 가장 가까운 지점이 아니라 멀리 가서 캐고 있어").
-                     옛 식은 두 갈래 모두 밭 중심보다 **더 멀리** 밀어 놓고 있었다.
-                     · 돈맵(tight4): 이기는 항이 '홀 발자국 타원 반지름 + 1.6' = 3.30이었다. "홀 발자국에서
-                       1.6타일은 띄운다"는 규칙인데, 이런 맵은 밭 근테두리(1.38)가 이미
-                       홀 발자국 타원(1.70)보다 안쪽이라 1.6타일 여유를 주는 순간 밭을
-                       통째로 지나 원테두리(2.38)보다 0.92타일 바깥에 섰다. 저장소
-                       리플레이 셋의 시작 기지 여섯 곳이 모두 그랬다.
-                     · 보통 맵: outR4 = hd2 = 밭 '중심'이라 결정 속에 파묻혀 섰다.
-                     이제 밭(2×1 발자국)을 타원으로 본 그 방향 반지름만큼 물러서서, 어느
-                     맵에서든 홀 쪽 테두리 앞 0.35타일에 선다. */
-                  const pr4 = 1 / Math.max(0.001, Math.hypot(ux4, uy4 / 0.5));
-                  const outR4 = Math.max(0.6, hd2 - pr4 - 0.35);
-                  /* 반납 끝 — 보통 맵은 종전대로 홀 안(0.2). 밭이 홀 치마 밑에 붙은
-                     돈맵은 캐는 자리 자체가 발자국 안이라 왕복이 짧을 수밖에 없다(원작도
-                     그 맵에서는 일꾼이 홀 위에 겹쳐 서서 캔다). 그래도 제자리걸음으로만
-                     보이지 않게 0.75타일은 오가게 두고, 홀 한복판까지 들어가지는 않는다.
-                     겹쳐 그리는 것은 아래 nearMine9 = tight4가 이미 허락한다. */
-                  const inR4 = tight4 ? Math.max(0.35, outR4 - 0.75) : 0.2;
-                  const legLen4 = Math.max(0.6, outR4 - inR4);
-                  /* 걸음과 멈춤(요청의 결) — 일꾼 걸음보다 살짝 느리게 걷고 양 끝에서
-                     캐고 내리는 동안 멈춘다. 거리가 멀수록 왕복이 오래 걸린다. */
-                  const MINE_WALK9 = 2.6;
-                  const MINE_DWELL9 = 1.4;
-                  const leg4 = legLen4 / MINE_WALK9;
-                  const period4 = 2 * (leg4 + MINE_DWELL9);
-                  /* 박자는 개체마다 어긋낸다(수리: 넷이 한 줄로 붙어 다닌다) — 예전
-                     ei×2.7은 왕복 주기(무한 맵에서 4초)와 맞아떨어져 서로 겹쳤다.
-                     황금비로 0~1을 고르게 흩어 주기 어디에도 몰리지 않는다. */
-                  const seed4 = Math.abs(e.tag > 0 ? e.tag : ei);
-                  const off4 = ((seed4 * 0.6180339887) % 1) * period4;
-                  const u4 = ((t + off4) % period4 + period4) % period4;
-                  // k4 — 0=캐는 자리(바깥), 1=반납 자리(홀 쪽).
-                  const k4 = u4 < leg4 ? u4 / leg4
-                    : u4 < leg4 + MINE_DWELL9 ? 1
-                      : u4 < 2 * leg4 + MINE_DWELL9
-                        ? 1 - (u4 - leg4 - MINE_DWELL9) / leg4 : 0;
-                  const r4 = outR4 + (inR4 - outR4) * k4;
-                  /* 줄(lane)로 나란히 — 한 밭에 여럿이 붙어도 오가는 길을 옆으로
-                     조금씩 비켜, 몸이 정확히 포개지지 않는다. 원작의 밭 앞 줄서기다. */
-                  const lane4 = (mineLane9 - 2) * 0.45;
-                  pos = {
-                    ...pos,
-                    x: h2.x + ux4 * r4 - uy4 * lane4,
-                    y: h2.y + uy4 * r4 + ux4 * lane4,
-                  };
-                  // 밭이 붙은 맵은 반납 끝이 발자국 가장자리라, 숨김 규칙을 아예 뺀다.
-                  nearMine9 = tight4;
-                }
-              }
-            }
-          }
           /* 변태·건설로 흡수되기 직전엔 그 자리로 들어간다(요청: 드론 변태도 고치
              중앙에 놔야 자연스럽다) — 예전엔 제자리에서 그냥 사라져, 고치는 발자국
              한가운데에 솟는데 드론은 옆에서 없어졌다. 앵커 1.2초 전부터 발자국 중앙
@@ -14290,14 +13711,14 @@ export default function ReplayMotionPlayer({
              덮어쓰기가 코어 덮어쓰기보다 **앞**에 있어, 코어를 켜면 언 유닛이 그대로
              걸어 다녔다(과제 #61 — 두 모형이 같은 몸을 밀던 자리). */
           if (frzSt) {
-            const fp2 = posAt(rp, Math.max(rp[0][0], frzSt[0]), null, undefined, e.sim);
+            const fp2 = posAt(rp, Math.max(rp[0][0], frzSt[0]));
             if (fp2) pos = { ...pos, x: fp2.x, y: fp2.y };
           }
           /* 땅에 박혀 있다(지적: 러커와 버로우 러커가 같이 움직인다) — 땅속인 동안은
              자취·교전 당김·시뮬이 무슨 자리를 내놓든 판 그 자리다. 아래 스무딩보다
              앞에 둬, 파고드는 순간에는 미끄러져 들어가고 그 뒤로는 못 박힌다. */
           if (burrowed) {
-            const bp2 = posAt(rp, Math.max(rp[0][0], burrowAt), null, undefined, e.sim);
+            const bp2 = posAt(rp, Math.max(rp[0][0], burrowAt));
             if (bp2) pos = { ...pos, x: bp2.x, y: bp2.y };
           }
           /* 화면 스무딩(지적: 뚝뚝 끊김 → 재요청: 순간이동 무조건 제거, 아무리 짧아도
@@ -14358,7 +13779,7 @@ export default function ReplayMotionPlayer({
                지금 표시 위치(스무딩·걸음이 계속 간다)가 아니라 죽은 '순간'의 자취
                좌표에서 터진다. */
             const dmem0 = diePosRef.current.get(holdKey);
-            const dp0 = dmem0 ?? posAt(rp, Math.max(rp[0][0], dieAt), null, undefined, e.sim);
+            const dp0 = dmem0 ?? posAt(rp, Math.max(rp[0][0], dieAt));
             const dpx = dp0 ? dp0.x : ax3;
             const dpy = dp0 ? dp0.y : ay3;
             /* 공중은 떠 있던 몸 자리에서 터진다(지적) — 비행 높이만큼 위로. */
