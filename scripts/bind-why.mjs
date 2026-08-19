@@ -153,4 +153,86 @@ for (const path of files) {
   }
   console.log("  못 지은 원장이 많은 정체 앞 8종: "
     + lostBy.slice(0, 8).map(([k, n]) => `${k}×${n}`).join(" "));
+
+  /* ── 원장이 맞나 — 뽑은 수와 붙은 수를 정체별로 견준다. 짝짓기를 아무리 잘해도
+     원장 자체가 부풀어 있으면 그만큼이 합성 개체가 된다. 부호가 답을 나눈다:
+       원장 > 개체 : 원장이 부풀었다(또는 그 유닛이 한 번도 안 골라졌다)
+       원장 < 개체 : 이름을 과하게 붙였다(순전한 오류에 가깝다) */
+  const RACE_W = { 테란: "SCV", 프로토스: "Probe", 저그: "Drone" };
+  const TWINS2 = new Set(["Zergling", "Scourge"]);
+  const FROM2 = {
+    Lurker: "Hydralisk", Guardian: "Mutalisk", Devourer: "Mutalisk",
+    "Lurker Egg": "Hydralisk", Archon: "High Templar", "Dark Archon": "Dark Templar",
+  };
+  const canon2 = (u) => (u === "Siege Tank" ? "Siege Tank (Tank Mode)" : u);
+  const sel2 = new Map();
+  const P2 = new Map();
+  const addP = (pid, u, n) => {
+    const m = P2.get(pid) ?? new Map();
+    m.set(canon2(u), (m.get(canon2(u)) ?? 0) + n);
+    P2.set(pid, m);
+  };
+  for (const c of cmds) {
+    const tt = nm(c.Type);
+    const pid = c.PlayerID;
+    if (tt === "Select") { sel2.set(pid, [...(c.UnitTags ?? [])]); continue; }
+    if (tt === "Select Add") { sel2.set(pid, [...(sel2.get(pid) ?? []), ...(c.UnitTags ?? [])]); continue; }
+    if (tt === "Select Remove") {
+      const rm = new Set(c.UnitTags ?? []);
+      sel2.set(pid, (sel2.get(pid) ?? []).filter((x) => !rm.has(x)));
+      continue;
+    }
+    const u = nm(c.Unit);
+    if (!u && tt !== "Merge Archon" && tt !== "Merge Dark Archon") continue;
+    const ik = c.IneffKind;
+    const ikv = typeof ik === "number" ? ik : String(ik ?? "");
+    if (ik !== undefined && ik !== null && ikv !== 0 && ikv !== "0" && ikv !== "" && ikv !== "Effective") continue;
+    if (tt === "Train") { addP(pid, u, TWINS2.has(u) ? 2 : 1); continue; }
+    if (tt === "Merge Archon" || tt === "Merge Dark Archon") {
+      const made = tt === "Merge Archon" ? "Archon" : "Dark Archon";
+      const from = tt === "Merge Archon" ? "High Templar" : "Dark Templar";
+      const n = Math.max(2, (sel2.get(pid) ?? []).length);
+      addP(pid, made, Math.floor(n / 2));
+      addP(pid, from, -Math.floor(n / 2) * 2);
+      continue;
+    }
+    if (tt === "Unit Morph") {
+      const n = Math.max(1, (sel2.get(pid) ?? []).length);
+      addP(pid, u, TWINS2.has(u) ? n * 2 : n);
+      if (FROM2[u]) addP(pid, FROM2[u], -n);
+      continue;
+    }
+  }
+  for (const p of players) {
+    const w = RACE_W[p.race];
+    if (w) addP(p.id, w, 4);
+    if (p.race === "저그") addP(p.id, "Overlord", 1);
+  }
+  const N2 = new Map();
+  for (const e of d.ents) {
+    if (e.bld || !e.k) continue;
+    const m = N2.get(e.o) ?? new Map();
+    m.set(e.k, (m.get(e.k) ?? 0) + 1);
+    N2.set(e.o, m);
+  }
+  const gap = new Map();
+  for (const p of players) {
+    const P = P2.get(p.id) ?? new Map();
+    const N = N2.get(p.id) ?? new Map();
+    for (const k of new Set([...P.keys(), ...N.keys()])) {
+      const a = Math.max(0, P.get(k) ?? 0);
+      const b = N.get(k) ?? 0;
+      if (a === b) continue;
+      const g = gap.get(k) ?? { prod: 0, ent: 0 };
+      g.prod += a; g.ent += b;
+      gap.set(k, g);
+    }
+  }
+  const rows = [...gap.entries()].map(([k, g]) => [k, g.prod, g.ent, g.ent - g.prod])
+    .sort((x, y) => Math.abs(y[3]) - Math.abs(x[3]));
+  console.log("  ── 뽑은 수 vs 붙은 수 (어긋난 정체 앞 10종)");
+  for (const [k, a, b, dd] of rows.slice(0, 10)) {
+    console.log(`     ${String(k).padEnd(24)} 뽑음 ${String(a).padStart(5)} · 개체 ${String(b).padStart(5)}`
+      + ` · ${dd > 0 ? "개체가" : "원장이"} ${String(Math.abs(dd)).padStart(4)} 많다`);
+  }
 }
