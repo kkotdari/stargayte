@@ -4544,14 +4544,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const a2 = (ang * Math.PI) / 180;
       const dxr = Math.sin(a2);
       const dyr = Math.cos(a2);
-      const rr9 = mbR(0.35) * 0.96;
+      // 다리를 더 안쪽으로(요청) — 밑동 옆구리 0.96 → 0.78 자리에 뿌리를 박는다.
+      const rr9 = mbR(0.35) * 0.78;
       const bx9 = dxr * rr9;
       const by9 = 0.6 + dyr * rr9;
       /* 다리는 저그 기본색이다(요청: "다리가 아니라 위쪽 건물 옆면에 개인색 적용,
          다리는 저그 기본색") — 여태 이 촉수 여섯이 개인색이라 스파이어가 통째로 임자
          색 기둥 다발로 읽혔다. 개인색은 아래 머리 옆면이 맡는다. */
       out.push(...tagKey(paintBase(spirePillar({
-        x: bx9, y: by9, z0: MB_H * 0.35, h: 10.6, w: 1.05, tipW: 0.42,
+        /* 살짝 가늘게(요청) — 1.05 → 0.88, 끝도 0.42 → 0.36.
+           길이는 1.2배(요청: "스파이어만 다리길이 1.2배") — 10.6 → 12.7. 머리를 절반으로
+           줄인 만큼 다리가 짧아 보였다. 머리 자리(11.1)는 그대로라 다리가 머리 옆구리로
+           한 뼘 더 올라가 감싼다. */
+        x: bx9, y: by9, z0: MB_H * 0.35, h: 12.7, w: 0.88, tipW: 0.36,
         segs: 9, sides: 6, hold: 0.05, taper: 1.35,
         leanX: -dxr * (rr9 - 1.15), leanY: -dyr * (rr9 - 1.15),
         curveX: dxr * 0.85, curveY: dyr * 0.85,
@@ -4562,13 +4567,35 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        읽힌다. 그리고 **옆면이 개인색이다**(요청) — 칠하지 않으면 임자 색이 든다.
        상자(16)를 넘지만 굽는 판의 여백이 62%라 잘리지 않고, 정규화가 폭 기준이라
        높이는 그대로 살아난다. */
+    /* 머리 높이는 절반으로(재요청: "스파이어 원통 높이 1/2로") — 세 배(5.7)는 기둥이
+       됐다. 2.85면 촉수 다발 위에 얹힌 '원통 머리'로 읽힌다. */
+    const HEAD_Z0 = 11.1;
+    const HEAD_H = 2.85;
     out.push(...tagKey(spirePillar({
       // 중심은 촉수가 모이는 자리(0, 0.6)와 같아야 한다(지적: 다리·뚜껑 중심 어긋남).
-      x: 0, y: 0.6, z0: 11.1, h: 5.7, w: 2.6, tipW: 3.3,
-      segs: 5, sides: 14, hold: 0.15,
+      x: 0, y: 0.6, z0: HEAD_Z0, h: HEAD_H, w: 2.6, tipW: 3.3,
+      segs: 3, sides: 14, hold: 0.15,
     }), 20));
+    /* 개인색 옆면에 세로 줄무늬를 띄엄띄엄 한 바퀴(요청) — 머리 옆면이 임자 색인데
+       민둥해서 원통 하나로만 보였다. 여덟 자리에 좁은 세로 띠를 세워 골을 낸다:
+       띠는 저그 기본색이라 그 사이로 임자 색이 드러난다. 요잉을 타는 자리라 앞으로
+       돌아온 서넛만 보이고 뒤엣것은 제 깊이로 묻힌다. */
+    for (let k9 = 0; k9 < 8; k9 += 1) {
+      const a9 = (k9 / 8) * Math.PI * 2;
+      const dx9 = Math.sin(a9);
+      const dy9 = Math.cos(a9);
+      if (facingRatio(dx9, dy9) < 0.1) continue;
+      out.push(...tagKey(paintBase(spirePillar({
+        x: 0, y: 0, h: 1, w: 0.42, tipW: 0.42, segs: 3, sides: 4, hold: 1,
+        path: (t9: number): [number, number, number] => {
+          // 옆면은 아래 2.6에서 위 3.3으로 벌어진다 — 띠도 그 기울기를 그대로 탄다.
+          const rr = (2.6 + (3.3 - 2.6) * t9) * 1.01;
+          return [dx9 * rr, 0.6 + dy9 * rr, HEAD_Z0 + 0.25 + t9 * (HEAD_H - 0.5)];
+        },
+      }), RACE_BASE_TONE.zerg), 21 + depthNow(dx9, dy9) * 0.4));
+    }
     // 골진 도넛 왕관 — 방사 골 + 가운데 구멍. 뚜껑은 저그 기본색(지적).
-    const [cx2, cy2] = project(0, 0.6, 16.9);
+    const [cx2, cy2] = project(0, 0.6, HEAD_Z0 + HEAD_H + 0.1);
     out.push(...tagKey([[groundEllipse(cx2, cy2, 3.55, 2.05), 1, RACE_BASE_TONE.zerg] as ShapeFace], 22));
     /* 골도 요잉을 탄다(지적: 뚜껑이 안 돎) — 화면 고정 각이던 골 위치에 현재 요잉을
        더해, 뚜껑이 함께 도는 것으로 보인다. */
@@ -4650,14 +4677,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          물질로 변경(저그 기본색)") — 상아 뿔 대신 크기가 제각각인 둥근 덩이 셋을
          겹쳐 뭉게구름 한 송이를 만든다. 길이(len)는 그대로 쓰되 뾰족함이 없어지고,
          색은 저그 기본색이라 줄기와 한 몸으로 읽힌다. */
+      /* 구름은 아래위로 길고 크게, 회백색으로(재요청: "그레이터 스파이어 구름모양은
+         더 아래위로 긴형태로 더 크게 그리고 회백색 계열") — 저그 기본색 뭉치는 줄기와
+         한 몸으로 묻혔다. 회백색이면 꼭대기에서 또렷하고, 세로로 늘이면 '피어오르는
+         연기 기둥'으로 읽힌다: 반지름은 1.5배, 높이는 그 두 배 가까이(r×1.7) 준다. */
+      const PUFF = "#c7c9c4";
       const puff = (t9: number, r9: number): ShapeFace[] => paintBase(domeFaces3(
-        bx9 + dxr * (0.6 + t9 * 1.4), by9 + dyr * (0.6 + t9 * 1.4), r9, r9 * 0.9,
-        bz9 + len * (0.25 + t9 * 0.7),
-      ), RACE_BASE_TONE.zerg);
+        bx9 + dxr * (0.5 + t9 * 1.2), by9 + dyr * (0.5 + t9 * 1.2), r9, r9 * 1.7,
+        bz9 + len * (0.2 + t9 * 0.85),
+      ), PUFF);
       out.push(...tagKey([
-        ...puff(0, 0.95 + len * 0.1),
-        ...puff(0.45, 0.8 + len * 0.09),
-        ...puff(0.9, 0.6 + len * 0.07),
+        ...puff(0, 1.45 + len * 0.14),
+        ...puff(0.5, 1.2 + len * 0.12),
+        ...puff(1, 0.9 + len * 0.1),
       ], depthNow(bx9, by9) * 1.6));
     }
     // 꼭대기 살덩이 엽 아가리.
@@ -9275,7 +9307,7 @@ export const BLD_NORM: Record<string, number> = {
   sbattery: 2.032,
   scaffold: 1.733,
   scifac: 1.373,
-  spire: 1.232,  // 상자 상한에 걸림
+  spire: 1.409,  // 상자 상한에 걸림
   spore: 1.422,
   sunken: 1.072,
   tomb: 1.534,
