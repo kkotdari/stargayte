@@ -5,7 +5,7 @@ import Avatar from "../common/Avatar";
 import ReplayMapCanvas from "./ReplayMapCanvas";
 import PillTabs from "../common/PillTabs";
 import { cx } from "../../utils/format";
-import { TECH_KO } from "../../utils/replayNames";
+import { BUILDING_KO, TECH_KO, UNIT_KO } from "../../utils/replayNames";
 import type { ReplayMapGrid } from "../../utils/replayParser";
 import { api } from "../../api/client";
 import { applyReplayMap, promoteReplayMap } from "../../hooks/useReplayMap";
@@ -8956,6 +8956,16 @@ type UnitDrawOp = {
   tint?: string;
   /** 방금 명령을 받아 잡혀 있음 — 발밑에 임자 색 선택 링(지적: 드래그 선택 구분). */
   selRing?: boolean;
+  /* ── 정보 팝업(요청: 유닛·건물 클릭하면 정보 툴팁) ─────────────────────────────
+     클릭 판정과 툴팁이 이 셋만 본다. 열쇠는 프레임이 바뀌어도 같은 몸을 가리켜야
+     하므로 유닛은 개체 태그, 건물은 임자·종류·자리로 짓는다. */
+  pickKey?: string;
+  /** 영문 유닛·건물 이름(표 조회용). */
+  pickName?: string;
+  /** 임자(플레이어 raw). */
+  pickRaw?: string;
+  /** 건물인가 — 툴팁이 생산·연구·큐를 보여 줄지 가른다. */
+  pickBld?: boolean;
 };
 /* 구운 판의 실제 바닥(재재지적: 드론·해처리가 떠 있고 그림자가 이상하다) — 상자
    바닥 기준 어림은 모델이 상자를 다 안 채우면(해처리 둔덕 등) 그림자가 발보다 한참
@@ -12043,6 +12053,10 @@ export default function ReplayMotionPlayer({
      컨테이너 세로비가 맡아서 %자리가 저절로 따라온다. 휠 확대·드래그 이동은 기존
      렌즈(zoom·pan) 그대로다. */
   const [pitched, setPitched] = useState(false);
+  /** 정보 팝업으로 집어 둔 몸의 열쇠(요청) — null이면 닫힘. */
+  const [picked, setPicked] = useState<string | null>(null);
+  /** 이번 프레임에 그린 op — 클릭 판정과 팝업 내용이 여기서 지금 값을 읽는다. */
+  const opsRef = useRef<UnitDrawOp[]>([]);
   // 유닛 크기 토글(요청) — 기본은 실제 크기, 누르면 2배.
   const [unitBig, setUnitBig] = useState(false);
   // (삭제·요청: 모바일에도 입체 보기 개방) — 터치 기기 판별이 있던 자리.
@@ -12812,7 +12826,34 @@ export default function ReplayMotionPlayer({
     }
   };
   const onMapPointerUp = (e: React.PointerEvent) => {
+    const dragged = dragRef.current?.id === e.pointerId && dragRef.current.live;
     if (dragRef.current?.id === e.pointerId) dragRef.current = null;
+    // 끌던 손가락이 아니면 클릭이다 — 유닛·건물을 집어 정보 팝업을 연다(요청).
+    if (!dragged) pickAt(e.clientX, e.clientY);
+  };
+  /* 정보 팝업(요청: 유닛·건물 클릭하면 정보 툴팁, 딴 데 누르면 닫힘, 다른 몸을 누르면
+     새 툴팁) — 집는 것은 '열쇠' 하나뿐이고, 내용은 프레임마다 지금 그린 op에서 다시
+     읽는다. 그래서 체력·생산·업그레이드가 저절로 실시간이다. */
+  const pickAt = (clientX: number, clientY: number): void => {
+    const el = mapRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const px = clientX - r.left;
+    const py = clientY - r.top;
+    let best: string | null = null;
+    let bestD = Infinity;
+    for (const o of opsRef.current) {
+      if (!o.pickKey) continue;
+      // UnitLayer의 분수→화면 사상과 같은 식(zx/zy 주석 참고).
+      const ox = (o.fx - 0.5) * r.width * zoom + r.width / 2 + pan.x;
+      const oy = (o.fy - 0.5) * r.height * zoom + r.height / 2 + pan.y;
+      const box = o.wFrac ? Math.max(o.wFrac, o.hFrac ?? 0) * r.width : o.sizePx;
+      // 작은 유닛도 손가락으로 집을 수 있게 최소 반경을 준다.
+      const rad = Math.max(14, box * zoom * 0.5);
+      const d = Math.hypot(px - ox, py - oy);
+      if (d <= rad && d < bestD) { bestD = d; best = o.pickKey; }
+    }
+    setPicked(best);
   };
 
   /* 키보드(요청: PC) — ↑↓ 배속, ←→ 5초 뒤/앞. 댓글 입력 중에는 건드리지 않는다. */
@@ -13767,6 +13808,10 @@ export default function ReplayMotionPlayer({
                   return bs2 ? bs2[0] + bs2[1] : undefined;
                 })(),
                 hpFrac: bldHp.frac,
+                /* 정보 팝업 신원(요청) — 건물은 태그가 없어 임자·종류·착공 자리로
+                   짓는다(같은 자리에 다시 지어도 착공 시각이 다르면 다른 몸이다). */
+                pickKey: `b${raw}|${unit}|${Math.round(bx * 4)}|${Math.round(by * 4)}`,
+                pickName: unit, pickRaw: raw, pickBld: true,
                 /* 땅에 앉은 건물은 그림자를 안 진다(요청: 건물 바닥 그림자는 제거) —
                    건물은 발자국이 곧 제 자리라 바닥 타원이 정보를 더하지 않고, 모델
                    발치에 검은 테를 둘러 도형을 흐리기만 했다. 떠 있는 건물만 제 것으로
@@ -15098,6 +15143,8 @@ export default function ReplayMotionPlayer({
             // 보임 토글이면 만피여도 표시(요청: 모든 유닛·건물 다 표시).
             hpFrac: Math.max(0.04, Math.min(1, hpNow / Math.max(1, hpFull))),
             hpMax: hpFull,
+            // 정보 팝업 신원(요청) — 개체 태그가 프레임을 건너 같은 몸을 가리킨다.
+            pickKey: `u${e.tag}`, pickName: e.unit, pickRaw: e.raw,
             tint: (() => {
               const actSt = e.statuses.find(([sa3, sb3]) => t >= sa3 && t < sb3);
               return actSt ? STATUS_TINT[actSt[2]] : undefined;
@@ -15619,6 +15666,69 @@ export default function ReplayMotionPlayer({
             둔다: CSS 확대에 태우지 않고 줌·팬을 그리기 좌표에 직접 입혀, 어느 배율에서도
             화면 해상도 그대로 또렷하다. unitOps는 렌즈 안 마커 계산부가 이 렌더에서
             채우고, 커밋 뒤 effect가 그린다. */}
+        {/* 정보 팝업(요청) — 그린 op 목록을 붙들어 둬 클릭 판정이 훑는다. UnitLayer가
+            겹침 이완으로 fx를 손보므로, 판정도 '그려진 자리'와 같은 값을 본다. */}
+        {((): null => { opsRef.current = unitOps; return null; })()}
+        {(() => {
+          if (!picked) return null;
+          const op = unitOps.find((o) => o.pickKey === picked);
+          // 죽거나 무너져 이번 프레임에 없으면 팝업도 닫힌 것처럼 사라진다.
+          if (!op) return null;
+          const en = op.pickName ?? "";
+          const ko = op.pickBld ? BUILDING_KO[en] ?? en : UNIT_KO[en] ?? en;
+          const max = op.hpMax ?? 0;
+          const cur = Math.max(0, Math.round((op.hpFrac ?? 1) * max));
+          const sh = op.pickBld ? (BLD_STATS[en]?.[1] ?? 0) : (UNIT_STATS[en]?.sh ?? 0);
+          const trk = motion.players.find((pp) => pp.raw === op.pickRaw);
+          const lines: string[] = [];
+          lines.push(`체력 ${cur} / ${max}${sh > 0 ? `  (실드 ${sh} 포함)` : ""}`);
+          if (op.pickBld) {
+            /* 생산·연구·큐(요청) — 생산 기록은 '완성 시각'이라, 지금 창 안이면 방금
+               나온 것, 앞엣것은 큐로 읽는다(무엇이 언제 나오는지가 그대로 큐다). */
+            const evs: [number, string][] = [];
+            for (const u of PRODUCED_BY[en] ?? []) {
+              for (const ps of trk?.prod?.[u] ?? []) evs.push([ps, UNIT_KO[u] ?? u]);
+            }
+            evs.sort((a, b) => a[0] - b[0]);
+            const justOut = evs.filter(([ps]) => ps <= t && t - ps <= PROD_FLASH_SEC);
+            const queue = evs.filter(([ps]) => ps > t).slice(0, 4);
+            lines.push(justOut.length > 0
+              ? `생산 완료 ${justOut.map(([, n]) => n).join(" · ")}`
+              : "생산 대기");
+            if (queue.length > 0) {
+              lines.push(`큐 ${queue.map(([ps, n]) => `${n} +${Math.max(0, Math.round(ps - t))}초`).join(" · ")}`);
+            }
+            const doing = (trk?.ups ?? []).filter(([us]) =>
+              RESEARCH_BUILDING[en === "Lair" || en === "Hive" ? "Hatchery" : en] === undefined
+                ? false
+                : RESEARCH_BUILDING[en === "Lair" || en === "Hive" ? "Hatchery" : en] === en
+                  && us <= t && t - us <= RESEARCH_SEC);
+            for (const [us, n] of doing) {
+              const pct2 = Math.round(((t - us) / RESEARCH_SEC) * 100);
+              lines.push(`연구 중 ${TECH_KO[n] ?? n} ${Math.min(99, pct2)}%`);
+            }
+          } else {
+            const done = (trk?.ups ?? []).filter(([us]) => us <= t);
+            lines.push(done.length > 0
+              ? `업그레이드 ${done.slice(-8).map(([, n]) => TECH_KO[n] ?? n).join(" · ")}`
+              : "업그레이드 없음");
+          }
+          const el = mapRef.current;
+          const w9 = el?.clientWidth ?? 1;
+          const h9 = el?.clientHeight ?? 1;
+          const lx = ((op.fx - 0.5) * zoom + 0.5) * w9 + pan.x;
+          const ly = ((op.fy - 0.5) * zoom + 0.5) * h9 + pan.y;
+          return (
+            <div
+              className="scr-motion-info"
+              style={{ left: Math.round(lx), top: Math.round(ly) }}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <div className="scr-motion-info-name">{ko}</div>
+              {lines.map((ln) => <div key={ln} className="scr-motion-info-line">{ln}</div>)}
+            </div>
+          );
+        })()}
         <UnitLayer
           ops={unitOps} zoom={zoom} pan={pan} wallMask={creepMask} maskRects={creepMaskRects}
           showShadows={qShadows} showOverlap={qOverlap} showHp={qHp && hpShow} showCreep={qCreep}
