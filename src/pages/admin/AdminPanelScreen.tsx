@@ -493,11 +493,16 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
                           checked={picked.has(r.id)}
                           onChange={() => togglePick(r.id)}
                         />
+                        {/* 윗줄은 경기(리플레이)와 맵, 아랫줄은 로스터(요청) — 무엇을
+                            다시 분석하는지가 먼저고, 누가 했는지는 그 아래다. */}
                         <span className="scr-redo-pick-main">
-                          <span className="scr-redo-pick-no">{r.matchNo}</span>
+                          <span className="scr-redo-pick-top">
+                            <span className="scr-redo-pick-no">{r.matchNo}</span>
+                            <span className="scr-redo-pick-map">{r.map}</span>
+                            <span className="scr-redo-pick-date">{r.date}</span>
+                          </span>
                           <span className="scr-redo-pick-who">{r.who}</span>
                         </span>
-                        <span className="scr-redo-pick-sub">{r.date} · {r.map}</span>
                       </label>
                     ))}
                     {pickFiltered.length === 0 && (

@@ -70,6 +70,7 @@ function gameLineOf(d: ReplayDraft): string {
         + `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`);
     }
   } else if (d.date) parts.push(d.date);
+  if (d.mapName) parts.push(d.mapName);
   if (d.durationSeconds != null) {
     parts.push(`${Math.floor(d.durationSeconds / 60)}분 ${String(d.durationSeconds % 60).padStart(2, "0")}초`);
   }
@@ -407,11 +408,7 @@ export default function ReplayReviewModal({
                         onClick={() => setOpenIndex(open ? null : i)}
                         aria-expanded={open}
                       >
-                        <span className="scr-replay-review-title">
-                          <span className="scr-mono scr-replay-mapping-row-name">{d.fileName}</span>
-                          {/* 맵은 리플레이명 곁에 작고 흐리게(요청: 윗줄에 리플레이명과 맵). */}
-                          {d.mapName ? <span className="scr-replay-review-map">{d.mapName}</span> : null}
-                        </span>
+                        <span className="scr-mono scr-replay-mapping-row-name">{d.fileName}</span>
                         <span className="scr-replay-review-badge">{v.badge}</span>
                       </button>
                       {d.excludeReason !== "duplicate" && (
