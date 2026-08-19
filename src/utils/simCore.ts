@@ -19,6 +19,8 @@ import {
   FRAME_SEC, GEYSER_FOOT, LURKER_REHIT_FRAMES, MINE_ATTACH_FRAMES, MINE_DETACH_FRAMES,
   MINE_GAS_FRAMES, MINE_MINERAL_FRAMES, MINE_RETURN_FRAMES, MINERAL_FOOT, TURN_RATE,
   UNBURROW_MIN_FRAMES, ACID_SPORE_MAX, ACID_SPORE_PX,
+  IRRADIATE_TOTAL, PLAGUE_TOTAL, SHIELD_REGEN_PER_SEC, TERRAN_BURN_HP_PCT, TERRAN_BURN_PER_SEC,
+  WEAPONS, ZERG_REGEN_PER_SEC, nukeDamage,
   buildSecOf, buildingBox, fp, isAir, moveDynOf, speedOfUnit, unfp, unitBoxTiles,
 } from "./bwUnits";
 /* 전투 값은 표(bwUnits)를 직접 읽지 않고 어댑터(bwCombat)를 거친다 — 표가 통째로 갈리는
@@ -293,6 +295,11 @@ type Body = {
   energy: number; energyMax: number;
   /** 몸에 붙은 산성포자들의 만료 시각(초) — 아홉까지, 하나마다 제 타이머다. */
   spores: number[];
+  /** 플레이그·이레디에이트가 끝나는 시각(초) — −1이면 안 걸렸다. 둘 다 중첩 없이 갱신이다. */
+  plagueUntil: number; irradUntil: number;
+  /** 저절로 낫는가(저그) · 반파되면 타는가(테란 건물) — 몸을 세울 때 한 번만 정한다.
+   *  매 틱 임자 종족을 지도에서 뒤지면 그 조회가 곧 시뮬 비용이다. */
+  regen: boolean; burns: boolean;
   /** 지금 쓰는 전투 값 한 벌. 벙커에 타면 cpBunker로 갈아 끼운다(무기 +64px·획득 +2타일). */
   cp: CombatProfile;
   cpBase: CombatProfile; cpBunker: CombatProfile | null;
@@ -382,6 +389,19 @@ const ENERGY_START_FRAC = 0.25;
 const ENERGY_MAX = 200;
 /** 산성포자 하나가 붙어 있는 시간(초) — 150 상태틱(8프레임)이다. */
 const ACID_SPORE_SEC = timerSec(STATUS_TICKS.acidSpore);
+/* ── 무기를 안 타는 지속 피해 — [OBW] update_unit_status_timers의 한 줄들 ─────────
+   플레이그는 75틱에 걸쳐 300(틱마다 300/76), 이레디에이트는 75틱에 250(틱마다 250/75).
+   여기서는 초당값으로 옮겨 dt에 곱한다 — 틱 눈금(TICK_SEC)이 원전의 8프레임과 달라도
+   총량이 같아야 하기 때문이다. */
+const PLAGUE_SEC = timerSec(STATUS_TICKS.plague);
+const PLAGUE_DPS = PLAGUE_TOTAL / PLAGUE_SEC;
+const IRRADIATE_SEC = timerSec(STATUS_TICKS.irradiate);
+const IRRADIATE_DPS = IRRADIATE_TOTAL / IRRADIATE_SEC;
+/** 핵 발사에서 착탄까지(초) — 재생기의 연출 상수와 같은 값이다. */
+const NUKE_FALL_SEC = 7;
+/** 핵 무기 한 벌 — 링(감쇠) 판정에만 쓴다. 피해량은 nukeDamage가 표적마다 따로 낸다.
+ *  splashDivisorAt이 받는 꼴(ProfWeapon)로 감싸 넘긴다 — 사거리·업글은 안 쓴다. */
+const NUKE_W = { wp: WEAPONS.Nuclear_Strike, rangeTiles: 0, cd: 0, dmg: 0, hits: 1 };
 /** 힐 사거리(타일, 중심 사이) — 원전은 30픽셀이다. */
 const HEAL_REACH = 30 / 32;
 /** 명령 없이 스스로 태울 상대를 찾는 거리(타일) — 원전 find_medic_target의 160픽셀. */
@@ -509,6 +529,9 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
            "건물은 large·방어력 최소 1" 같은 손보정은 지어낸 값이었다. 표에 없는 이름
            (애드온 ComSat 등)만 DEFAULT_UNIT으로 떨어진다. [추정] */
         rad: bcp.radius, hw: 0, hh: 0, fixTag: 0, energy: 0, energyMax: 0, spores: [],
+        plagueUntil: -1, irradUntil: -1,
+        regen: (raceOfOwner.get(e.o) ?? "") === "저그",
+        burns: (raceOfOwner.get(e.o) ?? "") === "테란",
         cp: bcp, cpBase: bcp, cpBunker: null,
         dmg: targetFor(e.k ?? "", bUps),
         cd: 0, foe: null, aggro: true, reacq: spot[0] + acqPhaseOf(e.t),
@@ -569,6 +592,10 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       energyMax: kind === "Medic"
         ? ENERGY_MAX + (hasUpgrade(ups, "Caduceus Reactor") ? 50 : 0) : 0,
       spores: [],
+      plagueUntil: -1,
+      irradUntil: -1,
+      regen: (raceOfOwner.get(e.o) ?? "") === "저그",
+      burns: false,      // 화재는 건물만이다(위 Body.burns 주석).
       cp, cpBase: cp, cpBunker: bunkerShooterProfileOf(kind),
       dmg: targetFor(kind, ups),
       cd: 0, foe: null, aggro: false, reacq: e.b + acqPhaseOf(e.t), dieAt: null, job: null,
@@ -1219,6 +1246,23 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       Math.round(tgt.x * 10) / 10, Math.round(tgt.y * 10) / 10, 0, 0);
   };
 
+  /** 무기를 안 타는 직접 피해(화재·플레이그·이레디에이트·핵) — 방어력·크기 배수를
+   *  안 거치고 체력에서 곧장 뺀다. 죽으면 hurt와 같은 자로 죽음을 적는다(증거 하한도
+   *  같이 지킨다). floor가 있으면 그 아래로는 안 깎는다(플레이그는 절대 못 죽인다). */
+  const drain = (tgt: Body, hpRaw: number, t: number, by: Body | null, floor = 0): void => {
+    if (tgt.state === ST_GONE || tgt.dieAt !== null || hpRaw <= 0) return;
+    const low = fp(floor);
+    if (tgt.dmg.hp <= low) return;
+    tgt.dmg.hp = Math.max(low, tgt.dmg.hp - hpRaw);
+    if (tgt.dmg.hp > 0) return;
+    tgt.dmg.hp = 0;
+    tgt.dieAt = Math.max(t, tgt.aliveUntil);
+    if (tgt.dieAt > t) saved += 1;
+    kills += 1;
+    events.push(tgt.dieAt, EV_DIE, tgt.tag, by ? by.tag : 0,
+      Math.round(tgt.x * 10) / 10, Math.round(tgt.y * 10) / 10, 0, 0);
+  };
+
   /* 러커 가시 — 표적 하나가 아니라 제 앞 직선 위의 지상 적 전부를 때린다. 감쇠가 없어
      안쪽 링(splashPx[0] = 20px) 안이면 누구든 전액을 맞고, 같은 표적은 32프레임 안에
      두 번 안 맞는다(LURKER_REHIT_FRAMES). 그래서 이 무기만 스플래시 경로를 안 탄다. */
@@ -1461,6 +1505,9 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   /** 아직 안 터진 스톰 박자 [초, x, y] — 오름차순. 시전 하나가 여덟을 낳는다. */
   const stormPulsesDue: [number, number, number][] = [];
   let stormI = 0;
+  /** 떨어지는 중인 핵 — [착탄 초, x, y, 임자]. */
+  const nukesDue: [number, number, number, number][] = [];
+  let nukeI = 0;
   let castI = 0;
   const underSwarm = (b: Body, t: number): boolean => {
     if (b.air || b.bld) return false;          // 공중·건물은 스웜이 안 가린다
@@ -1511,6 +1558,44 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         if (b.dmg.hp > STIM_SELF_DAMAGE * 256) b.dmg.hp -= STIM_SELF_DAMAGE * 256;
       }
       if (b.matrixUntil >= 0 && t > b.matrixUntil) { b.dmg.matrixHp = 0; b.matrixUntil = -1; }
+      /* ── 무기를 안 타는 체력 변화(요청: 표가 아는데 코어가 안 읽던 규칙 전부) ──
+         [OBW] 전부 update_unit_status_timers/update_unit 안의 한 줄짜리 규칙들이다.
+         · 저그 재생 — ut_regens_hp면 프레임마다 +4_fp8(초당 0.372). **정액**이다.
+         · 프로토스 실드 — 프레임마다 +7_fp8(초당 0.651). 이것도 정액이다.
+         · 테란 건물 화재 — 체력 33% 이하면 프레임마다 −20_fp8(초당 1.86). 하한이 없어
+           **타서 무너진다**(원작에서 반파된 건물이 저절로 주저앉는 그 규칙이다).
+         · 플레이그 — 75틱 동안 틱마다 300/76. hp보다 크면 안 깎아 **절대 못 죽인다**.
+         · 이레디에이트 — 75틱 동안 250/75을, 걸린 몸과 그 32px 안 유기물 비건물에게.
+           (건물·기계는 안 아프다. 그래서 베슬이 저글링 무리 한가운데를 지지는 것이다.) */
+      if (b.state !== ST_GONE && b.dieAt === null && (b.regen || b.burns || b.cpBase.hasShield
+        || b.plagueUntil >= 0 || b.irradUntil >= 0)) {
+        const maxHp9 = fp(b.cpBase.hp);
+        if (b.regen && b.dmg.hp > 0 && b.dmg.hp < maxHp9) {
+          b.dmg.hp = Math.min(maxHp9, b.dmg.hp + fp(ZERG_REGEN_PER_SEC * dt));
+        }
+        if (b.cpBase.hasShield) {
+          const maxSh9 = fp(b.cpBase.shield);
+          if (b.dmg.shield < maxSh9) {
+            b.dmg.shield = Math.min(maxSh9, b.dmg.shield + fp(SHIELD_REGEN_PER_SEC * dt));
+          }
+        }
+        if (b.burns && b.dmg.hp <= (maxHp9 * TERRAN_BURN_HP_PCT) / 100) {
+          drain(b, fp(TERRAN_BURN_PER_SEC * dt), t, null);
+        }
+        if (t < b.plagueUntil) drain(b, fp(PLAGUE_DPS * dt), t, null, 1 / 256);
+        else if (b.plagueUntil >= 0 && t >= b.plagueUntil) b.plagueUntil = -1;
+        if (t < b.irradUntil) {
+          drain(b, fp(IRRADIATE_DPS * dt), t, null);
+          /* 곁에도 번진다 — 32px(1타일) 안의 유기물 비건물. 겹쳐 선 무리에서 이것이
+             '겹치면 폭증'의 정체다: 한 마리가 걸려도 붙어 선 전부가 같이 닳는다. */
+          for (const c9 of active) {
+            if (c9 === b || c9.state === ST_GONE || c9.dieAt !== null) continue;
+            if (!c9.cpBase.organic || c9.bld) continue;
+            if (dist(b.x, b.y, c9.x, c9.y) > 1) continue;
+            drain(c9, fp(IRRADIATE_DPS * dt), t, null);
+          }
+        } else if (b.irradUntil >= 0 && t >= b.irradUntil) b.irradUntil = -1;
+      }
       /* 산성포자는 중첩마다 제 타이머다 — 만료된 것만 하나씩 빠진다(원전도 슬롯을 따로
          센다). 남은 수가 곧 받는 피해 가산이고 제 쿨다운 벌점이다. */
       if (b.spores.length > 0) {
@@ -2154,6 +2239,40 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         stormPulsesDue.sort((p1, p2) => p1[0] - p2[0]);
         continue;
       }
+      /* 플레이그 — [OBW] plague(pos, source): 착탄점 64px(2타일) 안의 **모두**에게
+         타이머 75틱을 건다(시전자만 빼고, 무적·버로우 제외). 편을 안 가린다 — 제 편도
+         걸린다. 중첩은 없고 다시 걸면 타이머만 새로 찬다. */
+      if (tech === "Plague") {
+        for (const o of bodies) {
+          if (o.state === ST_GONE || o.dieAt !== null || o.burrowed) continue;
+          if (csec < o.born || (o.died !== null && csec >= o.died)) continue;
+          if (dist(o.x, o.y, cx, cy) > 2) continue;
+          o.plagueUntil = csec + PLAGUE_SEC;
+        }
+        continue;
+      }
+      /* 이레디에이트 — 찍은 자리에서 가장 가까운 **적** 하나에게 건다(원전은 표적을 찍는
+         주문인데 우리 증거에는 좌표만 남는다). 그 몸과 32px 안 유기물이 함께 닳는다. */
+      if (tech === "Irradiate") {
+        let best9: Body | null = null;
+        let bd9 = 3;
+        for (const o of bodies) {
+          if (o.state === ST_GONE || o.dieAt !== null || o.bld) continue;
+          if (csec < o.born || (o.died !== null && csec >= o.died)) continue;
+          if (sameSide(o.owner, cpid)) continue;
+          const d9 = dist(o.x, o.y, cx, cy);
+          if (d9 < bd9) { bd9 = d9; best9 = o; }
+        }
+        if (best9) best9.irradUntil = csec + IRRADIATE_SEC;
+        continue;
+      }
+      /* 핵 — 발사 증거에서 NUKE_FALL_SEC 뒤에 터진다. 피해는 표적마다
+         max(500, (최대체력+최대실드) × 2/3)이고 폭발형 링(1/2/4 감쇠)을 탄다. */
+      if (tech === "Nuclear Strike") {
+        nukesDue.push([csec + NUKE_FALL_SEC, cx, cy, cpid]);
+        nukesDue.sort((p1, q1) => p1[0] - q1[0]);
+        continue;
+      }
       if (tech !== "Ensnare" && tech !== "Defensive Matrix") continue;
       if (tech === "Ensnare") {
         for (const o of live) {
@@ -2176,6 +2295,20 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
     }
     /* 스톰 박자 — 반경 안의 **모두**를 때린다(radial, 시전자 본인 포함). 편을 안 가리는
        것이 원작이고, 그래서 스톰 위에 선 아군도 녹는다. */
+    /* 핵 착탄 — 원전의 폭발형 링 그대로. 표적마다 피해가 제 최대 체력에 비례하므로
+       (max(500, 2/3)) 큰 것일수록 크게 아프고, 링 밖은 아예 안 아프다. */
+    while (nukeI < nukesDue.length && nukesDue[nukeI][0] <= t) {
+      const [, nx9, ny9, npid] = nukesDue[nukeI];
+      nukeI += 1;
+      for (const o of active) {
+        if (o.state === ST_GONE || o.dieAt !== null || o.state === ST_INSIDE) continue;
+        const dpx9 = dist(o.x, o.y, nx9, ny9) * 32;
+        const div9 = splashDivisorAt(NUKE_W as unknown as ProfWeapon, dpx9, { burrowed: o.burrowed });
+        if (div9 === null) continue;
+        void npid;   // 핵은 편을 안 가린다 — 제 편도 태운다(폭발형 radial).
+        drain(o, fp(nukeDamage(o.cpBase.hp + o.cpBase.shield) / div9), t, null);
+      }
+    }
     while (stormI < stormPulsesDue.length && stormPulsesDue[stormI][0] <= t) {
       const [, sx, sy] = stormPulsesDue[stormI];
       stormI += 1;
