@@ -9134,9 +9134,21 @@ function pathBox(d: string): [number, number, number, number] {
    매긴다 — 106개 모델을 손으로 안 건드려도 전부 걸리고, 모델러가 명시로 매긴 등급은
    그대로 존중한다(내려가기만 하고 올라가지 않는다). */
 /** 부품 크기(그 부품 상자 넓이 ÷ 가장 큰 부품 상자 넓이)로 등급을 매기는 문턱.
- *  이 아래면 세부(3), 그 위 TIER_TRIM 아래면 장식(2), 그 위는 형체(1). */
+ *  이 아래면 세부(3), 그 위 TIER_TRIM 아래면 장식(2), 그 위는 형체(1).
+ *  ⚠ 길이(긴 변)로 재 보았다가 되돌렸다 — 각도에 따라 부품이 나타났다 사라지는 것이
+ *    "옆에서 보면 넓이가 무너져서"일 것이라 짚었는데, 실측으로 흔들림이 그대로였고
+ *    (유닛 88건 중 67건, 최대 57%p) 실루엣만 나빠졌다(깨짐 2건 → 16건). 진짜 원인은
+ *    따로 있다 — 부품 묶기 자체가 각도마다 달라진다(autoTier 위 주석 참고). */
 const TIER_FINE = 0.12;
 const TIER_TRIM = 0.3;
+/** 명암 잔조각의 문턱(요청: 명시 2티어가 너무 많다 — 디테일을 조금 줄이자).
+ *  제 부품 상자의 이 몫보다 작은 **명암 면**(제 색을 지닌 면 = topFace·sideFace가
+ *  얹는 흰·검 판)은 포인트가 아니라 장식으로 본다. 실측으로 건물 면의 48%가 명시
+ *  2티어인데, 그 대부분이 한 부품에 여럿씩 붙은 명암 조각이다 — 큰 판 하나면 그 부품의
+ *  형태는 이미 읽히고, 나머지 잔조각은 고에서만 얹으면 된다.
+ *  ⚠ 임자 색이 칠해질 면(fill 없음)은 여기서 건드리지 않는다 — 그것이 '누구 것인가'를
+ *    말하는 면이라, lodFilter도 따로 지켜 준다. */
+const SHADE_MINOR = 0.35;
 const AUTO_TIER_CACHE = new Map<string, ShapeFace[]>();
 /** 도록도 같은 자를 쓴다(요청: 모델 갤러리의 사양 라디오) — 지도는 늘
  *  lodFilter(autoTier(...)) 순서로 거른다. 이 단계를 건너뛰면 '저'가 지도보다 훨씬
@@ -9148,7 +9160,10 @@ export function autoTier(key: string, faces: ShapeFace[]): ShapeFace[] {
   // 부품 묶기 — stageFaces와 같은 자(깊이 열쇠가 바뀌면 새 부품).
   const gid: number[] = [];
   const boxes: [number, number, number, number][] = [];
+  /** 부품 상자 넓이 — 등급을 정하는 크기다. */
   const areas: number[] = [];
+  /** 낱면 상자 넓이 — 명암 잔조각 판정이 쓴다(부품 상자와 헷갈리면 안 된다). */
+  const faceSpan: number[] = [];
   let g = -1;
   let lastKey: number | undefined;
   for (const f of faces) {
@@ -9161,6 +9176,7 @@ export function autoTier(key: string, faces: ShapeFace[]): ShapeFace[] {
     if (k !== undefined) lastKey = k;
     gid.push(g);
     const b = pathBox(f[0]);
+    faceSpan.push((b[2] - b[0]) * (b[3] - b[1]));
     const bb = boxes[g];
     if (b[0] < bb[0]) bb[0] = b[0];
     if (b[1] < bb[1]) bb[1] = b[1];
@@ -9208,18 +9224,29 @@ export function autoTier(key: string, faces: ShapeFace[]): ShapeFace[] {
       const span = Math.max(core[2] - core[0], core[3] - core[1], 0.001);
       if (out9 > span * 0.06) return cur;
       const r = areas[gid[i]] / big;
-      return Math.max(cur, r < TIER_FINE ? LOD_FINE : r < TIER_TRIM ? LOD_TRIM : 1);
+      let a9 = r < TIER_FINE ? LOD_FINE : r < TIER_TRIM ? LOD_TRIM : 1;
+      /* ★ 아래 본 판정과 **같은 자**여야 한다 — 명암 잔조각 강등을 여기서 빼먹으면,
+         실루엣을 만들던 면이 3티어로 내려간 뒤에도 이 셈은 그 면을 아직 1티어로 알고
+         있어 구제 대상에서 빠진다(실측: 그 어긋남 하나로 실루엣 깨짐이 2건 → 54건). */
+      if (faces[i][2] !== undefined) {
+        const ga9 = areas[gid[i]];
+        if (ga9 > 0 && faceSpan[i] / ga9 < SHADE_MINOR) a9 = Math.max(a9, LOD_FINE);
+      }
+      return Math.max(cur, a9);
     };
     for (let i = 0; i < faces.length; i += 1) if (tierOf(i) <= 1) grow(pathBox(faces[i][0]));
     if (Number.isFinite(lo[0])) {
-      const span = Math.max(lo[2] - lo[0], lo[3] - lo[1], 0.001);
-      /* 여유 2% — 반올림·안티에일리어싱 수준의 삐져나옴까지 올리면 결국 다 올라간다. */
-      const eps = span * 0.02;
+      /* 여유는 **축마다 따로** 2%다(수리: 홀쭉한 모델이 그물에서 샜다) — 한 값으로
+         묶으면 긴 축(고스트·스카웃은 세로)이 문턱을 정해, 짧은 축으로 삐져나온 부품이
+         "여유 안"으로 읽혔다. 반올림·안티에일리어싱 수준만 걸러 내면 되는 값이라
+         제 축의 길이로 재는 것이 맞다. */
+      const epsX = Math.max(lo[2] - lo[0], 0.001) * 0.02;
+      const epsY = Math.max(lo[3] - lo[1], 0.001) * 0.02;
       for (let g2 = 0; g2 < boxes.length; g2 += 1) {
         const b = boxes[g2];
         if (!Number.isFinite(b[0])) continue;
-        const outg = Math.max(lo[0] - b[0], lo[1] - b[1], b[2] - lo[2], b[3] - lo[3]);
-        if (outg > eps) promote.add(g2);
+        if (lo[0] - b[0] > epsX || b[2] - lo[2] > epsX
+          || lo[1] - b[1] > epsY || b[3] - lo[3] > epsY) promote.add(g2);
       }
     }
   }
@@ -9241,7 +9268,14 @@ export function autoTier(key: string, faces: ShapeFace[]): ShapeFace[] {
     const span = Math.max(core[2] - core[0], core[3] - core[1], 0.001);
     if (out9 > span * 0.06) return f;
     const r = areas[gid[i]] / big;
-    const auto = r < TIER_FINE ? LOD_FINE : r < TIER_TRIM ? LOD_TRIM : 1;
+    let auto = r < TIER_FINE ? LOD_FINE : r < TIER_TRIM ? LOD_TRIM : 1;
+    /* 명암 잔조각은 한 단 더 내린다(위 SHADE_MINOR 주석) — 제 색을 지닌 면이면서
+       제 부품 상자의 작은 몫만 덮는 것들이다. 부품 상자를 재는 자는 위와 같다. */
+    if (f[2] !== undefined) {
+      // b는 **부품** 상자다(위 out9가 쓰는 값) — 낱면 길이는 faceSpan이 따로 안다.
+      const ga = areas[gid[i]];
+      if (ga > 0 && faceSpan[i] / ga < SHADE_MINOR) auto = Math.max(auto, LOD_FINE);
+    }
     return (auto > cur ? [f[0], f[1], f[2], f[3], auto] : f) as ShapeFace;
   });
   AUTO_TIER_CACHE.set(key, out);
