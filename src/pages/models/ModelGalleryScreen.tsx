@@ -2,9 +2,12 @@ import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, ZoomIn } from "lucide-react";
-import { SHAPE_BUILDERS, SHAPE_GALLERY, ShapeIcon } from "../../components/replay/ReplayMotionPlayer";
-import { withYaw, VIEW } from "../../utils/shapeOblique";
+import {
+  SHAPE_BUILDERS, SHAPE_GALLERY, ShapeIcon, shapeMapTiles, autoTier,
+} from "../../components/replay/ReplayMotionPlayer";
+import { withYaw, VIEW, lodFilter } from "../../utils/shapeOblique";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
+import PillTabs from "../../components/common/PillTabs";
 
 /* 자료실 > 모델링(요청) — 재생 화면의 3D 도형들을 큰 화면으로 살펴본다. 모두에게 열려
  * 있다(운영 아님). 전부 3D 빌더라 요잉(수평 시점)을 돌려 볼 수 있고, 전투 갈래
@@ -26,11 +29,28 @@ const clampScale = (k: number): number => Math.min(SCALE_MAX, Math.max(SCALE_MIN
    스타 게임 컨셉과 맞음). 도록(시트)도 이 기본 연두로 찍는다. */
 const STAGE_COLORS = ["#7ed491", "#f2f5f9", "#5ea2ff", "#ff6a5e", "#ffce54"];
 const WHITE = "#f2f5f9";
+/* 지도상 크기의 기준 자(타일, 요청: "지도상 크기 토글") — 도록에서 가장 큰 상자가 무대를
+   꽉 채우도록 그 값을 1로 삼는다. 기준을 도록 전체의 최대로 잡는 것이 핵심이다: 모델마다
+   제각각 기준을 두면 '상대 크기'가 안 되고, 고정 상수로 두면 나중에 큰 모델이 하나
+   들어올 때 무대 밖으로 나간다. */
+const MAP_REF_TILES = Math.max(
+  ...SHAPE_GALLERY.map(({ kind }) => Math.max(...shapeMapTiles(kind))),
+);
 
 export default function ModelGalleryScreen() {
   const [kind, setKind] = useState(SHAPE_GALLERY[0]?.kind ?? "");
   const [yaw, setYaw] = useState<number>(VIEW.yawDeg);
   const [color, setColor] = useState(STAGE_COLORS[0]);
+  /* 지도상 크기(요청: 토글) — 끄면 여태처럼 모델마다 무대를 꽉 채워(디자인 검수: "모든
+     모델이 제 상자를 같은 몫으로 채우는가"), 켜면 지도에서 서로 얼마나 큰지 그대로다.
+     이 둘은 서로 다른 물음이라 한 화면에서 갈아 끼울 수 있어야 한다 — 여태 도록은 앞의
+     물음밖에 못 물었다. */
+  const [mapSize, setMapSize] = useState(false);
+  /* 사양별 보기(요청: 저/중/고 라디오) — 값이 곧 부품 등급(LOD) 상한이라 재생기의 성능
+     라디오와 같은 눈금이다: 1 저=형체만 · 2 중=+포인트 · 3 고=+장식.
+     여기서 보는 것은 "사양을 내리면 이 모델이 무엇을 잃는가"다 — 개인색 면은 어느 등급
+     에서도 하나는 남게 되어 있어(lodFilter 주석) 저에서도 임자를 알아볼 수 있어야 한다. */
+  const [quality, setQuality] = useState(3);
   /* 돋보기 팝업(요청) — 무대의 돋보기를 누르면 최대 크기로 띄워 본다. 같은 faces를
      그대로 그려서 팝업 안에서도 자동 회전이 이어진다. */
   const [zoomed, setZoomed] = useState(false);
@@ -159,16 +179,30 @@ export default function ModelGalleryScreen() {
       dragRef.current = null;
     },
   };
+  /* 지도상 크기 배수 — 상자의 가로·세로를 따로 준다(요청). 건물은 발자국이 4×3처럼
+     정사각이 아니라, 한 값으로 줄이면 지도에서 보이는 납작함이 사라진다.
+     사용자의 휠 확대(scale)와는 곱해진다: 지도 비율을 켠 채로도 들여다볼 수 있어야 한다. */
+  const [mapKx, mapKy] = useMemo(() => {
+    if (!mapSize) return [1, 1];
+    const [tw, th] = shapeMapTiles(kind);
+    return [tw / MAP_REF_TILES, th / MAP_REF_TILES];
+  }, [mapSize, kind]);
   /* 배율을 입히는 겉옷 — svg에 직접 걸지 않는다. 팝업의 세로 가운데 맞춤이 svg의
      transform을 이미 쓰고 있어 서로 덮어쓴다. */
-  const scaleStyle = scale === 1 ? undefined : { transform: `scale(${scale.toFixed(3)})` };
+  const scaleStyle = scale === 1 && !mapSize ? undefined
+    : { transform: `scale(${(scale * mapKx).toFixed(4)}, ${(scale * mapKy).toFixed(4)})` };
   /* 배율 표시 — 1배 미만은 소수 한 자리로는 0.1로 뭉개져 1/8과 1/4이 구분되지 않는다. */
   const scaleLabel = scale === 1 ? "" : ` · ×${scale < 1 ? scale.toFixed(2) : scale.toFixed(1)}`;
   const builder: (() => ReturnType<(typeof SHAPE_BUILDERS)[string]>) | undefined =
     Object.prototype.hasOwnProperty.call(SHAPE_BUILDERS, kind) ? SHAPE_BUILDERS[kind] : undefined;
+  /* 지도와 **같은 순서**로 거른다(요청: 사양별 보기) — autoTier가 부품 크기로 등급을
+     먼저 매기고, 그다음 lodFilter가 상한까지 남긴다. 갈무리 열쇠는 종류+요잉이면 족하다:
+     도록은 늘 사선 시점 한 가지이고, 등급 상한은 거르는 쪽이라 열쇠에 안 든다. */
   const faces = useMemo(
-    () => (builder ? withYaw(yaw, () => builder()) : undefined),
-    [builder, yaw],
+    () => (builder
+      ? lodFilter(autoTier(`g|${kind}|${snapYaw(yaw)}`, withYaw(yaw, () => builder())), quality)
+      : undefined),
+    [builder, kind, yaw, quality],
   );
   return (
     <div className="scr-screen scr-model-screen">
@@ -230,6 +264,34 @@ export default function ModelGalleryScreen() {
               </button>
             </>
           )}
+        </div>
+        {/* 보기 손잡이 두 개(요청) — 지도상 크기 토글과 사양 라디오. 무대와 목록 사이에
+            한 줄로 앉는다: 무대 위 오버레이(각도·돋보기·색·멈춤)는 이미 네 귀퉁이가 다
+            찼고, 목록 아래로 내리면 스크롤에 딸려 사라진다. 재생기의 같은 줄과 같은
+            부품(PillTabs)이라 눈금도 같다. */}
+        <div className="scr-model-opts">
+          <span className="scr-model-opt">
+            <span className="scr-model-opt-label">지도상 크기</span>
+            <PillTabs
+              options={[{ value: "off", label: "끔" }, { value: "on", label: "켬" }]}
+              toggle
+              value={mapSize ? "on" : "off"}
+              onChange={(v) => setMapSize(v === "on")}
+              aria-label="지도상 크기"
+            />
+          </span>
+          <span className="scr-model-opt">
+            <span className="scr-model-opt-label">사양</span>
+            <PillTabs
+              options={[
+                { value: "1", label: "저" }, { value: "2", label: "중" }, { value: "3", label: "고" },
+              ]}
+              value={String(quality)}
+              onChange={(v) => setQuality(Number(v))}
+              aria-label="사양"
+              fit
+            />
+          </span>
         </div>
         <div className="scr-model-list">
           {(["유닛", "건물"] as const).map((grp) => (

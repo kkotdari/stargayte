@@ -8822,6 +8822,39 @@ export const SHAPE_GALLERY: { kind: string; label: string; group: "유닛" | "�
   { kind: "geyser", label: "가스 간헐천", group: "건물" },
 ];
 
+/** 도형 kind → 그 kind로 그려지는 건물의 원작 이름 — SHAPE_KIND를 뒤집은 것이다.
+ *  이름이 여럿인 kind(ComSat·Comsat Station)는 먼저 걸린 하나로 족하다: 발자국이 같다. */
+const BLD_NAME_OF_KIND: Record<string, string> = Object.fromEntries(
+  Object.entries(SHAPE_KIND).map(([name, k]) => [k, name]).reverse(),
+);
+/** 도록 kind → 원작 치수를 가진 kind — 제 치수가 표에 없는 변형들만 적는다. */
+const GALLERY_SIZE_KIND: Record<string, string> = {
+  carrierbay: "carrier",   // 인터셉터를 문 캐리어 — 몸은 캐리어다
+  lurkeregg: "lurker",     // 알은 러커의 한 시절
+  mutacocoon: "muta",      // 고치도 마찬가지
+};
+/** 도록 kind → 지도에서 차지하는 **상자**(가로·세로 타일) — 모델 갤러리의 '지도상 크기'
+ *  가 이 값으로 모델을 줄이고 늘인다(요청).
+ *  자가 둘인데 눈금이 하나다: 유닛은 원작 치수표가 정한 정사각 상자(unitTilesOf — 지도의
+ *  unitGlyphPx가 tilePx를 곱하기 **직전**의 바로 그 값)이고, 건물은 발자국(FOOTPRINT)
+ *  이다. 둘 다 단위가 타일이라 유닛과 건물을 한 자로 나란히 견줄 수 있다.
+ *  ⚠ **크기만** 지도와 같다. 도록은 사선(base) 시점이고 지도 기본은 위에서 본(top)
+ *    시점이라, 같은 모델도 −9.1%(스카웃)~+15.1%(변태고치)로 어긋난다(ShapeIcon 주석).
+ *    또 지도에는 화면 크기에 따른 자동 등급 강등(autoTier)이 걸리는데 여기엔 없다 —
+ *    부품이 얼마나 빠지는지는 사양 라디오가 따로 말한다. */
+export const shapeMapTiles = (kind: string): [number, number] => {
+  const bld = BLD_NAME_OF_KIND[kind];
+  if (bld) return FOOTPRINT[bld] ?? [3, 2];
+  // 자원 둘은 건물표에 없다 — 원작 발자국 그대로(미네랄 2×1, 간헐천 4×2).
+  if (kind === "mineral") return [2, 1];
+  if (kind === "geyser") return [4, 2];
+  // 공사장·고치는 무엇이 될지에 따라 달라진다 — 흔한 3×2로 둔다(건물 폴백과 같다).
+  if (kind === "scaffold" || kind === "cocoon") return [3, 2];
+  const sk = GALLERY_SIZE_KIND[kind] ?? kind;
+  const n = unitTilesOf(sk, sk, 1);
+  return [n, n];
+};
+
 /** 유닛(지상 이동체) 모델 kind 집합 — 겹침 방지 이완의 대상 판별에 쓴다(도록의 유닛
  *  갈래 그대로). 건물·자원·크립은 여기 없어 안 밀린다. */
 const UNIT_KIND_SET = new Set(SHAPE_GALLERY.filter((g) => g.group === "유닛").map((g) => g.kind));
@@ -9383,7 +9416,11 @@ function pathBox(d: string): [number, number, number, number] {
    매긴다 — 106개 모델을 손으로 안 건드려도 전부 걸리고, 모델러가 명시로 매긴 등급은
    그대로 존중한다(내려가기만 하고 올라가지 않는다). */
 const AUTO_TIER_CACHE = new Map<string, ShapeFace[]>();
-function autoTier(key: string, faces: ShapeFace[]): ShapeFace[] {
+/** 도록도 같은 자를 쓴다(요청: 모델 갤러리의 사양 라디오) — 지도는 늘
+ *  lodFilter(autoTier(...)) 순서로 거른다. 이 단계를 건너뛰면 '저'가 지도보다 훨씬
+ *  많은 부품을 남겨, 사양을 내려도 무엇이 빠지는지 보이지 않는다(부품 몸통은 명시
+ *  등급이 전부 형체(1)라 lodFilter만으로는 하나도 안 빠진다 — 위 주석 참고). */
+export function autoTier(key: string, faces: ShapeFace[]): ShapeFace[] {
   const hit = AUTO_TIER_CACHE.get(key);
   if (hit) return hit;
   // 부품 묶기 — stageFaces와 같은 자(깊이 열쇠가 바뀌면 새 부품).

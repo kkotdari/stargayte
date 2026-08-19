@@ -13080,6 +13080,23 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   color: var(--muted); font-size: 10px; cursor: pointer; padding: 0;
 }
 .scr-model-note { font-size: var(--fs-caption); color: var(--muted); }
+/* 도록 보기 손잡이 줄(요청: 지도상 크기 토글 + 사양 저/중/고 라디오) — 무대와 목록
+   사이 한 줄. 라벨은 위, 알약은 아래로 재생기의 보기 설정 줄(.scr-motion-radio)과 같은
+   꼴이라, 두 화면을 오갈 때 같은 손잡이로 읽힌다. */
+.scr-model-opts {
+  display: flex; justify-content: center; align-items: flex-end; gap: 14px;
+  width: 100%; margin: 0 0 10px; flex-wrap: wrap;
+  /* 목록(flex: 1)과 한 기둥에 서므로 안 눌리게 못 박는다 — 기본 flex-shrink는 1이라
+     목록이 길어지면 이 줄이 먼저 찌그러진다. */
+  flex: none;
+}
+.scr-model-opt { display: inline-flex; flex-direction: column; align-items: stretch; gap: 3px; }
+.scr-model-opt-label {
+  font-size: 10px; font-weight: 700; color: var(--muted);
+  line-height: 1; padding-left: 4px;
+}
+.scr-model-opt .scr-pill-tabs { height: 20px; background: rgba(255, 255, 255, 0.08); }
+.scr-light-theme .scr-model-opt .scr-pill-tabs { background: rgba(0, 0, 0, 0.06); }
 /* 뷰어·목록 분리(지적: 아래 목록 보기 힘듦) — 패널을 화면 높이에 맞춰 세로로 나누고,
    스크롤은 목록에만 준다. 뷰어는 그대로 붙박이. */
 /* 모델 화면 제목 줄(요청: 제목 아래 갭 줄이기) — 공용 28px 예약 대신 바짝 8px. */
