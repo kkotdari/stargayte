@@ -801,6 +801,39 @@ export const screenCircle = (cx: number, cy: number, r: number): string =>
   `M${r2(cx - r)} ${r2(cy)}a${r2(r)} ${r2(r)} 0 1 0 ${r2(r * 2)} 0`
   + `a${r2(r)} ${r2(r)} 0 1 0-${r2(r * 2)} 0Z`;
 
+/** 화면 반구 — 구의 **위 절반**. 구(sphereFaces3)와 같은 자를 쓴다: 중심만 투영하고
+ *  반지름은 화면 원이라 어느 요잉에서도 안 찌그러진다. 잘린 밑면은 카메라가 내려다보는
+ *  만큼(납작비) 아래로 부푼 타원 호로 닫아, 판판한 뚜껑이 아니라 둥근 밑으로 읽힌다. */
+export function halfSphereFaces3(
+  cx: number, cy: number, cz: number, r: number, fill?: string,
+): ShapeFace[] {
+  const [sx, sy] = project(cx, cy, cz);
+  const ry = r * groundSquashNow();
+  // 위 반원 → 아래로 부푼 타원 호로 닫는다.
+  const d = `M${r2(sx - r)} ${r2(sy)}A${r2(r)} ${r2(r)} 0 0 1 ${r2(sx + r)} ${r2(sy)}`
+    + `A${r2(r)} ${r2(ry)} 0 0 1 ${r2(sx - r)} ${r2(sy)}Z`;
+  const body: ShapeFace = fill ? [d, 1, fill] : bodyFace(d);
+  return tagKey([
+    body,
+    sideFace(screenCircle(sx + r * 0.42, sy - r * 0.06, r * 0.38), OP.sideSoft),
+    topFace(screenCircle(sx - r * 0.36, sy - r * 0.34, r * 0.24)),
+  ], depthNow(cx, cy) + r);
+}
+
+/** 화면 1/4구 — 반구를 다시 앞뒤로 갈라 **뒤 절반**만 남긴 껍데기. 위 반원과, 세로로
+ *  자른 단면(위로 부푼 타원 호) 사이의 초승달이다. 얼굴가리개 뒤에 한 겹 세우면 그것이
+ *  곧 뒤통수를 감싸는 껍데기다. */
+export function quarterSphereFaces3(
+  cx: number, cy: number, cz: number, r: number, fill?: string,
+): ShapeFace[] {
+  const [sx, sy] = project(cx, cy, cz);
+  const ry = r * groundSquashNow();
+  const d = `M${r2(sx - r)} ${r2(sy)}A${r2(r)} ${r2(r)} 0 0 1 ${r2(sx + r)} ${r2(sy)}`
+    + `A${r2(r)} ${r2(ry)} 0 0 0 ${r2(sx - r)} ${r2(sy)}Z`;
+  const body: ShapeFace = fill ? [d, 1, fill] : bodyFace(d);
+  return tagKey([body, topFace(d, OP.topSoft)], depthNow(cx, cy) + r);
+}
+
 /** 공(구) 한 덩이 — 중심만 투영하고 반지름은 화면 원이다. 몸 + 좌상 광택 + 우하 그늘.
  *  광택·그늘은 몸 안쪽에 물려 두어(중심 오프셋 + 반지름 < 1) 어떤 크기에서도 실루엣
  *  밖으로 삐치지 않는다. 세계 광원과 같은 방향(좌상)이라 다른 부품과 결이 맞는다. */
