@@ -11302,8 +11302,14 @@ export function ShapeIcon({
         modelNormOf(kind) === 1 && bldNormOf(kind) !== 1
           ? `translate(8 16) scale(${bldNormOf(kind)}) translate(-8 -16)` : "",
       ].filter(Boolean).join(" ") || undefined)}>
+        {/* 명암을 지도와 같은 세기로(지적: "도록에서 그림자가 안나오는 느낌") — 캔버스
+            유닛 층은 흰·검 덮개 면의 불투명도를 shadeBoost로 1.45배 올려 그리는데,
+            SVG로 그리는 이 자리만 원본 값을 그대로 썼다. 같은 모델이 두 화면에서 다른
+            대비로 보이던 이유다. 몸판(덮개색 없는 면)은 그대로라 색은 안 변한다. */}
         {faces
-          ? faces.map(([d, op, fill], i) => <path key={i} d={d} fill={fill ?? "currentColor"} opacity={op} />)
+          ? faces.map(([d, op, fill], i) => (
+            <path key={i} d={d} fill={fill ?? "currentColor"} opacity={shadeBoost(op, fill)} />
+          ))
           : <path d={SHAPE_PATHS[kind]} fill="currentColor" />}
       </g>
     </svg>

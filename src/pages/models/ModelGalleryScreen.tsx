@@ -35,15 +35,15 @@ const STAGE_COLORS = ["#7ed491", "#f2f5f9", "#5ea2ff", "#ff6a5e", "#ffce54"];
    제각각 기준을 두면 '상대 크기'가 안 되고, 고정 상수로 두면 나중에 큰 모델이 하나
    들어올 때 무대 밖으로 나간다. */
 const MAP_REF_TILES = Math.max(...SHAPE_GALLERY.map(({ kind }) => shapeMapTiles(kind)));
-/* 썸네일은 형체(저)만 그린다(수리: 모델 페이지가 느리다) — 실측으로 도록 목록의
-   <path>가 30,537개였다(99종 × 평균 309면). 44px 썸네일에 3티어 장식까지 얹는 것은
-   지도에서도 안 하는 일이다(크기가 정하는 자동 강등에 걸린다). 형체만 남기면 11,367개로
-   63% 줄고, 그림은 그 크기에서 사실상 같다. 모듈에서 한 번만 굽고 모두가 나눠 쓴다. */
-const THUMB_FACES: Record<string, ShapeFace[]> = Object.fromEntries(
-  SHAPE_GALLERY
-    .filter(({ kind }) => Object.prototype.hasOwnProperty.call(SHAPE_BUILDERS, kind))
-    .map(({ kind }) => [kind, lodFilter(autoTier(kind, `thumb|${kind}`, bake(SHAPE_BUILDERS[kind])), 1)]),
-);
+/* 썸네일 등급은 **사양 라디오를 따른다**(지적 묶음: 그레이터 스파이어 구름·메딕 적십자·
+   히드라 얼굴이 목록에서 안 보이고 "그림자가 안 나오는 느낌") — 여태 이 표가 등급 1(저)로
+   못 박혀 있었다. 등급 1은 **형체만** 남기는 자리라, 명암 덮개(topFace·sideFace는 기본
+   등급 2)까지 통째로 빠진다. 그래서 목록의 모든 모델이 그늘 없는 색판으로 보였고, 작은
+   장식(십자·구름·이빨)은 아예 없었다.
+   그때는 칸이 44px이라 형체만으로 충분했지만, 지금 목록은 2열이라 칸이 화면 절반이다 —
+   그 크기에서 등급 1은 눈에 띄게 밋밋하다. 기본값 3(고)으로 두고, 무거우면 라디오로
+   내리면 된다(그 라디오가 이제 목록에도 걸린다).
+   ★ 아래 thumbFacesOf 한 곳에서만 굽고, 열쇠에 등급과 요잉을 함께 넣어 갈무리한다. */
 
 
 /** 도록의 칸 하나(요청: 칸마다 끌어 돌리고 돋보기로 크게) — 면·선택·색·배수가 그대로면
@@ -369,14 +369,13 @@ export default function ModelGalleryScreen() {
    *  오가도 다시 안 굽는다: 24방뿐이라 몇 번 끌면 그 종류는 전부 캐시에 든다). */
   const thumbBakeRef = useRef(new Map<string, ShapeFace[]>());
   const thumbFacesOf = (k: string): ShapeFace[] | undefined => {
-    const y9 = thumbYaw[k];
-    if (y9 === undefined) return THUMB_FACES[k];
-    const key9 = `${k}|${snapYaw(y9)}`;
+    const b9 = Object.prototype.hasOwnProperty.call(SHAPE_BUILDERS, k) ? SHAPE_BUILDERS[k] : undefined;
+    if (!b9) return undefined;
+    const y9 = snapYaw(thumbYaw[k] ?? VIEW.yawDeg);
+    const key9 = `${k}|${y9}|${quality}`;
     const hit9 = thumbBakeRef.current.get(key9);
     if (hit9) return hit9;
-    const b9 = Object.prototype.hasOwnProperty.call(SHAPE_BUILDERS, k) ? SHAPE_BUILDERS[k] : undefined;
-    if (!b9) return THUMB_FACES[k];
-    const f9 = lodFilter(autoTier(k, `thumb|${key9}`, bake(() => withYaw(y9, b9))), 1);
+    const f9 = lodFilter(autoTier(k, `thumb|${key9}`, bake(() => withYaw(y9, b9))), quality);
     if (thumbBakeRef.current.size > 400) thumbBakeRef.current.clear();
     thumbBakeRef.current.set(key9, f9);
     return f9;
@@ -410,7 +409,7 @@ export default function ModelGalleryScreen() {
               </div>
             ))}
           </div>
-  ), [kind, mapSize, thumbYaw, color]);
+  ), [kind, mapSize, thumbYaw, color, quality]);
   return (
     <div className="scr-screen scr-model-screen">
       {/* 이름은 짧게 '모델'(요청) — 제목 아래 갭도 화면 전용 CSS로 줄였다. */}
