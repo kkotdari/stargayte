@@ -8912,6 +8912,16 @@ function unitSprite(
 /* 건물 채움 보정에서 빼는 것들 — 크립 판(clipWalk)은 지형이고, 애드온 통로는 본체와
    부속 사이를 잇는 폭이 곧 제 길이라 늘리면 어긋난다. 미네랄은 발자국이 아니라 덩이
    넷을 흩어 놓은 무리라 요청대로 손대지 않는다. */
+/** 화가 순서의 한 타일(수리: 겹치는 건물의 앞뒤가 뒤바뀐다 · 소환구가 앞 건물에 안 가려짐)
+ *  — 여태 한 타일이 80이었는데, 건물의 '나이' 항이 최대 30이었다. 그래서 아랫변이
+ *  0.375타일 안으로 붙은 두 건물은 **자리가 아니라 나이가 앞뒤를 정했다**: 나란히 선
+ *  건물끼리 뒤엣것이 앞을 덮었고, 갓 소환을 시작한 소환구(나이 항이 가장 크다)는 이미
+ *  서 있던 앞 건물 위로 올라왔다.
+ *  한 타일을 800으로 넓혀 나이는 0.1타일 미만의 **진짜 동점**만 가른다. 층 편향
+ *  (자원 +1200 = 1.5타일, 유닛 +400 = 0.5타일)도 같은 배수로 따라온다. */
+const Z_TILE = 800;
+/** 공중은 늘 위층 — 지상 z가 아무리 커도(맵 256타일 × Z_TILE) 못 넘는 값이어야 한다. */
+const Z_AIR = 10000000;
 /** 프로토스 소환구 상자(타일)와 지면에서 띄우는 높이(타일) — 요청: 축소 + 더 띄우기. */
 const WARP_TILES = 1.8;
 const WARP_LIFT = 0.75;
@@ -9191,8 +9201,11 @@ export function autoTier(key: string, faces: ShapeFace[]): ShapeFace[] {
  *  낮은 것부터 세운다: 발판·다리·바닥 슬래브가 먼저 서고 지붕·굴뚝·안테나가 마지막에
  *  얹힌다. 고른 부품은 **통째로** 그리므로 잘린 단면이 안 생긴다.
  *  그리는 차례는 원래 순서 그대로 둔다(칠하는 순서가 곧 앞뒤라 재정렬하면 안 된다). */
+/** 공사 단계 수(요청: 3단계 부족하면 5단계로) — 부품이 많은 건물일수록 3칸으로는 한
+ *  칸에 3분의 1이 통째로 솟아 '자라는' 대신 '툭 나타나는' 것으로 보인다. */
+export const BUILD_STAGES = 5;
 export function stageFaces(faces: ShapeFace[], stg: number): ShapeFace[] {
-  if (stg <= 0 || stg >= 3) return faces;
+  if (stg <= 0 || stg >= BUILD_STAGES) return faces;
   const gid: number[] = [];
   const tops: number[] = [];
   let g = -1;
@@ -9208,7 +9221,7 @@ export function stageFaces(faces: ShapeFace[], stg: number): ShapeFace[] {
   const n = tops.length;
   if (n <= 1) return faces;
   const order = tops.map((_, i) => i).sort((a, b) => tops[b] - tops[a]);
-  const keep = new Set(order.slice(0, Math.max(1, Math.round((n * stg) / 3))));
+  const keep = new Set(order.slice(0, Math.max(1, Math.round((n * stg) / BUILD_STAGES))));
   return faces.filter((_, i) => keep.has(gid[i]));
 }
 
@@ -9328,7 +9341,7 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
       const vy0 = zy(o.fy);
       return vx0 >= -ex0 && vx0 <= cw + ex0 && vy0 >= -ex0 && vy0 <= ch + ex0;
     };
-    const sorted = [...ops].sort((a, b) => (a.z + (a.air ? 100000 : 0)) - (b.z + (b.air ? 100000 : 0))).filter(inView0);
+    const sorted = [...ops].sort((a, b) => (a.z + (a.air ? Z_AIR : 0)) - (b.z + (b.air ? Z_AIR : 0))).filter(inView0);
     /* ── 겹침 불가 원칙(요청: 유닛·건물은 겹쳐지지 않는다, 공중은 예외) — 그리기 전에
        지상 유닛 마커를 서로·건물과 겹치지 않게 밀어낸다. 화면 픽셀 좌표에서 2회 이완:
        ① 건물 상자 안에 든 유닛은 가장 가까운 변 밖으로, ② 유닛끼리는 반지름 합의 0.8
@@ -11048,11 +11061,12 @@ export default function ReplayMotionPlayer({
         for (let i = e.ev.length - 1; i >= 0; i -= 1) {
           if (e.ev[i][1] >= 0) { lastPosF = e.ev[i][3]; break; }
         }
-        /* 프로토스는 소환하고 곧장 자유다(지적: 프로브가 건물 소환하고 사라졌다가 다음
-           명령을 받으면 다시 나타남) — 공사 내내 붙어 있는 건 테란 SCV뿐이고, 그동안의
-           모습도 합성 건설 일꾼이 대신 그린다. 프로브를 같은 자로 숨기면 다음 명령이
-           올 때까지(수십 초) 통째로 사라진다. 소환 순간(1.6초)만 숨기고 그 뒤로는 현장
-           곁에 선 채로 그린다. */
+        /* 프로토스는 소환하고 곧장 자유다 — 공사 내내 붙어 있는 건 테란 SCV뿐이고,
+           그동안의 모습도 합성 건설 SCV가 대신 그린다.
+           ★ 프로브는 **한 순간도 안 숨긴다**(수리: 건설한 프로브가 잠깐 안 보였다 나타남)
+             — 소환 순간 1.6초를 숨겨 뒀는데, 그 자리를 채울 합성 일꾼이 프로토스에는
+             없다(builderLeave는 SCV만 본다). 그래서 진짜로 아무것도 없는 1.6초의
+             구멍이었다. 소환 연출은 소환구가 이미 말한다. */
         const warpOnly = e.k === "Probe";
         if (lastPosF === 2 && wk.length > 0 && !warpOnly) {
           /* 흡수 시각의 뜻은 '현장 도착'이다. 렌더러 자취에서는 마지막 점이 곧 도착이라
@@ -11081,7 +11095,8 @@ export default function ReplayMotionPlayer({
           for (let j = i + 1; j < e.ev.length; j += 1) {
             if (e.ev[j][1] >= 0 && e.ev[j][0] > v2[0] + 1) { end = e.ev[j][0]; break; }
           }
-          buildHides.push([v2[0], warpOnly ? Math.min(end, v2[0] + 1.6) : end]);
+          if (warpOnly) continue;   // 프로브는 안 숨긴다(위 주석)
+          buildHides.push([v2[0], end]);
         }
       }
       out.push({
@@ -12833,11 +12848,14 @@ export default function ReplayMotionPlayer({
               + (!addonPlus ? (shapeKind ? -riseOf(unit) / 2 : fp2[1] * 0.1) : 0);
             const [fxF, fyF] = posFrac(anchorX, anchorY);
             const mkK = pitchK(centerY);
-            /* 나이 가산은 반 타일 몫(40) 아래로(지적: 연달아 놓인 가스 건물의 앞뒤
-               가려짐이 뒤바뀜) — 세로 간격이 좁으면 나이 항(최대 70)이 y 항(타일당 80)을
-               이겨 뒤 건물이 앞을 덮었다. */
+            /* 나이는 **진짜 동점만** 가른다(수리: 겹치는 건물의 앞뒤가 뒤바뀜 · 소환구가
+               앞 건물에 안 가려짐) — 한 타일이 Z_TILE(800)이고 나이 항은 60까지라,
+               아랫변이 0.075타일보다 벌어져 있으면 자리가 언제나 이긴다. 예전에는 한
+               타일이 80인데 나이가 30까지여서, 0.375타일 안에 붙은 건물끼리 나이가
+               앞뒤를 뒤집었다. */
             const z = pitched
-              ? 1000 + Math.round((by + footDy(unit) * 2) * 80) + Math.min(30, Math.round(sec / 90))
+              ? 1000 + Math.round((by + footDy(unit) * 2) * Z_TILE)
+                + Math.min(60, Math.round(sec / 45))
               : 1000 + Math.round(afloat ? t : sec);
             const alpha = fade * (afloat ? 0.75 : 1);
             const color = modeColor(raw, team);
@@ -12955,8 +12973,14 @@ export default function ReplayMotionPlayer({
                 kind: race2 === "저그" ? "cocoon"
                   : race2 === "프로토스" ? "warpin"
                     : (shapeKind || "scaffold"),
+                /* 아래 부품부터 다섯 칸에 나눠 솟는다(요청: 3단계 부족 시 5단계) —
+                   진행률을 그대로 칸으로 바꾼다. 마지막 칸(=BUILD_STAGES)이 완성 모델
+                   이라, 다 짓기 전에 완성형이 서 버리지 않게 진행률 1 미만은 한 칸
+                   아래로 묶어 둔다. 단계가 굽기 캐시 열쇠에 들어가므로 판은 단계마다
+                   한 번만 구워진다(프레임 비용 없음). */
                 ...(race2 === "테란" && shapeKind
-                  ? { buildStage: prog < 0.34 ? 1 : prog < 0.67 ? 2 : 3 }
+                  ? { buildStage: Math.max(1, Math.min(BUILD_STAGES - 1,
+                    Math.ceil(prog * BUILD_STAGES))) }
                   : {}),
                 // 공사 모델도 45도 요잉(지적) + 종류별 보정(지적: 테란 공사장 반시계 90).
                 rotDeg: buildingYawOf(race2 === "저그" ? "cocoon"
@@ -13358,7 +13382,7 @@ export default function ReplayMotionPlayer({
                넓혀, 정말 한 타일 반 넘게 앞에 선 건물만 자원을 가린다. 자원은 배경이라
                가려지면 지도가 안 읽히고, 반대로 자원이 조금 앞서 그려져도 어색하지 않다.
                가스 간헐천은 그 위에 정제소가 서면 아예 감춰지므로 같은 몫을 줘도 안전하다. */
-            z: pitched ? 1000 + Math.round((res[1] + (wTiles * 0.75) / 2) * 80) + 120 : 900 + ri,
+            z: pitched ? 1000 + Math.round((res[1] + (wTiles * 0.75) / 2) * Z_TILE) + 1200 : 900 + ri,
             kind: gasSpot ? "geyser" : "mineral",
             viewYaw: viewYawOf(res[0], res[1]), flat: !pitched, pitch: pitched,
             sizePx: 0,
@@ -13875,7 +13899,7 @@ export default function ReplayMotionPlayer({
                가산(최대 +30)이 붙어 앞에 선 유닛까지 덮었다. 유닛에 그보다 큰 붙박이
                +40을 줘 같은 깊이에서는 늘 유닛이 이기게 한다(뒤에 선 유닛은 y가 작아
                여전히 건물 뒤로 간다). */
-            z: pitched || uAir ? 1000 + Math.round(ay3 * 80) + 40 : 1000 + (ei % 137),
+            z: pitched || uAir ? 1000 + Math.round(ay3 * Z_TILE) + 400 : 1000 + (ei % 137),
             kind: kindMain,
             selRing: selNow || undefined,
             // 보임 토글이면 만피여도 표시(요청: 모든 유닛·건물 다 표시).
