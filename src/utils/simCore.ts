@@ -832,6 +832,8 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
 
   /* 길찾기 캐시 — 같은 두 점을 여러 유닛이 함께 쓴다(부대 이동). */
   const pathCache = new Map<string, [number, number][]>();
+  /** 수송선마다 몇 번째로 내렸나 — 선 배에서 내리는 자리를 돌려 가며 흩는다. */
+  const unloadTurn = new Map<number, number>();
   /** 곧은 줄이 트여 있나 — 0.5타일마다 훑는다. 트였으면 길찾기를 아예 안 부른다. */
   const clearLine = (
     x0: number, y0: number, x1: number, y1: number, hw: number, hh: number,
@@ -1487,6 +1489,31 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         if (o.kind === "unload") {
           b.inside = null; b.cp = b.cpBase;
           b.x = o.x; b.y = o.y; b.dest = null; b.state = ST_IDLE;
+          /* 내리는 자리는 **그 순간 수송선이 있는 자리**다(요청: "수송선류 이동/정지
+             상태에서 본인에게 언로드 찍으면 이동하면서/정지상태로 내리는거") — 증거가
+             주는 좌표(o.x·o.y)는 명령을 누른 순간의 배 자리 하나뿐이라, 배가 달리는
+             중에 쏟아도 여덟 기가 그 한 점에 겹쳐 나타났다. 하차는 이미 배마다 18프레임
+             씩 벌려 두었으므로(UNLOAD_GAP_SEC), 자리를 배의 지금 자리로 바꾸기만 하면
+             달리는 배는 저절로 한 줄로 흘리고 선 배는 제자리에 쏟는다.
+             방향: 달리는 중이면 배 뒤쪽으로(뒤로 흘리듯), 서 있으면 네 방향으로 돌려
+             가며 몸 반지름만큼 띄운다 — 안 그러면 선 배 아래 다 겹친다. */
+          const drop = byTag.get(o.tag) ?? [];
+          const shipNow = drop.find((s2) => t >= s2.born && (s2.died === null || t < s2.died)
+            /* 증거가 말한 하차 자리에서 너무 멀면 배 쪽을 안 믿는다 — 그 배의 자리는
+               우리 모형이 낸 값이고 하차 좌표는 증거다(증거가 어림을 이긴다). 4타일은
+               18프레임 간격에 수송선 최고 속도로도 못 벌어지는 거리라, 정상적인 '달리며
+               쏟기'는 다 통과하고 모형이 어긋난 경우만 걸러진다. */
+            && Math.hypot(s2.x - o.x, s2.y - o.y) <= 4);
+          if (shipNow) {
+            const n9 = (unloadTurn.get(o.tag) ?? 0);
+            unloadTurn.set(o.tag, n9 + 1);
+            const moving = shipNow.state === ST_MOVE || shipNow.dest !== null;
+            const deg = moving ? shipNow.hdg + 180 : n9 * 90;
+            const rad = ((deg - 90) * Math.PI) / 180;
+            const off = shipNow.rad + b.rad + 0.1;
+            b.x = shipNow.x + Math.cos(rad) * off;
+            b.y = shipNow.y + Math.sin(rad) * off;
+          }
           /* 하차 벌칙(unit_unload, bwgame.h:3167-3178)은 **양자택일**이다.
              · 오더 잠금 가지 — main_order_timer=30(1.260초). 리버가 확정 사례이고,
                '재장전할 무기가 없는 유닛'도 같은 가지로 본다([추정]). 이 가지는 무기 쿨
