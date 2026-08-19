@@ -543,6 +543,46 @@ export function wallFrame(
   };
 }
 
+/** 세운 다각기둥 — 평면 다각형(plan)을 z0에서 h만큼 밀어 올린다. 규칙 다각형이 아니어도
+ *  되므로 사다리꼴·모서리 깎은 육각형처럼 손으로 잡은 단면을 그대로 세울 수 있다.
+ *  옆면은 보이는 것만, 세계 광원 밝기로(faceLight) — 돌려도 명암이 안 뒤집힌다. */
+export function prismZFaces(
+  plan: readonly (readonly [number, number])[], z0: number, h: number,
+  /** 윗면을 덮을지 — 남의 몸에 두르는 띠는 뚜껑이 몸속에 묻혀 있어 그리면 안 된다
+   *  (그리면 그 원판이 몸을 덮는다). 그런 토막은 false로 벽만 남긴다. */
+  capTop = true,
+): ShapeFace[] {
+  const n = plan.length;
+  let cx = 0;
+  let cy = 0;
+  for (const [x, y] of plan) { cx += x; cy += y; }
+  cx /= n;
+  cy /= n;
+  let rad = 0;
+  for (const [x, y] of plan) rad = Math.max(rad, Math.hypot(x - cx, y - cy));
+  const faces: ShapeFace[] = [];
+  for (let i = 0; i < n; i += 1) {
+    const j = (i + 1) % n;
+    // 벽의 바깥 법선 — 변의 가운데가 단면 중심에서 어느 쪽인가로 잡는다.
+    const mx = (plan[i][0] + plan[j][0]) / 2 - cx;
+    const my = (plan[i][1] + plan[j][1]) / 2 - cy;
+    const len = Math.hypot(mx, my) || 1;
+    const { visible, face } = faceLight(mx / len, my / len);
+    if (!visible) continue;
+    const d = polyPath3([
+      [plan[i][0], plan[i][1], z0], [plan[j][0], plan[j][1], z0],
+      [plan[j][0], plan[j][1], z0 + h], [plan[i][0], plan[i][1], z0 + h],
+    ]);
+    faces.push(bodyFace(d), ...face(d));
+  }
+  if (capTop) {
+    const top = polyPath3(plan.map(([x, y]) => [x, y, z0 + h] as [number, number, number]));
+    faces.push(bodyFace(top), topFace(top, OP.topSoft));
+  }
+  // 깊이 키는 원기둥과 같은 규칙 — 가장 앞점이되 제 높이만큼만.
+  return tagKey(faces, depthNow(cx, cy) + Math.min(h, rad));
+}
+
 /** 세운 상자 — frustum의 특수형. 보이는 면·세계 광원은 frustumFaces3가 맡는다. */
 export function boxFaces3(
   cx: number, cy: number, w: number, d: number, h: number, z0 = 0,

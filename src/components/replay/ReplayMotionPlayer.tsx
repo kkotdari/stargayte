@@ -47,7 +47,7 @@ import {
   type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
   domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces,
-  pyramidFaces3, screenCircle, sphereFaces3, tubeFaces,
+  prismZFaces, pyramidFaces3, screenCircle, sphereFaces3, tubeFaces,
   wallDiscPath, withPitchView, withTopView, withViewShear, withYaw, zsorted,
 } from "../../utils/shapeOblique";
 import { TEAM_COLOR, type MinimapMarker } from "./ReplayMinimap";
@@ -442,6 +442,14 @@ function spikeHorn(
  *  segs    마디 수(많을수록 휨이 매끈하다), sides 단면 다각형의 변 수
  *  leanX·leanY  끝이 곧게 밀리는 양(기울기), curveX·curveY  끝으로 갈수록 더해지는 휨
  *  hold    아래 이 비율까지는 굵기를 그대로 둔다(기둥 구간, 0~1) */
+/** 정팔각형 평면(중심 x,y·반지름 r) — 배틀크루저의 몸통·목이 쓰는 단면. 모 하나가
+ *  정면을 보게 22.5도 돌려, 앞에서 볼 때 꼭짓점이 아니라 면이 마주 선다. */
+const OCT8 = (x: number, y: number, r: number): [number, number][] =>
+  Array.from({ length: 8 }, (_, i) => {
+    const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+    return [x + Math.cos(a) * r, y + Math.sin(a) * r] as [number, number];
+  });
+
 function spirePillar(o: {
   x: number; y: number; z0?: number; h: number; w: number; tipW?: number;
   segs?: number; sides?: number;
@@ -6130,10 +6138,23 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...tubeFaces(4.8, -1.6, 4.8, 1, 0.55, 5.3),
       ...hornFaces(4.8, 1, 5.55, 4.8, 2.4, 5.5, 0.5),
     ], "#c9ced6"),
-    // 장도리 몸(정정 둘: 몸 짧게, 목 길게) — 몸통·긴 목·가로 머리·함교.
-    ...paintBase(boxFaces3(0, -0.6, 2.4, 3.4, 1.6, 5.4), "#c9ced6"),
-    ...boxFaces3(0, 2.2, 1.2, 2.6, 0.9, 5.7), // 목 — 개인색 유지.
-    ...paintBase(boxFaces3(0, 4.1, 3.6, 1.2, 1.4, 5.5), "#c9ced6"),
+    /* 장도리 몸(요청: 상자 셋을 형태로 바꾼다) — 몸통·목·머리를 각각 제 모양으로.
+       ① 몸통은 **팔각기둥이고 뚜껑쪽이 살짝 좁다**(요청). 위에서 내려다보는 카메라라
+          여덟 모가 그대로 윤곽이 되고, 좁아지는 만큼 위가 눌린 함체로 읽힌다. */
+    ...spirePillar({
+      x: 0, y: -0.6, z0: 5.35, h: 1.75, w: 1.62, tipW: 1.24,
+      segs: 1, sides: 8, hold: 0, taper: 1, fill: "#c9ced6",
+    }),
+    /* ② 목은 **넓적한 팔각기둥**이고, 해처리 옆선처럼 **개인색 띠가 둘** 두른다(요청).
+       기둥은 은색이고 띠만 임자 색이다 — 띠는 뚜껑 없는 벽이라 몸을 안 덮는다. */
+    ...paintBase(prismZFaces(OCT8(0, 2.2, 1.16), 5.5, 1.05), "#c9ced6"),
+    ...tagKey(prismZFaces(OCT8(0, 2.2, 1.3), 5.62, 0.26, false), depthNow(0, 2.2) + 1.5),
+    ...tagKey(prismZFaces(OCT8(0, 2.2, 1.3), 6.02, 0.26, false), depthNow(0, 2.2) + 1.5),
+    /* ③ 앞부분은 장도리 머리다(요청) — 윗면이 사다리꼴인데 앞 두 모서리를 뭉뚝하게
+       깎아 결국 육각형이고, 높이감이 있다. 세운 다각기둥 하나로 세운다. */
+    ...paintBase(prismZFaces([
+      [-1.85, 3.5], [1.85, 3.5], [1.32, 4.4], [0.78, 4.9], [-0.78, 4.9], [-1.32, 4.4],
+    ], 5.35, 0.92), "#c9ced6"),
     ...paintBase(boxFaces3(0, -1.4, 1.2, 1.2, 0.8, 7), "#c9ced6"),
     /* 야마토 포문 홈(요청) — 머리 앞면 가운데의 어두운 구멍과 옅은 테. 앞면 벽 데칼
        (wallDiscPath)이라 요잉과 함께 돌고, 뒤에선 몸에 가려 안 그린다. */
@@ -6141,10 +6162,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ? ((): ShapeFace[] => {
         const k = Math.min(1, (facingRatio(0, 1) + 0.05) / 0.4);
         // 제 깊이(재지적: 안 보임) — 함교 키에 묻어 머리 상자가 홈을 덮었다.
+        // 앞면이 y 4.9로 나가고 머리가 z 5.25~6.8이라, 홈도 그 한가운데로 옮긴다.
         return tagKey([
-          topFace(wallDiscPath(0, 4.72, 6.2, 0.6, 0.5), 0.18 * k),
-          capFace(wallDiscPath(0, 4.72, 6.2, 0.42, 0.34), 0.5 * k),
-        ], depthNow(0, 4.75) + 1.5);
+          topFace(wallDiscPath(0, 4.93, 5.8, 0.55, 0.44), 0.18 * k),
+          capFace(wallDiscPath(0, 4.93, 5.8, 0.38, 0.3), 0.5 * k),
+        ], depthNow(0, 4.95) + 1.5);
       })()
       : []),
   ],
@@ -6589,9 +6611,26 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       );
       return faces;
     };
+    /* 꽁무니 추진체 셋(요청) — 몸통 뒤쪽에 **삼각형으로** 박힌다: 아래 둘(옆 잎 뒤)과
+       위 하나(윗잎 뒤). 색은 프로토스 기본 금색(#d4af37)보다 한 단 진한 금이고, 뒷
+       단면은 플라즈마 에너지다 — 관이 제 끝 단면을 그리는 대신, 그 자리에 벽 원반을
+       한 장 세워 밝게 태운다(뒤를 보일 때만 그린다). */
+    const THRUST_GOLD = "#a8801f";
+    const thruster = (tx: number, tz: number): ShapeFace[] => [
+      ...paintBase(tubeFaces(tx, -2.45, tx, -3.65, 0.4, tz), THRUST_GOLD),
+      ...(facingRatio(0, -1) > 0.05
+        ? tagKey([
+          [wallDiscPath(tx, -3.68, tz, 0.36, 0.3), 0.9, P_PLASMA] as ShapeFace,
+          topFace(wallDiscPath(tx, -3.7, tz, 0.2, 0.17), 0.5),
+        ], depthNow(tx, -3.7) + 0.5)
+        : []),
+    ];
     return [
       // 세 잎 다 금색(재지적) — 잎마다 겉 가운데에 개인색을 은은히 얹는다.
       // 개인색 장식은 윗잎에만(재재재지적) — 옆 두 잎은 순금색.
+      ...thruster(-1.15, 4.95),
+      ...thruster(1.15, 4.95),
+      ...thruster(0, 6.25),
       ...paintBase(lens(-1.3, -1, 5.1, 1.05, 3.9, "L"), "#d4af37"),
       ...paintBase(lens(1.3, 1, 5.1, 1.05, 3.9, "R"), "#d4af37"),
       ...paintBase(lens(0, 0, 6.5, 1.05, 4.1, "T"), "#d4af37"),
@@ -7689,8 +7728,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
       ], "#b83a2c"),
       /* 허리띠(요청: 추가) — 임자 색이다. 몸통(반지름 1.06) 둘레를 아주 살짝 밖에서
-         두르는 낮은 테라, 앞뒤 어느 각도에서도 한 줄로 읽힌다. */
-      ...tagKey(cylinderFaces3(0, -0.2, 1.12, 0.42, 3.05), depthNow(0, -0.2) + 0.6),
+         두르는 낮은 테라, 앞뒤 어느 각도에서도 한 줄로 읽힌다.
+         ★ 안 보이던 까닭(지적: "허리띠가 안보여") — 깊이 키를 손으로 +0.6으로 줬는데,
+         몸통 원기둥의 키는 cylinderFaces3가 매기는 depthNow + min(h, r) = +1.06이다.
+         띠가 몸통보다 **먼저** 그려져 통째로 덮였다.
+         원기둥으로 그려도 안 된다 — cylinderFaces3의 실루엣은 '위 타원 + 벽 + 아래 타원'을
+         한 덩이로 닫은 경로라, 높이가 낮으면 통째로 원판이 된다(실측: 가슴을 덮는 파란
+         원). 띠는 **벽만** 그려야 한다. 세운 다각기둥에서 뚜껑을 빼면 그것이 벽이다. */
+      ...tagKey(prismZFaces(
+        Array.from({ length: 16 }, (_, i) => {
+          const a = (i / 16) * Math.PI * 2;
+          return [Math.cos(a) * 1.13, -0.2 + Math.sin(a) * 1.13] as [number, number];
+        }), 3.0, 0.5, false,
+      ), depthNow(0, -0.2) + 1.3),
       /* 헬멧은 원시 구다(요청: "헬멧은 구형 원시 도형 사용으로 변경") — 반구(domeFaces3)는
          밑이 잘려 어깨 위에 얹힌 '그릇'으로 읽혔다. sphereFaces3는 중심만 투영하고
          반지름은 화면 원이라 어느 요잉에서도 동그랗고, 광택·그늘이 세계 광원과 같은
@@ -7705,9 +7755,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          테두리만 초승달로 남는다 — 곧 뒤통수 절반을 감싼 껍데기다. 반구 프리미티브를
          쓰지 않는 까닭은 앞선 지적 그대로다(밑이 잘려 '그릇'으로 보인다). */
       ...tagKey(sphereFaces3(0, -0.44, 4.22, 0.93, "#a5342a"), depthNow(0, -1.6)),   // 파이어뱃 — 붉은 뒤껍데기
-      // 두 팔(요청) — 어깨에서 건틀릿 뿌리로. **상완은 임자 색**이라 안 칠한다(요청).
-      ...hornFaces(-1.45, -0.2, 4.9, -1.4, 0.6, 3.2, 0.64),
-      ...hornFaces(1.45, -0.2, 4.9, 1.4, 0.6, 3.2, 0.64),
+      /* 두 팔(요청) — 어깨에서 건틀릿 뿌리로. **상완은 임자 색**이라 안 칠한다(요청).
+         뿌리 높이 4.9 → 3.9(지적: "팔뚝 위가 어깨보다 높네 높이 맞춰주고") — 어깨뽕은
+         반구(중심 z 3.6, 높이 0.85)라 꼭대기가 4.45다. 팔이 4.9에서 나오니 어깨 위로
+         반 타일이 솟아, 등 연료통 옆으로 파란 뿔 둘이 튀어나와 보였다. 어깨 밑에서
+         나오게 내리면 어깨가 뿌리를 덮는다(마린도 3.7이다). */
+      ...hornFaces(-1.45, -0.2, 3.9, -1.4, 0.6, 3.2, 0.64),
+      ...hornFaces(1.45, -0.2, 3.9, 1.4, 0.6, 3.2, 0.64),
       // 화염 건틀릿 두 팔.
       // 앞으로 더 내민 화염 건틀릿(지적: 총구가 앞을 향하게).
       ...paintBase(tubeFaces(-1.4, 0.4, -1.4, 2.2, 0.42, 2.9, true), GUNMETAL),
