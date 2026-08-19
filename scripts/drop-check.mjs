@@ -180,7 +180,13 @@ for (const path of files) {
       + ` · 승객 자리가 수송선 ${board.riderTrans} · 생애 못 찾음 ${board.noLife}`
       + ` · 승객 정체가 수송선 ${board.isTrans} · **하차 기록 없음 ${board.noDrop}** → 통과 ${board.pass}`);
   }
-  console.log(`  탑승 구간이 닫힌 방식 — 하차 ${byOff.length}건 · 제 명령 ${byOwn.length}건 · 끝내 안 닫힘 ${open.length}건`);
+  {
+    /* 못 내린 승객이 어떻게 끝나나 — 배가 격추되면 함께 죽어야 한다(원작). 아무 일도
+       없으면 화면에서 조용히 사라지고 인구 셈에만 남아, 애먼 합성이 대신 물린다. */
+    const sunk = open.filter((s2) => s2.e.d !== null && s2.e.d !== undefined).length;
+    console.log(`  탑승 구간이 닫힌 방식 — 하차 ${byOff.length}건 · 제 명령 ${byOwn.length}건`
+      + ` · 끝내 안 닫힘 ${open.length}건(그중 배와 함께 죽은 것 ${sunk}건)`);
+  }
   console.log(`  태우고 내릴 때까지(하차로 닫힌 것) 중앙값 ${med(byOff.map((s) => Math.round(s.to - s.from)))}초`
     + ` · 제 명령으로 닫힌 것 중앙값 ${med(byOwn.map((s) => Math.round(s.to - s.from)))}초`);
   {

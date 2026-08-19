@@ -15406,7 +15406,11 @@ export default function ReplayMotionPlayer({
              따라잡는 몫이라, 이보다 크면 다시 '순간적으로 빨라짐'이 된다.
              드랍·리콜은 예외 — 원작에서도 순간이동이다. 수송 구간 앞뒤 여유를 두어
              하차 자리로 제때 나타나게 하고, 리콜은 같은 임자의 시전 전후 창으로 뺀다. */
-          const ridingNow9 = e.rides.some(([ra9, rb9]) => t >= ra9 - 1 && t < rb9 + 2);
+          /* 순간이동 면제는 **내릴 때만**이다(요청: 수송선 타고 내림 완벽히) — 타러 가는
+             것은 제 발로 걷는 일이라 걸음 상한을 그대로 받아야 한다. 여태 승선 1초
+             전부터 상한을 풀어, 배에서 멀리 있던 유닛이 마지막 1초에 날아가 탔다.
+             하차는 원작에서도 순간이동이라 뒤쪽 여유(+2초)는 그대로 둔다. */
+          const ridingNow9 = e.rides.some(([ra9, rb9]) => t >= ra9 && t < rb9 + 2);
           const recallNow9 = castsSrc.some(([cs9, , , tech9, craw9]) =>
             tech9 === "Recall" && craw9 === e.raw && t >= cs9 - 1 && t <= cs9 + 4);
           const vCap9 = ridingNow9 || recallNow9

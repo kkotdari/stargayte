@@ -4039,6 +4039,53 @@ const BLD_DIE_SLACK_SEC = 8;
     });
   }
 
+  /* ── 배와 함께 가라앉는다 ────────────────────────────────────────────────────
+     못 내린 채 배 안에 남는 승객이 있다(실측 26081222134400: 승선 49건 중 10건).
+     하차 명령이 리플레이에 없는 드랍이 흔하기 때문인데 — 그 배가 격추당했으면 승객도
+     함께 죽은 것이다. 여태는 그 승객이 죽지도 나타나지도 않고 영영 배 안에 남아,
+     화면에서는 조용히 사라지고 인구 셈에서는 끝까지 살아 있었다(그만큼 애먼 합성
+     개체가 인구 상한에 물려 대신 죽었다).
+     승선의 임자(배)는 증거가 이미 들고 있다(f=12의 다섯째 칸이 배 태그다). 그 배가
+     죽은 시각을 승객의 죽음으로 준다 — 더 일찍 죽은 승객은 제 죽음을 지킨다.
+     죽는 장면은 안 그려진다(그리면 안 된다): 재생기는 탑승 구간 동안 마커를 숨기고,
+     그 판정이 사망 효과보다 앞에 있어 배 안에서 죽은 승객은 그대로 사라진다 —
+     원작에서도 수송선이 터지면 승객은 나오지 않고 함께 죽는다.
+     인구 모형보다 **앞서** 돌아야 한다 — 인구가 이 죽음을 알고 세야 허수가 안 는다. */
+  {
+    const bornSort = new Map<number, typeof ents>();
+    for (const e of ents) {
+      const arr = bornSort.get(e.t) ?? [];
+      arr.push(e);
+      bornSort.set(e.t, arr);
+    }
+    for (const arr of bornSort.values()) arr.sort((a, b) => a.b - b.b);
+    /** 그 시각에 그 태그를 쓰던 개체 — 태그는 재사용된다. */
+    const hostAtE = (tag: number, at: number): (typeof ents)[number] | null => {
+      const arr = bornSort.get(tag);
+      if (!arr) return null;
+      let f: (typeof ents)[number] | null = null;
+      for (const e of arr) { if (e.b <= at + 1) f = e; else break; }
+      return f;
+    };
+    for (const e of ents) {
+      if (e.bld) continue;
+      /* 못 내린 승선 — 마지막 승선 뒤에 하차가 없다. */
+      let last12: UnitEv | null = null;
+      for (const v of e.ev) {
+        if (v[3] === 12) last12 = v;
+        else if (v[3] === 13) last12 = null;
+      }
+      if (!last12) continue;
+      const ht = (last12[4] as number | undefined) ?? 0;
+      if (!ht) continue;
+      const host = hostAtE(ht, last12[0]);
+      if (!host || host.d === null || host.d === undefined) continue;
+      if (e.d !== null && e.d !== undefined && e.d <= host.d) continue;
+      e.d = Math.round(host.d);
+      e.dk = "atk";
+    }
+  }
+
   /* ── 인구는 우리가 지어낸 개체의 상한이다 (지적: "생산·죽음 반영한 인구 모델은 어때") ──
      합성 개체(원장에는 있는데 태그가 한 번도 안 잡힌 유닛)는 **죽음 판정이 없다** —
      실측으로 한 프로토스의 합성 76기 중 죽은 것으로 잡힌 것이 0기였고(진짜 개체는 41%가
