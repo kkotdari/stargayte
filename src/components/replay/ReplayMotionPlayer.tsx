@@ -11749,7 +11749,13 @@ export function ShapeIcon({
      굽어 갈무리한다. 위쪽을 봐도 높이는 늘 위를 향한다. */
   const resolved = facesOverride
     ? { faces: facesOverride, rot: SHAPE_ROT[kind] ?? 0 }
-    : resolveShapeFaces(kind, rotDeg, flat, viewYaw, pitchView);
+    /* 방향을 안 주면 지도의 기본 자세다(요청: "도록에도 지도에 나오듯 +45도 요잉된
+       상태로 기본값을 보여줘") — 여태 도록은 rotDeg 없이(요잉 0) 굽고 지도는 45도로
+       굽어, 같은 모델이 두 화면에서 다른 각으로 섰다. 모델을 고칠 때마다 "도록에서
+       본 앞면이 지도에서는 어디로 가지"를 머리로 환산해야 했고, 그 환산이 이 세션의
+       요잉 왕복을 낳았다. 이제 도록이 곧 지도의 자세다 — 방향을 명시한 자리(유닛
+       마커의 진행 방향, 뷰어의 요잉 손잡이)는 준 값을 그대로 쓴다. */
+    : resolveShapeFaces(kind, rotDeg ?? BUILDING_BASE_YAW, flat, viewYaw, pitchView);
   const faces = resolved.faces;
   const rot = resolved.rot;
   /* 잉크 상자 — 칠해진 패스를 다 훑어 합집합을 낸다. 선 굵기·둥근 마감이 살짝 넘치므로
