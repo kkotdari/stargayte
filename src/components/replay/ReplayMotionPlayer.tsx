@@ -1227,7 +1227,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        돔 밑을 받침(5.4)보다 좁은 4.9로 잡은 것은 사진처럼 둘레에 테두리 갑판을
        남기기 위해서다 — 아래 입구 구조물과 그릇들이 그 갑판 위에 앉는다. */
     const DOME_Z = HULL_Z + 1.22;   // 받침 윗면 = 돔 밑
-    const T1_H = 2.22;        // 2층 기둥 높이 — 2.78에서 20% 낮췄다(요청)
+    /* 2층 기둥 높이 — 2.78에서 20% 낮췄던 것(요청)을 2.75로 되돌린다(지적: "커맨드는
+       뭔가 모델링이 잘못됐나 안커보여"). 실측이 그 낮춤의 대가를 보여 준다: 커맨드의
+       높이/폭이 0.75로 도록에서 가장 납작한 축이고(배럭 1.10·아머리 1.25), 넓적한
+       실루엣은 폭을 아무리 키워도 '큰 건물'로 안 읽힌다. 낮은 돔이 좋았다면 이 한 줄만
+       도로 2.22로 내리면 된다. */
+    const T1_H = 2.75;
     const T1_RB = 4.9;        // 아랫단 밑 반지름
     const T1_RT = 3.55;       // 아랫단 잘린 윗 반지름
     /* 아래쪽을 더 수직에 가깝게(요청) — 폭을 그대로 쥐는 구간(hold)을 늘리고 taper를
@@ -1256,7 +1261,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...tagKey(paintBase(spirePillar({
       /* 3층은 절반쯤에서 싹 잘린 토막이다(요청) — 뾰족하게 모으지 않고 넓은 윗면을
          그대로 남겨, 그 위에 앉는 관제 모듈의 받침이 되게 한다. */
-      x: 0, y: 0, z0: T2_Z, h: 0.85, w: T1_RT - 0.45, tipW: 2.28,
+      // 3층도 함께 올린다(0.85 → 1.05) — 2층만 키우면 위가 눌린 비율이 된다.
+      x: 0, y: 0, z0: T2_Z, h: 1.05, w: T1_RT - 0.45, tipW: 2.28,
       segs: 3, sides: 14, hold: 0.08, taper: 0.62, caps: "top",
     }), SILVER), 8));
 
@@ -8442,8 +8448,8 @@ const UNIT_SIZE_TUNE: Partial<Record<keyof typeof UNIT_BW_RAW, number>> = {
   gunner: 0.85, fbat: 0.85, ghost: 0.85, inf: 0.85,
   zealot: 0.85, dtemp: 0.85, htemp: 0.85,
   corsair: 0.85,
-  mine: 0.8, observer: 0.68,
-  arbiter: 1.2, defiler: 1.2, ultra: 1.35,
+  mine: 0.8, observer: 0.68, scourge: 0.7,
+  arbiter: 1.2, defiler: 1.2, ultra: 1.5,
 };
 /** ③-c 전체 배수 — "다 조금 크게/작게"를 한 값으로. */
 const UNIT_SIZE_GLOBAL: number = 1;
@@ -9029,10 +9035,13 @@ const BLD_ANCHOR_CACHE = new Map<string, [number, number]>();
    (요청: "넥서스 해처리 커맨드는 예외로 더 크게, 실제 게임처럼") — 원작에서도 이 셋의
    그림은 4×3 발자국을 넘어 앉는다. 레어·하이브는 해처리의 다음 단계라 같은 몫이다. */
 export const BLD_FILL_TARGET: Record<string, number> = {
-  /* 커맨드(tomb)를 두 번에 걸쳐 키운다(요청: "확대 커맨드"가 두 번) — 1.2 → 1.4 → 1.6.
-     본진 셋 중 커맨드만 유독 납작해 보이던 자리다. 넥서스·해처리 계열은 1.2 그대로라,
-     이제 커맨드가 본진 셋 가운데 가장 큼직하게 앉는다. */
-  tomb: 1.6, pyramidWide: 1.2, hatchery: 1.2, lair: 1.2, hive: 1.2,
+  /* 커맨드는 1.2로 되돌린다(요청: "1.2로 내리고 모델링쪽 봐봐") — 채움을 1.4·1.6으로
+     올려도 "안 커보여"가 그대로였다. 실측을 보면 이유가 있다: 커맨드의 잉크는 이미
+     도록에서 가장 넓은데(적용 후 폭 25.4로 넥서스 22.2·배럭 14.2보다 크다) **높이/폭이
+     0.75로 유독 납작하다**(배럭 1.10 · 아머리 1.25 · 해처리 0.96). 넓적한 것은 아무리
+     넓혀도 '큰 건물'이 아니라 '넓은 접시'로 읽힌다 — 손잡이가 아니라 모델의 몫이라
+     아래 tomb 모델의 돔 키를 올렸다. */
+  tomb: 1.2, pyramidWide: 1.2, hatchery: 1.2, lair: 1.2, hive: 1.2,
   /* 스타포트·게이트웨이가 제 발자국보다 좁아 보인다(지적: "일부 건물들이 실제 캔버스보다
      작게(좁게) 그려지는 느낌 … 게이트웨이 스타포트 등" · "스타포트는 안테나를 크기계산
      에서 살짝 빼줘야하고") — 진단이 맞다. 정규화가 재는 것은 **잉크 폭 전체**라, 몸통
@@ -9040,7 +9049,12 @@ export const BLD_FILL_TARGET: Record<string, number> = {
      대신 채우면 정작 몸통은 발자국의 절반 언저리에 머문다. 부품을 골라 빼는 자를 새로
      만드는 대신, 이 표가 원래 그 손잡이다(풀 1.3·파일런 1.425와 같은 자리): 목표를
      올려 몸통이 발자국을 채우게 하고 가는 팔은 조금 넘치게 둔다. */
-  plane: 1.12, gate: 1.1,
+  plane: 1.12,
+  /* 프로토스 쪽이 한 무리로 작게 보인다(지적: "아카이브 트리뷰널 비콘 스타게이트
+     게이트웨이 어시밀 작게 모델링된듯") — 여섯 다 몸이 가늘거나 속이 빈 형태라(아치·
+     기둥·고리), 잉크 폭을 발자국의 95%에 맞춰도 눈에 잡히는 덩어리는 그 절반이다.
+     같은 무리를 같은 몫으로 올린다 — 스타게이트(arch)만 상자 상한이 낮아 덜 오른다. */
+  gate: 1.25, archives: 1.15, tribunal: 1.15, fleetbeacon: 1.15, arch: 1.15, assim: 1.15,
   /* 스포닝 풀이 너무 작게 나온다(지적) — 이 모델은 바닥 크립 얼룩(반지름 6.8)이
      16-상자를 거의 가득 채워, 채움 보정이 '이미 큰 건물'로 재고 몸을 도로 줄였다.
      실제로 보이는 웅덩이·두렁은 상자의 절반쯤뿐이다. 목표 채움을 올려 몸을 키운다. */
@@ -9076,10 +9090,10 @@ export const BLD_FILL_TARGET: Record<string, number> = {
  *  표에 없는 종류는 1(모델 그대로)이다. */
 export const BLD_NORM: Record<string, number> = {
   academy: 1.408,
-  arch: 1.556,
-  archives: 1.991,
+  arch: 1.883,
+  archives: 2.275,  // 상자 상한에 걸림
   armory: 1.452,
-  assim: 1.709,
+  assim: 2.069,
   cavern: 1.082,
   citadel: 1.749,
   cocoon: 1.756,
@@ -9097,9 +9111,9 @@ export const BLD_NORM: Record<string, number> = {
   evo: 1.214,
   extract: 0.991,
   factory: 1.063,
-  fleetbeacon: 1.711,
+  fleetbeacon: 2.071,
   forge: 1.398,
-  gate: 1.742,
+  gate: 1.979,
   geyser: 1.513,
   gspire: 1.195,
   hatchery: 1.367,
@@ -9124,10 +9138,10 @@ export const BLD_NORM: Record<string, number> = {
   spire: 1.450,
   spore: 1.422,
   sunken: 1.072,
-  tomb: 2.033,  // 상자 상한에 걸림
+  tomb: 1.531,
   tombFlat: 1.140,
   trapezoid: 1.514,
-  tribunal: 1.615,
+  tribunal: 1.954,
   turret: 1.608,
   warpin: 2.038,
 };
@@ -10180,9 +10194,19 @@ export function ShapeIcon({ kind, className, faces: facesOverride, rotDeg, flat,
           몸 3.74타일 : 저글링 1.75타일로 2.1배 다르고, ② 도록은 base 모드(사선), 지도
           기본은 top 모드라 같은 모델도 −9.1%(스카웃) ~ +15.1%(변태고치)로 어긋난다.
           표에 없는 종류(건물·핵 등)는 1이라 아무 일도 안 일어난다. */}
+      {/* ★ 건물 정규화(BLD_NORM)도 여기서 태운다(지적: "지도 크기 끄면 다 크기가
+          똑같아야하는거지") — 여태 이 자리는 유닛 표(MODEL_NORM)만 봤고 건물은 배수 1로
+          떨어졌다. 그래서 도록은 건물을 **정규화 전 날것**으로 보여 주고 있었다: 실측으로
+          날것의 잉크 폭이 6.79~18.15로 2.67배 벌어져 있으니, 도록에서 "이 건물은 작게
+          모델링됐다"고 보이던 것 중 상당수가 실은 지도에서는 정규화로 이미 채워지고
+          있었다는 뜻이다. 이제 도록과 지도가 같은 배수를 본다.
+          축도 지도와 같다 — 유닛은 상자 한가운데(8,8), 건물은 발 가운데(8,16)에서 키운다
+          (buildingSprite가 쓰는 그 축이다). */}
       <g transform={[
         rot ? `rotate(${rot} 8 8)` : "",
         modelNormOf(kind) !== 1 ? `translate(8 8) scale(${modelNormOf(kind)}) translate(-8 -8)` : "",
+        modelNormOf(kind) === 1 && (BLD_NORM[kind] ?? 1) !== 1
+          ? `translate(8 16) scale(${BLD_NORM[kind]}) translate(-8 -16)` : "",
       ].filter(Boolean).join(" ") || undefined}>
         {faces
           ? faces.map(([d, op, fill], i) => <path key={i} d={d} fill={fill ?? "currentColor"} opacity={op} />)
