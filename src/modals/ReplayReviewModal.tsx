@@ -70,7 +70,6 @@ function gameLineOf(d: ReplayDraft): string {
         + `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`);
     }
   } else if (d.date) parts.push(d.date);
-  if (d.mapName) parts.push(d.mapName);
   if (d.durationSeconds != null) {
     parts.push(`${Math.floor(d.durationSeconds / 60)}분 ${String(d.durationSeconds % 60).padStart(2, "0")}초`);
   }
@@ -435,7 +434,11 @@ export default function ReplayReviewModal({
                     ))}
 
                     {/* 언제 시작해 얼마나 걸린 무슨 경기였나(요청: 게임정보). */}
-                    <div className="scr-replay-review-game">{gameLineOf(d)}</div>
+                    <div className="scr-replay-review-game">
+                      {gameLineOf(d)}
+                      {/* 맵 이름은 한 단 작고 흐리게(요청) — 리플레이명·참가자가 먼저다. */}
+                      {d.mapName ? <span className="scr-replay-review-map">{d.mapName}</span> : null}
+                    </div>
 
                     {/* (삭제) 요약 문단 미리보기 — 검토창에서는 뺐다(요청). 이 창이 답할
                         물음은 "그냥 등록해도 되나" 하나이고, 열 몇 줄짜리 문단은 그 물음과

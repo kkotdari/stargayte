@@ -5359,7 +5359,23 @@ html.scr-page-bg.scr-page-bg-light.scr-light-theme .scr-main::before {
 }
 .scr-replay-review-why-error { color: var(--loss); }
 .scr-replay-review-game {
-  font-size: var(--fs-micro); color: var(--muted); font-variant-numeric: tabular-nums;
+  /* 정보가 많은 창이라 한 단 더 작게(요청: 텍스트 크기 축소). */
+  font-size: var(--fs-10); color: var(--muted); font-variant-numeric: tabular-nums;
+}
+/* 맵 이름(요청: 리플레이명·참가자가 중요하니 맵은 상대적으로 줄여도 된다) — 같은 줄
+   끝에 한 단 더 작고 흐리게 붙는다. */
+.scr-replay-review-map { font-size: var(--fs-9); color: var(--dim); margin-left: 6px; }
+/* 리플레이명은 이 창에서 가장 먼저 읽혀야 한다(요청: 잘 보이게) — 한 단 키운다. */
+.scr-replay-review-head .scr-replay-mapping-row-name { font-size: var(--fs-body); }
+/* 나머지 곁글(사유·힌트)은 한 단 작게 — 줄 수가 많아 이 창이 빽빽하다(요청). */
+.scr-replay-review-why, .scr-modal-match .scr-hint { font-size: var(--fs-9); }
+/* 모바일 액션 줄이 떠 있는 탭바에 가렸다(지적: 재분석 모달 버튼이 탭바에 가려짐) —
+   이 창만 전체화면(100dvh)이라 푸터가 화면 맨 아래, 곧 탭바 자리에 앉는다. 탭바
+   높이와 그 띄운 몫만큼 내려 깔아 버튼이 늘 탭바 위로 온다. */
+@media (max-width: 1159px) {
+  .scr-modal-match .scr-form-actions {
+    padding-bottom: calc(var(--mobile-footer-h, 69px) + var(--scr-float-bottom, 6px) + 10px);
+  }
 }
 
 /* 승패 선택 — 리플레이가 승자를 못 가려낸 행에만 나온다. 목록이라 행마다 버튼을 다 깔면
