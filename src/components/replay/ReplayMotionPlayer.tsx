@@ -4310,10 +4310,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        윗 뚜껑이 배 높이에 접시 같은 턱으로 삐져나와 못 쓴다 — 내려다보는 시점이라 가장
        굵은 자리 아래는 어차피 제 배에 가려 안 보이니, 한 기둥이면 족하다. 발치 금 테가
        바닥에서 병굽 노릇을 하고, 목에 두른 테가 두건 앉을 자리를 끊어 준다. */
+    /* 배가 둥근 진짜 물병으로(지적: "아둔도 아래기둥이 동그란 살짝 긴 물병모양임") —
+       한 기둥으로는 굵기가 밑에서 위로 **줄기만** 해서, 굽에서 배까지 곧게 벌어진
+       원뿔이 됐다. 기둥 둘을 이음매에서 **같은 굵기(2.85)로 맞물려** 세우면 아래는
+       좁은 굽에서 배로 부풀고 위는 배에서 목으로 오므라든다 — 그 둘이 만나 둥근 배가
+       난다. 예전 주석이 겹치기를 포기한 것은 넓은 쪽을 아래에 두어 윗 뚜껑이 접시처럼
+       삐져나왔기 때문이고, 굵기를 맞물리면 그 턱이 안 생긴다.
+       배를 3.0 → 2.85로 줄여 같은 키에서 조금 더 길쭉해 보이게 했고, 꼭대기(4.2)는
+       그대로라 목테·두건·뿔은 한 톨도 안 움직인다. */
     const flask: ShapeFace[] = [
       ...spirePillar({
-        x: 0, y: 0, z0: 0.1, h: 4.1, w: 3, tipW: 0.95,
-        segs: 11, sides: 16, hold: 0.22, taper: 2.4,
+        x: 0, y: 0, z0: 0.1, h: 1.75, w: 1.75, tipW: 2.85,
+        segs: 7, sides: 16, hold: 0.05, taper: 1.4, caps: "bottom",
+      }),
+      ...spirePillar({
+        x: 0, y: 0, z0: 1.85, h: 2.35, w: 2.85, tipW: 0.95,
+        segs: 9, sides: 16, hold: 0.1, taper: 2.2, caps: "none",
       }),
       ...paintBase(cylinderFaces3(0, 0, 1.2, 0.25, 3.6), "#8a6f2a"),
     ];
@@ -4653,15 +4665,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const out: ShapeFace[] = [...tagKey(creepSplat(6.2), -20)];
     /* 살덩이 엽 둘 — 볼록한 종 모양 기둥. 개인색이라 fill을 주지 않는다. */
     const lobe = (lx9: number, ly9: number, r9: number, h9: number): void => {
-      out.push(...tagKey(spirePillar({
-        x: lx9, y: ly9, z0: 0, h: h9, w: r9, tipW: r9 * 0.42,
-        segs: 7, sides: 12, hold: 0, taper: 0.55,
-      }), depthNow(lx9, ly9) * 1.6));
-      /* 결절 — 엽 표면에 박힌 잿빛 눈알 여섯. 옆선 위에 정확히 앉힌다. */
-      const lobeR = (t9: number): number => r9 * 0.42 + r9 * 0.58 * (1 - t9) ** 0.55;
+      /* 장기(심장) 같은 둥근 덩이다(지적: "지금처럼 바위모양이 아니라 장기(심장) 같은
+         둥근 모양") — 여태 taper 0.55짜리 종 모양 기둥이라 옆선이 곧게 내려와 바위
+         덩어리로 보였다. 둥근 돔 둘을 겹쳐, 아래는 넓게 부풀고 위는 한 뼘 작은 봉우리가
+         얹히는 실루엣을 낸다 — 곧 위가 살짝 잘록한 염통 꼴이다. */
+      out.push(...tagKey([
+        ...domeFaces3(lx9, ly9, r9, h9 * 0.74, 0),
+        ...domeFaces3(lx9, ly9 - r9 * 0.12, r9 * 0.74, h9 * 0.46, h9 * 0.48),
+      ], depthNow(lx9, ly9) * 1.6));
+      /* 결절 — 엽 표면에 박힌 잿빛 눈알 여섯. 옆선 위에 정확히 앉힌다.
+         옆선이 이제 원이므로 반지름도 원의 식(√(1−t²))을 따른다. */
+      const lobeR = (t9: number): number =>
+        r9 * Math.sqrt(Math.max(0.1, 1 - (t9 / 0.8) ** 2));
       for (const [ang, t9, nr9] of [
-        [-140, 0.28, 0.42], [-70, 0.5, 0.36], [-10, 0.3, 0.4],
-        [55, 0.55, 0.32], [120, 0.34, 0.38], [175, 0.6, 0.3],
+        [-140, 0.24, 0.42], [-70, 0.44, 0.36], [-10, 0.26, 0.4],
+        [55, 0.48, 0.32], [120, 0.3, 0.38], [175, 0.52, 0.3],
       ] as [number, number, number][]) {
         const a9 = (ang * Math.PI) / 180;
         const dxr = Math.sin(a9);
