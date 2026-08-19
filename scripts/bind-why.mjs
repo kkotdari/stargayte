@@ -219,17 +219,19 @@ for (const path of files) {
   for (const p of players) {
     const P = P2.get(p.id) ?? new Map();
     const N = N2.get(p.id) ?? new Map();
+    /* ★ 어긋난 사람만 더하면 총량이 아니다(이 자의 결함이었다 — 마린 '뽑음 192'가
+       실은 어긋난 사람들의 합이고, 진짜 Train은 229건이었다). 총합을 그대로 더하고
+       어긋난 몫은 따로 센다. */
     for (const k of new Set([...P.keys(), ...N.keys()])) {
       const a = Math.max(0, P.get(k) ?? 0);
       const b = N.get(k) ?? 0;
-      if (a === b) continue;
-      const g = gap.get(k) ?? { prod: 0, ent: 0 };
-      g.prod += a; g.ent += b;
+      const g = gap.get(k) ?? { prod: 0, ent: 0, off: 0 };
+      g.prod += a; g.ent += b; g.off += Math.abs(a - b);
       gap.set(k, g);
     }
   }
-  const rows = [...gap.entries()].map(([k, g]) => [k, g.prod, g.ent, g.ent - g.prod])
-    .sort((x, y) => Math.abs(y[3]) - Math.abs(x[3]));
+  const rows = [...gap.entries()].map(([k, g]) => [k, g.prod, g.ent, g.ent - g.prod, g.off])
+    .sort((x, y) => y[4] - x[4]);
   /* ── 합성 개체의 삶 — 인구 상한이 물린 것(dk="cap")이 태어나 얼마 만에 물렸나.
      곧바로 물린다면 그 원장은 애초에 유닛이 안 된 것이다(인구 막힘·취소를 우리가 못
      걸렀다는 뜻). 한참 살다 물린다면 원장은 옳고 죽음을 못 본 것뿐이다. */
@@ -246,9 +248,9 @@ for (const path of files) {
   console.log("    인구가 물린 정체 앞 8종: "
     + [...capBy.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, n]) => `${k}×${n}`).join(" "));
 
-  console.log("  ── 뽑은 수 vs 붙은 수 (어긋난 정체 앞 10종)");
-  for (const [k, a, b, dd] of rows.slice(0, 10)) {
+  console.log("  ── 뽑은 수 vs 붙은 수 (사람별 어긋남이 큰 정체 앞 10종)");
+  for (const [k, a, b, dd, off] of rows.slice(0, 10)) {
     console.log(`     ${String(k).padEnd(24)} 뽑음 ${String(a).padStart(5)} · 개체 ${String(b).padStart(5)}`
-      + ` · ${dd > 0 ? "개체가" : "원장이"} ${String(Math.abs(dd)).padStart(4)} 많다`);
+      + ` · 총차 ${dd > 0 ? "+" : ""}${String(dd).padStart(4)} · 사람별 어긋남 합 ${String(off).padStart(4)}`);
   }
 }
