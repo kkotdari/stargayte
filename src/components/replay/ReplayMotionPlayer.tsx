@@ -3267,9 +3267,21 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        가시가 나가는 타이밍에만 이 판을 쓰므로(SHAPE_BUILDERS.sunkenfire), 평소 모습과
        실루엣이 어긋나 건물이 들썩이는 일이 없다. */
     if (sunkenFire) {
+      /* 더 통통하고 두 배 길게, 위로 솟았다 아래로 휘는 활 모양(요청) — leanY·curveY로는
+         z가 t에 정비례해 곧게만 오르므로, 등뼈를 직접 그린다: y는 앞으로 곧게 나가고
+         z는 위로 볼록한 포물선(솟았다 내려온다). 이 활이 성큰의 촉수가 표적을 향해
+         휘둘리는 그 순간의 모양이다. */
+      const TL = 6.6;     // 앞으로 뻗는 거리
+      const TUP = 11;     // 솟는 몫
+      const TDN = 10;     // 내려앉는 몫(t²) — TUP보다 작아 끝이 처음보다는 높다
       out.push(...tagKey(paintBase(spirePillar({
-        x: 0.25, y: -0.15, z0: 3.4, h: 4.4, w: 0.6, tipW: 0.14,
-        segs: 9, sides: 8, hold: 0.04, taper: 1.25, leanY: 1.5, curveY: 1.8,
+        /* 굵기는 끝에서만 준다(사진) — taper 1.25는 밑동부터 곧장 가늘어져 활이 아니라
+           채찍이 됐다. 0.7이면 몸통 대부분이 통통하게 남고 마지막 한 뼘에서만 뾰족해진다. */
+        x: 0.25, y: -0.15, h: 1, w: 1.15, tipW: 0.26,
+        segs: 12, sides: 8, hold: 0.15, taper: 0.7,
+        path: (t9: number): [number, number, number] => [
+          0.25, -0.15 + TL * t9, 3.4 + TUP * t9 - TDN * t9 * t9,
+        ],
       }), "#b5713a"), 13));
     }
     // 등 검은 가시들 — 몸 옆선 위에 돋는다.
