@@ -8969,6 +8969,8 @@ type UnitDrawOp = {
   pickBld?: boolean;
   /** 지금 무슨 상태인가(요청: 건설·변태 등 모든 상태 노출) — 툴팁 첫 줄에 그대로 뜬다. */
   pickState?: string;
+  /** 걸려 있는 마법(키) — 팝업이 그 효과와 색까지 적는다. */
+  pickStatus?: string;
 };
 /* 구운 판의 실제 바닥(재재지적: 드론·해처리가 떠 있고 그림자가 이상하다) — 상자
    바닥 기준 어림은 모델이 상자를 다 안 채우면(해처리 둔덕 등) 그림자가 발보다 한참
@@ -10234,6 +10236,16 @@ const STATUS_TINT: Record<string, string> = {
 const STATUS_KO: Record<string, string> = {
   ensnare: "인스네어", plague: "플레이그", stasis: "스테이시스",
   mael: "마엘스트롬", lock: "락다운", irr: "이레디에이트",
+};
+/** 그 마법이 지금 이 몸에 하는 일(요청: 마법 걸린 상태도 피해나 상승 오라도 표시) —
+ *  글과 색까지. 피해를 주는 것은 붉게, 묶는 것은 보라, 늦추는 것은 청록이다. */
+const STATUS_FX: Record<string, { fx: string; col: string }> = {
+  plague: { fx: "지속 피해(체력 1까지)", col: "#e0705a" },
+  irr: { fx: "지속 피해 + 곁 아군까지", col: "#e8c84a" },
+  ensnare: { fx: "이동·공격 속도 저하", col: "#79c74c" },
+  stasis: { fx: "무적·행동 불가", col: "#69b7e8" },
+  mael: { fx: "행동 불가(생체)", col: "#a86ae0" },
+  lock: { fx: "행동 불가(기계)", col: "#c8c8d2" },
 };
 /** 디텍터(전수조사: 투명화 카운터) — 이들이 곁에 있으면 은신이 벗겨진다. */
 const DETECTOR_UNITS = new Set(["Overlord", "Observer", "Science Vessel"]);
@@ -15162,6 +15174,10 @@ export default function ReplayMotionPlayer({
             pickKey: `u${e.tag}`, pickName: e.unit, pickRaw: e.raw,
             /* 지금 무슨 상태인가(요청: 모든 상태 노출) — 땅속·은신·얼음·전투까지, 몸이
                이미 아는 것을 글로 옮긴다. 없으면 상태 줄을 안 적는다. */
+            pickStatus: (() => {
+              const a4 = e.statuses.find(([sa5, sb5]) => t >= sa5 && t < sb5);
+              return a4 ? a4[2] : undefined;
+            })(),
             pickState: (() => {
               const st: string[] = [];
               if (burrowed) st.push("땅속");
@@ -15725,6 +15741,16 @@ export default function ReplayMotionPlayer({
               </span>
             </div>
           );
+          /* 걸린 마법은 제 줄에 효과까지(요청) — 무엇에 걸렸는지보다 '그래서 어떻게
+             되는가'가 읽는 사람이 알고 싶은 것이다. */
+          if (op.pickStatus && STATUS_FX[op.pickStatus]) {
+            const sfx = STATUS_FX[op.pickStatus];
+            lines.push(
+              <div className="scr-motion-info-line" key="fx" style={{ color: sfx.col }}>
+                {`${STATUS_KO[op.pickStatus] ?? op.pickStatus} — ${sfx.fx}`}
+              </div>,
+            );
+          }
           if (op.pickState) {
             // 건설·변태도 글 대신 칸 바로(요청).
             const m9 = /(\d+)%$/.exec(op.pickState);
