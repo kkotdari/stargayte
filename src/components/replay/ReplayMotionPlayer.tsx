@@ -50,7 +50,7 @@ import {
   domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces,
   halfSphereFaces3, prismYFaces, prismZFaces, pyramidFaces3,
   screenCircle, sphereFaces3, tubeFaces,
-  wallDiscPath, withPitchView, withTopView, withViewShear, withYaw, zsorted,
+  wallDiscPath, withPitchView, withSpin, withTopView, withViewShear, withYaw, zsorted,
 } from "../../utils/shapeOblique";
 import { TEAM_COLOR, type MinimapMarker } from "./ReplayMinimap";
 
@@ -1763,7 +1763,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   },
   /* 서플라이(단순화, 지적) — 본체 상자 + 지붕 큰 회전 통풍구 + 앞면의 더 큰 둥근 팬
      둘 + 왼앞 줄무늬 차단바. 잔장식(등판·캐니스터·탱크)은 걷어냈다. */
-  trapezoid: () => {
+  trapezoid: () => withSpin(-90, () => {
     /* 서플라이 디포(재작도·사진) — 검회색 장갑 상자다. 지붕 뒤에 드럼통 하나가 서고,
        지붕 가운데와 앞면 두 곳에는 환풍구가 뚫린다. 왼쪽 지붕에는 은빛 보급 상자 줄과
        그 아래 초록 발광, 왼쪽 옆면에는 초록 창과 해저드 띠, 앞에는 경사로와 드럼 둘.
@@ -1943,7 +1943,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ], STEEL), depthNow(dx9, dy9) * 1.6 + 4));
     }
     return out;
-  },
+  }),
   factory: () => {
     /* 팩토리(요청·사진) — 직육면체가 아니라, 위아래 모서리를 크게 깎은 넓적한 8각
        단면을 길이 방향으로 뽑은 장갑 몸통이다. 옆면에는 패널 홈이 줄지어 파이고,
@@ -3804,7 +3804,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   },
   /* 익스트랙터(실물 참고) — 점액 받침 위 좌우 갈색 통(초록 발광 뚜껑 + 흘러내리는 힘줄
      우리)과 그 위 뿔 돋은 검은 덮개, 가운데 비스듬히 기댄 골진 붉은 애벌레 몸통. */
-  extract: () => {
+  extract: () => withSpin(135, () => {
     /* 익스트랙터(요청·사진: 뿔기둥 전면 활용) — 검은 덮개를 쓴 살덩이 통 둘이 좌우에
        서고, 통마다 옆구리를 타는 힘줄 기둥과 크게 휜 상아 뿔이 돋는다. 가운데는
        앞으로 기어 나오는 붉은 애벌레 몸통. 키는 저그 건물 공통 자(제 자리 깊이 ×
@@ -3905,7 +3905,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...tagKey(spikeHorn(1.9, 3.2, 0.4, 2.8, 4.4, 2.2, 0.8, IVORY, 6, 0.4, 0.6, 0.8),
       depthNow(2.3, 3.8) * 1.6));
     return out;
-  },
+  }),
 
   /* ── 업그레이드·테크 건물들(요청: 이제 다 만들자) ─────────────────────────── */
   /* 아카데미(전면 재작도·사진) — 어두운 강철 더미다: 왼쪽에 붉은 띠를 두른 리벳
@@ -4247,7 +4247,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   },
   /* 포지(렌더 참고 복원) — 왼앞 아치 별채, 가운데 총알 기둥 무리, 초록 배관 다발이
      오른쪽 큰 렌즈 돔으로 흘러들고, 앞오른쪽에 작은 렌즈 돔. */
-  forge: () => {
+  forge: () => withSpin(-90, () => {
     /* 포지(전면 재작도·사진) — 황금 덩치다: 오른뒤에 청록 눈이 박힌 큰 황금 돔,
        앞오른쪽에 같은 눈을 인 작은 돔, 왼쪽에 뾰족한 황금 뿔탑 셋, 그 사이를 잇는
        관 팔 넷, 앞왼쪽에 골이 진 황금 단, 붉은 띠와 은빛 발이 곳곳에 박힌다. */
@@ -4414,7 +4414,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         + Math.min(5, 0.65 * Math.abs(depthNow(1, 0)) + RIM * Math.abs(depthNow(0, 1)))));
     }
     return raceBase(out, "toss", pc);
-  },
+  }),
   /* 사이버네틱스 코어(실물 참고) — 가운데 드럼 위 파란 발광 고리, 그 뒤로 솟는 발톱
      손가락 셋, 둘레 네 포드마다 파란 구슬이 얹힌다. */
   cyber: () => {
@@ -4702,7 +4702,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 옵저버토리(전면 재작도·사진) — 바닥에 누운 황금 초승달 받침이 앞을 감싸고, 그
      위에 청록 띠를 두른 황금 기둥 셋이 솟아 청록 랜턴을 인다(가운데가 가장 높다).
      받침은 마디진 관이라 굽은 몸이 그대로 읽힌다. 랜턴 하나는 개인색이다. */
-  observatory: () => {
+  observatory: () => withSpin(270, () => {
     const GOLD = "#c9a227";
     const GOLD_D = "#8a6f2a";
     const TEAL = "#2f8f86";
@@ -4753,7 +4753,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         "#d8f7ff"] as ShapeFace], key + 2));
     });
     return raceBase(out, "toss", pc);
-  },
+  }),
   /* 플릿 비컨(리디자인, 실물 참고) — 낮고 둥근 몸 위에 큰 파란 구슬이 박히고,
      바닥에는 게발처럼 벌어지는 다리들, 왼팔 드럼 포드와 오른쪽 원반. */
   fleetbeacon: () => {
@@ -4865,7 +4865,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 에볼루션 챔버(재모델링·사진) — 결절이 박힌 큰 살덩이 엽 둘(개인색)이 앞을
      차지하고, 뒤에는 뒤틀린 검은 등걸이 가지를 뻗는다. 오른쪽에는 창백한 뼈판이
      기대고, 발치에는 검은 촉수 다발이 엉킨다. 키는 저그 공통 자(제 자리 깊이 × 1.6). */
-  evo: () => {
+  evo: () => withSpin(180, () => {
     const out: ShapeFace[] = [...tagKey(creepSplat(6.2), -20)];
     /* 살덩이 엽 둘 — 볼록한 종 모양 기둥. 개인색이라 fill을 주지 않는다. */
     const lobe = (lx9: number, ly9: number, r9: number, h9: number): void => {
@@ -4991,7 +4991,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ex9 - tx9, ey9 - ty9), depthNow(ex9, ey9) * 1.6 + 1));
     }
     return out;
-  },
+  }),
 
   /* 히드라리스크 덴(실물 참고) — 둔덕 위로 갈퀴막이 걸린 큰 돛가시들이 둘러서고,
      앞에는 마디진 꼬리가 똬리를 튼다. */
@@ -5706,9 +5706,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
 
   /* 해처리 — 둔덕 + 방사 다리 여섯(요잉을 따라 도는 것이 핵심) + 윗면 입·목띠. */
   // 띠·캐노피는 검정보다 한 단 연한 짙은 회색(재지적).
-  hatchery: () => hatcheryMoundFaces("#3a3f46"),
+  hatchery: () => withSpin(45, () => hatcheryMoundFaces("#3a3f46")),
   /* 레어 — 해처리 + 다리 끝 굽은 뿔 셋. */
-  lair: () => [
+  lair: () => withSpin(45, () => [
     // 뿔은 동굴 입구 하나 건너 하나(지적) — 다리 각 -170·-40·80의 입구에서 솟는다.
     // 뒤 입구(-170) 뿔은 둔덕이 가리도록 먼저(지적: 비쳐 보였다). 뿔은 검회색(요청).
     /* 뿔에 제 자리 깊이(지적: 가려짐) — 둔덕이 큰 반지름 키를 써서 앞쪽 뿔까지
@@ -5726,9 +5726,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       depthNow(-3.45, 4.1) * 1.6),
     ...tagKey(spikeHorn(5.3, 0.95, 1.2, 5.9, 1.1, 12.2, 2.8, "#1b1e23", 6, 1.6, 0.98, 0.17),
       depthNow(5.3, 0.95) * 1.6),
-  ],
+  ]),
   /* 하이브 — 더 길고 굵은 뿔 셋(뿔 등에 가시들, 요청) + 앞 컬. */
-  hive: () => {
+  hive: () => withSpin(45, () => {
     const out: ShapeFace[] = [];
     // 뿔은 동굴 입구 하나 건너 하나(지적) — 레어와 같은 세 입구, 더 길게.
     // 첫째(뒤 입구) 뿔은 둔덕보다 먼저 그린다(지적: 비쳐 보였다).
@@ -5777,10 +5777,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...tagKey(hornFaces(-2.6, 4.6, 0.6, -4.4, 6, 2.6, 1), depthNow(-3.5, 5.3) * 1.6));
     out.push(...tagKey(hornFaces(2.8, 4.4, 0.6, 4.6, 5.6, 2.4, 1), depthNow(3.7, 5) * 1.6));
     return out;
-  },
+  }),
   /* 스포닝 풀(입체감, 지적) — 살 테두리를 땅에서 도톰하게 올리고 앞으로 흘러내리는
      치마 벽을 달았다. 웅덩이 안쪽 뒤편엔 테두리 그늘, 위로는 마주 굽는 뼈 아치. */
-  pool: () => {
+  pool: () => withSpin(180, () => {
     /* 스포닝 풀(재작도) — 지적: "스포닝풀 동그란 풀 3개임. 왼쪽에 큰거 하나, 밑에
        작은거 하나, 오른쪽에 긴거 하나. 가운데 띠같은건 제거". 여태 웅덩이가 둘이고
        그 사이를 개인색 두렁이 가로질렀는데, 웅덩이를 셋(화면 왼쪽 큰 원 · 그 아래
@@ -5874,7 +5874,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ), depthNow(bx, by) * 1.6 + 1));
     }
     return out;
-  },
+  }),
   /* 핵탄두(요청·테스트) — 몸통 원통 + 둥근 탄두 + 꼬리 날개 넷. */
   nuke: () => [
     ...cylinderFaces3(0, 0, 1.7, 7.4),
@@ -7422,7 +7422,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   },
   /* 테란 공사장 — 기초 슬래브 + 뼈대 기둥 넷 + 가로 보 + 크레인.
      고정색(요청): 공사 쇳빛 + 빨간 불빛. */
-  scaffold: () => [
+  scaffold: () => withSpin(-90, () => [
     ...paintBase([
       ...boxFaces3(0, 0, 7, 5, 0.8),
       ...boxFaces3(-2.9, 1.9, 0.5, 0.5, 3.4, 0.8),
@@ -7459,7 +7459,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     [groundEllipse(...project(2.3, -1.5, 7.4), 0.3, 0.24), 0.85, "#ff5f4b"] as ShapeFace,
     [groundEllipse(...project(-2.9, 1.9, 4.5), 0.24, 0.19), 0.8, "#ff5f4b"] as ShapeFace,
     [groundEllipse(...project(2.9, -1.9, 4.5), 0.24, 0.19), 0.8, "#ff5f4b"] as ShapeFace,
-  ],
+  ]),
 
   /* 스파이더 마인(요청) — 땅에 반쯤 묻힌 작은 돔 + 감지침 셋. 맵에서 죽음의 원인이
      보이게 마인 자체를 그린다. */
@@ -10071,36 +10071,12 @@ const WORKER_KIND_SET = new Set([
    느낌으로 튼다. 원작 스프라이트 방향이 다른 모델(서플라이 디포 등)은 아래 보정표에
    도(°)를 더한다 — 값은 지적받는 대로 채운다. */
 const BUILDING_BASE_YAW = 45;
-const MODEL_YAW_TWEAK: Record<string, number> = {
-  /* 어시밀레이터는 보정을 걷었다(지적: 각도 문제 — 앞선 요청들을 되돌린다) — 합계
-     135로 총 180도였는데, 그러면 이 건물만 사선이 아니라 축에 나란히, 그것도 정면을
-     등지고 서서 제일 눈에 띄는 앞면 청록 렌즈가 어느 방향에서도 안 보였다. 기본
-     요잉(45도) 그대로 두어 보정 없는 다른 건물들과 같은 사선 자세가 된다. */
-  // 반시계 90도(지적) — 서플·포지·테란 공사장.
-  /* 히드라 덴은 거기서 시계 90도(요청: "일단 90도 시계방향 요잉하고 시작해") — −90 → 0.
-     이 요청 뒤로 덴의 앞뒤·좌우는 **요잉을 마친 화면 기준**으로 적는다. */
-  hydraden: 0, trapezoid: -90, forge: -90, scaffold: -90,
-  // 시계 90도(요청) — 스포닝 풀.
-  pool: 180, // (요청) 시계 90도 → 180도.
-  /* 해처리 갈래 시계 45도(요청) — 레어·하이브도 같은 몸이라 함께 돈다. */
-  hatchery: 45, lair: 45, hive: 45,
-  // 시계 90도(지적) — 템플러 아카이브. 로보틱스는 모델 자체가 앞을 보게 고쳐 보정 0.
-  // 아카이브 시계 90도(요청) — -90 → 0.
-  dome: 0, archives: 0,
-  /* 에볼루션 챔버·옵저버토리 시계 90도(지적: "에볼루션 챔버, 옵저버토리 시계 90도
-     요잉") — 둘 다 앞뒤가 뒤바뀌어 서 있었다: 에볼루션 챔버는 살덩이 엽 둘이 옆을
-     보고 검은 등걸이 앞을 가렸고, 옵저버토리는 앞을 감싸야 할 초승달 받침이 옆으로
-     누웠다. 이 표는 시계방향이 +다(위 히드라 덴·포지의 반시계 −90과 짝). */
-  evo: 180, // (요청) 시계 90도 → 180도.
-  /* 옵저버토리 시계 180도(요청) — 90에서 한 번 더 돌린다: 초승달 받침이 앞을 감싸야
-     하는데 90에서는 뒤를 감싸고 있었다. */
-  observatory: 270,
-  /* 익스트랙터 — 45도(요청: 간헐천 구멍이 정면을 보게)에서 시계로 90도 더(요청:
-     "익스트랙터 시계방향 90도 요잉"). 합계 135. */
-  extract: 135,
-};
-export const buildingYawOf = (kind: string): number =>
-  BUILDING_BASE_YAW + (MODEL_YAW_TWEAK[kind] ?? 0);
+/* 보정표(MODEL_YAW_TWEAK)는 걷었다(요청: "모든 보정표 제거하고, 앞으로 내가 요잉하라고
+   하는 건 그릴 때가 아니라 본 모델에서 돌리라는 뜻") — 건물마다 다른 각을 그릴 때마다
+   끼워 넣다 보니 합계가 -45·45·90·180·225·315로 흩어져, 같은 종족 건물끼리도 서 있는
+   각이 제각각이고 새 모델을 그릴 때마다 "왜 또 돌아가 있지"가 반복됐다. 그 각들은 이제
+   빌더 안 withSpin에 구워져 모델의 일부다 — 그리는 쪽은 기본 요잉 하나만 쓴다. */
+export const buildingYawOf = (): number => BUILDING_BASE_YAW;
 
 /* 음영 증폭(지적: 모델들 그림자가 너무 없어 — 갤러리보다 더 진하게) — 흑·백 덮개 면의
    불투명도를 1.45배로 키운다. 몸판(덮개색 없는 면)은 그대로라 색은 안 변하고 그늘·광만
@@ -15077,9 +15053,7 @@ export default function ReplayMotionPlayer({
                     Math.ceil(prog * BUILD_STAGES))) }
                   : {}),
                 // 공사 모델도 45도 요잉(지적) + 종류별 보정(지적: 테란 공사장 반시계 90).
-                rotDeg: buildingYawOf(race2 === "저그" ? "cocoon"
-                  : race2 === "프로토스" ? "warpin"
-                    : (race2 === "테란" && shapeKind ? unit : "scaffold")),
+                rotDeg: buildingYawOf(),
                 viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
                 // 공사 모델도 완성 건물과 같은 지면선에 선다.
                 baseFy: posFrac(bodyX, bodyY + boxH / 2)[1],
@@ -15230,7 +15204,7 @@ export default function ReplayMotionPlayer({
                 fx: fxF, fy: fyF, z, kind: sunkenOut ? "sunkenfire" : shapeKind,
                 /* 원작처럼 45도 요잉(지적) — 2D에도 적용(재지적: 2D도 45도 요잉해야지).
                    쐐기의 진범은 요잉이 아니라 hover 그림자의 beginPath 누락이었다. */
-                rotDeg: buildingYawOf(shapeKind),
+                rotDeg: buildingYawOf(),
                 hpMax: (() => {
                   const bs2 = BLD_STATS[unit];
                   return bs2 ? bs2[0] + bs2[1] : undefined;
@@ -15353,7 +15327,7 @@ export default function ReplayMotionPlayer({
                        앵커보다 앞이면 위로, 뒤면 아래로 간다. */
                     z: z + (sp3[1] >= 0 ? 1 : -1), kind: kind3,
                     // 라바는 저마다 다른 쪽을 보고 천천히 돌아눕는다(지적: 방향 바꿔야).
-                    rotDeg: buildingYawOf(unit) + (live3 ? ix3 * 115 + wob3 * 38 : 0),
+                    rotDeg: buildingYawOf() + (live3 ? ix3 * 115 + wob3 * 38 : 0),
                     viewYaw: viewYawOf(px3, py3), flat: !pitched, pitch: pitched,
                     /* 크기는 유닛과 **같은 자**를 탄다(unitGlyphPx) — 타일 폭을 직접
                        곱하면 그 값이 16-상자 한 변이라 실제 잉크는 3분의 1로 줄어,
@@ -15396,7 +15370,7 @@ export default function ReplayMotionPlayer({
                      모형의 x축이 두 벽의 법선과 나란해져, 막대가 양쪽 벽에 직각으로
                      꽂힌다(까닭은 addonlink 모델 쪽 주석에 적어 두었다). */
                   fx: lfx, fy: lfy, z: z - 1, kind: "addonlink",
-                  rotDeg: buildingYawOf("addonlink"),
+                  rotDeg: buildingYawOf(),
                   viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
                   sizePx: 0, wFrac: (linkW / grid.width) * mkA, hFrac: ((linkW * 0.36) / grid.width) * mkA,
                   boxFit: "meet", fitWidth: true, color, alpha, noShadow: true,
@@ -15487,7 +15461,7 @@ export default function ReplayMotionPlayer({
                   const mh9 = el9.clientHeight;
                   if (!mw9 || !mh9) return fall;
                   const [px9, py9] = anchorPoint(
-                    mz, buildingYawOf(unit), viewYawOf(centerX, centerY), pitched, !pitched,
+                    mz, buildingYawOf(), viewYawOf(centerX, centerY), pitched, !pitched,
                   );
                   // 16-상자 한 변이 곧 그려지는 발자국 폭이다(UnitLayer의 fitWidth).
                   const side9 = wTiles * mkK * (mw9 / grid.width);

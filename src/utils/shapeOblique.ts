@@ -332,6 +332,15 @@ export const VIEW = {
    블록을 나가면 표준 시점으로 돌아온다. 3D 프리미티브로 만든 도형은 이걸로 아무 각도에서나
    다시 투영할 수 있다(손으로 깎은 도형은 좌표에 시점이 구워져 불가). */
 let yawOverride: number | null = null;
+/** 모델 자체를 돌린다(요청: "앞으로 내가 요잉하라고 하는 건 그릴 때가 아니라 본 모델에서
+ *  돌리라는 뜻") — 빌더 몸을 이 안에서 부르면, deg만큼 돌아간 것이 곧 그 모델이다.
+ *  withYaw가 절대각을 못 박는 것과 달리 이것은 **지금 요잉에 얹는 상대 회전**이라,
+ *  그리는 쪽이 주는 방향(유닛의 진행 방향·건물 기본 요잉) 위에 모델의 제 각이 더해진다.
+ *  그래서 도록·지도·미니맵 어디서 굽든 같은 모델이 같은 자세로 선다 — 그리기 단계에
+ *  건물마다 다른 각을 끼워 넣던 보정표(MODEL_YAW_TWEAK)가 없어진 자리다. */
+export function withSpin<T>(deg: number, fn: () => T): T {
+  return withYaw(currentYaw() - deg, fn);
+}
 export function withYaw<T>(deg: number, fn: () => T): T {
   yawOverride = deg;
   try {
