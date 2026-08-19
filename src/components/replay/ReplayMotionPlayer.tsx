@@ -12642,6 +12642,8 @@ export default function ReplayMotionPlayer({
     const clickRank = new Map<string, number>();
     const out: {
       raw: string; unit: string; b: number; d: number | null; tag: number;
+      /** 죽음의 갈래 — 'cap'(인구 상한이 무른 합성)만 사망 효과 없이 사라진다. */
+      dk: string;
       /** 건설에 흡수되는 시각(지적: 건설 일꾼 잔상) — 현장 도착부터 숨는다. */
       buildHideAt: number | null;
       /** 공사 중 숨김 구간들(재재지적: 도는 SCV와 원래 SCV 이중 표시) — 앵커마다
@@ -12836,7 +12838,7 @@ export default function ReplayMotionPlayer({
         }
       }
       out.push({
-        raw, unit: e.k, b: e.b, d: e.d, tag: e.t, buildHideAt, buildHides, ups: pUps,
+        raw, unit: e.k, b: e.b, d: e.d, dk: e.dk ?? "", tag: e.t, buildHideAt, buildHides, ups: pUps,
         /* 건설 앵커 자리(요청: 드론 변태도 고치 중앙에) — 흡수되기 직전 이 자리로
            걸어 들어가야 고치가 솟는 자리와 겹친다. */
         buildSites: e.ev.filter((v) => v[3] === 2 && v[1] >= 0)
@@ -15670,6 +15672,10 @@ export default function ReplayMotionPlayer({
           // 죽음 창(dieAt~+1.2초) — 마커 대신 종족별 사망 효과가 남는다(체력 0 즉사 포함).
           if (dieAt !== null && t >= dieAt) {
             if (!qDeath) return null;
+            /* 인구 상한이 무른 합성은 죽는 장면이 없다(지적: "복제품들이 땅에 나타나서는
+               곧 혼자 죽음") — 원장이 제 과잉 계상을 무르는 것이라, 때린 놈도 없고
+               죽음도 아니다. 시뮬이 따로 죽였으면 그건 진짜 죽음이라 그대로 터진다. */
+            if (simDie === null && e.dk === "cap") return null;
             const dk = race === "저그" ? "zerg" : race === "프로토스" ? "toss" : "mech";
             /* 죽은 자리에 못박기(지적: 체력 0으로 소멸한 유닛이 폭발하며 움직임) —
                지금 표시 위치(스무딩·걸음이 계속 간다)가 아니라 죽은 '순간'의 자취
