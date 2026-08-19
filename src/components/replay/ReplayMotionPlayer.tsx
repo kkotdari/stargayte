@@ -9016,7 +9016,7 @@ export const BLD_FILL_TARGET: Record<string, number> = {
  *  안 넘는 선이다. 상한이 1보다 작은 종류는 이미 넘치고 있다는 뜻이라 "더 키우지만
  *  않는다"로 그친다 — 상한을 이유로 줄이면 멀쩡히 보이던 건물이 갑자기 작아진다.
  *  표에 없는 종류는 1(모델 그대로)이다. */
-const BLD_NORM: Record<string, number> = {
+export const BLD_NORM: Record<string, number> = {
   academy: 1.408,
   arch: 1.556,
   archives: 1.896,  // 상자 상한에 걸림
@@ -9121,7 +9121,8 @@ function pathYRange(d: string): [number, number] {
 }
 
 /** 그 패스가 차지하는 상자 [x0,y0,x1,y1](뷰박스 칸) — 부품 크기·자리 재기용. */
-function pathBox(d: string): [number, number, number, number] {
+// 계측 스크립트도 같은 자를 쓴다(scripts/… 실측용) — 내보낸다.
+export function pathBox(d: string): [number, number, number, number] {
   const nums: number[] = [];
   const re = /([MmLlQqCcSsTtAaHhVvZz])([^A-Za-z]*)/g;
   let m: RegExpExecArray | null = re.exec(d);
