@@ -9222,6 +9222,13 @@ function tierTableOf(kind: string): Map<number, number> {
   const perYaw: Map<number, [number, number, number, number]>[] = [];
   const explicitOf = new Map<number, number>();
   const bestRatio = new Map<number, number>();
+  /* 지배색·개인색 장부(요청: "LOD 티어0에 현재 부품들에 더해서 지배색(그 모델에서 가장
+     넓게 사용된 색), 개인색 부품은 모두 포함시켜줘") — 색깔별 넓이를 모으고, 개인색
+     (fill 없음 = 임자 색이 칠해질 면)을 가진 부품에 표를 세운다. 명암 판(#fff·#000)은
+     제 색이 아니라 얹은 그림자·광택이라 지배색 셈에서 뺀다. */
+  const colorArea = new Map<string, number>();
+  const partColors = new Map<number, Set<string>>();
+  const ownColorParts = new Set<number>();
   for (const y of YAWS) {
     const faces = bake(() => withYaw(y, builder));
     const boxes = new Map<number, [number, number, number, number]>();
@@ -9233,6 +9240,13 @@ function tierTableOf(kind: string): Map<number, number> {
       // 부품의 명시 등급은 그 부품에서 가장 낮은(=가장 중요한) 값으로 본다.
       if (prev === undefined || cur < prev) explicitOf.set(pid, cur);
       const b = pathBox(f[0]);
+      if (f[2] === undefined) ownColorParts.add(pid);
+      else if (f[2] !== "#fff" && f[2] !== "#000") {
+        colorArea.set(f[2], (colorArea.get(f[2]) ?? 0) + (b[2] - b[0]) * (b[3] - b[1]));
+        const set = partColors.get(pid);
+        if (set) set.add(f[2]);
+        else partColors.set(pid, new Set([f[2]]));
+      }
       const bb = boxes.get(pid);
       if (!bb) { boxes.set(pid, [b[0], b[1], b[2], b[3]]); continue; }
       if (b[0] < bb[0]) bb[0] = b[0];
@@ -9281,6 +9295,17 @@ function tierTableOf(kind: string): Map<number, number> {
         || lo[1] - b[1] > epsY || b[3] - lo[3] > epsY) table.set(pid, 0);
     }
   }
+  /* 지배색·개인색은 형체 확정(0)이다(요청) — 작게 그릴수록 '무엇인가'는 실루엣과
+     그 모델의 바탕색이, '누구 것인가'는 개인색이 말한다. 여기 걸리는 부품이 많아
+     사양을 내려도 면이 크게 안 줄어드는 것은 트레이드오프로 받는다(요청) — 대신
+     낮은 사양에서 그림자 같은 화면 효과를 끈다(qShadows). */
+  let domColor = "";
+  let domArea = 0;
+  for (const [c, a] of colorArea) if (a > domArea) { domArea = a; domColor = c; }
+  for (const [pid, cols] of partColors) {
+    if (domColor && cols.has(domColor)) table.set(pid, 0);
+  }
+  for (const pid of ownColorParts) table.set(pid, 0);
   return table;
 }
 /** 등급 입히기 — 표가 정한 부품 등급을 그 각도의 면들에 얹는다.
@@ -10414,7 +10439,11 @@ export default function ReplayMotionPlayer({
   lodSetCap(quality);
   const qHp = true;
   const qDeath = true;
-  const qShadows = true;
+  /* 낮은 사양에서는 그림자를 끈다(요청: "대신 그림자 반사 등 효과를 없애서 부하
+     감축하지뭐") — LOD 티어0에 지배색·개인색 부품이 다 들어오면서 부품 솎기로 버는
+     몫이 줄었다. 그 값을 화면 효과 쪽에서 치른다. 실루엣 광원은 원래부터 최고 등급
+     에서만 얹는다. */
+  const qShadows = quality >= 2;
   const qCombat = quality >= 2;
   const qBuildFx = quality >= 2;
   const qCreep = quality >= 2;
