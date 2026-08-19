@@ -5809,6 +5809,19 @@ body *::-webkit-scrollbar-corner { background: transparent; }
    버튼이 나란히 선다. */
 .scr-modal-md { max-width: 560px; }
 .scr-redo-pick { display: flex; flex-direction: column; max-height: min(78vh, 720px); }
+/* 모바일에서는 떠 있는 탭바 **위**에 앉힌다(지적: 재분석 모달의 '다시 분석' 버튼이
+   탭바에 가려짐). 겹침 순서 문제가 아니라 자리 문제다 — 이 창은 가운데 정렬인데다
+   높이를 vh(주소창을 포함한 큰 뷰포트)로 재서, 바닥의 버튼 줄이 실제로 보이는 화면
+   아래쪽, 곧 탭바가 떠 있는 띠에 내려앉았다. 탭바와 같은 자(--scr-float-bottom)에
+   탭바 높이를 더해 그 바로 위에 세우고, 높이는 dvh로 다시 잰다. */
+@media (max-width: 1159px) {
+  .scr-redo-pick {
+    top: auto;
+    bottom: calc(var(--scr-float-bottom, 6px) + var(--mobile-footer-h, 69px) + 8px);
+    transform: translate(-50%, 0);
+    max-height: calc(100dvh - var(--safe-top, 0px) - var(--mobile-footer-h, 69px) - 28px);
+  }
+}
 .scr-redo-pick-body { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow: hidden; }
 .scr-redo-pick-search { width: 100%; }
 .scr-redo-pick-all {
