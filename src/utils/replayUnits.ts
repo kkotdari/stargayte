@@ -525,6 +525,8 @@ export function buildUnitTracks(
   let anchorsLate = 0;
   /** 속력으로 가른 태그 재사용 수. */
   let tagSplits = 0;
+  /** 정체를 붙인 순간들 [태그, 초, 정체] — 절단 뒤 꼬리에 되돌리는 재료. */
+  const kindLog: { tag: number; sec: number; kind: string; group: boolean }[] = [];
   let anchorsLateUsed = 0;
   /** 물리 건물(건설 좌표로 아는 것) — 태그가 없어도 개체다(요청: 건물 파괴 파악).
    *  builder는 지은 일꾼의 태그 — 그 일꾼이 도착 전에 딴 데로 불려가면 건설 무르기다. */
@@ -691,6 +693,10 @@ export function buildUnitTracks(
   };
   const markKind = (life: Life, kind0: string, sec: number): Life => {
     const kind = KIND_ALIAS[kind0] ?? kind0;
+    /* 붙인 정체를 시각과 함께 적어 둔다 — 아래 태그 절단이 꼬리에 되돌려 준다.
+       정체는 커맨드를 훑을 때 붙는데 절단은 그 뒤에 오므로, 적어 두지 않으면 꼬리가
+       제 증거(건물을 앉혔다·힐을 썼다·시즈를 켰다…)까지 함께 잃는다. */
+    kindLog.push({ tag: life.tag, sec, kind, group: !!GROUP_MEMBERS[kind] });
     if (GROUP_MEMBERS[kind]) { life.groupKinds.add(kind); return life; }
     if (kindConflicts(life, kind)) {
       // 정체 충돌 — 태그 재사용. 앞 생애를 닫고 이 증거로 새 생애를 시작한다.
@@ -1821,8 +1827,36 @@ export function buildUnitTracks(
       life.ev = life.ev.slice(0, cut);
       life.last = life.ev[life.ev.length - 1][0];
       if (life.lastAtk !== null) life.evAfterAtk = life.ev.some((v) => v[0] > (life.lastAtk as number));
+      /* 꼬리도 제 정체 증거를 갖는다(계측으로 찾은 자리) — 정체는 커맨드를 훑을 때
+         붙는데 절단은 그 뒤에 오므로, 꼬리는 앞 유닛의 이름을 못 물려받는 대신 **제
+         증거까지 함께 잃고** 있었다. 실측: 무명 생애가 받은 명령을 세니 건설(44건)·
+         버로우(44건)·힐무브(4건)가 있었다 — 건물을 앉힌 개체는 일꾼일 수밖에 없는데
+         무명으로 남아 있었다는 뜻이다.
+         꼬리 구간의 증거만 보고 되살린다. 어림이 아니라 그 유닛만 할 수 있는 일이다:
+           f=2  건물을 앉혔다      → 그 종족의 일꾼
+           f=8·9 시즈를 켜고 껐다  → 시즈탱크
+           f=16 스팀을 썼다        → 보병(마린·파벳) 무리 */
+      const t0 = tail[0][0];
+      const t1 = tail[tail.length - 1][0];
+      const tailKinds = new Map<string, number>();
+      const tailGroups = new Set<string>();
+      for (const m of kindLog) {
+        if (m.tag !== life.tag || m.sec < t0 - 1 || m.sec > t1 + 1) continue;
+        if (m.group) tailGroups.add(m.kind);
+        else tailKinds.set(m.kind, (tailKinds.get(m.kind) ?? 0) + 1);
+      }
+      /* 머리도 제 구간 밖의 정체는 내놓는다 — 절단 뒤에 붙은 이름이 머리에 남아 있으면
+         앞 유닛이 뒤 유닛의 정체를 뒤집어쓴다. */
+      for (const m of kindLog) {
+        if (m.tag !== life.tag || m.sec < t0 - 1) continue;
+        if (m.group) life.groupKinds.delete(m.kind);
+        else {
+          const n9 = (life.kinds.get(m.kind) ?? 0) - 1;
+          if (n9 > 0) life.kinds.set(m.kind, n9); else life.kinds.delete(m.kind);
+        }
+      }
       extra.push({
-        tag: life.tag, owner: life.owner, kinds: new Map(), groupKinds: new Set(),
+        tag: life.tag, owner: life.owner, kinds: tailKinds, groupKinds: tailGroups,
         bld: false, born: tail[0][0], last: tail[tail.length - 1][0],
         lastAtk: null, evAfterAtk: false, morphTo: null, cxl: null, solo: false,
         ev: tail,
