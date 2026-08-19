@@ -3039,6 +3039,10 @@ const BLD_FIRST_SEC = 2;
 /** 같은 임자의 두 명령 사이를 '계속 때린 시간'으로 볼 상한(초) — 이보다 벌어지면
  *  그 사이엔 딴 데를 보고 있었다고 본다. */
 const BLD_MAX_GAP_SEC = 6;
+/** 교전에서 '사거리 안'으로 볼 때 주는 여유(타일) — 시뮬 자리는 증거 사이를 메운
+ *  어림이라 실제보다 한두 걸음 어긋난다. 근접(사거리 0 + 몸 반지름)을 칼같이 재면
+ *  뭉쳐 선 저글링조차 서로를 못 때리므로, 그 오차만큼 폭을 준다. */
+const FIGHT_SLOP_TILES = 2;
 /** 원장이 분석보다 먼저 건물을 무너뜨려도 좋은 폭(초) — 붕괴 결합이 마지막 8초에 걸쳐
  *  0으로 내리므로 그와 같은 값이다. 여기가 넓으면(옛 30초) 분석이 말한 죽음보다 한참
  *  앞서 무너져, 화면에서 건물이 이르게 사라진다. */
@@ -3090,11 +3094,26 @@ const BLD_DIE_SLACK_SEC = 8;
       else if (race2 === "저그") hp2 = Math.min(maxHp, hp2 + 1.5 * dt);
       else if (hp2 > 0 && hp2 < maxHp / 3) hp2 = Math.max(1, hp2 - 1.2 * dt);
     };
+    /* 얼마나 가까운 클릭이 '이 건물을 때린 것'인가 — 발자국에 매인다(지적: "시야에만
+       잡혀도 피격판정? 건물들 대부분에 실드 피격효과가 난다").
+       여태는 종류를 안 가리고 **중심에서 7타일**이었다. 7타일은 화면에서 건물 서너 채
+       너비라, 어택무브가 기지 곁을 스쳐 지나기만 해도 그 반경 안 건물이 다 함께 맞았다.
+       실측(scripts/hit-check.mjs, SG_26081613330800 · 건물 288채): 반경 7이면 62%가
+       '맞은 건물'이고 건물당 클릭 중앙값이 7번이다. 클릭의 거리 분포를 고리 넓이로
+       나눠 보면 밀도가 0~1타일에서 120이고 2타일 밖은 50~70에서 평평하다 — 즉 2타일
+       밖은 대부분 **옆 건물을 때린 클릭**이 배경으로 깔린 것이다.
+       이제 반경은 그 건물의 발자국이 정한다: 반대각의 절반 + 여유 1.5타일. 넥서스·
+       해처리(4×3)는 4.0타일, 포톤·성큰(2×2)은 2.9타일, 표에 없는 것(3×2)은 3.3타일.
+       여유 1.5는 클릭이 발자국 언저리에 떨어지는 것과 스플래시를 덮는 폭이다.
+       (중심 cx2·cy2가 '자리 + 1.5'라 큰 발자국에서 반 타일쯤 치우치는데, 그 오차도
+       이 여유 안에 든다.) */
+    const [fw2, fh2] = FOOT_WH[kind] ?? [3, 2];
+    const hitR2 = Math.hypot(fw2, fh2) / 2 + 1.5;
     for (const a of atkEvts) {
       if (a.sec < born2 + 2) continue;
       if (a.sec > until2 + 60) break;
       if (!isFoeOf(a.owner, owner)) continue;
-      if (Math.hypot(a.x - cx2, a.y - cy2) > 7) continue;
+      if (Math.hypot(a.x - cx2, a.y - cy2) > hitR2) continue;
       flow(prevSec, a.sec);
       while (hi2 < heals.length && heals[hi2] <= a.sec) {
         hp2 = Math.min(maxHp, hp2 + maxHp * 0.35);
@@ -3506,13 +3525,37 @@ const BLD_DIE_SLACK_SEC = 8;
           totGnd += cg;
         }
         /* 사수마다 겨눌 수 있는 표적 수를 미리 센다 — 안쪽 루프에서 다시 세면 개체 수의
-           세제곱이 되어 큰 교전에서 분석이 멈춘다. */
+           세제곱이 되어 큰 교전에서 분석이 멈춘다.
+           ★ '겨눌 수 있다'가 이제 **사거리 안**을 뜻한다(지적: "시야에만 잡혀도 피격판정?
+             아직 저글링 질럿이 멀리 있는데 상대편 질럿 피가 단다"). 여태는 갈래(대공·
+             대지)만 맞으면 교전 원 안의 모든 적을 겨눌 수 있는 것으로 셌다 — 원 지름이
+             16타일이라, 원 반대편 끝에 선 질럿이 서로를 때렸다.
+             실측(scripts/hit-check.mjs, SG_26081613330800): 피해가 오간 쌍 93359건의
+             평균 거리가 5.1타일이고 **91%가 제 사거리 밖**이었으며, 16%는 8타일보다도
+             멀었다. 이제 쌍마다 거리를 재고, 제 무기가 닿는 쌍에만 피해가 흐른다.
+             여유(FIGHT_SLOP_TILES)는 시뮬 자리가 어림이라 주는 폭이다 — 근접(사거리 0)
+             까지 칼같이 재면 뭉쳐 선 저글링조차 서로를 못 때린다. */
+        const reachOf = (sh: Agent, tg: Agent): number | null => {
+          const w = weaponVs(sh.prof, tg.air);
+          if (!w) return null;
+          return w.rangeTiles + sh.prof.radius + tg.prof.radius + FIGHT_SLOP_TILES;
+        };
+        const inReach = (sh: Agent, tg: Agent): boolean => {
+          const r = reachOf(sh, tg);
+          if (r === null) return false;
+          const dx9 = tg.x - sh.x;
+          const dy9 = tg.y - sh.y;
+          return dx9 * dx9 + dy9 * dy9 <= r * r;
+        };
         const canHit = new Map<Agent, number>();
         for (const [k2, list2] of present) {
-          const oa = totAir - (nAir.get(k2) ?? 0);
-          const og = totGnd - (nGnd.get(k2) ?? 0);
           for (const e2 of list2) {
-            canHit.set(e2, (e2.prof.air ? oa : 0) + (e2.prof.ground ? og : 0));
+            let n2 = 0;
+            for (const [k3, list3] of present) {
+              if (k3 === k2) continue;
+              for (const t3 of list3) if (inReach(e2, t3)) n2 += 1;
+            }
+            canHit.set(e2, n2);
           }
         }
         for (const [key, mine] of present) {
@@ -3527,6 +3570,8 @@ const BLD_DIE_SLACK_SEC = 8;
                 if (!w) continue;
                 const n = canHit.get(e2) ?? 0;
                 if (n <= 0) continue;
+                // 제 무기가 닿는 쌍에만 피해가 흐른다(위 canHit와 같은 자).
+                if (!inReach(e2, a)) continue;
                 const bite = dpsVs(w, e2.prof, lvOf(wUpsBy, e2.life.owner, sec), a.kind, aLv);
                 sh += bite.shield / n;
                 hp += bite.hp / n;

@@ -15,6 +15,7 @@
     "dmg-check": "node scripts/dmg-check.mjs",
     "id-check": "node scripts/id-check.mjs",
     "bld-check": "node scripts/bld-check.mjs",
+    "hit-check": "node scripts/hit-check.mjs",
     "gap-check": "node scripts/gap-check.mjs"
   },
   "dependencies": {
