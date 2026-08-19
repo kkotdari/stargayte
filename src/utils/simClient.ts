@@ -20,7 +20,10 @@ import type { SimInput } from "./simCore";
  * v4 (과제 #70): 길찾기를 A*로 바꾸면서 대각 모서리 자르기를 막아 자취가 달라졌고,
  * 자취·사건을 숫자 배열이 아니라 32비트 실수 배열로 내보낸다. 옛 캐시는 모양도 값도
  * 다른 판이라 그대로 두면 화면에 이번 작업이 하나도 안 보인다. */
-export const SIM_VERSION = 4;
+/* 5(이번 판) — 건물 틈(몸 상자 충돌·잔 눈금 길찾기)·SCV 수리·메딕 힐·편 가르기가
+   한꺼번에 들어와 자취와 사건이 통째로 달라졌다. 판 번호를 안 올리면 옛 캐시가 그대로
+   나와 이번 작업이 화면에 하나도 안 보인다. */
+export const SIM_VERSION = 5;
 
 const DB = "stargayte-sim";
 const STORE = "tracks";

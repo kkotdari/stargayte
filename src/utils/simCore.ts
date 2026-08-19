@@ -126,6 +126,9 @@ export type SimOpts = {
   epsilon?: number;
   /** 자원 지대 — [타일x, 타일y, 가스인가]. 일꾼 채취 왕복의 재료다(P3). */
   resources?: [number, number, number][];
+  /** 편 가르기 — [임자, 팀번호]. 지적: "동맹 판단도 해야지".
+   *  없거나 팀이 안 실린 임자는 저 혼자 한 편이다(1:1이면 아무 차이가 없다). */
+  teams?: [number, number][];
 };
 
 /* ── 상수 ─────────────────────────────────────────────────────────────────────── */
@@ -399,6 +402,17 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   const H = opts.height;
   /** 임자 → 종족 — SCV 수리가 '테란 것만' 고치는 원작 규칙에 쓴다. */
   const raceOfOwner = new Map((data.players ?? []).map((p) => [p.id, p.race ?? ""]));
+  /** 임자 → 팀. 팀 정보가 없으면 임자 하나가 곧 한 편이다(1:1은 아무 차이가 없다). */
+  const teamOfOwner = new Map(opts.teams ?? []);
+  /** 같은 편인가(지적: "동맹 판단도 해야지") — 여태 이 층은 '임자가 같은가'만 봐서,
+   *  팀전에서 **아군이 서로를 적으로 잡았다**(표적 획득이 c.owner === a.owner만 걸렀다).
+   *  같은 팀이면 겨누지 않고, 디텍터도 나눠 쓰고, 메딕·SCV가 아군을 돌본다. */
+  const sameSide = (o1: number, o2: number): boolean => {
+    if (o1 === o2) return true;
+    const t1 = teamOfOwner.get(o1);
+    const t2 = teamOfOwner.get(o2);
+    return t1 !== undefined && t1 > 0 && t1 === t2;
+  };
   const terrain = opts.terrain ?? null;
   /** 막힘 판의 눈금 — 한 타일을 몇 칸으로 쪼개나(아래 '막힘 판' 절 주석 참고).
    *  4칸이면 8px로, 원작 걸음 격자와 같다. 칸이 너무 많아지는 큰 맵만 2칸으로 떨어진다. */
@@ -1081,7 +1095,8 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   const visible = (a: Body, tgt: Body): boolean => {
     if (!anyBurrow || !tgt.burrowed) return true;
     for (const d of dets) {
-      if (d.owner !== a.owner) continue;
+      // 시야는 편끼리 나눈다 — 아군 디텍터가 벗긴 은신은 나도 본다.
+      if (!sameSide(d.owner, a.owner)) continue;
       if (dist(d.x, d.y, tgt.x, tgt.y) <= d.cp.sight) return true;
     }
     return false;
@@ -1221,7 +1236,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       for (let xx = xA; xx <= xB; xx += 1) {
         const arr = tcells[yy * tgw + xx];
         for (const c of arr) {
-          if (c.owner === a.owner || c.air || c.state === ST_GONE || c.dieAt !== null) continue;
+          if (sameSide(c.owner, a.owner) || c.air || c.state === ST_GONE || c.dieAt !== null) continue;
           if (c.state === ST_INSIDE) continue;
           const px = c.x - a.x;
           const py = c.y - a.y;
@@ -1268,7 +1283,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         for (let xx = xA; xx <= xB; xx += 1) {
           const arr = tcells[yy * tgw + xx];
           for (const c of arr) {
-            if (c.owner === a.owner || c.state === ST_GONE || c.dieAt !== null) continue;
+            if (sameSide(c.owner, a.owner) || c.state === ST_GONE || c.dieAt !== null) continue;
             // 태운 유닛은 못 때린다 — 원작에서 벙커·수송선 안은 표적이 아니다.
             if (c.state === ST_INSIDE) continue;
             /* 거리를 먼저 본다 — 이미 더 가까운 표적이 있으면 나머지는 볼 것도 없다.
@@ -1631,7 +1646,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
            (자리를 잘못 짚어도 값이 크지 않다 — 원작에서도 그 클릭은 수리가 된다.) */
         if (b.fixTag === 0 && b.wk && o.kind === "move" && b.kind === "SCV") {
           for (const c9 of active) {
-            if (c9 === b || c9.state === ST_GONE || c9.owner !== b.owner) continue;
+            if (c9 === b || c9.state === ST_GONE || !sameSide(c9.owner, b.owner)) continue;
             if (!(c9.cpBase.mech || c9.bld)) continue;
             if (raceOfOwner.get(c9.owner) !== "테란") break;   // 임자가 테란이 아니면 볼 것도 없다
             if (t < c9.born || (c9.died !== null && t >= c9.died)) continue;
@@ -1922,6 +1937,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
           .find((q) => t >= q.born && (q.died === null || t < q.died));
         const maxHp = tgt ? fp(tgt.cpBase.hp) : 0;
         const fixable = !!tgt && tgt.state !== ST_GONE && tgt !== b
+          && sameSide(tgt.owner, b.owner)
           && (tgt.cpBase.mech || tgt.bld) && raceOfOwner.get(tgt.owner) === "테란"
           && tgt.dmg.hp < maxHp;
         if (!fixable) b.fixTag = 0;
@@ -1950,9 +1966,8 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         const healable = (q: Body): boolean => q !== b && q.state !== ST_GONE
           && !healedTick.has(q.tag)
           && q.state !== ST_INSIDE && !q.air && !q.bld && q.cpBase.organic
-          /* 같은 임자만 본다 — 이 층은 동맹을 따로 안 든다(다른 자리도 다 owner로 잰다).
-             원작 메딕은 아군도 태워 주므로 팀전에서 남의 마린은 못 고치는 셈이다. */
-          && q.owner === b.owner && q.dmg.hp < fp(q.cpBase.hp)
+          // 아군도 태운다(지적: "동맹 판단도 해야지") — 원전도 alliances를 본다.
+          && sameSide(q.owner, b.owner) && q.dmg.hp < fp(q.cpBase.hp)
           && t >= q.born && (q.died === null || t < q.died);
         let tgt = b.fixTag !== 0
           ? (byTag.get(b.fixTag) ?? []).find((q) => healable(q)) : undefined;

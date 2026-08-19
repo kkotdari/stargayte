@@ -11019,6 +11019,13 @@ export default function ReplayMotionPlayer({
     for (let i = 0; i < tg.walk.length; i += 1) if (tg.walk[i]) walkable += 1;
     return `${tg.w}x${tg.h}.${walkable}`;
   }, [terrain, terrainRaw]);
+  /* 편 지문(지적: "동맹 판단도 해야지") — 팀은 개체 트랙이 아니라 화면 쪽 로스터가 안다.
+     로스터가 늦게 붙을 수 있으므로 지문을 deps에 넣어, 팀이 정해지는 순간 시뮬을 다시
+     돌린다(열쇠에도 같은 지문이 들어가 옛 결과와 안 섞인다). */
+  const simTeamKey = useMemo(
+    () => (entData ? entData.players.map((pl) => teamOfRaw(pl.name) ?? 0).join("") : ""),
+    [entData, teamOfRaw],
+  );
   /* 시뮬 자취 적재(위 simFlag 주석) — 개체 트랙과 지형이 다 오면 워커에 맡긴다. 결과가
      오기 전까지는 기존 길로 그린다(깜빡임 없이 갈아 끼운다). */
   useEffect(() => {
@@ -11044,12 +11051,18 @@ export default function ReplayMotionPlayer({
            지문이면 충분해서다 — 칸 하나만 칠해도 이 수가 움직인다. 자원은 개수만
            센다(자리가 바뀌는 일이 없다). [어림] */
       `${clockKey ?? "g"}:${entData.ents.length}:${entData.ents.reduce((n, x) => n + x.ev.length, 0)}:${grid.width}x${grid.height}`
-      + `:t${simTerrainKey}:r${(grid.resources ?? []).length}`,
+      + `:t${simTerrainKey}:r${(grid.resources ?? []).length}`
+      // 편 지문 — 팀 배정이 갈리면 아군·적군이 갈리므로 시뮬 결과가 통째로 다르다.
+      + `:m${simTeamKey}`,
       entData as unknown as Parameters<typeof loadSimTracks>[1],
       {
         width: grid.width, height: grid.height, terrain: terrainRaw ?? terrain,
         // 자원표 — 일꾼 채취 왕복의 재료(P3). 없으면 시뮬이 채취를 안 만든다.
         resources: (grid.resources ?? []) as [number, number, number][],
+        /* 편 가르기(지적: "동맹 판단도 해야지") — 개체 트랙에는 팀이 안 실려 있고
+           화면 쪽 로스터(bases)가 그것을 안다. 여기서 임자 번호에 붙여 넘긴다:
+           팀을 모르면 시뮬은 임자 하나를 한 편으로 보므로 아군끼리 서로를 쏜다. */
+        teams: entData.players.map((pl) => [pl.id, teamOfRaw(pl.name) ?? 0] as [number, number]),
       },
       setSimNote,
     ).then((got) => {
@@ -11059,7 +11072,7 @@ export default function ReplayMotionPlayer({
     });
     return () => { cancelled = true; };
   }, [entData, terrain, terrainRaw, grid.width, grid.height, grid.resources, clockKey,
-    simTerrainKey]);
+    simTerrainKey, simTeamKey, teamOfRaw]);
   /* 지형 수정(요청: 모든 경기 리플레이 화면에서, 아무나) — 산 버튼이 검수 모달을 연다.
      저장하면 이 자리에서 바로 새 지형으로 갈아 끼운다(맵 캐시는 다음 로드에 새 값을 받는다). */
   /* (제거·요청: 지형 편집) — 재생 화면의 검수 모달·산 버튼을 걷었다. 검수 저장분은
