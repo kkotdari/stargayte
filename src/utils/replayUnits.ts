@@ -144,6 +144,8 @@ export interface UnitTracksV2 {
     prodRazed?: number;
     /** 출생 자리를 못 정해 버려진 원장 수(과제 #71). */
     prodNoSite?: number;
+    /** 부대에 태운 합성 개체 수 — 그만큼이 제자리에 서 있지 않게 됐다. */
+    prodRode?: number;
     /** 프로토스 전력 끊김으로 생산이 밀린 초의 합(지적). */
     prodPowerDelay?: number;
     /** 인구 상한을 넘겨 물린 합성 개체 수(지적: 생산·죽음 반영 인구 모형). */
@@ -544,7 +546,7 @@ export function buildUnitTracks(
   }[] = [];
   /** 건물 태그별 생산 꼬리 시각 — 같은 건물의 큐는 한 줄로 이어진다(라바는 병렬). */
   const prodTail = new Map<number, number>();
-  const prodStats = { total: 0, bound: 0, syn: 0, razed: 0, noSite: 0, powerDelay: 0 };
+  const prodStats = { total: 0, bound: 0, syn: 0, razed: 0, noSite: 0, powerDelay: 0, rode: 0 };
   /** 선택 동반으로 이름을 받은 무명 생애 수 — 성적표(id-check)가 읽는다. */
   let coSelFilled = 0;
   /** 원장에 남은 몫이 없어 동반이 물러난 횟수 — 원장이 위라는 규칙이 실제로 무는 자리. */
@@ -4172,6 +4174,90 @@ const BLD_DIE_SLACK_SEC = 8;
     }
   }
 
+  /* ── 합성 개체를 부대에 태운다 (계측이 이끈 자리) ─────────────────────────────
+     합성 개체는 원장에는 있는데 태그가 한 번도 안 잡힌 유닛이다. 여태 그것들은 태어나
+     랠리까지 걸어가서는 **그 자리에 영원히 서 있었다**. 그러다 인구가 "이만큼 살아
+     있을 수 없다"고 짚으면 그제서야 물렸다.
+
+     재 보니 그 물림이 늦다 — 90300은 합성 385기 중 250기가 물리는데 산 시간 중앙이
+     166초였고, 30초 안에 물린 것은 16기뿐이었다. 즉 **원장이 과하게 센 것이 아니다**.
+     진짜로 뽑힌 유닛인데 우리가 그 태그를 한 번도 못 봤고, 그래서 어디로 갔는지도
+     어디서 죽었는지도 모르는 것이다.
+
+     모르는 것을 지어내지 않으면서 할 수 있는 일이 하나 있다: **같은 사람의 같은 유닛이
+     실제로 간 길**을 따라가게 하는 것. 마린 열 기를 뽑아 셋만 관측됐다면, 못 본 일곱도
+     그 셋과 함께 움직였다고 보는 것이 가만히 서 있었다고 보는 것보다 낫다 — 원작에서
+     한 부대로 뽑은 유닛은 한 부대로 움직인다.
+     규칙은 셋이다.
+       · 같은 임자·같은 정체여야 한다.
+       · 길잡이는 합성이 태어난 뒤에도 살아 있고 증거가 셋 이상인 실제 태그다.
+       · 태어난 자리에서 가장 가까운 길잡이를 고른다(40타일 안). 없으면 그대로 둔다.
+     따라가는 자취는 길잡이의 증거를 그대로 쓰되 태그마다 다른 작은 어긋남을 얹는다 —
+     같은 점에 겹쳐 서면 한 기로 보인다. 무작위가 아니라 태그의 순수 함수라 되감아도
+     같다. 죽음은 손대지 않는다(그건 아래 인구와 교전이 정한다). */
+  {
+    const SYN2 = (t: number): boolean => t <= -1000 && t > -20000;
+    /* 거리 상한은 두지 않는다(계측: 40타일로 막으니 385기 중 92기밖에 안 탔다) —
+       합성은 생산 건물 발치에서 태어나고 부대는 대개 딴 데 있으니 늘 멀다. 대신
+       **걸어가는 시간**을 치른다: 태어난 자리에서 길잡이까지의 거리를 제 속력으로
+       나눈 만큼 지난 뒤부터 따라붙는다. 지어내는 것이 아니라 원작에서도 그렇게 간다. */
+    const leadersOf = new Map<string, typeof ents>();
+    for (const e of ents) {
+      if (e.bld || !e.k || e.t <= 0 || e.ev.length < 3) continue;
+      const key = `${e.o}|${e.k}`;
+      const arr = leadersOf.get(key) ?? [];
+      arr.push(e);
+      leadersOf.set(key, arr);
+    }
+    /** 그 개체가 그때 있던 자리 — 증거 사이는 안 채운다(가장 가까운 앞 증거). */
+    const atTime = (e: (typeof ents)[number], t: number): [number, number] | null => {
+      let best: UnitEv | null = null;
+      for (const v of e.ev) {
+        if (v[1] < 0 || v[0] > t) continue;
+        best = v;
+      }
+      if (!best) {
+        const f = e.ev.find((v) => v[1] >= 0);
+        return f ? [f[1], f[2]] : null;
+      }
+      return [best[1], best[2]];
+    };
+    let rode = 0;
+    for (const e of ents) {
+      if (e.bld || !e.k || !SYN2(e.t)) continue;
+      const home = [...e.ev].reverse().find((v) => v[1] >= 0);
+      if (!home) continue;
+      const pool = leadersOf.get(`${e.o}|${e.k}`);
+      if (!pool) continue;
+      let lead: (typeof ents)[number] | null = null;
+      let bd = Number.POSITIVE_INFINITY;
+      for (const l of pool) {
+        /* 길잡이는 합성이 태어날 때 이미 살아 있던 것만 — 늦게 난 것까지 열어 봤더니
+           한 경기는 77기에서 57기로 오히려 줄었다(길잡이가 엉뚱하게 바뀌었다). */
+        if (l.b > e.b || (l.d !== null && l.d !== undefined && l.d <= e.b)) continue;
+        const p = atTime(l, e.b);
+        if (!p) continue;
+        const dd = Math.hypot(p[0] - home[1], p[1] - home[2]);
+        if (dd < bd) { bd = dd; lead = l; }
+      }
+      if (!lead) continue;
+      // 합류 시각 — 태어난 자리에서 부대까지 제 속력으로 걸어간 뒤부터 따라붙는다.
+      const joinAt = e.b + bd / Math.max(1, speedOfUnit(e.k));
+      // 태그마다 다른 작은 어긋남 — 겹쳐 서지 않게. 무작위가 아니라 태그의 함수다.
+      const ox = ((e.t * 7919) % 13) / 13 - 0.5;
+      const oy = ((e.t * 104729) % 11) / 11 - 0.5;
+      let added = 0;
+      for (const v of lead.ev) {
+        if (v[0] < joinAt || v[1] < 0) continue;
+        if (e.d !== null && e.d !== undefined && v[0] >= e.d) break;
+        e.ev.push([v[0], r1(v[1] + ox * 1.6), r1(v[2] + oy * 1.6), v[3] === 3 ? 0 : v[3]]);
+        added += 1;
+      }
+      if (added > 0) rode += 1;
+    }
+    prodStats.rode = rode;
+  }
+
   /* ── 인구는 우리가 지어낸 개체의 상한이다 (지적: "생산·죽음 반영한 인구 모델은 어때") ──
      합성 개체(원장에는 있는데 태그가 한 번도 안 잡힌 유닛)는 **죽음 판정이 없다** —
      실측으로 한 프로토스의 합성 76기 중 죽은 것으로 잡힌 것이 0기였고(진짜 개체는 41%가
@@ -4283,6 +4369,7 @@ const BLD_DIE_SLACK_SEC = 8;
       coSelOverFilled,
       prodRazed: prodStats.razed,
       prodNoSite: prodStats.noSite,
+      prodRode: prodStats.rode,
       prodPowerDelay: prodStats.powerDelay,
       synRetired,
       staleRetired: staleRetiredN,

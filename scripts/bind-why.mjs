@@ -230,6 +230,22 @@ for (const path of files) {
   }
   const rows = [...gap.entries()].map(([k, g]) => [k, g.prod, g.ent, g.ent - g.prod])
     .sort((x, y) => Math.abs(y[3]) - Math.abs(x[3]));
+  /* ── 합성 개체의 삶 — 인구 상한이 물린 것(dk="cap")이 태어나 얼마 만에 물렸나.
+     곧바로 물린다면 그 원장은 애초에 유닛이 안 된 것이다(인구 막힘·취소를 우리가 못
+     걸렀다는 뜻). 한참 살다 물린다면 원장은 옳고 죽음을 못 본 것뿐이다. */
+  const syn = d.ents.filter((e) => !e.bld && e.t <= -1000 && e.t > -20000);
+  const capped = syn.filter((e) => e.dk === "cap" && e.d !== null && e.d !== undefined);
+  const lifeSpan = capped.map((e) => e.d - e.b).sort((a, b) => a - b);
+  const q = (f) => (lifeSpan.length ? lifeSpan[Math.min(lifeSpan.length - 1, Math.floor(lifeSpan.length * f))] : 0);
+  const short = lifeSpan.filter((v) => v <= 30).length;
+  console.log(`  합성 개체 ${syn.length}기 · 그중 인구가 물린 것 ${capped.length}기`
+    + ` · 산 시간 중앙 ${q(0.5)}초 (1사분 ${q(0.25)} · 3사분 ${q(0.75)})`
+    + ` · 30초 안에 물린 것 ${short}기`);
+  const capBy = new Map();
+  for (const e of capped) capBy.set(e.k, (capBy.get(e.k) ?? 0) + 1);
+  console.log("    인구가 물린 정체 앞 8종: "
+    + [...capBy.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, n]) => `${k}×${n}`).join(" "));
+
   console.log("  ── 뽑은 수 vs 붙은 수 (어긋난 정체 앞 10종)");
   for (const [k, a, b, dd] of rows.slice(0, 10)) {
     console.log(`     ${String(k).padEnd(24)} 뽑음 ${String(a).padStart(5)} · 개체 ${String(b).padStart(5)}`
