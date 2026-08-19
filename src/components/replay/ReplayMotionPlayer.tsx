@@ -2254,7 +2254,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
            그 높이의 기둥 굵기보다 늘 살짝 굵어 기둥 끝을 완전히 감싼다.
            기둥 몸도 금빛(재작도) — 넷이 통째로 개인색이면 종족이 안 읽힌다. */
         ...paintBase(hornFaces(px, py, 0.4, px, py, 8.8, 1.7), "#c9a227"),
-        ...paintBase(hornFaces(px, py, 6.8, px, py, 8.9, 0.5), "#3bd8c2"),
+        /* 오벨리스크 보석은 **개인색**이다(지적: "넥서스 사선에서 개인색 장식 포인트가
+           안보임") — 여태 여기까지 사이언으로 못 박혀 있어서, 화면에 남은 개인색은
+           꼭대기 받침 띠 하나뿐이었다. 그 띠는 지붕에 가려 사선에서 거의 안 보인다.
+           네 귀 기둥 끝은 어느 방향에서 봐도 둘 이상 보이는 자리다 — 색을 안 줘
+           임자 색이 들게 한다. */
+        ...hornFaces(px, py, 6.8, px, py, 8.9, 0.5),
         topFace(groundEllipse(kx, ky, 0.45, 0.65), 0.5),
       ];
     })());
@@ -2299,7 +2304,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 받침 띠는 개인색(칠하지 않는다) — 가장 높고 사방에서 보이는 첫째 포인트.
     out.push(...tagKey([
       ...paintBase(boxFaces3(0, 0, 3.1, 3.1, 0.45, 6.4), GOLDD),
-      ...boxFaces3(0, 0, 2.9, 2.9, 0.42, 6.85),
+      // 받침 띠도 한 뼘 키운다 — 사선에서 지붕에 덜 가리게(지적).
+      ...boxFaces3(0, 0, 3.2, 3.2, 0.55, 6.8),
       [`M${project(0, 0, 7.2)[0]} ${project(0, 0, 7.2)[1] - 2.7} L${project(0, 0, 7.2)[0] + 1.25} ${project(0, 0, 7.2)[1] - 0.9} L${project(0, 0, 7.2)[0]} ${project(0, 0, 7.2)[1] + 0.55} L${project(0, 0, 7.2)[0] - 1.25} ${project(0, 0, 7.2)[1] - 0.9} Z`, 1, "#3bd8c2"] as ShapeFace,
       topFace(`M${project(0, 0, 7.2)[0]} ${project(0, 0, 7.2)[1] - 2.7} L${project(0, 0, 7.2)[0] - 1.25} ${project(0, 0, 7.2)[1] - 0.9} L${project(0, 0, 7.2)[0]} ${project(0, 0, 7.2)[1] + 0.55} L${project(0, 0, 7.2)[0] - 0.4} ${project(0, 0, 7.2)[1] - 0.95} Z`, 0.45),
     ], 45));
@@ -2487,39 +2493,30 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     {
       /* 발판은 안쪽 변 h에서 바깥 변 0.32로 기운 쐐기다(pad의 LO9) — 그 한복판
          높이에 띠를 앉혀야 한쪽 끝이 뜨거나 파묻히지 않는다. */
-      const BAR_Z9 = (h + 0.32) / 2;
-      const BAR_H9 = 0.4;
+      /* 두께 없는 데칼로(요청: "게이트 발판위 개인색은 두께없는 데칼로 발판 윗면에 딱
+         붙이기") — 직육면체 띠는 옆벽 넷과 윗면을 가져 발판 위에 올라앉은 '블록'으로
+         읽혔다. 이제 발판 윗면과 **같은 기울기**의 얇은 사각 하나만 얹는다: 발판은
+         안쪽 변 h에서 바깥 변 0.32로 기운 쐐기라, 네 꼭짓점의 높이를 그 규칙 그대로
+         셈해 0.02만 띄운다. 면이 하나뿐이라 어느 각도에서도 두께가 안 보인다. */
+      const PAD_R9 = 1.8;
       for (const [px9, py9] of [[0, 3.6], [0, -3.6], [3.8, 0], [-3.8, 0]] as [number, number][]) {
-        /* 띠를 90도 돌린다(재지적: "게이트 발판위 장식 90도씩 회전") — 여태는 중심에서
-           발판으로 가는 축과 직각(접선 방향)으로 누워 있었다. 이제 그 축과 나란한
-           방사 방향으로 길게 눕혀, 네 띠가 중심에서 밖으로 뻗는 살처럼 보인다. */
+        // 중심에서 발판으로 가는 축(바깥 방향) — 발판이 기운 축과 같다.
+        const ang9 = Math.atan2(py9, px9);
+        const ox9 = Math.cos(ang9);
+        const oy9 = Math.sin(ang9);
+        /* 그 축과 나란히 긴 데칼(재지적 때의 방향 그대로) — 방사 방향 1.45, 접선 0.34. */
+        const zAt9 = (x9: number, y9: number): number => {
+          const u9 = ((x9 - px9) * ox9 + (y9 - py9) * oy9) / PAD_R9;
+          return (h + 0.32) / 2 - u9 * ((h - 0.32) / 2) + 0.02;
+        };
         const lx9 = py9 === 0 ? 1.45 : 0.34;
         const ly9 = py9 === 0 ? 0.34 : 1.45;
-        const box9 = (z9: number): [number, number, number][] => [
-          [px9 - lx9, py9 - ly9, z9], [px9 + lx9, py9 - ly9, z9],
-          [px9 + lx9, py9 + ly9, z9], [px9 - lx9, py9 + ly9, z9],
-        ];
-        const lo9 = box9(BAR_Z9);
-        const hi9 = box9(BAR_Z9 + BAR_H9);
-        // 옆벽은 뒤에서 앞으로 — 발판 판때기와 같은 정렬 규칙이다.
-        const walls9 = lo9.map((_, i9) => {
-          const j9 = (i9 + 1) % 4;
-          const mx9 = (lo9[i9][0] + lo9[j9][0]) / 2 - px9;
-          const my9 = (lo9[i9][1] + lo9[j9][1]) / 2 - py9;
-          const ml9 = Math.hypot(mx9, my9) || 1;
-          return {
-            d: polyPath3([lo9[i9], lo9[j9], hi9[j9], hi9[i9]]),
-            nx: mx9 / ml9, ny: my9 / ml9, f: facingRatio(mx9 / ml9, my9 / ml9),
-          };
-        }).sort((q9, w9) => q9.f - w9.f);
-        const bar9: ShapeFace[] = [bodyFace(polyPath3(lo9))];
-        for (const wl9 of walls9) {
-          const fl9 = faceLight(wl9.nx, wl9.ny, 0.3);
-          bar9.push(bodyFace(wl9.d), ...(fl9.visible ? fl9.face(wl9.d) : [sideFace(wl9.d, 0.46)]));
-        }
-        // 윗면엔 흰 덮개를 얹지 않는다 — 여기가 임자 색이 제 색으로 드러나는 자리다.
-        bar9.push(bodyFace(polyPath3(hi9)));
-        gated.push(...tagKey(bar9, depthNow(px9, py9) * 1.6 + 0.3));
+        const quad9: [number, number, number][] = [
+          [px9 - lx9, py9 - ly9, 0], [px9 + lx9, py9 - ly9, 0],
+          [px9 + lx9, py9 + ly9, 0], [px9 - lx9, py9 + ly9, 0],
+        ].map(([qx9, qy9]) => [qx9, qy9, zAt9(qx9, qy9)] as [number, number, number]);
+        // 색을 안 준 면이라 임자 색이 제 색으로 든다(흰 덮개도 안 얹는다).
+        gated.push(...tagKey([bodyFace(polyPath3(quad9))], depthNow(px9, py9) * 1.6 + 0.3));
       }
     }
     /* 문틈 소환 빛은 고정 플라즈마색(요청) — 임자 색이면 어두운 색을 만났을 때 빛이
@@ -3250,7 +3247,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   assim: () => {
     const GOLD = "#c9a227";
     const GOLD_D = "#8a6f2a";
-    const TEAL = "#2f8f86";
+    /* (걷어냄) TEAL — 청록 #2f8f86. 녹색기가 돌아 황금 껍데기 위에서 이끼로 보였다는
+       지적으로 렌즈·눈금은 사이언으로, 굴뚝 띠는 개인색으로 옮겼다. */
     const CYAN = "#4fd8ee";
     const out: ShapeFace[] = [];
     /* 개인색 자리(수리) — 바탕색 도우미가 out의 밑칠을 전부 칠하므로, 임자 색으로
@@ -3272,7 +3270,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...tagKey(paintBase(domeFaces3(0, -0.2, DR9, DH9, 0), GOLD), 2));
     /* 몸을 타넘는 활 띠 넷 — 앞에서 뒤로 나란히 걸린다. 하나(가운데 앞)는 개인색. */
     // 개인색 몫 확대(요청) — 가운데 두 줄을 개인색으로, 굵기도 키운다.
-    ([[1.1, 1], [0.2, 1], [-0.7, 1], [-1.6, 0]] as [number, number][])
+    /* 띠 순서(요청: "등의 개인색을 맨앞금색 그다음줄 개인색 그다음줄 금색 순서대로
+       반복") — 앞에서부터 금·개인·금·개인이다. 여태는 앞 셋이 내리 개인색이라 등판이
+       통째로 임자 색으로 읽혔다. */
+    ([[1.1, 0], [0.2, 1], [-0.7, 0], [-1.6, 1]] as [number, number][])
       .forEach(([by9, own9]) => {
         /* 활은 껍데기 겉면을 정확히 탄다(지적: 지도에서 정·후면이 같이 보인다) —
            예전엔 반지름을 손으로 줘 다리가 껍데기 밖으로 삐져나왔고, 뒤에서 보면 그
@@ -3310,28 +3311,33 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           for (const u9 of [0.34, 0.5, 0.66]) {
             const [tx9, ty9, tz9] = arcPt(u9);
             out.push(...tagKey(
-              paintBase(domeFaces3(tx9, ty9, 0.24, 0.16, tz9), TEAL),
+              // 눈금도 녹색기를 뺀다(요청) — 청록(#2f8f86) → 사이언.
+              paintBase(domeFaces3(tx9, ty9, 0.24, 0.16, tz9), CYAN),
               depthNow(tx9, ty9) * 1.6 + tz9 * 2.2 + 0.6,
             ));
           }
         }
       });
     /* 앞면 큰 청록 렌즈 — 벽에 수직으로 붙은 볼록 원판(공용 렌즈 도형). */
+    /* 앞면 렌즈(요청: "정면 렌즈 장식 더 크게 하고 녹색톤 제거 및 전체를 반투명
+       사이언색으로") — 반지름 1.25 → 1.75, 볼록도 0.3 → 0.42. 속을 채우던 짙은 청록
+       (#1f7f97)은 녹색기가 돌아 황금 껍데기 위에서 이끼처럼 보였다. 여덟 자리 색으로
+       알파를 실어 반투명 사이언으로 바꾼다. */
     out.push(...lensFaces({
-      x: 0, y: 2.15, z: 1.35, nx: 0, ny: 1, r: 1.25, bulge: 0.3, lift: 12,
-      rim: GOLD_D, fill: "#1f7f97", core: CYAN, glint: "#d8f7ff",
+      x: 0, y: 2.15, z: 1.35, nx: 0, ny: 1, r: 1.75, bulge: 0.42, lift: 12,
+      rim: GOLD_D, fill: "#6fe4ffcc", core: "#c9f4ff", glint: "#f2fdff",
     }));
     /* 네 귀 기둥 — 뒤 둘은 높고 곧게, 앞 둘은 낮고 바깥으로 기운다. 청록 띠와 황금 갓. */
     ([[-2.3, -1.9, 3.4, 0], [2.3, -1.9, 3.4, 0], [-2.7, 1.5, 2.2, -1], [2.7, 1.5, 2.2, 1]] as
       [number, number, number, number][]).forEach(([px, py, ph, lean]) => {
-      out.push(...tagKey([
-        ...paintBase(spirePillar({
-          x: px, y: py, z0: 0.3, h: ph, w: 0.55, tipW: 0.42,
-          segs: 3, sides: 6, hold: 0.3, leanX: lean * 0.9, leanY: lean === 0 ? 0 : 0.4,
-        }), GOLD),
-        ...paintBase(cylinderFaces3(px + lean * 0.45, py + (lean === 0 ? 0 : 0.2),
-          0.6, 0.45, 0.3 + ph * 0.55), TEAL),
-      ], 10 + depthNow(px, py) * 1.6));
+      out.push(...tagKey(paintBase(spirePillar({
+        x: px, y: py, z0: 0.3, h: ph, w: 0.55, tipW: 0.42,
+        segs: 3, sides: 6, hold: 0.3, leanX: lean * 0.9, leanY: lean === 0 ? 0 : 0.4,
+      }), GOLD), 10 + depthNow(px, py) * 1.6));
+      /* 굴뚝 띠는 개인색이다(요청: "굴뚝들 녹색데칼 개인색으로 변경") — 색을 안 주면
+         임자 색이 들므로 pc에 담는다(out은 밑칠이 통째로 금빛을 덮어쓴다). */
+      pc.push(...tagKey(cylinderFaces3(px + lean * 0.45, py + (lean === 0 ? 0 : 0.2),
+        0.6, 0.45, 0.3 + ph * 0.55), 10 + depthNow(px, py) * 1.6 + 0.2));
     });
     /* 오른뒤 기둥에서 오르는 초록 가스(사진) — 위로 갈수록 넓고 옅어지는 세 켜. */
     for (const [gz, gr, ga] of [[4, 0.6, 0.3], [5.1, 0.9, 0.18], [6.2, 1.2, 0.1]] as
