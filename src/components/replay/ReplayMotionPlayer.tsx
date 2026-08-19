@@ -3403,9 +3403,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     {
       /* 굴뚝을 화면 왼쪽으로 조금 옮기고 키를 살짝 낮춘다(요청). 이 건물은 요잉 45도로
          서므로 화면 가로는 모델의 (x+y) 방향이다 — 왼쪽으로 0.9만큼 = x·y를 각각
-         0.64씩 뺀다. 높이는 4.8 → 4.2. */
-      const CHX = EGG_X + 0.1 - 0.64;
-      const CHY = EGG_Y - 0.3 - 0.64;
+         0.64씩 뺀다. 한 번 더 왼쪽으로(요청) — 0.9 → 2.0만큼, 곧 x·y를 1.41씩.
+         높이는 4.8 → 4.2. */
+      const CHX = EGG_X + 0.1 - 1.41;
+      const CHY = EGG_Y - 0.3 - 1.41;
       const CHZ = 4.2;
       const CHH = 4.2;
       const ck9 = depthNow(CHX, CHY) * 1.6 + 12;
