@@ -3386,15 +3386,42 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         capFace(screenCircle(ax9, ay9 + 0.06, 0.52), 0.55),
       ], depthNow(EGG_X, EGG_Y + EGG_R) * 1.6 + 10));
     }
-    /* 알 위를 넘어가는 큰 뿔 — 뒤에서 솟아 앞으로 감긴다(사진의 굽은 뿔). */
+    /* 알 위를 넘어가는 큰 뿔 — 뒤에서 솟아 앞으로 감긴다(사진의 굽은 뿔).
+       굴뚝이 알 한가운데를 차지하므로 뿔은 한 뼘 왼쪽으로 비켜 지나간다. */
     out.push(...tagKey(paintBase(spirePillar({
       x: 0, y: 0, h: 1, w: 0.95, tipW: 0.16, segs: 10, sides: 6, hold: 0.06, taper: 1.2,
       path: (t9: number): [number, number, number] => [
-        EGG_X - 0.6 + t9 * 0.5,
+        EGG_X - 1.7 + t9 * 0.5,
         EGG_Y - 2.4 + t9 * 4.2,
         2.6 + 4.4 * t9 - 3.4 * t9 * t9,
       ],
-    }), TWIG), depthNow(EGG_X, EGG_Y) * 1.6 + 11));
+    }), TWIG), depthNow(EGG_X - 1.7, EGG_Y) * 1.6 + 11));
+    /* 굴뚝 — **스포어의 발사 기관이자 이 건물의 핵심 포인트**(요청). 알 한가운데(가운데
+       기둥)에서 곧게 솟아 위에서 나팔처럼 벌어지고, 아가리 속은 깊게 어둡다. 알과 같은
+       살빛 대롱에 상아빛 테를 둘러 끝이 또렷하고, 밑동에는 개인색 띠를 둘러 임자를
+       여기서도 읽게 한다 — 눈이 가장 먼저 닿는 자리이기 때문이다. */
+    {
+      const CHX = EGG_X + 0.1;
+      const CHY = EGG_Y - 0.3;
+      const CHZ = 4.2;
+      const CHH = 4.8;
+      const ck9 = depthNow(CHX, CHY) * 1.6 + 12;
+      out.push(...tagKey([
+        ...paintBase(spirePillar({
+          x: CHX, y: CHY, z0: CHZ, h: CHH, w: 1.2, tipW: 0.92,
+          segs: 6, sides: 10, hold: 0.25,
+        }), SKIN),
+        ...paintBase(spirePillar({
+          x: CHX, y: CHY, z0: CHZ + CHH - 0.15, h: 1.15, w: 0.92, tipW: 1.55,
+          segs: 2, sides: 10, hold: 0.15, caps: "none",
+        }), IVORY),
+        capFace(discPath3(CHX, CHY, CHZ + CHH + 1, 1.2), 0.55),
+      ], ck9));
+      pc.push(...tagKey(spirePillar({
+        x: CHX, y: CHY, z0: CHZ + 0.55, h: 0.65, w: 1.32, tipW: 1.26,
+        segs: 1, sides: 10, hold: 0.5, caps: "none",
+      }), ck9 + 0.5));
+    }
     /* 앞오른쪽 주황 촉수 다발 — 바닥에 뭉친 짧고 통통한 관 넷(사진). */
     for (const [tx9, ty9, tl9, tw9] of [
       [2.5, 2.5, 1.5, 0.52], [3.3, 1.7, 1.25, 0.46], [1.9, 3.2, 1.15, 0.42], [3, 3, 0.95, 0.38],
@@ -4923,8 +4950,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        두고 이 덩이만 돌려야 하므로, 모델 요잉이 아니라 사진 좌표에서 제 중심(BC)을 축으로
        돌린다. 사진에서 px가 오른쪽·py가 뒤이므로 화면상 시계 90도는 (px,py) → (py,−px)다. */
     const BC: [number, number] = [1.7, 0.3];
-    const PB = (px: number, py: number): [number, number] =>
-      P(BC[0] + (py - BC[1]), BC[1] - (px - BC[0]));
+    /** 시계 90도 한 번 — 사진 좌표에서 (dx,dy) → (dy,−dx). */
+    const rotCW = (dx9: number, dy9: number): [number, number] => [dy9, -dx9];
+    const PB = (px: number, py: number): [number, number] => {
+      /* 두 번 돌린다 = 시계 180도(요청: "아까 말한 부분 시계방향 90도 회전해봐" — 앞서
+         한 번 돌린 위에 한 번 더). 한 줄로 (−dx,−dy)라고 적어도 같지만, 요청이 쌓인
+         결을 그대로 두어야 다음에 또 한 번 돌릴 때 이 줄만 늘리면 된다. */
+      let [dx9, dy9] = rotCW(px - BC[0], py - BC[1]);
+      [dx9, dy9] = rotCW(dx9, dy9);
+      return P(BC[0] + dx9, BC[1] + dy9);
+    };
     // 몸 — 붉은 살덩이 둔덕(사진).
     const [bmx, bmy] = PB(1.7, 0.3);
     out.push(...tagKey(paintBase(spirePillar({
@@ -9990,7 +10025,7 @@ export const BLD_NORM: Record<string, number> = {
   gspire: 0.917,
   hatchery: 1.367,
   hive: 1.165,
-  hydraden: 1.111,
+  hydraden: 1.070,
   lair: 1.223,
   mineral: 1.963,
   mshop: 1.958,
