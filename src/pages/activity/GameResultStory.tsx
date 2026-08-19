@@ -1,6 +1,6 @@
 import { useContext, useMemo, type MouseEvent, type PointerEvent } from "react";
 import { formatWhen } from "../../utils/date";
-import ReplayMotionPlayer, { type MotionBase, type SummaryMotion } from "../../components/replay/ReplayMotionPlayer";
+import ReplayMotionPlayer, { type MotionBase } from "../../components/replay/ReplayMotionPlayer";
 import { api } from "../../api/client";
 import ActivityComments from "./ActivityComments";
 import KakaoShareButton from "../../components/common/KakaoShareButton";
@@ -19,11 +19,6 @@ import type { GameResult, GameResultSlot, Member } from "../../types";
 // (스토리 다이어트) 문장 요약(summaryData) 기반의 스냅·자막·화살표·이모지 층은 통째로
 // 걷었다 — 요약 자체가 더는 만들어지지도 저장되지도 않는다. 남은 것은 로스터·승패·맵
 // 이름과 연속 재생이고, 재생의 장면은 개체 트랙 v2(buildsV2/castsV2)가 채운다.
-
-/* 요약이 사라져 v1 모션 트랙도 더는 실려 오지 않는다 — 재생기는 빈 모션으로 돌리고,
-   장면은 v2 개체 트랙(loadUnitTracks)이 채운다. 모듈 상수로 두는 이유는 렌더마다 새
-   객체를 만들면 재생기의 useMemo들이 전부 다시 돌기 때문이다. */
-const EMPTY_MOTION: SummaryMotion = { v: 1, step: 5, players: [], builds: [], casts: [] };
 
 export default function GameResultStory({
   gameResult, team1, team2, result, memberOf, highlightMemberIds, highlightTerms, active = true,
@@ -195,7 +190,7 @@ export default function GameResultStory({
       </div>
       {/* 연속 재생 — v1 모션(요약)이 사라져 빈 모션으로 돌고, 장면은 v2 개체 트랙이 채운다. */}
       <ReplayMotionPlayer
-        grid={storyMap} motion={EMPTY_MOTION} endSec={endSecVal}
+        grid={storyMap} endSec={endSecVal}
         bases={bases} teamOfRaw={teamOfRaw} active={active}
         /* 특정 시간 공유(요청) — 링크의 &t=면 그 시점부터, 공유 버튼은 clockKey로
            지금 재생 시각을 읽어 링크에 싣는다. */

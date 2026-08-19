@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Pause, Play, RotateCcw, Shield, X } from "lucide-react";
+import { Pause, Play, RotateCcw, X } from "lucide-react";
 import Avatar from "../common/Avatar";
 import ReplayMapCanvas from "./ReplayMapCanvas";
 import PillTabs from "../common/PillTabs";
@@ -51,56 +51,11 @@ import { TEAM_COLOR, type MinimapMarker } from "./ReplayMinimap";
    타일이고, 시각은 초(정수)다. */
 
 
-/** 한 사람의 자취 — 원본 게임 아이디(raw)로 부른다. */
-export interface MotionTrack {
-  raw: string;
-  /** 게임 내 색(#rrggbb, 요청) — 재생 화면이 팀 2색 대신 이 색으로 칠한다. 없으면 팀 색. */
-  color?: string;
-  /** [초, x, y, g?] — 버킷의 마지막 명령 자리. 안 움직인 버킷은 접혀 있다. */
-  pts: TrackPt[];
-  /** 일꾼의 자취 — 부대 자취(pts)에서 걷어낸, 정체가 일꾼으로 드러난 명령들. */
-  spts?: TrackPt[];
-  /** 수송선(오버로드 포함)의 자취. */
-  tpts?: TrackPt[];
-  /** 정체 모를 한 기짜리 클릭의 자취 — 시작 오버로드·옵저버 정찰이 대부분이다. */
-  opts?: TrackPt[];
-  /** 뜬 건물의 비행 클릭 자취. */
-  fpts?: TrackPt[];
-  /** 명령의 선택 크기 자취 [초, x, y, 몇 기 골랐나]. */
-  sels?: [number, number, number, number][];
-  /** 수송선 드랍 지점 [초, x, y]. */
-  drops?: [number, number, number][];
-  /** 태우기 지점 [초, x, y] — 제 수송선을 찍은 우클릭. */
-  loads?: [number, number, number][];
-  /** 정체가 드러난 유닛별 자취 — 키는 그 이름("Siege Tank"·"Bionic"·"Lurker"…). */
-  upts?: Record<string, TrackPt[]>;
-  /** [초, x, y, 건물 태그] — 생산 건물의 랠리 포인트. */
-  rly?: [number, number, number, number][];
-  /** [초, 유닛 영문명] — 그때까지 가장 많이 뽑은 전투 유닛이 바뀐 순간들(이름표 재료). */
-  units: [number, string][];
-  /** [초, 누적 일꾼 수] — "여태 뽑은 일꾼"으로 읽어야 한다(죽음은 리플레이에 없다). */
-  workers: [number, number][];
-  /** [초, 업그레이드 영문명] — 속도 업그레이드의 연구 시점. */
-  ups?: [number, string][];
-  /** 유닛 영문명 → 생산 시각(초)들 — "생산할 때 건물 이름 켜기"의 재료. */
-  prod: Record<string, number[]>;
-  /** prod와 나란한 '그때 골라져 있던 건물 번호(태그)'. */
-  ptag?: Record<string, number[]>;
-  /** [초, 병력 규모] — 최근 3분 안에 뽑은 전투 유닛 수. */
-  size: [number, number][];
-  /** [시작, 끝] 초 — 상대의 공격 명령이 내 부대 자리 곁에 몰린 구간(전투 어림). */
-  hot?: [number, number][];
-}
-
-export interface SummaryMotion {
-  v: 1;
-  step: number;
-  players: MotionTrack[];
-  /** [초, x, y, 건물 영문명, raw, 무너진 초(0이면 살아 있음), 이륙한 초?]. */
-  builds: [number, number, number, string, string, number, number?][];
-  /** [초, x, y, 기술 영문명, raw] — 좌표가 남는 마법(스톰·스웜·리콜…). */
-  casts: [number, number, number, string, string][];
-}
+/** [초, x, y, 건물 영문명, raw, 무너진 초(0이면 살아 있음), 이륙한 초?] — 화면이 읽는
+ *  건물 한 줄. 개체 트랙(buildsV2)이 만드는 유일한 꼴이다. */
+export type BuildRow = [number, number, number, string, string, number, number?];
+/** [초, x, y, 기술 영문명, raw] — 좌표가 남는 마법 한 줄(스톰·스웜·리콜…). */
+export type CastRow = [number, number, number, string, string];
 
 /** 공중 유닛인가 — 마법 유닛(베슬·퀸 등)은 자취 목적상 지상 취급을 유지한다(옛 규칙 그대로). */
 /* 오버로드는 통계용 AIR_UNITS(병력 구성 집합)에 없어서 지상으로 정렬됐다(지적: 스포닝
@@ -180,215 +135,9 @@ const pct = (v: number, span: number) => `${(v / span) * 100}%`;
 
    저장된 트랙이 아니라 화면에서 거른다 — 원본을 깎아 두면 되돌릴 수 없고, 이렇게 하면
    이미 등록된 경기도 재분석 없이 곧바로 반듯해진다. */
-/** 앞점에서 이만큼(맵 한 변 대비) 떨어지면 '저 멀리'다. */
-const SPIKE_FAR_RATE = 0.22;
-/** 그러고서 앞점의 이만큼 안으로 돌아오면 나들이였다고 본다. */
-const SPIKE_BACK_RATE = 0.1;
-/** 나들이로 볼 수 있는 최대 연속 점 수 — 이보다 길게 머물렀으면 그건 진짜 그 자리다. */
-const SPIKE_MAX_RUN = 4;
-/** 부대 묶기(요청: 가까운 유닛만 합침) — 앞 부대의 마지막 자리에서 이 안이면 같은 부대다.
- *  14 → 9(지적: 유닛이 갑자기 합쳐지고 커진다) — 14타일이면 화면에서 뚜렷이 떨어져 선
- *  두 무리도 한 부대로 삼켜, 마커들이 한 점으로 훅 모여들었다. */
-const SQUAD_MERGE_TILES = 9;
-/** 유닛별 마커의 뭉침 반경(요청: "같은 종류유닛을 무조건 뭉치는게 아니라 아주 가까울때만")
- *  — 부대 반경보다 훨씬 좁다. */
-const TYPE_MERGE_TILES = 6;
-// 4 → 8(지적: 합쳐짐) — 자리가 다 차면 새 무리가 못 태어나 기존 부대에 흡수됐다.
-const SQUAD_MAX = 8;
-/** 다 찼을 때 이보다 먼 점은 아예 빠뜨린다(지적: 동선이 튄다) — 가장 가까운 부대에
- *  이어도 맵을 가로지르는 유령 걸음이 된다. */
-const SQUAD_TELEPORT_TILES = 45;
-/** 곁 부대가 이만큼 조용하면 걷는다 — 본대에 합류했거나 정리된 것이다. */
-const SQUAD_FADE_SEC = 60;
-/** 정찰 자취의 걸음(타일/초) — 일꾼 속도다. 오버로드는 더 느리지만 누가 갔는지 모르는
- *  자리라, 흔한 쪽(일꾼)에 맞춘다. */
-const SCOUT_WALK_SPEED = 3.7;
-
-/** 먼 점을 새 부대로 볼지 내다보는 창(초) — 이 안에 옛 자리 근처 명령이 또 오면 두 무리다. */
-const SQUAD_LOOKAHEAD_SEC = 30;
-/** 출발점이 첫 목적지와 이보다 가까우면 심지 않는다 — 제자리 걸음만 한 점 는다. */
-const SAME_SPOT_START_TILES = 4;
-/** 이만큼 조용했던 부대는 먼 점을 못 가져간다(초, 지적: 잠든 무명 부대가 명령을 가로채
- *  순간이동처럼 보임) — 그 클릭은 새 부대로 태어나거나(자리가 있으면) 버려진다. */
-const SQUAD_RETIRE_SEC = 120;
-/** 묶음 이름(by) → 그 안의 유닛들 — 유닛별 마커의 수를 셀 때 쓴다. */
-const BY_UNITS: Record<string, string[]> = {
-  Bionic: ["Marine", "Firebat", "Medic"],
-  "Siege Tank": ["Siege Tank (Tank Mode)", "Siege Tank (Siege Mode)"],
-};
-
-/** 명령 점을 가까운 것끼리 부대로 묶는다(요청: 가까운 유닛만 합침) — 부대 자취와 정찰
- *  자취가 같이 쓴다.
- *
- *  먼 점 하나에는 두 이야기가 있다(지적: 부대를 가른 뒤로 먼 어택이 걷지 않았고, 일꾼·
- *  오버로드 위치도 여전히 튀었다) — 그 무리가 통째로 옮겨 가는 것이거나, 딴 무리가 저기서
- *  따로 움직이는 것이다. 가르는 근거는 옛 자리다: 먼 점 뒤로 곧(30초) 옛 자리 근처 명령이
- *  또 오면 두 무리가 같이 사는 것이라 부대를 가르고, 안 오면 이사라 이어 걷는다.
- *  새로 서는 부대는 곁 부대의 마지막 자리를 출발점으로 심는다 — 첫 점이 곧 목적지라
- *  마커가 목적지에서 태어나던 것을, 걸어 나가는 그림으로 되돌린다. */
-function splitSquads(
-  pts: TrackPt[], home?: [number, number] | null,
-  mergeTiles: number = SQUAD_MERGE_TILES,
-  /** 드랍 지점들(요청: 드랍십 태우고 내리는 게 반영 안 됨) — 갓 내린 자리 곁의 새 명령
-   *  뭉치는 여기서 태어난 부대다(수송선이 날라 준 것이라 걸어온 자취가 없는 게 맞다). */
-  warps?: [number, number, number][],
-  /** 이어붙이기 속도(타일/초) — 느린 정찰(오버로드·수송선)용(지적: 오버로드가 자꾸
-   *  순간이동). 이 갈래는 대개 한두 기의 여정이라 부대 나누기 휴리스틱(방향 갈림·옛 자리
-   *  재사용)이 여정을 툭툭 끊어 새 마커가 목적지에서 태어났다. 시간 대비 그 거리를 갈 수
-   *  있으면(bestD/dt ≤ glueSpeed) 같은 기체가 걸어간 것으로 보고 잇고, 방향 갈림 규칙은
-   *  끈다. */
-  glueSpeed?: number,
-): TrackPt[][] {
-  const squads: TrackPt[][] = [];
-  // 직전 점이 들어간 부대 — 연속 클릭은 대개 같은 선택(같은 부대)의 것이다.
-  let prevIdx = -1;
-  /* 선택 묶음 번호(g) → 그 묶음이 마지막으로 들어간 부대(지적: 단축키 부대지정 뒤
-     이동이 순간이동으로 보임) — 같은 부대지정으로 내린 명령은 거리와 무관하게 같은
-     부대의 자취다. 자리 어림(가까운 부대)보다 굵은 근거라 먼저 본다. */
-  const gToSquad = new Map<number, number>();
-  for (let i = 0; i < pts.length; i += 1) {
-    const pt = pts[i];
-    const g = pt[3];
-    if (g !== undefined) {
-      const k = gToSquad.get(g);
-      if (k !== undefined) {
-        const last = squads[k][squads[k].length - 1];
-        // 너무 멀면(TELEPORT 초과) 드랍·리콜로 옮겨진 것일 수 있다 — 아래 워프 시딩에 맡긴다.
-        if (Math.hypot(last[1] - pt[1], last[2] - pt[2]) <= SQUAD_TELEPORT_TILES) {
-          squads[k].push(pt);
-          prevIdx = k;
-          continue;
-        }
-      }
-    }
-    let best = -1;
-    let bestD = Infinity;
-    for (let k = 0; k < squads.length; k += 1) {
-      const last = squads[k][squads[k].length - 1];
-      const d = Math.hypot(last[1] - pt[1], last[2] - pt[2]);
-      if (d < bestD) { bestD = d; best = k; }
-    }
-    /* 순간이동 방지(지적: 이동 명령을 내리면 바로 그 자리로 가 버림) — 배정이 '목적지에서
-       가장 가까운 부대'라, 목적지 곁에 한참 조용한 옛 부대가 있으면 그 부대가 명령을
-       가로채 마커가 목적지에서 바로 켜졌다. 실제로 움직인 부대(직전 클릭과 같은 선택)는
-       제자리인 채였다. 가장 가까운 부대가 한참(SQUAD_FADE_SEC) 조용했고, 직전 클릭의
-       부대가 방금(10초 안)도 부려졌고 걸어갈 만한 거리(TELEPORT 이내)면, 직전 부대가
-       그리로 이동한 것으로 본다 — 마커가 걸어간다. */
-    if (best >= 0 && bestD <= mergeTiles && prevIdx >= 0 && prevIdx !== best) {
-      const bl = squads[best][squads[best].length - 1];
-      const pl = squads[prevIdx][squads[prevIdx].length - 1];
-      if (pt[0] - bl[0] > SQUAD_FADE_SEC && pt[0] - pl[0] <= 10
-        && Math.hypot(pl[1] - pt[1], pl[2] - pt[2]) <= SQUAD_TELEPORT_TILES) {
-        best = prevIdx;
-        bestD = Math.hypot(pl[1] - pt[1], pl[2] - pt[2]);
-      }
-    }
-    /* 방향이 갈리면 바로 안 묶는다(지적: 멈춰 있거나 같은 방향일 때만 묶기 — 뮤탈
-       나누기처럼 서로 다른 움직임은 딴 무리다) — 그 부대가 방금 가던 쪽에서 90도 넘게
-       꺾이는 클릭은 아래 staysBehind 판정으로 넘긴다: 옛 방향 클릭이 곧 또 오면(교차
-       클릭 = 나누기) 새 부대로 갈리고, 아니면(무리째 방향 전환) 그대로 잇는다. */
-    let joinable = best >= 0 && bestD <= mergeTiles;
-    if (joinable && squads.length < SQUAD_MAX && glueSpeed === undefined) {
-      const sq = squads[best];
-      if (sq.length >= 2) {
-        const prev = sq[sq.length - 2];
-        const last = sq[sq.length - 1];
-        const vx = last[1] - prev[1];
-        const vy = last[2] - prev[2];
-        const wx = pt[1] - last[1];
-        const wy = pt[2] - last[2];
-        const vlen = Math.hypot(vx, vy);
-        const wlen = Math.hypot(wx, wy);
-        if (vlen > 2 && wlen > 2 && (vx * wx + vy * wy) / (vlen * wlen) < 0) joinable = false;
-      }
-    }
-    /* 느린 정찰 이어붙이기(위 glueSpeed 주석) — 오버로드는 왕복·선회가 잦아 방향 규칙에
-       걸리고, 먼 목적지는 mergeTiles를 넘어 새 부대가 됐다. 그 시간에 갈 수 있는 거리면
-       같은 기체다 — 마커가 제 속도로 걸어간다(순간이동이 구조적으로 없어진다). */
-    if (!joinable && glueSpeed !== undefined && best >= 0) {
-      const last = squads[best][squads[best].length - 1];
-      const dt = pt[0] - last[0];
-      if (dt > 0 && bestD / dt <= glueSpeed) joinable = true;
-    }
-    if (joinable) {
-      squads[best].push(pt);
-      prevIdx = best;
-      if (g !== undefined) gToSquad.set(g, best);
-      continue;
-    }
-    if (best >= 0) {
-      const last = squads[best][squads[best].length - 1];
-      let staysBehind = false;
-      for (let j = i + 1; j < pts.length && pts[j][0] - pt[0] <= SQUAD_LOOKAHEAD_SEC; j += 1) {
-        if (Math.hypot(pts[j][1] - last[1], pts[j][2] - last[2]) <= mergeTiles) {
-          staysBehind = true;
-          break;
-        }
-      }
-      /* 옛 자리가 곧 다시 안 쓰인다 — 무리째 이사다. 이어 걸어간다.
-         단, 한참 잠든 부대는 못 가져간다(지적: "기존 명령 받은 무명 부대에 계속 명령을
-         할당해서" 순간이동) — 2분 넘게 조용하던 부대가 맵 저쪽 클릭을 가로채면 유령이
-         걸어간다. 그 클릭은 아래에서 새 부대로 태어난다. */
-      if (!staysBehind && pt[0] - last[0] <= SQUAD_RETIRE_SEC) {
-        squads[best].push(pt);
-        prevIdx = best;
-        if (g !== undefined) gToSquad.set(g, best);
-        continue;
-      }
-    }
-    if (squads.length < SQUAD_MAX) {
-      /* 새 부대의 출발점(지적: 엉뚱한 데서 태어남) — 갓 내린 드랍 지점이 곁에 있으면
-         거기서(수송선이 날라 줬다), 아니면 곁 부대의 마지막 자리, 그것도 없으면 본진이다.
-         첫 명령의 좌표는 목적지라, 심어 주지 않으면 마커가 목적지에서 태어난다. */
-      const warp = warps?.find(([ws, wx, wy]) =>
-        pt[0] - ws >= 0 && pt[0] - ws <= 45 && Math.hypot(wx - pt[1], wy - pt[2]) <= 10);
-      const from = best >= 0 ? squads[best][squads[best].length - 1] : null;
-      const seed: [number, number] | null = warp ? [warp[1], warp[2]]
-        : from ? [from[1], from[2]] : home ?? null;
-      squads.push(seed && Math.hypot(seed[0] - pt[1], seed[1] - pt[2]) > SAME_SPOT_START_TILES
-        ? [[pt[0], seed[0], seed[1]], pt] : [pt]);
-      prevIdx = squads.length - 1;
-      if (g !== undefined) gToSquad.set(g, prevIdx);
-      continue;
-    }
-    /* 다 찼으면 가까운(묶음 반경 안) 부대만 그리로 걸어간다(지적 둘: 순간이동 + 유닛이
-       갑자기 합쳐짐) — 예전엔 45타일까지 기존 부대에 이어 붙여, 자리가 차면 딴 무리의
-       명령이 옛 부대로 빨려 들어가 마커가 훅 합쳐졌다. 놓치는 것보다 합체가 더 큰
-       거짓말이다. */
-    if (bestD <= mergeTiles
-      && pt[0] - squads[best][squads[best].length - 1][0] <= SQUAD_RETIRE_SEC) {
-      squads[best].push(pt);
-      prevIdx = best;
-      if (g !== undefined) gToSquad.set(g, best);
-    }
-  }
-  return squads;
-}
-
-function dropSpikes(
-  pts: TrackPt[], span: number,
-): TrackPt[] {
-  if (pts.length < 3) return pts;
-  const far = span * SPIKE_FAR_RATE;
-  const back = span * SPIKE_BACK_RATE;
-  const at = (p: TrackPt) => [p[1], p[2]] as const;
-  const gap = (a: TrackPt, b: TrackPt) =>
-    Math.hypot(at(a)[0] - at(b)[0], at(a)[1] - at(b)[1]);
-  const out: TrackPt[] = [pts[0]];
-  let i = 1;
-  while (i < pts.length) {
-    const prev = out[out.length - 1];
-    if (gap(prev, pts[i]) <= far) { out.push(pts[i]); i += 1; continue; }
-    // 멀리 나간 구간의 끝을 찾는다 — 앞점 근처로 돌아온 첫 점이 그 끝이다.
-    let j = i;
-    while (j < pts.length && j - i < SPIKE_MAX_RUN && gap(prev, pts[j]) > far) j += 1;
-    if (j < pts.length && gap(prev, pts[j]) <= back) { i = j; continue; }  // 나들이 — 통째로 뺀다
-    out.push(pts[i]);
-    i += 1;
-  }
-  return out;
-}
-
+/* (걷어냄) 부대 어림 한 벌 — 명령 점을 부대 몇으로 묶고 가르던 상수와 함수(SPIKE_*·
+   SQUAD_*·TYPE_MERGE_TILES·BY_UNITS·splitSquads·dropSpikes)다. 개체 트랙이 태그마다
+   제 자취를 싣는 지금은 묶고 가를 것이 없다. */
 /* ── 유닛 속도(요청: 속업 여부 포함) ──────────────────────────────────────────
    값은 타일/초다(브루드워 픽셀/프레임 × 23.81fps ÷ 32px). 표에 없는 유닛은 보병쯤(3.2)으로
    친다. 속업은 리플레이의 업그레이드 기록(트랙의 ups)에서 연구 시점을 읽어, 그 뒤의
@@ -575,52 +324,9 @@ const SHAPE_KIND: Record<string, string> = {
 /* (전면 3D화·요청) 손으로 깎던 저그 본진 상수들은 3D 빌더(SHAPE_BUILDERS)로 대체됐다. */
 /* 전부 입체(면 겹침)로 옮겼다(요청: "무조건 입체로") — 홑겹 도형은 이제 없다. */
 const SHAPE_PATHS: Record<string, string> = {};
-/** 본진 아바타용 실루엣(요청: "아바타를 본진 안에", "아바타용 모양들도 크기 비슷하게") —
- *  건물 도형을 그대로 쓰면 종족마다 덩치가 달라(피라미드는 뾰족해 얼굴이 좁고, 커맨드의
- *  떠 있는 판은 사진 조각을 따로 남긴다) 셋을 비슷한 부피로 다시 깎은 판이다.
- *  장식(커맨드 꼭대기 판, 넥서스 양옆 기둥)도 함께 단다(요청: "아바타에도 장식 요소 다") —
- *  사진은 몸통(body)에만 담고 장식(deco)은 사진 위에 색으로 얹는다: 장식까지 클립에 넣으면
- *  떨어진 판·기둥 속에 사진 조각이 따로 남는다. 해처리는 건물 자체에 장식이 없어 몸통뿐이다
- *  (뿔은 레어부터다). */
-const AVATAR_HALL_PATHS: Record<string, { body: string; deco?: string; dy: number }> = {
-  /* dy — 동그란 아바타가 실루엣 배 속에 쏙 들어가는 세로 자리(px, 40px 상자 기준, 지적:
-     "아바타가 쏙 들어가게 크기 위치 조정"). 도형마다 배가 앉은 높이가 달라 하나로 못
-     맞춘다(피라미드는 아래가 넓고 돔은 가운데다).
-     모양은 건물 도형을 따라간다(요청: "아바타용도 모양 같이 맞춰가야해") — 커맨드 돔+판,
-     잘린 피라미드+기둥, 저그 둔덕+거미줄 밑동. */
-  테란: {
-    // 건물 커맨드와 같은 결(요청: 아바타 모양도 맞추기) — 돔 + 둥근 바닥 + 꼭대기 판.
-    body: "M1.5 12 Q1.5 4.8 8 4.8 Q14.5 4.8 14.5 12 Q13.2 14.4 8 14.4 Q2.8 14.4 1.5 12 Z",
-    deco: "M6.2 2.8 H9.8 V3.6 H6.2 Z",
-    dy: 3,
-  },
-  프로토스: {
-    // 건물 넥서스와 같은 결 — 뾰족한 넙적 피라미드 + 두 직선 바닥 + 양옆 기둥.
-    body: "M8 3 L15.8 12.4 L8 14.8 L0.2 12.4 Z",
-    deco: "M1.6 13.2 L2.8 5.8 L4.4 13.8 Z M14.4 13.2 L13.2 5.8 L11.6 13.8 Z",
-    dy: 5,
-  },
-  저그: {
-    // 건물 해처리와 같은 후지산 결이되, 원형 아바타가 담기게 옆으로 벌린 판.
-    // 다리(위로 펼쳐지는 뭉뚝한 갈래)도 함께 단다(요청: 아바타에도 다리 표현).
-    body: "M4.6 4.4 Q8 3.4 11.4 4.4 Q12 10 15 12.8 Q8 14.2 1 12.8 Q4 10 4.6 4.4 Z"
-      + " M3.8 11.2 Q1.4 11.6 0.4 9.4 Q2 10.3 3.6 10.2 Z"
-      + " M3.4 12.9 Q1 13.5 0 12.1 Q1.8 12.5 3.8 12.1 Z"
-      + " M12.2 11.2 Q14.6 11.6 15.6 9.4 Q14 10.3 12.4 10.2 Z"
-      + " M12.6 12.9 Q15 13.5 16 12.1 Q14.2 12.5 12.2 12.1 Z"
-      + " M7.3 13.6 Q7.2 15 8 15.2 Q8.8 15 8.9 13.6 Z",
-    dy: 4,
-  },
-};
-/** 저그 아바타의 단계 장식(요청: "해처리 아바타도 레어 하이브 다 표현") — 그 시각에
- *  살아 있는 최고 단계 건물을 따라간다. 레어는 바닥 뿔, 하이브는 본체보다 긴 뿔 셋. */
-const AVATAR_ZERG_DECO: Record<string, string | undefined> = {
-  hatchery: undefined,
-  lair: "M2.4 12.2 L1.2 8 L4.2 10.8 Z M13.6 12.2 L14.8 8 L11.8 10.8 Z",
-  hive: "M2 12.2 Q0.8 6.4 2.4 0.8 Q3.4 6.6 4.4 11 Z"
-    + " M6.9 10.4 Q7.3 3.8 8 0.3 Q8.7 3.8 9.1 10.4 Z"
-    + " M14 12.2 Q15.2 6.4 13.6 0.8 Q12.6 6.6 11.6 11 Z",
-};
+/* (걷어냄) 본진 아바타 실루엣 표 — 맵 위 본진 자리에 아바타를 앉히던 도형(AVATAR_
+   HALL_PATHS·AVATAR_ZERG_DECO)이다. 아바타가 맵 밖 로스터 기둥으로 나가면서 그리는
+   쪽이 먼저 사라졌고, 표만 남아 있었다. */
 
 /** 여러 면으로 그리는 도형 — [패스, 불투명도, 색?] 목록. 색을 안 주면 currentColor다.
  *  한 색 위에 흰/검 반투명을 겹쳐 밝은 윗면·어두운 옆면을 만든다(입체 사선 뷰). */
@@ -10374,21 +10080,10 @@ const BUILD_SEC: Record<string, number> = {
   Spire: 75.6, "Greater Spire": 75.6, "Nydus Canal": 25.2, "Defiler Mound": 37.8,
   "Ultralisk Cavern": 50.4,
 };
-/** 유닛 뽑는 시간(초, 어림) — 이 시간이 지나면 만든 건물 앞에 잠깐 놓인다(요청). */
-const UNIT_SEC: Record<string, number> = {
-  SCV: 13, Probe: 13, Drone: 13, Overlord: 25,
-  Marine: 15, Firebat: 15, Medic: 19, Ghost: 31,
-  Vulture: 19, "Siege Tank (Tank Mode)": 31, "Siege Tank": 31, Goliath: 25,
-  Wraith: 38, Dropship: 31, "Science Vessel": 50, Battlecruiser: 83, Valkyrie: 31,
-  Zealot: 25, Dragoon: 31, "High Templar": 31, "Dark Templar": 31,
-  Shuttle: 38, Reaver: 44, Observer: 25, Scout: 50, Corsair: 25, Carrier: 88, Arbiter: 100,
-  Zergling: 17, Hydralisk: 17, Mutalisk: 25, Scourge: 19, Queen: 31, Ultralisk: 42, Defiler: 31,
-};
-/* 자원 고갈(요청: 어느 정도 캐면 고갈, 무한맵 제외) — 미네랄 밭 1500을 두어 기가
-   캐면 약 12분, 가스 5000은 세 기가 약 17분이라는 어림. 고갈된 미네랄은 사라지고
-   가스는 색이 죽는다(원작: 고갈 가스도 2씩은 나온다). */
-const MINERAL_DEPLETE_SEC = 720;
-const GAS_DEPLETE_SEC = 1020;
+/* (걷어냄) UNIT_SEC — '유닛 뽑는 시간' 어림표. 완성 시각을 되짚는 데 쓰던 자리는
+   전부 원작 표(UNIT_BUILD_SEC)와 개체 트랙의 출생 시각으로 옮겨 갔다. */
+/* (걷어냄) 자원 고갈 상수(MINERAL_DEPLETE_SEC·GAS_DEPLETE_SEC) — 고갈 어림을
+   걷으면서 함께. */
 
 /* 교전 붙기의 자(아래 engagePosOf 주석) — 시야·당김 상한(타일), 근접 유닛, 유닛별
    사정거리(타일, 대략). 싸움과 무관한 유닛(일꾼·수송·캐스터)은 안 끈다 — 시즈 탱크
@@ -10435,15 +10130,8 @@ function nearestTrackSec(
   return best;
 }
 
-/** t 시각의 우세 유닛 이름 — 없으면 빈 문자열. */
-function unitAt(units: [number, string][], t: number): string {
-  let name = "";
-  for (const [sec, u] of units) {
-    if (sec > t) break;
-    name = u;
-  }
-  return name;
-}
+/* (걷어냄) unitAt — '이 부대의 우세 유닛' 어림. 개체마다 제 정체(e.k)가 있으니
+   부대의 대표 이름을 고를 일이 없다. */
 
 /** 상세 팝업 자동 확대의 자리 잡기 — 묶음 상세(카드 여럿)에서 첫 판만 확대창을 연다. */
 // (삭제·요청: 확대창 완전 제거) — autoBigHolder(묶음 상세의 첫 판만 확대)도 함께 걷었다.
@@ -10484,11 +10172,10 @@ const shortName = (name: string): string => {
 export const playbackClockOf = new Map<string, number>();
 
 export default function ReplayMotionPlayer({
-  grid, motion, endSec, bases, teamOfRaw, active = true, winnerTeam, side,
+  grid, endSec, bases, teamOfRaw, active = true, winnerTeam, side,
   onDetailClose, loadUnitTracks, initialSec, clockKey, shareNode,
 }: {
   grid: ReplayMapGrid;
-  motion: SummaryMotion;
   /** 경기 길이(초) — 경기 메타(durationSeconds)에서 온다. 없으면 트랙의 끝으로 잡는다. */
   endSec: number | null;
   /** 본진 로스터(아바타+이름) — 좌표는 옛 요약에서만 왔으므로 이제 없을 수 있다. */
@@ -10524,14 +10211,9 @@ export default function ReplayMotionPlayer({
   shareNode?: React.ReactNode;
   // (삭제·요청) caps — 자막 표시를 걷으면서 함께.
 }) {
-  const total = useMemo(() => {
-    if (endSec && endSec > 0) return endSec;
-    let last = 0;
-    // (스토리 다이어트) pts가 사라져 건물·마법 시각으로 어림한다 — endSec이 원래 주다.
-    for (const b of motion.builds) last = Math.max(last, b[0]);
-    for (const c of motion.casts) last = Math.max(last, c[0]);
-    return Math.max(60, last);
-  }, [motion, endSec]);
+  /* 경기 길이는 경기 메타(endSec)가 유일한 주다 — v1 모션을 걷어내면서 '건물·마법
+     시각으로 어림하던' 폴백도 함께 걷었다. 메타가 없으면 60초로 서서 눈에 띈다. */
+  const total = useMemo(() => (endSec && endSec > 0 ? endSec : 60), [endSec]);
 
   // 공유 링크의 시작 시각(요청) — 경기 길이 안일 때만 그 시점에서 시계를 세운다.
   const [t, setT] = useState(() =>
@@ -10545,17 +10227,15 @@ export default function ReplayMotionPlayer({
   useEffect(() => () => { if (clockKey) playbackClockOf.delete(clockKey); }, [clockKey]);
   /* 배지 색 규칙(요청) — 배경은 팀 컬러, 테두리는 개인(게임 내) 컬러, 글자는 배경과
      대비되는 흰/검이다. 역할이 고정되면서 팀색/개인색 토글은 걷었다. */
-  const colorByRaw = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const p of motion.players) if (p.color) m.set(p.raw, p.color);
-    return m;
-  }, [motion]);
+  /* 개인색은 개체 트랙(entData.players[].color)에서만 온다 — v1 모션 트랙의 color는
+     걷었다. 아래 modeColor가 이 표를 먼저 보고, 없으면 entData를 직접 뒤진다. */
+  const colorByRaw = useMemo(() => new Map<string, string>(), []);
   /* 색은 한 벌만 칠한다(요청: 중복 표시 제거) — 팀색/개인색을 전환 버튼으로 오간다.
      개인색이 없는 옛 기록은 개인색 모드여도 팀색으로 떨어진다. */
   const [colorMode, setColorMode] = useState<"team" | "personal">("personal");
-  /* 개체 트랙 v2 토글(요청: 별도 테이블에 담아 기존 부대 추적과 비교) — 켜면 유닛 층만
-     태그(유닛 번호) 단위 트랙으로 갈아 끼운다. 데이터는 처음 켤 때 한 번 내려받는다. */
-  const [entMode, setEntMode] = useState(false);
+  /* 개체 트랙 — 화면이 그리는 **유일한** 자료다(v1 부대 추적은 걷었다). 뜨자마자 한 번
+     내려받고, 못 받으면 아래 보기 줄이 '재분석 필요'라고 말한다: 자료가 없는 것과
+     "그 경기엔 아무 일도 없었다"가 화면에서 갈려야 한다. */
   const [entData, setEntData] = useState<UnitTracksV2 | null>(null);
   const [entLoad, setEntLoad] = useState<"idle" | "loading" | "none">("idle");
   /* 시뮬 코어 미리보기(기획서 docs/plan-sim-core-v4.md P1) — 주소에 ?sim=1을 붙이면
@@ -10592,22 +10272,19 @@ export default function ReplayMotionPlayer({
   const qPing = quality >= 3;
   /* (제거·요청) 좌우 동시 보기(비교) — forceEnt·syncKey·syncRole·신호줄까지 걷었다. */
   useEffect(() => {
-    /* v2가 기본(요청: v1 완전 제거의 1단계) — 트랙이 있으면 뜨자마자 v2로 연다.
-       트랙이 없는 옛 경기(재분석 전)만 v1로 남는다. 소스 걷어내기는 다음 단계다. */
-    if (loadUnitTracks && !entData && entLoad === "idle") void toggleEnt();
+    if (loadUnitTracks && !entData && entLoad === "idle") void loadEnt();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadUnitTracks]);
-  /* (v1 제거) 토글이 아니라 로더다 — 트랙을 내려받아 켠다. 끄는 길은 없다. */
-  const toggleEnt = async (): Promise<void> => {
-    if (entData) { setEntMode(true); return; }
-    if (!loadUnitTracks || entLoad === "loading") return;
+  /* 토글이 아니라 로더다 — 켜고 끄는 길은 없다(갈래가 하나뿐인데 스위치를 두면 거짓말
+     이다). 실패는 entLoad === "none"으로 남아 화면에 그대로 드러난다. */
+  const loadEnt = async (): Promise<void> => {
+    if (entData || !loadUnitTracks || entLoad === "loading") return;
     setEntLoad("loading");
     try {
       const raw = await loadUnitTracks();
       const parsed = raw ? (JSON.parse(raw) as UnitTracksV2) : null;
       if (parsed && parsed.v === 2 && Array.isArray(parsed.ents)) {
         setEntData(parsed);
-        setEntMode(true);
         setEntLoad("idle");
       } else {
         setEntLoad("none");
@@ -10619,7 +10296,7 @@ export default function ReplayMotionPlayer({
   /* v2 어댑터(요청: 건물까지 모든 정보를 한 테이블에 — 나중에 v1만 싹 걷어내게) — 개체
      트랙의 건물·마법을 v1과 똑같은 튜플로 바꿔, 아래의 건물·크립·채굴·마법 렌더 전부가
      소스만 갈아 끼우면 되게 한다. v2를 켜면 장면 전체(유닛·건물·마법)가 v2 데이터다. */
-  const buildsV2 = useMemo<SummaryMotion["builds"]>(() => {
+  const buildsV2 = useMemo<BuildRow[]>(() => {
     if (!entData) return [];
     const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
     type Row = { born: number; x: number; y: number; k: string; raw: string; gone: number; lift?: number };
@@ -10657,7 +10334,7 @@ export default function ReplayMotionPlayer({
        좌표)과 태그 줄(드론 태그가 건물이 된 생애)이 함께 있다. 태그 줄이 정체(변태
        반영: 크립 콜로니→성큰)와 취소를 더 잘 알고, 물리 줄은 발치 공격의 철거를 안다 —
        태그 줄을 남기고 물리 줄의 무너짐만 승계한다. */
-    const out: SummaryMotion["builds"] = [];
+    const out: BuildRow[] = [];
     for (const r of tagRows) {
       const twin = physRows.find((p2) => !p2.used && p2.raw === r.raw
         && Math.abs(p2.born - r.born) <= 3 && Math.hypot(p2.x - r.x, p2.y - r.y) <= 1.5);
@@ -10678,11 +10355,11 @@ export default function ReplayMotionPlayer({
     }
     return out;
   }, [entData]);
-  const castsV2 = useMemo<SummaryMotion["casts"]>(() => {
+  const castsV2 = useMemo<CastRow[]>(() => {
     if (!entData) return [];
     const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
     return (entData.casts ?? []).map(([s, x, y, tech, pidc]) =>
-      [s, x, y, tech, nameOfId.get(pidc) ?? ""] as SummaryMotion["casts"][number]);
+      [s, x, y, tech, nameOfId.get(pidc) ?? ""] as CastRow);
   }, [entData]);
   /* 건물 체력 자취(요청: 건물 체력바 — 실드·회복·불·수리 반영은 분석이 했다) —
      자리 열쇠(raw|x|y)로 그 건물의 체력 변곡점을 찾는다. */
@@ -10773,7 +10450,6 @@ export default function ReplayMotionPlayer({
     for (const arr of m.values()) arr.sort((a, b) => a.from - b.from);
     return m;
   }, [entData]);
-  const entOn = entMode && entData !== null;
   /* 건설 SCV 떠남 시각(지적: SCV들이 건설현장에 남는다) — 일꾼 개체의 건설 앵커(f=2)
      마다 [앵커 자리, 앵커 초, 그 뒤 첫 위치 증거 초]를 색인한다. 합성 건설 SCV는 그
      '첫 위치 증거' 순간(진짜 SCV가 현장을 떠나 걸어 나가는 순간)에 걷힌다. */
@@ -10852,8 +10528,12 @@ export default function ReplayMotionPlayer({
     }
     return m;
   }, [workerLive, t]);
-  const buildsSrc = entOn ? buildsV2 : motion.builds;
-  const castsSrc = entOn ? castsV2 : motion.casts;
+  /* 그리는 재료는 개체 트랙 하나뿐이다(요청: 정식 운영 — 안 나오면 문제인 것이 보이게).
+     예전엔 v1 부대 추적으로 떨어지는 갈래가 있었는데, 그 v1 자리에는 이미 오래전부터
+     빈 배열만 실려 왔다(요약 폐지). 폴백이 남아 있으면 트랙 적재가 실패해도 화면이
+     그냥 조용히 비어, 고장과 '아무 일도 없던 경기'가 구분되지 않는다. */
+  const buildsSrc = buildsV2;
+  const castsSrc = castsV2;
   /* 건물 겹침 해소(요청: 캔버스에서 건물끼리 겹침 불가) — 같은 시기에 함께 서 있는 두
      발자국이 포개지면, 늦게 선 쪽을 얕게 겹친 축으로 밀어낸다. 좌표는 커맨드 그대로가
      원칙이라 밀림은 화면에만 적용한다(근접 판정·경로 차단은 원좌표).
@@ -11168,15 +10848,7 @@ export default function ReplayMotionPlayer({
      공중은 직선)를 그 유닛의 속도(속업 포함)로 이동한다. 도착 전에 다음 명령이 오면 가던
      길 그 지점에서 새 목적지로 방향을 튼다. 명령이 없는 동안은 서 있는다 — 순간이동은
      구조적으로 없다. */
-  /* 정찰 클릭 한 번에 부대가 맵을 가로지르던 점들을 먼저 걷는다(위 dropSpikes 주석).
-     아래 자취를 펴는 계산도, 마커가 '방금 명령받았나'를 재는 곳도 이 걸러진 점을 본다 —
-     뺀 점이 한쪽에만 남아 있으면 마커는 가만히 선 채로 명령받은 척 맥동한다. */
-  const basePts = useMemo(
-    () => motion.players.map((p) => dropSpikes(p.pts, Math.max(grid.width, grid.height))),
-    [motion, grid.width, grid.height],
-  );
-
-  /* 자취 펴기 한 벌 — 부대는 지형 경로에 그 유닛의 속도로, 정찰(straight)은 직선에 일꾼
+  /* 자취 펴기 한 벌 — 개체는 지형 경로를 제 속도로 걷는다. 옛 '정찰은 직선에 일꾼
      걸음(3.7타일/초)으로 걷는다(지적: 일꾼·오버로드가 위치 찍으면 바로 이동하는 느낌 —
      정찰 점도 명령 시각에 출발해 걸어서 가야 한다). */
   /* 길찾기 캐시(개체 트랙 v2) — 부대 몇십 개가 아니라 개체 천여 개를 걷게 되면서, 같은
@@ -11257,8 +10929,10 @@ export default function ReplayMotionPlayer({
     };
     return { gridAt, verOf };
   }, [terrain, buildsSrc, grid.resources, grid.width, grid.height]);
+  /* 걷기에 필요한 것은 트랙 전체가 아니라 **속업 목록**뿐이었다 — v1 부대 트랙을
+     걷어내면서 인자도 그 알맹이로 좁힌다. */
   const walkTrack = (
-    src: TrackPt[], p: MotionTrack, straight: boolean, forcedUnit?: string,
+    src: TrackPt[], ups: [number, string][] | undefined, forcedUnit?: string,
     speedOverride?: number, forceGround?: boolean,
   ): [number, number, number][] => {
     if (src.length === 0) return [];
@@ -11272,14 +10946,16 @@ export default function ReplayMotionPlayer({
       // 명령이 올 때까지 서 있던 자리 — 같은 좌표의 점을 박아 그 구간을 정지로 만든다.
       if (orderSec > atSec) out.push([orderSec, atX, atY]);
       const startSec = Math.max(atSec, orderSec);
-      const unit = forcedUnit ?? (straight ? "" : unitAt(p.units, orderSec));
+      /* 정체는 부르는 쪽이 준다(forcedUnit) — 옛 '부대의 우세 유닛' 어림(unitAt)은
+         v1 트랙과 함께 걷었다. 이름이 없으면 아래에서 기본 보병 속도로 떨어진다. */
+      const unit = forcedUnit ?? "";
       /* 무명 부대는 늘 지상 길찾기다(지적: 지상 유닛이 벽을 뚫고 다닌다) — 우세 유닛이
          공중(뮤탈 등)이면 부대 전체가 직선으로 날았는데, 그 부대엔 지상 유닛이 섞여
          있기 마련이라 벽 뚫기가 더 큰 거짓말이다. 정체를 아는 공중(typeSquads)만 곧게
          난다. */
       const air = !forceGround && unit !== "" && isAirUnit(unit);
       let path: [number, number][] | null = null;
-      if (!straight && !air && (terrain || bldGrid)) {
+      if (!air && (terrain || bldGrid)) {
         /* 조인 격자 먼저, 끊겼으면 원본으로 한 번 더(위 terrainRaw 주석) — 둘 다 끊겼으면
            직선이 아니라 차선(벽을 비싸게 취급하는 다익스트라)이다(지적: 지상 유닛이 벽을 막
            통과해 직진). 격자가 조각났거나 출발·도착이 못 걷는 칸 깊숙이 떨어져 스냅이
@@ -11337,9 +11013,7 @@ export default function ReplayMotionPlayer({
       /* 정체를 아는 갈래(수송선·오버로드)는 곧게 날더라도 제 속도로 걷는다(지적: 오버로드
          이동이 뚝뚝 끊김 — 일꾼 걸음 3.7로 내달리곤 다음 명령까지 서 있어서, 실제 0.6짜리
          걸음과 전혀 다른 돌진·정지 반복이 됐다). 띄운 건물은 제 비행 속도(오버라이드)다. */
-      const v = speedOverride ?? (straight && !forcedUnit
-        ? SCOUT_WALK_SPEED
-        : Math.max(0.5, speedOf(unit || "Marine", orderSec, p.ups)));
+      const v = speedOverride ?? Math.max(0.5, speedOf(unit || "Marine", orderSec, ups));
       const travel = total / v;
       if (startSec + travel <= nextOrderSec) {
         // 끝까지 간다 — 도착 뒤 다음 명령까지는 위의 대기 점이 맡는다.
@@ -11398,81 +11072,61 @@ export default function ReplayMotionPlayer({
     }
     return dense;
   };
-  /* 부대 갈라 보기(요청: 유닛을 무조건 합치는 게 아니라 가까운 것만 합침) — 마커 하나가
-     드랍조와 본대를 오가며 순간이동하던 자리다. 명령 점을 가까운 것끼리 묶어 부대 몇으로
-     가르고, 어느 부대에서도 먼 점은 가장 오래 조용한 부대가 그리로 옮겨 간 것으로 본다. */
-  const homeOf = (raw: string): [number, number] | null => {
-    const b = bases.find((m) => m.key === raw);
-    return b && b.x !== undefined && b.y !== undefined ? [b.x, b.y] : null;
-  };
-  /* 수송선 명령 자리도 워프 후보다(요청: 새로운 셔틀 위치에서 명령이 갑자기 시작되면
-     내린 것) — 드랍 신호(drops)가 안 잡혀도, 수송선이 들른 자리 곁에서 태어나는 새 명령
-     뭉치는 수송선이 날라 준 부대라 걸어온 자취 없이 그 자리에서 시작해야 한다.
-     단 집 곁(15타일)의 수송선 자리는 뺀다(지적: 유닛 이동 중 마커 사라짐의 한 갈래) —
-     본진 근처는 수송선이 늘 오가는 곳이라, 행군하러 나서는 부대의 첫 클릭이 엉뚱하게
-     "여기서 내린 새 부대"로 태어나고 원래 부대는 조용해져 사라졌다. */
-  const warpsOf = (p: MotionTrack): [number, number, number][] => {
-    const home = homeOf(p.raw);
-    return [
-      ...(p.drops ?? []),
-      /* 리콜 자리도 워프 후보(요청: 갑작스런 등장은 드랍·리콜·태어남뿐) — 아비터
-         리콜로 옮겨진 부대는 걸어온 자취 없이 그 자리에서 시작하는 게 맞다. */
-      ...motion.casts
-        .filter((c) => c[4] === p.raw && c[3] === "Recall")
-        .map((c) => [c[0], c[1], c[2]] as [number, number, number]),
-      ...(p.tpts ?? [])
-        .filter(([, x, y]) => !home || Math.hypot(x - home[0], y - home[1]) > 15)
-        .map(([s, x, y]) => [s, x, y] as [number, number, number]),
-    ];
-  };
-  const squadPts = useMemo(
-    () => basePts.map((pts, pi) => {
-      /* 같은 병력 두 갈래 근본 봉합(재지적: 같은 유닛이 두 부대로 두 번 적진으로 감) —
-         혼성 부대는 클릭이 무명(pts)과 정체 갈래(upts)를 오간다: 그냥 어택땅은 무명,
-         스팀·시즈로 정체가 드러난 클릭은 유닛별 스트림. 같은 병력의 두 그림자가 나란히
-         행군하던 원인이다. 무명 점이 정체 갈래 점과 같은 시공간(±20초·8타일)에 있으면
-         같은 병력이므로 정체 쪽만 남기고 무명 점을 걷는다 — 멀리 떨어진 진짜 딴 무리는
-         그대로 남는다. 일꾼·수송 갈래는 병력이 아니라 잣대에서 뺀다. */
-      const ups = Object.entries(motion.players[pi].upts ?? {})
-        .filter(([u2]) => u2 !== "Worker" && u2 !== "Transport")
-        .flatMap(([, v]) => v);
-      const filtered = ups.length === 0 ? pts : pts.filter((pt) =>
-        !ups.some((u2) => Math.abs(u2[0] - pt[0]) <= 20
-          && Math.hypot(u2[1] - pt[1], u2[2] - pt[2]) <= 8));
-      return splitSquads(
-        filtered, homeOf(motion.players[pi].raw), SQUAD_MERGE_TILES, warpsOf(motion.players[pi]),
-      );
-    }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [basePts, motion, bases],
-  );
-  /* 정체가 드러난 유닛별 자취(요청: 모든 유닛의 위치를 따로, 같은 종류끼리만 묶기) —
-     시즈·스팀팩·버로우로 정체가 드러난 명령들이다. 종류마다 따로 묶으므로 탱크 라인과
-     바이오닉 본대가 딴 자리에 있어도 각자의 점으로 선다. 옛 분석본에는 없다(재분석). */
-  /* 같은 종류라도 아주 가까울 때만 뭉친다(요청: "같은 종류유닛을 무조건 뭉치는게 아니라
-     아주 가까울때만") — 부대 반경(14타일)은 앞마당 시즈 라인과 본진 수비 탱크까지 한
-     마커로 뭉쳤다. 6타일이면 화면에서 실제로 붙어 보이는 것만 하나가 된다. */
-  const typeSquads = useMemo(
-    () => motion.players.map((p) => Object.entries(p.upts ?? {})
-      .flatMap(([unit, pts]) => splitSquads(pts, homeOf(p.raw), TYPE_MERGE_TILES, warpsOf(p))
-        .map((sq) => ({ unit, raw: sq, walk: walkTrack(sq, p, false, unit) })))),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [motion, terrain, terrainRaw, bldGrid, grid.width, grid.height, bases],
-  );
-  const refinedSquads = useMemo(
-    () => motion.players.map((p, pi) => squadPts[pi].map((sq) =>
-      walkTrack(sq, p, false, undefined, undefined, true))),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [squadPts, terrain, terrainRaw, bldGrid, grid.width, grid.height, motion],
-  );
   /* 개체 걷기(v2·요청: 유닛 위치를 저마다 기억하고 브루드워 엔진처럼 분석) — 태그 하나가
      곧 마커 하나다. 저장된 증거 점(이동 명령의 목적지·남이 찍은 자리·건설 자리·정지)을
-     그 유닛의 속도와 지형 길찾기(walkTrack)로 걸린다. 부대 어림(squadPts)과 달리 묶고
-     가르는 어림이 없어, 갑자기 나타나고 사라지는 유령이 원리상 안 생긴다 — 비교가 목적
-     이라 건물·자원·크립 층은 기존(v1) 그대로 둔다. 생애의 죽음(d)이 오면 마커를 걷는다. */
+     그 유닛의 속도와 지형 길찾기(walkTrack)로 걸린다. 걷어낸 옛 부대 어림과 달리 묶고
+     가르는 어림이 없어, 갑자기 나타나고 사라지는 유령이 원리상 안 생긴다. 생애의
+     죽음(d)이 오면 마커를 걷는다. */
+  /* 속업(이동 속도 업그레이드) 목록 — raw별 [초, 업그레이드 영문명].
+     ★ 여태 이 자리는 v1 부대 트랙(p.ups)이 채웠는데, 요약이 폐지되며 그 트랙이 빈
+       껍데기가 된 뒤로 **속업이 하나도 안 걸리고 있었다**(질럿 다리·오버로드 날개·
+       벌처 부스터가 전부 기본 속도로 걸었다). 개체 트랙의 연구 기록에서 곧장 만든다.
+     연구가 **끝난** 시각(upsDone)이 있으면 그쪽이 맞다 — ups는 누른 때다. */
+  const upsByRaw = useMemo(() => {
+    const m = new Map<string, [number, string][]>();
+    if (!entData) return m;
+    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    const src = entData.upsDone && entData.upsDone.length > 0 ? entData.upsDone : entData.ups;
+    for (const [sec, name, pid] of src) {
+      const raw = nameOfId.get(pid);
+      if (raw === undefined) continue;
+      const a = m.get(raw) ?? [];
+      a.push([sec, name]);
+      m.set(raw, a);
+    }
+    for (const a of m.values()) a.sort((x, y) => x[0] - y[0]);
+    return m;
+  }, [entData]);
+  /* 사람별 유닛 완성 시각표 — raw → { 유닛 영문명: [완성 초…] }.
+     ★ 이 자리도 v1 부대 트랙(p.prod)이 채우던 곳이라, 요약 폐지 뒤로는 비어 있었다.
+       정보 팝업의 '생산 완료·큐'와 벙커 추정 사수가 그 빈 표를 읽고 있었다.
+       개체 트랙에서는 개체의 출생(b)이 곧 그 유닛이 완성된 순간이라 곧장 만들 수 있다. */
+  const prodDoneByRaw = useMemo(() => {
+    const m = new Map<string, Record<string, number[]>>();
+    if (!entData) return m;
+    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    for (const e of entData.ents) {
+      if (e.bld || !e.k) continue;
+      const raw = nameOfId.get(e.o);
+      if (raw === undefined) continue;
+      const rec = m.get(raw) ?? {};
+      (rec[e.k] ??= []).push(e.b);
+      m.set(raw, rec);
+    }
+    for (const rec of m.values()) for (const a of Object.values(rec)) a.sort((x, y) => x - y);
+    return m;
+  }, [entData]);
+  /** 그 사람의 첫 마린 완성 시각 — 빈 벙커에 사수 하나를 추정해도 되는 때. */
+  const marineBornOf = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const [raw, rec] of prodDoneByRaw) {
+      const a = rec.Marine;
+      if (a && a.length > 0) m.set(raw, a[0]);
+    }
+    return m;
+  }, [prodDoneByRaw]);
   const entWalks = useMemo(() => {
     if (!entData) return [];
-    const trackByName = new Map(motion.players.map((p) => [p.raw, p]));
     const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
     /* 같은 클릭을 받은 개체들의 차례표 — 행렬 시차·도착 대형의 열쇠(아래 주석). */
     const clickRank = new Map<string, number>();
@@ -11518,12 +11172,7 @@ export default function ReplayMotionPlayer({
          유닛이다(요청: 한 번도 안 집힌 유닛도 태어나 랠리로 걸어간다). */
       if (e.bld || e.t === -1) continue;
       const raw = nameOfId.get(e.o) ?? "";
-      /* v1 트랙이 없어도 유닛은 걷는다(지적: 리플레이에 유닛이 안 나옴) — 요약이
-         사라지며 motion이 빈 껍데기(EMPTY_MOTION)로 오는데, 여기서 v1 트랙을 필수로
-         요구하니 개체 전부가 걸러져 유닛이 0개였다. 트랙은 걷기 속도의 속업(ups)
-         참고용일 뿐이라, 없으면 빈 스텁으로 걷는다(기본 속도). */
-      const p = trackByName.get(raw)
-        ?? { raw, pts: [], units: [], workers: [], size: [], prod: {} };
+      const pUps = upsByRaw.get(raw);
       // 위치 없는 증거(생산·랠리, x=-1)는 걷기 재료가 아니다.
       /* 행렬 물리(지적: 이동을 찍으면 한 번에 출발하는 게 아니라 한 줄이 되면서 간다) +
          새 겹침 방지(지적: 다시 넣되 세련되게) — 같은 클릭(같은 사람·초·자리)을 받은
@@ -11596,7 +11245,7 @@ export default function ReplayMotionPlayer({
       const dropSecs = [...new Set(e.ev.filter((v) => v[3] === 13 && v[1] >= 0).map((v) => v[0]))]
         .sort((a, b) => a - b);
       const walkOf = (src: TrackPt[]): [number, number, number][] =>
-        walkTrack(src, p, false, e.k || undefined, undefined, e.k === "");
+        walkTrack(src, pUps, e.k || undefined, undefined, e.k === "");
       let wk: [number, number, number][];
       /* ★ 코어가 진실이다(과제 #61) — 코어 자취가 있으면 걸음은 통째로 코어 것이다.
          여태는 렌더러가 제 길찾기·속도표·대기점으로 자취를 하나 더 만들어 놓고,
@@ -11703,7 +11352,7 @@ export default function ReplayMotionPlayer({
         }
       }
       out.push({
-        raw, unit: e.k, b: e.b, d: e.d, tag: e.t, buildHideAt, buildHides, ups: p.ups,
+        raw, unit: e.k, b: e.b, d: e.d, tag: e.t, buildHideAt, buildHides, ups: pUps,
         /* 건설 앵커 자리(요청: 드론 변태도 고치 중앙에) — 흡수되기 직전 이 자리로
            걸어 들어가야 고치가 솟는 자리와 겹친다. */
         buildSites: e.ev.filter((v) => v[3] === 2 && v[1] >= 0)
@@ -11729,7 +11378,7 @@ export default function ReplayMotionPlayer({
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entData, terrain, terrainRaw, bldGrid, grid.width, grid.height, motion, simTracks]);
+  }, [entData, terrain, terrainRaw, bldGrid, grid.width, grid.height, upsByRaw, simTracks]);
   /* 유령 부대 흡수(지적: 1시에 쳐들어간 테란 병력이 아무것도 안 하고 계속 서 있음 —
      같은 부대를 다시 드래그하면 선택 묶음(g)이 갈려 새 부대가 되고, 옛 마커가 마지막
      명령 자리에 영영 남았다. 실측: 한 공격 방면에 묶음 여덟이 줄줄이). 부대 A의 마지막
@@ -11752,22 +11401,11 @@ export default function ReplayMotionPlayer({
     /** 떠 있는 건물(요청: 띄운 건물은 공중 유닛이다) — 대공 무기를 지닌 쪽만 친다. */
     lifted?: boolean;
   };
-  /* 띄운 건물의 지금 자리(요청: 띄운 건물은 공중 유닛이다) — 이륙 뒤의 비행 클릭(fpts)을
-     비행 속도로 훑어 이 프레임의 좌표를 낸다. 표적 지도와 아래 건물 그리기가 **같은
-     함수**를 써야 '보이는 몸'과 '겨눠지는 자리'가 안 갈린다 — 갈라져 있던 것이 지도가
-     지적한 결함(총알이 마지막 착륙 지점으로 갔다)이다. 좌표는 발자국 좌상단 기준이라
-     그리기 쪽과 눈금이 같다. */
-  const afloatPosAt = (
-    raw: string, liftAt: number, goneAt: number, x0: number, y0: number,
-  ): { x: number; y: number } => {
-    const p9 = motion.players.find((p) => p.raw === raw);
-    if (!p9) return { x: x0, y: y0 };
-    const flight = (p9.fpts ?? []).filter(([fs]) => fs >= liftAt && (goneAt === 0 || fs < goneAt));
-    if (flight.length === 0) return { x: x0, y: y0 };
-    const fw = walkTrack([[liftAt, x0, y0], ...flight], p9, true, undefined, BUILDING_FLY_SPEED);
-    const fp = posAt(fw, t, null);
-    return fp ? { x: fp.x, y: fp.y } : { x: x0, y: y0 };
-  };
+  /* (걷어냄) 띄운 건물의 비행 보간 afloatPosAt — 재료였던 v1 비행 클릭 자취(fpts)가
+     요약 폐지로 사라진 뒤 늘 출발 자리를 그대로 돌려주고 있었다. 개체 트랙은 이·착륙을
+     **자리마다 한 줄**로 나눠 싣는다(buildsV2: ev 2·5마다 새 줄) — 뜨기 전 자리와 내린
+     자리는 각각 제 줄이 정확히 안다. 잃은 것은 그 사이를 잇는 비행 애니메이션뿐이고,
+     그것은 이미 나오지 않고 있었다. */
   const engageFoes: FoeRow[] = [];
   /** 아비터 은신장(전수조사) — 같은 사람 유닛이 곁(4.5타일)에 있으면 흐려진다. */
   const arbiterSpots: { raw: string; x: number; y: number }[] = [];
@@ -11777,10 +11415,10 @@ export default function ReplayMotionPlayer({
   const entPosByTag = new Map<number, FoeRow>();
   /** 은신 판정을 뒤로 미루려고 잡아 두는 짝 — 아비터·디텍터 명단이 다 찬 뒤에 매긴다. */
   const foeEnts: { row: FoeRow; e: (typeof entWalks)[number]; q: TrackPos }[] = [];
-  if (entOn) {
-    /* v2 모드(지적: 유닛-건물 상호작용·어택땅 교전) — 교전 상대 목록을 v1 부대 어림이
-       아니라 v2 개체 위치로 채운다. 적의 방어 건물(성큰·캐논·터렛·벙커)도 상대다:
-       행군하던 유닛이 그 곁에서 멈춰 싸우고, 터렛·벙커 발사도 이 목록으로 겨눈다. */
+  {
+    /* 교전 상대 목록은 개체 위치로 채운다(지적: 유닛-건물 상호작용·어택땅 교전) —
+       적의 방어 건물(성큰·캐논·터렛·벙커)도 상대다: 행군하던 유닛이 그 곁에서 멈춰
+       싸우고, 터렛·벙커 발사도 이 목록으로 겨눈다. */
     for (const e of entWalks) {
       if (e.walk.length === 0 || t < e.walk[0][0]) continue;
       if (e.d !== null && t >= e.d) continue;
@@ -11827,10 +11465,9 @@ export default function ReplayMotionPlayer({
       const [, bx3, by3, bu2, br2, bg2, bl2] = brow;
       if (bl2 === undefined || t < bl2) continue;
       if ((bg2 ?? 0) > 0 && t >= (bg2 ?? 0)) continue;
-      const fp2 = afloatPosAt(br2, bl2, bg2 ?? 0, bx3, by3);
       engageFoes.push({
         team: teamOfRaw(br2) ?? 0,
-        x: fp2.x + footDx(bu2), y: fp2.y + footDy(bu2),
+        x: bx3 + footDx(bu2), y: by3 + footDy(bu2),
         air: true, bld: true, k: bu2, lifted: true,
       });
     }
@@ -11840,14 +11477,12 @@ export default function ReplayMotionPlayer({
     for (const bt of bldTagSpots.rows) {
       if (t < bt.born + 2 || (bt.gone > 0 && t >= bt.gone)) continue;
       if (entPosByTag.has(bt.tag)) continue;
-      // 뜬 건물은 나는 자리를 겨눈다 — 어택으로 콕 찍은 표적도 몸을 따라가야 한다.
-      const af = bt.lift !== undefined && t >= bt.lift
-        ? afloatPosAt(bt.raw, bt.lift, bt.gone, bt.x - footDx(bt.k), bt.y - footDy(bt.k))
-        : null;
+      // 뜬 건물은 공중 표적이다 — 자리는 제 줄이 아는 그 자리다(비행 보간은 걷었다).
+      const afloat9 = bt.lift !== undefined && t >= bt.lift;
       entPosByTag.set(bt.tag, {
-        x: af ? af.x + footDx(bt.k) : bt.x, y: af ? af.y + footDy(bt.k) : bt.y,
-        team: teamOfRaw(bt.raw) ?? 0, air: af !== null, bld: true, k: bt.k,
-        ...(af ? { lifted: true } : {}),
+        x: bt.x, y: bt.y,
+        team: teamOfRaw(bt.raw) ?? 0, air: afloat9, bld: true, k: bt.k,
+        ...(afloat9 ? { lifted: true } : {}),
       });
     }
     // 스캐너 스윕(전수조사) — 12초 동안 그 자리가 디텍터다.
@@ -11869,26 +11504,6 @@ export default function ReplayMotionPlayer({
       const burrowed9 = BURROWABLE.has(e.unit) && burrowStartOf(e.burrows, t) >= 0;
       if (cloaked9 || burrowed9) row.hidden = true;
     }
-  } else {
-    motion.players.forEach((p2, pi2) => {
-      const team2 = teamOfRaw(p2.raw) ?? 0;
-      for (const sq of refinedSquads[pi2] ?? []) {
-        if (sq.length === 0 || t < sq[0][0]) continue;
-        const q = posAt(sq, t, null);
-        if (q) engageFoes.push({ team: team2, x: q.x, y: q.y, air: false });
-      }
-      for (const g2 of typeSquads[pi2] ?? []) {
-        if (ENGAGE_SKIP.has(g2.unit)) continue;
-        if (g2.walk.length === 0 || t < g2.walk[0][0]) continue;
-        const q = posAt(g2.walk, t, null);
-        // 공중 무리인가(재지적: 레이스·골리앗은 공중 상대면 미사일) — 식구 전부가 공중일 때.
-        if (q) engageFoes.push({
-          team: team2, x: q.x, y: q.y,
-          air: (BY_UNITS[g2.unit] ?? [g2.unit]).every((u3) => isAirUnit(u3)),
-          uk: g2.unit,
-        });
-      }
-    });
   }
   /** 그 편이 이 자리를 탐지하고 있나 — 디텍터(오버로드·옵저버·베슬·터렛·스포어·캐논
    *  ·스캔)가 9타일 안이면 참. 은신·버로우 표적은 이것이 참이어야 겨눌 수 있다. */
@@ -11981,83 +11596,10 @@ export default function ReplayMotionPlayer({
   /* 정찰 자취도 걸어서 가고(지적: 갑자기 이동 — 직선이되 일꾼 걸음), 갈래·부대로 갈라
      각자의 점이 된다(지적: 드랍십 순간이동 — 일꾼 정찰과 셔틀 원정이 한 점을 놓고
      밀당했다). 갈래는 이름을 정한다(지적: 오버로드 이름이 안 나온다). */
-  /* 정찰(수송선·오버로드) 사슬(지적: 가다 멈췄다 순간이동, 특히 초반 — 실측 데이터로
-     확인: 클릭 간 거리가 부대 반경(28타일)을 넘으면 한 마리가 유령 마커 여럿으로 쪼개
-     졌다) — 거리 반경 대신 '그 시간에 그 걸음으로 닿을 수 있나'로 잇는다. 닿을 수 있으면
-     같은 마리, 없으면(동시에 딴 곳을 찍는 두 마리) 딴 마리다. */
-  const chainScout = (
-    pts: TrackPt[], speedAt: (sec: number) => number, home: [number, number] | null,
-  ): TrackPt[][] => {
-    const tracks: TrackPt[][] = [];
-    for (const pt of pts) {
-      let best = -1;
-      let bestSlack = Infinity;
-      for (let ti = 0; ti < tracks.length; ti += 1) {
-        const last = tracks[ti][tracks[ti].length - 1];
-        const need = Math.hypot(pt[1] - last[1], pt[2] - last[2]);
-        // 여유 14타일 — 명령 좌표는 '목표'라 실제 위치보다 과대(실측: 되돌림 스팸 클릭).
-        /* 속도는 그 시각의 것(지적: 오버로드가 자꾸 순간이동) — 속업(×4) 뒤에도 기본
-           0.6으로 재면 실제로 갈 수 있던 거리가 "못 간다"가 되어 여정이 갈라지고, 갈라진
-           새 자취가 목적지에서 태어나며 순간이동으로 보였다. */
-        const avail = Math.max(0, pt[0] - last[0]) * speedAt(pt[0]) * 1.5 + 14;
-        if (need <= avail && avail - need < bestSlack) { best = ti; bestSlack = avail - need; }
-      }
-      if (best >= 0) tracks[best].push(pt);
-      /* 새 자취는 전부 집에서 걸어 나온다(지적: 순간이동의 둘째 갈래) — 첫 자취만 집
-         시딩을 받아, 둘째 오버로드부터는 마커가 목적지에서 뿅 나타났다. 새 오버로드·
-         수송선은 어차피 본진(해처리)에서 나온다. */
-      else if (home) tracks.push([[pt[0], home[0], home[1]], pt]);
-      else tracks.push([pt]);
-    }
-    return tracks;
-  };
-
-  const scoutSquads = useMemo(() => motion.players.map((p) => {
-    const kinds: { kind: "worker" | "carrier" | "lone"; src: TrackPt[] }[] = [
-      { kind: "worker", src: p.spts ?? [] },
-      { kind: "carrier", src: p.tpts ?? [] },
-      { kind: "lone", src: p.opts ?? [] },
-    ];
-    // 정찰도 본진에서 걸어 나간다(지적: 엉뚱한 데서 태어남).
-    /* 일꾼 정찰은 직선이 아니라 지형 길로 걷는다(지적: "드론이 벽을 뚫고 정찰감") —
-       드론·SCV·프로브는 지상 유닛이다. 수송선·오버로드(carrier·lone)만 곧게 난다. */
-    const race = bases.find((b) => b.key === p.raw)?.race;
-    const workerUnit = race === "저그" ? "Drone" : race === "테란" ? "SCV" : "Probe";
-    /* 갈래마다 정체를 아는 만큼 제 속도로(지적: 오버로드 이동이 뚝뚝 끊김) — 저그의
-       수송·단독 정찰은 오버로드(0.6, 업글 ×4), 테란·토스 수송선은 드랍십·셔틀. 정체
-       모를 비저그 단독만 일꾼 걸음(3.7) 그대로다. */
-    const carrierUnit = race === "저그" ? "Overlord" : race === "테란" ? "Dropship" : "Shuttle";
-    const loneUnit = race === "저그" ? "Overlord" : undefined;
-    /* 수송선·단독 정찰은 넓은 반경(28타일)으로 묶는다(지적: 초반 오버로드가 조금 가다
-       멈췄다 나중에 몰아 움직임) — 한 마리가 맵을 크게 가로지르는 클릭들이 좁은 반경에서
-       여러 부대로 갈라지고, '조용한 부대가 저리 옮겨 간 것' 재배정에 튕기며 가다 서다
-       몰아치기가 됐다. 일꾼 정찰은 종전 반경 그대로다(여럿이 딴 데를 볼 수 있다). */
-    /* 시작 오버로드는 해처리 옆에 떠 있다(지적: 트랙이 본진 좌표에서 출발해, 한 번
-       해처리로 이동했다 움직이기 시작함) — 저그의 수송·단독 정찰은 걸어 나가는 출발점을
-       풍선이 서 있는 그 자리(본진 오른쪽 위 2.5타일)로 잡는다. */
-    const home0 = homeOf(p.raw);
-    const ovieHome: [number, number] | null = home0 && race === "저그"
-      ? [home0[0] + 2.5, home0[1] - 2.5] : home0;
-    /* 그 시각의 실제 속도(지적: 오버로드 순간이동) — 속업 연구 뒤에는 오버로드 ×4,
-       셔틀 ×1.5(드랍십은 속업이 없다)로 잰다. speedOf가 같은 표를 이미 안다. */
-    const carrierSpeedAt = (sec: number): number =>
-      speedOf(race === "저그" ? "Overlord" : race === "테란" ? "Dropship" : "Shuttle", sec, p.ups);
-    return kinds.flatMap(({ kind, src }) => (src.length === 0 ? [] : (kind === "worker"
-      ? splitSquads(src, home0)
-      : chainScout(
-        src,
-        kind === "carrier" || race === "저그" ? carrierSpeedAt : () => SCOUT_WALK_SPEED,
-        ovieHome,
-      ))
-      .map((sq) => ({
-        kind, raw: sq,
-        walk: walkTrack(
-          sq, p, kind !== "worker",
-          kind === "worker" ? workerUnit : kind === "carrier" ? carrierUnit : loneUnit,
-        ),
-      }))));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [motion, terrain, terrainRaw, bldGrid, grid.width, grid.height, bases]);
+  /* (걷어냄) 정찰 자취 한 벌 — 일꾼·수송선·단독 클릭의 자취(spts·tpts·opts)를 본진에서
+     이어 걷게 하던 어림이다. 재료가 전부 v1 부대 트랙이었고, 요약 폐지 뒤로는 빈
+     배열이라 아무것도 그리지 않았다. 지금은 개체 트랙(entWalks)이 정찰 유닛도 제 태그로
+     걷게 하므로 따로 어림할 것이 없다. */
   // 기본은 ×3이다(요청: ×8 → ×4였다가 눈금이 1·2·3·5·10·20으로 바뀌며 가장 가까운 값).
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(2);
   /* 탐색바(지적: 다이얼 드래그가 안 되고, 부드럽지 않고 반응이 느림) — 제어 입력은 매
@@ -13086,22 +12628,23 @@ export default function ReplayMotionPlayer({
      분석본) 그 건물 하나만 깜빡인다(요청: 어느 건물에서 생산 중인지). */
   const prodByRawType = useMemo(() => {
     const m = new Map<string, [number, number][]>();
-    for (const p of motion.players) {
-      for (const [type, units] of Object.entries(PRODUCED_BY)) {
-        const evs: [number, number][] = [];
-        for (const u of units) {
-          const secs = p.prod?.[u] ?? [];
-          const tags = p.ptag?.[u];
-          for (let k = 0; k < secs.length; k += 1) evs.push([secs[k], tags?.[k] ?? 0]);
-        }
-        if (evs.length > 0) {
-          evs.sort((a, b) => a[0] - b[0]);
-          m.set(`${p.raw}|${type}`, evs);
-        }
-      }
+    if (!entData) return m;
+    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    for (const e of entData.ents) {
+      if (!e.bld || !e.k || e.t === -1) continue;
+      const raw = nameOfId.get(e.o);
+      if (raw === undefined) continue;
+      const key = `${raw}|${e.k}`;
+      const a = m.get(key) ?? [];
+      // f=4는 '이 건물이 일했다'는 증거다(생산 또는 랠리 지정). 태그가 개체 제 것이라
+      // 순번 어림 없이 그 건물 하나만 켤 수 있다 — 옛 v1 표는 태그가 있을 때도 없을 때도
+      // 있어 대표 건물로 떨어지곤 했다.
+      for (const v of e.ev) if (v[3] === 4) a.push([v[0], e.t]);
+      if (a.length > 0) m.set(key, a);
     }
+    for (const a of m.values()) a.sort((x, y) => x[0] - y[0]);
     return m;
-  }, [motion]);
+  }, [entData]);
 
   /* 태그 → 건물 순번 어림(요청 승인) — 태그↔자리 대응은 리플레이에 없다. "먼저 보인
      태그 = 먼저 지은 건물"로 잇는다. 저그(라바 생산)는 태그가 라바 것이라 못 쓴다. */
@@ -13171,79 +12714,14 @@ export default function ReplayMotionPlayer({
       return { ...g, gx, gy, gd };
     });
   }, [gasBuildings, grid, gridHasGasFlags]);
-  /* 무한맵 검출(요청: 무한맵은 고갈 제외) — 겹쳐 쌓인 자원(1타일 안 두 항목)이 있으면
-     돈맵이다. 일반 맵은 밭이 겹치지 않는다. */
-  const moneyMap = useMemo(() => {
-    const rs = grid.resources ?? [];
-    for (let i = 0; i < rs.length; i += 1) {
-      for (let j = i + 1; j < rs.length; j += 1) {
-        const d = Math.hypot(rs[i][0] - rs[j][0], rs[i][1] - rs[j][1]);
-        if (d < 0.9) return true;
-        /* 간헐천끼리 3.5타일 안(재발견: mineral10 맵) — 간헐천 발자국이 4×2라 정상
-           맵에선 이보다 가까울 수 없다. 미네랄 스택은 파서 병합(반경 1.2)이 한 항목으로
-           접어 위 0.9 검사에 안 걸리는데, 그런 맵은 가스도 겹쳐 줄지어 있다. */
-        if (rs[i][2] === 1 && rs[j][2] === 1 && d < 3.5) return true;
-      }
-    }
-    return false;
-  }, [grid]);
+  /* (걷어냄) moneyMap — '겹쳐 쌓인 자원이면 돈맵'이라는 검출. 고갈 어림을 무한맵에서만
+     빼려고 두었던 것이라, 어림이 사라지면서 쓸 곳이 없어졌다. */
   /* 자원별 고갈 시각(위 MINERAL_DEPLETE_SEC 주석) — 미네랄은 '가까운 차례'가 처음
      일꾼으로 채워진 시각 + 12분, 가스는 그 자리 가스 건물의 첫 완공 + 17분. 임자·차례는
      채굴 표시와 같은 어림(가장 가까운 본진·홀)이되, 시각 의존을 피해 홀은 선 시각과
      무관하게 본다 — 고갈은 분 단위 어림이라 그 오차는 티가 안 난다. */
-  const depleteAt = useMemo(() => {
-    const rs = grid.resources ?? [];
-    const out = new Map<number, number>();
-    if (moneyMap) return out;
-    const gasIdx = new Set<number>();
-    rs.forEach((r, ri) => {
-      if (r[2] === 1 || (!gridHasGasFlags
-        && gasBuildings.some((g) => Math.hypot(g.x - r[0], g.y - r[1]) <= 6))) gasIdx.add(ri);
-    });
-    const ownerOf = rs.map((r) => {
-      let best = 10;
-      let raw: string | null = null;
-      for (const m of bases) {
-        if (m.x === undefined || m.y === undefined) continue;
-        const d = Math.hypot(r[0] - m.x, r[1] - m.y);
-        if (d < best) { best = d; raw = m.key; }
-      }
-      for (const h of halls) {
-        const d = Math.hypot(r[0] - h.x, r[1] - h.y);
-        if (d < best) { best = d; raw = h.raw; }
-      }
-      return { raw, dist: best };
-    });
-    const byOwner = new Map<string, number[]>();
-    rs.forEach((_r, ri) => {
-      const o = ownerOf[ri];
-      if (o.raw && !gasIdx.has(ri)) {
-        const a = byOwner.get(o.raw) ?? [];
-        a.push(ri);
-        byOwner.set(o.raw, a);
-      }
-    });
-    for (const [raw, arr] of byOwner) {
-      arr.sort((a, b) => ownerOf[a].dist - ownerOf[b].dist);
-      const wk = motion.players.find((p) => p.raw === raw)?.workers ?? [];
-      arr.forEach((ri, rank) => {
-        let start = rank < 4 ? 0 : Infinity;
-        for (const [sec, n] of wk) {
-          if (4 + n > rank) { start = Math.min(start, sec); break; }
-        }
-        if (Number.isFinite(start)) out.set(ri, start + MINERAL_DEPLETE_SEC);
-      });
-    }
-    rs.forEach((r, ri) => {
-      if (!gasIdx.has(ri)) return;
-      let first = Infinity;
-      for (const g of gasBuildings) {
-        if (Math.hypot(g.x - r[0], g.y - r[1]) <= 4) first = Math.min(first, g.sec + 30);
-      }
-      if (Number.isFinite(first)) out.set(ri, first + GAS_DEPLETE_SEC);
-    });
-    return out;
-  }, [grid, moneyMap, gridHasGasFlags, gasBuildings, bases, halls, motion]);
+  /* (걷어냄) depleteAt — 일꾼 수로 '이쯤이면 다 캤겠다'를 짐작하던 자원 고갈 어림.
+     인과 증거가 없어 화면에서 이미 꺼 두고 있었다(자원 모델은 늘 세워 둔다). */
   /* 스파이더 마인(요청) — 심은 자리(캐스트 좌표)에 마인 모델을 깔고, 심고 4초 뒤부터
      적 자취가 2타일 안에 들어온 첫 순간 터진 것으로 본다(리플레이에 폭발이 안 남는
      어림 — 갑자기 죽는 이유가 보이게). 디텍팅 제거는 알 수 없어 안 터진 마인은 남는다. */
@@ -13286,50 +12764,10 @@ export default function ReplayMotionPlayer({
       return { sec, x: c[1], y: c[2], confirmed };
     }), [castsSrc, buildsSrc]);
 
-  /* 태워진 유닛은 잠깐 사라진다(요청: 태운 자리의 유닛들은 안 보이다가 내리면 나타남) —
-     태움 지점 곁에 서 있던, 그 뒤로 새 명령이 없는 마커는 다음 드랍(없으면 계속)까지
-     숨는다. 내리면(드랍 시각이 지나면) 도로 나타난다 — 다 내렸는지는 알 수 없으니
-     시각만 근거다. */
-  /* 수송선 자취(걸어 편 것) — 아래 '곁에서 명령 끊김 = 탐' 판정이 그 시각의 수송선
-     자리를 물어보는 데 쓴다. */
-  const carrierWalks = useMemo(() => {
-    const m = new Map<string, TrackPt[][]>();
-    motion.players.forEach((p, pi) => {
-      m.set(p.raw, scoutSquads[pi].filter((g) => g.kind === "carrier").map((g) => g.walk));
-    });
-    return m;
-  }, [scoutSquads, motion]);
-  /* 수송선이 실제로 있고 나서다(지적: 수송선도 없는 시점·자리에 드랍 효과가 계속) —
-     드랍·태움 신호는 번호 정체 어림에서 나와 오염될 수 있다. 테란·토스는 첫 수송선
-     완성 전, 저그는 수송 업그레이드(Ventral Sacs) 연구 전의 신호는 전부 거짓이다. */
-  const transportReadyAt = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const p of motion.players) {
-      const race = bases.find((b) => b.key === p.raw)?.race;
-      if (race === "저그") {
-        const v = (p.ups ?? []).find(([, n]) => n === "Ventral Sacs");
-        m.set(p.raw, v ? v[0] : Infinity);
-        continue;
-      }
-      const unit = race === "테란" ? "Dropship" : "Shuttle";
-      const secs = p.prod?.[unit];
-      m.set(p.raw, secs && secs.length > 0 ? secs[0] + (UNIT_SEC[unit] ?? 20) : Infinity);
-    }
-    return m;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [motion, bases]);
-  /* 그리고 그 순간 수송선 자취가 곁에 있어야 한다(지적: 수송선 없는 데서 계속 나옴) —
-     신호 자리에서 12타일 안에 수송선이 없으면 그 드랍·태움은 어림이 헛짚은 것이다. */
-  const carrierNearAt = (raw: string, sec: number, x: number, y: number): boolean => {
-    for (const w of carrierWalks.get(raw) ?? []) {
-      if (w.length === 0 || sec < w[0][0] - 5) continue;
-      const tp = posAt(w, sec, null);
-      if (tp && Math.hypot(tp.x - x, tp.y - y) <= 12) return true;
-    }
-    return false;
-  };
-
-
+  /* (걷어냄) 수송·드랍 어림 한 벌 — 드랍/태움 신호(drops·loads)와 수송선 자취로
+     '내린 자리·태운 자리'를 짚던 어림이다. 재료가 전부 v1 부대 트랙이라 요약 폐지 뒤로는
+     아무것도 안 나왔다. 개체 트랙에는 승선(f=12)·하차(f=13)가 개체마다 실려 있어,
+     다시 만든다면 어림이 아니라 그 증거로 만드는 것이 맞다. */
   /* 본진이 무너졌나(지적: 본진 기지 건물은 절대 안 망했다 — 시작 홀을 builds에 합성하며
      판정이 생겼다) — 집 자리(3타일)의 내 홀 계보에서 마지막 채가 무너졌고 재건이 없으면
      함락이다. 아바타 로스터의 유령화와 채굴 일꾼 걷기가 같이 쓴다. */
@@ -13602,17 +13040,9 @@ export default function ReplayMotionPlayer({
                 landing = true;
               }
             }
-            /* 띄운 채 나는 정찰(요청: 엔베 띄워 정찰이 안 나온다) — 뜬 마커는 옛 자리에
-               둥실대는 대신, 이륙 뒤의 비행 클릭(fpts)을 비행 속도로 따라 난다. 동시에
-               두 채가 떠 있으면 자취를 나눠 갖지 못하고 같이 따라간다(어림). */
-            const flyTrack = motion.players.find((p) => p.raw === raw);
-            /* 표적 지도(engageFoes·entPosByTag)와 **같은 함수**를 쓴다 — 여태 몸만 여기서
-               옮기고 표적 자리는 마지막 착륙 지점에 못박혀 있어, 날아가는 건물을 쏘면
-               총알이 빈 땅으로 갔다. */
-            if (afloat && liftAt) {
-              const fp = afloatPosAt(raw, liftAt, goneAt, x, y);
-              bx = fp.x; by = fp.y;
-            }
+            /* 뜬 건물의 자리 — 개체 트랙이 착륙 자리마다 줄을 나눠 싣기 때문에, 이 줄의
+               좌표가 곧 지금 그 건물이 있는 자리다. 표적 지도(engageFoes·entPosByTag)도
+               같은 좌표를 본다 — 몸과 겨눠지는 자리가 갈리면 총알이 빈 땅으로 간다. */
             // 짓는 동안은 공사중 아이콘(요청: 반투명 말고) — 반투명은 "저기 뭐가 있긴 한데"
             // 로만 읽히고, 도형의 반투명(뒤 비침)과도 헷갈렸다. 날아온 건물은 이미 다 선
             // 건물이라 망치를 안 든다.
@@ -13642,7 +13072,7 @@ export default function ReplayMotionPlayer({
             // 건물인지는 안 남으므로 대표 건물에만 단다(지적).
             const hallLike = unit === "Lair" || unit === "Hive" ? "Hatchery" : unit;
             const researching = !razed && myOrd === repOrd
-              && (flyTrack?.ups ?? []).some(([us, name]) =>
+              && (upsByRaw.get(raw) ?? []).some(([us, name]) =>
                 RESEARCH_BUILDING[name] === hallLike && us <= t && t - us <= RESEARCH_SEC);
             // 이름 창 = 착공 직후 잠깐뿐(요청) — 그 뒤 공사 중에는 도형+망치이고, 생산·
             // 연구 중에도 이름 대신 라임 글로우가 말한다(요청: "생산중인 건물은 이름을
@@ -13714,11 +13144,13 @@ export default function ReplayMotionPlayer({
               const scvY = centerY + fp2[1] / 2 - 0.35;
               let scvShow = t - sec >= 0;
               if (t - sec >= bs2) {
-                const trk2 = motion.players.find((pp) => pp.raw === raw);
+                /* 공사가 끝난 뒤 이 SCV가 언제 자리를 뜨나 — 개체 트랙의 건설 앵커 창
+                   (builderLeave)이 '앵커 시각 → 그 뒤 첫 위치 증거'를 이미 색인해 둔다.
+                   옛 v1 일꾼 클릭 자취로 뒤지던 자리다. */
                 let nextCmd = Infinity;
-                for (const pt2 of trk2?.spts ?? []) {
-                  if (pt2[0] < sec + bs2 - 2) continue;
-                  if (Math.hypot(pt2[1] - scvX, pt2[2] - scvY) <= 5) { nextCmd = pt2[0]; break; }
+                for (const bl of builderLeave) {
+                  if (bl.end === Infinity || bl.end < sec + bs2 - 2) continue;
+                  if (Math.hypot(bl.x - scvX, bl.y - scvY) <= 5) { nextCmd = bl.end; break; }
                 }
                 if (t >= nextCmd) scvShow = false;
               }
@@ -13727,7 +13159,7 @@ export default function ReplayMotionPlayer({
                  앵커(f=2)를 남긴 일꾼 개체의 '앵커 뒤 첫 위치 증거' 시각이 곧 그 SCV가
                  현장을 떠난 순간이다. 그때부터는 개체 마커가 걸어 나가며 그리므로 합성
                  SCV를 걷는다. */
-              if (scvShow && entOn) {
+              if (scvShow) {
                 const lv = builderLeave.find((b2) =>
                   Math.abs(b2.x - centerX) <= fp2[0] / 2 + 2 && Math.abs(b2.y - centerY) <= fp2[1] / 2 + 2
                   && b2.s >= sec - 15 && b2.s <= sec + bs2);
@@ -13876,7 +13308,6 @@ export default function ReplayMotionPlayer({
             /* 건물 체력과 '맞은 순간'(요청: 피격 표현 재검토) — 자취가 내려간 마지막
                변곡점이 곧 이 건물이 맞은 때다. 체력바와 피격 불티가 같은 자를 쓴다. */
             const bldHp = ((): { frac: number | undefined; hurt: number } => {
-              if (!entOn) return { frac: undefined, hurt: -99 };
               const arr = entBldHp.get(`${raw}|${Math.round(x)}|${Math.round(y)}`);
               if (!arr) return { frac: 1, hurt: -99 }; // 기록 없는 성한 건물도 만피 바(요청).
               const rec = [...arr].filter((r2) => r2.born <= sec + 5)
@@ -14043,7 +13474,7 @@ export default function ReplayMotionPlayer({
                    채운 것으로 치면 아무도 못 본 화력을 지어낸다. 인원을 모를 때 가장 작은
                    참값이 1이고, 그 임자가 마린을 뽑은 뒤부터만 그렇게 본다. */
                 const presumed = unit === "Bunker" && crew.length === 0
-                  && (flyTrack?.prod?.Marine ?? []).some((ms9) => ms9 <= t);
+                  && (marineBornOf.get(raw) ?? Infinity) <= t;
                 const crewGun = presumed
                   || crew.some((c9) => c9.kind === "Marine" || c9.kind === "Ghost");
                 const crewBat = crew.some((c9) => c9.kind === "Firebat");
@@ -14053,7 +13484,7 @@ export default function ReplayMotionPlayer({
                    벙커 보너스(+64px=2타일)와 함께 받아 온다 — profileOf(정체, 업글, 벙커=참)
                    가 그 덧셈과 U-238 같은 사거리 업글을 이미 물고 나온다. */
                 const bunkUps = unit === "Bunker"
-                  ? (flyTrack?.ups ?? []).filter(([us9]) => us9 <= t).map(([, nm9]) => nm9) : [];
+                  ? (upsByRaw.get(raw) ?? []).filter(([us9]) => us9 <= t).map(([, nm9]) => nm9) : [];
                 // 사거리가 가장 긴 사수가 갈래를 정한다 — 고스트(C-10)가 있으면 그쪽.
                 const gunProf = unit === "Bunker"
                   ? profileOf(crew.some((c9) => c9.kind === "Ghost") ? "Ghost" : "Marine",
@@ -14162,11 +13593,9 @@ export default function ReplayMotionPlayer({
             g.sec <= t && (g.gone === 0 || t < g.gone) && g.gd <= 4
             && Math.abs(g.gx - res[0]) < 0.5 && Math.abs(g.gy - res[1]) < 0.5)) return null;
           // 고갈된 미네랄(요청)은 밭이 사라진다. 가스는 아래에서 색만 죽인다.
-          /* v2에서는 고갈 어림을 끈다(지적: 미네랄·간헐천에 모델 적용해야지 — 후반에
-             자원이 통째로 사라져 있었다). 고갈은 일꾼 수로 짐작한 v1 어림이라 인과
-             증거가 없다 — v2는 자원 모델을 늘 세워 둔다. */
-          const depleted = !entOn && (depleteAt.get(ri) ?? Infinity) <= t;
-          if (!gasSpot && depleted) return null;
+          /* 고갈 어림은 끈다(지적: 미네랄·간헐천에 모델 적용해야지 — 후반에 자원이
+             통째로 사라져 있었다). 일꾼 수로 짐작하던 v1 어림이라 인과 증거가 없었다:
+             자원 모델은 늘 세워 둔다. 가스 색이 죽는 연출까지 함께 걷었다. */
           // 미네랄 살짝 확대(요청) — 2.4 → 2.9타일 폭.
           /* 간헐천은 제 발자국 그대로 4타일(전수조사: 6.4타일로 그려져 제 발자국(4×2)
              보다 60% 넓었다 — 그 위에 앉는 정제소(4타일)가 못 덮어 가스 건물 주위로
@@ -14210,7 +13639,7 @@ export default function ReplayMotionPlayer({
                공간(칸 아랫변)에서 잡아 자리 사상으로 옮긴다. 평면에서는 값이 같아
                보이던 그대로고, 입체에서만 원근이 실려 제자리로 온다. */
             baseFy: posFrac(res[0], res[1] + (wTiles * 0.75) / 2)[1],
-            color: gasSpot ? (depleted ? "#5d564c" : "#8f8274") : "#8fb9e8",
+            color: gasSpot ? "#8f8274" : "#8fb9e8",
             // 미네랄 반투명(요청) — 뒤가 어렴풋이 비치는 수정 결정.
             alpha: gasSpot ? 1 : 0.55, noShadow: true,
           });
@@ -14329,270 +13758,15 @@ export default function ReplayMotionPlayer({
             </span>
           );
         })}
-        {/* 채굴 일꾼 점(v1 전용 장식 어림) — 일꾼 '수'로 자원 곁에 점을 찍는 층이라
-            실제 조작과 무관하게 그려진다(지적: 가스를 안 지었는데 캐러 다닌다 — 머니맵
-            특례가 맨 간헐천에도 점을 세웠다). v2는 실제 일꾼 개체가 제 클릭을 따라
-            움직이므로 이 층을 통째로 끈다 — 어림 장식이 아니라 증거만 남긴다. */}
-        {!entOn && (() => {
-          const resList = grid.resources ?? [];
-          /* 지대 임자를 먼저 한 번에 정한다(요청: 시작 일꾼 4기) — 아래에서 '임자가 같은
-             미네랄 지대 중 몇 번째로 가까운가'를 따져야 해서, 지대마다 따로 구하던 임자
-             찾기를 한 판 앞서 모아 계산한다. */
-          const owners = resList.map((res) => {
-            let owner: { x: number; y: number; raw: string; dist: number } | null = null;
-            /* 18 → 10(지적: 엄청 떨어진 미네랄을 캐는 일꾼) — 그 거리면 확장이 아니라
-               잘못 클릭이다. 진짜 확장은 홀이 자원 곁에 서므로 10이면 넉넉하다. */
-            let best = 10;
-            for (const m of bases) {
-              // 함락된 본진(fallenHome)은 채굴 목적지가 아니다(지적: 본진이 안 망하던 문제).
-              if (m.ghost || fallenHome(m) || m.x === undefined || m.y === undefined) continue;
-              const d = Math.hypot(res[0] - m.x, res[1] - m.y);
-              if (d < best) { best = d; owner = { x: m.x, y: m.y, raw: m.key, dist: d }; }
-            }
-            for (const hall of halls) {
-              if (hall.sec > t || (hall.gone > 0 && t >= hall.gone)) continue;
-              const d = Math.hypot(res[0] - hall.x, res[1] - hall.y);
-              if (d < best) { best = d; owner = { x: hall.x, y: hall.y, raw: hall.raw, dist: d }; }
-            }
-            return owner;
-          });
-          const gasFlagOf = (res: (typeof resList)[number]) => res[2] === 1
-            || (!gridHasGasFlags
-              && gasBuildings.some((g) => Math.hypot(g.x - res[0], g.y - res[1]) <= 6));
-          /* 임자별 미네랄 지대의 '가까운 차례'(요청: 시작 일꾼 4기는 가장 가까운 미네랄
-             4군데로) — 일꾼 수보다 먼 차례의 지대는 캐는 점이 안 선다. 초반 4기는 홀에서
-             가까운 네 지대만 오가고, 일꾼이 늘수록 바깥 지대까지 찬다. */
-          const mineralRank = new Map<number, number>();
-          // 임자별 미네랄 밭 수(요청: 밭당 일꾼 수 배분의 분모).
-          const ownerMineralCount = new Map<string, number>();
-          {
-            const byOwner = new Map<string, number[]>();
-            resList.forEach((res2, ri2) => {
-              const o = owners[ri2];
-              if (!o || gasFlagOf(res2)) return;
-              const arr = byOwner.get(o.raw) ?? [];
-              arr.push(ri2);
-              byOwner.set(o.raw, arr);
-            });
-            for (const arr of byOwner.values()) {
-              arr.sort((a, b) => owners[a]!.dist - owners[b]!.dist);
-              arr.forEach((ri2, k) => mineralRank.set(ri2, k));
-            }
-            for (const [raw2, arr] of byOwner) ownerMineralCount.set(raw2, arr.length);
-          }
-          return resList.flatMap((res, ri) => {
-          const owner = owners[ri];
-          if (!owner) return [];
-          /* 가스 지대 게이트(재지적: 가스 안 지은 곳에 가스 캐는 일꾼이 계속 나옴) —
-             가스가 낀 지대는 가스 건물(정제소류)이 서기 전엔 일꾼이 안 간다. 예전의
-             '홑 가스 지대' 판별(30타일 안 다른 지대가 있어야 게이트)은 가스만 있는
-             멀티를 놓쳤다 — 근처에 미네랄 지대가 따로 없어 홑으로 안 잡혔다. 미네랄과
-             가스가 한 지대로 묶인 맵에서 정제소 전까지 이 지대가 조용해지는 손해는
-             감수한다(본진 밑 곡괭이 일꾼이 채취 자체는 계속 말해 준다). */
-          /* 깃발 안전망(재지적: 아직도 가스 없는 곳에 가스 캐는 일꾼) — 옛 맵 데이터에는
-             가스 깃발(res[2])이 아예 없을 수 있다. 이 판에서 누군가 가스 건물을 지은
-             자리는 깃발과 무관하게 가스 지대다. */
-          const gasSpot = gasFlagOf(res);
-          if (gasSpot) {
-            /* 반경 10 → 4(지적: 건물 없는 가스에 일꾼이 붙음) — 돈맵처럼 간헐천이
-               몰려 있으면 하나의 정제소가 10타일 안 이웃 간헐천까지 전부 열어 버렸다.
-               정제소는 간헐천 위에 서므로 4타일이면 짝이 정확하다. */
-            const hasGasBuilding = gasBuildings.some((g) =>
-              g.raw === owner!.raw && g.sec + 30 <= t && (g.gone === 0 || t < g.gone)
-              && Math.hypot(g.x - res[0], g.y - res[1]) <= 4);
-            if (!hasGasBuilding) return [];
-          }
-          const track = motion.players.find((p) => p.raw === owner!.raw);
-          /* 시작 일꾼 4기(요청: 초반 4기 표현) — workers 집계는 생산 '누계'라 0에서
-             시작해, 경기 첫 화면에 채굴 일꾼이 하나도 없었다. 기본 4기를 밑절미로 더한다. */
-          const ownerRace = bases.find((b) => b.key === owner!.raw)?.race;
-          /* 채굴 일꾼 수는 '지금 살아 있는 수'다(요청) — 개체 트랙의 생사(workerNow)를
-             먼저 본다. 옛 누계는 죽음을 몰라, 일꾼이 전멸한 뒤에도 밭마다 점이 그대로
-             돌아다녔다. 저그 변태(익스트랙터)도 트랙이 이미 빼 주므로 손보정을 걷었다. */
-          let workerN = workerNow.get(owner!.raw) ?? -1;
-          if (workerN < 0) {
-            // 개체 트랙이 없는 옛 경기 — 예전 누계 모형 그대로(시작 4기 + 생산 누계).
-            workerN = 4;
-            for (const [sec, n] of track?.workers ?? []) {
-              if (sec > t) break;
-              workerN = 4 + n;
-            }
-            if (ownerRace === "저그") {
-              const morphed = buildsSrc.filter(([bs, , , bu, br]) =>
-                br === owner!.raw && bu === "Extractor" && bs <= t).length;
-              workerN = Math.max(0, workerN - morphed);
-            }
-          }
-          if (workerN === 0) return [];
-          /* 시작 4기는 가장 가까운 미네랄 4군데로(요청) — 일꾼 수보다 먼 차례의 미네랄
-             지대는 캐는 점이 안 선다. 일꾼이 늘면 바깥 지대도 차례로 찬다. */
-          if (!gasSpot && (mineralRank.get(ri) ?? 0) >= workerN) return [];
-          // 고갈된 미네랄(요청)엔 일꾼도 안 간다. 고갈 가스는 원작처럼 계속 캔다(2씩).
-          if (!gasSpot && (depleteAt.get(ri) ?? Infinity) <= t) return [];
-          const team = teamOfRaw(owner.raw);
-          /* 일꾼 수 규칙(지적: 하나에 한 마리가 아니다) — 가스는 세 마리, 미네랄은 밭당
-             1~3마리에서 시작해 후반엔 네 마리까지: 임자의 일꾼 수를 밭 수로 나눈 몫이다. */
-          const dots = gasSpot
-            ? Math.min(3, workerN)
-            : Math.max(1, Math.min(4, Math.round(workerN / Math.max(1, ownerMineralCount.get(owner.raw) ?? 8))));
-          /* 채굴 걸음을 실제 일꾼 걸음으로(지적: 일꾼 속도가 왜 이렇게 빠르냐) — 예전
-             사인파는 거리와 무관하게 7초에 한 왕복이라, 먼 홀(18타일까지)에선 점이 실제
-             일꾼(3.7타일/초)보다 빨리 내달렸고 캐는 멈춤도 없었다. 이제 구간 길이만큼
-             일꾼보다 살짝 느린 걸음(가감속 감안)으로 걷고, 양 끝에서 캐고 내리는 동안
-             멈춘다 — 거리가 멀수록 왕복이 오래 걸리는, 눈에 익은 그 리듬이다. */
-          const legTiles = Math.hypot(owner.x - res[0], owner.y - res[1]) * 0.7;
-          const MINE_WALK = 2.6;
-          const MINE_DWELL = 2;
-          const leg = legTiles / MINE_WALK;
-          const period = 2 * (leg + MINE_DWELL);
-          return Array.from({ length: dots }, (_, i) => {
-            // 점·지대마다 위상을 어긋내 셋이 같이 안 다니게 한다(결정적 — 프레임마다 안 튐).
-            const u = ((t + i * 5.3 + ri * 2.7) % period + period) % period;
-            const k = u < leg ? u / leg
-              : u < leg + MINE_DWELL ? 1
-                : u < 2 * leg + MINE_DWELL ? 1 - (u - leg - MINE_DWELL) / leg
-                  : 0;
-            const x = res[0] + (owner!.x - res[0]) * (0.15 + 0.7 * k);
-            const y = res[1] + (owner!.y - res[1]) * (0.15 + 0.7 * k);
-            // 걷는 방향(요청: 일꾼도 모델·방향) — 갈 때는 홀 쪽, 올 때는 자원 쪽.
-            const toHall = u < leg ? 1 : u < leg + MINE_DWELL ? 0 : u < 2 * leg + MINE_DWELL ? -1 : 0;
-            const hdg = toHall !== 0
-              ? Math.atan2(-((owner!.x - res[0]) * toHall), (owner!.y - res[1]) * toHall) * (180 / Math.PI) : 0;
-            // (캔버스 전환) — 채굴 일꾼도 unitOps로. 종족 일꾼 상징물이 오간다.
-            const [fx, fy] = posFrac(x, y);
-            unitOps.push({
-              fx, fy,
-              // 채굴 일꾼 점도 같은 규칙(위 주석) — 같은 줄에서는 건물보다 위.
-              z: pitched ? 1000 + Math.round(y * 80) + 40 : 900,
-              kind: workerKindOf(ownerRace), rotDeg: hdg, viewYaw: viewYawOf(x, y),
-              flat: !pitched, pitch: pitched,
-              sizePx: unitGlyphPx(workerKindOf(ownerRace), workerKindOf(ownerRace), 0, y),
-              color: modeColor(owner!.raw, team),
-              alpha: 1,
-              noSep: true,
-            });
-            return null;
-          });
-          });
-        })()}
-
-        {/* (이동·요청: 아바타를 맵 밖으로) — 본진 아바타+이름은 맵 양옆 로스터 기둥
-            (teamCol)으로 나갔다. 맵의 본진 자리는 합성된 시작 홀 도형이 말한다. */}
-        {false && bases.map((m) => {
-          const track = motion.players.find((p) => p.raw === m.key);
-          let workerN = 0;
-          for (const [sec, n] of track?.workers ?? []) {
-            if (sec > t) break;
-            workerN = n;
-          }
-          return (
-            <span
-              key={m.key}
-              className={cx("scr-motion-base", m.ghost && "scr-motion-base-ghost")}
-              style={{ ...posStyle(m.x ?? 0, m.y ?? 0) }}
-            >
-              {/* 테두리 한 겹(요청: 중복 제거) — 지금 색 모드의 색으로. 어두운 색에 받치던
-                  흰 겉테두리는 걷었다(요청: 흰 테두리 제거) — 아바타가 커진 뒤로는 색 테가
-                  얇아도 충분히 읽힌다. */}
-              <span style={{ position: "relative" }}>
-                {/* 아바타를 그 종족 본진 실루엣 '안'에 넣는다(요청: "본진 기지 아바타도 본진
-                    모양을 본따서", "아바타를 본진안에 넣으라는 뜻, 따로 빼지말고") —
-                    테란 무덤, 프로토스 피라미드, 저그 둔덕 모양으로 사진을 자르고 같은
-                    모양의 색 테를 두른다. 사진이 없는 사람은 도형 바탕에 첫 글자다.
-                    종족은 이 실루엣이 이미 말하므로 종족 배지는 걷었다(요청). */}
-                {(() => {
-                  /* 사진은 자르지 않는다(지적: "아바타를 잘라서 넣는게 아니라 원으로
-                     가운데에 잘림없이, 종족 무관 같은 크기") — 본진 실루엣은 색 판으로
-                     뒤에 서고, 그 한가운데에 동그란 아바타가 같은 크기로 얹힌다. */
-                  const hall = m.race ? AVATAR_HALL_PATHS[m.race] : undefined;
-                  /* 저그는 그 시각의 최고 단계(해처리→레어→하이브)를 따라 뿔이 자란다
-                     (요청: "해처리 아바타도 레어 하이브 다 표현"). */
-                  let deco = hall?.deco;
-                  if (m.race === "저그") {
-                    let tier: "hatchery" | "lair" | "hive" = "hatchery";
-                    for (const [bs, , , bu, br, bg] of motion.builds) {
-                      if (br !== m.key || bs > t || ((bg ?? 0) > 0 && t >= (bg ?? 0))) continue;
-                      if (bu === "Hive") { tier = "hive"; break; }
-                      if (bu === "Lair") tier = "lair";
-                    }
-                    deco = AVATAR_ZERG_DECO[tier];
-                  }
-                  if (!hall) {
-                    return (
-                      <span
-                        className="scr-motion-base-ring"
-                        style={{ boxShadow: `0 0 0 3px ${modeColor(m.key, m.team)}` }}
-                      >
-                        <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={24} />
-                      </span>
-                    );
-                  }
-                  return (
-                    <span className="scr-motion-base-hallwrap">
-                      <svg
-                        className="scr-motion-base-hallsvg" viewBox="0 0 16 16" aria-hidden
-                        style={{ color: modeColor(m.key, m.team) }}
-                      >
-                        <path d={hall.body} fill="currentColor" />
-                        {deco && <path d={deco} fill="currentColor" />}
-                      </svg>
-                      <span
-                        className="scr-motion-base-avatar-in"
-                        style={{ transform: `translateY(${hall.dy}px)` }}
-                      >
-                        <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={18} />
-                      </span>
-                    </span>
-                  );
-                })()}
-                {/* 팀 표시(요청: 깃발 말고 팀을 나타내는 아이콘에 색 구분) — 반대 어깨의
-                    방패다. 색은 늘 팀색이다(modeColor가 아니다): 개인색 모드에서는 아바타
-                    테두리가 그 사람 색이라, 편을 말해 주는 자리가 하나는 있어야 한다.
-                    방패 안에 팀 번호를 적는다(요청) — 색만으로는 "1팀이 파랑이던가"를
-                    되물어야 하는데, 숫자가 앉으면 그 물음이 없다. */}
-                {/* 11 → 15px(요청: 아바타 방패 크기 증가) — 아바타가 24px로 커진 뒤라
-                    방패가 그 절반은 돼야 어깨 장식이 아니라 표식으로 읽힌다. 숫자도 한
-                    눈금 따라 큰다(scr-motion-base-team의 --n 참고). */}
-                <span className="scr-motion-base-team">
-                  <Shield size={15} strokeWidth={0} fill={TEAM_EDGE[m.team === 2 ? 2 : 1]} />
-                  <i className="scr-motion-team-n">{m.team === 2 ? 2 : 1}</i>
-                </span>
-                {/* 재생이 끝나면 이긴 편에 트로피(요청) — 스냅의 승패 표시와 같은 자리. */}
-                {winnerTeam && m.team === winnerTeam && t >= total - 0.5 && !m.ghost && (
-                  <span className="scr-motion-trophy">🏆</span>
-                )}
-              </span>
-              {m.withName && (
-                <span
-                  className={cx("scr-motion-base-name", "scr-motion-chip", m.team === 2 ? "scr-motion-team2" : "scr-motion-team1")}
-                  style={chipStyle(m.key, m.team)}
-                >
-                  {m.name}
-                </span>
-              )}
-              {/* 일꾼 줄은 자리를 늘 잡아 둔다(지적: 첫 장면에서 일꾼 줄이 생기며 아바타가
-                  위로 밀렸다) — 마커는 세로 가운데 정렬이라 줄이 늘면 전체가 움직인다. */}
-              {m.withName && (
-                <span
-                  className="scr-motion-workers"
-                  style={workerN > 0 ? undefined : { visibility: "hidden" }}
-                >
-                  일꾼 {workerN || 0}
-                </span>
-              )}
-            </span>
-          );
-        })}
-
-
-
-
+        {/* (걷어냄) 채굴 일꾼 점 층 — 일꾼 '수'로 자원 곁에 점을 찍던 v1 장식 어림이다.
+            실제 조작과 무관하게 그려져, 가스를 안 지었는데도 캐러 다니곤 했다(지적).
+            개체 트랙에서는 실제 일꾼 개체가 제 클릭을 따라 움직이므로 어림이 필요 없다. */}
         {/* 개체 트랙 v2(요청: 태그 단위 분석을 별도 테이블에 담아 비교) — 태그 하나가
             곧 마커 하나다. 부대 어림의 묶음·흡수·합류 규칙이 전혀 없이, 각 개체가 제
             증거를 따라 걷고 제 죽음(d)에 종족 효과와 함께 걷힌다. 유닛 층만 바꿔 그리고
             건물·자원·크립·마법은 v1 그대로다. 정체를 모르는 개체는 그 종족의 기본 보병
             꼴을 반투명으로 — 아는 척은 안 하되 존재는 보인다. */}
-        {entMode && entWalks.map((e, ei) => {
+        {entWalks.map((e, ei) => {
           const rp = e.walk;
           if (rp.length === 0 || t < rp[0][0]) return null;
           /* 죽음의 주인은 하나다(과제 #69) — 시뮬이 돌면 시뮬, 아니면 분석의 d다.
@@ -15591,7 +14765,7 @@ export default function ReplayMotionPlayer({
         {/* 클릭 자국(요청: 동그라미 안에 점, 납작하게 + 토글) — 브루드워의 이동 클릭
             표시처럼, 명령이 떨어진 자리에 찍은 사람 색의 납작한 고리+가운데 점이 잠깐
             남는다. v2 데이터로 그리므로 v2 모드 + 클릭 토글이 켜져 있을 때만이다. */}
-        {entOn && clickFx && entClicks.map(([cs, cx2, cy2, raw, ck], i) => {
+        {clickFx && entClicks.map(([cs, cx2, cy2, raw, ck], i) => {
           if (t < cs || t - cs > 0.9) return null;
           /* UI 고정 크기 — 가장 축소(줌 1)에서도 또렷한 18px 기준(재지적). 타일 비례는
              큰 화면에서만 그보다 커진다. */
@@ -15612,7 +14786,7 @@ export default function ReplayMotionPlayer({
         {/* 미니맵 핑(요청: 클릭도 기록 — 리플레이에 좌표가 온전히 남는다) — v2 트랙에만
             있다. 찍은 사람 색의 물결 고리가 3초 동안 퍼진다. 카메라 시야는 리플레이에
             저장되지 않아 못 그린다(엔진 재시뮬레이션의 몫). */}
-        {entOn && qPing && (entData?.pings ?? []).map(([ps, px, py, ppid], i) => {
+        {qPing && (entData?.pings ?? []).map(([ps, px, py, ppid], i) => {
           if (t < ps || t - ps > 3) return null;
           const raw = entData?.players.find((pl) => pl.id === ppid)?.name ?? "";
           return (
@@ -15766,57 +14940,6 @@ export default function ReplayMotionPlayer({
           return null;
         })}
 
-        {/* 드랍·태움(요청: 셔틀·드랍십·오버로드의 태우기와 드랍 표현) — 내린 자리엔
-            '드랍', 제 수송선을 찍어 태운 자리엔 '태움'이 마법처럼 잠깐 떠오른다. */}
-        {motion.players.flatMap((p) => {
-          const team = teamOfRaw(p.raw);
-          /* 수송선 실존 걸림막(지적: 수송선도 없는 시점·자리에 드랍 효과가 계속) —
-             드랍·태움 신호는 번호 정체 어림이라 오염될 수 있다. 첫 수송선이 생기기
-             전(저그는 Ventral Sacs 연구 전)의 신호와, 그 순간 수송선 자취가 곁(12타일)에
-             없는 자리의 신호는 효과를 그리지 않는다. */
-          const ready = transportReadyAt.get(p.raw) ?? Infinity;
-          const mk = (pts: [number, number, number][] | undefined, kp: "dr" | "ld") => {
-            /* 몰린 클릭 접기(지적: 태움·내림 효과가 계속 남아 이상하다) — 여러 기를 태울
-               때 수송선을 잇달아 찍으므로, 10초·5타일 안에 몰린 클릭은 첫 것 하나만 배지가
-               된다. 그래야 효과가 "한 번 일어난 일"로 읽히고 끝난다. */
-            const folded: [number, number, number][] = [];
-            for (const pt of pts ?? []) {
-              const prev = folded[folded.length - 1];
-              if (prev && pt[0] - prev[0] <= 10
-                && Math.hypot(pt[1] - prev[1], pt[2] - prev[2]) <= 5) continue;
-              folded.push(pt);
-            }
-            return folded
-              .filter(([s, cx2, cy2]) => s <= t && t - s <= CAST_HOLD_SEC
-                && s >= ready && carrierNearAt(p.raw, s, cx2, cy2))
-              .map(([s, cx2, cy2]) => (
-                <React.Fragment key={`${kp}-${p.raw}-${s}-${cx2}-${cy2}`}>
-                  {/* 우주선 광선(요청: 글씨 없이 광선만) — 위(수송선)에서 유닛 자리로
-                      노랗게 내리쬔다. */}
-                  <span
-                    className="scr-motion-beam"
-                    style={{ ...posStyle(cx2, cy2) }}
-                  />
-                  {/* 유닛 승강(요청) — 태울 땐 광선 속으로 떠오르고, 내릴 땐 내려온다. */}
-                  {[0, 1].map((di) => (
-                    <span
-                      key={di}
-                      className={cx(
-                        "scr-motion-lift",
-                        kp === "ld" ? "scr-motion-lift-up" : "scr-motion-lift-down",
-                        di === 1 && "scr-motion-lift-b",
-                      )}
-                      style={{
-                        ...posStyle(cx2 + (di === 1 ? 0.7 : -0.4), cy2),
-                        color: modeColor(p.raw, team),
-                      }}
-                    />
-                  ))}
-                </React.Fragment>
-              ));
-          };
-          return [...mk(p.drops, "dr"), ...mk(p.loads, "ld")];
-        })}
         </div>
         {/* 유닛 캔버스 층(요청: 캔버스 전환 — 성능, 지적: 확대가 선명해야) — 렌즈 밖에
             둔다: CSS 확대에 태우지 않고 줌·팬을 그리기 좌표에 직접 입혀, 어느 배율에서도
@@ -15835,7 +14958,6 @@ export default function ReplayMotionPlayer({
           const max = op.hpMax ?? 0;
           const cur = Math.max(0, Math.round((op.hpFrac ?? 1) * max));
           const sh = op.pickBld ? (BLD_STATS[en]?.[1] ?? 0) : (UNIT_STATS[en]?.sh ?? 0);
-          const trk = motion.players.find((pp) => pp.raw === op.pickRaw);
           const lines: React.ReactNode[] = [];
           /* 진행 바(요청: 스타 원작처럼 칸 수를 따라) — 원작 진행 바는 통짜가 아니라
              칸이 하나씩 차오른다. 열 칸으로 나눠 채운 만큼만 밝힌다. */
@@ -15889,7 +15011,7 @@ export default function ReplayMotionPlayer({
             const evs: [number, string, number][] = [];
             for (const u of PRODUCED_BY[en] ?? []) {
               const sec = UNIT_BUILD_SEC[u] ?? 30;
-              for (const ps of trk?.prod?.[u] ?? []) evs.push([ps, UNIT_KO[u] ?? u, sec]);
+              for (const ps of prodDoneByRaw.get(op.pickRaw ?? "")?.[u] ?? []) evs.push([ps, UNIT_KO[u] ?? u, sec]);
             }
             evs.sort((a, b) => a[0] - b[0]);
             /* 진행률(요청) — 리플레이에 남는 건 완성 시각뿐이라, 거기서 생산 시간을
@@ -15907,7 +15029,7 @@ export default function ReplayMotionPlayer({
             if (queue.length > 0) {
               lines.push(`큐 ${queue.map(([ps, n, sec]) => `${n} +${Math.max(0, Math.round(ps - sec - t))}초`).join(" · ")}`);
             }
-            const doing = (trk?.ups ?? []).filter(([us]) =>
+            const doing = (upsByRaw.get(op.pickRaw ?? "") ?? []).filter(([us]) =>
               RESEARCH_BUILDING[en === "Lair" || en === "Hive" ? "Hatchery" : en] === undefined
                 ? false
                 : RESEARCH_BUILDING[en === "Lair" || en === "Hive" ? "Hatchery" : en] === en
@@ -15937,13 +15059,13 @@ export default function ReplayMotionPlayer({
               return air9 ? w === "Protoss Air Weapons" : w === "Protoss Ground Weapons";
             });
             const lv = (name: string): number =>
-              (trk?.ups ?? []).filter(([us, n]) => n === name && us <= t).length;
+              (upsByRaw.get(op.pickRaw ?? "") ?? []).filter(([us, n]) => n === name && us <= t).length;
             if (pick9) {
               lines.push(`${UPGRADE_LINE_KO[pick9.weapon] ?? "공/방"} ${lv(pick9.weapon)}-${lv(pick9.armor)}`);
             }
             /* 공/방 말고 그 유닛에 붙는 기술(속업·사업 등)은 이름으로 걸러 준다 —
                표가 유닛을 직접 가리키지 않으므로, 임자가 마친 것 중 최근 것을 곁들인다. */
-            const other = (trk?.ups ?? []).filter(([us, n]) => us <= t && !pairs.some((pr) => pr.weapon === n || pr.armor === n));
+            const other = (upsByRaw.get(op.pickRaw ?? "") ?? []).filter(([us, n]) => us <= t && !pairs.some((pr) => pr.weapon === n || pr.armor === n));
             if (other.length > 0) {
               lines.push(`연구 완료 ${other.slice(-6).map(([, n]) => TECH_KO[n] ?? n).join(" · ")}`);
             }
