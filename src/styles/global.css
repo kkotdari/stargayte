@@ -13374,7 +13374,11 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
      회전임을 커서가 그대로 말한다. 손바닥(grab)은 "끌어야만 한다"고 말해 ←/→ 키를
      가렸고, 손가락(pointer)은 그냥 누르는 곳으로 보였다. touch-action·user-select는
      손가락 화면의 끌기가 안 미끄러지게 그대로 둔다. */
-  cursor: ew-resize; position: relative; touch-action: none; user-select: none;
+  /* 세로는 스크롤, 가로는 회전(지적: "모바일 모델 목록이 세로 스크롤이 안돼") —
+     touch-action:none은 브라우저에게서 **모든** 손짓을 빼앗아, 목록을 세로로 쓸어도
+     아무 일도 안 일어났다. pan-y면 세로 쓸기는 브라우저가 스크롤로 쓰고 가로 쓸기만
+     우리에게 온다 — 이 칸이 하는 일이 정확히 그 가로 쓸기다. */
+  cursor: ew-resize; position: relative; touch-action: pan-y; user-select: none;
 }
 /* 칸 버튼(돋보기) — 오른쪽 위 귀퉁이. 칸을 끌 때 눌림이 안 새게 제 손짓만 먹는다. */
 .scr-model-cellbtns {

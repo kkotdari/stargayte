@@ -335,7 +335,9 @@ export default function ModelGalleryScreen() {
     if ((e.target as HTMLElement).closest("button")) return;
     cellDragRef.current = { k, x: e.clientX, base: thumbYawRef.current[k] ?? VIEW.yawDeg };
     cellMovedRef.current = false;
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+    /* 여기서는 포인터를 안 잡는다(지적: 모바일 세로 스크롤) — 누르자마자 잡으면 세로
+       쓸기까지 우리 것이 되어 브라우저가 스크롤을 못 한다. 가로로 문턱을 넘은 뒤에야
+       (아래 onCellMove) 잡는다 — 그때는 회전이 확실하다. */
   }, []);
   const onCellMove = useCallback((k: string, e: React.PointerEvent<HTMLDivElement>) => {
     const d9 = cellDragRef.current;
@@ -345,6 +347,8 @@ export default function ModelGalleryScreen() {
        남짓이라 0.8도로는 한 칸을 다 끌어도 80도밖에 안 돌았다. 3도면 5픽셀에 한 칸
        (15도)이 돈다. 문턱도 3 → 2픽셀. */
     if (Math.abs(dx9) < 2) return;
+    // 가로로 확실히 움직였다 — 이제부터 이 손짓은 회전이다.
+    if (!cellMovedRef.current) e.currentTarget.setPointerCapture?.(e.pointerId);
     cellMovedRef.current = true;
     setThumbYaw((m) => ({ ...m, [k]: snapYaw(d9.base + dx9 * 3) }));
   }, []);
