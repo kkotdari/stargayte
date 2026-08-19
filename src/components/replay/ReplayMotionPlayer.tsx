@@ -2001,7 +2001,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 경사로 — 안(문턱 안쪽 0.6)에서 시작해 문을 지나 밖으로 나오며 땅에 닿는다.
          화살표는 이 판 위에 그대로 얹는다 — 같은 평면이라 요잉을 함께 탄다. */
       const rx0 = X1 - 0.6;
-      const rx1 = X1 + 3.4;
+      /* 길이 반으로(요청) — 뻗는 길이 4.0(문턱 안 0.6 + 밖 3.4)이 2.0(안 0.6 + 밖 1.4)이
+         된다. 밖으로 내민 몫만 줄여 문간에 물리는 자리는 그대로 두었다. 같은 높이
+         (SILL)를 절반 거리에서 내려오므로 비탈만 가팔라진다. */
+      const rx1 = X1 + 1.4;
       const P = (t: number, hw: number): [number, number, number][] => {
         const x9 = rx0 + (rx1 - rx0) * t;
         const y9 = GHW + (0.35 * t);
@@ -8287,7 +8290,10 @@ function gasBoxLoad(cx: number, cy: number, cz: number, s = 1): ShapeFace[] {
 /** 가스 주머니(저그) — 둥근 살덩이를 힘줄 넷이 세로로 감싼다(요청). 꼭지는 어두운 관. */
 function gasSacLoad(cx: number, cy: number, cz: number, s = 1): ShapeFace[] {
   const r = 0.86 * s;
-  const f: ShapeFace[] = [...sphereFaces3(cx, cy, cz + r, r * 1.05, "#7d6b3a")];
+  /* 안의 구는 네온색이다(요청: "베스핀 가스 저그도 안의 구형태는 네온색") — 담는
+     그릇이 종족마다 달라도 담긴 것은 같은 베스핀이라, 색은 테란·프로토스 통의 초록
+     창과 한 계열이어야 한다. 감싼 힘줄만 저그의 살빛으로 남는다. */
+  const f: ShapeFace[] = [...sphereFaces3(cx, cy, cz + r, r * 1.05, "#4ff08a")];
   /* 힘줄 — 밑에서 위로 넘어가는 띠 넷. 구는 화면 원이라 띠도 화면에서 걸치게 두면
      되지만, 요잉을 함께 타야 하므로 모형 좌표의 두 점을 잇는 뿔로 세운다. */
   for (const [dx9, dy9] of [[-0.72, 0], [0.72, 0], [0, -0.72], [0, 0.72]] as [number, number][]) {
@@ -9541,7 +9547,7 @@ export const BLD_NORM: Record<string, number> = {
   ebay: 0.982,
   evo: 1.214,
   extract: 1.023,
-  factory: 1.042,
+  factory: 1.117,
   fleetbeacon: 2.071,
   forge: 1.398,
   gate: 1.979,
