@@ -4907,117 +4907,125 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const BONE = "#c8ccd0";
     const HORN = "#241f1c";
     const out: ShapeFace[] = [...tagKey(paintBase(creepSplat(6.8), "#3a3f46"), -20)];
-    /** 가지 줄의 사진 가로 자리(왼쪽) · 위로 갈수록 오른쪽으로 휘는 몫. */
-    const BPX = -3.5;
-    const BEND = 2.7;
-    /** [사진 앞뒤 자리, 길이] — 가운데가 가장 길고 앞뒤로 짧아진다. */
-    /* 둘째·넷째를 더 길게(요청) — 5.8 → 6.7. 가운데 하나만 우뚝하던 것이, 가운데를
-       중심으로 완만하게 낮아지는 부채꼴 능선이 된다. */
+    /** 몸 덩이의 중심(사진 좌표) — 가지·막의 호도 이 점을 축으로 돈다. */
+    const BC: [number, number] = [1.7, 0.3];
+    /** 시계 90도 한 번 — 사진 좌표에서 (dx,dy) → (−dy, dx).
+     *  ★ 부호를 뒤집었다(지적: "왜자꾸 시계랑 반시계랑 반대로 해?") — py를 '뒤쪽'으로
+     *  적어 두고 셈했는데, py는 project의 깊이(ry)이고 그 깊이는 **+가 시청자 쪽**이다
+     *  (depthNow 주석). 곧 py가 큰 쪽이 화면 **아래**다. 화면 아래(6시)의 점이 시계로
+     *  돌면 왼쪽(9시)으로 가야 하는데, 옛 식 (dy,−dx)는 오른쪽(3시)으로 보냈다. */
+    const rotCW = (dx9: number, dy9: number): [number, number] => [-dy9, dx9];
+    /** 몸 덩이(몸통·마디 꼬리·갈비·주둥이·엄니)만 통째로 돌린다 — 가지·막은 안 탄다. */
+    const PB = (px: number, py: number): [number, number] => {
+      /* 요청이 쌓인 만큼 90도씩 돈다: 90 → 180 → 다시 180 → 다시 90 = 합 **450도**,
+         곧 한 바퀴 돌고 시계 90도다. 접어 지우지 않고 세는 꼴로 남긴다 — 또 돌리라 하면
+         이 횟수만 고치면 된다. */
+      let [dx9, dy9] = rotCW(px - BC[0], py - BC[1]);
+      for (let q9 = 0; q9 < 4; q9 += 1) [dx9, dy9] = rotCW(dx9, dy9);
+      return P(BC[0] + dx9, BC[1] + dy9);
+    };
+    /* ── 가지 다섯 + 막 ── 몸통을 **둥글게 감싼다**(지적) — 여태 한 직선 위에 나란히
+       세워 두어 몸과 따로 노는 병풍처럼 보였다. 이제 다섯 뿌리를 몸 중심(BC) 둘레의
+       **호** 위에 놓고, 끝과 막의 아랫변도 같은 중심의 더 큰 호에 놓는다. 그러면 구조물
+       전체가 몸을 왼쪽에서 앞뒤로 감아 도는 꼴이 된다.
+       각은 사진 좌표의 극좌표다: 0도 = 오른쪽(+px) · 90도 = 앞(+py, 화면 아래) ·
+       180도 = 왼쪽 · 270도 = 뒤. 105~255도면 왼쪽을 한가운데 두고 앞뒤로 고르게 감는다. */
+    const BEND = 2.4;
+    /** 뿌리가 앉는 호의 반지름 — 몸에 바짝(요청). */
+    const RR = 2.6;
+    /** [각(도), 길이] — 가운데(180도)가 가장 길고 앞뒤로 갈수록 짧아진다. */
     const BR: [number, number][] = [
-      [-4.1, 3.8], [-2.05, 6.7], [0, 7.3], [2.05, 6.7], [4.1, 3.8],
+      [105, 3.8], [142.5, 6.7], [180, 7.3], [217.5, 6.7], [255, 3.8],
     ];
-    /** 끝 가지로 갈수록 막이 안으로 휘는 몫(요청) — 가운데 1, 양 끝 0.42.
-     *  막이 바깥으로 뻗는 거리를 이 값으로 줄이면, 아랫변이 직선이 아니라 양 끝에서
-     *  건물 쪽으로 감기는 곡선이 된다. */
+    /** 끝 가지로 갈수록 막이 안으로 휘는 몫(요청) — 가운데 1, 양 끝 0.42. */
     const inward = (idx9: number): number => 1 - 0.58 * (Math.abs(idx9 - 2) / 2);
-    /* 가지는 **방사형으로 펼쳐진다**(요청) — 뿌리는 한 자리에 모으고 끝만 앞뒤로
-       벌린다. 나란히 선 다섯이 아니라 한 밑동에서 부챗살처럼 갈라져 나가는 꼴이라야
-       사진의 그 느낌이 난다. 뿌리 0.3배 · 끝 1.35배로 벌린다. */
-    /* 뿌리 간격을 벌린다(요청) — 0.3배로 모아 두니 다섯이 한 점에서 나오는 꼴이라
-       밑동이 뭉쳤다. 0.78배면 뿌리끼리도 제 자리를 갖는다. 그만큼 벌어지는 각이
-       줄어드니 끝도 1.35 → 1.12로 낮춰, 부챗살이 과하게 벌어지지 않게 맞춘다
-       (요청: "자연히 방사형 퍼지는 정도는 낮아짐"). */
-    const ROOT_K = 0.78;
-    const TIP_K = 1.12;
-    const tips: [number, number, number][] = BR.map(([py9, bh9], i9) => {
-      const [mx9, my9] = P(BPX + BEND * (bh9 / 7.3) * inward(i9), py9 * TIP_K);
+    /** 사진 극좌표(BC 중심) → 모델 좌표. */
+    const ARC = (deg9: number, rad9: number): [number, number] => {
+      const a9 = (deg9 * Math.PI) / 180;
+      return P(BC[0] + Math.cos(a9) * rad9, BC[1] + Math.sin(a9) * rad9);
+    };
+    const tips: [number, number, number][] = BR.map(([deg9, bh9], i9) => {
+      const [mx9, my9] = ARC(deg9, RR + BEND * (bh9 / 7.3) * inward(i9));
       return [mx9, my9, 0.3 + bh9] as [number, number, number];
     });
-    /* 막 — 가지 끝을 잇는 윗변에서 오른쪽 아래 바닥으로 늘어진다. 양 끝에 바닥에 닿는
+    /* 막 — 가지 끝을 잇는 윗변에서 바깥 아래 바닥으로 늘어진다. 양 끝에는 바닥에 닿는
        점을 하나씩 더 붙여, 맨 끝 가지와 지면 사이도 막으로 이어진다(요청).
-       membraneFaces의 notch가 바깥 변을 우묵하게 파 '찢긴' 결을 낸다. */
-    const endF = P(BPX + 0.5, -6.2);
-    const endB = P(BPX + 0.5, 6.2);
+       아랫변의 반지름에 inward를 걸어, 끝으로 갈수록 막이 안쪽으로 감긴다(요청). */
+    const endF = ARC(BR[0][0] - 22, RR + 0.6);
+    const endB = ARC(BR[BR.length - 1][0] + 22, RR + 0.6);
     const MA: [number, number, number][] = [
       [endF[0], endF[1], 0.25], ...tips, [endB[0], endB[1], 0.25],
     ];
-    /** 막의 아랫변 — 사진에서 오른쪽으로 3.0만큼 나가 바닥에 닿는다. */
-    const MC: [number, number, number][] = BR.map(([py9], i9) => {
-      const [mx9, my9] = P(BPX + 3.4 * inward(i9), py9 * TIP_K * 0.9);
+    const MC: [number, number, number][] = BR.map(([deg9], i9) => {
+      const [mx9, my9] = ARC(deg9, RR + 4.2 * inward(i9));
       return [mx9, my9, 0] as [number, number, number];
     });
-    const mcF = P(BPX + 1.2, -5.8);
-    const mcB = P(BPX + 1.2, 5.8);
+    const mcF = ARC(BR[0][0] - 18, RR + 1.4);
+    const mcB = ARC(BR[BR.length - 1][0] + 18, RR + 1.4);
     MC.unshift([mcF[0], mcF[1], 0]);
     MC.push([mcB[0], mcB[1], 0]);
-    out.push(...membraneFaces(MA, MC, RACE_BASE_TONE.zerg, { shade: 0.16, notch: 0.34, key: 6 }));
-    /* 막의 찢긴 구멍 — 윗변·아랫변을 보간해 막 위에 정확히 앉힌다. 가지 사이 골마다
-       하나씩, 큼직한 세로 타원으로. 타원은 사진 가로축(=모델의 P(1,0) 방향)에 눕는다. */
-    const [ux9, uy9] = P(1, 0);
+    /* 막은 **칸마다 따로** 세운다(지적: "구멍이 막 뒤에서는 보이는데 앞쪽에선 안보임") —
+       한 장으로 두르면 키가 하나라, 몸을 감아 도는 막의 **앞쪽 절반**도 뒤쪽과 같은 키를
+       받는다. 그 키(6)가 몸통(12)보다 낮으니 앞을 지나는 막과 그 구멍이 몸에 덮였다.
+       칸마다 제 자리 깊이로 키를 주면 앞을 지나는 칸은 몸보다 위, 뒤로 도는 칸은 몸보다
+       아래로 저절로 갈린다 — 감싸는 구조물에는 이 방법뿐이다. */
+    const panelKey = (k9: number): number => {
+      const mx9 = (MA[k9][0] + MA[k9 + 1][0] + MC[k9][0] + MC[k9 + 1][0]) / 4;
+      const my9 = (MA[k9][1] + MA[k9 + 1][1] + MC[k9][1] + MC[k9 + 1][1]) / 4;
+      return 12 + depthNow(mx9, my9) * 1.6;
+    };
+    for (let k9 = 0; k9 + 1 < MA.length; k9 += 1) {
+      out.push(...membraneFaces(
+        [MA[k9], MA[k9 + 1]], [MC[k9], MC[k9 + 1]], RACE_BASE_TONE.zerg,
+        { shade: 0.16, notch: 0.34, key: panelKey(k9) },
+      ));
+    }
+    /* 막의 찢긴 구멍 — 윗변·아랫변을 보간해 막 위에 정확히 앉힌다. 타원이 눕는 평면은
+       그 자리의 **막이 뻗는 방향**(윗변 → 아랫변)과 z로 잡는다(수리: "구멍이 막 뒤에서는
+       보이는데 앞쪽에선 안보임") — 앞서는 사진 가로축 하나로 고정해 두어, 호를 따라
+       돌아간 자리에서는 그 평면이 막을 비스듬히 꿰뚫었다. 그러면 타원의 절반이 막 밖
+       허공에 뜨고, 보는 쪽에 따라 구멍이 사라진 것처럼 보인다. */
     const membHole = (u9: number, rr9: number, rz9: number): void => {
       const i9 = Math.min(MA.length - 2, Math.floor(u9 * (MA.length - 1)));
       const f9 = u9 * (MA.length - 1) - i9;
       const L = (a9: number, b9: number): number => a9 + (b9 - a9) * f9;
-      const cxA = L(MA[i9][0], MA[i9 + 1][0]);
-      const cyA = L(MA[i9][1], MA[i9 + 1][1]);
-      const czA = L(MA[i9][2], MA[i9 + 1][2]);
-      const cxB = L(MC[i9][0], MC[i9 + 1][0]);
-      const cyB = L(MC[i9][1], MC[i9 + 1][1]);
+      const axA = L(MA[i9][0], MA[i9 + 1][0]);
+      const ayA = L(MA[i9][1], MA[i9 + 1][1]);
+      const azA = L(MA[i9][2], MA[i9 + 1][2]);
+      const axB = L(MC[i9][0], MC[i9 + 1][0]);
+      const ayB = L(MC[i9][1], MC[i9 + 1][1]);
+      // 막의 가로 방향 — 윗변을 따라가는 접선. 이 방향과 z가 구멍이 눕는 평면이다.
+      const tx9 = MA[i9 + 1][0] - MA[i9][0];
+      const ty9 = MA[i9 + 1][1] - MA[i9][1];
+      const tl9 = Math.hypot(tx9, ty9) || 1;
       const T9 = 0.42;
-      const cx9 = cxA + (cxB - cxA) * T9;
-      const cy9 = cyA + (cyB - cyA) * T9;
-      const cz9 = czA * (1 - T9);
+      const cx9 = axA + (axB - axA) * T9;
+      const cy9 = ayA + (ayB - ayA) * T9;
+      const cz9 = azA * (1 - T9);
       if (cz9 < rz9 * 1.1) return;
       out.push(...tagKey([[polyPath3(Array.from({ length: 15 }, (_, q9) => {
         const a9 = (q9 / 14) * Math.PI * 2;
-        return [cx9 + ux9 * Math.cos(a9) * rr9, cy9 + uy9 * Math.cos(a9) * rr9,
+        return [cx9 + (tx9 / tl9) * Math.cos(a9) * rr9, cy9 + (ty9 / tl9) * Math.cos(a9) * rr9,
           cz9 + Math.sin(a9) * rz9] as [number, number, number];
-      })), 0.92, "#2a1512"] as ShapeFace], 7));
+      })), 0.92, "#2a1512"] as ShapeFace], panelKey(i9) + 0.3));
     };
     for (const [u9, rr9, rz9] of [
       [0.24, 0.95, 1.15], [0.4, 1.25, 1.55], [0.6, 1.25, 1.55], [0.76, 0.95, 1.15],
     ] as [number, number, number][]) membHole(u9, rr9, rz9);
-    /* 가지 다섯 — 왼쪽 줄에서 솟아 위로 갈수록 오른쪽으로 휜다. 붉은 살빛. */
-    /* 뿌리를 몸통 쪽으로 바짝 붙이고 굵기를 줄인다(요청) — 막이 서는 자리(BPX)에서
-       몸통 쪽으로 1.4만큼 당긴 자리가 뿌리다. 밑동 굵기도 0.84 → 0.58로 깎아, 굵은
-       기둥 다섯이 아니라 몸에서 뻗어 나온 가는 가시로 읽히게 한다. */
-    const BROOT = BPX + 1.4;
+    /* 가지 다섯 — 몸 둘레 호에서 솟아 위로 갈수록 바깥으로 휜다. 붉은 살빛.
+       가지는 **막보다 늘 앞**이다(지적: "가시가 막에 가리면 안되는데") — 제 자리 깊이만
+       쓰면 뒤로 돌아간 가지가 막(6) 뒤로 숨는다. 20을 깔고 그 위에서 저희끼리만 가린다. */
     for (let i9 = 0; i9 < BR.length; i9 += 1) {
-      const [py9, bh9] = BR[i9];
-      const [bx9, by9] = P(BROOT, py9 * ROOT_K);
-      const [tx9, ty9] = P(BPX + BEND * (bh9 / 7.3) * inward(i9), py9 * TIP_K);
+      const [deg9, bh9] = BR[i9];
+      const [bx9, by9] = ARC(deg9, RR);
+      const [tx9, ty9] = ARC(deg9, RR + BEND * (bh9 / 7.3) * inward(i9));
       out.push(...tagKey(paintBase(spirePillar({
         x: bx9, y: by9, z0: 0.3, h: bh9, w: 0.58, tipW: 0.12,
         segs: 8, sides: 6, hold: 0.1, taper: 1.4,
         leanX: (tx9 - bx9) * 0.4, leanY: (ty9 - by9) * 0.4,
         curveX: (tx9 - bx9) * 0.6, curveY: (ty9 - by9) * 0.6,
-      /* 가지는 **막보다 늘 앞**이다(지적: "가시가 막에 가리면 안되는데") — 제 자리
-         깊이(±8)만 쓰면 뒤로 돌아간 가지의 키가 막(6)보다 작아져 막 뒤로 숨었다.
-         가지는 막을 걸어 두는 뼈대라 어느 요잉에서도 드러나야 한다. 20을 깔고 그
-         위에서 저희끼리만 앞뒤를 가린다(막 6·구멍 7보다 위). */
       }), RED), 20 + depthNow(bx9, by9)));
     }
-    /* 몸 덩이(몸통·마디 꼬리·주둥이·엄니)만 **통째로 시계 90도 더 돌린다**(요청:
-       "주둥이랑 엄니 있는 부분이 전체적으로 시계방향으로 90도 요잉") — 가지·막은 그대로
-       두고 이 덩이만 돌려야 하므로, 모델 요잉이 아니라 사진 좌표에서 제 중심(BC)을 축으로
-       돌린다. 화면상 시계 90도의 식은 위 rotCW가 쥔다. */
-    const BC: [number, number] = [1.7, 0.3];
-    /** 시계 90도 한 번 — 사진 좌표에서 (dx,dy) → (−dy, dx).
-     *  ★ 부호를 뒤집었다(지적: "왜자꾸 시계랑 반시계랑 반대로 해?") — py를 '뒤쪽'으로
-     *  적어 두고 셈했는데, py는 project의 깊이(ry)이고 그 깊이는 **+가 시청자 쪽**이다
-     *  (depthNow 주석). 곧 py가 큰 쪽이 화면 **아래**다. 화면 아래(6시)에 있는 점이
-     *  시계로 돌면 왼쪽(9시)으로 가야 하는데, 옛 식 (dy,−dx)는 오른쪽(3시)으로 보냈다 —
-     *  반시계였다. */
-    const rotCW = (dx9: number, dy9: number): [number, number] => [-dy9, dx9];
-    const PB = (px: number, py: number): [number, number] => {
-      /* 요청이 쌓인 만큼 90도씩 돈다: 90 → 180 → 다시 180 → 다시 90 = 합 **450도**,
-         곧 한 바퀴 돌고 시계 90도다. 접어서 지우지 않고 세는 꼴로 남긴다 — 다음에 또
-         돌리라 하면 이 횟수만 고치면 된다. 도는 것은 **몸 덩이뿐**이고(가지·막은 이
-         변환을 안 탄다), 그 덩이에는 몸통·마디 꼬리·갈비·주둥이·엄니가 모두 든다. */
-      let [dx9, dy9] = rotCW(px - BC[0], py - BC[1]);
-      for (let q9 = 0; q9 < 4; q9 += 1) [dx9, dy9] = rotCW(dx9, dy9);
-      return P(BC[0] + dx9, BC[1] + dy9);
-    };
     // 몸 — 붉은 살덩이 둔덕(사진).
     const [bmx, bmy] = PB(1.7, 0.3);
     out.push(...tagKey(paintBase(spirePillar({
@@ -8169,13 +8177,40 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     out.push(...tagKey(paintBase(
       frustumFaces3(0, -1.5, 4, 2.4, 3.6, 2.2, 1.5, 2.5 + BODY_UP), HIDE),
     depthNow(0, -1.5) * 1.6 - 0.5));
-    // 뒷몸(골반) — 앞몸보다 한 뼘 작고 낮다.
-    out.push(...tagKey(paintBase(
-      frustumFaces3(0, -3.5, 5.4, 4, 4.4, 3.2, 1.8, 2.3 + BODY_UP), HIDE),
-    depthNow(0, -3.5) * 1.6));
-    out.push(...tagKey(paintBase(
-      frustumFaces3(0, -3.7, 4.4, 3.2, 3, 2.3, 1.5, 4 + BODY_UP), PLATE),
-    depthNow(0, -3.7) * 1.6 + 1));
+    /* 뒷몸(골반)은 **뒤가 뾰족한 역삼각형**이다(지적) — 네모 절두체로는 꽁무니가 뭉툭한
+       상자였다. 위에서 본 바닥이 삼각형인 쐐기를 세운다: 앞이 넓고(허리에 물린다) 뒤로
+       갈수록 좁아져 한 점으로 모인다. 위판은 같은 삼각형을 조금 줄여 얹어 옆면에 기울기를
+       준다 — 절두체와 같은 결이라 다른 부품과 명암이 어긋나지 않는다. */
+    {
+      const tri9 = (w9: number, yF9: number, yB9: number, z9: number):
+      [number, number, number][] => [
+        [-w9 / 2, yF9, z9], [w9 / 2, yF9, z9], [0, yB9, z9],
+      ];
+      const wedge9 = (
+        wB9: number, wT9: number, yF9: number, yB9: number, z09: number, h9: number,
+        fill9: string, key9: number,
+      ): void => {
+        const lo9 = tri9(wB9, yF9, yB9, z09);
+        const hi9 = tri9(wT9, yF9 - 0.25, yB9 + 0.4, z09 + h9);
+        const f9: ShapeFace[] = [bodyFace(polyPath3(hi9))];
+        for (let q9 = 0; q9 < 3; q9 += 1) {
+          const r9 = (q9 + 1) % 3;
+          const ex9 = lo9[r9][0] - lo9[q9][0];
+          const ey9 = lo9[r9][1] - lo9[q9][1];
+          const el9 = Math.hypot(ex9, ey9) || 1;
+          // 바깥 법선 — 삼각형을 시계로 돌 때 오른쪽이 바깥이다.
+          const nx9 = ey9 / el9;
+          const ny9 = -ex9 / el9;
+          const d9 = polyPath3([lo9[q9], lo9[r9], hi9[r9], hi9[q9]]);
+          const fl9 = faceLight(nx9, ny9, 0.25);
+          f9.push(bodyFace(d9), ...(fl9.visible ? fl9.face(d9) : [sideFace(d9, 0.4)]));
+        }
+        out.push(...tagKey(paintBase([...f9, topFace(polyPath3(hi9), 0.12)], fill9), key9));
+      };
+      // 아래 덩이(허리에 물리는 넓은 쪽) → 위 덩이(등판) 순으로 두 층.
+      wedge9(5.4, 4.4, -1.9, -6.2, 2.3 + BODY_UP, 1.8, HIDE, depthNow(0, -3.5) * 1.6);
+      wedge9(4.4, 3, -2.2, -5.8, 4 + BODY_UP, 1.5, PLATE, depthNow(0, -3.7) * 1.6 + 1);
+    }
     out.push(...tagKey(paintBase(
       pyramidFaces3(0, -3.9, 2.9, 2.3, 1.2, 5.4 + BODY_UP), PLATE),
     depthNow(0, -3.9) * 1.6 + 2));
@@ -10103,7 +10138,7 @@ export const BLD_NORM: Record<string, number> = {
   gspire: 0.917,
   hatchery: 1.367,
   hive: 1.165,
-  hydraden: 1.109,
+  hydraden: 1.112,
   lair: 1.223,
   mineral: 1.963,
   mshop: 1.958,
