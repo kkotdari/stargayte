@@ -8983,6 +8983,14 @@ const BLD_ANCHOR_CACHE = new Map<string, [number, number]>();
    그림은 4×3 발자국을 넘어 앉는다. 레어·하이브는 해처리의 다음 단계라 같은 몫이다. */
 export const BLD_FILL_TARGET: Record<string, number> = {
   tomb: 1.2, pyramidWide: 1.2, hatchery: 1.2, lair: 1.2, hive: 1.2,
+  /* 스타포트·게이트웨이가 제 발자국보다 좁아 보인다(지적: "일부 건물들이 실제 캔버스보다
+     작게(좁게) 그려지는 느낌 … 게이트웨이 스타포트 등" · "스타포트는 안테나를 크기계산
+     에서 살짝 빼줘야하고") — 진단이 맞다. 정규화가 재는 것은 **잉크 폭 전체**라, 몸통
+     밖으로 가늘게 뻗은 것(스타포트의 안테나 팔, 게이트웨이 아치의 바깥 다리)이 폭을
+     대신 채우면 정작 몸통은 발자국의 절반 언저리에 머문다. 부품을 골라 빼는 자를 새로
+     만드는 대신, 이 표가 원래 그 손잡이다(풀 1.3·파일런 1.425와 같은 자리): 목표를
+     올려 몸통이 발자국을 채우게 하고 가는 팔은 조금 넘치게 둔다. */
+  plane: 1.12, gate: 1.1,
   /* 스포닝 풀이 너무 작게 나온다(지적) — 이 모델은 바닥 크립 얼룩(반지름 6.8)이
      16-상자를 거의 가득 채워, 채움 보정이 '이미 큰 건물'로 재고 몸을 도로 줄였다.
      실제로 보이는 웅덩이·두렁은 상자의 절반쯤뿐이다. 목표 채움을 올려 몸을 키운다. */
@@ -9019,20 +9027,20 @@ export const BLD_FILL_TARGET: Record<string, number> = {
 export const BLD_NORM: Record<string, number> = {
   academy: 1.408,
   arch: 1.556,
-  archives: 1.896,  // 상자 상한에 걸림
+  archives: 1.991,
   armory: 1.452,
   assim: 1.709,
   cavern: 1.082,
-  citadel: 1.724,  // 상자 상한에 걸림
+  citadel: 1.749,
   cocoon: 1.756,
   coil: 1.058,
   comsat: 1.968,
   covert: 2.065,
   creep: 1.219,
-  ctower: 2.111,  // 상자 상한에 걸림
+  ctower: 2.238,
   cube: 1.137,
-  cyber: 1.768,  // 상자 상한에 걸림
-  diamond: 1.564,  // 상자 상한에 걸림
+  cyber: 1.972,
+  diamond: 1.876,  // 상자 상한에 걸림
   dmound: 1.115,
   dome: 1.418,
   ebay: 0.982,
@@ -9041,20 +9049,20 @@ export const BLD_NORM: Record<string, number> = {
   factory: 1.063,
   fleetbeacon: 1.711,
   forge: 1.398,
-  gate: 1.504,
+  gate: 1.742,
   geyser: 1.513,
-  gspire: 1.109,  // 상자 상한에 걸림
+  gspire: 1.195,
   hatchery: 1.367,
-  hive: 1.023,  // 상자 상한에 걸림
+  hive: 1.165,
   hydraden: 1.036,
-  lair: 1.157,  // 상자 상한에 걸림
+  lair: 1.223,
   mineral: 1.963,
   mshop: 1.958,
-  nsilo: 1.949,  // 상자 상한에 걸림
+  nsilo: 1.950,
   nydus: 1.184,
   observatory: 1.955,
   physlab: 2.008,
-  plane: 1.022,
+  plane: 1.205,
   pool: 1.525,
   pyramidWide: 1.058,
   queensnest: 1.184,
@@ -9063,7 +9071,7 @@ export const BLD_NORM: Record<string, number> = {
   sbattery: 2.032,
   scaffold: 1.733,
   scifac: 1.373,
-  spire: 1.232,  // 상자 상한에 걸림
+  spire: 1.450,
   spore: 1.422,
   sunken: 1.072,
   tomb: 1.534,
@@ -9413,7 +9421,14 @@ function buildingSprite(
      35%면 양옆 5.6이라 캡이 거의 안 걸린다. 값은 캔버스 넓이로 치른다(1.3² → 1.7²,
      1.7배) — 건물 판은 종류·요잉당 한 번만 굽고 캐시하므로 감당할 만하다.
      자리 계산은 전부 이 pad와 l에서 파생되므로(bAnc는 l에 대한 비) 함께 따라온다. */
-  const pad = Math.ceil(sideQ * 0.35) + 2;
+  /* 0.35 → 0.62(요청: "스파이어는 충분히 높이 올라갈수있게 높이 제한 없애야한다") —
+     이 여백이 곧 모델이 쓸 수 있는 자리이고, 정규화 배수의 상한도 여기서 나온다.
+     35%(모델 단위 양옆 5.6)에서는 위로 긴 모델이 상한에 먼저 걸려 목표 폭까지 못 컸다:
+     스파이어 1.45가 필요한데 1.27에서 잘렸고(적용 후 폭이 목표의 85%), 그레이터
+     스파이어·하이브·레어도 같은 자리에서 잘렸다. 62%(양옆 9.9)면 그 아홉이 다 풀린다.
+     값은 캔버스 넓이로 치른다(1.7² → 2.24², 1.7배) — 건물 판은 종류·요잉당 한 번만
+     굽고 LRU 예산 안에서 캐시되므로 프레임 비용은 0이다. */
+  const pad = Math.ceil(sideQ * 0.62) + 2;
   const l = sideQ + pad * 2;
   const cv = document.createElement("canvas");
   cv.width = Math.max(1, Math.ceil(l * B));

@@ -114,10 +114,12 @@ function inBrowser({ KINDS, VQS, LOD, RES, MARGIN, ANCHOR }) {
   };
   /** 축 a에서 키웠을 때 잉크가 **굽는 캔버스**에 처음 닿는 배수.
    *  16-상자가 아니라 pad까지 포함한 실제 캔버스로 재야 한다 — buildingSprite는
-   *  pad = 0.35·sideQ + 2 를 두르므로 모델 단위로 양옆 5.6씩 여유가 있다. 16-상자로
+   *  pad = 0.62·sideQ + 2 를 두르므로 모델 단위로 양옆 9.9씩 여유가 있다. 16-상자로
    *  재면 발선(y=16) 아래로 조금이라도 삐친 건물이 전부 상한 0이 되어 버린다
    *  (실측: 55종 중 13종이 그랬다 — 바닥 얼룩·받침 슬래브가 발선 아래로 내려간다). */
-  const PAD = 5.6;
+  /* 굽는 쪽 pad와 **같은 값이어야 한다**(buildingSprite: `Math.ceil(sideQ * 0.62) + 2`)
+     — 0.62 × 16 = 9.92. 여기만 어긋나면 표가 상한을 잘못 잡는다. */
+  const PAD = 9.92;
   const headroom = (bb, a) => {
     const lim = (lo, hi, c) => Math.min(
       hi > c ? (16 + PAD - c) / (hi - c) : Infinity,
@@ -147,10 +149,17 @@ function inBrowser({ KINDS, VQS, LOD, RES, MARGIN, ANCHOR }) {
 }
 
 const js = bundle();
-const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-proxy-server"] });
+/* 크로뮴 자리는 환경마다 다르다 — model-norm.mjs와 같은 손잡이(PW_CHROMIUM)를 준다.
+   (맥 로컬은 ~/Library/Caches/ms-playwright/… 아래에 있고, 리눅스 상자는 /opt다.) */
+const browser = await chromium.launch({
+  executablePath: process.env.PW_CHROMIUM ?? "/opt/pw-browsers/chromium",
+  args: ["--no-proxy-server"],
+});
 const page = await (await browser.newContext({ viewport: { width: 900, height: 900 } })).newPage();
 page.on("pageerror", (e) => console.error("PAGEERR", String(e).slice(0, 300)));
-await page.goto("http://127.0.0.1:5212/");
+/* 어떤 http 출처든 하나는 있어야 한다 — 번들이 localStorage를 건드리는데 about:blank·
+   data: 문서에서는 브라우저가 그 접근을 막는다(SecurityError). 내용은 안 쓴다. */
+await page.goto(process.env.PW_ORIGIN ?? "http://127.0.0.1:5212/");
 await page.addScriptTag({ content: js });
 await page.waitForFunction("!!window.__bakeBld");
 const KINDS = flag("--kinds") ? String(flag("--kinds")).split(",") : await page.evaluate("window.__bldKinds()");
