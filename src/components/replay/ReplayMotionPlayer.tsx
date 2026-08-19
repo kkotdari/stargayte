@@ -6393,14 +6393,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        그림자를 진다는 것이고(소환구는 WARP_LIFT만큼 떠 있어 바닥 타원을 받는다),
        고치는 땅에 앉는다. 다른 저그 건물의 크립과 같은 잿빛으로 칠해, 같은 원반이
        크립으로 읽히게 한다. */
-    ...paintBase([bodyFace(discPath3(0, 0, 0.04, 4.2))], "#3a3f46"),
-    // 덩어리 무게중심을 상자 가운데로(지적: 고치 중심이 어긋난다) — 전체 y -0.55.
+    /* 바닥 원반은 통째로 걷었다(요청: "저그 고치도 기본 바닥 그림자 모델링 제거하고
+       고치를 정가운데 배치하고 크기도 기본 크기를 크게 채우기") — 크립으로 칠해 두었어도
+       화면에서는 고치 밑에 깔린 검은 자국 하나였다. 원반이 빠지면 잉크 상자가 고치 몸만
+       재게 되므로, 정규화(MODEL_NORM)가 저절로 고치를 그만큼 크게 키운다.
+       덩어리도 상자 한가운데로 옮긴다 — 원반이 있던 시절의 y 치우침(-0.25/0.55)은
+       그 원반까지 함께 재던 무게중심이었다. */
     ...paintBase([
-      ...domeFaces3(0, -0.25, 2.6, 3.2),
-      ...domeFaces3(0, 0.55, 1.9, 1.5),
+      ...domeFaces3(0, 0.1, 2.6, 3.2),
+      ...domeFaces3(0, 0.9, 1.9, 1.5),
     ], "#d9b8a2"),
-    capFace(polyPath3([[-1.9, -0.05, 2.1], [1.9, -0.05, 2.1], [1.7, -0.25, 2.5], [-1.7, -0.25, 2.5]]), 0.18),
-    capFace(polyPath3([[-1.5, 0.75, 1.2], [1.5, 0.75, 1.2], [1.35, 0.55, 1.6], [-1.35, 0.55, 1.6]]), 0.18),
+    capFace(polyPath3([[-1.9, 0.3, 2.1], [1.9, 0.3, 2.1], [1.7, 0.1, 2.5], [-1.7, 0.1, 2.5]]), 0.18),
+    capFace(polyPath3([[-1.5, 1.1, 1.2], [1.5, 1.1, 1.2], [1.35, 0.9, 1.6], [-1.35, 0.9, 1.6]]), 0.18),
     /* 힘줄은 껍질 표면을 따라(재지적: 떠 있고 안 보임 — 더 많이, 보라·갈색) — 로보틱스
        고치의 이음선처럼 돔 반지름 프로필을 타고 세로로 흘러, 요잉해도 표면에 붙어 있다. */
     ...((): ShapeFace[] => {
@@ -6413,7 +6417,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 구불구불 + 가지(재지적: 직선이라 어색) — 마디마다 각도를 해시로 비틀며 오르고,
          중간 마디에서 짧은 곁가지가 갈라진다. 전부 각도의 순수 함수라 결정적이다. */
       const ptAt = (aa: number, z: number, rf: number): [number, number] =>
-        project(Math.sin(aa) * 2.6 * rf, -0.25 + Math.cos(aa) * 2.6 * rf, z);
+        project(Math.sin(aa) * 2.6 * rf, 0.1 + Math.cos(aa) * 2.6 * rf, z);
       const seg = (
         p1: [number, number], p2: [number, number], w: number, col: string,
       ): ShapeFace => [bandPath(p1[0], p1[1], p2[0], p2[1], w), 0.8, col] as ShapeFace;
@@ -6457,12 +6461,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        바닥 원을 썼는데, 가로세로 반지름을 같게 줘도 그 함수가 시각 밀림을 먹여
        비스듬한 타원이 됐다. 위 주석의 "어느 시점에서도 안 눌린다"는 밀림이 들어오기
        전 이야기라 더는 사실이 아니었다. 바닥 빛무리만 진짜 바닥이라 그대로 둔다. */
+    /* 바닥 빛무리는 걷었다(지적: "그림자는 두개가 나와서 하나만 나오게") — 그리는 쪽이
+       이미 접지 그림자를 따로 깔고 있어(op.groundShadow), 모델 안의 이 원반까지 있으면
+       땅에 자국이 둘 남았다. 높이를 말하는 것은 그리는 쪽 그림자 하나면 된다.
+       색은 플라즈마 쪽으로(요청) — 가운데는 더 희게(푸른끼), 바깥은 더 파랗고 옅게. */
+    void bx0; void by0;
     return [
-      topFace(groundEllipse(bx0, by0, 3.6, 1.7), 0.14),
-      [screenCircle(ox, oy, 3.05), 0.5, "#9fd4ff"] as ShapeFace,
-      [screenCircle(ox, oy, 2.1), 0.55, "#c4e6ff"] as ShapeFace,
-      [screenCircle(ox, oy, 1.05), 0.9, "#eaf6ff"] as ShapeFace,
-      topFace(screenCircle(ox - 0.8, oy - 0.8, 0.72), 0.5),
+      [screenCircle(ox, oy, 3.05), 0.3, "#5aa8ff"] as ShapeFace,
+      [screenCircle(ox, oy, 2.1), 0.45, "#93cdff"] as ShapeFace,
+      [screenCircle(ox, oy, 1.05), 0.95, "#f2fbff"] as ShapeFace,
+      topFace(screenCircle(ox - 0.8, oy - 0.8, 0.72), 0.55),
     ];
   },
   /* 테란 공사장 — 기초 슬래브 + 뼈대 기둥 넷 + 가로 보 + 크레인.
@@ -8643,7 +8651,12 @@ const MODEL_YAW_TWEAK: Record<string, number> = {
      요잉") — 둘 다 앞뒤가 뒤바뀌어 서 있었다: 에볼루션 챔버는 살덩이 엽 둘이 옆을
      보고 검은 등걸이 앞을 가렸고, 옵저버토리는 앞을 감싸야 할 초승달 받침이 옆으로
      누웠다. 이 표는 시계방향이 +다(위 히드라 덴·포지의 반시계 −90과 짝). */
-  evo: 90, observatory: 90,
+  evo: 90,
+  /* 옵저버토리 시계 180도(요청) — 90에서 한 번 더 돌린다: 초승달 받침이 앞을 감싸야
+     하는데 90에서는 뒤를 감싸고 있었다. */
+  observatory: 270,
+  /* 익스트랙터 시계 45도(요청) — 간헐천 구멍이 정면을 보게 반 칸 돌린다. */
+  extract: 45,
 };
 export const buildingYawOf = (kind: string): number =>
   BUILDING_BASE_YAW + (MODEL_YAW_TWEAK[kind] ?? 0);
@@ -9015,7 +9028,10 @@ const Z_TILE = 800;
 const Z_AIR = 10000000;
 /** 프로토스 소환구 상자(타일)와 지면에서 띄우는 높이(타일) — 요청: 축소 + 더 띄우기. */
 const WARP_TILES = 1.8;
-const WARP_LIFT = 0.75;
+/* 0.75 → 1.35(요청: "프로토스 소환구 높이가 너무 낮아 땅에서 더 높게 띄워줘") —
+   소환구는 아직 땅에 안 앉은 빛덩이라, 발자국에 가까이 붙으면 '지어진 건물'로 읽힌다.
+   바닥 그림자와의 틈이 곧 높이라서 이 값이 그대로 높이감이 된다. */
+const WARP_LIFT = 1.35;
 /** 공사 모델(소환구·고치·공사장)을 발자국 한가운데보다 이만큼 아래(앞)에 앉힌다(요청). */
 const CONSTRUCT_DROP = 0.55;
 /* 그림자 색은 검정으로 되돌렸다(지적: "그림자의 개인색 적용 롤백") — 임자 색을 0.34로
@@ -9094,7 +9110,7 @@ export const BLD_NORM: Record<string, number> = {
   assim: 2.069,
   cavern: 1.082,
   citadel: 1.749,
-  cocoon: 1.756,
+  cocoon: 2.835,
   coil: 1.058,
   comsat: 1.968,
   covert: 2.065,
@@ -9107,7 +9123,7 @@ export const BLD_NORM: Record<string, number> = {
   dome: 1.418,
   ebay: 0.982,
   evo: 1.214,
-  extract: 0.991,
+  extract: 1.023,
   factory: 1.063,
   fleetbeacon: 2.071,
   forge: 1.398,
@@ -9122,7 +9138,7 @@ export const BLD_NORM: Record<string, number> = {
   mshop: 1.958,
   nsilo: 1.950,
   nydus: 1.184,
-  observatory: 1.955,
+  observatory: 1.959,
   physlab: 2.008,
   plane: 1.205,
   pool: 1.525,
@@ -9141,7 +9157,7 @@ export const BLD_NORM: Record<string, number> = {
   trapezoid: 1.514,
   tribunal: 1.954,
   turret: 1.608,
-  warpin: 2.038,
+  warpin: 2.483,
 };
 const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number; w: number; cx: number }>();
 const bldSpriteBytes = { n: 0 };
@@ -13147,8 +13163,11 @@ export default function ReplayMotionPlayer({
             }
             /* 페이드 인·아웃(요청) — 지어질 때 1.2초 스르륵 나타나고, 없어질 때 1.2초
                스르륵 사라진다. */
-            const FADE_SEC = 1.2;
-            const fade = Math.min(
+            /* 저그는 페이드가 없다(요청: "저그 드론 건물 변태/취소시 페이드인 아웃 없게")
+               — 드론이 그 자리에서 건물로 변하는 것이라, 스르륵 나타나면 '어디선가
+               생겨난 것'으로 읽힌다. 취소도 마찬가지로 그 자리에서 도로 드론이 된다. */
+            const FADE_SEC = (bases.find((b9) => b9.key === raw)?.race) === "저그" ? 0 : 1.2;
+            const fade = FADE_SEC <= 0 ? 1 : Math.min(
               sec > 0 ? Math.min(1, (t - sec) / FADE_SEC) : 1,
               goneEff > 0 && t >= goneEff ? Math.max(0, 1 - (t - goneEff) / FADE_SEC) : 1,
             );
@@ -13313,8 +13332,13 @@ export default function ReplayMotionPlayer({
             if (race2 === "테란" && !flownFrom && sec > 0 && !razed
               && (goneEff === 0 || t < goneEff)) {
               const bs2 = bldNeed;
-              const scvX = bodyX - boxW / 2 + 0.35;
-              const scvY = bodyY + boxH / 2 - 0.35;
+              /* 일꾼이 불티를 따라간다(지적: "테란은 건설시 스파크는 이동하는데 일꾼은
+                 제자리임") — 불티 자리는 아래 buildfx가 6초마다 시계 방향으로 옮기는데
+                 (CORNER_SEC) 합성 SCV만 왼쪽 아래에 붙박이라, 용접 불티가 저 혼자
+                 건물을 돌았다. 같은 식으로 같은 귀퉁이를 쓴다 — 둘이 한 몸이어야 한다. */
+              const scvIdx = (Math.floor(t / 6) + i) % 4;
+              const scvX = bodyX + (scvIdx === 0 || scvIdx === 3 ? -1 : 1) * (boxW / 2 - 0.35);
+              const scvY = bodyY + (scvIdx === 0 || scvIdx === 1 ? 1 : -1) * (boxH / 2 - 0.35);
               let scvShow = t - sec >= 0;
               /* 중단 중에는 현장에 아무도 없다(요청: 테란 건설 중단) — 붙어 있던 구간
                  안에서만 합성 SCV가 선다. 이어 짓기로 다른 SCV가 오면 다시 선다. */
@@ -13450,6 +13474,8 @@ export default function ReplayMotionPlayer({
                  눈에 띄게 어색하다) 6초마다 시계 방향으로 옮긴다.
                  ⚠ 원작의 실제 순회 패턴은 아직 대조 전이다(지적: "이 패턴은 공식문서
                  조사 필요") — 조사가 오면 이 자리만 바꾸면 된다. */
+              /* 불티 자리 — 합성 SCV와 **같은 차례·같은 주기**다(지적: 둘이 따로 돌았다).
+                 SCV보다 조금 안쪽에 두어 불티가 몸에 반쯤 얹힌다. */
               const CORNER_SEC = 6;
               const cIdx = (Math.floor(t / CORNER_SEC) + i) % 4;
               const cDx = (cIdx === 0 || cIdx === 3 ? -1 : 1) * (boxW / 2 - 0.7);
