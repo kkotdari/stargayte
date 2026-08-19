@@ -3404,10 +3404,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     ];
     /* 가운데 구조물은 개인색(요청) — fill을 주지 않으면 그리는 쪽이 팀색을 넣는다.
        마디 테는 같은 팀색 위에 어두운 그늘을 덧대 골로 읽힌다. */
+    /* 키를 통 위로 올린다(지적: "가운데 개인색 부분 속부품인가 비쳐보이는거 같음") —
+       +4는 양옆 통의 가시·힘줄(키 +11까지)보다 낮아서, 앞에 선 애벌레 위로 통의 속부품이
+       그려져 '비쳐 보이는' 그림이 됐다. +14면 통의 어느 부품보다 위다. */
     out.push(...tagKey(spirePillar({
       x: 0, y: 0, h: 1, w: 1.5, tipW: 1.05, segs: 10, sides: 10, hold: 0.1, taper: 1.2,
       path: GRB,
-    }), depthNow(0, 0.4) * 1.6 + 4));
+    }), depthNow(0, 0.4) * 1.6 + 14));
+    /* 입구(요청: "프리미티브로 바꾸면서 입구쪽 부품 하나 없어진듯?") — 애벌레 앞 끝의
+       벌어진 아가리다. 끝점에 어두운 단면을 세우고 그 둘레를 살빛 입술 고리로 두른다. */
+    {
+      const [mx9, my9, mz9] = GRB(1);
+      out.push(...tagKey([
+        ...paintBase(domeFaces3(mx9, my9 + 0.15, 1.15, 0.5, mz9 - 0.25), "#8a4a2a"),
+        capFace(groundEllipse(...project(mx9, my9 + 0.35, mz9 + 0.05), 0.72, 0.42), 0.62),
+      ], depthNow(mx9, my9) * 1.6 + 15));
+    }
     for (const t9 of [0.28, 0.46, 0.64, 0.82]) {
       const [gx9, gy9, gz9] = GRB(t9);
       const rib9 = spirePillar({
@@ -4423,10 +4435,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         fill: IVORY_DEEP,
       }), depthNow(bx9, by9) * 1.6 + 3));
     }
-    /* 발치 촉수 다발 — 앞오른쪽 바닥에서 기어 나와 끝이 말려 오른다. */
+    /* 혈관 다발은 **두 장기 사이 뒤쪽**에 모인다(요청: "챔버 혈관부품들은 두 장기 사이
+       뒤쪽에 모여있어야 함") — 여태 앞오른쪽 바닥에서 기어 나와, 두 살덩이 엽과 상관없는
+       자리에서 혼자 뻗는 촉수 다발로 보였다. 두 엽의 가운데(x ≈ 0)에서 뒤(−y)로 모아
+       등걸 밑동을 감싸게 옮긴다. */
     for (const [tx9, ty9, ex9, ey9, ez9] of [
-      [2.2, 1.9, 2.8, 3.4, 0.9], [3, 1.4, 3.9, 2.6, 0.8],
-      [3.5, 0.7, 4.6, 1.4, 0.7], [1.6, 2.3, 1.9, 3.8, 1], [4, -0.2, 5.1, -0.4, 0.6],
+      [-0.9, -1, -1.7, -2.6, 0.9], [-0.3, -1.2, -0.6, -3.1, 0.8],
+      [0.4, -1.1, 0.9, -3, 0.7], [1, -0.9, 1.9, -2.4, 1], [0.05, -0.8, 0.1, -3.6, 0.6],
     ] as [number, number, number, number, number][]) {
       out.push(...tagKey(spikeHorn(tx9, ty9, 0.5, ex9, ey9, ez9, 0.42, "#2b241d", 6, 0.5,
         ex9 - tx9, ey9 - ty9), depthNow(ex9, ey9) * 1.6 + 1));
@@ -4532,24 +4547,28 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const rr9 = mbR(0.35) * 0.96;
       const bx9 = dxr * rr9;
       const by9 = 0.6 + dyr * rr9;
-      out.push(...tagKey(spirePillar({
+      /* 다리는 저그 기본색이다(요청: "다리가 아니라 위쪽 건물 옆면에 개인색 적용,
+         다리는 저그 기본색") — 여태 이 촉수 여섯이 개인색이라 스파이어가 통째로 임자
+         색 기둥 다발로 읽혔다. 개인색은 아래 머리 옆면이 맡는다. */
+      out.push(...tagKey(paintBase(spirePillar({
         x: bx9, y: by9, z0: MB_H * 0.35, h: 10.6, w: 1.05, tipW: 0.42,
         segs: 9, sides: 6, hold: 0.05, taper: 1.35,
         leanX: -dxr * (rr9 - 1.15), leanY: -dyr * (rr9 - 1.15),
         curveX: dxr * 0.85, curveY: dyr * 0.85,
-        /* 칠하지 않는다 = 개인색(지적: "본건물 옆면에 개인색 부여") — 이 촉수 기둥
-           여섯이 곧 스파이어의 옆면이다. 여섯이 60도로 둘러서 있어 어느 요잉에서도
-           앞으로 돌아온 두어 개가 임자 색을 보여 준다. */
-      }), depthNow(bx9, by9) * 1.6));
+      }), RACE_BASE_TONE.zerg), depthNow(bx9, by9) * 1.6));
     }
-    // 잿빛 머리 — 위로 살짝 벌어지는 짧은 기둥.
-    out.push(...tagKey(paintBase(spirePillar({
+    /* 머리(윗건물)를 세 배로(요청: "스파이어 윗건물 높이 3배로 증가") — 1.9 → 5.7.
+       스파이어의 실루엣은 이 머리라, 촉수 다발 위에 얹힌 뚜껑처럼 낮으면 '기둥 다발'로만
+       읽힌다. 그리고 **옆면이 개인색이다**(요청) — 칠하지 않으면 임자 색이 든다.
+       상자(16)를 넘지만 굽는 판의 여백이 62%라 잘리지 않고, 정규화가 폭 기준이라
+       높이는 그대로 살아난다. */
+    out.push(...tagKey(spirePillar({
       // 중심은 촉수가 모이는 자리(0, 0.6)와 같아야 한다(지적: 다리·뚜껑 중심 어긋남).
-      x: 0, y: 0.6, z0: 11.1, h: 1.9, w: 2.6, tipW: 3.3,
-      segs: 3, sides: 14, hold: 0.15,
-    }), RACE_BASE_TONE.zerg), 20));
+      x: 0, y: 0.6, z0: 11.1, h: 5.7, w: 2.6, tipW: 3.3,
+      segs: 5, sides: 14, hold: 0.15,
+    }), 20));
     // 골진 도넛 왕관 — 방사 골 + 가운데 구멍. 뚜껑은 저그 기본색(지적).
-    const [cx2, cy2] = project(0, 0.6, 13.1);
+    const [cx2, cy2] = project(0, 0.6, 16.9);
     out.push(...tagKey([[groundEllipse(cx2, cy2, 3.55, 2.05), 1, RACE_BASE_TONE.zerg] as ShapeFace], 22));
     /* 골도 요잉을 탄다(지적: 뚜껑이 안 돎) — 화면 고정 각이던 골 위치에 현재 요잉을
        더해, 뚜껑이 함께 도는 것으로 보인다. */
@@ -4575,22 +4594,27 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        벌어지는 줄기를 기둥 둘로 잇고(아래는 좁아지고 위는 벌어진다), 앞 붉은 살
        띠는 그 옆선을 타는 가는 기둥으로, 꼭대기 깃 뿔은 spikeHorn으로 낸다. */
     const out: ShapeFace[] = [];
+    /* 연못도 스파이어 식으로(요청) — 5.9/5.3이라 그레이터만 발자국을 넘게 퍼져 있었다.
+       스파이어와 같은 4.7/4.2로 맞춘다. */
     const [plx, ply] = project(0, 0.4, 0.02);
-    out.push(sideFace(groundEllipse(plx, ply, 5.9, 2.85), 0.22));
-    out.push([groundEllipse(plx, ply, 5.3, 2.5), 0.8, "#8ef23e"] as ShapeFace);
+    out.push(sideFace(groundEllipse(plx, ply, 4.7, 2.25), 0.22));
+    out.push([groundEllipse(plx, ply, 4.2, 1.98), 0.8, "#8ef23e"] as ShapeFace);
     const GS_W = 9;
     const GS_T = 14;
+    /** 윗건물을 세 배로 키운 뒤의 꼭대기 높이 — 아가리·깃 뿔이 이 값을 따라 올라간다. */
+    const GS_TOP = GS_W + (GS_T - GS_W) * 3;
     const gsLoR = (z9: number): number => 1.7 + 1.7 * (1 - z9 / GS_W) ** 1.6;
     // 아래 줄기 — 넓은 밑동에서 허리로.
     out.push(...tagKey(paintBase(spirePillar({
       x: 0, y: 0.4, z0: 0, h: GS_W, w: 3.4, tipW: 1.7,
       segs: 8, sides: 14, hold: 0, taper: 1.6,
     }), "#8a5f43"), 0));
-    // 위 줄기 — 허리에서 꼭대기로 다시 벌어진다.
-    out.push(...tagKey(paintBase(spirePillar({
-      x: 0, y: 0.4, z0: GS_W, h: GS_T - GS_W, w: 1.7, tipW: 3.1,
-      segs: 5, sides: 14, hold: 0,
-    }), "#8a5f43"), 1));
+    /* 위 줄기 = **윗건물**이다 — 높이를 세 배로 키우고(5 → 15) 옆면을 개인색으로 둔다
+       (요청: "그레이터 스파이어도 마찬가지"). 아래 줄기는 저그 기본색 그대로다. */
+    out.push(...tagKey(spirePillar({
+      x: 0, y: 0.4, z0: GS_W, h: (GS_T - GS_W) * 3, w: 1.7, tipW: 3.1,
+      segs: 9, sides: 14, hold: 0,
+    }), 1));
     // 앞 붉은 살 띠 — 아래 줄기 옆선을 그대로 타고 오른다.
     out.push(...tagKey(spirePillar({
       x: 0, y: 0, h: 1, w: 1.2, tipW: 0.5, segs: 9, sides: 6, hold: 0.06, taper: 1.4,
@@ -4618,25 +4642,32 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const a2 = (ang * Math.PI) / 180;
       const dxr = Math.sin(a2);
       const dyr = Math.cos(a2);
-      const bz9 = GS_T - 2.6;
+      const bz9 = GS_TOP - 2.6;
       const rr9 = 2.5;
       const bx9 = dxr * rr9;
       const by9 = 0.4 + dyr * rr9;
-      out.push(...tagKey(spikeHorn(
-        bx9, by9, bz9, bx9 + dxr * 1.5, by9 + dyr * 1.5, bz9 + len,
-        1, IVORY_DEEP, 6, 0.7, dxr, dyr,
-      /* 뒤로 돈 깃 뿔은 줄기 뒤로(지적: 안 가려짐) — 붙박이 보정(+6)을 걷고 제 자리
-         깊이만 쓴다. 줄기 키(0·1)보다 낮아지면 저절로 묻힌다. */
-      ), depthNow(bx9, by9) * 1.6));
+      /* 가시가 아니라 **솜사탕/구름**이다(요청: "위쪽 가시는 솜사탕/구름같은 느낌의
+         물질로 변경(저그 기본색)") — 상아 뿔 대신 크기가 제각각인 둥근 덩이 셋을
+         겹쳐 뭉게구름 한 송이를 만든다. 길이(len)는 그대로 쓰되 뾰족함이 없어지고,
+         색은 저그 기본색이라 줄기와 한 몸으로 읽힌다. */
+      const puff = (t9: number, r9: number): ShapeFace[] => paintBase(domeFaces3(
+        bx9 + dxr * (0.6 + t9 * 1.4), by9 + dyr * (0.6 + t9 * 1.4), r9, r9 * 0.9,
+        bz9 + len * (0.25 + t9 * 0.7),
+      ), RACE_BASE_TONE.zerg);
+      out.push(...tagKey([
+        ...puff(0, 0.95 + len * 0.1),
+        ...puff(0.45, 0.8 + len * 0.09),
+        ...puff(0.9, 0.6 + len * 0.07),
+      ], depthNow(bx9, by9) * 1.6));
     }
     // 꼭대기 살덩이 엽 아가리.
-    const [cx2, cy2] = project(0, 0.4, GS_T + 0.7);
+    const [cx2, cy2] = project(0, 0.4, GS_TOP + 0.7);
     const maw: ShapeFace[] = [
-      ...domeFaces3(-1.15, 0, 1.1, 0.9, GS_T - 0.2),
-      ...domeFaces3(1.15, 0, 1.05, 0.85, GS_T - 0.2),
-      ...domeFaces3(-0.75, 1.15, 0.95, 0.8, GS_T - 0.2),
-      ...domeFaces3(0.85, 1.15, 0.95, 0.8, GS_T - 0.2),
-      ...domeFaces3(0, -0.65, 0.95, 0.8, GS_T - 0.2),
+      ...domeFaces3(-1.15, 0, 1.1, 0.9, GS_TOP - 0.2),
+      ...domeFaces3(1.15, 0, 1.05, 0.85, GS_TOP - 0.2),
+      ...domeFaces3(-0.75, 1.15, 0.95, 0.8, GS_TOP - 0.2),
+      ...domeFaces3(0.85, 1.15, 0.95, 0.8, GS_TOP - 0.2),
+      ...domeFaces3(0, -0.65, 0.95, 0.8, GS_TOP - 0.2),
       capFace(groundEllipse(cx2, cy2 - 0.1, 0.75, 0.45), 0.5),
     ];
     out.push(...tagKey(maw, 24));
@@ -5058,8 +5089,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...(fill ? { fill } : {}),
       }), key));
     };
-    // 큰 웅덩이 두렁만 색을 안 준다 — 걷어낸 가운데 띠를 대신하는 개인색 자리다.
-    ridge(-2.9, -1.5, 3.46, 3.46, 0.6, undefined, kBig + 0.5);
+    /* 큰 웅덩이 두렁도 저그 기본색이다(요청: "제일큰 연못둘레도 다른 연못들과 똑같이
+       저그 기본색적용해주고 대신 둘레 중간중간 개인색 데칼 넣기") — 두렁 하나가
+       통째로 임자 색이라 그 원이 건물의 주인공이 돼 있었다. 살색으로 되돌리고, 대신
+       그 둘레에 개인색 마디 여섯을 일정한 간격으로 박는다. */
+    ridge(-2.9, -1.5, 3.46, 3.46, 0.6, FLESH, kBig + 0.5);
+    for (let d9 = 0; d9 < 6; d9 += 1) {
+      const a9 = (d9 / 6) * Math.PI * 2 + 0.26;
+      // 마디는 두렁을 그대로 타는 짧은 토막이다 — 두렁과 같은 반지름·같은 높이.
+      out.push(...tagKey(spirePillar({
+        x: 0, y: 0, h: 1, w: 0.66, tipW: 0.66, segs: 3, sides: 6, hold: 1,
+        path: (t9: number): [number, number, number] => {
+          const aa9 = a9 + (t9 - 0.5) * 0.5;
+          return [-2.9 + Math.cos(aa9) * 3.46, -1.5 + Math.sin(aa9) * 3.46, 0.47];
+        },
+      }), kBig + 0.6 + depthNow(Math.cos(a9) * 3.46, Math.sin(a9) * 3.46) * 0.2));
+    }
     ridge(2.75, 0.5, 1.76, 3.38, 0.55, FLESH, kLong + 0.5);
     ridge(-0.15, 3.5, 2, 2, 0.48, FLESH, kSmall + 0.5);
     /* 가장자리 뿌리 가시 — 바깥으로 뻗는 뿌리 여섯. 크기를 대폭 줄였다(정정: "뿌리
@@ -7439,26 +7484,29 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 러커(실물 참고) — 넓은 가시 등딱지, 사방으로 벌린 낫 칼다리 두 쌍(끝이 안으로
      말림), 앞 입. */
   lurker: () => {
+    /** 다리 살빛(요청: "짙은 살색") — 껍질 검회색과 갈라서 근육질 다리로 읽히게. */
+    const LEG_FLESH = "#8a5a4c";
     const out: ShapeFace[] = [];
     for (const m2 of [1, -1] as const) {
       /* 칼다리는 꺽쇠(재재지적: 더 완만하게) — 뿌리에서 바깥·위로 살짝만 올라
          꼭대기를 찍고, 완만한 각도로 내려와 땅을 짚는다. 내려오는 끝마디는
          상아색 발톱(지적)이다. */
-      // 뒤 칼다리 — 윗마디 더 길게(지적) + 검회색(요청).
-      out.push(...paintBase(hornFaces(m2 * 1.5, -0.9, 3.8, m2 * 3.5, -2.1, 4.35, 0.7), "#3a3f46"));
-      out.push(...ivory(hornFaces(m2 * 3.5, -2.1, 4.35, m2 * 4.7, -3, 1.4, 0.5)));
-      // 앞 칼다리 — 윗마디 더 길게(지적) + 검회색(요청).
-      out.push(...paintBase(hornFaces(m2 * 1.6, 0.6, 3.8, m2 * 3.6, 1.7, 4.35, 0.7), "#3a3f46"));
-      out.push(...ivory(hornFaces(m2 * 3.6, 1.7, 4.35, m2 * 4.8, 2.5, 1.4, 0.5)));
+      /* 대퇴부는 길고 굵게, 가시부는 짧게(요청: "럴커 다리 대퇴부를 더 길게 가시부는
+         더 짧게 수정하고 대퇴부 두께 증가(근육질 털다리 느낌) 그리고 색도 짙은 살색") —
+         검회색 껍질 대신 짙은 살색(#8a5a4c)으로 바꾸고 굵기를 0.7 → 1.05로 키운다.
+         무릎을 더 바깥·위로 보내 허벅지를 길게 뽑고, 그만큼 발톱 마디는 짧아진다. */
+      out.push(...paintBase(hornFaces(m2 * 1.5, -0.9, 3.8, m2 * 4.2, -2.6, 4.7, 1.05), LEG_FLESH));
+      out.push(...ivory(hornFaces(m2 * 4.2, -2.6, 4.7, m2 * 4.85, -3.2, 2.1, 0.42)));
+      out.push(...paintBase(hornFaces(m2 * 1.6, 0.6, 3.8, m2 * 4.3, 2.1, 4.7, 1.05), LEG_FLESH));
+      out.push(...ivory(hornFaces(m2 * 4.3, 2.1, 4.7, m2 * 4.95, 2.8, 2.1, 0.42)));
       /* 앞 가시갈고리 한 쌍(지적) — 몸 앞에서 앞을 향해 뻗다 끝이 갈고리처럼
          아래로 말린다. 상부 검회색(재지적). */
       out.push(...paintBase(hornFaces(m2 * 0.6, 1.9, 3.5, m2 * 1.1, 3.4, 2.3, 0.42), "#3a3f46"));
       out.push(...ivory(hornFaces(m2 * 1.1, 3.4, 2.3, m2 * 0.8, 4.1, 0.5, 0.28)));
     }
-    // 꽁무니 다리 하나 더(지적) — 뒤 가운데에서 뒤로 뻗어 땅을 짚는다.
-    // 꽁무니 다리도 꺽쇠(재지적: 뒷다리도 그렇게) — 완만히 올랐다 내려온다.
-    out.push(...paintBase(hornFaces(0, -1.5, 3.6, 0, -3.2, 4.5, 0.6), "#3a3f46"));
-    out.push(...ivory(hornFaces(0, -3.2, 4.5, 0, -4.6, 1.2, 0.42)));
+    // 꽁무니 다리도 같은 규칙(요청) — 굵은 살색 허벅지 + 짧은 발톱.
+    out.push(...paintBase(hornFaces(0, -1.5, 3.6, 0, -3.8, 4.8, 0.9), LEG_FLESH));
+    out.push(...ivory(hornFaces(0, -3.8, 4.8, 0, -4.7, 2, 0.4)));
     // 넓은 등딱지 + 등 가시들.
     out.push(...domeFaces3(0, -0.2, 2.5, 2, 3.4));
     // 등 가시들 검회색(요청).
@@ -7508,6 +7556,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const legs: string[] = [];
     // 끝마디는 상아 발톱(지적: 모든 다리·팔 끝마디) — 몸색과 갈라 따로 칠한다.
     const tips: string[] = [];
+    /** 앞 집게 날 — 여기만 개인색이다(요청). */
+    const claws: string[] = [];
     /* 마디 — 시작·끝 굵기를 따로 받아 사다리꼴로 그린다(재지적: 집게팔은 뿌리가
        얇고 집게 쪽에서 확 두꺼워져야 한다). 끝 굵기를 안 주면 곧은 막대다. */
     const seg = (
@@ -7557,9 +7607,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       // 앞 집게팔은 수직에 가깝게(요청) — 앞으로 크게 뻗던 것을 곧게 내린다.
       legs.push(seg(sx * 0.64, 1.36, rootZ(0.64, 1.36), sx * 0.95, 1.85, 1.4, 0.3, 0.5));
       legs.push(seg(sx * 0.95, 1.85, 1.4, sx * 1, 2.05, 0.2, 0.5, 0.95));
-      // 집게 — 굵은 밑동에서 두 갈래로 좁아지는 날.
-      tips.push(seg(sx * 1, 2.05, 0.2, sx * 1.45, 2.35, -0.5, 0.7, 0.25));
-      tips.push(seg(sx * 1, 2.05, 0.2, sx * 0.55, 2.45, -0.45, 0.7, 0.25));
+      /* 집게 날만 개인색이다(요청: "집게다리 중 집게 부분만 개인색") — 굵은 밑동에서
+         두 갈래로 좁아지는 이 두 날을 따로 담아 아래에서 색을 안 준 채 붙인다. */
+      claws.push(seg(sx * 1, 2.05, 0.2, sx * 1.45, 2.35, -0.5, 0.7, 0.25));
+      claws.push(seg(sx * 1, 2.05, 0.2, sx * 0.55, 2.45, -0.45, 0.7, 0.25));
     }
     /* 허파(재지적: 양옆 렌즈는 눈이 아니라 허파 같은 기관 — 흰색 말고 보라색으로,
        두껍게가 아니라 '넓게') — 접평면 부착은 그대로 두고, 접선 방향으로 길쭉한
@@ -7572,7 +7623,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const ly = Math.cos(th) * 2.05;
       // 위쪽을 살짝 안으로 눕힌다(요청) — 좌우가 서로 마주 보는 느낌.
       return lensFaces({
-        x: lx, y: ly, z: 5.65, nx: lx, ny: ly, r: 0.98, bulge: 0.26, tiltDeg: 9,
+        // 기관 1.2배(요청) — 반지름 0.98 → 1.18, 볼록도도 같은 비로.
+        x: lx, y: ly, z: 5.65, nx: lx, ny: ly, r: 1.18, bulge: 0.31, tiltDeg: 9,
       });
     };
     /* 얼굴(재지적: 얼굴은 앞쪽 아래쪽에 작은 반구형으로) — 몸 앞아래 표면에 붙는
@@ -7587,10 +7639,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 등의 가스 주머니는 걷었다(요청: 뒤통수 혹들 제거) — 공식 컨셉의 물집을 옮긴
        것이었는데, 크기를 두 번 줄이고 광택까지 뺀 뒤로는 뒤통수에 난 군더더기 두
        덩이로만 보였다. 등은 매끈한 풍선 하나로 둔다. */
-    return [
-      // 다리 짙은 갈색(요청).
-      [legs.join(" "), 1, "#6b4732"] as ShapeFace,
-      [tips.join(" "), 1, "#6b4732"] as ShapeFace,
+    /* 팔다리는 **저그 기본색**이다(요청: "오버로드 팔다리 색은 저그 기본색 + 집게다리
+       중 집게 부분만 개인색") — 여태 짙은 갈색(#6b4732)이 못 박혀 있어 다른 저그
+       유닛과 톤이 갈렸다. 색을 안 준 채 raceBase에 태우면 저그 바탕색이 들고, 집게
+       날만 accent로 빠져 임자 색이 든다. */
+    return raceBase([
+      [legs.join(" "), 1] as ShapeFace,
+      [tips.join(" "), 1] as ShapeFace,
       ...lens(-1),
       ...lens(1),
       ...face,
@@ -7601,7 +7656,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          화면 원이라 안 눌리고, 덤으로 제 명암(좌상 광택·우하 그늘)을 달고 나온다 —
          손으로 그린 몸판이라 빛이 안 들어가던 문제도 함께 풀린다. */
       ...tagKey(sphereFaces3(0, 0, 5.2, 2.4), depthNow(0, 0)),
-    ];
+    ], "zerg", [[claws.join(" "), 1] as ShapeFace]);
   },
   /* 드랍십(실물 참고) — 양옆 굵은 엔진 포드(앞 단면이 둥글게 보인다) + 가운데 각진
      몸통 + 뒤쪽 수직 꼬리날개. */
@@ -8258,13 +8313,13 @@ const MODEL_NORM: Record<string, number> = {
   htemp: 1.077,
   hydra: 0.758,
   inf: 1.286,
-  lurker: 0.627,
+  lurker: 0.603,
   lurkeregg: 0.886,
   mine: 1.293,  // 상자 상한(원한 배수 1.465)
   muta: 0.741,
   mutacocoon: 1.100,
   observer: 1.896,
-  ovie: 0.843,
+  ovie: 0.841,
   probe: 1.582,
   queen: 1.091,
   reaver: 1.234,
@@ -9200,7 +9255,7 @@ export const BLD_NORM: Record<string, number> = {
   forge: 1.398,
   gate: 1.979,
   geyser: 1.513,
-  gspire: 1.195,
+  gspire: 1.048,  // 상자 상한에 걸림
   hatchery: 1.367,
   hive: 1.165,
   hydraden: 1.036,
@@ -9220,7 +9275,7 @@ export const BLD_NORM: Record<string, number> = {
   sbattery: 2.032,
   scaffold: 1.733,
   scifac: 1.373,
-  spire: 1.450,
+  spire: 1.232,  // 상자 상한에 걸림
   spore: 1.422,
   sunken: 1.072,
   tomb: 1.534,
