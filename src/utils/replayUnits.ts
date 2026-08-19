@@ -1254,7 +1254,40 @@ export function buildUnitTracks(
              출발점으로 남긴다(여태 자리 없는 증거였다). */
           const lp = c.Pos;
           if (lp && typeof lp.X === "number" && typeof lp.Y === "number") {
-            pushEv(life, sec, lp.X / 32, lp.Y / 32, 6);
+            const tx9 = lp.X / 32;
+            const ty9 = lp.Y / 32;
+            /* ★ 띄운 건물이 화면에 아예 안 서던 자리(지적: "11시 테란이 건물을 다
+               띄웠는데 리플에선 안 보여. 건물을 내린 걸 새로 지은 걸로 착각하기도 하고")
+               — 화면의 건물 층은 **자리 증거(f=2 건설 · f=5 착륙)가 있는 생애만** 그린다.
+               그런데 건물을 지을 때 f=2가 찍히는 것은 '일꾼 태그'이고, 나중에 그 건물을
+               골라 띄울 때 골라지는 것은 '건물 태그'다. 둘은 다른 생애라, 띄운 건물
+               태그에는 자리 증거가 하나도 없다. 실측(90300 11시 테란): 이륙 증거를 지닌
+               건물 10기 중 7기가 자리 증거 0개 — 통째로 안 그려졌고, 나머지 셋은 착륙
+               증거 하나뿐이라 착륙한 순간 허공에서 새로 지어진 것처럼 나타났다.
+               고치는 자는 커맨드 자신이다: 이륙 좌표는 그 건물이 그때 서 있던 자리이므로,
+               그 자리를 발자국에 품은 제 건물을 찾아 정체와 앉았던 자리를 물려받는다.
+               땅에 있던 몸은 그 순간 걷는다 — 안 그러면 같은 건물이 땅과 하늘에 둘이 된다. */
+            if (!life.ev.some((v) => v[3] === 2 || v[3] === 5)) {
+              let sit9: (typeof built)[number] | null = null;
+              for (let bi9 = built.length - 1; bi9 >= 0; bi9 -= 1) {
+                const b9 = built[bi9];
+                if (b9.owner !== pid || b9.never || b9.born > sec) continue;
+                if (b9.gone !== null && b9.gone <= sec) continue;
+                const [fw9, fh9] = FOOT_WH[b9.kind] ?? [4, 3];
+                if (tx9 >= b9.x - 0.5 && tx9 <= b9.x + fw9 + 0.5
+                  && ty9 >= b9.y - 0.5 && ty9 <= b9.y + fh9 + 0.5) { sit9 = b9; break; }
+              }
+              if (sit9) {
+                if (life.kinds.size === 0) life.kinds.set(sit9.kind, 1);
+                pushEv(life, sec, sit9.x, sit9.y, 5);
+                sit9.gone = sec;
+                sit9.goneKind = "morph";
+              } else {
+                // 짝을 못 찾았을 때도 뜬 자리는 안다 — 발자국 왼위 귀퉁이로 되짚는다.
+                pushEv(life, sec, Math.round(tx9 - 2), Math.round(ty9 - 1.5), 5);
+              }
+            }
+            pushEv(life, sec, tx9, ty9, 6);
           } else pushEv(life, sec, -1, -1, 6);
           liftedTags.add(tag);
         } else if (cmdName === "Stim") {
