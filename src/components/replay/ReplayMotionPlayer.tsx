@@ -9766,7 +9766,19 @@ export const buildingYawOf = (kind: string): number =>
 /* 음영 증폭(지적: 모델들 그림자가 너무 없어 — 갤러리보다 더 진하게) — 흑·백 덮개 면의
    불투명도를 1.45배로 키운다. 몸판(덮개색 없는 면)은 그대로라 색은 안 변하고 그늘·광만
    뚜렷해진다. */
-const shadeBoost = (o: number, fill?: string): number => (fill ? Math.min(0.85, o * 1.45) : o);
+/** 덮개 면의 명암을 1.45배로 세게 — **덮개만**이다(지적: "불투명인 부품들 뒤가
+ *  비쳐보이는게 너무 많어").
+ *
+ *  이 함수의 뜻은 "흰·검 반투명 덮개(topFace·sideFace·capFace)를 지도에서 더 또렷하게"
+ *  였는데, 조건이 '색이 있으면'이라 **색을 지닌 몸판까지 걸렸다**. 몸판은 불투명도가
+ *  1이므로 min(0.85, 1.45) = 0.85 — 즉 paintBase·raceBase로 칠한 모든 부품과 손으로
+ *  색을 준 모든 면(마린 얼굴가리개·헬멧 껍데기·건메탈 총열…)이 화면 어디서나 15%
+ *  비쳤다. 지도·건물·도록 네 자리가 전부 이 한 줄을 지난다.
+ *
+ *  덮개는 애초에 반투명(0.22·0.3·0.4)이라 1보다 작다. 그 조건 하나만 더 두면 뜻은
+ *  그대로 지키면서 몸판은 불투명해진다. */
+const shadeBoost = (o: number, fill?: string): number =>
+  (fill && o < 1 ? Math.min(0.85, o * 1.45) : o);
 
 function resolveShapeFaces(
   kind: string, rotDeg?: number, flat?: boolean, viewYaw?: number, pitchView?: boolean,
