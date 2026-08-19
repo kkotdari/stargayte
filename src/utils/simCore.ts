@@ -19,7 +19,7 @@ import {
   FRAME_SEC, GEYSER_FOOT, LURKER_REHIT_FRAMES, MINE_ATTACH_FRAMES, MINE_DETACH_FRAMES,
   MINE_GAS_FRAMES, MINE_MINERAL_FRAMES, MINE_RETURN_FRAMES, MINERAL_FOOT, TURN_RATE,
   UNBURROW_MIN_FRAMES,
-  isAir, moveDynOf, speedOfUnit,
+  buildingBox, isAir, moveDynOf, speedOfUnit, unitBoxTiles,
 } from "./bwUnits";
 /* 전투 값은 표(bwUnits)를 직접 읽지 않고 어댑터(bwCombat)를 거친다 — 표가 통째로 갈리는
    중이라 읽는 자리를 한 곳으로 모아 두면 이름이 어긋나도 고칠 파일이 하나다.
@@ -278,6 +278,9 @@ type Body = {
    *  ⚠ 사거리 판정에는 쓰지 마라. 중심 기준으로 옮기는 덧셈은 bwCombat.reachTiles가
    *    이미 제 안에서 한다 — 여기서 또 더하면 이중 가산이다(verdict-충돌 지적). */
   rad: number;
+  /** 몸 상자 반폭·반높이(타일) — 건물 틈을 지날 수 있나가 이 둘로 갈린다(원작의
+   *  상자 대 상자). 저글링 0.25/0.25 · 드라군 0.5/0.5 · 마린 0.27/0.31. */
+  hw: number; hh: number;
   /** 지금 쓰는 전투 값 한 벌. 벙커에 타면 cpBunker로 갈아 끼운다(무기 +64px·획득 +2타일). */
   cp: CombatProfile;
   cpBase: CombatProfile; cpBunker: CombatProfile | null;
@@ -366,6 +369,10 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   const W = opts.width;
   const H = opts.height;
   const terrain = opts.terrain ?? null;
+  /** 막힘 판의 눈금 — 한 타일을 몇 칸으로 쪼개나(아래 '막힘 판' 절 주석 참고).
+   *  4칸이면 8px로, 원작 걸음 격자와 같다. 칸이 너무 많아지는 큰 맵만 2칸으로 떨어진다. */
+  const FINE = W * H * 16 <= 700000 ? 4 : 2;
+
 
   /* ── 업그레이드 — 개체가 태어난 시각에 그 임자가 갖고 있던 것들 ──
      표(profileOf·moveDynOf·speedOfUnit·targetFor)는 개체를 세울 때 딱 한 번 본다(성능).
@@ -449,7 +456,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         /* 건물의 체력·실드·방어력·크기는 이제 표(UNITS)에서 온다 — 옛 판이 하던
            "건물은 large·방어력 최소 1" 같은 손보정은 지어낸 값이었다. 표에 없는 이름
            (애드온 ComSat 등)만 DEFAULT_UNIT으로 떨어진다. [추정] */
-        rad: bcp.radius,
+        rad: bcp.radius, hw: 0, hh: 0,
         cp: bcp, cpBase: bcp, cpBunker: null,
         dmg: targetFor(e.k ?? "", bUps),
         cd: 0, foe: null, aggro: true, reacq: spot[0] + acqPhaseOf(e.t),
@@ -501,7 +508,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       kx: NaN, ky: NaN, kh: NaN, ks: ST_GONE, kt: 0, kvx: 0, kvy: 0,
       px: NaN, py: NaN,
       bld: false, wk: WORKERS.has(kind),
-      rad: cp.radius,
+      rad: cp.radius, hw: unitBoxTiles(kind)[0] / 2, hh: unitBoxTiles(kind)[1] / 2,
       cp, cpBase: cp, cpBunker: bunkerShooterProfileOf(kind),
       dmg: targetFor(kind, ups),
       cd: 0, foe: null, aggro: false, reacq: e.b + acqPhaseOf(e.t), dieAt: null, job: null,
@@ -589,51 +596,152 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
     }
   }
 
-  /* ── 막힘 판(요청: 건물·자원·유닛 모두 통과 불가) ────────────────────────────
-     지형 격자에 건물 발자국과 자원 지대를 덧칠한 판을 만들어 길찾기와 걸음을 함께
-     태운다. 건물은 서고 무너지므로 그때마다 판을 다시 굽고(경기당 수백 번뿐이다)
-     길 갈무리도 함께 비운다. */
+  /* ── 막힘 판(요청: 건물·자원·유닛 모두 통과 불가 + 건물 틈으로는 지나다니게) ──────
+     지형 격자에 건물과 자원 지대를 덧칠한 판을 만들어 길찾기와 걸음을 함께 태운다.
+     건물은 서고 무너지므로 그때마다 판을 다시 굽고(15초에 한 번으로 묶는다) 길 갈무리도
+     열쇠의 판 번호로 저절로 갈린다.
+
+     ★ 눈금이 타일보다 잘다(요청: 건물 틈) — 원작 건물이 막는 것은 발자국(타일 배수)이
+       아니라 **몸 상자**이고, 둘의 차이가 곧 틈이다(가로 배럭-배럭 24px·서플-서플 20px,
+       세로 서플-배럭 14px·배럭-서플 26px). 한 칸이 한 타일이면 그 반 타일짜리 틈이
+       판에 아예 안 담긴다. 그래서 한 타일을 4칸(8px — 원작 걸음 격자와 같은 눈금)으로
+       쪼갠다. 칸이 너무 많아지는 큰 맵만 2칸(16px)으로 떨어진다.
+     ★ 몸 크기도 판이 안다 — 장애물을 제 반폭만큼 부풀린 판을 크기별로 따로 굽고 유닛은
+       제 판에서 길을 찾는다(가운데 칸이 트였나 = 몸이 들어가나). 저글링(16px)은 1칸,
+       드라군·탱크·리버·아콘·울트라(32px 이상)는 2칸이다 — 그래서 같은 틈이 저글링에게는
+       열리고 드라군에게는 닫힌다. 근거와 표: docs/note-building-gaps.md. */
   const BW = terrain ? terrain.w : W;
   const BH = terrain ? terrain.h : H;
-  const staticBlock = new Uint8Array(BW * BH);      // 자원 — 경기 내내 그대로
-  const markRect = (arr: Uint8Array, tx: number, ty: number, tw: number, th: number): void => {
-    const x0 = Math.max(0, Math.floor((tx / W) * BW));
-    const y0 = Math.max(0, Math.floor((ty / H) * BH));
-    const x1 = Math.min(BW - 1, Math.floor((((tx + tw) / W) * BW) - 0.001));
-    const y1 = Math.min(BH - 1, Math.floor((((ty + th) / H) * BH) - 0.001));
-    for (let yy = y0; yy <= y1; yy += 1) for (let xx = x0; xx <= x1; xx += 1) arr[yy * BW + xx] = 1;
+  const GW = Math.max(4, Math.round(W * FINE));
+  const GH = Math.max(4, Math.round(H * FINE));
+  const staticBlock = new Uint8Array(GW * GH);      // 자원 — 경기 내내 그대로
+  /** 타일 사각형을 칸에 칠한다 — 조금이라도 걸치는 칸은 다 막는 쪽으로(장애물 안전). */
+  const markRect = (
+    arr: Uint8Array, tx: number, ty: number, tw: number, th: number, v: number,
+  ): void => {
+    const x0 = Math.max(0, Math.floor(tx * FINE));
+    const y0 = Math.max(0, Math.floor(ty * FINE));
+    const x1 = Math.min(GW - 1, Math.ceil((tx + tw) * FINE) - 1);
+    const y1 = Math.min(GH - 1, Math.ceil((ty + th) * FINE) - 1);
+    for (let yy = y0; yy <= y1; yy += 1) for (let xx = x0; xx <= x1; xx += 1) arr[yy * GW + xx] = v;
   };
   for (const [rx, ry, gas] of opts.resources ?? []) {
     const f = gas === 1 ? GEYSER_FOOT : MINERAL_FOOT;
-    markRect(staticBlock, rx - f[0] / 2, ry - f[1] / 2, f[0], f[1]);
+    markRect(staticBlock, rx - f[0] / 2, ry - f[1] / 2, f[0], f[1], 1);
   }
-  /** 지금 판 — 지형 walk에서 건물·자원 칸을 뺀 것. */
+  /** 지형 + 자원만 담은 바닥 판(건물 없음) — 크기별 잔 판이 이것을 베껴 쓴다. */
+  let baseWalk: Uint8Array | null = null;
+  /** 굵은 판(타일 눈금) — A*가 큰 줄기를 찾는 자리. */
   let liveGrid: TerrainGrid | null = null;
+  /** 지금 서 있는 건물들의 몸 상자(타일) [x0, y0, x1, y1]. */
+  let bldRects: [number, number, number, number][] = [];
   let gridVer = 0;
   const rebuildGrid = (t: number): void => {
     gridVer += 1;
-    const walk = new Uint8Array(BW * BH);
-    for (let i = 0; i < walk.length; i += 1) {
-      walk[i] = terrain ? (terrain.walk[i] && !staticBlock[i] ? 1 : 0) : (staticBlock[i] ? 0 : 1);
+    const walk = new Uint8Array(GW * GH);
+    for (let gy = 0; gy < GH; gy += 1) {
+      const ty = terrain ? Math.min(BH - 1, Math.floor(((gy / FINE) / H) * BH)) : 0;
+      for (let gx = 0; gx < GW; gx += 1) {
+        const i = gy * GW + gx;
+        if (staticBlock[i]) continue;                      // 0 그대로 = 막힘
+        if (!terrain) { walk[i] = 1; continue; }
+        const tx = Math.min(BW - 1, Math.floor(((gx / FINE) / W) * BW));
+        walk[i] = terrain.walk[ty * BW + tx] ? 1 : 0;
+      }
+    }
+    baseWalk = walk;
+    bldRects = [];
+    /* 굵은 판(A* 전용) — 길찾기까지 잔 눈금으로 돌리면 칸이 16배라 시뮬이 10배 느려진다
+       (실측: 4.7초 → 45.7초). 길의 큰 줄기는 타일 눈금으로 찾고, 건물 틈처럼 잔 것은
+       아래 잔 판이 맡는다: findPath는 곧은 줄(clearLine)을 **먼저** 보므로, 벽 너머를
+       향한 유닛이 틈을 지나는 길목은 잔 판이 그대로 판정한다. */
+    const coarse = new Uint8Array(BW * BH);
+    for (let i = 0; i < coarse.length; i += 1) {
+      const cx9 = i % BW;
+      const cy9 = (i - cx9) / BW;
+      const wx9 = ((cx9 + 0.5) / BW) * W;
+      const wy9 = ((cy9 + 0.5) / BH) * H;
+      coarse[i] = terrain
+        ? (terrain.walk[i] && !staticBlock[Math.min(GH - 1, Math.floor(wy9 * FINE)) * GW
+          + Math.min(GW - 1, Math.floor(wx9 * FINE))] ? 1 : 0)
+        : 1;
     }
     for (const b of bodies) {
       if (!b.bld || t < b.born || (b.died !== null && t >= b.died)) continue;
-      // 뜬 동안은 타일을 안 막는다 — 이륙하면 원작도 그 자리를 통째로 풀어 준다.
+      // 뜬 동안은 자리를 안 막는다 — 이륙하면 원작도 그 자리를 통째로 풀어 준다.
       if (b.flyWins.some(([fa, fb]) => t >= fa && t < fb)) continue;
-      const f = BUILDING_FOOT[b.kind] ?? DEFAULT_FOOT;
-      markRect(walk, b.x - f[0] / 2, b.y - f[1] / 2, f[0], f[1]);
-      // markRect는 1을 칠하므로 건물 칸은 0으로 되돌린다.
-      const x0 = Math.max(0, Math.floor(((b.x - f[0] / 2) / W) * BW));
-      const y0 = Math.max(0, Math.floor(((b.y - f[1] / 2) / H) * BH));
-      const x1 = Math.min(BW - 1, Math.floor((((b.x + f[0] / 2) / W) * BW) - 0.001));
-      const y1 = Math.min(BH - 1, Math.floor((((b.y + f[1] / 2) / H) * BH) - 0.001));
-      for (let yy = y0; yy <= y1; yy += 1) for (let xx = x0; xx <= x1; xx += 1) walk[yy * BW + xx] = 0;
+      const [bw2, bh2, ox2, oy2] = buildingBox(b.kind);
+      const rx0 = b.x + ox2 - bw2 / 2;
+      const ry0 = b.y + oy2 - bh2 / 2;
+      bldRects.push([rx0, ry0, rx0 + bw2, ry0 + bh2]);
+      // 굵은 판에는 몸 상자가 걸친 타일을 통째로 막는다(길의 큰 줄기는 보수적으로).
+      const cx0 = Math.max(0, Math.floor((rx0 / W) * BW));
+      const cy0 = Math.max(0, Math.floor((ry0 / H) * BH));
+      const cx1 = Math.min(BW - 1, Math.ceil(((rx0 + bw2) / W) * BW) - 1);
+      const cy1 = Math.min(BH - 1, Math.ceil(((ry0 + bh2) / H) * BH) - 1);
+      for (let yy = cy0; yy <= cy1; yy += 1) for (let xx = cx0; xx <= cx1; xx += 1) coarse[yy * BW + xx] = 0;
     }
-    liveGrid = { w: BW, h: BH, walk } as TerrainGrid;
+    liveGrid = { w: BW, h: BH, walk: coarse } as TerrainGrid;
+    indexRects();
     /* 길 갈무리는 비우지 않는다 — 열쇠에 판 번호(gridVer)가 들어 있어 옛 것은 저절로
        안 쓰인다. 비우면 건물이 설 때마다 부대 전체의 길을 다시 셈해 몇 배로 느려진다
        (실측: 게임 1이 6.1초 → 11.6초). 무한히 자라지 않게 상한만 둔다. */
     if (pathCache.size > 40000) pathCache.clear();
+  };
+  /** 건물 몸 상자를 그 상자가 걸친 타일마다 색인 — 자리 하나가 어느 건물에 걸리나는
+   *  제 타일 바구니만 보면 된다(건물 수백 개를 매번 훑지 않는다). 유닛 몸이 최대 반
+   *  타일쯤 되므로 한 타일 여유를 두고 담는다. */
+  const bldBuckets = new Map<number, [number, number, number, number][]>();
+  const bucketKey = (tx: number, ty: number): number => ty * (W + 2) + tx;
+  const indexRects = (): void => {
+    bldBuckets.clear();
+    for (const r of bldRects) {
+      const tx0 = Math.max(0, Math.floor(r[0]) - 1);
+      const ty0 = Math.max(0, Math.floor(r[1]) - 1);
+      const tx1 = Math.min(W, Math.floor(r[2]) + 1);
+      const ty1 = Math.min(H, Math.floor(r[3]) + 1);
+      for (let ty = ty0; ty <= ty1; ty += 1) {
+        for (let tx = tx0; tx <= tx1; tx += 1) {
+          const k = bucketKey(tx, ty);
+          const arr = bldBuckets.get(k);
+          if (arr) arr.push(r);
+          else bldBuckets.set(k, [r]);
+        }
+      }
+    }
+  };
+  /** 잔 눈금 판(몸 크기별) — 칸 **한가운데**에 그 몸을 놓았을 때 건물에 걸리면 막힌 칸이다.
+   *  굵은 판(타일)에서 길이 아예 안 나올 때만 굽는다: 건물로 막은 벽에서 '틈이 있나'를
+   *  가리는 자리가 거기뿐이라, 평소 길찾기는 값을 하나도 더 치르지 않는다. */
+  const fineByBox = new Map<string, TerrainGrid>();
+  const fineFor = (hw: number, hh: number): TerrainGrid => {
+    const key = `${gridVer}|${Math.round(hw * 32)},${Math.round(hh * 32)}`;
+    const hit = fineByBox.get(key);
+    if (hit) return hit;
+    const walk = baseWalk ? Uint8Array.from(baseWalk) : new Uint8Array(GW * GH).fill(1);
+    for (const r of bldRects) {
+      const x0 = Math.max(0, Math.ceil((r[0] - hw) * FINE - 0.5));
+      const y0 = Math.max(0, Math.ceil((r[1] - hh) * FINE - 0.5));
+      const x1 = Math.min(GW - 1, Math.floor((r[2] + hw) * FINE - 0.5));
+      const y1 = Math.min(GH - 1, Math.floor((r[3] + hh) * FINE - 0.5));
+      for (let yy = y0; yy <= y1; yy += 1) for (let xx = x0; xx <= x1; xx += 1) walk[yy * GW + xx] = 0;
+    }
+    const g = { w: GW, h: GH, walk } as TerrainGrid;
+    if (fineByBox.size > 24) fineByBox.clear();
+    fineByBox.set(key, g);
+    return g;
+  };
+  /** 그 몸(반폭 hw·반높이 hh)이 이 자리에서 건물과 겹치나 — 원작의 상자 대 상자다
+   *  (OpenBW is_blocked → unit_inner_bounding_box). 칸 눈금이 아니라 픽셀 셈이라
+   *  16px 틈과 24px 틈이 실제로 갈린다. */
+  const bldHit = (x: number, y: number, hw: number, hh: number): boolean => {
+    const arr = bldBuckets.get(bucketKey(Math.floor(x), Math.floor(y)));
+    if (!arr) return false;
+    for (let i = 0; i < arr.length; i += 1) {
+      const r = arr[i];
+      if (x + hw > r[0] && x - hw < r[2] && y + hh > r[1] && y - hh < r[3]) return true;
+    }
+    return false;
   };
   /* 발자국 테두리의 가장 가까운 점(요청: 미네랄 안쪽이 아니라 바깥에서 캐고, 반납도
      기지의 가장 가까운 외곽점에) — 가운데를 목표로 두면 몸이 자원·건물 속으로 들어간다.
@@ -671,7 +779,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       py - (dx / len) * pd, by2 - (dy / len) * pd];
   };
 
-  /** 지도가 말하는 진짜 벽인가 — 건물·자원 발자국은 안 본다. */
+  /** 지도가 말하는 진짜 벽인가 — 건물·자원은 안 본다(지형 격자를 그대로 읽는다). */
   const wallAt = (x: number, y: number): boolean => {
     if (!terrain) return false;
     const gx = Math.floor((x / W) * BW);
@@ -679,24 +787,23 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
     if (gx < 0 || gy < 0 || gx >= BW || gy >= BH) return true;
     return terrain.walk[gy * BW + gx] === 0;
   };
-  /** 그 타일이 막혔나 — 걸음 한 발마다 본다. */
-  const blockedAt = (x: number, y: number): boolean => {
-    if (!liveGrid) return false;
-    const gx = Math.floor((x / W) * BW);
-    const gy = Math.floor((y / H) * BH);
-    if (gx < 0 || gy < 0 || gx >= BW || gy >= BH) return true;
-    return liveGrid.walk[gy * BW + gx] === 0;
+  /** 이 몸(cls)이 그 자리에 못 서나 — 걸음 한 발마다 본다. */
+  const blockedAt = (x: number, y: number, hw = 0, hh = 0): boolean => {
+    const gx = Math.floor(x * FINE);
+    const gy = Math.floor(y * FINE);
+    if (gx < 0 || gy < 0 || gx >= GW || gy >= GH) return true;
+    if (baseWalk && baseWalk[gy * GW + gx] === 0) return true;   // 지형·자원
+    return bldHit(x, y, hw, hh);                                  // 건물은 제 상자로
   };
-  /** 지형·자원으로 막힌 칸인가 — 건물 발자국은 빼고 본다(건물은 아래에서 몸으로 잰다).
-   *  15초에 한 번 굽는 liveGrid와 달리 이 판은 경기 내내 그대로라, 착륙 판정이 판 굽는
+  /** 지형·자원으로 막힌 칸인가 — 건물은 빼고 본다(건물은 따로 몸으로 잰다).
+   *  15초에 한 번 굽는 판과 달리 이 값은 경기 내내 그대로라, 착륙 판정이 판 굽는
    *  주기에 흔들리지 않는다. */
   const terrainBlocked = (x: number, y: number): boolean => {
-    const gx = Math.floor((x / W) * BW);
-    const gy = Math.floor((y / H) * BH);
-    if (gx < 0 || gy < 0 || gx >= BW || gy >= BH) return true;
-    const i = gy * BW + gx;
-    if (staticBlock[i]) return true;
-    return terrain ? terrain.walk[i] === 0 : false;
+    const gx = Math.floor(x * FINE);
+    const gy = Math.floor(y * FINE);
+    if (gx < 0 || gy < 0 || gx >= GW || gy >= GH) return true;
+    if (staticBlock[gy * GW + gx]) return true;
+    return wallAt(x, y);
   };
   /** 여기 내려앉을 수 있나 — 원작은 착륙하는 동안 건물을 공중으로 치기 때문에, 발자국
    *  타일이 하나라도 점유돼 있으면 착륙이 그냥 실패하고 뜬 채로 남는다.
@@ -726,28 +833,35 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
   /* 길찾기 캐시 — 같은 두 점을 여러 유닛이 함께 쓴다(부대 이동). */
   const pathCache = new Map<string, [number, number][]>();
   /** 곧은 줄이 트여 있나 — 0.5타일마다 훑는다. 트였으면 길찾기를 아예 안 부른다. */
-  const clearLine = (x0: number, y0: number, x1: number, y1: number): boolean => {
+  const clearLine = (
+    x0: number, y0: number, x1: number, y1: number, hw: number, hh: number,
+  ): boolean => {
     const d = dist(x0, y0, x1, y1);
-    const n = Math.ceil(d / 0.5);
+    /* 걸음이 잔 눈금이면 훑기도 잘아야 한다 — 한 칸(8px)씩 본다. 반 타일씩 건너뛰면
+       건물 사이 틈은 물론 벽 모서리도 통째로 지나쳐 읽는다. */
+    const n = Math.ceil(d * FINE);
     for (let i = 1; i <= n; i += 1) {
-      if (blockedAt(x0 + ((x1 - x0) * i) / n, y0 + ((y1 - y0) * i) / n)) return false;
+      if (blockedAt(x0 + ((x1 - x0) * i) / n, y0 + ((y1 - y0) * i) / n, hw, hh)) return false;
     }
     return true;
   };
   /** 몸 폭을 감안한 시야 — 가운데 줄과 좌우 rad만큼의 옆줄까지 트여야 트인 것으로 본다.
    *  원작은 장애물을 제 몸 크기만큼 부풀려 검사한다. 그 값싼 대역이 이 옆줄 둘이다. */
-  const clearWide = (x0: number, y0: number, x1: number, y1: number, rad: number): boolean => {
+  const clearWide = (
+    x0: number, y0: number, x1: number, y1: number, rad: number, hw: number, hh: number,
+  ): boolean => {
     const dx = x1 - x0;
     const dy = y1 - y0;
     const d = Math.sqrt(dx * dx + dy * dy);
-    if (d < 1e-6) return !blockedAt(x0, y0);
+    if (d < 1e-6) return !blockedAt(x0, y0, hw, hh);
     const px = (-dy / d) * rad;
     const py = (dx / d) * rad;
-    const n = Math.ceil(d / 0.5);
+    const n = Math.ceil(d * FINE);
     for (let i = 0; i <= n; i += 1) {
       const x = x0 + (dx * i) / n;
       const y = y0 + (dy * i) / n;
-      if (blockedAt(x, y) || blockedAt(x + px, y + py) || blockedAt(x - px, y - py)) return false;
+      if (blockedAt(x, y, hw, hh) || blockedAt(x + px, y + py, hw, hh)
+        || blockedAt(x - px, y - py, hw, hh)) return false;
     }
     return true;
   };
@@ -755,7 +869,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
    *  path가 '벽 모서리'로만 꺾는 것의 값싼 대역이다). 내다보는 폭을 SMOOTH_LOOK으로
    *  묶어 비용을 길이에 비례하게 눌렀고, 길 하나당 한 번만 치러 갈무리에 함께 담긴다. */
   const smoothPath = (
-    x0: number, y0: number, pts: [number, number][],
+    x0: number, y0: number, pts: [number, number][], hw: number, hh: number,
   ): [number, number][] => {
     if (pts.length <= 2) return pts;
     const out: [number, number][] = [];
@@ -765,7 +879,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
     while (i < pts.length) {
       let j = i;
       const cap = Math.min(pts.length - 1, i + SMOOTH_LOOK);
-      while (j < cap && clearWide(cx, cy, pts[j + 1][0], pts[j + 1][1], PATH_PAD)) j += 1;
+      while (j < cap && clearWide(cx, cy, pts[j + 1][0], pts[j + 1][1], PATH_PAD, hw, hh)) j += 1;
       out.push(pts[j]);
       cx = pts[j][0];
       cy = pts[j][1];
@@ -773,21 +887,33 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
     }
     return out;
   };
-  const findPath = (x0: number, y0: number, x1: number, y1: number): [number, number][] => {
-    if (!liveGrid) return [[x1, y1]];
+  const findPath = (
+    x0: number, y0: number, x1: number, y1: number, hw: number, hh: number,
+  ): [number, number][] => {
     /* 대부분의 이동은 빈 땅을 가로지른다 — 그때는 길찾기(격자 BFS)가 통째로 낭비다.
-       곧은 줄이 트여 있으면 그대로 간다(실측: 게임 1이 11.0초 → 아래 값). */
-    if (clearLine(x0, y0, x1, y1)) return [[x1, y1]];
-    const key = `${gridVer}:${Math.round(x0)},${Math.round(y0)},${Math.round(x1)},${Math.round(y1)}`;
+       곧은 줄이 트여 있으면 그대로 간다(실측: 게임 1이 11.0초 → 아래 값).
+       ★ 건물 사이 틈으로 지나가는 것도 대개 이 갈래다: 판이 제 몸 크기로 부풀려져
+         있으므로 가운데 줄만 트였으면 그 몸이 실제로 들어간다는 뜻이다. */
+    if (clearLine(x0, y0, x1, y1, hw, hh)) return [[x1, y1]];
+    const grid = liveGrid;
+    if (!grid) return [[x1, y1]];
+    // 갈무리 열쇠에 몸 크기가 들어간다 — 저글링의 길을 드라군이 물려받으면 안 된다.
+    const key = `${gridVer}.${Math.round(hw * 8)},${Math.round(hh * 8)}:`
+      + `${Math.round(x0)},${Math.round(y0)},${Math.round(x1)},${Math.round(y1)}`;
     const hit = pathCache.get(key);
     if (hit) return hit;
-    const got = groundPath(liveGrid, x0 / W, y0 / H, x1 / W, y1 / H);
+    let got = groundPath(grid, x0 / W, y0 / H, x1 / W, y1 / H);
+    /* 굵은 판이 "길이 없다"고 하면 그때만 잔 판을 본다(요청: 건물 틈으로 지나다니게) —
+       타일 눈금에는 반 타일짜리 틈이 안 담겨, 건물로 막은 벽은 늘 '길 없음'으로 나온다.
+       잔 판은 8px 눈금에 제 몸 크기까지 재므로, 저글링은 넓은 틈으로 지나가고 드라군은
+       같은 틈에서 막힌다. 여기까지 와서도 길이 없으면 아래 소프트 폴백이 답을 낸다. */
+    if (!got) got = groundPath(fineFor(hw, hh), x0 / W, y0 / H, x1 / W, y1 / H);
     /* BFS가 길을 못 찾으면 예전엔 직선이었다 — 그 직선이 곧 "지상 유닛이 벽을 뚫고
        지나간다"의 정체였다(과제 #50). 벽을 비싸게 치는 다익스트라는 반드시 답을 내고,
        정말 막힌 자리만 최단으로 가로지른다. */
-    const raw = got ?? groundPathSoft(liveGrid, x0 / W, y0 / H, x1 / W, y1 / H);
+    const raw = got ?? groundPathSoft(grid, x0 / W, y0 / H, x1 / W, y1 / H);
     const pts = smoothPath(x0, y0,
-      raw.map(([fx, fy]) => [fx * W, fy * H] as [number, number]));
+      raw.map(([fx, fy]) => [fx * W, fy * H] as [number, number]), hw, hh);
     if (pathCache.size > 20000) pathCache.clear();
     pathCache.set(key, pts);
     return pts;
@@ -795,7 +921,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
 
   const setDest = (b: Body, x: number, y: number): void => {
     b.dest = [x, y];
-    b.path = b.air ? [[x, y]] : findPath(b.x, b.y, x, y);
+    b.path = b.air ? [[x, y]] : findPath(b.x, b.y, x, y, b.hw, b.hh);
     b.pi = 0;
     /* 꼭짓점마다 목적지까지 남은 거리 — 감속(정지거리)은 '얼마나 남았나'를 알아야 하는데
        매 틱 길 전체를 더하면 개체 수만큼 비싸다. 길을 짤 때 한 번만 셈해 둔다. */
@@ -1629,7 +1755,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
             const go = Math.min(b.speed * dt, d2);
             const nx2 = b.x + (dx2 / d2) * go;
             const ny2 = b.y + (dy2 / d2) * go;
-            if (d2 <= 0.4 || blockedAt(nx2, ny2)) {
+            if (d2 <= 0.4 || blockedAt(nx2, ny2, b.hw, b.hh)) {
               if (toHall) {
                 j.phase = 5;
                 j.wait = MINE_RETURN_FRAMES * FRAME_SEC;
@@ -1872,8 +1998,8 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
           const ay2 = a.y - (dy / d) * pa;
           const cx2 = c.x + (dx / d) * pc;
           const cy2 = c.y + (dy / d) * pc;
-          if (a.air || !blockedAt(ax2, ay2)) { a.x = ax2; a.y = ay2; }
-          if (c.air || !blockedAt(cx2, cy2)) { c.x = cx2; c.y = cy2; }
+          if (a.air || !blockedAt(ax2, ay2, a.hw, a.hh)) { a.x = ax2; a.y = ay2; }
+          if (c.air || !blockedAt(cx2, cy2, c.hw, c.hh)) { c.x = cx2; c.y = cy2; }
         }
       }
     }
