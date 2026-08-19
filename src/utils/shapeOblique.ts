@@ -862,11 +862,16 @@ export function halfSphereFaces3(
   const d = `M${r2(sx - r)} ${r2(sy)}A${r2(r)} ${r2(r)} 0 0 1 ${r2(sx + r)} ${r2(sy)}`
     + `A${r2(r)} ${r2(ry)} 0 0 1 ${r2(sx - r)} ${r2(sy)}Z`;
   const body: ShapeFace = fill ? [d, 1, fill] : bodyFace(d);
-  return tagKey([
-    body,
-    sideFace(screenCircle(sx + r * 0.42, sy - r * 0.06, r * 0.38), OP.sideSoft),
-    topFace(screenCircle(sx - r * 0.36, sy - r * 0.34, r * 0.24)),
-  ], depthNow(cx, cy) + r);
+  /* 명암은 **호를 따라 도는 초승달**이다(지적: 동그란 점 둘이 눈처럼 보인다) — 원반
+     두 장을 얹던 것을 걷는다. 밑동 호와 그보다 납작한 호 사이가 아랫배 그늘, 꼭대기
+     호와 조금 낮은 호 사이가 정수리 빛이다. 둘 다 실루엣 안에 딱 맞아 어느 크기에서도
+     밖으로 삐치지 않는다(원반은 작게 그릴수록 눈처럼 도드라졌다). */
+  const shade = `M${r2(sx + r)} ${r2(sy)}A${r2(r)} ${r2(ry)} 0 0 1 ${r2(sx - r)} ${r2(sy)}`
+    + `A${r2(r)} ${r2(ry * 0.42)} 0 0 0 ${r2(sx + r)} ${r2(sy)}Z`;
+  const gloss = `M${r2(sx - r)} ${r2(sy)}A${r2(r)} ${r2(r)} 0 0 1 ${r2(sx + r)} ${r2(sy)}`
+    + `A${r2(r)} ${r2(r * 0.78)} 0 0 0 ${r2(sx - r)} ${r2(sy)}Z`;
+  return tagKey([body, sideFace(shade, OP.sideSoft), topFace(gloss, OP.topSoft)],
+    depthNow(cx, cy) + r);
 }
 
 /** 화면 1/4구 — 반구를 다시 앞뒤로 갈라 **뒤 절반**만 남긴 껍데기. 위 반원과, 세로로

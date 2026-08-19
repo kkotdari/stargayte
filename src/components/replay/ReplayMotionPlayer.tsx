@@ -47,7 +47,7 @@ import {
   type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
   domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces,
-  halfSphereFaces3, prismYFaces, prismZFaces, pyramidFaces3, quarterSphereFaces3,
+  halfSphereFaces3, prismYFaces, prismZFaces, pyramidFaces3,
   screenCircle, sphereFaces3, tubeFaces,
   wallDiscPath, withPitchView, withTopView, withViewShear, withYaw, zsorted,
 } from "../../utils/shapeOblique";
@@ -7598,15 +7598,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...domeFaces3(-1.36, -0.3, 0.85, 0.76, 3.6),
         ...domeFaces3(1.36, -0.3, 0.85, 0.76, 3.6),
       ], "#dfe3e6"), depthNow(0, -0.2)),
-      /* 헬멧은 반구다(요청: "테란 보병들 헬멧 반정도만 보이게", "1/4구 반구 프리미티브
-         만들어서 쓰고") — 온전한 구를 어깨 밑으로 내려 반쯤 가리던 눈속임을 걷고,
-         반구 프리미티브를 그대로 쓴다. 구와 같은 자(화면 원)라 어느 요잉에서도 안
-         찌그러지고, 잘린 밑면은 내려다보는 만큼 부푼 타원 호로 닫힌다. */
-      ...tagKey(halfSphereFaces3(0, -0.2, 4.24, 0.84, "#7dff5c"), depthNow(0, -0.2) + 1.5),
-      /* 헬멧 뒤 껍데기는 **1/4구**다(요청) — 반구를 다시 앞뒤로 갈라 뒤 절반만 남긴
-         조각이라, 얼굴가리개 위·뒤로 초승달처럼 얹힌다. 온전한 구를 뒤에 한 겹 더
-         세워 테두리만 남기던 흉내를 걷었다. */
-      ...tagKey(quarterSphereFaces3(0, -0.44, 4.24, 0.93, "#eef1f3"), depthNow(0, -0.2) + 1.4),   // 메딕 — 네온 초록 얼굴가리개(요청) · 흰 뒤껍데기
+      /* 헬멧은 **겉껍데기가 몸이고 얼굴가리개가 그 앞에 박힌다**(지적: "테란 보병 헬멧
+         겉껍데기가 안 보이고 속이 비치는 것 수정").
+         여태는 거꾸로였다 — 큰 얼굴가리개(반구)가 앞이고 겉껍데기가 그 뒤의 얇은
+         초승달(1/4구)이었는데, 그 초승달의 두께가 반지름의 0.29배뿐이라 가리개 실루엣
+         안에 거의 다 묻혔다. 게다가 깊이 키를 둘 다 **같은 자리**(0, -0.2)에서 뽑아
+         고정으로 매겨 놔, 뒤통수를 보여 줄 요잉에서도 얼굴가리개가 늘 앞에 그려졌다 —
+         뒤에서 보면 껍데기 대신 가리개 속이 보이던 것이 그것이다.
+         이제 겉껍데기가 머리를 감싸는 반구(제 색)이고, 얼굴가리개는 그보다 작은 반구를
+         앞아래로 물려 박은 것이다. 깊이 키도 **저마다 제 자리**에서 뽑아, 요잉이 돌면
+         앞뒤가 저절로 뒤집힌다(가리개는 y +0.22, 껍데기는 y −0.38). */
+      ...tagKey(halfSphereFaces3(0, -0.38, 4.26, 0.98, "#eef1f3"), depthNow(0, -0.38) + 1.6),
+      ...tagKey(halfSphereFaces3(0, 0.26, 4.14, 0.62, "#7dff5c"), depthNow(0, 0.26) + 1.6),   // 메딕 — 흰 껍데기 · 네온 초록 얼굴가리개(요청)
       ...tagKey([bodyFace(apron), topFace(apron, 0.3)], depthNow(0, 0.79)),
       /* 가슴 빨간 십자(요청) — 병원 표시. 몸통은 원기둥이라 벽이 굽어 있으니, 앞을 볼
          때만 그리고 몸통 앞면(반지름 0.96)보다 아주 조금 앞(0.02)에 눕힌다. 세로·가로
@@ -7646,15 +7649,18 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...cylinderFaces3(0, -0.2, 1.06, 1.9, 2.3),
       ...domeFaces3(-1.5, -0.3, 0.95, 0.85, 3.6),
       ...domeFaces3(1.5, -0.3, 0.95, 0.85, 3.6),
-      /* 헬멧은 반구다(요청: "테란 보병들 헬멧 반정도만 보이게", "1/4구 반구 프리미티브
-         만들어서 쓰고") — 온전한 구를 어깨 밑으로 내려 반쯤 가리던 눈속임을 걷고,
-         반구 프리미티브를 그대로 쓴다. 구와 같은 자(화면 원)라 어느 요잉에서도 안
-         찌그러지고, 잘린 밑면은 내려다보는 만큼 부푼 타원 호로 닫힌다. */
-      ...tagKey(halfSphereFaces3(0, -0.2, 4.24, 0.84, "#bfe0ef"), depthNow(0, -0.2) + 1.5),
-      /* 헬멧 뒤 껍데기는 **1/4구**다(요청) — 반구를 다시 앞뒤로 갈라 뒤 절반만 남긴
-         조각이라, 얼굴가리개 위·뒤로 초승달처럼 얹힌다. 온전한 구를 뒤에 한 겹 더
-         세워 테두리만 남기던 흉내를 걷었다. */
-      ...tagKey(quarterSphereFaces3(0, -0.44, 4.24, 0.93, "#c9ced6"), depthNow(0, -0.2) + 1.4),   // 마린 — 은색 뒤껍데기
+      /* 헬멧은 **겉껍데기가 몸이고 얼굴가리개가 그 앞에 박힌다**(지적: "테란 보병 헬멧
+         겉껍데기가 안 보이고 속이 비치는 것 수정").
+         여태는 거꾸로였다 — 큰 얼굴가리개(반구)가 앞이고 겉껍데기가 그 뒤의 얇은
+         초승달(1/4구)이었는데, 그 초승달의 두께가 반지름의 0.29배뿐이라 가리개 실루엣
+         안에 거의 다 묻혔다. 게다가 깊이 키를 둘 다 **같은 자리**(0, -0.2)에서 뽑아
+         고정으로 매겨 놔, 뒤통수를 보여 줄 요잉에서도 얼굴가리개가 늘 앞에 그려졌다 —
+         뒤에서 보면 껍데기 대신 가리개 속이 보이던 것이 그것이다.
+         이제 겉껍데기가 머리를 감싸는 반구(제 색)이고, 얼굴가리개는 그보다 작은 반구를
+         앞아래로 물려 박은 것이다. 깊이 키도 **저마다 제 자리**에서 뽑아, 요잉이 돌면
+         앞뒤가 저절로 뒤집힌다(가리개는 y +0.22, 껍데기는 y −0.38). */
+      ...tagKey(halfSphereFaces3(0, -0.38, 4.26, 0.98, "#c9ced6"), depthNow(0, -0.38) + 1.6),
+      ...tagKey(halfSphereFaces3(0, 0.26, 4.14, 0.62, "#bfe0ef"), depthNow(0, 0.26) + 1.6),   // 마린 — 은색 껍데기 · 하늘빛 얼굴가리개
       /* 두 팔(재지적: 위치·굽힘) — 위팔은 어깨뽕 '아래'(z 3.7)에서 나와 앞-아래로
          내려가고, 팔꿈치에서 굽어 아래팔이 총몸으로 올라가 쥔다. 왼손은 앞손잡이,
          오른손은 방아쇠 쪽. */
@@ -7683,13 +7689,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       /* 가는 몸통(마린 1.25 → 0.7). 어깨 라운드 둘은 걷었다(요청: "고스트 어깨갑옷 제거")
          — 작아도 그것이 있으면 어깨가 부푼 실루엣이라 마린과 안 갈린다. */
       ...cylinderFaces3(0, -0.1, 0.6, 2, 2.3),
-      // 작은 헬멧 — 마린과 같은 반구, 반지름만 작다(요청).
-      // 고스트도 같은 규칙(요청) — 머리가 작아 내리는 몫도 조금 작다.
-      ...tagKey(halfSphereFaces3(0, -0.1, 4.28, 0.56, "#bfe0ef"), depthNow(0, -0.1) + 1.5),
-      /* 헬멧 뒤 껍데기는 **1/4구**다(요청) — 반구를 다시 앞뒤로 갈라 뒤 절반만 남긴
-         조각이라, 얼굴가리개 위·뒤로 초승달처럼 얹힌다. 온전한 구를 뒤에 한 겹 더
-         세워 테두리만 남기던 흉내를 걷었다. */
-      ...tagKey(quarterSphereFaces3(0, -0.34, 4.28, 0.64, "#eef1f3"), depthNow(0, -0.1) + 1.4),   // 고스트 — 흰 뒤껍데기
+      // 작은 헬멧 — 마린과 같은 규칙(겉껍데기 + 앞에 박은 얼굴가리개), 반지름만 작다.
+      ...tagKey(halfSphereFaces3(0, -0.28, 4.30, 0.68, "#eef1f3"), depthNow(0, -0.28) + 1.6),
+      ...tagKey(halfSphereFaces3(0, 0.18, 4.18, 0.44, "#bfe0ef"), depthNow(0, 0.18) + 1.6),   // 고스트 — 흰 껍데기
       /* 팔은 **어깨 자리에서** 나오고 더 길다(요청: "팔자체를 어깨위치로 올리고 길이
          늘리기") — 어깨 라운드를 걷으면서 팔 뿌리를 몸통 꼭대기(z 4.3) 바로 아래인
          4.15로 올리고, 아래팔이 앞으로 0.25 더 뻗는다. 가늘고 긴 팔이 고스트의 실루엣이다. */
@@ -7746,26 +7748,52 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           return [Math.cos(a) * 1.13, -0.2 + Math.sin(a) * 1.13] as [number, number];
         }), 3.0, 0.5, false,
       ), depthNow(0, -0.2) + 1.3),
-      /* 헬멧은 반구다(요청: "테란 보병들 헬멧 반정도만 보이게", "1/4구 반구 프리미티브
-         만들어서 쓰고") — 온전한 구를 어깨 밑으로 내려 반쯤 가리던 눈속임을 걷고,
-         반구 프리미티브를 그대로 쓴다. 구와 같은 자(화면 원)라 어느 요잉에서도 안
-         찌그러지고, 잘린 밑면은 내려다보는 만큼 부푼 타원 호로 닫힌다. */
-      ...tagKey(halfSphereFaces3(0, -0.2, 4.24, 0.84, "#bfe0ef"), depthNow(0, -0.2) + 1.5),
-      /* 헬멧 뒤 껍데기는 **1/4구**다(요청) — 반구를 다시 앞뒤로 갈라 뒤 절반만 남긴
-         조각이라, 얼굴가리개 위·뒤로 초승달처럼 얹힌다. 온전한 구를 뒤에 한 겹 더
-         세워 테두리만 남기던 흉내를 걷었다. */
-      ...tagKey(quarterSphereFaces3(0, -0.44, 4.24, 0.93, "#a5342a"), depthNow(0, -0.2) + 1.4),   // 파이어뱃 — 붉은 뒤껍데기
-      /* 두 팔(요청) — 어깨에서 건틀릿 뿌리로. **상완은 임자 색**이라 안 칠한다(요청).
-         뿌리 높이 4.9 → 3.9(지적: "팔뚝 위가 어깨보다 높네 높이 맞춰주고") — 어깨뽕은
-         반구(중심 z 3.6, 높이 0.85)라 꼭대기가 4.45다. 팔이 4.9에서 나오니 어깨 위로
-         반 타일이 솟아, 등 연료통 옆으로 파란 뿔 둘이 튀어나와 보였다. 어깨 밑에서
-         나오게 내리면 어깨가 뿌리를 덮는다(마린도 3.7이다). */
-      ...hornFaces(-1.45, -0.2, 3.9, -1.4, 0.6, 3.2, 0.64),
-      ...hornFaces(1.45, -0.2, 3.9, 1.4, 0.6, 3.2, 0.64),
-      // 화염 건틀릿 두 팔.
-      // 앞으로 더 내민 화염 건틀릿(지적: 총구가 앞을 향하게).
-      ...paintBase(tubeFaces(-1.4, 0.4, -1.4, 2.2, 0.42, 2.9, true), GUNMETAL),
-      ...paintBase(tubeFaces(1.4, 0.4, 1.4, 2.2, 0.42, 2.9, true), GUNMETAL),
+      /* 헬멧은 **겉껍데기가 몸이고 얼굴가리개가 그 앞에 박힌다**(지적: "테란 보병 헬멧
+         겉껍데기가 안 보이고 속이 비치는 것 수정").
+         여태는 거꾸로였다 — 큰 얼굴가리개(반구)가 앞이고 겉껍데기가 그 뒤의 얇은
+         초승달(1/4구)이었는데, 그 초승달의 두께가 반지름의 0.29배뿐이라 가리개 실루엣
+         안에 거의 다 묻혔다. 게다가 깊이 키를 둘 다 **같은 자리**(0, -0.2)에서 뽑아
+         고정으로 매겨 놔, 뒤통수를 보여 줄 요잉에서도 얼굴가리개가 늘 앞에 그려졌다 —
+         뒤에서 보면 껍데기 대신 가리개 속이 보이던 것이 그것이다.
+         이제 겉껍데기가 머리를 감싸는 반구(제 색)이고, 얼굴가리개는 그보다 작은 반구를
+         앞아래로 물려 박은 것이다. 깊이 키도 **저마다 제 자리**에서 뽑아, 요잉이 돌면
+         앞뒤가 저절로 뒤집힌다(가리개는 y +0.22, 껍데기는 y −0.38). */
+      ...tagKey(halfSphereFaces3(0, -0.38, 4.26, 0.98, "#a5342a"), depthNow(0, -0.38) + 1.6),
+      ...tagKey(halfSphereFaces3(0, 0.26, 4.14, 0.62, "#bfe0ef"), depthNow(0, 0.26) + 1.6),   // 파이어뱃 — 붉은 껍데기
+      /* 두 팔(요청: "파이어뱃 일반적인 팔로 바꾸고, 하완이 상완보다 두껍게, 붉은색
+         고정, 두 팔로 화염방사기를 들고 있는 모습") — 팔 자리에 굵은 건틀릿 관을 하나씩
+         꽂아 두던 것을 걷는다. 그건 팔이 아니라 '팔처럼 뻗은 무기'라, 어깨에서 손까지의
+         관절이 없어 파이어뱃만 사람 꼴에서 벗어나 있었다.
+         이제 마린과 같은 갈래다: 어깨에서 팔꿈치로 내려오는 상완, 팔꿈치에서 앞위로
+         올라가 무기를 쥐는 하완. 다만 **하완이 더 굵다**(0.60 → 0.78) — 장갑 낀 앞팔이
+         파이어뱃의 인상이다. 색은 붉은색 고정이고, 임자 색은 허리띠 하나가 맡는다. */
+      /* 팔은 몸통 **밖**으로 돌려 세운다 — 몸통 반지름이 1.06이고 어깨뽕이 ±1.5까지
+         부풀어, 안쪽으로 붙이면 팔이 통째로 그 실루엣에 묻힌다(첫 판이 그랬다).
+         색도 몸통(#b83a2c)보다 한 단 짙게 준다 — 같은 빨강이면 붙어 있는 것이 아니라
+         한 덩어리로 읽힌다. 붉은색 고정이라는 요청은 지킨다. */
+      ...paintBase([
+        ...rodFaces(-1.6, 0.1, 3.55, -1.4, 1.05, 2.6, 0.58),
+        ...rodFaces(-1.4, 1.05, 2.6, -0.5, 1.85, 3.05, 0.8),
+        ...rodFaces(1.6, 0.1, 3.55, 1.4, 1.05, 2.6, 0.58),
+        ...rodFaces(1.4, 1.05, 2.6, 0.5, 1.85, 3.05, 0.8),
+      ], "#8f2b20"),
+      /* 화염방사기 — 두 손이 **함께 쥔 한 자루**다. 가로로 누운 예열관을 두 손이 잡고,
+         그 가운데에서 노즐이 앞으로 뻗는다(관 프리미티브라 포구가 요잉을 탄다). */
+      ...paintBase([
+        ...rodFaces(-0.62, 1.8, 3.05, 0.62, 1.8, 3.05, 0.5),
+        ...tubeFaces(0, 2, 0, 3.3, 0.3, 3.05, true),
+      ], GUNMETAL),
+      /* 호스(요청: "화염방사기는 등뒤의 연료통과 호스로 연결됨") — 등 통 꼭대기에서
+         옆구리를 돌아 무기로 내려온다. 두 마디로 꺾어 늘어진 결을 낸다. 통이 둘이라
+         호스도 둘이다. */
+      /* 호스는 어깨 **아래**로 돌린다 — 통 꼭대기(z 5.5)에서 곧장 앞으로 내리면 머리
+         옆을 가로질러 멜빵처럼 보인다. 통 중턱에서 옆구리로 나와 무기로 올라간다. */
+      ...paintBase([
+        ...rodFaces(-0.85, -1.3, 4.4, -1.7, -0.3, 3.2, 0.24),
+        ...rodFaces(-1.7, -0.3, 3.2, -0.6, 1.7, 2.95, 0.24),
+        ...rodFaces(0.85, -1.3, 4.4, 1.7, -0.3, 3.2, 0.24),
+        ...rodFaces(1.7, -0.3, 3.2, 0.6, 1.7, 2.95, 0.24),
+      ], "#3a3f46"),
     ];
   },
   /* 질럿 — 검 두 자루(요청). */
@@ -9974,6 +10002,8 @@ type UnitDrawOp = {
   pickState?: string;
   /** 걸려 있는 마법(키) — 팝업이 그 효과와 색까지 적는다. */
   pickStatus?: string;
+  /** 건물의 발자국 원점(타일) — 팝업이 '이 건물에서 나온 것'만 고르는 자다. */
+  pickX?: number; pickY?: number;
 };
 /* 구운 판의 실제 바닥(재재지적: 드론·해처리가 떠 있고 그림자가 이상하다) — 상자
    바닥 기준 어림은 모델이 상자를 다 안 채우면(해처리 둔덕 등) 그림자가 발보다 한참
@@ -12626,6 +12656,32 @@ export default function ReplayMotionPlayer({
      ★ 이 자리도 v1 부대 트랙(p.prod)이 채우던 곳이라, 요약 폐지 뒤로는 비어 있었다.
        정보 팝업의 '생산 완료·큐'와 벙커 추정 사수가 그 빈 표를 읽고 있었다.
        개체 트랙에서는 개체의 출생(b)이 곧 그 유닛이 완성된 순간이라 곧장 만들 수 있다. */
+  /* 나온 자리까지 아는 생산표 — raw → [{ 유닛, 완성 초, 나온 자리 }].
+     ★ 지적: "라바 변태의 기록이 모든 해처리 간 공유되는 문제". 아래 prodDoneByRaw는
+       **사람별**이라, 팝업이 해처리 하나를 눌러도 그 사람의 저그 유닛 생산이 통째로
+       나왔다(배럭도 마찬가지다 — 라바가 워낙 많아 해처리에서 먼저 눈에 띈 것이다).
+       분석은 이미 유닛마다 '어느 건물에서 나왔나'를 자리로 정해 둔다(replayUnits의
+       출생지 결정: 건물 태그를 알면 그 자리, 라바처럼 모르면 그 종류의 실물 건물 중
+       하나를 골라 발자국 아래 출구를 준다). 그 출생 증거가 개체의 첫 증거(f=3)로
+       꽂혀 있으므로, 자리를 그대로 읽어 건물별로 가른다. */
+  const prodDoneAt = useMemo(() => {
+    const m = new Map<string, { u: string; s: number; x: number; y: number }[]>();
+    if (!entData) return m;
+    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    for (const e of entData.ents) {
+      if (e.bld || !e.k) continue;
+      const b0 = e.ev[0];
+      // 출생 증거는 '그 자리에 세운다'(f=3)로 꽂힌다 — 그 밖의 첫 증거는 생산지가 아니다.
+      if (!b0 || b0[3] !== 3 || b0[1] < 0) continue;
+      const raw = nameOfId.get(e.o);
+      if (raw === undefined) continue;
+      const a = m.get(raw) ?? [];
+      a.push({ u: e.k, s: b0[0], x: b0[1], y: b0[2] });
+      m.set(raw, a);
+    }
+    for (const a of m.values()) a.sort((x, y) => x.s - y.s);
+    return m;
+  }, [entData]);
   const prodDoneByRaw = useMemo(() => {
     const m = new Map<string, Record<string, number[]>>();
     if (!entData) return m;
@@ -14761,7 +14817,7 @@ export default function ReplayMotionPlayer({
                 /* 짓는 중에도 집힌다(요청: 건설 중 상태에서도 클릭 가능) — 열쇠는 완성
                    뒤와 같은 자로 지어, 다 지어져도 팝업이 그대로 이어진다. */
                 pickKey: `b${raw}|${unit}|${Math.round(bx * 4)}|${Math.round(by * 4)}`,
-                pickName: unit, pickRaw: raw, pickBld: true,
+                pickName: unit, pickRaw: raw, pickBld: true, pickX: bx, pickY: by,
                 /* 상태 줄 — 테란은 '건설 중단'을 따로 말한다(요청): 일꾼이 떠나거나
                    죽어 공사가 그 진행률에 멈춰 선 동안이다. */
                 pickState: race2 === "저그"
@@ -14947,7 +15003,7 @@ export default function ReplayMotionPlayer({
                 /* 정보 팝업 신원(요청) — 건물은 태그가 없어 임자·종류·착공 자리로
                    짓는다(같은 자리에 다시 지어도 착공 시각이 다르면 다른 몸이다). */
                 pickKey: `b${raw}|${unit}|${Math.round(bx * 4)}|${Math.round(by * 4)}`,
-                pickName: unit, pickRaw: raw, pickBld: true,
+                pickName: unit, pickRaw: raw, pickBld: true, pickX: bx, pickY: by,
                 /* 땅에 앉은 건물은 그림자를 안 진다(요청: 건물 바닥 그림자는 제거) —
                    건물은 발자국이 곧 제 자리라 바닥 타원이 정보를 더하지 않고, 모델
                    발치에 검은 테를 둘러 도형을 흐리기만 했다. 떠 있는 건물만 제 것으로
@@ -16408,10 +16464,30 @@ export default function ReplayMotionPlayer({
           if (op.pickBld) {
             /* 생산·연구·큐(요청) — 생산 기록은 '완성 시각'이라, 지금 창 안이면 방금
                나온 것, 앞엣것은 큐로 읽는다(무엇이 언제 나오는지가 그대로 큐다). */
+            /* 이 건물에서 나온 것만(지적: 라바 변태 기록이 해처리끼리 공유된다) —
+               출생 자리가 이 발자국 언저리인 것만 센다. 건물 태그를 아는 생산은 발자국
+               원점에, 라바처럼 모르는 생산은 발자국 아래 출구에 꽂히므로 두 규약을 다
+               담게 아래로 한 뼘 더 넓힌다. 자리를 모르는 옛 자취(출생 증거가 없는 것)는
+               사람별 표로 물러난다 — 안 그러면 팝업이 통째로 비어 버린다. */
+            const fp9 = FOOTPRINT[en] ?? [4, 3];
+            const bx9 = op.pickX;
+            const by9 = op.pickY;
+            const mine9 = bx9 === undefined || by9 === undefined ? null
+              : (prodDoneAt.get(op.pickRaw ?? "") ?? []).filter((r9) =>
+                r9.x >= bx9 - 1.5 && r9.x <= bx9 + fp9[0] + 1.5
+                && r9.y >= by9 - 1.5 && r9.y <= by9 + fp9[1] + 2);
             const evs: [number, string, number][] = [];
-            for (const u of PRODUCED_BY[en] ?? []) {
-              const sec = UNIT_BUILD_SEC[u] ?? 30;
-              for (const ps of prodDoneByRaw.get(op.pickRaw ?? "")?.[u] ?? []) evs.push([ps, UNIT_KO[u] ?? u, sec]);
+            const kinds9 = new Set(PRODUCED_BY[en] ?? []);
+            if (mine9 && mine9.length > 0) {
+              for (const r9 of mine9) {
+                if (!kinds9.has(r9.u)) continue;
+                evs.push([r9.s, UNIT_KO[r9.u] ?? r9.u, UNIT_BUILD_SEC[r9.u] ?? 30]);
+              }
+            } else {
+              for (const u of PRODUCED_BY[en] ?? []) {
+                const sec = UNIT_BUILD_SEC[u] ?? 30;
+                for (const ps of prodDoneByRaw.get(op.pickRaw ?? "")?.[u] ?? []) evs.push([ps, UNIT_KO[u] ?? u, sec]);
+              }
             }
             evs.sort((a, b) => a[0] - b[0]);
             /* 진행률(요청) — 리플레이에 남는 건 완성 시각뿐이라, 거기서 생산 시간을
@@ -16475,10 +16551,29 @@ export default function ReplayMotionPlayer({
           const h9 = el?.clientHeight ?? 1;
           const lx = ((op.fx - 0.5) * zoom + 0.5) * w9 + pan.x;
           const ly = ((op.fy - 0.5) * zoom + 0.5) * h9 + pan.y;
+          /* 팝업은 지도 밖으로 안 나간다(지적: "나오는 위치도 이상함 · 미니맵 내부로
+             제한") — 여태는 마커 자리에 그대로 띄워, 가장자리 유닛을 누르면 상자가
+             지도 밖(또는 화면 밖)으로 반쯤 잘려 나갔다.
+             폭은 CSS가 못 박은 값(232 + 좌우 여백 18)이라 여기서 그대로 쓸 수 있고,
+             높이는 줄 수로 어림한다(막대 줄은 두 줄 몫). 위로 띄울 자리가 모자라면
+             마커 아래로 뒤집는다 — 지도 위쪽 유닛이 그 경우다. */
+          const PAD9 = 6;
+          const PW9 = Math.min(250, w9 - PAD9 * 2);
+          const barN9 = lines.filter((ln) => typeof ln !== "string").length;
+          const PH9 = 28 + (lines.length - barN9) * 17 + barN9 * 26;
+          const cx9 = Math.min(Math.max(lx, PW9 / 2 + PAD9), w9 - PW9 / 2 - PAD9);
+          const flip9 = ly - PH9 - 14 < PAD9;
+          const cy9 = flip9
+            ? Math.min(ly, h9 - PH9 - 14 - PAD9)
+            : Math.min(Math.max(ly, PH9 + 14 + PAD9), h9 - PAD9);
           return (
             <div
               className="scr-motion-info"
-              style={{ left: Math.round(lx), top: Math.round(ly) }}
+              style={{
+                left: Math.round(cx9),
+                top: Math.round(cy9),
+                ...(flip9 ? { transform: "translate(-50%, 14px)" } : {}),
+              }}
               onPointerDown={(e) => e.stopPropagation()}
             >
               <div className="scr-motion-info-name">{ko}</div>

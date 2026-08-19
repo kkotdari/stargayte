@@ -14174,10 +14174,15 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    집은 몸 옆에 뜨는 작은 글 상자다. 내용은 프레임마다 다시 읽히므로(체력·생산·큐가
    모두 지금 값이다) 여기서는 자리와 꼴만 맡는다. 지도 위에 얹히지만 클릭은 통과시키지
    않는다 — 팝업 안을 눌렀다고 팝업이 닫히면 안 된다. */
+/* 폭은 **고정**이다(요청: "팝업폭은 제한이 아니라 고정") — 내용이 길고 짧음에 따라
+   상자가 늘었다 줄었다 하면, 재생 중 매 프레임 폭이 흔들려 읽기가 어렵다. 한 폭으로
+   못 박고 긴 줄은 접는다. 지도가 그보다 좁을 때만 지도 안으로 물러난다.
+   자리는 리액트 쪽에서 지도 상자 안으로 물린다(위/아래 뒤집기 포함). */
 .scr-motion-info {
   position: absolute; z-index: 30000; transform: translate(-50%, calc(-100% - 14px));
-  min-width: 120px; max-width: 260px;
+  width: 232px; max-width: calc(100% - 16px);
   padding: 6px 9px; border-radius: 8px;
+  overflow-wrap: anywhere;
   background: rgba(12, 16, 22, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.16);
   backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
