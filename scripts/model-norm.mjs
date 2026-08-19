@@ -144,11 +144,17 @@ function bundle() {
   writeFileSync(src, ENTRY);
   /* esbuild를 npx로 부르지 않는다(수리: 윈도우에서 못 돌던 자리) — 확장자 없는 "npx"는
      ENOENT, "npx.cmd"는 노드 20의 셸 우회 차단으로 EINVAL이다. 저장소에 이미 있는
-     esbuild 진입 스크립트를 지금 노드로 직접 돌리면 어느 platform에서도 같다. */
-  execFileSync(process.execPath, [
-    join(ROOT, "node_modules", "esbuild", "bin", "esbuild"), src, "--bundle", "--format=esm", "--log-level=error",
-    "--define:process.env.NODE_ENV=\"production\"", "--define:import.meta.env={}", `--outfile=${out}`,
-  ], { cwd: ROOT, stdio: ["ignore", "ignore", "inherit"] });
+     esbuild 진입점을 직접 부른다. 다만 그 진입점은 자바스크립트 껍데기일 때도 있고
+     설치 과정에서 네이티브 실행 파일로 바뀌어 있을 때도 있다. 앞 네 바이트를 읽어
+     실행 파일이면 그대로, 껍데기면 지금 노드로 돌린다. */
+  const ebin = join(ROOT, "node_modules", "esbuild", "bin", "esbuild");
+  const head = readFileSync(ebin).subarray(0, 4);
+  const native = head[0] === 0x7f && head[1] === 0x45 && head[2] === 0x4c && head[3] === 0x46
+    || (head[0] === 0x4d && head[1] === 0x5a);
+  const argv = [src, "--bundle", "--format=esm", "--log-level=error",
+    "--define:process.env.NODE_ENV=\"production\"", "--define:import.meta.env={}", `--outfile=${out}`];
+  execFileSync(native ? ebin : process.execPath, native ? argv : [ebin, ...argv],
+    { cwd: ROOT, stdio: ["ignore", "ignore", "inherit"] });
   const js = readFileSync(out, "utf8");
   rmSync(dir, { recursive: true, force: true });
   return js;
