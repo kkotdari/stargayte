@@ -195,10 +195,13 @@ const BURROW_OUT_SEC = UNBURROW_MIN_FRAMES * FRAME_SEC;
 /** 러커 가시가 같은 표적을 다시 때리기까지(초) — 32프레임. */
 const LURKER_REHIT_SEC = LURKER_REHIT_FRAMES * FRAME_SEC;
 
+
 /* ── 주문 ─────────────────────────────────────────────────────────────────────── */
 
 type OrdKind =
-  | "move" | "attack" | "anchor" | "board" | "unload" | "liftoff" | "land" | "gone" | "repair";
+  | "move" | "attack" | "anchor" | "board" | "unload" | "liftoff" | "land" | "gone" | "repair"
+  /** 건물 랠리로 정해진 첫 행선지 — 가는 것은 이동과 같고, 도착한 뒤가 다르다. */
+  | "rally";
 type Ord = { t: number; kind: OrdKind; x: number; y: number; tag: number };
 
 /** 증거를 주문으로 옮긴다 — 자리 없는 증거(생산·랠리·클로킹)는 이동과 무관하니 뺀다. */
@@ -232,6 +235,11 @@ function ordersOf(e: SimEnt): Ord[] {
        거기 있는 제 편 기계를 고친다. 다섯째 칸이 찍힌 대상의 태그다. */
     else if (f === 10) out.push({ t: s, kind: "repair", x, y, tag: extra ?? 0 });
     else if (f === 0) out.push({ t: s, kind: "move", x, y, tag: extra ?? 0 });
+    /* 20 랠리 목적지 — 가는 길은 이동과 똑같지만 도착한 뒤가 다르다. 일꾼은 랠리로
+       갔다고 해서 스스로 캐러 가지 않는다(지적: "일꾼도 랠리찍었다고 자동으로 일하지
+       않음"). 랠리가 밭에 찍혀 있으면 그때는 캔다 — 그 판정은 자원 자리를 아는 아래
+       주문 처리가 한다. */
+    else if (f === 20) out.push({ t: s, kind: "rally", x, y, tag: 0 });
   }
   out.sort((a, b) => a.t - b.t);
   return out;
@@ -291,6 +299,9 @@ type Body = {
   bld: boolean;
   /** 일꾼인가 — 이름으로 Set을 뒤지는 값을 뜨거운 자리에서 안 치르려고 미리 잡아 둔다. */
   wk: boolean;
+  /** 랠리로 가는 중인가 — 도착해도 스스로 일을 찾지 않는다(일꾼만 뜻이 있다).
+   *  사람이 준 다음 명령이 오면 풀린다. 랠리가 밭에 찍혔으면 애초에 안 선다. */
+  rallyHold: boolean;
   /** 몸 반지름(타일) — 밀어내기 평형에만 쓴다.
    *  ⚠ 사거리 판정에는 쓰지 마라. 중심 기준으로 옮기는 덧셈은 bwCombat.reachTiles가
    *    이미 제 안에서 한다 — 여기서 또 더하면 이중 가산이다(verdict-충돌 지적). */
@@ -535,7 +546,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         inside: null, actUntil: 0, lifted: false, landTo: null, flyWins: [],
         fixX: 0, fixY: 0, fixT: 0, keys: [],
         kx: NaN, ky: NaN, kh: NaN, ks: ST_GONE, kt: 0, kvx: 0, kvy: 0, px: NaN, py: NaN,
-        bld: true, wk: false,
+        bld: true, wk: false, rallyHold: false,
         /* 건물의 체력·실드·방어력·크기는 이제 표(UNITS)에서 온다 — 옛 판이 하던
            "건물은 large·방어력 최소 1" 같은 손보정은 지어낸 값이었다. 표에 없는 이름
            (애드온 ComSat 등)만 DEFAULT_UNIT으로 떨어진다. [추정] */
@@ -593,7 +604,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       keys: [],
       kx: NaN, ky: NaN, kh: NaN, ks: ST_GONE, kt: 0, kvx: 0, kvy: 0,
       px: NaN, py: NaN,
-      bld: false, wk: WORKERS.has(kind),
+      bld: false, wk: WORKERS.has(kind), rallyHold: false,
       rad: cp.radius, hw: unitBoxTiles(kind)[0] / 2, hh: unitBoxTiles(kind)[1] / 2, fixTag: 0,
       /* 기력은 메딕만 든다 — 다른 주문은 아직 이 층에 없다(스톰·인스네어 등은 증거로
          떨어지는 좌표 마법이라 시전자의 기력을 안 본다). 최대치는 카듀세우스 리액터를
@@ -1796,6 +1807,9 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
                언버로우 지연도 안 건다. 이미 거기까지 갔다는 증거니 그 시간은 지난 뒤다. */
             if (b.burrowed) { b.burrowed = false; b.burrowIn = -1; }
           }
+          /* 랠리에 세워 둔 일꾼도 '그때 저기 있었다'는 증거가 오면 붙잡아 둘 이유가
+             없다 — 이미 딴 데서 뭔가 하고 있었다는 말이다. */
+          b.rallyHold = false;
           continue;
         }
         if (b.inside !== null) continue;   // 배 안에서 받은 명령은 내린 뒤에 쓴다(P4)
@@ -1810,6 +1824,11 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
         if (b.job) claim.delete(b.job.res);
         b.job = null;
         b.aggro = o.kind === "attack";
+        /* 랠리로 온 일꾼은 도착해도 스스로 캐러 가지 않는다(지적: "일꾼도 랠리찍었다고
+           자동으로 일하지 않음 / 자원랠리도 바로 채취안함 그런 기능 없어 — 스타2랑
+           헷갈리지마"). 랠리가 밭에 걸려 있어도 마찬가지다: 원작의 랠리는 '거기로
+           가라'일 뿐 '거기 것을 캐라'가 아니다. 사람이 다음 명령을 줄 때 풀린다. */
+        b.rallyHold = o.kind === "rally" && b.wk;
         /* 수리 표적을 손에 든다(요청: SCV 수리) — 다른 명령이 오면 그 자리에서 놓는다.
            힐(메딕)도 같은 f=10으로 오지만 고치는 것은 기계뿐이라 아래에서 갈린다. */
         b.fixTag = o.kind === "repair" ? o.tag : 0;
@@ -2014,7 +2033,7 @@ export function simulate(data: SimInput, opts: SimOpts): SimResult {
       /* ③-b 채취(P3) — 명령이 없는 일꾼은 제 밭과 홀 사이를 오간다. 원작에서 이 순환은
          자동이라 리플레이에 명령으로 안 남는다: 시뮬이 모델하지 않으면 일꾼이 마지막
          명령 자리에 얼어붙는다(렌더의 왕복 어림이 하던 일을 여기로 옮겼다). */
-      if (!b.dest && b.inside === null && b.wk) {
+      if (!b.dest && b.inside === null && b.wk && !b.rallyHold) {
         if (!b.job) b.job = assignJob(b, t);
         if (b.job) {
           const j = b.job;

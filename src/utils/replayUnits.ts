@@ -69,7 +69,10 @@ export interface UnitCmd {
  *  6 이륙(위치 없음, x·y는 -1), 7 공격 명령의 목적지(지적: 어택 찍으면 그 대상을
  *  공격해야 — 다섯째 값이 찍힌 대상의 태그, 땅 어택이면 0), 8 시즈모드 켬, 9 해제
  *  (지적: 시즈 판정은 리플레이 커맨드 그대로 — 둘 다 위치 없음), 17 추정 자리(클릭
- *  중앙값으로 어림한 건물 자리 — 표적 지도·체력 원장만 쓰고 화면에는 안 그린다). */
+ *  중앙값으로 어림한 건물 자리 — 표적 지도·체력 원장만 쓰고 화면에는 안 그린다),
+ *  20 랠리 목적지(원장 유닛이 완성되어 처음 가는 자리 — 사람이 찍은 이동 0과 다르다:
+ *  일꾼은 여기 도착해도 스스로 일을 찾지 않는다. 4와도 다르다 — 4는 '건물이 랠리를
+ *  찍었다'는 건물 쪽 증거이고, 20은 '그 유닛이 거기로 간다'는 유닛 쪽 목적지다). */
 export type UnitEv = [number, number, number, number, number?];
 export interface UnitEnt {
   /** 유닛 번호. 물리 건물(끝내 선택된 적 없어 건설 좌표로만 아는 것)은 -1. */
@@ -367,6 +370,9 @@ interface Life {
   cxl: number | null;       // 건설 취소 커맨드를 받은 초(건물 생애의 끝)
   solo: boolean;            // 홀로 골라져 명령받은 적이 있나(시작 오버로드 판별 재료)
   /** 이 건물 생애에 찍힌 랠리들 [초, x, y] — 원장 유닛의 첫 행선지. */
+  /** 이 건물 생애에 찍힌 랠리들 [초, x, y] — 뽑힌 유닛의 첫 행선지다. 자원에 걸었든
+   *  맨땅에 걸었든 하는 일은 같다: 거기까지 걸어가서 선다(지적: "자원랠리도 바로
+   *  채취안함 그런 기능 없어"). */
   rallies?: [number, number, number][];
   /** 원장 결합으로 출생 이야기를 이미 받았다 — 어림 출고 보정은 건너뛴다. */
   spawned?: boolean;
@@ -2307,9 +2313,21 @@ export function buildUnitTracks(
           sx = pick.x; sy = pick.y;
         }
       }
-      if (!rally) rally = lastRallyOf(it.pid, it.done);
-      // 오버로드·일꾼은 랠리를 안 탄다(오버로드는 제자리, 일꾼은 자원 배정).
-      if (it.unit === "Overlord" || it.unit === RACE_WORKER[raceOf.get(it.pid) ?? ""]) rally = null;
+      const worker9 = it.unit === RACE_WORKER[raceOf.get(it.pid) ?? ""];
+      /* 사람 단위 폴백은 일꾼에게 안 쓴다(계측으로 정한 자리) — 이 폴백은 "그 사람이
+         마지막으로 어느 건물에든 찍은 랠리"라, 배럭·게이트에 찍은 집결지를 일꾼에게
+         물려 준다. 실측: 일꾼 랠리 목적지가 30800에서 144개인데 밭 위는 0개였고
+         90300은 189개 중 40개뿐이었다 — 나머지는 전부 군대 집결지다. 제 홀이 찍은
+         랠리만 쓴다. */
+      if (!rally && !worker9) rally = lastRallyOf(it.pid, it.done);
+      /* 오버로드만 랠리를 안 탄다 — 뽑히면 그 자리에 뜬다.
+         일꾼은 탄다(지적: "일꾼도 랠리찍었다고 자동으로 일하지 않음"). 여태 일꾼은
+         랠리를 통째로 버리고 태어나자마자 자원으로 갔는데, 원작은 그렇지 않다:
+         랠리가 미네랄·가스에 찍혀 있으면 캐러 가고, 맨땅에 찍혀 있으면 거기까지
+         걸어가서 선다. 어느 쪽인지는 자리를 아는 시뮬이 가린다(simCore의 rally 주문).
+         랠리 대부분은 어차피 제 밭에 찍혀 있어 겉보기는 거의 안 바뀐다 — 바뀌는 것은
+         '맨땅에 모아 둔 일꾼'이 여태 혼자 밭으로 돌아가던 자리다. */
+      if (it.unit === "Overlord") rally = null;
       return { it, sx, sy, rally };
     }).filter((r) => {
       if (r.sx >= 0) return true;
@@ -2333,7 +2351,10 @@ export function buildUnitTracks(
         const wd = Math.hypot(r.rally[0] - r.sx, r.rally[1] - r.sy);
         const arriveAt = Math.round(doneAt + Math.min(30, wd / 4));
         if (life.ev.length === 0 || arriveAt < life.ev[0][0]) {
-          inserts.push([arriveAt, r1(r.rally[0]), r1(r.rally[1]), 0]);
+          /* 갈래 20 = 건물 랠리 목적지(사람이 찍은 이동 0과 가른다) — 시뮬은 이걸
+             '가되 도착해서 스스로 일을 찾지는 않는다'로 읽고, 화면의 마우스 자국도
+             여기에는 안 찍는다(사람이 찍은 자리는 건물이었지 저기가 아니다). */
+          inserts.push([arriveAt, r1(r.rally[0]), r1(r.rally[1]), 20]);
         }
       }
       life.ev.unshift(...inserts);
@@ -2435,7 +2456,7 @@ export function buildUnitTracks(
       };
       if (r.rally) {
         const wd = Math.hypot(r.rally[0] - r.sx, r.rally[1] - r.sy);
-        life.ev.push([Math.round(doneAt + Math.min(30, wd / 4)), r1(r.rally[0]), r1(r.rally[1]), 0]);
+        life.ev.push([Math.round(doneAt + Math.min(30, wd / 4)), r1(r.rally[0]), r1(r.rally[1]), 20]);
         life.last = life.ev[life.ev.length - 1][0];
       }
       done.push(life);
