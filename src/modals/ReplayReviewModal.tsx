@@ -407,7 +407,11 @@ export default function ReplayReviewModal({
                         onClick={() => setOpenIndex(open ? null : i)}
                         aria-expanded={open}
                       >
-                        <span className="scr-mono scr-replay-mapping-row-name">{d.fileName}</span>
+                        <span className="scr-replay-review-title">
+                          <span className="scr-mono scr-replay-mapping-row-name">{d.fileName}</span>
+                          {/* 맵은 리플레이명 곁에 작고 흐리게(요청: 윗줄에 리플레이명과 맵). */}
+                          {d.mapName ? <span className="scr-replay-review-map">{d.mapName}</span> : null}
+                        </span>
                         <span className="scr-replay-review-badge">{v.badge}</span>
                       </button>
                       {d.excludeReason !== "duplicate" && (
@@ -434,11 +438,7 @@ export default function ReplayReviewModal({
                     ))}
 
                     {/* 언제 시작해 얼마나 걸린 무슨 경기였나(요청: 게임정보). */}
-                    <div className="scr-replay-review-game">
-                      {gameLineOf(d)}
-                      {/* 맵 이름은 한 단 작고 흐리게(요청) — 리플레이명·참가자가 먼저다. */}
-                      {d.mapName ? <span className="scr-replay-review-map">{d.mapName}</span> : null}
-                    </div>
+                    <div className="scr-replay-review-game">{gameLineOf(d)}</div>
 
                     {/* (삭제) 요약 문단 미리보기 — 검토창에서는 뺐다(요청). 이 창이 답할
                         물음은 "그냥 등록해도 되나" 하나이고, 열 몇 줄짜리 문단은 그 물음과
