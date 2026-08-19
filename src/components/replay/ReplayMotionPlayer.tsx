@@ -36,7 +36,7 @@ import { posAt, type TrackPos, type TrackPt } from "../../utils/replayTrack";
 import { FLYING_BUILDING_TPS } from "../../utils/bwTransport";
 import {
   annulusPath, bandPath, bodyFace, capFace, curvePath3, depthNow, fine, groundEllipse,
-  LOD_FINE, LOD_TRIM, lodFilter, shape, sideFace, tagKey, topFace, trim,
+  LOD_FINE, LOD_TRIM, lodFilter, shape, sideFace, tagKey, topFace, trim, bake,
   type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
   domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces,
@@ -7945,13 +7945,13 @@ for (const k of Object.keys(SHAPE_BUILDERS)) {
 
 const SHAPE_FACES: Record<string, ShapeFace[]> = {
   // 3D 빌더 전부를 표준 시점으로 한 번 굽고, 2D 기호(전투 갈래)는 그대로 얹는다.
-  ...Object.fromEntries(Object.entries(SHAPE_BUILDERS).map(([k, b]) => [k, b()])),
+  ...Object.fromEntries(Object.entries(SHAPE_BUILDERS).map(([k, b]) => [k, bake(b)])),
   // (2D 기호 삭제·요청) — 갈래 기호도 전부 3D 빌더가 만든다: 삼각형은 삼각뿔로.
 };
 /* 위에서 본 판(요청: 입체 아닌 모드에서 좀 더 부감으로) — 같은 빌더를 납작비 0.66·
    높이 0.6으로 다시 구운 것. 입체 보기가 아닐 때 지도 마커가 이쪽을 쓴다. */
 const SHAPE_FACES_TOP: Record<string, ShapeFace[]> = withTopView(() =>
-  Object.fromEntries(Object.entries(SHAPE_BUILDERS).map(([k, b]) => [k, b()])));
+  Object.fromEntries(Object.entries(SHAPE_BUILDERS).map(([k, b]) => [k, bake(b)])));
 /** 방향(요잉) 굽기 갈무리 — kind×22.5도(16방향) 버킷×(부감 여부)마다 한 번 굽는다. */
 const HEAD_FACES = new Map<string, ShapeFace[]>();
 /* (삭제·요청) 유닛 → 마커 갈래 표 — 전 유닛이 제 모델을 갖게 되어 갈래 표는 걷었다. */
@@ -8619,9 +8619,10 @@ function resolveShapeFaces(
       /* vq는 요잉이 아니라 시각 밀림(지적: 돌리면 모양이 찌그러짐) — 모델은 제 방향
          (bucket)만 요잉하고, 시각은 깊이 비례 가로 밀림(소실점 이동)으로만 반영한다. */
       const sh = Math.tan((vq * Math.PI) / 180);
+      // bake(부품 번호 새로 세기)를 가장 바깥에 둔다 — 굽는 판 하나가 곧 부품 한 벌이다.
       const bake0 = (): ShapeFace[] => withViewShear(sh, () => withYaw(-bucket, builder));
-      const bake = pitchView ? (): ShapeFace[] => withPitchView(bake0) : bake0;
-      f = flat ? withTopView(bake) : bake();
+      const baked = pitchView ? (): ShapeFace[] => withPitchView(bake0) : bake0;
+      f = bake(() => (flat ? withTopView(baked) : baked()));
       HEAD_FACES.set(key, f);
     }
     faces = f;
@@ -8873,7 +8874,7 @@ function unitSprite(
   if (hit) return hit;
   const { faces: all } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
   if (!all) return null;
-  const faces = lodFilter(autoTier(`u|${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}`, all), lod);
+  const faces = lodFilter(autoTier(op.kind, `u|${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}`, all), lod);
   /* (제거·요청) 드롭섀도 굽기 — 건물·유닛 그림자를 다 걷어 굽는 판도 그림자 없이 민다.
      pad는 안티에일리어싱 여유만. */
   const pad = 2;
@@ -9150,133 +9151,135 @@ const TIER_TRIM = 0.3;
  *    말하는 면이라, lodFilter도 따로 지켜 준다. */
 const SHADE_MINOR = 0.35;
 const AUTO_TIER_CACHE = new Map<string, ShapeFace[]>();
-/** 도록도 같은 자를 쓴다(요청: 모델 갤러리의 사양 라디오) — 지도는 늘
- *  lodFilter(autoTier(...)) 순서로 거른다. 이 단계를 건너뛰면 '저'가 지도보다 훨씬
- *  많은 부품을 남겨, 사양을 내려도 무엇이 빠지는지 보이지 않는다(부품 몸통은 명시
- *  등급이 전부 형체(1)라 lodFilter만으로는 하나도 안 빠진다 — 위 주석 참고). */
-export function autoTier(key: string, faces: ShapeFace[]): ShapeFace[] {
-  const hit = AUTO_TIER_CACHE.get(key);
+/** 종류별 부품 등급표 — 부품 번호 → 등급. 0은 '형체 확정'(실루엣을 책임지는 부품). */
+const TIER_TABLE = new Map<string, Map<number, number>>();
+/** 그 종류의 등급표를 만든다 — **기준 각도에서 한 번만** 재고 모든 각도가 이 표를 쓴다.
+ *
+ *  ★ 왜 한 번인가(수리: "각도에 따라 팔·다리 같은 게 안 보일 때가 많다. 고에서는 다
+ *    보이는데 저·중에서만 이상했다") — 여태는 굽는 각도마다 **투영된** 도형을 다시 재서
+ *    등급을 매겼다. 팔·다리를 옆에서 보면 상자가 무너져 그 각도에서만 3티어로 떨어지고,
+ *    몸을 돌리면 도로 살아난다. 실측으로 유닛 88건 중 66건이 각도에 따라 남는 부품
+ *    비율이 흔들렸다(평균 21.7%p, 최대 54%p — 셔틀 중이 13%~67%).
+ *    부품 번호(ShapeFace 여섯째)가 각도와 무관한 신원을 주므로, 등급은 그 번호에
+ *    한 번만 매겨 두면 된다. 각도는 이제 등급에 영향을 못 준다.
+ *  ★ 덤으로 가볍다 — 굽는 판마다 돌던 셈이 종류마다 한 번으로 준다(실측: 면 하나당
+ *    2.5µs · 판 하나당 0.79ms였다. 요잉 16방 × 시점 버킷만큼 곱해지던 값이다). */
+function tierTableOf(kind: string): Map<number, number> {
+  const hit = TIER_TABLE.get(kind);
   if (hit) return hit;
-  // 부품 묶기 — stageFaces와 같은 자(깊이 열쇠가 바뀌면 새 부품).
-  const gid: number[] = [];
-  const boxes: [number, number, number, number][] = [];
-  /** 부품 상자 넓이 — 등급을 정하는 크기다. */
-  const areas: number[] = [];
-  /** 낱면 상자 넓이 — 명암 잔조각 판정이 쓴다(부품 상자와 헷갈리면 안 된다). */
-  const faceSpan: number[] = [];
-  let g = -1;
-  let lastKey: number | undefined;
-  for (const f of faces) {
-    const k = f[3];
-    if (g < 0 || (k !== undefined && k !== lastKey)) {
-      g += 1;
-      areas.push(0);
-      boxes.push([Infinity, Infinity, -Infinity, -Infinity]);
+  const table = new Map<number, number>();
+  TIER_TABLE.set(kind, table);
+  const builder = Object.prototype.hasOwnProperty.call(SHAPE_BUILDERS, kind)
+    ? SHAPE_BUILDERS[kind] : undefined;
+  if (!builder) return table;
+  /* 한 각도만 보면 안 된다(수리: 기준 각도로만 표를 만들었더니 다른 각도에서 실루엣이
+     깨졌다 — 198건 중 44건, 최대 −59%). 옆에서 가려지는 부품이 정면에서는 윤곽을
+     만들기 때문이다. 여덟 방을 다 보고 **어느 한 각도에서라도 크면 크다**로 정한다.
+     비용은 종류마다 여덟 판이고 한 번뿐이다(그 뒤로는 표만 읽는다). */
+  const YAWS = [0, 45, 90, 135, 180, 225, 270, 315];
+  const areaOf = (b: [number, number, number, number]): number =>
+    (b[2] - b[0]) * (b[3] - b[1]);
+  /** 각도별 부품 상자 — [요잉 차례][부품 번호]. */
+  const perYaw: Map<number, [number, number, number, number]>[] = [];
+  const explicitOf = new Map<number, number>();
+  const bestRatio = new Map<number, number>();
+  for (const y of YAWS) {
+    const faces = bake(() => withYaw(y, builder));
+    const boxes = new Map<number, [number, number, number, number]>();
+    for (const f of faces) {
+      const pid = f[5];
+      if (pid === undefined) continue;
+      const cur = f[4] ?? 1;
+      const prev = explicitOf.get(pid);
+      // 부품의 명시 등급은 그 부품에서 가장 낮은(=가장 중요한) 값으로 본다.
+      if (prev === undefined || cur < prev) explicitOf.set(pid, cur);
+      const b = pathBox(f[0]);
+      const bb = boxes.get(pid);
+      if (!bb) { boxes.set(pid, [b[0], b[1], b[2], b[3]]); continue; }
+      if (b[0] < bb[0]) bb[0] = b[0];
+      if (b[1] < bb[1]) bb[1] = b[1];
+      if (b[2] > bb[2]) bb[2] = b[2];
+      if (b[3] > bb[3]) bb[3] = b[3];
     }
-    if (k !== undefined) lastKey = k;
-    gid.push(g);
-    const b = pathBox(f[0]);
-    faceSpan.push((b[2] - b[0]) * (b[3] - b[1]));
-    const bb = boxes[g];
-    if (b[0] < bb[0]) bb[0] = b[0];
-    if (b[1] < bb[1]) bb[1] = b[1];
-    if (b[2] > bb[2]) bb[2] = b[2];
-    if (b[3] > bb[3]) bb[3] = b[3];
+    let big = 0.0001;
+    for (const b of boxes.values()) big = Math.max(big, areaOf(b));
+    for (const [pid, b] of boxes) {
+      const r = areaOf(b) / big;
+      if (r > (bestRatio.get(pid) ?? 0)) bestRatio.set(pid, r);
+    }
+    perYaw.push(boxes);
   }
-  /* 부품의 크기는 **그 부품 상자**의 넓이다(수리: 사양 저·중에서 보여야 할 부품이
-     안 보인다) — 여태 여기 쓰던 값은 '그 부품에서 가장 큰 면 하나'의 넓이였다. 위
-     주석이 말하는 뜻("부품의 상자 넓이")과 코드가 어긋나 있었던 것이고, 어긋난 방향이
-     하필 나쁘다: 얇은 조각 수십 개로 이루어진 큰 부품(날개 슬랫·간헐천 기둥·벌처
-     차체)은 낱장이 다 작아서 통째로 3티어로 내려가 사라졌다.
-     실측(고치기 전, 실루엣이 줄어든 45/198건): 가스 간헐천이 저에서 410면 중 1면만
-     남아 세로 45%가 날아갔고, 벌처는 가로 59%, 사이언스 베슬은 세로 52%를 잃었다.
-     부품 상자로 재면 '큰 덩이'가 실제로 크게 잡혀 형체(1티어)로 남는다. */
-  for (let g2 = 0; g2 < boxes.length; g2 += 1) {
-    const bb2 = boxes[g2];
-    areas[g2] = Number.isFinite(bb2[0]) ? (bb2[2] - bb2[0]) * (bb2[3] - bb2[1]) : 0;
+  /* 크기로 매긴 1차 등급 — 명시 등급보다 내려가지는 않는다(모델러가 장식이라 한 것을
+     형체로 올리지 않는다). 여기서 쓰는 크기는 여덟 방 중 가장 크게 잡힌 값이라, 옆에서
+     납작해지는 팔·다리가 그 각도에서만 사라지는 일이 없다. */
+  for (const [pid, r] of bestRatio) {
+    const cur = explicitOf.get(pid) ?? 1;
+    if (cur === 0) { table.set(pid, 0); continue; }
+    const auto = r < TIER_FINE ? LOD_FINE : r < TIER_TRIM ? LOD_TRIM : 1;
+    table.set(pid, Math.max(cur, auto));
   }
-  const big = Math.max(...areas, 0.0001);
-  const core = boxes[areas.indexOf(big)] ?? [0, 0, 0, 0];
-  /* ★ 형체(1티어)는 실루엣을 책임진다(수리: 사양 저·중에서 보여야 할 부품이 안 보임)
-     — 여태 규칙은 "모델러가 명시한 등급은 존중한다, 내려가기만 하고 올라가지 않는다"
-     였다. 그런데 실루엣을 만드는 면이 명시 2·3티어인 모델이 실제로 많다: 벌처는 전체
-     폭(4.0~12.0)을 만드는 것이 명시 2티어 흰 면이고 몸통은 6.3~9.6뿐이며, 사이언스
-     베슬은 몸 높이 전체를 만드는 면이 명시 2티어 검은 면이다. 그리기 헬퍼(topFace·
-     sideFace)의 기본 등급이 장식(2)인데 모델러가 그것으로 **몸을 그린** 것이다.
-     그래서 저에서 벌처는 가로 59%, 베슬은 세로 52%를 잃었다.
-     내려가기만 하는 규칙에는 이걸 구제할 길이 없으므로, 마지막에 한 번 **올린다**:
-     지금 1티어인 면들의 상자를 재고, 그 밖으로 뻗는 부품은 통째로 1티어로 끌어올린다.
-     부품 단위인 이유는 면 하나만 올리면 그 조각이 허공에 뜨기 때문이다. */
-  const promote = new Set<number>();
-  {
+  /* 형체(1티어 이하)는 실루엣을 책임진다 — 각도마다 1티어 부품들의 상자를 재고, 그
+     밖으로(축마다 여유 2%) 뻗는 부품은 '형체 확정'(0)으로 끌어올린다. 각도마다 따로
+     보고 합집합을 취하는 것이 핵심이다: 어느 한 각도에서 윤곽을 만들면 그 부품은
+     모든 각도에서 형체다(등급이 각도마다 달라지면 그것이 곧 깜빡임이다).
+     그리기 헬퍼(topFace·sideFace)의 기본 등급이 장식(2)인데 모델러가 그것으로 몸을
+     그린 모델이 많아, 명시 등급을 존중하기만 해서는 벌처(가로 −59%)·사이언스
+     베슬(세로 −52%)처럼 몸이 날아간다. */
+  for (const boxes of perYaw) {
     const lo: [number, number, number, number] = [Infinity, Infinity, -Infinity, -Infinity];
-    const grow = (b: [number, number, number, number]): void => {
+    for (const [pid, b] of boxes) {
+      if ((table.get(pid) ?? 1) > 1) continue;
       if (b[0] < lo[0]) lo[0] = b[0];
       if (b[1] < lo[1]) lo[1] = b[1];
       if (b[2] > lo[2]) lo[2] = b[2];
       if (b[3] > lo[3]) lo[3] = b[3];
-    };
-    const tierOf = (i: number): number => {
-      const cur = faces[i][4] ?? 1;
-      if (cur === 0) return 0;
-      const b = boxes[gid[i]];
-      const out9 = Math.max(core[0] - b[0], core[1] - b[1], b[2] - core[2], b[3] - core[3]);
-      const span = Math.max(core[2] - core[0], core[3] - core[1], 0.001);
-      if (out9 > span * 0.06) return cur;
-      const r = areas[gid[i]] / big;
-      let a9 = r < TIER_FINE ? LOD_FINE : r < TIER_TRIM ? LOD_TRIM : 1;
-      /* ★ 아래 본 판정과 **같은 자**여야 한다 — 명암 잔조각 강등을 여기서 빼먹으면,
-         실루엣을 만들던 면이 3티어로 내려간 뒤에도 이 셈은 그 면을 아직 1티어로 알고
-         있어 구제 대상에서 빠진다(실측: 그 어긋남 하나로 실루엣 깨짐이 2건 → 54건). */
-      if (faces[i][2] !== undefined) {
-        const ga9 = areas[gid[i]];
-        if (ga9 > 0 && faceSpan[i] / ga9 < SHADE_MINOR) a9 = Math.max(a9, LOD_FINE);
-      }
-      return Math.max(cur, a9);
-    };
-    for (let i = 0; i < faces.length; i += 1) if (tierOf(i) <= 1) grow(pathBox(faces[i][0]));
-    if (Number.isFinite(lo[0])) {
-      /* 여유는 **축마다 따로** 2%다(수리: 홀쭉한 모델이 그물에서 샜다) — 한 값으로
-         묶으면 긴 축(고스트·스카웃은 세로)이 문턱을 정해, 짧은 축으로 삐져나온 부품이
-         "여유 안"으로 읽혔다. 반올림·안티에일리어싱 수준만 걸러 내면 되는 값이라
-         제 축의 길이로 재는 것이 맞다. */
-      const epsX = Math.max(lo[2] - lo[0], 0.001) * 0.02;
-      const epsY = Math.max(lo[3] - lo[1], 0.001) * 0.02;
-      for (let g2 = 0; g2 < boxes.length; g2 += 1) {
-        const b = boxes[g2];
-        if (!Number.isFinite(b[0])) continue;
-        if (lo[0] - b[0] > epsX || b[2] - lo[2] > epsX
-          || lo[1] - b[1] > epsY || b[3] - lo[3] > epsY) promote.add(g2);
-      }
+    }
+    if (!Number.isFinite(lo[0])) continue;
+    const epsX = Math.max(lo[2] - lo[0], 0.001) * 0.02;
+    const epsY = Math.max(lo[3] - lo[1], 0.001) * 0.02;
+    for (const [pid, b] of boxes) {
+      if (lo[0] - b[0] > epsX || b[2] - lo[2] > epsX
+        || lo[1] - b[1] > epsY || b[3] - lo[3] > epsY) table.set(pid, 0);
     }
   }
-  const out = faces.map((f, i) => {
+  return table;
+}
+/** 등급 입히기 — 표가 정한 부품 등급을 그 각도의 면들에 얹는다.
+ *  번호 없는 면(빌더가 tagKey·tagDepth를 안 거친 15%)은 제 명시 등급 그대로 둔다:
+ *  각도마다 다르게 판정하면 그 면들이 다시 깜빡이게 된다.
+ *  명암 잔조각 줄이기(요청)는 그 각도의 실제 크기로 본다 — 명암은 그림자·광택이라
+ *  드나들어도 형태가 흔들리지 않고, 형체 확정(0) 부품에는 손대지 않는다. */
+export function autoTier(kind: string, key: string, faces: ShapeFace[]): ShapeFace[] {
+  const hit = AUTO_TIER_CACHE.get(key);
+  if (hit) return hit;
+  const table = tierTableOf(kind);
+  const partSpan = new Map<number, number>();
+  /* 명암**만**으로 이루어진 부품은 잔조각 줄이기에서 통째로 뺀다(수리: 어느 각도에서
+     몸이 사라졌다) — 명암 면을 내리면 그 부품에 남는 것이 없어 부품 자체가 없어진다.
+     줄여도 되는 것은 '몸 위에 얹힌 명암'이지 '명암으로 그린 몸'이 아니다. 실측으로 이
+     한 줄이 실루엣 깨짐 350건 → 214건, 각도 흔들림 8.9%p → 3.4%p를 만든다(값은 감축률
+     로 치른다: 저 59%→80%). */
+  const hasBody = new Set<number>();
+  for (const f of faces) {
+    const pid = f[5];
+    if (pid === undefined) continue;
+    if (f[2] === undefined) hasBody.add(pid);
+    const b = pathBox(f[0]);
+    const a = (b[2] - b[0]) * (b[3] - b[1]);
+    partSpan.set(pid, Math.max(partSpan.get(pid) ?? 0, a));
+  }
+  const out = faces.map((f) => {
+    const pid = f[5];
+    if (pid === undefined) return f;
     const cur = f[4] ?? 1;
-    // 형체 확정(0)은 자동 판정이 손대지 않는다.
-    if (cur === 0) return f;
-    /* 실루엣을 만드는 부품은 명시 등급이 무엇이든 형체로 끌어올린다(위 주석).
-       ★ 아래 '실루엣 밖으로 뻗으면 안 내린다' 분기보다 **먼저** 봐야 한다 — 그 분기는
-         등급을 그대로 두고 곧장 돌려주므로, 뒤에 두면 정작 구제해야 할 면(밖으로 뻗는
-         면)이 전부 그 문으로 빠져나간다. */
-    if (promote.has(gid[i]) && cur > 1) return [f[0], f[1], f[2], f[3], 1] as ShapeFace;
-    /* 실루엣을 만드는 부품은 작아도 안 내린다(지적: 넥서스 네 기둥도 형태 쪽이라
-       1티어여야 한다) — 가장 큰 부품의 상자 **밖으로 뻗은** 부품은 그 자체가 윤곽을
-       바꾼다(기둥·다리·날개·포신·뿔이 전부 그렇다). 안에 파묻힌 부품만 크기로
-       내린다 — 그건 빠져도 실루엣이 그대로다. */
-    const b = boxes[gid[i]];
-    const out9 = Math.max(core[0] - b[0], core[1] - b[1], b[2] - core[2], b[3] - core[3]);
-    const span = Math.max(core[2] - core[0], core[3] - core[1], 0.001);
-    if (out9 > span * 0.06) return f;
-    const r = areas[gid[i]] / big;
-    let auto = r < TIER_FINE ? LOD_FINE : r < TIER_TRIM ? LOD_TRIM : 1;
-    /* 명암 잔조각은 한 단 더 내린다(위 SHADE_MINOR 주석) — 제 색을 지닌 면이면서
-       제 부품 상자의 작은 몫만 덮는 것들이다. 부품 상자를 재는 자는 위와 같다. */
-    if (f[2] !== undefined) {
-      // b는 **부품** 상자다(위 out9가 쓰는 값) — 낱면 길이는 faceSpan이 따로 안다.
-      const ga = areas[gid[i]];
-      if (ga > 0 && faceSpan[i] / ga < SHADE_MINOR) auto = Math.max(auto, LOD_FINE);
+    let t = table.get(pid) ?? cur;
+    if (t > 0 && f[2] !== undefined && hasBody.has(pid)) {
+      const b = pathBox(f[0]);
+      const pa = partSpan.get(pid) ?? 0;
+      const fa = (b[2] - b[0]) * (b[3] - b[1]);
+      if (pa > 0 && fa / pa < SHADE_MINOR) t = Math.max(t, LOD_FINE);
     }
-    return (auto > cur ? [f[0], f[1], f[2], f[3], auto] : f) as ShapeFace;
+    return (t === cur ? f : [f[0], f[1], f[2], f[3], t, pid]) as ShapeFace;
   });
   AUTO_TIER_CACHE.set(key, out);
   return out;
@@ -9336,7 +9339,7 @@ function buildingSprite(
   const { faces: all } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
   if (!all) return null;
   const faces = stageFaces(
-    lodFilter(autoTier(`b|${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}`, all), lod), stg);
+    lodFilter(autoTier(op.kind, `b|${op.kind}|${op.rotDeg ?? 0}|${op.flat ? 1 : 0}|${vq}|${op.pitch ? 1 : 0}`, all), lod), stg);
   /* 여백을 15% → 35%로 넓혔다(과제 #67) — 이 여백이 곧 모델이 쓸 수 있는 자리다.
      15%면 모델 단위로 양옆 2.4뿐이라, 정규화 배수를 재 보니 55종 중 30종이 목표에
      못 가고 여기서 잘렸다(그리고 지금도 7종은 이미 넘쳐 잘리고 있다: 하이브·레어·

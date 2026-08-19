@@ -5,7 +5,7 @@ import { X, ZoomIn } from "lucide-react";
 import {
   SHAPE_BUILDERS, SHAPE_GALLERY, ShapeIcon, shapeMapTiles, autoTier,
 } from "../../components/replay/ReplayMotionPlayer";
-import { withYaw, VIEW, lodFilter, type ShapeFace } from "../../utils/shapeOblique";
+import { withYaw, VIEW, lodFilter, bake, type ShapeFace } from "../../utils/shapeOblique";
 import { useLockBodyScroll } from "../../utils/bodyScrollLock";
 import PillTabs from "../../components/common/PillTabs";
 
@@ -41,7 +41,7 @@ const MAP_REF_TILES = Math.max(...SHAPE_GALLERY.map(({ kind }) => shapeMapTiles(
 const THUMB_FACES: Record<string, ShapeFace[]> = Object.fromEntries(
   SHAPE_GALLERY
     .filter(({ kind }) => Object.prototype.hasOwnProperty.call(SHAPE_BUILDERS, kind))
-    .map(({ kind }) => [kind, lodFilter(autoTier(`thumb|${kind}`, SHAPE_BUILDERS[kind]()), 1)]),
+    .map(({ kind }) => [kind, lodFilter(autoTier(kind, `thumb|${kind}`, bake(SHAPE_BUILDERS[kind])), 1)]),
 );
 
 export default function ModelGalleryScreen() {
@@ -206,7 +206,7 @@ export default function ModelGalleryScreen() {
      도록은 늘 사선 시점 한 가지이고, 등급 상한은 거르는 쪽이라 열쇠에 안 든다. */
   const faces = useMemo(
     () => (builder
-      ? lodFilter(autoTier(`g|${kind}|${snapYaw(yaw)}`, withYaw(yaw, () => builder())), quality)
+      ? lodFilter(autoTier(kind, `g|${kind}|${snapYaw(yaw)}`, bake(() => withYaw(yaw, () => builder()))), quality)
       : undefined),
     [builder, kind, yaw, quality],
   );

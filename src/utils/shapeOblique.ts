@@ -37,7 +37,15 @@
  *    3 세부   가장 작은 것. 원통 단면, 광택 점, 리벳, 데칼, 잔가시. 가장 먼저 빠진다.
  *  걸러 내는 일은 스프라이트를 굽는 순간 딱 한 번 일어난다(unitSprite/buildingSprite) —
  *  프레임마다 재는 것이 아니라, 등급이 캐시 열쇠에 들어가 판이 등급별로 따로 구워진다. */
-export type ShapeFace = [string, number, string?, number?, number?];
+/** 면 하나 — [경로, 농도, 색?, 깊이 열쇠?, 등급?, 부품 번호?].
+ *  ★ 여섯째가 부품 번호다(수리: 각도에 따라 팔·다리가 저·중에서 사라진다) — 넷째(깊이
+ *    열쇠)는 **각도마다 값이 달라지는 깊이**라 부품 신원으로 쓸 수 없었다. 등급 매기기
+ *    (autoTier)가 그 값의 '같은 값이 이어지는 구간'으로 부품을 묶고 있었는데, 각도가
+ *    바뀌면 깊이가 재편돼 묶음이 통째로 달라졌다(실측: 99종 중 74종에서 부품 수가
+ *    각도마다 바뀌었고, 러커는 면 45개 고정인데 부품이 13~21개로 흔들렸다). 그래서
+ *    같은 팔이 각도마다 다른 등급을 받아 나타났다 사라졌다. 부품 번호는 굽는 각도와
+ *    무관하게 '빌더가 몇 번째로 선언한 부품인가'만 말한다. */
+export type ShapeFace = [string, number, string?, number?, number?, number?];
 
 /** 부품 등급 — 1(형체)은 기본값이라 아무 데도 안 적는다.
  *  0은 '형체 **확정**'이다(지적: 넥서스 네 기둥처럼 작아도 형태를 만드는 부품이 크기
@@ -343,15 +351,29 @@ export function depthNow(x: number, y: number): number {
   const th = (currentYaw() * Math.PI) / 180;
   return -x * Math.sin(th) + y * Math.cos(th);
 }
+/* 부품 번호 매기개 — 굽기 한 판 안에서 tagKey·tagDepth가 불릴 때마다 하나씩 는다.
+   빌더가 "여기까지가 한 부품이다"라고 선언하는 자리가 곧 그 둘이라, 호출 차례가 그대로
+   부품 신원이 된다. 같은 빌더는 어느 각도에서도 같은 차례로 부르므로 각도와 무관하다. */
+let partSeq = 0;
+/** 굽기 한 판을 시작한다 — 부품 번호를 0부터 다시 센다. 모든 굽기가 이 문을 지나야
+ *  같은 모델의 같은 부품이 각도가 달라도 같은 번호를 받는다. */
+export function bake<T>(fn: () => T): T {
+  partSeq = 0;
+  return fn();
+}
 /** 부품 면들에 중심 깊이를 매긴다 — 손 면 묶음이 제 자리를 밝힐 때 쓴다. */
 export function tagDepth(faces: ShapeFace[], x: number, y: number): ShapeFace[] {
   const d = depthNow(x, y);
-  return faces.map(([p, o, f, , l]) => [p, o, f, d, l] as ShapeFace);
+  partSeq += 1;
+  const pid = partSeq;
+  return faces.map(([p, o, f, , l]) => [p, o, f, d, l, pid] as ShapeFace);
 }
 /** 깊이 키를 그대로 매긴다 — 프리미티브가 '부품 전체에서 가장 앞점'을 셈해 단다
  *  (지적: 중앙값 기준은 길쭉한 부품에서 틀린다 — 같은 부품도 깊이가 많이 다르다). */
 export function tagKey(faces: ShapeFace[], key: number): ShapeFace[] {
-  return faces.map(([p, o, f, , l]) => [p, o, f, key, l] as ShapeFace);
+  partSeq += 1;
+  const pid = partSeq;
+  return faces.map(([p, o, f, , l]) => [p, o, f, key, l, pid] as ShapeFace);
 }
 /** 부품 깊이 정렬(지적: 요잉으로 뒤로 간 부품이 앞 부품 위에 그려져 '비쳐 보임') —
  *  깊이 있는 면은 뒤→앞으로, 깊이 없는 면은 직전 깊이를 물려받아(장식은 제 부품에
