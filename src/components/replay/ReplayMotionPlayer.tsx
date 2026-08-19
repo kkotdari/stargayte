@@ -34,7 +34,8 @@ import { posAtSim, shotsAt, ST_INSIDE, type SimEventArr, type SimTrack } from ".
 import { posAt, LERP_MAX_GAP_SEC, type TrackPos, type TrackPt } from "../../utils/replayTrack";
 import { FLYING_BUILDING_TPS } from "../../utils/bwTransport";
 import {
-  bodyFace, capFace, depthNow, groundEllipse, lodFilter, sideFace, tagKey, topFace,
+  bodyFace, capFace, depthNow, groundEllipse, LOD_DECO, LOD_POINT, lodFilter,
+  sideFace, tagKey, topFace,
   type ShapeFace,
   boxFaces3, cylinderFaces3, discPath3, polyPath3, project,
   domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces,
@@ -9040,6 +9041,13 @@ const LOD_PX_DECO = 44;
    바꿔 가며 네 번 다 돌려도 하락은 0칸이었다. */
 const LOD_INK_POINT = 5.0;
 const LOD_INK_DECO = 11;
+/** 사양 라디오가 정하는 등급 상한(요청: "LOD 적용 및 성능 3단계로 — 딱 LOD랑 맞고
+ *  편하지") — 저 1(형체만) · 중 2(+포인트) · 고 3(+장식). 크기로 정한 등급과 이 상한
+ *  중 낮은 쪽이 실제 등급이라, 사양을 내리면 큰 모델도 부품을 덜 그린다. */
+let lodCap = LOD_DECO;
+function lodSetCap(q: number): void {
+  lodCap = q <= 1 ? 1 : q === 2 ? LOD_POINT : LOD_DECO;
+}
 /** 기기 여력 벌점(0 또는 1) — 프레임이 계속 밀리면 1로 올라 등급이 한 단 내려간다. */
 let lodPenalty = 0;
 let lodSlowFrames = 0;
@@ -9053,7 +9061,8 @@ function lodNoteFrame(ms: number): void {
 /** 이 크기로 그릴 때의 등급 — 1 형체 / 2 포인트 / 3 장식. */
 function lodOf(px: number, ptPx = LOD_PX_POINT, dcPx = LOD_PX_DECO): number {
   const base = px < ptPx ? 1 : px < dcPx ? 2 : 3;
-  return Math.max(1, base - lodPenalty);
+  // 크기가 정한 등급과 사양 상한 중 낮은 쪽 — 거기서 기기 벌점을 또 한 단 뺀다.
+  return Math.max(1, Math.min(base, lodCap) - lodPenalty);
 }
 
 /* 실루엣 광원(요청: "사양 최고에서는 유닛과 건물 모두 밝음 어두움 표현 필요") —
@@ -10395,20 +10404,26 @@ export default function ReplayMotionPlayer({
   const [simNote, setSimNote] = useState<string | null>(null);
   /* 클릭 자국 토글(요청) — 기본은 끔: 클릭이 많은 경기에서는 자국이 화면을 덮는다. */
   const [clickFx, setClickFx] = useState(true); // 기본 켬(요청)
-  /* 사양 라디오(요청: 최저·저·중·고·최고 — 렌더 요소 단계별 온오프, 기본 중).
-     0 최저: 접지 그림자만(재요청: 그림자는 최저부터) / 1 저: +체력바·죽음 효과 /
-     2 중: +전투·공사 애니·크립 / 3 고: +겹침 그림자 / 4 최고: +핑(전부 켬). */
+  /* 사양 라디오(요청: "성능 3단계로 수정(저/중/고) 이러면 딱 LOD랑 맞고 편하지") —
+     값이 **곧 모델 부품 등급(LOD)**이다: 1 저=형체만 · 2 중=+포인트 · 3 고=+장식.
+     렌더 요소도 같은 세 칸에 접었다(옛 다섯 칸의 최저는 저로, 최고는 고로 합쳤다):
+       저 1 — 접지 그림자·체력바·죽음 효과
+       중 2 — +전투·공사 애니·크립
+       고 3 — +겹침 그림자·핑(전부 켬)
+     한 자리에서 모델 정밀도와 효과가 같이 오르내려, 고르는 쪽도 한 눈금만 본다. */
   const [quality, setQuality] = useState(2);
-  // 체력바 보임/숨김(요청: 라디오화) — 사양 게이트(저 이상)와 곱해진다.
+  // 체력바 보임/숨김(요청: 라디오화) — 사양 게이트와 곱해진다.
   const [hpShow, setHpShow] = useState(true);
-  const qHp = quality >= 1;
-  const qDeath = quality >= 1;
+  // 모델 굽기가 이 상한을 읽는다 — 그리기 전에 세워 둔다(모듈 전역, lodPenalty와 같은 결).
+  lodSetCap(quality);
+  const qHp = true;
+  const qDeath = true;
   const qShadows = true;
   const qCombat = quality >= 2;
   const qBuildFx = quality >= 2;
   const qCreep = quality >= 2;
   const qOverlap = quality >= 3;
-  const qPing = quality >= 4;
+  const qPing = quality >= 3;
   /* (제거·요청) 좌우 동시 보기(비교) — forceEnt·syncKey·syncRole·신호줄까지 걷었다. */
   useEffect(() => {
     /* v2가 기본(요청: v1 완전 제거의 1단계) — 트랙이 있으면 뜨자마자 v2로 연다.
@@ -15572,8 +15587,7 @@ export default function ReplayMotionPlayer({
           <span className="scr-motion-radio-label">성능</span>
           <PillTabs
             options={[
-              { value: "0", label: "최저" }, { value: "1", label: "저" },
-              { value: "2", label: "중" }, { value: "3", label: "고" }, { value: "4", label: "최고" },
+              { value: "1", label: "저" }, { value: "2", label: "중" }, { value: "3", label: "고" },
             ]}
             value={String(quality)}
             onChange={(v) => setQuality(Number(v))}
