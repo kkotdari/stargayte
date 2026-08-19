@@ -13370,11 +13370,11 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 8px 4px; border-radius: 8px; border: 1px solid transparent;
   background: rgba(var(--overlay-rgb), 0.05); color: var(--text);
-  /* 커서는 손바닥이 아니라 손가락이다(지적: "목록에서는 손바닥으로 나와 아직도") — PC의
-     회전은 이제 ←/→ 키다. 손바닥은 "끌어야 한다"고 말해 키를 가리므로, 칸이 실제로 하는
-     일(눌러 고르기)을 그대로 가리킨다. 끌기는 손가락 화면용으로 남아 있고 거기엔 커서가
-     없다. touch-action·user-select는 그 끌기가 안 미끄러지게 그대로 둔다. */
-  cursor: pointer; position: relative; touch-action: none; user-select: none;
+  /* 커서는 좌우 화살표다(요청: "손가락 말고 좌우 커서로") — 이 칸에서 할 일이 좌우
+     회전임을 커서가 그대로 말한다. 손바닥(grab)은 "끌어야만 한다"고 말해 ←/→ 키를
+     가렸고, 손가락(pointer)은 그냥 누르는 곳으로 보였다. touch-action·user-select는
+     손가락 화면의 끌기가 안 미끄러지게 그대로 둔다. */
+  cursor: ew-resize; position: relative; touch-action: none; user-select: none;
 }
 /* 칸 버튼(돋보기) — 오른쪽 위 귀퉁이. 칸을 끌 때 눌림이 안 새게 제 손짓만 먹는다. */
 .scr-model-cellbtns {

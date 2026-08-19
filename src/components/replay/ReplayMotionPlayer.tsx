@@ -883,13 +883,15 @@ function raceBase(
      하이라이트를 날카롭게 하고 검은 그늘(#000)은 1.25배만 깊게 해, 밝은 쪽이 확 튀고
      어두운 쪽은 완전히 죽지 않는 금속 대비를 만든다. 테란·저그는 그대로다 — 셋이 같은
      광을 받으면 종족이 안 갈린다. */
-  /* 테란에도 광택을 준다(요청: "광택 넣을 방법도 있나? … 은은한") — 프로토스와 같은
-     수법이되 훨씬 약하게. 금속의 광은 색이 아니라 명암 차이므로, 흰 광만 조금 올리고
-     그늘은 거의 그대로 둔다. 프로토스는 1.7/1.25로 쨍하게, 테란은 1.32/1.1로
-     은은하게 — 그래야 둘이 같은 금속으로 안 보인다. 저그는 유기체라 광을 안 준다. */
+  /* 테란 광택을 프로토스와 **같게**(요청) — 1.32/1.1로 은은하게 두었더니 강철이
+     콘크리트처럼 무광이었다. 이제 둘 다 1.7/1.25다: 흰 광은 쨍하게 올리고 검은 그늘은
+     덜 깊게 해, 밝은 쪽이 확 튀고 어두운 쪽은 안 죽는 금속 대비가 된다. 종족은 이제
+     광이 아니라 바탕색(은색 대 금색)이 가른다. 저그는 유기체라 광을 안 준다.
+     raceBase는 건물·유닛을 안 가리므로 테란 유닛의 금속도 함께 밝아진다 — 같은 재질을
+     한 종족 안에서 둘로 나눌 이유는 없다. */
   const GLOSS: Partial<Record<keyof typeof RACE_BASE_TONE, [number, number]>> = {
     toss: [1.7, 1.25],
-    terran: [1.32, 1.1],
+    terran: [1.7, 1.25],
   };
   const g9 = GLOSS[tone];
   const lit = g9
@@ -1482,91 +1484,168 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 배럭(실물 참고) — 중앙 몸통 + 좌우로 더 높은 쌍탑 + 벌어진 네 다리와 원반 발. */
   cube: () => {
     /* 배럭(사진 참고·요청) — 크게 보면 얇은 직육면체 판 셋(가운데·좌·우)이 나란히
-       서고 그 사이를 입체 상자가 잇는 꼴이다. 뒤쪽에는 좌우 판 끝에 비스듬한 환풍구가
-       붙고, 가운데 판 위에도 길게 환풍구가 얹힌다. */
+       서고 그 사이를 입체 상자가 잇는 꼴이다. 지붕에는 앞으로 기운 경사 벤트가 얹힌다.
+
+       이번 손질(지적·요청 한 묶음):
+        · **판이 각도에 따라 커졌다 작아졌다** 하던 것 — 원인은 두께가 뒤집혀 있었다.
+          판 셋(1.9·1.6)보다 그 사이를 잇는 상자(2.9)가 더 두꺼워, 정면에서는 얇은 판이
+          옆에서는 두꺼운 사이 상자가 실루엣을 잡았다. 이제 판이 두껍고(바깥 2.7·가운데
+          2.4) 사이 상자가 얇다(1.9) — 어느 각도에서 봐도 판 셋이 덩치를 쥔다.
+        · 데칼은 판마다 하나씩(요청). 사이 상자에 두 짝씩 붙던 것을 걷었다.
+        · 옆면 데칼은 작은 네모가 아니라 앞뒤로 긴 가로띠다(요청).
+        · 벤트는 상자가 아니라 **경사로**다(요청: 옆에서 보면 삼각형) — 뒤가 높고
+          앞으로 미끄러져 내려온다.
+        · 다리를 조금만 더 드러냈다(요청) — 몸통 전체를 LIFT만큼 올린다.
+        · 노란 창을 앞면과 옆면에 몇 개씩 냈다(요청). */
     const out: ShapeFace[] = [];
-    /* 개인색을 큰 상자에서 **작은 데칼로** 옮긴다(요청: "개인색 파트를 현재 파트말고
-       더 디테일하고 작은 단위로 넣기 옆면 데칼로", "배럭 데칼은 앞뒤옆면 모두").
-       사이 상자 둘을 통째로 칠하던 방식은 두 가지가 나빴다.
-        ① 넓은 면이라 윗면의 흰 음영(0.42)이 크게 깔려, 색이 씻긴 유리판처럼 보였다 —
-           "옆면 파트가 반투명한거 불투명하게"라는 지적이 이것이다. 이제 그 상자는
-           다른 벽과 같은 테란 기본색이라 씻길 색이 없다.
-        ② 임자 색이 건물의 절반을 덮어 배럭인지 알아보기 전에 색부터 보였다.
-       대신 네 벽(앞·뒤·좌·우)에 작은 판을 짝지어 붙인다. 벽이 보일 때만 그리고,
-       벽보다 아주 조금 밖에 눕혀 z-싸움을 피한다. */
     const pc: ShapeFace[] = [];
-    /* 다리 여섯(지적) — 앞뒤 세 쌍. 다리가 너무 길다는 지적에 몸통 전체를 1.35만큼
-       내려앉혔다(바닥판 z 2.4 → 1.05). 다리만 줄이면 몸과 다리 사이가 뜨므로 몸이
-       내려와야 한다. 이제 드러나는 다리 길이는 1.07로 팩토리(0.92)·스타포트(1.22)와
-       같은 자리에 든다. 지붕 환풍구·어깨 띠의 z도 같은 값만큼 함께 내렸다. */
-    // 다리 여섯 — 앞뒤 세 쌍.
+    /** 몸통을 통째로 올리는 값(요청: "다리 길이 조금만 높이기") — 다리는 z 0.38에서
+     *  시작하므로 몸이 오른 만큼 그대로 드러나는 다리가 된다. 지붕 위에 얹히는 것들도
+     *  이 값을 함께 탄다. */
+    const LIFT = 0.36;
+    /** 판 셋 — 바깥 둘은 크고 두껍게, 가운데는 한 뼘 작게. */
+    const PX = 3.95;        // 바깥 판의 x 중심
+    const PW = 2.7;         // 바깥 판 두께(x)
+    const PD = 7.6;         // 판 깊이(y)
+    const PH = 7.2;         // 바깥 판 높이
+    const MW = 2.4;         // 가운데 판 두께
+    const MD = 6.4;
+    const MH = 5.8;
+    const PZ = 1.05 + LIFT; // 판 밑면
+    /** 사이 상자 — 판보다 얇고·낮고·얕다. 판에 물려 이음매 노릇만 한다. */
+    const GX = 1.95;
+    const GW = 1.9;
+    const GD = 7;
+    const GH = 4.6;
+    const GZ = 1.55 + LIFT;
+    const PTOP = PZ + PH;   // 바깥 판 지붕
+    const MTOP = PZ + MH;   // 가운데 판 지붕
+    // 다리 여섯 — 앞뒤 세 쌍. 가운데 다리는 몸통 안쪽으로.
     out.push(
-      // 가운데 다리는 몸통 안쪽으로(수리: y 4.3은 가운데 상자 밖이라 허공에 떴다).
-      ...legAndFoot(-3.9, 3.4, 1.45), ...legAndFoot(0, 3.7, 1.45), ...legAndFoot(3.9, 3.4, 1.45),
-      ...legAndFoot(-3.9, -3.4, 1.45), ...legAndFoot(0, -3.7, 1.45), ...legAndFoot(3.9, -3.4, 1.45),
+      ...legAndFoot(-3.9, 3.4, 1.45 + LIFT), ...legAndFoot(0, 3.7, 1.45 + LIFT),
+      ...legAndFoot(3.9, 3.4, 1.45 + LIFT),
+      ...legAndFoot(-3.9, -3.4, 1.45 + LIFT), ...legAndFoot(0, -3.7, 1.45 + LIFT),
+      ...legAndFoot(3.9, -3.4, 1.45 + LIFT),
     );
-    // 사이를 잇는 입체 상자 — 판보다 낮고 짧아 판 셋이 도드라진다.
-    /* 사이 상자는 판보다 앞뒤로 조금 더 내민다(지적: 판에 가려 안 보임) — 판이
-       더 길면 정면에서 통째로 덮인다. 키도 판과 같은 층에 둬 요잉으로 앞뒤가 갈린다. */
-    /* 키는 제 자리 깊이 하나로(지적: 배럭 키값) — 14·16·18·20 같은 붙박이 상수가
-       깊이 항(±5)보다 커서 요잉과 무관하게 상수가 순서를 지배했다. 판 셋과 사이
-       상자는 나란히 선 것들이라 제 자리 깊이만으로 앞뒤가 옳고, 위에 얹힌 환풍구·
-       어깨 띠만 제 판의 깊이에 +0.3을 더해 따라다닌다. */
-    out.push(...tagKey(boxFaces3(-2.1, 0, 2.9, 8.2, 4.6, 1.55), depthNow(-2.1, 0) * 1.6));
-    out.push(...tagKey(boxFaces3(2.1, 0, 2.9, 8.2, 4.6, 1.55), depthNow(2.1, 0) * 1.6));
-    // 얇은 판 셋(재지적) — 양쪽 판이 더 크고 가운데가 오히려 작다.
-    out.push(...tagKey(boxFaces3(-4.1, 0, 1.9, 7.6, 7.2, 1.05), depthNow(-4.1, 0) * 1.6));
-    out.push(...tagKey(boxFaces3(4.1, 0, 1.9, 7.6, 7.2, 1.05), depthNow(4.1, 0) * 1.6));
-    out.push(...tagKey(boxFaces3(0, 0, 1.6, 6.4, 5.8, 1.05), depthNow(0, 0) * 1.6));
-    /* 뒤쪽 환풍구(사진) — 좌우 판 뒤끝에 비스듬히 앉은 격자 상자. 살짝 기울여 뒤로
-       빠지고, 앞면에 밝은 살 세 줄. */
-    /* 환풍구는 양쪽 판 위에(재지적) — 판 꼭대기(z 9.6)에 앞뒤로 긴 상자를 얹고
-       가로 살을 긋는다. 뒤쪽으로 치우쳐 앉는다(사진). */
+    /* 키는 제 자리 깊이 하나로(지적: 배럭 키값) — 붙박이 상수가 깊이 항보다 커서
+       요잉과 무관하게 순서를 지배하던 것을 고친 자리다. 판 셋과 사이 상자는 나란히 선
+       것들이라 제 자리 깊이만으로 앞뒤가 옳고, 위에 얹힌 벤트·띠만 제 판의 깊이에
+       +0.3을 더해 따라다닌다. */
+    // 사이 상자 둘 — 판보다 뒤에 그려도 얇아서 안 가린다.
+    out.push(...tagKey(boxFaces3(-GX, 0, GW, GD, GH, GZ), depthNow(-GX, 0) * 1.6));
+    out.push(...tagKey(boxFaces3(GX, 0, GW, GD, GH, GZ), depthNow(GX, 0) * 1.6));
+    // 판 셋.
+    out.push(...tagKey(boxFaces3(-PX, 0, PW, PD, PH, PZ), depthNow(-PX, 0) * 1.6));
+    out.push(...tagKey(boxFaces3(PX, 0, PW, PD, PH, PZ), depthNow(PX, 0) * 1.6));
+    out.push(...tagKey(boxFaces3(0, 0, MW, MD, MH, PZ), depthNow(0, 0) * 1.6));
+    /** 지붕 경사 벤트(요청: "경사로 모양으로 앞으로 기울이기 옆에서 보면 삼각형") —
+     *  뒤(−y)가 높고 앞(+y)으로 미끄러져 내려오는 쐐기다. 옆 삼각 둘 · 뒷벽 · 경사면으로
+     *  이루어지고, 경사면 위에는 밝은 살을 몇 줄 긋는다(환풍구의 격자). */
+    const rampVent = (
+      cx: number, hw: number, yBack: number, yFront: number, zBase: number, hi: number,
+      ribs: number,
+    ): ShapeFace[] => {
+      const f: ShapeFace[] = [];
+      const zTop = zBase + hi;
+      for (const m9 of [-1, 1] as const) {
+        const d9 = polyPath3([
+          [cx + m9 * hw, yBack, zBase], [cx + m9 * hw, yBack, zTop], [cx + m9 * hw, yFront, zBase],
+        ]);
+        const fl9 = faceLight(m9, 0, 0);
+        if (fl9.visible) f.push(bodyFace(d9), ...fl9.face(d9));
+      }
+      const back = polyPath3([
+        [cx - hw, yBack, zBase], [cx + hw, yBack, zBase], [cx + hw, yBack, zTop], [cx - hw, yBack, zTop],
+      ]);
+      const flB = faceLight(0, -1, 0);
+      if (flB.visible) f.push(bodyFace(back), ...flB.face(back));
+      /* 경사면의 법선 — 뒤위에서 앞아래로 내려오는 모서리에 수직이고 하늘을 본다.
+         모서리 e=(ey,ez)에 대해 n=(−ez,ey)/|e| 다. */
+      const ey = yFront - yBack;
+      const ez = -hi;
+      const l9 = Math.hypot(ey, ez) || 1;
+      const slope = polyPath3([
+        [cx - hw, yBack, zTop], [cx + hw, yBack, zTop], [cx + hw, yFront, zBase], [cx - hw, yFront, zBase],
+      ]);
+      const flS = faceLight(0, -ez / l9, ey / l9);
+      f.push(bodyFace(slope), ...(flS.visible ? flS.face(slope) : [sideFace(slope, 0.34)]));
+      // 살 — 경사면을 가로지르는 밝은 줄. 면을 따라 앉게 t로 보간한다.
+      for (let i9 = 1; i9 <= ribs; i9 += 1) {
+        const t0 = i9 / (ribs + 1);
+        const t1 = t0 + 0.09;
+        const at = (t9: number): [number, number] => [yBack + ey * t9, zTop - hi * t9];
+        const [ya, za] = at(t0);
+        const [yb, zb] = at(t1);
+        f.push(topFace(polyPath3([
+          [cx - hw * 0.78, ya, za], [cx + hw * 0.78, ya, za],
+          [cx + hw * 0.78, yb, zb], [cx - hw * 0.78, yb, zb],
+        ]), 0.3));
+      }
+      return f;
+    };
     for (const sx9 of [-1, 1] as const) {
-      const vx9 = sx9 * 4.1;
-      out.push(...tagKey([
-        ...boxFaces3(vx9, -1, 1.7, 4.8, 1.2, 8.25),
-        ...Array.from({ length: 4 }, (_, i9) => topFace(polyPath3([
-          [vx9 - 0.7, -3 + i9 * 1.15, 9.5], [vx9 + 0.7, -3 + i9 * 1.15, 9.5],
-          [vx9 + 0.7, -2.62 + i9 * 1.15, 9.5], [vx9 - 0.7, -2.62 + i9 * 1.15, 9.5],
-        ]), 0.3)),
-      ], depthNow(vx9, 0) * 1.6 + 0.3));
+      out.push(...tagKey(rampVent(sx9 * PX, 0.95, -2.9, 1.5, PTOP, 1.55, 3),
+        depthNow(sx9 * PX, 0) * 1.6 + 0.3));
     }
-    /* 가운데 판 위 환풍구 — 양쪽보다 작고 짧다. */
-    out.push(...tagKey([
-      ...boxFaces3(0, -0.8, 1.3, 3, 0.9, 6.85),
-      ...Array.from({ length: 3 }, (_, i9) => topFace(polyPath3([
-        [-0.52, -1.9 + i9 * 0.95, 7.8], [0.52, -1.9 + i9 * 0.95, 7.8],
-        [0.52, -1.58 + i9 * 0.95, 7.8], [-0.52, -1.58 + i9 * 0.95, 7.8],
-      ]), 0.3)),
-    ], depthNow(0, 0) * 1.6 + 0.3));
-    // 좌우 판 어깨의 밝은 띠(기존 포인트 유지) — 제 판을 따라다닌다.
-    out.push(...tagKey([topFace(polyPath3([[-5, 2.6, 8.3], [-3.2, 2.6, 8.3],
-      [-3.2, 1.7, 8.3], [-5, 1.7, 8.3]]), 0.3)], depthNow(-4.1, 0) * 1.6 + 0.3));
-    out.push(...tagKey([topFace(polyPath3([[3.2, 2.6, 8.3], [5, 2.6, 8.3],
-      [5, 1.7, 8.3], [3.2, 1.7, 8.3]]), 0.3)], depthNow(4.1, 0) * 1.6 + 0.3));
-    /* 개인색 데칼 — 앞·뒤 벽에는 사이 상자 둘 위에 두 짝씩, 좌·우 벽에는 바깥 판에
-       세 짝씩. 작고 촘촘해 색이 '표식'으로 읽히고 건물 모양을 안 가린다. */
+    out.push(...tagKey(rampVent(0, 0.66, -2.1, 0.9, MTOP, 1.05, 2), depthNow(0, 0) * 1.6 + 0.3));
+    // 바깥 판 어깨의 밝은 띠(기존 포인트 유지) — 제 판을 따라다닌다.
+    for (const sx9 of [-1, 1] as const) {
+      out.push(...tagKey([topFace(polyPath3([
+        [sx9 * PX - 1.1, 2.6, PTOP], [sx9 * PX + 1.1, 2.6, PTOP],
+        [sx9 * PX + 1.1, 1.7, PTOP], [sx9 * PX - 1.1, 1.7, PTOP],
+      ]), 0.3)], depthNow(sx9 * PX, 0) * 1.6 + 0.3));
+    }
+    /** 노란 창(요청: "노란 네모 창문도 앞과 옆면에 몇개씩") — 불이 켜진 유리라 음영을
+     *  안 태우고 제 색 그대로 앉는다. 벽보다 아주 조금 밖에 눕혀 z-싸움을 피한다. */
+    const GLASS = "#f2c94c";
+    const win = (
+      pts: [number, number, number][], key: number,
+    ): void => { out.push(...tagKey(paintBase([bodyFace(polyPath3(pts))], GLASS), key)); };
     for (const sy9 of [1, -1] as const) {
       if (facingRatio(0, sy9) <= 0.12) continue;
-      const yw9 = sy9 * 4.13;
-      for (const bx9 of [-2.1, 2.1]) {
-        for (const dx9 of [-0.72, 0.72]) {
-          pc.push(...tagKey([bodyFace(polyPath3([
-            [bx9 + dx9 - 0.5, yw9, 2.5], [bx9 + dx9 + 0.5, yw9, 2.5],
-            [bx9 + dx9 + 0.5, yw9, 4.5], [bx9 + dx9 - 0.5, yw9, 4.5],
-          ]))], depthNow(bx9, sy9 * 4.1) * 1.6 + 0.3));
+      const py9 = sy9 * (PD / 2 + 0.03);
+      const my9 = sy9 * (MD / 2 + 0.03);
+      // 바깥 판 앞면 — 창 둘 · 그 아래 개인색 데칼 하나.
+      for (const sx9 of [-1, 1] as const) {
+        const cx9 = sx9 * PX;
+        const key9 = depthNow(cx9, sy9 * PD) * 1.6 + 0.3;
+        for (const dx9 of [-0.68, 0.68]) {
+          win([
+            [cx9 + dx9 - 0.36, py9, 5.3 + LIFT], [cx9 + dx9 + 0.36, py9, 5.3 + LIFT],
+            [cx9 + dx9 + 0.36, py9, 6.1 + LIFT], [cx9 + dx9 - 0.36, py9, 6.1 + LIFT],
+          ], key9);
         }
+        pc.push(...tagKey([bodyFace(polyPath3([
+          [cx9 - 0.85, py9, 2.6 + LIFT], [cx9 + 0.85, py9, 2.6 + LIFT],
+          [cx9 + 0.85, py9, 4.1 + LIFT], [cx9 - 0.85, py9, 4.1 + LIFT],
+        ]))], key9));
       }
+      // 가운데 판 앞면 — 창 하나 · 데칼 하나.
+      const keyM = depthNow(0, sy9 * MD) * 1.6 + 0.3;
+      win([
+        [-0.42, my9, 4.9 + LIFT], [0.42, my9, 4.9 + LIFT],
+        [0.42, my9, 5.6 + LIFT], [-0.42, my9, 5.6 + LIFT],
+      ], keyM);
+      pc.push(...tagKey([bodyFace(polyPath3([
+        [-0.75, my9, 2.5 + LIFT], [0.75, my9, 2.5 + LIFT],
+        [0.75, my9, 3.9 + LIFT], [-0.75, my9, 3.9 + LIFT],
+      ]))], keyM));
     }
+    /* 옆면(±x) — 개인색은 앞뒤로 긴 가로띠 하나(요청: "작은 네모말고 가로띠로 길게"),
+       그 위에 노란 창 셋. */
     for (const sx9 of [1, -1] as const) {
       if (facingRatio(sx9, 0) <= 0.12) continue;
-      const xw9 = sx9 * 5.08;
-      for (const dy9 of [-2.1, 0, 2.1]) {
-        pc.push(...tagKey([bodyFace(polyPath3([
-          [xw9, dy9 - 0.62, 3.2], [xw9, dy9 + 0.62, 3.2],
-          [xw9, dy9 + 0.62, 5.6], [xw9, dy9 - 0.62, 5.6],
-        ]))], depthNow(sx9 * 4.1, 0) * 1.6 + 0.3));
+      const xw9 = sx9 * (PW / 2 + PX + 0.03);
+      const key9 = depthNow(sx9 * PX, 0) * 1.6 + 0.3;
+      pc.push(...tagKey([bodyFace(polyPath3([
+        [xw9, -3.05, 2.7 + LIFT], [xw9, 3.05, 2.7 + LIFT],
+        [xw9, 3.05, 3.7 + LIFT], [xw9, -3.05, 3.7 + LIFT],
+      ]))], key9));
+      for (const dy9 of [-2, 0, 2]) {
+        win([
+          [xw9, dy9 - 0.42, 5 + LIFT], [xw9, dy9 + 0.42, 5 + LIFT],
+          [xw9, dy9 + 0.42, 5.9 + LIFT], [xw9, dy9 - 0.42, 5.9 + LIFT],
+        ], key9);
       }
     }
     return raceBase(out, "terran", pc);
@@ -1770,10 +1849,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           밖으로 나와 땅에 닿는다.
         · 앞쪽 경사로 셋은 절반으로 줄였고, 지붕의 굴뚝·관제 상자는 1/3로 줄였다.
         · 지붕 한가운데에 두께 있는 직각삼각형 벤트를 얹었다. */
-    const K = 1.2;
+    /* 전체 1.1배(요청) — 1.2 → 1.32. y·z는 이 배수 하나가 다 태운다. */
+    const K = 1.2 * 1.1;
     /** 앞면(정면에서 보이는 넓은 벽)의 폭 = 길이축(x)이다. 1.2배로 키우니 너무 길어
-     *  보여 이 축만 덜 키운다(요청: "앞면에서 봤을때 폭은 살짝 축소"). */
-    const KX = 1.05;
+     *  보여 이 축만 덜 키웠고(요청: "앞면에서 봤을때 폭은 살짝 축소"), 이번엔 거기서
+     *  다시 10%를 뺀다(요청: "앞뒷면만 폭 10프로 줄이고"). 1.05 × 1.1 × 0.9 = 1.0395라
+     *  x는 사실상 제자리고, 커지는 것은 y·z뿐이다 — 옆에서 본 덩치가 커지고 정면은
+     *  좁아지는, 요청 두 줄이 함께 노리던 그 모양이다. */
+    const KX = 1.05 * 1.1 * 0.9;
     const X0 = -5.5 * KX;
     const X1 = 4.3 * KX;
     const ZT = 6.9 * K;
@@ -1937,18 +2020,31 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       })(),
       // 관제 모듈의 안테나(모듈 상자는 개인색이라 아래 accent로).
       tagKey(tubeFaces(3.12, -3.12, 5.2, -3.12, 0.22, ZT + 1.5), 26 + depthNow(4.2, -3.12)),
-      /* 앞으로 나란히 내려오는 경사로 셋 — 크기를 절반으로 줄였다(요청).
-         제 깊이를 달아 뒤로 돌면 몸통 뒤로 들어간다. */
+      /* 앞으로 나란히 내려오는 경사로 셋 — 다시 한 번 줄이고 몸 안쪽으로 밀어 넣었다
+         (요청: "경사로 축소 및 본건물 안쪽으로 더 밀어넣고"). 위끝은 몸 밑판의 앞
+         모서리(y 2K · z FLOOR)에 그대로 물리고, 밖으로 나오는 길이를 1.5 → 0.78로,
+         폭을 0.55/0.65 → 0.4/0.46으로 줄인다. 좌표를 K로 매어 두어 몸이 커지면
+         경사로도 같이 큰다(여태 y만 붙박이 2.4/3.9라 1.1배에서 벽과 어긋났다). */
       [-3.8, -1, 1.8].flatMap((rx) => {
-        /* 위끝은 몸 밑판의 앞 모서리다(y 2.4 · z FLOOR) — 그보다 밖(3.2)에 두면
-           그 높이엔 벽이 없어 판이 허공에서 시작한다. */
-        const d = polyPath3([[rx - 0.55, 2.4, FLOOR], [rx + 0.55, 2.4, FLOOR],
-          [rx + 0.65, 3.9, 0], [rx - 0.65, 3.9, 0]]);
+        const y0r = 2 * K;
+        const y1r = y0r + 0.78;
+        const d = polyPath3([[rx - 0.4, y0r, FLOOR], [rx + 0.4, y0r, FLOOR],
+          [rx + 0.46, y1r, 0], [rx - 0.46, y1r, 0]]);
+        /* 그 위의 입구(요청: "위에 입구 표현(반투명 노란 불빛)추가") — 앞벽(y = YW)에
+           난 문이다. 안에서 새어 나오는 불빛이라 음영을 안 태우고 노란색 반투명 하나로
+           앉힌다. 벽보다 아주 조금 밖에 눕혀 z-싸움을 피한다. */
+        const lit: ShapeFace[] = faceLight(0, 1, 0).visible ? [[polyPath3([
+          [rx - 0.62, YW + 0.02, FLOOR + 0.15], [rx + 0.62, YW + 0.02, FLOOR + 0.15],
+          [rx + 0.62, YW + 0.02, FLOOR + 1.75], [rx - 0.62, YW + 0.02, FLOOR + 1.75],
+        ]), 0.5, "#f2c94c"] as ShapeFace] : [];
         // 진출 경사로 은색(요청).
-        return tagKey([
-          [d, 1, "#c9ced6"] as ShapeFace,
-          topFace(d, 0.14),
-        ], depthNow(rx, 3.2) * 1.6);
+        return [
+          ...tagKey([
+            [d, 1, "#c9ced6"] as ShapeFace,
+            topFace(d, 0.14),
+          ], depthNow(rx, y1r) * 1.6),
+          ...tagKey(lit, depthNow(rx, YW) * 1.6 + 0.4),
+        ];
       }),
     ), "terran", [
       /* 개인색 — 옆면 출입구 위 데칼(위에서 모았다)과 지붕 관제 모듈.
@@ -2090,9 +2186,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           bx9 + (tx9 - bx9) * t9, by9 + (ty9 - by9) * t9, PAD_Z + 0.42 + 0.22 * t9,
         ],
       }), "#6a707a"), 44 + dep9));
+      /* 끝 부품은 수직으로 가늘고 길게(요청) — 여태 반지름 0.5의 납작한 원통 + 돔이라
+         '뭉툭한 혹'으로 보였다. 이제 얇은 받침 위에 가는 장대가 곧게 선다. */
       out.push(...tagKey(paintBase([
-        ...cylinderFaces3(tx9, ty9, 0.5, 0.22, PAD_Z + 0.58),
-        ...domeFaces3(tx9, ty9, 0.5, 0.52, PAD_Z + 0.8),
+        ...cylinderFaces3(tx9, ty9, 0.26, 0.16, PAD_Z + 0.56),
+        ...cylinderFaces3(tx9, ty9, 0.13, 1.85, PAD_Z + 0.7),
       ], "#4a505a"), 45 + dep9));
     }
 
@@ -2114,7 +2212,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       const sy9 = Math.cos(a9);
       const mx9 = sx9 * 4.6;
       const my9 = sy9 * 4.6;
-      if (facingRatio(sx9, sy9) <= 0.04) continue;
+      /* 각도로 걸러 내지 않는다(지적: "옆 뒤 개인색 부품 각도에 따라 안보이는 문제") —
+         이건 벽에 칠한 데칼이 아니라 착륙판 둘레에 **눕힌 상자**라, 바깥 법선이 뒤를
+         향해도 내려다보는 카메라에는 윗면이 그대로 보인다. facingRatio 컷은 평평한
+         데칼용 잣대인데 그것을 상자에 대는 바람에, 임자 색이 어떤 요잉에서는 하나도
+         안 남았다. 상자 자신의 faceLight가 이미 안 보이는 면을 걸러 준다. */
       /* 길쭉한 쪽이 둘레를 따라 눕는다 — 앞뒤(0·180)는 가로로 길고 좌우(90·270)는
          세로로 길다. 상자는 못 돌리므로 두 폭을 바꿔 끼운다. */
       const along = Math.abs(sy9) > 0.5;
@@ -6154,7 +6256,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        아카데미도", "애드온들도") — 이 건물들만 제 회색을 손으로 박아 두고 있어서,
        커맨드·배럭·팩토리 옆에 서면 혼자 어둡고 칙칙했다. 주 덩이를 raceBase가 칠하는
        톤(#868d94)으로 맞추고, 어두운 받침·구멍·밝은 은빛 디테일은 그대로 둔다.
-       raceBase로 감싸는 것은 색뿐 아니라 종족별 광택(테란 1.32/1.1)까지 받기 위해서다. */
+       raceBase로 감싸는 것은 색뿐 아니라 종족별 광택(테란 1.7/1.25)까지 받기 위해서다. */
     return raceBase(out, "terran");
   },
   /* 핵 사일로(재모델링·사진) — 리벳 박힌 강철 드럼 무리다: 오른뒤에 주황 창 띠를
@@ -6230,7 +6332,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        아카데미도", "애드온들도") — 이 건물들만 제 회색을 손으로 박아 두고 있어서,
        커맨드·배럭·팩토리 옆에 서면 혼자 어둡고 칙칙했다. 주 덩이를 raceBase가 칠하는
        톤(#868d94)으로 맞추고, 어두운 받침·구멍·밝은 은빛 디테일은 그대로 둔다.
-       raceBase로 감싸는 것은 색뿐 아니라 종족별 광택(테란 1.32/1.1)까지 받기 위해서다. */
+       raceBase로 감싸는 것은 색뿐 아니라 종족별 광택(테란 1.7/1.25)까지 받기 위해서다. */
     return raceBase(out, "terran");
   },
   /* 머신 샵(재모델링·사진) — 톱니처럼 각진 강철 덩치다: 앞면에 주황 테를 두른
@@ -6288,7 +6390,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        아카데미도", "애드온들도") — 이 건물들만 제 회색을 손으로 박아 두고 있어서,
        커맨드·배럭·팩토리 옆에 서면 혼자 어둡고 칙칙했다. 주 덩이를 raceBase가 칠하는
        톤(#868d94)으로 맞추고, 어두운 받침·구멍·밝은 은빛 디테일은 그대로 둔다.
-       raceBase로 감싸는 것은 색뿐 아니라 종족별 광택(테란 1.32/1.1)까지 받기 위해서다. */
+       raceBase로 감싸는 것은 색뿐 아니라 종족별 광택(테란 1.7/1.25)까지 받기 위해서다. */
     return raceBase(out, "terran");
   },
   /* 컨트롤 타워(재모델링·사진) — 붉은 치마를 두른 원뿔 관제탑에 노랑·검정 빗금 띠가
@@ -6367,7 +6469,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        아카데미도", "애드온들도") — 이 건물들만 제 회색을 손으로 박아 두고 있어서,
        커맨드·배럭·팩토리 옆에 서면 혼자 어둡고 칙칙했다. 주 덩이를 raceBase가 칠하는
        톤(#868d94)으로 맞추고, 어두운 받침·구멍·밝은 은빛 디테일은 그대로 둔다.
-       raceBase로 감싸는 것은 색뿐 아니라 종족별 광택(테란 1.32/1.1)까지 받기 위해서다. */
+       raceBase로 감싸는 것은 색뿐 아니라 종족별 광택(테란 1.7/1.25)까지 받기 위해서다. */
     return raceBase(out, "terran");
   },
   /* 코버트 옵스(재모델링·사진) — 어두운 각진 선체 위에 길쭉한 장갑 슬래브 셋이
@@ -6432,7 +6534,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        아카데미도", "애드온들도") — 이 건물들만 제 회색을 손으로 박아 두고 있어서,
        커맨드·배럭·팩토리 옆에 서면 혼자 어둡고 칙칙했다. 주 덩이를 raceBase가 칠하는
        톤(#868d94)으로 맞추고, 어두운 받침·구멍·밝은 은빛 디테일은 그대로 둔다.
-       raceBase로 감싸는 것은 색뿐 아니라 종족별 광택(테란 1.32/1.1)까지 받기 위해서다. */
+       raceBase로 감싸는 것은 색뿐 아니라 종족별 광택(테란 1.7/1.25)까지 받기 위해서다. */
     return raceBase(out, "terran");
   },
   /* 피직스 랩(재모델링·사진) — 왼쪽에 큰 강철 구형 포드가 앉고 그 뒤로 노랑·검정
@@ -6492,7 +6594,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        아카데미도", "애드온들도") — 이 건물들만 제 회색을 손으로 박아 두고 있어서,
        커맨드·배럭·팩토리 옆에 서면 혼자 어둡고 칙칙했다. 주 덩이를 raceBase가 칠하는
        톤(#868d94)으로 맞추고, 어두운 받침·구멍·밝은 은빛 디테일은 그대로 둔다.
-       raceBase로 감싸는 것은 색뿐 아니라 종족별 광택(테란 1.32/1.1)까지 받기 위해서다. */
+       raceBase로 감싸는 것은 색뿐 아니라 종족별 광택(테란 1.7/1.25)까지 받기 위해서다. */
     return raceBase(out, "terran");
   },
   /* ── 공사 표현 공용 셋(요청: 아이콘 대신 모델) ───────────────────────────── */
@@ -9296,7 +9398,7 @@ export const BLD_NORM: Record<string, number> = {
   covert: 2.065,
   creep: 1.219,
   ctower: 2.238,
-  cube: 1.137,
+  cube: 1.112,
   cyber: 1.972,
   diamond: 1.876,  // 상자 상한에 걸림
   dmound: 1.115,
@@ -9304,7 +9406,7 @@ export const BLD_NORM: Record<string, number> = {
   ebay: 0.982,
   evo: 1.214,
   extract: 1.023,
-  factory: 1.063,
+  factory: 1.042,
   fleetbeacon: 2.071,
   forge: 1.398,
   gate: 1.979,
@@ -9320,7 +9422,7 @@ export const BLD_NORM: Record<string, number> = {
   nydus: 1.184,
   observatory: 1.959,
   physlab: 2.008,
-  plane: 1.205,
+  plane: 1.213,
   pool: 1.525,
   pyramidWide: 1.058,
   queensnest: 1.184,
