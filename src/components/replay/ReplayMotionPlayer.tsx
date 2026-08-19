@@ -969,15 +969,26 @@ function suitHelmet(
   if (gd) faces.push([gd, 0.6, glass], topFace(gd, 0.1));
   return tagKey(faces, depthNow(0, cy) + 1.6);
 }
-/** 저그 갈고리 — 밖·앞으로 나갔다 안으로 감기는 한 장의 낫 날(원복). */
+/** 저그 갈고리(지적: "낫을 더 사실적으로") — 손으로 그린 납작한 종이 한 장이었다.
+ *  화면 좌표로 친 베지에 실루엣이라 두께도 명암도 없고, 요잉이 돌아도 늘 같은 쪽
+ *  얼굴만 보였다. 이제는 **휜 축을 가진 기둥**이다: 뿌리에서 밖·앞으로 크게 나갔다
+ *  안으로 감기는 2차 베지에를 축으로 삼고, 뿌리에서 끝으로 가늘어지는 옆선을 준다.
+ *  단면은 좌우로 부풀린 타원(oval > 1)이라 위아래로 얇은 날이 된다 — 카이저 블레이드가
+ *  바로 그 꼴이고, 덕분에 위에서는 넓은 날, 옆에서는 얇은 날등이 저절로 나온다.
+ *  뿌리 단면만 뚜껑을 닫는다(끝은 뾰족하고, 뿌리는 몸속에 묻힌다). */
 function claw3(m: 1 | -1, s: number, z0: number): ShapeFace[] {
-  const [a1x, a1y] = project(m * 0.7 * s, 0.6 * s, z0);
-  const [a2x, a2y] = project(m * 1.5 * s, 0.2 * s, z0);
-  const [ox, oy] = project(m * 2.9 * s, 2.4 * s, z0 + 0.6);
-  const [tx, ty] = project(m * 1 * s, 4.4 * s, z0 - 0.6);
-  const [ix, iy] = project(m * 1.9 * s, 1.9 * s, z0 + 0.2);
-  const d = `M${a1x} ${a1y} Q${ox} ${oy} ${tx} ${ty} Q${ix} ${iy} ${a2x} ${a2y} Z`;
-  return [bodyFace(d), sideFace(d, 0.16)];
+  const P0: [number, number, number] = [m * 0.75 * s, 0.45 * s, z0 + 0.1];
+  const CP: [number, number, number] = [m * 3.05 * s, 2.3 * s, z0 + 0.5];
+  const P1: [number, number, number] = [m * 0.95 * s, 4.5 * s, z0 - 0.45];
+  const bez = (a: number, b: number, c: number, t: number): number =>
+    (1 - t) * (1 - t) * a + 2 * (1 - t) * t * b + t * t * c;
+  return spirePillar({
+    x: 0, y: 0, h: 1, w: 1, segs: 9, sides: 6, oval: 1.75, caps: "bottom",
+    path: (t: number): [number, number, number] => [
+      bez(P0[0], CP[0], P1[0], t), bez(P0[1], CP[1], P1[1], t), bez(P0[2], CP[2], P1[2], t),
+    ],
+    widthOf: (t: number): number => (0.44 * (1 - t) ** 1.25 + 0.028) * s,
+  });
 }
 function ivory(faces: ShapeFace[]): ShapeFace[] {
   return faces.map(([d, o, f, k, l]) => [d, o, f ?? IVORY, k, l] as ShapeFace);
@@ -8748,15 +8759,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        예외로 둥글게 간다. 각진 쐐기였을 때는 얼굴이 앞몸에서 이어진 또 한 겹의
        갑옷판으로 읽혀 어디가 머리인지 안 보였다. 지름은 옛 쐐기 밑변(3.4)에 맞춘다.
        이마 판·눈·턱은 그대로 이 구 앞면에 물려 박힌다. */
-    out.push(...tagKey(sphereFaces3(0, 3.9, 4.9, 1.7, PLATE), 12));
-    // 이마 판 — 창백한 판(임자 색). 구 위쪽에 좁게 얹어 눈썹뼈로 읽히게 한다.
-    out.push(...tagKey(frustumFaces3(0, 4.2, 1.45, 1.15, 1, 0.8, 0.35, 5.05 + BODY_UP), 12.6));
-    // 눈 한 쌍(요청) — 이마 판 아래, 머리 쐐기 앞면.
-    out.push(...tagKey(zergEyes(4.9, 3.95 + BODY_UP, 0.72, 0.28), 12.8));
-    // 턱 — 머리 밑으로 내민 짧고 각진 판.
-    out.push(...tagKey(paintBase(
-      frustumFaces3(0, 4.7, 2.4, 1.6, 1.7, 1.1, 0.75, 2.2 + BODY_UP), DARK),
-    12.3));
+    out.push(...tagKey(sphereFaces3(0, 3.9, 4.7, 1.2, PLATE), 12));
+    /* 이마 판과 턱, 각진 입체 둘은 걷었다(지적) — 구 하나로 간 얼굴에 네모 판이
+       붙으니 얼굴이 도로 갑옷 조각 모음이 됐다. 얼굴에 남는 것은 눈 한 쌍뿐이다. */
+    out.push(...tagKey(zergEyes(4.62, 3.78 + BODY_UP, 0.54, 0.24), 12.8));
     /* ── 낫 한 쌍 ── **고유색(상아빛)이다**(요청) — 임자 색이 아니다. 밖·앞으로 크게
        감긴다. 넷이 아니라 둘이다(지적: "갈고리는 한 쌍인데 지금 두 쌍") — 낮게
        앞으로 뻗던 작은 한 쌍을 걷었다. 넷은 앞이 갈퀴로 뒤덮여 몸이 안 보였다. */
@@ -9746,7 +9752,7 @@ const MODEL_NORM: Record<string, number> = {
   tankbody: 0.846,
   tanksiege: 0.660,
   tanksiegebody: 0.756,
-  ultra: 0.433,
+  ultra: 0.437,
   valk: 0.949,
   vessel: 0.810,
   vulture: 1.058,
