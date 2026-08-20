@@ -10,7 +10,7 @@
  *
  *   머리   char[4] "OBWT" · u8 판(=2) · f32 초당프레임 · i32 믿을프레임(-1이면 끝까지)
  *   로스터 u8 사람수, 사람마다 u8 임자 · u8 리플레이id · u8 종족 · u8 편 · u8 controller
- *          · u32 색번호(RGB가 아니다 — 아래 BW_COLOR로 편다) · u8 이름길이 · 이름(UTF-8)
+ *          · u32 개인색(0x00rrggbb, CCLR에서 읽은 값) · u8 이름길이 · 이름(UTF-8)
  *   트랙표 u32 트랙수, 트랙마다 u32 태그 · u8 임자 · u16 유닛종류
  *          · u32 키수 · u32 체력키수 · u32 인터셉터키수
  *   키 흐름 (트랙 차례대로, 트랙마다 앞 키와의 **차이**를 적는다)
@@ -97,27 +97,9 @@ export type TruthTracks = {
   orders: Map<number, [number, number, number, number][]>;
 };
 
-/* 개인색 — 리플레이는 **색 번호**를 담는다(RGB가 아니다). 원작의 팔레트로 편다.
-   0~7이 여덟 사람 자리의 색이라 실제로 쓰이는 것은 거의 이 여덟이고, 그 위는 관전·중립
-   자리에서나 나온다. 값은 원작 팔레트(111~126번 칸) 그대로다. */
-const BW_COLOR: Record<number, string> = {
-  0: "#f40404",  // 빨강
-  1: "#0c48cc",  // 파랑
-  2: "#2cb494",  // 청록
-  3: "#88409c",  // 보라
-  4: "#f88c14",  // 주황
-  5: "#703014",  // 갈색
-  6: "#cce0d0",  // 하양
-  7: "#fcfc38",  // 노랑
-  8: "#088008",  // 초록
-  9: "#fcfc7c",  // 연노랑
-  10: "#ecc4b0", // 살구
-  11: "#4068d4", // 하늘
-  12: "#74a47c", // 연두
-  13: "#9090b8", // 회보라
-  14: "#fcfc7c", // 연노랑
-  15: "#00e4fc", // 시안
-};
+/* 개인색은 덤퍼가 리마스터의 **CCLR 구획**에서 읽어 온다(bwdump.cpp) — 사람마다 고른
+   색이 float 넷으로 거기 들어 있다. 헤더의 색 칸은 색표 번호가 아니라 딴 것이었다:
+   판마다 같은 번호가 다른 색으로 나와, screp과 대조해 보고서야 알았다. */
 
 /** 상태 번호 — 옛 시뮬(ST_*)과 같은 값이다. */
 export const TRUTH_ST_IDLE = 0;
@@ -256,9 +238,10 @@ export async function decodeTruthTracks(b64: string): Promise<TruthTracks | null
       const race = c.u8();
       const force = c.u8();
       const controller = c.u8();
-      const slot = c.u32();
+      const rgb = c.u32();
       const name = c.utf8(c.u8());
-      const color = BW_COLOR[slot] ?? "#cccccc";
+      // 덤퍼가 CCLR에서 읽어 온 진짜 개인색이다(0xffffff이면 그 구획이 없는 옛 리플레이).
+      const color = `#${(rgb & 0xffffff).toString(16).padStart(6, "0")}`;
       players.push({ owner, pid, race, force, controller, color, name });
     }
 
