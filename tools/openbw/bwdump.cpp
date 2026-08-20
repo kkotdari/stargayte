@@ -64,6 +64,24 @@ static void bwdump_gen_report() {
   }
 }
 
+static std::map<std::string,int> g_trigmiss;
+void bwdump_trigmiss(int kind, int id) {
+  char k[48]; snprintf(k, sizeof k, "%s %d", kind == 1 ? "조건" : "동작", id);
+  g_trigmiss[k] += 1;
+}
+static std::map<std::string,int> g_ai;
+void bwdump_aiorder(const char* name) { g_ai[name] += 1; }
+static void bwdump_trigmiss_report() {
+  if (g_trigmiss.empty()) return;
+  fprintf(stderr, "\n⚠ 안 만든 트리거를 만났다(OpenBW 미구현 — 조건은 '아니다', 동작은 건너뜀)\n");
+  for (const auto& kv : g_trigmiss) fprintf(stderr, "   %-10s %d회\n", kv.first.c_str(), kv.second);
+}
+static void bwdump_ai_report() {
+  if (g_ai.empty()) return;
+  fprintf(stderr, "\n⚠ 컴퓨터 AI 명령이 나왔다(OpenBW에 구현 없음 — '가만히'로 넘겼다)\n");
+  for (const auto& kv : g_ai) fprintf(stderr, "   %-16s %d회\n", kv.first.c_str(), kv.second);
+  fprintf(stderr, "   → 이 판의 참값은 그만큼 못 믿는다\n");
+}
 static std::map<std::string,int> g_why;
 void bwdump_why(const char* what, int step) {
   if (!getenv("BWDUMP_WHY")) return;
@@ -153,7 +171,9 @@ static double bwdump_aim_p90(int b) {
   std::sort(v.begin(), v.end());
   return v[(size_t)(v.size() * 0.9)];
 }
+static bool g_no_ai = false;
 static int bwdump_trust_frame() {
+  if (g_no_ai) return 0;      /* 컴퓨터가 낀 판은 처음부터 못 믿는다 */
   for (int b = 0; b + 1 < 64; ++b) {
     const bool res_bad = g_tot[b] >= 20 && g_tot[b + 1] >= 20
       && g_ok[b] * 100 < g_tot[b] * 97 && g_ok[b + 1] * 100 < g_tot[b + 1] * 97;
@@ -391,6 +411,21 @@ int main(int argc, char** argv) {
     if (std::string(argv[i]) == "--units") units_mode = true;
     if (std::string(argv[i]) == "--tracks") tracks_mode = true;
   }
+  /* 컴퓨터 플레이어가 끼어 있으면 이 판은 원리상 못 돌린다 — OpenBW에는 컴퓨터 AI가
+     아예 없다(AIPatrol·ComputerAI 같은 명령이 구현되어 있지 않다). 참값을 내 봐야
+     쓰레기이므로 먼저 크게 알린다. */
+  {
+    int comps = 0;
+    if (getenv("BWDUMP_CTRL")) for (size_t i = 0; i != 12; ++i) fprintf(stderr, "  자리 %zu controller=%d race=%d\n", i, (int)player.st().players[i].controller, (int)player.st().players[i].race);
+    for (size_t i = 0; i != 12; ++i) {
+      auto c = player.st().players[i].controller;
+      if (c == player_t::controller_computer || c == player_t::controller_computer_game) comps += 1;
+    }
+    if (comps) {
+      fprintf(stderr, "\n⚠⚠ 컴퓨터 플레이어 %d명 — OpenBW에는 컴퓨터 AI가 없다. 이 판의 참값은 쓸 수 없다.\n\n", comps);
+      g_no_ai = true;
+    }
+  }
   struct life_t { int kind, owner, born, last; int bx, by, lx, ly; };
   std::map<unsigned, life_t> lives;
   if (units_mode) {
@@ -484,6 +519,8 @@ int main(int argc, char** argv) {
     bwdump_ord_report();
     bwdump_aim_report();
     bwdump_selown_report();
+    bwdump_ai_report();
+    bwdump_trigmiss_report();
     bwdump_fail_report();
     bwdump_trig_report();
     bwdump_owner_time_report();

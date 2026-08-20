@@ -56,6 +56,11 @@ struct modern_replay_file_reader {
 				pos += n;
 			}
 		}
+		if (getenv("BWDUMP_DUMPSEC") && output_size > 100000) {
+			char nm[256]; snprintf(nm, sizeof nm, "%s.%zu", getenv("BWDUMP_DUMPSEC"), output_size);
+			FILE* f = fopen(nm, "wb"); if (f) { fwrite(output, 1, pos, f); fclose(f);
+				fprintf(stderr, "  [토막 저장] %s (%zu/%zu 바이트)\n", nm, pos, output_size); }
+		}
 		if (pos != output_size) error("modern_replay: %d 바이트 읽음, %d 기대", (int)pos, (int)output_size);
 	}
 
