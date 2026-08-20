@@ -9827,64 +9827,89 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   ovie: () => {
     const SHELL = "#5a3a26";      // 갑각 짙은 갈색(사진)
     const SHELL_LIT = "#7c5334";  // 갑각 이랑 — 한 단 밝다
-    const R9 = 2.35;              // 몸 반지름
-    const CZ = 5.2;               // 몸 중심 높이
+    /* 몸통만 키운다(요청: "오버로드 몸통쪽 전체 크기 1.1배 몸통 세로 높이 추가 1.1배")
+       — 가로는 1.1배, 높이는 거기에 한 번 더 1.1배를 얹어 1.21배다. 배·갑각·이랑·앞턱·
+       허파 렌즈·얼굴·등 주머니·뿔이 몸통 쪽이고, 아래로 매달린 다리와 집게는 제 치수를
+       그대로 둔다 — 다만 **뿌리 자리는 커진 몸을 따라간다**(안 그러면 붙어 있던 것이
+       몸 속에 파묻히거나 허공에 뜬다).
+       ★ 화면에서 오버로드가 10% 커지는 것이 아니다 — 굽는 사슬 끝의 MODEL_NORM이 종류
+         마다 잉크 상자를 한 크기로 맞추므로, 바뀌는 것은 **몸통과 나머지의 비**다.
+         그래서 이 파일을 고치면 `npm run model-norm -- --emit`을 다시 돌려 MODEL_NORM·
+         MODEL_INK를 함께 갈아야 한다(표 주석의 규약). */
+    const BK = 1.1;               // 몸통 가로 배수
+    const BKZ = 1.1 * 1.1;        // 몸통 세로 배수(가로 몫 위에 한 번 더)
+    const R9 = 2.35 * BK;         // 몸 반지름 — 가로
+    const RZ9 = 2.35 * BKZ;       // 몸 반지름 — 세로(돔의 높이를 재는 자)
+    const CZ = 5.2;               // 몸 중심 높이(안 움직인다 — 여기서 위아래로 늘린다)
+    /** 몸통에 붙는 높이를 커진 몸으로 옮긴다 — 몸 중심에서 재어 세로 배수를 먹인다. */
+    const bz = (z9: number): number => CZ + (z9 - CZ) * BKZ;
     const body: ShapeFace[] = [];
     /* 배 — 아래로 부푼 물렁한 살. 갑각보다 먼저 그려 갑각이 그 위를 덮는다. */
-    body.push(...tagKey(domeFaces3(0, 0, R9 * 0.98, -R9 * 0.82, CZ), depthNow(0, 0) - 1));
+    body.push(...tagKey(domeFaces3(0, 0, R9 * 0.98, -RZ9 * 0.82, CZ), depthNow(0, 0) - 1));
     /* 갑각 — 위를 덮는 돔. 그 위에 앞뒤로 흐르는 이랑 셋을 얹어 딱딱한 껍질로 읽히게
        한다(이것이 '풍선'을 벗는 대목이다). 이랑은 구 표면을 따라 도는 낮은 기둥이라
        어느 요잉에서도 등에 붙어 함께 돈다. */
-    body.push(...tagKey(paintBase(domeFaces3(0, -0.1, R9, R9 * 0.92, CZ - 0.15), SHELL),
-      depthNow(0, -0.1) + 0.5));
-    for (const xr of [-1.35, 0, 1.35]) {
+    body.push(...tagKey(paintBase(domeFaces3(0, -0.1 * BK, R9, RZ9 * 0.92, bz(CZ - 0.15)), SHELL),
+      depthNow(0, -0.1 * BK) + 0.5));
+    for (const xr0 of [-1.35, 0, 1.35]) {
+      const xr = xr0 * BK;
       const rr = Math.sqrt(Math.max(0.05, R9 * R9 - xr * xr)) * 0.99;
+      // 이랑은 타원면을 따라 돈다 — 가로는 rr, 세로는 그 세로 몫이다.
+      const rz = rr * (RZ9 / R9);
       body.push(...tagKey(paintBase(spirePillar({
         x: 0, y: 0, h: 1, w: 1, segs: 8, sides: 5, caps: "none",
         path: (t9: number): [number, number, number] => {
           const a9 = -0.42 + t9 * 2.5;
-          return [xr, Math.cos(a9) * rr, CZ - 0.15 + Math.sin(a9) * rr];
+          return [xr, Math.cos(a9) * rr, bz(CZ - 0.15) + Math.sin(a9) * rz];
         },
-        widthOf: (t9: number): number => 0.2 + 0.1 * Math.sin(Math.PI * t9),
-      }), SHELL_LIT), depthNow(xr, 0.4) + 1.2));
+        widthOf: (t9: number): number => (0.2 + 0.1 * Math.sin(Math.PI * t9)) * BK,
+      }), SHELL_LIT), depthNow(xr, 0.4 * BK) + 1.2));
     }
     /* 갑각 앞턱 — 배와 갑각이 만나는 자리를 두르는 두꺼운 테. 앞을 볼 때만. */
     if (facingRatio(0, 1) > 0.05) {
       body.push(...tagKey(paintBase(
-        tubeFaces(-1.6, 1.5, 1.6, 1.5, 0.3, CZ - 0.5), SHELL_LIT,
-      ), depthNow(0, 1.5) + 2));
+        tubeFaces(-1.6 * BK, 1.5 * BK, 1.6 * BK, 1.5 * BK, 0.3 * BK, bz(CZ - 0.5)), SHELL_LIT,
+      ), depthNow(0, 1.5 * BK) + 2));
     }
     /* 뿔(사진) — 앞위로 크게 굽는 으뜸 한 쌍 + 뒤·옆의 작은 것들. 상아빛 고유색이라
        갑각과 갈린다. 제 뿌리 깊이를 달아 뒤로 돈 뿔은 몸에 가려진다. */
     const horns: ShapeFace[] = [];
     for (const m of [-1, 1] as const) {
       horns.push(...tagKey(spikeHorn(
-        m * 1.5, 0.95, CZ + 0.6, m * 2.9, 3.2, CZ + 2.5, 0.66, IVORY_DEEP, 6, 1.1, m * 0.5, 0.9,
-      ), depthNow(m * 2.2, 2) * 1.6 + 3));
+        m * 1.5 * BK, 0.95 * BK, bz(CZ + 0.6), m * 2.9 * BK, 3.2 * BK, bz(CZ + 2.5),
+        0.66 * BK, IVORY_DEEP, 6, 1.1, m * 0.5, 0.9,
+      ), depthNow(m * 2.2 * BK, 2 * BK) * 1.6 + 3));
       horns.push(...tagKey(spikeHorn(
-        m * 1.75, -1.2, CZ + 0.9, m * 2.85, -2.9, CZ + 1.9, 0.44, IVORY_DEEP, 6, 0.7, m * 0.6, -0.8,
-      ), depthNow(m * 2.3, -2) * 1.6 + 3));
+        m * 1.75 * BK, -1.2 * BK, bz(CZ + 0.9), m * 2.85 * BK, -2.9 * BK, bz(CZ + 1.9),
+        0.44 * BK, IVORY_DEEP, 6, 0.7, m * 0.6, -0.8,
+      ), depthNow(m * 2.3 * BK, -2 * BK) * 1.6 + 3));
       horns.push(...tagKey(spikeHorn(
-        m * 0.9, -0.2, CZ + 2.05, m * 1.55, 0.5, CZ + 3.1, 0.3, IVORY_DEEP, 6, 0.4, m * 0.8, 0.4,
-      ), depthNow(m * 1.2, 0.2) * 1.6 + 4));
+        m * 0.9 * BK, -0.2 * BK, bz(CZ + 2.05), m * 1.55 * BK, 0.5 * BK, bz(CZ + 3.1),
+        0.3 * BK, IVORY_DEEP, 6, 0.4, m * 0.8, 0.4,
+      ), depthNow(m * 1.2 * BK, 0.2 * BK) * 1.6 + 4));
     }
     /* 양옆 허파 기관 — 접평면에 선 넓은 보라 렌즈(앞선 정정 그대로 둔다: 눈이 아니라
        기관이다). 갑각 옆구리에 박힌다. */
     const lens = (m: number): ShapeFace[] => {
       const th = Math.PI * (82 / 180);
-      const lx = Math.sin(th) * 2.05 * m;
-      const ly = Math.cos(th) * 2.05;
-      return lensFaces({ x: lx, y: ly, z: CZ + 0.45, nx: lx, ny: ly, r: 1.18, bulge: 0.31, tiltDeg: 9 });
+      const lx = Math.sin(th) * 2.05 * BK * m;
+      const ly = Math.cos(th) * 2.05 * BK;
+      return lensFaces({
+        x: lx, y: ly, z: bz(CZ + 0.45), nx: lx, ny: ly, r: 1.18 * BK, bulge: 0.31 * BK, tiltDeg: 9,
+      });
     };
     /* 얼굴 — 배 앞아래에 박힌 작은 구 + 사진의 붉게 빛나는 눈 한 쌍. */
-    const [fhx, fhy] = project(0, 1.95, 3.95);
+    /* 얼굴은 배에 박혀 있으므로 자리가 배를 따라간다 — 제 크기는 가로 몫(BK)만 받는다:
+       작은 구를 세로로 1.21배 늘이면 얼굴만 달걀이 된다. */
+    const [fhx, fhy] = project(0, 1.95 * BK, bz(3.95));
     const face: ShapeFace[] = [
       ...tagKey([
-        [screenCircle(fhx, fhy, 0.8), 1, "#6b4732"] as ShapeFace,
-        topFace(screenCircle(fhx - 0.26, fhy - 0.26, 0.3), 0.22),
-      ], depthNow(0, 1.95)),
+        [screenCircle(fhx, fhy, 0.8 * BK), 1, "#6b4732"] as ShapeFace,
+        topFace(screenCircle(fhx - 0.26 * BK, fhy - 0.26 * BK, 0.3 * BK), 0.22),
+      ], depthNow(0, 1.95 * BK)),
       ...([-1, 1] as const).flatMap((m) => lensFaces({
-        x: m * 0.42, y: 1.95, z: 4.35, nx: m * 0.5, ny: 1, r: 0.22, bulge: 0.15, lift: 3,
+        x: m * 0.42 * BK, y: 1.95 * BK, z: bz(4.35), nx: m * 0.5, ny: 1,
+        r: 0.22 * BK, bulge: 0.15 * BK, lift: 3,
         rim: "#5c1610", fill: "#d8412a", core: "#ff8a5c", glint: "#ffe0cf",
       })),
     ];
@@ -9892,14 +9917,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        갈수록 가늘고, 끝마디만 상아 발톱이다. 화면 띠가 아니라 투영 막대라 어느
        요잉에서도 굵기가 제대로 산다. */
     const limbs: ShapeFace[] = [];
+    /* 뿌리 높이는 **타원면**을 따른다 — 몸이 세로로 1.21배 늘었으므로 구 공식(가로
+       반지름 하나)으로 재면 다리가 배 속에서 시작한다. 가로 몫으로 각을 잡고 세로 몫을
+       곱한다. */
     const rootZ = (rx9: number, ry9: number): number => {
       const d9 = Math.min(R9 - 0.1, Math.hypot(rx9, ry9));
-      return CZ - Math.sqrt(Math.max(0.01, R9 * R9 - d9 * d9)) + 0.2;
+      return CZ - Math.sqrt(Math.max(0.01, R9 * R9 - d9 * d9)) * (RZ9 / R9) + 0.2;
     };
     for (const m of [-1, 1] as const) {
-      for (const ly of [-1.36, -0.4, 0.8]) {
-        const KX = [0.96, 0.96, 0.88, 0.74].map((v) => m * v);
-        const KZ = [rootZ(0.96, ly), 1.1, -0.2, -1.35];
+      for (const ly0 of [-1.36, -0.4, 0.8]) {
+        const ly = ly0 * BK;
+        // 다리 제 치수는 그대로다 — 붙는 자리만 넓어진 배를 따라 바깥으로 나간다.
+        const KX = [0.96 * BK, 0.96 * BK, 0.88, 0.74].map((v) => m * v);
+        const KZ = [rootZ(0.96 * BK, ly), 1.1, -0.2, -1.35];
         const KW = [0.34, 0.3, 0.26, 0.2];
         const key = depthNow(m * 0.9, ly) * 1.6 - 2;
         for (let j = 0; j < 3; j += 1) {
@@ -9914,12 +9944,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        팔뚝과 갈린다. */
     const claws: ShapeFace[] = [];
     for (const m of [-1, 1] as const) {
-      const key = depthNow(m * 1, 1.9) * 1.6 + 1;
+      const key = depthNow(m * 1 * BK, 1.9 * BK) * 1.6 + 1;
       // 위 절반 — 뿌리는 얇고 갈림점에서 가장 굵다.
       claws.push(...tagKey(spirePillar({
         x: 0, y: 0, h: 1, w: 1, segs: 5, sides: 6, caps: "none",
         path: (t9: number): [number, number, number] =>
-          [m * (0.66 + 0.42 * t9), 1.4 + 0.7 * t9, rootZ(0.66, 1.4) - 2.3 * t9],
+          [m * (0.66 * BK + 0.42 * t9), 1.4 * BK + 0.7 * t9, rootZ(0.66 * BK, 1.4 * BK) - 2.3 * t9],
         widthOf: (t9: number): number => 0.26 + 0.3 * t9,
       }), key));
       // 아래 절반 = 집게 두 갈래. 바깥 갈래는 밖으로, 안 갈래는 안으로 벌어진다.
@@ -9927,9 +9957,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         claws.push(...tagKey(ivory(spirePillar({
           x: 0, y: 0, h: 1, w: 1, segs: 6, sides: 6, caps: "bottom",
           path: (t9: number): [number, number, number] => [
-            m * (1.08 + s * (0.52 * t9 + 0.34 * t9 * t9)),
-            2.1 + 0.5 * t9 - 0.35 * t9 * t9,
-            rootZ(0.66, 1.4) - 2.3 - 2.1 * t9,
+            m * (1.08 * BK + s * (0.52 * t9 + 0.34 * t9 * t9)),
+            2.1 * BK + 0.5 * t9 - 0.35 * t9 * t9,
+            rootZ(0.66 * BK, 1.4 * BK) - 2.3 - 2.1 * t9,
           ],
           widthOf: (t9: number): number => 0.34 * (1 - t9) ** 0.8 + 0.04,
         })), key + 0.4 + (s > 0 ? 0.1 : 0)));
@@ -9939,11 +9969,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        덩이 넷. accent로 빼 raceBase의 밑칠을 안 받으므로 칠하지 않은 채 남고, 그
        자리에 임자 색이 든다. 작게 그려질수록 '누구 것인가'가 급하므로 이 자리가
        개인색을 갖는 것이 맞다. */
+    /* 등 주머니는 갑각 위에 얹힌 몸통 쪽이다 — 자리는 커진 몸을 따르고, 제 크기는
+       가로 몫(BK)만 받는다(구를 세로로만 늘이면 주머니가 달걀이 된다). */
     const sacs: ShapeFace[] = ([
       [0, -1.15, 6.95, 0.86], [-1.2, -0.55, 6.6, 0.66],
       [1.2, -0.55, 6.6, 0.66], [0, -2.2, 6.1, 0.6],
     ] as [number, number, number, number][]).flatMap(([sx, sy, sz, sr]) =>
-      tagKey(sphereFaces3(sx, sy, sz, sr), depthNow(sx, sy) * 1.6 + 5));
+      tagKey(sphereFaces3(sx * BK, sy * BK, bz(sz), sr * BK),
+        depthNow(sx * BK, sy * BK) * 1.6 + 5));
     return raceBase([
       ...limbs,
       ...claws,
@@ -10746,7 +10779,7 @@ const UNIT_BULK: Record<string, 0 | 1 | 2> = {
  *  하던 일을 채움 보정이 아니라 이 층으로 옮긴 것이다. 스크립트도 짝은 안 찍는다.
  *  표에 없는 종류는 1(모델 그대로)이다 — 건물이 여기로 떨어진다. */
 const MODEL_NORM: Record<string, number> = {
-  arbiter: 2.024,
+  arbiter: 1.774,  // 상자 상한(원한 배수 2.068)
   archon: 0.525,
   bc: 0.670,
   burrowhole: 0.832,
@@ -10771,20 +10804,20 @@ const MODEL_NORM: Record<string, number> = {
   htemp: 1.074,
   hydra: 0.782,
   inf: 1.437,
-  larva: 1.466,
+  larva: 1.350,  // 상자 상한(원한 배수 1.466)
   lurker: 0.592,
   lurkeregg: 0.886,
-  mine: 1.411,  // 상자 상한(원한 배수 1.465)
+  mine: 1.293,  // 상자 상한(원한 배수 1.465)
   muta: 0.735,
   mutacocoon: 1.100,
   observer: 1.938,
-  ovie: 0.624,
+  ovie: 0.575,
   probe: 1.582,
   probeGas: 1.392,
   probeMin: 1.473,
   queen: 0.741,
   reaver: 1.234,
-  scourge: 1.327,
+  scourge: 1.293,  // 상자 상한(원한 배수 1.327)
   scout: 0.951,
   scv: 0.734,
   scvGas: 0.733,
@@ -10843,7 +10876,7 @@ const NORM_TARGET_INK = 5.2;
  *   · tankgun·tanksiegegun — **일부러** 목표를 안 맞춘 것. 짝이라 차체 배수를 쓰므로
  *     제 잉크 상자는 5.2가 아니다(포신은 완결 유닛이 아니라 부품이다).
  *  이 표도 --emit이 낸 값이다. */
-const MODEL_INK: Record<string, number> = { mine: 5.008, tankgun: 3.939, tanksiegegun: 4.318 };
+const MODEL_INK: Record<string, number> = { arbiter: 4.461, larva: 4.787, mine: 4.591, scourge: 5.070, tankgun: 3.939, tanksiegegun: 4.318 };
 /** 그리는 kind가 정규화 뒤 실제로 차지하는 잉크 상자(모델 단위). */
 const modelInkOf = (kind: string): number => MODEL_INK[kind] ?? NORM_TARGET_INK;
 
