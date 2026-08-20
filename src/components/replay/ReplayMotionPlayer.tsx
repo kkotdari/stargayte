@@ -15759,18 +15759,29 @@ export default function ReplayMotionPlayer({
   /* 시야에서 벗어나면 일시정지(요청) — 다시 보일 때 자동으로 되살리지는 않는다(멈춘 걸
      사람이 이어 보는 건 재생 버튼의 몫이다). 확대 모달은 늘 화면 안이라 안 지킨다 —
      여닫는 재부착 순간 IO가 '안 보임'을 쏘아 재생을 멈추던 것(지적: 확대·축소 시
-     재생 유지)도 이것으로 막힌다. big이 바뀌면 맵이 다른 트리로 옮겨 심기므로 effect를
-     다시 걸어 새 엘리먼트를 관찰한다. */
+     재생 유지)도 이것으로 막힌다. 맵이 다른 트리로 옮겨 심기면 effect를 다시 걸어 새
+     엘리먼트를 관찰한다.
+     ★ 전체화면에서는 아예 안 건다(지적: "전체화면모드 처음들어갈때 재생정지되는 문제")
+       — 원인은 이 관찰자였다. 전체화면은 지도를 body의 자리에서 떼어 판 안(.scr-fs-stage)
+       으로 옮겨 심으므로 맵 엘리먼트가 **갈린다**. 그런데 이 effect의 의존 목록에는
+       wide만 있어서 다시 걸리지 않았고, 관찰자는 방금 떨어져 나간 **낡은** 엘리먼트를
+       계속 보고 있었다. 떨어진 엘리먼트는 당연히 '안 보임'이라 곧장 재생을 멈췄다.
+       fsOn을 목록에 넣어 다시 걸고, 전체화면 동안에는 관찰 자체를 쉰다 — 그때 지도는
+       화면을 통째로 덮고 있어 '스크롤 밖으로 나감'이라는 것이 아예 없다. */
   useEffect(() => {
-    if (wide) return undefined;
+    if (wide || fsOn) return undefined;
     const el = mapRef.current;
     if (!el || typeof IntersectionObserver === "undefined") return undefined;
     const io = new IntersectionObserver((entries) => {
+      /* 이중 잠금 — 전체화면으로 넘어가는 참이면 이 알림은 '스크롤 밖으로 나갔다'가
+         아니라 '옮겨 심느라 잠깐 떨어졌다'는 뜻이다. 알림은 다음 그리기 뒤에 오고
+         effect 청소는 그 전에 도는 것이 보통이지만, 순서에 기대지 않는다. */
+      if (fsOnRef.current) return;
       if (entries.some((e) => !e.isIntersecting)) setPlaying(false);
     }, { threshold: 0.2 });
     io.observe(el);
     return () => io.disconnect();
-  }, [wide]);
+  }, [wide, fsOn]);
 
   /* (삭제) 화면을 벗어날 때의 정지는 이제 스크롤 밖(IntersectionObserver)뿐이다 —
      창 전환(blur) 정지를 걷은 뒤에도 탭 숨김(visibilitychange) 정지가 남아 창을 덮으면
@@ -16127,6 +16138,20 @@ export default function ReplayMotionPlayer({
           fit
         />
       </span>
+      {/* 전체화면 여닫이(요청: "전체화면 온오프 버튼을 여기로 이동" — 색상·성능과 공유
+          사이의 빈 자리) — 들고나기가 **한 버튼**이라, 전체화면 안에서도 같은 자리에서
+          같은 손가락으로 닫는다. 이 줄은 좁은 배치와 손가락 기기 전체화면이 함께 쓰므로
+          한 벌로 둘 다 된다. 남는 자리는 이 버튼과 공유 버튼이 반씩 나눠 갖는다
+          (둘 다 margin-left:auto — 그래서 이 버튼이 빈칸 한가운데에 선다). */}
+      <button
+        type="button"
+        className="scr-motion-litbtn scr-motion-mobfs"
+        onClick={() => (fsOn ? exitFs() : enterFs())}
+        aria-label={fsOn ? "전체화면 나가기" : "전체화면"}
+        title={fsOn ? "전체화면 나가기" : "전체화면"}
+      >
+        {fsOn ? <Minimize size={15} /> : <Maximize size={15} />}
+      </button>
       {shareNode}
     </div>
   );
@@ -16319,8 +16344,11 @@ export default function ReplayMotionPlayer({
         >
             {/* 전체화면 버튼(요청) — 네 귀퉁이 꺾쇠(변 중간이 끊어진 사각형) 아이콘이다.
               지도 오른쪽 위 구석에 반투명으로 뜬다. 지도의 팬·줌 손짓에 안 딸리게
-              눌림을 끊는다. 전체화면 안에서는 오버레이가 나가기 버튼을 맡는다. */}
-          {!fsOn && (
+              눌림을 끊는다. 전체화면 안에서는 오버레이가 나가기 버튼을 맡는다.
+              ★ 넓은 배치에만 선다(요청: "전체화면 온오프 버튼을 여기로 이동") — 좁은
+                배치에서는 아래 색상·성능 줄의 여닫이 버튼이 그 몫이라, 지도 구석에
+                또 두면 같은 일을 하는 버튼이 둘이다. */}
+          {wide && !fsOn && (
             <button
               type="button"
               className="scr-motion-litbtn scr-motion-fsbtn"
@@ -18547,9 +18575,9 @@ export default function ReplayMotionPlayer({
       aria-label="시점 각도"
     />
   );
-  /* 나가기 — 손가락 기기에서는 **맨 윗줄 가운데**에 선다(지적: "모바일에서 전체화면
-     나가는 버튼이 없음"). 여태 아래 조작줄 꼬리에 공유 버튼과 나란히 있었는데, 그 줄이
-     좁은 화면에서 넘쳐(공유 버튼이 크다 — 아래) 꼬리째 화면 밖으로 밀려나 있었다. */
+  /* 나가기 — 넓은 배치(PC) 전용이다. 손가락 기기의 나가기는 아래 색상·성능 줄의
+     여닫이 버튼이 맡는다(요청: "전체화면 온오프 버튼을 여기로 이동") — 한때 맨 윗줄
+     가운데에도 뒀지만, 같은 일을 하는 버튼이 한 화면에 둘일 까닭이 없다. */
   const fsExitNode = (
     <button
       type="button" className="scr-motion-litbtn scr-fs-exit"
@@ -18577,7 +18605,6 @@ export default function ReplayMotionPlayer({
             <>
               <div className="scr-fs-top">
                 <div className="scr-fs-toproster">{teamCol(1)}</div>
-                {fsExitNode}
                 <div className="scr-fs-toproster">{teamCol(2)}</div>
               </div>
               <div className="scr-fs-edge scr-fs-edge-l">{fsSpeedBar}</div>

@@ -11676,6 +11676,14 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    빈 자리였다). 밀어내는 몫은 공유 버튼이 맡는다(아래). */
 /* 공유 버튼은 이 줄에서 컴팩트하다(지적: 너무 크다) — 기본 .scr-btn 크기(40px대)는
    알약 둘과 나란히 서기엔 두 배로 크다. PC 공유 줄과 같은 24px 흰 알약으로 맞춘다. */
+/* 전체화면 여닫이(요청: "전체화면 온오프 버튼을 여기로 이동") — 색상·성능과 공유 사이
+   빈칸의 한가운데다. 남는 자리를 이 버튼과 공유 버튼의 auto 여백 둘이 반씩 나눠 갖는다.
+   손가락 표적이라 알약을 키운다(기본 .scr-motion-litbtn은 20px 높이). */
+.scr-motion-mobrow .scr-motion-mobfs {
+  margin-left: auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; min-width: 40px; height: 26px; padding: 0;
+}
 .scr-motion-mobrow .scr-kakao-share-btn {
   margin-left: auto;
   height: 24px; min-height: 0; padding: 0 10px; font-size: 11px; gap: 4px;
@@ -14586,9 +14594,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   padding: calc(max(var(--safe-top, 0px), 8px) + 4px) 8px 10px;
   background: linear-gradient(180deg, rgba(6, 9, 14, 0.55), rgba(6, 9, 14, 0));
 }
+/* 로스터 둘이 줄을 반씩 나눠 갖는다 — 가운데 있던 나가기는 아래 색상·성능 줄의
+   여닫이 버튼으로 옮겼다(요청). */
 .scr-fs-toproster { flex: 1 1 0; min-width: 0; }
-/* 나가기는 손가락으로 눌러야 하니 알약을 키운다 — 기본 .scr-motion-litbtn은 24×20이다. */
-.scr-fs-top .scr-fs-exit { flex: 0 0 auto; width: 36px; min-width: 36px; height: 32px; }
 /* 배속·각도는 지도 좌우 **가장자리**에 얹는다 — 평소 좁은 화면(.scr-motion-slidebar-l/-r)과
    같은 자리다. 다만 그쪽은 지도 상자 기준이고 이쪽은 화면 기준이다: 전체화면의 지도는
    화면보다 크게 깔려 끌려 다니므로 지도에 붙이면 밖으로 밀려난다. */
