@@ -54,3 +54,9 @@ var/
 *.pem
 .vercel
 .env*
+
+# 스타크래프트 자료 파일 — 저작물이라 저장소에 안 들어간다(tools/openbw/README.md)
+*.mpq
+tools/openbw/data/
+tools/openbw/bwdump
+tools/openbw/bwextract
