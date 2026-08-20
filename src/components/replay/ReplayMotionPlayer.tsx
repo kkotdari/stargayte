@@ -4274,7 +4274,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
 
   /* 스포어(정정: 가시가 아니라 굴뚝이 포인트) — 크립 밑동과 몸통 덩어리 위에, 왼뒤에서
      굵게 서는 아가리 뚫린 굴뚝 관. */
-  spore: () => {
+  // 요잉 −45도(요청: "크립/스포어콜로니 -45도").
+  spore: () => withModelSpin(-45, () => {
     /* 스포어 콜로니(제로베이스 재작도 — 사진이 첫째 자료) ────────────────────────
        사진이 말하는 것:
          · 한가운데에 **매끈하고 통통한 주황빛 알덩이**가 앉는다. 위가 둥글게 부풀고
@@ -4433,11 +4434,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       }), TENT), depthNow(tx9, ty9) * 1.6 + 2));
     }
     return raceBase(out, "zerg", pc);
-  },
+  }),
 
   /* 크립 콜로니(실물 참고) — 처진 붉은 둔덕 + 꼭대기 주름 혹(입) + 옆 가시 + 바닥에
      번진 점액 자락. */
-  creep: () => withModelSpin(-90, () => {
+  // 요잉 −90 → −135도(요청: "크립/스포어콜로니 -45도").
+  creep: () => withModelSpin(-135, () => {
     /* 크립 콜로니(요청: 뿔기둥 전격 활용 / 지적: 뚜껑·가시가 어긋남) — 둔덕 옆선을
        식으로 두고, 뚜껑은 그 꼭대기 원 위에, 가시는 그 옆면 위에 앉힌다. 키는
        해처리와 같은 자(둔덕 0, 나머지는 제 자리 깊이 × 1.6). */
@@ -5778,8 +5780,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 에볼루션 챔버(재모델링·사진) — 결절이 박힌 큰 살덩이 엽 둘(개인색)이 앞을
      차지하고, 뒤에는 뒤틀린 검은 등걸이 가지를 뻗는다. 오른쪽에는 창백한 뼈판이
      기대고, 발치에는 검은 촉수 다발이 엉킨다. 키는 저그 공통 자(제 자리 깊이 × 1.6). */
-  // 요잉 180 → 270도(요청: "챔버(+90도 요잉도)").
-  evo: () => withModelSpin(270, () => {
+  // 요잉 270 → 360도(요청: "챔버 +90도" — 두 번째 +90이다). 한 바퀴라 0과 같다.
+  evo: () => withModelSpin(0, () => {
     const out: ShapeFace[] = [...tagKey(creepSplat(6.2), -20)];
     /* 살덩이 엽 둘 — 볼록한 종 모양 기둥. 개인색이라 fill을 주지 않는다. */
     const lobe = (lx9: number, ly9: number, r9: number, h9: number): void => {
@@ -11952,7 +11954,8 @@ export const BLD_FILL_TARGET: Record<string, number> = {
      부품을 골라 빼는 자를 새로 만드는 대신 이 표로 되돌린다 — 스타포트의 안테나,
      게이트웨이 아치의 바깥 다리를 다룬 그 자리와 같은 손잡이다. 뿔은 조금 넘치게 두고
      몸통이 발자국을 채우게 한다. 하이브가 뿔이 더 많아 한 단 더 준다. */
-  lair: 1.45, hive: 1.55,
+  // 한 번 더 키운다(재요청: "레어 하이브 확대") — 1.45·1.55 → 1.7·1.8.
+  lair: 1.7, hive: 1.8,
   /* 스타포트·게이트웨이가 제 발자국보다 좁아 보인다(지적: "일부 건물들이 실제 캔버스보다
      작게(좁게) 그려지는 느낌 … 게이트웨이 스타포트 등" · "스타포트는 안테나를 크기계산
      에서 살짝 빼줘야하고") — 진단이 맞다. 정규화가 재는 것은 **잉크 폭 전체**라, 몸통
@@ -11987,7 +11990,7 @@ export const BLD_FILL_TARGET: Record<string, number> = {
        둘이고, 아래 값은 그 둘에 대해서는 뜻이 없다. */
   // 작아 보이는 것들 — 키운다.
   tombFlat: 1.2,       // 벙커
-  turret: 1.2,         // 터렛
+  turret: 1.45,        // 터렛(재요청: "터렛 확대" — 1.2에서 더)
   trapezoid: 1.2,      // 서플라이
   /* 엔베는 한 번 더(재지적: "엔베 크기 확대") — 1.2로도 작았다. 지붕이 낮고 넓은
      판이라 잉크 폭을 다 써도 눈에 잡히는 덩어리가 얇다. */
@@ -12062,9 +12065,9 @@ export const BLD_NORM: Record<string, number> = {
   geyser: 1.587,
   gspire: 1.151,  // 상자 상한에 걸림
   hatchery: 1.327,
-  hive: 1.345,
+  hive: 1.511,  // 상자 상한에 걸림
   hydraden: 1.070,
-  lair: 1.293,
+  lair: 1.516,
   mineral: 1.963,
   mshop: 1.649,
   nsilo: 1.642,
@@ -12081,14 +12084,14 @@ export const BLD_NORM: Record<string, number> = {
   scaffold: 1.733,
   scifac: 1.373,
   spire: 1.548,  // 상자 상한에 걸림
-  spore: 1.660,
+  spore: 1.666,
   sunken: 1.354,
   sunkenfire: 1.326,
   tomb: 1.534,
   tombFlat: 1.441,
   trapezoid: 1.906,
   tribunal: 1.954,
-  turret: 2.235,
+  turret: 2.312,  // 상자 상한에 걸림
   warpin: 2.196,
 };
 const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; ox: number; oy: number; pad: number; l: number; side: number; bot: number; top: number; w: number; cx: number }>();
