@@ -14732,7 +14732,8 @@ export default function ReplayMotionPlayer({
      연속으로 움직이는 길이 여기까지 간다. 더블클릭·더블탭이 한 번에 뛰는 자리는
      ZOOM_GAME 그대로다(그건 앞서 6 → 4로 낮춰 달라던 값이라 건드리지 않는다).
      핀치 상한이 20이라 다른 길과 안 맞던 것도 여기로 모은다. */
-  const ZOOM_MAX = 8;
+  // 8 → 16(재요청: "확대 상한 지금의 두배더").
+  const ZOOM_MAX = 16;
   /* 확대는 **PC 휠과 모바일 핀치 두 길뿐**이다(요청: "인포팝업 때문에 더블탭/클릭 줌은
      제거") — 유닛을 눌러 정보 팝업을 여는 것과 같은 손짓이라, 팝업을 두 번 확인하려다
      화면이 확대되고 팝업이 닫히는 일이 잦았다. 여기 있던 ZOOM_GAME(한 번에 뛰던 배율)
@@ -16919,14 +16920,14 @@ export default function ReplayMotionPlayer({
               const bs9 = BLD_STATS[unit];
               const bShShare9 = bs9 && bs9[1] > 0 ? bs9[1] / (bs9[0] + bs9[1]) : 0;
               const bShieldUp9 = bShShare9 > 0 && (bldHp.frac ?? 1) > 1 - bShShare9 + 0.001;
-              // 건물도 같은 잣대로 잠깐만(지적) — 0.8 → 0.35초.
+              // 건물도 같은 잣대로 잠깐만(지적·요청) — 0.8 → 0.35 → 0.18초.
               /* 건물도 맞은 방향에 튄다(요청: "근접공격시 피격효과(건물포함, 방향주의)")
                  — 저글링이 해처리를 물어뜯는 동안 불티가 늘 발자국 한가운데에서 텄다.
                  붙어 있는 적 쪽 테두리로 옮긴다: 발자국 반쪽의 0.8배라 벽면 언저리다.
                  가로세로가 다른 발자국이라 x·y에 각자의 몫을 곱한다. */
-              const bHitDir9 = bldHp.hurt > -99 && t - bldHp.hurt <= 0.35
+              const bHitDir9 = bldHp.hurt > -99 && t - bldHp.hurt <= 0.18
                 ? hitDirOf(teamOfRaw(raw), centerX, centerY) : null;
-              const bldHitFx = bldHp.hurt > -99 && t - bldHp.hurt <= 0.35 ? (
+              const bldHitFx = bldHp.hurt > -99 && t - bldHp.hurt <= 0.18 ? (
                 <span
                   key={`bhit-${i}`}
                   className="scr-motion-army scr-motion-dot scr-v2fx"
@@ -17408,7 +17409,8 @@ export default function ReplayMotionPlayer({
               재건)는 폭발이 아니라 제외한다. */}
           {buildsSrc.map(([sec, x, y, unit, raw, gone, liftAt], i) => {
             const goneAt = gone ?? 0;
-            if (!goneAt || liftAt || t < goneAt || t > goneAt + 2) return null;
+            // 2 → 1초(요청: "시간 축소해") — CSS 애니도 같은 1초다.
+            if (!goneAt || liftAt || t < goneAt || t > goneAt + 1) return null;
             // 후계가 선 자리는 무너진 것이 아니라 변태·재건이다(위 succeedsBld와 같은 자).
             if (buildsSrc.some(([s2, x2, y2, u2, r2], j) => j !== i && r2 === raw
               && s2 > sec && Math.hypot(x2 - x, y2 - y) <= SAME_SITE_TILES
@@ -17453,7 +17455,10 @@ export default function ReplayMotionPlayer({
                죽을 때까지 살아 있게 된다(위 ★). 변태로 끝난 생애는 여운도 없다: 다음
                생애가 같은 자리에서 바로 서므로, 1.2초를 더 두면 알 위에 라바가 겹친다. */
             const dieAt = e.died;
-            if (dieAt !== null && t >= dieAt + (e.end === "morph" ? 0 : 1.2)) return null;
+            /* 사망 여운 1.2 → 0.55초(요청: "시간 축소해") — 피격과 같은 까닭이다.
+               몸은 죽은 자리에 못박히지만, 그 자리에 오래 남을수록 뒤에 오는 유닛이
+               시체 위를 지나간다. */
+            if (dieAt !== null && t >= dieAt + (e.end === "morph" ? 0 : 0.55)) return null;
             const team = teamOfRaw(e.raw);
             /* 걸음 속도 상한(요청) — 제 속도표로 죈다. 15%만 여유를 둔다: 교전 지연을
                따라잡는 몫이라, 이보다 크면 다시 '순간적으로 빨라짐'이 된다.
@@ -17771,17 +17776,31 @@ export default function ReplayMotionPlayer({
               const dp0 = dmem0 ?? posAt(rp, Math.max(rp[0][0], dieAt));
               const dpx = dp0 ? dp0.x : ax3;
               const dpy = dp0 ? dp0.y : ay3;
+              /** 죽은 몸의 화면 크기 — 뜨는 높이와 터지는 크기가 같은 자를 쓴다. */
+              const diePx9 = drawUnit === ""
+                ? unitGlyphPx(unitMarkerKind("", race), unitMarkerKind("", race), 0, dpy)
+                : unitPxOf(drawUnit, dpy);
               /* 공중은 떠 있던 몸 자리에서 터진다(지적) — 비행 높이만큼 위로. */
-              const dieLift = uAir
-                ? (drawUnit === "" ? unitGlyphPx(unitMarkerKind("", race), unitMarkerKind("", race), 0, dpy)
-                  : unitPxOf(drawUnit, dpy)) * 1.6 : 0;
+              const dieLift = uAir ? diePx9 * 1.6 : 0;
               return (
                 <span
                   key={`v2die-${ei}`}
                   className="scr-motion-army scr-motion-dot"
                   style={{ ...posStyle(dpx, dpy), zIndex: 1300, ...(dieLift ? { marginTop: `${(-dieLift).toFixed(1)}px` } : {}) }}
                 >
-                  <span className={`scr-motion-diefx scr-die-${dk}`} />
+                  {/* 크기는 그 몸에 맞춘다(요청: "사망효과나 파괴효과는 크기에 비례
+                      해주고") — 여태 CSS의 6px 고정이라, 저글링이 죽든 울트라가 죽든
+                      같은 크기의 불덩이가 텄다. 건물 붕괴는 이미 발자국에 매여 있었고
+                      유닛만 안 매여 있었다. 몸 상자의 1.1배로 잡는다 — 몸보다 조금
+                      크게 번지는 것이 폭발로 읽힌다. */}
+                  <span
+                    className={`scr-motion-diefx scr-die-${dk}`}
+                    style={{
+                      width: `${(diePx9 * 1.1).toFixed(1)}px`,
+                      height: `${(diePx9 * 1.1).toFixed(1)}px`,
+                      margin: `${(-diePx9 * 0.55).toFixed(1)}px 0 0 ${(-diePx9 * 0.55).toFixed(1)}px`,
+                    }}
+                  />
                 </span>
               );
             }
@@ -18011,8 +18030,14 @@ export default function ReplayMotionPlayer({
                찍힌 곳과 실제로 맞는 곳은 다르고(표적은 그 사이 걸어가 있다), 8초 내내
                켜져 있어 싸움과 무관한 자리에서도 불티가 텄다. 이제 제 체력 자취가
                내려간 순간(hurtAt)에만, 제 몸 위에서 짧게 튄다. */
-            // 잠깐만 뜬다(지적: "절대 움직임 없게 잠깐 표시") — 0.7 → 0.3초.
-            const hitNow = t - hurtAt <= 0.3;
+            /* 잠깐만 뜬다(지적: "절대 움직임 없게 잠깐 표시") — 0.7 → 0.3 → 0.15초.
+               ★ 더 줄이는 까닭이 있다(요청: "공격은 대부분 멈춰서 하지만 맞는건 움직이면서
+                 맞음 ... 아주 짧게 보여줘야 하는 이유야") — 맞는 몸은 그 사이에도 계속
+                 걷는데 불티는 맞은 그 순간의 자리에 서 있어야 한다. 창이 길수록 몸이
+                 불티를 두고 앞으로 나가, 불티가 몸에서 떨어져 나온 것처럼 보인다.
+                 0.15초면 20Hz 그리기에서 세 프레임이라 보이기는 하고, 그동안 가장 빠른
+                 유닛도 반 타일을 못 간다. */
+            const hitNow = t - hurtAt <= 0.15;
             /* 효과는 가슴 높이(지적: 공격 효과가 너무 낮다 — 발밑에서 튀었다) — 마커
                기준점은 발 자리라, 몸이 실제로 떠 있는 몫만큼 띄워 몸통에 맞춘다.
                ★ 그 몫은 **그리는 쪽과 같은 식**이어야 한다(지적: "공중유닛의 피격효과가

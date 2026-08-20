@@ -63,8 +63,15 @@ export default function GameResultStory({
      (배율 1 · 가운데 · 90도). */
   const initialView = useMemo(() => {
     if (!linkQuery) return undefined;
+    /* ★ 없는 값은 **기본값**이다(지적: "공유시 각도가 무조건 30도로 돼") —
+       `Number(null)`은 0이고 0은 유한하므로, 이 검사가 "없음"을 "0"으로 읽어 기본값을
+       한 번도 안 썼다. 그래서 &a=가 없는 링크(90도에서 공유한 링크는 각을 안 싣는다)가
+       0도로 들어왔고, 가장 가까운 칸을 찾는 자리에서 30도로 붙었다. cx·cy도 같은
+       병이었다 — 없으면 0이라 화면이 지도 왼쪽 위 귀퉁이로 튀었다. */
     const num = (k: string, dflt: number): number => {
-      const v = Number(linkQuery.get(k));
+      const raw9 = linkQuery.get(k);
+      if (raw9 === null || raw9.trim() === "") return dflt;
+      const v = Number(raw9);
       return Number.isFinite(v) ? v : dflt;
     };
     if (linkQuery.get("z") === null && linkQuery.get("cx") === null

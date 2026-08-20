@@ -13458,11 +13458,14 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 죽음 효과(요청: 종족/타입별) — 쓰러지는 짧은 순간의 잔상: 테란 생체는 붉은 퍼프,
    메카닉은 주황 스파크 화구, 프로토스는 파랗게 스러지는 빛, 저그는 보라 살점 튐. */
 /* 반으로 축소(요청: 소멸·폭파 효과가 너무 큼) — 12px → 6px. */
+/* 크기는 렌더가 인라인 width/height·margin으로 정한다(요청: "사망효과나 파괴효과는
+   크기에 비례해주고") — 여기 값은 그 값이 못 오는 경우의 바닥이다. 시간도 줄인다
+   (요청): 0.9 → 0.5s. 여운 창(0.55초)보다 짧아야 중간에 안 끊긴다. */
 .scr-motion-diefx {
   position: absolute; left: 50%; top: 50%;
   width: 6px; height: 6px; margin: -3px 0 0 -3px;
   border-radius: 50%; pointer-events: none;
-  animation: scr-diefx 0.9s ease-out forwards;
+  animation: scr-diefx 0.5s ease-out forwards;
 }
 .scr-die-bio { background: radial-gradient(circle, rgba(230, 80, 60, 0.9) 0%, rgba(160, 40, 30, 0.5) 55%, transparent 75%); }
 .scr-die-mech { background: radial-gradient(circle, rgba(255, 220, 130, 0.95) 0%, rgba(255, 120, 50, 0.75) 45%, transparent 70%); }
@@ -13555,18 +13558,18 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   pointer-events: none;
 }
 .scr-clp-core, .scr-clp-smoke { position: absolute; inset: 0; border-radius: 50%; }
-.scr-clp-terran .scr-clp-core { background: radial-gradient(circle, rgba(255, 224, 140, 0.95) 0%, rgba(255, 120, 50, 0.85) 40%, transparent 70%); animation: scr-clp-burst 2s ease-out forwards; }
-.scr-clp-terran .scr-clp-smoke { background: radial-gradient(circle, rgba(120, 120, 125, 0.55) 0%, rgba(80, 80, 85, 0.35) 55%, transparent 75%); animation: scr-clp-smoke 2s ease-out forwards; }
-.scr-clp-zerg .scr-clp-core { background: radial-gradient(circle, rgba(190, 110, 180, 0.9) 0%, rgba(120, 60, 120, 0.6) 50%, transparent 72%); animation: scr-clp-burst 2s ease-out forwards; }
-.scr-clp-zerg .scr-clp-smoke { background: radial-gradient(circle, rgba(140, 80, 60, 0.5) 0%, rgba(90, 50, 45, 0.3) 55%, transparent 75%); animation: scr-clp-smoke 2s ease-out forwards; }
+.scr-clp-terran .scr-clp-core { background: radial-gradient(circle, rgba(255, 224, 140, 0.95) 0%, rgba(255, 120, 50, 0.85) 40%, transparent 70%); animation: scr-clp-burst 1s ease-out forwards; }
+.scr-clp-terran .scr-clp-smoke { background: radial-gradient(circle, rgba(120, 120, 125, 0.55) 0%, rgba(80, 80, 85, 0.35) 55%, transparent 75%); animation: scr-clp-smoke 1s ease-out forwards; }
+.scr-clp-zerg .scr-clp-core { background: radial-gradient(circle, rgba(190, 110, 180, 0.9) 0%, rgba(120, 60, 120, 0.6) 50%, transparent 72%); animation: scr-clp-burst 1s ease-out forwards; }
+.scr-clp-zerg .scr-clp-smoke { background: radial-gradient(circle, rgba(140, 80, 60, 0.5) 0%, rgba(90, 50, 45, 0.3) 55%, transparent 75%); animation: scr-clp-smoke 1s ease-out forwards; }
 /* 프로토스는 멋진 에너지 폭발(재지적: 스러짐이 아니라) — 하얀 섬광 화구가 크게
    터지고, 푸른 에너지 링이 바깥으로 퍼져 나간다. */
-.scr-clp-toss .scr-clp-core { background: radial-gradient(circle, rgba(255, 255, 255, 0.98) 0%, rgba(170, 215, 255, 0.9) 35%, rgba(110, 170, 255, 0.6) 55%, transparent 74%); animation: scr-clp-burst 2s ease-out forwards; }
+.scr-clp-toss .scr-clp-core { background: radial-gradient(circle, rgba(255, 255, 255, 0.98) 0%, rgba(170, 215, 255, 0.9) 35%, rgba(110, 170, 255, 0.6) 55%, transparent 74%); animation: scr-clp-burst 1s ease-out forwards; }
 .scr-clp-toss .scr-clp-smoke {
   background: transparent;
   border: 2px solid rgba(150, 200, 255, 0.85);
   box-shadow: 0 0 10px rgba(120, 180, 255, 0.7), inset 0 0 8px rgba(160, 210, 255, 0.5);
-  animation: scr-clp-ring 2s ease-out forwards;
+  animation: scr-clp-ring 1s ease-out forwards;
 }
 @keyframes scr-clp-ring {
   0% { opacity: 0; transform: scale(0.2); }
@@ -13768,7 +13771,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   12%, 55% { opacity: 1; }
   100% { opacity: 0; }
 }
-.scr-v2fx .scr-puff-hit { animation: scr-hitflash 0.28s linear; }
+/* 창이 0.15초로 줄었으니 애니도 그 안에 끝나야 한다(요청: 시간 축소) — 0.28 → 0.14s.
+   길면 렌더가 스팬을 걷을 때 화면 중간에서 툭 끊긴다. */
+.scr-v2fx .scr-puff-hit { animation: scr-hitflash 0.14s linear; }
 /* 수리 불티(지적: 일꾼 수리 파싱) — SCV가 표적 곁에서 일할 때 튀는 푸른 용접빛. 반으로. */
 .scr-v2fx .scr-puff-weld {
   transform: translate(-50%, -60%) scale(0.22);
