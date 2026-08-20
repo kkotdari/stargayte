@@ -345,8 +345,45 @@ let yawOverride: number | null = null;
  *  그리는 쪽이 주는 방향(유닛의 진행 방향·건물 기본 요잉) 위에 모델의 제 각이 더해진다.
  *  그래서 도록·지도·미니맵 어디서 굽든 같은 모델이 같은 자세로 선다 — 그리기 단계에
  *  건물마다 다른 각을 끼워 넣던 보정표(MODEL_YAW_TWEAK)가 없어진 자리다. */
-export function withSpin<T>(deg: number, fn: () => T): T {
-  return withYaw(currentYaw() - deg, fn);
+/* 모델 회전(요청: "withSpin 걷어내고 좌표를 돌린 모델로") ─────────────────────────
+   ★ 걷어낸 withSpin이 무엇을 잘못했나 — 그것은 `withYaw(currentYaw() − deg)`였다.
+     곧 **모델이 아니라 카메라를 돌리는** 수법이다. 그림의 앞뒤는 맞게 나오지만
+     `currentYaw()`를 읽는 것이 하나 더 있다: **세계 광원**(faceLight·facingRatio)이다.
+     그래서 45도로 감싼 건물은 빛까지 45도 함께 돌아, 옆에 선 건물과 하이라이트 방향이
+     어긋났다. "돌려도 광원은 고정"이라는 이 파일의 규약을 그 한 줄이 깨고 있었다.
+
+   ★ 대신 하는 일 — **모형 좌표를 실제로 돌린다**. 이 블록 안에서는 모든 모형 점
+     (project·depthNow의 입력)과 모든 모형 법선(faceLight·facingRatio의 입력)이
+     deg만큼 돌아간 뒤 셈에 들어간다. 카메라와 광원은 한 톨도 안 움직인다.
+     기하만 놓고 보면 옛 withSpin과 **정확히 같은 그림**이다(아래 회전식이 그 유도다):
+       yaw Y에서 (x', y')를 그린 것이 yaw Y−d에서 (x, y)를 그린 것과 같으려면
+         x' = x·cos d − y·sin d,  y' = x·sin d + y·cos d
+       — 곧 표준 반시계 회전이다. 빌더의 숫자를 손으로 돌려 적는 것과 같은 일을,
+       손이 아니라 이 한 자리에서 한다(수백 개 좌표를 옮겨 적다 틀릴 자리가 없다).
+
+   겹쳐 쓰면 더해진다 — 안쪽 블록은 바깥 블록의 회전 위에 제 각을 얹는다. */
+let modelSpinRad = 0;
+export function withModelSpin<T>(deg: number, fn: () => T): T {
+  const prev = modelSpinRad;
+  modelSpinRad = prev + (deg * Math.PI) / 180;
+  try {
+    return fn();
+  } finally {
+    modelSpinRad = prev;
+  }
+}
+/** 모형 평면 좌표(또는 평면 법선) 하나를 모델 회전만큼 돌린다 — 모형 공간이 셈에
+ *  들어가는 **모든 입구**가 이것을 지난다: project · depthNow · faceLight · facingRatio.
+ *  회전이 0이면 아무 일도 안 하므로, 안 감싼 모델은 값도 비용도 그대로다. */
+function spun(x: number, y: number): [number, number] {
+  if (!modelSpinRad) return [x, y];
+  const c = Math.cos(modelSpinRad);
+  const s = Math.sin(modelSpinRad);
+  return [x * c - y * s, x * s + y * c];
+}
+/** 지금 유효한 모델 회전(도) — 다리 단면의 보임 판정처럼 각도로 셈하는 곳이 쓴다. */
+export function modelSpinDeg(): number {
+  return (modelSpinRad * 180) / Math.PI;
 }
 export function withYaw<T>(deg: number, fn: () => T): T {
   yawOverride = deg;
@@ -364,8 +401,9 @@ function currentYaw(): number {
 
 /** 화면 깊이(요잉 반영) — painter 정렬용. +가 시청자 쪽(앞). */
 export function depthNow(x: number, y: number): number {
+  const [mx, my] = spun(x, y);
   const th = (currentYaw() * Math.PI) / 180;
-  return -x * Math.sin(th) + y * Math.cos(th);
+  return -mx * Math.sin(th) + my * Math.cos(th);
 }
 /* 부품 번호 매기개 — 굽기 한 판 안에서 tagKey·tagDepth가 불릴 때마다 하나씩 는다.
    빌더가 "여기까지가 한 부품이다"라고 선언하는 자리가 곧 그 둘이라, 호출 차례가 그대로
@@ -415,11 +453,13 @@ export function faceLight(
    *  수평 전용 판정은 그 면을 걷어내 구멍을 냈고, 그 틈으로 뒤 요소가 비쳐 보였다. */
   nzModel = 0,
 ): { visible: boolean; face: (d: string) => ShapeFace[] } {
+  // 법선도 모델과 함께 돈다 — 광원은 세계에 고정이므로 돌아가는 것은 면 쪽이다.
+  const [mnx, mny] = spun(nxModel, nyModel);
   const th = (currentYaw() * Math.PI) / 180;
   const c = Math.cos(th);
   const sn = Math.sin(th);
-  const nx = nxModel * c + nyModel * sn;
-  const ny = -nxModel * sn + nyModel * c;
+  const nx = mnx * c + mny * sn;
+  const ny = -mnx * sn + mny * c;
   const dot = nx * LIGHT_PLAN[0] + ny * LIGHT_PLAN[1];
   const face = (d: string): ShapeFace[] => {
     if (dot > 0.3) return [topFace(d, Math.min(0.2, (dot - 0.3) * 0.3 + 0.08))];
@@ -441,9 +481,10 @@ export function faceLight(
  *  둥근 몸에 붙은 장식(어시밀레이터 알 등)을 모서리에서 뚝 끊지 않고, 돌아 나가며
  *  서서히 줄이는 데 쓴다. */
 export function facingRatio(nxModel: number, nyModel: number): number {
+  const [mnx, mny] = spun(nxModel, nyModel);
   const th = (currentYaw() * Math.PI) / 180;
-  const nx = nxModel * Math.cos(th) + nyModel * Math.sin(th);
-  const ny = -nxModel * Math.sin(th) + nyModel * Math.cos(th);
+  const nx = mnx * Math.cos(th) + mny * Math.sin(th);
+  const ny = -mnx * Math.sin(th) + mny * Math.cos(th);
   const vphi = Math.atan(viewShear);
   return ny * Math.cos(vphi) - nx * Math.sin(vphi);
 }
@@ -467,11 +508,13 @@ export function withViewShear<T>(sh: number, fn: () => T): T {
 }
 /** 모형 좌표 (x,y,z) → 화면 [sx, sy]. y(앞)는 아래로, z(위)는 위로 간다. */
 export function project(x: number, y: number, z: number): [number, number] {
+  // 모델 회전이 먼저다 — 돌아간 좌표를 카메라가 본다(카메라는 안 움직인다).
+  const [mx, my] = spun(x, y);
   const th = ((yawOverride ?? VIEW.yawDeg) * Math.PI) / 180;
   const c = Math.cos(th);
   const sn = Math.sin(th);
-  const rx = x * c + y * sn;
-  const ry = -x * sn + y * c;
+  const rx = mx * c + my * sn;
+  const ry = -mx * sn + my * c;
   /* 앞으로 숙임(지적: 시청자 쪽으로 숙여야 한다) — 입체 판에서 꼭대기일수록 시청자
      쪽으로 기운다(z가 깊이에 태워짐). 지붕 윗면이 드러나 45도 내려다보는 지형과 자세가
      맞는다. sin20° ≈ 0.34. */
@@ -781,7 +824,7 @@ export function limbFaces(
   ]);
   const faces: ShapeFace[] = [bodyFace(body)];
   // 단면 보임도 지금 유효한 요잉으로(수리: 기본 시점 고정이라 좌우로 굽힐 때 비대칭).
-  const beta = Math.abs(angleDeg + currentYaw());
+  const beta = Math.abs(angleDeg + modelSpinDeg() + currentYaw());
   if (capOpen && beta < 100) {
     // 단면 반원 — 앞이면 꽉 차게, 옆이면 작게(capScaleOf와 같은 눈금).
     const scale = beta < 55 ? 1 : 0.6;

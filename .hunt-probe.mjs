@@ -1,0 +1,13 @@
+import fs from 'fs';
+const Screp = (await import('screp-js')).default;
+const p = process.argv[2];
+const buf = new Uint8Array(fs.readFileSync(p));
+const res = await Screp.parseBuffer(buf, {header:true, computed:true, mapData:true, cmds:true});
+console.log(Object.keys(res));
+console.log(JSON.stringify(res.Header, null, 1).slice(0, 3000));
+console.log('---COMPUTED---');
+console.log(JSON.stringify(res.Computed, null, 1).slice(0, 2500));
+console.log('---MAPDATA keys---');
+console.log(Object.keys(res.MapData||{}));
+console.log('---CMD sample---');
+console.log(JSON.stringify(res.Commands?.Cmds?.slice(0,5), null, 1));
