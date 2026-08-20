@@ -15067,11 +15067,13 @@ export default function ReplayMotionPlayer({
           값인 것은 창의 ↑↓ 키 방향과 같다. 라벨은 지도 반대쪽(바깥)으로 뺀다.
           좁은 화면에는 안 단다(요청: PC). */}
       <div className="scr-motion-mapwrap">
-      {/* 지도 왼쪽 기둥 — 위에서부터 1팀 로스터 · 배속 슬라이드 바(요청: "로스터
-          슬라이드바 버튼류가 한 div에 세로로 배치되는거야 / 로스터는 좌우 최상단에"). */}
+      {/* 지도 바깥 좌우에 **네 칸**이 선다(요청: "두 슬라이드는 로스터 버튼 셀과 별도의
+          셀을 하나씩 양쪽에 추가해서 거기 넣어줘") — 바깥부터 [배속 바][1팀 로스터]
+          [지도][2팀 로스터 + 버튼][각도 바]. 여태 바가 로스터 기둥 **안에** 절대 자리로
+          떠 있어, 지표 줄이 길어지면 로스터 글자와 겹쳤다(지적: 미네랄·가스가 붙으면
+          더 길어진다). 제 칸으로 빼면 겹칠 것이 아예 없고, 좌우 대칭도 자리로 지켜진다. */}
       {wide && (
-        <div className="scr-motion-side">
-          {teamCol(1)}
+        <div className="scr-motion-slidecol">
           <SlideBar
             title="배속"
             options={[...SPEEDS].reverse().map((v) => ({ value: String(v), label: `×${v}` }))}
@@ -15080,6 +15082,11 @@ export default function ReplayMotionPlayer({
             labelSide="left"
             aria-label="배속"
           />
+        </div>
+      )}
+      {wide && (
+        <div className="scr-motion-side">
+          {teamCol(1)}
         </div>
       )}
       <div
@@ -17367,6 +17374,11 @@ export default function ReplayMotionPlayer({
       {wide && (
         <div className="scr-motion-side">
           {teamCol(2)}
+          {viewRowNode}
+        </div>
+      )}
+      {wide && (
+        <div className="scr-motion-slidecol">
           <SlideBar
             title="각도"
             options={PITCH_DEGS.map((d) => ({ value: String(d), label: `${d}°` }))}
@@ -17375,7 +17387,6 @@ export default function ReplayMotionPlayer({
             labelSide="right"
             aria-label="시점 각도"
           />
-          {viewRowNode}
         </div>
       )}
       </div>

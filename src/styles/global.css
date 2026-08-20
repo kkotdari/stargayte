@@ -11072,22 +11072,27 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   flex: 0 0 auto; width: 190px; min-width: 0;
   display: flex; flex-direction: column; align-items: center; gap: 8px;
 }
-/* 두 바는 좌우 대칭이어야 한다(지적: "배속과 각도바가 대칭위치에 있어야지") — 남는
-   자리에 auto 여백으로 띄우면 오른쪽만 아래에 버튼 줄이 있어 자리가 서로 어긋난다.
-   기둥(=지도) 세로 한가운데에 못 박아 둘이 같은 높이에 선다. */
-.scr-motion-side .scr-slidebar {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  /* 비침은 **모바일 사정**이다(요청: "모바일은 투명도고 PC는 노상관") — 좁은 화면에서는
-     바가 지도 위에 얹혀 그 자리의 지형을 가리지만, PC에서는 지도 **바깥** 기둥에 서므로
-     가릴 것이 없다. 가릴 것이 없으면 판은 진한 편이 눈에 편하다 — 기본값(0.2)을 여기서만
-     되돌린다. */
-  background: rgba(10, 14, 18, 0.42);
+/* 슬라이드 바는 **제 칸**에 산다(요청: "로스터 버튼 셀과 별도의 셀을 하나씩 양쪽에
+   추가해서 거기 넣어줘") — 여태 로스터 기둥 안에 절대 자리로 떠 있어, 지표 줄이 길어지면
+   로스터 글자와 겹쳤다. 바깥부터 [배속 바][1팀 로스터][지도][2팀 로스터+버튼][각도 바]
+   다섯 칸이라, 겹칠 것이 없고 좌우 대칭도 자리로 지켜진다(둘 다 제 칸의 세로 한가운데).
+   폭은 바 하나만큼(트랙 20 + 여백)이라 지도가 잃는 몫이 거의 없다. */
+.scr-motion-slidecol {
+  flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
 }
+/* PC에서는 판이 진해도 된다(요청: "모바일은 투명도고 PC는 노상관") — 지도 **바깥**
+   칸이라 가릴 지형이 없다. 기본값(0.2)을 여기서만 되돌린다. */
+.scr-motion-slidecol .scr-slidebar { background: rgba(10, 14, 18, 0.42); }
 /* 버튼 줄은 기둥 맨 아래(요청: "버튼단은 하단으로 이동"). */
 .scr-motion-side .scr-motion-viewrow { margin-top: auto; }
-/* 기둥 안의 버튼 줄은 갭을 줄인다(요청: "자리가 좁을거 같으면") — 한 기둥에 로스터·
-   바·버튼 셋이 함께 서므로 14px 갭은 넘친다. */
+/* 기둥 안의 버튼 줄은 갭을 줄인다(요청: "자리가 좁을거 같으면"). */
 .scr-motion-side .scr-motion-viewrow { gap: 8px; }
+/* 로스터부·버튼부에 **최소 높이**를 못 박는다(요청) — 지표 줄에 미네랄·가스가 붙으면
+   사람 칸이 두 줄씩 더 길어진다. 그때 기둥이 통째로 늘어나면 지도까지 밀려 내려가므로,
+   지금부터 그 몫을 미리 비워 둔다: 지표 다섯 줄(9px × 1.35 + 1px 간격 ≈ 65px) 기준으로
+   사람 칸 ≈ 125px, 2행이니 로스터 268px. 버튼부는 지금 서 있는 알약 다섯 줄만큼이다. */
+.scr-motion-side .scr-motion-teamcol { min-height: 268px; }
+.scr-motion-side .scr-motion-viewrow { min-height: 196px; }
 .scr-slidebar {
   flex: 0 0 auto;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
