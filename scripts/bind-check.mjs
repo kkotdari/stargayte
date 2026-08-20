@@ -43,7 +43,7 @@ if (files.length === 0) {
 
 /** 원본을 사본으로 떠서 창의 앞끝(8초)과 뒤끝(300초)을 바깥 값으로 바꾼다. */
 function probeSource() {
-  const src = readFileSync(join(ROOT, "src/utils/replayUnits.ts"), "utf8");
+  const src = readFileSync(join(ROOT, "src/legacy/replayUnits.ts"), "utf8");
   const before = "r.it.done - 8";
   const back = "life.born - r.it.done > 300";
   const n = src.split(before).length - 1;

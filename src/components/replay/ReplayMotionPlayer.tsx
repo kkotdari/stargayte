@@ -12,7 +12,7 @@ import type { ReplayMapGrid } from "../../utils/replayParser";
 import { api } from "../../api/client";
 import { applyReplayMap, promoteReplayMap } from "../../hooks/useReplayMap";
 import { AIR_UNITS } from "../../utils/replayBuildMix";
-import { BLD_STATS, UNIT_BUILD_SEC, UNIT_STATS, type UnitTracksV2 } from "../../utils/replayUnits";
+import { BLD_STATS, UNIT_BUILD_SEC, UNIT_STATS, type UnitTracksV2 } from "../../legacy/replayUnits";
 /* 사거리는 이 파일이 들고 있던 상수(ENGAGE_SIGHT_TILES 9, 방어 건물 7/7/7/8/6, 벙커 안
    화염 3.5)가 아니라 표에서 온다(과제 #48) — 마린도 시즈 탱크도 한 값 9로 쏘고 9에서
    멈추던 자리다. 표를 읽는 문은 **bwCombat 하나**로 정한다: bwUnits에도 같은 이름의
@@ -32,11 +32,11 @@ import {
 } from "../../utils/bwUnits";
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, type TerrainGrid } from "../../utils/minimapTerrain";
-import { loadSimTracks, logSim } from "../../utils/simClient";
+import { loadSimTracks, logSim } from "../../legacy/simClient";
 import {
   hitsAt, posAtSim, shotsAt, ST_CARRY_GAS, ST_CARRY_MIN, ST_INSIDE,
   type SimEventArr, type SimTrack,
-} from "../../utils/simCore";
+} from "../../legacy/simCore";
 /* 자취 읽기는 유틸로 나갔다(과제 #61) — 코어가 걸음의 진실이 된 뒤로 이 파일의
    몫이 아니고, 밖에 있어야 자로 잴 수 있다(scripts/pos-check.mjs). */
 import { posAt, type TrackPos, type TrackPt } from "../../utils/replayTrack";

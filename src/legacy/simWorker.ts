@@ -6,7 +6,7 @@
  * 왜 열 때 도는가(요청·기획서 5절): 업로드 때 구워 두면 시뮬을 고칠 때마다 전 경기를
  * 재분석해야 한다. 열 때 돌면 코어를 고치는 순간 과거 경기 전부가 저절로 좋아진다. */
 
-import { simulate, type SimInput, type SimOpts } from "../utils/simCore";
+import { simulate, type SimInput, type SimOpts } from "./simCore";
 
 export type SimReq = { id: number; data: SimInput; opts: SimOpts };
 export type SimRes =

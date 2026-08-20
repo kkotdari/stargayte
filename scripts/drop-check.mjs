@@ -42,7 +42,7 @@ const dir = mkdtempSync(join(tmpdir(), "dropchk-"));
 /* 계측판 — 승선 후보가 **어느 문턱에서 걸러지나**를 세는 계수기만 끼운 replayUnits
    복사본을 만든다(앱에는 계측 코드가 한 줄도 안 들어간다). 후보를 만드는 곳과 거르는
    곳이 한 함수 안에 있어 바깥에서는 못 재는 값이다. */
-const RU = join(ROOT, "src/utils/replayUnits.ts");
+const RU = join(ROOT, "src/legacy/replayUnits.ts");
 const ruSrc = readFileSync(RU, "utf8");
 const NEEDLE = "    void promoted;";
 const PROBE = `    {
@@ -69,7 +69,7 @@ const absImports = (t) => t.replace(/from "\.\//g, `from "${join(ROOT, "src/util
 writeFileSync(join(dir, "replayUnits.ts"), absImports(probed ? ruSrc.replace(NEEDLE, PROBE) : ruSrc));
 const src = join(dir, "e.ts");
 const out = join(dir, "e.mjs");
-writeFileSync(src, `export { buildUnitTracks } from ${JSON.stringify(probed ? join(dir, "replayUnits") : join(ROOT, "src/utils/replayUnits"))};`);
+writeFileSync(src, `export { buildUnitTracks } from ${JSON.stringify(probed ? join(dir, "replayUnits") : join(ROOT, "src/legacy/replayUnits"))};`);
 execFileSync("npx", ["esbuild", src, "--bundle", "--platform=node", "--format=esm",
   "--log-level=error", `--outfile=${out}`], { cwd: ROOT, stdio: ["ignore", "ignore", "inherit"] });
 const { buildUnitTracks } = await import(pathToFileURL(out).href);

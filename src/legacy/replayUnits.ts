@@ -18,10 +18,10 @@
 import {
   CAST_ORDER_TO_UNIT, USE_CMD_TO_UNIT, CAST_ORDER_TO_TECH, PLACE_MINE_ORDER,
   normalizeUpgradeName,
-} from "./replayTechNames";
-import { speedOfUnit, upgradeMaxLevel } from "./bwUnits";
-import { SUPPLY_CAP, SUPPLY_COST, SUPPLY_GIVES } from "./bwCombat";
-import { UNLOAD_GAP_SEC, UNLOAD_PENALTY_EXEMPT, slotsOf, spaceOf } from "./bwTransport";
+} from "../utils/replayTechNames";
+import { speedOfUnit, upgradeMaxLevel } from "../utils/bwUnits";
+import { SUPPLY_CAP, SUPPLY_COST, SUPPLY_GIVES } from "../utils/bwCombat";
+import { UNLOAD_GAP_SEC, UNLOAD_PENALTY_EXEMPT, slotsOf, spaceOf } from "../utils/bwTransport";
 /* 전투 값은 표(bwUnits)를 직접 읽지 않고 어댑터(bwCombat)를 거친다(과제 #54).
    ─ 왜 이렇게 됐는가: 이 파일의 체력 원장은 유닛마다 dps 스칼라 하나(UNIT_STATS.dps)만
      보고 공격 종류(normal/concussive/explosive)·표적 크기 배수·방어력 뺄셈·쿨다운·
@@ -34,7 +34,7 @@ import {
   attackOf, bunkerFallbackProfile, profileOf, targetFor, weaponVs,
   type CombatProfile, type ProfWeapon,
   upgradeSeconds,
-} from "./bwCombat";
+} from "../utils/bwCombat";
 import type { Race } from "../types";
 
 /* ── 입력 — screp 커맨드에서 쓰는 필드만 구조 타입으로 받는다(replayParser의 ScrepCmd와

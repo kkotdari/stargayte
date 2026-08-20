@@ -95,7 +95,7 @@ const waiting = new Map<number, (r: SimResult | null) => void>();
 function ensureWorker(): Worker | null {
   if (worker) return worker;
   try {
-    worker = new Worker(new URL("../workers/simWorker.ts", import.meta.url), { type: "module" });
+    worker = new Worker(new URL("./simWorker.ts", import.meta.url), { type: "module" });
     worker.onmessage = (ev: MessageEvent) => {
       const m = ev.data as {
         id: number; ok: boolean; tracks?: SimTrack[]; events?: SimEventArr;

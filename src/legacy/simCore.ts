@@ -13,7 +13,7 @@
  * P1 범위: 이동·주문·수송 탑승·하드 앵커 보정. 전투(표적 획득·사격·피해·죽음)는 P2다.
  * 리액트를 안 쓴다 — 웹 워커와 노드 CLI가 그대로 번들해 돌린다. */
 
-import { groundPath, groundPathSoft, type TerrainGrid } from "./minimapTerrain";
+import { groundPath, groundPathSoft, type TerrainGrid } from "../utils/minimapTerrain";
 import {
   BUILDING_FOOT, BURROW_MIN_FRAMES, BURROW_UNITS, DEFAULT_FOOT, DEFAULT_TURN_RATE,
   FRAME_SEC, GEYSER_FOOT, LURKER_REHIT_FRAMES, MINE_ATTACH_FRAMES, MINE_DETACH_FRAMES,
@@ -22,7 +22,7 @@ import {
   IRRADIATE_TOTAL, PLAGUE_TOTAL, SHIELD_REGEN_PER_SEC, TERRAN_BURN_HP_PCT, TERRAN_BURN_PER_SEC,
   WEAPONS, ZERG_REGEN_PER_SEC, missProbability, nukeDamage,
   buildSecOf, buildingBox, fp, isAir, moveDynOf, speedOfUnit, unfp, unitBoxTiles,
-} from "./bwUnits";
+} from "../utils/bwUnits";
 /* 전투 값은 표(bwUnits)를 직접 읽지 않고 어댑터(bwCombat)를 거친다 — 표가 통째로 갈리는
    중이라 읽는 자리를 한 곳으로 모아 두면 이름이 어긋나도 고칠 파일이 하나다.
    ⚠ bwUnits에도 reachTiles가 있지만 그쪽은 업그레이드·벙커 보너스를 못 받는 짧은 판이다.
@@ -35,11 +35,11 @@ import {
   bunkerShooterProfileOf, minReachTiles, profileOf, reachTiles, splashDivisorAt,
   splashHitsCaster, splashHitsOwnUnits, targetFor, weaponVs,
   type CombatProfile, type DmgTarget, type ProfWeapon,
-} from "./bwCombat";
+} from "../utils/bwCombat";
 import {
   FLYING_BUILDING_TPS, ORDER_POLL_SEC, PICKUP_POLL_SEC, UNLOAD_GAP_SEC,
   UNLOAD_ORDER_LOCK_SEC, UNLOAD_PENALTY_EXEMPT, unloadOrderLocked,
-} from "./bwTransport";
+} from "../utils/bwTransport";
 
 /* ── 입력 모양(개체 트랙 v2) ─────────────────────────────────────────────────── */
 

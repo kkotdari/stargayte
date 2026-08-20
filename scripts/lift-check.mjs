@@ -24,7 +24,7 @@ if (files.length === 0) {
 const dir = mkdtempSync(join(tmpdir(), "liftchk-"));
 const src = join(dir, "e.ts");
 const out = join(dir, "e.mjs");
-writeFileSync(src, `export { buildUnitTracks } from ${JSON.stringify(join(ROOT, "src/utils/replayUnits"))};`);
+writeFileSync(src, `export { buildUnitTracks } from ${JSON.stringify(join(ROOT, "src/legacy/replayUnits"))};`);
 {
   const ebin = join(ROOT, "node_modules", "esbuild", "bin", "esbuild");
   const head = readFileSync(ebin).subarray(0, 4);

@@ -11,7 +11,7 @@ import {
   normalizeUpgradeName, CAST_ORDER_TO_TECH, USE_CMD_TO_TECH, PLACE_MINE_ORDER,
   CAST_ORDER_TO_UNIT, USE_CMD_TO_UNIT,
 } from "./replayTechNames";
-import { buildUnitTracks, serializeUnitTracks } from "./replayUnits";
+import { buildUnitTracks, serializeUnitTracks } from "../legacy/replayUnits";
 import type { Race, GameType } from "../types";
 
 const RACE_NAME_MAP: Record<string, Race> = {

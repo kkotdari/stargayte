@@ -37,7 +37,7 @@ if (files.length === 0) {
 const dir = mkdtempSync(join(tmpdir(), "tagchk-"));
 const src = join(dir, "e.ts");
 const out = join(dir, "e.mjs");
-writeFileSync(src, `export { buildUnitTracks } from ${JSON.stringify(join(ROOT, "src/utils/replayUnits"))};\n`
+writeFileSync(src, `export { buildUnitTracks } from ${JSON.stringify(join(ROOT, "src/legacy/replayUnits"))};\n`
   + `export { speedOfUnit } from ${JSON.stringify(join(ROOT, "src/utils/bwUnits"))};`);
 {
   const ebin = join(ROOT, "node_modules", "esbuild", "bin", "esbuild");

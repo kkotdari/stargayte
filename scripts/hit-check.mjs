@@ -43,7 +43,7 @@ const dir = mkdtempSync(join(tmpdir(), "hitchk-"));
 /* 계측판 — 교전 피해가 오가는 그 줄에 계수기만 끼운 replayUnits 복사본을 만든다.
    원본을 못 찾으면(코드가 바뀌면) 계측 없이 그냥 돈다 — 자가 조용히 거짓말하지 않게
    찾은 자리 수를 아래에서 알린다. */
-const RU = join(ROOT, "src/utils/replayUnits.ts");
+const RU = join(ROOT, "src/legacy/replayUnits.ts");
 const ruSrc = readFileSync(RU, "utf8");
 /* 계수기는 **실제로 피해가 흐르는 줄 바로 앞**에 끼워야 한다 — 앞선 걸러내기(갈래·
    사거리) 뒤여야 '오간 쌍'을 세는 것이 된다. */
@@ -68,7 +68,7 @@ const absImports = (t) => t.replace(/from "\.\//g, `from "${join(ROOT, "src/util
 writeFileSync(join(dir, "replayUnits.ts"), absImports(probed ? ruSrc.replace(NEEDLE, PROBE) : ruSrc));
 const src = join(dir, "e.ts");
 const out = join(dir, "e.mjs");
-writeFileSync(src, `export { buildUnitTracks } from ${JSON.stringify(probed ? join(dir, "replayUnits") : join(ROOT, "src/utils/replayUnits"))};`);
+writeFileSync(src, `export { buildUnitTracks } from ${JSON.stringify(probed ? join(dir, "replayUnits") : join(ROOT, "src/legacy/replayUnits"))};`);
 execFileSync("npx", ["esbuild", src, "--bundle", "--platform=node", "--format=esm",
   "--log-level=error", `--outfile=${out}`], { cwd: ROOT, stdio: ["ignore", "ignore", "inherit"] });
 const { buildUnitTracks } = await import(pathToFileURL(out).href);

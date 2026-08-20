@@ -58,7 +58,7 @@ if (files.length === 0) {
   process.exit(2);
 }
 
-const { UNIT_BUILD_SEC, buildUnitTracks } = await bundle("src/utils/replayUnits.ts");
+const { UNIT_BUILD_SEC, buildUnitTracks } = await bundle("src/legacy/replayUnits.ts");
 const { LARVA_MAX, hatchState, START_MINERALS } = await bundle("src/utils/bwUnits.ts");
 const { default: Screp } = await import("screp-js");
 

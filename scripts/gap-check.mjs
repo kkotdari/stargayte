@@ -24,7 +24,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dir = mkdtempSync(join(tmpdir(), "gap-"));
 const src = join(dir, "e.ts"); const out = join(dir, "e.mjs");
-writeFileSync(src, `export { simulate } from ${JSON.stringify(join(ROOT, "src/utils/simCore"))};\n`
+writeFileSync(src, `export { simulate } from ${JSON.stringify(join(ROOT, "src/legacy/simCore"))};\n`
   + `export { buildingBox, unitBoxTiles, BUILDING_FOOT } from ${JSON.stringify(join(ROOT, "src/utils/bwUnits"))};`);
 execFileSync("npx", ["esbuild", src, "--bundle", "--platform=node", "--format=esm", "--log-level=error", `--outfile=${out}`], { cwd: ROOT, stdio: ["ignore","ignore","inherit"] });
 const { simulate, buildingBox, unitBoxTiles, BUILDING_FOOT } = await import(pathToFileURL(out).href);

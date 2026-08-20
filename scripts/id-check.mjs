@@ -40,7 +40,7 @@ if (files.length === 0) {
 const dir = mkdtempSync(join(tmpdir(), "idchk-"));
 const src = join(dir, "e.ts");
 const out = join(dir, "e.mjs");
-writeFileSync(src, `export { buildUnitTracks } from ${JSON.stringify(join(ROOT, "src/utils/replayUnits"))};`);
+writeFileSync(src, `export { buildUnitTracks } from ${JSON.stringify(join(ROOT, "src/legacy/replayUnits"))};`);
 execFileSync("npx", ["esbuild", src, "--bundle", "--platform=node", "--format=esm",
   "--log-level=error", `--outfile=${out}`], { cwd: ROOT, stdio: ["ignore", "ignore", "inherit"] });
 const { buildUnitTracks } = await import(pathToFileURL(out).href);

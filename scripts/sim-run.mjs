@@ -300,7 +300,7 @@ function goalReport(data, r) {
   };
 }
 
-const { simulate } = await bundle("src/utils/simCore.ts");
+const { simulate } = await bundle("src/legacy/simCore.ts");
 const { decodeWalk } = await bundle("src/utils/minimapTerrain.ts");
 const { isAir } = await bundle("src/utils/bwUnits.ts");
 

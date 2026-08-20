@@ -155,7 +155,7 @@ const PATCHES = [
 const HEAD = "const __W = { bind: [0, 0], only: [0, 0, 0, 0], taken: 0, saw: 0, front: 0, back: 0, kind0: 0, kind1: 0, act: 0 };\n";
 
 async function bundleProbe() {
-  const src = readFileSync(join(ROOT, "src/utils/replayUnits.ts"), "utf8");
+  const src = readFileSync(join(ROOT, "src/legacy/replayUnits.ts"), "utf8");
   let text = src;
   for (const [a, b] of PATCHES) {
     if (!text.includes(a)) throw new Error(`계수기 자리를 못 찾았다: ${a.slice(0, 50)}`);
