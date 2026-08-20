@@ -9836,8 +9836,22 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          마다 잉크 상자를 한 크기로 맞추므로, 바뀌는 것은 **몸통과 나머지의 비**다.
          그래서 이 파일을 고치면 `npm run model-norm -- --emit`을 다시 돌려 MODEL_NORM·
          MODEL_INK를 함께 갈아야 한다(표 주석의 규약). */
-    const BK = 1.1;               // 몸통 가로 배수
+    /* 가로는 도로 10% 줄인다(재요청: "가로 10프로 축소") — 1.1배로 넓혔더니 몸이
+       퍼져 보였다. 세로(1.21배)는 그대로 두므로 몸통이 위아래로 긴 알꼴이 된다. */
+    const BK = 1.1 * 0.9;         // 몸통 가로 배수(= 0.99, 원래 폭과 거의 같다)
     const BKZ = 1.1 * 1.1;        // 몸통 세로 배수(가로 몫 위에 한 번 더)
+    /** 등에 난 가시(뿔) 줄임(요청: "몸통 가시 크기 축소") — 뿌리는 그대로 두고 굵기와
+     *  길이만 줄여야 몸에 박힌 자리가 안 뜬다. */
+    const SPIKE_K = 0.9;
+    /** 뿌리를 못 박은 채 SPIKE_K배로 줄인 뿔 — 끝점을 뿌리 쪽으로 그만큼 당긴다. */
+    const spike = (
+      bx9: number, by9: number, bz9: number, tx9: number, ty9: number, tz9: number,
+      w9: number, fill9: string, sides9: number, bow9: number, bowX9: number, bowY9: number,
+    ): ShapeFace[] => spikeHorn(
+      bx9, by9, bz9,
+      bx9 + (tx9 - bx9) * SPIKE_K, by9 + (ty9 - by9) * SPIKE_K, bz9 + (tz9 - bz9) * SPIKE_K,
+      w9 * SPIKE_K, fill9, sides9, bow9 * SPIKE_K, bowX9, bowY9,
+    );
     const R9 = 2.35 * BK;         // 몸 반지름 — 가로
     const RZ9 = 2.35 * BKZ;       // 몸 반지름 — 세로(돔의 높이를 재는 자)
     const CZ = 5.2;               // 몸 중심 높이(안 움직인다 — 여기서 위아래로 늘린다)
@@ -9875,15 +9889,15 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        갑각과 갈린다. 제 뿌리 깊이를 달아 뒤로 돈 뿔은 몸에 가려진다. */
     const horns: ShapeFace[] = [];
     for (const m of [-1, 1] as const) {
-      horns.push(...tagKey(spikeHorn(
+      horns.push(...tagKey(spike(
         m * 1.5 * BK, 0.95 * BK, bz(CZ + 0.6), m * 2.9 * BK, 3.2 * BK, bz(CZ + 2.5),
         0.66 * BK, IVORY_DEEP, 6, 1.1, m * 0.5, 0.9,
       ), depthNow(m * 2.2 * BK, 2 * BK) * 1.6 + 3));
-      horns.push(...tagKey(spikeHorn(
+      horns.push(...tagKey(spike(
         m * 1.75 * BK, -1.2 * BK, bz(CZ + 0.9), m * 2.85 * BK, -2.9 * BK, bz(CZ + 1.9),
         0.44 * BK, IVORY_DEEP, 6, 0.7, m * 0.6, -0.8,
       ), depthNow(m * 2.3 * BK, -2 * BK) * 1.6 + 3));
-      horns.push(...tagKey(spikeHorn(
+      horns.push(...tagKey(spike(
         m * 0.9 * BK, -0.2 * BK, bz(CZ + 2.05), m * 1.55 * BK, 0.5 * BK, bz(CZ + 3.1),
         0.3 * BK, IVORY_DEEP, 6, 0.4, m * 0.8, 0.4,
       ), depthNow(m * 1.2 * BK, 0.2 * BK) * 1.6 + 4));
@@ -10811,7 +10825,7 @@ const MODEL_NORM: Record<string, number> = {
   muta: 0.735,
   mutacocoon: 1.100,
   observer: 1.938,
-  ovie: 0.575,
+  ovie: 0.638,
   probe: 1.582,
   probeGas: 1.392,
   probeMin: 1.473,
