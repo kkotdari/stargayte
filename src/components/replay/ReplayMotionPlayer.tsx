@@ -7680,11 +7680,14 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        굽는다 — 요잉을 따라 날개와 함께 눌리고, 등을 보이면 안 그린다. */
     const decal = (m2: 1 | -1): ShapeFace[] => {
       if (facingRatio(m2, 0) <= 0.06) return [];
-      const px = m2 * 1.44;
+      /* 데칼은 **반으로 줄이고 날개면에 딱 붙인다**(지적) — 반지름 0.66×0.4 →
+         0.33×0.2. 자리도 x 1.44에서 1.21로 당긴다: 날개 축이 ±0.95이고 옆 반두께가
+         0.24이므로 겉면이 정확히 1.19다. 그보다 0.02만 밖에 둬 z-싸움만 피한다. */
+      const px = m2 * 1.21;
       const N = 16;
       const pts = Array.from({ length: N }, (_, i) => {
         const a = (i / N) * Math.PI * 2;
-        return [px, 0.1 + Math.cos(a) * 0.66, 5.95 + Math.sin(a) * 0.4] as [number, number, number];
+        return [px, 0.1 + Math.cos(a) * 0.33, 5.95 + Math.sin(a) * 0.2] as [number, number, number];
       });
       return tagKey([bodyFace(polyPath3(pts))], depthNow(px, 0.1) + 1.6);
     };
@@ -7701,6 +7704,19 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
          0.45, 높이 1.2 → 0.4. 여태 몸 돔이 날개보다 커서 아비터가 '금색 공에 지느러미'
          였다. 몸이 작아지면 날개 둘이 실루엣을 쥔다 — 아비터의 그 꼴이 맞다.
          렌즈 셋도 같은 몫으로 줄여 작아진 코에 얹는다. */
+      /* 몸과 날개를 잇는 **ㅇ 관절**(지적: "아비터 몸체와 날개가 떨어져있는데
+         이응관절 넣어서 딱 붙이기") — 몸 돔의 반지름이 0.45이고 날개 안쪽 면이
+         x 0.71이라 그 사이 0.26이 빈 채였다. 짧은 원통 한 쌍이 그 틈을 메우며,
+         관 끝이 날개 속에 박혀 '끼워 맞춘 관절'로 읽힌다. 둘레에 한 단 굵은 테를
+         둘러 ㅇ 자 이음매를 또렷하게 한다.
+         ★ 몸통보다 **뒤에** 둔다(지적: "아비터 관절에 몸통이 안가려지게") — 붙박이
+           +1.2는 어느 각도에서도 몸 돔(제 자리 깊이 + 반지름 0.4)을 이겨, 짧아야 할
+           관절이 몸 위를 가로질렀다. 관절은 몸에 **꽂히는** 것이니 −0.3으로 낮춰
+           몸이 늘 그 뿌리를 덮게 한다. 몸보다 먼저 그리는 것도 같은 이유다. */
+      ...([-1, 1] as const).flatMap((m8): ShapeFace[] => tagKey(paintBase([
+        ...tubeFaces(m8 * 0.2, 0.2, m8 * 0.85, 0.2, 0.2, 5.88),
+        ...tubeFaces(m8 * 0.5, 0.2, m8 * 0.66, 0.2, 0.27, 5.88),
+      ], "#a8801f"), depthNow(m8 * 0.55, 0.2) - 0.3)),
       ...paintBase(domeFaces3(0, 0.2, 0.45, 0.4, 5.72), "#d4af37"),
       /* 앞면 네온 원렌즈 셋(요청) — 코앞에 가로로 늘어선 작은 사이언 렌즈. 접평면에
          서므로 옆으로 돌면 납작해지고 뒤에선 사라진다. */
@@ -11362,6 +11378,42 @@ function contentBox(cv: HTMLCanvasElement): { bot: number; cx: number; top: numb
      작아 보인다. 그 몫을 재서 그리기 단계가 되돌린다. */
   return { bot, cx: (minX + maxX + 1) / 2, top, w: maxX - minX + 1 };
 }
+/* ── 구운 판을 잉크에 맞춰 잘라 낸다(재생 부하 개선) ──────────────────────────
+   왜 이것이 가장 큰 자리인가 — 굽는 판은 **16 모델 단위 정사각**이다(unitSprite가
+   `c2.scale(pxq/16, pxq/16)`으로 그 상자를 화면 pxq에 맞춘다). 그런데 정규화가
+   맞추는 잉크 상자는 5.2 모델 단위다(NORM_TARGET_INK) — 곧 그림이 실제로 차지하는
+   폭은 판의 **3분의 1**뿐이고, 넓이로는 **9분의 1**이다. 나머지 8/9는 투명 픽셀인데
+   그것을 그대로 보관하고 그대로 blit해 왔다.
+   건물도 같다: pad가 발자국의 62%라 판 한 변이 발자국의 2.24배이고, 잉크는 대략
+   1배다 — 넓이의 5분의 1만 쓰인다.
+
+   자르면 두 가지가 한꺼번에 준다:
+     · **보관 바이트** — LRU 예산(96MB)을 8인전에서 세 배 넘기던 것이 그 밑으로 내려온다
+       (scripts/sprite-check.mjs가 잰 값: 8인 301.9MB → 자른 뒤 그 1/8~1/9).
+     · **blit 비용** — 옮기는 픽셀이 그만큼 준다.
+   잘라도 그림은 한 톨도 안 바뀐다: 자른 자리(ox·oy)를 함께 들고 다니며 그릴 때
+   되돌리므로, 원래 판을 통째로 그린 것과 **픽셀 단위로 같다**. 재는 값들(bot·cx·w)은
+   자르기 **전** 좌표계 그대로 둔다 — 발 위치·그림자·체력바가 다 그 자를 쓰기 때문이다. */
+export function cropToInk(
+  cv: HTMLCanvasElement, box: { bot: number; cx: number; top: number; w: number },
+): { cv: HTMLCanvasElement; ox: number; oy: number } {
+  const M = 1; // 안티에일리어싱 가장자리 한 픽셀은 남긴다.
+  const x0 = Math.max(0, Math.floor(box.cx - box.w / 2) - M);
+  const x1 = Math.min(cv.width, Math.ceil(box.cx + box.w / 2) + M);
+  const y0 = Math.max(0, box.top - M);
+  const y1 = Math.min(cv.height, box.bot + M);
+  const w = x1 - x0;
+  const h = y1 - y0;
+  // 잉크가 없거나 이미 꽉 찬 판은 그대로 둔다(자를 것이 없다).
+  if (w <= 0 || h <= 0 || (w >= cv.width && h >= cv.height)) return { cv, ox: 0, oy: 0 };
+  const out = document.createElement("canvas");
+  out.width = w;
+  out.height = h;
+  const c = out.getContext("2d");
+  if (!c) return { cv, ox: 0, oy: 0 };
+  c.drawImage(cv, x0, y0, w, h, 0, 0, w, h);
+  return { cv: out, ox: x0, oy: y0 };
+}
 const PATH2D_CACHE = new Map<string, Path2D>();
 const pathOf = (d: string): Path2D => {
   let p = PATH2D_CACHE.get(d);
@@ -11515,12 +11567,21 @@ function trimSpriteCache<T extends { cv: HTMLCanvasElement }>(
    둘을 갈라 재는 까닭: 같은 40fps라도 'bake 200 · blit 400'과 'bake 0 · blit 4000'은
    고칠 자리가 전혀 다르다. 앞엣것은 캐시 열쇠, 뒤엣것은 그리는 수를 줄여야 한다.
 
-   ★ 열쇠에 무엇이 들어 있나(이 계측이 겨누는 자리) — unitSprite의 캐시 열쇠는
+   ★ 열쇠에 무엇이 들어 있나(이 계측이 겨눈 자리) — unitSprite의 캐시 열쇠는
      `kind|rot|flat|vq|pitch|color|pxq|B|lod`이고, 그중 **color가 임자 색**이다.
      색 없는 면(개인색 자리)이 구울 때 이미 칠해져 굽히므로 열쇠에 들어갈 수밖에
      없는데, 그 대가로 **임자가 늘면 같은 유닛의 판이 임자 수만큼 갈린다**. 8인전이면
-     같은 마린이 최대 여덟 벌이다. 이 계측기가 그 곱셈이 실제로 일어나는지(그리고
-     그때 bake가 실제로 치솟는지)를 말해 준다.
+     같은 마린이 최대 여덟 벌이다.
+   ★ 계측이 낸 답과 고친 자리 — scripts/sprite-check.mjs로 재니 그 곱셈이 예산을
+     정확히 어디서 넘기는지가 나왔다: 1인 37.7MB(예산 96MB의 39%) · 3인 118% ·
+     8인 301.9MB(314%). 3인부터 넘고 8인이면 세 배라, LRU가 매 프레임 쫓아내고 다시
+     굽는다 — 그것이 버벅임의 얼개였다.
+     고친 것은 **열쇠가 아니라 판의 크기**다(cropToInk). 열쇠에서 색을 빼려면 굽는
+     판을 색과 무관하게 만들어야 하는데, 개인색 면과 고정색 면이 화가 순서로 서로
+     겹쳐 있어 층을 둘로 가르면 가림 순서가 깨진다. 대신 **판의 빈 자리를 없앴다**:
+     굽는 판은 16 모델 단위 정사각인데 잉크는 5.2뿐이라 넓이의 8/9가 투명이었다.
+     잘라 낸 뒤 같은 자로 다시 재니 8인 301.9MB → **42.3MB(44%)**, 7.1배다.
+     예산 안으로 들어왔으니 쫓아내기가 멈춘다. 그림은 한 톨도 안 바뀐다.
    읽는 법 — 개발자 콘솔에서 `__spritePerf.last`를 보거나, 한 줄 요약은
      `__spritePerf.line()`. 값은 프레임마다 롤링되고 `last`는 직전 한 판의 합이다. */
 export const SPRITE_PERF = {
@@ -11566,11 +11627,11 @@ function perfFrame(ms: number): void {
   p.bake = 0; p.hit = 0; p.blit = 0; p.direct = 0;
   p.bldBake = 0; p.bldHit = 0; p.bldBlit = 0;
 }
-const SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; bot: number; cx: number; top: number; w: number }>();
+const SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; ox: number; oy: number; pad: number; l: number; bot: number; cx: number; top: number; w: number }>();
 const spriteBytes = { n: 0 };
 function unitSprite(
   op: UnitDrawOp, pxq: number, B: number,
-): { cv: HTMLCanvasElement; pad: number; l: number; bot: number; cx: number; top: number; w: number } | null {
+): { cv: HTMLCanvasElement; ox: number; oy: number; pad: number; l: number; bot: number; cx: number; top: number; w: number } | null {
   const rotB = op.rotDeg !== undefined
     ? ((Math.round(op.rotDeg / 22.5) * 22.5) % 360 + 360) % 360 : -1;
   const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
@@ -11618,9 +11679,12 @@ function unitSprite(
     c2.fill(pathOf(d));
   }
   if (lod >= 3) silhouetteLight(c2, cv);
-  const entry = { cv, pad, l, ...contentBox(cv) };
+  // 잉크에 맞춰 자른다 — 자른 자리(ox·oy)만 함께 들고 다니면 그림은 그대로다.
+  const box = contentBox(cv);
+  const cr = cropToInk(cv, box);
+  const entry = { cv: cr.cv, ox: cr.ox, oy: cr.oy, pad, l, ...box };
   SPRITE_CACHE.set(key, entry);
-  spriteBytes.n += canvasBytes(cv);
+  spriteBytes.n += canvasBytes(cr.cv);
   trimSpriteCache(SPRITE_CACHE, spriteBytes, SPRITE_BYTES_MAX);
   return entry;
 }
@@ -11780,7 +11844,7 @@ export const BLD_NORM: Record<string, number> = {
   turret: 1.770,
   warpin: 2.196,
 };
-const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number; w: number; cx: number }>();
+const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; ox: number; oy: number; pad: number; l: number; side: number; bot: number; top: number; w: number; cx: number }>();
 const bldSpriteBytes = { n: 0 };
 /** 경로의 세로 범위 [위, 아래] — 공사에서 부품을 높이 순으로 세우는 데 쓴다.
  *  우리 도형 문법은 M·L·Q·C·A(a)·Z뿐이다. 호는 끝점 ± ry로 어림한다(순서를 정하는
@@ -12189,7 +12253,7 @@ export function stageFaces(faces: ShapeFace[], stg: number): ShapeFace[] {
 
 function buildingSprite(
   op: UnitDrawOp, sideQ: number, B: number,
-): { cv: HTMLCanvasElement; pad: number; l: number; side: number; bot: number; top: number; w: number; cx: number } | null {
+): { cv: HTMLCanvasElement; ox: number; oy: number; pad: number; l: number; side: number; bot: number; top: number; w: number; cx: number } | null {
   const vq = op.viewYaw ? Math.max(-36, Math.min(36, Math.round(op.viewYaw / 6) * 6)) : 0;
   const lod = lodOf(sideQ);
   /* 공사 단계(요청: "3단계로 하고 실제 모델의 부품을 일부만 표현하다가 완성되는 형태로
@@ -12250,12 +12314,17 @@ function buildingSprite(
     c2.fill(pathOf(d));
   }
   if (lod >= 3) silhouetteLight(c2, cv);
+  /* 잉크에 맞춰 자른다 — 건물 판은 여백(pad)이 발자국의 62%라 한 변이 2.24배이고,
+     잉크는 대략 1배다: 넓이의 5분의 1만 쓰인다. 자른 자리(ox·oy)만 들고 다니면
+     그림은 그대로다(위 cropToInk 주석). */
   const box9 = contentBox(cv);
+  const cr9 = cropToInk(cv, box9);
   const entry = {
-    cv, pad, l, side: sideQ, bot: box9.bot, top: box9.top, w: box9.w, cx: box9.cx,
+    cv: cr9.cv, ox: cr9.ox, oy: cr9.oy,
+    pad, l, side: sideQ, bot: box9.bot, top: box9.top, w: box9.w, cx: box9.cx,
   };
   BLD_SPRITE_CACHE.set(key, entry);
-  bldSpriteBytes.n += canvasBytes(cv);
+  bldSpriteBytes.n += canvasBytes(cr9.cv);
   trimSpriteCache(BLD_SPRITE_CACHE, bldSpriteBytes, BLD_SPRITE_BYTES_MAX);
   return entry;
 }
@@ -12598,10 +12667,12 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
              중심(cx)을 발자국 중심에 앉힌다 — 바닥(bot)을 땅에 앉힌 것과 같은 결. */
           const bLeft9 = sx - (bAnc ? bAnc[0] * bspr.l : bspr.cx / B) * k;
           SPRITE_PERF.bldBlit += 1;
+          // 자른 판을 제 자리에 되돌린다(유닛과 같은 규칙) — bLeft9·bTop9는 자르기
+          // 전 판의 왼위 모서리다.
           ctx.drawImage(
             bspr.cv,
-            bLeft9, bTop9,
-            bspr.l * k, bspr.l * k,
+            bLeft9 + (bspr.ox / B) * k, bTop9 + (bspr.oy / B) * k,
+            (bspr.cv.width / B) * k, (bspr.cv.height / B) * k,
           );
           /* 건물 체력바(요청) — 다친 건물 위에만. 유닛 바와 같은 3색. */
           if (showHp !== false && op.hpFrac !== undefined && op.hpFrac > 0) {
@@ -12830,10 +12901,16 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         } else ctx.shadowColor = "transparent";
         ctx.globalAlpha = op.alpha;
         SPRITE_PERF.blit += 1;
+        /* 자른 판을 제 자리에 되돌린다 — 원래 판의 왼위 모서리가 있던 곳에서
+           자른 만큼(ox·oy, 기기 픽셀이라 B로 나눈다) 옮겨 그리면, 통째로 그린 것과
+           픽셀 단위로 같은 그림이 나온다. */
+        const cw9 = spr.cv.width / B;
+        const ch9 = spr.cv.height / B;
         ctx.drawImage(
           spr.cv,
-          -(spr.pad + pxq / 2) * k, -(spr.pad + pxq / 2) * k,
-          spr.l * k, spr.l * k,
+          (-(spr.pad + pxq / 2) + spr.ox / B) * k,
+          (-(spr.pad + pxq / 2) + spr.oy / B) * k,
+          cw9 * k, ch9 * k,
         );
         ctx.restore();
         continue;
