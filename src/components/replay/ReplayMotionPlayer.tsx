@@ -32,11 +32,14 @@ import {
 } from "../../utils/bwUnits";
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, type TerrainGrid } from "../../utils/minimapTerrain";
-import { loadSimTracks, logSim } from "../../legacy/simClient";
+/* 자취는 이제 서버가 굽는다 — 브라우저는 풀어서 읽기만 한다(tools/openbw/README.md).
+   여태 이 자리에서 돌던 시뮬(legacy/simCore·simClient)은 명령에서 **유추**하던 것이라,
+   참값이 생긴 뒤로는 견줄 것도 없어 통째로 걷었다. legacy는 유물로 남긴다. */
 import {
-  hitsAt, posAtSim, shotsAt, ST_CARRY_GAS, ST_CARRY_MIN, ST_INSIDE,
-  type SimEventArr, type SimTrack,
-} from "../../legacy/simCore";
+  decodeTruthTracks, posAtTruth as posAtSim, type TruthTrack,
+  TRUTH_ST_CARRY_GAS as ST_CARRY_GAS, TRUTH_ST_CARRY_MIN as ST_CARRY_MIN,
+  TRUTH_ST_INSIDE as ST_INSIDE,
+} from "../../utils/openbwTracks";
 /* 자취 읽기는 유틸로 나갔다(과제 #61) — 코어가 걸음의 진실이 된 뒤로 이 파일의
    몫이 아니고, 밖에 있어야 자로 잴 수 있다(scripts/pos-check.mjs). */
 import { posAt, type TrackPos, type TrackPt } from "../../utils/replayTrack";
@@ -13332,10 +13335,11 @@ export default function ReplayMotionPlayer({
   /** 상세 팝업 닫기(요청: PC는 게임 결과만 확대창이 기본, 기존 상세는 미사용) — 값이
    *  오면 PC에서 마운트되자마자 확대창을 열고, 확대창을 닫을 때 상세까지 함께 닫는다. */
   onDetailClose?: () => void;
-  /** 개체 트랙 v2 로더(요청: 태그 단위 분석을 별도 테이블로 저장해 비교) — 있으면 보기
-   *  줄에 '부대/개체' 토글이 선다. 개체 모드는 유닛 층만 태그 단위 트랙으로 바꿔 그리고,
-   *  건물·자원·크립은 기존 그대로 둔다. null이 오면(옛 경기·분석 실패) 토글이 알린다. */
-  loadUnitTracks?: () => Promise<string | null>;
+  /** 개체 트랙 로더 — 두 가지가 함께 온다: `data`는 사건 표(v2: 건물·업그레이드·마법·
+   *  체력), `motion`은 서버가 OpenBW로 구운 **참값 자취**(자리·방향·상태)다. 둘 중 하나라도
+   *  없으면 재생기는 아무것도 안 그리고 "재생할 수 없는 게임"이라고만 말한다(요청: 폴백
+   *  없음) — 유추로 그린 그림은 실제 경기가 아니라 거짓말이었다. */
+  loadUnitTracks?: () => Promise<{ data: string | null; motion: string | null }>;
   /** 이 시각(초)부터 재생 시작(요청: 카톡 공유 링크의 &t=) — 경기 길이를 넘으면 무시. */
   initialSec?: number;
   /** 현재 재생 시각을 적어 둘 열쇠(경기번호) — 공유 링크가 &t=로 실어 보낸다. */
@@ -13371,15 +13375,9 @@ export default function ReplayMotionPlayer({
      "그 경기엔 아무 일도 없었다"가 화면에서 갈려야 한다. */
   const [entData, setEntData] = useState<UnitTracksV2 | null>(null);
   const [entLoad, setEntLoad] = useState<"idle" | "loading" | "none">("idle");
-  /* 시뮬 코어 미리보기(기획서 docs/plan-sim-core-v4.md P1) — 주소에 ?sim=1을 붙이면
-     유닛의 자리·방향을 명령 자취가 아니라 시뮬 결과에서 읽는다. 기존 길과 나란히 두고
-     눈으로 견줄 수 있게 깃발로 켠다 — 확인이 끝나면 이쪽이 기본이 되고 보정 코드가
-     통째로 걷힌다. 시뮬은 워커가 돌고 결과는 IndexedDB에 캐시된다(열 때마다 안 돈다). */
-  const [simTracks, setSimTracks] = useState<Map<number, SimTrack> | null>(null);
-  const [simEvents, setSimEvents] = useState<SimEventArr | null>(null);
-  /* 진행 알림(지적: 로딩 시간이 전혀 없는데 되는 건가) — 워커에서 도니 화면이 안 멈춰
-     제대로 돌았는지 눈으로 가릴 수가 없다. 지도 귀퉁이에 상태를 적어 둔다. */
-  const [simNote, setSimNote] = useState<string | null>(null);
+  /* 유닛의 자리·방향·상태 — 서버가 리플레이를 그대로 돌려 구운 참값이다. 태그로 찾는다.
+     (이름이 sim으로 남은 것은 읽는 자리가 수백 군데라서다 — 값의 출처만 바뀌었다.) */
+  const [simTracks, setSimTracks] = useState<Map<number, TruthTrack> | null>(null);
   /* 클릭 자국 토글(요청) — 기본은 끔: 클릭이 많은 경기에서는 자국이 화면을 덮는다. */
   const [clickFx, setClickFx] = useState(true); // 기본 켬(요청)
   /* 사양 라디오(요청: "성능 3단계로 수정(저/중/고) 이러면 딱 LOD랑 맞고 편하지") —
@@ -13417,12 +13415,17 @@ export default function ReplayMotionPlayer({
     if (entData || !loadUnitTracks || entLoad === "loading") return;
     setEntLoad("loading");
     try {
-      const raw = await loadUnitTracks();
-      const parsed = raw ? (JSON.parse(raw) as UnitTracksV2) : null;
-      if (parsed && parsed.v === 2 && Array.isArray(parsed.ents)) {
+      const got = await loadUnitTracks();
+      const parsed = got.data ? (JSON.parse(got.data) as UnitTracksV2) : null;
+      /* 자취는 zlib+varint로 눌려 온다 — 푸는 데 26분짜리 8인전이 100ms쯤이다. */
+      const truth = got.motion ? await decodeTruthTracks(got.motion) : null;
+      if (parsed && parsed.v === 2 && Array.isArray(parsed.ents) && truth) {
         setEntData(parsed);
+        setSimTracks(new Map(truth.tracks.map((tr) => [tr.tag, tr])));
         setEntLoad("idle");
       } else {
+        /* 둘 중 하나만 있어도 못 그린다: 사건만 있으면 자리가 없고, 자리만 있으면
+           건물·마법·체력이 없다. 반쪽으로 그리는 길은 안 둔다(요청). */
         setEntLoad("none");
       }
     } catch {
@@ -14018,73 +14021,9 @@ export default function ReplayMotionPlayer({
      지형이 갈리면(검수 저장 등) 비운다. */
   const rallyRoutes = useRef(new Map<string, [number, number][]>());
   useEffect(() => { rallyRoutes.current.clear(); }, [terrain, terrainRaw]);
-  /* 시뮬이 실제로 본 지형의 지문 — 위 캐시 열쇠가 쓴다. 코어가 받는 것과 같은 격자
-     (terrainRaw가 있으면 그것, 없으면 terrain)를 봐야 지문이 거짓말을 안 한다. */
-  const simTerrainKey = useMemo(() => {
-    const tg = terrainRaw ?? terrain;
-    if (!tg) return "0";
-    let walkable = 0;
-    for (let i = 0; i < tg.walk.length; i += 1) if (tg.walk[i]) walkable += 1;
-    /* 언덕 층도 지문에 넣는다(요청: 검수 격자에 언덕 층) — 안 넣으면 언덕을 칠해 저장해도
-       열쇠가 그대로라 캐시가 옛 자취를 되돌려 준다(지형 지문이 없던 시절과 같은 구멍). */
-    let hi = 0;
-    if (tg.high) for (let i = 0; i < tg.high.length; i += 1) if (tg.high[i]) hi += 1;
-    return `${tg.w}x${tg.h}.${walkable}.${hi}`;
-  }, [terrain, terrainRaw]);
-  /* 편 지문(지적: "동맹 판단도 해야지") — 팀은 개체 트랙이 아니라 화면 쪽 로스터가 안다.
-     로스터가 늦게 붙을 수 있으므로 지문을 deps에 넣어, 팀이 정해지는 순간 시뮬을 다시
-     돌린다(열쇠에도 같은 지문이 들어가 옛 결과와 안 섞인다). */
-  const simTeamKey = useMemo(
-    () => (entData ? entData.players.map((pl) => teamOfRaw(pl.name) ?? 0).join("") : ""),
-    [entData, teamOfRaw],
-  );
-  /* 시뮬 자취 적재(위 simFlag 주석) — 개체 트랙과 지형이 다 오면 워커에 맡긴다. 결과가
-     오기 전까지는 기존 길로 그린다(깜빡임 없이 갈아 끼운다). */
-  useEffect(() => {
-    if (!entData) {
-      /* 알약도 함께 띄운다 — 아무것도 안 뜨면 깃발이 안 먹은 건지 자료가 없는 건지
-         구분할 수가 없다(지적). */
-      setSimNote("시뮬 대기 — 개체 트랙 기다리는 중");
-      logSim("개체 트랙(v2)이 아직 없다 — 시뮬은 그것이 온 뒤에 돈다");
-      return undefined;
-    }
-    let cancelled = false;
-    logSim(`시작 — 개체 ${entData.ents.length}, 맵 ${grid.width}x${grid.height}, `
-      + `지형 ${(terrainRaw ?? terrain) ? "있음" : "없음"}, 자원 ${(grid.resources ?? []).length}`);
-    void loadSimTracks(
-      /* 캐시 열쇠 — 경기를 가르는 값(clockKey)에 개체 수·증거 수를 지문으로 붙인다.
-         clockKey가 없는 자리에서도 다른 경기끼리 섞이지 않게.
-         ★ 지형·자원 지문을 뒤에 붙인다(병합 검증이 잡은 구멍). 여태 열쇠에는 지도가
-           아예 없었다 — terrain·resources는 opts로 워커에 넘어가고 effect의 deps에도
-           있어 effect는 다시 돌지만, 열쇠가 같으니 캐시가 **옛 자취를 되돌려 줬다**.
-           맵연결·지형검수로 지도를 고쳐도 시뮬은 영영 옛 지형 판이었다는 뜻이다. 걸음이
-           지형을 보는 이번 병합에서는 곧장 눈에 띄는 결함이 된다.
-           격자 전체를 해싱하지 않고 '걸을 수 있는 칸 수'로 줄인 것은 값싸게 갈리는
-           지문이면 충분해서다 — 칸 하나만 칠해도 이 수가 움직인다. 자원은 개수만
-           센다(자리가 바뀌는 일이 없다). [어림] */
-      `${clockKey ?? "g"}:${entData.ents.length}:${entData.ents.reduce((n, x) => n + x.ev.length, 0)}:${grid.width}x${grid.height}`
-      + `:t${simTerrainKey}:r${(grid.resources ?? []).length}`
-      // 편 지문 — 팀 배정이 갈리면 아군·적군이 갈리므로 시뮬 결과가 통째로 다르다.
-      + `:m${simTeamKey}`,
-      entData as unknown as Parameters<typeof loadSimTracks>[1],
-      {
-        width: grid.width, height: grid.height, terrain: terrainRaw ?? terrain,
-        // 자원표 — 일꾼 채취 왕복의 재료(P3). 없으면 시뮬이 채취를 안 만든다.
-        resources: (grid.resources ?? []) as [number, number, number][],
-        /* 편 가르기(지적: "동맹 판단도 해야지") — 개체 트랙에는 팀이 안 실려 있고
-           화면 쪽 로스터(bases)가 그것을 안다. 여기서 임자 번호에 붙여 넘긴다:
-           팀을 모르면 시뮬은 임자 하나를 한 편으로 보므로 아군끼리 서로를 쏜다. */
-        teams: entData.players.map((pl) => [pl.id, teamOfRaw(pl.name) ?? 0] as [number, number]),
-      },
-      setSimNote,
-    ).then((got) => {
-      if (cancelled || !got) return;
-      setSimTracks(new Map(got.tracks.map((tr) => [tr.tag, tr])));
-      setSimEvents(got.events);
-    });
-    return () => { cancelled = true; };
-  }, [entData, terrain, terrainRaw, grid.width, grid.height, grid.resources, clockKey,
-    simTerrainKey, simTeamKey, teamOfRaw]);
+  /* (걷어냄) 시뮬 자취 적재 — 지형·편 지문으로 캐시 열쇠를 만들어 워커에 명령 자취를
+     넘기던 자리다. 자리는 이제 서버가 구운 참값으로 오므로(loadEnt) 지형도 편도 걸음에
+     쓸 일이 없다. 워커·캐시·지문 열쇠가 전부 여기서 사라졌다. */
   /* 지형 수정(요청: 모든 경기 리플레이 화면에서, 아무나) — 산 버튼이 검수 모달을 연다.
      저장하면 이 자리에서 바로 새 지형으로 갈아 끼운다(맵 캐시는 다음 로드에 새 값을 받는다). */
   /* (제거·요청: 지형 편집) — 재생 화면의 검수 모달·산 버튼을 걷었다. 검수 저장분은
@@ -15513,13 +15452,10 @@ export default function ReplayMotionPlayer({
   /* 캔버스 유닛 층의 재료(요청: 캔버스 전환 — 성능) — 이번 렌더에서 그릴 낱개 유닛
      도형들. 아래 마커 계산부가 push하고, 렌즈 안의 <UnitLayer>가 커밋 뒤 한 번에 그린다.
      계산(자리·회피·방향·깊이·순서)은 전부 그대로라 그림은 SVG 시절과 같다. */
-  /* 이번 프레임의 시뮬 발사(P2) — 태그마다 마지막 한 발의 표적 자리. 0.35초 창은
-     트레이서 애니가 살아 있는 길이 어림이다. 시뮬이 꺼져 있으면 null이고, 그때는
-     렌더가 종전대로 제 교전 판정으로 그린다. */
-  const simShots = simEvents ? shotsAt(simEvents, t, 0.35) : null;
-  /* 누가 나를 쐈나 — 피격 불티를 '맞는 방향'에 놓는 자다(지적). 창은 불티가 떠 있는
-     동안(0.45초)보다 조금 넓게 잡아, 불티가 뜬 뒤에도 방향을 잃지 않게 한다. */
-  const simHits = simEvents ? hitsAt(simEvents, t, 0.6) : null;
+  /* (걷어냄) 발사·피격 사건 — 옛 시뮬이 제 전투 판정으로 내던 것이다. 참값 자취에는
+     자리·방향·상태만 실려 있어 '누가 누구를 쐈나'가 없다(덤퍼가 아직 안 뽑는다). 그래서
+     트레이서와 피격 불티는 다시 렌더 제 교전 판정으로 돌아간다 — 아래 두 자리다.
+     [다음 수] bwdump가 발사 사건까지 내주면 여기로 돌아온다. */
   const unitOps: UnitDrawOp[] = [];
   /* (제거) 어택 명령 표적 집합으로 피격을 그리던 자 — 명령이 찍힌 곳과 실제로 맞는
      곳이 다르고 8초 내내 켜져, 싸움과 무관한 자리에서 불티가 텄다(지적). 이제 각
@@ -16087,12 +16023,6 @@ export default function ReplayMotionPlayer({
           aria-label="모델 크기"
         />
       </span>
-      {/* (v1 제거·요청) — 개체 트랙이 없는 옛 경기만 재분석 안내를 띄운다. */}
-      {loadUnitTracks && entLoad === "none" && (
-        <span className="scr-motion-btn scr-motion-rbtn" style={{ opacity: 0.7, pointerEvents: "none" }}>
-          개체 트랙 없음 — 재분석 필요
-        </span>
-      )}
       <span className="scr-motion-radio">
         <span className="scr-motion-radio-label">체력바</span>
         <PillTabs
@@ -16209,11 +16139,9 @@ export default function ReplayMotionPlayer({
           touchAction: "none",
         }}
       >
-        {/* 시뮬 상태 — 코어가 정식 경로가 된 뒤로는 **자취가 아직 없을 때만** 뜬다.
-            다 실린 뒤의 telemetry(몇 기·몇 초)는 콘솔(logSim) 몫이다: 잘 된 것을 화면에
-            계속 알릴 이유는 없고, 안 된 것은 반드시 보여야 한다(요청). */}
-        {!simTracks && simNote && (
-          <span className="scr-motion-simnote">{simNote}</span>
+        {/* 받는 중 — 자취는 눌러도 한 판에 1~2MB라 잠깐 걸린다. 다 온 뒤에는 안 뜬다. */}
+        {!simTracks && entLoad === "loading" && (
+          <span className="scr-motion-simnote">자취 받는 중…</span>
         )}
         {/* 맵연결(요청: 별도로 맵 좌상단에, 연결 안 된 경우만, 알약 형태) — 렌즈 밖이라
             휠 줌에도 제자리다. 맵의 팬·줌 손짓에 안 딸리게 눌림을 끊는다. */}
@@ -17619,18 +17547,6 @@ export default function ReplayMotionPlayer({
              몇 타일씩 벌어진 채로 사격 판정과 조준각을 원자취 거리로 내리다 보니, 몸
              옆에 아무도 없는데 트레이서가 나가고 각도도 엉뚱한 데를 겨눴다. 아래 사격
              ·조준·가시 길이는 전부 이 값을 쓴다. */
-          /* 시뮬이 켜져 있으면 사격도 시뮬 것이다(P2) — 렌더가 제 나름의 교전 판정으로
-             그리면 시뮬과 따로 논다(몸은 싸우는데 트레이서는 딴 데를 겨눈다). 이번 틱에
-             그 태그가 쏜 발이 있으면 그 표적이 곧 조준점이고, 없으면 안 쏜다. */
-          const simShot = simShots?.get(e.tag) ?? null;
-          if (simShots) {
-            if (simShot) {
-              foe = { bx: simShot[0], by: simShot[1], bd: Math.hypot(simShot[0] - pos.x, simShot[1] - pos.y), air: false };
-              fighting = true;
-            } else {
-              fighting = false;
-            }
-          }
           const foeDist = Number.isFinite(foe.bd)
             ? Math.hypot(foe.bx - pos.x, foe.by - pos.y) : Infinity;
           /* 몸 방향(지적: 트레이서와 불일치 + 뒤로 걷기) — 싸울 땐 표적을 바라보고,
@@ -17878,16 +17794,8 @@ export default function ReplayMotionPlayer({
                      증거만으로 아는 피격) 예전처럼 몸 가운데다. */
                   width: `${(fxPx * 0.42).toFixed(1)}px`,
                   height: `${(fxPx * 0.42).toFixed(1)}px`,
-                  transform: (() => {
-                    const from9 = simHits?.get(e.tag);
-                    if (!from9) return "translate(-50%, -60%)";
-                    const dx9 = from9[0] - pos.x;
-                    const dy9 = (from9[1] - pos.y) * (pitched ? pitchFlat : 1);
-                    const len9 = Math.hypot(dx9, dy9) || 1;
-                    const r9 = fxPx * 0.34;      // 몸 반지름 언저리
-                    return `translate(calc(-50% + ${((dx9 / len9) * r9).toFixed(1)}px), `
-                      + `calc(-60% + ${((dy9 / len9) * r9).toFixed(1)}px))`;
-                  })(),
+                  // 쏜 쪽을 모르니 몸 가운데다(위 '발사·피격 사건' 주석).
+                  transform: "translate(-50%, -60%)",
                 }}
               />
             )
@@ -17932,11 +17840,7 @@ export default function ReplayMotionPlayer({
              적어 놓고 코드는 '여유 7'을 사거리로 쓰고 있었다. 그리고 가시는 지상 전용
              무기라 공중 표적에는 안 나간다. */
           const lurkRange = fireRangeTilesOf("Lurker", false);
-          const lurkStrike = burrowed && !frzSt && !foe.air && foeDist <= lurkRange
-            /* 시뮬이 돌면 쿨다운(36~39프레임)도 시뮬 것이다 — 이번 틱에 그 태그의 발사가
-               없으면 가시도 없다. 안 그러면 사거리 안에 적이 있는 내내 가시가 끊기지 않고
-               솟는다. */
-            && (!simShots || simShot !== null);
+          const lurkStrike = burrowed && !frzSt && !foe.air && foeDist <= lurkRange;
           /* 솎기(기획서 1-G) — 근접은 이제 그릴 효과가 없으므로(잽 동작이 대신한다) 덜
              솎을 이유도 없다. 다만 맞은 불티는 솎으면 안 된다 — 맞는 순간은 개체마다
              한 번뿐이라 솎이면 통째로 사라진다. */
@@ -18611,5 +18515,15 @@ export default function ReplayMotionPlayer({
 
   /* (삭제·요청: PC 확대창 관련 소스 완전 제거) — 포털 모달·가리개·폭 공식 전부.
      넓은 배치는 wide가 인라인으로 그린다. */
+  /* 자료가 없으면 한마디만 한다(요청: 폴백 없음) — 옛 경기·분석 실패·아직 안 구운 판이
+     여기 걸린다. 여태는 명령에서 유추한 그림이라도 띄웠지만, 그건 실제로 벌어진 일이
+     아니었다. 없는 것은 없다고 말하는 편이 낫다. */
+  if (entLoad === "none") {
+    return (
+      <div className="scr-motion-nodata">
+        <span>재생할 수 없는 게임이에요</span>
+      </div>
+    );
+  }
   return body;
 }

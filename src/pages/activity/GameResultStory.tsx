@@ -208,9 +208,11 @@ export default function GameResultStory({
           />
         )}
         onDetailClose={detailClose ?? undefined}
-        /* 개체 트랙 v2(요청: 별도 테이블과 비교) — 재생기의 '부대/개체' 토글이 처음
-           켜질 때 한 번 내려받는다. 없는 경기(옛 등록·분석 실패)는 null이 온다. */
-        loadUnitTracks={() => api.getGameUnitTracks(gameResult.id).catch(() => null)}
+        /* 개체 트랙 — 사건(data)과 서버가 구운 참값 자취(motion)가 함께 온다. 재생기가
+           처음 열릴 때 한 번 내려받는다. 없는 경기(옛 등록·분석 실패·아직 안 구움)는
+           각각 null이다. */
+        loadUnitTracks={() => api.getGameUnitTracks(gameResult.id)
+          .catch(() => ({ data: null, motion: null }))}
         winnerTeam={gameResult.result === "team1" ? 1 : gameResult.result === "team2" ? 2 : undefined}
         /* 확대 모드의 오른쪽 영역엔 이 경기의 댓글(지적: "리플" = 댓글) — 활동 카드
            하단과 같은 컴포넌트를 그대로 앉힌다. 모달(z 210) 안이라 overModal. */

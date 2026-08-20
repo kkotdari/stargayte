@@ -54,6 +54,48 @@ export const TRUTH_ST_BURROW = 6;
 export const TRUTH_ST_CARRY_MIN = 7;
 export const TRUTH_ST_CARRY_GAS = 8;
 
+/* 자취 읽개 ─────────────────────────────────────────────────────────────────────
+   키는 3프레임(약 0.126초)마다 하나다. 그 사이 시각은 앞뒤 키를 이어서 메운다 — 안 그러면
+   초당 8칸씩 유닛이 튄다. 방향은 최단 각으로 돌리고(359°→1°가 358° 역회전이 안 되게),
+   상태는 안 섞는다(걷는 중과 싸우는 중 사이에 '반쯤'은 없다).
+   옛 시뮬(legacy/simCore.posAtSim)에 있던 것을 그대로 옮겼다 — 자취 꼴이 같으니 셈도 같고,
+   이걸 옮겨야 시뮬 엔진이 앱 묶음에서 통째로 빠진다. */
+const norm360 = (d: number): number => ((d % 360) + 360) % 360;
+const angDiff = (a: number, b: number): number => {
+  let d = norm360(b - a);
+  if (d > 180) d -= 360;
+  return d;
+};
+
+/** t초일 때 이 개체의 자리·방향·상태. 아직 안 태어났으면 null. */
+export function posAtTruth(
+  tr: TruthTrack, t: number,
+): { x: number; y: number; hdg: number; state: number } | null {
+  const n = tr.keys.length / 5;
+  if (n === 0) return null;
+  if (t < tr.keys[0]) return null;
+  // 마지막으로 t를 안 넘는 키 — 키가 수천 개라 이분법으로 찾는다.
+  let lo = 0;
+  let hi = n - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (tr.keys[mid * 5] <= t) lo = mid; else hi = mid - 1;
+  }
+  const i = lo * 5;
+  const st = tr.keys[i + 4];
+  if (lo === n - 1) return { x: tr.keys[i + 1], y: tr.keys[i + 2], hdg: tr.keys[i + 3], state: st };
+  const j = i + 5;
+  const span = tr.keys[j] - tr.keys[i];
+  const u = span > 0 ? Math.min(1, Math.max(0, (t - tr.keys[i]) / span)) : 0;
+  const dh = angDiff(tr.keys[i + 3], tr.keys[j + 3]);
+  return {
+    x: tr.keys[i + 1] + (tr.keys[j + 1] - tr.keys[i + 1]) * u,
+    y: tr.keys[i + 2] + (tr.keys[j + 2] - tr.keys[i + 2]) * u,
+    hdg: norm360(tr.keys[i + 3] + dh * u),
+    state: st,
+  };
+}
+
 /** base64 → 바이트. atob는 라틴1 문자열을 주므로 코드포인트를 그대로 옮긴다. */
 function fromBase64(s: string): Uint8Array {
   const bin = atob(s);
@@ -73,7 +115,10 @@ async function inflate(bytes: Uint8Array): Promise<Uint8Array> {
 /** 바이트열을 앞에서부터 훑는 작은 커서 — 꼴이 한 줄로 이어져 있어 되감을 일이 없다. */
 class Cursor {
   private p = 0;
-  constructor(private readonly b: Uint8Array) {}
+  private readonly b: Uint8Array;
+  /* 매개변수 속성(constructor(private b))은 안 쓴다 — 이 리포는 erasableSyntaxOnly라
+     타입만 지워서는 자바스크립트가 안 되는 문법을 금한다. */
+  constructor(b: Uint8Array) { this.b = b; }
   u8(): number { return this.b[this.p++]; }
   u16(): number { const v = this.b[this.p] | (this.b[this.p + 1] << 8); this.p += 2; return v; }
   u32(): number {

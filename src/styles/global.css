@@ -14320,14 +14320,26 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   100% { opacity: 1; }
 }
 
-/* 시뮬 상태 알림(기획서 v4) — 워커에서 도니 화면이 안 멈춰, 되고 있는지 알려 줄 자리가
-   있어야 한다(지적: 로딩 시간이 전혀 없는데 되는 건가). 맵 좌상단, 맵연결 알약 자리 위. */
+/* 자취 받는 중 알림 — 자취는 서버가 구워 두지만 한 판에 1~2MB라 내려받는 동안 지도가
+   비어 보인다. 되고 있다고 알려 줄 자리다. 맵 좌상단, 맵연결 알약 자리 위. */
 .scr-motion-simnote {
   position: absolute; left: 8px; top: 8px; z-index: 30000;
   padding: 2px 8px; border-radius: 999px;
   background: rgba(20, 24, 32, 0.72); color: #cfe6ff;
   font-size: 11px; line-height: 1.6; letter-spacing: 0.2px;
   pointer-events: none; white-space: nowrap;
+}
+
+/* 재생할 수 없는 경기(요청: 폴백 없음) — 참값 자취나 사건 표가 없는 판은 재생기 자리에
+   이 한마디만 선다. 옛 경기·분석 실패·아직 안 구운 판이 여기 걸린다. 상자는 지도가
+   설 자리만큼만 높이를 잡아, 앞뒤 여백이 갑자기 무너지지 않게 한다. */
+.scr-motion-nodata {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 220px; padding: 24px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 13px; letter-spacing: 0.2px; text-align: center;
 }
 
 /* ── 정보 팝업(요청: 유닛·건물 클릭하면 정보 툴팁) ─────────────────────────────────

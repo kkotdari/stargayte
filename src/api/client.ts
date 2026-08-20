@@ -303,10 +303,20 @@ export const api = {
     });
   },
 
-  /** 개체 트랙 v2 조회 — 없으면(옛 경기·분석 실패) data가 null이다. */
-  async getGameUnitTracks(id: number): Promise<string | null> {
-    const res = await request<{ data: string | null }>(`/api/game-results/${id}/unit-tracks`);
-    return res.data ?? null;
+  /** 개체 트랙 조회 — 두 가지가 함께 온다.
+   *
+   *  data   — 개체 트랙 v2(사건: 명령·연구·마법). 프론트가 만들어 올린 것.
+   *  motion — **참값 자취**(유닛의 자리·방향·상태). 서버가 리플레이를 실제로
+   *           시뮬레이션해 구운 것이다(api 리포의 openbw/README.md). 이게 있으면
+   *           화면은 브라우저 시뮬을 안 돌린다 — 여태 경기를 열 때마다, 폰마다
+   *           다시 돌리던 일이다.
+   *
+   *  옛 경기·아직 안 구운 경기는 각각 null이다. */
+  async getGameUnitTracks(id: number): Promise<{ data: string | null; motion: string | null }> {
+    const res = await request<{ data: string | null; motion?: string | null }>(
+      `/api/game-results/${id}/unit-tracks`,
+    );
+    return { data: res.data ?? null, motion: res.motion ?? null };
   },
 
   // 전적통계 화면 전용 — 회원별로 이미 집계된 전적을 받는다.
