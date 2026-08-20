@@ -3759,7 +3759,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      잎날 넷이 앞뒤 축을 빙 둘러 배 면끼리 마주보는 관(구멍이 앞뒤). 높은 부감
      카메라에서 구멍이 보이도록 관 앞을 35도쯤 들고 앞을 살짝 나팔로 벌렸다.
      각 잎의 안쪽 면엔 밝은 발광 잎. 판·받침은 없다. */
-  arch: () => {
+  // 요잉 +180도(요청: "스타게이트 모델 +180도 요잉").
+  arch: () => withModelSpin(180, () => {
     // 그림자는 옅고 아담하게 — 관문이 떠 있는 자리만 알리면 된다.
     const out: ShapeFace[] = [sideFace(discPath3(0, 0.2, 0, 3.4), 0.16)];
     const C = 5;      // 관문 축 높이
@@ -3837,7 +3838,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       }
     }
     return out;
-  },
+  }),
   /* 파일런(정정 둘) — 고리를 수정 허리께로 더 올리고(지적), 수정은 매끈한 육각
      보석으로 다듬었다: 위 뾰족·어깨·허리·아래 뾰족이 좌우대칭. */
   diamond: () => {
@@ -17693,7 +17694,15 @@ export default function ReplayMotionPlayer({
             const goneAt = gone ?? 0;
             if (goneAt > 0 && t >= goneAt + 1.2) return null;
             const cxb = x + footDx(unit);
-            const cyb = y + footDy(unit);
+            /* 크립은 **그려진 건물 아래**에 깔린다(지적: "해처리 아래로 한참 내려와서
+               퍼지잖아") — 여태 발자국 한가운데에 동그라미의 중심을 두었다. 바닥 데칼로는
+               그것이 맞지만, 이 화면의 건물은 발자국에서 위로 **솟아** 그려져(riseOf) 몸의
+               무게중심이 발자국보다 한참 위에 있다. 그래서 같은 자리에 놓아도 크립만 아래로
+               흘러내린 것처럼 보인다.
+               건물 몸이 쓰는 그 보정을 크립도 그대로 받는다 — 위 건물 층의 anchorY가
+               `-riseOf(unit)/2`를 빼는 것과 같은 자다. 그러면 크립의 한가운데가 곧
+               건물이 서 있는 자리가 된다. */
+            const cyb = y + footDy(unit) - riseOf(unit) / 2;
             const [cfx, cfy] = posFrac(cxb, cyb);
             /* 크립 확산(요청: 원작 규칙) — 해처리(레어·하이브)와 콜로니류만 시간이 갈수록
                크립이 넓게 퍼지고, 나머지 건물은 제 발밑만 적신다. 같은 자리의 앞선 같은
@@ -17762,7 +17771,15 @@ export default function ReplayMotionPlayer({
             const cy9 = y + footDy(unit);
             const r9 = ((FOOTPRINT[unit] ?? [4, 3])[0] * 1.4) / 2;
             const wPct = Math.abs(posFrac(cx9 + r9, cy9)[0] - posFrac(cx9 - r9, cy9)[0]) * 100;
-            const hPct = Math.abs(posFrac(cx9, cy9 + r9)[1] - posFrac(cx9, cy9 - r9)[1]) * 100;
+            /* 평면(90도)에서는 자리 사상이 눌러 주지 않는다(지적: "리프트랜딩 충격파도
+               2디에서 너무 원이야 세로가 눌리지 않고") — posFrac은 입체에서만 원근을
+               싣고, 평면에서는 타일 원이 화면 원 그대로 나온다. 그런데 이 화면의 평면
+               바닥은 **의도적으로 눌려 있다**(원작 이동 마커와 같은 2:1 지면 관례):
+               건물 접지 그림자도 평면에서 0.55를 곱해 깐다. 같은 값을 여기에도 쓴다 —
+               충격파와 그림자가 같은 바닥에 누워야 한다는 것이 애초의 요청이다. */
+            const GROUND_SQUISH_2D = 0.55;
+            const hPct = Math.abs(posFrac(cx9, cy9 + r9)[1] - posFrac(cx9, cy9 - r9)[1]) * 100
+              * (pitched ? 1 : GROUND_SQUISH_2D);
             return (
               <span
                 key={`td-${i}`}
