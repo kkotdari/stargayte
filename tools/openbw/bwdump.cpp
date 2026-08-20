@@ -10,6 +10,12 @@
 #include <string>
 #include <map>
 
+static int g_ok[64] = {0}, g_slot[64] = {0}, g_tot[64] = {0};
+/** 고르기가 유닛을 찾았나 — 1분 칸으로 모은다(23.81프레임 = 1초). */
+void bwdump_resolve(int frame, bool ok, bool slot) {
+  int b = frame / 1429; if (b > 63) b = 63;
+  g_tot[b] += 1; if (ok) g_ok[b] += 1; if (slot) g_slot[b] += 1;
+}
 using namespace bwgame;
 
 int main(int argc, char** argv) {
@@ -149,6 +155,12 @@ int main(int argc, char** argv) {
         L.born, L.last, L.last < (int)replay_st.end_frame - 1 ? 1 : 0, L.bx, L.by, L.lx, L.ly);
     }
     fprintf(stderr, "유닛 %zu기의 생애를 냈다\n", lives.size());
+    if (getenv("BWDUMP_RESOLVE")) {
+      fprintf(stderr, "  분  고르기  찾음   슬롯만\n");
+      for (int b = 0; b < 64; ++b) if (g_tot[b])
+        fprintf(stderr, "  %2d  %6d  %5.1f%%  %5.1f%%\n", b, g_tot[b],
+          g_ok[b] * 100.0 / g_tot[b], g_slot[b] * 100.0 / g_tot[b]);
+    }
     for (size_t i = 0; i != 8; ++i) {
       if (replay_st.player_name[i].empty()) continue;
       fprintf(stderr, "  %-16s 끝 자원 미네랄 %6d · 가스 %5d · 캔 미네랄 %7d\n",

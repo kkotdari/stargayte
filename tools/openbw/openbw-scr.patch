@@ -1,8 +1,17 @@
 diff --git a/actions.h b/actions.h
-index 5a0ad23..28544a5 100644
+index 5a0ad23..2d5d11e 100644
 --- a/actions.h
 +++ b/actions.h
-@@ -1013,6 +1013,91 @@ struct action_functions: state_functions {
+@@ -3,6 +3,8 @@
+ 
+ #include "bwgame.h"
+ 
++void bwdump_resolve(int frame, bool ok, bool slot);
++
+ namespace bwgame {
+ 
+ struct action_state {
+@@ -1013,6 +1015,97 @@ struct action_functions: state_functions {
  		return action_select(owner, units);
  	}
  
@@ -21,12 +30,18 @@ index 5a0ad23..28544a5 100644
 +	 *  위 식으로 떨어지고, 다른 지도(New Super빠른무한)에서도 그대로 맞았다. */
 +	unit_t* get_unit_scr(uint32_t raw) const {
 +		size_t idx = (size_t)(raw & 0x1fff);
-+		if (idx <= 1700) return nullptr;
-+		idx -= 1700;
-+		unit_t* u = get_unit(idx - 1);
-+		if (!u) return nullptr;
-+		if (u->unit_id_generation % (1u << 19) != (raw >> 13)) return nullptr;
-+		return u;
++		bool ok = false, slot = false;
++		unit_t* r9 = nullptr;
++		if (idx > 1700) {
++			idx -= 1700;
++			unit_t* u = get_unit(idx - 1);
++			slot = !!u;
++			if (u && u->unit_id_generation % (1u << 19) == (raw >> 13)) { r9 = u; ok = true; }
++		}
++		if (getenv("BWDUMP_RESOLVE")) {
++			bwdump_resolve((int)st.current_frame, ok, slot);
++		}
++		return r9;
 +	}
 +
 +	/* ── 리마스터(1.21+)의 명령 여섯 ── 0x60~0x65는 옛 0x14·0x15·0x18·0x09·0x0a·0x0b와
@@ -94,7 +109,7 @@ index 5a0ad23..28544a5 100644
  	template<typename reader_T>
  	bool read_action_shift_select(int owner, reader_T&& r) {
  		size_t n = r.template get<uint8_t>();
-@@ -1349,6 +1434,19 @@ struct action_functions: state_functions {
+@@ -1349,6 +1442,19 @@ struct action_functions: state_functions {
  		int action_id = r.template get<uint8_t>();
  		on_action(owner, action_id);
  		switch (action_id) {
@@ -114,3 +129,18 @@ index 5a0ad23..28544a5 100644
  		case 9:
  			return read_action_select(owner, r);
  		case 10:
+diff --git a/replay.h b/replay.h
+index 00f44eb..bafe51e 100644
+--- a/replay.h
++++ b/replay.h
+@@ -190,6 +190,10 @@ struct replay_functions: action_functions {
+ 		auto player_color = gir.get<std::array<uint32_t, 8>>(); // player colors
+ 		auto create_melee_units_for_player = gir.get<std::array<uint8_t, 8>>();
+ 		
++		if (getenv("BWDUMP_SETUP"))
++			fprintf(stderr, "설정: 승리조건 %d · 자원방식 %d · 시작유닛 %d · 토너먼트 %d · 시작미네랄 %u\n",
++				(int)victory_condition, (int)resource_type, (int)create_initial_units,
++				(int)tournament_mode, (unsigned)starting_minerals);
+ 		replay_st.end_frame = frame_count;
+ 		replay_st.game_type = game_type;
+ 		
