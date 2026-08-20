@@ -476,6 +476,20 @@ v2가 아직 혼자 대는 것:
 실제 6.9MB 묶음으로 끝까지 확인했다 — 955개가 깔리고, 틀린 토큰은 404고, 그 볼륨으로
 덤퍼가 돌아 트랙이 나온다.
 
+### 대소문자 — 맥에서 안 드러나고 리눅스에서 터진다
+
+`images.tbl`은 그림 이름을 `Zerg\Hive.grp`처럼 적어 두는데 뽑힌 파일은 `unit/zerg/Hive.grp`다
+(폴더는 소문자, 파일은 원래 대소문자). 맥은 대소문자를 안 가려서 그대로 열렸고, 운영
+(리눅스)에 올리고 나서야 `자료 파일 없음: /data/bwdata/unit/Zerg/Hive.grp`로 터졌다.
+
+덤퍼가 자료 폴더를 한 번 훑어 **소문자 색인**을 만들고 그것으로 찾는다(955개라 몇 ms다).
+시험은 맥에서 대소문자를 가리는 디스크 이미지를 만들어 한다:
+
+    hdiutil create -size 64m -fs "Case-sensitive APFS" -volname bwcase -quiet bwcase.dmg
+    hdiutil attach -mountpoint ./cs bwcase.dmg && cp -R tools/openbw/data/* ./cs/
+
+그 볼륨에서 돌린 결과가 평소 볼륨과 한 바이트도 안 달라야 한다.
+
 ## 다음 걸음
 
 1. 뼈대를 참값으로 — 재생기가 `entData.ents` 대신 자취를 훑게 하고, v2는 체력·업그레이드
