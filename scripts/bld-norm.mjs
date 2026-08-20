@@ -114,12 +114,13 @@ function inBrowser({ KINDS, VQS, LOD, RES, MARGIN, ANCHOR }) {
   };
   /** 축 a에서 키웠을 때 잉크가 **굽는 캔버스**에 처음 닿는 배수.
    *  16-상자가 아니라 pad까지 포함한 실제 캔버스로 재야 한다 — buildingSprite는
-   *  pad = 0.62·sideQ + 2 를 두르므로 모델 단위로 양옆 9.9씩 여유가 있다. 16-상자로
+   *  pad = 0.78·sideQ + 2 를 두르므로 모델 단위로 양옆 12.5씩 여유가 있다. 16-상자로
    *  재면 발선(y=16) 아래로 조금이라도 삐친 건물이 전부 상한 0이 되어 버린다
    *  (실측: 55종 중 13종이 그랬다 — 바닥 얼룩·받침 슬래브가 발선 아래로 내려간다). */
-  /* 굽는 쪽 pad와 **같은 값이어야 한다**(buildingSprite: `Math.ceil(sideQ * 0.62) + 2`)
+  /* 굽는 쪽 pad와 **같은 값이어야 한다**(buildingSprite: `Math.ceil(sideQ * 0.78) + 2`)
      — 0.62 × 16 = 9.92. 여기만 어긋나면 표가 상한을 잘못 잡는다. */
-  const PAD = 9.92;
+  // 굽는 쪽 pad와 같은 값(buildingSprite: `Math.ceil(sideQ * 0.78) + 2`) — 0.78 × 16.
+  const PAD = 12.48;
   const headroom = (bb, a) => {
     const lim = (lo, hi, c) => Math.min(
       hi > c ? (16 + PAD - c) / (hi - c) : Infinity,

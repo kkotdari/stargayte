@@ -506,8 +506,24 @@ export function withViewShear<T>(sh: number, fn: () => T): T {
     viewShear = 0;
   }
 }
+/** 모델 자체 높이 배수 — withModelZ 안에서만 1이 아니다.
+ *  화면 배율(zScale)이 아니라 **모형 좌표의 z**에 곱하므로, 지붕 위에 앉은 것도
+ *  사면을 재는 값도 전부 같은 몫으로 따라 올라간다. 모델 파일의 z를 한 줄씩
+ *  고치는 것과 결과가 같고, 되돌리기도 배수 하나다. */
+let modelZK = 1;
+/** 이 안에서 만든 면들의 모형 높이를 k배로 — 가로·세로(x·y)는 안 건드린다. */
+export function withModelZ<T>(k: number, fn: () => T): T {
+  const prev = modelZK;
+  modelZK = k;
+  try {
+    return fn();
+  } finally {
+    modelZK = prev;
+  }
+}
 /** 모형 좌표 (x,y,z) → 화면 [sx, sy]. y(앞)는 아래로, z(위)는 위로 간다. */
-export function project(x: number, y: number, z: number): [number, number] {
+export function project(x: number, y: number, z0: number): [number, number] {
+  const z = z0 * modelZK;
   // 모델 회전이 먼저다 — 돌아간 좌표를 카메라가 본다(카메라는 안 움직인다).
   const [mx, my] = spun(x, y);
   const th = ((yawOverride ?? VIEW.yawDeg) * Math.PI) / 180;

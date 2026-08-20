@@ -59,7 +59,7 @@ import {
   domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces,
   prismYFaces, prismZFaces, pyramidFaces3,
   screenCircle, setPitchSquash, sphereFaces3, tubeFaces,
-  wallDiscPath, withModelSpin, withPitchView, withTopView, withViewShear, withYaw, zsorted,
+  wallDiscPath, withModelSpin, withModelZ, withPitchView, withTopView, withViewShear, withYaw, zsorted,
 } from "../../utils/shapeOblique";
 import { TEAM_COLOR, type MinimapMarker } from "./ReplayMinimap";
 
@@ -2619,7 +2619,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   },
   /* 서플라이(단순화, 지적) — 본체 상자 + 지붕 큰 회전 통풍구 + 앞면의 더 큰 둥근 팬
      둘 + 왼앞 줄무늬 차단바. 잔장식(등판·캐니스터·탱크)은 걷어냈다. */
-  trapezoid: () => withModelSpin(-90, () => {
+  // 모델 자체를 20% 높인다(요청) — 폭은 그대로 두고 z만 배수로 든다.
+  trapezoid: () => withModelZ(1.2, () => withModelSpin(-90, () => {
     /* 서플라이 디포(재작도·사진) — 검회색 장갑 상자다. 지붕 뒤에 드럼통 하나가 서고,
        지붕 가운데와 앞면 두 곳에는 환풍구가 뚫린다. 왼쪽 지붕에는 은빛 보급 상자 줄과
        그 아래 초록 발광, 왼쪽 옆면에는 초록 창과 해저드 띠, 앞에는 경사로와 드럼 둘.
@@ -2799,7 +2800,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ], STEEL), depthNow(dx9, dy9) * 1.6 + 4));
     }
     return out;
-  }),
+  })),
   factory: () => {
     /* 팩토리(요청·사진) — 직육면체가 아니라, 위아래 모서리를 크게 깎은 넓적한 8각
        단면을 길이 방향으로 뽑은 장갑 몸통이다. 옆면에는 패널 홈이 줄지어 파이고,
@@ -3711,7 +3712,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const C = 5;      // 관문 축 높이
     const R = 3.1;    // 축에서 잎 배까지 반지름
     const LEN = 3.1;  // 잎의 앞뒤 반길이
-    const TANG = 1.5; // 접선 반폭
+    /* 접선 반폭 1.5 → 1.95(요청: "네 잎 너비 확대") — 잎이 넓어지면 관문의 구멍이
+       좁아지고 넷이 한 통으로 읽힌다. 앞뒤 길이(LEN)와 반지름(R)은 그대로라 관문의
+       덩치는 안 변하고 날만 두꺼워진다. */
+    const TANG = 1.95; // 접선 반폭
     const RAD = 0.42; // 반지름 방향 반두께
     const GOLD9 = "#c9a227";
     /* 잎 넷을 **기둥 둘 맞붙이기**로 다시 짠다(요청) — 여태 잎 한 장이 안판·바깥판
@@ -4784,7 +4788,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 아카데미(전면 재작도·사진) — 어두운 강철 더미다: 왼쪽에 붉은 띠를 두른 리벳
      드럼 돔, 뒤에 붉은 갓을 쓴 굴뚝 탑 둘과 잿빛 원통 하나, 오른쪽에 속이 붉은 큰
      고리 대야, 그 앞에 기운 작업 단, 발치를 두르는 돌빛 슬래브들. */
-  academy: () => {
+  // 모델 자체를 20% 높인다(요청: "서플라이 아카데미 높이 모델자체 20프로 살짝
+  // 높여줘") — 가로·세로는 그대로다.
+  academy: () => withModelZ(1.2, () => {
     const STEEL = "#868d94";   // 테란 기본색(요청)
     const DARK = "#3f444b";
     // 붉던 세 자리(드럼 띠·굴뚝 갓·대야 속)는 개인색이 됐다(요청) — 붉은색 상수는 뺀다.
@@ -4864,7 +4870,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ], 20 + depthNow(1.9, 1.6) * 1.6));
     }
     return raceBase(out, "terran", pc);
-  },
+  }),
   /* 엔지니어링 베이(복원) — 사방 대각 팔 끝의 원반 발 넷, 각진 몸체 더미, 끝이
      빛나는 앞 통, 지붕 안테나. */
   ebay: () => {
@@ -10372,10 +10378,13 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     const ROCK = "#7a7264";
     const GAS = "#7ee03a";
     const GAS_D = "#3f7a1c";
-    const out: ShapeFace[] = [
-      // 흙바닥 — 고정 회갈색.
-      [groundEllipse(...project(0, 0, 0.02), 4.7, 2.25), 1, "#413c35"] as ShapeFace,
-    ];
+    /* (걷어냄) 흙바닥 타원 — 분화구 밑에 깔던 짙은 회갈(#413c35) 원반이다(요청:
+       "가스는 아래 그림자 제거"). 흙을 뜻하려던 것인데 화면에서는 간헐천이 지는
+       그림자 한 장이었고, 이 판의 규칙은 **뜬 것만 그림자를 진다**는 것이다(고치
+       바닥 원반을 걷은 것과 같은 까닭).
+       ★ 잉크 상자도 이 원반이 재고 있었으므로(반지름 4.7 — 분화구보다 넓다) 걷은
+         만큼 정규화가 다시 잡는다. bld-norm을 함께 돌렸다. */
+    const out: ShapeFace[] = [];
     /* 둘러선 바위 덩이(정정: "삭제하지 말고 수와 크기를 대폭 축소") — 여섯을 셋으로
        줄이고 키도 3분의 1 아래로 낮춘 자갈이다. 이 덩이들이 잉크 폭만 넓히고 시선은
        분화구에서 뺏어 가던 것이 문제였지, 있어야 할 자리가 아닌 건 아니었다.
@@ -11956,7 +11965,8 @@ export const BLD_FILL_TARGET: Record<string, number> = {
      게이트웨이 어시밀 작게 모델링된듯") — 여섯 다 몸이 가늘거나 속이 빈 형태라(아치·
      기둥·고리), 잉크 폭을 발자국의 95%에 맞춰도 눈에 잡히는 덩어리는 그 절반이다.
      같은 무리를 같은 몫으로 올린다 — 스타게이트(arch)만 상자 상한이 낮아 덜 오른다. */
-  gate: 1.25, tribunal: 1.15, fleetbeacon: 1.15,
+  // 게이트만 한 단 내린다(요청: "게이트 살짝 축소") — 1.25 → 1.12.
+  gate: 1.12, tribunal: 1.15, fleetbeacon: 1.15,
   /* 스포닝 풀이 너무 작게 나온다(지적) — 이 모델은 바닥 크립 얼룩(반지름 6.8)이
      16-상자를 거의 가득 채워, 채움 보정이 '이미 큰 건물'로 재고 몸을 도로 줄였다.
      실제로 보이는 웅덩이·두렁은 상자의 절반쯤뿐이다. 목표 채움을 올려 몸을 키운다. */
@@ -11965,7 +11975,8 @@ export const BLD_FILL_TARGET: Record<string, number> = {
      이 표가 정한다(구운 판의 잉크 폭을 재서 발자국의 몇 할이 되게 다시 굽는다). 그래서
      파일런은 모델을 건드리는 대신 기본값 0.95의 1.5배인 1.425를 못 박아, 다른 건물보다
      반쯤 더 크게 선다. */
-  diamond: 1.425,
+  /* 파일런 1.425 → 1.6(요청: "파일런 확대") — 여백을 든 덕에 이제 실제로 오른다. */
+  diamond: 1.6,
   /* ── 눈으로 고른 한 벌(요청) ────────────────────────────────────────────────
      "작아 보이는 것"과 "커 보이는 것"을 화면에서 짚어 준 목록이다. 정규화는 잉크 폭을
      한 목표로 맞출 뿐 **덩어리가 눈에 얼마나 잡히는가**는 모른다 — 속이 빈 고리·가는
@@ -11978,7 +11989,13 @@ export const BLD_FILL_TARGET: Record<string, number> = {
   tombFlat: 1.2,       // 벙커
   turret: 1.2,         // 터렛
   trapezoid: 1.2,      // 서플라이
-  ebay: 1.2,           // 엔지니어링 베이
+  /* 엔베는 한 번 더(재지적: "엔베 크기 확대") — 1.2로도 작았다. 지붕이 낮고 넓은
+     판이라 잉크 폭을 다 써도 눈에 잡히는 덩어리가 얇다. */
+  ebay: 1.45,          // 엔지니어링 베이
+  /* (취소·요청: "아니다 취소하고") 아카데미 크기 축소 — 되돌린다. 높이 20%(withModelZ)만
+     남는다. 서플라이도 같다: 크기는 손대지 않고(1.2 그대로) 높이만 올렸다. */
+  // 아모리는 줄인다(요청: "아모리 축소").
+  armory: 0.8,
   coil: 1.2,           // 포토 캐논
   hydraden: 1.2,       // 히드라 덴
   evo: 1.2,            // 에볼루션 챔버
@@ -12017,13 +12034,13 @@ export const BLD_FILL_TARGET: Record<string, number> = {
  *  않는다"로 그친다 — 상한을 이유로 줄이면 멀쩡히 보이던 건물이 갑자기 작아진다.
  *  표에 없는 종류는 1(모델 그대로)이다. */
 export const BLD_NORM: Record<string, number> = {
-  academy: 1.408,
-  arch: 2.131,  // 상자 상한에 걸림
-  archives: 2.265,  // 상자 상한에 걸림
-  armory: 1.452,
+  academy: 1.399,
+  arch: 2.321,  // 상자 상한에 걸림
+  archives: 2.489,  // 상자 상한에 걸림
+  armory: 1.223,
   assim: 1.439,
   cavern: 1.082,
-  citadel: 2.131,  // 상자 상한에 걸림
+  citadel: 2.225,
   cocoon: 2.878,
   coil: 1.337,
   comsat: 1.655,
@@ -12032,20 +12049,20 @@ export const BLD_NORM: Record<string, number> = {
   ctower: 1.884,
   cube: 1.112,
   cyber: 1.972,
-  diamond: 1.876,  // 상자 상한에 걸림
+  diamond: 2.062,  // 상자 상한에 걸림
   dmound: 1.111,
   dome: 1.418,
-  ebay: 1.241,
+  ebay: 1.499,
   evo: 1.540,
   extract: 0.900,
   factory: 1.117,
   fleetbeacon: 2.107,
   forge: 1.766,
-  gate: 1.979,
-  geyser: 1.513,
-  gspire: 1.048,  // 상자 상한에 걸림
+  gate: 1.774,
+  geyser: 1.587,
+  gspire: 1.151,  // 상자 상한에 걸림
   hatchery: 1.327,
-  hive: 1.322,  // 상자 상한에 걸림
+  hive: 1.345,
   hydraden: 1.070,
   lair: 1.293,
   mineral: 1.963,
@@ -12063,15 +12080,15 @@ export const BLD_NORM: Record<string, number> = {
   sbattery: 2.032,
   scaffold: 1.733,
   scifac: 1.373,
-  spire: 1.409,  // 상자 상한에 걸림
+  spire: 1.548,  // 상자 상한에 걸림
   spore: 1.660,
   sunken: 1.354,
   sunkenfire: 1.326,
   tomb: 1.534,
   tombFlat: 1.441,
-  trapezoid: 1.912,
+  trapezoid: 1.906,
   tribunal: 1.954,
-  turret: 2.104,  // 상자 상한에 걸림
+  turret: 2.235,
   warpin: 2.196,
 };
 const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; ox: number; oy: number; pad: number; l: number; side: number; bot: number; top: number; w: number; cx: number }>();
@@ -12517,7 +12534,14 @@ function buildingSprite(
      스파이어·하이브·레어도 같은 자리에서 잘렸다. 62%(양옆 9.9)면 그 아홉이 다 풀린다.
      값은 캔버스 넓이로 치른다(1.7² → 2.24², 1.7배) — 건물 판은 종류·요잉당 한 번만
      굽고 LRU 예산 안에서 캐시되므로 프레임 비용은 0이다. */
-  const pad = Math.ceil(sideQ * 0.62) + 2;
+  /* 굽는 여백 0.62 → 0.78(요청: "파일런 확대" — 파일런은 여태 이 여백이 정한 상한에
+     걸려 목표를 올려도 한 톨도 안 커졌다) — 여백이 곧 정규화 배수의 천장이다. 판이
+     16-상자 밖으로 이만큼까지 나가도 안 잘리므로, 이 값을 들면 상한에 걸려 있던
+     여덟(arch·archives·citadel·diamond·gspire·hive·spire·turret)이 함께 풀린다.
+     값이 오르면 굽는 판이 넓어진다: (1 + 2·0.78)² / (1 + 2·0.62)² = 1.36배 면적.
+     ★ scripts/bld-norm.mjs의 PAD와 **같은 값이어야 한다** — 다르면 상한 셈이 어긋나
+       판이 조용히 잘린다. */
+  const pad = Math.ceil(sideQ * 0.78) + 2;
   const l = sideQ + pad * 2;
   const cv = document.createElement("canvas");
   cv.width = Math.max(1, Math.ceil(l * B));
@@ -17452,7 +17476,11 @@ export default function ReplayMotionPlayer({
                화가 순서가 누가 이기든 한쪽이 가려졌다. 자원끼리의 가림은 순서로는 못
                푼다(둘 다 자원이라 같은 자를 쓴다) — 그림을 제 발자국에 가깝게 되돌려야
                겹치지 않는다. 3.0은 여전히 밭(2타일)보다 5할 크다. */
-            const wTiles = gasSpot ? 4 : 3;
+            /* 20% 축소(요청: "가스미네랄 모델 크기 축소 20프로") — 간헐천 4 → 3.2,
+               미네랄 3 → 2.4타일. 간헐천의 제 발자국은 4×2라 3.2는 그보다 좁지만,
+               자원은 그 위에 서는 건물·일꾼에 자리를 내주는 지물이라 발자국을 꽉
+               채울 까닭이 없다. */
+            const wTiles = gasSpot ? 3.2 : 2.4;
             unitOps.push({
               fx, fy,
               /* 자원도 높이를 가진다(지적: 뒤 사물을 가려야) — 990 바닥층이 아니라 건물과
@@ -17957,26 +17985,17 @@ export default function ReplayMotionPlayer({
             if (dieAt === null || t < dieAt) diePosRef.current.set(holdKey, { x: pos.x, y: pos.y });
             const [ax3, ay3] = [pos.x, pos.y];
             const [fx, fy] = posFrac(ax3, ay3);
-            /* 건설 일꾼 뒷그물(재지적: 좌하단의 '진짜' 일꾼이 남는다 — 앵커 판정
-               buildHideAt을 비껴간 경우) — 조용히 서 있는 일꾼이, 제 최근 활동 무렵
-               '이후'에 선 내 건물 발자국에 붙어 있으면(회피가 모서리로 밀어낸 그 자리)
-               그 공사에 흡수된 것으로 본다. 오래전부터 서 있던 본진 곁 일꾼은 건물이
-               제 활동보다 한참 앞서라 안 걸린다. */
-            if (isWorker && !rawPos.moving) {
-              let lastAct = e.born;
-              for (const os3 of e.orders) {
-                if (os3 <= t) lastAct = os3;
-                else break;
-              }
-              const absorbed = buildsSrc.some(([bs4, bx4, by4, bu4, br4, bg4]) => {
-                if (br4 !== e.raw || bs4 > t || ((bg4 ?? 0) > 0 && t >= (bg4 ?? 0))) return false;
-                if (bs4 < lastAct - 60) return false;
-                const [fw4, fh4] = FOOTPRINT[bu4] ?? [3, 2];
-                return Math.abs(pos.x - (bx4 + fw4 / 2)) <= fw4 / 2 + 1.2
-                  && Math.abs(pos.y - (by4 + fh4 / 2)) <= fh4 / 2 + 1.2;
-              });
-              if (absorbed) return null;
-            }
+            /* (걷어냄) 건설 일꾼 뒷그물 — **가만히 선** 일꾼이 제 최근 활동 무렵에
+               선 내 건물 발자국(+1.2타일) 안에 있으면 통째로 안 그리던 자리다.
+               지적: "건설 scv 움직일땐 보이고 서서 스파크 날땐 안보임" — 바로 이것이다.
+               용접하는 SCV는 발자국 안에 **서 있으므로** 늘 걸리고, 귀퉁이를 옮기려고
+               걷는 동안만 moving이 되어 잠깐 보였다.
+               이 그물은 합성 건설 SCV를 따로 세우던 시절의 짝이다: 그때는 합성이 그
+               자리를 대신 채웠으므로 진짜 일꾼을 지워야 둘로 안 보였다. 합성을 걷은
+               뒤로는 지울 상대가 없어, 짓는 동안 그 자리에 **아무도 없게** 만들 뿐이다.
+               게다가 조건이 '공사 중'도 아니라(서 있는 아무 건물이면 된다) 배럭 옆에
+               가만히 선 일꾼까지 사라졌다. 참값 자취가 일꾼을 제자리에 세워 주므로
+               가릴 까닭이 없다. */
             // 죽음 창(dieAt~+1.2초) — 마커 대신 종족별 사망 효과가 남는다(체력 0 즉사 포함).
             if (dieAt !== null && t >= dieAt) {
               if (!qDeath) return null;
