@@ -158,8 +158,17 @@ const browser = await chromium.launch({
 const page = await (await browser.newContext({ viewport: { width: 900, height: 900 } })).newPage();
 page.on("pageerror", (e) => console.error("PAGEERR", String(e).slice(0, 300)));
 /* 어떤 http 출처든 하나는 있어야 한다 — 번들이 localStorage를 건드리는데 about:blank·
-   data: 문서에서는 브라우저가 그 접근을 막는다(SecurityError). 내용은 안 쓴다. */
-await page.goto(process.env.PW_ORIGIN ?? "http://127.0.0.1:5212/");
+   data: 문서에서는 브라우저가 그 접근을 막는다(SecurityError). 내용은 안 쓴다.
+   ★ 개발 서버를 띄워 둘 필요는 없다(수리: 서버가 없으면 ERR_CONNECTION_REFUSED로
+     죽었다) — model-norm.mjs와 같은 수법으로 그 주소를 **가로채** 빈 문서를 돌려준다.
+     PW_ORIGIN을 주면 그쪽으로 진짜 나간다. */
+const ORIGIN = process.env.PW_ORIGIN ?? "http://bld-norm.local/";
+if (!process.env.PW_ORIGIN) {
+  await page.route(`${ORIGIN}*`, (r) => r.fulfill({
+    contentType: "text/html", body: "<!doctype html><meta charset=utf-8><body>",
+  }));
+}
+await page.goto(ORIGIN);
 await page.addScriptTag({ content: js });
 await page.waitForFunction("!!window.__bakeBld");
 const KINDS = flag("--kinds") ? String(flag("--kinds")).split(",") : await page.evaluate("window.__bldKinds()");

@@ -149,8 +149,11 @@ function bundle() {
      실행 파일이면 그대로, 껍데기면 지금 노드로 돌린다. */
   const ebin = join(ROOT, "node_modules", "esbuild", "bin", "esbuild");
   const head = readFileSync(ebin).subarray(0, 4);
-  const native = head[0] === 0x7f && head[1] === 0x45 && head[2] === 0x4c && head[3] === 0x46
-    || (head[0] === 0x4d && head[1] === 0x5a);
+  /* 실행 파일 판별 — ELF(리눅스) · MZ(윈도) · Mach-O(맥, cf fa ed fe / 팻 ca fe ba be).
+     맥의 매직이 빠져 있어 네이티브 esbuild를 노드로 돌리다 SyntaxError가 났다. */
+  const magic = (head[0] << 24 | head[1] << 16 | head[2] << 8 | head[3]) >>> 0;
+  const native = magic === 0x7f454c46 || (head[0] === 0x4d && head[1] === 0x5a)
+    || magic === 0xcffaedfe || magic === 0xcefaedfe || magic === 0xcafebabe;
   const argv = [src, "--bundle", "--format=esm", "--log-level=error",
     "--define:process.env.NODE_ENV=\"production\"", "--define:import.meta.env={}", `--outfile=${out}`];
   execFileSync(native ? ebin : process.execPath, native ? argv : [ebin, ...argv],

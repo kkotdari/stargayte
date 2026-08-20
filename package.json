@@ -11,6 +11,8 @@
     "share-thumbs": "node scripts/make-share-thumbs.cjs",
     "sim-metrics": "node scripts/sim-metrics.mjs",
     "model-norm": "node scripts/model-norm.mjs",
+    "model-shot": "node scripts/model-shot.mjs",
+    "sprite-check": "node scripts/sprite-check.mjs",
     "bld-norm": "node scripts/bld-norm.mjs",
     "dmg-check": "node scripts/dmg-check.mjs",
     "id-check": "node scripts/id-check.mjs",
