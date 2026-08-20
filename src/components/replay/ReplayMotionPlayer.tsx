@@ -14838,9 +14838,16 @@ export default function ReplayMotionPlayer({
   /** 전체화면 무대(화면을 꽉 채우는 상자) — 지도를 이 크기에 맞춰 덮게 깐다. */
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [stage, setStage] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  /** 무대 크기를 ref로도 들고 있는다 — 팬 한계를 재는 곳 중에는 **한 번만 걸리는
+   *  effect 안**(휠 줌)이 있어서, 상태를 읽으면 그 effect가 만들어질 때의 옛 값(0)에
+   *  붙들린다. 그러면 전체화면에서 휠로 축소할 때 한계가 평소 배치의 식으로 셈해져,
+   *  잡아 줘야 할 자리를 안 잡고 지도 끝이 안으로 들어왔다(지적). */
+  const stageSizeRef = useRef({ w: 0, h: 0 });
   /** 지금 유효한 창(보이는 구멍)의 크기 — 평소엔 지도 상자, 전체화면에선 무대다. */
-  const viewBox = (rw: number, rh: number): { w: number; h: number } =>
-    (fsOnRef.current && stage.w > 0 ? { w: stage.w, h: stage.h } : { w: rw, h: rh });
+  const viewBox = (rw: number, rh: number): { w: number; h: number } => {
+    const st = stageSizeRef.current;
+    return fsOnRef.current && st.w > 0 ? { w: st.w, h: st.h } : { w: rw, h: rh };
+  };
   /** 팬 한계 — 내용(지도 × 배율)이 창보다 큰 만큼만 움직인다. */
   const panLimit = (rw: number, rh: number, z: number): { x: number; y: number } => {
     const v = viewBox(rw, rh);
@@ -14903,10 +14910,18 @@ export default function ReplayMotionPlayer({
   /* 무대 크기 — 지도를 이 크기에 맞춰 **덮게**(cover) 깔아야 크롭이 나온다. 화면 회전·
      주소창 여닫힘까지 따라오도록 ResizeObserver로 지켜본다. */
   useEffect(() => {
-    if (!fsOn) { setStage({ w: 0, h: 0 }); return undefined; }
+    if (!fsOn) {
+      stageSizeRef.current = { w: 0, h: 0 };
+      setStage({ w: 0, h: 0 });
+      return undefined;
+    }
     const el = stageRef.current;
     if (!el) return undefined;
-    const read = (): void => setStage({ w: el.clientWidth, h: el.clientHeight });
+    const read = (): void => {
+      const v = { w: el.clientWidth, h: el.clientHeight };
+      stageSizeRef.current = v;
+      setStage(v);
+    };
     read();
     const ro = new ResizeObserver(read);
     ro.observe(el);
@@ -15006,7 +15021,8 @@ export default function ReplayMotionPlayer({
       zoomRef.current = z1;
       panRef.current = { x: px, y: py };
       lens.style.setProperty("--mz", `${z1}`);
-      lens.style.transform = z1 > 1 ? `translate(${px}px, ${py}px) scale(${z1})` : "";
+      lens.style.transform = z1 > 1 || px !== 0 || py !== 0
+        ? `translate(${px}px, ${py}px) scale(${z1})` : "";
       /* 유닛 캔버스도 같이 따라온다(위 ②) — 이미 그려진 그림(손짓 시작 배율)을 지금
          배율로 옮기는 변환이다. 굳으면 아래 effect가 다시 그리며 이 변환을 지운다. */
       const cv9 = el.querySelector<HTMLCanvasElement>(".scr-motion-unitlayer");
@@ -15098,7 +15114,12 @@ export default function ReplayMotionPlayer({
   useEffect(() => {
     const lens = lensRef.current;
     if (lens) {
-      lens.style.transform = zoom > 1
+      /* 배율이 1이어도 **팬은 걸어야 한다**(지적: "전체화면시 맵은 안움직이고 모델들만
+         움직여 드래그하면") — 전체화면은 지도를 화면보다 크게 깔아 1배에서도 끌 수
+         있는데, 이 줄이 `zoom > 1`일 때만 변환을 걸어 지도 그림만 제자리에 있었다
+         (유닛 캔버스는 팬을 그리기 좌표로 받으므로 저 혼자 움직였다). 배율이든 팬이든
+         움직인 것이 있으면 건다. */
+      lens.style.transform = zoom > 1 || pan.x !== 0 || pan.y !== 0
         ? `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` : "";
     }
     const cv = mapRef.current?.querySelector<HTMLCanvasElement>(".scr-motion-unitlayer");
