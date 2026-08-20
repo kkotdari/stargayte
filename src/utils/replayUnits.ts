@@ -449,7 +449,12 @@ const r1 = (n: number): number => Math.round(n * 10) / 10;
  *
  *  그래서 스팀이 이긴다 — 다만 **제 증거를 가진 것은 지킨다**: 시즈를 켠 적이 있으면
  *  탱크고, 힐을 한 적이 있으면 메딕이다. 행동 증거끼리는 더 구체적인 쪽이 이기고,
- *  아무 증거도 없으면 스팀이 정한다. #62(버로우를 커맨드 증거로 판정)와 같은 이치다. */
+ *  아무 증거도 없으면 스팀이 정한다. #62(버로우를 커맨드 증거로 판정)와 같은 이치다.
+ *
+ *  ★ 마지막 줄("kinds에 파벳이 있으면 파벳, 아니면 마린")은 이제 **안 불린다** — 그
+ *  자리가 곧 두 번째 '모르면 마린'이었고, 무리 무명 사슬(groupPick)이 그 갈래까지
+ *  가져갔다(unknownGroup의 ⓑ). 확인 삼아 이 줄을 Ghost로 바꿔 돌려도 고스트가 하나도
+ *  안 나온다. 사슬이 못 닿는 판을 대비한 안전망으로만 남긴다. */
 const STIM_KINDS = new Set(["Marine", "Firebat"]);
 function stimSettles(life: Life, kind: string): string {
   if (STIM_KINDS.has(kind)) return kind;
@@ -4233,9 +4238,30 @@ const BLD_DIE_SLACK_SEC = 8;
       for (const l of list) if (l.born <= sec + 0.5 && (hit === null || l.born > hit.born)) hit = l;
       return hit;
     };
-    /** 무명인가 — 구체 증거가 하나도 없고 그룹 증거만 있는 유닛 생애. */
+    /** 이 생애에 '제 정체를 말해 주는' 행동 증거가 있나 — 시즈(8·9)·힐/수리(10)·건설(2).
+     *  stimSettles가 쓰는 것과 **같은 잣대**여야 두 자리가 안 갈린다. */
+    const selfEvidence = (l: Life): boolean =>
+      l.ev.some((v) => v[3] === 8 || v[3] === 9 || v[3] === 10 || v[3] === 2);
+    /** 무명인가 — 그룹 증거는 있는데 그 무리 안의 이름을 가리킬 근거가 없는 유닛 생애.
+     *
+     *  두 갈래를 함께 잡는다:
+     *   ⓐ 구체 증거가 아예 없는 것(kinds가 빈 생애).
+     *   ⓑ 구체 증거가 **있지만 그것이 틀렸다고 이미 판정된** 것 — 스팀을 썼는데 붙은
+     *      이름이 마린도 파벳도 아니고(SCV·시즈 탱크·메딕 …), 그 이름을 뒷받침할 제
+     *      행동 증거가 하나도 없는 생애다. 여기서 stimSettles가 "kinds에 파벳이 있으면
+     *      파벳, 아니면 마린"으로 떨어뜨리고 있었다 — ⓐ와 똑같은 '모르면 마린'이다.
+     *      이름이 이미 틀린 것으로 판정됐으니 그 kinds는 근거로 안 쓰고, 아래 사슬(곁의
+     *      동료 → 임자 조성)로 다시 묻는다. */
     const unknownGroup = (l: Life): string => {
-      if (l.bld || l.kinds.size > 0 || l.groupKinds.size === 0) return "";
+      if (l.bld || l.groupKinds.size === 0) return "";
+      if (l.kinds.size > 0) {
+        if (!l.groupKinds.has("Bionic")) return "";
+        if (!l.ev.some((v) => v[3] === 16)) return "";
+        const mk = majorityKindOf2(l);
+        if (STIM_KINDS.has(mk)) return "";       // 이미 마린/파벳 — 손댈 것이 없다
+        if (selfEvidence(l)) return "";          // 제 증거가 있는 이름은 지킨다
+        return "Bionic";
+      }
       /* 수송선은 여기서 안 다룬다 — 종족이 곧 답이라(테란 드랍십·토스 셔틀·저그 오버로드)
          settleKind의 규칙이 이미 **정확하다**. 표로 답이 나오는 것을 투표로 다시 물으면
          더 나빠질 수만 있다. 여기가 푸는 것은 답이 표에 없는 무리(Bionic)다. */
