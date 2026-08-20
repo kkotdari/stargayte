@@ -14673,6 +14673,11 @@ export default function ReplayMotionPlayer({
   }, [pitchFlat]);
   /** 정보 팝업으로 집어 둔 몸의 열쇠(요청) — null이면 닫힘. */
   const [picked, setPicked] = useState<string | null>(null);
+  /** 좁은 화면에서 지도 위에 얹힌 세로 바 둘(배속·각도)이 지금 보이나 — 지도가 화면
+   *  폭을 꽉 채우는 배치라 바가 곧 지형을 가린다. 지도의 빈 곳을 톡 누르면 켜졌다
+   *  꺼진다(요청: "모바일 맵 터치로 세로슬라이더 두개 온오프").
+   *  처음에는 보인다 — 안 보이는 채로 시작하면 그런 조작이 있다는 것을 알 길이 없다. */
+  const [mobBars, setMobBars] = useState(true);
   /** 이번 프레임에 그린 op — 클릭 판정과 팝업 내용이 여기서 지금 값을 읽는다. */
   const opsRef = useRef<UnitDrawOp[]>([]);
   // 유닛 크기 토글(요청) — 기본은 실제 크기, 누르면 2배.
@@ -15625,10 +15630,18 @@ export default function ReplayMotionPlayer({
     if (tp?.id === e.pointerId) tapRef.current = null;
     /* 클릭은 '누른 그 손가락이, 거의 안 움직이고, 손짓(핀치) 중이 아닐 때' 뿐이다. */
     if (dragged || !tp || tp.id !== e.pointerId || tp.moved || gestureRef.current) return;
+    /* 이 누름이 한 일이 하나면 그것으로 끝이다 — 몸을 집었으면 정보 팝업이 뜬 참이고,
+       떠 있던 팝업을 닫았으면 그것이 이 누름의 몫이다. 거기에 조작부까지 함께
+       움직이면 한 번 누르는데 두 가지가 바뀐다. */
+    const hadPopup = picked !== null;
     const hit = pickAt(e.clientX, e.clientY);
-    /* 전체화면에서 **아무것도 안 집힌** 누름은 조작부를 켰다 껐다 한다(요청) — 몸을
-       눌렀으면 정보 팝업이 뜬 참이라 조작부까지 함께 움직이면 두 가지가 한꺼번에 바뀐다. */
-    if (!hit && fsOnRef.current) fsToggleUi();
+    if (hit || hadPopup) return;
+    /* 아무것도 안 집힌 빈 곳의 누름 —
+         · 전체화면이면 조작부를 켰다 껐다(요청)
+         · 좁은 배치면 지도 위 세로 바 둘을 켰다 껐다(요청: "모바일 맵 터치로
+           세로슬라이더 두개 온오프"). 그 바가 사는 배치가 곧 이 배치다. */
+    if (fsOnRef.current) fsToggleUi();
+    else if (!wide) setMobBars((v) => !v);
   };
   /* 정보 팝업(요청: 유닛·건물 클릭하면 정보 툴팁, 딴 데 누르면 닫힘, 다른 몸을 누르면
      새 툴팁) — 집는 것은 '열쇠' 하나뿐이고, 내용은 프레임마다 지금 그린 op에서 다시
@@ -18452,7 +18465,11 @@ export default function ReplayMotionPlayer({
               다니므로, 지도에 붙은 바는 화면 밖으로 밀려난다. 전체화면의 바는 화면
               가장자리에 따로 선다(아래 fsInner). */}
           {!wide && !fsOn && (
-            <>
+            /* 끄면 **지우지 않고 흐린다** — 자리를 그대로 두면 켜고 끌 때 지도가 안
+               흔들리고, 사라지는 것도 전체화면 조작부와 같은 결로 부드럽다.
+               꺼진 동안에는 손짓을 안 받는다(CSS의 pointer-events: none) — 안 보이는
+               바가 지도의 누름을 가로채면 다시 켤 수가 없다. */
+            <div className={cx("scr-motion-slideover", !mobBars && "scr-motion-slideover-off")}>
               <div className="scr-motion-slidebar-l">
                 <SlideBar
                   title="배속"
@@ -18473,7 +18490,7 @@ export default function ReplayMotionPlayer({
                   aria-label="시점 각도"
                 />
               </div>
-            </>
+            </div>
           )}
           {/* (삭제) PC 확대 조절바 — PC에서는 확대 기능을 통째로 걷었다(요청). 확대·이동은
               이제 모바일 손짓(더블탭·두 손가락)만의 것이다. */}

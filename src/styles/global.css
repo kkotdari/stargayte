@@ -11059,6 +11059,21 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 }
 .scr-motion-slidebar-l { left: 4px; }
 .scr-motion-slidebar-r { right: 4px; }
+/* 그 둘을 켜고 끄는 덮개(요청: "모바일 맵 터치로 세로슬라이더 두개 온오프") — 지도의
+   빈 곳을 톡 누르면 흐려졌다 돌아온다.
+   ★ 덮개는 **자리를 잡은 채로** 깐다(position:absolute; inset:0; z-index) — 흐림
+     (opacity<1)은 그 자체로 쌓임 맥락을 만들어서, 흐름 속 보통 상자였다면 안쪽 바의
+     z-index 7000이 맥락 밖으로 못 나가 유닛 캔버스(z 6000) 뒤로 깔린다. 덮개가 제
+     z-index를 들고 서면 그 값으로 겨루므로 안쪽 차례는 그대로다.
+   ★ 덮개 자신은 손짓을 안 받는다 — 지도 전체를 덮으므로, 안 그러면 지도의 누름을
+     통째로 가로채 다시 켤 수가 없다. 받는 것은 바 둘뿐이다. */
+.scr-motion-slideover {
+  position: absolute; inset: 0; z-index: 7000; pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.scr-motion-slideover > * { pointer-events: auto; }
+.scr-motion-slideover-off { opacity: 0; }
+.scr-motion-slideover-off > * { pointer-events: none; }
 
 /* 지도 + 좌우 기둥 한 줄 — 기둥은 지도와 같은 높이로 늘어난다(요청: 로스터는 최상단,
    버튼단은 하단). */
