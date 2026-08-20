@@ -263,6 +263,98 @@ static void bwdump_rng_report() {
 }
 static int g_shown = 0;
 static int g_firstmiss = -1;
+
+/* ── 자리 칸(index) 생애 명부 — 갈림을 좁히는 가장 예민한 자 ────────────────────
+ *
+ * 리플레이의 태그는 (자리+1) | (세대<<13)이다. 곧 **원판의 세대가 그 안에 적혀 있다.**
+ * 세대는 그 자리가 재사용될 때마다 하나 오르므로
+ *
+ *     리플레이 세대 − 우리 세대 = 그 자리에서 우리가 원판보다 유닛을 몇 번
+ *                                더(+) 또는 덜(−) 만들었나
+ *
+ * 가 된다. 난수 호출 수를 셀 필요가 없다 — 이 값은 결과가 아니라 **원인** 쪽을 가리킨다.
+ * 게다가 자리(위치)로 재면 어긋남이 눈에 띄기까지 44~108초가 걸리는데(BWDUMP_KICK 실측)
+ * 세대는 그 자리가 다음에 골라지는 순간 드러난다.
+ *
+ * 쓰는 법
+ *   BWDUMP_SLOT=auto    ← 권장. 모든 자리의 들고남을 모아 두었다가, **미스가 난 자리만**
+ *                         끝에 명부로 낸다. 한 번만 돌리면 된다.
+ *   BWDUMP_SLOT=<번호>  그 자리 하나만 실시간으로 찍는다(BWDUMP_FIRSTMISS이 알려 준 값).
+ *   BWDUMP_SLOT=all     모든 자리를 실시간으로 찍는다(크다 — 유닛 하나에 두 줄).
+ *
+ * 읽는 법 — 우리 세대가 원판보다 **크면** 그 명부 안에 원판에 없던 유닛이 있다(우리가
+ * 더 만들었다). **작으면** 원판이 만든 것을 우리가 안 만들었다. 그 유닛의 종류와 프레임이
+ * 곧 첫 갈림의 정체다. 짧게 살다 사라지는 것들(컴샛 스캔·스캐럽·인터셉터·마인·브루들링·알)
+ * 이 자리를 빠르게 갉아먹으므로 거기부터 의심하면 된다. */
+struct slot_ev_t { int idx, frame, in, gen, kind, owner; unsigned tag; };
+static std::vector<slot_ev_t> g_slot_ev;
+struct miss_slot_t { int n = 0, frame = 0, gen = 0; };
+static std::map<int, miss_slot_t> g_miss_slot;
+/** -2 아직 안 읽음 · -1 전부 · >=0 그 자리만. auto는 전부 모으되 출력은 끝에. */
+static int g_slot_want = -2;
+static bool g_slot_auto = false;
+static bool slot_watch_on() {
+  if (g_slot_want == -2) {
+    const char* s = getenv("BWDUMP_SLOT");
+    if (!s || !*s) { g_slot_want = -3; return false; }
+    if (s[0] == 'a' && s[1] == 'u') { g_slot_want = -1; g_slot_auto = true; }
+    else if (s[0] == 'a' || s[0] == 'A') g_slot_want = -1;
+    else g_slot_want = atoi(s);
+    fprintf(stderr, "자리 감시 — %s%s\n",
+      g_slot_want < 0 ? "모든 자리" : "자리 하나만",
+      g_slot_auto ? " (미스 난 자리만 끝에 낸다)" : "");
+  }
+  return g_slot_want != -3;
+}
+static void slot_note(int idx, int frame, bool in, int gen, int kind, int owner, unsigned tag) {
+  if (g_slot_auto) {
+    /* 20분짜리 8인전이 유닛 3천 남짓이라 두 줄씩 6천 항목이다 — 메모리는 문제가 안 된다. */
+    if (g_slot_ev.size() < 4000000) g_slot_ev.push_back({ idx, frame, in ? 1 : 0, gen, kind, owner, tag });
+    return;
+  }
+  fprintf(stderr, "SLOT\t%d\t%s\t%d\t%.1f초\t세대%d\t종류%d\t임자%d\t태그%u\n",
+    idx, in ? "들어옴" : "나감", frame, frame / 23.81, gen, kind, owner, tag);
+}
+/** 끝에 부르는 갈무리 — auto일 때 미스가 난 자리의 명부만 골라 낸다. */
+static void bwdump_slot_report() {
+  if (!g_slot_auto) return;
+  if (g_miss_slot.empty()) {
+    fprintf(stderr, "\n자리 명부 — 못 푼 태그가 하나도 없다(갈리지 않은 판이다).\n");
+    return;
+  }
+  fprintf(stderr, "\n── 자리 명부 — 못 푼 태그가 난 자리 %zu곳 ─────────────────────────\n",
+    g_miss_slot.size());
+  /* 처음 미스가 난 차례로 — 첫 갈림이 맨 위에 온다. */
+  std::vector<std::pair<int, miss_slot_t>> ms(g_miss_slot.begin(), g_miss_slot.end());
+  std::sort(ms.begin(), ms.end(), [](const std::pair<int, miss_slot_t>& a,
+                                     const std::pair<int, miss_slot_t>& b) {
+    return a.second.frame < b.second.frame;
+  });
+  int shown = 0;
+  for (const auto& kv : ms) {
+    if (shown++ >= 12) { fprintf(stderr, "  … 나머지 %zu곳은 줄인다\n", ms.size() - 12); break; }
+    /* 우리가 그 자리에 마지막으로 넣은 세대를 찾는다 — 원판 세대와의 차이가 답이다. */
+    int ours = -1;
+    for (const auto& e : g_slot_ev)
+      if (e.idx == kv.first && e.in && e.frame <= kv.second.frame) ours = e.gen;
+    fprintf(stderr, "\n  ★ 자리 %d — 첫 미스 %.1f초(프레임 %d) · %d회\n",
+      kv.first, kv.second.frame / 23.81, kv.second.frame, kv.second.n);
+    if (ours >= 0)
+      fprintf(stderr, "     원판 세대 %d · 우리 세대 %d · 차이 %+d  → 우리가 %s\n",
+        kv.second.gen, ours, kv.second.gen - ours,
+        kv.second.gen > ours ? "그 자리에 유닛을 **덜** 만들었다"
+                             : (kv.second.gen < ours ? "그 자리에 유닛을 **더** 만들었다"
+                                                     : "세대는 같다(자리 자체가 빈 것)"));
+    else fprintf(stderr, "     그 자리에 우리가 넣은 것이 하나도 없다\n");
+    for (const auto& e : g_slot_ev) {
+      if (e.idx != kv.first) continue;
+      fprintf(stderr, "     %s %7.1f초  세대%-3d 종류%-3d 임자%d  태그%u\n",
+        e.in ? "들어옴" : "나감  ", e.frame / 23.81, e.gen, e.kind, e.owner, e.tag);
+    }
+  }
+  fprintf(stderr, "\n  읽는 법 — 차이가 −이면 그 명부 안에 **원판에 없던 유닛**이 있다."
+    " 짧게 살다 사라지는 것부터 보라(컴샛 스캔·스캐럽·인터셉터·마인·브루들링·알).\n");
+}
 void bwdump_resolve(int frame, bool ok, bool slot, unsigned raw) {
   /* 태그 0은 **표적이 없다**는 뜻이다(빈 땅 우클릭) — 실패가 아니라 정상이다.
      이걸 실패로 세면 적중률이 통째로 낮게 나온다(처음에 56%로 보였던 것이 그것이다). */
@@ -271,6 +363,18 @@ void bwdump_resolve(int frame, bool ok, bool slot, unsigned raw) {
   g_tot[b] += 1; if (ok) g_ok[b] += 1; if (slot) g_slot[b] += 1;
   if (bwdump_cur_owner >= 0 && bwdump_cur_owner < 12) { g_pt[bwdump_cur_owner][b] += 1; if (ok) g_po[bwdump_cur_owner][b] += 1; }
   if (!ok && g_firstmiss < 0) g_firstmiss = frame;
+  /* 못 푼 태그를 자리(index)별로 모아 둔다 — BWDUMP_SLOT=auto가 끝에 이 자리들만
+     골라 생애 명부를 낸다. 태그는 (자리+1) | (세대<<13)이라 낮은 13비트가 자리다.
+     ★ raw>>13이 곧 **원판이 적어 놓은 세대**다. 우리 세대와의 차이가 그 자리에서
+       우리가 원판보다 유닛을 몇 번 더(+)/덜(−) 만들었나를 그대로 말해 준다. */
+  if (!ok) {
+    const int idx = (int)(raw & 0x1fff) - 1;
+    if (idx >= 0 && g_miss_slot.size() < 4096) {
+      auto& m = g_miss_slot[idx];
+      if (m.n == 0) { m.frame = frame; m.gen = (int)(raw >> 13); }
+      m.n += 1;
+    }
+  }
   if (!ok && getenv("BWDUMP_MISSTAGS")) fprintf(stderr, "MISS\t%u\t%d\n", raw, frame);
   if (!ok && slot && getenv("BWDUMP_FIRSTMISS") && g_shown < 14) {
     g_shown += 1;
@@ -658,6 +762,30 @@ int main(int argc, char** argv) {
          명부에 세대가 통째로 비어 보이고, 리플레이가 그 자리를 가리킬 때 영문을 알 수 없다. */
       { size_t n9 = all9.size();
         for (size_t i9 = 0; i9 < n9; ++i9) if (all9[i9]->subunit) all9.push_back(all9[i9]->subunit); }
+      /* 자리 칸의 들고남 — 세대가 바뀌면 그 자리가 재사용된 것이다(위 머리말). */
+      if (slot_watch_on()) {
+        struct occ_t { int gen, kind, owner; unsigned tag; };
+        static std::map<int, occ_t> prev9;
+        std::map<int, occ_t> cur9;
+        for (unit_t* u : all9) {
+          const int idx = (int)u->index;
+          if (g_slot_want >= 0 && idx != g_slot_want) continue;
+          cur9[idx] = occ_t{ (int)u->unit_id_generation, (int)u->unit_type->id,
+                             (int)u->owner, bwdump_tag(u) };
+        }
+        const int fr9 = (int)st.current_frame;
+        for (const auto& kv : cur9) {
+          auto it = prev9.find(kv.first);
+          if (it == prev9.end() || it->second.gen != kv.second.gen)
+            slot_note(kv.first, fr9, true, kv.second.gen, kv.second.kind, kv.second.owner, kv.second.tag);
+        }
+        for (const auto& kv : prev9) {
+          auto it = cur9.find(kv.first);
+          if (it == cur9.end() || it->second.gen != kv.second.gen)
+            slot_note(kv.first, fr9, false, kv.second.gen, kv.second.kind, kv.second.owner, kv.second.tag);
+        }
+        prev9.swap(cur9);
+      }
       for (unit_t* u : all9) {
         if (getenv("BWDUMP_ORD")) bwdump_ord((int)u->order_type->id, (int)st.current_frame);
         const unsigned tg = bwdump_tag(u);
@@ -703,6 +831,7 @@ int main(int argc, char** argv) {
         fprintf(stderr, "  %2d  %6d  %5.1f%%  %5.1f%%\n", b, g_tot[b],
           g_ok[b] * 100.0 / g_tot[b], g_slot[b] * 100.0 / g_tot[b]);
     }
+    bwdump_slot_report();
     bwdump_gen_report();
     bwdump_why_report();
     bwdump_rng_report();
