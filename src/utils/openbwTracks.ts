@@ -8,20 +8,25 @@
  *
  *   전체 = zlib( 아래 바이트열 )              ← 작은 끝(little-endian)
  *
- *   머리
- *     char[4] "OBWT" · u8 판(=1) · f32 초당프레임 · i32 믿을프레임(-1이면 끝까지)
- *     u32 트랙수
- *   트랙표 × 트랙수
- *     u32 태그 · u8 임자 · u16 유닛종류 · u32 키수
+ *   머리   char[4] "OBWT" · u8 판(=2) · f32 초당프레임 · i32 믿을프레임(-1이면 끝까지)
+ *   로스터 u8 사람수, 사람마다 u8 임자 · u8 리플레이id · u8 종족 · u8 편 · u8 controller
+ *          · u32 개인색 · u8 이름길이 · 이름 바이트(UTF-8)
+ *   트랙표 u32 트랙수, 트랙마다 u32 태그 · u8 임자 · u16 유닛종류
+ *          · u32 키수 · u32 체력키수 · u32 인터셉터키수
  *   키 흐름 (트랙 차례대로, 트랙마다 앞 키와의 **차이**를 적는다)
- *     트랙마다 앞프레임=앞x=앞y=0에서 시작
  *     키마다: varint(zigzag(프레임차)) · varint(zigzag(x차)) · varint(zigzag(y차))
  *             · u8 방향(0~255) · u8 상태
+ *   체력 흐름 → 인터셉터 흐름 (트랙 차례대로, 키가 있는 트랙만)
+ *     키마다: varint(프레임차) · varint(값차)
+ *   업그레이드 u32 개수, 개마다 varint(프레임차) · u16 id · u8 단계 · u8 사람
+ *   마법       u32 개수, 개마다 varint(프레임차) · u16 x · u16 y · u8 기술 · u8 사람
+ *   핑         u32 개수, 개마다 varint(프레임차) · u16 x · u16 y · u8 사람
  *
- * 왜 이렇게까지 접나 — 글자(TSV)로 내면 26분짜리 8인전이 39MB다. 서버가 트랙 하나에 쓸 수
- * 있는 자리는 4MB고, 폰으로 보내는 짐이기도 하다. 이 꼴로는 같은 경기가 1.8MB다.
+ * 왜 이렇게까지 접나 — 글자(TSV)로 내면 26분짜리 8인전이 39MB다. 폰으로 보내는 짐이라
+ * 이 꼴로 접어 0.8~3.8MB로 만든다.
  */
 import { BW_UNIT_NAME } from "./bwUnitNames";
+import { bwUpgradeName, BW_TECH_NAME } from "./bwUpgradeNames";
 
 /** 앱이 쓰는 트랙 — src/legacy/simCore.ts 의 SimTrack과 같은 꼴이다.
  *  옛 길이 사라져도 이 꼴은 남으므로 여기에 다시 적어 둔다. */
@@ -35,12 +40,40 @@ export type TruthTrack = {
   died: number | null;
   /** 다섯씩 [t(초), x(타일), y(타일), 방향(도), 상태] */
   keys: Float32Array;
+  /** 체력 변곡점 [초, 남은 체력] — 실드를 더한 **실제 수치**다(퍼센트가 아니다).
+   *  잔물결(저그 재생·프로토스 실드 충전)은 솎여 있다. */
+  hp?: [number, number][];
+  /** 캐리어 인터셉터 수 변곡점 [초, 개수]. 캐리어가 아니면 없다. */
+  ic?: [number, number][];
+};
+
+/** 리플레이 머리말이 아는 사람. */
+export type TruthPlayer = {
+  /** 시뮬 안의 임자 번호(0~11) — 트랙의 owner와 같은 것이다. */
+  owner: number;
+  /** 리플레이가 적어 둔 사람 번호 — 옛 분석(screp)의 PlayerID와 같은 자리다. */
+  pid: number;
+  /** 0 저그 1 테란 2 프로토스 */
+  race: number;
+  /** 편(force) 번호 */
+  force: number;
+  controller: number;
+  /** 게임 안 개인색 #rrggbb */
+  color: string;
+  name: string;
 };
 
 export type TruthTracks = {
   tracks: TruthTrack[];
   /** 시뮬이 실제 게임과 같다고 볼 수 있는 마지막 시각(초). null이면 끝까지 믿어도 된다. */
   trustUntil: number | null;
+  players: TruthPlayer[];
+  /** 연구가 **끝난** 시각 [초, 이름, 임자]. 누른 때가 아니라 실제로 올라간 때다. */
+  ups: [number, string, number][];
+  /** 마법 [초, x(타일), y(타일), 기술 이름, 임자] — 기운을 실제로 쓴 순간이다. */
+  casts: [number, number, number, string, number][];
+  /** 미니맵 핑 [초, x(타일), y(타일), 임자] */
+  pings: [number, number, number, number][];
 };
 
 /** 상태 번호 — 옛 시뮬(ST_*)과 같은 값이다. */
@@ -133,6 +166,13 @@ class Cursor {
     this.p += 4;
     return v;
   }
+  /** UTF-8 글 n바이트. 사람 이름이 여기로 온다(한글은 덤퍼가 CP949에서 옮겨 놓는다). */
+  utf8(n: number): string {
+    const s = new TextDecoder().decode(this.b.subarray(this.p, this.p + n));
+    this.p += n;
+    return s;
+  }
+
   /** 7비트씩 담긴 수 + zigzag 되돌리기 — 음수도 작은 바이트로 들어온다. */
   varint(): number {
     let z = 0;
@@ -160,15 +200,33 @@ export async function decodeTruthTracks(b64: string): Promise<TruthTracks | null
     const c = new Cursor(raw);
     if (c.u8() !== 0x4f || c.u8() !== 0x42 || c.u8() !== 0x57 || c.u8() !== 0x54) return null; // "OBWT"
     const version = c.u8();
-    if (version !== 1) return null;
+    if (version !== 2) return null;
     const fps = c.f32();
     const trustFrame = c.i32();
-    const n = c.u32();
-    if (!Number.isFinite(fps) || fps <= 0 || n > 100000) return null;
+    if (!Number.isFinite(fps) || fps <= 0) return null;
 
-    const head: { tag: number; owner: number; type: number; count: number }[] = new Array(n);
+    const players: TruthPlayer[] = [];
+    const pn = c.u8();
+    for (let i = 0; i < pn; i += 1) {
+      const owner = c.u8();
+      const pid = c.u8();
+      const race = c.u8();
+      const force = c.u8();
+      const controller = c.u8();
+      const rgb = c.u32();
+      const name = c.utf8(c.u8());
+      // 개인색은 0x00rrggbb로 온다 — 화면이 쓰는 #rrggbb로 편다.
+      const color = `#${(rgb & 0xffffff).toString(16).padStart(6, "0")}`;
+      players.push({ owner, pid, race, force, controller, color, name });
+    }
+
+    const n = c.u32();
+    if (n > 100000) return null;
+    const head: { tag: number; owner: number; type: number;
+      count: number; hp: number; ic: number }[] = new Array(n);
     for (let i = 0; i < n; i += 1) {
-      head[i] = { tag: c.u32(), owner: c.u8(), type: c.u16(), count: c.u32() };
+      head[i] = { tag: c.u32(), owner: c.u8(), type: c.u16(),
+        count: c.u32(), hp: c.u32(), ic: c.u32() };
     }
 
     const tracks: TruthTrack[] = [];
@@ -205,7 +263,65 @@ export async function decodeTruthTracks(b64: string): Promise<TruthTracks | null
         keys,
       });
     }
-    return { tracks, trustUntil: trustFrame < 0 ? null : trustFrame / fps };
+
+    /* 체력·인터셉터는 자리 키와 따로 온다(섞으면 한쪽이 바뀔 때마다 다른 쪽 키까지
+       끌려 나온다). 트랙 차례가 같으므로 같은 차례로 읽어 붙인다. */
+    const readTicks = (want: (h: typeof head[number]) => number,
+      put: (tr: TruthTrack, v: [number, number][]) => void): void => {
+      for (let i = 0; i < n; i += 1) {
+        const cnt = want(head[i]);
+        if (!cnt) continue;
+        const out: [number, number][] = new Array(cnt);
+        let pf = 0;
+        let pv = 0;
+        for (let k = 0; k < cnt; k += 1) {
+          pf += c.varint();
+          pv += c.varint();
+          out[k] = [pf / fps, pv];
+        }
+        put(tracks[i], out);
+      }
+    };
+    readTicks((h) => h.hp, (tr, v) => { tr.hp = v; });
+    readTicks((h) => h.ic, (tr, v) => { tr.ic = v; });
+
+    const ups: [number, string, number][] = [];
+    { let pf = 0;
+      const cnt = c.u32();
+      for (let i = 0; i < cnt; i += 1) {
+        pf += c.varint();
+        const id = c.u16();
+        const level = c.u8();
+        const who = c.u8();
+        const nm = bwUpgradeName(id);
+        // 2단계·3단계는 이름 뒤에 단계를 붙인다 — 옛 표기와 같은 자리다.
+        if (nm) ups.push([pf / fps, level > 1 ? `${nm} ${level}` : nm, who]);
+      } }
+
+    const casts: [number, number, number, string, number][] = [];
+    { let pf = 0;
+      const cnt = c.u32();
+      for (let i = 0; i < cnt; i += 1) {
+        pf += c.varint();
+        const x = c.u16();
+        const y = c.u16();
+        const tech = c.u8();
+        const who = c.u8();
+        casts.push([pf / fps, x / 32, y / 32, BW_TECH_NAME[tech] ?? `?${tech}`, who]);
+      } }
+
+    const pings: [number, number, number, number][] = [];
+    { let pf = 0;
+      const cnt = c.u32();
+      for (let i = 0; i < cnt; i += 1) {
+        pf += c.varint();
+        const x = c.u16();
+        const y = c.u16();
+        pings.push([pf / fps, x / 32, y / 32, c.u8()]);
+      } }
+
+    return { tracks, trustUntil: trustFrame < 0 ? null : trustFrame / fps,
+      players, ups, casts, pings };
   } catch {
     return null;
   }
