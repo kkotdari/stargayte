@@ -172,6 +172,99 @@ export const UNIT_UPGRADE_TAG: Partial<Record<UpgradeName, { unit: string; tag: 
   "Gravitic Thrusters": { unit: "Scout", tag: "속업" },
 };
 
+/* ── 그 연구가 실제로 걸리는 유닛 ────────────────────────────────────────────────
+ *
+ * 지적: "유닛 인포팝업에 다른 유닛의 업그레이드까지 뜸". 여태 팝업은 임자가 마친 연구
+ * 가운데 공/방이 아닌 것을 **전부** 늘어놓았다 — 마린을 눌러도 저글링 속업이, 드라군을
+ * 눌러도 리버 스캐럽 증설이 떴다. 그 유닛에 안 걸리는 것은 그 유닛의 정보가 아니다.
+ *
+ * 그래서 연구마다 '걸리는 유닛'을 적는다. 여기 없는 이름은 팝업에 **안 띄운다** —
+ * 모르면 지어내지 않는다는 이 프로젝트의 규칙 그대로다.
+ *
+ * 공/방(ARMOR_WEAPON_PAIRS)은 이 표에 없다. 그쪽은 종족·공중 여부로 줄을 골라 단계까지
+ * 보여 주는 제 길이 따로 있다. 실드업만은 프로토스 **모두**에 걸리므로 여기 적는다.
+ *
+ * [출처] 원작 techdata.dat·upgrades.dat이 가리키는 대상과 통설이 일치하는 자리들이다.
+ *   이름은 위 TECH_NAMES·UPGRADE_NAMES 그대로 쓴다(괄호는 normalizeUpgradeName이 뗀다).
+ *   ★ 철자가 갈리는 둘은 양쪽 다 적어 둔다 — 이 리포 안에서도 "Leg Enhancement(s)"와
+ *     "Gravitic Booster(s)"가 두 꼴로 쓰이고 있다(RESEARCH_BUILDING vs UPGRADE_NAMES). */
+export const UPGRADE_UNITS: Record<string, readonly string[]> = {
+  // ── 테란 ──
+  "Stim Packs": ["Marine", "Firebat"],
+  "U-238 Shells": ["Marine"],
+  "Caduceus Reactor": ["Medic"],
+  Restoration: ["Medic"],
+  "Optical Flare": ["Medic"],
+  "Ion Thrusters": ["Vulture"],
+  "Spider Mines": ["Vulture"],
+  "Tank Siege Mode": ["Siege Tank", "Siege Tank (Tank Mode)", "Siege Tank (Siege Mode)"],
+  "Charon Boosters": ["Goliath"],
+  "Cloaking Field": ["Wraith"],
+  "Apollo Reactor": ["Wraith"],
+  "Titan Reactor": ["Science Vessel"],
+  "EMP Shockwave": ["Science Vessel"],
+  Irradiate: ["Science Vessel"],
+  "Defensive Matrix": ["Science Vessel"],
+  "Yamato Gun": ["Battlecruiser"],
+  "Colossus Reactor": ["Battlecruiser"],
+  "Personnel Cloaking": ["Ghost"],
+  Lockdown: ["Ghost"],
+  "Moebius Reactor": ["Ghost"],
+  "Ocular Implants": ["Ghost"],
+  "Nuclear Strike": ["Ghost"],
+  // ── 프로토스 ── (실드업은 프로토스 전 유닛)
+  "Protoss Plasma Shields": [
+    "Probe", "Zealot", "Dragoon", "High Templar", "Dark Templar", "Archon", "Dark Archon",
+    "Shuttle", "Reaver", "Observer", "Scout", "Corsair", "Carrier", "Arbiter", "Interceptor",
+  ],
+  "Singularity Charge": ["Dragoon"],
+  "Leg Enhancement": ["Zealot"],
+  "Leg Enhancements": ["Zealot"],
+  "Psionic Storm": ["High Templar"],
+  Hallucination: ["High Templar"],
+  "Khaydarin Amulet": ["High Templar"],
+  Maelstrom: ["Dark Archon"],
+  "Mind Control": ["Dark Archon"],
+  Feedback: ["Dark Archon"],
+  "Argus Talisman": ["Dark Archon"],
+  Recall: ["Arbiter"],
+  "Stasis Field": ["Arbiter"],
+  "Khaydarin Core": ["Arbiter"],
+  "Disruption Web": ["Corsair"],
+  "Argus Jewel": ["Corsair"],
+  "Scarab Damage": ["Reaver"],
+  "Reaver Capacity": ["Reaver"],
+  "Gravitic Drive": ["Shuttle"],
+  "Gravitic Booster": ["Observer"],
+  "Gravitic Boosters": ["Observer"],
+  "Sensor Array": ["Observer"],
+  "Carrier Capacity": ["Carrier"],
+  "Gravitic Thrusters": ["Scout"],
+  "Apial Sensors": ["Scout"],
+  // ── 저그 ──
+  "Metabolic Boost": ["Zergling"],
+  "Adrenal Glands": ["Zergling"],
+  "Muscular Augments": ["Hydralisk"],
+  "Grooved Spines": ["Hydralisk"],
+  "Lurker Aspect": ["Hydralisk", "Lurker"],
+  "Pneumatized Carapace": ["Overlord"],
+  "Ventral Sacs": ["Overlord"],
+  Antennae: ["Overlord"],
+  "Chitinous Plating": ["Ultralisk"],
+  "Anabolic Synthesis": ["Ultralisk"],
+  Plague: ["Defiler"],
+  Consume: ["Defiler"],
+  "Metasynaptic Node": ["Defiler"],
+  "Defiler Energy": ["Defiler"],
+  Ensnare: ["Queen"],
+  "Spawn Broodlings": ["Queen"],
+  Parasite: ["Queen"],
+  "Gamete Meiosis": ["Queen"],
+  Infestation: ["Queen"],
+  /* 버로우는 땅에 들어갈 수 있는 것 전부다(원작: 지상 유닛 중 이 여섯). */
+  Burrowing: ["Zergling", "Hydralisk", "Drone", "Defiler", "Lurker", "Infested Terran"],
+};
+
 /** 상징 업그레이드의 '이야깃거리 점수' — TECH_RANK와 같은 뜻이다(클수록 먼저 말한다).
  *
  *  기준은 '그 업그레이드가 판을 바꾸나'다(지적으로 바로잡은 순서).

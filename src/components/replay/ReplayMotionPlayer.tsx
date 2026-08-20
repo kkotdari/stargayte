@@ -8,7 +8,7 @@ import PillTabs from "../common/PillTabs";
 import SlideBar from "../common/SlideBar";
 import { cx } from "../../utils/format";
 import { BUILDING_KO, TECH_KO, UNIT_KO } from "../../utils/replayNames";
-import { ARMOR_WEAPON_PAIRS, UPGRADE_LINE_KO } from "../../utils/replayTechNames";
+import { ARMOR_WEAPON_PAIRS, UPGRADE_LINE_KO, UPGRADE_UNITS } from "../../utils/replayTechNames";
 import type { ReplayMapGrid } from "../../utils/replayParser";
 import { api } from "../../api/client";
 import { applyReplayMap, promoteReplayMap } from "../../hooks/useReplayMap";
@@ -304,6 +304,20 @@ const RESEARCH_BUILDING: Record<string, string> = {
   "Anabolic Synthesis": "Ultralisk Cavern", "Chitinous Plating": "Ultralisk Cavern",
   "Plague": "Defiler Mound", "Consume": "Defiler Mound", "Metasynaptic Node": "Defiler Mound",
   "Ensnare": "Queen's Nest", "Spawn Broodlings": "Queen's Nest", "Gamete Meiosis": "Queen's Nest",
+  /* ★ 이름이 두 꼴로 갈려 있던 셋 — 표준 이름(UPGRADE_NAMES)을 함께 적는다. 연구
+     기록(upsByRaw)은 normalizeUpgradeName을 지난 **표준 이름**으로 들어오므로, 위의
+     복수형 철자만으로는 시타델·옵저버토리·디파일러마운드의 연구가 한 번도 안 맞았다. */
+  "Leg Enhancement": "Citadel of Adun",
+  "Gravitic Booster": "Observatory",
+  "Defiler Energy": "Defiler Mound",
+  /* 빠져 있던 연구들 — 애드온·코버트옵스에서 하는 것들이라 표에 없었고, 그래서 그
+     건물을 눌러도 진행률이 안 떴다. */
+  "Charon Boosters": "Machine Shop",
+  "Colossus Reactor": "Physics Lab",
+  "Moebius Reactor": "Covert Ops",
+  "Ocular Implants": "Covert Ops",
+  "EMP Shockwave": "Science Facility",
+  "Irradiate": "Science Facility",
 };
 
 const ZERG_LARVA = ["Drone", "Overlord", "Zergling", "Hydralisk", "Mutalisk", "Scourge", "Queen", "Ultralisk", "Defiler"];
@@ -18111,21 +18125,32 @@ export default function ReplayMotionPlayer({
               const making = evs.filter(([ps, , sec]) => t < ps && t >= ps - sec);
               const queue = evs.filter(([ps, , sec]) => t < ps - sec).slice(0, 4);
               const justOut = evs.filter(([ps]) => ps <= t && t - ps <= PROD_FLASH_SEC);
-              if (making.length > 0) {
-                for (const [ps, n, sec] of making) {
-                  lines.push(bar(`생산 중 ${n}`, Math.min(0.99, (t - (ps - sec)) / sec)));
-                }
-              } else if (justOut.length > 0) {
-                lines.push(`생산 완료 ${justOut.map(([, n]) => n).join(" · ")}`);
-              } else lines.push("생산 대기");
+              /* ★ 유닛을 못 뽑는 건물에는 생산 줄을 아예 안 쓴다(지적: "업글건물에
+                 생산대기가 뜸") — 엔지니어링 베이·포지·에볼루션 챔버 같은 연구 전용
+                 건물은 PRODUCED_BY에 아무것도 없어서, 위 evs가 늘 비고 그래서 '생산
+                 대기'만 떴다. 그 건물은 애초에 뽑을 것이 없으니 대기랄 것도 없다 —
+                 아래 '연구 중'이 뜨거나, 아무 일도 안 하면 아무 줄도 안 뜬다. */
+              if ((PRODUCED_BY[en] ?? []).length > 0) {
+                if (making.length > 0) {
+                  for (const [ps, n, sec] of making) {
+                    lines.push(bar(`생산 중 ${n}`, Math.min(0.99, (t - (ps - sec)) / sec)));
+                  }
+                } else if (justOut.length > 0) {
+                  lines.push(`생산 완료 ${justOut.map(([, n]) => n).join(" · ")}`);
+                } else lines.push("생산 대기");
+              }
               if (queue.length > 0) {
                 lines.push(`큐 ${queue.map(([ps, n, sec]) => `${n} +${Math.max(0, Math.round(ps - sec - t))}초`).join(" · ")}`);
               }
-              const doing = (upsByRaw.get(op.pickRaw ?? "") ?? []).filter(([us]) =>
-                RESEARCH_BUILDING[en === "Lair" || en === "Hive" ? "Hatchery" : en] === undefined
-                  ? false
-                  : RESEARCH_BUILDING[en === "Lair" || en === "Hive" ? "Hatchery" : en] === en
-                    && us <= t && t - us <= RESEARCH_SEC);
+              /* ★ 연구 중 — 표는 **연구 이름 → 그 연구를 하는 건물**인데 여태 건물
+                 이름으로 뒤지고 있었다(RESEARCH_BUILDING["Engineering Bay"]는 없다).
+                 그래서 이 줄은 어느 건물에서도 한 번도 안 떴다 — 업그레이드 건물이
+                 '생산 대기'만 달고 서 있던 나머지 절반이다.
+                 라바 계보(해처리·레어·하이브)는 세 이름이 같은 연구를 하므로 홀 이름
+                 하나로 모아서 견준다. */
+              const hall9 = en === "Lair" || en === "Hive" ? "Hatchery" : en;
+              const doing = (upsByRaw.get(op.pickRaw ?? "") ?? []).filter(([us, n]) =>
+                RESEARCH_BUILDING[n] === hall9 && us <= t && t - us <= RESEARCH_SEC);
               for (const [us, n] of doing) {
                 lines.push(bar(`연구 중 ${TECH_KO[n] ?? n}`, Math.min(0.99, (t - us) / RESEARCH_SEC)));
               }
@@ -18155,9 +18180,15 @@ export default function ReplayMotionPlayer({
               if (pick9) {
                 lines.push(`${UPGRADE_LINE_KO[pick9.weapon] ?? "공/방"} ${lv(pick9.weapon)}-${lv(pick9.armor)}`);
               }
-              /* 공/방 말고 그 유닛에 붙는 기술(속업·사업 등)은 이름으로 걸러 준다 —
-                 표가 유닛을 직접 가리키지 않으므로, 임자가 마친 것 중 최근 것을 곁들인다. */
-              const other = (upsByRaw.get(op.pickRaw ?? "") ?? []).filter(([us, n]) => us <= t && !pairs.some((pr) => pr.weapon === n || pr.armor === n));
+              /* ★ 그 유닛에 **실제로 걸리는** 연구만(지적: "유닛 인포팝업에 다른 유닛의
+                 업그레이드까지 뜸") — 여태는 임자가 마친 것 중 공/방이 아닌 것을 전부
+                 늘어놓아, 마린을 눌러도 저글링 속업이 떴다. 이제 연구마다 걸리는 유닛을
+                 적은 표(UPGRADE_UNITS)로 거른다. 표에 없는 이름은 안 띄운다 — 모르면
+                 지어내지 않는다. 공/방은 위 줄이 단계까지 따로 말한다. */
+              const other = (upsByRaw.get(op.pickRaw ?? "") ?? []).filter(([us, n]) =>
+                us <= t
+                && !pairs.some((pr) => pr.weapon === n || pr.armor === n)
+                && (UPGRADE_UNITS[n] ?? []).includes(en));
               if (other.length > 0) {
                 lines.push(`연구 완료 ${other.slice(-6).map(([, n]) => TECH_KO[n] ?? n).join(" · ")}`);
               }
