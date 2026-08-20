@@ -428,6 +428,11 @@ int main(int argc, char** argv) {
       std::vector<unit_t*> all9;
       for (unit_t* u : ptr(st.visible_units)) all9.push_back(u);
       for (unit_t* u : ptr(st.hidden_units)) all9.push_back(u);
+      /* 포탑(subunit)은 **어느 목록에도 안 들어간다** — 시즈탱크·골리앗 같은 유닛은 포탑이
+         별도의 자리와 세대를 먹는데, OpenBW의 create_unit은 본체만 목록에 넣는다. 빼먹으면
+         명부에 세대가 통째로 비어 보이고, 리플레이가 그 자리를 가리킬 때 영문을 알 수 없다. */
+      { size_t n9 = all9.size();
+        for (size_t i9 = 0; i9 < n9; ++i9) if (all9[i9]->subunit) all9.push_back(all9[i9]->subunit); }
       for (unit_t* u : all9) {
         if (getenv("BWDUMP_ORD")) bwdump_ord((int)u->order_type->id, (int)st.current_frame);
         const unsigned tg = bwdump_tag(u);
@@ -524,6 +529,8 @@ int main(int argc, char** argv) {
       std::set<unsigned> seen9;
       for (unit_t* u : ptr(st.visible_units)) all9.push_back(u);
       for (unit_t* u : ptr(st.hidden_units)) all9.push_back(u);
+      /* 트랙에는 포탑을 안 넣는다 — 앱은 시즈탱크·골리앗을 하나로 그린다.
+         (참값 명부(--units)에는 넣는다. 포탑도 자리와 세대를 먹기 때문이다.) */
       for (unit_t* u : all9) {
         /* 상태는 **떨리지 않는** 기준으로 잡는다. 재장전 시계나 속도로 잡으면 한 번 쏠
            때마다, 한 발짝 멈출 때마다 갈래가 바뀌어 키가 폭증한다(전체의 6할이 그것이었다).
