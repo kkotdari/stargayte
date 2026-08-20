@@ -69,10 +69,10 @@ for (const line of text.split("\n")) {
     continue;
   }
   if (line[0] === "f") continue;
-  const [frame, tag, , , x, y, head, state] = line.split("\t").map(Number);
+  const [frame, tag, , type, x, y, head, state] = line.split("\t").map(Number);
   let a = byTag.get(tag);
   if (!a) { a = []; byTag.set(tag, a); }
-  a.push([frame, x, y, head, state]);
+  a.push([frame, x, y, head, state, type]);
 }
 
 // ── 이진 쪽
@@ -105,7 +105,7 @@ for (const tr of decoded.tracks) {
   const n = tr.keys.length / 5;
   if (n !== a.length) { say(`태그 ${tr.tag} 키 ${n} vs ${a.length}`); continue; }
   for (let i = 0; i < n; i += 1) {
-    const [frame, x, y, head, state] = a[i];
+    const [frame, x, y, head, state, type] = a[i];
     const o = i * 5;
     const near = (got, want, tol) => Math.abs(got - want) <= tol;
     if (!near(tr.keys[o], frame / FPS, 1e-3)) { say(`태그 ${tr.tag} 키 ${i} 시각`); break; }
@@ -113,6 +113,7 @@ for (const tr of decoded.tracks) {
     if (!near(tr.keys[o + 2], y / 32, 1 / 64)) { say(`태그 ${tr.tag} 키 ${i} y`); break; }
     if (!near(tr.keys[o + 3], (head * 360) / 256, 1e-2)) { say(`태그 ${tr.tag} 키 ${i} 방향`); break; }
     if (tr.keys[o + 4] !== state) { say(`태그 ${tr.tag} 키 ${i} 상태`); break; }
+    if (tr.types[i] !== type) { say(`태그 ${tr.tag} 키 ${i} 종류 ${tr.types[i]} vs ${type}`); break; }
   }
   keys += n;
   /* 체력·인터셉터도 견준다 — 자리 키와 따로 실려 오므로 차례가 한 칸만 밀려도
@@ -135,7 +136,8 @@ decoded.players.forEach((pl, i) => {
   if (!w) return;
   if (pl.owner !== Number(w[0]) || pl.pid !== Number(w[1]) || pl.race !== Number(w[2])
     || pl.force !== Number(w[3]) || pl.controller !== Number(w[4])) say(`사람 ${i} 값`);
-  if (pl.color !== `#${(Number(w[5]) & 0xffffff).toString(16).padStart(6, "0")}`) say(`사람 ${i} 색`);
+  // 색은 번호 → 팔레트라 글자 쪽 수와 직접 못 견준다. 꼴만 본다.
+  if (!/^#[0-9a-f]{6}$/.test(pl.color)) say(`사람 ${i} 색 ${pl.color}`);
   if (pl.name !== w[6]) say(`사람 ${i} 이름 ${pl.name} vs ${w[6]}`);
 });
 /* 업그레이드는 이름을 못 붙인 번호(unk_*)를 해독기가 버리므로 수가 줄 수 있다 —

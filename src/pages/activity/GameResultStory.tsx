@@ -212,7 +212,7 @@ export default function GameResultStory({
            처음 열릴 때 한 번 내려받는다. 없는 경기(옛 등록·분석 실패·아직 안 구움)는
            각각 null이다. */
         loadUnitTracks={() => api.getGameUnitTracks(gameResult.id)
-          .catch(() => ({ data: null, motion: null }))}
+          .catch(() => ({ motion: null }))}
         winnerTeam={gameResult.result === "team1" ? 1 : gameResult.result === "team2" ? 2 : undefined}
         /* 확대 모드의 오른쪽 영역엔 이 경기의 댓글(지적: "리플" = 댓글) — 활동 카드
            하단과 같은 컴포넌트를 그대로 앉힌다. 모달(z 210) 안이라 overModal. */

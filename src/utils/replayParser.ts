@@ -11,7 +11,6 @@ import {
   normalizeUpgradeName, CAST_ORDER_TO_TECH, USE_CMD_TO_TECH, PLACE_MINE_ORDER,
   CAST_ORDER_TO_UNIT, USE_CMD_TO_UNIT,
 } from "./replayTechNames";
-import { buildUnitTracks, serializeUnitTracks } from "../legacy/replayUnits";
 import type { Race, GameType } from "../types";
 
 const RACE_NAME_MAP: Record<string, Race> = {
@@ -299,7 +298,6 @@ export interface ParsedReplay {
    *  위치를 저마다 기억하고 브루드워 엔진처럼 분석 + 건물 파괴 파악). 기존 부대 추적과
    *  비교할 수 있게 별도 테이블(game_result_unit_tracks)에 저장된다. 분석이 실패해도
    *  등록은 막지 않는다 — 그때는 null. */
-  unitTracks: string | null;
 }
 
 export class ReplayParseError extends Error {}
@@ -1417,34 +1415,10 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
     ? Math.round(frames * SECONDS_PER_FRAME)
     : null;
 
-  /* 개체 트랙 v2 — 커맨드 스트림을 태그 단위로 다시 읽는다(요청). 관전 의심자까지 포함해
-     실제 슬롯 전원을 준다(명령이 거의 없는 사람은 개체도 거의 안 만든다). 실측 77ms(4:4
-     22분)라 등록 흐름을 눈에 띄게 늦추지 않고, 어떤 실패도 등록을 막으면 안 되므로 통째로
-     감싼다. */
-  const unitTracks = ((): string | null => {
-    if (!cmds) return null;
-    try {
-      const trackPlayers = (res.Header.Players ?? [])
-        .filter((p) => !p.Observer && p.Type?.Name !== "Observer")
-        .map((p) => ({
-          id: p.ID, name: p.Name, race: RACE_NAME_MAP[p.Race?.Name ?? ""] ?? "" as const,
-          // 게임 내 개인색 — v1을 걷어낸 뒤에도 이 테이블만으로 칠할 수 있게(요청).
-          color: typeof p.Color?.RGB === "number"
-            ? `#${p.Color.RGB.toString(16).padStart(6, "0")}` : null,
-          // 시작 지점 — 시작 홀(첫 커맨드센터·해처리)을 개체로 심는 재료.
-          startX: startTileOf(p.SlotID)?.x ?? null,
-          startY: startTileOf(p.SlotID)?.y ?? null,
-          /* 팀 번호(지적: 왜케 안 죽어 — 의 반대급부) — 전투 사망 보정이 아군의 공격
-             명령·방어건물을 적으로 오인해 제 유닛을 죽이지 않게 편 가르기 재료를 준다. */
-          team: typeof p.Team === "number" ? p.Team : null,
-        }));
-      // 서버 상한(200만 자)을 넘는 긴 경기는 이동 증거를 솎아 들여보낸다(모듈 주석).
-      return serializeUnitTracks(buildUnitTracks(cmds, trackPlayers));
-    } catch {
-      return null;
-    }
-  })();
-
+  /* (걷어냄) 개체 트랙 v2 — 커맨드 스트림을 태그 단위로 다시 읽어 "이 번호가 무슨
+     유닛이고 어디 있나"를 유추하던 자리다. 이제 서버가 리플레이를 **실제로 돌려** 참값을
+     구우므로(tools/openbw/README.md) 유추할 것이 없다. 등록 때 77ms를 쓰고 200만 자를
+     올리던 짐이 통째로 사라졌다. */
   return {
     fileName: file.name,
     date,
@@ -1460,6 +1434,5 @@ export async function parseReplayFile(file: File): Promise<ParsedReplay> {
     teamSplitUncertain,
     mapGrid: await readMapGrid(res),
     startSpots: (res.MapData?.StartLocations ?? []).map((sp) => [sp.X / 32, sp.Y / 32] as [number, number]),
-    unitTracks,
   };
 }

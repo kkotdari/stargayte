@@ -52,7 +52,6 @@ export type SummaryJobResult =
     slots: ReanalyzedSlot[];
     /** 개체 트랙 v2(JSON 문자열) — 재분석이 옛 경기에도 v2를 만들어 준다(요청: 재분석
      *  한 번으로 기존 경기 전부). 분석 실패면 null — 재분석 자체는 그대로 간다. */
-    unitTracks: string | null;
   }
   | { id: number; ok: false; error: string };
 
@@ -82,7 +81,6 @@ ctx.onmessage = (e: MessageEvent<SummaryJob>) => {
           cmdCount: p.cmdCount, effectiveCmdCount: p.effectiveCmdCount,
           buildCount: p.buildCount, buildMix: p.buildMix,
         })),
-        unitTracks: parsed.unitTracks ?? null,
       });
     } catch (err) {
       ctx.postMessage({ id, ok: false, error: err instanceof Error ? err.message : "리플레이를 읽지 못했어요." });

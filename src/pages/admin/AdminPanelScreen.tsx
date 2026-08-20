@@ -118,7 +118,6 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
     let failed = 0;
     /* 개체 트랙 v2 업로드 실패를 따로 센다(지적: 재분석했는데 트랙이 안 들어옴 — 조용히
        삼키니 성공처럼 보였다). 재분석 본체와 별개로 세어 끝 알림에서 알린다. */
-    let trackFailed = 0;
     const pool = createSummaryPool();
     try {
       /* 고른 경기만 돌린다(요청: 재분석 누르면 팝업으로 경기 목록이 뜨고 선택해서
@@ -147,11 +146,6 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
               mapName: r.mapName, gameStartedAt: r.gameStartedAt,
               durationSeconds: r.durationSeconds, slots: r.slots,
             });
-            // 개체 트랙 v2 — 재분석이 옛 경기에도 별도 테이블을 채워 준다(요청: 재분석
-            // 한 번으로). 실패해도 재분석 본체는 성공으로 치되, 따로 세어 알린다.
-            if (r.unitTracks) {
-              await api.putGameUnitTracks(id, r.unitTracks).catch(() => { trackFailed += 1; });
-            }
           } else {
             // 일꾼을 못 쓰는 환경(옛 브라우저 등)에서는 예전처럼 화면 쪽에서 읽는다.
             const parsed = await parseReplayFile(new File([blob], `${id}.rep`));
@@ -167,9 +161,6 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
                 buildCount: p.buildCount, buildMix: p.buildMix,
               })),
             });
-            if (parsed.unitTracks) {
-              await api.putGameUnitTracks(id, parsed.unitTracks).catch(() => { trackFailed += 1; });
-            }
           }
         } catch {
           failed += 1;
@@ -186,7 +177,7 @@ export default function AdminPanelScreen({ isAdmin }: AdminPanelScreenProps) {
          setRedo는 아직 그려지기 전이라 39/40에서 멈춘 채로 알림이 덮였다. 값이 틀린 게
          아니라 그릴 틈을 안 준 것이라, 한 프레임만 양보하면 된다. */
       await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
-      window.alert(`경기 ${done - failed}건을 다시 분석했어요.${failed > 0 ? `\n${failed}건은 리플레이를 읽지 못해 그대로 뒀어요.` : ""}${trackFailed > 0 ? `\n개체 트랙(v2)은 ${trackFailed}건을 올리지 못했어요 — 서버가 아직 새 버전이 아니거나 응답을 거절했어요.` : ""}`);
+      window.alert(`경기 ${done - failed}건을 다시 분석했어요.${failed > 0 ? `\n${failed}건은 리플레이를 읽지 못해 그대로 뒀어요.` : ""}\n참값 자취는 서버가 뒤에서 굽습니다 — 잠시 뒤 재생해 보세요.`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "경기를 다시 분석하지 못했어요.");
     } finally {

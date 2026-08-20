@@ -35,6 +35,7 @@ import { terrainOf, decodeWalk, type TerrainGrid } from "../../utils/minimapTerr
 /* 자취는 이제 서버가 굽는다 — 브라우저는 풀어서 읽기만 한다(tools/openbw/README.md).
    여태 이 자리에서 돌던 시뮬(legacy/simCore·simClient)은 명령에서 **유추**하던 것이라,
    참값이 생긴 뒤로는 견줄 것도 없어 통째로 걷었다. legacy는 유물로 남긴다. */
+import { truthToV2 } from "../../utils/truthToV2";
 import {
   decodeTruthTracks, posAtTruth as posAtSim, type TruthTrack,
   TRUTH_ST_CARRY_GAS as ST_CARRY_GAS, TRUTH_ST_CARRY_MIN as ST_CARRY_MIN,
@@ -13335,11 +13336,10 @@ export default function ReplayMotionPlayer({
   /** 상세 팝업 닫기(요청: PC는 게임 결과만 확대창이 기본, 기존 상세는 미사용) — 값이
    *  오면 PC에서 마운트되자마자 확대창을 열고, 확대창을 닫을 때 상세까지 함께 닫는다. */
   onDetailClose?: () => void;
-  /** 개체 트랙 로더 — 두 가지가 함께 온다: `data`는 사건 표(v2: 건물·업그레이드·마법·
-   *  체력), `motion`은 서버가 OpenBW로 구운 **참값 자취**(자리·방향·상태)다. 둘 중 하나라도
-   *  없으면 재생기는 아무것도 안 그리고 "재생할 수 없는 게임"이라고만 말한다(요청: 폴백
-   *  없음) — 유추로 그린 그림은 실제 경기가 아니라 거짓말이었다. */
-  loadUnitTracks?: () => Promise<{ data: string | null; motion: string | null }>;
+  /** 참값 자취 로더 — 서버가 리플레이를 실제로 돌려 구운 것 하나면 화면이 다 선다
+   *  (자리·방향·상태·종류·체력·업그레이드·마법·핑·로스터). 없으면 재생기는 아무것도
+   *  안 그리고 "재생할 수 없는 게임"이라고만 말한다(요청: 폴백 없음). */
+  loadUnitTracks?: () => Promise<{ motion: string | null }>;
   /** 이 시각(초)부터 재생 시작(요청: 카톡 공유 링크의 &t=) — 경기 길이를 넘으면 무시. */
   initialSec?: number;
   /** 현재 재생 시각을 적어 둘 열쇠(경기번호) — 공유 링크가 &t=로 실어 보낸다. */
@@ -13415,17 +13415,15 @@ export default function ReplayMotionPlayer({
     if (entData || !loadUnitTracks || entLoad === "loading") return;
     setEntLoad("loading");
     try {
+      /* 자취는 zlib+varint로 눌려 온다 — 푸는 데 26분짜리 8인전이 100ms쯤이다.
+         이 안에 자리·체력·업그레이드·마법·핑·로스터가 다 들어 있다. */
       const got = await loadUnitTracks();
-      const parsed = got.data ? (JSON.parse(got.data) as UnitTracksV2) : null;
-      /* 자취는 zlib+varint로 눌려 온다 — 푸는 데 26분짜리 8인전이 100ms쯤이다. */
       const truth = got.motion ? await decodeTruthTracks(got.motion) : null;
-      if (parsed && parsed.v === 2 && Array.isArray(parsed.ents) && truth) {
-        setEntData(parsed);
+      if (truth && truth.tracks.length) {
+        setEntData(truthToV2(truth));
         setSimTracks(new Map(truth.tracks.map((tr) => [tr.tag, tr])));
         setEntLoad("idle");
       } else {
-        /* 둘 중 하나만 있어도 못 그린다: 사건만 있으면 자리가 없고, 자리만 있으면
-           건물·마법·체력이 없다. 반쪽으로 그리는 길은 안 둔다(요청). */
         setEntLoad("none");
       }
     } catch {

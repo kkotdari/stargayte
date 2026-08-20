@@ -322,12 +322,9 @@ export default function ReplayReviewModal({
           mapName: d.mapName || null, gameStartedAt: d.gameStartedAt, durationSeconds: d.durationSeconds,
           mapData: d.mapGrid,
         };
-        const saved = await addGameResult(payload);
-        // 개체 트랙 v2 — 경기 저장이 끝난 뒤 별도 테이블에 따로 올린다(요청: 태그 단위
-        // 분석을 별도 테이블로 저장해 비교). 실패해도 경기 등록은 이미 끝났으므로 막지 않는다.
-        if (d.unitTracks && saved?.id) {
-          api.putGameUnitTracks(saved.id, d.unitTracks).catch(() => {});
-        }
+        await addGameResult(payload);
+        /* (걷어냄) 개체 트랙 v2 올리기 — 브라우저가 유추해 만든 표를 별도 테이블에
+           올리던 자리다. 이제 서버가 등록 직후 리플레이를 실제로 돌려 참값을 굽는다. */
         setSubmittedIndices((prev) => new Set(prev).add(i));
         onRegistered?.(d.fileName);
       }
