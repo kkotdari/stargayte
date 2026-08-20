@@ -50,6 +50,10 @@ export type TruthLife = {
   kind: string;
   /** 태어난 초. */
   born: number;
+  /** 태어난 자리(타일) — 유닛이면 '어느 건물에서 나왔나'가 여기서 곧장 읽힌다.
+   *  건물이면 몸 한가운데다(발자국 좌상단은 sites가 따로 준다). */
+  bornX: number;
+  bornY: number;
   /** 사라진 초 — 끝까지 살아 있었으면 null. */
   died: number | null;
   /** 끝난 갈래 — "morph" 다음 생애로 이어짐 · "atk" 사라짐 · "" 끝까지 삶. */
@@ -58,6 +62,11 @@ export type TruthLife = {
   bld: boolean;
   /** 앉은 자리들 — 첫째가 처음 지은 자리, 그 뒤는 옮겨 앉은 자리다. 건물만 갖는다. */
   sites: LifeSite[];
+  /** 다 지어진 초 — 참값이 키마다 싣는 '다 지어졌나'가 처음 켜지는 때다. 처음부터 서
+   *  있던 건물은 태어난 때이고, 끝내 못 지은 건물은 Infinity다. 건물이 아니면 born.
+   *  ★ 이 값이 있어서 '언제 완공됐나'를 더는 유추하지 않는다 — 옛 화면은 일꾼의 명령
+   *    증거로 "이 건물이 처음 일한 때"를 찾아 완공을 어림했다. */
+  doneAt: number;
   /** 떠오른 초들 — 착륙(sites)과 짝이 된다. */
   lifts: number[];
   /** 자세 바뀜 [초, 박혔나] — 시즈탱크만 갖는다. */
@@ -121,6 +130,8 @@ function livesOfTrack(
 
     const sites: LifeSite[] = [];
     const lifts: number[] = [];
+    /** 다 지어진 때 — done 비트가 처음 켜지는 키. 안 켜지면 끝내 못 지은 것이다. */
+    let doneAt = born;
     if (bld) {
       /* 자취의 자리는 **몸 한가운데**다(BW의 unit.position). 화면의 건물 층은 발자국
          **좌상단 타일**을 기준으로 그리므로 반 발자국을 뺀다 — 안 빼면 건물이 통째로
@@ -135,6 +146,12 @@ function livesOfTrack(
          없다(가장 빠른 건물도 15초) — 그런 것은 처음부터 서 있던 것으로 본다. */
       const raising = tr.done[segStart] === 0 && born > 1;
       sites.push([raising ? born : born - buildSecOf(kind), bx, by]);
+      if (raising) {
+        doneAt = Infinity;
+        for (let i = segStart; i < end; i += 1) {
+          if (tr.done[i]) { doneAt = tr.keys[i * 5]; break; }
+        }
+      }
       /* 이륙·착륙 — 건물이 자리를 옮겼으면 뜬 것이다. 참 자취가 그 사이를 다 그리므로
          뜬 때와 앉은 때만 찍어 주면 화면이 그 둘로 장면을 만든다. */
       let px = tr.keys[segStart * 5 + 1];
@@ -161,10 +178,13 @@ function livesOfTrack(
       owner: tr.owner,
       kind,
       born,
+      bornX: tr.keys[segStart * 5 + 1],
+      bornY: tr.keys[segStart * 5 + 2],
       died: more || gone ? lastT : null,
       end: more ? "morph" : gone ? "atk" : "",
       bld,
       sites,
+      doneAt,
       lifts,
       // 시즈는 이 생애의 구간에 든 것만.
       sieges: sieges.filter(([s]) => s >= born && s <= lastT),

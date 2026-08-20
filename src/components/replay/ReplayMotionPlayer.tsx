@@ -13,7 +13,7 @@ import type { ReplayMapGrid } from "../../utils/replayParser";
 import { api } from "../../api/client";
 import { applyReplayMap, promoteReplayMap } from "../../hooks/useReplayMap";
 import { AIR_UNITS } from "../../utils/replayBuildMix";
-import { BLD_STATS, UNIT_BUILD_SEC, UNIT_STATS, type UnitTracksV2 } from "../../legacy/replayUnits";
+import { BLD_STATS, UNIT_BUILD_SEC, UNIT_STATS } from "../../legacy/replayUnits";
 /* 사거리는 이 파일이 들고 있던 상수(ENGAGE_SIGHT_TILES 9, 방어 건물 7/7/7/8/6, 벙커 안
    화염 3.5)가 아니라 표에서 온다(과제 #48) — 마린도 시즈 탱크도 한 값 9로 쏘고 9에서
    멈추던 자리다. 표를 읽는 문은 **bwCombat 하나**로 정한다: bwUnits에도 같은 이름의
@@ -23,12 +23,12 @@ import { BLD_STATS, UNIT_BUILD_SEC, UNIT_STATS, type UnitTracksV2 } from "../../
    이라 실제보다 두 몸 반지름만큼 짧게 잡히는 어림인데, 그리기용 게이트라 그대로 둔다 —
    반지름까지 더하는 정확한 셈은 코어(bwCombat.reachTiles)의 몫이다. */
 import {
-  BUNKER_SEATS, acquireTilesOf, fireRangeTilesOf, isKnownKind, profileOf, weaponVs,
+  acquireTilesOf, fireRangeTilesOf, isKnownKind, profileOf, weaponVs,
 } from "../../utils/bwCombat";
 /* 러커 가시가 나아가는 거리·속도는 무기표가 아니라 iscript 행동(behaviour 9 "go to max
    range")에서 온 값이라 bwCombat이 안 물고 있다. 숫자를 여기 또 적는 대신 표에서 읽는다. */
 import {
-  BUILDING_FOOT, FRAME_SEC, hatchState, LURKER_SPINE_SPEED_PX,
+  BUILDING_FOOT, FRAME_SEC, LURKER_SPINE_SPEED_PX,
   LURKER_SPINE_TRAVEL_PX, buildingBox, SUPPLY_CAP, SUPPLY_COST, SUPPLY_GIVES,
 } from "../../utils/bwUnits";
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
@@ -37,10 +37,11 @@ import { terrainOf, decodeWalk, type TerrainGrid } from "../../utils/minimapTerr
    여태 이 자리에서 돌던 시뮬(legacy/simCore·simClient)은 명령에서 **유추**하던 것이라,
    참값이 생긴 뒤로는 견줄 것도 없어 통째로 걷었다. legacy는 유물로 남긴다. */
 import RaceBadge from "../common/RaceBadge";
-import { truthToV2 } from "../../utils/truthToV2";
+import { truthWorld, type TruthWorld } from "../../utils/truthLives";
 import {
   decodeTruthTracks, posAtTruth as posAtSim, type TruthTrack, type TruthTracks,
   TRUTH_ST_CARRY_GAS as ST_CARRY_GAS, TRUTH_ST_CARRY_MIN as ST_CARRY_MIN,
+  TRUTH_ST_BURROW as ST_BURROW,
   TRUTH_ST_FIGHT as ST_FIGHT,
   TRUTH_ST_INSIDE as ST_INSIDE,
 } from "../../utils/openbwTracks";
@@ -70,7 +71,12 @@ import { TEAM_COLOR, type MinimapMarker } from "./ReplayMinimap";
 
 /** [초, x, y, 건물 영문명, raw, 무너진 초(0이면 살아 있음), 이륙한 초?] — 화면이 읽는
  *  건물 한 줄. 개체 트랙(buildsV2)이 만드는 유일한 꼴이다. */
-export type BuildRow = [number, number, number, string, string, number, number?];
+/* [착공 초, 타일x, 타일y, 종류, 임자, 사라진 초, 이륙 초?, **완공 초**?]
+   ★ 여덟째가 완공 초다 — 참값이 키마다 싣는 '다 지어졌나'가 처음 켜지는 때(TruthLife
+     .doneAt). 여태 화면은 이 값을 몰라 '착공 + 표의 건설 시간'으로 어림했고, 테란은
+     공사가 멈춰 서면 그 어림이 틀려 별도 유추(bldWork)를 돌렸다. 참값이 말하므로 둘 다
+     필요 없다. */
+export type BuildRow = [number, number, number, string, string, number, number?, number?];
 /** [초, x, y, 기술 영문명, raw] — 좌표가 남는 마법 한 줄(스톰·스웜·리콜…). */
 export type CastRow = [number, number, number, string, string];
 
@@ -82,7 +88,9 @@ export type CastRow = [number, number, number, string, string];
    실제로 떨어뜨리던 것은 지상 캐스터가 아니라 아비터·베슬·퀸(나는 캐스터) 셋뿐이라,
    이들도 지상 취급돼 건물에 덮이고 지형 길찾기로 걸었다. 옵저버는 원래 정상이었다. */
 export const isAirUnit = (unit: string): boolean =>
-  unit === "Overlord" || AIR_UNITS.has(unit);
+  // 뮤탈 고치는 원작에서도 떠 있다 — 참값이 이제 고치를 제 유닛으로 낸다(태그 그대로
+  // 뮤탈 → 고치 → 가디언). 여기 없으면 갓 웅크린 고치가 땅에 내려앉는다.
+  unit === "Overlord" || unit === "Mutalisk Cocoon" || AIR_UNITS.has(unit);
 
 /** 본진 로스터 한 사람 — 위치(x·y)는 이제 요약이 사라져 실려 오지 않을 수 있다.
  *  좌표가 없으면 지형 앵커·채굴 임자 어림 같은 위치 계산에서 조용히 빠진다. */
@@ -10456,6 +10464,12 @@ const UNIT_3D: Record<string, string> = {
   "Infested Terran": "zling", Lurker: "lurker", Defiler: "defiler",
   // 일꾼류는 다 직접 모델링(요청).
   SCV: "scv", Probe: "probe", Drone: "drone",
+  /* 라바·알·변태 껍질(지적: "라바 위치 및 라바에서 알로 변태 거기서 유닛 태어나기까지
+     다 됐지?") — 여기 이름이 없어 저그 폴백(zling)으로 떨어졌다. 곧 **해처리마다
+     저글링 서넛이 꿈틀대고 있었다**. 참값 자취를 실측해 보면 이 넷은 지어낼 것이
+     하나도 없는 진짜 개체다(실측 한 태그: 라바 35 → 알 36 → 히드라 38 → 럴커알 97 →
+     럴커 103, 자리까지 다 실려 있다). 이름만 이어 주면 제 모습으로 선다. */
+  Larva: "larva", Egg: "egg", "Lurker Egg": "lurkeregg", "Mutalisk Cocoon": "mutacocoon",
 };
 /** 종족 → 일꾼 상징물 — 유닛 이름이 없는 일꾼 점(정찰·채굴)용. */
 const workerKindOf = (race?: string): string =>
@@ -10497,13 +10511,12 @@ const ATTACK_FX: Record<string, string> = {
      빠지는 잽으로 때리는 것을 보인다(MELEE_JAB_SEC). 그림 없는 동작이 호보다 읽기
      쉽고, 무엇보다 옆에 뜬 부메랑처럼 보이지 않는다. */
 };
-/* 변태 중 모습(요청·사진) — 히드라는 럴커 알로, 뮤탈은 가디언·디바우러가 되는 번데기
-   고치로 웅크린다. 태어난 뒤 이 시간 동안은 알·고치를 그리고 공격도 안 한다. */
-const MORPH_SHELL: Record<string, string> = {
-  Lurker: "lurkeregg", Guardian: "mutacocoon", Devourer: "mutacocoon",
-};
-/** 변태에 걸리는 시간(초) — 원작 값 어림(럴커·가디언·디바우러 모두 40초대). */
-const MORPH_SHELL_SEC = 40;
+/* (걷어냄) 변태 중 모습 — '태어난 뒤 40초 동안은 럴커 알·번데기 고치를 그린다'는
+   어림이었다. 개체 기록에 껍질이 안 남던 시절의 대역이다.
+   참값에는 껍질이 **제 유닛으로** 실린다(럴커 알 97 · 뮤탈 고치 59). 게다가 태그가
+   같아 한 몸의 다음 시절로 이어진다 — 실측: 태그 10462가 라바 → 알 → 히드라 →
+   럴커 알 → 럴커로 갈아입는다. 그러니 어림을 그대로 두면 **껍질을 두 번** 그린다:
+   참값이 낸 진짜 껍질이 지나간 뒤, 갓 깨어난 럴커를 40초 더 알로 덮었다. */
 /** 사주경계를 하는 정체([어림] — 위 bodyHdg 주석) — 커뮤니티 문서가 확인해 주는 보병만.
  *  차량·기계·일꾼·공중은 원작에서도 제자리에서 두리번거리지 않는다. */
 const IDLE_SCAN = new Set(["Marine", "Firebat", "Ghost", "Medic", "Zergling", "Hydralisk", "Zealot"]);
@@ -10607,6 +10620,7 @@ const UNIT_BULK: Record<string, 0 | 1 | 2> = {
   // ── 저그 ──
   Larva: 0, Drone: 0, Zergling: 0, Mutalisk: 0, Scourge: 0, Broodling: 0,
   "Infested Terran": 0,
+  Egg: 1, "Lurker Egg": 1, "Mutalisk Cocoon": 1,
   Hydralisk: 1, Queen: 1, Defiler: 1,
   /* 럴커는 원전이 중형이다 — `UnitType.cpp` unitSize[103](Zerg_Lurker) = Medium.
      여기 있던 "원작에서 대형이다(조사)"라는 주석은 원전과 반대라 지웠다. */
@@ -10813,6 +10827,11 @@ const UNIT_BW_RAW = {
   ultra: [38, 32, 2, 0], defiler: [27, 25, 1, 0], queen: [48, 48, 1, 1], ovie: [50, 50, 2, 1],
   muta: [44, 44, 0, 1], scourge: [24, 24, 0, 1], guardian: [44, 44, 2, 1],
   devourer: [44, 44, 2, 1],
+  /* 라바·알·껍질 — bwUnits의 치수표와 같은 값(라바 16×16 소형, 알·껍질 32×32 중형).
+     SIZE_BLEND이 0이라 이 줄들이 딴 유닛 크기를 흔들지 않는다(크기는 종류마다 제
+     상자만 본다). */
+  larva: [16, 16, 0, 0], egg: [32, 32, 1, 0],
+  lurkeregg: [32, 32, 1, 0], mutacocoon: [32, 32, 1, 1],
 } as const;
 /** 기하평균 — '전체 크기감을 안 바꾸는' 평균이다. 곱셈으로 크기를 만지는 이 파일에서
  *  산술평균은 큰 쪽에 끌려간다. */
@@ -11063,8 +11082,9 @@ export const SHAPE_GALLERY: { kind: string; label: string; group: "유닛" | "�
   { kind: "carrierbay", label: "캐리어(인터셉터)", group: "유닛" },
   { kind: "arbiter", label: "아비터", group: "유닛" },
   // ── 유닛 · 저그 ──
-  /* 라바·변태알은 개체 트랙에 안 실리는 모델이다(리플레이에 라바는 안 남는다) —
-     해처리 발치의 장식으로만 나온다. 도록에 올려 두면 크기 정규화도 같은 자를 탄다. */
+  /* 라바·변태알은 **참값 자취에 제 유닛으로 실린다**(옛 주석은 "리플레이에 라바는 안
+     남는다"였다 — 명령 기록만 보던 시절의 말이다). 실측: 한 태그가 라바 35 → 알 36 →
+     드론 41로 갈아입는다. 그래서 해처리 장식이 아니라 다른 유닛과 같은 길로 그려진다. */
   { kind: "larva", label: "라바", group: "유닛" },
   { kind: "egg", label: "변태알", group: "유닛" },
   { kind: "drone", label: "드론", group: "유닛" },
@@ -13108,17 +13128,8 @@ const FREEZE_STATUS = new Set(["stasis", "mael", "lock"]);
  *  테란. 울트라·퀸·스커지는 못 숨는다. 버로우 커맨드는 고른 무리 전체에 실려
  *  오므로(못 숨는 것이 섞여 있어도 같은 증거가 붙는다) 이 명단으로 거른다. */
 const BURROWABLE = new Set(["Drone", "Zergling", "Hydralisk", "Lurker", "Defiler", "Infested Terran"]);
-/** 지금 땅속인가 — 땅속이면 '판 시각', 아니면 -1. 시즈와 같은 잣대(켬/끔 증거를
- *  시간순으로 접는다)다. 판 시각을 돌려주는 이유는 그 자리에 못 박기 위해서다
- *  (지적: 러커와 버로우 러커가 같이 움직인다 — 구멍이 자취를 따라 미끄러졌다). */
-const burrowStartOf = (spans: [number, number][], t: number): number => {
-  let at = -1;
-  for (const [bs, on] of spans) {
-    if (bs > t) break;
-    at = on === 1 ? bs : -1;
-  }
-  return at;
-};
+/* (걷어냄) burrowStartOf — 버로우 켬/끔 커맨드(f=18/19)를 시간순으로 접어 '판 시각'을
+   내던 자다. 참값 자취가 프레임마다 ST_BURROW로 직접 말하므로 접을 것이 없다. */
 const STATUS_TINT: Record<string, string> = {
   ensnare: "#79c74c", plague: "#b4452e", stasis: "#69b7e8",
   mael: "#a86ae0", lock: "#c8c8d2", irr: "#e8c84a",
@@ -13167,8 +13178,8 @@ const SCAN_DUST: [number, number, number][] = Array.from({ length: 16 }, (_, i) 
   const r9 = Math.sqrt((i + 0.4) / 16) * 42;
   return [50 + Math.cos(a9) * r9, 50 + Math.sin(a9) * r9, ((i * 5) % 16) * 0.11];
 });
-/** 라바를 데리고 있는 저그 본진 — 라바·변태알을 발치에 그리는 대상이다. */
-const ZERG_HALLS = new Set<string>(["Hatchery", "Lair", "Hive"]);
+/* (걷어냄) ZERG_HALLS — 라바·변태알을 발치에 그릴 저그 본진 명단이다. 그 장식을
+   걷었으므로(위 '라바·변태알 장식' 주석) 명단도 함께. */
 const ADDONS = new Set([
   "Comsat Station", "Nuclear Silo", "Machine Shop", "Control Tower", "Covert Ops", "Physics Lab",
   // v2 트랙의 변형 이름(지적: 커맨드 애드온에 통로가 안 붙음) — screp는 ComSat으로 준다.
@@ -13226,18 +13237,10 @@ const BUILD_SEC: Record<string, number> = {
   Spire: 75.6, "Greater Spire": 75.6, "Nydus Canal": 25.2, "Defiler Mound": 37.8,
   "Ultralisk Cavern": 50.4,
 };
-/** 공사가 실제로 자란 시간(초) — 붙어 있던 구간들을 t까지 더한다(테란 건설 중단). */
-const workedBy = (wins: [number, number][], t: number): number => {
-  let s = 0;
-  for (const [a, b] of wins) {
-    if (t <= a) break;
-    s += Math.min(t, b) - a;
-  }
-  return s;
-};
-/** 지금 일꾼이 붙어 있나 — 구간 안이면 자라는 중, 아니면 중단이다. */
-const workingAt = (wins: [number, number][], t: number): boolean =>
-  wins.some(([a, b]) => t >= a && t < b);
+/* (걷어냄) workedBy·workingAt — 테란 '건설 중단'을 그리려고, 일꾼이 건물에 붙어 있던
+   구간을 명령 증거로 되짚어 잇던 짝이다. 참값은 완공 시각을 제 손으로 말하므로(키마다
+   실린 '다 지어졌나' 비트 → TruthLife.doneAt) 되짚을 까닭이 없어졌다. 함께 사라진 표시:
+   공사가 멈춰 선 동안의 '중단' 표. */
 
 /* (걷어냄) UNIT_SEC — '유닛 뽑는 시간' 어림표. 완성 시각을 되짚는 데 쓰던 자리는
    전부 원작 표(UNIT_BUILD_SEC)와 개체 트랙의 출생 시각으로 옮겨 갔다. */
@@ -13252,6 +13255,9 @@ const ENGAGE_SKIP = new Set([
   "Worker", "Transport", "Overlord", "Dropship", "Shuttle", "Observer", "Science Vessel",
   "Defiler", "Queen", "High Templar", "Dark Archon", "Medic", "Arbiter", "Lurker",
   "Siege Tank (Siege Mode)",
+  /* 라바·알·껍질은 싸우지 않는다 — 참값이 이제 이 넷을 진짜 개체로 내므로, 명단에
+     없으면 해처리 발치의 라바가 적을 보고 교전 자세를 잡는다. */
+  "Larva", "Egg", "Lurker Egg", "Mutalisk Cocoon",
 ]);
 /* 근접 유닛(지적: 질럿이 가까이 가지 않고 멀리서 싸움) — 이들은 당김 상한(2.5타일)에
    걸려 6~7타일 밖에 멈춰 서면 안 되고, 표적에 몸이 닿을 때까지 걸어 들어가야 한다.
@@ -13273,7 +13279,7 @@ const MELEE_UNITS = new Set([
 /* (걷어냄) nearestTrackSec — 교전이 끝난 뒤 '지금 선 자리와 가장 가까운 앞쪽 시각'을
    찾아 시계를 옮기던 자. 렌더러 교전 당김과 함께. */
 
-/* (걷어냄) unitAt — '이 부대의 우세 유닛' 어림. 개체마다 제 정체(e.k)가 있으니
+/* (걷어냄) unitAt — '이 부대의 우세 유닛' 어림. 개체마다 제 정체(e.kind)가 있으니
    부대의 대표 이름을 고를 일이 없다. */
 
 /** 상세 팝업 자동 확대의 자리 잡기 — 묶음 상세(카드 여럿)에서 첫 판만 확대창을 연다. */
@@ -13379,7 +13385,7 @@ export default function ReplayMotionPlayer({
   /* 개체 트랙 — 화면이 그리는 **유일한** 자료다(v1 부대 추적은 걷었다). 뜨자마자 한 번
      내려받고, 못 받으면 아래 보기 줄이 '재분석 필요'라고 말한다: 자료가 없는 것과
      "그 경기엔 아무 일도 없었다"가 화면에서 갈려야 한다. */
-  const [entData, setEntData] = useState<UnitTracksV2 | null>(null);
+  const [entData, setEntData] = useState<TruthWorld | null>(null);
   const [entLoad, setEntLoad] = useState<"idle" | "loading" | "none">("idle");
   /* 유닛의 자리·방향·상태 — 서버가 리플레이를 그대로 돌려 구운 참값이다. 태그로 찾는다.
      (이름이 sim으로 남은 것은 읽는 자리가 수백 군데라서다 — 값의 출처만 바뀌었다.) */
@@ -13428,7 +13434,7 @@ export default function ReplayMotionPlayer({
       const got = await loadUnitTracks();
       const truth = got.motion ? await decodeTruthTracks(got.motion) : null;
       if (truth && truth.tracks.length) {
-        setEntData(truthToV2(truth));
+        setEntData(truthWorld(truth, (k) => UNIT_BUILD_SEC[k] ?? 0));
         setTruth(truth);
         setSimTracks(new Map(truth.tracks.map((tr) => [tr.tag, tr])));
         setEntLoad("idle");
@@ -13444,36 +13450,39 @@ export default function ReplayMotionPlayer({
      소스만 갈아 끼우면 되게 한다. v2를 켜면 장면 전체(유닛·건물·마법)가 v2 데이터다. */
   const buildsV2 = useMemo<BuildRow[]>(() => {
     if (!entData) return [];
-    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
-    type Row = { born: number; x: number; y: number; k: string; raw: string; gone: number; lift?: number };
+    const nameOfId = new Map(entData.players.map((pl) => [pl.owner, pl.name]));
+    type Row = { born: number; x: number; y: number; k: string; raw: string; gone: number;
+      lift?: number; doneAt: number };
     const tagRows: Row[] = [];
     const physRows: (Row & { used?: boolean })[] = [];
-    for (const e of entData.ents) {
-      if (!e.bld || !e.k) continue;
-      const raw = nameOfId.get(e.o) ?? "";
+    for (const e of entData.lives) {
+      if (!e.bld || !e.kind) continue;
+      const raw = nameOfId.get(e.owner) ?? "";
       if (!raw) continue;
-      const spots = e.ev.filter((v) => v[3] === 2 || v[3] === 5);
+      const spots = e.sites;
       if (spots.length === 0) continue;
       /* 죽음의 주인은 하나다(과제 #69) — 분석이 체력 자취를 **d에서** 0으로 맞춰
          내보내므로, 여기서 체력 0을 따로 볼 이유가 없어졌다. 옛 코드는 hpZero가 d보다
          이르면 그쪽을 골랐는데, 실측으로 그 둘이 거의 늘 달랐다(경기1: 체력 0에 닿은
          1042기 중 d와 같은 것이 6기, 934기가 평균 6초 일렀고 62기는 증거상 살았는데도
          바가 0이었다). 이제 분석 쪽에서 하나로 모았다. */
-      const gone = e.d ?? 0;
+      const gone = e.died ?? 0;
       for (let i = 0; i < spots.length; i += 1) {
         const [sSec, x, y] = spots[i];
         const nextS = i + 1 < spots.length ? spots[i + 1][0] : null;
-        const lift = e.ev.find((v) => v[3] === 6 && v[0] >= sSec && (nextS === null || v[0] <= nextS));
+        const lift = e.lifts.find((ls) => ls >= sSec && (nextS === null || ls <= nextS));
         const row: Row = {
           /* 공사 시작은 '자리를 찍은 순간'이다(지적: 첫 홀이 짓는 걸로 나온다) — 예전엔
-             건설 앵커(f=2)일 때 개체의 출생(e.b)을 썼는데, 프로토스·테란은 일꾼 태그가
+             건설 앵커(f=2)일 때 개체의 출생(e.born)을 썼는데, 프로토스·테란은 일꾼 태그가
              그대로 건물 생애가 되므로 그 값은 일꾼이 태어난 때(경기 1초)다. 그래서
              90초에 지은 확장 넥서스가 1초부터 공사 중으로 서 있었다. 앵커 시각을 쓴다. */
-          born: sSec, x, y, k: e.k, raw,
+          born: sSec, x, y, k: e.kind, raw,
           gone: nextS !== null ? nextS : gone,
-          ...(lift ? { lift: lift[0] } : {}),
+          // 완공 초는 참값이 말한다 — 옮겨 앉은 뒤(i > 0)에는 이미 다 지어진 몸이다.
+          doneAt: i === 0 ? e.doneAt : sSec,
+          ...(lift !== undefined ? { lift } : {}),
         };
-        (e.t === -1 ? physRows : tagRows).push(row);
+        (e.tag === -1 ? physRows : tagRows).push(row);
       }
     }
     /* 같은 건물이 두 번 선다(드론→건물 변태 분리의 산물) — 같은 자리엔 물리 줄(건설
@@ -13489,21 +13498,17 @@ export default function ReplayMotionPlayer({
         twin.used = true;
         if (gone === 0 && twin.gone > 0) gone = twin.gone;
       }
-      out.push(r.lift !== undefined
-        ? [r.born, r.x, r.y, r.k, r.raw, gone, r.lift]
-        : [r.born, r.x, r.y, r.k, r.raw, gone]);
+      out.push([r.born, r.x, r.y, r.k, r.raw, gone, r.lift, r.doneAt]);
     }
     for (const p2 of physRows) {
       if (p2.used) continue;
-      out.push(p2.lift !== undefined
-        ? [p2.born, p2.x, p2.y, p2.k, p2.raw, p2.gone, p2.lift]
-        : [p2.born, p2.x, p2.y, p2.k, p2.raw, p2.gone]);
+      out.push([p2.born, p2.x, p2.y, p2.k, p2.raw, p2.gone, p2.lift, p2.doneAt]);
     }
     return out;
   }, [entData]);
   const castsV2 = useMemo<CastRow[]>(() => {
     if (!entData) return [];
-    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    const nameOfId = new Map(entData.players.map((pl) => [pl.owner, pl.name]));
     return (entData.casts ?? []).map(([s, x, y, tech, pidc]) =>
       [s, x, y, tech, nameOfId.get(pidc) ?? ""] as CastRow);
   }, [entData]);
@@ -13512,15 +13517,16 @@ export default function ReplayMotionPlayer({
   const entBldHp = useMemo(() => {
     const m = new Map<string, { born: number; hp: [number, number][] }[]>();
     if (!entData) return m;
-    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
-    for (const e of entData.ents) {
+    const nameOfId = new Map(entData.players.map((pl) => [pl.owner, pl.name]));
+    for (const e of entData.lives) {
       if (!e.bld || !e.hp || e.hp.length === 0) continue;
-      const site = [...e.ev].reverse().find((v) => v[3] === 2 || v[3] === 5 || v[3] === 17);
+      // 마지막으로 앉은 자리 — 옮겨 앉았으면 그쪽이다.
+      const site = e.sites[e.sites.length - 1];
       if (!site) continue;
-      const raw = nameOfId.get(e.o) ?? "";
+      const raw = nameOfId.get(e.owner) ?? "";
       const key = `${raw}|${Math.round(site[1])}|${Math.round(site[2])}`;
       const arr = m.get(key) ?? [];
-      arr.push({ born: e.b, hp: e.hp });
+      arr.push({ born: e.born, hp: e.hp });
       m.set(key, arr);
     }
     return m;
@@ -13541,23 +13547,23 @@ export default function ReplayMotionPlayer({
       x: number; y: number; raw: string; born: number; gone: number; k: string; lift?: number;
     }[] = [];
     if (!entData) return { rows, sites };
-    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
-    for (const e of entData.ents) {
+    const nameOfId = new Map(entData.players.map((pl) => [pl.owner, pl.name]));
+    for (const e of entData.lives) {
       if (!e.bld) continue;
-      const site = [...e.ev].reverse().find((v) => v[3] === 2 || v[3] === 5 || v[3] === 17);
+      const site = e.sites[e.sites.length - 1];
       if (!site) continue;
       // 죽음의 주인은 하나다(과제 #69) — 위 주석 참조.
-      const gone = e.d ?? 0;
+      const gone = e.died ?? 0;
       /* 이륙 증거(f=6)를 같이 싣는다 — 여태 이 색인은 건설·착륙(f=2/5/17)만 봐서, 떠서
          날아가는 건물의 표적 자리가 마지막 착륙 지점에 못박혀 있었다(몸은 날아가는데
          어택으로 찍은 총알은 빈 땅으로 갔다). */
-      const lifted = [...e.ev].reverse().find((v) => v[3] === 6 && v[0] >= site[0]);
+      const lifted = [...e.lifts].reverse().find((ls) => ls >= site[0]);
       const row = {
-        tag: e.t, x: site[1] + footDx(e.k), y: site[2] + footDy(e.k),
-        raw: nameOfId.get(e.o) ?? "", born: e.b, gone, k: e.k,
-        ...(lifted ? { lift: lifted[0] } : {}),
+        tag: e.tag, x: site[1] + footDx(e.kind), y: site[2] + footDy(e.kind),
+        raw: nameOfId.get(e.owner) ?? "", born: e.born, gone, k: e.kind,
+        ...(lifted !== undefined ? { lift: lifted } : {}),
       };
-      if (e.t > 0) rows.push(row);
+      if (e.tag > 0) rows.push(row);
       else sites.push(row);
     }
     /* 허수아비 방지(기획서 2-D) — 태그 생애가 소멸 시각을 모르면(gone=0) 같은 자리
@@ -13570,163 +13576,23 @@ export default function ReplayMotionPlayer({
     }
     return { rows, sites };
   }, [entData]);
-  /* 벙커에 누가 들었나(원전: 벙커 **자신은** 표적 획득도 발사도 안 한다 — UNITS.Bunker의
-     ground/air가 둘 다 null이다. 쏘는 것은 안에 든 마린·파이어뱃·고스트이고 메딕·SCV는
-     타기만 한다). 리플레이에는 '누가 안에 있는지'가 따로 안 남고 남는 것은 제 벙커를 찍은
-     우클릭뿐인데, 분석이 그것을 승선 증거(f=12)로 옮겨 두었고 다섯째 칸이 태운 쪽 태그다.
-     짝이 되는 하차(f=13)까지가 탑승 구간이고, 하차 명령이 없으면 그 개체가 사라질 때까지다.
-     자리는 넷뿐이라(BUNKER_SEATS) 먼저 들어간 넷만 센다. */
-  const bunkerCrew = useMemo(() => {
-    const m = new Map<number, { kind: string; from: number; to: number }[]>();
-    if (!entData) return m;
-    const bunkers = new Set(entData.ents.filter((e) => e.bld && e.k === "Bunker").map((e) => e.t));
-    for (const e of entData.ents) {
-      if (e.bld || !e.k) continue;
-      for (let i = 0; i < e.ev.length; i += 1) {
-        const v = e.ev[i];
-        if (v[3] !== 12) continue;
-        const host = v[4] ?? 0;
-        if (!bunkers.has(host)) continue;
-        const off = e.ev.find((v2, j) => j > i && v2[3] === 13);
-        const arr = m.get(host) ?? [];
-        arr.push({ kind: e.k, from: v[0], to: off ? off[0] : (e.d ?? Infinity) });
-        m.set(host, arr);
-      }
-    }
-    for (const arr of m.values()) arr.sort((a, b) => a.from - b.from);
-    return m;
-  }, [entData]);
-  /* 건설 SCV 떠남 시각(지적: SCV들이 건설현장에 남는다) — 일꾼 개체의 건설 앵커(f=2)
-     마다 [앵커 자리, 앵커 초, 그 뒤 첫 위치 증거 초]를 색인한다. 합성 건설 SCV는 그
-     '첫 위치 증거' 순간(진짜 SCV가 현장을 떠나 걸어 나가는 순간)에 걷힌다. */
-  const builderLeave = useMemo(() => {
-    const m: { x: number; y: number; s: number; end: number }[] = [];
-    if (!entData) return m;
-    for (const e of entData.ents) {
-      if (e.bld || e.t === -1) continue;
-      if (e.k !== "SCV" && e.k !== "") continue;
-      for (let i = 0; i < e.ev.length; i += 1) {
-        const v = e.ev[i];
-        if (v[3] !== 2 || v[1] < 0) continue;
-        let end = Infinity;
-        for (let j = i + 1; j < e.ev.length; j += 1) {
-          if (e.ev[j][1] >= 0 && e.ev[j][0] > v[0] + 1) { end = e.ev[j][0]; break; }
-        }
-        m.push({ x: v[1], y: v[2], s: v[0], end });
-      }
-    }
-    return m;
-  }, [entData]);
-  /* 테란 건설 중단(요청) — 원작에서 테란 건물은 **SCV가 붙어 있는 동안만** 자란다:
-     짓던 SCV가 딴 명령을 받아 걸어 나가거나 죽으면 공사는 그 진행률에서 멈춰 서고
-     (건설 중단), 아무 SCV나 그 건물을 다시 찍으면 그 자리에서 이어 짓는다. 여태 화면은
-     '착공 시각 + 표의 건설 시간'이면 무조건 완성이라, 러시에 일꾼이 죽어 영영 안 지어진
-     건물이 멀쩡히 서 있었다(저그 변태·프로토스 소환은 일꾼이 없어도 자라므로 그대로다).
-
-     증거는 개체 트랙에 이미 다 있다 — 일꾼의 위치 증거 하나가 '그 자리로 간다'는 뜻이고
-     다음 위치 증거(또는 죽음 e.d)가 그 구간을 닫는다. 착공 앵커(f=2)로 열린 구간이 곧
-     처음 붙어 있던 동안이고, 그 뒤 **발자국 안을 찍은 일꾼 클릭**이 이어 짓기다(아직 다
-     안 지어진 건물 자리는 걸어 들어갈 수 있는 땅이 아니라, 그 안을 찍는 클릭은 이어
-     짓기·수리뿐이다). 시프트 예약 명령(다섯째 칸 1)은 지금 움직이지 않으니 구간을 안
-     닫는다 — 짓고 나서 캐러 갈 예약은 중단이 아니다.
-
-     ★ 안전망: 그 건물이 나중에 실제로 일한 증거(생산·랠리 f=4, 이륙 f=6, 남이 찍은
-       자리 f=1, 부속건물 건설 f=2)가 있으면 그때는 이미 완성이다 — 증거가 어림을 이긴다. */
-  const bldWork = useMemo(() => {
-    const m = new Map<number, { wins: [number, number][]; doneAt: number }>();
-    if (!entData) return m;
-    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
-    const raceOfRaw = new Map(entData.players.map((pl) => [pl.name, pl.race]));
-    /* 일꾼이 어디에 있었나 — 타일 바구니에 담아 건물마다 훑을 값을 줄인다(건물 수백 ×
-       일꾼 증거 수천이면 그냥 훑기엔 무겁다). */
-    type Win = { raw: string; x: number; y: number; f: number; a: number; b: number };
-    const bucket = new Map<string, Win[]>();
-    for (const e of entData.ents) {
-      if (e.bld || e.t === -1) continue;
-      if (e.k !== "SCV" && e.k !== "") continue;
-      const raw = nameOfId.get(e.o) ?? "";
-      if (!raw) continue;
-      for (let i = 0; i < e.ev.length; i += 1) {
-        const v = e.ev[i];
-        if (v[1] < 0 || (v[3] !== 0 && v[3] !== 2 && v[3] !== 10)) continue;
-        let end = e.d ?? Infinity;
-        for (let j = i + 1; j < e.ev.length; j += 1) {
-          const w = e.ev[j];
-          if (w[1] < 0 || w[0] <= v[0] + 1) continue;
-          if (w[3] === 0 && w[4] === 1) continue;      // 예약 명령은 아직 안 움직인다
-          end = Math.min(end, w[0]);
-          break;
-        }
-        if (!(end > v[0])) continue;
-        const key = `${Math.floor(v[1])}|${Math.floor(v[2])}`;
-        const arr = bucket.get(key);
-        const win: Win = { raw, x: v[1], y: v[2], f: v[3], a: v[0], b: end };
-        if (arr) arr.push(win);
-        else bucket.set(key, [win]);
-      }
-    }
-    /* 그 건물이 실제로 일한 첫 시각 — 생산·랠리(f=4)·이륙(f=6)·부속건물 건설(f=2)·
-       착륙(f=5)은 다 지어진 건물만 할 수 있는 일이다. '남이 찍은 자리'(f=1)는 뺐다 —
-       적이 짓다 만 건물을 때리는 클릭이 그것이라, 완성의 증거가 아니다.
-       자리 열쇠는 건물 렌더가 쓰는 것과 같다. */
-    const actAt = new Map<string, number>();
-    for (const e of entData.ents) {
-      if (!e.bld) continue;
-      const anchor0 = e.ev.find((v) => v[3] === 2 || v[3] === 5);
-      if (!anchor0) continue;
-      const act = e.ev.find((v) => v[0] > anchor0[0] + 1
-        && (v[3] === 4 || v[3] === 6 || v[3] === 2 || v[3] === 5));
-      if (!act) continue;
-      const key = `${nameOfId.get(e.o) ?? ""}|${Math.round(anchor0[1])}|${Math.round(anchor0[2])}`;
-      const prev = actAt.get(key);
-      if (prev === undefined || act[0] < prev) actAt.set(key, act[0]);
-    }
-    buildsV2.forEach((row, i) => {
-      const [sec, x, y, unit, raw] = row;
-      if (sec <= 0 || raceOfRaw.get(raw) !== "테란" || ADDONS.has(unit)) return;
-      const need = BUILD_SEC[unit] ?? 30;
-      const [fw, fh] = FOOTPRINT[unit] ?? [3, 2];
-      const cand: Win[] = [];
-      for (let ty = Math.floor(y) - 1; ty <= Math.floor(y + fh) + 1; ty += 1) {
-        for (let tx = Math.floor(x) - 1; tx <= Math.floor(x + fw) + 1; tx += 1) {
-          const arr = bucket.get(`${tx}|${ty}`);
-          if (arr) for (const w of arr) cand.push(w);
-        }
-      }
-      /* 착공을 낸 일꾼의 앵커 — 이것이 있어야 '일꾼이 지은 건물'이다. 시작 커맨드나
-         착륙으로 앉은 줄은 여기서 걸러진다(공사 자체가 없었다). */
-      const anchor = cand.find((w) => w.raw === raw && w.f === 2
-        && Math.abs(w.a - sec) <= 2 && Math.hypot(w.x - x, w.y - y) <= 1.5);
-      if (!anchor) return;
-      const spans: [number, number][] = [[sec, Math.max(sec, anchor.b)]];
-      for (const w of cand) {
-        if (w === anchor || w.raw !== raw || w.b <= sec) continue;
-        if (w.x < x - 0.5 || w.x > x + fw + 0.5 || w.y < y - 0.5 || w.y > y + fh + 0.5) continue;
-        spans.push([Math.max(sec, w.a), w.b]);
-      }
-      spans.sort((p2, q2) => p2[0] - q2[0]);
-      const wins: [number, number][] = [];
-      for (const sp of spans) {
-        const last = wins[wins.length - 1];
-        if (last && sp[0] <= last[1]) last[1] = Math.max(last[1], sp[1]);
-        else wins.push([sp[0], sp[1]]);
-      }
-      let acc = 0;
-      let doneAt = Infinity;
-      for (const [a, b] of wins) {
-        if (b - a >= need - acc) { doneAt = a + (need - acc); break; }
-        acc += b - a;
-      }
-      /* 증거가 어림을 이긴다 — 다만 표의 건설 시간보다 빨리 세울 수는 없으니 하한을
-         함께 건다(실측: 8초 만에 끊긴 벙커가 클릭 증거로 155초에 완성이 될 뻔했다). */
-      const act = actAt.get(`${raw}|${Math.round(x)}|${Math.round(y)}`);
-      if (act !== undefined && act < doneAt) doneAt = Math.max(sec + need, act);
-      // 한 번도 안 멈춘 공사는 표에 안 담는다 — 렌더가 종전 셈(착공 + 건설 시간)으로 간다.
-      if (doneAt <= sec + need + 0.01) return;
-      m.set(i, { wins, doneAt });
-    });
-    return m;
-  }, [entData, buildsV2]);
+  /* (걷어냄) **벙커 승무원 색인**과 **건설 SCV 떠남 색인** — 둘 다 유추 시절의 증거
+     갈래를 읽던 것이라 참값에서는 늘 빈손이었다.
+       · 벙커 승무원은 '제 벙커를 찍은 우클릭'을 승선 증거(f=12)로 옮겨 읽었는데, 참값은
+         그런 갈래를 안 만든다. 그래서 crew는 언제나 비어 있었고 화면은 실제로는 늘
+         '마린 한 기 추정'(presumed)으로 돌고 있었다 — 그 어림만 남긴다.
+         되살리려면 자취의 상태(ST_INSIDE)로 새로 짜야 한다: 벙커 발자국 안에서 '안에
+         있음'인 유닛이 곧 승무원이다.
+       · 건설 SCV 떠남은 일꾼 개체의 건설 증거(f=2)를 읽었는데, 참값에서 건설 자리는
+         **건물 생애**에만 달린다(일꾼에게는 안 달린다). 그것을 쓰던 합성 SCV 자체를
+         위에서 걷었으므로 함께 걷는다. */
+  /* (걷어냄) **테란 건설 중단 판정(bldWork)** — "SCV가 붙어 있는 동안만 건물이 자란다"를
+     일꾼의 명령 증거로 되짚던 자리다. 일꾼의 위치 증거로 '붙어 있던 구간'을 만들고, 그
+     구간의 합으로 완공 시각을 다시 셈했다. 참값에는 그 증거 갈래가 없어 늘 빈손이었다.
+     ★ 완공 시각은 이제 **참값이 직접 말한다**(TruthLife.doneAt) — 자취가 키마다 싣는
+       '다 지어졌나'가 처음 켜지는 때다. 어림으로 되짚을 이유가 사라졌다.
+     ★ '중단 중'이라는 표시만 없어진다. 되살리려면 참값에서 새로 짜야 한다: 건물 발자국
+       곁에 제 임자의 일꾼이 서 있는지를 자취의 자리로 보면 된다. */
   /* 살아 있는 일꾼 수(요청: 일꾼 수도 사망 일꾼 반영해 실시간으로) ────────────────
      옛 값은 생산 **누계**였다 — 한 번 는 뒤로 절대 줄지 않아서, 실측 1855초 팀전에서
      한 테란이 133기로 표시되는 동안 실제로 살아 있는 것은 13기였다(저그는 더 심했다:
@@ -13742,15 +13608,15 @@ export default function ReplayMotionPlayer({
     /** raw → [초, 그때의 생존 일꾼 수] (계단 자취) */
     const m = new Map<string, [number, number][]>();
     if (!entData) return m;
-    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    const nameOfId = new Map(entData.players.map((pl) => [pl.owner, pl.name]));
     const evs = new Map<string, [number, number][]>();
-    for (const e of entData.ents) {
-      if (e.bld || !WORKER_KINDS.has(e.k)) continue;
-      const raw = nameOfId.get(e.o);
+    for (const e of entData.lives) {
+      if (e.bld || !WORKER_KINDS.has(e.kind)) continue;
+      const raw = nameOfId.get(e.owner);
       if (raw === undefined) continue;
       const a = evs.get(raw) ?? [];
-      a.push([e.b, 1]);
-      if (e.d !== null) a.push([e.d, -1]);
+      a.push([e.born, 1]);
+      if (e.died !== null) a.push([e.died, -1]);
       evs.set(raw, a);
     }
     for (const [raw, a] of evs) {
@@ -13785,20 +13651,20 @@ export default function ReplayMotionPlayer({
     /** raw → [초, 먹은 인구(내부단위), 준 인구(내부단위)] 계단 */
     const m = new Map<string, [number, number, number][]>();
     if (!entData) return m;
-    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
-    const raceOfId = new Map(entData.players.map((pl) => [pl.id, pl.race ?? ""]));
+    const nameOfId = new Map(entData.players.map((pl) => [pl.owner, pl.name]));
+    const raceOfId = new Map(entData.players.map((pl) => [pl.owner, pl.race ?? ""]));
     const evs = new Map<string, [number, number, number][]>();
-    for (const e of entData.ents) {
-      const raw = nameOfId.get(e.o);
+    for (const e of entData.lives) {
+      const raw = nameOfId.get(e.owner);
       if (raw === undefined) continue;
       const a = evs.get(raw) ?? [];
-      const gives = SUPPLY_GIVES[e.k] ?? 0;
-      const eats = e.bld ? 0 : (SUPPLY_COST[e.k] ?? 0);
+      const gives = SUPPLY_GIVES[e.kind] ?? 0;
+      const eats = e.bld ? 0 : (SUPPLY_COST[e.kind] ?? 0);
       /* 주는 쪽은 시작 밑천과 겹치지 않게 2초 뒤에 난 것만 센다(위 ★). */
-      const g = gives > 0 && e.b > 2 ? gives : 0;
+      const g = gives > 0 && e.born > 2 ? gives : 0;
       if (eats === 0 && g === 0) continue;
-      a.push([e.b, eats, g]);
-      if (e.d !== null) a.push([e.d, -eats, -g]);
+      a.push([e.born, eats, g]);
+      if (e.died !== null) a.push([e.died, -eats, -g]);
       evs.set(raw, a);
     }
     for (const [raw, a] of evs) {
@@ -13846,7 +13712,7 @@ export default function ReplayMotionPlayer({
   const resNow = useMemo(() => {
     const out = new Map<string, [number, number]>();
     if (!truth || !entData) return out;
-    const nameOf = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    const nameOf = new Map(entData.players.map((pl) => [pl.owner, pl.name]));
     for (const [owner, rows] of truth.res) {
       const raw = nameOf.get(owner);
       if (!raw || !rows.length) continue;
@@ -13868,7 +13734,7 @@ export default function ReplayMotionPlayer({
   const apmNow = useMemo(() => {
     const out = new Map<string, number>();
     if (!truth || !entData) return out;
-    const nameOf = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    const nameOf = new Map(entData.players.map((pl) => [pl.owner, pl.name]));
     const from = Math.max(0, t - 60);
     const span = Math.max(5, t - from);
     for (const [owner, buckets] of truth.apm) {
@@ -13973,13 +13839,13 @@ export default function ReplayMotionPlayer({
   const entCombatStart = useMemo(() => {
     const m = new Map<string, number>();
     if (!entData) return m;
-    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
-    for (const e of entData.ents) {
-      if (e.bld || !e.k) continue;
-      if (e.k === "SCV" || e.k === "Probe" || e.k === "Drone" || e.k === "Overlord") continue;
-      const raw = nameOfId.get(e.o) ?? "";
+    const nameOfId = new Map(entData.players.map((pl) => [pl.owner, pl.name]));
+    for (const e of entData.lives) {
+      if (e.bld || !e.kind) continue;
+      if (e.kind === "SCV" || e.kind === "Probe" || e.kind === "Drone" || e.kind === "Overlord") continue;
+      const raw = nameOfId.get(e.owner) ?? "";
       const cur = m.get(raw);
-      if (cur === undefined || e.b < cur) m.set(raw, e.b);
+      if (cur === undefined || e.born < cur) m.set(raw, e.born);
     }
     return m;
   }, [entData]);
@@ -13989,21 +13855,20 @@ export default function ReplayMotionPlayer({
      별도 저장이 필요 없어 이미 재분석된 경기에서도 바로 나온다. */
   const entClicks = useMemo<[number, number, number, string, number][]>(() => {
     if (!entData) return [];
-    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    const nameOfId = new Map(entData.players.map((pl) => [pl.owner, pl.name]));
     const seen = new Set<string>();
     /* 다섯째 값은 클릭의 종류(지적: 클릭·우클릭이 구분이 안 된다) — 0 이동 우클릭,
        7 공격 클릭. 선택(드래그)은 자리가 아니라 잡힌 유닛들 몸에 켜지는 링이 맡는다. */
     const out: [number, number, number, string, number][] = [];
-    for (const e of entData.ents) {
-      if (e.t < 0) continue;
-      const raw = nameOfId.get(e.o) ?? "";
+    for (const e of entData.lives) {
+      if (e.tag < 0) continue;
+      const raw = nameOfId.get(e.owner) ?? "";
       if (!raw) continue;
-      for (const v of e.ev) {
-        if (v[3] !== 0 && v[3] !== 7) continue;
-        const key = `${e.o}:${v[0]}:${v[1]}:${v[2]}`;
+      for (const o of e.orders) {
+        const key = `${e.owner}:${o[0]}:${o[1]}:${o[2]}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        out.push([v[0], v[1], v[2], raw, v[3]]);
+        out.push([o[0], o[1], o[2], raw, o[3] ? 7 : 0]);
       }
     }
     return out.sort((a, b) => a[0] - b[0]);
@@ -14182,8 +14047,8 @@ export default function ReplayMotionPlayer({
   const upsByRaw = useMemo(() => {
     const m = new Map<string, [number, string][]>();
     if (!entData) return m;
-    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
-    const src = entData.upsDone && entData.upsDone.length > 0 ? entData.upsDone : entData.ups;
+    const nameOfId = new Map(entData.players.map((pl) => [pl.owner, pl.name]));
+    const src = entData.ups && entData.ups.length > 0 ? entData.ups : entData.ups;
     for (const [sec, name, pid] of src) {
       const raw = nameOfId.get(pid);
       if (raw === undefined) continue;
@@ -14209,16 +14074,16 @@ export default function ReplayMotionPlayer({
   const prodDoneAt = useMemo(() => {
     const m = new Map<string, { u: string; s: number; x: number; y: number }[]>();
     if (!entData) return m;
-    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
-    for (const e of entData.ents) {
-      if (e.bld || !e.k) continue;
-      const b0 = e.ev[0];
-      // 출생 증거는 '그 자리에 세운다'(f=3)로 꽂힌다 — 그 밖의 첫 증거는 생산지가 아니다.
-      if (!b0 || b0[3] !== 3 || b0[1] < 0) continue;
-      const raw = nameOfId.get(e.o);
+    const nameOfId = new Map(entData.players.map((pl) => [pl.owner, pl.name]));
+    for (const e of entData.lives) {
+      if (e.bld || !e.kind) continue;
+      /* 나온 자리는 **참값이 곧장 안다**(지적: 어댑터 걷기) — 옛 코드는 분석이 꽂아 둔
+         출생 증거(f=3)를 읽었는데, 참값은 그런 증거를 안 만드는 대신 그 유닛이 처음
+         나타난 **실제 자리**를 안다. 그것이 곧 나온 건물의 출구다. */
+      const raw = nameOfId.get(e.owner);
       if (raw === undefined) continue;
       const a = m.get(raw) ?? [];
-      a.push({ u: e.k, s: b0[0], x: b0[1], y: b0[2] });
+      a.push({ u: e.kind, s: e.born, x: e.bornX, y: e.bornY });
       m.set(raw, a);
     }
     for (const a of m.values()) a.sort((x, y) => x.s - y.s);
@@ -14227,13 +14092,13 @@ export default function ReplayMotionPlayer({
   const prodDoneByRaw = useMemo(() => {
     const m = new Map<string, Record<string, number[]>>();
     if (!entData) return m;
-    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
-    for (const e of entData.ents) {
-      if (e.bld || !e.k) continue;
-      const raw = nameOfId.get(e.o);
+    const nameOfId = new Map(entData.players.map((pl) => [pl.owner, pl.name]));
+    for (const e of entData.lives) {
+      if (e.bld || !e.kind) continue;
+      const raw = nameOfId.get(e.owner);
       if (raw === undefined) continue;
       const rec = m.get(raw) ?? {};
-      (rec[e.k] ??= []).push(e.b);
+      (rec[e.kind] ??= []).push(e.born);
       m.set(raw, rec);
     }
     for (const rec of m.values()) for (const a of Object.values(rec)) a.sort((x, y) => x - y);
@@ -14250,13 +14115,14 @@ export default function ReplayMotionPlayer({
   }, [prodDoneByRaw]);
   const entWalks = useMemo(() => {
     if (!entData) return [];
-    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
-    /* 같은 클릭을 받은 개체들의 차례표 — 행렬 시차·도착 대형의 열쇠(아래 주석). */
-    const clickRank = new Map<string, number>();
+    const nameOfId = new Map(entData.players.map((pl) => [pl.owner, pl.name]));
+    /* (걷어냄) 같은 클릭을 받은 개체들의 차례표(clickRank) — 명령 좌표로 걸음을 짓던
+       시절, 한 클릭을 받은 무리를 행렬로 흩뜨리던 열쇠다. 걸음이 참값이 된 지금은
+       흩뜨릴 것이 없다(참값에 이미 저마다 제자리로 흩어져 있다). */
     const out: {
-      raw: string; unit: string; b: number; d: number | null; tag: number;
-      /** 죽음의 갈래 — 'cap'(인구 상한이 무른 합성)만 사망 효과 없이 사라진다. */
-      dk: string;
+      raw: string; unit: string; born: number; died: number | null; tag: number;
+      /** 끝난 갈래 — 'morph'는 사망 효과 없이 다음 생애로 이어진다. */
+      end: string;
       /** 건설에 흡수되는 시각(지적: 건설 일꾼 잔상) — 현장 도착부터 숨는다. */
       buildHideAt: number | null;
       /** 공사 중 숨김 구간들(재재지적: 도는 SCV와 원래 SCV 이중 표시) — 앵커마다
@@ -14270,9 +14136,7 @@ export default function ReplayMotionPlayer({
       /** 시즈 켬·해제 [초, 켬1/해제0] — 커맨드 그대로(지적). */
       sieges: [number, number][];
       /** 버로우 켬·해제 [초, 켬1/해제0] — 시즈와 같이 커맨드 그대로. */
-      burrows: [number, number][];
       /** 수리·힐 명령 초(지적: 일꾼 수리·매딕 힐) — 곁에서 일하는 효과의 창. */
-      fixes: number[];
       /** 체력 변곡점 [초, 퍼센트](요청: 스탯 생애주기) — 체력바의 재료. */
       hp: [number, number][];
       /** 인터셉터 개수 변곡점(요청: 실시간 적용) — 캐리어 둘레를 도는 점들. */
@@ -14290,12 +14154,12 @@ export default function ReplayMotionPlayer({
       walk: [number, number, number][];
       /** 걸음이 코어(simCore)에서 왔나 — 렌더러 보정을 끄는 열쇠(과제 #61). */
     }[] = [];
-    for (const e of entData.ents) {
+    for (const e of entData.lives) {
       // 건물(태그·물리 모두)은 v1 층이 계속 그린다 — 여기는 유닛만.
       /* 건물(태그·물리 -1)은 v1 건물 층이 그린다. 합성 개체(원장 출신, -1000 이하)는
          유닛이다(요청: 한 번도 안 집힌 유닛도 태어나 랠리로 걸어간다). */
-      if (e.bld || e.t === -1) continue;
-      const raw = nameOfId.get(e.o) ?? "";
+      if (e.bld || e.tag === -1) continue;
+      const raw = nameOfId.get(e.owner) ?? "";
       const pUps = upsByRaw.get(raw);
       // 위치 없는 증거(생산·랠리, x=-1)는 걷기 재료가 아니다.
       /* 행렬 물리(지적: 이동을 찍으면 한 번에 출발하는 게 아니라 한 줄이 되면서 간다) +
@@ -14310,56 +14174,13 @@ export default function ReplayMotionPlayer({
          제 발로 100타일을 가로질렀다(실측: 게임 1의 승선 21건 중 5건).
          구간의 끝은 짝이 되는 하차(f=13)다. 하차 기록이 없으면, 배 안에서 낼 수 없는
          제 명령(8초 뒤의 이동·공격)이 나오기 전까지 배 안이다. */
+      /* (걷어냄) **승선 구간 색인과 명령 자취(pts)** — 둘 다 유추 시절의 뼈대다.
+         · 승선 구간은 승선·하차 증거(f=12·13)로 만들었는데 참값은 그 갈래를 안 낸다.
+           배 안인지는 이제 자취의 상태(ST_INSIDE)가 프레임마다 직접 말한다.
+         · pts는 명령 좌표를 이어 붙여 만들던 **걸음 후보**였다. 걸음이 참값 자취(wk)로
+           바뀐 뒤로는 만들어 놓고 **한 번도 안 읽혔다** — 정렬하고 출발점까지 심어 두고
+           버리던 죽은 일이다. 개체 수천 × 명령 수천을 프레임마다 훑던 자리이기도 하다. */
       const rideSpans: [number, number][] = [];
-      for (let i = 0; i < e.ev.length; i += 1) {
-        if (e.ev[i][3] !== 12) continue;
-        const bs2 = e.ev[i][0];
-        const off = e.ev.find((v, j) => j > i && v[3] === 13);
-        const own = e.ev.find((v, j) => j > i && (v[3] === 0 || v[3] === 7) && v[0] >= bs2 + 8);
-        rideSpans.push([bs2, off ? off[0] : (own ? own[0] : Infinity)]);
-      }
-      /* 배 안에서 받은 명령은 걷기 재료가 아니다 — 배가 실어 나르는 동안의 클릭이라,
-         자취에 넣으면 승객이 그 좌표로 제 발로 간다. 승하차 점(12·13)만 남긴다. */
-      const aboardAt = (s: number): boolean =>
-        rideSpans.some(([ra, rb]) => s > ra + 0.01 && s < rb - 0.01);
-      const pts: TrackPt[] = [];
-      // 일꾼은 대형 없이 그대로(지적: 일꾼끼리는 자원 캐는 동안 겹침이 원작 동작).
-      const isWk = e.k === "SCV" || e.k === "Probe" || e.k === "Drone";
-      for (const v of e.ev) {
-        if (v[1] < 0 || v[3] === 4) continue;
-        if (v[3] !== 12 && v[3] !== 13 && aboardAt(v[0])) continue;
-        if (!isWk && (v[3] === 0 || v[3] === 7)) {
-          const key = `${e.o}:${v[0]}:${v[1]}:${v[2]}`;
-          const idx = clickRank.get(key) ?? 0;
-          clickRank.set(key, idx + 1);
-          const rr = 0.55 * Math.sqrt(idx);
-          const aa = idx * 2.4;
-          pts.push([
-            v[0] + Math.min(2.4, idx * 0.22),
-            v[1] + Math.cos(aa) * rr,
-            v[2] + Math.sin(aa) * rr,
-          ]);
-        } else {
-          pts.push([v[0], v[1], v[2]]);
-        }
-      }
-      // 시차가 순서를 뒤집었으면(다음 명령이 바로 붙은 경우) 시간순으로 되돌린다.
-      pts.sort((a, b) => a[0] - b[0]);
-      /* 갑툭튀 방지(지적: 맵 중간에 갑자기 나타남) — 첫 위치 증거는 대개 '목적지'라,
-         출생보다 한참 늦고 본진에서 멀면 그 자리에서 태어난 것처럼 보였다. 출생 시각의
-         가장 가까운 제 홀에서 걸어(날아) 나오게 출발점을 심는다. */
-      if (pts.length > 0 && pts[0][0] > e.b + 1) {
-        let hx = -1;
-        let hy = -1;
-        let hd = Infinity;
-        for (const [bs4, bx4, by4, bu4, br4, bg4] of buildsSrc) {
-          if (br4 !== raw || bs4 > e.b || ((bg4 ?? 0) > 0 && e.b >= (bg4 ?? 0))) continue;
-          if (!["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(bu4)) continue;
-          const d6 = Math.hypot(bx4 - pts[0][1], by4 - pts[0][2]);
-          if (d6 < hd) { hd = d6; hx = bx4 + footDx(bu4); hy = by4 + footDy(bu4); }
-        }
-        if (hx >= 0 && hd > 8) pts.unshift([e.b, hx, hy]);
-      }
       /* (걷어냄) 증거가 없으면 안 그리던 문 — 걸음이 명령 증거에서 오던 시절의 자다.
          아래에서 보듯 걸음은 이제 참값 자취에서 온다. 참값에는 명령이 없는 유닛(시작
          일꾼·라바·자동 생산분)도 다 들어 있는데, 이 문이 그것들을 통째로 걸렀다 —
@@ -14370,7 +14191,7 @@ export default function ReplayMotionPlayer({
          코어가 낸 데 서 있는데 겨눠지는 자리는 렌더러 어림이라, 총알이 딴 데로 갔다.
          이제 코어 자취가 없으면 그 개체는 **안 그린다** — 대역으로 비슷한 것을
          지어내면 코어가 못 낸 개체가 있다는 사실이 화면에서 사라진다. */
-      const simTr0 = simTracks?.get(e.t);
+      const simTr0 = simTracks?.get(e.tag);
       if (!simTr0 || simTr0.keys.length < 5) continue;
       const ks = simTr0.keys;
       const wk: [number, number, number][] = new Array(Math.floor(ks.length / 5));
@@ -14388,86 +14209,38 @@ export default function ReplayMotionPlayer({
         if (!pp5 || Math.hypot(cx9 - pp5.x, cy9 - pp5.y) > cfg.r) continue;
         statuses.push([cs5, cs5 + cfg.dur, cfg.kind]);
       }
-      /* 개인 클로킹(f=14 켬 / 15 끔) 구간. */
+      /* (걷어냄) 개인 클로킹 구간 — 켬·끔 증거(f=14·15)로 만들었는데 참값은 그 갈래를
+         안 낸다(자취의 상태에 '은신'이라는 칸 자체가 없다). 늘 빈손이던 자리다.
+         다크템플러·옵저버처럼 **늘 은신인 둘**은 아래 렌더가 이름으로 따로 안다 —
+         연구로 켜는 레이스·고스트의 은신만 화면에서 빠진다. */
       const cloaks: [number, number][] = [];
-      {
-        let on = -1;
-        for (const v of e.ev) {
-          if (v[3] === 14 && on < 0) on = v[0];
-          else if (v[3] === 15 && on >= 0) { cloaks.push([on, v[0]]); on = -1; }
-        }
-        if (on >= 0) cloaks.push([on, Infinity]);
-      }
       /* 건설에 흡수(지적: 테란 일꾼이 건설을 시작하면 복제처럼 둘이 됐다가, 끝나면
          원래 일꾼이 복제된 자리에 영영 서 있음) — 명령받은 진짜 일꾼 개체는 건설
          앵커(f=2)가 마지막 증거라 생존 원칙으로 현장에 박제됐고, 공사 중 모습은 합성
          건설 일꾼 연출이 따로 그려 둘로 보였다. 마지막 위치 증거가 건설 앵커면 현장
          도착(걷기 마지막 점)부터 공사에 흡수시켜 숨긴다 — 그 뒤 제 증거가 생기는
          일꾼은 애초에 이 조건에 안 걸려 그대로 걸어 나온다. */
-      let buildHideAt: number | null = null;
-      /* 공사 중 숨김 구간들(재재지적: 건설 중에 도는 SCV와 원래 SCV가 둘 다 나옴) —
-         마지막 증거가 앵커일 때만 숨기던 규칙은, 공사가 '끝난 뒤' 딴 명령을 받는 일꾼을
-         공사 '중'에는 안 숨겼다. 앵커(f=2)마다 [앵커 시각, 다음 위치 증거)를 숨김
-         구간으로 잡는다 — 그동안은 합성 건설 일꾼이 그 SCV다. */
+      /* (걷어냄) **공사 중 일꾼 숨김** — 짓는 동안 진짜 일꾼을 숨기고 그 자리에 합성
+         건설 SCV를 세우던 짝이다. 합성 SCV를 위에서 걷었으므로 숨김도 함께 걷는다 —
+         안 그러면 짓는 동안 그 자리에 **아무도 없다**. 판정 재료(일꾼에게 달린 건설
+         증거 f=2)도 참값에는 없어 어차피 늘 빈손이었다. 참값에서는 진짜 일꾼이 제
+         자취대로 현장에 서 있다가 걸어 나간다 — 숨기고 세울 것이 없다. */
+      const buildHideAt: number | null = null;
       const buildHides: [number, number][] = [];
-      if (isWk) {
-        let lastPosF = -1;
-        for (let i = e.ev.length - 1; i >= 0; i -= 1) {
-          if (e.ev[i][1] >= 0) { lastPosF = e.ev[i][3]; break; }
-        }
-        /* 프로토스는 소환하고 곧장 자유다 — 공사 내내 붙어 있는 건 테란 SCV뿐이고,
-           그동안의 모습도 합성 건설 SCV가 대신 그린다.
-           ★ 프로브는 **한 순간도 안 숨긴다**(수리: 건설한 프로브가 잠깐 안 보였다 나타남)
-             — 소환 순간 1.6초를 숨겨 뒀는데, 그 자리를 채울 합성 일꾼이 프로토스에는
-             없다(builderLeave는 SCV만 본다). 그래서 진짜로 아무것도 없는 1.6초의
-             구멍이었다. 소환 연출은 소환구가 이미 말한다. */
-        const warpOnly = e.k === "Probe";
-        if (lastPosF === 2 && wk.length > 0 && !warpOnly) {
-          /* 흡수 시각의 뜻은 '현장 도착'이다. 렌더러 자취에서는 마지막 점이 곧 도착이라
-             그대로 썼는데, 코어 자취의 마지막 점은 그 몸의 **생애 끝**이다(공사 뒤에도
-             계속 산다). 그래서 코어일 때는 마지막 건설 앵커 자리에 몸이 처음 닿은
-             순간을 찾는다 — 못 닿으면 옛 규칙 그대로 마지막 점이다. */
-          buildHideAt = wk[wk.length - 1][0];
-          {
-            let anc: [number, number, number] | null = null;
-            for (let i = e.ev.length - 1; i >= 0; i -= 1) {
-              const v3 = e.ev[i];
-              if (v3[3] === 2 && v3[1] >= 0) { anc = [v3[0], v3[1], v3[2]]; break; }
-            }
-            if (anc) {
-              for (const [ws, wx, wy] of wk) {
-                if (ws < anc[0]) continue;
-                if (Math.hypot(wx - anc[1], wy - anc[2]) <= 3.5) { buildHideAt = ws; break; }
-              }
-            }
-          }
-        }
-        for (let i = 0; i < e.ev.length; i += 1) {
-          const v2 = e.ev[i];
-          if (v2[3] !== 2) continue;
-          let end = Infinity;
-          for (let j = i + 1; j < e.ev.length; j += 1) {
-            if (e.ev[j][1] >= 0 && e.ev[j][0] > v2[0] + 1) { end = e.ev[j][0]; break; }
-          }
-          if (warpOnly) continue;   // 프로브는 안 숨긴다(위 주석)
-          buildHides.push([v2[0], end]);
-        }
-      }
       out.push({
-        raw, unit: e.k, b: e.b, d: e.d, dk: e.dk ?? "", tag: e.t, buildHideAt, buildHides, ups: pUps,
-        /* 건설 앵커 자리(요청: 드론 변태도 고치 중앙에) — 흡수되기 직전 이 자리로
-           걸어 들어가야 고치가 솟는 자리와 겹친다. */
-        buildSites: e.ev.filter((v) => v[3] === 2 && v[1] >= 0)
-          .map((v) => [v[0], v[1], v[2]] as [number, number, number]),
-        atkAt: e.ev.filter((v) => v[3] === 7).map((v) => [v[0], v[4] ?? 0, v[1], v[2]] as [number, number, number, number]),
-        sieges: e.ev.filter((v) => v[3] === 8 || v[3] === 9)
-          .map((v) => [v[0], v[3] === 8 ? 1 : 0] as [number, number]),
-        burrows: e.ev.filter((v) => v[3] === 18 || v[3] === 19)
-          .map((v) => [v[0], v[3] === 18 ? 1 : 0] as [number, number]),
-        fixes: e.ev.filter((v) => v[3] === 10).map((v) => v[0]),
+        raw, unit: e.kind, born: e.born, died: e.died, end: e.end, tag: e.tag,
+        buildHideAt, buildHides, ups: pUps,
+        // 건설 자리 — 참값에서는 **건물 생애**에만 달린다(일꾼에게는 안 달린다).
+        buildSites: e.sites.map((v) => [v[0], v[1], v[2]] as [number, number, number]),
+        /* 공격 명령 [초, 표적 태그, x, y] — 참값의 명령에는 **표적 태그가 없다**(누른
+           자리만 남는다). 그래서 표적은 0으로 두고, 아래 교전은 자리로 찾는다.
+           (걷어냄) 버로우(18·19)·수리(10)는 참값이 안 내는 갈래라 늘 빈 배열이었다. */
+        atkAt: e.orders.filter((o) => o[3])
+          .map((o) => [o[0], 0, o[1], o[2]] as [number, number, number, number]),
+        sieges: e.sieges.map(([s9, on9]) => [s9, on9 ? 1 : 0] as [number, number]),
         hp: e.hp ?? [],
         ic: e.ic ?? [],
-        orders: e.ev.filter((v) => v[3] === 0 || v[3] === 7 || v[3] === 3).map((v) => v[0]),
+        orders: e.orders.map((o) => o[0]),
         // 승선 구간 — 위 rideSpans(짝이 되는 하차까지)를 그대로 쓴다.
         rides: rideSpans,
         // 걸음은 늘 코어가 낸 자취다 — 렌더러가 따로 어림하는 갈래는 없앴다.
@@ -14521,12 +14294,12 @@ export default function ReplayMotionPlayer({
        싸우고, 터렛·벙커 발사도 이 목록으로 겨눈다. */
     for (const e of entWalks) {
       if (e.walk.length === 0 || t < e.walk[0][0]) continue;
-      if (e.d !== null && t >= e.d) continue;
+      if (e.died !== null && t >= e.died) continue;
       /* 유령 상대 제거(지적: 주변에 공격할 게 없는데 공격 모션) — 화면 규칙으로 이미
          죽었거나(체력 0 조기 사망) 숨은(수송 탑승·건설 흡수) 개체가 목록에 남아, 곁
          유닛이 빈 땅에 대고 계속 쐈다. 표시와 같은 잣대로 거른다. */
       // 죽음의 주인은 하나다(과제 #69) — 체력 0은 이제 d에서만 나온다.
-      const dieAt0 = e.d;
+      const dieAt0 = e.died;
       if (dieAt0 !== null && t >= dieAt0) continue;
       if (e.rides.some(([ra0, rb0]) => t >= ra0 + 1 && t < rb0)) continue;
       if (e.buildHides.some(([ba0, bb0]) => t >= ba0 && t < bb0)) continue;
@@ -14549,7 +14322,7 @@ export default function ReplayMotionPlayer({
       if (!["Sunken Colony", "Spore Colony", "Photon Cannon", "Missile Turret", "Bunker"].includes(bu)) continue;
       /* 다 지어져야 쏜다 — 테란 벙커·터렛은 공사가 멈춰 선 동안 완성이 미뤄진다
          (bldWork, 테란 건설 중단). 나머지는 종전대로 착공 + 표의 건설 시간. */
-      if (t < (bldWork.get(bi)?.doneAt ?? bs + (BUILD_SEC[bu] ?? 30))) continue;
+      if (t < (buildsSrc[bi][7] ?? bs + (BUILD_SEC[bu] ?? 30))) continue;
       if ((bg ?? 0) > 0 && t >= (bg ?? 0)) continue;
       // 방어 건물도 bld·종류를 실어 발자국 기준 정지·창 규칙을 태운다(기획서 1-D).
       engageFoes.push({
@@ -14603,8 +14376,11 @@ export default function ReplayMotionPlayer({
         || e.unit === "Dark Templar" || e.unit === "Observer"
         || (e.unit !== "Arbiter" && arbiterSpots.some((asp) =>
           asp.raw === e.raw && Math.hypot(asp.x - q.x, asp.y - q.y) <= 4.5));
-      // 버로우(요청) — 화면의 버로우 판정과 같은 자, 곧 커맨드 증거다.
-      const burrowed9 = BURROWABLE.has(e.unit) && burrowStartOf(e.burrows, t) >= 0;
+      /* 버로우(요청) — 화면의 버로우 판정과 같은 자, 곧 **참값 자취의 상태**다
+         (여태는 커맨드 증거 f=18/19였다). */
+      const bTr9 = simTracks?.get(e.tag);
+      const burrowed9 = BURROWABLE.has(e.unit) && !!bTr9
+        && posAtSim(bTr9, t)?.state === ST_BURROW;
       if (cloaked9 || burrowed9) row.hidden = true;
     }
   }
@@ -15792,18 +15568,30 @@ export default function ReplayMotionPlayer({
   const prodByRawType = useMemo(() => {
     const m = new Map<string, [number, number][]>();
     if (!entData) return m;
-    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
-    for (const e of entData.ents) {
-      if (!e.bld || !e.k || e.t === -1) continue;
-      const raw = nameOfId.get(e.o);
+    const nameOfId = new Map(entData.players.map((pl) => [pl.owner, pl.name]));
+    /* 어느 건물이 냈나는 **참값이 곧장 안다**(지적: 어댑터 걷기) — 옛 코드는 분석이
+       꽂아 둔 '이 건물이 일했다'(f=4) 증거를 읽었는데, 참값은 그 갈래를 안 만드는 대신
+       **유닛이 처음 나타난 실제 자리**를 안다. 그 자리를 품은 건물이 그 유닛을 낸
+       건물이다 — 순번 어림도, 대표 건물 폴백도 필요 없다. */
+    const blds = entData.lives.filter((e) => e.bld && e.kind && e.tag !== -1
+      && e.sites.length > 0);
+    for (const u of entData.lives) {
+      if (u.bld || !u.kind) continue;
+      const raw = nameOfId.get(u.owner);
       if (raw === undefined) continue;
-      const key = `${raw}|${e.k}`;
+      const host = blds.find((b9) => {
+        if (b9.owner !== u.owner || b9.born > u.born || (b9.died ?? Infinity) < u.born) return false;
+        const st = b9.sites[b9.sites.length - 1];
+        const [fw9, fh9] = FOOTPRINT[b9.kind] ?? [3, 2];
+        // 발자국에서 한 타일 여유 — 출구는 발자국 바로 바깥이다.
+        return u.bornX >= st[1] - 1 && u.bornX <= st[1] + fw9 + 1
+          && u.bornY >= st[2] - 1 && u.bornY <= st[2] + fh9 + 1;
+      });
+      if (!host) continue;
+      const key = `${raw}|${host.kind}`;
       const a = m.get(key) ?? [];
-      // f=4는 '이 건물이 일했다'는 증거다(생산 또는 랠리 지정). 태그가 개체 제 것이라
-      // 순번 어림 없이 그 건물 하나만 켤 수 있다 — 옛 v1 표는 태그가 있을 때도 없을 때도
-      // 있어 대표 건물로 떨어지곤 했다.
-      for (const v of e.ev) if (v[3] === 4) a.push([v[0], e.t]);
-      if (a.length > 0) m.set(key, a);
+      a.push([u.born, host.tag]);
+      if (a.length === 1) m.set(key, a);
     }
     for (const a of m.values()) a.sort((x, y) => x[0] - y[0]);
     return m;
@@ -15855,12 +15643,11 @@ export default function ReplayMotionPlayer({
   const gasBuildings = useMemo(() => buildsSrc
     .map((row, i) => [row, i] as const)
     .filter(([[, , , unit]]) => ["Refinery", "Assimilator", "Extractor"].includes(unit))
-    .map(([[sec, x, y, unit, raw, gone], i]) => ({
+    .map(([[sec, x, y, unit, raw, gone, , doneAt]]) => ({
       sec, x: x + footDx(unit), y: y + footDy(unit), raw, gone: gone ?? 0,
-      /* 완공 시각(요청: "간헐천은 건물을 짓는 동안만 보이고 완공되면 안보임") — 테란은
-         건설 중단이 있어 표의 건설 시간이 아니라 실제로 자란 시각(bldWork)이 답이다. */
-      done: bldWork.get(i)?.doneAt ?? sec + (BUILD_SEC[unit] ?? 30),
-    })), [buildsSrc, bldWork]);
+      // 완공 시각(요청: "간헐천은 건물을 짓는 동안만 보이고 완공되면 안보임") — 참값이 말한다.
+      done: doneAt ?? sec + (BUILD_SEC[unit] ?? 30),
+    })), [buildsSrc]);
   /* 가스 깃발이 정확한 판인가(지적: 미네랄과 가스를 헷갈림) — 간헐천 낱개화 이후의
      격자는 깃발(res[2])이 정확해서, '가스 건물 곁 6타일' 폴백을 쓰면 정제소 곁 미네랄
      밭까지 간헐천으로 그려 버린다. 폴백은 깃발이 하나도 없는 옛 격자에서만 쓴다. */
@@ -16345,7 +16132,7 @@ export default function ReplayMotionPlayer({
             const drawOrder = buildsSrc.map((_, i) => i)
               .sort((a, b) => buildsSrc[a][2] - buildsSrc[b][2]);
             return drawOrder.map((i) => {
-              const [sec, x, y, unit, raw, gone, liftAt] = buildsSrc[i];
+              const [sec, x, y, unit, raw, gone, liftAt, bldDoneAt] = buildsSrc[i];
               if (sec > t) return null;
               const goneAt = gone ?? 0;
               // 없어진 건물은 그냥 사라진다(요청: ✕ 표시 없음) — 착륙 이사·변태와도 한 결이다.
@@ -16431,14 +16218,13 @@ export default function ReplayMotionPlayer({
               // 건물이라 망치를 안 든다.
               // 시작 건물(합성된 0초 홀)도 망치를 안 든다(지적: 처음 홀에 망치 표시는 왜?) —
               // 경기 시작에 이미 다 서 있던 건물이지, 짓는 중이 아니다.
-              /* 완성 시각 — 테란 건설 중단(bldWork)이 있으면 'SCV가 붙어 있던 만큼만
-                 자란' 그 시각이고, 없으면 종전대로 착공 + 표의 건설 시간이다. */
-              const work = bldWork.get(i);
+              // 완성 시각은 참값이 말한다(행의 여덟째 칸) — 없으면 착공 + 표의 건설 시간.
               const bldNeed = BUILD_SEC[unit] ?? 30;
-              const doneAt = work ? work.doneAt : sec + bldNeed;
+              const doneAt = bldDoneAt ?? sec + bldNeed;
               const raising = !razed && !flownFrom && sec > 0 && t < doneAt;
-              /** 공사가 멈춰 선 동안인가 — 일꾼이 하나도 안 붙어 있는 구간 사이다. */
-              const halted = !!work && raising && !workingAt(work.wins, t);
+              /* (걷어냄) '건설 중단' 표시 — 일꾼이 붙어 있는 구간을 명령 증거로 되짚던
+                 값이라 참값에서는 늘 거짓이었다. 위 주석 참조. */
+              const halted = false;
               const team = teamOfRaw(raw);
               const tagOrd = tagOrdinals.get(`${raw}|${unit}`);
               const typeList = buildsByType.get(`${raw}|${unit}`) ?? [];
@@ -16535,69 +16321,21 @@ export default function ReplayMotionPlayer({
               const wFrac = (wTiles / grid.width) * mkK;
               const hFrac = (hTiles / grid.width) * mkK;
               const race2 = bases.find((b) => b.key === raw)?.race;
-              /* 짓는 SCV(재재재지적: 완공돼도 자원으로 보내지 말고 다음 명령을 받게) — 공사
-                 내내 불티 곁에 서 있고, 완공 뒤에는 그 곁(5타일)에 떨어지는 임자의 첫 일꾼
-                 명령(spts)을 '이 SCV가 받은 다음 명령'으로 보고 그 순간 일꾼 스트림에
-                 넘긴다(그 클릭부터는 일꾼 점이 그린다). 명령이 안 오면 게으른 SCV 그대로
-                 서 있고, 건물이 무너지면 함께 걷힌다. 지어낸 미네랄 왕복은 걷었다. */
-              if (race2 === "테란" && !flownFrom && sec > 0 && !razed
-                && (goneEff === 0 || t < goneEff)) {
-                const bs2 = bldNeed;
-                /* 일꾼이 불티를 따라간다(지적: "테란은 건설시 스파크는 이동하는데 일꾼은
-                   제자리임") — 불티 자리는 아래 buildfx가 6초마다 시계 방향으로 옮기는데
-                   (CORNER_SEC) 합성 SCV만 왼쪽 아래에 붙박이라, 용접 불티가 저 혼자
-                   건물을 돌았다. 같은 식으로 같은 귀퉁이를 쓴다 — 둘이 한 몸이어야 한다. */
-                const scvIdx = (Math.floor(t / 6) + i) % 4;
-                const scvX = bodyX + (scvIdx === 0 || scvIdx === 3 ? -1 : 1) * (boxW / 2 - 0.35);
-                const scvY = bodyY + (scvIdx === 0 || scvIdx === 1 ? 1 : -1) * (boxH / 2 - 0.35);
-                let scvShow = t - sec >= 0;
-                /* 중단 중에는 현장에 아무도 없다(요청: 테란 건설 중단) — 붙어 있던 구간
-                   안에서만 합성 SCV가 선다. 이어 짓기로 다른 SCV가 오면 다시 선다. */
-                if (work && t < doneAt) scvShow = workingAt(work.wins, t);
-                if (t >= doneAt) {
-                  /* 공사가 끝난 뒤 이 SCV가 언제 자리를 뜨나 — 개체 트랙의 건설 앵커 창
-                     (builderLeave)이 '앵커 시각 → 그 뒤 첫 위치 증거'를 이미 색인해 둔다.
-                     옛 v1 일꾼 클릭 자취로 뒤지던 자리다. */
-                  let nextCmd = Infinity;
-                  for (const bl of builderLeave) {
-                    if (bl.end === Infinity || bl.end < doneAt - 2) continue;
-                    if (Math.hypot(bl.x - scvX, bl.y - scvY) <= 5) { nextCmd = bl.end; break; }
-                  }
-                  if (t >= nextCmd) scvShow = false;
-                }
-                /* v2에선 진짜 개체가 답을 안다(지적: SCV들이 건설현장에 남는다 — v2 모드는
-                   motion이 빈 껍데기라 위 spts 게이트가 영영 안 열렸다) — 이 현장의 건설
-                   앵커(f=2)를 남긴 일꾼 개체의 '앵커 뒤 첫 위치 증거' 시각이 곧 그 SCV가
-                   현장을 떠난 순간이다. 그때부터는 개체 마커가 걸어 나가며 그리므로 합성
-                   SCV를 걷는다. */
-                /* 공사 이력을 아는 건물(bldWork)은 위에서 이미 갈랐다 — 아래 옛 잣대는
-                   첫 일꾼이 떠난 시각 하나뿐이라, 이어 짓는 SCV까지 지운다. */
-                if (scvShow && !work) {
-                  const lv = builderLeave.find((b2) =>
-                    Math.abs(b2.x - centerX) <= fp2[0] / 2 + 2 && Math.abs(b2.y - centerY) <= fp2[1] / 2 + 2
-                    && b2.s >= sec - 15 && b2.s <= sec + bs2);
-                  if (lv && t >= lv.end) scvShow = false;
-                }
-                if (scvShow) {
-                  const [sfx2, sfy2] = posFrac(scvX, scvY);
-                  unitOps.push({
-                    fx: sfx2, fy: sfy2, z: z + 1, kind: "scv",
-                    rotDeg: Math.atan2(-(centerX - scvX), centerY - scvY) * (180 / Math.PI),
-                    viewYaw: viewYawOf(scvX, scvY), flat: !pitched, pitch: pitched,
-                    sizePx: unitGlyphPx("scv", "scv", 0, scvY),
-                    color: modeColor(raw, teamOfRaw(raw)),
-                    alpha: 1,
-                    noSep: true,
-                  });
-                }
-              }
+              /* (걷어냄) **합성 건설 SCV** — 공사 중 건물 귀퉁이에 SCV 한 기를 지어
+                 세우던 자리다. 유추 시절에는 어느 일꾼이 짓는지 알 수 없어 필요했지만,
+                 참값에는 **그 SCV가 제 자취로 이미 거기 서 있다**. 겹쳐 그리면 일꾼이
+                 둘로 보인다.
+                 게다가 이 합성 SCV는 지금 **영영 안 사라졌다**: 완공 뒤 걷는 조건이
+                 builderLeave(일꾼의 건설 증거 f=2)와 bldWork에 달려 있었는데, 참값에는
+                 그 증거 갈래가 없어 둘 다 늘 빈손이었다. 그래서 지은 건물마다 SCV 한 기가
+                 경기 끝까지 붙어 있었다(지적: "건설현장에 SCV들이 남는다"). */
               if (raising) {
                 // 공사는 종족 공용 모델(고치·소환구·공사장)이 말한다.
                 /* 저그 고치는 크기 자체가 두근거린다(요청: 확대 바운스) — 10Hz t의 사인
                    박동. 스프라이트는 2px 칸 양자화라 두어 가지 크기를 오가며 캐시된다.
                    그리고 게임처럼 단계 성장(재지적: 너무 작음): 공사 진행에 따라 0.7배에서
                    1.5배까지 세 단계로 자란다. */
-                const prog = Math.min(1, (work ? workedBy(work.wins, t) : t - sec) / bldNeed);
+                const prog = Math.min(1, (t - sec) / bldNeed);
                 // 시작을 크게(재지적: 처음에 너무 작음 — 훨씬 크게 시작) — 0.7 → 1.0.
                 /* 자라되 완성 건물을 넘지 않는다(전수조사: 1.0→1.5배라 4타일 해처리의
                    고치가 6.4타일 — 다 지어진 건물보다 컸다). 발자국의 0.8 → 1.0으로. */
@@ -16856,97 +16594,16 @@ export default function ReplayMotionPlayer({
                   fitWidth: true,
                   color, alpha, noShadow: true,
                 });
-                /* 라바와 변태알(요청: "이왕 해처리에 매핑할 거면 라바도 모델링하소
-                   변태알도 하면 좋을 듯") — 생산 자리가 건물마다 갈리고 나니, 이 해처리가
-                   지금 무엇을 품고 있고 라바가 몇 마리 남았는지를 그릴 수 있다.
-                   ▸ 변태알 — 그 해처리에서 난 유닛의 '완성 시각 − 변태 시간' 구간이 곧
-                     알이다. 자리는 분석이 정한 출생 자리(발자국 아래 출구) 곁이다.
-                   ▸ 라바 — 리플레이에 라바 자체는 안 남는다(라바는 명령을 안 받고, 변태를
-                     누른 순간에만 태그가 스친다). 다만 원작의 규칙이 뚜렷하다: 해처리
-                     하나가 342프레임(14.4초)마다 한 마리를 뱉고 최대 셋까지 모이며,
-                     변태를 누르면 하나가 준다(bwUnits의 LARVA_*). 그 규칙에 **이 해처리의
-                     변태 시각들**을 먹이면 지금 남은 수가 나온다 — 지어내는 것이 아니라
-                     아는 규칙과 아는 증거로 되짚는 것이다. */
-                if (ZERG_HALLS.has(unit) && !raising && (goneEff === 0 || t < goneEff)) {
-                  const fp3 = FOOTPRINT[unit] ?? [4, 3];
-                  /* 다 안 지어진 해처리는 아무것도 못 뱉는다(지적: "아직 완성도 안 된
-                     해처리에서 유닛 생산") — 자리로만 고르면, 본진 곁에 새로 올라가는
-                     해처리가 아직 공사 중인데도 옆 해처리가 뱉은 알·라바를 제 것으로
-                     집어 간다(발자국 언저리 상자가 겹친다). 변태를 시작한 시각(완성 −
-                     변태 시간)이 이 해처리의 완공(doneAt) 뒤라야 이 해처리의 몫이다. */
-                  /* 시작 해처리는 처음부터 다 지어져 있다(수리: 초반에 알이 하나도 안
-                     뜨던 자리) — 이 건물은 착공 증거가 없어 sec이 0이고, doneAt은 그
-                     0에 건설 시간(약 120초)을 더한 값이 된다. 완공 문을 그대로 걸면 첫
-                     2분 동안 이 해처리의 변태가 전부 걸러져 알이 사라졌다. raising이
-                     시작 홀을 sec > 0으로 가려내는 것과 같은 자를 쓴다. */
-                  const doneEff3 = sec > 0 ? doneAt : 0;
-                  const mine3 = (prodDoneAt.get(raw) ?? []).filter((r3) =>
-                    r3.x >= bx - 1.5 && r3.x <= bx + fp3[0] + 1.5
-                    && r3.y >= by - 1.5 && r3.y <= by + fp3[1] + 2);
-                  /* 되짚기는 규칙 층이 한다(bwUnits.hatchState) — 렌더러는 그리기만.
-                     ▸ **알은 라바가 있던 자리에서 난다**(지적: "라바 자리가 아닌 다른
-                       곳에서 알로 변태") — 알 칸과 라바 칸을 따로 두었더니 변태가 자리를
-                       옮기는 것처럼 보였다. 이제 여섯 칸을 둘이 나눠 쓰고, 변태는 가장
-                       오래된 라바가 있던 칸을 알로 바꾼다.
-                     ▸ **시작 해처리는 라바 셋을 데리고 시작한다**(하나가 아니다) — 그래서
-                       0초부터 셋을 뽑을 수 있는 것이고, 여태 0초에 라바가 하나뿐이라
-                       초반 내내 라바 0이 이어졌다.
-                     ▸ **0초에 낼 수 있는 변태는 50 미네랄어치뿐이다**(요청: "게임 시작 시
-                       미네랄 50원") — 증거가 같은 시각을 여럿 가리켜도 그 돈으로 못 산
-                       알은 그때 없었다. 이것이 "시작부터 알 두 개"의 자다.
-                     ▸ 저글링·스커지는 알 하나에서 둘이 나온다 — 개체 기록 둘이 알 하나다. */
-                  const spots3 = hatchState(mine3, doneEff3, sec <= 0, t,
-                    (u3) => UNIT_BUILD_SEC[u3] ?? 30);
-                  /* 알과 라바가 앉는 여섯 칸 — 해처리 발치를 두른다. 칸 번호가 곧 자리라,
-                     라바가 알이 돼도 그 자리에 그대로 있는다. */
-                  const SPOT6: [number, number][] = [
-                    [-1.7, 1.35], [0.1, 1.75], [1.8, 1.35],
-                    [-2.1, 0.1], [2.1, 0.1], [0.1, -1.5],
-                  ];
-                  const put3 = (kind3: string, sz3: number, ix3: number): void => {
-                    const live3 = kind3 !== "egg";
-                    const sp3 = SPOT6[ix3 % SPOT6.length];
-                    /* 라바는 가만히 안 있는다(지적: "좀 이리저리 꿈틀대고 방향 바꿔야") —
-                       제자리에서 아주 조금 기어다니고 몸이 도는 정도다. 무작위가 아니라
-                       시각과 자리 번호의 순수 함수라 되감아도 같은 자리에서 같이 꿈틀댄다
-                       (재생이 t를 앞뒤로 옮겨도 그림이 안 튄다). 주기를 서로 어긋나게 둬
-                       셋이 한 몸처럼 움직이지 않는다. */
-                    const wob3 = live3 ? Math.sin(t * 0.55 + ix3 * 2.3) : 0;
-                    const wob4 = live3 ? Math.sin(t * 0.41 + ix3 * 1.7) : 0;
-                    const px3 = centerX + sp3[0] + wob3 * 0.3;
-                    const py3 = centerY + sp3[1] + wob4 * 0.24;
-                    const [pfx3, pfy3] = posFrac(px3, py3);
-                    unitOps.push({
-                      fx: pfx3, fy: pfy3,
-                      /* 해처리 뒤에 누운 것은 해처리에 가려야 한다(지적: "라바 해처리에
-                         안 가려지는 키 문제") — z를 건물보다 한 칸 위로 못 박아 두어
-                         뒷자리(y가 음수인 칸)까지 늘 건물 앞에 그려졌다. 제 자리가 건물
-                         앵커보다 앞이면 위로, 뒤면 아래로 간다. */
-                      z: z + (sp3[1] >= 0 ? 1 : -1), kind: kind3,
-                      // 라바는 저마다 다른 쪽을 보고 천천히 돌아눕는다(지적: 방향 바꿔야).
-                      rotDeg: buildingYawOf() + (live3 ? ix3 * 115 + wob3 * 38 : 0),
-                      viewYaw: viewYawOf(px3, py3), flat: !pitched, pitch: pitched,
-                      /* 크기는 유닛과 **같은 자**를 탄다(unitGlyphPx) — 타일 폭을 직접
-                         곱하면 그 값이 16-상자 한 변이라 실제 잉크는 3분의 1로 줄어,
-                         화면에서는 점 하나가 된다. 라바는 소형, 알은 그보다 한 단 크다. */
-                      sizePx: unitGlyphPx(kind3, kind3, kind3 === "egg" ? 1 : 0, py3) * sz3,
-                      color, alpha, noSep: true, noShadow: true,
-                      /* 인포 팝업 신원(요청: "라바 인포팝업이 안 뜬다") — 라바·알은
-                         리플레이 개체 기록에 안 남아(해처리가 셈해 그리는 장식이다)
-                         여태 pickKey 자체가 없었다. 그래서 눌러도 아무 일이 없었다.
-                         개체 태그가 없으니 '어느 해처리의 몇 번 칸'을 열쇠로 삼는다 —
-                         칸 번호가 곧 자리라 프레임이 지나도 같은 몸을 가리킨다. */
-                      pickKey: `l${Math.round(centerX * 4)}|${Math.round(centerY * 4)}|${ix3}`,
-                      pickName: kind3 === "egg" ? "Egg" : "Larva",
-                      hpFrac: 1,
-                      hpMax: kind3 === "egg" ? 200 : 25,
-                    });
-                  };
-                  // 둘 다 한 단 작게(지적: 라바·알이 너무 크다) — 알 1.15 → 0.68, 라바 1 → 0.6.
-                  for (const sp of spots3) {
-                    put3(sp.kind === "egg" ? "egg" : "larva", sp.kind === "egg" ? 0.68 : 0.6, sp.slot);
-                  }
-                }
+                /* (걷어냄) **라바·변태알 장식** — 해처리가 제 생산 기록을 규칙표
+                   (bwUnits.hatchState)에 먹여 "지금 라바가 몇이고 무엇을 품고 있나"를
+                   되짚어, 발치 여섯 칸에 라바와 알을 앉히던 자리다. 리플레이 개체 기록에
+                   라바가 안 남던 시절에는 그것이 유일한 길이었다(라바는 명령을 안 받는다).
+                   ★ 참값에는 **라바도 알도 진짜 개체로 실린다** — 자리·태그·체력까지 다
+                     있다(실측: 한 판에 라바 키 5,558 · 알 키 5,304, 태그 하나가 라바 →
+                     알 → 유닛으로 갈아입는다). 그러니 되짚을 것이 없다. 되짚기를 그냥
+                     두면 진짜 라바 위에 지어낸 라바가 겹쳐 두 벌이 된다.
+                   함께 사라진 것: 여섯 칸 자리표(SPOT6)와 꿈틀거림. 참값 라바는 제
+                   자취대로 해처리 발치에서 실제로 꿈틀댄다 — 흉내 낼 까닭이 없다. */
                 /* 애드온 연결 통로(지적: 본체와 잇는 방식 고민 — 원작 배치 참고) — 원작
                    에서 부속건물은 본체 오른쪽 아래에 붙는다: 애드온 왼쪽 모서리에서 본체
                    쪽으로 낮은 복도 판을 깐다. */
@@ -17002,8 +16659,10 @@ export default function ReplayMotionPlayer({
                   const bunkTag = unit !== "Bunker" ? 0
                     : (bldTagSpots.rows.find((r9) => r9.k === "Bunker" && r9.raw === raw
                       && Math.abs(r9.x - centerX) <= 1.5 && Math.abs(r9.y - centerY) <= 1.5)?.tag ?? 0);
-                  const crew = bunkTag === 0 ? [] : (bunkerCrew.get(bunkTag) ?? [])
-                    .filter((c9) => t >= c9.from && t < c9.to).slice(0, BUNKER_SEATS);
+                  /* 승무원 색인은 걷었다(위 주석) — 참값에 승선 증거가 없어 늘 비어
+                     있던 값이다. 아래 '마린 한 기 추정'이 실제로 늘 하던 일이다. */
+                  const crew: { kind: string }[] = [];
+                  void bunkTag;
                   /* 승선 증거가 하나도 없는 벙커는 마린 한 기가 든 것으로 친다 [어림] —
                      벙커를 골라 누르는 Load 버튼으로 태우면 우클릭 증거가 안 남기 때문이다.
                      빈 벙커로 두면 지어 놓고 지켜 낸 방어선이 화면에서 통째로 사라지고, 넷을
@@ -17359,7 +17018,7 @@ export default function ReplayMotionPlayer({
                성립한다(체력 0 = d). 셋을 견주던 옛 사슬은 걷었다 — 그 셋이 서로 달라서
                화면·시뮬·체력바가 제각각 다른 순간에 유닛을 죽이고 있었다. */
             const simDie = simTracks?.get(e.tag)?.died ?? null;
-            const dieAt = simDie !== null ? simDie : e.d;
+            const dieAt = simDie !== null ? simDie : e.died;
             if (dieAt !== null && t >= dieAt + 1.2) return null;
             const team = teamOfRaw(e.raw);
             /* 걸음 속도 상한(요청) — 제 속도표로 죈다. 15%만 여유를 둔다: 교전 지연을
@@ -17437,17 +17096,15 @@ export default function ReplayMotionPlayer({
             /* 초반 무명은 일꾼(지적: 일꾼밖에 없는데 저글링이 정찰) — 그 사람의 첫 전투
                유닛이 태어나기 전의 무명 개체는 보병일 수 없다. */
             const drawUnit = u !== "" ? u
-              : e.b < (entCombatStart.get(e.raw) ?? Infinity)
+              : e.born < (entCombatStart.get(e.raw) ?? Infinity)
                 ? (race === "저그" ? "Drone" : race === "테란" ? "SCV" : "Probe") : "";
             const isWorker = drawUnit === "SCV" || drawUnit === "Probe" || drawUnit === "Drone";
             /* 버로우(지적: 러커와 버로우 러커가 같이 움직인다 / 변태 알에서 나오자마자
-               버로우 상태로 나온다) — 여태 '러커가 안 움직이면 땅속'이라는 어림이었다.
-               그 한 줄이 두 가지를 동시에 틀리게 했다: 걸음이 멎기만 하면(랠리 도착·
-               교전 홀드·갓 태어난 순간) 땅속으로 보이고, 반대로 땅속인데 자취가 흐르면
-               구멍이 따라 미끄러졌다. 이제 커맨드 증거(f=18/19)를 시즈와 같은 잣대로
-               읽는다. 판 시각(burrowAt)은 아래에서 그 자리에 못 박는 데 쓴다. */
-            const burrowAt = BURROWABLE.has(drawUnit) ? burrowStartOf(e.burrows, t) : -1;
-            const burrowed = burrowAt >= 0;
+               버로우 상태로 나온다) — 여태 두 벌이었다: '안 움직이면 땅속'이라는 어림,
+               그다음엔 커맨드 증거(f=18/19)를 접어 읽기. 이제 **참값 자취가 프레임마다
+               직접 말한다**(ST_BURROW). 자리 못 박기도 필요 없다 — 땅속인 동안 자취
+               자체가 그 자리에 서 있으므로, 구멍이 미끄러질 일이 없다. */
+            const burrowed = BURROWABLE.has(drawUnit) && simState === ST_BURROW;
             /* 밭이 홀에 붙은 무한 맵인가 — 왕복 폭이 발자국보다 좁아, 아래 '홀에 들어간
                순간 숨김' 창이 왕복을 통째로 삼키는 경우를 가른다(지적). */
             let nearMine9 = false;
@@ -17457,7 +17114,6 @@ export default function ReplayMotionPlayer({
                불꽃이 인다. 일꾼·수송·옵저버는 안 싸운다(도망 대상일 뿐). */
             const holdKey = `${e.raw}-v2e${ei}`;
             const canFight = !isWorker && !uAir
-              && MORPH_SHELL[drawUnit] === undefined
               && !(drawUnit !== "" && ENGAGE_SKIP.has(drawUnit));
             /* 표적 우선(지적: 어택 찍으면 그 대상을 공격해야) — 최근(30초 안) 공격 명령이
                찍은 태그가 아직 살아 움직이면 그쪽이 상대다. 없으면 가장 가까운 적. */
@@ -17601,13 +17257,8 @@ export default function ReplayMotionPlayer({
               const fp2 = posAt(rp, Math.max(rp[0][0], frzSt[0]));
               if (fp2) pos = { ...pos, x: fp2.x, y: fp2.y };
             }
-            /* 땅에 박혀 있다(지적: 러커와 버로우 러커가 같이 움직인다) — 땅속인 동안은
-               자취·교전 당김·시뮬이 무슨 자리를 내놓든 판 그 자리다. 아래 스무딩보다
-               앞에 둬, 파고드는 순간에는 미끄러져 들어가고 그 뒤로는 못 박힌다. */
-            if (burrowed) {
-              const bp2 = posAt(rp, Math.max(rp[0][0], burrowAt));
-              if (bp2) pos = { ...pos, x: bp2.x, y: bp2.y };
-            }
+            /* (걷어냄) 땅속 자리 못 박기 — 커맨드 증거로 '판 시각'을 알아내 그 자리에
+               고정하던 자리다. 참값 자취는 땅속인 동안 스스로 안 움직이므로 필요 없다. */
             /* 화면 스무딩(지적: 뚝뚝 끊김 → 재요청: 순간이동 무조건 제거, 아무리 짧아도
                스무스) — 지난 프레임 표시 자리에서 목표로 지수 추종. 거리 상한(6타일 스냅)
                을 걷어 드랍·리콜 급 큰 이동도 빠른 미끄럼으로 잇는다. 시간 되감기·큰 시간
@@ -17644,7 +17295,7 @@ export default function ReplayMotionPlayer({
                그 공사에 흡수된 것으로 본다. 오래전부터 서 있던 본진 곁 일꾼은 건물이
                제 활동보다 한참 앞서라 안 걸린다. */
             if (isWorker && !rawPos.moving) {
-              let lastAct = e.b;
+              let lastAct = e.born;
               for (const os3 of e.orders) {
                 if (os3 <= t) lastAct = os3;
                 else break;
@@ -17664,7 +17315,7 @@ export default function ReplayMotionPlayer({
               /* 인구 상한이 무른 합성은 죽는 장면이 없다(지적: "복제품들이 땅에 나타나서는
                  곧 혼자 죽음") — 원장이 제 과잉 계상을 무르는 것이라, 때린 놈도 없고
                  죽음도 아니다. 시뮬이 따로 죽였으면 그건 진짜 죽음이라 그대로 터진다. */
-              if (simDie === null && e.dk === "cap") return null;
+              if (simDie === null && e.end === "cap") return null;
               const dk = race === "저그" ? "zerg" : race === "프로토스" ? "toss" : "mech";
               /* 죽은 자리에 못박기(지적: 체력 0으로 소멸한 유닛이 폭발하며 움직임) —
                  지금 표시 위치(스무딩·걸음이 계속 간다)가 아니라 죽은 '순간'의 자취
@@ -17754,13 +17405,12 @@ export default function ReplayMotionPlayer({
             const selNow = clickFx && e.orders.some((os2) => t >= os2 && t - os2 <= 0.35);
             /* 시즈탱크 반동(요청: 발포 시 포탑·포신만) — 차체/포탑을 딴 판으로 밀어,
                쏘는 박자에 포탑 판만 뒤로 살짝 밀렸다 돌아온다. */
-            /* 변태 중이면 알·고치다(요청) — 태어난 직후 MORPH_SHELL_SEC 동안은 제 모습이
-               아니라 껍질 안이다. 이 동안은 싸우지도 않는다(아래 canFight). */
-            const morphShell = MORPH_SHELL[drawUnit] !== undefined
-              && t - e.b < MORPH_SHELL_SEC ? MORPH_SHELL[drawUnit] : null;
-            const kind0 = morphShell ?? (burrowed ? "burrowhole"
+            /* 변태 중이면 알·고치다(요청) — 이제 참값이 껍질을 제 유닛으로 내므로
+               (럴커 알·뮤탈 고치) 아래 unitMarkerKind가 이름 그대로 껍질을 고른다.
+               덧씌우던 어림은 걷었다(위 주석). */
+            const kind0 = burrowed ? "burrowhole"
               : isWorker ? workerLoadKind(workerKindOf(race), simState)
-                : unitMarkerKind(drawUnit2, race));
+                : unitMarkerKind(drawUnit2, race);
             const gunKind = kind0 === "tank" ? "tankgun" : kind0 === "tanksiege" ? "tanksiegegun" : null;
             const kindMain = kind0 === "tank" ? "tankbody" : kind0 === "tanksiege" ? "tanksiegebody" : kind0;
             unitOps.push({
@@ -17963,10 +17613,12 @@ export default function ReplayMotionPlayer({
               );
             }
             /* 수리·힐 연출(지적: 일꾼 수리 + 매딕 힐) — 명령 뒤 8초 동안 그 자리에서
-               일한다: SCV는 용접 불티, 매딕은 흰 십자가 떠오른다. */
+               일한다: SCV는 용접 불티, 매딕은 흰 십자가 떠오른다.
+               ★ (걷어냄) 재료였던 수리·힐 커맨드(f=10)를 참값은 안 낸다 — 자취의 상태에
+                 '고치는 중'이라는 칸이 없다. 늘 빈손이라 연출도 늘 꺼져 있다. 되살리려면
+                 상대 개체의 체력이 오르는 구간을 자취에서 읽어 새로 짜야 한다. */
             if (!fighting) {
-              const fixAt = e.fixes.length > 0
-                ? e.fixes.filter((fs) => fs <= t && t - fs <= 8).pop() : undefined;
+              const fixAt: number | undefined = undefined;
               if (fixAt !== undefined) {
                 const heal = drawUnit === "Medic";
                 return (
@@ -18134,7 +17786,7 @@ export default function ReplayMotionPlayer({
               저장되지 않아 못 그린다(엔진 재시뮬레이션의 몫). */}
           {qPing && (entData?.pings ?? []).map(([ps, px, py, ppid], i) => {
             if (t < ps || t - ps > 3) return null;
-            const raw = entData?.players.find((pl) => pl.id === ppid)?.name ?? "";
+            const raw = entData?.players.find((pl) => pl.owner === ppid)?.name ?? "";
             return (
               <span
                 key={`ping-${i}`}

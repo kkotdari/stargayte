@@ -489,9 +489,10 @@ export function speedOfUnit(unit: string, ups?: Set<string> | string[]): number 
 }
 
 /* ── 라바 ─────────────────────────────────────────────────────────────────────
-   해처리 계열은 라바를 뱉는다. 리플레이에 라바 자체는 안 남지만(라바는 명령을 안 받고,
-   변태를 누른 순간에만 태그가 스친다) 규칙은 뚜렷하다 — 그래서 변태 시각들만 있으면
-   '지금 몇 마리 남았나'를 되짚을 수 있다. */
+   해처리 계열은 라바를 뱉는다. 아래는 그 규칙(원작의 사실)이다.
+   ⚠ 여기 있던 "리플레이에 라바 자체는 안 남는다"는 말은 **명령 기록만 보던 시절의
+     것**이라 지웠다. 참값 자취에는 라바가 제 유닛으로 실린다 — 그래서 이 상수들로
+     라바 수를 되짚던 층(hatchState)은 걷어냈다(아래 걷어냄 주석). */
 
 /** 라바 하나가 새로 도는 데 걸리는 프레임 — 342(빠른 속도 23.81fps에서 14.36초).
  *  ⚠ [어림] 원전 코드를 못 읽었다. 널리 쓰이는 값이고 화면에서도 맞지만, 확인되면
@@ -640,129 +641,13 @@ export function costOf(kind: string): readonly [number, number] {
   return UNIT_COST[kind] ?? ZERO_COST;
 }
 const ZERO_COST: readonly [number, number] = [0, 0];
-
-/** 해처리 발치에 앉는 자리 수 — 라바와 알이 **같은 자리를 나눠 쓴다**. */
-export const HATCH_SPOTS = 6;
-/** 이 해처리에서 난 유닛 하나 — u는 정체, s는 완성 시각이다. */
-export type HatchRec = { readonly u: string; readonly s: number };
-/** 지금 이 해처리 발치에 있는 것 하나 — 어느 칸에 무엇이 있나. */
-export type HatchSpot = { kind: "larva" | "egg"; u: string; slot: number };
-
-/* ── 해처리 발치의 라바와 알 ───────────────────────────────────────────────────
-   지적 둘을 함께 고치는 자리다.
-     · "라바 자리가 아닌 다른 곳에서 알로 변태된다" — 알 칸과 라바 칸을 따로 두었더니
-       변태가 자리를 옮기는 것처럼 보였다. 실제로는 **라바 그 자체가 알이 된다**.
-       그래서 칸을 하나로 합치고, 변태는 그 라바가 있던 칸을 알로 바꾼다.
-     · "시작부터 알 두 개" — 라바를 하나에서 세기 시작했고(시작 해처리는 셋이다),
-       0초에 낼 수 있는 돈(50 미네랄)을 안 봤다.
-
-   되짚는 방법은 사건을 시각 순으로 한 번 흘리는 것이다: 라바가 나고 → 변태가 가장
-   오래된 라바를 알로 바꾸고 → 알이 깨면 칸이 빈다. 시각 t를 넣으면 그때의 칸 상태가
-   나온다. 재생을 앞뒤로 옮겨도 같은 t면 같은 답이라 그림이 안 튄다.
-
-   저글링·스커지는 알 하나에서 둘이 나온다 — 개체 기록 둘이 알 하나다. */
-export function hatchState(
-  recs: readonly HatchRec[],
-  hallDone: number,
-  isStart: boolean,
-  t: number,
-  needOf: (u: string) => number,
-): HatchSpot[] {
-  // ① 개체 기록을 알 단위로 묶는다.
-  const eggs: { u: string; m: number; s: number }[] = [];
-  {
-    const sorted = [...recs].sort((a, b) => a.s - b.s);
-    let i = 0;
-    while (i < sorted.length) {
-      const r = sorted[i];
-      const twin = EGG_TWINS.has(r.u) && i + 1 < sorted.length
-        && sorted[i + 1].u === r.u && sorted[i + 1].s === r.s;
-      const m = r.s - needOf(r.u);
-      if (m >= hallDone - 0.5) eggs.push({ u: r.u, m, s: r.s });
-      i += twin ? 2 : 1;
-    }
-  }
-  // ② 사건을 시각 순으로 흘린다.
-  const slots: ({ kind: "larva" | "egg"; u: string } | null)[] =
-    Array.from({ length: HATCH_SPOTS }, () => null);
-  const bornAt: number[] = Array.from({ length: HATCH_SPOTS }, () => 0);
-  const eggSlot = new Map<number, number>();
-  const freeSlot = (): number => slots.findIndex((v) => v === null);
-  const larvaN = (): number => slots.reduce((n, v) => n + (v && v.kind === "larva" ? 1 : 0), 0);
-  const spawn = (now: number): void => {
-    if (larvaN() >= LARVA_MAX) return;
-    const k = freeSlot();
-    if (k < 0) return;
-    slots[k] = { kind: "larva", u: "" };
-    bornAt[k] = now;
-  };
-  /* 돈지갑 — 시작 해처리에서만 센다(요청: "게임 시작 시 미네랄 50원").
-     한 명령에 라바를 여럿 골라 눌러도 원작은 **낼 수 있는 만큼만** 변태시킨다. 개체
-     기록은 고른 수만큼 남으므로, 돈을 안 보면 0초에 알 셋이 한꺼번에 선다(실측:
-     5시 저그가 1초에 셋).
-     돈이 확실한 자리는 시작뿐이다 — 그래서 시작 해처리에만 건다. 채취 수입은
-     ⚠[어림] 일꾼 하나가 초당 1미네랄로 넉넉하게 잡는다(실제는 0.7 안팎이다).
-     넉넉히 잡아야 이 그물이 진짜 변태를 잘못 걸러내지 않는다. 일꾼 수는 시작 넷에
-     이 해처리에서 깬 드론을 더한 값이다. */
-  const MINE_RATE = 1;
-  let purse = START_MINERALS;
-  let workers = 4;
-  let purseAt = hallDone;
-  const accrue = (now: number): void => {
-    purse += workers * MINE_RATE * Math.max(0, now - purseAt);
-    purseAt = Math.max(purseAt, now);
-  };
-  const marks: { at: number; run: (now: number) => void }[] = [];
-  if (isStart) {
-    marks.push({ at: hallDone, run: (now) => { for (let k = 0; k < LARVA_START; k += 1) spawn(now); } });
-  }
-  for (let k = 1; hallDone + k * LARVA_SPAWN_SEC <= t; k += 1) {
-    marks.push({ at: hallDone + k * LARVA_SPAWN_SEC, run: (now) => spawn(now) });
-  }
-  eggs.forEach((g, gi) => {
-    if (g.m <= t) {
-      marks.push({ at: g.m, run: (now) => {
-        if (isStart) {
-          accrue(now);
-          const cost = MORPH_MINERAL[g.u] ?? 50;
-          if (purse < cost) return;                 // 그 돈으로는 못 산 알이다
-          purse -= cost;
-        }
-        // 가장 오래된 라바가 알이 된다 — 라바가 없으면 빈 칸에 놓는다.
-        let k = -1;
-        let best = Number.POSITIVE_INFINITY;
-        for (let j = 0; j < slots.length; j += 1) {
-          const v = slots[j];
-          if (v && v.kind === "larva" && bornAt[j] < best) { best = bornAt[j]; k = j; }
-        }
-        /* 라바가 없으면 알도 없다 — 그 변태는 이 해처리가 낸 것이 아니다(다른
-           해처리 몫이거나, 완성 시각에서 되짚은 변태 시각이 어긋난 것이다). 빈 칸에
-           그냥 놓으면 라바를 넷·다섯 잡아먹은 해처리가 되어 원작 규칙을 깬다. */
-        if (k < 0) return;
-        slots[k] = { kind: "egg", u: g.u };
-        eggSlot.set(gi, k);
-      } });
-    }
-    if (g.s <= t) {
-      marks.push({ at: g.s, run: (now) => {
-        const k = eggSlot.get(gi);
-        if (k === undefined || slots[k]?.kind !== "egg") return;
-        if (isStart) { accrue(now); if (g.u === "Drone") workers += 1; }
-        slots[k] = null;
-        eggSlot.delete(gi);
-      } });
-    }
-  });
-  // 같은 시각이면 알이 깨는 것이 먼저다 — 그래야 그 칸을 새 변태가 곧바로 쓴다.
-  marks.sort((a, b) => a.at - b.at);
-  for (const mk of marks) mk.run(mk.at);
-  const out: HatchSpot[] = [];
-  for (let k = 0; k < slots.length; k += 1) {
-    const v = slots[k];
-    if (v) out.push({ kind: v.kind, u: v.u, slot: k });
-  }
-  return out;
-}
+/* (걷어냄) 해처리 발치의 라바·알 되짚기 — HATCH_SPOTS·HatchRec·HatchSpot·hatchState.
+   "리플레이에 라바 자체는 안 남는다"를 전제로, 변태 시각들만 가지고 지금 라바가 몇이고
+   무엇을 품고 있나를 규칙(342프레임마다 하나·최대 셋)으로 되짚던 층이다.
+   ★ 그 전제가 참값에서 깨졌다 — 참값 자취에는 라바도 알도 **제 유닛으로** 실린다
+     (자리·태그·체력까지). 실측: 한 판에 라바 키 5,558 · 알 키 5,304이고, 태그 하나가
+     라바 35 → 알 36 → 유닛으로 갈아입는다. 되짚을 것이 없다.
+   위 LARVA_* 상수는 남긴다 — 원작의 사실이라, 되짚기와 무관하게 값으로 쓸 데가 있다. */
 
 /** 회전 속도(도/초) — [추정] flingy.dat turn_radius를 못 구했다. 화면에서 맞춘 값. */
 export const TURN_RATE: Record<string, number> = {
