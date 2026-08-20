@@ -17721,7 +17721,14 @@ export default function ReplayMotionPlayer({
               viewYaw: viewYawOf(cxb, cyb), flat: !pitched, pitch: pitched,
               sizePx: 0,
               wFrac: (wTiles / grid.width) * mk3,
-              hFrac: ((wTiles * 0.75) / grid.width) * mk3,
+              /* 상자 높이는 **그림의 실제 비율**이다(지적: "건물위치도 밀렸듯이 크립도
+                 밀려서 만들어져") — 0.75로 못 박아 두었는데 크립 얼룩의 잉크는 세로/가로
+                 0.953이다(실측: 도록으로 세 무늬를 구워 잉크 상자를 쟀다 — 셋 다 300×286).
+                 그리기가 `fitWidth`로 폭에 맞춰 키우고 `meet`로 **바닥 가운데** 정렬하므로,
+                 그림이 상자보다 0.203·폭만큼 높으면 그 절반쯤이 위로 삐져나간다:
+                 잉크 중심이 발자국 중심보다 0.1015·폭 위로 밀린다(해처리 15타일 크립이면
+                 1.5타일). 상자를 그림에 맞추면 바닥 정렬이 곧 가운데 정렬이 된다. */
+              hFrac: ((wTiles * 0.953) / grid.width) * mk3,
               boxFit: "meet", fitWidth: true,
               color: "#544659",
               alpha: goneAt > 0 && t >= goneAt ? Math.max(0, 1 - (t - goneAt) / 1.2) : 1,
