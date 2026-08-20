@@ -162,6 +162,11 @@ export interface UnitTracksV2 {
     synRetired?: number;
     /** 인구가 짚어 준 '놓친 죽음' — 오래 소식 없던 관측 개체를 물린 수. */
     staleRetired?: number;
+    /** 무리 무명(스팀만 쓴 번호)이 어느 근거로 갈렸나 — 성적표가 읽는다. */
+    groupUnknown?: number;
+    groupBySel?: number;
+    groupByMix?: number;
+    groupByFallback?: number;
   };
 }
 
@@ -543,6 +548,10 @@ export function buildUnitTracks(
   let bldSplits = 0;
   /** 정체를 붙인 순간들 [태그, 초, 정체] — 절단 뒤 꼬리에 되돌리는 재료. */
   const kindLog: { tag: number; sec: number; kind: string; group: boolean }[] = [];
+  /** 그룹 증거가 걸린 **선택 묶음**들 — 「무리대표 마린」을 푸는 첫 재료다(아래 groupPick).
+   *  스팀은 부대 전체에 걸리므로, 그 선택에 함께 잡힌 동료의 구체 정체가 곧 무명의
+   *  가장 가까운 근거다. */
+  const groupSel: { kind: string; sec: number; owner: number; tags: number[] }[] = [];
   let anchorsLateUsed = 0;
   /** 물리 건물(건설 좌표로 아는 것) — 태그가 없어도 개체다(요청: 건물 파괴 파악).
    *  builder는 지은 일꾼의 태그 — 그 일꾼이 도착 전에 딴 데로 불려가면 건설 무르기다. */
@@ -1266,6 +1275,10 @@ export function buildUnitTracks(
           }
         }
         continue;
+      }
+      // 그룹 증거(스팀 = Bionic 등)는 **선택 묶음째로** 적어 둔다 — 아래 groupPick의 재료.
+      if (kind && GROUP_MEMBERS[kind] && tags.length > 0) {
+        groupSel.push({ kind, sec, owner: pid, tags: [...tags] });
       }
       let mergedTo: Life | null = null;
       for (const tag of tags) {
@@ -4196,6 +4209,119 @@ const BLD_DIE_SLACK_SEC = 8;
       if (a.trace.length > 0) simHpOf.set(a.life, a.trace);
     }
   }
+  /* ── 「무리대표 마린」을 푼다(지적: "모르면 마린"인 것은 맞습니다) ─────────────────
+     스팀만 쓴 번호는 마린인지 파이어뱃인지 모른다. 여태는 GROUP_FALLBACK이 그런 무명을
+     **상수 하나로** 마린이라 못 박았다 — 순전한 오류는 아니지만(파벳 증거가 하나라도
+     있으면 그쪽이 이긴다) 임자의 실제 조성과 무관하게 마린 쪽으로 쏠린다.
+     증거가 있는 곳에서부터 좁힌다. 위에서 걸리면 아래는 안 본다:
+       ① **같은 선택 묶음의 다수결** — 스팀은 부대 전체에 걸리므로, 그 순간 함께 골라진
+          동료 중 구체 정체를 가진 것들의 다수 쪽이 무명의 가장 가까운 근거다.
+       ② **임자 조성의 비율 배정** — 그래도 모르면 그 임자가 낸 마린 : 파벳 수를 세어
+          그 비율대로 남은 무명을 나눈다(태그 순으로 결정적). 30:3이면 무명 14기가 전부
+          마린이 되는 대신 13:1이 된다 — 조성이 안 왜곡된다.
+       ③ 임자에게 그 그룹의 구체 증거가 통째로 없으면 그때만 옛 대표로 떨어진다.
+     ★ 이 자리는 **무명에만** 손댄다 — 제 증거(kinds)가 있는 생애는 한 톨도 안 건드린다. */
+  const groupPick = new Map<Life, string>();
+  /** 무리 무명이 어떻게 갈렸나 — 성적표(scripts/bionic-check.mjs)가 읽는다. */
+  const groupStat = { unknown: 0, bySel: 0, byMix: 0, byFallback: 0 };
+  {
+    /** 그 시각에 그 태그로 살아 있던 생애 — 태그는 재사용되므로 시각으로 가른다. */
+    const lifeAt = (tag: number, sec: number): Life | null => {
+      const list = byTag.get(tag);
+      if (!list) return null;
+      let hit: Life | null = null;
+      for (const l of list) if (l.born <= sec + 0.5 && (hit === null || l.born > hit.born)) hit = l;
+      return hit;
+    };
+    /** 무명인가 — 구체 증거가 하나도 없고 그룹 증거만 있는 유닛 생애. */
+    const unknownGroup = (l: Life): string => {
+      if (l.bld || l.kinds.size > 0 || l.groupKinds.size === 0) return "";
+      /* 수송선은 여기서 안 다룬다 — 종족이 곧 답이라(테란 드랍십·토스 셔틀·저그 오버로드)
+         settleKind의 규칙이 이미 **정확하다**. 표로 답이 나오는 것을 투표로 다시 물으면
+         더 나빠질 수만 있다. 여기가 푸는 것은 답이 표에 없는 무리(Bionic)다. */
+      for (const g of l.groupKinds) {
+        if (g === "Transport") continue;
+        if (GROUP_FALLBACK[g] && GROUP_MEMBERS[g]) return g;
+      }
+      return "";
+    };
+    /** 임자별 구체 조성 — 그룹이 품는 이름만 센다. */
+    const mix = new Map<string, number>();          // `${owner}|${group}|${kind}` → 수
+    const unknowns: { life: Life; g: string }[] = [];
+    for (const [, list] of byTag) {
+      for (const l of list) {
+        const g0 = unknownGroup(l);
+        if (g0) { unknowns.push({ life: l, g: g0 }); continue; }
+        if (l.bld) continue;
+        const k0 = majorityKindOf2(l);
+        if (!k0) continue;
+        for (const [g, mem] of Object.entries(GROUP_MEMBERS)) {
+          if (!GROUP_FALLBACK[g] || !mem.has(k0)) continue;
+          const key = `${l.owner}|${g}|${k0}`;
+          mix.set(key, (mix.get(key) ?? 0) + 1);
+        }
+      }
+    }
+    // ① 같은 선택 묶음의 다수결.
+    const left: { life: Life; g: string }[] = [];
+    groupStat.unknown = unknowns.length;
+    for (const u of unknowns) {
+      const mem = GROUP_MEMBERS[u.g];
+      const vote = new Map<string, number>();
+      for (const sel of groupSel) {
+        if (sel.kind !== u.g || sel.owner !== u.life.owner) continue;
+        if (!sel.tags.includes(u.life.tag)) continue;
+        if (sel.sec < u.life.born - 0.5) continue;
+        for (const tg of sel.tags) {
+          if (tg === u.life.tag) continue;
+          const mate = lifeAt(tg, sel.sec);
+          if (!mate || mate.bld) continue;
+          const mk = majorityKindOf2(mate);
+          if (!mk || !mem.has(mk)) continue;
+          vote.set(mk, (vote.get(mk) ?? 0) + 1);
+        }
+      }
+      let best = "";
+      let bn = 0;
+      for (const [k, n] of vote) if (n > bn) { best = k; bn = n; }
+      if (best) { groupPick.set(u.life, best); groupStat.bySel += 1; } else left.push(u);
+    }
+    /* ② 임자 조성의 비율 배정 — 남은 무명을 태그 순으로 늘어놓고, 파벳 몫이 비율에
+       모자란 자리마다 하나씩 파벳을 준다(누적 오차 방식이라 고르게 흩어진다). */
+    const byOwnerG = new Map<string, Life[]>();
+    for (const u of left) {
+      const key = `${u.life.owner}|${u.g}`;
+      const arr = byOwnerG.get(key) ?? [];
+      arr.push(u.life);
+      byOwnerG.set(key, arr);
+    }
+    for (const [key, arr] of byOwnerG) {
+      const [ownerS, g] = key.split("|");
+      const mem = [...(GROUP_MEMBERS[g] ?? [])];
+      const cnt = mem.map((k) => mix.get(`${ownerS}|${g}|${k}`) ?? 0);
+      const tot = cnt.reduce((a, b) => a + b, 0);
+      arr.sort((a, b) => a.tag - b.tag || a.born - b.born);
+      if (tot === 0) {
+        // ③ 그 임자에게 구체 증거가 통째로 없다 — 그때만 옛 대표로.
+        for (const l of arr) { groupPick.set(l, GROUP_FALLBACK[g] ?? ""); groupStat.byFallback += 1; }
+        continue;
+      }
+      const acc = mem.map(() => 0);
+      for (const l of arr) {
+        // 남은 몫이 가장 큰 이름에게 준다(최대 잉여법) — 결정적이고 비율에 가장 가깝다.
+        let bi = 0;
+        let bv = -Infinity;
+        for (let i = 0; i < mem.length; i += 1) {
+          const want = (cnt[i] / tot) * (acc.reduce((a, b) => a + b, 0) + 1);
+          const v = want - acc[i];
+          if (v > bv) { bv = v; bi = i; }
+        }
+        acc[bi] += 1;
+        groupPick.set(l, mem[bi]);
+        groupStat.byMix += 1;
+      }
+    }
+  }
   const ents: UnitEnt[] = [];
   let lives = 0;
   for (const [, list] of byTag) {
@@ -4341,7 +4467,8 @@ const BLD_DIE_SLACK_SEC = 8;
       const race = raceOf.get(life.owner) ?? "";
       const icArr = icptOf.get(life.tag);
       ents.push({
-        t: life.tag, o: life.owner, k: settleKind(life, race), b: Math.round(life.born),
+        t: life.tag, o: life.owner, k: groupPick.get(life) ?? settleKind(life, race),
+        b: Math.round(life.born),
         d: d === null ? null : Math.round(d), dk, bld: life.bld ? 1 : 0, ev: life.ev,
         ...(hpTrace ? { hp: hpTrace } : {}),
         ...(icArr && icArr.length > 0 ? { ic: icArr } : {}),
@@ -4659,6 +4786,11 @@ const BLD_DIE_SLACK_SEC = 8;
       prodPowerDelay: prodStats.powerDelay,
       synRetired,
       staleRetired: staleRetiredN,
+      /* 무리 무명(스팀만 쓴 번호) 판정 내역 — 어느 근거로 갈렸나. */
+      groupUnknown: groupStat.unknown,
+      groupBySel: groupStat.bySel,
+      groupByMix: groupStat.byMix,
+      groupByFallback: groupStat.byFallback,
     },
   };
 }
