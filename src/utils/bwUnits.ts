@@ -516,6 +516,131 @@ export const MORPH_MINERAL: Record<string, number> = {
   Guardian: 50, Devourer: 50, "Infested Terran": 100,
 };
 
+/* ── 값(미네랄·가스) ── [DAT] units.dat MineralCost / GasCost 실덤프.
+   자원 모형(채취 수입 · 지출)의 지출 쪽 재료다. 손으로 적지 않았다 —
+   heinermann/factorio-starcraft의 arr/units.lua(units.dat 통짜 덤프)를 긁어 이 프로젝트가
+   쓰는 이름으로만 접었다. 103종이 다 잡혔고 이름이 다른 넷(다크 템플러·시즈 탱크·
+   퀸즈 네스트·고치)만 손으로 이어 붙였다.
+
+   읽는 규칙 셋 — 이 표는 "그 순간 지갑에서 나가는 돈"이다:
+    · **변태는 차액이다.** 러커 [50,100]는 히드라 값이 아니라 히드라에서 러커로 바뀔 때
+      더 내는 몫이고, 레어·하이브·그레이터 스파이어·성큰·스포어도 마찬가지다. 아콘·
+      다크 아콘이 [0,0]인 것도 같은 이유다(템플러 둘을 이미 샀다).
+    · **저그 쌍둥이는 알 하나 값이다.** 저글링 [50,0]·스커지 [25,75]는 두 마리 값이
+      아니라 **알 한 개** 값이다(그 알에서 둘이 나온다) — MORPH_MINERAL과 같은 규약.
+    · 덤프에서 1/1로 적힌 것(라바·알·브루들링·스파이더 마인 같은 '값 없음' 표식)은
+      0으로 내렸다. 공짜로 생기는 것들이라 지출에 잡히면 안 된다. */
+export const UNIT_COST: Record<string, readonly [number, number]> = {
+  Academy: [150, 0],
+  Arbiter: [100, 350],
+  "Arbiter Tribunal": [200, 150],
+  Archon: [0, 0],
+  Armory: [100, 50],
+  Assimilator: [100, 0],
+  Barracks: [150, 0],
+  Battlecruiser: [400, 300],
+  Broodling: [0, 0],
+  Bunker: [100, 0],
+  Carrier: [350, 250],
+  "Citadel of Adun": [150, 100],
+  Cocoon: [0, 0],
+  "Command Center": [400, 0],
+  "Comsat Station": [50, 50],
+  "Control Tower": [50, 50],
+  Corsair: [150, 100],
+  "Covert Ops": [50, 50],
+  "Creep Colony": [75, 0],
+  "Cybernetics Core": [200, 0],
+  "Dark Archon": [0, 0],
+  "Dark Templar": [125, 100],
+  Defiler: [50, 150],
+  "Defiler Mound": [100, 100],
+  Devourer: [150, 50],
+  Dragoon: [125, 50],
+  Drone: [50, 0],
+  Dropship: [100, 100],
+  Egg: [0, 0],
+  "Engineering Bay": [125, 0],
+  "Evolution Chamber": [75, 0],
+  Extractor: [50, 0],
+  Factory: [200, 100],
+  Firebat: [50, 25],
+  "Fleet Beacon": [300, 200],
+  Forge: [150, 0],
+  Gateway: [150, 0],
+  Ghost: [25, 75],
+  Goliath: [100, 50],
+  "Greater Spire": [100, 150],
+  Guardian: [50, 100],
+  Hatchery: [300, 0],
+  "High Templar": [50, 150],
+  Hive: [200, 150],
+  Hydralisk: [75, 25],
+  "Hydralisk Den": [100, 50],
+  "Infested Command Center": [0, 0],
+  "Infested Terran": [100, 50],
+  Interceptor: [25, 0],
+  Lair: [150, 100],
+  Larva: [0, 0],
+  Lurker: [50, 100],
+  "Lurker Egg": [0, 0],
+  "Machine Shop": [50, 50],
+  Marine: [50, 0],
+  Medic: [50, 25],
+  "Missile Turret": [75, 0],
+  Mutalisk: [100, 100],
+  Nexus: [400, 0],
+  "Nuclear Missile": [200, 200],
+  "Nuclear Silo": [100, 100],
+  "Nydus Canal": [150, 0],
+  Observatory: [50, 100],
+  Observer: [25, 75],
+  Overlord: [100, 0],
+  "Photon Cannon": [150, 0],
+  "Physics Lab": [50, 50],
+  Probe: [50, 0],
+  Pylon: [100, 0],
+  Queen: [100, 100],
+  "Queen's Nest": [150, 100],
+  "Queens Nest": [150, 100],
+  Reaver: [200, 100],
+  Refinery: [100, 0],
+  "Robotics Facility": [200, 200],
+  "Robotics Support Bay": [150, 100],
+  SCV: [50, 0],
+  Scarab: [15, 0],
+  "Science Facility": [100, 150],
+  "Science Vessel": [100, 225],
+  Scourge: [25, 75],
+  Scout: [275, 125],
+  "Shield Battery": [100, 0],
+  Shuttle: [200, 0],
+  "Siege Tank": [150, 100],
+  "Siege Tank (Siege Mode)": [150, 100],
+  "Siege Tank (Tank Mode)": [150, 100],
+  "Spawning Pool": [200, 0],
+  "Spider Mine": [1, 0],
+  Spire: [200, 150],
+  "Spore Colony": [50, 0],
+  Stargate: [150, 150],
+  Starport: [150, 100],
+  "Sunken Colony": [50, 0],
+  "Supply Depot": [100, 0],
+  "Templar Archives": [150, 200],
+  Ultralisk: [200, 200],
+  "Ultralisk Cavern": [150, 200],
+  Valkyrie: [250, 125],
+  Vulture: [75, 0],
+  Wraith: [150, 100],
+  Zealot: [100, 0],
+  Zergling: [50, 0],
+};
+/** 그 정체의 값 — 표에 없으면 [0,0](공짜로 생기는 것·모르는 것). */
+export function costOf(kind: string): readonly [number, number] {
+  return UNIT_COST[kind] ?? ZERO_COST;
+}
+const ZERO_COST: readonly [number, number] = [0, 0];
+
 /** 해처리 발치에 앉는 자리 수 — 라바와 알이 **같은 자리를 나눠 쓴다**. */
 export const HATCH_SPOTS = 6;
 /** 이 해처리에서 난 유닛 하나 — u는 정체, s는 완성 시각이다. */
