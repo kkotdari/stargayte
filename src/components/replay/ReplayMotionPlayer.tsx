@@ -15068,10 +15068,16 @@ export default function ReplayMotionPlayer({
           좁은 화면에는 안 단다(요청: PC). */}
       <div className="scr-motion-mapwrap">
       {/* 지도 바깥 좌우에 **네 칸**이 선다(요청: "두 슬라이드는 로스터 버튼 셀과 별도의
-          셀을 하나씩 양쪽에 추가해서 거기 넣어줘") — 바깥부터 [배속 바][1팀 로스터]
-          [지도][2팀 로스터 + 버튼][각도 바]. 여태 바가 로스터 기둥 **안에** 절대 자리로
+          셀을 하나씩 양쪽에 추가해서 거기 넣어줘") — 바깥부터 [1팀 로스터]
+          [배속 바][지도][각도 바][2팀 로스터 + 버튼] — **바가 안쪽, 로스터가 바깥**이다
+          (지적). 여태 바가 로스터 기둥 **안에** 절대 자리로
           떠 있어, 지표 줄이 길어지면 로스터 글자와 겹쳤다(지적: 미네랄·가스가 붙으면
           더 길어진다). 제 칸으로 빼면 겹칠 것이 아예 없고, 좌우 대칭도 자리로 지켜진다. */}
+      {wide && (
+        <div className="scr-motion-side">
+          {teamCol(1)}
+        </div>
+      )}
       {wide && (
         <div className="scr-motion-slidecol">
           <SlideBar
@@ -15082,11 +15088,6 @@ export default function ReplayMotionPlayer({
             labelSide="left"
             aria-label="배속"
           />
-        </div>
-      )}
-      {wide && (
-        <div className="scr-motion-side">
-          {teamCol(1)}
         </div>
       )}
       <div
@@ -17372,12 +17373,6 @@ export default function ReplayMotionPlayer({
       {/* 지도 오른쪽 기둥 — 위에서부터 2팀 로스터 · 각도 슬라이드 바 · 버튼 줄(요청:
           "버튼단은 하단으로 이동"). 가운데 바는 위아래 auto 여백으로 남는 자리에 뜬다. */}
       {wide && (
-        <div className="scr-motion-side">
-          {teamCol(2)}
-          {viewRowNode}
-        </div>
-      )}
-      {wide && (
         <div className="scr-motion-slidecol">
           <SlideBar
             title="각도"
@@ -17387,6 +17382,12 @@ export default function ReplayMotionPlayer({
             labelSide="right"
             aria-label="시점 각도"
           />
+        </div>
+      )}
+      {wide && (
+        <div className="scr-motion-side">
+          {teamCol(2)}
+          {viewRowNode}
         </div>
       )}
       </div>
