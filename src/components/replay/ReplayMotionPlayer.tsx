@@ -1059,6 +1059,11 @@ function suitTorso(g: number, o: { chest?: number; oval?: number } = {}): ShapeF
 }
 /** 전투병 체형(마린·고스트·파이어뱃) — 가슴은 넣고 등은 두툼하게. */
 const SUIT_TROOPER = { chest: -0.5, oval: 1.02 } as const;
+/** 파워드 아머의 **짙은 은색** 조각(요청: "마린 어깨 벨트 무릎 짙은 은샥") — 헬멧
+ *  껍데기(#c9ced6)와 같은 색으로 뒀더니 셋이 헬멧과 한 덩이로 뭉쳐, 갑옷의 결이 아니라
+ *  '흰 부분이 넓은 마린'이 됐다. 한 단 어둡게 두면 헬멧이 여전히 밝은 채로 어깨·벨트·
+ *  무릎이 그 아래 층으로 읽힌다. */
+const SUIT_SILVER = "#8b939c";
 /** 임자 색 면을 **한 톤 연하게**(요청: "색은 지배색에서 살짝 연하게") — 개인색은
  *  그리는 쪽이 넣으므로 빌더가 그 색을 알 수 없다. 대신 색을 안 준 몸통 면 위에
  *  같은 모양의 흰 반투명을 한 겹 얹으면, 어떤 임자 색이 오든 그 색의 **밝은 판**이
@@ -1074,7 +1079,7 @@ function paleTeam(faces: ShapeFace[], k = 0.24): ShapeFace[] {
 /** 무릎보호구(요청: "얇은 무릎보호구 채우기") — 무릎 앞에 덧대는 얇고 넓적한 판.
  *  좌우로 넓고 앞뒤로 얇은 단면(oval 1.5)이라 정강이를 감싼 덮개로 읽히고, 색은
  *  임자 색보다 한 톤 연하다(paleTeam). 양 끝은 남의 몸속이라 뚜껑을 안 그린다. */
-function suitKnee(m: 1 | -1, g: number, spread = g): ShapeFace[] {
+function suitKnee(m: 1 | -1, g: number, spread = g, fill?: string): ShapeFace[] {
   /* **앞뒤로 납작하고 좌우로 휜** 판이다(지적: "무릎보호대 반대로 했어 — 앞뒤가
      납작 좌우로 휜"). 앞선 판은 축을 앞으로 볼록하게 휘어 놓아 휨이 **앞뒤**로 갔다.
      휨은 그쪽이 아니라 **좌우**다: 무릎을 감싸고 도는 얕은 원통 껍데기라, 가운데는
@@ -1120,12 +1125,14 @@ function suitKnee(m: 1 | -1, g: number, spread = g): ShapeFace[] {
     }
   }
   if (!body.length) return [];
-  return paleTeam(tagKey([bodyFace(body.join(" ")), ...shade],
-    depthNow(kx, ky + 0.4 * g) + 0.6), 0.26);
+  // 색을 받으면 그 색(요청: 마린은 은색), 아니면 임자 색에 흰 기를 섞는다.
+  const kf = tagKey([bodyFace(body.join(" ")), ...shade],
+    depthNow(kx, ky + 0.4 * g) + 0.6);
+  return fill ? paintBase(kf, fill) : paleTeam(kf, 0.26);
 }
 /** 보병 다리 한 쌍 — 허벅지·정강이·부츠 세 마디. 무릎이 살짝 앞으로 나오고 종아리에
  *  배가 있어 곧은 기둥이 아니다. spread는 두 다리가 벌어진 몫(가는 몸도 발은 덜 모은다). */
-function suitLegs(g: number, spread = g): ShapeFace[] {
+function suitLegs(g: number, spread = g, kneeFill?: string): ShapeFace[] {
   const out: ShapeFace[] = [];
   for (const m of [-1, 1] as const) {
     const hip: [number, number, number] = [m * 0.54 * spread, -0.05, 2.62];
@@ -1144,17 +1151,35 @@ function suitLegs(g: number, spread = g): ShapeFace[] {
     out.push(...frustumFaces3(m * 0.58 * spread, 0.16,
       0.72 * g, 1.32 * g, 0.58 * g, 1.06 * g, 0.42 * g, 0));
     // 무릎보호구 — 두 마디 이음매를 덮는 얇은 판. 색은 임자 색보다 한 톤 연하다.
-    out.push(...suitKnee(m, g, spread));
+    out.push(...suitKnee(m, g, spread, kneeFill));
   }
   return out;
 }
 /** 어깨보호구 — 가슴 속에서 나와 바깥으로 부풀었다 오므라드는 뿔기둥. 안쪽 끝이
  *  몸통 안에 묻히므로 단면을 안 그린다(지적: "어깨보호구 안쪽면을 평평하게 잘라
  *  몸통에 붙이기"). */
-function suitPauldron(m: 1 | -1, g: number): ShapeFace[] {
-  // 무릎보호구와 같은 톤으로 맞춘다(요청: "이참에 어깨보호구도 색 살짝 연하게 맞춤").
-  return paleTeam(suitLimb([m * 0.48 * g, -0.1, 4.12], [m * 1.46 * g, -0.16, 3.76],
-    0.5 * g, 0.24 * g, 0.7 * g, { sides: 8, segs: 4, caps: "top" }), 0.26);
+/** 허리띠 — 몸통 허리(z 2.95 언저리)를 두르는 얇은 테(요청: "마린 매딕 허리띠").
+ *  몸통이 앞뒤로 눌린(oval 0.86) 뿔기둥이라 띠도 같은 눌림을 써야 허리에 붙는다.
+ *  깊이 열쇠는 몸통과 **같은 자**다(`depthNow(중심) + 반두께`) — 자를 달리 쓰면
+ *  뒤에서 볼 때 띠가 등 위로 떠오른다(앞가리개가 그랬다). */
+function suitBelt(g: number, fill: string): ShapeFace[] {
+  /* 허리는 몸통의 **잘록한 자리**다 — 몸통 옆폭 프로필(SUIT_TORSO_W)이 t 0.44에서
+     0.74로 가장 좁고, 그 t가 z 3.22다(몸통 z = 2.3 + 2.1t). 띠를 그 언저리에 두르고
+     반지름은 그보다 한 뼘 굵게 준다: 처음에 0.62g로 뒀더니 그 높이의 몸통(≈0.80g)
+     **안에 들어가 안 보였다**(실측: 도록에서 띠가 한 줄도 안 나왔다). */
+  const R = 0.88 * g;
+  return tagKey(paintBase(spirePillar({
+    x: 0, y: -0.06, h: 1, w: 1, segs: 2, sides: 8, oval: 0.86, caps: "none",
+    path: (t9: number): [number, number, number] => [0, -0.06, 3.06 + 0.34 * t9],
+    widthOf: (): number => R,
+  }), fill), depthNow(0, -0.06) + R + 0.02);
+}
+function suitPauldron(m: 1 | -1, g: number, fill?: string): ShapeFace[] {
+  /* 색을 받으면 그 색으로 칠하고(요청: "마린 어깨 무릎 보호구 은색"), 안 받으면
+     여태처럼 임자 색에 흰 기를 섞는다(paleTeam) — 매딕·파뱃·고스트는 그대로다. */
+  const f9 = suitLimb([m * 0.48 * g, -0.1, 4.12], [m * 1.46 * g, -0.16, 3.76],
+    0.5 * g, 0.24 * g, 0.7 * g, { sides: 8, segs: 4, caps: "top" });
+  return fill ? paintBase(f9, fill) : paleTeam(f9, 0.26);
 }
 /** 보병 팔 한 짝 — 어깨에서 나온 가는 상완, 팔꿈치에서 굵어지는 하완(파워드 아머의
  *  규칙: 하완이 상완보다 두껍다). */
@@ -8982,9 +9007,20 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         ...suitPauldron(-1, G),
         ...suitPauldron(1, G),
       ], "#dfe3e6"),
+      /* 허리띠는 빨강(요청: "마린 매딕 허리띠 / 마린 은색 매딕 빨간색") — 어깨의
+         적십자와 같은 붉은색이라 흰 의무복 위에서 둘이 한 표시로 읽힌다. */
+      ...suitBelt(G, "#d8362c"),
       // 매딕 — 흰 껍데기 · 네온 초록 얼굴가리개(요청). 헬멧은 마린과 같은 자로 키운다.
       ...suitHelmet(-0.06, 4.58, 0.73, "#eef1f3", "#7dff5c"),
-      ...tagKey([bodyFace(apron), topFace(apron, 0.3)], depthNow(0, 0.7) * 1.6 + 2),
+      /* 앞가리개는 **앞을 볼 때만** 그린다(지적: "매딕 앞가리개 몸다리에 안가려짐") —
+         깊이 열쇠로는 못 푼다. 몸통은 `depthNow(0, 0.08) + 0.9g`, 치마는
+         `depthNow(0, 0.7) × 1.6 + 2`라 자가 둘이고, 뒤에서 볼 때 치마 쪽이 늘 커서
+         등 위로 앞치마가 떠올랐다(궤도·흙받이와 같은 갈래다).
+         치마는 배 앞면에 붙은 **한 장의 껍데기**라, 뒤를 볼 때는 애초에 보일 것이
+         없다 — 어깨 적십자(cross)가 이미 쓰는 그 자를 그대로 쓴다. */
+      ...(facingRatio(0, 1) > 0.05
+        ? tagKey([bodyFace(apron), topFace(apron, 0.3)], depthNow(0, 0.7) * 1.6 + 2)
+        : []),
       // 어깨보호구 앞쪽 적십자 한 쌍(요청) — 병원 표시.
       ...cross(-1),
       ...cross(1),
@@ -9005,12 +9041,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   gunner: () => {
     /* 몸은 뿔기둥 넷으로 짠다(요청) — 다리·몸통·목·어깨보호구. 칠하지 않은 면은
        임자 색이라, 마린의 전투복 자체가 개인색이고 헬멧 껍데기만 은색이다. */
+    /* 어깨·무릎 보호구와 허리띠는 은색이다(요청: "마린 어깨 무릎 보호구 은색" ·
+       "마린 매딕 허리띠 / 마린 은색") — 전투복 자체는 그대로 임자 색이라, 은색 조각
+       셋이 그 위에서 갑옷의 결을 낸다. */
     return [
-      ...suitLegs(1),
+      ...suitLegs(1, 1, SUIT_SILVER),
       ...suitTorso(1, SUIT_TROOPER),
+      ...suitBelt(1, SUIT_SILVER),
       ...suitNeck(1),
-      ...suitPauldron(-1, 1),
-      ...suitPauldron(1, 1),
+      ...suitPauldron(-1, 1, SUIT_SILVER),
+      ...suitPauldron(1, 1, SUIT_SILVER),
       // 헬멧 — 1.4배(요청: "마린 파뱃 헬멧 크기 1.4배"). 0.65 → 0.91.
       ...suitHelmet(-0.06, 4.6, 0.73, "#c9ced6"),
       /* 두 팔 — 위팔은 어깨보호구 밑에서 나와 앞-아래로 내려가고, 팔꿈치에서 굽어
@@ -11180,7 +11220,12 @@ const UNIT_SIZE_TUNE: Partial<Record<keyof typeof UNIT_BW_RAW, number>> = {
      그만큼 상대적으로 작아진다 — 그것이 곧 "배클이 커진다"는 뜻이다. */
   bc: 1.2,
   scv: 0.85, probe: 0.85, drone: 0.85,
-  gunner: 0.85, fbat: 0.85, ghost: 0.85, inf: 0.85,
+  gunner: 0.85, fbat: 0.85, ghost: 0.85,
+  /* 매딕만 한 단 더(요청: "메딕 … 몸 전체 사이즈 10프로 축소") — 0.85 × 0.9 = 0.765.
+     ★ 모델 좌표를 줄이는 길은 여기서 안 통한다: 정규화(MODEL_NORM)가 잉크 상자를 한
+       목표에 맞추므로 균일 축소는 그대로 되돌려진다. 화면 크기를 정하는 손잡이가 이
+       표다 — 그래서 "몸 전체"는 여기서만 줄일 수 있다. */
+  inf: 0.765,
   zealot: 0.85, dtemp: 0.85, htemp: 0.85,
   corsair: 0.85,
   mine: 0.8, observer: 0.68, scourge: 0.7,
