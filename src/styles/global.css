@@ -11067,7 +11067,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    (요청: "로스터 슬라이드바 버튼류가 한 div에 세로로 배치되는거야"). */
 .scr-motion-side {
   position: relative;
-  flex: 0 0 auto; width: 120px; min-width: 0;
+  /* 로스터가 2열이 되면서 넓어졌다(요청: "PC에서 로스터 두줄로 / 두줄은 세로 2열로
+     배치") — 한 사람 칸이 92px이고 그 둘에 사이 6px이다. */
+  flex: 0 0 auto; width: 190px; min-width: 0;
   display: flex; flex-direction: column; align-items: center; gap: 8px;
 }
 /* 두 바는 좌우 대칭이어야 한다(지적: "배속과 각도바가 대칭위치에 있어야지") — 남는
@@ -11092,33 +11094,37 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-slidebar-title {
   font-size: 10px; font-weight: 700; color: rgba(255, 255, 255, 0.8); white-space: nowrap;
 }
-.scr-slidebar-track { position: relative; width: 40px; height: 156px; cursor: pointer; outline: none; }
+/* 레일은 상자 한가운데다(요청: "배속 각도 슬라이드 슬라이드바가 영역의 중앙에 있으면
+   좋을듯 라벨은 좀 치우치더라도") — 손잡이가 미끄러지는 축이 눈에 먼저 들어오는 것이라
+   그것이 가운데에 서야 바가 반듯해 보인다. 라벨은 한쪽으로 몰리고, 상자는 그 몫만큼
+   넓다(반대쪽은 빈자리다). */
+.scr-slidebar-track { position: relative; width: 56px; height: 156px; cursor: pointer; outline: none; }
 .scr-slidebar-track:focus-visible { box-shadow: 0 0 0 2px rgba(var(--lit-rgb), 0.6); border-radius: 8px; }
 /* 레일 — 눈금이 꿰이는 가는 세로줄. 라벨이 붙는 반대쪽 가장자리에 붙는다. */
 .scr-slidebar-rail { position: absolute; top: 0; bottom: 0; width: 2px; border-radius: 999px; background: rgba(255, 255, 255, 0.3); }
-.scr-slidebar-right .scr-slidebar-rail { left: 7px; }
-.scr-slidebar-left .scr-slidebar-rail { right: 7px; }
+.scr-slidebar-right .scr-slidebar-rail { left: 50%; margin-left: -1px; }
+.scr-slidebar-left .scr-slidebar-rail { right: 50%; margin-right: -1px; }
 /* 눈금 한 칸 — 짧은 가로 획과 아주 작은 라벨(요청: "눈금있고 아주 작게 라벨링"). */
 .scr-slidebar-tickwrap { position: absolute; left: 0; right: 0; height: 0; }
 .scr-slidebar-tick { position: absolute; width: 8px; height: 2px; margin-top: -1px; border-radius: 1px; background: rgba(255, 255, 255, 0.5); }
-.scr-slidebar-right .scr-slidebar-tick { left: 4px; }
-.scr-slidebar-left .scr-slidebar-tick { right: 4px; }
+.scr-slidebar-right .scr-slidebar-tick { left: 50%; margin-left: -4px; }
+.scr-slidebar-left .scr-slidebar-tick { right: 50%; margin-right: -4px; }
 .scr-slidebar-tick-on { background: var(--lit-pill-bg); }
 .scr-slidebar-mark {
   position: absolute; font-style: normal; font-size: 9px; line-height: 1;
   color: rgba(255, 255, 255, 0.62); white-space: nowrap; transform: translateY(-50%);
 }
 .scr-slidebar-mark-on { color: #fff; font-weight: 700; }
-.scr-slidebar-right .scr-slidebar-mark { left: 15px; }
-.scr-slidebar-left .scr-slidebar-mark { right: 15px; }
+.scr-slidebar-right .scr-slidebar-mark { left: calc(50% + 9px); }
+.scr-slidebar-left .scr-slidebar-mark { right: calc(50% + 9px); }
 /* 손잡이 — 눈금 사이에 머물지 않고 늘 눈금 위에 달라붙는다. */
 .scr-slidebar-thumb {
   position: absolute; width: 12px; height: 12px; margin-top: -6px;
   border-radius: 999px; background: var(--lit-pill-bg); box-shadow: var(--lit-pill-glow);
   transition: top .12s ease-out; pointer-events: none;
 }
-.scr-slidebar-right .scr-slidebar-thumb { left: 2px; }
-.scr-slidebar-left .scr-slidebar-thumb { right: 2px; }
+.scr-slidebar-right .scr-slidebar-thumb { left: 50%; margin-left: -6px; }
+.scr-slidebar-left .scr-slidebar-thumb { right: 50%; margin-right: -6px; }
 /* 모바일 화면 폭 확대(요청: 산 아이콘 옆 확대 버튼 — 모달을 벗어나 화면 폭 최대) —
    맵 줄이 제 상자 가운데에서 뷰포트 폭으로 넓어진다(50% − 50vw 트릭: 상세 모달 본문의
    가로 클리핑 상자가 모달 폭 전체를 덮어서, 모달을 100vw로 넓히면 잘리지 않는다).
@@ -11925,7 +11931,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    ·보기 줄과 같이 1/3으로 걸치고, 행도 못 박아 이웃이 늘고 줄어도 안 떠돈다. */
 /* (삭제·요청: 색상도 일반 토글로 합치기) — 색상 줄이 왼쪽 기둥에 따로 앉던 자리. */
 /* (지도 좌우에 갈라 세운 로스터는 위 .scr-motion-side 기둥 안에 들어갔다.) */
-.scr-motion-side .scr-motion-teamcol { width: 100%; }
+/* 한 팀 넷을 2열로 앉힌다(요청) — 세로 넷은 지표 줄이 붙으면서 기둥을 너무 길게
+   끌었다. 열 폭이 좁아 지표 줄은 두 줄로 접힌다(그 줄은 flex-wrap이다). */
+.scr-motion-side .scr-motion-teamcol {
+  width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 6px; align-items: start;
+}
 
 /* 왼쪽 — 같은 팀은 세로로(지적), 두 팀 기둥이 나란히 서고 줄(행)이 서로 맞는다.
    조작부는 로스터 바로 밑이 아니라 기둥의 아래쪽에 붙는다(요청) — 늘어나는 줄(1fr)을
