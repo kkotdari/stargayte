@@ -11582,6 +11582,11 @@ type UnitDrawOp = {
   /** 크립 판(요청: 크립은 벽·램프·다리를 못 넘는다) — 이 표시가 있는 판들은 먼저 깔고
    *  지형 차단 마스크로 파낸 뒤 나머지를 얹는다. */
   clipWalk?: boolean;
+  /** 그림의 **잉크 한가운데**를 fy에 맞춘다(바닥 맞춤 대신) — 바닥에 눕는 데칼용이다.
+   *  기본(바닥 맞춤)은 그림 높이가 상자와 다르면 그 차이의 절반만큼 자리가 밀리는데,
+   *  그 차이가 보기(평면·입체)마다 달라 한 값으로는 못 맞춘다. 여기 이 갈래는 구운
+   *  판에서 잉크 높이를 **그때그때 재서** 맞추므로 어느 보기에서도 정확히 가운데다. */
+  inkCenter?: boolean;
   /** 겹침 방지 이완에서 뺀다(지적: 채굴 일꾼이 해처리 밖으로 밀려 엉뚱한 데서 캠) —
    *  채굴 동선은 건물·자원과 겹치는 게 실제 모습이다. */
   noSep?: boolean;
@@ -13041,8 +13046,15 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
              실제 바닥(bot)을 발자국 바닥선에 앉힌다. */
           /* 뜬 건물은 몸만 띄운다(요청: "뜬 건물에 그림자 필요") — 위 그림자는 지면선
              (groundY) 그대로 깔리므로, 여기서 몸을 올린 몫이 곧 눈에 보이는 높이다. */
-          const bTop9 = (groundY ?? sy + hPx / 2) - wPx * (op.liftK ?? 0)
-            - (bAnc ? bAnc[1] * bspr.l : bspr.bot / B) * k;
+          const inkBot9 = (bAnc ? bAnc[1] * bspr.l : bspr.bot / B) * k;
+          /* 데칼은 잉크 한가운데를 자리에 맞춘다(지적: "2d(90도)에서 저그 크립이 아직도
+             아래로 내려가있어") — 상자 높이로 맞추던 길은 보기마다 답이 달랐다: 평면
+             (90도)은 바닥 눌림이 1이라 크립 얼룩의 잉크가 세로로 길어지고, 입체는 눌려
+             납작해진다. 상자(hFrac)는 한 값이니 그 차이가 그대로 자리 밀림이 됐다.
+             구운 판의 잉크 높이(top~bot)를 여기서 재면 보기와 무관하게 딱 가운데다. */
+          const bTop9 = op.inkCenter
+            ? sy + ((bspr.bot - bspr.top) / B) * k / 2 - inkBot9
+            : (groundY ?? sy + hPx / 2) - wPx * (op.liftK ?? 0) - inkBot9;
           /* 좌우 어긋남 수리(지적: 건물이 살짝 왼쪽·오른쪽으로 어긋난다) — 상자 중심에
              맞춰 찍었는데 모델이 제 16-상자 안에서 치우쳐 그려진 것들이 있다. 발자국을
              채우려 배율을 키우면 그 치우침도 함께 커져 눈에 띈다. 그린 픽셀의 가로
@@ -17742,6 +17754,8 @@ export default function ReplayMotionPlayer({
                  1.5타일). 상자를 그림에 맞추면 바닥 정렬이 곧 가운데 정렬이 된다. */
               hFrac: ((wTiles * 0.953) / grid.width) * mk3,
               boxFit: "meet", fitWidth: true,
+              // 자리는 상자가 아니라 잉크가 정한다(위 inkCenter 주석).
+              inkCenter: true,
               color: "#544659",
               alpha: goneAt > 0 && t >= goneAt ? Math.max(0, 1 - (t - goneAt) / 1.2) : 1,
               noShadow: true,
