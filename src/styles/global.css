@@ -11086,9 +11086,14 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-slidebar {
   flex: 0 0 auto;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 7px 3px; border-radius: 12px;
-  background: rgba(10, 14, 18, 0.42); backdrop-filter: blur(3px);
-  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.12);
+  /* 알약이 아니라 **둥근 네모 판**이다(요청) — 폭을 20px대로 줄이고 나니 모서리 12px이
+     좌우를 반원으로 먹어 통째로 알약처럼 보였다. 6px이면 같은 폭에서도 네 귀만 둥근
+     판으로 읽힌다. 바탕도 더 비친다(요청: 투명도 높이기) — 0.42 → 0.2. 지도 위에 얹히는
+     조작부라 판이 진하면 그 자리의 지형이 통째로 가려진다. 흐림(blur)은 남겨 둬야 옅은
+     판 위에서도 글자가 읽힌다. */
+  padding: 7px 3px; border-radius: 6px;
+  background: rgba(10, 14, 18, 0.2); backdrop-filter: blur(3px);
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.1);
   user-select: none; touch-action: none;
 }
 .scr-slidebar-title {
