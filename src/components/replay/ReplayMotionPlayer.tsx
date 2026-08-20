@@ -4672,12 +4672,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   },
   /* 익스트랙터(실물 참고) — 점액 받침 위 좌우 갈색 통(초록 발광 뚜껑 + 흘러내리는 힘줄
      우리)과 그 위 뿔 돋은 검은 덮개, 가운데 비스듬히 기댄 골진 붉은 애벌레 몸통. */
-  extract: () => withModelSpin(180, () => {
+  // 요잉 180 → 315도(요청: "+135도 요잉").
+  extract: () => withModelSpin(315, () => {
     /* 익스트랙터(요청·사진: 뿔기둥 전면 활용) — 검은 덮개를 쓴 살덩이 통 둘이 좌우에
        서고, 통마다 옆구리를 타는 힘줄 기둥과 크게 휜 상아 뿔이 돋는다. 가운데는
        앞으로 기어 나오는 붉은 애벌레 몸통. 키는 저그 건물 공통 자(제 자리 깊이 ×
        1.6)를 쓴다. */
-    const out: ShapeFace[] = [sideFace(discPath3(0, 0.4, 0, 7.2), 0.2)];
+    /* 바닥 원반 7.2 → 5.0(요청: "익스트랙터 바닥부품 축소") — 통 둘의 바깥 끝이
+       ±6.4쯤인데 원반이 7.2라 몸보다 넓게 깔려 있었다. 게다가 정규화는 **잉크 폭**을
+       재므로 이 원반이 폭을 대신 채우면 정작 통·뿔은 발자국을 덜 채운다(스포닝 풀의
+       크립 얼룩과 같은 갈래). 몸 안으로 물리면 몸이 그만큼 커진다. */
+    const out: ShapeFace[] = [sideFace(discPath3(0, 0.4, 0, 5.0), 0.2)];
     const vat = (px: number, py: number, r: number, m: 1 | -1): void => {
       const key = depthNow(px, py) * 1.6;
       const VH = 3.6;
@@ -11997,7 +12002,7 @@ export const BLD_NORM: Record<string, number> = {
   dome: 1.418,
   ebay: 0.982,
   evo: 1.212,
-  extract: 1.006,
+  extract: 1.069,
   factory: 1.117,
   fleetbeacon: 2.107,
   forge: 1.398,
@@ -16648,11 +16653,22 @@ export default function ReplayMotionPlayer({
               const landedHere = sec > 0 && buildsSrc.some(([, x2, y2, u2, r2, g2, l2]) =>
                 r2 === raw && u2 === unit && l2 !== undefined && (g2 ?? 0) === sec
                 && (x2 !== x || y2 !== y));
+              /* 이 줄이 걷히는 것이 '날아가 저기 앉았다'인가(지적: "건물 오르내릴때도
+                 그냥 내리면 되는데 페이드아웃되고 새로 나와서 좀 이상해") — 이사는 줄
+                 둘이 나눠 그린다: 떠난 자리 줄이 목적지까지 날아가고, 앉은 자리 줄이
+                 그 시각부터 선다. 앉은 줄의 **나타남** 페이드는 이미 껐는데(landedHere)
+                 떠난 줄의 **사라짐** 페이드는 살아 있어서, 1.2초 동안 같은 건물이 둘로
+                 겹쳐 보였다 — 하나는 또렷하고 하나는 스러지는 유령이다.
+                 넘겨주기는 페이드가 아니다. 그 순간 딱 끊는다. */
+              const landedAway = liftAt !== undefined && goneAt > liftAt
+                && buildsSrc.some(([s2, x2, y2, u2, r2]) => r2 === raw && u2 === unit
+                  && s2 === goneAt && (x2 !== x || y2 !== y));
               const fade = FADE_SEC <= 0 ? 1 : Math.min(
                 sec > 0 && !landedHere ? Math.min(1, (t - sec) / FADE_SEC) : 1,
-                goneEff > 0 && t >= goneEff ? Math.max(0, 1 - (t - goneEff) / FADE_SEC) : 1,
+                goneEff > 0 && t >= goneEff && !landedAway
+                  ? Math.max(0, 1 - (t - goneEff) / FADE_SEC) : 1,
               );
-              if (goneEff > 0 && t >= goneEff + FADE_SEC) return null;
+              if (goneEff > 0 && t >= goneEff + (landedAway ? 0 : FADE_SEC)) return null;
               if (fade <= 0) return null;
               // 떠 있는 구간(지적: 건물 떠 있는 게 표현이 안 된다) — 이륙부터 착륙(=goneAt)
               // 까지 옛 자리에서 둥실거린다.
@@ -16792,7 +16808,13 @@ export default function ReplayMotionPlayer({
                  뜬 건물만 층이 다르다 — 그건 나이가 아니라 공중이므로 air로 올린다. */
               const z = 1000 + Math.round((bodyY + boxH / 2) * Z_TILE)
                 + Math.min(60, Math.round(sec / 45));
-              const alpha = fade * (afloat ? 0.75 : 1);
+              /* 뜬 건물도 **불투명**하다(지적: "띄운건물이 페이드아웃되는 현상") —
+                 여태 0.75를 곱해, 뜬 동안 내내 25% 비쳤다. 반투명은 "떠 있다"를 말할
+                 길이 그것뿐이던 시절의 표시다. 이제는 몸이 실제로 떠오르고(liftK) 그
+                 아래 땅에 그림자가 깔리므로 뜬 것이 자리로 읽힌다 — 그런데도 계속
+                 비치면 그건 '떠 있다'가 아니라 '사라지는 중'으로 보인다.
+                 페이드(fade)는 그대로 남긴다: 그건 정말로 걷히는 건물의 것이다. */
+              const alpha = fade;
               const color = modeColor(raw, team);
               if (addonPlus) {
                 // 모델 없는 부속건물 폴백 — + 하나(캔버스 전환 첫 판이 모델까지 +로 덮던
@@ -17490,6 +17512,34 @@ export default function ReplayMotionPlayer({
               clipWalk: true,
             });
             return null;
+          })}
+          {/* 착지 충격파(요청: "내리면서 충격파 표현정도 더해주면 될듯") — 날아온 건물이
+              땅에 닿는 순간, 발자국 둘레로 먼지 고리가 한 번 퍼졌다 잦아든다. 이사 두 줄의
+              넘겨주기가 페이드 없이 딱 끊기므로(위 landedAway), 그 이음매를 이 한 박자가
+              메운다: 바뀐 것이 '사라지고 나타남'이 아니라 '내려앉음'으로 읽힌다.
+              앉은 자리 줄(landedHere)이 제 시작 시각에 그린다 — 날아온 것만이라, 새로 지은
+              건물은 여기 안 걸린다. */}
+          {qBuildFx && buildsSrc.map(([sec, x, y, unit, raw], i) => {
+            if (sec <= 0 || t < sec || t - sec > 0.6) return null;
+            const cameFrom = buildsSrc.some(([, x2, y2, u2, r2, g2, l2]) =>
+              r2 === raw && u2 === unit && l2 !== undefined && (g2 ?? 0) === sec
+              && (x2 !== x || y2 !== y));
+            if (!cameFrom) return null;
+            // 고리 지름은 발자국 폭의 1.4배 — 몸 밖으로 한 뼘 퍼진다.
+            const wPct = (((FOOTPRINT[unit] ?? [4, 3])[0] * 1.4) / grid.width) * 100;
+            return (
+              <span
+                key={`td-${i}`}
+                className="scr-motion-touchdown"
+                style={{
+                  ...posStyle(x + footDx(unit), y + footDy(unit)),
+                  width: `${wPct}%`, zIndex: 999,
+                  // 땅에 눕는 고리라 세로는 바닥 눌림 그대로다.
+                  ["--sq" as string]: pitched ? pitchFlat.toFixed(3) : "1",
+                }}
+                aria-hidden
+              />
+            );
           })}
           {/* 건물 소멸 효과(요청: 종족별) — 무너진 순간 2초: 테란 주황 폭발+회색 연기,
               저그 보라 살점 퍼짐, 프로토스 파란 빛 붕괴. 이륙 이사·같은 계보 대체(진화·
