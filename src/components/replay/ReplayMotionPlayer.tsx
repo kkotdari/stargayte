@@ -14690,7 +14690,7 @@ export default function ReplayMotionPlayer({
    *  그 차이만큼이 곧 크롭이고, 드래그로 보는 '나머지 부분'이다. */
   const fsCoverW = stage.w > 0
     ? Math.max(stage.w, (stage.h * grid.width) / Math.max(1, grid.height)) : 0;
-  /** 손가락 기기인가 — 미니맵(PC 전용)과 깨우기 버튼(모바일 전용)이 이 값으로 갈린다. */
+  /** 손가락 기기인가 — 전체화면 배치가 통째로 이 값으로 갈린다(기둥 둘 vs 위·아래 줄). */
   const [coarse, setCoarse] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return undefined;
@@ -14702,12 +14702,29 @@ export default function ReplayMotionPlayer({
   }, []);
   /** 오버레이 조작부가 지금 보이나(요청: 3초 미조작 시 숨김). */
   const [fsUi, setFsUi] = useState(true);
+  const fsUiRef = useRef(true);
+  fsUiRef.current = fsUi;
   const fsHideRef = useRef(0);
+  /** 손으로 연 조작부인가 — 그러면 저절로 안 숨는다(아래 fsToggleUi). */
+  const fsStickRef = useRef(false);
   /** 조작부를 깨우고 3초 뒤 다시 숨긴다 — 조작이 있을 때마다 이 시계가 되감긴다. */
   const fsWake = useCallback((): void => {
     setFsUi(true);
     window.clearTimeout(fsHideRef.current);
+    /* 손으로 연 것은 손으로 닫는다 — 시계를 안 건다. */
+    if (fsStickRef.current) return;
     fsHideRef.current = window.setTimeout(() => setFsUi(false), 3000);
+  }, []);
+  /* 지도의 빈 곳을 누르면 조작부를 켰다 껐다 한다(요청: "맵 클릭시 인포팝업뜨는곳
+     아니면 도구 오버레이뜸 뜬상태에서 또 클릭시 닫힘") — 유닛·건물을 눌렀을 때는 여기까지
+     안 온다. 그건 정보 팝업의 몫이다(아래 onMapPointerUp).
+     구석에 떠 있던 '⋯' 깨우기 버튼은 이걸로 갈음하고 걷어냈다(요청: "모바일 전체화면
+     메뉴 버튼 제거") — 지도 아무 데나 누르면 되는데 버튼이 하나 더 떠 있을 까닭이 없다. */
+  const fsToggleUi = useCallback((): void => {
+    window.clearTimeout(fsHideRef.current);
+    const next = !fsUiRef.current;
+    fsStickRef.current = next;
+    setFsUi(next);
   }, []);
   /* 전체화면 들고나기 — 브라우저 전체화면 API를 쓰되, **되는 곳에서만** 쓴다.
      아이폰 사파리는 div에 requestFullscreen이 아예 없으므로(영상 말고는 안 준다),
@@ -14717,9 +14734,16 @@ export default function ReplayMotionPlayer({
   const enterFs = useCallback((): void => {
     setFsOn(true);
     fsWake();
-    const el = rootRef.current;
-    if (el && !document.fullscreenElement && el.requestFullscreen) {
-      void el.requestFullscreen().catch(() => {});
+    /* 전체화면 대상은 **문서 뿌리**다(수리: "모바일 전체화면 맨위 스타게이트 로고가
+       있어서") — 여태 이 컴포넌트의 뿌리 <div>에 걸었는데, 그 조상인 경기 카드
+       (.scr-game-result-trow)에 backdrop-filter가 걸려 있다. backdrop-filter는 자손
+       position:fixed의 '담을 상자'를 뷰포트에서 그 요소로 바꿔 놓는다. PC는 전체화면
+       API가 먹혀 최상위 층으로 올라가니 티가 안 났지만, div에 requestFullscreen을 안
+       주는 아이폰 사파리에서는 CSS 폴백(fixed·inset:0)이 화면이 아니라 **카드**를
+       기준으로 깔렸다 — 그래서 화면 맨 위 헤더가 안 덮였다. 오버레이는 이제 body로
+       포털하고(아래 fsInner), 전체화면도 문서 뿌리에 건다. */
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      void document.documentElement.requestFullscreen().catch(() => {});
     }
   }, [fsWake]);
   const exitFs = useCallback((): void => {
@@ -14767,12 +14791,14 @@ export default function ReplayMotionPlayer({
   /* 3초 미조작이면 숨긴다(요청) — 깨우는 손짓은 기기마다 다르다:
        · PC — 마우스를 **가장자리로** 가져갈 때만(요청). 화면 한복판에서 마우스가
          움직인다고 조작부가 뜨면, 보고 있는 장면을 계속 가린다.
-       · 모바일 — 구석의 반투명 버튼(아래 .scr-fs-wake). 손가락이 지도를 끄는 동안
-         조작부가 튀어나오면 그게 더 방해다.
+       · 모바일 — 지도의 **빈 곳**을 톡 누를 때만(위 fsToggleUi). 손가락이 지도를 끄는
+         동안 조작부가 튀어나오면 그게 더 방해다. 그렇게 손으로 연 것은 손으로 닫는다 —
+         3초 시계를 안 건다(fsStickRef).
      조작부 자체를 만지는 동안에는 계속 깨어 있다(그 안의 pointerdown이 fsWake를 부른다). */
   useEffect(() => {
     if (!fsOn) {
       window.clearTimeout(fsHideRef.current);
+      fsStickRef.current = false;
       setFsUi(true);
       return undefined;
     }
@@ -15433,14 +15459,17 @@ export default function ReplayMotionPlayer({
     if (tp?.id === e.pointerId) tapRef.current = null;
     /* 클릭은 '누른 그 손가락이, 거의 안 움직이고, 손짓(핀치) 중이 아닐 때' 뿐이다. */
     if (dragged || !tp || tp.id !== e.pointerId || tp.moved || gestureRef.current) return;
-    pickAt(e.clientX, e.clientY);
+    const hit = pickAt(e.clientX, e.clientY);
+    /* 전체화면에서 **아무것도 안 집힌** 누름은 조작부를 켰다 껐다 한다(요청) — 몸을
+       눌렀으면 정보 팝업이 뜬 참이라 조작부까지 함께 움직이면 두 가지가 한꺼번에 바뀐다. */
+    if (!hit && fsOnRef.current) fsToggleUi();
   };
   /* 정보 팝업(요청: 유닛·건물 클릭하면 정보 툴팁, 딴 데 누르면 닫힘, 다른 몸을 누르면
      새 툴팁) — 집는 것은 '열쇠' 하나뿐이고, 내용은 프레임마다 지금 그린 op에서 다시
      읽는다. 그래서 체력·생산·업그레이드가 저절로 실시간이다. */
-  const pickAt = (clientX: number, clientY: number): void => {
+  const pickAt = (clientX: number, clientY: number): boolean => {
     const el = mapRef.current;
-    if (!el) return;
+    if (!el) return false;
     const r = el.getBoundingClientRect();
     const px = clientX - r.left;
     const py = clientY - r.top;
@@ -15468,6 +15497,7 @@ export default function ReplayMotionPlayer({
       if (d <= rad && d < bestD) { bestD = d; best = o.pickKey; }
     }
     setPicked(best);
+    return best !== null;
   };
 
   /* 키보드(요청: PC) — ↑↓ 배속, ←→ 5초 뒤/앞. 댓글 입력 중에는 건드리지 않는다.
@@ -18244,7 +18274,10 @@ export default function ReplayMotionPlayer({
           {/* 좁은 화면의 슬라이드 바는 지도 **안** 좌우에 얹는다(요청: "모바일은 미니맵
               안쪽에 좌우에 배속/각도 슬라이드 오버레이") — 지도가 화면 폭을 꽉 채우므로
               바깥에 세울 자리가 없다. 넓은 배치는 지도 바깥 기둥에 선다(위). */}
-          {!wide && (
+          {/* 전체화면에서는 이 두 바를 안 쓴다 — 그때 지도는 화면보다 크게 깔려 끌려
+              다니므로, 지도에 붙은 바는 화면 밖으로 밀려난다. 전체화면의 바는 화면
+              가장자리에 따로 선다(아래 fsInner). */}
+          {!wide && !fsOn && (
             <>
               <div className="scr-motion-slidebar-l">
                 <SlideBar
@@ -18293,84 +18326,112 @@ export default function ReplayMotionPlayer({
     });
   };
   /* ── 전체화면 오버레이(요청) ────────────────────────────────────────────────
-     "좌우하단 조작부는 현재 PC화면과 동일한 위치와 형태, 구성" — 그래서 여기 서는 것은
-     전부 위에서 이미 만든 조각 그대로다(teamCol · SlideBar · mapToggleNode ·
+     PC는 "좌우하단 조작부는 현재 PC화면과 동일한 위치와 형태, 구성" — 그래서 여기 서는
+     것은 전부 위에서 이미 만든 조각 그대로다(teamCol · SlideBar · mapToggleNode ·
      perfToggleNode · controlsNode · shareNode). 새로 만든 것은 미니맵 하나뿐이다.
-     왼쪽 위 1팀 · 오른쪽 위 2팀 · 그 아래 각각 배속/각도 세로바 · 그 아래 각각
-     지도 표시 토글류 / 성능·색상 선택류 · 아래쪽에 재생·진행바·시각·공유.
-     ★ 뿌리는 갈아치우지 않는다 — 전체화면 API는 **그 엘리먼트가 DOM에서 사라지면**
-       곧바로 풀린다. 그래서 평소 배치와 전체화면이 같은 뿌리 <div>를 쓰고, 안에서
-       무엇을 그릴지만 갈린다(아래 body의 자식들은 .scr-motion-fs일 때 CSS로 숨는다).
-       한 번만 있어야 하는 둘(지도 mapNode · 탐색바가 든 controlsNode)은 그래서
-       `!fsOn &&`로 한쪽에만 붙는다. */
-  const fsInner = fsOn ? (
-    <div className="scr-fs-root">
-      <div className="scr-fs-stage" ref={stageRef}>{mapNode}</div>
-      <div className="scr-fs-ui" onPointerDown={fsWake}>
-        <div className="scr-fs-col scr-fs-left">
-          <div className="scr-fs-roster">{teamCol(1)}</div>
-          <div className="scr-fs-bar">
-            <SlideBar
-              title="배속"
-              options={[...SPEEDS].reverse().map((v) => ({ value: String(v), label: `×${v}` }))}
-              value={String(speed)}
-              onChange={(v) => setSpeed(SPEEDS.find((s2) => String(s2) === v) ?? SPEEDS[0])}
-              labelSide="left"
-              aria-label="배속"
-            />
-          </div>
-          <div className="scr-fs-toggles">{mapToggleNode}</div>
-          {/* 미니맵은 PC만(요청) — 손가락 기기에서는 조작부가 이미 화면을 많이 먹는다. */}
-          {!coarse && stage.w >= 900 && (
-            <ReplayFullscreenMinimap
-              image={grid.image ?? undefined}
-              ratio={grid.width / Math.max(1, grid.height)}
-              dotsRef={opsRef}
-              tick={t}
-              view={fsView}
-              onSeek={fsSeek}
-            />
+
+     ★ 판은 **body로 포털한다**(수리) — 이 컴포넌트의 조상인 경기 카드에 backdrop-filter가
+       걸려 있어, 그 아래의 position:fixed는 화면이 아니라 카드를 기준으로 깔린다.
+       전체화면 API가 먹는 PC는 최상위 층으로 올라가 티가 안 났지만, 아이폰 사파리는
+       CSS 폴백뿐이라 화면 맨 위(헤더·로고)가 안 덮였다(지적). 포털하면 그 사정에서
+       완전히 벗어난다 — 평소 배치(.scr-motion-fs)는 그동안 통째로 숨는다. */
+  /** 배속·각도 바는 세 배치(PC 평소·PC 전체화면·모바일 전체화면)가 같은 것을 나눠 쓴다. */
+  const fsSpeedBar = (
+    <SlideBar
+      title="배속"
+      options={[...SPEEDS].reverse().map((v) => ({ value: String(v), label: `×${v}` }))}
+      value={String(speed)}
+      onChange={(v) => setSpeed(SPEEDS.find((s2) => String(s2) === v) ?? SPEEDS[0])}
+      labelSide="left"
+      aria-label="배속"
+    />
+  );
+  const fsPitchBar = (
+    <SlideBar
+      title="각도"
+      options={PITCH_DEGS.map((d) => ({ value: String(d), label: `${d}°` }))}
+      value={String(pitchDeg)}
+      onChange={(v) => setPitchDeg(Number(v))}
+      labelSide="right"
+      aria-label="시점 각도"
+    />
+  );
+  /* 나가기 — 손가락 기기에서는 **맨 윗줄 가운데**에 선다(지적: "모바일에서 전체화면
+     나가는 버튼이 없음"). 여태 아래 조작줄 꼬리에 공유 버튼과 나란히 있었는데, 그 줄이
+     좁은 화면에서 넘쳐(공유 버튼이 크다 — 아래) 꼬리째 화면 밖으로 밀려나 있었다. */
+  const fsExitNode = (
+    <button
+      type="button" className="scr-motion-litbtn scr-fs-exit"
+      onClick={exitFs} aria-label="전체화면 나가기" title="전체화면 나가기"
+    >
+      <Minimize size={15} />
+    </button>
+  );
+  /* 손가락 기기의 전체화면 배치(요청: "모바일 도구 오버레이 배치 잘해서 패널 남는 공간
+     많이 줄일수 있을듯 안그래도 화면 좁은데 맵 다가려져") — 여태 좌우로 148px짜리 기둥
+     둘이 서서 폭 390px 화면에서 지도에 94px만 남겼다. 기둥을 걷고 이렇게 앉힌다:
+       · 맨 위 한 줄 — [1팀 로스터] [나가기] [2팀 로스터]
+       · 지도 좌우 **가장자리**에 배속·각도 바(지도 위에 얹되 세로 한가운데)
+       · 맨 아래 두 줄 — [색상·성능·공유] / [재생·진행바·시각]
+     가운데는 통째로 지도다. */
+  const fsInner = fsOn ? createPortal(
+    <div className={cx("scr-motion", "scr-fs-layer", !fsUi && "is-idle")}>
+      <div className="scr-fs-root">
+        <div className="scr-fs-stage" ref={stageRef}>{mapNode}</div>
+        {/* 깨우기는 **캡처**로 받는다 — 슬라이드 바가 제 누름을 stopPropagation으로
+            끊으므로(지도 끌기와 겹치지 않게), 올라오는 길로는 여기까지 못 온다.
+            내려가는 길에서 먼저 받으면 바를 만지는 동안에도 조작부가 안 사라진다. */}
+        <div className="scr-fs-ui" onPointerDownCapture={fsWake}>
+          {coarse ? (
+            <>
+              <div className="scr-fs-top">
+                <div className="scr-fs-toproster">{teamCol(1)}</div>
+                {fsExitNode}
+                <div className="scr-fs-toproster">{teamCol(2)}</div>
+              </div>
+              <div className="scr-fs-edge scr-fs-edge-l">{fsSpeedBar}</div>
+              <div className="scr-fs-edge scr-fs-edge-r">{fsPitchBar}</div>
+              <div className="scr-fs-bottom scr-fs-bottom-mob">
+                {mobBarNode}
+                {controlsNode}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="scr-fs-col scr-fs-left">
+                <div className="scr-fs-roster">{teamCol(1)}</div>
+                <div className="scr-fs-bar">{fsSpeedBar}</div>
+                <div className="scr-fs-toggles">{mapToggleNode}</div>
+                {/* 미니맵은 PC만(요청) — 손가락 기기에서는 조작부가 이미 화면을 많이 먹는다. */}
+                {stage.w >= 900 && (
+                  <ReplayFullscreenMinimap
+                    image={grid.image ?? undefined}
+                    ratio={grid.width / Math.max(1, grid.height)}
+                    dotsRef={opsRef}
+                    tick={t}
+                    view={fsView}
+                    onSeek={fsSeek}
+                  />
+                )}
+              </div>
+              <div className="scr-fs-col scr-fs-right">
+                <div className="scr-fs-roster">{teamCol(2)}</div>
+                <div className="scr-fs-bar">{fsPitchBar}</div>
+                <div className="scr-fs-toggles">{perfToggleNode}</div>
+              </div>
+              <div className="scr-fs-bottom">
+                {controlsNode}
+                <div className="scr-fs-bottom-tail">
+                  {shareNode}
+                  {fsExitNode}
+                </div>
+              </div>
+            </>
           )}
         </div>
-        <div className="scr-fs-col scr-fs-right">
-          <div className="scr-fs-roster">{teamCol(2)}</div>
-          <div className="scr-fs-bar">
-            <SlideBar
-              title="각도"
-              options={PITCH_DEGS.map((d) => ({ value: String(d), label: `${d}°` }))}
-              value={String(pitchDeg)}
-              onChange={(v) => setPitchDeg(Number(v))}
-              labelSide="right"
-              aria-label="시점 각도"
-            />
-          </div>
-          <div className="scr-fs-toggles">{perfToggleNode}</div>
-        </div>
-        <div className="scr-fs-bottom">
-          {controlsNode}
-          <div className="scr-fs-bottom-tail">
-            {shareNode}
-            <button
-              type="button" className="scr-motion-litbtn scr-fs-exit"
-              onClick={exitFs} aria-label="전체화면 나가기" title="전체화면 나가기"
-            >
-              <Minimize size={15} />
-            </button>
-          </div>
-        </div>
       </div>
-      {/* 모바일 깨우기 버튼(요청: "모바일은 조작부 켜는 반투명 버튼을 구석에 플로팅") */}
-      {coarse && (
-        <button
-          type="button"
-          className="scr-fs-wake"
-          onClick={() => { if (fsUi) setFsUi(false); else fsWake(); }}
-          aria-label="조작부"
-        >
-          <span aria-hidden>⋯</span>
-        </button>
-      )}
-    </div>
+    </div>,
+    document.body,
   ) : null;
 
   const body = (
@@ -18379,8 +18440,8 @@ export default function ReplayMotionPlayer({
       // -modal/-backdrop)은 소스째 삭제됐고, 이 .scr-motion-wide가 인라인 넓은 배치의
       // 유일한 클래스다(혼동을 없애려 -big에서 개명). ref는 자리 폭 재기(wide 판정)용.
       ref={rootRef}
-      className={cx("scr-motion", wide && !fsOn && "scr-motion-wide",
-        fsOn && "scr-motion-fs", fsOn && !fsUi && "is-idle")}
+      /* is-idle은 이제 포털된 판이 쓴다(위 fsInner) — 여기 남으면 아무 데도 안 닿는다. */
+      className={cx("scr-motion", wide && !fsOn && "scr-motion-wide", fsOn && "scr-motion-fs")}
       /* 폭 제한은 여기 걸지 않는다(수리) — 뿌리 상자에는 지도만이 아니라 양옆 로스터와
          아래 조작 줄들이 함께 들어 있어서, 여기를 좁히면 화면 전체가 왼쪽 한 기둥으로
          쪼그라들었다(실측: 지도가 140px). 세로 맞춤은 지도 자신에게 건다(아래 참조). */
@@ -18483,7 +18544,7 @@ export default function ReplayMotionPlayer({
 
       {/* 넓은 배치의 버튼 줄은 지도 오른쪽 기둥 맨 아래에 있다(위 맵줄 참조).
           좁은 화면은 색상·성능·공유 한 줄만이고, 그 줄은 진행바 **위**에 선다(요청). */}
-      {!wide && mobBarNode}
+      {!wide && !fsOn && mobBarNode}
       {linkOpen && createPortal(
         <div className="scr-modal-overlay scr-terrain-overlay" onClick={() => setLinkOpen(false)}>
           <div className="scr-modal scr-maplink-modal" onClick={(e) => e.stopPropagation()}>

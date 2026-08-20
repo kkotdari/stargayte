@@ -32,8 +32,9 @@ export default function SlideBar({
   const widest = options.reduce((m, o) => Math.max(m, o.label.length), 1);
   const index = Math.max(0, options.findIndex((o) => o.value === value));
   const trackRef = useRef<HTMLDivElement>(null);
-  /** 세로 자리(0~1, 위가 0)를 가장 가까운 눈금으로 잡는다. */
-  const pick = (clientY: number): void => {
+  /** 세로 자리(0~1, 위가 0)를 가장 가까운 눈금으로 잡는다.
+   *  snap이면 어디를 눌러도 가장 가까운 눈금으로 곧장 간다(누를 때). */
+  const pick = (clientY: number, snap: boolean): void => {
     const el = trackRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
@@ -43,10 +44,14 @@ export default function SlideBar({
        원래") — 여태 가장 가까운 눈금으로 반올림했더니 두 눈금의 **한가운데**를 지나는
        순간 값이 넘어갔다. 손잡이는 아직 옛 눈금에 붙어 있는데 화면(각도·배속)만 먼저
        바뀌니 '미끄러진다'는 느낌이 든다. 눈금에서 ±0.28칸 안에 들어와야 넘긴다 —
-       그 사이 구간에서는 옛 값이 그대로다. */
+       그 사이 구간에서는 옛 값이 그대로다.
+       ★ 다만 그 문턱은 **끄는 동안**의 규칙이다(지적: "슬라이드 잘 안집혀") — 톡 누른
+         자리가 두 눈금 사이면 아무 일도 안 일어나 컨트롤이 죽은 것처럼 느껴졌다. 손가락
+         기기에서는 한 칸이 39px이라 그 '죽은 띠'가 17px이나 된다. 누를 때는 문턱 없이
+         가장 가까운 눈금으로 붙인다 — 끌기의 차분함은 그대로 두고 탭만 살린다. */
     const raw = f * (n - 1);
     const i = Math.round(raw);
-    if (Math.abs(raw - i) > 0.28) return;
+    if (!snap && Math.abs(raw - i) > 0.28) return;
     if (options[i] && options[i].value !== value) onChange(options[i].value);
   };
   const onDown = (e: ReactPointerEvent): void => {
@@ -55,12 +60,12 @@ export default function SlideBar({
     e.stopPropagation();
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    pick(e.clientY);
+    pick(e.clientY, true);
   };
   const onMove = (e: ReactPointerEvent): void => {
     if (!(e.buttons & 1)) return;
     e.stopPropagation();
-    pick(e.clientY);
+    pick(e.clientY, false);
   };
   const onKeyDown = (e: ReactKeyboardEvent): void => {
     if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;

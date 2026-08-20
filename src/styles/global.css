@@ -11156,6 +11156,22 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 }
 .scr-slidebar-right .scr-slidebar-thumb { left: 50%; margin-left: -6px; }
 .scr-slidebar-left .scr-slidebar-thumb { right: 50%; margin-right: -6px; }
+/* 손가락 기기는 표적을 후하게(요청: "가로 세로 슬라이드 모두 잘 안집혀 터치 판정을 좀
+   후하게") — 폭 20px 막대는 손가락 접촉면(권장 44px)의 절반도 안 된다. 레일·눈금·손잡이가
+   모두 가운데 정렬이라 **상자 폭만 넓히면 그 폭 전체가 표적**이 되고, 보이는 그림은
+   그대로다. 세로도 156→180px로 늘려 한 칸(다섯 눈금 기준 39→45px)을 키운다.
+   ★ 세로 여백(padding)은 못 넣는다 — 눈금 자리는 트랙 상자 높이의 비율로 셈하므로
+     (SlideBar의 pick·at) 위아래가 늘면 눈금과 손가락이 어긋난다. 넓히는 것은 폭뿐이다. */
+@media (pointer: coarse) {
+  .scr-slidebar { padding: 7px 2px; }
+  .scr-slidebar-track { width: 46px; height: 180px; }
+  .scr-slidebar-tick { width: 14px; }
+  .scr-slidebar-right .scr-slidebar-tick { margin-left: -7px; }
+  .scr-slidebar-left .scr-slidebar-tick { margin-right: -7px; }
+  .scr-slidebar-thumb { width: 16px; height: 16px; margin-top: -8px; }
+  .scr-slidebar-right .scr-slidebar-thumb { margin-left: -8px; }
+  .scr-slidebar-left .scr-slidebar-thumb { margin-right: -8px; }
+}
 /* 모바일 화면 폭 확대(요청: 산 아이콘 옆 확대 버튼 — 모달을 벗어나 화면 폭 최대) —
    맵 줄이 제 상자 가운데에서 뷰포트 폭으로 넓어진다(50% − 50vw 트릭: 상세 모달 본문의
    가로 클리핑 상자가 모달 폭 전체를 덮어서, 모달을 100vw로 넓히면 잘리지 않는다).
@@ -11607,8 +11623,24 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    붙는다. 진행바 줄 바로 위다. */
 .scr-motion-mobrow {
   display: flex; align-items: flex-end; gap: 10px; margin: 2px 0 4px;
+  /* 넘치면 접는다(지적: "현재장면 공유 버튼 너무 크고 화면 밖으로 나감") — 여태 한 줄로
+     못 박혀 있어, 세 덩이의 합이 화면 폭을 넘으면 오른쪽 것이 그냥 밖으로 밀려났다. */
+  flex-wrap: wrap; row-gap: 4px;
 }
 .scr-motion-mobrow .scr-motion-qrow { margin-left: auto; }
+/* 공유 버튼은 이 줄에서 컴팩트하다(지적: 너무 크다) — 기본 .scr-btn 크기(40px대)는
+   알약 둘과 나란히 서기엔 두 배로 크다. PC 공유 줄과 같은 24px 흰 알약으로 맞춘다. */
+.scr-motion-mobrow .scr-kakao-share-btn {
+  height: 24px; min-height: 0; padding: 0 10px; font-size: 11px; gap: 4px;
+  white-space: nowrap; line-height: 1; flex: 0 0 auto;
+  background: #fff; color: #10151a; border: 1px solid #fff; border-radius: 8px;
+  box-shadow: var(--lit-pill-glow);
+}
+.scr-motion-mobrow .scr-kakao-share-btn svg { width: 11px; height: 11px; color: #10151a; }
+.scr-light-theme .scr-motion-mobrow .scr-kakao-share-btn {
+  background: var(--lit-pill-bg); border-color: transparent; color: var(--text);
+}
+.scr-light-theme .scr-motion-mobrow .scr-kakao-share-btn svg { color: var(--text); }
 /* 배속은 한 단 더 작게(요청: "크기를 줄이고") — 라벨을 위가 아니라 옆에 두어 줄
    높이를 아낀다. .scr-motion-radio의 세로 배치를 여기서 가로로 되돌린다. */
 .scr-motion-speeds {
@@ -11812,6 +11844,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   .scr-motion-range::-webkit-slider-runnable-track { margin-top: 0; }
   .scr-motion-range::-webkit-slider-thumb { width: 20px; height: 20px; margin-top: -8px; }
   .scr-motion-range::-moz-range-thumb { width: 20px; height: 20px; }
+}
+/* 손가락 기기는 한 단 더(요청: "가로 세로 슬라이드 모두 잘 안집혀") — 상자 32→44px,
+   손잡이 20→24px. 트랙(4px) 기준 손잡이 중심 보정은 −(24−4)/2 = −10px이다. */
+@media (pointer: coarse) {
+  .scr-motion-range { height: 44px; }
+  .scr-motion-range::-webkit-slider-thumb { width: 24px; height: 24px; margin-top: -10px; }
+  .scr-motion-range::-moz-range-thumb { width: 24px; height: 24px; }
 }
 .scr-motion-range::-webkit-slider-runnable-track {
   height: 4px; border-radius: 999px;
@@ -14404,14 +14443,22 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    보일지만 바꾼다. 그래서 평소 자식들은 여기서 숨기고 오버레이만 남긴다.
    position: fixed는 폴백이기도 하다 — 아이폰 사파리는 div에 requestFullscreen을 안
    주므로, API가 안 걸려도 이 한 줄이 화면을 덮는다. */
-.scr-motion-fs {
+/* ★ 판은 뿌리 상자가 아니라 **body로 포털된 .scr-fs-layer**다(수리: "모바일 전체화면
+   맨위 스타게이트 로고가 있어서") — 경기 카드(.scr-game-result-trow)에 backdrop-filter가
+   걸려 있고, 그건 자손 position:fixed의 담을 상자를 뷰포트에서 그 카드로 바꾼다. 전체화면
+   API가 먹는 PC는 최상위 층으로 올라가 티가 안 났지만, div에 requestFullscreen을 안 주는
+   아이폰 사파리는 이 CSS 폴백이 전부라 화면이 아니라 카드를 덮고 있었다. body로 나가면
+   그 사정이 아예 없다.
+   .scr-motion을 함께 걸어 두는 것은 로스터·알약 같은 조각들이 `.scr-motion X` 자손
+   선택자로 꾸며져 있어서다 — 포털 밖으로 나가면 그 규칙들이 통째로 안 걸린다. */
+.scr-fs-layer {
   position: fixed; inset: 0; z-index: 90000;
-  margin: 0 !important; padding: 0; gap: 0;
+  display: block; margin: 0; padding: 0; gap: 0;
   width: 100vw; height: 100vh; height: 100dvh;
   background: #05070a;
 }
-/* 평소 배치의 자식들은 전체화면에서 안 보인다 — 오버레이(.scr-fs-root)만 남는다. */
-.scr-motion-fs > *:not(.scr-fs-root) { display: none !important; }
+/* 평소 배치는 전체화면 동안 통째로 숨는다 — 화면은 위 판이 그린다. */
+.scr-motion-fs { display: none !important; }
 .scr-fs-root { position: absolute; inset: 0; }
 /* 무대 — 지도를 자르는 창이다. 지도는 이보다 크게(cover) 깔리고 여기서 잘린다. */
 .scr-fs-stage { position: absolute; inset: 0; overflow: hidden; }
@@ -14422,21 +14469,23 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-fs-ui { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
 .scr-fs-ui > * { pointer-events: auto; }
 .scr-fs-ui, .scr-fs-wake { transition: opacity 0.22s ease; }
-.scr-motion-fs.is-idle .scr-fs-ui { opacity: 0; pointer-events: none; }
-.scr-motion-fs.is-idle .scr-fs-ui > * { pointer-events: none; }
+.scr-fs-layer.is-idle .scr-fs-ui { opacity: 0; pointer-events: none; }
+.scr-fs-layer.is-idle .scr-fs-ui > * { pointer-events: none; }
 
 .scr-fs-col {
   position: absolute; top: 0; bottom: 84px;
   display: flex; flex-direction: column; gap: 10px;
   width: 208px; padding: 10px;
   overflow: hidden;
-  background: linear-gradient(90deg, rgba(6, 9, 14, 0.82), rgba(6, 9, 14, 0.28));
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  /* 더 비친다(요청: "오버레이 배경 투명도 높이기") — 0.82→0.48, 안쪽 끝은 0.28→0.02로
+     아예 사라진다. 흐림은 남겨 둬야 옅은 판 위에서도 글자가 읽힌다. */
+  background: linear-gradient(90deg, rgba(6, 9, 14, 0.48), rgba(6, 9, 14, 0.02));
+  backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
 }
 .scr-fs-left { left: 0; }
 .scr-fs-right {
   right: 0;
-  background: linear-gradient(270deg, rgba(6, 9, 14, 0.82), rgba(6, 9, 14, 0.28));
+  background: linear-gradient(270deg, rgba(6, 9, 14, 0.48), rgba(6, 9, 14, 0.02));
   align-items: flex-end;
 }
 /* 로스터는 위, 바는 남는 자리, 토글은 그 아래 — 요청의 세로 차례 그대로다. */
@@ -14449,8 +14498,8 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-fs-bottom {
   position: absolute; left: 0; right: 0; bottom: 0;
   display: flex; align-items: center; gap: 10px; padding: 8px 12px;
-  background: linear-gradient(0deg, rgba(6, 9, 14, 0.88), rgba(6, 9, 14, 0.18));
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  background: linear-gradient(0deg, rgba(6, 9, 14, 0.55), rgba(6, 9, 14, 0));
+  backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
 }
 .scr-fs-bottom > .scr-motion-bar-controls { flex: 1 1 auto; margin: 0; }
 .scr-fs-bottom-tail { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
@@ -14463,16 +14512,39 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 }
 .scr-fs-minimap > canvas { display: block; width: 100%; height: 100%; }
 
-/* 모바일 깨우기 버튼 — 구석에 뜨는 반투명 알약. 조작부가 숨어도 이것만 남는다. */
-.scr-fs-wake {
-  position: absolute; right: 12px; bottom: 12px; z-index: 20;
-  width: 40px; height: 40px; border-radius: 999px;
-  display: grid; place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  background: rgba(10, 14, 20, 0.55); color: rgba(255, 255, 255, 0.86);
-  font-size: 18px; line-height: 1;
-  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+/* (삭제·요청: "모바일 전체화면 메뉴 버튼 제거") — 구석에 떠 있던 '⋯' 깨우기 알약
+   (.scr-fs-wake)이 있던 자리다. 이제 지도 아무 데나 누르면 조작부가 켜졌다 꺼진다
+   (ReplayMotionPlayer의 fsToggleUi). */
+
+/* ── 손가락 기기의 전체화면 배치(요청: "모바일 도구 오버레이 배치 잘해서 패널 남는
+   공간 많이 줄일수 있을듯 안그래도 화면 좁은데 맵 다가려져") ─────────────────────
+   여태 좌우 148px 기둥 둘이 서서, 폭 390px 화면에서 지도에 94px만 남겼다. 기둥을 걷고
+   위 한 줄 · 지도 가장자리 바 둘 · 아래 두 줄로 바꾼다 — 가운데는 통째로 지도다. */
+.scr-fs-top {
+  position: absolute; left: 0; right: 0; top: 0;
+  display: flex; align-items: flex-start; gap: 8px;
+  /* 노치·상태바만큼 내려 앉힌다(요청: "맨위 스타게이트 로고가 있어서 로스터 좀
+     내려야해") — 헤더 자체는 이제 판이 덮지만, 홈 화면 웹앱이나 노치 기기에서는
+     화면 맨 위 몇십 px이 시스템 몫이라 그만큼은 비워야 로스터가 안 잘린다. */
+  padding: calc(max(var(--safe-top, 0px), 8px) + 4px) 8px 10px;
+  background: linear-gradient(180deg, rgba(6, 9, 14, 0.55), rgba(6, 9, 14, 0));
 }
+.scr-fs-toproster { flex: 1 1 0; min-width: 0; }
+/* 나가기는 손가락으로 눌러야 하니 알약을 키운다 — 기본 .scr-motion-litbtn은 24×20이다. */
+.scr-fs-top .scr-fs-exit { flex: 0 0 auto; width: 36px; min-width: 36px; height: 32px; }
+/* 배속·각도는 지도 좌우 **가장자리**에 얹는다 — 평소 좁은 화면(.scr-motion-slidebar-l/-r)과
+   같은 자리다. 다만 그쪽은 지도 상자 기준이고 이쪽은 화면 기준이다: 전체화면의 지도는
+   화면보다 크게 깔려 끌려 다니므로 지도에 붙이면 밖으로 밀려난다. */
+.scr-fs-edge { position: absolute; top: 50%; transform: translateY(-50%); }
+.scr-fs-edge-l { left: 4px; }
+.scr-fs-edge-r { right: 4px; }
+/* 아래 두 줄 — 색상·성능·공유가 위, 재생·진행바·시각이 아래(요청의 모바일 구성 그대로). */
+.scr-fs-bottom-mob {
+  flex-direction: column; align-items: stretch; gap: 2px;
+  padding: 4px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+}
+.scr-fs-bottom-mob > .scr-motion-mobrow,
+.scr-fs-bottom-mob > .scr-motion-bar-controls { margin: 0; }
 
 /* 좁은 화면은 글자를 줄인다(요청: "모바일은 화면폭이 좁아 택스트 작게"). */
 @media (max-width: 900px) {
