@@ -28,6 +28,8 @@ export default function SlideBar({
   title, options, value, onChange, labelSide = "right", ...rest
 }: SlideBarProps) {
   const n = options.length;
+  /* 가장 긴 값 글자 수 — 값 칸의 자리를 이만큼 잡아 둔다(아래 주석). */
+  const widest = options.reduce((m, o) => Math.max(m, o.label.length), 1);
   const index = Math.max(0, options.findIndex((o) => o.value === value));
   const trackRef = useRef<HTMLDivElement>(null);
   /** 세로 자리(0~1, 위가 0)를 가장 가까운 눈금으로 잡는다. */
@@ -97,8 +99,13 @@ export default function SlideBar({
       </div>
       {/* 눈금마다 값을 적지 않고 **고른 값 하나만 바 아래**에 적는다(요청) — 여섯 개
           라벨이 레일 옆에 늘어서느라 바 폭의 대부분을 라벨이 먹고 있었다. 값이 한 자리에
-          고정되면 바는 눈금과 손잡이만 남아 얇아지고, 지금 값은 오히려 크게 읽힌다. */}
-      <span className="scr-slidebar-value">{options[index]?.label}</span>
+          고정되면 바는 눈금과 손잡이만 남아 얇아지고, 지금 값은 오히려 크게 읽힌다.
+          ★ 자리는 **가장 긴 값만큼 미리 잡아 둔다**(지적: 슬라이드바 폭이 왔다 갔다 함) —
+            ×1에서 ×20으로, 5°에서 30°로 넘어갈 때 글자가 한 칸 늘면서 바 전체가 그만큼
+            넓어졌다 좁아졌다 했다. 지도 위에 얹힌 조작부라 그 흔들림이 곧장 눈에 띈다. */}
+      <span className="scr-slidebar-value" style={{ minWidth: `${widest}ch` }}>
+        {options[index]?.label}
+      </span>
     </div>
   );
 }

@@ -11144,6 +11144,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-slidebar-value {
   font-size: 11px; font-weight: 700; color: #fff; line-height: 1;
   white-space: nowrap; font-variant-numeric: tabular-nums;
+  /* 자리는 컴포넌트가 가장 긴 값에 맞춰 잡아 준다(SlideBar.tsx) — 여기서는 그 칸 안에
+     가운데로 세우기만 한다. 왼쪽 정렬이면 폭은 안 흔들려도 글자가 좌우로 튄다. */
+  text-align: center;
 }
 /* 손잡이 — 눈금 사이에 머물지 않고 늘 눈금 위에 달라붙는다. */
 .scr-slidebar-thumb {
