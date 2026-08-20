@@ -14194,10 +14194,19 @@ export default function ReplayMotionPlayer({
       const simTr0 = simTracks?.get(e.tag);
       if (!simTr0 || simTr0.keys.length < 5) continue;
       const ks = simTr0.keys;
-      const wk: [number, number, number][] = new Array(Math.floor(ks.length / 5));
-      for (let q = 0, w2 = 0; q + 4 < ks.length; q += 5, w2 += 1) {
-        wk[w2] = [ks[q], ks[q + 1], ks[q + 2]];
+      /* ★ 걸음은 **이 생애의 구간만** 담는다(지적: "라바 알이 왜 기어다니냐 라바같은데")
+         — 자취 하나가 여러 생애를 품는다: 태그 하나가 라바 → 알 → 드론으로 갈아입고,
+         truthLives가 그 경계에서 생애를 가른다. 그런데 여기서 자취의 **모든** 키를
+         생애마다 통째로 복사했다. 그러면 라바의 걸음이 드론이 죽을 때까지 이어져,
+         아래 그리기의 '언제부터 언제까지 보이나'가 생애가 아니라 태그 전체가 된다 —
+         드론 곁에 라바와 알이 평생 따라다녔다. 구간 밖 키를 잘라 그 뿌리를 막는다. */
+      const wEnd = e.died ?? Infinity;
+      const wk: [number, number, number][] = [];
+      for (let q = 0; q + 4 < ks.length; q += 5) {
+        if (ks[q] < e.born || ks[q] > wEnd) continue;
+        wk.push([ks[q], ks[q + 1], ks[q + 2]]);
       }
+      if (wk.length === 0) continue;
       /* 상태(전수조사) — 시전 순간 그 자리에 있었으면 걸린다. 적이 건 것만(스태시스는
          아군 오폭도 언다). */
       const statuses: [number, number, string][] = [];
@@ -14293,7 +14302,7 @@ export default function ReplayMotionPlayer({
        적의 방어 건물(성큰·캐논·터렛·벙커)도 상대다: 행군하던 유닛이 그 곁에서 멈춰
        싸우고, 터렛·벙커 발사도 이 목록으로 겨눈다. */
     for (const e of entWalks) {
-      if (e.walk.length === 0 || t < e.walk[0][0]) continue;
+      if (e.walk.length === 0 || t < e.born) continue;
       if (e.died !== null && t >= e.died) continue;
       /* 유령 상대 제거(지적: 주변에 공격할 게 없는데 공격 모션) — 화면 규칙으로 이미
          죽었거나(체력 0 조기 사망) 숨은(수송 탑승·건설 흡수) 개체가 목록에 남아, 곁
@@ -17012,14 +17021,17 @@ export default function ReplayMotionPlayer({
               꼴을 반투명으로 — 아는 척은 안 하되 존재는 보인다. */}
           {entWalks.map((e, ei) => {
             const rp = e.walk;
-            if (rp.length === 0 || t < rp[0][0]) return null;
+            // 이 생애가 시작하기 전에는 안 그린다 — 걸음이 이미 구간으로 잘려 있다(위 ★).
+            if (rp.length === 0 || t < e.born) return null;
             /* 죽음의 주인은 하나다(과제 #69) — 시뮬이 돌면 시뮬, 아니면 분석의 d다.
                분석이 체력 자취를 d에서 0으로 맞춰 주므로 '체력바가 0이면 즉사'는 저절로
                성립한다(체력 0 = d). 셋을 견주던 옛 사슬은 걷었다 — 그 셋이 서로 달라서
                화면·시뮬·체력바가 제각각 다른 순간에 유닛을 죽이고 있었다. */
-            const simDie = simTracks?.get(e.tag)?.died ?? null;
-            const dieAt = simDie !== null ? simDie : e.died;
-            if (dieAt !== null && t >= dieAt + 1.2) return null;
+            /* 끝나는 때는 **이 생애의 것**이다 — 자취(태그)의 죽음을 보면 라바가 드론이
+               죽을 때까지 살아 있게 된다(위 ★). 변태로 끝난 생애는 여운도 없다: 다음
+               생애가 같은 자리에서 바로 서므로, 1.2초를 더 두면 알 위에 라바가 겹친다. */
+            const dieAt = e.died;
+            if (dieAt !== null && t >= dieAt + (e.end === "morph" ? 0 : 1.2)) return null;
             const team = teamOfRaw(e.raw);
             /* 걸음 속도 상한(요청) — 제 속도표로 죈다. 15%만 여유를 둔다: 교전 지연을
                따라잡는 몫이라, 이보다 크면 다시 '순간적으로 빨라짐'이 된다.
@@ -17312,10 +17324,13 @@ export default function ReplayMotionPlayer({
             // 죽음 창(dieAt~+1.2초) — 마커 대신 종족별 사망 효과가 남는다(체력 0 즉사 포함).
             if (dieAt !== null && t >= dieAt) {
               if (!qDeath) return null;
-              /* 인구 상한이 무른 합성은 죽는 장면이 없다(지적: "복제품들이 땅에 나타나서는
-                 곧 혼자 죽음") — 원장이 제 과잉 계상을 무르는 것이라, 때린 놈도 없고
-                 죽음도 아니다. 시뮬이 따로 죽였으면 그건 진짜 죽음이라 그대로 터진다. */
-              if (simDie === null && e.end === "cap") return null;
+              /* 변태로 끝난 생애는 죽은 것이 아니다 — 같은 몸이 다음 시절로 갈아입는
+                 것이라(라바 → 알 → 유닛, 히드라 → 럴커 알 → 럴커), 터뜨리면 해처리
+                 발치가 매번 폭발한다. 위 문이 여운 없이 걷으므로 여기까지 오지도
+                 않지만, 뜻을 못박아 둔다.
+                 (걷어냄) 'cap' — 인구 과잉 계상을 원장이 무르던 합성 죽음이다. 참값에는
+                 그런 무름이 없다(자취에 있는 개체는 실제로 있던 개체다). */
+              if (e.end === "morph") return null;
               const dk = race === "저그" ? "zerg" : race === "프로토스" ? "toss" : "mech";
               /* 죽은 자리에 못박기(지적: 체력 0으로 소멸한 유닛이 폭발하며 움직임) —
                  지금 표시 위치(스무딩·걸음이 계속 간다)가 아니라 죽은 '순간'의 자취
