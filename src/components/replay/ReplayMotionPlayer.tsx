@@ -50,7 +50,7 @@ import {
 import { posAt, type TrackPos, type TrackPt } from "../../utils/replayTrack";
 /* 승하차 딜레이도 표에서 읽는다(요청: "탑승 딜레이시간에 딱 맞추기") — 태우기는 오더
    게이트 9프레임, 내리기는 한 기당 18프레임이다. */
-import { FLYING_BUILDING_TPS, PICKUP_POLL_SEC, UNLOAD_GAP_SEC } from "../../utils/bwTransport";
+import { PICKUP_POLL_SEC, UNLOAD_GAP_SEC } from "../../utils/bwTransport";
 import {
   annulusPath, bandPath, bodyFace, capFace, curvePath3, depthNow, fine, groundEllipse,
   LOD_FINE, LOD_TRIM, lodFilter, shape, sideFace, tagKey, topFace, trim, bake,
@@ -254,7 +254,10 @@ function speedOf(
  *  속도를 1로 박고(bwgame.h order_BuildingLiftOff), 오더가 끝날 때의 속도 복원이 건물을
  *  빼놓아 원래 값으로 못 돌아온다. 여태 쓰던 1.2는 근거 없는 어림이라 이사·정찰 비행이
  *  1.6배 빨랐다. */
-const BUILDING_FLY_SPEED = FLYING_BUILDING_TPS;
+/* (걷어냄) BUILDING_FLY_SPEED — 이사 비행에 걸리는 시간을 '거리 ÷ 속도'로 어림하던
+   자다. 참값이 뜬 때와 앉은 때를 둘 다 말하므로(위 이사 비행 주석) 어림할 것이 없다:
+   구간이 곧 답이고, 속도는 그 구간에서 저절로 나온다. 원작 값(FLYING_BUILDING_TPS =
+   0.744타일/초)은 표에 그대로 남아 있다. */
 /* (제거) 재생 전용 이름 보강 SCOUT_KO — 유닛별 완성 시각표(unitDoneByRaw)에서 일꾼을
    걸러내는 데만 쓰던 이름표였다. 그 표를 걷으면서 마지막 쓰임이 없어졌다. */
 /** 생산 뒤 이 안이면 그 건물이 '일하는 중'이다(요청: 생산할 때 이름 표시) — 건물의 이름
@@ -16182,8 +16185,13 @@ export default function ReplayMotionPlayer({
                  — 드론이 그 자리에서 건물로 변하는 것이라, 스르륵 나타나면 '어디선가
                  생겨난 것'으로 읽힌다. 취소도 마찬가지로 그 자리에서 도로 드론이 된다. */
               const FADE_SEC = (bases.find((b9) => b9.key === raw)?.race) === "저그" ? 0 : 1.2;
+              /* 날아와 앉은 줄은 스르륵 나타나지 않는다(위 이사 비행 주석) — 같은 몸이
+                 방금 저기서 왔으므로, 페이드인은 '어디선가 새로 생겨났다'로 읽힌다. */
+              const landedHere = sec > 0 && buildsSrc.some(([, x2, y2, u2, r2, g2, l2]) =>
+                r2 === raw && u2 === unit && l2 !== undefined && (g2 ?? 0) === sec
+                && (x2 !== x || y2 !== y));
               const fade = FADE_SEC <= 0 ? 1 : Math.min(
-                sec > 0 ? Math.min(1, (t - sec) / FADE_SEC) : 1,
+                sec > 0 && !landedHere ? Math.min(1, (t - sec) / FADE_SEC) : 1,
                 goneEff > 0 && t >= goneEff ? Math.max(0, 1 - (t - goneEff) / FADE_SEC) : 1,
               );
               if (goneEff > 0 && t >= goneEff + FADE_SEC) return null;
@@ -16215,17 +16223,28 @@ export default function ReplayMotionPlayer({
               const flownFrom = sec > 0 && buildsSrc.find(([, x2, y2, u2, r2, g2]) =>
                 r2 === raw && u2 === unit && (g2 ?? 0) > 0 && (g2 ?? 0) === sec
                 && (x2 !== x || y2 !== y)) || undefined;
+              /* 이사 비행은 **떠난 자리 줄**이 그린다(지적: "테란 건물 띄운게 표현 안되고
+                 내린게 건설로 읽히는듯") ────────────────────────────────────────────
+                 참값은 뜬 때(liftAt)와 앉은 때(goneAt)를 둘 다 안다. 그러니 비행 구간은
+                 [뜬 때, 앉은 때]다. 여태는 그 구간을 안 보고, **앉은 자리 줄**이 제 시작
+                 시각부터 어림 속도로 날아오게 그렸다 — 그래서 둘이 겹쳤다:
+                   · 떠난 자리 줄은 뜬 때부터 앉을 때까지 **제자리에서 둥실**댄다
+                     (afloat이 자리를 안 옮긴다). 곧 뜨는 것은 보여도 가는 것은 안 보인다.
+                   · 앉은 자리 줄은 이미 앉은 시각부터 **그제야** 날아온다.
+                 이제 떠난 줄이 실제 구간 동안 두 자리 사이를 잇고, 앉은 줄은 제 시각에
+                 이미 앉아 있다(아래 landedFrom이 나타남 페이드를 끈다 — 날아와 앉은 것은
+                 새로 생겨난 것이 아니다). */
+              const flyTo = liftAt !== undefined && goneAt > liftAt
+                ? buildsSrc.find(([s2, x2, y2, u2, r2]) => r2 === raw && u2 === unit
+                  && s2 === goneAt && (x2 !== x || y2 !== y))
+                : undefined;
               /* 이사 비행 중인가 — 떠 있는 건물만 그림자를 지니는 데 쓴다(요청). */
               let landing = false;
-              if (flownFrom) {
-                const flyDist = Math.hypot(flownFrom[1] - x, flownFrom[2] - y);
-                const flyDur = Math.min(40, flyDist / BUILDING_FLY_SPEED);
-                if (t < sec + flyDur && flyDur > 0) {
-                  const k = Math.max(0, (t - sec) / flyDur);
-                  bx = flownFrom[1] + (x - flownFrom[1]) * k;
-                  by = flownFrom[2] + (y - flownFrom[2]) * k;
-                  landing = true;
-                }
+              if (flyTo && liftAt !== undefined && t >= liftAt) {
+                const k = Math.min(1, (t - liftAt) / Math.max(0.1, goneAt - liftAt));
+                bx = x + (flyTo[1] - x) * k;
+                by = y + (flyTo[2] - y) * k;
+                landing = true;
               }
               /* 뜬 건물의 자리 — 개체 트랙이 착륙 자리마다 줄을 나눠 싣기 때문에, 이 줄의
                  좌표가 곧 지금 그 건물이 있는 자리다. 표적 지도(engageFoes·entPosByTag)도

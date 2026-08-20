@@ -23,7 +23,7 @@
  */
 import { BUILDING_FOOT } from "./bwUnits";
 import { BW_UNIT_NAME } from "./bwUnitNames";
-import { TRUTH_ST_GONE, type TruthTrack, type TruthTracks } from "./openbwTracks";
+import { TRUTH_ST_GONE, TRUTH_ST_MOVE, type TruthTrack, type TruthTracks } from "./openbwTracks";
 
 /** 시즈탱크의 두 자세 — 종류 번호가 바뀌지만 같은 몸이다. */
 const TANK_ID = 5;
@@ -152,21 +152,24 @@ function livesOfTrack(
           if (tr.done[i]) { doneAt = tr.keys[i * 5]; break; }
         }
       }
-      /* 이륙·착륙 — 건물이 자리를 옮겼으면 뜬 것이다. 참 자취가 그 사이를 다 그리므로
-         뜬 때와 앉은 때만 찍어 주면 화면이 그 둘로 장면을 만든다. */
-      let px = tr.keys[segStart * 5 + 1];
-      let py = tr.keys[segStart * 5 + 2];
+      /* 이륙·착륙 — **자취의 상태가 직접 말한다**(지적: "테란 건물 띄운게 표현 안되고
+         내린게 건설로 읽히는듯"). 여태는 이웃 키의 자리 차이가 0.4타일을 넘나로 갈랐는데,
+         키는 프레임이 아니라 **경로가 휠 때** 찍히므로 그 차이가 비행을 뜻하지 않는다.
+         실측(배럭 태그 10514): 537.3초에 떴는데 첫 키의 차이가 0.3타일이라 못 잡고 한 키
+         늦게 떴고, 580.6초에 앉았는데 그 키의 차이가 0.5타일이라 **여전히 나는 중**으로
+         읽혀 다음 정지 키인 692.5초에야 앉았다 — 112초를 허공에 떠 있었고, 그 자리에
+         내린 몸은 1초 만에 사라졌다. 커맨드(태그 11103)처럼 네 번 뜨고 앉는 건물은
+         이 어림이 통째로 어긋난다.
+         상태는 그런 어림이 필요 없다: 나는 동안 MOVE(1)이고 앉으면 아니다. */
       let flying = false;
       for (let i = segStart + 1; i < end; i += 1) {
-        const x = tr.keys[i * 5 + 1];
-        const y = tr.keys[i * 5 + 2];
-        const moved = Math.abs(x - px) > 0.4 || Math.abs(y - py) > 0.4;
-        if (moved && !flying) { flying = true; lifts.push(tr.keys[i * 5]); }
-        else if (!moved && flying) {
+        const moving = tr.keys[i * 5 + 4] === TRUTH_ST_MOVE;
+        if (moving && !flying) { flying = true; lifts.push(tr.keys[i * 5]); }
+        else if (!moving && flying) {
           flying = false;
-          sites.push([tr.keys[i * 5], x - foot[0] / 2, y - foot[1] / 2]);
+          sites.push([tr.keys[i * 5],
+            tr.keys[i * 5 + 1] - foot[0] / 2, tr.keys[i * 5 + 2] - foot[1] / 2]);
         }
-        px = x; py = y;
       }
     }
     const mine: LifeOrder[] = [];
