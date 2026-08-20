@@ -128,15 +128,84 @@ static void bwdump_fail_report() {
     fprintf(stderr, "  %-32s %6d회  처음 %.1f초\n", kv.first.c_str(), kv.second,
       g_fail_first.count(kv.first) ? g_fail_first[kv.first] / 23.81 : -1.0);
 }
-/* 참값을 어디까지 믿어도 되나 — 리플레이 명령이 가리킨 유닛을 시뮬이 못 찾기 시작하면
-   그 뒤로는 시뮬이 실제 게임과 갈라졌다는 뜻이다. 1분 칸의 적중률이 처음 98% 밑으로
-   떨어진 칸의 시작 프레임을 돌려준다(끝까지 멀쩡하면 -1). */
+/* 겨냥 어긋남 — 리플레이의 우클릭·표적명령에는 표적 태그와 **그때의 좌표**가 함께 실린다.
+   사람은 유닛 그림 위를 찍으므로 그 좌표는 실제 게임에서 그 유닛이 있던 자리다. 우리 시뮬이
+   아는 자리와 얼마나 벌어지나를 재면, 고르기 적중률이 100%인 구간에서도 미세한 밀림이 보인다.
+   이것이 갈리기 훨씬 전부터 커지고 있으면 '서서히 쌓인 것'이고, 갈리는 순간까지 붙어 있으면
+   '한 번의 사건'이다. */
+static std::vector<int> g_aim[64];
+void bwdump_aim(int frame, int dx, int dy) {
+  int b = frame / 1429; if (b > 63) b = 63;
+  g_aim[b].push_back((int)(std::sqrt((double)dx * dx + (double)dy * dy) + 0.5));
+}
+
+/* 참값을 어디까지 믿어도 되나 ─────────────────────────────────────────────────
+   두 가지 신호를 함께 본다.
+    ① 고르기 적중률 — 리플레이 명령이 가리킨 유닛을 시뮬이 찾아내는 비율
+    ② 겨냥 어긋남 — 리플레이가 적어 둔 표적 좌표와 우리 시뮬의 그 유닛 자리 차이
+   둘 다 **두 분 잇달아** 나빠야 갈린 것으로 본다. 한 분만 나쁜 것은 큰 전투다 — 방금 죽은
+   유닛을 가리키는 명령이 몰리면 적중률이 잠깐 떨어졌다가 돌아온다. 1.16 판 20분이 그랬는데,
+   한 분만 보는 문턱은 23분 내내 멀쩡한 판을 갈렸다고 잘못 읽었다(못 찾은 26건이 전부
+   6~13프레임 전에 죽은 유닛이었다). 진짜 갈림은 안 돌아온다. */
+static double bwdump_aim_p90(int b) {
+  if (g_aim[b].size() < 8) return -1;
+  std::vector<int> v = g_aim[b];
+  std::sort(v.begin(), v.end());
+  return v[(size_t)(v.size() * 0.9)];
+}
 static int bwdump_trust_frame() {
-  for (int b = 0; b < 64; ++b) {
-    if (g_tot[b] < 20) continue;
-    if (g_ok[b] * 100 < g_tot[b] * 98) return b * 1429;
+  for (int b = 0; b + 1 < 64; ++b) {
+    const bool res_bad = g_tot[b] >= 20 && g_tot[b + 1] >= 20
+      && g_ok[b] * 100 < g_tot[b] * 97 && g_ok[b + 1] * 100 < g_tot[b + 1] * 97;
+    const double a0 = bwdump_aim_p90(b), a1 = bwdump_aim_p90(b + 1);
+    const bool aim_bad = a0 > 120 && a1 > 120;
+    if (res_bad || aim_bad) return b * 1429;
   }
   return -1;
+}
+void bwdump_aim_big(int frame, unsigned tag, int kind, int owner, int ox, int oy, int rx, int ry) {
+  if (!getenv("BWDUMP_AIMBIG")) return;
+  const int lim = atoi(getenv("BWDUMP_AIMBIG"));
+  const double d = std::sqrt((double)(rx - ox) * (rx - ox) + (double)(ry - oy) * (ry - oy));
+  if (d < lim) return;
+  /* 창(window)을 주면 그 구간만 본다 — BWDUMP_AIMFROM/AIMTO(초) */
+  const double sec = frame / 23.81;
+  if (getenv("BWDUMP_AIMFROM") && sec < atof(getenv("BWDUMP_AIMFROM"))) return;
+  if (getenv("BWDUMP_AIMTO") && sec > atof(getenv("BWDUMP_AIMTO"))) return;
+  static int n = 0;
+  if (n++ >= 60) return;
+  fprintf(stderr, "  %7.1f초 · 태그 %u(자리 %u 세대 %u) 종류 %d 임자 %d · 우리 (%d,%d) vs 리플레이 (%d,%d) · %.0f픽셀\n",
+    frame / 23.81, tag, tag & 0x1fff, tag >> 13, kind, owner, ox, oy, rx, ry, d);
+}
+static int g_so_bad[64], g_so_tot[64];
+static int g_so_shown = 0;
+void bwdump_selown(int frame, int co, int uo, int kind, unsigned tag) {
+  int b = frame / 1429; if (b > 63) b = 63;
+  g_so_tot[b] += 1;
+  if (co == uo) return;
+  g_so_bad[b] += 1;
+  if (getenv("BWDUMP_SELOWN") && g_so_shown++ < 16)
+    fprintf(stderr, "  %7.1f초 · 임자%d가 고른 유닛이 우리 시뮬에선 임자%d의 종류%d (태그 %u 자리 %u 세대 %u)\n",
+      frame / 23.81, co, uo, kind, tag, tag & 0x1fff, tag >> 13);
+}
+static void bwdump_selown_report() {
+  if (!getenv("BWDUMP_SELOWN")) return;
+  fprintf(stderr, "\n고른 유닛의 임자가 어긋난 비율(분마다)\n");
+  for (int b = 0; b < 64; ++b) if (g_so_tot[b] >= 5)
+    fprintf(stderr, "  %2d분  %5d건 중 %4d건 (%.1f%%)\n", b, g_so_tot[b], g_so_bad[b],
+      g_so_bad[b] * 100.0 / g_so_tot[b]);
+}
+static void bwdump_aim_report() {
+  if (!getenv("BWDUMP_AIM")) return;
+  fprintf(stderr, "\n겨냥 어긋남(픽셀) — 리플레이가 적은 표적 좌표 vs 우리 시뮬의 그 유닛 자리\n");
+  fprintf(stderr, "  분    건수   중앙   90%%    최대\n");
+  for (int b = 0; b < 64; ++b) {
+    if (g_aim[b].size() < 5) continue;
+    std::vector<int> v = g_aim[b];
+    std::sort(v.begin(), v.end());
+    fprintf(stderr, "  %2d %7zu %6d %6d %7d\n", b, v.size(), v[v.size()/2],
+      v[(size_t)(v.size()*0.9)], v.back());
+  }
 }
 static int g_ord_first[256], g_ord_cnt[256];
 void bwdump_ord(int id, int frame) {
@@ -329,6 +398,16 @@ int main(int argc, char** argv) {
       rf.next_frame();
       /* 보이는 것 + **숨은 것**(수송선 안·건물 안)까지 훑는다 — 실려 있는 동안은
          visible_units에서 빠지므로, 그것만 보면 드랍된 유닛이 통째로 안 잡힌다. */
+      if (getenv("BWDUMP_ACC")) {
+        /* 무엇이 쌓이나 — 분마다 누적 난수 뽑기·유닛 만들기·죽음·총알을 찍는다.
+           판마다 갈리는 시각의 값이 비슷하면 '뽑기 한 번마다 어긋날 확률'이 있다는 뜻이다. */
+        static int lastb = -1;
+        int b = (int)st.current_frame / 1429;
+        if (b != lastb) {
+          lastb = b;
+          fprintf(stderr, "ACC\t%d\t%llu\n", b, (unsigned long long)st.total_random_counts);
+        }
+      }
       if (getenv("BWDUMP_PEAK")) {
         static size_t pu = 0, pb = 0, ps = 0, pi = 0, po = 0, pp = 0, pt = 0;
         auto up = [](size_t& m, size_t v) { if (v > m) m = v; };
@@ -398,6 +477,8 @@ int main(int argc, char** argv) {
     bwdump_why_report();
     bwdump_rng_report();
     bwdump_ord_report();
+    bwdump_aim_report();
+    bwdump_selown_report();
     bwdump_fail_report();
     bwdump_trig_report();
     bwdump_owner_time_report();
