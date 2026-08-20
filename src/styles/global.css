@@ -11911,12 +11911,19 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    다이얼 크기 키우고 터치영역도 넓게") — 상자 32→48px, 손잡이 20→28px, 줄도 4→6px로
    굵힌다. 손잡이 중심 보정은 −(28−6)/2 = −11px이다. */
 @media (pointer: coarse) {
-  .scr-motion-range { height: 48px; }
-  .scr-motion-range::-webkit-slider-runnable-track { height: 6px; }
-  .scr-motion-range::-moz-range-track { height: 6px; }
-  .scr-motion-range::-webkit-slider-thumb { width: 28px; height: 28px; margin-top: -11px; }
-  .scr-motion-range::-moz-range-thumb { width: 28px; height: 28px; }
+  /* 재재요청("진행바 손잡이 확대 및 터치 영역 확대") — 상자 48→56px, 손잡이 28→34px,
+     줄 6→8px. 손잡이 중심 보정은 −(34−8)/2 = −13px이다. */
+  .scr-motion-range { height: 56px; }
+  .scr-motion-range::-webkit-slider-runnable-track { height: 8px; }
+  .scr-motion-range::-moz-range-track { height: 8px; }
+  .scr-motion-range::-webkit-slider-thumb { width: 34px; height: 34px; margin-top: -13px; }
+  .scr-motion-range::-moz-range-thumb { width: 34px; height: 34px; }
 }
+/* 전체화면에서는 손짓을 통째로 바가 갖는다 — 평소 화면의 pan-y는 "재생바 위에서 위아래
+   스와이프가 페이지 스크롤로 이어져야 한다"는 요청 때문인데, 전체화면 뒤에는 스크롤할
+   페이지가 없다. 그런데도 pan-y를 두면, 손잡이를 집으려는 손이 조금만 비스듬해도
+   브라우저가 세로 손짓으로 채 가서 끌기가 시작조차 안 된다. */
+.scr-fs-layer .scr-motion-range { touch-action: none; }
 .scr-motion-range::-webkit-slider-runnable-track {
   height: 4px; border-radius: 999px;
   background: linear-gradient(to right, var(--text) var(--p, 0%), var(--line-soft) var(--p, 0%));
