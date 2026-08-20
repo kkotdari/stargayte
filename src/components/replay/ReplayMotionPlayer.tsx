@@ -3763,7 +3763,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     // 그림자는 옅고 아담하게 — 관문이 떠 있는 자리만 알리면 된다.
     const out: ShapeFace[] = [sideFace(discPath3(0, 0.2, 0, 3.4), 0.16)];
     const C = 5;      // 관문 축 높이
-    const R = 3.1;    // 축에서 잎 배까지 반지름
+    /* 잎을 축 쪽으로 모은다(요청: "스타게이트 잎들 중심쪽으러 살짝 더 모으기") —
+       3.1 → 2.62. 넷이 벌어져 있으면 가운데 구멍이 넓어 관문이 '고리 넷'으로 흩어져
+       보인다. 반지름만 줄이므로 잎의 길이(LEN)·폭(TANG)·휨은 그대로다. */
+    const R = 2.62;   // 축에서 잎 배까지 반지름
     const LEN = 3.1;  // 잎의 앞뒤 반길이
     /* 접선 반폭 1.5 → 1.95(요청: "네 잎 너비 확대") — 잎이 넓어지면 관문의 구멍이
        좁아지고 넷이 한 통으로 읽힌다. 앞뒤 길이(LEN)와 반지름(R)은 그대로라 관문의
@@ -12143,8 +12146,8 @@ export const BLD_FILL_TARGET: Record<string, number> = {
  *  않는다"로 그친다 — 상한을 이유로 줄이면 멀쩡히 보이던 건물이 갑자기 작아진다.
  *  표에 없는 종류는 1(모델 그대로)이다. */
 export const BLD_NORM: Record<string, number> = {
-  academy: 1.399,
-  arch: 2.321,  // 상자 상한에 걸림
+  academy: 1.684,
+  arch: 2.413,  // 상자 상한에 걸림
   archives: 2.489,  // 상자 상한에 걸림
   armory: 1.223,
   assim: 1.655,
@@ -12195,7 +12198,7 @@ export const BLD_NORM: Record<string, number> = {
   sunkenfire: 1.326,
   tomb: 1.534,
   tombFlat: 1.441,
-  trapezoid: 2.141,
+  trapezoid: 2.476,
   tribunal: 1.954,
   turret: 2.312,  // 상자 상한에 걸림
   warpin: 2.196,
