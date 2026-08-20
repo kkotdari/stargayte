@@ -7070,84 +7070,64 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       })()
       : []),
   ],
-  /* 발키리(자료 기준 재작도 — 요청: 현재 모델 25%만 존중) ──────────────────────
-     자료가 말하는 것(starcraft.fandom.com/wiki/Valkyrie):
-       · "approximately 33 metres in length and 13 metres in width" — **길이가 폭의
-         2.5배**다. 여태 판은 폭이 길이만큼 넓은 뭉툭한 상자라, 프리깃이 아니라 트럭
-         이었다. 이 비 하나가 재작도의 첫 이유다.
-       · "H.A.L.O. cluster rockets, firing missiles in salvos of eight" — 여덟 발이
-         한 살보다. 발사관 여덟의 아가리가 앞을 보아야 '미사일 프리깃'으로 읽힌다.
-       · "equipped with eight rear engines" — 꽁무니 엔진이 여럿이다.
-       · "anti-fighter spacecraft … atmospheric and space flight" — 대기권에서도 나는
-         물건이라 뒤로 젖힌 날개가 있다.
-     남긴 것(25%) — 은색 몸에 개인색 날개라는 색 규약과, 코 경사면을 faceLight로
-     골라 그리는 방식. 나머지는 다시 짰다. */
+  /* 발키리(실물 참고) — 뭉툭한 큰 몸통에 둥근 코, 지붕의 미사일 튜브 다발 두 줄,
+     양옆의 납작한 판 날개, 뒤 엔진 블록. */
   valk: () => {
-    const STEEL = "#c9ced6";
-    const DEEP = "#9198a1";
-    const out: ShapeFace[] = [];
-    /* 동체 — (x, z) 단면을 뒤에서 앞으로 민 육각 기둥. 길이 7.6에 폭 2.2로 3.5:1이라
-       자료의 33×13(2.5:1)보다도 길쭉하게 잡았다(위에서 내려다보면 앞뒤가 눌려 보이므로). */
-    const hullPlan: [number, number][] = [
-      [-1.1, 5.3], [-0.66, 6.1], [0.66, 6.1], [1.1, 5.3], [0.72, 4.6], [-0.72, 4.6],
-    ];
-    out.push(...paintBase(prismYFaces(hullPlan, -3.4, 6.4, false, true), STEEL));
-    /* 코 — 동체 앞끝에서 한 점으로 좁아지는 쐐기. 단면이 축에 수직이라 어느 요잉에서도
-       결이 맞는다. */
-    out.push(...tagKey(paintBase(spirePillar({
-      x: 0, y: 0, h: 1, w: 1, segs: 6, sides: 6, oval: 1.15, caps: "none",
-      path: (t9: number): [number, number, number] => [0, 3 + 2.2 * t9, 5.42 - 0.3 * t9],
-      widthOf: (t9: number): number => 0.82 * (1 - t9) ** 0.7 + 0.06,
-    }), STEEL), depthNow(0, 4) * 1.6 + 1));
-    /* 조종석 — 코 뿌리에 얹힌 유리 캐노피. 테만 은색이다. */
-    {
-      const key = depthNow(0, 2.6) * 1.6 + 3;
-      out.push(...tagKey(paintBase(boxFaces3(0, 2.5, 1.5, 1.9, 0.24, 5.95), STEEL), key - 0.3));
-      out.push(...tagKey(
-        frustumFaces3(0, 2.5, 1.28, 1.7, 0.9, 1.2, 0.72, 6.15)
-          .map(([d9, o9, f9, k9, l9]) =>
-            [d9, f9 === undefined ? 0.7 : o9, f9 ?? "#8fc6dd", k9, l9] as ShapeFace),
-        key,
-      ));
-    }
-    /* 뒤로 젖힌 날개 한 쌍(개인색) — 동체 허리에서 밖·뒤로 뻗는 얇은 판. 잎 도형으로
-       짜 뿌리는 두껍고 끝은 한 점으로 모인다. 단면 기준을 위(z)로 못 박아 **납작한
-       날개**가 되게 한다(spread > 1 = 좌우로 넓고 위아래로 얇다). */
-    for (const m of [-1, 1] as const) {
-      out.push(...leafFaces({
-        /* 날개 폭(코드)을 키운다 — 실측 렌더에서 파란 실오라기 둘로만 보였다.
-           반코드 = thick × spread이므로 0.72 → 1.15로 올리고, 젖힘도 조금 눅인다. */
-        path: (t9: number): [number, number, number] =>
-          [m * (1 + 3.5 * t9), 1.1 - 2.9 * t9, 5.1 - 0.12 * t9],
-        waist: 0.34, thick: 0.23, spread: 5,
-        rootW: 0.6, rootPow: 0.6, tipPow: 1.1,
-        sides: 8, segs: 6, ref: [0, 0, 1],
-        key: depthNow(m * 2.4, -0.5) * 1.6 + 1.5,
-      }));
-    }
-    /* **H.A.L.O. 발사관 여덟**(자료: salvos of eight) — 동체 등에 2 × 4로 박힌다.
-       앞을 볼 때 여덟 아가리가 한눈에 들어와야 '한 살보 여덟 발'이 읽힌다. */
-    {
-      const key = 20 + depthNow(0, 0.2);
-      const pod: ShapeFace[] = [
-        ...paintBase(boxFaces3(0, 0.2, 2.15, 3.4, 0.95, 6.05), DEEP),
-      ];
-      for (const dx of [-0.75, -0.25, 0.25, 0.75]) {
-        for (const dz of [6.35, 6.72]) {
-          pod.push(...paintBase(tubeFaces(dx, -1.4, dx, 1.75, 0.19, dz, true), "#aab1b9"));
+    const plate = (m2: 1 | -1): string => polyPath3([
+      [m2 * 1.6, 0.8, 5.6], [m2 * 3.6, 0.2, 5.4], [m2 * 3.4, -1.8, 5.5], [m2 * 1.6, -1.2, 5.7],
+    ]);
+    /* (삭제·지적: 튜브 코가 요잉을 안 먹는다) — groundEllipse는 바닥에 눕힌 원이라
+       화면 고정 타원이었다. 관 자체가 capOpen으로 제 끝 단면을 그린다(아래). */
+    return [
+      // 날개만 빼고 전체 은색(요청).
+      ...paintBase(boxFaces3(0, -2.3, 2.2, 1, 1.5, 5.3), "#c9ced6"),
+      bodyFace(plate(1)), sideFace(plate(1), 0.2),
+      bodyFace(plate(-1)), topFace(plate(-1), 0.14),
+      ...paintBase(boxFaces3(0, -0.4, 2.8, 3.8, 2.2, 5), "#c9ced6"),
+      /* 코(재재지적: 경사 네 면의 보임) — 면을 고정으로 그려서 왼 면이 아예 없고 오른
+         면은 어느 각에서나 남았다. 앞·좌·우 기운 면을 faceLight로 판정해 보이는 면만
+         제 밑칠과 음영으로 그린다. 윗면은 내려다보는 카메라라 늘 보인다. */
+      ...tagKey((() => {
+        const top = polyPath3([[-1.35, 1, 6.05], [1.35, 1, 6.05], [0.75, 3, 5.9], [-0.75, 3, 5.9]]);
+        const nose: ShapeFace[] = [bodyFace(top), topFace(top, 0.18)];
+        const sides: [number, number, [number, number, number][]][] = [
+          [0, 1, [[-0.75, 3, 5.9], [0.75, 3, 5.9], [0.75, 3, 5], [-0.75, 3, 5]]],
+          [0.96, 0.29, [[1.35, 1, 6.05], [0.75, 3, 5.9], [0.75, 3, 5], [1.35, 1, 5]]],
+          [-0.96, 0.29, [[-1.35, 1, 6.05], [-0.75, 3, 5.9], [-0.75, 3, 5], [-1.35, 1, 5]]],
+        ];
+        for (const [nx, ny, pts] of sides) {
+          const { visible, face } = faceLight(nx, ny);
+          if (!visible) continue;
+          const d = polyPath3(pts);
+          nose.push(bodyFace(d), ...face(d));
         }
-      }
-      out.push(...tagKey(pod, key));
-      // 덮개 — 발사관 다발을 한 덩이로 묶는 얇은 판.
-      out.push(...tagKey(paintBase(boxFaces3(0, 0.2, 2.25, 3.5, 0.18, 6.98), STEEL), key + 0.5));
-    }
-    /* 꽁무니 엔진 여덟(자료) — 2 × 4로 박힌 노즐. 뒤를 볼 때만 포구가 어두워진다. */
-    for (const ex of [-0.78, -0.26, 0.26, 0.78]) {
-      for (const ez of [4.85, 5.75]) {
-        out.push(...paintBase(tubeFaces(ex, -3.3, ex, -4.1, 0.24, ez, true), "#9ba3ad"));
-      }
-    }
-    return out;
+        return paintBase(nose, "#c9ced6");
+      })(), depthNow(0, 2.1) + 0.9),
+      ...tagKey([
+        capFace(polyPath3([[-1.15, 1.35, 7.5], [1.15, 1.35, 7.5], [1.05, 1.75, 6.85], [-1.05, 1.75, 6.85]]), 0.45),
+        topFace(polyPath3([[-0.95, 1.42, 7.35], [-0.1, 1.42, 7.35], [-0.18, 1.66, 6.98], [-0.9, 1.66, 6.98]]), 0.3),
+      ], depthNow(0, 1.55) + 1.1),
+      /* 지붕 **H.A.L.O. 다연장 미사일 포드 한 쌍**(자료: "H.A.L.O. cluster rockets,
+         firing missiles in salvos of eight") — 여태 굵은 관 하나씩이라 '연장'이 안
+         읽혔다. 한 쌍에 넉 발씩, 모두 여덟 발이 한 살보다. 관 넷을 나란히 묶고 그
+         위에 덮개 판을 얹으면 발사기 한 덩이가 된다. 몸 위 얹힘이라 큰 키로 못 박는다. */
+      ...([-1, 1] as const).flatMap((m8): ShapeFace[] => {
+        const px = m8 * 0.95;
+        const pod: ShapeFace[] = [];
+        for (const [dx8, dz8] of [[-0.3, 7.02], [0.3, 7.02], [-0.3, 7.55], [0.3, 7.55]] as [number, number][]) {
+          pod.push(...paintBase(tubeFaces(px + dx8, -1.7, px + dx8, 1, 0.25, dz8, true), "#aab1b9"));
+        }
+        // 덮개 판 — 관 넷을 한 덩이로 묶는다.
+        pod.push(...paintBase(boxFaces3(px, -0.35, 1.22, 2.5, 0.22, 7.78), "#c9ced6"));
+        return tagKey(pod, 20 + depthNow(px, -0.35));
+      }),
+      /* 꽁무니 엔진 넷(자료: UED 판은 뒤 엔진이 여럿이다) — 뒤를 볼 때만 포구가
+         어두워지는 관 프리미티브라 각도를 스스로 탄다. */
+      ...([[-1.3, 5.4], [1.3, 5.4], [-0.55, 6.5], [0.55, 6.5]] as [number, number][])
+        .flatMap(([ex, ez]) => paintBase(
+          tubeFaces(ex, -2.5, ex, -3.5, 0.34, ez, true), "#9ba3ad",
+        )),
+    ];
   },
   /* 사이언스 베슬(정정) — 구 몸통 아래에 구형 추진기 세 개가 달린다. */
   vessel: () => {
@@ -9890,95 +9870,133 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...horns,
     ], "zerg", sacs);
   },
-  /* 드랍십(자료 기준 재작도 — 요청: 현재 모델 25%만 존중) ──────────────────────
-     자료가 말하는 것(starcraft.fandom.com/wiki/Quantradyne_APOD-33_dropship):
-       · "heavily armored tactical transport … twin engines fed hypergolic tanks that
-         result in plasma exhaust, said engines being capable of shifting their angles"
-         — **각도를 트는 엔진 둘**이 이 물건의 첫 표식이다. 동체에 딱 붙은 통이 아니라,
-         옆으로 내민 짧은 날개(파일런) 끝에 매달려 기울어 있는 나셀이다.
-       · "carry anything from troops to siege tanks" — 시즈탱크가 들어가는 화물칸이라
-         동체가 **네모지고 두껍다**. 매끈한 등판이 아니다.
-       · "easy deployment allowed through both aft and front ramps" — 앞뒤로 램프가
-         열린다: 앞머리 아래가 경사진 문이고 꽁무니도 그렇다.
-       · "design … heavily modelled on the one found in the movie Aliens" — 영화의
-         강습 수송기 꼴: 넓적한 동체 + 좌우로 벌린 엔진 + 앞유리 조종석.
-     남긴 것(25%) — 엔진 나셀을 관 프리미티브로 두는 방식과 은색·개인색 띠 규약.
-     굽은 등판 한 장으로 몸을 대신하던 짜임은 걷었다(화물칸이 안 읽혔다). */
+  /* 드랍십(실물 참고) — 양옆 굵은 엔진 포드(앞 단면이 둥글게 보인다) + 가운데 각진
+     몸통 + 뒤쪽 수직 꼬리날개. */
+  /* 드랍십(다시 셋, 지적) — 완만하게 휘어진 판의 양쪽 끝에 실린더가 달린 꼴: 좌우
+     굵은 통 한 쌍과 그 사이를 잇는 활처럼 젖혀진 판. 앞끝은 뭉뚝한 뚜껑, 뒤엔 꼬리. */
   dship: () => {
-    const STEEL = "#c9ced6";
-    const DEEP = "#9198a1";
-    const out: ShapeFace[] = [];
-    /* 화물칸 — 네모지고 두꺼운 동체. 위가 살짝 좁은 절두체라 옆에서 장갑이 기울어 보인다. */
-    out.push(...tagKey(paintBase(
-      frustumFaces3(0, -0.3, 3.4, 5.4, 3, 4.9, 1.9, 4.35), STEEL,
-    ), depthNow(0, -0.3) * 1.6));
-    /* 앞 램프(자료: front ramp) — 앞머리 아래가 비스듬히 깎인 문. 그 위가 조종석이다. */
-    {
-      const ramp = polyPath3([
-        [-1.5, 2.4, 4.35], [1.5, 2.4, 4.35], [1.35, 1.5, 5.6], [-1.35, 1.5, 5.6],
-      ]);
-      out.push(...tagKey([[ramp, 1, DEEP] as ShapeFace, topFace(ramp, 0.16)],
-        depthNow(0, 1.95) * 1.6 + 1));
-    }
-    /* 꽁무니 램프 — 앞과 짝. 뒤를 볼 때만 그린다. */
-    if (facingRatio(0, -1) > 0.05) {
-      const aft = polyPath3([
-        [-1.5, -3, 4.35], [1.5, -3, 4.35], [1.35, -2.1, 5.6], [-1.35, -2.1, 5.6],
-      ]);
-      out.push(...tagKey([[aft, 1, DEEP] as ShapeFace, sideFace(aft, 0.2)],
-        depthNow(0, -2.5) * 1.6 + 1));
-    }
-    /* 조종석 — 화물칸 앞머리 위에 얹힌 유리 상자. 테만 은색이다. */
-    {
-      const key = depthNow(0, 1.9) * 1.6 + 3;
-      out.push(...tagKey(paintBase(boxFaces3(0, 1.85, 2.5, 1.7, 0.26, 6.2), STEEL), key - 0.3));
-      out.push(...tagKey(
-        frustumFaces3(0, 1.85, 2.2, 1.55, 1.6, 1.15, 0.92, 6.42)
-          .map(([d9, o9, f9, k9, l9]) =>
-            [d9, f9 === undefined ? 0.68 : o9, f9 ?? "#8fc6dd", k9, l9] as ShapeFace),
-        key,
-      ));
-    }
-    /* **각도를 튼 엔진 나셀 한 쌍**(자료) — 짧은 파일런 끝에 매달려 앞이 살짝 들린
-       통. 앞은 흡기구, 뒤는 플라즈마 배기다. 파일런이 있어야 '트는 엔진'으로 읽힌다. */
-    for (const m of [-1, 1] as const) {
-      const px = m * 3.35;
-      const key = depthNow(px, -0.2) * 1.6 + 2;
-      // 파일런 — 동체 옆구리에서 밖으로 내민 짧은 날개.
-      out.push(...tagKey(paintBase(boxFaces3(m * 2.3, -0.2, 1.7, 1.5, 0.6, 5.1), DEEP), key - 0.4));
-      // 나셀 — 앞이 살짝 들린 통(앞 z가 뒤보다 높다).
-      out.push(...tagKey(paintBase(tubeFaces(px, -2.6, px, 2.2, 0.92, 4.7), STEEL), key));
-      // 앞 흡기구 — 앞을 볼 때만. 벽 원반이라 요잉을 따라 눌린다.
-      if (facingRatio(0, 1) > 0.06) {
+    // (정리) 손 좌표 문자열 헬퍼 pt — 굽은 판이 전부 curvePath3로 옮겨져 쓸 데가 없다.
+    const out: ShapeFace[] = []; // 꼬리 제거(재재지적)
+    /* 포드는 캡슐 한 덩이(정정: 앞 뭉치가 본체와 떨어져 보였고 검정이 끼었다) —
+       양 끝이 둥근 외곽선 하나로 그려 이음매도 어두운 단면도 없다. */
+    /* 포드는 모델 공간 관으로(재지적: 사선에서 실린더가 안 보임 + 추진체와 높이가
+       어긋남) — 화면 좌표 캡슐은 깊이 키가 없어 등판에 가려졌고, 화면에서 위로 민
+       만큼 모델 높이도 알 수 없었다. tubeFaces는 제 깊이를 달고 추진체와 같은
+       좌표계를 쓴다. 위 회색 광택 원은 제거(요청). */
+    const POD_Z = 4.2;
+    const pod = (tx: number): void => {
+      /* 깊이 보정을 걷는다(재지적: 사선에서 가려져야 할 실린더가 앞으로 튄다) —
+         관이 스스로 다는 깊이면 판·꼬리와 자연스럽게 앞뒤가 갈린다. */
+      out.push(...paintBase(tubeFaces(tx, -2.9, tx, 0.4, 0.82, POD_Z), "#c9ced6"));
+    };
+    // 폭 축소(지적: 몸체 폭 줄이기) — 포드 자리 ±3.1 → ±2.6.
+    pod(-2.6);
+    pod(2.6);
+    /* 포드 앞 흡기구(자료 재작도) — 엔진 나셀의 앞이 뚫려 있다는 표시. 앞을 볼 때만
+       그리고, 벽 원반이라 요잉을 따라 함께 눌린다. */
+    if (facingRatio(0, 1) > 0.06) {
+      for (const tx of [-2.6, 2.6]) {
         out.push(...tagKey([
-          [wallDiscPath(px, 2.28, 4.7, 0.72, 0.72), 1, "#5c636d"] as ShapeFace,
-          [wallDiscPath(px, 2.32, 4.7, 0.46, 0.46), 1, "#2c3238"] as ShapeFace,
-        ], key + 0.6));
+          [wallDiscPath(tx, 0.42, POD_Z, 0.62, 0.62), 1, "#5c636d"] as ShapeFace,
+          [wallDiscPath(tx, 0.4, POD_Z, 0.4, 0.4), 1, "#2c3238"] as ShapeFace,
+        ], depthNow(tx, 0.42) * 1.6 + 2));
       }
-      // 뒤 배기 노즐 — 관이 제 각도의 포구를 그린다. 그 앞에 플라즈마 불빛.
-      out.push(...tagKey(paintBase(tubeFaces(px, -2.5, px, -3.5, 0.72, 4.7, true), "#7d848d"), key + 0.3));
-      if (facingRatio(0, -1) > 0.05) {
-        out.push(...tagKey([
-          [wallDiscPath(px, -3.55, 4.7, 0.56, 0.56), 0.85, "#7fd0ff"] as ShapeFace,
-        ], key + 0.7));
-      }
-      // 나셀 허리의 개인색 띠 — 작아져도 남는 자리다(칠하지 않는다).
-      out.push(...tagKey(tubeFaces(px, -0.6, px, 0.1, 0.96, 4.7), key + 0.4));
     }
-    /* 꼬리 안정판 — 화물칸 꽁무니 위로 곧게 선 판 하나. 얇고 넓적하다. */
-    out.push(...tagKey(paintBase(spirePillar({
-      x: 0, y: 0, h: 1, w: 1, segs: 4, sides: 6, oval: 0.16, caps: "none",
-      path: (t9: number): [number, number, number] => [0, -2.4 - 0.5 * t9, 6.2 + 2 * t9],
-      widthOf: (t9: number): number => 1.05 - 0.55 * t9,
-    }), STEEL), depthNow(0, -2.6) * 1.6 + 2));
-    /* 착륙 다리 셋 — 화물칸 밑에서 짧게 내려선다(자료: 바닥이 내려온다). */
-    for (const [lx, ly] of [[-1.5, 1.5], [1.5, 1.5], [0, -2.2]] as [number, number][]) {
-      out.push(...tagKey(paintBase([
-        ...tubeFaces(lx, ly, lx, ly, 0.24, 3.9),
-        ...boxFaces3(lx, ly, 0.9, 0.75, 0.22, 3.5),
-      ], DEEP), depthNow(lx, ly) * 1.6 - 1));
+    /* 구부러진 판이 곧 윗 등(재지적: 판이 너무 아래) — 포드보다 한 단 높이 올리고
+       포드 뒤에 그려 등이 위로 올라앉는다. 판은 은색, 개인색 띠는 이 판에만(재지적). */
+    const plate = curvePath3([-2.6, 2.6, 6.1], [
+      [[0, 3.4, 6.95], [2.6, 2.6, 6.1]], [[2.6, -1.8, 5.9]], [[0, -2.8, 6.55], [-2.6, -1.8, 5.9]],
+    ]);
+    // 판 두께감(지적) — 앞 가장자리 아래로 내려앉는 옆면 띠.
+    const edge = curvePath3([-2.6, 2.6, 6.1], [
+      [[0, 3.4, 6.95], [2.6, 2.6, 6.1]], [[2.6, 2.6, 5.4]], [[0, 3.4, 6.25], [-2.6, 2.6, 5.4]],
+    ]);
+    /* 좌우 옆면(재지적: 등판 옆면이 안 보임) — 판 좌우 변에서 아래로 내려앉는 두께
+       띠. 보이는 쪽만 그린다. */
+    const flank = (m9: 1 | -1): string => curvePath3([m9 * 2.6, 2.6, 6.1], [
+      [[m9 * 2.6, -1.8, 5.9]], [[m9 * 2.6, -1.8, 5.2]], [[m9 * 2.6, 2.6, 5.4]],
+    ]);
+    /* 뒤 가장자리 두께(재지적: 등판 뒷면도 안 보임) — 앞 edge와 짝이 되는 뒤쪽 띠.
+       뒤가 보일 때만 그린다. */
+    const rearEdge = curvePath3([-2.6, -1.8, 5.9], [
+      [[0, -2.8, 6.55], [2.6, -1.8, 5.9]], [[2.6, -1.8, 5.2]], [[0, -2.8, 5.85], [-2.6, -1.8, 5.2]],
+    ]);
+    out.push(...tagKey([
+      [edge, 1, "#c9ced6"] as ShapeFace, sideFace(edge, 0.22),
+      ...(faceLight(0, -1).visible
+        ? [[rearEdge, 1, "#c9ced6"] as ShapeFace, ...faceLight(0, -1).face(rearEdge)]
+        : []),
+      ...([1, -1] as const).flatMap((m9): ShapeFace[] => {
+        const fl9 = faceLight(m9, 0);
+        if (!fl9.visible) return [];
+        return [[flank(m9), 1, "#c9ced6"] as ShapeFace, ...fl9.face(flank(m9))];
+      }),
+      [plate, 1, "#c9ced6"] as ShapeFace, topFace(plate, 0.18),
+      // 등판 개인색 띠 — 판의 굽은 결을 그대로 따르는 가로 줄.
+      bodyFace(curvePath3([-2.55, 1.9, 6.11], [
+        [[0, 2.6, 6.9], [2.55, 1.9, 6.11]], [[2.55, 0.6, 6.06]], [[0, 1.3, 6.83], [-2.55, 0.6, 6.06]],
+      ])),
+    ], depthNow(0, 0.4)));
+    /* 앞 조종석 캐노피(자료 재작도) — 등판 앞머리에 얹힌 유리 상자. 여태 드랍십에
+       사람이 타는 자리가 없어 '판 하나에 통 둘'로만 읽혔다. 테만 은색이고 위·옆·앞
+       세 면이 유리라 어느 각도에서도 조종석으로 읽힌다. */
+    out.push(...tagKey([
+      ...paintBase(boxFaces3(0, 2.2, 2, 1.5, 0.26, 6.62), "#c9ced6"),
+      ...frustumFaces3(0, 2.25, 1.75, 1.35, 1.35, 1.05, 0.9, 6.85)
+        .map(([d9, o9, f9, k9, l9]) =>
+          [d9, f9 === undefined ? 0.68 : o9, f9 ?? "#8fc6dd", k9, l9] as ShapeFace),
+    ], depthNow(0, 2.2) * 1.6 + 3));
+    /* 뒤 추진체 셋 — 짙은 은색(재지적). 앞에서 볼 때도 몸을 뚫고 보이던 문제(지적:
+       안 가려짐)는 꽁무니가 돌아앉으면 아예 그리지 않는 것으로 해결 — 몸판이 무깊이
+       면이라 painter로는 못 가린다. */
+    /* 추진체 넷(요청) — 본체 둘과 포드마다 하나씩, 크기를 키웠다. 꽁무니가 돌아앉으면
+       아예 안 그린다(몸판이 무깊이 면이라 painter로는 못 가린다). */
+    /* 추진체 넷(재지적: 보여야 하는데 안 보임) — 꽁무니 각도 게이트와 붙박이 키를
+       걷고 관 자체 깊이로 둔다. 뒤에서 보면 몸 밖으로 나와 보이고 앞에서 보면 몸이
+       가린다. 뒤 하얀 분사 원은 제거(요청). */
+    // 포드 추진체는 실린더 중심 높이에 맞춘다(재지적).
+    for (const [tx, tz] of [[-0.85, 5.6], [0.85, 5.6], [-2.6, POD_Z], [2.6, POD_Z]] as [number, number][]) {
+      out.push(...paintBase(tubeFaces(tx, -2.95, tx, -3.95, 0.82, tz), "#9ba3ad"));
     }
-    return zsorted(out);
+    /* 꼬리(재지적: 축을 몸통에 붙이고 비행기 꼬리 스타일로) — 등판 뒤끝에서 곧장
+       솟는 수직 안정판과, 그 위에서 좌우로 뻗는 수평 안정판 한 쌍. */
+    /* 꼬리 입체화(요청) — 수직 안정판은 좌우 두께, 수평 안정판은 위아래 두께를 갖는
+       판. 각 판의 둘레를 띠로 둘러 부피를 만든다. */
+    out.push(...tagKey(paintBase(((): ShapeFace[] => {
+      const finAt = (x9: number): [number, number, number][] => [
+        [x9, -1.9, 6.1], [x9, -4.6, 8.3], [x9, -5.3, 8.3], [x9, -5.3, 5.6],
+      ];
+      const wingAt = (z9: number): [number, number, number][] => [
+        [-1.6, -5.1, z9], [1.6, -5.1, z9], [1.2, -4.25, z9], [-1.2, -4.25, z9],
+      ];
+      /* 옆면은 뒤를 향한 것부터(재지적: 면들이 서로 가리고 비친다) — 무깊이 면이라
+         배열 순서가 곧 그리는 순서다. 각 옆면의 바깥 법선을 재 뒤→앞으로 정렬하면
+         앞면이 늘 위에 온다. */
+      const slab = (lo9: [number, number, number][], hi9: [number, number, number][],
+        topOp: number): ShapeFace[] => {
+        const f9: ShapeFace[] = [bodyFace(polyPath3(lo9)), sideFace(polyPath3(lo9), 0.26)];
+        const cX9 = lo9.reduce((q9, w9) => q9 + w9[0], 0) / lo9.length;
+        const cY9 = lo9.reduce((q9, w9) => q9 + w9[1], 0) / lo9.length;
+        const walls9 = lo9.map((_, i9) => {
+          const j9 = (i9 + 1) % lo9.length;
+          const mx9 = (lo9[i9][0] + lo9[j9][0]) / 2 - cX9;
+          const my9 = (lo9[i9][1] + lo9[j9][1]) / 2 - cY9;
+          const ml9 = Math.hypot(mx9, my9) || 1;
+          return {
+            d: polyPath3([lo9[i9], lo9[j9], hi9[j9], hi9[i9]]),
+            f: facingRatio(mx9 / ml9, my9 / ml9),
+          };
+        }).sort((q9, w9) => q9.f - w9.f);
+        for (const w9 of walls9) f9.push(bodyFace(w9.d), sideFace(w9.d, w9.f >= 0 ? 0.2 : 0.4));
+        f9.push(bodyFace(polyPath3(hi9)), topFace(polyPath3(hi9), topOp));
+        return f9;
+      };
+      return [
+        ...slab(finAt(-0.2), finAt(0.2), 0.14),
+        ...slab(wingAt(7.95), wingAt(8.25), 0.16),
+      ];
+    })(), "#c9ced6"), depthNow(0, -3.6)));
+    return out;
   },
   /* 셔틀(다시 둘, 실물 참고) — 둥근 게딱지 몸통 앞(+y)으로 굵은 집게 두 개가 안쪽으로
      굽어 마주 물고, 그 사이가 어두운 아가리(위에 빛 줄). 등 뒤엔 엔진 짐 세 덩이,
@@ -10648,7 +10666,7 @@ const MODEL_NORM: Record<string, number> = {
   drone: 1.077,
   droneGas: 1.005,
   droneMin: 1.056,
-  dship: 0.690,
+  dship: 0.704,
   dtemp: 0.917,
   egg: 1.218,
   fbat: 1.156,
@@ -10684,7 +10702,7 @@ const MODEL_NORM: Record<string, number> = {
   tanksiege: 0.519,
   tanksiegebody: 0.633,
   ultra: 0.437,
-  valk: 0.773,
+  valk: 0.900,
   vessel: 0.804,
   vulture: 0.803,
   wraith: 0.774,
