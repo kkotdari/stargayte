@@ -11069,7 +11069,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    못 박은 뒤로 그 줄이 지도보다 커질 수 있게 되면서 실제로 지도가 세로로 늘어났다.
    지도만 stretch에서 빼면 높이가 다시 제 가로세로비에서 나온다 — 기둥은 그대로 늘어나
    버튼 줄의 바닥 정렬(margin-top:auto)도 살아 있다. */
-.scr-motion-mapwrap > .scr-motion-map { align-self: flex-start; }
+/* 늘어나지만 않으면 되고, 자리는 **가운데**다(지적: "세로든 가로든 가운데 정렬은 해야지
+   지도") — flex-start면 기둥이 더 길 때 지도가 위로 붙어 아래가 휑하다. center면 남는
+   세로를 위아래로 나눠 갖는다. 가로는 좌우 기둥이 대칭이라 이미 가운데지만, 폭이
+   달라져도 흔들리지 않게 줄 자체에도 가운데 정렬을 걸어 둔다. */
+.scr-motion-mapwrap { justify-content: center; }
+.scr-motion-mapwrap > .scr-motion-map { align-self: center; }
 /* 지도 좌우 기둥 — 위에서부터 로스터 · 슬라이드 바 · (오른쪽만) 버튼 줄이 세로로 선다
    (요청: "로스터 슬라이드바 버튼류가 한 div에 세로로 배치되는거야"). */
 .scr-motion-side {

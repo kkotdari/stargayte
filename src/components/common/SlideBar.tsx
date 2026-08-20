@@ -37,7 +37,14 @@ export default function SlideBar({
     const r = el.getBoundingClientRect();
     if (r.height <= 0) return;
     const f = Math.min(1, Math.max(0, (clientY - r.top) / r.height));
-    const i = Math.round(f * (n - 1));
+    /* 값은 **눈금에 닿았을 때** 바뀐다(지적: "그 눈금에 도착하면 그때 딱 바뀌는건데
+       원래") — 여태 가장 가까운 눈금으로 반올림했더니 두 눈금의 **한가운데**를 지나는
+       순간 값이 넘어갔다. 손잡이는 아직 옛 눈금에 붙어 있는데 화면(각도·배속)만 먼저
+       바뀌니 '미끄러진다'는 느낌이 든다. 눈금에서 ±0.28칸 안에 들어와야 넘긴다 —
+       그 사이 구간에서는 옛 값이 그대로다. */
+    const raw = f * (n - 1);
+    const i = Math.round(raw);
+    if (Math.abs(raw - i) > 0.28) return;
     if (options[i] && options[i].value !== value) onChange(options[i].value);
   };
   const onDown = (e: ReactPointerEvent): void => {
