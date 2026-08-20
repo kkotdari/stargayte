@@ -63,25 +63,7 @@ static void bwdump_gen_report() {
     fprintf(stderr, "   (갈래 %d)\n", (int)v.size());
   }
 }
-static std::map<int,int> g_fit[64];
-static int g_fit_tot[64] = {0};
-void bwdump_shiftfit(int frame, int d, bool found) {
-  int b = frame / 1429; if (b > 63) b = 63;
-  g_fit[b][d] += 1; g_fit_tot[b] += 1;
-}
-static void bwdump_fit_report() {
-  if (!getenv("BWDUMP_FIT")) return;
-  fprintf(stderr, "\n못 찾은 고르기를 몇 칸 옮기면 맞나 (99=아무 데도 없음)\n");
-  for (int b = 0; b < 64; b += 1) {
-    if (!g_fit_tot[b]) continue;
-    std::vector<std::pair<int,int>> v(g_fit[b].begin(), g_fit[b].end());
-    std::sort(v.begin(), v.end(), [](const std::pair<int,int>& a, const std::pair<int,int>& c){ return a.second > c.second; });
-    fprintf(stderr, "  %2d분  실패 %-5d ", b, g_fit_tot[b]);
-    for (size_t i = 0; i < v.size() && i < 5; i += 1)
-      fprintf(stderr, "  %+d:%.0f%%", v[i].first, v[i].second * 100.0 / g_fit_tot[b]);
-    fprintf(stderr, "\n");
-  }
-}
+
 static std::map<std::string,int> g_why;
 void bwdump_why(const char* what, int step) {
   if (!getenv("BWDUMP_WHY")) return;
@@ -146,15 +128,6 @@ static void bwdump_fail_report() {
     fprintf(stderr, "  %-32s %6d회  처음 %.1f초\n", kv.first.c_str(), kv.second,
       g_fail_first.count(kv.first) ? g_fail_first[kv.first] / 23.81 : -1.0);
 }
-static int g_map[3] = {0,0,0};
-void bwdump_map(int which) { if (which >= 0 && which < 3) g_map[which] += 1; }
-static void bwdump_map_report() {
-  if (!getenv("BWDUMP_DUAL")) return;
-  int t = g_map[0] + g_map[1] + g_map[2];
-  if (!t) return;
-  fprintf(stderr, "\n자리 셈 맞대기 — 1700 빼기 %d회(%.1f%%) · 그대로 %d회(%.1f%%) · 둘 다 아님 %d회(%.1f%%)\n",
-    g_map[0], g_map[0]*100.0/t, g_map[1], g_map[1]*100.0/t, g_map[2], g_map[2]*100.0/t);
-}
 /* 참값을 어디까지 믿어도 되나 — 리플레이 명령이 가리킨 유닛을 시뮬이 못 찾기 시작하면
    그 뒤로는 시뮬이 실제 게임과 갈라졌다는 뜻이다. 1분 칸의 적중률이 처음 98% 밑으로
    떨어진 칸의 시작 프레임을 돌려준다(끝까지 멀쩡하면 -1). */
@@ -164,6 +137,22 @@ static int bwdump_trust_frame() {
     if (g_ok[b] * 100 < g_tot[b] * 98) return b * 1429;
   }
   return -1;
+}
+static int g_ord_first[256], g_ord_cnt[256];
+void bwdump_ord(int id, int frame) {
+  if (id < 0 || id >= 256) return;
+  if (!g_ord_cnt[id]) g_ord_first[id] = frame;
+  g_ord_cnt[id] += 1;
+}
+static void bwdump_ord_report() {
+  if (!getenv("BWDUMP_ORD")) return;
+  fprintf(stderr, "\n명령(order) 갈래마다 처음 쓰인 시각 — 늦은 차례 14개\n");
+  int order[256], n = 0;
+  for (int i = 0; i < 256; ++i) if (g_ord_cnt[i]) order[n++] = i;
+  for (int a = 0; a < n; ++a) for (int b = a+1; b < n; ++b)
+    if (g_ord_first[order[b]] > g_ord_first[order[a]]) { int t=order[a]; order[a]=order[b]; order[b]=t; }
+  for (int i = 0; i < n && i < 24; ++i)
+    fprintf(stderr, "  order %3d  처음 %6.2f분 · %d회\n", order[i], g_ord_first[order[i]]/23.81/60.0, g_ord_cnt[order[i]]);
 }
 static int g_rng_first[64], g_rng_cnt[64];
 void bwdump_rng(int source, int frame) {
@@ -340,10 +329,28 @@ int main(int argc, char** argv) {
       rf.next_frame();
       /* 보이는 것 + **숨은 것**(수송선 안·건물 안)까지 훑는다 — 실려 있는 동안은
          visible_units에서 빠지므로, 그것만 보면 드랍된 유닛이 통째로 안 잡힌다. */
+      if (getenv("BWDUMP_PEAK")) {
+        static size_t pu = 0, pb = 0, ps = 0, pi = 0, po = 0, pp = 0, pt = 0;
+        auto up = [](size_t& m, size_t v) { if (v > m) m = v; };
+        auto used = [](auto& c) { size_t f = 0; for (auto& v : c.free_list) { (void)v; ++f; } return c.size - f; };
+        up(pu, used(st.units_container));
+        up(pb, (size_t)st.active_bullets_size);
+        up(ps, used(st.sprites_container));
+        up(pi, used(st.images_container));
+        up(po, (size_t)st.active_orders_size);
+        up(pp, st.paths.size());
+        up(pt, st.thingies.size());
+        if ((int)st.current_frame + 1 >= (int)replay_st.end_frame)
+          fprintf(stderr, "그릇 최고치 — 유닛 %zu/%zu · 총알 %zu/%zu · 스프라이트 %zu/%zu · 이미지 %zu/%zu"
+            " · 명령 %zu/%zu · 경로 %zu/1024 · thingy %zu/%zu\n",
+            pu, bw_limits.units, pb, bw_limits.bullets, ps, bw_limits.sprites,
+            pi, bw_limits.images, po, bw_limits.orders, pp, pt, bw_limits.thingies);
+      }
       std::vector<unit_t*> all9;
       for (unit_t* u : ptr(st.visible_units)) all9.push_back(u);
       for (unit_t* u : ptr(st.hidden_units)) all9.push_back(u);
       for (unit_t* u : all9) {
+        if (getenv("BWDUMP_ORD")) bwdump_ord((int)u->order_type->id, (int)st.current_frame);
         const unsigned tg = bwdump_tag(u);
         auto it = lives.find(tg);
         if (it == lives.end()) {
@@ -388,10 +395,9 @@ int main(int argc, char** argv) {
           g_ok[b] * 100.0 / g_tot[b], g_slot[b] * 100.0 / g_tot[b]);
     }
     bwdump_gen_report();
-    bwdump_fit_report();
     bwdump_why_report();
-    bwdump_map_report();
     bwdump_rng_report();
+    bwdump_ord_report();
     bwdump_fail_report();
     bwdump_trig_report();
     bwdump_owner_time_report();
