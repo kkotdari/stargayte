@@ -11077,6 +11077,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    기둥(=지도) 세로 한가운데에 못 박아 둘이 같은 높이에 선다. */
 .scr-motion-side .scr-slidebar {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  /* 비침은 **모바일 사정**이다(요청: "모바일은 투명도고 PC는 노상관") — 좁은 화면에서는
+     바가 지도 위에 얹혀 그 자리의 지형을 가리지만, PC에서는 지도 **바깥** 기둥에 서므로
+     가릴 것이 없다. 가릴 것이 없으면 판은 진한 편이 눈에 편하다 — 기본값(0.2)을 여기서만
+     되돌린다. */
+  background: rgba(10, 14, 18, 0.42);
 }
 /* 버튼 줄은 기둥 맨 아래(요청: "버튼단은 하단으로 이동"). */
 .scr-motion-side .scr-motion-viewrow { margin-top: auto; }
