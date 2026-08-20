@@ -60,3 +60,7 @@ var/
 tools/openbw/data/
 tools/openbw/bwdump
 tools/openbw/bwextract
+
+tools/openbw/openbw/
+tools/openbw/CascLib/
+tools/openbw/*.o

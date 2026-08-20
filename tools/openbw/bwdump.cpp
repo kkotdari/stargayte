@@ -5,6 +5,7 @@
  *   arr/images.tbl · scripts/iscript.bin
  * 그림·소리는 한 장도 안 쓴다(시뮬레이션만 한다). */
 #include "replay.h"
+#include "modern_replay.h"
 #include <cstdio>
 #include <string>
 
@@ -16,7 +17,10 @@ int main(int argc, char** argv) {
   const int step = argc > 3 ? atoi(argv[3]) : 24;
 
   auto load_file = [&](a_vector<uint8_t>& dst, a_string filename) {
+    /* 이름 안의 역슬래시를 슬래시로 — images.tbl이 적어 둔 그림 이름은 "zerg\\avenger.grp"
+       처럼 윈도 표기라, 그대로 이으면 맥·리눅스에서 파일을 못 찾는다. */
     std::string p = dir + "/" + filename.c_str();
+    for (char& c : p) if (c == '\\') c = '/';
     FILE* f = fopen(p.c_str(), "rb");
     if (!f) error("자료 파일 없음: %s", p.c_str());
     fseek(f, 0, SEEK_END); long n = ftell(f); fseek(f, 0, SEEK_SET);
@@ -43,12 +47,35 @@ int main(int argc, char** argv) {
   action_state action_st;
   replay_state replay_st;
   replay_functions rf(player.st(), action_st, replay_st);
-  rf.load_replay_file(argv[2]);
+  /* 옛 형식이면 OpenBW의 읽개로, 리마스터(1.21+)면 우리 읽개로 — 표식과 압축이 달라
+     한쪽 읽개로는 다른 쪽을 못 읽는다(modern_replay.h 머리말). */
+  if (data_loading::is_modern_replay(argv[2])) {
+    fprintf(stderr, "리플레이 형식: 리마스터(1.21+)\n");
+    auto file_r = data_loading::file_reader<>(a_string(argv[2]));
+    rf.load_replay(data_loading::make_modern_replay_file_reader(file_r));
+  } else {
+    fprintf(stderr, "리플레이 형식: 옛것\n");
+    rf.load_replay_file(argv[2]);
+  }
 
   state& st = player.st();
-  fprintf(stderr, "맵 %dx%d · 끝 프레임 %d\n",
-    (int)st.game->map_width, (int)st.game->map_height, (int)replay_st.end_frame);
+  fprintf(stderr, "맵 %dx%d · 끝 프레임 %d · 이름 %s\n",
+    (int)st.game->map_width, (int)st.game->map_height, (int)replay_st.end_frame,
+    replay_st.map_name.c_str());
+  for (size_t i = 0; i != 12; ++i) {
+    if (!replay_st.player_name[i].empty())
+      fprintf(stderr, "  자리 %zu: %s · 미네랄 %d · 가스 %d\n", i,
+        replay_st.player_name[i].c_str(), (int)st.current_minerals[i], (int)st.current_gas[i]);
+  }
 
+  if (getenv("BWDUMP_IDX")) {
+    size_t n = 0, mn = (size_t)-1, mx = 0;
+    for (unit_t* u : ptr(st.visible_units)) {
+      n += 1; mn = std::min(mn, (size_t)u->index); mx = std::max(mx, (size_t)u->index);
+    }
+    fprintf(stderr, "시작 유닛 %zu기 · index %zu~%zu · 첫 유닛 id32 %u\n", n, mn, mx,
+      st.visible_units.empty() ? 0u : (unsigned)rf.get_unit_id_32(&*st.visible_units.begin()).raw_value);
+  }
   printf("frame\tid\towner\ttype\tx\ty\thp\tshield\tenergy\tcompleted\n");
   while ((int)st.current_frame < (int)replay_st.end_frame) {
     rf.next_frame();
