@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <string>
 #include <cstring>
+#include <zlib.h>
 #include <map>
 #include <vector>
 #include <algorithm>
@@ -286,6 +287,69 @@ static unsigned bwdump_tag(const bwgame::unit_t* u) {
     ? (unsigned)((u->index + 1) | ((u->unit_id_generation % (1u << 19)) << 13))
     : (unsigned)((u->index + 1) | ((u->unit_id_generation % (1u << 5)) << 11));
 }
+
+/* 트랙을 조밀한 이진으로 낸다 ─────────────────────────────────────────────────
+   글자(TSV)로 내면 26분짜리 8인전이 39MB다. 서버가 트랙 하나에 쓸 수 있는 자리는 4MB라
+   그대로는 못 싣는다. 그래서 이렇게 접는다(늘어놓으면 2.2MB가 된다).
+
+     전체 = zlib( 아래 바이트열 )              ← 작은 끝(little-endian)
+
+     머리
+       char[4] "OBWT" · u8 판(=1) · f32 초당프레임 · i32 믿을프레임(-1이면 끝까지)
+       u32 트랙수
+     트랙표 × 트랙수
+       u32 태그 · u8 임자 · u16 유닛종류 · u32 키수
+     키 흐름 (트랙 차례대로, 트랙마다 앞 키와의 **차이**를 적는다)
+       트랙마다 앞프레임=앞x=앞y=0에서 시작
+       키마다: varint(zigzag(프레임차)) · varint(zigzag(x차)) · varint(zigzag(y차))
+               · u8 방향(0~255) · u8 상태
+       varint는 7비트씩 끊어 담고 더 있으면 최상위 비트를 세운다.
+       zigzag는 (v << 1) ^ (v >> 31) — 음수도 작은 수로 만든다.
+
+   x·y는 픽셀, 프레임은 그대로다. 읽는 쪽이 초·타일·도로 바꾼다. */
+struct track_key_t { int frame, x, y, head, state, type, owner; };
+
+static void put_u8(std::vector<uint8_t>& b, unsigned v) { b.push_back((uint8_t)(v & 0xff)); }
+static void put_u16(std::vector<uint8_t>& b, unsigned v) { put_u8(b, v); put_u8(b, v >> 8); }
+static void put_u32(std::vector<uint8_t>& b, unsigned v) { put_u16(b, v); put_u16(b, v >> 16); }
+static void put_varint(std::vector<uint8_t>& b, int v) {
+  unsigned z = ((unsigned)v << 1) ^ (unsigned)(v >> 31);
+  for (;;) { uint8_t c = z & 0x7f; z >>= 7; if (z) b.push_back(c | 0x80); else { b.push_back(c); break; } }
+}
+
+static void bwdump_write_binary(const std::map<unsigned, std::vector<track_key_t>>& store, int trust_frame) {
+  std::vector<uint8_t> b;
+  b.push_back('O'); b.push_back('B'); b.push_back('W'); b.push_back('T');
+  put_u8(b, 1);
+  { const float fps = 23.81f; uint32_t bits; std::memcpy(&bits, &fps, 4); put_u32(b, bits); }
+  put_u32(b, (unsigned)trust_frame);
+  put_u32(b, (unsigned)store.size());
+  for (const auto& kv : store) {
+    /* 임자·종류는 **마지막에 무엇이었나**로 잡는다 — 라바가 알이 되고 저글링이 되는 것이
+       한 태그의 한 생애다. 사라짐(3)은 종류를 안 바꾸므로 건너뛴다. */
+    int owner = kv.second.empty() ? 0 : kv.second.front().owner;
+    int type = kv.second.empty() ? 0 : kv.second.front().type;
+    for (const auto& k : kv.second) if (k.state != 3) { owner = k.owner; type = k.type; }
+    put_u32(b, kv.first); put_u8(b, (unsigned)owner);
+    put_u16(b, (unsigned)type); put_u32(b, (unsigned)kv.second.size());
+  }
+  for (const auto& kv : store) {
+    int pf = 0, px = 0, py = 0;
+    for (const auto& k : kv.second) {
+      put_varint(b, k.frame - pf); put_varint(b, k.x - px); put_varint(b, k.y - py);
+      put_u8(b, (unsigned)k.head); put_u8(b, (unsigned)k.state);
+      pf = k.frame; px = k.x; py = k.y;
+    }
+  }
+  uLongf out_len = compressBound((uLong)b.size());
+  std::vector<uint8_t> out(out_len);
+  if (compress2(out.data(), &out_len, b.data(), (uLong)b.size(), 9) != Z_OK)
+    { fprintf(stderr, "트랙을 누르지 못했다\n"); exit(1); }
+  fwrite(out.data(), 1, out_len, stdout);
+  fprintf(stderr, "이진 트랙 — 트랙 %zu개 · 편 %.1fMB → 눌러서 %.1fMB\n",
+    store.size(), b.size() / 1048576.0, out_len / 1048576.0);
+}
+
 using namespace bwgame;
 
 int main(int argc, char** argv) {
@@ -407,9 +471,11 @@ int main(int argc, char** argv) {
      빠짐없이 훑으므로 **한 프레임만 살다 간 유닛도 안 놓친다**. */
   bool units_mode = false;
   bool tracks_mode = false;
+  bool bin_mode = false;
   for (int i = 3; i < argc; ++i) {
     if (std::string(argv[i]) == "--units") units_mode = true;
     if (std::string(argv[i]) == "--tracks") tracks_mode = true;
+    if (std::string(argv[i]) == "--bin") bin_mode = true;
   }
   /* 컴퓨터 플레이어가 끼어 있으면 이 판은 원리상 못 돌린다 — OpenBW에는 컴퓨터 AI가
      아예 없다(AIPatrol·ComputerAI 같은 명령이 구현되어 있지 않다). 참값을 내 봐야
@@ -546,10 +612,19 @@ int main(int argc, char** argv) {
        매 표본을 그대로 적으면 14분짜리가 240만 줄이다. **곧게 가는 동안은 안 적는다** —
        직전 표본이 '적은 점 → 지금'을 잇는 선에서 얼마나 벗어나는지 보고, 벗어날 때만
        그 직전 표본을 꺾임점으로 남긴다. 읽는 쪽은 키 사이를 곧게 이어 그린다. */
-    printf("frame\ttag\towner\ttype\tx\ty\thead\tstate\n");
-    struct key_t { int frame, x, y, head, state, type, owner; };
+    if (!bin_mode) printf("frame\ttag\towner\ttype\tx\ty\thead\tstate\n");
+    using key_t = track_key_t;
     long why9[6] = {0,0,0,0,0,0};
-    auto emit9 = [](unsigned tg, const key_t& c) {
+    /* --bin이면 글자로 안 쓰고 모아 두었다가 끝에 한 번에 눌러서 낸다(아래 참고).
+       26분짜리 8인전이 글자로는 39MB인데 눌러서 2.2MB가 된다 — 서버 상한이 4MB다. */
+    std::map<unsigned, std::vector<key_t>> store9;
+    std::set<unsigned> skipres9;   /* 지도가 놓아 준 자원 — 앱이 지도에서 그린다 */
+    auto is_map_resource = [](int t) {
+      return t == 176 || t == 177 || t == 178 || t == 188 || t == 214;
+    };
+    auto emit9 = [&](unsigned tg, const key_t& c) {
+      if (skipres9.count(tg)) return;
+      if (bin_mode) { store9[tg].push_back(c); return; }
       printf("%d\t%u\t%d\t%d\t%d\t%d\t%d\t%d\n", c.frame, tg, c.owner,
         c.type, c.x, c.y, c.head, c.state);
     };
@@ -588,7 +663,10 @@ int main(int argc, char** argv) {
           (int)rf.direction_index(u->heading), state9, (int)u->unit_type->id, (int)u->owner };
         seen9.insert(tg);
         auto it = anchor9.find(tg);
-        if (it == anchor9.end()) { why9[0]++; emit9(tg, cur); anchor9[tg] = cur; continue; }
+        if (it == anchor9.end()) {
+          if (is_map_resource(cur.type)) { skipres9.insert(tg); anchor9[tg] = cur; continue; }
+          why9[0]++; emit9(tg, cur); anchor9[tg] = cur; continue;
+        }
         const key_t anc = it->second;
         auto pit = pend9.find(tg);
         if (anc.state != cur.state || anc.type != cur.type || anc.owner != cur.owner) {
@@ -628,7 +706,8 @@ int main(int argc, char** argv) {
     for (auto& kv : pend9) emit9(kv.first, kv.second);
     /* 믿을 수 있는 구간은 **다 돌고 나서야** 알 수 있다(고르기 적중률로 재므로).
        그래서 맨 뒤에 적는다 — 읽는 쪽은 줄을 다 훑으니 자리는 상관없다. */
-    printf("#trust\t%d\n", bwdump_trust_frame());
+    if (!bin_mode) printf("#trust\t%d\n", bwdump_trust_frame());
+    if (bin_mode) bwdump_write_binary(store9, bwdump_trust_frame());
     {
       const int tf = bwdump_trust_frame();
       fprintf(stderr, "키가 나온 까닭 — 처음 %ld · 갈래바뀜 %ld · 길벗어남 %ld · 방향꺾임 %ld · 오래됨 %ld · 사라짐 %ld\n",
