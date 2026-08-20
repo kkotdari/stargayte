@@ -42,8 +42,15 @@ writeFileSync(src, `export { buildUnitTracks } from ${JSON.stringify(join(ROOT, 
 {
   const ebin = join(ROOT, "node_modules", "esbuild", "bin", "esbuild");
   const head = readFileSync(ebin).subarray(0, 4);
-  const native = (head[0] === 0x7f && head[1] === 0x45 && head[2] === 0x4c && head[3] === 0x46)
-    || (head[0] === 0x4d && head[1] === 0x5a);
+  /* 실행 파일인가 — 아니면 esbuild 껍데기 스크립트라 node로 돌려야 한다.
+     ★ 맥(Mach-O)을 빠뜨리고 있었다(수리: 이 자가 아예 안 돌았다) — ELF·PE만 보다가
+     맥의 실행 파일을 스크립트로 알고 node에 먹여 SyntaxError가 났다. */
+  const mg = (a, b, c, d) => head[0] === a && head[1] === b && head[2] === c && head[3] === d;
+  const native = mg(0x7f, 0x45, 0x4c, 0x46)          // ELF (리눅스)
+    || (head[0] === 0x4d && head[1] === 0x5a)        // PE  (윈도)
+    || mg(0xcf, 0xfa, 0xed, 0xfe) || mg(0xce, 0xfa, 0xed, 0xfe)
+    || mg(0xfe, 0xed, 0xfa, 0xcf) || mg(0xfe, 0xed, 0xfa, 0xce)
+    || mg(0xca, 0xfe, 0xba, 0xbe);                   // Mach-O (맥)
   const a = [src, "--bundle", "--platform=node", "--format=esm", "--log-level=error", `--outfile=${out}`];
   execFileSync(native ? ebin : process.execPath, native ? a : [ebin, ...a],
     { cwd: ROOT, stdio: ["ignore", "ignore", "inherit"] });

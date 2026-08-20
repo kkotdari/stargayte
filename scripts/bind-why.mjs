@@ -47,7 +47,25 @@ const PATCHES = [
   ],
   [
     "          if (life.born < front || life.born - r.it.done > 300) continue;",
-    "          if (life.born < front) { __W.front += 1; continue; }\n"
+    /* 조건들을 **따로따로** 재 둔다 — 순서대로 걸러 내면 맨 앞 조건이 탈락을 다 먹어,
+       뒤 조건이 진짜 병목인지 아닌지가 안 보인다(실측: 앞끝이 86,400회를 먹었는데
+       정작 창을 무한히 열어도 결합률이 한 자리도 안 움직였다). 네 조건 중 **딱 하나만
+       걸리는 쌍**이 곧 "그 하나만 고치면 붙는" 몫이다. */
+    "          {\n"
+    + "            const _mk = (() => { let b = '', n = 0; for (const [k, c] of life.kinds) if (c > n) { b = k; n = c; } return b; })();\n"
+    + "            const _isW = r.it.unit === (RACE_WORKER[raceOf.get(r.it.pid) ?? ''] ?? '');\n"
+    + "            const _atk = life.ev.some((v) => v[3] === 7);\n"
+    + "            const _bld = life.ev.some((v) => v[3] === 2);\n"
+    + "            const bad = [\n"
+    + "              life.born < front,\n"
+    + "              life.born - r.it.done > 300,\n"
+    + "              pass === 0 ? _mk !== r.it.unit : _mk !== '',\n"
+    + "              pass === 1 && ((_isW && _atk) || (!_isW && _bld)),\n"
+    + "            ];\n"
+    + "            const nBad = bad.filter(Boolean).length;\n"
+    + "            if (nBad === 1) __W.only[bad.findIndex(Boolean)] += 1;\n"
+    + "          }\n"
+    + "          if (life.born < front) { __W.front += 1; continue; }\n"
     + "          if (life.born - r.it.done > 300) { __W.back += 1; continue; }",
   ],
   [
@@ -63,6 +81,12 @@ const PATCHES = [
     + "            if (!isWorkerItem && builtSomething) { __W.act += 1; continue; }",
   ],
   [
+    "          if (pass === 1) life.kinds.set(r.it.unit, 1);\n          attach(life, r);",
+    "          if (pass === 1) life.kinds.set(r.it.unit, 1);\n"
+    + "          __W.bind[pass] += 1;\n"
+    + "          attach(life, r);",
+  ],
+  [
     "    // ③ 잔여는 합성 개체 — 한 번도 안 집힌 유닛도 태어나 랠리까지는 산다(요청).",
     "    {\n"
     + "      const lostBy = new Map();\n"
@@ -74,13 +98,61 @@ const PATCHES = [
     + "      }\n"
     + "      __W.noCand = noCand;\n"
     + "      __W.freeLives = candLives.filter((l) => !l.spawned).length;\n"
+    /* 자유 생애의 임자에게 **아직 안 붙은 원장이 남아 있나** — 남아 있는데도 자유라면
+       조건이 막은 것이고, 안 남아 있다면 애초에 붙을 데가 없던 것이다(그 임자의 원장이
+       먼저 동났다). 둘은 고칠 자리가 아예 다르다. */
+    + "      const openBy = new Map();\n"
+    + "      for (const r of items) if (!r.it.bound) openBy.set(r.it.pid, (openBy.get(r.it.pid) ?? 0) + 1);\n"
+    + "      let freeWithItem = 0; let freeNoItem = 0;\n"
+    + "      for (const l of candLives) {\n"
+    + "        if (l.spawned) continue;\n"
+    + "        if ((openBy.get(l.owner) ?? 0) > 0) freeWithItem += 1; else freeNoItem += 1;\n"
+    + "      }\n"
+    + "      __W.freeWithItem = freeWithItem;\n"
+    /* 마지막 결정타 — **이름 없는** 자유 생애 하나하나에 대해, 임자의 안 붙은 원장을
+       전부 훑어 어느 조건이 막았는지 센다. 여기서 0이 아닌 칸이 곧 다음에 손댈 자리다. */
+    + "      const blk = { front: 0, back: 0, act: 0, none: 0, lives: 0 };\n"
+    + "      for (const l of candLives) {\n"
+    + "        if (l.spawned || l.kinds.size > 0) continue;\n"
+    + "        blk.lives += 1;\n"
+    + "        const c = { front: 0, back: 0, act: 0, ok: 0 };\n"
+    + "        for (const r of items) {\n"
+    + "          if (r.it.bound || r.it.pid !== l.owner) continue;\n"
+    + "          if (l.born < r.it.done - 8) { c.front += 1; continue; }\n"
+    + "          if (l.born - r.it.done > 300) { c.back += 1; continue; }\n"
+    + "          const isW = r.it.unit === (RACE_WORKER[raceOf.get(r.it.pid) ?? ''] ?? '');\n"
+    + "          const atk = l.ev.some((v) => v[3] === 7);\n"
+    + "          const bl = l.ev.some((v) => v[3] === 2);\n"
+    + "          if ((isW && atk) || (!isW && bl)) { c.act += 1; continue; }\n"
+    + "          c.ok += 1;\n"
+    + "        }\n"
+    + "        if (c.ok > 0) blk.none += 1;\n"
+    + "        else if (c.front >= c.back && c.front >= c.act) blk.front += 1;\n"
+    + "        else if (c.back >= c.act) blk.back += 1;\n"
+    + "        else blk.act += 1;\n"
+    + "      }\n"
+    + "      __W.blk = blk;\n"
+    + "      __W.freeNoItem = freeNoItem;\n"
+    /* 남은 자유 생애가 **무슨 이름**인지 — 여기가 다음에 손댈 자리를 정한다.
+       이름이 없으면(무명) 2차가 아무 원장에나 붙일 수 있었는데도 안 붙은 것이고,
+       이름이 있으면 그 이름의 원장이 동나서 못 붙은 것이다. 둘은 고칠 방법이 다르다. */
+    + "      const freeMix = new Map();\n"
+    + "      for (const l of candLives) {\n"
+    + "        if (l.spawned) continue;\n"
+    + "        let mk9 = ''; let bn9 = 0;\n"
+    + "        for (const [k9, n9] of l.kinds) if (n9 > bn9) { mk9 = k9; bn9 = n9; }\n"
+    + "        const g9 = [...l.groupKinds][0] ?? '';\n"
+    + "        const key9 = mk9 || (g9 ? `(무리 ${g9})` : (l.bld ? '(건물)' : '(무명)'));\n"
+    + "        freeMix.set(key9, (freeMix.get(key9) ?? 0) + 1);\n"
+    + "      }\n"
+    + "      __W.freeMix = [...freeMix.entries()].sort((a, b) => b[1] - a[1]);\n"
     + "      __W.candLives = candLives.length;\n"
     + "      globalThis.__BIND_WHY = { why: __W, lostBy: [...lostBy.entries()].sort((a, b) => b[1] - a[1]) };\n"
     + "    }\n"
     + "    // ③ 잔여는 합성 개체 — 한 번도 안 집힌 유닛도 태어나 랠리까지는 산다(요청).",
   ],
 ];
-const HEAD = "const __W = { taken: 0, saw: 0, front: 0, back: 0, kind0: 0, kind1: 0, act: 0 };\n";
+const HEAD = "const __W = { bind: [0, 0], only: [0, 0, 0, 0], taken: 0, saw: 0, front: 0, back: 0, kind0: 0, kind1: 0, act: 0 };\n";
 
 async function bundleProbe() {
   const src = readFileSync(join(ROOT, "src/utils/replayUnits.ts"), "utf8");
@@ -96,8 +168,16 @@ async function bundleProbe() {
   writeFileSync(ts, text);
   const ebin = join(ROOT, "node_modules", "esbuild", "bin", "esbuild");
   const head = readFileSync(ebin).subarray(0, 4);
-  const native = (head[0] === 0x7f && head[1] === 0x45 && head[2] === 0x4c && head[3] === 0x46)
-    || (head[0] === 0x4d && head[1] === 0x5a);
+  /* 실행 파일인가 — 아니면 esbuild 껍데기 스크립트라 node로 돌려야 한다.
+     ★ 맥(Mach-O)을 빠뜨리고 있었다(수리: 이 자가 아예 안 돌았다) — ELF·PE만 보다가
+     맥의 실행 파일을 스크립트로 알고 node에 먹여 SyntaxError가 났다. Mach-O는
+     cf fa ed fe(64비트 LE) · fe ed fa cf(BE) · ca fe ba be(유니버설)로 시작한다. */
+  const mg = (a, b, c, d) => head[0] === a && head[1] === b && head[2] === c && head[3] === d;
+  const native = mg(0x7f, 0x45, 0x4c, 0x46)          // ELF (리눅스)
+    || (head[0] === 0x4d && head[1] === 0x5a)        // PE  (윈도)
+    || mg(0xcf, 0xfa, 0xed, 0xfe) || mg(0xce, 0xfa, 0xed, 0xfe)
+    || mg(0xfe, 0xed, 0xfa, 0xcf) || mg(0xfe, 0xed, 0xfa, 0xce)
+    || mg(0xca, 0xfe, 0xba, 0xbe);                   // Mach-O (맥)
   const a = [ts, "--bundle", "--platform=node", "--format=esm", "--log-level=error", `--outfile=${out}`];
   execFileSync(native ? ebin : process.execPath, native ? a : [ebin, ...a],
     { cwd: ROOT, stdio: ["ignore", "ignore", "inherit"] });
@@ -147,6 +227,25 @@ for (const path of files) {
     + ` · 못 지음 ${unbound} · 합성 개체 ${st.prodSyn}`);
   console.log(`  생애 후보 ${why.candLives} · 끝까지 짝 없이 남은 자유 생애 ${why.freeLives}`
     + ` · 자유 생애가 아예 없던 원장 ${why.noCand}건`);
+  if (why.bind) console.log(`  ▷ 붙인 곳: 1차(같은 이름) ${why.bind[0]}건 · 2차(무명) ${why.bind[1]}건`);
+  if (why.freeWithItem !== undefined) {
+    console.log(`  ▷ 자유 생애 ${why.freeLives}기 중 임자에게 안 붙은 원장이 **남아 있는데도** 자유인 것`
+      + ` ${why.freeWithItem}기 · 붙을 원장이 아예 없던 것 ${why.freeNoItem}기`);
+  }
+  if (why.blk) {
+    const b = why.blk;
+    console.log(`  ▷ 이름 없는 자유 생애 ${b.lives}기를 막은 것: 창 앞끝 ${b.front} · 창 뒤끝 ${b.back}`
+      + ` · 행동 ${b.act} · **아무것도 안 막았는데 자유** ${b.none}`);
+  }
+  if (why.only) {
+    const L = ["창 앞끝", "창 뒤끝", "정체", "행동"];
+    console.log(`  ▷ 넷 중 **딱 하나만** 걸린 쌍(그것만 고치면 붙는다): `
+      + why.only.map((n, i) => `${L[i]} ${n}`).join(" · "));
+  }
+  if (why.freeMix) {
+    console.log(`  남은 자유 생애의 이름 앞 10종: `
+      + why.freeMix.slice(0, 10).map(([k, n]) => `${k}×${n}`).join(" "));
+  }
   for (const k of ["taken", "saw", "front", "back", "kind0", "kind1", "act"]) {
     const v = why[k] ?? 0;
     console.log(`    ${String(v).padStart(7)}회  ${LABEL[k]}`);

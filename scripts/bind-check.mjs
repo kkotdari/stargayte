@@ -51,10 +51,17 @@ function probeSource() {
   if (n === 0 || nb === 0) throw new Error("창 상수를 못 찾았다 — 원본이 바뀌었다");
   return {
     n: n + nb,
-    text: "const __SLACK = Number(globalThis.__BIND_SLACK ?? 8);\n"
-      + "const __BACK = Number(globalThis.__BIND_BACK ?? 300);\n"
-      + src.replaceAll(before, "r.it.done - __SLACK")
-        .replaceAll(back, "life.born - r.it.done > __BACK")
+    /* ★ 값을 **부를 때마다** 읽어야 한다(수리: 이 자가 여태 거짓말을 하고 있었다) —
+       예전엔 `const __SLACK = globalThis.__BIND_SLACK ?? 8`처럼 모듈 맨 위에서 한 번만
+       읽었다. 그런데 이 자는 모듈을 **한 번 불러 두고** 그 뒤에 전역을 바꿔 가며 여러 번
+       돌린다: 상수는 첫 불러오기 때 이미 굳으므로, 두 번째 값부터는 그냥 무시됐다.
+       그래서 앞끝을 0에서 99999까지 쓸어도 결합률이 "한 자리도 안 움직이는" 그림이
+       나왔고, 그 관찰이 replayUnits의 주석("여기를 만지는 것은 헛일")으로까지 굳었다.
+       함수로 바꿔 매번 전역을 읽게 하면 그 그림이 뒤집힌다. */
+    text: "const __SLACK = () => Number(globalThis.__BIND_SLACK ?? 8);\n"
+      + "const __BACK = () => Number(globalThis.__BIND_BACK ?? 300);\n"
+      + src.replaceAll(before, "r.it.done - __SLACK()")
+        .replaceAll(back, "life.born - r.it.done > __BACK()")
         .replaceAll('from "./', `from "${join(ROOT, "src/utils")}/`),
   };
 }
@@ -67,8 +74,15 @@ async function bundleProbe() {
   writeFileSync(ts, text);
   const ebin = join(ROOT, "node_modules", "esbuild", "bin", "esbuild");
   const head = readFileSync(ebin).subarray(0, 4);
-  const native = (head[0] === 0x7f && head[1] === 0x45 && head[2] === 0x4c && head[3] === 0x46)
-    || (head[0] === 0x4d && head[1] === 0x5a);
+  /* 실행 파일인가 — 아니면 esbuild 껍데기 스크립트라 node로 돌려야 한다.
+     ★ 맥(Mach-O)을 빠뜨리고 있었다(수리: 이 자가 아예 안 돌았다) — ELF·PE만 보다가
+     맥의 실행 파일을 스크립트로 알고 node에 먹여 SyntaxError가 났다. */
+  const mg = (a, b, c, d) => head[0] === a && head[1] === b && head[2] === c && head[3] === d;
+  const native = mg(0x7f, 0x45, 0x4c, 0x46)          // ELF (리눅스)
+    || (head[0] === 0x4d && head[1] === 0x5a)        // PE  (윈도)
+    || mg(0xcf, 0xfa, 0xed, 0xfe) || mg(0xce, 0xfa, 0xed, 0xfe)
+    || mg(0xfe, 0xed, 0xfa, 0xcf) || mg(0xfe, 0xed, 0xfa, 0xce)
+    || mg(0xca, 0xfe, 0xba, 0xbe);                   // Mach-O (맥)
   const a = [ts, "--bundle", "--platform=node", "--format=esm", "--log-level=error",
     `--outfile=${out}`];
   execFileSync(native ? ebin : process.execPath, native ? a : [ebin, ...a],
