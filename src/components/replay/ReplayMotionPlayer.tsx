@@ -41,6 +41,7 @@ import { truthToV2 } from "../../utils/truthToV2";
 import {
   decodeTruthTracks, posAtTruth as posAtSim, type TruthTrack, type TruthTracks,
   TRUTH_ST_CARRY_GAS as ST_CARRY_GAS, TRUTH_ST_CARRY_MIN as ST_CARRY_MIN,
+  TRUTH_ST_FIGHT as ST_FIGHT,
   TRUTH_ST_INSIDE as ST_INSIDE,
 } from "../../utils/openbwTracks";
 /* 자취 읽기는 유틸로 나갔다(과제 #61) — 코어가 걸음의 진실이 된 뒤로 이 파일의
@@ -17384,6 +17385,21 @@ export default function ReplayMotionPlayer({
             const eff9 = t;
             const rawPos = posAt(rp, eff9);
             if (!rawPos) return null;
+            /* ★ 참값 표본을 **여기서 한 번** 뜬다(지적: "증거주의가 아니라 모션 그대로
+               재생 방식이야 이제 — 거기서 문제가 생기는듯") — 맞다. 여태 이 표본은
+               한참 아래, 이미 교전을 판정하고 자리를 다 정한 **뒤**에 떠서 자리만
+               덮어썼다. 그래서 그 사이의 판정들은 전부 유추 시절의 어림을 보고 내려졌다:
+               싸우는지 아닌지도, 어디를 보는지도. 자취가 '지금 싸우는 중'을 실어 주는데
+               거리 어림으로 다시 정하고 있었던 셈이다.
+               표본을 걸음 바로 뒤로 당겨, 아래 모든 판정이 참값을 보고 서게 한다. */
+            const simTr = simTracks?.get(e.tag);
+            const simNow = simTr ? posAtSim(simTr, t) : null;
+            // 배 안이면 아예 안 그린다(참값이 그렇다고 말한다).
+            if (simNow && simNow.state === ST_INSIDE) return null;
+            /** 참값이 말하는 몸 방향 — 없으면 아래 어림이 맡는다. */
+            const simHdg: number | null = simNow ? simNow.hdg : null;
+            /** 참값이 말하는 지금 상태 — 사주경계·교전 판정이 이걸 본다. */
+            const simState: number | null = simNow ? simNow.state : null;
             /* 탑승 중(요청: 수송선 승하차) — 배 안에 있으니 마커를 걷는다. 하차 지점
                (f=13)이나 다음 제 명령에서 다시 나타나 걷는다.
                승하차 연출(요청) — 태울 땐 빛기둥이 내리고 그 안에서 몸이 작아지며 떠올라
@@ -17504,11 +17520,18 @@ export default function ReplayMotionPlayer({
                지어낸 값을 쓰느니 알던 어림이 낫고, 그것들은 어차피 canFight에서 걸린다. */
             const acq9 = drawUnit !== "" && isKnownKind(drawUnit)
               ? (acquireTilesOf(drawUnit) || ENGAGE_SIGHT_TILES) : ENGAGE_SIGHT_TILES;
-            let fighting = canFight && !frzSt && !burrowed && Number.isFinite(foe.bd)
-              && (foe.bd <= acq9 * (engagedBefore ? 1.3 : 1)
-                /* 어택이 찍은 건물은 14.4타일부터 접근 시작(기획서 1-E — 수리: 시야
-                   게이트가 철거 행군을 9타일 밖에서 세워 뒀다). */
-                || (foe.bld === true && foe.bd <= ENGAGE_SIGHT_TILES * 1.6));
+            /* ★ 싸우는가는 **참값이 말한다**(지적: 모션 그대로 재생) — 자취의 상태에
+               FIGHT가 실려 있다. 아래 거리 어림(획득 사거리·히스테리시스·어택 명령
+               되짚기)은 자리를 유추하던 시절에 "이쯤이면 붙었겠다"를 셈하던 장치라,
+               참값 위에 얹으면 실제로 싸운 유닛을 안 싸운다고 하거나 그 반대가 된다.
+               참값이 없는 개체(옛 판·굽다 만 판)만 옛 어림으로 물러난다.
+               표적(foe)은 그대로 쓴다 — 그건 '싸우나'가 아니라 '어느 쪽을 보고 쏘나'라
+               연출의 몫이고, 참값에는 그 답이 없다. */
+            let fighting = simState !== null
+              ? (simState === ST_FIGHT && canFight && !frzSt && !burrowed)
+              : (canFight && !frzSt && !burrowed && Number.isFinite(foe.bd)
+                && (foe.bd <= acq9 * (engagedBefore ? 1.3 : 1)
+                  || (foe.bld === true && foe.bd <= ENGAGE_SIGHT_TILES * 1.6)));
             let pos = rawPos;
             /* 교전 당김·홀드·잽은 코어가 켜지면 안 돈다(과제 #61) — 코어는 표적까지
                걸어가 사거리에서 멈추는 일을 제 이동 모형으로 이미 했다. 여기서 한 번 더
@@ -17569,19 +17592,7 @@ export default function ReplayMotionPlayer({
                남는 몫은 둘이다: 코어만 아는 몸 방향(hdg)과, 배 안(ST_INSIDE)이면 아예
                안 그리는 판정. 코어 결과가 아직 없으면(계산 중·실패) 렌더러 길 그대로다.
                아래 스무딩도 코어면 건너뛴다 — 이미 제 속도로 적분된 자리다. */
-            let simHdg: number | null = null;
-            /** 코어가 말하는 지금 상태 — 사주경계는 '정말 서 있을 때'만이라 이 값이 필요하다. */
-            let simState: number | null = null;
-            const simTr = simTracks?.get(e.tag);
-            if (simTr) {
-              const sp = posAtSim(simTr, t);
-              if (sp) {
-                if (sp.state === ST_INSIDE) return null;
-                pos = { ...pos, x: sp.x, y: sp.y };
-                simHdg = sp.hdg;
-                simState = sp.state;
-              }
-            }
+            if (simNow) pos = { ...pos, x: simNow.x, y: simNow.y };
             /* 얼어붙은 것은 코어보다 위다(전수조사: 스태시스·마엘스톰·락다운) — 코어는
                그 기술을 모르니 제 갈 길을 계속 걷는다. 못 박는 쪽은 증거다. 여태 이
                덮어쓰기가 코어 덮어쓰기보다 **앞**에 있어, 코어를 켜면 언 유닛이 그대로
