@@ -7449,35 +7449,41 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        숙이는 S자 기둥. 축을 직접 그려야 나오는 꼴이라 path로 준다. 끝에 아가리와
        형광 눈 한 쌍. */
     {
-      const key = depthNow(0, 3.6) * 1.6 + 4;
+      const key = depthNow(0, 3) * 1.6 + 4;
       out.push(...tagKey(paintBase(spirePillar({
         x: 0, y: 0, h: 1, w: 1, segs: 9, sides: 8, oval: 0.85, caps: "none",
         path: (t9: number): [number, number, number] => {
           const u9 = 1 - t9;
           const bez = (p0: number, c1: number, c2: number, p3: number): number =>
             u9 * u9 * u9 * p0 + 3 * u9 * u9 * t9 * c1 + 3 * u9 * t9 * t9 * c2 + t9 * t9 * t9 * p3;
-          // 목: 뒤에서 앞으로 나가며 한 번 솟았다 앞아래로 숙인다.
-          return [0, bez(2.2, 3.1, 3.9, 4.7), bez(5.6, 6.5, 6.4, 5.2)];
+          /* 목: 뒤에서 앞으로 나가며 한 번 솟았다 앞아래로 숙인다.
+             **짧게**(요청: "퀸 머리 짧게") — 끝을 y 4.7 → 3.7로 당겨 목 길이를
+             1/3쯤 줄인다. 솟았다 숙이는 S자는 제어점을 같은 비로 당겨 그대로 남긴다. */
+          return [0, bez(2.2, 2.85, 3.35, 3.7), bez(5.6, 6.3, 6.2, 5.25)];
         },
         widthOf: (t9: number): number => 0.5 - 0.16 * t9 + 0.18 * Math.sin(Math.PI * t9),
       }), DARK), key));
       // 머리 끝 — 아가리와 눈. 저그 공용 얼굴과 같은 결이되 목 끝에 맞춰 작다.
-      out.push(...tagKey(paintBase(domeFaces3(0, 4.75, 0.62, 0.5, 4.95), DARK), key + 0.5));
+      // 머리 끝 부품들도 짧아진 목 끝(y 3.7)으로 함께 당긴다.
+      out.push(...tagKey(paintBase(domeFaces3(0, 3.78, 0.6, 0.48, 5), DARK), key + 0.5));
       out.push(...tagKey([capFace(polyPath3([
-        [-0.32, 5.25, 5.15], [0.32, 5.25, 5.15], [0.22, 5.5, 4.95], [-0.22, 5.5, 4.95],
+        [-0.3, 4.25, 5.18], [0.3, 4.25, 5.18], [0.2, 4.48, 4.98], [-0.2, 4.48, 4.98],
       ]), 0.42)], key + 0.7));
-      out.push(...tagKey(zergEyes(5.05, 5.42, 0.26, 0.16, 4), key + 0.9));
+      out.push(...tagKey(zergEyes(4.06, 5.45, 0.25, 0.16, 4), key + 0.9));
     }
     /* **촉수 여섯**(자료: numerous tentacles) — 꽁무니에서 뒤아래로 늘어진다. 굵기는
        성큰 혓바닥 규칙을 뒤집은 그것(밑동이 굵고 끝이 뾰족하다) — 앞선 요청("앞이
        넓어지지 않고 좁아지게")이 그대로 살아 있는 자리다. 길이·벌림을 조금씩 달리해
        여섯이 한 다발로 뭉치지 않게 한다. */
+    /* **짧게**(요청: "퀸 뒷 가시 짧게") — 뒤로 뻗는 길이를 −4.4~−2.6에서 −2.6~−1.5로
+       줄이고 벌림도 함께 좁힌다. 여섯이라는 수와 밑동 굵은 옆선은 그대로다: 자료가
+       말하는 것은 '길다'가 아니라 '여럿'이다. 아래로 처지는 몫도 그만큼 줄인다. */
     ([
-      [-1, 0.9, -3.4, 1.1], [1, 0.9, -3.4, 1.1],
-      [-1, 0.5, -4.4, 1.5], [1, 0.5, -4.4, 1.5],
-      [-1, 0.2, -2.6, 0.7], [1, 0.2, -2.6, 0.7],
+      [-1, 0.8, -2.1, 0.7], [1, 0.8, -2.1, 0.7],
+      [-1, 0.45, -2.6, 0.95], [1, 0.45, -2.6, 0.95],
+      [-1, 0.2, -1.6, 0.45], [1, 0.2, -1.6, 0.45],
     ] as [number, number, number, number][]).forEach(([m9, sx, ey, sp], i9) => {
-      const y0 = -2 - (i9 % 3) * 0.5;
+      const y0 = -1.9 - (i9 % 3) * 0.4;
       out.push(...tagKey(paintBase(spirePillar({
         x: m9 * sx, y: y0, h: 1, w: 0.5, tipW: 0.06,
         segs: 10, sides: 6, hold: 0.05, taper: 1.2,
@@ -7486,7 +7492,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
           return [
             m9 * (sx + sp * Math.sin(Math.PI * t9 * 0.7)),
             yy,
-            5 + PT(y0) - 1.6 * t9 - 0.9 * t9 * t9,
+            5 + PT(y0) - 1 * t9 - 0.55 * t9 * t9,
           ];
         },
       }), DARK), depthNow(m9 * sx, y0 + ey * 0.5) * 1.6 - 2 + i9 * 0.05));
@@ -9940,9 +9946,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
     /* 앞 조종석 캐노피(자료 재작도) — 등판 앞머리에 얹힌 유리 상자. 여태 드랍십에
        사람이 타는 자리가 없어 '판 하나에 통 둘'로만 읽혔다. 테만 은색이고 위·옆·앞
        세 면이 유리라 어느 각도에서도 조종석으로 읽힌다. */
+    /* 납작하게(요청: "드랍십 앞부분에 붙인 상자모양 납작하게") — 높이 0.9 → 0.4로
+       눌러 등판에 붙인 낮은 유리창이 되게 한다. 앞으로 갈수록 더 낮아지는 기울기는
+       남겨 두어(뒤 1.4 → 앞 1.05 폭) 캐노피의 결은 유지된다. */
     out.push(...tagKey([
-      ...paintBase(boxFaces3(0, 2.2, 2, 1.5, 0.26, 6.62), "#c9ced6"),
-      ...frustumFaces3(0, 2.25, 1.75, 1.35, 1.35, 1.05, 0.9, 6.85)
+      ...paintBase(boxFaces3(0, 2.2, 2, 1.5, 0.2, 6.6), "#c9ced6"),
+      ...frustumFaces3(0, 2.25, 1.8, 1.4, 1.45, 1.1, 0.4, 6.78)
         .map(([d9, o9, f9, k9, l9]) =>
           [d9, f9 === undefined ? 0.68 : o9, f9 ?? "#8fc6dd", k9, l9] as ShapeFace),
     ], depthNow(0, 2.2) * 1.6 + 3));
@@ -10666,7 +10675,7 @@ const MODEL_NORM: Record<string, number> = {
   drone: 1.077,
   droneGas: 1.005,
   droneMin: 1.056,
-  dship: 0.704,
+  dship: 0.711,
   dtemp: 0.917,
   egg: 1.218,
   fbat: 1.156,
@@ -10689,7 +10698,7 @@ const MODEL_NORM: Record<string, number> = {
   probe: 1.582,
   probeGas: 1.392,
   probeMin: 1.473,
-  queen: 0.622,
+  queen: 0.741,
   reaver: 1.234,
   scourge: 1.327,
   scout: 0.951,
