@@ -7663,10 +7663,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         const y9 = 1.22 - 3.02 * t;
         return [m2 * 0.95, y9, 5.92 + Math.sin(Math.PI * Math.min(1, t * 1.15)) * 0.1];
       },
-      /* 정면에서 본 높이를 줄인다(요청: "아비터 날개 정면에서 봤을때 높이 축소") —
-         thick이 곧 위아래 반두께다(0.78 → 0.48). 좌우 반폭(thick × spread)은 0.48로
-         지켜야 실루엣이 안 야위므로 spread를 그만큼 올린다(0.62 → 1). */
-      waist: 0.26, thick: 0.48, spread: 1,
+      /* 정면에서 본 높이를 줄인다(요청) — thick이 곧 위아래 반두께다(0.78 → 0.48).
+         ★ 옆두께도 줄인다(요청: "아비터 양 날개 옆두께 줄이기") — 좌우 반폭은
+           thick × spread이므로 spread를 1 → 0.5로 내려 0.48 → 0.24로 반 만든다.
+           위아래는 그대로라 날개가 **얇은 지느러미**가 된다. */
+      waist: 0.26, thick: 0.48, spread: 0.5,
       rootW: 0.34, rootPow: 0.55, tipPow: 1.25,
       sides: 10, segs: 7, fill: "#d4af37", ref: [0, 0, 1],
       /* 날개 키(재지적: 각도에 따라 몸체에 가려짐) — 몸 돔은 depthNow에 반지름
@@ -10662,7 +10663,7 @@ const UNIT_BULK: Record<string, 0 | 1 | 2> = {
  *  하던 일을 채움 보정이 아니라 이 층으로 옮긴 것이다. 스크립트도 짝은 안 찍는다.
  *  표에 없는 종류는 1(모델 그대로)이다 — 건물이 여기로 떨어진다. */
 const MODEL_NORM: Record<string, number> = {
-  arbiter: 1.988,
+  arbiter: 2.024,
   archon: 0.525,
   bc: 0.670,
   burrowhole: 0.832,
