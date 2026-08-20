@@ -11,7 +11,8 @@
  * [짝짓는 법 — 어림이 아니다]
  * 리플레이 명령이 유닛을 가리킬 때 쓰는 수(태그)가 열쇠다. 우리 분석의 개체는 그 태그를
  * 그대로 신원으로 쓰고, OpenBW도 같은 규약으로 태그를 낼 수 있다(리마스터는
- * (index+1+1700) | (generation<<13)). 그래서 두 쪽을 **한 자리도 안 틀리고** 짝지을 수 있다.
+ * (index+1) | (generation<<13) — 유닛 그릇이 3400칸이다). 그래서 두 쪽을 **한 자리도
+ * 안 틀리고** 짝지을 수 있다.
  *
  * [재는 것]
  *  ① 정체 정확도 — 짝지은 개체 중 이름이 맞는 비율. 이것이 그동안 못 재던 수다.
@@ -153,15 +154,15 @@ for (const f of files) {
     console.log(`     └ 참값에서 그 태그의 정체: ${k} ×${n}`);
   }
   /* 유령 태그가 애초에 **유닛 태그일 수 있는 수**인지 본다. 리마스터의 유닛 태그는
-     index 칸이 1701~3400(= 1700 + 1..1700)이어야 한다 — 그 밖이면 유닛 번호가 아니다. */
+     index 칸이 1~3400이어야 한다(유닛 그릇이 3400칸이다) — 그 밖이면 유닛 번호가 아니다. */
   let ghostImpossible = 0;
   for (const t of ourTags) {
     if (truthTags.has(t)) continue;
     const ix = t & 0x1fff;
-    if (ix < 1701 || ix > 3400) ghostImpossible += 1;
+    if (ix < 1 || ix > 3400) ghostImpossible += 1;
   }
   console.log(`     └ 그중 ${ghostImpossible}기는 **유닛 태그일 수 없는 수**다`
-    + ` (index 칸이 1701~3400 밖)`);
+    + ` (index 칸이 1~3400 밖)`);
   console.log(`  ④ 한 태그를 몇 개로 잘랐나  평균 ${(( ents - synthetic) / Math.max(1, ourTags.size)).toFixed(2)}개`);
   if (wrong.size) {
     console.log(`  틀린 이름 앞 8종(우리 → 참값):`);

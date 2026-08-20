@@ -171,6 +171,15 @@ void bwdump_resolve(int frame, bool ok, bool slot, unsigned raw) {
   }
 }
 bw_limits_t bw_limits;      /* 그릇 한도 — 요즘 리플레이면 아래에서 리마스터 값으로 올린다 */
+static bool g_modern = false;
+/* 리플레이가 명령에서 유닛을 가리킬 때 쓰는 수와 **같은 꼴**로 낸다.
+   옛 판은 16비트 (자리+1) | (세대%32 << 11), 리마스터는 32비트 (자리+1) | (세대 << 13).
+   꼴이 다르면 참값과 우리 분석을 태그로 짝지을 수가 없다. */
+static unsigned bwdump_tag(const bwgame::unit_t* u) {
+  return g_modern
+    ? (unsigned)((u->index + 1) | ((u->unit_id_generation % (1u << 19)) << 13))
+    : (unsigned)((u->index + 1) | ((u->unit_id_generation % (1u << 5)) << 11));
+}
 using namespace bwgame;
 
 int main(int argc, char** argv) {
@@ -212,6 +221,7 @@ int main(int argc, char** argv) {
   /* 옛 형식이면 OpenBW의 읽개로, 리마스터(1.21+)면 우리 읽개로 — 표식과 압축이 달라
      한쪽 읽개로는 다른 쪽을 못 읽는다(modern_replay.h 머리말). */
   if (data_loading::is_modern_replay(argv[2])) {
+    g_modern = true;
     fprintf(stderr, "리플레이 형식: 리마스터(1.21+)\n");
     /* 리마스터는 그릇 한도를 두 배로 늘렸다 — 리플레이의 LMTS 구획에 적힌 값이 이것이다.
        유닛 자리 번호가 `한도 − 몇째로 만들어졌나`라서, 1700칸으로 두면 번호가 통째로
@@ -302,8 +312,7 @@ int main(int argc, char** argv) {
       for (unit_t* u : ptr(st.visible_units)) all9.push_back(u);
       for (unit_t* u : ptr(st.hidden_units)) all9.push_back(u);
       for (unit_t* u : all9) {
-        const unsigned tg = (unsigned)((u->index + 1)
-          | ((u->unit_id_generation % (1u << 19)) << 13));
+        const unsigned tg = bwdump_tag(u);
         auto it = lives.find(tg);
         if (it == lives.end()) {
           lives.emplace(tg, life_t{ (int)u->unit_type->id, (int)u->owner,
@@ -365,8 +374,7 @@ int main(int argc, char** argv) {
     rf.next_frame();
     if ((int)st.current_frame % step) continue;
     for (unit_t* u : ptr(st.visible_units)) {
-      const unsigned scr_tag = (unsigned)((u->index + 1)
-        | ((u->unit_id_generation % (1u << 19)) << 13));
+      const unsigned scr_tag = bwdump_tag(u);
       printf("%d\t%u\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
         (int)st.current_frame, scr_tag, (int)u->owner,
         (int)u->unit_type->id, u->position.x, u->position.y,
