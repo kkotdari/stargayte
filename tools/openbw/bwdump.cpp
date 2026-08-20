@@ -164,10 +164,10 @@ void bwdump_resolve(int frame, bool ok, bool slot, unsigned raw) {
   if (bwdump_cur_owner >= 0 && bwdump_cur_owner < 12) { g_pt[bwdump_cur_owner][b] += 1; if (ok) g_po[bwdump_cur_owner][b] += 1; }
   if (!ok && g_firstmiss < 0) g_firstmiss = frame;
   if (!ok && getenv("BWDUMP_MISSTAGS")) fprintf(stderr, "MISS\t%u\t%d\n", raw, frame);
-  if (!ok && getenv("BWDUMP_FIRSTMISS") && g_shown < 12) {
+  if (!ok && slot && getenv("BWDUMP_FIRSTMISS") && g_shown < 14) {
     g_shown += 1;
-    fprintf(stderr, "  못 찾은 고르기 · 프레임 %d (%.1f초) · 태그 %u = index %u · 세대 %u\n",
-      frame, frame / 23.81, raw, (raw & 0x1fff), raw >> 13);
+    fprintf(stderr, "  세대만 틀림 · 프레임 %d (%.1f초) · 자리 %u · 리플레이 세대 %u\n",
+      frame, frame / 23.81, (raw & 0x1fff), raw >> 13);
   }
 }
 bw_limits_t bw_limits;      /* 그릇 한도 — 요즘 리플레이면 아래에서 리마스터 값으로 올린다 */
@@ -218,6 +218,12 @@ int main(int argc, char** argv) {
        1700씩 어긋나 명령이 유닛을 못 찾는다. */
     bw_limits.units = 3400; bw_limits.bullets = 400; bw_limits.sprites = 5000;
     bw_limits.images = 10000; bw_limits.orders = 4000; bw_limits.thingies = 1000;
+    /* 하나씩 되돌려 보기(시험용) */
+    if (getenv("BWLIM_BULLETS")) bw_limits.bullets = (size_t)atoi(getenv("BWLIM_BULLETS"));
+    if (getenv("BWLIM_SPRITES")) bw_limits.sprites = (size_t)atoi(getenv("BWLIM_SPRITES"));
+    if (getenv("BWLIM_IMAGES")) bw_limits.images = (size_t)atoi(getenv("BWLIM_IMAGES"));
+    if (getenv("BWLIM_ORDERS")) bw_limits.orders = (size_t)atoi(getenv("BWLIM_ORDERS"));
+    if (getenv("BWLIM_THINGIES")) bw_limits.thingies = (size_t)atoi(getenv("BWLIM_THINGIES"));
     fprintf(stderr, "그릇 한도: 유닛 %zu · 스프라이트 %zu · 이미지 %zu\n",
       bw_limits.units, bw_limits.sprites, bw_limits.images);
     auto file_r = data_loading::file_reader<>(a_string(argv[2]));

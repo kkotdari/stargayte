@@ -1,5 +1,5 @@
 diff --git a/actions.h b/actions.h
-index 5a0ad23..13bb762 100644
+index 5a0ad23..6b49618 100644
 --- a/actions.h
 +++ b/actions.h
 @@ -3,6 +3,17 @@
@@ -74,7 +74,7 @@ index 5a0ad23..13bb762 100644
  		if (ut_addon(unit_type)) {
  			xy pos(int(32 * tile_pos.x) + unit_type->placement_size.x / 2, int(32 * tile_pos.y) + unit_type->placement_size.y / 2);
  			if (can_place_building(u, owner, unit_type, pos, false, false)) {
-@@ -1008,11 +1025,107 @@ struct action_functions: state_functions {
+@@ -1008,11 +1025,116 @@ struct action_functions: state_functions {
  		static_vector<unit_t*, 12> units;
  		for (size_t i = 0; i != n; ++i) {
  			auto uid = unit_id(r.template get<uint16_t>());
@@ -107,8 +107,17 @@ index 5a0ad23..13bb762 100644
 +		if (!idx) return nullptr;
 +		unit_t* u = get_unit(idx - 1);
 +		bool ok = false;
-+		if (u && (getenv("BWDUMP_ANYGEN")
-+			|| u->unit_id_generation % (1u << 19) == (raw >> 13))) ok = true;
++		/* 세대 셈 후보(BWDUMP_GENRULE): 0=그대로 1=아무거나 2=만들때+죽을때 둘 다 셈
++		   3=±1까지 봐줌 */
++		const unsigned g_want = raw >> 13;
++		const unsigned g_have = u ? u->unit_id_generation % (1u << 19) : 0;
++		const int rule9 = getenv("BWDUMP_GENRULE") ? atoi(getenv("BWDUMP_GENRULE")) : 0;
++		if (u) {
++			if (getenv("BWDUMP_ANYGEN") || rule9 == 1) ok = true;
++			else if (rule9 == 2) ok = (g_want == (g_have ? g_have * 2 - 1 : 0));
++			else if (rule9 == 3) ok = (g_want + 1 >= g_have && g_have + 1 >= g_want);
++			else ok = (g_have == g_want);
++		}
 +		if (getenv("BWDUMP_RESOLVE")) bwdump_resolve((int)st.current_frame, ok, !!u, raw);
 +		if (u && getenv("BWDUMP_GEN"))
 +			::bwdump_gen((int)st.current_frame, raw >> 13,
@@ -182,7 +191,7 @@ index 5a0ad23..13bb762 100644
  	template<typename reader_T>
  	bool read_action_shift_select(int owner, reader_T&& r) {
  		size_t n = r.template get<uint8_t>();
-@@ -1347,8 +1460,23 @@ struct action_functions: state_functions {
+@@ -1347,8 +1469,23 @@ struct action_functions: state_functions {
  	template<typename reader_T>
  	bool read_action(int owner, reader_T&& r) {
  		int action_id = r.template get<uint8_t>();
@@ -206,7 +215,7 @@ index 5a0ad23..13bb762 100644
  		case 9:
  			return read_action_select(owner, r);
  		case 10:
-@@ -1454,11 +1582,14 @@ struct action_functions: state_functions {
+@@ -1454,11 +1591,14 @@ struct action_functions: state_functions {
  	}
  
  	void execute_actions(uint8_t* actions_data_begin, uint8_t* actions_data_end) {
@@ -224,7 +233,7 @@ index 5a0ad23..13bb762 100644
  				return;
  			}
 diff --git a/bwgame.h b/bwgame.h
-index 4cd76d6..fd85a33 100644
+index 4cd76d6..264604b 100644
 --- a/bwgame.h
 +++ b/bwgame.h
 @@ -14,6 +14,17 @@
@@ -328,6 +337,15 @@ index 4cd76d6..fd85a33 100644
  			u->connected_unit = nullptr;
  			u_unset_status_flag(u, unit_t::status_flag_loaded);
  
+@@ -10756,7 +10778,7 @@ struct state_functions {
+ 			st.free_paths.pop_front();
+ 			return r;
+ 		}
+-		if (st.paths.size() >= 1024) return nullptr;
++		if (st.paths.size() >= 1024) { ::bwdump_fail("길찾기 경로가 꽉 참", (int)st.current_frame, 0); return nullptr; }
+ 		return &*st.paths.emplace(st.paths.end());
+ 	}
+ 
 @@ -13104,6 +13126,7 @@ struct state_functions {
  	}
  
@@ -336,16 +354,33 @@ index 4cd76d6..fd85a33 100644
  		int timer_step = 42;
  
  		for (size_t i = 0; i != 12; ++i) {
-@@ -14539,7 +14562,7 @@ struct state_functions {
+@@ -14492,10 +14515,14 @@ struct state_functions {
+ 	}
+ 
+ 	bullet_t* create_bullet(const weapon_type_t* weapon_type, unit_t* source_unit, xy pos, int owner, direction_t heading) {
+-		if (weapon_type->id == WeaponTypes::Halo_Rockets && st.active_bullets_size >= 80) return nullptr;
++		/* 발키리 로켓만 걸리는 문턱 — 원판에서 총알 그릇 100칸의 8할이다. 리마스터는 그릇을
++		   400칸으로 늘렸으니 문턱도 같은 비율로 따라가야 한다. 80으로 두면 발키리가 실제보다
++		   덜 쏘고, 그 판의 전투 결과가 갈린다. */
++		if (weapon_type->id == WeaponTypes::Halo_Rockets
++			&& st.active_bullets_size >= (int)(::bw_limits.bullets * 8 / 10)) return nullptr;
+ 		if (u_cannot_attack(source_unit) && !is_spell(weapon_type)) return nullptr;
+ 		bullet_t* b = st.bullets_container.top();
+-		if (!b) return nullptr;
++		if (!b) { ::bwdump_fail("총알 그릇이 꽉 참", (int)st.current_frame, (int)weapon_type->id); return nullptr; }
+ 		if (!initialize_bullet(b, weapon_type, source_unit, pos, owner, heading)) {
+ 			return nullptr;
+ 		}
+@@ -14539,7 +14566,7 @@ struct state_functions {
  			st.free_thingies.pop_front();
  			return r;
  		}
 -		if (st.thingies.size() >= 500) return nullptr;
-+		if (st.thingies.size() >= ::bw_limits.thingies) return nullptr;
++		if (st.thingies.size() >= ::bw_limits.thingies) { ::bwdump_fail("thingy 그릇이 꽉 참", (int)st.current_frame, 0); return nullptr; }
  		return &*st.thingies.emplace(st.thingies.end());
  	}
  
-@@ -15271,7 +15294,7 @@ struct state_functions {
+@@ -15271,7 +15298,7 @@ struct state_functions {
  		if (!image_type)  error("attempt to create image of null type");
  
  		image_t* image = st.images_container.top();
@@ -354,7 +389,7 @@ index 4cd76d6..fd85a33 100644
  		st.images_container.pop();
  
  		if (sprite->images.empty()) {
-@@ -15307,7 +15330,7 @@ struct state_functions {
+@@ -15307,7 +15334,7 @@ struct state_functions {
  		if (!sprite_type)  error("attempt to create sprite of null type");
  
  		sprite_t* sprite = st.sprites_container.top();
@@ -363,7 +398,7 @@ index 4cd76d6..fd85a33 100644
  		st.sprites_container.pop();
  
  		auto initialize_sprite = [&]() {
-@@ -16322,14 +16345,17 @@ struct state_functions {
+@@ -16322,14 +16349,17 @@ struct state_functions {
  			unit_t* u = st.units_container.top();
  			if (!u) {
  				st.last_error = 61; // Cannot create more units
@@ -381,7 +416,16 @@ index 4cd76d6..fd85a33 100644
  				return (unit_t*)nullptr;
  			}
  			st.units_container.pop();
-@@ -16848,7 +16874,7 @@ struct state_functions {
+@@ -16778,7 +16808,7 @@ struct state_functions {
+ 
+ 	order_t* create_order(const order_type_t* order_type, order_target_t target) {
+ 		order_t* o = st.orders_container.top();
+-		if (!o) return nullptr;
++		if (!o) { ::bwdump_fail("명령 그릇이 꽉 참", (int)st.current_frame, 0); return nullptr; }
+ 		st.orders_container.pop();
+ 		++st.active_orders_size;
+ 		o->order_type = order_type;
+@@ -16848,7 +16878,7 @@ struct state_functions {
  			}
  		}
  		if (queue) {
@@ -390,7 +434,7 @@ index 4cd76d6..fd85a33 100644
  				queue_order_back(u, order_type, target);
  			}
  		} else {
-@@ -19039,6 +19065,7 @@ struct state_functions {
+@@ -19039,6 +19069,7 @@ struct state_functions {
  	};
  
  	bool execute_trigger_action(execute_trigger_struct& ets, int owner, running_trigger& rt, running_trigger::action& ra, const trigger::action& a) {
@@ -398,7 +442,7 @@ index 4cd76d6..fd85a33 100644
  		switch (a.type) {
  		case 1: // victory
  			if (st.players[owner].controller == player_t::controller_occupied || st.players[owner].controller == player_t::controller_computer_game) {
-@@ -19559,7 +19586,7 @@ struct state_copier {
+@@ -19559,7 +19590,7 @@ struct state_copier {
  	state_functions funcs;
  	state_copier(const state&st, state& r) : st(st), r(r), funcs(r) {}
  
@@ -407,7 +451,7 @@ index 4cd76d6..fd85a33 100644
  	std::array<bool, 100> bullet_copied{};
  	std::array<bool, 2500> sprite_copied{};
  	std::array<bool, 5000> image_copied{};
-@@ -19953,19 +19980,24 @@ struct game_load_functions : state_functions {
+@@ -19953,19 +19984,24 @@ struct game_load_functions : state_functions {
  		for (auto& v : st.player_units) v.clear();
  
  		st.units_container = {};
@@ -555,7 +599,7 @@ index d2eaa3e..ec369d7 100644
  	struct fighter_link {
  		auto* operator()(unit_t* ptr) {
 diff --git a/replay.h b/replay.h
-index 00f44eb..c3c913e 100644
+index 00f44eb..fce6133 100644
 --- a/replay.h
 +++ b/replay.h
 @@ -117,6 +117,8 @@ struct replay_functions: action_functions {
@@ -578,3 +622,40 @@ index 00f44eb..c3c913e 100644
  		replay_st.end_frame = frame_count;
  		replay_st.game_type = game_type;
  		
+@@ -224,6 +230,36 @@ struct replay_functions: action_functions {
+ 		for (size_t i = 0; i != 8; ++i) {
+ 			st.players[i].color = (int)player_color[i];
+ 		}
++
++		/* 팀전은 같은 편끼리 **동맹**으로 시작한다 — 이걸 안 걸면 한 편이 서로 적이 되어
++		   만나자마자 치고받는다. 없던 전투가 벌어지니 죽는 유닛이 달라지고, 유닛 자리가
++		   어긋나면서 그 뒤 명령이 통째로 헛돈다.
++		     11 팀멜리 · 12 팀FFA · 13 팀CTF · 15 Top vs Bottom
++		   요즘 리플레이는 거의 다 15다(3v3·4v4 공방). 멜리(2)는 각자 남이라 안 건다. */
++		if (replay_st.game_type == 11 || replay_st.game_type == 12
++			|| replay_st.game_type == 13 || replay_st.game_type == 15) {
++			for (size_t i = 0; i != 8; ++i) {
++				if (st.players[i].controller != player_t::controller_occupied
++					&& st.players[i].controller != player_t::controller_computer_game) continue;
++				for (size_t j = 0; j != 8; ++j) {
++					if (i == j) continue;
++					if (st.players[j].controller != player_t::controller_occupied
++						&& st.players[j].controller != player_t::controller_computer_game) continue;
++					if (st.players[i].force != st.players[j].force) continue;
++					st.alliances[i][j] = 1;
++					st.shared_vision[i] |= 1 << j;
++				}
++			}
++		}
++		if (getenv("BWDUMP_ALLY")) {
++			fprintf(stderr, "게임 갈래 %u · 편(force)/동맹\n", (unsigned)replay_st.game_type);
++			for (size_t i = 0; i != 8; ++i) {
++				if (st.players[i].controller != player_t::controller_occupied) continue;
++				fprintf(stderr, "  임자%zu 편%d 종족%d  동맹: ", i, (int)st.players[i].force, (int)st.players[i].race);
++				for (size_t j = 0; j != 8; ++j) fprintf(stderr, "%d", (int)st.alliances[i][j]);
++				fprintf(stderr, "\n");
++			}
++		}
+ 	}
+ 	
+ 	void next_frame() {
