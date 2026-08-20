@@ -11086,7 +11086,7 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-slidebar {
   flex: 0 0 auto;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 8px 4px; border-radius: 14px;
+  padding: 7px 3px; border-radius: 12px;
   background: rgba(10, 14, 18, 0.42); backdrop-filter: blur(3px);
   box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.12);
   user-select: none; touch-action: none;
@@ -11094,11 +11094,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-slidebar-title {
   font-size: 10px; font-weight: 700; color: rgba(255, 255, 255, 0.8); white-space: nowrap;
 }
-/* 레일은 상자 한가운데다(요청: "배속 각도 슬라이드 슬라이드바가 영역의 중앙에 있으면
-   좋을듯 라벨은 좀 치우치더라도") — 손잡이가 미끄러지는 축이 눈에 먼저 들어오는 것이라
-   그것이 가운데에 서야 바가 반듯해 보인다. 라벨은 한쪽으로 몰리고, 상자는 그 몫만큼
-   넓다(반대쪽은 빈자리다). */
-.scr-slidebar-track { position: relative; width: 56px; height: 156px; cursor: pointer; outline: none; }
+/* 레일은 상자 한가운데다(요청) — 손잡이가 미끄러지는 축이 눈에 먼저 들어오는 것이라
+   그것이 가운데에 서야 바가 반듯해 보인다.
+   폭 56 → 20px(요청: 세로 바 폭 줄이기) — 56px은 레일 옆에 늘어서던 눈금 라벨 여섯의
+   자리였다. 그 값들을 바 아래 한 줄로 옮기면서(SlideBar의 scr-slidebar-value) 남길
+   것은 눈금 획(8px)과 손잡이(12px)뿐이라, 상자가 그 굵기까지 좁아진다. */
+.scr-slidebar-track { position: relative; width: 20px; height: 156px; cursor: pointer; outline: none; }
 .scr-slidebar-track:focus-visible { box-shadow: 0 0 0 2px rgba(var(--lit-rgb), 0.6); border-radius: 8px; }
 /* 레일 — 눈금이 꿰이는 가는 세로줄. 라벨이 붙는 반대쪽 가장자리에 붙는다. */
 .scr-slidebar-rail { position: absolute; top: 0; bottom: 0; width: 2px; border-radius: 999px; background: rgba(255, 255, 255, 0.3); }
@@ -11110,13 +11111,12 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-slidebar-right .scr-slidebar-tick { left: 50%; margin-left: -4px; }
 .scr-slidebar-left .scr-slidebar-tick { right: 50%; margin-right: -4px; }
 .scr-slidebar-tick-on { background: var(--lit-pill-bg); }
-.scr-slidebar-mark {
-  position: absolute; font-style: normal; font-size: 9px; line-height: 1;
-  color: rgba(255, 255, 255, 0.62); white-space: nowrap; transform: translateY(-50%);
+/* 고른 값 — 바 아래 한 줄(요청: "각 스텝의 값을 눈금에 적지 않고 선택된 값을 슬라이드
+   아래에 표시"). 이름(위)과 짝을 이루는 자리라, 이름보다 한 단 밝고 굵게 둔다. */
+.scr-slidebar-value {
+  font-size: 11px; font-weight: 700; color: #fff; line-height: 1;
+  white-space: nowrap; font-variant-numeric: tabular-nums;
 }
-.scr-slidebar-mark-on { color: #fff; font-weight: 700; }
-.scr-slidebar-right .scr-slidebar-mark { left: calc(50% + 9px); }
-.scr-slidebar-left .scr-slidebar-mark { right: calc(50% + 9px); }
 /* 손잡이 — 눈금 사이에 머물지 않고 늘 눈금 위에 달라붙는다. */
 .scr-slidebar-thumb {
   position: absolute; width: 12px; height: 12px; margin-top: -6px;

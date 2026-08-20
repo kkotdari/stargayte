@@ -9,7 +9,8 @@ interface SlideBarProps {
   options: { value: string; label: string }[];
   value: string;
   onChange: (value: string) => void;
-  /** 눈금 라벨이 붙는 쪽 — 지도 왼쪽 바는 오른쪽에, 오른쪽 바는 왼쪽에 단다. */
+  /** 눈금이 치우치는 쪽 — 눈금 값을 바 아래로 옮긴 뒤로는 자리에 영향을 주지 않지만,
+   *  좌우 바를 구분하는 클래스로 남겨 둔다(둘의 미세 조정을 따로 걸 수 있게). */
   labelSide?: "left" | "right";
   "aria-label": string;
 }
@@ -83,11 +84,14 @@ export default function SlideBar({
         {options.map((o, i) => (
           <span key={o.value} className="scr-slidebar-tickwrap" style={{ top: at(i) }}>
             <i className={cx("scr-slidebar-tick", i === index && "scr-slidebar-tick-on")} />
-            <em className={cx("scr-slidebar-mark", i === index && "scr-slidebar-mark-on")}>{o.label}</em>
           </span>
         ))}
         <span className="scr-slidebar-thumb" style={{ top: at(index) }} />
       </div>
+      {/* 눈금마다 값을 적지 않고 **고른 값 하나만 바 아래**에 적는다(요청) — 여섯 개
+          라벨이 레일 옆에 늘어서느라 바 폭의 대부분을 라벨이 먹고 있었다. 값이 한 자리에
+          고정되면 바는 눈금과 손잡이만 남아 얇아지고, 지금 값은 오히려 크게 읽힌다. */}
+      <span className="scr-slidebar-value">{options[index]?.label}</span>
     </div>
   );
 }
