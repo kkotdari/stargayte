@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Maximize, Minimize, Pause, Play, RotateCcw, X } from "lucide-react";
+import { AlertTriangle, Maximize, Minimize, Pause, Play, RotateCcw, X } from "lucide-react";
 import Avatar from "../common/Avatar";
 import ReplayMapCanvas from "./ReplayMapCanvas";
 import ReplayFullscreenMinimap from "./ReplayFullscreenMinimap";
@@ -13366,10 +13366,21 @@ const shortName = (name: string): string => {
 /** 경기별 현재 재생 시각(요청: 특정 시간으로 카톡 공유) — 재생기가 제 clockKey로 지금
  *  t를 계속 적어 두면, 공유 버튼이 링크에 &t=로 실어 보낸다. */
 export const playbackClockOf = new Map<string, number>();
+/** 경기별 지금 **보고 있는 자리**(요청: "현재 장면 공유시 내가 보고있던 부분의 위치까지
+ *  같이 보내서 들어오는 사람도 거기가 재생되게") — 시각만으로는 같은 장면이 안 된다.
+ *  확대해서 한 귀퉁이를 보고 있었으면 받는 쪽도 그 귀퉁이를 봐야 '그 장면'이다.
+ *  자리는 **분수**로 적는다(픽셀이 아니라) — 보내는 사람의 지도 상자와 받는 사람의
+ *  지도 상자는 크기가 다르다. cx·cy는 화면 한가운데에 오는 지도 위 지점이다. */
+export const playbackViewOf = new Map<string, {
+  /** 배율(1이 기본) */ z: number;
+  /** 화면 한가운데의 지도 가로 분수(0~1) */ cx: number;
+  /** 세로 분수(0~1) */ cy: number;
+  /** 시점 각도(도) */ deg: number;
+}>();
 
 export default function ReplayMotionPlayer({
   grid, endSec, bases, teamOfRaw, active = true, winnerTeam, side,
-  onDetailClose, loadUnitTracks, initialSec, clockKey, shareNode,
+  onDetailClose, loadUnitTracks, initialSec, initialView, clockKey, shareNode,
 }: {
   grid: ReplayMapGrid;
   /** 경기 길이(초) — 경기 메타(durationSeconds)에서 온다. 없으면 트랙의 끝으로 잡는다. */
@@ -13401,6 +13412,9 @@ export default function ReplayMotionPlayer({
   loadUnitTracks?: () => Promise<{ motion: string | null }>;
   /** 이 시각(초)부터 재생 시작(요청: 카톡 공유 링크의 &t=) — 경기 길이를 넘으면 무시. */
   initialSec?: number;
+  /** 이 자리에서 보기 시작(요청: 공유 링크의 &z=·&cx=·&cy=·&a=) — 보낸 사람이 보던
+   *  배율·가운데점·각도다. 지도 상자가 실제로 서고 나서 한 번만 건다. */
+  initialView?: { z: number; cx: number; cy: number; deg: number };
   /** 현재 재생 시각을 적어 둘 열쇠(경기번호) — 공유 링크가 &t=로 실어 보낸다. */
   clockKey?: string;
   /** 진행바 아래 공유 버튼(요청: 케밥은 그대로, 별도 버튼) — 시계 옆에 앉는다. */
@@ -13439,6 +13453,13 @@ export default function ReplayMotionPlayer({
   const [simTracks, setSimTracks] = useState<Map<number, TruthTrack> | null>(null);
   /* 참값 원본 — 자원·실시간 APM은 v2 꼴에 자리가 없어 여기서 직접 읽는다. */
   const [truth, setTruth] = useState<TruthTracks | null>(null);
+  /* 갈라진 판 경고(요청: "openbw결과가 부정확한 애들은 처음에 한번 경고창 띄우기 /
+     페이지 진입시 한번") — 서버가 구울 때 '어디까지 믿어도 되는지'를 함께 적어 보낸다
+     (OBWT 머리말의 믿을프레임). 그 값이 있다는 것은 시뮬이 도중에 실제 경기와 갈라졌다는
+     뜻이다. 여태 받아만 놓고 아무 데도 안 쓰고 있었다.
+     ★ 상세로 들어온 화면에서만 띄운다(onDetailClose가 있을 때) — 활동 목록은 카드마다
+       재생기가 하나씩이라, 목록에서 띄우면 경고창이 여러 개 겹쳐 뜬다. */
+  const [trustWarn, setTrustWarn] = useState<number | null>(null);
   /* 클릭 자국 토글(요청) — 기본은 끔: 클릭이 많은 경기에서는 자국이 화면을 덮는다. */
   const [clickFx, setClickFx] = useState(true); // 기본 켬(요청)
   /* 사양 라디오(요청: "성능 3단계로 수정(저/중/고) 이러면 딱 LOD랑 맞고 편하지") —
@@ -13483,6 +13504,7 @@ export default function ReplayMotionPlayer({
       if (truth && truth.tracks.length) {
         setEntData(truthWorld(truth, (k) => UNIT_BUILD_SEC[k] ?? 0));
         setTruth(truth);
+        if (truth.trustUntil !== null && onDetailClose) setTrustWarn(truth.trustUntil);
         setSimTracks(new Map(truth.tracks.map((tr) => [tr.tag, tr])));
         setEntLoad("idle");
       } else {
@@ -14690,6 +14712,63 @@ export default function ReplayMotionPlayer({
    *  그 차이만큼이 곧 크롭이고, 드래그로 보는 '나머지 부분'이다. */
   const fsCoverW = stage.w > 0
     ? Math.max(stage.w, (stage.h * grid.width) / Math.max(1, grid.height)) : 0;
+  /* 지금 보는 자리를 계속 적어 둔다(요청: "현재 장면 공유시 내가 보고있던 부분의 위치까지
+     같이 보내서 들어오는 사람도 거기가 재생되게") — 공유 버튼(gameShare)이 이 값을 읽어
+     링크에 싣는다. 픽셀이 아니라 **분수**로 적는 까닭은 보내는 쪽과 받는 쪽의 지도 상자
+     크기가 달라서다: 화면 한가운데에 오는 지도 위 지점을 0~1로 적으면 상자가 아무리
+     달라도 같은 곳이 가운데에 온다.
+     식은 클릭 판정(pickAt)의 역이다 — 거기서 화면 x = (fx−0.5)·폭·배율 + 폭/2 + pan.x
+     이므로, 화면 한가운데(x = 폭/2)에 오는 fx는 0.5 − pan.x/(폭·배율)이다. */
+  useEffect(() => {
+    if (!clockKey) return;
+    const el = mapRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (r.width <= 0 || r.height <= 0) return;
+    playbackViewOf.set(clockKey, {
+      z: zoom,
+      cx: 0.5 - pan.x / (r.width * zoom),
+      cy: 0.5 - pan.y / (r.height * zoom),
+      deg: pitchDeg,
+    });
+  }, [clockKey, zoom, pan.x, pan.y, pitchDeg]);
+  useEffect(() => () => { if (clockKey) playbackViewOf.delete(clockKey); }, [clockKey]);
+  /* 받은 자리로 옮겨 앉는다(요청: 공유 링크의 &z=·&cx=·&cy=·&a=) — 딱 한 번이다.
+     지도 상자가 실제로 설 때까지 프레임마다 기다린다: 자취를 받아 오고 배치가 정해지는
+     동안 상자 폭이 0이라, 그때 셈하면 팬이 통째로 0으로 눌린다. 2초(120프레임)를
+     기다려도 안 서면 그냥 포기한다 — 못 옮긴 채로라도 재생은 돌아야 한다. */
+  const viewDoneRef = useRef(false);
+  useEffect(() => {
+    if (!initialView || viewDoneRef.current) return undefined;
+    let raf = 0;
+    let tries = 0;
+    const step = (): void => {
+      const el = mapRef.current;
+      const r = el?.getBoundingClientRect();
+      if (!r || r.width < 4) {
+        if (tries++ < 120) raf = requestAnimationFrame(step);
+        return;
+      }
+      viewDoneRef.current = true;
+      /* 각도는 우리가 가진 칸 중 가장 가까운 것으로 붙인다 — 링크가 낡아 없는 값이
+         와도 화면이 어긋나지 않는다. */
+      const deg = PITCH_DEGS.reduce((best, d) =>
+        (Math.abs(d - initialView.deg) < Math.abs(best - initialView.deg) ? d : best),
+      PITCH_DEGS[0]);
+      setPitchDeg(deg);
+      const z = Math.min(ZOOM_MAX, Math.max(1, initialView.z));
+      setZoom(z);
+      const lim = panLimit(r.width, r.height, z);
+      setPan({
+        x: Math.min(lim.x, Math.max(-lim.x, (0.5 - initialView.cx) * r.width * z)),
+        y: Math.min(lim.y, Math.max(-lim.y, (0.5 - initialView.cy) * r.height * z)),
+      });
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+    // panLimit은 렌더마다 새로 나지만 읽는 값(stage·fsOn)은 ref다 — 목록에 안 넣는다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialView]);
   /** 손가락 기기인가 — 전체화면 배치가 통째로 이 값으로 갈린다(기둥 둘 vs 위·아래 줄). */
   const [coarse, setCoarse] = useState(false);
   useEffect(() => {
@@ -15409,8 +15488,79 @@ export default function ReplayMotionPlayer({
      쓸어 넘기려고 눌렀다 떼기만 해도 팝업이 떴다. 이제 확대와 무관하게 누른 자리를
      적어 두고, 손가락이 DRAG_SLOP보다 움직였으면 그건 클릭이 아니다. */
   const tapRef = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
+  /* 눌러서 감기(요청: "모바일에서 미니맵 오른쪽반은 앞으로 감기 왼쪽반은 뒤로감기
+     (누르고 있는경우) ... 드래그하고 간섭안되게") — 손가락을 HOLD_MS 넘게 **가만히**
+     누르고 있으면 그때부터 시각이 흐른다. 끌기와 겹치지 않는 유일한 문턱이 '안 움직임'
+     이라, 그 안에 손이 DRAG_SLOP을 넘으면 감기는 아예 안 걸린다. 반대로 한 번 걸린
+     뒤에는 팬을 끊는다 — 손가락은 이제 감기 손잡이지 지도가 아니다.
+     감았으면 뗄 때 탭 취급을 안 한다: 정보 팝업도 안 뜨고 조작부도 안 열린다.
+     손가락 기기 전용이다(요청: 모바일) — PC에서 마우스를 누르고 있는 것은 끌기다. */
+  const HOLD_MS = 400;
+  const holdTimerRef = useRef(0);
+  const holdRafRef = useRef(0);
+  /** 지금 감고 있나 — 팬을 끊는 표다. */
+  const holdOnRef = useRef(false);
+  /** 이번 손짓이 한 번이라도 감았나 — **다음 누름에서야** 지워진다. 뗄 때 탭을 막는
+   *  것은 이 표다: 창(window)의 안전망과 지도의 onPointerUp 중 누가 먼저 도착하든
+   *  판정이 안 뒤집히게 하려면, 떼는 순간에 지워지는 값에 기대면 안 된다. */
+  const holdSeekedRef = useRef(false);
+  /** 감기 전에 재생 중이었나 — 놓으면 그대로 되돌린다. */
+  const holdWasPlaying = useRef(false);
+  const holdAtRef = useRef(0);
+  const stopHold = (): void => {
+    if (holdTimerRef.current) { window.clearTimeout(holdTimerRef.current); holdTimerRef.current = 0; }
+    if (holdRafRef.current) { cancelAnimationFrame(holdRafRef.current); holdRafRef.current = 0; }
+  };
+  const startHold = (dir: 1 | -1): void => {
+    holdOnRef.current = true;
+    holdSeekedRef.current = true;
+    holdAtRef.current = t;
+    dragRef.current = null;
+    setPlaying(false);
+    /** 감기 속도(게임초 / 실초) — 20분 판이면 40초/초라 끝에서 끝까지 30초다. */
+    const rate = Math.max(8, total / 30);
+    let last = performance.now();
+    const step = (now: number): void => {
+      const dt = Math.min(0.2, (now - last) / 1000);
+      last = now;
+      const nv = Math.min(total, Math.max(0, holdAtRef.current + dir * rate * dt));
+      holdAtRef.current = nv;
+      setT(nv);
+      setDone(nv >= total);
+      holdRafRef.current = requestAnimationFrame(step);
+    };
+    holdRafRef.current = requestAnimationFrame(step);
+  };
+  /* 안전망 — 손가락이 지도 밖에서 떨어지면 지도의 onPointerUp이 안 온다(포인터 잡기는
+     확대·전체화면일 때만 건다). 그때 감기가 안 멈추면 시각이 혼자 계속 흐른다. */
+  useEffect(() => {
+    const end = (): void => {
+      stopHold();
+      if (!holdOnRef.current) return;
+      holdOnRef.current = false;
+      if (holdWasPlaying.current) setPlaying(true);
+    };
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+    return () => {
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      stopHold();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const onMapPointerDown = (e: React.PointerEvent) => {
     tapRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+    /* 왼쪽 절반이면 뒤로, 오른쪽 절반이면 앞으로 — 기준은 **화면**이다(지도가 아니라).
+       전체화면에서는 지도가 화면보다 크게 깔려 끌려 다니므로, 지도 기준으로 재면
+       "오른쪽 절반"이 눈에 보이는 오른쪽과 안 맞는다. */
+    holdSeekedRef.current = false;
+    if (coarse && !gestureRef.current) {
+      const dir: 1 | -1 = e.clientX < window.innerWidth / 2 ? -1 : 1;
+      holdWasPlaying.current = playing;
+      stopHold();
+      holdTimerRef.current = window.setTimeout(() => startHold(dir), HOLD_MS);
+    }
     /* 전체화면에선 1배에도 끈다(요청: "드래그로 나머지 부분을 보는 식") — 지도가
        화면보다 크게 깔려 있어 배율과 무관하게 여유가 있다. */
     if ((zoom <= 1 && !fsOn) || e.button !== 0) return;
@@ -15427,8 +15577,14 @@ export default function ReplayMotionPlayer({
        pan과 엉뚱한 pan이 번갈아 이기며 화면이 다른 자리로 튀었다. */
     const tp0 = tapRef.current;
     if (tp0 && tp0.id === e.pointerId && !tp0.moved
-      && Math.hypot(e.clientX - tp0.x, e.clientY - tp0.y) > DRAG_SLOP) tp0.moved = true;
-    if (gestureRef.current) { dragRef.current = null; return; }
+      && Math.hypot(e.clientX - tp0.x, e.clientY - tp0.y) > DRAG_SLOP) {
+      tp0.moved = true;
+      // 아직 안 걸린 감기는 여기서 접는다 — 그건 끌기지 누르고 있는 것이 아니다.
+      if (!holdOnRef.current) stopHold();
+    }
+    // 감는 중에는 지도가 안 따라온다(요청: 드래그와 간섭 없게).
+    if (holdOnRef.current) { dragRef.current = null; return; }
+    if (gestureRef.current) { dragRef.current = null; stopHold(); return; }
     const d = dragRef.current;
     if (!d || d.id !== e.pointerId) return;
     if (!d.live) {
@@ -15453,6 +15609,16 @@ export default function ReplayMotionPlayer({
     }
   };
   const onMapPointerUp = (e: React.PointerEvent) => {
+    stopHold();
+    if (holdSeekedRef.current) {
+      if (holdOnRef.current) {
+        holdOnRef.current = false;
+        if (holdWasPlaying.current) setPlaying(true);
+      }
+      dragRef.current = null;
+      tapRef.current = null;
+      return;
+    }
     const dragged = dragRef.current?.id === e.pointerId && dragRef.current.live;
     if (dragRef.current?.id === e.pointerId) dragRef.current = null;
     const tp = tapRef.current;
@@ -15883,11 +16049,17 @@ export default function ReplayMotionPlayer({
                   </span>
                 )}
                 {/* 미네랄·가스(요청) — 참값이 그때 얼마 있었는지를 그대로 안다.
-                    여태 이 칸이 비어 있던 것은 명령만 보고는 낼 수가 없어서였다. */}
+                    표시는 **색만**이다(요청: "미네랄 가스 이모지 빼고 색으로만 표현하자")
+                    — 💎·🟢가 숫자보다 넓어 좁은 칸을 절반이나 먹고 있었다. 파랑이 미네랄,
+                    초록이 가스라는 것은 원작이 쓰는 색 그대로다. */}
                 {resNow.has(m.key) && (
                   <>
-                    <span className="scr-motion-stat">💎 {resNow.get(m.key)?.[0]}</span>
-                    <span className="scr-motion-stat">🟢 {resNow.get(m.key)?.[1]}</span>
+                    <span className="scr-motion-stat scr-motion-stat-min">
+                      {resNow.get(m.key)?.[0]}
+                    </span>
+                    <span className="scr-motion-stat scr-motion-stat-gas">
+                      {resNow.get(m.key)?.[1]}
+                    </span>
                   </>
                 )}
                 {/* APM은 지금 이 순간의 값이다(지적: 실시간으로 안 바뀌네) — 지난 1분치.
@@ -16073,15 +16245,17 @@ export default function ReplayMotionPlayer({
           }}
           aria-label="재생 위치"
         />
-        {/* 시계 폭을 못 박는다(지적: 슬라이드바 너비가 왔다 갔다 함) — 9:59에서 10:00로
-            넘어가면 글자가 한 칸 늘고, 그만큼 옆의 탐색바가 줄었다 늘었다 했다. 가장 긴
-            꼴(총 길이 × 2 + " / ")만큼 자리를 미리 잡고 숫자 폭도 고정한다. */}
-        <span
-          className="scr-motion-clockwrap"
-          style={{ minWidth: `${fmtClock(total).length * 2 + 3}ch`,
-            fontVariantNumeric: "tabular-nums" }}
-        >
-          <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
+        {/* 시계 폭은 **글자 자신**이 고정한다(지적: "진행바 옆에 자리를 너무 남김 다
+            써야지") — 여태 이 칸에 `min-width: 13ch`를 걸어 뒀는데, ch는 이 칸의 글꼴
+            (16px)로 재고 정작 글자는 9px이라 자리가 두 배로 잡혔다. 실측(390px 화면):
+            칸 115.7px에 글자 52.5px — 63px이 그냥 비어 있었고 그만큼 탐색바가 짧았다.
+            9:59에서 10:00로 넘어갈 때 흔들리지 않게 하려던 것이 본뜻이므로, 짧은 쪽을
+            숫자폭 빈칸(U+2007)으로 앞을 채워 글자 수를 늘 같게 만든다. tabular-nums와
+            짝이라 빈칸 하나가 숫자 하나와 정확히 같은 폭이다. */}
+        <span className="scr-motion-clockwrap" style={{ fontVariantNumeric: "tabular-nums" }}>
+          <span className="scr-motion-clock">
+            {fmtClock(t).padStart(fmtClock(total).length, "\u2007")} / {fmtClock(total)}
+          </span>
         </span>
       </div>
   );
@@ -18597,6 +18771,31 @@ export default function ReplayMotionPlayer({
       {/* 오른쪽 댓글 영역(요청: PC에서 댓글부를 미니맵 우측으로 — 기존 확대창 방식 그대로,
           다만 이제 겹창 없이 상세 화면 안 인라인이다). */}
       {wide && side ? <div className="scr-motion-sidewrap">{side}</div> : null}
+      {/* 갈라진 판 경고(요청: 페이지 진입 시 한 번) — 서버가 구울 때 잰 '믿을 수 있는
+          구간'이 경기 끝보다 짧으면, 그 뒤 장면은 실제 경기와 다르다. 한 번 보고 닫으면
+          다시 안 뜬다(이 화면에 머무는 동안). */}
+      {trustWarn !== null && createPortal(
+        <div className="scr-modal-overlay">
+          <div className="scr-modal scr-modal-sm scr-modal-confirm">
+            <div className="scr-confirm-head">
+              <AlertTriangle size={18} className="scr-confirm-icon" />
+              <span>재구성이 도중에 갈라진 경기예요</span>
+            </div>
+            <p className="scr-confirm-msg">
+              {trustWarn < 1
+                ? "이 경기는 처음부터 실제와 다르게 흘러가요. 컴퓨터가 낀 판이거나 아직 못 옮긴 규칙이 있는 판이에요. 장면은 참고만 해 주세요."
+                : `이 경기는 ${fmtClock(Math.floor(trustWarn))}까지만 실제 경기와 같아요.`
+                  + " 그 뒤 장면은 재구성이 실제와 갈라져 다르게 보일 수 있어요."}
+            </p>
+            <div className="scr-form-actions">
+              <button className="scr-btn scr-btn-primary" onClick={() => setTrustWarn(null)}>
+                알겠어요
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
       {fsInner}
     </div>
   );

@@ -45,15 +45,37 @@ export default function GameResultStory({
   /* 특정 시간 공유(요청: 카톡 링크로 열면 그 시각부터 재생) — 주소의 &t=<초>는 이
      경기(game 파라미터가 일치할 때)에만 적용한다. 피드의 다른 카드가 같이 점프하면
      안 되니 경기번호·id 둘 다로 맞춰 본다. 첫 마운트에 한 번만 읽는다. */
-  const initialSec = useMemo(() => {
+  /** 주소가 이 경기를 가리키나 — 시각(&t=)과 보던 자리(&z=·&cx=·&cy=·&a=)가 같이 쓴다. */
+  const linkQuery = useMemo(() => {
     const q = new URLSearchParams(window.location.search);
     const gameParam = q.get("game");
-    if (!gameParam) return undefined;
-    if (gameParam !== gameResult.matchNo && Number(gameParam) !== gameResult.id) return undefined;
-    const v = Number(q.get("t"));
-    return Number.isFinite(v) && v > 0 ? Math.floor(v) : undefined;
+    if (!gameParam) return null;
+    if (gameParam !== gameResult.matchNo && Number(gameParam) !== gameResult.id) return null;
+    return q;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const initialSec = useMemo(() => {
+    const v = Number(linkQuery?.get("t"));
+    return Number.isFinite(v) && v > 0 ? Math.floor(v) : undefined;
+  }, [linkQuery]);
+  /* 보던 자리(요청: "현재 장면 공유시 내가 보고있던 부분의 위치까지 같이 보내서 들어오는
+     사람도 거기가 재생되게") — 셋 중 하나라도 있으면 넘긴다. 없는 것은 기본값으로 채운다
+     (배율 1 · 가운데 · 90도). */
+  const initialView = useMemo(() => {
+    if (!linkQuery) return undefined;
+    const num = (k: string, dflt: number): number => {
+      const v = Number(linkQuery.get(k));
+      return Number.isFinite(v) ? v : dflt;
+    };
+    if (linkQuery.get("z") === null && linkQuery.get("cx") === null
+      && linkQuery.get("a") === null) return undefined;
+    return {
+      z: Math.min(8, Math.max(1, num("z", 1))),
+      cx: Math.min(1, Math.max(0, num("cx", 0.5))),
+      cy: Math.min(1, Math.max(0, num("cy", 0.5))),
+      deg: num("a", 90),
+    };
+  }, [linkQuery]);
   // 확대 창 왼쪽 기둥의 타임스탬프(요청: 공통 양식) — 앱 공용 시각 유틸(formatWhen)로,
   // 리플레이 실제 시작 시각(시각 포함), 없으면 경기 날짜.
   const stampText = formatWhen(gameResult.gameStartedAt ?? gameResult.date, { clock: true });
@@ -197,6 +219,7 @@ export default function GameResultStory({
         /* 특정 시간 공유(요청) — 링크의 &t=면 그 시점부터, 공유 버튼은 clockKey로
            지금 재생 시각을 읽어 링크에 싣는다. */
         initialSec={initialSec}
+        initialView={initialView}
         clockKey={String(gameResult.matchNo || gameResult.id)}
         /* 진행바 아래 별도 공유 버튼(요청: 케밥은 그대로) — 지금 재생 시각이 링크에
            실려, 받은 쪽은 이 장면부터 본다. */

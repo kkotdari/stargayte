@@ -11127,7 +11127,11 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
    폭 56 → 20px(요청: 세로 바 폭 줄이기) — 56px은 레일 옆에 늘어서던 눈금 라벨 여섯의
    자리였다. 그 값들을 바 아래 한 줄로 옮기면서(SlideBar의 scr-slidebar-value) 남길
    것은 눈금 획(8px)과 손잡이(12px)뿐이라, 상자가 그 굵기까지 좁아진다. */
-.scr-slidebar-track { position: relative; width: 20px; height: 156px; cursor: pointer; outline: none; }
+/* 누르는 몫은 판(.scr-slidebar) 전체다(지적: 맨 위·맨 아래 다이얼이 안 집힌다) —
+   손잡이는 눈금에 **중심**이 놓여 양 끝에서는 절반이 트랙 밖이다. 그래서 제목·값
+   글자까지가 한 컨트롤이고, 자리 계산만 트랙을 자로 쓴다(SlideBar.tsx). */
+.scr-slidebar { cursor: pointer; }
+.scr-slidebar-track { position: relative; width: 20px; height: 156px; outline: none; }
 .scr-slidebar-track:focus-visible { box-shadow: 0 0 0 2px rgba(var(--lit-rgb), 0.6); border-radius: 8px; }
 /* 레일 — 눈금이 꿰이는 가는 세로줄. 라벨이 붙는 반대쪽 가장자리에 붙는다. */
 .scr-slidebar-rail { position: absolute; top: 0; bottom: 0; width: 2px; border-radius: 999px; background: rgba(255, 255, 255, 0.3); }
@@ -11212,12 +11216,35 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 .scr-motion:not(.scr-motion-wide) .scr-motion-mapwrap {
   width: 100vw; max-width: 100vw; margin-left: calc(50% - 50vw);
 }
-/* 두 줄 허용 + 팀별 가운데 정렬 + 온이름(재요청: 공간 아낀 만큼) — 헤드 줄의 BEST
-   칩을 걷어 여유가 생겼다. 이름은 다시 풀로 흐르고, 못 다 서면 둘째 줄로 넘어간다. */
+/* 칸은 **그릇이 정한다**(요청: "로스터같은부분은 칸 고정해서 내용에따라 너비 흔들리고나
+   하지 않게") — 여태 팀 기둥이 flex-wrap이라 칸 폭이 내용에서 나왔다. 일꾼이 9→14가
+   되거나 미네랄이 88→202가 되면 그 칸이 넓어지고 옆 칸들이 통째로 밀렸다.
+   실측(390px 화면, 4v4): 칸 폭이 0~5.6px, 칸 왼끝이 −4.4~+4.9px씩 흔들렸다.
+   사람 수만큼 같은 폭으로 나눠 갖는 그리드로 바꾼다 — 폭이 그릇에서 나오므로 안의
+   숫자가 몇 자리든 자리는 한 톨도 안 움직인다. 넘치는 글자는 칸 안에서 잘린다. */
 .scr-motion:not(.scr-motion-wide) .scr-motion-teamcol {
-  width: auto; flex-direction: row; flex-wrap: wrap; gap: 3px 5px;
-  align-items: center; justify-content: center; align-content: center;
+  width: auto; display: grid;
+  grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+  gap: 3px 2px; align-items: center; justify-items: center;
 }
+.scr-motion:not(.scr-motion-wide) .scr-motion-teamcol-item {
+  width: 100%; min-width: 0;
+  /* 칸을 '자'로 삼는다 — 글자 크기가 뷰포트가 아니라 **제 칸**을 따라간다. 칸 폭은
+     사람 수가 정하므로(1v1이면 넓고 4v4면 좁다) 화면 폭으로 어림하면 3v3에서 틀린다.
+     실측(360px 화면 4v4): 칸 40.2px에 이름칩이 41px이라 0.8px씩 넘쳤고, 모바일
+     전체화면(칸 35px)에서는 6px 넘쳤다. cqw를 못 읽는 옛 브라우저는 clamp가 통째로
+     버려져 예전 크기(11px·9px) 그대로다 — 그래서 max-width로 한 겹 더 막아 둔다. */
+  container-type: inline-size;
+}
+.scr-motion:not(.scr-motion-wide) .scr-motion-teamcol-name {
+  max-width: 100%; font-size: clamp(8px, 24cqw, 11px);
+}
+.scr-motion:not(.scr-motion-wide) .scr-motion-stats { font-size: clamp(7px, 22cqw, 9px); }
+/* 숫자는 폭이 같은 글꼴로(요청의 같은 뜻) — 1과 4의 폭이 다르면 칸이 고정돼도 그 안에서
+   글자가 좌우로 튄다. 지표 줄은 통째로 표 숫자다. */
+.scr-motion-stats { font-variant-numeric: tabular-nums; max-width: 100%; overflow: hidden; }
+.scr-motion:not(.scr-motion-wide) .scr-motion-teamcol-head { max-width: 100%; }
+.scr-motion:not(.scr-motion-wide) .scr-motion-teamcol-text { max-width: 100%; }
 /* 가운데 vs(요청: 구분선 말고 vs) — 경계 border를 걷고 가운데 칸(auto)에 vs가 선다. */
 .scr-motion:not(.scr-motion-wide) .scr-motion-teamcol:last-of-type { justify-content: center; }
 .scr-motion-teamvs {
@@ -11231,8 +11258,9 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   align-self: center; justify-self: end; margin-right: -2px;
 }
 .scr-motion:not(.scr-motion-wide) .scr-motion-teamcol-item .scr-motion-base-ring { display: none; }
-/* 이름은 살짝 크게(요청) — 아바타가 빠져 이름이 곧 그 사람이다. */
-.scr-motion:not(.scr-motion-wide) .scr-motion-teamcol-name { font-size: 11px; max-width: none; }
+/* (합침) 이름 크기·폭은 위 칸 규칙이 쥔다 — 여기 있던 `font-size:11px; max-width:none`이
+   같은 무게로 뒤에 있어, 칸에 맞춰 줄이는 clamp와 넘침 막이를 통째로 덮고 있었다.
+   "아바타가 빠져 이름이 곧 그 사람이다"라는 뜻은 clamp의 위 끝(11px)이 그대로 잇는다. */
 /* 잘라내기는 바탕 그림에만(지적: 경계의 아바타·이름이 잘려 나감) — 컨테이너가 overflow:
    hidden이면 모서리 본진의 마커가 반쪽이 된다. 둥근 모서리는 그림이 제 몫으로 갖는다. */
 .scr-motion-map {
@@ -11627,10 +11655,14 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
      못 박혀 있어, 세 덩이의 합이 화면 폭을 넘으면 오른쪽 것이 그냥 밖으로 밀려났다. */
   flex-wrap: wrap; row-gap: 4px;
 }
-.scr-motion-mobrow .scr-motion-qrow { margin-left: auto; }
+/* 라디오는 서로 붙어 왼쪽에 모인다(지적: "성능 버튼이 정가운데 있거나 아니면 라디오끼리
+   왼쪽에 모이거나 해야할듯") — 여태 성능에 margin-left:auto가 걸려 있어 색상과 성능
+   사이가 통째로 벌어졌다(실측 390px 화면: 색상 끝 54px, 성능 시작 238.9px — 185px이
+   빈 자리였다). 밀어내는 몫은 공유 버튼이 맡는다(아래). */
 /* 공유 버튼은 이 줄에서 컴팩트하다(지적: 너무 크다) — 기본 .scr-btn 크기(40px대)는
    알약 둘과 나란히 서기엔 두 배로 크다. PC 공유 줄과 같은 24px 흰 알약으로 맞춘다. */
 .scr-motion-mobrow .scr-kakao-share-btn {
+  margin-left: auto;
   height: 24px; min-height: 0; padding: 0 10px; font-size: 11px; gap: 4px;
   white-space: nowrap; line-height: 1; flex: 0 0 auto;
   background: #fff; color: #10151a; border: 1px solid #fff; border-radius: 8px;
@@ -11845,12 +11877,15 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   .scr-motion-range::-webkit-slider-thumb { width: 20px; height: 20px; margin-top: -8px; }
   .scr-motion-range::-moz-range-thumb { width: 20px; height: 20px; }
 }
-/* 손가락 기기는 한 단 더(요청: "가로 세로 슬라이드 모두 잘 안집혀") — 상자 32→44px,
-   손잡이 20→24px. 트랙(4px) 기준 손잡이 중심 보정은 −(24−4)/2 = −10px이다. */
+/* 손가락 기기는 한 단 더(요청: "가로 세로 슬라이드 모두 잘 안집혀" → 재요청: "진행바
+   다이얼 크기 키우고 터치영역도 넓게") — 상자 32→48px, 손잡이 20→28px, 줄도 4→6px로
+   굵힌다. 손잡이 중심 보정은 −(28−6)/2 = −11px이다. */
 @media (pointer: coarse) {
-  .scr-motion-range { height: 44px; }
-  .scr-motion-range::-webkit-slider-thumb { width: 24px; height: 24px; margin-top: -10px; }
-  .scr-motion-range::-moz-range-thumb { width: 24px; height: 24px; }
+  .scr-motion-range { height: 48px; }
+  .scr-motion-range::-webkit-slider-runnable-track { height: 6px; }
+  .scr-motion-range::-moz-range-track { height: 6px; }
+  .scr-motion-range::-webkit-slider-thumb { width: 28px; height: 28px; margin-top: -11px; }
+  .scr-motion-range::-moz-range-thumb { width: 28px; height: 28px; }
 }
 .scr-motion-range::-webkit-slider-runnable-track {
   height: 4px; border-radius: 999px;
@@ -14504,6 +14539,13 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-fs-bottom > .scr-motion-bar-controls { flex: 1 1 auto; margin: 0; }
 .scr-fs-bottom-tail { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 
+/* PC 전체화면의 기둥은 두 칸씩 앉힌다 — 208px(좁은 창은 148px) 기둥에 넷을 한 줄로
+   세우면 칸이 37~52px이라 '일꾼 14'가 안 든다. 지도 옆 기둥(.scr-motion-side)과 같은
+   2열이다. 선택자에 .scr-motion을 한 번 더 얹은 것은 위 :not(.scr-motion-wide) 규칙과
+   같은 무게로 맞춰 뒤에 오는 이쪽이 이기게 하기 위해서다. */
+.scr-motion .scr-fs-col .scr-motion-teamcol {
+  grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 4px;
+}
 /* 미니맵(PC 전용) — 왼쪽 기둥 아래 빈 자리에 앉는다. */
 .scr-fs-minimap {
   flex: 0 0 auto; width: 100%; position: relative;
@@ -14550,7 +14592,7 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 @media (max-width: 900px) {
   .scr-fs-col { width: 148px; padding: 8px 6px; gap: 6px; font-size: 11px; }
   .scr-fs-col .scr-motion-radio-label { font-size: 10px; }
-  .scr-fs-col .scr-motion-teamcol-name { font-size: 11px; }
+  /* (걷음) 이름 크기는 칸이 정한다 — 위 clamp(8~11px)가 92px 칸에서는 그대로 11px이다. */
   .scr-fs-col .scr-motion-stat { font-size: 10px; }
   .scr-fs-bottom { padding: 6px 8px; gap: 6px; }
 }

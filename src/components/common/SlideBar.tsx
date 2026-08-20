@@ -76,8 +76,20 @@ export default function SlideBar({
     if (ni !== index) onChange(options[ni].value);
   };
   const at = (i: number): string => `${(i / (n - 1)) * 100}%`;
+  /* 손가락은 **판 전체**가 받는다(지적: "세로슬라이드 두개가 맨위에 다이얼이 있으면
+     터치가 안돼 맨아래도") — 맞다. 손잡이는 눈금 자리에 **중심**이 놓이므로, 맨 위
+     눈금에서는 손잡이의 위 절반(8px)이 트랙 밖으로 나가 있다. 눈에 보이는 그 부분을
+     누르면 트랙이 아니라 제목(또는 판 여백)이 맞아 아무 일도 안 일어났다. 맨 아래도
+     같은 이유로 값 글자 쪽이 먹었다.
+     자리 계산은 그대로 **트랙**을 자로 쓰고(pick 안에서 clientY를 트랙 rect로 잰다),
+     비율은 0~1로 조여 두었으므로 트랙 위를 누르면 맨 위 눈금, 아래를 누르면 맨 아래
+     눈금이 잡힌다 — 제목과 값 글자가 자연스럽게 양 끝 눈금의 넓은 표적이 된다. */
   return (
-    <div className={cx("scr-slidebar", `scr-slidebar-${labelSide}`)}>
+    <div
+      className={cx("scr-slidebar", `scr-slidebar-${labelSide}`)}
+      onPointerDown={onDown}
+      onPointerMove={onMove}
+    >
       <span className="scr-slidebar-title">{title}</span>
       <div
         ref={trackRef}
@@ -90,8 +102,6 @@ export default function SlideBar({
         aria-valuenow={n - index}
         aria-valuetext={options[index]?.label}
         aria-orientation="vertical"
-        onPointerDown={onDown}
-        onPointerMove={onMove}
         onKeyDown={onKeyDown}
       >
         <span className="scr-slidebar-rail" />
