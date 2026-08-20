@@ -14944,15 +14944,21 @@ export default function ReplayMotionPlayer({
       return undefined;
     }
     fsWake();
+    /** 가장자리로 치는 폭 — **정말 끝까지 가야 한다**(지적: "마우스를 가장자리 끝까지
+     *  안가도 오버레이 나오는거 수정"). 72px은 화면을 보다 마우스를 조금만 옮겨도
+     *  걸려, 사실상 '움직이면 뜬다'였다. 16px이면 화면 끝으로 밀어야 걸린다. */
+    const EDGE = 16;
     const onMove = (e: PointerEvent): void => {
       if (e.pointerType !== "mouse") return;
       const el = stageRef.current;
       if (!el) return;
+      /* 이미 떠 있는 조작부 위에 마우스가 있으면 계속 깨어 있는다 — 버튼을 겨누는
+         동안 사라지면 누를 수가 없다. 가장자리 판정과 별개인 까닭이 그것이다. */
+      const over = e.target instanceof Element && e.target.closest(".scr-fs-ui");
       const r = el.getBoundingClientRect();
-      const EDGE = 72;
       const near = e.clientX - r.left < EDGE || r.right - e.clientX < EDGE
         || e.clientY - r.top < EDGE || r.bottom - e.clientY < EDGE;
-      if (near) fsWake();
+      if (near || over) fsWake();
     };
     window.addEventListener("pointermove", onMove, { passive: true });
     return () => {
@@ -15046,9 +15052,12 @@ export default function ReplayMotionPlayer({
       el.removeEventListener("wheel", onWheel);
       window.clearTimeout(wheelTimer);
     };
-    // 확대창(포털 재부착)이 사라져 맵 엘리먼트는 안 바뀐다.
+    /* ★ 전체화면을 켜고 끄면 **맵 엘리먼트가 갈린다**(지적: "pc에서 전체화면시 휠
+       줌안됨") — 지도는 평소 자리와 무대 중 한쪽에만 붙으므로, 켜는 순간 옛 노드가
+       사라지고 새 노드가 선다. 마운트 때 한 번만 걸던 이 리스너는 사라진 노드에
+       남아 있었다. fsOn이 바뀔 때 다시 건다. */
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fsOn]);
   /* 팬 재죔(지적: 줌인아웃하다 맵을 벗어나면 문제) — 팬 한계는 '그때의 맵 상자'로
      계산되는데, 줌 단계·보기 전환(3D 피칭은 세로가 0.74로 눌린다)으로 상자가 변하면
      이미 서 있던 팬이 새 한계를 넘어 맵 가장자리 밖(빈 바탕)이 드러나고 마커가 맵을
