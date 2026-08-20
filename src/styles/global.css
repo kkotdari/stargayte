@@ -11422,10 +11422,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
 }
 /* 로스터 아래 지표 줄(요청: 일꾼·인구·미네랄·가스·apm을 한 덩이로, 라벨은 일꾼만,
-   작은 글씨로, 가운데 정렬) — 값이 다섯이라 한 줄에 다 안 서는 폭에서는 접힌다. */
+   작은 글씨로, 가운데 정렬).
+   ★ 항목마다 줄을 바꾼다(요청: "항목별로 세로로 줄바꿈") — 가로로 접던 방식은 폭에 따라
+   접히는 자리가 달라져, 같은 지표가 사람마다 다른 줄에 서고 어떤 폭에서는 두 값이 한
+   줄에 붙어 하나로 읽혔다. 세로로 세우면 몇 번째 줄이 무슨 값인지가 늘 같다. */
 .scr-motion-stats {
-  display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline;
-  gap: 0 5px; font-size: 9px; font-weight: 700; line-height: 1.35;
+  display: flex; flex-direction: column; justify-content: flex-start; align-items: center;
+  gap: 1px; font-size: 9px; font-weight: 700; line-height: 1.35;
   color: var(--muted); text-shadow: none;
 }
 .scr-motion-stat { white-space: nowrap; }
@@ -11942,7 +11945,8 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* (삭제·요청: 색상도 일반 토글로 합치기) — 색상 줄이 왼쪽 기둥에 따로 앉던 자리. */
 /* (지도 좌우에 갈라 세운 로스터는 위 .scr-motion-side 기둥 안에 들어갔다.) */
 /* 한 팀 넷을 2열로 앉힌다(요청) — 세로 넷은 지표 줄이 붙으면서 기둥을 너무 길게
-   끌었다. 열 폭이 좁아 지표 줄은 두 줄로 접힌다(그 줄은 flex-wrap이다). */
+   끌었다. 지표 줄은 이제 항목마다 한 줄이라(위 .scr-motion-stats) 폭과 무관하게 같은
+   높이를 쓴다. */
 .scr-motion-side .scr-motion-teamcol {
   width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px 6px; align-items: start;
