@@ -35,9 +35,10 @@ import { terrainOf, decodeWalk, type TerrainGrid } from "../../utils/minimapTerr
 /* 자취는 이제 서버가 굽는다 — 브라우저는 풀어서 읽기만 한다(tools/openbw/README.md).
    여태 이 자리에서 돌던 시뮬(legacy/simCore·simClient)은 명령에서 **유추**하던 것이라,
    참값이 생긴 뒤로는 견줄 것도 없어 통째로 걷었다. legacy는 유물로 남긴다. */
+import RaceBadge from "../common/RaceBadge";
 import { truthToV2 } from "../../utils/truthToV2";
 import {
-  decodeTruthTracks, posAtTruth as posAtSim, type TruthTrack,
+  decodeTruthTracks, posAtTruth as posAtSim, type TruthTrack, type TruthTracks,
   TRUTH_ST_CARRY_GAS as ST_CARRY_GAS, TRUTH_ST_CARRY_MIN as ST_CARRY_MIN,
   TRUTH_ST_INSIDE as ST_INSIDE,
 } from "../../utils/openbwTracks";
@@ -13378,6 +13379,8 @@ export default function ReplayMotionPlayer({
   /* 유닛의 자리·방향·상태 — 서버가 리플레이를 그대로 돌려 구운 참값이다. 태그로 찾는다.
      (이름이 sim으로 남은 것은 읽는 자리가 수백 군데라서다 — 값의 출처만 바뀌었다.) */
   const [simTracks, setSimTracks] = useState<Map<number, TruthTrack> | null>(null);
+  /* 참값 원본 — 자원·실시간 APM은 v2 꼴에 자리가 없어 여기서 직접 읽는다. */
+  const [truth, setTruth] = useState<TruthTracks | null>(null);
   /* 클릭 자국 토글(요청) — 기본은 끔: 클릭이 많은 경기에서는 자국이 화면을 덮는다. */
   const [clickFx, setClickFx] = useState(true); // 기본 켬(요청)
   /* 사양 라디오(요청: "성능 3단계로 수정(저/중/고) 이러면 딱 LOD랑 맞고 편하지") —
@@ -13421,6 +13424,7 @@ export default function ReplayMotionPlayer({
       const truth = got.motion ? await decodeTruthTracks(got.motion) : null;
       if (truth && truth.tracks.length) {
         setEntData(truthToV2(truth));
+        setTruth(truth);
         setSimTracks(new Map(truth.tracks.map((tr) => [tr.tag, tr])));
         setEntLoad("idle");
       } else {
@@ -13831,6 +13835,50 @@ export default function ReplayMotionPlayer({
   }, [supplyLive, entData, t]);
   /** 지금(t) 살아 있는 일꾼 수 — raw별. 개체 트랙이 없는 옛 경기는 비어 있고, 부르는
    *  쪽이 옛 누계 모형으로 떨어진다. */
+  /* 지금 이 순간의 미네랄·가스(요청) — 참값이 바뀔 때마다 적어 둔 것을 t로 되짚는다.
+     여태 이 칸이 비어 있던 것은 낼 수가 없어서였다: 명령만 보고는 수입도 지출도 모르니
+     지어내는 수밖에 없었다. 이제 실제로 그때 얼마 있었는지가 그대로 있다. */
+  const resNow = useMemo(() => {
+    const out = new Map<string, [number, number]>();
+    if (!truth || !entData) return out;
+    const nameOf = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    for (const [owner, rows] of truth.res) {
+      const raw = nameOf.get(owner);
+      if (!raw || !rows.length) continue;
+      // 마지막으로 t를 안 넘는 줄 — 줄이 수천 개라 이분법으로 찾는다.
+      let lo = 0;
+      let hi = rows.length - 1;
+      if (rows[0][0] > t) continue;
+      while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if (rows[mid][0] <= t) lo = mid; else hi = mid - 1;
+      }
+      out.set(raw, [rows[lo][1], rows[lo][2]]);
+    }
+    return out;
+  }, [truth, entData, t]);
+  /* 실시간 APM(지적: APM이 실시간으로 안 바뀌네) — 경기 전체 평균 하나를 내내 띄우고
+     있었다. 참값이 명령을 5초 통에 담아 주므로, 지난 1분치를 더하면 그것이 곧 지금의
+     APM이다(분당 명령 수). 판 초반 1분 동안은 흐른 시간으로 나눠 비율을 맞춘다. */
+  const apmNow = useMemo(() => {
+    const out = new Map<string, number>();
+    if (!truth || !entData) return out;
+    const nameOf = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    const from = Math.max(0, t - 60);
+    const span = Math.max(5, t - from);
+    for (const [owner, buckets] of truth.apm) {
+      const raw = nameOf.get(owner);
+      if (!raw) continue;
+      let n = 0;
+      for (const [bt, cnt] of buckets) {
+        if (bt + truth.apmBucketSec <= from) continue;
+        if (bt > t) break;
+        n += cnt;
+      }
+      out.set(raw, Math.round((n * 60) / span));
+    }
+    return out;
+  }, [truth, entData, t]);
   const workerNow = useMemo(() => {
     const m = new Map<string, number>();
     for (const [raw, series] of workerLive) {
@@ -14307,7 +14355,10 @@ export default function ReplayMotionPlayer({
         }
         if (hx >= 0 && hd > 8) pts.unshift([e.b, hx, hy]);
       }
-      if (pts.length === 0) continue;
+      /* (걷어냄) 증거가 없으면 안 그리던 문 — 걸음이 명령 증거에서 오던 시절의 자다.
+         아래에서 보듯 걸음은 이제 참값 자취에서 온다. 참값에는 명령이 없는 유닛(시작
+         일꾼·라바·자동 생산분)도 다 들어 있는데, 이 문이 그것들을 통째로 걸렀다 —
+         화면에 유닛이 하나도 안 태어나던 원인이다. */
       /* ★ 걸음은 코어 하나뿐이다(과제 #61 → 정식 배포) — 여태는 렌더러가 제 길찾기·
          속도표·대기점으로 자취를 하나 더 만들어 두고 그리기 직전에 코어 자리로
          덮어썼다. 둘이 나란히 돌면 **표적 지도가 덮어쓰기 전 자리를 본다**: 몸은
@@ -15905,6 +15956,9 @@ export default function ReplayMotionPlayer({
               <span className="scr-motion-teamcol-name" style={chipStyle(m.key, m.team)}>
                 {shortName(m.name)}
               </span>
+              {/* 종족 한 글자(요청) — 이름 옆. 종족 고유색 글자만 두는 배지라 자리를
+                  거의 안 먹는다. 종족을 못 읽은 경기는 스스로 안 그린다. */}
+              {m.race ? <RaceBadge race={m.race} circleLetter size={18} /> : null}
             </span>
             </span>
               {/* 로스터 아래 지표(요청: "로스터 아래 표시 항목 — 일꾼수·인구수·미네랄·
@@ -15924,8 +15978,18 @@ export default function ReplayMotionPlayer({
                     {supplyNow.get(m.key)?.[0]}/{supplyNow.get(m.key)?.[1]}
                   </span>
                 )}
-                {m.apm !== undefined && m.apm !== null && (
-                  <span className="scr-motion-stat">{m.apm}</span>
+                {/* 미네랄·가스(요청) — 참값이 그때 얼마 있었는지를 그대로 안다.
+                    여태 이 칸이 비어 있던 것은 명령만 보고는 낼 수가 없어서였다. */}
+                {resNow.has(m.key) && (
+                  <>
+                    <span className="scr-motion-stat">💎 {resNow.get(m.key)?.[0]}</span>
+                    <span className="scr-motion-stat">🟢 {resNow.get(m.key)?.[1]}</span>
+                  </>
+                )}
+                {/* APM은 지금 이 순간의 값이다(지적: 실시간으로 안 바뀌네) — 지난 1분치.
+                    참값이 없으면 경기 전체 평균으로 떨어진다. */}
+                {(apmNow.has(m.key) || (m.apm !== undefined && m.apm !== null)) && (
+                  <span className="scr-motion-stat">{apmNow.get(m.key) ?? m.apm}</span>
                 )}
               </span>
             {winnerTeam && (m.team === 2 ? 2 : 1) === winnerTeam && t >= total - 0.5 && !fallen && (
@@ -18493,7 +18557,14 @@ export default function ReplayMotionPlayer({
           }}
           aria-label="재생 위치"
         />
-        <span className="scr-motion-clockwrap">
+        {/* 시계 폭을 못 박는다(지적: 슬라이드바 너비가 왔다 갔다 함) — 9:59에서 10:00로
+            넘어가면 글자가 한 칸 늘고, 그만큼 옆의 탐색바가 줄었다 늘었다 했다. 가장 긴
+            꼴(총 길이 × 2 + " / ")만큼 자리를 미리 잡고 숫자 폭도 고정한다. */}
+        <span
+          className="scr-motion-clockwrap"
+          style={{ minWidth: `${fmtClock(total).length * 2 + 3}ch`,
+            fontVariantNumeric: "tabular-nums" }}
+        >
           <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
         </span>
       </div>

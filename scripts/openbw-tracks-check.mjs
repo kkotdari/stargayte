@@ -51,7 +51,7 @@ const text = runDump([]).toString();
 let trustText = -1;
 const byTag = new Map();
 const hpText = new Map(), icText = new Map();
-const upText = [], castText = [], pingText = [], playerText = [];
+const upText = [], castText = [], pingText = [], playerText = [], resText = [], apmText = [];
 for (const line of text.split("\n")) {
   if (!line) continue;
   if (line[0] === "#") {
@@ -66,6 +66,8 @@ for (const line of text.split("\n")) {
     } else if (p[0] === "#up") upText.push(p.slice(1).map(Number));
     else if (p[0] === "#cast") castText.push(p.slice(1).map(Number));
     else if (p[0] === "#ping") pingText.push(p.slice(1).map(Number));
+    else if (p[0] === "#res") resText.push(p.slice(1).map(Number));
+    else if (p[0] === "#apm") apmText.push(p.slice(1).map(Number));
     continue;
   }
   if (line[0] === "f") continue;
@@ -112,7 +114,8 @@ for (const tr of decoded.tracks) {
     if (!near(tr.keys[o + 1], x / 32, 1 / 64)) { say(`태그 ${tr.tag} 키 ${i} x`); break; }
     if (!near(tr.keys[o + 2], y / 32, 1 / 64)) { say(`태그 ${tr.tag} 키 ${i} y`); break; }
     if (!near(tr.keys[o + 3], (head * 360) / 256, 1e-2)) { say(`태그 ${tr.tag} 키 ${i} 방향`); break; }
-    if (tr.keys[o + 4] !== state) { say(`태그 ${tr.tag} 키 ${i} 상태`); break; }
+    if (tr.keys[o + 4] !== (state & 0x7f)) { say(`태그 ${tr.tag} 키 ${i} 상태`); break; }
+    if (tr.done[i] !== (state & 0x80 ? 0 : 1)) { say(`태그 ${tr.tag} 키 ${i} 완성`); break; }
     if (tr.types[i] !== type) { say(`태그 ${tr.tag} 키 ${i} 종류 ${tr.types[i]} vs ${type}`); break; }
   }
   keys += n;
@@ -172,7 +175,9 @@ const b64 = bin.toString("base64").length;
 console.log(`\n▸ ${rep.split("/").pop().slice(0, 56)}`);
 console.log(`  트랙 ${decoded.tracks.length}개 · 키 ${keys}개`);
 console.log(`  사람 ${decoded.players.length} · 업그레이드 ${decoded.ups.length}`
-  + ` · 마법 ${decoded.casts.length} · 핑 ${decoded.pings.length}`);
+  + ` · 마법 ${decoded.casts.length} · 핑 ${decoded.pings.length}`
+  + ` · 자원 ${[...decoded.res.values()].reduce((n, a) => n + a.length, 0)}`
+  + ` · APM통 ${[...decoded.apm.values()].reduce((n, a) => n + a.length, 0)}`);
 console.log(`  이진 ${(bin.length / 1048576).toFixed(2)}MB · base64 ${(b64 / 1048576).toFixed(2)}MB (서버 상한 12MB)`);
 console.log(`  믿을 수 있는 구간: ${decoded.trustUntil === null ? "끝까지" : `0 ~ ${(decoded.trustUntil / 60).toFixed(1)}분`}`);
 console.log(bad ? `  ✗ 어긋난 곳 ${bad}군데` : "  ✓ 이진과 글자가 한 자리도 안 틀린다");

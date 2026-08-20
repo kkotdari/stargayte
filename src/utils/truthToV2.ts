@@ -21,7 +21,7 @@
  * 셋 다 참 자취에서 곧장 읽어 낸다: 건물이 자리를 옮겼으면 이륙·착륙이고, 유닛 종류가
  * 시즈모드로 바뀌었으면 시즈다.
  */
-import { BLD_STATS, type UnitEnt, type UnitEv, type UnitTracksV2 } from "../legacy/replayUnits";
+import { BLD_STATS, UNIT_BUILD_SEC, type UnitEnt, type UnitEv, type UnitTracksV2 } from "../legacy/replayUnits";
 import type { Race } from "../types";
 import { BW_UNIT_NAME } from "./bwUnitNames";
 import { TRUTH_ST_GONE, type TruthTracks } from "./openbwTracks";
@@ -40,7 +40,10 @@ const RACE_OF: Record<number, Race> = { 0: "저그", 1: "테란", 2: "프로토�
 const isBuilding = (kind: string): boolean => !!BLD_STATS[kind];
 
 /** 자취 하나를 v2 개체 하나 이상으로 편다. 변태는 생애가 갈리므로 개체도 갈린다. */
-function entsOfTrack(tr: TruthTracks["tracks"][number]): UnitEnt[] {
+function entsOfTrack(
+  tr: TruthTracks["tracks"][number],
+  orders: TruthTracks["orders"],
+): UnitEnt[] {
   const n = tr.types.length;
   if (!n) return [];
   const out: UnitEnt[] = [];
@@ -71,8 +74,14 @@ function entsOfTrack(tr: TruthTracks["tracks"][number]): UnitEnt[] {
 
     const ev: UnitEv[] = [];
     if (bld) {
-      // 건설 자리 — 이 생애의 첫 자리다.
-      ev.push([born, tr.keys[segStart * 5 + 1], tr.keys[segStart * 5 + 2], 2]);
+      /* 건설 자리 — 화면은 이 시각부터 짓는 장면을 그린다.
+         ★ 이미 다 지어진 채로 나타난 건물(시작 본진!)은 그 시각을 **뒤로 물린다** —
+           안 그러면 첫 홀이 경기 시작부터 2분 동안 공사 중으로 서 있다(지적). 참값이
+           키마다 '다 지어졌나'를 알려 주므로 짓는 중으로 시작했는지 곧장 안다. */
+      const bx = tr.keys[segStart * 5 + 1];
+      const by = tr.keys[segStart * 5 + 2];
+      const startedRaw = tr.done[segStart] === 0;
+      ev.push([startedRaw ? born : born - (UNIT_BUILD_SEC[kind] ?? 0), bx, by, 2]);
       /* 이륙·착륙 — 건물이 자리를 옮겼으면 뜬 것이다. 참 자취가 그 사이를 다 그리므로
          뜬 때와 앉은 때만 찍어 주면 된다(화면은 그 둘로 장면을 만든다). */
       let px = tr.keys[segStart * 5 + 1];
@@ -88,6 +97,10 @@ function entsOfTrack(tr: TruthTracks["tracks"][number]): UnitEnt[] {
       }
     }
     for (const s of sieges) if (s[0] >= born && s[0] <= lastT) ev.push(s);
+    /* 이 생애에 떨어진 명령 — 마우스 자국(어디를 눌렀나)과 선택 링(그때 골려 있었나)이
+       이걸로 선다. v2의 증거 번호(0 이동·7 공격)를 그대로 쓴다. */
+    for (const o of orders.get(tr.tag) ?? [])
+      if (o[0] >= born && o[0] <= lastT) ev.push([o[0], o[1], o[2], o[3]]);
     ev.sort((a, b) => a[0] - b[0]);
 
     out.push({
@@ -112,7 +125,7 @@ function entsOfTrack(tr: TruthTracks["tracks"][number]): UnitEnt[] {
 export function truthToV2(truth: TruthTracks): UnitTracksV2 {
   /* 지도가 놓아 준 자원은 덤퍼가 이미 뺐다(화면이 지도에서 그린다). */
   const ents: UnitEnt[] = [];
-  for (const tr of truth.tracks) ents.push(...entsOfTrack(tr));
+  for (const tr of truth.tracks) ents.push(...entsOfTrack(tr, truth.orders));
   return {
     v: 2,
     /* 임자 번호를 그대로 쓴다 — 옛 표는 리플레이 분석기(screp)의 번호를 썼지만, 이제 표와

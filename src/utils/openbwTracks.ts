@@ -15,12 +15,16 @@
  *          · u32 키수 · u32 체력키수 · u32 인터셉터키수
  *   키 흐름 (트랙 차례대로, 트랙마다 앞 키와의 **차이**를 적는다)
  *     키마다: varint(zigzag(프레임차)) · varint(zigzag(x차)) · varint(zigzag(y차))
- *             · u8 방향(0~255) · u8 상태 · varint(zigzag(종류차))
+ *             · u8 방향(0~255) · u8 상태(최상위 비트=아직 안 지어짐) · varint(zigzag(종류차))
  *   체력 흐름 → 인터셉터 흐름 (트랙 차례대로, 키가 있는 트랙만)
  *     키마다: varint(프레임차) · varint(값차)
  *   업그레이드 u32 개수, 개마다 varint(프레임차) · u16 id · u8 단계 · u8 사람
  *   마법       u32 개수, 개마다 varint(프레임차) · u16 x · u16 y · u8 기술 · u8 사람
  *   핑         u32 개수, 개마다 varint(프레임차) · u16 x · u16 y · u8 사람
+ *   자원       u32 개수, 개마다 u8 사람 · varint(그 사람의 앞 값과의 프레임차)
+ *              · varint(미네랄차) · varint(가스차)
+ *   명령       u32 개수, 개마다 varint(프레임차) · u32 태그 · u16 x · u16 y · u8 갈래
+ *   APM        u32 개수 · u16 통크기(프레임), 개마다 varint(통차) · u8 사람 · varint(명령수)
  *
  * 왜 이렇게까지 접나 — 글자(TSV)로 내면 26분짜리 8인전이 39MB다. 폰으로 보내는 짐이라
  * 이 꼴로 접어 0.8~3.8MB로 만든다.
@@ -40,6 +44,9 @@ export type TruthTrack = {
   died: number | null;
   /** 다섯씩 [t(초), x(타일), y(타일), 방향(도), 상태] */
   keys: Float32Array;
+  /** 키마다 '다 지어졌나' — 0이면 짓는 중이다. 시작부터 서 있던 건물과 지금 짓는 건물을
+   *  가리는 표다. 키 수와 길이가 같다. */
+  done: Uint8Array;
   /** 키마다의 유닛 종류 번호 — 한 생애 안에서 바뀐다(라바→알→저글링, 탱크↔시즈모드).
    *  `kind`는 그중 **마지막**이다. 키 수와 길이가 같다. */
   types: Uint16Array;
@@ -77,6 +84,17 @@ export type TruthTracks = {
   casts: [number, number, number, string, number][];
   /** 미니맵 핑 [초, x(타일), y(타일), 임자] */
   pings: [number, number, number, number][];
+  /** 자원 현황 — 임자마다 [초, 미네랄, 가스] 변곡점. 안 바뀌는 동안은 안 적혀 있다. */
+  res: Map<number, [number, number, number][]>;
+  /** 실시간 APM의 재료 — 임자마다 [통 시작 초, 그 통의 명령 수]. 통은 약 5초다.
+   *  경기 전체 평균 하나로는 "지금 얼마나 바쁜가"를 못 그린다. */
+  apm: Map<number, [number, number][]>;
+  /** APM 통 하나의 길이(초). */
+  apmBucketSec: number;
+  /** 태그마다 그 유닛에게 떨어진 명령 [초, x(타일), y(타일), 갈래(0 이동·7 공격)].
+   *  게임 상태에는 안 남는 것이라(누른 사람만 아는 일) 명령 스트림에서만 온다 —
+   *  마우스 자국과 선택 링이 이걸로 선다. */
+  orders: Map<number, [number, number, number, number][]>;
 };
 
 /* 개인색 — 리플레이는 **색 번호**를 담는다(RGB가 아니다). 원작의 팔레트로 편다.
@@ -258,6 +276,7 @@ export async function decodeTruthTracks(b64: string): Promise<TruthTracks | null
       const h = head[i];
       const keys = new Float32Array(h.count * 5);
       const types = new Uint16Array(h.count);
+      const done = new Uint8Array(h.count);
       let pf = 0;
       let px = 0;
       let py = 0;
@@ -269,7 +288,9 @@ export async function decodeTruthTracks(b64: string): Promise<TruthTracks | null
         px += c.varint();
         py += c.varint();
         const headingByte = c.u8();
-        const state = c.u8();
+        const stateByte = c.u8();
+        const state = stateByte & 0x7f;
+        done[k] = stateByte & 0x80 ? 0 : 1;
         pt += c.varint();
         types[k] = pt;
         const t = pf / fps;
@@ -290,6 +311,7 @@ export async function decodeTruthTracks(b64: string): Promise<TruthTracks | null
         died,
         keys,
         types,
+        done,
       });
     }
 
@@ -349,8 +371,50 @@ export async function decodeTruthTracks(b64: string): Promise<TruthTracks | null
         pings.push([pf / fps, x / 32, y / 32, c.u8()]);
       } }
 
+    const res = new Map<number, [number, number, number][]>();
+    { const prev = new Map<number, [number, number, number]>();
+      const cnt = c.u32();
+      for (let i = 0; i < cnt; i += 1) {
+        const who = c.u8();
+        const p = prev.get(who) ?? [0, 0, 0];
+        const row: [number, number, number] = [p[0] + c.varint(), p[1] + c.varint(), p[2] + c.varint()];
+        prev.set(who, row);
+        const arr = res.get(who) ?? [];
+        arr.push([row[0] / fps, row[1], row[2]]);
+        res.set(who, arr);
+      } }
+
+    const orders = new Map<number, [number, number, number, number][]>();
+    { let pf = 0;
+      const cnt = c.u32();
+      for (let i = 0; i < cnt; i += 1) {
+        pf += c.varint();
+        const tag = c.u32();
+        const x = c.u16();
+        const y = c.u16();
+        const kind = c.u8();
+        const arr = orders.get(tag) ?? [];
+        arr.push([pf / fps, x / 32, y / 32, kind]);
+        orders.set(tag, arr);
+      } }
+
+    const apm = new Map<number, [number, number][]>();
+    let apmBucketSec = 5;
+    { const cnt = c.u32();
+      const bucketFrames = c.u16();
+      apmBucketSec = bucketFrames / fps;
+      let pb = 0;
+      for (let i = 0; i < cnt; i += 1) {
+        pb += c.varint();
+        const who = c.u8();
+        const n = c.varint();
+        const arr = apm.get(who) ?? [];
+        arr.push([(pb * bucketFrames) / fps, n]);
+        apm.set(who, arr);
+      } }
+
     return { tracks, trustUntil: trustFrame < 0 ? null : trustFrame / fps,
-      players, ups, casts, pings };
+      players, ups, casts, pings, res, apm, apmBucketSec, orders };
   } catch {
     return null;
   }

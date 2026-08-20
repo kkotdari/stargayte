@@ -22,10 +22,12 @@ static int g_ok[64] = {0}, g_slot[64] = {0}, g_tot[64] = {0};
 static int g_first[256], g_cnt[256];
 /** 명령 갈래마다 **처음 나온 프레임**을 적어 둔다 — 어긋남이 시작되는 시각과 견주면
  *  "그 무렵 처음 쓰인 명령"이 범인 후보로 좁혀진다. */
-void bwdump_action(int id, int frame) {
+static void bwdump_count_action(int frame, int owner);   /* 아래 정의 — 실시간 APM */
+void bwdump_action(int id, int frame, int owner) {
   id &= 0xff;
   if (!g_cnt[id]) g_first[id] = frame;
   g_cnt[id] += 1;
+  bwdump_count_action(frame, owner);
 }
 /* 세대(generation) 어긋남 재기 — 리플레이가 적어 온 세대와 우리가 센 세대의 **차이**를
    분 단위로 모은다. 차이가 늘 같은 수면 세는 시점만 다른 것이고(고치면 끝), 시각이
@@ -411,7 +413,7 @@ static unsigned bwdump_tag(const bwgame::unit_t* u) {
      키 흐름 (트랙 차례대로, 트랙마다 앞 키와의 **차이**를 적는다)
        트랙마다 앞프레임=앞x=앞y=0에서 시작
        키마다: varint(zigzag(프레임차)) · varint(zigzag(x차)) · varint(zigzag(y차))
-               · u8 방향(0~255) · u8 상태 · varint(zigzag(종류차))
+               · u8 방향(0~255) · u8 상태(최상위 비트=아직 안 지어짐) · varint(zigzag(종류차))
        ★ 종류가 키마다 실린다 — 한 태그의 한 생애 안에서 종류가 **바뀐다**. 라바가
          알이 되고 저글링이 되고, 시즈탱크가 시즈모드가 되고, 저글링이 파묻힌다. 트랙에
          하나만 실으면 라바 시절도 저글링으로 그려진다. 안 바뀌는 동안은 0이라 거의
@@ -424,6 +426,11 @@ static unsigned bwdump_tag(const bwgame::unit_t* u) {
                  id는 업그레이드 번호 그대로, 기술은 0x8000을 얹는다
      마법        u32 개수, 개마다 varint(프레임차) · u16 x · u16 y · u8 기술 · u8 사람
      핑          u32 개수, 개마다 varint(프레임차) · u16 x · u16 y · u8 사람
+     자원        u32 개수, 개마다 u8 사람 · varint(그 사람의 앞 값과의 프레임차)
+                 · varint(미네랄차) · varint(가스차)
+     명령        u32 개수, 개마다 varint(프레임차) · u32 태그 · u16 x · u16 y · u8 갈래
+                 갈래는 0 이동·7 공격(v2의 증거 번호와 같다)
+     APM         u32 개수 · u16 통크기(프레임), 개마다 varint(통차) · u8 사람 · varint(명령수)
 
    x·y는 픽셀, 프레임은 그대로다. 읽는 쪽이 초·타일·도로 바꾼다.
 
@@ -444,13 +451,34 @@ struct roster_t { int owner, pid, race, force, controller; unsigned color; std::
 struct up_ev_t { int frame, id, level, player; };    /* id는 업그레이드 그대로, 기술은 0x8000|id */
 struct cast_ev_t { int frame, x, y, tech, player; };
 struct ping_ev_t { int frame, x, y, player; };
+/* 고른 유닛에게 떨어진 명령 — 마우스 자국(어디를 눌렀나)과 선택 링(누가 그때 골려
+   있었나)의 재료다. 태그마다 [프레임, x, y, 갈래(0 이동·7 공격)]. */
+struct ord_ev_t { int frame; unsigned tag; int x, y, kind; };
+static std::vector<ord_ev_t> g_ords;
 static std::vector<roster_t> g_roster;
 static std::vector<up_ev_t> g_ups;
 static std::vector<cast_ev_t> g_casts;
 static std::vector<ping_ev_t> g_pings;
+/* 미네랄·가스 현황 — 표본마다 사람별로 적는다. 화면이 "그때 얼마 있었나"를 그리려면
+   판이 끝난 뒤의 총합이 아니라 시각마다의 값이 있어야 한다. 안 바뀌면 안 적는다. */
+struct res_ev_t { int frame, player, minerals, gas; };
+static std::vector<res_ev_t> g_res;
 /* 상한 — 어긋난 판이 끝없이 쌓는 것을 막는다. 실측은 핑 38회·마법 수백 회 규모다. */
+/* 실시간 APM의 재료 — 명령을 5초 통에 담아 센다. 화면은 "지금 이 사람이 얼마나 바쁜가"를
+   그려야 하는데, 판이 끝난 뒤의 평균 하나로는 그릴 수가 없다. 통마다 세어 두면 화면이
+   원하는 창(1분 따위)으로 다시 묶을 수 있다. */
+static const int APM_BUCKET_FRAMES = 119;    /* 약 5초 */
+static std::map<std::pair<int,int>, int> g_apm;   /* (통, 임자) → 명령 수 */
+static void bwdump_count_action(int frame, int owner) {
+  if (owner < 0 || owner >= 12) return;
+  g_apm[{ frame / APM_BUCKET_FRAMES, owner }] += 1;
+}
+
 void bwdump_ping(int frame, int owner, int x, int y) {
   if (g_pings.size() < 20000) g_pings.push_back({frame, x, y, owner});
+}
+void bwdump_order(int frame, int owner, unsigned tag, int x, int y, int kind) {
+  if (g_ords.size() < 2000000) g_ords.push_back({ frame, tag, x, y, kind });
 }
 void bwdump_cast(int frame, int owner, int x, int y, int tech) {
   if (g_casts.size() < 100000) g_casts.push_back({frame, x, y, tech, owner});
@@ -538,6 +566,27 @@ static void bwdump_write_binary(const std::map<unsigned, std::vector<track_key_t
   { int pf = 0; for (const auto& e : g_pings) {
       put_varint(b, e.frame - pf); put_u16(b, (unsigned)e.x); put_u16(b, (unsigned)e.y);
       put_u8(b, (unsigned)e.player); pf = e.frame; } }
+  /* 자원 — 사람마다 따로 이어 붙인다(사람 안에서만 차이를 적으면 수가 작다). */
+  put_u32(b, (unsigned)g_res.size());
+  { std::map<int, std::array<int,3>> prev;   /* 임자 → [프레임, 미네랄, 가스] */
+    for (const auto& e : g_res) {
+      auto& p = prev[e.player];
+      put_u8(b, (unsigned)e.player);
+      put_varint(b, e.frame - p[0]); put_varint(b, e.minerals - p[1]); put_varint(b, e.gas - p[2]);
+      p = { e.frame, e.minerals, e.gas };
+    } }
+  /* 명령 — 태그마다 눌린 자리. 프레임 차례대로라 프레임만 차이로 적는다. */
+  put_u32(b, (unsigned)g_ords.size());
+  { int pf = 0; for (const auto& e : g_ords) {
+      put_varint(b, e.frame - pf); put_u32(b, e.tag);
+      put_u16(b, (unsigned)e.x); put_u16(b, (unsigned)e.y); put_u8(b, (unsigned)e.kind);
+      pf = e.frame; } }
+  /* 실시간 APM — 5초 통마다 사람별 명령 수. */
+  put_u32(b, (unsigned)g_apm.size());
+  put_u16(b, (unsigned)APM_BUCKET_FRAMES);
+  { int pb = 0; for (const auto& kv : g_apm) {
+      put_varint(b, kv.first.first - pb); put_u8(b, (unsigned)kv.first.second);
+      put_varint(b, kv.second); pb = kv.first.first; } }
   uLongf out_len = compressBound((uLong)b.size());
   std::vector<uint8_t> out(out_len);
   if (compress2(out.data(), &out_len, b.data(), (uLong)b.size(), 9) != Z_OK)
@@ -548,6 +597,7 @@ static void bwdump_write_binary(const std::map<unsigned, std::vector<track_key_t
   for (const auto& kv : ic_store) icn += kv.second.size();
   fprintf(stderr, "이진 트랙 — 트랙 %zu개 · 체력 %zu · 인터셉터 %zu · 업그레이드 %zu · 마법 %zu · 핑 %zu\n",
     store.size(), hpn, icn, g_ups.size(), g_casts.size(), g_pings.size());
+  fprintf(stderr, "  자원 %zu · APM통 %zu · 명령 %zu\n", g_res.size(), g_apm.size(), g_ords.size());
   fprintf(stderr, "  편 %.1fMB → 눌러서 %.1fMB\n", b.size() / 1048576.0, out_len / 1048576.0);
 }
 
@@ -911,6 +961,16 @@ int main(int argc, char** argv) {
       rf.next_frame();
       if ((int)st.current_frame % step) continue;
       for (const auto& r : g_roster) {
+        {
+          const int mn = (int)st.current_minerals[r.owner];
+          const int gs = (int)st.current_gas[r.owner];
+          static std::map<int, std::pair<int,int>> lastres;
+          auto it = lastres.find(r.owner);
+          if (it == lastres.end() || it->second.first != mn || it->second.second != gs) {
+            g_res.push_back({ (int)st.current_frame, r.owner, mn, gs });
+            lastres[r.owner] = { mn, gs };
+          }
+        }
         for (int ui = 0; ui < 61; ++ui) {
           const int lv = st.upgrade_levels[r.owner][(UpgradeTypes)ui];
           if (lv == lastup9[r.owner][ui]) continue;
@@ -975,6 +1035,10 @@ int main(int argc, char** argv) {
             }
           }
         }
+        /* 아직 다 안 지어졌으면 최상위 비트를 세운다 — 짓는 중인 건물과 이미 선 건물을
+           가리는 유일한 표다. 자리는 남는 칸이라 한 바이트도 안 늘고, 이 비트가 바뀌는
+           순간(완성)에 키가 하나 생겨 완성 시각도 그대로 남는다. */
+        if (!rf.u_completed(u)) state9 |= 0x80;
         const key_t cur{ (int)st.current_frame, u->position.x, u->position.y,
           (int)rf.direction_index(u->heading), state9, (int)u->unit_type->id, (int)u->owner };
         seen9.insert(tg);
@@ -1038,6 +1102,12 @@ int main(int argc, char** argv) {
         printf("#cast\t%d\t%d\t%d\t%d\t%d\n", e.frame, e.x, e.y, e.tech, e.player);
       for (const auto& e : g_pings)
         printf("#ping\t%d\t%d\t%d\t%d\n", e.frame, e.x, e.y, e.player);
+      for (const auto& e : g_res)
+        printf("#res\t%d\t%d\t%d\t%d\n", e.frame, e.player, e.minerals, e.gas);
+      for (const auto& kv : g_apm)
+        printf("#apm\t%d\t%d\t%d\n", kv.first.first, kv.first.second, kv.second);
+      for (const auto& e : g_ords)
+        printf("#ord\t%d\t%u\t%d\t%d\t%d\n", e.frame, e.tag, e.x, e.y, e.kind);
       printf("#trust\t%d\n", bwdump_trust_frame());
     }
     if (bin_mode) bwdump_write_binary(store9, hp9, ic9, bwdump_trust_frame());
