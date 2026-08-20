@@ -52,7 +52,16 @@ int main(int argc, char** argv) {
   if (data_loading::is_modern_replay(argv[2])) {
     fprintf(stderr, "리플레이 형식: 리마스터(1.21+)\n");
     auto file_r = data_loading::file_reader<>(a_string(argv[2]));
-    rf.load_replay(data_loading::make_modern_replay_file_reader(file_r));
+    /* 지도(.chk)를 옆으로 빼 둔다 — BWDUMP_CHK에 경로를 주면 그 파일로 쓴다.
+       지도가 선언한 유닛 수와 시뮬이 실제로 세운 수를 견주는 데 쓴다. */
+    std::vector<uint8_t> chk;
+    rf.load_replay(data_loading::make_modern_replay_file_reader(file_r), true,
+                   getenv("BWDUMP_CHK") ? &chk : nullptr);
+    if (getenv("BWDUMP_CHK") && !chk.empty()) {
+      FILE* c = fopen(getenv("BWDUMP_CHK"), "wb");
+      if (c) { fwrite(chk.data(), 1, chk.size(), c); fclose(c);
+        fprintf(stderr, "지도 %zu 바이트를 %s 로 뺐다\n", chk.size(), getenv("BWDUMP_CHK")); }
+    }
   } else {
     fprintf(stderr, "리플레이 형식: 옛것\n");
     rf.load_replay_file(argv[2]);
@@ -66,6 +75,9 @@ int main(int argc, char** argv) {
     if (!replay_st.player_name[i].empty())
       fprintf(stderr, "  자리 %zu: %s · 미네랄 %d · 가스 %d\n", i,
         replay_st.player_name[i].c_str(), (int)st.current_minerals[i], (int)st.current_gas[i]);
+    if (getenv("BWDUMP_SLOTS"))
+      fprintf(stderr, "     └ 명령 임자번호 %d · 종족 %d · 조종 %d\n",
+        (int)action_st.player_id[i], (int)st.players[i].race, (int)st.players[i].controller);
   }
 
   if (getenv("BWDUMP_IDX")) {
@@ -75,6 +87,18 @@ int main(int argc, char** argv) {
     }
     fprintf(stderr, "시작 유닛 %zu기 · index %zu~%zu · 첫 유닛 id32 %u\n", n, mn, mx,
       st.visible_units.empty() ? 0u : (unsigned)rf.get_unit_id_32(&*st.visible_units.begin()).raw_value);
+  }
+  if (getenv("BWDUMP_CMDS")) {
+    const auto& b = replay_st.actions_data_buffer;
+    size_t p = 0; int shown = 0;
+    while (p + 5 <= b.size() && shown < 14) {
+      int frame = (int)(b[p] | (b[p+1]<<8) | (b[p+2]<<16) | ((unsigned)b[p+3]<<24));
+      size_t len = b[p+4];
+      fprintf(stderr, "프레임 %6d · %2zu바이트:", frame, len);
+      for (size_t i = 0; i < len && p+5+i < b.size(); ++i) fprintf(stderr, " %02x", b[p+5+i]);
+      fprintf(stderr, "\n");
+      p += 5 + len; shown += 1;
+    }
   }
   printf("frame\tid\towner\ttype\tx\ty\thp\tshield\tenergy\tcompleted\n");
   while ((int)st.current_frame < (int)replay_st.end_frame) {
