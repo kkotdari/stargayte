@@ -8378,12 +8378,28 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        돌아가면서 옆쪽 치우침이 된다**: 45도면 0.9의 0.7배가 그대로 x로 간다. 게다가
        정규화가 발 가운데를 축으로 2.835배를 걸어, 모델의 작은 어긋남이 화면에서는
        세 배로 커진다. 두 돔과 두 이음 틈을 모두 x=0·y=0 축에 세운다. */
+    /* 옆선을 타원으로(요청: "저그 공사 고치 좀더 타원반구에 가깝게 지금 너무 네모남")
+       — 기본 돔은 2차 베지에라 옆이 곧게 서다 꼭대기에서 꺾인다(한가운데가 0.75r·0.75h
+       를 지나 타원 밖으로 부푼다). round를 켜면 3차 베지에가 되어 0.707r·0.707h —
+       정확히 타원 위의 점을 지난다. */
     ...paintBase([
-      ...domeFaces3(0, 0, 2.6, 3.2),
-      ...domeFaces3(0, 0, 1.9, 1.5),
+      ...domeFaces3(0, 0, 2.6, 3.2, 0, true),
+      ...domeFaces3(0, 0, 1.9, 1.5, 0, true),
     ], "#d9b8a2"),
-    capFace(polyPath3([[-1.9, 0.2, 2.1], [1.9, 0.2, 2.1], [1.7, 0, 2.5], [-1.7, 0, 2.5]]), 0.18),
-    capFace(polyPath3([[-1.5, 0.2, 1.2], [1.5, 0.2, 1.2], [1.35, 0, 1.6], [-1.35, 0, 1.6]]), 0.18),
+    /* 이음 틈도 그 타원 옆선에 맞춘다 — 폭을 손으로 적어 두면 굽은 옆선 밖으로 삐친다.
+       높이 z에서의 반폭은 r·√(1 − (z/h)²)다(바깥 돔 r=2.6·h=3.2, 안쪽 r=1.9·h=1.5). */
+    ...((): ShapeFace[] => {
+      const wAt = (r9: number, h9: number, z9: number): number =>
+        r9 * Math.sqrt(Math.max(0, 1 - (z9 / h9) ** 2));
+      const seam = (r9: number, h9: number, zLo: number, zHi: number): ShapeFace => {
+        const wLo = wAt(r9, h9, zLo) * 0.97;
+        const wHi = wAt(r9, h9, zHi) * 0.97;
+        return capFace(polyPath3([
+          [-wLo, 0.2, zLo], [wLo, 0.2, zLo], [wHi, 0, zHi], [-wHi, 0, zHi],
+        ]), 0.18);
+      };
+      return [seam(2.6, 3.2, 2.1, 2.5), seam(1.9, 1.5, 1.1, 1.32)];
+    })(),
     /* 힘줄은 껍질 표면을 따라(재지적: 떠 있고 안 보임 — 더 많이, 보라·갈색) — 로보틱스
        고치의 이음선처럼 돔 반지름 프로필을 타고 세로로 흘러, 요잉해도 표면에 붙어 있다. */
     ...((): ShapeFace[] => {
@@ -11408,6 +11424,10 @@ type UnitDrawOp = {
    *  그림자보다 한 칸쯤 아래에 그려짐 — 그림자는 지면에 직접 그린 도형이라 옳고,
    *  몸만 화면 어림을 써서 원근이 실린 만큼 어긋났다). */
   baseFy?: number;
+  /** 몸을 지면선에서 얼마나 띄워 그릴까 — **그린 폭의 배수**다(화면 px이 아니라).
+   *  건물 전용이다: 유닛은 air·rise가 그 몫을 한다. 그림자는 안 따라 뜬다 — 그
+   *  둘이 벌어진 만큼이 곧 '떠 있다'로 읽힌다. */
+  liftK?: number;
   /** 발자국 세로/가로 비(건물) — 접지 그림자가 '바닥 발자국'만 덮게 하는 자(지적:
    *  칸(hPx)은 모델 높이까지 포함해, 칸 기준 타원은 건물을 통째로 덮는 큰 원이 됐다). */
   footRatio?: number;
@@ -11939,7 +11959,7 @@ export const BLD_NORM: Record<string, number> = {
   assim: 2.069,
   cavern: 1.082,
   citadel: 1.762,
-  cocoon: 2.856,
+  cocoon: 2.878,
   coil: 1.058,
   comsat: 1.966,
   covert: 2.065,
@@ -12805,7 +12825,9 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
           /* 발은 땅에(보정과 짝) — 상자 바닥에 맞추면 모델의 잉크 바닥이 상자보다
              위에 있는 만큼의 틈이 배율만큼 함께 커져 건물이 떠 보인다. 그린 픽셀의
              실제 바닥(bot)을 발자국 바닥선에 앉힌다. */
-          const bTop9 = (groundY ?? sy + hPx / 2)
+          /* 뜬 건물은 몸만 띄운다(요청: "뜬 건물에 그림자 필요") — 위 그림자는 지면선
+             (groundY) 그대로 깔리므로, 여기서 몸을 올린 몫이 곧 눈에 보이는 높이다. */
+          const bTop9 = (groundY ?? sy + hPx / 2) - wPx * (op.liftK ?? 0)
             - (bAnc ? bAnc[1] * bspr.l : bspr.bot / B) * k;
           /* 좌우 어긋남 수리(지적: 건물이 살짝 왼쪽·오른쪽으로 어긋난다) — 상자 중심에
              맞춰 찍었는데 모델이 제 16-상자 안에서 치우쳐 그려진 것들이 있다. 발자국을
@@ -12846,7 +12868,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         const { faces } = resolveShapeFaces(op.kind, op.rotDeg, op.flat, op.viewYaw, op.pitch);
         if (faces) {
           const s = (op.fitWidth ? wPx : Math.min(wPx, hPx)) / 16;
-          ctx.translate(sx, groundY ?? sy + hPx / 2);
+          // 모델 면으로 그리는 길도 같은 몫만큼 띄운다(스프라이트 길과 짝).
+          ctx.translate(sx, (groundY ?? sy + hPx / 2) - wPx * (op.liftK ?? 0));
           ctx.scale(s, s);
           ctx.translate(-8, -16);
           for (const [d, o, fill] of faces) {
@@ -16026,8 +16049,11 @@ export default function ReplayMotionPlayer({
   // 건물 한가운데로 오가야 한다.
   const halls = useMemo(() => buildsSrc
     .filter(([, , , unit]) => ["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(unit))
-    .map(([sec, x, y, unit, raw, gone]) => ({
+    .map(([sec, x, y, unit, raw, gone, , doneAt]) => ({
       sec, x: x + footDx(unit), y: y + footDy(unit), raw, gone: gone ?? 0,
+      /* 완공 시각 — 참값이 말하고, 없으면 착공 + 표의 건설 시간이다. 자원 반납 숨김이
+         이 값을 본다: **짓는 중인 건물은 들어갈 수 있는 곳이 아니다**(아래 inHall). */
+      done: doneAt ?? sec + (BUILD_SEC[unit] ?? 30),
     })), [buildsSrc]);
   /** 가스 건물들 — 가스 지대에 일꾼을 보낼 자격이다(지적: 가스도 안 지었는데 왔다 갔다). */
   const gasBuildings = useMemo(() => buildsSrc
@@ -17002,6 +17028,12 @@ export default function ReplayMotionPlayer({
                      따로 만든다(요청: 떠 있는 건물만 자체적으로 제작) — 이륙해 둥실대거나
                      이사 비행 중일 때, 발자국보다 작은 타원을 땅에 깔아 높이를 말한다. */
                   groundShadow: afloat || landing,
+                  /* 뜬 건물은 **몸이 떠야** 그림자가 보인다(지적: "뜬 건물에 그림자
+                     필요") — 그림자는 이미 발자국 아래에 깔리고 있었는데, 몸을 안 띄워서
+                     그림자가 몸 밑에 통째로 가려 있었다. 그린 폭의 0.3배만큼 띄우고,
+                     아주 느리게 오르내리게 한다(제자리에 못 박힌 그림자와 벌어졌다
+                     좁아지는 그 차가 곧 높이다). 앉으면 0이라 예전과 같다. */
+                  liftK: afloat || landing ? 0.3 + 0.02 * Math.sin(t * 1.5) : undefined,
                   // 접지 그림자의 발자국 비(지적: 그림자는 바닥 발자국만) — 세로/가로.
                   footRatio: boxH / boxW,
                   /* 바닥에 실제로 깔리는 그림자(요청) — 발자국 크기의 타원을 타일 공간
@@ -17692,18 +17724,25 @@ export default function ReplayMotionPlayer({
                  4×3 발자국의 거의 전부라, 반납 왕복의 절반을 건물 속으로 삼켰다(실측:
                  경기 20초에 일꾼 41기가 이 규칙으로 사라졌다). 정말 안으로 들어간
                  한가운데(±1.15×0.85)만 숨긴다. */
-              const inHall = halls.some((h) => h.raw === e.raw && h.sec <= t
+              /* ★ **완공된** 건물에만 건다(지적: "공사중 scv가 엉뚱한데 나오고 자꾸
+                 사라졌다 나왔다 함") — 여태 문턱이 `h.sec <= t`, 곧 **착공** 시각이었다.
+                 그래서 커맨드센터를 짓는 SCV가 제 발자국 한가운데(±1.15×0.85)에 서
+                 있는 동안 통째로 숨었고, 공사하며 발자국 안팎을 오가면 그 좁은 창을
+                 넘나들며 깜빡였다 — 보이는 순간은 늘 발자국 가장자리라 '엉뚱한 데'로
+                 읽혔다. 이 숨김은 '자원 반납하러 건물 안으로 들어간 순간'을 위한 것이지
+                 짓는 중인 자리를 위한 것이 아니다. */
+              const inHall = halls.some((h) => h.raw === e.raw && t >= h.done
                 && (h.gone === 0 || t < h.gone)
                 && Math.abs(h.x - pos.x) <= 1.15 && Math.abs(h.y - pos.y) <= 0.85);
               if (inHall) return null;
               /* 가스 건물도 같은 규칙(지적: 가스 일꾼이 들어가기 한참 전에 사라짐) —
                  발자국 한가운데(문턱 1.4×0.7)에 정말 '들어간 순간'만 숨는다. 다가가는
                  동안은 그대로 보인다. */
-              const inGas = buildsSrc.some(([bs6, bx6, by6, bu6, br6, bg6]) =>
-                br6 === e.raw && bs6 <= t && ((bg6 ?? 0) === 0 || t < (bg6 ?? 0))
-                && (bu6 === "Refinery" || bu6 === "Assimilator" || bu6 === "Extractor")
-                && Math.abs(bx6 + footDx(bu6) - pos.x) <= 1.4
-                && Math.abs(by6 + footDy(bu6) - pos.y) <= 0.7);
+              /* 가스 건물도 같은 병이었다 — 문턱이 착공(bs6 <= t)이라, 정제소를 짓는
+                 일꾼은 짓는 내내 숨어 있었다. 완공 시각을 아는 gasBuildings를 쓴다. */
+              const inGas = gasBuildings.some((g) => g.raw === e.raw && t >= g.done
+                && (g.gone === 0 || t < g.gone)
+                && Math.abs(g.x - pos.x) <= 1.4 && Math.abs(g.y - pos.y) <= 0.7);
               if (inGas) return null;
             }
             /* 코어 자리로 못 박는다(기획서 P1, ?sim=1) — 이제 위의 걸음(rawPos)부터가

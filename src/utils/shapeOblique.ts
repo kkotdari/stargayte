@@ -884,12 +884,28 @@ export function frustumFaces3(
 /** 반구 돔 — 회전 대칭이라 요잉 불변. 바닥 중심 (cx,cy,z0), 반지름 r, 높이 h. */
 export function domeFaces3(
   cx: number, cy: number, r: number, hh: number, z0 = 0,
+  /** 옆선을 **타원**으로 굽힌다(요청: "좀더 타원반구에 가깝게 지금 너무 네모남").
+   *
+   *  기본 옆선은 2차 베지에다: 조종점이 꼭대기 모서리(tx±r, ty)라, 곡선의 한가운데가
+   *  (0.75r, 0.75h)를 지난다 — 0.75² + 0.75² = 1.125 > 1이니 타원 **밖으로** 부푼
+   *  꼴이고, 그래서 옆이 곧게 서다 꼭대기에서 꺾이는 모난 실루엣이 나온다.
+   *  round면 3차 베지에로 바꾼다: 조종점을 밑동 접선(세로)·꼭대기 접선(가로) 방향으로
+   *  0.5523배씩 두면 한가운데가 (0.707r, 0.707h) — 타원 위의 그 점이다. */
+  round = false,
 ): ShapeFace[] {
   const [bx, by] = project(cx, cy, z0);
   // 꼭대기 x도 제 투영으로(지적) — 원통과 같은 이유. 정수리만 기울고 발은 붙는다.
   const [tx, ty] = project(cx, cy, z0 + hh);
   const ry = r * groundSquashNow();
-  const body = `M${r2(bx - r)} ${r2(by)} Q${r2(tx - r)} ${r2(ty)} ${r2(tx)} ${r2(ty)}`
+  /** 원을 베지에로 흉내 낼 때의 손잡이 길이 — 4분원에서 오차가 가장 작은 값이다. */
+  const K = 0.5523;
+  const dy = ty - by;   // 화면 세로 몫(위로 솟으면 음수, 아래로 부풀면 양수)
+  const body = round
+    ? `M${r2(bx - r)} ${r2(by)}`
+      + `C${r2(bx - r)} ${r2(by + dy * K)} ${r2(tx - r * K)} ${r2(ty)} ${r2(tx)} ${r2(ty)}`
+      + `C${r2(tx + r * K)} ${r2(ty)} ${r2(bx + r)} ${r2(by + dy * K)} ${r2(bx + r)} ${r2(by)}`
+      + `a${r2(r)} ${r2(ry)} 0 1 1-${r2(r * 2)} 0Z`
+    : `M${r2(bx - r)} ${r2(by)} Q${r2(tx - r)} ${r2(ty)} ${r2(tx)} ${r2(ty)}`
     + ` Q${r2(tx + r)} ${r2(ty)} ${r2(bx + r)} ${r2(by)}`
     + `a${r2(r)} ${r2(ry)} 0 1 1-${r2(r * 2)} 0Z`;
   const shine = groundEllipse((bx + tx) / 2 - r * 0.25, (by + ty) / 2 - (by - ty) * 0.22, r * 0.4, r * 0.18);
