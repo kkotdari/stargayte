@@ -86,6 +86,8 @@ export default function GameResultStory({
       avatar: memberOf(s.slot.memberId)?.avatar ?? null,
       race: s.slot.race, team: s.team,
       withName: true, highlight: hit,
+      // 로스터 아래 지표 줄이 쓴다(요청) — 리플레이로 등록된 슬롯에만 값이 있다.
+      apm: s.slot.apm,
     };
   }), [slots, memberOf, highlightMemberIds, highlightTerms]);
 

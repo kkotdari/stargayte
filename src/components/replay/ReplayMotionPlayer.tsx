@@ -28,7 +28,7 @@ import {
    range")에서 온 값이라 bwCombat이 안 물고 있다. 숫자를 여기 또 적는 대신 표에서 읽는다. */
 import {
   BUILDING_FOOT, FRAME_SEC, hatchState, LURKER_SPINE_SPEED_PX,
-  LURKER_SPINE_TRAVEL_PX, buildingBox,
+  LURKER_SPINE_TRAVEL_PX, buildingBox, SUPPLY_CAP, SUPPLY_COST, SUPPLY_GIVES,
 } from "../../utils/bwUnits";
 // (정리) DEFENSE_BUILDINGS — 건물 캔버스 전환으로 ▲ 글자 갈래가 없어져 더는 안 쓴다.
 import { terrainOf, decodeWalk, type TerrainGrid } from "../../utils/minimapTerrain";
@@ -12671,6 +12671,74 @@ export default function ReplayMotionPlayer({
     }
     return m;
   }, [entData]);
+  /* 인구(요청: 로스터 아래 "인구수 n/m") ────────────────────────────────────────
+     일꾼 수와 같은 수법이다 — 개체마다 태어난 초·끝난 초를 ±사건으로 늘어놓고 계단을
+     만든다. 먹는 쪽(SUPPLY_COST)은 유닛이, 주는 쪽(SUPPLY_GIVES)은 서플·파일런·
+     오버로드·홀이 낸다. 표의 단위는 원작 내부 단위라 화면에 낼 때 반으로 나눈다
+     (저글링·스커지가 0.5를 먹기 때문에 표가 정수로 두 배다).
+     ★ 시작 밑천은 표에서 안 세고 종족으로 못 박는다 — 실측해 보니 개체 트랙의 0초에
+       프로토스는 넥서스가 둘로 잡히고(시작 홀이 겹쳐 들어온다) 저그는 드론이 일곱이다.
+       그 자리를 그대로 더하면 시작부터 인구 상한이 두 배가 된다. 그래서 주는 쪽은
+       **2초 뒤에 태어난 것만** 세고, 시작 몫(테란 20·프로토스 18·저그 2+오버로드 16)은
+       종족이 정한다. */
+  const RACE_START_SUPPLY: Record<string, number> = { 테란: 20, 프로토스: 18, 저그: 18 };
+  const supplyLive = useMemo(() => {
+    /** raw → [초, 먹은 인구(내부단위), 준 인구(내부단위)] 계단 */
+    const m = new Map<string, [number, number, number][]>();
+    if (!entData) return m;
+    const nameOfId = new Map(entData.players.map((pl) => [pl.id, pl.name]));
+    const raceOfId = new Map(entData.players.map((pl) => [pl.id, pl.race ?? ""]));
+    const evs = new Map<string, [number, number, number][]>();
+    for (const e of entData.ents) {
+      const raw = nameOfId.get(e.o);
+      if (raw === undefined) continue;
+      const a = evs.get(raw) ?? [];
+      const gives = SUPPLY_GIVES[e.k] ?? 0;
+      const eats = e.bld ? 0 : (SUPPLY_COST[e.k] ?? 0);
+      /* 주는 쪽은 시작 밑천과 겹치지 않게 2초 뒤에 난 것만 센다(위 ★). */
+      const g = gives > 0 && e.b > 2 ? gives : 0;
+      if (eats === 0 && g === 0) continue;
+      a.push([e.b, eats, g]);
+      if (e.d !== null) a.push([e.d, -eats, -g]);
+      evs.set(raw, a);
+    }
+    for (const [raw, a] of evs) {
+      a.sort((p, q) => p[0] - q[0]);
+      const series: [number, number, number][] = [];
+      let used = 0;
+      let give = 0;
+      for (const [sec, du, dg] of a) {
+        used += du;
+        give += dg;
+        if (series.length > 0 && series[series.length - 1][0] === sec) {
+          series[series.length - 1][1] = used;
+          series[series.length - 1][2] = give;
+        } else series.push([sec, used, give]);
+      }
+      m.set(raw, series);
+    }
+    void raceOfId;
+    return m;
+  }, [entData]);
+  /** 지금(t)의 인구 — raw별 [먹은 수, 상한] (둘 다 화면 단위). */
+  const supplyNow = useMemo(() => {
+    const m = new Map<string, [number, number]>();
+    const raceOfRaw = new Map((entData?.players ?? []).map((pl) => [pl.name, pl.race ?? ""]));
+    for (const [raw, series] of supplyLive) {
+      let used = 0;
+      let give = 0;
+      for (const [sec, u, g] of series) {
+        if (sec > t) break;
+        used = u; give = g;
+      }
+      const base = RACE_START_SUPPLY[raceOfRaw.get(raw) ?? ""] ?? 0;
+      m.set(raw, [
+        Math.round(used / 2),
+        Math.min(SUPPLY_CAP, base + give) / 2,
+      ]);
+    }
+    return m;
+  }, [supplyLive, entData, t]);
   /** 지금(t) 살아 있는 일꾼 수 — raw별. 개체 트랙이 없는 옛 경기는 비어 있고, 부르는
    *  쪽이 옛 누계 모형으로 떨어진다. */
   const workerNow = useMemo(() => {
@@ -14802,6 +14870,10 @@ export default function ReplayMotionPlayer({
             key={m.key}
             className={cx("scr-motion-teamcol-item", fallen && "scr-motion-base-ghost")}
           >
+            {/* 위는 아바타+이름 한 줄, 아래는 지표 한 줄이다(요청: "각 로스터 아래
+                가운데 정렬로 새로배치") — 지표를 이름 칸 안에 두면 아바타 옆에 붙어
+                왼쪽으로 쏠린다. 항목 폭 전체를 쓰게 밖으로 뺀다. */}
+            <span className="scr-motion-teamcol-head">
             <span className="scr-motion-base-ring" style={{ boxShadow: `0 0 0 2px ${color}` }}>
               <Avatar member={{ id: m.memberId, nickname: m.name, avatar: m.avatar }} size={22} />
             </span>
@@ -14810,16 +14882,29 @@ export default function ReplayMotionPlayer({
               <span className="scr-motion-teamcol-name" style={chipStyle(m.key, m.team)}>
                 {shortName(m.name)}
               </span>
-              {/* 일꾼 수(요청: 사망 일꾼까지 반영해 실시간으로) — 지금 살아 있는 수다.
-                  줄은 늘 자리를 잡아 둔다: 값이 생겼다 사라졌다 하면 아바타가 위아래로
-                  들썩인다(옛 지적). 개체 트랙이 없는 옛 경기는 아예 빈 줄로 남는다. */}
+            </span>
+            </span>
+              {/* 로스터 아래 지표(요청: "로스터 아래 표시 항목 — 일꾼수·인구수·미네랄·
+                  가스·apm / 라벨은 없고 일꾼만 일꾼 붙임 / 일꾼 단위 기는 빼기 / 데이터가
+                  많아진 만큼 작은 글씨로 / 각 로스터 아래 가운데 정렬") — 이름 아래 한
+                  덩이로 접어 놓는다. 줄은 늘 자리를 잡아 둔다: 값이 생겼다 사라졌다 하면
+                  아바타가 위아래로 들썩인다(옛 지적).
+                  미네랄·가스는 아직 안 붙었다 — 수입·지출 모형이 있어야 낼 수 있는 수라
+                  지어내지 않는다(다음 판에서 원가표와 채취 수입으로 붙인다). */}
               <span
-                className="scr-motion-workers"
+                className="scr-motion-stats"
                 style={workerNow.has(m.key) ? undefined : { visibility: "hidden" }}
               >
-                일꾼 {workerNow.get(m.key) ?? 0}
+                <span className="scr-motion-stat">일꾼 {workerNow.get(m.key) ?? 0}</span>
+                {supplyNow.has(m.key) && (
+                  <span className="scr-motion-stat">
+                    {supplyNow.get(m.key)?.[0]}/{supplyNow.get(m.key)?.[1]}
+                  </span>
+                )}
+                {m.apm !== undefined && m.apm !== null && (
+                  <span className="scr-motion-stat">{m.apm}</span>
+                )}
               </span>
-            </span>
             {winnerTeam && (m.team === 2 ? 2 : 1) === winnerTeam && t >= total - 0.5 && !fallen && (
               <span className="scr-motion-trophy">🏆</span>
             )}

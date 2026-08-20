@@ -347,6 +347,9 @@ export interface MinimapMarker {
   withName: boolean;
   /** 검색 중 짚어야 할 사람인가 — 로스터를 감춘 모바일에서는 여기가 유일한 표시 자리다. */
   highlight: boolean;
+  /** 그 사람의 APM(리플레이 파싱 값, 경기 전체 평균) — 로스터 아래 지표 줄이 쓴다.
+   *  수동 등록 경기는 null이라 그 칸을 아예 안 그린다. */
+  apm?: number | null;
   /** 그 시점에 궤멸됐거나 빈사 상태인가 — 본진에 해골을 얹는다(요청). */
   downed?: boolean;
   /** 크게 다쳤지만 아직 끝난 건 아닌 상태(요청: 큰 타격·빈사는 해골 말고 반창고만) —

@@ -11128,7 +11128,10 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
 /* (삭제·요청: 모바일 확대 제거 둘째 판) — .scr-motion-wide 규칙이 있던 자리. 전체화면
    게임 상세(.scr-activity-detail-full)가 같은 트릭을 상시로 쓴다. */
 .scr-motion-teamcol { display: flex; flex-direction: column; gap: 10px; width: 88px; flex: 0 0 auto; }
-.scr-motion-teamcol-item { position: relative; display: flex; align-items: center; gap: 6px; }
+.scr-motion-teamcol-item {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 1px;
+}
+.scr-motion-teamcol-head { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .scr-motion-teamcol-text { display: flex; flex-direction: column; min-width: 0; }
 /* 글씨는 충분히 작게(요청) — 기둥은 지도 곁들이라 지도보다 목소리가 작아야 한다. */
 .scr-motion-teamcol-name {
@@ -11402,10 +11405,17 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   font-size: 7px; font-weight: 700; color: #f5f6f7;
   text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
 }
-/* 로스터 기둥의 일꾼 줄은 지도 밖(카드 바탕)이라 테마 색을 따른다. */
-.scr-motion-teamcol .scr-motion-workers { color: var(--muted); text-shadow: none; }
-/* 2팀 기둥은 오른쪽 벽에 붙는다 — 일꾼 줄도 이름처럼 오른쪽 정렬(지적). */
-.scr-motion-teamcol:last-of-type .scr-motion-workers { align-self: flex-end; text-align: right; }
+/* 로스터 아래 지표 줄(요청: 일꾼·인구·미네랄·가스·apm을 한 덩이로, 라벨은 일꾼만,
+   작은 글씨로, 가운데 정렬) — 값이 다섯이라 한 줄에 다 안 서는 폭에서는 접힌다. */
+.scr-motion-stats {
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline;
+  gap: 0 5px; font-size: 9px; font-weight: 700; line-height: 1.35;
+  color: var(--muted); text-shadow: none;
+}
+.scr-motion-stat { white-space: nowrap; }
+/* 미네랄은 파랑, 가스는 초록(요청) — 원작의 자원 아이콘 색이다. */
+.scr-motion-stat-min { color: #63b3ff; }
+.scr-motion-stat-gas { color: #4fd08a; }
 .scr-motion-build-razed { color: var(--dim); animation: scr-motion-in 0.3s ease-out; }
 /* (삭제) 생산·연구 라임 테(-glow) — 하는 일은 가운데 아이콘(망치·톱니·플라스크)만으로
    말한다(요청: 건물 액티브 사각형 효과 제거). */
