@@ -13557,17 +13557,22 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 착지 충격파(요청: "내리면서 충격파 표현정도 더해주면 될듯") — 날아온 건물이 닿는
    순간 발자국 둘레로 한 번 퍼지는 먼지 고리. 땅에 눕는 것이라 세로는 바닥 눌림(--sq)을
    그대로 받는다. 건물 밑에 깔린다(z 999 < 건물 1000+) — 고리는 지면의 일이다. */
+/* 가로·세로는 렌더가 그 자리의 자리 사상(posFrac)으로 재 준다 — 눌림 상수로 흉내 내지
+   않으므로 뜬 건물 그림자와 같은 평면에 눕는다(요청). */
 .scr-motion-touchdown {
-  position: absolute; aspect-ratio: 1 / 1; pointer-events: none;
-  transform: translate(-50%, -50%) scaleY(var(--sq, 1));
+  position: absolute; pointer-events: none;
+  transform: translate(-50%, -50%);
   border-radius: 50%;
   border: 1px solid rgba(226, 214, 190, 0.75);
   box-shadow: 0 0 6px rgba(226, 214, 190, 0.35);
-  animation: scr-touchdown 0.6s ease-out forwards;
+  /* 퍼지는 결도 베지어다(요청: "충격파 효과 ... 부드러운 베지어곡선") — ease-out은
+     크로뮴 기본 곡선이라 끝이 뭉툭하다. 앞이 빠르고 뒤가 길게 잦아드는 곡선을 못
+     박으면 '툭 나타났다 사라지는 원'이 아니라 '퍼져 나가는 파문'으로 읽힌다. */
+  animation: scr-touchdown 0.7s cubic-bezier(0.16, 0.84, 0.32, 1) forwards;
 }
 @keyframes scr-touchdown {
-  0% { opacity: 0; scale: 0.35; }
-  18% { opacity: 0.9; }
+  0% { opacity: 0; scale: 0.3; }
+  14% { opacity: 0.9; }
   100% { opacity: 0; scale: 1; }
 }
 .scr-motion-collapse {

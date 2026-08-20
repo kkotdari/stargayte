@@ -5772,7 +5772,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   /* 에볼루션 챔버(재모델링·사진) — 결절이 박힌 큰 살덩이 엽 둘(개인색)이 앞을
      차지하고, 뒤에는 뒤틀린 검은 등걸이 가지를 뻗는다. 오른쪽에는 창백한 뼈판이
      기대고, 발치에는 검은 촉수 다발이 엉킨다. 키는 저그 공통 자(제 자리 깊이 × 1.6). */
-  evo: () => withModelSpin(180, () => {
+  // 요잉 180 → 270도(요청: "챔버(+90도 요잉도)").
+  evo: () => withModelSpin(270, () => {
     const out: ShapeFace[] = [...tagKey(creepSplat(6.2), -20)];
     /* 살덩이 엽 둘 — 볼록한 종 모양 기둥. 개인색이라 fill을 주지 않는다. */
     const lobe = (lx9: number, ly9: number, r9: number, h9: number): void => {
@@ -11934,7 +11935,15 @@ export const BLD_FILL_TARGET: Record<string, number> = {
      0.75로 유독 납작하다**(배럭 1.10 · 아머리 1.25 · 해처리 0.96). 넓적한 것은 아무리
      넓혀도 '큰 건물'이 아니라 '넓은 접시'로 읽힌다 — 손잡이가 아니라 모델의 몫이라
      아래 tomb 모델의 돔 키를 올렸다. */
-  tomb: 1.2, pyramidWide: 1.2, hatchery: 1.2, lair: 1.2, hive: 1.2,
+  tomb: 1.2, pyramidWide: 1.2, hatchery: 1.2,
+  /* 레어·하이브는 해처리보다 더 준다(요청: "레어 하이브가 해처리보다 작아보여 키워줘
+     뿔기둥은 크기에서 빼야해") — 진단이 맞다. 셋 다 같은 1.2였는데, 정규화가 재는 것은
+     **잉크 폭 전체**라 레어·하이브의 검은 뿔기둥(끝이 x −3.9 ~ +5.9까지 뻗는다)이 그
+     폭을 대신 채운다. 해처리에는 그 뿔이 없으니 같은 목표에서 몸통만 훨씬 크다.
+     부품을 골라 빼는 자를 새로 만드는 대신 이 표로 되돌린다 — 스타포트의 안테나,
+     게이트웨이 아치의 바깥 다리를 다룬 그 자리와 같은 손잡이다. 뿔은 조금 넘치게 두고
+     몸통이 발자국을 채우게 한다. 하이브가 뿔이 더 많아 한 단 더 준다. */
+  lair: 1.45, hive: 1.55,
   /* 스타포트·게이트웨이가 제 발자국보다 좁아 보인다(지적: "일부 건물들이 실제 캔버스보다
      작게(좁게) 그려지는 느낌 … 게이트웨이 스타포트 등" · "스타포트는 안테나를 크기계산
      에서 살짝 빼줘야하고") — 진단이 맞다. 정규화가 재는 것은 **잉크 폭 전체**라, 몸통
@@ -11947,7 +11956,7 @@ export const BLD_FILL_TARGET: Record<string, number> = {
      게이트웨이 어시밀 작게 모델링된듯") — 여섯 다 몸이 가늘거나 속이 빈 형태라(아치·
      기둥·고리), 잉크 폭을 발자국의 95%에 맞춰도 눈에 잡히는 덩어리는 그 절반이다.
      같은 무리를 같은 몫으로 올린다 — 스타게이트(arch)만 상자 상한이 낮아 덜 오른다. */
-  gate: 1.25, archives: 1.15, tribunal: 1.15, fleetbeacon: 1.15, arch: 1.15, assim: 1.15,
+  gate: 1.25, tribunal: 1.15, fleetbeacon: 1.15,
   /* 스포닝 풀이 너무 작게 나온다(지적) — 이 모델은 바닥 크립 얼룩(반지름 6.8)이
      16-상자를 거의 가득 채워, 채움 보정이 '이미 큰 건물'로 재고 몸을 도로 줄였다.
      실제로 보이는 웅덩이·두렁은 상자의 절반쯤뿐이다. 목표 채움을 올려 몸을 키운다. */
@@ -11957,6 +11966,32 @@ export const BLD_FILL_TARGET: Record<string, number> = {
      파일런은 모델을 건드리는 대신 기본값 0.95의 1.5배인 1.425를 못 박아, 다른 건물보다
      반쯤 더 크게 선다. */
   diamond: 1.425,
+  /* ── 눈으로 고른 한 벌(요청) ────────────────────────────────────────────────
+     "작아 보이는 것"과 "커 보이는 것"을 화면에서 짚어 준 목록이다. 정규화는 잉크 폭을
+     한 목표로 맞출 뿐 **덩어리가 눈에 얼마나 잡히는가**는 모른다 — 속이 빈 고리·가는
+     기둥·납작한 판은 같은 폭이어도 작아 보이고, 통짜 상자는 커 보인다. 그 몫을 이
+     표가 받는다.
+     ★ 값이 상자 상한에 걸리는 종류는 여기서 올려도 안 커진다(굽는 판이 잘리므로
+       bld-norm이 상한에서 멈춘다). 지금 걸리는 것은 파일런(diamond)·스파이어(spire)
+       둘이고, 아래 값은 그 둘에 대해서는 뜻이 없다. */
+  // 작아 보이는 것들 — 키운다.
+  tombFlat: 1.2,       // 벙커
+  turret: 1.2,         // 터렛
+  trapezoid: 1.2,      // 서플라이
+  ebay: 1.2,           // 엔지니어링 베이
+  coil: 1.2,           // 포토 캐논
+  hydraden: 1.2,       // 히드라 덴
+  evo: 1.2,            // 에볼루션 챔버
+  creep: 1.2, sunken: 1.2, sunkenfire: 1.2, spore: 1.2,   // 크립·성큰·스포어
+  spire: 1.2, gspire: 1.2,                                // 스파이어(상한에 걸림)
+  forge: 1.2,          // 포지
+  citadel: 1.2,        // 시타델 오브 아둔
+  archives: 1.35,      // 템플러 아카이브(1.15에서 더)
+  arch: 1.35,          // 스타게이트(1.15에서 더)
+  // 커 보이는 것들 — 줄인다.
+  observatory: 0.8,
+  comsat: 0.8, nsilo: 0.8, mshop: 0.8, ctower: 0.8, covert: 0.8, physlab: 0.8,  // 애드온
+  refinery: 0.8, assim: 0.8, extract: 0.8,                                      // 가스 셋
 };
 /** 건물 모델 공간 정규화 배수 — 발 가운데(8,16)를 축으로 곱한다. **화면 크기가 아니다.**
  *
@@ -11983,60 +12018,60 @@ export const BLD_FILL_TARGET: Record<string, number> = {
  *  표에 없는 종류는 1(모델 그대로)이다. */
 export const BLD_NORM: Record<string, number> = {
   academy: 1.408,
-  arch: 1.989,
-  archives: 2.157,
+  arch: 2.131,  // 상자 상한에 걸림
+  archives: 2.265,  // 상자 상한에 걸림
   armory: 1.452,
-  assim: 2.069,
+  assim: 1.439,
   cavern: 1.082,
-  citadel: 1.762,
+  citadel: 2.131,  // 상자 상한에 걸림
   cocoon: 2.878,
-  coil: 1.058,
-  comsat: 1.966,
-  covert: 2.065,
-  creep: 1.219,
-  ctower: 2.238,
+  coil: 1.337,
+  comsat: 1.655,
+  covert: 1.739,
+  creep: 1.540,
+  ctower: 1.884,
   cube: 1.112,
   cyber: 1.972,
   diamond: 1.876,  // 상자 상한에 걸림
   dmound: 1.111,
   dome: 1.418,
-  ebay: 0.982,
-  evo: 1.212,
-  extract: 1.069,
+  ebay: 1.241,
+  evo: 1.540,
+  extract: 0.900,
   factory: 1.117,
   fleetbeacon: 2.107,
-  forge: 1.398,
+  forge: 1.766,
   gate: 1.979,
   geyser: 1.513,
-  gspire: 0.917,
+  gspire: 1.048,  // 상자 상한에 걸림
   hatchery: 1.327,
-  hive: 1.042,
-  hydraden: 0.847,
-  lair: 1.070,
+  hive: 1.322,  // 상자 상한에 걸림
+  hydraden: 1.070,
+  lair: 1.293,
   mineral: 1.963,
-  mshop: 1.958,
-  nsilo: 1.950,
+  mshop: 1.649,
+  nsilo: 1.642,
   nydus: 1.184,
-  observatory: 1.959,
-  physlab: 2.008,
+  observatory: 1.650,
+  physlab: 1.691,
   plane: 1.209,
   pool: 1.449,
   pyramidWide: 1.058,
   queensnest: 1.184,
-  refinery: 1.266,
+  refinery: 1.066,
   robobay: 1.423,
   sbattery: 2.032,
   scaffold: 1.733,
   scifac: 1.373,
   spire: 1.409,  // 상자 상한에 걸림
-  spore: 1.314,
-  sunken: 1.072,
-  sunkenfire: 1.050,
+  spore: 1.660,
+  sunken: 1.354,
+  sunkenfire: 1.326,
   tomb: 1.534,
-  tombFlat: 1.140,
-  trapezoid: 1.514,
+  tombFlat: 1.441,
+  trapezoid: 1.912,
   tribunal: 1.954,
-  turret: 1.770,
+  turret: 2.104,  // 상자 상한에 걸림
   warpin: 2.196,
 };
 const BLD_SPRITE_CACHE = new Map<string, { cv: HTMLCanvasElement; ox: number; oy: number; pad: number; l: number; side: number; bot: number; top: number; w: number; cx: number }>();
@@ -16714,8 +16749,29 @@ export default function ReplayMotionPlayer({
                 : undefined;
               /* 이사 비행 중인가 — 떠 있는 건물만 그림자를 지니는 데 쓴다(요청). */
               let landing = false;
+              /** 지금 얼마나 떠 있나(0 땅 ~ 1 최고) — 몸을 띄우는 몫이 이 값을 탄다. */
+              let hover9 = 0;
+              if (afloat) {
+                /* 부드럽게 뜨고 내린다(요청: "뜨고 내리는 효과 부드러운 베지어곡선") —
+                   여태 뜬 순간 몸이 툭 솟고 앉는 순간 툭 떨어졌다. 오르는 데 0.9초,
+                   내리는 데 0.9초를 쓰고 그 사이는 최고 높이다. 곡선은 smoothstep
+                   (3u² − 2u³) — 3차 베지에 ease-in-out과 같은 꼴이라 양 끝의 기울기가
+                   0이다: 땅을 떠나는 순간과 닿는 순간에 속도가 0이라야 '툭'이 없다. */
+                const RISE9 = 0.9;
+                const ease9 = (u: number): number => {
+                  const c = Math.min(1, Math.max(0, u));
+                  return c * c * (3 - 2 * c);
+                };
+                const up9 = ease9((t - liftAt!) / RISE9);
+                // 앉을 때가 정해져 있으면 마지막 RISE9초 동안 도로 내려앉는다.
+                const down9 = goneAt > (liftAt ?? 0) ? ease9((goneAt - t) / RISE9) : 1;
+                hover9 = Math.min(up9, down9);
+              }
               if (flyTo && liftAt !== undefined && t >= liftAt) {
-                const k = Math.min(1, (t - liftAt) / Math.max(0.1, goneAt - liftAt));
+                /* 가로 이동도 같은 곡선이다 — 등속으로 밀면 뜨자마자 최고 속도라
+                   출발·도착이 뚝뚝 끊긴다. */
+                const u9 = Math.min(1, (t - liftAt) / Math.max(0.1, goneAt - liftAt));
+                const k = u9 * u9 * (3 - 2 * u9);
                 bx = x + (flyTo[1] - x) * k;
                 by = y + (flyTo[2] - y) * k;
                 landing = true;
@@ -17094,9 +17150,11 @@ export default function ReplayMotionPlayer({
                      그림자가 몸 밑에 통째로 가려 있었다. 그린 폭의 0.3배만큼 띄우고,
                      아주 느리게 오르내리게 한다(제자리에 못 박힌 그림자와 벌어졌다
                      좁아지는 그 차가 곧 높이다). 앉으면 0이라 예전과 같다. */
-                  // 0.3 → 0.55(요청: "건물 좀더 높이 띄우기") — 그림자와 벌어진 몫이
-                  // 곧 높이라, 띄울수록 떠 있다는 것이 또렷하다.
-                  liftK: afloat || landing ? 0.55 + 0.03 * Math.sin(t * 1.5) : undefined,
+                  /* 0.3 → 0.55(요청: "건물 좀더 높이 띄우기") — 그림자와 벌어진 몫이
+                     곧 높이라, 띄울수록 떠 있다는 것이 또렷하다. 오르내림은 hover9가
+                     부드러운 곡선으로 먹인다(위) — 뜬 채로 있는 동안만 둥실거린다. */
+                  liftK: afloat
+                    ? hover9 * (0.55 + 0.03 * Math.sin(t * 1.5)) : undefined,
                   // 접지 그림자의 발자국 비(지적: 그림자는 바닥 발자국만) — 세로/가로.
                   footRatio: boxH / boxW,
                   /* 바닥에 실제로 깔리는 그림자(요청) — 발자국 크기의 타원을 타일 공간
@@ -17106,7 +17164,10 @@ export default function ReplayMotionPlayer({
                      뜬 건물은 발자국의 0.6배로 줄여 깐다 — 몸과 그림자의 크기 차가 곧
                      비행 높이로 읽힌다(공중 유닛 그림자와 같은 결). */
                   shadowPts: ((): [number, number][] => {
-                    const sk9 = 0.6;
+                    /* 0.6 → 0.85(지적: "띄운건물 그림자 크기 작음") — 발자국의 60%는
+                       큰 건물에서 몸 밑에 숨는 크기였다. 85%면 몸보다는 작아 '떠 있다'가
+                       남으면서도 땅에 실린 무게가 읽힌다. */
+                    const sk9 = 0.85;
                     const rx9 = (boxW / 2) * sk9;
                     const ry9 = (boxH / 2) * sk9;
                     const pts9: [number, number][] = [];
@@ -17157,12 +17218,19 @@ export default function ReplayMotionPlayer({
                   /* 두 끝은 **몸 상자** 변이다(요청: 건물 틈) — 발자국 변으로 재면 이제
                      본체·애드온이 발자국보다 작게 서므로 통로가 허공에서 시작한다. */
                   const parBox = par ? buildingBox(par[3]) : null;
+                  /* 짧게, 그리고 뒤로(요청: "애드온 연결부 길이줄이고 뒤로 옮겨야대") —
+                     두 끝을 각각 상자 안으로 0.5 → 1.3타일씩 물린다(길이 1.6타일 축소).
+                     통로는 두 건물을 잇는 짧은 목이지 다리가 아니라, 벽 앞으로 길게
+                     뻗으면 둘 사이가 비어 보인다. 세로도 몸 상자 앞(+0.1)에서 뒤
+                     (−0.18)로 옮긴다 — 사람이 지나는 통로는 건물의 앞면이 아니라
+                     뒤쪽에 붙는 것이 원작의 그림이고, 앞에 두면 두 건물의 얼굴을 가린다. */
+                  const LINK_IN = 1.3;
                   const leftEdge = par && parBox
-                    ? par[1] + footDx(par[3]) + parBox[2] + parBox[0] / 2 - 0.5
+                    ? par[1] + footDx(par[3]) + parBox[2] + parBox[0] / 2 - LINK_IN
                     : bodyX - boxW / 2 - 1.2;
-                  const rightEdge = bodyX - boxW / 2 + 0.5;
+                  const rightEdge = bodyX - boxW / 2 + LINK_IN;
                   const linkW = Math.max(1.6, rightEdge - leftEdge);
-                  const [lfx, lfy] = posFrac((leftEdge + rightEdge) / 2, bodyY + boxH * 0.1);
+                  const [lfx, lfy] = posFrac((leftEdge + rightEdge) / 2, bodyY - boxH * 0.18);
                   unitOps.push({
                     /* 통로도 건물과 같은 45도로 굽는다(지적: "각 옆면에는 수직임") —
                        본체·애드온이 다 요잉해 서 있어 서로 마주 보는 옆면도 비스듬한데,
@@ -17525,17 +17593,24 @@ export default function ReplayMotionPlayer({
               r2 === raw && u2 === unit && l2 !== undefined && (g2 ?? 0) === sec
               && (x2 !== x || y2 !== y));
             if (!cameFrom) return null;
-            // 고리 지름은 발자국 폭의 1.4배 — 몸 밖으로 한 뼘 퍼진다.
-            const wPct = (((FOOTPRINT[unit] ?? [4, 3])[0] * 1.4) / grid.width) * 100;
+            /* 고리는 **그림자와 같은 평면**에 눕는다(요청: "충격파 그림자와 같은 각도
+               눕히기") — 눌림 상수(pitchFlat) 하나로 세로만 줄이면 그건 화면에서 흉내
+               낸 타원이라, 원근이 실린 그림자 다각형과 각이 안 맞는다. 자리 사상
+               (posFrac)으로 **그 자리에서** 가로·세로 반지름을 각각 재면, 지도가
+               그 줄에 실어 놓은 원근·기울기가 그대로 실린다 — 뜬 건물 그림자가
+               shadowPts로 하는 일과 같은 자다. */
+            const cx9 = x + footDx(unit);
+            const cy9 = y + footDy(unit);
+            const r9 = ((FOOTPRINT[unit] ?? [4, 3])[0] * 1.4) / 2;
+            const wPct = Math.abs(posFrac(cx9 + r9, cy9)[0] - posFrac(cx9 - r9, cy9)[0]) * 100;
+            const hPct = Math.abs(posFrac(cx9, cy9 + r9)[1] - posFrac(cx9, cy9 - r9)[1]) * 100;
             return (
               <span
                 key={`td-${i}`}
                 className="scr-motion-touchdown"
                 style={{
-                  ...posStyle(x + footDx(unit), y + footDy(unit)),
-                  width: `${wPct}%`, zIndex: 999,
-                  // 땅에 눕는 고리라 세로는 바닥 눌림 그대로다.
-                  ["--sq" as string]: pitched ? pitchFlat.toFixed(3) : "1",
+                  ...posStyle(cx9, cy9),
+                  width: `${wPct.toFixed(3)}%`, height: `${hPct.toFixed(3)}%`, zIndex: 999,
                 }}
                 aria-hidden
               />
