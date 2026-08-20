@@ -17076,7 +17076,17 @@ export default function ReplayMotionPlayer({
             // 배 안이면 아예 안 그린다(참값이 그렇다고 말한다).
             if (simNow && simNow.state === ST_INSIDE) return null;
             /** 참값이 말하는 몸 방향 — 없으면 아래 어림이 맡는다. */
-            const simHdg: number | null = simNow ? simNow.hdg : null;
+            /* ★ 참값 heading은 **정북이 0**이고, 이 화면의 각도는 **정남이 0**이다
+               (지적: "이제보니 다 뒤로걸어"). 화면 쪽 규약은 세 군데가 같은 식을 쓴다 —
+               headingOf·headingOfDisplay·표적 조준이 모두 atan2(-dx, dy)라, dy가 +일 때
+               (곧 남쪽으로 갈 때) 0도다. 참값은 원작 direction_index 그대로여서 북이 0,
+               동이 90이다. 둘을 맞대 보면 딱 반 바퀴 차이다:
+                 북 참0/화면180 · 동 참90/화면270 · 남 참180/화면0 · 서 참270/화면90.
+               곧 화면각 = 참값각 + 180이고, 뒤집힘(거울)은 없다. 여태 이 반 바퀴를 안
+               돌려 **모든 유닛이 제 등으로 걸었다**. 참값 자취를 그대로 재생하기
+               시작하면서 들어온 자리다 — 그전에는 화면이 제 걸음에서 각을 냈으니
+               규약이 저절로 맞았다. */
+            const simHdg: number | null = simNow ? (simNow.hdg + 180) % 360 : null;
             /** 참값이 말하는 지금 상태 — 사주경계·교전 판정이 이걸 본다. */
             const simState: number | null = simNow ? simNow.state : null;
             /* 탑승 중(요청: 수송선 승하차) — 배 안에 있으니 마커를 걷는다. 하차 지점
