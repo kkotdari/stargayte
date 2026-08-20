@@ -1,11 +1,34 @@
 diff --git a/actions.h b/actions.h
-index 5a0ad23..dc4158c 100644
+index 5a0ad23..28544a5 100644
 --- a/actions.h
 +++ b/actions.h
-@@ -1013,6 +1013,68 @@ struct action_functions: state_functions {
+@@ -1013,6 +1013,91 @@ struct action_functions: state_functions {
  		return action_select(owner, units);
  	}
  
++	/* 리마스터(1.21+)의 유닛 태그를 우리 유닛으로 옮긴다.
++	 *
++	 *  옛 태그는 `(index+1) | (generation << 11)`인 16비트였다. 리마스터는 32비트로 넓히면서
++	 *  **칸의 폭과 시작점을 함께 바꿨다**: index 칸이 13비트가 되고, 그 값이 1700(유닛 배열
++	 *  크기)만큼 밀려 있다. 곧
++	 *      태그 = (index + 1 + 1700) | (generation << 13)
++	 *  이다. 이 자리를 옛 규약으로 읽으면 index가 엉뚱한 곳(1700 남짓 위)을 가리켜, 고르기가
++	 *  **늘 빈손**이 되고 그러면 명령이 다 실행되는데도 아무 일이 안 일어난다.
++	 *
++	 *  어떻게 알아냈나 — 같은 지도(UGL 17 Anti-Hack)의 1.16 판과 리마스터 판을 나란히 돌렸다.
++	 *  1.16의 태그는 우리 id와 **한 자리도 안 틀리고** 같았고(3255·3256·3269…), 리마스터의
++	 *  태그는 임자가 누구든 정확히 **7844**만큼 컸다. 7844 = 1700 + 4×2048 − 2048×1 이므로
++	 *  위 식으로 떨어지고, 다른 지도(New Super빠른무한)에서도 그대로 맞았다. */
++	unit_t* get_unit_scr(uint32_t raw) const {
++		size_t idx = (size_t)(raw & 0x1fff);
++		if (idx <= 1700) return nullptr;
++		idx -= 1700;
++		unit_t* u = get_unit(idx - 1);
++		if (!u) return nullptr;
++		if (u->unit_id_generation % (1u << 19) != (raw >> 13)) return nullptr;
++		return u;
++	}
++
 +	/* ── 리마스터(1.21+)의 명령 여섯 ── 0x60~0x65는 옛 0x14·0x15·0x18·0x09·0x0a·0x0b와
 +	   하는 일이 같고, **유닛 태그가 16비트가 아니라 32비트**인 것만 다르다.
 +	   (screp은 그 뒤 절반을 "Unknown, always 0?"로 건너뛰지만, 실제로는 세대(generation)가
@@ -17,7 +40,7 @@ index 5a0ad23..dc4158c 100644
 +	bool read_action_default_order_121(int owner, reader_T&& r) {
 +		int x = r.template get<int16_t>();
 +		int y = r.template get<int16_t>();
-+		unit_t* target = get_unit(unit_id_32(r.template get<uint32_t>()));
++		unit_t* target = get_unit_scr(r.template get<uint32_t>());
 +		UnitTypes target_unit_type_id = (UnitTypes)r.template get<uint16_t>();
 +		const unit_type_t* target_unit_type = target_unit_type_id == UnitTypes::None ? nullptr : get_unit_type(target_unit_type_id);
 +		bool queue = r.template get<uint8_t>() != 0;
@@ -27,7 +50,7 @@ index 5a0ad23..dc4158c 100644
 +	bool read_action_order_121(int owner, reader_T&& r) {
 +		int x = r.template get<int16_t>();
 +		int y = r.template get<int16_t>();
-+		unit_t* target = get_unit(unit_id_32(r.template get<uint32_t>()));
++		unit_t* target = get_unit_scr(r.template get<uint32_t>());
 +		UnitTypes target_unit_type_id = (UnitTypes)r.template get<uint16_t>();
 +		const unit_type_t* target_unit_type = target_unit_type_id == UnitTypes::None ? nullptr : get_unit_type(target_unit_type_id);
 +		Orders order_id = (Orders)r.template get<uint8_t>();
@@ -37,7 +60,7 @@ index 5a0ad23..dc4158c 100644
 +	}
 +	template<typename reader_T>
 +	bool read_action_unload_121(int owner, reader_T&& r) {
-+		unit_t* target = get_unit(unit_id_32(r.template get<uint32_t>()));
++		unit_t* target = get_unit_scr(r.template get<uint32_t>());
 +		return action_unload(owner, target);
 +	}
 +
@@ -51,7 +74,7 @@ index 5a0ad23..dc4158c 100644
 +		if (n > 12) error("invalid selection of %d units", n);
 +		static_vector<unit_t*, 12> units;
 +		for (size_t i = 0; i != n; ++i) {
-+			units.push_back(get_unit(unit_id_32(r.template get<uint32_t>())));
++			units.push_back(get_unit_scr(r.template get<uint32_t>()));
 +		}
 +		return units;
 +	}
@@ -71,7 +94,7 @@ index 5a0ad23..dc4158c 100644
  	template<typename reader_T>
  	bool read_action_shift_select(int owner, reader_T&& r) {
  		size_t n = r.template get<uint8_t>();
-@@ -1349,6 +1411,19 @@ struct action_functions: state_functions {
+@@ -1349,6 +1434,19 @@ struct action_functions: state_functions {
  		int action_id = r.template get<uint8_t>();
  		on_action(owner, action_id);
  		switch (action_id) {

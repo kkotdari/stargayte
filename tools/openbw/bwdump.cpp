@@ -64,7 +64,14 @@ int main(int argc, char** argv) {
     }
   } else {
     fprintf(stderr, "리플레이 형식: 옛것\n");
-    rf.load_replay_file(argv[2]);
+    std::vector<uint8_t> chk;
+    auto file_r = data_loading::file_reader<>(a_string(argv[2]));
+    rf.load_replay(data_loading::make_replay_file_reader(file_r), true,
+                   getenv("BWDUMP_CHK") ? &chk : nullptr);
+    if (getenv("BWDUMP_CHK") && !chk.empty()) {
+      FILE* c = fopen(getenv("BWDUMP_CHK"), "wb");
+      if (c) { fwrite(chk.data(), 1, chk.size(), c); fclose(c); }
+    }
   }
 
   state& st = player.st();
