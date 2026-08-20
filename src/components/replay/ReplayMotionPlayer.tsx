@@ -59,7 +59,7 @@ import {
   domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces,
   prismYFaces, prismZFaces, pyramidFaces3,
   screenCircle, setPitchSquash, sphereFaces3, tubeFaces,
-  wallDiscPath, withModelSpin, withModelScale, withModelZ, withPitchView, withTopView, withViewShear, withYaw, zsorted,
+  wallDiscPath, withModelSpin, withModelScale, withPitchView, withTopView, withViewShear, withYaw, zsorted,
 } from "../../utils/shapeOblique";
 import { TEAM_COLOR, type MinimapMarker } from "./ReplayMinimap";
 
@@ -1746,6 +1746,15 @@ function tankTrack(cx: number, yA = -3.6, yB = 3.6): ShapeFace[] {
      차체만큼 높게(2.6) 세운다. */
   const H = 2.6;
   const W = 1.45;
+  /* 궤도 한 짝의 부품들은 **한 자**를 쓴다(지적: "궤도 위 판 안보이고 궤도가 보임") —
+     여태 슬래브는 trackFaces가 `depthNow(cx, 가운데) + min(h, …)`로 재고, 그 위에 얹는
+     링크·기동륜·흙받이는 `depthNow(cx, y) × 1.6 + n`으로 쟀다. 자가 둘이라 깊이가
+     음수인 쪽(먼 궤도)에서 부호가 뒤집힌다: 요잉 45도에서 먼 궤도의 슬래브는 −1.73 +
+     2.6 = 0.87인데 흙받이는 −1.73×1.6 + 2 = −0.77이라, **슬래브가 흙받이를 덮었다**.
+     가까운 궤도에서는 반대로 흙받이가 이겨서, 두 궤도가 서로 다르게 보였다.
+     슬래브와 같은 식으로 밑값을 잡고 거기에 층만 얹는다 — 어느 깊이에서도 차례가
+     안 뒤집힌다. 차체(HULL_KEY 6)는 이 최대치(≈4.3 + 0.6)보다 위라 그대로 이긴다. */
+  const kTrack = depthNow(cx, (yA + yB) / 2) + H;
   const out: ShapeFace[] = [...paintBase(trackFaces(cx, yA, yB, H, W), TRACK_STEEL)];
   // 트랙 링크 — 달림면을 가로지르는 가는 리브 여덟.
   const n = 8;
@@ -1753,18 +1762,18 @@ function tankTrack(cx: number, yA = -3.6, yB = 3.6): ShapeFace[] {
     const y = yA + 0.8 + (i * (yB - yA - 1.6)) / (n - 1);
     out.push(...tagKey(paintBase(
       boxFaces3(cx, y, W + 0.16, 0.24, 0.14, H - 0.13), "#41474f",
-    ), depthNow(cx, y) * 1.6 + 1));
+    ), kTrack + 0.2));
   }
   // 앞뒤 기동륜 — 궤도 안쪽 벽에 박힌 두꺼운 원판.
   for (const y of [yA + 0.85, yB - 0.85]) {
     out.push(...tagKey(paintBase(
       tubeFaces(cx - W * 0.52, y, cx + W * 0.52, y, 0.5, H / 2 - 0.05), "#5a616b",
-    ), depthNow(cx, y) * 1.6 + 1.4));
+    ), kTrack + 0.4));
   }
   // 흙받이 — 궤도 위를 덮는 얇은 판. 차체와 궤도를 한 몸으로 묶는다.
   out.push(...tagKey(paintBase(
     boxFaces3(cx, (yA + yB) / 2 + 0.15, W + 0.5, yB - yA - 0.5, 0.2, H), "#9aa1aa",
-  ), depthNow(cx, 0) * 1.6 + 2));
+  ), kTrack + 0.6));
   return out;
 }
 /** 궤도 한 쌍 — 사진대로 한 쪽에 하나씩, 차체 길이를 다 덮는다. */
@@ -2636,7 +2645,10 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      ★ 줄이는 축이 **모델 x**인 까닭: 이 모델은 withModelSpin(-90)으로 돌려 세운다.
        −90도 회전은 (x, y) → (y, −x)라 모델의 x축이 화면의 앞뒤(깊이)가 된다. 모델
        좌표만 보고 y를 줄이면 앞뒤가 아니라 좌우가 줄어든다. */
-  trapezoid: () => withModelScale(0.78, 1, 1.2, () => withModelSpin(-90, () => {
+  /* 폭·길이만 줄인다(요청: "서플 높이 그대로 폭 길이만 축소") — 가로 두 축을 0.75로,
+     높이는 앞서 올린 1.2 그대로다. 정규화가 잉크 **상자**를 한 목표에 맞추므로, 가로가
+     줄고 세로가 그대로면 그만큼 배수가 올라 결과는 '더 좁고 더 높은' 디포가 된다. */
+  trapezoid: () => withModelScale(0.75, 0.75, 1.2, () => withModelSpin(-90, () => {
     /* 서플라이 디포(재작도·사진) — 검회색 장갑 상자다. 지붕 뒤에 드럼통 하나가 서고,
        지붕 가운데와 앞면 두 곳에는 환풍구가 뚫린다. 왼쪽 지붕에는 은빛 보급 상자 줄과
        그 아래 초록 발광, 왼쪽 옆면에는 초록 창과 해저드 띠, 앞에는 경사로와 드럼 둘.
@@ -4808,7 +4820,9 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
      고리 대야, 그 앞에 기운 작업 단, 발치를 두르는 돌빛 슬래브들. */
   // 모델 자체를 20% 높인다(요청: "서플라이 아카데미 높이 모델자체 20프로 살짝
   // 높여줘") — 가로·세로는 그대로다.
-  academy: () => withModelZ(1.2, () => {
+  /* 폭·길이만 줄인다(요청: "아카데미도 높이 그대로 폭 길이만 줄이기") — 서플라이와
+     같은 자다: 가로 두 축 0.75, 높이는 앞서 올린 1.2 그대로. */
+  academy: () => withModelScale(0.75, 0.75, 1.2, () => {
     const STEEL = "#868d94";   // 테란 기본색(요청)
     const DARK = "#3f444b";
     // 붉던 세 자리(드럼 띠·굴뚝 갓·대야 속)는 개인색이 됐다(요청) — 붉은색 상수는 뺀다.
@@ -4941,14 +4955,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       ...tagKey(paintBase(frustumFaces3(0, 0, 10.08, 6.34, 7.2, 3.74, 2.04, BODY_Z), SILVER), 0),
       // 왼 옆구리를 따라 눕는 작은 드럼 — 끝면이 빛난다.
       ...tagKey([
-        ...tubeFaces(-5.3, 1.3, -3.2, 1.3, 0.68, BODY_Z + 1),
-        topFace(groundEllipse(...project(-5.3, 1.3, BODY_Z + 1.34), 0.5, 0.4), 0.35),
+        // 작은 드럼도 같은 몫으로(요청) — 반지름 0.68 → 0.52.
+        ...tubeFaces(-5.3, 1.3, -3.4, 1.3, 0.52, BODY_Z + 0.86),
+        topFace(groundEllipse(...project(-5.3, 1.3, BODY_Z + 1.1), 0.38, 0.3), 0.35),
       ], 6),
       ...foot(-5.85, 3.65), ...foot(5.85, 3.65),
     ];
-    // 오른앞 개인색 드럼 — 앞으로 튀어나온 큰 통이라 옆에서도 임자 색이 넓게 읽힌다.
-    pc.push(...tagKey(tubeFaces(2.6, 0.6, 2.6, 4.2, 1.1, BODY_Z + 1.05),
-      14 + depthNow(2.6, 2.4) * 1.6));
+    /* 오른앞 개인색 드럼 — 앞으로 튀어나온 큰 통이라 옆에서도 임자 색이 넓게 읽힌다.
+       축소(요청: "엔베 드럼통 축소") — 반지름 1.1 → 0.78, 길이 3.6 → 2.4타일. 몸통이
+       납작한 절두뿔이라 이 통 하나가 실루엣의 앞을 통째로 먹고 있었다. */
+    pc.push(...tagKey(tubeFaces(2.6, 1.0, 2.6, 3.4, 0.78, BODY_Z + 0.85),
+      14 + depthNow(2.6, 2.2) * 1.6));
     // 지붕 더미 둘 — 윗면·옆면 은색.
     out.push(...tagKey(paintBase(boxFaces3(-1, 0, 2.8, 2.4, 1.4, TOP), SILVER),
       10 + depthNow(-1, 0) * 1.6));
@@ -8593,10 +8610,16 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        그어 놓은 선처럼 보였다. raceBase로 다른 테란 건물과 같은 톤·광택을 받는다.
        그 위에 해저드 빗금을 두른다 — 공사장 슬래브·서플라이 옆구리에 쓴 그 무늬다.
        사람이 지나다니는 통로라는 것을 한눈에 말해 주고, 은색 막대 하나로는 밋밋하다. */
+    /* 통로를 땅으로 내린다(요청: "아래로 내리기") — 여태 z 3에서 시작해 6까지 섰다.
+       두 건물 사이를 잇는 **사람이 지나는 통로**인데 3타일이나 떠 있어, 이어 주는 목이
+       아니라 공중에 걸린 다리로 보였다. 바닥(0.4)에서 2.2까지로 낮춘다 — 해저드 띠도
+       그만큼 함께 내려야 통로 옆구리에 남는다. */
     const L = 6.5;      // 막대 반길이(x)
     const W = 1.5;      // 막대 반폭(y)
-    const zB = 4;       // 띠 아래
-    const zT = 4.9;     // 띠 위
+    const Z0 = 0.4;     // 통로 바닥
+    const ZH = 2.2;     // 통로 높이
+    const zB = Z0 + 0.5;              // 띠 아래
+    const zT = Z0 + ZH - 0.35;        // 띠 위
     const band = (ny: 1 | -1): ShapeFace[] => {
       if (facingRatio(0, ny) < 0.05) return [];
       // 보이는 쪽 벽을 살짝(0.02) 밖으로 띄워 벽과 z-싸움을 안 하게 한다.
@@ -8612,7 +8635,7 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
       return out;
     };
     return [
-      ...raceBase(boxFaces3(0, 0, L * 2, W * 2, 3, 3), "terran"),
+      ...raceBase(boxFaces3(0, 0, L * 2, W * 2, ZH, Z0), "terran"),
       ...band(1),
       ...band(-1),
     ];
@@ -17297,7 +17320,10 @@ export default function ReplayMotionPlayer({
                     ? par[1] + footDx(par[3]) + parBox[2] + parBox[0] / 2 - LINK_IN
                     : bodyX - boxW / 2 - 1.2;
                   const rightEdge = bodyX - boxW / 2 + LINK_IN;
-                  const linkW = Math.max(1.6, rightEdge - leftEdge);
+                  /* 가로 2/3(요청: "애드온 연결부 가로 길이 2/3로 줄이고") — 두 끝을
+                     안으로 물리는 것(LINK_IN)과 별개로, 남은 길이 자체를 줄인다.
+                     가운데는 그대로라 양쪽이 똑같이 짧아진다. */
+                  const linkW = Math.max(1.2, (rightEdge - leftEdge) * (2 / 3));
                   // 더 뒤로(재요청: "애드온 연결부 더 뒤로") — −0.18 → −0.38.
                   const [lfx, lfy] = posFrac((leftEdge + rightEdge) / 2, bodyY - boxH * 0.38);
                   unitOps.push({
@@ -18124,6 +18150,14 @@ export default function ReplayMotionPlayer({
                  도는 **양과 방향**만은 원전 그대로다(11.25도 배수·시계 3:1).
                iscript 덤프를 구하면 이 블록의 표만 갈면 정확해진다. */
             const bodyHdg = (() => {
+              /* 시즈는 **대각선으로만 박힌다**(요청: "시즈는 무조건 대각선으로 모드를 막게
+                 돼있음") — 원작의 시즈 모드 그림은 8방위 중 네 대각(45·135·225·315)만
+                 있고, 자리를 잡을 때 몸이 그 넷 중 가장 가까운 쪽으로 돌아가 앉는다.
+                 여기서는 시즈가 켜져 있는 동안 몸 각을 그 넷으로 딱 잡는다 — 사주경계도
+                 걷는 방향도 이보다 위다(박힌 것은 돌지 않는다). */
+              if (siegeOn === 1 && drawUnit.startsWith("Siege Tank")) {
+                return Math.round((bodyHdg0 - 45) / 90) * 90 + 45;
+              }
               if (!IDLE_SCAN.has(drawUnit2) || fighting || burrowed) return bodyHdg0;
               if (simState !== null && simState !== 0) return bodyHdg0;   // 0 = ST_IDLE
               const step = Math.floor(t / IDLE_SCAN_SEC + (e.tag % 7) / 7);
