@@ -144,12 +144,23 @@ function livesOfTrack(
          자취의 첫 키가 0초가 아닐 수 있고, 그러면 done이 1이어도 born > 0이라 화면이
          그때부터 짓는 장면을 그린다. 경기 첫 1초 안에 나타난 건물은 지을 시간 자체가
          없다(가장 빠른 건물도 15초) — 그런 것은 처음부터 서 있던 것으로 본다. */
-      const raising = tr.done[segStart] === 0 && born > 1;
+      /* 변태로 서는 건물도 '짓는 중'이다(요청: "레어 하이브 성큰 스포어 그레이터스파이어
+         변태시에도 변태중에 고치로 표현해야함") — 이 생애가 **앞 생애에서 이어진 몸**
+         (segStart > 0)이고 변태로 서는 다섯 중 하나면, 다 지어진 비트와 무관하게 변태
+         구간을 연다. 참값의 done 비트만 믿으면 변태 중에도 1로 오는 판이 있어(같은 몸이
+         계속 서 있는 것이라 완성으로 읽힌다) 고치가 한 프레임도 안 떴다. */
+      const morphed = segStart > 0 && MORPH_SEC[kind] !== undefined;
+      const raising = (tr.done[segStart] === 0 || morphed) && born > 1;
       sites.push([raising ? born : born - buildSecOf(kind), bx, by]);
       if (raising) {
         doneAt = Infinity;
         for (let i = segStart; i < end; i += 1) {
           if (tr.done[i]) { doneAt = tr.keys[i * 5]; break; }
+        }
+        /* 참값이 변태의 끝을 안 말하면(또는 시작부터 완성이라 말하면) 원작 표로 잰다.
+           그 표는 프레임을 23.81로 나눈 값이라 다른 건물 시간과 같은 자다. */
+        if (morphed && (!Number.isFinite(doneAt) || doneAt <= born + 0.5)) {
+          doneAt = Math.min(lastT, born + MORPH_SEC[kind]);
         }
       }
       /* 이륙·착륙 — **자취의 상태가 직접 말한다**(지적: "테란 건물 띄운게 표현 안되고
@@ -201,6 +212,14 @@ function livesOfTrack(
 }
 
 /** 참값 한 판 → 화면이 읽는 사람·생애·사건. */
+/** 변태로 서는 건물의 변태 시간(초) — 원작 프레임을 23.81로 나눈 값이다.
+ *  레어 1500 · 하이브 1800 · 그레이터 스파이어 1800 · 성큰 300 · 스포어 300 프레임.
+ *  이 다섯만이 '앞 건물이 그대로 다음 것이 되는' 갈래다(드론→건물은 유닛에서 온다). */
+const MORPH_SEC: Record<string, number> = {
+  Lair: 63, Hive: 75.6, "Greater Spire": 75.6,
+  "Sunken Colony": 12.6, "Spore Colony": 12.6,
+};
+
 export function truthWorld(truth: TruthTracks, buildSecOf: BuildSecOf): TruthWorld {
   const lives: TruthLife[] = [];
   for (const tr of truth.tracks) lives.push(...livesOfTrack(tr, truth.orders, buildSecOf));
