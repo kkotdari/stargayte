@@ -185,16 +185,18 @@ const pitchTag = (pitch?: boolean): string => (pitch ? pitchFlatNow.toFixed(3) :
    s에 반비례하게 당긴다. 가까운 변 / 먼 변의 비 r = (D + s/2) / (D − s/2)로 잰다.
    ★ 한 번 더 세게(재요청: "각도 낮출때 원근감 더 강하게") — 6.3/3.6에서는 다 내려도
      1.32라, 각을 낮춘 값이 화면에서 잘 안 읽혔다. 4.8/2.8로 당긴다:
-       각    지금(6.3·3.6) → 바꾼 뒤(4.8·2.8)
-       60도    1.118  →  1.159
-       48도    1.188  →  1.258
-       38도    1.257  →  1.358
-       30도    1.315  →  1.446
-     칸마다 자라는 몫이 0.07에서 0.10으로 늘고, 맨 아래 칸이 가장 크게 세진다.
-     상한은 여전히 1.6 아래다 — 옛 값 1.6(수렴 1.60배)은 '가운데가 솟고 양옆이 흘러
-     내리는 언덕' 착시를 낳아 걷은 자리라, 그 선은 넘지 않는다. */
-const PITCH_DIST_FAR = 4.8;
-const pitchDistOf = (s: number): number => Math.max(2.3, PITCH_DIST_FAR - 2.8 * s);
+       각    6.3·3.6 → 4.8·2.8 → 지금(3.41·1.77)
+       60도    1.118  →  1.159  →  1.220
+       48도    1.188  →  1.258  →  1.354
+       38도    1.257  →  1.358  →  1.486
+       30도    1.315  →  1.446  →  1.600
+     세 번째 칸이 재재요청("원근감 더더 강하게")이다. 맨 아래 칸이 옛 상수 시절의
+     1.6에 닿는데, 그때 '가운데가 솟고 양옆이 흘러내리는 언덕' 착시를 낳던 것과는
+     사정이 다르다: 그때는 **모든 각에서** 1.6이라 평면에 가까운 화면에서도 사다리꼴이
+     가팔랐다. 지금은 각의 함수라 90도가 정확히 1.00이고, 1.6은 가장 많이 눕힌 칸
+     하나뿐이다 — 그 칸에서는 원근이 세야 눕힌 값을 한다. */
+const PITCH_DIST_FAR = 3.41;
+const pitchDistOf = (s: number): number => Math.max(1.8, PITCH_DIST_FAR - 1.77 * s);
 
 
 const pct = (v: number, span: number) => `${(v / span) * 100}%`;
@@ -9960,7 +9962,8 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
         // 다리 제 치수는 그대로다 — 붙는 자리만 넓어진 배를 따라 바깥으로 나간다.
         const KX = [0.96 * BK, 0.96 * BK, 0.88, 0.74].map((v) => m * v);
         const KZ = [rootZ(0.96 * BK, ly), 1.1, -0.2, -1.35];
-        const KW = [0.34, 0.3, 0.26, 0.2];
+        // 굵기 반으로(요청: "오버로드 다리 굵기 반으로") — 마디 넷의 비는 그대로다.
+        const KW = [0.17, 0.15, 0.13, 0.1];
         const key = depthNow(m * 0.9, ly) * 1.6 - 2;
         for (let j = 0; j < 3; j += 1) {
           const seg9 = rodFaces(KX[j], ly, KZ[j], KX[j + 1], ly, KZ[j + 1], KW[j] * 2);
@@ -11424,6 +11427,9 @@ type UnitDrawOp = {
    *  그림자보다 한 칸쯤 아래에 그려짐 — 그림자는 지면에 직접 그린 도형이라 옳고,
    *  몸만 화면 어림을 써서 원근이 실린 만큼 어긋났다). */
   baseFy?: number;
+  /** 이 판을 그릴 때만 곱하는 몫 — 모델 좌표는 안 건드린다(정규화가 잰 서로의 비가
+   *  그대로 남는다). 건물이 이 값으로 1.2배 크게 앉는다. */
+  drawK?: number;
   /** 몸을 지면선에서 얼마나 띄워 그릴까 — **그린 폭의 배수**다(화면 px이 아니라).
    *  건물 전용이다: 유닛은 air·rise가 그 몫을 한다. 그림자는 안 따라 뜬다 — 그
    *  둘이 벌어진 만큼이 곧 '떠 있다'로 읽힌다. */
@@ -11616,14 +11622,30 @@ function lodSetCap(q: number): void {
 /** 기기 여력 벌점(0 또는 1) — 프레임이 계속 밀리면 1로 올라 등급이 한 단 내려간다. */
 let lodPenalty = 0;
 let lodSlowFrames = 0;
-/** 재생 루프가 프레임마다 부른다 — 느린 프레임이 이어지면 등급을 한 단 내린다. */
+let lodFastFrames = 0;
+/* 재생 루프가 프레임마다 부른다 — 느린 프레임이 이어지면 등급을 한 단 내리고,
+   다시 넉넉해지면 **도로 올린다**.
+   ★ 여태 올리는 길이 없었다(지적: "줌 배율에 따라 자동으로 lod조정하는거 너무 과하게
+     해서 어느정도 확대하면 크게가 충분한데도 전체 디테일이 안보이는거같아") — 벌점은
+     한 번 1이 되면 새로고침 전까지 영영 1이었다. 큰 교전 한 번이나 첫 굽기 몰림처럼
+     잠깐 밀리는 자리는 흔한데, 그 뒤로는 아무리 확대해도 최고 등급이 안 나왔다.
+     '느린 프레임 45'로 내리고 '빠른 프레임 240(약 12초)'으로 올린다 — 올리는 쪽을
+     훨씬 길게 잡아, 경계에서 등급이 오르내리며 판을 다시 굽는 일이 없게 한다.
+     문턱도 45 → 90으로 물렸다: 45프레임이면 두 세컨드도 안 되는 짧은 밀림이다. */
 function lodNoteFrame(ms: number): void {
   // 굽기 계측도 같은 프레임 경계에서 롤링한다(요청: 프레임당 굽는 횟수·drawImage 수).
   perfFrame(ms);
   if (ms > 34) {
+    lodFastFrames = 0;
     lodSlowFrames += 1;
-    if (lodSlowFrames > 45 && lodPenalty === 0) { lodPenalty = 1; lodSlowFrames = 0; }
-  } else if (lodSlowFrames > 0) lodSlowFrames -= 1;
+    if (lodSlowFrames > 90 && lodPenalty === 0) { lodPenalty = 1; lodSlowFrames = 0; }
+  } else {
+    if (lodSlowFrames > 0) lodSlowFrames -= 1;
+    if (lodPenalty > 0) {
+      lodFastFrames += 1;
+      if (lodFastFrames > 240) { lodPenalty = 0; lodFastFrames = 0; }
+    }
+  }
 }
 /** 이 크기로 그릴 때의 등급 — 1 형체 / 2 포인트 / 3 장식. */
 function lodOf(px: number, ptPx = LOD_PX_POINT, dcPx = LOD_PX_DECO): number {
@@ -11866,6 +11888,9 @@ const Z_UNIT_AHEAD = 61;
  *    +1.5인데 미네랄(3타일)은 +1.125이라, 0.375타일 뒤의 간헐천이 앞 미네랄을 덮었다.
  *    자원끼리는 오직 **제 자리**로만 앞뒤를 가른다. */
 const Z_RES_AHEAD = 2100;
+/** 건물을 지도에 그릴 때만 곱하는 몫(요청: "건물들 지도에 그릴때 1.2배 확대필요해보임").
+ *  모델 좌표(BLD_NORM)가 아니라 그리는 크기라, 건물끼리의 비는 정규화가 잰 그대로다. */
+const BLD_DRAW_K = 1.2;
 /** 공중은 늘 위층 — 지상 z가 아무리 커도(맵 256타일 × Z_TILE) 못 넘는 값이어야 한다. */
 const Z_AIR = 10000000;
 /** 프로토스 소환구 상자(타일)와 지면에서 띄우는 높이(타일) — 요청: 축소 + 더 띄우기. */
@@ -12733,7 +12758,16 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         }
         // keepRatio(xMidYMax meet) — 비율 유지로 상자에 맞추고 바닥 가운데 정렬.
         // 스프라이트로 찍는다(요청: 건물도 병목 감축) — 실패 시 직접 그리기 폴백.
-        const sidePx = op.fitWidth ? wPx : Math.min(wPx, hPx);
+        /* 그릴 때만 키운다(요청: "건물들 지도에 그릴때 1.2배 확대필요해보임") —
+           ★ 모델 좌표(BLD_NORM)를 키우는 길은 안 쓴다. 목표 채움을 1.2배로 올려
+             다시 재 봤더니 굽는 상자에 걸리는 종류가 **2종에서 12종으로** 늘었다:
+             걸린 것들은 1.2배가 아니라 제 상한까지만 커지므로, 건물끼리의 크기 비가
+             통째로 어긋난다 — 정규화가 막으려던 바로 그 일이다.
+             여기서 키우면 판이 그 크기로 **구워지므로** 흐려지지도 않고, 모델 좌표는
+             한 톨도 안 건드려 서로의 비가 그대로 남는다.
+           그림자·체력바·발자국 자리는 안 따라 커진다 — 그림자는 발자국의 것이고
+           바닥선(baseFy)도 발자국의 것이라, 커진 몸이 같은 땅 위에 앉는다. */
+        const sidePx = (op.fitWidth ? wPx : Math.min(wPx, hPx)) * (op.drawK ?? 1);
         const sideQ = Math.max(4, Math.round(sidePx / 2) * 2);
         const bspr = buildingSprite(op, sideQ, B);
         /* 런타임 채움 보정은 없앴다(과제 #67) — 구운 판의 잉크 폭을 재서 발자국의
@@ -12986,11 +13020,14 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         ctx.shadowColor = "transparent";
         /* 선 굵기는 화면 고정(지적: 링은 UI 요소 — 확대에 굵어지면 안 됨) — 반지름은
            유닛(px)을 따라가되 굵기에서 zoom을 뺀다. */
-        // 굵기 한 단 더 감소(요청: 마우스 마커·선택 링 모두 더 가늘게)
-        // — 0.7~×0.025 → 0.45~×0.016 → 0.32~×0.011. 마우스 마커(0.28px)와 같은 결.
-        // 굵기도 몸을 따른다 — 상자를 따르면 잉크가 적은 모델만 굵어진다(0.011 → 상자
-        // 대신 몸이므로 잉크 몫 0.325로 나눈 0.034가 지금과 같은 굵기다).
-        const ringW = Math.max(0.32, op.sizePx * inkK * 0.034);
+        /* ★ 굵기를 되돌린다(지적: "유닛 선택링이 안나와") — 두 번의 "더 가늘게"가
+           0.7 → 0.45 → 0.32px까지 내려왔는데, 그 값은 **화면 화소 아래**다. 실측:
+           마린의 sizePx는 20 남짓이고 잉크 몫 0.325를 곱한 뒤 0.034를 걸면 0.22라
+           늘 하한(0.32)에 걸린다. dpr 1 화면에서 0.32px 선은 3분의 1만 칠해지는
+           회색 자국이라, 0.35초 동안 스치고 지나가면 안 보이는 것과 같다.
+           1.1px을 바닥으로 잡는다 — 여전히 한 획짜리 가는 테지만 화소 하나는 채운다.
+           배수도 0.034 → 0.06으로 올려 큰 몸에서는 조금 더 또렷하다. */
+        const ringW = Math.max(1.1, op.sizePx * inkK * 0.06);
         // 링도 내용물 발끝에(재지적) — 상자 고정 오프셋은 작은 모델에서 몸 아래로 떨어졌다.
         const ringY = op.air ? footY - lift : footY - px * 0.03;
         const ringPath = (): void => {
@@ -16829,6 +16866,7 @@ export default function ReplayMotionPlayer({
                      뒤와 같은 자로 지어, 다 지어져도 팝업이 그대로 이어진다. */
                   pickKey: `b${raw}|${unit}|${Math.round(bx * 4)}|${Math.round(by * 4)}`,
                   pickName: unit, pickRaw: raw, pickBld: true, pickX: bx, pickY: by,
+                  drawK: BLD_DRAW_K,
                   pickWip: true,
                   /* 상태 줄 — 테란은 '건설 중단'을 따로 말한다(요청): 일꾼이 떠나거나
                      죽어 공사가 그 진행률에 멈춰 선 동안이다. */
@@ -17022,6 +17060,7 @@ export default function ReplayMotionPlayer({
                      짓는다(같은 자리에 다시 지어도 착공 시각이 다르면 다른 몸이다). */
                   pickKey: `b${raw}|${unit}|${Math.round(bx * 4)}|${Math.round(by * 4)}`,
                   pickName: unit, pickRaw: raw, pickBld: true, pickX: bx, pickY: by,
+                  drawK: BLD_DRAW_K,
                   /* 땅에 앉은 건물은 그림자를 안 진다(요청: 건물 바닥 그림자는 제거) —
                      건물은 발자국이 곧 제 자리라 바닥 타원이 정보를 더하지 않고, 모델
                      발치에 검은 테를 둘러 도형을 흐리기만 했다. 떠 있는 건물만 제 것으로
@@ -17033,7 +17072,9 @@ export default function ReplayMotionPlayer({
                      그림자가 몸 밑에 통째로 가려 있었다. 그린 폭의 0.3배만큼 띄우고,
                      아주 느리게 오르내리게 한다(제자리에 못 박힌 그림자와 벌어졌다
                      좁아지는 그 차가 곧 높이다). 앉으면 0이라 예전과 같다. */
-                  liftK: afloat || landing ? 0.3 + 0.02 * Math.sin(t * 1.5) : undefined,
+                  // 0.3 → 0.55(요청: "건물 좀더 높이 띄우기") — 그림자와 벌어진 몫이
+                  // 곧 높이라, 띄울수록 떠 있다는 것이 또렷하다.
+                  liftK: afloat || landing ? 0.55 + 0.03 * Math.sin(t * 1.5) : undefined,
                   // 접지 그림자의 발자국 비(지적: 그림자는 바닥 발자국만) — 세로/가로.
                   footRatio: boxH / boxW,
                   /* 바닥에 실제로 깔리는 그림자(요청) — 발자국 크기의 타원을 타일 공간
@@ -17921,7 +17962,10 @@ export default function ReplayMotionPlayer({
             /* 선택 표시(지적: 드래그 선택 구분) — 방금 명령을 받았다는 것은 그 직전에
                (드래그든 부대지정이든) 잡혔다는 뜻이다. 클릭 토글이 켜져 있으면 명령
                직후 0.35초 동안 몸에 흰 링이 켜져, 함께 잡힌 무리가 한눈에 보인다. */
-            const selNow = clickFx && e.orders.some((os2) => t >= os2 && t - os2 <= 0.35);
+            /* 0.35 → 0.5초 — 모바일 그리기가 20Hz라 0.35초는 일곱 프레임이고,
+               그 사이 배속이 빠르면 두어 프레임으로 준다. 잡힌 것을 알아볼 만큼은
+               남긴다(요청과 같은 결의 지적: "유닛 선택링이 안나와"). */
+            const selNow = clickFx && e.orders.some((os2) => t >= os2 && t - os2 <= 0.5);
             /* 시즈탱크 반동(요청: 발포 시 포탑·포신만) — 차체/포탑을 딴 판으로 밀어,
                쏘는 박자에 포탑 판만 뒤로 살짝 밀렸다 돌아온다. */
             /* 변태 중이면 알·고치다(요청) — 이제 참값이 껍질을 제 유닛으로 내므로
@@ -18564,10 +18608,31 @@ export default function ReplayMotionPlayer({
               const fp9 = FOOTPRINT[en] ?? [4, 3];
               const bx9 = op.pickX;
               const by9 = op.pickY;
+              /* 낳은 자리가 **누구 것인가**(지적: "인포팝업에 다른 건물의 생산이 공유돼서
+                 생산바가 여러개 나옴") — 여태 '내 발자국 ±1.5타일 창 안'이면 다 내 것으로
+                 셌다. 배럭 둘이 나란히 서면 두 창이 3타일이나 겹쳐, 옆 건물이 뽑은 것이
+                 양쪽 팝업에 함께 떴다. 창은 그대로 두되(자리가 정확히 안 남는 생산이
+                 있다) 겹치는 자리는 **더 가까운 건물이 가져간다** — 같은 사람의, 그때
+                 서 있던, 그 유닛을 뽑을 수 있는 건물들끼리만 견준다. */
+              const nearer9 = (rx: number, ry: number, u: string): boolean => {
+                if (bx9 === undefined || by9 === undefined) return true;
+                const myD = Math.hypot(rx - (bx9 + fp9[0] / 2), ry - (by9 + fp9[1] / 2));
+                for (const [os9, ox9, oy9, ou9, or9, og9] of buildsSrc) {
+                  if (or9 !== op.pickRaw) continue;
+                  if (ox9 === bx9 && oy9 === by9) continue;           // 나 자신
+                  if (os9 > t || ((og9 ?? 0) > 0 && t >= (og9 ?? 0))) continue;
+                  if (!(PRODUCED_BY[ou9] ?? []).includes(u)) continue;
+                  const of9 = FOOTPRINT[ou9] ?? [4, 3];
+                  const d9 = Math.hypot(rx - (ox9 + of9[0] / 2), ry - (oy9 + of9[1] / 2));
+                  if (d9 < myD - 0.01) return false;                  // 더 가까운 임자가 있다
+                }
+                return true;
+              };
               const mine9 = bx9 === undefined || by9 === undefined ? null
                 : (prodDoneAt.get(op.pickRaw ?? "") ?? []).filter((r9) =>
                   r9.x >= bx9 - 1.5 && r9.x <= bx9 + fp9[0] + 1.5
-                  && r9.y >= by9 - 1.5 && r9.y <= by9 + fp9[1] + 2);
+                  && r9.y >= by9 - 1.5 && r9.y <= by9 + fp9[1] + 2
+                  && nearer9(r9.x, r9.y, r9.u));
               const evs: [number, string, number][] = [];
               const kinds9 = new Set(PRODUCED_BY[en] ?? []);
               if (mine9 && mine9.length > 0) {
@@ -18584,7 +18649,14 @@ export default function ReplayMotionPlayer({
               evs.sort((a, b) => a[0] - b[0]);
               /* 진행률(요청) — 리플레이에 남는 건 완성 시각뿐이라, 거기서 생산 시간을
                  빼 시작을 되짚는다. 지금이 그 사이면 '생산 중 NN%'다. */
-              const making = evs.filter(([ps, , sec]) => t < ps && t >= ps - sec);
+              /* 건물은 한 번에 **하나만** 뽑는다(지적: 생산바가 여러 개) — 자리로 가른
+                 뒤에도 자리를 모르는 옛 생산이 사람별 표에서 흘러들 수 있고, 그때는
+                 같은 창에 여럿이 걸린다. 가장 먼저 나올 것 하나만 바로 세우고 나머지는
+                 아래 큐 칸으로 내려보낸다 — 원작 생산 패널이 그 꼴이다. */
+              const making = evs
+                .filter(([ps, , sec]) => t < ps && t >= ps - sec)
+                .sort((a, b) => a[0] - b[0])
+                .slice(0, 1);
               const queue = evs.filter(([ps, , sec]) => t < ps - sec).slice(0, 4);
               const justOut = evs.filter(([ps]) => ps <= t && t - ps <= PROD_FLASH_SEC);
               /* ★ 유닛을 못 뽑는 건물에는 생산 줄을 아예 안 쓴다(지적: "업글건물에
