@@ -12,6 +12,8 @@
 #include <map>
 #include <vector>
 #include <algorithm>
+#include <set>
+#include <cmath>
 
 static int g_ok[64] = {0}, g_slot[64] = {0}, g_tot[64] = {0};
 /** 고르기가 유닛을 찾았나 — 1분 칸으로 모은다(23.81프레임 = 1초). */
@@ -326,7 +328,11 @@ int main(int argc, char** argv) {
      대조(scripts/truth-check.mjs)에는 이게 자리마다의 좌표보다 훨씬 쓸모 있고, 매 프레임을
      빠짐없이 훑으므로 **한 프레임만 살다 간 유닛도 안 놓친다**. */
   bool units_mode = false;
-  for (int i = 3; i < argc; ++i) if (std::string(argv[i]) == "--units") units_mode = true;
+  bool tracks_mode = false;
+  for (int i = 3; i < argc; ++i) {
+    if (std::string(argv[i]) == "--units") units_mode = true;
+    if (std::string(argv[i]) == "--tracks") tracks_mode = true;
+  }
   struct life_t { int kind, owner, born, last; int bx, by, lx, ly; };
   std::map<unsigned, life_t> lives;
   if (units_mode) {
@@ -401,6 +407,105 @@ int main(int argc, char** argv) {
         replay_st.player_name[i].c_str(), (int)st.current_minerals[i], (int)st.current_gas[i],
         (int)st.total_minerals_gathered[i]);
     }
+    return 0;
+  }
+  if (tracks_mode) {
+    /* 앱이 먹는 트랙 꼴 — 키프레임 [t, x, y, 방향, 상태]에 필요한 것만 낸다.
+       상태 번호는 앱의 것과 같다: 0 가만 1 이동 2 안에 탐 3 사라짐 4 싸움 5 채취
+       6 파묻힘 7 미네랄 들고 8 가스 들고.
+
+       매 표본을 그대로 적으면 14분짜리가 240만 줄이다. **곧게 가는 동안은 안 적는다** —
+       직전 표본이 '적은 점 → 지금'을 잇는 선에서 얼마나 벗어나는지 보고, 벗어날 때만
+       그 직전 표본을 꺾임점으로 남긴다. 읽는 쪽은 키 사이를 곧게 이어 그린다. */
+    printf("frame\ttag\towner\ttype\tx\ty\thead\tstate\n");
+    struct key_t { int frame, x, y, head, state, type, owner; };
+    long why9[6] = {0,0,0,0,0,0};
+    auto emit9 = [](unsigned tg, const key_t& c) {
+      printf("%d\t%u\t%d\t%d\t%d\t%d\t%d\t%d\n", c.frame, tg, c.owner,
+        c.type, c.x, c.y, c.head, c.state);
+    };
+    /* 얼마나 곱게 남길지 — BWDUMP_DEV(픽셀, 기본 4) · BWDUMP_HEAD(0~255, 기본 28).
+       키가 많을수록 곱지만 폰으로 보내는 짐이 무거워진다. */
+    const double DEV9 = getenv("BWDUMP_DEV") ? atof(getenv("BWDUMP_DEV")) : 4.0;
+    const int HEAD9 = getenv("BWDUMP_HEAD") ? atoi(getenv("BWDUMP_HEAD")) : 28;
+    std::map<unsigned, key_t> anchor9;   /* 마지막으로 적은 키 */
+    std::map<unsigned, key_t> pend9;     /* 아직 안 적은 직전 표본 */
+    while ((int)st.current_frame < (int)replay_st.end_frame) {
+      rf.next_frame();
+      if ((int)st.current_frame % step) continue;
+      std::vector<unit_t*> all9;
+      std::set<unsigned> seen9;
+      for (unit_t* u : ptr(st.visible_units)) all9.push_back(u);
+      for (unit_t* u : ptr(st.hidden_units)) all9.push_back(u);
+      for (unit_t* u : all9) {
+        /* 상태는 **떨리지 않는** 기준으로 잡는다. 재장전 시계나 속도로 잡으면 한 번 쏠
+           때마다, 한 발짝 멈출 때마다 갈래가 바뀌어 키가 폭증한다(전체의 6할이 그것이었다).
+           지금 무슨 명령을 받고 있나로 본다 — 싸우는 동안 죽 '싸움'이다. */
+        const auto oid9 = u->order_type->id;
+        const bool fighting9 = oid9 == Orders::AttackUnit || oid9 == Orders::AttackFixedRange
+          || oid9 == Orders::AttackMove || oid9 == Orders::TowerAttack;
+        int state9 = 0;
+        if (rf.us_hidden(u)) state9 = 2;
+        else if (rf.u_burrowed(u)) state9 = 6;
+        else if (u->carrying_flags & 2) state9 = 7;
+        else if (u->carrying_flags & 1) state9 = 8;
+        else if (rf.u_gathering(u)) state9 = 5;
+        else if (fighting9) state9 = 4;
+        else if (rf.u_movement_flag(u, 2)) state9 = 1;
+        const unsigned tg = bwdump_tag(u);
+        const key_t cur{ (int)st.current_frame, u->position.x, u->position.y,
+          (int)rf.direction_index(u->heading), state9, (int)u->unit_type->id, (int)u->owner };
+        seen9.insert(tg);
+        auto it = anchor9.find(tg);
+        if (it == anchor9.end()) { why9[0]++; emit9(tg, cur); anchor9[tg] = cur; continue; }
+        const key_t anc = it->second;
+        auto pit = pend9.find(tg);
+        if (anc.state != cur.state || anc.type != cur.type || anc.owner != cur.owner) {
+          why9[1]++;
+          if (pit != pend9.end()) { why9[1]++; emit9(tg, pit->second); pend9.erase(pit); }
+          emit9(tg, cur); anchor9[tg] = cur; continue;
+        }
+        if (pit != pend9.end()) {
+          const key_t pv = pit->second;
+          const double dx = (double)cur.x - anc.x, dy = (double)cur.y - anc.y;
+          const double len = std::sqrt(dx * dx + dy * dy);
+          double dev = len < 1e-6
+            ? std::sqrt((double)(pv.x - anc.x) * (pv.x - anc.x) + (double)(pv.y - anc.y) * (pv.y - anc.y))
+            : std::fabs((pv.x - anc.x) * dy - (pv.y - anc.y) * dx) / len;
+          int hd = std::abs(pv.head - cur.head); if (hd > 128) hd = 256 - hd;
+          /* 오래됐다고 찍는 것은 **움직이는 것**에만 — 건물과 미네랄까지 10초마다
+             찍으면 그것만으로 키의 4분의 1이 된다. */
+          const bool moving9 = cur.state == 1 || cur.state == 5 || cur.state == 7 || cur.state == 8;
+          if (dev > DEV9 || hd > HEAD9 || (moving9 && pv.frame - anc.frame >= 240)) {
+            why9[dev > DEV9 ? 2 : (hd > HEAD9 ? 3 : 4)]++;
+            emit9(tg, pv); anchor9[tg] = pv; pend9[tg] = cur; continue;
+          }
+        }
+        pend9[tg] = cur;
+      }
+      /* 이번에 안 보이면 사라진 것이다 — 마지막 표본을 적고 상태 3(사라짐)을 찍는다. */
+      for (auto it = anchor9.begin(); it != anchor9.end();) {
+        if (seen9.count(it->first)) { ++it; continue; }
+        auto pit = pend9.find(it->first);
+        if (pit != pend9.end()) { emit9(it->first, pit->second); pend9.erase(pit); }
+        why9[5]++;
+        key_t g = it->second; g.frame = (int)st.current_frame; g.state = 3;
+        emit9(it->first, g);
+        it = anchor9.erase(it);
+      }
+    }
+    for (auto& kv : pend9) emit9(kv.first, kv.second);
+    /* 믿을 수 있는 구간은 **다 돌고 나서야** 알 수 있다(고르기 적중률로 재므로).
+       그래서 맨 뒤에 적는다 — 읽는 쪽은 줄을 다 훑으니 자리는 상관없다. */
+    printf("#trust\t%d\n", bwdump_trust_frame());
+    {
+      const int tf = bwdump_trust_frame();
+      fprintf(stderr, "키가 나온 까닭 — 처음 %ld · 갈래바뀜 %ld · 길벗어남 %ld · 방향꺾임 %ld · 오래됨 %ld · 사라짐 %ld\n",
+        why9[0], why9[1], why9[2], why9[3], why9[4], why9[5]);
+      if (tf >= 0) fprintf(stderr, "⚠ 트랙을 믿을 수 있는 구간: 0 ~ %.1f분\n", tf / 23.81 / 60.0);
+      else fprintf(stderr, "트랙은 끝까지 믿을 수 있다\n");
+    }
+    fprintf(stderr, "끝\n");
     return 0;
   }
   printf("frame\ttag\towner\ttype\tx\ty\thp\tshield\tenergy\tcompleted\n");
