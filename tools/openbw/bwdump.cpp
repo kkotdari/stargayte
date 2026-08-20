@@ -8,6 +8,7 @@
 #include "modern_replay.h"
 #include <cstdio>
 #include <string>
+#include <map>
 
 using namespace bwgame;
 
@@ -107,13 +108,64 @@ int main(int argc, char** argv) {
       p += 5 + len; shown += 1;
     }
   }
-  printf("frame\tid\towner\ttype\tx\ty\thp\tshield\tenergy\tcompleted\n");
+  /* 태그(tag) 칸이 대조의 열쇠다 — 리플레이 명령이 유닛을 가리킬 때 쓰는 바로 그 수라,
+     우리 분석이 붙인 개체와 **한 자리도 안 틀리고** 짝지을 수 있다. 리마스터 규약은
+     (index + 1 + 1700) | (generation << 13) 이다(actions.h의 get_unit_scr 머리말). */
+  /* --units: 프레임마다 전부 뱉는 대신 **유닛 생애표**만 낸다. 태그마다 한 줄로
+     [정체·임자·태어난 프레임·마지막으로 보인 프레임·죽었나·첫 자리·끝 자리]다.
+     대조(scripts/truth-check.mjs)에는 이게 자리마다의 좌표보다 훨씬 쓸모 있고, 매 프레임을
+     빠짐없이 훑으므로 **한 프레임만 살다 간 유닛도 안 놓친다**. */
+  bool units_mode = false;
+  for (int i = 3; i < argc; ++i) if (std::string(argv[i]) == "--units") units_mode = true;
+  struct life_t { int kind, owner, born, last; int bx, by, lx, ly; };
+  std::map<unsigned, life_t> lives;
+  if (units_mode) {
+    while ((int)st.current_frame < (int)replay_st.end_frame) {
+      rf.next_frame();
+      /* 보이는 것 + **숨은 것**(수송선 안·건물 안)까지 훑는다 — 실려 있는 동안은
+         visible_units에서 빠지므로, 그것만 보면 드랍된 유닛이 통째로 안 잡힌다. */
+      std::vector<unit_t*> all9;
+      for (unit_t* u : ptr(st.visible_units)) all9.push_back(u);
+      for (unit_t* u : ptr(st.hidden_units)) all9.push_back(u);
+      for (unit_t* u : all9) {
+        const unsigned tg = (unsigned)((u->index + 1 + 1700)
+          | ((u->unit_id_generation % (1u << 19)) << 13));
+        auto it = lives.find(tg);
+        if (it == lives.end()) {
+          lives.emplace(tg, life_t{ (int)u->unit_type->id, (int)u->owner,
+            (int)st.current_frame, (int)st.current_frame,
+            u->position.x, u->position.y, u->position.x, u->position.y });
+        } else {
+          it->second.last = (int)st.current_frame;
+          it->second.lx = u->position.x;
+          it->second.ly = u->position.y;
+        }
+      }
+    }
+    printf("tag\tkind\towner\tborn\tlast\tdied\tbx\tby\tlx\tly\n");
+    for (const auto& kv : lives) {
+      const auto& L = kv.second;
+      printf("%u\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", kv.first, L.kind, L.owner,
+        L.born, L.last, L.last < (int)replay_st.end_frame - 1 ? 1 : 0, L.bx, L.by, L.lx, L.ly);
+    }
+    fprintf(stderr, "유닛 %zu기의 생애를 냈다\n", lives.size());
+    for (size_t i = 0; i != 8; ++i) {
+      if (replay_st.player_name[i].empty()) continue;
+      fprintf(stderr, "  %-16s 끝 자원 미네랄 %6d · 가스 %5d · 캔 미네랄 %7d\n",
+        replay_st.player_name[i].c_str(), (int)st.current_minerals[i], (int)st.current_gas[i],
+        (int)st.total_minerals_gathered[i]);
+    }
+    return 0;
+  }
+  printf("frame\ttag\towner\ttype\tx\ty\thp\tshield\tenergy\tcompleted\n");
   while ((int)st.current_frame < (int)replay_st.end_frame) {
     rf.next_frame();
     if ((int)st.current_frame % step) continue;
     for (unit_t* u : ptr(st.visible_units)) {
-      printf("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
-        (int)st.current_frame, (int)rf.get_unit_id(u).raw_value, (int)u->owner,
+      const unsigned scr_tag = (unsigned)((u->index + 1 + 1700)
+        | ((u->unit_id_generation % (1u << 19)) << 13));
+      printf("%d\t%u\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+        (int)st.current_frame, scr_tag, (int)u->owner,
         (int)u->unit_type->id, u->position.x, u->position.y,
         u->hp.raw_value / 256, u->shield_points.raw_value / 256,
         u->energy.raw_value / 256, rf.u_completed(u) ? 1 : 0);
