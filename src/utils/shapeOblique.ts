@@ -401,7 +401,8 @@ function currentYaw(): number {
 
 /** 화면 깊이(요잉 반영) — painter 정렬용. +가 시청자 쪽(앞). */
 export function depthNow(x: number, y: number): number {
-  const [mx, my] = spun(x, y);
+  // 깊이도 같은 자로 잰다 — 모델 축을 줄여 놓고 정렬만 옛 좌표로 하면 앞뒤가 뒤집힌다.
+  const [mx, my] = spun(x * modelXK, y * modelYK);
   const th = (currentYaw() * Math.PI) / 180;
   return -mx * Math.sin(th) + my * Math.cos(th);
 }
@@ -511,21 +512,37 @@ export function withViewShear<T>(sh: number, fn: () => T): T {
  *  사면을 재는 값도 전부 같은 몫으로 따라 올라간다. 모델 파일의 z를 한 줄씩
  *  고치는 것과 결과가 같고, 되돌리기도 배수 하나다. */
 let modelZK = 1;
-/** 이 안에서 만든 면들의 모형 높이를 k배로 — 가로·세로(x·y)는 안 건드린다. */
-export function withModelZ<T>(k: number, fn: () => T): T {
-  const prev = modelZK;
-  modelZK = k;
+/** 모델 자체 가로·세로 배수 — withModelScale 안에서만 1이 아니다. 모델 회전(spun)
+ *  **앞에** 곱하므로 모형 제 축(x·y)을 늘이고 줄인다. 그래서 −90도로 돌려 세운
+ *  모델에서는 x가 화면의 앞뒤가 된다 — 축을 고를 때 그 모델의 spin을 함께 봐야 한다. */
+let modelXK = 1;
+let modelYK = 1;
+/** 이 안에서 만든 면들의 모형 치수를 축마다 다른 배수로 — 모델 파일의 좌표를 한 줄씩
+ *  고치는 것과 결과가 같고, 되돌리기도 배수 셋이다. */
+export function withModelScale<T>(kx: number, ky: number, kz: number, fn: () => T): T {
+  const px = modelXK;
+  const py = modelYK;
+  const pz = modelZK;
+  modelXK = kx;
+  modelYK = ky;
+  modelZK = kz;
   try {
     return fn();
   } finally {
-    modelZK = prev;
+    modelXK = px;
+    modelYK = py;
+    modelZK = pz;
   }
 }
+/** 높이만 k배 — withModelScale(1, 1, k)의 이름 있는 자리다. */
+export function withModelZ<T>(k: number, fn: () => T): T {
+  return withModelScale(1, 1, k, fn);
+}
 /** 모형 좌표 (x,y,z) → 화면 [sx, sy]. y(앞)는 아래로, z(위)는 위로 간다. */
-export function project(x: number, y: number, z0: number): [number, number] {
+export function project(x0: number, y0: number, z0: number): [number, number] {
   const z = z0 * modelZK;
   // 모델 회전이 먼저다 — 돌아간 좌표를 카메라가 본다(카메라는 안 움직인다).
-  const [mx, my] = spun(x, y);
+  const [mx, my] = spun(x0 * modelXK, y0 * modelYK);
   const th = ((yawOverride ?? VIEW.yawDeg) * Math.PI) / 180;
   const c = Math.cos(th);
   const sn = Math.sin(th);

@@ -59,7 +59,7 @@ import {
   domeFaces3, faceLight, facingRatio, frustumFaces3, groundSquashNow, hornFaces,
   prismYFaces, prismZFaces, pyramidFaces3,
   screenCircle, setPitchSquash, sphereFaces3, tubeFaces,
-  wallDiscPath, withModelSpin, withModelZ, withPitchView, withTopView, withViewShear, withYaw, zsorted,
+  wallDiscPath, withModelSpin, withModelScale, withModelZ, withPitchView, withTopView, withViewShear, withYaw, zsorted,
 } from "../../utils/shapeOblique";
 import { TEAM_COLOR, type MinimapMarker } from "./ReplayMinimap";
 
@@ -1774,21 +1774,31 @@ function tankTracks(dx = 2.45): ShapeFace[] {
 /** 차체 — 궤도 사이 상자 + 사선 앞판 + 빗금 해치 + 옆 장갑 치마 + 꽁무니 통풍구.
  *  옆면은 개인색을 안 쓴다(포탑이 그 몫을 맡는다) — 차체까지 팀색이면 궤도 사이가
  *  통째로 물들어 형체가 뭉갠다. */
+/* 차체가 궤도보다 **늘 위**다(지적: "시즈탱크 바퀴가 위부품에 안가려짐") — 원인은
+   깊이 열쇠를 부품 하나에 **하나만** 다는 것이다. 궤도 슬래브는 앞뒤로 7.2타일이라
+   요잉 45도에서는 절반이 차체 앞, 절반이 차체 뒤인데, 그 전부가 가운뎃점 하나로 잰
+   열쇠(depthNow(±2.45, 0)·1.6 + 2 ≈ ±4.8)를 받는다. 그래서 가까운 쪽 궤도가 통째로
+   차체 위로 올라와, 차체 한복판에 짙은 알약이 얹혔다(실측: 45·135도에서 또렷하다).
+   내려다보는 화면에서 차체는 궤도 사이에 있고 더 높다(차체 꼭대기 2.85 vs 궤도 2.6)
+   — 겹치는 자리에서는 차체가 이겨야 맞다. 궤도 열쇠의 최대치(≈4.8)보다 위인 상수를
+   차체 부품들에 준다. 열쇠를 쪼개는 길(슬래브를 y로 자르기)도 있지만 알약 끝이
+   이음매로 끊긴다. */
+const HULL_KEY = 6;
 function tankHull(): ShapeFace[] {
   const out: ShapeFace[] = [];
   // 몸통 — 위가 살짝 좁은 절두체라 옆에서 보면 장갑이 기울어 보인다.
   out.push(...tagKey(paintBase(
     frustumFaces3(0, -0.25, 3.6, 5.7, 3.2, 5.2, 2.35, 0.5), TANK_STEEL,
-  ), depthNow(0, -0.25) * 1.6));
+  ), HULL_KEY));
   /* 사선 앞판(사진) — 차체 앞끝에서 위-뒤로 눕는 판. 옆에서도 이 기울기가 보이게
      제 면으로 그린다. */
   const glacis = polyPath3([
     [-1.62, 2.62, 0.6], [1.62, 2.62, 0.6], [1.5, 1.5, 2.85], [-1.5, 1.5, 2.85],
   ]);
   out.push(...tagKey([[glacis, 1, TANK_STEEL] as ShapeFace, topFace(glacis, 0.2)],
-    depthNow(0, 2) * 1.6 + 1));
+    HULL_KEY + 1));
   // 빗금 해치 — 사선 앞판 위에 얹힌다.
-  out.push(...hazardPanel(0, 1.9, 1.9, 1.05, 0.5, 4));
+  out.push(...tagKey(hazardPanel(0, 1.9, 1.9, 1.05, 0.5, 4), HULL_KEY + 2));
   // 앞 등 한 쌍 — 사선판 위 귀퉁이의 작은 불빛.
   out.push(...([-1, 1] as const).flatMap((m) => lensFaces({
     x: m * 1.22, y: 1.78, z: 2.35, nx: m * 0.3, ny: 1, r: 0.19, bulge: 0.18, lift: 3,
@@ -1799,14 +1809,14 @@ function tankHull(): ShapeFace[] {
     for (const [y0, len] of [[1.05, 1.9], [-1.35, 2.4]] as [number, number][]) {
       out.push(...tagKey(paintBase(
         boxFaces3(m * 1.86, y0, 0.22, len, 0.9, 1.1), "#aab1b9",
-      ), depthNow(m * 1.86, y0) * 1.6 + 0.5));
+      ), HULL_KEY + 0.5));
     }
   }
   // 꽁무니 엔진 통풍구 — 갑판 뒤의 어두운 살 넷.
   for (let i = 0; i < 4; i += 1) {
     out.push(...tagKey(paintBase(
       boxFaces3(0, -1.7 - i * 0.42, 2.5, 0.22, 0.12, 2.8), "#5a616b",
-    ), depthNow(0, -1.7 - i * 0.42) * 1.6 + 1));
+    ), HULL_KEY + 1.5 + i * 0.01));
   }
   return out;
 }
@@ -1917,22 +1927,25 @@ function siegeTurret(): ShapeFace[] {
   out.push(...tagKey(paintBase(boxFaces3(0, 0.2, 2.15, 2.5, 1.15, 4.55), "#7d848d"), 44));
   /* 넙적한 포신(정정) — oval > 1이 곧 '좌우로 넓고 위아래로 얇다'다. 뿌리에서
      포구까지 살짝 가늘어지고, 축이 위-앞으로 기운다. */
+  /* 더 넓고 두껍게, 그리고 은색(요청: "시즈모드시 포신이 더 폭이 넓고 두껍 은색이고")
+     — oval 2.15 → 2.6(좌우 폭), 반두께 0.4 → 0.62(위아래). 색은 GUNMETAL(짙은 총열
+     색)에서 차체와 같은 TANK_STEEL로 — 사진의 시즈 포신은 차체와 한 몸인 은색이다. */
   out.push(...tagKey(paintBase(spirePillar({
-    x: 0, y: 0, h: 1, w: 1, segs: 7, sides: 8, oval: 2.15, caps: "none",
+    x: 0, y: 0, h: 1, w: 1, segs: 7, sides: 8, oval: 2.6, caps: "none",
     path: (t9: number): [number, number, number] => [0, 0.6 + 7.2 * t9, 5.1 + 0.95 * t9],
-    widthOf: (t9: number): number => 0.4 - 0.07 * t9,
-  }), GUNMETAL), 45));
+    widthOf: (t9: number): number => 0.62 - 0.09 * t9,
+  }), TANK_STEEL), 45));
   // 포구 — 한 단 넓은 소염기. 끝 단면을 그려 포신이 뚫린 관으로 읽힌다.
   out.push(...tagKey(paintBase(spirePillar({
-    x: 0, y: 0, h: 1, w: 1, segs: 2, sides: 8, oval: 2.15, caps: "top",
+    x: 0, y: 0, h: 1, w: 1, segs: 2, sides: 8, oval: 2.6, caps: "top",
     path: (t9: number): [number, number, number] => [0, 7.45 + 0.75 * t9, 6 + 0.1 * t9],
-    widthOf: (): number => 0.46,
-  }), GUNMETAL), 46));
+    widthOf: (): number => 0.7,
+  }), TANK_STEEL), 46));
   // 청록 띠 — 포신 뿌리.
   out.push(...tagKey(paintBase(spirePillar({
-    x: 0, y: 0, h: 1, w: 1, segs: 2, sides: 8, oval: 2.15, caps: "none",
+    x: 0, y: 0, h: 1, w: 1, segs: 2, sides: 8, oval: 2.6, caps: "none",
     path: (t9: number): [number, number, number] => [0, 1.9 + 0.5 * t9, 5.27 + 0.07 * t9],
-    widthOf: (): number => 0.44,
+    widthOf: (): number => 0.67,
   }), TANK_TEAL), 45.5));
   /* 요람 윗판의 짙은 올리브 덮개(사진) — 위에서 내려다보는 화면에서 가장 잘 보이는
      면이라, 이 한 장이 시즈 자세를 평상시와 갈라 준다. */
@@ -2619,8 +2632,11 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
   },
   /* 서플라이(단순화, 지적) — 본체 상자 + 지붕 큰 회전 통풍구 + 앞면의 더 큰 둥근 팬
      둘 + 왼앞 줄무늬 차단바. 잔장식(등판·캐니스터·탱크)은 걷어냈다. */
-  // 모델 자체를 20% 높인다(요청) — 폭은 그대로 두고 z만 배수로 든다.
-  trapezoid: () => withModelZ(1.2, () => withModelSpin(-90, () => {
+  /* 앞뒤 22% 줄이고 높이는 20% 든다(요청: "서플 앞뒤길이 축소" · 앞서 "높이만 높이기").
+     ★ 줄이는 축이 **모델 x**인 까닭: 이 모델은 withModelSpin(-90)으로 돌려 세운다.
+       −90도 회전은 (x, y) → (y, −x)라 모델의 x축이 화면의 앞뒤(깊이)가 된다. 모델
+       좌표만 보고 y를 줄이면 앞뒤가 아니라 좌우가 줄어든다. */
+  trapezoid: () => withModelScale(0.78, 1, 1.2, () => withModelSpin(-90, () => {
     /* 서플라이 디포(재작도·사진) — 검회색 장갑 상자다. 지붕 뒤에 드럼통 하나가 서고,
        지붕 가운데와 앞면 두 곳에는 환풍구가 뚫린다. 왼쪽 지붕에는 은빛 보급 상자 줄과
        그 아래 초록 발광, 왼쪽 옆면에는 초록 창과 해저드 띠, 앞에는 경사로와 드럼 둘.
@@ -11160,8 +11176,14 @@ const UNIT_SIZE_TUNE: Partial<Record<keyof typeof UNIT_BW_RAW, number>> = {
      선 길이가 아니라 **면적**이었다. 여기 값은 선 배수라 그 절반이 답이다. */
   larva: 0.5, egg: 0.5,
 };
-/** ③-c 전체 배수 — "다 조금 크게/작게"를 한 값으로. */
-const UNIT_SIZE_GLOBAL: number = 1;
+/** ③-c 전체 배수 — "다 조금 크게/작게"를 한 값으로.
+ *  1 → 1.12(요청: "유닛들 크기 살짝 키움 실제 게임에서 비율 느낌") — 원작은 마린 하나가
+ *  배럭 앞에 서면 문짝만 하다. 우리 화면은 유닛 상자가 원작 치수(√(폭×높이))에서
+ *  곧장 나오므로 건물 대비 비가 원작보다 작게 잡혀 있었다: 건물은 발자국을 꽉 채우는데
+ *  유닛은 제 충돌 상자만 하니, 같은 자를 써도 눈에는 유닛만 작다.
+ *  ★ 건물 쪽 손잡이(BLD_FILL_TARGET)와 달리 이 값은 **모든 유닛에 한꺼번에** 걸린다 —
+ *    종류 사이의 비(마린 : 울트라)는 한 톨도 안 바뀌고 무리 전체가 같이 커진다. */
+const UNIT_SIZE_GLOBAL: number = 1.12;
 /** 화면 크기의 유일한 입구(타일).
  *  열쇠가 둘인 것이 핵심이다(지적: 손잡이가 못 닿는 종류가 7개) —
  *   · sizeKind(원작 치수)는 **유닛의 성질**이다. 버로우한 히드라의 구멍은 히드라 크기다.
@@ -11636,6 +11658,20 @@ let lodCap = LOD_FINE;
 function lodSetCap(q: number): void {
   lodCap = q <= 1 ? 1 : q === 2 ? LOD_TRIM : LOD_FINE;
 }
+/** 지금 화면 배율 — 그리기 직전에 UnitLayer가 넣어 준다(lodSetZoom).
+ *  크기로 정하는 등급을 **배율이 덮는다**(요청: "2.5배부터 모든 부품 다 표시" ·
+ *  앞선 지적: "어느정도 확대하면 크게가 충분한데도 전체 디테일이 안보이는거같아").
+ *  까닭: 등급은 '화면에 몇 픽셀로 그려지나'로 정하는데, 그 픽셀에는 배율이 이미
+ *  실려 있으므로 크게 확대하면 저절로 올라가야 맞다. 그런데 잉크 몫이 작은 종류
+ *  (정규화 뒤 상자의 32%만 잉크인 유닛들)는 4배로 키워도 문턱(11)에 못 닿는 것이
+ *  있었다. 배율이 2.5를 넘으면 크기 판정을 건너뛰고 최고 등급에서 시작한다 —
+ *  사양 상한(lodCap)과 기기 벌점은 그대로 걸린다. 확대해서 들여다보는 사람은
+ *  '지금 이 순간의 한 장'을 보는 것이라 프레임 예산도 그만큼 여유가 있다. */
+let lodZoom = 1;
+const LOD_ALL_ZOOM = 2.5;
+function lodSetZoom(z: number): void {
+  lodZoom = z;
+}
 /** 기기 여력 벌점(0 또는 1) — 프레임이 계속 밀리면 1로 올라 등급이 한 단 내려간다. */
 let lodPenalty = 0;
 let lodSlowFrames = 0;
@@ -11666,7 +11702,7 @@ function lodNoteFrame(ms: number): void {
 }
 /** 이 크기로 그릴 때의 등급 — 1 형체 / 2 포인트 / 3 장식. */
 function lodOf(px: number, ptPx = LOD_PX_POINT, dcPx = LOD_PX_DECO): number {
-  const base = px < ptPx ? 1 : px < dcPx ? 2 : 3;
+  const base = lodZoom >= LOD_ALL_ZOOM ? LOD_FINE : px < ptPx ? 1 : px < dcPx ? 2 : 3;
   // 크기가 정한 등급과 사양 상한 중 낮은 쪽 — 거기서 기기 벌점을 또 한 단 뺀다.
   return Math.max(1, Math.min(base, lodCap) - lodPenalty);
 }
@@ -12010,8 +12046,10 @@ export const BLD_FILL_TARGET: Record<string, number> = {
   arch: 1.35,          // 스타게이트(1.15에서 더)
   // 커 보이는 것들 — 줄인다.
   observatory: 0.8,
-  comsat: 0.8, nsilo: 0.8, mshop: 0.8, ctower: 0.8, covert: 0.8, physlab: 0.8,  // 애드온
-  refinery: 0.8, assim: 0.8, extract: 0.8,                                      // 가스 셋
+  // 애드온은 한 단 더 줄인다(재요청: "애드온 건물들 축소") — 0.8 → 0.66.
+  comsat: 0.66, nsilo: 0.66, mshop: 0.66, ctower: 0.66, covert: 0.66, physlab: 0.66,
+  // 가스 셋은 도로 살짝 올린다(요청: "가스 건물즐 살짝씩 확대") — 0.8 → 0.92.
+  refinery: 0.92, assim: 0.92, extract: 0.92,
 };
 /** 건물 모델 공간 정규화 배수 — 발 가운데(8,16)를 축으로 곱한다. **화면 크기가 아니다.**
  *
@@ -12041,15 +12079,15 @@ export const BLD_NORM: Record<string, number> = {
   arch: 2.321,  // 상자 상한에 걸림
   archives: 2.489,  // 상자 상한에 걸림
   armory: 1.223,
-  assim: 1.439,
+  assim: 1.655,
   cavern: 1.082,
   citadel: 2.225,
   cocoon: 2.878,
   coil: 1.337,
-  comsat: 1.655,
-  covert: 1.739,
+  comsat: 1.366,
+  covert: 1.435,
   creep: 1.540,
-  ctower: 1.884,
+  ctower: 1.555,
   cube: 1.112,
   cyber: 1.972,
   diamond: 2.062,  // 상자 상한에 걸림
@@ -12057,7 +12095,7 @@ export const BLD_NORM: Record<string, number> = {
   dome: 1.418,
   ebay: 1.499,
   evo: 1.540,
-  extract: 0.900,
+  extract: 1.035,
   factory: 1.117,
   fleetbeacon: 2.107,
   forge: 1.766,
@@ -12069,16 +12107,16 @@ export const BLD_NORM: Record<string, number> = {
   hydraden: 1.070,
   lair: 1.516,
   mineral: 1.963,
-  mshop: 1.649,
-  nsilo: 1.642,
+  mshop: 1.360,
+  nsilo: 1.354,
   nydus: 1.184,
   observatory: 1.650,
-  physlab: 1.691,
+  physlab: 1.395,
   plane: 1.209,
   pool: 1.449,
   pyramidWide: 1.058,
   queensnest: 1.184,
-  refinery: 1.066,
+  refinery: 1.226,
   robobay: 1.423,
   sbattery: 2.032,
   scaffold: 1.733,
@@ -12089,7 +12127,7 @@ export const BLD_NORM: Record<string, number> = {
   sunkenfire: 1.326,
   tomb: 1.534,
   tombFlat: 1.441,
-  trapezoid: 1.906,
+  trapezoid: 2.141,
   tribunal: 1.954,
   turret: 2.312,  // 상자 상한에 걸림
   warpin: 2.196,
@@ -12621,6 +12659,9 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
     if (cv.height !== bh) cv.height = bh;
     const ctx = cv.getContext("2d");
     if (!ctx) return;
+    /* 등급은 배율도 본다(요청: 2.5배부터 전부) — 굽기가 이 값을 읽으므로 그리기 전에
+       세워 둔다(lodSetCap·lodPenalty와 같은 결의 모듈 전역이다). */
+    lodSetZoom(zoom);
     ctx.setTransform(B, 0, 0, B, 0, 0);
     ctx.clearRect(0, 0, cw, ch);
     /* (제거·요청) 도형 드롭섀도 — 건물·유닛 그림자를 다 걷었다(떠다니는 것 제외).
@@ -17257,7 +17298,8 @@ export default function ReplayMotionPlayer({
                     : bodyX - boxW / 2 - 1.2;
                   const rightEdge = bodyX - boxW / 2 + LINK_IN;
                   const linkW = Math.max(1.6, rightEdge - leftEdge);
-                  const [lfx, lfy] = posFrac((leftEdge + rightEdge) / 2, bodyY - boxH * 0.18);
+                  // 더 뒤로(재요청: "애드온 연결부 더 뒤로") — −0.18 → −0.38.
+                  const [lfx, lfy] = posFrac((leftEdge + rightEdge) / 2, bodyY - boxH * 0.38);
                   unitOps.push({
                     /* 통로도 건물과 같은 45도로 굽는다(지적: "각 옆면에는 수직임") —
                        본체·애드온이 다 요잉해 서 있어 서로 마주 보는 옆면도 비스듬한데,
@@ -18411,8 +18453,16 @@ export default function ReplayMotionPlayer({
               siegeOn === 1 && fxUnit.startsWith("Siege Tank") ? "Siege Tank (Siege Mode)" : fxUnit,
               race,
             );
+            /* 총구는 **몸이 보는 쪽**에 있다(요청: "트레이서는 몸 정면을 향해 나가기
+               대신 공중유닛 때릴땐 정면에서 각도만 조절하기") — 여태 앵커를 조준각
+               (atkDeg, 표적까지의 타일 각)으로 뽑았다. 지상 표적은 몸이 그쪽을 보므로
+               둘이 같지만, 공중 표적은 다르다: 화면 각(beamDeg)이 비행 높이만큼 위로
+               꺾이는데 앵커는 땅 각으로 뽑히니, 총구가 몸의 옆구리에 찍히고 거기서
+               빛이 비스듬히 나갔다.
+               앵커는 몸 각(bodyHdg)으로 뽑고 — 그래서 늘 몸 정면(포구)이다 — 빛의
+               기울기만 beamDeg가 정한다. 요청의 두 문장이 그대로 이 두 줄이다. */
             const mzP = atkDeg !== null
-              ? muzzlePoint(fxKind, atkDeg, viewYawOf(ax3, ay3), pitched) : null;
+              ? muzzlePoint(fxKind, bodyHdg, viewYawOf(ax3, ay3), pitched) : null;
             /* 앵커도 몸과 같은 배수를 탄다(정규화) — 모델 공간을 상자 중심으로 키웠으니
                앵커의 '중심 대비 좌표'도 같은 배수로 늘어난다. 안 태우면 트레이서가 포신
                끝을 벗어난다.
@@ -18474,10 +18524,11 @@ export default function ReplayMotionPlayer({
                          — 6px 고정이라 유닛 크기를 캔버스 비례로 바로잡고 나니 호가 몸통
                          만 해져, 칼자국이 아니라 옆에 뜬 부메랑으로 보였다. 몸의 절반
                          크기에 테두리도 그만큼 얇게. */
+                      // 반으로(요청: 트레이서·피해효과 크기 전체 반) — 0.34 → 0.17.
                       ...(ATTACK_FX[fxUnit] === "slash" ? {
-                        width: `${(fxPx * 0.34).toFixed(1)}px`,
-                        height: `${(fxPx * 0.34).toFixed(1)}px`,
-                        borderWidth: `${Math.max(0.4, fxPx * 0.05).toFixed(2)}px`,
+                        width: `${(fxPx * 0.17).toFixed(1)}px`,
+                        height: `${(fxPx * 0.17).toFixed(1)}px`,
+                        borderWidth: `${Math.max(0.3, fxPx * 0.025).toFixed(2)}px`,
                         opacity: 0.85,
                       } : {}),
                     }}

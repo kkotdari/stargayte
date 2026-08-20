@@ -13774,14 +13774,18 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    특이도로 무기별 클래스를 전부 이겨서, 미사일이든 화염이든 화면에서는 0.5×3px 실오라기
    하나였다. 그래서 슬래시·가시만 예외 규칙을 따로 달아 두는 땜질이 있었다(이제 필요 없다).
    무기 클래스가 붙은 트레이서는 제 크기로 그린다. */
-.scr-v2fx .scr-motion-tracer:not([class*="scr-tracer-"]) { width: 0.5px; height: 3px; }
+/* 전체 반으로(요청: "트레이서, 피해효과 전체 반으로 줄이기 크기를") — 0.5×3 → 0.25×1.5.
+   무기별 클래스 값들도 같은 몫으로 함께 줄였다(위 규칙들). */
+.scr-v2fx .scr-motion-tracer:not([class*="scr-tracer-"]) { width: 0.25px; height: 1.5px; }
 /* 반으로(지적: 피격·치료 효과 등이 너무 크다) — 0.7 → 0.35. */
-.scr-v2fx .scr-motion-puff { transform: scale(0.35); }
+/* 반으로(요청) — 0.35 → 0.175. */
+.scr-v2fx .scr-motion-puff { transform: scale(0.175); }
 /* 피격 불꽃(지적: 공격받는 쪽에도 효과) — 표적이 된 개체 위에서 튀는 주황 불티.
    퍼프보다 작고 붉게, 위로 살짝 튄다. */
 /* 반으로(지적: 피격 효과 너무 크다) — 0.5 → 0.25. */
 .scr-v2fx .scr-puff-hit {
-  transform: translate(-50%, -70%) scale(0.25);
+  /* 반으로(요청) — 0.25 → 0.125. */
+  transform: translate(-50%, -70%) scale(0.125);
   background: radial-gradient(circle, rgba(255, 170, 90, 0.95) 0%, rgba(255, 90, 40, 0.5) 45%, transparent 70%);
   animation-duration: 0.7s;
 }
@@ -13799,7 +13803,8 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 .scr-v2fx .scr-puff-hit { animation: scr-hitflash 0.14s linear; }
 /* 수리 불티(지적: 일꾼 수리 파싱) — SCV가 표적 곁에서 일할 때 튀는 푸른 용접빛. 반으로. */
 .scr-v2fx .scr-puff-weld {
-  transform: translate(-50%, -60%) scale(0.22);
+  /* 반으로(요청) — 0.22 → 0.11. */
+  transform: translate(-50%, -60%) scale(0.11);
   background: radial-gradient(circle, rgba(190, 230, 255, 0.95) 0%, rgba(90, 160, 255, 0.5) 45%, transparent 70%);
   animation-duration: 0.6s;
 }
@@ -13922,13 +13927,13 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    가운데에서 가장 가까운 적 쪽으로 뻗는 가는 빛줄기. 위쪽 기준점(transform-origin
    50% 0)에서 회전각이 적 방향을 가리키고, 밝았다 스러지길 반복한다. */
 .scr-motion-tracer {
-  position: absolute; left: 50%; top: 50%; width: 0.8px; height: 4.5px;
+  position: absolute; left: 50%; top: 50%; width: 0.4px; height: 2.25px;
   /* margin-left(-1px 고정) 대신 제 폭의 절반 translate(지적: 좌표 계산 전수 조사) —
      무기별 변종이 폭만 바꾸며 margin을 물려받아, 굵은 탄일수록 중심이 축에서 왼쪽으로
      어긋났다. translate 속성은 회전(transform)과 따로 합성돼 폭이 얼마든 정확히
      가운데다. scr-shot 키프레임도 x를 -50%로 맞춘다. */
   translate: -50% 0;
-  border-radius: 1px; pointer-events: none;
+  border-radius: 0.5px; pointer-events: none;
   transform-origin: 50% 0;
   /* 기본이 곧 총구 갈래다(요청: "마린 골리앗 같은 총구 종류는 짧은 노란 빛") — 크림빛
      4.5px에서 노랑 3.4px로. 짧아야 '탄'으로 읽히고, 길면 레이저·미사일과 안 갈린다. */
@@ -13941,7 +13946,7 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 전체적으로 더 작게(지적: "총구에서 나오는데 몸만한 트레이서?") — 갈래마다 잡아 둔
    크기를 한 번 더 0.6배로 줄이는 대신, 여기서 기본을 낮추고 아래 갈래 값들도 함께
    낮춘다. 길이는 '총구에서 표적 쪽으로 잠깐 튀는 불빛'이면 족하다. */
-.scr-motion-tracer { width: 0.7px; height: 2.2px; }
+.scr-motion-tracer { width: 0.35px; height: 1.1px; }
 /* 번쩍 하나 — 움직이지 않는다(지적: "움직임 없이 유닛의 공격부에 고정"). 뜨고 지는
    구간을 좁혀 잔상이 안 남게 한다. */
 @keyframes scr-tracer {
@@ -13955,19 +13960,19 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 퉁퉁포(탱크 모드) — 짧고 두꺼운 주황(요청). 시즈와 한눈에 갈려야 해서 길이를 줄이고
    두께를 키웠다: 같은 색이되 '짧고 뭉툭한 것'과 '길고 굵은 것'의 대비다. */
 .scr-tracer-cannon {
-  width: 1.5px; height: 2.6px; border-radius: 1.1px;
+  width: 0.75px; height: 1.3px; border-radius: 0.55px;
   background: linear-gradient(to bottom, rgba(255, 196, 92, 0.98), rgba(255, 132, 30, 0));
   animation-duration: 0.85s;
 }
 /* 시즈 모드 — 굵고 긴 주황(요청). 포신에서 길게 뻗는 한 줄기. */
 .scr-tracer-siege {
-  width: 2px; height: 7px; border-radius: 1.5px;
+  width: 1px; height: 3.5px; border-radius: 0.75px;
   background: linear-gradient(to bottom, rgba(255, 214, 130, 0.98) 0 25%, rgba(255, 128, 24, 0.85) 70%, rgba(255, 110, 16, 0));
   animation-duration: 1s;
 }
 /* 파이어뱃 — 중간 길이 붉고 두꺼운 화염(요청). 끝으로 갈수록 붉게 번지고 흩어진다. */
 .scr-tracer-flame {
-  width: 3px; height: 4px; border-radius: 2.2px;
+  width: 1.5px; height: 2px; border-radius: 1.1px;
   background: linear-gradient(to bottom, rgba(255, 226, 150, 0.95) 0 18%, rgba(255, 110, 40, 0.9) 55%, rgba(220, 40, 20, 0));
   filter: blur(0.3px);
   animation-duration: 0.3s;
@@ -13975,7 +13980,7 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 근접 베기(기획서 1-G) — 몸 가장자리에서 짧은 흰 호가 표적 쪽으로 쓸린다.
    rotate 속성은 인라인 transform(조준 회전)과 따로 합성돼 축을 안 깨뜨린다. */
 .scr-tracer-slash {
-  width: 6px; height: 6px; background: none;
+  width: 3px; height: 3px; background: none;
   border: 1.2px solid transparent;
   border-top-color: rgba(255, 250, 235, 0.95);
   border-right-color: rgba(255, 250, 235, 0.5);
@@ -13992,25 +13997,25 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 }
 /* 히드라 — 중간 길이 형광 녹색 얇게(요청). 기본보다 길고 더 가늘다. */
 .scr-tracer-spine {
-  width: 0.6px; height: 4px;
+  width: 0.3px; height: 2px;
   background: linear-gradient(to bottom, rgba(170, 255, 90, 1), rgba(120, 230, 40, 0));
   box-shadow: 0 0 1.5px rgba(150, 255, 80, 0.6);
   animation-duration: 0.45s;
 }
 .scr-tracer-bolt {
-  width: 1.2px; height: 4px;
+  width: 0.6px; height: 2px;
   background: linear-gradient(to bottom, rgba(150, 200, 255, 0.95), rgba(150, 200, 255, 0));
   animation-duration: 0.6s;
 }
 .scr-tracer-glave {
-  width: 1px; height: 2.5px; border-radius: 0.5px;
+  width: 0.5px; height: 1.25px; border-radius: 0.25px;
   background: linear-gradient(to bottom, rgba(200, 230, 170, 0.95), rgba(140, 170, 110, 0.6));
   animation-duration: 0.24s;
 }
 /* 미사일(레이스·발키리·골리앗 대공·스카우트 대공·터렛) — 연기 느낌의 길고 흰/회색
    빛(요청). 머리는 희게 밝고 꼬리로 갈수록 회색 연기가 퍼진다. */
 .scr-tracer-missile {
-  width: 1.1px; height: 7.5px; border-radius: 0.8px;
+  width: 0.55px; height: 3.75px; border-radius: 0.4px;
   background: linear-gradient(to bottom,
     rgba(255, 255, 255, 0.98) 0 12%, rgba(226, 230, 236, 0.72) 45%, rgba(170, 176, 186, 0.28) 78%, rgba(150, 156, 166, 0));
   filter: blur(0.35px);
@@ -14019,7 +14024,7 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 디바우러 산성포 — 두껍고 연기 느낌의 보라(요청). 뭉근하게 번지는 덩어리라 흐림을
    같이 준다. 퀸의 산도 같은 갈래로 둔다(둘 다 '뿌리는 것'이다). */
 .scr-tracer-acid {
-  width: 2.6px; height: 4.5px; border-radius: 2px;
+  width: 1.3px; height: 2.25px; border-radius: 1px;
   background: linear-gradient(to bottom,
     rgba(206, 150, 255, 0.95) 0 20%, rgba(150, 80, 220, 0.7) 60%, rgba(110, 50, 170, 0));
   filter: blur(0.5px);
@@ -14043,7 +14048,7 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    건물 쪽 코드가 아직 photon을 부르므로 두 이름이 같은 그림을 쓴다. */
 .scr-tracer-plasma,
 .scr-tracer-photon {
-  width: 1.7px; height: 5.5px; border-radius: 1.3px;
+  width: 0.85px; height: 2.75px; border-radius: 0.65px;
   background: linear-gradient(to bottom,
     rgba(232, 244, 255, 0.98) 0 18%, rgba(120, 180, 255, 0.9) 55%, rgba(70, 120, 255, 0));
   box-shadow: 0 0 3px rgba(120, 180, 255, 0.55);
@@ -14051,22 +14056,22 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   animation-duration: 0.24s;
 }
 .scr-tracer-flare {
-  width: 1px; height: 3.5px;
+  width: 0.5px; height: 1.75px;
   background: linear-gradient(to bottom, rgba(200, 230, 255, 0.95), rgba(120, 180, 255, 0));
   animation-duration: 0.22s;
 }
 .scr-tracer-laser {
-  width: 0.8px; height: 3.5px;
+  width: 0.4px; height: 1.75px;
   background: linear-gradient(to bottom, rgba(255, 120, 100, 0.95), rgba(255, 120, 100, 0));
   animation-duration: 0.3s;
 }
 .scr-tracer-burst {
-  width: 0.8px; height: 4px;
+  width: 0.4px; height: 2px;
   background: linear-gradient(to bottom, rgba(255, 244, 200, 0.95), rgba(255, 244, 200, 0));
   animation-duration: 0.22s;
 }
 .scr-tracer-zap {
-  width: 1.2px; height: 4.5px;
+  width: 0.6px; height: 2.25px;
   background: repeating-linear-gradient(
     to bottom, rgba(210, 230, 255, 0.95) 0 2px, rgba(140, 170, 255, 0.5) 2px 3px);
   animation-duration: 0.2s;
@@ -14080,7 +14085,7 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 럴커·성큰 가시 — 갈색으로 길고 가늘게(요청). 폭을 절반으로 줄여 '창'이 되게 한다
    (길이는 렌더가 표적까지 실거리로 인라인 지정한다). */
 .scr-tracer-spike {
-  width: 2px; height: 12px;
+  width: 1px; height: 6px;
   border-radius: 0;
   background: linear-gradient(to bottom, rgba(140, 96, 52, 0.98) 0 70%, rgba(96, 64, 34, 0.9) 100%);
   clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
@@ -14091,7 +14096,7 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    구슬을 늘리고 흐림을 살짝 준다. 옛 이름(acidball)도 같은 그림이다. */
 .scr-tracer-venom,
 .scr-tracer-acidball {
-  width: 2.1px; height: 5px; border-radius: 1.6px;
+  width: 1.05px; height: 2.5px; border-radius: 0.8px;
   background: linear-gradient(to bottom,
     rgba(240, 255, 140, 0.98) 0 20%, rgba(190, 230, 60, 0.85) 55%, rgba(140, 190, 30, 0));
   filter: blur(0.3px);
@@ -14100,7 +14105,7 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
 /* 메딕(요청: "메딕 노란 작은 동그란 빛") — 뻗는 줄기가 아니라 표적 쪽에 켜지는 작고
    동그란 노란 불빛이다. 총구 축(translateY)은 그대로 타되 길이가 없다. */
 .scr-tracer-heal {
-  width: 2.4px; height: 2.4px; border-radius: 50%;
+  width: 1.2px; height: 1.2px; border-radius: 50%;
   background: radial-gradient(circle, rgba(255, 246, 170, 0.98) 0 40%, rgba(255, 214, 80, 0.55) 70%, transparent 78%);
   box-shadow: 0 0 3px rgba(255, 226, 120, 0.7);
   animation: scr-heal-glow 0.9s ease-in-out infinite;
