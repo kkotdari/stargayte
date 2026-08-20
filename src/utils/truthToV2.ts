@@ -23,6 +23,7 @@
  */
 import { BLD_STATS, UNIT_BUILD_SEC, type UnitEnt, type UnitEv, type UnitTracksV2 } from "../legacy/replayUnits";
 import type { Race } from "../types";
+import { BUILDING_FOOT } from "./bwUnits";
 import { BW_UNIT_NAME } from "./bwUnitNames";
 import { TRUTH_ST_GONE, type TruthTracks } from "./openbwTracks";
 
@@ -78,9 +79,23 @@ function entsOfTrack(
          ★ 이미 다 지어진 채로 나타난 건물(시작 본진!)은 그 시각을 **뒤로 물린다** —
            안 그러면 첫 홀이 경기 시작부터 2분 동안 공사 중으로 서 있다(지적). 참값이
            키마다 '다 지어졌나'를 알려 주므로 짓는 중으로 시작했는지 곧장 안다. */
-      const bx = tr.keys[segStart * 5 + 1];
-      const by = tr.keys[segStart * 5 + 2];
-      const startedRaw = tr.done[segStart] === 0;
+      /* ★ 자취의 자리는 **중심**이다(BW의 unit.position은 언제나 몸 한가운데다) —
+         그런데 화면의 건물 층은 이 자리를 **발자국 좌상단 타일**로 읽고 거기에 반
+         발자국을 더해 중심을 낸다(centerX = bx + footDx). 유추 시절 v2가 건설 명령의
+         타일 좌표를 실어 주던 계약이라 그랬다.
+         그대로 두면 반 발자국이 두 번 더해져 건물이 통째로 **오른아래로 밀린다**
+         (지적: "건물들 위치가 조금 틀림 우하단으로 쏠린느낌") — 커맨드센터(4×3)면
+         2타일 오른쪽·1.5타일 아래다. 여기서 반 발자국을 빼 계약을 지킨다. */
+      const foot = BUILDING_FOOT[kind] ?? [3, 2];
+      const bx = tr.keys[segStart * 5 + 1] - foot[0] / 2;
+      const by = tr.keys[segStart * 5 + 2] - foot[1] / 2;
+      /* 처음부터 서 있던 건물인가 — 참값이 키마다 '다 지어졌나'를 준다. 다만 그 비트만
+         믿으면 안 된다(지적: "아직도 스타팅 홀 건설되면서 시작한다구"): 시작 본진은
+         자취의 **첫 키가 0초가 아닐 수 있고**(덤퍼가 첫 프레임 뒤부터 적는 판), 그러면
+         done이 1이어도 `born`이 0보다 커서 화면이 그때부터 짓는 장면을 그린다.
+         경기 첫 1초 안에 나타난 건물은 지을 시간 자체가 없다(가장 빠른 건물도 15초다) —
+         그런 것은 무조건 처음부터 서 있던 것으로 본다. */
+      const startedRaw = tr.done[segStart] === 0 && born > 1;
       ev.push([startedRaw ? born : born - (UNIT_BUILD_SEC[kind] ?? 0), bx, by, 2]);
       /* 이륙·착륙 — 건물이 자리를 옮겼으면 뜬 것이다. 참 자취가 그 사이를 다 그리므로
          뜬 때와 앉은 때만 찍어 주면 된다(화면은 그 둘로 장면을 만든다). */
@@ -92,7 +107,11 @@ function entsOfTrack(
         const y = tr.keys[i * 5 + 2];
         const moved = Math.abs(x - px) > 0.4 || Math.abs(y - py) > 0.4;
         if (moved && !flying) { flying = true; ev.push([tr.keys[i * 5], -1, -1, 6]); }
-        else if (!moved && flying) { flying = false; ev.push([tr.keys[i * 5], x, y, 5]); }
+        // 착륙 자리도 건설 자리와 같은 계약(좌상단 타일)이어야 한다 — 반 발자국을 뺀다.
+        else if (!moved && flying) {
+          flying = false;
+          ev.push([tr.keys[i * 5], x - foot[0] / 2, y - foot[1] / 2, 5]);
+        }
         px = x; py = y;
       }
     }

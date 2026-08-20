@@ -1,8 +1,9 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Pause, Play, RotateCcw, X } from "lucide-react";
+import { Maximize, Minimize, Pause, Play, RotateCcw, X } from "lucide-react";
 import Avatar from "../common/Avatar";
 import ReplayMapCanvas from "./ReplayMapCanvas";
+import ReplayFullscreenMinimap from "./ReplayFullscreenMinimap";
 import PillTabs from "../common/PillTabs";
 import SlideBar from "../common/SlideBar";
 import { cx } from "../../utils/format";
@@ -14823,6 +14824,127 @@ export default function ReplayMotionPlayer({
   const [unitBig, setUnitBig] = useState(false);
   // (삭제·요청: 모바일에도 입체 보기 개방) — 터치 기기 판별이 있던 자리.
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  /* ── 전체화면 재생(요청) ────────────────────────────────────────────────────
+     "전체화면 버튼을 누르면 화면을 꽉 채우는 모드로 바뀌고, 지도 비율과 화면 비율이
+     안 맞으니 **화면 비율에 맞게 최대 크롭한 부분**이 비춰지며 드래그로 나머지를 본다."
+     크롭·드래그는 새 기계를 안 들인다 — 이미 있는 팬 한계식을 한 줄 일반화하면 그대로
+     나온다(아래 panLimit): 지금 식은 `(배율−1)×지도폭/2`인데, 그것은 "창 = 지도 상자"일
+     때의 특수형이다. 창을 따로 두면 `(지도폭×배율 − 창폭)/2`이고, 창이 지도와 같으면
+     옛 식으로 되돌아온다. 전체화면에서는 지도를 화면보다 크게(cover) 깔아 두므로
+     배율 1에서도 그 차이만큼 드래그 여유가 생긴다 — 그것이 곧 '크롭한 나머지 보기'다. */
+  const [fsOn, setFsOn] = useState(false);
+  const fsOnRef = useRef(false);
+  fsOnRef.current = fsOn;
+  /** 전체화면 무대(화면을 꽉 채우는 상자) — 지도를 이 크기에 맞춰 덮게 깐다. */
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const [stage, setStage] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  /** 지금 유효한 창(보이는 구멍)의 크기 — 평소엔 지도 상자, 전체화면에선 무대다. */
+  const viewBox = (rw: number, rh: number): { w: number; h: number } =>
+    (fsOnRef.current && stage.w > 0 ? { w: stage.w, h: stage.h } : { w: rw, h: rh });
+  /** 팬 한계 — 내용(지도 × 배율)이 창보다 큰 만큼만 움직인다. */
+  const panLimit = (rw: number, rh: number, z: number): { x: number; y: number } => {
+    const v = viewBox(rw, rh);
+    return { x: Math.max(0, (rw * z - v.w) / 2), y: Math.max(0, (rh * z - v.h) / 2) };
+  };
+  /** 전체화면에서 지도가 화면을 **덮는** 폭 — 비율은 지키고 짧은 쪽을 화면에 맞춘다.
+   *  그 차이만큼이 곧 크롭이고, 드래그로 보는 '나머지 부분'이다. */
+  const fsCoverW = stage.w > 0
+    ? Math.max(stage.w, (stage.h * grid.width) / Math.max(1, grid.height)) : 0;
+  /** 손가락 기기인가 — 미니맵(PC 전용)과 깨우기 버튼(모바일 전용)이 이 값으로 갈린다. */
+  const [coarse, setCoarse] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return undefined;
+    const mq = window.matchMedia("(pointer: coarse)");
+    const read = (): void => setCoarse(mq.matches);
+    read();
+    mq.addEventListener("change", read);
+    return () => mq.removeEventListener("change", read);
+  }, []);
+  /** 오버레이 조작부가 지금 보이나(요청: 3초 미조작 시 숨김). */
+  const [fsUi, setFsUi] = useState(true);
+  const fsHideRef = useRef(0);
+  /** 조작부를 깨우고 3초 뒤 다시 숨긴다 — 조작이 있을 때마다 이 시계가 되감긴다. */
+  const fsWake = useCallback((): void => {
+    setFsUi(true);
+    window.clearTimeout(fsHideRef.current);
+    fsHideRef.current = window.setTimeout(() => setFsUi(false), 3000);
+  }, []);
+  /* 전체화면 들고나기 — 브라우저 전체화면 API를 쓰되, **되는 곳에서만** 쓴다.
+     아이폰 사파리는 div에 requestFullscreen이 아예 없으므로(영상 말고는 안 준다),
+     성패와 무관하게 CSS로도 화면을 덮는다(.scr-motion-fs가 position:fixed·inset:0).
+     그래서 안 되는 기기에서도 '꽉 찬 화면'은 똑같이 나온다 — 다르게 나오는 것은
+     주소창이 남느냐뿐이다. */
+  const enterFs = useCallback((): void => {
+    setFsOn(true);
+    fsWake();
+    const el = rootRef.current;
+    if (el && !document.fullscreenElement && el.requestFullscreen) {
+      void el.requestFullscreen().catch(() => {});
+    }
+  }, [fsWake]);
+  const exitFs = useCallback((): void => {
+    setFsOn(false);
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+  }, []);
+  /* 브라우저 쪽에서 나간 것(Esc·시스템 제스처)도 우리 상태에 반영한다. CSS 폴백으로만
+     덮고 있는 기기에서는 이 이벤트가 안 오므로 Esc를 따로 받는다. */
+  useEffect(() => {
+    const onFsc = (): void => { if (!document.fullscreenElement) setFsOn(false); };
+    const onEsc = (e: KeyboardEvent): void => {
+      if (e.key === "Escape" && fsOnRef.current && !document.fullscreenElement) exitFs();
+    };
+    document.addEventListener("fullscreenchange", onFsc);
+    window.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFsc);
+      window.removeEventListener("keydown", onEsc);
+    };
+  }, [exitFs]);
+  /* 무대 크기 — 지도를 이 크기에 맞춰 **덮게**(cover) 깔아야 크롭이 나온다. 화면 회전·
+     주소창 여닫힘까지 따라오도록 ResizeObserver로 지켜본다. */
+  useEffect(() => {
+    if (!fsOn) { setStage({ w: 0, h: 0 }); return undefined; }
+    const el = stageRef.current;
+    if (!el) return undefined;
+    const read = (): void => setStage({ w: el.clientWidth, h: el.clientHeight });
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    window.addEventListener("orientationchange", read);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("orientationchange", read);
+    };
+  }, [fsOn]);
+  /* 3초 미조작이면 숨긴다(요청) — 깨우는 손짓은 기기마다 다르다:
+       · PC — 마우스를 **가장자리로** 가져갈 때만(요청). 화면 한복판에서 마우스가
+         움직인다고 조작부가 뜨면, 보고 있는 장면을 계속 가린다.
+       · 모바일 — 구석의 반투명 버튼(아래 .scr-fs-wake). 손가락이 지도를 끄는 동안
+         조작부가 튀어나오면 그게 더 방해다.
+     조작부 자체를 만지는 동안에는 계속 깨어 있다(그 안의 pointerdown이 fsWake를 부른다). */
+  useEffect(() => {
+    if (!fsOn) {
+      window.clearTimeout(fsHideRef.current);
+      setFsUi(true);
+      return undefined;
+    }
+    fsWake();
+    const onMove = (e: PointerEvent): void => {
+      if (e.pointerType !== "mouse") return;
+      const el = stageRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const EDGE = 72;
+      const near = e.clientX - r.left < EDGE || r.right - e.clientX < EDGE
+        || e.clientY - r.top < EDGE || r.bottom - e.clientY < EDGE;
+      if (near) fsWake();
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.clearTimeout(fsHideRef.current);
+    };
+  }, [fsOn, fsWake]);
   useEffect(() => {
     const el = mapRef.current;
     if (!el) return undefined;
@@ -14878,8 +15000,7 @@ export default function ReplayMotionPlayer({
       // 커서 아래의 지도 지점이 그 자리에 남도록 팬을 함께 푼다(더블클릭과 같은 자).
       const ux = (e.clientX - ox - panRef.current.x) / z0;
       const uy = (e.clientY - oy - panRef.current.y) / z0;
-      const maxX = ((z1 - 1) * rect.width) / 2;
-      const maxY = ((z1 - 1) * rect.height) / 2;
+      const { x: maxX, y: maxY } = panLimit(rect.width, rect.height, z1);
       const px = Math.min(maxX, Math.max(-maxX, e.clientX - ox - z1 * ux));
       const py = Math.min(maxY, Math.max(-maxY, e.clientY - oy - z1 * uy));
       zoomRef.current = z1;
@@ -14942,16 +15063,17 @@ export default function ReplayMotionPlayer({
   useEffect(() => {
     const el = mapRef.current;
     if (!el) return;
-    if (zoom <= 1) return;
+    // 전체화면은 1배에도 크롭 여유가 있어 되죄어야 한다(평소엔 여유가 0이라 건너뛴다).
+    if (zoom <= 1 && !fsOn) return;
     const rect = el.getBoundingClientRect();
-    const maxX = ((zoom - 1) * rect.width) / 2;
-    const maxY = ((zoom - 1) * rect.height) / 2;
+    const { x: maxX, y: maxY } = panLimit(rect.width, rect.height, zoom);
     setPan((p) => {
       const nx = Math.min(maxX, Math.max(-maxX, p.x));
       const ny = Math.min(maxY, Math.max(-maxY, p.y));
       return nx === p.x && ny === p.y ? p : { x: nx, y: ny };
     });
-  }, [zoom, pitched, wide]);
+    // 전체화면 무대 크기가 바뀌어도 되죈다(크롭 여유가 달라진다).
+  }, [zoom, pitched, wide, fsOn, stage.w, stage.h]);
 
   /* 드래그 팬(지적: 확대 후 드래그가 이상함 — 브라우저의 이미지 드래그가 끌려 나왔다)
      — 확대 중에는 드래그로 지도를 민다. 경계 죔은 휠과 같은 식. */
@@ -15400,7 +15522,9 @@ export default function ReplayMotionPlayer({
   const tapRef = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
   const onMapPointerDown = (e: React.PointerEvent) => {
     tapRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
-    if (zoom <= 1 || e.button !== 0) return;
+    /* 전체화면에선 1배에도 끈다(요청: "드래그로 나머지 부분을 보는 식") — 지도가
+       화면보다 크게 깔려 있어 배율과 무관하게 여유가 있다. */
+    if ((zoom <= 1 && !fsOn) || e.button !== 0) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     dragRef.current = {
       id: e.pointerId, sx: e.clientX, sy: e.clientY, px: pan.x, py: pan.y, live: false,
@@ -15425,8 +15549,7 @@ export default function ReplayMotionPlayer({
     const el = mapRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const maxX = ((zoom - 1) * rect.width) / 2;
-    const maxY = ((zoom - 1) * rect.height) / 2;
+    const { x: maxX, y: maxY } = panLimit(rect.width, rect.height, zoom);
     /* 프레임당 한 번(지적: 드래그 버벅임) — pointermove는 120Hz까지 튄다. */
     dragPendRef.current = {
       x: Math.min(maxX, Math.max(-maxX, d.px + (e.clientX - d.sx))),
@@ -15484,30 +15607,71 @@ export default function ReplayMotionPlayer({
     setPicked(best);
   };
 
-  /* 키보드(요청: PC) — ↑↓ 배속, ←→ 5초 뒤/앞. 댓글 입력 중에는 건드리지 않는다. */
+  /* 키보드(요청: PC) — ↑↓ 배속, ←→ 5초 뒤/앞. 댓글 입력 중에는 건드리지 않는다.
+     전체화면에서는 여기에 넷이 더 붙는다(요청): PageUp/Down 시각 이동 · c 색상 토글 ·
+     p 재생/일시정지 · wasd 지도 드래그 이동.
+     ★ 단축키는 오버레이를 **안 깨운다**(요청: "단축키 사용한다고 오버레이 활성화는
+       아님") — 그래서 여기서는 fsWake를 부르지 않는다. 보고 있는 화면을 가리지 않고
+       조작만 하려는 것이 단축키를 쓰는 까닭이다. */
   useEffect(() => {
-    if (!wide) return undefined;
+    if (!wide && !fsOn) return undefined;
     const onKey = (e: KeyboardEvent) => {
       const t2 = e.target as HTMLElement | null;
       if (t2 && (t2.tagName === "INPUT" || t2.tagName === "TEXTAREA" || t2.isContentEditable)) return;
-      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      const k = e.key;
+      if (k === "ArrowUp" || k === "ArrowDown") {
         e.preventDefault();
         setSpeed((v) => {
           const i = SPEEDS.indexOf(v);
-          return SPEEDS[e.key === "ArrowUp" ? Math.min(SPEEDS.length - 1, i + 1) : Math.max(0, i - 1)];
+          return SPEEDS[k === "ArrowUp" ? Math.min(SPEEDS.length - 1, i + 1) : Math.max(0, i - 1)];
         });
-      } else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      } else if (k === "ArrowLeft" || k === "ArrowRight") {
         e.preventDefault();
         setT((v) => {
-          const nv = Math.min(total, Math.max(0, v + (e.key === "ArrowRight" ? 5 : -5)));
+          const nv = Math.min(total, Math.max(0, v + (k === "ArrowRight" ? 5 : -5)));
           setDone(nv >= total);
           return nv;
         });
+      } else if (!fsOn) {
+        // 아래는 전체화면 전용이다 — 평소 화면에서 p·c가 눌리면 남의 단축키를 뺏는다.
+      } else if (k === "PageUp" || k === "PageDown") {
+        // 한 번에 한 판의 1/20씩(최소 30초) — 긴 경기에서도 몇 번이면 훑는다.
+        e.preventDefault();
+        const jump = Math.max(30, total / 20);
+        setT((v) => {
+          const nv = Math.min(total, Math.max(0, v + (k === "PageUp" ? -jump : jump)));
+          setDone(nv >= total);
+          return nv;
+        });
+      } else if (k === "c" || k === "C" || k === "ㅊ") {
+        e.preventDefault();
+        setColorMode((v) => (v === "team" ? "personal" : "team"));
+      } else if (k === "p" || k === "P" || k === "ㅔ") {
+        e.preventDefault();
+        if (done) { setT(0); setDone(false); setPlaying(true); return; }
+        setPlaying((v) => !v);
+      } else if ("wasdWASDㅈㅁㄴㅇ".includes(k) && k.length === 1) {
+        /* wasd 지도 이동 — 한 번에 화면의 8분의 1씩 민다. 한계는 다른 길과 같은
+           panLimit이라, 크롭 여유를 넘어 빈 바탕이 드러나는 일이 없다. */
+        e.preventDefault();
+        const el = mapRef.current;
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        const lim = panLimit(r.width, r.height, zoomRef.current);
+        const step = Math.max(40, viewBox(r.width, r.height).w / 8);
+        const dx = "adADㅁㅇ".includes(k) ? (("adAD".includes(k) ? k === "a" || k === "A" : k === "ㅁ") ? step : -step) : 0;
+        const dy = "wsWSㅈㄴ".includes(k) ? (("wsWS".includes(k) ? k === "w" || k === "W" : k === "ㅈ") ? step : -step) : 0;
+        setPan((p) => ({
+          x: Math.min(lim.x, Math.max(-lim.x, p.x + dx)),
+          y: Math.min(lim.y, Math.max(-lim.y, p.y + dy)),
+        }));
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [wide, total]);
+    // panLimit·viewBox는 렌더마다 새로 나지만 읽는 값(stage·fsOn)은 아래 목록에 있다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wide, total, fsOn, done, stage.w, stage.h]);
 
   /* 한 번에 한 판만(요청) — 재생을 시작하는 순간 먼저 돌던 판을 멈춘다. */
   const pauseSelf = useRef(() => {});
@@ -15878,8 +16042,11 @@ export default function ReplayMotionPlayer({
     </div>
   );
 
-  const viewRowNode = (
-    <div className="scr-motion-bar scr-motion-viewrow">
+  /* 토글을 두 갈래로 나눠 둔다(요청: 전체화면에서 "그아래는 각각 지도 표시 토글류,
+     성능 색상 선택류가 배치") — 평소 배치에서는 아래 viewRowNode가 둘을 도로 한 줄로
+     이어 붙이므로 지금 화면은 한 톨도 안 바뀐다. 전체화면만 좌우로 갈라 쓴다. */
+  const perfToggleNode = (
+    <>
       {/* 색상도 다른 것들과 같은 꼴로 합쳤다(요청: "색상도 일반 토글로 합치기") —
           제 줄(.scr-motion-colorrow)에 라벨 없이 혼자 서 있던 것을, 위에 라벨을 얹은
           보통 토글로 만들어 이 줄 맨 앞에 세운다. */}
@@ -15911,6 +16078,10 @@ export default function ReplayMotionPlayer({
           fit
         />
       </span>
+    </>
+  );
+  const mapToggleNode = (
+    <>
       <span className="scr-motion-radio">
         <span className="scr-motion-radio-label">모델 크기</span>
         <PillTabs
@@ -15943,8 +16114,2466 @@ export default function ReplayMotionPlayer({
           toggle
         />
       </span>
+    </>
+  );
+  const viewRowNode = (
+    <div className="scr-motion-bar scr-motion-viewrow">
+      {perfToggleNode}
+      {mapToggleNode}
     </div>
   );
+
+  /* 조종간 한 줄(요청: PC·모바일 공통 — [재생 | 탐색바 | 시각]) — 평소 배치와
+     전체화면이 **같은 것 하나**를 나눠 쓴다. 탐색바는 비제어(ref)라 두 곳에 동시에
+     둘 수 없으므로, 전체화면일 때는 아래쪽 한 벌만 그린다(둘 중 하나만 붙는다). */
+  const controlsNode = (
+      <div className="scr-motion-bar scr-motion-bar-controls">
+        <button
+          type="button" className="scr-motion-play"
+          onClick={() => {
+            if (done) { setT(0); setDone(false); setPlaying(true); return; }
+            setPlaying((v) => !v);
+          }}
+          aria-label={playing ? "일시정지" : "재생"}
+        >
+          {playing
+            ? <Pause size={20} fill="currentColor" />
+            : done
+              ? <RotateCcw size={20} />
+              : <Play size={20} fill="currentColor" />}
+        </button>
+        {/* 비제어 탐색바(지적: 드래그가 안 먹고 느림 — 위 rangeRef 주석). step이 없어야
+            ×4에서도 손잡이가 툭툭 안 뛴다. --p는 지나온 자리를 채우는 그라데이션 경계다. */}
+        <input
+          ref={rangeRef}
+          className="scr-motion-range" type="range"
+          min={0} max={total} step="any" defaultValue={t}
+          onPointerDown={() => { scrubbing.current = true; }}
+          onPointerUp={() => { scrubbing.current = false; }}
+          onPointerCancel={() => { scrubbing.current = false; }}
+          onInput={(e) => {
+            const el = e.target as HTMLInputElement;
+            const v = Number(el.value);
+            el.style.setProperty("--p", `${total > 0 ? (v / total) * 100 : 0}%`);
+            // 지도는 프레임당 한 번만 따라온다 — 끌기 이벤트마다 그리면 손이 밀린다.
+            if (seekPending.current === null) {
+              requestAnimationFrame(() => {
+                const sv = seekPending.current;
+                seekPending.current = null;
+                if (sv === null) return;
+                setT(sv);
+                setDone(sv >= total);
+              });
+            }
+            seekPending.current = v;
+          }}
+          aria-label="재생 위치"
+        />
+        {/* 시계 폭을 못 박는다(지적: 슬라이드바 너비가 왔다 갔다 함) — 9:59에서 10:00로
+            넘어가면 글자가 한 칸 늘고, 그만큼 옆의 탐색바가 줄었다 늘었다 했다. 가장 긴
+            꼴(총 길이 × 2 + " / ")만큼 자리를 미리 잡고 숫자 폭도 고정한다. */}
+        <span
+          className="scr-motion-clockwrap"
+          style={{ minWidth: `${fmtClock(total).length * 2 + 3}ch`,
+            fontVariantNumeric: "tabular-nums" }}
+        >
+          <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
+        </span>
+      </div>
+  );
+
+  /* 지도 상자 — 평소 배치와 전체화면이 **같은 것 하나**를 나눠 쓴다(요청: 전체화면
+     모드). 두 벌로 베끼면 캔버스·렌즈·팝업이 두 트리에 생겨 굽기 캐시도 손짓 상태도
+     갈린다. 변수 하나로 두고 붙는 자리만 달리한다. */
+  const mapNode = (
+        <div
+          className={cx("scr-motion-map", pitched && "scr-motion-pitched")} ref={mapRef}
+          onPointerDown={onMapPointerDown}
+          onPointerMove={onMapPointerMove}
+          onPointerUp={onMapPointerUp}
+          onPointerCancel={onMapPointerUp}
+          style={{
+            /* 넓은 배치에서만 고정 크기다(요청: 1024 고정) — 좁은 화면은 폭 100%로 흐른다.
+               보기(2D·3D)와 무관하다: 3D일 때만 상자를 넓히면 보기를 바꿀 때마다 세로가
+               달라져 탐색바 아래가 통째로 밀린다(실측 285px). 3D의 눕힘은 상자가 아니라
+               회전 전 판(pitchGeom의 hPre)이 맡는다. */
+            /* 1024는 상한이다(요청: min(1024px, 100%)) — 고정만 두면 왼쪽 기둥(232)과
+               댓글 기둥(232)에 간격까지 476px을 더한 값이 화면을 넘어, 대략 1560px보다
+               좁은 화면에서 페이지에 가로 스크롤이 생겼다(실측: 1440에서 28px, 1280에서
+               188px). 100%는 그리드 칸(minmax(0,1fr)) 폭이라 순환하지 않는다. */
+            /* 오른쪽에 세로 바 기둥이 생기면서 줄이지는 몫이 필요해졌다(요청: PC 세로 바)
+               — flex 0 0 auto는 한 톨도 안 줄어들어, 좁은 PC에서 바 폭(약 104px)만큼
+               페이지에 가로 스크롤이 생긴다. 1024는 어차피 상한이므로 줄어드는 것은
+               허용하고(0 1 auto) 가로세로비가 세로를 따라오게 둔다. */
+            ...(wide ? { width: `min(${mapViewW}px, 100%)`, flex: "0 1 auto", minWidth: 0 } : {}),
+            aspectRatio: `${grid.width} / ${grid.height}`,
+            ...(zoom > 1 || pitched ? { overflow: "hidden" } : {}),
+            ...(zoom > 1 || fsOn ? { cursor: dragRef.current ? "grabbing" : "grab" } : {}),
+            /* 전체화면 — 지도를 화면보다 **크게**(cover) 깔고, 자르는 일은 무대에
+               맡긴다(요청: "지도비율과 화면이 안맞으니 화면비율에 맞게끔 최대 크롭한
+               부분이 비춰지며 드래그로 나머지 부분을 보는식"). 여기서 자르면(overflow
+               hidden) 배율을 올렸을 때 상자 밖 내용이 창 안인데도 잘려 빈 자리가 난다. */
+            ...(fsOn && fsCoverW > 0 ? {
+              position: "absolute" as const,
+              left: "50%", top: "50%", transform: "translate(-50%, -50%)",
+              width: `${fsCoverW}px`, flex: "0 0 auto", minWidth: 0,
+              overflow: "visible" as const, borderRadius: 0,
+            } : {}),
+            /* 손짓 격리(지적 둘: 맵 조정 시 모달이 딸려 움직임 + 2D 모드에서 드래그가
+               모달로 전파) — 맵 위 손짓은 확대 여부와 무관하게 브라우저에 안 넘긴다.
+               확대 전 세로 스크롤만 열어 두던 pan-y가 2D에서 모달을 끌었다. 모달 훑기는
+               맵 밖(로스터·댓글)에서 하면 된다. */
+            touchAction: "none",
+          }}
+        >
+            {/* 전체화면 버튼(요청) — 네 귀퉁이 꺾쇠(변 중간이 끊어진 사각형) 아이콘이다.
+              지도 오른쪽 위 구석에 반투명으로 뜬다. 지도의 팬·줌 손짓에 안 딸리게
+              눌림을 끊는다. 전체화면 안에서는 오버레이가 나가기 버튼을 맡는다. */}
+          {!fsOn && (
+            <button
+              type="button"
+              className="scr-motion-litbtn scr-motion-fsbtn"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); enterFs(); }}
+              aria-label="전체화면" title="전체화면"
+            >
+              <Maximize size={15} />
+            </button>
+          )}
+        {/* 받는 중 — 자취는 눌러도 한 판에 1~2MB라 잠깐 걸린다. 다 온 뒤에는 안 뜬다. */}
+          {!simTracks && entLoad === "loading" && (
+            <span className="scr-motion-simnote">자취 받는 중…</span>
+          )}
+          {/* 맵연결(요청: 별도로 맵 좌상단에, 연결 안 된 경우만, 알약 형태) — 렌즈 밖이라
+              휠 줌에도 제자리다. 맵의 팬·줌 손짓에 안 딸리게 눌림을 끊는다. */}
+          {!grid.image && (
+            <button
+              type="button"
+              className="scr-motion-litbtn scr-motion-maplink"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); setLinkOpen(true); }}
+            >
+              맵연결
+            </button>
+          )}
+          {/* 미연결 안내(요청: 작게) — 지형(벽) 정보가 없어 유닛이 벽을 뚫고 다닌다는 것을
+              알린다. 버튼 바로 아래 한 줄. */}
+          {!grid.image && (
+            <span className="scr-motion-maplink-note">미연결 상태에선 유닛이 벽을 뚫고 다녀요</span>
+          )}
+          {/* 렌즈 상자 — PC 휠 줌(요청)이 이 층을 통째로 키운다(마커·자취까지 같이). */}
+          <div
+            ref={lensRef}
+            className="scr-motion-lens"
+            style={{
+              /* 줌 역배율 변수(지적: 클릭 마커·링은 UI라 확대에 굵어지면 안 됨) —
+                 UI성 마커가 scale(1/--mz)로 제 화면 크기를 지킨다. */
+              "--mz": zoom,
+              /* transform은 여기서 안 쓴다(수리: 휠 확대가 한 번만 먹는다) — 재생 중엔
+                 매 프레임 리렌더가 나서, 상태에서 나온 변환이 휠이 방금 쓴 변환을 계속
+                 되돌렸다. 아래 lensZoom effect가 상태가 바뀔 때만 써 준다. */
+            } as React.CSSProperties}
+          >
+          {grid.image
+            ? (
+              <img
+                className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`}
+                draggable={false}
+                onLoad={(e) => setImgSide(e.currentTarget.naturalWidth || 0)}
+                style={pitchStyle()}
+              />
+            )
+            : (
+              /* 매핑 안 된 맵(정정: 샘플 녹색이 아니라 맵에서 실제 추출한 지형) — 리플레이
+                 타일 격자 개략도(ReplayMapCanvas)를 바탕으로 깐다. 초록 계열 지형 램프가
+                 곧 기본색이다. 3D에선 실제 그림과 똑같은 기울임을 입는다(지적: 기본 파싱
+                 맵은 입체 효과가 안 됨). */
+              <div
+                /* 격자 개략도는 과표본을 안 건다 — 캔버스 배킹이 512로 고정이라 상자만
+                   키워 봐야 화소가 안 는다(메모리만 든다). */
+                className="scr-motion-canvas scr-motion-canvas-blank"
+                style={pitched ? (() => {
+                  const { q, cy, P } = pitchGeom();
+                  return { transform: `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${P.toFixed(0)}px) rotateX(${pitchTiltDeg.toFixed(2)}deg)` };
+                })() : undefined}
+              >
+                <ReplayMapCanvas grid={grid} className="scr-motion-canvas-tiles" />
+              </div>
+            )}
+
+          {/* 건물(요청: 합치기 대신) — 기본은 작은 이름이 늘 떠 있되, 가까이 겹치는 같은
+              이름은 하나만 적고 나머지는 점(지적: 겹치면 안 보인다). 긴 이름은 폰트를 한
+              단계 줄인다. 생산·연구 중이면 심장처럼 뛴다(요청). */}
+          {(() => {
+            /* 시작 홀은 파서가 합성한다(지적: 스타팅 포인트에 기지가 없다 → 재분석으로
+               해결, 폴백은 걷었다 — 요청). */
+            /* 그리는 차례는 y(세로) 순이다 — 높이가 생기면서(BUILD_RISE) 높은 건물이 제 뒤
+               건물 위로 솟는데(지적: "높이땜에 뒤에 건물과 겹쳐보일수도"), 사선 뷰에서는
+               앞(y가 큰) 건물이 뒤를 가리는 것이 맞다. i는 원래 인덱스 그대로 들고 간다
+               (buildsByType 등이 그 인덱스로 잰다). */
+            const drawOrder = buildsSrc.map((_, i) => i)
+              .sort((a, b) => buildsSrc[a][2] - buildsSrc[b][2]);
+            return drawOrder.map((i) => {
+              const [sec, x, y, unit, raw, gone, liftAt] = buildsSrc[i];
+              if (sec > t) return null;
+              const goneAt = gone ?? 0;
+              // 없어진 건물은 그냥 사라진다(요청: ✕ 표시 없음) — 착륙 이사·변태와도 한 결이다.
+              /* 핵 한 방(요청) — 폭발 반경 안에서 무너진 걸로 판정된 건물은 파괴 감지가
+                 한참 뒤에 눈치챘더라도 착탄 순간 바로 걷는다. 이륙 이사 기록(liftAt)은
+                 goneAt이 착륙 시각이라 건드리지 않는다. */
+              let goneEff = goneAt;
+              if (!liftAt) {
+                for (const nk of nukeImpacts) {
+                  const d = Math.hypot(x + footDx(unit) - nk.x, y + footDy(unit) - nk.y);
+                  if (goneAt > 0) {
+                    if (nk.sec <= goneAt && goneAt - nk.sec <= 90 && d <= 5) {
+                      goneEff = Math.min(goneEff, nk.sec);
+                    }
+                    continue;
+                  }
+                  /* 파괴 감지가 아예 없던 건물(지적: 핵 터진 자리에 건물이 남는다) — 파괴
+                     감지는 놓치는 게 많아, 터진 게 확인된 핵의 폭심(4타일) 안 건물은 그냥
+                     걷는다. 본진(커맨드·넥서스·해처리 계열)만은 체력이 커서 실제로도 핵
+                     한 방을 버티므로 남긴다. */
+                  if (nk.confirmed && nk.sec >= sec && nk.sec <= t && d <= 4
+                    && !["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(unit)) {
+                    goneEff = goneEff > 0 ? Math.min(goneEff, nk.sec) : nk.sec;
+                  }
+                }
+              }
+              /* 페이드 인·아웃(요청) — 지어질 때 1.2초 스르륵 나타나고, 없어질 때 1.2초
+                 스르륵 사라진다. */
+              /* 저그는 페이드가 없다(요청: "저그 드론 건물 변태/취소시 페이드인 아웃 없게")
+                 — 드론이 그 자리에서 건물로 변하는 것이라, 스르륵 나타나면 '어디선가
+                 생겨난 것'으로 읽힌다. 취소도 마찬가지로 그 자리에서 도로 드론이 된다. */
+              const FADE_SEC = (bases.find((b9) => b9.key === raw)?.race) === "저그" ? 0 : 1.2;
+              const fade = FADE_SEC <= 0 ? 1 : Math.min(
+                sec > 0 ? Math.min(1, (t - sec) / FADE_SEC) : 1,
+                goneEff > 0 && t >= goneEff ? Math.max(0, 1 - (t - goneEff) / FADE_SEC) : 1,
+              );
+              if (goneEff > 0 && t >= goneEff + FADE_SEC) return null;
+              if (fade <= 0) return null;
+              // 떠 있는 구간(지적: 건물 떠 있는 게 표현이 안 된다) — 이륙부터 착륙(=goneAt)
+              // 까지 옛 자리에서 둥실거린다.
+              const afloat = !!liftAt && t >= liftAt;
+              const razed = false;
+              /* 같은 자리에 제 후계가 서면(레어 진화·재건·콜로니 변태) 옛 것은 걷는다
+                 (지적: 비활성 건물이 글자와 도형으로 동시 표시). 계보는 한 방향이고
+                 자리는 발자국 안이라야 한다(위 succeedsBld 주석 — 성큰이 옆 크립 콜로니에
+                 지워지던 자리). */
+              if (!razed && buildsSrc.some(([s2, x2, y2, u2, r2], j) =>
+                j !== i && r2 === raw && s2 > sec && s2 <= t
+                && Math.hypot(x2 - x, y2 - y) <= SAME_SITE_TILES && succeedsBld(unit, u2))) {
+                return null;
+              }
+              /* 착륙 이사(요청: 건물 움직임도 추적) — 같은 임자의 같은 건물이 내 시작
+                 시각에 걷혔으면 거기서 날아온 것이다. 나는 동안은 두 자리 사이를 비행
+                 속도로 잇는다. */
+              let bx = x;
+              let by = y;
+              /* 겹침 해소(요청: 건물끼리 캔버스 겹침 불가) — 화면 자리만 민다(위 bldNudge). */
+              const nud = bldNudge.get(i);
+              if (nud) { bx += nud[0]; by += nud[1]; }
+              /* 짝의 걷힌 시각이 실제로 있어야(> 0) 한다(지적: 첫 기지가 위에서 내려온다) —
+                 시작 홀은 시작 시각이 0이라, 조건이 "gone === 0"이 되면 살아 있는 같은 종류
+                 건물 아무거나와 짝이 돼 거기서 날아왔다. */
+              const flownFrom = sec > 0 && buildsSrc.find(([, x2, y2, u2, r2, g2]) =>
+                r2 === raw && u2 === unit && (g2 ?? 0) > 0 && (g2 ?? 0) === sec
+                && (x2 !== x || y2 !== y)) || undefined;
+              /* 이사 비행 중인가 — 떠 있는 건물만 그림자를 지니는 데 쓴다(요청). */
+              let landing = false;
+              if (flownFrom) {
+                const flyDist = Math.hypot(flownFrom[1] - x, flownFrom[2] - y);
+                const flyDur = Math.min(40, flyDist / BUILDING_FLY_SPEED);
+                if (t < sec + flyDur && flyDur > 0) {
+                  const k = Math.max(0, (t - sec) / flyDur);
+                  bx = flownFrom[1] + (x - flownFrom[1]) * k;
+                  by = flownFrom[2] + (y - flownFrom[2]) * k;
+                  landing = true;
+                }
+              }
+              /* 뜬 건물의 자리 — 개체 트랙이 착륙 자리마다 줄을 나눠 싣기 때문에, 이 줄의
+                 좌표가 곧 지금 그 건물이 있는 자리다. 표적 지도(engageFoes·entPosByTag)도
+                 같은 좌표를 본다 — 몸과 겨눠지는 자리가 갈리면 총알이 빈 땅으로 간다. */
+              // 짓는 동안은 공사중 아이콘(요청: 반투명 말고) — 반투명은 "저기 뭐가 있긴 한데"
+              // 로만 읽히고, 도형의 반투명(뒤 비침)과도 헷갈렸다. 날아온 건물은 이미 다 선
+              // 건물이라 망치를 안 든다.
+              // 시작 건물(합성된 0초 홀)도 망치를 안 든다(지적: 처음 홀에 망치 표시는 왜?) —
+              // 경기 시작에 이미 다 서 있던 건물이지, 짓는 중이 아니다.
+              /* 완성 시각 — 테란 건설 중단(bldWork)이 있으면 'SCV가 붙어 있던 만큼만
+                 자란' 그 시각이고, 없으면 종전대로 착공 + 표의 건설 시간이다. */
+              const work = bldWork.get(i);
+              const bldNeed = BUILD_SEC[unit] ?? 30;
+              const doneAt = work ? work.doneAt : sec + bldNeed;
+              const raising = !razed && !flownFrom && sec > 0 && t < doneAt;
+              /** 공사가 멈춰 선 동안인가 — 일꾼이 하나도 안 붙어 있는 구간 사이다. */
+              const halted = !!work && raising && !workingAt(work.wins, t);
+              const team = teamOfRaw(raw);
+              const tagOrd = tagOrdinals.get(`${raw}|${unit}`);
+              const typeList = buildsByType.get(`${raw}|${unit}`) ?? [];
+              const myOrd = typeList.indexOf(i);
+              /* 태그를 모르면 대표 하나만(지적: 해처리 생산·업그레이드에 모든 해처리가
+                 아이콘) — 같은 종류 전부에 달면 어디서 하는지가 아니라 "다 한다"로 읽힌다.
+                 대표는 그 종류에서 가장 오래된, 지금 살아 있는 건물(대개 본진 쪽)이다. */
+              const repOrd = typeList.findIndex((bi) => {
+                const [s2, , , , , g2] = buildsSrc[bi];
+                return s2 <= t && !((g2 ?? 0) > 0 && t >= (g2 ?? 0));
+              });
+              const producing = !razed && (prodByRawType.get(`${raw}|${unit}`) ?? [])
+                .some(([ps, tag]) => {
+                  if (!(ps <= t && t - ps <= PROD_FLASH_SEC)) return false;
+                  // 태그를 알면 그 순번의 건물만(요청) — 모르면 대표 건물만(지적).
+                  if (!tag || !tagOrd) return myOrd === repOrd;
+                  const ord = tagOrd.get(tag);
+                  return ord === undefined || ord === myOrd;
+                });
+              // 연구 중(요청) — 이 건물에서 하는 연구가 지금 창 안에 시작돼 있나. 어느
+              // 건물인지는 안 남으므로 대표 건물에만 단다(지적).
+              const hallLike = unit === "Lair" || unit === "Hive" ? "Hatchery" : unit;
+              const researching = !razed && myOrd === repOrd
+                && (upsByRaw.get(raw) ?? []).some(([us, name]) =>
+                  RESEARCH_BUILDING[name] === hallLike && us <= t && t - us <= RESEARCH_SEC);
+              // 이름 창 = 착공 직후 잠깐뿐(요청) — 그 뒤 공사 중에는 도형+망치이고, 생산·
+              // 연구 중에도 이름 대신 라임 글로우가 말한다(요청: "생산중인 건물은 이름을
+              // 띄우지 말고 액티브").
+              // 시작 건물은 액티브도 없다(요청: 처음 등장하는 건물·유닛은 액티브 안 주기).
+              // (요청) 착공 직후 이름 창도 걷었다 — 모델이 정체를 말한다.
+              const activeBuild = false;
+              // 차례 계산에서 빠졌지만(지적: 무조건 신규 건물 우선) 판정 기반은 남겨둔다.
+              void activeBuild;
+              /* 미세 박동(요청: 유닛 뽑거나 업그레이드 중인 건물은 아주 미세하게 박동) —
+                 게임 시간 1.6초 주기로 2.5%만 부풀었다 준다. 살아 일한다는 기색만 내고
+                 시선을 끌 만큼은 아니다. 캔버스 전환 때 끊겼던 심장 뛰기의 계승이다. */
+              const pulse = producing || researching
+                ? 1 + 0.025 * Math.sin((t * Math.PI * 2) / 1.6) : 1;
+              /* (캔버스 전환 둘째 판·요청: 건물도 캔버스로) — 이름 창·아이콘이 다 걷힌
+                 건물 마커는 도형 하나라, 자리·상자·차례 계산만 그대로 두고 그리기는
+                 unitOps로 보낸다. DOM에는 효과(전투 불꽃·마법·핵)만 남는다(요청). */
+              const shapeKind = SHAPE_KIND[unit];
+              /* 부속건물도 제 모델이면 보통 건물과 같은 자리 규칙이다(요청: 부속건물 모델링)
+                 — + 글자 시절의 스넉 오프셋(-1.6, +0.4)은 모델 없는 폴백에만 남는다. */
+              const addonPlus = ADDONS.has(unit) && !shapeKind;
+              const fp2 = FOOTPRINT[unit] ?? [3, 2];
+              const centerX = bx + footDx(unit);
+              const centerY = by + footDy(unit);
+              /* 그리는 상자는 발자국이 아니라 **몸 상자**다(요청: 건물 틈) — 원작은 건물마다
+                 자리 상자(발자국, 타일 배수)와 몸 상자(units.dat dimensions)를 따로 들고,
+                 둘의 차이가 곧 건물 사이의 틈이다. 네 변이 저마다 달라(배럭 좌16·우8·상8·
+                 하16px) 상자 중심도 발자국 중심에서 조금 밀린다. 그래서 나란히 선 건물
+                 사이가 종류·배치에 따라 열리고 닫힌다(docs/note-building-gaps.md).
+                 ⚠ 예전 확정("바닥 폭 = 타일 발자국")을 이 요청이 뒤집는다 — 발자국을 꽉
+                   채워 그리면 틈이 원리적으로 안 생긴다. */
+              const [boxW, boxH, boxOx, boxOy] = buildingBox(unit);
+              const bodyX = centerX + boxOx;
+              const bodyY = centerY + boxOy;
+              const anchorX = bodyX - (addonPlus ? 1.6 : 0);
+              const anchorY = bodyY + (addonPlus ? 0.4 : 0)
+                + (!addonPlus ? (shapeKind ? -riseOf(unit) / 2 : boxH * 0.1) : 0);
+              const [fxF, fyF] = posFrac(anchorX, anchorY);
+              const mkK = pitchK(centerY);
+              /* 나이는 **진짜 동점만** 가른다(수리: 겹치는 건물의 앞뒤가 뒤바뀜 · 소환구가
+                 앞 건물에 안 가려짐) — 한 타일이 Z_TILE(800)이고 나이 항은 60까지라,
+                 아랫변이 0.075타일보다 벌어져 있으면 자리가 언제나 이긴다. 예전에는 한
+                 타일이 80인데 나이가 30까지여서, 0.375타일 안에 붙은 건물끼리 나이가
+                 앞뒤를 뒤집었다. */
+              const z = pitched
+                ? 1000 + Math.round((bodyY + boxH / 2) * Z_TILE)
+                  + Math.min(60, Math.round(sec / 45))
+                : 1000 + Math.round(afloat ? t : sec);
+              const alpha = fade * (afloat ? 0.75 : 1);
+              const color = modeColor(raw, team);
+              if (addonPlus) {
+                // 모델 없는 부속건물 폴백 — + 하나(캔버스 전환 첫 판이 모델까지 +로 덮던
+                // 것을 바로잡았다: 이제 여섯 애드온 다 모델이 있어 여긴 안전망이다).
+                unitOps.push({
+                  // 폴백 + 글자도 같은 자로(전수조사) — 고정 7/11px이었다.
+                  fx: fxF, fy: fyF, z, kind: "", sizePx: tilePx * 2 * mkK * pulse,
+                  color, alpha, textGlyph: "+", noShadow: true,
+                });
+                return null;
+              }
+              /* 바닥은 실제 발자국 그대로(요청: 건물 바닥크기를 캔버스에 맞추기) — 기지를
+                 1.3배 부풀리던 보정을 걷었다: 바닥 폭이 타일 발자국과 같아야 하고, 높이는
+                 모델 제 비율이 바닥 폭을 따라 정한다(아래 fitWidth). */
+              /* 애드온의 1.35배 뻥튀기는 걷었다 — "작은 부속 모델이 상자를 덜 채워
+                 왜소하다"는 지적을 상자째 키워 때우던 보정인데, 이제 그리기 단계가 잉크
+                 폭을 재서 발자국을 채우므로(지금은 BLD_NORM) 상자는 제 발자국(2×2) 그대로
+                 두면 된다. 그대로 두면 부속만 발자국보다 28% 넓게 그려진다. */
+              const wTiles = boxW * (shapeKind ? 1 : 0.8) * bldMul;
+              const hTiles = wTiles * ((boxH + (shapeKind ? riseOf(unit) : 0)) / boxW);
+              const wFrac = (wTiles / grid.width) * mkK;
+              const hFrac = (hTiles / grid.width) * mkK;
+              const race2 = bases.find((b) => b.key === raw)?.race;
+              /* 짓는 SCV(재재재지적: 완공돼도 자원으로 보내지 말고 다음 명령을 받게) — 공사
+                 내내 불티 곁에 서 있고, 완공 뒤에는 그 곁(5타일)에 떨어지는 임자의 첫 일꾼
+                 명령(spts)을 '이 SCV가 받은 다음 명령'으로 보고 그 순간 일꾼 스트림에
+                 넘긴다(그 클릭부터는 일꾼 점이 그린다). 명령이 안 오면 게으른 SCV 그대로
+                 서 있고, 건물이 무너지면 함께 걷힌다. 지어낸 미네랄 왕복은 걷었다. */
+              if (race2 === "테란" && !flownFrom && sec > 0 && !razed
+                && (goneEff === 0 || t < goneEff)) {
+                const bs2 = bldNeed;
+                /* 일꾼이 불티를 따라간다(지적: "테란은 건설시 스파크는 이동하는데 일꾼은
+                   제자리임") — 불티 자리는 아래 buildfx가 6초마다 시계 방향으로 옮기는데
+                   (CORNER_SEC) 합성 SCV만 왼쪽 아래에 붙박이라, 용접 불티가 저 혼자
+                   건물을 돌았다. 같은 식으로 같은 귀퉁이를 쓴다 — 둘이 한 몸이어야 한다. */
+                const scvIdx = (Math.floor(t / 6) + i) % 4;
+                const scvX = bodyX + (scvIdx === 0 || scvIdx === 3 ? -1 : 1) * (boxW / 2 - 0.35);
+                const scvY = bodyY + (scvIdx === 0 || scvIdx === 1 ? 1 : -1) * (boxH / 2 - 0.35);
+                let scvShow = t - sec >= 0;
+                /* 중단 중에는 현장에 아무도 없다(요청: 테란 건설 중단) — 붙어 있던 구간
+                   안에서만 합성 SCV가 선다. 이어 짓기로 다른 SCV가 오면 다시 선다. */
+                if (work && t < doneAt) scvShow = workingAt(work.wins, t);
+                if (t >= doneAt) {
+                  /* 공사가 끝난 뒤 이 SCV가 언제 자리를 뜨나 — 개체 트랙의 건설 앵커 창
+                     (builderLeave)이 '앵커 시각 → 그 뒤 첫 위치 증거'를 이미 색인해 둔다.
+                     옛 v1 일꾼 클릭 자취로 뒤지던 자리다. */
+                  let nextCmd = Infinity;
+                  for (const bl of builderLeave) {
+                    if (bl.end === Infinity || bl.end < doneAt - 2) continue;
+                    if (Math.hypot(bl.x - scvX, bl.y - scvY) <= 5) { nextCmd = bl.end; break; }
+                  }
+                  if (t >= nextCmd) scvShow = false;
+                }
+                /* v2에선 진짜 개체가 답을 안다(지적: SCV들이 건설현장에 남는다 — v2 모드는
+                   motion이 빈 껍데기라 위 spts 게이트가 영영 안 열렸다) — 이 현장의 건설
+                   앵커(f=2)를 남긴 일꾼 개체의 '앵커 뒤 첫 위치 증거' 시각이 곧 그 SCV가
+                   현장을 떠난 순간이다. 그때부터는 개체 마커가 걸어 나가며 그리므로 합성
+                   SCV를 걷는다. */
+                /* 공사 이력을 아는 건물(bldWork)은 위에서 이미 갈랐다 — 아래 옛 잣대는
+                   첫 일꾼이 떠난 시각 하나뿐이라, 이어 짓는 SCV까지 지운다. */
+                if (scvShow && !work) {
+                  const lv = builderLeave.find((b2) =>
+                    Math.abs(b2.x - centerX) <= fp2[0] / 2 + 2 && Math.abs(b2.y - centerY) <= fp2[1] / 2 + 2
+                    && b2.s >= sec - 15 && b2.s <= sec + bs2);
+                  if (lv && t >= lv.end) scvShow = false;
+                }
+                if (scvShow) {
+                  const [sfx2, sfy2] = posFrac(scvX, scvY);
+                  unitOps.push({
+                    fx: sfx2, fy: sfy2, z: z + 1, kind: "scv",
+                    rotDeg: Math.atan2(-(centerX - scvX), centerY - scvY) * (180 / Math.PI),
+                    viewYaw: viewYawOf(scvX, scvY), flat: !pitched, pitch: pitched,
+                    sizePx: unitGlyphPx("scv", "scv", 0, scvY),
+                    color: modeColor(raw, teamOfRaw(raw)),
+                    alpha: 1,
+                    noSep: true,
+                  });
+                }
+              }
+              if (raising) {
+                // 공사는 종족 공용 모델(고치·소환구·공사장)이 말한다.
+                /* 저그 고치는 크기 자체가 두근거린다(요청: 확대 바운스) — 10Hz t의 사인
+                   박동. 스프라이트는 2px 칸 양자화라 두어 가지 크기를 오가며 캐시된다.
+                   그리고 게임처럼 단계 성장(재지적: 너무 작음): 공사 진행에 따라 0.7배에서
+                   1.5배까지 세 단계로 자란다. */
+                const prog = Math.min(1, (work ? workedBy(work.wins, t) : t - sec) / bldNeed);
+                // 시작을 크게(재지적: 처음에 너무 작음 — 훨씬 크게 시작) — 0.7 → 1.0.
+                /* 자라되 완성 건물을 넘지 않는다(전수조사: 1.0→1.5배라 4타일 해처리의
+                   고치가 6.4타일 — 다 지어진 건물보다 컸다). 발자국의 0.8 → 1.0으로. */
+                const stage = prog < 0.33 ? 0.8 : prog < 0.7 ? 0.9 : 1;
+                const beat = race2 === "저그" ? stage * (1 + 0.06 * Math.sin(t * 5.2)) : 1;
+                /* 공사 모델은 바닥 맞춤(지적: 소환구보다 훨씬 아래쪽에 실제 건물이 생긴다)
+                   — 완성 모델은 '들어올린 칸'의 바닥 = 발자국 바닥에 앉는데, 소환구·고치는
+                   제 작은 상자가 칸 중심(위로 들어올린 앵커)에 걸려 바닥이 발자국보다 위에
+                   떴다. 상자 바닥을 발자국 바닥에 맞춘다. */
+                // 소환구는 정사각 상자(재재지적: 3D에서 찌그러짐) — 어디서도 안 눌린다.
+                /* 소환구 축소 + 더 띄우기(요청) — 상자 3.4 → 2.4타일이고, 발자국
+                   바닥에서 0.6타일 위로 띄운다(워프 중인 건물은 아직 땅에 안 앉았다). */
+                const modelHT = race2 === "프로토스" ? WARP_TILES
+                  : ((hFrac * grid.width) / mkK) * beat;
+                /* 고치 치우침(재지적) — +0.25타일 보정 대신 모델 자체 무게중심을 상자
+                   가운데로 옮겨 보정 없이 맞는다. */
+                /* 발자국 한가운데가 아니라 조금 아래(앞)로(요청) — 그림자를 줄여 발치에
+                   맞춘 것과 같은 결이다. 사선 시점에서 상자 중앙에 놓으면 모델이 제
+                   발자국보다 뒤로 물러나 떠 보인다. */
+                        const bAnchorY = bodyY + boxH / 2 - modelHT / 2 + CONSTRUCT_DROP
+                  - (race2 === "프로토스" ? WARP_LIFT : 0);
+                /* 가로 자리는 **지면선에서** 잰다(지적: "공사 고치 아직도 액자의 오른쪽에
+                   그려져있어") — posFrac은 입체에서 사다리꼴 수렴을 먹이므로 같은 x라도
+                   y가 다르면 화면 x가 달라진다. 공사 모델의 y 기준(bAnchorY)은 모델 높이의
+                   절반만큼 위라, 고치처럼 키가 큰(정규화 2.86배) 것일수록 그 수렴이 크게
+                   실려 발자국 액자에서 옆으로 밀려났다. 액자가 놓인 곳은 지면선이므로
+                   가로는 거기서 재고, 세로만 모델 앵커에서 잰다. */
+                const [bfxF] = posFrac(bodyX, bodyY + boxH / 2);
+                const [, bfyF] = posFrac(bodyX, bAnchorY);
+                unitOps.push({
+                  fx: bfxF, fy: bfyF, z,
+                  /* 짓는 중에도 집힌다(요청: 건설 중 상태에서도 클릭 가능) — 열쇠는 완성
+                     뒤와 같은 자로 지어, 다 지어져도 팝업이 그대로 이어진다. */
+                  pickKey: `b${raw}|${unit}|${Math.round(bx * 4)}|${Math.round(by * 4)}`,
+                  pickName: unit, pickRaw: raw, pickBld: true, pickX: bx, pickY: by,
+                  /* 상태 줄 — 테란은 '건설 중단'을 따로 말한다(요청): 일꾼이 떠나거나
+                     죽어 공사가 그 진행률에 멈춰 선 동안이다. */
+                  pickState: race2 === "저그"
+                    ? `변태 중 ${Math.round(prog * 100)}%`
+                    : `${halted ? "건설 중단" : "건설 중"} ${Math.round(prog * 100)}%`,
+                  /* 테란 공사는 제 건물 모델을 아래부터 드러낸다(요청: "3단계로 하고 실제
+                     모델의 부품을 일부만 표현하다가 완성되는 형태로. 아래쪽 부품부터 →
+                     점점 위로"). 뼈대·크레인 한 벌(scaffold)을 모든 건물에 똑같이 쓰던
+                     것을 걷는다 — 무엇을 짓는지 완성될 때까지 알 수 없었다.
+                     모델이 없는 건물(부속 등 폴백)만 예전 공사장으로 떨어진다. */
+                  kind: race2 === "저그" ? "cocoon"
+                    : race2 === "프로토스" ? "warpin"
+                      : (shapeKind || "scaffold"),
+                  /* 아래 부품부터 다섯 칸에 나눠 솟는다(요청: 3단계 부족 시 5단계) —
+                     진행률을 그대로 칸으로 바꾼다. 마지막 칸(=BUILD_STAGES)이 완성 모델
+                     이라, 다 짓기 전에 완성형이 서 버리지 않게 진행률 1 미만은 한 칸
+                     아래로 묶어 둔다. 단계가 굽기 캐시 열쇠에 들어가므로 판은 단계마다
+                     한 번만 구워진다(프레임 비용 없음). */
+                  ...(race2 === "테란" && shapeKind
+                    ? { buildStage: Math.max(1, Math.min(BUILD_STAGES - 1,
+                      Math.ceil(prog * BUILD_STAGES))) }
+                    : {}),
+                  // 공사 모델도 45도 요잉(지적) + 종류별 보정(지적: 테란 공사장 반시계 90).
+                  rotDeg: buildingYawOf(),
+                  viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
+                  // 공사 모델도 완성 건물과 같은 지면선에 선다.
+                  baseFy: posFrac(bodyX, bodyY + boxH / 2)[1],
+                  // 공사 모델도 완성 모델과 같은 폭 기준 — 바닥 폭이 발자국과 같아야 한다.
+                  /* 소환구는 크기 통일(재지적: 게임에서도 모든 건물이 같다) — 발자국과
+                     무관하게 소형 기준 고정. */
+                  sizePx: 0,
+                  wFrac: race2 === "프로토스" ? (WARP_TILES / grid.width) * mkK : wFrac * beat,
+                  hFrac: race2 === "프로토스" ? (WARP_TILES / grid.width) * mkK : hFrac * beat,
+                  boxFit: "meet", fitWidth: true,
+                  /* 소환구는 떠 있다(요청: 그림자 작게 표현해 공중 느낌) — 발자국 폭의
+                     절반짜리 작은 타원만 바닥에 깔린다. 몸은 WARP_LIFT만큼 떠 있으니
+                     그 틈이 곧 높이로 읽힌다. 저그 고치·테란 공사장은 땅에 앉는다. */
+                  ...(race2 === "프로토스"
+                    ? { groundShadow: true, footRatio: 0.5 }
+                    : {}),
+                  color, alpha, noShadow: true,
+                });
+                /* 공사 애니(요청) — 모델은 캐시 스프라이트라 못 움직이니 CSS 오버레이가
+                   맡는다: 테란 빨간 불 깜빡, 저그 심장 박동, 프로토스 소환 글로우. */
+                /* 스파크 자리(재지적: 일꾼 주변에 작게) — 테란은 SCV가 붙는 건물
+                   왼쪽 아래 모서리에서 인다. 저그 박동·토스 글로우는 가운데 그대로. */
+                /* 모서리에 바짝(재지적: 일꾼이 너무 떨어져 있나) — 0.4 → 0.9타일 안쪽,
+                   반 타일 위로: 불티가 공사장 몸체에 반쯤 얹힌다. */
+                /* 저그 고치도 모델 앵커에(재지적: 고치와 안의 박동 빛 중앙이 안 맞음) —
+                   고치 모델은 무게중심 보정(+0.25타일)과 바닥 맞춤을 받는데 글로우만
+                   발자국 가운데였다. 소환구와 같은 식으로 셋 다 제 모델에 묶는다. */
+                /* 테란 일꾼은 네 귀퉁이를 돈다(요청: "프로브가 4귀퉁이를 돌면서 공사") —
+                   여태 왼쪽 아래 한 자리에 붙박이로 서서 용접했다. 건물 번호로 시작
+                   귀퉁이를 흩어 두고(같은 기지의 공사가 나란히 같은 자리에서 시작하면
+                   눈에 띄게 어색하다) 6초마다 시계 방향으로 옮긴다.
+                   ⚠ 원작의 실제 순회 패턴은 아직 대조 전이다(지적: "이 패턴은 공식문서
+                   조사 필요") — 조사가 오면 이 자리만 바꾸면 된다. */
+                /* 불티 자리 — 합성 SCV와 **같은 차례·같은 주기**다(지적: 둘이 따로 돌았다).
+                   SCV보다 조금 안쪽에 두어 불티가 몸에 반쯤 얹힌다. */
+                const CORNER_SEC = 6;
+                const cIdx = (Math.floor(t / CORNER_SEC) + i) % 4;
+                const cDx = (cIdx === 0 || cIdx === 3 ? -1 : 1) * (boxW / 2 - 0.7);
+                const cDy = (cIdx === 0 || cIdx === 1 ? 1 : -1) * (boxH / 2 - 0.5);
+                const bfxX = race2 === "테란" ? bodyX + cDx : bodyX;
+                const bfxY = race2 === "테란" ? bodyY + cDy
+                  : bodyY + boxH / 2 - modelHT / 2;
+                // 멈춰 선 공사에는 불티가 없다(요청: 테란 건설 중단) — 아무도 안 붙어 있다.
+                if (!qBuildFx || halted) return null;
+                return (
+                  <span
+                    key={`bfx-${i}`}
+                    className={`scr-motion-buildfx scr-bfx-${race2 === "저그" ? "zerg" : race2 === "프로토스" ? "toss" : "terran"}`}
+                    style={{ ...posStyle(bfxX, bfxY), zIndex: z + 1 }}
+                  >
+                    {/* 테란 용접 스파크(지적: 빨간 깜빡임이 전투 같다) — 밝은 흰빛의 길이가
+                        다른 짧은 막대들을 둥글게 배치, 저마다 다른 박자로 튄다. 길이·각은
+                        건물 번호 해시로 결정적이다. 크기는 타일 크기에 비례(재지적: 왜케
+                        커 — 고정 px라 모바일의 작은 맵에선 막대가 건물만 했다). */}
+                    {race2 === "테란" && (() => {
+                      /* 불티 파팟(재×4지적: 동그라미 로딩 아이콘 같다) — 원인은 72도 균등
+                         방사 배치 + 제각각 박자(= 도는 스피너). 이제 한 점에서 위쪽
+                         부채꼴로 흩어진 제각각 길이의 실선들이 '같은 박자'로 파팟(두 번
+                         연속) 튀고, 쉬었다가 반복한다(키프레임 scr-weld). 각은 위 반원에
+                         건물 해시로 흩어 놓아 돌지 않는다. */
+                      const ws = Math.max(0.3, ((mapRef.current?.clientWidth ?? 320) / grid.width) / 5);
+                      return [0, 1, 2, 3, 4].map((k) => (
+                        <span
+                          key={k}
+                          className="scr-bfx-weld"
+                          style={{
+                            width: "0.2px",
+                            height: `${((0.4 + ((i * 7 + k * 5) % 5) * 0.28) * ws).toFixed(1)}px`,
+                            transform: `rotate(${-90 + (k - 2) * 34 + ((i * 13 + k * 29) % 22) - 11}deg) translateY(${(0.2 * ws).toFixed(1)}px)`,
+                            animationDelay: `${(i % 5) / 10}s`,
+                          }}
+                        />
+                      ));
+                    })()}
+                  </span>
+                );
+              }
+              /* 건물 체력과 '맞은 순간'(요청: 피격 표현 재검토) — 자취가 내려간 마지막
+                 변곡점이 곧 이 건물이 맞은 때다. 체력바와 피격 불티가 같은 자를 쓴다. */
+              const bldHp = ((): { frac: number | undefined; hurt: number } => {
+                const arr = entBldHp.get(`${raw}|${Math.round(x)}|${Math.round(y)}`);
+                if (!arr) return { frac: 1, hurt: -99 }; // 기록 없는 성한 건물도 만피 바(요청).
+                const rec = [...arr].filter((r2) => r2.born <= sec + 5)
+                  .sort((a2, b2) => b2.born - a2.born)[0] ?? arr[0];
+                /* 체력은 실제 수치다(지적) — 만피는 건물 표에서 가져와 나눈다. */
+                const bs0 = BLD_STATS[unit];
+                const full0 = bs0 ? bs0[0] + bs0[1] : 850;
+                let now0 = full0;
+                let hurt = -99;
+                for (const [hs3, hv3] of rec.hp) {
+                  if (hs3 > t) break;
+                  if (hv3 < now0) hurt = hs3;
+                  now0 = hv3;
+                }
+                return { frac: Math.max(0.04, Math.min(1, now0 / Math.max(1, full0))), hurt };
+              })();
+              /* 맞는 건물에도 불티(요청: 유닛·건물 피격 표현 재검토) — 여태 건물은 피격
+                 연출이 아예 없어, 해처리가 깎이는 동안 화면에서 터지는 것은 때리는 쪽
+                 유닛의 연기뿐이었다. 그래서 "피해 객체와 멀리 떨어진 곳에서 나온다"로
+                 보였다. 크기는 발자국에 매어(폭의 0.3배) 작은 건물에서 과하지 않게. */
+              const bldTile9 = (mapRef.current?.clientWidth ?? 320) / grid.width;
+              /* 건물도 실드가 남았으면 막이 번쩍인다(요청) — 프로토스 건물은 전부 실드를
+                 지녔고, 자취는 체력+실드 합이라 남은 비율로 갈린다. */
+              const bs9 = BLD_STATS[unit];
+              const bShShare9 = bs9 && bs9[1] > 0 ? bs9[1] / (bs9[0] + bs9[1]) : 0;
+              const bShieldUp9 = bShShare9 > 0 && (bldHp.frac ?? 1) > 1 - bShShare9 + 0.001;
+              // 건물도 같은 잣대로 잠깐만(지적) — 0.8 → 0.35초.
+              const bldHitFx = bldHp.hurt > -99 && t - bldHp.hurt <= 0.35 ? (
+                <span
+                  key={`bhit-${i}`}
+                  className="scr-motion-army scr-motion-dot scr-v2fx"
+                  style={{ ...posStyle(centerX, centerY), zIndex: z + 3 }}
+                >
+                  {bShieldUp9 ? (
+                    <span
+                      key={`bshd-${Math.round(bldHp.hurt * 10)}`}
+                      className="scr-motion-shieldfx"
+                      style={{
+                        width: `${(fp2[0] * 0.95 * bldTile9).toFixed(1)}px`,
+                        height: `${(fp2[0] * 0.95 * bldTile9).toFixed(1)}px`,
+                      }}
+                    />
+                  ) : (
+                    <span
+                      key={`bh-${Math.round(bldHp.hurt * 10)}`}
+                      className="scr-motion-puff scr-puff-hit"
+                      style={{
+                        width: `${(fp2[0] * 0.3 * bldTile9).toFixed(1)}px`,
+                        height: `${(fp2[0] * 0.3 * bldTile9).toFixed(1)}px`,
+                        transform: "translate(-50%, -50%)",
+                      }}
+                    />
+                  )}
+                </span>
+              ) : null;
+              /* 성큰은 쏘는 동안 혓바닥을 내민 판으로 바꾼다(요청: "가시가 나오는 타이밍에
+                 이 모양이") — 아래 방어 사격이 트레이서를 그리는 조건과 **같은 자**를 쓴다:
+                 사거리 안에 지상 표적이 있고, 다 지어졌고, 아직 안 걷혔을 때. 조건을 따로
+                 두면 혓바닥과 가시가 서로 다른 순간에 나가 둘 다 거짓말이 된다. */
+              const sunkenOut = unit === "Sunken Colony" && qCombat && !raising
+                && (goneEff === 0 || t < goneEff)
+                && (() => {
+                  const f9 = nearestFoe(teamOfRaw(raw), centerX, centerY, "ground");
+                  return f9.bd <= fireRangeTilesOf(unit, false);
+                })();
+              if (shapeKind) {
+                unitOps.push({
+                  fx: fxF, fy: fyF, z, kind: sunkenOut ? "sunkenfire" : shapeKind,
+                  /* 원작처럼 45도 요잉(지적) — 2D에도 적용(재지적: 2D도 45도 요잉해야지).
+                     쐐기의 진범은 요잉이 아니라 hover 그림자의 beginPath 누락이었다. */
+                  rotDeg: buildingYawOf(),
+                  hpMax: (() => {
+                    const bs2 = BLD_STATS[unit];
+                    return bs2 ? bs2[0] + bs2[1] : undefined;
+                  })(),
+                  hpFrac: bldHp.frac,
+                  /* 정보 팝업 신원(요청) — 건물은 태그가 없어 임자·종류·착공 자리로
+                     짓는다(같은 자리에 다시 지어도 착공 시각이 다르면 다른 몸이다). */
+                  pickKey: `b${raw}|${unit}|${Math.round(bx * 4)}|${Math.round(by * 4)}`,
+                  pickName: unit, pickRaw: raw, pickBld: true, pickX: bx, pickY: by,
+                  /* 땅에 앉은 건물은 그림자를 안 진다(요청: 건물 바닥 그림자는 제거) —
+                     건물은 발자국이 곧 제 자리라 바닥 타원이 정보를 더하지 않고, 모델
+                     발치에 검은 테를 둘러 도형을 흐리기만 했다. 떠 있는 건물만 제 것으로
+                     따로 만든다(요청: 떠 있는 건물만 자체적으로 제작) — 이륙해 둥실대거나
+                     이사 비행 중일 때, 발자국보다 작은 타원을 땅에 깔아 높이를 말한다. */
+                  groundShadow: afloat || landing,
+                  // 접지 그림자의 발자국 비(지적: 그림자는 바닥 발자국만) — 세로/가로.
+                  footRatio: boxH / boxW,
+                  /* 바닥에 실제로 깔리는 그림자(요청) — 발자국 크기의 타원을 타일 공간
+                     에서 열두 점으로 찍고, 그 점들을 자리 사상(posFrac)으로 옮긴다.
+                     화면에서 타원을 눌러 흉내 내는 것이 아니라 지면 위에 그린 도형이라,
+                     원근·기울기가 지면 격자와 정확히 같다.
+                     뜬 건물은 발자국의 0.6배로 줄여 깐다 — 몸과 그림자의 크기 차가 곧
+                     비행 높이로 읽힌다(공중 유닛 그림자와 같은 결). */
+                  shadowPts: ((): [number, number][] => {
+                    const sk9 = 0.6;
+                    const rx9 = (boxW / 2) * sk9;
+                    const ry9 = (boxH / 2) * sk9;
+                    const pts9: [number, number][] = [];
+                    for (let q9 = 0; q9 < 12; q9 += 1) {
+                      const a9 = (q9 / 12) * Math.PI * 2;
+                      pts9.push(posFrac(
+                        bodyX + Math.cos(a9) * rx9 * 0.98,
+                        bodyY + Math.sin(a9) * ry9 * 0.98,
+                      ));
+                    }
+                    return pts9;
+                  })(),
+                  // 지면선 — 몸 상자 아랫변(그림자 타원의 아래 끝과 같은 지면).
+                  baseFy: posFrac(bodyX, bodyY + boxH / 2)[1],
+                  viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
+                  sizePx: 0, wFrac: wFrac * pulse, hFrac: hFrac * pulse, boxFit: "meet",
+                  /* 전 건물 폭 기준(요청: 바닥을 발자국에, 높이는 제 비율로) — meet
+                     (min(w,h)) 규칙은 상자가 낮으면 바닥까지 같이 줄여 발자국보다 작은
+                     바닥을 만들었다(벙커가 유난히 작던 이유와 같은 갈래). 폭을 기준 삼으면
+                     바닥이 늘 발자국 폭과 같고 높이는 모델 비율이 따라온다. */
+                  fitWidth: true,
+                  color, alpha, noShadow: true,
+                });
+                /* 라바와 변태알(요청: "이왕 해처리에 매핑할 거면 라바도 모델링하소
+                   변태알도 하면 좋을 듯") — 생산 자리가 건물마다 갈리고 나니, 이 해처리가
+                   지금 무엇을 품고 있고 라바가 몇 마리 남았는지를 그릴 수 있다.
+                   ▸ 변태알 — 그 해처리에서 난 유닛의 '완성 시각 − 변태 시간' 구간이 곧
+                     알이다. 자리는 분석이 정한 출생 자리(발자국 아래 출구) 곁이다.
+                   ▸ 라바 — 리플레이에 라바 자체는 안 남는다(라바는 명령을 안 받고, 변태를
+                     누른 순간에만 태그가 스친다). 다만 원작의 규칙이 뚜렷하다: 해처리
+                     하나가 342프레임(14.4초)마다 한 마리를 뱉고 최대 셋까지 모이며,
+                     변태를 누르면 하나가 준다(bwUnits의 LARVA_*). 그 규칙에 **이 해처리의
+                     변태 시각들**을 먹이면 지금 남은 수가 나온다 — 지어내는 것이 아니라
+                     아는 규칙과 아는 증거로 되짚는 것이다. */
+                if (ZERG_HALLS.has(unit) && !raising && (goneEff === 0 || t < goneEff)) {
+                  const fp3 = FOOTPRINT[unit] ?? [4, 3];
+                  /* 다 안 지어진 해처리는 아무것도 못 뱉는다(지적: "아직 완성도 안 된
+                     해처리에서 유닛 생산") — 자리로만 고르면, 본진 곁에 새로 올라가는
+                     해처리가 아직 공사 중인데도 옆 해처리가 뱉은 알·라바를 제 것으로
+                     집어 간다(발자국 언저리 상자가 겹친다). 변태를 시작한 시각(완성 −
+                     변태 시간)이 이 해처리의 완공(doneAt) 뒤라야 이 해처리의 몫이다. */
+                  /* 시작 해처리는 처음부터 다 지어져 있다(수리: 초반에 알이 하나도 안
+                     뜨던 자리) — 이 건물은 착공 증거가 없어 sec이 0이고, doneAt은 그
+                     0에 건설 시간(약 120초)을 더한 값이 된다. 완공 문을 그대로 걸면 첫
+                     2분 동안 이 해처리의 변태가 전부 걸러져 알이 사라졌다. raising이
+                     시작 홀을 sec > 0으로 가려내는 것과 같은 자를 쓴다. */
+                  const doneEff3 = sec > 0 ? doneAt : 0;
+                  const mine3 = (prodDoneAt.get(raw) ?? []).filter((r3) =>
+                    r3.x >= bx - 1.5 && r3.x <= bx + fp3[0] + 1.5
+                    && r3.y >= by - 1.5 && r3.y <= by + fp3[1] + 2);
+                  /* 되짚기는 규칙 층이 한다(bwUnits.hatchState) — 렌더러는 그리기만.
+                     ▸ **알은 라바가 있던 자리에서 난다**(지적: "라바 자리가 아닌 다른
+                       곳에서 알로 변태") — 알 칸과 라바 칸을 따로 두었더니 변태가 자리를
+                       옮기는 것처럼 보였다. 이제 여섯 칸을 둘이 나눠 쓰고, 변태는 가장
+                       오래된 라바가 있던 칸을 알로 바꾼다.
+                     ▸ **시작 해처리는 라바 셋을 데리고 시작한다**(하나가 아니다) — 그래서
+                       0초부터 셋을 뽑을 수 있는 것이고, 여태 0초에 라바가 하나뿐이라
+                       초반 내내 라바 0이 이어졌다.
+                     ▸ **0초에 낼 수 있는 변태는 50 미네랄어치뿐이다**(요청: "게임 시작 시
+                       미네랄 50원") — 증거가 같은 시각을 여럿 가리켜도 그 돈으로 못 산
+                       알은 그때 없었다. 이것이 "시작부터 알 두 개"의 자다.
+                     ▸ 저글링·스커지는 알 하나에서 둘이 나온다 — 개체 기록 둘이 알 하나다. */
+                  const spots3 = hatchState(mine3, doneEff3, sec <= 0, t,
+                    (u3) => UNIT_BUILD_SEC[u3] ?? 30);
+                  /* 알과 라바가 앉는 여섯 칸 — 해처리 발치를 두른다. 칸 번호가 곧 자리라,
+                     라바가 알이 돼도 그 자리에 그대로 있는다. */
+                  const SPOT6: [number, number][] = [
+                    [-1.7, 1.35], [0.1, 1.75], [1.8, 1.35],
+                    [-2.1, 0.1], [2.1, 0.1], [0.1, -1.5],
+                  ];
+                  const put3 = (kind3: string, sz3: number, ix3: number): void => {
+                    const live3 = kind3 !== "egg";
+                    const sp3 = SPOT6[ix3 % SPOT6.length];
+                    /* 라바는 가만히 안 있는다(지적: "좀 이리저리 꿈틀대고 방향 바꿔야") —
+                       제자리에서 아주 조금 기어다니고 몸이 도는 정도다. 무작위가 아니라
+                       시각과 자리 번호의 순수 함수라 되감아도 같은 자리에서 같이 꿈틀댄다
+                       (재생이 t를 앞뒤로 옮겨도 그림이 안 튄다). 주기를 서로 어긋나게 둬
+                       셋이 한 몸처럼 움직이지 않는다. */
+                    const wob3 = live3 ? Math.sin(t * 0.55 + ix3 * 2.3) : 0;
+                    const wob4 = live3 ? Math.sin(t * 0.41 + ix3 * 1.7) : 0;
+                    const px3 = centerX + sp3[0] + wob3 * 0.3;
+                    const py3 = centerY + sp3[1] + wob4 * 0.24;
+                    const [pfx3, pfy3] = posFrac(px3, py3);
+                    unitOps.push({
+                      fx: pfx3, fy: pfy3,
+                      /* 해처리 뒤에 누운 것은 해처리에 가려야 한다(지적: "라바 해처리에
+                         안 가려지는 키 문제") — z를 건물보다 한 칸 위로 못 박아 두어
+                         뒷자리(y가 음수인 칸)까지 늘 건물 앞에 그려졌다. 제 자리가 건물
+                         앵커보다 앞이면 위로, 뒤면 아래로 간다. */
+                      z: z + (sp3[1] >= 0 ? 1 : -1), kind: kind3,
+                      // 라바는 저마다 다른 쪽을 보고 천천히 돌아눕는다(지적: 방향 바꿔야).
+                      rotDeg: buildingYawOf() + (live3 ? ix3 * 115 + wob3 * 38 : 0),
+                      viewYaw: viewYawOf(px3, py3), flat: !pitched, pitch: pitched,
+                      /* 크기는 유닛과 **같은 자**를 탄다(unitGlyphPx) — 타일 폭을 직접
+                         곱하면 그 값이 16-상자 한 변이라 실제 잉크는 3분의 1로 줄어,
+                         화면에서는 점 하나가 된다. 라바는 소형, 알은 그보다 한 단 크다. */
+                      sizePx: unitGlyphPx(kind3, kind3, kind3 === "egg" ? 1 : 0, py3) * sz3,
+                      color, alpha, noSep: true, noShadow: true,
+                      /* 인포 팝업 신원(요청: "라바 인포팝업이 안 뜬다") — 라바·알은
+                         리플레이 개체 기록에 안 남아(해처리가 셈해 그리는 장식이다)
+                         여태 pickKey 자체가 없었다. 그래서 눌러도 아무 일이 없었다.
+                         개체 태그가 없으니 '어느 해처리의 몇 번 칸'을 열쇠로 삼는다 —
+                         칸 번호가 곧 자리라 프레임이 지나도 같은 몸을 가리킨다. */
+                      pickKey: `l${Math.round(centerX * 4)}|${Math.round(centerY * 4)}|${ix3}`,
+                      pickName: kind3 === "egg" ? "Egg" : "Larva",
+                      hpFrac: 1,
+                      hpMax: kind3 === "egg" ? 200 : 25,
+                    });
+                  };
+                  // 둘 다 한 단 작게(지적: 라바·알이 너무 크다) — 알 1.15 → 0.68, 라바 1 → 0.6.
+                  for (const sp of spots3) {
+                    put3(sp.kind === "egg" ? "egg" : "larva", sp.kind === "egg" ? 0.68 : 0.6, sp.slot);
+                  }
+                }
+                /* 애드온 연결 통로(지적: 본체와 잇는 방식 고민 — 원작 배치 참고) — 원작
+                   에서 부속건물은 본체 오른쪽 아래에 붙는다: 애드온 왼쪽 모서리에서 본체
+                   쪽으로 낮은 복도 판을 깐다. */
+                if (ADDONS.has(unit)) {
+                  const mkA = pitchK(centerY);
+                  /* 본체를 찾아 정확히 잇는다(재재재지적: 연결이 너무 구림 — 통로가 본체
+                     오른변에 안 닿고 허공에 떴다) — 같은 임자의 살아 있는 비-애드온 중
+                     '오른변이 애드온 왼변과 맞닿는' 건물이 부모다. 통로는 부모 오른변에서
+                     애드온 왼변까지, 양끝을 0.5타일씩 물려 이음매 없이 깐다. */
+                  const par = buildsSrc.find(([ps3, pxT, pyT, pu3, pr3, pg3]) =>
+                    pr3 === raw && !ADDONS.has(pu3) && ps3 <= t
+                    && ((pg3 ?? 0) === 0 || t < (pg3 ?? 0))
+                    && Math.abs((pxT + (FOOTPRINT[pu3] ?? [4, 3])[0]) - x) <= 2
+                    && Math.abs(pyT - y) <= 4);
+                  /* 두 끝은 **몸 상자** 변이다(요청: 건물 틈) — 발자국 변으로 재면 이제
+                     본체·애드온이 발자국보다 작게 서므로 통로가 허공에서 시작한다. */
+                  const parBox = par ? buildingBox(par[3]) : null;
+                  const leftEdge = par && parBox
+                    ? par[1] + footDx(par[3]) + parBox[2] + parBox[0] / 2 - 0.5
+                    : bodyX - boxW / 2 - 1.2;
+                  const rightEdge = bodyX - boxW / 2 + 0.5;
+                  const linkW = Math.max(1.6, rightEdge - leftEdge);
+                  const [lfx, lfy] = posFrac((leftEdge + rightEdge) / 2, bodyY + boxH * 0.1);
+                  unitOps.push({
+                    /* 통로도 건물과 같은 45도로 굽는다(지적: "각 옆면에는 수직임") —
+                       본체·애드온이 다 요잉해 서 있어 서로 마주 보는 옆면도 비스듬한데,
+                       통로만 요잉 0으로 구우면 그 벽을 비껴 찌른다. 같은 각으로 구워야
+                       모형의 x축이 두 벽의 법선과 나란해져, 막대가 양쪽 벽에 직각으로
+                       꽂힌다(까닭은 addonlink 모델 쪽 주석에 적어 두었다). */
+                    fx: lfx, fy: lfy, z: z - 1, kind: "addonlink",
+                    rotDeg: buildingYawOf(),
+                    viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
+                    sizePx: 0, wFrac: (linkW / grid.width) * mkA, hFrac: ((linkW * 0.36) / grid.width) * mkA,
+                    boxFit: "meet", fitWidth: true, color, alpha, noShadow: true,
+                  });
+                }
+                /* 방어 사격(재지적: 터렛은 골리앗 대공과 동일, 벙커는 안에 든 것 따라) —
+                   사거리 안 적 마커가 있으면 건물에서도 트레이서가 나간다. 터렛은 공중
+                   상대만 미사일(8타일), 벙커는 총알(6타일)에 임자가 파벳을 뽑아 뒀고 적이
+                   코앞(3.5타일)이면 화염을 섞는다 — 안에 누가 들었는지는 리플레이에 안
+                   남아, 그 시점 보유 병종으로 어림한다. */
+                /* 포톤·성큰·스포어도 쏜다(지적: 사거리 안에 대상이 있는데 공격을 안 한다)
+                   — 여태 터렛·벙커만 이 갈래에 들어 있어, 프로토스·저그 방어 건물은
+                   화력이 체력에만 접혀 있고 화면에는 아무 일도 안 일어났다. 성큰은 대지
+                   (7타일)·스포어는 대공(7타일)·포톤은 둘 다(7타일)라, 못 치는 갈래는
+                   nearestFoe의 only로 아예 안 본다. */
+                if (qCombat && DEF_FIRE.has(unit)
+                  && !raising && (goneEff === 0 || t < goneEff)) {
+                  const teamB = teamOfRaw(raw);
+                  /* 벙커 승무원 — 이 벙커 태그의 탑승 구간 중 지금 살아 있는 것들. 자리 넷을
+                     넘겨 잡히면 먼저 들어간 넷만 센다. 이 목록이 비면 벙커는 아무것도 안
+                     한다(빈 벙커가 쏘던 것이 예전 거짓말이다). */
+                  const bunkTag = unit !== "Bunker" ? 0
+                    : (bldTagSpots.rows.find((r9) => r9.k === "Bunker" && r9.raw === raw
+                      && Math.abs(r9.x - centerX) <= 1.5 && Math.abs(r9.y - centerY) <= 1.5)?.tag ?? 0);
+                  const crew = bunkTag === 0 ? [] : (bunkerCrew.get(bunkTag) ?? [])
+                    .filter((c9) => t >= c9.from && t < c9.to).slice(0, BUNKER_SEATS);
+                  /* 승선 증거가 하나도 없는 벙커는 마린 한 기가 든 것으로 친다 [어림] —
+                     벙커를 골라 누르는 Load 버튼으로 태우면 우클릭 증거가 안 남기 때문이다.
+                     빈 벙커로 두면 지어 놓고 지켜 낸 방어선이 화면에서 통째로 사라지고, 넷을
+                     채운 것으로 치면 아무도 못 본 화력을 지어낸다. 인원을 모를 때 가장 작은
+                     참값이 1이고, 그 임자가 마린을 뽑은 뒤부터만 그렇게 본다. */
+                  const presumed = unit === "Bunker" && crew.length === 0
+                    && (marineBornOf.get(raw) ?? Infinity) <= t;
+                  const crewGun = presumed
+                    || crew.some((c9) => c9.kind === "Marine" || c9.kind === "Ghost");
+                  const crewBat = crew.some((c9) => c9.kind === "Firebat");
+                  /* 사거리는 표에서 온다(과제 #48) — 여기 박혀 있던 캐논 7·성큰 7·스포어 7·
+                     터렛 8·벙커 6·화염 3.5는 서로 다른 자리에 흩어진 채 표와 어긋나 있었다
+                     (터렛은 원작 7이다). 벙커는 표에서 무기가 아예 없으므로 승무원의 무기를
+                     벙커 보너스(+64px=2타일)와 함께 받아 온다 — profileOf(정체, 업글, 벙커=참)
+                     가 그 덧셈과 U-238 같은 사거리 업글을 이미 물고 나온다. */
+                  const bunkUps = unit === "Bunker"
+                    ? (upsByRaw.get(raw) ?? []).filter(([us9]) => us9 <= t).map(([, nm9]) => nm9) : [];
+                  // 사거리가 가장 긴 사수가 갈래를 정한다 — 고스트(C-10)가 있으면 그쪽.
+                  const gunProf = unit === "Bunker"
+                    ? profileOf(crew.some((c9) => c9.kind === "Ghost") ? "Ghost" : "Marine",
+                      bunkUps, true) : null;
+                  const batProf = unit === "Bunker" && crewBat
+                    ? profileOf("Firebat", bunkUps, true) : null;
+                  const batRG = batProf ? (weaponVs(batProf, false)?.rangeTiles ?? -1) : -1;
+                  const rgG = unit === "Bunker"
+                    ? (crewGun && gunProf ? (weaponVs(gunProf, false)?.rangeTiles ?? -1) : -1)
+                    : fireRangeTilesOf(unit, false);
+                  const rgA = unit === "Bunker"
+                    ? (crewGun && gunProf ? (weaponVs(gunProf, true)?.rangeTiles ?? -1) : -1)
+                    : fireRangeTilesOf(unit, true);
+                  /* 못 치는 갈래는 표적으로도 안 삼는다 — 벙커는 승무원이 정한다: 마린·
+                     고스트는 공중도 치므로(그래서 공중 표적이라고 사격이 통째로 사라지던 것이
+                     지도가 잡은 버그다) 갈래를 안 나누고, 화염뿐이면 지상 전용이다. */
+                  const onlyB = unit === "Bunker" ? (crewGun ? undefined : "ground")
+                    : rgA < 0 ? "ground" : rgG < 0 ? "air" : undefined;
+                  const foeB = nearestFoe(teamB, centerX, centerY, onlyB);
+                  const rgB = foeB.air ? rgA : rgG;
+                  // 화면 기준 조준(지적: 공중 각도·지면 평행) — 유닛 트레이서와 같은 셈.
+                  const tPxB = (mapRef.current?.clientWidth ?? 320) / grid.width;
+                  let dgy = (foeB.by - centerY) * tPxB * (pitched ? pitchFlat : 1);
+                  // 표적의 제 크기로 조준 높이를 뺀다 — 표적 유닛 이름은 FoeRow.uk에 있다
+                  // (예전 코드는 건물 행에만 실리는 k를 공중 갈래에서 읽어 늘 폴백이었다).
+                  if (foeB.air) dgy -= unitPxOf(foeB.uk ?? "?", foeB.by) * 1.6;
+                  const degB = Math.atan2(-((foeB.bx - centerX) * tPxB), dgy) * (180 / Math.PI);
+                  /* 트레이서가 **제 포구에서** 나간다(요청: "포톤캐논등이 트레이서가 포구가
+                     아닌 먼곳에 나오는 문제 무조건 포구에 나와야 누구건지 알아") — 여태
+                     방어 건물은 유닛과 달리 모델 앵커가 없어, 발자국 한가운데에서 붙박이
+                     픽셀(MUZZLE_PX 5~7px)만큼 앞으로 민 자리에서 쏘았다. 그 픽셀은 화면
+                     크기에 매인 값이라 지도가 작을수록(폰) 건물 몇 배 밖에서 빛이 났고,
+                     포톤 여럿이 붙어 서면 누가 쏘는지 알 수 없었다.
+                     이제 유닛과 같은 셈이다 — 모델 공간의 포구(BLD_MUZZLE)를 굽기와 같은
+                     변환으로 투영하고, 그 자리를 화면 px로 옮긴다. 좌표계만 유닛과 다르다:
+                     건물 판은 발자국 **바닥 가운데**(16-상자의 8,16)가 앵커이고 한 변이
+                     발자국 폭이라, 지면선까지 내려간 뒤 상자 안 자리를 더한다. 앵커도 몸과
+                     같은 정규화 배수(bldNormOf)를 탄다. */
+                  const bTf = ((): string => {
+                    const fall = `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)`;
+                    const mz = shapeKind ? BLD_MUZZLE[shapeKind] : undefined;
+                    const el9 = mapRef.current;
+                    if (!mz || !el9) return fall;
+                    const mw9 = el9.clientWidth;
+                    const mh9 = el9.clientHeight;
+                    if (!mw9 || !mh9) return fall;
+                    const [px9, py9] = anchorPoint(
+                      mz, buildingYawOf(), viewYawOf(centerX, centerY), pitched, !pitched,
+                    );
+                    // 16-상자 한 변이 곧 그려지는 발자국 폭이다(UnitLayer의 fitWidth).
+                    const side9 = wTiles * mkK * (mw9 / grid.width);
+                    // 앵커도 몸과 같은 배수를 탄다 — 굽기가 상자 (8,16)을 축으로 키운다.
+                    const bn9 = bldNormOf(shapeKind);
+                    const ax9 = 8 + (px9 - 8) * bn9;
+                    const ay9 = 16 + (py9 - 16) * bn9;
+                    // 그리기가 실제로 앉히는 자리(잉크 바닥·가로중심) 기준으로 잰다.
+                    const ink9 = BLD_INK_BOX.get(shapeKind) ?? [8, 16];
+                    const [afx9] = posFrac(anchorX, anchorY);
+                    const [, gfy9] = posFrac(bodyX, bodyY + boxH / 2);
+                    const [cfx9, cfy9] = posFrac(centerX, centerY);
+                    const dx9 = (afx9 - cfx9) * mw9 + ((ax9 - ink9[0]) * side9) / 16;
+                    const dy9 = (gfy9 - cfy9) * mh9 + ((ay9 - ink9[1]) * side9) / 16;
+                    return `translate(${dx9.toFixed(1)}px, ${dy9.toFixed(1)}px) rotate(${degB.toFixed(1)}deg)`;
+                  })();
+                  const fire: React.ReactNode[] = [];
+                  /* 포톤은 대공·대지 한 자루, 성큰은 촉수(표적까지 실거리로 뻗는다 — 럴커
+                     가시와 같은 셈), 스포어는 포자. 사거리 숫자는 위 rgB가 표에서 받아 왔다. */
+                  if (unit === "Photon Cannon" && foeB.bd <= rgB) {
+                    fire.push(<span key="p" className="scr-motion-tracer scr-tracer-photon" style={{ transform: bTf }} />);
+                  }
+                  if (unit === "Sunken Colony" && foeB.bd <= rgB) {
+                    fire.push(<span
+                      key="s"
+                      className="scr-motion-tracer scr-tracer-spike"
+                      style={{
+                        transform: bTf,
+                        height: `${(foeB.bd * tPxB).toFixed(1)}px`,
+                      }}
+                    />);
+                  }
+                  if (unit === "Spore Colony" && foeB.bd <= rgB) {
+                    // 스포어는 가디언과 같은 독 갈래다(요청: "스포어/가디언은 독느낌 노랑 연두 길게").
+                    fire.push(<span key="o" className="scr-motion-tracer scr-tracer-venom" style={{ transform: bTf }} />);
+                  }
+                  if (unit === "Missile Turret" && foeB.air && foeB.bd <= rgB) {
+                    fire.push(<span key="t" className="scr-motion-tracer scr-tracer-missile" style={{ transform: bTf }} />);
+                  }
+                  if (unit === "Bunker" && (crew.length > 0 || presumed)) {
+                    if (crewGun && rgB >= 0 && foeB.bd <= rgB) {
+                      fire.push(<span key="g" className="scr-motion-tracer" style={{ transform: bTf }} />);
+                    }
+                    // 화염은 지상 전용이고 사거리도 제 것(가우스 6에 견줘 3)이다.
+                    if (crewBat && !foeB.air && batRG >= 0 && foeB.bd <= batRG) {
+                      fire.push(<span key="f" className="scr-motion-tracer scr-tracer-flame" style={{ transform: bTf, animationDelay: "0.2s" }} />);
+                    }
+                  }
+                  if (fire.length > 0) {
+                    return (
+                      <span
+                        key={`dfx-${i}`} className="scr-motion-deffire"
+                        style={{ ...posStyle(centerX, centerY), zIndex: z + 2 }}
+                      >
+                        {fire}
+                        {bldHitFx}
+                      </span>
+                    );
+                  }
+                }
+                return bldHitFx;
+              }
+              // 전용 도형이 없는 건물 — 발자국 80% 네모(.scr-motion-sq와 같은 채움·0.82).
+              unitOps.push({
+                fx: fxF, fy: fyF, z, kind: "",
+                sizePx: 0, wFrac: wFrac * pulse, hFrac: hFrac * pulse, boxFit: "fill",
+                color, alpha: alpha * 0.82, noShadow: true,
+              });
+              return bldHitFx;
+            });
+          })()}
+
+
+          {/* 채굴 일꾼(요청, 지적: 방향 반대) — 자원 지대마다, 그 시점에 서 있는 가장
+              가까운 본진 건물(시작 본진·확장 포함)을 찾아 그리로 오간다. 가까운 홀이 없는
+              자원(아직 안 편 멀티)은 비워 둔다. */}
+          {/* 자원 지물(요청: 미네랄·가스 모델링해서 맵에 배치) — 지대마다 가스 깃발이면
+              간헐천, 아니면 미네랄 결정 무더기. 팀색과 무관한 고정 색이고, 건물(1000+)
+              아래 층에 깔린다. */}
+          {(grid.resources ?? []).map((res, ri) => {
+            const gasSpot = res[2] === 1
+              || (!gridHasGasFlags
+                && gasBuildings.some((g) => Math.hypot(g.x - res[0], g.y - res[1]) <= 6));
+            /* 정확한 좌표 우선(재지적: 겹치더라도 제자리에) — 홀 치마 회피 보정은 걷었다.
+               군집도 낱밭 수준(파서 반경 1.2)으로 좁혀, 밭이 홀에 붙은 맵은 붙은 그대로
+               그린다. */
+            const mkK = pitchK(res[1]);
+            const [fx, fy] = posFrac(res[0], res[1]);
+            /* 간헐천은 두 칸 폭(지적: 한 칸처럼 작았다). 미네랄은 낱밭 단위가 되면서
+               2×1 밭 폭에 맞춘 2.4타일 — 예전 3.2는 지대(여러 밭 묶음) 시절의 폭이다.
+               색은 제 기본색(지적): 미네랄은 반투명 파란 수정, 가스는 회갈색 바위. */
+            /* 가스 위 건물(재지적: "간헐천에 건물 지을때 간헐천 모델링도 보이면서 겹쳐지게
+               해야함(원작 반영)") — 앞선 지적("건물을 지으면 간헐천 모델은 사라져야")을
+               뒤집는 요청이다. 원작에서 정제소·어시밀레이터·익스트랙터는 간헐천을 지우지
+               않고 그 위에 얹힌다: 건물 몸(정제소 3.5타일)이 간헐천(4타일)보다 좁아 테두리가
+               삐져나오고, 그 겹침이 '가스 위에 지었다'를 말한다.
+               그래서 감추는 대신 **건물 뒤로 보낸다** — 아래 z에서 자원의 앞섬 몫(+1200)을
+               빼고 두 타일치를 더 물려, 같은 자리에 선 건물이 무슨 일이 있어도 앞에 온다.
+               ★ 다만 **짓는 동안만**이다(재요청: "완공되면 안보임") — 공사 중에는 간헐천이
+                 건물 뒤로 비치고, 완공되는 순간 감춘다. 정제소가 뚜껑을 덮는 그림이다. */
+            const gasOn = gasSpot ? gasHideOf.find((g) =>
+              g.sec <= t && (g.gone === 0 || t < g.gone) && g.gd <= 4
+              && Math.abs(g.gx - res[0]) < 0.5 && Math.abs(g.gy - res[1]) < 0.5) : undefined;
+            if (gasOn && t >= gasOn.done) return null;
+            const underGas = !!gasOn;
+            // 고갈된 미네랄(요청)은 밭이 사라진다. 가스는 아래에서 색만 죽인다.
+            /* 고갈 어림은 끈다(지적: 미네랄·간헐천에 모델 적용해야지 — 후반에 자원이
+               통째로 사라져 있었다). 일꾼 수로 짐작하던 v1 어림이라 인과 증거가 없었다:
+               자원 모델은 늘 세워 둔다. 가스 색이 죽는 연출까지 함께 걷었다. */
+            // 미네랄 살짝 확대(요청) — 2.4 → 2.9타일 폭.
+            /* 간헐천은 제 발자국 그대로 4타일(전수조사: 6.4타일로 그려져 제 발자국(4×2)
+               보다 60% 넓었다 — 그 위에 앉는 정제소(4타일)가 못 덮어 가스 건물 주위로
+               간헐천이 삐져나오던 원인이기도 하다). */
+            // 미네랄 확대(재지적: 크기도 너무 작아) — 2.9 → 4.2타일 폭.
+            /* 미네랄 폭을 4.2 → 3.0타일로(지적: 넥서스와 간헐천에 가려짐) — 실제 밭은
+               2×1인데 4.2타일로 그리다 보니, 옆 간헐천(4타일)과 그림이 통째로 겹쳐
+               화가 순서가 누가 이기든 한쪽이 가려졌다. 자원끼리의 가림은 순서로는 못
+               푼다(둘 다 자원이라 같은 자를 쓴다) — 그림을 제 발자국에 가깝게 되돌려야
+               겹치지 않는다. 3.0은 여전히 밭(2타일)보다 5할 크다. */
+            const wTiles = gasSpot ? 4 : 3;
+            unitOps.push({
+              fx, fy,
+              /* 자원도 높이를 가진다(지적: 뒤 사물을 가려야) — 990 바닥층이 아니라 건물과
+                 같은 y순 층에 선다. 기준은 그림 상자의 아랫변(+1.2 — 건물 z가 발자국
+                 아랫변 기준이라 같은 자로 재야 함): +0.7로는 콜로니 뿔이 앞 미네랄을
+                 덮었다(지적: 가려짐 에러). */
+              /* 자원은 같은 줄 건물보다 앞(지적: 미네랄이 가려진다) — 본진 셋을 발자국
+                 보다 크게 그리기 시작하면서, 앞줄 미네랄이 뒷줄 본진 그림에 덮였다. 자원의
+                 z를 반 타일(+40)만큼 올려 같은 줄이면 자원이 이긴다. 정말 앞에 선 건물
+                 (한 타일 이상 아래)은 여전히 자원을 가린다. */
+              /* 화가 순서 기준을 그린 상자 아랫변으로(지적: 미네랄이 다른 요소에
+                 가려짐) — 고정 +1.2는 밭을 키우고 나서 실제 그림보다 위였다. 건물이
+                 발자국 아랫변을 쓰는 것과 같은 자로 맞춘다. */
+              /* 자원이 건물에 가리는 것을 더 넓게 막는다(지적: 미네랄이 뒤에 있는 가스나
+                 건물에 가려짐) — 화가 순서는 '그림 아랫변'만 보는데, 건물 모형은 제 발자국
+                 보다 훨씬 크게 그려져(어시밀레이터의 지느러미·기둥) 한 줄 뒤에 서 있어도
+                 앞 미네랄을 덮는다. 자원의 앞섬 몫을 반 타일(40)에서 한 타일 반(120)으로
+                 넓혀, 정말 한 타일 반 넘게 앞에 선 건물만 자원을 가린다. 자원은 배경이라
+                 가려지면 지도가 안 읽히고, 반대로 자원이 조금 앞서 그려져도 어색하지 않다.
+                 가스 간헐천은 그 위에 정제소가 서면 아예 감춰지므로 같은 몫을 줘도 안전하다. */
+              z: pitched
+                ? 1000 + Math.round((res[1] + (wTiles * 0.75) / 2) * Z_TILE)
+                  + (underGas ? -2 * Z_TILE : 1200)
+                : (underGas ? 700 : 900) + ri,
+              kind: gasSpot ? "geyser" : "mineral",
+              viewYaw: viewYawOf(res[0], res[1]), flat: !pitched, pitch: pitched,
+              sizePx: 0,
+              wFrac: (wTiles / grid.width) * mkK,
+              hFrac: ((wTiles * 0.75) / grid.width) * mkK,
+              boxFit: "meet", fitWidth: true,
+              /* 자원도 지면선에 앉힌다(지적: 간헐천·미네랄 위치도 그렇다) — 건물과 같은
+                 갈래의 어긋남이다. 상자 바닥을 화면에서 어림하지 않고, 같은 자리를 타일
+                 공간(칸 아랫변)에서 잡아 자리 사상으로 옮긴다. 평면에서는 값이 같아
+                 보이던 그대로고, 입체에서만 원근이 실려 제자리로 온다. */
+              baseFy: posFrac(res[0], res[1] + (wTiles * 0.75) / 2)[1],
+              color: gasSpot ? "#8f8274" : "#8fb9e8",
+              // 미네랄 반투명(요청) — 뒤가 어렴풋이 비치는 수정 결정.
+              alpha: gasSpot ? 1 : 0.55, noShadow: true,
+            });
+            return null;
+          })}
+          {/* 스파이더 마인(요청) — 안 터졌으면 모델, 터지는 1.2초는 폭발 스팬. */}
+          {mines.map((m, mi) => {
+            if (t < m.sec || (m.boom > 0 && t >= m.boom + 1.2)) return null;
+            const [mfx, mfy] = posFrac(m.x, m.y);
+            if (m.boom === 0 || t < m.boom) {
+              unitOps.push({
+                fx: mfx, fy: mfy, z: 960 + mi, kind: "mine",
+                viewYaw: viewYawOf(m.x, m.y), flat: !pitched, pitch: pitched,
+                // 스파이더 마인은 원작 분류대로 소형(전수조사: dot 눈금 0.8배였다).
+                sizePx: unitGlyphPx("mine", "mine", 0, m.y),
+                /* 진형 간격 — 마인은 noSep이 아니라서 이완(밀어내기)에 드는 **유일한**
+                   유닛 op이다.
+                   3차 설계는 여기에 원작 몸 지름(15×15 = 0.469타일)을 **고정값**으로 실어
+                   '모델 크기' 라디오가 간격을 못 흔들게 했는데, 검증이 그것이 회귀임을
+                   실측으로 잡았다: 라디오와 크기표는 그림만 키우고 간격은 그대로라, 확대
+                   화면에서 그려지는 몸폭이 중심거리의 457%가 된다(지금은 68%라 절대 안
+                   겹친다). 마인은 한 자리에 여럿이 깔리는 물건이라 이게 바로 눈에 띈다.
+                   그래서 반지름을 **그려지는 몸**에 매단다 — 그려지는 몸폭이
+                   sizePx × (잉크상자/16)이므로, 그 폭이 중심거리(2×반지름)의 68%가 되는
+                   값을 쓴다. 라디오를 어디에 두든 비율이 지금 그대로다. */
+                sepPx: (unitGlyphPx("mine", "mine", 0, m.y) * modelInkOf("mine")) / 16 / 1.36,
+                color: modeColor(m.raw, teamOfRaw(m.raw) ?? 1),
+                alpha: 0.95, noShadow: true,
+              });
+              return null;
+            }
+            return (
+              <span
+                key={`mine-${mi}`} className="scr-motion-mineboom"
+                style={{ ...posStyle(m.x, m.y), zIndex: 1500 }}
+              />
+            );
+          })}
+          {/* 저그 크립(요청) — 살아 있는 저그 건물마다 발밑에 보라 크립 블롭을 깐다.
+              불투명 단색이라 이웃 크립과 겹치며 이음매 없이 한 덩어리로 이어지고,
+              건물이 없어지면 페이드와 함께 곧 걷힌다(지적). 층은 자원(900)보다 아래. */}
+          {buildsSrc.map(([sec, x, y, unit, raw, gone], i) => {
+            if (sec > t) return null;
+            const race = bases.find((b2) => b2.key === raw)?.race;
+            if (race !== "저그") return null;
+            const goneAt = gone ?? 0;
+            if (goneAt > 0 && t >= goneAt + 1.2) return null;
+            const cxb = x + footDx(unit);
+            const cyb = y + footDy(unit);
+            const [cfx, cfy] = posFrac(cxb, cyb);
+            /* 크립 확산(요청: 원작 규칙) — 해처리(레어·하이브)와 콜로니류만 시간이 갈수록
+               크립이 넓게 퍼지고, 나머지 건물은 제 발밑만 적신다. 같은 자리의 앞선 같은
+               계열(해처리→레어, 크립→성큰)에서 확산 시계를 이어받고, 경기 시작 본진
+               해처리(sec 0)는 처음부터 만개다(원작: 첫 해처리는 크립을 다 깔고 시작). */
+            const hallKind = ["Hatchery", "Lair", "Hive"].includes(unit);
+            const colonyKind = unit.includes("Colony");
+            let wTiles = 8;
+            if (hallKind || colonyKind) {
+              let startSec = sec;
+              for (const [s2, x2, y2, u2, r2] of buildsSrc) {
+                // 자리·계보는 위 succeedsBld와 같은 자를 쓴다 — 곁 콜로니의 시계를 안 물어온다.
+                if (r2 !== raw || s2 >= startSec
+                  || Math.hypot(x2 - x, y2 - y) > SAME_SITE_TILES) continue;
+                if (succeedsBld(u2, unit)) startSec = s2;
+              }
+              const maxW = hallKind ? 15 : 11;
+              const minW = hallKind ? 8 : 5.5;
+              const p = startSec <= 1 ? 1 : Math.min(1, Math.max(0, t - startSec) / CREEP_SPREAD_SEC);
+              // 앞이 빠르고 갈수록 느린 번짐 — 반 타일 눈금이라 스프라이트도 계단으로만 다시 굽는다.
+              const ease = 1 - (1 - p) * (1 - p);
+              wTiles = Math.round((minW + (maxW - minW) * ease) * 2) / 2;
+            }
+            const mk3 = pitchK(cyb);
+            unitOps.push({
+              fx: cfx, fy: cfy, z: 880 + (i % 20),
+              kind: i % 3 === 0 ? "creeppatch" : i % 3 === 1 ? "creeppatch2" : "creeppatch3",
+              viewYaw: viewYawOf(cxb, cyb), flat: !pitched, pitch: pitched,
+              sizePx: 0,
+              wFrac: (wTiles / grid.width) * mk3,
+              hFrac: ((wTiles * 0.75) / grid.width) * mk3,
+              boxFit: "meet", fitWidth: true,
+              color: "#544659",
+              alpha: goneAt > 0 && t >= goneAt ? Math.max(0, 1 - (t - goneAt) / 1.2) : 1,
+              noShadow: true,
+              clipWalk: true,
+            });
+            return null;
+          })}
+          {/* 건물 소멸 효과(요청: 종족별) — 무너진 순간 2초: 테란 주황 폭발+회색 연기,
+              저그 보라 살점 퍼짐, 프로토스 파란 빛 붕괴. 이륙 이사·같은 계보 대체(진화·
+              재건)는 폭발이 아니라 제외한다. */}
+          {buildsSrc.map(([sec, x, y, unit, raw, gone, liftAt], i) => {
+            const goneAt = gone ?? 0;
+            if (!goneAt || liftAt || t < goneAt || t > goneAt + 2) return null;
+            // 후계가 선 자리는 무너진 것이 아니라 변태·재건이다(위 succeedsBld와 같은 자).
+            if (buildsSrc.some(([s2, x2, y2, u2, r2], j) => j !== i && r2 === raw
+              && s2 > sec && Math.hypot(x2 - x, y2 - y) <= SAME_SITE_TILES
+              && succeedsBld(unit, u2))) return null;
+            const race = bases.find((b2) => b2.key === raw)?.race;
+            const rk = race === "저그" ? "zerg" : race === "프로토스" ? "toss" : "terran";
+            if (!qDeath) return null;
+            /* 크기는 건물 발자국의 0.7배(재지적: 그래도 너무 큼 — 반으로) — 퍼센트 폭이라
+               맵 확대에도 비례한다. */
+            const clpW = (((FOOTPRINT[unit] ?? [3, 2])[0] * 0.7) / grid.width) * 100;
+            return (
+              <span
+                key={`clp-${i}`}
+                className={`scr-motion-collapse scr-clp-${rk}`}
+                style={{
+                  ...posStyle(x + footDx(unit), y + footDy(unit)),
+                  width: `${clpW}%`, zIndex: 1450,
+                }}
+              >
+                <span className="scr-clp-smoke" />
+                <span className="scr-clp-core" />
+              </span>
+            );
+          })}
+          {/* (걷어냄) 채굴 일꾼 점 층 — 일꾼 '수'로 자원 곁에 점을 찍던 v1 장식 어림이다.
+              실제 조작과 무관하게 그려져, 가스를 안 지었는데도 캐러 다니곤 했다(지적).
+              개체 트랙에서는 실제 일꾼 개체가 제 클릭을 따라 움직이므로 어림이 필요 없다. */}
+          {/* 개체 트랙 v2(요청: 태그 단위 분석을 별도 테이블에 담아 비교) — 태그 하나가
+              곧 마커 하나다. 부대 어림의 묶음·흡수·합류 규칙이 전혀 없이, 각 개체가 제
+              증거를 따라 걷고 제 죽음(d)에 종족 효과와 함께 걷힌다. 유닛 층만 바꿔 그리고
+              건물·자원·크립·마법은 v1 그대로다. 정체를 모르는 개체는 그 종족의 기본 보병
+              꼴을 반투명으로 — 아는 척은 안 하되 존재는 보인다. */}
+          {entWalks.map((e, ei) => {
+            const rp = e.walk;
+            if (rp.length === 0 || t < rp[0][0]) return null;
+            /* 죽음의 주인은 하나다(과제 #69) — 시뮬이 돌면 시뮬, 아니면 분석의 d다.
+               분석이 체력 자취를 d에서 0으로 맞춰 주므로 '체력바가 0이면 즉사'는 저절로
+               성립한다(체력 0 = d). 셋을 견주던 옛 사슬은 걷었다 — 그 셋이 서로 달라서
+               화면·시뮬·체력바가 제각각 다른 순간에 유닛을 죽이고 있었다. */
+            const simDie = simTracks?.get(e.tag)?.died ?? null;
+            const dieAt = simDie !== null ? simDie : e.d;
+            if (dieAt !== null && t >= dieAt + 1.2) return null;
+            const team = teamOfRaw(e.raw);
+            /* 걸음 속도 상한(요청) — 제 속도표로 죈다. 15%만 여유를 둔다: 교전 지연을
+               따라잡는 몫이라, 이보다 크면 다시 '순간적으로 빨라짐'이 된다.
+               드랍·리콜은 예외 — 원작에서도 순간이동이다. 수송 구간 앞뒤 여유를 두어
+               하차 자리로 제때 나타나게 하고, 리콜은 같은 임자의 시전 전후 창으로 뺀다. */
+            /* 순간이동 면제는 **내릴 때만**이다(요청: 수송선 타고 내림 완벽히) — 타러 가는
+               것은 제 발로 걷는 일이라 걸음 상한을 그대로 받아야 한다. 여태 승선 1초
+               전부터 상한을 풀어, 배에서 멀리 있던 유닛이 마지막 1초에 날아가 탔다.
+               하차는 원작에서도 순간이동이라 뒤쪽 여유(+2초)는 그대로 둔다. */
+            const ridingNow9 = e.rides.some(([ra9, rb9]) => t >= ra9 && t < rb9 + 2);
+            const recallNow9 = castsSrc.some(([cs9, , , tech9, craw9]) =>
+              tech9 === "Recall" && craw9 === e.raw && t >= cs9 - 1 && t <= cs9 + 4);
+            const vCap9 = ridingNow9 || recallNow9
+              ? undefined : speedOf(e.unit || "Marine", t, e.ups) * 1.15;
+            /* 걸음 시계 — 코어 자취가 제 시각에 제자리라 지금 시각 그대로다.
+               탐색(1.5초 넘는 건너뜀)은 지금 시각으로 맞추고, 싸우는 동안은 멈추며,
+               그 밖에는 빚이 있으면 TRACK_CATCHUP으로 달려 따라잡는다. */
+            /* 걸음 시계는 코어 것이다(과제 #61 → 정식 배포) — 빚·따라잡기·상한은
+               "명령 좌표를 언제 지날까"를 렌더러가 어림하던 시절의 장치다. 코어
+               자취는 이미 제 시각에 제자리라, 여기서 시각을 미루면 코어가 낸 값을
+               렌더러가 도로 흔드는 꼴이 된다. */
+            const eff9 = t;
+            const rawPos = posAt(rp, eff9);
+            if (!rawPos) return null;
+            /* 탑승 중(요청: 수송선 승하차) — 배 안에 있으니 마커를 걷는다. 하차 지점
+               (f=13)이나 다음 제 명령에서 다시 나타나 걷는다.
+               승하차 연출(요청) — 태울 땐 빛기둥이 내리고 그 안에서 몸이 작아지며 떠올라
+               사라지고, 내릴 땐 거꾸로다. rideK 0=제 모습, 1=완전히 빨려듦. */
+            /* 승하차 길이는 **원작의 딜레이 그대로**다(요청: "탑승 딜레이시간에 딱 맞추기")
+               — 태우기는 게이트 주기 9프레임(0.378초), 내리기는 한 기당 18프레임(0.756초)
+               이고 그 값은 표(bwTransport)가 든다. 0.9초 고정이던 옛 값은 태우기가 실제
+               딜레이의 2.4배라, 배가 벌써 떠난 뒤에도 몸이 남아 빨려 들어가고 있었다. */
+            const rideInSec = PICKUP_POLL_SEC;
+            const rideOutSec = UNLOAD_GAP_SEC;
+            if (e.rides.some(([ra, rb]) => t >= ra + rideInSec && t < rb)) return null;
+            let rideK = 0;
+            /** 승하차 회전(도) — 한 바퀴 뱅글(요청). 태울 땐 0→360, 내릴 땐 그 반대다. */
+            let rideSpin = 0;
+            const rideIn9 = e.rides.find(([ra]) => t >= ra && t < ra + rideInSec);
+            const rideOut9 = e.rides.find(([, rb]) => t >= rb && t < rb + rideOutSec);
+            if (rideIn9) {
+              rideK = Math.min(1, (t - rideIn9[0]) / rideInSec);
+              rideSpin = rideK * 360;
+            } else if (rideOut9) {
+              rideK = Math.max(0, 1 - (t - rideOut9[1]) / rideOutSec);
+              rideSpin = -rideK * 360;
+            }
+            /* 건설에 흡수(지적: 건설 끝난 일꾼이 복제된 자리에 계속 서 있음) — 현장에
+               도착한 순간부터 숨는다. 공사 중 모습은 합성 건설 일꾼 연출의 몫이고,
+               죽음이 아니라 소멸 효과도 없다. */
+            if (e.buildHideAt !== null && t >= e.buildHideAt) return null;
+            // 공사 중 구간(재재지적: 이중 표시) — 앵커~다음 증거 사이는 공사에 흡수돼 있다.
+            if (e.buildHides.some(([ba2, bb2]) => t >= ba2 && t < bb2)) return null;
+            /* 빙결(전수조사: 스태시스·마엘스톰·락다운) — 걸린 자리에 얼어붙는다. */
+            const frzSt = e.statuses.find(([sa2, sb2, sk2]) =>
+              FREEZE_STATUS.has(sk2) && t >= sa2 && t < sb2);
+            const race = bases.find((b) => b.key === e.raw)?.race;
+            const u = e.unit;
+            /* 초반 무명은 일꾼(지적: 일꾼밖에 없는데 저글링이 정찰) — 그 사람의 첫 전투
+               유닛이 태어나기 전의 무명 개체는 보병일 수 없다. */
+            const drawUnit = u !== "" ? u
+              : e.b < (entCombatStart.get(e.raw) ?? Infinity)
+                ? (race === "저그" ? "Drone" : race === "테란" ? "SCV" : "Probe") : "";
+            const isWorker = drawUnit === "SCV" || drawUnit === "Probe" || drawUnit === "Drone";
+            /* 버로우(지적: 러커와 버로우 러커가 같이 움직인다 / 변태 알에서 나오자마자
+               버로우 상태로 나온다) — 여태 '러커가 안 움직이면 땅속'이라는 어림이었다.
+               그 한 줄이 두 가지를 동시에 틀리게 했다: 걸음이 멎기만 하면(랠리 도착·
+               교전 홀드·갓 태어난 순간) 땅속으로 보이고, 반대로 땅속인데 자취가 흐르면
+               구멍이 따라 미끄러졌다. 이제 커맨드 증거(f=18/19)를 시즈와 같은 잣대로
+               읽는다. 판 시각(burrowAt)은 아래에서 그 자리에 못 박는 데 쓴다. */
+            const burrowAt = BURROWABLE.has(drawUnit) ? burrowStartOf(e.burrows, t) : -1;
+            const burrowed = burrowAt >= 0;
+            /* 밭이 홀에 붙은 무한 맵인가 — 왕복 폭이 발자국보다 좁아, 아래 '홀에 들어간
+               순간 숨김' 창이 왕복을 통째로 삼키는 경우를 가른다(지적). */
+            let nearMine9 = false;
+            const uAir = drawUnit !== "" && isAirUnit(drawUnit);
+            /* 교전(지적: 상호작용 없음 + 어택땅 중 만나면 멈추고 싸워야) — 적 개체·방어
+               건물이 시야 안이면 싸움이다: 그 자리에 멈춰 서고(engageHoldRef), 트레이서·
+               불꽃이 인다. 일꾼·수송·옵저버는 안 싸운다(도망 대상일 뿐). */
+            const holdKey = `${e.raw}-v2e${ei}`;
+            const canFight = !isWorker && !uAir
+              && MORPH_SHELL[drawUnit] === undefined
+              && !(drawUnit !== "" && ENGAGE_SKIP.has(drawUnit));
+            /* 표적 우선(지적: 어택 찍으면 그 대상을 공격해야) — 최근(30초 안) 공격 명령이
+               찍은 태그가 아직 살아 움직이면 그쪽이 상대다. 없으면 가장 가까운 적. */
+            /* 대공 무기가 없으면 떠 있는 건물은 표적이 아니다(요청: 띄운 건물은 공중
+               유닛이다). 명단을 또 적지 않고 표에 묻는다 — 대공 사거리가 −1이면 그 유닛은
+               하늘을 못 친다. 이름을 모르는 개체(k="")는 표가 기본값으로 떨어져 조용히
+               틀리므로 아는 이름일 때만 가른다. */
+            const noAir9 = drawUnit !== "" && isKnownKind(drawUnit)
+              && fireRangeTilesOf(drawUnit, true) < 0;
+            let foe: { bx: number; by: number; bd: number; air: boolean; bld?: boolean; k?: string } =
+              nearestFoe(team, rawPos.x, rawPos.y, undefined, noAir9);
+            /* 표적 우선(재수리·기획서 1-B): 최신 1건만 보던 규칙은 어택땅 연타 한 번에
+               건물 표적을 지웠다 — nearestFoe에는 일반 건물이 없어 폴백도 없다. 창
+               (건물 45초/유닛 12초) 안에서 역순으로 훑되, 태그 없는 명령(어택땅)은
+               건너뛰고 태그 있는 가장 최근 명령을 채택한다. */
+            for (let ai = e.atkAt.length - 1; ai >= 0; ai -= 1) {
+              const [as2, atg, akx, aky] = e.atkAt[ai];
+              if (as2 > t) continue;
+              if (t - as2 > 45) break;
+              if (atg <= 0) continue;
+              let tp = entPosByTag.get(atg);
+              /* 태그 미해석 폴백(기획서 2-D) — 태그가 지도에 없으면(시작 홀·태그 재활용
+                 분리) 클릭 좌표에서 3타일 안의 살아 있는 적 건물 자리로 잇는다. 어택땅
+                 (atg=0)은 여기 못 온다 — 건물이 보인다고 싸움이 나면 안 된다. */
+              if (!tp) {
+                const st9 = bldTagSpots.sites.find((s9) =>
+                  t >= s9.born + 2 && (s9.gone === 0 || t < s9.gone)
+                  && Math.abs(s9.x - akx) <= 3 && Math.abs(s9.y - aky) <= 3
+                  && (teamOfRaw(s9.raw) ?? 0) > 0 && teamOfRaw(s9.raw) !== team);
+                if (st9) {
+                  tp = { x: st9.x, y: st9.y, team: teamOfRaw(st9.raw) ?? 0, air: false, bld: true, k: st9.k };
+                }
+              }
+              /* 팀 미상(0)은 표적으로도 안 삼는다(위 nearestFoe 주석과 같은 오인 방지).
+                 아군은 표적이 될 수 있다(요청: 명시적 어택은 아군도 지정) — 여기 오는
+                 태그는 A를 누르고 직접 찍은 명령뿐이라(우클릭 격상은 적에게만 붙는다)
+                 같은 편 태그가 실렸다면 사람이 정말 제 유닛을 찍은 것이다. */
+              // 은신·버로우는 콕 찍은 어택이라도 디텍터 없이는 못 겨눈다(요청).
+              if (tp && tp.hidden && !detectedBy(team, tp.x, tp.y)) continue;
+              if (tp && tp.team > 0 && (team ?? 0) > 0
+                && t - as2 <= (tp.bld ? 45 : 12)) {
+                const td = Math.hypot(tp.x - rawPos.x, tp.y - rawPos.y);
+                // 너무 먼 표적은 안 겨눈다(지적: 타겟팅 오인) — 이미 딴 데 간 옛 표적이다.
+                if (td <= ENGAGE_SIGHT_TILES * 1.6) {
+                  foe = { bx: tp.x, by: tp.y, bd: td, air: tp.air, ...(tp.bld ? { bld: true, k: tp.k } : {}) };
+                  break;
+                }
+              }
+            }
+            /* 히스테리시스(지적: 이동 중 위치가 앞뒤로 잘게 플리커) — 시야 경계에 선
+               적 때문에 교전이 프레임마다 켜졌다 꺼지면, '멈춘 자리'와 '지연 걸음' 사이를
+               오가며 흔들렸다. 들어올 땐 시야, 나갈 땐 시야×1.3이라 경계에서 안 떨린다. */
+            const engagedBefore = engageHoldRef.current.has(holdKey);
+            /* 붙는 거리는 시야가 아니라 **자동 획득 사거리**다(과제 #48) — 여태 이 파일의
+               교전은 전부 ENGAGE_SIGHT_TILES 9 하나로 갈렸다. 그래서 저글링(획득 3)이
+               화면 반대편의 적을 보고 달려들고, 시즈 모드(12)는 오히려 사거리 안에 든
+               적을 보고도 더 걸어 들어갔다. 원작은 시야·자동 획득·무기 사거리가 셋 다
+               다른 값이고, 여기 필요한 것은 가운데 것이다. 표에 없는 이름과 획득값 0
+               (드랍십·베슬·오버로드처럼 스스로 표적을 안 잡는 것들)만 옛 9로 물러난다 —
+               지어낸 값을 쓰느니 알던 어림이 낫고, 그것들은 어차피 canFight에서 걸린다. */
+            const acq9 = drawUnit !== "" && isKnownKind(drawUnit)
+              ? (acquireTilesOf(drawUnit) || ENGAGE_SIGHT_TILES) : ENGAGE_SIGHT_TILES;
+            let fighting = canFight && !frzSt && !burrowed && Number.isFinite(foe.bd)
+              && (foe.bd <= acq9 * (engagedBefore ? 1.3 : 1)
+                /* 어택이 찍은 건물은 14.4타일부터 접근 시작(기획서 1-E — 수리: 시야
+                   게이트가 철거 행군을 9타일 밖에서 세워 뒀다). */
+                || (foe.bld === true && foe.bd <= ENGAGE_SIGHT_TILES * 1.6));
+            let pos = rawPos;
+            /* 교전 당김·홀드·잽은 코어가 켜지면 안 돈다(과제 #61) — 코어는 표적까지
+               걸어가 사거리에서 멈추는 일을 제 이동 모형으로 이미 했다. 여기서 한 번 더
+               끌면 두 모형이 같은 몸을 밀고, 어차피 아래에서 코어 자리로 덮여 버려질
+               값을 프레임마다 셈하는 것이기도 하다. */
+            // 다음 프레임을 위한 걸음 시계 기록 — 싸우는(유예 포함) 동안은 멈춰 둔다.
+            /* 가스 왕복(지적: 가스 캐는 일꾼이 하나도 없다) — 배정 클릭은 한 번만 남고
+               그 뒤는 게임이 자동 순환이라, 개체가 정제소 위에 서서 건물에 가려져 있었다.
+               제 정제소 곁(2타일)에 선 일꾼은 가장 가까운 홀과 그 사이를 결정적으로
+               왕복한다 — 어림 장식이 아니라, 그 일꾼이 실제로 가스에 배정된 개체다. */
+            /* 채취 왕복도 코어 몫이다(과제 #61) — 코어에는 밭 배정과 왕복이 들어 있다
+               (simCore.assignJob). 렌더러의 결정적 왕복은 코어가 없던 때의 대역이라,
+               켜져 있으면 같은 일꾼을 두 박자로 흔들 뿐이다. */
+            /* 변태·건설로 흡수되기 직전엔 그 자리로 들어간다(요청: 드론 변태도 고치
+               중앙에 놔야 자연스럽다) — 예전엔 제자리에서 그냥 사라져, 고치는 발자국
+               한가운데에 솟는데 드론은 옆에서 없어졌다. 앵커 1.2초 전부터 발자국 중앙
+               (고치와 같은 자리 보정 포함)으로 미끄러져 들어간다. */
+            if (isWorker) {
+              const site9 = e.buildSites.find((v) => t >= v[0] - 1.2 && t <= v[0] + 0.2);
+              if (site9) {
+                const bRow9 = buildsSrc.find(([bs9, bx9, by9, , br9]) =>
+                  br9 === e.raw && Math.abs(bs9 - site9[0]) <= 3
+                  && Math.abs(bx9 - site9[1]) <= 1.5 && Math.abs(by9 - site9[2]) <= 1.5);
+                const fp9 = FOOTPRINT[bRow9 ? bRow9[3] : ""] ?? [3, 2];
+                const tx9 = site9[1] + fp9[0] / 2;
+                const ty9 = site9[2] + fp9[1] / 2 + CONSTRUCT_DROP;
+                const k9 = Math.min(1, Math.max(0, (t - (site9[0] - 1.2)) / 1.2));
+                pos = { ...pos, x: pos.x + (tx9 - pos.x) * k9, y: pos.y + (ty9 - pos.y) * k9 };
+              }
+            }
+            /* 자원 반납 순간은 숨는다(요청: 기지 겹침은 허용하되 들어간 순간 렌더링에선
+               숨기기) — 왕복 자리가 제 홀 발자국 안이면 그 프레임은 안 그린다. 원작도
+               반납하는 일꾼은 건물 속으로 잠깐 사라진다. */
+            if (isWorker && !nearMine9) {
+              /* 밭이 홀에 붙은 무한 맵에서는 아예 안 숨긴다(지적: 일꾼이 일을 안 하는
+                 것처럼 보임) — 왕복 폭이 발자국보다 좁아 숨김 창이 왕복을 통째로
+                 삼켰다. 아래 창은 밭이 3타일 넘게 떨어진 보통 맵에서만 건다. */
+              /* 숨김 창을 좁힌다(지적: 첫 4기가 채취하는 게 안 보인다) — ±1.8×1.3타일은
+                 4×3 발자국의 거의 전부라, 반납 왕복의 절반을 건물 속으로 삼켰다(실측:
+                 경기 20초에 일꾼 41기가 이 규칙으로 사라졌다). 정말 안으로 들어간
+                 한가운데(±1.15×0.85)만 숨긴다. */
+              const inHall = halls.some((h) => h.raw === e.raw && h.sec <= t
+                && (h.gone === 0 || t < h.gone)
+                && Math.abs(h.x - pos.x) <= 1.15 && Math.abs(h.y - pos.y) <= 0.85);
+              if (inHall) return null;
+              /* 가스 건물도 같은 규칙(지적: 가스 일꾼이 들어가기 한참 전에 사라짐) —
+                 발자국 한가운데(문턱 1.4×0.7)에 정말 '들어간 순간'만 숨는다. 다가가는
+                 동안은 그대로 보인다. */
+              const inGas = buildsSrc.some(([bs6, bx6, by6, bu6, br6, bg6]) =>
+                br6 === e.raw && bs6 <= t && ((bg6 ?? 0) === 0 || t < (bg6 ?? 0))
+                && (bu6 === "Refinery" || bu6 === "Assimilator" || bu6 === "Extractor")
+                && Math.abs(bx6 + footDx(bu6) - pos.x) <= 1.4
+                && Math.abs(by6 + footDy(bu6) - pos.y) <= 0.7);
+              if (inGas) return null;
+            }
+            /* 코어 자리로 못 박는다(기획서 P1, ?sim=1) — 이제 위의 걸음(rawPos)부터가
+               코어 자취를 읽은 값이라(과제 #61) 여기서 자리가 달라질 일은 사실상 없다.
+               남는 몫은 둘이다: 코어만 아는 몸 방향(hdg)과, 배 안(ST_INSIDE)이면 아예
+               안 그리는 판정. 코어 결과가 아직 없으면(계산 중·실패) 렌더러 길 그대로다.
+               아래 스무딩도 코어면 건너뛴다 — 이미 제 속도로 적분된 자리다. */
+            let simHdg: number | null = null;
+            /** 코어가 말하는 지금 상태 — 사주경계는 '정말 서 있을 때'만이라 이 값이 필요하다. */
+            let simState: number | null = null;
+            const simTr = simTracks?.get(e.tag);
+            if (simTr) {
+              const sp = posAtSim(simTr, t);
+              if (sp) {
+                if (sp.state === ST_INSIDE) return null;
+                pos = { ...pos, x: sp.x, y: sp.y };
+                simHdg = sp.hdg;
+                simState = sp.state;
+              }
+            }
+            /* 얼어붙은 것은 코어보다 위다(전수조사: 스태시스·마엘스톰·락다운) — 코어는
+               그 기술을 모르니 제 갈 길을 계속 걷는다. 못 박는 쪽은 증거다. 여태 이
+               덮어쓰기가 코어 덮어쓰기보다 **앞**에 있어, 코어를 켜면 언 유닛이 그대로
+               걸어 다녔다(과제 #61 — 두 모형이 같은 몸을 밀던 자리). */
+            if (frzSt) {
+              const fp2 = posAt(rp, Math.max(rp[0][0], frzSt[0]));
+              if (fp2) pos = { ...pos, x: fp2.x, y: fp2.y };
+            }
+            /* 땅에 박혀 있다(지적: 러커와 버로우 러커가 같이 움직인다) — 땅속인 동안은
+               자취·교전 당김·시뮬이 무슨 자리를 내놓든 판 그 자리다. 아래 스무딩보다
+               앞에 둬, 파고드는 순간에는 미끄러져 들어가고 그 뒤로는 못 박힌다. */
+            if (burrowed) {
+              const bp2 = posAt(rp, Math.max(rp[0][0], burrowAt));
+              if (bp2) pos = { ...pos, x: bp2.x, y: bp2.y };
+            }
+            /* 화면 스무딩(지적: 뚝뚝 끊김 → 재요청: 순간이동 무조건 제거, 아무리 짧아도
+               스무스) — 지난 프레임 표시 자리에서 목표로 지수 추종. 거리 상한(6타일 스냅)
+               을 걷어 드랍·리콜 급 큰 이동도 빠른 미끄럼으로 잇는다. 시간 되감기·큰 시간
+               건너뜀(탐색)만 그 자리 리셋이다. */
+            if (!simTr) {
+              const mem2 = drawPosRef.current.get(holdKey);
+              if (mem2 && t >= mem2.at && t - mem2.at < 1.5) {
+                const dt5 = t - mem2.at;
+                const k5 = 1 - Math.exp(-dt5 * 6);
+                let nx5 = mem2.x + (pos.x - mem2.x) * k5;
+                let ny5 = mem2.y + (pos.y - mem2.y) * k5;
+                /* 활강 속도 상한(지적: 갓 태어난 유닛이 랠리로 확 미끄러짐) — 지수 추종은
+                   먼 어긋남일수록 초반이 광속이라 표시 이동을 죈다. 상한은 제 속도표의
+                   1.5배(요청: 걸음 속도 상한) — 한 자로 9타일을 쓰면 걸음 3타일짜리
+                   질럿도 초당 9타일까지 미끄러졌다. 추종의 따라잡기 몫이라 걸음보다는
+                   넉넉히 준다. 드랍·리콜은 걸음 상한에서 빠지지만 화면 추종은 종전대로
+                   9타일로 죈다 — 순간이동 무조건 금지가 화면의 원칙이다. */
+                const md5 = Math.hypot(nx5 - mem2.x, ny5 - mem2.y);
+                const cap5 = (vCap9 === undefined ? 9 : (vCap9 / 1.15) * 1.5) * dt5;
+                if (md5 > cap5 && md5 > 0) {
+                  nx5 = mem2.x + ((nx5 - mem2.x) / md5) * cap5;
+                  ny5 = mem2.y + ((ny5 - mem2.y) / md5) * cap5;
+                }
+                pos = { ...pos, x: nx5, y: ny5 };
+              }
+              drawPosRef.current.set(holdKey, { x: pos.x, y: pos.y, at: t });
+            }
+            if (dieAt === null || t < dieAt) diePosRef.current.set(holdKey, { x: pos.x, y: pos.y });
+            const [ax3, ay3] = [pos.x, pos.y];
+            const [fx, fy] = posFrac(ax3, ay3);
+            /* 건설 일꾼 뒷그물(재지적: 좌하단의 '진짜' 일꾼이 남는다 — 앵커 판정
+               buildHideAt을 비껴간 경우) — 조용히 서 있는 일꾼이, 제 최근 활동 무렵
+               '이후'에 선 내 건물 발자국에 붙어 있으면(회피가 모서리로 밀어낸 그 자리)
+               그 공사에 흡수된 것으로 본다. 오래전부터 서 있던 본진 곁 일꾼은 건물이
+               제 활동보다 한참 앞서라 안 걸린다. */
+            if (isWorker && !rawPos.moving) {
+              let lastAct = e.b;
+              for (const os3 of e.orders) {
+                if (os3 <= t) lastAct = os3;
+                else break;
+              }
+              const absorbed = buildsSrc.some(([bs4, bx4, by4, bu4, br4, bg4]) => {
+                if (br4 !== e.raw || bs4 > t || ((bg4 ?? 0) > 0 && t >= (bg4 ?? 0))) return false;
+                if (bs4 < lastAct - 60) return false;
+                const [fw4, fh4] = FOOTPRINT[bu4] ?? [3, 2];
+                return Math.abs(pos.x - (bx4 + fw4 / 2)) <= fw4 / 2 + 1.2
+                  && Math.abs(pos.y - (by4 + fh4 / 2)) <= fh4 / 2 + 1.2;
+              });
+              if (absorbed) return null;
+            }
+            // 죽음 창(dieAt~+1.2초) — 마커 대신 종족별 사망 효과가 남는다(체력 0 즉사 포함).
+            if (dieAt !== null && t >= dieAt) {
+              if (!qDeath) return null;
+              /* 인구 상한이 무른 합성은 죽는 장면이 없다(지적: "복제품들이 땅에 나타나서는
+                 곧 혼자 죽음") — 원장이 제 과잉 계상을 무르는 것이라, 때린 놈도 없고
+                 죽음도 아니다. 시뮬이 따로 죽였으면 그건 진짜 죽음이라 그대로 터진다. */
+              if (simDie === null && e.dk === "cap") return null;
+              const dk = race === "저그" ? "zerg" : race === "프로토스" ? "toss" : "mech";
+              /* 죽은 자리에 못박기(지적: 체력 0으로 소멸한 유닛이 폭발하며 움직임) —
+                 지금 표시 위치(스무딩·걸음이 계속 간다)가 아니라 죽은 '순간'의 자취
+                 좌표에서 터진다. */
+              const dmem0 = diePosRef.current.get(holdKey);
+              const dp0 = dmem0 ?? posAt(rp, Math.max(rp[0][0], dieAt));
+              const dpx = dp0 ? dp0.x : ax3;
+              const dpy = dp0 ? dp0.y : ay3;
+              /* 공중은 떠 있던 몸 자리에서 터진다(지적) — 비행 높이만큼 위로. */
+              const dieLift = uAir
+                ? (drawUnit === "" ? unitGlyphPx(unitMarkerKind("", race), unitMarkerKind("", race), 0, dpy)
+                  : unitPxOf(drawUnit, dpy)) * 1.6 : 0;
+              return (
+                <span
+                  key={`v2die-${ei}`}
+                  className="scr-motion-army scr-motion-dot"
+                  style={{ ...posStyle(dpx, dpy), zIndex: 1300, ...(dieLift ? { marginTop: `${(-dieLift).toFixed(1)}px` } : {}) }}
+                >
+                  <span className={`scr-motion-diefx scr-die-${dk}`} />
+                </span>
+              );
+            }
+            /* 시즈모드(지적: 판정을 리플레이에서) — Siege/Unsiege 커맨드 증거 그대로. */
+            let siegeOn = 0;
+            for (const [ss2, on2] of e.sieges) { if (ss2 <= t) siegeOn = on2; else break; }
+            const drawUnit2 = siegeOn === 1 && drawUnit.startsWith("Siege Tank")
+              ? "Siege Tank (Siege Mode)" : drawUnit;
+            /* 표적 거리는 '그려지는 몸'에서 다시 잰다(지적: 맞는 대상이 없는데 공격한다 /
+               둘이 너무 멀어 따로 놀아 보인다) — foe.bd는 원자취(명령 좌표) 기준인데,
+               화면의 몸은 교전 당김·잽·채굴 왕복·겹침까지 실린 딴 자리에 있다. 그 둘이
+               몇 타일씩 벌어진 채로 사격 판정과 조준각을 원자취 거리로 내리다 보니, 몸
+               옆에 아무도 없는데 트레이서가 나가고 각도도 엉뚱한 데를 겨눴다. 아래 사격
+               ·조준·가시 길이는 전부 이 값을 쓴다. */
+            const foeDist = Number.isFinite(foe.bd)
+              ? Math.hypot(foe.bx - pos.x, foe.by - pos.y) : Infinity;
+            /* 몸 방향(지적: 트레이서와 불일치 + 뒤로 걷기) — 싸울 땐 표적을 바라보고,
+               걸을 땐 실제 화면 이동 방향을 본다(headingOfDisplay). */
+            const foeDeg = foeDist <= ENGAGE_SIGHT_TILES
+              ? Math.atan2(-(foe.bx - pos.x), foe.by - pos.y) * (180 / Math.PI) : null;
+            /* 싸울 때도 '움직이면 이동 방향'이 먼저다(요청) — 표적 고정 요잉은 잽으로
+               파고들거나 진형이 밀릴 때 몸이 옆·뒤로 미끄러지게 만들었다. 제자리에 선
+               순간에만 표적을 본다. */
+            const bodyHdg0 = simHdg !== null ? simHdg : headingOfDisplay(
+              holdKey, pos.x, pos.y, headingOf(rp, rawPos),
+              fighting && foeDeg !== null ? foeDeg : null,
+            );
+            /* 사주경계(요청: "제자리 서있는 유닛들이 주기적으로 사주경계를 함 … 하는 유닛이
+               있고 안 하는 유닛이 있고 패턴도 다르다") — 원전의 정체는 iscript 옵코드
+               turnrand다([OBW] bwgame.h:14921): 몸을 8_dir×a(11.25도의 배수)만큼 돌리되
+               네 번에 한 번만 반시계, 나머지는 시계다(시계 쪽으로 치우친 무작위).
+               ⚠ **누가 어떤 박자로 도는가는 iscript.bin에 있고 우리 자료에는 없다** —
+                 BWAPI·units.dat·flingy.dat 어느 덤프에도 스크립트는 안 들어 있다(게임 MPQ를
+                 IceCC로 풀어야 나온다). 그래서 여기 [어림]은 둘이다:
+                   ① 도는 유닛 — 커뮤니티 문서가 확인해 주는 보병(마린이 총을 들었다 내리며
+                      두리번거린다)만 켠다. 차량·기계·일꾼·공중은 안 켠다.
+                   ② 박자 — 3.2초마다 한 번, 태그로 위상을 흩어 부대가 한꺼번에 안 돈다.
+                 도는 **양과 방향**만은 원전 그대로다(11.25도 배수·시계 3:1).
+               iscript 덤프를 구하면 이 블록의 표만 갈면 정확해진다. */
+            const bodyHdg = (() => {
+              if (!IDLE_SCAN.has(drawUnit2) || fighting || burrowed) return bodyHdg0;
+              if (simState !== null && simState !== 0) return bodyHdg0;   // 0 = ST_IDLE
+              const step = Math.floor(t / IDLE_SCAN_SEC + (e.tag % 7) / 7);
+              const r = (step * 2654435761 + e.tag * 40503) >>> 0;   // 결정론 난수(같은 입력=같은 그림)
+              const amt = 1 + (r % 2);                                // 11.25 또는 22.5도
+              const ccw = (r >>> 8) % 4 === 1;                        // 네 번에 한 번만 반시계
+              return bodyHdg0 + (ccw ? -1 : 1) * amt * 11.25;
+            })();
+            /* 지금 체력(요청: 체력을 지니고 다닌다) — 변곡점 목록에서 t 시점 값.
+               내려간 변곡점의 시각은 곧 '이 개체가 실제로 맞은 순간'이라, 피격 불티를
+               그 자리·그 때에 띄우는 자로 함께 쓴다(요청: 피격 표현 재검토). */
+            /* 체력은 실제 수치다(지적: "체력은 반올림 없이 실제 수치로") — 자취의 값이
+               곧 남은 체력(실드 포함)이라, 만피는 표에서 가져와 나눈다. */
+            const hpFull = (() => {
+              const st0 = UNIT_STATS[drawUnit2] ?? UNIT_STATS[drawUnit];
+              return st0 ? st0.hp + (st0.sh ?? 0) : 40;
+            })();
+            let hpNow = hpFull;
+            let hurtAt = -99;
+            for (const [hs2, hv2] of e.hp) {
+              if (hs2 > t) break;
+              if (hv2 < hpNow) hurtAt = hs2;
+              hpNow = hv2;
+            }
+            /* 선택 표시(지적: 드래그 선택 구분) — 방금 명령을 받았다는 것은 그 직전에
+               (드래그든 부대지정이든) 잡혔다는 뜻이다. 클릭 토글이 켜져 있으면 명령
+               직후 0.35초 동안 몸에 흰 링이 켜져, 함께 잡힌 무리가 한눈에 보인다. */
+            const selNow = clickFx && e.orders.some((os2) => t >= os2 && t - os2 <= 0.35);
+            /* 시즈탱크 반동(요청: 발포 시 포탑·포신만) — 차체/포탑을 딴 판으로 밀어,
+               쏘는 박자에 포탑 판만 뒤로 살짝 밀렸다 돌아온다. */
+            /* 변태 중이면 알·고치다(요청) — 태어난 직후 MORPH_SHELL_SEC 동안은 제 모습이
+               아니라 껍질 안이다. 이 동안은 싸우지도 않는다(아래 canFight). */
+            const morphShell = MORPH_SHELL[drawUnit] !== undefined
+              && t - e.b < MORPH_SHELL_SEC ? MORPH_SHELL[drawUnit] : null;
+            const kind0 = morphShell ?? (burrowed ? "burrowhole"
+              : isWorker ? workerLoadKind(workerKindOf(race), simState)
+                : unitMarkerKind(drawUnit2, race));
+            const gunKind = kind0 === "tank" ? "tankgun" : kind0 === "tanksiege" ? "tanksiegegun" : null;
+            const kindMain = kind0 === "tank" ? "tankbody" : kind0 === "tanksiege" ? "tanksiegebody" : kind0;
+            unitOps.push({
+              fx, fy,
+              /* 공중은 2D에서도 y순(지적: 공중 유닛 간 앞뒤 섞임) — ei 나머지는 무작위
+                 순서라 뒤 풍선이 앞을 덮었다. */
+              /* 같은 줄이면 유닛이 건물보다 위(지적: 유닛이 건물에 가려짐) — 건물의
+                 화가 기준은 발자국 아랫변이라 같은 y면 깊이가 같은데, 건물에만 나이
+                 가산(최대 +30)이 붙어 앞에 선 유닛까지 덮었다. 유닛에 그보다 큰 붙박이
+                 +40을 줘 같은 깊이에서는 늘 유닛이 이기게 한다(뒤에 선 유닛은 y가 작아
+                 여전히 건물 뒤로 간다). */
+              z: pitched || uAir ? 1000 + Math.round(ay3 * Z_TILE) + 400 : 1000 + (ei % 137),
+              kind: kindMain,
+              selRing: selNow || undefined,
+              // 보임 토글이면 만피여도 표시(요청: 모든 유닛·건물 다 표시).
+              hpFrac: Math.max(0.04, Math.min(1, hpNow / Math.max(1, hpFull))),
+              hpMax: hpFull,
+              // 정보 팝업 신원(요청) — 개체 태그가 프레임을 건너 같은 몸을 가리킨다.
+              pickKey: `u${e.tag}`, pickName: e.unit, pickRaw: e.raw,
+              /* 지금 무슨 상태인가(요청: 모든 상태 노출) — 땅속·은신·얼음·전투까지, 몸이
+                 이미 아는 것을 글로 옮긴다. 없으면 상태 줄을 안 적는다. */
+              pickStatus: (() => {
+                const a4 = e.statuses.find(([sa5, sb5]) => t >= sa5 && t < sb5);
+                return a4 ? a4[2] : undefined;
+              })(),
+              pickState: (() => {
+                const st: string[] = [];
+                if (burrowed) st.push("땅속");
+                /* 은신(요청) — 연구로 켠 창(e.cloaks)과 늘 은신인 둘. 아비터 은신장은
+                   곁 유닛 사정이라 이 자리에서 모른다. */
+                if (e.cloaks.some(([ca2, cb2]) => t >= ca2 && t < cb2)
+                  || e.unit === "Dark Templar" || e.unit === "Observer") st.push("은신");
+                const actSt2 = e.statuses.find(([sa4, sb4]) => t >= sa4 && t < sb4);
+                if (actSt2) st.push(STATUS_KO[actSt2[2]] ?? actSt2[2]);
+                return st.length > 0 ? st.join(" · ") : undefined;
+              })(),
+              tint: (() => {
+                const actSt = e.statuses.find(([sa3, sb3]) => t >= sa3 && t < sb3);
+                return actSt ? STATUS_TINT[actSt[2]] : undefined;
+              })(),
+              // 승하차 뱅글(요청) — 몸 방향에 한 바퀴를 얹는다. 요잉 버킷이 16방이라
+              // 스프라이트는 이미 구워 둔 판을 돌아가며 쓸 뿐, 새로 굽지 않는다.
+              rotDeg: burrowed ? undefined : bodyHdg + rideSpin,
+              viewYaw: viewYawOf(ax3, ay3), flat: !pitched, pitch: pitched,
+              /* 크기 열쇠 셋을 바로잡는다(지적 셋을 한 줄에서 고친다):
+                 ① drawUnit이 아니라 drawUnit2 — 시즈모드 탱크가 "tank" 줄에서 크기를 받아
+                    tanksiege 손잡이가 죽은 값이었다.
+                 ② 그리는 모델은 kindMain(tankbody·burrowhole·lurkeregg…)이므로 잉크 몫은
+                    그쪽에서 찾는다. 원작 치수는 여전히 유닛 것이다(버로우한 히드라 구멍은
+                    히드라 크기).
+                 ③ 이름 없는 유닛은 제가 그려지는 모델(kindMain = 종족 기본 보병)의 크기다.
+                    예전엔 그림은 마린인데 상자는 SCV라 25% 어긋났다. */
+              sizePx: (drawUnit === ""
+                ? unitGlyphPx(kindMain, kindMain, 0, ay3) : unitPxOf(drawUnit2, ay3, kindMain))
+                * (1 - rideK * 0.75), // 승하차 축소(요청)
+              // 진형 간격은 원작 몸 지름 — 그리기 크기를 만져도 안 흔들린다.
+              sepPx: drawUnit === "" ? unitSepPxOf("?") : unitSepPxOf(drawUnit2),
+              /* 태울 땐 떠오르며 사라지고, 내릴 땐 그 반대로 내려오며 드러난다(요청)
+                 — rideK가 태우기에서 0→1, 내리기에서 1→0이라 한 식이 둘을 다 낸다. */
+              rise: rideK * 1.6,
+              color: modeColor(e.raw, team),
+              alpha: (() => {
+                /* 클로킹(전수조사) — 개인 클록(f=14/15)·상시 은신(다크·옵저버)·아비터
+                   은신장. 적 디텍터(오버로드·옵저버·베슬·터렛·스포어·캐논·스캔)가
+                   곁이면 반쯤 벗겨진다. */
+                const cloakedNow = e.cloaks.some(([ca, cb]) => t >= ca && t < cb)
+                  || drawUnit === "Dark Templar" || drawUnit === "Observer"
+                  || (drawUnit !== "Arbiter" && arbiterSpots.some((asp) =>
+                    asp.raw === e.raw && Math.hypot(asp.x - pos.x, asp.y - pos.y) <= 4.5));
+                if (!cloakedNow) return u === "" ? 0.8 : 1;
+                const detected = detectorSpots.some((dsp) => dsp.team > 0
+                  && dsp.team !== (team ?? 0) && Math.hypot(dsp.x - pos.x, dsp.y - pos.y) <= 9);
+                return detected ? 0.72 : 0.4;
+              })() * (1 - rideK * 0.95), // 승하차 페이드(요청)
+              air: uAir,
+              /* 겹침 이완은 v2에선 안 쓴다(지적: 다시 넣되 새로) — 도착 대형(entWalks의
+                 해바라기 나선)이 겹침을 미리 푸는 방식이라, 프레임마다 밀치는 이완의
+                 떨림이 없다. */
+              noSep: true,
+            });
+            /* 귀신 활강(요청: 하템이 약간 귀신처럼 이동) — 걷는 동안 지나온 자리에
+               몸 잔상 두 장을 점점 옅게 끌고 다닌다. 그림자·체력바·링 없이 몸만. */
+            if (kindMain === "htemp" && rawPos.moving && !fighting) {
+              const hr9 = (bodyHdg * Math.PI) / 180;
+              const mainOp = unitOps[unitOps.length - 1];
+              for (let gi = 1; gi <= 2; gi += 1) {
+                const [gfx9, gfy9] = posFrac(ax3 + Math.sin(hr9) * 0.45 * gi, ay3 - Math.cos(hr9) * 0.45 * gi);
+                unitOps.push({
+                  ...mainOp, fx: gfx9, fy: gfy9, z: mainOp.z - gi,
+                  alpha: mainOp.alpha * (gi === 1 ? 0.32 : 0.15),
+                  selRing: undefined, hpFrac: undefined, tint: undefined, noShadow: true,
+                });
+              }
+            }
+            /* 포탑 판(요청: 발포 시 포탑·포신만 움직임) — 쏘는 박자(1.5초 주기 앞 0.18초)에
+               포탑만 뒤로 0.4타일 밀렸다 돌아온다. 차체 판(kindMain)은 제자리다. */
+            if (gunKind) {
+              const fireK = fighting && foeDeg !== null && ((t + ei * 0.7) % 1.5) < 0.18 ? 1 : 0;
+              const gdx = foeDeg !== null ? -Math.sin((foeDeg * Math.PI) / 180) : 0;
+              const gdy = foeDeg !== null ? Math.cos((foeDeg * Math.PI) / 180) : 0;
+              const last = unitOps[unitOps.length - 1];
+              const [gfx, gfy] = posFrac(ax3 - gdx * 0.4 * fireK, ay3 - gdy * 0.4 * fireK);
+              unitOps.push({
+                // 포신 가려짐 해결(지적) — 곁 유닛의 z가 포탑을 얇게 자르지 않게 여유 있게.
+                ...last, kind: gunKind, fx: gfx, fy: gfy, z: last.z + 30,
+                selRing: undefined, hpFrac: undefined, hpMax: undefined,
+                tint: undefined, groundShadow: undefined,
+              });
+            }
+            /* 전투 효과(지적: 효과 다 살리기) — 유닛별 예광탄이 가장 가까운 적 쪽으로
+               뻗고, 이따금 퍼프가 터진다. DOM 수를 아끼려 세 개체에 하나만 효과를 단다. */
+            /* 피격 연출(지적: 마린 트레이서는 있는데 공격받는 오버로드엔 피격효과가
+               없다) — 최근 적 공격 명령의 표적이 '나'면, 싸울 수 없는 유닛(오버로드·
+               일꾼·수송)에도 맞는 불꽃이 튄다. */
+            /* 인터셉터(요청: 개수 실시간) — 캐리어 둘레를 도는 작은 점들. 개수는
+               Train Fighter 변곡점 그대로다. */
+            if (drawUnit === "Carrier" && e.ic.length > 0) {
+              let icN = 0;
+              for (const [is3, iv3] of e.ic) {
+                if (is3 <= t) icN = iv3;
+                else break;
+              }
+              if (icN > 0) {
+                return (
+                  <span
+                    key={`v2ic-${ei}`}
+                    className="scr-motion-army scr-motion-dot"
+                    style={{ ...posStyle(ax3, ay3), zIndex: 1305, color: modeColor(e.raw, team) }}
+                  >
+                    {Array.from({ length: icN }).map((_, ki) => (
+                      <span
+                        key={ki}
+                        className="scr-ic-dot"
+                        style={{ transform: `rotate(${((ki * 360) / icN + t * 50) % 360}deg) translateX(10px)` }}
+                      />
+                    ))}
+                  </span>
+                );
+              }
+            }
+            /* 피격(요청: 지금은 피해 객체와 멀리 떨어진 곳에서 나오고 크기도 크다) —
+               예전엔 '최근 8초 안에 어택 명령이 찍은 태그'를 맞은 것으로 쳤다. 명령이
+               찍힌 곳과 실제로 맞는 곳은 다르고(표적은 그 사이 걸어가 있다), 8초 내내
+               켜져 있어 싸움과 무관한 자리에서도 불티가 텄다. 이제 제 체력 자취가
+               내려간 순간(hurtAt)에만, 제 몸 위에서 짧게 튄다. */
+            // 잠깐만 뜬다(지적: "절대 움직임 없게 잠깐 표시") — 0.7 → 0.3초.
+            const hitNow = t - hurtAt <= 0.3;
+            /* 효과는 가슴 높이(지적: 공격 효과가 너무 낮다 — 발밑에서 튀었다) — 마커
+               기준점은 발 자리라, 유닛 키의 1/3만큼 띄워 몸통에 맞춘다. */
+            const fxPx = drawUnit === ""
+              ? unitGlyphPx(kindMain, kindMain, 0, ay3) : unitPxOf(drawUnit2, ay3, kindMain);
+            const fxLift = { marginTop: `${(-fxPx * 0.34).toFixed(1)}px` };
+            /* 맞는 쪽 불티(요청: 크기도 몸에 맞게) — 고정 크기(9px에 scale 0.25)라
+               유닛 크기를 캔버스 비례로 바로잡은 뒤엔 작은 유닛 위에서 유독 컸다.
+               몸 상자의 0.55배로 잡고 가슴 높이에 띄운다. 싸우는 중이어도 맞으면
+               띄운다 — 맞는 것과 때리는 것은 따로다. */
+            /* 프로토스는 실드가 먼저 깎인다(요청: 실드가 남은 유닛·건물은 반투명 실드가
+               깜빡이는 표현으로) — 체력 자취는 실드까지 합친 몫이라, 남은 비율이 체력
+               몫보다 크면 아직 실드가 버티는 중이다. 그동안은 불티 대신 몸을 감싼 푸른
+               막이 한 번 번쩍인다. */
+            const st9 = UNIT_STATS[drawUnit2] ?? UNIT_STATS[drawUnit];
+            const shShare9 = st9 && st9.sh ? st9.sh / (st9.hp + st9.sh) : 0;
+            const shieldUp9 = shShare9 > 0
+              && hpNow / Math.max(1, hpFull) > 1 - shShare9 + 0.001;
+            const hitSpark = qCombat && hitNow ? (
+              shieldUp9 ? (
+                <span
+                  key={`shd-${Math.round(hurtAt * 10)}`}
+                  className="scr-motion-shieldfx"
+                  style={{
+                    width: `${(fxPx * 1.05).toFixed(1)}px`,
+                    height: `${(fxPx * 1.05).toFixed(1)}px`,
+                  }}
+                />
+              ) : (
+                <span
+                  key={`hit-${Math.round(hurtAt * 10)}`}
+                  className="scr-motion-puff scr-puff-hit"
+                  style={{
+                    /* 맞는 방향에, 움직임 없이 잠깐(지적) — 코어의 발사 사건에서 쏜 쪽
+                       자리를 찾아 몸 테두리 쪽으로 옮긴다. 방향을 모르면(사건이 없거나
+                       증거만으로 아는 피격) 예전처럼 몸 가운데다. */
+                    width: `${(fxPx * 0.42).toFixed(1)}px`,
+                    height: `${(fxPx * 0.42).toFixed(1)}px`,
+                    // 쏜 쪽을 모르니 몸 가운데다(위 '발사·피격 사건' 주석).
+                    transform: "translate(-50%, -60%)",
+                  }}
+                />
+              )
+            ) : null;
+            if (hitSpark && !fighting) {
+              return (
+                <span
+                  key={`v2hit-${ei}`}
+                  className="scr-motion-army scr-motion-dot scr-v2fx"
+                  style={{ ...posStyle(ax3, ay3), zIndex: 1310, ...fxLift }}
+                >
+                  {hitSpark}
+                </span>
+              );
+            }
+            /* 수리·힐 연출(지적: 일꾼 수리 + 매딕 힐) — 명령 뒤 8초 동안 그 자리에서
+               일한다: SCV는 용접 불티, 매딕은 흰 십자가 떠오른다. */
+            if (!fighting) {
+              const fixAt = e.fixes.length > 0
+                ? e.fixes.filter((fs) => fs <= t && t - fs <= 8).pop() : undefined;
+              if (fixAt !== undefined) {
+                const heal = drawUnit === "Medic";
+                return (
+                  <span
+                    key={`v2fix-${ei}`}
+                    className="scr-motion-army scr-motion-dot scr-v2fx"
+                    style={{ ...posStyle(ax3, ay3), zIndex: 1310, ...fxLift }}
+                  >
+                    <span
+                      key={`fx-${Math.floor(t / 1.1)}`}
+                      className={heal ? "scr-motion-healfx" : "scr-motion-puff scr-puff-weld"}
+                    />
+                  </span>
+                );
+              }
+            }
+            /* 럴커 가시(지적: 가시 표현이 안 나옴) — 럴커는 교전 돌입 목록(ENGAGE_SKIP)
+               밖이라 fighting이 영영 거짓이었고 가시 트레이서도 안 나왔다. 원작대로
+               버로우한 채 적이 사거리 안이면 명령 없이도 가시를 쏜다. 럴커는 수가 적으니
+               1/3 솎기도 안 태운다.
+               값은 표에서 온다: 무기 사거리 6타일(Subterranean_Spines 192px). 주석은 6이라
+               적어 놓고 코드는 '여유 7'을 사거리로 쓰고 있었다. 그리고 가시는 지상 전용
+               무기라 공중 표적에는 안 나간다. */
+            const lurkRange = fireRangeTilesOf("Lurker", false);
+            const lurkStrike = burrowed && !frzSt && !foe.air && foeDist <= lurkRange;
+            /* 솎기(기획서 1-G) — 근접은 이제 그릴 효과가 없으므로(잽 동작이 대신한다) 덜
+               솎을 이유도 없다. 다만 맞은 불티는 솎으면 안 된다 — 맞는 순간은 개체마다
+               한 번뿐이라 솎이면 통째로 사라진다. */
+            if (fighting && !lurkStrike && !hitSpark && ei % 3 !== 0) return null;
+            if (((!fighting && !lurkStrike) || !qCombat) && !hitSpark) return null;
+            /* 근접은 효과 스팬 자체가 없다 — 잽으로 때리는 것이 보이고, 맞는 쪽 불티는
+               맞는 개체가 제 몸에 띄운다. */
+            if (!lurkStrike && !hitSpark && (MELEE_UNITS.has(drawUnit) || drawUnit === "")) return null;
+            const fxUnit = drawUnit === "" ? (race === "저그" ? "Zergling" : race === "테란" ? "Marine" : "Zealot") : drawUnit;
+            const atkDeg = foeDeg;
+            /* 조준각은 화면 기준(지적 둘: 공중 표적 각도가 안 맞음 + 지상 사격은 지면과
+               평행해야) — 타일 각을 그대로 돌리면 3D의 바닥 눌림(0.74)과 떠 있는 몸
+               (lift)이 무시된다. 화면 픽셀 델타로 재고, 공중 표적·공중 사수는 비행
+               높이를 가감한다. */
+            const aimDeg = (fx9: number, fy9: number, fAir: boolean): number => {
+              const tPx9 = (mapRef.current?.clientWidth ?? 320) / grid.width;
+              const ddx = (fx9 - pos.x) * tPx9;
+              let ddy = (fy9 - pos.y) * tPx9 * (pitched ? pitchFlat : 1);
+              // 비행 높이 반감(재재지적)과 함께 0.8로.
+              if (fAir) ddy -= fxPx * 0.8;
+              if (uAir) ddy += fxPx * 0.8;
+              return (Math.atan2(-ddx, ddy) * 180) / Math.PI;
+            };
+            const beamDeg = atkDeg !== null ? aimDeg(foe.bx, foe.by, foe.air) : null;
+            /* 총구 모델 앵커(승인) — 몸 스프라이트와 같은 변환으로 앵커를 투영해, 그 자리
+               에서 트레이서를 시작한다. 16-상자 중심(8,8)이 마커 앵커(발 자리)다. 효과
+               스팬이 이미 가슴 높이(-0.34)로 떠 있고 몸 스프라이트는 -0.24만 떠 있어,
+               그 차(+0.10)를 세로에 되돌린다. 앵커 없는 유닛은 픽셀 오프셋 폴백. */
+            const fxKind = unitMarkerKind(
+              siegeOn === 1 && fxUnit.startsWith("Siege Tank") ? "Siege Tank (Siege Mode)" : fxUnit,
+              race,
+            );
+            const mzP = atkDeg !== null
+              ? muzzlePoint(fxKind, atkDeg, viewYawOf(ax3, ay3), pitched) : null;
+            /* 앵커도 몸과 같은 배수를 탄다(정규화) — 모델 공간을 상자 중심으로 키웠으니
+               앵커의 '중심 대비 좌표'도 같은 배수로 늘어난다. 안 태우면 트레이서가 포신
+               끝을 벗어난다.
+               단 **배수는 앵커가 붙은 판의 것**이어야 한다. 탱크·시즈탱크의 총구는 차체가
+               아니라 포신 판(tankgun·tanksiegegun)에 있는데 fxKind는 합본 이름(tank·
+               tanksiege)이라, 그대로 쓰면 1.52배·1.79배 어긋난다. 짝은 modelNormOf가
+               차체 배수로 접으므로 결국 차체·포신·앵커 셋이 한 배수를 쓴다. */
+            /* 버로우 상태에서는 몸이 제 모델이 아니라 **구멍 판**으로 그려진다(kind0가
+               "burrowhole"이다). 앵커 배수도 그 판을 따라야 한다 — 럴커 0.627 대 구멍
+               0.832라 그대로 두면 1.327배 어긋나 가시가 구멍의 32% 자리에서 솟는다
+               (지금은 53%다). 히드라가 버로우한 채 맞을 때도 같은 갈래다. */
+            /* 그 무기의 쿨다운(초) — 트레이서 번쩍임 길이의 자다(위 animationDuration 주석).
+               업그레이드·스팀은 안 본다: 눈에 보이는 것은 '이 무기가 얼마나 자주 쏘나'다. */
+            const fxCd = (() => {
+              const pf9 = isKnownKind(fxUnit) ? profileOf(fxUnit) : null;
+              const w9 = pf9 ? weaponVs(pf9, foe.air) : null;
+              const cd9 = w9 ? w9.cd : 0.6;
+              return Math.min(0.32, Math.max(0.08, cd9 * 0.35));
+            })();
+            const mzS = modelNormOf(burrowed ? "burrowhole" : (MUZZLE_PLATE[fxKind] ?? fxKind));
+            const mzTf = mzP
+              ? `translate(${(((mzP[0] - 8) * mzS * fxPx) / 16).toFixed(1)}px, ${((((mzP[1] - 8) * mzS * fxPx) / 16) + 0.1 * fxPx).toFixed(1)}px) rotate(${beamDeg!.toFixed(1)}deg)`
+              : `rotate(${beamDeg?.toFixed(1)}deg) translateY(${MUZZLE_PX[fxUnit] ?? 4}px)`;
+            return (
+              <span
+                key={`v2fx-${ei}`}
+                className="scr-motion-army scr-motion-dot scr-v2fx"
+                /* 럴커 가시는 가슴 높이가 아니라 땅에서 솟는다 — 들어올림 없이. */
+                style={{ ...posStyle(ax3, ay3), zIndex: 1310, ...glyphStyle(e.raw, team), ...(lurkStrike ? {} : fxLift) }}
+              >
+                {/* 메딕도 그린다(요청: "메딕 노란 작은 동그란 빛") — 여태 heal만 갈래에서
+                    빠져 있어 매딕은 아무 표시가 없었다. 빛 하나라 조준각만 타면 된다. */}
+                {atkDeg !== null && ATTACK_FX[fxUnit] && (
+                  <span
+                    /* 지상·대공이 다른 무기는 표적을 보고 갈아 끼운다(요청) — 레이스(지상
+                       레이저/대공 미사일)·골리앗(총/대공 미사일)·스카우트(플라즈마/대공
+                       미사일)가 그 셋이다. */
+                    className={`scr-motion-tracer scr-tracer-${
+                      (fxUnit === "Wraith" || fxUnit === "Goliath" || fxUnit === "Scout") && foe.air
+                        ? "missile" : ATTACK_FX[fxUnit]}`}
+                    /* 럴커 가시는 표적에서 멈추지 않는다 — 원작의 가시는 표적 자리가 아니라
+                       늘 '제 자리 + 방향 × 최대 사거리'로 나아가(iscript behaviour 9), 그
+                       직선 위의 적 지상 유닛을 모두 훑고 지나간다. 그래서 길이는 표적까지
+                       거리가 아니라 212px 고정이고, 훑는 시간도 가시 속도(18.75px/프레임)가
+                       정한 0.475초다. 예전의 '표적까지 실거리'는 지나쳐 맞는 그림을 지웠다.
+                       px→타일은 원작의 한 타일 = 32px. */
+                    style={{
+                      transform: mzTf, animationDelay: `${((ei * 7) % 5) / 10}s`,
+                      /* 길이는 그 무기의 쿨다운에 매인다(지적: "타이밍을 아주 짧게 가져간다
+                         (공속에 반비례)") — 빨리 쏘는 무기일수록 번쩍임이 짧아 다음 발과 안
+                         겹치고, 느린 무기(시즈·가디언)는 조금 길게 남는다. 쿨다운의 35%를
+                         0.08~0.32초로 죈다. 표 값이라 손으로 정한 수는 상한·하한 둘뿐이다. */
+                      animationDuration: `${fxCd.toFixed(3)}s`,
+                      ...(lurkStrike ? {
+                        height: `${((LURKER_SPINE_TRAVEL_PX / 32) * ((mapRef.current?.clientWidth ?? 320) / grid.width)).toFixed(1)}px`,
+                        animationDuration: `${(LURKER_SPINE_TRAVEL_PX / LURKER_SPINE_SPEED_PX * FRAME_SEC).toFixed(3)}s`,
+                      } : {}),
+                      /* 근접 휘두름 호는 제 몸에 맞춘다(지적: "부메랑 모양이 계속 나온다")
+                         — 6px 고정이라 유닛 크기를 캔버스 비례로 바로잡고 나니 호가 몸통
+                         만 해져, 칼자국이 아니라 옆에 뜬 부메랑으로 보였다. 몸의 절반
+                         크기에 테두리도 그만큼 얇게. */
+                      ...(ATTACK_FX[fxUnit] === "slash" ? {
+                        width: `${(fxPx * 0.34).toFixed(1)}px`,
+                        height: `${(fxPx * 0.34).toFixed(1)}px`,
+                        borderWidth: `${Math.max(0.4, fxPx * 0.05).toFixed(2)}px`,
+                        opacity: 0.85,
+                      } : {}),
+                    }}
+                  />
+                )}
+                {/* (제거) 공격자 발밑 퍼프 — 때리는 쪽에서 터지던 연기라, 맞는 쪽 불티와
+                    헷갈려 "피해 객체와 멀리 떨어진 곳에서 나온다"로 읽혔다(지적). 발사는
+                    트레이서가, 피격은 맞는 쪽 불티가 말한다. */}
+                {hitSpark}
+              </span>
+            );
+          })}
+
+
+          {/* 마법 — 떨어진 자리에 이름이 잠깐 떠오른다. 핵만은 이름에 폭발 파문까지
+              얹는다(요청: "핵 떨어지는거도 효과") — 경기 하나에 몇 번 없는, 그 판의 가장
+              큰 사건이라 다른 마법과 같은 글자 한 줄로는 안 보였다. */}
+          {/* 클릭 자국(요청: 동그라미 안에 점, 납작하게 + 토글) — 브루드워의 이동 클릭
+              표시처럼, 명령이 떨어진 자리에 찍은 사람 색의 납작한 고리+가운데 점이 잠깐
+              남는다. v2 데이터로 그리므로 v2 모드 + 클릭 토글이 켜져 있을 때만이다. */}
+          {clickFx && entClicks.map(([cs, cx2, cy2, raw, ck], i) => {
+            if (t < cs || t - cs > 0.9) return null;
+            /* UI 고정 크기 — 가장 축소(줌 1)에서도 또렷한 18px 기준(재지적). 타일 비례는
+               큰 화면에서만 그보다 커진다. */
+            const ckw = Math.max(18, ((mapRef.current?.clientWidth ?? 320) / grid.width) * 0.55);
+            // 공격 클릭은 붉은 고리로 갈라 보인다(지적: 클릭 종류 구분).
+            return (
+              <span
+                key={`clk-${i}`}
+                className={cx("scr-motion-clickfx", ck === 7 && "scr-clickfx-atk")}
+                style={{
+                  ...posStyle(cx2, cy2), color: modeColor(raw, teamOfRaw(raw)), zIndex: 1490,
+                  "--ckw": `${ckw.toFixed(1)}px`,
+                } as React.CSSProperties}
+              />
+            );
+          })}
+
+          {/* 미니맵 핑(요청: 클릭도 기록 — 리플레이에 좌표가 온전히 남는다) — v2 트랙에만
+              있다. 찍은 사람 색의 물결 고리가 3초 동안 퍼진다. 카메라 시야는 리플레이에
+              저장되지 않아 못 그린다(엔진 재시뮬레이션의 몫). */}
+          {qPing && (entData?.pings ?? []).map(([ps, px, py, ppid], i) => {
+            if (t < ps || t - ps > 3) return null;
+            const raw = entData?.players.find((pl) => pl.id === ppid)?.name ?? "";
+            return (
+              <span
+                key={`ping-${i}`}
+                className="scr-motion-pingfx"
+                style={{ ...posStyle(px, py), color: modeColor(raw, teamOfRaw(raw)), zIndex: 1500 }}
+              />
+            );
+          })}
+
+          {castsNow.map(([sec, x, y, tech, raw], i) => {
+            if (!TECH_KO[tech]) return null; // 한글명을 모르는 기술은 안 띄운다(요청).
+            if (tech === "Nuclear Strike") {
+              /* 핵(정정) — 런치가 아니라 실제 착탄에 폭발(지적): 낙하 동안은 표적 점, 마지막
+                 2초에 탄두가 내려오고, NUKE_FALL_SEC부터 폭발 광원. 크기는 실제 피해 반경
+                 (4타일)에 맞춘 지름 8타일 상자에 %로 그리고 살짝 투명하다(지적). */
+              const age = t - sec;
+              /* 성공 판정(지적) — 불발이면 폭발 없이 표적 점만 보이다 만다. */
+              const landed = nukeImpacts.some((nk) =>
+                nk.confirmed && nk.x === x && nk.y === y && Math.abs(nk.sec - (sec + NUKE_FALL_SEC)) < 0.5);
+              if (age >= NUKE_FALL_SEC && !landed) return null;
+              return (
+                <span
+                  key={`c-${i}`}
+                  className="scr-motion-nukefx"
+                  style={{
+                    ...posStyle(x, y),
+                    width: pct(8, grid.width),
+                  }}
+                >
+                  {age < NUKE_FALL_SEC - 2 ? (
+                    <span className="scr-motion-nuke-dot" />
+                  ) : age < NUKE_FALL_SEC && landed ? (
+                    /* 낙하를 게임 시간으로 직접(수리: CSS 실시간 2초 애니라 배속에서 탄두가
+                       덜 내려왔는데 폭발로 넘어갔다) — 마지막 2초의 진행률로 높이를 잰다. */
+                    <span
+                      className="scr-motion-nuke-fall"
+                      style={{
+                        color: modeColor(raw, teamOfRaw(raw)),
+                        animation: "none",
+                        translate: `0 ${Math.round(-140 * (1 - (age - (NUKE_FALL_SEC - 2)) / 2))}px`,
+                        opacity: 0.4 + 0.6 * ((age - (NUKE_FALL_SEC - 2)) / 2),
+                      }}
+                    >
+                      <ShapeIcon kind="nuke" flat={!pitched} pitchView={pitched} />
+                    </span>
+                  ) : (
+                    <>
+                      <span className="scr-motion-nuke-flash" />
+                      {/* 화구는 반구 돔(요청) — 평면 원 대신 3D 돔이 부푼다. */}
+                      <span className="scr-motion-nuke-domewrap"><ShapeIcon kind="nukedome" flat={!pitched} pitchView={pitched} /></span>
+                      <span className="scr-motion-nuke-ring" />
+                    </>
+                  )}
+                </span>
+              );
+            }
+            {
+              /* 특징 기술 효과(요청) — 이름 배지 대신 실제 영역 크기의 전용 효과.
+                 [클래스, 지름(타일)] — 영역은 인게임 어림이다. */
+              const AREA_FX: Record<string, [string, number]> = {
+                Plague: ["plague", 5], Ensnare: ["ensnare", 5], Irradiate: ["irrad", 2.5],
+                "EMP Shockwave": ["emp", 6], "Stasis Field": ["stasis", 4],
+                Lockdown: ["lock", 2.2], Maelstrom: ["mael", 5], Recall: ["recall", 4],
+                /* 스캔 지름은 실제 탐지 반경 그대로(요청) — 8타일짜리 장식 고리가 아니라,
+                   그 안의 은신이 벗겨지는 바로 그 원이다. */
+                "Scanner Sweep": ["scan", DETECT_TILES * 2], "Disruption Web": ["dweb", 5.5],
+                /* 야마토(정정: 리플레이에 FireYamatoGun 명령이 좌표까지 남는다 — "안
+                   남는다"던 앞선 말은 틀렸다) — 표적에 청백 에너지 구체가 작렬한다. */
+                "Yamato Gun": ["yamato", 2.6],
+              };
+              const fx = AREA_FX[tech];
+              if (fx) {
+                if (tech === "EMP Shockwave" && t - sec > 1.6) return null;
+                if (tech === "Yamato Gun" && t - sec > 2.2) return null;
+                return (
+                  <span
+                    key={`c-${i}`}
+                    className={`scr-motion-castfx scr-fx-${fx[0]}`}
+                    style={{
+                      ...posStyle(x, y),
+                      width: pct(fx[1], grid.width),
+                    }}
+                  >
+                    {/* 스캔 별가루(요청: 뿌리면 그 자리에 별가루) — 원 안에 황금각으로
+                        고르게 흩뿌린 작은 네 갈래 별들이 저마다 어긋난 박자로 반짝인다.
+                        자리는 결정적이라 프레임마다 안 떨린다. */}
+                    {tech === "Scanner Sweep" && SCAN_DUST.map(([dx9, dy9, dl9], di9) => (
+                      <span
+                        key={`d${di9}`}
+                        className="scr-fx-dust"
+                        style={{ left: `${dx9}%`, top: `${dy9}%`, animationDelay: `${dl9}s` }}
+                      />
+                    ))}
+                  </span>
+                );
+              }
+            }
+            if (tech === "Dark Swarm") {
+              /* 다크 스웜(요청) — 갈색 반투명 구름이 우글거린다. 실제 지속(약 60초의
+                 절반만 표시)과 영역(지름 6타일)에 맞춘다. */
+              return (
+                <span
+                  key={`c-${i}`}
+                  className="scr-motion-swarmfx"
+                  style={{
+                    ...posStyle(x, y),
+                    width: pct(6, grid.width),
+                  }}
+                >
+                  <span className="scr-motion-swarm-cloud" />
+                  <span className="scr-motion-swarm-cloud scr-motion-swarm-cloud-b" />
+                </span>
+              );
+            }
+            if (tech === "Psionic Storm") {
+              /* 사이오닉 스톰(요청) — 반투명 번개가 지지직. 영역은 실제 인게임(지름
+                 3타일)과 일치. 폭풍 지속(약 4초)만 보여 준다. */
+              if (t - sec > 4) return null;
+              return (
+                <span
+                  key={`c-${i}`}
+                  className="scr-motion-stormfx"
+                  style={{
+                    ...posStyle(x, y),
+                    width: pct(3, grid.width),
+                  }}
+                >
+                  <span className="scr-motion-storm-glow" />
+                  <span className="scr-motion-storm-flash" />
+                  {/* 원작 스톰(참고 이미지) — 굵은 수직 낙뢰 여러 가닥이 영역 가득 제각각
+                      내리꽂힌다. 가닥마다 잔가지가 붙고, 흰 심지에 파란 광채를 두른다. */}
+                  <svg className="scr-motion-storm-bolts" viewBox="0 0 48 48" aria-hidden>
+                    <path d="M6 3 L11 9 L7 16 L12 22 L5 31 L11 38 L7 46" />
+                    <path d="M16 0 L13 12 L19 18 L14 29 L18 37 L13 47" />
+                    <path d="M24 4 L21 10 L27 15 L23 24 L28 33 L23 41 L27 47" />
+                    <path d="M33 1 L36 8 L30 17 L35 25 L29 35 L34 44" />
+                    <path d="M41 3 L38 12 L44 20 L39 30 L43 39 L40 47" />
+                    <path d="M46 8 L44 16 L47 25 L43 35 L46 43" />
+                    <path d="M11 9 L16 12" />
+                    <path d="M30 17 L25 20" />
+                    <path d="M28 33 L33 36" />
+                    <path d="M14 29 L9 32" />
+                  </svg>
+                </span>
+              );
+            }
+            /* (제거·요청: 배지 더 이상 사용 안 함) — 전용 효과가 없는 기술의 이름 알약
+               배지가 서던 자리. 효과 있는 기술(스톰·스웜·핵·역병 등)만 그린다. */
+            return null;
+          })}
+
+          </div>
+          {/* 유닛 캔버스 층(요청: 캔버스 전환 — 성능, 지적: 확대가 선명해야) — 렌즈 밖에
+              둔다: CSS 확대에 태우지 않고 줌·팬을 그리기 좌표에 직접 입혀, 어느 배율에서도
+              화면 해상도 그대로 또렷하다. unitOps는 렌즈 안 마커 계산부가 이 렌더에서
+              채우고, 커밋 뒤 effect가 그린다. */}
+          {/* 정보 팝업(요청) — 그린 op 목록을 붙들어 둬 클릭 판정이 훑는다. UnitLayer가
+              겹침 이완으로 fx를 손보므로, 판정도 '그려진 자리'와 같은 값을 본다. */}
+          {((): null => { opsRef.current = unitOps; return null; })()}
+          {(() => {
+            if (!picked) return null;
+            const op = unitOps.find((o) => o.pickKey === picked);
+            // 죽거나 무너져 이번 프레임에 없으면 팝업도 닫힌 것처럼 사라진다.
+            if (!op) return null;
+            const en = op.pickName ?? "";
+            const ko = op.pickBld ? BUILDING_KO[en] ?? en : UNIT_KO[en] ?? en;
+            const max = op.hpMax ?? 0;
+            const cur = Math.max(0, Math.round((op.hpFrac ?? 1) * max));
+            const sh = op.pickBld ? (BLD_STATS[en]?.[1] ?? 0) : (UNIT_STATS[en]?.sh ?? 0);
+            const lines: React.ReactNode[] = [];
+            /* 진행 바(요청: 스타 원작처럼 칸 수를 따라) — 원작 진행 바는 통짜가 아니라
+               칸이 하나씩 차오른다. 열 칸으로 나눠 채운 만큼만 밝힌다. */
+            const bar = (label: string, p9: number, col = "#6fe36f"): React.ReactNode => (
+              <div className="scr-motion-info-prog" key={`${label}${p9.toFixed(2)}`}>
+                <span className="scr-motion-info-line">{label}</span>
+                <span className="scr-motion-info-bar">
+                  {Array.from({ length: 10 }, (_, k) => (
+                    <i
+                      key={k}
+                      className={k < Math.round(p9 * 10) ? "is-on" : undefined}
+                      style={k < Math.round(p9 * 10) ? { background: col } : undefined}
+                    />
+                  ))}
+                </span>
+              </div>
+            );
+            /* 걸린 마법은 제 줄에 효과까지(요청) — 무엇에 걸렸는지보다 '그래서 어떻게
+               되는가'가 읽는 사람이 알고 싶은 것이다. */
+            if (op.pickStatus && STATUS_FX[op.pickStatus]) {
+              const sfx = STATUS_FX[op.pickStatus];
+              lines.push(
+                <div className="scr-motion-info-line" key="fx" style={{ color: sfx.col }}>
+                  {`${STATUS_KO[op.pickStatus] ?? op.pickStatus} — ${sfx.fx}`}
+                </div>,
+              );
+            }
+            if (op.pickState) {
+              // 건설·변태도 글 대신 칸 바로(요청).
+              const m9 = /(\d+)%$/.exec(op.pickState);
+              if (m9) lines.push(bar(op.pickState.replace(/\s*\d+%$/, ""), Number(m9[1]) / 100));
+              else lines.push(op.pickState);
+            }
+            /* 실드는 따로 한 줄(요청) — 원작은 실드부터 깎이므로, 남은 값이 체력 몫을
+               넘으면 그 초과분이 곧 남은 실드다. */
+            /* 체력·실드도 원작 색을 따른다(요청: 실드 흰색·체력 연녹색 등 게임 테마를
+               충실히) — 원작 체력 바는 가득하면 연녹, 절반 아래로 노랑, 3분의 1 아래로
+               빨강이다. 실드는 그 위에 흰(옅은 하늘) 칸으로 얹힌다. */
+            const hpOnly = Math.max(1, max - sh);
+            const hpCur = Math.min(cur, hpOnly);
+            const hpR = hpCur / hpOnly;
+            lines.push(bar(`체력 ${hpCur} / ${hpOnly}`, hpR,
+              hpR > 0.5 ? "#7ee07e" : hpR > 0.33 ? "#e8d94a" : "#e05a4a"));
+            if (sh > 0) {
+              const shCur = Math.max(0, cur - hpOnly);
+              lines.push(bar(`실드 ${shCur} / ${sh}`, shCur / sh, "#f2f6ff"));
+            }
+            if (op.pickBld) {
+              /* 생산·연구·큐(요청) — 생산 기록은 '완성 시각'이라, 지금 창 안이면 방금
+                 나온 것, 앞엣것은 큐로 읽는다(무엇이 언제 나오는지가 그대로 큐다). */
+              /* 이 건물에서 나온 것만(지적: 라바 변태 기록이 해처리끼리 공유된다) —
+                 출생 자리가 이 발자국 언저리인 것만 센다. 건물 태그를 아는 생산은 발자국
+                 원점에, 라바처럼 모르는 생산은 발자국 아래 출구에 꽂히므로 두 규약을 다
+                 담게 아래로 한 뼘 더 넓힌다. 자리를 모르는 옛 자취(출생 증거가 없는 것)는
+                 사람별 표로 물러난다 — 안 그러면 팝업이 통째로 비어 버린다. */
+              const fp9 = FOOTPRINT[en] ?? [4, 3];
+              const bx9 = op.pickX;
+              const by9 = op.pickY;
+              const mine9 = bx9 === undefined || by9 === undefined ? null
+                : (prodDoneAt.get(op.pickRaw ?? "") ?? []).filter((r9) =>
+                  r9.x >= bx9 - 1.5 && r9.x <= bx9 + fp9[0] + 1.5
+                  && r9.y >= by9 - 1.5 && r9.y <= by9 + fp9[1] + 2);
+              const evs: [number, string, number][] = [];
+              const kinds9 = new Set(PRODUCED_BY[en] ?? []);
+              if (mine9 && mine9.length > 0) {
+                for (const r9 of mine9) {
+                  if (!kinds9.has(r9.u)) continue;
+                  evs.push([r9.s, UNIT_KO[r9.u] ?? r9.u, UNIT_BUILD_SEC[r9.u] ?? 30]);
+                }
+              } else {
+                for (const u of PRODUCED_BY[en] ?? []) {
+                  const sec = UNIT_BUILD_SEC[u] ?? 30;
+                  for (const ps of prodDoneByRaw.get(op.pickRaw ?? "")?.[u] ?? []) evs.push([ps, UNIT_KO[u] ?? u, sec]);
+                }
+              }
+              evs.sort((a, b) => a[0] - b[0]);
+              /* 진행률(요청) — 리플레이에 남는 건 완성 시각뿐이라, 거기서 생산 시간을
+                 빼 시작을 되짚는다. 지금이 그 사이면 '생산 중 NN%'다. */
+              const making = evs.filter(([ps, , sec]) => t < ps && t >= ps - sec);
+              const queue = evs.filter(([ps, , sec]) => t < ps - sec).slice(0, 4);
+              const justOut = evs.filter(([ps]) => ps <= t && t - ps <= PROD_FLASH_SEC);
+              if (making.length > 0) {
+                for (const [ps, n, sec] of making) {
+                  lines.push(bar(`생산 중 ${n}`, Math.min(0.99, (t - (ps - sec)) / sec)));
+                }
+              } else if (justOut.length > 0) {
+                lines.push(`생산 완료 ${justOut.map(([, n]) => n).join(" · ")}`);
+              } else lines.push("생산 대기");
+              if (queue.length > 0) {
+                lines.push(`큐 ${queue.map(([ps, n, sec]) => `${n} +${Math.max(0, Math.round(ps - sec - t))}초`).join(" · ")}`);
+              }
+              const doing = (upsByRaw.get(op.pickRaw ?? "") ?? []).filter(([us]) =>
+                RESEARCH_BUILDING[en === "Lair" || en === "Hive" ? "Hatchery" : en] === undefined
+                  ? false
+                  : RESEARCH_BUILDING[en === "Lair" || en === "Hive" ? "Hatchery" : en] === en
+                    && us <= t && t - us <= RESEARCH_SEC);
+              for (const [us, n] of doing) {
+                lines.push(bar(`연구 중 ${TECH_KO[n] ?? n}`, Math.min(0.99, (t - us) / RESEARCH_SEC)));
+              }
+            } else {
+              /* 그 유닛에 실제로 걸리는 공/방 줄만 레벨로 보여 준다(요청: 인게임보다
+                 풍부하게 — 해당 유닛의 업그레이드 상태). 줄 고르기는 종족과 공중 여부,
+                 테란만 보병/메카닉 갈래를 더 본다. */
+              const race9 = bases.find((b) => b.key === op.pickRaw)?.race ?? "";
+              const pairs = ARMOR_WEAPON_PAIRS[race9] ?? [];
+              const air9 = isAirUnit(en);
+              const infantry9 = new Set(["Marine", "Firebat", "Medic", "Ghost", "SCV"]);
+              const melee9 = new Set(["Zergling", "Ultralisk", "Broodling", "Drone"]);
+              const pick9 = pairs.find((pr) => {
+                const w = pr.weapon;
+                if (race9 === "테란") {
+                  return air9 ? w === "Terran Ship Weapons"
+                    : infantry9.has(en) ? w === "Terran Infantry Weapons" : w === "Terran Vehicle Weapons";
+                }
+                if (race9 === "저그") {
+                  return air9 ? w === "Zerg Flyer Attacks"
+                    : melee9.has(en) ? w === "Zerg Melee Attacks" : w === "Zerg Missile Attacks";
+                }
+                return air9 ? w === "Protoss Air Weapons" : w === "Protoss Ground Weapons";
+              });
+              const lv = (name: string): number =>
+                (upsByRaw.get(op.pickRaw ?? "") ?? []).filter(([us, n]) => n === name && us <= t).length;
+              if (pick9) {
+                lines.push(`${UPGRADE_LINE_KO[pick9.weapon] ?? "공/방"} ${lv(pick9.weapon)}-${lv(pick9.armor)}`);
+              }
+              /* 공/방 말고 그 유닛에 붙는 기술(속업·사업 등)은 이름으로 걸러 준다 —
+                 표가 유닛을 직접 가리키지 않으므로, 임자가 마친 것 중 최근 것을 곁들인다. */
+              const other = (upsByRaw.get(op.pickRaw ?? "") ?? []).filter(([us, n]) => us <= t && !pairs.some((pr) => pr.weapon === n || pr.armor === n));
+              if (other.length > 0) {
+                lines.push(`연구 완료 ${other.slice(-6).map(([, n]) => TECH_KO[n] ?? n).join(" · ")}`);
+              }
+            }
+            const el = mapRef.current;
+            const w9 = el?.clientWidth ?? 1;
+            const h9 = el?.clientHeight ?? 1;
+            const lx = ((op.fx - 0.5) * zoom + 0.5) * w9 + pan.x;
+            const ly = ((op.fy - 0.5) * zoom + 0.5) * h9 + pan.y;
+            /* 팝업은 지도 밖으로 안 나간다(지적: "나오는 위치도 이상함 · 미니맵 내부로
+               제한") — 여태는 마커 자리에 그대로 띄워, 가장자리 유닛을 누르면 상자가
+               지도 밖(또는 화면 밖)으로 반쯤 잘려 나갔다.
+               폭은 CSS가 못 박은 값(232 + 좌우 여백 18)이라 여기서 그대로 쓸 수 있고,
+               높이는 줄 수로 어림한다(막대 줄은 두 줄 몫). 위로 띄울 자리가 모자라면
+               마커 아래로 뒤집는다 — 지도 위쪽 유닛이 그 경우다. */
+            const PAD9 = 6;
+            const PW9 = Math.min(250, w9 - PAD9 * 2);
+            const barN9 = lines.filter((ln) => typeof ln !== "string").length;
+            const PH9 = 28 + (lines.length - barN9) * 17 + barN9 * 26;
+            const cx9 = Math.min(Math.max(lx, PW9 / 2 + PAD9), w9 - PW9 / 2 - PAD9);
+            const flip9 = ly - PH9 - 14 < PAD9;
+            const cy9 = flip9
+              ? Math.min(ly, h9 - PH9 - 14 - PAD9)
+              : Math.min(Math.max(ly, PH9 + 14 + PAD9), h9 - PAD9);
+            return (
+              <div
+                className="scr-motion-info"
+                style={{
+                  left: Math.round(cx9),
+                  top: Math.round(cy9),
+                  ...(flip9 ? { transform: "translate(-50%, 14px)" } : {}),
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <div className="scr-motion-info-name">{ko}</div>
+                {lines.map((ln, li) => (typeof ln === "string"
+                  ? <div key={li} className="scr-motion-info-line">{ln}</div>
+                  : <React.Fragment key={li}>{ln}</React.Fragment>))}
+              </div>
+            );
+          })()}
+          <UnitLayer
+            ops={unitOps} zoom={zoom} pan={pan} wallMask={creepMask} maskRects={creepMaskRects}
+            showShadows={qShadows} showOverlap={qOverlap} showHp={qHp && hpShow} showCreep={qCreep}
+            /* 크립을 가두는 맵 모서리(재지적: 3D에서 크립이 영역을 벗어남) — 입체는 원근
+               투영된 사다리꼴이라 네 모서리를 posFrac으로 투영해 넘긴다. 평면은 단위
+               사각형이 나와 기존 직사각 클립과 같다. */
+            clipQuad={[
+              posFrac(0, 0), posFrac(grid.width, 0),
+              posFrac(grid.width, grid.height), posFrac(0, grid.height),
+            ]}
+          />
+          {/* 좁은 화면의 슬라이드 바는 지도 **안** 좌우에 얹는다(요청: "모바일은 미니맵
+              안쪽에 좌우에 배속/각도 슬라이드 오버레이") — 지도가 화면 폭을 꽉 채우므로
+              바깥에 세울 자리가 없다. 넓은 배치는 지도 바깥 기둥에 선다(위). */}
+          {!wide && (
+            <>
+              <div className="scr-motion-slidebar-l">
+                <SlideBar
+                  title="배속"
+                  options={[...SPEEDS].reverse().map((v) => ({ value: String(v), label: `×${v}` }))}
+                  value={String(speed)}
+                  onChange={(v) => setSpeed(SPEEDS.find((s2) => String(s2) === v) ?? SPEEDS[0])}
+                  labelSide="right"
+                  aria-label="배속"
+                />
+              </div>
+              <div className="scr-motion-slidebar-r">
+                <SlideBar
+                  title="각도"
+                  options={PITCH_DEGS.map((d) => ({ value: String(d), label: `${d}°` }))}
+                  value={String(pitchDeg)}
+                  onChange={(v) => setPitchDeg(Number(v))}
+                  labelSide="left"
+                  aria-label="시점 각도"
+                />
+              </div>
+            </>
+          )}
+          {/* (삭제) PC 확대 조절바 — PC에서는 확대 기능을 통째로 걷었다(요청). 확대·이동은
+              이제 모바일 손짓(더블탭·두 손가락)만의 것이다. */}
+        </div>
+  );
+
+  /* 미니맵이 읽는 '지금 보는 창' — 지도 분수 좌표다. 그리는 쪽의 사상(zx/zy)을 그대로
+     뒤집으면 나온다: 분수 f는 화면에서 (f−0.5)·지도폭·배율 + 지도폭/2 + 팬에 놓이므로,
+     창의 양 끝을 f로 되돌리면 중심 0.5 − 팬/(지도폭·배율), 폭 창폭/(지도폭·배율)이다. */
+  const fsMapH = fsCoverW > 0 ? (fsCoverW * grid.height) / Math.max(1, grid.width) : 0;
+  const fsView = {
+    cx: fsCoverW > 0 ? 0.5 - pan.x / (fsCoverW * zoom) : 0.5,
+    cy: fsMapH > 0 ? 0.5 - pan.y / (fsMapH * zoom) : 0.5,
+    w: fsCoverW > 0 ? stage.w / (fsCoverW * zoom) : 1,
+    h: fsMapH > 0 ? stage.h / (fsMapH * zoom) : 1,
+  };
+  /** 미니맵을 끌었다 — 그 분수 자리가 화면 한가운데로 오게 팬을 푼다(위 식의 역). */
+  const fsSeek = (fx: number, fy: number): void => {
+    if (fsCoverW <= 0 || fsMapH <= 0) return;
+    const lim = panLimit(fsCoverW, fsMapH, zoom);
+    setPan({
+      x: Math.min(lim.x, Math.max(-lim.x, (0.5 - fx) * fsCoverW * zoom)),
+      y: Math.min(lim.y, Math.max(-lim.y, (0.5 - fy) * fsMapH * zoom)),
+    });
+  };
+  /* ── 전체화면 오버레이(요청) ────────────────────────────────────────────────
+     "좌우하단 조작부는 현재 PC화면과 동일한 위치와 형태, 구성" — 그래서 여기 서는 것은
+     전부 위에서 이미 만든 조각 그대로다(teamCol · SlideBar · mapToggleNode ·
+     perfToggleNode · controlsNode · shareNode). 새로 만든 것은 미니맵 하나뿐이다.
+     왼쪽 위 1팀 · 오른쪽 위 2팀 · 그 아래 각각 배속/각도 세로바 · 그 아래 각각
+     지도 표시 토글류 / 성능·색상 선택류 · 아래쪽에 재생·진행바·시각·공유.
+     ★ 뿌리는 갈아치우지 않는다 — 전체화면 API는 **그 엘리먼트가 DOM에서 사라지면**
+       곧바로 풀린다. 그래서 평소 배치와 전체화면이 같은 뿌리 <div>를 쓰고, 안에서
+       무엇을 그릴지만 갈린다(아래 body의 자식들은 .scr-motion-fs일 때 CSS로 숨는다).
+       한 번만 있어야 하는 둘(지도 mapNode · 탐색바가 든 controlsNode)은 그래서
+       `!fsOn &&`로 한쪽에만 붙는다. */
+  const fsInner = fsOn ? (
+    <div className="scr-fs-root">
+      <div className="scr-fs-stage" ref={stageRef}>{mapNode}</div>
+      <div className="scr-fs-ui" onPointerDown={fsWake}>
+        <div className="scr-fs-col scr-fs-left">
+          <div className="scr-fs-roster">{teamCol(1)}</div>
+          <div className="scr-fs-bar">
+            <SlideBar
+              title="배속"
+              options={[...SPEEDS].reverse().map((v) => ({ value: String(v), label: `×${v}` }))}
+              value={String(speed)}
+              onChange={(v) => setSpeed(SPEEDS.find((s2) => String(s2) === v) ?? SPEEDS[0])}
+              labelSide="left"
+              aria-label="배속"
+            />
+          </div>
+          <div className="scr-fs-toggles">{mapToggleNode}</div>
+          {/* 미니맵은 PC만(요청) — 손가락 기기에서는 조작부가 이미 화면을 많이 먹는다. */}
+          {!coarse && stage.w >= 900 && (
+            <ReplayFullscreenMinimap
+              image={grid.image ?? undefined}
+              ratio={grid.width / Math.max(1, grid.height)}
+              dotsRef={opsRef}
+              tick={t}
+              view={fsView}
+              onSeek={fsSeek}
+            />
+          )}
+        </div>
+        <div className="scr-fs-col scr-fs-right">
+          <div className="scr-fs-roster">{teamCol(2)}</div>
+          <div className="scr-fs-bar">
+            <SlideBar
+              title="각도"
+              options={PITCH_DEGS.map((d) => ({ value: String(d), label: `${d}°` }))}
+              value={String(pitchDeg)}
+              onChange={(v) => setPitchDeg(Number(v))}
+              labelSide="right"
+              aria-label="시점 각도"
+            />
+          </div>
+          <div className="scr-fs-toggles">{perfToggleNode}</div>
+        </div>
+        <div className="scr-fs-bottom">
+          {controlsNode}
+          <div className="scr-fs-bottom-tail">
+            {shareNode}
+            <button
+              type="button" className="scr-motion-litbtn scr-fs-exit"
+              onClick={exitFs} aria-label="전체화면 나가기" title="전체화면 나가기"
+            >
+              <Minimize size={15} />
+            </button>
+          </div>
+        </div>
+      </div>
+      {/* 모바일 깨우기 버튼(요청: "모바일은 조작부 켜는 반투명 버튼을 구석에 플로팅") */}
+      {coarse && (
+        <button
+          type="button"
+          className="scr-fs-wake"
+          onClick={() => { if (fsUi) setFsUi(false); else fsWake(); }}
+          aria-label="조작부"
+        >
+          <span aria-hidden>⋯</span>
+        </button>
+      )}
+    </div>
+  ) : null;
 
   const body = (
     <div
@@ -15952,7 +18581,8 @@ export default function ReplayMotionPlayer({
       // -modal/-backdrop)은 소스째 삭제됐고, 이 .scr-motion-wide가 인라인 넓은 배치의
       // 유일한 클래스다(혼동을 없애려 -big에서 개명). ref는 자리 폭 재기(wide 판정)용.
       ref={rootRef}
-      className={cx("scr-motion", wide && "scr-motion-wide")}
+      className={cx("scr-motion", wide && !fsOn && "scr-motion-wide",
+        fsOn && "scr-motion-fs", fsOn && !fsUi && "is-idle")}
       /* 폭 제한은 여기 걸지 않는다(수리) — 뿌리 상자에는 지도만이 아니라 양옆 로스터와
          아래 조작 줄들이 함께 들어 있어서, 여기를 좁히면 화면 전체가 왼쪽 한 기둥으로
          쪼그라들었다(실측: 지도가 140px). 세로 맞춤은 지도 자신에게 건다(아래 참조). */
@@ -16007,2269 +18637,7 @@ export default function ReplayMotionPlayer({
           />
         </div>
       )}
-      <div
-        className={cx("scr-motion-map", pitched && "scr-motion-pitched")} ref={mapRef}
-        onPointerDown={onMapPointerDown}
-        onPointerMove={onMapPointerMove}
-        onPointerUp={onMapPointerUp}
-        onPointerCancel={onMapPointerUp}
-        style={{
-          /* 넓은 배치에서만 고정 크기다(요청: 1024 고정) — 좁은 화면은 폭 100%로 흐른다.
-             보기(2D·3D)와 무관하다: 3D일 때만 상자를 넓히면 보기를 바꿀 때마다 세로가
-             달라져 탐색바 아래가 통째로 밀린다(실측 285px). 3D의 눕힘은 상자가 아니라
-             회전 전 판(pitchGeom의 hPre)이 맡는다. */
-          /* 1024는 상한이다(요청: min(1024px, 100%)) — 고정만 두면 왼쪽 기둥(232)과
-             댓글 기둥(232)에 간격까지 476px을 더한 값이 화면을 넘어, 대략 1560px보다
-             좁은 화면에서 페이지에 가로 스크롤이 생겼다(실측: 1440에서 28px, 1280에서
-             188px). 100%는 그리드 칸(minmax(0,1fr)) 폭이라 순환하지 않는다. */
-          /* 오른쪽에 세로 바 기둥이 생기면서 줄이지는 몫이 필요해졌다(요청: PC 세로 바)
-             — flex 0 0 auto는 한 톨도 안 줄어들어, 좁은 PC에서 바 폭(약 104px)만큼
-             페이지에 가로 스크롤이 생긴다. 1024는 어차피 상한이므로 줄어드는 것은
-             허용하고(0 1 auto) 가로세로비가 세로를 따라오게 둔다. */
-          ...(wide ? { width: `min(${mapViewW}px, 100%)`, flex: "0 1 auto", minWidth: 0 } : {}),
-          aspectRatio: `${grid.width} / ${grid.height}`,
-          ...(zoom > 1 || pitched ? { overflow: "hidden" } : {}),
-          ...(zoom > 1 ? { cursor: dragRef.current ? "grabbing" : "grab" } : {}),
-          /* 손짓 격리(지적 둘: 맵 조정 시 모달이 딸려 움직임 + 2D 모드에서 드래그가
-             모달로 전파) — 맵 위 손짓은 확대 여부와 무관하게 브라우저에 안 넘긴다.
-             확대 전 세로 스크롤만 열어 두던 pan-y가 2D에서 모달을 끌었다. 모달 훑기는
-             맵 밖(로스터·댓글)에서 하면 된다. */
-          touchAction: "none",
-        }}
-      >
-        {/* 받는 중 — 자취는 눌러도 한 판에 1~2MB라 잠깐 걸린다. 다 온 뒤에는 안 뜬다. */}
-        {!simTracks && entLoad === "loading" && (
-          <span className="scr-motion-simnote">자취 받는 중…</span>
-        )}
-        {/* 맵연결(요청: 별도로 맵 좌상단에, 연결 안 된 경우만, 알약 형태) — 렌즈 밖이라
-            휠 줌에도 제자리다. 맵의 팬·줌 손짓에 안 딸리게 눌림을 끊는다. */}
-        {!grid.image && (
-          <button
-            type="button"
-            className="scr-motion-litbtn scr-motion-maplink"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => { e.stopPropagation(); setLinkOpen(true); }}
-          >
-            맵연결
-          </button>
-        )}
-        {/* 미연결 안내(요청: 작게) — 지형(벽) 정보가 없어 유닛이 벽을 뚫고 다닌다는 것을
-            알린다. 버튼 바로 아래 한 줄. */}
-        {!grid.image && (
-          <span className="scr-motion-maplink-note">미연결 상태에선 유닛이 벽을 뚫고 다녀요</span>
-        )}
-        {/* 렌즈 상자 — PC 휠 줌(요청)이 이 층을 통째로 키운다(마커·자취까지 같이). */}
-        <div
-          ref={lensRef}
-          className="scr-motion-lens"
-          style={{
-            /* 줌 역배율 변수(지적: 클릭 마커·링은 UI라 확대에 굵어지면 안 됨) —
-               UI성 마커가 scale(1/--mz)로 제 화면 크기를 지킨다. */
-            "--mz": zoom,
-            /* transform은 여기서 안 쓴다(수리: 휠 확대가 한 번만 먹는다) — 재생 중엔
-               매 프레임 리렌더가 나서, 상태에서 나온 변환이 휠이 방금 쓴 변환을 계속
-               되돌렸다. 아래 lensZoom effect가 상태가 바뀔 때만 써 준다. */
-          } as React.CSSProperties}
-        >
-        {grid.image
-          ? (
-            <img
-              className="scr-motion-canvas" src={grid.image} alt={`${grid.name} 미니맵`}
-              draggable={false}
-              onLoad={(e) => setImgSide(e.currentTarget.naturalWidth || 0)}
-              style={pitchStyle()}
-            />
-          )
-          : (
-            /* 매핑 안 된 맵(정정: 샘플 녹색이 아니라 맵에서 실제 추출한 지형) — 리플레이
-               타일 격자 개략도(ReplayMapCanvas)를 바탕으로 깐다. 초록 계열 지형 램프가
-               곧 기본색이다. 3D에선 실제 그림과 똑같은 기울임을 입는다(지적: 기본 파싱
-               맵은 입체 효과가 안 됨). */
-            <div
-              /* 격자 개략도는 과표본을 안 건다 — 캔버스 배킹이 512로 고정이라 상자만
-                 키워 봐야 화소가 안 는다(메모리만 든다). */
-              className="scr-motion-canvas scr-motion-canvas-blank"
-              style={pitched ? (() => {
-                const { q, cy, P } = pitchGeom();
-                return { transform: `translateY(${(-cy).toFixed(1)}px) scale(${q.toFixed(4)}) perspective(${P.toFixed(0)}px) rotateX(${pitchTiltDeg.toFixed(2)}deg)` };
-              })() : undefined}
-            >
-              <ReplayMapCanvas grid={grid} className="scr-motion-canvas-tiles" />
-            </div>
-          )}
-
-        {/* 건물(요청: 합치기 대신) — 기본은 작은 이름이 늘 떠 있되, 가까이 겹치는 같은
-            이름은 하나만 적고 나머지는 점(지적: 겹치면 안 보인다). 긴 이름은 폰트를 한
-            단계 줄인다. 생산·연구 중이면 심장처럼 뛴다(요청). */}
-        {(() => {
-          /* 시작 홀은 파서가 합성한다(지적: 스타팅 포인트에 기지가 없다 → 재분석으로
-             해결, 폴백은 걷었다 — 요청). */
-          /* 그리는 차례는 y(세로) 순이다 — 높이가 생기면서(BUILD_RISE) 높은 건물이 제 뒤
-             건물 위로 솟는데(지적: "높이땜에 뒤에 건물과 겹쳐보일수도"), 사선 뷰에서는
-             앞(y가 큰) 건물이 뒤를 가리는 것이 맞다. i는 원래 인덱스 그대로 들고 간다
-             (buildsByType 등이 그 인덱스로 잰다). */
-          const drawOrder = buildsSrc.map((_, i) => i)
-            .sort((a, b) => buildsSrc[a][2] - buildsSrc[b][2]);
-          return drawOrder.map((i) => {
-            const [sec, x, y, unit, raw, gone, liftAt] = buildsSrc[i];
-            if (sec > t) return null;
-            const goneAt = gone ?? 0;
-            // 없어진 건물은 그냥 사라진다(요청: ✕ 표시 없음) — 착륙 이사·변태와도 한 결이다.
-            /* 핵 한 방(요청) — 폭발 반경 안에서 무너진 걸로 판정된 건물은 파괴 감지가
-               한참 뒤에 눈치챘더라도 착탄 순간 바로 걷는다. 이륙 이사 기록(liftAt)은
-               goneAt이 착륙 시각이라 건드리지 않는다. */
-            let goneEff = goneAt;
-            if (!liftAt) {
-              for (const nk of nukeImpacts) {
-                const d = Math.hypot(x + footDx(unit) - nk.x, y + footDy(unit) - nk.y);
-                if (goneAt > 0) {
-                  if (nk.sec <= goneAt && goneAt - nk.sec <= 90 && d <= 5) {
-                    goneEff = Math.min(goneEff, nk.sec);
-                  }
-                  continue;
-                }
-                /* 파괴 감지가 아예 없던 건물(지적: 핵 터진 자리에 건물이 남는다) — 파괴
-                   감지는 놓치는 게 많아, 터진 게 확인된 핵의 폭심(4타일) 안 건물은 그냥
-                   걷는다. 본진(커맨드·넥서스·해처리 계열)만은 체력이 커서 실제로도 핵
-                   한 방을 버티므로 남긴다. */
-                if (nk.confirmed && nk.sec >= sec && nk.sec <= t && d <= 4
-                  && !["Command Center", "Nexus", "Hatchery", "Lair", "Hive"].includes(unit)) {
-                  goneEff = goneEff > 0 ? Math.min(goneEff, nk.sec) : nk.sec;
-                }
-              }
-            }
-            /* 페이드 인·아웃(요청) — 지어질 때 1.2초 스르륵 나타나고, 없어질 때 1.2초
-               스르륵 사라진다. */
-            /* 저그는 페이드가 없다(요청: "저그 드론 건물 변태/취소시 페이드인 아웃 없게")
-               — 드론이 그 자리에서 건물로 변하는 것이라, 스르륵 나타나면 '어디선가
-               생겨난 것'으로 읽힌다. 취소도 마찬가지로 그 자리에서 도로 드론이 된다. */
-            const FADE_SEC = (bases.find((b9) => b9.key === raw)?.race) === "저그" ? 0 : 1.2;
-            const fade = FADE_SEC <= 0 ? 1 : Math.min(
-              sec > 0 ? Math.min(1, (t - sec) / FADE_SEC) : 1,
-              goneEff > 0 && t >= goneEff ? Math.max(0, 1 - (t - goneEff) / FADE_SEC) : 1,
-            );
-            if (goneEff > 0 && t >= goneEff + FADE_SEC) return null;
-            if (fade <= 0) return null;
-            // 떠 있는 구간(지적: 건물 떠 있는 게 표현이 안 된다) — 이륙부터 착륙(=goneAt)
-            // 까지 옛 자리에서 둥실거린다.
-            const afloat = !!liftAt && t >= liftAt;
-            const razed = false;
-            /* 같은 자리에 제 후계가 서면(레어 진화·재건·콜로니 변태) 옛 것은 걷는다
-               (지적: 비활성 건물이 글자와 도형으로 동시 표시). 계보는 한 방향이고
-               자리는 발자국 안이라야 한다(위 succeedsBld 주석 — 성큰이 옆 크립 콜로니에
-               지워지던 자리). */
-            if (!razed && buildsSrc.some(([s2, x2, y2, u2, r2], j) =>
-              j !== i && r2 === raw && s2 > sec && s2 <= t
-              && Math.hypot(x2 - x, y2 - y) <= SAME_SITE_TILES && succeedsBld(unit, u2))) {
-              return null;
-            }
-            /* 착륙 이사(요청: 건물 움직임도 추적) — 같은 임자의 같은 건물이 내 시작
-               시각에 걷혔으면 거기서 날아온 것이다. 나는 동안은 두 자리 사이를 비행
-               속도로 잇는다. */
-            let bx = x;
-            let by = y;
-            /* 겹침 해소(요청: 건물끼리 캔버스 겹침 불가) — 화면 자리만 민다(위 bldNudge). */
-            const nud = bldNudge.get(i);
-            if (nud) { bx += nud[0]; by += nud[1]; }
-            /* 짝의 걷힌 시각이 실제로 있어야(> 0) 한다(지적: 첫 기지가 위에서 내려온다) —
-               시작 홀은 시작 시각이 0이라, 조건이 "gone === 0"이 되면 살아 있는 같은 종류
-               건물 아무거나와 짝이 돼 거기서 날아왔다. */
-            const flownFrom = sec > 0 && buildsSrc.find(([, x2, y2, u2, r2, g2]) =>
-              r2 === raw && u2 === unit && (g2 ?? 0) > 0 && (g2 ?? 0) === sec
-              && (x2 !== x || y2 !== y)) || undefined;
-            /* 이사 비행 중인가 — 떠 있는 건물만 그림자를 지니는 데 쓴다(요청). */
-            let landing = false;
-            if (flownFrom) {
-              const flyDist = Math.hypot(flownFrom[1] - x, flownFrom[2] - y);
-              const flyDur = Math.min(40, flyDist / BUILDING_FLY_SPEED);
-              if (t < sec + flyDur && flyDur > 0) {
-                const k = Math.max(0, (t - sec) / flyDur);
-                bx = flownFrom[1] + (x - flownFrom[1]) * k;
-                by = flownFrom[2] + (y - flownFrom[2]) * k;
-                landing = true;
-              }
-            }
-            /* 뜬 건물의 자리 — 개체 트랙이 착륙 자리마다 줄을 나눠 싣기 때문에, 이 줄의
-               좌표가 곧 지금 그 건물이 있는 자리다. 표적 지도(engageFoes·entPosByTag)도
-               같은 좌표를 본다 — 몸과 겨눠지는 자리가 갈리면 총알이 빈 땅으로 간다. */
-            // 짓는 동안은 공사중 아이콘(요청: 반투명 말고) — 반투명은 "저기 뭐가 있긴 한데"
-            // 로만 읽히고, 도형의 반투명(뒤 비침)과도 헷갈렸다. 날아온 건물은 이미 다 선
-            // 건물이라 망치를 안 든다.
-            // 시작 건물(합성된 0초 홀)도 망치를 안 든다(지적: 처음 홀에 망치 표시는 왜?) —
-            // 경기 시작에 이미 다 서 있던 건물이지, 짓는 중이 아니다.
-            /* 완성 시각 — 테란 건설 중단(bldWork)이 있으면 'SCV가 붙어 있던 만큼만
-               자란' 그 시각이고, 없으면 종전대로 착공 + 표의 건설 시간이다. */
-            const work = bldWork.get(i);
-            const bldNeed = BUILD_SEC[unit] ?? 30;
-            const doneAt = work ? work.doneAt : sec + bldNeed;
-            const raising = !razed && !flownFrom && sec > 0 && t < doneAt;
-            /** 공사가 멈춰 선 동안인가 — 일꾼이 하나도 안 붙어 있는 구간 사이다. */
-            const halted = !!work && raising && !workingAt(work.wins, t);
-            const team = teamOfRaw(raw);
-            const tagOrd = tagOrdinals.get(`${raw}|${unit}`);
-            const typeList = buildsByType.get(`${raw}|${unit}`) ?? [];
-            const myOrd = typeList.indexOf(i);
-            /* 태그를 모르면 대표 하나만(지적: 해처리 생산·업그레이드에 모든 해처리가
-               아이콘) — 같은 종류 전부에 달면 어디서 하는지가 아니라 "다 한다"로 읽힌다.
-               대표는 그 종류에서 가장 오래된, 지금 살아 있는 건물(대개 본진 쪽)이다. */
-            const repOrd = typeList.findIndex((bi) => {
-              const [s2, , , , , g2] = buildsSrc[bi];
-              return s2 <= t && !((g2 ?? 0) > 0 && t >= (g2 ?? 0));
-            });
-            const producing = !razed && (prodByRawType.get(`${raw}|${unit}`) ?? [])
-              .some(([ps, tag]) => {
-                if (!(ps <= t && t - ps <= PROD_FLASH_SEC)) return false;
-                // 태그를 알면 그 순번의 건물만(요청) — 모르면 대표 건물만(지적).
-                if (!tag || !tagOrd) return myOrd === repOrd;
-                const ord = tagOrd.get(tag);
-                return ord === undefined || ord === myOrd;
-              });
-            // 연구 중(요청) — 이 건물에서 하는 연구가 지금 창 안에 시작돼 있나. 어느
-            // 건물인지는 안 남으므로 대표 건물에만 단다(지적).
-            const hallLike = unit === "Lair" || unit === "Hive" ? "Hatchery" : unit;
-            const researching = !razed && myOrd === repOrd
-              && (upsByRaw.get(raw) ?? []).some(([us, name]) =>
-                RESEARCH_BUILDING[name] === hallLike && us <= t && t - us <= RESEARCH_SEC);
-            // 이름 창 = 착공 직후 잠깐뿐(요청) — 그 뒤 공사 중에는 도형+망치이고, 생산·
-            // 연구 중에도 이름 대신 라임 글로우가 말한다(요청: "생산중인 건물은 이름을
-            // 띄우지 말고 액티브").
-            // 시작 건물은 액티브도 없다(요청: 처음 등장하는 건물·유닛은 액티브 안 주기).
-            // (요청) 착공 직후 이름 창도 걷었다 — 모델이 정체를 말한다.
-            const activeBuild = false;
-            // 차례 계산에서 빠졌지만(지적: 무조건 신규 건물 우선) 판정 기반은 남겨둔다.
-            void activeBuild;
-            /* 미세 박동(요청: 유닛 뽑거나 업그레이드 중인 건물은 아주 미세하게 박동) —
-               게임 시간 1.6초 주기로 2.5%만 부풀었다 준다. 살아 일한다는 기색만 내고
-               시선을 끌 만큼은 아니다. 캔버스 전환 때 끊겼던 심장 뛰기의 계승이다. */
-            const pulse = producing || researching
-              ? 1 + 0.025 * Math.sin((t * Math.PI * 2) / 1.6) : 1;
-            /* (캔버스 전환 둘째 판·요청: 건물도 캔버스로) — 이름 창·아이콘이 다 걷힌
-               건물 마커는 도형 하나라, 자리·상자·차례 계산만 그대로 두고 그리기는
-               unitOps로 보낸다. DOM에는 효과(전투 불꽃·마법·핵)만 남는다(요청). */
-            const shapeKind = SHAPE_KIND[unit];
-            /* 부속건물도 제 모델이면 보통 건물과 같은 자리 규칙이다(요청: 부속건물 모델링)
-               — + 글자 시절의 스넉 오프셋(-1.6, +0.4)은 모델 없는 폴백에만 남는다. */
-            const addonPlus = ADDONS.has(unit) && !shapeKind;
-            const fp2 = FOOTPRINT[unit] ?? [3, 2];
-            const centerX = bx + footDx(unit);
-            const centerY = by + footDy(unit);
-            /* 그리는 상자는 발자국이 아니라 **몸 상자**다(요청: 건물 틈) — 원작은 건물마다
-               자리 상자(발자국, 타일 배수)와 몸 상자(units.dat dimensions)를 따로 들고,
-               둘의 차이가 곧 건물 사이의 틈이다. 네 변이 저마다 달라(배럭 좌16·우8·상8·
-               하16px) 상자 중심도 발자국 중심에서 조금 밀린다. 그래서 나란히 선 건물
-               사이가 종류·배치에 따라 열리고 닫힌다(docs/note-building-gaps.md).
-               ⚠ 예전 확정("바닥 폭 = 타일 발자국")을 이 요청이 뒤집는다 — 발자국을 꽉
-                 채워 그리면 틈이 원리적으로 안 생긴다. */
-            const [boxW, boxH, boxOx, boxOy] = buildingBox(unit);
-            const bodyX = centerX + boxOx;
-            const bodyY = centerY + boxOy;
-            const anchorX = bodyX - (addonPlus ? 1.6 : 0);
-            const anchorY = bodyY + (addonPlus ? 0.4 : 0)
-              + (!addonPlus ? (shapeKind ? -riseOf(unit) / 2 : boxH * 0.1) : 0);
-            const [fxF, fyF] = posFrac(anchorX, anchorY);
-            const mkK = pitchK(centerY);
-            /* 나이는 **진짜 동점만** 가른다(수리: 겹치는 건물의 앞뒤가 뒤바뀜 · 소환구가
-               앞 건물에 안 가려짐) — 한 타일이 Z_TILE(800)이고 나이 항은 60까지라,
-               아랫변이 0.075타일보다 벌어져 있으면 자리가 언제나 이긴다. 예전에는 한
-               타일이 80인데 나이가 30까지여서, 0.375타일 안에 붙은 건물끼리 나이가
-               앞뒤를 뒤집었다. */
-            const z = pitched
-              ? 1000 + Math.round((bodyY + boxH / 2) * Z_TILE)
-                + Math.min(60, Math.round(sec / 45))
-              : 1000 + Math.round(afloat ? t : sec);
-            const alpha = fade * (afloat ? 0.75 : 1);
-            const color = modeColor(raw, team);
-            if (addonPlus) {
-              // 모델 없는 부속건물 폴백 — + 하나(캔버스 전환 첫 판이 모델까지 +로 덮던
-              // 것을 바로잡았다: 이제 여섯 애드온 다 모델이 있어 여긴 안전망이다).
-              unitOps.push({
-                // 폴백 + 글자도 같은 자로(전수조사) — 고정 7/11px이었다.
-                fx: fxF, fy: fyF, z, kind: "", sizePx: tilePx * 2 * mkK * pulse,
-                color, alpha, textGlyph: "+", noShadow: true,
-              });
-              return null;
-            }
-            /* 바닥은 실제 발자국 그대로(요청: 건물 바닥크기를 캔버스에 맞추기) — 기지를
-               1.3배 부풀리던 보정을 걷었다: 바닥 폭이 타일 발자국과 같아야 하고, 높이는
-               모델 제 비율이 바닥 폭을 따라 정한다(아래 fitWidth). */
-            /* 애드온의 1.35배 뻥튀기는 걷었다 — "작은 부속 모델이 상자를 덜 채워
-               왜소하다"는 지적을 상자째 키워 때우던 보정인데, 이제 그리기 단계가 잉크
-               폭을 재서 발자국을 채우므로(지금은 BLD_NORM) 상자는 제 발자국(2×2) 그대로
-               두면 된다. 그대로 두면 부속만 발자국보다 28% 넓게 그려진다. */
-            const wTiles = boxW * (shapeKind ? 1 : 0.8) * bldMul;
-            const hTiles = wTiles * ((boxH + (shapeKind ? riseOf(unit) : 0)) / boxW);
-            const wFrac = (wTiles / grid.width) * mkK;
-            const hFrac = (hTiles / grid.width) * mkK;
-            const race2 = bases.find((b) => b.key === raw)?.race;
-            /* 짓는 SCV(재재재지적: 완공돼도 자원으로 보내지 말고 다음 명령을 받게) — 공사
-               내내 불티 곁에 서 있고, 완공 뒤에는 그 곁(5타일)에 떨어지는 임자의 첫 일꾼
-               명령(spts)을 '이 SCV가 받은 다음 명령'으로 보고 그 순간 일꾼 스트림에
-               넘긴다(그 클릭부터는 일꾼 점이 그린다). 명령이 안 오면 게으른 SCV 그대로
-               서 있고, 건물이 무너지면 함께 걷힌다. 지어낸 미네랄 왕복은 걷었다. */
-            if (race2 === "테란" && !flownFrom && sec > 0 && !razed
-              && (goneEff === 0 || t < goneEff)) {
-              const bs2 = bldNeed;
-              /* 일꾼이 불티를 따라간다(지적: "테란은 건설시 스파크는 이동하는데 일꾼은
-                 제자리임") — 불티 자리는 아래 buildfx가 6초마다 시계 방향으로 옮기는데
-                 (CORNER_SEC) 합성 SCV만 왼쪽 아래에 붙박이라, 용접 불티가 저 혼자
-                 건물을 돌았다. 같은 식으로 같은 귀퉁이를 쓴다 — 둘이 한 몸이어야 한다. */
-              const scvIdx = (Math.floor(t / 6) + i) % 4;
-              const scvX = bodyX + (scvIdx === 0 || scvIdx === 3 ? -1 : 1) * (boxW / 2 - 0.35);
-              const scvY = bodyY + (scvIdx === 0 || scvIdx === 1 ? 1 : -1) * (boxH / 2 - 0.35);
-              let scvShow = t - sec >= 0;
-              /* 중단 중에는 현장에 아무도 없다(요청: 테란 건설 중단) — 붙어 있던 구간
-                 안에서만 합성 SCV가 선다. 이어 짓기로 다른 SCV가 오면 다시 선다. */
-              if (work && t < doneAt) scvShow = workingAt(work.wins, t);
-              if (t >= doneAt) {
-                /* 공사가 끝난 뒤 이 SCV가 언제 자리를 뜨나 — 개체 트랙의 건설 앵커 창
-                   (builderLeave)이 '앵커 시각 → 그 뒤 첫 위치 증거'를 이미 색인해 둔다.
-                   옛 v1 일꾼 클릭 자취로 뒤지던 자리다. */
-                let nextCmd = Infinity;
-                for (const bl of builderLeave) {
-                  if (bl.end === Infinity || bl.end < doneAt - 2) continue;
-                  if (Math.hypot(bl.x - scvX, bl.y - scvY) <= 5) { nextCmd = bl.end; break; }
-                }
-                if (t >= nextCmd) scvShow = false;
-              }
-              /* v2에선 진짜 개체가 답을 안다(지적: SCV들이 건설현장에 남는다 — v2 모드는
-                 motion이 빈 껍데기라 위 spts 게이트가 영영 안 열렸다) — 이 현장의 건설
-                 앵커(f=2)를 남긴 일꾼 개체의 '앵커 뒤 첫 위치 증거' 시각이 곧 그 SCV가
-                 현장을 떠난 순간이다. 그때부터는 개체 마커가 걸어 나가며 그리므로 합성
-                 SCV를 걷는다. */
-              /* 공사 이력을 아는 건물(bldWork)은 위에서 이미 갈랐다 — 아래 옛 잣대는
-                 첫 일꾼이 떠난 시각 하나뿐이라, 이어 짓는 SCV까지 지운다. */
-              if (scvShow && !work) {
-                const lv = builderLeave.find((b2) =>
-                  Math.abs(b2.x - centerX) <= fp2[0] / 2 + 2 && Math.abs(b2.y - centerY) <= fp2[1] / 2 + 2
-                  && b2.s >= sec - 15 && b2.s <= sec + bs2);
-                if (lv && t >= lv.end) scvShow = false;
-              }
-              if (scvShow) {
-                const [sfx2, sfy2] = posFrac(scvX, scvY);
-                unitOps.push({
-                  fx: sfx2, fy: sfy2, z: z + 1, kind: "scv",
-                  rotDeg: Math.atan2(-(centerX - scvX), centerY - scvY) * (180 / Math.PI),
-                  viewYaw: viewYawOf(scvX, scvY), flat: !pitched, pitch: pitched,
-                  sizePx: unitGlyphPx("scv", "scv", 0, scvY),
-                  color: modeColor(raw, teamOfRaw(raw)),
-                  alpha: 1,
-                  noSep: true,
-                });
-              }
-            }
-            if (raising) {
-              // 공사는 종족 공용 모델(고치·소환구·공사장)이 말한다.
-              /* 저그 고치는 크기 자체가 두근거린다(요청: 확대 바운스) — 10Hz t의 사인
-                 박동. 스프라이트는 2px 칸 양자화라 두어 가지 크기를 오가며 캐시된다.
-                 그리고 게임처럼 단계 성장(재지적: 너무 작음): 공사 진행에 따라 0.7배에서
-                 1.5배까지 세 단계로 자란다. */
-              const prog = Math.min(1, (work ? workedBy(work.wins, t) : t - sec) / bldNeed);
-              // 시작을 크게(재지적: 처음에 너무 작음 — 훨씬 크게 시작) — 0.7 → 1.0.
-              /* 자라되 완성 건물을 넘지 않는다(전수조사: 1.0→1.5배라 4타일 해처리의
-                 고치가 6.4타일 — 다 지어진 건물보다 컸다). 발자국의 0.8 → 1.0으로. */
-              const stage = prog < 0.33 ? 0.8 : prog < 0.7 ? 0.9 : 1;
-              const beat = race2 === "저그" ? stage * (1 + 0.06 * Math.sin(t * 5.2)) : 1;
-              /* 공사 모델은 바닥 맞춤(지적: 소환구보다 훨씬 아래쪽에 실제 건물이 생긴다)
-                 — 완성 모델은 '들어올린 칸'의 바닥 = 발자국 바닥에 앉는데, 소환구·고치는
-                 제 작은 상자가 칸 중심(위로 들어올린 앵커)에 걸려 바닥이 발자국보다 위에
-                 떴다. 상자 바닥을 발자국 바닥에 맞춘다. */
-              // 소환구는 정사각 상자(재재지적: 3D에서 찌그러짐) — 어디서도 안 눌린다.
-              /* 소환구 축소 + 더 띄우기(요청) — 상자 3.4 → 2.4타일이고, 발자국
-                 바닥에서 0.6타일 위로 띄운다(워프 중인 건물은 아직 땅에 안 앉았다). */
-              const modelHT = race2 === "프로토스" ? WARP_TILES
-                : ((hFrac * grid.width) / mkK) * beat;
-              /* 고치 치우침(재지적) — +0.25타일 보정 대신 모델 자체 무게중심을 상자
-                 가운데로 옮겨 보정 없이 맞는다. */
-              /* 발자국 한가운데가 아니라 조금 아래(앞)로(요청) — 그림자를 줄여 발치에
-                 맞춘 것과 같은 결이다. 사선 시점에서 상자 중앙에 놓으면 모델이 제
-                 발자국보다 뒤로 물러나 떠 보인다. */
-                      const bAnchorY = bodyY + boxH / 2 - modelHT / 2 + CONSTRUCT_DROP
-                - (race2 === "프로토스" ? WARP_LIFT : 0);
-              /* 가로 자리는 **지면선에서** 잰다(지적: "공사 고치 아직도 액자의 오른쪽에
-                 그려져있어") — posFrac은 입체에서 사다리꼴 수렴을 먹이므로 같은 x라도
-                 y가 다르면 화면 x가 달라진다. 공사 모델의 y 기준(bAnchorY)은 모델 높이의
-                 절반만큼 위라, 고치처럼 키가 큰(정규화 2.86배) 것일수록 그 수렴이 크게
-                 실려 발자국 액자에서 옆으로 밀려났다. 액자가 놓인 곳은 지면선이므로
-                 가로는 거기서 재고, 세로만 모델 앵커에서 잰다. */
-              const [bfxF] = posFrac(bodyX, bodyY + boxH / 2);
-              const [, bfyF] = posFrac(bodyX, bAnchorY);
-              unitOps.push({
-                fx: bfxF, fy: bfyF, z,
-                /* 짓는 중에도 집힌다(요청: 건설 중 상태에서도 클릭 가능) — 열쇠는 완성
-                   뒤와 같은 자로 지어, 다 지어져도 팝업이 그대로 이어진다. */
-                pickKey: `b${raw}|${unit}|${Math.round(bx * 4)}|${Math.round(by * 4)}`,
-                pickName: unit, pickRaw: raw, pickBld: true, pickX: bx, pickY: by,
-                /* 상태 줄 — 테란은 '건설 중단'을 따로 말한다(요청): 일꾼이 떠나거나
-                   죽어 공사가 그 진행률에 멈춰 선 동안이다. */
-                pickState: race2 === "저그"
-                  ? `변태 중 ${Math.round(prog * 100)}%`
-                  : `${halted ? "건설 중단" : "건설 중"} ${Math.round(prog * 100)}%`,
-                /* 테란 공사는 제 건물 모델을 아래부터 드러낸다(요청: "3단계로 하고 실제
-                   모델의 부품을 일부만 표현하다가 완성되는 형태로. 아래쪽 부품부터 →
-                   점점 위로"). 뼈대·크레인 한 벌(scaffold)을 모든 건물에 똑같이 쓰던
-                   것을 걷는다 — 무엇을 짓는지 완성될 때까지 알 수 없었다.
-                   모델이 없는 건물(부속 등 폴백)만 예전 공사장으로 떨어진다. */
-                kind: race2 === "저그" ? "cocoon"
-                  : race2 === "프로토스" ? "warpin"
-                    : (shapeKind || "scaffold"),
-                /* 아래 부품부터 다섯 칸에 나눠 솟는다(요청: 3단계 부족 시 5단계) —
-                   진행률을 그대로 칸으로 바꾼다. 마지막 칸(=BUILD_STAGES)이 완성 모델
-                   이라, 다 짓기 전에 완성형이 서 버리지 않게 진행률 1 미만은 한 칸
-                   아래로 묶어 둔다. 단계가 굽기 캐시 열쇠에 들어가므로 판은 단계마다
-                   한 번만 구워진다(프레임 비용 없음). */
-                ...(race2 === "테란" && shapeKind
-                  ? { buildStage: Math.max(1, Math.min(BUILD_STAGES - 1,
-                    Math.ceil(prog * BUILD_STAGES))) }
-                  : {}),
-                // 공사 모델도 45도 요잉(지적) + 종류별 보정(지적: 테란 공사장 반시계 90).
-                rotDeg: buildingYawOf(),
-                viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
-                // 공사 모델도 완성 건물과 같은 지면선에 선다.
-                baseFy: posFrac(bodyX, bodyY + boxH / 2)[1],
-                // 공사 모델도 완성 모델과 같은 폭 기준 — 바닥 폭이 발자국과 같아야 한다.
-                /* 소환구는 크기 통일(재지적: 게임에서도 모든 건물이 같다) — 발자국과
-                   무관하게 소형 기준 고정. */
-                sizePx: 0,
-                wFrac: race2 === "프로토스" ? (WARP_TILES / grid.width) * mkK : wFrac * beat,
-                hFrac: race2 === "프로토스" ? (WARP_TILES / grid.width) * mkK : hFrac * beat,
-                boxFit: "meet", fitWidth: true,
-                /* 소환구는 떠 있다(요청: 그림자 작게 표현해 공중 느낌) — 발자국 폭의
-                   절반짜리 작은 타원만 바닥에 깔린다. 몸은 WARP_LIFT만큼 떠 있으니
-                   그 틈이 곧 높이로 읽힌다. 저그 고치·테란 공사장은 땅에 앉는다. */
-                ...(race2 === "프로토스"
-                  ? { groundShadow: true, footRatio: 0.5 }
-                  : {}),
-                color, alpha, noShadow: true,
-              });
-              /* 공사 애니(요청) — 모델은 캐시 스프라이트라 못 움직이니 CSS 오버레이가
-                 맡는다: 테란 빨간 불 깜빡, 저그 심장 박동, 프로토스 소환 글로우. */
-              /* 스파크 자리(재지적: 일꾼 주변에 작게) — 테란은 SCV가 붙는 건물
-                 왼쪽 아래 모서리에서 인다. 저그 박동·토스 글로우는 가운데 그대로. */
-              /* 모서리에 바짝(재지적: 일꾼이 너무 떨어져 있나) — 0.4 → 0.9타일 안쪽,
-                 반 타일 위로: 불티가 공사장 몸체에 반쯤 얹힌다. */
-              /* 저그 고치도 모델 앵커에(재지적: 고치와 안의 박동 빛 중앙이 안 맞음) —
-                 고치 모델은 무게중심 보정(+0.25타일)과 바닥 맞춤을 받는데 글로우만
-                 발자국 가운데였다. 소환구와 같은 식으로 셋 다 제 모델에 묶는다. */
-              /* 테란 일꾼은 네 귀퉁이를 돈다(요청: "프로브가 4귀퉁이를 돌면서 공사") —
-                 여태 왼쪽 아래 한 자리에 붙박이로 서서 용접했다. 건물 번호로 시작
-                 귀퉁이를 흩어 두고(같은 기지의 공사가 나란히 같은 자리에서 시작하면
-                 눈에 띄게 어색하다) 6초마다 시계 방향으로 옮긴다.
-                 ⚠ 원작의 실제 순회 패턴은 아직 대조 전이다(지적: "이 패턴은 공식문서
-                 조사 필요") — 조사가 오면 이 자리만 바꾸면 된다. */
-              /* 불티 자리 — 합성 SCV와 **같은 차례·같은 주기**다(지적: 둘이 따로 돌았다).
-                 SCV보다 조금 안쪽에 두어 불티가 몸에 반쯤 얹힌다. */
-              const CORNER_SEC = 6;
-              const cIdx = (Math.floor(t / CORNER_SEC) + i) % 4;
-              const cDx = (cIdx === 0 || cIdx === 3 ? -1 : 1) * (boxW / 2 - 0.7);
-              const cDy = (cIdx === 0 || cIdx === 1 ? 1 : -1) * (boxH / 2 - 0.5);
-              const bfxX = race2 === "테란" ? bodyX + cDx : bodyX;
-              const bfxY = race2 === "테란" ? bodyY + cDy
-                : bodyY + boxH / 2 - modelHT / 2;
-              // 멈춰 선 공사에는 불티가 없다(요청: 테란 건설 중단) — 아무도 안 붙어 있다.
-              if (!qBuildFx || halted) return null;
-              return (
-                <span
-                  key={`bfx-${i}`}
-                  className={`scr-motion-buildfx scr-bfx-${race2 === "저그" ? "zerg" : race2 === "프로토스" ? "toss" : "terran"}`}
-                  style={{ ...posStyle(bfxX, bfxY), zIndex: z + 1 }}
-                >
-                  {/* 테란 용접 스파크(지적: 빨간 깜빡임이 전투 같다) — 밝은 흰빛의 길이가
-                      다른 짧은 막대들을 둥글게 배치, 저마다 다른 박자로 튄다. 길이·각은
-                      건물 번호 해시로 결정적이다. 크기는 타일 크기에 비례(재지적: 왜케
-                      커 — 고정 px라 모바일의 작은 맵에선 막대가 건물만 했다). */}
-                  {race2 === "테란" && (() => {
-                    /* 불티 파팟(재×4지적: 동그라미 로딩 아이콘 같다) — 원인은 72도 균등
-                       방사 배치 + 제각각 박자(= 도는 스피너). 이제 한 점에서 위쪽
-                       부채꼴로 흩어진 제각각 길이의 실선들이 '같은 박자'로 파팟(두 번
-                       연속) 튀고, 쉬었다가 반복한다(키프레임 scr-weld). 각은 위 반원에
-                       건물 해시로 흩어 놓아 돌지 않는다. */
-                    const ws = Math.max(0.3, ((mapRef.current?.clientWidth ?? 320) / grid.width) / 5);
-                    return [0, 1, 2, 3, 4].map((k) => (
-                      <span
-                        key={k}
-                        className="scr-bfx-weld"
-                        style={{
-                          width: "0.2px",
-                          height: `${((0.4 + ((i * 7 + k * 5) % 5) * 0.28) * ws).toFixed(1)}px`,
-                          transform: `rotate(${-90 + (k - 2) * 34 + ((i * 13 + k * 29) % 22) - 11}deg) translateY(${(0.2 * ws).toFixed(1)}px)`,
-                          animationDelay: `${(i % 5) / 10}s`,
-                        }}
-                      />
-                    ));
-                  })()}
-                </span>
-              );
-            }
-            /* 건물 체력과 '맞은 순간'(요청: 피격 표현 재검토) — 자취가 내려간 마지막
-               변곡점이 곧 이 건물이 맞은 때다. 체력바와 피격 불티가 같은 자를 쓴다. */
-            const bldHp = ((): { frac: number | undefined; hurt: number } => {
-              const arr = entBldHp.get(`${raw}|${Math.round(x)}|${Math.round(y)}`);
-              if (!arr) return { frac: 1, hurt: -99 }; // 기록 없는 성한 건물도 만피 바(요청).
-              const rec = [...arr].filter((r2) => r2.born <= sec + 5)
-                .sort((a2, b2) => b2.born - a2.born)[0] ?? arr[0];
-              /* 체력은 실제 수치다(지적) — 만피는 건물 표에서 가져와 나눈다. */
-              const bs0 = BLD_STATS[unit];
-              const full0 = bs0 ? bs0[0] + bs0[1] : 850;
-              let now0 = full0;
-              let hurt = -99;
-              for (const [hs3, hv3] of rec.hp) {
-                if (hs3 > t) break;
-                if (hv3 < now0) hurt = hs3;
-                now0 = hv3;
-              }
-              return { frac: Math.max(0.04, Math.min(1, now0 / Math.max(1, full0))), hurt };
-            })();
-            /* 맞는 건물에도 불티(요청: 유닛·건물 피격 표현 재검토) — 여태 건물은 피격
-               연출이 아예 없어, 해처리가 깎이는 동안 화면에서 터지는 것은 때리는 쪽
-               유닛의 연기뿐이었다. 그래서 "피해 객체와 멀리 떨어진 곳에서 나온다"로
-               보였다. 크기는 발자국에 매어(폭의 0.3배) 작은 건물에서 과하지 않게. */
-            const bldTile9 = (mapRef.current?.clientWidth ?? 320) / grid.width;
-            /* 건물도 실드가 남았으면 막이 번쩍인다(요청) — 프로토스 건물은 전부 실드를
-               지녔고, 자취는 체력+실드 합이라 남은 비율로 갈린다. */
-            const bs9 = BLD_STATS[unit];
-            const bShShare9 = bs9 && bs9[1] > 0 ? bs9[1] / (bs9[0] + bs9[1]) : 0;
-            const bShieldUp9 = bShShare9 > 0 && (bldHp.frac ?? 1) > 1 - bShShare9 + 0.001;
-            // 건물도 같은 잣대로 잠깐만(지적) — 0.8 → 0.35초.
-            const bldHitFx = bldHp.hurt > -99 && t - bldHp.hurt <= 0.35 ? (
-              <span
-                key={`bhit-${i}`}
-                className="scr-motion-army scr-motion-dot scr-v2fx"
-                style={{ ...posStyle(centerX, centerY), zIndex: z + 3 }}
-              >
-                {bShieldUp9 ? (
-                  <span
-                    key={`bshd-${Math.round(bldHp.hurt * 10)}`}
-                    className="scr-motion-shieldfx"
-                    style={{
-                      width: `${(fp2[0] * 0.95 * bldTile9).toFixed(1)}px`,
-                      height: `${(fp2[0] * 0.95 * bldTile9).toFixed(1)}px`,
-                    }}
-                  />
-                ) : (
-                  <span
-                    key={`bh-${Math.round(bldHp.hurt * 10)}`}
-                    className="scr-motion-puff scr-puff-hit"
-                    style={{
-                      width: `${(fp2[0] * 0.3 * bldTile9).toFixed(1)}px`,
-                      height: `${(fp2[0] * 0.3 * bldTile9).toFixed(1)}px`,
-                      transform: "translate(-50%, -50%)",
-                    }}
-                  />
-                )}
-              </span>
-            ) : null;
-            /* 성큰은 쏘는 동안 혓바닥을 내민 판으로 바꾼다(요청: "가시가 나오는 타이밍에
-               이 모양이") — 아래 방어 사격이 트레이서를 그리는 조건과 **같은 자**를 쓴다:
-               사거리 안에 지상 표적이 있고, 다 지어졌고, 아직 안 걷혔을 때. 조건을 따로
-               두면 혓바닥과 가시가 서로 다른 순간에 나가 둘 다 거짓말이 된다. */
-            const sunkenOut = unit === "Sunken Colony" && qCombat && !raising
-              && (goneEff === 0 || t < goneEff)
-              && (() => {
-                const f9 = nearestFoe(teamOfRaw(raw), centerX, centerY, "ground");
-                return f9.bd <= fireRangeTilesOf(unit, false);
-              })();
-            if (shapeKind) {
-              unitOps.push({
-                fx: fxF, fy: fyF, z, kind: sunkenOut ? "sunkenfire" : shapeKind,
-                /* 원작처럼 45도 요잉(지적) — 2D에도 적용(재지적: 2D도 45도 요잉해야지).
-                   쐐기의 진범은 요잉이 아니라 hover 그림자의 beginPath 누락이었다. */
-                rotDeg: buildingYawOf(),
-                hpMax: (() => {
-                  const bs2 = BLD_STATS[unit];
-                  return bs2 ? bs2[0] + bs2[1] : undefined;
-                })(),
-                hpFrac: bldHp.frac,
-                /* 정보 팝업 신원(요청) — 건물은 태그가 없어 임자·종류·착공 자리로
-                   짓는다(같은 자리에 다시 지어도 착공 시각이 다르면 다른 몸이다). */
-                pickKey: `b${raw}|${unit}|${Math.round(bx * 4)}|${Math.round(by * 4)}`,
-                pickName: unit, pickRaw: raw, pickBld: true, pickX: bx, pickY: by,
-                /* 땅에 앉은 건물은 그림자를 안 진다(요청: 건물 바닥 그림자는 제거) —
-                   건물은 발자국이 곧 제 자리라 바닥 타원이 정보를 더하지 않고, 모델
-                   발치에 검은 테를 둘러 도형을 흐리기만 했다. 떠 있는 건물만 제 것으로
-                   따로 만든다(요청: 떠 있는 건물만 자체적으로 제작) — 이륙해 둥실대거나
-                   이사 비행 중일 때, 발자국보다 작은 타원을 땅에 깔아 높이를 말한다. */
-                groundShadow: afloat || landing,
-                // 접지 그림자의 발자국 비(지적: 그림자는 바닥 발자국만) — 세로/가로.
-                footRatio: boxH / boxW,
-                /* 바닥에 실제로 깔리는 그림자(요청) — 발자국 크기의 타원을 타일 공간
-                   에서 열두 점으로 찍고, 그 점들을 자리 사상(posFrac)으로 옮긴다.
-                   화면에서 타원을 눌러 흉내 내는 것이 아니라 지면 위에 그린 도형이라,
-                   원근·기울기가 지면 격자와 정확히 같다.
-                   뜬 건물은 발자국의 0.6배로 줄여 깐다 — 몸과 그림자의 크기 차가 곧
-                   비행 높이로 읽힌다(공중 유닛 그림자와 같은 결). */
-                shadowPts: ((): [number, number][] => {
-                  const sk9 = 0.6;
-                  const rx9 = (boxW / 2) * sk9;
-                  const ry9 = (boxH / 2) * sk9;
-                  const pts9: [number, number][] = [];
-                  for (let q9 = 0; q9 < 12; q9 += 1) {
-                    const a9 = (q9 / 12) * Math.PI * 2;
-                    pts9.push(posFrac(
-                      bodyX + Math.cos(a9) * rx9 * 0.98,
-                      bodyY + Math.sin(a9) * ry9 * 0.98,
-                    ));
-                  }
-                  return pts9;
-                })(),
-                // 지면선 — 몸 상자 아랫변(그림자 타원의 아래 끝과 같은 지면).
-                baseFy: posFrac(bodyX, bodyY + boxH / 2)[1],
-                viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
-                sizePx: 0, wFrac: wFrac * pulse, hFrac: hFrac * pulse, boxFit: "meet",
-                /* 전 건물 폭 기준(요청: 바닥을 발자국에, 높이는 제 비율로) — meet
-                   (min(w,h)) 규칙은 상자가 낮으면 바닥까지 같이 줄여 발자국보다 작은
-                   바닥을 만들었다(벙커가 유난히 작던 이유와 같은 갈래). 폭을 기준 삼으면
-                   바닥이 늘 발자국 폭과 같고 높이는 모델 비율이 따라온다. */
-                fitWidth: true,
-                color, alpha, noShadow: true,
-              });
-              /* 라바와 변태알(요청: "이왕 해처리에 매핑할 거면 라바도 모델링하소
-                 변태알도 하면 좋을 듯") — 생산 자리가 건물마다 갈리고 나니, 이 해처리가
-                 지금 무엇을 품고 있고 라바가 몇 마리 남았는지를 그릴 수 있다.
-                 ▸ 변태알 — 그 해처리에서 난 유닛의 '완성 시각 − 변태 시간' 구간이 곧
-                   알이다. 자리는 분석이 정한 출생 자리(발자국 아래 출구) 곁이다.
-                 ▸ 라바 — 리플레이에 라바 자체는 안 남는다(라바는 명령을 안 받고, 변태를
-                   누른 순간에만 태그가 스친다). 다만 원작의 규칙이 뚜렷하다: 해처리
-                   하나가 342프레임(14.4초)마다 한 마리를 뱉고 최대 셋까지 모이며,
-                   변태를 누르면 하나가 준다(bwUnits의 LARVA_*). 그 규칙에 **이 해처리의
-                   변태 시각들**을 먹이면 지금 남은 수가 나온다 — 지어내는 것이 아니라
-                   아는 규칙과 아는 증거로 되짚는 것이다. */
-              if (ZERG_HALLS.has(unit) && !raising && (goneEff === 0 || t < goneEff)) {
-                const fp3 = FOOTPRINT[unit] ?? [4, 3];
-                /* 다 안 지어진 해처리는 아무것도 못 뱉는다(지적: "아직 완성도 안 된
-                   해처리에서 유닛 생산") — 자리로만 고르면, 본진 곁에 새로 올라가는
-                   해처리가 아직 공사 중인데도 옆 해처리가 뱉은 알·라바를 제 것으로
-                   집어 간다(발자국 언저리 상자가 겹친다). 변태를 시작한 시각(완성 −
-                   변태 시간)이 이 해처리의 완공(doneAt) 뒤라야 이 해처리의 몫이다. */
-                /* 시작 해처리는 처음부터 다 지어져 있다(수리: 초반에 알이 하나도 안
-                   뜨던 자리) — 이 건물은 착공 증거가 없어 sec이 0이고, doneAt은 그
-                   0에 건설 시간(약 120초)을 더한 값이 된다. 완공 문을 그대로 걸면 첫
-                   2분 동안 이 해처리의 변태가 전부 걸러져 알이 사라졌다. raising이
-                   시작 홀을 sec > 0으로 가려내는 것과 같은 자를 쓴다. */
-                const doneEff3 = sec > 0 ? doneAt : 0;
-                const mine3 = (prodDoneAt.get(raw) ?? []).filter((r3) =>
-                  r3.x >= bx - 1.5 && r3.x <= bx + fp3[0] + 1.5
-                  && r3.y >= by - 1.5 && r3.y <= by + fp3[1] + 2);
-                /* 되짚기는 규칙 층이 한다(bwUnits.hatchState) — 렌더러는 그리기만.
-                   ▸ **알은 라바가 있던 자리에서 난다**(지적: "라바 자리가 아닌 다른
-                     곳에서 알로 변태") — 알 칸과 라바 칸을 따로 두었더니 변태가 자리를
-                     옮기는 것처럼 보였다. 이제 여섯 칸을 둘이 나눠 쓰고, 변태는 가장
-                     오래된 라바가 있던 칸을 알로 바꾼다.
-                   ▸ **시작 해처리는 라바 셋을 데리고 시작한다**(하나가 아니다) — 그래서
-                     0초부터 셋을 뽑을 수 있는 것이고, 여태 0초에 라바가 하나뿐이라
-                     초반 내내 라바 0이 이어졌다.
-                   ▸ **0초에 낼 수 있는 변태는 50 미네랄어치뿐이다**(요청: "게임 시작 시
-                     미네랄 50원") — 증거가 같은 시각을 여럿 가리켜도 그 돈으로 못 산
-                     알은 그때 없었다. 이것이 "시작부터 알 두 개"의 자다.
-                   ▸ 저글링·스커지는 알 하나에서 둘이 나온다 — 개체 기록 둘이 알 하나다. */
-                const spots3 = hatchState(mine3, doneEff3, sec <= 0, t,
-                  (u3) => UNIT_BUILD_SEC[u3] ?? 30);
-                /* 알과 라바가 앉는 여섯 칸 — 해처리 발치를 두른다. 칸 번호가 곧 자리라,
-                   라바가 알이 돼도 그 자리에 그대로 있는다. */
-                const SPOT6: [number, number][] = [
-                  [-1.7, 1.35], [0.1, 1.75], [1.8, 1.35],
-                  [-2.1, 0.1], [2.1, 0.1], [0.1, -1.5],
-                ];
-                const put3 = (kind3: string, sz3: number, ix3: number): void => {
-                  const live3 = kind3 !== "egg";
-                  const sp3 = SPOT6[ix3 % SPOT6.length];
-                  /* 라바는 가만히 안 있는다(지적: "좀 이리저리 꿈틀대고 방향 바꿔야") —
-                     제자리에서 아주 조금 기어다니고 몸이 도는 정도다. 무작위가 아니라
-                     시각과 자리 번호의 순수 함수라 되감아도 같은 자리에서 같이 꿈틀댄다
-                     (재생이 t를 앞뒤로 옮겨도 그림이 안 튄다). 주기를 서로 어긋나게 둬
-                     셋이 한 몸처럼 움직이지 않는다. */
-                  const wob3 = live3 ? Math.sin(t * 0.55 + ix3 * 2.3) : 0;
-                  const wob4 = live3 ? Math.sin(t * 0.41 + ix3 * 1.7) : 0;
-                  const px3 = centerX + sp3[0] + wob3 * 0.3;
-                  const py3 = centerY + sp3[1] + wob4 * 0.24;
-                  const [pfx3, pfy3] = posFrac(px3, py3);
-                  unitOps.push({
-                    fx: pfx3, fy: pfy3,
-                    /* 해처리 뒤에 누운 것은 해처리에 가려야 한다(지적: "라바 해처리에
-                       안 가려지는 키 문제") — z를 건물보다 한 칸 위로 못 박아 두어
-                       뒷자리(y가 음수인 칸)까지 늘 건물 앞에 그려졌다. 제 자리가 건물
-                       앵커보다 앞이면 위로, 뒤면 아래로 간다. */
-                    z: z + (sp3[1] >= 0 ? 1 : -1), kind: kind3,
-                    // 라바는 저마다 다른 쪽을 보고 천천히 돌아눕는다(지적: 방향 바꿔야).
-                    rotDeg: buildingYawOf() + (live3 ? ix3 * 115 + wob3 * 38 : 0),
-                    viewYaw: viewYawOf(px3, py3), flat: !pitched, pitch: pitched,
-                    /* 크기는 유닛과 **같은 자**를 탄다(unitGlyphPx) — 타일 폭을 직접
-                       곱하면 그 값이 16-상자 한 변이라 실제 잉크는 3분의 1로 줄어,
-                       화면에서는 점 하나가 된다. 라바는 소형, 알은 그보다 한 단 크다. */
-                    sizePx: unitGlyphPx(kind3, kind3, kind3 === "egg" ? 1 : 0, py3) * sz3,
-                    color, alpha, noSep: true, noShadow: true,
-                    /* 인포 팝업 신원(요청: "라바 인포팝업이 안 뜬다") — 라바·알은
-                       리플레이 개체 기록에 안 남아(해처리가 셈해 그리는 장식이다)
-                       여태 pickKey 자체가 없었다. 그래서 눌러도 아무 일이 없었다.
-                       개체 태그가 없으니 '어느 해처리의 몇 번 칸'을 열쇠로 삼는다 —
-                       칸 번호가 곧 자리라 프레임이 지나도 같은 몸을 가리킨다. */
-                    pickKey: `l${Math.round(centerX * 4)}|${Math.round(centerY * 4)}|${ix3}`,
-                    pickName: kind3 === "egg" ? "Egg" : "Larva",
-                    hpFrac: 1,
-                    hpMax: kind3 === "egg" ? 200 : 25,
-                  });
-                };
-                // 둘 다 한 단 작게(지적: 라바·알이 너무 크다) — 알 1.15 → 0.68, 라바 1 → 0.6.
-                for (const sp of spots3) {
-                  put3(sp.kind === "egg" ? "egg" : "larva", sp.kind === "egg" ? 0.68 : 0.6, sp.slot);
-                }
-              }
-              /* 애드온 연결 통로(지적: 본체와 잇는 방식 고민 — 원작 배치 참고) — 원작
-                 에서 부속건물은 본체 오른쪽 아래에 붙는다: 애드온 왼쪽 모서리에서 본체
-                 쪽으로 낮은 복도 판을 깐다. */
-              if (ADDONS.has(unit)) {
-                const mkA = pitchK(centerY);
-                /* 본체를 찾아 정확히 잇는다(재재재지적: 연결이 너무 구림 — 통로가 본체
-                   오른변에 안 닿고 허공에 떴다) — 같은 임자의 살아 있는 비-애드온 중
-                   '오른변이 애드온 왼변과 맞닿는' 건물이 부모다. 통로는 부모 오른변에서
-                   애드온 왼변까지, 양끝을 0.5타일씩 물려 이음매 없이 깐다. */
-                const par = buildsSrc.find(([ps3, pxT, pyT, pu3, pr3, pg3]) =>
-                  pr3 === raw && !ADDONS.has(pu3) && ps3 <= t
-                  && ((pg3 ?? 0) === 0 || t < (pg3 ?? 0))
-                  && Math.abs((pxT + (FOOTPRINT[pu3] ?? [4, 3])[0]) - x) <= 2
-                  && Math.abs(pyT - y) <= 4);
-                /* 두 끝은 **몸 상자** 변이다(요청: 건물 틈) — 발자국 변으로 재면 이제
-                   본체·애드온이 발자국보다 작게 서므로 통로가 허공에서 시작한다. */
-                const parBox = par ? buildingBox(par[3]) : null;
-                const leftEdge = par && parBox
-                  ? par[1] + footDx(par[3]) + parBox[2] + parBox[0] / 2 - 0.5
-                  : bodyX - boxW / 2 - 1.2;
-                const rightEdge = bodyX - boxW / 2 + 0.5;
-                const linkW = Math.max(1.6, rightEdge - leftEdge);
-                const [lfx, lfy] = posFrac((leftEdge + rightEdge) / 2, bodyY + boxH * 0.1);
-                unitOps.push({
-                  /* 통로도 건물과 같은 45도로 굽는다(지적: "각 옆면에는 수직임") —
-                     본체·애드온이 다 요잉해 서 있어 서로 마주 보는 옆면도 비스듬한데,
-                     통로만 요잉 0으로 구우면 그 벽을 비껴 찌른다. 같은 각으로 구워야
-                     모형의 x축이 두 벽의 법선과 나란해져, 막대가 양쪽 벽에 직각으로
-                     꽂힌다(까닭은 addonlink 모델 쪽 주석에 적어 두었다). */
-                  fx: lfx, fy: lfy, z: z - 1, kind: "addonlink",
-                  rotDeg: buildingYawOf(),
-                  viewYaw: viewYawOf(centerX, centerY), flat: !pitched, pitch: pitched,
-                  sizePx: 0, wFrac: (linkW / grid.width) * mkA, hFrac: ((linkW * 0.36) / grid.width) * mkA,
-                  boxFit: "meet", fitWidth: true, color, alpha, noShadow: true,
-                });
-              }
-              /* 방어 사격(재지적: 터렛은 골리앗 대공과 동일, 벙커는 안에 든 것 따라) —
-                 사거리 안 적 마커가 있으면 건물에서도 트레이서가 나간다. 터렛은 공중
-                 상대만 미사일(8타일), 벙커는 총알(6타일)에 임자가 파벳을 뽑아 뒀고 적이
-                 코앞(3.5타일)이면 화염을 섞는다 — 안에 누가 들었는지는 리플레이에 안
-                 남아, 그 시점 보유 병종으로 어림한다. */
-              /* 포톤·성큰·스포어도 쏜다(지적: 사거리 안에 대상이 있는데 공격을 안 한다)
-                 — 여태 터렛·벙커만 이 갈래에 들어 있어, 프로토스·저그 방어 건물은
-                 화력이 체력에만 접혀 있고 화면에는 아무 일도 안 일어났다. 성큰은 대지
-                 (7타일)·스포어는 대공(7타일)·포톤은 둘 다(7타일)라, 못 치는 갈래는
-                 nearestFoe의 only로 아예 안 본다. */
-              if (qCombat && DEF_FIRE.has(unit)
-                && !raising && (goneEff === 0 || t < goneEff)) {
-                const teamB = teamOfRaw(raw);
-                /* 벙커 승무원 — 이 벙커 태그의 탑승 구간 중 지금 살아 있는 것들. 자리 넷을
-                   넘겨 잡히면 먼저 들어간 넷만 센다. 이 목록이 비면 벙커는 아무것도 안
-                   한다(빈 벙커가 쏘던 것이 예전 거짓말이다). */
-                const bunkTag = unit !== "Bunker" ? 0
-                  : (bldTagSpots.rows.find((r9) => r9.k === "Bunker" && r9.raw === raw
-                    && Math.abs(r9.x - centerX) <= 1.5 && Math.abs(r9.y - centerY) <= 1.5)?.tag ?? 0);
-                const crew = bunkTag === 0 ? [] : (bunkerCrew.get(bunkTag) ?? [])
-                  .filter((c9) => t >= c9.from && t < c9.to).slice(0, BUNKER_SEATS);
-                /* 승선 증거가 하나도 없는 벙커는 마린 한 기가 든 것으로 친다 [어림] —
-                   벙커를 골라 누르는 Load 버튼으로 태우면 우클릭 증거가 안 남기 때문이다.
-                   빈 벙커로 두면 지어 놓고 지켜 낸 방어선이 화면에서 통째로 사라지고, 넷을
-                   채운 것으로 치면 아무도 못 본 화력을 지어낸다. 인원을 모를 때 가장 작은
-                   참값이 1이고, 그 임자가 마린을 뽑은 뒤부터만 그렇게 본다. */
-                const presumed = unit === "Bunker" && crew.length === 0
-                  && (marineBornOf.get(raw) ?? Infinity) <= t;
-                const crewGun = presumed
-                  || crew.some((c9) => c9.kind === "Marine" || c9.kind === "Ghost");
-                const crewBat = crew.some((c9) => c9.kind === "Firebat");
-                /* 사거리는 표에서 온다(과제 #48) — 여기 박혀 있던 캐논 7·성큰 7·스포어 7·
-                   터렛 8·벙커 6·화염 3.5는 서로 다른 자리에 흩어진 채 표와 어긋나 있었다
-                   (터렛은 원작 7이다). 벙커는 표에서 무기가 아예 없으므로 승무원의 무기를
-                   벙커 보너스(+64px=2타일)와 함께 받아 온다 — profileOf(정체, 업글, 벙커=참)
-                   가 그 덧셈과 U-238 같은 사거리 업글을 이미 물고 나온다. */
-                const bunkUps = unit === "Bunker"
-                  ? (upsByRaw.get(raw) ?? []).filter(([us9]) => us9 <= t).map(([, nm9]) => nm9) : [];
-                // 사거리가 가장 긴 사수가 갈래를 정한다 — 고스트(C-10)가 있으면 그쪽.
-                const gunProf = unit === "Bunker"
-                  ? profileOf(crew.some((c9) => c9.kind === "Ghost") ? "Ghost" : "Marine",
-                    bunkUps, true) : null;
-                const batProf = unit === "Bunker" && crewBat
-                  ? profileOf("Firebat", bunkUps, true) : null;
-                const batRG = batProf ? (weaponVs(batProf, false)?.rangeTiles ?? -1) : -1;
-                const rgG = unit === "Bunker"
-                  ? (crewGun && gunProf ? (weaponVs(gunProf, false)?.rangeTiles ?? -1) : -1)
-                  : fireRangeTilesOf(unit, false);
-                const rgA = unit === "Bunker"
-                  ? (crewGun && gunProf ? (weaponVs(gunProf, true)?.rangeTiles ?? -1) : -1)
-                  : fireRangeTilesOf(unit, true);
-                /* 못 치는 갈래는 표적으로도 안 삼는다 — 벙커는 승무원이 정한다: 마린·
-                   고스트는 공중도 치므로(그래서 공중 표적이라고 사격이 통째로 사라지던 것이
-                   지도가 잡은 버그다) 갈래를 안 나누고, 화염뿐이면 지상 전용이다. */
-                const onlyB = unit === "Bunker" ? (crewGun ? undefined : "ground")
-                  : rgA < 0 ? "ground" : rgG < 0 ? "air" : undefined;
-                const foeB = nearestFoe(teamB, centerX, centerY, onlyB);
-                const rgB = foeB.air ? rgA : rgG;
-                // 화면 기준 조준(지적: 공중 각도·지면 평행) — 유닛 트레이서와 같은 셈.
-                const tPxB = (mapRef.current?.clientWidth ?? 320) / grid.width;
-                let dgy = (foeB.by - centerY) * tPxB * (pitched ? pitchFlat : 1);
-                // 표적의 제 크기로 조준 높이를 뺀다 — 표적 유닛 이름은 FoeRow.uk에 있다
-                // (예전 코드는 건물 행에만 실리는 k를 공중 갈래에서 읽어 늘 폴백이었다).
-                if (foeB.air) dgy -= unitPxOf(foeB.uk ?? "?", foeB.by) * 1.6;
-                const degB = Math.atan2(-((foeB.bx - centerX) * tPxB), dgy) * (180 / Math.PI);
-                /* 트레이서가 **제 포구에서** 나간다(요청: "포톤캐논등이 트레이서가 포구가
-                   아닌 먼곳에 나오는 문제 무조건 포구에 나와야 누구건지 알아") — 여태
-                   방어 건물은 유닛과 달리 모델 앵커가 없어, 발자국 한가운데에서 붙박이
-                   픽셀(MUZZLE_PX 5~7px)만큼 앞으로 민 자리에서 쏘았다. 그 픽셀은 화면
-                   크기에 매인 값이라 지도가 작을수록(폰) 건물 몇 배 밖에서 빛이 났고,
-                   포톤 여럿이 붙어 서면 누가 쏘는지 알 수 없었다.
-                   이제 유닛과 같은 셈이다 — 모델 공간의 포구(BLD_MUZZLE)를 굽기와 같은
-                   변환으로 투영하고, 그 자리를 화면 px로 옮긴다. 좌표계만 유닛과 다르다:
-                   건물 판은 발자국 **바닥 가운데**(16-상자의 8,16)가 앵커이고 한 변이
-                   발자국 폭이라, 지면선까지 내려간 뒤 상자 안 자리를 더한다. 앵커도 몸과
-                   같은 정규화 배수(bldNormOf)를 탄다. */
-                const bTf = ((): string => {
-                  const fall = `rotate(${degB.toFixed(1)}deg) translateY(${MUZZLE_PX[unit] ?? 5}px)`;
-                  const mz = shapeKind ? BLD_MUZZLE[shapeKind] : undefined;
-                  const el9 = mapRef.current;
-                  if (!mz || !el9) return fall;
-                  const mw9 = el9.clientWidth;
-                  const mh9 = el9.clientHeight;
-                  if (!mw9 || !mh9) return fall;
-                  const [px9, py9] = anchorPoint(
-                    mz, buildingYawOf(), viewYawOf(centerX, centerY), pitched, !pitched,
-                  );
-                  // 16-상자 한 변이 곧 그려지는 발자국 폭이다(UnitLayer의 fitWidth).
-                  const side9 = wTiles * mkK * (mw9 / grid.width);
-                  // 앵커도 몸과 같은 배수를 탄다 — 굽기가 상자 (8,16)을 축으로 키운다.
-                  const bn9 = bldNormOf(shapeKind);
-                  const ax9 = 8 + (px9 - 8) * bn9;
-                  const ay9 = 16 + (py9 - 16) * bn9;
-                  // 그리기가 실제로 앉히는 자리(잉크 바닥·가로중심) 기준으로 잰다.
-                  const ink9 = BLD_INK_BOX.get(shapeKind) ?? [8, 16];
-                  const [afx9] = posFrac(anchorX, anchorY);
-                  const [, gfy9] = posFrac(bodyX, bodyY + boxH / 2);
-                  const [cfx9, cfy9] = posFrac(centerX, centerY);
-                  const dx9 = (afx9 - cfx9) * mw9 + ((ax9 - ink9[0]) * side9) / 16;
-                  const dy9 = (gfy9 - cfy9) * mh9 + ((ay9 - ink9[1]) * side9) / 16;
-                  return `translate(${dx9.toFixed(1)}px, ${dy9.toFixed(1)}px) rotate(${degB.toFixed(1)}deg)`;
-                })();
-                const fire: React.ReactNode[] = [];
-                /* 포톤은 대공·대지 한 자루, 성큰은 촉수(표적까지 실거리로 뻗는다 — 럴커
-                   가시와 같은 셈), 스포어는 포자. 사거리 숫자는 위 rgB가 표에서 받아 왔다. */
-                if (unit === "Photon Cannon" && foeB.bd <= rgB) {
-                  fire.push(<span key="p" className="scr-motion-tracer scr-tracer-photon" style={{ transform: bTf }} />);
-                }
-                if (unit === "Sunken Colony" && foeB.bd <= rgB) {
-                  fire.push(<span
-                    key="s"
-                    className="scr-motion-tracer scr-tracer-spike"
-                    style={{
-                      transform: bTf,
-                      height: `${(foeB.bd * tPxB).toFixed(1)}px`,
-                    }}
-                  />);
-                }
-                if (unit === "Spore Colony" && foeB.bd <= rgB) {
-                  // 스포어는 가디언과 같은 독 갈래다(요청: "스포어/가디언은 독느낌 노랑 연두 길게").
-                  fire.push(<span key="o" className="scr-motion-tracer scr-tracer-venom" style={{ transform: bTf }} />);
-                }
-                if (unit === "Missile Turret" && foeB.air && foeB.bd <= rgB) {
-                  fire.push(<span key="t" className="scr-motion-tracer scr-tracer-missile" style={{ transform: bTf }} />);
-                }
-                if (unit === "Bunker" && (crew.length > 0 || presumed)) {
-                  if (crewGun && rgB >= 0 && foeB.bd <= rgB) {
-                    fire.push(<span key="g" className="scr-motion-tracer" style={{ transform: bTf }} />);
-                  }
-                  // 화염은 지상 전용이고 사거리도 제 것(가우스 6에 견줘 3)이다.
-                  if (crewBat && !foeB.air && batRG >= 0 && foeB.bd <= batRG) {
-                    fire.push(<span key="f" className="scr-motion-tracer scr-tracer-flame" style={{ transform: bTf, animationDelay: "0.2s" }} />);
-                  }
-                }
-                if (fire.length > 0) {
-                  return (
-                    <span
-                      key={`dfx-${i}`} className="scr-motion-deffire"
-                      style={{ ...posStyle(centerX, centerY), zIndex: z + 2 }}
-                    >
-                      {fire}
-                      {bldHitFx}
-                    </span>
-                  );
-                }
-              }
-              return bldHitFx;
-            }
-            // 전용 도형이 없는 건물 — 발자국 80% 네모(.scr-motion-sq와 같은 채움·0.82).
-            unitOps.push({
-              fx: fxF, fy: fyF, z, kind: "",
-              sizePx: 0, wFrac: wFrac * pulse, hFrac: hFrac * pulse, boxFit: "fill",
-              color, alpha: alpha * 0.82, noShadow: true,
-            });
-            return bldHitFx;
-          });
-        })()}
-
-
-        {/* 채굴 일꾼(요청, 지적: 방향 반대) — 자원 지대마다, 그 시점에 서 있는 가장
-            가까운 본진 건물(시작 본진·확장 포함)을 찾아 그리로 오간다. 가까운 홀이 없는
-            자원(아직 안 편 멀티)은 비워 둔다. */}
-        {/* 자원 지물(요청: 미네랄·가스 모델링해서 맵에 배치) — 지대마다 가스 깃발이면
-            간헐천, 아니면 미네랄 결정 무더기. 팀색과 무관한 고정 색이고, 건물(1000+)
-            아래 층에 깔린다. */}
-        {(grid.resources ?? []).map((res, ri) => {
-          const gasSpot = res[2] === 1
-            || (!gridHasGasFlags
-              && gasBuildings.some((g) => Math.hypot(g.x - res[0], g.y - res[1]) <= 6));
-          /* 정확한 좌표 우선(재지적: 겹치더라도 제자리에) — 홀 치마 회피 보정은 걷었다.
-             군집도 낱밭 수준(파서 반경 1.2)으로 좁혀, 밭이 홀에 붙은 맵은 붙은 그대로
-             그린다. */
-          const mkK = pitchK(res[1]);
-          const [fx, fy] = posFrac(res[0], res[1]);
-          /* 간헐천은 두 칸 폭(지적: 한 칸처럼 작았다). 미네랄은 낱밭 단위가 되면서
-             2×1 밭 폭에 맞춘 2.4타일 — 예전 3.2는 지대(여러 밭 묶음) 시절의 폭이다.
-             색은 제 기본색(지적): 미네랄은 반투명 파란 수정, 가스는 회갈색 바위. */
-          /* 가스 위 건물(재지적: "간헐천에 건물 지을때 간헐천 모델링도 보이면서 겹쳐지게
-             해야함(원작 반영)") — 앞선 지적("건물을 지으면 간헐천 모델은 사라져야")을
-             뒤집는 요청이다. 원작에서 정제소·어시밀레이터·익스트랙터는 간헐천을 지우지
-             않고 그 위에 얹힌다: 건물 몸(정제소 3.5타일)이 간헐천(4타일)보다 좁아 테두리가
-             삐져나오고, 그 겹침이 '가스 위에 지었다'를 말한다.
-             그래서 감추는 대신 **건물 뒤로 보낸다** — 아래 z에서 자원의 앞섬 몫(+1200)을
-             빼고 두 타일치를 더 물려, 같은 자리에 선 건물이 무슨 일이 있어도 앞에 온다.
-             ★ 다만 **짓는 동안만**이다(재요청: "완공되면 안보임") — 공사 중에는 간헐천이
-               건물 뒤로 비치고, 완공되는 순간 감춘다. 정제소가 뚜껑을 덮는 그림이다. */
-          const gasOn = gasSpot ? gasHideOf.find((g) =>
-            g.sec <= t && (g.gone === 0 || t < g.gone) && g.gd <= 4
-            && Math.abs(g.gx - res[0]) < 0.5 && Math.abs(g.gy - res[1]) < 0.5) : undefined;
-          if (gasOn && t >= gasOn.done) return null;
-          const underGas = !!gasOn;
-          // 고갈된 미네랄(요청)은 밭이 사라진다. 가스는 아래에서 색만 죽인다.
-          /* 고갈 어림은 끈다(지적: 미네랄·간헐천에 모델 적용해야지 — 후반에 자원이
-             통째로 사라져 있었다). 일꾼 수로 짐작하던 v1 어림이라 인과 증거가 없었다:
-             자원 모델은 늘 세워 둔다. 가스 색이 죽는 연출까지 함께 걷었다. */
-          // 미네랄 살짝 확대(요청) — 2.4 → 2.9타일 폭.
-          /* 간헐천은 제 발자국 그대로 4타일(전수조사: 6.4타일로 그려져 제 발자국(4×2)
-             보다 60% 넓었다 — 그 위에 앉는 정제소(4타일)가 못 덮어 가스 건물 주위로
-             간헐천이 삐져나오던 원인이기도 하다). */
-          // 미네랄 확대(재지적: 크기도 너무 작아) — 2.9 → 4.2타일 폭.
-          /* 미네랄 폭을 4.2 → 3.0타일로(지적: 넥서스와 간헐천에 가려짐) — 실제 밭은
-             2×1인데 4.2타일로 그리다 보니, 옆 간헐천(4타일)과 그림이 통째로 겹쳐
-             화가 순서가 누가 이기든 한쪽이 가려졌다. 자원끼리의 가림은 순서로는 못
-             푼다(둘 다 자원이라 같은 자를 쓴다) — 그림을 제 발자국에 가깝게 되돌려야
-             겹치지 않는다. 3.0은 여전히 밭(2타일)보다 5할 크다. */
-          const wTiles = gasSpot ? 4 : 3;
-          unitOps.push({
-            fx, fy,
-            /* 자원도 높이를 가진다(지적: 뒤 사물을 가려야) — 990 바닥층이 아니라 건물과
-               같은 y순 층에 선다. 기준은 그림 상자의 아랫변(+1.2 — 건물 z가 발자국
-               아랫변 기준이라 같은 자로 재야 함): +0.7로는 콜로니 뿔이 앞 미네랄을
-               덮었다(지적: 가려짐 에러). */
-            /* 자원은 같은 줄 건물보다 앞(지적: 미네랄이 가려진다) — 본진 셋을 발자국
-               보다 크게 그리기 시작하면서, 앞줄 미네랄이 뒷줄 본진 그림에 덮였다. 자원의
-               z를 반 타일(+40)만큼 올려 같은 줄이면 자원이 이긴다. 정말 앞에 선 건물
-               (한 타일 이상 아래)은 여전히 자원을 가린다. */
-            /* 화가 순서 기준을 그린 상자 아랫변으로(지적: 미네랄이 다른 요소에
-               가려짐) — 고정 +1.2는 밭을 키우고 나서 실제 그림보다 위였다. 건물이
-               발자국 아랫변을 쓰는 것과 같은 자로 맞춘다. */
-            /* 자원이 건물에 가리는 것을 더 넓게 막는다(지적: 미네랄이 뒤에 있는 가스나
-               건물에 가려짐) — 화가 순서는 '그림 아랫변'만 보는데, 건물 모형은 제 발자국
-               보다 훨씬 크게 그려져(어시밀레이터의 지느러미·기둥) 한 줄 뒤에 서 있어도
-               앞 미네랄을 덮는다. 자원의 앞섬 몫을 반 타일(40)에서 한 타일 반(120)으로
-               넓혀, 정말 한 타일 반 넘게 앞에 선 건물만 자원을 가린다. 자원은 배경이라
-               가려지면 지도가 안 읽히고, 반대로 자원이 조금 앞서 그려져도 어색하지 않다.
-               가스 간헐천은 그 위에 정제소가 서면 아예 감춰지므로 같은 몫을 줘도 안전하다. */
-            z: pitched
-              ? 1000 + Math.round((res[1] + (wTiles * 0.75) / 2) * Z_TILE)
-                + (underGas ? -2 * Z_TILE : 1200)
-              : (underGas ? 700 : 900) + ri,
-            kind: gasSpot ? "geyser" : "mineral",
-            viewYaw: viewYawOf(res[0], res[1]), flat: !pitched, pitch: pitched,
-            sizePx: 0,
-            wFrac: (wTiles / grid.width) * mkK,
-            hFrac: ((wTiles * 0.75) / grid.width) * mkK,
-            boxFit: "meet", fitWidth: true,
-            /* 자원도 지면선에 앉힌다(지적: 간헐천·미네랄 위치도 그렇다) — 건물과 같은
-               갈래의 어긋남이다. 상자 바닥을 화면에서 어림하지 않고, 같은 자리를 타일
-               공간(칸 아랫변)에서 잡아 자리 사상으로 옮긴다. 평면에서는 값이 같아
-               보이던 그대로고, 입체에서만 원근이 실려 제자리로 온다. */
-            baseFy: posFrac(res[0], res[1] + (wTiles * 0.75) / 2)[1],
-            color: gasSpot ? "#8f8274" : "#8fb9e8",
-            // 미네랄 반투명(요청) — 뒤가 어렴풋이 비치는 수정 결정.
-            alpha: gasSpot ? 1 : 0.55, noShadow: true,
-          });
-          return null;
-        })}
-        {/* 스파이더 마인(요청) — 안 터졌으면 모델, 터지는 1.2초는 폭발 스팬. */}
-        {mines.map((m, mi) => {
-          if (t < m.sec || (m.boom > 0 && t >= m.boom + 1.2)) return null;
-          const [mfx, mfy] = posFrac(m.x, m.y);
-          if (m.boom === 0 || t < m.boom) {
-            unitOps.push({
-              fx: mfx, fy: mfy, z: 960 + mi, kind: "mine",
-              viewYaw: viewYawOf(m.x, m.y), flat: !pitched, pitch: pitched,
-              // 스파이더 마인은 원작 분류대로 소형(전수조사: dot 눈금 0.8배였다).
-              sizePx: unitGlyphPx("mine", "mine", 0, m.y),
-              /* 진형 간격 — 마인은 noSep이 아니라서 이완(밀어내기)에 드는 **유일한**
-                 유닛 op이다.
-                 3차 설계는 여기에 원작 몸 지름(15×15 = 0.469타일)을 **고정값**으로 실어
-                 '모델 크기' 라디오가 간격을 못 흔들게 했는데, 검증이 그것이 회귀임을
-                 실측으로 잡았다: 라디오와 크기표는 그림만 키우고 간격은 그대로라, 확대
-                 화면에서 그려지는 몸폭이 중심거리의 457%가 된다(지금은 68%라 절대 안
-                 겹친다). 마인은 한 자리에 여럿이 깔리는 물건이라 이게 바로 눈에 띈다.
-                 그래서 반지름을 **그려지는 몸**에 매단다 — 그려지는 몸폭이
-                 sizePx × (잉크상자/16)이므로, 그 폭이 중심거리(2×반지름)의 68%가 되는
-                 값을 쓴다. 라디오를 어디에 두든 비율이 지금 그대로다. */
-              sepPx: (unitGlyphPx("mine", "mine", 0, m.y) * modelInkOf("mine")) / 16 / 1.36,
-              color: modeColor(m.raw, teamOfRaw(m.raw) ?? 1),
-              alpha: 0.95, noShadow: true,
-            });
-            return null;
-          }
-          return (
-            <span
-              key={`mine-${mi}`} className="scr-motion-mineboom"
-              style={{ ...posStyle(m.x, m.y), zIndex: 1500 }}
-            />
-          );
-        })}
-        {/* 저그 크립(요청) — 살아 있는 저그 건물마다 발밑에 보라 크립 블롭을 깐다.
-            불투명 단색이라 이웃 크립과 겹치며 이음매 없이 한 덩어리로 이어지고,
-            건물이 없어지면 페이드와 함께 곧 걷힌다(지적). 층은 자원(900)보다 아래. */}
-        {buildsSrc.map(([sec, x, y, unit, raw, gone], i) => {
-          if (sec > t) return null;
-          const race = bases.find((b2) => b2.key === raw)?.race;
-          if (race !== "저그") return null;
-          const goneAt = gone ?? 0;
-          if (goneAt > 0 && t >= goneAt + 1.2) return null;
-          const cxb = x + footDx(unit);
-          const cyb = y + footDy(unit);
-          const [cfx, cfy] = posFrac(cxb, cyb);
-          /* 크립 확산(요청: 원작 규칙) — 해처리(레어·하이브)와 콜로니류만 시간이 갈수록
-             크립이 넓게 퍼지고, 나머지 건물은 제 발밑만 적신다. 같은 자리의 앞선 같은
-             계열(해처리→레어, 크립→성큰)에서 확산 시계를 이어받고, 경기 시작 본진
-             해처리(sec 0)는 처음부터 만개다(원작: 첫 해처리는 크립을 다 깔고 시작). */
-          const hallKind = ["Hatchery", "Lair", "Hive"].includes(unit);
-          const colonyKind = unit.includes("Colony");
-          let wTiles = 8;
-          if (hallKind || colonyKind) {
-            let startSec = sec;
-            for (const [s2, x2, y2, u2, r2] of buildsSrc) {
-              // 자리·계보는 위 succeedsBld와 같은 자를 쓴다 — 곁 콜로니의 시계를 안 물어온다.
-              if (r2 !== raw || s2 >= startSec
-                || Math.hypot(x2 - x, y2 - y) > SAME_SITE_TILES) continue;
-              if (succeedsBld(u2, unit)) startSec = s2;
-            }
-            const maxW = hallKind ? 15 : 11;
-            const minW = hallKind ? 8 : 5.5;
-            const p = startSec <= 1 ? 1 : Math.min(1, Math.max(0, t - startSec) / CREEP_SPREAD_SEC);
-            // 앞이 빠르고 갈수록 느린 번짐 — 반 타일 눈금이라 스프라이트도 계단으로만 다시 굽는다.
-            const ease = 1 - (1 - p) * (1 - p);
-            wTiles = Math.round((minW + (maxW - minW) * ease) * 2) / 2;
-          }
-          const mk3 = pitchK(cyb);
-          unitOps.push({
-            fx: cfx, fy: cfy, z: 880 + (i % 20),
-            kind: i % 3 === 0 ? "creeppatch" : i % 3 === 1 ? "creeppatch2" : "creeppatch3",
-            viewYaw: viewYawOf(cxb, cyb), flat: !pitched, pitch: pitched,
-            sizePx: 0,
-            wFrac: (wTiles / grid.width) * mk3,
-            hFrac: ((wTiles * 0.75) / grid.width) * mk3,
-            boxFit: "meet", fitWidth: true,
-            color: "#544659",
-            alpha: goneAt > 0 && t >= goneAt ? Math.max(0, 1 - (t - goneAt) / 1.2) : 1,
-            noShadow: true,
-            clipWalk: true,
-          });
-          return null;
-        })}
-        {/* 건물 소멸 효과(요청: 종족별) — 무너진 순간 2초: 테란 주황 폭발+회색 연기,
-            저그 보라 살점 퍼짐, 프로토스 파란 빛 붕괴. 이륙 이사·같은 계보 대체(진화·
-            재건)는 폭발이 아니라 제외한다. */}
-        {buildsSrc.map(([sec, x, y, unit, raw, gone, liftAt], i) => {
-          const goneAt = gone ?? 0;
-          if (!goneAt || liftAt || t < goneAt || t > goneAt + 2) return null;
-          // 후계가 선 자리는 무너진 것이 아니라 변태·재건이다(위 succeedsBld와 같은 자).
-          if (buildsSrc.some(([s2, x2, y2, u2, r2], j) => j !== i && r2 === raw
-            && s2 > sec && Math.hypot(x2 - x, y2 - y) <= SAME_SITE_TILES
-            && succeedsBld(unit, u2))) return null;
-          const race = bases.find((b2) => b2.key === raw)?.race;
-          const rk = race === "저그" ? "zerg" : race === "프로토스" ? "toss" : "terran";
-          if (!qDeath) return null;
-          /* 크기는 건물 발자국의 0.7배(재지적: 그래도 너무 큼 — 반으로) — 퍼센트 폭이라
-             맵 확대에도 비례한다. */
-          const clpW = (((FOOTPRINT[unit] ?? [3, 2])[0] * 0.7) / grid.width) * 100;
-          return (
-            <span
-              key={`clp-${i}`}
-              className={`scr-motion-collapse scr-clp-${rk}`}
-              style={{
-                ...posStyle(x + footDx(unit), y + footDy(unit)),
-                width: `${clpW}%`, zIndex: 1450,
-              }}
-            >
-              <span className="scr-clp-smoke" />
-              <span className="scr-clp-core" />
-            </span>
-          );
-        })}
-        {/* (걷어냄) 채굴 일꾼 점 층 — 일꾼 '수'로 자원 곁에 점을 찍던 v1 장식 어림이다.
-            실제 조작과 무관하게 그려져, 가스를 안 지었는데도 캐러 다니곤 했다(지적).
-            개체 트랙에서는 실제 일꾼 개체가 제 클릭을 따라 움직이므로 어림이 필요 없다. */}
-        {/* 개체 트랙 v2(요청: 태그 단위 분석을 별도 테이블에 담아 비교) — 태그 하나가
-            곧 마커 하나다. 부대 어림의 묶음·흡수·합류 규칙이 전혀 없이, 각 개체가 제
-            증거를 따라 걷고 제 죽음(d)에 종족 효과와 함께 걷힌다. 유닛 층만 바꿔 그리고
-            건물·자원·크립·마법은 v1 그대로다. 정체를 모르는 개체는 그 종족의 기본 보병
-            꼴을 반투명으로 — 아는 척은 안 하되 존재는 보인다. */}
-        {entWalks.map((e, ei) => {
-          const rp = e.walk;
-          if (rp.length === 0 || t < rp[0][0]) return null;
-          /* 죽음의 주인은 하나다(과제 #69) — 시뮬이 돌면 시뮬, 아니면 분석의 d다.
-             분석이 체력 자취를 d에서 0으로 맞춰 주므로 '체력바가 0이면 즉사'는 저절로
-             성립한다(체력 0 = d). 셋을 견주던 옛 사슬은 걷었다 — 그 셋이 서로 달라서
-             화면·시뮬·체력바가 제각각 다른 순간에 유닛을 죽이고 있었다. */
-          const simDie = simTracks?.get(e.tag)?.died ?? null;
-          const dieAt = simDie !== null ? simDie : e.d;
-          if (dieAt !== null && t >= dieAt + 1.2) return null;
-          const team = teamOfRaw(e.raw);
-          /* 걸음 속도 상한(요청) — 제 속도표로 죈다. 15%만 여유를 둔다: 교전 지연을
-             따라잡는 몫이라, 이보다 크면 다시 '순간적으로 빨라짐'이 된다.
-             드랍·리콜은 예외 — 원작에서도 순간이동이다. 수송 구간 앞뒤 여유를 두어
-             하차 자리로 제때 나타나게 하고, 리콜은 같은 임자의 시전 전후 창으로 뺀다. */
-          /* 순간이동 면제는 **내릴 때만**이다(요청: 수송선 타고 내림 완벽히) — 타러 가는
-             것은 제 발로 걷는 일이라 걸음 상한을 그대로 받아야 한다. 여태 승선 1초
-             전부터 상한을 풀어, 배에서 멀리 있던 유닛이 마지막 1초에 날아가 탔다.
-             하차는 원작에서도 순간이동이라 뒤쪽 여유(+2초)는 그대로 둔다. */
-          const ridingNow9 = e.rides.some(([ra9, rb9]) => t >= ra9 && t < rb9 + 2);
-          const recallNow9 = castsSrc.some(([cs9, , , tech9, craw9]) =>
-            tech9 === "Recall" && craw9 === e.raw && t >= cs9 - 1 && t <= cs9 + 4);
-          const vCap9 = ridingNow9 || recallNow9
-            ? undefined : speedOf(e.unit || "Marine", t, e.ups) * 1.15;
-          /* 걸음 시계 — 코어 자취가 제 시각에 제자리라 지금 시각 그대로다.
-             탐색(1.5초 넘는 건너뜀)은 지금 시각으로 맞추고, 싸우는 동안은 멈추며,
-             그 밖에는 빚이 있으면 TRACK_CATCHUP으로 달려 따라잡는다. */
-          /* 걸음 시계는 코어 것이다(과제 #61 → 정식 배포) — 빚·따라잡기·상한은
-             "명령 좌표를 언제 지날까"를 렌더러가 어림하던 시절의 장치다. 코어
-             자취는 이미 제 시각에 제자리라, 여기서 시각을 미루면 코어가 낸 값을
-             렌더러가 도로 흔드는 꼴이 된다. */
-          const eff9 = t;
-          const rawPos = posAt(rp, eff9);
-          if (!rawPos) return null;
-          /* 탑승 중(요청: 수송선 승하차) — 배 안에 있으니 마커를 걷는다. 하차 지점
-             (f=13)이나 다음 제 명령에서 다시 나타나 걷는다.
-             승하차 연출(요청) — 태울 땐 빛기둥이 내리고 그 안에서 몸이 작아지며 떠올라
-             사라지고, 내릴 땐 거꾸로다. rideK 0=제 모습, 1=완전히 빨려듦. */
-          /* 승하차 길이는 **원작의 딜레이 그대로**다(요청: "탑승 딜레이시간에 딱 맞추기")
-             — 태우기는 게이트 주기 9프레임(0.378초), 내리기는 한 기당 18프레임(0.756초)
-             이고 그 값은 표(bwTransport)가 든다. 0.9초 고정이던 옛 값은 태우기가 실제
-             딜레이의 2.4배라, 배가 벌써 떠난 뒤에도 몸이 남아 빨려 들어가고 있었다. */
-          const rideInSec = PICKUP_POLL_SEC;
-          const rideOutSec = UNLOAD_GAP_SEC;
-          if (e.rides.some(([ra, rb]) => t >= ra + rideInSec && t < rb)) return null;
-          let rideK = 0;
-          /** 승하차 회전(도) — 한 바퀴 뱅글(요청). 태울 땐 0→360, 내릴 땐 그 반대다. */
-          let rideSpin = 0;
-          const rideIn9 = e.rides.find(([ra]) => t >= ra && t < ra + rideInSec);
-          const rideOut9 = e.rides.find(([, rb]) => t >= rb && t < rb + rideOutSec);
-          if (rideIn9) {
-            rideK = Math.min(1, (t - rideIn9[0]) / rideInSec);
-            rideSpin = rideK * 360;
-          } else if (rideOut9) {
-            rideK = Math.max(0, 1 - (t - rideOut9[1]) / rideOutSec);
-            rideSpin = -rideK * 360;
-          }
-          /* 건설에 흡수(지적: 건설 끝난 일꾼이 복제된 자리에 계속 서 있음) — 현장에
-             도착한 순간부터 숨는다. 공사 중 모습은 합성 건설 일꾼 연출의 몫이고,
-             죽음이 아니라 소멸 효과도 없다. */
-          if (e.buildHideAt !== null && t >= e.buildHideAt) return null;
-          // 공사 중 구간(재재지적: 이중 표시) — 앵커~다음 증거 사이는 공사에 흡수돼 있다.
-          if (e.buildHides.some(([ba2, bb2]) => t >= ba2 && t < bb2)) return null;
-          /* 빙결(전수조사: 스태시스·마엘스톰·락다운) — 걸린 자리에 얼어붙는다. */
-          const frzSt = e.statuses.find(([sa2, sb2, sk2]) =>
-            FREEZE_STATUS.has(sk2) && t >= sa2 && t < sb2);
-          const race = bases.find((b) => b.key === e.raw)?.race;
-          const u = e.unit;
-          /* 초반 무명은 일꾼(지적: 일꾼밖에 없는데 저글링이 정찰) — 그 사람의 첫 전투
-             유닛이 태어나기 전의 무명 개체는 보병일 수 없다. */
-          const drawUnit = u !== "" ? u
-            : e.b < (entCombatStart.get(e.raw) ?? Infinity)
-              ? (race === "저그" ? "Drone" : race === "테란" ? "SCV" : "Probe") : "";
-          const isWorker = drawUnit === "SCV" || drawUnit === "Probe" || drawUnit === "Drone";
-          /* 버로우(지적: 러커와 버로우 러커가 같이 움직인다 / 변태 알에서 나오자마자
-             버로우 상태로 나온다) — 여태 '러커가 안 움직이면 땅속'이라는 어림이었다.
-             그 한 줄이 두 가지를 동시에 틀리게 했다: 걸음이 멎기만 하면(랠리 도착·
-             교전 홀드·갓 태어난 순간) 땅속으로 보이고, 반대로 땅속인데 자취가 흐르면
-             구멍이 따라 미끄러졌다. 이제 커맨드 증거(f=18/19)를 시즈와 같은 잣대로
-             읽는다. 판 시각(burrowAt)은 아래에서 그 자리에 못 박는 데 쓴다. */
-          const burrowAt = BURROWABLE.has(drawUnit) ? burrowStartOf(e.burrows, t) : -1;
-          const burrowed = burrowAt >= 0;
-          /* 밭이 홀에 붙은 무한 맵인가 — 왕복 폭이 발자국보다 좁아, 아래 '홀에 들어간
-             순간 숨김' 창이 왕복을 통째로 삼키는 경우를 가른다(지적). */
-          let nearMine9 = false;
-          const uAir = drawUnit !== "" && isAirUnit(drawUnit);
-          /* 교전(지적: 상호작용 없음 + 어택땅 중 만나면 멈추고 싸워야) — 적 개체·방어
-             건물이 시야 안이면 싸움이다: 그 자리에 멈춰 서고(engageHoldRef), 트레이서·
-             불꽃이 인다. 일꾼·수송·옵저버는 안 싸운다(도망 대상일 뿐). */
-          const holdKey = `${e.raw}-v2e${ei}`;
-          const canFight = !isWorker && !uAir
-            && MORPH_SHELL[drawUnit] === undefined
-            && !(drawUnit !== "" && ENGAGE_SKIP.has(drawUnit));
-          /* 표적 우선(지적: 어택 찍으면 그 대상을 공격해야) — 최근(30초 안) 공격 명령이
-             찍은 태그가 아직 살아 움직이면 그쪽이 상대다. 없으면 가장 가까운 적. */
-          /* 대공 무기가 없으면 떠 있는 건물은 표적이 아니다(요청: 띄운 건물은 공중
-             유닛이다). 명단을 또 적지 않고 표에 묻는다 — 대공 사거리가 −1이면 그 유닛은
-             하늘을 못 친다. 이름을 모르는 개체(k="")는 표가 기본값으로 떨어져 조용히
-             틀리므로 아는 이름일 때만 가른다. */
-          const noAir9 = drawUnit !== "" && isKnownKind(drawUnit)
-            && fireRangeTilesOf(drawUnit, true) < 0;
-          let foe: { bx: number; by: number; bd: number; air: boolean; bld?: boolean; k?: string } =
-            nearestFoe(team, rawPos.x, rawPos.y, undefined, noAir9);
-          /* 표적 우선(재수리·기획서 1-B): 최신 1건만 보던 규칙은 어택땅 연타 한 번에
-             건물 표적을 지웠다 — nearestFoe에는 일반 건물이 없어 폴백도 없다. 창
-             (건물 45초/유닛 12초) 안에서 역순으로 훑되, 태그 없는 명령(어택땅)은
-             건너뛰고 태그 있는 가장 최근 명령을 채택한다. */
-          for (let ai = e.atkAt.length - 1; ai >= 0; ai -= 1) {
-            const [as2, atg, akx, aky] = e.atkAt[ai];
-            if (as2 > t) continue;
-            if (t - as2 > 45) break;
-            if (atg <= 0) continue;
-            let tp = entPosByTag.get(atg);
-            /* 태그 미해석 폴백(기획서 2-D) — 태그가 지도에 없으면(시작 홀·태그 재활용
-               분리) 클릭 좌표에서 3타일 안의 살아 있는 적 건물 자리로 잇는다. 어택땅
-               (atg=0)은 여기 못 온다 — 건물이 보인다고 싸움이 나면 안 된다. */
-            if (!tp) {
-              const st9 = bldTagSpots.sites.find((s9) =>
-                t >= s9.born + 2 && (s9.gone === 0 || t < s9.gone)
-                && Math.abs(s9.x - akx) <= 3 && Math.abs(s9.y - aky) <= 3
-                && (teamOfRaw(s9.raw) ?? 0) > 0 && teamOfRaw(s9.raw) !== team);
-              if (st9) {
-                tp = { x: st9.x, y: st9.y, team: teamOfRaw(st9.raw) ?? 0, air: false, bld: true, k: st9.k };
-              }
-            }
-            /* 팀 미상(0)은 표적으로도 안 삼는다(위 nearestFoe 주석과 같은 오인 방지).
-               아군은 표적이 될 수 있다(요청: 명시적 어택은 아군도 지정) — 여기 오는
-               태그는 A를 누르고 직접 찍은 명령뿐이라(우클릭 격상은 적에게만 붙는다)
-               같은 편 태그가 실렸다면 사람이 정말 제 유닛을 찍은 것이다. */
-            // 은신·버로우는 콕 찍은 어택이라도 디텍터 없이는 못 겨눈다(요청).
-            if (tp && tp.hidden && !detectedBy(team, tp.x, tp.y)) continue;
-            if (tp && tp.team > 0 && (team ?? 0) > 0
-              && t - as2 <= (tp.bld ? 45 : 12)) {
-              const td = Math.hypot(tp.x - rawPos.x, tp.y - rawPos.y);
-              // 너무 먼 표적은 안 겨눈다(지적: 타겟팅 오인) — 이미 딴 데 간 옛 표적이다.
-              if (td <= ENGAGE_SIGHT_TILES * 1.6) {
-                foe = { bx: tp.x, by: tp.y, bd: td, air: tp.air, ...(tp.bld ? { bld: true, k: tp.k } : {}) };
-                break;
-              }
-            }
-          }
-          /* 히스테리시스(지적: 이동 중 위치가 앞뒤로 잘게 플리커) — 시야 경계에 선
-             적 때문에 교전이 프레임마다 켜졌다 꺼지면, '멈춘 자리'와 '지연 걸음' 사이를
-             오가며 흔들렸다. 들어올 땐 시야, 나갈 땐 시야×1.3이라 경계에서 안 떨린다. */
-          const engagedBefore = engageHoldRef.current.has(holdKey);
-          /* 붙는 거리는 시야가 아니라 **자동 획득 사거리**다(과제 #48) — 여태 이 파일의
-             교전은 전부 ENGAGE_SIGHT_TILES 9 하나로 갈렸다. 그래서 저글링(획득 3)이
-             화면 반대편의 적을 보고 달려들고, 시즈 모드(12)는 오히려 사거리 안에 든
-             적을 보고도 더 걸어 들어갔다. 원작은 시야·자동 획득·무기 사거리가 셋 다
-             다른 값이고, 여기 필요한 것은 가운데 것이다. 표에 없는 이름과 획득값 0
-             (드랍십·베슬·오버로드처럼 스스로 표적을 안 잡는 것들)만 옛 9로 물러난다 —
-             지어낸 값을 쓰느니 알던 어림이 낫고, 그것들은 어차피 canFight에서 걸린다. */
-          const acq9 = drawUnit !== "" && isKnownKind(drawUnit)
-            ? (acquireTilesOf(drawUnit) || ENGAGE_SIGHT_TILES) : ENGAGE_SIGHT_TILES;
-          let fighting = canFight && !frzSt && !burrowed && Number.isFinite(foe.bd)
-            && (foe.bd <= acq9 * (engagedBefore ? 1.3 : 1)
-              /* 어택이 찍은 건물은 14.4타일부터 접근 시작(기획서 1-E — 수리: 시야
-                 게이트가 철거 행군을 9타일 밖에서 세워 뒀다). */
-              || (foe.bld === true && foe.bd <= ENGAGE_SIGHT_TILES * 1.6));
-          let pos = rawPos;
-          /* 교전 당김·홀드·잽은 코어가 켜지면 안 돈다(과제 #61) — 코어는 표적까지
-             걸어가 사거리에서 멈추는 일을 제 이동 모형으로 이미 했다. 여기서 한 번 더
-             끌면 두 모형이 같은 몸을 밀고, 어차피 아래에서 코어 자리로 덮여 버려질
-             값을 프레임마다 셈하는 것이기도 하다. */
-          // 다음 프레임을 위한 걸음 시계 기록 — 싸우는(유예 포함) 동안은 멈춰 둔다.
-          /* 가스 왕복(지적: 가스 캐는 일꾼이 하나도 없다) — 배정 클릭은 한 번만 남고
-             그 뒤는 게임이 자동 순환이라, 개체가 정제소 위에 서서 건물에 가려져 있었다.
-             제 정제소 곁(2타일)에 선 일꾼은 가장 가까운 홀과 그 사이를 결정적으로
-             왕복한다 — 어림 장식이 아니라, 그 일꾼이 실제로 가스에 배정된 개체다. */
-          /* 채취 왕복도 코어 몫이다(과제 #61) — 코어에는 밭 배정과 왕복이 들어 있다
-             (simCore.assignJob). 렌더러의 결정적 왕복은 코어가 없던 때의 대역이라,
-             켜져 있으면 같은 일꾼을 두 박자로 흔들 뿐이다. */
-          /* 변태·건설로 흡수되기 직전엔 그 자리로 들어간다(요청: 드론 변태도 고치
-             중앙에 놔야 자연스럽다) — 예전엔 제자리에서 그냥 사라져, 고치는 발자국
-             한가운데에 솟는데 드론은 옆에서 없어졌다. 앵커 1.2초 전부터 발자국 중앙
-             (고치와 같은 자리 보정 포함)으로 미끄러져 들어간다. */
-          if (isWorker) {
-            const site9 = e.buildSites.find((v) => t >= v[0] - 1.2 && t <= v[0] + 0.2);
-            if (site9) {
-              const bRow9 = buildsSrc.find(([bs9, bx9, by9, , br9]) =>
-                br9 === e.raw && Math.abs(bs9 - site9[0]) <= 3
-                && Math.abs(bx9 - site9[1]) <= 1.5 && Math.abs(by9 - site9[2]) <= 1.5);
-              const fp9 = FOOTPRINT[bRow9 ? bRow9[3] : ""] ?? [3, 2];
-              const tx9 = site9[1] + fp9[0] / 2;
-              const ty9 = site9[2] + fp9[1] / 2 + CONSTRUCT_DROP;
-              const k9 = Math.min(1, Math.max(0, (t - (site9[0] - 1.2)) / 1.2));
-              pos = { ...pos, x: pos.x + (tx9 - pos.x) * k9, y: pos.y + (ty9 - pos.y) * k9 };
-            }
-          }
-          /* 자원 반납 순간은 숨는다(요청: 기지 겹침은 허용하되 들어간 순간 렌더링에선
-             숨기기) — 왕복 자리가 제 홀 발자국 안이면 그 프레임은 안 그린다. 원작도
-             반납하는 일꾼은 건물 속으로 잠깐 사라진다. */
-          if (isWorker && !nearMine9) {
-            /* 밭이 홀에 붙은 무한 맵에서는 아예 안 숨긴다(지적: 일꾼이 일을 안 하는
-               것처럼 보임) — 왕복 폭이 발자국보다 좁아 숨김 창이 왕복을 통째로
-               삼켰다. 아래 창은 밭이 3타일 넘게 떨어진 보통 맵에서만 건다. */
-            /* 숨김 창을 좁힌다(지적: 첫 4기가 채취하는 게 안 보인다) — ±1.8×1.3타일은
-               4×3 발자국의 거의 전부라, 반납 왕복의 절반을 건물 속으로 삼켰다(실측:
-               경기 20초에 일꾼 41기가 이 규칙으로 사라졌다). 정말 안으로 들어간
-               한가운데(±1.15×0.85)만 숨긴다. */
-            const inHall = halls.some((h) => h.raw === e.raw && h.sec <= t
-              && (h.gone === 0 || t < h.gone)
-              && Math.abs(h.x - pos.x) <= 1.15 && Math.abs(h.y - pos.y) <= 0.85);
-            if (inHall) return null;
-            /* 가스 건물도 같은 규칙(지적: 가스 일꾼이 들어가기 한참 전에 사라짐) —
-               발자국 한가운데(문턱 1.4×0.7)에 정말 '들어간 순간'만 숨는다. 다가가는
-               동안은 그대로 보인다. */
-            const inGas = buildsSrc.some(([bs6, bx6, by6, bu6, br6, bg6]) =>
-              br6 === e.raw && bs6 <= t && ((bg6 ?? 0) === 0 || t < (bg6 ?? 0))
-              && (bu6 === "Refinery" || bu6 === "Assimilator" || bu6 === "Extractor")
-              && Math.abs(bx6 + footDx(bu6) - pos.x) <= 1.4
-              && Math.abs(by6 + footDy(bu6) - pos.y) <= 0.7);
-            if (inGas) return null;
-          }
-          /* 코어 자리로 못 박는다(기획서 P1, ?sim=1) — 이제 위의 걸음(rawPos)부터가
-             코어 자취를 읽은 값이라(과제 #61) 여기서 자리가 달라질 일은 사실상 없다.
-             남는 몫은 둘이다: 코어만 아는 몸 방향(hdg)과, 배 안(ST_INSIDE)이면 아예
-             안 그리는 판정. 코어 결과가 아직 없으면(계산 중·실패) 렌더러 길 그대로다.
-             아래 스무딩도 코어면 건너뛴다 — 이미 제 속도로 적분된 자리다. */
-          let simHdg: number | null = null;
-          /** 코어가 말하는 지금 상태 — 사주경계는 '정말 서 있을 때'만이라 이 값이 필요하다. */
-          let simState: number | null = null;
-          const simTr = simTracks?.get(e.tag);
-          if (simTr) {
-            const sp = posAtSim(simTr, t);
-            if (sp) {
-              if (sp.state === ST_INSIDE) return null;
-              pos = { ...pos, x: sp.x, y: sp.y };
-              simHdg = sp.hdg;
-              simState = sp.state;
-            }
-          }
-          /* 얼어붙은 것은 코어보다 위다(전수조사: 스태시스·마엘스톰·락다운) — 코어는
-             그 기술을 모르니 제 갈 길을 계속 걷는다. 못 박는 쪽은 증거다. 여태 이
-             덮어쓰기가 코어 덮어쓰기보다 **앞**에 있어, 코어를 켜면 언 유닛이 그대로
-             걸어 다녔다(과제 #61 — 두 모형이 같은 몸을 밀던 자리). */
-          if (frzSt) {
-            const fp2 = posAt(rp, Math.max(rp[0][0], frzSt[0]));
-            if (fp2) pos = { ...pos, x: fp2.x, y: fp2.y };
-          }
-          /* 땅에 박혀 있다(지적: 러커와 버로우 러커가 같이 움직인다) — 땅속인 동안은
-             자취·교전 당김·시뮬이 무슨 자리를 내놓든 판 그 자리다. 아래 스무딩보다
-             앞에 둬, 파고드는 순간에는 미끄러져 들어가고 그 뒤로는 못 박힌다. */
-          if (burrowed) {
-            const bp2 = posAt(rp, Math.max(rp[0][0], burrowAt));
-            if (bp2) pos = { ...pos, x: bp2.x, y: bp2.y };
-          }
-          /* 화면 스무딩(지적: 뚝뚝 끊김 → 재요청: 순간이동 무조건 제거, 아무리 짧아도
-             스무스) — 지난 프레임 표시 자리에서 목표로 지수 추종. 거리 상한(6타일 스냅)
-             을 걷어 드랍·리콜 급 큰 이동도 빠른 미끄럼으로 잇는다. 시간 되감기·큰 시간
-             건너뜀(탐색)만 그 자리 리셋이다. */
-          if (!simTr) {
-            const mem2 = drawPosRef.current.get(holdKey);
-            if (mem2 && t >= mem2.at && t - mem2.at < 1.5) {
-              const dt5 = t - mem2.at;
-              const k5 = 1 - Math.exp(-dt5 * 6);
-              let nx5 = mem2.x + (pos.x - mem2.x) * k5;
-              let ny5 = mem2.y + (pos.y - mem2.y) * k5;
-              /* 활강 속도 상한(지적: 갓 태어난 유닛이 랠리로 확 미끄러짐) — 지수 추종은
-                 먼 어긋남일수록 초반이 광속이라 표시 이동을 죈다. 상한은 제 속도표의
-                 1.5배(요청: 걸음 속도 상한) — 한 자로 9타일을 쓰면 걸음 3타일짜리
-                 질럿도 초당 9타일까지 미끄러졌다. 추종의 따라잡기 몫이라 걸음보다는
-                 넉넉히 준다. 드랍·리콜은 걸음 상한에서 빠지지만 화면 추종은 종전대로
-                 9타일로 죈다 — 순간이동 무조건 금지가 화면의 원칙이다. */
-              const md5 = Math.hypot(nx5 - mem2.x, ny5 - mem2.y);
-              const cap5 = (vCap9 === undefined ? 9 : (vCap9 / 1.15) * 1.5) * dt5;
-              if (md5 > cap5 && md5 > 0) {
-                nx5 = mem2.x + ((nx5 - mem2.x) / md5) * cap5;
-                ny5 = mem2.y + ((ny5 - mem2.y) / md5) * cap5;
-              }
-              pos = { ...pos, x: nx5, y: ny5 };
-            }
-            drawPosRef.current.set(holdKey, { x: pos.x, y: pos.y, at: t });
-          }
-          if (dieAt === null || t < dieAt) diePosRef.current.set(holdKey, { x: pos.x, y: pos.y });
-          const [ax3, ay3] = [pos.x, pos.y];
-          const [fx, fy] = posFrac(ax3, ay3);
-          /* 건설 일꾼 뒷그물(재지적: 좌하단의 '진짜' 일꾼이 남는다 — 앵커 판정
-             buildHideAt을 비껴간 경우) — 조용히 서 있는 일꾼이, 제 최근 활동 무렵
-             '이후'에 선 내 건물 발자국에 붙어 있으면(회피가 모서리로 밀어낸 그 자리)
-             그 공사에 흡수된 것으로 본다. 오래전부터 서 있던 본진 곁 일꾼은 건물이
-             제 활동보다 한참 앞서라 안 걸린다. */
-          if (isWorker && !rawPos.moving) {
-            let lastAct = e.b;
-            for (const os3 of e.orders) {
-              if (os3 <= t) lastAct = os3;
-              else break;
-            }
-            const absorbed = buildsSrc.some(([bs4, bx4, by4, bu4, br4, bg4]) => {
-              if (br4 !== e.raw || bs4 > t || ((bg4 ?? 0) > 0 && t >= (bg4 ?? 0))) return false;
-              if (bs4 < lastAct - 60) return false;
-              const [fw4, fh4] = FOOTPRINT[bu4] ?? [3, 2];
-              return Math.abs(pos.x - (bx4 + fw4 / 2)) <= fw4 / 2 + 1.2
-                && Math.abs(pos.y - (by4 + fh4 / 2)) <= fh4 / 2 + 1.2;
-            });
-            if (absorbed) return null;
-          }
-          // 죽음 창(dieAt~+1.2초) — 마커 대신 종족별 사망 효과가 남는다(체력 0 즉사 포함).
-          if (dieAt !== null && t >= dieAt) {
-            if (!qDeath) return null;
-            /* 인구 상한이 무른 합성은 죽는 장면이 없다(지적: "복제품들이 땅에 나타나서는
-               곧 혼자 죽음") — 원장이 제 과잉 계상을 무르는 것이라, 때린 놈도 없고
-               죽음도 아니다. 시뮬이 따로 죽였으면 그건 진짜 죽음이라 그대로 터진다. */
-            if (simDie === null && e.dk === "cap") return null;
-            const dk = race === "저그" ? "zerg" : race === "프로토스" ? "toss" : "mech";
-            /* 죽은 자리에 못박기(지적: 체력 0으로 소멸한 유닛이 폭발하며 움직임) —
-               지금 표시 위치(스무딩·걸음이 계속 간다)가 아니라 죽은 '순간'의 자취
-               좌표에서 터진다. */
-            const dmem0 = diePosRef.current.get(holdKey);
-            const dp0 = dmem0 ?? posAt(rp, Math.max(rp[0][0], dieAt));
-            const dpx = dp0 ? dp0.x : ax3;
-            const dpy = dp0 ? dp0.y : ay3;
-            /* 공중은 떠 있던 몸 자리에서 터진다(지적) — 비행 높이만큼 위로. */
-            const dieLift = uAir
-              ? (drawUnit === "" ? unitGlyphPx(unitMarkerKind("", race), unitMarkerKind("", race), 0, dpy)
-                : unitPxOf(drawUnit, dpy)) * 1.6 : 0;
-            return (
-              <span
-                key={`v2die-${ei}`}
-                className="scr-motion-army scr-motion-dot"
-                style={{ ...posStyle(dpx, dpy), zIndex: 1300, ...(dieLift ? { marginTop: `${(-dieLift).toFixed(1)}px` } : {}) }}
-              >
-                <span className={`scr-motion-diefx scr-die-${dk}`} />
-              </span>
-            );
-          }
-          /* 시즈모드(지적: 판정을 리플레이에서) — Siege/Unsiege 커맨드 증거 그대로. */
-          let siegeOn = 0;
-          for (const [ss2, on2] of e.sieges) { if (ss2 <= t) siegeOn = on2; else break; }
-          const drawUnit2 = siegeOn === 1 && drawUnit.startsWith("Siege Tank")
-            ? "Siege Tank (Siege Mode)" : drawUnit;
-          /* 표적 거리는 '그려지는 몸'에서 다시 잰다(지적: 맞는 대상이 없는데 공격한다 /
-             둘이 너무 멀어 따로 놀아 보인다) — foe.bd는 원자취(명령 좌표) 기준인데,
-             화면의 몸은 교전 당김·잽·채굴 왕복·겹침까지 실린 딴 자리에 있다. 그 둘이
-             몇 타일씩 벌어진 채로 사격 판정과 조준각을 원자취 거리로 내리다 보니, 몸
-             옆에 아무도 없는데 트레이서가 나가고 각도도 엉뚱한 데를 겨눴다. 아래 사격
-             ·조준·가시 길이는 전부 이 값을 쓴다. */
-          const foeDist = Number.isFinite(foe.bd)
-            ? Math.hypot(foe.bx - pos.x, foe.by - pos.y) : Infinity;
-          /* 몸 방향(지적: 트레이서와 불일치 + 뒤로 걷기) — 싸울 땐 표적을 바라보고,
-             걸을 땐 실제 화면 이동 방향을 본다(headingOfDisplay). */
-          const foeDeg = foeDist <= ENGAGE_SIGHT_TILES
-            ? Math.atan2(-(foe.bx - pos.x), foe.by - pos.y) * (180 / Math.PI) : null;
-          /* 싸울 때도 '움직이면 이동 방향'이 먼저다(요청) — 표적 고정 요잉은 잽으로
-             파고들거나 진형이 밀릴 때 몸이 옆·뒤로 미끄러지게 만들었다. 제자리에 선
-             순간에만 표적을 본다. */
-          const bodyHdg0 = simHdg !== null ? simHdg : headingOfDisplay(
-            holdKey, pos.x, pos.y, headingOf(rp, rawPos),
-            fighting && foeDeg !== null ? foeDeg : null,
-          );
-          /* 사주경계(요청: "제자리 서있는 유닛들이 주기적으로 사주경계를 함 … 하는 유닛이
-             있고 안 하는 유닛이 있고 패턴도 다르다") — 원전의 정체는 iscript 옵코드
-             turnrand다([OBW] bwgame.h:14921): 몸을 8_dir×a(11.25도의 배수)만큼 돌리되
-             네 번에 한 번만 반시계, 나머지는 시계다(시계 쪽으로 치우친 무작위).
-             ⚠ **누가 어떤 박자로 도는가는 iscript.bin에 있고 우리 자료에는 없다** —
-               BWAPI·units.dat·flingy.dat 어느 덤프에도 스크립트는 안 들어 있다(게임 MPQ를
-               IceCC로 풀어야 나온다). 그래서 여기 [어림]은 둘이다:
-                 ① 도는 유닛 — 커뮤니티 문서가 확인해 주는 보병(마린이 총을 들었다 내리며
-                    두리번거린다)만 켠다. 차량·기계·일꾼·공중은 안 켠다.
-                 ② 박자 — 3.2초마다 한 번, 태그로 위상을 흩어 부대가 한꺼번에 안 돈다.
-               도는 **양과 방향**만은 원전 그대로다(11.25도 배수·시계 3:1).
-             iscript 덤프를 구하면 이 블록의 표만 갈면 정확해진다. */
-          const bodyHdg = (() => {
-            if (!IDLE_SCAN.has(drawUnit2) || fighting || burrowed) return bodyHdg0;
-            if (simState !== null && simState !== 0) return bodyHdg0;   // 0 = ST_IDLE
-            const step = Math.floor(t / IDLE_SCAN_SEC + (e.tag % 7) / 7);
-            const r = (step * 2654435761 + e.tag * 40503) >>> 0;   // 결정론 난수(같은 입력=같은 그림)
-            const amt = 1 + (r % 2);                                // 11.25 또는 22.5도
-            const ccw = (r >>> 8) % 4 === 1;                        // 네 번에 한 번만 반시계
-            return bodyHdg0 + (ccw ? -1 : 1) * amt * 11.25;
-          })();
-          /* 지금 체력(요청: 체력을 지니고 다닌다) — 변곡점 목록에서 t 시점 값.
-             내려간 변곡점의 시각은 곧 '이 개체가 실제로 맞은 순간'이라, 피격 불티를
-             그 자리·그 때에 띄우는 자로 함께 쓴다(요청: 피격 표현 재검토). */
-          /* 체력은 실제 수치다(지적: "체력은 반올림 없이 실제 수치로") — 자취의 값이
-             곧 남은 체력(실드 포함)이라, 만피는 표에서 가져와 나눈다. */
-          const hpFull = (() => {
-            const st0 = UNIT_STATS[drawUnit2] ?? UNIT_STATS[drawUnit];
-            return st0 ? st0.hp + (st0.sh ?? 0) : 40;
-          })();
-          let hpNow = hpFull;
-          let hurtAt = -99;
-          for (const [hs2, hv2] of e.hp) {
-            if (hs2 > t) break;
-            if (hv2 < hpNow) hurtAt = hs2;
-            hpNow = hv2;
-          }
-          /* 선택 표시(지적: 드래그 선택 구분) — 방금 명령을 받았다는 것은 그 직전에
-             (드래그든 부대지정이든) 잡혔다는 뜻이다. 클릭 토글이 켜져 있으면 명령
-             직후 0.35초 동안 몸에 흰 링이 켜져, 함께 잡힌 무리가 한눈에 보인다. */
-          const selNow = clickFx && e.orders.some((os2) => t >= os2 && t - os2 <= 0.35);
-          /* 시즈탱크 반동(요청: 발포 시 포탑·포신만) — 차체/포탑을 딴 판으로 밀어,
-             쏘는 박자에 포탑 판만 뒤로 살짝 밀렸다 돌아온다. */
-          /* 변태 중이면 알·고치다(요청) — 태어난 직후 MORPH_SHELL_SEC 동안은 제 모습이
-             아니라 껍질 안이다. 이 동안은 싸우지도 않는다(아래 canFight). */
-          const morphShell = MORPH_SHELL[drawUnit] !== undefined
-            && t - e.b < MORPH_SHELL_SEC ? MORPH_SHELL[drawUnit] : null;
-          const kind0 = morphShell ?? (burrowed ? "burrowhole"
-            : isWorker ? workerLoadKind(workerKindOf(race), simState)
-              : unitMarkerKind(drawUnit2, race));
-          const gunKind = kind0 === "tank" ? "tankgun" : kind0 === "tanksiege" ? "tanksiegegun" : null;
-          const kindMain = kind0 === "tank" ? "tankbody" : kind0 === "tanksiege" ? "tanksiegebody" : kind0;
-          unitOps.push({
-            fx, fy,
-            /* 공중은 2D에서도 y순(지적: 공중 유닛 간 앞뒤 섞임) — ei 나머지는 무작위
-               순서라 뒤 풍선이 앞을 덮었다. */
-            /* 같은 줄이면 유닛이 건물보다 위(지적: 유닛이 건물에 가려짐) — 건물의
-               화가 기준은 발자국 아랫변이라 같은 y면 깊이가 같은데, 건물에만 나이
-               가산(최대 +30)이 붙어 앞에 선 유닛까지 덮었다. 유닛에 그보다 큰 붙박이
-               +40을 줘 같은 깊이에서는 늘 유닛이 이기게 한다(뒤에 선 유닛은 y가 작아
-               여전히 건물 뒤로 간다). */
-            z: pitched || uAir ? 1000 + Math.round(ay3 * Z_TILE) + 400 : 1000 + (ei % 137),
-            kind: kindMain,
-            selRing: selNow || undefined,
-            // 보임 토글이면 만피여도 표시(요청: 모든 유닛·건물 다 표시).
-            hpFrac: Math.max(0.04, Math.min(1, hpNow / Math.max(1, hpFull))),
-            hpMax: hpFull,
-            // 정보 팝업 신원(요청) — 개체 태그가 프레임을 건너 같은 몸을 가리킨다.
-            pickKey: `u${e.tag}`, pickName: e.unit, pickRaw: e.raw,
-            /* 지금 무슨 상태인가(요청: 모든 상태 노출) — 땅속·은신·얼음·전투까지, 몸이
-               이미 아는 것을 글로 옮긴다. 없으면 상태 줄을 안 적는다. */
-            pickStatus: (() => {
-              const a4 = e.statuses.find(([sa5, sb5]) => t >= sa5 && t < sb5);
-              return a4 ? a4[2] : undefined;
-            })(),
-            pickState: (() => {
-              const st: string[] = [];
-              if (burrowed) st.push("땅속");
-              /* 은신(요청) — 연구로 켠 창(e.cloaks)과 늘 은신인 둘. 아비터 은신장은
-                 곁 유닛 사정이라 이 자리에서 모른다. */
-              if (e.cloaks.some(([ca2, cb2]) => t >= ca2 && t < cb2)
-                || e.unit === "Dark Templar" || e.unit === "Observer") st.push("은신");
-              const actSt2 = e.statuses.find(([sa4, sb4]) => t >= sa4 && t < sb4);
-              if (actSt2) st.push(STATUS_KO[actSt2[2]] ?? actSt2[2]);
-              return st.length > 0 ? st.join(" · ") : undefined;
-            })(),
-            tint: (() => {
-              const actSt = e.statuses.find(([sa3, sb3]) => t >= sa3 && t < sb3);
-              return actSt ? STATUS_TINT[actSt[2]] : undefined;
-            })(),
-            // 승하차 뱅글(요청) — 몸 방향에 한 바퀴를 얹는다. 요잉 버킷이 16방이라
-            // 스프라이트는 이미 구워 둔 판을 돌아가며 쓸 뿐, 새로 굽지 않는다.
-            rotDeg: burrowed ? undefined : bodyHdg + rideSpin,
-            viewYaw: viewYawOf(ax3, ay3), flat: !pitched, pitch: pitched,
-            /* 크기 열쇠 셋을 바로잡는다(지적 셋을 한 줄에서 고친다):
-               ① drawUnit이 아니라 drawUnit2 — 시즈모드 탱크가 "tank" 줄에서 크기를 받아
-                  tanksiege 손잡이가 죽은 값이었다.
-               ② 그리는 모델은 kindMain(tankbody·burrowhole·lurkeregg…)이므로 잉크 몫은
-                  그쪽에서 찾는다. 원작 치수는 여전히 유닛 것이다(버로우한 히드라 구멍은
-                  히드라 크기).
-               ③ 이름 없는 유닛은 제가 그려지는 모델(kindMain = 종족 기본 보병)의 크기다.
-                  예전엔 그림은 마린인데 상자는 SCV라 25% 어긋났다. */
-            sizePx: (drawUnit === ""
-              ? unitGlyphPx(kindMain, kindMain, 0, ay3) : unitPxOf(drawUnit2, ay3, kindMain))
-              * (1 - rideK * 0.75), // 승하차 축소(요청)
-            // 진형 간격은 원작 몸 지름 — 그리기 크기를 만져도 안 흔들린다.
-            sepPx: drawUnit === "" ? unitSepPxOf("?") : unitSepPxOf(drawUnit2),
-            /* 태울 땐 떠오르며 사라지고, 내릴 땐 그 반대로 내려오며 드러난다(요청)
-               — rideK가 태우기에서 0→1, 내리기에서 1→0이라 한 식이 둘을 다 낸다. */
-            rise: rideK * 1.6,
-            color: modeColor(e.raw, team),
-            alpha: (() => {
-              /* 클로킹(전수조사) — 개인 클록(f=14/15)·상시 은신(다크·옵저버)·아비터
-                 은신장. 적 디텍터(오버로드·옵저버·베슬·터렛·스포어·캐논·스캔)가
-                 곁이면 반쯤 벗겨진다. */
-              const cloakedNow = e.cloaks.some(([ca, cb]) => t >= ca && t < cb)
-                || drawUnit === "Dark Templar" || drawUnit === "Observer"
-                || (drawUnit !== "Arbiter" && arbiterSpots.some((asp) =>
-                  asp.raw === e.raw && Math.hypot(asp.x - pos.x, asp.y - pos.y) <= 4.5));
-              if (!cloakedNow) return u === "" ? 0.8 : 1;
-              const detected = detectorSpots.some((dsp) => dsp.team > 0
-                && dsp.team !== (team ?? 0) && Math.hypot(dsp.x - pos.x, dsp.y - pos.y) <= 9);
-              return detected ? 0.72 : 0.4;
-            })() * (1 - rideK * 0.95), // 승하차 페이드(요청)
-            air: uAir,
-            /* 겹침 이완은 v2에선 안 쓴다(지적: 다시 넣되 새로) — 도착 대형(entWalks의
-               해바라기 나선)이 겹침을 미리 푸는 방식이라, 프레임마다 밀치는 이완의
-               떨림이 없다. */
-            noSep: true,
-          });
-          /* 귀신 활강(요청: 하템이 약간 귀신처럼 이동) — 걷는 동안 지나온 자리에
-             몸 잔상 두 장을 점점 옅게 끌고 다닌다. 그림자·체력바·링 없이 몸만. */
-          if (kindMain === "htemp" && rawPos.moving && !fighting) {
-            const hr9 = (bodyHdg * Math.PI) / 180;
-            const mainOp = unitOps[unitOps.length - 1];
-            for (let gi = 1; gi <= 2; gi += 1) {
-              const [gfx9, gfy9] = posFrac(ax3 + Math.sin(hr9) * 0.45 * gi, ay3 - Math.cos(hr9) * 0.45 * gi);
-              unitOps.push({
-                ...mainOp, fx: gfx9, fy: gfy9, z: mainOp.z - gi,
-                alpha: mainOp.alpha * (gi === 1 ? 0.32 : 0.15),
-                selRing: undefined, hpFrac: undefined, tint: undefined, noShadow: true,
-              });
-            }
-          }
-          /* 포탑 판(요청: 발포 시 포탑·포신만 움직임) — 쏘는 박자(1.5초 주기 앞 0.18초)에
-             포탑만 뒤로 0.4타일 밀렸다 돌아온다. 차체 판(kindMain)은 제자리다. */
-          if (gunKind) {
-            const fireK = fighting && foeDeg !== null && ((t + ei * 0.7) % 1.5) < 0.18 ? 1 : 0;
-            const gdx = foeDeg !== null ? -Math.sin((foeDeg * Math.PI) / 180) : 0;
-            const gdy = foeDeg !== null ? Math.cos((foeDeg * Math.PI) / 180) : 0;
-            const last = unitOps[unitOps.length - 1];
-            const [gfx, gfy] = posFrac(ax3 - gdx * 0.4 * fireK, ay3 - gdy * 0.4 * fireK);
-            unitOps.push({
-              // 포신 가려짐 해결(지적) — 곁 유닛의 z가 포탑을 얇게 자르지 않게 여유 있게.
-              ...last, kind: gunKind, fx: gfx, fy: gfy, z: last.z + 30,
-              selRing: undefined, hpFrac: undefined, hpMax: undefined,
-              tint: undefined, groundShadow: undefined,
-            });
-          }
-          /* 전투 효과(지적: 효과 다 살리기) — 유닛별 예광탄이 가장 가까운 적 쪽으로
-             뻗고, 이따금 퍼프가 터진다. DOM 수를 아끼려 세 개체에 하나만 효과를 단다. */
-          /* 피격 연출(지적: 마린 트레이서는 있는데 공격받는 오버로드엔 피격효과가
-             없다) — 최근 적 공격 명령의 표적이 '나'면, 싸울 수 없는 유닛(오버로드·
-             일꾼·수송)에도 맞는 불꽃이 튄다. */
-          /* 인터셉터(요청: 개수 실시간) — 캐리어 둘레를 도는 작은 점들. 개수는
-             Train Fighter 변곡점 그대로다. */
-          if (drawUnit === "Carrier" && e.ic.length > 0) {
-            let icN = 0;
-            for (const [is3, iv3] of e.ic) {
-              if (is3 <= t) icN = iv3;
-              else break;
-            }
-            if (icN > 0) {
-              return (
-                <span
-                  key={`v2ic-${ei}`}
-                  className="scr-motion-army scr-motion-dot"
-                  style={{ ...posStyle(ax3, ay3), zIndex: 1305, color: modeColor(e.raw, team) }}
-                >
-                  {Array.from({ length: icN }).map((_, ki) => (
-                    <span
-                      key={ki}
-                      className="scr-ic-dot"
-                      style={{ transform: `rotate(${((ki * 360) / icN + t * 50) % 360}deg) translateX(10px)` }}
-                    />
-                  ))}
-                </span>
-              );
-            }
-          }
-          /* 피격(요청: 지금은 피해 객체와 멀리 떨어진 곳에서 나오고 크기도 크다) —
-             예전엔 '최근 8초 안에 어택 명령이 찍은 태그'를 맞은 것으로 쳤다. 명령이
-             찍힌 곳과 실제로 맞는 곳은 다르고(표적은 그 사이 걸어가 있다), 8초 내내
-             켜져 있어 싸움과 무관한 자리에서도 불티가 텄다. 이제 제 체력 자취가
-             내려간 순간(hurtAt)에만, 제 몸 위에서 짧게 튄다. */
-          // 잠깐만 뜬다(지적: "절대 움직임 없게 잠깐 표시") — 0.7 → 0.3초.
-          const hitNow = t - hurtAt <= 0.3;
-          /* 효과는 가슴 높이(지적: 공격 효과가 너무 낮다 — 발밑에서 튀었다) — 마커
-             기준점은 발 자리라, 유닛 키의 1/3만큼 띄워 몸통에 맞춘다. */
-          const fxPx = drawUnit === ""
-            ? unitGlyphPx(kindMain, kindMain, 0, ay3) : unitPxOf(drawUnit2, ay3, kindMain);
-          const fxLift = { marginTop: `${(-fxPx * 0.34).toFixed(1)}px` };
-          /* 맞는 쪽 불티(요청: 크기도 몸에 맞게) — 고정 크기(9px에 scale 0.25)라
-             유닛 크기를 캔버스 비례로 바로잡은 뒤엔 작은 유닛 위에서 유독 컸다.
-             몸 상자의 0.55배로 잡고 가슴 높이에 띄운다. 싸우는 중이어도 맞으면
-             띄운다 — 맞는 것과 때리는 것은 따로다. */
-          /* 프로토스는 실드가 먼저 깎인다(요청: 실드가 남은 유닛·건물은 반투명 실드가
-             깜빡이는 표현으로) — 체력 자취는 실드까지 합친 몫이라, 남은 비율이 체력
-             몫보다 크면 아직 실드가 버티는 중이다. 그동안은 불티 대신 몸을 감싼 푸른
-             막이 한 번 번쩍인다. */
-          const st9 = UNIT_STATS[drawUnit2] ?? UNIT_STATS[drawUnit];
-          const shShare9 = st9 && st9.sh ? st9.sh / (st9.hp + st9.sh) : 0;
-          const shieldUp9 = shShare9 > 0
-            && hpNow / Math.max(1, hpFull) > 1 - shShare9 + 0.001;
-          const hitSpark = qCombat && hitNow ? (
-            shieldUp9 ? (
-              <span
-                key={`shd-${Math.round(hurtAt * 10)}`}
-                className="scr-motion-shieldfx"
-                style={{
-                  width: `${(fxPx * 1.05).toFixed(1)}px`,
-                  height: `${(fxPx * 1.05).toFixed(1)}px`,
-                }}
-              />
-            ) : (
-              <span
-                key={`hit-${Math.round(hurtAt * 10)}`}
-                className="scr-motion-puff scr-puff-hit"
-                style={{
-                  /* 맞는 방향에, 움직임 없이 잠깐(지적) — 코어의 발사 사건에서 쏜 쪽
-                     자리를 찾아 몸 테두리 쪽으로 옮긴다. 방향을 모르면(사건이 없거나
-                     증거만으로 아는 피격) 예전처럼 몸 가운데다. */
-                  width: `${(fxPx * 0.42).toFixed(1)}px`,
-                  height: `${(fxPx * 0.42).toFixed(1)}px`,
-                  // 쏜 쪽을 모르니 몸 가운데다(위 '발사·피격 사건' 주석).
-                  transform: "translate(-50%, -60%)",
-                }}
-              />
-            )
-          ) : null;
-          if (hitSpark && !fighting) {
-            return (
-              <span
-                key={`v2hit-${ei}`}
-                className="scr-motion-army scr-motion-dot scr-v2fx"
-                style={{ ...posStyle(ax3, ay3), zIndex: 1310, ...fxLift }}
-              >
-                {hitSpark}
-              </span>
-            );
-          }
-          /* 수리·힐 연출(지적: 일꾼 수리 + 매딕 힐) — 명령 뒤 8초 동안 그 자리에서
-             일한다: SCV는 용접 불티, 매딕은 흰 십자가 떠오른다. */
-          if (!fighting) {
-            const fixAt = e.fixes.length > 0
-              ? e.fixes.filter((fs) => fs <= t && t - fs <= 8).pop() : undefined;
-            if (fixAt !== undefined) {
-              const heal = drawUnit === "Medic";
-              return (
-                <span
-                  key={`v2fix-${ei}`}
-                  className="scr-motion-army scr-motion-dot scr-v2fx"
-                  style={{ ...posStyle(ax3, ay3), zIndex: 1310, ...fxLift }}
-                >
-                  <span
-                    key={`fx-${Math.floor(t / 1.1)}`}
-                    className={heal ? "scr-motion-healfx" : "scr-motion-puff scr-puff-weld"}
-                  />
-                </span>
-              );
-            }
-          }
-          /* 럴커 가시(지적: 가시 표현이 안 나옴) — 럴커는 교전 돌입 목록(ENGAGE_SKIP)
-             밖이라 fighting이 영영 거짓이었고 가시 트레이서도 안 나왔다. 원작대로
-             버로우한 채 적이 사거리 안이면 명령 없이도 가시를 쏜다. 럴커는 수가 적으니
-             1/3 솎기도 안 태운다.
-             값은 표에서 온다: 무기 사거리 6타일(Subterranean_Spines 192px). 주석은 6이라
-             적어 놓고 코드는 '여유 7'을 사거리로 쓰고 있었다. 그리고 가시는 지상 전용
-             무기라 공중 표적에는 안 나간다. */
-          const lurkRange = fireRangeTilesOf("Lurker", false);
-          const lurkStrike = burrowed && !frzSt && !foe.air && foeDist <= lurkRange;
-          /* 솎기(기획서 1-G) — 근접은 이제 그릴 효과가 없으므로(잽 동작이 대신한다) 덜
-             솎을 이유도 없다. 다만 맞은 불티는 솎으면 안 된다 — 맞는 순간은 개체마다
-             한 번뿐이라 솎이면 통째로 사라진다. */
-          if (fighting && !lurkStrike && !hitSpark && ei % 3 !== 0) return null;
-          if (((!fighting && !lurkStrike) || !qCombat) && !hitSpark) return null;
-          /* 근접은 효과 스팬 자체가 없다 — 잽으로 때리는 것이 보이고, 맞는 쪽 불티는
-             맞는 개체가 제 몸에 띄운다. */
-          if (!lurkStrike && !hitSpark && (MELEE_UNITS.has(drawUnit) || drawUnit === "")) return null;
-          const fxUnit = drawUnit === "" ? (race === "저그" ? "Zergling" : race === "테란" ? "Marine" : "Zealot") : drawUnit;
-          const atkDeg = foeDeg;
-          /* 조준각은 화면 기준(지적 둘: 공중 표적 각도가 안 맞음 + 지상 사격은 지면과
-             평행해야) — 타일 각을 그대로 돌리면 3D의 바닥 눌림(0.74)과 떠 있는 몸
-             (lift)이 무시된다. 화면 픽셀 델타로 재고, 공중 표적·공중 사수는 비행
-             높이를 가감한다. */
-          const aimDeg = (fx9: number, fy9: number, fAir: boolean): number => {
-            const tPx9 = (mapRef.current?.clientWidth ?? 320) / grid.width;
-            const ddx = (fx9 - pos.x) * tPx9;
-            let ddy = (fy9 - pos.y) * tPx9 * (pitched ? pitchFlat : 1);
-            // 비행 높이 반감(재재지적)과 함께 0.8로.
-            if (fAir) ddy -= fxPx * 0.8;
-            if (uAir) ddy += fxPx * 0.8;
-            return (Math.atan2(-ddx, ddy) * 180) / Math.PI;
-          };
-          const beamDeg = atkDeg !== null ? aimDeg(foe.bx, foe.by, foe.air) : null;
-          /* 총구 모델 앵커(승인) — 몸 스프라이트와 같은 변환으로 앵커를 투영해, 그 자리
-             에서 트레이서를 시작한다. 16-상자 중심(8,8)이 마커 앵커(발 자리)다. 효과
-             스팬이 이미 가슴 높이(-0.34)로 떠 있고 몸 스프라이트는 -0.24만 떠 있어,
-             그 차(+0.10)를 세로에 되돌린다. 앵커 없는 유닛은 픽셀 오프셋 폴백. */
-          const fxKind = unitMarkerKind(
-            siegeOn === 1 && fxUnit.startsWith("Siege Tank") ? "Siege Tank (Siege Mode)" : fxUnit,
-            race,
-          );
-          const mzP = atkDeg !== null
-            ? muzzlePoint(fxKind, atkDeg, viewYawOf(ax3, ay3), pitched) : null;
-          /* 앵커도 몸과 같은 배수를 탄다(정규화) — 모델 공간을 상자 중심으로 키웠으니
-             앵커의 '중심 대비 좌표'도 같은 배수로 늘어난다. 안 태우면 트레이서가 포신
-             끝을 벗어난다.
-             단 **배수는 앵커가 붙은 판의 것**이어야 한다. 탱크·시즈탱크의 총구는 차체가
-             아니라 포신 판(tankgun·tanksiegegun)에 있는데 fxKind는 합본 이름(tank·
-             tanksiege)이라, 그대로 쓰면 1.52배·1.79배 어긋난다. 짝은 modelNormOf가
-             차체 배수로 접으므로 결국 차체·포신·앵커 셋이 한 배수를 쓴다. */
-          /* 버로우 상태에서는 몸이 제 모델이 아니라 **구멍 판**으로 그려진다(kind0가
-             "burrowhole"이다). 앵커 배수도 그 판을 따라야 한다 — 럴커 0.627 대 구멍
-             0.832라 그대로 두면 1.327배 어긋나 가시가 구멍의 32% 자리에서 솟는다
-             (지금은 53%다). 히드라가 버로우한 채 맞을 때도 같은 갈래다. */
-          /* 그 무기의 쿨다운(초) — 트레이서 번쩍임 길이의 자다(위 animationDuration 주석).
-             업그레이드·스팀은 안 본다: 눈에 보이는 것은 '이 무기가 얼마나 자주 쏘나'다. */
-          const fxCd = (() => {
-            const pf9 = isKnownKind(fxUnit) ? profileOf(fxUnit) : null;
-            const w9 = pf9 ? weaponVs(pf9, foe.air) : null;
-            const cd9 = w9 ? w9.cd : 0.6;
-            return Math.min(0.32, Math.max(0.08, cd9 * 0.35));
-          })();
-          const mzS = modelNormOf(burrowed ? "burrowhole" : (MUZZLE_PLATE[fxKind] ?? fxKind));
-          const mzTf = mzP
-            ? `translate(${(((mzP[0] - 8) * mzS * fxPx) / 16).toFixed(1)}px, ${((((mzP[1] - 8) * mzS * fxPx) / 16) + 0.1 * fxPx).toFixed(1)}px) rotate(${beamDeg!.toFixed(1)}deg)`
-            : `rotate(${beamDeg?.toFixed(1)}deg) translateY(${MUZZLE_PX[fxUnit] ?? 4}px)`;
-          return (
-            <span
-              key={`v2fx-${ei}`}
-              className="scr-motion-army scr-motion-dot scr-v2fx"
-              /* 럴커 가시는 가슴 높이가 아니라 땅에서 솟는다 — 들어올림 없이. */
-              style={{ ...posStyle(ax3, ay3), zIndex: 1310, ...glyphStyle(e.raw, team), ...(lurkStrike ? {} : fxLift) }}
-            >
-              {/* 메딕도 그린다(요청: "메딕 노란 작은 동그란 빛") — 여태 heal만 갈래에서
-                  빠져 있어 매딕은 아무 표시가 없었다. 빛 하나라 조준각만 타면 된다. */}
-              {atkDeg !== null && ATTACK_FX[fxUnit] && (
-                <span
-                  /* 지상·대공이 다른 무기는 표적을 보고 갈아 끼운다(요청) — 레이스(지상
-                     레이저/대공 미사일)·골리앗(총/대공 미사일)·스카우트(플라즈마/대공
-                     미사일)가 그 셋이다. */
-                  className={`scr-motion-tracer scr-tracer-${
-                    (fxUnit === "Wraith" || fxUnit === "Goliath" || fxUnit === "Scout") && foe.air
-                      ? "missile" : ATTACK_FX[fxUnit]}`}
-                  /* 럴커 가시는 표적에서 멈추지 않는다 — 원작의 가시는 표적 자리가 아니라
-                     늘 '제 자리 + 방향 × 최대 사거리'로 나아가(iscript behaviour 9), 그
-                     직선 위의 적 지상 유닛을 모두 훑고 지나간다. 그래서 길이는 표적까지
-                     거리가 아니라 212px 고정이고, 훑는 시간도 가시 속도(18.75px/프레임)가
-                     정한 0.475초다. 예전의 '표적까지 실거리'는 지나쳐 맞는 그림을 지웠다.
-                     px→타일은 원작의 한 타일 = 32px. */
-                  style={{
-                    transform: mzTf, animationDelay: `${((ei * 7) % 5) / 10}s`,
-                    /* 길이는 그 무기의 쿨다운에 매인다(지적: "타이밍을 아주 짧게 가져간다
-                       (공속에 반비례)") — 빨리 쏘는 무기일수록 번쩍임이 짧아 다음 발과 안
-                       겹치고, 느린 무기(시즈·가디언)는 조금 길게 남는다. 쿨다운의 35%를
-                       0.08~0.32초로 죈다. 표 값이라 손으로 정한 수는 상한·하한 둘뿐이다. */
-                    animationDuration: `${fxCd.toFixed(3)}s`,
-                    ...(lurkStrike ? {
-                      height: `${((LURKER_SPINE_TRAVEL_PX / 32) * ((mapRef.current?.clientWidth ?? 320) / grid.width)).toFixed(1)}px`,
-                      animationDuration: `${(LURKER_SPINE_TRAVEL_PX / LURKER_SPINE_SPEED_PX * FRAME_SEC).toFixed(3)}s`,
-                    } : {}),
-                    /* 근접 휘두름 호는 제 몸에 맞춘다(지적: "부메랑 모양이 계속 나온다")
-                       — 6px 고정이라 유닛 크기를 캔버스 비례로 바로잡고 나니 호가 몸통
-                       만 해져, 칼자국이 아니라 옆에 뜬 부메랑으로 보였다. 몸의 절반
-                       크기에 테두리도 그만큼 얇게. */
-                    ...(ATTACK_FX[fxUnit] === "slash" ? {
-                      width: `${(fxPx * 0.34).toFixed(1)}px`,
-                      height: `${(fxPx * 0.34).toFixed(1)}px`,
-                      borderWidth: `${Math.max(0.4, fxPx * 0.05).toFixed(2)}px`,
-                      opacity: 0.85,
-                    } : {}),
-                  }}
-                />
-              )}
-              {/* (제거) 공격자 발밑 퍼프 — 때리는 쪽에서 터지던 연기라, 맞는 쪽 불티와
-                  헷갈려 "피해 객체와 멀리 떨어진 곳에서 나온다"로 읽혔다(지적). 발사는
-                  트레이서가, 피격은 맞는 쪽 불티가 말한다. */}
-              {hitSpark}
-            </span>
-          );
-        })}
-
-
-        {/* 마법 — 떨어진 자리에 이름이 잠깐 떠오른다. 핵만은 이름에 폭발 파문까지
-            얹는다(요청: "핵 떨어지는거도 효과") — 경기 하나에 몇 번 없는, 그 판의 가장
-            큰 사건이라 다른 마법과 같은 글자 한 줄로는 안 보였다. */}
-        {/* 클릭 자국(요청: 동그라미 안에 점, 납작하게 + 토글) — 브루드워의 이동 클릭
-            표시처럼, 명령이 떨어진 자리에 찍은 사람 색의 납작한 고리+가운데 점이 잠깐
-            남는다. v2 데이터로 그리므로 v2 모드 + 클릭 토글이 켜져 있을 때만이다. */}
-        {clickFx && entClicks.map(([cs, cx2, cy2, raw, ck], i) => {
-          if (t < cs || t - cs > 0.9) return null;
-          /* UI 고정 크기 — 가장 축소(줌 1)에서도 또렷한 18px 기준(재지적). 타일 비례는
-             큰 화면에서만 그보다 커진다. */
-          const ckw = Math.max(18, ((mapRef.current?.clientWidth ?? 320) / grid.width) * 0.55);
-          // 공격 클릭은 붉은 고리로 갈라 보인다(지적: 클릭 종류 구분).
-          return (
-            <span
-              key={`clk-${i}`}
-              className={cx("scr-motion-clickfx", ck === 7 && "scr-clickfx-atk")}
-              style={{
-                ...posStyle(cx2, cy2), color: modeColor(raw, teamOfRaw(raw)), zIndex: 1490,
-                "--ckw": `${ckw.toFixed(1)}px`,
-              } as React.CSSProperties}
-            />
-          );
-        })}
-
-        {/* 미니맵 핑(요청: 클릭도 기록 — 리플레이에 좌표가 온전히 남는다) — v2 트랙에만
-            있다. 찍은 사람 색의 물결 고리가 3초 동안 퍼진다. 카메라 시야는 리플레이에
-            저장되지 않아 못 그린다(엔진 재시뮬레이션의 몫). */}
-        {qPing && (entData?.pings ?? []).map(([ps, px, py, ppid], i) => {
-          if (t < ps || t - ps > 3) return null;
-          const raw = entData?.players.find((pl) => pl.id === ppid)?.name ?? "";
-          return (
-            <span
-              key={`ping-${i}`}
-              className="scr-motion-pingfx"
-              style={{ ...posStyle(px, py), color: modeColor(raw, teamOfRaw(raw)), zIndex: 1500 }}
-            />
-          );
-        })}
-
-        {castsNow.map(([sec, x, y, tech, raw], i) => {
-          if (!TECH_KO[tech]) return null; // 한글명을 모르는 기술은 안 띄운다(요청).
-          if (tech === "Nuclear Strike") {
-            /* 핵(정정) — 런치가 아니라 실제 착탄에 폭발(지적): 낙하 동안은 표적 점, 마지막
-               2초에 탄두가 내려오고, NUKE_FALL_SEC부터 폭발 광원. 크기는 실제 피해 반경
-               (4타일)에 맞춘 지름 8타일 상자에 %로 그리고 살짝 투명하다(지적). */
-            const age = t - sec;
-            /* 성공 판정(지적) — 불발이면 폭발 없이 표적 점만 보이다 만다. */
-            const landed = nukeImpacts.some((nk) =>
-              nk.confirmed && nk.x === x && nk.y === y && Math.abs(nk.sec - (sec + NUKE_FALL_SEC)) < 0.5);
-            if (age >= NUKE_FALL_SEC && !landed) return null;
-            return (
-              <span
-                key={`c-${i}`}
-                className="scr-motion-nukefx"
-                style={{
-                  ...posStyle(x, y),
-                  width: pct(8, grid.width),
-                }}
-              >
-                {age < NUKE_FALL_SEC - 2 ? (
-                  <span className="scr-motion-nuke-dot" />
-                ) : age < NUKE_FALL_SEC && landed ? (
-                  /* 낙하를 게임 시간으로 직접(수리: CSS 실시간 2초 애니라 배속에서 탄두가
-                     덜 내려왔는데 폭발로 넘어갔다) — 마지막 2초의 진행률로 높이를 잰다. */
-                  <span
-                    className="scr-motion-nuke-fall"
-                    style={{
-                      color: modeColor(raw, teamOfRaw(raw)),
-                      animation: "none",
-                      translate: `0 ${Math.round(-140 * (1 - (age - (NUKE_FALL_SEC - 2)) / 2))}px`,
-                      opacity: 0.4 + 0.6 * ((age - (NUKE_FALL_SEC - 2)) / 2),
-                    }}
-                  >
-                    <ShapeIcon kind="nuke" flat={!pitched} pitchView={pitched} />
-                  </span>
-                ) : (
-                  <>
-                    <span className="scr-motion-nuke-flash" />
-                    {/* 화구는 반구 돔(요청) — 평면 원 대신 3D 돔이 부푼다. */}
-                    <span className="scr-motion-nuke-domewrap"><ShapeIcon kind="nukedome" flat={!pitched} pitchView={pitched} /></span>
-                    <span className="scr-motion-nuke-ring" />
-                  </>
-                )}
-              </span>
-            );
-          }
-          {
-            /* 특징 기술 효과(요청) — 이름 배지 대신 실제 영역 크기의 전용 효과.
-               [클래스, 지름(타일)] — 영역은 인게임 어림이다. */
-            const AREA_FX: Record<string, [string, number]> = {
-              Plague: ["plague", 5], Ensnare: ["ensnare", 5], Irradiate: ["irrad", 2.5],
-              "EMP Shockwave": ["emp", 6], "Stasis Field": ["stasis", 4],
-              Lockdown: ["lock", 2.2], Maelstrom: ["mael", 5], Recall: ["recall", 4],
-              /* 스캔 지름은 실제 탐지 반경 그대로(요청) — 8타일짜리 장식 고리가 아니라,
-                 그 안의 은신이 벗겨지는 바로 그 원이다. */
-              "Scanner Sweep": ["scan", DETECT_TILES * 2], "Disruption Web": ["dweb", 5.5],
-              /* 야마토(정정: 리플레이에 FireYamatoGun 명령이 좌표까지 남는다 — "안
-                 남는다"던 앞선 말은 틀렸다) — 표적에 청백 에너지 구체가 작렬한다. */
-              "Yamato Gun": ["yamato", 2.6],
-            };
-            const fx = AREA_FX[tech];
-            if (fx) {
-              if (tech === "EMP Shockwave" && t - sec > 1.6) return null;
-              if (tech === "Yamato Gun" && t - sec > 2.2) return null;
-              return (
-                <span
-                  key={`c-${i}`}
-                  className={`scr-motion-castfx scr-fx-${fx[0]}`}
-                  style={{
-                    ...posStyle(x, y),
-                    width: pct(fx[1], grid.width),
-                  }}
-                >
-                  {/* 스캔 별가루(요청: 뿌리면 그 자리에 별가루) — 원 안에 황금각으로
-                      고르게 흩뿌린 작은 네 갈래 별들이 저마다 어긋난 박자로 반짝인다.
-                      자리는 결정적이라 프레임마다 안 떨린다. */}
-                  {tech === "Scanner Sweep" && SCAN_DUST.map(([dx9, dy9, dl9], di9) => (
-                    <span
-                      key={`d${di9}`}
-                      className="scr-fx-dust"
-                      style={{ left: `${dx9}%`, top: `${dy9}%`, animationDelay: `${dl9}s` }}
-                    />
-                  ))}
-                </span>
-              );
-            }
-          }
-          if (tech === "Dark Swarm") {
-            /* 다크 스웜(요청) — 갈색 반투명 구름이 우글거린다. 실제 지속(약 60초의
-               절반만 표시)과 영역(지름 6타일)에 맞춘다. */
-            return (
-              <span
-                key={`c-${i}`}
-                className="scr-motion-swarmfx"
-                style={{
-                  ...posStyle(x, y),
-                  width: pct(6, grid.width),
-                }}
-              >
-                <span className="scr-motion-swarm-cloud" />
-                <span className="scr-motion-swarm-cloud scr-motion-swarm-cloud-b" />
-              </span>
-            );
-          }
-          if (tech === "Psionic Storm") {
-            /* 사이오닉 스톰(요청) — 반투명 번개가 지지직. 영역은 실제 인게임(지름
-               3타일)과 일치. 폭풍 지속(약 4초)만 보여 준다. */
-            if (t - sec > 4) return null;
-            return (
-              <span
-                key={`c-${i}`}
-                className="scr-motion-stormfx"
-                style={{
-                  ...posStyle(x, y),
-                  width: pct(3, grid.width),
-                }}
-              >
-                <span className="scr-motion-storm-glow" />
-                <span className="scr-motion-storm-flash" />
-                {/* 원작 스톰(참고 이미지) — 굵은 수직 낙뢰 여러 가닥이 영역 가득 제각각
-                    내리꽂힌다. 가닥마다 잔가지가 붙고, 흰 심지에 파란 광채를 두른다. */}
-                <svg className="scr-motion-storm-bolts" viewBox="0 0 48 48" aria-hidden>
-                  <path d="M6 3 L11 9 L7 16 L12 22 L5 31 L11 38 L7 46" />
-                  <path d="M16 0 L13 12 L19 18 L14 29 L18 37 L13 47" />
-                  <path d="M24 4 L21 10 L27 15 L23 24 L28 33 L23 41 L27 47" />
-                  <path d="M33 1 L36 8 L30 17 L35 25 L29 35 L34 44" />
-                  <path d="M41 3 L38 12 L44 20 L39 30 L43 39 L40 47" />
-                  <path d="M46 8 L44 16 L47 25 L43 35 L46 43" />
-                  <path d="M11 9 L16 12" />
-                  <path d="M30 17 L25 20" />
-                  <path d="M28 33 L33 36" />
-                  <path d="M14 29 L9 32" />
-                </svg>
-              </span>
-            );
-          }
-          /* (제거·요청: 배지 더 이상 사용 안 함) — 전용 효과가 없는 기술의 이름 알약
-             배지가 서던 자리. 효과 있는 기술(스톰·스웜·핵·역병 등)만 그린다. */
-          return null;
-        })}
-
-        </div>
-        {/* 유닛 캔버스 층(요청: 캔버스 전환 — 성능, 지적: 확대가 선명해야) — 렌즈 밖에
-            둔다: CSS 확대에 태우지 않고 줌·팬을 그리기 좌표에 직접 입혀, 어느 배율에서도
-            화면 해상도 그대로 또렷하다. unitOps는 렌즈 안 마커 계산부가 이 렌더에서
-            채우고, 커밋 뒤 effect가 그린다. */}
-        {/* 정보 팝업(요청) — 그린 op 목록을 붙들어 둬 클릭 판정이 훑는다. UnitLayer가
-            겹침 이완으로 fx를 손보므로, 판정도 '그려진 자리'와 같은 값을 본다. */}
-        {((): null => { opsRef.current = unitOps; return null; })()}
-        {(() => {
-          if (!picked) return null;
-          const op = unitOps.find((o) => o.pickKey === picked);
-          // 죽거나 무너져 이번 프레임에 없으면 팝업도 닫힌 것처럼 사라진다.
-          if (!op) return null;
-          const en = op.pickName ?? "";
-          const ko = op.pickBld ? BUILDING_KO[en] ?? en : UNIT_KO[en] ?? en;
-          const max = op.hpMax ?? 0;
-          const cur = Math.max(0, Math.round((op.hpFrac ?? 1) * max));
-          const sh = op.pickBld ? (BLD_STATS[en]?.[1] ?? 0) : (UNIT_STATS[en]?.sh ?? 0);
-          const lines: React.ReactNode[] = [];
-          /* 진행 바(요청: 스타 원작처럼 칸 수를 따라) — 원작 진행 바는 통짜가 아니라
-             칸이 하나씩 차오른다. 열 칸으로 나눠 채운 만큼만 밝힌다. */
-          const bar = (label: string, p9: number, col = "#6fe36f"): React.ReactNode => (
-            <div className="scr-motion-info-prog" key={`${label}${p9.toFixed(2)}`}>
-              <span className="scr-motion-info-line">{label}</span>
-              <span className="scr-motion-info-bar">
-                {Array.from({ length: 10 }, (_, k) => (
-                  <i
-                    key={k}
-                    className={k < Math.round(p9 * 10) ? "is-on" : undefined}
-                    style={k < Math.round(p9 * 10) ? { background: col } : undefined}
-                  />
-                ))}
-              </span>
-            </div>
-          );
-          /* 걸린 마법은 제 줄에 효과까지(요청) — 무엇에 걸렸는지보다 '그래서 어떻게
-             되는가'가 읽는 사람이 알고 싶은 것이다. */
-          if (op.pickStatus && STATUS_FX[op.pickStatus]) {
-            const sfx = STATUS_FX[op.pickStatus];
-            lines.push(
-              <div className="scr-motion-info-line" key="fx" style={{ color: sfx.col }}>
-                {`${STATUS_KO[op.pickStatus] ?? op.pickStatus} — ${sfx.fx}`}
-              </div>,
-            );
-          }
-          if (op.pickState) {
-            // 건설·변태도 글 대신 칸 바로(요청).
-            const m9 = /(\d+)%$/.exec(op.pickState);
-            if (m9) lines.push(bar(op.pickState.replace(/\s*\d+%$/, ""), Number(m9[1]) / 100));
-            else lines.push(op.pickState);
-          }
-          /* 실드는 따로 한 줄(요청) — 원작은 실드부터 깎이므로, 남은 값이 체력 몫을
-             넘으면 그 초과분이 곧 남은 실드다. */
-          /* 체력·실드도 원작 색을 따른다(요청: 실드 흰색·체력 연녹색 등 게임 테마를
-             충실히) — 원작 체력 바는 가득하면 연녹, 절반 아래로 노랑, 3분의 1 아래로
-             빨강이다. 실드는 그 위에 흰(옅은 하늘) 칸으로 얹힌다. */
-          const hpOnly = Math.max(1, max - sh);
-          const hpCur = Math.min(cur, hpOnly);
-          const hpR = hpCur / hpOnly;
-          lines.push(bar(`체력 ${hpCur} / ${hpOnly}`, hpR,
-            hpR > 0.5 ? "#7ee07e" : hpR > 0.33 ? "#e8d94a" : "#e05a4a"));
-          if (sh > 0) {
-            const shCur = Math.max(0, cur - hpOnly);
-            lines.push(bar(`실드 ${shCur} / ${sh}`, shCur / sh, "#f2f6ff"));
-          }
-          if (op.pickBld) {
-            /* 생산·연구·큐(요청) — 생산 기록은 '완성 시각'이라, 지금 창 안이면 방금
-               나온 것, 앞엣것은 큐로 읽는다(무엇이 언제 나오는지가 그대로 큐다). */
-            /* 이 건물에서 나온 것만(지적: 라바 변태 기록이 해처리끼리 공유된다) —
-               출생 자리가 이 발자국 언저리인 것만 센다. 건물 태그를 아는 생산은 발자국
-               원점에, 라바처럼 모르는 생산은 발자국 아래 출구에 꽂히므로 두 규약을 다
-               담게 아래로 한 뼘 더 넓힌다. 자리를 모르는 옛 자취(출생 증거가 없는 것)는
-               사람별 표로 물러난다 — 안 그러면 팝업이 통째로 비어 버린다. */
-            const fp9 = FOOTPRINT[en] ?? [4, 3];
-            const bx9 = op.pickX;
-            const by9 = op.pickY;
-            const mine9 = bx9 === undefined || by9 === undefined ? null
-              : (prodDoneAt.get(op.pickRaw ?? "") ?? []).filter((r9) =>
-                r9.x >= bx9 - 1.5 && r9.x <= bx9 + fp9[0] + 1.5
-                && r9.y >= by9 - 1.5 && r9.y <= by9 + fp9[1] + 2);
-            const evs: [number, string, number][] = [];
-            const kinds9 = new Set(PRODUCED_BY[en] ?? []);
-            if (mine9 && mine9.length > 0) {
-              for (const r9 of mine9) {
-                if (!kinds9.has(r9.u)) continue;
-                evs.push([r9.s, UNIT_KO[r9.u] ?? r9.u, UNIT_BUILD_SEC[r9.u] ?? 30]);
-              }
-            } else {
-              for (const u of PRODUCED_BY[en] ?? []) {
-                const sec = UNIT_BUILD_SEC[u] ?? 30;
-                for (const ps of prodDoneByRaw.get(op.pickRaw ?? "")?.[u] ?? []) evs.push([ps, UNIT_KO[u] ?? u, sec]);
-              }
-            }
-            evs.sort((a, b) => a[0] - b[0]);
-            /* 진행률(요청) — 리플레이에 남는 건 완성 시각뿐이라, 거기서 생산 시간을
-               빼 시작을 되짚는다. 지금이 그 사이면 '생산 중 NN%'다. */
-            const making = evs.filter(([ps, , sec]) => t < ps && t >= ps - sec);
-            const queue = evs.filter(([ps, , sec]) => t < ps - sec).slice(0, 4);
-            const justOut = evs.filter(([ps]) => ps <= t && t - ps <= PROD_FLASH_SEC);
-            if (making.length > 0) {
-              for (const [ps, n, sec] of making) {
-                lines.push(bar(`생산 중 ${n}`, Math.min(0.99, (t - (ps - sec)) / sec)));
-              }
-            } else if (justOut.length > 0) {
-              lines.push(`생산 완료 ${justOut.map(([, n]) => n).join(" · ")}`);
-            } else lines.push("생산 대기");
-            if (queue.length > 0) {
-              lines.push(`큐 ${queue.map(([ps, n, sec]) => `${n} +${Math.max(0, Math.round(ps - sec - t))}초`).join(" · ")}`);
-            }
-            const doing = (upsByRaw.get(op.pickRaw ?? "") ?? []).filter(([us]) =>
-              RESEARCH_BUILDING[en === "Lair" || en === "Hive" ? "Hatchery" : en] === undefined
-                ? false
-                : RESEARCH_BUILDING[en === "Lair" || en === "Hive" ? "Hatchery" : en] === en
-                  && us <= t && t - us <= RESEARCH_SEC);
-            for (const [us, n] of doing) {
-              lines.push(bar(`연구 중 ${TECH_KO[n] ?? n}`, Math.min(0.99, (t - us) / RESEARCH_SEC)));
-            }
-          } else {
-            /* 그 유닛에 실제로 걸리는 공/방 줄만 레벨로 보여 준다(요청: 인게임보다
-               풍부하게 — 해당 유닛의 업그레이드 상태). 줄 고르기는 종족과 공중 여부,
-               테란만 보병/메카닉 갈래를 더 본다. */
-            const race9 = bases.find((b) => b.key === op.pickRaw)?.race ?? "";
-            const pairs = ARMOR_WEAPON_PAIRS[race9] ?? [];
-            const air9 = isAirUnit(en);
-            const infantry9 = new Set(["Marine", "Firebat", "Medic", "Ghost", "SCV"]);
-            const melee9 = new Set(["Zergling", "Ultralisk", "Broodling", "Drone"]);
-            const pick9 = pairs.find((pr) => {
-              const w = pr.weapon;
-              if (race9 === "테란") {
-                return air9 ? w === "Terran Ship Weapons"
-                  : infantry9.has(en) ? w === "Terran Infantry Weapons" : w === "Terran Vehicle Weapons";
-              }
-              if (race9 === "저그") {
-                return air9 ? w === "Zerg Flyer Attacks"
-                  : melee9.has(en) ? w === "Zerg Melee Attacks" : w === "Zerg Missile Attacks";
-              }
-              return air9 ? w === "Protoss Air Weapons" : w === "Protoss Ground Weapons";
-            });
-            const lv = (name: string): number =>
-              (upsByRaw.get(op.pickRaw ?? "") ?? []).filter(([us, n]) => n === name && us <= t).length;
-            if (pick9) {
-              lines.push(`${UPGRADE_LINE_KO[pick9.weapon] ?? "공/방"} ${lv(pick9.weapon)}-${lv(pick9.armor)}`);
-            }
-            /* 공/방 말고 그 유닛에 붙는 기술(속업·사업 등)은 이름으로 걸러 준다 —
-               표가 유닛을 직접 가리키지 않으므로, 임자가 마친 것 중 최근 것을 곁들인다. */
-            const other = (upsByRaw.get(op.pickRaw ?? "") ?? []).filter(([us, n]) => us <= t && !pairs.some((pr) => pr.weapon === n || pr.armor === n));
-            if (other.length > 0) {
-              lines.push(`연구 완료 ${other.slice(-6).map(([, n]) => TECH_KO[n] ?? n).join(" · ")}`);
-            }
-          }
-          const el = mapRef.current;
-          const w9 = el?.clientWidth ?? 1;
-          const h9 = el?.clientHeight ?? 1;
-          const lx = ((op.fx - 0.5) * zoom + 0.5) * w9 + pan.x;
-          const ly = ((op.fy - 0.5) * zoom + 0.5) * h9 + pan.y;
-          /* 팝업은 지도 밖으로 안 나간다(지적: "나오는 위치도 이상함 · 미니맵 내부로
-             제한") — 여태는 마커 자리에 그대로 띄워, 가장자리 유닛을 누르면 상자가
-             지도 밖(또는 화면 밖)으로 반쯤 잘려 나갔다.
-             폭은 CSS가 못 박은 값(232 + 좌우 여백 18)이라 여기서 그대로 쓸 수 있고,
-             높이는 줄 수로 어림한다(막대 줄은 두 줄 몫). 위로 띄울 자리가 모자라면
-             마커 아래로 뒤집는다 — 지도 위쪽 유닛이 그 경우다. */
-          const PAD9 = 6;
-          const PW9 = Math.min(250, w9 - PAD9 * 2);
-          const barN9 = lines.filter((ln) => typeof ln !== "string").length;
-          const PH9 = 28 + (lines.length - barN9) * 17 + barN9 * 26;
-          const cx9 = Math.min(Math.max(lx, PW9 / 2 + PAD9), w9 - PW9 / 2 - PAD9);
-          const flip9 = ly - PH9 - 14 < PAD9;
-          const cy9 = flip9
-            ? Math.min(ly, h9 - PH9 - 14 - PAD9)
-            : Math.min(Math.max(ly, PH9 + 14 + PAD9), h9 - PAD9);
-          return (
-            <div
-              className="scr-motion-info"
-              style={{
-                left: Math.round(cx9),
-                top: Math.round(cy9),
-                ...(flip9 ? { transform: "translate(-50%, 14px)" } : {}),
-              }}
-              onPointerDown={(e) => e.stopPropagation()}
-            >
-              <div className="scr-motion-info-name">{ko}</div>
-              {lines.map((ln, li) => (typeof ln === "string"
-                ? <div key={li} className="scr-motion-info-line">{ln}</div>
-                : <React.Fragment key={li}>{ln}</React.Fragment>))}
-            </div>
-          );
-        })()}
-        <UnitLayer
-          ops={unitOps} zoom={zoom} pan={pan} wallMask={creepMask} maskRects={creepMaskRects}
-          showShadows={qShadows} showOverlap={qOverlap} showHp={qHp && hpShow} showCreep={qCreep}
-          /* 크립을 가두는 맵 모서리(재지적: 3D에서 크립이 영역을 벗어남) — 입체는 원근
-             투영된 사다리꼴이라 네 모서리를 posFrac으로 투영해 넘긴다. 평면은 단위
-             사각형이 나와 기존 직사각 클립과 같다. */
-          clipQuad={[
-            posFrac(0, 0), posFrac(grid.width, 0),
-            posFrac(grid.width, grid.height), posFrac(0, grid.height),
-          ]}
-        />
-        {/* 좁은 화면의 슬라이드 바는 지도 **안** 좌우에 얹는다(요청: "모바일은 미니맵
-            안쪽에 좌우에 배속/각도 슬라이드 오버레이") — 지도가 화면 폭을 꽉 채우므로
-            바깥에 세울 자리가 없다. 넓은 배치는 지도 바깥 기둥에 선다(위). */}
-        {!wide && (
-          <>
-            <div className="scr-motion-slidebar-l">
-              <SlideBar
-                title="배속"
-                options={[...SPEEDS].reverse().map((v) => ({ value: String(v), label: `×${v}` }))}
-                value={String(speed)}
-                onChange={(v) => setSpeed(SPEEDS.find((s2) => String(s2) === v) ?? SPEEDS[0])}
-                labelSide="right"
-                aria-label="배속"
-              />
-            </div>
-            <div className="scr-motion-slidebar-r">
-              <SlideBar
-                title="각도"
-                options={PITCH_DEGS.map((d) => ({ value: String(d), label: `${d}°` }))}
-                value={String(pitchDeg)}
-                onChange={(v) => setPitchDeg(Number(v))}
-                labelSide="left"
-                aria-label="시점 각도"
-              />
-            </div>
-          </>
-        )}
-        {/* (삭제) PC 확대 조절바 — PC에서는 확대 기능을 통째로 걷었다(요청). 확대·이동은
-            이제 모바일 손짓(더블탭·두 손가락)만의 것이다. */}
-      </div>
+      {!fsOn && mapNode}
       {/* 지도 오른쪽 기둥 — 위에서부터 2팀 로스터 · 각도 슬라이드 바 · 버튼 줄(요청:
           "버튼단은 하단으로 이동"). 가운데 바는 위아래 auto 여백으로 남는 자리에 뜬다. */}
       {wide && (
@@ -18358,61 +18726,7 @@ export default function ReplayMotionPlayer({
         </div>,
         document.body,
       )}
-      {/* 조종간 한 줄(요청: PC·모바일 공통 — [재생 | 탐색바 | 시각], 시각 아래 작은
-          공유 버튼) — 컴팩트하게 여백을 죈다. */}
-      <div className="scr-motion-bar scr-motion-bar-controls">
-        <button
-          type="button" className="scr-motion-play"
-          onClick={() => {
-            if (done) { setT(0); setDone(false); setPlaying(true); return; }
-            setPlaying((v) => !v);
-          }}
-          aria-label={playing ? "일시정지" : "재생"}
-        >
-          {playing
-            ? <Pause size={20} fill="currentColor" />
-            : done
-              ? <RotateCcw size={20} />
-              : <Play size={20} fill="currentColor" />}
-        </button>
-        {/* 비제어 탐색바(지적: 드래그가 안 먹고 느림 — 위 rangeRef 주석). step이 없어야
-            ×4에서도 손잡이가 툭툭 안 뛴다. --p는 지나온 자리를 채우는 그라데이션 경계다. */}
-        <input
-          ref={rangeRef}
-          className="scr-motion-range" type="range"
-          min={0} max={total} step="any" defaultValue={t}
-          onPointerDown={() => { scrubbing.current = true; }}
-          onPointerUp={() => { scrubbing.current = false; }}
-          onPointerCancel={() => { scrubbing.current = false; }}
-          onInput={(e) => {
-            const el = e.target as HTMLInputElement;
-            const v = Number(el.value);
-            el.style.setProperty("--p", `${total > 0 ? (v / total) * 100 : 0}%`);
-            // 지도는 프레임당 한 번만 따라온다 — 끌기 이벤트마다 그리면 손이 밀린다.
-            if (seekPending.current === null) {
-              requestAnimationFrame(() => {
-                const sv = seekPending.current;
-                seekPending.current = null;
-                if (sv === null) return;
-                setT(sv);
-                setDone(sv >= total);
-              });
-            }
-            seekPending.current = v;
-          }}
-          aria-label="재생 위치"
-        />
-        {/* 시계 폭을 못 박는다(지적: 슬라이드바 너비가 왔다 갔다 함) — 9:59에서 10:00로
-            넘어가면 글자가 한 칸 늘고, 그만큼 옆의 탐색바가 줄었다 늘었다 했다. 가장 긴
-            꼴(총 길이 × 2 + " / ")만큼 자리를 미리 잡고 숫자 폭도 고정한다. */}
-        <span
-          className="scr-motion-clockwrap"
-          style={{ minWidth: `${fmtClock(total).length * 2 + 3}ch`,
-            fontVariantNumeric: "tabular-nums" }}
-        >
-          <span className="scr-motion-clock">{fmtClock(t)} / {fmtClock(total)}</span>
-        </span>
-      </div>
+      {!fsOn && controlsNode}
       {/* 진행바 아랫줄 — 왼쪽 배속, 오른쪽 현재 장면 공유(요청: "배속은 크기를 줄이고
           진행바 쪽으로 이동, 현재 장면 공유랑 같은 라인으로"). 공유 버튼이 없는 경기도
           있으므로 줄 자체는 배속만으로도 선다. */}
@@ -18424,6 +18738,7 @@ export default function ReplayMotionPlayer({
       {/* 오른쪽 댓글 영역(요청: PC에서 댓글부를 미니맵 우측으로 — 기존 확대창 방식 그대로,
           다만 이제 겹창 없이 상세 화면 안 인라인이다). */}
       {wide && side ? <div className="scr-motion-sidewrap">{side}</div> : null}
+      {fsInner}
     </div>
   );
 
@@ -18433,9 +18748,44 @@ export default function ReplayMotionPlayer({
      여기 걸린다. 여태는 명령에서 유추한 그림이라도 띄웠지만, 그건 실제로 벌어진 일이
      아니었다. 없는 것은 없다고 말하는 편이 낫다. */
   if (entLoad === "none") {
+    /* ★ 껍데기는 **그대로 둔다**(지적: "재생할 수 없는 게임이에요 뜰 때만 댓글 추가가
+       아래에 뜨네 / 항상 일관된 디자인이 필요 맵영역 크기도 버튼들도") — 여태 이
+       갈래는 한마디짜리 상자 하나만 돌려주고 나머지 배치를 통째로 버렸다. 그러면
+       ① 지도 자리가 220px짜리 띠로 쪼그라들고 ② 넓은 배치에서 오른쪽에 서던 댓글
+       기둥이 갈 곳을 잃어 아래로 흘러내린다. 재생할 수 없다는 것은 **지도 안의 사정**
+       이지 페이지 배치가 알 일이 아니다.
+       그래서 같은 뼈대(맵줄 · 양옆 로스터 · 오른쪽 댓글 기둥)를 그대로 세우고, 지도가
+       설 자리에 그 한마디만 앉힌다 — 상자 크기도 비율도 재생되는 판과 같다.
+       조작 줄은 안 단다: 없는 것을 조작하는 버튼은 일관성이 아니라 거짓말이다. */
     return (
-      <div className="scr-motion-nodata">
-        <span>재생할 수 없는 게임이에요</span>
+      <div
+        ref={rootRef}
+        className={cx("scr-motion", wide && "scr-motion-wide")}
+        style={{ margin: "0 auto" }}
+      >
+        <div className="scr-motion-maprow">
+          {!wide && (
+            <div className="scr-motion-rosterwrap">
+              {teamCol(1)}
+              <span className="scr-motion-teamvs" aria-hidden>vs</span>
+              {teamCol(2)}
+            </div>
+          )}
+          <div className="scr-motion-mapwrap">
+            {wide && <div className="scr-motion-side">{teamCol(1)}</div>}
+            <div
+              className="scr-motion-map scr-motion-nodata"
+              style={{
+                ...(wide ? { width: `min(${mapViewW}px, 100%)`, flex: "0 1 auto", minWidth: 0 } : {}),
+                aspectRatio: `${grid.width} / ${grid.height}`,
+              }}
+            >
+              <span>재생할 수 없는 게임이에요</span>
+            </div>
+            {wide && <div className="scr-motion-side">{teamCol(2)}</div>}
+          </div>
+        </div>
+        {wide && side ? <div className="scr-motion-sidewrap">{side}</div> : null}
       </div>
     );
   }
