@@ -14424,7 +14424,14 @@ export default function ReplayMotionPlayer({
   const dragRef = useRef<
     { id: number; sx: number; sy: number; px: number; py: number; live: boolean } | null
   >(null);
+  /* 누른 자리 기억(지적: "인포팝업이 드래그하려고 눌러도 뜨는 문제") — 여태 팝업은
+     '끌지 않았으면 클릭'으로 열렸는데, 끌기 판정(dragRef)은 확대했을 때만 만들어졌다.
+     그래서 1배에서는 손가락을 아무리 밀어도 dragRef가 없어 늘 '클릭'이었다: 지도를
+     쓸어 넘기려고 눌렀다 떼기만 해도 팝업이 떴다. 이제 확대와 무관하게 누른 자리를
+     적어 두고, 손가락이 DRAG_SLOP보다 움직였으면 그건 클릭이 아니다. */
+  const tapRef = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
   const onMapPointerDown = (e: React.PointerEvent) => {
+    tapRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
     if (zoom <= 1 || e.button !== 0) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     dragRef.current = {
@@ -14437,6 +14444,9 @@ export default function ReplayMotionPlayer({
     /* 핀치 중엔 드래그 팬 봉인(지적: 확대축소 때 전혀 다른 곳이 깜빡) — 두 손가락이
        닿아 있는 동안엔 각 손가락의 pointermove가 저마다 팬으로 처리돼, 핀치가 계산한
        pan과 엉뚱한 pan이 번갈아 이기며 화면이 다른 자리로 튀었다. */
+    const tp0 = tapRef.current;
+    if (tp0 && tp0.id === e.pointerId && !tp0.moved
+      && Math.hypot(e.clientX - tp0.x, e.clientY - tp0.y) > DRAG_SLOP) tp0.moved = true;
     if (gestureRef.current) { dragRef.current = null; return; }
     const d = dragRef.current;
     if (!d || d.id !== e.pointerId) return;
@@ -14465,8 +14475,11 @@ export default function ReplayMotionPlayer({
   const onMapPointerUp = (e: React.PointerEvent) => {
     const dragged = dragRef.current?.id === e.pointerId && dragRef.current.live;
     if (dragRef.current?.id === e.pointerId) dragRef.current = null;
-    // 끌던 손가락이 아니면 클릭이다 — 유닛·건물을 집어 정보 팝업을 연다(요청).
-    if (!dragged) pickAt(e.clientX, e.clientY);
+    const tp = tapRef.current;
+    if (tp?.id === e.pointerId) tapRef.current = null;
+    /* 클릭은 '누른 그 손가락이, 거의 안 움직이고, 손짓(핀치) 중이 아닐 때' 뿐이다. */
+    if (dragged || !tp || tp.id !== e.pointerId || tp.moved || gestureRef.current) return;
+    pickAt(e.clientX, e.clientY);
   };
   /* 정보 팝업(요청: 유닛·건물 클릭하면 정보 툴팁, 딴 데 누르면 닫힘, 다른 몸을 누르면
      새 툴팁) — 집는 것은 '열쇠' 하나뿐이고, 내용은 프레임마다 지금 그린 op에서 다시
@@ -14825,6 +14838,38 @@ export default function ReplayMotionPlayer({
   /* 차례는 색상 → 성능 → 모델 크기 → 체력바 → 마우스 조작이다. 2D/3D 알약은 없다
      (요청: "기존 2d3d 토글은 피시 모바일 다 제거") — 각도는 지도 오른쪽 슬라이드 바가
      쥔다. */
+  /* 모바일 줄(요청: "모바일 구성 — 색상 … 성능 … 현재장면공유버튼 / 재생버튼 …
+     진행바 … 진행시각") — 좁은 화면에는 이 둘만 남긴다. 모델 크기·체력바·마우스 조작은
+     안 그린다(요청: 버튼 다 제거). 기능은 그대로다 — 상태와 그것을 읽는 렌더 경로는
+     한 줄도 안 건드렸고, PC의 오른쪽 기둥에서는 다섯 개가 다 선다. */
+  const mobBarNode = (
+    <div className="scr-motion-bar scr-motion-mobrow">
+      <span className="scr-motion-radio">
+        <span className="scr-motion-radio-label">색상</span>
+        <PillTabs
+          options={[{ value: "personal", label: "개인색" }, { value: "team", label: "팀색" }]}
+          value={colorMode}
+          onChange={(v) => setColorMode(v)}
+          aria-label="색상"
+          toggle
+        />
+      </span>
+      <span className="scr-motion-radio scr-motion-qrow">
+        <span className="scr-motion-radio-label">성능</span>
+        <PillTabs
+          options={[
+            { value: "1", label: "저" }, { value: "2", label: "중" }, { value: "3", label: "고" },
+          ]}
+          value={String(quality)}
+          onChange={(v) => setQuality(Number(v))}
+          aria-label="성능"
+          fit
+        />
+      </span>
+      {shareNode}
+    </div>
+  );
+
   const viewRowNode = (
     <div className="scr-motion-bar scr-motion-viewrow">
       {/* 색상도 다른 것들과 같은 꼴로 합쳤다(요청: "색상도 일반 토글로 합치기") —
@@ -17202,6 +17247,33 @@ export default function ReplayMotionPlayer({
             posFrac(grid.width, grid.height), posFrac(0, grid.height),
           ]}
         />
+        {/* 좁은 화면의 슬라이드 바는 지도 **안** 좌우에 얹는다(요청: "모바일은 미니맵
+            안쪽에 좌우에 배속/각도 슬라이드 오버레이") — 지도가 화면 폭을 꽉 채우므로
+            바깥에 세울 자리가 없다. 넓은 배치는 지도 바깥 기둥에 선다(위). */}
+        {!wide && (
+          <>
+            <div className="scr-motion-slidebar-l">
+              <SlideBar
+                title="배속"
+                options={[...SPEEDS].reverse().map((v) => ({ value: String(v), label: `×${v}` }))}
+                value={String(speed)}
+                onChange={(v) => setSpeed(SPEEDS.find((s2) => String(s2) === v) ?? SPEEDS[0])}
+                labelSide="right"
+                aria-label="배속"
+              />
+            </div>
+            <div className="scr-motion-slidebar-r">
+              <SlideBar
+                title="각도"
+                options={PITCH_DEGS.map((d) => ({ value: String(d), label: `${d}°` }))}
+                value={String(pitchDeg)}
+                onChange={(v) => setPitchDeg(Number(v))}
+                labelSide="left"
+                aria-label="시점 각도"
+              />
+            </div>
+          </>
+        )}
         {/* (삭제) PC 확대 조절바 — PC에서는 확대 기능을 통째로 걷었다(요청). 확대·이동은
             이제 모바일 손짓(더블탭·두 손가락)만의 것이다. */}
       </div>
@@ -17246,9 +17318,9 @@ export default function ReplayMotionPlayer({
         ) : null}
       </div>
 
-      {/* 넓은 배치의 버튼 줄은 오른쪽 기둥 맨 아래에 있다(위 맵줄 참조) — 여기 남는
-          것은 좁은 화면 몫이다. */}
-      {!wide && viewRowNode}
+      {/* 넓은 배치의 버튼 줄은 지도 오른쪽 기둥 맨 아래에 있다(위 맵줄 참조).
+          좁은 화면은 색상·성능·공유 한 줄만이고, 그 줄은 진행바 **위**에 선다(요청). */}
+      {!wide && mobBarNode}
       {linkOpen && createPortal(
         <div className="scr-modal-overlay scr-terrain-overlay" onClick={() => setLinkOpen(false)}>
           <div className="scr-modal scr-maplink-modal" onClick={(e) => e.stopPropagation()}>
@@ -17340,22 +17412,9 @@ export default function ReplayMotionPlayer({
       {/* 진행바 아랫줄 — 왼쪽 배속, 오른쪽 현재 장면 공유(요청: "배속은 크기를 줄이고
           진행바 쪽으로 이동, 현재 장면 공유랑 같은 라인으로"). 공유 버튼이 없는 경기도
           있으므로 줄 자체는 배속만으로도 선다. */}
-      <div className="scr-motion-bar scr-motion-sharerow">
-        {/* 배속도 마찬가지로 좁은 화면 몫이다 — PC는 지도 오른쪽 세로 바가 맡는다. */}
-        {!wide && (
-        <span className="scr-motion-radio scr-motion-speeds">
-          <span className="scr-motion-radio-label">배속</span>
-          <PillTabs
-            options={SPEEDS.map((v) => ({ value: String(v), label: `×${v}` }))}
-            value={String(speed)}
-            onChange={(v) => setSpeed(SPEEDS.find((s) => String(s) === v) ?? SPEEDS[0])}
-            aria-label="배속"
-            fit
-          />
-        </span>
-        )}
-        {shareNode}
-      </div>
+      {/* 공유 줄은 넓은 배치 전용이다 — 좁은 화면의 공유 버튼은 위 색상·성능 줄에
+          함께 서고(요청), 배속은 지도 안 왼쪽 슬라이드 바가 맡는다. */}
+      {wide && <div className="scr-motion-bar scr-motion-sharerow">{shareNode}</div>}
       {/* (삭제·지적: PC 타임스탬프 중복) — 기둥의 타임스탬프·등록자는 걷었다. 시각은
           맵 이름 줄(.scr-story-when)이 말하고 등록자는 그 오른쪽에 붙는다(GameResultStory). */}
       {/* 오른쪽 댓글 영역(요청: PC에서 댓글부를 미니맵 우측으로 — 기존 확대창 방식 그대로,
