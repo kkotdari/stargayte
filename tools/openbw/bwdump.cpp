@@ -153,6 +153,32 @@ static void bwdump_map_report() {
   fprintf(stderr, "\n자리 셈 맞대기 — 1700 빼기 %d회(%.1f%%) · 그대로 %d회(%.1f%%) · 둘 다 아님 %d회(%.1f%%)\n",
     g_map[0], g_map[0]*100.0/t, g_map[1], g_map[1]*100.0/t, g_map[2], g_map[2]*100.0/t);
 }
+/* 참값을 어디까지 믿어도 되나 — 리플레이 명령이 가리킨 유닛을 시뮬이 못 찾기 시작하면
+   그 뒤로는 시뮬이 실제 게임과 갈라졌다는 뜻이다. 1분 칸의 적중률이 처음 98% 밑으로
+   떨어진 칸의 시작 프레임을 돌려준다(끝까지 멀쩡하면 -1). */
+static int bwdump_trust_frame() {
+  for (int b = 0; b < 64; ++b) {
+    if (g_tot[b] < 20) continue;
+    if (g_ok[b] * 100 < g_tot[b] * 98) return b * 1429;
+  }
+  return -1;
+}
+static int g_rng_first[64], g_rng_cnt[64];
+void bwdump_rng(int source, int frame) {
+  if (source < 0 || source >= 64) return;
+  if (!g_rng_cnt[source]) g_rng_first[source] = frame;
+  g_rng_cnt[source] += 1;
+}
+static void bwdump_rng_report() {
+  if (!getenv("BWDUMP_RNG")) return;
+  fprintf(stderr, "\n난수 갈래마다 처음 쓰인 시각\n");
+  int order[64], n = 0;
+  for (int i = 0; i < 64; ++i) if (g_rng_cnt[i]) order[n++] = i;
+  for (int a = 0; a < n; ++a) for (int b = a+1; b < n; ++b)
+    if (g_rng_first[order[b]] < g_rng_first[order[a]]) { int t=order[a]; order[a]=order[b]; order[b]=t; }
+  for (int i = 0; i < n; ++i)
+    fprintf(stderr, "  갈래 %2d  처음 %6.2f분 · %d회\n", order[i], g_rng_first[order[i]]/23.81/60.0, g_rng_cnt[order[i]]);
+}
 static int g_shown = 0;
 static int g_firstmiss = -1;
 void bwdump_resolve(int frame, bool ok, bool slot, unsigned raw) {
@@ -325,6 +351,13 @@ int main(int argc, char** argv) {
         }
       }
     }
+    {
+      const int tf = bwdump_trust_frame();
+      printf("#trust\t%d\n", tf);
+      if (tf >= 0)
+        fprintf(stderr, "⚠ 참값을 믿을 수 있는 구간: 0 ~ %.1f분 (그 뒤로 시뮬이 실제 게임과 갈라진다)\n", tf / 23.81 / 60.0);
+      else fprintf(stderr, "참값은 끝까지 믿을 수 있다\n");
+    }
     printf("tag\tkind\towner\tborn\tlast\tdied\tbx\tby\tlx\tly\n");
     for (const auto& kv : lives) {
       const auto& L = kv.second;
@@ -352,6 +385,7 @@ int main(int argc, char** argv) {
     bwdump_fit_report();
     bwdump_why_report();
     bwdump_map_report();
+    bwdump_rng_report();
     bwdump_fail_report();
     bwdump_trig_report();
     bwdump_owner_time_report();

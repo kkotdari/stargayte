@@ -79,12 +79,23 @@ for (const f of files) {
   }).toString();
   const truth = new Map();      // 태그 → {kind, owner, born, last, died, bx, by, lx, ly}
   const truthAll = new Map();   // 중립(자원)까지 포함한 전부 — 유령 태그의 정체를 가린다
+  /* 덤퍼가 스스로 말하는 **믿을 수 있는 구간**. 리플레이 명령이 가리킨 유닛을 시뮬이 못
+     찾기 시작한 프레임이다 — 그 뒤로는 시뮬이 실제 게임과 갈라졌으니 참값이 아니다.
+     -1이면 끝까지 멀쩡하다. 여기 걸리면 그 앞 구간만 놓고 잰다(아니면 우리 분석이
+     멀쩡한데도 틀린 것처럼 보인다). */
+  let trust = Infinity;
   for (const line of raw.split("\n")) {
-    if (!line || line[0] === "t") continue;
+    if (line.startsWith("#trust")) {
+      const v = Number(line.split("\t")[1]);
+      if (v >= 0) trust = v;
+      continue;
+    }
+    if (!line || line[0] === "t" || line[0] === "#") continue;
     const [tag, kindId, owner, born, last, died, bx, by, lx, ly] = line.split("\t").map(Number);
     const kind = UNIT_NAME[String(kindId)] ?? `?${kindId}`;
     truthAll.set(tag, kind);
     if (NEUTRAL.has(kind)) continue;
+    if (born >= trust) continue;          // 갈라진 뒤에 생긴 것은 참값이 아니다
     truth.set(tag, { kind, owner, born, last, died: !!died,
       bx: bx / 32, by: by / 32, lx: lx / 32, ly: ly / 32 });
   }
@@ -111,6 +122,7 @@ for (const f of files) {
   const byTag = new Map();
   let synthetic = 0;
   for (const e of d.ents) {
+    if (e.b >= trust / FPS) continue;     // 참값과 같은 구간만 견준다(e.b는 초)
     if (e.t <= 0) { synthetic += 1; continue; }
     const cur = byTag.get(e.t);
     const life = (e.d ?? 1e9) - e.b;
@@ -132,10 +144,14 @@ for (const f of files) {
   const ourTags = new Set(byTag.keys());
   const missed = [...truthTags].filter((t) => !ourTags.has(t)).length;
   const ghosts = [...ourTags].filter((t) => !truthTags.has(t)).length;
-  const ents = d.ents.filter((e) => !e.bld).length + d.ents.filter((e) => e.bld).length;
+  const ents = d.ents.filter((e) => e.b < trust / FPS).length;   // 참값과 같은 구간만
 
   const pc = (a, b) => (b ? (a / b * 100).toFixed(1) : "-") + "%";
   console.log(`\n▸ ${f.split("/").pop().slice(0, 52)}`);
+  if (trust !== Infinity) {
+    console.log(`  ⚠ 참값은 ${(trust / FPS / 60).toFixed(1)}분까지만 믿을 수 있다`
+      + ` — 그 구간만 놓고 잰다 (시뮬이 그 뒤로 실제 게임과 갈라졌다)`);
+  }
   console.log(`  참값 유닛 ${truthUnits.length}기`);
   console.log(`  우리 개체 ${ents}기 = 태그 있는 것 ${ents - synthetic} + 합성 ${synthetic}`
     + `  → 참값의 ${(ents / Math.max(1, truthUnits.length)).toFixed(1)}배`);
