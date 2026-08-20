@@ -14583,6 +14583,28 @@ export default function ReplayMotionPlayer({
     }
     return { bx, by, bd, air: bAir, bld: bBld, k: bK, uk: bUk };
   };
+  /** '닿아 있다'고 볼 거리(타일) — 근접 무기의 사거리는 원작에서 1 안쪽이고, 두 몸의
+   *  반지름과 붙는 여유를 더해도 이만큼이면 충분하다. */
+  const HIT_DIR_TILES = 2.5;
+  /* 맞은 쪽이 **어디서 맞았나**(요청: "근접공격시 피격효과(건물포함, 방향주의)") —
+     참값에는 '누가 때렸나'가 없다. 체력이 내려간 순간만 있다. 그런데 근접 공격은 붙어야
+     때리므로, 맞은 그 순간 **닿아 있는 적**이 곧 때린 쪽이다 — 추정이 아니라 사실상
+     확정이다. 원거리는 그 반경 밖이라 아무것도 안 돌려준다: 그때는 방향을 모르는 것이
+     맞고, 모르면 몸 가운데에 그대로 둔다(지어내지 않는다).
+     돌려주는 것은 **화면** 방향의 단위 벡터다 — 입체에서는 세로가 눌리므로 그 몫을
+     곱해야 불티가 몸의 맞는 쪽 테두리를 정확히 짚는다. */
+  const hitDirOf = (
+    team9: number | undefined, x9: number, y9: number,
+  ): [number, number] | null => {
+    if (!team9) return null;
+    const f9 = nearestFoe(team9, x9, y9);
+    if (!Number.isFinite(f9.bd) || f9.bd > HIT_DIR_TILES || f9.bd < 0.05) return null;
+    const dx9 = f9.bx - x9;
+    const dy9 = (f9.by - y9) * (pitched ? pitchFlat : 1);
+    const m9 = Math.hypot(dx9, dy9);
+    if (m9 < 0.001) return null;
+    return [dx9 / m9, dy9 / m9];
+  };
   /* 정찰 자취도 걸어서 가고(지적: 갑자기 이동 — 직선이되 일꾼 걸음), 갈래·부대로 갈라
      각자의 점이 된다(지적: 드랍십 순간이동 — 일꾼 정찰과 셔틀 원정이 한 점을 놓고
      밀당했다). 갈래는 이름을 정한다(지적: 오버로드 이름이 안 나온다). */
@@ -16865,6 +16887,12 @@ export default function ReplayMotionPlayer({
               const bShShare9 = bs9 && bs9[1] > 0 ? bs9[1] / (bs9[0] + bs9[1]) : 0;
               const bShieldUp9 = bShShare9 > 0 && (bldHp.frac ?? 1) > 1 - bShShare9 + 0.001;
               // 건물도 같은 잣대로 잠깐만(지적) — 0.8 → 0.35초.
+              /* 건물도 맞은 방향에 튄다(요청: "근접공격시 피격효과(건물포함, 방향주의)")
+                 — 저글링이 해처리를 물어뜯는 동안 불티가 늘 발자국 한가운데에서 텄다.
+                 붙어 있는 적 쪽 테두리로 옮긴다: 발자국 반쪽의 0.8배라 벽면 언저리다.
+                 가로세로가 다른 발자국이라 x·y에 각자의 몫을 곱한다. */
+              const bHitDir9 = bldHp.hurt > -99 && t - bldHp.hurt <= 0.35
+                ? hitDirOf(teamOfRaw(raw), centerX, centerY) : null;
               const bldHitFx = bldHp.hurt > -99 && t - bldHp.hurt <= 0.35 ? (
                 <span
                   key={`bhit-${i}`}
@@ -16887,7 +16915,9 @@ export default function ReplayMotionPlayer({
                       style={{
                         width: `${(fp2[0] * 0.3 * bldTile9).toFixed(1)}px`,
                         height: `${(fp2[0] * 0.3 * bldTile9).toFixed(1)}px`,
-                        transform: "translate(-50%, -50%)",
+                        transform: bHitDir9
+                          ? `translate(calc(-50% + ${(bHitDir9[0] * fp2[0] * 0.4 * bldTile9).toFixed(1)}px), calc(-50% + ${(bHitDir9[1] * fp2[1] * 0.4 * bldTile9 * (pitched ? pitchFlat : 1)).toFixed(1)}px))`
+                          : "translate(-50%, -50%)",
                       }}
                     />
                   )}
@@ -17951,10 +17981,17 @@ export default function ReplayMotionPlayer({
             // 잠깐만 뜬다(지적: "절대 움직임 없게 잠깐 표시") — 0.7 → 0.3초.
             const hitNow = t - hurtAt <= 0.3;
             /* 효과는 가슴 높이(지적: 공격 효과가 너무 낮다 — 발밑에서 튀었다) — 마커
-               기준점은 발 자리라, 유닛 키의 1/3만큼 띄워 몸통에 맞춘다. */
+               기준점은 발 자리라, 몸이 실제로 떠 있는 몫만큼 띄워 몸통에 맞춘다.
+               ★ 그 몫은 **그리는 쪽과 같은 식**이어야 한다(지적: "공중유닛의 피격효과가
+                 공중의 몸이 아닌 땅에 나오는 문제") — UnitLayer는 몸을 발 자리에서
+                 `크기 × (0.24 + 공중이면 0.8 + rise)`만큼 위로 들어 찍는데, 여기서는
+                 0.34 한 값으로 못 박혀 있었다. 지상 유닛에서는 0.24 + 가슴 몫 0.10이라
+                 우연히 맞았지만, 공중 유닛은 몸이 0.8만큼 더 떠 있어 불티가 땅에서
+                 텄다. 같은 식을 쓰면 앞으로 들기가 바뀌어도 한 줄만 따라오면 된다. */
             const fxPx = drawUnit === ""
               ? unitGlyphPx(kindMain, kindMain, 0, ay3) : unitPxOf(drawUnit2, ay3, kindMain);
-            const fxLift = { marginTop: `${(-fxPx * 0.34).toFixed(1)}px` };
+            const fxBody = fxPx * (0.24 + (uAir ? 0.8 : 0) + rideK * 1.6);
+            const fxLift = { marginTop: `${(-(fxBody + fxPx * 0.1)).toFixed(1)}px` };
             /* 맞는 쪽 불티(요청: 크기도 몸에 맞게) — 고정 크기(9px에 scale 0.25)라
                유닛 크기를 캔버스 비례로 바로잡은 뒤엔 작은 유닛 위에서 유독 컸다.
                몸 상자의 0.55배로 잡고 가슴 높이에 띄운다. 싸우는 중이어도 맞으면
@@ -17967,6 +18004,9 @@ export default function ReplayMotionPlayer({
             const shShare9 = st9 && st9.sh ? st9.sh / (st9.hp + st9.sh) : 0;
             const shieldUp9 = shShare9 > 0
               && hpNow / Math.max(1, hpFull) > 1 - shShare9 + 0.001;
+            /* 맞은 방향(요청) — 닿아 있는 적이 곧 때린 쪽이다. 없으면 null이고 그때는
+               예전처럼 몸 가운데다. 맞는 순간(0.3초)에만 재므로 값이 비싸지 않다. */
+            const hitDir9 = qCombat && hitNow ? hitDirOf(team, rawPos.x, rawPos.y) : null;
             const hitSpark = qCombat && hitNow ? (
               shieldUp9 ? (
                 <span
@@ -17982,13 +18022,14 @@ export default function ReplayMotionPlayer({
                   key={`hit-${Math.round(hurtAt * 10)}`}
                   className="scr-motion-puff scr-puff-hit"
                   style={{
-                    /* 맞는 방향에, 움직임 없이 잠깐(지적) — 코어의 발사 사건에서 쏜 쪽
-                       자리를 찾아 몸 테두리 쪽으로 옮긴다. 방향을 모르면(사건이 없거나
-                       증거만으로 아는 피격) 예전처럼 몸 가운데다. */
+                    /* 맞는 방향에, 움직임 없이 잠깐(요청: "방향주의") — 닿아 있는 적을
+                       때린 쪽으로 보고 그쪽 몸 테두리로 옮긴다(몸 반지름의 0.6배).
+                       방향을 모르면(원거리·증거만으로 아는 피격) 몸 가운데다. */
                     width: `${(fxPx * 0.42).toFixed(1)}px`,
                     height: `${(fxPx * 0.42).toFixed(1)}px`,
-                    // 쏜 쪽을 모르니 몸 가운데다(위 '발사·피격 사건' 주석).
-                    transform: "translate(-50%, -60%)",
+                    transform: hitDir9
+                      ? `translate(calc(-50% + ${(hitDir9[0] * fxPx * 0.3).toFixed(1)}px), calc(-60% + ${(hitDir9[1] * fxPx * 0.3).toFixed(1)}px))`
+                      : "translate(-50%, -60%)",
                   }}
                 />
               )
