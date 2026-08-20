@@ -11413,6 +11413,9 @@ type UnitDrawOp = {
   pickRaw?: string;
   /** 건물인가 — 툴팁이 생산·연구·큐를 보여 줄지 가른다. */
   pickBld?: boolean;
+  /** 아직 짓는(변태하는) 중인 건물인가 — 그런 건물은 생산도 큐도 연구도 못 한다.
+   *  팝업이 그 줄들을 아예 안 쓰는 표다(요청). */
+  pickWip?: boolean;
   /** 지금 무슨 상태인가(요청: 건설·변태 등 모든 상태 노출) — 툴팁 첫 줄에 그대로 뜬다. */
   pickState?: string;
   /** 걸려 있는 마법(키) — 팝업이 그 효과와 색까지 적는다. */
@@ -11775,6 +11778,10 @@ function unitSprite(
  *  한 타일을 800으로 넓혀 나이는 0.1타일 미만의 **진짜 동점**만 가른다. 층 편향
  *  (자원 +1200 = 1.5타일, 유닛 +400 = 0.5타일)도 같은 배수로 따라온다. */
 const Z_TILE = 800;
+/** 같은 줄에서 유닛이 건물을 이기는 몫 — 건물의 나이 가산 상한(60)보다 하나만 크다.
+ *  동점을 가르는 것이 일이라 넉넉할 까닭이 없다: 넓게 주면 그만큼 뒤에 선 유닛이
+ *  앞 건물을 뚫고 나온다(0.076타일). */
+const Z_UNIT_AHEAD = 61;
 /** 공중은 늘 위층 — 지상 z가 아무리 커도(맵 256타일 × Z_TILE) 못 넘는 값이어야 한다. */
 const Z_AIR = 10000000;
 /** 프로토스 소환구 상자(타일)와 지면에서 띄우는 높이(타일) — 요청: 축소 + 더 띄우기. */
@@ -13380,7 +13387,7 @@ export const playbackViewOf = new Map<string, {
 
 export default function ReplayMotionPlayer({
   grid, endSec, bases, teamOfRaw, active = true, winnerTeam, side,
-  onDetailClose, loadUnitTracks, initialSec, initialView, clockKey, shareNode,
+  onDetailClose, loadUnitTracks, initialSec, initialView, clockKey, shareNode, soleView,
 }: {
   grid: ReplayMapGrid;
   /** 경기 길이(초) — 경기 메타(durationSeconds)에서 온다. 없으면 트랙의 끝으로 잡는다. */
@@ -13417,6 +13424,10 @@ export default function ReplayMotionPlayer({
   initialView?: { z: number; cx: number; cy: number; deg: number };
   /** 현재 재생 시각을 적어 둘 열쇠(경기번호) — 공유 링크가 &t=로 실어 보낸다. */
   clockKey?: string;
+  /** 이 재생기가 화면에 홀로 있나 — 상세 모달이나 게임 페이지처럼 한 판만 보고 있는
+   *  화면이다. 갈라진 판 경고는 여기서만 뜬다(목록은 카드마다 재생기가 하나씩이라
+   *  경고창이 겹친다). */
+  soleView?: boolean;
   /** 진행바 아래 공유 버튼(요청: 케밥은 그대로, 별도 버튼) — 시계 옆에 앉는다. */
   shareNode?: React.ReactNode;
   // (삭제·요청) caps — 자막 표시를 걷으면서 함께.
@@ -13457,8 +13468,13 @@ export default function ReplayMotionPlayer({
      페이지 진입시 한번") — 서버가 구울 때 '어디까지 믿어도 되는지'를 함께 적어 보낸다
      (OBWT 머리말의 믿을프레임). 그 값이 있다는 것은 시뮬이 도중에 실제 경기와 갈라졌다는
      뜻이다. 여태 받아만 놓고 아무 데도 안 쓰고 있었다.
-     ★ 상세로 들어온 화면에서만 띄운다(onDetailClose가 있을 때) — 활동 목록은 카드마다
-       재생기가 하나씩이라, 목록에서 띄우면 경고창이 여러 개 겹쳐 뜬다. */
+     ★ 이 재생기가 화면에 홀로 있을 때만 띄운다(soleView) — 활동 목록은 카드마다
+       재생기가 하나씩이라, 목록에서 띄우면 경고창이 여러 개 겹쳐 뜬다.
+       ★ 여태 그 자격을 onDetailClose(상세 모달의 닫기 통로)로 갈음했는데(지적:
+         "분석오류도 경고가 안뜨네"), 게임 페이지(활동 › 게임 › 번호)는 그 컨텍스트를
+         일부러 안 씌운다("GameDetailClose 컨텍스트를 안 씌우므로" — ActivityScreen).
+         그래서 정작 사람이 제일 오래 머무는 화면에서 경고가 한 번도 안 떴다. 자격을
+         제 이름의 prop으로 받는다. */
   const [trustWarn, setTrustWarn] = useState<number | null>(null);
   /* 클릭 자국 토글(요청) — 기본은 끔: 클릭이 많은 경기에서는 자국이 화면을 덮는다. */
   const [clickFx, setClickFx] = useState(true); // 기본 켬(요청)
@@ -13504,7 +13520,7 @@ export default function ReplayMotionPlayer({
       if (truth && truth.tracks.length) {
         setEntData(truthWorld(truth, (k) => UNIT_BUILD_SEC[k] ?? 0));
         setTruth(truth);
-        if (truth.trustUntil !== null && onDetailClose) setTrustWarn(truth.trustUntil);
+        if (truth.trustUntil !== null && soleView) setTrustWarn(truth.trustUntil);
         setSimTracks(new Map(truth.tracks.map((tr) => [tr.tag, tr])));
         setEntLoad("idle");
       } else {
@@ -14676,8 +14692,9 @@ export default function ReplayMotionPlayer({
   /** 좁은 화면에서 지도 위에 얹힌 세로 바 둘(배속·각도)이 지금 보이나 — 지도가 화면
    *  폭을 꽉 채우는 배치라 바가 곧 지형을 가린다. 지도의 빈 곳을 톡 누르면 켜졌다
    *  꺼진다(요청: "모바일 맵 터치로 세로슬라이더 두개 온오프").
-   *  처음에는 보인다 — 안 보이는 채로 시작하면 그런 조작이 있다는 것을 알 길이 없다. */
-  const [mobBars, setMobBars] = useState(true);
+   *  처음에는 **숨어 있다**(요청: "모바일 처음엔 두 세로 슬라이더 숨기기") — 좁은 화면
+   *  에서는 첫 화면이 지형이어야 하고, 바는 필요할 때 불러 쓰는 것이다. */
+  const [mobBars, setMobBars] = useState(false);
   /** 이번 프레임에 그린 op — 클릭 판정과 팝업 내용이 여기서 지금 값을 읽는다. */
   const opsRef = useRef<UnitDrawOp[]>([]);
   // 유닛 크기 토글(요청) — 기본은 실제 크기, 누르면 2배.
@@ -16688,6 +16705,7 @@ export default function ReplayMotionPlayer({
                      뒤와 같은 자로 지어, 다 지어져도 팝업이 그대로 이어진다. */
                   pickKey: `b${raw}|${unit}|${Math.round(bx * 4)}|${Math.round(by * 4)}`,
                   pickName: unit, pickRaw: raw, pickBld: true, pickX: bx, pickY: by,
+                  pickWip: true,
                   /* 상태 줄 — 테란은 '건설 중단'을 따로 말한다(요청): 일꾼이 떠나거나
                      죽어 공사가 그 진행률에 멈춰 선 동안이다. */
                   pickState: race2 === "저그"
@@ -17752,10 +17770,17 @@ export default function ReplayMotionPlayer({
                  순서라 뒤 풍선이 앞을 덮었다. */
               /* 같은 줄이면 유닛이 건물보다 위(지적: 유닛이 건물에 가려짐) — 건물의
                  화가 기준은 발자국 아랫변이라 같은 y면 깊이가 같은데, 건물에만 나이
-                 가산(최대 +30)이 붙어 앞에 선 유닛까지 덮었다. 유닛에 그보다 큰 붙박이
-                 +40을 줘 같은 깊이에서는 늘 유닛이 이기게 한다(뒤에 선 유닛은 y가 작아
-                 여전히 건물 뒤로 간다). */
-              z: pitched || uAir ? 1000 + Math.round(ay3 * Z_TILE) + 400 : 1000 + (ei % 137),
+                 가산(최대 +60)이 붙어 앞에 선 유닛까지 덮었다. 유닛에 그보다 **딱 한 칸
+                 큰** 붙박이를 줘 같은 깊이에서는 늘 유닛이 이기게 한다(뒤에 선 유닛은 y가
+                 작아 여전히 건물 뒤로 간다).
+                 ★ 그 몫이 400이었다(지적: "앞뒤 순서안맞게 가려짐 문제") — 한 타일이
+                   Z_TILE(800)이니 **반 타일**이다. 건물 아랫변보다 반 타일이나 뒤에 선
+                   유닛까지 건물을 뚫고 앞으로 나왔다: 커맨드센터 뒤를 지나는 마린이
+                   건물 위에 올라탄 것처럼 보이던 것이 이것이다. 동점만 가르면 되므로
+                   나이 가산의 상한(60)보다 하나 큰 값이면 충분하다 — 어긋남의 폭이
+                   0.5타일에서 0.076타일(61/800)로 준다. */
+              z: pitched || uAir
+                ? 1000 + Math.round(ay3 * Z_TILE) + Z_UNIT_AHEAD : 1000 + (ei % 137),
               kind: kindMain,
               selRing: selNow || undefined,
               // 보임 토글이면 만피여도 표시(요청: 모든 유닛·건물 다 표시).
@@ -18336,7 +18361,13 @@ export default function ReplayMotionPlayer({
               const shCur = Math.max(0, cur - hpOnly);
               lines.push(bar(`실드 ${shCur} / ${sh}`, shCur / sh, "#f2f6ff"));
             }
-            if (op.pickBld) {
+            if (op.pickBld && op.pickWip) {
+              /* 짓는 중인 건물은 아무 일도 못 한다(요청: "건설중 건물에 생산중이나 큐가
+                 있으면 안돼 / 업그레이드 진행도 물론") — 원작에서 미완성 건물은 아직
+                 명령을 받지 않는다. 여태 이 갈래가 없어서, 착공 자리 언저리에서 나온
+                 옛 생산 기록이 짓는 중인 새 건물에도 그대로 붙어 '생산 중'·'큐'가 떴다.
+                 상태 줄(건설 중 NN%)과 체력만 남기고 여기서 끝낸다. */
+            } else if (op.pickBld) {
               /* 생산·연구·큐(요청) — 생산 기록은 '완성 시각'이라, 지금 창 안이면 방금
                  나온 것, 앞엣것은 큐로 읽는다(무엇이 언제 나오는지가 그대로 큐다). */
               /* 이 건물에서 나온 것만(지적: 라바 변태 기록이 해처리끼리 공유된다) —
@@ -18384,8 +18415,19 @@ export default function ReplayMotionPlayer({
                   lines.push(`생산 완료 ${justOut.map(([, n]) => n).join(" · ")}`);
                 } else lines.push("생산 대기");
               }
+              /* 큐는 **바가 없고 칸이 옆으로 늘어선다**(요청: "큐 목록은 바가 없어야되고
+                 4칸인가 큐된 목록이 옆으로 쭉 나오면 돼") — 원작 생산 패널이 그렇다:
+                 지금 뽑는 것 하나만 진행 바를 갖고, 뒤에 선 것들은 칸에 담겨 옆으로
+                 늘어선다. 남은 초는 안 적는다 — 좁은 칸에 숫자까지 넣으면 이름이 잘린다. */
               if (queue.length > 0) {
-                lines.push(`큐 ${queue.map(([ps, n, sec]) => `${n} +${Math.max(0, Math.round(ps - sec - t))}초`).join(" · ")}`);
+                lines.push(
+                  <div className="scr-motion-info-queue" key="queue">
+                    <span className="scr-motion-info-line">큐</span>
+                    <span className="scr-motion-info-slots">
+                      {queue.map(([ps, n], qi) => <i key={`${ps}${qi}`}>{n}</i>)}
+                    </span>
+                  </div>,
+                );
               }
               /* ★ 연구 중 — 표는 **연구 이름 → 그 연구를 하는 건물**인데 여태 건물
                  이름으로 뒤지고 있었다(RESEARCH_BUILDING["Engineering Bay"]는 없다).
@@ -18446,11 +18488,13 @@ export default function ReplayMotionPlayer({
             /* 팝업은 지도 밖으로 안 나간다(지적: "나오는 위치도 이상함 · 미니맵 내부로
                제한") — 여태는 마커 자리에 그대로 띄워, 가장자리 유닛을 누르면 상자가
                지도 밖(또는 화면 밖)으로 반쯤 잘려 나갔다.
-               폭은 CSS가 못 박은 값(232 + 좌우 여백 18)이라 여기서 그대로 쓸 수 있고,
+               폭은 CSS가 못 박은 값이라 여기서 그대로 쓸 수 있고,
                높이는 줄 수로 어림한다(막대 줄은 두 줄 몫). 위로 띄울 자리가 모자라면
                마커 아래로 뒤집는다 — 지도 위쪽 유닛이 그 경우다. */
             const PAD9 = 6;
-            const PW9 = Math.min(250, w9 - PAD9 * 2);
+            /* 폭은 CSS가 못 박은 값(116 + 좌우 여백 18)이다(요청: "정보팝업 모달 너비
+               반으로 축소") — 232에서 절반으로 줄였으니 여기 상한도 절반이다. */
+            const PW9 = Math.min(134, w9 - PAD9 * 2);
             const barN9 = lines.filter((ln) => typeof ln !== "string").length;
             const PH9 = 28 + (lines.length - barN9) * 17 + barN9 * 26;
             const cx9 = Math.min(Math.max(lx, PW9 / 2 + PAD9), w9 - PW9 / 2 - PAD9);

@@ -231,6 +231,14 @@ export default function GameResultStory({
           />
         )}
         onDetailClose={detailClose ?? undefined}
+        /* 갈라진 판 경고를 띄울 자격(지적: "분석오류도 경고가 안뜨네") — 상세 모달
+           (detailClose가 있다)이거나 게임 페이지(linkQuery가 이 경기를 가리킨다)면 이
+           재생기가 화면에 홀로 있는 것이다. 목록에서는 안 띄운다 — 카드마다 재생기가
+           하나씩이라 경고창이 여러 개 겹친다.
+           ★ 여태 재생기가 onDetailClose로 그 자격을 갈음했는데, 게임 페이지는 그
+             컨텍스트를 일부러 안 씌운다(ActivityScreen). 그래서 정작 사람이 제일 오래
+             머무는 화면에서 경고가 한 번도 안 떴다. */
+        soleView={!!detailClose || linkQuery !== null}
         /* 개체 트랙 — 사건(data)과 서버가 구운 참값 자취(motion)가 함께 온다. 재생기가
            처음 열릴 때 한 번 내려받는다. 없는 경기(옛 등록·분석 실패·아직 안 구움)는
            각각 null이다. */

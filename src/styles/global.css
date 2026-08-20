@@ -11511,6 +11511,13 @@ html.scr-comment-typing, html.scr-comment-typing body { background: var(--card-b
   gap: 1px; font-size: 9px; font-weight: 700; line-height: 1.35;
   color: var(--muted); text-shadow: none;
 }
+/* 자리를 미리 비워 둔다(지적: "로스터 데이터 자리 미리 확보해놓기 지금 로딩되면 지도가
+   아래로 밀림") — 참값이 오기 전에는 '일꾼 0' 한 줄뿐이고, 오고 나면 인구·미네랄·가스·
+   apm이 붙어 다섯 줄이 된다. 그 네 줄만큼 지도가 통째로 밀려 내려갔다. 다섯 줄 몫을
+   처음부터 잡아 두면 자료가 오고 가도 줄이 안 움직인다.
+   em으로 잡는 까닭은 글자 크기가 칸 폭을 따라 변하기 때문이다(container query) —
+   px으로 못 박으면 칸이 좁아진 배치에서 도리어 남는다. */
+.scr-motion-stats { min-height: calc(5 * 1.35em + 4px); }
 .scr-motion-stat { white-space: nowrap; }
 /* 미네랄은 파랑, 가스는 초록(요청) — 원작의 자원 아이콘 색이다. */
 .scr-motion-stat-min { color: #63b3ff; }
@@ -14473,7 +14480,9 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
    자리는 리액트 쪽에서 지도 상자 안으로 물린다(위/아래 뒤집기 포함). */
 .scr-motion-info {
   position: absolute; z-index: 30000; transform: translate(-50%, calc(-100% - 14px));
-  width: 232px; max-width: calc(100% - 16px);
+  /* 232 → 116px(요청: "정보팝업 모달 너비 반으로 축소 눈금도 폭 반으로") — 진행 바는
+     상자 폭을 채우는 flex라, 상자가 반이 되면 눈금 열 칸도 함께 반이 된다. */
+  width: 116px; max-width: calc(100% - 16px);
   padding: 6px 9px; border-radius: 8px;
   overflow-wrap: anywhere;
   background: rgba(12, 16, 22, 0.88);
@@ -14493,6 +14502,18 @@ html:not(.scr-light-theme) .scr-story-snap-on::after {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 .scr-motion-info-bar i.is-on { background: #6fe36f; border-color: rgba(255, 255, 255, 0.3); }
+/* 큐는 바가 아니라 **칸**이다(요청: "큐 목록은 바가 없어야되고 4칸인가 큐된 목록이
+   옆으로 쭉 나오면 돼") — 원작 생산 패널이 그렇다: 지금 뽑는 것 하나만 진행 바를 갖고,
+   뒤에 선 것들은 작은 칸에 담겨 옆으로 늘어선다. 좁은 상자라 글자를 한 단 더 줄인다. */
+.scr-motion-info-queue { display: flex; align-items: center; gap: 4px; margin-top: 2px; min-width: 0; }
+.scr-motion-info-slots { display: flex; gap: 2px; min-width: 0; }
+.scr-motion-info-slots i {
+  font-style: normal; font-size: 8px; font-weight: 700; line-height: 1;
+  padding: 2px 3px; border-radius: 3px; white-space: nowrap;
+  min-width: 0; overflow: hidden;
+  color: rgba(255, 255, 255, 0.82); background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.12);
+}
 
 /* ── 전체화면 재생(요청: "모바일 피시에서 전체화면 버튼 클릭하면 화면을 꽉채우는
    전체화면 모드로 변함") ────────────────────────────────────────────────────────
