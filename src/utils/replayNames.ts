@@ -5,6 +5,8 @@
 // screp 영문명 → 한국어 통용 표기. 여기 없는 유닛은 화면에 쓰지 않는다 — 영문명을 그대로
 // 노출하면 어색하고, UMS 맵의 영웅 유닛까지 새어 나온다.
 export const UNIT_KO: Record<string, string> = {
+  // 라바·알(요청: 인포 팝업) — 개체 기록에는 안 남지만 화면에는 그려진다.
+  Larva: "라바", Egg: "변태알",
   Marine: "마린", Firebat: "파이어뱃", Medic: "메딕", Ghost: "고스트",
   Vulture: "벌처", Goliath: "골리앗",
   "Siege Tank (Tank Mode)": "탱크", "Siege Tank (Siege Mode)": "탱크",

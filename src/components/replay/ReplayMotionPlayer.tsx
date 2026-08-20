@@ -12628,8 +12628,9 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
           ctx.shadowColor = "transparent";
           // 검정 그림자로 롤백(지적: "그림자의 개인색 적용 롤백") — 임자 색을 눌러 칠하던
           // 것을 걷고 예전 검정으로 돌아간다. 짙기는 별개 지적으로 올려 둔 값이라 유지:
-          // 이제 뜬 건물만 그림자를 지므로 공중 유닛과 같은 0.5.
-          ctx.globalAlpha = op.alpha * 0.5;
+          // 이제 뜬 건물만 그림자를 지므로 공중 유닛과 같은 짙기다.
+          // 살짝 연하게(요청: "유닛 및 뜬 건물 그림자 살짝 연하게") — 0.5 → 0.36.
+          ctx.globalAlpha = op.alpha * 0.36;
           ctx.fillStyle = "#000";
           ctx.beginPath();
           if (op.shadowPts && op.shadowPts.length >= 3) {
@@ -12765,8 +12766,9 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
            위로 당겨 몸에 겹친다. */
         const shUp = op.kind === "htemp" ? px * 0.16 : 0;
         // 짙기 상향(지적: 그림자가 너무 흐려 안 보인다) — 0.26/0.16 → 0.5/0.34.
-        // 색은 검정으로 롤백(지적: "그림자의 개인색 적용 롤백") — 짙기는 위 지적대로 둔다.
-        ctx.globalAlpha = op.alpha * (op.air ? 0.5 : 0.34);
+        // 색은 검정으로 롤백(지적: "그림자의 개인색 적용 롤백").
+        // 다시 한 단 연하게(요청: "유닛 및 뜬 건물 그림자 살짝 연하게") — 0.5/0.34 → 0.36/0.25.
+        ctx.globalAlpha = op.alpha * (op.air ? 0.36 : 0.25);
         ctx.fillStyle = "#000";
         /* beginPath 필수(조사: 전 모드 거대 검은 쐐기의 진범) — 경로를 안 비우면
            ellipse가 직전 점에서 타원까지 선분을 이어 붙이며 프레임 내내 누적되고,
@@ -12798,7 +12800,8 @@ function UnitLayer({ ops, zoom, pan, wallMask, maskRects, clipQuad, showShadows,
         ctx.save();
         ctx.shadowColor = "transparent";
         // 짙기 상향(지적) — 0.15 → 0.32. 색만 검정으로 롤백(지적: "그림자의 개인색 적용 롤백").
-        ctx.globalAlpha = op.alpha * 0.32;
+        // 다시 한 단 연하게(요청: "유닛 및 뜬 건물 그림자 살짝 연하게") — 0.32 → 0.23.
+        ctx.globalAlpha = op.alpha * 0.23;
         ctx.fillStyle = "#000";
         ctx.beginPath();
         /* 그림자는 몸 폭(inkW)으로 잰다(지적: "그림자 크기가 유닛 크기 반영 못한 듯 —
@@ -14781,31 +14784,16 @@ export default function ReplayMotionPlayer({
 
   /* PC 휠 줌(요청) — 맵 위에서 휠로 확대/축소, 커서 자리를 붙든 채 늘어난다. 팬은 줌
      계산에 함께 실려 경계 밖이 안 보이게 죈다. */
-  /* 확대 배율 — 더블클릭·더블탭이 이 값과 1배 사이만 오간다(중간 단계 없음).
-     6 → 4로 낮췄다(요청: "더블클릭 시 확대비율을 좀 낮추기"). 6은 "게임 화면이 가로
-     20타일쯤 보여 준다"에서 온 값인데, 실제로는 너무 깊이 들어가 주변 상황이 통째로
-     화면 밖으로 나갔다. 4는 가로 32타일쯤을 보여 준다.
-     덤으로 자리가 좋다: 맵 뷰어 1024px에 128타일 맵이면 한 타일이 8px이라, 4배에서
-     한 타일이 정확히 32px — 원작의 타일 크기 그대로다. */
-  const ZOOM_GAME = 4;
   /* 이어서 늘릴 때의 상한(요청: "재생 확대 최대 8배로 수정") — 휠·핀치처럼 배율이
      연속으로 움직이는 길이 여기까지 간다. 더블클릭·더블탭이 한 번에 뛰는 자리는
      ZOOM_GAME 그대로다(그건 앞서 6 → 4로 낮춰 달라던 값이라 건드리지 않는다).
      핀치 상한이 20이라 다른 길과 안 맞던 것도 여기로 모은다. */
   const ZOOM_MAX = 8;
+  /* 확대는 **PC 휠과 모바일 핀치 두 길뿐**이다(요청: "인포팝업 때문에 더블탭/클릭 줌은
+     제거") — 유닛을 눌러 정보 팝업을 여는 것과 같은 손짓이라, 팝업을 두 번 확인하려다
+     화면이 확대되고 팝업이 닫히는 일이 잦았다. 여기 있던 ZOOM_GAME(한 번에 뛰던 배율)
+     과 zoomGate(갈래 셋을 한 번으로 묶던 빗장)도 함께 걷었다. */
   const [zoom, setZoom] = useState(1);
-  /* 확대·축소 빗장(지적: 실기 진단 — 판정은 매번 '확대'로 떨어지는데 화면이 그대로다)
-     — iOS 사파리는 더블탭에서 touchend와 함께 dblclick도 쏜다. 우리 더블탭이 확대해
-     놓으면 곧이어 온 dblclick이 zoomRef가 이미 6인 걸 보고 도로 1로 되돌려, 두 번
-     누를 때마다 확대→축소가 한 프레임 안에 겹쳐 아무 일도 없는 것처럼 보였다.
-     갈래가 셋(더블클릭·터치·포인터)이라 400ms 안의 두 번째 발동은 무조건 무시한다. */
-  const zoomAtRef = useRef(0);
-  const zoomGate = (): boolean => {
-    const t0 = performance.now();
-    if (t0 - zoomAtRef.current < 450) return false;
-    zoomAtRef.current = t0;
-    return true;
-  };
   /* 피칭 보기(요청) — 수직 부감 대신 약간 비스듬한 정면. 바닥(지형 그림과 마커 자리)만
      세로로 눌리고, 건물·유닛 도형은 제 크기로 서 있어 3D로 바닥에 붙는다. 눌림은
      컨테이너 세로비가 맡아서 %자리가 저절로 따라온다. 휠 확대·드래그 이동은 기존
@@ -14846,33 +14834,10 @@ export default function ReplayMotionPlayer({
     /* 프레임당 한 번만 상태를 놓는다(지적: 줌·드래그 버벅임) — 휠은 초당 수십 번
        튀는데 틱마다 setState면 그때마다 전체 마커 렌더가 돌았다. 목표값을 모아 rAF
        한 번에 반영한다(연타는 pend 기준으로 이어 계산해 커서 고정이 안 깨진다). */
-    /* 휠 줌은 걷고 더블클릭 토글로(요청) — PC·모바일 모두 '두 번 눌러 확대/축소'
-       한 가지 방법만 남긴다. 배율은 실제 게임에서 한 화면에 들어오는 몫(ZOOM_GAME)
-       하나뿐이라, 중간 단계 없이 켜고 끈다. 누른 지점 아래의 지도 지점이 그 자리에
-       남도록 팬을 함께 푼다. */
-    const onDbl = (e: MouseEvent) => {
-      e.preventDefault();
-      if (!zoomGate()) return;
-      const rect = el.getBoundingClientRect();
-      if (zoomRef.current > 1.05) {
-        setZoom(1);
-        setPan({ x: 0, y: 0 });
-        return;
-      }
-      const ox = rect.left + rect.width / 2;
-      const oy = rect.top + rect.height / 2;
-      const ux = (e.clientX - ox - panRef.current.x) / zoomRef.current;
-      const uy = (e.clientY - oy - panRef.current.y) / zoomRef.current;
-      const nx = e.clientX - ox - ZOOM_GAME * ux;
-      const ny = e.clientY - oy - ZOOM_GAME * uy;
-      const maxX = ((ZOOM_GAME - 1) * rect.width) / 2;
-      const maxY = ((ZOOM_GAME - 1) * rect.height) / 2;
-      setZoom(ZOOM_GAME);
-      setPan({
-        x: Math.min(maxX, Math.max(-maxX, nx)),
-        y: Math.min(maxY, Math.max(-maxY, ny)),
-      });
-    };
+    /* 더블클릭·더블탭 줌은 걷었다(요청: "인포팝업 때문에 더블탭/클릭 줌은 제거") —
+       유닛을 눌러 정보 팝업을 여는 것과 같은 손짓이라, 팝업을 두 번 확인하려다 화면이
+       확대되고 팝업이 닫히는 일이 잦았다. 확대는 PC 휠과 모바일 핀치 두 길만 남긴다.
+       (zoomGate도 함께 필요 없어졌다 — 갈래가 셋일 때 겹침을 막던 빗장이었다.) */
     /* PC 휠 줌 복구(요청) — 없앴던 이유는 버벅임이었다. 원인은 배율 자체가 아니라
        '휠 한 틱마다 setState'였다: 휠은 초당 수십 번 오는데 그때마다 리액트가 마커
        수천 개를 통째로 다시 그렸다. 이제 손짓이 도는 동안은 리액트를 아예 안 건드린다 —
@@ -14938,11 +14903,9 @@ export default function ReplayMotionPlayer({
         setPan({ ...panRef.current });
       }, 140);
     };
-    el.addEventListener("dblclick", onDbl);
     // passive:false 라야 브라우저의 페이지 스크롤을 막을 수 있다.
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => {
-      el.removeEventListener("dblclick", onDbl);
       el.removeEventListener("wheel", onWheel);
       window.clearTimeout(wheelTimer);
     };
@@ -15027,43 +14990,8 @@ export default function ReplayMotionPlayer({
     let pinch: { d: number; z: number; cx: number; cy: number; px: number; py: number } | null = null;
     let pinchPend: { z: number; p: { x: number; y: number } } | null = null;
     let pinchRaf = 0;
-    /* 더블탭 확대·축소(요청: 모바일에서 더블클릭류) — 한 손가락 탭 두 번이면 탭 지점
-       중심으로 확대, 이미 확대 중이면 원래대로.
-       판정 폭(지적: 모바일에서 더블탭이 안 됨) — 실기로 재보니 320ms·36px·끌림 10px은
-       손가락에 너무 빡빡했다. 두 번째 탭이 조금만 늦거나(브라우저 더블클릭 기준도
-       500ms다) 손가락이 10px만 굴러도 탭이 아니라고 버렸다. 520ms·56px·끌림 18px로
-       넓힌다. 시각은 이벤트의 timeStamp를 쓴다 — 재생 렌더가 프레임을 오래 잡으면
-       핸들러가 늦게 돌아, 손은 빨랐는데 performance.now() 간격만 길어졌다. */
-    /* 520 → 650ms(재지적: 아직도 안 됨) — 손을 뗀 순간부터 재므로 첫 탭을 오래 누르면
-       그만큼 간격이 는다. 지도엔 한 번 탭으로 하는 일이 없어 넓혀도 잃을 게 없다. */
-    const TAP_MS = 650;
-    /* 두 탭 거리 56 → 110px, 한 탭 안 끌림 26 → 60px(재지적: 두 탭 위치가 달라서
-       그런 것 같다) — 엄지로 작은 지도를 두 번 두드리면 두 자리가 쉽게 반 뼘씩
-       어긋나고, 손가락도 그만큼 구른다. 지도엔 한 번 탭으로 하는 일이 없으니 넓게
-       잡아도 잃을 게 없다. 진짜 끌기는 아래 '오래 눌렀나'로 갈라낸다. */
-    const TAP_GAP = 110;
-    const TAP_MOVE = 60;
-    // 오래 누르면 탭이 아니라 끌기다 — 눌린 시간으로 한 번 더 거른다.
-    const TAP_HOLD_MS = 600;
-    const evTime = (e: TouchEvent): number => (e.timeStamp > 0 ? e.timeStamp : performance.now());
-    /* 실기 진단(요청 대응) — 주소에 ?dbg=tap을 붙이면 왼쪽 아래에 마지막 탭들의 숫자가
-       뜬다. 에뮬레이터에서는 다 되는데 실기에서만 안 되는 상황이라, 실제 기기에서 어떤
-       값이 나오는지 봐야 다음 수를 둘 수 있다. 평소에는 만들지도 않는다. */
-    const dbgOn = typeof location !== "undefined" && /[?&]dbg=tap/.test(location.search);
-    let dbgEl: HTMLDivElement | null = null;
-    if (dbgOn) {
-      dbgEl = document.createElement("div");
-      dbgEl.style.cssText = "position:fixed;left:6px;bottom:6px;z-index:99999;background:rgba(0,0,0,.78);"
-        + "color:#fff;font:11px/1.35 monospace;padding:6px 8px;border-radius:6px;white-space:pre;pointer-events:none";
-      dbgEl.textContent = "탭 진단 대기";
-      document.body.appendChild(dbgEl);
-    }
-    const dbg = (m: string): void => {
-      if (!dbgEl) return;
-      dbgEl.textContent = [m, ...(dbgEl.textContent ?? "").split("\n")].slice(0, 7).join("\n");
-    };
-    let tap: { t: number; x: number; y: number } | null = null;
-    let tapStart: { x: number; y: number; moved: boolean; t: number } | null = null;
+    /* (제거·요청) 더블탭 판정에 쓰던 상수·진단기·상태가 있던 자리 — 확대는 이제
+       PC 휠과 모바일 핀치 두 길뿐이라 탭을 잴 일이 없다. */
     const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
     /** 두 손가락의 가운데가 지도 안인가 — 지도 밖에서 시작한 손짓은 페이지 몫이다. */
     const twoInMap = (e: TouchEvent): boolean => e.touches.length === 2
@@ -15151,96 +15079,13 @@ export default function ReplayMotionPlayer({
       const r = mapBox();
       return !!r && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
     };
-    const onDocTS = (e: TouchEvent) => {
-      if (e.touches.length !== 1) { tapStart = null; tap = null; return; }
-      const t0 = e.touches[0];
-      tapStart = inMap(t0.clientX, t0.clientY)
-        ? { x: t0.clientX, y: t0.clientY, moved: false, t: evTime(e) } : null;
-    };
-    const onDocTM = (e: TouchEvent) => {
-      // 크게 끌렸으면 탭이 아니다 — 그 아래는 손가락 굴림으로 본다.
-      if (!tapStart || e.touches.length !== 1) return;
-      const t0 = e.touches[0];
-      if (Math.hypot(t0.clientX - tapStart.x, t0.clientY - tapStart.y) > TAP_MOVE) tapStart.moved = true;
-    };
-    // 확대·복귀 한 번 — 위 zoomGate가 갈래 셋(더블클릭·터치·포인터)을 한 번으로 묶는다.
-    const fireDouble = (cx0: number, cy0: number): boolean => {
-      if (!zoomGate()) return false;
-      dbg(zoomRef.current > 1.05 ? "→ 축소" : "→ 확대");
-      if (zoomRef.current > 1.05) {
-        setZoom(1);
-        setPan({ x: 0, y: 0 });
-        return true;
-      }
-      const r2 = mapBox();
-      if (!r2) return true;
-      const ox2 = r2.left + r2.width / 2;
-      const oy2 = r2.top + r2.height / 2;
-      const z2 = ZOOM_GAME;
-      // 핀치와 같은 수식 — 탭한 지점 아래의 지도 지점이 그 자리에 남는다.
-      const ux2 = (cx0 - ox2 - panRef.current.x) / zoomRef.current;
-      const uy2 = (cy0 - oy2 - panRef.current.y) / zoomRef.current;
-      setZoom(z2);
-      setPan({ x: cx0 - ox2 - z2 * ux2, y: cy0 - oy2 - z2 * uy2 });
-      return true;
-    };
-    const onDocTE = (e: TouchEvent) => {
-      if (e.touches.length !== 0 || !tapStart || e.changedTouches.length !== 1) {
-        if (e.touches.length === 0) tapStart = null;
-        return;
-      }
-      const ct = e.changedTouches[0];
-      const now = evTime(e);
-      const held = Math.round(now - tapStart.t);
-      const ok = !tapStart.moved && now - tapStart.t < TAP_HOLD_MS
-        && inMap(ct.clientX, ct.clientY);
-      tapStart = null;
-      const gap = tap ? Math.round(Math.hypot(ct.clientX - tap.x, ct.clientY - tap.y)) : -1;
-      const wait = tap ? Math.round(now - tap.t) : -1;
-      dbg(`T 누름${held}ms 끌림${ok ? "N" : "Y/밖"} 간격${wait}ms 거리${gap}px`);
-      if (!ok) { tap = null; return; }
-      if (tap && now - tap.t < TAP_MS && Math.hypot(ct.clientX - tap.x, ct.clientY - tap.y) < TAP_GAP) {
-        // 두 번째 탭 — 브라우저 더블탭 페이지 확대를 끊고 지도만 확대·복귀한다.
-        if (e.cancelable) e.preventDefault();
-        tap = null;
-        fireDouble(ct.clientX, ct.clientY);
-        return;
-      }
-      tap = { t: now, x: ct.clientX, y: ct.clientY };
-    };
-    /* 포인터로도 같은 판정을 한다(재지적: 모바일 더블탭 안 됨) — 인앱 웹뷰나 기기에
-       따라 touch 갈래가 통째로 안 오는 경우가 있다. 포인터 이벤트는 어디서나 오므로
-       같은 자를 하나 더 대 둔다. 둘 다 맞으면 위 빗장이 한 번만 듣게 막는다. */
-    let pStart: { x: number; y: number; moved: boolean; t: number } | null = null;
-    let pTap: { t: number; x: number; y: number } | null = null;
-    const onPD = (e: PointerEvent) => {
-      if (e.pointerType !== "touch") return;
-      pStart = inMap(e.clientX, e.clientY)
-        ? { x: e.clientX, y: e.clientY, moved: false, t: e.timeStamp } : null;
-    };
-    const onPM = (e: PointerEvent) => {
-      if (!pStart || e.pointerType !== "touch") return;
-      if (Math.hypot(e.clientX - pStart.x, e.clientY - pStart.y) > TAP_MOVE) pStart.moved = true;
-    };
-    const onPU = (e: PointerEvent) => {
-      if (e.pointerType !== "touch") return;
-      const st = pStart;
-      pStart = null;
-      const now = e.timeStamp > 0 ? e.timeStamp : performance.now();
-      if (!st || st.moved || now - st.t > TAP_HOLD_MS || !inMap(e.clientX, e.clientY)) {
-        pTap = null;
-        return;
-      }
-      const pg = pTap ? Math.round(Math.hypot(e.clientX - pTap.x, e.clientY - pTap.y)) : -1;
-      dbg(`P 간격${pTap ? Math.round(now - pTap.t) : -1}ms 거리${pg}px`);
-      if (pTap && now - pTap.t < TAP_MS
-        && Math.hypot(e.clientX - pTap.x, e.clientY - pTap.y) < TAP_GAP) {
-        pTap = null;
-        dbg(fireDouble(e.clientX, e.clientY) ? "P 더블탭 발동" : "P 빗장에 막힘");
-        return;
-      }
-      pTap = { t: now, x: e.clientX, y: e.clientY };
-    };
+    /* (제거·요청: "인포팝업 때문에 더블탭/클릭 줌은 제거") — 여기 있던 것은 더블탭
+       확대 갈래 전부다: 탭 시작 추적(onDocTS·onDocTM), 두 번째 탭 판정(onDocTE),
+       그리고 touch 갈래가 통째로 안 오는 기기를 위한 포인터 판정(onPD·onPM·onPU),
+       셋을 한 번으로 묶던 빗장(zoomGate)과 발동부(fireDouble).
+       유닛을 눌러 정보 팝업을 여는 것과 같은 손짓이라, 팝업을 두 번 확인하려다 화면이
+       확대되고 팝업이 닫히는 일이 잦았다. 확대는 PC 휠과 모바일 핀치 두 길만 남는다.
+       핀치가 쓰는 mapBox·inMap과 탭 판정 상수들은 위에 그대로 있다. */
     /* 핀치도 문서에서 받는다(지적: 모바일 핀치줌이 안 된다) — 더블탭이 이미 같은 이유로
        문서로 옮겨 와 있다: 맵은 자료가 온 뒤에 그려지기도 해서 마운트 순간 mapRef가
        비어 있으면 el에 건 리스너가 **영영 안 달렸다**. 그러면 핀치는 코드가 멀쩡해도
@@ -15259,16 +15104,6 @@ export default function ReplayMotionPlayer({
     document.addEventListener("touchmove", onTM, { passive: false });
     document.addEventListener("touchend", onTE);
     document.addEventListener("touchcancel", onTE);
-    document.addEventListener("touchstart", onDocTS, { passive: true });
-    document.addEventListener("touchmove", onDocTM, { passive: true });
-    /* 문서 touchend는 수동 등록 아님(passive: false) — 두 번째 탭에서 브라우저 제
-       더블탭 확대를 끊어야 하는데, 수동 등록이면 preventDefault가 무시된다. */
-    document.addEventListener("touchend", onDocTE, { passive: false });
-    document.addEventListener("touchcancel", onDocTE, { passive: true });
-    document.addEventListener("pointerdown", onPD, { passive: true });
-    document.addEventListener("pointermove", onPM, { passive: true });
-    document.addEventListener("pointerup", onPU, { passive: true });
-    document.addEventListener("pointercancel", onPU, { passive: true });
     return () => {
       if (pinchRaf) cancelAnimationFrame(pinchRaf);
       document.removeEventListener("gesturestart", onGesture);
@@ -15277,15 +15112,6 @@ export default function ReplayMotionPlayer({
       document.removeEventListener("touchmove", onTM);
       document.removeEventListener("touchend", onTE);
       document.removeEventListener("touchcancel", onTE);
-      document.removeEventListener("touchstart", onDocTS);
-      document.removeEventListener("touchmove", onDocTM);
-      document.removeEventListener("touchend", onDocTE);
-      document.removeEventListener("touchcancel", onDocTE);
-      document.removeEventListener("pointerdown", onPD);
-      document.removeEventListener("pointermove", onPM);
-      document.removeEventListener("pointerup", onPU);
-      document.removeEventListener("pointercancel", onPU);
-      dbgEl?.remove();
     };
     // 확대창(포털 재부착)이 사라져 맵 엘리먼트는 안 바뀐다 — 마운트에 한 번이면 된다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -15638,8 +15464,18 @@ export default function ReplayMotionPlayer({
       if (!o.pickKey) continue;
       // UnitLayer의 분수→화면 사상과 같은 식(zx/zy 주석 참고).
       const ox = (o.fx - 0.5) * r.width * zoom + r.width / 2 + pan.x;
-      const oy = (o.fy - 0.5) * r.height * zoom + r.height / 2 + pan.y;
+      const oy0 = (o.fy - 0.5) * r.height * zoom + r.height / 2 + pan.y;
       const box = o.wFrac ? Math.max(o.wFrac, o.hFrac ?? 0) * r.width : o.sizePx;
+      /* ★ 유닛은 **그린 자리**로 판정해야 한다(지적: "오버로드·라바 인포팝업이 안 뜬다 —
+         공중 유닛 전반의 문제일 수 있다") — 맞았다. 그리는 쪽(UnitLayer)은 몸을 발밑
+         자리에서 `px·0.24 + lift`만큼 **위로 들어** 찍는데(lift는 공중 0.8px + rise),
+         판정은 들기 전 자리에서 재고 있었다. 공중 유닛은 들린 몫(1.04px)이 판정 반경
+         (0.5px)보다 커서, **몸을 눌러도 절대 안 잡히고** 몸 아래 빈 땅을 눌러야 잡혔다.
+         그리는 식과 같은 값을 그대로 쓴다 — 앞으로 들기가 바뀌어도 한 줄만 따라오면 된다. */
+      const pxU = o.sizePx * zoom;
+      const liftU = o.wFrac ? 0
+        : pxU * 0.24 + (o.air ? pxU * 0.8 : 0) + (o.rise ?? 0) * pxU;
+      const oy = oy0 - liftU;
       // 작은 유닛도 손가락으로 집을 수 있게 최소 반경을 준다.
       const rad = Math.max(14, box * zoom * 0.5);
       const d = Math.hypot(px - ox, py - oy);
@@ -16861,6 +16697,15 @@ export default function ReplayMotionPlayer({
                        화면에서는 점 하나가 된다. 라바는 소형, 알은 그보다 한 단 크다. */
                     sizePx: unitGlyphPx(kind3, kind3, kind3 === "egg" ? 1 : 0, py3) * sz3,
                     color, alpha, noSep: true, noShadow: true,
+                    /* 인포 팝업 신원(요청: "라바 인포팝업이 안 뜬다") — 라바·알은
+                       리플레이 개체 기록에 안 남아(해처리가 셈해 그리는 장식이다)
+                       여태 pickKey 자체가 없었다. 그래서 눌러도 아무 일이 없었다.
+                       개체 태그가 없으니 '어느 해처리의 몇 번 칸'을 열쇠로 삼는다 —
+                       칸 번호가 곧 자리라 프레임이 지나도 같은 몸을 가리킨다. */
+                    pickKey: `l${Math.round(centerX * 4)}|${Math.round(centerY * 4)}|${ix3}`,
+                    pickName: kind3 === "egg" ? "Egg" : "Larva",
+                    hpFrac: 1,
+                    hpMax: kind3 === "egg" ? 200 : 25,
                   });
                 };
                 // 둘 다 한 단 작게(지적: 라바·알이 너무 크다) — 알 1.15 → 0.68, 라바 1 → 0.6.
