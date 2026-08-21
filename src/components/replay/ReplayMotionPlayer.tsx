@@ -3768,7 +3768,12 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        3.1 → 2.62. 넷이 벌어져 있으면 가운데 구멍이 넓어 관문이 '고리 넷'으로 흩어져
        보인다. 반지름만 줄이므로 잎의 길이(LEN)·폭(TANG)·휨은 그대로다. */
     const R = 2.62;   // 축에서 잎 배까지 반지름
-    const LEN = 3.1;  // 잎의 앞뒤 반길이
+    /* 앞뒤를 싹둑 자른다(요청: "네 잎의 앞뒤를 싹둑 잘라서 깊이랑 폭이 차이 많이
+       안나게") — 3.1 → 2.15. 접선 반폭(TANG)이 1.95인데 앞뒤 반길이가 3.1이라 깊이가
+       폭의 1.6배였다: 정면에서 보면 위·아래 잎은 넓적하고 좌우 잎은 앞뒤로만 길어
+       가느다란 조각으로 보였다(도록 0·180도로 확인). 2.15면 1.1배라 넷이 같은
+       덩어리로 읽힌다. */
+    const LEN = 2.15; // 잎의 앞뒤 반길이
     /* 접선 반폭 1.5 → 1.95(요청: "네 잎 너비 확대") — 잎이 넓어지면 관문의 구멍이
        좁아지고 넷이 한 통으로 읽힌다. 앞뒤 길이(LEN)와 반지름(R)은 그대로라 관문의
        덩치는 안 변하고 날만 두꺼워진다. */
@@ -7755,13 +7760,17 @@ export const SHAPE_BUILDERS: Record<string, () => ShapeFace[]> = {
        단면은 플라즈마 에너지다 — 관이 제 끝 단면을 그리는 대신, 그 자리에 벽 원반을
        한 장 세워 밝게 태운다(뒤를 보일 때만 그린다). */
     const THRUST_GOLD = "#a8801f";
+    /* 추진체를 0.75타일 뒤로 뺀다(요청: "추진체들을 더 뒤로 빼서 밖에서 반정도
+       보이게") — 여태 관이 y −2.45~−3.65라 잎 뒤에 거의 파묻혀, 뒤에서 봐도 끝
+       단면(플라즈마 원반) 세 점만 빠끔 나왔다. −3.2~−4.4로 물리면 길이 1.2 중
+       0.6쯤이 몸 밖에 남는다 — '뒤에 달린 통'으로 읽힌다. 끝 단면도 같이 따라간다. */
     const thruster = (tx: number, tz: number): ShapeFace[] => [
-      ...paintBase(tubeFaces(tx, -2.45, tx, -3.65, 0.4, tz), THRUST_GOLD),
+      ...paintBase(tubeFaces(tx, -3.2, tx, -4.4, 0.4, tz), THRUST_GOLD),
       ...(facingRatio(0, -1) > 0.05
         ? tagKey([
-          [wallDiscPath(tx, -3.68, tz, 0.36, 0.3), 0.9, P_PLASMA] as ShapeFace,
-          topFace(wallDiscPath(tx, -3.7, tz, 0.2, 0.17), 0.5),
-        ], depthNow(tx, -3.7) + 0.5)
+          [wallDiscPath(tx, -4.43, tz, 0.36, 0.3), 0.9, P_PLASMA] as ShapeFace,
+          topFace(wallDiscPath(tx, -4.45, tz, 0.2, 0.17), 0.5),
+        ], depthNow(tx, -4.45) + 0.5)
         : []),
     ];
     return [
@@ -10916,8 +10925,8 @@ const MODEL_NORM: Record<string, number> = {
   archon: 0.525,
   bc: 0.670,
   burrowhole: 0.832,
-  carrier: 0.989,
-  carrierbay: 0.834,
+  carrier: 0.928,
+  carrierbay: 0.800,
   corsair: 1.073,
   darchon: 0.475,
   defiler: 0.687,
@@ -10944,7 +10953,7 @@ const MODEL_NORM: Record<string, number> = {
   muta: 0.735,
   mutacocoon: 1.100,
   observer: 1.938,
-  ovie: 0.638,
+  ovie: 0.639,
   probe: 1.582,
   probeGas: 1.392,
   probeMin: 1.473,
@@ -10958,7 +10967,7 @@ const MODEL_NORM: Record<string, number> = {
   shuttle: 0.666,
   tank: 0.636,
   tankbody: 0.700,
-  tanksiege: 0.519,
+  tanksiege: 0.506,
   tanksiegebody: 0.633,
   ultra: 0.437,
   valk: 0.900,
@@ -11009,7 +11018,7 @@ const NORM_TARGET_INK = 5.2;
  *   · tankgun·tanksiegegun — **일부러** 목표를 안 맞춘 것. 짝이라 차체 배수를 쓰므로
  *     제 잉크 상자는 5.2가 아니다(포신은 완결 유닛이 아니라 부품이다).
  *  이 표도 --emit이 낸 값이다. */
-const MODEL_INK: Record<string, number> = { arbiter: 4.461, larva: 4.787, mine: 4.591, scourge: 5.070, tankgun: 3.939, tanksiegegun: 4.318 };
+const MODEL_INK: Record<string, number> = { arbiter: 4.461, larva: 4.787, mine: 4.591, scourge: 5.070, tankgun: 3.939, tanksiegegun: 4.557 };
 /** 그리는 kind가 정규화 뒤 실제로 차지하는 잉크 상자(모델 단위). */
 const modelInkOf = (kind: string): number => MODEL_INK[kind] ?? NORM_TARGET_INK;
 
@@ -12153,7 +12162,7 @@ export const BLD_FILL_TARGET: Record<string, number> = {
  *  표에 없는 종류는 1(모델 그대로)이다. */
 export const BLD_NORM: Record<string, number> = {
   academy: 1.684,
-  arch: 2.413,  // 상자 상한에 걸림
+  arch: 2.478,  // 상자 상한에 걸림
   archives: 2.489,  // 상자 상한에 걸림
   armory: 1.223,
   assim: 1.655,
